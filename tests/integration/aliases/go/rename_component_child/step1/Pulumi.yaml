@@ -1,3 +1,0 @@
-name: rename_component_child
-description: A program that renames a component child with an alias.
-runtime: go

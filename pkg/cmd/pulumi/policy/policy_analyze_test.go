@@ -25,6 +25,8 @@ import (
 	"strings"
 	"testing"
 
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -47,7 +49,7 @@ import (
 // makeAnalyzeSnapshot builds a minimal snapshot with a single resource.
 func makeAnalyzeSnapshot() *deploy.Snapshot {
 	return &deploy.Snapshot{
-		Resources: []*resource.State{{
+		Resources: []*pkgresource.State{{
 			Type:    tokens.Type("pkg:index:MyResource"),
 			URN:     "urn:pulumi:stack::project::pkg:index:MyResource::res",
 			Custom:  true,
@@ -85,7 +87,7 @@ func newMockBackendForAnalyze() (*backend.MockBackend, *backend.MockStack) {
 // newMockWsAndLm returns a MockContext and MockLoginManager that route through be.
 func newMockWsAndLm(be backend.Backend) (pkgWorkspace.Context, cmdBackend.LoginManager) {
 	ws := &pkgWorkspace.MockContext{
-		ReadProjectF: func() (*workspace.Project, string, error) {
+		ReadProjectF: func(_ string) (*workspace.Project, string, error) {
 			return nil, "", workspace.ErrProjectNotFound
 		},
 	}
@@ -324,7 +326,7 @@ func TestStackReferenceForFile(t *testing.T) {
 		t.Parallel()
 
 		ref := stackReferenceForFile(&deploy.Snapshot{
-			Resources: []*resource.State{
+			Resources: []*pkgresource.State{
 				{URN: "urn:pulumi:prod::infra::pkg:index:MyResource::a"},
 				{URN: "urn:pulumi:prod::infra::pkg:index:MyResource::b"},
 			},
@@ -350,9 +352,9 @@ func TestStackReferenceForFile(t *testing.T) {
 				"urn:pulumi:dev::infra::pkg:index:MyResource::b", // differing stack
 			},
 		} {
-			resources := make([]*resource.State, len(urns))
+			resources := make([]*pkgresource.State, len(urns))
 			for i, u := range urns {
-				resources[i] = &resource.State{URN: u}
+				resources[i] = &pkgresource.State{URN: u}
 			}
 			ref := stackReferenceForFile(&deploy.Snapshot{Resources: resources})
 			assert.Equal(t, "multiple", ref.Name().String())
@@ -366,7 +368,7 @@ func TestStackReferenceForFile(t *testing.T) {
 		t.Parallel()
 
 		ref := stackReferenceForFile(&deploy.Snapshot{
-			Resources: []*resource.State{{URN: "not-a-urn"}},
+			Resources: []*pkgresource.State{{URN: "not-a-urn"}},
 		})
 		assert.Equal(t, "unknown", ref.Name().String())
 		assert.Equal(t, "<unknown>", ref.String())
@@ -548,7 +550,7 @@ func TestPolicyAnalyzeCmd_AnalyzeStackCalled_PrintsAndUsesOutputs(t *testing.T) 
 
 	urn := resource.URN("urn:pulumi:stack::project::pkg:index:MyResource::res")
 	snap := &deploy.Snapshot{
-		Resources: []*resource.State{{
+		Resources: []*pkgresource.State{{
 			Type:    tokens.Type("pkg:index:MyResource"),
 			URN:     urn,
 			Custom:  true,

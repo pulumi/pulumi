@@ -17,6 +17,8 @@ package state
 import (
 	"testing"
 
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
+
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/stretchr/testify/assert"
@@ -32,7 +34,7 @@ func TestSnapshotFrontendRoundTrip(t *testing.T) {
 			Magic:   "a985ef3cf45426591e732ba9a8c59847d8d3bfcf747713e1e6bb4589b89a75ed",
 			Version: "3.74.1-dev.0",
 		},
-		Resources: []*resource.State{
+		Resources: []*pkgresource.State{
 			{
 				URN:  resource.URN("urn:pulumi:dev::random::pulumi:pulumi:Stack::random-dev"),
 				Type: "pulumi:pulumi:Stack",

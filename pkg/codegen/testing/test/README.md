@@ -22,7 +22,7 @@ directory that contains that information:
 
 ```
  testdata/
-     my-simple-schema/   # i.e. `simple-enum-schema`
+     my-simple-schema/   # i.e. `simple-resource-schema`
          schema.(json|yaml)
          go/
          python/

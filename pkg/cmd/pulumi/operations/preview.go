@@ -22,6 +22,7 @@ import (
 	"log/slog"
 	"maps"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -81,18 +82,18 @@ func buildImportFile(
 		importSet := map[resource.URN]struct{}{}
 		// All providers that we've seen so far, used to build Version and PluginDownloadURL.
 		providerInputs := map[resource.URN]resource.PropertyMap{}
-		// Full (unfiltered) provider inputs from the resource State, used to serialize into the
-		// import file for explicit providers that need creation.
-		providerFullInputs := map[resource.URN]resource.PropertyMap{}
 
 		imports := importFile{
 			NameTable: map[string]resource.URN{},
 		}
 
-		// A mapping of names to the index of the resourceSpec in imports.Resources that used it. We have to
-		// fix up names _as we go_ because we're mapping over the event stream, and it would be pretty
-		// inefficient to wait for the whole thing to finish before building the import specs.
-		takenNames := map[string]int{}
+		// A mapping of names to their logical name and type that used it. We have to fix up names _as we go_
+		// because we're mapping over the event stream, and it would be pretty inefficient to wait for the
+		// whole thing to finish before building the import specs.
+		takenNames := map[string]struct {
+			name string
+			typ  tokens.Type
+		}{}
 
 		// We want to prefer using the urns name for the source name, but if it conflicts with other resources
 		// we'll auto suffix it, first with the type, then with rising numbers. This function does that
@@ -120,42 +121,49 @@ func buildImportFile(
 
 			urn := preEvent.Metadata.URN
 			name := urn.Name()
-			if i, has := takenNames[name]; has {
-				// Another resource already has this name, lets check if that was it's original name or if it was a rename
-				importI := imports.Resources[i]
-				if importI.LogicalName != "" {
-					// i was renamed, so we're going to go backwards rename it again and then we can use our name for this resource.
-					newName := uniqueName(importI.LogicalName, importI.Type)
-					imports.Resources[i].Name = newName
-					// Go through all the resources and fix up any parent references to use the new name.
-					for j := range imports.Resources {
-						if imports.Resources[j].Parent == name {
-							imports.Resources[j].Parent = newName
-						}
-					}
-					// Fix up the nametable if needed
+			if old, has := takenNames[name]; has {
+				// Another resource already has this name, lets check if that was it's original name or if it was a rename.
+				if old.name != name {
+					// old was renamed, so we're going to go backwards rename it again and then we can use our name for this resource.
+					newName := uniqueName(old.name, old.typ)
+
+					// Fix up the name table to reflect the rename.
 					if urn, has := imports.NameTable[name]; has {
 						delete(imports.NameTable, name)
 						imports.NameTable[newName] = urn
 					}
+					// Then go through all the resources and fix up any name, parent or provider references to use the new name.
+					for j := range imports.Resources {
+						if imports.Resources[j].Name == name {
+							imports.Resources[j].Name = newName
+						}
+						if imports.Resources[j].Parent == name {
+							imports.Resources[j].Parent = newName
+						}
+						if imports.Resources[j].Provider == name {
+							imports.Resources[j].Provider = newName
+						}
+					}
 					// Fix up takenNames incase this is hit again
-					takenNames[newName] = i
+					takenNames[newName] = takenNames[name]
+					delete(takenNames, name)
 				} else {
-					// i just had the same name as us, lets find a new one
+					// old just had the same name as us, lets find a new one
 					name = uniqueName(name, urn.Type())
 				}
 			}
 
 			// Name is unique at this point
 			fullNameTable[urn] = name
+			takenNames[name] = struct {
+				name string
+				typ  tokens.Type
+			}{urn.Name(), urn.Type()}
 
 			// If this is a provider we need to note we've seen it so we can build the Version and PluginDownloadURL of
 			// any resources that use it.
 			if sdkproviders.IsProviderType(urn.Type()) {
 				providerInputs[urn] = preEvent.Metadata.Res.Inputs
-				contract.Assertf(preEvent.Metadata.Res.State != nil,
-					"%s: expected State to be non-nil for provider", urn)
-				providerFullInputs[urn] = preEvent.Metadata.Res.State.Inputs
 			}
 
 			// Only interested in creates
@@ -170,10 +178,9 @@ func buildImportFile(
 			// We're importing this URN so track that we've seen it.
 			importSet[urn] = struct{}{}
 
-			// Provider resources are not imported with an ID like regular resources. Instead,
-			// their inputs are serialized into the import file's providerInputs section so the
-			// import system can create them with the correct configuration.
-			if sdkproviders.IsProviderType(urn.Type()) {
+			// Default providers are not declared in the import file; the import system creates
+			// them from ambient config.
+			if sdkproviders.IsDefaultProvider(urn) {
 				continue
 			}
 
@@ -201,30 +208,15 @@ func buildImportFile(
 					return importFile{}, fmt.Errorf("could not parse provider reference: %w", err)
 				}
 
-				// Providers are not imported as resources (we skip them above), but resources
-				// that use a new explicit provider can still be in the import file. We serialize
-				// the provider's full inputs so the import system can create it.
 				if !sdkproviders.IsDefaultProvider(ref.URN()) {
 					var has bool
 					provider, has = fullNameTable[ref.URN()]
 					contract.Assertf(has, "expected provider %q to be in full name table", new.Provider)
 
-					imports.NameTable[provider] = ref.URN()
-
-					// If this provider is being created in this deployment, serialize its full inputs
-					// so the import system can recreate it with the correct configuration.
-					if _, inImportSet := importSet[ref.URN()]; inImportSet {
-						if fullInputs, ok := providerFullInputs[ref.URN()]; ok {
-							serialized, serErr := stack.SerializeProperties(ctx, fullInputs, enc, false)
-							if serErr != nil {
-								return importFile{}, fmt.Errorf(
-									"could not serialize provider inputs for %s: %w", ref.URN(), serErr)
-							}
-							if imports.ProviderInputs == nil {
-								imports.ProviderInputs = map[string]map[string]any{}
-							}
-							imports.ProviderInputs[provider] = serialized
-						}
+					// Don't add to the import NameTable if we're creating the provider in the same
+					// deployment; it is declared in the resources list instead.
+					if _, inImportSet := importSet[ref.URN()]; !inImportSet {
+						imports.NameTable[provider] = ref.URN()
 					}
 				}
 
@@ -246,10 +238,44 @@ func buildImportFile(
 			}
 
 			var id resource.ID
-			// id only needs filling in for custom resources, set it to a placeholder so the user can easily
-			// search for that.
+			var inputs map[string]any
 			if new.Custom {
-				id = "<PLACEHOLDER>"
+				if sdkproviders.IsProviderType(urn.Type()) {
+					// Explicit providers are created by the import system rather than read from a
+					// cloud, so they are declared with their full inputs instead of an ID.
+					contract.Assertf(preEvent.Metadata.Res.State != nil,
+						"%s: expected State to be non-nil for provider", urn)
+					if fullInputs := preEvent.Metadata.Res.State.Inputs; len(fullInputs) > 0 {
+						// Anything not known during the preview would be written out as the unknown
+						// placeholder, which is not a value the import system can use.
+						known, unknown := resource.PropertyMap{}, []string{}
+						for _, k := range fullInputs.StableKeys() {
+							if fullInputs[k].ContainsUnknowns() {
+								unknown = append(unknown, string(k))
+								continue
+							}
+							known[k] = fullInputs[k]
+						}
+						if len(unknown) > 0 {
+							cmdutil.Diag().Warningf(diag.Message(urn,
+								"configuration of provider %s is not known during the preview and has "+
+									"been omitted from the import file, fill it in before importing: %s"),
+								urn, strings.Join(unknown, ", "))
+						}
+						if len(known) > 0 {
+							var serErr error
+							inputs, serErr = stack.SerializeProperties(ctx, known, enc, false)
+							if serErr != nil {
+								return importFile{}, fmt.Errorf(
+									"could not serialize provider inputs for %s: %w", urn, serErr)
+							}
+						}
+					}
+				} else {
+					// id only needs filling in for other custom resources, set it to a placeholder
+					// so the user can easily search for that.
+					id = "<PLACEHOLDER>"
+				}
 			}
 
 			// We only want to set logical name if we need to
@@ -258,7 +284,6 @@ func buildImportFile(
 				logicalName = urn.Name()
 			}
 
-			takenNames[name] = len(imports.Resources)
 			imports.Resources = append(imports.Resources, importSpec{
 				Type:              new.Type,
 				Name:              name,
@@ -269,6 +294,7 @@ func buildImportFile(
 				Remote:            !new.Custom && new.Provider != "",
 				Version:           version,
 				PluginDownloadURL: pluginDownloadURL,
+				Inputs:            inputs,
 				LogicalName:       logicalName,
 			})
 		}
@@ -286,6 +312,7 @@ func NewPreviewCmd() *cobra.Command {
 	var stackName string
 	var configArray []string
 	var configFile string
+	var envOverrides []string
 	var configPath bool
 	var client string
 	var planFilePath string
@@ -324,6 +351,7 @@ func NewPreviewCmd() *cobra.Command {
 	var excludeDependents bool
 	var attachDebugger []string
 	var skipPluginPreInstall bool
+	var ignoreProtect bool
 
 	// Flags for Neo.
 	var neoEnabled bool
@@ -349,16 +377,22 @@ func NewPreviewCmd() *cobra.Command {
 			ctx := cmd.Context()
 			ws := pkgWorkspace.Instance
 
-			proj, root, err := readProjectForUpdate(ws, client)
-			if err != nil {
-				return err
-			}
+			var proj *workspace.Project
+			var root string
+			var meta *promise.Promise[map[string]string]
+			if !remoteArgs.Remote {
+				var err error
+				proj, root, err = readProjectForUpdate(ws, client)
+				if err != nil {
+					return err
+				}
 
-			if err := plugin.ValidatePulumiVersionRange(proj.RequiredPulumiVersion, version.Version); err != nil {
-				return err
-			}
+				if err := plugin.ValidatePulumiVersionRange(proj.RequiredPulumiVersion, version.Version); err != nil {
+					return err
+				}
 
-			meta := metadata.GetLanguageRuntimeMetadata(ctx, root, proj)
+				meta = metadata.GetLanguageRuntimeMetadata(ctx, root, proj)
+			}
 
 			if err := validateAttachDebuggerFlag(attachDebugger); err != nil {
 				return err
@@ -470,7 +504,7 @@ func NewPreviewCmd() *cobra.Command {
 				return err
 			}
 
-			cfg, sm, err := config.GetStackConfiguration(ctx, cmdutil.Diag(), ssml, s, proj, configFile)
+			cfg, sm, err := config.GetStackConfiguration(ctx, cmdutil.Diag(), ssml, s, proj, configFile, envOverrides)
 			if err != nil {
 				return fmt.Errorf("getting stack configuration: %w", err)
 			}
@@ -487,12 +521,12 @@ func NewPreviewCmd() *cobra.Command {
 			stackName := s.Ref().Name().String()
 			if skipConfigValidation {
 				// Still apply project config defaults onto the stack config, but skip validation.
-				if configErr := workspace.ApplyProjectConfig(
+				if configErr := pkgWorkspace.ApplyProjectConfig(
 					ctx, stackName, proj, cfg.Environment, cfg.Config, encrypter, decrypter); configErr != nil {
 					return fmt.Errorf("applying stack config: %w", configErr)
 				}
 			} else {
-				configErr := workspace.ValidateStackConfigAndApplyProjectConfig(
+				configErr := pkgWorkspace.ValidateStackConfigAndApplyProjectConfig(
 					ctx,
 					stackName,
 					proj,
@@ -548,6 +582,7 @@ func NewPreviewCmd() *cobra.Command {
 					TargetDependents:          targetDependents,
 					Excludes:                  deploy.NewUrnTargets(excludeURNs),
 					ExcludeDependents:         excludeDependents,
+					IgnoreProtect:             ignoreProtect,
 					// If we're trying to save a plan then we _need_ to generate it. We also turn this on in
 					// experimental mode to just get more testing of it.
 					GeneratePlan:         env.Experimental.Value() || planFilePath != "",
@@ -659,6 +694,7 @@ func NewPreviewCmd() *cobra.Command {
 	cmd.PersistentFlags().StringVar(
 		&configFile, "config-file", "",
 		"Use the configuration values in the specified file rather than detecting the file name")
+	config.OverrideEnvFlag(cmd, &envOverrides)
 	cmd.PersistentFlags().StringArrayVarP(
 		&configArray, "config", "c", []string{},
 		"Config to use during the preview and save to the stack config file")
@@ -786,6 +822,11 @@ func NewPreviewCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVar(
 		&skipPluginPreInstall, "skip-plugin-pre-install", false,
 		"Skip the up-front provider plugin install step; missing plugins are installed lazily by the engine")
+
+	cmd.PersistentFlags().BoolVar(
+		&ignoreProtect, "ignore-protect", false,
+		"Ignore the protect resource option for this operation, previewing the deletion or replacement "+
+			"of protected resources instead of failing")
 
 	cmd.PersistentFlags().BoolVar(
 		&neoEnabled, "neo", false,

@@ -495,6 +495,45 @@ func TestRawCall_ForwardsUserHeaders(t *testing.T) {
 		"Authorization must stay pinned to the resolved token")
 }
 
+// TestRawCall_RepeatedHeadersAccumulate is a regression test for
+// https://github.com/pulumi/pulumi/issues/23126: `-H`/`--header` is
+// documented as repeatable, but buildAPIHeaders used http.Header.Set for
+// every occurrence, so each repeated value for the same header name
+// silently discarded the one before it and only the last survived on the
+// wire. Repeated occurrences of the same name must accumulate instead,
+// matching `curl -H ... -H ...` and `gh api -H ... -H ...`. The first
+// user-supplied occurrence of a name must still replace an encoder default
+// (Accept/Content-Type) rather than being appended alongside it.
+func TestRawCall_RepeatedHeadersAccumulate(t *testing.T) {
+	t.Parallel()
+	var received http.Header
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		received = r.Header.Clone()
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	t.Cleanup(srv.Close)
+
+	apiClient := client.NewClient(srv.URL, "my-token", false, nil)
+	hdrs := []ParsedHeader{
+		{Name: "X-Foo", Value: "a"},
+		{Name: "X-Foo", Value: "b"},
+		// Repeated user-supplied Content-Type: the first occurrence must
+		// replace the encoder default, the second must accumulate alongside
+		// it rather than either being dropped or the default lingering.
+		{Name: "Content-Type", Value: "text/plain"},
+		{Name: "Content-Type", Value: "application/x-yaml"},
+	}
+	resp, err := apiClient.RawCall(t.Context(), http.MethodGet, "/echo", nil, nil,
+		buildAPIHeaders("application/json", "application/json", hdrs), false)
+	require.NoError(t, err)
+	resp.Body.Close()
+
+	assert.Equal(t, []string{"a", "b"}, received.Values("X-Foo"),
+		"repeated -H values for the same header name must all reach the wire")
+	assert.Equal(t, []string{"text/plain", "application/x-yaml"}, received.Values("Content-Type"),
+		"repeated user Content-Type values must accumulate without the encoder default lingering")
+}
+
 // TestValidateFlagCombos_BodyAndInputMutuallyExclusive pins the user-visible
 // error when both --body and --input are set.
 func TestValidateFlagCombos_BodyAndInputMutuallyExclusive(t *testing.T) {

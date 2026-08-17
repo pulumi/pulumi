@@ -226,7 +226,8 @@ func TestCreatingProjectWithPulumiBackendURL(t *testing.T) {
 	assert.Equal(t, defaultProjectName, proj.Name.String())
 	// Expect the stack directory to have a checkpoint file for the stack.
 	_, err = os.Stat(filepath.Join(
-		backendDir, workspace.BookkeepingDir, workspace.StackDir, defaultProjectName, stackName+".json"))
+		backendDir, workspace.BookkeepingDir, pkgWorkspace.StackDir, defaultProjectName, stackName+".json",
+	))
 	require.NoError(t, err)
 
 	b, err = backend.CurrentBackend(ctx, pkgWorkspace.Instance, backend.DefaultLoginManager, nil, display.Options{})
@@ -236,6 +237,10 @@ func TestCreatingProjectWithPulumiBackendURL(t *testing.T) {
 
 //nolint:paralleltest // changes directory for process
 func TestRunNewYesWithTemplate(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping template download test in short mode")
+	}
+
 	tempdir := tempProjectDir(t)
 	t.Chdir(tempdir)
 
@@ -256,30 +261,24 @@ func TestRunNewYesWithTemplate(t *testing.T) {
 	require.Equal(t, "yaml", proj.Runtime.Name())
 }
 
-// pulumi new --language yaml --yes --non-interactive
-//
-//nolint:paralleltest // changes directory for process
-func TestRunNewYesWithAILanguage(t *testing.T) {
-	tempdir := tempProjectDir(t)
-	t.Chdir(tempdir)
+func TestRunNewErrorsOnRetiredAIFlags(t *testing.T) {
+	t.Parallel()
 
-	args := newArgs{
-		yes:                   true,
-		interactive:           false,
-		aiLanguage:            "yaml",
-		aiPrompt:              "", // empty
-		prompt:                ui.PromptForValue,
-		chooseTemplate:        ChooseTemplate,
-		secretsProvider:       "default",
-		stack:                 stackName,
-		generateOnly:          true,
-		promptForAIProjectURL: promptForAIProjectURL,
-		languageTemplate:      languageTemplateMock,
+	tests := []struct {
+		name string
+		args newArgs
+	}{
+		{name: "ai prompt only", args: newArgs{aiPrompt: "an s3 bucket"}},
+		{name: "language only", args: newArgs{aiLanguage: "yaml"}},
+		{name: "both flags", args: newArgs{aiPrompt: "an s3 bucket", aiLanguage: "yaml"}},
 	}
-
-	err := runNew(t.Context(), args)
-	require.ErrorContains(t, err,
-		"the --ai <prompt> flag is required when running in non-interactive mode with the --language flag")
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			err := runNew(t.Context(), tt.args)
+			require.EqualError(t, err, aiRetiredMessage)
+		})
+	}
 }
 
 const (
@@ -322,9 +321,12 @@ func currentUser(t *testing.T) string {
 }
 
 func loadStackName(t *testing.T) string {
-	w, err := pkgWorkspace.Instance.New()
+	w, err := pkgWorkspace.Instance.New("")
 	require.NoError(t, err)
-	return w.Settings().Stack
+	backendURL, err := pkgWorkspace.GetCurrentCloudURL(pkgWorkspace.Instance, env.Global(), nil)
+	require.NoError(t, err)
+	name, _ := w.Settings().StackForBackend(backendURL)
+	return name
 }
 
 func removeStack(t *testing.T, dir, name string) {

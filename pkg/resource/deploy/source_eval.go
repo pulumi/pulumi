@@ -35,6 +35,8 @@ import (
 	"github.com/grpc-ecosystem/grpc-opentracing/go/otgrpc"
 	opentracing "github.com/opentracing/opentracing-go"
 	slicesfx "github.com/pgavlin/fx/v2/slices"
+	"go.opentelemetry.io/otel"
+	oteltrace "go.opentelemetry.io/otel/trace"
 	"google.golang.org/protobuf/types/known/emptypb"
 	"google.golang.org/protobuf/types/known/structpb"
 
@@ -49,6 +51,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/pluginstorage"
 	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
+	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/resourcetracker"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -60,6 +63,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
@@ -147,6 +151,10 @@ type evalSource struct {
 
 	// the function to run the evaluation with.
 	runner func(resourceMonitorTarget string) *promise.Promise[struct{}]
+
+	// the span covering the currently-running program evaluation, if any. The resource monitor uses it as the
+	// fallback parent for incoming calls that carry no trace context of their own.
+	runSpan atomic.Pointer[oteltrace.Span]
 }
 
 func (src *evalSource) Close() error {
@@ -347,11 +355,18 @@ func (iter *evalSourceIterator) forkRun(
 	// Fire up the goroutine to make the RPC invocation against the language runtime.  As this executes, calls
 	// to queue things up in the resource channel will occur, and we will serve them concurrently.
 	go PanicRecovery(iter.panicErrs, func() {
+		_, runSpan := cmdutil.StartSpan(iter.src.plugctx.Base(), otel.Tracer("pulumi-cli"), "run-program")
+		iter.src.runSpan.Store(&runSpan)
+
 		// Next, launch the language plugin.
 		run := iter.src.runner(iter.mon.Address())
 
 		// Communicate the error, if it exists, or nil if the program exited cleanly.
 		_, err := run.Result(context.TODO())
+
+		iter.src.runSpan.Store(nil)
+		runSpan.End()
+
 		if err != nil {
 			logging.V(5).Infof("Program exited with error: %s", err)
 		} else {
@@ -416,6 +431,8 @@ type resmon struct {
 
 	parents     map[resource.URN]resource.URN // map of child URNs to their parent URNs
 	parentsLock sync.Mutex
+
+	registrations resourcetracker.Tracker
 
 	resGoals               map[resource.URN]pkgresource.Goal  // map of seen URNs and their goals.
 	resGoalsLock           sync.Mutex                         // locks the resGoals map.
@@ -542,6 +559,13 @@ func newResourceMonitor(
 		componentAliases:        map[resource.URN][]resource.URN{},
 	}
 
+	otelParent := func() oteltrace.Span {
+		if s := src.runSpan.Load(); s != nil {
+			return *s
+		}
+		return oteltrace.SpanFromContext(src.plugctx.Base())
+	}
+
 	// Fire up a gRPC server and start listening for incomings.
 	handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
 		Cancel: resmon.cancel,
@@ -549,7 +573,7 @@ func newResourceMonitor(
 			pulumirpc.RegisterResourceMonitorServer(srv, resmon)
 			return nil
 		},
-		Options: sourceEvalServeOptions(src.plugctx, tracingSpan, env.DebugGRPC.Value()),
+		Options: sourceEvalServeOptions(src.plugctx, tracingSpan, otelParent, env.DebugGRPC.Value()),
 	})
 	if err != nil {
 		return nil, err
@@ -634,9 +658,12 @@ func (rm *resmon) Cancel(ctx context.Context) error {
 	return errors.Join(errs...)
 }
 
-func sourceEvalServeOptions(ctx *plugin.Context, tracingSpan opentracing.Span, logFile string) []grpc.ServerOption {
-	serveOpts := rpcutil.TracingServerInterceptorOptions(
+func sourceEvalServeOptions(
+	ctx *plugin.Context, tracingSpan opentracing.Span, otelParent func() oteltrace.Span, logFile string,
+) []grpc.ServerOption {
+	serveOpts := rpcutil.TracingServerInterceptorOptionsWithOTelParent(
 		tracingSpan,
+		otelParent,
 		otgrpc.SpanDecorator(decorateResourceSpans),
 	)
 	if logFile != "" {
@@ -969,7 +996,11 @@ func (rm *resmon) supportedMonitorFeatures() []pulumirpc.ResourceMonitorFeature 
 	if rm.supportsFeatureID("sendsOptionsToHooks") {
 		features = append(features, pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_SENDS_OPTIONS_TO_HOOKS)
 	}
-	return features
+	return append(features,
+		pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_BYTE_STRING,
+		pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_INVOKE_DEPENDS_ON,
+		pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_INVOKE_PARENT,
+	)
 }
 
 func (rm *resmon) GetDeploymentInfo(_ context.Context,
@@ -998,7 +1029,9 @@ func (rm *resmon) GetDeploymentInfo(_ context.Context,
 }
 
 // Invoke performs an invocation of a member located in a resource provider.
-func (rm *resmon) Invoke(ctx context.Context, req *pulumirpc.ResourceInvokeRequest) (*pulumirpc.InvokeResponse, error) {
+func (rm *resmon) Invoke(
+	ctx context.Context, req *pulumirpc.ResourceInvokeRequest,
+) (*pulumirpc.ResourceInvokeResponse, error) {
 	// Fetch the token.
 	tok := tokens.ModuleMember(req.GetTok())
 
@@ -1016,8 +1049,13 @@ func (rm *resmon) Invoke(ctx context.Context, req *pulumirpc.ResourceInvokeReque
 		return nil, fmt.Errorf("failed to unmarshal %v args: %w", tok, err)
 	}
 
+	parent, err := resource.ParseOptionalURN(req.GetParent())
+	if err != nil {
+		return nil, rpcerror.New(codes.InvalidArgument, fmt.Sprintf("invalid parent URN: %s", err))
+	}
+
 	opts := &pulumirpc.TransformInvokeOptions{
-		Provider:          req.GetProvider(),
+		Provider:          rm.resolveProvider(req.GetProvider(), nil, parent, tok.Package()),
 		Version:           req.GetVersion(),
 		PluginDownloadUrl: req.GetPluginDownloadURL(),
 		PluginChecksums:   req.GetPluginChecksums(),
@@ -1066,6 +1104,22 @@ func (rm *resmon) Invoke(ctx context.Context, req *pulumirpc.ResourceInvokeReque
 		return nil, fmt.Errorf("Invoke: %w", err)
 	}
 
+	// If the caller declared dependencies, the invoke must observe the resources it depends on.
+	if deps := req.GetDependsOn(); len(deps) > 0 {
+		roots := mapset.NewThreadUnsafeSetWithSize[resource.URN](len(deps))
+		for _, dep := range deps {
+			urn, err := resource.ParseURN(dep)
+			if err != nil {
+				return nil, fmt.Errorf("invalid dependsOn URN %q: %w", dep, err)
+			}
+			roots.Add(urn)
+		}
+		if rm.registrations.HasUnresolved(roots) {
+			logging.V(5).Infof("ResourceMonitor.Invoke: tok=%v has pending dependencies, returning unknown", tok)
+			return &pulumirpc.ResourceInvokeResponse{Unknown: true}, nil
+		}
+	}
+
 	// Do the invoke and then return the arguments.
 	logging.V(5).Infof("ResourceMonitor.Invoke received: tok=%v #args=%v", tok, len(args))
 	resp, err := prov.Invoke(ctx, plugin.InvokeRequest{
@@ -1090,6 +1144,7 @@ func (rm *resmon) Invoke(ctx context.Context, req *pulumirpc.ResourceInvokeReque
 		KeepUnknowns:     true,
 		KeepSecrets:      true,
 		KeepResources:    keepResources,
+		KeepByteString:   req.GetAcceptsByteString(),
 		WorkingDirectory: rm.workingDirectory,
 	})
 	if err != nil {
@@ -1102,7 +1157,22 @@ func (rm *resmon) Invoke(ctx context.Context, req *pulumirpc.ResourceInvokeReque
 			Reason:   failure.Reason,
 		})
 	}
-	return &pulumirpc.InvokeResponse{Return: mret, Failures: chkfails}, nil
+	return &pulumirpc.ResourceInvokeResponse{Return: mret, Failures: chkfails}, nil
+}
+
+// trackSettledResource records the resource a completed registration or read produced.
+//
+// parent and custom are the caller's, not the state's: Construct hands back a state carrying only a URN and outputs, so
+// a remote component's own state has neither, and filing it under the empty parent would hide it and everything beneath
+// it from a dependency declared on an ancestor. The step generator does not rewrite a goal's parent, so on the paths
+// where the state does carry one it is this same value.
+//
+// The step has finished, but the snapshot manager may still be reading the state, so take its lock to read the id.
+func (rm *resmon) trackSettledResource(state *pkgresource.State, parent resource.URN, custom bool) {
+	state.Lock.Lock()
+	urn, id := state.URN, state.ID
+	state.Lock.Unlock()
+	rm.registrations.Track(urn, parent, custom, id != "")
 }
 
 // Call dynamically executes a method in the provider associated with a component resource.
@@ -1270,7 +1340,7 @@ func (rm *resmon) Call(ctx context.Context, req *pulumirpc.ResourceCallRequest) 
 	)
 	ret, err := prov.Call(ctx, plugin.CallRequest{
 		Tok:     tok,
-		Args:    args,
+		Args:    resource.FromResourcePropertyMap(args),
 		Info:    info,
 		Options: options,
 	})
@@ -1292,7 +1362,8 @@ func (rm *resmon) Call(ctx context.Context, req *pulumirpc.ResourceCallRequest) 
 	if ret.ReturnDependencies == nil {
 		ret.ReturnDependencies = map[resource.PropertyKey][]resource.URN{}
 	}
-	for k, v := range ret.Return {
+	retReturn := resource.ToResourcePropertyMap(ret.Return)
+	for k, v := range retReturn {
 		ret.ReturnDependencies[k] = extendOutputDependencies(ret.ReturnDependencies[k], v)
 	}
 
@@ -1305,11 +1376,12 @@ func (rm *resmon) Call(ctx context.Context, req *pulumirpc.ResourceCallRequest) 
 		returnDependencies[string(name)] = &pulumirpc.CallResponse_ReturnDependencies{Urns: urns}
 	}
 
-	mret, err := plugin.MarshalProperties(ret.Return, plugin.MarshalOptions{
+	mret, err := plugin.MarshalProperties(retReturn, plugin.MarshalOptions{
 		Label:            label,
 		KeepUnknowns:     true,
 		KeepSecrets:      true,
 		KeepResources:    true,
+		KeepByteString:   req.GetAcceptsByteString(),
 		WorkingDirectory: rm.workingDirectory,
 	})
 	if err != nil {
@@ -1430,11 +1502,15 @@ func (rm *resmon) ReadResource(ctx context.Context,
 	}
 
 	contract.Assertf(result != nil, "ReadResource operation returned a nil result")
+	// A read always produces an id, so it is never pending, but it can still be an invoke's declared dependency.
+	rm.trackSettledResource(result.State, parent, true)
+
 	marshaled, err := plugin.MarshalProperties(result.State.Outputs, plugin.MarshalOptions{
 		Label:            label,
 		KeepUnknowns:     true,
 		KeepSecrets:      req.GetAcceptSecrets(),
 		KeepResources:    req.GetAcceptResources(),
+		KeepByteString:   req.GetAcceptsByteString(),
 		WorkingDirectory: rm.workingDirectory,
 	})
 	if err != nil {
@@ -1469,6 +1545,7 @@ func (rm *resmon) wrapTransformCallback(cb *pulumirpc.Callback) (TransformFuncti
 			KeepSecrets:        true,
 			KeepResources:      true,
 			KeepOutputValues:   true,
+			KeepByteString:     cb.AcceptsByteString,
 			WorkingDirectory:   rm.workingDirectory,
 			ComputeAssetHashes: true,
 		}
@@ -1546,6 +1623,7 @@ func (rm *resmon) wrapInvokeTransformCallback(cb *pulumirpc.Callback) (Transform
 			KeepSecrets:      true,
 			KeepResources:    true,
 			KeepOutputValues: true,
+			KeepByteString:   cb.AcceptsByteString,
 			WorkingDirectory: rm.workingDirectory,
 		}
 
@@ -1671,6 +1749,7 @@ func (rm *resmon) wrapResourceHookCallback(name string, cb *pulumirpc.Callback) 
 			KeepSecrets:      true,
 			KeepResources:    true,
 			KeepOutputValues: true,
+			KeepByteString:   cb.AcceptsByteString,
 		}
 		if newInputs != nil {
 			mNewInputs, err = plugin.MarshalProperties(newInputs, mOpts)
@@ -1772,6 +1851,7 @@ func (rm *resmon) wrapErrorHookCallback(
 			KeepSecrets:      true,
 			KeepResources:    true,
 			KeepOutputValues: true,
+			KeepByteString:   cb.AcceptsByteString,
 		}
 		if newInputs != nil {
 			mNewInputs, err = plugin.MarshalProperties(newInputs, mOpts)
@@ -1866,7 +1946,7 @@ func inheritFromParent(child *pulumirpc.RegisterResourceRequest, parent pkgresou
 	}
 }
 
-type stackTrace = []resource.StackFrame
+type stackTrace = []pkgresource.StackFrame
 
 type sourcePositions struct {
 	projectRoot string
@@ -1930,13 +2010,13 @@ func (s *sourcePositions) newStackTrace(raw *pulumirpc.StackTrace) stackTrace {
 		return nil
 	}
 
-	return slice.Map(raw.Frames, func(f *pulumirpc.StackFrame) resource.StackFrame {
+	return slice.Map(raw.Frames, func(f *pulumirpc.StackFrame) pkgresource.StackFrame {
 		pc, err := s.parseSourcePosition(f.GetPc())
 		if err != nil {
 			logging.V(5).Infof("failed to parse frame source position %#v: %v", f.GetPc(), err)
-			return resource.StackFrame{}
+			return pkgresource.StackFrame{}
 		}
-		return resource.StackFrame{SourcePosition: pc}
+		return pkgresource.StackFrame{SourcePosition: pc}
 	})
 }
 
@@ -2134,6 +2214,8 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 	if err != nil {
 		return nil, rpcerror.New(codes.InvalidArgument, fmt.Sprintf("invalid parent URN: %s", err))
 	}
+
+	defer rm.registrations.MarkInFlight(parent)()
 
 	if parent != "" {
 		rm.resGoalsLock.Lock()
@@ -2726,7 +2808,12 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 				"resource monitor shut down while waiting for construct to complete")
 		}
 
-		result = &RegisterResult{State: &resource.State{URN: constructResult.URN, Outputs: constructResult.Outputs}}
+		result = &RegisterResult{
+			State: &pkgresource.State{
+				URN:     constructResult.URN,
+				Outputs: resource.ToResourcePropertyMap(constructResult.Outputs),
+			},
+		}
 
 		// The provider may have returned OutputValues in "Outputs", we need to downgrade them to Computed or
 		// Secret but also add them to the outputDeps map.
@@ -2877,6 +2964,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 				rm.componentProviders[result.State.URN] = opts.GetProviders()
 			}()
 		}
+		rm.trackSettledResource(result.State, parent, custom)
 	}
 
 	// Filter out partially-known values if the requestor does not support them.
@@ -2995,6 +3083,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		KeepUnknowns:     true,
 		KeepSecrets:      req.GetAcceptSecrets(),
 		KeepResources:    req.GetAcceptResources(),
+		KeepByteString:   req.GetAcceptsByteString(),
 		WorkingDirectory: rm.workingDirectory,
 	})
 	if err != nil {
@@ -3020,6 +3109,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		Object:               obj,
 		PropertyDependencies: outputDeps,
 		Result:               reason,
+		Unknown:              result.Unknown,
 	}, nil
 }
 
@@ -3165,7 +3255,7 @@ type readResourceEvent struct {
 	dependencies            []resource.URN
 	additionalSecretOutputs []resource.PropertyKey
 	sourcePosition          string
-	stackTrace              []resource.StackFrame
+	stackTrace              []pkgresource.StackFrame
 	done                    chan *ReadResult
 }
 
@@ -3183,8 +3273,8 @@ func (g *readResourceEvent) Dependencies() []resource.URN     { return g.depende
 func (g *readResourceEvent) AdditionalSecretOutputs() []resource.PropertyKey {
 	return g.additionalSecretOutputs
 }
-func (g *readResourceEvent) SourcePosition() string            { return g.sourcePosition }
-func (g *readResourceEvent) StackTrace() []resource.StackFrame { return g.stackTrace }
+func (g *readResourceEvent) SourcePosition() string               { return g.sourcePosition }
+func (g *readResourceEvent) StackTrace() []pkgresource.StackFrame { return g.stackTrace }
 
 func (g *readResourceEvent) Done(result *ReadResult) {
 	g.done <- result

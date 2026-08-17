@@ -16,7 +16,9 @@ package plugin
 
 import (
 	"context"
+	"fmt"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	codegenrpc "github.com/pulumi/pulumi/sdk/v3/proto/go/codegen"
@@ -36,38 +38,57 @@ func (c *converterServer) ConvertState(ctx context.Context,
 	req *pulumirpc.ConvertStateRequest,
 ) (*pulumirpc.ConvertStateResponse, error) {
 	resp, err := c.converter.ConvertState(ctx, &ConvertStateRequest{
-		MapperTarget: req.MapperTarget,
-		Args:         req.Args,
+		MapperTarget:   req.MapperTarget,
+		Args:           req.Args,
+		LoaderTarget:   req.LoaderTarget,
+		ResolverTarget: req.ResolverTarget,
 	})
 	if err != nil {
 		return nil, err
 	}
 
 	resources := make([]*pulumirpc.ResourceImport, len(resp.Resources))
-	for i, resource := range resp.Resources {
+	for i, res := range resp.Resources {
 		resources[i] = &pulumirpc.ResourceImport{
-			Type:              resource.Type,
-			Name:              resource.Name,
-			Id:                resource.ID,
-			Version:           resource.Version,
-			PluginDownloadURL: resource.PluginDownloadURL,
-			LogicalName:       resource.LogicalName,
-			IsRemote:          resource.IsRemote,
-			IsComponent:       resource.IsComponent,
+			Type:              res.Type,
+			Name:              res.Name,
+			Id:                res.ID,
+			Version:           res.Version,
+			PluginDownloadURL: res.PluginDownloadURL,
+			LogicalName:       res.LogicalName,
+			IsRemote:          res.IsRemote,
+			IsComponent:       res.IsComponent,
+			Parent:            res.Parent,
+			Properties:        res.Properties,
+			Provider:          res.Provider,
 		}
-		if p := resource.Parameterization; p != nil {
+		if p := res.Parameterization; p != nil {
 			resources[i].Parameterization = &pulumirpc.ResourceParameterization{
 				PluginName:    p.PluginName,
 				PluginVersion: p.PluginVersion,
 				Value:         p.Value,
 			}
 		}
-		if e := resource.Extension; e != nil {
+		if e := res.Extension; e != nil {
 			resources[i].Extension = &pulumirpc.ResourceExtension{
 				Name:    e.Name,
 				Version: e.Version,
 				Value:   e.Value,
 			}
+		}
+		if res.Inputs != nil {
+			inputs, err := MarshalProperties(resource.ToResourcePropertyMap(*res.Inputs), MarshalOptions{KeepSecrets: true})
+			if err != nil {
+				return nil, fmt.Errorf("marshaling inputs for resource %q: %w", res.Name, err)
+			}
+			resources[i].Inputs = inputs
+		}
+		if res.Outputs != nil {
+			outputs, err := MarshalProperties(resource.ToResourcePropertyMap(*res.Outputs), MarshalOptions{KeepSecrets: true})
+			if err != nil {
+				return nil, fmt.Errorf("marshaling outputs for resource %q: %w", res.Name, err)
+			}
+			resources[i].Outputs = outputs
 		}
 	}
 
@@ -120,6 +141,7 @@ func (c *converterServer) ConvertSnippet(ctx context.Context,
 		Package:      req.Package,
 		Token:        req.Token,
 		Attributes:   req.Attributes,
+		Resources:    convertSnippetResourceReferencesFromRPC(req.Resources),
 	})
 	if err != nil {
 		return nil, err
@@ -131,9 +153,26 @@ func (c *converterServer) ConvertSnippet(ctx context.Context,
 	}
 
 	return &pulumirpc.ConvertSnippetResponse{
-		Diagnostics: diags,
-		Filename:    resp.Filename,
-		Source:      resp.Source,
-		Attributes:  resp.Attributes,
+		Diagnostics:   diags,
+		Filename:      resp.Filename,
+		Source:        resp.Source,
+		Attributes:    resp.Attributes,
+		ResourceNames: resp.ResourceNames,
 	}, nil
+}
+
+func convertSnippetResourceReferencesFromRPC(
+	resources map[string]*pulumirpc.ConvertSnippetRequest_ResourceReference,
+) map[string]ConvertSnippetResourceReference {
+	if len(resources) == 0 {
+		return nil
+	}
+	result := make(map[string]ConvertSnippetResourceReference, len(resources))
+	for name, res := range resources {
+		result[name] = ConvertSnippetResourceReference{
+			Token:   res.Token,
+			Package: res.Package,
+		}
+	}
+	return result
 }

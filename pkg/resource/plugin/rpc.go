@@ -15,10 +15,12 @@
 package plugin
 
 import (
+	"encoding/base64"
 	"fmt"
 	"maps"
 	"reflect"
 	"slices"
+	"unicode/utf8"
 
 	"google.golang.org/protobuf/types/known/structpb"
 
@@ -44,6 +46,11 @@ type MarshalOptions struct {
 	KeepOutputValues      bool   // true if we are keeping output values.
 	UpgradeToOutputValues bool   // true if secrets and unknowns should be upgraded to output values.
 	WorkingDirectory      string // the optional working directory to use when serializing assets & archives.
+
+	// true if the receiver understands strings containing bytes that are not valid UTF-8, which are marshaled with
+	// the byte string signature. Otherwise marshaling such a string returns an error, since it cannot be
+	// transported as a protobuf string field without corruption.
+	KeepByteString bool
 
 	// true if a nil input should result in a nil output, false if it should result in an empty struct/map.
 	PropagateNil bool
@@ -134,7 +141,20 @@ func MarshalPropertyValue(key resource.PropertyKey, v resource.PropertyValue,
 			},
 		}, nil
 	} else if v.IsString() {
-		return MarshalString(v.StringValue(), opts), nil
+		s := v.StringValue()
+		if !utf8.ValidString(s) {
+			if !opts.KeepByteString {
+				return nil, fmt.Errorf(
+					"the value of property %q is a string that contains non-UTF8 bytes, which the receiver does not support",
+					key)
+			}
+			raw := resource.NewProperty(resource.PropertyMap{
+				resource.SigKey: resource.NewProperty(resource.ByteStringSig),
+				"value":         resource.NewProperty(base64.StdEncoding.EncodeToString([]byte(s))),
+			})
+			return MarshalPropertyValue(key, raw, opts)
+		}
+		return MarshalString(s, opts), nil
 	} else if v.IsArray() {
 		var elems []*structpb.Value
 		for _, elem := range v.ArrayValue() {
@@ -456,6 +476,20 @@ func UnmarshalPropertyValue(key resource.PropertyKey, v *structpb.Value,
 				return nil, fmt.Errorf("malformed RPC secret: missing value for %q", key)
 			}
 			return unmarshalSecretPropertyValue(value, opts), nil
+		case resource.ByteStringSig:
+			value, ok := obj["value"]
+			if !ok {
+				return nil, fmt.Errorf("malformed byte string for %q: missing value", key)
+			}
+			if !value.IsString() {
+				return nil, fmt.Errorf("malformed byte string for %q: value is not a string", key)
+			}
+			decoded, err := base64.StdEncoding.DecodeString(value.StringValue())
+			if err != nil {
+				return nil, fmt.Errorf("malformed byte string for %q: value is not valid base64: %w", key, err)
+			}
+			m := resource.NewProperty(string(decoded))
+			return &m, nil
 		case resource.ResourceReferenceSig:
 			urn, ok := obj["urn"]
 			if !ok {

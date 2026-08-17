@@ -21,14 +21,20 @@ import (
 	"github.com/zclconf/go-cty/cty"
 )
 
-// Hook represents a named resource lifecycle hook block.
+// Hook represents a named hook block. The first label declares the hook's kind: a
+// `resource` hook runs at resource lifecycle steps, while an `error` hook runs when an
+// operation fails retryably and its command's exit status decides whether to retry.
 //
 // Example PCL:
 //
-//	hook "myHook" {
+//	hook resource "myHook" {
 //	    command      = ["touch", hookTestFile]
 //	    onDryRun     = false
 //	    ignoreErrors = false
+//	}
+//
+//	hook error "myErrorHook" {
+//	    command = ["touch", hookTestFile]
 //	}
 //
 // A hook can then be referenced in a resource's hooks option:
@@ -36,6 +42,7 @@ import (
 //	options {
 //	    hooks = {
 //	        beforeCreate = [myHook]
+//	        onError      = [myErrorHook]
 //	    }
 //	}
 type Hook struct {
@@ -56,7 +63,24 @@ type Hook struct {
 	// IgnoreErrors, when set to true, causes errors from the hook to be logged as warnings
 	// instead of failing the program. Defaults to false.
 	IgnoreErrors model.Expression
+
+	// Kind is the kind of the hook, declared by the block's first label. Resource hooks run
+	// at resource lifecycle steps (`beforeCreate`, `afterDelete`, etc.). Error hooks run when
+	// an operation fails retryably and signal whether it should be retried: the operation is
+	// retried if and only if the hook's command exits successfully.
+	Kind HookKind
 }
+
+// HookKind is the kind of a hook block: resource or error, matching the two hook
+// registration kinds in the language SDKs.
+type HookKind string
+
+const (
+	// HookKindResource is a hook that runs at resource lifecycle steps.
+	HookKindResource HookKind = "resource"
+	// HookKindError is a hook that runs when an operation fails retryably.
+	HookKindError HookKind = "error"
+)
 
 // SyntaxNode returns the syntax node associated with the hook.
 func (h *Hook) SyntaxNode() hclsyntax.Node {

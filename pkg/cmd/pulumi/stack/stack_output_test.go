@@ -22,6 +22,8 @@ import (
 	"strings"
 	"testing"
 
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
+
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
@@ -103,7 +105,7 @@ func TestStackOutputCmd_plainText(t *testing.T) {
 			t.Parallel()
 
 			snap := deploy.Snapshot{
-				Resources: []*resource.State{
+				Resources: []*pkgresource.State{
 					{
 						Type:    resource.RootStackType,
 						Outputs: tt.outputs,
@@ -214,7 +216,7 @@ func TestStackOutputCmd_json(t *testing.T) {
 			t.Parallel()
 
 			snap := deploy.Snapshot{
-				Resources: []*resource.State{
+				Resources: []*pkgresource.State{
 					{
 						Type:    resource.RootStackType,
 						Outputs: tt.outputs,
@@ -335,7 +337,7 @@ func TestStackOutputCmd_shell(t *testing.T) {
 			t.Parallel()
 
 			snap := deploy.Snapshot{
-				Resources: []*resource.State{
+				Resources: []*pkgresource.State{
 					{
 						Type:    resource.RootStackType,
 						Outputs: tt.outputs,

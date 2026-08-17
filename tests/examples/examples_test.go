@@ -16,6 +16,7 @@ package examples
 
 import (
 	"bytes"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -29,119 +30,117 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
+func getCwd(t *testing.T) string {
+	cwd, err := os.Getwd()
+	if err != nil {
+		t.FailNow()
+	}
+	return cwd
+}
+
+func getBaseOptions() integration.ProgramTestOptions {
+	return integration.ProgramTestOptions{
+		Dependencies: []string{"@pulumi/pulumi"},
+	}
+}
+
+// runWithBackends runs the program test against both a local DIY backend and the Pulumi
+// service. The service subtest is skipped unless PULUMI_TEST_USE_SERVICE=true, so PR runs
+// only pay for the local variant. makeOpts is called once per subtest so the subtests
+// don't share mutable state (e.g. output buffers).
+func runWithBackends(t *testing.T, makeOpts func(t *testing.T) integration.ProgramTestOptions) {
+	t.Parallel()
+
+	//nolint:paralleltest // ProgramTest calls t.Parallel()
+	t.Run("local", func(t *testing.T) {
+		test := makeOpts(t)
+		test.CloudURL = integration.MakeTempBackend(t)
+		integration.ProgramTest(t, &test)
+	})
+
+	//nolint:paralleltest // ProgramTest calls t.Parallel()
+	t.Run("service", func(t *testing.T) {
+		if os.Getenv("PULUMI_TEST_USE_SERVICE") != "true" {
+			t.Skip("Skipping: PULUMI_TEST_USE_SERVICE is not \"true\"")
+		}
+		test := makeOpts(t)
+		test.RequireService = true
+		integration.ProgramTest(t, &test)
+	})
+}
+
 //nolint:paralleltest // uses parallel programtest
 func TestAccMinimal(t *testing.T) {
-	test := getBaseOptions().
-		With(integration.ProgramTestOptions{
-			Dir: filepath.Join(getCwd(t), "minimal"),
-			Config: map[string]string{
-				"name": "Pulumi",
-			},
-			Secrets: map[string]string{
-				"secret": "this is my secret message",
-			},
-			ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
-				// Simple runtime validation that just ensures the checkpoint was written and read.
-				require.NotNil(t, stackInfo.Deployment)
-			},
-			RunBuild: true,
-		})
-
-	integration.ProgramTest(t, &test)
+	runWithBackends(t, func(t *testing.T) integration.ProgramTestOptions {
+		return getBaseOptions().
+			With(integration.ProgramTestOptions{
+				Dir: filepath.Join(getCwd(t), "minimal"),
+				Config: map[string]string{
+					"name": "Pulumi",
+				},
+				Secrets: map[string]string{
+					"secret": "this is my secret message",
+				},
+				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+					// Simple runtime validation that just ensures the checkpoint was written and read.
+					require.NotNil(t, stackInfo.Deployment)
+				},
+				RunBuild: true,
+			})
+	})
 }
 
 //nolint:paralleltest // uses parallel programtest
 func TestAccDynamicProviderSimple(t *testing.T) {
-	test := getBaseOptions().
-		With(integration.ProgramTestOptions{
-			Dir: filepath.Join(getCwd(t), "dynamic-provider/simple"),
-			Config: map[string]string{
-				"simple:config:w": "1",
-				"simple:config:x": "1",
-				"simple:config:y": "1",
-			},
-		})
-
-	integration.ProgramTest(t, &test)
+	runWithBackends(t, func(t *testing.T) integration.ProgramTestOptions {
+		return getBaseOptions().
+			With(integration.ProgramTestOptions{
+				Dir: filepath.Join(getCwd(t), "dynamic-provider/simple"),
+				Config: map[string]string{
+					"simple:config:w": "1",
+					"simple:config:x": "1",
+					"simple:config:y": "1",
+				},
+			})
+	})
 }
 
 //nolint:paralleltest // uses parallel programtest
 func TestAccDynamicProviderClassWithComments(t *testing.T) {
-	test := getBaseOptions().
-		With(integration.ProgramTestOptions{
-			Dir: filepath.Join(getCwd(t), "dynamic-provider/class-with-comments"),
-		})
-
-	integration.ProgramTest(t, &test)
-}
-
-//nolint:paralleltest // uses parallel programtest
-func TestAccDynamicProviderClassWithComments_withLocalState(t *testing.T) {
-	test := getBaseOptions().
-		With(integration.ProgramTestOptions{
-			Dir:      filepath.Join(getCwd(t), "dynamic-provider/class-with-comments"),
-			CloudURL: integration.MakeTempBackend(t),
-		})
-
-	integration.ProgramTest(t, &test)
+	runWithBackends(t, func(t *testing.T) integration.ProgramTestOptions {
+		return getBaseOptions().
+			With(integration.ProgramTestOptions{
+				Dir: filepath.Join(getCwd(t), "dynamic-provider/class-with-comments"),
+			})
+	})
 }
 
 //nolint:paralleltest // uses parallel programtest
 func TestAccDynamicProviderMultipleTurns(t *testing.T) {
-	test := getBaseOptions().
-		With(integration.ProgramTestOptions{
-			Dir: filepath.Join(getCwd(t), "dynamic-provider/multiple-turns"),
-			ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
-				for _, res := range stackInfo.Deployment.Resources {
-					if !providers.IsProviderType(res.Type) && res.Parent == "" {
-						assert.Equal(t, stackInfo.RootResource.URN, res.URN,
-							"every resource but the root resource should have a parent, but %v didn't", res.URN)
+	runWithBackends(t, func(t *testing.T) integration.ProgramTestOptions {
+		return getBaseOptions().
+			With(integration.ProgramTestOptions{
+				Dir: filepath.Join(getCwd(t), "dynamic-provider/multiple-turns"),
+				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+					for _, res := range stackInfo.Deployment.Resources {
+						if !providers.IsProviderType(res.Type) && res.Parent == "" {
+							assert.Equal(t, stackInfo.RootResource.URN, res.URN,
+								"every resource but the root resource should have a parent, but %v didn't", res.URN)
+						}
 					}
-				}
-			},
-		})
-
-	integration.ProgramTest(t, &test)
-}
-
-//nolint:paralleltest // uses parallel programtest
-func TestAccDynamicProviderMultipleTurns_withLocalState(t *testing.T) {
-	test := getBaseOptions().
-		With(integration.ProgramTestOptions{
-			Dir: filepath.Join(getCwd(t), "dynamic-provider/multiple-turns"),
-			ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
-				for _, res := range stackInfo.Deployment.Resources {
-					if !providers.IsProviderType(res.Type) && res.Parent == "" {
-						assert.Equal(t, stackInfo.RootResource.URN, res.URN,
-							"every resource but the root resource should have a parent, but %v didn't", res.URN)
-					}
-				}
-			},
-			CloudURL: integration.MakeTempBackend(t),
-		})
-
-	integration.ProgramTest(t, &test)
+				},
+			})
+	})
 }
 
 //nolint:paralleltest // uses parallel programtest
 func TestAccDynamicProviderMultipleTurns2(t *testing.T) {
-	test := getBaseOptions().
-		With(integration.ProgramTestOptions{
-			Dir: filepath.Join(getCwd(t), "dynamic-provider/multiple-turns-2"),
-		})
-
-	integration.ProgramTest(t, &test)
-}
-
-//nolint:paralleltest // uses parallel programtest
-func TestAccDynamicProviderMultipleTurns2_withLocalState(t *testing.T) {
-	test := getBaseOptions().
-		With(integration.ProgramTestOptions{
-			Dir:      filepath.Join(getCwd(t), "dynamic-provider/multiple-turns-2"),
-			CloudURL: integration.MakeTempBackend(t),
-		})
-
-	integration.ProgramTest(t, &test)
+	runWithBackends(t, func(t *testing.T) integration.ProgramTestOptions {
+		return getBaseOptions().
+			With(integration.ProgramTestOptions{
+				Dir: filepath.Join(getCwd(t), "dynamic-provider/multiple-turns-2"),
+			})
+	})
 }
 
 //nolint:paralleltest // uses parallel programtest
@@ -175,12 +174,12 @@ func TestAccDynamicProviderSecrets(t *testing.T) {
 
 //nolint:paralleltest // uses parallel programtest
 func TestAccDynamicProviderDerivedInputs(t *testing.T) {
-	test := getBaseOptions().
-		With(integration.ProgramTestOptions{
-			Dir: filepath.Join(getCwd(t), "dynamic-provider/derived-inputs"),
-		})
-
-	integration.ProgramTest(t, &test)
+	runWithBackends(t, func(t *testing.T) integration.ProgramTestOptions {
+		return getBaseOptions().
+			With(integration.ProgramTestOptions{
+				Dir: filepath.Join(getCwd(t), "dynamic-provider/derived-inputs"),
+			})
+	})
 }
 
 //nolint:paralleltest // uses parallel programtest
@@ -194,32 +193,21 @@ func TestDynamicProviderGenericTypes(t *testing.T) {
 }
 
 //nolint:paralleltest // uses parallel programtest
-func TestAccDynamicProviderDerivedInputs_withLocalState(t *testing.T) {
-	test := getBaseOptions().
-		With(integration.ProgramTestOptions{
-			Dir:      filepath.Join(getCwd(t), "dynamic-provider/derived-inputs"),
-			CloudURL: integration.MakeTempBackend(t),
-		})
-
-	integration.ProgramTest(t, &test)
-}
-
-//nolint:paralleltest // uses parallel programtest
 func TestAccFormattable(t *testing.T) {
-	var formattableStdout, formattableStderr bytes.Buffer
-	test := getBaseOptions().
-		With(integration.ProgramTestOptions{
-			Dir: filepath.Join(getCwd(t), "formattable"),
-			ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
-				// Note that we're abusing this hook to validate stdout. We don't actually care about the checkpoint.
-				stdout := formattableStdout.String()
-				assert.False(t, strings.Contains(stdout, "MISSING"))
-			},
-			Stdout: &formattableStdout,
-			Stderr: &formattableStderr,
-		})
-
-	integration.ProgramTest(t, &test)
+	runWithBackends(t, func(t *testing.T) integration.ProgramTestOptions {
+		var formattableStdout, formattableStderr bytes.Buffer
+		return getBaseOptions().
+			With(integration.ProgramTestOptions{
+				Dir: filepath.Join(getCwd(t), "formattable"),
+				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+					// Note that we're abusing this hook to validate stdout. We don't actually care about the checkpoint.
+					stdout := formattableStdout.String()
+					assert.False(t, strings.Contains(stdout, "MISSING"))
+				},
+				Stdout: &formattableStdout,
+				Stderr: &formattableStderr,
+			})
+	})
 }
 
 //nolint:paralleltest // uses parallel programtest

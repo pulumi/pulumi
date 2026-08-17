@@ -60,6 +60,7 @@ func NewDoCmd(
 	loadConverterPlugin func(
 		*plugin.Context, string, func(sev diag.Severity, msg string),
 	) (plugin.Converter, error),
+	runStatefulUpdate RunStatefulUpdateFunc,
 ) *cobra.Command {
 	if pluginFromSource == nil {
 		pluginFromSource = func(
@@ -67,7 +68,8 @@ func NewDoCmd(
 			pctx *plugin.Context, wd, source string,
 		) (plugin.Provider, error) {
 			registry := cmdCmd.NewDefaultRegistry(ctx, lm, ws, nil, pctx.Diag, env.Global())
-			p, _, err := packages.ProviderFromSource(ws, pctx, source, registry, env.Global(), 0 /* unbounded concurrency */)
+			p, _, err := packages.ProviderFromSource(
+				ws, pctx, source, registry, env.Global(), 0 /* unbounded concurrency */, "" /* pluginDownloadURL */)
 			return p, err
 		}
 	}
@@ -92,6 +94,7 @@ func NewDoCmd(
 	var dryrun bool
 	var showSecrets bool
 	var stateless bool
+	var output string
 
 	// buildSubcommand returns the dynamically constructed subcommand along with a cleanup function that must be
 	// deferred by the caller. The cleanup tears down the provider gRPC channel — running it as a defer inside
@@ -107,6 +110,10 @@ func NewDoCmd(
 		contract.Assertf(!errors.Is(err, pflag.ErrHelp), "unexpected --help flag")
 		if err != nil {
 			return nil, nil, fmt.Errorf("parse arguments: %w", err)
+		}
+
+		if output != "" && output != "default" && output != "json" {
+			return nil, nil, fmt.Errorf("unsupported output format %q (supported: default, json)", output)
 		}
 
 		pargs := flags.Args()
@@ -132,13 +139,27 @@ func NewDoCmd(
 		if err != nil {
 			return nil, nil, fmt.Errorf("get working directory: %w", err)
 		}
-		sink := diag.DefaultSink(cmd.OutOrStdout(), cmd.ErrOrStderr(), diag.FormatOptions{
+		base := diag.DefaultSink(cmd.OutOrStdout(), cmd.ErrOrStderr(), diag.FormatOptions{
 			Color: cmdutil.GetGlobalColorization(),
 		})
+		diagFwd := &forwardingSink{base: base}
+		statusFwd := &forwardingSink{base: base}
 
-		proj, root, err := ws.ReadProject()
+		proj, root, err := ws.ReadProject("")
 		if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
 			return nil, nil, fmt.Errorf("read project: %w", err)
+		}
+		usedGlobalProjectFallback := false
+		// Fall back to the auto-materialized global project under $PULUMI_HOME so that stateful
+		// `pulumi do` subcommands work without the user having to run `pulumi new` / `pulumi
+		// stack init` first. ensureGlobalProject only touches the filesystem; the matching
+		// `default` stack is created lazily by the stateful command path.
+		if proj == nil {
+			proj, root, err = ensureGlobalProject()
+			if err != nil {
+				return nil, nil, err
+			}
+			usedGlobalProjectFallback = true
 		}
 		// If we're inside a Pulumi project, the working directory the plugin host runs in should be
 		// the project's pwd, not whatever the user happened to invoke `pulumi` from. Snapshot that
@@ -155,13 +176,16 @@ func NewDoCmd(
 		ctx := cmd.Context()
 		tracer := otel.Tracer("pulumi-cli")
 
-		host, err := newHost(ctx, sink, sink)
+		loading := startSpinner(fmt.Sprintf("Loading provider '%s'", pkgargs[0]))
+		defer loading()
+
+		host, err := newHost(ctx, diagFwd, statusFwd)
 		if err != nil {
 			return nil, nil, fmt.Errorf("create plugin host: %w", err)
 		}
 
 		pctx, err := plugin.NewContext(
-			ctx, sink, sink, host, nil, wd, nil, false,
+			ctx, diagFwd, statusFwd, host, nil, wd, nil, false,
 			nil)
 		if err != nil {
 			contract.IgnoreClose(host)
@@ -211,6 +235,10 @@ func NewDoCmd(
 				Version: resp.Version.String(),
 			}
 		}
+
+		loading()
+		reading := startSpinner(fmt.Sprintf("Reading schema for '%s'", pkgName))
+		defer reading()
 
 		getSchema, err := p.GetSchema(ctx, schemaRequest)
 		if err != nil {
@@ -266,17 +294,22 @@ func NewDoCmd(
 			dryrun:            dryrun,
 			showSecrets:       showSecrets,
 			stateless:         stateless,
+			jsonOut:           output == "json",
 			wd:                wd,
 			proj:              proj,
 			root:              root,
+			globalFallback:    usedGlobalProjectFallback,
 			ws:                ws,
 			lm:                lm,
-			sink:              sink,
+			diagFwd:           diagFwd,
+			statusFwd:         statusFwd,
+			runStatefulUpdate: runStatefulUpdate,
 		}).newCommand()
 		if err != nil {
 			cleanup()
 			return nil, nil, err
 		}
+		reading()
 		// Replace the short name in Use with the full token so the usage
 		// string shows e.g. "pulumi do aws:s3:Bucket" instead of "pulumi do Bucket".
 		if len(pargs) > 0 {
@@ -308,12 +341,12 @@ func NewDoCmd(
 				}
 			}
 		}
-		// Copy the flags from the `do` command to this new subcommand
-		cmd.LocalNonPersistentFlags().VisitAll(func(f *pflag.Flag) {
-			subcmd.Flags().AddFlag(f)
-		})
+		// Copy the flags from the `do` command onto the dynamic subcommand as persistent flags
+		// so they're visible on every operation subcommand (create/patch/read/...). Skip any
+		// that the subcmd already declares — a schema input named e.g. "dry-run" registers an
+		// alias flag on the leaf that would otherwise collide.
 		cmd.LocalFlags().VisitAll(func(f *pflag.Flag) {
-			if subcmd.Flags().Lookup(f.Name) == nil {
+			if subcmd.Flags().Lookup(f.Name) == nil && subcmd.PersistentFlags().Lookup(f.Name) == nil {
 				subcmd.PersistentFlags().AddFlag(f)
 			}
 		})
@@ -381,6 +414,7 @@ e.g. pulumi do --package "name@version param1 \"multi word param\""
 
 Resource operations: list, create, read, patch, delete
 Functions are invoked directly by name.
+Built-in commands: show-resources
 
 Provider plugins are auto-installed on first use; you don't need to run
 'pulumi plugin install' ahead of time. Run 'pulumi plugin list' to see what is
@@ -388,13 +422,21 @@ installed locally.
 
 Provider configuration can be supplied via:
   - the provider's standard environment variables (e.g. AWS_REGION)
-  - an input file passed with --provider-file (PCL by default;
-    set --input to convert from another format)
+  - an input file passed with --provider-file (YAML by default;
+    set --input to use another format)
 
-Function inputs come from --input-file. PCL is the default; pass --input
-to convert from another format such as YAML. Non-PCL formats require a
-converter plugin for that format to be installed.`,
+Function inputs come from --input-file. YAML is the default; pass --input
+to use another format.
+
+Simple properties can also be set with flags: --<property> <value> takes the
+value as a literal, while --<property>+ <value> parses the value as an
+expression in the input format (e.g. YAML interpolations or fn:: invocations).`,
 		DisableFlagParsing: true,
+		// Provider tokens like `aws:s3:Bucket` are not registered as cobra subcommands (the
+		// dispatch is dynamic in RunE), so accept arbitrary positional args here. Without this,
+		// cobra's default legacyArgs check rejects unknown positionals when the command has any
+		// real children (e.g. `show-resources`).
+		Args: cobra.ArbitraryArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			subcmd, cleanup, err := buildSubcommand(cmd, args)
 			if cleanup != nil {
@@ -433,18 +475,24 @@ converter plugin for that format to be installed.`,
 		}
 	})
 
-	cmd.PersistentFlags().BoolVar(&dryrun, "dry-run", false, "Run the operation in preview mode")
-	cmd.PersistentFlags().BoolVar(&showSecrets, "show-secrets", false, "Show secret values in output")
-	cmd.PersistentFlags().BoolVar(&stateless, "stateless", false,
-		"Run create/patch/delete directly against the provider without persisting state. "+
-			"Required for now: the stateful (engine-driven) implementation is still in development, "+
-			"so create/patch/delete error out unless --stateless is set.")
-	cmd.PersistentFlags().StringVar(
+	// These flags apply to the dynamically-constructed resource/function subcommands and are
+	// consumed via the manual flags.Parse in buildSubcommand. They're declared as local (not
+	// persistent) so they don't leak onto real cobra children like `show-resources`, which has
+	// its own flag set. The copy loop in buildSubcommand replicates them onto each dynamic leaf.
+	cmd.Flags().BoolVar(&dryrun, "dry-run", false, "Run the operation in preview mode")
+	cmd.Flags().BoolVar(&showSecrets, "show-secrets", false, "Show secret values in output")
+	cmd.Flags().StringVar(&output, "output", "",
+		"Output format for resource operation results (supported: default, json)")
+	cmd.Flags().BoolVar(&stateless, "stateless", false,
+		"Run create/patch/delete directly against the provider without persisting state.")
+	cmd.Flags().StringVar(
 		&pkg, "package", "", "The package to load, in the form 'name@version' or "+
 			"a path to a plugin binary or folder. If the package supports "+
 			"parameterization, additional space-separated parameters can be "+
 			"included after the package name, e.g. --package \"name@version "+
 			"param1 \\\"multi word param\\\"\"")
+
+	cmd.AddCommand(newShowResourcesCommand(ws, lm))
 
 	return cmd
 }
@@ -457,12 +505,19 @@ converter plugin for that format to be installed.`,
 //
 // Errors reading the workspace are swallowed: the stack identity is best-effort context for PCL
 // evaluation, not a hard requirement, and `do` must stay usable when no workspace is configured.
-func currentStackIdentity(ws pkgWorkspace.Context) (organization, stack string) {
-	w, err := ws.New()
+func currentStackIdentity(ws pkgWorkspace.Context, globalFallback bool, root string) (organization, stack string) {
+	dir := ""
+	// The global fallback project lives outside the process cwd; read its workspace settings
+	// directly so PCL sees the selected stack the same as it would in a real project.
+	if globalFallback {
+		dir = root
+	}
+	w, err := ws.New(dir)
 	if err != nil {
 		return "", ""
 	}
-	name := w.Settings().Stack
+	backendURL, _ := pkgWorkspace.GetCurrentCloudURL(ws, env.Global(), nil)
+	name, _ := w.Settings().StackForBackend(backendURL)
 	if name == "" {
 		return "", ""
 	}
@@ -492,6 +547,7 @@ type packageCommand struct {
 	dryrun            bool
 	showSecrets       bool
 	stateless         bool
+	jsonOut           bool
 
 	// wd / proj / root capture the working-directory and project-loading state from buildSubcommand
 	// — kept here rather than baked into a snapshot of functionEvalContext so the evalContext()
@@ -500,12 +556,21 @@ type packageCommand struct {
 	wd   string
 	proj *workspace.Project
 	root string
+	// globalFallback is true only when buildSubcommand synthesized pc.proj from
+	// $PULUMI_HOME/default-global-project because no real project was found.
+	globalFallback bool
 
 	// ws / lm let configureProvider open the current stack's backend when --provider is set so it
 	// can read the referenced provider resource's Inputs. Plumbed from NewDoCmd.
-	ws   pkgWorkspace.Context
-	lm   cmdBackend.LoginManager
-	sink diag.Sink
+	ws        pkgWorkspace.Context
+	lm        cmdBackend.LoginManager
+	diagFwd   *forwardingSink
+	statusFwd *forwardingSink
+
+	// runStatefulUpdate drives `backend.UpdateStack` for stateful subcommands (currently `upsert`).
+	// Nil in stateless mode or when the caller (tests, prod bootstrap) hasn't provided an
+	// implementation. See RunStatefulUpdateFunc in do_resource_upsert.go.
+	runStatefulUpdate RunStatefulUpdateFunc
 }
 
 // evalContext builds the PCL evaluation context from the workspace state we captured at construction
@@ -519,7 +584,7 @@ func (pc *packageCommand) evalContext() functionEvalContext {
 		// When a stack is selected in the workspace, expose its organization and short name to the
 		// PCL runtime so input files can reference pulumi.organization / pulumi.stack the same way
 		// a program would.
-		ec.Organization, ec.Stack = currentStackIdentity(pc.ws)
+		ec.Organization, ec.Stack = currentStackIdentity(pc.ws, pc.globalFallback, pc.root)
 	}
 	return ec
 }
@@ -577,17 +642,10 @@ func (pc *packageCommand) isKnownModule(typed string) bool {
 		return mod == name || strings.HasPrefix(mod, name+"/")
 	}
 	resources, functions := pc.memberTokens()
-	for _, tok := range functions {
-		if inModule(tok) {
-			return true
-		}
+	if slices.ContainsFunc(functions, inModule) {
+		return true
 	}
-	for _, tok := range resources {
-		if inModule(tok) {
-			return true
-		}
-	}
-	return false
+	return slices.ContainsFunc(resources, inModule)
 }
 
 func (pc *packageCommand) moduleToken(token string) string {

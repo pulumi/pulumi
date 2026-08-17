@@ -284,6 +284,8 @@ type nodeOptions struct {
 	// The packagemanger to use to install dependencies.
 	// One of auto, npm, yarn, pnpm or bun, defaults to auto.
 	packagemanager npm.PackageManagerType
+	// Skip devDependencies when installing dependencies.
+	production bool
 }
 
 func parseOptions(options map[string]any, runtime string) (nodeOptions, error) {
@@ -313,6 +315,14 @@ func parseOptions(options map[string]any, runtime string) (nodeOptions, error) {
 			nodeOptions.nodeargs = args
 		} else {
 			return nodeOptions, errors.New("nodeargs option must be a string")
+		}
+	}
+
+	if production, ok := options["production"]; ok {
+		if prod, ok := production.(bool); ok {
+			nodeOptions.production = prod
+		} else {
+			return nodeOptions, errors.New("production option must be a boolean")
 		}
 	}
 
@@ -1210,7 +1220,8 @@ func (host *nodeLanguageHost) InstallDependencies(
 	}
 	otelSpan.SetAttributes(append(setOptionsAttributes(opts), attribute.String("workspaceRoot", workspaceRoot))...)
 
-	if err := host.installShared(ctx, opts.packagemanager, workspaceRoot, req.IsPlugin, stdout, stderr); err != nil {
+	err = host.installShared(ctx, opts.packagemanager, workspaceRoot, req.IsPlugin, opts.production, stdout, stderr)
+	if err != nil {
 		return err
 	}
 
@@ -1350,6 +1361,24 @@ func (host *nodeLanguageHost) RuntimeOptionsPrompts(ctx context.Context,
 func (host *nodeLanguageHost) Template(ctx context.Context,
 	req *pulumirpc.TemplateRequest,
 ) (*pulumirpc.TemplateResponse, error) {
+	opts, err := parseOptions(req.Info.Options.AsMap(), host.runtime)
+	if err != nil {
+		return nil, err
+	}
+
+	if opts.packagemanager == npm.PnpmPackageManager {
+		workspacePath := filepath.Join(req.Info.ProgramDirectory, "pnpm-workspace.yaml")
+		if _, err := os.Stat(workspacePath); os.IsNotExist(err) {
+			content := "# Don't run protobufjs's unnecessary install script (pnpm 11 fails install unless it's listed here).\n" +
+				"# https://github.com/protobufjs/protobuf.js/pull/2299\n" +
+				"allowBuilds:\n" +
+				"  protobufjs: false\n"
+			if err := os.WriteFile(workspacePath, []byte(content), 0o600); err != nil {
+				return nil, fmt.Errorf("writing pnpm-workspace.yaml: %w", err)
+			}
+		}
+	}
+
 	return &pulumirpc.TemplateResponse{}, nil
 }
 
@@ -1375,7 +1404,7 @@ func (host *nodeLanguageHost) About(ctx context.Context,
 		return nil, fmt.Errorf("could not find executable %q: %w", runtimeExec, err)
 	}
 
-	var runtimeVersion, pmVersion string
+	var runtimeVersion, pmVersion, tsVersion string
 
 	g, ctx := errgroup.WithContext(ctx)
 	g.Go(func() error {
@@ -1398,6 +1427,22 @@ func (host *nodeLanguageHost) About(ctx context.Context,
 		pmVersion = version.String()
 		return nil
 	})
+	g.Go(func() error {
+		// Report the TypeScript version the program would load. We resolve it via the runtime's
+		// module resolution from the program directory, since that is how it is loaded at run
+		// time; a `tsc` on PATH may be a different installation. Reading package.json avoids
+		// loading the whole compiler.
+		cmd := exec.CommandContext(ctx, runtimeExec, "-e",
+			"console.log(require('typescript/package.json').version)")
+		cmd.Dir = req.Info.ProgramDirectory
+		out, err := cmd.Output()
+		if err != nil {
+			// Don't fail if we could not determine the typescript version
+			return nil
+		}
+		tsVersion = strings.TrimSpace(string(out))
+		return nil
+	})
 
 	if err := g.Wait(); err != nil {
 		return &pulumirpc.AboutResponse{
@@ -1408,13 +1453,18 @@ func (host *nodeLanguageHost) About(ctx context.Context,
 		}, nil
 	}
 
+	metadata := map[string]string{
+		"packagemanager":        pm.Name(),
+		"packagemanagerVersion": pmVersion,
+	}
+	if tsVersion != "" {
+		metadata["typescriptVersion"] = tsVersion
+	}
+
 	return &pulumirpc.AboutResponse{
 		Executable: runtimeExecutable,
 		Version:    runtimeVersion,
-		Metadata: map[string]string{
-			"packagemanager":        pm.Name(),
-			"packagemanagerVersion": pmVersion,
-		},
+		Metadata:   metadata,
 	}, nil
 }
 
@@ -2280,5 +2330,6 @@ func setOptionsAttributes(opts nodeOptions) []attribute.KeyValue {
 		attribute.String("nodeOptions.packageManager", string(opts.packagemanager)),
 		attribute.String("nodeOptions.tsConfigPath", opts.tsconfigpath),
 		attribute.String("nodeOptions.nodeArgs", opts.nodeargs),
+		attribute.Bool("nodeOptions.production", opts.production),
 	}
 }

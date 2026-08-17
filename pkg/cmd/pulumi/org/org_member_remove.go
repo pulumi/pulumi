@@ -77,8 +77,9 @@ func newOrgMemberRemoveCmdWith(factory orgMemberRemoveClientFactory) *cobra.Comm
 	args.outputFormat = defaultOrgMemberRemoveOutputFormat()
 
 	cmd := &cobra.Command{
-		Use:   "remove <user-login>",
-		Short: "[EXPERIMENTAL] Remove a member from an organization",
+		Use:     "remove <user-login>",
+		Aliases: []string{"rm", "delete"},
+		Short:   "[EXPERIMENTAL] Remove a member from an organization",
 		Long: "[EXPERIMENTAL] Remove a member from an organization.\n" +
 			"\n" +
 			"Removes a user from an organization. The removed user loses access to\n" +

@@ -22,8 +22,8 @@ import (
 	"google.golang.org/protobuf/types/known/structpb"
 	"pgregory.net/rapid"
 
+	resource_testing "github.com/pulumi/pulumi/pkg/v3/resource/testing"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	resource_testing "github.com/pulumi/pulumi/sdk/v3/go/common/resource/testing"
 )
 
 var marshalOpts = MarshalOptions{

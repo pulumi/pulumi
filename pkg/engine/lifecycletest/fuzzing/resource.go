@@ -20,6 +20,8 @@ import (
 	"slices"
 	"strings"
 
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
+
 	"github.com/mitchellh/copystructure"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
@@ -55,8 +57,8 @@ type ResourceSpec struct {
 	Tags map[string]bool
 }
 
-// Creates a ResourceSpec from the given resource.State.
-func FromResource(r *resource.State) *ResourceSpec {
+// Creates a ResourceSpec from the given pkgresource.State.
+func FromResource(r *pkgresource.State) *ResourceSpec {
 	deps := copystructure.Must(copystructure.Copy(r.Dependencies)).([]resource.URN)
 	propDeps := copystructure.Must(copystructure.Copy(r.PropertyDependencies)).(map[resource.PropertyKey][]resource.URN)
 	aliases := copystructure.Must(copystructure.Copy(r.Aliases)).([]resource.URN)
@@ -161,14 +163,14 @@ func (r *ResourceSpec) Copy() *ResourceSpec {
 	}
 }
 
-// Returns a resource.State representation of this ResourceSpec, suitable for inclusion in e.g. a snapshot.
-func (r *ResourceSpec) AsResource() *resource.State {
+// Returns a pkgresource.State representation of this ResourceSpec, suitable for inclusion in e.g. a snapshot.
+func (r *ResourceSpec) AsResource() *pkgresource.State {
 	deps := copystructure.Must(copystructure.Copy(r.Dependencies)).([]resource.URN)
 	propDeps := copystructure.Must(copystructure.Copy(r.PropertyDependencies)).(map[resource.PropertyKey][]resource.URN)
 	aliases := copystructure.Must(copystructure.Copy(r.Aliases)).([]resource.URN)
 
 	tags := strings.Join(slices.Sorted(maps.Keys(r.Tags)), ", ")
-	s := &resource.State{
+	s := &pkgresource.State{
 		Type:                 r.Type,
 		URN:                  r.URN(),
 		Custom:               r.Custom,
@@ -184,7 +186,7 @@ func (r *ResourceSpec) AsResource() *resource.State {
 		DeletedWith:          r.DeletedWith,
 		Aliases:              aliases,
 		SourcePosition:       tags,
-		StackTrace:           []resource.StackFrame{{SourcePosition: tags}},
+		StackTrace:           []pkgresource.StackFrame{{SourcePosition: tags}},
 	}
 
 	// In order to allow us to control generated resource IDs (e.g. such as those returned by a provider Create call),

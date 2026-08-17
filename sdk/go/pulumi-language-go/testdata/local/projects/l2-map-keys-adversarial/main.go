@@ -49,9 +49,7 @@ func main() {
 			},
 		}, nil)
 		ctx.Export("resourceBooleanMap", res.BooleanMap)
-		ctx.Export("invokeBooleanMap", invokeResult.ApplyT(func(invokeResult primitive.InvokeResult) (map[string]bool, error) {
-			return invokeResult.BooleanMap, nil
-		}).(pulumi.BoolMapOutput))
+		ctx.Export("invokeBooleanMap", invokeResult.BooleanMap())
 		return nil
 	})
 }

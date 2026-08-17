@@ -19,16 +19,21 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"strings"
+
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/schemainfo"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
 	hclsyntax "github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -39,40 +44,20 @@ import (
 )
 
 func resourceSchemaHelp(res *schema.Resource) string {
+	color := cmdutil.GetGlobalColorization()
 	var b strings.Builder
-	writeProperties := func(title string, properties []*schema.Property, includeRequired bool) {
-		if len(properties) == 0 {
-			return
-		}
+	writeSection := func(title string, properties []*schema.Property, kind schemainfo.Kind) {
 		if b.Len() > 0 {
-			trimmed := strings.TrimSuffix(b.String(), "\n")
-			b.Reset()
-			b.WriteString(trimmed)
-			b.WriteString("\n\n")
+			// WriteProperties output ends in a newline; add one more to separate sections.
+			b.WriteByte('\n')
 		}
-		b.WriteString(title)
-		b.WriteString(":\n")
-		for _, property := range properties {
-			fmt.Fprintf(&b, "  %s (%s", property.Name, unwrapType(property.Type))
-			if includeRequired {
-				if property.IsRequired() {
-					b.WriteString(", required")
-				} else {
-					b.WriteString(", optional")
-				}
-			}
-			b.WriteString(")")
-			if property.Comment != "" {
-				fmt.Fprintf(&b, " - %s", strings.ReplaceAll(cleanComment(property.Comment), "\n", " "))
-			}
-			b.WriteString("\n")
-		}
+		schemainfo.WriteProperties(&b, color, title, schemainfo.BoundProperties(properties), kind)
 	}
 
-	writeProperties("Inputs", res.InputProperties, true)
-	writeProperties("Outputs", res.Properties, false)
-	if res.ListInputs != nil {
-		writeProperties("List Inputs", res.ListInputs.Properties, true)
+	writeSection("Inputs", res.InputProperties, schemainfo.Inputs)
+	writeSection("Outputs", res.Properties, schemainfo.Outputs)
+	if res.ListInputs != nil && len(res.ListInputs.Properties) > 0 {
+		writeSection("List Inputs", res.ListInputs.Properties, schemainfo.ListInputs)
 	}
 	return strings.TrimSuffix(b.String(), "\n")
 }
@@ -83,11 +68,14 @@ func (pc *packageCommand) newResourceCommand(res *schema.Resource) *cobra.Comman
 
 	shorthelp := fmt.Sprintf("Operate on the %s resource", name)
 	longhelp := shorthelp + "."
-	if res.Comment != "" {
-		longhelp = fmt.Sprintf("%s\n\n%s", longhelp, cleanComment(res.Comment))
+	if description := schemainfo.RenderDescription(res.Comment); description != "" {
+		longhelp = fmt.Sprintf("%s\n\n%s", longhelp, description)
 	}
 	if schemaHelp := resourceSchemaHelp(res); schemaHelp != "" {
 		longhelp = fmt.Sprintf("%s\n\n%s", longhelp, schemaHelp)
+	}
+	if len(res.InputProperties) > 0 {
+		longhelp = fmt.Sprintf("%s\n\n%s", longhelp, inputFlagsHelp)
 	}
 
 	cmd := &cobra.Command{
@@ -99,15 +87,25 @@ func (pc *packageCommand) newResourceCommand(res *schema.Resource) *cobra.Comman
 	// Provider configuration applies to all sub-operations, so register here as persistent flags.
 	cmd.PersistentFlags().StringVar(&pc.providerFile, "provider-file", "",
 		"Path to a file containing provider configuration")
-	cmd.PersistentFlags().StringVar(&pc.format, "input", "pcl",
+	cmd.PersistentFlags().StringVar(&pc.format, "input", "yaml",
 		"Format of the provider configuration file")
 	cmd.PersistentFlags().StringVar(&pc.providerURN, "provider", "",
 		"The URN of a provider resource in the current stack whose inputs to use as the "+
 			"base of the provider configuration (requires a stack context)")
 	addPersistentInputFlags(cmd, pc.spec.Name(), pc.providerDef.InputProperties)
-	cmd.AddCommand(pc.newResourceCreateCommand(res))
+	// `create`/`upsert`/`patch` have different UX between stateful (takes a resource <name> and adds a
+	// snippet to the stack) and stateless (uses the resource type's short name and calls the
+	// provider directly), so the command trees diverge here.
+	if pc.stateless {
+		cmd.AddCommand(pc.newStatelessResourceCreateCommand(res))
+		cmd.AddCommand(pc.newStatelessResourceUpsertCommand(res))
+		cmd.AddCommand(pc.newStatelessResourcePatchCommand(res))
+	} else {
+		cmd.AddCommand(pc.newStatefulResourceCreateCommand(res))
+		cmd.AddCommand(pc.newStatefulResourceUpsertCommand(res))
+		cmd.AddCommand(pc.newStatefulResourcePatchCommand(res))
+	}
 	cmd.AddCommand(pc.newResourceReadCommand(res))
-	cmd.AddCommand(pc.newResourcePatchCommand(res))
 	cmd.AddCommand(pc.newResourceDeleteCommand(res))
 	if res.ListInputs != nil {
 		cmd.AddCommand(pc.newResourceListCommand(res))
@@ -115,7 +113,40 @@ func (pc *packageCommand) newResourceCommand(res *schema.Resource) *cobra.Comman
 	return cmd
 }
 
-func (pc *packageCommand) newResourceCreateCommand(res *schema.Resource) *cobra.Command {
+// newStatefulResourceCreateCommand adds a snippet to the current stack and runs the deployment
+// engine targeting only that snippet. Errors if a snippet with the same (Name, Type) already
+// exists — `upsert` is the command for replacing one in place.
+func (pc *packageCommand) newStatefulResourceCreateCommand(res *schema.Resource) *cobra.Command {
+	var inputFile string
+	var inputFormat string
+	var resourcesFile string
+	var yes bool
+	cmd := &cobra.Command{
+		Use:   "create <name>",
+		Short: "Create a resource",
+		Long: "Create a resource.\n\n" +
+			"The created resource is tracked in the stack, so Pulumi can manage its lifecycle. " +
+			"Fails if a resource with the given name already exists — use `upsert` to replace " +
+			"one in place.",
+		Args: cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			contract.Assertf(!pc.stateless, "stateful create should not be registered in stateless mode")
+			return pc.runStatefulSnippetUpdate(cmd, statefulSnippetUpdate{
+				res:           res,
+				name:          args[0],
+				inputFile:     inputFile,
+				inputFormat:   inputFormat,
+				resourcesFile: resourcesFile,
+				yes:           yes,
+				requireFresh:  true,
+			})
+		},
+	}
+	addStatefulSnippetUpdateFlags(cmd, &inputFile, &inputFormat, &resourcesFile, &yes, res.InputProperties)
+	return cmd
+}
+
+func (pc *packageCommand) newStatelessResourceCreateCommand(res *schema.Resource) *cobra.Command {
 	var inputFile string
 	var yes bool
 	cmd := &cobra.Command{
@@ -123,50 +154,24 @@ func (pc *packageCommand) newResourceCreateCommand(res *schema.Resource) *cobra.
 		Short: "Create a resource",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if !pc.stateless {
-				return errStatefulNotImplemented("create")
-			}
+			contract.Assertf(pc.stateless, "stateless create should not be registered in stateful mode")
 			if err := pc.requireYesIfNonInteractive(yes); err != nil {
 				return err
 			}
 			ctx := cmd.Context()
-			if err := pc.configureProvider(cmd, ctx); err != nil {
-				return err
-			}
-			urn := resourceURN(res)
-			inputs, err := evaluateResourceFile(
-				ctx, inputFile, "input", pc.format, res, pc.evalContext(),
-				pc.converter, pc.loaderTarget, pc.packageDescriptor,
-				collectInputFlags(cmd, "input", res.InputProperties))
-			if err != nil {
-				return fmt.Errorf("parse input file: %w", err)
-			}
-			checked, err := pc.checkResourceInputs(ctx, urn, res, nil, inputs)
-			if err != nil {
-				return err
-			}
-			summary, err := formatCreateSummary(res, checked, pc.showSecrets)
-			if err != nil {
-				return err
-			}
-			// Create doesn't have an ID yet, so require the user to type "yes" — same pattern as `plugin rm`.
-			if err := pc.confirm(cmd, summary, "yes", yes); err != nil {
-				return err
-			}
-			response, err := pc.provider.Create(ctx, plugin.CreateRequest{
-				URN:        urn,
-				Name:       urn.Name(),
-				Type:       urn.Type(),
-				Properties: checked,
-				Preview:    pc.dryrun,
+			return pc.runStatelessCreate(cmd, res, yes, func() (resource.PropertyMap, error) {
+				if err := pc.configureProvider(cmd, ctx); err != nil {
+					return nil, err
+				}
+				inputs, err := evaluateResourceFile(
+					ctx, inputFile, "input", pc.format, res, pc.evalContext(),
+					pc.converter, pc.loaderTarget, pc.packageDescriptor,
+					collectInputFlags(cmd, "input", res.InputProperties))
+				if err != nil {
+					return nil, fmt.Errorf("parse input file: %w", err)
+				}
+				return inputs, nil
 			})
-			if err != nil {
-				return err
-			}
-			if response.ID == "" {
-				response.ID = resource.ID("[unknown]")
-			}
-			return pc.printResourceResult(cmd, response.ID, response.Properties, res)
 		},
 	}
 	cmd.Flags().StringVar(&inputFile, "input-file", "", "Path to a file containing resource inputs")
@@ -174,6 +179,68 @@ func (pc *packageCommand) newResourceCreateCommand(res *schema.Resource) *cobra.
 		"Automatically approve and perform the operation without a confirmation prompt")
 	addInputFlags(cmd, "input", res.InputProperties)
 	return cmd
+}
+
+func (pc *packageCommand) runStatelessCreate(
+	cmd *cobra.Command, res *schema.Resource, yes bool,
+	prepareInputs func() (resource.PropertyMap, error),
+) error {
+	ctx := cmd.Context()
+	urn := resourceURN(res)
+	var checked resource.PropertyMap
+	prepare := func() (*pkgresource.State, error) {
+		inputs, err := prepareInputs()
+		if err != nil {
+			return nil, err
+		}
+		checked, err = pc.checkResourceInputs(ctx, urn, res, nil, inputs)
+		if err != nil {
+			return nil, err
+		}
+		return operationState(urn, "", checked, nil), nil
+	}
+	create := func() (*pkgresource.State, error) {
+		response, err := pc.provider.Create(ctx, plugin.CreateRequest{
+			URN:        urn,
+			Name:       urn.Name(),
+			Type:       urn.Type(),
+			Properties: checked,
+			Preview:    pc.dryrun,
+		})
+		if err != nil {
+			return nil, err
+		}
+		id := response.ID
+		if id == "" {
+			id = resource.ID("[unknown]")
+		}
+		return resultState(urn, id, nil, response.Properties, res), nil
+	}
+	if pc.dryrun {
+		return pc.runDisplayedStep(cmd, displayedStep{
+			Op:  deploy.OpCreate,
+			New: operationState(urn, "", nil, nil),
+		}, func() (*pkgresource.State, error) {
+			if _, err := prepare(); err != nil {
+				return nil, err
+			}
+			return create()
+		})
+	}
+	if err := pc.runDisplayedStep(cmd, displayedStep{
+		Op:      deploy.OpCreate,
+		New:     operationState(urn, "", nil, nil),
+		Preview: true,
+	}, prepare); err != nil {
+		return err
+	}
+	if err := pc.confirm(cmd, "", "create", yes); err != nil {
+		return err
+	}
+	return pc.runDisplayedStep(cmd, displayedStep{
+		Op:  deploy.OpCreate,
+		New: operationState(urn, "", checked, nil),
+	}, create)
 }
 
 func (pc *packageCommand) newResourceReadCommand(res *schema.Resource) *cobra.Command {
@@ -187,30 +254,68 @@ func (pc *packageCommand) newResourceReadCommand(res *schema.Resource) *cobra.Co
 				return err
 			}
 			urn := resourceURN(res)
-			response, err := pc.provider.Read(ctx, plugin.ReadRequest{
-				URN:    urn,
-				Name:   urn.Name(),
-				Type:   urn.Type(),
-				ID:     resource.ID(args[0]),
-				Inputs: resource.PropertyMap{},
-				State:  resource.PropertyMap{},
+			id := resource.ID(args[0])
+			return pc.runDisplayedStep(cmd, displayedStep{
+				Op:  deploy.OpRead,
+				New: operationState(urn, id, nil, nil),
+			}, func() (*pkgresource.State, error) {
+				response, err := pc.provider.Read(ctx, plugin.ReadRequest{
+					URN:    urn,
+					Name:   urn.Name(),
+					Type:   urn.Type(),
+					ID:     id,
+					Inputs: resource.PropertyMap{},
+					State:  resource.PropertyMap{},
+				})
+				if err != nil {
+					return nil, err
+				}
+				if readNotFound(response) {
+					return nil, fmt.Errorf("resource %q was not found", args[0])
+				}
+				if response.ID != "" {
+					id = response.ID
+				}
+				return resultState(urn, id, nil, response.Outputs, res), nil
 			})
-			if err != nil {
-				return err
-			}
-			if response.Outputs == nil {
-				return fmt.Errorf("resource %q was not found", args[0])
-			}
-			id := response.ID
-			if id == "" {
-				id = resource.ID(args[0])
-			}
-			return pc.printResourceResult(cmd, id, response.Outputs, res)
 		},
 	}
 }
 
-func (pc *packageCommand) newResourcePatchCommand(res *schema.Resource) *cobra.Command {
+// newStatefulResourcePatchCommand patches the existing snippet for (name, res.Token) by
+// overriding only the top-level PCL attributes the user supplies. The rest of the snippet's
+// code — other attributes, options blocks, comments — and its References/Descriptor are
+// preserved verbatim.
+func (pc *packageCommand) newStatefulResourcePatchCommand(res *schema.Resource) *cobra.Command {
+	var inputFile string
+	var inputFormat string
+	var resourcesFile string
+	var yes bool
+	cmd := &cobra.Command{
+		Use:   "patch <name>",
+		Short: "Patch a resource",
+		Long: "Patch a resource.\n\n" +
+			"Only the inputs supplied here override the corresponding attributes in the existing " +
+			"resource snippet; all other snippet content is preserved. Fails if no resource with " +
+			"the given name exists.",
+		Args: cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			contract.Assertf(!pc.stateless, "stateful patch should not be registered in stateless mode")
+			return pc.runStatefulSnippetPatch(cmd, res, args[0], inputFile, inputFormat, resourcesFile, yes)
+		},
+	}
+	cmd.Flags().StringVar(&inputFormat, "input", "yaml",
+		"Format of the resource inputs file (any language name supported by an installed converter)")
+	cmd.Flags().StringVar(&inputFile, "input-file", "", "Path to a file containing resource inputs")
+	cmd.Flags().StringVar(&resourcesFile, "resources-file", "",
+		"Path to a JSON file mapping identifiers to resource URNs that input expressions may reference")
+	cmd.Flags().BoolVar(&yes, "yes", false,
+		"Automatically approve and perform the operation without a confirmation prompt")
+	addInputFlags(cmd, "input", res.InputProperties)
+	return cmd
+}
+
+func (pc *packageCommand) newStatelessResourcePatchCommand(res *schema.Resource) *cobra.Command {
 	var inputFile string
 	var inputFormat string
 	var yes bool
@@ -219,9 +324,7 @@ func (pc *packageCommand) newResourcePatchCommand(res *schema.Resource) *cobra.C
 		Short: "Patch a resource",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if !pc.stateless {
-				return errStatefulNotImplemented("patch")
-			}
+			contract.Assertf(pc.stateless, "stateless patch should not be registered in stateful mode")
 			if err := pc.requireYesIfNonInteractive(yes); err != nil {
 				return err
 			}
@@ -242,7 +345,7 @@ func (pc *packageCommand) newResourcePatchCommand(res *schema.Resource) *cobra.C
 			if err != nil {
 				return err
 			}
-			if read.Outputs == nil {
+			if readNotFound(read) {
 				return fmt.Errorf("resource %q was not found", args[0])
 			}
 			// AllowMissingProperties because a patch typically only specifies the fields being changed; the binder
@@ -255,52 +358,12 @@ func (pc *packageCommand) newResourcePatchCommand(res *schema.Resource) *cobra.C
 				return fmt.Errorf("parse input file: %w", err)
 			}
 
-			oldInputs := read.Inputs
-			newInputs := oldInputs.Copy()
-			for key, value := range patch {
-				newInputs[key] = value
-			}
-			checked, err := pc.checkResourceInputs(ctx, urn, res, oldInputs, newInputs)
-			if err != nil {
-				return err
-			}
-
-			diff, err := pc.provider.Diff(ctx, plugin.DiffRequest{
-				URN:        urn,
-				Name:       urn.Name(),
-				Type:       urn.Type(),
-				ID:         id,
-				OldInputs:  oldInputs,
-				OldOutputs: read.Outputs,
-				NewInputs:  checked,
-			})
-			if err != nil {
-				return fmt.Errorf("diff: %w", err)
-			}
-			summary := formatPatchSummary(
-				res, id, oldInputs, checked, diff, pc.showSecrets, cmdutil.GetGlobalColorization())
-			// Require the user to type the resource ID — same pattern as `stack rm` requiring the stack name.
-			if err := pc.confirm(cmd, summary, string(id), yes); err != nil {
-				return err
-			}
-
-			response, err := pc.provider.Update(ctx, plugin.UpdateRequest{
-				URN:        urn,
-				Name:       urn.Name(),
-				Type:       urn.Type(),
-				ID:         id,
-				OldInputs:  oldInputs,
-				OldOutputs: read.Outputs,
-				NewInputs:  checked,
-				Preview:    pc.dryrun,
-			})
-			if err != nil {
-				return err
-			}
-			return pc.printResourceResult(cmd, id, response.Properties, res)
+			newInputs := read.Inputs.Copy()
+			maps.Copy(newInputs, patch)
+			return pc.runStatelessUpdate(cmd, res, id, read, newInputs, "patch", yes)
 		},
 	}
-	cmd.Flags().StringVar(&inputFormat, "input", "pcl", "Format of the configuration files")
+	cmd.Flags().StringVar(&inputFormat, "input", "yaml", "Format of the configuration files")
 	cmd.Flags().StringVar(&inputFile, "input-file", "", "Path to a file containing resource inputs")
 	cmd.Flags().BoolVar(&yes, "yes", false,
 		"Automatically approve and perform the operation without a confirmation prompt")
@@ -308,15 +371,73 @@ func (pc *packageCommand) newResourcePatchCommand(res *schema.Resource) *cobra.C
 	return cmd
 }
 
+func (pc *packageCommand) runStatelessUpdate(
+	cmd *cobra.Command, res *schema.Resource, id resource.ID,
+	read plugin.ReadResponse, newInputs resource.PropertyMap, operation string, yes bool,
+) error {
+	ctx := cmd.Context()
+	urn := resourceURN(res)
+	oldInputs := read.Inputs
+	checked, err := pc.checkResourceInputs(ctx, urn, res, oldInputs, newInputs)
+	if err != nil {
+		return err
+	}
+
+	diff, err := pc.provider.Diff(ctx, plugin.DiffRequest{
+		URN:        urn,
+		Name:       urn.Name(),
+		Type:       urn.Type(),
+		ID:         id,
+		OldInputs:  oldInputs,
+		OldOutputs: read.Outputs,
+		NewInputs:  checked,
+	})
+	if err != nil {
+		return fmt.Errorf("diff: %w", err)
+	}
+	summary := formatPatchSummary(
+		res, id, oldInputs, checked, diff, pc.showSecrets, cmdutil.GetGlobalColorization())
+	if err := pc.confirm(cmd, summary, operation, yes); err != nil {
+		return err
+	}
+
+	return pc.runDisplayedStep(cmd, displayedStep{
+		Op:           deploy.OpUpdate,
+		Old:          operationState(urn, id, oldInputs, read.Outputs),
+		New:          operationState(urn, id, checked, nil),
+		Diffs:        diff.ChangedKeys,
+		DetailedDiff: diff.DetailedDiff,
+	}, func() (*pkgresource.State, error) {
+		response, err := pc.provider.Update(ctx, plugin.UpdateRequest{
+			URN:        urn,
+			Name:       urn.Name(),
+			Type:       urn.Type(),
+			ID:         id,
+			OldInputs:  oldInputs,
+			OldOutputs: read.Outputs,
+			NewInputs:  checked,
+			Preview:    pc.dryrun,
+		})
+		if err != nil {
+			return nil, err
+		}
+		return resultState(urn, id, checked, response.Properties, res), nil
+	})
+}
+
 func (pc *packageCommand) newResourceDeleteCommand(res *schema.Resource) *cobra.Command {
 	var yes bool
+	use := "delete <id>"
+	if !pc.stateless {
+		use = "delete <name>"
+	}
 	cmd := &cobra.Command{
-		Use:   "delete <id>",
+		Use:   use,
 		Short: "Delete a resource",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if !pc.stateless {
-				return errStatefulNotImplemented("delete")
+				return pc.runStatefulSnippetDelete(cmd, res, args[0], yes)
 			}
 			if err := pc.requireYesIfNonInteractive(yes); err != nil {
 				return err
@@ -326,20 +447,51 @@ func (pc *packageCommand) newResourceDeleteCommand(res *schema.Resource) *cobra.
 				return err
 			}
 			urn := resourceURN(res)
-			id := resource.ID(args[0])
-			// Require the user to type the resource ID — same pattern as `stack rm` requiring the stack name.
-			if err := pc.confirm(cmd, formatDeleteSummary(res, id), string(id), yes); err != nil {
+
+			// First we need to read the resource. The ID given here is an "import id", while the actual
+			// Delete call needs the real ID + any inputs/outputs. terraform-pf bridge for example will fail to
+			// delete if just passed the ID and no state.
+			response, err := pc.provider.Read(ctx, plugin.ReadRequest{
+				URN:    urn,
+				Name:   urn.Name(),
+				Type:   urn.Type(),
+				ID:     resource.ID(args[0]),
+				Inputs: resource.PropertyMap{},
+				State:  resource.PropertyMap{},
+			})
+			if err != nil {
 				return err
 			}
-			_, err := pc.provider.Delete(ctx, plugin.DeleteRequest{
-				URN:     urn,
-				Name:    urn.Name(),
-				Type:    urn.Type(),
-				ID:      id,
-				Inputs:  resource.PropertyMap{},
-				Outputs: resource.PropertyMap{},
+			if readNotFound(response) {
+				return fmt.Errorf("resource %q was not found", args[0])
+			}
+			id := response.ID
+			if id == "" {
+				id = resource.ID(args[0])
+			}
+
+			if err := pc.confirm(cmd, formatDeleteSummary(res, id, pc.dryrun), string(id), yes); err != nil {
+				return err
+			}
+			// The provider protocol has no preview mode for Delete, so the summary above is the whole dry run.
+			if pc.dryrun {
+				return nil
+			}
+
+			return pc.runDisplayedStep(cmd, displayedStep{
+				Op:  deploy.OpDelete,
+				Old: operationState(urn, id, nil, nil),
+			}, func() (*pkgresource.State, error) {
+				_, err := pc.provider.Delete(ctx, plugin.DeleteRequest{
+					URN:     urn,
+					Name:    urn.Name(),
+					Type:    urn.Type(),
+					ID:      id,
+					Inputs:  response.Inputs,
+					Outputs: response.Outputs,
+				})
+				return nil, err
 			})
-			return err
 		},
 	}
 	cmd.Flags().BoolVar(&yes, "yes", false,
@@ -361,6 +513,8 @@ func (pc *packageCommand) newResourceListCommand(res *schema.Resource) *cobra.Co
 				return errors.New("--all and --count are mutually exclusive")
 			}
 			ctx := cmd.Context()
+			listing := startSpinner(fmt.Sprintf("Listing %s resources", res.Token))
+			defer listing()
 			if err := pc.configureProvider(cmd, ctx); err != nil {
 				return err
 			}
@@ -382,7 +536,7 @@ func (pc *packageCommand) newResourceListCommand(res *schema.Resource) *cobra.Co
 				}
 				stream, err := pc.provider.List(ctx, plugin.ListRequest{
 					Token:             tokens.Type(res.Token),
-					Query:             query,
+					Query:             resource.FromResourcePropertyMap(query),
 					Limit:             limit,
 					ContinuationToken: continuation,
 				})
@@ -396,6 +550,7 @@ func (pc *packageCommand) newResourceListCommand(res *schema.Resource) *cobra.Co
 					results = append(results, item)
 				}
 				if stream.Computed {
+					listing()
 					output, err := jsonifyProperty(resource.NewProperty("<unknown>"), pc.showSecrets)
 					if err != nil {
 						return err
@@ -416,10 +571,11 @@ func (pc *packageCommand) newResourceListCommand(res *schema.Resource) *cobra.Co
 				}
 			}
 
+			listing()
 			return pc.printListResults(cmd, results)
 		},
 	}
-	cmd.Flags().StringVar(&inputFormat, "input", "pcl", "Input file format")
+	cmd.Flags().StringVar(&inputFormat, "input", "yaml", "Input file format")
 	cmd.Flags().StringVar(&inputFile, "input-file", "", "Path to a file containing resource list inputs")
 	cmd.Flags().BoolVar(&all, "all", false, "Enumerate all matching resources")
 	cmd.Flags().Int64Var(&count, "count", 0, "Enumerate up to count matching resources")
@@ -436,7 +592,7 @@ func evaluateResourceListFile(
 	contract.Assertf(res.ListInputs != nil, "should not call evaluateResourceListFile for resources without list inputs")
 
 	bind := func(file *hclsyntax.File) ([]*model.Attribute, model.Type, []*schema.Property, hcl.Diagnostics) {
-		attrs, inputType, diags := pcl.BindResourceList(file, res)
+		attrs, inputType, diags := pcl.BindResourceList(ctx, file, res)
 		return attrs, inputType, res.ListInputs.Properties, diags
 	}
 	return evaluateFile(
@@ -468,16 +624,29 @@ func (pc *packageCommand) checkResourceInputs(
 	return checked.Properties, nil
 }
 
-func (pc *packageCommand) printResourceResult(
-	cmd *cobra.Command, id resource.ID, outputs resource.PropertyMap, res *schema.Resource,
-) error {
-	contract.Requiref(id != "", "id", "id should not be blank")
+func readNotFound(read plugin.ReadResponse) bool {
+	return read.Outputs == nil || read.ID == ""
+}
 
+func resultOutputs(id resource.ID, outputs resource.PropertyMap, res *schema.Resource) resource.PropertyMap {
+	contract.Requiref(id != "", "id", "id should not be blank")
 	if res.Properties != nil {
 		outputs = filterOutputs(outputs, res.Properties)
+	} else {
+		outputs = outputs.Copy()
 	}
 	outputs["id"] = resource.NewProperty(string(id))
-	output, err := jsonifyProperty(resource.NewProperty(outputs), pc.showSecrets)
+	return outputs
+}
+
+func resultState(
+	urn resource.URN, id resource.ID, inputs, outputs resource.PropertyMap, res *schema.Resource,
+) *pkgresource.State {
+	return operationState(urn, id, inputs, resultOutputs(id, outputs, res))
+}
+
+func (pc *packageCommand) printResourceResult(cmd *cobra.Command, state *pkgresource.State) error {
+	output, err := jsonifyProperty(resource.NewProperty(state.Outputs), pc.showSecrets)
 	if err != nil {
 		return fmt.Errorf("failed to convert outputs to JSON: %w", err)
 	}
@@ -501,23 +670,10 @@ func (pc *packageCommand) printListResults(cmd *cobra.Command, results []plugin.
 	return nil
 }
 
-// errStatefulNotImplemented is returned from create/patch/delete when the user did not pass
-// --stateless. The stateful (engine-driven) implementation of these operations is the planned
-// default but isn't built yet, so for now the only working path is opting in to the stateless one.
-func errStatefulNotImplemented(op string) error {
-	return fmt.Errorf("`%s` is not yet implemented in stateful mode; pass --stateless to use the "+
-		"direct-provider implementation", op)
-}
-
-func formatCreateSummary(res *schema.Resource, inputs resource.PropertyMap, showSecrets bool) (string, error) {
-	body, err := jsonifyProperty(resource.NewProperty(inputs), showSecrets)
-	if err != nil {
-		return "", fmt.Errorf("format inputs: %w", err)
+func formatDeleteSummary(res *schema.Resource, id resource.ID, dryrun bool) string {
+	if dryrun {
+		return fmt.Sprintf("This would delete %s %q.", res.Token, id)
 	}
-	return fmt.Sprintf("This will create %s with the following inputs:\n%s", res.Token, body), nil
-}
-
-func formatDeleteSummary(res *schema.Resource, id resource.ID) string {
 	return fmt.Sprintf("This will delete %s %q.", res.Token, id)
 }
 

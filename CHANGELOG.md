@@ -1,5 +1,302 @@
 # Changelog
 
+## 3.257.0 (2026-08-13)
+
+### Features
+
+- [cli] Offer to create a first project after logging in to an account with no stacks [#24133](https://github.com/pulumi/pulumi/pull/24133)
+- [cli/do] Auto-assign identifiers to existing stack resources in `pulumi do` input expressions, and add `pulumi do show-resources` to list them [#24184](https://github.com/pulumi/pulumi/pull/24184)
+- [cli/do] Make "`pulumi do <pkg> <resource> patch <name>` work in stateful mode, overlaying the supplied inputs onto the existing snippet" [#24295](https://github.com/pulumi/pulumi/pull/24295)
+- [cli/state] Implement `pulumi state get` to show individual resources [#24191](https://github.com/pulumi/pulumi/pull/24191)
+- [cli/do] Fall back to an auto-created project and stack under PULUMI_HOME when `pulumi do` is invoked outside of a Pulumi project [#24231](https://github.com/pulumi/pulumi/pull/24231)
+
+### Bug Fixes
+
+- [sdkgen/go] Generated output-form invokes pass their arguments to the core SDK without resolving them first, so invoke dependencies can be inferred from arguments; generated SDKs now require pulumi SDK v3.255.0 or later [#24060](https://github.com/pulumi/pulumi/pull/24060)
+- [cli] Make '`pulumi stack history events --summary` report the program errors  from the language host [#24111](https://github.com/pulumi/pulumi/pull/24111)
+- [cli/cloud] `pulumi api`: repeated `-H`/`--header` values for the same header name now all reach the wire, instead of each one silently overwriting the last [#24180](https://github.com/pulumi/pulumi/pull/24180)
+- [cli/package] Maintain `--server` when adding to the packages section of Pulumi.yaml [#24189](https://github.com/pulumi/pulumi/pull/24189)
+- [sdk/go] Fix panics in hooks to not crash the entire process [#24218](https://github.com/pulumi/pulumi/pull/24218)
+- [programgen/go] `for` expressions are now generated as Go loops [#24228](https://github.com/pulumi/pulumi/pull/24228)
+- [programgen/go] Fix invalid `_ := index` statement emitted for resources with a numeric `range` whose value variable is unused [#24227](https://github.com/pulumi/pulumi/pull/24227)
+- [sdk/python] Report an error instead of hanging when a Python resource depends on its own parent [#24230](https://github.com/pulumi/pulumi/pull/24230)
+- [sdkgen/go] Generate the missing Go input types for resource input properties that are deeply nested collections of object types [#24236](https://github.com/pulumi/pulumi/pull/24236)
+- [programgen/go] Rename properties that collide with reserved names (e.g. `elementType`) the same way SDK codegen does, instead of emitting uncompilable code [#24235](https://github.com/pulumi/pulumi/pull/24235)
+- [cli/display] Show the value being added when a refresh or provider diff reports an added property [#24245](https://github.com/pulumi/pulumi/pull/24245)
+- [cli/plugin] Track when a plugin was last run so `pulumi plugin ls` reports an accurate last-used time on all platforms [#24251](https://github.com/pulumi/pulumi/pull/24251)
+- [engine] Show secrets in diff display when `--show-secrets` is passed [#24253](https://github.com/pulumi/pulumi/pull/24253)
+- [cli] Exit promptly when a command is cancelled while an HTTP request is being retried [#24276](https://github.com/pulumi/pulumi/pull/24276)
+
+### Improvements
+
+- [sdk/nodejs] Improve error message when resource registrations are still pending when pulumi exits [#24082](https://github.com/pulumi/pulumi/pull/24082)
+- [cli] Pass the invoked command (e.g. `pulumi new`) to the browser-based login/signup flow so Pulumi Cloud can attribute signups to the command that triggered them [#24192](https://github.com/pulumi/pulumi/pull/24192)
+
+### Miscellaneous
+
+- [sdkgen] Extension-parameterized packages now namespace their resource and function tokens under their own package name rather than the base provider's [#24143](https://github.com/pulumi/pulumi/pull/24143)
+- [java] Upgrade java to v1.35.0 [#24202](https://github.com/pulumi/pulumi/pull/24202)
+- [backend/diy] The deprecation warning is now an error. PULUMI_DIY_BACKEND_IGNORE_DEPRECATION_WARNING is now PULUMI_DIY_BACKEND_IGNORE_DEPRECATION_ERROR. [#24216](https://github.com/pulumi/pulumi/pull/24216)
+- [java] Upgrade java to v1.36.0 [#24243](https://github.com/pulumi/pulumi/pull/24243)
+- [sdk/dotnet] Upgrade dotnet to v3.111.1 [#24249](https://github.com/pulumi/pulumi/pull/24249)
+## 3.256.0 (2026-08-04)
+
+### Features
+
+- [cli] Add `--ignore-protect` flag to `pulumi up`, `pulumi preview` and `pulumi destroy` to allow deleting protected resources without unprotecting them in the state first [#24053](https://github.com/pulumi/pulumi/pull/24053)
+- [cli/env] Add an optional `--export-env-vars` flag to the `env provider {aws,azure,gcp}-login` commands to also set the standard SDK environment variables referencing the login outputs [#24055](https://github.com/pulumi/pulumi/pull/24055)
+- [cli] Add a `--server` flag to `pulumi package add`, `publish`, `get-schema`, `get-mapping`, `gen-sdk`, `info` and `pulumi schema check` that skips package resolution and uses the given URL as the plugin download URL [#24107](https://github.com/pulumi/pulumi/pull/24107)
+
+### Bug Fixes
+
+- [backend/service] Fix `pulumi login --insecure` not being reflected in the stack's service secrets manager state, which caused TLS verification failures against self-hosted backends using self-signed certificates [#24134](https://github.com/pulumi/pulumi/pull/24134)
+- [cli] Scope current stack selection to the active backend so switching backends no longer surfaces stale stack errors [#23974](https://github.com/pulumi/pulumi/pull/23974)
+- [programgen/go] Parent an invoke written inside a component to that component, lower a component's outputs, and only import `fmt` when a component needs it [#24019](https://github.com/pulumi/pulumi/pull/24019)
+- [programgen/python] Parent an invoke written inside a component to that component, so it resolves the component's providers [#24018](https://github.com/pulumi/pulumi/pull/24018)
+- [sdk/nodejs] Defer output-form invokes that depend on a remote component whose resources are pending creation, by declaring invoke dependencies to the engine [#24042](https://github.com/pulumi/pulumi/pull/24042)
+- [engine] Gate invokes on the created-ness of their declared dependencies, including the children of remote components, resolving them as unknown during previews that still have to create them [#24040](https://github.com/pulumi/pulumi/pull/24040)
+- [sdk/go] Defer output-form invokes that depend on a remote component whose resources are pending creation, by declaring invoke dependencies to the engine [#24044](https://github.com/pulumi/pulumi/pull/24044)
+- [pcl] Declare invoke dependencies to the engine so invokes that depend on pending resources, including remote components, resolve as unknown during previews [#24041](https://github.com/pulumi/pulumi/pull/24041)
+- [sdk/python] Defer output-form invokes that depend on a remote component whose resources are pending creation, by declaring invoke dependencies to the engine [#24043](https://github.com/pulumi/pulumi/pull/24043)
+- [cli/env] `env provider` no longer writes a new environment revision when the resulting definition is unchanged [#24055](https://github.com/pulumi/pulumi/pull/24055)
+- [sdk/go] Output-form invokes now infer their resource dependencies from their arguments, so they are skipped during preview while a dependent resource is pending creation and their results carry those dependencies [#24054](https://github.com/pulumi/pulumi/pull/24054)
+- [sdkgen/go] Fixes nested optional output conversions [#24096](https://github.com/pulumi/pulumi/pull/24096)
+- [engine] Fix a plugin process leak in `NewPolicyAnalyzer` when `ConfigureStack` fails after the plugin has booted [#24106](https://github.com/pulumi/pulumi/pull/24106)
+- [programgen/go] Avoid redundant applies when projecting properties from generated Go object outputs [#24112](https://github.com/pulumi/pulumi/pull/24112)
+- [backend/diy] Fix 403 errors writing to third-party S3-compatible backends (e.g. IBM COS, MinIO) by defaulting request_checksum_calculation to when_required when the s3:// backend URL sets a custom endpoint [#24109](https://github.com/pulumi/pulumi/pull/24109)
+- [programgen/nodejs] Avoid redundant applies when projecting properties from Node.js outputs [#24119](https://github.com/pulumi/pulumi/pull/24119)
+- [programgen/python] Avoid redundant applies when projecting properties from Python outputs [#24120](https://github.com/pulumi/pulumi/pull/24120)
+- [sdk] Fix apply erroring for skipped resources [#24108](https://github.com/pulumi/pulumi/pull/24108)
+- [cli] Retry rate-limited (HTTP 429) API requests when they are safe to retry, honoring the server's Retry-After header [#24131](https://github.com/pulumi/pulumi/pull/24131)
+- [cli] Exit non-zero from remote operations (`pulumi up --remote`, `pulumi deployment run`) when the deployment fails [#24155](https://github.com/pulumi/pulumi/pull/24155)
+- [cli/new] Resolve and install packages required by the program during `pulumi new`, as `pulumi install` does [#24126](https://github.com/pulumi/pulumi/pull/24126)
+- [cli] Make --remote not require a Pulumi.yaml file to be present [#24128](https://github.com/pulumi/pulumi/pull/24128)
+- [cli/import] Generate explicit providers in the import file `resources` [#24135](https://github.com/pulumi/pulumi/pull/24135)
+- [sdk/nodejs] Fix trustedDependencies parsing for bun [#24145](https://github.com/pulumi/pulumi/pull/24145)
+- [auto/go] ImportResources no longer leaks `--stack` into the converter's arguments when converter args are passed [#24146](https://github.com/pulumi/pulumi/pull/24146)
+- [auto/go] Fix `ImportResources` when `GenerateCode(false)` is set [#24147](https://github.com/pulumi/pulumi/pull/24147)
+- [sdk/go] Fix hooks and transforms causing panics with mocks [#24161](https://github.com/pulumi/pulumi/pull/24161)
+- [programgen/go] Fix plain invokes emitting nonexistent `...ArgsArgs` argument types [#24172](https://github.com/pulumi/pulumi/pull/24172)
+
+### Improvements
+
+- [cli/import] Error when running `pulumi import --from terraform` in a Pulumi HCL project [#23744](https://github.com/pulumi/pulumi/pull/23744)
+- [programgen] Add `ID` type to PCL [#22702](https://github.com/pulumi/pulumi/pull/22702)
+- [engine] Give the resource monitor's `Invoke` its own response message, separating it from the one a provider returns [#24100](https://github.com/pulumi/pulumi/pull/24100)
+- [cli/do] Allow stateful resources to register their own provider resources based on provider inputs on the command line [#24098](https://github.com/pulumi/pulumi/pull/24098)
+- [cli] Refresh the first-login welcome message to link your Pulumi Cloud console and the Pulumi changelog [#24122](https://github.com/pulumi/pulumi/pull/24122)
+- [cli/do] Add support for the `--provider` argument for stateful operations [#24132](https://github.com/pulumi/pulumi/pull/24132)
+- [programgen/go] Better typing for maps, using known types rather than `map[string]interface{}` [#24142](https://github.com/pulumi/pulumi/pull/24142)
+- [cli/import] Serve the package-resolver service to state converters via `resolver_target` on `ConvertStateRequest`, so converters can resolve package specifications the same way the CLI does [#24174](https://github.com/pulumi/pulumi/pull/24174)
+
+### Miscellaneous
+
+- [cli] Retire the Pulumi AI mode of `pulumi new` (interactive choice and `--ai`/`--language` flags). The backing service has been shut down; use `pulumi neo` instead. [#24116](https://github.com/pulumi/pulumi/pull/24116)
+- [sdk/dotnet] Upgrade dotnet to v3.110.0 [#24175](https://github.com/pulumi/pulumi/pull/24175)
+- [yaml] Upgrade yaml to v1.38.1 [#24175](https://github.com/pulumi/pulumi/pull/24175)
+## 3.255.0 (2026-07-28)
+
+### Features
+
+- [cli] Add an `--extension` flag to package commands for extension-parameterized packages, reinstalled from `Pulumi.yaml` on `pulumi install`
+- [cli] Project files to disk and surface their paths as environment variables for all output formats when opening an ESC environment [#23993](https://github.com/pulumi/pulumi/pull/23993)
+- [engine] Resolve an invoke's provider from the `providers` option of the parent named on the request, matching the resolution applied to resource registrations [#24016](https://github.com/pulumi/pulumi/pull/24016)
+- [cli/do] Add `--resources` to refer to existing resources in state in `do` input expressions [#24037](https://github.com/pulumi/pulumi/pull/24037)
+
+### Bug Fixes
+
+- [programgen/nodejs] Parent an invoke written inside a component to that component, so it resolves the component's providers [#24017](https://github.com/pulumi/pulumi/pull/24017)
+- [pcl] Apply the `providers` option of a `component` block to the resources and invokes it declares [#24016](https://github.com/pulumi/pulumi/pull/24016)
+- [cli/import] Fix import file generation when parent resources share names [#24069](https://github.com/pulumi/pulumi/pull/24069)
+- [cli] Fix parallel `pulumi install` processes sharing a `PULUMI_HOME` intermittently failing with a missing provider executable error [#24080](https://github.com/pulumi/pulumi/pull/24080)
+- [sdk/python] Allow Construct and Call methods to run concurrently in provider servers [#24081](https://github.com/pulumi/pulumi/pull/24081)
+
+### Improvements
+
+- [engine] Support strings containing non-UTF8 bytes flowing between providers, the engine, state, and languages that opt in (Go and PCL initially) [#23856](https://github.com/pulumi/pulumi/pull/23856)
+- [cli] Add a `--summary` flag to `pulumi stack history events` that reduces a past update's events to the same summary shape as a live `pulumi up --output json`, extended with error diagnostics and failed-resource markers [#23960](https://github.com/pulumi/pulumi/pull/23960)
+- [protobuf] Allow state converters to supply resource inputs and outputs in ConvertState responses [#23987](https://github.com/pulumi/pulumi/pull/23987)
+- [engine] Allow policy packs to point to executable binaries, not just script folders [#24052](https://github.com/pulumi/pulumi/pull/24052)
+- [cli/display] The Neo diagnostics link now suggests `pulumi neo --debug-update` or `pulumi neo --debug-preview` to investigate the failed operation [#24075](https://github.com/pulumi/pulumi/pull/24075)
+- [sdk/python] Allow `UV_PROJECT_ENVIRONMENT` to override the virtualenv path if uv is used [#24077](https://github.com/pulumi/pulumi/pull/24077)
+- [cli] Allow otel traces to be sent over https [#24078](https://github.com/pulumi/pulumi/pull/24078)
+## 3.254.0 (2026-07-23)
+
+### Features
+
+- [cli] Add `pulumi logs share` command for sharing logs with Pulumi [#22546](https://github.com/pulumi/pulumi/pull/22546)
+- [cli] Add `pulumi stack migrate` to migrate a stack from another backend to the currently logged-in backend, including re-encrypting config secrets and stack state under the target secrets provider [#22902](https://github.com/pulumi/pulumi/pull/22902)
+- [cli/config] Add an `--override-env` flag to `up`, `preview`, `destroy`, and `refresh` to substitute imported environments for a single run without editing the stack config [#23562](https://github.com/pulumi/pulumi/pull/23562)
+- [cli] Add `pulumi neo acp` to run Neo as an Agent Client Protocol agent over stdio for ACP-capable editors, with read-only and plan mode exposed as session config options [#23886](https://github.com/pulumi/pulumi/pull/23886)
+- [cli/neo] Retry transient `pulumi neo` stream and message-send failures, and add `pulumi neo resume` with chat history [#23835](https://github.com/pulumi/pulumi/pull/23835)
+- [cli/neo] Make Ctrl+C clear typed text and preserve Ctrl+A/Ctrl+E line navigation in `pulumi neo` [#23932](https://github.com/pulumi/pulumi/pull/23932)
+- [cli/do] Add `upsert` to do, allowing resources to be statefully created or updated in a stack [#23813](https://github.com/pulumi/pulumi/pull/23813)
+- [sdk/python] Add `pulumi.run` for natively awaited Python program entrypoints that can return stack outputs [#23945](https://github.com/pulumi/pulumi/pull/23945)
+- [cli/do] Allow expressions for number inputs [#23954](https://github.com/pulumi/pulumi/pull/23954)
+- [cli/do] Allow expressions for boolean inputs [#23967](https://github.com/pulumi/pulumi/pull/23967)
+- [cli/policy] Add `--runtime-options` to `pulumi policy new` [#23992](https://github.com/pulumi/pulumi/pull/23992)
+- [cli/do] Add support for stateful create [#23996](https://github.com/pulumi/pulumi/pull/23996)
+- [cli/do] Add support for stateful delete [#24000](https://github.com/pulumi/pulumi/pull/24000)
+
+### Bug Fixes
+
+- [sdkgen/go] Fix Go codegen for plain properties nested inside non-plain objects [#22524](https://github.com/pulumi/pulumi/pull/22524)
+- [cli/neo] Keep `pulumi neo` connected during quiet periods when the event stream only receives keep-alive heartbeats [#23935](https://github.com/pulumi/pulumi/pull/23935)
+- [engine] Validate snippets before persisting them [#23920](https://github.com/pulumi/pulumi/pull/23920)
+- [backend] Fix dangling ReplaceWith references in the journal replayer [#23927](https://github.com/pulumi/pulumi/pull/23927)
+- [cli/do] Fix the converter plugin not being called if just attributes needed converting [#23948](https://github.com/pulumi/pulumi/pull/23948)
+- [programgen/go] Generate compilable Go for programs that use discriminated union members as array/list elements [#23980](https://github.com/pulumi/pulumi/pull/23980)
+
+### Improvements
+
+- [cli] Align commands with the CLI naming guidelines, adding `ls`, `rm`, `delete`, `mv`, `update`, `modify`, `create` and `setup` aliases to list/remove/move/edit/new commands and making `state remove` and `package remove` the canonical names with `delete` kept as an alias [#23903](https://github.com/pulumi/pulumi/pull/23903)
+- [cli] Suggest closely-matching commands from the whole command tree when an unknown command is entered [#23848](https://github.com/pulumi/pulumi/pull/23848)
+- [cli] Print help but exit with a non-zero code when `pulumi` is run without a command, matching the behavior of other group commands [#23848](https://github.com/pulumi/pulumi/pull/23848)
+- [programgen] Support `onError` resource hooks in generated Go, NodeJS, and Python programs and in the PCL runtime, retrying the failed operation when the hook command exits successfully [#23839](https://github.com/pulumi/pulumi/pull/23839)
+- [protobuf] Add parent and properties fields to ResourceImport so state converters can express resource hierarchy and property filters [#23929](https://github.com/pulumi/pulumi/pull/23929)
+- [protobuf] Allow state converters to declare explicit providers as resources in ConvertState responses and attach imported resources to them via the new provider field [#23975](https://github.com/pulumi/pulumi/pull/23975)
+- [cli] Redact secrets in property values in logs [#23931](https://github.com/pulumi/pulumi/pull/23931)
+- [cli] Make `-v<n> --logflow` no longer produce separate log files for plugins [#23938](https://github.com/pulumi/pulumi/pull/23938)
+- [protobuf] Pass a schema loader target to state converters in ConvertStateRequest [#23944](https://github.com/pulumi/pulumi/pull/23944)
+- [cli/import] Allow explicit providers to be declared in the resources section of an import file and referenced by name [#23972](https://github.com/pulumi/pulumi/pull/23972)
+- [cli] Remove the template count from `pulumi new --help`, which required a slow template listing before help could display [#23973](https://github.com/pulumi/pulumi/pull/23973)
+- [cli/import] Support inputs and outputs on resources in import files, importing supplied state directly and skipping the provider read when outputs are given [#23984](https://github.com/pulumi/pulumi/pull/23984)
+
+### Miscellaneous
+
+- [sdk] Move RetrieveGitFolder to the gitutil package [#23955](https://github.com/pulumi/pulumi/pull/23955)
+- [sdk] Move template helpers from workspace to pkg/cmd/pulumi/templates [#23963](https://github.com/pulumi/pulumi/pull/23963)
+## 3.253.0 (2026-07-14)
+
+### Features
+
+- [auto/go] Support --import-pending-creates for refresh command in Go Automation API for preview refresh and refresh operations [#23833](https://github.com/pulumi/pulumi/pull/23833)
+
+### Bug Fixes
+
+- [sdk] Precompose filenames to NFC on macOS when matching ignore patterns during archive creation, mirroring git's core.precomposeunicode so composed patterns match decomposed filenames [#23566](https://github.com/pulumi/pulumi/pull/23566)
+- [cli] Respect the -v log level again so that without -v only warnings and errors are written to stderr [#23910](https://github.com/pulumi/pulumi/pull/23910)
+- [codegen] Correctly generate provider resources declared inside PCL components for Node.js, Python and Go [#23904](https://github.com/pulumi/pulumi/pull/23904)
+
+### Improvements
+
+- [cli] Add a `--version` flag to the `pulumi` command that prints the version, same as `pulumi version` [#23898](https://github.com/pulumi/pulumi/pull/23898)
+- [cli] Align `env` commands with the CLI naming guidelines, making `list`, `remove` and `move` the canonical names with `ls`, `rm`, `delete` and `mv` kept as aliases [#23901](https://github.com/pulumi/pulumi/pull/23901)
+## 3.252.0 (2026-07-13)
+
+### Features
+
+- [auto] Add `import` to the generated automation APIs for NodeJS, Python and Go [#23876](https://github.com/pulumi/pulumi/pull/23876)
+
+### Bug Fixes
+
+- [cli] Exit with a non-zero code when a command group such as `pulumi env` is given an unknown subcommand or no subcommand at all [#23814](https://github.com/pulumi/pulumi/pull/23814)
+- [cli] Fix a panic when displaying a stack-level policy violation [#23692](https://github.com/pulumi/pulumi/pull/23692)
+- [cli] Make reading non-secret stack outputs and running `pulumi about` no longer require the passphrase for passphrase-encrypted stacks [#23820](https://github.com/pulumi/pulumi/pull/23820)
+- [cli] Avoid `pulumi logs <command>` showing the log for the currently running command [#23887](https://github.com/pulumi/pulumi/pull/23887)
+
+### Improvements
+
+- [cli] Improve the error message when using Pulumi ESC with a DIY backend to suggest logging into Pulumi Cloud [#23811](https://github.com/pulumi/pulumi/pull/23811)
+- [cli] Show command name for cli commands when running any command that lists logs [#23889](https://github.com/pulumi/pulumi/pull/23889)
+- [cli/display] Render strings containing non-UTF8 bytes as b"<base64>" in diffs and JSON output [#23870](https://github.com/pulumi/pulumi/pull/23870)
+
+### Bug Fixes
+
+- [cli/do] Fix calling delete on PF resources that need read called first [#23837](https://github.com/pulumi/pulumi/pull/23837)
+- [cli/env] Submit the change request created by `pulumi env open-request` so it is pending approval instead of being left as an unsubmitted draft [#23802](https://github.com/pulumi/pulumi/pull/23802)
+
+### Improvements
+
+- [cli/env] Add a `--reason` flag to `pulumi env open-request` to explain the request to approvers [#23802](https://github.com/pulumi/pulumi/pull/23802)
+
+### Bug Fixes
+
+- [cli/neo] Fix the initial prompt sometimes rendering above the welcome banner in `pulumi neo` [#23831](https://github.com/pulumi/pulumi/pull/23831)
+
+### Improvements
+
+- [cli/state] Improve the error message when a resource URN is not found in the state for `pulumi state` commands, suggesting close-matching URNs and how to list the URNs in the stack [#23812](https://github.com/pulumi/pulumi/pull/23812)
+
+### Bug Fixes
+
+- [engine] Fix importing a resource whose import identifier differs from its canonical ID causes the resource to be deleted on a subsequent update [#23834](https://github.com/pulumi/pulumi/pull/23834)
+
+### Improvements
+
+- [pcl] Allow binding hooks to a resource's `onError` option [#23838](https://github.com/pulumi/pulumi/pull/23838)
+
+### Bug Fixes
+
+- [programgen] Deduplicate identical apply arguments to avoid unnecessary Promise.all/pulumi.all/Output.All in generated code [#22293](https://github.com/pulumi/pulumi/pull/22293)
+- [sdk] Failed resource registrations will return faulted outputs, not unknown outputs [#23844](https://github.com/pulumi/pulumi/pull/23844)
+
+### Features
+
+- [sdk/nodejs] Add a `production` runtime option for Node.js projects. When set to `true` in `Pulumi.yaml`, `pulumi install` skips `devDependencies` (npm `--production`, pnpm `--production`, yarn `--production`). [#23849](https://github.com/pulumi/pulumi/pull/23849)
+
+### Bug Fixes
+
+- [sdk/nodejs] Fix empty node_modules folders in serialized function archives when using pnpm or symlinked workspace packages [#23866](https://github.com/pulumi/pulumi/pull/23866)
+
+### Miscellaneous
+
+- [sdk/nodejs] Report the TypeScript version in `pulumi about` [#23850](https://github.com/pulumi/pulumi/pull/23850)
+- [sdk/nodejs] Update OpenTelemetry dependencies [#23855](https://github.com/pulumi/pulumi/pull/23855)
+## 3.251.0 (2026-07-08)
+
+### Bug Fixes
+
+- [cli] Show a `retain` marker for retain-on-delete resources in `--diff` output [#23754](https://github.com/pulumi/pulumi/pull/23754)
+- [cli] Don't miscopy out archives [#23798](https://github.com/pulumi/pulumi/pull/23798)
+
+### Miscellaneous
+
+- [cli] Add `pulumi neo --debug-update` and `pulumi neo --debug-preview` flags to investigate a failed update or preview, suggested in the failure output [#23499](https://github.com/pulumi/pulumi/pull/23499)
+
+### Improvements
+
+- [cli/convert] Add an `ecosystem` field to converter mapping requests so a converter can request mappings for the ecosystem it consumes rather than its own name [#23804](https://github.com/pulumi/pulumi/pull/23804)
+- [cli/deployment] `pulumi deployment settings` no longer writes the local `Pulumi.<stack>.deploy.yaml` file: the experimental `init`, `pull`, `configure`, and `env` subcommands have been removed, and the CLI no longer calls the deployment-settings encrypt endpoint. `get`/`edit`/`destroy` continue to manage settings directly in Pulumi Cloud [#23480](https://github.com/pulumi/pulumi/pull/23480)
+- [cli/deployment] The deployment settings file (`Pulumi.<stack>.deploy.yaml`) has been removed entirely. The experimental `pulumi deployment settings push` (`update`/`up`) command, the `--config-file` flag, and the SDK helpers that read the file have been removed. Manage deployment settings directly in Pulumi Cloud with `pulumi deployment settings get`, `edit`, and `destroy` [#23480](https://github.com/pulumi/pulumi/pull/23480)
+
+### Bug Fixes
+
+- [cli/display] Prevent plugin debug logs from appearing as raw JSON in the CLI's output when logging with `--logtostderr` [#23633](https://github.com/pulumi/pulumi/pull/23633)
+
+### Improvements
+
+- [cli/env] Report the new revision number when an environment definition is updated (e.g. `pulumi env edit`, `pulumi env provider`, `pulumi env version rollback`) [#23799](https://github.com/pulumi/pulumi/pull/23799)
+
+### Miscellaneous
+
+- [cli/env] Fold the Pulumi ESC engine and CLI into the pulumi/pulumi monorepo, removing the sdk↔esc Go module cycle. Internal refactor with no user-facing behavior change; `pulumi env`/`pulumi esc` are unaffected. [#23746](https://github.com/pulumi/pulumi/pull/23746)
+
+### Improvements
+
+- [cli/import] Support importing resources under parameterized providers from a converter or import file [#23763](https://github.com/pulumi/pulumi/pull/23763)
+- [cli/import] Support importing resources under extension-parameterized providers [#23779](https://github.com/pulumi/pulumi/pull/23779)
+
+### Features
+
+- [engine] Add `TargetSnippets` to deployment options to target snippets by UUID. [#23745](https://github.com/pulumi/pulumi/pull/23745)
+
+### Improvements
+
+- [engine] Add OpenTelemetry spans to the StackReference read path so performance traces can pinpoint slow snapshot fetches, deserialization, or secret decryption [#23787](https://github.com/pulumi/pulumi/pull/23787)
+
+### Features
+
+- [programgen/pcl] Invoke functions declared with multi-argument inputs using positional arguments in PCL [#23571](https://github.com/pulumi/pulumi/pull/23571)
+
+### Bug Fixes
+
+- [sdk/nodejs] Don't include the version in module paths when serializing functions when using pnpm [#23767](https://github.com/pulumi/pulumi/pull/23767)
+- [sdk/nodejs] Support pnpm 11 [#23815](https://github.com/pulumi/pulumi/pull/23815)
+
+### Features
+
+- [sdkgen] Generate SDKs and programs for extension-parameterized packages [#23579](https://github.com/pulumi/pulumi/pull/23579)
 ## 3.250.0 (2026-07-02)
 
 ### Bug Fixes

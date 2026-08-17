@@ -85,6 +85,9 @@ class Output(Generic[T_co]):
     dependency graph' to be created, which properly tracks the relationship between resources.
     """
 
+    # Keep non-private members in sync with outputMemberNames in
+    # pkg/codegen/python/gen_program_lower.go so programgen does not lift conflicting properties.
+
     _data: asyncio.Future[_OutputData[T_co]]
     """
     Single future that resolves to all Output state at once: the value, whether it is known,
@@ -315,7 +318,7 @@ class Output(Generic[T_co]):
                 t_data = await transformed_as_output._data
                 return _OutputData(
                     resources=resources | t_data.resources,
-                    value=cast(U, t_data.value),
+                    value=t_data.value,
                     is_known=t_data.is_known,
                     is_secret=t_data.is_secret or is_secret,
                 )
@@ -334,7 +337,7 @@ class Output(Generic[T_co]):
             #  3. transformed is U. It is trivially known.
             return _OutputData(
                 resources=resources,
-                value=cast(U, transformed),
+                value=transformed,
                 is_known=True,
                 is_secret=is_secret,
             )
@@ -461,7 +464,7 @@ class Output(Generic[T_co]):
                 # directly with no arguments.
                 lambda d: typ(**d) if d else typ()
             )
-            return cast(Output[U], o_typ)
+            return o_typ
 
         # Is a (non-empty) dict, list, or tuple? Recurse into the values within them.
         if val and isinstance(val, dict):

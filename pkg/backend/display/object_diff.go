@@ -27,6 +27,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/sergi/go-diff/diffmatchpatch"
 	"gopkg.in/yaml.v3"
@@ -698,8 +699,8 @@ func (p *propertyPrinter) printPropertyValueRecurse(v resource.PropertyValue) {
 			massaged := a.Text
 
 			// pretty print the text, line by line, with proper breaks.
-			lines := strings.Split(massaged, "\n")
-			for _, line := range lines {
+			lines := strings.SplitSeq(massaged, "\n")
+			for line := range lines {
 				p.writeUnprefixedIndentedf("    %s\n", line)
 			}
 			p.writeUnprefixedIndentedf("}")
@@ -885,6 +886,20 @@ func (p *propertyPrinter) printPropertyValueDiff(titleFunc func(*propertyPrinter
 	p = p.withOp(deploy.OpUpdate).withPrefix(true)
 	contract.Assertf(p.indent > 0, "indentation must be > 0 to print property value diffs")
 
+	if p.showSecrets && (diff.Old.IsSecret() || diff.New.IsSecret()) {
+		old, new := diff.Old, diff.New
+		if old.IsSecret() {
+			old = old.SecretValue().Element
+		}
+		if new.IsSecret() {
+			new = new.SecretValue().Element
+		}
+		if elemDiff := old.Diff(new); elemDiff != nil {
+			p.printPropertyValueDiff(titleFunc, *elemDiff)
+			return
+		}
+	}
+
 	if diff.Array != nil {
 		titleFunc(p)
 		p.writeVerbatim("[\n")
@@ -928,7 +943,8 @@ func (p *propertyPrinter) printPropertyValueDiff(titleFunc func(*propertyPrinter
 			if isPrimitive(diff.Old) && isPrimitive(diff.New) {
 				titleFunc(p)
 
-				if diff.Old.IsString() && diff.New.IsString() {
+				if diff.Old.IsString() && diff.New.IsString() &&
+					utf8.ValidString(diff.Old.StringValue()) && utf8.ValidString(diff.New.StringValue()) {
 					p.printTextDiff(diff.Old.StringValue(), diff.New.StringValue())
 					return
 				}
@@ -977,6 +993,10 @@ func (p *propertyPrinter) printPrimitivePropertyValue(v resource.PropertyValue) 
 			p.writef("%g", number)
 		}
 	} else if v.IsString() {
+		if !utf8.ValidString(v.StringValue()) {
+			p.writeVerbatim(byteStringDisplay(v.StringValue()))
+			return
+		}
 		if vv, kind, ok := p.decodeValue(v.StringValue()); ok {
 			p.writef("(%s) ", kind)
 			p.printPropertyValue(vv)

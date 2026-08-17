@@ -40,9 +40,13 @@ type Callback struct {
 	// the gRPC target of the callback service.
 	Target string `protobuf:"bytes,1,opt,name=target,proto3" json:"target,omitempty"`
 	// the service specific unique token for this callback.
-	Token         string `protobuf:"bytes,2,opt,name=token,proto3" json:"token,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Token string `protobuf:"bytes,2,opt,name=token,proto3" json:"token,omitempty"`
+	// True if and only if the callback host supports strings containing bytes that are not valid UTF-8, marshaled
+	// as objects carrying the byte string signature and a base64 encoding of the string's bytes. If true, the
+	// caller may pass such values to the callback.
+	AcceptsByteString bool `protobuf:"varint,3,opt,name=accepts_byte_string,json=acceptsByteString,proto3" json:"accepts_byte_string,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
 }
 
 func (x *Callback) Reset() {
@@ -87,6 +91,13 @@ func (x *Callback) GetToken() string {
 		return x.Token
 	}
 	return ""
+}
+
+func (x *Callback) GetAcceptsByteString() bool {
+	if x != nil {
+		return x.AcceptsByteString
+	}
+	return false
 }
 
 type CallbackInvokeRequest struct {
@@ -192,10 +203,11 @@ var File_pulumi_callback_proto protoreflect.FileDescriptor
 
 const file_pulumi_callback_proto_rawDesc = "" +
 	"\n" +
-	"\x15pulumi/callback.proto\x12\tpulumirpc\"8\n" +
+	"\x15pulumi/callback.proto\x12\tpulumirpc\"h\n" +
 	"\bCallback\x12\x16\n" +
 	"\x06target\x18\x01 \x01(\tR\x06target\x12\x14\n" +
-	"\x05token\x18\x02 \x01(\tR\x05token\"G\n" +
+	"\x05token\x18\x02 \x01(\tR\x05token\x12.\n" +
+	"\x13accepts_byte_string\x18\x03 \x01(\bR\x11acceptsByteString\"G\n" +
 	"\x15CallbackInvokeRequest\x12\x14\n" +
 	"\x05token\x18\x01 \x01(\tR\x05token\x12\x18\n" +
 	"\arequest\x18\x02 \x01(\fR\arequest\"4\n" +

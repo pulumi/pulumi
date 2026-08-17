@@ -26,6 +26,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -246,7 +247,7 @@ func (p *ComponentPropertyDepsProvider) CheckConfig(
 	_ context.Context,
 	req plugin.CheckConfigRequest,
 ) (plugin.CheckConfigResponse, error) {
-	version, ok := req.News["version"]
+	version, ok := req.News.GetOk("version")
 	if !ok {
 		return plugin.CheckConfigResponse{
 			Failures: makeCheckFailure("version", "missing version"),
@@ -259,13 +260,13 @@ func (p *ComponentPropertyDepsProvider) CheckConfig(
 		}, nil
 	}
 
-	if version.StringValue() != "1.33.7" {
+	if version.AsString() != "1.33.7" {
 		return plugin.CheckConfigResponse{
 			Failures: makeCheckFailure("version", "version is not 1.33.7"),
 		}, nil
 	}
 
-	if len(req.News) != 1 {
+	if req.News.Len() != 1 {
 		return plugin.CheckConfigResponse{
 			Failures: makeCheckFailure("", fmt.Sprintf("too many properties: %v", req.News)),
 		}, nil
@@ -393,7 +394,7 @@ func (p *ComponentPropertyDepsProvider) Construct(
 
 	return plugin.ConstructResponse{
 		URN: resource.URN(component.Urn),
-		Outputs: resource.NewPropertyMapFromMap(map[string]any{
+		Outputs: property.NewMap(map[string]property.Value{
 			"propertyDeps": p.convertMapToObjectProperty(req.Options.PropertyDependencies),
 		}),
 	}, nil
@@ -408,20 +409,20 @@ func (p *ComponentPropertyDepsProvider) Call(
 	}
 
 	return plugin.CallResponse{
-		Return: resource.PropertyMap{
+		Return: property.NewMap(map[string]property.Value{
 			"result": p.convertMapToObjectProperty(req.Options.ArgDependencies),
-		},
+		}),
 	}, nil
 }
 
 func (p *ComponentPropertyDepsProvider) convertMapToObjectProperty(
 	m map[resource.PropertyKey][]resource.URN,
-) resource.PropertyValue {
+) property.Value {
 	fields := make(map[string]any)
 	for key, urns := range m {
 		fields[string(key)] = urns
 	}
-	return resource.NewProperty(resource.NewPropertyMapFromMap(fields))
+	return resource.FromResourcePropertyValue(resource.NewProperty(resource.NewPropertyMapFromMap(fields)))
 }
 
 func (p *ComponentPropertyDepsProvider) convertMapToStruct(

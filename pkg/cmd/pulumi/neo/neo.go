@@ -16,6 +16,7 @@ package neo
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -23,17 +24,20 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"time"
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 	"github.com/spf13/cobra"
 	"golang.org/x/sync/errgroup"
 
+	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
 	"github.com/pulumi/pulumi/pkg/v3/backend/state"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/neo/tools"
 	displaytypes "github.com/pulumi/pulumi/pkg/v3/display"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
@@ -56,6 +60,19 @@ const nonInteractivePromptPreamble = "<details><summary>non-interactive mode</su
 	"explicit and return a complete final answer.\n\n" +
 	"</details>"
 
+var (
+	userMessageRetryInitialBackoff = 1 * time.Second
+	userMessageRetryMaxBackoff     = 30 * time.Second
+)
+
+// neoTaskCreator is the slice of the cloud client that creates Neo tasks.
+// *client.Client satisfies it; tests fake it.
+type neoTaskCreator interface {
+	CreateNeoTask(
+		ctx context.Context, orgName, content, stackName, projectName string, opts client.CreateNeoTaskOptions,
+	) (*client.NeoTaskResponse, error)
+}
+
 // createNeoTaskWithEntityRetry creates a Neo task; if the backend rejects the
 // attached stack with "invalid entities" (typically a permissions issue) it retries
 // once without the stack so the task is still created. onEntityDropped, if non-nil,
@@ -63,7 +80,7 @@ const nonInteractivePromptPreamble = "<details><summary>non-interactive mode</su
 // surface a warning.
 func createNeoTaskWithEntityRetry(
 	ctx context.Context,
-	pc *client.Client,
+	pc neoTaskCreator,
 	orgName, prompt, stackName, projectName string,
 	opts client.CreateNeoTaskOptions,
 	onEntityDropped func(error),
@@ -76,6 +93,17 @@ func createNeoTaskWithEntityRetry(
 		return pc.CreateNeoTask(ctx, orgName, prompt, "", "", opts)
 	}
 	return resp, err
+}
+
+// entityDroppedWarning renders the user-facing warning for
+// createNeoTaskWithEntityRetry's stack-dropped fallback. The TUI and the ACP
+// adapter both surface it, so the wording lives here rather than at each call
+// site.
+func entityDroppedWarning(orgName, projectName, stackRefName string, err error) string {
+	return fmt.Sprintf(
+		"could not attach stack %s/%s/%s to Neo task: %s; creating task without stack context",
+		orgName, projectName, stackRefName, err,
+	)
 }
 
 // isInvalidEntitiesError reports whether err is the Neo backend's "invalid entities"
@@ -119,6 +147,14 @@ var (
 	isInteractive = cmdutil.Interactive
 )
 
+func initialTUIWidth(w io.Writer) int {
+	width := cmdCmd.WriterWidth(w)
+	if width < minUsableTUIWidth {
+		return cmdCmd.WriterWidth(nil)
+	}
+	return width
+}
+
 // NewNeoCmd creates the `pulumi neo` command. This first slice of the command starts a
 // Neo task in `cli` tool execution mode, prints a console URL the user can open in a
 // browser, and runs the local tool-execution loop in the foreground until the task ends.
@@ -131,6 +167,8 @@ func NewNeoCmd() *cobra.Command {
 		approvalModeFlag    string
 		permissionModeFlag  string
 		printMode           bool
+		debugUpdateFlag     string
+		debugPreviewFlag    string
 		disableIntegrations bool
 	)
 
@@ -167,10 +205,29 @@ func NewNeoCmd() *cobra.Command {
 					approvalMode = client.NeoApprovalModeAuto
 				}
 			}
-			return runNeo(
-				ctx, cmd.OutOrStdout(), cmd.ErrOrStderr(),
-				prompt, stackName, orgFlag, cwdFlag, approvalMode, permissionMode, printMode,
-				disableIntegrations)
+			// --debug-update/--debug-preview seed Neo to investigate a failed operation. A bare
+			// flag infers the latest of that kind; =<id> targets a specific run. They are mutually
+			// exclusive, so at most one is ever Changed.
+			var debugKind debugKind
+			var debugID string
+			switch {
+			case cmd.Flags().Changed("debug-update"):
+				debugKind, debugID = debugUpdate, valueOrEmpty(debugUpdateFlag)
+			case cmd.Flags().Changed("debug-preview"):
+				debugKind, debugID = debugPreview, valueOrEmpty(debugPreviewFlag)
+			}
+			return runNeo(ctx, cmd.OutOrStdout(), cmd.ErrOrStderr(), neoRunOptions{
+				prompt:              prompt,
+				stackName:           stackName,
+				orgFlag:             orgFlag,
+				cwdFlag:             cwdFlag,
+				approvalMode:        approvalMode,
+				permissionMode:      permissionMode,
+				printMode:           printMode,
+				debugKind:           debugKind,
+				debugID:             debugID,
+				disableIntegrations: disableIntegrations,
+			})
 		},
 	}
 
@@ -192,8 +249,56 @@ func NewNeoCmd() *cobra.Command {
 	cmd.Flags().BoolVar(&disableIntegrations, "disable-integrations", false,
 		"Run the Neo task with no integration credentials, ignoring any org-enabled "+
 			"integrations.")
+	cmd.Flags().StringVar(&debugUpdateFlag, "debug-update", "",
+		"Debug a failed update. With no value, targets the stack's latest update; "+
+			"pass =<version> (e.g. --debug-update=42) to target a specific one")
+	cmd.Flags().StringVar(&debugPreviewFlag, "debug-preview", "",
+		"Debug a failed preview. With no value, targets the stack's latest preview; "+
+			"pass =<preview-id> to target a specific one")
+	// A non-empty NoOptDefVal makes the flag's value optional: a bare flag records the sentinel
+	// ("infer latest"), while =<id> records the explicit id.
+	cmd.Flags().Lookup("debug-update").NoOptDefVal = debugLatestSentinel
+	cmd.Flags().Lookup("debug-preview").NoOptDefVal = debugLatestSentinel
+	cmd.MarkFlagsMutuallyExclusive("debug-update", "debug-preview")
+
+	var (
+		resumeOrgFlag string
+		resumeCwdFlag string
+	)
+	resumeCmd := &cobra.Command{
+		Use:   "resume <task-id>",
+		Short: "Resume local tool execution for an existing Pulumi Neo task",
+		Long: "Reopens the local Neo TUI for an existing task and attaches the local tool loop " +
+			"from the current event tail. Historical chat is rendered in the TUI, but historical " +
+			"local shell, filesystem, and Pulumi tool calls are not re-executed.",
+		Args: cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return runNeoResume(cmd.Context(), cmd.OutOrStdout(), cmd.ErrOrStderr(), args[0], resumeOrgFlag, resumeCwdFlag)
+		},
+	}
+	resumeCmd.Flags().StringVar(&resumeOrgFlag, "org", "",
+		"The organization that owns the Neo task (defaults to the user's default org)")
+	resumeCmd.Flags().StringVar(&resumeCwdFlag, "cwd", "",
+		"Working directory for local tool execution (defaults to the current directory)")
+	cmd.AddCommand(resumeCmd)
+
+	// `pulumi neo acp` runs Neo as an Agent Client Protocol agent over stdio.
+	cmd.AddCommand(newNeoACPCmd())
 
 	return cmd
+}
+
+// debugLatestSentinel is the NoOptDefVal for --debug-update/--debug-preview: pflag requires a
+// non-empty NoOptDefVal to make a flag's value optional, so a bare flag records this sentinel
+// ("infer the latest"). It is untypeable as a real id so it can't collide with a user-passed value.
+const debugLatestSentinel = "\x00latest"
+
+// valueOrEmpty maps the bare-flag sentinel back to "" so callers see an explicit id or nothing.
+func valueOrEmpty(v string) string {
+	if v == debugLatestSentinel {
+		return ""
+	}
+	return v
 }
 
 // parseApprovalMode validates the --approval-mode flag value against the
@@ -219,98 +324,157 @@ func parsePermissionMode(s string) (client.NeoPermissionMode, error) {
 	return "", fmt.Errorf("invalid --permission-mode %q: expected one of default, read-only", s)
 }
 
-func runNeo(
-	ctx context.Context,
-	stdout, stderr io.Writer,
-	prompt, stackName, orgFlag, cwdFlag string,
-	approvalMode client.NeoApprovalMode,
-	permissionMode client.NeoPermissionMode,
-	printMode bool,
-	disableIntegrations bool,
-) error {
-	// nil lets the server inherit the org's enabled integrations; the empty slice opts out.
-	var enabledIntegrations *[]string
-	if disableIntegrations {
-		enabledIntegrations = &[]string{}
-	}
+// neoRunOptions carries everything runNeo needs to start a Neo session.
+type neoRunOptions struct {
+	prompt         string
+	stackName      string
+	orgFlag        string
+	cwdFlag        string
+	approvalMode   client.NeoApprovalMode
+	permissionMode client.NeoPermissionMode
+	printMode      bool
+	// debugKind/debugID make this a debug session: runNeo seeds a prompt targeting a failed
+	// operation of that kind and appends the stack context. debugKind is debugNone for a normal
+	// session; debugID is "" to infer the latest of debugKind.
+	debugKind           debugKind
+	debugID             string
+	disableIntegrations bool
+}
 
+type neoRuntime struct {
+	cwd      string
+	ws       pkgWorkspace.Context
+	project  *workspace.Project
+	cloudBe  httpstate.Backend
+	pc       *client.Client
+	handlers map[string]ToolHandler
+	pu       *tools.Pulumi
+}
+
+// readNeoProject reads the project enclosing dir (the process working directory
+// when empty), tolerating absence — `pulumi neo` can run outside a project.
+func readNeoProject(ws pkgWorkspace.Context, dir string) (*workspace.Project, error) {
+	project, _, err := ws.ReadProject(dir)
+	if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
+		return nil, err
+	}
+	return project, nil
+}
+
+// neoUpgradeRequiredError carries the user-facing minimum-version message from
+// resolveNeoCloudBackend. It is a distinct type so the interactive path can
+// present the message bare (via FprintBailf) while other paths propagate it as
+// an ordinary error.
+type neoUpgradeRequiredError struct{ msg string }
+
+func (e neoUpgradeRequiredError) Error() string { return e.msg }
+
+// resolveNeoCloudBackend narrows be to the Pulumi Cloud backend and enforces
+// Neo's minimum CLI version, returning neoUpgradeRequiredError when an upgrade
+// is needed. Every Neo entrypoint gates through it so the backend requirement
+// and version policy live in one place.
+func resolveNeoCloudBackend(ctx context.Context, be backend.Backend) (httpstate.Backend, error) {
+	cloudBe, ok := be.(httpstate.Backend)
+	if !ok {
+		return nil, errors.New("`pulumi neo` requires the Pulumi Cloud backend")
+	}
+	if msg := neoUpgradeMessage(cloudBe.Capabilities(ctx), version.Version); msg != "" {
+		return nil, neoUpgradeRequiredError{msg: msg}
+	}
+	return cloudBe, nil
+}
+
+func prepareNeoRuntime(ctx context.Context, stderr io.Writer, cwdFlag string) (*neoRuntime, error) {
 	if cwdFlag == "" {
 		var err error
 		cwdFlag, err = os.Getwd()
 		if err != nil {
-			return fmt.Errorf("resolving working directory: %w", err)
+			return nil, fmt.Errorf("resolving working directory: %w", err)
 		}
 	}
 
 	ws := pkgWorkspace.Instance
-	opts := display.Options{Color: cmdutil.GetGlobalColorization()}
+	displayOpts := display.Options{Color: cmdutil.GetGlobalColorization()}
 
-	project, _, err := ws.ReadProject()
-	if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
-		return err
-	}
-
-	be, err := cmdBackend.CurrentBackend(ctx, ws, cmdBackend.DefaultLoginManager, project, opts)
+	project, err := readNeoProject(ws, "")
 	if err != nil {
-		return err
+		return nil, err
 	}
-	cloudBe, ok := be.(httpstate.Backend)
-	if !ok {
-		return errors.New("`pulumi neo` requires the Pulumi Cloud backend")
+
+	be, err := cmdBackend.CurrentBackend(ctx, ws, cmdBackend.DefaultLoginManager, project, displayOpts)
+	if err != nil {
+		return nil, err
+	}
+	cloudBe, err := resolveNeoCloudBackend(ctx, be)
+	var upgradeErr neoUpgradeRequiredError
+	if errors.As(err, &upgradeErr) {
+		// Print the upgrade message bare (no "error:" prefix) and bail.
+		return nil, result.FprintBailf(stderr, "%s", upgradeErr.msg)
+	}
+	if err != nil {
+		return nil, err
 	}
 	pc := cloudBe.Client()
 
-	if msg := neoUpgradeMessage(cloudBe.Capabilities(ctx), version.Version); msg != "" {
-		return result.FprintBailf(stderr, "%s", msg)
+	lt, err := buildLocalToolHandlers(cwdFlag, ws)
+	if err != nil {
+		return nil, err
 	}
 
-	orgName, projectName, stackRefName, err := resolveTaskTarget(ctx, ws, cloudBe, project, stackName, orgFlag)
+	return &neoRuntime{
+		cwd:      cwdFlag,
+		ws:       ws,
+		project:  project,
+		cloudBe:  cloudBe,
+		pc:       pc,
+		handlers: lt.handlers,
+		pu:       lt.pu,
+	}, nil
+}
+
+func runNeo(ctx context.Context, stdout, stderr io.Writer, opts neoRunOptions) error {
+	// nil lets the server inherit the org's enabled integrations; the empty slice opts out.
+	var enabledIntegrations *[]string
+	if opts.disableIntegrations {
+		enabledIntegrations = &[]string{}
+	}
+
+	rt, err := prepareNeoRuntime(ctx, stderr, opts.cwdFlag)
 	if err != nil {
 		return err
 	}
+	opts.cwdFlag = rt.cwd
 
-	// Allow tools to read/write under temp directories in addition to cwd: the agent
-	// stages scratch files there (downloads, intermediate state) and the CLI sandbox
-	// would otherwise reject those paths. See pulumi/pulumi-service#42027.
-	extraRoots := dedupeExistingRoots("/tmp", os.TempDir())
-	fs, err := tools.NewFilesystem(cwdFlag, extraRoots...)
+	target, err := resolveTaskTarget(ctx, rt.ws, rt.cloudBe, rt.project,
+		taskTargetOpts{stackName: opts.stackName, orgFlag: opts.orgFlag})
 	if err != nil {
 		return err
 	}
-	sh, err := tools.NewShell(cwdFlag, extraRoots...)
-	if err != nil {
-		return err
-	}
-	handlers := map[string]ToolHandler{
-		"filesystem": fs,
-		"shell":      sh,
+	orgName, projectName, stackRefName := target.org, target.project, target.stackName()
+
+	// In a debug session, replace the prompt with the seed that points Neo at the failed
+	// operation, folding any positional prompt in as extra guidance.
+	if opts.debugKind != debugNone {
+		opts.prompt = buildDebugPrompt(ctx, rt.cloudBe, target, opts.debugKind, opts.debugID, opts.prompt)
 	}
 
-	// In non-interactive mode the sink stays nil and live events are dropped; the
-	// interactive path below sets pu.Sink to push UIEvents onto uiCh.
-	pu, err := tools.NewPulumi(cwdFlag, ws, nil)
-	if err != nil {
-		return err
-	}
-	handlers["pulumi"] = pu
-
-	if printMode || !isInteractive() {
-		if prompt == "" {
+	if opts.printMode || !isInteractive() {
+		if opts.prompt == "" {
 			return errors.New("a prompt argument is required in non-interactive mode")
 		}
-		taskPrompt := nonInteractivePromptPreamble + "\n\n" + prompt
+		taskPrompt := nonInteractivePromptPreamble + "\n\n" + opts.prompt
 		resp, err := createNeoTaskWithEntityRetry(
-			ctx, pc, orgName, taskPrompt, stackRefName, projectName, client.CreateNeoTaskOptions{
+			ctx, rt.pc, orgName, taskPrompt, stackRefName, projectName, client.CreateNeoTaskOptions{
 				ToolExecutionMode:   "cli",
-				ApprovalMode:        approvalMode,
-				PermissionMode:      permissionMode,
+				ApprovalMode:        opts.approvalMode,
+				PermissionMode:      opts.permissionMode,
 				EnabledIntegrations: enabledIntegrations,
 			}, nil)
 		if err != nil {
 			return err
 		}
-		if !printMode {
-			consoleURL := client.CloudConsoleURL(pc.URL(), orgName, "neo", "tasks", resp.TaskID)
+		if !opts.printMode {
+			consoleURL := client.CloudConsoleURL(rt.pc.URL(), orgName, "neo", "tasks", resp.TaskID)
 			if consoleURL != "" {
 				fmt.Fprintln(stderr, consoleURL)
 			} else {
@@ -318,13 +482,13 @@ func runNeo(
 			}
 		}
 		session := &Session{
-			Client:   pc,
-			Handlers: handlers,
+			Client:   rt.pc,
+			Handlers: rt.handlers,
 			OrgName:  orgName,
 			TaskID:   resp.TaskID,
 			Log:      stderr,
 		}
-		if printMode {
+		if opts.printMode {
 			session.Output = stdout
 		}
 		return session.Run(ctx)
@@ -334,9 +498,9 @@ func runNeo(
 	defer close(uiCh)
 	outCh := make(chan outboundEvent, 8)
 
-	pu.Sink = newPulumiSinkForUI(uiCh)
+	rt.pu.Sink = newPulumiSinkForUI(uiCh)
 
-	username, _, _, _ := pc.GetPulumiAccountDetails(ctx)
+	username, _, _, _ := rt.pc.GetPulumiAccountDetails(ctx)
 
 	// Detect the terminal background once, before bubbletea takes over stdin.
 	// Querying in-band (via tea.RequestBackgroundColor or glamour's auto-style)
@@ -346,18 +510,20 @@ func runNeo(
 	//
 	//nolint:forbidigo // needs the real terminal fds to query the background; cmd.OutOrStdout() is an io.Writer
 	hasDarkBackground := lipgloss.HasDarkBackground(os.Stdin, os.Stdout)
+	initialWidth := initialTUIWidth(stdout)
 
 	model := NewModel(ModelConfig{
 		Org:                   orgName,
-		WorkDir:               cwdFlag,
+		WorkDir:               opts.cwdFlag,
 		Username:              username,
 		Version:               version.Version,
 		EventCh:               uiCh,
 		OutCh:                 outCh,
-		Busy:                  prompt != "",
-		InitialPrompt:         prompt,
-		InitialApprovalMode:   approvalMode,
-		InitialPermissionMode: permissionMode,
+		Busy:                  opts.prompt != "",
+		InitialPrompt:         opts.prompt,
+		InitialApprovalMode:   opts.approvalMode,
+		InitialPermissionMode: opts.permissionMode,
+		InitialWidth:          initialWidth,
 		HasDarkBackground:     hasDarkBackground,
 	})
 
@@ -365,20 +531,28 @@ func runNeo(
 	// scrollback after exit.
 	p := newTeaProgram(model)
 
-	return runWithTUI(
+	var (
+		taskMu sync.Mutex
+		taskID string
+	)
+	getTaskID := func() string {
+		taskMu.Lock()
+		defer taskMu.Unlock()
+		return taskID
+	}
+	setTaskID := func(id string) {
+		taskMu.Lock()
+		defer taskMu.Unlock()
+		taskID = id
+	}
+
+	err = runWithTUI(
 		ctx,
 		func() error {
 			_, err := p.Run()
 			return err
 		},
 		func(g *errgroup.Group, gctx context.Context) {
-			// taskState tracks the task ID once created (may be deferred if no prompt).
-			type taskState struct {
-				mu     sync.Mutex
-				taskID string
-			}
-			ts := &taskState{}
-
 			// createTask creates the Neo task with the given prompt and starts the session.
 			// Called immediately if a prompt was provided, or on the first user message.
 			// approvalMode / permissionMode / planMode are the values the TUI captured at
@@ -391,36 +565,32 @@ func runNeo(
 				planMode bool,
 			) error {
 				resp, err := createNeoTaskWithEntityRetry(
-					gctx, pc, orgName, initialPrompt, stackRefName, projectName, client.CreateNeoTaskOptions{
+					gctx, rt.pc, orgName, initialPrompt, stackRefName, projectName, client.CreateNeoTaskOptions{
 						ToolExecutionMode:   "cli",
 						ApprovalMode:        createApprovalMode,
 						PermissionMode:      createPermissionMode,
 						PlanMode:            planMode,
 						EnabledIntegrations: enabledIntegrations,
 					}, func(originalErr error) {
-						sendUI(uiCh, UIWarning{Message: fmt.Sprintf(
-							"could not attach stack %s/%s/%s to Neo task: %s; "+
-								"creating task without stack context",
-							orgName, projectName, stackRefName, originalErr,
-						)})
+						sendUI(uiCh, UIWarning{
+							Message: entityDroppedWarning(orgName, projectName, stackRefName, originalErr),
+						})
 					})
 				if err != nil {
 					sendUI(uiCh, UIError{Message: "failed to create Neo task: " + err.Error()})
 					return err
 				}
 
-				ts.mu.Lock()
-				ts.taskID = resp.TaskID
-				ts.mu.Unlock()
+				setTaskID(resp.TaskID)
 
-				consoleURL := client.CloudConsoleURL(pc.URL(), orgName, "neo", "tasks", resp.TaskID)
+				consoleURL := client.CloudConsoleURL(rt.pc.URL(), orgName, "neo", "tasks", resp.TaskID)
 				if consoleURL != "" {
 					sendUI(uiCh, UISessionURL{URL: consoleURL})
 				}
 
 				session := &Session{
-					Client:   pc,
-					Handlers: handlers,
+					Client:   rt.pc,
+					Handlers: rt.handlers,
 					OrgName:  orgName,
 					TaskID:   resp.TaskID,
 					UIEvents: uiCh,
@@ -428,12 +598,12 @@ func runNeo(
 				return session.Run(gctx)
 			}
 
-			if prompt != "" {
+			if opts.prompt != "" {
 				// The command-line prompt path always passes false for planMode and
 				// uses the modes parsed from the CLI flags (which the TUI also seeds
 				// into its model). A subsequent toggle still routes through the TUI.
 				g.Go(func() error {
-					return createTask(prompt, approvalMode, permissionMode, false)
+					return createTask(opts.prompt, opts.approvalMode, opts.permissionMode, false)
 				})
 			}
 
@@ -455,17 +625,181 @@ func runNeo(
 			g.Go(func() error {
 				return dispatchUserEvents(
 					gctx, outCh, uiCh,
-					prompt != "",
-					func() string {
-						ts.mu.Lock()
-						defer ts.mu.Unlock()
-						return ts.taskID
-					},
+					opts.prompt != "",
+					getTaskID,
 					func(message string, am client.NeoApprovalMode, pm client.NeoPermissionMode, planMode bool) {
 						g.Go(func() error {
 							return createTask(message, am, pm, planMode)
 						})
 					},
+					func(ctx context.Context, taskID string, body any) error {
+						return rt.pc.PostNeoTaskUserEvent(ctx, orgName, taskID, body)
+					},
+					func(ctx context.Context, taskID string, opts client.UpdateNeoTaskOptions) error {
+						return rt.pc.UpdateNeoTask(ctx, orgName, taskID, opts)
+					},
+				)
+			})
+		},
+	)
+	if id := getTaskID(); id != "" {
+		fmt.Fprintf(stderr, "\nTo resume this Neo session, run: %s\n", formatNeoResumeCommand(id, orgName))
+	}
+	return err
+}
+
+func formatNeoResumeCommand(taskID, orgName string) string {
+	if orgName == "" {
+		return "pulumi neo resume " + taskID
+	}
+	return "pulumi neo resume " + taskID + " --org " + orgName
+}
+
+func runNeoResume(
+	ctx context.Context,
+	stdout, stderr io.Writer,
+	taskID, orgFlag, cwdFlag string,
+) error {
+	_ = stdout
+
+	rt, err := prepareNeoRuntime(ctx, stderr, cwdFlag)
+	if err != nil {
+		return err
+	}
+
+	orgName := orgFlag
+	if orgName == "" {
+		orgName, err = rt.cloudBe.GetDefaultOrg(ctx)
+		if err != nil {
+			return fmt.Errorf("determining default organization: %w", err)
+		}
+	}
+	if orgName == "" {
+		return errors.New("could not determine an organization for the Neo task; pass --org")
+	}
+
+	task, err := rt.pc.GetNeoTask(ctx, orgName, taskID)
+	if err != nil {
+		return err
+	}
+	approvalMode := task.ApprovalMode
+	if approvalMode == "" {
+		approvalMode = client.NeoApprovalModeManual
+	}
+	permissionMode := task.PermissionMode
+	if permissionMode == "" {
+		permissionMode = client.NeoPermissionModeDefault
+	}
+
+	historyEvents, lastEventID, err := rt.pc.GetNeoTaskEvents(ctx, orgName, taskID)
+	if err != nil {
+		return err
+	}
+
+	consoleURL := client.CloudConsoleURL(rt.pc.URL(), orgName, "neo", "tasks", taskID)
+	if consoleURL != "" {
+		fmt.Fprintln(stderr, consoleURL)
+	} else {
+		fmt.Fprintf(stderr, "Resumed Neo task %s\n", taskID)
+	}
+	if lastEventID != "" {
+		fmt.Fprintf(stderr, "Attached from event %s; historical local tool calls will not be replayed.\n", lastEventID)
+	}
+
+	if isInteractive() {
+		return runNeoResumeTUI(
+			ctx, stdout, stderr, rt.pc, rt.handlers, rt.pu, orgName, taskID, rt.cwd,
+			approvalMode, permissionMode, historyEvents, lastEventID)
+	}
+
+	session := &Session{
+		Client:      rt.pc,
+		Handlers:    rt.handlers,
+		OrgName:     orgName,
+		TaskID:      taskID,
+		LastEventID: lastEventID,
+		Log:         stderr,
+	}
+	return session.Run(ctx)
+}
+
+func runNeoResumeTUI(
+	ctx context.Context,
+	stdout, stderr io.Writer,
+	pc *client.Client,
+	handlers map[string]ToolHandler,
+	pu *tools.Pulumi,
+	orgName, taskID, cwdFlag string,
+	approvalMode client.NeoApprovalMode,
+	permissionMode client.NeoPermissionMode,
+	historyEvents []apitype.AgentConsoleEvent,
+	lastEventID string,
+) error {
+	uiCh := make(chan UIEvent, 64)
+	defer close(uiCh)
+	outCh := make(chan outboundEvent, 8)
+
+	pu.Sink = newPulumiSinkForUI(uiCh)
+
+	username, _, _, _ := pc.GetPulumiAccountDetails(ctx)
+
+	//nolint:forbidigo // needs the real terminal fds to query the background; cmd.OutOrStdout() is an io.Writer
+	hasDarkBackground := lipgloss.HasDarkBackground(os.Stdin, os.Stdout)
+	initialWidth := initialTUIWidth(stdout)
+
+	model := NewModel(ModelConfig{
+		Org:                   orgName,
+		WorkDir:               cwdFlag,
+		Username:              username,
+		Version:               version.Version,
+		EventCh:               uiCh,
+		OutCh:                 outCh,
+		InitialApprovalMode:   approvalMode,
+		InitialPermissionMode: permissionMode,
+		MessageSent:           true,
+		TaskCreated:           true,
+		History:               historyEventsToUI(historyEvents),
+		InitialWidth:          initialWidth,
+		HasDarkBackground:     hasDarkBackground,
+	})
+	model, initialScrollback := model.prepareInitialScrollback(initialWidth, 24)
+	if initialScrollback != "" {
+		fmt.Fprintln(stdout, initialScrollback)
+	}
+
+	p := newTeaProgram(model)
+
+	err := runWithTUI(
+		ctx,
+		func() error {
+			_, err := p.Run()
+			return err
+		},
+		func(g *errgroup.Group, gctx context.Context) {
+			g.Go(func() error {
+				session := &Session{
+					Client:      pc,
+					Handlers:    handlers,
+					OrgName:     orgName,
+					TaskID:      taskID,
+					LastEventID: lastEventID,
+					UIEvents:    uiCh,
+				}
+				return session.Run(gctx)
+			})
+
+			g.Go(func() error {
+				<-gctx.Done()
+				p.Quit()
+				return nil
+			})
+
+			g.Go(func() error {
+				return dispatchUserEvents(
+					gctx, outCh, uiCh,
+					true,
+					func() string { return taskID },
+					func(string, client.NeoApprovalMode, client.NeoPermissionMode, bool) {},
 					func(ctx context.Context, taskID string, body any) error {
 						return pc.PostNeoTaskUserEvent(ctx, orgName, taskID, body)
 					},
@@ -476,6 +810,99 @@ func runNeo(
 			})
 		},
 	)
+	fmt.Fprintf(stderr, "\nTo resume this Neo session, run: %s\n", formatNeoResumeCommand(taskID, orgName))
+	return err
+}
+
+func historyEventsToUI(events []apitype.AgentConsoleEvent) []UIEvent {
+	history := make([]UIEvent, 0, len(events))
+	pendingToolCalls := map[string]apitype.AgentBackendEventToolCall{}
+	for _, event := range events {
+		switch {
+		case event.Type == consoleEventUserInput && len(event.EventBody) > 0:
+			history = append(history, historyUIEventsFromUserInput(event.EventBody, pendingToolCalls)...)
+		case event.Type == consoleEventAgentResponse && len(event.EventBody) > 0:
+			recordHistoricalToolCalls(event.EventBody, pendingToolCalls)
+			history = append(history, uiEventsFromAgentResponse(event.EventBody)...)
+		}
+	}
+	return history
+}
+
+func recordHistoricalToolCalls(
+	eventBody json.RawMessage,
+	pendingToolCalls map[string]apitype.AgentBackendEventToolCall,
+) {
+	var head apitype.AgentBackendEventHeader
+	if err := json.Unmarshal(eventBody, &head); err != nil || head.Type != backendEventAssistantMessage {
+		return
+	}
+	var msg apitype.AgentBackendEventAssistantMessage
+	if err := json.Unmarshal(eventBody, &msg); err != nil {
+		return
+	}
+	for _, call := range msg.ToolCalls {
+		if call.ToolCallID == "" || call.ExecutionMode != toolExecutionModeCLI {
+			continue
+		}
+		pendingToolCalls[call.ToolCallID] = call
+	}
+}
+
+func historyUIEventsFromUserInput(
+	eventBody json.RawMessage,
+	pendingToolCalls map[string]apitype.AgentBackendEventToolCall,
+) []UIEvent {
+	var head apitype.AgentBackendEventHeader
+	if err := json.Unmarshal(eventBody, &head); err != nil {
+		return nil
+	}
+
+	switch head.Type {
+	case userEventExecToolCall:
+		var evt apitype.AgentUserEventExecToolCall
+		if err := json.Unmarshal(eventBody, &evt); err != nil {
+			return nil
+		}
+		call := pendingToolCalls[evt.ToolCallID]
+		name := evt.Name
+		if name == "" {
+			name = call.Name
+		}
+		return []UIEvent{UIToolStarted{
+			Name: name,
+			Args: call.Args,
+		}}
+	case userEventToolResult:
+		var evt apitype.AgentUserEventToolResult
+		if err := json.Unmarshal(eventBody, &evt); err != nil {
+			return nil
+		}
+		events := make([]UIEvent, 0, len(evt.ToolResults))
+		for _, result := range evt.ToolResults {
+			resultRaw, err := json.Marshal(result.Content)
+			if err != nil {
+				resultRaw, _ = json.Marshal(map[string]string{
+					"marshal_error": err.Error(),
+				})
+			}
+			call := pendingToolCalls[result.ToolCallID]
+			delete(pendingToolCalls, result.ToolCallID)
+			name := result.Name
+			if name == "" {
+				name = call.Name
+			}
+			events = append(events, UIToolCompleted{
+				Name:    name,
+				Args:    call.Args,
+				Result:  resultRaw,
+				IsError: result.IsError,
+			})
+		}
+		return events
+	default:
+		return uiEventsFromUserInput(eventBody)
+	}
 }
 
 // runWithTUI runs the bubbletea program alongside caller-registered worker
@@ -537,10 +964,50 @@ func dispatchUserEvents(
 	updateTask func(ctx context.Context, taskID string, opts client.UpdateNeoTaskOptions) error,
 ) error {
 	taskCreated := initialTaskCreated
+	pendingMessages := []queuedUserMessage{}
+	var retryTimer *time.Timer
+	var retryC <-chan time.Time
+	retryNow := false
+	stopRetryTimer := func() {
+		if retryTimer != nil {
+			retryTimer.Stop()
+			retryTimer = nil
+			retryC = nil
+		}
+	}
+	scheduleRetry := func(attempt int) {
+		delay := userMessageRetryDelay(attempt)
+		retryTimer = time.NewTimer(delay)
+		retryC = retryTimer.C
+	}
+	flushPending := func() error {
+		retryNow = false
+		stopRetryTimer()
+		var err error
+		pendingMessages, err = flushQueuedUserMessages(ctx, pendingMessages, getTaskID, postEvent, uiCh)
+		if err != nil {
+			return err
+		}
+		if len(pendingMessages) > 0 && retryTimer == nil {
+			scheduleRetry(pendingMessages[0].failures)
+		}
+		return nil
+	}
+
 	for {
+		if retryNow {
+			if err := flushPending(); err != nil {
+				return err
+			}
+		}
+
 		select {
 		case <-ctx.Done():
 			return nil
+		case <-retryC:
+			retryTimer = nil
+			retryC = nil
+			retryNow = true
 		case ob, ok := <-outCh:
 			if !ok {
 				return nil
@@ -572,11 +1039,81 @@ func dispatchUserEvents(
 				}
 				continue
 			}
+			if msg, isMsg := ob.event.(apitype.AgentUserEventUserMessage); isMsg {
+				pendingMessages = append(pendingMessages, queuedUserMessage{event: msg})
+				if len(pendingMessages) == 1 {
+					retryNow = true
+				}
+				continue
+			}
 			if err := postEvent(ctx, taskID, ob.event); err != nil {
 				sendUI(uiCh, UIWarning{Message: "failed to send event: " + err.Error()})
 			}
 		}
 	}
+}
+
+type queuedUserMessage struct {
+	event        apitype.AgentUserEventUserMessage
+	failures     int
+	reconnecting bool
+}
+
+func flushQueuedUserMessages(
+	ctx context.Context,
+	pending []queuedUserMessage,
+	getTaskID func() string,
+	postEvent func(ctx context.Context, taskID string, body any) error,
+	uiCh chan<- UIEvent,
+) ([]queuedUserMessage, error) {
+	for len(pending) > 0 {
+		if ctx.Err() != nil {
+			return pending, nil
+		}
+		taskID := getTaskID()
+		if taskID == "" {
+			pending[0].failures++
+			if !pending[0].reconnecting {
+				pending[0].reconnecting = true
+				sendUI(uiCh, UIReconnecting{})
+			}
+			return pending, nil
+		}
+		err := postEvent(ctx, taskID, pending[0].event)
+		if err == nil {
+			if pending[0].reconnecting {
+				sendUI(uiCh, UIReconnected{})
+			}
+			pending = pending[1:]
+			continue
+		}
+		if ctx.Err() != nil {
+			return pending, nil
+		}
+		if !isTransientStreamError(err) {
+			sendUI(uiCh, UIWarning{Message: "failed to send event: " + err.Error()})
+			pending = pending[1:]
+			continue
+		}
+		pending[0].failures++
+		if !pending[0].reconnecting {
+			pending[0].reconnecting = true
+			sendUI(uiCh, UIReconnecting{})
+		}
+		return pending, nil
+	}
+	return pending, nil
+}
+
+func userMessageRetryDelay(attempt int) time.Duration {
+	if attempt < 1 {
+		attempt = 1
+	}
+	d := userMessageRetryInitialBackoff << (attempt - 1)
+	if d <= 0 || d > userMessageRetryMaxBackoff {
+		return userMessageRetryMaxBackoff
+	}
+	return d
 }
 
 // stackRefWithOrg is the subset of backend.StackReference that carries the
@@ -587,9 +1124,36 @@ type stackRefWithOrg interface {
 	Organization() (string, bool)
 }
 
-// resolveTaskTarget figures out the org, project, and stack name to attach to the new Neo
-// task. The stack flag is optional — if it's empty we try the currently selected stack and
-// fall back to a project-only attachment if there isn't one.
+// taskTarget is the resolved org, project, and stack a Neo task attaches to. The stack name comes
+// from ref; ref is nil when no stack could be resolved, so the task runs without stack context.
+type taskTarget struct {
+	org     string
+	project string
+	ref     backend.StackReference
+}
+
+// stackName returns the resolved stack's name, or "" when no stack was resolved.
+func (t taskTarget) stackName() string {
+	if t.ref == nil {
+		return ""
+	}
+	return t.ref.Name().String()
+}
+
+// taskTargetOpts are the optional inputs to resolveTaskTarget.
+type taskTargetOpts struct {
+	// stackName is the --stack flag; when empty the currently selected stack is
+	// tried, falling back to a project-only attachment if there isn't one.
+	stackName string
+	// orgFlag is the --org flag; when set it wins over any stack-derived owner.
+	orgFlag string
+	// dir roots the current-stack lookup; empty means the process working
+	// directory.
+	dir string
+}
+
+// resolveTaskTarget figures out the org, project, and stack to attach to the
+// new Neo task.
 //
 // Org resolution: --org wins if provided; otherwise we use the owner carried
 // by the stack reference (so a workspace-selected `otherorg/proj/dev` keeps
@@ -601,28 +1165,29 @@ func resolveTaskTarget(
 	ws pkgWorkspace.Context,
 	be httpstate.Backend,
 	project *workspace.Project,
-	stackName, orgFlag string,
-) (org, projectName, stack string, err error) {
+	opts taskTargetOpts,
+) (taskTarget, error) {
+	var t taskTarget
 	if project != nil {
-		projectName = string(project.Name)
+		t.project = string(project.Name)
 	}
 
 	var stackOwner string
-	if stackName != "" {
-		ref, err := be.ParseStackReference(stackName)
+	if opts.stackName != "" {
+		ref, err := be.ParseStackReference(opts.stackName)
 		if err != nil {
-			return "", "", "", err
+			return taskTarget{}, err
 		}
-		stack = ref.Name().String()
+		t.ref = ref
 		if owned, ok := ref.(stackRefWithOrg); ok {
 			if o, has := owned.Organization(); has {
 				stackOwner = o
 			}
 		}
 	} else {
-		s, err := state.CurrentStack(ctx, ws, be)
+		s, err := state.CurrentStackAt(ctx, ws, be, opts.dir)
 		if err == nil && s != nil {
-			stack = s.Ref().Name().String()
+			t.ref = s.Ref()
 			if owned, ok := s.Ref().(stackRefWithOrg); ok {
 				if o, has := owned.Organization(); has {
 					stackOwner = o
@@ -632,20 +1197,64 @@ func resolveTaskTarget(
 	}
 
 	switch {
-	case orgFlag != "":
-		org = orgFlag
+	case opts.orgFlag != "":
+		t.org = opts.orgFlag
 	case stackOwner != "":
-		org = stackOwner
+		t.org = stackOwner
 	default:
-		org, err = be.GetDefaultOrg(ctx)
+		org, err := be.GetDefaultOrg(ctx)
 		if err != nil {
-			return "", "", "", fmt.Errorf("determining default organization: %w", err)
+			return taskTarget{}, fmt.Errorf("determining default organization: %w", err)
 		}
+		t.org = org
 	}
-	if org == "" {
-		return "", "", "", errors.New("could not determine an organization for the Neo task; pass --org")
+	if t.org == "" {
+		return taskTarget{}, errors.New("could not determine an organization for the Neo task; pass --org")
 	}
-	return org, projectName, stack, nil
+	return t, nil
+}
+
+// localTools are the CLI-local tool handlers shared by every Neo entrypoint. The
+// concrete fs/sh/pu handles are exposed alongside the assembled handler map so
+// callers can layer on extras without re-deriving the shared construction or the
+// temp-root policy: the interactive path sets pu.Sink, and the ACP adapter routes
+// fs/sh through the editor. handlers already contains fs/sh/pu under their tool
+// names.
+type localTools struct {
+	fs       *tools.Filesystem
+	sh       *tools.Shell
+	pu       *tools.Pulumi
+	handlers map[string]ToolHandler
+}
+
+// buildLocalToolHandlers constructs the CLI-local tool handlers shared by every
+// Neo entrypoint (interactive TUI, non-interactive, ACP): the filesystem, shell,
+// and pulumi tools rooted at cwd. The filesystem and shell additionally allow
+// tools to read/write under temp directories in addition to cwd: the agent
+// stages scratch files there (downloads, intermediate state) and the CLI sandbox
+// would otherwise reject those paths (see pulumi/pulumi-service#42027).
+func buildLocalToolHandlers(cwd string, ws pkgWorkspace.Context) (localTools, error) {
+	extraRoots := dedupeExistingRoots("/tmp", os.TempDir())
+	fs, err := tools.NewFilesystem(cwd, extraRoots...)
+	if err != nil {
+		return localTools{}, err
+	}
+	sh, err := tools.NewShell(cwd, extraRoots...)
+	if err != nil {
+		return localTools{}, err
+	}
+	pu, err := tools.NewPulumi(cwd, ws, nil)
+	if err != nil {
+		return localTools{}, err
+	}
+	return localTools{
+		fs: fs, sh: sh, pu: pu,
+		handlers: map[string]ToolHandler{
+			"filesystem": fs,
+			"shell":      sh,
+			"pulumi":     pu,
+		},
+	}, nil
 }
 
 // dedupeExistingRoots returns candidates with duplicates removed by canonical path,

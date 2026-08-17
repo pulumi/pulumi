@@ -27,6 +27,8 @@ import (
 	"strings"
 
 	"github.com/hashicorp/hcl/v2"
+	segmentiojson "github.com/segmentio/encoding/json"
+
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageinstallation"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageresolution"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageworkspace"
@@ -77,9 +79,10 @@ func BindSpecWithContext(
 // It returns the path to the installed package.
 func InstallPackage(stdout io.Writer, ws pkgWorkspace.Context, proj workspace.BaseProject, pctx *plugin.Context,
 	language, root, schemaSource string, parameters plugin.ParameterizeParameters,
-	registry registry.Registry, e env.Env, concurrency int,
+	registry registry.Registry, e env.Env, concurrency int, asExtension bool, pluginDownloadURL string,
 ) (*schema.Package, *workspace.PackageSpec, hcl.Diagnostics, error) {
-	pkgSpec, specOverride, err := SchemaFromSchemaSource(ws, pctx, schemaSource, parameters, registry, e, concurrency)
+	pkgSpec, specOverride, err := SchemaFromSchemaSource(ws, pctx, schemaSource, parameters, registry, e, concurrency,
+		asExtension, pluginDownloadURL)
 	if err != nil {
 		var diagErr hcl.Diagnostics
 		if errors.As(err, &diagErr) {
@@ -381,72 +384,50 @@ func setSpecNamespace(spec *schema.PackageSpec, pluginSpec workspace.PluginDescr
 func SchemaFromSchemaSource(
 	ws pkgWorkspace.Context,
 	pctx *plugin.Context, packageSource string, parameters plugin.ParameterizeParameters, registry registry.Registry,
-	env env.Env, concurrency int,
+	env env.Env, concurrency int, asExtension bool, pluginDownloadURL string,
 ) (*schema.PackageSpec, *workspace.PackageSpec, error) {
+	raw, packageSpec, parameterizationName, err := schemaJSONBytes(
+		ws, pctx, packageSource, parameters, registry, env, concurrency, pluginDownloadURL,
+	)
+	if err != nil {
+		return nil, nil, err
+	}
 	var spec schema.PackageSpec
-	if ext := filepath.Ext(packageSource); ext == ".yaml" || ext == ".yml" {
-		if !parameters.Empty() {
-			return nil, nil, errors.New("parameterization arguments are not supported for yaml files")
-		}
-		f, err := os.ReadFile(packageSource)
-		if err != nil {
-			return nil, nil, err
-		}
-		err = yaml.Unmarshal(f, &spec)
-		if err != nil {
-			return nil, nil, err
-		}
-		return &spec, nil, nil
-	} else if ext == ".json" {
-		if !parameters.Empty() {
-			return nil, nil, errors.New("parameterization arguments are not supported for json files")
-		}
-
-		f, err := os.ReadFile(packageSource)
-		if err != nil {
-			return nil, nil, err
-		}
-		err = json.Unmarshal(f, &spec)
-		if err != nil {
-			return nil, nil, err
-		}
+	if err := json.Unmarshal(raw, &spec); err != nil {
+		return nil, nil, err
+	}
+	if packageSpec == nil {
+		// The schema came from a file, so there is no plugin to describe.
 		return &spec, nil, nil
 	}
-
-	p, packageSpec, err := ProviderFromSource(ws, pctx, packageSource, registry, env, concurrency)
-	if err != nil {
-		return nil, nil, err
+	if asExtension && spec.ExtensionParameterization == nil {
+		return nil, nil, fmt.Errorf(
+			"%s did not return an extension-parameterized schema; the source may not support "+
+				"extension parameterization",
+			packageSource)
 	}
-	defer contract.IgnoreClose(p)
-
-	var request plugin.GetSchemaRequest
-	if !parameters.Empty() {
-		resp, err := p.Parameterize(pctx.Request(), plugin.ParameterizeRequest{
-			Parameters: parameters,
-		})
-		if err != nil {
-			return nil, nil, fmt.Errorf("parameterize: %w", err)
+	if parameterizationName != "" {
+		switch {
+		case spec.Parameterization != nil && spec.ExtensionParameterization != nil:
+			return nil, nil, errors.New(
+				"provider returned schema with both parameterization and extensionParameterization blocks; " +
+					"the provider must emit exactly one")
+		case spec.Parameterization == nil && spec.ExtensionParameterization == nil:
+			return nil, nil, fmt.Errorf(
+				"provider returned schema without a parameterization block but parameterize identified the package as %q; "+
+					"the provider must emit a schema whose parameterization name matches its parameterize response",
+				parameterizationName)
 		}
-
-		request = plugin.GetSchemaRequest{
-			SubpackageName:    resp.Name,
-			SubpackageVersion: &resp.Version,
+		if spec.Name != parameterizationName {
+			return nil, nil, fmt.Errorf(
+				"provider returned schema parameterized as %q but parameterize identified the package as %q; "+
+					"the provider must emit a schema whose parameterization name matches its parameterize response",
+				spec.Name, parameterizationName)
 		}
 	}
-
-	tracer := otel.Tracer("pulumi-cli")
-	_, schemaSpan := cmdutil.StartSpan(pctx.Request(), tracer, "get-schema",
-		trace.WithAttributes(attribute.String("source", packageSource)))
-	schema, err := p.GetSchema(pctx.Request(), request)
-	schemaSpan.End()
-	if err != nil {
-		return nil, nil, err
-	}
-	err = json.Unmarshal(schema.Schema, &spec)
-	if err != nil {
-		return nil, nil, err
-	}
-	pluginSpec, err := workspace.NewPluginDescriptor(pctx.Request(), packageSource, apitype.ResourcePlugin, nil, "", nil)
+	pluginSpec, err := workspace.NewPluginDescriptor(
+		pctx.Request(), packageSource, apitype.ResourcePlugin, nil, pluginDownloadURL, nil,
+	)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -454,7 +435,86 @@ func SchemaFromSchemaSource(
 		spec.PluginDownloadURL = pluginSpec.PluginDownloadURL
 	}
 	setSpecNamespace(&spec, pluginSpec)
-	return &spec, &packageSpec, nil
+	return &spec, packageSpec, nil
+}
+
+// PartialPackageFromSchemaSource loads a schema source into a lazily-bound *schema.PartialPackage.
+// Unlike SchemaFromSchemaSource it does not parse or bind the whole schema up front, so commands
+// that only need a few members (e.g. `pulumi package info --resource`) avoid the cost of binding
+// the entire package.
+func PartialPackageFromSchemaSource(
+	ctx context.Context,
+	ws pkgWorkspace.Context, pctx *plugin.Context, packageSource string,
+	parameters plugin.ParameterizeParameters, reg registry.Registry, env env.Env, concurrency int,
+	pluginDownloadURL string,
+) (*schema.PartialPackage, error) {
+	raw, _, _, err := schemaJSONBytes(ws, pctx, packageSource, parameters, reg, env, concurrency, pluginDownloadURL)
+	if err != nil {
+		return nil, err
+	}
+	var spec schema.PartialPackageSpec
+	if _, err := segmentiojson.Parse(raw, &spec, segmentiojson.ZeroCopy); err != nil {
+		return nil, fmt.Errorf("unmarshal schema: %w", err)
+	}
+	return schema.ImportPartialSpecWithContext(ctx, spec, nil, schema.NewPluginLoader(pctx))
+}
+
+// schemaJSONBytes returns the raw JSON bytes of a schema source (a YAML or JSON file, or a
+// provider's schema). The returned workspace.PackageSpec is non-nil if and only if the schema is
+// sourced from a plugin.
+func schemaJSONBytes(
+	ws pkgWorkspace.Context, pctx *plugin.Context, packageSource string,
+	parameters plugin.ParameterizeParameters, reg registry.Registry, env env.Env, concurrency int,
+	pluginDownloadURL string,
+) ([]byte, *workspace.PackageSpec, string, error) {
+	switch filepath.Ext(packageSource) {
+	case ".yaml", ".yml":
+		if !parameters.Empty() {
+			return nil, nil, "", errors.New("parameterization arguments are not supported for yaml files")
+		}
+		f, err := os.ReadFile(packageSource)
+		if err != nil {
+			return nil, nil, "", err
+		}
+		var spec schema.PackageSpec
+		if err := yaml.Unmarshal(f, &spec); err != nil {
+			return nil, nil, "", err
+		}
+		raw, err := json.Marshal(spec)
+		return raw, nil, "", err
+	case ".json":
+		if !parameters.Empty() {
+			return nil, nil, "", errors.New("parameterization arguments are not supported for json files")
+		}
+		raw, err := os.ReadFile(packageSource)
+		return raw, nil, "", err
+	}
+
+	p, packageSpec, err := ProviderFromSource(ws, pctx, packageSource, reg, env, concurrency, pluginDownloadURL)
+	if err != nil {
+		return nil, nil, "", err
+	}
+	defer contract.IgnoreClose(p)
+
+	var request plugin.GetSchemaRequest
+	var parameterizationName string
+	if !parameters.Empty() {
+		resp, err := p.Parameterize(pctx.Request(), plugin.ParameterizeRequest{Parameters: parameters})
+		if err != nil {
+			return nil, nil, "", fmt.Errorf("parameterize: %w", err)
+		}
+		parameterizationName = resp.Name
+		request = plugin.GetSchemaRequest{SubpackageName: resp.Name, SubpackageVersion: &resp.Version}
+	}
+	tracer := otel.Tracer("pulumi-cli")
+	_, schemaSpan := cmdutil.StartSpan(pctx.Request(), tracer, "get-schema",
+		trace.WithAttributes(attribute.String("source", packageSource)))
+	getSchema, err := p.GetSchema(pctx.Request(), request)
+	schemaSpan.End()
+	if err != nil {
+		return nil, nil, "", err
+	}
+	return getSchema.Schema, &packageSpec, parameterizationName, nil
 }
 
 // ProviderFromSource takes a plugin name or path.
@@ -463,13 +523,13 @@ func SchemaFromSchemaSource(
 func ProviderFromSource(
 	ws pkgWorkspace.Context,
 	pctx *plugin.Context, packageSource string, reg registry.Registry,
-	e env.Env, concurrency int,
+	e env.Env, concurrency int, pluginDownloadURL string,
 ) (plugin.Provider, workspace.PackageSpec, error) {
 	// Helper without a *cobra.Command writer; plumbing the writer into
 	// packageworkspace.New would require a much larger API change.
 	installCtx := packageworkspace.New(pluginstorage.Instance, ws, pctx, os.Stderr, os.Stderr, //nolint:forbidigo
 		nil, packageworkspace.Options{})
-	return providerFromSource(pctx, packageSource, reg, e, concurrency, installCtx)
+	return providerFromSource(pctx, packageSource, reg, e, concurrency, pluginDownloadURL, installCtx)
 }
 
 // providerFromSource is the injectable core of [ProviderFromSource]. It performs all package
@@ -477,7 +537,7 @@ func ProviderFromSource(
 // mock [packageinstallation.Context] for the real, IO-performing [packageworkspace.Workspace].
 func providerFromSource(
 	pctx *plugin.Context, packageSource string, reg registry.Registry,
-	e env.Env, concurrency int, installCtx packageinstallation.Context,
+	e env.Env, concurrency int, pluginDownloadURL string, installCtx packageinstallation.Context,
 ) (plugin.Provider, workspace.PackageSpec, error) {
 	ctx, span := otel.Tracer("pulumi-cli").Start(pctx.Request(), "provider.load")
 	defer span.End()
@@ -498,6 +558,10 @@ func providerFromSource(
 				packageSpec = remap
 			}
 		}
+	}
+	if pluginDownloadURL != "" {
+		// If an explicit plugin download URL is provided, override the package spec's PluginDownloadURL.
+		packageSpec.PluginDownloadURL = pluginDownloadURL
 	}
 
 	f, spec, _, err := packageinstallation.InstallPlugin(ctx, packageSpec, nil, "", packageinstallation.Options{

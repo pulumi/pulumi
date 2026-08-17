@@ -68,7 +68,7 @@ func NewPluginCmd() *cobra.Command {
 
 // getProjectPlugins fetches a list of plugins used by this project.
 func getProjectPlugins(ctx context.Context) ([]workspace.PluginDescriptor, error) {
-	proj, root, err := pkgWorkspace.Instance.ReadProject()
+	proj, root, err := pkgWorkspace.Instance.ReadProject("")
 	if err != nil {
 		return nil, err
 	}
@@ -107,7 +107,7 @@ func getProjectPlugins(ctx context.Context) ([]workspace.PluginDescriptor, error
 }
 
 func resolvePlugins(ctx context.Context, plugins []workspace.PluginDescriptor) ([]workspace.PluginInfo, error) {
-	proj, root, err := pkgWorkspace.Instance.ReadProject()
+	proj, root, err := pkgWorkspace.Instance.ReadProject("")
 	if err != nil {
 		return nil, err
 	}

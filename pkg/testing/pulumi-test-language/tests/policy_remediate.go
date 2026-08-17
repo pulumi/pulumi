@@ -18,7 +18,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language/providers"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -44,12 +44,12 @@ func init() {
 				PolicyName:        "fixup",
 				PolicyPackName:    "remediate",
 				PolicyPackVersion: "3.0.0",
-				Before: resource.PropertyMap{
-					"value": resource.NewPropertyValue(true),
-				},
-				After: resource.PropertyMap{
-					"value": resource.NewPropertyValue(false),
-				},
+				Before: property.NewMap(map[string]property.Value{
+					"value": property.New(true),
+				}),
+				After: property.NewMap(map[string]property.Value{
+					"value": property.New(false),
+				}),
 			},
 		}
 

@@ -33,6 +33,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
@@ -73,8 +74,8 @@ func TestPackageRef(t *testing.T) {
 		require.NoError(t, err)
 
 		// If we register the "same" provider in parallel, we should get the same ref.
-		promises := []*promise.Promise[string]{}
-		for i := 0; i < 100; i++ {
+		promises := make([]*promise.Promise[string], 0, 100)
+		for range 100 {
 			var pcs promise.CompletionSource[string]
 			promises = append(promises, pcs.Promise())
 			go func() {
@@ -187,15 +188,15 @@ func TestReplacementParameterizedProvider(t *testing.T) {
 				},
 				CallF: func(_ context.Context, req plugin.CallRequest, _ *deploytest.ResourceMonitor) (plugin.CallResponse, error) {
 					assert.Equal(t, "pkgExt:index:call", req.Tok.String())
-					assert.Equal(t, resource.NewProperty("in"), req.Args["input"])
+					assert.Equal(t, property.New("in"), req.Args.Get("input"))
 					assert.Equal(t, map[resource.PropertyKey][]resource.URN{
 						"input": {"urn:pulumi:stack::m::typA::resB"},
 					}, req.Options.ArgDependencies)
 
 					return plugin.CallResponse{
-						Return: resource.PropertyMap{
-							"output": resource.NewProperty("output"),
-						},
+						Return: property.NewMap(map[string]property.Value{
+							"output": property.New("output"),
+						}),
 						ReturnDependencies: map[resource.PropertyKey][]resource.URN{
 							"output": {"urn:pulumi:stack::m::typA::resB"},
 						},
@@ -217,9 +218,9 @@ func TestReplacementParameterizedProvider(t *testing.T) {
 
 					return plugin.ConstructResponse{
 						URN: resource.NewURN("", "", "", req.Type, req.Name),
-						Outputs: resource.PropertyMap{
-							"output": resource.NewProperty("output"),
-						},
+						Outputs: property.NewMap(map[string]property.Value{
+							"output": property.New("output"),
+						}),
 						OutputDependencies: map[resource.PropertyKey][]resource.URN{
 							"output": {"urn:pulumi:stack::m::typA::resB"},
 						},

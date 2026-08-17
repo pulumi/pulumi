@@ -32,6 +32,10 @@ import (
 )
 
 func TestDecryptGzipLog(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping test that runs the pulumi CLI in short mode")
+	}
+
 	t.Parallel()
 
 	e := ptesting.NewEnvironment(t)
@@ -69,7 +73,7 @@ func TestFormatLogRecordsFoldsArgs(t *testing.T) {
 	require.NoError(t, err)
 
 	var out bytes.Buffer
-	err = formatLogRecords(bytes.NewReader(append(line, '\n')), &out)
+	err = formatLogRecords(bytes.NewReader(append(line, '\n')), &out, false)
 	require.NoError(t, err)
 
 	var got map[string]any
@@ -103,7 +107,7 @@ func TestFormatLogRecordsDecodesPropertyValues(t *testing.T) {
 	require.NoError(t, err)
 
 	var out bytes.Buffer
-	err = formatLogRecords(bytes.NewReader(append(line, '\n')), &out)
+	err = formatLogRecords(bytes.NewReader(append(line, '\n')), &out, false)
 	require.NoError(t, err)
 
 	var got map[string]any
@@ -118,6 +122,10 @@ func TestFormatLogRecordsDecodesPropertyValues(t *testing.T) {
 // an encrypted log file during a `pulumi preview`, and `pulumi logs decrypt`
 // can read it back.
 func TestDecryptEncryptedLog(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping test that runs the pulumi CLI in short mode")
+	}
+
 	t.Parallel()
 
 	e := ptesting.NewEnvironment(t)

@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"hash/fnv"
 	"io"
+	maps0 "maps"
 	"net/http"
 	"os"
 	"os/exec"
@@ -218,6 +219,10 @@ func (e *testEnvironments) LoadEnvironment(ctx context.Context, ref string) ([]b
 	return env.latest().yaml, rot128{}, nil
 }
 
+func (e *testEnvironments) AuthorizeImport(_ context.Context, _ string, _ string, _ bool) error {
+	return nil
+}
+
 type testEnvironmentRetract struct {
 	replacement int
 	reason      string
@@ -251,6 +256,16 @@ type testPulumiClient struct {
 	defaultOrg   string
 	environments map[string]*testEnvironment
 	openEnvs     map[string]*esc.Environment
+
+	// submittedChangeRequests records submitted change requests in call order, so tests can assert
+	// that a command actually submits the change requests it creates.
+	submittedChangeRequests []submittedChangeRequest
+}
+
+type submittedChangeRequest struct {
+	orgName         string
+	changeRequestID string
+	description     *string
 }
 
 type testLoginManager struct {
@@ -430,6 +445,7 @@ func (c *testPulumiClient) checkEnvironment(
 		envLoader,
 		execContext,
 		showSecrets,
+		eval.EvalOptions{TraceMode: eval.TraceModeFull},
 	)
 	diags.Extend(checkDiags...)
 	return checked, mapDiags(diags), nil
@@ -461,7 +477,16 @@ func (c *testPulumiClient) openEnvironment(
 		return "", nil, fmt.Errorf("initializing the ESC exec context: %w", err)
 	}
 
-	openEnv, evalDiags := eval.EvalEnvironment(ctx, name, decl, rot128{}, providers, envLoader, execContext)
+	openEnv, evalDiags := eval.EvalEnvironment(
+		ctx,
+		name,
+		decl,
+		rot128{},
+		providers,
+		envLoader,
+		execContext,
+		eval.EvalOptions{TraceMode: eval.TraceModeFull},
+	)
 	diags.Extend(evalDiags...)
 
 	if diags.HasErrors() {
@@ -735,6 +760,11 @@ func (c *testPulumiClient) SubmitChangeRequest(
 	changeRequestID string,
 	description *string,
 ) error {
+	c.submittedChangeRequests = append(c.submittedChangeRequests, submittedChangeRequest{
+		orgName:         orgName,
+		changeRequestID: changeRequestID,
+		description:     description,
+	})
 	return nil
 }
 
@@ -803,6 +833,7 @@ func (c *testPulumiClient) OpenYAMLEnvironment(
 	orgName string,
 	yaml []byte,
 	duration time.Duration,
+	opts ...client.OpenYAMLOption,
 ) (string, []client.EnvironmentDiagnostic, error) {
 	return c.openEnvironment(ctx, orgName, "<yaml>", yaml)
 }
@@ -903,9 +934,7 @@ func (c *testPulumiClient) ListEnvironmentReferrers(
 	resp := &client.ListEnvironmentReferrersResponse{
 		Referrers: map[string][]client.EnvironmentReferrer{},
 	}
-	for k, v := range env.referrers {
-		resp.Referrers[k] = v
-	}
+	maps0.Copy(resp.Referrers, env.referrers)
 	return resp, nil
 }
 
@@ -1603,9 +1632,7 @@ func (c *testExec) runScript(script string, cmd *exec.Cmd) error {
 				hc := interp.HandlerCtx(ctx)
 
 				environ := testEnviron{}
-				for k, v := range c.environ {
-					environ[k] = v
-				}
+				maps0.Copy(environ, c.environ)
 				hc.Env.Each(func(name string, vr expand.Variable) bool {
 					environ[name] = vr.String()
 					return true
@@ -2095,4 +2122,40 @@ func TestCLI(t *testing.T) {
 			assert.Equal(t, testcase.expectedStderr, stderr.String())
 		})
 	}
+}
+
+// TestEnvOpenRequestSubmits verifies that `esc env open-request` submits the change requests it
+// creates rather than leaving them as unsubmitted drafts, and that --reason is forwarded to the
+// submit call as the change request description.
+func TestEnvOpenRequestSubmits(t *testing.T) {
+	t.Setenv("PULUMI_API", "")
+	t.Setenv("PULUMI_HOME", t.TempDir())
+
+	_, testcase, err := loadTestcase(filepath.Join("testdata", "env-open-request-ok.yaml"))
+	require.NoError(t, err)
+
+	var stdout, stderr bytes.Buffer
+	err = testcase.exec.runScript(testcase.script, &exec.Cmd{
+		Path:   "<script>",
+		Args:   []string{"<script>"},
+		Stdin:  bytes.NewReader(nil),
+		Stdout: &stdout,
+		Stderr: &stderr,
+	})
+	require.NoError(t, err)
+
+	client := testcase.exec.client
+
+	// The testcase runs three open-request invocations; each must submit the created change request.
+	require.Len(t, client.submittedChangeRequests, 3)
+	for _, sub := range client.submittedChangeRequests {
+		assert.Equal(t, "test-org", sub.orgName)
+		assert.Equal(t, "test-request-id-12345", sub.changeRequestID)
+	}
+
+	// The first two invocations pass no reason; the third passes --reason.
+	assert.Nil(t, client.submittedChangeRequests[0].description)
+	assert.Nil(t, client.submittedChangeRequests[1].description)
+	require.NotNil(t, client.submittedChangeRequests[2].description)
+	assert.Equal(t, "Need prod access for incident 1234", *client.submittedChangeRequests[2].description)
 }

@@ -5,6 +5,11 @@ import * as pulumi from "@pulumi/pulumi";
 import * as utilities from "./utilities";
 
 // Export members:
+export { DeluxeArgs } from "./deluxe";
+export type Deluxe = import("./deluxe").Deluxe;
+export const Deluxe: typeof import("./deluxe").Deluxe = null as any;
+utilities.lazyLoad(exports, ["Deluxe"], () => require("./deluxe"));
+
 export { ProviderArgs } from "./provider";
 export type Provider = import("./provider").Provider;
 export const Provider: typeof import("./provider").Provider = null as any;
@@ -32,6 +37,8 @@ const _module = {
     version: utilities.getVersion(),
     construct: (name: string, type: string, urn: string): pulumi.Resource => {
         switch (type) {
+            case "enum:index:Deluxe":
+                return new Deluxe(name, <any>undefined, { urn })
             case "enum:index:Res":
                 return new Res(name, <any>undefined, { urn })
             default:

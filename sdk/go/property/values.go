@@ -288,6 +288,12 @@ func (v Value) WithDependencies(dependencies []urn.URN) Value {
 	return v
 }
 
+// hasValue returns true if a value not a plain null. This is private to discourage external use, null _should_ normally
+// be semantically meaningful, but currently for diffs we have to treat missing and null the same.
+func (v Value) hasValue() bool {
+	return !v.IsNull() || v.isSecret || len(v.dependencies) != 0
+}
+
 // WithGoValue creates a new Value with the inner value newGoValue.
 //
 // To set a [Value] to a null or computed value, pass [Null] or [Computed] as the new

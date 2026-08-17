@@ -42,6 +42,26 @@ func init() {
 					RequireSingleResource(l, snap.Resources, "pulumi:providers:secret")
 					secret := RequireSingleResource(l, snap.Resources, "secret:index:Resource")
 
+					data := map[string]any{
+						"public":  "open",
+						"private": "closed",
+					}
+
+					secretCollections := map[resource.PropertyKey]resource.PropertyValue{
+						"privateArray": resource.MakeSecret(resource.NewProperty([]resource.PropertyValue{
+							resource.NewProperty("closed"),
+						})),
+						"privateMap": resource.MakeSecret(resource.NewProperty(resource.NewPropertyMapFromMap(map[string]any{
+							"key": "closed",
+						}))),
+						"privateDataArray": resource.MakeSecret(resource.NewProperty([]resource.PropertyValue{
+							resource.NewProperty(resource.NewPropertyMapFromMap(data)),
+						})),
+						"privateDataMap": resource.MakeSecret(resource.NewProperty(resource.NewPropertyMapFromMap(map[string]any{
+							"key": resource.NewProperty(resource.NewPropertyMapFromMap(data)),
+						}))),
+					}
+
 					wantCorrect := resource.NewPropertyMapFromMap(map[string]any{
 						"public":  "open",
 						"private": resource.MakeSecret(resource.NewProperty("closed")),
@@ -49,10 +69,7 @@ func init() {
 							"public":  "open",
 							"private": resource.MakeSecret(resource.NewProperty("closed")),
 						},
-						"privateData": resource.MakeSecret(resource.NewProperty(resource.NewPropertyMapFromMap(map[string]any{
-							"public":  "open",
-							"private": "closed",
-						}))),
+						"privateData": resource.MakeSecret(resource.NewProperty(resource.NewPropertyMapFromMap(data))),
 					})
 
 					wantExpected := resource.NewPropertyMapFromMap(map[string]any{
@@ -65,11 +82,13 @@ func init() {
 							// fix it. We should fix the engine to ensure this ends up as secret as well.
 							"private": "closed",
 						},
-						"privateData": resource.MakeSecret(resource.NewProperty(resource.NewPropertyMapFromMap(map[string]any{
-							"public":  "open",
-							"private": "closed",
-						}))),
+						"privateData": resource.MakeSecret(resource.NewProperty(resource.NewPropertyMapFromMap(data))),
 					})
+
+					for key, value := range secretCollections {
+						wantCorrect[key] = value
+						wantExpected[key] = value
+					}
 
 					if !wantCorrect.DeepEquals(secret.Inputs) {
 						assert.Equal(l, wantExpected, secret.Inputs,

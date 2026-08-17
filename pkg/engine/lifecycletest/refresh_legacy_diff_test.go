@@ -20,6 +20,8 @@ import (
 	"strconv"
 	"testing"
 
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
+
 	"github.com/blang/semver"
 	combinations "github.com/mxschmitt/golang-combinations"
 	"github.com/stretchr/testify/assert"
@@ -82,8 +84,8 @@ func validateRefreshBasicsWithLegacyDiffCombination(
 
 	p.Options.Targets = deploy.NewUrnTargetsFromUrns(refreshTargets)
 
-	newResource := func(urn resource.URN, id resource.ID, del bool, dependencies ...resource.URN) *resource.State {
-		return &resource.State{
+	newResource := func(urn resource.URN, id resource.ID, del bool, dependencies ...resource.URN) *pkgresource.State {
+		return &pkgresource.State{
 			Type:         urn.Type(),
 			URN:          urn,
 			Custom:       true,
@@ -95,7 +97,7 @@ func validateRefreshBasicsWithLegacyDiffCombination(
 		}
 	}
 
-	oldResources := []*resource.State{
+	oldResources := []*pkgresource.State{
 		newResource(urnA, "0", false),
 		newResource(urnB, "1", false, urnA),
 		newResource(urnC, "2", false, urnA, urnB),

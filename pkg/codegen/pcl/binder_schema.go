@@ -27,7 +27,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/zclconf/go-cty/cty"
 )
@@ -192,6 +191,7 @@ func (c *PackageCache) loadPackageSchema(
 }
 
 func (c *PackageCache) loadPackageSchemaFromDescriptor(
+	ctx context.Context,
 	loader schema.Loader,
 	descriptor *schema.PackageDescriptor,
 ) (*packageSchema, error) {
@@ -211,7 +211,7 @@ func (c *PackageCache) loadPackageSchemaFromDescriptor(
 		return s, nil
 	}
 
-	pkg, err := schema.LoadPackageReferenceV2(context.TODO(), loader, descriptor)
+	pkg, err := schema.LoadPackageReferenceV2(ctx, loader, descriptor)
 	if err != nil {
 		return nil, err
 	}
@@ -227,18 +227,15 @@ func (c *PackageCache) loadPackageSchemaFromDescriptor(
 }
 
 // canonicalizeToken converts a Pulumi token into its canonical "pkg:module:member" form.
-// The package portion is taken from the token itself rather than pkg.Name() so that
-// extension-parameterized schemas, whose tokens live in the base provider's namespace,
-// keep that namespace after canonicalization.
 func canonicalizeToken(tok string, pkg schema.PackageReference) string {
-	pkgName, _, member, _ := DecomposeToken(tok, hcl.Range{})
-	return fmt.Sprintf("%s:%s:%s", pkgName, pkg.TokenToModule(tok), member)
+	_, _, member, _ := DecomposeToken(tok, hcl.Range{})
+	return fmt.Sprintf("%s:%s:%s", pkg.Name(), pkg.TokenToModule(tok), member)
 }
 
 // getPkgOpts gets the package options from an unbound resource node.
 func (b *binder) getPkgOpts(node *Resource) packageOpts {
 	node.VariableType = model.NewObjectType(map[string]model.Type{
-		"id":  model.NewOutputType(model.StringType),
+		"id":  model.NewOutputType(model.IDType),
 		"urn": model.NewOutputType(model.StringType),
 	})
 	var rangeKey, rangeValue model.Type
@@ -384,24 +381,16 @@ func (b *binder) loadReferencedPackageSchemas(ctx context.Context, n Node) error
 			continue
 		}
 
-		_, declared := b.packageDescriptors[name]
-		if extDescriptors := b.extensionDescriptorsForBase(tokens.PackageName(name)); !declared && len(extDescriptors) > 0 {
-			// name is a base plugin; record each extension that layers on it under the
-			// extension's own name (what dependency checks expect), found via the base.
-			for _, extDescriptor := range extDescriptors {
-				extPkg, extErr := b.options.packageCache.loadPackageSchemaFromDescriptor(b.options.loader, extDescriptor)
-				if extErr != nil {
-					if b.options.skipResourceTypecheck || b.options.skipInvokeTypecheck {
-						continue
-					}
-					return extErr
-				}
-				b.referencedPackages[extPkg.schema.Name()] = extPkg.schema
-			}
-			continue
+		var pkg *packageSchema
+		var err error
+		if packageDescriptor, ok := b.packageDescriptors[name]; ok {
+			pkg, err = b.options.packageCache.loadPackageSchemaFromDescriptor(ctx, b.options.loader, packageDescriptor)
+		} else {
+			pkg, err = b.options.packageCache.loadPackageSchema(
+				ctx, b.options.loader,
+				name, pkgOpts.version, pkgOpts.pluginDownloadURL,
+			)
 		}
-
-		pkg, err := b.loadDeclaredOrBarePackageSchema(ctx, name, pkgOpts.version, pkgOpts.pluginDownloadURL)
 		if err != nil {
 			if b.options.skipResourceTypecheck || b.options.skipInvokeTypecheck {
 				continue
@@ -640,6 +629,18 @@ func GetDiscriminatedUnionObjectMapping(t *model.UnionType) map[string]model.Typ
 	mapping := map[string]model.Type{}
 	for _, t := range t.ElementTypes {
 		k, v := getDiscriminatedUnionObjectItem(t)
+		if k == "" {
+			continue
+		}
+		// When the union comes from a lifted schema.InputType, each variant
+		// appears twice — once as the input-shape ObjectType and once wrapped
+		// in an OutputType containing the plain shape. Both share a token.
+		// Prefer the first (input-shape) match so downstream conversion picks
+		// the shape whose fields carry OutputType, which is what triggers
+		// literals to be wrapped as pulumi.String / pulumi.Bool inputs.
+		if _, exists := mapping[k]; exists {
+			continue
+		}
 		mapping[k] = v
 	}
 	return mapping
@@ -744,7 +745,7 @@ func GenEnum(
 			safeEnum(member)
 		} else {
 			unsafeEnum(from)
-			knownVal := strings.Split(strings.Split(known.GoString(), "(")[1], ")")[0]
+			knownVal, _, _ := strings.Cut(strings.Split(known.GoString(), "(")[1], ")")
 			diag := &hcl.Diagnostic{
 				Severity: hcl.DiagError,
 				Summary:  fmt.Sprintf("%v is not a valid value of the enum \"%v\"", knownVal, t.Token),

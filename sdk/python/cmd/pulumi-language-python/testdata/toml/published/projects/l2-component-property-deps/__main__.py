@@ -21,4 +21,4 @@ pulumi.export("propertyDepsFromCall", component1.refs(resource=custom1,
     resource_map={
         "one": custom1,
         "two": custom2,
-    }).apply(lambda call: call.result))
+    }).result)

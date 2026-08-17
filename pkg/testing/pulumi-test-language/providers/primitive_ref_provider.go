@@ -124,7 +124,7 @@ func (p *PrimitiveRefProvider) CheckConfig(
 	_ context.Context, req plugin.CheckConfigRequest,
 ) (plugin.CheckConfigResponse, error) {
 	// Expect just the version
-	version, ok := req.News["version"]
+	version, ok := req.News.GetOk("version")
 	if !ok {
 		return plugin.CheckConfigResponse{
 			Failures: makeCheckFailure("version", "missing version"),
@@ -135,13 +135,13 @@ func (p *PrimitiveRefProvider) CheckConfig(
 			Failures: makeCheckFailure("version", "version is not a string"),
 		}, nil
 	}
-	if version.StringValue() != "11.0.0" {
+	if version.AsString() != "11.0.0" {
 		return plugin.CheckConfigResponse{
 			Failures: makeCheckFailure("version", "version is not 11.0.0"),
 		}, nil
 	}
 
-	if len(req.News) != 1 {
+	if req.News.Len() != 1 {
 		return plugin.CheckConfigResponse{
 			Failures: makeCheckFailure("", fmt.Sprintf("too many properties: %v", req.News)),
 		}, nil

@@ -198,6 +198,7 @@ func GenerateProgramWithOptions(program *pcl.Program, opts ProgramOptions) (map[
 	for componentDir, component := range program.CollectComponents() {
 		componentFilename := filepath.Base(componentDir)
 		componentName := component.DeclarationName()
+		pcl.MapProvidersAsResources(component.Program)
 		componentGenerator := &generator{
 			program:     component.Program,
 			isComponent: true,
@@ -625,8 +626,6 @@ func (g *generator) collectProgramImports(program *pcl.Program) programImports {
 			var packageRef schema.PackageReference
 			if n.Schema != nil && n.Schema.PackageReference != nil {
 				packageRef = n.Schema.PackageReference
-				// Extension resources import the extension's SDK package, not the base.
-				pkg = packageRef.Name()
 			}
 			visitPkg(pkg, packageRef)
 		case *pcl.ReadResource:
@@ -634,7 +633,6 @@ func (g *generator) collectProgramImports(program *pcl.Program) programImports {
 			var packageRef schema.PackageReference
 			if n.Schema != nil && n.Schema.PackageReference != nil {
 				packageRef = n.Schema.PackageReference
-				pkg = packageRef.Name()
 			}
 			visitPkg(pkg, packageRef)
 		case *pcl.Component:
@@ -738,7 +736,7 @@ func componentElementType(pclType model.Type) string {
 		return "boolean"
 	case model.IntType, model.NumberType:
 		return "number"
-	case model.StringType:
+	case model.IDType, model.StringType:
 		return "string"
 	default:
 		switch pclType := pclType.(type) {
@@ -828,7 +826,7 @@ func (g *generator) genComponentResourceDefinition(w io.Writer, componentName st
 				}
 				if configVar.Description != "" {
 					g.Fgenf(w, "%s/**\n", g.Indent)
-					for _, line := range strings.Split(configVar.Description, "\n") {
+					for line := range strings.SplitSeq(configVar.Description, "\n") {
 						g.Fgenf(w, "%s * %s\n", g.Indent, line)
 					}
 					g.Fgenf(w, "%s */\n", g.Indent)
@@ -1121,9 +1119,6 @@ func resourceTypeName(r *pcl.Resource) (string, string, string, hcl.Diagnostics)
 
 	if r.Schema != nil {
 		module = moduleName(module, r.Schema.PackageReference)
-		if r.Schema.PackageReference != nil {
-			pkg = r.Schema.PackageReference.Name()
-		}
 	}
 
 	return pkg, module, cgstrings.UppercaseFirst(member), diagnostics
@@ -1134,9 +1129,6 @@ func readResourceTypeName(r *pcl.ReadResource) (string, string, string, hcl.Diag
 
 	if r.Schema != nil {
 		module = moduleName(module, r.Schema.PackageReference)
-		if r.Schema.PackageReference != nil {
-			pkg = r.Schema.PackageReference.Name()
-		}
 	}
 
 	return pkg, module, cgstrings.UppercaseFirst(member), diagnostics
@@ -1160,7 +1152,14 @@ func moduleName(module string, pkg schema.PackageReference) string {
 	if module == "index" {
 		return ""
 	}
-	return strings.ToLower(strings.ReplaceAll(module, "/", "."))
+	// Each segment becomes a property access on the package, so segments that aren't
+	// legal identifiers (e.g. containing hyphens) use the sanitized name the SDK
+	// exports them under.
+	segments := strings.Split(strings.ToLower(module), "/")
+	for i, segment := range segments {
+		segments[i] = makeValidModuleSegment(segment)
+	}
+	return strings.Join(segments, ".")
 }
 
 // makeResourceName returns the expression that should be emitted for a resource's "name" parameter given its base name
@@ -1341,6 +1340,36 @@ func (g *generator) genHookNode(w io.Writer, h *pcl.Hook) {
 	var cmdExprs []model.Expression
 	if tuple, ok := h.Command.(*model.TupleConsExpression); ok {
 		cmdExprs = tuple.Expressions
+	}
+
+	if h.Kind == pcl.HookKindError {
+		// Error hooks return whether the failed operation should be retried: retry if and
+		// only if the command exits successfully.
+		g.Fgenf(w, "%sconst %s = new pulumi.ErrorHook(%q, (args) => {\n",
+			g.Indent, varName, hookName)
+		g.Indented(func() {
+			g.Fgenf(w, "%stry {\n", g.Indent)
+			g.Indented(func() {
+				if len(cmdExprs) > 0 {
+					g.Fgenf(w, "%schild_process.execFileSync(%v, [", g.Indent, cmdExprs[0])
+					for j, arg := range cmdExprs[1:] {
+						if j > 0 {
+							g.Fgenf(w, ", ")
+						}
+						g.Fgenf(w, "%v", arg)
+					}
+					g.Fgenf(w, "]);\n")
+				}
+				g.Fgenf(w, "%sreturn true;\n", g.Indent)
+			})
+			g.Fgenf(w, "%s} catch (error) {\n", g.Indent)
+			g.Indented(func() {
+				g.Fgenf(w, "%sreturn false;\n", g.Indent)
+			})
+			g.Fgenf(w, "%s}\n", g.Indent)
+		})
+		g.Fgenf(w, "%s});\n", g.Indent)
+		return
 	}
 
 	g.Fgenf(w, "%sconst %s = new pulumi.ResourceHook(%q, (args) => {\n",
@@ -1932,7 +1961,7 @@ func (g *generator) genComponent(w io.Writer, component *pcl.Component) {
 
 func computeConfigTypeParam(configType model.Type) string {
 	switch pcl.UnwrapOption(configType) {
-	case model.StringType:
+	case model.IDType, model.StringType:
 		return "string"
 	case model.NumberType, model.IntType:
 		return "number"
@@ -2008,7 +2037,7 @@ func (g *generator) genConfigVariable(w io.Writer, v *pcl.ConfigVariable) {
 	}
 
 	if v.Description != "" {
-		for _, line := range strings.Split(v.Description, "\n") {
+		for line := range strings.SplitSeq(v.Description, "\n") {
 			g.Fgenf(w, "%s// %s\n", g.Indent, line)
 		}
 	}

@@ -66,7 +66,7 @@ func parseAndSaveConfigArray(
 // client address is present, the returned project will always have the runtime set to "client"
 // with the address option set to the client address.
 func readProjectForUpdate(ws pkgWorkspace.Context, clientAddress string) (*workspace.Project, string, error) {
-	proj, root, err := ws.ReadProject()
+	proj, root, err := ws.ReadProject("")
 	if err != nil {
 		oerr := err
 		if errors.Is(err, workspace.ErrProjectNotFound) {

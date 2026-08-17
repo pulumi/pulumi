@@ -275,27 +275,6 @@ func functionName(tokenArg model.Expression) (string, string, string, hcl.Diagno
 	return pkg, module, member, diagnostics
 }
 
-// functionPackage resolves the package that defines the function token. For
-// extensions the token lives in the base namespace but the owner is the
-// extension; fall back to the token prefix.
-func (g *generator) functionPackage(tokenArg model.Expression) string {
-	token := tokenArg.(*model.TemplateExpression).Parts[0].(*model.LiteralValueExpression).Value.AsString()
-	pkg, _, _, _ := pcl.DecomposeToken(token, tokenArg.SyntaxNode().Range())
-	for _, ref := range g.program.PackageReferences() {
-		if ref.Name() == pkg {
-			return pkg
-		}
-	}
-	for _, ref := range g.program.PackageReferences() {
-		if def, err := ref.Definition(); err == nil {
-			if _, ok := def.GetFunction(token); ok {
-				return ref.Name()
-			}
-		}
-	}
-	return pkg
-}
-
 func (g *generator) genRange(w io.Writer, call *model.FunctionCallExpression, entries bool) {
 	var from, to model.Expression
 	switch len(call.Args) {
@@ -371,9 +350,9 @@ func (g *generator) visitFunctionImports(
 		return
 	}
 
-	_, _, _, diags := functionName(x.Args[0])
+	pkg, _, _, diags := functionName(x.Args[0])
 	contract.Assertf(len(diags) == 0, "unexpected diagnostics: %v", diags)
-	visitPackageImport(g.functionPackage(x.Args[0]))
+	visitPackageImport(pkg)
 }
 
 func enumName(enum *model.EnumType) (string, error) {
@@ -502,7 +481,14 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 				genMaybeOutputConversion(func(v string) {
 					g.Fgenf(w, `%s === "true"`, v)
 				})
-			case model.StringType.AssignableFrom(to) && !model.StringType.AssignableFrom(fromType):
+			// ids and strings are treated interchangeably in JavaScript, so if we are casting to id but
+			// already have string _or_ id that's fine. Same for casting to string.
+			case model.StringType.AssignableFrom(to) &&
+				!model.StringType.AssignableFrom(fromType) &&
+				!model.IDType.AssignableFrom(fromType),
+				model.IDType.AssignableFrom(to) &&
+					!model.StringType.AssignableFrom(fromType) &&
+					!model.IDType.AssignableFrom(fromType):
 				genMaybeOutputConversion(func(v string) {
 					g.Fgenf(w, "String(%s)", v)
 				})
@@ -523,6 +509,9 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		}
 	case pcl.IntrinsicApply:
 		g.genApply(w, expr)
+	case "recover":
+		g.Fgenf(w, "pulumi.recover(%.20v, err => ((error) => %.v)(err instanceof Error ? err.message : String(err)))",
+			expr.Args[0], expr.Args[1])
 	case intrinsicAwait:
 		g.Fgenf(w, "await %.17v", expr.Args[0])
 	case intrinsicInterpolate:
@@ -596,9 +585,8 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 			g.Fprint(w, ")")
 		}
 	case pcl.Invoke:
-		_, module, fn, diags := functionName(expr.Args[0])
+		pkg, module, fn, diags := functionName(expr.Args[0])
 		contract.Assertf(len(diags) == 0, "unexpected diagnostics: %v", diags)
-		pkg := g.functionPackage(expr.Args[0])
 		if module != "" {
 			module = "." + module
 		}
@@ -607,6 +595,11 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		if isOut {
 			name = name + "Output"
 		}
+		invokeOptions, hasOptions := pcl.InvokeOptions(expr)
+		parentThis := g.isComponent && !pcl.InvokeOptionSet(expr, "parent")
+		// The options bag is positional, so it can only be emitted once the arguments before it are.
+		emitOptions := len(expr.Args) >= 2 && (hasOptions || parentThis)
+
 		g.Fprintf(w, "%s(", name)
 		if len(expr.Args) >= 2 {
 			if expr.Signature.MultiArgumentInputs {
@@ -619,15 +612,19 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 					invokeArgs = expr.Args[1].(*model.ObjectConsExpression)
 				}
 
-				pcl.GenerateMultiArguments(g.Formatter, w, "undefined", invokeArgs, pcl.SortedFunctionParameters(expr))
+				pcl.GenerateMultiArguments(
+					g.Formatter, w, "undefined", invokeArgs, pcl.SortedFunctionParameters(expr), emitOptions)
 			} else {
 				g.Fgenf(w, "%.v", expr.Args[1])
 			}
 		}
-		if len(expr.Args) == 3 {
-			if invokeOptions, ok := expr.Args[2].(*model.ObjectConsExpression); ok {
-				g.Fgen(w, ", {")
-				g.Indented(func() {
+		if emitOptions {
+			g.Fgen(w, ", {")
+			g.Indented(func() {
+				if parentThis {
+					g.Fgenf(w, "\n%sparent: this,", g.Indent)
+				}
+				if hasOptions {
 					for _, item := range invokeOptions.Items {
 						key := pcl.LiteralValueString(item.Key)
 						g.Fgenf(w, "\n%s", g.Indent)
@@ -640,9 +637,9 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 							g.Fgenf(w, "%s: %v,", key, item.Value)
 						}
 					}
-				})
-				g.Fgenf(w, "\n%s}", g.Indent)
-			}
+				}
+			})
+			g.Fgenf(w, "\n%s}", g.Indent)
 		}
 		g.Fprint(w, ")")
 	case "join":

@@ -40,8 +40,9 @@ func TestMergeProviderIntoEnv_EmptyDoc(t *testing.T) {
       fn::secret: s
 `)
 
-	out, err := mergeProviderIntoEnv(nil, []any{"aws", "login"}, provider)
+	out, changed, err := mergeProviderIntoEnv(nil, []any{"aws", "login"}, provider, nil)
 	require.NoError(t, err)
+	assert.True(t, changed)
 	assert.YAMLEq(t, `values:
   aws:
     login:
@@ -72,8 +73,9 @@ func TestMergeProviderIntoEnv_ReplacesExisting(t *testing.T) {
       fn::secret: new
 `)
 
-	out, err := mergeProviderIntoEnv(current, []any{"aws", "login"}, provider)
+	out, changed, err := mergeProviderIntoEnv(current, []any{"aws", "login"}, provider, nil)
 	require.NoError(t, err)
+	assert.True(t, changed)
 	assert.YAMLEq(t, `values:
   aws:
     login:
@@ -101,8 +103,9 @@ imports:
       fn::secret: t
 `)
 
-	out, err := mergeProviderIntoEnv(current, []any{"gcp", "login"}, provider)
+	out, changed, err := mergeProviderIntoEnv(current, []any{"gcp", "login"}, provider, nil)
 	require.NoError(t, err)
+	assert.True(t, changed)
 	assert.YAMLEq(t, `values:
   unrelated:
     foo: bar
@@ -116,6 +119,87 @@ imports:
 imports:
   - default/base
 `, string(out))
+}
+
+func TestMergeProviderIntoEnv_WritesEnvVars(t *testing.T) {
+	t.Parallel()
+	provider := mustNode(t, `fn::open::aws-login:
+  oidc:
+    roleArn: arn
+    sessionName: s
+`)
+
+	out, changed, err := mergeProviderIntoEnv(nil, []any{"aws", "login"}, provider,
+		awsLoginEnvVars(propertyPathRef([]any{"aws", "login"})))
+	require.NoError(t, err)
+	assert.True(t, changed)
+	assert.YAMLEq(t, `values:
+  aws:
+    login:
+      fn::open::aws-login:
+        oidc:
+          roleArn: arn
+          sessionName: s
+  environmentVariables:
+    AWS_ACCESS_KEY_ID: ${aws.login.accessKeyId}
+    AWS_SECRET_ACCESS_KEY: ${aws.login.secretAccessKey}
+    AWS_SESSION_TOKEN: ${aws.login.sessionToken}
+`, string(out))
+}
+
+// Existing environmentVariables entries must survive; only our keys are added or updated.
+func TestMergeProviderIntoEnv_MergesEnvVars(t *testing.T) {
+	t.Parallel()
+	current := []byte(`values:
+  environmentVariables:
+    KEEP_ME: value
+    ARM_CLIENT_ID: stale
+`)
+	provider := mustNode(t, `fn::open::azure-login:
+  clientId: c
+  tenantId: t
+  oidc: true
+`)
+
+	out, changed, err := mergeProviderIntoEnv(current, []any{"azure", "login"}, provider,
+		azureLoginOIDCEnvVars(propertyPathRef([]any{"azure", "login"}), false))
+	require.NoError(t, err)
+	assert.True(t, changed)
+	assert.YAMLEq(t, `values:
+  azure:
+    login:
+      fn::open::azure-login:
+        clientId: c
+        tenantId: t
+        oidc: true
+  environmentVariables:
+    KEEP_ME: value
+    ARM_USE_OIDC: "true"
+    ARM_CLIENT_ID: ${azure.login.clientId}
+    ARM_TENANT_ID: ${azure.login.tenantId}
+    ARM_OIDC_TOKEN: ${azure.login.oidc.token}
+`, string(out))
+}
+
+// Re-merging an identical provider block and env vars reports no change, so the caller can
+// skip the write and avoid bumping a revision.
+func TestMergeProviderIntoEnv_NoChangeWhenIdentical(t *testing.T) {
+	t.Parallel()
+	provider := mustNode(t, `fn::open::aws-login:
+  oidc:
+    roleArn: arn
+    sessionName: s
+`)
+	envVars := awsLoginEnvVars(propertyPathRef([]any{"aws", "login"}))
+
+	first, changed, err := mergeProviderIntoEnv(nil, []any{"aws", "login"}, provider, envVars)
+	require.NoError(t, err)
+	require.True(t, changed)
+
+	second, changed, err := mergeProviderIntoEnv(first, []any{"aws", "login"}, provider, envVars)
+	require.NoError(t, err)
+	assert.False(t, changed)
+	assert.Equal(t, string(first), string(second))
 }
 
 func TestSecretNode_WrapsScalar(t *testing.T) {

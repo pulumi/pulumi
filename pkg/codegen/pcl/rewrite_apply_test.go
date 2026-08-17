@@ -141,6 +141,20 @@ func TestApplyRewriter(t *testing.T) {
 			input:  `resource.boolOutput ? "yes" : "no"`,
 			output: `__apply(resource.boolOutput, eval(boolOutput, boolOutput ? "yes" : "no"))`,
 		},
+		// Test deduplication of identical apply arguments (pulumi/pulumi#4635).
+		{
+			input:  `"v: ${resource.stringOutput} ${resource.stringOutput}"`,
+			output: `__apply(resource.stringOutput,eval(stringOutput, "v: ${stringOutput} ${stringOutput}"))`,
+		},
+		{
+			input:  `"v: ${resource.objectOutput.stringPlain} ${resource.objectOutput.stringPlain}"`,
+			output: `__apply(resource.objectOutput,eval(objectOutput, "v: ${objectOutput.stringPlain} ${objectOutput.stringPlain}"))`,
+		},
+		// Different outputs from the same resource should NOT be deduplicated.
+		{
+			input:  `"v: ${resource.stringOutput} ${resource.boolOutput}"`,
+			output: `__apply(resource.stringOutput, resource.boolOutput,eval(stringOutput, boolOutput, "v: ${stringOutput} ${boolOutput}"))`,
+		},
 	}
 
 	resourceType := model.NewObjectType(map[string]model.Type{

@@ -41,7 +41,7 @@ func assertApplied(t *testing.T, out Output) {
 }
 
 func newIntOutput() IntOutput {
-	return IntOutput{internal.NewOutputState(nil, reflect.TypeOf(42))}
+	return IntOutput{internal.NewOutputState(nil, reflect.TypeFor[int]())}
 }
 
 func TestBasicOutputs(t *testing.T) {
@@ -75,7 +75,7 @@ func TestBasicOutputs(t *testing.T) {
 func TestArrayOutputs(t *testing.T) {
 	t.Parallel()
 
-	out := ArrayOutput{internal.NewOutputState(nil, reflect.TypeOf([]any{}))}
+	out := ArrayOutput{internal.NewOutputState(nil, reflect.TypeFor[[]any]())}
 	go func() {
 		internal.ResolveOutput(out, []any{nil, 0, "x"}, true, false, resourcesToInternal(nil))
 	}()
@@ -95,7 +95,7 @@ func TestArrayOutputs(t *testing.T) {
 func TestBoolOutputs(t *testing.T) {
 	t.Parallel()
 
-	out := BoolOutput{internal.NewOutputState(nil, reflect.TypeOf(false))}
+	out := BoolOutput{internal.NewOutputState(nil, reflect.TypeFor[bool]())}
 	go func() {
 		internal.ResolveOutput(out, true, true, false, resourcesToInternal(nil))
 	}()
@@ -110,7 +110,7 @@ func TestBoolOutputs(t *testing.T) {
 func TestMapOutputs(t *testing.T) {
 	t.Parallel()
 
-	out := MapOutput{internal.NewOutputState(nil, reflect.TypeOf(map[string]any{}))}
+	out := MapOutput{internal.NewOutputState(nil, reflect.TypeFor[map[string]any]())}
 	go func() {
 		internal.ResolveOutput(out, map[string]any{"x": 1, "y": false, "z": "abc"}, true, false, resourcesToInternal(nil))
 	}()
@@ -128,7 +128,7 @@ func TestMapOutputs(t *testing.T) {
 func TestNumberOutputs(t *testing.T) {
 	t.Parallel()
 
-	out := Float64Output{internal.NewOutputState(nil, reflect.TypeOf(float64(0)))}
+	out := Float64Output{internal.NewOutputState(nil, reflect.TypeFor[float64]())}
 	go func() {
 		internal.ResolveOutput(out, 42.345, true, false, resourcesToInternal(nil))
 	}()
@@ -143,7 +143,7 @@ func TestNumberOutputs(t *testing.T) {
 func TestStringOutputs(t *testing.T) {
 	t.Parallel()
 
-	out := StringOutput{internal.NewOutputState(nil, reflect.TypeOf(""))}
+	out := StringOutput{internal.NewOutputState(nil, reflect.TypeFor[string]())}
 	go func() {
 		internal.ResolveOutput(out, "a stringy output", true, false, resourcesToInternal(nil))
 	}()
@@ -378,25 +378,25 @@ func TestToOutputAnyDeps(t *testing.T) {
 	}
 
 	stringDep1, stringDep2 := &ResourceState{}, &ResourceState{}
-	stringOut := StringOutput{internal.NewOutputState(nil, reflect.TypeOf(""), stringDep1)}
+	stringOut := StringOutput{internal.NewOutputState(nil, reflect.TypeFor[string](), stringDep1)}
 	go func() {
 		internal.ResolveOutput(stringOut, "a stringy output", true, false, resourcesToInternal([]Resource{stringDep2}))
 	}()
 
 	intDep1, intDep2 := &ResourceState{}, &ResourceState{}
-	intOut := IntOutput{internal.NewOutputState(nil, reflect.TypeOf(0), intDep1)}
+	intOut := IntOutput{internal.NewOutputState(nil, reflect.TypeFor[int](), intDep1)}
 	go func() {
 		internal.ResolveOutput(intOut, 42, true, false, resourcesToInternal([]Resource{intDep2}))
 	}()
 
 	boolDep1, boolDep2 := &ResourceState{}, &ResourceState{}
-	boolOut := BoolOutput{internal.NewOutputState(nil, reflect.TypeOf(true), boolDep1)}
+	boolOut := BoolOutput{internal.NewOutputState(nil, reflect.TypeFor[bool](), boolDep1)}
 	go func() {
 		internal.ResolveOutput(boolOut, true, true, false, resourcesToInternal([]Resource{boolDep2}))
 	}()
 
 	res := &ResourceState{}
-	urnOut := URNOutput{internal.NewOutputState(nil, reflect.TypeOf(URN("")), res)}
+	urnOut := URNOutput{internal.NewOutputState(nil, reflect.TypeFor[URN](), res)}
 	go func() {
 		internal.ResolveOutput(urnOut, URN("foo"), true, false, resourcesToInternal(nil))
 	}()
@@ -462,7 +462,7 @@ type argsInputs struct {
 }
 
 func (*argsInputs) ElementType() reflect.Type {
-	return reflect.TypeOf((*args)(nil))
+	return reflect.TypeFor[*args]()
 }
 
 // Test that ToOutput correctly handles nested inputs when the argument is an input with no corresponding output type.
@@ -519,7 +519,7 @@ func TestUnsecret(t *testing.T) {
 		return val, nil
 	})
 
-	for i := 0; i < 2; i++ {
+	for range 2 {
 		select {
 		case err := <-errChan:
 			require.NoError(t, err)
@@ -559,7 +559,7 @@ func TestSecrets(t *testing.T) {
 		return val, nil
 	})
 
-	for i := 0; i < 2; i++ {
+	for range 2 {
 		select {
 		case err := <-errChan:
 			require.NoError(t, err)
@@ -604,7 +604,7 @@ func TestSecretApply(t *testing.T) {
 		return val, nil
 	})
 
-	for i := 0; i < 2; i++ {
+	for range 2 {
 		select {
 		case err := <-errChan:
 			require.NoError(t, err)
@@ -691,14 +691,14 @@ func TestDeps(t *testing.T) {
 	t.Parallel()
 
 	stringDep1, stringDep2 := &ResourceState{}, &ResourceState{}
-	stringOut := StringOutput{internal.NewOutputState(nil, reflect.TypeOf(""), stringDep1)}
+	stringOut := StringOutput{internal.NewOutputState(nil, reflect.TypeFor[string](), stringDep1)}
 	assert.ElementsMatch(t, []Resource{stringDep1}, getOutputDeps(stringOut))
 	go func() {
 		internal.ResolveOutput(stringOut, "hello", true, false, resourcesToInternal([]Resource{stringDep2}))
 	}()
 
 	boolDep1, boolDep2 := &ResourceState{}, &ResourceState{}
-	boolOut := BoolOutput{internal.NewOutputState(nil, reflect.TypeOf(true), boolDep1)}
+	boolOut := BoolOutput{internal.NewOutputState(nil, reflect.TypeFor[bool](), boolDep1)}
 	assert.ElementsMatch(t, []Resource{boolDep1}, getOutputDeps(boolOut))
 	go func() {
 		internal.ResolveOutput(boolOut, true, true, false, resourcesToInternal([]Resource{boolDep2}))
@@ -793,13 +793,13 @@ func TestRegisterInputType(t *testing.T) {
 	t.Parallel()
 
 	assert.PanicsWithError(t, "expected string to be an interface", func() {
-		RegisterInputType(reflect.TypeOf(""), FooArgs{})
+		RegisterInputType(reflect.TypeFor[string](), FooArgs{})
 	})
 	assert.PanicsWithError(t, "expected pulumi.Foo to implement internal.Input", func() {
-		RegisterInputType(reflect.TypeOf((*Foo)(nil)).Elem(), FooArgs{})
+		RegisterInputType(reflect.TypeFor[Foo](), FooArgs{})
 	})
 	assert.PanicsWithError(t, "expected pulumi.FooArgs to implement interface pulumi.FooInput", func() {
-		RegisterInputType(reflect.TypeOf((*FooInput)(nil)).Elem(), FooArgs{})
+		RegisterInputType(reflect.TypeFor[FooInput](), FooArgs{})
 	})
 }
 
@@ -870,8 +870,8 @@ func TestApplyTOutput(t *testing.T) {
 	r2 := newSimpleCustomResource(ctx, URN("urn2"), ID("id2"))
 	r3 := newSimpleCustomResource(ctx, URN("urn3"), ID("id3"))
 	r4 := newSimpleCustomResource(ctx, URN("urn4"), ID("id4"))
-	out1 := StringOutput{internal.NewOutputState(nil, reflect.TypeOf(""), r1)}
-	out2 := IntOutput{internal.NewOutputState(nil, reflect.TypeOf(0), r2)}
+	out1 := StringOutput{internal.NewOutputState(nil, reflect.TypeFor[string](), r1)}
+	out2 := IntOutput{internal.NewOutputState(nil, reflect.TypeFor[int](), r2)}
 	go func() {
 		internal.ResolveOutput(out1, "r1 output", true, false, resourcesToInternal([]Resource{r3}))
 		internal.ResolveOutput(out2, 42, true, false, resourcesToInternal([]Resource{r4}))
@@ -915,8 +915,8 @@ func TestApplyTOutputJoinDeps(t *testing.T) {
 	rA := newSimpleCustomResource(ctx, URN("urnA"), ID("idA"))
 	rB := newSimpleCustomResource(ctx, URN("urnB"), ID("idB"))
 
-	outA := IntOutput{internal.NewOutputState(nil, reflect.TypeOf(0), rA)}
-	outB := IntOutput{internal.NewOutputState(nil, reflect.TypeOf(0), rB)}
+	outA := IntOutput{internal.NewOutputState(nil, reflect.TypeFor[int](), rA)}
+	outB := IntOutput{internal.NewOutputState(nil, reflect.TypeFor[int](), rB)}
 
 	applyF := func(outA, outB IntOutput) IntOutput {
 		return outA.ApplyT(func(v int) (IntOutput, error) {
@@ -944,9 +944,9 @@ func TestApplyTOutputJoin(t *testing.T) {
 	r2 := newSimpleCustomResource(ctx, URN("urn2"), ID("id2"))
 	r3 := newSimpleCustomResource(ctx, URN("urn3"), ID("id3"))
 
-	out1 := IntOutput{internal.NewOutputState(nil, reflect.TypeOf(0), r1)}
-	out2 := IntOutput{internal.NewOutputState(nil, reflect.TypeOf(0), r2)}
-	out3 := IntOutput{internal.NewOutputState(nil, reflect.TypeOf(0), r3)}
+	out1 := IntOutput{internal.NewOutputState(nil, reflect.TypeFor[int](), r1)}
+	out2 := IntOutput{internal.NewOutputState(nil, reflect.TypeFor[int](), r2)}
+	out3 := IntOutput{internal.NewOutputState(nil, reflect.TypeFor[int](), r3)}
 
 	go func() {
 		internal.ResolveOutput(out1, 2, true, false, resourcesToInternal([]Resource{r1}))
@@ -1190,7 +1190,7 @@ func TestApplyTCoerce(t *testing.T) {
 
 		type FooOutput struct{ *OutputState }
 
-		o := FooOutput{internal.NewOutputState(nil, reflect.TypeOf(Foo{}))}
+		o := FooOutput{internal.NewOutputState(nil, reflect.TypeFor[Foo]())}
 		go internal.ResolveOutput(o, Foo{v: 42}, true, false, resourcesToInternal(nil))
 
 		assertApplied(t, o.ApplyT(func(b Bar) (any, error) {

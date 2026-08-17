@@ -19,6 +19,8 @@ import (
 	"encoding/json"
 	"fmt"
 
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
+
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack/migrate"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
@@ -27,6 +29,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 // UnmarshalVersionedCheckpointToLatestCheckpoint unmarshals a versioned checkpoint to the latest checkpoint format.
@@ -211,7 +214,7 @@ func DeserializeCheckpoint(
 }
 
 // GetRootStackResource returns the root stack resource from a given snapshot, or nil if not found.
-func GetRootStackResource(snap *deploy.Snapshot) (*resource.State, error) {
+func GetRootStackResource(snap *deploy.Snapshot) (*pkgresource.State, error) {
 	if snap != nil {
 		for _, res := range snap.Resources {
 			if res.Type == resource.RootStackType && res.Parent == "" {
@@ -223,10 +226,10 @@ func GetRootStackResource(snap *deploy.Snapshot) (*resource.State, error) {
 }
 
 // CreateRootStackResource creates a new root stack resource with the given name
-func CreateRootStackResource(stackName tokens.QName, projectName tokens.PackageName) *resource.State {
+func CreateRootStackResource(stackName tokens.QName, projectName tokens.PackageName) *pkgresource.State {
 	typ, name := resource.RootStackType, fmt.Sprintf("%s-%s", projectName, stackName)
 	urn := resource.NewURN(stackName, projectName, "", typ, name)
-	return resource.NewState{
+	return pkgresource.NewState{
 		Type:                    typ,
 		URN:                     urn,
 		Custom:                  false,
@@ -257,7 +260,7 @@ func CreateRootStackResource(stackName tokens.QName, projectName tokens.PackageN
 		IgnoreChanges:           nil,
 		HideDiff:                nil,
 		ReplaceOnChanges:        nil,
-		ReplacementTrigger:      resource.NewNullProperty(),
+		ReplacementTrigger:      property.Value{},
 		RefreshBeforeUpdate:     false,
 		ViewOf:                  "",
 		ResourceHooks:           nil,

@@ -37,6 +37,9 @@ import (
 )
 
 func newExtractSchemaCommand() *cobra.Command {
+	var parameterArgs []string
+	var asExtension bool
+	var serverURL string
 	cmd := &cobra.Command{
 		Use:   "get-schema",
 		Short: "Get the schema.json from a package",
@@ -71,9 +74,9 @@ If a folder either the plugin binary must match the folder name (e.g. 'aws' and 
 			}
 			defer contract.IgnoreClose(pctx)
 
-			parameters := &plugin.ParameterizeArgs{Args: args[1:]}
+			parameters := &plugin.ParameterizeArgs{Args: parameterArgs}
 			spec, _, err := packages.SchemaFromSchemaSource(pkgWorkspace.Instance, pctx, source, parameters,
-				registry, env.Global(), 0 /* unbounded concurrency */)
+				registry, env.Global(), 0 /* unbounded concurrency */, asExtension, serverURL)
 			if err != nil {
 				return err
 			}
@@ -112,6 +115,11 @@ If a folder either the plugin binary must match the folder name (e.g. 'aws' and 
 	// It's worth mentioning the `--`, as it means that Cobra will stop parsing flags.
 	// In other words, a provider parameter can be `--foo` as long as it's after `--`.
 	cmd.Use = "get-schema <schema-source> [flags] [--] [provider-parameter]..."
+
+	cmd.Flags().StringVar(&serverURL, "server", "",
+		"A URL to download the plugin from. When set, the provider argument is used as the plugin name "+
+			"directly and no package resolution is performed.")
+	packages.AddExtensionFlag(cmd, &parameterArgs, &asExtension)
 
 	return cmd
 }

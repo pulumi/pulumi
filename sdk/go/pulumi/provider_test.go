@@ -41,7 +41,7 @@ type BoolEnumInput interface {
 type BoolEnumOutput struct{ *OutputState }
 
 func (BoolEnumOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*BoolEnum)(nil)).Elem()
+	return reflect.TypeFor[BoolEnum]()
 }
 
 func (o BoolEnumOutput) ToBoolEnumOutput() BoolEnumOutput {
@@ -55,7 +55,7 @@ func (o BoolEnumOutput) ToBoolEnumOutputWithContext(ctx context.Context) BoolEnu
 type BoolEnum bool
 
 func (BoolEnum) ElementType() reflect.Type {
-	return reflect.TypeOf((*BoolEnum)(nil)).Elem()
+	return reflect.TypeFor[BoolEnum]()
 }
 
 func (e BoolEnum) ToBoolEnumOutput() BoolEnumOutput {
@@ -80,7 +80,7 @@ type IntEnumInput interface {
 type IntEnumOutput struct{ *OutputState }
 
 func (IntEnumOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*IntEnum)(nil)).Elem()
+	return reflect.TypeFor[IntEnum]()
 }
 
 func (o IntEnumOutput) ToIntEnumOutput() IntEnumOutput {
@@ -94,7 +94,7 @@ func (o IntEnumOutput) ToIntEnumOutputWithContext(ctx context.Context) IntEnumOu
 type IntEnum int
 
 func (IntEnum) ElementType() reflect.Type {
-	return reflect.TypeOf((*IntEnum)(nil)).Elem()
+	return reflect.TypeFor[IntEnum]()
 }
 
 func (e IntEnum) ToIntEnumOutput() IntEnumOutput {
@@ -119,7 +119,7 @@ type FloatEnumInput interface {
 type FloatEnumOutput struct{ *OutputState }
 
 func (FloatEnumOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*FloatEnum)(nil)).Elem()
+	return reflect.TypeFor[FloatEnum]()
 }
 
 func (o FloatEnumOutput) ToFloatEnumOutput() FloatEnumOutput {
@@ -133,7 +133,7 @@ func (o FloatEnumOutput) ToFloatEnumOutputWithContext(ctx context.Context) Float
 type FloatEnum float64
 
 func (FloatEnum) ElementType() reflect.Type {
-	return reflect.TypeOf((*FloatEnum)(nil)).Elem()
+	return reflect.TypeFor[FloatEnum]()
 }
 
 func (e FloatEnum) ToFloatEnumOutput() FloatEnumOutput {
@@ -158,7 +158,7 @@ type StringEnumInput interface {
 type StringEnumOutput struct{ *OutputState }
 
 func (StringEnumOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*StringEnum)(nil)).Elem()
+	return reflect.TypeFor[StringEnum]()
 }
 
 func (o StringEnumOutput) ToStringEnumOutput() StringEnumOutput {
@@ -172,7 +172,7 @@ func (o StringEnumOutput) ToStringEnumOutputWithContext(ctx context.Context) Str
 type StringEnum string
 
 func (StringEnum) ElementType() reflect.Type {
-	return reflect.TypeOf((*StringEnum)(nil)).Elem()
+	return reflect.TypeFor[StringEnum]()
 }
 
 func (e StringEnum) ToStringEnumOutput() StringEnumOutput {
@@ -237,7 +237,7 @@ type NestedOutput struct {
 }
 
 func (NestedOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*Nested)(nil)).Elem()
+	return reflect.TypeFor[Nested]()
 }
 
 type NestedPtrOutput struct {
@@ -245,7 +245,7 @@ type NestedPtrOutput struct {
 }
 
 func (NestedPtrOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((**Nested)(nil)).Elem()
+	return reflect.TypeFor[*Nested]()
 }
 
 type NestedArrayOutput struct {
@@ -253,7 +253,7 @@ type NestedArrayOutput struct {
 }
 
 func (NestedArrayOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*[]Nested)(nil)).Elem()
+	return reflect.TypeFor[[]Nested]()
 }
 
 type NestedMapOutput struct {
@@ -261,7 +261,7 @@ type NestedMapOutput struct {
 }
 
 func (NestedMapOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*map[string]Nested)(nil)).Elem()
+	return reflect.TypeFor[map[string]Nested]()
 }
 
 type StringArgs struct {
@@ -342,7 +342,7 @@ type NestedInputtyInputArgs struct {
 }
 
 func (NestedInputtyInputArgs) ElementType() reflect.Type {
-	return reflect.TypeOf((*NestedInputty)(nil)).Elem()
+	return reflect.TypeFor[NestedInputty]()
 }
 
 type PlainOptionalNestedInputtyInputArgs struct {
@@ -374,7 +374,7 @@ type LaunchTemplateOptionsArgs struct {
 }
 
 func (LaunchTemplateOptionsArgs) ElementType() reflect.Type {
-	return reflect.TypeOf((*LaunchTemplateOptions)(nil)).Elem()
+	return reflect.TypeFor[LaunchTemplateOptions]()
 }
 
 func (i LaunchTemplateOptionsArgs) ToLaunchTemplateOptionsOutput() LaunchTemplateOptionsOutput {
@@ -407,7 +407,7 @@ func LaunchTemplateOptionsPtr(v *LaunchTemplateOptionsArgs) LaunchTemplateOption
 }
 
 func (*launchTemplateOptionsPtrType) ElementType() reflect.Type {
-	return reflect.TypeOf((**LaunchTemplateOptions)(nil)).Elem()
+	return reflect.TypeFor[*LaunchTemplateOptions]()
 }
 
 func (i *launchTemplateOptionsPtrType) ToLaunchTemplateOptionsPtrOutput() LaunchTemplateOptionsPtrOutput {
@@ -421,7 +421,7 @@ func (i *launchTemplateOptionsPtrType) ToLaunchTemplateOptionsPtrOutputWithConte
 type LaunchTemplateOptionsOutput struct{ *OutputState }
 
 func (LaunchTemplateOptionsOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*LaunchTemplateOptions)(nil)).Elem()
+	return reflect.TypeFor[LaunchTemplateOptions]()
 }
 
 func (o LaunchTemplateOptionsOutput) ToLaunchTemplateOptionsOutput() LaunchTemplateOptionsOutput {
@@ -445,7 +445,7 @@ func (o LaunchTemplateOptionsOutput) ToLaunchTemplateOptionsPtrOutputWithContext
 type LaunchTemplateOptionsPtrOutput struct{ *OutputState }
 
 func (LaunchTemplateOptionsPtrOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((**LaunchTemplateOptions)(nil)).Elem()
+	return reflect.TypeFor[*LaunchTemplateOptions]()
 }
 
 func (o LaunchTemplateOptionsPtrOutput) ToLaunchTemplateOptionsPtrOutput() LaunchTemplateOptionsPtrOutput {
@@ -482,7 +482,7 @@ type LaunchTemplateTagSpecificationArgs struct {
 }
 
 func (LaunchTemplateTagSpecificationArgs) ElementType() reflect.Type {
-	return reflect.TypeOf((*LaunchTemplateTagSpecification)(nil)).Elem()
+	return reflect.TypeFor[LaunchTemplateTagSpecification]()
 }
 
 func (i LaunchTemplateTagSpecificationArgs) ToLaunchTemplateTagSpecificationOutput() LaunchTemplateTagSpecificationOutput {
@@ -503,7 +503,7 @@ type LaunchTemplateTagSpecificationArrayInput interface {
 type LaunchTemplateTagSpecificationArray []LaunchTemplateTagSpecificationInput
 
 func (LaunchTemplateTagSpecificationArray) ElementType() reflect.Type {
-	return reflect.TypeOf((*[]LaunchTemplateTagSpecification)(nil)).Elem()
+	return reflect.TypeFor[[]LaunchTemplateTagSpecification]()
 }
 
 func (i LaunchTemplateTagSpecificationArray) ToLaunchTemplateTagSpecificationArrayOutput() LaunchTemplateTagSpecificationArrayOutput {
@@ -517,7 +517,7 @@ func (i LaunchTemplateTagSpecificationArray) ToLaunchTemplateTagSpecificationArr
 type LaunchTemplateTagSpecificationOutput struct{ *OutputState }
 
 func (LaunchTemplateTagSpecificationOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*LaunchTemplateTagSpecification)(nil)).Elem()
+	return reflect.TypeFor[LaunchTemplateTagSpecification]()
 }
 
 func (o LaunchTemplateTagSpecificationOutput) ToLaunchTemplateTagSpecificationOutput() LaunchTemplateTagSpecificationOutput {
@@ -531,7 +531,7 @@ func (o LaunchTemplateTagSpecificationOutput) ToLaunchTemplateTagSpecificationOu
 type LaunchTemplateTagSpecificationArrayOutput struct{ *OutputState }
 
 func (LaunchTemplateTagSpecificationArrayOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*[]LaunchTemplateTagSpecification)(nil)).Elem()
+	return reflect.TypeFor[[]LaunchTemplateTagSpecification]()
 }
 
 func (o LaunchTemplateTagSpecificationArrayOutput) ToLaunchTemplateTagSpecificationArrayOutput() LaunchTemplateTagSpecificationArrayOutput {
@@ -553,10 +553,10 @@ type LaunchTemplateArgs struct {
 }
 
 func init() {
-	RegisterInputType(reflect.TypeOf((*BoolEnumInput)(nil)).Elem(), BoolEnum(false))
-	RegisterInputType(reflect.TypeOf((*IntEnumInput)(nil)).Elem(), IntEnum(0))
-	RegisterInputType(reflect.TypeOf((*FloatEnumInput)(nil)).Elem(), FloatEnum(0))
-	RegisterInputType(reflect.TypeOf((*StringEnumInput)(nil)).Elem(), StringEnum(""))
+	RegisterInputType(reflect.TypeFor[BoolEnumInput](), BoolEnum(false))
+	RegisterInputType(reflect.TypeFor[IntEnumInput](), IntEnum(0))
+	RegisterInputType(reflect.TypeFor[FloatEnumInput](), FloatEnum(0))
+	RegisterInputType(reflect.TypeFor[StringEnumInput](), StringEnum(""))
 }
 
 func assertOutputEqual(t *testing.T, value any, known bool, secret bool, deps map[URN]struct{}, output any) {

@@ -31,8 +31,9 @@ func newEnvScheduleNewCmd(env *envCommand) *cobra.Command {
 	)
 
 	cmd := &cobra.Command{
-		Use:   "new [<org-name>/][<project-name>/]<environment-name>",
-		Short: "Create a new scheduled action on an environment.",
+		Use:     "new [<org-name>/][<project-name>/]<environment-name>",
+		Aliases: []string{"create", "setup"},
+		Short:   "Create a new scheduled action on an environment.",
 		Long: "[EXPERIMENTAL] Create a new scheduled action on an environment\n" +
 			"\n" +
 			"This command schedules a secret rotation against the environment. Use --cron to\n" +

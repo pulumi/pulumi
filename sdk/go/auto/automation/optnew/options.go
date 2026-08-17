@@ -30,7 +30,7 @@ type Options struct {
 	Stderr io.Writer
 	// Stdin, when non-nil, is connected to the child process' stdin.
 	Stdin io.Reader
-	// Prompt to use for Pulumi AI
+	// Retired: use 'pulumi neo -p "prompt"' instead.
 	AI string
 	// Colorize output. Choices are: always, never, raw, auto
 	Color string
@@ -50,7 +50,7 @@ type Options struct {
 	FullyQualifyStackNames bool
 	// Generate the project only; do not create a stack, save config, or install dependencies
 	GenerateOnly bool
-	// Language to use for Pulumi AI (must be one of TypeScript, JavaScript, Python, Go, C#, Java, or YAML)
+	// Retired: use 'pulumi neo -p "prompt"' instead.
 	Language string
 	// List locally installed templates and exit
 	ListTemplates bool
@@ -64,7 +64,7 @@ type Options struct {
 	Name string
 	// Use locally cached templates without making any network requests
 	Offline bool
-	// Export OpenTelemetry traces to the specified endpoint. Use file:// for local JSON files, grpc:// for remote collectors
+	// Export OpenTelemetry traces to the specified endpoint. Use file:// for local JSON files, grpc:// or https:// for remote collectors
 	OtelTraces string
 	// Emit CPU and memory profiles and an execution trace to '[filename].[pid].{cpu,mem,trace}', respectively
 	Profiling string
@@ -76,7 +76,7 @@ type Options struct {
 	SecretsProvider string
 	// The stack name; either an existing stack or stack to create; if not specified, a prompt will request it
 	Stack string
-	// Run in template mode, which will skip prompting for AI or Template functionality
+	// Deprecated: template mode is now the only mode; this flag is a no-op
 	TemplateMode bool
 	// Emit tracing to the specified endpoint. Use the `file:` scheme to write tracing data to a local file
 	Tracing string

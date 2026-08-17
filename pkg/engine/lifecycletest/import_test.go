@@ -21,10 +21,13 @@ import (
 	"sync"
 	"testing"
 
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
+
 	"github.com/blang/semver"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	. "github.com/pulumi/pulumi/pkg/v3/engine" //nolint:revive
 	lt "github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest/framework"
@@ -522,7 +525,7 @@ func TestImportUpdatedID(t *testing.T) {
 		nil,
 		false,
 	)
-	snap := p.Run(t, &deploy.Snapshot{Resources: []*resource.State{stackResource}})
+	snap := p.Run(t, &deploy.Snapshot{Resources: []*pkgresource.State{stackResource}})
 
 	require.NotEmpty(t, snap.Resources)
 
@@ -615,7 +618,7 @@ func TestImportExtensionParameterizedResource(t *testing.T) {
 		assert.Equal(t, []byte("blob-a"), blob.Value)
 	}
 
-	var imported *resource.State
+	var imported *pkgresource.State
 	for _, r := range snap.Resources {
 		if r.URN.Name() == "resA" {
 			imported = r
@@ -899,6 +902,145 @@ func TestImportPlanExistingImport(t *testing.T) {
 
 	require.NoError(t, err)
 	require.Len(t, snap.Resources, 3)
+}
+
+func TestImportPlanSuppliedOutputs(t *testing.T) {
+	t.Parallel()
+
+	suppliedInputs := resource.PropertyMap{
+		"foo":  resource.NewProperty("bar"),
+		"frob": resource.MakeSecret(resource.NewProperty(1.0)),
+	}
+	suppliedOutputs := resource.PropertyMap{
+		"foo":  resource.NewProperty("bar"),
+		"frob": resource.MakeSecret(resource.NewProperty(1.0)),
+	}
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				GetSchemaF: func(context.Context, plugin.GetSchemaRequest) (plugin.GetSchemaResponse, error) {
+					return plugin.GetSchemaResponse{Schema: []byte(importSchema)}, nil
+				},
+				DiffF: diffImportResource,
+				ReadF: func(context.Context, plugin.ReadRequest) (plugin.ReadResponse, error) {
+					t.Fatal("Read should not be called when outputs are supplied")
+					return plugin.ReadResponse{}, nil
+				},
+			}, nil
+		}),
+	}
+	programF := deploytest.NewLanguageRuntimeF(nil)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
+
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true},
+	}
+
+	componentInputs := resource.PropertyMap{
+		"size": resource.NewProperty(3.0),
+	}
+	componentOutputs := resource.PropertyMap{
+		"result": resource.NewProperty("value"),
+	}
+
+	project := p.GetProject()
+	snap, err := lt.ImportOp([]deploy.Import{{
+		Type:      "my:module:Component",
+		Name:      "comp",
+		Component: true,
+		Inputs:    componentInputs,
+		Outputs:   componentOutputs,
+	}, {
+		Type:    "pkgA:m:typA",
+		Name:    "resB",
+		ID:      "imported-id",
+		Inputs:  suppliedInputs,
+		Outputs: suppliedOutputs,
+	}}).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+
+	require.NoError(t, err)
+	require.Len(t, snap.Resources, 4)
+
+	// Import steps run in parallel, so look resources up by name rather than snapshot position.
+	byName := func(name string) *pkgresource.State {
+		for _, r := range snap.Resources {
+			if r.URN.Name() == name {
+				return r
+			}
+		}
+		t.Fatalf("resource %q not found in snapshot", name)
+		return nil
+	}
+
+	comp := byName("comp")
+	assert.Equal(t, componentInputs, comp.Inputs)
+	assert.Equal(t, componentOutputs, comp.Outputs)
+
+	resB := byName("resB")
+	assert.Equal(t, resource.ID("imported-id"), resB.ID)
+	assert.Equal(t, suppliedInputs, resB.Inputs)
+	assert.Equal(t, suppliedOutputs, resB.Outputs)
+}
+
+func TestImportPlanSuppliedInputsMerge(t *testing.T) {
+	t.Parallel()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				GetSchemaF: func(context.Context, plugin.GetSchemaRequest) (plugin.GetSchemaResponse, error) {
+					return plugin.GetSchemaResponse{Schema: []byte(importSchema)}, nil
+				},
+				DiffF: diffImportResource,
+				ReadF: func(context.Context, plugin.ReadRequest) (plugin.ReadResponse, error) {
+					// "foo" is a write-only attribute the importer cannot return; "frob" comes back
+					// in plain text even though it was supplied as a secret.
+					return plugin.ReadResponse{
+						ReadResult: plugin.ReadResult{
+							ID: "actual-id",
+							Inputs: resource.PropertyMap{
+								"foo":  resource.NewNullProperty(),
+								"frob": resource.NewProperty(1.0),
+							},
+							Outputs: resource.PropertyMap{
+								"frob": resource.NewProperty(1.0),
+							},
+						},
+						Status: resource.StatusOK,
+					}, nil
+				},
+			}, nil
+		}),
+	}
+	programF := deploytest.NewLanguageRuntimeF(nil)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
+
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true},
+	}
+
+	project := p.GetProject()
+	snap, err := lt.ImportOp([]deploy.Import{{
+		Type: "pkgA:m:typA",
+		Name: "resB",
+		ID:   "imported-id",
+		Inputs: resource.PropertyMap{
+			"foo":  resource.NewProperty("supplied"),
+			"frob": resource.MakeSecret(resource.NewProperty(2.0)),
+		},
+	}}).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+
+	require.NoError(t, err)
+	require.Len(t, snap.Resources, 3)
+
+	// The provider's Read wins where it returned a value, lifted to a secret where the supplied value
+	// was one; the supplied value fills the null.
+	assert.Equal(t, resource.ID("actual-id"), snap.Resources[2].ID)
+	assert.Equal(t, resource.PropertyMap{
+		"foo":  resource.NewProperty("supplied"),
+		"frob": resource.MakeSecret(resource.NewProperty(1.0)),
+	}, snap.Resources[2].Inputs)
 }
 
 func TestImportPlanEmptyState(t *testing.T) {
@@ -1705,5 +1847,123 @@ func TestImportDeleteBeforeReplace(t *testing.T) {
 
 	project := p.GetProject()
 	_, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, true, p.BackendClient, nil, "0")
+	require.NoError(t, err)
+}
+
+// TestImportIDPreservedAcrossUpdate is a regression test for
+// https://github.com/pulumi/pulumi/issues/14836.
+//
+// When a resource is imported with an ImportID whose format differs from the
+// resource's canonical ID (common for GCP Secret Manager, Cloudflare DNS
+// records, and other providers), and the imported inputs differ from the live
+// state (so the engine plans Import followed by Update), the follow-up update
+// used to blank out ImportID in the saved state. On the next `pulumi up` the
+// import decision would then compare the goal ID against the resource's ID
+// (rather than the original ImportID), mismatch, and plan an
+// ImportReplacement + Replace — deleting the live cloud resource.
+func TestImportIDPreservedAcrossUpdate(t *testing.T) {
+	t.Parallel()
+
+	// The import identifier the user passes (differs from the resource's real ID,
+	// e.g. "projects/foo/secrets/bar" vs "bar").
+	const importIdentifier = resource.ID("projects/foo/secrets/my-secret")
+	const canonicalID = resource.ID("my-secret")
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+					// The live resource's inputs differ from the program's inputs,
+					// so the engine will schedule an Update after the Import.
+					return plugin.ReadResponse{
+						ReadResult: plugin.ReadResult{
+							Inputs: resource.PropertyMap{
+								"foo": resource.NewProperty("live"),
+							},
+							Outputs: resource.PropertyMap{
+								"foo": resource.NewProperty("live"),
+							},
+							ID: canonicalID,
+						},
+						Status: resource.StatusOK,
+					}, nil
+				},
+				DiffF: func(_ context.Context, req plugin.DiffRequest) (plugin.DiffResult, error) {
+					if req.OldOutputs["foo"].DeepEquals(req.NewInputs["foo"]) {
+						return plugin.DiffResult{Changes: plugin.DiffNone}, nil
+					}
+					return plugin.DiffResult{Changes: plugin.DiffSome}, nil
+				},
+				UpdateF: func(_ context.Context, req plugin.UpdateRequest) (plugin.UpdateResponse, error) {
+					return plugin.UpdateResponse{
+						Properties: req.NewInputs,
+						Status:     resource.StatusOK,
+					}, nil
+				},
+			}, nil
+		}, deploytest.WithGrpc),
+	}
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+			ImportID: importIdentifier,
+			Inputs: resource.PropertyMap{
+				"foo": resource.NewProperty("desired"),
+			},
+		})
+		require.NoError(t, err)
+		return nil
+	})
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
+
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
+	}
+	resURN := p.NewURN("pkgA:m:typA", "resA", "")
+
+	// First update: Import + Update (inputs differ from live state).
+	project := p.GetProject()
+	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient,
+		func(_ workspace.Project, _ deploy.Target, entries JournalEntries, _ []Event, err error) error {
+			seenImport, seenUpdate := false, false
+			for _, entry := range entries {
+				if entry.Step.URN() != resURN || entry.Kind != TestJournalEntrySuccess {
+					continue
+				}
+				switch entry.Step.Op() {
+				case deploy.OpImport:
+					seenImport = true
+				case deploy.OpUpdate:
+					seenUpdate = true
+				}
+			}
+			assert.True(t, seenImport, "expected an import step")
+			assert.True(t, seenUpdate, "expected an update after the import")
+			return err
+		}, "0")
+	require.NoError(t, err)
+	require.Len(t, snap.Resources, 2)
+	// The ImportID must be preserved after the follow-up update, otherwise the
+	// next deploy cannot recognise this as an already-imported resource.
+	assert.Equal(t, importIdentifier, snap.Resources[1].ImportID,
+		"ImportID should be preserved on the resource state after Import+Update")
+
+	// Second update: same program. Should be a no-op Same for the resource — NOT a
+	// Delete or ImportReplacement.
+	_, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient,
+		func(_ workspace.Project, _ deploy.Target, entries JournalEntries, _ []Event, err error) error {
+			for _, entry := range entries {
+				if entry.Step.URN() != resURN {
+					continue
+				}
+				op := entry.Step.Op()
+				assert.NotContains(t, []display.StepOp{
+					deploy.OpDelete, deploy.OpDeleteReplaced,
+					deploy.OpReplace, deploy.OpImportReplacement,
+				}, op, "resource should not be deleted or replaced on a subsequent no-op update; got %v", op)
+				assert.Equal(t, deploy.OpSame, op, "expected Same on second update")
+			}
+			return err
+		}, "1")
 	require.NoError(t, err)
 }

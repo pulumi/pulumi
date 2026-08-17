@@ -232,7 +232,7 @@ func (p *Pulumi) run(ctx context.Context, a pulumiArgs, isPreview bool) (pulumiR
 	}
 	defer func() { _ = os.Chdir(prevDir) }()
 
-	proj, root, err := p.Workspace.ReadProject()
+	proj, root, err := p.Workspace.ReadProject("")
 	if err != nil {
 		return failedResult(a, "", fmt.Errorf("reading project: %w", err))
 	}
@@ -262,14 +262,14 @@ func (p *Pulumi) run(ctx context.Context, a pulumiArgs, isPreview bool) (pulumiR
 	}
 
 	ssml := cmdStack.NewStackSecretsManagerLoaderFromEnv()
-	cfg, sm, err := cmdConfig.GetStackConfiguration(ctx, cmdutil.Diag(), ssml, s, proj, "")
+	cfg, sm, err := cmdConfig.GetStackConfiguration(ctx, cmdutil.Diag(), ssml, s, proj, "", nil)
 	if err != nil {
 		return failedResult(a, "", fmt.Errorf("getting stack configuration: %w", err))
 	}
 
 	decrypter := sm.Decrypter()
 	encrypter := sm.Encrypter()
-	if err := workspace.ValidateStackConfigAndApplyProjectConfig(
+	if err := pkgWorkspace.ValidateStackConfigAndApplyProjectConfig(
 		ctx, s.Ref().Name().String(), proj, cfg.Environment, cfg.Config, encrypter, decrypter,
 	); err != nil {
 		return failedResult(a, "", fmt.Errorf("validating stack config: %w", err))

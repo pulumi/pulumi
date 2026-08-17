@@ -68,9 +68,10 @@ func (m *mapperClient) GetMapping(
 	ctx context.Context,
 	provider string,
 	hint *MapperPackageHint,
+	ecosystem string,
 ) ([]byte, error) {
 	label := "GetMapping"
-	logging.V(7).Infof("%s executing: provider=%s, hint=%v", label, provider, hint)
+	logging.V(7).Infof("%s executing: provider=%s, hint=%v, ecosystem=%s", label, provider, hint, ecosystem)
 
 	pluginName := ""
 	var parameterizationHint *codegenrpc.MapperParameterizationHint
@@ -89,6 +90,7 @@ func (m *mapperClient) GetMapping(
 		Provider:             provider,
 		PulumiProvider:       pluginName,
 		ParameterizationHint: parameterizationHint,
+		Ecosystem:            ecosystem,
 	})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)

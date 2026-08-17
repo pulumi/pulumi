@@ -15,22 +15,27 @@
 package newcmd
 
 import (
+	"archive/tar"
 	"bytes"
+	"compress/gzip"
 	"context"
 	"crypto/rand"
 	"encoding/hex"
-	"errors"
 	"fmt"
 	"iter"
+	"net/http"
+	"net/http/httptest"
 	"os"
+	"os/exec"
 	"path/filepath"
+	goruntime "runtime"
 	"strings"
+	"sync/atomic"
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
-	cmdTemplates "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/templates"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/pkg/v3/registry"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
@@ -39,17 +44,20 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/grpc"
+	"google.golang.org/protobuf/types/known/emptypb"
 )
 
 //nolint:paralleltest // changes directory for process
 func TestFailInInteractiveWithoutYes(t *testing.T) {
-	skipIfShortOrNoPulumiAccessToken(t)
-
 	tempdir := tempProjectDir(t)
 	t.Chdir(tempdir)
 
@@ -59,19 +67,28 @@ func TestFailInInteractiveWithoutYes(t *testing.T) {
 		prompt:            ui.PromptForValue,
 		secretsProvider:   "default",
 		stack:             stackName,
-		templateNameOrURL: "typescript",
+		templateNameOrURL: localTemplate(t),
 	}
 
 	err := runNew(t.Context(), args)
 	assert.Error(t, err)
 }
 
-//nolint:paralleltest // changes directory for process
+//nolint:paralleltest // changes directory for process, mocks login manager
 func TestFailIfProjectNameDoesNotMatch(t *testing.T) {
-	skipIfShortOrNoPulumiAccessToken(t)
-
 	tempdir := tempProjectDir(t)
 	t.Chdir(tempdir)
+
+	mockCurrentBackend(t, &backend.MockBackend{
+		ParseStackReferenceF: func(s string) (backend.StackReference, error) {
+			parts := strings.Split(s, "/")
+			require.Len(t, parts, 3)
+			return &backend.MockStackReference{
+				ProjectV: tokens.Name(parts[1]),
+				NameV:    tokens.MustParseStackName(parts[2]),
+			}, nil
+		},
+	})
 
 	args := newArgs{
 		interactive:       false,
@@ -80,7 +97,7 @@ func TestFailIfProjectNameDoesNotMatch(t *testing.T) {
 		secretsProvider:   "default",
 		stack:             "org/projectA/stack",
 		name:              "projectB",
-		templateNameOrURL: "typescript",
+		templateNameOrURL: localTemplate(t),
 		languageTemplate:  languageTemplateMock,
 	}
 
@@ -106,7 +123,7 @@ func TestCreatingStackWithArgsSpecifiedOrgName(t *testing.T) {
 		prompt:            ui.PromptForValue,
 		secretsProvider:   "default",
 		stack:             orgStackName,
-		templateNameOrURL: "typescript",
+		templateNameOrURL: localTemplate(t),
 		languageTemplate:  languageTemplateMock,
 	}
 
@@ -132,7 +149,7 @@ func TestCreatingStackWithPromptedOrgName(t *testing.T) {
 		interactive:       true,
 		prompt:            promptMock(uniqueProjectName, orgStackName),
 		secretsProvider:   "default",
-		templateNameOrURL: "typescript",
+		templateNameOrURL: localTemplate(t),
 		languageTemplate:  languageTemplateMock,
 	}
 
@@ -160,7 +177,7 @@ func TestCreatingStackWithArgsSpecifiedFullNameSucceeds(t *testing.T) {
 		prompt:            ui.PromptForValue,
 		secretsProvider:   "default",
 		stack:             fullStackName,
-		templateNameOrURL: "typescript",
+		templateNameOrURL: localTemplate(t),
 		languageTemplate:  languageTemplateMock,
 	}
 
@@ -186,7 +203,7 @@ func TestCreatingProjectWithArgsSpecifiedName(t *testing.T) {
 		prompt:            ui.PromptForValue,
 		secretsProvider:   "default",
 		stack:             stackName,
-		templateNameOrURL: "typescript",
+		templateNameOrURL: localTemplate(t),
 		languageTemplate:  languageTemplateMock,
 	}
 
@@ -211,7 +228,7 @@ func TestCreatingProjectWithPromptedName(t *testing.T) {
 		interactive:       true,
 		prompt:            promptMock(uniqueProjectName, stackName),
 		secretsProvider:   "default",
-		templateNameOrURL: "typescript",
+		templateNameOrURL: localTemplate(t),
 		languageTemplate:  languageTemplateMock,
 	}
 
@@ -224,27 +241,14 @@ func TestCreatingProjectWithPromptedName(t *testing.T) {
 	assert.Equal(t, uniqueProjectName, proj.Name.String())
 }
 
-//nolint:paralleltest // changes directory for process, mocks backendInstance
+//nolint:paralleltest // changes directory for process, mocks login manager
 func TestCreatingProjectWithExistingArgsSpecifiedNameFails(t *testing.T) {
-	skipIfShortOrNoPulumiAccessToken(t)
-
 	tempdir := tempProjectDir(t)
 	t.Chdir(tempdir)
 
-	testutil.MockBackendInstance(t, &backend.MockBackend{
+	mockCurrentBackend(t, &backend.MockBackend{
 		DoesProjectExistF: func(ctx context.Context, org string, name string) (bool, error) {
 			return name == projectName, nil
-		},
-		GetReadOnlyCloudRegistryF: func() registry.Registry {
-			return &backend.MockCloudRegistry{
-				Mock: registry.Mock{
-					ListTemplatesF: func(
-						ctx context.Context, opts registry.ListTemplatesOptions,
-					) iter.Seq2[apitype.TemplateMetadata, error] {
-						return func(yield func(apitype.TemplateMetadata, error) bool) {}
-					},
-				},
-			}
 		},
 	})
 
@@ -254,46 +258,30 @@ func TestCreatingProjectWithExistingArgsSpecifiedNameFails(t *testing.T) {
 		name:              projectName,
 		prompt:            ui.PromptForValue,
 		secretsProvider:   "default",
-		templateNameOrURL: "typescript",
+		templateNameOrURL: localTemplate(t),
 	}
 
 	err := runNew(t.Context(), args)
 	assert.ErrorContains(t, err, "project with this name already exists")
 }
 
-//nolint:paralleltest // changes directory for process, mocks backendInstance
+//nolint:paralleltest // changes directory for process, mocks login manager
 func TestCreatingProjectWithExistingPromptedNameFails(t *testing.T) {
-	skipIfShortOrNoPulumiAccessToken(t)
-
 	tempdir := tempProjectDir(t)
 	t.Chdir(tempdir)
 
-	listTemplates := func(
-		ctx context.Context, opts registry.ListTemplatesOptions,
-	) iter.Seq2[apitype.TemplateMetadata, error] {
-		assert.Equal(t, registry.ListTemplatesOptions{}, opts)
-		return func(yield func(apitype.TemplateMetadata, error) bool) {}
-	}
-
-	testutil.MockBackendInstance(t, &backend.MockBackend{
+	mockCurrentBackend(t, &backend.MockBackend{
 		DoesProjectExistF: func(ctx context.Context, org string, name string) (bool, error) {
 			return name == projectName, nil
 		},
 		NameF: func() string { return "mock" },
-		GetReadOnlyCloudRegistryF: func() registry.Registry {
-			return &backend.MockCloudRegistry{
-				Mock: registry.Mock{
-					ListTemplatesF: listTemplates,
-				},
-			}
-		},
 	})
 
 	args := newArgs{
 		interactive:       true,
 		prompt:            promptMock(projectName, ""),
 		secretsProvider:   "default",
-		templateNameOrURL: "typescript",
+		templateNameOrURL: localTemplate(t),
 		languageTemplate:  languageTemplateMock,
 	}
 
@@ -301,28 +289,14 @@ func TestCreatingProjectWithExistingPromptedNameFails(t *testing.T) {
 	assert.ErrorContains(t, err, "Try again")
 }
 
-//nolint:paralleltest // changes directory for process, mocks backendInstance
+//nolint:paralleltest // changes directory for process, mocks login manager
 func TestGeneratingProjectWithExistingArgsSpecifiedNameSucceeds(t *testing.T) {
-	skipIfShortOrNoPulumiAccessToken(t)
-
 	tempdir := tempProjectDir(t)
 	t.Chdir(tempdir)
 
-	testutil.MockBackendInstance(t, &backend.MockBackend{
+	mockCurrentBackend(t, &backend.MockBackend{
 		DoesProjectExistF: func(ctx context.Context, org string, name string) (bool, error) {
 			return true, nil
-		},
-		GetReadOnlyCloudRegistryF: func() registry.Registry {
-			return &backend.MockCloudRegistry{
-				Mock: registry.Mock{
-					ListTemplatesF: func(
-						ctx context.Context, opts registry.ListTemplatesOptions,
-					) iter.Seq2[apitype.TemplateMetadata, error] {
-						assert.Equal(t, registry.ListTemplatesOptions{}, opts)
-						return func(yield func(apitype.TemplateMetadata, error) bool) {}
-					},
-				},
-			}
 		},
 		NameF: func() string { return "mock" },
 	})
@@ -335,7 +309,7 @@ func TestGeneratingProjectWithExistingArgsSpecifiedNameSucceeds(t *testing.T) {
 		name:              projectName,
 		prompt:            ui.PromptForValue,
 		secretsProvider:   "default",
-		templateNameOrURL: "typescript",
+		templateNameOrURL: localTemplate(t),
 		languageTemplate:  languageTemplateMock,
 	}
 
@@ -346,28 +320,14 @@ func TestGeneratingProjectWithExistingArgsSpecifiedNameSucceeds(t *testing.T) {
 	assert.Equal(t, projectName, proj.Name.String())
 }
 
-//nolint:paralleltest // changes directory for process, mocks backendInstance
+//nolint:paralleltest // changes directory for process, mocks login manager
 func TestGeneratingProjectWithExistingPromptedNameSucceeds(t *testing.T) {
-	skipIfShortOrNoPulumiAccessToken(t)
-
 	tempdir := tempProjectDir(t)
 	t.Chdir(tempdir)
 
-	testutil.MockBackendInstance(t, &backend.MockBackend{
+	mockCurrentBackend(t, &backend.MockBackend{
 		DoesProjectExistF: func(ctx context.Context, org string, name string) (bool, error) {
 			return true, nil
-		},
-		GetReadOnlyCloudRegistryF: func() registry.Registry {
-			return &backend.MockCloudRegistry{
-				Mock: registry.Mock{
-					ListTemplatesF: func(
-						ctx context.Context, opts registry.ListTemplatesOptions,
-					) iter.Seq2[apitype.TemplateMetadata, error] {
-						assert.Equal(t, registry.ListTemplatesOptions{}, opts)
-						return func(yield func(apitype.TemplateMetadata, error) bool) {}
-					},
-				},
-			}
 		},
 		NameF: func() string { return "mock" },
 	})
@@ -378,7 +338,7 @@ func TestGeneratingProjectWithExistingPromptedNameSucceeds(t *testing.T) {
 		interactive:       true,
 		prompt:            promptMock(projectName, ""),
 		secretsProvider:   "default",
-		templateNameOrURL: "typescript",
+		templateNameOrURL: localTemplate(t),
 		languageTemplate:  languageTemplateMock,
 	}
 
@@ -407,13 +367,16 @@ func TestCreatingProjectWithEmptyConfig(t *testing.T) {
 		return defaultValue, nil
 	}
 
+	template := writeLocalTemplate(t, t.TempDir(), "aws-template", localTemplateYAML+
+		"template:\n  config:\n    aws:region:\n      description: The AWS region to deploy into\n      default: us-east-1\n")
+
 	args := newArgs{
 		name:              uniqueProjectName,
 		stack:             stackName,
 		interactive:       true,
 		prompt:            prompt,
 		secretsProvider:   "default",
-		templateNameOrURL: "aws-typescript",
+		templateNameOrURL: template,
 		languageTemplate:  languageTemplateMock,
 	}
 
@@ -429,27 +392,14 @@ func TestCreatingProjectWithEmptyConfig(t *testing.T) {
 	removeStack(t, tempdir, stackName)
 }
 
-//nolint:paralleltest // changes directory for process, mocks backendInstance
+//nolint:paralleltest // changes directory for process, mocks login manager
 func TestGeneratingProjectWithInvalidArgsSpecifiedNameFails(t *testing.T) {
-	skipIfShortOrNoPulumiAccessToken(t)
-
 	tempdir := tempProjectDir(t)
 	t.Chdir(tempdir)
 
-	testutil.MockBackendInstance(t, &backend.MockBackend{
+	mockCurrentBackend(t, &backend.MockBackend{
 		DoesProjectExistF: func(ctx context.Context, org string, name string) (bool, error) {
 			return true, nil
-		},
-		GetReadOnlyCloudRegistryF: func() registry.Registry {
-			return &backend.MockCloudRegistry{
-				Mock: registry.Mock{
-					ListTemplatesF: func(
-						ctx context.Context, opts registry.ListTemplatesOptions,
-					) iter.Seq2[apitype.TemplateMetadata, error] {
-						return func(yield func(apitype.TemplateMetadata, error) bool) {}
-					},
-				},
-			}
 		},
 	})
 
@@ -461,7 +411,7 @@ func TestGeneratingProjectWithInvalidArgsSpecifiedNameFails(t *testing.T) {
 		name:              "not#valid",
 		prompt:            ui.PromptForValue,
 		secretsProvider:   "default",
-		templateNameOrURL: "typescript",
+		templateNameOrURL: localTemplate(t),
 		languageTemplate:  languageTemplateMock,
 	}
 
@@ -469,28 +419,16 @@ func TestGeneratingProjectWithInvalidArgsSpecifiedNameFails(t *testing.T) {
 	assert.ErrorContains(t, err, "project names may only contain")
 }
 
-//nolint:paralleltest // changes directory for process, mocks backendInstance
+//nolint:paralleltest // changes directory for process, mocks login manager
 func TestGeneratingProjectWithInvalidPromptedNameFails(t *testing.T) {
-	skipIfShortOrNoPulumiAccessToken(t)
-
 	tempdir := tempProjectDir(t)
 	t.Chdir(tempdir)
 
-	testutil.MockBackendInstance(t, &backend.MockBackend{
+	templateDir := localTemplate(t)
+
+	mockCurrentBackend(t, &backend.MockBackend{
 		DoesProjectExistF: func(ctx context.Context, org string, name string) (bool, error) {
 			return true, nil
-		},
-		GetReadOnlyCloudRegistryF: func() registry.Registry {
-			return &backend.MockCloudRegistry{
-				Mock: registry.Mock{
-					ListTemplatesF: func(
-						ctx context.Context, opts registry.ListTemplatesOptions,
-					) iter.Seq2[apitype.TemplateMetadata, error] {
-						assert.Equal(t, registry.ListTemplatesOptions{}, opts)
-						return func(yield func(apitype.TemplateMetadata, error) bool) {}
-					},
-				},
-			}
 		},
 		NameF: func() string { return "mock" },
 	})
@@ -501,7 +439,7 @@ func TestGeneratingProjectWithInvalidPromptedNameFails(t *testing.T) {
 		interactive:       true,
 		prompt:            promptMock("not#valid", ""),
 		secretsProvider:   "default",
-		templateNameOrURL: "typescript",
+		templateNameOrURL: templateDir,
 		languageTemplate:  languageTemplateMock,
 	})
 	assert.ErrorContains(t, err, "project names may only contain")
@@ -511,19 +449,33 @@ func TestGeneratingProjectWithInvalidPromptedNameFails(t *testing.T) {
 		interactive:       true,
 		prompt:            promptMock("", ""),
 		secretsProvider:   "default",
-		templateNameOrURL: "typescript",
+		templateNameOrURL: templateDir,
 		languageTemplate:  languageTemplateMock,
 	})
 	assert.ErrorContains(t, err, "project names may not be empty")
 }
 
-//nolint:paralleltest // changes directory for process
+//nolint:paralleltest // changes directory for process, mocks login manager
 func TestInvalidTemplateName(t *testing.T) {
-	skipIfShortOrNoPulumiAccessToken(t)
-
 	t.Run("RemoteTemplateNotFound", func(t *testing.T) {
 		tempdir := tempProjectDir(t)
 		t.Chdir(tempdir)
+
+		useLocalTemplateRepo(t, "typescript")
+		mockCurrentBackend(t, &backend.MockBackend{
+			NameF: func() string { return "mock" },
+			GetReadOnlyCloudRegistryF: func() registry.Registry {
+				return &backend.MockCloudRegistry{
+					Mock: registry.Mock{
+						ListTemplatesF: func(
+							ctx context.Context, opts registry.ListTemplatesOptions,
+						) iter.Seq2[apitype.ListTemplatesResponse, error] {
+							return singlePage()
+						},
+					},
+				}
+			},
+		})
 
 		// A template that will never exist.
 		template := "this-is-not-the-template-youre-looking-for"
@@ -542,6 +494,8 @@ func TestInvalidTemplateName(t *testing.T) {
 	t.Run("LocalTemplateNotFound", func(t *testing.T) {
 		tempdir := tempProjectDir(t)
 		t.Chdir(tempdir)
+
+		t.Setenv(env.TemplatePath.Var().Name(), filepath.Join(t.TempDir(), "templates"))
 
 		// A template that will never exist remotely.
 		template := "this-is-not-the-template-youre-looking-for"
@@ -565,6 +519,62 @@ func tempProjectDir(t *testing.T) string {
 	dir := filepath.Join(t.TempDir(), genUniqueName(t))
 	require.NoError(t, os.MkdirAll(dir, 0o700))
 	return dir
+}
+
+const localTemplateYAML = "name: ${PROJECT}\ndescription: ${DESCRIPTION}\nruntime: yaml\n"
+
+func writeLocalTemplate(t *testing.T, parent, name, body string) string {
+	t.Helper()
+
+	dir := filepath.Join(parent, name)
+	require.NoError(t, os.MkdirAll(dir, 0o700))
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "Pulumi.yaml"), []byte(body), 0o600))
+	return dir
+}
+
+func localTemplate(t *testing.T) string {
+	t.Helper()
+
+	return writeLocalTemplate(t, t.TempDir(), "template", localTemplateYAML)
+}
+
+func useLocalTemplateRepo(t *testing.T, names ...string) {
+	t.Helper()
+
+	repo := t.TempDir()
+	for _, name := range names {
+		writeLocalTemplate(t, repo, name, localTemplateYAML)
+	}
+	git := func(args ...string) {
+		cmd := exec.Command("git", args...)
+		cmd.Dir = repo
+		out, err := cmd.CombinedOutput()
+		require.NoError(t, err, "git %v: %s", args, out)
+	}
+	git("init", "--initial-branch=master")
+	git("add", ".")
+	git("-c", "user.name=test", "-c", "user.email=test@example.com", "-c", "commit.gpgsign=false",
+		"commit", "-m", "templates")
+	t.Setenv(env.TemplateGitRepository.Var().Name(), repo)
+	t.Setenv(env.TemplateBranch.Var().Name(), "master")
+	t.Setenv(env.TemplatePath.Var().Name(), filepath.Join(t.TempDir(), "templates"))
+}
+
+func mockCurrentBackend(t *testing.T, mockBackend backend.Backend) {
+	t.Helper()
+
+	testutil.MockLoginManager(t, &cmdBackend.MockLoginManager{
+		CurrentF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink,
+			url string, project *workspace.Project, setCurrent bool,
+		) (backend.Backend, error) {
+			return mockBackend, nil
+		},
+		LoginF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink,
+			url string, project *workspace.Project, setCurrent bool, insecure bool, color colors.Colorization,
+		) (backend.Backend, error) {
+			return mockBackend, nil
+		},
+	})
 }
 
 func genUniqueName(t *testing.T) string {
@@ -608,8 +618,8 @@ func TestValidateStackRefAndProjectName(t *testing.T) {
 				Mock: registry.Mock{
 					ListTemplatesF: func(
 						ctx context.Context, opts registry.ListTemplatesOptions,
-					) iter.Seq2[apitype.TemplateMetadata, error] {
-						return func(yield func(apitype.TemplateMetadata, error) bool) {}
+					) iter.Seq2[apitype.ListTemplatesResponse, error] {
+						return singlePage()
 					},
 				},
 			}
@@ -686,8 +696,8 @@ func TestProjectExists(t *testing.T) {
 				Mock: registry.Mock{
 					ListTemplatesF: func(
 						ctx context.Context, opts registry.ListTemplatesOptions,
-					) iter.Seq2[apitype.TemplateMetadata, error] {
-						return func(yield func(apitype.TemplateMetadata, error) bool) {}
+					) iter.Seq2[apitype.ListTemplatesResponse, error] {
+						return singlePage()
 					},
 				},
 			}
@@ -762,7 +772,7 @@ func TestGenerateOnlyProjectCheck(t *testing.T) {
 				secretsProvider:   "default",
 				stack:             tt.stack,
 				name:              "project",
-				templateNameOrURL: "typescript",
+				templateNameOrURL: localTemplate(t),
 				languageTemplate:  languageTemplateMock,
 			}
 
@@ -838,8 +848,8 @@ func TestPulumiNewConflictingProject(t *testing.T) {
 				Mock: registry.Mock{
 					ListTemplatesF: func(
 						ctx context.Context, opts registry.ListTemplatesOptions,
-					) iter.Seq2[apitype.TemplateMetadata, error] {
-						return func(yield func(apitype.TemplateMetadata, error) bool) {}
+					) iter.Seq2[apitype.ListTemplatesResponse, error] {
+						return singlePage()
 					},
 				},
 			}
@@ -867,50 +877,67 @@ func TestPulumiNewConflictingProject(t *testing.T) {
 	assert.Truef(t, called, "expected resolution to be called with duplicate name")
 }
 
-//nolint:paralleltest // changes directory for process
+//nolint:paralleltest // changes directory for process, mocks login manager
 func TestPulumiNewSetsTemplateTag(t *testing.T) {
-	if os.Getenv("PULUMI_ACCESS_TOKEN") == "" {
-		t.Skip("Skipping test because PULUMI_ACCESS_TOKEN is not set")
-	}
 	tests := []struct {
 		argument string
-		prompted string
+		// answers drives the guided prompts when no template is named. Empty means the
+		// invocation names one and never prompts.
+		answers  []any
 		expected string
+		remote   bool
 	}{
 		{
-			"typescript",
-			"",
-			"typescript",
+			argument: "typescript",
+			expected: "typescript",
 		},
 		{
-			"https://github.com/pulumi/templates/tree/master/yaml?foo=bar",
-			"",
-			"https://github.com/pulumi/templates/tree/master/yaml",
+			argument: "https://github.com/pulumi/templates/tree/master/yaml?foo=bar",
+			expected: "https://github.com/pulumi/templates/tree/master/yaml",
+			remote:   true,
 		},
 		{
-			"",
-			"python",
-			"python",
+			answers:  []any{"Basic Pulumi Program", "Python"},
+			expected: "python",
 		},
 	}
 	for _, tt := range tests {
 		name := tt.argument
 		if name == "" {
-			name = tt.prompted
+			name = tt.expected
 		}
 		t.Run(name, func(t *testing.T) {
+			if tt.remote {
+				skipIfShortOrNoPulumiAccessToken(t)
+			} else {
+				useLocalTemplateRepo(t, "typescript", "python")
+				mockCurrentBackend(t, &backend.MockBackend{
+					NameF: func() string { return "mock" },
+					GetReadOnlyCloudRegistryF: func() registry.Registry {
+						return &backend.MockCloudRegistry{
+							Mock: registry.Mock{
+								ListTemplatesF: func(
+									ctx context.Context, opts registry.ListTemplatesOptions,
+								) iter.Seq2[apitype.ListTemplatesResponse, error] {
+									return singlePage()
+								},
+							},
+						}
+					},
+				})
+			}
+
 			tempdir := tempProjectDir(t)
 			t.Chdir(tempdir)
 			uniqueProjectName := filepath.Base(tempdir) + "test"
 
-			chooseTemplateMock := func(templates []cmdTemplates.Template, opts display.Options,
-			) (cmdTemplates.Template, error) {
-				for _, template := range templates {
-					if template.Name() == tt.prompted {
-						return template, nil
-					}
-				}
-				return nil, errors.New("template not found")
+			prompted := len(tt.answers) > 0
+			selectOne := func(string, []string, display.Options) (int, error) {
+				t.Error("a named template must not prompt")
+				return 0, nil
+			}
+			if prompted {
+				selectOne, _ = scriptedSelect(t, tt.answers...)
 			}
 
 			runtimeOptionsMock := func(ctx *plugin.Context, language plugin.LanguageRuntime,
@@ -921,15 +948,14 @@ func TestPulumiNewSetsTemplateTag(t *testing.T) {
 			}
 
 			args := newArgs{
-				interactive:          tt.prompted != "",
+				interactive:          prompted,
 				generateOnly:         true,
-				yes:                  tt.prompted == "",
-				templateMode:         true,
+				yes:                  !prompted,
 				name:                 projectName,
 				prompt:               promptMock(uniqueProjectName, stackName),
 				promptRuntimeOptions: runtimeOptionsMock,
 				languageTemplate:     languageTemplateMock,
-				chooseTemplate:       chooseTemplateMock,
+				selectOne:            selectOne,
 				secretsProvider:      "default",
 				templateNameOrURL:    tt.argument,
 			}
@@ -959,17 +985,19 @@ func TestPulumiPromptRuntimeOptions(t *testing.T) {
 		return map[string]any{"someOption": "someValue"}, nil
 	}
 
+	template := writeLocalTemplate(t, t.TempDir(), "python-template",
+		"name: ${PROJECT}\ndescription: ${DESCRIPTION}\nruntime: python\n")
+
 	args := newArgs{
 		interactive:          false,
 		generateOnly:         true,
 		yes:                  true,
-		templateMode:         true,
 		name:                 projectName,
 		prompt:               ui.PromptForValue,
 		promptRuntimeOptions: runtimeOptionsMock,
 		languageTemplate:     languageTemplateMock,
 		secretsProvider:      "default",
-		templateNameOrURL:    "python",
+		templateNameOrURL:    template,
 	}
 
 	err := runNew(t.Context(), args)
@@ -981,7 +1009,7 @@ func TestPulumiPromptRuntimeOptions(t *testing.T) {
 	require.Equal(t, "someValue", proj.Runtime.Options()["someOption"])
 }
 
-//nolint:paralleltest // Sets a global mock backend
+//nolint:paralleltest // Sets a mock login manager
 func TestPulumiNewWithOrgTemplates(t *testing.T) {
 	// Set environment variable to disable registry resolution and use org templates
 	t.Setenv("PULUMI_DISABLE_REGISTRY_RESOLVE", "true")
@@ -1029,27 +1057,14 @@ func TestPulumiNewWithOrgTemplates(t *testing.T) {
 				Mock: registry.Mock{
 					ListTemplatesF: func(
 						ctx context.Context, opts registry.ListTemplatesOptions,
-					) iter.Seq2[apitype.TemplateMetadata, error] {
-						return func(yield func(apitype.TemplateMetadata, error) bool) {}
+					) iter.Seq2[apitype.ListTemplatesResponse, error] {
+						return singlePage()
 					},
 				},
 			}
 		},
 	}
-	testutil.MockBackendInstance(t, mockBackend)
-	testutil.MockLoginManager(t, &cmdBackend.MockLoginManager{
-		CurrentF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink,
-			url string, project *workspace.Project, setCurrent bool,
-		) (backend.Backend, error) {
-			return mockBackend, nil
-		},
-		LoginF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink,
-			url string, project *workspace.Project, setCurrent bool,
-			insecure bool, color colors.Colorization,
-		) (backend.Backend, error) {
-			return mockBackend, nil
-		},
-	})
+	mockCurrentBackend(t, mockBackend)
 
 	newCmd := NewNewCmd()
 	var stdout, stderr bytes.Buffer
@@ -1086,7 +1101,14 @@ Available Templates:
 
 func ptr[T any](v T) *T { return &v }
 
-//nolint:paralleltest // Sets a global mock backend
+// singlePage answers a template listing with one page holding the given templates.
+func singlePage(templates ...apitype.TemplateMetadata) iter.Seq2[apitype.ListTemplatesResponse, error] {
+	return func(yield func(apitype.ListTemplatesResponse, error) bool) {
+		yield(apitype.ListTemplatesResponse{Templates: templates}, nil)
+	}
+}
+
+//nolint:paralleltest // Sets a mock login manager
 func TestPulumiNewWithRegistryTemplates(t *testing.T) {
 	t.Setenv("PULUMI_DISABLE_REGISTRY_RESOLVE", "false")
 	t.Setenv("PULUMI_EXPERIMENTAL", "true")
@@ -1094,19 +1116,12 @@ func TestPulumiNewWithRegistryTemplates(t *testing.T) {
 		Mock: registry.Mock{
 			ListTemplatesF: func(
 				ctx context.Context, opts registry.ListTemplatesOptions,
-			) iter.Seq2[apitype.TemplateMetadata, error] {
-				return func(yield func(apitype.TemplateMetadata, error) bool) {
-					if !yield(apitype.TemplateMetadata{
-						Name: "template-1", Description: ptr("Describe 1"), Publisher: "Some org",
-					}, nil) {
-						return
-					}
-					if !yield(apitype.TemplateMetadata{
-						Name: "template-2", Description: ptr("Describe 2"), RepoSlug: ptr("some-org/repo"), Source: "github",
-					}, nil) {
-						return
-					}
-				}
+			) iter.Seq2[apitype.ListTemplatesResponse, error] {
+				return singlePage(apitype.TemplateMetadata{
+					Name: "template-1", Description: ptr("Describe 1"), Publisher: "Some org",
+				}, apitype.TemplateMetadata{
+					Name: "template-2", Description: ptr("Describe 2"), RepoSlug: ptr("some-org/repo"), Source: "github",
+				})
 			},
 		},
 	}
@@ -1115,19 +1130,7 @@ func TestPulumiNewWithRegistryTemplates(t *testing.T) {
 			return mockRegistry
 		},
 	}
-	testutil.MockBackendInstance(t, mockBackend)
-	testutil.MockLoginManager(t, &cmdBackend.MockLoginManager{
-		CurrentF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink,
-			url string, project *workspace.Project, setCurrent bool,
-		) (backend.Backend, error) {
-			return mockBackend, nil
-		},
-		LoginF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink,
-			url string, project *workspace.Project, setCurrent bool, insecure bool, color colors.Colorization,
-		) (backend.Backend, error) {
-			return mockBackend, nil
-		},
-	})
+	mockCurrentBackend(t, mockBackend)
 
 	newCmd := NewNewCmd()
 	var stdout, stderr bytes.Buffer
@@ -1163,6 +1166,10 @@ Available Templates:
 // TestPulumiNewWithoutPulumiAccessToken checks that we won't error if we run `pulumi new
 // --list-templates` without PULUMI_ACCESS_TOKEN set.
 func TestPulumiNewWithoutPulumiAccessToken(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping template registry integration test in short mode")
+	}
+
 	t.Setenv("PULUMI_ACCESS_TOKEN", "")
 	tempdir := t.TempDir()
 	t.Setenv("PULUMI_HOME", tempdir)
@@ -1191,17 +1198,17 @@ Available Templates:
 	assert.Equal(t, "", stderr.String())
 }
 
-//nolint:paralleltest // Sets a global mock backend
+//nolint:paralleltest // Sets a mock login manager
 func TestPulumiNewWithoutTemplateSupport(t *testing.T) {
-	testutil.MockBackendInstance(t, &backend.MockBackend{
+	mockCurrentBackend(t, &backend.MockBackend{
 		GetReadOnlyCloudRegistryF: func() registry.Registry {
 			return &backend.MockCloudRegistry{
 				Mock: registry.Mock{
 					ListTemplatesF: func(
 						ctx context.Context, opts registry.ListTemplatesOptions,
-					) iter.Seq2[apitype.TemplateMetadata, error] {
-						assert.Equal(t, registry.ListTemplatesOptions{}, opts)
-						return func(yield func(apitype.TemplateMetadata, error) bool) {}
+					) iter.Seq2[apitype.ListTemplatesResponse, error] {
+						require.Len(t, opts.Backing, 1, "browsing splits the listing, one backing per fetch")
+						return singlePage()
 					},
 				},
 			}
@@ -1225,7 +1232,7 @@ Available Templates:
 	assert.Equal(t, "", stderr.String())
 }
 
-//nolint:paralleltest // Sets a global mock backend, changes the directory
+//nolint:paralleltest // Sets a mock login manager, changes the directory
 func TestPulumiNewOrgTemplate(t *testing.T) {
 	// Set environment variable to disable registry resolution and use org templates
 	t.Setenv("PULUMI_DISABLE_REGISTRY_RESOLVE", "true")
@@ -1286,27 +1293,14 @@ resources:
 				Mock: registry.Mock{
 					ListTemplatesF: func(
 						ctx context.Context, opts registry.ListTemplatesOptions,
-					) iter.Seq2[apitype.TemplateMetadata, error] {
-						return func(yield func(apitype.TemplateMetadata, error) bool) {}
+					) iter.Seq2[apitype.ListTemplatesResponse, error] {
+						return singlePage()
 					},
 				},
 			}
 		},
 	}
-	testutil.MockBackendInstance(t, mockBackend)
-
-	testutil.MockLoginManager(t, &cmdBackend.MockLoginManager{
-		CurrentF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink,
-			url string, project *workspace.Project, setCurrent bool,
-		) (backend.Backend, error) {
-			return mockBackend, nil
-		},
-		LoginF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink,
-			url string, project *workspace.Project, setCurrent bool, insecure bool, color colors.Colorization,
-		) (backend.Backend, error) {
-			return mockBackend, nil
-		},
-	})
+	mockCurrentBackend(t, mockBackend)
 
 	newCmd := NewNewCmd()
 	var stdout, stderr bytes.Buffer
@@ -1342,37 +1336,6 @@ func assertTemplateContains(t *testing.T, actual, expected string) {
 	actualP := parse(actual)
 	for _, e := range expectedP {
 		assert.Contains(t, actualP, e)
-	}
-}
-
-func TestNoPromptWithYes(t *testing.T) {
-	t.Parallel()
-	for _, interactive := range []bool{true, false} {
-		t.Run(fmt.Sprintf("interactive=%t", interactive), func(t *testing.T) {
-			t.Parallel()
-			args := newArgs{
-				interactive: interactive,
-				yes:         true,
-			}
-
-			mockBackend := &backend.MockBackend{
-				GetReadOnlyCloudRegistryF: func() registry.Registry {
-					return &backend.MockCloudRegistry{
-						Mock: registry.Mock{
-							ListTemplatesF: func(
-								ctx context.Context, opts registry.ListTemplatesOptions,
-							) iter.Seq2[apitype.TemplateMetadata, error] {
-								assert.Equal(t, registry.ListTemplatesOptions{}, opts)
-								return func(yield func(apitype.TemplateMetadata, error) bool) {}
-							},
-						},
-					}
-				},
-				NameF: func() string { return "mock" },
-			}
-
-			require.False(t, shouldPromptForAIOrTemplate(args, mockBackend))
-		})
 	}
 }
 
@@ -1455,6 +1418,124 @@ func TestNewCmdYesRejectsInvalidExplicitName(t *testing.T) {
 	require.ErrorContains(t, err, "'my project' is not a valid project name")
 	_, statErr := os.Stat(filepath.Join(dir, "Pulumi.yaml"))
 	assert.ErrorIs(t, statErr, os.ErrNotExist)
+}
+
+// requiredPackagesRecorder is an in-process language runtime, attached via
+// PULUMI_DEBUG_LANGUAGES, that records the GetRequiredPackages call it receives and
+// reports a single required package.
+type requiredPackagesRecorder struct {
+	pulumirpc.UnimplementedLanguageRuntimeServer
+
+	programDirectory atomic.Value
+	requiredPackage  *pulumirpc.PackageDependency
+}
+
+func (s *requiredPackagesRecorder) Handshake(
+	context.Context, *pulumirpc.LanguageHandshakeRequest,
+) (*pulumirpc.LanguageHandshakeResponse, error) {
+	return &pulumirpc.LanguageHandshakeResponse{}, nil
+}
+
+func (s *requiredPackagesRecorder) GetPluginInfo(context.Context, *emptypb.Empty) (*pulumirpc.PluginInfo, error) {
+	return &pulumirpc.PluginInfo{Version: "1.0.0"}, nil
+}
+
+func (s *requiredPackagesRecorder) InstallDependencies(
+	*pulumirpc.InstallDependenciesRequest, pulumirpc.LanguageRuntime_InstallDependenciesServer,
+) error {
+	return nil
+}
+
+func (s *requiredPackagesRecorder) GetRequiredPackages(
+	_ context.Context, req *pulumirpc.GetRequiredPackagesRequest,
+) (*pulumirpc.GetRequiredPackagesResponse, error) {
+	s.programDirectory.Store(req.Info.ProgramDirectory)
+	return &pulumirpc.GetRequiredPackagesResponse{
+		Packages: []*pulumirpc.PackageDependency{s.requiredPackage},
+	}, nil
+}
+
+func pluginBinaryName(name string) string {
+	binary := "pulumi-resource-" + name
+	if goruntime.GOOS == "windows" {
+		binary += ".exe"
+	}
+	return binary
+}
+
+// fakePluginServer serves a plugin tarball containing a stub pulumi-resource-<name>
+// binary, in the layout the plugin download machinery expects.
+func fakePluginServer(t *testing.T, name string) *httptest.Server {
+	t.Helper()
+
+	var tarball bytes.Buffer
+	gzw := gzip.NewWriter(&tarball)
+	tw := tar.NewWriter(gzw)
+	binary := []byte("#!/bin/sh\nexit 0\n")
+	require.NoError(t, tw.WriteHeader(&tar.Header{
+		Name: pluginBinaryName(name),
+		Mode: 0o755,
+		Size: int64(len(binary)),
+	}))
+	_, err := tw.Write(binary)
+	require.NoError(t, err)
+	require.NoError(t, tw.Close())
+	require.NoError(t, gzw.Close())
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, err := w.Write(tarball.Bytes())
+		require.NoError(t, err)
+	}))
+	t.Cleanup(server.Close)
+	return server
+}
+
+// TestNewInstallsRequiredPackages ensures that `pulumi new` resolves & installs required packages.
+func TestNewInstallsRequiredPackages(t *testing.T) {
+	useTempFilestateBackend(t)
+	pulumiHome := t.TempDir()
+	t.Setenv("PULUMI_HOME", pulumiHome)
+
+	pluginServer := fakePluginServer(t, "testpkg")
+	lang := &requiredPackagesRecorder{
+		requiredPackage: &pulumirpc.PackageDependency{
+			Name:    "testpkg",
+			Kind:    "resource",
+			Version: "1.2.3",
+			Server:  pluginServer.URL,
+		},
+	}
+	cancel := make(chan bool)
+	t.Cleanup(func() { close(cancel) })
+	handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
+		Cancel: cancel,
+		Init: func(srv *grpc.Server) error {
+			pulumirpc.RegisterLanguageRuntimeServer(srv, lang)
+			return nil
+		},
+	})
+	require.NoError(t, err)
+	t.Setenv("PULUMI_DEBUG_LANGUAGES", fmt.Sprintf("testlang:%d", handle.Port))
+
+	tempdir := tempProjectDir(t)
+	t.Chdir(tempdir)
+	template := writeLocalTemplate(t, t.TempDir(), "testlang-template",
+		"name: ${PROJECT}\ndescription: ${DESCRIPTION}\nruntime: testlang\n")
+
+	args := newArgs{
+		interactive:       false,
+		yes:               true,
+		prompt:            ui.PromptForValue,
+		secretsProvider:   "default",
+		stack:             stackName,
+		templateNameOrURL: template,
+		languageTemplate:  languageTemplateMock,
+	}
+	require.NoError(t, runNew(t.Context(), args))
+
+	assert.Equal(t, tempdir, lang.programDirectory.Load())
+	assert.FileExists(t,
+		filepath.Join(pulumiHome, "plugins", "resource-testpkg-v1.2.3", pluginBinaryName("testpkg")))
 }
 
 //nolint:paralleltest

@@ -17,6 +17,7 @@ package deploy
 import (
 	"errors"
 	"fmt"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -89,13 +90,7 @@ type PlanDiff struct {
 
 // Returns true if the Deletes array contains the given key
 func (planDiff *PlanDiff) ContainsDelete(key resource.PropertyKey) bool {
-	found := false
-	for i := range planDiff.Deletes {
-		if planDiff.Deletes[i] == key {
-			found = true
-			break
-		}
-	}
+	found := slices.Contains(planDiff.Deletes, key)
 	return found
 }
 
@@ -347,7 +342,7 @@ func (rp *ResourcePlan) diffAliases(a, b []resource.Alias) (message string, chan
 // This is similar to ResourcePlan.checkGoal but for the case we're we don't have a goal saved.
 // This simple checks that we're not changing anything.
 func checkMissingPlan(
-	oldState *resource.State,
+	oldState *pkgresource.State,
 	newInputs resource.PropertyMap,
 	programGoal *pkgresource.Goal,
 ) error {

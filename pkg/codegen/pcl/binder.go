@@ -20,9 +20,11 @@ import (
 	"encoding/base64"
 	"fmt"
 	"io/fs"
+	"maps"
 	"net/url"
 	"os"
 	"path/filepath"
+	"slices"
 	"sort"
 
 	"github.com/blang/semver"
@@ -32,9 +34,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/maputil"
 	"github.com/zclconf/go-cty/cty"
 )
 
@@ -183,7 +183,7 @@ func NonStrictBindOptions() []BindOption {
 // bindInputFile is the binder setup shared by BindFunction and BindResource: it constructs a binder, registers the
 // standard PCL builtins, walks the file's top-level attributes, and returns the bound arguments along with each
 // input's name range (for diagnostic Subjects).
-func bindInputFile(file *syntax.File, opts ...BindOption) (
+func bindInputFile(ctx context.Context, file *syntax.File, opts ...BindOption) (
 	*binder, []*model.Attribute, map[string]hcl.Range, hcl.Diagnostics,
 ) {
 	var options bindOptions
@@ -207,7 +207,10 @@ func bindInputFile(file *syntax.File, opts ...BindOption) (
 	for name, fn := range pulumiBuiltins(options) {
 		b.root.DefineFunction(name, fn)
 	}
-	b.root.DefineFunction(Invoke, model.NewFunction(model.GenericFunctionSignature(b.bindInvokeSignature)))
+	b.root.DefineFunction(Invoke, model.NewFunction(model.GenericFunctionSignature(
+		func(args []model.Expression) (model.StaticFunctionSignature, hcl.Diagnostics) {
+			return b.bindInvokeSignature(ctx, args)
+		})))
 	b.root.DefineFunction(Call, model.NewFunction(model.GenericFunctionSignature(b.bindCallSignature)))
 
 	var diagnostics hcl.Diagnostics
@@ -240,10 +243,11 @@ func bindInputFile(file *syntax.File, opts ...BindOption) (
 // type the inputs were typechecked against. The model type is used downstream (e.g. by RewriteConversions during
 // evaluation) so that conversions reference the same type instances the binder built.
 func BindFunction(
+	ctx context.Context,
 	file *syntax.File, fn *schema.Function,
 	opts ...BindOption,
 ) ([]*model.Attribute, model.Type, hcl.Diagnostics) {
-	b, args, inputRanges, diagnostics := bindInputFile(file, opts...)
+	b, args, inputRanges, diagnostics := bindInputFile(ctx, file, opts...)
 
 	argProperties := make(map[string]model.Type, len(args))
 	for _, item := range args {
@@ -278,10 +282,11 @@ func BindFunction(
 // inputs were typechecked against. The model type is used downstream (e.g. by RewriteConversions during evaluation)
 // so that conversions reference the same type instances the binder built.
 func BindResource(
+	ctx context.Context,
 	file *syntax.File, res *schema.Resource,
 	opts ...BindOption,
 ) ([]*model.Attribute, model.Type, hcl.Diagnostics) {
-	b, args, inputRanges, diagnostics := bindInputFile(file, opts...)
+	b, args, inputRanges, diagnostics := bindInputFile(ctx, file, opts...)
 
 	// resolveInputUnions expects a name → expression map; rebuild it from args rather than tracking the same thing
 	// twice during attribute binding.
@@ -306,6 +311,7 @@ func BindResource(
 // this binds the full resource shape, including options and range, so the resulting program can be
 // evaluated through the normal resource registration path.
 func BindResourceProgram(
+	ctx context.Context,
 	file *syntax.File, name, token string,
 	loader schema.Loader,
 	opts ...BindOption,
@@ -343,16 +349,17 @@ func BindResourceProgram(
 		Bytes:  file.Bytes,
 		Tokens: file.Tokens,
 	}
-	return BindProgram([]*syntax.File{resourceFile}, loader, opts...)
+	return BindProgramWithContext(ctx, []*syntax.File{resourceFile}, loader, opts...)
 }
 
 // BindResourceList binds a PCL file as a resource list input and returns the bound arguments. This is used for `do` to
 // type check and evaluate resource list inputs.
 func BindResourceList(
+	ctx context.Context,
 	file *syntax.File, res *schema.Resource,
 	opts ...BindOption,
 ) ([]*model.Attribute, model.Type, hcl.Diagnostics) {
-	b, args, inputRanges, diagnostics := bindInputFile(file, opts...)
+	b, args, inputRanges, diagnostics := bindInputFile(ctx, file, opts...)
 
 	if res.ListInputs == nil {
 		diagnostics = append(diagnostics, &hcl.Diagnostic{
@@ -414,7 +421,7 @@ func typecheckObjectArgs(
 		}
 	}
 
-	for _, name := range maputil.SortedKeys(objectType.Properties) {
+	for _, name := range slices.Sorted(maps.Keys(objectType.Properties)) {
 		expected := objectType.Properties[name]
 		_, hasAttribute := attrNames[name]
 		if model.IsOptionalType(expected) || hasAttribute {
@@ -437,9 +444,14 @@ func typecheckObjectArgs(
 // loader resolves any packages the program references; the caller owns its lifetime. A program that references
 // no packages can pass a non-resolving loader (see [schema.NewNullLoader]).
 func BindProgram(files []*syntax.File, loader schema.Loader, opts ...BindOption) (*Program, hcl.Diagnostics, error) {
+	return BindProgramWithContext(context.TODO(), files, loader, opts...)
+}
+
+func BindProgramWithContext(
+	ctx context.Context, files []*syntax.File, loader schema.Loader, opts ...BindOption,
+) (*Program, hcl.Diagnostics, error) {
 	contract.Requiref(loader != nil, "loader", "must not be nil")
 
-	ctx := context.TODO()
 	options := bindOptions{loader: loader}
 	for _, o := range opts {
 		o(&options)
@@ -468,7 +480,10 @@ func BindProgram(files []*syntax.File, loader schema.Loader, opts ...BindOption)
 		b.root.DefineFunction(name, fn)
 	}
 	// Define the invoke function.
-	b.root.DefineFunction(Invoke, model.NewFunction(model.GenericFunctionSignature(b.bindInvokeSignature)))
+	b.root.DefineFunction(Invoke, model.NewFunction(model.GenericFunctionSignature(
+		func(args []model.Expression) (model.StaticFunctionSignature, hcl.Diagnostics) {
+			return b.bindInvokeSignature(ctx, args)
+		})))
 	// Define the call function.
 	b.root.DefineFunction(Call, model.NewFunction(model.GenericFunctionSignature(b.bindCallSignature)))
 	// Define any external scope variables supplied by the caller (e.g. resources owned by another source that
@@ -482,14 +497,10 @@ func BindProgram(files []*syntax.File, loader schema.Loader, opts ...BindOption)
 	// Load package descriptors from the files
 	descriptorMap, descriptorDiags := ReadAllPackageDescriptors(files)
 	diagnostics = append(diagnostics, descriptorDiags...)
-	for packageName, descriptor := range descriptorMap {
-		b.packageDescriptors[packageName] = descriptor
-	}
+	maps.Copy(b.packageDescriptors, descriptorMap)
 	// Caller-supplied descriptors (snippet bindings carry these structurally rather than as PCL syntax)
 	// take precedence over any file-declared block for the same package.
-	for packageName, descriptor := range options.extraPackageDescriptors {
-		b.packageDescriptors[packageName] = descriptor
-	}
+	maps.Copy(b.packageDescriptors, options.extraPackageDescriptors)
 
 	// Sort files in source order, then declare all top-level nodes in each.
 	sort.Slice(files, func(i, j int) bool {
@@ -511,6 +522,10 @@ func BindProgram(files []*syntax.File, loader schema.Loader, opts ...BindOption)
 	if diagnostics.HasErrors() {
 		return nil, diagnostics, diagnostics
 	}
+
+	// Normalize positional multi-argument invokes into their object-argument form so that downstream
+	// code only ever observes the object form. See invoke_positional.go.
+	diagnostics = diagnostics.Extend(b.rewritePositionalInvokes(ctx))
 
 	return &Program{
 		Nodes:  b.nodes,
@@ -798,14 +813,21 @@ func (b *binder) declareNodes(ctx context.Context, file *syntax.File) (hcl.Diagn
 				diagnostics = append(diagnostics, diags...)
 			case "hook":
 				labels := item.Labels
-				if len(labels) != 1 {
-					diagnostics = append(diagnostics, labelsErrorf(item, "hook blocks must have exactly one label"))
+				if len(labels) != 2 {
+					diagnostics = append(diagnostics, labelsErrorf(item,
+						"hook blocks must have exactly two labels: a kind ('resource' or 'error') and a name"))
 					continue
 				}
-				name := labels[0]
+				kind, name := HookKind(labels[0]), labels[1]
+				if kind != HookKindResource && kind != HookKindError {
+					diagnostics = append(diagnostics, labelsErrorf(item,
+						"invalid hook kind '%s': must be 'resource' or 'error'", labels[0]))
+					continue
+				}
 				v := &Hook{
 					syntax:      item,
 					logicalName: name,
+					Kind:        kind,
 				}
 				diags := b.declareNode(name, v)
 				diagnostics = append(diagnostics, diags...)
@@ -1067,54 +1089,6 @@ func ReadPackageDescriptors(file *syntax.File) (map[string]*schema.PackageDescri
 		}
 	}
 	return packageDescriptors, diagnostics
-}
-
-// extensionDescriptorsForBase returns the descriptors that extend the given base
-// package name.
-func (b *binder) extensionDescriptorsForBase(base tokens.PackageName) []*schema.PackageDescriptor {
-	var descriptors []*schema.PackageDescriptor
-	for _, descriptor := range b.packageDescriptors {
-		if descriptor.Parameterization != nil && tokens.PackageName(descriptor.Name) == base {
-			descriptors = append(descriptors, descriptor)
-		}
-	}
-	return descriptors
-}
-
-// loadDeclaredOrBarePackageSchema loads the schema for name: the package declared
-// under that name when the program supplied a descriptor for it, otherwise a bare
-// load by name. It does not consider extensions layered on name as a base —
-// callers reach those through extensionDescriptorsForBase.
-func (b *binder) loadDeclaredOrBarePackageSchema(
-	ctx context.Context, name, version, pluginDownloadURL string,
-) (*packageSchema, error) {
-	if descriptor, ok := b.packageDescriptors[name]; ok {
-		return b.options.packageCache.loadPackageSchemaFromDescriptor(b.options.loader, descriptor)
-	}
-	return b.options.packageCache.loadPackageSchema(ctx, b.options.loader, name, version, pluginDownloadURL)
-}
-
-// candidateSchemasForToken loads the schemas a token with package portion pkg
-// could live in: the package named pkg, plus every extension layered on it. The
-// caller looks the token up in each. The error is returned only when nothing
-// loaded, so the caller can tell an unknown package from an unknown member.
-func (b *binder) candidateSchemasForToken(ctx context.Context, pkg string) ([]*packageSchema, error) {
-	var schemas []*packageSchema
-	var firstErr error
-	add := func(s *packageSchema, err error) {
-		if err != nil {
-			if firstErr == nil {
-				firstErr = err
-			}
-			return
-		}
-		schemas = append(schemas, s)
-	}
-	add(b.loadDeclaredOrBarePackageSchema(ctx, pkg, "", ""))
-	for _, descriptor := range b.extensionDescriptorsForBase(tokens.PackageName(pkg)) {
-		add(b.options.packageCache.loadPackageSchemaFromDescriptor(b.options.loader, descriptor))
-	}
-	return schemas, firstErr
 }
 
 // declareNode declares a single top-level node. If a node with the same name has already been declared, it returns an

@@ -18,6 +18,8 @@ import (
 	"context"
 	"testing"
 
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -57,7 +59,7 @@ func TestGetStackResourceOutputs(t *testing.T) {
 		GetStackF: func(ctx context.Context, stackRef StackReference) (Stack, error) {
 			return &MockStack{
 				SnapshotF: func(ctx context.Context, sp secrets.Provider) (*deploy.Snapshot, error) {
-					return &deploy.Snapshot{Resources: []*resource.State{
+					return &deploy.Snapshot{Resources: []*pkgresource.State{
 						resc1, resc2, deleted,
 					}}, nil
 				},
@@ -111,14 +113,14 @@ func testURN(typ, name string) resource.URN {
 	return resource.NewURN("test", "test", "", tokens.Type(typ), name)
 }
 
-func deleteState(typ, name string, outs resource.PropertyMap) *resource.State {
-	return &resource.State{
+func deleteState(typ, name string, outs resource.PropertyMap) *pkgresource.State {
+	return &pkgresource.State{
 		Delete: true, Type: tokens.Type(typ), URN: testURN(typ, name), Outputs: outs,
 	}
 }
 
-func liveState(typ, name string, outs resource.PropertyMap) *resource.State {
-	return &resource.State{
+func liveState(typ, name string, outs resource.PropertyMap) *pkgresource.State {
+	return &pkgresource.State{
 		Delete: false, Type: tokens.Type(typ), URN: testURN(typ, name), Outputs: outs,
 	}
 }

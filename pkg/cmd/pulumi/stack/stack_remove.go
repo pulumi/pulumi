@@ -45,7 +45,7 @@ func newStackRemoveCmd() *cobra.Command {
 	var removeBackups bool
 	cmd := &cobra.Command{
 		Use:     "remove",
-		Aliases: []string{"rm"},
+		Aliases: []string{"rm", "delete"},
 		Short:   "Remove a stack and its configuration",
 		Long: "Remove a stack and its configuration\n" +
 			"\n" +
@@ -120,7 +120,7 @@ func newStackRemoveCmd() *cobra.Command {
 			msg := fmt.Sprintf("%sStack '%s' has been removed!%s", colors.SpecAttention, s.Ref(), colors.Reset)
 			fmt.Fprintln(cmd.OutOrStdout(), opts.Color.Colorize(msg))
 
-			contract.IgnoreError(state.SetCurrentStack(ws, ""))
+			contract.IgnoreError(state.SetCurrentStack(ws, state.BackendURLKey(s.Backend()), ""))
 			return nil
 		},
 	}

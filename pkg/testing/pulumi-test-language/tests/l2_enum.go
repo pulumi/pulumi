@@ -32,11 +32,12 @@ func init() {
 				err, snapshot, changes := res.Err, res.Snap, res.Changes
 				RequireStackResource(l, err, changes)
 
-				require.Len(l, snapshot.Resources, 5, "3 resources & provider & stack")
+				require.Len(l, snapshot.Resources, 6, "4 resources & provider & stack")
 
 				sink1 := RequireSingleNamedResource(l, snapshot.Resources, "sink1")
 				sink2 := RequireSingleNamedResource(l, snapshot.Resources, "sink2")
 				sink3 := RequireSingleNamedResource(l, snapshot.Resources, "sink3")
+				sink4 := RequireSingleNamedResource(l, snapshot.Resources, "sink4")
 
 				expect := resource.PropertyMap{
 					"intEnum":    resource.NewProperty(1.0),
@@ -46,6 +47,24 @@ func init() {
 				assert.Equal(l, expect, sink1.Outputs)
 				assert.Equal(l, expect, sink2.Outputs)
 				assert.Equal(l, expect, sink3.Outputs)
+
+				assert.Equal(l, resource.PropertyMap{
+					"numberEnum": resource.NewProperty(0.1),
+					"wordyEnum":  resource.NewProperty("It's got apostrophes"),
+					"arrayOfEnum": resource.NewProperty([]resource.PropertyValue{
+						resource.NewProperty("one"),
+						resource.NewProperty("two"),
+					}),
+					"mapOfEnum": resource.NewProperty(resource.PropertyMap{
+						"small": resource.NewProperty(1.0),
+						"large": resource.NewProperty(2.0),
+					}),
+					"holder": resource.NewProperty(resource.PropertyMap{
+						"size":  resource.NewProperty(2.0),
+						"color": resource.NewProperty("one"),
+					}),
+					"unionEnum": resource.NewProperty("A Value With Spaces."),
+				}, sink4.Outputs)
 			},
 		}},
 	}

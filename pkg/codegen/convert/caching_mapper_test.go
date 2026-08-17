@@ -61,7 +61,7 @@ func TestCachingPluginMapper_OnlyInstallsOnce(t *testing.T) {
 	// Act.
 	//
 	// After the first time, we should have attempted an installation.
-	data, err := mapper.GetMapping(t.Context(), "gcp", nil /*hint*/)
+	data, err := mapper.GetMapping(t.Context(), "gcp", nil /*hint*/, "" /*ecosystem*/)
 
 	// Assert.
 	require.NoError(t, err)
@@ -71,7 +71,7 @@ func TestCachingPluginMapper_OnlyInstallsOnce(t *testing.T) {
 	// Act.
 	//
 	// After the second time, we should still have only attempted an installation once.
-	data, err = mapper.GetMapping(t.Context(), "gcp", nil /*hint*/)
+	data, err = mapper.GetMapping(t.Context(), "gcp", nil /*hint*/, "" /*ecosystem*/)
 
 	// Assert.
 	require.NoError(t, err)
@@ -117,7 +117,7 @@ func TestCachingPluginMapper_ConcurrentAccess(t *testing.T) {
 	wg.Add(numGoroutines)
 
 	// Create multiple goroutines that will all try to access the map at the same time
-	for i := 0; i < numGoroutines; i++ {
+	for i := range numGoroutines {
 		// Use two different provider names to enforce multiple map writes
 		provider := "gcp"
 		if i%2 == 0 {
@@ -128,7 +128,7 @@ func TestCachingPluginMapper_ConcurrentAccess(t *testing.T) {
 			defer wg.Done()
 
 			// Get the mapping - this will cause concurrent map writes without proper locking
-			_, err := mapper.GetMapping(t.Context(), p, nil /*hint*/)
+			_, err := mapper.GetMapping(t.Context(), p, nil /*hint*/, "" /*ecosystem*/)
 			require.NoError(t, err)
 		}(provider)
 	}

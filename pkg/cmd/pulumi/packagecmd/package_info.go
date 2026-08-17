@@ -29,6 +29,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packages"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageworkspace"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/schemainfo"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/convert"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	pkghost "github.com/pulumi/pulumi/pkg/v3/host"
@@ -36,9 +37,9 @@ import (
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/maputil"
 	"github.com/spf13/cobra"
 )
 
@@ -46,6 +47,9 @@ func newPackageInfoCmd() *cobra.Command {
 	var module string
 	var resource string
 	var function string
+	var parameterArgs []string
+	var asExtension bool
+	var serverURL string
 	cmd := &cobra.Command{
 		Use:   "info",
 		Short: "Show information about a package",
@@ -82,23 +86,38 @@ The <provider> argument can be specified in the same way as in 'pulumi package a
 				return errors.New("only one of --function or --resource can be specified")
 			}
 
-			parameters := &plugin.ParameterizeArgs{Args: args[1:]}
+			parameters := &plugin.ParameterizeArgs{Args: parameterArgs}
+			stdout := cmd.OutOrStdout()
+			color := cmdutil.GetGlobalColorization()
+
+			loadPartial := func() (*schema.PartialPackage, error) {
+				return packages.PartialPackageFromSchemaSource(cmd.Context(), pkgWorkspace.Instance, pctx, args[0],
+					parameters, registry, env.Global(), 0 /* unbounded concurrency */, serverURL)
+			}
+
+			if function != "" {
+				pp, err := loadPartial()
+				if err != nil {
+					return err
+				}
+				return showFunctionInfo(pp, module, function, stdout, color)
+			} else if resource != "" {
+				pp, err := loadPartial()
+				if err != nil {
+					return err
+				}
+				return showResourceInfo(pp, module, resource, stdout, color)
+			}
+
 			spec, _, err := packages.SchemaFromSchemaSource(pkgWorkspace.Instance, pctx, args[0], parameters,
-				registry, env.Global(), 0 /* unbounded concurrency */)
+				registry, env.Global(), 0 /* unbounded concurrency */, asExtension, serverURL)
 			if err != nil {
 				return err
 			}
-
-			stdout := cmd.OutOrStdout()
-
-			if function != "" {
-				return showFunctionInfo(spec, module, function, stdout)
-			} else if resource != "" {
-				return showResourceInfo(spec, module, resource, stdout)
-			} else if module != "" {
-				return showModuleInfo(spec, module, stdout)
+			if module != "" {
+				return showModuleInfo(spec, module, stdout, color)
 			}
-			return showProviderInfo(spec, args, stdout)
+			return showProviderInfo(spec, loadPartial, args, stdout, color)
 		},
 	}
 
@@ -118,11 +137,18 @@ The <provider> argument can be specified in the same way as in 'pulumi package a
 	cmd.Flags().StringVarP(&module, "module", "m", "", "Module name")
 	cmd.Flags().StringVarP(&resource, "resource", "r", "", "Resource name")
 	cmd.Flags().StringVarP(&function, "function", "f", "", "Function name")
+	cmd.Flags().StringVar(&serverURL, "server", "",
+		"A URL to download the plugin from. When set, the provider argument is used as the plugin name "+
+			"directly and no package resolution is performed.")
+	packages.AddExtensionFlag(cmd, &parameterArgs, &asExtension)
 
 	return cmd
 }
 
-func showProviderInfo(spec *schema.PackageSpec, args []string, stdout io.Writer) error {
+func showProviderInfo(
+	spec *schema.PackageSpec, loadPartial func() (*schema.PartialPackage, error), args []string, stdout io.Writer,
+	color colors.Colorization,
+) error {
 	contract.Requiref(len(args) > 0, "args", "should be non-empty")
 
 	modules := make(map[string]struct{})
@@ -145,7 +171,11 @@ func showProviderInfo(spec *schema.PackageSpec, args []string, stdout io.Writer)
 			if len(nameSplit) < 3 {
 				return fmt.Errorf("invalid function name %q", name)
 			}
-			return showFunctionInfo(spec, "", nameSplit[2], stdout)
+			pp, err := loadPartial()
+			if err != nil {
+				return err
+			}
+			return showFunctionInfo(pp, "", nameSplit[2], stdout, color)
 		}
 	}
 
@@ -155,26 +185,31 @@ func showProviderInfo(spec *schema.PackageSpec, args []string, stdout io.Writer)
 			if len(nameSplit) < 3 {
 				return fmt.Errorf("invalid resource name %q", name)
 			}
-			return showResourceInfo(spec, "", nameSplit[2], stdout)
+			pp, err := loadPartial()
+			if err != nil {
+				return err
+			}
+			return showResourceInfo(pp, "", nameSplit[2], stdout, color)
 		}
 	}
 
 	if len(modules) == 1 {
 		for name := range modules {
-			return showModuleInfo(spec, name, stdout)
+			return showModuleInfo(spec, name, stdout, color)
 		}
 	}
 
+	bold := func(s string) string { return schemainfo.Bold(color, s) }
 	fmt.Fprintf(stdout, bold("Name")+": %s\n", spec.Name)
 	fmt.Fprintf(stdout, bold("Version")+": %s\n", spec.Version)
-	fmt.Fprintf(stdout, bold("Description")+": %s\n", summaryFromDescription(spec.Description))
+	fmt.Fprintf(stdout, bold("Description")+": %s\n", schemainfo.Summarize(spec.Description))
 	fmt.Fprintf(stdout, bold("Total resources")+" %d\n", len(spec.Resources))
 	fmt.Fprintf(stdout, bold("Total functions")+" %d\n", len(spec.Functions))
 	fmt.Fprintf(stdout, bold("Total modules")+": %d\n", len(modules))
 
 	fmt.Fprintln(stdout)
 
-	fmt.Fprintf(stdout, bold("Modules")+": %s\n", strings.Join(maputil.SortedKeys(modules), ", "))
+	fmt.Fprintf(stdout, bold("Modules")+": %s\n", strings.Join(slices.Sorted(maps.Keys(modules)), ", "))
 
 	fmt.Fprintln(stdout)
 	strArgs := strings.Join(args, " ")
@@ -193,21 +228,19 @@ func showProviderInfo(spec *schema.PackageSpec, args []string, stdout io.Writer)
 	return nil
 }
 
-func summaryFromDescription(description string) string {
-	// The description of a resource is markdown formatted.  We only want to provide a
-	// short summary of the description, so we will only show the first paragraph. Note
-	// that an empty newline denotes the end of the paragraph, but a regular newline might
-	// still be part of the first paragraph, and may be in the middle of a sentence.
-	// Therefore we split the description into lines, and join the first paragraph, replacing
-	// newlines with spaces.
-	var summary strings.Builder
-	for _, line := range strings.Split(description, "\n") {
-		if strings.TrimSpace(line) == "" {
-			break
-		}
-		summary.WriteString(line + " ")
+// writeDescription renders the full schema description below a Description label, inline when it
+// fits on one line.
+func writeDescription(stdout io.Writer, color colors.Colorization, comment string) {
+	description := schemainfo.RenderDescription(comment)
+	if description == "" {
+		return
 	}
-	return strings.TrimSpace(summary.String())
+	label := schemainfo.Bold(color, "Description")
+	if strings.Contains(description, "\n") {
+		fmt.Fprintf(stdout, label+":\n%s\n", description)
+	} else {
+		fmt.Fprintf(stdout, label+": %s\n", description)
+	}
 }
 
 func simplifyModuleName(typ string, name string) (string, error) {
@@ -219,11 +252,12 @@ func simplifyModuleName(typ string, name string) (string, error) {
 	return split[0] + ":" + moduleSplit[0] + ":" + split[2], nil
 }
 
-func showModuleInfo(spec *schema.PackageSpec, moduleName string, stdout io.Writer) error {
+func showModuleInfo(spec *schema.PackageSpec, moduleName string, stdout io.Writer, color colors.Colorization) error {
+	bold := func(s string) string { return schemainfo.Bold(color, s) }
 	fmt.Fprintf(stdout, bold("Name")+": %s\n", spec.Name)
 	fmt.Fprintf(stdout, bold("Module")+": %s\n", moduleName)
 	fmt.Fprintf(stdout, bold("Version")+": %s\n", spec.Version)
-	fmt.Fprintf(stdout, bold("Description")+": %s\n", summaryFromDescription(spec.Description))
+	fmt.Fprintf(stdout, bold("Description")+": %s\n", schemainfo.Summarize(spec.Description))
 
 	resources := make(map[string]schema.ResourceSpec)
 	for res, spec := range spec.Resources {
@@ -265,299 +299,127 @@ func showModuleInfo(spec *schema.PackageSpec, moduleName string, stdout io.Write
 	fmt.Fprintf(stdout, bold("Resources")+": %d\n", len(resources))
 
 	fmt.Fprintln(stdout)
-	for _, name := range maputil.SortedKeys(resources) {
-		fmt.Fprintf(stdout, " - %s: %s\n", bold(name), summaryFromDescription(resources[name].Description))
+	for _, name := range slices.Sorted(maps.Keys(resources)) {
+		fmt.Fprintf(stdout, " - %s: %s\n", bold(name), schemainfo.Summarize(resources[name].Description))
 	}
 	fmt.Fprintln(stdout)
 
 	fmt.Fprintf(stdout, bold("Functions")+": %d\n", len(functions))
 
 	fmt.Fprintln(stdout)
-	for _, name := range maputil.SortedKeys(functions) {
-		fmt.Fprintf(stdout, " - %s: %s\n", bold(name), summaryFromDescription(functions[name].Description))
+	for _, name := range slices.Sorted(maps.Keys(functions)) {
+		fmt.Fprintf(stdout, " - %s: %s\n", bold(name), schemainfo.Summarize(functions[name].Description))
 	}
 	return nil
 }
 
-func bold(s string) string {
-	return colors.Always.Colorize(colors.Bold + s + colors.Reset)
-}
-
-func underline(s string) string {
-	return colors.Always.Colorize(colors.Underline + s + colors.Reset)
-}
-
-func showFunctionInfo(spec *schema.PackageSpec, moduleName, functionName string, stdout io.Writer) error {
-	var fun schema.FunctionSpec
-	var specFunName string
-	if moduleName != "" {
-		fullFunctionName := fmt.Sprintf("%s:%s:%s", spec.Name, moduleName, functionName)
-		var ok bool
-		fun, ok = spec.Functions[fullFunctionName]
-		specFunName = fullFunctionName
-		if !ok {
-			for name, f := range spec.Functions {
-				simplifiedName, err := simplifyModuleName("function", name)
-				if err != nil {
-					return err
-				}
-
-				if fullFunctionName == simplifiedName {
-					fun = f
-					ok = true
-					specFunName = name
-					break
-				}
-			}
-		}
-		if !ok {
-			return fmt.Errorf("function %q not found", fullFunctionName)
-		}
-	} else {
-		found := false
-		for name, f := range spec.Functions {
-			split := strings.Split(name, ":")
-			if len(split) < 3 {
-				return fmt.Errorf("invalid function name %q", name)
-			}
-			resName := split[2]
-			if resName == functionName {
-				if found {
-					return fmt.Errorf("ambiguous resource name %q, please use --module <module> to disambiguate", functionName)
-				}
-				fun = f
-				found = true
-				specFunName = name
-			}
-		}
-		if !found {
-			return fmt.Errorf("function %q not found", functionName)
-		}
+func showFunctionInfo(
+	pp *schema.PartialPackage, moduleName, functionName string, stdout io.Writer, color colors.Colorization,
+) error {
+	var memberTokens []string
+	for it := pp.Functions().Range(); it.Next(); {
+		memberTokens = append(memberTokens, it.Token())
+	}
+	token, err := findMemberToken(pp, memberTokens, "function", moduleName, functionName)
+	if err != nil {
+		return err
+	}
+	fun, ok, err := pp.Functions().Get(token)
+	if err != nil {
+		return err
+	}
+	if !ok {
+		return fmt.Errorf("function %q not found", functionName)
 	}
 
-	fmt.Fprintf(stdout, bold("Function")+": %s\n", specFunName)
-	fmt.Fprintf(stdout, bold("Description")+": %s\n", summaryFromDescription(fun.Description))
+	bold := func(s string) string { return schemainfo.Bold(color, s) }
+	fmt.Fprintf(stdout, bold("Function")+": %s\n", fun.Token)
+	writeDescription(stdout, color, fun.Comment)
 
 	fmt.Fprintln(stdout)
-	fmt.Fprintln(stdout, bold("Inputs")+":")
-	hasRequired := false
-	for _, name := range maputil.SortedKeys(fun.Inputs.Properties) {
-		prop := fun.Inputs.Properties[name]
-		requiredStr := ""
-		if slices.Contains(fun.Inputs.Required, name) {
-			hasRequired = true
-			requiredStr = "*"
-		}
-		typ, err := getType(spec, prop.TypeSpec)
-		if err != nil {
-			return err
-		}
-		fmt.Fprintf(stdout, " - %s (%s%s): %s\n",
-			bold(name), underline(typ), underline(requiredStr),
-			summaryFromDescription(prop.Description))
+	var inputProperties []*schema.Property
+	if fun.Inputs != nil {
+		inputProperties = fun.Inputs.Properties
 	}
-	if hasRequired {
-		fmt.Fprintf(stdout, "Inputs marked with '*' are required\n")
-	}
+	schemainfo.WriteProperties(stdout, color, "Inputs", schemainfo.BoundProperties(inputProperties), schemainfo.Inputs)
 
-	var returnType *schema.ReturnTypeSpec
-	if fun.ReturnType != nil {
-		returnType = fun.ReturnType
-	} else if fun.Outputs != nil {
-		returnType = &schema.ReturnTypeSpec{
-			ObjectTypeSpec: fun.Outputs,
-		}
-	}
-	if returnType != nil {
+	// A bound function's object outputs live in Outputs; a single non-object return value lives in
+	// ReturnType and renders inline.
+	if fun.Outputs != nil {
 		fmt.Fprintln(stdout)
-		fmt.Fprint(stdout, bold("Outputs")+":")
-		if returnType.ObjectTypeSpec != nil {
-			fmt.Fprintln(stdout)
-			obj := returnType.ObjectTypeSpec
-			hasPresent := false
-			for _, name := range maputil.SortedKeys(obj.Properties) {
-				prop := obj.Properties[name]
-				presentStr := ""
-				if slices.Contains(obj.Required, name) {
-					hasPresent = true
-					presentStr = "*"
-				}
-				typ, err := getType(spec, prop.TypeSpec)
-				if err != nil {
-					return err
-				}
-				fmt.Fprintf(stdout, " - %s (%s%s): %s\n",
-					bold(name), underline(typ), underline(presentStr),
-					summaryFromDescription(prop.Description))
-			}
-			if hasPresent {
-				fmt.Fprintf(stdout, "Outputs marked with '*' are always present\n")
-			}
-		} else if returnType.TypeSpec != nil {
-			typ, err := getType(spec, *returnType.TypeSpec)
-			if err != nil {
-				return err
-			}
-			fmt.Fprintf(stdout, " %s\n", underline(typ))
-		}
+		outputs := schemainfo.BoundProperties(fun.Outputs.Properties)
+		schemainfo.WriteProperties(stdout, color, "Outputs", outputs, schemainfo.Outputs)
+	} else if fun.ReturnType != nil {
+		fmt.Fprintln(stdout)
+		fmt.Fprintf(stdout, bold("Outputs")+": %s\n",
+			schemainfo.Underline(color, schemainfo.TypeString(fun.ReturnType)))
 	}
 
 	return nil
 }
 
-func showResourceInfo(spec *schema.PackageSpec, moduleName, resourceName string, stdout io.Writer) error {
-	var res schema.ResourceSpec
-	var specResName string
-	if moduleName != "" {
-		fullResourceName := fmt.Sprintf("%s:%s:%s", spec.Name, moduleName, resourceName)
-		var ok bool
-		res, ok = spec.Resources[fullResourceName]
-		specResName = fullResourceName
-		if !ok {
-			for name, r := range spec.Resources {
-				simplifiedName, err := simplifyModuleName("resource", name)
-				if err != nil {
-					return err
-				}
-
-				if fullResourceName == simplifiedName {
-					res = r
-					ok = true
-					specResName = name
-					break
-				}
-			}
-		}
-		if !ok {
-			return fmt.Errorf("resource %q not found", fullResourceName)
-		}
-	} else {
-		found := false
-		for name, r := range spec.Resources {
-			split := strings.Split(name, ":")
-			if len(split) < 3 {
-				return fmt.Errorf("invalid resource name %q", name)
-			}
-			resName := split[2]
-			if resName == resourceName {
-				if found {
-					return fmt.Errorf("ambiguous resource name %q, please use --module <module> to disambiguate", resourceName)
-				}
-				res = r
-				found = true
-				specResName = name
-			}
-		}
-		if !found {
-			return fmt.Errorf("resource %q not found", resourceName)
-		}
+func showResourceInfo(
+	pp *schema.PartialPackage, moduleName, resourceName string, stdout io.Writer, color colors.Colorization,
+) error {
+	var memberTokens []string
+	for it := pp.Resources().Range(); it.Next(); {
+		memberTokens = append(memberTokens, it.Token())
+	}
+	token, err := findMemberToken(pp, memberTokens, "resource", moduleName, resourceName)
+	if err != nil {
+		return err
+	}
+	res, ok, err := pp.Resources().Get(token)
+	if err != nil {
+		return err
+	}
+	if !ok {
+		return fmt.Errorf("resource %q not found", resourceName)
 	}
 
-	fmt.Fprintf(stdout, bold("Resource")+": %s\n", specResName)
-	fmt.Fprintf(stdout, bold("Description")+": %s\n", summaryFromDescription(res.Description))
+	bold := func(s string) string { return schemainfo.Bold(color, s) }
+	fmt.Fprintf(stdout, bold("Resource")+": %s\n", res.Token)
+	writeDescription(stdout, color, res.Comment)
 
 	fmt.Fprintln(stdout)
-	fmt.Fprintln(stdout, bold("Inputs")+":")
-	hasRequired := false
-	for _, name := range maputil.SortedKeys(res.InputProperties) {
-		prop := res.InputProperties[name]
-		requiredStr := ""
-		if slices.Contains(res.RequiredInputs, name) {
-			hasRequired = true
-			requiredStr = "*"
-		}
-		typ, err := getType(spec, prop.TypeSpec)
-		if err != nil {
-			return err
-		}
-		fmt.Fprintf(stdout, " - %s (%s%s): %s\n",
-			bold(name), underline(typ), underline(requiredStr),
-			summaryFromDescription(prop.Description))
-	}
-	if hasRequired {
-		fmt.Fprintf(stdout, "Inputs marked with '*' are required\n")
-	}
+	schemainfo.WriteProperties(
+		stdout, color, "Inputs", schemainfo.BoundProperties(res.InputProperties), schemainfo.Inputs)
 
 	fmt.Fprintln(stdout)
-
-	fmt.Fprintln(stdout, bold("Outputs")+":")
-	hasPresent := false
-	for _, name := range maputil.SortedKeys(res.Properties) {
-		prop := res.Properties[name]
-		presentStr := ""
-		if slices.Contains(res.Required, name) {
-			hasPresent = true
-			presentStr = "*"
-		}
-		typ, err := getType(spec, prop.TypeSpec)
-		if err != nil {
-			return err
-		}
-		fmt.Fprintf(stdout, " - %s (%s%s): %s\n",
-			bold(name), underline(typ), underline(presentStr),
-			summaryFromDescription(prop.Description))
-	}
-	if hasPresent {
-		fmt.Fprintf(stdout, "Outputs marked with '*' are always present\n")
-	}
+	schemainfo.WriteProperties(stdout, color, "Outputs", schemainfo.BoundProperties(res.Properties), schemainfo.Outputs)
 	return nil
 }
 
-func getType(spec *schema.PackageSpec, prop schema.TypeSpec) (string, error) {
-	typ := prop.Type
-	if typ != "" && typ != "object" && typ != "array" && prop.Ref == "" {
-		return typ, nil
-	}
-	if prop.Type == "array" {
-		if prop.Items == nil {
-			return "[]unknown", nil
+// findMemberToken resolves the full token of a resource or function from its unqualified name,
+// optionally disambiguated by module.
+func findMemberToken(pp *schema.PartialPackage, memberTokens []string, kind, moduleName, name string) (string, error) {
+	var found string
+	for _, token := range memberTokens {
+		if !tokens.Token(token).HasModuleMember() || string(tokens.Type(token).Name()) != name {
+			continue
 		}
-		typ, err := getType(spec, *prop.Items)
-		if err != nil {
-			return "", err
-		}
-		return "[]" + typ, nil
-	}
-	if prop.Type == "object" {
-		if prop.AdditionalProperties == nil {
-			return "object", nil
-		}
-		typ, err := getType(spec, *prop.AdditionalProperties)
-		if err != nil {
-			return "", err
-		}
-		return "map[string]" + typ, nil
-	}
-	if prop.Ref != "" {
-		if strings.HasPrefix(prop.Ref, "#/types/") {
-			ref := strings.TrimPrefix(prop.Ref, "#/types/")
-			ref = strings.ReplaceAll(ref, "%2F", "/")
-			if typeSpec, ok := spec.Types[ref]; ok {
-				if len(typeSpec.Enum) > 0 {
-					return fmt.Sprintf("enum(%s){%s}",
-						typeSpec.Type, formatEnumValues(typeSpec.Enum)), nil
-				}
-				simplifiedName, err := simplifyModuleName("type", ref)
-				if err != nil {
-					return "", err
-				}
-				split := strings.Split(simplifiedName, ":")
-				return split[2], nil
+		if moduleName != "" {
+			if tokenModule(pp, token) == moduleName {
+				return token, nil
 			}
+			continue
 		}
-		return prop.Ref, nil
+		if found != "" {
+			return "", fmt.Errorf("ambiguous %s name %q, please use --module <module> to disambiguate", kind, name)
+		}
+		found = token
 	}
-	return "unknown", nil
+	if found == "" {
+		return "", fmt.Errorf("%s %q not found", kind, name)
+	}
+	return found, nil
 }
 
-func formatEnumValues(enum []schema.EnumValueSpec) string {
-	var values []string
-	for _, v := range enum {
-		if v.Name != "" {
-			values = append(values, v.Name)
-		} else if v.Value != nil {
-			values = append(values, fmt.Sprintf("%v", v.Value))
-		}
+// tokenModule returns the module of a Pulumi token per the package's module format, mapping the
+// root module back to its "index" spelling so it can be matched against --module index.
+func tokenModule(pp *schema.PartialPackage, token string) string {
+	if module := pp.TokenToModule(token); module != "" {
+		return module
 	}
-	return strings.Join(values, ", ")
+	return "index"
 }

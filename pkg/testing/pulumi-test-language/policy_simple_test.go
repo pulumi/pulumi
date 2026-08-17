@@ -371,7 +371,7 @@ func (h *PolicySimpleLanguageHost) RunPlugin(
 
 	err = server.Send(&pulumirpc.RunPluginResponse{
 		Output: &pulumirpc.RunPluginResponse_Stdout{
-			Stdout: []byte(fmt.Sprintf("%v\n", handle.Port)),
+			Stdout: fmt.Appendf(nil, "%v\n", handle.Port),
 		},
 	})
 	if err != nil {

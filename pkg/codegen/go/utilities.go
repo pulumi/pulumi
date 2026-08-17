@@ -72,6 +72,17 @@ func isReservedResourceField(resourceName, s string) bool {
 	}
 }
 
+// structFieldName returns the generated Go SDK struct field name for a schema property,
+// applying the same rename SDK codegen uses for properties that collide with generated
+// methods (e.g. `elementType` -> `ElementType_`).
+func structFieldName(propertyName string) string {
+	name := Title(propertyName)
+	if isReservedResourceField("", name) {
+		name += "_"
+	}
+	return name
+}
+
 // isLegalIdentifierStart returns true if it is legal for c to be the first character of a Go identifier as per
 // https://golang.org/ref/spec#Identifiers
 func isLegalIdentifierStart(c rune) bool {

@@ -27,6 +27,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -223,7 +224,7 @@ func (p *CallProvider) CheckConfig(
 	_ context.Context,
 	req plugin.CheckConfigRequest,
 ) (plugin.CheckConfigResponse, error) {
-	version, ok := req.News["version"]
+	version, ok := req.News.GetOk("version")
 	if !ok {
 		return plugin.CheckConfigResponse{
 			Failures: makeCheckFailure("version", "missing version"),
@@ -236,14 +237,14 @@ func (p *CallProvider) CheckConfig(
 		}, nil
 	}
 
-	if version.StringValue() != "15.7.9" {
+	if version.AsString() != "15.7.9" {
 		return plugin.CheckConfigResponse{
 			Failures: makeCheckFailure("version", "version is not 15.7.9"),
 		}, nil
 	}
 
 	// version and value
-	if len(req.News) > 2 {
+	if req.News.Len() > 2 {
 		return plugin.CheckConfigResponse{
 			Failures: makeCheckFailure("", fmt.Sprintf("too many properties: %v", req.News)),
 		}, nil
@@ -352,7 +353,7 @@ func (p *CallProvider) callCustomProviderValue(
 	req plugin.CallRequest,
 	monitor pulumirpc.ResourceMonitorClient,
 ) (plugin.CallResponse, error) {
-	selfRef := req.Args["__self__"].ResourceReferenceValue()
+	selfRef := req.Args.Get("__self__").AsResourceReference()
 
 	selfRes, err := monitor.Invoke(ctx, &pulumirpc.ResourceInvokeRequest{
 		Tok: "pulumi:pulumi:getResource",
@@ -393,8 +394,8 @@ func (p *CallProvider) callCustomProviderValue(
 	result := provValue.GetStringValue() + resValue.GetStringValue()
 
 	return plugin.CallResponse{
-		Return: resource.NewPropertyMapFromMap(map[string]any{
-			"result": result,
+		Return: property.NewMap(map[string]property.Value{
+			"result": property.New(result),
 		}),
 	}, nil
 }
@@ -404,7 +405,7 @@ func (p *CallProvider) callProviderIdentity(
 	req plugin.CallRequest,
 	monitor pulumirpc.ResourceMonitorClient,
 ) (plugin.CallResponse, error) {
-	selfRef := req.Args["__self__"].ResourceReferenceValue()
+	selfRef := req.Args.Get("__self__").AsResourceReference()
 
 	selfRes, err := monitor.Invoke(ctx, &pulumirpc.ResourceInvokeRequest{
 		Tok: "pulumi:pulumi:getResource",
@@ -423,8 +424,8 @@ func (p *CallProvider) callProviderIdentity(
 	result := value.GetStringValue()
 
 	return plugin.CallResponse{
-		Return: resource.NewPropertyMapFromMap(map[string]any{
-			"result": result,
+		Return: property.NewMap(map[string]property.Value{
+			"result": property.New(result),
 		}),
 	}, nil
 }
@@ -434,7 +435,7 @@ func (p *CallProvider) callProviderPrefixed(
 	req plugin.CallRequest,
 	monitor pulumirpc.ResourceMonitorClient,
 ) (plugin.CallResponse, error) {
-	prefix, ok := req.Args["prefix"]
+	prefix, ok := req.Args.GetOk("prefix")
 	if !ok {
 		return plugin.CallResponse{
 			Failures: makeCheckFailure("prefix", "missing prefix"),
@@ -447,7 +448,7 @@ func (p *CallProvider) callProviderPrefixed(
 		}, nil
 	}
 
-	selfRef := req.Args["__self__"].ResourceReferenceValue()
+	selfRef := req.Args.Get("__self__").AsResourceReference()
 
 	selfRes, err := monitor.Invoke(ctx, &pulumirpc.ResourceInvokeRequest{
 		Tok: "pulumi:pulumi:getResource",
@@ -463,11 +464,11 @@ func (p *CallProvider) callProviderPrefixed(
 	}
 
 	value := selfRes.Return.Fields["state"].GetStructValue().Fields["value"]
-	result := prefix.StringValue() + value.GetStringValue()
+	result := prefix.AsString() + value.GetStringValue()
 
 	return plugin.CallResponse{
-		Return: resource.NewPropertyMapFromMap(map[string]any{
-			"result": result,
+		Return: property.NewMap(map[string]property.Value{
+			"result": property.New(result),
 		}),
 	}, nil
 }

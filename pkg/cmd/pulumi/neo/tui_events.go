@@ -83,6 +83,17 @@ type UIWarning struct {
 
 func (UIWarning) uiEvent() {}
 
+// UIReconnecting signals that a user message is queued locally while the
+// backend is temporarily unavailable.
+type UIReconnecting struct{}
+
+func (UIReconnecting) uiEvent() {}
+
+// UIReconnected signals that a queued user message has reached the backend.
+type UIReconnected struct{}
+
+func (UIReconnected) uiEvent() {}
+
 // UICancelled signals the session was cancelled.
 type UICancelled struct{}
 

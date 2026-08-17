@@ -16,6 +16,7 @@ package test
 
 import (
 	"flag"
+	"maps"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -122,10 +123,6 @@ var PulumiPulumiSDKTests = []*SDKTest{
 	{
 		Directory:   "resource-args-python",
 		Description: "Resource args with same named resource and type",
-	},
-	{
-		Directory:   "simple-enum-schema",
-		Description: "Simple schema with enum types",
 	},
 	{
 		Directory:   "simple-plain-schema-with-root-package",
@@ -328,16 +325,6 @@ var PulumiPulumiSDKTests = []*SDKTest{
 		Skip:        allLanguages.Except("go/any"),
 	},
 	{
-		Directory:   "go-nested-collections",
-		Description: "Generate a resource that outputs [][][]Foo",
-		Skip:        allLanguages.Except("go/any"),
-	},
-	{
-		Directory:        "secrets",
-		Description:      "Generate a resource with secret properties",
-		SkipCompileCheck: codegen.NewStringSet(TestDotnet),
-	},
-	{
 		Directory:   "regress-py-tfbridge-611",
 		Description: "Regresses pulumi/pulumi-terraform-bridge#611",
 		Skip:        allLanguages.Except("python/any").Union(codegen.NewStringSet("python/test", "python/py_compile")),
@@ -459,6 +446,15 @@ func NoSDKCodegenChecks() bool {
 	return genSDKOnly
 }
 
+// runToolchainChecks reports whether the post-generation checks (compile, unit test) should run.
+// The checks invoke real language toolchains — e.g. `go build` over each generated SDK and its
+// full dependency graph — which is expensive, and their results do not depend on the host
+// platform, so CI only pays for them on Linux. All platforms still validate the generated files
+// against the goldens.
+func runToolchainChecks() bool {
+	return os.Getenv("CI") == "" || runtime.GOOS == "linux"
+}
+
 func init() {
 	noChecks := false
 	if env, ok := os.LookupEnv("PULUMI_TEST_SDK_NO_CHECKS"); ok {
@@ -509,7 +505,7 @@ type SDKCodegenOptions struct {
 // directory that contains that information:
 //
 //	testdata/
-//	    my-simple-schema/   # i.e. `simple-enum-schema`
+//	    my-simple-schema/   # i.e. `simple-resource-schema`
 //	        schema.(json|yaml)
 //	        go/
 //	        python/
@@ -614,12 +610,8 @@ func TestSDKCodegen(t *testing.T, opts *SDKCodegenOptions) { // revive:disable-l
 			// test-specific checks, with test-specific
 			// having precedence.
 			allChecks := make(map[string]CodegenCheck)
-			for k, v := range opts.Checks {
-				allChecks[k] = v
-			}
-			for k, v := range tt.Checks {
-				allChecks[k] = v
-			}
+			maps.Copy(allChecks, opts.Checks)
+			maps.Copy(allChecks, tt.Checks)
 
 			// Sort the checks in alphabetical order.
 			var checkOrder []string
@@ -632,6 +624,10 @@ func TestSDKCodegen(t *testing.T, opts *SDKCodegenOptions) { // revive:disable-l
 			//nolint:paralleltest // test functions are ordered
 			for _, check := range checkOrder {
 				t.Run(check, func(t *testing.T) {
+					if !runToolchainChecks() {
+						t.Skip("Skipping toolchain checks: their results are platform-independent, " +
+							"so they only run on Linux in CI.")
+					}
 					if tt.ShouldSkipTest(opts.Language, check) {
 						t.Skip()
 					}

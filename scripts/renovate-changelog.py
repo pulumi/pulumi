@@ -5,7 +5,7 @@ Generate changelog entries for language provider version bumps that renovate app
 scripts/get-language-providers.sh.
 
 Invoked from `make renovate` (which is itself called from a renovate postUpgradeTasks hook). Detects bumps by diffing
-the script against HEAD and shells out to `go-change create` for each one. No-op when nothing relevant changed.
+the script against HEAD and shells out to `changie new` for each one. No-op when nothing relevant changed.
 """
 
 import re
@@ -23,8 +23,15 @@ SCOPE_FOR = {
 # Matches an array entry like: "dotnet v3.102.0"
 ENTRY_RE = re.compile(r'^\s*"([a-z]+)\s+(v[0-9][0-9.]*)"\s*$')
 
-# Pinned version to match the version used by `make changelog` in the Makefile.
-GO_CHANGE = ["go", "run", "github.com/pulumi/go-change@v0.1.3", "create"]
+CHANGIE = [
+    "mise",
+    "exec",
+    "--yes",
+    "--",
+    "changie",
+    "new",
+    "--interactive=false",
+]
 
 
 def added_entries(diff: str):
@@ -51,19 +58,16 @@ def main():
 
     for lang, version in added_entries(diff):
         scope = SCOPE_FOR.get(lang, lang)
-        title = f"upgrade-{lang}-to-{version.replace('.', '-')}"
         description = f"Upgrade {lang} to {version}"
         subprocess.run(
-            GO_CHANGE
+            CHANGIE
             + [
-                "-t",
+                "--kind",
                 "chore",
-                "-s",
+                "--component",
                 scope,
-                "-d",
+                "--body",
                 description,
-                "--title",
-                title,
             ],
             check=True,
             stdin=subprocess.DEVNULL,

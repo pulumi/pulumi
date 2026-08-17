@@ -30,12 +30,8 @@ type DynListToDynResult struct {
 }
 
 func DynListToDynOutput(ctx *pulumi.Context, args DynListToDynOutputArgs, opts ...pulumi.InvokeOption) DynListToDynResultOutput {
-	return pulumi.ToOutputWithContext(ctx.Context(), args).
-		ApplyT(func(v interface{}) (DynListToDynResultOutput, error) {
-			args := v.(DynListToDynArgs)
-			options := pulumi.InvokeOutputOptions{InvokeOptions: internal.PkgInvokeDefaultOpts(opts)}
-			return ctx.InvokeOutput("any-type-function:index:dynListToDyn", args, DynListToDynResultOutput{}, options).(DynListToDynResultOutput), nil
-		}).(DynListToDynResultOutput)
+	options := pulumi.InvokeOutputOptions{InvokeOptions: internal.PkgInvokeDefaultOpts(opts)}
+	return ctx.InvokeOutput("any-type-function:index:dynListToDyn", args, DynListToDynResultOutput{}, options).(DynListToDynResultOutput)
 }
 
 type DynListToDynOutputArgs struct {

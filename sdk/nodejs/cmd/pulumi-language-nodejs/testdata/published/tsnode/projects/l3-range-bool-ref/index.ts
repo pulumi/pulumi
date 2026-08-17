@@ -7,4 +7,4 @@ let boolResource: nestedobject.Target | undefined;
 if (createBool) {
     boolResource = new nestedobject.Target("boolResource", {name: "bool-resource"});
 }
-const boolTarget = new nestedobject.Target("boolTarget", {name: boolResource!.name.apply(name => `${name}+`)});
+const boolTarget = new nestedobject.Target("boolTarget", {name: pulumi.interpolate`${boolResource!.name}+`});

@@ -19,6 +19,7 @@
         "skipLibCheck": true
     },
     "files": [
+        "getText.ts",
         "index.ts",
         "myInvoke.ts",
         "provider.ts",

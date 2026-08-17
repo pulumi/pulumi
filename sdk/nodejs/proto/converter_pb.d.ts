@@ -5,6 +5,7 @@
 /* eslint-disable */
 
 import * as jspb from "google-protobuf";
+import * as google_protobuf_struct_pb from "google-protobuf/google/protobuf/struct_pb";
 import * as pulumi_codegen_hcl_pb from "./codegen/hcl_pb";
 import * as pulumi_codegen_loader_pb from "./codegen/loader_pb";
 
@@ -15,6 +16,10 @@ export class ConvertStateRequest extends jspb.Message {
     getArgsList(): Array<string>;
     setArgsList(value: Array<string>): ConvertStateRequest;
     addArgs(value: string, index?: number): string;
+    getLoaderTarget(): string;
+    setLoaderTarget(value: string): ConvertStateRequest;
+    getResolverTarget(): string;
+    setResolverTarget(value: string): ConvertStateRequest;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): ConvertStateRequest.AsObject;
@@ -30,6 +35,8 @@ export namespace ConvertStateRequest {
     export type AsObject = {
         mapperTarget: string,
         argsList: Array<string>,
+        loaderTarget: string,
+        resolverTarget: string,
     }
 }
 
@@ -60,6 +67,24 @@ export class ResourceImport extends jspb.Message {
     clearExtension$(): void;
     getExtension$(): ResourceExtension | undefined;
     setExtension$(value?: ResourceExtension): ResourceImport;
+    getParent(): string;
+    setParent(value: string): ResourceImport;
+    clearPropertiesList(): void;
+    getPropertiesList(): Array<string>;
+    setPropertiesList(value: Array<string>): ResourceImport;
+    addProperties(value: string, index?: number): string;
+    getProvider(): string;
+    setProvider(value: string): ResourceImport;
+
+    hasInputs(): boolean;
+    clearInputs(): void;
+    getInputs(): google_protobuf_struct_pb.Struct | undefined;
+    setInputs(value?: google_protobuf_struct_pb.Struct): ResourceImport;
+
+    hasOutputs(): boolean;
+    clearOutputs(): void;
+    getOutputs(): google_protobuf_struct_pb.Struct | undefined;
+    setOutputs(value?: google_protobuf_struct_pb.Struct): ResourceImport;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): ResourceImport.AsObject;
@@ -83,6 +108,11 @@ export namespace ResourceImport {
         isRemote: boolean,
         parameterization?: ResourceParameterization.AsObject,
         extension?: ResourceExtension.AsObject,
+        parent: string,
+        propertiesList: Array<string>,
+        provider: string,
+        inputs?: google_protobuf_struct_pb.Struct.AsObject,
+        outputs?: google_protobuf_struct_pb.Struct.AsObject,
     }
 }
 
@@ -248,6 +278,9 @@ export class ConvertSnippetRequest extends jspb.Message {
     getAttributesMap(): jspb.Map<string, string>;
     clearAttributesMap(): void;
 
+    getResourcesMap(): jspb.Map<string, ConvertSnippetRequest.ResourceReference>;
+    clearResourcesMap(): void;
+
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): ConvertSnippetRequest.AsObject;
     static toObject(includeInstance: boolean, msg: ConvertSnippetRequest): ConvertSnippetRequest.AsObject;
@@ -267,7 +300,37 @@ export namespace ConvertSnippetRequest {
         token: string,
 
         attributesMap: Array<[string, string]>,
+
+        resourcesMap: Array<[string, ConvertSnippetRequest.ResourceReference.AsObject]>,
     }
+
+
+    export class ResourceReference extends jspb.Message { 
+        getToken(): string;
+        setToken(value: string): ResourceReference;
+
+        hasPackage(): boolean;
+        clearPackage(): void;
+        getPackage(): pulumi_codegen_loader_pb.GetSchemaRequest | undefined;
+        setPackage(value?: pulumi_codegen_loader_pb.GetSchemaRequest): ResourceReference;
+
+        serializeBinary(): Uint8Array;
+        toObject(includeInstance?: boolean): ResourceReference.AsObject;
+        static toObject(includeInstance: boolean, msg: ResourceReference): ResourceReference.AsObject;
+        static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+        static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+        static serializeBinaryToWriter(message: ResourceReference, writer: jspb.BinaryWriter): void;
+        static deserializeBinary(bytes: Uint8Array): ResourceReference;
+        static deserializeBinaryFromReader(message: ResourceReference, reader: jspb.BinaryReader): ResourceReference;
+    }
+
+    export namespace ResourceReference {
+        export type AsObject = {
+            token: string,
+            pb_package?: pulumi_codegen_loader_pb.GetSchemaRequest.AsObject,
+        }
+    }
+
 }
 
 export class ConvertSnippetResponse extends jspb.Message { 
@@ -284,6 +347,9 @@ export class ConvertSnippetResponse extends jspb.Message {
 
     getAttributesMap(): jspb.Map<string, string>;
     clearAttributesMap(): void;
+
+    getResourceNamesMap(): jspb.Map<string, string>;
+    clearResourceNamesMap(): void;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): ConvertSnippetResponse.AsObject;
@@ -302,5 +368,7 @@ export namespace ConvertSnippetResponse {
         source: Uint8Array | string,
 
         attributesMap: Array<[string, string]>,
+
+        resourceNamesMap: Array<[string, string]>,
     }
 }

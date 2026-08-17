@@ -18,7 +18,10 @@ import (
 	"context"
 	"encoding/json"
 	"io"
+	"maps"
 	"time"
+
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
@@ -26,7 +29,6 @@ import (
 	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 )
 
 // stackJSONEnvelope is the stable, machine-readable shape emitted by
@@ -123,9 +125,7 @@ func buildStackJSON(in stackJSONInputs) *stackJSONEnvelope {
 		v := cs.Version
 		env.Version = &v
 		env.ActiveUpdate = cs.ActiveUpdate
-		for k, v := range cs.Tags {
-			env.Tags[k] = v
-		}
+		maps.Copy(env.Tags, cs.Tags)
 		if op := cs.CurrentOperation; op != nil {
 			env.CurrentOperation = &stackOperationJSON{
 				Kind:    string(op.Kind),
@@ -170,7 +170,7 @@ func buildStackJSON(in stackJSONInputs) *stackJSONEnvelope {
 	return env
 }
 
-func snapshotResourceJSON(r *resource.State) stackResourceJSON {
+func snapshotResourceJSON(r *pkgresource.State) stackResourceJSON {
 	return stackResourceJSON{
 		URN:    string(r.URN),
 		Type:   string(r.Type),

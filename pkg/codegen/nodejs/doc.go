@@ -119,6 +119,21 @@ func (d DocLanguageHelper) GetResourceFunctionResultName(modName string, f *sche
 	return cgstrings.UppercaseFirst(funcName) + "Result"
 }
 
+// ResolveDocRef renders a single doc ref as a NodeJS name.
+func (d DocLanguageHelper) ResolveDocRef(pkg schema.PackageReference, selfRef, ref schema.DocRef) (string, bool, error) {
+	var info NodePackageInfo
+	if a, err := pkg.Language("nodejs"); err == nil {
+		info, _ = a.(NodePackageInfo)
+	}
+	mod := &modContext{
+		pkg:      pkg,
+		modToPkg: info.ModuleToPackage,
+		mod:      "\x00docrefresolver",
+	}
+	name, ok := mod.docRefResolver(selfRef)(ref)
+	return name, ok, nil
+}
+
 func (d DocLanguageHelper) GetMethodName(m *schema.Method) string {
 	return cgstrings.Camel(m.Name)
 }

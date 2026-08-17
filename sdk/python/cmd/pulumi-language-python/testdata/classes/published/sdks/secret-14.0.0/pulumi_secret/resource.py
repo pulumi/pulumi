@@ -17,14 +17,22 @@ __all__ = ['ResourceArgs', 'Resource']
 class ResourceArgs:
     def __init__(__self__, *,
                  private: pulumi.Input[_builtins.str],
+                 private_array: pulumi.Input[Sequence[pulumi.Input[_builtins.str]]],
                  private_data: pulumi.Input['DataArgs'],
+                 private_data_array: pulumi.Input[Sequence[pulumi.Input['DataArgs']]],
+                 private_data_map: pulumi.Input[Mapping[str, pulumi.Input['DataArgs']]],
+                 private_map: pulumi.Input[Mapping[str, pulumi.Input[_builtins.str]]],
                  public: pulumi.Input[_builtins.str],
                  public_data: pulumi.Input['DataArgs']):
         """
         The set of arguments for constructing a Resource resource.
         """
         pulumi.set(__self__, "private", private)
+        pulumi.set(__self__, "private_array", private_array)
         pulumi.set(__self__, "private_data", private_data)
+        pulumi.set(__self__, "private_data_array", private_data_array)
+        pulumi.set(__self__, "private_data_map", private_data_map)
+        pulumi.set(__self__, "private_map", private_map)
         pulumi.set(__self__, "public", public)
         pulumi.set(__self__, "public_data", public_data)
 
@@ -38,6 +46,15 @@ class ResourceArgs:
         pulumi.set(self, "private", value)
 
     @_builtins.property
+    @pulumi.getter(name="privateArray")
+    def private_array(self) -> pulumi.Input[Sequence[pulumi.Input[_builtins.str]]]:
+        return pulumi.get(self, "private_array")
+
+    @private_array.setter
+    def private_array(self, value: pulumi.Input[Sequence[pulumi.Input[_builtins.str]]]):
+        pulumi.set(self, "private_array", value)
+
+    @_builtins.property
     @pulumi.getter(name="privateData")
     def private_data(self) -> pulumi.Input['DataArgs']:
         return pulumi.get(self, "private_data")
@@ -45,6 +62,33 @@ class ResourceArgs:
     @private_data.setter
     def private_data(self, value: pulumi.Input['DataArgs']):
         pulumi.set(self, "private_data", value)
+
+    @_builtins.property
+    @pulumi.getter(name="privateDataArray")
+    def private_data_array(self) -> pulumi.Input[Sequence[pulumi.Input['DataArgs']]]:
+        return pulumi.get(self, "private_data_array")
+
+    @private_data_array.setter
+    def private_data_array(self, value: pulumi.Input[Sequence[pulumi.Input['DataArgs']]]):
+        pulumi.set(self, "private_data_array", value)
+
+    @_builtins.property
+    @pulumi.getter(name="privateDataMap")
+    def private_data_map(self) -> pulumi.Input[Mapping[str, pulumi.Input['DataArgs']]]:
+        return pulumi.get(self, "private_data_map")
+
+    @private_data_map.setter
+    def private_data_map(self, value: pulumi.Input[Mapping[str, pulumi.Input['DataArgs']]]):
+        pulumi.set(self, "private_data_map", value)
+
+    @_builtins.property
+    @pulumi.getter(name="privateMap")
+    def private_map(self) -> pulumi.Input[Mapping[str, pulumi.Input[_builtins.str]]]:
+        return pulumi.get(self, "private_map")
+
+    @private_map.setter
+    def private_map(self, value: pulumi.Input[Mapping[str, pulumi.Input[_builtins.str]]]):
+        pulumi.set(self, "private_map", value)
 
     @_builtins.property
     @pulumi.getter
@@ -72,7 +116,11 @@ class Resource(pulumi.CustomResource):
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
                  private: pulumi.Input[Optional[_builtins.str]] = None,
+                 private_array: pulumi.Input[Optional[Sequence[pulumi.Input[_builtins.str]]]] = None,
                  private_data: pulumi.Input[Optional[pulumi.InputType['DataArgs']]] = None,
+                 private_data_array: pulumi.Input[Optional[Sequence[pulumi.Input[pulumi.InputType['DataArgs']]]]] = None,
+                 private_data_map: pulumi.Input[Optional[Mapping[str, pulumi.Input[pulumi.InputType['DataArgs']]]]] = None,
+                 private_map: pulumi.Input[Optional[Mapping[str, pulumi.Input[_builtins.str]]]] = None,
                  public: pulumi.Input[Optional[_builtins.str]] = None,
                  public_data: pulumi.Input[Optional[pulumi.InputType['DataArgs']]] = None,
                  __props__=None):
@@ -107,7 +155,11 @@ class Resource(pulumi.CustomResource):
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
                  private: pulumi.Input[Optional[_builtins.str]] = None,
+                 private_array: pulumi.Input[Optional[Sequence[pulumi.Input[_builtins.str]]]] = None,
                  private_data: pulumi.Input[Optional[pulumi.InputType['DataArgs']]] = None,
+                 private_data_array: pulumi.Input[Optional[Sequence[pulumi.Input[pulumi.InputType['DataArgs']]]]] = None,
+                 private_data_map: pulumi.Input[Optional[Mapping[str, pulumi.Input[pulumi.InputType['DataArgs']]]]] = None,
+                 private_map: pulumi.Input[Optional[Mapping[str, pulumi.Input[_builtins.str]]]] = None,
                  public: pulumi.Input[Optional[_builtins.str]] = None,
                  public_data: pulumi.Input[Optional[pulumi.InputType['DataArgs']]] = None,
                  __props__=None):
@@ -122,16 +174,28 @@ class Resource(pulumi.CustomResource):
             if private is None and not opts.urn:
                 raise TypeError("Missing required property 'private'")
             __props__.__dict__["private"] = None if private is None else pulumi.Output.secret(private)
+            if private_array is None and not opts.urn:
+                raise TypeError("Missing required property 'private_array'")
+            __props__.__dict__["private_array"] = None if private_array is None else pulumi.Output.secret(private_array)
             if private_data is None and not opts.urn:
                 raise TypeError("Missing required property 'private_data'")
             __props__.__dict__["private_data"] = None if private_data is None else pulumi.Output.secret(private_data)
+            if private_data_array is None and not opts.urn:
+                raise TypeError("Missing required property 'private_data_array'")
+            __props__.__dict__["private_data_array"] = None if private_data_array is None else pulumi.Output.secret(private_data_array)
+            if private_data_map is None and not opts.urn:
+                raise TypeError("Missing required property 'private_data_map'")
+            __props__.__dict__["private_data_map"] = None if private_data_map is None else pulumi.Output.secret(private_data_map)
+            if private_map is None and not opts.urn:
+                raise TypeError("Missing required property 'private_map'")
+            __props__.__dict__["private_map"] = None if private_map is None else pulumi.Output.secret(private_map)
             if public is None and not opts.urn:
                 raise TypeError("Missing required property 'public'")
             __props__.__dict__["public"] = public
             if public_data is None and not opts.urn:
                 raise TypeError("Missing required property 'public_data'")
             __props__.__dict__["public_data"] = public_data
-        secret_opts = pulumi.ResourceOptions(additional_secret_outputs=["private", "privateData"])
+        secret_opts = pulumi.ResourceOptions(additional_secret_outputs=["private", "privateArray", "privateData", "privateDataArray", "privateDataMap", "privateMap"])
         opts = pulumi.ResourceOptions.merge(opts, secret_opts)
         super(Resource, __self__).__init__(
             'secret:index:Resource',
@@ -156,7 +220,11 @@ class Resource(pulumi.CustomResource):
         __props__ = ResourceArgs.__new__(ResourceArgs)
 
         __props__.__dict__["private"] = None
+        __props__.__dict__["private_array"] = None
         __props__.__dict__["private_data"] = None
+        __props__.__dict__["private_data_array"] = None
+        __props__.__dict__["private_data_map"] = None
+        __props__.__dict__["private_map"] = None
         __props__.__dict__["public"] = None
         __props__.__dict__["public_data"] = None
         return Resource(resource_name, opts=opts, __props__=__props__)
@@ -167,9 +235,29 @@ class Resource(pulumi.CustomResource):
         return pulumi.get(self, "private")
 
     @_builtins.property
+    @pulumi.getter(name="privateArray")
+    def private_array(self) -> pulumi.Output[Sequence[_builtins.str]]:
+        return pulumi.get(self, "private_array")
+
+    @_builtins.property
     @pulumi.getter(name="privateData")
     def private_data(self) -> pulumi.Output['outputs.Data']:
         return pulumi.get(self, "private_data")
+
+    @_builtins.property
+    @pulumi.getter(name="privateDataArray")
+    def private_data_array(self) -> pulumi.Output[Sequence['outputs.Data']]:
+        return pulumi.get(self, "private_data_array")
+
+    @_builtins.property
+    @pulumi.getter(name="privateDataMap")
+    def private_data_map(self) -> pulumi.Output[Mapping[str, 'outputs.Data']]:
+        return pulumi.get(self, "private_data_map")
+
+    @_builtins.property
+    @pulumi.getter(name="privateMap")
+    def private_map(self) -> pulumi.Output[Mapping[str, _builtins.str]]:
+        return pulumi.get(self, "private_map")
 
     @_builtins.property
     @pulumi.getter

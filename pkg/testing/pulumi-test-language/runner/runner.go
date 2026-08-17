@@ -32,6 +32,8 @@ import (
 	"strings"
 	"sync"
 
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
+
 	"github.com/blang/semver"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
@@ -1135,7 +1137,7 @@ func createStackReferences(
 
 		snap := &deploy.Snapshot{
 			SecretsManager: sm,
-			Resources: []*resource.State{
+			Resources: []*pkgresource.State{
 				{
 					Type: resource.RootStackType,
 					URN: resource.CreateURN(resourceName, string(resource.RootStackType), "",
@@ -1679,7 +1681,7 @@ func runLanguageTests(
 			assertPreview = func(
 				l *tests.L, args tests.AssertPreviewArgs,
 			) {
-				require.NoErrorf(l, err, "expected no error in preview")
+				require.NoErrorf(l, args.Err, "expected no error in preview")
 			}
 		}
 

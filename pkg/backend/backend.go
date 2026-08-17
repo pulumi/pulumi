@@ -312,6 +312,7 @@ type EnvironmentsBackend interface {
 		org string,
 		yaml []byte,
 		duration time.Duration,
+		environmentOverrides map[string]string,
 	) (*esc.Environment, apitype.EnvironmentDiagnostics, error)
 }
 

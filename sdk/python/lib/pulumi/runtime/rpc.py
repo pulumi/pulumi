@@ -41,6 +41,7 @@ from semver import Version
 from .. import _types, log
 from .. import urn as urn_util
 from . import known_types, settings
+from .proto import resource_pb2
 from .resource_cycle_breaker import declare_dependency
 
 if TYPE_CHECKING:
@@ -292,7 +293,11 @@ async def _add_dependency(
 
     # Note that a recursive algorithm here would be cleaner, but that results in a
     # RecursionError with deeply nested hierarchies of ComponentResources.
+    # The traversal below must not await: awaiting a URN part way through can
+    # deadlock against a cycle that has not been walked yet. Collect the
+    # resources to await and await them once the whole graph has been checked.
     res_list = [(res, from_resource)]
+    awaitable: list[Resource] = []
     while len(res_list) > 0:
         res, from_resource = res_list.pop(0)
         if not isinstance(res, Resource):
@@ -321,17 +326,16 @@ async def _add_dependency(
         # Rather than adding the component resource itself, each child resource
         # is added as a dependency.
         if isinstance(res, ComponentResource) and not res._remote:
-            # Copy the set before iterating so that any concurrent child additions during
-            # the dependency computation (which is async, so can be interleaved with other
-            # operations including child resource construction which adds children to this
-            # resource) do not trigger modification during iteration errors.
             child_resources = res._childResources.copy()
             for child in child_resources:
                 res_list.append((child, from_resource))
         else:
-            urn = await res.urn.future()
-            if urn:
-                deps[urn] = res
+            awaitable.append(res)
+
+    for res in awaitable:
+        urn = await res.urn.future()
+        if urn:
+            deps[urn] = res
 
 
 async def _expand_dependencies(
@@ -471,9 +475,8 @@ async def serialize_property(
         is_custom = known_types.is_custom_resource(value)
         resource_id = cast("CustomResource", value).id if is_custom else None
 
-        if (
-            exclude_resource_refs_from_deps
-            and await settings.monitor_supports_resource_references()
+        if exclude_resource_refs_from_deps and settings.monitor_supports_feature(
+            resource_pb2.RESOURCE_MONITOR_FEATURE_RESOURCE_REFERENCES
         ):
             # If excluding resource references from dependencies and the monitor supports resource
             # references, we don't want to track this dependency, so we set `deps` to `None` so when
@@ -481,7 +484,9 @@ async def serialize_property(
             deps = None
 
         # If we're retaining resources, serialize the resource as a reference.
-        if await settings.monitor_supports_resource_references():
+        if settings.monitor_supports_feature(
+            resource_pb2.RESOURCE_MONITOR_FEATURE_RESOURCE_REFERENCES
+        ):
             res = {
                 _special_sig_key: _special_resource_sig,
                 "urn": await serialize_property(
@@ -651,7 +656,9 @@ async def serialize_property(
             deps.extend(promise_deps)
         value_resources.update(promise_deps)
 
-        if keep_output_values and await settings.monitor_supports_output_values():
+        if keep_output_values and settings.monitor_supports_feature(
+            resource_pb2.RESOURCE_MONITOR_FEATURE_OUTPUT_VALUES
+        ):
             urn_deps: list[Resource] = []
             for resource in value_resources:
                 await serialize_property(
@@ -680,7 +687,9 @@ async def serialize_property(
 
         if not is_known:
             return UNKNOWN
-        if is_secret and await settings.monitor_supports_secrets():
+        if is_secret and settings.monitor_supports_feature(
+            resource_pb2.RESOURCE_MONITOR_FEATURE_SECRETS
+        ):
             # Serializing an output with a secret value requires the use of a magical signature key,
             # which the engine detects.
             return {_special_sig_key: _special_secret_sig, "value": value}
@@ -983,12 +992,20 @@ def deserialize_resource(
         str(ref_struct["packageVersion"]) if "packageVersion" in ref_struct else ""
     )
 
-    urn_parts = urn_util._parse_urn(urn)
-    urn_name = urn_parts.urn_name
-    typ = urn_parts.typ
-    pkg_name = urn_parts.pkg_name
-    mod_name = urn_parts.mod_name
-    typ_name = urn_parts.typ_name
+    # New engines send type and name as distinct fields.
+    urn_name = str(ref_struct["name"]) if "name" in ref_struct else None
+    typ = str(ref_struct["type"]) if "type" in ref_struct else None
+
+    # Old engines don't and we have to parse the URN.
+    if urn_name is None or typ is None:
+        urn_parts = urn_util._parse_urn(urn)
+        urn_name = urn_parts.urn_name
+        typ = urn_parts.typ
+
+    typ_parts = typ.split(":")
+    pkg_name = typ_parts[0]
+    mod_name = typ_parts[1] if len(typ_parts) > 1 else ""
+    typ_name = typ_parts[2] if len(typ_parts) > 2 else ""
 
     is_provider = pkg_name == "pulumi" and mod_name == "providers"
     if is_provider:
@@ -1000,7 +1017,7 @@ def deserialize_resource(
     else:
         resource_module = get_resource_module(pkg_name, mod_name, version)
         if resource_module is not None:
-            return cast("Resource", resource_module.construct(urn_name, typ, urn))
+            return resource_module.construct(urn_name, typ, urn)
 
     # If we've made it here, deserialize the reference as either a URN or an ID (if present).
     if "id" in ref_struct:
@@ -1451,6 +1468,7 @@ def resolve_outputs(
     custom: bool,
     transform_using_type_metadata: bool = False,
     keep_unknowns: bool = False,
+    resolve_missing_as_unknown: bool = False,
 ):
     # Produce a combined set of property states, starting with inputs and then applying
     # outputs.  If the same property exists in the inputs and outputs states, the output wins.
@@ -1514,7 +1532,9 @@ def resolve_outputs(
                     return_none_on_dict_type_mismatch=True,
                 )
 
-    resolve_properties(resolvers, all_properties, translated_deps, custom)
+    resolve_properties(
+        resolvers, all_properties, translated_deps, custom, resolve_missing_as_unknown
+    )
 
 
 def resolve_properties(
@@ -1522,6 +1542,7 @@ def resolve_properties(
     all_properties: dict[str, Any],
     deps: Mapping[str, set["Resource"]],
     custom: bool,
+    resolve_missing_as_unknown: bool = False,
 ):
     for key, value in all_properties.items():
         # Skip "id" and "urn", since we handle those specially.
@@ -1575,10 +1596,11 @@ def resolve_properties(
 
     # `allProps` may not have contained a value for every resolver: for example, optional outputs may not be present.
     # We will resolve all of these values as `None`, and will mark the value as known if we are not running a
-    # preview.
+    # preview and the resource wasn't a skipped create.
     for key, resolve in resolvers.items():
         if key not in all_properties:
-            resolve(None, not settings.is_dry_run(), False, deps.get(key), None)
+            known = not settings.is_dry_run() and not resolve_missing_as_unknown
+            resolve(None, known, False, deps.get(key), None)
 
 
 def resolve_outputs_due_to_exception(resolvers: dict[str, Resolver], exn: Exception):

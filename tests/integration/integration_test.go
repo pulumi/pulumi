@@ -262,7 +262,10 @@ func TestDestroyStackRef_LocalNonProject_NewEnv(t *testing.T) {
 	e := ptesting.NewEnvironment(t)
 	defer e.DeleteIfNotFailed()
 
-	e.Env = []string{"PULUMI_DIY_BACKEND_LEGACY_LAYOUT=true"}
+	e.Env = []string{
+		"PULUMI_DIY_BACKEND_LEGACY_LAYOUT=true",
+		"PULUMI_DIY_BACKEND_IGNORE_DEPRECATION_ERROR=true",
+	}
 	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 	testDestroyStackRef(e, "")
 }
@@ -273,7 +276,10 @@ func TestDestroyStackRef_LocalNonProject_OldEnv(t *testing.T) {
 	e := ptesting.NewEnvironment(t)
 	defer e.DeleteIfNotFailed()
 
-	e.Env = []string{"PULUMI_SELF_MANAGED_STATE_LEGACY_LAYOUT=true"}
+	e.Env = []string{
+		"PULUMI_SELF_MANAGED_STATE_LEGACY_LAYOUT=true",
+		"PULUMI_DIY_BACKEND_IGNORE_DEPRECATION_ERROR=true",
+	}
 	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 	testDestroyStackRef(e, "")
 }
@@ -1287,9 +1293,9 @@ func TestPolicyPackNew(t *testing.T) {
 	e := ptesting.NewEnvironment(t)
 	defer e.DeleteIfNotFailed()
 	require.False(t, e.PathExists("venv"))
-	stdout, _ := e.RunCommand("pulumi", "policy", "new", "aws-python", "--force")
+	stdout, _ := e.RunCommand(
+		"pulumi", "policy", "new", "aws-python", "--force", "--runtime-options", "toolchain=uv")
 	require.NotContains(t, stdout, "To install dependencies for the Policy Pack, run `pulumi install`")
-	require.Contains(t, stdout, "Finished creating virtual environment")
 	require.Contains(t, stdout, "Finished installing dependencies")
 	require.True(t, e.PathExists("venv"))
 }
@@ -1672,10 +1678,8 @@ func TestRunningViaCLIWrapper(t *testing.T) {
 	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 	e.RunCommand("pulumi", "stack", "init", "dev")
 	e.RunCommand("pulumi", "stack", "select", "-s", "dev")
-	// `pulumi package add` rewrites package.json, so install the local SDK *after* it: InstallDependencies
-	// pins @pulumi/pulumi to the local build with a matching npm override.
-	e.RunCommand("pulumi", "package", "add", providerPath)
 	e.InstallDependencies()
+	e.RunCommand("pulumi", "package", "add", providerPath)
 	e.CWD = e.RootPath
 
 	// Run pulumi via a wrapper that does not start Pulumi in its own process group.

@@ -15,6 +15,7 @@
 package ints
 
 import (
+	"encoding/json"
 	"fmt"
 	"testing"
 
@@ -35,10 +36,11 @@ func getResource(stackInfo integration.RuntimeValidationStackInfo, name string) 
 }
 
 // TestPropertyNameDiffs checks that property names that look like invalid property paths
-// do not break diff generation.
+// do not break diff generation. The program creates one resource per property name, so a
+// single update exercises the diff for every name at once.
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestPropertyNameDiffs(t *testing.T) {
-	t.Parallel()
-
 	validPropertyNames := []string{
 		"foo",
 		"example.com",
@@ -53,35 +55,38 @@ func TestPropertyNameDiffs(t *testing.T) {
 		".[Hello, Unquoted World!]", // Regression v3.89.0 v3.90.1
 		`.H[ello, World!"]`,         // Regression v3.89.0 v3.90.1
 	}
-	//nolint:paralleltest // ProgramTest calls t.Parallel()
-	for _, propName := range validPropertyNames {
-		t.Run("validate path "+propName, func(t *testing.T) {
-			integration.ProgramTest(t, &integration.ProgramTestOptions{
-				Dir:          "step1",
-				Dependencies: []string{"@pulumi/pulumi"},
-				Config: map[string]string{
-					"propertyName": propName,
-				},
-				Quick: true,
+
+	propertyNamesJSON, err := json.Marshal(validPropertyNames)
+	require.NoError(t, err)
+
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:          "step1",
+		Dependencies: []string{"@pulumi/pulumi"},
+		Config: map[string]string{
+			"propertyNames": string(propertyNamesJSON),
+		},
+		Quick: true,
+		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+			require.NotNil(t, stackInfo.Deployment)
+			for i, propName := range validPropertyNames {
+				res, err := getResource(stackInfo, fmt.Sprintf("a%d", i))
+				require.NoError(t, err)
+				state := res.Outputs["state"].(map[string]any)
+				assert.Equal(t, "foo", state[propName])
+			}
+		},
+		EditDirs: []integration.EditDir{
+			{
+				Dir:      "step2",
+				Additive: true,
 				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 					require.NotNil(t, stackInfo.Deployment)
-					res, err := getResource(stackInfo, "a")
-					require.NoError(t, err)
-					state := res.Outputs["state"].(map[string]any)
-					assert.Equal(t, "foo", state[propName])
+					for i := range validPropertyNames {
+						_, err := getResource(stackInfo, fmt.Sprintf("a%d", i))
+						require.NoError(t, err)
+					}
 				},
-				EditDirs: []integration.EditDir{
-					{
-						Dir:      "step2",
-						Additive: true,
-						ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
-							require.NotNil(t, stackInfo.Deployment)
-							_, err := getResource(stackInfo, "a")
-							require.NoError(t, err)
-						},
-					},
-				},
-			})
-		})
-	}
+			},
+		},
+	})
 }

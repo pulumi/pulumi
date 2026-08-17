@@ -17,6 +17,7 @@ package deployment
 import (
 	"errors"
 	"fmt"
+	"os"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
@@ -63,7 +64,11 @@ func newDeploymentRunCmd(ws pkgWorkspace.Context) *cobra.Command {
 				SuppressPermalink: suppressPermalink,
 			}
 
-			project, _, err := ws.ReadProject()
+			cwd, err := os.Getwd()
+			if err != nil {
+				return fmt.Errorf("getting current working directory: %w", err)
+			}
+			project, _, err := ws.ReadProject(cwd)
 			if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
 				return err
 			}
@@ -113,11 +118,13 @@ func newDeploymentRunCmd(ws pkgWorkspace.Context) *cobra.Command {
 
 	cmd.PersistentFlags().BoolVar(
 		&suppressPermalink, "suppress-permalink", false,
-		"Suppress display of the state permalink")
+		"Suppress display of the state permalink",
+	)
 
 	cmd.PersistentFlags().StringVarP(
 		&stack, "stack", "s", "",
-		"The name of the stack to operate on. Defaults to the current stack")
+		"The name of the stack to operate on. Defaults to the current stack",
+	)
 
 	return cmd
 }

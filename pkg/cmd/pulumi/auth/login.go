@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 
@@ -56,61 +57,68 @@ func NewLoginCmd(ws pkgWorkspace.Context, lm backend.LoginManager, store env.Env
 
 	cmd := &cobra.Command{
 		Use:   "login",
-		Short: "Log in to the Pulumi Cloud",
-		Long: "Log in to the Pulumi Cloud.\n" +
+		Short: "Log in to a Pulumi state backend",
+		Long: "Log in to a Pulumi state backend.\n" +
 			"\n" +
-			"The Pulumi Cloud manages your stack's state reliably. Simply run\n" +
+			"With no arguments, this command logs in to Pulumi Cloud:\n" +
 			"\n" +
 			"    $ pulumi login\n" +
 			"\n" +
-			"and this command will prompt you for an access token, including a way to launch your web browser to\n" +
-			"easily obtain one. You can script by using `PULUMI_ACCESS_TOKEN` environment variable.\n" +
+			"If `PULUMI_ACCESS_TOKEN` is set, that token is used. Otherwise, the command prompts for an\n" +
+			"access token and offers to open a browser where you can create one.\n" +
 			"\n" +
-			"By default, this will log in to the managed Pulumi Cloud backend.\n" +
-			"If you prefer to log in to a self-hosted Pulumi Cloud backend, specify a URL. For example, run\n" +
+			"To log in to a self-hosted Pulumi Cloud, pass its API URL:\n" +
 			"\n" +
 			"    $ pulumi login https://api.pulumi.acmecorp.com\n" +
 			"\n" +
-			"to log in to a self-hosted Pulumi Cloud running at the api.pulumi.acmecorp.com domain.\n" +
+			"For either, `--default-org` sets the organization to use when a command doesn't name one, and\n" +
+			"`--interactive` lists the accounts you're already logged in to so you can choose among them.\n" +
 			"\n" +
-			"For `https://` URLs, the CLI will speak REST to a Pulumi Cloud that manages state and concurrency control.\n" +
-			"You can specify a default org to use when logging into the Pulumi Cloud backend or a " +
-			"self-hosted Pulumi Cloud.\n" +
+			"To manage state yourself, pass the URL of a supported storage backend instead. Pulumi stores\n" +
+			"state under a `.pulumi` directory at that location, and backing it up and coordinating access\n" +
+			"across a team is then up to you:\n" +
 			"\n" +
-			"If you prefer to operate Pulumi independently of a Pulumi Cloud, and entirely local to your computer,\n" +
-			"pass `file://<path>`, where `<path>` will be where state checkpoints will be stored. For instance,\n" +
+			"    $ pulumi login file://~                                    # local filesystem\n" +
+			"    $ pulumi login s3://my-pulumi-state-bucket                 # AWS S3\n" +
+			"    $ pulumi login gs://my-pulumi-state-bucket                 # Google Cloud Storage\n" +
+			"    $ pulumi login azblob://my-pulumi-state-bucket             # Azure Blob Storage\n" +
+			"    $ pulumi login postgres://user:password@host:5432/database # PostgreSQL\n" +
 			"\n" +
-			"    $ pulumi login file://~\n" +
-			"\n" +
-			"will store your state information on your computer underneath `~/.pulumi`. It is then up to you to\n" +
-			"manage this state, including backing it up, using it in a team environment, and so on.\n" +
-			"\n" +
-			"As a shortcut, you may pass --local to use your home directory (this is an alias for `file://~`):\n" +
-			"\n" +
-			"    $ pulumi login --local\n" +
-			"\n" +
-			"Additionally, you may leverage supported object storage backends from one of the cloud providers " +
-			"to manage the state independent of the Pulumi Cloud. For instance,\n" +
-			"\n" +
-			"AWS S3:\n" +
-			"\n" +
-			"    $ pulumi login s3://my-pulumi-state-bucket\n" +
-			"\n" +
-			"GCP GCS:\n" +
-			"\n" +
-			"    $ pulumi login gs://my-pulumi-state-bucket\n" +
-			"\n" +
-			"Azure Blob:\n" +
-			"\n" +
-			"    $ pulumi login azblob://my-pulumi-state-bucket\n" +
-			"\n" +
-			"PostgreSQL:\n" +
-			"\n" +
-			"    $ pulumi login postgres://username:password@hostname:5432/database\n",
+			"`--local` is a shortcut for `file://~`, which stores state under `~/.pulumi`.\n",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			displayOptions := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
+			}
+
+			// Login performs the plaintext-to-encrypted migration itself, so
+			// the "will encrypt on the next login" warning would be stale by
+			// the time this command exits.
+			workspace.SuppressPlaintextPendingWarning()
+
+			// Clearly fixable conditions (a locked or momentarily unavailable
+			// store) surface as ordinary errors that leave the file alone and
+			// never reach this path. What does reach it may still be
+			// recoverable — e.g. by switching back to the OS credential store
+			// provider that holds the key — so ask before destroying it.
+			// Automation cannot answer and needs login to succeed, so
+			// non-interactive runs replace the file as before.
+			if _, err := workspace.GetStoredCredentials(); workspace.IsUndecryptableCredentials(err) {
+				fmt.Fprintf(cmd.ErrOrStderr(),
+					"warning: existing stored credentials can no longer be decrypted: %v\n", err)
+				if cmdutil.Interactive() {
+					replace := false
+					if err := survey.AskOne(&survey.Confirm{
+						Message: "Replace the stored credentials with the ones from this login?",
+						Default: false,
+					}, &replace, ui.SurveyIcons(displayOptions.Color)); err != nil || !replace {
+						return errors.New("login cancelled: restore the OS credential store protecting the " +
+							"existing credentials, or run `pulumi logout --all` to discard them")
+					}
+				}
+				if err := workspace.ResetStoredCredentials(); err != nil {
+					return fmt.Errorf("removing undecryptable credentials: %w", err)
+				}
 			}
 
 			// If a <cloud> was specified as an argument, use it.
@@ -140,8 +148,13 @@ func NewLoginCmd(ws pkgWorkspace.Context, lm backend.LoginManager, store env.Env
 				cloudURL = filepath.ToSlash(cloudURL)
 			}
 
+			cwd, err := os.Getwd()
+			if err != nil {
+				return fmt.Errorf("getting current working directory: %w", err)
+			}
+
 			// Try to read the current project
-			project, _, err := ws.ReadProject()
+			project, _, err := ws.ReadProject(cwd)
 			if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
 				return err
 			}
@@ -172,7 +185,8 @@ func NewLoginCmd(ws pkgWorkspace.Context, lm backend.LoginManager, store env.Env
 					cloudURL = "https://api.pulumi.com"
 				}
 			} else if url := strings.TrimPrefix(strings.TrimPrefix(
-				cloudURL, "https://"), "http://"); strings.HasPrefix(url, "app.pulumi.com/") ||
+				cloudURL, "https://",
+			), "http://"); strings.HasPrefix(url, "app.pulumi.com/") ||
 				strings.HasPrefix(url, "pulumi.com") {
 				return fmt.Errorf("%s is not a valid self-hosted backend, "+
 					"use `pulumi login` without arguments to log into the Pulumi Cloud backend", cloudURL)
@@ -202,21 +216,25 @@ func NewLoginCmd(ws pkgWorkspace.Context, lm backend.LoginManager, store env.Env
 			if oidcToken != "" {
 				// Extract defaults from JWT token before creating auth context
 				resolvedOrg, resolvedTeam, resolvedUser, innerErr := extractOIDCDefaults(
-					oidcOrg, oidcTeam, oidcUser, oidcToken)
+					oidcOrg, oidcTeam, oidcUser, oidcToken,
+				)
 				if innerErr != nil {
 					return fmt.Errorf("problem logging in: %w", innerErr)
 				}
 
 				authContext, innerErr := workspace.NewAuthContextForTokenExchange(
-					resolvedOrg, resolvedTeam, resolvedUser, oidcToken, oidcExpiration)
+					resolvedOrg, resolvedTeam, resolvedUser, oidcToken, oidcExpiration,
+				)
 				if innerErr != nil {
 					return fmt.Errorf("problem logging in: %w", innerErr)
 				}
 				be, err = lm.LoginFromAuthContext(
-					ctx, cmdutil.Diag(), cloudURL, project, true /* setCurrent */, insecure, authContext)
+					ctx, cmdutil.Diag(), cloudURL, project, true /* setCurrent */, insecure, authContext,
+				)
 			} else {
 				be, err = lm.Login(
-					ctx, ws, cmdutil.Diag(), cloudURL, project, true /* setCurrent */, insecure, displayOptions.Color)
+					ctx, ws, cmdutil.Diag(), cloudURL, project, true /* setCurrent */, insecure, displayOptions.Color,
+				)
 			}
 
 			if err != nil {
@@ -243,7 +261,7 @@ func NewLoginCmd(ws pkgWorkspace.Context, lm backend.LoginManager, store env.Env
 				fmt.Fprintf(cmd.OutOrStdout(), "Logged in to %s (%s)\n", be.Name(), be.URL())
 			}
 
-			return nil
+			return offerFirstStep(ctx, be, cwd, cmd.OutOrStdout(), displayOptions, cmdutil.Interactive())
 		},
 	}
 
@@ -270,18 +288,17 @@ func NewLoginCmd(ws pkgWorkspace.Context, lm backend.LoginManager, store env.Env
 	cmd.PersistentFlags().StringVar(&oidcUser, "oidc-user", "", "The user when exchanging for a personal token")
 	cmd.PersistentFlags().StringVar(
 		&oidcExpiration, "oidc-expiration", "",
-		"The expiration for the cloud backend access token in duration format (e.g. '15m', '24h')")
+		"The expiration for the cloud backend access token in duration format (e.g. '15m', '24h')",
+	)
 
 	return cmd
 }
 
 func validateCloudBackendType(typ string) error {
-	kind := strings.SplitN(typ, ":", 2)[0]
+	kind, _, _ := strings.Cut(typ, ":")
 	supportedKinds := []string{"azblob", "gs", "s3", "file", "https", "http", "postgres"}
-	for _, supportedKind := range supportedKinds {
-		if kind == supportedKind {
-			return nil
-		}
+	if slices.Contains(supportedKinds, kind) {
+		return nil
 	}
 	return fmt.Errorf("unknown backend cloudUrl format '%s' (supported Url formats are: "+
 		"azblob://, gs://, s3://, file://, https://, http:// and postgres://)",
@@ -366,10 +383,10 @@ func extractOIDCDefaults(organization, team, user, token string) (string, string
 			}
 		}
 		for _, scope := range scopes {
-			if strings.HasPrefix(scope, "team:") {
-				jwtTeam = strings.TrimPrefix(scope, "team:")
-			} else if strings.HasPrefix(scope, "user:") {
-				jwtUser = strings.TrimPrefix(scope, "user:")
+			if after, ok0 := strings.CutPrefix(scope, "team:"); ok0 {
+				jwtTeam = after
+			} else if after, ok0 := strings.CutPrefix(scope, "user:"); ok0 {
+				jwtUser = after
 			}
 			// Note: runner scope not yet implemented in CLI
 		}
@@ -381,7 +398,8 @@ func extractOIDCDefaults(organization, team, user, token string) (string, string
 		return "", "", "", fmt.Errorf(
 			"JWT scope contains both team '%s' and user '%s'. "+
 				"Only one of team or user may be specified for token exchange",
-			jwtTeam, jwtUser)
+			jwtTeam, jwtUser,
+		)
 	}
 
 	// Validate that explicit flags don't conflict with JWT claims
@@ -390,21 +408,24 @@ func extractOIDCDefaults(organization, team, user, token string) (string, string
 			"--oidc-org '%s' conflicts with JWT aud claim organization '%s'. "+
 				"The JWT aud claim takes precedence during token exchange. "+
 				"Either omit --oidc-org to use the JWT value, or ensure they match",
-			organization, jwtOrg)
+			organization, jwtOrg,
+		)
 	}
 	if team != "" && jwtTeam != "" && team != jwtTeam {
 		return "", "", "", fmt.Errorf(
 			"--oidc-team '%s' conflicts with JWT scope team '%s'. "+
 				"The JWT scope takes precedence during token exchange. "+
 				"Either omit --oidc-team to use the JWT value, or ensure they match",
-			team, jwtTeam)
+			team, jwtTeam,
+		)
 	}
 	if user != "" && jwtUser != "" && user != jwtUser {
 		return "", "", "", fmt.Errorf(
 			"--oidc-user '%s' conflicts with JWT scope user '%s'. "+
 				"The JWT scope takes precedence during token exchange. "+
 				"Either omit --oidc-user to use the JWT value, or ensure they match",
-			user, jwtUser)
+			user, jwtUser,
+		)
 	}
 
 	// Use JWT values if explicit flags not provided

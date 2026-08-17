@@ -30,6 +30,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil/rpcerror"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
@@ -39,6 +40,11 @@ type providerServer struct {
 	provider                       Provider
 	acceptSecrets, sendSecrets     bool
 	acceptResources, sendResources bool
+
+	// True if the caller accepts strings containing bytes that are not valid UTF-8. Unlike the other
+	// capabilities this defaults to false: it is only enabled when the caller advertises it via Handshake or
+	// Configure, since older engines cannot decode the encoding.
+	sendByteString bool
 }
 
 func NewProviderServer(provider Provider) pulumirpc.ResourceProviderServer {
@@ -63,11 +69,12 @@ func (p *providerServer) unmarshalOptions(label string, keepOutputValues bool) M
 
 func (p *providerServer) marshalOptions(label string) MarshalOptions {
 	return MarshalOptions{
-		Label:         label,
-		KeepUnknowns:  true,
-		KeepSecrets:   p.sendSecrets,
-		KeepResources: p.sendResources,
-		PropagateNil:  true,
+		Label:          label,
+		KeepUnknowns:   true,
+		KeepSecrets:    p.sendSecrets,
+		KeepResources:  p.sendResources,
+		KeepByteString: p.sendByteString,
+		PropagateNil:   true,
 	}
 }
 
@@ -155,6 +162,7 @@ func (p *providerServer) Handshake(
 		MapperTarget:                req.MapperTarget,
 		LoaderTarget:                req.LoaderTarget,
 		ResolverTarget:              req.ResolverTarget,
+		AcceptsByteString:           req.AcceptsByteString,
 	})
 	if err != nil {
 		return nil, err
@@ -162,12 +170,16 @@ func (p *providerServer) Handshake(
 
 	p.acceptSecrets = res.AcceptSecrets
 	p.acceptResources = res.AcceptResources
+	p.sendByteString = req.AcceptsByteString
 
 	return &pulumirpc.ProviderHandshakeResponse{
 		AcceptSecrets:                   res.AcceptSecrets,
 		AcceptResources:                 res.AcceptResources,
 		AcceptOutputs:                   res.AcceptOutputs,
 		SupportsAutonamingConfiguration: res.SupportsAutonamingConfiguration,
+		// providerServer unmarshals byte string into plain Go strings before handing them to the wrapped
+		// provider, so it can shim support regardless of the provider's own answer.
+		AcceptsByteString: true,
 	}, nil
 }
 
@@ -284,15 +296,15 @@ func (p *providerServer) CheckConfig(ctx context.Context,
 		URN:           urn,
 		Name:          req.Name,
 		Type:          tokens.Type(req.Type),
-		Olds:          state,
-		News:          inputs,
+		Olds:          resource.FromResourcePropertyMap(state),
+		News:          resource.FromResourcePropertyMap(inputs),
 		AllowUnknowns: true,
 	})
 	if err != nil {
 		return nil, p.checkNYI("CheckConfig", err)
 	}
 
-	rpcInputs, err := MarshalProperties(resp.Properties, p.marshalOptions("inputs"))
+	rpcInputs, err := MarshalProperties(resource.ToResourcePropertyMap(resp.Properties), p.marshalOptions("inputs"))
 	if err != nil {
 		return nil, err
 	}
@@ -661,7 +673,7 @@ func (p *providerServer) List(
 	}
 	listStream, err := p.provider.List(stream.Context(), ListRequest{
 		Token:             tokens.Type(req.GetToken()),
-		Query:             query,
+		Query:             resource.FromResourcePropertyMap(query),
 		Limit:             req.GetLimit(),
 		PageSize:          req.GetPageSize(),
 		ContinuationToken: req.GetContinuationToken(),
@@ -957,7 +969,7 @@ func (p *providerServer) Construct(ctx context.Context,
 
 	opts := p.marshalOptions("outputs")
 	opts.KeepOutputValues = req.AcceptsOutputValues
-	outputs, err := MarshalProperties(resp.Outputs, opts)
+	outputs, err := MarshalProperties(resource.ToResourcePropertyMap(resp.Outputs), opts)
 	if err != nil {
 		return nil, err
 	}
@@ -1046,7 +1058,7 @@ func (p *providerServer) Call(ctx context.Context, req *pulumirpc.CallRequest) (
 
 	result, err := p.provider.Call(ctx, CallRequest{
 		Tok:     tokens.ModuleMember(req.GetTok()),
-		Args:    args,
+		Args:    resource.FromResourcePropertyMap(args),
 		Info:    info,
 		Options: options,
 	})
@@ -1057,7 +1069,7 @@ func (p *providerServer) Call(ctx context.Context, req *pulumirpc.CallRequest) (
 
 	opts := p.marshalOptions("return")
 	opts.KeepOutputValues = req.AcceptsOutputValues
-	rpcResult, err := MarshalProperties(result.Return, opts)
+	rpcResult, err := MarshalProperties(resource.ToResourcePropertyMap(result.Return), opts)
 	if err != nil {
 		return nil, err
 	}
@@ -1117,22 +1129,22 @@ func unmarshalViews(views []*pulumirpc.View, opts MarshalOptions) ([]View, error
 
 // unmarshalView is a helper that unmarshals a single view from gRPC into a View struct.
 func unmarshalView(v *pulumirpc.View, opts MarshalOptions) (View, error) {
-	var err error
-
-	var inputs resource.PropertyMap
+	var inputs property.Map
 	if v.Inputs != nil {
-		inputs, err = UnmarshalProperties(v.Inputs, opts)
+		minputs, err := UnmarshalProperties(v.Inputs, opts)
 		if err != nil {
 			return View{}, err
 		}
+		inputs = resource.FromResourcePropertyMap(minputs)
 	}
 
-	var outputs resource.PropertyMap
+	var outputs property.Map
 	if v.Outputs != nil {
-		outputs, err = UnmarshalProperties(v.Outputs, opts)
+		moutputs, err := UnmarshalProperties(v.Outputs, opts)
 		if err != nil {
 			return View{}, err
 		}
+		outputs = resource.FromResourcePropertyMap(moutputs)
 	}
 
 	return View{

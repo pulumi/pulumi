@@ -189,7 +189,7 @@ class MockMonitor:
                 rpc.serialize_properties(registered_resource._asdict(), {})
             )
             fields = {"failures": None, "return": ret_proto}
-            return provider_pb2.InvokeResponse(**fields)
+            return resource_pb2.ResourceInvokeResponse(**fields)
 
         call_args = MockCallArgs(
             token=request.tok, args=args, provider=request.provider
@@ -209,7 +209,7 @@ class MockMonitor:
         ret_proto = _sync_await(rpc.serialize_properties(ret, {}))
 
         fields = {"failures": failures, "return": ret_proto}
-        return provider_pb2.InvokeResponse(**fields)
+        return resource_pb2.ResourceInvokeResponse(**fields)
 
     def ReadResource(self, request):
         # Ensure we have an event loop on this thread because it's needed when deserializing resource references.
@@ -270,6 +270,27 @@ class MockMonitor:
         has_support = request.id != "outputValues"
         return type("SupportsFeatureResponse", (object,), {"hasSupport": has_support})
 
+    def GetDeploymentInfo(self, request):
+        # Support for "outputValues" is deliberately disabled for the mock monitor so
+        # instances of `Output` don't show up in `MockResourceArgs` inputs.
+        # INVOKE_DEPENDS_ON is left out because the mock monitor implements no invoke
+        # dependency gate; leaving it out keeps the client-side one.
+        return resource_pb2.DeploymentInfo(
+            supportedFeatures=[
+                resource_pb2.RESOURCE_MONITOR_FEATURE_SECRETS,
+                resource_pb2.RESOURCE_MONITOR_FEATURE_RESOURCE_REFERENCES,
+                resource_pb2.RESOURCE_MONITOR_FEATURE_ALIAS_SPECS,
+                resource_pb2.RESOURCE_MONITOR_FEATURE_REPLACEMENT_TRIGGER,
+                resource_pb2.RESOURCE_MONITOR_FEATURE_DELETED_WITH,
+                resource_pb2.RESOURCE_MONITOR_FEATURE_REPLACE_WITH,
+                resource_pb2.RESOURCE_MONITOR_FEATURE_TRANSFORMS,
+                resource_pb2.RESOURCE_MONITOR_FEATURE_INVOKE_TRANSFORMS,
+                resource_pb2.RESOURCE_MONITOR_FEATURE_PARAMETERIZATION,
+                resource_pb2.RESOURCE_MONITOR_FEATURE_RESOURCE_HOOKS,
+                resource_pb2.RESOURCE_MONITOR_FEATURE_ERROR_HOOKS,
+            ]
+        )
+
     def RegisterPackage(self, request):
         # Mocks don't _really_ support packages, so we just return a fake package ref.
         return resource_pb2.RegisterPackageResponse(ref="mock-uuid")
@@ -319,8 +340,13 @@ def set_mocks(
     """
     set_mocks configures the Pulumi runtime to use the given mocks for testing.
     """
+    monitor = MockMonitor(mocks) if monitor is None else monitor
+    monitor_features = set(
+        monitor.GetDeploymentInfo(empty_pb2.Empty()).supportedFeatures
+    )
     settings = MockSettings(
-        monitor=MockMonitor(mocks) if not monitor else monitor,
+        monitor=monitor,
+        monitor_features=monitor_features,
         engine=MockEngine(logger),
         project=project if project is not None else "project",
         stack=stack if stack is not None else "stack",
@@ -331,4 +357,5 @@ def set_mocks(
 
     # Ensure a new root stack resource has been initialized.
     if get_root_resource() is None:
-        Stack(lambda: None)
+        root_stack = Stack()
+        root_stack._finish()

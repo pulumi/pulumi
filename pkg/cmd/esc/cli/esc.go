@@ -129,7 +129,7 @@ func New(opts *Options) *cobra.Command {
 			"    - %[1]s env get  : Get a property in an environment definition\n"+
 			"    - %[1]s env set  : Set a property in an environment definition\n"+
 			"    - %[1]s env edit : Edit an environment definition\n"+
-			"    - %[1]s env ls   : List available environments\n"+
+			"    - %[1]s env list : List available environments\n"+
 			"    - %[1]s run      : Run a command within the context of an environment\n"+
 			"    - %[1]s open     : Open an environment and access its contents\n"+
 			"\n"+

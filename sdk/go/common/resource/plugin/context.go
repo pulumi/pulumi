@@ -224,11 +224,9 @@ func NewContextWithRoot(ctx context.Context, d, statusD diag.Sink, host Host,
 	}
 
 	var projectName tokens.PackageName
-	var project *workspace.Project
 	projPath, err := workspace.DetectProjectPath()
 	if err == nil && projPath != "" {
 		if p, loadErr := workspace.LoadProject(projPath); loadErr == nil {
-			project = p
 			projectName = p.Name
 		}
 	}
@@ -249,7 +247,9 @@ func NewContextWithRoot(ctx context.Context, d, statusD diag.Sink, host Host,
 		disableProviderPreview: disableProviderPreview,
 		config:                 config,
 		projectName:            projectName,
-		CloudCredentialEnv:     pulumiCloudCredentialEnv(project),
+		// ripped out of sdk/go/common support, this is used for plugins running via the CLI against a real backend,  we
+		// don't expect other tools still using Context to need this.
+		CloudCredentialEnv: nil,
 	}
 
 	projectPlugins, err := projectPluginsFromProject(pctx, plugins, packages)

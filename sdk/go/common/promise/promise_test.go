@@ -124,15 +124,12 @@ func TestManyGets(t *testing.T) {
 	ctx := t.Context()
 
 	var wg sync.WaitGroup
-	for i := 0; i < 10; i++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-
+	for range 10 {
+		wg.Go(func() {
 			got, err := ps.Promise().Result(ctx)
 			require.NoError(t, err)
 			assert.Equal(t, 42, got)
-		}()
+		})
 	}
 
 	ps.Fulfill(42)

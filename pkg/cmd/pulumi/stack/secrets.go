@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"slices"
 	"strings"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
@@ -59,7 +60,7 @@ func CreateSecretsManagerForExistingStack(
 		}
 	}
 
-	project, _, err := ws.ReadProject()
+	project, _, err := ws.ReadProject("")
 	if err != nil {
 		return err
 	}
@@ -135,7 +136,7 @@ func readStackConfiguration(ctx context.Context, sink diag.Sink, ws pkgWorkspace
 	// Attempt to read a stack configuration, since it's possible that the user may have supplied one even though the
 	// stack has not actually been created yet. If we fail to read one, that's OK -- we'll just create a new one and
 	// populate it as we go.
-	project, _, err := ws.ReadProject()
+	project, _, err := ws.ReadProject("")
 	if err != nil {
 		return &workspace.ProjectStack{}, nil
 	}
@@ -334,12 +335,10 @@ func needsSaveProjectStackAfterSecretManger(
 }
 
 func ValidateSecretsProvider(typ string) error {
-	kind := strings.SplitN(typ, ":", 2)[0]
+	kind, _, _ := strings.Cut(typ, ":")
 	supportedKinds := []string{"default", "passphrase", "awskms", "azurekeyvault", "gcpkms", "hashivault"}
-	for _, supportedKind := range supportedKinds {
-		if kind == supportedKind {
-			return nil
-		}
+	if slices.Contains(supportedKinds, kind) {
+		return nil
 	}
 	return fmt.Errorf("unknown secrets provider type '%s' (supported values: %s)",
 		kind,

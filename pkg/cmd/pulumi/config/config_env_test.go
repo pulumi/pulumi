@@ -21,7 +21,7 @@ import (
 	"strings"
 
 	survey "github.com/AlecAivazis/survey/v2"
-	"github.com/acarl005/stripansi"
+	"github.com/charmbracelet/x/ansi"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
@@ -99,7 +99,7 @@ func newConfigEnvCmdForTestWithCheckYAMLEnvironment(
 		},
 
 		ws: &pkgWorkspace.MockContext{
-			ReadProjectF: func() (*workspace.Project, string, error) {
+			ReadProjectF: func(string) (*workspace.Project, string, error) {
 				p, err := workspace.LoadProjectBytes([]byte(projectYAML), "Pulumi.yaml", encoding.YAML)
 				if err != nil {
 					return nil, "", err
@@ -205,6 +205,10 @@ func (m envDefMap) LoadEnvironment(ctx context.Context, name string) ([]byte, ev
 	return []byte(def), nil, nil
 }
 
+func (m envDefMap) AuthorizeImport(_ context.Context, _ string, _ string, _ bool) error {
+	return nil
+}
+
 func newConfigEnvCmdForInitTest(
 	stdin io.Reader,
 	stdout io.Writer,
@@ -229,7 +233,9 @@ func newConfigEnvCmdForInitTest(
 			if err != nil {
 				return nil, err
 			}
-			_, checkDiags := eval.CheckEnvironment(ctx, name, decl, nil, nil, envs, &esc.ExecContext{}, false)
+			_, checkDiags := eval.CheckEnvironment(
+				ctx, name, decl, nil, nil, envs, &esc.ExecContext{}, false, eval.EvalOptions{},
+			)
 			diags.Extend(checkDiags...)
 			if len(diags) != 0 {
 				return mapEvalDiags(diags), nil
@@ -246,7 +252,9 @@ func newConfigEnvCmdForInitTest(
 			if err != nil {
 				return nil, nil, err
 			}
-			env, checkDiags := eval.CheckEnvironment(ctx, "<yaml>", decl, nil, nil, envs, &esc.ExecContext{}, false)
+			env, checkDiags := eval.CheckEnvironment(
+				ctx, "<yaml>", decl, nil, nil, envs, &esc.ExecContext{}, false, eval.EvalOptions{},
+			)
 			diags.Extend(checkDiags...)
 			return env, mapEvalDiags(diags), nil
 		},
@@ -257,5 +265,5 @@ func newConfigEnvCmdForInitTest(
 // cleanStdout strips ANSI escape codes and carriage returns from captured output so
 // assertions can compare plain text.
 func cleanStdout(stdout string) string {
-	return strings.ReplaceAll(stripansi.Strip(stdout), "\r", "")
+	return strings.ReplaceAll(ansi.Strip(stdout), "\r", "")
 }

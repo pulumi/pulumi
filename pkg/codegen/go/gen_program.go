@@ -45,7 +45,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/maputil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -65,6 +64,7 @@ type generator struct {
 	jsonTempSpiller     *jsonSpiller
 	ternaryTempSpiller  *tempSpiller
 	splatSpiller        *splatSpiller
+	forSpiller          *forSpiller
 	optionalSpiller     *optionalSpiller
 	inlineInvokeSpiller *inlineInvokeSpiller
 	callSpiller         *callSpiller
@@ -86,7 +86,11 @@ type generator struct {
 	// inPlainObjectField indicates that the generator is producing a value for a plain (non-input)
 	// struct field, so the object literal should be emitted as a value rather than a pointer.
 	inPlainObjectField bool
-	isComponent        bool
+	// inPlainInvokeArgs indicates that the generator is producing the arguments for a plain
+	// (non-output-versioned) invoke, which uses the plain argument structs rather than the
+	// paired ...Args input shapes.
+	inPlainInvokeArgs bool
+	isComponent       bool
 
 	// User-configurable options
 	assignResourcesToVariables bool // Assign resource to a new variable instead of _.
@@ -127,6 +131,7 @@ func newGenerator(program *pcl.Program, opts GenerateProgramOptions) (*generator
 		jsonTempSpiller:     &jsonSpiller{},
 		ternaryTempSpiller:  &tempSpiller{},
 		splatSpiller:        &splatSpiller{},
+		forSpiller:          &forSpiller{},
 		optionalSpiller:     &optionalSpiller{},
 		inlineInvokeSpiller: &inlineInvokeSpiller{},
 		callSpiller:         &callSpiller{},
@@ -249,6 +254,8 @@ func componentInputElementType(pclType model.Type) string {
 		return "pulumi.Float64Input"
 	case model.StringType:
 		return "pulumi.StringInput"
+	case model.IDType:
+		return "pulumi.IDInput"
 	default:
 		switch pclType := pclType.(type) {
 		case *model.ListType, *model.MapType:
@@ -288,14 +295,14 @@ func (g *generator) genComponentArgs(w io.Writer, componentName string, componen
 	argsTypeName := Title(componentName) + "Args"
 
 	objectTypedConfigVars := collectObjectTypedConfigVariables(component)
-	variableNames := maputil.SortedKeys(objectTypedConfigVars)
+	variableNames := slices.Sorted(maps.Keys(objectTypedConfigVars))
 	// generate resource args for this component
 	for _, variableName := range variableNames {
 		objectType := objectTypedConfigVars[variableName]
 		objectTypeName := configObjectTypeName(variableName)
 		g.Fprintf(w, "type %s struct {\n", objectTypeName)
 		g.Indented(func() {
-			propertyNames := maputil.SortedKeys(objectType.Properties)
+			propertyNames := slices.Sorted(maps.Keys(objectType.Properties))
 			for _, propertyName := range propertyNames {
 				propertyType := objectType.Properties[propertyName]
 				inputType := componentInputType(propertyType)
@@ -466,10 +473,21 @@ func (g *generator) genComponentDefinition(w io.Writer, componentName string, co
 			})
 			g.Fgenf(w, "%s}\n", g.Indent)
 		} else {
+			// An output's expression has to be lowered before it can be emitted, exactly as a top-level
+			// output's is by genOutputAssignment: a traversal into an invoke or resource result becomes an
+			// ApplyT, which is not something the raw expression can be written as.
+			values := make([]model.Expression, len(outputs))
+			for i, output := range outputs {
+				value, destType := liftValueToOutput(output.Value)
+				expr, temps := g.lowerExpression(value, destType)
+				g.genTemps(w, temps)
+				values[i] = expr
+			}
+
 			g.Fgenf(w, "err = %sctx.RegisterResourceOutputs(&componentResource, pulumi.Map{\n", g.Indent)
 			g.Indented(func() {
-				for _, output := range outputs {
-					g.Fgenf(w, "%s\"%s\": %v,\n", g.Indent, output.LogicalName(), output.Value)
+				for i, output := range outputs {
+					g.Fgenf(w, "%s\"%s\": %.3v,\n", g.Indent, output.LogicalName(), values[i])
 				}
 			})
 			g.Fgenf(w, "%s})\n", g.Indent)
@@ -480,8 +498,10 @@ func (g *generator) genComponentDefinition(w io.Writer, componentName string, co
 			})
 			g.Fgenf(w, "%s}\n", g.Indent)
 
-			for _, output := range outputs {
-				g.Fgenf(w, "%scomponentResource.%s = %v\n", g.Indent, Title(output.Name()), output.Value)
+			for i, output := range outputs {
+				// The field is declared as pulumi.AnyOutput, so the concrete output type the expression
+				// produces has to be converted rather than assigned.
+				g.Fgenf(w, "%scomponentResource.%s = pulumi.Any(%.3v)\n", g.Indent, Title(output.Name()), values[i])
 			}
 		}
 		g.Fgenf(w, "%sreturn &componentResource, nil\n", g.Indent)
@@ -550,6 +570,7 @@ func GenerateProgramWithOptions(program *pcl.Program, opts GenerateProgramOption
 
 		componentFilename := filepath.Base(componentDir)
 		componentName := component.DeclarationName()
+		pcl.MapProvidersAsResources(component.Program)
 		componentGenerator, err := newGenerator(component.Program, opts)
 		componentGenerator.isComponent = true
 		for _, n := range component.Program.Nodes {
@@ -708,7 +729,7 @@ func GenerateProjectFiles(project workspace.Project, program *pcl.Program,
 
 	// For any local dependencies, add a replace statement. Make sure we iter this in sorted order (c.f.
 	// https://github.com/pulumi/pulumi/issues/16859).
-	pkgs := maputil.SortedKeys(localDependencies)
+	pkgs := slices.Sorted(maps.Keys(localDependencies))
 	for _, pkg := range pkgs {
 		path := localDependencies[pkg]
 		// pkg is the package name, we transformed these into Go paths above so use the map generated there
@@ -896,6 +917,14 @@ func (g *generator) collectImports(program *pcl.Program) (helpers codegen.String
 
 	// Accumulate import statements for the various providers
 	for _, n := range program.Nodes {
+		if g.isComponent {
+			switch n.(type) {
+			case *pcl.Resource, *pcl.ReadResource, *pcl.Component:
+				// A child registered inside a component derives its name from the
+				// component's, which the generated code builds with fmt.Sprintf.
+				g.importer.Import("fmt", "fmt")
+			}
+		}
 		switch r := n.(type) {
 		case *pcl.Resource:
 			token, tokenRange := r.GetToken()
@@ -909,10 +938,6 @@ func (g *generator) collectImports(program *pcl.Program) (helpers codegen.String
 				}
 			} else {
 				mod = g.resolveModule(token)
-			}
-			// Extension resources import the extension's SDK package, not the base.
-			if r.Schema != nil && r.Schema.PackageReference != nil {
-				pkg = r.Schema.PackageReference.Name()
 			}
 			vPath, err := g.getVersionPath(program, pkg)
 			if err != nil {
@@ -930,9 +955,6 @@ func (g *generator) collectImports(program *pcl.Program) (helpers codegen.String
 				continue
 			}
 			mod := g.resolveModule(token)
-			if r.Schema != nil && r.Schema.PackageReference != nil {
-				pkg = r.Schema.PackageReference.Name()
-			}
 			vPath, err := g.getVersionPath(program, pkg)
 			if err != nil {
 				if r.Schema != nil {
@@ -964,7 +986,6 @@ func (g *generator) collectImports(program *pcl.Program) (helpers codegen.String
 
 					contract.Assertf(len(diagnostics) == 0, "Expected no diagnostics, got %d", len(diagnostics))
 
-					pkg = g.functionPackage(token)
 					vPath, err := g.getVersionPath(program, pkg)
 					if err != nil {
 						panic(err)
@@ -998,11 +1019,6 @@ func (g *generator) collectImports(program *pcl.Program) (helpers codegen.String
 			return n, nil
 		})
 		contract.Assertf(len(diags) == 0, "Expected no diagnostics, got %d", len(diags))
-
-		if g.isComponent {
-			// needed for resource names
-			g.importer.Import("fmt", "fmt")
-		}
 
 		diags = n.VisitExpressions(nil, func(n model.Expression) (model.Expression, hcl.Diagnostics) {
 			if call, ok := n.(*model.FunctionCallExpression); ok {
@@ -1146,7 +1162,7 @@ func (g *generator) addPulumiImport(pkg, versionPath, mod, name string) {
 
 		if strings.Contains(pkgName, "-") {
 			var alias strings.Builder
-			for _, part := range strings.Split(pkgName, "-") {
+			for part := range strings.SplitSeq(pkgName, "-") {
 				alias.WriteString(strcase.ToLowerCamel(part))
 			}
 			pkgName = alias.String()
@@ -1193,6 +1209,9 @@ func (g *generator) genPostamble(w io.Writer, nodes []pcl.Node) {
 func (g *generator) genHelpers(w io.Writer) {
 	for _, v := range g.arrayHelpers {
 		inputType := strings.TrimSuffix(v.destType, "Array")
+		if inputType == "pulumi.IDArray" {
+			inputType = "pulumi.IDInput"
+		}
 		parts := strings.Split(inputType, ".")
 		contract.Assertf(len(parts) == 2, "genHelpers inputType expected to have two parts.")
 		typ := parts[1]
@@ -1240,13 +1259,50 @@ func (g *generator) genHookNode(w io.Writer, h *pcl.Hook) {
 
 	// Extract the command expressions from the Command tuple.
 	var cmdExprs []model.Expression
+	var cmdTemps []any
 	if tuple, ok := h.Command.(*model.TupleConsExpression); ok {
-		cmdExprs = tuple.Expressions
+		for _, expr := range tuple.Expressions {
+			expr, temps := g.lowerExpression(expr, model.StringType)
+			cmdExprs = append(cmdExprs, expr)
+			cmdTemps = append(cmdTemps, temps...)
+		}
+	}
+
+	if h.Kind == pcl.HookKindError {
+		// Error hooks return whether the failed operation should be retried: retry if and
+		// only if the command exits successfully.
+		g.Fgenf(w, "%s%s, err := ctx.RegisterErrorHook(%q, func(args *pulumi.ErrorHookArgs) (bool, error) {\n",
+			g.Indent, varName, hookName)
+		g.Indented(func() {
+			g.genTempsMultiReturn(w, cmdTemps, "bool")
+			if len(cmdExprs) > 0 {
+				g.Fgenf(w, "%sreturn exec.Command(%v", g.Indent, cmdExprs[0])
+				for _, arg := range cmdExprs[1:] {
+					g.Fgenf(w, ", %v", arg)
+				}
+				g.Fgenf(w, ").Run() == nil, nil\n")
+			} else {
+				g.Fgenf(w, "%sreturn false, nil\n", g.Indent)
+			}
+		})
+		g.Fgenf(w, "%s})\n", g.Indent)
+		g.Fgenf(w, "%sif err != nil {\n", g.Indent)
+		g.Indented(func() {
+			if g.isComponent {
+				g.Fgenf(w, "%sreturn nil, err\n", g.Indent)
+			} else {
+				g.Fgenf(w, "%sreturn err\n", g.Indent)
+			}
+		})
+		g.Fgenf(w, "%s}\n", g.Indent)
+		g.isErrAssigned = true
+		return
 	}
 
 	g.Fgenf(w, "%s%s, err := ctx.RegisterResourceHook(%q, func(args *pulumi.ResourceHookArgs) error {\n",
 		g.Indent, varName, hookName)
 	g.Indented(func() {
+		g.genTemps(w, cmdTemps)
 		if len(cmdExprs) > 0 {
 			g.Fgenf(w, "%sreturn exec.Command(%v", g.Indent, cmdExprs[0])
 			for _, arg := range cmdExprs[1:] {
@@ -1532,7 +1588,11 @@ func (g *generator) genResourceOptions(w io.Writer, block *model.Block) {
 				g.Fgenf(w, ", pulumi.ResourceHooks(&pulumi.ResourceHookBinding{")
 				for _, hookType := range hookTypes {
 					vars := hookVars[hookType]
-					g.Fgenf(w, "%s: []*pulumi.ResourceHook{%s}, ", Title(hookType), strings.Join(vars, ", "))
+					hookGoType := "ResourceHook"
+					if hookType == "onError" {
+						hookGoType = "ErrorHook"
+					}
+					g.Fgenf(w, "%s: []*pulumi.%s{%s}, ", Title(hookType), hookGoType, strings.Join(vars, ", "))
 				}
 				g.Fgenf(w, "})")
 			}
@@ -1558,10 +1618,6 @@ func (g *generator) genResource(w io.Writer, r *pcl.Resource) {
 	}
 	if pkg == "pulumi" && mod == "pulumi" {
 		mod = ""
-	}
-	// Extension resources are emitted from the extension's SDK package, not the base.
-	if r.Schema != nil && r.Schema.PackageReference != nil {
-		pkg = r.Schema.PackageReference.Name()
 	}
 	if mod == "" || strings.HasPrefix(mod, "/") || mod == IndexToken {
 		originalMod = mod
@@ -1632,7 +1688,7 @@ func (g *generator) genResource(w io.Writer, r *pcl.Resource) {
 						}
 					}
 				}
-				g.Fgenf(w, "%s: %.v,\n", strings.Title(attr.Name), attr.Value)
+				g.Fgenf(w, "%s: %.v,\n", structFieldName(attr.Name), attr.Value)
 				g.inPlainObjectField = false
 			}
 			g.Fprint(w, "}")
@@ -1681,7 +1737,9 @@ func (g *generator) genResource(w io.Writer, r *pcl.Resource) {
 			g.Fgenf(w, "for index := 0; index < %.v; index++ {\n", rangeExpr)
 			g.Indented(func() {
 				g.Fgenf(w, "%skey0 := index\n", g.Indent)
-				g.Fgenf(w, "%s%s := index\n", g.Indent, valVar)
+				if isValUsed {
+					g.Fgenf(w, "%sval0 := index\n", g.Indent)
+				}
 			})
 		} else {
 			g.Fgenf(w, "for key0, %s := range %.v {\n", valVar, rangeExpr)
@@ -1771,7 +1829,7 @@ func (g *generator) genReadResource(w io.Writer, r *pcl.ReadResource) {
 		if len(stateInputs) > 0 {
 			g.Fgenf(w, "&%s.%sState{\n", modOrAlias, typ)
 			for _, attr := range stateInputs {
-				g.Fgenf(w, "%s: %.v,\n", strings.Title(attr.Name), attr.Value)
+				g.Fgenf(w, "%s: %.v,\n", structFieldName(attr.Name), attr.Value)
 			}
 			g.Fprint(w, "}")
 		} else {
@@ -1816,7 +1874,9 @@ func (g *generator) genReadResource(w io.Writer, r *pcl.ReadResource) {
 			g.Fgenf(w, "for index := 0; index < %.v; index++ {\n", rangeExpr)
 			g.Indented(func() {
 				g.Fgenf(w, "%skey0 := index\n", g.Indent)
-				g.Fgenf(w, "%s%s := index\n", g.Indent, valVar)
+				if isValUsed {
+					g.Fgenf(w, "%sval0 := index\n", g.Indent)
+				}
 			})
 		} else {
 			g.Fgenf(w, "for key0, %s := range %.v {\n", valVar, rangeExpr)
@@ -1911,6 +1971,8 @@ func deferredOutputTypeParameter(outputType model.Type) string {
 		return "float64"
 	case model.StringType:
 		return "string"
+	case model.IDType:
+		return "pulumi.ID"
 	default:
 		switch exprType := unwrapped.(type) {
 		case *model.ListType:
@@ -1937,6 +1999,8 @@ func deferredOutputCastTypeParameter(outputType model.Type) string {
 		return "pulumi.Float64Output"
 	case model.StringType:
 		return "pulumi.StringOutput"
+	case model.IDType:
+		return "pulumi.IDOutput"
 	default:
 		switch exprType := unwrapped.(type) {
 		case *model.ListType:
@@ -1949,6 +2013,8 @@ func deferredOutputCastTypeParameter(outputType model.Type) string {
 				return "pulumi.Float64ArrayOutput"
 			case model.StringType:
 				return "pulumi.StringArrayOutput"
+			case model.IDType:
+				return "pulumi.IDArrayOutput"
 			}
 			return "pulumi.ArrayOutput"
 		case *model.MapType:
@@ -1961,6 +2027,8 @@ func deferredOutputCastTypeParameter(outputType model.Type) string {
 				return "pulumi.Float64MapOutput"
 			case model.StringType:
 				return "pulumi.StringMapOutput"
+			case model.IDType:
+				return "pulumi.IDMapOutput"
 			}
 			return "pulumi.MapOutput"
 		case *model.OutputType:
@@ -2117,7 +2185,9 @@ func (g *generator) genComponent(w io.Writer, r *pcl.Component) {
 			g.Fgenf(w, "for index := 0; index < %.v; index++ {\n", rangeExpr)
 			g.Indented(func() {
 				g.Fgenf(w, "%skey0 := index\n", g.Indent)
-				g.Fgenf(w, "%s%s := index\n", g.Indent, valVar)
+				if isValUsed {
+					g.Fgenf(w, "%sval0 := index\n", g.Indent)
+				}
 			})
 		} else {
 			g.Fgenf(w, "for key0, %s := range %.v {\n", valVar, rangeExpr)
@@ -2204,7 +2274,51 @@ func (g *generator) genOutputAssignment(w io.Writer, v *pcl.OutputVariable) {
 	value, destType := liftValueToOutput(v.Value)
 	expr, temps := g.lowerExpression(value, destType)
 	g.genTemps(w, temps)
+	// If the value renders as a typed Go map/slice of Pulumi Input interfaces
+	// (e.g. map[string]pulumi.IDInput), cast it to the corresponding named
+	// Pulumi container so it satisfies pulumi.Input.
+	if wrap, ok := g.typedInputContainerWrap(expr); ok {
+		g.Fgenf(w, "ctx.Export(%q, %s%.3v))\n", v.LogicalName(), wrap, expr)
+		return
+	}
 	g.Fgenf(w, "ctx.Export(%q, %.3v)\n", v.LogicalName(), expr)
+}
+
+// typedInputContainerWrap returns a `pulumi.XMap(` / `pulumi.XArray(` prefix
+// when expr renders as a raw Go map/slice of Pulumi Input interfaces (e.g.
+// map[string]pulumi.IDInput). Those raw containers don't satisfy pulumi.Input
+// by themselves, but casting to the named type does — the underlying types
+// are identical. Only recognized for traversals into a local variable, where
+// the local's Go type is derivable without hitting schema resolution.
+func (g *generator) typedInputContainerWrap(expr model.Expression) (string, bool) {
+	// Look through the IntrinsicConvert liftValueToOutput wraps.
+	inner := expr
+	for {
+		call, ok := inner.(*model.FunctionCallExpression)
+		if !ok || call.Name != pcl.IntrinsicConvert || len(call.Args) != 1 {
+			break
+		}
+		inner = call.Args[0]
+	}
+	st, ok := inner.(*model.ScopeTraversalExpression)
+	if !ok || len(st.Parts) == 0 {
+		return "", false
+	}
+	if _, ok := st.Parts[0].(*pcl.LocalVariable); !ok {
+		return "", false
+	}
+	goType := g.argumentTypeName(inner.Type(), false)
+	if elm, ok := strings.CutPrefix(goType, "map[string]"); ok {
+		if named, ok := pulumiInputElementCastName(elm); ok {
+			return "pulumi." + named + "Map(", true
+		}
+	}
+	if elm, ok := strings.CutPrefix(goType, "[]"); ok {
+		if named, ok := pulumiInputElementCastName(elm); ok {
+			return "pulumi." + named + "Array(", true
+		}
+	}
+	return "", false
 }
 
 func (g *generator) genTemps(w io.Writer, temps []any) {
@@ -2258,6 +2372,9 @@ func (g *generator) genTempsMultiReturn(w io.Writer, temps []any, zeroValueType 
 		case *splatTemp:
 			argTyp := g.argumentTypeName(t.Value.Each.Type(), false)
 			if strings.Contains(argTyp, ".") {
+				if argTyp == "pulumi.IDInput" {
+					argTyp = "pulumi.ID"
+				}
 				g.Fgenf(w, "var %s %sArray\n", t.Name, argTyp)
 			} else {
 				g.Fgenf(w, "var %s []%s\n", t.Name, argTyp)
@@ -2265,6 +2382,8 @@ func (g *generator) genTempsMultiReturn(w io.Writer, temps []any, zeroValueType 
 			g.Fgenf(w, "for _, val0 := range %.v {\n", t.Value.Source)
 			g.Fgenf(w, "%s = append(%s, %.v)\n", t.Name, t.Name, t.Value.Each)
 			g.Fgenf(w, "}\n")
+		case *forTemp:
+			g.genForTemp(w, t)
 		case *optionalTemp:
 			g.Fgenf(w, "%s := %.v\n", t.Name, t.Value)
 		case *inlineInvokeTemp:
@@ -2403,7 +2522,7 @@ func (g *generator) genConfigVariable(w io.Writer, v *pcl.ConfigVariable) {
 	}
 
 	if v.Description != "" {
-		for _, line := range strings.Split(v.Description, "\n") {
+		for line := range strings.SplitSeq(v.Description, "\n") {
 			g.Fgenf(w, "%s// %s\n", g.Indent, line)
 		}
 	}

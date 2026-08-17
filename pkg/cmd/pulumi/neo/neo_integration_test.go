@@ -15,6 +15,7 @@
 package neo
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -22,6 +23,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -35,6 +37,8 @@ import (
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -52,9 +56,10 @@ const testWaitTimeout = 30 * time.Second
 type neoFakeServer struct {
 	server *httptest.Server
 
-	mu        sync.Mutex
-	posts     []recordedPost
-	streamHit bool
+	mu                 sync.Mutex
+	posts              []recordedPost
+	streamHit          bool
+	streamLastEventIDs []string
 
 	// streamSend pushes raw event payloads (one JSON object per send) to the
 	// SSE handler, which frames them as `data: ...\n\n` and flushes. Closing
@@ -105,6 +110,7 @@ func newNeoFakeServer(t *testing.T) *neoFakeServer {
 		func(w http.ResponseWriter, r *http.Request) {
 			s.mu.Lock()
 			s.streamHit = true
+			s.streamLastEventIDs = append(s.streamLastEventIDs, r.Header.Get("Last-Event-ID"))
 			s.mu.Unlock()
 
 			w.Header().Set("Content-Type", "text/event-stream")
@@ -129,12 +135,46 @@ func newNeoFakeServer(t *testing.T) *neoFakeServer {
 			}
 		})
 
+	// GET /api/preview/agents/{org}/tasks/{id}/events → paginated event list
+	// used by `pulumi neo resume` to attach from the current tail without
+	// replaying historical local tool calls.
+	mux.HandleFunc("/api/preview/agents/test-org/tasks/task-1/events",
+		func(w http.ResponseWriter, _ *http.Request) {
+			userEvent, err := json.Marshal(apitype.AgentUserEventUserMessage{
+				Type:    userEventUserMessage,
+				Content: "historical user message",
+			})
+			require.NoError(t, err)
+			assistantEvent, err := json.Marshal(apitype.AgentBackendEventAssistantMessage{
+				Type:    backendEventAssistantMessage,
+				Content: "historical assistant response",
+				IsFinal: true,
+			})
+			require.NoError(t, err)
+			w.Header().Set("Content-Type", "application/json")
+			_ = json.NewEncoder(w).Encode(map[string]any{
+				"events": []apitype.AgentConsoleEvent{
+					{Type: consoleEventUserInput, ID: "evt-1", EventBody: userEvent},
+					{Type: consoleEventAgentResponse, ID: "evt-tail", EventBody: assistantEvent},
+				},
+			})
+		})
+
 	// POST /api/preview/agents/{org}/tasks/{id} → PostNeoTaskUserEvent. Record
 	// the wrapped {"event": ...} body. The dispatcher posts here when the user
 	// types into the TUI; the bug-fix scenario doesn't strictly need it, but
 	// recording lets the test assert the wiring is reachable.
 	mux.HandleFunc("/api/preview/agents/test-org/tasks/task-1",
 		func(w http.ResponseWriter, r *http.Request) {
+			if r.Method == http.MethodGet {
+				w.Header().Set("Content-Type", "application/json")
+				_ = json.NewEncoder(w).Encode(client.NeoTask{
+					TaskID:         "task-1",
+					ApprovalMode:   client.NeoApprovalModeBalanced,
+					PermissionMode: client.NeoPermissionModeReadOnly,
+				})
+				return
+			}
 			body, _ := io.ReadAll(r.Body)
 			s.mu.Lock()
 			s.posts = append(s.posts, recordedPost{path: r.URL.Path, body: body})
@@ -208,6 +248,12 @@ func (s *neoFakeServer) sawStreamConnect() bool {
 	return s.streamHit
 }
 
+func (s *neoFakeServer) recordedStreamLastEventIDs() []string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return append([]string(nil), s.streamLastEventIDs...)
+}
+
 // TestRunNeoIntegration_DoubleCtrlCExits is the high-fidelity regression test
 // for the Ctrl+C double-press hang. It runs the full runNeo entrypoint
 // (interactive path) against an in-process httptest.Server with a real
@@ -217,7 +263,7 @@ func (s *neoFakeServer) sawStreamConnect() bool {
 // kept gctx alive, Session.Run blocked on `<-ctx.Done` forever, and g.Wait
 // hung — this test would time out instead of completing.
 //
-//nolint:paralleltest // mutates package globals (BackendInstance, pkgWorkspace.Instance, newTeaProgram, isInteractive)
+//nolint:paralleltest,lll // mutates package globals (DefaultLoginManager, pkgWorkspace.Instance, newTeaProgram, isInteractive)
 func TestRunNeoIntegration_DoubleCtrlCExits(t *testing.T) {
 	isolateWorkspace(t) // PULUMI_STACK="", PULUMI_HOME=t.TempDir()
 
@@ -227,8 +273,7 @@ func TestRunNeoIntegration_DoubleCtrlCExits(t *testing.T) {
 	// constructor; it reads no global state and performs no I/O at construction.
 	pc := client.NewClient(srv.server.URL, "", false, nil)
 
-	// Fake backend wired with the real client. CurrentBackend short-circuits
-	// to BackendInstance when set, bypassing all login / cloud-URL resolution.
+	// Fake backend wired with the real client.
 	be := newFakeBackend()
 	be.ClientV = pc
 	be.GetDefaultOrgF = func(context.Context) (string, error) { return "test-org", nil }
@@ -236,9 +281,24 @@ func TestRunNeoIntegration_DoubleCtrlCExits(t *testing.T) {
 		return "test-user", []string{"test-org"}, nil, nil
 	}
 
-	prevBackend := cmdBackend.BackendInstance
-	cmdBackend.BackendInstance = be
-	t.Cleanup(func() { cmdBackend.BackendInstance = prevBackend })
+	lm := &cmdBackend.MockLoginManager{
+		CurrentF: func(
+			context.Context, pkgWorkspace.Context, diag.Sink,
+			string, *workspace.Project, bool,
+		) (backend.Backend, error) {
+			return be, nil
+		},
+		LoginF: func(context.Context, pkgWorkspace.Context, diag.Sink,
+			string, *workspace.Project, bool,
+			bool, colors.Colorization,
+		) (backend.Backend, error) {
+			return be, nil
+		},
+	}
+
+	prevLm := cmdBackend.DefaultLoginManager
+	cmdBackend.DefaultLoginManager = lm
+	t.Cleanup(func() { cmdBackend.DefaultLoginManager = prevLm })
 
 	prevWorkspace := pkgWorkspace.Instance
 	pkgWorkspace.Instance = &pkgWorkspace.MockContext{}
@@ -305,10 +365,16 @@ func TestRunNeoIntegration_DoubleCtrlCExits(t *testing.T) {
 
 	// runNeo on its own goroutine so the test can enforce a hard timeout
 	// rather than relying on `go test -timeout` to catch a hang.
+	var stderr bytes.Buffer
 	done := make(chan error, 1)
 	go func() {
-		done <- runNeo(t.Context(), io.Discard, io.Discard, "do a thing", "" /*stack*/, "test-org", t.TempDir(),
-			client.NeoApprovalModeManual, client.NeoPermissionModeDefault, false /*printMode*/, false /*disableIntegrations*/)
+		done <- runNeo(t.Context(), io.Discard, &stderr, neoRunOptions{
+			prompt:         "do a thing",
+			orgFlag:        "test-org",
+			cwdFlag:        t.TempDir(),
+			approvalMode:   client.NeoApprovalModeManual,
+			permissionMode: client.NeoPermissionModeDefault,
+		})
 	}()
 
 	select {
@@ -338,6 +404,19 @@ func TestRunNeoIntegration_DoubleCtrlCExits(t *testing.T) {
 		"CreateNeoTask body must include the prompt")
 	assert.True(t, srv.sawStreamConnect(),
 		"SSE stream was never opened — test did not exercise Session.Run")
+	assert.Contains(t, stderr.String(), "To resume this Neo session, run: pulumi neo resume task-1 --org test-org")
+}
+
+// runNeoTest invokes runNeo with the option defaults shared by these integration tests; tests
+// vary only the prompt and working directory.
+func runNeoTest(ctx context.Context, prompt, cwd string) error {
+	return runNeo(ctx, io.Discard, io.Discard, neoRunOptions{
+		prompt:         prompt,
+		orgFlag:        "test-org",
+		cwdFlag:        cwd,
+		approvalMode:   client.NeoApprovalModeManual,
+		permissionMode: client.NeoPermissionModeDefault,
+	})
 }
 
 // installNeoTestEnv wires the fake backend and workspace globals for an
@@ -354,9 +433,24 @@ func installNeoTestEnv(t *testing.T, srv *neoFakeServer, interactive bool) {
 	be.ClientV = pc
 	be.GetDefaultOrgF = func(context.Context) (string, error) { return "test-org", nil }
 
-	prevBackend := cmdBackend.BackendInstance
-	cmdBackend.BackendInstance = be
-	t.Cleanup(func() { cmdBackend.BackendInstance = prevBackend })
+	lm := &cmdBackend.MockLoginManager{
+		CurrentF: func(
+			context.Context, pkgWorkspace.Context, diag.Sink,
+			string, *workspace.Project, bool,
+		) (backend.Backend, error) {
+			return be, nil
+		},
+		LoginF: func(context.Context, pkgWorkspace.Context, diag.Sink,
+			string, *workspace.Project, bool,
+			bool, colors.Colorization,
+		) (backend.Backend, error) {
+			return be, nil
+		},
+	}
+
+	prevLm := cmdBackend.DefaultLoginManager
+	cmdBackend.DefaultLoginManager = lm
+	t.Cleanup(func() { cmdBackend.DefaultLoginManager = prevLm })
 
 	prevWorkspace := pkgWorkspace.Instance
 	pkgWorkspace.Instance = &pkgWorkspace.MockContext{}
@@ -374,7 +468,7 @@ func installNeoTestEnv(t *testing.T, srv *neoFakeServer, interactive bool) {
 // CreateNeoTask, console URL print, Session construction, session.Run) had no
 // coverage.
 //
-//nolint:paralleltest // mutates package globals (BackendInstance, pkgWorkspace.Instance, isInteractive)
+//nolint:paralleltest // mutates package globals (DefaultLoginManager, pkgWorkspace.Instance, isInteractive)
 func TestRunNeoIntegration_NonInteractiveHappyPath(t *testing.T) {
 	isolateWorkspace(t)
 	srv := newNeoFakeServer(t)
@@ -393,8 +487,7 @@ func TestRunNeoIntegration_NonInteractiveHappyPath(t *testing.T) {
 
 	done := make(chan error, 1)
 	go func() {
-		done <- runNeo(t.Context(), io.Discard, io.Discard, "do a thing", "" /*stack*/, "test-org", t.TempDir(),
-			client.NeoApprovalModeManual, client.NeoPermissionModeDefault, false /*printMode*/, false /*disableIntegrations*/)
+		done <- runNeoTest(t.Context(), "do a thing", t.TempDir())
 	}()
 
 	select {
@@ -411,6 +504,121 @@ func TestRunNeoIntegration_NonInteractiveHappyPath(t *testing.T) {
 		"CreateNeoTask body must include the prompt")
 }
 
+// TestRunNeoResumeIntegration_AttachesFromTail covers the resume path: it must
+// fetch the existing task's current tail event ID, open the SSE stream with
+// Last-Event-ID, and avoid creating a new task.
+//
+//nolint:paralleltest // mutates package globals
+func TestRunNeoResumeIntegration_AttachesFromTail(t *testing.T) {
+	isolateWorkspace(t)
+	srv := newNeoFakeServer(t)
+	installNeoTestEnv(t, srv, false /*interactive*/)
+
+	go func() {
+		if !srv.awaitStreamConnect(t, 2*time.Second) {
+			return
+		}
+		srv.endStream()
+	}()
+
+	done := make(chan error, 1)
+	go func() {
+		done <- runNeoResume(t.Context(), io.Discard, io.Discard, "task-1", "test-org", t.TempDir())
+	}()
+
+	select {
+	case err := <-done:
+		require.NoError(t, err)
+	case <-time.After(5 * time.Second):
+		t.Fatal("runNeoResume did not return within 5s")
+	}
+
+	assert.Empty(t, srv.recordedPosts(), "resume must not create a new task or post user events")
+	assert.Equal(t, []string{"evt-tail"}, srv.recordedStreamLastEventIDs(),
+		"resume must open the stream from the current task tail")
+}
+
+// TestRunNeoResumeIntegration_InteractivePostsFollowup verifies that resume is
+// a real CLI session when run interactively: it reopens the TUI and sends new
+// user messages to the existing task instead of creating a new one.
+//
+//nolint:paralleltest // mutates package globals
+func TestRunNeoResumeIntegration_InteractivePostsFollowup(t *testing.T) {
+	isolateWorkspace(t)
+	srv := newNeoFakeServer(t)
+	installNeoTestEnv(t, srv, true /*interactive*/)
+
+	var (
+		programMu sync.Mutex
+		program   *tea.Program
+	)
+	prevProgram := newTeaProgram
+	newTeaProgram = func(m tea.Model) *tea.Program {
+		p := tea.NewProgram(
+			m,
+			tea.WithInput(nil),
+			tea.WithOutput(io.Discard),
+			tea.WithoutSignals(),
+			tea.WithoutSignalHandler(),
+			tea.WithoutRenderer(),
+		)
+		programMu.Lock()
+		program = p
+		programMu.Unlock()
+		return p
+	}
+	t.Cleanup(func() { newTeaProgram = prevProgram })
+
+	var stderr bytes.Buffer
+	done := make(chan error, 1)
+	go func() {
+		done <- runNeoResume(t.Context(), io.Discard, &stderr, "task-1", "test-org", t.TempDir())
+	}()
+
+	var p *tea.Program
+	deadline := time.Now().Add(2 * time.Second)
+	for time.Now().Before(deadline) {
+		programMu.Lock()
+		p = program
+		programMu.Unlock()
+		if p != nil && srv.sawStreamConnect() {
+			break
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	require.NotNil(t, p, "resume TUI did not start")
+	require.True(t, srv.sawStreamConnect(), "resume did not open the SSE stream")
+
+	for _, r := range "hello from resume" {
+		p.Send(tea.KeyPressMsg{Code: r, Text: string(r)})
+	}
+	p.Send(tea.KeyPressMsg{Code: tea.KeyEnter})
+
+	require.Eventually(t, func() bool {
+		for _, post := range srv.recordedPosts() {
+			if post.path == "/api/preview/agents/test-org/tasks/task-1" &&
+				strings.Contains(string(post.body), "hello from resume") {
+				return true
+			}
+		}
+		return false
+	}, 2*time.Second, 10*time.Millisecond)
+
+	p.Quit()
+	select {
+	case err := <-done:
+		require.NoError(t, err)
+	case <-time.After(5 * time.Second):
+		t.Fatal("runNeoResume interactive TUI did not return within 5s")
+	}
+
+	for _, post := range srv.recordedPosts() {
+		assert.NotEqual(t, "/api/preview/agents/test-org/tasks", post.path,
+			"interactive resume must not create a new task")
+	}
+	assert.Contains(t, stderr.String(), "To resume this Neo session, run: pulumi neo resume task-1 --org test-org")
+}
+
 // TestRunNeoIntegration_NonInteractiveRequiresPrompt covers the early-return
 // guard that rejects an empty prompt in non-interactive mode (there's no input
 // mechanism, so the agent has nothing to react to).
@@ -421,8 +629,7 @@ func TestRunNeoIntegration_NonInteractiveRequiresPrompt(t *testing.T) {
 	srv := newNeoFakeServer(t)
 	installNeoTestEnv(t, srv, false /*interactive*/)
 
-	err := runNeo(t.Context(), io.Discard, io.Discard, "" /*prompt*/, "", "test-org", t.TempDir(),
-		client.NeoApprovalModeManual, client.NeoPermissionModeDefault, false /*printMode*/, false /*disableIntegrations*/)
+	err := runNeoTest(t.Context(), "" /*prompt*/, t.TempDir())
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "prompt argument is required")
 
@@ -439,16 +646,32 @@ func TestRunNeoIntegration_RequiresCloudBackend(t *testing.T) {
 	isolateWorkspace(t)
 
 	// A bare MockBackend deliberately doesn't implement httpstate.Backend.
-	prevBackend := cmdBackend.BackendInstance
-	cmdBackend.BackendInstance = &backend.MockBackend{}
-	t.Cleanup(func() { cmdBackend.BackendInstance = prevBackend })
+	be := &backend.MockBackend{}
+
+	lm := &cmdBackend.MockLoginManager{
+		CurrentF: func(
+			context.Context, pkgWorkspace.Context, diag.Sink, string,
+			*workspace.Project, bool,
+		) (backend.Backend, error) {
+			return be, nil
+		},
+		LoginF: func(context.Context, pkgWorkspace.Context, diag.Sink,
+			string, *workspace.Project, bool,
+			bool, colors.Colorization,
+		) (backend.Backend, error) {
+			return be, nil
+		},
+	}
+
+	prevLm := cmdBackend.DefaultLoginManager
+	cmdBackend.DefaultLoginManager = lm
+	t.Cleanup(func() { cmdBackend.DefaultLoginManager = prevLm })
 
 	prevWorkspace := pkgWorkspace.Instance
 	pkgWorkspace.Instance = &pkgWorkspace.MockContext{}
 	t.Cleanup(func() { pkgWorkspace.Instance = prevWorkspace })
 
-	err := runNeo(t.Context(), io.Discard, io.Discard, "do a thing", "", "test-org", t.TempDir(),
-		client.NeoApprovalModeManual, client.NeoPermissionModeDefault, false /*printMode*/, false /*disableIntegrations*/)
+	err := runNeoTest(t.Context(), "do a thing", t.TempDir())
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "Pulumi Cloud backend",
 		"non-cloud backends must surface a clear error rather than panic on the type assertion")
@@ -478,8 +701,7 @@ func TestRunNeoIntegration_ResolvesCwdWhenEmpty(t *testing.T) {
 		// cwdFlag empty → runNeo calls os.Getwd. The test's own working
 		// directory is always a real, readable path, so the tools constructors
 		// accept it and runNeo proceeds.
-		done <- runNeo(t.Context(), io.Discard, io.Discard, "do a thing", "", "test-org", "", /*cwd*/
-			client.NeoApprovalModeManual, client.NeoPermissionModeDefault, false /*printMode*/, false /*disableIntegrations*/)
+		done <- runNeoTest(t.Context(), "do a thing", "" /*cwd*/)
 	}()
 
 	select {
@@ -502,8 +724,7 @@ func TestRunNeoIntegration_RejectsNonexistentCwd(t *testing.T) {
 	installNeoTestEnv(t, srv, false /*interactive*/)
 
 	missing := t.TempDir() + "/does-not-exist"
-	err := runNeo(t.Context(), io.Discard, io.Discard, "do a thing", "", "test-org", missing,
-		client.NeoApprovalModeManual, client.NeoPermissionModeDefault, false /*printMode*/, false /*disableIntegrations*/)
+	err := runNeoTest(t.Context(), "do a thing", missing)
 	require.Error(t, err)
 	// The exact wrapping is internal to tools.NewFilesystem, but the missing
 	// path should be referenced so the user can see what went wrong.
@@ -526,13 +747,12 @@ func TestRunNeoIntegration_PropagatesReadProjectError(t *testing.T) {
 
 	// Override the workspace to surface a non-NotFound error from ReadProject.
 	pkgWorkspace.Instance = &pkgWorkspace.MockContext{
-		ReadProjectF: func() (*workspace.Project, string, error) {
+		ReadProjectF: func(_ string) (*workspace.Project, string, error) {
 			return nil, "", errors.New("synthetic ReadProject failure")
 		},
 	}
 
-	err := runNeo(t.Context(), io.Discard, io.Discard, "do a thing", "", "test-org", t.TempDir(),
-		client.NeoApprovalModeManual, client.NeoPermissionModeDefault, false /*printMode*/, false /*disableIntegrations*/)
+	err := runNeoTest(t.Context(), "do a thing", t.TempDir())
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "synthetic ReadProject failure")
 	assert.Empty(t, srv.recordedPosts(),
@@ -564,9 +784,24 @@ func TestRunNeoIntegration_PropagatesCreateNeoTaskError(t *testing.T) {
 	be.ClientV = pc
 	be.GetDefaultOrgF = func(context.Context) (string, error) { return "test-org", nil }
 
-	prevBackend := cmdBackend.BackendInstance
-	cmdBackend.BackendInstance = be
-	t.Cleanup(func() { cmdBackend.BackendInstance = prevBackend })
+	lm := &cmdBackend.MockLoginManager{
+		CurrentF: func(
+			context.Context, pkgWorkspace.Context, diag.Sink,
+			string, *workspace.Project, bool,
+		) (backend.Backend, error) {
+			return be, nil
+		},
+		LoginF: func(context.Context, pkgWorkspace.Context, diag.Sink,
+			string, *workspace.Project, bool,
+			bool, colors.Colorization,
+		) (backend.Backend, error) {
+			return be, nil
+		},
+	}
+
+	prevLm := cmdBackend.DefaultLoginManager
+	cmdBackend.DefaultLoginManager = lm
+	t.Cleanup(func() { cmdBackend.DefaultLoginManager = prevLm })
 
 	prevWorkspace := pkgWorkspace.Instance
 	pkgWorkspace.Instance = &pkgWorkspace.MockContext{}
@@ -576,8 +811,7 @@ func TestRunNeoIntegration_PropagatesCreateNeoTaskError(t *testing.T) {
 	isInteractive = func() bool { return false }
 	t.Cleanup(func() { isInteractive = prevInteractive })
 
-	err := runNeo(t.Context(), io.Discard, io.Discard, "do a thing", "", "test-org", t.TempDir(),
-		client.NeoApprovalModeManual, client.NeoPermissionModeDefault, false /*printMode*/, false /*disableIntegrations*/)
+	err := runNeoTest(t.Context(), "do a thing", t.TempDir())
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "creating Neo task")
 }
@@ -596,7 +830,7 @@ func TestRunNeoIntegration_PropagatesCreateNeoTaskError(t *testing.T) {
 // goroutine, p.Run would block until the test deadline even though createTask
 // had already errored.
 //
-//nolint:paralleltest // mutates package globals (BackendInstance, pkgWorkspace.Instance, newTeaProgram, isInteractive)
+//nolint:paralleltest,lll // mutates package globals (DefaultLoginManager, pkgWorkspace.Instance, newTeaProgram, isInteractive)
 func TestRunNeoIntegration_InteractiveCreateNeoTaskFailureExits(t *testing.T) {
 	isolateWorkspace(t)
 
@@ -617,9 +851,24 @@ func TestRunNeoIntegration_InteractiveCreateNeoTaskFailureExits(t *testing.T) {
 	be.ClientV = pc
 	be.GetDefaultOrgF = func(context.Context) (string, error) { return "test-org", nil }
 
-	prevBackend := cmdBackend.BackendInstance
-	cmdBackend.BackendInstance = be
-	t.Cleanup(func() { cmdBackend.BackendInstance = prevBackend })
+	lm := &cmdBackend.MockLoginManager{
+		CurrentF: func(
+			context.Context, pkgWorkspace.Context, diag.Sink,
+			string, *workspace.Project, bool,
+		) (backend.Backend, error) {
+			return be, nil
+		},
+		LoginF: func(context.Context, pkgWorkspace.Context, diag.Sink,
+			string, *workspace.Project, bool,
+			bool, colors.Colorization,
+		) (backend.Backend, error) {
+			return be, nil
+		},
+	}
+
+	prevLm := cmdBackend.DefaultLoginManager
+	cmdBackend.DefaultLoginManager = lm
+	t.Cleanup(func() { cmdBackend.DefaultLoginManager = prevLm })
 
 	prevWorkspace := pkgWorkspace.Instance
 	pkgWorkspace.Instance = &pkgWorkspace.MockContext{}
@@ -649,8 +898,7 @@ func TestRunNeoIntegration_InteractiveCreateNeoTaskFailureExits(t *testing.T) {
 
 	done := make(chan error, 1)
 	go func() {
-		done <- runNeo(t.Context(), io.Discard, io.Discard, "do a thing", "" /*stack*/, "test-org", t.TempDir(),
-			client.NeoApprovalModeManual, client.NeoPermissionModeDefault, false /*printMode*/, false /*disableIntegrations*/)
+		done <- runNeoTest(t.Context(), "do a thing", t.TempDir())
 	}()
 
 	select {

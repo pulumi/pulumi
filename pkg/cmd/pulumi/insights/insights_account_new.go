@@ -91,8 +91,9 @@ func newInsightsAccountNewCmdWith(factory accountNewClientFactory) *cobra.Comman
 	}
 
 	cmd := &cobra.Command{
-		Use:   "new",
-		Short: "[EXPERIMENTAL] Create a new Insights account",
+		Use:     "new",
+		Aliases: []string{"create", "setup"},
+		Short:   "[EXPERIMENTAL] Create a new Insights account",
 		Long: "[EXPERIMENTAL] Create a new Pulumi Insights account.\n\n" +
 			"An Insights account represents a cloud provider account (e.g. AWS,\n" +
 			"Azure, GCP, OCI, Kubernetes) configured for resource discovery.",

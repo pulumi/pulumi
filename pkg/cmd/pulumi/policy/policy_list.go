@@ -52,7 +52,7 @@ func newPolicyListCmd(ws pkgWorkspace.Context, lm cmdBackend.LoginManager) *cobr
 			ctx := cmd.Context()
 
 			// Try to read the current project
-			project, _, err := ws.ReadProject()
+			project, _, err := ws.ReadProject("")
 			if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
 				return err
 			}

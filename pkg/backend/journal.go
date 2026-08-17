@@ -21,11 +21,13 @@ import (
 	"fmt"
 	"maps"
 	"os"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/pulumi/pulumi/pkg/v3/engine"
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack/snapshot"
@@ -36,7 +38,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	utilenv "github.com/pulumi/pulumi/sdk/v3/go/common/util/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/maputil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
 )
 
@@ -44,22 +45,25 @@ func SerializeJournalEntry(
 	ctx context.Context, je engine.JournalEntry, enc config.Encrypter,
 ) (apitype.JournalEntry, error) {
 	var state *apitype.ResourceV3
+	var requiresByteString bool
 
 	if je.State != nil {
-		s, err := stack.SerializeResource(ctx, je.State, enc, false)
+		s, encodedByteString, err := stack.SerializeResource(ctx, je.State, enc, false)
 		if err != nil {
 			return apitype.JournalEntry{}, fmt.Errorf("serializing resource state: %w", err)
 		}
 		state = &s
+		requiresByteString = requiresByteString || encodedByteString
 	}
 
 	var operation *apitype.OperationV2
 	if je.Operation != nil {
-		op, err := stack.SerializeOperation(ctx, *je.Operation, enc, false)
+		op, encodedByteString, err := stack.SerializeOperation(ctx, *je.Operation, enc, false)
 		if err != nil {
 			return apitype.JournalEntry{}, fmt.Errorf("serializing operation: %w", err)
 		}
 		operation = &op
+		requiresByteString = requiresByteString || encodedByteString
 	}
 	var secretsManager *apitype.SecretsProvidersV1
 	if je.SecretsManager != nil {
@@ -71,11 +75,13 @@ func SerializeJournalEntry(
 
 	var snapshot *apitype.DeploymentV3
 	if je.NewSnapshot != nil {
+		var features []string
 		var err error
-		snapshot, err = stack.SerializeDeployment(ctx, je.NewSnapshot, false)
+		snapshot, _, features, err = stack.SerializeDeploymentWithMetadata(ctx, je.NewSnapshot, false)
 		if err != nil {
 			return apitype.JournalEntry{}, fmt.Errorf("serializing new snapshot: %w", err)
 		}
+		requiresByteString = requiresByteString || slices.Contains(features, "byteString")
 	}
 	var snippets []apitype.SnippetV1
 	if je.Snippets != nil {
@@ -104,6 +110,8 @@ func SerializeJournalEntry(
 		ExtensionRef:          je.ExtensionRef,
 		Extension:             je.Extension,
 		Snippets:              snippets,
+
+		RequiresByteString: requiresByteString,
 	}
 
 	return serializedEntry, nil
@@ -130,6 +138,11 @@ type JournalReplayer struct {
 
 	// hasRefresh indicates whether any of the journal entries were part of a refresh operation.
 	hasRefresh bool
+
+	// requiresByteString indicates whether any applied journal entry encoded strings containing
+	// non-UTF8 bytes. It is tracked here because such strings inside secrets cannot be detected from
+	// the serialized resources this replayer holds.
+	requiresByteString bool
 
 	// index is the current index in the new resource list.
 	index int64
@@ -162,6 +175,9 @@ func NewJournalReplayer(base *apitype.DeploymentV3) *JournalReplayer {
 }
 
 func (r *JournalReplayer) Add(entry apitype.JournalEntry) error {
+	if entry.RequiresByteString {
+		r.requiresByteString = true
+	}
 	switch entry.Kind {
 	case apitype.JournalEntryKindBegin:
 		r.incompleteOps[entry.OperationID] = entry
@@ -287,10 +303,14 @@ func rebuildDependencies(resources []apitype.ResourceV3) {
 				}
 			}
 		}
-		for i, r := range resources[i].ReplaceWith {
-			if !referenceable[r] {
-				resources[i].ReplaceWith = append(resources[i].ReplaceWith, "")
+		newReplaceWith := []resource.URN{}
+		for _, r := range resources[i].ReplaceWith {
+			if referenceable[r] {
+				newReplaceWith = append(newReplaceWith, r)
 			}
+		}
+		if len(resources[i].ReplaceWith) > 0 {
+			resources[i].ReplaceWith = newReplaceWith
 		}
 		if !referenceable[resources[i].DeletedWith] {
 			resources[i].DeletedWith = ""
@@ -331,7 +351,7 @@ func (r *JournalReplayer) GenerateDeployment() (apitype.TypedDeployment, error) 
 	for i, res := range r.newResources {
 		if _, ok := removeIndices[int64(i)]; !ok {
 			resources = append(resources, *res)
-			stack.ApplyFeatures(*res, features)
+			stack.ApplyFeatures(*res, r.requiresByteString, features)
 		}
 	}
 
@@ -351,13 +371,13 @@ func (r *JournalReplayer) GenerateDeployment() (apitype.TypedDeployment, error) 
 					// we're supposed to replace the resource), and then a
 					// delete happens (so we're supposed to delete the resource).
 					resources = append(resources, *state)
-					stack.ApplyFeatures(*state, features)
+					stack.ApplyFeatures(*state, r.requiresByteString, features)
 				} else {
 					if _, ok := r.markAsDeletion[int64(i)]; ok {
 						res.Delete = true
 					}
 					resources = append(resources, res)
-					stack.ApplyFeatures(res, features)
+					stack.ApplyFeatures(res, r.requiresByteString, features)
 				}
 			}
 		}
@@ -368,7 +388,7 @@ func (r *JournalReplayer) GenerateDeployment() (apitype.TypedDeployment, error) 
 	for _, op := range r.incompleteOps {
 		if op.Operation != nil {
 			operations = append(operations, *op.Operation)
-			stack.ApplyFeatures(op.Operation.Resource, features)
+			stack.ApplyFeatures(op.Operation.Resource, r.requiresByteString, features)
 		}
 	}
 
@@ -379,7 +399,7 @@ func (r *JournalReplayer) GenerateDeployment() (apitype.TypedDeployment, error) 
 		for _, pendingOperation := range base.PendingOperations {
 			if pendingOperation.Type == apitype.OperationTypeCreating {
 				operations = append(operations, pendingOperation)
-				stack.ApplyFeatures(pendingOperation.Resource, features)
+				stack.ApplyFeatures(pendingOperation.Resource, r.requiresByteString, features)
 			}
 		}
 	}
@@ -428,7 +448,7 @@ func (r *JournalReplayer) GenerateDeployment() (apitype.TypedDeployment, error) 
 	return apitype.TypedDeployment{
 		Deployment: deployment,
 		Version:    version,
-		Features:   maputil.SortedKeys(features),
+		Features:   slices.Sorted(maps.Keys(features)),
 	}, nil
 }
 
@@ -633,8 +653,8 @@ func NewSnapshotJournaler(
 		snapCopy = &deploy.Snapshot{
 			Manifest:          baseSnap.Manifest,
 			SecretsManager:    baseSnap.SecretsManager,
-			Resources:         make([]*resource.State, 0),
-			PendingOperations: make([]resource.Operation, 0),
+			Resources:         make([]*pkgresource.State, 0),
+			PendingOperations: make([]pkgresource.Operation, 0),
 			Metadata:          baseSnap.Metadata,
 			Snippets:          baseSnap.Snippets,
 		}
@@ -782,8 +802,8 @@ func NewJournaler(
 		snapCopy = &deploy.Snapshot{
 			Manifest:          baseSnap.Manifest,
 			SecretsManager:    baseSnap.SecretsManager,
-			Resources:         make([]*resource.State, 0),
-			PendingOperations: make([]resource.Operation, 0),
+			Resources:         make([]*pkgresource.State, 0),
+			PendingOperations: make([]pkgresource.Operation, 0),
 			Metadata:          baseSnap.Metadata,
 		}
 		// Copy the resources from the base snapshot to the new snapshot.

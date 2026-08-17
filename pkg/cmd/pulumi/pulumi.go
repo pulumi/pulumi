@@ -75,6 +75,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/policy"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/project"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/project/newcmd"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/rattler"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/schema"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/state"
@@ -259,6 +260,7 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 	cmd = &cobra.Command{
 		Use:           "pulumi",
 		Short:         "Pulumi command line",
+		Version:       version.Version,
 		SilenceErrors: true,
 		SilenceUsage:  true,
 		Long: "Pulumi - Modern Infrastructure as Code\n" +
@@ -325,7 +327,7 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 			// encrypted). Engine operations may upgrade to encrypted logging
 			// when a secrets manager becomes available.
 			var logErr error
-			autoLogger, logErr = backendlogging.StartLogging(cmd.Context(), nil /* sm */)
+			autoLogger, logErr = backendlogging.StartLogging(cmd.Context(), nil /* sm */, commandPath)
 			if logErr != nil {
 				slog.Info("automatic logging unavailable", "err", logErr)
 			}
@@ -379,6 +381,7 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 			}
 			ctx = cmdutil.ContextWithProcessStartTime(ctx, processStartTime)
 			ctx = httpstate.ContextWithAgentCredentialUse(ctx)
+			ctx = httpstate.ContextWithCommandName(ctx, cmd.CommandPath())
 			cmd.SetContext(ctx)
 
 			cmdutil.InitPprofServer(ctx)
@@ -443,6 +446,8 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 		},
 	}
 
+	cmd.SetVersionTemplate("{{.Version}}\n")
+
 	cmd.PersistentFlags().StringVarP(&cwd, "cwd", "C", "",
 		"Run pulumi as if it had been started in another directory")
 	cmd.PersistentFlags().BoolVarP(&cmdutil.Emoji, "emoji", "e", runtime.GOOS == "darwin",
@@ -461,7 +466,7 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 		"Emit tracing to the specified endpoint. Use the `file:` scheme to write tracing data to a local file")
 	cmd.PersistentFlags().StringVar(&otelTracesFlag, "otel-traces", "",
 		"Export OpenTelemetry traces to the specified endpoint. "+
-			"Use file:// for local JSON files, grpc:// for remote collectors")
+			"Use file:// for local JSON files, grpc:// or https:// for remote collectors")
 	cmd.PersistentFlags().StringVar(&profiling, "profiling", "",
 		"Emit CPU and memory profiles and an execution trace to '[filename].[pid].{cpu,mem,trace}', respectively")
 	cmd.PersistentFlags().IntVar(&memProfileRate, "memprofilerate", 0,
@@ -512,7 +517,8 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 				deployment.NewDeploymentCmd(pkgWorkspace.Instance),
 				cloud.NewAPICmd(),
 				insights.NewInsightsCmd(),
-				cmdDo.NewDoCmd(cmdBackend.DefaultLoginManager, pkgWorkspace.Instance, nil, nil, nil),
+				cmdDo.NewDoCmd(cmdBackend.DefaultLoginManager, pkgWorkspace.Instance,
+					nil, nil, nil, cmdDo.DefaultRunStatefulUpdate),
 			},
 		},
 		{
@@ -593,6 +599,11 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 	// With all the commands registered, we can walk the tree to build the
 	// environment variable declarations.
 	declareFlagsAsEnvironmentVariables(cmd)
+
+	// Patch commands so that invalid invocations exit non-zero with
+	// suggestions for closely-matching commands.
+	rattler.Install(cmd)
+
 	return cmd, cleanup
 }
 
@@ -814,7 +825,7 @@ func getCLIVersionInfo(
 
 // cacheVersionInfo saves version information in a cache file to be looked up later.
 func cacheVersionInfo(info cachedVersionInfo) error {
-	updateCheckFile, err := workspace.GetCachedVersionFilePath()
+	updateCheckFile, err := pkgWorkspace.GetCachedVersionFilePath()
 	if err != nil {
 		return err
 	}
@@ -830,7 +841,7 @@ func cacheVersionInfo(info cachedVersionInfo) error {
 
 // readVersionInfo reads version information from the cache file.
 func readVersionInfo() (cachedVersionInfo, error) {
-	updateCheckFile, err := workspace.GetCachedVersionFilePath()
+	updateCheckFile, err := pkgWorkspace.GetCachedVersionFilePath()
 	if err != nil {
 		return cachedVersionInfo{}, err
 	}
@@ -856,7 +867,7 @@ func readVersionInfo() (cachedVersionInfo, error) {
 // If we can't read the cached versions file, we return true and a zero time,
 // indicating that we want to possibly prompt the user for an upgrade.
 func checkVersionPrompt(devVersion bool) (bool, int64) {
-	updateCheckFile, err := workspace.GetCachedVersionFilePath()
+	updateCheckFile, err := pkgWorkspace.GetCachedVersionFilePath()
 	if err != nil {
 		return true, 0
 	}

@@ -6,3 +6,8 @@ import * as inputs from "../types/input";
 import * as outputs from "../types/output";
 import * as enums from "../types/enums";
 
+export interface Holder {
+    color?: enums.StringEnum;
+    size?: enums.IntEnum;
+}
+

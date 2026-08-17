@@ -46,11 +46,10 @@ func init() {
 					AssertPropertyMapMember(l, stack.Outputs, "invokeGreeting",
 						resource.NewProperty("Hello, Pulumi"))
 
-					// The Greeting custom resource lives under the BASE provider's
-					// namespace, not the extension's. Its state must carry an
-					// ExtensionRef so the engine can re-hydrate the extension on
-					// subsequent runs.
-					greeting := RequireSingleResource(l, snap.Resources, "extbase:index:Greeting")
+					// The Greeting custom resource lives under the extension's own
+					// namespace. Its state must carry an ExtensionRef so the engine
+					// can re-hydrate the extension on subsequent runs.
+					greeting := RequireSingleResource(l, snap.Resources, "myext:index:Greeting")
 					require.NotEmpty(l, greeting.ExtensionRef,
 						"extension resource state must carry an ExtensionRef")
 					require.Contains(l, greeting.Provider, "pulumi:providers:extbase::",

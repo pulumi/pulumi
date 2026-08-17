@@ -18,6 +18,8 @@ import (
 	"context"
 	"testing"
 
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
+
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -234,11 +236,11 @@ func TestBuiltinProvider(t *testing.T) {
 				t.Parallel()
 
 				p := &builtinProvider{
-					news:  &gsync.Map[urn.URN, *resource.State]{},
-					reads: &gsync.Map[urn.URN, *resource.State]{},
+					news:  &gsync.Map[urn.URN, *pkgresource.State]{},
+					reads: &gsync.Map[urn.URN, *pkgresource.State]{},
 				}
 
-				expected := &resource.State{
+				expected := &pkgresource.State{
 					Outputs: resource.PropertyMap{
 						"foo": resource.NewProperty("bar"),
 					},
@@ -261,11 +263,11 @@ func TestBuiltinProvider(t *testing.T) {
 				t.Parallel()
 
 				p := &builtinProvider{
-					news:  &gsync.Map[urn.URN, *resource.State]{},
-					reads: &gsync.Map[urn.URN, *resource.State]{},
+					news:  &gsync.Map[urn.URN, *pkgresource.State]{},
+					reads: &gsync.Map[urn.URN, *pkgresource.State]{},
 				}
 
-				expected := &resource.State{
+				expected := &pkgresource.State{
 					Outputs: resource.PropertyMap{
 						"foo": resource.NewProperty("bar"),
 					},
@@ -287,8 +289,8 @@ func TestBuiltinProvider(t *testing.T) {
 			t.Run("err", func(t *testing.T) {
 				t.Parallel()
 				p := &builtinProvider{
-					news:  &gsync.Map[urn.URN, *resource.State]{},
-					reads: &gsync.Map[urn.URN, *resource.State]{},
+					news:  &gsync.Map[urn.URN, *pkgresource.State]{},
+					reads: &gsync.Map[urn.URN, *pkgresource.State]{},
 				}
 				_, err := p.Invoke(t.Context(), plugin.InvokeRequest{
 					Tok: getResource,

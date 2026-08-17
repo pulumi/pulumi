@@ -18,6 +18,7 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
+	"slices"
 
 	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumix"
@@ -96,11 +97,9 @@ func NewPolicyPack(
 				return nil, errors.New("enforcementLevel cannot be explicitly specified in configSchema properties." +
 					" enforcementLevel is a reserved property")
 			}
-			for _, req := range schema.Required {
-				if req == "enforcementLevel" {
-					return nil, errors.New("enforcementLevel cannot be required in configSchema." +
-						" enforcementLevel is a reserved property")
-				}
+			if slices.Contains(schema.Required, "enforcementLevel") {
+				return nil, errors.New("enforcementLevel cannot be required in configSchema." +
+					" enforcementLevel is a reserved property")
 			}
 		}
 	}

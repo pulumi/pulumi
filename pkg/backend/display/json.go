@@ -16,9 +16,13 @@ package display
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"os"
+	"unicode/utf8"
+
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
 
 	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
@@ -32,10 +36,19 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
 
+// byteStringDisplay renders a string containing bytes that are not valid UTF-8 as b"<base64>",
+// since such strings cannot be represented in JSON or terminal output directly.
+func byteStringDisplay(s string) string {
+	return `b"` + base64.StdEncoding.EncodeToString([]byte(s)) + `"`
+}
+
 // massagePropertyValue takes a property value and strips out the secrets annotations from it.  If showSecrets is
-// not true any secret values are replaced with "[secret]".
+// not true any secret values are replaced with "[secret]". Strings containing bytes that are not valid UTF-8 are
+// replaced with their b"<base64>" rendering.
 func massagePropertyValue(v resource.PropertyValue, showSecrets bool) resource.PropertyValue {
 	switch {
+	case v.IsString() && !utf8.ValidString(v.StringValue()):
+		return resource.NewProperty(byteStringDisplay(v.StringValue()))
 	case v.IsArray():
 		new := make([]resource.PropertyValue, len(v.ArrayValue()))
 		for i, e := range v.ArrayValue() {
@@ -71,7 +84,7 @@ func MassageSecrets(m resource.PropertyMap, showSecrets bool) resource.PropertyM
 
 // stateForJSONOutput prepares some resource's state for JSON output. This includes filtering the output based
 // on the supplied options, in addition to massaging secret fields.
-func stateForJSONOutput(s *resource.State, opts Options) *resource.State {
+func stateForJSONOutput(s *pkgresource.State, opts Options) *pkgresource.State {
 	var inputs resource.PropertyMap
 	var outputs resource.PropertyMap
 	if !isRootURN(s.URN) || !opts.SuppressOutputs {
@@ -83,7 +96,7 @@ func stateForJSONOutput(s *resource.State, opts Options) *resource.State {
 		inputs = resource.PropertyMap{}
 		outputs = resource.PropertyMap{}
 	}
-	return resource.NewState{
+	return pkgresource.NewState{
 		Type:                    s.Type,
 		URN:                     s.URN,
 		Custom:                  s.Custom,
@@ -280,7 +293,7 @@ func getPreviewMetadataStep(
 	ctx := context.TODO()
 	if m.Old != nil {
 		oldState := stateForJSONOutput(m.Old.State, opts)
-		res, err := stack.SerializeResource(ctx, oldState, config.NewPanicCrypter(), false /* showSecrets */)
+		res, _, err := stack.SerializeResource(ctx, oldState, config.NewPanicCrypter(), false /* showSecrets */)
 		if err == nil {
 			step.OldState = &res
 		} else {
@@ -289,7 +302,7 @@ func getPreviewMetadataStep(
 	}
 	if m.New != nil {
 		newState := stateForJSONOutput(m.New.State, opts)
-		res, err := stack.SerializeResource(ctx, newState, config.NewPanicCrypter(), false /* showSecrets */)
+		res, _, err := stack.SerializeResource(ctx, newState, config.NewPanicCrypter(), false /* showSecrets */)
 		if err == nil {
 			step.NewState = &res
 		} else {

@@ -99,6 +99,19 @@ func agentCredentialUseFromContext(ctx context.Context) *agentCredentialUse {
 	return use
 }
 
+type commandNameContextKey struct{}
+
+// ContextWithCommandName returns a context carrying the full invoked CLI command path
+// (e.g. "pulumi new"), for use in login/signup analytics.
+func ContextWithCommandName(ctx context.Context, name string) context.Context {
+	return context.WithValue(ctx, commandNameContextKey{}, name)
+}
+
+func commandNameFromContext(ctx context.Context) (string, bool) {
+	name, ok := ctx.Value(commandNameContextKey{}).(string)
+	return name, ok
+}
+
 // MarkAgentCredentialsUsed records that this CLI command selected shared
 // temporary agent credentials for the given cloud URL.
 func MarkAgentCredentialsUsed(ctx context.Context, cloudURL string) {
@@ -121,67 +134,6 @@ func AgentCredentialsUsed(ctx context.Context, cloudURL string) bool {
 	use.Lock()
 	defer use.Unlock()
 	return use.cloudURLs[cloudURL]
-}
-
-type PulumiAILanguage string
-
-const (
-	PulumiAILanguageTypeScript PulumiAILanguage = "TypeScript"
-	PulumiAILanguageJavaScript PulumiAILanguage = "JavaScript"
-	PulumiAILanguagePython     PulumiAILanguage = "Python"
-	PulumiAILanguageGo         PulumiAILanguage = "Go"
-	PulumiAILanguageCSharp     PulumiAILanguage = "C#"
-	PulumiAILanguageJava       PulumiAILanguage = "Java"
-	PulumiAILanguageYAML       PulumiAILanguage = "YAML"
-)
-
-var pulumiAILanguageMap = map[string]PulumiAILanguage{
-	"typescript": PulumiAILanguageTypeScript,
-	"javascript": PulumiAILanguageJavaScript,
-	"python":     PulumiAILanguagePython,
-	"go":         PulumiAILanguageGo,
-	"c#":         PulumiAILanguageCSharp,
-	"java":       PulumiAILanguageJava,
-	"yaml":       PulumiAILanguageYAML,
-}
-
-// All of the languages supported by Pulumi AI.
-var PulumiAILanguageOptions = []PulumiAILanguage{
-	PulumiAILanguageTypeScript,
-	PulumiAILanguageJavaScript,
-	PulumiAILanguagePython,
-	PulumiAILanguageGo,
-	PulumiAILanguageCSharp,
-	PulumiAILanguageJava,
-	PulumiAILanguageYAML,
-}
-
-// A natural language list of languages supported by Pulumi AI.
-const PulumiAILanguagesClause = "TypeScript, JavaScript, Python, Go, C#, Java, or YAML"
-
-func (e *PulumiAILanguage) String() string {
-	return string(*e)
-}
-
-func (e *PulumiAILanguage) Set(v string) error {
-	value, ok := pulumiAILanguageMap[strings.ToLower(v)]
-	if !ok {
-		return fmt.Errorf("must be one of %s", PulumiAILanguagesClause)
-	}
-	*e = value
-	return nil
-}
-
-func (e *PulumiAILanguage) Type() string {
-	return "pulumiAILanguage"
-}
-
-type AIPromptRequestBody struct {
-	Language       PulumiAILanguage `json:"language"`
-	Instructions   string           `json:"instructions"`
-	ResponseMode   string           `json:"responseMode"`
-	ConversationID string           `json:"conversationId"`
-	ConnectionID   string           `json:"connectionId"`
 }
 
 // Name validation rules enforced by the Pulumi Service.
@@ -238,9 +190,12 @@ type Backend interface {
 	NaturalLanguageSearch(
 		ctx context.Context, orgName string, query string,
 	) (*apitype.ResourceSearchResponse, error)
-	PromptAI(ctx context.Context, requestBody AIPromptRequestBody) (*http.Response, error)
 	// Capabilities returns the capabilities of the backend indicating what features are available.
 	Capabilities(ctx context.Context) apitype.Capabilities
+
+	// GetLatestStackPreview returns the stack's most recent preview operation, or nil if the
+	// stack has no previews. Previews are tracked separately from update history (GetHistory).
+	GetLatestStackPreview(ctx context.Context, stackRef backend.StackReference) (*apitype.StackPreview, error)
 }
 
 // userInfo holds the user account details fetched from the backend.
@@ -430,8 +385,11 @@ func loginWithBrowser(
 	q.Add("cliSessionPort", port)
 	q.Add("cliSessionNonce", nonce)
 	q.Add("cliSessionDescription", tokenDescription)
-	if command != "pulumi" {
-		q.Add("cliCommand", command)
+	// The invoked command path (e.g. "pulumi new"), independent of the "pulumi" literal
+	// above, so the login/signup destination can attribute the visit to the command
+	// that triggered it.
+	if name, ok := commandNameFromContext(ctx); ok && name != "" && name != "pulumi" {
+		q.Add("cliCommand", name)
 	}
 	u.RawQuery = q.Encode()
 
@@ -608,6 +566,11 @@ func (m defaultLoginManager) Current(
 	if err == nil && existingAccount.HasCredential() {
 		logging.V(7).Infof("Found stored credentials for %q in default credentials", cloudURL)
 	} else if err != nil {
+		// Even with PULUMI_ACCESS_TOKEN set: the token is persisted to this
+		// same file, so proceeding would end in a write over the envelope.
+		if workspace.IsUndecryptableCredentials(err) {
+			return nil, err
+		}
 		logging.V(7).Infof("Could not read default credentials for %q: %v", cloudURL, err)
 	}
 	if err == nil && existingAccount.HasCredential() &&
@@ -640,7 +603,7 @@ func (m defaultLoginManager) Current(
 				return nil, err
 			}
 			logging.V(7).Infof("Detected agent mode (%s); checking shared agent credentials", agent)
-			return m.currentOrSignupAgentAccount(ctx, cloudURL, insecure, setCurrent, agent)
+			return m.currentOrSignupAgentAccount(ctx, cloudURL, insecure, setCurrent, agent, err)
 		}
 		// No access token available, this isn't an error per-se but we don't have a backend.
 		logging.V(7).Infof("No access token or agent mode detected for %q", cloudURL)
@@ -681,6 +644,7 @@ func (m defaultLoginManager) currentOrSignupAgentAccount(
 	insecure bool,
 	setCurrent bool,
 	agentName string,
+	defaultCredsErr error,
 ) (*workspace.Account, error) {
 	now := time.Now()
 	if deleted, err := workspace.DeleteExpiredAgentCredentials(now); err != nil {
@@ -733,6 +697,12 @@ func (m defaultLoginManager) currentOrSignupAgentAccount(
 		logging.V(7).Infof("Shared agent credentials for %q are not valid; creating a new agent account", cloudURL)
 	} else {
 		logging.V(7).Infof("No shared agent credentials found for %q; creating a new agent account", cloudURL)
+	}
+
+	// An undecryptable credentials file must surface its actionable error,
+	// not be papered over with a fresh ephemeral agent identity.
+	if workspace.IsUndecryptableCredentials(defaultCredsErr) {
+		return nil, defaultCredsErr
 	}
 
 	logging.V(7).Infof("Calling agent signup endpoint for %q", cloudURL)
@@ -918,25 +888,18 @@ func (m defaultLoginManager) LoginWithOIDCToken(
 	return &account, nil
 }
 
-// WelcomeUser prints a Welcome to Pulumi message.
-func WelcomeUser(opts display.Options) {
-	fmt.Printf(`
-
-  %s
-
-  Pulumi helps you create, deploy, and manage infrastructure on any cloud using
-  your favorite language. You can get started today with Pulumi at:
-
-      https://www.pulumi.com/docs/get-started/
-
-  %s Resources you create with Pulumi are given unique names (a randomly
-  generated suffix) by default. To learn more about auto-naming or customizing resource
-  names see https://www.pulumi.com/docs/intro/concepts/resources/#autonaming.
-
-
-`,
-		opts.Color.Colorize(colors.SpecHeadline+"Welcome to Pulumi!"+colors.Reset),
-		opts.Color.Colorize(colors.SpecSubHeadline+"Tip:"+colors.Reset))
+// WelcomeUser prints a Welcome to Pulumi message. consoleURL may be empty, in which case the
+// console line is omitted.
+func WelcomeUser(opts display.Options, consoleURL string) {
+	fmt.Printf("\n\n  %s\n\n", opts.Color.Colorize(colors.SpecHeadline+"Welcome to Pulumi!"+colors.Reset))
+	if consoleURL != "" {
+		fmt.Printf("  Your stacks, state, and deployment history live at %s\n\n",
+			opts.Color.Colorize(colors.BrightBlue+colors.Underline+consoleURL+colors.Reset))
+	}
+	fmt.Printf("  See what's new: %s\n\n",
+		opts.Color.Colorize(colors.BrightBlue+colors.Underline+"https://www.pulumi.com/releases/changelog/"+colors.Reset))
+	fmt.Printf("  %s Create your first project with `pulumi new`.\n\n\n",
+		opts.Color.Colorize(colors.SpecSubHeadline+"New to Pulumi?"+colors.Reset))
 }
 
 func (b *cloudBackend) StackConsoleURL(stackRef backend.StackReference) (string, error) {
@@ -1531,13 +1494,7 @@ func (b *cloudBackend) RenameStack(ctx context.Context, stack backend.Stack,
 func (b *cloudBackend) Preview(ctx context.Context, stack backend.Stack,
 	op backend.UpdateOperation, events chan<- engine.Event,
 ) (*deploy.Plan, sdkDisplay.ResourceChanges, error) {
-	// We can skip PreviewThenPromptThenExecute, and just go straight to Execute.
-	opts := backend.ApplierOptions{
-		DryRun:   true,
-		ShowLink: true,
-	}
-	return b.apply(
-		ctx, apitype.PreviewUpdate, stack, op, opts, events)
+	return backend.Preview(ctx, stack, op, b.apply, events)
 }
 
 func (b *cloudBackend) Update(ctx context.Context, stack backend.Stack,
@@ -1719,19 +1676,6 @@ func (b *cloudBackend) NaturalLanguageSearch(
 	return results, err
 }
 
-func (b *cloudBackend) PromptAI(
-	ctx context.Context, requestBody AIPromptRequestBody,
-) (*http.Response, error) {
-	res, err := b.client.SubmitAIPrompt(ctx, requestBody)
-	if err != nil {
-		return nil, err
-	}
-	if res.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("failed to submit AI prompt: %s", res.Status)
-	}
-	return res, nil
-}
-
 func (b *cloudBackend) renderAndSummarizeOutput(
 	ctx context.Context, kind apitype.UpdateKind, stack backend.Stack, op backend.UpdateOperation,
 	events []engine.Event, update client.UpdateIdentifier, updateMeta updateMetadata, dryRun bool,
@@ -1762,7 +1706,7 @@ func (b *cloudBackend) renderAndSummarizeOutput(
 			summary, err := b.summarizeErrorWithNeo(ctx, renderer.Output(), stack.Ref(), op.Opts.Display)
 			// Pass the error into the renderer to ensure it's displayed. We don't want to fail the update/preview
 			// if we can't generate a summary.
-			display.RenderNeoErrorSummary(summary, err, op.Opts.Display, permalink)
+			display.RenderNeoErrorSummary(summary, err, op.Opts.Display, permalink, dryRun)
 		}
 	}
 }
@@ -2266,6 +2210,26 @@ func (b *cloudBackend) GetHistory(
 	return beUpdates, nil
 }
 
+// GetLatestStackPreview returns the stack's most recent preview operation, or nil if it has none.
+func (b *cloudBackend) GetLatestStackPreview(
+	ctx context.Context,
+	stackRef backend.StackReference,
+) (*apitype.StackPreview, error) {
+	stack, err := b.getCloudStackIdentifier(stackRef)
+	if err != nil {
+		return nil, err
+	}
+
+	previews, err := b.client.GetLatestStackPreviews(ctx, stack)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get stack previews: %w", err)
+	}
+	if len(previews) == 0 {
+		return nil, nil
+	}
+	return &previews[0], nil
+}
+
 func (b *cloudBackend) GetLatestConfiguration(ctx context.Context,
 	stack backend.Stack,
 ) (backend.LatestConfiguration, error) {
@@ -2608,8 +2572,8 @@ func exchangeOidcToken(
 func getTokenValue(source string) (string, error) {
 	if isExpectedTokenFormat(source) {
 		return source, nil
-	} else if strings.HasPrefix(source, "file://") {
-		filePath := strings.TrimPrefix(source, "file://")
+	} else if after, ok := strings.CutPrefix(source, "file://"); ok {
+		filePath := after
 		data, err := os.ReadFile(filePath)
 		if err != nil {
 			return "", fmt.Errorf("reading token from file '%s': %w", filePath, err)
@@ -2764,6 +2728,13 @@ func (b *cloudBackend) RunDeployment(ctx context.Context, stackRef backend.Stack
 		token = logs.NextToken
 	}
 
+	deployment, err := b.client.GetDeployment(ctx, stackID, id)
+	if err != nil {
+		return err
+	}
+	if deployment.Status == "failed" {
+		return errors.New("deployment failed")
+	}
 	return nil
 }
 
@@ -2771,7 +2742,7 @@ func (b *cloudBackend) showDeploymentEvents(ctx context.Context, stackID client.
 	kind apitype.UpdateKind, deploymentID string, opts display.Options,
 ) error {
 	getUpdateID := func() (string, int, error) {
-		for tries := 0; tries < 10; tries++ {
+		for range 10 {
 			updates, err := b.client.GetDeploymentUpdates(ctx, stackID, deploymentID)
 			if err != nil {
 				return "", 0, err
@@ -2811,6 +2782,7 @@ func (b *cloudBackend) showDeploymentEvents(ctx context.Context, stackID client.
 	// The UpdateEvents API returns a continuation token to only get events after the previous call.
 	var continuationToken *string
 	var lastEvent engine.Event
+	var opResult apitype.OperationResult
 	for {
 		resp, err := b.client.GetUpdateEngineEvents(ctx, update, client.GetUpdateEngineEventsOptions{
 			ContinuationToken: continuationToken,
@@ -2819,6 +2791,9 @@ func (b *cloudBackend) showDeploymentEvents(ctx context.Context, stackID client.
 			return err
 		}
 		for _, jsonEvent := range resp.Events {
+			if jsonEvent.SummaryEvent != nil {
+				opResult = jsonEvent.SummaryEvent.Result
+			}
 			event, err := display.ConvertJSONEvent(jsonEvent)
 			if err != nil {
 				return err
@@ -2837,6 +2812,13 @@ func (b *cloudBackend) showDeploymentEvents(ctx context.Context, stackID client.
 
 			close(events)
 			<-done
+			switch opResult {
+			case apitype.OperationResultFailed:
+				return errors.New("deployment failed")
+			case apitype.OperationResultCanceled:
+				return backenderr.CancelledError{Operation: string(kind)}
+			case apitype.OperationResultSucceeded:
+			}
 			return nil
 		}
 

@@ -21,6 +21,8 @@ import (
 	"io"
 	"strings"
 
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
+
 	mapset "github.com/deckarep/golang-set/v2"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
 	"github.com/zclconf/go-cty/cty"
@@ -122,7 +124,7 @@ func sanitizeName(name string) string {
 	return strings.ReplaceAll(name, ".", "_")
 }
 
-func createImportState(states []*resource.State, snapshot []*resource.State, names NameTable) ImportState {
+func createImportState(states []*pkgresource.State, snapshot []*pkgresource.State, names NameTable) ImportState {
 	pathedLiteralValues := make([]PathedLiteralValue, 0)
 	for _, state := range states {
 		// Ensure all names are sanitized, at this point
@@ -176,8 +178,8 @@ func GenerateLanguageDefinitions(
 	w io.Writer,
 	loader schema.Loader,
 	gen LanguageGenerator,
-	states []*resource.State,
-	snapshot []*resource.State,
+	states []*pkgresource.State,
+	snapshot []*pkgresource.State,
 	names NameTable,
 ) error {
 	generateProgramText := func(importState ImportState) (*pcl.Program, hcl.Diagnostics, error) {

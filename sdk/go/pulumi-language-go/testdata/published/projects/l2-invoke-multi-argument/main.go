@@ -7,12 +7,8 @@ import (
 
 func main() {
 	pulumi.Run(func(ctx *pulumi.Context) error {
-		ctx.Export("both", multiargumentinvoke.MultiArgumentInvokeOutput(ctx, pulumi.String("hello"), pulumi.String("world")).ApplyT(func(invoke multiargumentinvoke.MultiArgumentInvokeResult) (string, error) {
-			return invoke.Result, nil
-		}).(pulumi.StringOutput))
-		ctx.Export("onlyRequired", multiargumentinvoke.MultiArgumentInvokeOutput(ctx, pulumi.String("hello"), nil).ApplyT(func(invoke multiargumentinvoke.MultiArgumentInvokeResult) (string, error) {
-			return invoke.Result, nil
-		}).(pulumi.StringOutput))
+		ctx.Export("both", multiargumentinvoke.MultiArgumentInvokeOutput(ctx, pulumi.String("hello"), pulumi.String("world")).Result())
+		ctx.Export("onlyRequired", multiargumentinvoke.MultiArgumentInvokeOutput(ctx, pulumi.String("hello"), nil).Result())
 		return nil
 	})
 }

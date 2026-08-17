@@ -20,7 +20,9 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"maps"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 	"sync"
@@ -38,6 +40,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
@@ -66,8 +69,8 @@ type PolicyEnvironmentResolver interface {
 // prefix and the policy name. Keys may be "policyName" or "packName:policyName".
 // This mirrors pulumiConfig's optional namespace pattern (e.g., "aws:region").
 func parsePolicyConfigKey(key string) (packName, policyName string) {
-	if i := strings.IndexByte(key, ':'); i >= 0 {
-		return key[:i], key[i+1:]
+	if before, after, ok := strings.Cut(key, ":"); ok {
+		return before, after
 	}
 	return "", key
 }
@@ -87,9 +90,7 @@ func mergePolicyConfig(
 		return base
 	}
 	merged := make(map[string]*json.RawMessage, len(base)+len(escConfig))
-	for k, v := range base {
-		merged[k] = v
-	}
+	maps.Copy(merged, base)
 	for rawKey, v := range escConfig {
 		packPrefix, policyName := parsePolicyConfigKey(rawKey)
 		if packPrefix != "" && packPrefix != packName {
@@ -163,9 +164,7 @@ func mergeAnalyzerConfig(
 		return base
 	}
 	result := make(map[string]plugin.AnalyzerPolicyConfig, len(base)+len(overlay))
-	for k, v := range base {
-		result[k] = v
-	}
+	maps.Copy(result, base)
 	for k, ov := range overlay {
 		bv, exists := result[k]
 		if !exists {
@@ -180,9 +179,7 @@ func mergeAnalyzerConfig(
 		// Clone base properties first to avoid mutating the original map.
 		if len(ov.Properties) > 0 {
 			merged := make(map[string]any, len(bv.Properties)+len(ov.Properties))
-			for pk, pv := range bv.Properties {
-				merged[pk] = pv
-			}
+			maps.Copy(merged, bv.Properties)
 			deepMergeMap(merged, ov.Properties)
 			bv.Properties = merged
 		}
@@ -424,6 +421,10 @@ type UpdateOptions struct {
 	// ContinueOnError is true if the engine should continue processing resources after an error is encountered.
 	ContinueOnError bool
 
+	// IgnoreProtect is true if the engine should ignore the protect option on resources, allowing
+	// protected resources to be deleted or replaced by this operation.
+	IgnoreProtect bool
+
 	// AttachDebugger is the list of things to debug.  This can be "program", "all", "plugins", or "plugin:<plugin-name>".
 	AttachDebugger []string
 
@@ -572,12 +573,6 @@ func Update(u UpdateInfo, ctx *Context, opts UpdateOptions, dryRun bool) (
 	logging.V(7).Infof("*** Starting Update(preview=%v) ***", dryRun)
 	defer logging.V(7).Infof("*** Update(preview=%v) complete ***", dryRun)
 
-	if len(opts.Snippets) > 0 && !dryRun && ctx.SnapshotManager != nil {
-		if err := ctx.SnapshotManager.SetSnippets(effectiveSnippets); err != nil {
-			return nil, nil, err
-		}
-	}
-
 	// We skip the target check here because the targeted resource may not exist yet.
 
 	return update(ctx, info, &deploymentOptions{
@@ -589,6 +584,27 @@ func Update(u UpdateInfo, ctx *Context, opts UpdateOptions, dryRun bool) (
 		DryRun:        dryRun,
 		pluginManager: ctx.PluginManager,
 	})
+}
+
+func persistValidatedSnippets(
+	ctx context.Context,
+	manager SnapshotManager,
+	snippets []resource.Snippet,
+	plugctx *plugin.Context,
+) error {
+	if manager == nil {
+		return nil
+	}
+	loader := schema.NewPluginLoader(plugctx)
+	for _, snippet := range snippets {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		if err := deploy.ValidateSnippet(ctx, snippet, loader); err != nil {
+			return err
+		}
+	}
+	return manager.SetSnippets(snippets)
 }
 
 func installPlugins(
@@ -766,7 +782,7 @@ func loadPolicyPlugins(plugctx *plugin.Context,
 					policyOpts.AdditionalEnv = resolved.EnvironmentVariables
 				}
 				if len(resolved.Secrets) > 0 {
-					logging.AddGlobalFilter(logging.CreateFilter(resolved.Secrets, "[secret]"))
+					logging.AddGlobalSecretFilter(resolved.Secrets, "[secret]")
 				}
 			}
 
@@ -870,7 +886,7 @@ func loadPolicyPlugins(plugctx *plugin.Context,
 						policyOpts.AdditionalEnv = resolved.EnvironmentVariables
 					}
 					if len(resolved.Secrets) > 0 {
-						logging.AddGlobalFilter(logging.CreateFilter(resolved.Secrets, "[secret]"))
+						logging.AddGlobalSecretFilter(resolved.Secrets, "[secret]")
 					}
 				}
 			}
@@ -1043,7 +1059,7 @@ func newUpdateSource(ctx context.Context,
 	program := deploy.NewProgramSource(plugctx, runinfo, evalOpts, panicErrs)
 
 	var observer *deploy.RegistrationObserver
-	// Now create sources for _any_ snippets in the snapshot and mux them with the main source.
+	// Now create sources for snippets in the snapshot and mux them with the main source.
 	if target.Snapshot != nil && len(target.Snapshot.Snippets) > 0 {
 		// Create a registration observer so concurrent sources (the program + any snippet sources below) can wait for
 		// each other's RegisterResource calls. The resource monitor publishes outputs on the observer; snippet sources
@@ -1053,8 +1069,26 @@ func newUpdateSource(ctx context.Context,
 		// We need a loader for snippets
 		loader := schema.NewPluginLoader(plugctx)
 
-		snippetSources := make([]func(string) *promise.Promise[struct{}], len(target.Snapshot.Snippets))
-		for i, snippet := range target.Snapshot.Snippets {
+		// When the operation targets specific snippets, evaluate only those; everything else is
+		// carried forward from old state, so references into it are resolved from that state
+		// (matching what an untargeted replay would publish).
+		replaySnippets := target.Snapshot.Snippets
+		if len(opts.TargetSnippets) > 0 {
+			replaySnippets = slice.Prealloc[resource.Snippet](len(target.Snapshot.Snippets))
+			for _, snippet := range target.Snapshot.Snippets {
+				if slices.Contains(opts.TargetSnippets, snippet.UUID) {
+					replaySnippets = append(replaySnippets, snippet)
+				}
+			}
+			for _, r := range target.Snapshot.Resources {
+				if r != nil && !r.Delete && !slices.Contains(opts.TargetSnippets, r.SnippetID) {
+					observer.Resolve(r.URN, r.ID, r.Outputs)
+				}
+			}
+		}
+
+		snippetSources := make([]func(string) *promise.Promise[struct{}], len(replaySnippets))
+		for i, snippet := range replaySnippets {
 			snippetSources[i] = deploy.NewSnippetSource(
 				ctx, snippet, loader, runinfo.ProjectRoot, runinfo.Pwd, observer)
 		}
@@ -1272,9 +1306,7 @@ func (acts *updateActions) OnResourceStepPost(
 		contract.Assertf(new != nil, "new state should not be nil for partially-failed update")
 		contract.Assertf(old != nil, "old state should not be nil for partially-failed update")
 		new.Inputs = make(resource.PropertyMap)
-		for key, value := range old.Inputs {
-			new.Inputs[key] = value
-		}
+		maps.Copy(new.Inputs, old.Inputs)
 	}
 
 	// Write out the current snapshot. Note that even if a failure has occurred, we should still have a

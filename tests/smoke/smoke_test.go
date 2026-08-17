@@ -371,7 +371,7 @@ func TestPackageGetSchema(t *testing.T) {
 	// Now try and get the parameterized schema from within a Pulumi project with a packages declaration.
 	err = os.WriteFile(
 		filepath.Join(e.CWD, "Pulumi.yaml"),
-		[]byte(fmt.Sprintf(`name: project
+		fmt.Appendf(nil, `name: project
 runtime: yaml
 packages:
   tp: %s
@@ -379,7 +379,7 @@ backend:
   url: '%s'`,
 			providerDir,
 			e.LocalURL(),
-		)), 0o600)
+		), 0o600)
 	require.NoError(t, err)
 
 	schemaJSON, _ = e.RunCommand("pulumi", "package", "get-schema", "tp", "parameter")
@@ -719,13 +719,13 @@ func TestSecretsProvidersInitializationSmoke(t *testing.T) {
 				require.NoError(t, err)
 
 				projectYAML := filepath.Join(projectDir, "Pulumi.yaml")
-				err = os.WriteFile(projectYAML, []byte(fmt.Sprintf(`name: project
+				err = os.WriteFile(projectYAML, fmt.Appendf(nil, `name: project
 runtime: %s
 backend:
   url: '%s'`,
 					runtime,
 					e.LocalURL(),
-				)), 0o600)
+				), 0o600)
 				require.NoError(t, err)
 
 				stackYAML := filepath.Join(projectDir, "Pulumi.dev.yaml")
@@ -1288,7 +1288,7 @@ func TestDoCommandLocalRun(t *testing.T) {
 	// is the JSON result. The provider still captures stdout/stderr as outputs.
 	e.WriteTestFile("inputs.pcl", `command = "echo hello"`+"\n"+`logging = "none"`+"\n")
 
-	stdout, stderr := e.RunCommand("pulumi", "do", "command:local:run", "--input-file", "inputs.pcl")
+	stdout, stderr := e.RunCommand("pulumi", "do", "command:local:run", "--input", "pcl", "--input-file", "inputs.pcl")
 
 	// Guard against the dynamic-subcommand re-execute racing with the root command's update-check goroutine and
 	// producing a "send on closed channel" panic. The panic is intermittent so it doesn't always reproduce, but
@@ -1343,7 +1343,7 @@ func TestDoCommandLocalCommand(t *testing.T) {
 
 	stdout, stderr := e.RunCommand(
 		"pulumi", "do", "--stateless", "command:local:Command", "create",
-		"--input-file", "inputs.pcl", "--yes")
+		"--input", "pcl", "--input-file", "inputs.pcl", "--yes")
 
 	// Guard against the dynamic-subcommand re-execute racing with the root command's update-check goroutine and
 	// producing a "send on closed channel" panic. The panic is intermittent so it doesn't always reproduce, but
@@ -1365,4 +1365,18 @@ func TestPulumiNewEmptyOperations(t *testing.T) {
 	e.RunCommand("pulumi", "new", "-y")
 	e.RunCommand("pulumi", "stack", "init", "testing")
 	e.RunCommand("pulumi", "config", "set", "key", "value")
+}
+
+// Test that `pulumi --version` prints the same output as `pulumi version`.
+func TestVersionFlag(t *testing.T) {
+	t.Parallel()
+
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+
+	versionCmdStdout, _ := e.RunCommand("pulumi", "version")
+	versionFlagStdout, _ := e.RunCommand("pulumi", "--version")
+
+	assert.NotEmpty(t, strings.TrimSpace(versionCmdStdout))
+	assert.Equal(t, versionCmdStdout, versionFlagStdout)
 }

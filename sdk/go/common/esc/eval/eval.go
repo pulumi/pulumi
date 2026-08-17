@@ -50,6 +50,9 @@ type ProviderLoader interface {
 type EnvironmentLoader interface {
 	// LoadEnvironment loads the definition for the environment with the given name.
 	LoadEnvironment(ctx context.Context, name string) ([]byte, Decrypter, error)
+
+	// AuthorizeImport reports whether the environment named by importer may import the environment named by imported.
+	AuthorizeImport(ctx context.Context, importer string, imported string, importerIsRoot bool) error
 }
 
 // LoadYAML decodes a YAML template from an io.Reader.
@@ -85,6 +88,7 @@ func EvalEnvironment(
 	providers ProviderLoader,
 	environments EnvironmentLoader,
 	execContext *esc.ExecContext,
+	opts EvalOptions,
 ) (*esc.Environment, syntax.Diagnostics) {
 	opened, _, diags := evalEnvironment(
 		ctx,
@@ -98,6 +102,7 @@ func EvalEnvironment(
 		execContext,
 		true,
 		nil,
+		opts,
 	)
 	return opened, diags
 }
@@ -113,6 +118,7 @@ func CheckEnvironment(
 	environments EnvironmentLoader,
 	execContext *esc.ExecContext,
 	showSecrets bool,
+	opts EvalOptions,
 ) (*esc.Environment, syntax.Diagnostics) {
 	checked, _, diags := evalEnvironment(
 		ctx,
@@ -126,6 +132,7 @@ func CheckEnvironment(
 		execContext,
 		showSecrets,
 		nil,
+		opts,
 	)
 	return checked, diags
 }
@@ -141,6 +148,7 @@ func RotateEnvironment(
 	environments EnvironmentLoader,
 	execContext *esc.ExecContext,
 	paths []resource.PropertyPath,
+	opts EvalOptions,
 ) (*esc.Environment, RotationResult, syntax.Diagnostics) {
 	rotateDocPaths := make(map[string]bool, len(paths))
 	for _, path := range paths {
@@ -158,6 +166,7 @@ func RotateEnvironment(
 		execContext,
 		true,
 		rotateDocPaths,
+		opts,
 	)
 }
 
@@ -174,6 +183,7 @@ func evalEnvironment(
 	execContext *esc.ExecContext,
 	showSecrets bool,
 	rotatePaths map[string]bool,
+	opts EvalOptions,
 ) (*esc.Environment, RotationResult, syntax.Diagnostics) {
 	if env == nil || (len(env.Values.GetEntries()) == 0 && len(env.Imports.GetElements()) == 0) {
 		return nil, nil, nil
@@ -194,6 +204,7 @@ func evalEnvironment(
 		showSecrets,
 		rotatePaths,
 	)
+	ec.traceMode = opts.TraceMode
 	v, diags := ec.evaluate()
 
 	s := schema.Never().Schema()
@@ -205,7 +216,7 @@ func evalEnvironment(
 		}
 	}
 
-	contextProperties, exportDiags := ec.myContext.export(name)
+	contextProperties, exportDiags := ec.myContext.export(name, ec.traceMode)
 	diags.Extend(exportDiags...)
 
 	executionContext := &esc.EvaluatedExecutionContext{
@@ -213,7 +224,7 @@ func evalEnvironment(
 		Schema:     ec.myContext.schema,
 	}
 
-	envProperties, exportDiags := v.export(name)
+	envProperties, exportDiags := v.export(name, ec.traceMode)
 	diags.Extend(exportDiags...)
 
 	return &esc.Environment{
@@ -253,6 +264,8 @@ type evalContext struct {
 	// rotating. if empty, all rotators will be invoked.
 	rotateDocPaths map[string]bool
 	rotationResult RotationResult // result of secret rotations
+
+	traceMode TraceMode // traceMode used during eval and passed to export
 
 	diags syntax.Diagnostics // diagnostics generated during evaluation
 }
@@ -587,6 +600,12 @@ func (e *evalContext) evaluateImports() {
 //
 // Each environment in the import closure is only evaluated once.
 func (e *evalContext) evaluateImport(expr ast.Expr, name string) (*value, bool) {
+	// Authorize the import edge before consulting the cache, so authorization runs once per (importer, imported)
+	if err := e.environments.AuthorizeImport(e.ctx, e.name, name, e.isRootEnv); err != nil {
+		e.errorf(expr, "%s", err.Error())
+		return nil, false
+	}
+
 	var val *value
 	if imported, ok := e.imports[name]; ok {
 		if imported.evaluating {
@@ -619,6 +638,7 @@ func (e *evalContext) evaluateImport(expr ast.Expr, name string) (*value, bool) 
 
 		// we only want to rotate the root environment, so set rotating flag to false when evaluating imports
 		imp := newEvalContext(e.ctx, e.validating, false, name, env, false, dec, e.providers, e.environments, e.imports, e.execContext, e.showSecrets, nil) //nolint:lll
+		imp.traceMode = e.traceMode
 		v, diags := imp.evaluate()
 		e.diags.Extend(diags...)
 
@@ -1195,7 +1215,7 @@ func (e *evalContext) evaluateBuiltinOpen(x *expr, repr *openExpr) *value {
 		return v
 	}
 
-	inputsV, exportDiags := inputs.export("")
+	inputsV, exportDiags := inputs.export("", e.traceMode)
 	e.diags.Extend(exportDiags...)
 
 	output, err := provider.Open(e.ctx, inputsV.Value.(map[string]esc.Value), e.execContext)
@@ -1263,12 +1283,12 @@ func (e *evalContext) evaluateBuiltinRotate(x *expr, repr *rotateExpr) *value {
 		return v
 	}
 
-	inputsV, exportDiags := inputs.export("")
+	inputsV, exportDiags := inputs.export("", e.traceMode)
 	e.diags.Extend(exportDiags...)
 
 	// if rotating, invoke prior to open
 	if e.shouldRotate(docPath) {
-		stateV, exportDiags := state.export("")
+		stateV, exportDiags := state.export("", e.traceMode)
 		e.diags.Extend(exportDiags...)
 
 		newState, err := rotator.Rotate(
@@ -1309,7 +1329,7 @@ func (e *evalContext) evaluateBuiltinRotate(x *expr, repr *rotateExpr) *value {
 		state = unexport(newState, x)
 	}
 
-	stateV, exportDiags := state.export("")
+	stateV, exportDiags := state.export("", e.traceMode)
 	e.diags.Extend(exportDiags...)
 
 	output, err := rotator.Open(
@@ -1499,7 +1519,7 @@ func (e *evalContext) evaluateBuiltinValidate(x *expr, repr *validateExpr) *valu
 // valueToSchema converts an evaluated value to a *schema.Schema.
 func (e *evalContext) valueToSchema(v *value) (*schema.Schema, error) {
 	// Export the value to esc.Value
-	ev, diags := v.export("")
+	ev, diags := v.export("", e.traceMode)
 	e.diags.Extend(diags...)
 
 	// Convert to JSON representation
@@ -1595,7 +1615,7 @@ func (e *evalContext) evaluateBuiltinToJSON(x *expr, repr *toJSONExpr) *value {
 
 	v.combine(value)
 	if !v.unknown {
-		valueV, exportDiags := value.export("")
+		valueV, exportDiags := value.export("", e.traceMode)
 		e.diags.Extend(exportDiags...)
 
 		b, err := json.Marshal(valueV.ToJSON(false))
@@ -1617,7 +1637,7 @@ func (e *evalContext) evaluateBuiltinToYAML(x *expr, repr *toYAMLExpr) *value {
 
 	v.combine(value)
 	if !v.unknown {
-		valueV, exportDiags := value.export("")
+		valueV, exportDiags := value.export("", e.traceMode)
 		e.diags.Extend(exportDiags...)
 
 		b, err := yaml.Marshal(valueV.ToJSON(false))

@@ -39,12 +39,9 @@ import (
 	// We need to re-use glogs flags otherwise we'd get conflicts if another dependency pulled in glog later.
 	_ "github.com/golang/glog"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/sig"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 )
-
-type Filter interface {
-	Filter(s string) string
-}
 
 var (
 	LogToStderr = false // true if logging is being redirected to stderr.
@@ -53,8 +50,11 @@ var (
 )
 
 var (
-	rwLock  sync.RWMutex
-	filters []Filter
+	rwLock sync.RWMutex
+
+	secretsSeen     map[string]struct{}
+	secretsPairs    []string
+	secretsReplacer *strings.Replacer
 )
 
 var (
@@ -75,13 +75,61 @@ func init() {
 // handlerMu held for writing. slog.SetDefault is safe for concurrent use
 // with readers, so no additional synchronisation is needed.
 func rebuildLogger() {
-	var p slog.Handler = formattingHandler{inner: primary}
+	var p slog.Handler = verbosityHandler{inner: formattingHandler{inner: primary}}
 	var h slog.Handler = filteringHandler{inner: &teeHandler{
 		primary:  p,
 		sink:     sinkHandler,
 		exporter: exportHandler,
 	}}
 	slog.SetDefault(slog.New(h))
+}
+
+// logRedactable is implemented by attribute values (such as the property types) that know how to
+// replace their secret contents for plaintext log output. Only the primary (stderr or log file)
+// output redacts; the sink and export handlers receive unredacted records.
+type logRedactable interface {
+	RedactedLogValue() slog.Value
+}
+
+func redactAttr(a slog.Attr) slog.Attr {
+	if k := a.Value.Kind(); k != slog.KindAny && k != slog.KindLogValuer {
+		return a
+	}
+	switch v := a.Value.Any().(type) {
+	case logRedactable:
+		a.Value = v.RedactedLogValue()
+	case map[string]any:
+		a.Value = slog.AnyValue(redactSecretsInJSON(v))
+	case []any:
+		a.Value = slog.AnyValue(redactSecretsInJSON(v))
+	}
+	return a
+}
+
+// redactSecretsInJSON walks an already-serialized JSON value and replaces any object carrying the
+// Pulumi secret signature with "[secret]". Unlike the in-place walk `pulumi logs share` uses on
+// records it owns, this copies: the original value is shared with the unredacted sink and export
+// log outputs.
+func redactSecretsInJSON(v any) any {
+	switch val := v.(type) {
+	case map[string]any:
+		if s, ok := val[sig.Key].(string); ok && s == sig.Secret {
+			return "[secret]"
+		}
+		redacted := make(map[string]any, len(val))
+		for k, child := range val {
+			redacted[k] = redactSecretsInJSON(child)
+		}
+		return redacted
+	case []any:
+		redacted := make([]any, len(val))
+		for i, child := range val {
+			redacted[i] = redactSecretsInJSON(child)
+		}
+		return redacted
+	default:
+		return val
+	}
 }
 
 // SetExportHandler installs an slog.Handler for OTLP log export.
@@ -120,8 +168,10 @@ func verbosityLevel(verbose int) slog.Level {
 		return LevelTrace
 	case verbose >= 10:
 		return slog.LevelDebug
-	default:
+	case verbose >= 1:
 		return slog.LevelInfo
+	default:
+		return slog.LevelWarn
 	}
 }
 
@@ -226,16 +276,15 @@ func InitLogging(logToStderr bool, verbose int, logFlow bool) {
 	} else if f := flag.CommandLine.Lookup("v"); f != nil {
 		fmt.Sscan(f.Value.String(), &Verbose) //nolint:errcheck
 	}
-
 	initExportHandler(filepath.Base(os.Args[0]))
 
 	handlerMu.Lock()
 
 	switch {
-	case LogToStderr && exportHandler != nil:
-		// Logs already flow to the engine over OTel, so ignore --logtostderr:
-		// writing JSON records to stderr would only leak them into the
-		// engine's display of our output.
+	case exportHandler != nil:
+		// Logs already flow to the engine over OTel, so skip local output:
+		// a log file would only duplicate them, and writing JSON records to
+		// stderr would leak them into the engine's display of our output.
 		primary = discardHandler{}
 	case LogToStderr:
 		primary = slog.NewJSONHandler(os.Stderr, &slog.HandlerOptions{
@@ -365,6 +414,7 @@ func (f formattingHandler) Handle(ctx context.Context, r slog.Record) error {
 	var fmtArgs []any
 	var other []slog.Attr
 	r.Attrs(func(a slog.Attr) bool {
+		a = redactAttr(a)
 		if strings.HasPrefix(a.Key, "pulumi.log.arg") {
 			fmtArgs = append(fmtArgs, a.Value.Any())
 		} else {
@@ -384,34 +434,18 @@ func (f formattingHandler) Handle(ctx context.Context, r slog.Record) error {
 }
 
 func (f formattingHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
-	return formattingHandler{inner: f.inner.WithAttrs(attrs)}
+	redacted := make([]slog.Attr, len(attrs))
+	for i, a := range attrs {
+		redacted[i] = redactAttr(a)
+	}
+	return formattingHandler{inner: f.inner.WithAttrs(redacted)}
 }
 
 func (f formattingHandler) WithGroup(name string) slog.Handler {
 	return formattingHandler{inner: f.inner.WithGroup(name)}
 }
 
-type nopFilter struct{}
-
-func (f *nopFilter) Filter(s string) string {
-	return s
-}
-
-type replacerFilter struct {
-	replacer *strings.Replacer
-}
-
-func (f *replacerFilter) Filter(s string) string {
-	return f.replacer.Replace(s)
-}
-
-func AddGlobalFilter(filter Filter) {
-	rwLock.Lock()
-	filters = append(filters, filter)
-	rwLock.Unlock()
-}
-
-func CreateFilter(secrets []string, replacement string) Filter {
+func replacements(secrets []string, replacement string) []string {
 	items := slice.Prealloc[string](len(secrets))
 	for _, secret := range secrets {
 		// For short secrets, don't actually add them to the filter, this is a trade-off we make to prevent
@@ -433,24 +467,78 @@ func CreateFilter(secrets []string, replacement string) Filter {
 			items = append(items, escaped, replacement)
 		}
 	}
-	if len(items) > 0 {
-		return &replacerFilter{replacer: strings.NewReplacer(items...)}
-	}
+	return items
+}
 
-	return &nopFilter{}
+// AddGlobalSecretFilter registers secrets to be replaced by FilterString. Secrets registered
+// here are deduplicated and folded into a single replacer, so FilterString makes one pass over
+// its input no matter how many operations register their secrets.
+func AddGlobalSecretFilter(secrets []string, replacement string) {
+	rwLock.Lock()
+	defer rwLock.Unlock()
+
+	changed := false
+	for _, secret := range secrets {
+		if _, seen := secretsSeen[secret]; seen {
+			continue
+		}
+		if secretsSeen == nil {
+			secretsSeen = map[string]struct{}{}
+		}
+		secretsSeen[secret] = struct{}{}
+		secretsPairs = append(secretsPairs, replacements([]string{secret}, replacement)...)
+		changed = true
+	}
+	if changed && len(secretsPairs) > 0 {
+		secretsReplacer = strings.NewReplacer(secretsPairs...)
+	}
 }
 
 func FilterString(msg string) string {
-	var localFilters []Filter
 	rwLock.RLock()
-	localFilters = filters
+	secretsFilter := secretsReplacer
 	rwLock.RUnlock()
 
-	for _, filter := range localFilters {
-		msg = filter.Filter(msg)
+	if secretsFilter != nil {
+		msg = secretsFilter.Replace(msg)
 	}
-
 	return msg
+}
+
+// verbosityHandler drops records whose "v" attribute exceeds the requested -v level before they
+// reach the primary log output. Records carry their original pulumi verbosity in the "v"
+// attribute, while their slog levels are bucketed too coarsely (V(1)-V(9) all map to Info) for
+// level-based filtering alone. Only the primary output filters by verbosity; the sink and export
+// handlers receive every record.
+type verbosityHandler struct {
+	inner slog.Handler
+}
+
+func (h verbosityHandler) Enabled(ctx context.Context, level slog.Level) bool {
+	return h.inner.Enabled(ctx, level)
+}
+
+func (h verbosityHandler) Handle(ctx context.Context, r slog.Record) error {
+	drop := false
+	r.Attrs(func(a slog.Attr) bool {
+		if a.Key == "v" && a.Value.Kind() == slog.KindInt64 {
+			drop = a.Value.Int64() > int64(Verbose)
+			return false
+		}
+		return true
+	})
+	if drop {
+		return nil
+	}
+	return h.inner.Handle(ctx, r)
+}
+
+func (h verbosityHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
+	return verbosityHandler{inner: h.inner.WithAttrs(attrs)}
+}
+
+func (h verbosityHandler) WithGroup(name string) slog.Handler {
+	return verbosityHandler{inner: h.inner.WithGroup(name)}
 }
 
 type discardHandler struct{}

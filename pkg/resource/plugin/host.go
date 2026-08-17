@@ -54,11 +54,6 @@ type Host interface {
 	// have a resource URN associated with them.  If no urn is provided, the message is global.
 	LogStatus(sev diag.Severity, urn resource.URN, msg string, streamID int32)
 
-	// Analyzer fetches the analyzer with a given name, possibly lazily allocating the plugins for
-	// it.  If an analyzer could not be found, or an error occurred while creating it, a non-nil
-	// error is returned.
-	Analyzer(ctx *Context, nm tokens.QName) (Analyzer, error)
-
 	// PolicyAnalyzer boots the nodejs analyzer plugin located at a given path. This is useful
 	// because policy analyzers generally do not need to be "discovered" -- the engine is given a
 	// set of policies that are required to be run during an update, so they tend to be in a

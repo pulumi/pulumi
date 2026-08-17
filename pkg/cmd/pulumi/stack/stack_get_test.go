@@ -21,6 +21,8 @@ import (
 	"testing"
 	"time"
 
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
+
 	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
@@ -201,7 +203,7 @@ func TestBuildStackJSON_WithSnapshot(t *testing.T) {
 				{Name: "aws", Kind: "resource", Version: &v123},
 			},
 		},
-		Resources: []*resource.State{
+		Resources: []*pkgresource.State{
 			{URN: urn, Type: "aws:s3/bucket:Bucket", ID: "bucket-id-1"},
 		},
 	}

@@ -17,6 +17,8 @@ package tests
 import (
 	"strings"
 
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
+
 	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language/providers"
@@ -54,7 +56,7 @@ func init() {
 					withCustomURL2 := RequireSingleNamedResource(l, res.Snap.Resources, "withCustomURL2")
 
 					// Find provider resources for any URL
-					findProvider := func(providerRef string) *resource.State {
+					findProvider := func(providerRef string) *pkgresource.State {
 						urn, err := resource.ParseURN(providerRef[:strings.LastIndex(providerRef, "::")])
 						require.NoError(l, err)
 						for _, r := range res.Snap.Resources {

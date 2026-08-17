@@ -18,15 +18,20 @@ import (
 	"bytes"
 	"encoding/json"
 	"io"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/pkg/v3/importer"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
+	resourcestack "github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	sdkconfig "github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -151,7 +156,45 @@ func TestParseImportFile_errors(t *testing.T) {
 			},
 			wantErrs: []string{
 				"1 error occurred",
-				"the provider 'unknown' for resource 'thing' of type 'foo:bar:baz' has no entry in 'nameTable'",
+				"the provider 'unknown' for resource 'thing' of type 'foo:bar:baz' has no entry in 'nameTable' or 'resources'",
+			},
+		},
+		{
+			desc: "provider with an ID",
+			give: importFile{
+				Resources: []importSpec{
+					{
+						Name: "prov",
+						ID:   "some-id",
+						Type: "pulumi:providers:aws",
+					},
+				},
+			},
+			wantErrs: []string{
+				"1 error occurred",
+				"resource 'prov' of type 'pulumi:providers:aws' has an ID, but is a provider, which is created rather than read",
+			},
+		},
+		{
+			desc: "provider reference to a non-provider resource",
+			give: importFile{
+				Resources: []importSpec{
+					{
+						Name: "bucket",
+						ID:   "bucket-id",
+						Type: "aws:s3/bucket:Bucket",
+					},
+					{
+						Name:     "thing",
+						ID:       "thing-id",
+						Type:     "aws:s3/bucket:Bucket",
+						Provider: "bucket",
+					},
+				},
+			},
+			wantErrs: []string{
+				"1 error occurred",
+				"the provider 'bucket' for resource 'thing' of type 'aws:s3/bucket:Bucket' is not a provider",
 			},
 		},
 		{
@@ -274,6 +317,18 @@ func TestParseImportFile_errors(t *testing.T) {
 			},
 			wantErrs: []string{
 				"resource 'res-2' of type 'foo:bar:a' has an ambiguous provider",
+			},
+		},
+		{
+			desc: "provider with outputs",
+			give: importFile{Resources: []importSpec{{
+				Name:    "prov",
+				Type:    "pulumi:providers:aws",
+				Outputs: map[string]any{"foo": "bar"},
+			}}},
+			wantErrs: []string{
+				"1 error occurred",
+				"resource 'prov' of type 'pulumi:providers:aws' is a provider and may not have outputs",
 			},
 		},
 		{
@@ -565,6 +620,204 @@ func TestParseImportFileProviderInputs(t *testing.T) {
 	assert.Equal(t, resource.NewProperty("6.0.0"), imports[0].ProviderInputs["version"])
 }
 
+func TestParseImportFileUnknownValues(t *testing.T) {
+	t.Parallel()
+
+	// The marker the stack serialisation uses to stand in for an unknown value.
+	unknown, err := resourcestack.SerializePropertyValue(
+		t.Context(), resource.MakeComputed(resource.NewProperty("")), sdkconfig.NopEncrypter, false)
+	require.NoError(t, err)
+
+	providerURN := resource.URN("urn:pulumi:stack::proj::pulumi:providers:aws::my-prov")
+	spec := importSpec{
+		Name:     "thing",
+		ID:       "thing-id",
+		Type:     "aws:s3:Bucket",
+		Provider: "my-prov",
+	}
+
+	tests := []struct {
+		field string
+		give  func(importSpec) importFile
+	}{
+		{
+			field: "providerInputs",
+			give: func(spec importSpec) importFile {
+				return importFile{
+					Resources: []importSpec{spec},
+					ProviderInputs: map[string]map[string]any{
+						"my-prov": {"region": unknown, "version": "6.0.0"},
+					},
+				}
+			},
+		},
+		{
+			field: "inputs",
+			give: func(spec importSpec) importFile {
+				spec.Inputs = map[string]any{"bucket": unknown}
+				return importFile{Resources: []importSpec{spec}}
+			},
+		},
+		{
+			field: "outputs",
+			give: func(spec importSpec) importFile {
+				spec.Outputs = map[string]any{"arn": []any{unknown}}
+				return importFile{Resources: []importSpec{spec}}
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.field, func(t *testing.T) {
+			t.Parallel()
+
+			f := tt.give(spec)
+			f.NameTable = map[string]resource.URN{"my-prov": providerURN}
+
+			_, _, err := parseImportFile(f, tokens.MustParseStackName("stack"), "proj", false, sdkconfig.NopDecrypter)
+			assert.ErrorContains(t, err,
+				"the "+tt.field+" for resource 'thing' of type 'aws:s3:Bucket' contain unknown values")
+		})
+	}
+}
+
+func ptr[T any](v T) *T {
+	return &v
+}
+
+func TestMakeImportFileFromResourceListInputsOutputs(t *testing.T) {
+	t.Parallel()
+
+	f, err := makeImportFileFromResourceList(t.Context(), []plugin.ResourceImport{
+		{
+			Type: "aws:s3/bucket:Bucket",
+			Name: "thing",
+			ID:   "thing-id",
+			Inputs: ptr(property.NewMap(map[string]property.Value{
+				"password": property.New("shh").WithSecret(true),
+			})),
+			Outputs: ptr(property.NewMap(map[string]property.Value{
+				"arn": property.New("some:arn"),
+			})),
+		},
+	})
+	require.NoError(t, err)
+
+	imports, _, err := parseImportFile(f, tokens.MustParseStackName("stack"), "proj", false, sdkconfig.NopDecrypter)
+	require.NoError(t, err)
+	require.Len(t, imports, 1)
+
+	// Secret values survive the round trip through the import file's serialized form.
+	assert.Equal(t, resource.MakeSecret(resource.NewProperty("shh")), imports[0].Inputs["password"])
+	assert.Equal(t, resource.NewProperty("some:arn"), imports[0].Outputs["arn"])
+}
+
+func TestParseImportFileInputsOutputs(t *testing.T) {
+	t.Parallel()
+
+	f := importFile{
+		Resources: []importSpec{
+			{
+				Name: "my-prov",
+				Type: "pulumi:providers:aws",
+				Inputs: map[string]any{
+					"region": "eu-west-1",
+				},
+			},
+			{
+				Name:     "thing",
+				ID:       "thing-id",
+				Type:     "aws:s3:Bucket",
+				Provider: "my-prov",
+				Inputs: map[string]any{
+					"bucket": "my-bucket",
+				},
+				Outputs: map[string]any{
+					"bucket": "my-bucket",
+					"arn":    "arn:aws:s3:::my-bucket",
+				},
+			},
+		},
+	}
+	imports, _, err := parseImportFile(f, tokens.MustParseStackName("stack"), "proj", false, sdkconfig.NopDecrypter)
+	require.NoError(t, err)
+	require.Len(t, imports, 2)
+
+	// A provider spec's inputs become its configuration.
+	assert.Equal(t, resource.NewProperty("eu-west-1"), imports[0].Inputs["region"])
+	require.Nil(t, imports[0].ProviderInputs)
+
+	assert.Equal(t, resource.NewProperty("my-bucket"), imports[1].Inputs["bucket"])
+	assert.Equal(t, resource.NewProperty("arn:aws:s3:::my-bucket"), imports[1].Outputs["arn"])
+}
+
+func TestParseImportFileDeclaredProvider(t *testing.T) {
+	t.Parallel()
+
+	f := importFile{
+		Resources: []importSpec{
+			{
+				Name: "my-prov",
+				Type: "pulumi:providers:aws",
+			},
+			{
+				Name:     "thing",
+				ID:       "thing-id",
+				Type:     "aws:s3:Bucket",
+				Provider: "my-prov",
+			},
+		},
+		ProviderInputs: map[string]map[string]any{
+			"my-prov": {
+				"region": "eu-west-1",
+			},
+		},
+	}
+	imports, _, err := parseImportFile(f, tokens.MustParseStackName("stack"), "proj", false, sdkconfig.NopDecrypter)
+	require.NoError(t, err)
+	require.Len(t, imports, 2)
+
+	providerURN := resource.URN("urn:pulumi:stack::proj::pulumi:providers:aws::my-prov")
+	require.NotNil(t, imports[0].Inputs)
+	assert.Equal(t, resource.NewProperty("eu-west-1"), imports[0].Inputs["region"])
+	assert.Equal(t, providerURN, imports[1].Provider)
+}
+
+func TestParseImportFileProviderWithParent(t *testing.T) {
+	t.Parallel()
+
+	f := importFile{
+		Resources: []importSpec{
+			{
+				Name:      "comp",
+				Type:      "my:index:Comp",
+				Component: true,
+			},
+			{
+				Name:   "my-prov",
+				Type:   "pulumi:providers:aws",
+				Parent: "comp",
+				Inputs: map[string]any{"region": "eu-west-1"},
+			},
+			{
+				Name:     "thing",
+				ID:       "thing-id",
+				Type:     "aws:s3:Bucket",
+				Provider: "my-prov",
+			},
+		},
+	}
+	imports, _, err := parseImportFile(f, tokens.MustParseStackName("stack"), "proj", false, sdkconfig.NopDecrypter)
+	require.NoError(t, err)
+	require.Len(t, imports, 3)
+
+	assert.Equal(t, resource.URN("urn:pulumi:stack::proj::my:index:Comp::comp"), imports[1].Parent)
+	assert.Equal(t, resource.NewProperty("eu-west-1"), imports[1].Inputs["region"])
+	assert.Equal(t,
+		resource.URN("urn:pulumi:stack::proj::my:index:Comp$pulumi:providers:aws::my-prov"),
+		imports[2].Provider)
+}
+
 func TestParseImportFileProviderInputsWithoutEntry(t *testing.T) {
 	t.Parallel()
 
@@ -747,4 +1000,27 @@ func TestImportCmd_OutputAndJSONMutuallyExclusive(t *testing.T) {
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "none of the others can be",
 		"expected cobra's mutually-exclusive error, got: %v", err)
+}
+
+// TestImportCmd_TerraformConverterRejectedInHclProject verifies that
+// `pulumi import --from terraform` is rejected in a Pulumi HCL project. The
+// Terraform converter writes statically bridged providers into state, but
+// pulumi-hcl runs resources through the dynamic Terraform bridge, so the next
+// preview would show a delete and create for every resource.
+//
+//nolint:paralleltest // changes process working directory
+func TestImportCmd_TerraformConverterRejectedInHclProject(t *testing.T) {
+	dir := t.TempDir()
+	err := os.WriteFile(filepath.Join(dir, "Pulumi.yaml"), []byte("name: test\nruntime: hcl\n"), 0o600)
+	require.NoError(t, err)
+	t.Chdir(dir)
+
+	cmd := NewImportCmd()
+	cmd.SetArgs([]string{"--from", "terraform", "--yes"})
+	cmd.SetOut(io.Discard)
+	cmd.SetErr(io.Discard)
+
+	err = cmd.Execute()
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "pulumi import --from hcl")
 }

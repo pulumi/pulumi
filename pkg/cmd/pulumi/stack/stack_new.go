@@ -42,7 +42,7 @@ func newStackNewCmd() *cobra.Command {
 	var sicmd stackNewCmd
 	cmd := &cobra.Command{
 		Use:     "new",
-		Aliases: []string{"init"},
+		Aliases: []string{"init", "create", "setup"},
 		Short:   "Create an empty stack with the given name, ready for updates",
 		Long: "Create an empty stack with the given name, ready for updates\n" +
 			"\n" +
@@ -148,7 +148,7 @@ func (cmd *stackNewCmd) Run(ctx context.Context, args []string) error {
 	ws := pkgWorkspace.Instance
 
 	// Try to read the current project
-	project, _, err := ws.ReadProject()
+	project, _, err := ws.ReadProject("")
 	if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
 		return err
 	}
@@ -198,7 +198,7 @@ func (cmd *stackNewCmd) Run(ctx context.Context, args []string) error {
 		return err
 	}
 
-	proj, root, projectErr := ws.ReadProject()
+	proj, root, projectErr := ws.ReadProject("")
 	if projectErr != nil && !errors.Is(projectErr, workspace.ErrProjectNotFound) {
 		return projectErr
 	}

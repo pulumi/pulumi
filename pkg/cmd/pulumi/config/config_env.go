@@ -37,6 +37,13 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// errBackendNoEnvironments indicates that the given backend does not support ESC environments and
+// points the user at the Pulumi Cloud backend, which does.
+func errBackendNoEnvironments(b backend.Backend) error {
+	return fmt.Errorf("backend %v does not support environments; Pulumi ESC environments require the "+
+		"Pulumi Cloud backend, use `pulumi login` without arguments to log into the Pulumi Cloud backend", b.Name())
+}
+
 func newConfigEnvCmd(ws pkgWorkspace.Context, stackRef *string, configFile *string) *cobra.Command {
 	impl := configEnvCmd{
 		stdin:            os.Stdin,
@@ -120,7 +127,12 @@ func (cmd *configEnvCmd) loadEnvPreamble(ctx context.Context,
 ) (*workspace.ProjectStack, *workspace.Project, *backend.Stack, error) {
 	opts := display.Options{Color: cmd.color}
 
-	project, _, err := cmd.ws.ReadProject()
+	cwd, err := os.Getwd()
+	if err != nil {
+		return nil, nil, nil, fmt.Errorf("getting current working directory: %w", err)
+	}
+
+	project, _, err := cmd.ws.ReadProject(cwd)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -141,7 +153,7 @@ func (cmd *configEnvCmd) loadEnvPreamble(ctx context.Context,
 
 	_, ok := stack.Backend().(backend.EnvironmentsBackend)
 	if !ok {
-		return nil, nil, nil, fmt.Errorf("backend %v does not support environments", stack.Backend().Name())
+		return nil, nil, nil, errBackendNoEnvironments(stack.Backend())
 	}
 
 	projectStack, err := cmd.loadProjectStack(ctx, cmd.diags, project, stack, *cmd.configFile)

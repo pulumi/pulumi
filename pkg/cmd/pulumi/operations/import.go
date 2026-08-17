@@ -24,6 +24,8 @@ import (
 	"os"
 	"strings"
 
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
+
 	"github.com/blang/semver"
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/hcl/v2"
@@ -68,15 +70,16 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil/rpcerror"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 func parseResourceSpec(spec string) (string, resource.URN, error) {
-	equals := strings.Index(spec, "=")
-	if equals == -1 {
+	before, after, ok := strings.Cut(spec, "=")
+	if !ok {
 		return "", "", errors.New("spec must be of the form name=URN")
 	}
 
-	name, urn := spec[:equals], resource.URN(spec[equals+1:])
+	name, urn := before, resource.URN(after)
 	if name == "" || urn == "" {
 		return "", "", errors.New("spec must be of the form name=URN")
 	}
@@ -91,10 +94,32 @@ func parseResourceSpec(spec string) (string, resource.URN, error) {
 	return name, urn, nil
 }
 
-func makeImportFileFromResourceList(resources []plugin.ResourceImport) (importFile, error) {
+func makeImportFileFromResourceList(ctx context.Context, resources []plugin.ResourceImport) (importFile, error) {
+	// Serialized with secrets in plain text, marked with the secret signature: the converter response
+	// carries them the same way, and parseImportFile deserializes them back into secret values.
+	serialize := func(props *property.Map, name, kind string) (map[string]any, error) {
+		if props == nil {
+			return nil, nil
+		}
+		mprops := resource.ToResourcePropertyMap(*props)
+		serialized, err := resourcestack.SerializeProperties(ctx, mprops, sdkconfig.NopEncrypter, true /*showSecrets*/)
+		if err != nil {
+			return nil, fmt.Errorf("serializing %s for resource %q: %w", kind, name, err)
+		}
+		return serialized, nil
+	}
+
 	nameTable := map[string]resource.URN{}
 	specs := make([]importSpec, len(resources))
 	for i, res := range resources {
+		inputs, err := serialize(res.Inputs, res.Name, "inputs")
+		if err != nil {
+			return importFile{}, err
+		}
+		outputs, err := serialize(res.Outputs, res.Name, "outputs")
+		if err != nil {
+			return importFile{}, err
+		}
 		specs[i] = importSpec{
 			Type:              tokens.Type(res.Type),
 			Name:              res.Name,
@@ -104,6 +129,11 @@ func makeImportFileFromResourceList(resources []plugin.ResourceImport) (importFi
 			Component:         res.IsComponent,
 			Remote:            res.IsRemote,
 			LogicalName:       res.LogicalName,
+			Parent:            res.Parent,
+			Properties:        res.Properties,
+			Provider:          res.Provider,
+			Inputs:            inputs,
+			Outputs:           outputs,
 		}
 		if p := res.Parameterization; p != nil {
 			specs[i].Parameterization = &importParameterization{
@@ -185,6 +215,14 @@ type importSpec struct {
 	Component         bool        `json:"component,omitempty"`
 	Remote            bool        `json:"remote,omitempty"`
 
+	// Inputs holds input properties supplied for the resource. Values the provider's Read cannot return
+	// (e.g. write-only attributes) are taken from here instead. For a provider declared in the resources
+	// block, Inputs is its configuration.
+	Inputs map[string]any `json:"inputs,omitempty"`
+	// Outputs holds the resource's full output state. When set, the resource is imported from these
+	// values directly and the provider's Read is skipped entirely.
+	Outputs map[string]any `json:"outputs,omitempty"`
+
 	// LogicalName is the resources Pulumi name (i.e. the first argument to `new Resource`).
 	LogicalName string `json:"logicalName,omitempty"`
 
@@ -220,6 +258,8 @@ type importFile struct {
 	// ProviderInputs maps provider names (as used in NameTable and importSpec.Provider) to
 	// their serialized inputs. This allows the import system to create explicit providers
 	// that are not yet in state with the correct configuration. Secrets are encrypted.
+	//
+	// Deprecated: declare the provider in Resources and set its configuration via its Inputs instead.
 	ProviderInputs map[string]map[string]any `json:"providerInputs,omitempty"`
 }
 
@@ -349,7 +389,20 @@ func parseImportFile(
 		if spec.Name == "" {
 			pusherrf("%v has no name", describeResource(i, spec))
 		}
-		if !spec.Component && spec.ID == "" {
+		if providers.IsProviderType(spec.Type) {
+			// Providers declared in the resources block are created during import rather than read
+			// from a cloud, so they take no ID.
+			if spec.ID != "" {
+				pusherrf("%v has an ID, but is a provider, which is created rather than read",
+					describeResource(i, spec))
+			}
+			if spec.Component {
+				pusherrf("%v is a provider and may not be marked as a component", describeResource(i, spec))
+			}
+			if len(spec.Outputs) > 0 {
+				pusherrf("%v is a provider and may not have outputs", describeResource(i, spec))
+			}
+		} else if !spec.Component && spec.ID == "" {
 			pusherrf("%v has no ID", describeResource(i, spec))
 		} else if spec.Component && spec.ID != "" {
 			pusherrf("%v has an ID, but is marked as a component", describeResource(i, spec))
@@ -516,10 +569,13 @@ func parseImportFile(
 				pusherrf("%v has an ambiguous provider",
 					describeResource(i, spec))
 			}
-			urn, ok := f.NameTable[spec.Provider]
+			// urnMapping covers both the name table and the URNs built above for in-file resources.
+			urn, ok := urnMapping[spec.Provider]
 			if !ok {
-				pusherrf("the provider '%v' for %v has no entry in 'nameTable'",
+				pusherrf("the provider '%v' for %v has no entry in 'nameTable' or 'resources'",
 					spec.Provider, describeResource(i, spec))
+			} else if !urn.IsValid() || !providers.IsProviderType(urn.Type()) {
+				pusherrf("the provider '%v' for %v is not a provider", spec.Provider, describeResource(i, spec))
 			} else {
 				imp.Provider = urn
 			}
@@ -533,6 +589,39 @@ func parseImportFile(
 						describeResource(i, spec), err)
 				} else {
 					imp.ProviderInputs = providerInputs
+				}
+			}
+		}
+
+		if providers.IsProviderType(spec.Type) {
+			serializedInputs, ok := f.ProviderInputs[spec.Name]
+			if spec.Inputs != nil {
+				serializedInputs, ok = spec.Inputs, true
+			}
+			if ok {
+				inputs, err := resourcestack.DeserializeProperties(serializedInputs, dec)
+				if err != nil {
+					pusherrf("could not deserialize provider inputs for %v: %w",
+						describeResource(i, spec), err)
+				} else {
+					imp.Inputs = inputs
+				}
+			}
+		} else {
+			if spec.Inputs != nil {
+				inputs, err := resourcestack.DeserializeProperties(spec.Inputs, dec)
+				if err != nil {
+					pusherrf("could not deserialize inputs for %v: %w", describeResource(i, spec), err)
+				} else {
+					imp.Inputs = inputs
+				}
+			}
+			if spec.Outputs != nil {
+				outputs, err := resourcestack.DeserializeProperties(spec.Outputs, dec)
+				if err != nil {
+					pusherrf("could not deserialize outputs for %v: %w", describeResource(i, spec), err)
+				} else {
+					imp.Outputs = outputs
 				}
 			}
 		}
@@ -570,6 +659,17 @@ func parseImportFile(
 				Name:    spec.Extension.Name,
 				Version: spec.Extension.Version,
 				Value:   spec.Extension.Value,
+			}
+		}
+
+		for field, props := range map[string]resource.PropertyMap{
+			"inputs":         imp.Inputs,
+			"outputs":        imp.Outputs,
+			"providerInputs": imp.ProviderInputs,
+		} {
+			if props.ContainsUnknowns() {
+				pusherrf("the %v for %v contain unknown values; fill them in before importing",
+					field, describeResource(i, spec))
 			}
 		}
 
@@ -618,14 +718,14 @@ func generateImportedDefinitions(ctx *plugin.Context,
 		}
 	}()
 
-	resourceTable := map[resource.URN]*resource.State{}
+	resourceTable := map[resource.URN]*pkgresource.State{}
 	for _, r := range snap.Resources {
 		if !r.Delete {
 			resourceTable[r.URN] = r
 		}
 	}
 
-	var resources []*resource.State
+	var resources []*pkgresource.State
 	for _, i := range imports {
 		var parentType tokens.Type
 		if i.Parent != "" {
@@ -782,13 +882,18 @@ func NewImportCmd() *cobra.Command {
 
 			ws := pkgWorkspace.Instance
 
-			proj, root, err := ws.ReadProject()
+			proj, root, err := ws.ReadProject("")
 			if err != nil {
 				return err
 			}
 
 			if err := plugin.ValidatePulumiVersionRange(proj.RequiredPulumiVersion, version.Version); err != nil {
 				return err
+			}
+
+			if from == "terraform" && importFilePath == "" && proj.Runtime.Name() == "hcl" {
+				return errors.New("`pulumi import --from terraform` will produce state that doesn't line up " +
+					"with Pulumi's HCL runtime.\nYou should run `pulumi import --from hcl` instead.")
 			}
 
 			ssml := cmdStack.NewStackSecretsManagerLoaderFromEnv()
@@ -874,14 +979,21 @@ func NewImportCmd() *cobra.Command {
 				}
 
 				mapperServer := convert.NewMapperServer(mapper)
-				grpcServer, err := plugin.NewServer(pCtx, convert.MapperRegistration(mapperServer))
+				loaderServer := schema.NewLoaderServer(schema.NewPluginLoader(pCtx))
+				resolverServer := packageworkspace.NewResolverServer(reg)(pCtx)
+				grpcServer, err := plugin.NewServer(pCtx,
+					convert.MapperRegistration(mapperServer),
+					schema.LoaderRegistration(loaderServer),
+					packageworkspace.ResolverRegistration(resolverServer))
 				if err != nil {
 					return err
 				}
 
 				resp, err := converter.ConvertState(ctx, &plugin.ConvertStateRequest{
-					MapperTarget: grpcServer.Addr(),
-					Args:         args,
+					MapperTarget:   grpcServer.Addr(),
+					Args:           args,
+					LoaderTarget:   grpcServer.Addr(),
+					ResolverTarget: grpcServer.Addr(),
 				})
 				if err != nil {
 					rpcErr := rpcerror.Convert(err)
@@ -899,7 +1011,7 @@ func NewImportCmd() *cobra.Command {
 					return errors.New("conversion failed")
 				}
 
-				f, err := makeImportFileFromResourceList(resp.Resources)
+				f, err := makeImportFileFromResourceList(ctx, resp.Resources)
 				if err != nil {
 					return err
 				}
@@ -1008,13 +1120,18 @@ func NewImportCmd() *cobra.Command {
 				return err
 			}
 
-			cfg, sm, err := config.GetStackConfiguration(ctx, sink, ssml, s, proj, configFile)
+			cfg, sm, err := config.GetStackConfiguration(ctx, sink, ssml, s, proj, configFile, nil)
 			if err != nil {
 				return fmt.Errorf("getting stack configuration: %w", err)
 			}
 
 			decrypter := sm.Decrypter()
 			encrypter := sm.Encrypter()
+
+			if len(importFile.ProviderInputs) > 0 {
+				sink.Warningf(diag.Message("", "the 'providerInputs' field is deprecated: declare the "+
+					"provider in 'resources' and set its configuration via its 'inputs' instead"))
+			}
 
 			imports, nameTable, err := parseImportFile(
 				importFile, s.Ref().Name(), proj.Name, protectResources, decrypter)
@@ -1077,7 +1194,7 @@ func NewImportCmd() *cobra.Command {
 			cmdutil.SetStringSpanAttributes(ctx, m.Environment)
 
 			stackName := s.Ref().Name().String()
-			configErr := workspace.ValidateStackConfigAndApplyProjectConfig(
+			configErr := pkgWorkspace.ValidateStackConfigAndApplyProjectConfig(
 				ctx,
 				stackName,
 				proj,

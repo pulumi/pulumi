@@ -21,6 +21,7 @@ import collections.abc
 import google.protobuf.descriptor
 import google.protobuf.internal.containers
 import google.protobuf.message
+import google.protobuf.struct_pb2
 import pulumi.codegen.hcl_pb2
 import pulumi.codegen.loader_pb2
 import typing
@@ -33,8 +34,16 @@ class ConvertStateRequest(google.protobuf.message.Message):
 
     MAPPER_TARGET_FIELD_NUMBER: builtins.int
     ARGS_FIELD_NUMBER: builtins.int
+    LOADER_TARGET_FIELD_NUMBER: builtins.int
+    RESOLVER_TARGET_FIELD_NUMBER: builtins.int
     mapper_target: builtins.str
     """the gRPC target of the mapper service."""
+    loader_target: builtins.str
+    """The target of a codegen.LoaderServer to use for loading schemas."""
+    resolver_target: builtins.str
+    """The target of a [](pulumirpc.PackageResolver) service the converter can use to resolve package
+    specifications to concrete package dependencies. May be empty on older engines.
+    """
     @property
     def args(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]:
         """the args passed to `pulumi import` for this conversion. Normally used to specifiy a state file to
@@ -46,8 +55,10 @@ class ConvertStateRequest(google.protobuf.message.Message):
         *,
         mapper_target: builtins.str = ...,
         args: collections.abc.Iterable[builtins.str] | None = ...,
+        loader_target: builtins.str = ...,
+        resolver_target: builtins.str = ...,
     ) -> None: ...
-    def ClearField(self, field_name: typing.Literal["args", b"args", "mapper_target", b"mapper_target"]) -> None: ...
+    def ClearField(self, field_name: typing.Literal["args", b"args", "loader_target", b"loader_target", "mapper_target", b"mapper_target", "resolver_target", b"resolver_target"]) -> None: ...
 
 global___ConvertStateRequest = ConvertStateRequest
 
@@ -67,6 +78,11 @@ class ResourceImport(google.protobuf.message.Message):
     IS_REMOTE_FIELD_NUMBER: builtins.int
     PARAMETERIZATION_FIELD_NUMBER: builtins.int
     EXTENSION_FIELD_NUMBER: builtins.int
+    PARENT_FIELD_NUMBER: builtins.int
+    PROPERTIES_FIELD_NUMBER: builtins.int
+    PROVIDER_FIELD_NUMBER: builtins.int
+    INPUTS_FIELD_NUMBER: builtins.int
+    OUTPUTS_FIELD_NUMBER: builtins.int
     type: builtins.str
     """the type token for the resource."""
     name: builtins.str
@@ -83,6 +99,15 @@ class ResourceImport(google.protobuf.message.Message):
     """true if this is a component resource."""
     is_remote: builtins.bool
     """true if this is a remote resource. Ignored if is_component is false."""
+    parent: builtins.str
+    """the name of the resource's parent, if any. Must reference the name of another resource in the same
+    response; resources without a parent are parented to the stack root.
+    """
+    provider: builtins.str
+    """the name of the resource's explicit provider, if any. Must reference the name of a provider
+    declared as another resource (of type "pulumi:providers:<package>") in the same response;
+    resources without a provider are served by an appropriate default provider.
+    """
     @property
     def parameterization(self) -> global___ResourceParameterization:
         """the replacement parameterization to use for the resource's provider, if any. Set when the resource
@@ -94,6 +119,27 @@ class ResourceImport(google.protobuf.message.Message):
         """the extension parameterization to apply to the resource's provider, if any. Unlike a replacement
         parameterization, the resource's own type is in the base provider's package; the extension is a blob
         applied on top of that provider. Mutually exclusive with parameterization.
+        """
+
+    @property
+    def properties(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]:
+        """the input properties to include when generating code for the resource. Defaults to the resource's
+        required properties.
+        """
+
+    @property
+    def inputs(self) -> google.protobuf.struct_pb2.Struct:
+        """input properties supplied for the resource, if any. Values the provider's Read cannot return
+        (e.g. write-only attributes) are taken from here instead. For a provider declared in the
+        response, inputs is its configuration. Secret values are marked with Pulumi's standard secret
+        signature.
+        """
+
+    @property
+    def outputs(self) -> google.protobuf.struct_pb2.Struct:
+        """the resource's full output state, if any. When set, the resource is imported from these values
+        directly and the provider's Read is skipped entirely. Secret values are marked with Pulumi's
+        standard secret signature.
         """
 
     def __init__(
@@ -109,9 +155,14 @@ class ResourceImport(google.protobuf.message.Message):
         is_remote: builtins.bool = ...,
         parameterization: global___ResourceParameterization | None = ...,
         extension: global___ResourceExtension | None = ...,
+        parent: builtins.str = ...,
+        properties: collections.abc.Iterable[builtins.str] | None = ...,
+        provider: builtins.str = ...,
+        inputs: google.protobuf.struct_pb2.Struct | None = ...,
+        outputs: google.protobuf.struct_pb2.Struct | None = ...,
     ) -> None: ...
-    def HasField(self, field_name: typing.Literal["extension", b"extension", "parameterization", b"parameterization"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing.Literal["extension", b"extension", "id", b"id", "is_component", b"is_component", "is_remote", b"is_remote", "logical_name", b"logical_name", "name", b"name", "parameterization", b"parameterization", "pluginDownloadURL", b"pluginDownloadURL", "type", b"type", "version", b"version"]) -> None: ...
+    def HasField(self, field_name: typing.Literal["extension", b"extension", "inputs", b"inputs", "outputs", b"outputs", "parameterization", b"parameterization"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing.Literal["extension", b"extension", "id", b"id", "inputs", b"inputs", "is_component", b"is_component", "is_remote", b"is_remote", "logical_name", b"logical_name", "name", b"name", "outputs", b"outputs", "parameterization", b"parameterization", "parent", b"parent", "pluginDownloadURL", b"pluginDownloadURL", "properties", b"properties", "provider", b"provider", "type", b"type", "version", b"version"]) -> None: ...
 
 global___ResourceImport = ResourceImport
 
@@ -273,12 +324,52 @@ class ConvertSnippetRequest(google.protobuf.message.Message):
         ) -> None: ...
         def ClearField(self, field_name: typing.Literal["key", b"key", "value", b"value"]) -> None: ...
 
+    @typing.final
+    class ResourceReference(google.protobuf.message.Message):
+        DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+        TOKEN_FIELD_NUMBER: builtins.int
+        PACKAGE_FIELD_NUMBER: builtins.int
+        token: builtins.str
+        """The resource token for the referenced resource."""
+        @property
+        def package(self) -> pulumi.codegen.loader_pb2.GetSchemaRequest:
+            """The package description to load for the referenced resource."""
+
+        def __init__(
+            self,
+            *,
+            token: builtins.str = ...,
+            package: pulumi.codegen.loader_pb2.GetSchemaRequest | None = ...,
+        ) -> None: ...
+        def HasField(self, field_name: typing.Literal["package", b"package"]) -> builtins.bool: ...
+        def ClearField(self, field_name: typing.Literal["package", b"package", "token", b"token"]) -> None: ...
+
+    @typing.final
+    class ResourcesEntry(google.protobuf.message.Message):
+        DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+        KEY_FIELD_NUMBER: builtins.int
+        VALUE_FIELD_NUMBER: builtins.int
+        key: builtins.str
+        @property
+        def value(self) -> global___ConvertSnippetRequest.ResourceReference: ...
+        def __init__(
+            self,
+            *,
+            key: builtins.str = ...,
+            value: global___ConvertSnippetRequest.ResourceReference | None = ...,
+        ) -> None: ...
+        def HasField(self, field_name: typing.Literal["value", b"value"]) -> builtins.bool: ...
+        def ClearField(self, field_name: typing.Literal["key", b"key", "value", b"value"]) -> None: ...
+
     FILENAME_FIELD_NUMBER: builtins.int
     SOURCE_FIELD_NUMBER: builtins.int
     TARGET_LOADER_FIELD_NUMBER: builtins.int
     PACKAGE_FIELD_NUMBER: builtins.int
     TOKEN_FIELD_NUMBER: builtins.int
     ATTRIBUTES_FIELD_NUMBER: builtins.int
+    RESOURCES_FIELD_NUMBER: builtins.int
     filename: builtins.str
     """The name of the source file. This is used for diagnostics."""
     source: builtins.bytes
@@ -297,6 +388,10 @@ class ConvertSnippetRequest(google.protobuf.message.Message):
     def attributes(self) -> google.protobuf.internal.containers.ScalarMap[builtins.str, builtins.str]:
         """any extra attributes to convert."""
 
+    @property
+    def resources(self) -> google.protobuf.internal.containers.MessageMap[builtins.str, global___ConvertSnippetRequest.ResourceReference]:
+        """any external resource references to convert."""
+
     def __init__(
         self,
         *,
@@ -306,9 +401,10 @@ class ConvertSnippetRequest(google.protobuf.message.Message):
         package: pulumi.codegen.loader_pb2.GetSchemaRequest | None = ...,
         token: builtins.str = ...,
         attributes: collections.abc.Mapping[builtins.str, builtins.str] | None = ...,
+        resources: collections.abc.Mapping[builtins.str, global___ConvertSnippetRequest.ResourceReference] | None = ...,
     ) -> None: ...
     def HasField(self, field_name: typing.Literal["package", b"package"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing.Literal["attributes", b"attributes", "filename", b"filename", "package", b"package", "source", b"source", "target_loader", b"target_loader", "token", b"token"]) -> None: ...
+    def ClearField(self, field_name: typing.Literal["attributes", b"attributes", "filename", b"filename", "package", b"package", "resources", b"resources", "source", b"source", "target_loader", b"target_loader", "token", b"token"]) -> None: ...
 
 global___ConvertSnippetRequest = ConvertSnippetRequest
 
@@ -332,10 +428,27 @@ class ConvertSnippetResponse(google.protobuf.message.Message):
         ) -> None: ...
         def ClearField(self, field_name: typing.Literal["key", b"key", "value", b"value"]) -> None: ...
 
+    @typing.final
+    class ResourceNamesEntry(google.protobuf.message.Message):
+        DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+        KEY_FIELD_NUMBER: builtins.int
+        VALUE_FIELD_NUMBER: builtins.int
+        key: builtins.str
+        value: builtins.str
+        def __init__(
+            self,
+            *,
+            key: builtins.str = ...,
+            value: builtins.str = ...,
+        ) -> None: ...
+        def ClearField(self, field_name: typing.Literal["key", b"key", "value", b"value"]) -> None: ...
+
     DIAGNOSTICS_FIELD_NUMBER: builtins.int
     FILENAME_FIELD_NUMBER: builtins.int
     SOURCE_FIELD_NUMBER: builtins.int
     ATTRIBUTES_FIELD_NUMBER: builtins.int
+    RESOURCE_NAMES_FIELD_NUMBER: builtins.int
     filename: builtins.str
     """The generated PCL filename."""
     source: builtins.bytes
@@ -348,6 +461,12 @@ class ConvertSnippetResponse(google.protobuf.message.Message):
     def attributes(self) -> google.protobuf.internal.containers.ScalarMap[builtins.str, builtins.str]:
         """any extra attributes to merge into the final pcl result."""
 
+    @property
+    def resource_names(self) -> google.protobuf.internal.containers.ScalarMap[builtins.str, builtins.str]:
+        """any external resource names that were rewritten during conversion. The keys are identifiers
+        in the source language and the values are identifiers in the generated PCL.
+        """
+
     def __init__(
         self,
         *,
@@ -355,7 +474,8 @@ class ConvertSnippetResponse(google.protobuf.message.Message):
         filename: builtins.str = ...,
         source: builtins.bytes = ...,
         attributes: collections.abc.Mapping[builtins.str, builtins.str] | None = ...,
+        resource_names: collections.abc.Mapping[builtins.str, builtins.str] | None = ...,
     ) -> None: ...
-    def ClearField(self, field_name: typing.Literal["attributes", b"attributes", "diagnostics", b"diagnostics", "filename", b"filename", "source", b"source"]) -> None: ...
+    def ClearField(self, field_name: typing.Literal["attributes", b"attributes", "diagnostics", b"diagnostics", "filename", b"filename", "resource_names", b"resource_names", "source", b"source"]) -> None: ...
 
 global___ConvertSnippetResponse = ConvertSnippetResponse

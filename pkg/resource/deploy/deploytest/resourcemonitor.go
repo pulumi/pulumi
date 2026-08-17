@@ -23,6 +23,7 @@ import (
 	"time"
 
 	fxs "github.com/pgavlin/fx/v2/slices"
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
@@ -120,7 +121,7 @@ func parseSourcePosition(raw string) (*pulumirpc.SourcePosition, error) {
 
 func marshalSourceInfo(
 	sourcePosition string,
-	stackTrace []resource.StackFrame,
+	stackTrace []pkgresource.StackFrame,
 ) (_ *pulumirpc.SourcePosition, _ *pulumirpc.StackTrace, err error) {
 	var pos *pulumirpc.SourcePosition
 	if sourcePosition != "" {
@@ -132,7 +133,9 @@ func marshalSourceInfo(
 
 	var trace *pulumirpc.StackTrace
 	if len(stackTrace) != 0 {
-		frames, err := fxs.TryCollect(fxs.MapUnpack(stackTrace, func(f resource.StackFrame) (*pulumirpc.StackFrame, error) {
+		frames, err := fxs.TryCollect(fxs.MapUnpack(stackTrace, func(
+			f pkgresource.StackFrame,
+		) (*pulumirpc.StackFrame, error) {
 			position, err := parseSourcePosition(f.SourcePosition)
 			if err != nil {
 				return nil, err
@@ -441,7 +444,7 @@ type ResourceOptions struct {
 	AliasSpecs              bool
 
 	SourcePosition         string
-	StackTrace             []resource.StackFrame
+	StackTrace             []pkgresource.StackFrame
 	ParentStackTraceHandle string
 
 	DisableSecrets            bool
@@ -474,6 +477,7 @@ type RegisterResourceResponse struct {
 	Outputs      resource.PropertyMap
 	Dependencies map[resource.PropertyKey][]resource.URN
 	Result       pulumirpc.Result
+	Unknown      bool
 }
 
 func (rm *ResourceMonitor) RegisterResource(t tokens.Type, name string, custom bool,
@@ -493,6 +497,7 @@ func (rm *ResourceMonitor) RegisterResource(t tokens.Type, name string, custom b
 		KeepSecrets:      rm.supportsSecrets,
 		KeepResources:    rm.supportsResourceReferences,
 		KeepOutputValues: opts.Remote,
+		KeepByteString:   true,
 	})
 	if err != nil {
 		return nil, err
@@ -586,6 +591,7 @@ func (rm *ResourceMonitor) RegisterResource(t tokens.Type, name string, custom b
 		IgnoreChanges:              opts.IgnoreChanges,
 		AcceptSecrets:              !opts.DisableSecrets,
 		AcceptResources:            !opts.DisableResourceReferences,
+		AcceptsByteString:          true,
 		Version:                    opts.Version,
 		AliasURNs:                  aliasStrings,
 		ImportId:                   string(opts.ImportID),
@@ -646,6 +652,7 @@ func (rm *ResourceMonitor) RegisterResource(t tokens.Type, name string, custom b
 		Outputs:      outs,
 		Dependencies: depsMap,
 		Result:       resp.Result,
+		Unknown:      resp.Unknown,
 	}, nil
 }
 
@@ -676,7 +683,7 @@ func (rm *ResourceMonitor) ReadResource(
 	provider,
 	version,
 	sourcePosition string,
-	stackTrace []resource.StackFrame,
+	stackTrace []pkgresource.StackFrame,
 	parentStackTraceHandle string,
 	packageRef string,
 ) (resource.URN, resource.PropertyMap, error) {
@@ -721,9 +728,47 @@ func (rm *ResourceMonitor) ReadResource(
 	return resource.URN(resp.Urn), outs, nil
 }
 
+// InvokeOptions is an optional bag of options for the Invoke method.
+type InvokeOptions struct {
+	// Parent is the URN of the resource the invoke is parented to.
+	Parent resource.URN
+	// DependsOn is the set of dependency URNs to declare on the request.
+	DependsOn []resource.URN
+}
+
+// InvokeResult is the full result of an invoke, including the unknown marker that the plain Invoke wrapper discards.
+type InvokeResult struct {
+	Return   resource.PropertyMap
+	Failures []*pulumirpc.CheckFailure
+	Unknown  bool
+}
+
 func (rm *ResourceMonitor) Invoke(tok tokens.ModuleMember, inputs resource.PropertyMap,
-	provider string, version string, packageRef string,
+	provider string, version string, packageRef string, options ...InvokeOptions,
 ) (resource.PropertyMap, []*pulumirpc.CheckFailure, error) {
+	result, err := rm.InvokeWithResult(tok, inputs, provider, version, packageRef, options...)
+	if err != nil {
+		return nil, nil, err
+	}
+	if len(result.Failures) != 0 {
+		return nil, result.Failures, nil
+	}
+	return result.Return, nil, nil
+}
+
+func (rm *ResourceMonitor) InvokeWithResult(tok tokens.ModuleMember, inputs resource.PropertyMap,
+	provider string, version string, packageRef string, options ...InvokeOptions,
+) (*InvokeResult, error) {
+	opts := InvokeOptions{}
+	for _, o := range options {
+		if o.Parent != "" {
+			opts.Parent = o.Parent
+		}
+		if o.DependsOn != nil {
+			opts.DependsOn = o.DependsOn
+		}
+	}
+
 	// marshal inputs
 	ins, err := plugin.MarshalProperties(inputs, plugin.MarshalOptions{
 		KeepUnknowns:  true,
@@ -731,33 +776,39 @@ func (rm *ResourceMonitor) Invoke(tok tokens.ModuleMember, inputs resource.Prope
 		KeepSecrets:   true,
 	})
 	if err != nil {
-		return nil, nil, err
+		return nil, err
+	}
+
+	dependsOn := make([]string, len(opts.DependsOn))
+	for i, urn := range opts.DependsOn {
+		dependsOn[i] = string(urn)
 	}
 
 	// submit request
 	resp, err := rm.resmon.Invoke(context.Background(), &pulumirpc.ResourceInvokeRequest{
 		Tok:        string(tok),
 		Provider:   provider,
+		Parent:     string(opts.Parent),
 		Args:       ins,
 		Version:    version,
 		PackageRef: packageRef,
+		DependsOn:  dependsOn,
 	})
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
-	// handle failures
 	if len(resp.Failures) != 0 {
-		return nil, resp.Failures, nil
+		return &InvokeResult{Failures: resp.Failures}, nil
 	}
 
 	// unmarshal outputs
 	outs, err := rm.unmarshalProperties(resp.Return)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
-	return outs, nil, nil
+	return &InvokeResult{Return: outs, Unknown: resp.Unknown}, nil
 }
 
 func (rm *ResourceMonitor) Call(
@@ -768,7 +819,7 @@ func (rm *ResourceMonitor) Call(
 	version string,
 	packageRef string,
 	sourcePosition string,
-	stackTrace []resource.StackFrame,
+	stackTrace []pkgresource.StackFrame,
 	parentStackTraceHandle string,
 ) (resource.PropertyMap, map[resource.PropertyKey][]resource.URN, []*pulumirpc.CheckFailure, error) {
 	sourcePos, stack, err := marshalSourceInfo(sourcePosition, stackTrace)

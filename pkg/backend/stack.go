@@ -17,6 +17,7 @@ package backend
 import (
 	"context"
 	"fmt"
+	"maps"
 	"path/filepath"
 
 	"github.com/pulumi/pulumi/pkg/v3/display"
@@ -166,9 +167,7 @@ func GetMergedStackTags(ctx context.Context, s Stack,
 
 	// Add each new environment tag to the existing tags, overwriting existing tags with the
 	// latest values.
-	for k, v := range envTags {
-		tags[k] = v
-	}
+	maps.Copy(tags, envTags)
 
 	return tags, nil
 }

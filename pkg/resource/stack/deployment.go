@@ -16,19 +16,23 @@ package stack
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
+	"maps"
 	"math"
 	"reflect"
 	"slices"
 	"strconv"
 	"strings"
+	"unicode/utf8"
 
 	fxs "github.com/pgavlin/fx/v2/slices"
 	"go.opentelemetry.io/otel"
 
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack/migrate"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
@@ -41,7 +45,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/maputil"
 	"github.com/santhosh-tekuri/jsonschema/v5"
 )
 
@@ -74,6 +77,7 @@ const (
 	replaceWithFeature               = "replaceWith"
 	snippetsFeature                  = "snippets-prototype"
 	extensionParameterizationFeature = "extensionParameterization"
+	byteStringFeature                = "byteString"
 )
 
 var (
@@ -132,6 +136,7 @@ var supportedFeatures = map[string]bool{
 	replaceWithFeature:               true,
 	snippetsFeature:                  true,
 	extensionParameterizationFeature: true,
+	byteStringFeature:                true,
 }
 
 // validateSupportedFeatures validates that the features used in a deployment are supported.
@@ -149,7 +154,13 @@ func validateSupportedFeatures(features []string) error {
 }
 
 // ApplyFeatures applies the features used by a resource to the feature map.
-func ApplyFeatures(res apitype.ResourceV3, features map[string]bool) {
+//
+// Byte string inside secrets are encrypted away by serialization, so they cannot be detected from
+// the serialized resource; callers must pass encodedByteString as reported by SerializeResource.
+func ApplyFeatures(res apitype.ResourceV3, encodedByteString bool, features map[string]bool) {
+	if encodedByteString {
+		features[byteStringFeature] = true
+	}
 	if res.RefreshBeforeUpdate {
 		features[refreshBeforeUpdateFeature] = true
 	}
@@ -171,6 +182,38 @@ func ApplyFeatures(res apitype.ResourceV3, features map[string]bool) {
 	if res.SnippetID != "" {
 		features[snippetsFeature] = true
 	}
+}
+
+// propertyValueNeedsByteString reports whether the value contains a string with bytes that are not
+// valid UTF-8. Such strings serialize with the byte string signature, which requires the
+// byteString feature so that older engines refuse to read state they would corrupt.
+func propertyValueNeedsByteString(v resource.PropertyValue) bool {
+	switch {
+	case v.IsString():
+		return !utf8.ValidString(v.StringValue())
+	case v.IsArray():
+		if slices.ContainsFunc(v.ArrayValue(), propertyValueNeedsByteString) {
+			return true
+		}
+	case v.IsObject():
+		return propertyMapNeedsByteString(v.ObjectValue())
+	case v.IsSecret():
+		return propertyValueNeedsByteString(v.SecretValue().Element)
+	case v.IsOutput():
+		return propertyValueNeedsByteString(v.OutputValue().Element)
+	case v.IsComputed():
+		return propertyValueNeedsByteString(v.Input().Element)
+	}
+	return false
+}
+
+func propertyMapNeedsByteString(m resource.PropertyMap) bool {
+	for _, v := range m {
+		if propertyValueNeedsByteString(v) {
+			return true
+		}
+	}
+	return false
 }
 
 // ValidateUntypedDeployment validates a deployment against the Deployment JSON schema.
@@ -225,19 +268,22 @@ func SerializeDeploymentWithMetadata(
 	// Serialize all vertices and only include a vertex section if non-empty.
 	resources := slice.Prealloc[apitype.ResourceV3](len(snap.Resources))
 	for _, res := range snap.Resources {
-		sres, err := SerializeResource(ctx, res, enc, showSecrets)
+		sres, encodedByteString, err := SerializeResource(ctx, res, enc, showSecrets)
 		if err != nil {
 			return nil, 0, nil, fmt.Errorf("serializing resources: %w", err)
 		}
-		ApplyFeatures(sres, featureMap)
+		ApplyFeatures(sres, encodedByteString, featureMap)
 		resources = append(resources, sres)
 	}
 
 	operations := slice.Prealloc[apitype.OperationV2](len(snap.PendingOperations))
 	for _, op := range snap.PendingOperations {
-		sop, err := SerializeOperation(ctx, op, enc, showSecrets)
+		sop, encodedByteString, err := SerializeOperation(ctx, op, enc, showSecrets)
 		if err != nil {
 			return nil, 0, nil, err
+		}
+		if encodedByteString {
+			featureMap[byteStringFeature] = true
 		}
 		operations = append(operations, sop)
 	}
@@ -274,7 +320,7 @@ func SerializeDeploymentWithMetadata(
 		}
 	}
 
-	features := maputil.SortedKeys(featureMap)
+	features := slices.Sorted(maps.Keys(featureMap))
 	if len(features) == 0 {
 		features = nil
 	}
@@ -300,9 +346,7 @@ func SerializeSnippet(s resource.Snippet) apitype.SnippetV1 {
 	var refs map[string]string
 	if len(s.References) > 0 {
 		refs = make(map[string]string, len(s.References))
-		for k, v := range s.References {
-			refs[k] = v
-		}
+		maps.Copy(refs, s.References)
 	}
 	return apitype.SnippetV1{
 		UUID:       s.UUID,
@@ -335,9 +379,7 @@ func DeserializeSnippet(s apitype.SnippetV1) resource.Snippet {
 	var refs map[string]string
 	if len(s.References) > 0 {
 		refs = make(map[string]string, len(s.References))
-		for k, v := range s.References {
-			refs[k] = v
-		}
+		maps.Copy(refs, s.References)
 	}
 	return resource.Snippet{
 		UUID:       s.UUID,
@@ -532,8 +574,8 @@ func DeserializeDeploymentV3(
 	}
 
 	type deserializedData struct {
-		resources []*resource.State
-		ops       []resource.Operation
+		resources []*pkgresource.State
+		ops       []pkgresource.Operation
 	}
 
 	data, err := BatchDecrypt(
@@ -541,7 +583,7 @@ func DeserializeDeploymentV3(
 		secretsManager,
 		func(ctx context.Context, dec config.Decrypter) (deserializedData, error) {
 			// For every serialized resource vertex, create a ResourceDeployment out of it.
-			resources := slice.Prealloc[*resource.State](len(deployment.Resources))
+			resources := slice.Prealloc[*pkgresource.State](len(deployment.Resources))
 			for _, res := range deployment.Resources {
 				desres, err := DeserializeResource(res, dec)
 				if err != nil {
@@ -550,7 +592,7 @@ func DeserializeDeploymentV3(
 				resources = append(resources, desres)
 			}
 
-			ops := slice.Prealloc[resource.Operation](len(deployment.PendingOperations))
+			ops := slice.Prealloc[pkgresource.Operation](len(deployment.PendingOperations))
 			for _, op := range deployment.PendingOperations {
 				desop, err := DeserializeOperation(op, dec)
 				if err != nil {
@@ -583,7 +625,8 @@ func DeserializeDeploymentV3(
 		}
 	}
 	return deploy.NewSnapshot(
-		*manifest, secretsManager, data.resources, data.ops, metadata, snippets, deployment.Extensions), nil
+		*manifest, secretsManager, data.resources, data.ops, metadata, snippets, deployment.Extensions,
+	), nil
 }
 
 // initializeSecretsManager initializes the secrets manager for a deployment.
@@ -608,22 +651,28 @@ func initializeSecretsManager(
 	return secretsManager, nil
 }
 
-// SerializeResource turns a resource into a structure suitable for serialization.
+// SerializeResource turns a resource into a structure suitable for serialization. The returned bool
+// reports whether serialization encoded strings containing non-UTF8 bytes: encoding inside secrets is
+// invisible once they are encrypted, so this must be reported here, while the plaintext is still visible.
 func SerializeResource(
-	ctx context.Context, res *resource.State, enc config.Encrypter, showSecrets bool,
-) (apitype.ResourceV3, error) {
+	ctx context.Context, res *pkgresource.State, enc config.Encrypter, showSecrets bool,
+) (apitype.ResourceV3, bool, error) {
 	contract.Requiref(res != nil, "res", "must not be nil")
 	contract.Requiref(res.URN != "", "res", "must have a URN")
 
 	res.Lock.Lock()
 	defer res.Lock.Unlock()
 
+	encodedByteString := propertyMapNeedsByteString(res.Inputs) ||
+		propertyMapNeedsByteString(res.Outputs) ||
+		propertyValueNeedsByteString(resource.ToResourcePropertyValue(res.ReplacementTrigger))
+
 	// Serialize all input and output properties recursively, and add them if non-empty.
 	var inputs map[string]any
 	if inp := res.Inputs; inp != nil {
 		sinp, err := SerializeProperties(ctx, inp, enc, showSecrets)
 		if err != nil {
-			return apitype.ResourceV3{}, err
+			return apitype.ResourceV3{}, false, err
 		}
 		inputs = sinp
 	}
@@ -631,17 +680,19 @@ func SerializeResource(
 	if outp := res.Outputs; outp != nil {
 		soutp, err := SerializeProperties(ctx, outp, enc, showSecrets)
 		if err != nil {
-			return apitype.ResourceV3{}, err
+			return apitype.ResourceV3{}, false, err
 		}
 		outputs = soutp
 	}
 
-	trigger, err := SerializePropertyValue(ctx, res.ReplacementTrigger, enc, showSecrets)
+	trigger, err := SerializePropertyValue(
+		ctx, resource.ToResourcePropertyValue(res.ReplacementTrigger), enc, showSecrets,
+	)
 	if err != nil {
-		return apitype.ResourceV3{}, err
+		return apitype.ResourceV3{}, false, err
 	}
 
-	stackTrace := slices.Collect(fxs.Map(res.StackTrace, func(frame resource.StackFrame) apitype.StackFrameV1 {
+	stackTrace := slices.Collect(fxs.Map(res.StackTrace, func(frame pkgresource.StackFrame) apitype.StackFrameV1 {
 		return apitype.StackFrameV1{SourcePosition: frame.SourcePosition}
 	}))
 
@@ -687,21 +738,21 @@ func SerializeResource(
 		v3Resource.CustomTimeouts = &res.CustomTimeouts
 	}
 
-	return v3Resource, nil
+	return v3Resource, encodedByteString, nil
 }
 
 // SerializeOperation serializes a resource in a pending state.
 func SerializeOperation(
-	ctx context.Context, op resource.Operation, enc config.Encrypter, showSecrets bool,
-) (apitype.OperationV2, error) {
-	res, err := SerializeResource(ctx, op.Resource, enc, showSecrets)
+	ctx context.Context, op pkgresource.Operation, enc config.Encrypter, showSecrets bool,
+) (apitype.OperationV2, bool, error) {
+	res, encodedByteString, err := SerializeResource(ctx, op.Resource, enc, showSecrets)
 	if err != nil {
-		return apitype.OperationV2{}, fmt.Errorf("serializing resource: %w", err)
+		return apitype.OperationV2{}, false, fmt.Errorf("serializing resource: %w", err)
 	}
 	return apitype.OperationV2{
 		Resource: res,
 		Type:     apitype.OperationType(op.Type),
-	}, nil
+	}, encodedByteString, nil
 }
 
 // SerializeProperties serializes a resource property bag so that it's suitable for serialization.
@@ -829,6 +880,15 @@ func SerializePropertyValue(ctx context.Context, prop resource.PropertyValue, en
 		return &secret, nil
 	}
 
+	// Strings containing bytes that are not valid UTF-8 would be corrupted by JSON encoding, so they are
+	// serialized with a signature carrying the base64 encoding of their bytes.
+	if prop.IsString() && !utf8.ValidString(prop.StringValue()) {
+		return map[string]any{
+			resource.SigKey: resource.ByteStringSig,
+			"value":         base64.StdEncoding.EncodeToString([]byte(prop.StringValue())),
+		}, nil
+	}
+
 	// Floats need special handling for Inf and NaN.
 	if prop.IsNumber() && (math.IsNaN(prop.NumberValue()) || math.IsInf(prop.NumberValue(), 0)) {
 		// We just save this as hexadecimal strings to preserve precision.
@@ -845,7 +905,7 @@ func SerializePropertyValue(ctx context.Context, prop resource.PropertyValue, en
 }
 
 // DeserializeResource turns a serialized resource back into its usual form.
-func DeserializeResource(res apitype.ResourceV3, dec config.Decrypter) (*resource.State, error) {
+func DeserializeResource(res apitype.ResourceV3, dec config.Decrypter) (*pkgresource.State, error) {
 	// Deserialize the resource properties, if they exist.
 	inputs, err := DeserializeProperties(res.Inputs, dec)
 	if err != nil {
@@ -873,11 +933,11 @@ func DeserializeResource(res apitype.ResourceV3, dec config.Decrypter) (*resourc
 		return nil, fmt.Errorf("resource '%s' has 'custom' false but non-empty ID", res.URN)
 	}
 
-	stackTrace := slices.Collect(fxs.Map(res.StackTrace, func(frame apitype.StackFrameV1) resource.StackFrame {
-		return resource.StackFrame{SourcePosition: frame.SourcePosition}
+	stackTrace := slices.Collect(fxs.Map(res.StackTrace, func(frame apitype.StackFrameV1) pkgresource.StackFrame {
+		return pkgresource.StackFrame{SourcePosition: frame.SourcePosition}
 	}))
 
-	return resource.NewState{
+	return pkgresource.NewState{
 			Type:                    res.Type,
 			URN:                     res.URN,
 			Custom:                  res.Custom,
@@ -909,7 +969,7 @@ func DeserializeResource(res apitype.ResourceV3, dec config.Decrypter) (*resourc
 			IgnoreChanges:           res.IgnoreChanges,
 			HideDiff:                res.HideDiff,
 			ReplaceOnChanges:        res.ReplaceOnChanges,
-			ReplacementTrigger:      trigger,
+			ReplacementTrigger:      resource.FromResourcePropertyValue(trigger),
 			RefreshBeforeUpdate:     res.RefreshBeforeUpdate,
 			ViewOf:                  res.ViewOf,
 			ResourceHooks:           res.ResourceHooks,
@@ -920,12 +980,12 @@ func DeserializeResource(res apitype.ResourceV3, dec config.Decrypter) (*resourc
 
 // DeserializeOperation hydrates a pending resource/operation pair.
 func DeserializeOperation(op apitype.OperationV2, dec config.Decrypter,
-) (resource.Operation, error) {
+) (pkgresource.Operation, error) {
 	res, err := DeserializeResource(op.Resource, dec)
 	if err != nil {
-		return resource.Operation{}, err
+		return pkgresource.Operation{}, err
 	}
-	return resource.NewOperation(res, resource.OperationType(op.Type)), nil
+	return pkgresource.NewOperation(res, pkgresource.OperationType(op.Type)), nil
 }
 
 // DeserializeProperties deserializes an entire map of deploy properties into a resource property map.
@@ -1101,6 +1161,18 @@ func DeserializePropertyValue(v any, dec config.Decrypter,
 						return resource.MakeCustomResourceReference(urn, resource.ID(id), packageVersion), nil
 					}
 					return resource.MakeComponentResourceReference(urn, packageVersion), nil
+				case resource.ByteStringSig:
+					encoded, ok := objmap["value"].(string)
+					if !ok {
+						return resource.PropertyValue{},
+							errors.New("malformed byte string: missing or non-string 'value' field")
+					}
+					decoded, err := base64.StdEncoding.DecodeString(encoded)
+					if err != nil {
+						return resource.PropertyValue{},
+							fmt.Errorf("malformed byte string: unable to parse 'value' field: %w", err)
+					}
+					return resource.NewProperty(string(decoded)), nil
 				case floatSignature:
 					hex, ok := objmap["value"].(string)
 					if !ok {

@@ -26,6 +26,7 @@ import (
 	"fmt"
 	"go/format"
 	"io"
+	"maps"
 	"net/url"
 	"os"
 	"path"
@@ -853,13 +854,9 @@ func (pkg *pkgContext) contextForExternalReference(t schema.Type) (*pkgContext, 
 		if len(ourPkgGoInfo.PackageImportAliases) > 0 {
 			pkgImportAliases = make(map[string]string)
 			// Copy the external import aliases.
-			for k, v := range goInfo.PackageImportAliases {
-				pkgImportAliases[k] = v
-			}
+			maps.Copy(pkgImportAliases, goInfo.PackageImportAliases)
 			// Copy the local import aliases, overwriting any external aliases.
-			for k, v := range ourPkgGoInfo.PackageImportAliases {
-				pkgImportAliases[k] = v
-			}
+			maps.Copy(pkgImportAliases, ourPkgGoInfo.PackageImportAliases)
 		}
 	}
 
@@ -1134,13 +1131,10 @@ func (pkg *pkgContext) toOutputMethod(t schema.Type) string {
 // printComment filters examples for the Go languages and prepends double forward slash to each line in the given
 // comment. If indent is true, each line is indented with tab character. It returns the number of lines in the
 // resulting comment. It guarantees that each line is terminated with newline character.
-func (pkg *pkgContext) printComment(w io.Writer, comment string, selfRef schema.DocRef, indent bool) (int, error) {
-	if comment == "" {
-		return 0, nil
-	}
-	comment = codegen.FilterExamples(comment, "go")
-
-	comment, err := pkg.pkg.InterpretPulumiRefs(comment, func(ref schema.DocRef) (string, bool) {
+// docRefResolver returns a resolver for `{{% ref %}}` shortcodes that produces Go names. If
+// selfRef is set, refs within the same scope are returned unqualified.
+func (pkg *pkgContext) docRefResolver(selfRef schema.DocRef) func(schema.DocRef) (string, bool) {
+	return func(ref schema.DocRef) (string, bool) {
 		var base string
 		switch ref.Kind {
 		case schema.DocRefKindResource, schema.DocRefKindResourceProperty:
@@ -1148,11 +1142,11 @@ func (pkg *pkgContext) printComment(w io.Writer, comment string, selfRef schema.
 		case schema.DocRefKindResourceInputProperty:
 			base = pkg.tokenToResource(ref.ResourceToken()) + "Args"
 		case schema.DocRefKindFunction:
-			base = tokenToName(ref.Function.Token)
+			base = pkg.docRefFunctionName(ref.Function)
 		case schema.DocRefKindFunctionInputProperty:
-			base = tokenToName(ref.Function.Token) + "Args"
+			base = pkg.docRefFunctionName(ref.Function) + "Args"
 		case schema.DocRefKindFunctionOutputProperty:
-			base = tokenToName(ref.Function.Token)
+			base = pkg.docRefFunctionName(ref.Function)
 		case schema.DocRefKindType, schema.DocRefKindTypeProperty:
 			base = pkg.tokenToType(ref.Type.String())
 		case schema.DocRefKindUnknown:
@@ -1180,7 +1174,16 @@ func (pkg *pkgContext) printComment(w io.Writer, comment string, selfRef schema.
 		}
 
 		return fmt.Sprintf("%s.%s", base, property), true
-	})
+	}
+}
+
+func (pkg *pkgContext) printComment(w io.Writer, comment string, selfRef schema.DocRef, indent bool) (int, error) {
+	if comment == "" {
+		return 0, nil
+	}
+	comment = codegen.FilterExamples(comment, "go")
+
+	comment, err := pkg.pkg.InterpretPulumiRefs(comment, pkg.docRefResolver(selfRef))
 	if err != nil {
 		return 0, fmt.Errorf("error interpreting Pulumi references in comment %q: %w", comment, err)
 	}
@@ -1811,6 +1814,56 @@ func (pkg *pkgContext) fieldName(r *schema.Resource, field *schema.Property) str
 	return res
 }
 
+type outputPropertyAccessorReceiver int
+
+const (
+	// regularOutputReceiver selects accessors generated on TOutput.
+	regularOutputReceiver outputPropertyAccessorReceiver = iota
+	// pointerOutputReceiver selects accessors generated on TPtrOutput.
+	pointerOutputReceiver
+)
+
+// outputPropertyAccessorName returns the generated accessor name for a property on the given output receiver.
+func outputPropertyAccessorName(propertyName string, receiver outputPropertyAccessorReceiver) string {
+	name := Title(propertyName)
+	if receiver == pointerOutputReceiver {
+		switch name {
+		case "IsSecret", "ElementType":
+			name += "Prop"
+		}
+		return name
+	}
+
+	if isReservedResourceField("", name) {
+		name += "_"
+	}
+	switch strings.ToLower(propertyName) {
+	case "elementtype", "issecret":
+		name = "Get" + name
+	}
+	return name
+}
+
+// supportsOutputPropertyAccessors reports whether an object type has generated property accessors on the given receiver.
+func (pkg *pkgContext) supportsOutputPropertyAccessors(
+	objectType *schema.ObjectType,
+	receiver outputPropertyAccessorReceiver,
+) bool {
+	if objectType.IsOverlay || objectType.IsInputShape() {
+		return false
+	}
+
+	details, ok := pkg.typeDetails[objectType]
+	if !ok {
+		return false
+	}
+
+	if receiver == pointerOutputReceiver {
+		return details.ptrOutput && goPackageInfo(pkg.pkg).Generics != GenericsSettingGenericsOnly
+	}
+	return details.output
+}
+
 func (pkg *pkgContext) genPlainType(w io.Writer, name, comment, deprecationMessage string,
 	properties []*schema.Property,
 ) error {
@@ -2068,11 +2121,7 @@ func (pkg *pkgContext) genOutputTypes(w io.Writer, genArgs genOutputTypesArgs) e
 				outputType = pkg.genericOutputType(p.Type)
 			}
 
-			propName := pkg.fieldName(nil, p)
-			switch strings.ToLower(p.Name) {
-			case "elementtype", "issecret":
-				propName = "Get" + propName
-			}
+			propName := outputPropertyAccessorName(p.Name, regularOutputReceiver)
 			fmt.Fprintf(w, "func (o %sOutput) %s() %s {\n", name, propName, outputType)
 			if !genArgs.usingGenericTypes {
 				fmt.Fprintf(w, "\treturn o.ApplyT(func (v %s) %s { return v.%s }).(%s)\n",
@@ -2110,12 +2159,7 @@ func (pkg *pkgContext) genOutputTypes(w io.Writer, genArgs genOutputTypesArgs) e
 				deref = "&"
 			}
 
-			funcName := Title(p.Name)
-			// Avoid conflicts with Output interface for lifted attributes.
-			switch funcName {
-			case "IsSecret", "ElementType":
-				funcName = funcName + "Prop"
-			}
+			funcName := outputPropertyAccessorName(p.Name, pointerOutputReceiver)
 
 			fmt.Fprintf(w, "func (o %sPtrOutput) %s() %s {\n", name, funcName, outputType)
 			fmt.Fprintf(w, "\treturn o.ApplyT(func (v *%s) %s {\n", name, applyType)
@@ -3224,6 +3268,21 @@ func (pkg *pkgContext) functionName(f *schema.Function) string {
 	return name
 }
 
+func (pkg *pkgContext) docRefFunctionName(f *schema.Function) string {
+	if f == nil {
+		return ""
+	}
+
+	name := tokenToName(f.Token)
+	mod := pkg.tokenToPackage(f.Token)
+	if modPkg, ok := pkg.packages[mod]; ok {
+		if override, ok := modPkg.functionNames[f]; ok {
+			name = override
+		}
+	}
+	return name
+}
+
 func (pkg *pkgContext) functionOutputName(f *schema.Function) string {
 	originalName := pkg.functionName(f)
 	return originalName + "Output"
@@ -3417,7 +3476,7 @@ func (pkg *pkgContext) genFunctionOutputVersion(w io.Writer, f *schema.Function,
 	if f.Inputs == nil {
 		inputsVar = "nil"
 	} else if codegen.IsProvideDefaultsFuncRequired(f.Inputs) && !pkg.disableObjectDefaults {
-		inputsVar = "args.Defaults()"
+		inputsVar = "outputArgs"
 	} else {
 		inputsVar = "args"
 	}
@@ -3444,73 +3503,47 @@ func (pkg *pkgContext) genFunctionOutputVersion(w io.Writer, f *schema.Function,
 			fmt.Fprintf(w, "func %[1]sOutput(ctx *pulumi.Context, args %[1]sOutputArgs, opts ...pulumi.InvokeOption) %[2]s {\n",
 				originalName, resultTypeName)
 		}
-		fmt.Fprint(w, "	return pulumi.ToOutputWithContext(ctx.Context(), args).\n")
-		fmt.Fprintf(w, "		ApplyT(func(v interface{}) (%s, error) {\n", resultTypeName)
-		fmt.Fprintf(w, "			args := v.(%s)\n", pkg.functionArgsTypeName(f))
-		fmt.Fprintf(w, "			options := pulumi.InvokeOutputOptions{InvokeOptions: %s.PkgInvokeDefaultOpts(opts)}\n", pkg.internalModuleName)
-
-		if def.Parameterization != nil || def.ExtensionParameterization != nil {
-			err = pkg.GenPkgGetPackageRefCall(w, resultTypeName+"{}")
-			if err != nil {
-				return err
-			}
-			fmt.Fprint(w, "			options.PackageRef = ref\n")
+		if inputsVar == "outputArgs" {
+			argsTypeName := pkg.functionArgsTypeName(f)
+			fmt.Fprint(w, "	outputArgs := pulumi.ToOutputWithContext(ctx.Context(), args).\n")
+			fmt.Fprintf(w, "		ApplyT(func(v interface{}) *%s {\n", argsTypeName)
+			fmt.Fprintf(w, "			args := v.(%s)\n", argsTypeName)
+			fmt.Fprint(w, "			return args.Defaults()\n")
+			fmt.Fprint(w, "		})\n")
 		}
-		if objectReturnType != nil {
-			fmt.Fprintf(w, "			return ctx.InvokeOutput(\"%s\", %s, %s{}, options).(%s), nil\n",
-				f.Token, inputsVar, resultTypeName, resultTypeName)
-		} else {
-			otyp := pkg.outputType(&schema.MapType{ElementType: returnType})
-			ityp := pkg.typeString(&schema.MapType{ElementType: returnType})
-			typ := pkg.typeString(returnType)
-
-			fmt.Fprintf(w, "			rv := ctx.InvokeOutput(\"%s\", %s, %s{}, options).(%s)\n", f.Token, inputsVar, otyp, otyp)
-			fmt.Fprintf(w, "			return rv.ApplyT(func(rv %s) %s {\n", ityp, typ)
-			fmt.Fprintf(w, "				var result %s\n", typ)
-			fmt.Fprintf(w, "				for _, v := range rv {\n")
-			fmt.Fprintf(w, "					result = v\n")
-			fmt.Fprintf(w, "				}\n")
-			fmt.Fprintf(w, "				return result\n")
-			fmt.Fprintf(w, "			}).(%s), nil\n", resultTypeName)
-		}
-		fmt.Fprintf(w, "		}).(%s)\n", resultTypeName)
-		fmt.Fprint(w, "}\n")
-		fmt.Fprint(w, "\n")
 	} else {
 		fmt.Fprintf(w, "func %sOutput(ctx *pulumi.Context, opts ...pulumi.InvokeOption) %s {\n",
 			originalName, resultTypeName)
-		fmt.Fprintf(w, "	return pulumi.ToOutput(0).ApplyT(func(int) (%s, error) {\n", resultTypeName)
-		fmt.Fprintf(w, "		options := pulumi.InvokeOutputOptions{InvokeOptions: %s.PkgInvokeDefaultOpts(opts)}\n", pkg.internalModuleName)
-
-		if def.Parameterization != nil || def.ExtensionParameterization != nil {
-			err = pkg.GenPkgGetPackageRefCall(w, resultTypeName+"{}")
-			if err != nil {
-				return err
-			}
-			fmt.Fprint(w, "			options.PackageRef = ref\n")
-		}
-
-		if objectReturnType != nil {
-			fmt.Fprintf(w, "		return ctx.InvokeOutput(\"%s\", %s, %s{}, options).(%s), nil\n",
-				f.Token, inputsVar, resultTypeName, resultTypeName)
-		} else {
-			otyp := pkg.outputType(&schema.MapType{ElementType: returnType})
-			ityp := pkg.typeString(&schema.MapType{ElementType: returnType})
-			typ := pkg.typeString(returnType)
-
-			fmt.Fprintf(w, "			rv := ctx.InvokeOutput(\"%s\", %s, %s{}, options).(%s)\n", f.Token, inputsVar, otyp, otyp)
-			fmt.Fprintf(w, "			return rv.ApplyT(func(rv %s) %s {\n", ityp, typ)
-			fmt.Fprintf(w, "				var result %s\n", typ)
-			fmt.Fprintf(w, "				for _, v := range rv {\n")
-			fmt.Fprintf(w, "					result = v\n")
-			fmt.Fprintf(w, "				}\n")
-			fmt.Fprintf(w, "				return result\n")
-			fmt.Fprintf(w, "			}).(%s), nil\n", resultTypeName)
-		}
-		fmt.Fprintf(w, "	}).(%s)\n", resultTypeName)
-		fmt.Fprint(w, "}\n")
-		fmt.Fprint(w, "\n")
 	}
+
+	if def.Parameterization != nil || def.ExtensionParameterization != nil {
+		fmt.Fprint(w, "	options := pulumi.InvokeOutputOptions{\n")
+		fmt.Fprintf(w, "		InvokeOptions: %s.PkgInvokeDefaultOpts(opts),\n", pkg.internalModuleName)
+		fmt.Fprintf(w, "		PackageRefF:   %s.PkgGetPackageRef,\n", pkg.internalModuleName)
+		fmt.Fprint(w, "	}\n")
+	} else {
+		fmt.Fprintf(w, "	options := pulumi.InvokeOutputOptions{InvokeOptions: %s.PkgInvokeDefaultOpts(opts)}\n", pkg.internalModuleName)
+	}
+
+	if objectReturnType != nil {
+		fmt.Fprintf(w, "	return ctx.InvokeOutput(\"%s\", %s, %s{}, options).(%s)\n",
+			f.Token, inputsVar, resultTypeName, resultTypeName)
+	} else {
+		otyp := pkg.outputType(&schema.MapType{ElementType: returnType})
+		ityp := pkg.typeString(&schema.MapType{ElementType: returnType})
+		typ := pkg.typeString(returnType)
+
+		fmt.Fprintf(w, "	rv := ctx.InvokeOutput(\"%s\", %s, %s{}, options).(%s)\n", f.Token, inputsVar, otyp, otyp)
+		fmt.Fprintf(w, "	return rv.ApplyT(func(rv %s) %s {\n", ityp, typ)
+		fmt.Fprintf(w, "		var result %s\n", typ)
+		fmt.Fprintf(w, "		for _, v := range rv {\n")
+		fmt.Fprintf(w, "			result = v\n")
+		fmt.Fprintf(w, "		}\n")
+		fmt.Fprintf(w, "		return result\n")
+		fmt.Fprintf(w, "	}).(%s)\n", resultTypeName)
+	}
+	fmt.Fprint(w, "}\n")
+	fmt.Fprint(w, "\n")
 
 	if f.Inputs != nil {
 		outputArgsTypeName := pkg.functionOutputVersionArgsTypeName(f)
@@ -3863,6 +3896,11 @@ func (pkg *pkgContext) nestedTypeToType(typ schema.Type) (string, bool) {
 		}
 		return "", false
 	case *schema.ObjectType:
+		// Nested collection types are always named after the plain shape (e.g. BarArray,
+		// not BarArgsArray), so input and plain chains resolve to the same names.
+		if t.IsInputShape() {
+			t = t.PlainShape
+		}
 		return pkg.resolveObjectType(t), true
 	case *schema.EnumType:
 		return pkg.resolveEnumType(t), true
@@ -3906,8 +3944,8 @@ func (pkg *pkgContext) genTypeRegistrations(
 			}
 		}
 		for _, t := range types {
-			if strings.HasSuffix(t, "Input") {
-				fmt.Fprintf(w, "\tpulumi.RegisterInputType(reflect.TypeOf((*%s)(nil)).Elem(), %s{})\n", t, strings.TrimSuffix(t, "Input"))
+			if before, ok := strings.CutSuffix(t, "Input"); ok {
+				fmt.Fprintf(w, "\tpulumi.RegisterInputType(reflect.TypeOf((*%s)(nil)).Elem(), %s{})\n", t, before)
 			}
 		}
 	}
@@ -4238,7 +4276,7 @@ func (pkg *pkgContext) genHeader(w io.Writer, goImports []string, importsAndAlia
 			pkgName = packageName(def)
 		}
 	} else {
-		pkgName = path.Base(pkg.mod)
+		pkgName = goPackage(path.Base(pkg.mod))
 	}
 
 	fmt.Fprintf(w, "package %s\n\n", pkgName)
@@ -5471,10 +5509,7 @@ func GeneratePackage(tool string,
 		err = gomod.AddGoStmt("1.25")
 		contract.AssertNoErrorf(err, "could not add Go statement to go.mod")
 		pulumiPackagePath := "github.com/pulumi/pulumi/sdk/v3"
-		pulumiVersion := "v3.30.0"
-		if pkg.Parameterization != nil || pkg.ExtensionParameterization != nil {
-			pulumiVersion = "v3.228.0"
-		}
+		pulumiVersion := "v3.256.0"
 		err = gomod.AddRequire(pulumiPackagePath, pulumiVersion)
 		contract.AssertNoErrorf(err, "could not add require statement to go.mod")
 		if replacementPath, hasReplacement := localDependencies["pulumi"]; hasReplacement {
@@ -5571,8 +5606,8 @@ func (pkg *pkgContext) GenUtilitiesFile(w io.Writer, packageRegex string) error 
 	subtitutions := map[string]string{
 		`"${packageRegex}"`: fmt.Sprintf("%q", packageRegex),
 	}
-	i := strings.Index(embeddedUtilities, "package utilities")
-	code := embeddedUtilities[i+len("package utilities"):]
+	_, after, _ := strings.Cut(embeddedUtilities, "package utilities")
+	code := after
 	for x, y := range subtitutions {
 		code = strings.ReplaceAll(code, x, y)
 	}

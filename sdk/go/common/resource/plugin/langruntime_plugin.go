@@ -162,7 +162,7 @@ func GetLanguageAttachPort(runtime string) (*int, error) {
 	var optAttach string
 
 	if languagesEnvVar, has := os.LookupEnv("PULUMI_DEBUG_LANGUAGES"); has {
-		for _, provider := range strings.Split(languagesEnvVar, ",") {
+		for provider := range strings.SplitSeq(languagesEnvVar, ",") {
 			parts := strings.SplitN(provider, ":", 2)
 
 			if parts[0] == runtime {

@@ -36,12 +36,13 @@ func init() {
 
 					RequireStackResource(l, err, changes)
 
-					// stack + provider + 2 resources
-					require.Len(l, snap.Resources, 4, "expected 4 resources in snapshot")
+					// stack + provider + 3 resources
+					require.Len(l, snap.Resources, 5, "expected 5 resources in snapshot")
 
 					RequireSingleResource(l, snap.Resources, "pulumi:providers:optional-primitive-ref")
 					setRes := RequireSingleNamedResource(l, snap.Resources, "setRes")
 					unsetRes := RequireSingleNamedResource(l, snap.Resources, "unsetRes")
+					fromNestedOptional := RequireSingleNamedResource(l, snap.Resources, "fromNestedOptional")
 
 					setWant := resource.NewPropertyMapFromMap(map[string]any{
 						"data": resource.NewPropertyMapFromMap(map[string]any{
@@ -52,6 +53,9 @@ func init() {
 							"numberArray": []any{-1.0, 0.0, 1.0},
 							"booleanMap":  map[string]any{"t": true, "f": false},
 						}),
+						"optionalData": resource.NewPropertyMapFromMap(map[string]any{
+							"string": "optional parent",
+						}),
 					})
 					assert.Equal(l, setWant, setRes.Inputs, "setRes inputs")
 					assert.Equal(l, setWant, setRes.Outputs, "setRes outputs")
@@ -61,6 +65,14 @@ func init() {
 					})
 					assert.Equal(l, unsetWant, unsetRes.Inputs, "unsetRes inputs")
 					assert.Equal(l, unsetWant, unsetRes.Outputs, "unsetRes outputs")
+
+					fromNestedOptionalWant := resource.NewPropertyMapFromMap(map[string]any{
+						"data": resource.NewPropertyMapFromMap(map[string]any{
+							"string": "optional parent",
+						}),
+					})
+					assert.Equal(l, fromNestedOptionalWant, fromNestedOptional.Inputs, "fromNestedOptional inputs")
+					assert.Equal(l, fromNestedOptionalWant, fromNestedOptional.Outputs, "fromNestedOptional outputs")
 
 					stack := RequireSingleResource(l, snap.Resources, "pulumi:pulumi:Stack")
 					outputs := stack.Outputs

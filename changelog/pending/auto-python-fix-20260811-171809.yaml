@@ -1,0 +1,4 @@
+component: auto/python
+kind: fix
+body: Add missing `program` argument on `preview_refresh` and `preview_destroy` stack methods
+time: 2026-08-11T17:18:09.10822+02:00

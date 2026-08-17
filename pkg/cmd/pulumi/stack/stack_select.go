@@ -54,7 +54,7 @@ func newStackSelectCmd() *cobra.Command {
 			}
 
 			// Try to read the current project
-			project, root, err := ws.ReadProject()
+			project, root, err := ws.ReadProject("")
 			if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
 				return err
 			}
@@ -91,7 +91,7 @@ func newStackSelectCmd() *cobra.Command {
 					}
 					return stackErr
 				} else if s != nil {
-					return state.SetCurrentStack(ws, stackRef.FullyQualifiedName().String())
+					return state.SetCurrentStack(ws, state.BackendURLKey(b), stackRef.FullyQualifiedName().String())
 				}
 				// If create flag was passed and stack was not found, create it and select it.
 				if create && stack != "" {
@@ -99,7 +99,7 @@ func newStackSelectCmd() *cobra.Command {
 					if err != nil {
 						return err
 					}
-					return state.SetCurrentStack(ws, s.Ref().FullyQualifiedName().String())
+					return state.SetCurrentStack(ws, state.BackendURLKey(b), s.Ref().FullyQualifiedName().String())
 				}
 
 				return backenderr.StackNotFoundError{StackName: stackRef.String()}
@@ -120,7 +120,7 @@ func newStackSelectCmd() *cobra.Command {
 			}
 
 			contract.Assertf(stack != nil, "must select a stack")
-			return state.SetCurrentStack(ws, stack.Ref().FullyQualifiedName().String())
+			return state.SetCurrentStack(ws, state.BackendURLKey(b), stack.Ref().FullyQualifiedName().String())
 		},
 	}
 

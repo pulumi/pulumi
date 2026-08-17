@@ -29,6 +29,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/text/unicode/norm"
 )
 
 func TestIgnoreSimple(t *testing.T) {
@@ -116,6 +117,32 @@ func TestIgnoreNestedGitignore(t *testing.T) {
 		fileContents{name: "pkg/node_modules/included.txt", shouldRetain: true},
 		fileContents{name: "pkg/node_modules/pulumi/excluded.txt", shouldRetain: false},
 		fileContents{name: "pkg/node_modules/pulumi/excluded/excluded.txt", shouldRetain: false})
+}
+
+// TestIgnorePrecomposesUnicode verifies that a .gitignore pattern authored in
+// composed (NFC) form matches a directory whose name is stored decomposed (NFD)
+// on disk — mirroring git's core.precomposeunicode. This is macOS-only behavior:
+// precomposeUnicode normalizes readdir output to NFC there and is a no-op
+// elsewhere, so the test only runs on darwin.
+func TestIgnorePrecomposesUnicode(t *testing.T) {
+	t.Parallel()
+
+	if runtime.GOOS != "darwin" {
+		t.Skip("precomposeUnicode only normalizes on macOS")
+	}
+
+	// The directory is created on disk in NFD (decomposed) form while the
+	// .gitignore pattern uses NFC (precomposed). APFS preserves the exact bytes
+	// we write, so readdir hands the name back in NFD; the match then succeeds
+	// only because precomposeUnicode brings it back to NFC before matching.
+	nfc := norm.NFC.String("café")
+	nfd := norm.NFD.String("café")
+	require.NotEqual(t, nfc, nfd, "expected NFC and NFD forms to differ")
+
+	doArchiveTest(t, ".",
+		fileContents{name: ".gitignore", contents: []byte(nfc + "/"), shouldRetain: true},
+		fileContents{name: "included.txt", shouldRetain: true},
+		fileContents{name: nfd + "/excluded.txt", shouldRetain: false})
 }
 
 func doArchiveTest(t *testing.T, path string, files ...fileContents) {

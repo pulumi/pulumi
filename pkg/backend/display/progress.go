@@ -634,8 +634,14 @@ func (display *ProgressDisplay) filterOutUnnecessaryNodesAndSetDisplayTimes(node
 	for _, node := range nodes {
 		node.childNodes = display.filterOutUnnecessaryNodesAndSetDisplayTimes(node.childNodes)
 
-		if node.row.HideRowIfUnnecessary() && len(node.childNodes) == 0 {
-			continue
+		if node.row.HideRowIfUnnecessary() {
+			if len(node.childNodes) == 0 {
+				continue
+			}
+			if rr, ok := node.row.(*resourceRowData); ok && rr.syntheticStackRow {
+				result = append(result, node.childNodes...)
+				continue
+			}
 		}
 
 		display.displayOrderCounter++
@@ -846,7 +852,8 @@ func (display *ProgressDisplay) printDiagnostics() {
 			colors.SpecCreateReplacement + "[Pulumi Neo]" + colors.Reset + " Would you like help with these diagnostics?")
 		display.println("    " +
 			colors.Underline + colors.Blue + ExplainFailureLink(display.permalink) + colors.Reset)
-		display.println("    " + "Or run `pulumi neo` for an interactive agent in your terminal.")
+		display.println("    " + "Or run `" + neoDebugCommand(display.isPreview) +
+			"` for an interactive agent in your terminal.")
 		display.println("")
 	}
 }
@@ -1025,15 +1032,13 @@ func (display *ProgressDisplay) printOutputs() {
 	if display.opts.SuppressOutputs {
 		return
 	}
-	// Cannot display outputs for the stack if we don't know its URN.
-	if display.stackUrn == "" {
+	step, ok := display.outputsStep()
+	if !ok {
 		return
 	}
 
-	stackStep := display.eventUrnToResourceRow[display.stackUrn].Step()
-
 	props := getResourceOutputsPropertiesString(
-		stackStep,
+		step,
 		1, /* indent */
 		display.isPreview,
 		display.opts.Debug,
@@ -1045,6 +1050,29 @@ func (display *ProgressDisplay) printOutputs() {
 		display.println(colors.SpecHeadline + "Outputs:" + colors.Reset)
 		display.println(props)
 	}
+}
+
+// outputsStep picks the step whose outputs the Outputs section prints: normally the root stack's;
+// with SuppressStackRow (no stack participates), the single operated resource's.
+func (display *ProgressDisplay) outputsStep() (engine.StepEventMetadata, bool) {
+	if display.stackUrn != "" {
+		return display.eventUrnToResourceRow[display.stackUrn].Step(), true
+	}
+	if !display.opts.SuppressStackRow {
+		return engine.StepEventMetadata{}, false
+	}
+	var step engine.StepEventMetadata
+	found := false
+	for urn, row := range display.eventUrnToResourceRow {
+		if urn == "" {
+			continue
+		}
+		if found {
+			return engine.StepEventMetadata{}, false
+		}
+		step, found = row.Step(), true
+	}
+	return step, found
 }
 
 // printSummary prints the Stack's SummaryEvent in a new section if applicable.
@@ -1444,7 +1472,8 @@ func (display *ProgressDisplay) ensureHeaderAndStackRows() {
 		tick:                 display.currentTick,
 		diagInfo:             &DiagInfo{},
 		step:                 engine.StepEventMetadata{Op: deploy.OpSame},
-		hideRowIfUnnecessary: false,
+		hideRowIfUnnecessary: display.opts.SuppressStackRow,
+		syntheticStackRow:    true,
 	}
 
 	display.eventUrnToResourceRow[display.stackUrn] = stackRow

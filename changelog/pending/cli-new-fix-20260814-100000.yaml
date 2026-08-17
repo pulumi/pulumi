@@ -1,0 +1,4 @@
+component: cli/new
+kind: fix
+body: Fix cloning templates and repositories into paths containing symlinks with absolute targets
+time: 2026-08-14T14:20:10.429573+02:00

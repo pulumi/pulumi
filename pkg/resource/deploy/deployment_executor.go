@@ -20,6 +20,8 @@ import (
 	"fmt"
 	"strings"
 
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
+
 	mapset "github.com/deckarep/golang-set/v2"
 	"github.com/pulumi/pulumi/pkg/v3/resource/graph"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
@@ -508,7 +510,7 @@ func (ex *deploymentExecutor) performPostSteps(
 		// This is not "true" delete parallelism, since there may be resources that could safely begin
 		// deleting but we won't until the previous set of deletes fully completes. This approximation
 		// is conservative, but correct.
-		erroredDeps := mapset.NewSet[*resource.State]()
+		erroredDeps := mapset.NewSet[*pkgresource.State]()
 		seenErrors := mapset.NewSet[Step]()
 		for _, antichain := range deleteChains {
 			erroredSteps := ex.stepExec.GetErroredSteps()
@@ -522,7 +524,7 @@ func (ex *deploymentExecutor) performPostSteps(
 				if seenErrors.Contains(step) {
 					continue
 				}
-				for _, r := range []*resource.State{step.Res(), step.Old()} {
+				for _, r := range []*pkgresource.State{step.Res(), step.Old()} {
 					if r != nil && dg.Contains(r) {
 						deps := dg.TransitiveDependenciesOf(r)
 						erroredDeps = erroredDeps.Union(deps)
@@ -711,7 +713,7 @@ func (ex *deploymentExecutor) refresh(callerCtx context.Context, refreshBeforeUp
 	// old snapshot.  If they did provider --target's then only create refresh steps for those
 	// specific targets.
 	steps := []Step{}
-	resourceToStep := map[*resource.State]Step{}
+	resourceToStep := map[*pkgresource.State]Step{}
 
 	// We also keep track of dependents as we find them in order to exclude
 	// transitive dependents as well.
@@ -863,7 +865,7 @@ func (ex *deploymentExecutor) refresh(callerCtx context.Context, refreshBeforeUp
 	return nil
 }
 
-func (ex *deploymentExecutor) rebuildBaseState(resourceToStep map[*resource.State]Step) {
+func (ex *deploymentExecutor) rebuildBaseState(resourceToStep map[*pkgresource.State]Step) {
 	// Rebuild this deployment's map of old resources and dependency graph, stripping out any deleted
 	// resources and repairing dependency lists as necessary. Note that this updates the base
 	// snapshot _in memory_, so it is critical that any components that use the snapshot refer to
@@ -892,13 +894,13 @@ func (ex *deploymentExecutor) rebuildBaseState(resourceToStep map[*resource.Stat
 	// Note that the correctness of this process depends on the fact that the list of resources is a
 	// topological sort of its corresponding dependency graph, so a resource always appears in the
 	// list after any resources on which it may depend.
-	resources := []*resource.State{}
+	resources := []*pkgresource.State{}
 	referenceable := make(map[resource.URN]bool)
-	olds := make(map[resource.URN]*resource.State)
-	allOlds := make(map[resource.URN][]*resource.State)
-	oldViews := make(map[resource.URN][]*resource.State)
+	olds := make(map[resource.URN]*pkgresource.State)
+	allOlds := make(map[resource.URN][]*pkgresource.State)
+	oldViews := make(map[resource.URN][]*pkgresource.State)
 	for _, s := range ex.deployment.prev.Resources {
-		var old, new *resource.State
+		var old, new *pkgresource.State
 		if step, has := resourceToStep[s]; has {
 			// We produced a refresh step for this specific resource.  Use the new information about
 			// its dependencies during the update.
@@ -919,35 +921,36 @@ func (ex *deploymentExecutor) rebuildBaseState(resourceToStep map[*resource.Stat
 
 		newDeps := []resource.URN{}
 		newPropDeps := map[resource.PropertyKey][]resource.URN{}
+		newReplaceWith := []resource.URN{}
 
 		_, allDeps := new.GetAllDependencies()
 		for _, dep := range allDeps {
 			switch dep.Type {
-			case resource.ResourceParent:
+			case pkgresource.ResourceParent:
 				// We handle parents separately later on (see undangleParentResources),
 				// so we'll skip over them here.
 				continue
-			case resource.ResourceDependency:
+			case pkgresource.ResourceDependency:
 				if referenceable[dep.URN] {
 					newDeps = append(newDeps, dep.URN)
 				}
-			case resource.ResourcePropertyDependency:
+			case pkgresource.ResourcePropertyDependency:
 				if referenceable[dep.URN] {
 					newPropDeps[dep.Key] = append(newPropDeps[dep.Key], dep.URN)
 				}
-			case resource.ResourceDeletedWith:
+			case pkgresource.ResourceDeletedWith:
 				if !referenceable[dep.URN] {
 					new.DeletedWith = ""
 				}
-			case resource.ResourceReplaceWith:
-				if !referenceable[dep.URN] {
-					new.ReplaceWith = nil
+			case pkgresource.ResourceReplaceWith:
+				if referenceable[dep.URN] {
+					newReplaceWith = append(newReplaceWith, dep.URN)
 				}
 			}
 		}
 
-		// Since we can only have shrunk the sets of dependencies and property
-		// dependencies, we'll only update them if they were non empty to begin
+		// Since we can only have shrunk the sets of dependencies, property dependencies,
+		// and replace-with dependencies, we'll only update them if they were non empty to begin
 		// with. This is to avoid e.g. replacing a nil input with an non-nil but
 		// empty output, which while equivalent in many cases is not the same and
 		// could result in subtly different behaviour in some parts of the engine.
@@ -956,6 +959,9 @@ func (ex *deploymentExecutor) rebuildBaseState(resourceToStep map[*resource.Stat
 		}
 		if len(new.PropertyDependencies) > 0 {
 			new.PropertyDependencies = newPropDeps
+		}
+		if len(new.ReplaceWith) > 0 {
+			new.ReplaceWith = newReplaceWith
 		}
 
 		// Add this resource to the resource list and mark it as referenceable.
@@ -983,7 +989,7 @@ func (ex *deploymentExecutor) rebuildBaseState(resourceToStep map[*resource.Stat
 	ex.deployment.oldViews = oldViews
 }
 
-func undangleParentResources(undeleted map[resource.URN]bool, resources []*resource.State) {
+func undangleParentResources(undeleted map[resource.URN]bool, resources []*pkgresource.State) {
 	// Since a refresh may delete arbitrary resources, we need to handle the case where
 	// the parent of a still existing resource is deleted.
 	//

@@ -26,12 +26,9 @@ import (
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageinstallation"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageresolution"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageworkspace"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/policy"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/project/newcmd"
-	"github.com/pulumi/pulumi/pkg/v3/pluginstorage"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -122,7 +119,7 @@ func NewInstallCmd(ws pkgWorkspace.Context) *cobra.Command {
 			}
 
 			// Load the project
-			proj, root, err := ws.ReadProject()
+			proj, root, err := ws.ReadProject("")
 			if err != nil {
 				return err
 			}
@@ -192,37 +189,13 @@ func NewInstallCmd(ws pkgWorkspace.Context) *cobra.Command {
 			}
 
 			if !noPlugins {
-				// Compute the set of plugins the current project needs.
-				packages, specs, err := lang.GetRequiredPackages(ctx, programInfo)
-				if err != nil {
-					return err
-				}
-
-				projPath, err := workspace.DetectProjectPathFrom(root)
-				if err != nil {
-					return fmt.Errorf("locating Pulumi.yaml: %w", err)
-				}
-
-				ws := packageworkspace.New(pluginstorage.Instance, pkgWorkspace.Instance,
-					pctx, cmd.OutOrStderr(), cmd.ErrOrStderr(), nil,
-					packageworkspace.Options{
-						UseLanguageVersionTools: useLanguageVersionTools,
-					})
-
 				// Pass the continuation from InstallPackagesFromProject so the packages it
 				// already installed and linked are not reinstalled or regenerated here.
-				_, err = packageinstallation.InstallPluginSet(ctx, packages, specs, proj, filepath.Dir(projPath),
-					packageinstallation.Options{
-						Concurrency: parallel,
-						PriorState:  continuation,
-						Options: packageresolution.Options{
-							ResolveVersionWithLocalWorkspace:           true,
-							ResolveWithRegistry:                        !env.DisableRegistryResolve.Value(),
-							AllowNonInvertableLocalWorkspaceResolution: true,
-						},
-					}, registry, ws)
+				err := newcmd.InstallRequiredPackages(ctx, pctx, proj, root, main,
+					continuation, parallel, useLanguageVersionTools, registry,
+					cmd.OutOrStderr(), cmd.ErrOrStderr())
 				if err != nil {
-					return fmt.Errorf("installing packages: %w", err)
+					return err
 				}
 			}
 

@@ -38,8 +38,9 @@ import (
 func TestRoundTripConvert(t *testing.T) {
 	t.Parallel()
 
+	value := pTest.Value(10)
 	rapid.Check(t, func(t *rapid.T) {
-		source := pTest.Value(10).Draw(t, "round-trip value")
+		source := value.Draw(t, "round-trip value")
 		propertyValue := resource.ToResourcePropertyValue(source)
 		roundTripped := resource.FromResourcePropertyValue(propertyValue)
 
@@ -81,8 +82,9 @@ func testRoundTripThroughGRPC(t require.TestingT, v property.Value) {
 func TestConversionThroughGRPCRapid(t *testing.T) {
 	t.Parallel()
 
+	value := pTest.Value(10)
 	rapid.Check(t, func(t *rapid.T) {
-		source := pTest.Value(10).Draw(t, "round-trip value")
+		source := value.Draw(t, "round-trip value")
 		testRoundTripThroughGRPC(t, source)
 	})
 }
@@ -104,6 +106,56 @@ func TestConversionThroughGRPC(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			testRoundTripThroughGRPC(t, tt.value)
+		})
+	}
+}
+
+func TestDiffCompatibility(t *testing.T) {
+	t.Parallel()
+
+	rapid.Check(t, func(t *rapid.T) {
+		a := pTest.Map(10).Draw(t, "round-trip value a")
+		b := pTest.Map(10).Draw(t, "round-trip value b")
+
+		assert.Equal(t,
+			resource.ToResourceObjectDiff(a.Diff(b)),
+			resource.ToResourcePropertyMap(a).Diff(resource.ToResourcePropertyMap(b)))
+	})
+}
+
+func TestDiffCompatibilityWrappedValues(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name string
+		a, b property.Map
+	}{
+		{
+			"secret arrays",
+			property.NewMap(map[string]property.Value{
+				"k": property.New([]property.Value{property.New(1.0)}).WithSecret(true),
+			}),
+			property.NewMap(map[string]property.Value{
+				"k": property.New([]property.Value{property.New(2.0)}).WithSecret(true),
+			}),
+		},
+		{
+			"secret maps with null values",
+			property.NewMap(map[string]property.Value{
+				"k": property.New(map[string]property.Value{"n": property.New(property.Null)}).WithSecret(true),
+			}),
+			property.NewMap(map[string]property.Value{
+				"k": property.New(property.Map{}).WithSecret(true),
+			}),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t,
+				resource.ToResourceObjectDiff(tt.a.Diff(tt.b)),
+				resource.ToResourcePropertyMap(tt.a).Diff(resource.ToResourcePropertyMap(tt.b)))
 		})
 	}
 }

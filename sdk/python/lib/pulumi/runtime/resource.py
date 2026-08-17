@@ -40,10 +40,8 @@ from .rpc import _expand_dependencies, serialize_property
 from .settings import (
     _get_callbacks,
     _get_rpc_manager,
-    _sync_monitor_supports_transforms,
-    monitor_supports_error_hooks,
-    monitor_supports_resource_hooks,
     handle_grpc_error,
+    monitor_supports_feature,
 )
 
 if TYPE_CHECKING:
@@ -265,7 +263,9 @@ async def prepare_resource(
     if opts is not None and opts.replacement_trigger is not None:
         replacement_trigger = opts.replacement_trigger
 
-    supports_alias_specs = await settings.monitor_supports_alias_specs()
+    supports_alias_specs = monitor_supports_feature(
+        resource_pb2.RESOURCE_MONITOR_FEATURE_ALIAS_SPECS
+    )
     aliases = await prepare_aliases(res, opts, supports_alias_specs)
     deleted_with_urn: Optional[str] = ""
     if opts is not None and opts.deleted_with is not None:
@@ -597,7 +597,7 @@ def get_resource(
                 except grpc.RpcError as exn:
                     handle_grpc_error(exn)
 
-            resp = await asyncio.get_event_loop().run_in_executor(
+            resp = await asyncio.get_running_loop().run_in_executor(
                 None, wrap_with_context(do_invoke)
             )
 
@@ -880,7 +880,7 @@ def read_resource(
                 except grpc.RpcError as exn:
                     handle_grpc_error(exn)
 
-            resp = await asyncio.get_event_loop().run_in_executor(
+            resp = await asyncio.get_running_loop().run_in_executor(
                 None, wrap_with_context(do_rpc_call)
             )
 
@@ -1048,7 +1048,9 @@ def register_resource(
 
             callbacks: list[callback_pb2.Callback] = []
             if opts.transforms:
-                if not _sync_monitor_supports_transforms():
+                if not monitor_supports_feature(
+                    resource_pb2.RESOURCE_MONITOR_FEATURE_TRANSFORMS
+                ):
                     raise Exception(
                         "The Pulumi CLI does not support transforms. Please update the Pulumi CLI."
                     )
@@ -1077,17 +1079,15 @@ def register_resource(
             if opts.custom_timeouts is not None:
                 custom_timeouts = _create_custom_timeouts(opts.custom_timeouts)
 
-            if (
-                resolver.deleted_with_urn
-                and not await settings.monitor_supports_deleted_with()
+            if resolver.deleted_with_urn and not monitor_supports_feature(
+                resource_pb2.RESOURCE_MONITOR_FEATURE_DELETED_WITH
             ):
                 raise Exception(
                     "The Pulumi CLI does not support the DeletedWith option. Please update the Pulumi CLI."
                 )
 
-            if (
-                resolver.replace_with_urns
-                and not await settings.monitor_supports_replace_with()
+            if resolver.replace_with_urns and not monitor_supports_feature(
+                resource_pb2.RESOURCE_MONITOR_FEATURE_REPLACE_WITH
             ):
                 raise Exception(
                     "The Pulumi CLI does not support the ReplaceWith option. Please update the Pulumi CLI."
@@ -1175,7 +1175,7 @@ def register_resource(
                 except grpc.RpcError as exn:
                     handle_grpc_error(exn)
 
-            resp = await asyncio.get_event_loop().run_in_executor(
+            resp = await asyncio.get_running_loop().run_in_executor(
                 None, wrap_with_context(do_rpc_call)
             )
         except Exception as exn:
@@ -1205,7 +1205,22 @@ def register_resource(
         try:
             log.debug(f"resource registration successful: ty={ty}, urn={resp.urn}")
 
-            resolve_urn(resp.urn, True, False, None)
+            # If the engine reported that the resource failed or was skipped, synthesize an
+            # exception so downstream outputs fault. This allows `Output.recover` to intercept
+            # the failure. `ResourceRegistrationFailed` is a marker class that `wait_for_rpcs`
+            # skips at program exit, so unrecovered outputs don't tear down continue-on-error
+            # updates.
+            result_failed = resp.result != resource_pb2.Result.SUCCESS
+            register_exn: Optional[Exception] = None
+            if result_failed:
+                # Lazy import to avoid a circular import at module load.
+                from .stack import ResourceRegistrationFailed
+
+                register_exn = ResourceRegistrationFailed(
+                    f"resource {name} [{ty}] failed to register"
+                )
+
+            resolve_urn(resp.urn, True, False, register_exn)
             resolve_urn_called = True
 
             if resolve_id is not None:
@@ -1213,7 +1228,7 @@ def register_resource(
                 # empty string, we should treat it as unknown. TFBridge in particular is known to send
                 # the empty string as an ID when doing a preview.
                 is_known = bool(resp.id)
-                resolve_id(resp.id, is_known, False, None)
+                resolve_id(resp.id, is_known, False, register_exn)
                 resolve_id_called = True
 
             property_deps = {}
@@ -1223,17 +1238,22 @@ def register_resource(
                     urns = list(v.urns)
                     property_deps[k] = set(map(new_dependency, urns))
 
-            keep_unknowns = resp.result == resource_pb2.Result.SUCCESS
-            rpc.resolve_outputs(
-                res,
-                resolver.serialized_props,
-                resp.object,
-                property_deps,
-                resolvers,
-                custom,
-                transform_using_type_metadata,
-                keep_unknowns,
-            )
+            if register_exn is not None:
+                rpc.resolve_outputs_due_to_exception(resolvers, register_exn)
+            else:
+                keep_unknowns = resp.result == resource_pb2.Result.SUCCESS
+                unknown = custom and not settings.is_dry_run() and resp.unknown
+                rpc.resolve_outputs(
+                    res,
+                    resolver.serialized_props,
+                    resp.object,
+                    property_deps,
+                    resolvers,
+                    custom,
+                    transform_using_type_metadata,
+                    keep_unknowns,
+                    resolve_missing_as_unknown=unknown,
+                )
             resolve_outputs_called = True
 
         except Exception as exn:
@@ -1281,7 +1301,7 @@ def register_resource_outputs(
             except grpc.RpcError as exn:
                 handle_grpc_error(exn)
 
-        await asyncio.get_event_loop().run_in_executor(
+        await asyncio.get_running_loop().run_in_executor(
             None, wrap_with_context(do_rpc_call)
         )
         log.debug(
@@ -1308,6 +1328,7 @@ class RegisterResponse:
     object: struct_pb2.Struct
     propertyDependencies: Optional[dict[str, PropertyDependencies]]
     result: Optional[resource_pb2.Result.ValueType]
+    unknown: bool
 
     def __init__(
         self,
@@ -1316,12 +1337,14 @@ class RegisterResponse:
         object: struct_pb2.Struct,
         propertyDependencies: Optional[dict[str, PropertyDependencies]],
         result: Optional[resource_pb2.Result.ValueType],
+        unknown: bool = False,
     ):
         self.urn = urn
         self.id = id
         self.object = object
         self.propertyDependencies = propertyDependencies
         self.result = result
+        self.unknown = unknown
 
 
 def convert_providers(
@@ -1381,7 +1404,9 @@ async def _prepare_resource_hooks(
             hooks, hook_type, []
         )
         for i, _hook in enumerate(hooks_for_type or []):
-            if not await monitor_supports_resource_hooks():
+            if not monitor_supports_feature(
+                resource_pb2.RESOURCE_MONITOR_FEATURE_RESOURCE_HOOKS
+            ):
                 raise Exception(
                     "The Pulumi CLI does not support resource hooks. Please update the Pulumi CLI."
                 )
@@ -1403,7 +1428,9 @@ async def _prepare_resource_hooks(
 
     on_error_hooks_list: list[ErrorHook] = getattr(hooks, "on_error", []) or []
     if on_error_hooks_list:
-        if not await monitor_supports_error_hooks():
+        if not monitor_supports_feature(
+            resource_pb2.RESOURCE_MONITOR_FEATURE_ERROR_HOOKS
+        ):
             raise Exception(
                 "The Pulumi CLI does not support error hooks. Please update the Pulumi CLI."
             )
@@ -1425,7 +1452,9 @@ def register_resource_hook(hook: "ResourceHook") -> asyncio.Future[None]:
         return callbacks.register_resource_hook(hook)
 
     async def wrapper() -> None:
-        if not await monitor_supports_resource_hooks():
+        if not monitor_supports_feature(
+            resource_pb2.RESOURCE_MONITOR_FEATURE_RESOURCE_HOOKS
+        ):
             raise Exception(
                 "The Pulumi CLI does not support resource hooks. Please update the Pulumi CLI."
             )
@@ -1448,7 +1477,9 @@ def register_error_hook(hook: "ErrorHook") -> asyncio.Future[None]:
         return callbacks.register_error_hook(hook)
 
     async def wrapper() -> None:
-        if not await monitor_supports_error_hooks():
+        if not monitor_supports_feature(
+            resource_pb2.RESOURCE_MONITOR_FEATURE_ERROR_HOOKS
+        ):
             raise Exception(
                 "The Pulumi CLI does not support error hooks. Please update the Pulumi CLI."
             )

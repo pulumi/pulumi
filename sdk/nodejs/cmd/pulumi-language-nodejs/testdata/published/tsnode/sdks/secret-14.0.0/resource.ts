@@ -34,7 +34,11 @@ export class Resource extends pulumi.CustomResource {
     }
 
     declare public readonly private: pulumi.Output<string>;
+    declare public readonly privateArray: pulumi.Output<string[]>;
     declare public readonly privateData: pulumi.Output<outputs.Data>;
+    declare public readonly privateDataArray: pulumi.Output<outputs.Data[]>;
+    declare public readonly privateDataMap: pulumi.Output<{[key: string]: outputs.Data}>;
+    declare public readonly privateMap: pulumi.Output<{[key: string]: string}>;
     declare public readonly public: pulumi.Output<string>;
     declare public readonly publicData: pulumi.Output<outputs.Data>;
 
@@ -52,8 +56,20 @@ export class Resource extends pulumi.CustomResource {
             if (args?.private === undefined && !opts.urn) {
                 throw new Error("Missing required property 'private'");
             }
+            if (args?.privateArray === undefined && !opts.urn) {
+                throw new Error("Missing required property 'privateArray'");
+            }
             if (args?.privateData === undefined && !opts.urn) {
                 throw new Error("Missing required property 'privateData'");
+            }
+            if (args?.privateDataArray === undefined && !opts.urn) {
+                throw new Error("Missing required property 'privateDataArray'");
+            }
+            if (args?.privateDataMap === undefined && !opts.urn) {
+                throw new Error("Missing required property 'privateDataMap'");
+            }
+            if (args?.privateMap === undefined && !opts.urn) {
+                throw new Error("Missing required property 'privateMap'");
             }
             if (args?.public === undefined && !opts.urn) {
                 throw new Error("Missing required property 'public'");
@@ -62,17 +78,25 @@ export class Resource extends pulumi.CustomResource {
                 throw new Error("Missing required property 'publicData'");
             }
             resourceInputs["private"] = args?.private ? pulumi.secret(args.private) : undefined;
+            resourceInputs["privateArray"] = args?.privateArray ? pulumi.secret(args.privateArray) : undefined;
             resourceInputs["privateData"] = args?.privateData ? pulumi.secret(args.privateData) : undefined;
+            resourceInputs["privateDataArray"] = args?.privateDataArray ? pulumi.secret(args.privateDataArray) : undefined;
+            resourceInputs["privateDataMap"] = args?.privateDataMap ? pulumi.secret(args.privateDataMap) : undefined;
+            resourceInputs["privateMap"] = args?.privateMap ? pulumi.secret(args.privateMap) : undefined;
             resourceInputs["public"] = args?.public;
             resourceInputs["publicData"] = args?.publicData;
         } else {
             resourceInputs["private"] = undefined /*out*/;
+            resourceInputs["privateArray"] = undefined /*out*/;
             resourceInputs["privateData"] = undefined /*out*/;
+            resourceInputs["privateDataArray"] = undefined /*out*/;
+            resourceInputs["privateDataMap"] = undefined /*out*/;
+            resourceInputs["privateMap"] = undefined /*out*/;
             resourceInputs["public"] = undefined /*out*/;
             resourceInputs["publicData"] = undefined /*out*/;
         }
         opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts);
-        const secretOpts = { additionalSecretOutputs: ["private", "privateData"] };
+        const secretOpts = { additionalSecretOutputs: ["private", "privateArray", "privateData", "privateDataArray", "privateDataMap", "privateMap"] };
         opts = pulumi.mergeOptions(opts, secretOpts);
         super(Resource.__pulumiType, name, resourceInputs, opts);
     }
@@ -83,7 +107,11 @@ export class Resource extends pulumi.CustomResource {
  */
 export interface ResourceArgs {
     private: pulumi.Input<string>;
+    privateArray: pulumi.Input<pulumi.Input<string>[]>;
     privateData: pulumi.Input<inputs.DataArgs>;
+    privateDataArray: pulumi.Input<pulumi.Input<inputs.DataArgs>[]>;
+    privateDataMap: pulumi.Input<{[key: string]: pulumi.Input<inputs.DataArgs>}>;
+    privateMap: pulumi.Input<{[key: string]: pulumi.Input<string>}>;
     public: pulumi.Input<string>;
     publicData: pulumi.Input<inputs.DataArgs>;
 }

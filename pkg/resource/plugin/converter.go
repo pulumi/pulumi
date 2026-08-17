@@ -20,6 +20,7 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	codegenrpc "github.com/pulumi/pulumi/sdk/v3/proto/go/codegen"
 )
 
@@ -41,6 +42,26 @@ type ResourceImport struct {
 	// Extension is set when an extension parameterization should be applied to the resource's (base)
 	// provider. Mutually exclusive with Parameterization.
 	Extension *ResourceExtension
+
+	// Parent is the name of the resource's parent, if any. It must reference the name of another resource
+	// in the same response; resources without a parent are parented to the stack root.
+	Parent string
+
+	// Properties lists the input properties to include when generating code for the resource. Defaults to
+	// the resource's required properties.
+	Properties []string
+
+	// Provider is the name of the resource's explicit provider, if any. It must reference the name of a
+	// provider declared as another resource in the same response.
+	Provider string
+
+	// Inputs holds input properties supplied for the resource. Values the provider's Read cannot return
+	// (e.g. write-only attributes) are taken from here instead. For a provider declared in the response,
+	// Inputs is its configuration.
+	Inputs *property.Map
+	// Outputs holds the resource's full output state. When set, the resource is imported from these
+	// values directly and the provider's Read is skipped entirely.
+	Outputs *property.Map
 }
 
 // ResourceParameterization describes the base plugin that a resource's parameterized provider is built
@@ -67,6 +88,10 @@ type ResourceExtension struct {
 type ConvertStateRequest struct {
 	MapperTarget string
 	Args         []string
+	LoaderTarget string
+	// ResolverTarget is the target of a PackageResolver service the converter can use to resolve
+	// package specifications to concrete package dependencies. May be empty on older engines.
+	ResolverTarget string
 }
 
 type ConvertStateResponse struct {
@@ -96,6 +121,12 @@ type ConvertSnippetRequest struct {
 	Package    *codegenrpc.GetSchemaRequest
 	Token      string
 	Attributes map[string]string
+	Resources  map[string]ConvertSnippetResourceReference
+}
+
+type ConvertSnippetResourceReference struct {
+	Token   string
+	Package *codegenrpc.GetSchemaRequest
 }
 
 type ConvertSnippetResponse struct {
@@ -103,6 +134,8 @@ type ConvertSnippetResponse struct {
 	Filename    string
 	Source      []byte
 	Attributes  map[string]string
+	// ResourceNames maps source-language resource names to generated PCL names.
+	ResourceNames map[string]string
 }
 
 type Converter interface {

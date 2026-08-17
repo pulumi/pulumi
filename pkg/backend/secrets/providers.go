@@ -24,6 +24,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/secrets/cloud"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/passphrase"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/service"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 )
 
 // DefaultProvider is the default DefaultProvider to use when deserializing deployments.
@@ -54,6 +55,49 @@ func (secretsProvider) OfType(ctx context.Context, ty string, state json.RawMess
 	}
 
 	return stack.NewBatchingCachingSecretsManager(sm), nil
+}
+
+// BlindingProvider builds secrets managers that redact every secret to config.BlindingCrypter's "[secret]"
+// sentinel instead of decrypting it. It never needs a passphrase or other credentials, so it can be used to
+// deserialize a checkpoint when we only need to read non-secret data (or display secrets masked) — for example
+// reading a non-secret stack output or listing resources in `pulumi about` — without prompting for a passphrase.
+var BlindingProvider secrets.Provider = blindingProvider{}
+
+type blindingProvider struct{}
+
+func (blindingProvider) OfType(_ context.Context, ty string, state json.RawMessage) (secrets.Manager, error) {
+	return blindingManager{ty: ty, state: state}, nil
+}
+
+type blindingManager struct {
+	ty    string
+	state json.RawMessage
+}
+
+func (m blindingManager) Type() string                { return m.ty }
+func (m blindingManager) State() json.RawMessage      { return m.state }
+func (m blindingManager) Encrypter() config.Encrypter { return config.BlindingCrypter }
+func (m blindingManager) Decrypter() config.Decrypter { return redactingDecrypter{} }
+
+type redactingDecrypter struct{}
+
+// DecryptValue returns config.BlindingCrypter's "[secret]" sentinel, JSON-encoded: deployment deserialization
+// unmarshals each decrypted plaintext as a JSON value, so the bare sentinel (not valid JSON) can't be returned
+// directly.
+func (redactingDecrypter) DecryptValue(ctx context.Context, ciphertext string) (string, error) {
+	redacted, err := config.BlindingCrypter.DecryptValue(ctx, ciphertext)
+	if err != nil {
+		return "", err
+	}
+	plaintext, err := json.Marshal(redacted)
+	if err != nil {
+		return "", err
+	}
+	return string(plaintext), nil
+}
+
+func (d redactingDecrypter) BatchDecrypt(ctx context.Context, ciphertexts []string) ([]string, error) {
+	return config.DefaultBatchDecrypt(ctx, d, ciphertexts)
 }
 
 // NamedStackProvider is the same as the default secrets provider,

@@ -7,8 +7,11 @@ from . import _utilities
 import typing
 # Export this package's modules as members:
 from ._enums import *
+from .deluxe import *
 from .provider import *
 from .res import *
+from ._inputs import *
+from . import outputs
 
 # Make subpackages available:
 if typing.TYPE_CHECKING:
@@ -25,6 +28,7 @@ _utilities.register(
   "mod": "index",
   "fqn": "pulumi_enum",
   "classes": {
+   "enum:index:Deluxe": "Deluxe",
    "enum:index:Res": "Res"
   }
  },

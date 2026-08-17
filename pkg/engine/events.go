@@ -18,6 +18,8 @@ import (
 	"bytes"
 	"time"
 
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
+
 	codeasset "github.com/pulumi/pulumi/pkg/v3/asset"
 	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
@@ -65,7 +67,7 @@ func NewCancelEvent() Event {
 
 func NewEvent[T EventPayload](payload T) Event {
 	// We want to use deepcopy.Copy here to ensure the state is not mutated after the event is created. We need to lock
-	// any *resource.State objects that are part of the payload, as other events may be trying to mutate state in
+	// any *pkgresource.State objects that are part of the payload, as other events may be trying to mutate state in
 	// parallel with this event.
 
 	var typ EventType
@@ -218,8 +220,8 @@ type PolicyRemediationEventPayload struct {
 	PolicyName        string
 	PolicyPackName    string
 	PolicyPackVersion string
-	Before            resource.PropertyMap
-	After             resource.PropertyMap
+	Before            property.Map
+	After             property.Map
 }
 
 // PolicyLoadEventPayload is the payload for an event with type `policy-load`.
@@ -349,6 +351,7 @@ type StepEventMetadata struct {
 	DetailedDiff map[string]plugin.PropertyDiff // the rich, structured diff
 	Logical      bool                           // true if this step represents a logical operation in the program.
 	Provider     string                         // the provider that performed this step.
+	Untargeted   bool                           // true if this same-step's resource was not included in the operation.
 }
 
 func (m *StepEventMetadata) LockState() {
@@ -373,7 +376,7 @@ func (m *StepEventMetadata) UnlockState() {
 // StepEventStateMetadata contains detailed metadata about a resource's state pertaining to a given step.
 type StepEventStateMetadata struct {
 	// State contains the raw, complete state, for this resource.
-	State *resource.State
+	State *pkgresource.State
 	// the resource's type.
 	Type tokens.Type
 	// the resource's object urn, a human-friendly, unique name for the resource.
@@ -433,7 +436,7 @@ func makeEventEmitter(events chan<- Event, update UpdateInfo) (eventEmitter, err
 		}
 	}
 
-	logging.AddGlobalFilter(logging.CreateFilter(secrets, "[secret]"))
+	logging.AddGlobalSecretFilter(secrets, "[secret]")
 
 	buffer, done := make(chan Event), make(chan bool)
 	go queueEvents(events, buffer, done)
@@ -500,6 +503,12 @@ func queueEvents(events chan<- Event, buffer chan Event, done chan bool) {
 	}
 }
 
+// MakeStepEventStateMetadata converts a resource state into the event metadata engine events
+// carry, redacting property values the same way real engine events do.
+func MakeStepEventStateMetadata(state *pkgresource.State, showSecrets bool) *StepEventStateMetadata {
+	return makeStepEventStateMetadata(state, false /*debug*/, showSecrets)
+}
+
 func makeStepEventMetadata(op display.StepOp, step deploy.Step, debug bool, showSecrets bool) StepEventMetadata {
 	contract.Assertf(op == step.Op() || step.Op() == deploy.OpRefresh,
 		"step must be %v or %v, got %v", op, deploy.OpRefresh, step.Op())
@@ -531,10 +540,11 @@ func makeStepEventMetadata(op display.StepOp, step deploy.Step, debug bool, show
 		Res:          makeStepEventStateMetadata(step.Res(), debug, showSecrets),
 		Logical:      step.Logical(),
 		Provider:     step.Provider(),
+		Untargeted:   step.IsUntargeted(),
 	}
 }
 
-func makeStepEventStateMetadata(state *resource.State, debug bool, showSecrets bool) *StepEventStateMetadata {
+func makeStepEventStateMetadata(state *pkgresource.State, debug bool, showSecrets bool) *StepEventStateMetadata {
 	if state == nil {
 		return nil
 	}
@@ -689,8 +699,8 @@ func (e *eventEmitter) policyRemediationEvent(urn resource.URN, t plugin.Remedia
 		PolicyName:        t.PolicyName,
 		PolicyPackName:    t.PolicyPackName,
 		PolicyPackVersion: t.PolicyPackVersion,
-		Before:            resource.ToResourcePropertyMap(before),
-		After:             resource.ToResourcePropertyMap(after),
+		Before:            before,
+		After:             after,
 	}))
 }
 

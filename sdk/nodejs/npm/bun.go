@@ -108,9 +108,13 @@ func (bun *bunManager) Link(ctx context.Context, dir, packageName, path string) 
 	// https://bun.com/docs/install/lifecycle
 	cmd = exec.CommandContext(ctx, "bun", "pm", "pkg", "get", "trustedDependencies")
 	cmd.Dir = dir
-	out, err := cmd.CombinedOutput()
+	out, err := cmd.Output()
 	if err != nil {
-		return fmt.Errorf("error running %s: %w, output: %s", cmd.String(), err, out)
+		msg := "error running " + cmd.String()
+		if len(bytes.TrimSpace(out)) > 0 {
+			msg += ", stdout: " + string(bytes.TrimSpace(out))
+		}
+		return errutil.ErrorWithStderr(err, msg)
 	}
 	out = bytes.TrimSpace(out)
 	var dependencies []string

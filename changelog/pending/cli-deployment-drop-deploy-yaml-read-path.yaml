@@ -1,6 +1,0 @@
-component: cli/deployment
-kind: improvement
-body: 'The deployment settings file (`Pulumi.<stack>.deploy.yaml`) has been removed entirely. The experimental `pulumi deployment settings push` (`update`/`up`) command, the `--config-file` flag, and the SDK helpers that read the file have been removed. Manage deployment settings directly in Pulumi Cloud with `pulumi deployment settings get`, `edit`, and `destroy`'
-time: 2026-07-03T00:00:00.000000+00:00
-custom:
-    PR: "23480"

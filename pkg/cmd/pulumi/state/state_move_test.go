@@ -21,6 +21,8 @@ import (
 	"path/filepath"
 	"testing"
 
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
+
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/diy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
@@ -28,6 +30,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/b64"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/passphrase"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/urn"
@@ -37,7 +40,7 @@ import (
 )
 
 func createStackWithResources(
-	t *testing.T, b diy.Backend, stackName string, resources []*resource.State,
+	t *testing.T, b diy.Backend, stackName string, resources []*pkgresource.State,
 ) backend.Stack {
 	sm := b64.NewBase64SecretsManager()
 
@@ -64,25 +67,25 @@ type MoveOptions struct {
 }
 
 func runMove(
-	t *testing.T, sourceResources []*resource.State, args []string,
+	t *testing.T, sourceResources []*pkgresource.State, args []string,
 ) (*deploy.Snapshot, *deploy.Snapshot, bytes.Buffer) {
 	return runMoveWithOptions(t, sourceResources, args, &MoveOptions{})
 }
 
 func runMoveWithOptions(
-	t *testing.T, sourceResources []*resource.State, args []string, options *MoveOptions,
+	t *testing.T, sourceResources []*pkgresource.State, args []string, options *MoveOptions,
 ) (*deploy.Snapshot, *deploy.Snapshot, bytes.Buffer) {
-	return runMoveWithOptionsAndDestResources(t, sourceResources, []*resource.State{}, args, options)
+	return runMoveWithOptionsAndDestResources(t, sourceResources, []*pkgresource.State{}, args, options)
 }
 
 func runMoveWithDestResources(
-	t *testing.T, sourceResources, destResources []*resource.State, args []string,
+	t *testing.T, sourceResources, destResources []*pkgresource.State, args []string,
 ) (*deploy.Snapshot, *deploy.Snapshot, bytes.Buffer) {
 	return runMoveWithOptionsAndDestResources(t, sourceResources, destResources, args, &MoveOptions{})
 }
 
 func runMoveWithOptionsAndDestResources(
-	t *testing.T, sourceResources, destResources []*resource.State, args []string, options *MoveOptions,
+	t *testing.T, sourceResources, destResources []*pkgresource.State, args []string, options *MoveOptions,
 ) (*deploy.Snapshot, *deploy.Snapshot, bytes.Buffer) {
 	ctx := t.Context()
 	tmpDir := t.TempDir()
@@ -125,7 +128,7 @@ func TestMoveLeafResource(t *testing.T) {
 	t.Parallel()
 
 	providerURN := resource.NewURN("sourceStack", "test", "", "pulumi:providers:a", "default_1_0_0")
-	sourceResources := []*resource.State{
+	sourceResources := []*pkgresource.State{
 		{
 			URN:    providerURN,
 			Type:   "pulumi:providers:a::default_1_0_0",
@@ -169,7 +172,7 @@ func TestChildrenAreBeingMoved(t *testing.T) {
 	t.Parallel()
 
 	providerURN := resource.NewURN("sourceStack", "test", "", "pulumi:providers:a", "default_1_0_0")
-	sourceResources := []*resource.State{
+	sourceResources := []*pkgresource.State{
 		{
 			URN:    providerURN,
 			Type:   "pulumi:providers:a::default_1_0_0",
@@ -226,7 +229,7 @@ func TestMoveResourceWithDependencies(t *testing.T) {
 	propDepsURN := resource.NewURN("sourceStack", "test", "", "a:b:c", "propDeps")
 	movedChildURN := resource.NewURN("sourceStack", "test", "a:b:c", "a:b:c", "movedChildURN")
 	dependsOnMovedChildURN := resource.NewURN("sourceStack", "test", "a:b:c", "a:b:c", "dependsOnMovedChildURN")
-	sourceResources := []*resource.State{
+	sourceResources := []*pkgresource.State{
 		{
 			URN:    providerURN,
 			Type:   "pulumi:providers:a::default_1_0_0",
@@ -345,7 +348,7 @@ func TestMoveWithExistingProvider(t *testing.T) {
 	t.Parallel()
 
 	providerURN := resource.NewURN("sourceStack", "test", "", "pulumi:providers:a", "default_1_0_0")
-	sourceResources := []*resource.State{
+	sourceResources := []*pkgresource.State{
 		{
 			URN:    providerURN,
 			Type:   "pulumi:providers:a::default_1_0_0",
@@ -362,7 +365,7 @@ func TestMoveWithExistingProvider(t *testing.T) {
 		},
 	}
 
-	destResources := []*resource.State{
+	destResources := []*pkgresource.State{
 		{
 			URN:    resource.NewURN("destStack", "test", "", "pulumi:providers:a", "default_1_0_0"),
 			Type:   "pulumi:providers:a::default_1_0_0",
@@ -407,7 +410,7 @@ func TestMoveWithExistingResource(t *testing.T) {
 	t.Parallel()
 
 	providerURN := resource.NewURN("sourceStack", "test", "", "pulumi:providers:a", "default_1_0_0")
-	sourceResources := []*resource.State{
+	sourceResources := []*pkgresource.State{
 		{
 			URN:    providerURN,
 			Type:   "pulumi:providers:a::default_1_0_0",
@@ -422,7 +425,7 @@ func TestMoveWithExistingResource(t *testing.T) {
 	}
 
 	otherProviderURN := resource.NewURN("destStack", "test", "", "pulumi:providers:a", "default_1_0_1")
-	destResources := []*resource.State{
+	destResources := []*pkgresource.State{
 		{
 			URN:    otherProviderURN,
 			Type:   "pulumi:providers:a::default_1_0_1",
@@ -469,7 +472,7 @@ func TestParentsAreBeingMoved(t *testing.T) {
 	t.Parallel()
 
 	providerURN := resource.NewURN("sourceStack", "test", "", "pulumi:providers:a", "default_1_0_0")
-	sourceResources := []*resource.State{
+	sourceResources := []*pkgresource.State{
 		{
 			URN:    providerURN,
 			Type:   "pulumi:providers:a::default_1_0_0",
@@ -520,7 +523,7 @@ func TestMoveRewritesQualifiedTypeWhenReparentingToRoot(t *testing.T) {
 	childURN := resource.NewURN("sourceStack", "test", componentURN.QualifiedType(),
 		"pkgA:index:typB", "child")
 
-	sourceResources := []*resource.State{
+	sourceResources := []*pkgresource.State{
 		{
 			URN:    providerURN,
 			Type:   "pulumi:providers:pkgA::default_1_0_0",
@@ -604,7 +607,7 @@ func TestEmptyDestStack(t *testing.T) {
 	require.NoError(t, err)
 
 	providerURN := resource.NewURN("sourceStack", "test", "", "pulumi:providers:a", "default_1_0_0")
-	sourceResources := []*resource.State{
+	sourceResources := []*pkgresource.State{
 		{
 			URN:    providerURN,
 			Type:   "pulumi:providers:a::default_1_0_0",
@@ -680,7 +683,7 @@ func TestMovingProvidersWithSameID(t *testing.T) {
 	t.Parallel()
 
 	providerURN := resource.NewURN("sourceStack", "test", "", "pulumi:providers:a", "default_1_0_0")
-	sourceResources := []*resource.State{
+	sourceResources := []*pkgresource.State{
 		{
 			URN:  resource.DefaultRootStackURN("sourceStack", "test"),
 			Type: "pulumi:pulumi:Stack",
@@ -715,7 +718,7 @@ func TestMovingProvidersWithSameID(t *testing.T) {
 
 	sourceStack := createStackWithResources(t, b, sourceStackName, sourceResources)
 
-	destResources := []*resource.State{}
+	destResources := []*pkgresource.State{}
 	destStackName := "organization/test/destStack"
 	destStack := createStackWithResources(t, b, destStackName, destResources)
 
@@ -782,7 +785,7 @@ func TestMoveUnknownResource(t *testing.T) {
 	t.Parallel()
 
 	providerURN := resource.NewURN("sourceStack", "test", "", "pulumi:providers:a", "default_1_0_0")
-	sourceResources := []*resource.State{
+	sourceResources := []*pkgresource.State{
 		{
 			URN:    providerURN,
 			Type:   "pulumi:providers:a::default_1_0_0",
@@ -811,7 +814,7 @@ func TestMoveUnknownResource(t *testing.T) {
 
 	sourceStack := createStackWithResources(t, b, sourceStackName, sourceResources)
 
-	destResources := []*resource.State{}
+	destResources := []*pkgresource.State{}
 	destStackName := "organization/test/destStack"
 	destStack := createStackWithResources(t, b, destStackName, destResources)
 
@@ -841,7 +844,7 @@ func TestProviderIsReparented(t *testing.T) {
 	t.Parallel()
 
 	providerURN := resource.NewURN("sourceStack", "test", "", "pulumi:providers:a", "default_1_0_0")
-	sourceResources := []*resource.State{
+	sourceResources := []*pkgresource.State{
 		{
 			URN:  resource.DefaultRootStackURN("sourceStack", "test"),
 			Type: "pulumi:pulumi:Stack",
@@ -889,7 +892,7 @@ func TestMoveProvider(t *testing.T) {
 	t.Parallel()
 
 	providerURN := resource.NewURN("sourceStack", "test", "", "pulumi:providers:a", "default_1_0_0")
-	sourceResources := []*resource.State{
+	sourceResources := []*pkgresource.State{
 		{
 			URN:    providerURN,
 			Type:   "pulumi:providers:a::default_1_0_0",
@@ -918,7 +921,7 @@ func TestMoveProvider(t *testing.T) {
 
 	sourceStack := createStackWithResources(t, b, sourceStackName, sourceResources)
 
-	destResources := []*resource.State{}
+	destResources := []*pkgresource.State{}
 	destStackName := "organization/test/destStack"
 	destStack := createStackWithResources(t, b, destStackName, destResources)
 
@@ -947,7 +950,7 @@ func TestMoveRootStack(t *testing.T) {
 	t.Parallel()
 
 	providerURN := resource.NewURN("sourceStack", "test", "", "pulumi:providers:a", "default_1_0_0")
-	sourceResources := []*resource.State{
+	sourceResources := []*pkgresource.State{
 		{
 			URN:  resource.DefaultRootStackURN("sourceStack", "test"),
 			Type: "pulumi:pulumi:Stack",
@@ -991,7 +994,7 @@ func TestMoveRootStack(t *testing.T) {
 //nolint:paralleltest // changes directory for process
 func TestMoveSecret(t *testing.T) {
 	providerURN := resource.NewURN("sourceStack", "test", "", "pulumi:providers:a", "default_1_0_0")
-	sourceResources := []*resource.State{
+	sourceResources := []*pkgresource.State{
 		{
 			URN:  resource.DefaultRootStackURN("sourceStack", "test"),
 			Type: "pulumi:pulumi:Stack",
@@ -1090,7 +1093,7 @@ func TestMoveSecretOutsideOfProjectDir(t *testing.T) {
 	t.Parallel()
 
 	providerURN := resource.NewURN("sourceStack", "test", "", "pulumi:providers:a", "default_1_0_0")
-	sourceResources := []*resource.State{
+	sourceResources := []*pkgresource.State{
 		{
 			URN:  resource.DefaultRootStackURN("sourceStack", "test"),
 			Type: "pulumi:pulumi:Stack",
@@ -1163,7 +1166,7 @@ func TestMoveSecretOutsideOfProjectDir(t *testing.T) {
 
 func TestMoveSecretNotInDestProjectDir(t *testing.T) {
 	providerURN := resource.NewURN("sourceStack", "test", "", "pulumi:providers:a", "default_1_0_0")
-	sourceResources := []*resource.State{
+	sourceResources := []*pkgresource.State{
 		{
 			URN:  resource.DefaultRootStackURN("sourceStack", "test"),
 			Type: "pulumi:pulumi:Stack",
@@ -1248,7 +1251,7 @@ func TestMoveProviderWithSameInputs(t *testing.T) {
 	t.Parallel()
 
 	providerURN := resource.NewURN("sourceStack", "test", "", "pulumi:providers:a", "default_1_0_0")
-	sourceResources := []*resource.State{
+	sourceResources := []*pkgresource.State{
 		{
 			URN:    providerURN,
 			Type:   "pulumi:providers:a::default_1_0_0",
@@ -1266,7 +1269,7 @@ func TestMoveProviderWithSameInputs(t *testing.T) {
 	}
 
 	destProviderURN := resource.NewURN("destStack", "test", "", "pulumi:providers:a", "default_1_0_0")
-	destResources := []*resource.State{
+	destResources := []*pkgresource.State{
 		{
 			URN:    destProviderURN,
 			Type:   "pulumi:providers:a::default_1_0_0",
@@ -1279,7 +1282,8 @@ func TestMoveProviderWithSameInputs(t *testing.T) {
 	}
 
 	sourceSnapshot, destSnapshot, stdout := runMoveWithDestResources(
-		t, sourceResources, destResources, []string{string(sourceResources[1].URN)})
+		t, sourceResources, destResources, []string{string(sourceResources[1].URN)},
+	)
 
 	//nolint:lll
 	expectedStdout := `Planning to move the following resources from organization/test/sourceStack to organization/test/destStack:
@@ -1313,7 +1317,7 @@ func TestMoveLockedBackendRevertsDestination(t *testing.T) {
 	t.Parallel()
 
 	providerURN := resource.NewURN("sourceStack", "test", "", "pulumi:providers:a", "default_1_0_0")
-	sourceResources := []*resource.State{
+	sourceResources := []*pkgresource.State{
 		{
 			URN:  resource.DefaultRootStackURN("sourceStack", "test"),
 			Type: "pulumi:pulumi:Stack",
@@ -1348,7 +1352,7 @@ func TestMoveLockedBackendRevertsDestination(t *testing.T) {
 	sourceStack := createStackWithResources(t, b, sourceStackName, sourceResources)
 
 	destStackName := "organization/anotherproject/destStack"
-	destStack := createStackWithResources(t, b, destStackName, []*resource.State{})
+	destStack := createStackWithResources(t, b, destStackName, []*pkgresource.State{})
 
 	mp := &secrets.MockProvider{}
 	mp = mp.Add("b64", func(_ json.RawMessage) (secrets.Manager, error) {
@@ -1401,7 +1405,7 @@ func TestProviderParentsAreTreatedAsProviders(t *testing.T) {
 	t.Parallel()
 
 	providerURN := resource.NewURN("sourceStack", "test", "", "pulumi:providers:a", "default_1_0_0")
-	sourceResources := []*resource.State{
+	sourceResources := []*pkgresource.State{
 		{
 			URN:  resource.DefaultRootStackURN("sourceStack", "test"),
 			Type: "pulumi:pulumi:Stack",
@@ -1429,7 +1433,8 @@ func TestProviderParentsAreTreatedAsProviders(t *testing.T) {
 
 	sourceSnapshot, destSnapshot, stdout := runMoveWithOptions(
 		t, sourceResources, []string{string(sourceResources[2].URN)},
-		&MoveOptions{IncludeParents: true})
+		&MoveOptions{IncludeParents: true},
+	)
 
 	assert.Contains(t, stdout.String(),
 		"Planning to move the following resources from organization/test/sourceStack to organization/test/destStack:\n\n"+
@@ -1461,7 +1466,7 @@ func TestMoveBreaksCopiedProviderDependenciesToRemainingSourceResources(t *testi
 	remainingURN := resource.NewURN("sourceStack", "test", "", "a:b:c", "remaining")
 	moveURN := resource.NewURN("sourceStack", "test", "", "a:b:c", "moveMe")
 
-	sourceResources := []*resource.State{
+	sourceResources := []*pkgresource.State{
 		{
 			URN:  sourceRootURN,
 			Type: sourceRootURN.Type(),
@@ -1499,4 +1504,114 @@ func TestMoveBreaksCopiedProviderDependenciesToRemainingSourceResources(t *testi
 			"dependencies on resources in organization/test/sourceStack:\n\n"+
 			"  - urn:pulumi:sourceStack::test::pulumi:providers:a::default_1_0_0 has "+
 			"a dependency on urn:pulumi:sourceStack::test::a:b:c::remaining")
+}
+
+func TestStateMoveExtensionBlobs(t *testing.T) {
+	t.Parallel()
+
+	providerURN := resource.NewURN("sourceStack", "test", "", "pulumi:providers:extbase", "default_1_0_0")
+	provider := &pkgresource.State{
+		URN: providerURN, Type: "pulumi:providers:extbase::default_1_0_0", ID: "provider_id", Custom: true,
+	}
+	greeting := func(name, ref string) *pkgresource.State {
+		return &pkgresource.State{
+			URN:          resource.NewURN("sourceStack", "test", "", "extbase:index:Greeting", name),
+			Type:         "extbase:index:Greeting",
+			Provider:     string(providerURN) + "::provider_id",
+			ExtensionRef: pkgresource.ExtensionRef(ref),
+		}
+	}
+
+	cases := []struct {
+		name          string
+		stayBehindRef string
+		moveRef       string
+		exts          map[apitype.ExtensionRef]apitype.Extension
+		sourceHas     []string
+		sourceLacks   []string
+		destHas       []string
+		destLacks     []string
+	}{
+		{
+			name:          "shared_blob_stays_on_source_and_copies_to_dest",
+			stayBehindRef: "ext-blob-1",
+			moveRef:       "ext-blob-1",
+			exts: map[apitype.ExtensionRef]apitype.Extension{
+				"ext-blob-1": {Name: "myext", Version: "1.0.0", Value: []byte("Hello")},
+			},
+			sourceHas: []string{"ext-blob-1"},
+			destHas:   []string{"ext-blob-1"},
+		},
+		{
+			name:          "unreferenced_blob_is_pruned_from_source",
+			stayBehindRef: "ext-kept",
+			moveRef:       "ext-moved",
+			exts: map[apitype.ExtensionRef]apitype.Extension{
+				"ext-kept":  {Name: "keep", Version: "1.0.0", Value: []byte("Hi")},
+				"ext-moved": {Name: "move", Version: "1.0.0", Value: []byte("Bye")},
+			},
+			sourceHas:   []string{"ext-kept"},
+			sourceLacks: []string{"ext-moved"},
+			destHas:     []string{"ext-moved"},
+			destLacks:   []string{"ext-kept"},
+		},
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+
+			ctx := t.Context()
+			sm := b64.NewBase64SecretsManager()
+			b, err := diy.New(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(t.TempDir()), nil)
+			require.NoError(t, err)
+
+			importStack := func(
+				name string, resources []*pkgresource.State, exts map[apitype.ExtensionRef]apitype.Extension,
+			) backend.Stack {
+				snap := deploy.NewSnapshot(deploy.Manifest{}, sm, resources, nil, deploy.SnapshotMetadata{}, nil, exts)
+				udep, err := stack.SerializeUntypedDeployment(ctx, snap, nil)
+				require.NoError(t, err)
+				ref, err := b.ParseStackReference(name)
+				require.NoError(t, err)
+				s, err := b.CreateStack(ctx, ref, "", nil, nil)
+				require.NoError(t, err)
+				require.NoError(t, b.ImportDeployment(ctx, s, udep))
+				return s
+			}
+
+			moveMe := greeting("moveMe", c.moveRef)
+			source := importStack("organization/test/sourceStack",
+				[]*pkgresource.State{provider, greeting("stayBehind", c.stayBehindRef), moveMe}, c.exts)
+			dest := importStack("organization/test/destStack", nil, nil)
+
+			mp := &secrets.MockProvider{}
+			mp = mp.Add("b64", func(_ json.RawMessage) (secrets.Manager, error) { return sm, nil })
+
+			cmd := stateMoveCmd{Yes: true, Stdout: &bytes.Buffer{}, Colorizer: colors.Never}
+			require.NoError(t, cmd.Run(ctx, source, dest, []string{string(moveMe.URN)}, mp, mp))
+
+			sourceSnap, err := source.Snapshot(ctx, mp)
+			require.NoError(t, err)
+			destSnap, err := dest.Snapshot(ctx, mp)
+			require.NoError(t, err)
+
+			for _, ref := range c.sourceHas {
+				assert.Contains(t, sourceSnap.Extensions, apitype.ExtensionRef(ref),
+					"source must retain a referenced blob")
+			}
+			for _, ref := range c.sourceLacks {
+				assert.NotContains(t, sourceSnap.Extensions, apitype.ExtensionRef(ref),
+					"source must drop a blob no longer referenced after the move")
+			}
+			for _, ref := range c.destHas {
+				assert.Contains(t, destSnap.Extensions, apitype.ExtensionRef(ref),
+					"destination must receive the moved resource's blob")
+			}
+			for _, ref := range c.destLacks {
+				assert.NotContains(t, destSnap.Extensions, apitype.ExtensionRef(ref),
+					"destination must not receive an unrelated blob")
+			}
+		})
+	}
 }

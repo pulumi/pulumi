@@ -132,7 +132,7 @@ func TestStepExecutor(t *testing.T) {
 				pendingNews: gsync.Map[resource.URN, Step]{},
 			}
 			notInPlan := resource.NewURN("test", "test", "", "test", "not-in-plan")
-			se.pendingNews.Store(notInPlan, &CreateStep{new: &resource.State{}})
+			se.pendingNews.Store(notInPlan, &CreateStep{new: &pkgresource.State{}})
 			assert.ErrorContains(t, se.ExecuteRegisterResourceOutputs(&registerResourceOutputsEvent{
 				urn: notInPlan,
 			}), "no plan for resource")
@@ -150,7 +150,7 @@ func TestStepExecutor(t *testing.T) {
 				pendingNews: gsync.Map[resource.URN, Step]{},
 			}
 			notInPlan := resource.NewURN("test", "test", "", "test", "not-in-plan")
-			se.pendingNews.Store(notInPlan, &CreateStep{new: &resource.State{}})
+			se.pendingNews.Store(notInPlan, &CreateStep{new: &pkgresource.State{}})
 			assert.ErrorContains(t, se.ExecuteRegisterResourceOutputs(&registerResourceOutputsEvent{
 				urn: notInPlan,
 			}), "resource should already have a plan")
@@ -177,7 +177,7 @@ func TestStepExecutor(t *testing.T) {
 				pendingNews: gsync.Map[resource.URN, Step]{},
 			}
 			notInPlan := resource.NewURN("test", "test", "", "test", "not-in-plan")
-			se.pendingNews.Store(notInPlan, &CreateStep{new: &resource.State{
+			se.pendingNews.Store(notInPlan, &CreateStep{new: &pkgresource.State{
 				URN: "urn:pulumi:some-urn",
 			}})
 			// Does not error.
@@ -206,9 +206,9 @@ func TestStepExecutor(t *testing.T) {
 				},
 				pendingNews: gsync.Map[resource.URN, Step]{},
 			}
-			se.pendingNews.Store(resource.URN("not-in-plan"), &CreateStep{new: &resource.State{}})
+			se.pendingNews.Store(resource.URN("not-in-plan"), &CreateStep{new: &pkgresource.State{}})
 			assert.ErrorIs(t, se.executeStep(0, &CreateStep{
-				new: &resource.State{URN: "urn:pulumi:some-urn"},
+				new: &pkgresource.State{URN: "urn:pulumi:some-urn"},
 			}), expectedErr)
 		})
 		t.Run("disallow mark id secret", func(t *testing.T) {
@@ -232,12 +232,12 @@ func TestStepExecutor(t *testing.T) {
 						},
 					},
 					goals: &gsync.Map[resource.URN, *pkgresource.Goal]{},
-					news:  &gsync.Map[resource.URN, *resource.State]{},
+					news:  &gsync.Map[resource.URN, *pkgresource.State]{},
 				},
 				pendingNews: gsync.Map[resource.URN, Step]{},
 			}
 			step := &CreateStep{
-				new: &resource.State{
+				new: &pkgresource.State{
 					URN: "urn:pulumi:some-urn",
 					AdditionalSecretOutputs: []resource.PropertyKey{
 						"id",

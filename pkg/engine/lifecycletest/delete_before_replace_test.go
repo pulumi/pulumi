@@ -23,6 +23,8 @@ import (
 	"testing"
 	"time"
 
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
+
 	"github.com/blang/semver"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -71,12 +73,12 @@ func generateComplexTestDependencyGraph(
 
 	newResource := func(urn resource.URN, id resource.ID, provider string, dependencies []resource.URN,
 		propertyDeps propertyDependencies, outputs resource.PropertyMap,
-	) *resource.State {
+	) *pkgresource.State {
 		return newResource(urn, "", id, provider, dependencies, propertyDeps, outputs, true)
 	}
 
 	old := &deploy.Snapshot{
-		Resources: []*resource.State{
+		Resources: []*pkgresource.State{
 			newResource(urnA, "0", "", nil, nil, resource.PropertyMap{"A": resource.NewProperty("foo")}),
 			newResource(urnB, "1", string(urnA)+"::0", nil, nil, nil),
 			newResource(urnC, "2", "",

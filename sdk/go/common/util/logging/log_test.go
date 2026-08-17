@@ -15,13 +15,21 @@
 package logging
 
 import (
+	"context"
+	"io"
+	"log/slog"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
+	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/types/known/structpb"
+
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/sig"
 )
 
 func TestInitLogging(t *testing.T) {
@@ -63,63 +71,102 @@ func TestInitLoggingIgnoresLogToStderrWithOTel(t *testing.T) {
 	assert.Equal(t, discardHandler{}, primary)
 }
 
-func TestFilter(t *testing.T) {
-	t.Parallel()
+// TestInitLoggingSkipsLogFileWithOTel verifies that no local log file is
+// created when logs are exported over OTel: the engine receives the records
+// and writes them to its own log output.
+func TestInitLoggingSkipsLogFileWithOTel(t *testing.T) { //nolint:paralleltest // mutates global logging state
+	t.Setenv("PULUMI_LOG_OTLP_ENDPOINT", "127.0.0.1:1")
 
-	filter1 := CreateFilter([]string{"secret1", "secret2"}, "[secret]")
-	msg1 := filter1.Filter(
-		"These are my secrets: secret1, secret2, secret3, secret10")
+	prevLog, prevV, prevFlow := LogToStderr, Verbose, LogFlow
+	prevPath, prevFile := logFilePath, logFile
+	t.Cleanup(func() {
+		shutdownExportHandler()
+		handlerMu.Lock()
+		primary = discardHandler{}
+		logFilePath, logFile = prevPath, prevFile
+		rebuildLogger()
+		handlerMu.Unlock()
+		LogToStderr, Verbose, LogFlow = prevLog, prevV, prevFlow
+	})
+
+	InitLogging(false, 9, false)
+
+	handlerMu.RLock()
+	defer handlerMu.RUnlock()
+	require.NotNil(t, exportHandler)
+	assert.Equal(t, discardHandler{}, primary)
+	assert.Equal(t, prevPath, logFilePath)
+}
+
+//nolint:paralleltest // exercises the process-global secret filter state.
+func TestFilterString(t *testing.T) {
+	rwLock.Lock()
+	prevSeen, prevPairs, prevReplacer := secretsSeen, secretsPairs, secretsReplacer
+	secretsSeen, secretsPairs, secretsReplacer = nil, nil, nil
+	rwLock.Unlock()
+	t.Cleanup(func() {
+		rwLock.Lock()
+		secretsSeen, secretsPairs, secretsReplacer = prevSeen, prevPairs, prevReplacer
+		rwLock.Unlock()
+	})
+
+	AddGlobalSecretFilter([]string{"secret1", "secret2"}, "[secret]")
 	assert.Equal(t,
 		"These are my secrets: [secret], [secret], secret3, [secret]0",
-		msg1)
+		FilterString("These are my secrets: secret1, secret2, secret3, secret10"))
 
 	// Ensure that special characters don't screw up the search
-	filter2 := CreateFilter([]string{"secret.*", "secre[t]3"}, "[creds]")
-	msg2 := filter2.Filter(
-		"These are my secrets: secret1, secret2, secret3, secret.*, secre[t]3")
+	AddGlobalSecretFilter([]string{"secret.*", "secre[t]3"}, "[creds]")
 	assert.Equal(t,
-		"These are my secrets: secret1, secret2, secret3, [creds], [creds]",
-		msg2)
+		"These are my secrets: secret3, [creds], [creds]",
+		FilterString("These are my secrets: secret3, secret.*, secre[t]3"))
 
 	// Ensure that non-UTF8 characters don't screw up the search
-	filter3 := CreateFilter([]string{"nonutf8\xa7", "secret1"}, "[creds]")
-	msg3 := filter3.Filter(
-		"These are my secrets: secret1, nonutf8\xa7")
+	AddGlobalSecretFilter([]string{"nonutf8\xa7"}, "[creds]")
 	assert.Equal(t,
-		"These are my secrets: [creds], [creds]",
-		msg3)
+		"These are my secrets: [creds]",
+		FilterString("These are my secrets: nonutf8\xa7"))
 
 	// Short secrets of 1-2 characters are not masked
-	filter4 := CreateFilter([]string{"a", "my", "123"}, "[creds]")
-	msg4 := filter4.Filter(
-		"These are my secrets: a, my, 123")
+	AddGlobalSecretFilter([]string{"a", "my", "123"}, "[creds]")
 	assert.Equal(t,
 		"These are my secrets: a, my, [creds]",
-		msg4)
+		FilterString("These are my secrets: a, my, 123"))
 
 	// Ensure that multi-line secrets are masked in output.
-	filter5 := CreateFilter([]string{"multi\nline\nsecret"}, "[secret]")
-	msg5 := filter5.Filter(
-		`These are my secrets: multi\nline\nsecret`)
+	AddGlobalSecretFilter([]string{"multi\nline\nsecret"}, "[secret]")
 	assert.Equal(t,
 		"These are my secrets: [secret]",
-		msg5)
+		FilterString(`These are my secrets: multi\nline\nsecret`))
 
 	// Ensure that secrets with tabs are masked in output.
-	filter6 := CreateFilter([]string{"secretwith\t"}, "[secret]")
-	msg6 := filter6.Filter(
-		`These are my secrets: secretwith\t`)
+	AddGlobalSecretFilter([]string{"secretwith\t"}, "[secret]")
 	assert.Equal(t,
 		"These are my secrets: [secret]",
-		msg6)
+		FilterString(`These are my secrets: secretwith\t`))
 
 	// Boolean strings "true" and "false" are not masked, regardless of case.
-	filter7 := CreateFilter([]string{"true", "false", "True", "FALSE", "realsecret"}, "[secret]")
-	msg7 := filter7.Filter(
-		"value is True and FALSE but realsecret is hidden")
+	AddGlobalSecretFilter([]string{"true", "false", "True", "FALSE", "realsecret"}, "[secret]")
 	assert.Equal(t,
 		"value is True and FALSE but [secret] is hidden",
-		msg7)
+		FilterString("value is True and FALSE but realsecret is hidden"))
+
+	// Secrets serialized to JSON are masked in their escaped form as well.
+	AddGlobalSecretFilter([]string{`quo"te`}, "[secret]")
+	assert.Equal(t,
+		`values: [secret], [secret]`,
+		FilterString(`values: quo"te, quo\"te`))
+
+	// Different replacements can be used for different secrets.
+	AddGlobalSecretFilter([]string{"hunter2"}, "[credential]")
+	assert.Equal(t,
+		"[secret] and [credential]",
+		FilterString("realsecret and hunter2"))
+
+	// Re-registering secrets must not grow the replacement list.
+	before := len(secretsPairs)
+	AddGlobalSecretFilter([]string{"secret1", "realsecret"}, "[secret]")
+	assert.Equal(t, before, len(secretsPairs))
 }
 
 func TestLoggingDoesNotConflictWithGlog(t *testing.T) {
@@ -141,6 +188,296 @@ func TestLoggingDoesNotConflictWithGlog(t *testing.T) {
 
 	cmd := exec.Command("go", "run", "-mod=mod", ".")
 	cmd.Dir = dir
+	cmd.Env = append(os.Environ(), "GOWORK=off")
 	output, err := cmd.CombinedOutput()
 	require.NoError(t, err, string(output))
+}
+
+// TestInitLoggingFiltersVerbosity verifies that the stderr handler filters records logged directly
+// through slog by the -v level: without -v only warnings and errors pass.
+//
+//nolint:paralleltest // mutates global logging state
+func TestInitLoggingFiltersVerbosity(t *testing.T) {
+	prevLog, prevV, prevFlow := LogToStderr, Verbose, LogFlow
+	t.Cleanup(func() {
+		handlerMu.Lock()
+		primary = discardHandler{}
+		rebuildLogger()
+		handlerMu.Unlock()
+		LogToStderr, Verbose, LogFlow = prevLog, prevV, prevFlow
+	})
+
+	enabled := func(level slog.Level) bool {
+		handlerMu.RLock()
+		defer handlerMu.RUnlock()
+		return primary.Enabled(t.Context(), level)
+	}
+
+	InitLogging(true, 0, false)
+	assert.False(t, enabled(slog.LevelInfo))
+	assert.False(t, enabled(slog.LevelDebug))
+	assert.True(t, enabled(slog.LevelWarn))
+	assert.True(t, enabled(slog.LevelError))
+
+	InitLogging(true, 1, false)
+	assert.True(t, enabled(slog.LevelInfo))
+	assert.False(t, enabled(slog.LevelDebug))
+
+	InitLogging(true, 10, false)
+	assert.True(t, enabled(slog.LevelDebug))
+	assert.False(t, enabled(LevelTrace))
+
+	InitLogging(true, 11, false)
+	assert.True(t, enabled(LevelTrace))
+}
+
+// TestLogToStderrRespectsVerbosity verifies that with --logtostderr and no -v, neither V-guarded
+// nor direct slog info records reach stderr — even while a sink handler (as installed for
+// encrypted logs) keeps them flowing — and warnings still show.
+//
+//nolint:paralleltest // mutates global logging state and os.Stderr
+func TestLogToStderrRespectsVerbosity(t *testing.T) {
+	prevLog, prevV, prevFlow := LogToStderr, Verbose, LogFlow
+	t.Cleanup(func() {
+		SetSinkHandler(nil)
+		handlerMu.Lock()
+		primary = discardHandler{}
+		rebuildLogger()
+		handlerMu.Unlock()
+		LogToStderr, Verbose, LogFlow = prevLog, prevV, prevFlow
+	})
+
+	r, w, err := os.Pipe()
+	require.NoError(t, err)
+	oldStderr := os.Stderr
+	os.Stderr = w
+	InitLogging(true, 0, false)
+	os.Stderr = oldStderr
+
+	sink := &recordingHandler{}
+	SetSinkHandler(sink)
+
+	V(9).Infof("guarded info %d", 42)
+	Infof("unguarded info")
+	slog.Info("direct info")
+	Warningf("warning shows")
+
+	require.NoError(t, w.Close())
+	out, err := io.ReadAll(r)
+	require.NoError(t, err)
+
+	assert.NotContains(t, string(out), "guarded info")
+	assert.NotContains(t, string(out), "unguarded info")
+	assert.NotContains(t, string(out), "direct info")
+	assert.Contains(t, string(out), "warning shows")
+	assert.True(t, sink.saw("guarded info %d"))
+}
+
+type recordingHandler struct {
+	mu   sync.Mutex
+	msgs []string
+}
+
+func (h *recordingHandler) Enabled(context.Context, slog.Level) bool { return true }
+
+func (h *recordingHandler) Handle(_ context.Context, r slog.Record) error {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	h.msgs = append(h.msgs, r.Message)
+	return nil
+}
+
+func (h *recordingHandler) WithAttrs([]slog.Attr) slog.Handler { return h }
+func (h *recordingHandler) WithGroup(string) slog.Handler      { return h }
+
+func (h *recordingHandler) saw(msg string) bool {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	return slices.Contains(h.msgs, msg)
+}
+
+// TestLogToStderrFiltersHigherVerbosity reproduces `pulumi up --logtostderr -v=1` showing v=5
+// records: the primary handler must drop records whose "v" attribute exceeds the requested level,
+// for both the V() wrapper and direct slog calls that carry the attribute.
+//
+//nolint:paralleltest // mutates global logging state and os.Stderr
+func TestLogToStderrFiltersHigherVerbosity(t *testing.T) {
+	prevLog, prevV, prevFlow := LogToStderr, Verbose, LogFlow
+	t.Cleanup(func() {
+		SetSinkHandler(nil)
+		handlerMu.Lock()
+		primary = discardHandler{}
+		rebuildLogger()
+		handlerMu.Unlock()
+		LogToStderr, Verbose, LogFlow = prevLog, prevV, prevFlow
+	})
+
+	r, w, err := os.Pipe()
+	require.NoError(t, err)
+	oldStderr := os.Stderr
+	os.Stderr = w
+	InitLogging(true, 1, false)
+	os.Stderr = oldStderr
+
+	sink := &recordingHandler{}
+	SetSinkHandler(sink)
+
+	V(1).Infof("v1 shows")
+	V(5).Infof("v5 hidden")
+	slog.Info("direct v5 hidden", "v", 5)
+	slog.Info("unleveled info shows")
+
+	require.NoError(t, w.Close())
+	out, err := io.ReadAll(r)
+	require.NoError(t, err)
+
+	assert.Contains(t, string(out), "v1 shows")
+	assert.NotContains(t, string(out), "v5 hidden")
+	assert.NotContains(t, string(out), "direct v5 hidden")
+	assert.Contains(t, string(out), "unleveled info shows")
+	assert.True(t, sink.saw("v5 hidden"))
+}
+
+// TestRedactingHandlerAppliesOnlyToPrimary verifies attribute values implementing
+// RedactedLogValue are redacted before the primary output, while the sink receives unredacted
+// attributes.
+//
+//nolint:paralleltest // mutates global logging state and os.Stderr
+func TestRedactingHandlerAppliesOnlyToPrimary(t *testing.T) {
+	prevLog, prevV, prevFlow := LogToStderr, Verbose, LogFlow
+	t.Cleanup(func() {
+		SetSinkHandler(nil)
+		handlerMu.Lock()
+		primary = discardHandler{}
+		rebuildLogger()
+		handlerMu.Unlock()
+		LogToStderr, Verbose, LogFlow = prevLog, prevV, prevFlow
+	})
+
+	r, w, err := os.Pipe()
+	require.NoError(t, err)
+	oldStderr := os.Stderr
+	os.Stderr = w
+	InitLogging(true, 1, false)
+	os.Stderr = oldStderr
+
+	sink := &recordingAttrHandler{}
+	SetSinkHandler(sink)
+
+	slog.Info("logging in", "password", redactableSecret("hunter2"))
+
+	require.NoError(t, w.Close())
+	out, err := io.ReadAll(r)
+	require.NoError(t, err)
+
+	assert.Contains(t, string(out), "[secret]")
+	assert.NotContains(t, string(out), "hunter2")
+	assert.True(t, sink.sawAttr("password", "hunter2"))
+}
+
+type redactableSecret string
+
+func (s redactableSecret) RedactedLogValue() slog.Value { return slog.StringValue("[secret]") }
+
+type recordingAttrHandler struct {
+	mu    sync.Mutex
+	attrs []slog.Attr
+}
+
+func (h *recordingAttrHandler) Enabled(context.Context, slog.Level) bool { return true }
+
+func (h *recordingAttrHandler) Handle(_ context.Context, r slog.Record) error {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	r.Attrs(func(a slog.Attr) bool {
+		h.attrs = append(h.attrs, a)
+		return true
+	})
+	return nil
+}
+
+func (h *recordingAttrHandler) WithAttrs([]slog.Attr) slog.Handler { return h }
+func (h *recordingAttrHandler) WithGroup(string) slog.Handler      { return h }
+
+func (h *recordingAttrHandler) sawAttr(key, value string) bool {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	for _, a := range h.attrs {
+		if a.Key == key && a.Value.String() == value {
+			return true
+		}
+	}
+	return false
+}
+
+//nolint:paralleltest // mutates global logging state and os.Stderr
+func TestPropertyValueAttrsRedacted(t *testing.T) {
+	prevLog, prevV, prevFlow := LogToStderr, Verbose, LogFlow
+	t.Cleanup(func() {
+		handlerMu.Lock()
+		primary = discardHandler{}
+		rebuildLogger()
+		handlerMu.Unlock()
+		LogToStderr, Verbose, LogFlow = prevLog, prevV, prevFlow
+	})
+
+	r, w, err := os.Pipe()
+	require.NoError(t, err)
+	oldStderr := os.Stderr
+	os.Stderr = w
+	InitLogging(true, 1, false)
+	os.Stderr = oldStderr
+
+	sv, err := structpb.NewValue(map[string]any{
+		"name": "web",
+		"password": map[string]any{
+			sig.Key:     sig.Secret,
+			"plaintext": "hunter2",
+		},
+	})
+	require.NoError(t, err)
+	slog.Info("checking inputs", "inputs", PropertyValue{Key: "inputs", Value: sv})
+
+	require.NoError(t, w.Close())
+	out, err := io.ReadAll(r)
+	require.NoError(t, err)
+
+	assert.Contains(t, string(out), "[secret]")
+	assert.Contains(t, string(out), "web")
+	assert.NotContains(t, string(out), "hunter2")
+}
+
+//nolint:paralleltest // mutates global logging state and os.Stderr
+func TestSerializedSecretsRedactedBySignature(t *testing.T) {
+	prevLog, prevV, prevFlow := LogToStderr, Verbose, LogFlow
+	t.Cleanup(func() {
+		handlerMu.Lock()
+		primary = discardHandler{}
+		rebuildLogger()
+		handlerMu.Unlock()
+		LogToStderr, Verbose, LogFlow = prevLog, prevV, prevFlow
+	})
+
+	r, w, err := os.Pipe()
+	require.NoError(t, err)
+	oldStderr := os.Stderr
+	os.Stderr = w
+	InitLogging(true, 1, false)
+	os.Stderr = oldStderr
+
+	slog.Info("registering", "props", map[string]any{
+		"name": "web",
+		"password": map[string]any{
+			sig.Key:     sig.Secret,
+			"plaintext": "hunter2",
+		},
+	})
+
+	require.NoError(t, w.Close())
+	out, err := io.ReadAll(r)
+	require.NoError(t, err)
+
+	assert.Contains(t, string(out), "[secret]")
+	assert.Contains(t, string(out), "web")
+	assert.NotContains(t, string(out), "hunter2")
 }

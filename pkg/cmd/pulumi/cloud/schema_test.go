@@ -70,8 +70,8 @@ func TestDiscriminatorVariantsShowLiteralType(t *testing.T) {
 
 	// Should NOT contain a generic type*: (string) at the variant property level.
 	// (The only type*: (string) should be inside nested objects, not at the variant level.)
-	lines := strings.Split(output, "\n")
-	for _, line := range lines {
+	lines := strings.SplitSeq(output, "\n")
+	for line := range lines {
 		trimmed := strings.TrimSpace(line)
 		if trimmed == "type*: (string)" {
 			t.Errorf("found generic 'type*: (string)' at variant level, expected literal values")
@@ -92,7 +92,7 @@ func TestDiscriminatorNestedRefOmitsType(t *testing.T) {
 	inPR := false
 	inRepo := false
 	repoDepth := 0
-	for _, line := range strings.Split(output, "\n") {
+	for line := range strings.SplitSeq(output, "\n") {
 		trimmed := strings.TrimSpace(line)
 		if strings.Contains(trimmed, `type*: "pull_request"`) {
 			inPR = true
@@ -142,7 +142,7 @@ func TestAllOfMergePreservesDiscriminatorProperty(t *testing.T) {
 	// since renderBodySchema uses indent=2 and properties are at indent+2=4)
 	// with the discriminator's allowed values.
 	found := false
-	for _, line := range strings.Split(output, "\n") {
+	for line := range strings.SplitSeq(output, "\n") {
 		if strings.HasPrefix(line, "    type") && !strings.HasPrefix(line, "      ") {
 			found = true
 			// Should show the discriminator mapping keys as allowed values.

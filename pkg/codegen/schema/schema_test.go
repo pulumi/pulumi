@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/fs"
+	"maps"
 	"math"
 	"net/url"
 	"os"
@@ -1992,9 +1993,7 @@ func TestValidateTypeToken(t *testing.T) {
 				spec.Meta = &MetadataSpec{ModuleFormat: c.moduleFormat}
 			}
 			allowed := map[string][]string{"example": nil}
-			for pkg, mods := range c.allowedExtras {
-				allowed[pkg] = mods
-			}
+			maps.Copy(allowed, c.allowedExtras)
 			errors := spec.validateTypeToken(allowed, "type", c.input)
 			if c.expectError {
 				assert.True(t, errors.HasErrors(), "expected an error but got none")
@@ -3066,12 +3065,12 @@ func TestExtensionTokenNamespace(t *testing.T) {
 		wantRejected bool
 	}{
 		{
-			name:  "base-namespaced token is allowed",
-			token: "extbase:index:Greeting",
+			name:  "extension-own-namespace token is allowed",
+			token: "myext:index:Greeting",
 		},
 		{
-			name:         "extension-own-namespace token is rejected",
-			token:        "myext:index:Greeting",
+			name:         "base-namespaced token is rejected",
+			token:        "extbase:index:Greeting",
 			wantRejected: true,
 		},
 	}
@@ -3095,7 +3094,7 @@ func TestExtensionTokenNamespace(t *testing.T) {
 			})
 			require.NoError(t, err)
 
-			want := fmt.Sprintf("invalid token '%s' (must have package name 'extbase')", tt.token)
+			want := fmt.Sprintf("invalid token '%s' (must have package name 'myext')", tt.token)
 			rejected := false
 			for _, d := range diags {
 				if d.Severity == hcl.DiagError && strings.Contains(d.Summary, want) {
@@ -3105,7 +3104,8 @@ func TestExtensionTokenNamespace(t *testing.T) {
 			if tt.wantRejected {
 				assert.True(t, rejected, "expected rejection diagnostic %q, got %v", want, diags)
 			} else {
-				assert.False(t, diags.HasErrors(), "base-namespaced token should bind without errors, got %v", diags)
+				assert.False(t, diags.HasErrors(),
+					"extension-namespaced token should bind without errors, got %v", diags)
 			}
 		})
 	}
@@ -3177,7 +3177,7 @@ func TestBindExtensionParameterized(t *testing.T) {
   "name": "extensionref",
   "version": "1.0.0",
   "resources": {
-    "test-base:index:Root": {
+    "extensionref:index:Root": {
       "type": "object",
       "properties": { "data": { "type": "string" } }
     }
@@ -3791,9 +3791,7 @@ func TestRequiredObjectCycles(t *testing.T) {
 	})
 }
 
-// TestBindSpecReservedPackageNames asserts that the package names "pulumi" and "input" are rejected at bind time.
-// "pulumi" is reserved for the builtin package/provider resources; "input" is reserved for `pulumi do` to use as
-// a flag-vs-token discriminator.
+// TestBindSpecReservedPackageNames asserts that reserved package names are rejected at bind time.
 func TestBindSpecReservedPackageNames(t *testing.T) {
 	t.Parallel()
 

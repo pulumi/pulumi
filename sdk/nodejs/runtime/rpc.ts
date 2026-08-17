@@ -20,7 +20,7 @@ import { ComponentResource, CustomResource, DependencyResource, ProviderResource
 import { debuggablePromise, debugPromiseLeaks, errorString } from "./debuggable";
 import { getAllTransitivelyReferencedResourceURNs } from "./dependsOn";
 import { excessiveDebugOutput, isDryRun } from "./settings";
-import { getStore, getResourcePackages, getResourceModules } from "./state";
+import { getStore, getResourcePackages, getResourceModules, PendingResourceRegistration } from "./state";
 
 import * as gstruct from "google-protobuf/google/protobuf/struct_pb";
 import * as semver from "semver";
@@ -155,6 +155,9 @@ export interface SerializationOptions {
      * this will have no effect.
      */
     excludeResourceReferencesFromDependencies?: boolean;
+
+    /** @internal */
+    pendingRegistration?: PendingResourceRegistration;
 }
 
 /**
@@ -173,6 +176,9 @@ async function serializeFilteredProperties(
     const result: Record<string, any> = {};
     for (const k of Object.keys(props)) {
         if (acceptKey(k)) {
+            if (opts?.pendingRegistration !== undefined) {
+                opts.pendingRegistration.inputProperty = k;
+            }
             // We treat properties with undefined values as if they do not exist.
             const dependentResources = new Set<Resource>();
             let v;
@@ -314,7 +320,8 @@ export function resolveProperties(
 
     // `allProps` may not have contained a value for every resolver: for example, optional outputs may not be present.
     // We will resolve all of these values as `undefined`, and will mark the value as known if we are not running a
-    // preview.  For updates when the update of the resource was either skipped or failed we'll mark them as `unknown`.
+    // preview.  For updates when the resource failed, was skipped, or was a skipped create we'll mark them as
+    // `unknown`.
     for (const k of Object.keys(resolvers)) {
         if (!allProps.hasOwnProperty(k)) {
             const resolve = resolvers[k];
@@ -449,6 +456,10 @@ export async function serializeProperty(
     if (Output.isInstance(prop)) {
         if (excessiveDebugOutput) {
             log.debug(`Serialize property [${ctx}]: Output<T>`);
+        }
+
+        if (opts?.pendingRegistration !== undefined) {
+            opts.pendingRegistration.awaitingOutput = prop;
         }
 
         // handle serializing both old-style outputs (with sync resources) and new-style outputs
@@ -788,12 +799,17 @@ export function deserializeProperty(prop: any, keepUnknowns?: boolean): any {
                     const urn = prop["urn"];
                     const version = prop["packageVersion"];
 
-                    const urnParts = urn.split("::");
-                    const qualifiedType = urnParts[2];
-                    const urnName = urnParts[3];
-
-                    const type = qualifiedType.split("$").pop()!;
-                    const typeParts = type.split(":");
+                    // New engines send type and name as distinct fields
+                    let urnType = prop["type"];
+                    let urnName = prop["name"];
+                    // Old engines don't and we have to parse the URN.
+                    if (urnName === undefined || urnType === undefined) {
+                        const urnParts = urn.split("::");
+                        const qualifiedType = urnParts[2];
+                        urnName = urnParts[3];
+                        urnType = qualifiedType.split("$").pop()!;
+                    }
+                    const typeParts = urnType.split(":");
                     const pkgName = typeParts[0];
                     const modName = typeParts.length > 1 ? typeParts[1] : "";
                     const typName = typeParts.length > 2 ? typeParts[2] : "";
@@ -802,12 +818,12 @@ export function deserializeProperty(prop: any, keepUnknowns?: boolean): any {
                     if (isProvider) {
                         const resourcePackage = getResourcePackage(typName, version);
                         if (resourcePackage) {
-                            return resourcePackage.constructProvider(urnName, type, urn);
+                            return resourcePackage.constructProvider(urnName, urnType, urn);
                         }
                     } else {
                         const resourceModule = getResourceModule(pkgName, modName, version);
                         if (resourceModule) {
-                            return resourceModule.construct(urnName, type, urn);
+                            return resourceModule.construct(urnName, urnType, urn);
                         }
                     }
 

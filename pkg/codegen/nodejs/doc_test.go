@@ -19,12 +19,30 @@
 package nodejs
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+// renderWithResolver is a test helper that obtains a DocRefResolver and uses it to substitute the
+// ref shortcodes in description, mirroring what a doc-generating caller would do (modulo its own
+// AST walking / code-block handling).
+func renderWithResolver(
+	t *testing.T, d DocLanguageHelper, pkg schema.PackageReference,
+	selfRef schema.DocRef, description string,
+) string {
+	t.Helper()
+	rendered, err := pkg.InterpretPulumiRefs(description, func(ref schema.DocRef) (string, bool) {
+		name, ok, err := d.ResolveDocRef(pkg, selfRef, ref)
+		require.NoError(t, err)
+		return name, ok
+	})
+	require.NoError(t, err)
+	return strings.TrimSuffix(rendered, "\n")
+}
 
 var testPackageSpec = schema.PackageSpec{
 	Name:        "aws",
@@ -101,6 +119,92 @@ func TestGetDocLinkForResourceType(t *testing.T) {
 	expected := "/docs/reference/pkg/nodejs/pulumi/aws/s3/#Bucket"
 	link := d.GetDocLinkForResourceType(pkg, "s3", "Bucket")
 	assert.Equal(t, expected, link)
+}
+
+func TestResolveDocRef(t *testing.T) {
+	t.Parallel()
+
+	pkg := getTestPackage(t)
+	d := DocLanguageHelper{}
+
+	cases := []struct {
+		name        string
+		description string
+		expected    string
+	}{
+		{
+			name:        "resource",
+			description: "See {{% ref #/resources/aws:s3%2Fbucket:Bucket %}}.",
+			expected:    "See Bucket.",
+		},
+		{
+			name:        "resource input property",
+			description: "See {{% ref #/resources/aws:s3%2Fbucket:Bucket/inputProperties/corsRules %}}.",
+			expected:    "See BucketArgs.corsRules.",
+		},
+		{
+			name:        "type",
+			description: "See {{% ref #/types/aws:s3%2FBucketCorsRule:BucketCorsRule %}}.",
+			expected:    "See BucketCorsRule.",
+		},
+		{
+			name:        "type property",
+			description: "See {{% ref #/types/aws:s3%2FBucketCorsRule:BucketCorsRule/properties/stringProp %}}.",
+			expected:    "See BucketCorsRule.stringProp.",
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			got := renderWithResolver(t, d, pkg.Reference(), schema.DocRef{}, tc.description)
+			assert.Equal(t, tc.expected, got)
+		})
+	}
+
+	t.Run("selfRef", func(t *testing.T) {
+		t.Parallel()
+		var bucket *schema.Resource
+		for _, r := range pkg.Resources {
+			if r.Token == "aws:s3/bucket:Bucket" {
+				bucket = r
+			}
+		}
+		require.NotNil(t, bucket)
+		var corsRule schema.Type
+		for _, typ := range pkg.Types {
+			if obj, ok := typ.(*schema.ObjectType); ok && obj.Token == "aws:s3/BucketCorsRule:BucketCorsRule" {
+				corsRule = obj
+			}
+		}
+		require.NotNil(t, corsRule)
+
+		cases := []struct {
+			name        string
+			selfRef     schema.DocRef
+			description string
+			expected    string
+		}{
+			{
+				name:        "resource self-input-property unqualified",
+				selfRef:     schema.DocRefForResource(bucket),
+				description: "See {{% ref #/resources/aws:s3%2Fbucket:Bucket/inputProperties/corsRules %}}.",
+				expected:    "See corsRules.",
+			},
+			{
+				name:        "type self-property unqualified",
+				selfRef:     schema.DocRefForType(corsRule),
+				description: "See {{% ref #/types/aws:s3%2FBucketCorsRule:BucketCorsRule/properties/stringProp %}}.",
+				expected:    "See stringProp.",
+			},
+		}
+		for _, tc := range cases {
+			t.Run(tc.name, func(t *testing.T) {
+				t.Parallel()
+				got := renderWithResolver(t, d, pkg.Reference(), tc.selfRef, tc.description)
+				assert.Equal(t, tc.expected, got)
+			})
+		}
+	})
 }
 
 func TestGetDocLinkForResourceInputOrOutputType(t *testing.T) {

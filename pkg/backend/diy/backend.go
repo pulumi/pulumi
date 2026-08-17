@@ -19,6 +19,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 	"net/url"
 	"os"
 	"os/user"
@@ -34,10 +35,10 @@ import (
 	"github.com/gofrs/uuid"
 
 	"gocloud.dev/blob"
-	_ "gocloud.dev/blob/azureblob" // driver for azblob://
-	_ "gocloud.dev/blob/fileblob"  // driver for file://
-	"gocloud.dev/blob/gcsblob"     // driver for gs://
-	_ "gocloud.dev/blob/s3blob"    // driver for s3://
+	"gocloud.dev/blob/azureblob"  // driver for azblob://
+	_ "gocloud.dev/blob/fileblob" // driver for file://
+	"gocloud.dev/blob/gcsblob"    // driver for gs://
+	_ "gocloud.dev/blob/s3blob"   // driver for s3://
 	"gocloud.dev/gcerrors"
 
 	"github.com/pulumi/pulumi/pkg/v3/authhelpers"
@@ -264,6 +265,19 @@ func newDIYBackend(
 		}
 	}
 
+	// go-cloud's default azblob opener refuses to open buckets when
+	// AZURE_STORAGE_SAS_TOKEN is set and the URL overrides the service
+	// endpoint, e.g. via the storage_account query parameter. The backend URL
+	// is provided by the user at login rather than an untrusted source, so use
+	// a custom opener without that restriction to keep such URLs working.
+	if p.Scheme == azureblob.Scheme {
+		blobmux = &blob.URLMux{}
+		blobmux.RegisterBucket(azureblob.Scheme, &azureblob.URLOpener{
+			MakeClient:        azureblob.NewDefaultClient,
+			ServiceURLOptions: *azureblob.NewDefaultServiceURLOptions(),
+		})
+	}
+
 	bucket, err := blobmux.OpenBucket(ctx, u)
 	if err != nil {
 		return nil, fmt.Errorf("unable to open bucket %s: %w", u, err)
@@ -344,8 +358,8 @@ func newDIYBackend(
 
 	// If we're not in project mode and the user hasn't disabled the warning, warn that legacy mode is deprecated and
 	// due to be removed.
-	if !projectMode && !opts.Env.GetBool(env.DIYBackendIgnoreDeprecationWarning) {
-		d.Warningf(diag.Message("", `
+	if !projectMode && !opts.Env.GetBool(env.DIYBackendIgnoreDeprecationError) {
+		return nil, errors.New(`
 ================================================================================
 Legacy DIY state is deprecated, please upgrade your state to project mode using:
 'pulumi state upgrade'
@@ -353,8 +367,8 @@ Legacy DIY state is deprecated, please upgrade your state to project mode using:
 It is due to be removed in a future release before the end of this year (2026).
 If you have any feedback or concerns, please let us know by commenting on the
 issue at https://github.com/pulumi/pulumi/issues/19566.
-Set PULUMI_DIY_BACKEND_IGNORE_DEPRECATION_WARNING=1 to disable this warning.
-================================================================================`))
+Set PULUMI_DIY_BACKEND_IGNORE_DEPRECATION_ERROR=1 to disable this error.
+================================================================================`)
 	}
 
 	// If we're not in project mode, or we've disabled the warning, we're done.
@@ -634,6 +648,11 @@ func massageBlobPath(path string) (string, error) {
 //   - a scheme-less endpoint (e.g. endpoint=minio:9000) gets an explicit http:// or https://
 //     scheme depending on disableSSL; the v1 SDK implied the scheme, while the v2 SDK
 //     requires one.
+//   - when an endpoint is set (i.e. a third-party S3-compatible store rather than AWS),
+//     request_checksum_calculation defaults to when_required, unless it is configured
+//     explicitly via the URL or the AWS_REQUEST_CHECKSUM_CALCULATION environment variable.
+//     The v2 SDK's default of computing CRC32 checksums with aws-chunked streaming uploads
+//     is rejected by some third-party stores; the v1 SDK never sent them.
 //
 // The other v1-era parameters (s3ForcePathStyle, awssdk) are still understood by gocloud.dev
 // and need no translation.
@@ -656,13 +675,20 @@ func translateLegacyS3Params(urlstr string) (string, error) {
 		changed = true
 	}
 
-	if endpoint := query.Get("endpoint"); endpoint != "" && !strings.Contains(endpoint, "://") {
-		scheme := "https"
-		if disableSSL {
-			scheme = "http"
+	if endpoint := query.Get("endpoint"); endpoint != "" {
+		if !strings.Contains(endpoint, "://") {
+			scheme := "https"
+			if disableSSL {
+				scheme = "http"
+			}
+			query.Set("endpoint", scheme+"://"+endpoint)
+			changed = true
 		}
-		query.Set("endpoint", scheme+"://"+endpoint)
-		changed = true
+		if query.Get("request_checksum_calculation") == "" &&
+			os.Getenv("AWS_REQUEST_CHECKSUM_CALCULATION") == "" {
+			query.Set("request_checksum_calculation", "when_required")
+			changed = true
+		}
 	}
 
 	if !changed {
@@ -1072,7 +1098,16 @@ func (b *diyBackend) renameStack(ctx context.Context, oldRef *diyBackendReferenc
 	if chk != nil && chk.Latest != nil {
 		project, has := newRef.Project()
 		contract.Assertf(has || project == "", "project should be blank for legacy stacks")
-		if err = edit.RenameStack(chk.Latest, newRef.name, tokens.PackageName(project)); err != nil {
+		oldProject, oldHas := oldRef.Project()
+		if !oldHas && len(chk.Latest.Resources) > 0 {
+			// Legacy refs carry no project, but their URNs still do; scope the rewrite to it.
+			oldProject = tokens.Name(chk.Latest.Resources[0].URN.Project())
+		}
+		if err = edit.RenameStack(chk.Latest, newRef.name, tokens.PackageName(project),
+			edit.RenameStackOptions{
+				OldName:    oldRef.name,
+				OldProject: tokens.PackageName(oldProject),
+			}); err != nil {
 			return err
 		}
 	}
@@ -1123,12 +1158,7 @@ func (b *diyBackend) PackPolicies(
 func (b *diyBackend) Preview(ctx context.Context, stack backend.Stack,
 	op backend.UpdateOperation, events chan<- engine.Event,
 ) (*deploy.Plan, sdkDisplay.ResourceChanges, error) {
-	// We can skip PreviewThenPromptThenExecute and just go straight to Execute.
-	opts := backend.ApplierOptions{
-		DryRun:   true,
-		ShowLink: true,
-	}
-	return b.apply(ctx, apitype.PreviewUpdate, stack, op, opts, events)
+	return backend.Preview(ctx, stack, op, b.apply, events)
 }
 
 func (b *diyBackend) Update(ctx context.Context, stack backend.Stack,
@@ -1578,9 +1608,7 @@ func (b *diyBackend) UpdateStackTags(ctx context.Context,
 
 	if diyStack, ok := stack.(*diyStack); ok {
 		tagsCopy := make(map[apitype.StackTagName]string, len(tags))
-		for k, v := range tags {
-			tagsCopy[k] = v
-		}
+		maps.Copy(tagsCopy, tags)
 		diyStack.tags.Store(&tagsCopy)
 	}
 

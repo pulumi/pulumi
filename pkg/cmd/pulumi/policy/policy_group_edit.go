@@ -90,8 +90,9 @@ func newPolicyGroupEditCmdWith(factory policyGroupEditClientFactory) *cobra.Comm
 	args.outputFormat = defaultPolicyGroupGetOutputFormat()
 
 	cmd := &cobra.Command{
-		Use:   "edit <name>",
-		Short: "[EXPERIMENTAL] Update a Policy Group's configuration",
+		Use:     "edit <name>",
+		Aliases: []string{"update", "modify"},
+		Short:   "[EXPERIMENTAL] Update a Policy Group's configuration",
 		Long: "[EXPERIMENTAL] Update a Policy Group's configuration.\n" +
 			"\n" +
 			"Renames a Policy Group, adds or removes stacks, applies or detaches\n" +
@@ -387,10 +388,10 @@ func mergeStringList(current, adds, removes []string) []string {
 // parseStackReference splits "project/stack" into a PulumiStackReference. A
 // bare "stack" leaves RoutingProject empty.
 func parseStackReference(s string) apitype.PulumiStackReference {
-	if i := strings.Index(s, "/"); i >= 0 {
+	if before, after, ok := strings.Cut(s, "/"); ok {
 		return apitype.PulumiStackReference{
-			RoutingProject: s[:i],
-			Name:           s[i+1:],
+			RoutingProject: before,
+			Name:           after,
 		}
 	}
 	return apitype.PulumiStackReference{Name: s}
@@ -403,11 +404,11 @@ func parsePolicyPackRef(s string) (apitype.PolicyPackMetadata, error) {
 	if s == "" {
 		return apitype.PolicyPackMetadata{}, errors.New("policy pack reference must not be empty")
 	}
-	at := strings.Index(s, "@")
-	if at < 0 {
+	before, after, ok := strings.Cut(s, "@")
+	if !ok {
 		return apitype.PolicyPackMetadata{Name: s}, nil
 	}
-	name, ver := s[:at], s[at+1:]
+	name, ver := before, after
 	if name == "" {
 		return apitype.PolicyPackMetadata{}, fmt.Errorf("policy pack reference %q is missing a name", s)
 	}

@@ -18,11 +18,14 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"io"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"strings"
 	"sync/atomic"
+	"syscall"
 	"testing"
 	"time"
 
@@ -32,7 +35,6 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
-	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
 	displaytypes "github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
@@ -41,6 +43,37 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
+
+func TestNeoDebugFlags(t *testing.T) {
+	t.Parallel()
+
+	// The flags carry the optional-value sentinel, so a bare flag is legal (pflag otherwise
+	// requires `--debug-update=<v>`).
+	for _, name := range []string{"debug-update", "debug-preview"} {
+		fl := NewNeoCmd().Flags().Lookup(name)
+		require.NotNilf(t, fl, "flag %q", name)
+		assert.Equalf(t, debugLatestSentinel, fl.NoOptDefVal, "flag %q NoOptDefVal", name)
+	}
+
+	// A bare flag parses to the sentinel (→ infer latest); `=value` records the explicit id.
+	parse := func(name string, args ...string) string {
+		cmd := NewNeoCmd()
+		require.NoError(t, cmd.ParseFlags(args))
+		return valueOrEmpty(cmd.Flags().Lookup(name).Value.String())
+	}
+	assert.Equal(t, "", parse("debug-update", "--debug-update"))
+	assert.Equal(t, "42", parse("debug-update", "--debug-update=42"))
+	assert.Equal(t, "", parse("debug-preview", "--debug-preview"))
+	assert.Equal(t, "2e07637b-d20b-4d4f-9d29-a7bcb1631cf7",
+		parse("debug-preview", "--debug-preview=2e07637b-d20b-4d4f-9d29-a7bcb1631cf7"))
+
+	// The two debug flags are mutually exclusive; cobra rejects them before RunE.
+	cmd := NewNeoCmd()
+	cmd.SetArgs([]string{"--debug-update", "--debug-preview"})
+	cmd.SetOut(io.Discard)
+	cmd.SetErr(io.Discard)
+	assert.Error(t, cmd.Execute())
+}
 
 // fakeHTTPBackend embeds a generic MockBackend and adds the few extra methods the
 // httpstate.Backend interface requires. resolveTaskTarget only dips into the base
@@ -51,11 +84,22 @@ type fakeHTTPBackend struct {
 	// ClientV is returned from Client(); leave nil for tests that don't need a
 	// live client (the integration test wires a real *client.Client here).
 	ClientV *client.Client
+	// GetLatestStackPreviewF backs --debug-preview's lookup; leave nil to report no previews.
+	GetLatestStackPreviewF func(context.Context, backend.StackReference) (*apitype.StackPreview, error)
 }
 
 func (f *fakeHTTPBackend) CloudURL() string                                       { return "" }
 func (f *fakeHTTPBackend) StackConsoleURL(backend.StackReference) (string, error) { return "", nil }
 func (f *fakeHTTPBackend) Client() *client.Client                                 { return f.ClientV }
+
+func (f *fakeHTTPBackend) GetLatestStackPreview(
+	ctx context.Context, stackRef backend.StackReference,
+) (*apitype.StackPreview, error) {
+	if f.GetLatestStackPreviewF != nil {
+		return f.GetLatestStackPreviewF(ctx, stackRef)
+	}
+	return nil, nil
+}
 
 func (f *fakeHTTPBackend) RunDeployment(
 	context.Context, backend.StackReference, apitype.CreateDeploymentRequest,
@@ -73,10 +117,6 @@ func (f *fakeHTTPBackend) Search(
 func (f *fakeHTTPBackend) NaturalLanguageSearch(
 	context.Context, string, string,
 ) (*apitype.ResourceSearchResponse, error) {
-	return nil, nil
-}
-
-func (f *fakeHTTPBackend) PromptAI(context.Context, httpstate.AIPromptRequestBody) (*http.Response, error) {
 	return nil, nil
 }
 
@@ -120,11 +160,11 @@ func TestResolveTaskTarget_UsesStackFlag(t *testing.T) {
 	ws := &pkgWorkspace.MockContext{}
 	project := &workspace.Project{Name: tokens.PackageName("my-proj")}
 
-	org, proj, stack, err := resolveTaskTarget(t.Context(), ws, be, project, "prod", "")
+	target, err := resolveTaskTarget(t.Context(), ws, be, project, taskTargetOpts{stackName: "prod"})
 	require.NoError(t, err)
-	assert.Equal(t, "default-org", org)
-	assert.Equal(t, "my-proj", proj)
-	assert.Equal(t, "prod", stack)
+	assert.Equal(t, "default-org", target.org)
+	assert.Equal(t, "my-proj", target.project)
+	assert.Equal(t, "prod", target.stackName())
 }
 
 //nolint:paralleltest // uses t.Setenv
@@ -140,9 +180,9 @@ func TestResolveTaskTarget_OrgFlagOverridesDefault(t *testing.T) {
 	}
 
 	ws := &pkgWorkspace.MockContext{}
-	org, _, _, err := resolveTaskTarget(t.Context(), ws, be, nil, "", "explicit")
+	target, err := resolveTaskTarget(t.Context(), ws, be, nil, taskTargetOpts{orgFlag: "explicit"})
 	require.NoError(t, err)
-	assert.Equal(t, "explicit", org)
+	assert.Equal(t, "explicit", target.org)
 }
 
 //nolint:paralleltest // uses t.Setenv
@@ -153,9 +193,9 @@ func TestResolveTaskTarget_FallsBackToBackendDefaultOrg(t *testing.T) {
 	be.GetDefaultOrgF = func(context.Context) (string, error) { return "backend-default", nil }
 
 	ws := &pkgWorkspace.MockContext{}
-	org, _, _, err := resolveTaskTarget(t.Context(), ws, be, nil, "", "")
+	target, err := resolveTaskTarget(t.Context(), ws, be, nil, taskTargetOpts{})
 	require.NoError(t, err)
-	assert.Equal(t, "backend-default", org)
+	assert.Equal(t, "backend-default", target.org)
 }
 
 //nolint:paralleltest // uses t.Setenv
@@ -169,7 +209,7 @@ func TestResolveTaskTarget_ErrorsWhenOrgUnresolvable(t *testing.T) {
 	be.GetDefaultOrgF = func(context.Context) (string, error) { return "", nil }
 
 	ws := &pkgWorkspace.MockContext{}
-	_, _, _, err := resolveTaskTarget(t.Context(), ws, be, nil, "", "")
+	_, err := resolveTaskTarget(t.Context(), ws, be, nil, taskTargetOpts{})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "pass --org")
 }
@@ -184,7 +224,7 @@ func TestResolveTaskTarget_DefaultOrgLookupErrorIsWrapped(t *testing.T) {
 	}
 
 	ws := &pkgWorkspace.MockContext{}
-	_, _, _, err := resolveTaskTarget(t.Context(), ws, be, nil, "", "")
+	_, err := resolveTaskTarget(t.Context(), ws, be, nil, taskTargetOpts{})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "determining default organization")
 	assert.Contains(t, err.Error(), "boom")
@@ -200,7 +240,7 @@ func TestResolveTaskTarget_InvalidStackReferenceErrors(t *testing.T) {
 	}
 
 	ws := &pkgWorkspace.MockContext{}
-	_, _, _, err := resolveTaskTarget(t.Context(), ws, be, nil, "bad/stack/name/here", "")
+	_, err := resolveTaskTarget(t.Context(), ws, be, nil, taskTargetOpts{stackName: "bad/stack/name/here"})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "invalid stack")
 }
@@ -212,10 +252,10 @@ func TestResolveTaskTarget_OmitsProjectNameWhenProjectNil(t *testing.T) {
 	// `pulumi neo` can be run outside a project — resolveTaskTarget must tolerate
 	// a nil project and return an empty projectName rather than panicking.
 	be := newFakeBackend()
-	org, proj, _, err := resolveTaskTarget(t.Context(), ws(), be, nil, "", "explicit")
+	target, err := resolveTaskTarget(t.Context(), ws(), be, nil, taskTargetOpts{orgFlag: "explicit"})
 	require.NoError(t, err)
-	assert.Equal(t, "explicit", org)
-	assert.Empty(t, proj)
+	assert.Equal(t, "explicit", target.org)
+	assert.Empty(t, target.project)
 }
 
 // parseQualifiedStackRefF builds a MockStackReference from `owner/project/name`,
@@ -253,10 +293,10 @@ func TestResolveTaskTarget_StackFlagOwnerWinsOverDefaultOrg(t *testing.T) {
 		return "", nil
 	}
 
-	org, _, stack, err := resolveTaskTarget(t.Context(), ws(), be, nil, "otherorg/proj/dev", "")
+	target, err := resolveTaskTarget(t.Context(), ws(), be, nil, taskTargetOpts{stackName: "otherorg/proj/dev"})
 	require.NoError(t, err)
-	assert.Equal(t, "otherorg", org)
-	assert.Equal(t, "dev", stack)
+	assert.Equal(t, "otherorg", target.org)
+	assert.Equal(t, "dev", target.stackName())
 }
 
 //nolint:paralleltest // uses t.Setenv
@@ -283,7 +323,7 @@ func TestResolveTaskTarget_WorkspaceStackOwnerWinsOverDefaultOrg(t *testing.T) {
 	}
 
 	wsCtx := &pkgWorkspace.MockContext{
-		NewF: func() (pkgWorkspace.W, error) {
+		NewF: func(_ string) (pkgWorkspace.W, error) {
 			return &pkgWorkspace.MockW{
 				SettingsF: func() *pkgWorkspace.Settings {
 					return &pkgWorkspace.Settings{Stack: "otherorg/proj/dev"}
@@ -292,10 +332,10 @@ func TestResolveTaskTarget_WorkspaceStackOwnerWinsOverDefaultOrg(t *testing.T) {
 		},
 	}
 
-	org, _, stack, err := resolveTaskTarget(t.Context(), wsCtx, be, nil, "", "")
+	target, err := resolveTaskTarget(t.Context(), wsCtx, be, nil, taskTargetOpts{})
 	require.NoError(t, err)
-	assert.Equal(t, "otherorg", org)
-	assert.Equal(t, "dev", stack)
+	assert.Equal(t, "otherorg", target.org)
+	assert.Equal(t, "dev", target.stackName())
 }
 
 //nolint:paralleltest // uses t.Setenv
@@ -309,10 +349,11 @@ func TestResolveTaskTarget_OrgFlagOverridesStackOwner(t *testing.T) {
 	be := newFakeBackend()
 	be.ParseStackReferenceF = parseQualifiedStackRefF
 
-	org, _, stack, err := resolveTaskTarget(t.Context(), ws(), be, nil, "otherorg/proj/dev", "explicit")
+	target, err := resolveTaskTarget(t.Context(), ws(), be, nil,
+		taskTargetOpts{stackName: "otherorg/proj/dev", orgFlag: "explicit"})
 	require.NoError(t, err)
-	assert.Equal(t, "explicit", org)
-	assert.Equal(t, "dev", stack)
+	assert.Equal(t, "explicit", target.org)
+	assert.Equal(t, "dev", target.stackName())
 }
 
 func ws() pkgWorkspace.Context { return &pkgWorkspace.MockContext{} }
@@ -884,6 +925,174 @@ func TestDispatchUserEvents_WarnsOnPostFailure(t *testing.T) {
 	require.Len(t, got, 1)
 	assert.Contains(t, got[0].Message, "failed to send event")
 	assert.Contains(t, got[0].Message, "network down")
+}
+
+func TestDispatchUserEvents_RetriesUserMessageOnTransientPostFailure(t *testing.T) {
+	t.Parallel()
+
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+
+	uiCh := make(chan UIEvent, 8)
+	out := make(chan outboundEvent, 1)
+	var attempts atomic.Int32
+
+	done := make(chan error, 1)
+	go func() {
+		done <- dispatchUserEvents(ctx, out, uiCh, true,
+			func() string { return "task-1" },
+			noopSpawn,
+			func(context.Context, string, any) error {
+				if attempts.Add(1) == 1 {
+					return &url.Error{Op: "Post", URL: "http://localhost:8080", Err: syscall.ECONNREFUSED}
+				}
+				return nil
+			},
+			noopUpdateTask)
+	}()
+
+	out <- outboundEvent{event: apitype.AgentUserEventUserMessage{
+		Type:    userEventUserMessage,
+		Content: "are you there?",
+	}}
+
+	var sawReconnecting, sawReconnected bool
+	deadline := time.After(3 * time.Second)
+	for !sawReconnecting || !sawReconnected {
+		select {
+		case evt := <-uiCh:
+			switch evt.(type) {
+			case UIReconnecting:
+				sawReconnecting = true
+			case UIReconnected:
+				sawReconnected = true
+			}
+		case <-deadline:
+			t.Fatalf("timed out waiting for reconnect events; attempts=%d", attempts.Load())
+		}
+	}
+	assert.Equal(t, int32(2), attempts.Load(), "message must be retried after transient post failure")
+
+	cancel()
+	select {
+	case err := <-done:
+		require.NoError(t, err)
+	case <-time.After(time.Second):
+		t.Fatal("dispatcher did not exit after ctx cancel")
+	}
+}
+
+func TestDispatchUserEvents_DropsUserMessageOnPermanentPostFailure(t *testing.T) {
+	t.Parallel()
+
+	uiCh := make(chan UIEvent, 4)
+	out := make(chan outboundEvent, 1)
+	var attempts atomic.Int32
+
+	out <- outboundEvent{event: apitype.AgentUserEventUserMessage{
+		Type:    userEventUserMessage,
+		Content: "hello",
+	}}
+	close(out)
+
+	err := dispatchUserEvents(t.Context(), out, uiCh, true,
+		func() string { return "task-1" },
+		noopSpawn,
+		func(context.Context, string, any) error {
+			attempts.Add(1)
+			return errors.New("permission denied")
+		},
+		noopUpdateTask)
+	require.NoError(t, err)
+
+	close(uiCh)
+	var warnings []UIWarning
+	for evt := range uiCh {
+		if w, ok := evt.(UIWarning); ok {
+			warnings = append(warnings, w)
+		}
+	}
+	assert.Equal(t, int32(1), attempts.Load(), "permanent failure must not be retried")
+	require.Len(t, warnings, 1)
+	assert.Contains(t, warnings[0].Message, "failed to send event")
+	assert.Contains(t, warnings[0].Message, "permission denied")
+}
+
+func TestHistoryEventsToUI(t *testing.T) {
+	t.Parallel()
+
+	userBody, err := json.Marshal(apitype.AgentUserEventUserMessage{
+		Type:    userEventUserMessage,
+		Content: "historical question",
+	})
+	require.NoError(t, err)
+	assistantBody, err := json.Marshal(apitype.AgentBackendEventAssistantMessage{
+		Type:    backendEventAssistantMessage,
+		Content: "historical answer",
+		IsFinal: true,
+	})
+	require.NoError(t, err)
+	toolCallArgs := json.RawMessage(`{"file_path":"/tmp/x"}`)
+	toolHandoffBody, err := json.Marshal(apitype.AgentBackendEventAssistantMessage{
+		Type: backendEventAssistantMessage,
+		ToolCalls: []apitype.AgentBackendEventToolCall{
+			{
+				ToolCallID:    "call-1",
+				Name:          "filesystem__read",
+				Args:          toolCallArgs,
+				ExecutionMode: toolExecutionModeCLI,
+			},
+		},
+		IsFinal: true,
+	})
+	require.NoError(t, err)
+	execBody, err := json.Marshal(apitype.AgentUserEventExecToolCall{
+		Type:       userEventExecToolCall,
+		ToolCallID: "call-1",
+		Name:       "filesystem__read",
+	})
+	require.NoError(t, err)
+	resultBody, err := json.Marshal(apitype.AgentUserEventToolResult{
+		Type: userEventToolResult,
+		ToolResults: []apitype.AgentUserEventToolResultItem{
+			{
+				ToolCallID: "call-1",
+				Name:       "filesystem__read",
+				Content:    map[string]any{"ok": true},
+			},
+		},
+	})
+	require.NoError(t, err)
+
+	events := historyEventsToUI([]apitype.AgentConsoleEvent{
+		{Type: consoleEventUserInput, EventBody: userBody},
+		{Type: consoleEventAgentResponse, EventBody: toolHandoffBody},
+		{Type: consoleEventUserInput, EventBody: execBody},
+		{Type: consoleEventUserInput, EventBody: resultBody},
+		{Type: consoleEventAgentResponse, EventBody: assistantBody},
+	})
+
+	require.Len(t, events, 5)
+	user, ok := events[0].(UIUserMessage)
+	require.True(t, ok)
+	assert.Equal(t, "historical question", user.Content)
+	handoff, ok := events[1].(UIAssistantMessage)
+	require.True(t, ok)
+	assert.True(t, handoff.HasPendingCLIWork)
+	started, ok := events[2].(UIToolStarted)
+	require.True(t, ok)
+	assert.Equal(t, "filesystem__read", started.Name)
+	assert.JSONEq(t, string(toolCallArgs), string(started.Args))
+	completed, ok := events[3].(UIToolCompleted)
+	require.True(t, ok)
+	assert.Equal(t, "filesystem__read", completed.Name)
+	assert.JSONEq(t, string(toolCallArgs), string(completed.Args))
+	assert.False(t, completed.IsError)
+	assert.JSONEq(t, `{"ok":true}`, string(completed.Result))
+	assistant, ok := events[4].(UIAssistantMessage)
+	require.True(t, ok)
+	assert.Equal(t, "historical answer", assistant.Content)
+	assert.True(t, assistant.IsFinal)
 }
 
 func TestCreateNeoTaskWithEntityRetry(t *testing.T) {

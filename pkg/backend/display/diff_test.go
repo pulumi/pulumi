@@ -33,6 +33,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -314,6 +315,58 @@ func TestCreateDiffRequiresColor(t *testing.T) {
 	assert.Contains(t, err.Error(), "color must be specified")
 }
 
+func TestRenderDiffPolicyRemediationEventFromPropertyMaps(t *testing.T) {
+	t.Parallel()
+
+	urn := resource.URN("urn:pulumi:test::test::pkgA:m:typA::resA")
+	events := []engine.Event{
+		engine.NewEvent(engine.PolicyRemediationEventPayload{
+			ResourceURN:       urn,
+			PolicyName:        "ignored",
+			PolicyPackName:    "analyzerA",
+			PolicyPackVersion: "1.0.0",
+			Before:            property.Map{},
+			After: property.NewMap(map[string]property.Value{
+				"a":   property.New("nope"),
+				"ggg": property.New(true),
+			}),
+		}),
+		engine.NewEvent(engine.PolicyRemediationEventPayload{
+			ResourceURN:       urn,
+			PolicyName:        "real-deal",
+			PolicyPackName:    "analyzerA",
+			PolicyPackVersion: "1.0.0",
+			Before: property.NewMap(map[string]property.Value{
+				"a":   property.New("nope"),
+				"ggg": property.New(true),
+			}),
+			After: property.NewMap(map[string]property.Value{
+				"a":   property.New("foo"),
+				"fff": property.New(true),
+				"z":   property.New("bar"),
+			}),
+		}),
+	}
+
+	var actual strings.Builder
+	for _, event := range events {
+		actual.WriteString(RenderDiffEvent(event, 0, nil, Options{Color: colors.Never}))
+	}
+
+	expected := "" +
+		"    analyzerA@v1.0.0 [remediate]  ignored  (pkgA:m:typA: resA)\n" +
+		"      + a  : \"nope\"\n" +
+		"      + ggg: true\n" +
+		"\n" +
+		"    analyzerA@v1.0.0 [remediate]  real-deal  (pkgA:m:typA: resA)\n" +
+		"      ~ a  : \"nope\" => \"foo\"\n" +
+		"      + fff: true\n" +
+		"      - ggg: true\n" +
+		"      + z  : \"bar\"\n" +
+		"\n"
+	assert.Equal(t, expected, actual.String())
+}
+
 func TestCreateDiffDoesNotIndentBeneathHiddenParent(t *testing.T) {
 	t.Parallel()
 
@@ -437,4 +490,71 @@ func TestRenderDiffPolicyViolationEventUsesDisplayResourceTypeNameWithURNs(t *te
 		output,
 		"(aws:s3:Bucket: urn:pulumi:dev::project::aws:s3/bucket:Bucket::my-bucket)",
 	)
+}
+
+func TestRenderDiffPolicyRemediationEventUsesDisplayResourceTypeName(t *testing.T) {
+	t.Parallel()
+
+	payload := engine.PolicyRemediationEventPayload{
+		ResourceURN:       "urn:pulumi:dev::project::aws:s3/bucket:Bucket::my-bucket",
+		PolicyName:        "tag-policy",
+		PolicyPackName:    "foo-policy-pack",
+		PolicyPackVersion: "0.0.6",
+		Before: property.NewMap(map[string]property.Value{
+			"tag": property.New("before"),
+		}),
+		After: property.NewMap(map[string]property.Value{
+			"tag": property.New("after"),
+		}),
+	}
+
+	output := renderDiffPolicyRemediationEvent(payload, "", false, Options{Color: colors.Never})
+
+	assert.Contains(t, output, "(aws:s3:Bucket: my-bucket)")
+	assert.NotContains(t, output, "aws:s3/bucket:Bucket")
+}
+
+func TestPolicyResourceClause(t *testing.T) {
+	t.Parallel()
+
+	opts := Options{Color: colors.Never}
+
+	// A stack-level violation carries an empty URN; an empty or otherwise malformed URN
+	// must produce no clause and must not panic (URN.Type/URN.Name assert the urn:pulumi:
+	// prefix).
+	assert.Empty(t, policyResourceClause("", opts))
+	assert.Empty(t, policyResourceClause("not-a-pulumi-urn", opts))
+
+	// Resource types render as display names (the module path is truncated).
+	assert.Equal(t,
+		"  (aws:s3:Bucket: my-bucket)",
+		policyResourceClause("urn:pulumi:stack::project::aws:s3/bucket:Bucket::my-bucket", opts))
+}
+
+func TestRenderDiffPolicyViolationEvent_StackLevel(t *testing.T) {
+	t.Parallel()
+
+	opts := Options{Color: colors.Never}
+	base := engine.PolicyViolationEventPayload{
+		PolicyName:        "resource-inventory",
+		PolicyPackName:    "my-pack",
+		PolicyPackVersion: "1.0.0",
+		EnforcementLevel:  apitype.Advisory,
+		Message:           "analyzed 6209 resources",
+	}
+
+	// A stack-level violation has no resource URN; rendering must not panic and
+	// must omit the "(type: name)" clause.
+	var stackOut string
+	require.NotPanics(t, func() {
+		stackOut = renderDiffPolicyViolationEvent(base, "", "", opts)
+	})
+	assert.Contains(t, stackOut, "resource-inventory")
+	assert.Contains(t, stackOut, "analyzed 6209 resources")
+	assert.NotContains(t, stackOut, "(")
+
+	resourceLevel := base
+	resourceLevel.ResourceURN = "urn:pulumi:stack::project::aws:s3/bucket:Bucket::my-bucket"
+	resourceOut := renderDiffPolicyViolationEvent(resourceLevel, "", "", opts)
+	assert.Contains(t, resourceOut, "(aws:s3:Bucket: my-bucket)")
 }

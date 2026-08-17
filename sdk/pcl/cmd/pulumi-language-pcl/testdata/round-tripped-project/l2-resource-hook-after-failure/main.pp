@@ -1,4 +1,4 @@
-hook "failingHook" {
+hook resource "failingHook" {
     command = ["false"]
 }
 

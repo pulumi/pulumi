@@ -97,7 +97,7 @@ func newStackImportCmd(ws pkgWorkspace.Context, lm cmdBackend.LoginManager, sp s
 			// reconfigure it for the target stack we're importing into.
 			if snapshot.SecretsManager != nil && snapshot.SecretsManager.Type() == service.Type {
 				var loadErr error
-				project, _, loadErr := ws.ReadProject()
+				project, _, loadErr := ws.ReadProject("")
 				var ps *workspace.ProjectStack
 				if loadErr == nil {
 					ps, loadErr = LoadProjectStack(ctx, diag, project, s, "")

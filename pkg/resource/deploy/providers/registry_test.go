@@ -22,7 +22,10 @@ import (
 	"sync"
 	"testing"
 
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
+
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 
 	"github.com/blang/semver"
 
@@ -52,8 +55,8 @@ type testProvider struct {
 	pkg         tokens.Package
 	version     semver.Version
 	configured  bool
-	checkConfig func(resource.URN, resource.PropertyMap,
-		resource.PropertyMap, bool) (resource.PropertyMap, []plugin.CheckFailure, error)
+	checkConfig func(resource.URN, property.Map,
+		property.Map, bool) (property.Map, []plugin.CheckFailure, error)
 	diffConfig func(resource.URN, resource.PropertyMap, resource.PropertyMap, bool, []string) (plugin.DiffResult, error)
 	config     func(resource.PropertyMap) error
 }
@@ -171,8 +174,8 @@ func newSimpleLoader(t *testing.T, pkg, version string, config func(resource.Pro
 			pkg:     pkg,
 			version: ver,
 			checkConfig: func(urn resource.URN, olds,
-				news resource.PropertyMap, allowUnknowns bool,
-			) (resource.PropertyMap, []plugin.CheckFailure, error) {
+				news property.Map, allowUnknowns bool,
+			) (property.Map, []plugin.CheckFailure, error) {
 				return news, nil, nil
 			},
 			diffConfig: func(urn resource.URN, olds, news resource.PropertyMap,
@@ -185,13 +188,13 @@ func newSimpleLoader(t *testing.T, pkg, version string, config func(resource.Pro
 	})
 }
 
-func newProviderState(pkg, name, id string, del bool, inputs resource.PropertyMap) *resource.State {
+func newProviderState(pkg, name, id string, del bool, inputs resource.PropertyMap) *pkgresource.State {
 	typ := providers.MakeProviderType(tokens.Package(pkg))
 	urn := resource.NewURN("test", "test", "", typ, name)
 	if inputs == nil {
 		inputs = resource.PropertyMap{}
 	}
-	return &resource.State{
+	return &pkgresource.State{
 		Type:   typ,
 		URN:    urn,
 		Custom: true,
@@ -214,7 +217,7 @@ func TestNewRegistryNoOldState(t *testing.T) {
 func TestNewRegistryOldState(t *testing.T) {
 	t.Parallel()
 
-	olds := []*resource.State{
+	olds := []*pkgresource.State{
 		// Two providers from package A, each with a unique name and ID
 		newProviderState("pkgA", "a", "id1", false, nil),
 		newProviderState("pkgA", "b", "id2", false, nil),
@@ -274,7 +277,7 @@ func TestNewRegistryOldState(t *testing.T) {
 func TestCRUD(t *testing.T) {
 	t.Parallel()
 
-	olds := []*resource.State{
+	olds := []*pkgresource.State{
 		newProviderState("pkgA", "a", "id1", false, nil),
 		newProviderState("pkgB", "a", "id1", false, nil),
 		newProviderState("pkgC", "a", "id1", false, nil),
@@ -439,7 +442,7 @@ func TestCRUD(t *testing.T) {
 func TestCRUDPreview(t *testing.T) {
 	t.Parallel()
 
-	olds := []*resource.State{
+	olds := []*pkgresource.State{
 		newProviderState("pkgA", "a", "id1", false, nil),
 		newProviderState("pkgB", "a", "id1", false, nil),
 		newProviderState("pkgC", "a", "id1", false, nil),
@@ -454,8 +457,8 @@ func TestCRUDPreview(t *testing.T) {
 				pkg:     pkg,
 				version: ver,
 				checkConfig: func(urn resource.URN, olds,
-					news resource.PropertyMap, allowUnknowns bool,
-				) (resource.PropertyMap, []plugin.CheckFailure, error) {
+					news property.Map, allowUnknowns bool,
+				) (property.Map, []plugin.CheckFailure, error) {
 					return news, nil, nil
 				},
 				diffConfig: func(urn resource.URN, olds, news resource.PropertyMap,
@@ -796,7 +799,7 @@ func TestConcurrentRegistryUsage(t *testing.T) {
 	// We're going to create a few thousand providers in parallel, registering a load of aliases for each of
 	// them.
 	var wg sync.WaitGroup
-	for i := 0; i < 1000; i++ {
+	for i := range 1000 {
 		wg.Add(1)
 		go func(i int) {
 			defer wg.Done()
@@ -804,7 +807,7 @@ func TestConcurrentRegistryUsage(t *testing.T) {
 			typ := providers.MakeProviderType("pkgA")
 			providerURN := resource.NewURN("test", "test", "", typ, fmt.Sprintf("p%d", i))
 
-			for j := 0; j < 1000; j++ {
+			for j := range 1000 {
 				aliasURN := resource.NewURN("test", "test", "", typ, fmt.Sprintf("p%d_%d", i, j))
 				r.RegisterAlias(providerURN, aliasURN)
 			}
@@ -1131,7 +1134,7 @@ func TestEnvMappingsPassedToHost(t *testing.T) {
 				pkg:     tokens.Package(descriptor.Name),
 				version: semver.MustParse("1.0.0"),
 				//nolint:lll
-				checkConfig: func(urn resource.URN, olds, news resource.PropertyMap, allowUnknowns bool) (resource.PropertyMap, []plugin.CheckFailure, error) {
+				checkConfig: func(urn resource.URN, olds, news property.Map, allowUnknowns bool) (property.Map, []plugin.CheckFailure, error) {
 					return news, nil, nil
 				},
 				//nolint:lll
@@ -1212,8 +1215,8 @@ func TestSameUpdateRace_UpdateFirst(t *testing.T) {
 					pkg:     "pkgA",
 					version: semver.MustParse("1.0.0"),
 					checkConfig: func(
-						urn resource.URN, olds, news resource.PropertyMap, allowUnknowns bool,
-					) (resource.PropertyMap, []plugin.CheckFailure, error) {
+						urn resource.URN, olds, news property.Map, allowUnknowns bool,
+					) (property.Map, []plugin.CheckFailure, error) {
 						return news, nil, nil
 					},
 					diffConfig: func(
@@ -1300,8 +1303,8 @@ func TestSameUpdateRace_SameFirst(t *testing.T) {
 					pkg:     "pkgA",
 					version: semver.MustParse("1.0.0"),
 					checkConfig: func(
-						urn resource.URN, olds, news resource.PropertyMap, allowUnknowns bool,
-					) (resource.PropertyMap, []plugin.CheckFailure, error) {
+						urn resource.URN, olds, news property.Map, allowUnknowns bool,
+					) (property.Map, []plugin.CheckFailure, error) {
 						return news, nil, nil
 					},
 					diffConfig: func(
@@ -1385,7 +1388,7 @@ func TestSameUpdateRace_Concurrent(t *testing.T) {
 	t.Parallel()
 
 	// Run the test multiple times to increase chance of hitting race conditions.
-	for i := 0; i < 100; i++ {
+	for i := range 100 {
 		func() {
 			// Create a loader that returns closable providers so we can track closes.
 			var createdProviders []*closableTestProvider
@@ -1399,8 +1402,8 @@ func TestSameUpdateRace_Concurrent(t *testing.T) {
 							pkg:     "pkgA",
 							version: semver.MustParse("1.0.0"),
 							checkConfig: func(
-								urn resource.URN, olds, news resource.PropertyMap, allowUnknowns bool,
-							) (resource.PropertyMap, []plugin.CheckFailure, error) {
+								urn resource.URN, olds, news property.Map, allowUnknowns bool,
+							) (property.Map, []plugin.CheckFailure, error) {
 								return news, nil, nil
 							},
 							diffConfig: func(

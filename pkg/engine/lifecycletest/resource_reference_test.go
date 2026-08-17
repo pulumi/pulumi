@@ -18,6 +18,8 @@ import (
 	"context"
 	"testing"
 
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
+
 	"github.com/blang/semver"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -405,7 +407,7 @@ func TestResourceReferences_NameAndTypeFilledByEngine(t *testing.T) {
 
 					return plugin.ConstructResponse{
 						URN:     component.URN,
-						Outputs: outputs,
+						Outputs: resource.FromResourcePropertyMap(outputs),
 					}, nil
 				},
 			}, nil
@@ -453,7 +455,7 @@ func TestResourceReferences_NameAndTypeFilledByEngine(t *testing.T) {
 		p.Options, false, p.BackendClient, nil, "0")
 	require.NoError(t, err)
 
-	var componentState *resource.State
+	var componentState *pkgresource.State
 	for _, res := range snap.Resources {
 		if res.URN.Name() == "component" && res.Type == "pkgA:m:component" {
 			componentState = res

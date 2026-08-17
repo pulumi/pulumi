@@ -60,6 +60,7 @@ type publishPackageArgs struct {
 	publisher       string
 	readmePath      string
 	installDocsPath string
+	serverURL       string
 }
 
 type packagePublishCmd struct {
@@ -67,7 +68,7 @@ type packagePublishCmd struct {
 
 	extractSchema func(
 		ws pkgWorkspace.Context, pctx *plugin.Context, packageSource string, parameters plugin.ParameterizeParameters,
-		registry registry.Registry, e env.Env, concurrency int,
+		registry registry.Registry, e env.Env, concurrency int, asExtension bool, pluginDownloadURL string,
 	) (*schema.PackageSpec, *workspace.PackageSpec, error)
 }
 
@@ -138,6 +139,9 @@ func newPackagePublishCmd() *cobra.Command {
 	cmd.Flags().StringVar(
 		&args.installDocsPath, "installation-configuration", "",
 		"Path to the installation configuration markdown file")
+	cmd.Flags().StringVar(&args.serverURL, "server", "",
+		"A URL to download the plugin from. When set, the provider argument is used as the plugin name "+
+			"directly and no package resolution is performed.")
 
 	return cmd
 }
@@ -151,7 +155,7 @@ func (cmd *packagePublishCmd) Run(
 	if cmd.stdout == nil {
 		cmd.stdout = io.Discard
 	}
-	project, _, err := pkgWorkspace.Instance.ReadProject()
+	project, _, err := pkgWorkspace.Instance.ReadProject("")
 	if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
 		return fmt.Errorf("failed to determine current project: %w", err)
 	}
@@ -181,7 +185,7 @@ func (cmd *packagePublishCmd) Run(
 	defer contract.IgnoreClose(pctx)
 
 	pkg, _, err := cmd.extractSchema(pkgWorkspace.Instance, pctx, packageSrc, packageParams, b.GetReadOnlyCloudRegistry(),
-		env.Global(), 0 /* unbounded concurrency */)
+		env.Global(), 0 /* unbounded concurrency */, false /* asExtension */, args.serverURL)
 	if err != nil {
 		return fmt.Errorf("failed to get schema: %w", err)
 	}

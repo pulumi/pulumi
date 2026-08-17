@@ -21,8 +21,8 @@ import (
 	"fmt"
 	"io"
 	"maps"
+	"math"
 	"os"
-	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -30,14 +30,18 @@ import (
 
 	"github.com/gofrs/uuid"
 	"github.com/hashicorp/hcl/v2"
+	hclv2syntax "github.com/hashicorp/hcl/v2/hclsyntax"
+	"github.com/hashicorp/hcl/v2/hclwrite"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
+	"github.com/zclconf/go-cty/cty"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	backendSecrets "github.com/pulumi/pulumi/pkg/v3/backend/secrets"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/schemainfo"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
@@ -55,6 +59,14 @@ import (
 	codegenrpc "github.com/pulumi/pulumi/sdk/v3/proto/go/codegen"
 )
 
+func startSpinner(prefix string) func() {
+	spinner, ticker := cmdutil.NewSpinnerAndTicker(
+		prefix, nil, cmdutil.GetGlobalColorization(), 8 /*timesPerSecond*/, !cmdutil.Interactive(),
+	)
+	spinner.Tick()
+	return cmdutil.SpinUntilStopped(spinner, ticker)
+}
+
 type functionEvalContext struct {
 	WorkingDir    string
 	ProjectName   string
@@ -66,6 +78,7 @@ type functionEvalContext struct {
 type inputFlagValue struct {
 	value string
 	typ   schema.Type
+	expr  bool
 }
 
 func jsonifyPropertyValue(v resource.PropertyValue, showSecrets bool) (any, error) {
@@ -223,44 +236,11 @@ func unionVariantMatches(prop resource.PropertyValue, typ schema.Type) bool {
 	return false
 }
 
-// evaluatePCLFile reads, binds, and evaluates a PCL input file against a caller-supplied schema. The bind callback
-// decides how the parsed file is type-checked (function vs. resource) and returns the schema property list used to
-// coerce values during evaluation.
-func evaluatePCLFile(
-	path, fileType string,
-	bind func(*hclsyntax.File) ([]*model.Attribute, model.Type, []*schema.Property, hcl.Diagnostics),
-	evalContext functionEvalContext,
-	inputFlags map[string]inputFlagValue,
-) (resource.PropertyMap, error) {
-	// When no input file is supplied we still run the bind step against an empty file so that the schema's
-	// required-input check fires.
-	var input io.Reader
-	filename := path
-	if path == "" {
-		input = strings.NewReader("")
-		filename = fmt.Sprintf("<no %s file>", fileType)
-	} else {
-		f, err := os.Open(path)
-		if err != nil {
-			return nil, fmt.Errorf("open %s file: %w", fileType, err)
-		}
-		defer contract.IgnoreClose(f)
-		input = f
-	}
-
-	attributeLiterals, err := inputFlagLiterals(inputFlags)
-	if err != nil {
-		return nil, err
-	}
-	return evaluatePCL(input, filename, fileType, bind, evalContext, attributeLiterals)
-}
-
 func evaluatePCL(
 	input io.Reader,
 	filename, fileType string,
 	bind func(*hclsyntax.File) ([]*model.Attribute, model.Type, []*schema.Property, hcl.Diagnostics),
 	evalContext functionEvalContext,
-	attributeLiterals map[string]string,
 ) (resource.PropertyMap, error) {
 	parser := hclsyntax.NewParser()
 	if err := parser.ParseFile(input, filename); err != nil {
@@ -271,9 +251,6 @@ func evaluatePCL(
 	}
 	contract.Assertf(len(parser.Files) == 1, "Should be one PCL file")
 	file := parser.Files[0]
-	if err := mergeAttributeLiterals(file, filename, fileType, attributeLiterals); err != nil {
-		return nil, err
-	}
 
 	attrs, inputType, properties, diagnostics := bind(file)
 	if diagnostics.HasErrors() {
@@ -298,7 +275,7 @@ func evaluatePCL(
 		func(context.Context, resource.ResourceReference) (resource.PropertyMap, error) {
 			return nil, notSupported("reference resources")
 		},
-		func(context.Context, *pulumirpc.ResourceInvokeRequest) (*pulumirpc.InvokeResponse, error) {
+		func(context.Context, *pulumirpc.ResourceInvokeRequest) (*pulumirpc.ResourceInvokeResponse, error) {
 			return nil, notSupported("invoke functions")
 		},
 		func(context.Context, *pulumirpc.ResourceCallRequest) (*pulumirpc.CallResponse, error) {
@@ -317,10 +294,108 @@ func evaluatePCL(
 	return result, nil
 }
 
+// parseFile reads an input file in the given format and returns it ready for evaluation. For non-PCL formats the source
+// is routed through the named converter plugin's ConvertSnippet RPC and the resulting PCL is treated the same as a
+// direct read of a PCL file.
+func parseFile(
+	ctx context.Context,
+	path, fileType, inputFormat, token string,
+	loadConverter func(string) (plugin.Converter, error),
+	loaderTarget string,
+	packageDescriptor *codegenrpc.GetSchemaRequest,
+	inputFlags map[string]inputFlagValue,
+	resources map[string]plugin.ConvertSnippetResourceReference,
+) ([]byte, string, map[string]string, error) {
+	contract.Requiref(inputFormat != "", "inputFormat", "inputFormat must be non-empty")
+	filename := path
+
+	var pcl []byte
+	if path == "" {
+		// Bind still runs against an empty file so the schema's required-input check fires.
+		filename = fmt.Sprintf("<no %s file>", fileType)
+	} else {
+		var err error
+		pcl, err = os.ReadFile(path)
+		if err != nil {
+			return nil, "", nil, fmt.Errorf("open %s file: %w", fileType, err)
+		}
+	}
+
+	plainFlags := map[string]inputFlagValue{}
+	exprFlags := map[string]inputFlagValue{}
+	for name, flag := range inputFlags {
+		if flag.expr {
+			exprFlags[name] = flag
+		} else {
+			plainFlags[name] = flag
+		}
+	}
+
+	literals, err := inputFlagLiterals(plainFlags)
+	if err != nil {
+		return nil, "", nil, err
+	}
+	if literals == nil {
+		literals = map[string]string{}
+	}
+
+	resourceNames := map[string]string{}
+	if inputFormat == "pcl" {
+		for name, flag := range exprFlags {
+			literals[name] = flag.value
+		}
+	} else if len(pcl) > 0 || len(exprFlags) > 0 {
+		converter, err := loadConverter(inputFormat)
+		if err != nil {
+			return nil, "", nil, fmt.Errorf("load %s input converter: %w", inputFormat, err)
+		}
+		defer contract.IgnoreClose(converter)
+
+		resp, err := converter.ConvertSnippet(ctx, &plugin.ConvertSnippetRequest{
+			Filename:     filename,
+			Source:       pcl,
+			TargetLoader: loaderTarget,
+			Package:      packageDescriptor,
+			Token:        token,
+			Attributes:   inputFlagAttributes(exprFlags),
+			Resources:    resources,
+		})
+		if err != nil {
+			if status.Code(err) == codes.Unimplemented {
+				return nil, "", nil, fmt.Errorf(
+					"%s %s converter does not support snippet conversion; use pcl format or try installing a newer %s converter",
+					inputFormat, fileType, inputFormat,
+				)
+			}
+			return nil, "", nil, fmt.Errorf("generate PCL from %s file: %w", fileType, err)
+		}
+		if resp.Diagnostics.HasErrors() {
+			return nil, "", nil, resp.Diagnostics
+		}
+		pcl = resp.Source
+		filename = resp.Filename
+		if filename == "" {
+			filename = fmt.Sprintf("<converted %s>", fileType)
+		}
+		maps.Copy(literals, resp.Attributes)
+		if resp.ResourceNames != nil {
+			resourceNames = resp.ResourceNames
+		}
+	}
+
+	merged, err := mergeAttributeLiteralsIntoPCL(pcl, filename, fileType, literals)
+	if err != nil {
+		return nil, "", nil, err
+	}
+
+	return merged, filename, resourceNames, nil
+}
+
 // evaluateFile reads an input file in the given format and evaluates it. For non-PCL formats the source is routed
 // through the named converter plugin's ConvertSnippet RPC and the resulting PCL is fed into the same bind pipeline.
-// An empty path is treated as "no input provided" and always goes through the PCL path so the bind step's
-// missing-required check still fires.
+// Plain input flags are merged into the PCL as literal values without converter involvement; expression flags
+// (--<flag>+) are interpreted by the selected converter, or merged as PCL expressions when the input format is pcl.
+// The converter only runs when there is file source or at least one expression flag.
 func evaluateFile(
 	ctx context.Context,
 	path, fileType, inputFormat, token string,
@@ -331,40 +406,14 @@ func evaluateFile(
 	evalContext functionEvalContext,
 	inputFlags map[string]inputFlagValue,
 ) (resource.PropertyMap, error) {
-	if path == "" || inputFormat == "" || inputFormat == "pcl" {
-		return evaluatePCLFile(path, fileType, bind, evalContext, inputFlags)
-	}
-
-	converter, err := loadConverter(inputFormat)
+	merged, filename, _, err := parseFile(
+		ctx, path, fileType, inputFormat, token,
+		loadConverter, loaderTarget, packageDescriptor, inputFlags, nil,
+	)
 	if err != nil {
-		return nil, fmt.Errorf("load %s input converter: %w", inputFormat, err)
+		return nil, err
 	}
-	defer contract.IgnoreClose(converter)
-
-	source, err := os.ReadFile(path)
-	if err != nil {
-		return nil, fmt.Errorf("read %s file: %w", fileType, err)
-	}
-	resp, err := converter.ConvertSnippet(ctx, &plugin.ConvertSnippetRequest{
-		Filename:     path,
-		Source:       source,
-		TargetLoader: loaderTarget,
-		Package:      packageDescriptor,
-		Token:        token,
-		Attributes:   inputFlagAttributes(inputFlags),
-	})
-	if err != nil {
-		if status.Code(err) == codes.Unimplemented {
-			return nil, fmt.Errorf(
-				"%s %s converter does not support snippet conversion; use pcl format or try installing a newer %s converter",
-				inputFormat, fileType, inputFormat)
-		}
-		return nil, fmt.Errorf("generate PCL from %s file: %w", fileType, err)
-	}
-	if resp.Diagnostics.HasErrors() {
-		return nil, resp.Diagnostics
-	}
-	return evaluatePCL(bytes.NewReader(resp.Source), resp.Filename, fileType, bind, evalContext, resp.Attributes)
+	return evaluatePCL(bytes.NewReader(merged), filename, fileType, bind, evalContext)
 }
 
 func evaluateFunctionFile(
@@ -374,7 +423,7 @@ func evaluateFunctionFile(
 	inputFlags map[string]inputFlagValue,
 ) (resource.PropertyMap, error) {
 	bind := func(file *hclsyntax.File) ([]*model.Attribute, model.Type, []*schema.Property, hcl.Diagnostics) {
-		attrs, inputType, diags := pcl.BindFunction(file, fn)
+		attrs, inputType, diags := pcl.BindFunction(ctx, file, fn)
 		var properties []*schema.Property
 		if fn.Inputs != nil {
 			properties = fn.Inputs.Properties
@@ -395,7 +444,7 @@ func evaluateResourceFile(
 	bindOpts ...pcl.BindOption,
 ) (resource.PropertyMap, error) {
 	bind := func(file *hclsyntax.File) ([]*model.Attribute, model.Type, []*schema.Property, hcl.Diagnostics) {
-		attrs, inputType, diags := pcl.BindResource(file, res, bindOpts...)
+		attrs, inputType, diags := pcl.BindResource(ctx, file, res, bindOpts...)
 		return attrs, inputType, res.InputProperties, diags
 	}
 	return evaluateFile(
@@ -413,13 +462,18 @@ func collectInputFlags(cmd *cobra.Command, namespace string, inputs []*schema.Pr
 		}
 
 		flagName := inputFlagName(input.Name)
-		if flag := cmd.Flag(fmt.Sprintf("%s:%s", namespace, flagName)); flag != nil && flag.Changed {
-			values[input.Name] = inputFlagValue{value: flag.Value.String(), typ: typ}
-			continue
-		}
+		names := []string{fmt.Sprintf("%s:%s", namespace, flagName)}
 		if namespace == "input" {
-			if flag := cmd.Flag(flagName); flag != nil && flag.Changed {
+			names = append(names, flagName)
+		}
+		for _, name := range names {
+			if flag := cmd.Flag(name); flag != nil && flag.Changed {
 				values[input.Name] = inputFlagValue{value: flag.Value.String(), typ: typ}
+				break
+			}
+			if flag := cmd.Flag(name + "+"); flag != nil && flag.Changed {
+				values[input.Name] = inputFlagValue{value: flag.Value.String(), typ: typ, expr: true}
+				break
 			}
 		}
 	}
@@ -445,56 +499,285 @@ func inputFlagLiterals(inputFlags map[string]inputFlagValue) (map[string]string,
 	for name, flag := range inputFlags {
 		literal, err := pclLiteral(flag)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("--%s: %w", inputFlagName(name), err)
 		}
 		attrs[name] = literal
 	}
 	return attrs, nil
 }
 
-func mergeAttributeLiterals(
-	file *hclsyntax.File, filename, fileType string, attributes map[string]string,
-) error {
-	if len(attributes) == 0 {
-		return nil
+// mergeAttributeLiteralsIntoPCL merges `name = literal` attribute assignments into source at the
+// top level and returns the resulting PCL bytes. Each entry in attrs is a name and a serialized
+// PCL literal (e.g. `"foo"`, `42`, `true`) — the same shape converter plugins return from
+// ConvertSnippet and that inputFlagLiterals produces for --input-* flags. Uses hclwrite so an
+// existing attribute of the same name is replaced in place rather than duplicated, and non-flag
+// content (blocks, comments, formatting) survives the round trip.
+func mergeAttributeLiteralsIntoPCL(
+	source []byte, filename, fileType string, attrs map[string]string,
+) ([]byte, error) {
+	if len(attrs) == 0 {
+		return source, nil
 	}
-
-	names := make([]string, 0, len(attributes))
-	for name := range attributes {
+	// hclwrite needs a blank line after a one-line file with no trailing newline; otherwise a
+	// newly-added attribute can be appended to the existing attribute's token stream.
+	if len(source) > 0 && source[len(source)-1] != '\n' {
+		source = append(append([]byte{}, source...), '\n')
+	}
+	file, diags := hclwrite.ParseConfig(source, filename, hcl.Pos{Line: 1, Column: 1})
+	if diags.HasErrors() {
+		return nil, diags
+	}
+	body := file.Body()
+	names := make([]string, 0, len(attrs))
+	for name := range attrs {
 		names = append(names, name)
 	}
 	sort.Strings(names)
-
-	var overlay strings.Builder
-	for _, name := range names {
-		fmt.Fprintf(&overlay, "%s = %s\n", name, attributes[name])
-	}
-
-	parser := hclsyntax.NewParser()
 	overlayName := fmt.Sprintf("%s flags for %s", fileType, filename)
-	if err := parser.ParseFile(strings.NewReader(overlay.String()), overlayName); err != nil {
-		return fmt.Errorf("parse %s flags: %w", fileType, err)
+	for _, name := range names {
+		overlay, diags := hclwrite.ParseConfig(
+			fmt.Appendf(nil, "%s = %s\n", name, attrs[name]), overlayName, hcl.Pos{Line: 1, Column: 1},
+		)
+		if diags.HasErrors() {
+			return nil, fmt.Errorf("parse %s flag %s: %w", fileType, name, diags)
+		}
+		attr := overlay.Body().GetAttribute(name)
+		if attr == nil {
+			return nil, fmt.Errorf("parse %s flag %s: no attribute produced", fileType, name)
+		}
+		body.SetAttributeRaw(name, attr.Expr().BuildTokens(nil))
 	}
-	if parser.Diagnostics.HasErrors() {
-		return parser.Diagnostics
+	out := file.Bytes()
+	return out, nil
+}
+
+// mergeAbsentAttributeLiteralsIntoPCL is the sibling of mergeAttributeLiteralsIntoPCL that only
+// sets a top-level attribute when it is not already present. Used to overlay --provider base inputs
+// beneath the user's --provider-file / --<flag> overrides without clobbering them.
+func mergeAbsentAttributeLiteralsIntoPCL(
+	source []byte, filename, fileType string, attrs map[string]string,
+) ([]byte, error) {
+	if len(attrs) == 0 {
+		return source, nil
 	}
-	contract.Assertf(len(parser.Files) == 1, "Should be one PCL flags file")
-	for name, attr := range parser.Files[0].Body.Attributes {
-		file.Body.Attributes[name] = attr
+	if len(source) > 0 && source[len(source)-1] != '\n' {
+		source = append(append([]byte{}, source...), '\n')
 	}
-	return nil
+	file, diags := hclwrite.ParseConfig(source, filename, hcl.Pos{Line: 1, Column: 1})
+	if diags.HasErrors() {
+		return nil, diags
+	}
+	body := file.Body()
+	names := make([]string, 0, len(attrs))
+	for name := range attrs {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	overlayName := fmt.Sprintf("%s base for %s", fileType, filename)
+	for _, name := range names {
+		if body.GetAttribute(name) != nil {
+			continue
+		}
+		overlay, diags := hclwrite.ParseConfig(
+			fmt.Appendf(nil, "%s = %s\n", name, attrs[name]), overlayName, hcl.Pos{Line: 1, Column: 1},
+		)
+		if diags.HasErrors() {
+			return nil, fmt.Errorf("parse %s base %s: %w", fileType, name, diags)
+		}
+		attr := overlay.Body().GetAttribute(name)
+		if attr == nil {
+			return nil, fmt.Errorf("parse %s base %s: no attribute produced", fileType, name)
+		}
+		body.SetAttributeRaw(name, attr.Expr().BuildTokens(nil))
+	}
+	return file.Bytes(), nil
+}
+
+// mergePCLAttributesIntoPCL takes the top-level attributes from `patch` and writes them into
+// `source`, overriding any attribute of the same name and preserving all other content (existing
+// attributes, blocks, and comments). Non-attribute content in `patch` (blocks, comments) is
+// ignored — patch semantics only touch inputs.
+func mergePCLAttributesIntoPCL(
+	source []byte, sourceFilename string, patch []byte, patchFilename string,
+) ([]byte, error) {
+	if len(patch) == 0 {
+		return source, nil
+	}
+	patchFile, diags := hclwrite.ParseConfig(patch, patchFilename, hcl.Pos{Line: 1, Column: 1})
+	if diags.HasErrors() {
+		return nil, diags
+	}
+	patchAttrs := patchFile.Body().Attributes()
+	if len(patchAttrs) == 0 {
+		return source, nil
+	}
+	if len(source) > 0 && source[len(source)-1] != '\n' {
+		source = append(append([]byte{}, source...), '\n')
+	}
+	file, diags := hclwrite.ParseConfig(source, sourceFilename, hcl.Pos{Line: 1, Column: 1})
+	if diags.HasErrors() {
+		return nil, diags
+	}
+	body := file.Body()
+	names := make([]string, 0, len(patchAttrs))
+	for name := range patchAttrs {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	for _, name := range names {
+		body.SetAttributeRaw(name, patchAttrs[name].Expr().BuildTokens(nil))
+	}
+	return file.Bytes(), nil
+}
+
+// injectProviderOptionInPCL rewrites a resource snippet's PCL to reference the (external) provider
+// snippet's URN via the given identifier (declared by the snippet's References map). If the
+// source already has a top-level `options` block, `provider = <name>` is added inside it (unless
+// a provider attribute is already present); otherwise a fresh `options { provider = <name> }`
+// block is appended.
+func injectProviderOptionInPCL(source []byte, filename, name string) ([]byte, error) {
+	if len(source) > 0 && source[len(source)-1] != '\n' {
+		source = append(append([]byte{}, source...), '\n')
+	}
+	file, diags := hclwrite.ParseConfig(source, filename, hcl.Pos{Line: 1, Column: 1})
+	if diags.HasErrors() {
+		return nil, diags
+	}
+	body := file.Body()
+	overlay, diags := hclwrite.ParseConfig(
+		fmt.Appendf(nil, "provider = %s\n", name), "<options.provider>", hcl.Pos{Line: 1, Column: 1},
+	)
+	if diags.HasErrors() {
+		return nil, diags
+	}
+	providerAttr := overlay.Body().GetAttribute("provider")
+	if providerAttr == nil {
+		return nil, errors.New("failed to construct provider option tokens")
+	}
+	providerTokens := providerAttr.Expr().BuildTokens(nil)
+	for _, block := range body.Blocks() {
+		if block.Type() != "options" {
+			continue
+		}
+		if block.Body().GetAttribute("provider") == nil {
+			block.Body().SetAttributeRaw("provider", providerTokens)
+		}
+		return file.Bytes(), nil
+	}
+	newBlock := body.AppendNewBlock("options", nil)
+	newBlock.Body().SetAttributeRaw("provider", providerTokens)
+	return file.Bytes(), nil
+}
+
+// propertyValueToPCLLiteral serializes a resource.PropertyValue into a PCL literal fragment
+// suitable for embedding as an attribute value (e.g. `"foo"`, `{ a = 1 }`). Only value-shaped
+// kinds are supported — computed/output/asset/archive/resource-reference values would need engine
+// support to encode, so they return an error naming the offending attribute.
+func propertyValueToPCLLiteral(name string, v resource.PropertyValue) (string, error) {
+	switch {
+	case v.IsNull():
+		return string(hclwrite.TokensForValue(cty.NullVal(cty.DynamicPseudoType)).Bytes()), nil
+	case v.IsBool():
+		return string(hclwrite.TokensForValue(cty.BoolVal(v.BoolValue())).Bytes()), nil
+	case v.IsNumber():
+		return string(hclwrite.TokensForValue(cty.NumberFloatVal(v.NumberValue())).Bytes()), nil
+	case v.IsString():
+		return string(hclwrite.TokensForValue(cty.StringVal(v.StringValue())).Bytes()), nil
+	case v.IsArray():
+		arr := v.ArrayValue()
+		if len(arr) == 0 {
+			return "[]", nil
+		}
+		elems := make([]string, len(arr))
+		for i, el := range arr {
+			ev, err := propertyValueToPCLLiteral(name, el)
+			if err != nil {
+				return "", err
+			}
+			elems[i] = ev
+		}
+		return "[" + strings.Join(elems, ", ") + "]", nil
+	case v.IsObject():
+		obj := v.ObjectValue()
+		if len(obj) == 0 {
+			return "{}", nil
+		}
+		keys := make([]string, 0, len(obj))
+		for k := range obj {
+			keys = append(keys, string(k))
+		}
+		sort.Strings(keys)
+		lines := make([]string, 0, len(keys)+2)
+		lines = append(lines, "{")
+		for _, key := range keys {
+			val := obj[resource.PropertyKey(key)]
+			fv, err := propertyValueToPCLLiteral(name+"."+key, val)
+			if err != nil {
+				return "", err
+			}
+			lines = append(lines, fmt.Sprintf("  %s = %s", pclObjectKeyLiteral(key), strings.ReplaceAll(fv, "\n", "\n  ")))
+		}
+		lines = append(lines, "}")
+		return strings.Join(lines, "\n"), nil
+	case v.IsSecret():
+		lit, err := propertyValueToPCLLiteral(name, v.SecretValue().Element)
+		if err != nil {
+			return "", err
+		}
+		return fmt.Sprintf("secret(%s)", lit), nil
+	case v.IsAsset():
+		return "", fmt.Errorf("provider config attribute %q of type asset is not yet supported", name)
+	case v.IsArchive():
+		return "", fmt.Errorf("provider config attribute %q of type archive is not yet supported", name)
+	case v.IsResourceReference():
+		return "", fmt.Errorf("provider config attribute %q of type resource reference is not yet supported", name)
+	case v.IsComputed(), v.IsOutput():
+		return "", fmt.Errorf(
+			"provider config attribute %q has a computed/output value and cannot be materialized", name,
+		)
+	}
+	return "", fmt.Errorf("provider config attribute %q has an unsupported value kind", name)
+}
+
+func pclObjectKeyLiteral(key string) string {
+	if hclv2syntax.ValidIdentifier(key) {
+		return key
+	}
+	return string(hclwrite.TokensForValue(cty.StringVal(key)).Bytes())
 }
 
 func pclLiteral(flag inputFlagValue) (string, error) {
 	switch flag.typ {
 	case schema.StringType:
-		return strconv.Quote(flag.value), nil
-	case schema.BoolType, schema.IntType, schema.NumberType:
-		return flag.value, nil
+		return string(hclwrite.TokensForValue(cty.StringVal(flag.value)).Bytes()), nil
+	case schema.BoolType:
+		v, err := strconv.ParseBool(flag.value)
+		if err != nil {
+			return "", fmt.Errorf("invalid boolean value %q", flag.value)
+		}
+		return string(hclwrite.TokensForValue(cty.BoolVal(v)).Bytes()), nil
+	case schema.IntType:
+		v, err := strconv.ParseInt(flag.value, 10, 64)
+		if err != nil {
+			return "", fmt.Errorf("invalid integer value %q", flag.value)
+		}
+		return string(hclwrite.TokensForValue(cty.NumberIntVal(v)).Bytes()), nil
+	case schema.NumberType:
+		v, err := strconv.ParseFloat(flag.value, 64)
+		if err != nil || math.IsNaN(v) || math.IsInf(v, 0) {
+			return "", fmt.Errorf("invalid number value %q", flag.value)
+		}
+		return string(hclwrite.TokensForValue(cty.NumberFloatVal(v)).Bytes()), nil
 	default:
 		return "", fmt.Errorf("unsupported flag type %s", flag.typ)
 	}
 }
+
+const exprFlagHelp = " (value is parsed as an expression in the input format)"
+
+const inputFlagsHelp = "Simple inputs can be set with flags: --<input> <value> takes the value as a\n" +
+	"literal, while --<input>+ <value> parses the value as an expression in the\n" +
+	"input format."
 
 func addInputFlags(cmd *cobra.Command, namespace string, inputs []*schema.Property) {
 	addInputFlagsTo(cmd, cmd.Flags(), namespace, inputs)
@@ -511,52 +794,43 @@ func addInputFlagsTo(cmd *cobra.Command, flags *pflag.FlagSet, namespace string,
 		typ := unwrapType(input.Type)
 		comment := flagUsage(input.Comment)
 
-		if typ == schema.StringType {
+		switch typ {
+		case schema.BoolType:
+			flagFunc = func(name, extraHelp string) {
+				flags.String(name, "false", comment+extraHelp)
+				flags.Lookup(name).NoOptDefVal = "true"
+			}
+		case schema.StringType, schema.IntType, schema.NumberType:
 			flagFunc = func(name, extraHelp string) {
 				flags.String(name, "", comment+extraHelp)
 			}
 		}
-		if typ == schema.BoolType {
-			flagFunc = func(name, extraHelp string) {
-				flags.Bool(name, false, comment+extraHelp)
-			}
-		}
-		if typ == schema.IntType {
-			flagFunc = func(name, extraHelp string) {
-				flags.Int(name, 0, comment+extraHelp)
-			}
-		}
-		if typ == schema.NumberType {
-			flagFunc = func(name, extraHelp string) {
-				flags.Float64(name, 0, comment+extraHelp)
-			}
-		}
 
 		if flagFunc != nil {
+			exprFunc := func(name, extraHelp string) {
+				flags.String(name, "", comment+extraHelp)
+			}
 			flagName := inputFlagName(input.Name)
 			key := fmt.Sprintf("%s:%s", namespace, flagName)
 			flagFunc(key, "")
+			exprFunc(key+"+", exprFlagHelp)
+			flags.Lookup(key + "+").Hidden = true
 			if namespace == "input" && flags.Lookup(flagName) == nil {
 				flagFunc(flagName, " (alias for --"+key+")")
-				cmd.MarkFlagsMutuallyExclusive(key, flagName)
+				exprFunc(flagName+"+", exprFlagHelp)
+				flags.Lookup(flagName + "+").Hidden = true
+				cmd.MarkFlagsMutuallyExclusive(key, flagName, key+"+", flagName+"+")
 				// Mark the namespaced flag as hidden
 				flags.Lookup(key).Hidden = true
+			} else {
+				cmd.MarkFlagsMutuallyExclusive(key, key+"+")
 			}
 		}
 	}
 }
 
-var langChoiceSpanRegexp = regexp.MustCompile(`(?s)<span\b[^>]*>(.*?)</span>`)
-
-var envVarChoiceRegexp = regexp.MustCompile("(?s)(`[A-Z][A-Z0-9_]*`) or <span\\b[^>]*>.*?</span> environment variables")
-
-func cleanComment(comment string) string {
-	comment = envVarChoiceRegexp.ReplaceAllString(comment, "$1 environment variable")
-	return langChoiceSpanRegexp.ReplaceAllString(comment, "$1")
-}
-
 func flagUsage(comment string) string {
-	return strings.ReplaceAll(cleanComment(comment), "`", "")
+	return strings.ReplaceAll(schemainfo.CleanComment(comment), "`", "")
 }
 
 func inputFlagName(name string) string {
@@ -604,10 +878,14 @@ func unwrapType(typ schema.Type) schema.Type {
 	return typ
 }
 
+var doDisplayStack = tokens.MustParseStackName("dev")
+
+const doDisplayProject tokens.PackageName = "default"
+
 func resourceURN(res *schema.Resource) resource.URN {
 	_, _, name, diags := pcl.DecomposeToken(res.Token, hcl.Range{})
 	contract.Assertf(!diags.HasErrors(), "token should decompose")
-	return resource.NewURN("dev", "default", "", tokens.Type(res.Token), name)
+	return resource.NewURN(doDisplayStack.Q(), doDisplayProject, "", tokens.Type(res.Token), name)
 }
 
 func (pc *packageCommand) configureProvider(cmd *cobra.Command, ctx context.Context) error {
@@ -635,7 +913,8 @@ func (pc *packageCommand) configureProvider(cmd *cobra.Command, ctx context.Cont
 	config, err := evaluateResourceFile(
 		ctx, pc.providerFile, "provider", pc.format,
 		pc.providerDef, ec, pc.converter, pc.loaderTarget, pc.packageDescriptor,
-		collectInputFlags(cmd, pc.spec.Name(), pc.providerDef.InputProperties))
+		collectInputFlags(cmd, pc.spec.Name(), pc.providerDef.InputProperties),
+	)
 	if err != nil {
 		return fmt.Errorf("parse provider file: %w", err)
 	}
@@ -679,7 +958,7 @@ func (pc *packageCommand) loadProviderInputsFromStack(
 	ctx context.Context, providerURN resource.URN,
 ) (resource.PropertyMap, error) {
 	s, err := cmdStack.RequireStack(
-		ctx, pc.sink, pc.ws, pc.lm,
+		ctx, pc.diagFwd, pc.ws, pc.lm,
 		"", /*stackName — use whatever is currently selected*/
 		cmdStack.LoadOnly, display.Options{Color: cmdutil.GetGlobalColorization()},
 		"", /*configFile*/
@@ -703,7 +982,8 @@ func (pc *packageCommand) loadProviderInputsFromStack(
 		if !strings.HasPrefix(string(res.Type), "pulumi:providers:") {
 			return nil, fmt.Errorf(
 				"resource %s is not a provider (type=%s); --provider must name a provider resource",
-				providerURN, res.Type)
+				providerURN, res.Type,
+			)
 		}
 		// The provider package must also match: AWS provider inputs handed to an Azure
 		// Configure call would either fail with a confusing schema mismatch or — worse — silently
@@ -712,7 +992,8 @@ func (pc *packageCommand) loadProviderInputsFromStack(
 		if res.Type != expectedType {
 			return nil, fmt.Errorf(
 				"resource %s is a provider for a different package (type=%s); --provider must name a %s resource",
-				providerURN, res.Type, expectedType)
+				providerURN, res.Type, expectedType,
+			)
 		}
 		// Clone so we don't hand callers an aliasing pointer into the snapshot's state.
 		return maps.Clone(res.Inputs), nil
@@ -733,16 +1014,19 @@ func (pc *packageCommand) requireYesIfNonInteractive(yes bool) error {
 	return nil
 }
 
-// confirm prints summary and asks the user to type confirmName to proceed. The summary and prompt go to stderr so
-// that stdout stays a clean JSON channel for piping. Returns nil to proceed; a bail error (suppressed by the
-// outer CLI) when the user declines. requireYesIfNonInteractive should have been called earlier; if we somehow
-// reach here non-interactively without --yes we treat it as a decline. Uses ui.ConfirmPrompt for the prompt
-// itself so the look and feel matches stack rm and friends.
-func (pc *packageCommand) confirm(cmd *cobra.Command, summary, confirmName string, yes bool) error {
+// confirm prints summary and asks the user whether to proceed, using the same yes/no chooser as `pulumi up`
+// and `pulumi destroy`. operation names the operation in the prompt (e.g. "create"). The summary and prompt
+// go to stderr so that stdout stays a clean JSON channel for piping. Returns nil to proceed; a bail error
+// (suppressed by the outer CLI) when the user declines; a real error when the prompt is cancelled (e.g.
+// Ctrl-C), matching up/destroy. requireYesIfNonInteractive should have been called
+// earlier; if we somehow reach here non-interactively without --yes we treat it as a decline.
+func (pc *packageCommand) confirm(cmd *cobra.Command, summary, operation string, yes bool) error {
 	stderr := cmd.ErrOrStderr()
-	fmt.Fprint(stderr, summary)
-	if !strings.HasSuffix(summary, "\n") {
-		fmt.Fprintln(stderr)
+	if summary != "" {
+		fmt.Fprint(stderr, summary)
+		if !strings.HasSuffix(summary, "\n") {
+			fmt.Fprintln(stderr)
+		}
 	}
 	if yes || pc.dryrun {
 		return nil
@@ -750,12 +1034,17 @@ func (pc *packageCommand) confirm(cmd *cobra.Command, summary, confirmName strin
 	if !cmdutil.Interactive() {
 		return backenderr.ErrNonInteractiveRequiresYes
 	}
-	opts := display.Options{
-		Color:  cmdutil.GetGlobalColorization(),
-		Stdin:  cmd.InOrStdin(),
-		Stdout: stderr,
+	response, err := ui.PromptUserErr(
+		fmt.Sprintf("Do you want to perform this %s?", operation),
+		[]string{"yes", "no"},
+		"no",
+		cmdutil.GetGlobalColorization(),
+		ui.SurveyStdio(cmd.InOrStdin(), stderr)...,
+	)
+	if err != nil {
+		return fmt.Errorf("confirmation cancelled, not proceeding with the %s: %w", operation, err)
 	}
-	if !ui.ConfirmPrompt("", confirmName, opts) {
+	if response != "yes" {
 		return result.FprintBailf(stderr, "confirmation declined")
 	}
 	return nil

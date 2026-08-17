@@ -448,6 +448,7 @@ func prepareConfig(
 					org string,
 					yaml []byte,
 					duration time.Duration,
+					_ map[string]string,
 				) (*esc.Environment, apitype.EnvironmentDiagnostics, error) {
 					return env, apitype.EnvironmentDiagnostics{}, nil
 				},
@@ -797,7 +798,7 @@ func TestConfigSetAll(t *testing.T) {
 			configFile := filepath.Join(tmpdir, "Pulumi.stack.yaml")
 
 			ws := &pkgWorkspace.MockContext{
-				ReadProjectF: func() (*workspace.Project, string, error) {
+				ReadProjectF: func(string) (*workspace.Project, string, error) {
 					return &workspace.Project{
 						Name: "testProject",
 					}, "", nil
@@ -955,7 +956,7 @@ func TestConfigRefresh(t *testing.T) {
 		}
 
 		ws := &pkgWorkspace.MockContext{
-			ReadProjectF: func() (*workspace.Project, string, error) {
+			ReadProjectF: func(string) (*workspace.Project, string, error) {
 				return &workspace.Project{Name: "testProject"}, "", nil
 			},
 			GetStoredCredentialsF: func() (workspace.Credentials, error) {
@@ -1423,7 +1424,7 @@ func TestConfigPathOperations(t *testing.T) {
 			configFile := filepath.Join(tmpdir, "Pulumi.stack.yaml")
 
 			ws := &pkgWorkspace.MockContext{
-				ReadProjectF: func() (*workspace.Project, string, error) {
+				ReadProjectF: func(string) (*workspace.Project, string, error) {
 					return &project, tmpdir, nil
 				},
 			}

@@ -16,6 +16,7 @@ package policy
 
 import (
 	"encoding/json"
+	"maps"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
@@ -114,9 +115,7 @@ func loadPolicyConfigFromFile(file string) (map[string]*json.RawMessage, error) 
 // in a format the way the API service is expecting.
 func marshalAnalyzerPolicyConfig(c plugin.AnalyzerPolicyConfig) (*json.RawMessage, error) {
 	m := make(map[string]any)
-	for k, v := range c.Properties {
-		m[k] = v
-	}
+	maps.Copy(m, c.Properties)
 	if c.EnforcementLevel != "" {
 		m["enforcementLevel"] = c.EnforcementLevel
 	}

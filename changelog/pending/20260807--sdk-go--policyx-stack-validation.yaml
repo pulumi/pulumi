@@ -1,0 +1,4 @@
+component: sdk/go
+kind: feat
+body: Add `policyx.NewStackValidationPolicy` and wire up the analyzer's `AnalyzeStack` RPC so Go policy packs can validate the full stack
+time: 2026-08-07T00:00:00+00:00

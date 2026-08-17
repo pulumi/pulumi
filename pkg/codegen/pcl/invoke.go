@@ -28,6 +28,31 @@ import (
 // Invoke is the name of the PCL `invoke` intrinsic, which can be used to invoke provider functions.
 const Invoke = "invoke"
 
+// InvokeOptions returns the options object of a bound invoke call. A bound invoke always has a token
+// and an argument object, so the options are the third argument if present at all. ok is false if the
+// call has no options.
+func InvokeOptions(call *model.FunctionCallExpression) (opts *model.ObjectConsExpression, ok bool) {
+	if len(call.Args) != 3 {
+		return nil, false
+	}
+	opts, ok = call.Args[2].(*model.ObjectConsExpression)
+	return opts, ok
+}
+
+// InvokeOptionSet reports whether the given invoke call explicitly sets the named option.
+func InvokeOptionSet(call *model.FunctionCallExpression, name string) bool {
+	opts, ok := InvokeOptions(call)
+	if !ok {
+		return false
+	}
+	for _, item := range opts.Items {
+		if LiteralValueString(item.Key) == name {
+			return true
+		}
+	}
+	return false
+}
+
 func getInvokeToken(call *hclsyntax.FunctionCallExpr) (string, hcl.Range, bool) {
 	if call.Name != Invoke || len(call.Args) < 1 {
 		return "", hcl.Range{}, false
@@ -44,6 +69,38 @@ func getInvokeToken(call *hclsyntax.FunctionCallExpr) (string, hcl.Range, bool) 
 		return "", hcl.Range{}, false
 	}
 	return literal.Val.AsString(), call.Args[0].Range(), true
+}
+
+// invokeTokenArgument extracts the literal function token from a bound invoke call's first argument.
+// It returns the token, the literal expression holding it (so callers may canonicalize the token in
+// place), and the token's source range. ok is false if the first argument is not a single string
+// literal.
+func invokeTokenArgument(args []model.Expression) (
+	token string, lit *model.LiteralValueExpression, tokenRange hcl.Range, ok bool,
+) {
+	if len(args) < 1 {
+		return "", nil, hcl.Range{}, false
+	}
+	template, isTemplate := args[0].(*model.TemplateExpression)
+	if !isTemplate || len(template.Parts) != 1 {
+		return "", nil, hcl.Range{}, false
+	}
+	literal, isLiteral := template.Parts[0].(*model.LiteralValueExpression)
+	if !isLiteral || model.StringType.ConversionFrom(literal.Type()) == model.NoConversion {
+		return "", nil, hcl.Range{}, false
+	}
+	return literal.Value.AsString(), literal, args[0].SyntaxNode().Range(), true
+}
+
+// loadPackageSchema loads the schema for the named package, honoring a registered package descriptor
+// when present and otherwise loading the package's default version. The default version is loaded
+// (rather than failing) because the concrete version may not yet be known; see the note in
+// binder_resource.go.
+func (b *binder) loadPackageSchema(ctx context.Context, pkg string) (*packageSchema, error) {
+	if descriptor, ok := b.packageDescriptors[pkg]; ok {
+		return b.options.packageCache.loadPackageSchemaFromDescriptor(ctx, b.options.loader, descriptor)
+	}
+	return b.options.packageCache.loadPackageSchema(ctx, b.options.loader, pkg, "", "")
 }
 
 // annotateObjectProperties annotates the properties of an object expression with the
@@ -102,31 +159,31 @@ func annotateObjectProperties(modelType model.Type, schemaType schema.Type) {
 	}
 }
 
-func (b *binder) bindInvokeSignature(args []model.Expression) (model.StaticFunctionSignature, hcl.Diagnostics) {
+func (b *binder) bindInvokeSignature(
+	ctx context.Context, args []model.Expression,
+) (model.StaticFunctionSignature, hcl.Diagnostics) {
 	if len(args) < 1 {
 		return b.zeroSignature(), nil
 	}
 
-	template, ok := args[0].(*model.TemplateExpression)
-	if !ok || len(template.Parts) != 1 {
-		return b.zeroSignature(), hcl.Diagnostics{tokenMustBeStringLiteral(args[0])}
-	}
-	lit, ok := template.Parts[0].(*model.LiteralValueExpression)
-	if !ok || model.StringType.ConversionFrom(lit.Type()) == model.NoConversion {
+	token, lit, tokenRange, ok := invokeTokenArgument(args)
+	if !ok {
 		return b.zeroSignature(), hcl.Diagnostics{tokenMustBeStringLiteral(args[0])}
 	}
 
-	token, tokenRange := lit.Value.AsString(), args[0].SyntaxNode().Range()
 	pkg, _, _, diagnostics := DecomposeToken(token, tokenRange)
 	if diagnostics.HasErrors() {
 		return b.zeroSignature(), diagnostics
 	}
 
-	// The function token's package portion may be a plain package or a base
-	// provider whose functions are supplied by an extension layered on it; the
-	// function is defined by whichever candidate schema contains the token.
-	candidates, err := b.candidateSchemasForToken(context.TODO(), pkg)
-	if len(candidates) == 0 {
+	var pkgSchema *packageSchema
+	var err error
+	if packageDescriptor, ok := b.packageDescriptors[pkg]; ok {
+		pkgSchema, err = b.options.packageCache.loadPackageSchemaFromDescriptor(ctx, b.options.loader, packageDescriptor)
+	} else {
+		pkgSchema, err = b.options.packageCache.loadPackageSchema(ctx, b.options.loader, pkg, "", "")
+	}
+	if err != nil {
 		if b.options.skipInvokeTypecheck {
 			return b.zeroSignature(), nil
 		}
@@ -136,26 +193,14 @@ func (b *binder) bindInvokeSignature(args []model.Expression) (model.StaticFunct
 		return b.zeroSignature(), hcl.Diagnostics{asWarningDiagnostic(e)}
 	}
 
-	var fn *schema.Function
-	var canonicalToken string
-	for _, candidate := range candidates {
-		function, tk, found, err := candidate.LookupFunction(token)
-		if err != nil {
-			if b.options.skipInvokeTypecheck {
-				return b.zeroSignature(), nil
-			}
+	fn, tk, ok, err := pkgSchema.LookupFunction(token)
+	if err != nil {
+		if b.options.skipInvokeTypecheck {
+			return b.zeroSignature(), nil
+		}
 
-			return b.zeroSignature(), hcl.Diagnostics{functionLoadError(token, err, tokenRange)}
-		}
-		if found {
-			fn, canonicalToken = function, tk
-			if _, ok := b.referencedPackages[candidate.schema.Name()]; !ok {
-				b.referencedPackages[candidate.schema.Name()] = candidate.schema
-			}
-			break
-		}
-	}
-	if fn == nil {
+		return b.zeroSignature(), hcl.Diagnostics{functionLoadError(token, err, tokenRange)}
+	} else if !ok {
 		if b.options.skipInvokeTypecheck {
 			return b.zeroSignature(), nil
 		}
@@ -163,11 +208,25 @@ func (b *binder) bindInvokeSignature(args []model.Expression) (model.StaticFunct
 		return b.zeroSignature(), hcl.Diagnostics{unknownFunction(token, tokenRange)}
 	}
 
-	lit.Value = cty.StringVal(canonicalToken)
+	lit.Value = cty.StringVal(tk)
 
 	if len(args) < 2 {
 		return b.zeroSignature(), hcl.Diagnostics{errorf(tokenRange, "missing second arg")}
 	}
+
+	// A function declared with multiArgumentInputs must be invoked positionally, e.g.
+	// invoke(token, a, b) rather than invoke(token, { p1 = a, p2 = b }). Reject the object-argument
+	// form and bind positional calls against a per-input signature; rewritePositionalInvokes later
+	// normalizes them to the object form. See invoke_positional.go.
+	if fn.MultiArgumentInputs {
+		if b.invokeUsesObjectArgument(fn, args) {
+			return b.zeroSignature(), hcl.Diagnostics{errorf(tokenRange,
+				"function %q is declared with multi-argument inputs and must be invoked with positional "+
+					"arguments, e.g. invoke(%q, arg1, arg2), not a single object argument", token, token)}
+		}
+		return b.positionalInvokeSignature(fn), nil
+	}
+
 	sig, err := b.signatureForArgs(fn, args[1].Type())
 	if err != nil {
 		diag := hcl.Diagnostics{errorf(tokenRange, "Invoke binding error: %v", err)}

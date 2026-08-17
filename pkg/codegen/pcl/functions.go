@@ -552,6 +552,53 @@ func pulumiBuiltins(options bindOptions) map[string]*model.Function {
 				return sig, diagnostics
 			},
 		)),
+		"recover": model.NewFunction(model.GenericFunctionSignature(
+			func(args []model.Expression) (model.StaticFunctionSignature, hcl.Diagnostics) {
+				var diagnostics hcl.Diagnostics
+
+				if len(args) != 2 {
+					diagnostics = append(diagnostics, &hcl.Diagnostic{
+						Severity: hcl.DiagError,
+						Summary:  "'recover' expects exactly two arguments",
+					})
+				}
+
+				valueType, recoveryType := model.Type(model.DynamicType), model.Type(model.DynamicType)
+				if len(args) > 0 {
+					valueType = args[0].Type()
+					if _, ok := valueType.(*model.OutputType); !ok {
+						rng := args[0].SyntaxNode().Range()
+						diagnostics = append(diagnostics, &hcl.Diagnostic{
+							Severity: hcl.DiagError,
+							Summary:  "the first argument to 'recover' must be an output",
+							Subject:  &rng,
+						})
+					}
+				}
+				if len(args) > 1 {
+					recoveryType = args[1].Type()
+				}
+
+				returnType, _ := model.UnifyTypes(model.ResolveOutputs(valueType), model.ResolveOutputs(recoveryType))
+				if returnType == nil {
+					returnType = model.DynamicType
+				}
+
+				return model.StaticFunctionSignature{
+					Parameters: []model.Parameter{
+						{
+							Name: "value",
+							Type: valueType,
+						},
+						{
+							Name: "recovery",
+							Type: recoveryType,
+						},
+					},
+					ReturnType: model.NewOutputType(returnType),
+				}, diagnostics
+			},
+		)),
 		"rootDirectory": model.NewFunction(model.StaticFunctionSignature{
 			ReturnType: model.StringType,
 		}),

@@ -21,6 +21,8 @@ import (
 	"path/filepath"
 	"testing"
 
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -41,6 +43,8 @@ import (
 // validating that the legacy behavior is preserved.
 
 func TestListStacksWithMultiplePassphrases_legacy(t *testing.T) {
+	t.Setenv("PULUMI_DIY_BACKEND_IGNORE_DEPRECATION_ERROR", "true")
+
 	// Login to a temp dir diy backend
 	tmpDir := markLegacyStore(t, t.TempDir())
 	ctx := t.Context()
@@ -99,7 +103,7 @@ func TestListStacksWithMultiplePassphrases_legacy(t *testing.T) {
 }
 
 func TestDrillError_legacy(t *testing.T) {
-	t.Parallel()
+	t.Setenv("PULUMI_DIY_BACKEND_IGNORE_DEPRECATION_ERROR", "true")
 
 	// Login to a temp dir diy backend
 	tmpDir := markLegacyStore(t, t.TempDir())
@@ -117,7 +121,7 @@ func TestDrillError_legacy(t *testing.T) {
 }
 
 func TestCancel_legacy(t *testing.T) {
-	t.Parallel()
+	t.Setenv("PULUMI_DIY_BACKEND_IGNORE_DEPRECATION_ERROR", "true")
 
 	// Login to a temp dir diy backend
 	tmpDir := markLegacyStore(t, t.TempDir())
@@ -178,7 +182,7 @@ func TestCancel_legacy(t *testing.T) {
 }
 
 func TestRemoveMakesBackups_legacy(t *testing.T) {
-	t.Parallel()
+	t.Setenv("PULUMI_DIY_BACKEND_IGNORE_DEPRECATION_ERROR", "true")
 
 	// Login to a temp dir diy backend
 	tmpDir := markLegacyStore(t, t.TempDir())
@@ -221,7 +225,7 @@ func TestRemoveMakesBackups_legacy(t *testing.T) {
 }
 
 func TestRenameWorks_legacy(t *testing.T) {
-	t.Parallel()
+	t.Setenv("PULUMI_DIY_BACKEND_IGNORE_DEPRECATION_ERROR", "true")
 
 	// Login to a temp dir diy backend
 	tmpDir := markLegacyStore(t, t.TempDir())
@@ -292,10 +296,10 @@ func TestRenameWorks_legacy(t *testing.T) {
 
 // Regression test for https://github.com/pulumi/pulumi/issues/10439
 func TestHtmlEscaping_legacy(t *testing.T) {
-	t.Parallel()
+	t.Setenv("PULUMI_DIY_BACKEND_IGNORE_DEPRECATION_ERROR", "true")
 
 	sm := b64.NewBase64SecretsManager()
-	resources := []*resource.State{
+	resources := []*pkgresource.State{
 		{
 			URN:  resource.NewURN("a", "proj", "d:e:f", "a:b:c", "name"),
 			Type: "a:b:c",
@@ -346,7 +350,7 @@ func TestHtmlEscaping_legacy(t *testing.T) {
 }
 
 func TestDIYBackendRejectsStackInitOptions_legacy(t *testing.T) {
-	t.Parallel()
+	t.Setenv("PULUMI_DIY_BACKEND_IGNORE_DEPRECATION_ERROR", "true")
 
 	// Here, we provide options that illegally specify a team on a
 	// backend that does not support teams. We expect this to create
@@ -388,7 +392,8 @@ func TestParallelStackFetch_legacy(t *testing.T) {
 
 	// Create a custom environment with DIYBackendParallel set
 	s := make(declared.MapStore)
-	s[env.DIYBackendParallel.Var().Name()] = "5" // Set parallel to 5
+	s[env.DIYBackendParallel.Var().Name()] = "5"                  // Set parallel to 5
+	s[env.DIYBackendIgnoreDeprecationError.Var().Name()] = "true" // Ignore deprecation error
 
 	b, err := newDIYBackend(
 		ctx,
@@ -401,7 +406,7 @@ func TestParallelStackFetch_legacy(t *testing.T) {
 	// Create multiple stacks to test parallel fetching
 	numStacks := 10
 	stackRefs := make([]backend.StackReference, numStacks)
-	for i := 0; i < numStacks; i++ {
+	for i := range numStacks {
 		stackName := fmt.Sprintf("stack%d", i)
 		stackRef, err := b.ParseStackReference(stackName)
 		require.NoError(t, err)
@@ -425,7 +430,7 @@ func TestParallelStackFetch_legacy(t *testing.T) {
 		stackNames[stack.Name().String()] = true
 	}
 
-	for i := 0; i < numStacks; i++ {
+	for i := range numStacks {
 		stackName := fmt.Sprintf("stack%d", i)
 		assert.True(t, stackNames[stackName], "Stack %s should be in the results", stackName)
 	}

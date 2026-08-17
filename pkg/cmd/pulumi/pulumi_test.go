@@ -15,6 +15,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"net/http"
 	"net/http/httptest"
@@ -22,8 +23,10 @@ import (
 	"time"
 
 	"github.com/blang/semver"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	cmdDo "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/do"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/spf13/cobra"
@@ -525,7 +528,7 @@ func TestGetCLIMetadata(t *testing.T) {
 
 func newDoTestCmd() *cobra.Command {
 	root := &cobra.Command{Use: "pulumi"}
-	doCmd := cmdDo.NewDoCmd(nil, nil, nil, nil, nil)
+	doCmd := cmdDo.NewDoCmd(nil, nil, nil, nil, nil, nil)
 	root.AddCommand(doCmd)
 	return doCmd
 }
@@ -1027,4 +1030,44 @@ func TestParseRootPersistentFlags(t *testing.T) {
 			assert.Equal(t, c.wantColor, color)
 		})
 	}
+}
+
+// A bare group command such as `pulumi env` should still print help, but exit
+// non-zero since it did not do anything.
+func TestGroupCommandsBareInvocationExitsNonZero(t *testing.T) {
+	// A bare group invocation is runnable and so executes the root
+	// PersistentPreRunE, which would otherwise fire a background network
+	// update check. t.Setenv also rules out t.Parallel here.
+	t.Setenv("PULUMI_SKIP_UPDATE_CHECK", "true")
+
+	pulumiCmd, cleanup := NewPulumiCmd()
+	defer cleanup()
+
+	var stdout, stderr bytes.Buffer
+	pulumiCmd.SetOut(&stdout)
+	pulumiCmd.SetErr(&stderr)
+	pulumiCmd.SetArgs([]string{"env"})
+
+	err := pulumiCmd.Execute()
+	require.Error(t, err)
+	assert.True(t, result.IsBail(err), "expected a bail error so no message is printed after the help text")
+	assert.Equal(t, cmd.ExitCodeError, cmd.ExitCodeFor(err))
+	assert.Contains(t, stdout.String(), "Usage:", "help text should still be printed")
+}
+
+// Requesting help explicitly must keep exiting 0.
+//
+//nolint:paralleltest // NewPulumiCmd registers env vars in a process-wide registry
+func TestGroupCommandsHelpFlagSucceeds(t *testing.T) {
+	pulumiCmd, cleanup := NewPulumiCmd()
+	defer cleanup()
+
+	var stdout, stderr bytes.Buffer
+	pulumiCmd.SetOut(&stdout)
+	pulumiCmd.SetErr(&stderr)
+	pulumiCmd.SetArgs([]string{"env", "--help"})
+
+	err := pulumiCmd.Execute()
+	require.NoError(t, err)
+	assert.Contains(t, stdout.String(), "Usage:")
 }

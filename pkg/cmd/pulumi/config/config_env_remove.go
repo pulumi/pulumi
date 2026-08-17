@@ -27,7 +27,7 @@ func newConfigEnvRemoveCmd(parent *configEnvCmd) *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:     "remove",
-		Aliases: []string{"rm"},
+		Aliases: []string{"rm", "delete"},
 		Short:   "Remove environment from a stack",
 		Long:    "Removes an environment from a stack's import list.",
 		RunE: func(cmd *cobra.Command, args []string) error {

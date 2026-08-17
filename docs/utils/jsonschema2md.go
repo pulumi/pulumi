@@ -374,7 +374,7 @@ func main() {
 		rootID: "-",
 	}
 	if *idString != "" {
-		for _, idm := range strings.Split(*idString, ",") {
+		for idm := range strings.SplitSeq(*idString, ",") {
 			eq := strings.IndexByte(idm, '=')
 			if eq == -1 {
 				log.Fatalf("invalid 'id=path' mapping '%v'", idm)

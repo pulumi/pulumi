@@ -17,42 +17,11 @@ package plugin
 import (
 	"testing"
 
+	envutil "github.com/pulumi/pulumi/sdk/v3/go/common/util/env"
 	"github.com/stretchr/testify/require"
 )
 
-func TestConstructEnvWithAdditionalEnv(t *testing.T) {
-	t.Parallel()
-
-	opts := &PolicyAnalyzerOptions{
-		Organization: "test-org",
-		Project:      "test-project",
-		Stack:        "test-stack",
-		DryRun:       false,
-		AdditionalEnv: map[string]string{
-			"MY_SECRET":  "secret-value",
-			"AWS_REGION": "us-west-2",
-		},
-	}
-
-	result, err := constructEnv(opts, "nodejs")
-	require.NoError(t, err)
-
-	// Verify standard env vars are set.
-	val, found := result.GetStore().Raw("PULUMI_ORGANIZATION")
-	require.True(t, found)
-	require.Equal(t, "test-org", val)
-
-	// Verify AdditionalEnv vars are injected.
-	val, found = result.GetStore().Raw("MY_SECRET")
-	require.True(t, found)
-	require.Equal(t, "secret-value", val)
-
-	val, found = result.GetStore().Raw("AWS_REGION")
-	require.True(t, found)
-	require.Equal(t, "us-west-2", val)
-}
-
-func TestConstructEnvWithoutAdditionalEnv(t *testing.T) {
+func TestConstructEnv(t *testing.T) {
 	t.Parallel()
 
 	opts := &PolicyAnalyzerOptions{
@@ -62,7 +31,8 @@ func TestConstructEnvWithoutAdditionalEnv(t *testing.T) {
 		DryRun:       true,
 	}
 
-	result, err := constructEnv(opts, "python")
+	env := envutil.NewEnv(envutil.MapStore{})
+	result, err := constructEnv(env, opts, "python")
 	require.NoError(t, err)
 
 	// Standard vars should still be set.

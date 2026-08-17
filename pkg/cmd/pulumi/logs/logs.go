@@ -35,7 +35,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 func NewLogsCmd(ws pkgWorkspace.Context) *cobra.Command {
@@ -62,7 +61,7 @@ func NewLogsCmd(ws pkgWorkspace.Context) *cobra.Command {
 			}
 
 			// Fetch the project.
-			proj, _, err := ws.ReadProject()
+			proj, _, err := ws.ReadProject("")
 			if err != nil {
 				return err
 			}
@@ -81,7 +80,7 @@ func NewLogsCmd(ws pkgWorkspace.Context) *cobra.Command {
 				return err
 			}
 
-			cfg, sm, err := config.GetStackConfiguration(ctx, cmdutil.Diag(), ssml, s, proj, configFile)
+			cfg, sm, err := config.GetStackConfiguration(ctx, cmdutil.Diag(), ssml, s, proj, configFile, nil)
 			if err != nil {
 				return fmt.Errorf("getting stack configuration: %w", err)
 			}
@@ -90,7 +89,7 @@ func NewLogsCmd(ws pkgWorkspace.Context) *cobra.Command {
 			encrypter := sm.Encrypter()
 
 			stackName := s.Ref().Name().String()
-			configErr := workspace.ValidateStackConfigAndApplyProjectConfig(
+			configErr := pkgWorkspace.ValidateStackConfigAndApplyProjectConfig(
 				ctx,
 				stackName,
 				proj,
@@ -200,6 +199,7 @@ func NewLogsCmd(ws pkgWorkspace.Context) *cobra.Command {
 	logsCmd.AddCommand(newDecryptCmd(ws))
 	logsCmd.AddCommand(newListCmd())
 	logsCmd.AddCommand(newRemoveCmd())
+	logsCmd.AddCommand(newShareCmd(ws, &stackName, createEncryptionSessionFromAPI))
 
 	logsCmd.PersistentFlags().StringVarP(
 		&stackName, "stack", "s", "",

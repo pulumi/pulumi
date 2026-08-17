@@ -75,6 +75,15 @@ func (h *L2ExtensionParameterizedResourceLanguageHost) GenerateProject(
 	if project.Name != "l2-extension-parameterized-resource" {
 		return nil, fmt.Errorf("unexpected project name %s", project.Name)
 	}
+	// Assert that only the extension package is listed in the project dependencies
+	for name := range req.LocalDependencies {
+		if name == "pulumi" {
+			continue
+		}
+		if name != "myext" {
+			return nil, fmt.Errorf("unexpected local dependency %s", name)
+		}
+	}
 	project.Runtime = workspace.NewProjectRuntimeInfo("mock", nil)
 	projectYaml, err := yaml.Marshal(project)
 	if err != nil {
@@ -179,7 +188,7 @@ func (h *L2ExtensionParameterizedResourceLanguageHost) Run(
 			return nil, fmt.Errorf("could not get package reference: %w", err)
 		}
 		res, err := monitor.RegisterResource(ctx, &pulumirpc.RegisterResourceRequest{
-			Type:       "extbase:index:Greeting",
+			Type:       "myext:index:Greeting",
 			Custom:     true,
 			Name:       "greeting",
 			PackageRef: ref,
@@ -197,7 +206,7 @@ func (h *L2ExtensionParameterizedResourceLanguageHost) Run(
 			return nil, fmt.Errorf("could not get package reference: %w", err)
 		}
 		res, err := monitor.RegisterResource(ctx, &pulumirpc.RegisterResourceRequest{
-			Type:       "extbase:index:GreetingComponent",
+			Type:       "myext:index:GreetingComponent",
 			Remote:     true,
 			Name:       "greetingComp",
 			PackageRef: ref,
@@ -224,7 +233,7 @@ func (h *L2ExtensionParameterizedResourceLanguageHost) Run(
 		return nil, fmt.Errorf("could not get package reference: %w", err)
 	}
 	invokeResp, err := monitor.Invoke(ctx, &pulumirpc.ResourceInvokeRequest{
-		Tok:        "extbase:index:greet",
+		Tok:        "myext:index:greet",
 		PackageRef: ref,
 		Args: &structpb.Struct{
 			Fields: map[string]*structpb.Value{

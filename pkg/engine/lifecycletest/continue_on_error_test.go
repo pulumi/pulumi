@@ -20,6 +20,8 @@ import (
 	"slices"
 	"testing"
 
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
+
 	"github.com/blang/semver"
 	. "github.com/pulumi/pulumi/pkg/v3/engine" //nolint:revive
 	lt "github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest/framework"
@@ -228,7 +230,7 @@ func TestUpContinueOnErrorCreate(t *testing.T) {
 
 	for _, urn := range expectedURNs {
 		// Ensure that the expected URN is present in the snapshot.
-		found := slices.ContainsFunc(snap.Resources, func(rs *resource.State) bool {
+		found := slices.ContainsFunc(snap.Resources, func(rs *pkgresource.State) bool {
 			return rs.URN == resource.URN(urn)
 		})
 		assert.True(t, found, "Expected URN %s not found in snapshot", urn)
@@ -368,7 +370,7 @@ func TestUpContinueOnErrorUpdate(t *testing.T) {
 
 	for _, urn := range expectedURNs {
 		// Ensure that the expected URN is present in the snapshot.
-		idx := slices.IndexFunc(snap.Resources, func(rs *resource.State) bool {
+		idx := slices.IndexFunc(snap.Resources, func(rs *pkgresource.State) bool {
 			return rs.URN == resource.URN(urn)
 		})
 		assert.NotEqual(t, -1, idx, "Expected URN %s not found in snapshot", urn)
@@ -866,7 +868,7 @@ func TestUpContinueOnErrorFailedDependencies(t *testing.T) {
 
 	for _, urn := range expectedURNs {
 		// Ensure that the expected URN is present in the snapshot.
-		found := slices.ContainsFunc(snap.Resources, func(rs *resource.State) bool {
+		found := slices.ContainsFunc(snap.Resources, func(rs *pkgresource.State) bool {
 			return rs.URN == resource.URN(urn)
 		})
 		assert.True(t, found, "Expected URN %s not found in snapshot", urn)

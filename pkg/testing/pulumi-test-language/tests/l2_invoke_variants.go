@@ -15,6 +15,7 @@
 package tests
 
 import (
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -42,7 +43,7 @@ func init() {
 					// however with the python SDK, that is not the case, instead the default
 					// provider gets registered first. This is indicating that something might be wrong
 					// with the how python SDK registers resources
-					var stack *resource.State
+					var stack *pkgresource.State
 					for _, r := range snap.Resources {
 						if r.Type == resource.RootStackType {
 							stack = r

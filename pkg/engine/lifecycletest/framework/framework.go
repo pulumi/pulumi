@@ -32,8 +32,9 @@ import (
 	"testing"
 	"time"
 
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
+
 	"github.com/blang/semver"
-	"github.com/mitchellh/copystructure"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -60,6 +61,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/deepcopy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
@@ -233,7 +235,7 @@ func (op TestOp) runWithContext(
 		originalBase = &deploy.Snapshot{
 			Manifest:          target.Snapshot.Manifest,
 			SecretsManager:    target.Snapshot.SecretsManager,
-			Resources:         slice.Map(target.Snapshot.Resources, (*resource.State).Copy),
+			Resources:         slice.Map(target.Snapshot.Resources, (*pkgresource.State).Copy),
 			PendingOperations: target.Snapshot.PendingOperations,
 			Metadata:          target.Snapshot.Metadata,
 		}
@@ -267,7 +269,8 @@ func (op TestOp) runWithContext(
 
 		var err error
 		journaler, err = backend.NewSnapshotJournaler(
-			context.Background(), journalPersister, secretsManager, secretsProvider, target.Snapshot)
+			context.Background(), journalPersister, secretsManager, secretsProvider, target.Snapshot,
+		)
 		require.NoErrorf(opts.T, err, "got error setting up journaler")
 
 		snapshotManager := backend.NewSnapshotManager(persister, secretsManager, target.Snapshot, nil)
@@ -401,7 +404,8 @@ func (op TestOp) runWithContext(
 		// the snapshot here before serializing it.
 		snap.SecretsManager = secretsManager
 		serializedSnap, _, _, err = stack.SerializeDeploymentWithMetadata(
-			context.TODO(), snap, false)
+			context.TODO(), snap, false,
+		)
 		if err != nil {
 			errs = append(errs, fmt.Errorf("could not serialize snapshot: %w", err))
 		}
@@ -743,7 +747,8 @@ func assertProgressDisplay(
 			Stderr:               &stderr,
 			DeterministicOutput:  true,
 			ShowLinkToNeo:        false,
-		}, false)
+		}, false,
+	)
 
 	for _, e := range events {
 		eventChannel <- e
@@ -881,7 +886,8 @@ func (p *TestPlan) GetTarget(t TB, snapshot *deploy.Snapshot) deploy.Target {
 func CloneSnapshot(t TB, snap *deploy.Snapshot) *deploy.Snapshot {
 	t.Helper()
 	if snap != nil {
-		copiedSnap := copystructure.Must(copystructure.Copy(*snap)).(deploy.Snapshot)
+		copiedSnap, ok := deepcopy.Copy(*snap).(deploy.Snapshot)
+		assert.True(t, ok, "failed to copy snapshot")
 		assert.True(t, reflect.DeepEqual(*snap, copiedSnap))
 		return &copiedSnap
 	}
@@ -902,7 +908,8 @@ func (p *TestPlan) RunWithName(t TB, snapshot *deploy.Snapshot, name string) *de
 			// Don't run validate on the preview step
 			_, err := step.Op.RunStep(
 				project, previewTarget, p.Options, true, p.BackendClient, nil,
-				fmt.Sprintf("%s-%d-%d-preview", name, i, p.run))
+				fmt.Sprintf("%s-%d-%d-preview", name, i, p.run),
+			)
 			if step.ExpectFailure {
 				assert.Error(t, err)
 				continue
@@ -1074,7 +1081,8 @@ func (b *TestBuilder) WithProvider(name string, version string, prov *deploytest
 	loader := deploytest.NewProviderLoader(
 		tokens.Package(name), semver.MustParse(version), func() (plugin.Provider, error) {
 			return prov, nil
-		})
+		},
+	)
 	b.loaders = append(b.loaders, loader)
 	return b
 }
@@ -1097,7 +1105,8 @@ func (b *TestBuilder) RunUpdate(
 	// Run an update for initial state.
 	var err error
 	snap, err := TestOp(engine.Update).Run(
-		p.GetProject(), p.GetTarget(b.t, b.snap), p.Options, false, p.BackendClient, nil)
+		p.GetProject(), p.GetTarget(b.t, b.snap), p.Options, false, p.BackendClient, nil,
+	)
 	return &Result{
 		snap: snap,
 		err:  err,

@@ -71,7 +71,7 @@ type Goal struct {
 	// If set, the source location of the resource registration.
 	SourcePosition string
 	// If set, the stack trace at time of registration.
-	StackTrace []resource.StackFrame
+	StackTrace []StackFrame
 	// The resource hooks attached to the resource, by type.
 	ResourceHooks map[resource.HookType][]string
 	// If set, the UUID of the snippet that registered this resource.
@@ -150,7 +150,7 @@ type NewGoal struct {
 	SourcePosition string // required
 
 	// If set, the stack trace at time of registration
-	StackTrace []resource.StackFrame // required
+	StackTrace []StackFrame // required
 
 	// The resource hooks attached to the resource, by type.
 	ResourceHooks map[resource.HookType][]string // required

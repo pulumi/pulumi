@@ -28,8 +28,8 @@ import (
 )
 
 // multiExtensionRuntimeLoader serves two extensions over the same base provider
-// ("extbase"): "exta" defines extbase:index:Aye and "extb" defines
-// extbase:index:Bee. Both resource tokens live in the base namespace.
+// ("extbase"): "exta" defines exta:index:Aye and "extb" defines extb:index:Bee,
+// each in its own namespace.
 type multiExtensionRuntimeLoader struct{}
 
 func (l *multiExtensionRuntimeLoader) LoadPackage(pkg string, version *semver.Version) (*schema.Package, error) {
@@ -42,9 +42,9 @@ func (l *multiExtensionRuntimeLoader) LoadPackageV2(
 	var name, token string
 	switch {
 	case d.Parameterization != nil && d.Parameterization.Name == "exta":
-		name, token = "exta", "extbase:index:Aye"
+		name, token = "exta", "exta:index:Aye"
 	case d.Parameterization != nil && d.Parameterization.Name == "extb":
-		name, token = "extb", "extbase:index:Bee"
+		name, token = "extb", "extb:index:Bee"
 	default:
 		return nil, fmt.Errorf("unexpected package %q", d.PackageName())
 	}
@@ -106,10 +106,8 @@ func (registerPackageMonitor) RegisterPackage(
 }
 
 // TestPackageRefResolutionAcrossExtensionsOnSameBase registers two extensions
-// over the same base provider and checks that each base-namespaced resource
-// token resolves to its OWN extension's package reference. Because tokens live
-// in the base namespace, resolving by the base name alone collapses both
-// extensions onto one ref (last registration wins).
+// over the same base provider and checks that each extension's resource token
+// resolves to its OWN extension's package reference.
 func TestPackageRefResolutionAcrossExtensionsOnSameBase(t *testing.T) {
 	t.Parallel()
 
@@ -141,13 +139,11 @@ func TestPackageRefResolutionAcrossExtensionsOnSameBase(t *testing.T) {
 
 	require.NoError(t, i.registerPackages(t.Context()))
 
-	ayeRef, err := i.getPackageRefFromToken("extbase:index:Aye")
-	require.NoError(t, err)
-	beeRef, err := i.getPackageRefFromToken("extbase:index:Bee")
-	require.NoError(t, err)
+	ayeRef := i.getPackageRefFromToken("exta:index:Aye")
+	beeRef := i.getPackageRefFromToken("extb:index:Bee")
 
-	require.Equal(t, "ref-exta", ayeRef, "extbase:index:Aye is defined by the exta extension")
-	require.Equal(t, "ref-extb", beeRef, "extbase:index:Bee is defined by the extb extension")
+	require.Equal(t, "ref-exta", ayeRef, "exta:index:Aye is defined by the exta extension")
+	require.Equal(t, "ref-extb", beeRef, "extb:index:Bee is defined by the extb extension")
 	require.NotEqual(t, ayeRef, beeRef,
 		"resources from different extensions on the same base must not share a package ref")
 }

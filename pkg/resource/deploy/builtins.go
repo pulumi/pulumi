@@ -20,6 +20,8 @@ import (
 	"fmt"
 	"sort"
 
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
+
 	uuid "github.com/gofrs/uuid"
 	"go.opentelemetry.io/otel"
 
@@ -43,15 +45,15 @@ type builtinProvider struct {
 	backendClient BackendClient
 
 	// news is a map of URNs to new resource states that have been produced by the current deployment.
-	news *gsync.Map[resource.URN, *resource.State]
+	news *gsync.Map[resource.URN, *pkgresource.State]
 	// reads is a map of URNs to resource states that have been read during the current deployment.
-	reads *gsync.Map[resource.URN, *resource.State]
+	reads *gsync.Map[resource.URN, *pkgresource.State]
 }
 
 func newBuiltinProvider(
 	backendClient BackendClient,
-	news *gsync.Map[resource.URN, *resource.State],
-	reads *gsync.Map[resource.URN, *resource.State],
+	news *gsync.Map[resource.URN, *pkgresource.State],
+	reads *gsync.Map[resource.URN, *pkgresource.State],
 	d diag.Sink,
 ) *builtinProvider {
 	ctx, cancel := context.WithCancel(context.Background())

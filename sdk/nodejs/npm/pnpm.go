@@ -95,55 +95,84 @@ func (pnpm *pnpmManager) installCmd(ctx context.Context, production bool) *exec.
 
 func (pnpm *pnpmManager) Link(ctx context.Context, dir, packageName, path string) error {
 	packageSpecifier := getLinkPackageProperty(packageName, path)
-	cmd := exec.CommandContext(ctx, "pnpm", "pkg", "set", packageSpecifier)
+	cmd := exec.CommandContext(ctx, "npm", "pkg", "set", packageSpecifier)
 	cmd.Dir = dir
 	if out, err := cmd.CombinedOutput(); err != nil {
-		return fmt.Errorf("error executing pnpm command %s: %w, output: %s", cmd.String(), err, out)
+		return fmt.Errorf("error executing npm command %s: %w, output: %s", cmd.String(), err, out)
 	}
 
-	// Local SDKs have a postInstall script that needs to run. By default pnpm does not run these scripts. We have to
-	// add the package to the `onlyBuiltDependencies` setting to allow this.
-	// https://pnpm.io/settings#onlybuiltdependencies
-	//
-	// The key pnpm expects depends on its version: the 10.34.2 security release requires local directory
-	// dependencies to be allowlisted by their lockfile depPath ("name@file:path"); bare package names are silently
-	// ignored. Conversely, versions before 10.34.2 reject the depPath form with ERR_PNPM_INVALID_VERSION_UNION, so
-	// we can't write both keys unconditionally.
+	// Local SDKs have a postInstall script that needs to run. By default pnpm does not run these scripts, so we have
+	// to allowlist the package.
 	version, err := pnpm.Version()
 	if err != nil {
 		return err
 	}
-	key := packageName
-	if version.GTE(semver.MustParse("10.34.2")) {
-		key = packageName + "@file:" + filepath.ToSlash(path)
+	return pnpm.allowBuildScripts(ctx, version, dir, packageName, path)
+}
+
+// allowBuildScripts allowlists the linked local SDK so that its install/postInstall script (which compiles the SDK
+// from TypeScript) is allowed to run.
+//
+// On pnpm >=11 the dependencies are listed in allowBuilds, on older versions in `onlyBuiltDependencies`.
+//
+// Local directory dependencies are keyed by their lockfile depPath ("name@file:path"). pnpm >= 10.34.2 requires this
+// form (bare names are silently ignored), while versions before it reject it with ERR_PNPM_INVALID_VERSION_UNION.
+func (pnpm *pnpmManager) allowBuildScripts(
+	ctx context.Context, version semver.Version, dir, packageName, path string,
+) error {
+	depPath := packageName + "@file:" + filepath.ToSlash(path)
+
+	if version.GTE(semver.MustParse("11.0.0")) {
+		return pnpm.mergeProjectConfig(ctx, dir, "allowBuilds", func(current []byte) (any, error) {
+			allowBuilds := map[string]bool{}
+			_ = json.Unmarshal(current, &allowBuilds)
+			allowBuilds[depPath] = true
+			return allowBuilds, nil
+		})
 	}
 
-	cmd = exec.CommandContext(ctx, "pnpm", "config", "get", "onlyBuiltDependencies", "--json")
-	cmd.Dir = dir
-	out, err := cmd.CombinedOutput()
-	if err != nil {
-		return fmt.Errorf("error running %s: %w, output: %s", cmd.String(), err, out)
+	key := packageName
+	if version.GTE(semver.MustParse("10.34.2")) {
+		key = depPath
 	}
-	out = bytes.TrimSpace(out)
-	var dependencies []string
-	if len(out) > 0 && string(out) != "undefined" {
-		if err := json.Unmarshal(out, &dependencies); err != nil {
-			dependencies = []string{}
+	return pnpm.mergeProjectConfig(ctx, dir, "onlyBuiltDependencies", func(current []byte) (any, error) {
+		var deps []string
+		_ = json.Unmarshal(current, &deps)
+		if !slices.Contains(deps, key) {
+			deps = append(deps, key)
 		}
-	}
-	if !slices.Contains(dependencies, key) {
-		dependencies = append(dependencies, key)
-	}
-	jsonData, err := json.Marshal(dependencies)
+		return deps, nil
+	})
+}
+
+// mergeProjectConfig reads a pnpm project-level config setting (as JSON), applies update to it, and writes the result
+// back. `pnpm config set --location project` stores it in pnpm-workspace.yaml, preserving any other keys. `current`
+// is nil when the setting is unset.
+func (pnpm *pnpmManager) mergeProjectConfig(
+	ctx context.Context, dir, setting string, update func(current []byte) (any, error),
+) error {
+	get := exec.CommandContext(ctx, "pnpm", "config", "get", setting, "--json")
+	get.Dir = dir
+	out, err := get.CombinedOutput()
 	if err != nil {
-		return fmt.Errorf("error marshaling dependencies to JSON: %w", err)
+		return fmt.Errorf("error running %s: %w, output: %s", get.String(), err, out)
+	}
+	if out = bytes.TrimSpace(out); string(out) == "undefined" {
+		out = nil
+	}
+	updated, err := update(out)
+	if err != nil {
+		return err
+	}
+	data, err := json.Marshal(updated)
+	if err != nil {
+		return fmt.Errorf("error marshaling %s to JSON: %w", setting, err)
 	}
 	//nolint:gosec // json data is escaped
-	cmd = exec.CommandContext(ctx, "pnpm", "config", "set", "onlyBuiltDependencies", string(jsonData),
-		"--location", "project", "--json")
-	cmd.Dir = dir
-	if out, err := cmd.CombinedOutput(); err != nil {
-		return fmt.Errorf("error running %s: %w, output: %s", cmd.String(), err, out)
+	set := exec.CommandContext(ctx, "pnpm", "config", "set", setting, string(data), "--location", "project", "--json")
+	set.Dir = dir
+	if out, err := set.CombinedOutput(); err != nil {
+		return fmt.Errorf("error running %s: %w, output: %s", set.String(), err, out)
 	}
 	return nil
 }

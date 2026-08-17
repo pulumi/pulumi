@@ -40,12 +40,12 @@ type ParsedField struct {
 // `@path` (or `@-` for stdin) is honoured for both typed and raw fields.
 // typed=false always emits the value verbatim as a string (for `-f`).
 func parseField(spec string, typed bool, stdin io.Reader) (ParsedField, error) {
-	eq := strings.IndexByte(spec, '=')
-	if eq < 0 {
+	before, after, ok := strings.Cut(spec, "=")
+	if !ok {
 		return ParsedField{}, NewAPIError(cmdutil.ExitCodeError, ErrInvalidFlags,
 			"field must be key=value: "+spec).WithField("field")
 	}
-	key, val := spec[:eq], spec[eq+1:]
+	key, val := before, after
 	if key == "" {
 		return ParsedField{}, NewAPIError(cmdutil.ExitCodeError, ErrInvalidFlags,
 			"field key must not be empty: "+spec).WithField("field")
@@ -139,7 +139,11 @@ func methodDefaultsToPost(fieldCount int, hasInput, hasBody bool) bool {
 // buildAPIHeaders folds contentType / accept / user `-H` headers into a
 // single http.Header for httpstate Client.RawCall. User headers win over
 // the encoder defaults (Accept, Content-Type); user-supplied Authorization
-// is dropped — RawCall pins it from the Client's token.
+// is dropped — RawCall pins it from the Client's token. `-H` is documented
+// as repeatable, so repeated occurrences of the same header name accumulate
+// (matching curl/gh's behavior) rather than each one silently overwriting
+// the last; only the first user-supplied occurrence of a given name
+// replaces an encoder default.
 func buildAPIHeaders(contentType, accept string, headers []ParsedHeader) http.Header {
 	h := http.Header{}
 	if accept != "" {
@@ -150,11 +154,20 @@ func buildAPIHeaders(contentType, accept string, headers []ParsedHeader) http.He
 	if contentType != "" {
 		h.Set("Content-Type", contentType)
 	}
+	seenNames := make(map[string]bool, len(headers))
 	for _, ph := range headers {
 		if strings.EqualFold(ph.Name, "Authorization") {
 			continue
 		}
-		h.Set(ph.Name, ph.Value)
+		key := http.CanonicalHeaderKey(ph.Name)
+		if seenNames[key] {
+			h.Add(key, ph.Value)
+		} else {
+			// First user-supplied value for this name; replace whatever
+			// encoder default (or nothing) was there.
+			h.Set(key, ph.Value)
+			seenNames[key] = true
+		}
 	}
 	return h
 }

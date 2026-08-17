@@ -47,7 +47,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           repo: pulumi/pulumictl
-          tag: v0.0.46
+          tag: v0.0.50
           cache: enable
       - name: Git describe
         id: ghd

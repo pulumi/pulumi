@@ -38,9 +38,9 @@ func TestShell_ExecuteCapturesStdout(t *testing.T) {
 	require.NoError(t, err)
 	res, err := sh.Invoke(t.Context(), "shell_execute", json.RawMessage(`{"command":"echo hi"}`))
 	require.NoError(t, err)
-	m := res.(map[string]any)
-	assert.Equal(t, "hi\n", m["stdout"])
-	assert.Equal(t, 0, m["exit_code"])
+	r := res.(ShellResult)
+	assert.Equal(t, "hi\n", r.Stdout)
+	assert.Equal(t, 0, r.ExitCode)
 }
 
 func TestShell_ExecuteHonorsTimeout(t *testing.T) {
@@ -56,7 +56,7 @@ func TestShell_ExecuteHonorsTimeout(t *testing.T) {
 	require.Error(t, err, "timeout must surface as a non-nil error so the TUI marks the call failed")
 	assert.Contains(t, err.Error(), "timed out")
 	require.NotNil(t, res, "partial result must still be returned alongside the timeout error")
-	assert.Equal(t, true, res.(map[string]any)["timed_out"])
+	assert.True(t, res.(ShellResult).TimedOut)
 }
 
 func TestShell_ExecuteHonorsAgentTimeout(t *testing.T) {
@@ -72,7 +72,7 @@ func TestShell_ExecuteHonorsAgentTimeout(t *testing.T) {
 		json.RawMessage(`{"command":"sleep 5","timeout":0.1}`))
 	require.Error(t, err)
 	require.NotNil(t, res)
-	assert.Equal(t, true, res.(map[string]any)["timed_out"])
+	assert.True(t, res.(ShellResult).TimedOut)
 	assert.Less(t, time.Since(start), 5*time.Second, "agent-supplied timeout was ignored")
 }
 
@@ -90,7 +90,7 @@ func TestShell_ExecuteAgentTimeoutOverridesDefault(t *testing.T) {
 		json.RawMessage(`{"command":"sleep 5","timeout":0.1}`))
 	require.Error(t, err)
 	require.NotNil(t, res)
-	assert.Equal(t, true, res.(map[string]any)["timed_out"])
+	assert.True(t, res.(ShellResult).TimedOut)
 	assert.Less(t, time.Since(start), 5*time.Second, "agent timeout did not override DefaultTimeout")
 }
 
@@ -111,7 +111,7 @@ func TestShell_ExecuteUnblocksOnOrphanedChild(t *testing.T) {
 		json.RawMessage(`{"command":"sleep 30 & wait","timeout":0.2}`))
 	require.Error(t, err)
 	require.NotNil(t, res)
-	assert.Equal(t, true, res.(map[string]any)["timed_out"])
+	assert.True(t, res.(ShellResult).TimedOut)
 	// Allow generous slack for the WaitDelay grace period (5s) plus CI noise.
 	assert.Less(t, time.Since(start), 15*time.Second, "shell hung on orphaned child")
 }
@@ -137,7 +137,7 @@ func TestShell_ExecuteCapturesNonZeroExit(t *testing.T) {
 	require.NoError(t, err)
 	res, err := sh.Invoke(t.Context(), "shell_execute", json.RawMessage(`{"command":"exit 3"}`))
 	require.NoError(t, err)
-	assert.Equal(t, 3, res.(map[string]any)["exit_code"])
+	assert.Equal(t, 3, res.(ShellResult).ExitCode)
 }
 
 func TestShell_ExecuteHonorsCwdSubdirectory(t *testing.T) {
@@ -159,7 +159,7 @@ func TestShell_ExecuteHonorsCwdSubdirectory(t *testing.T) {
 	res, err := sh.Invoke(t.Context(), "shell_execute",
 		json.RawMessage(`{"command":"pwd","cwd":"`+sub+`"}`))
 	require.NoError(t, err)
-	assert.True(t, strings.HasPrefix(res.(map[string]any)["stdout"].(string), resolvedSub))
+	assert.True(t, strings.HasPrefix(res.(ShellResult).Stdout, resolvedSub))
 }
 
 func TestShell_ExecuteRejectsCwdOutsideRoot(t *testing.T) {
@@ -208,13 +208,13 @@ func TestShell_TruncatesLargeOutput(t *testing.T) {
 
 	sh, err := NewShell(t.TempDir())
 	require.NoError(t, err)
-	// Generate more than maxOutputBytes of stdout.
+	// Generate more than MaxOutputBytes of stdout.
 	res, err := sh.Invoke(t.Context(), "shell_execute",
 		json.RawMessage(`{"command":"dd if=/dev/zero bs=1048576 count=2 2>/dev/null | tr '\\0' 'A'"}`))
 	require.NoError(t, err)
-	m := res.(map[string]any)
-	assert.True(t, m["truncated"].(bool))
-	assert.LessOrEqual(t, len(m["stdout"].(string)), maxOutputBytes)
+	r := res.(ShellResult)
+	assert.True(t, r.Truncated)
+	assert.LessOrEqual(t, len(r.Stdout), MaxOutputBytes)
 }
 
 func TestShell_RejectsUnknownMethod(t *testing.T) {
@@ -246,7 +246,7 @@ func TestShell_AcceptsCwdUnderExtraRoot(t *testing.T) {
 	res, err := sh.Invoke(t.Context(), "shell_execute",
 		json.RawMessage(fmt.Sprintf(`{"command":"pwd","cwd":%q}`, scratch)))
 	require.NoError(t, err)
-	assert.True(t, strings.HasPrefix(res.(map[string]any)["stdout"].(string), resolvedScratch))
+	assert.True(t, strings.HasPrefix(res.(ShellResult).Stdout, resolvedScratch))
 }
 
 func TestShell_RejectsCwdOutsideRootAndExtras(t *testing.T) {
@@ -299,7 +299,7 @@ func TestShell_InjectsAIAgent(t *testing.T) {
 	res, err := sh.Invoke(t.Context(), "shell_execute",
 		json.RawMessage(`{"command":"printenv AI_AGENT"}`))
 	require.NoError(t, err)
-	assert.Equal(t, "neo\n", res.(map[string]any)["stdout"])
+	assert.Equal(t, "neo\n", res.(ShellResult).Stdout)
 }
 
 func TestChildEnvWithAgent(t *testing.T) {

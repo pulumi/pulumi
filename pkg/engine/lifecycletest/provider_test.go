@@ -21,6 +21,8 @@ import (
 	"sync"
 	"testing"
 
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
+
 	"github.com/blang/semver"
 	"github.com/gofrs/uuid"
 	"github.com/stretchr/testify/assert"
@@ -41,6 +43,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 func TestSingleResourceDefaultProviderLifecycle(t *testing.T) {
@@ -129,7 +132,7 @@ func TestSingleResourceDefaultProviderUpgrade(t *testing.T) {
 
 	// Create an old snapshot with an existing copy of the single resource and no providers.
 	old := &deploy.Snapshot{
-		Resources: []*resource.State{{
+		Resources: []*pkgresource.State{{
 			Type:    resURN.Type(),
 			URN:     resURN,
 			Custom:  true,
@@ -1500,14 +1503,14 @@ func TestProviderVersionAssignment(t *testing.T) {
 		name     string
 		packages []workspace.PackageDescriptor
 		snapshot *deploy.Snapshot
-		validate func(t *testing.T, r *resource.State)
+		validate func(t *testing.T, r *pkgresource.State)
 		versions []string
 		prog     deploytest.ProgramFunc
 	}{
 		{
 			name:     "empty",
 			versions: []string{"1.0.0"},
-			validate: func(*testing.T, *resource.State) {},
+			validate: func(*testing.T, *pkgresource.State) {},
 			prog:     prog(),
 		},
 		{
@@ -1523,7 +1526,7 @@ func TestProviderVersionAssignment(t *testing.T) {
 					},
 				},
 			},
-			validate: func(t *testing.T, r *resource.State) {
+			validate: func(t *testing.T, r *pkgresource.State) {
 				if providers.IsProviderType(r.Type) && !providers.IsDefaultProvider(r.URN) {
 					assert.Equal(t, r.Inputs["version"].StringValue(), "1.1.0")
 					assert.Equal(t, r.Inputs["__internal"].ObjectValue()["pluginDownloadURL"].StringValue(), "example.com/default")
@@ -1541,7 +1544,7 @@ func TestProviderVersionAssignment(t *testing.T) {
 					Kind:    apitype.ResourcePlugin,
 				},
 			}},
-			validate: func(t *testing.T, r *resource.State) {
+			validate: func(t *testing.T, r *pkgresource.State) {
 				if providers.IsProviderType(r.Type) && !providers.IsDefaultProvider(r.URN) {
 					_, hasVersion := r.Inputs["version"]
 					assert.False(t, hasVersion)
@@ -1562,7 +1565,7 @@ func TestProviderVersionAssignment(t *testing.T) {
 				},
 			}},
 			snapshot: &deploy.Snapshot{
-				Resources: []*resource.State{
+				Resources: []*pkgresource.State{
 					{
 						Type: "providers:pulumi:pkgA",
 						URN:  "this:is:a:urn::ofaei",
@@ -1572,7 +1575,7 @@ func TestProviderVersionAssignment(t *testing.T) {
 					},
 				},
 			},
-			validate: func(t *testing.T, r *resource.State) {
+			validate: func(t *testing.T, r *pkgresource.State) {
 				if providers.IsProviderType(r.Type) && !providers.IsDefaultProvider(r.URN) {
 					assert.Equal(t, r.Inputs["version"].StringValue(), "1.1.0")
 				}
@@ -1961,7 +1964,7 @@ func TestProvidersOptionInheritanceRemote(t *testing.T) {
 				snap, err := entries.Snap(target.Snapshot)
 				require.NoError(t, err)
 
-				providerResources := map[string]*resource.State{}
+				providerResources := map[string]*pkgresource.State{}
 				for _, res := range snap.Resources {
 					if providers.IsProviderType(res.Type) {
 						providerResources[string(res.Type.Name())] = res
@@ -2108,7 +2111,7 @@ func TestRefreshLegacyState(t *testing.T) {
 	}
 
 	snapshot := &deploy.Snapshot{
-		Resources: []*resource.State{
+		Resources: []*pkgresource.State{
 			{
 				Type: "providers:pulumi:pkgA",
 				URN:  p.NewURN("providers:pulumi:pkgA", "prov", ""),
@@ -2145,8 +2148,8 @@ func TestInternalFiltered(t *testing.T) {
 					return plugin.DiffResult{}, nil
 				},
 				CheckConfigF: func(_ context.Context, req plugin.CheckConfigRequest) (plugin.CheckConfigResponse, error) {
-					assert.NotContains(t, req.News, internalKey)
-					assert.NotContains(t, req.Olds, internalKey)
+					assert.NotContains(t, req.News.AsMap(), string(internalKey))
+					assert.NotContains(t, req.Olds.AsMap(), string(internalKey))
 					return plugin.CheckConfigResponse{}, nil
 				},
 				ConfigureF: func(_ context.Context, req plugin.ConfigureRequest) (plugin.ConfigureResponse, error) {
@@ -2170,8 +2173,8 @@ func TestInternalFiltered(t *testing.T) {
 					return plugin.DiffResult{}, nil
 				},
 				CheckConfigF: func(_ context.Context, req plugin.CheckConfigRequest) (plugin.CheckConfigResponse, error) {
-					assert.NotContains(t, req.News, internalKey)
-					assert.NotContains(t, req.Olds, internalKey)
+					assert.NotContains(t, req.News.AsMap(), string(internalKey))
+					assert.NotContains(t, req.Olds.AsMap(), string(internalKey))
 					return plugin.CheckConfigResponse{}, nil
 				},
 				ConfigureF: func(_ context.Context, req plugin.ConfigureRequest) (plugin.ConfigureResponse, error) {
@@ -2420,10 +2423,10 @@ func TestDroppedVersion(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				CheckConfigF: func(_ context.Context, req plugin.CheckConfigRequest) (plugin.CheckConfigResponse, error) {
-					news := req.News.Copy()
+					news := req.News.AsMap()
 					delete(news, "version")
 					return plugin.CheckConfigResponse{
-						Properties: news,
+						Properties: property.NewMap(news),
 					}, nil
 				},
 			}, nil
@@ -2467,10 +2470,10 @@ func TestChangedVersion(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				CheckConfigF: func(_ context.Context, req plugin.CheckConfigRequest) (plugin.CheckConfigResponse, error) {
-					news := req.News.Copy()
-					news["version"] = resource.NewProperty("2.0.0")
+					news := req.News.AsMap()
+					news["version"] = property.New("2.0.0")
 					return plugin.CheckConfigResponse{
-						Properties: news,
+						Properties: property.NewMap(news),
 					}, nil
 				},
 			}, nil
@@ -2508,12 +2511,12 @@ func TestInternalKey(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				CheckConfigF: func(_ context.Context, req plugin.CheckConfigRequest) (plugin.CheckConfigResponse, error) {
-					news := req.News.Copy()
-					news["__internal"] = resource.NewProperty(resource.NewPropertyMapFromMap(map[string]any{
-						"some": "internal data",
+					news := req.News.AsMap()
+					news["__internal"] = property.New(property.NewMap(map[string]property.Value{
+						"some": property.New("internal data"),
 					}))
 					return plugin.CheckConfigResponse{
-						Properties: news,
+						Properties: property.NewMap(news),
 					}, nil
 				},
 			}, nil

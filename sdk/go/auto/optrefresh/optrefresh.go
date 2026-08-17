@@ -45,6 +45,23 @@ func ClearPendingCreates() Option {
 	})
 }
 
+// PendingCreate describes a pending create operation to import into the state, mapping the
+// resource's URN to the physical ID it was assigned by the provider.
+type PendingCreate struct {
+	// URN is the Pulumi resource URN of the pending create.
+	URN string
+	// ID is the provider-assigned physical ID of the created resource.
+	ID string
+}
+
+// ImportPendingCreates will cause the refresh to import the given pending creates into the
+// state, mapping each resource URN to the physical ID it was assigned by the provider.
+func ImportPendingCreates(creates []PendingCreate) Option {
+	return optionFunc(func(opts *Options) {
+		opts.ImportPendingCreates = creates
+	})
+}
+
 // Message (optional) to associate with the refresh operation
 func Message(message string) Option {
 	return optionFunc(func(opts *Options) {
@@ -182,6 +199,8 @@ type Options struct {
 	ExpectNoChanges bool
 	// Clear all pending creates, dropping them from the state
 	ClearPendingCreates bool
+	// Import the given pending creates into the state, mapping each resource URN to its provider ID
+	ImportPendingCreates []PendingCreate
 	// Specify an exclusive of resource URNs to refresh
 	Target []string
 	// Allows updating of dependent targets discovered but not specified in the Target list

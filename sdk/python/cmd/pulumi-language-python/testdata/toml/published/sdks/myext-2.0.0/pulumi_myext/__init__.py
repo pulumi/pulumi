@@ -17,8 +17,8 @@ _utilities.register(
   "mod": "index",
   "fqn": "pulumi_myext",
   "classes": {
-   "extbase:index:Greeting": "Greeting",
-   "extbase:index:GreetingComponent": "GreetingComponent"
+   "myext:index:Greeting": "Greeting",
+   "myext:index:GreetingComponent": "GreetingComponent"
   }
  }
 ]

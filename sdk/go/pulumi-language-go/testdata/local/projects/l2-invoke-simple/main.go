@@ -9,14 +9,10 @@ func main() {
 	pulumi.Run(func(ctx *pulumi.Context) error {
 		ctx.Export("hello", simpleinvoke.MyInvokeOutput(ctx, simpleinvoke.MyInvokeOutputArgs{
 			Value: pulumi.String("hello"),
-		}, nil).ApplyT(func(invoke simpleinvoke.MyInvokeResult) (string, error) {
-			return invoke.Result, nil
-		}).(pulumi.StringOutput))
+		}, nil).Result())
 		ctx.Export("goodbye", simpleinvoke.MyInvokeOutput(ctx, simpleinvoke.MyInvokeOutputArgs{
 			Value: pulumi.String("goodbye"),
-		}, nil).ApplyT(func(invoke simpleinvoke.MyInvokeResult) (string, error) {
-			return invoke.Result, nil
-		}).(pulumi.StringOutput))
+		}, nil).Result())
 		return nil
 	})
 }

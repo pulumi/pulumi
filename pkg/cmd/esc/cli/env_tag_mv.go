@@ -25,9 +25,10 @@ func newEnvTagMvCmd(env *envCommand) *cobra.Command {
 	var utc bool
 
 	cmd := &cobra.Command{
-		Use:   "mv [<org-name>/][<project-name>/]<environment-name> <name> <new-name>",
-		Args:  cobra.ExactArgs(3),
-		Short: "Move an environment tag",
+		Use:     "move [<org-name>/][<project-name>/]<environment-name> <name> <new-name>",
+		Aliases: []string{"mv"},
+		Args:    cobra.ExactArgs(3),
+		Short:   "Move an environment tag",
 		Long: "Move an environment tag\n" +
 			"\n" +
 			"This command updates a tag with the given name on the specified environment, " +

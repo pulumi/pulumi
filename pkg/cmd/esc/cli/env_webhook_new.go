@@ -34,8 +34,9 @@ func newEnvWebhookNewCmd(env *envCommand) *cobra.Command {
 	)
 
 	cmd := &cobra.Command{
-		Use:   "new [<org-name>/][<project-name>/]<environment-name> <webhook-display-name>",
-		Short: "Create a new environment webhook.",
+		Use:     "new [<org-name>/][<project-name>/]<environment-name> <webhook-display-name>",
+		Aliases: []string{"create", "setup"},
+		Short:   "Create a new environment webhook.",
 		Long: "[EXPERIMENTAL] Create a new environment webhook\n" +
 			"\n" +
 			"This command attaches a new webhook to the given environment. The positional\n" +

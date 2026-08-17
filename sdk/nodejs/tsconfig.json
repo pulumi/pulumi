@@ -102,7 +102,9 @@
         "tests/unwrap.spec.ts",
         "tests/util.ts",
         "tests/runtime/asyncIterableUtil.spec.ts",
+        "tests/runtime/codePaths.spec.ts",
         "tests/runtime/dependsOn.spec.ts",
+        "tests/runtime/featureSupport.spec.ts",
         "tests/runtime/findWorkspaceRoot.spec.ts",
         "tests/runtime/manifest.spec.ts",
         "tests/runtime/registerPackage.spec.ts",
@@ -129,6 +131,7 @@
         "tests/provider/experimental/analyzer.spec.ts",
         "tests/provider/experimental/schema.spec.ts",
         "tests_with_mocks/mocks.spec.ts",
+        "tests_with_mocks/pendingRegistrations.spec.ts",
         "npm/testdata/nested/project/index.ts",
         "types/arborist.d.ts",
         "types/fs-glob.d.ts"

@@ -72,7 +72,7 @@ func newProjectListCmd() *cobra.Command {
 			ws := pkgWorkspace.Instance
 			var err error
 			var currentProject *workspace.Project
-			currentProject, _, err = ws.ReadProject()
+			currentProject, _, err = ws.ReadProject("")
 			if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
 				return err
 			}

@@ -15,10 +15,14 @@ import (
 type Resource struct {
 	pulumi.CustomResourceState
 
-	Private     pulumi.StringOutput `pulumi:"private"`
-	PrivateData DataOutput          `pulumi:"privateData"`
-	Public      pulumi.StringOutput `pulumi:"public"`
-	PublicData  DataOutput          `pulumi:"publicData"`
+	Private          pulumi.StringOutput      `pulumi:"private"`
+	PrivateArray     pulumi.StringArrayOutput `pulumi:"privateArray"`
+	PrivateData      DataOutput               `pulumi:"privateData"`
+	PrivateDataArray DataArrayOutput          `pulumi:"privateDataArray"`
+	PrivateDataMap   DataMapOutput            `pulumi:"privateDataMap"`
+	PrivateMap       pulumi.StringMapOutput   `pulumi:"privateMap"`
+	Public           pulumi.StringOutput      `pulumi:"public"`
+	PublicData       DataOutput               `pulumi:"publicData"`
 }
 
 // NewResource registers a new resource with the given unique name, arguments, and options.
@@ -31,8 +35,20 @@ func NewResource(ctx *pulumi.Context,
 	if args.Private == nil {
 		return nil, errors.New("invalid value for required argument 'Private'")
 	}
+	if args.PrivateArray == nil {
+		return nil, errors.New("invalid value for required argument 'PrivateArray'")
+	}
 	if args.PrivateData == nil {
 		return nil, errors.New("invalid value for required argument 'PrivateData'")
+	}
+	if args.PrivateDataArray == nil {
+		return nil, errors.New("invalid value for required argument 'PrivateDataArray'")
+	}
+	if args.PrivateDataMap == nil {
+		return nil, errors.New("invalid value for required argument 'PrivateDataMap'")
+	}
+	if args.PrivateMap == nil {
+		return nil, errors.New("invalid value for required argument 'PrivateMap'")
 	}
 	if args.Public == nil {
 		return nil, errors.New("invalid value for required argument 'Public'")
@@ -43,12 +59,28 @@ func NewResource(ctx *pulumi.Context,
 	if args.Private != nil {
 		args.Private = pulumi.ToSecret(args.Private).(pulumi.StringInput)
 	}
+	if args.PrivateArray != nil {
+		args.PrivateArray = pulumi.ToSecret(args.PrivateArray).(pulumi.StringArrayInput)
+	}
 	if args.PrivateData != nil {
 		args.PrivateData = pulumi.ToSecret(args.PrivateData).(DataInput)
 	}
+	if args.PrivateDataArray != nil {
+		args.PrivateDataArray = pulumi.ToSecret(args.PrivateDataArray).(DataArrayInput)
+	}
+	if args.PrivateDataMap != nil {
+		args.PrivateDataMap = pulumi.ToSecret(args.PrivateDataMap).(DataMapInput)
+	}
+	if args.PrivateMap != nil {
+		args.PrivateMap = pulumi.ToSecret(args.PrivateMap).(pulumi.StringMapInput)
+	}
 	secrets := pulumi.AdditionalSecretOutputs([]string{
 		"private",
+		"privateArray",
 		"privateData",
+		"privateDataArray",
+		"privateDataMap",
+		"privateMap",
 	})
 	opts = append(opts, secrets)
 	opts = internal.PkgResourceDefaultOpts(opts)
@@ -84,18 +116,26 @@ func (ResourceState) ElementType() reflect.Type {
 }
 
 type resourceArgs struct {
-	Private     string `pulumi:"private"`
-	PrivateData Data   `pulumi:"privateData"`
-	Public      string `pulumi:"public"`
-	PublicData  Data   `pulumi:"publicData"`
+	Private          string            `pulumi:"private"`
+	PrivateArray     []string          `pulumi:"privateArray"`
+	PrivateData      Data              `pulumi:"privateData"`
+	PrivateDataArray []Data            `pulumi:"privateDataArray"`
+	PrivateDataMap   map[string]Data   `pulumi:"privateDataMap"`
+	PrivateMap       map[string]string `pulumi:"privateMap"`
+	Public           string            `pulumi:"public"`
+	PublicData       Data              `pulumi:"publicData"`
 }
 
 // The set of arguments for constructing a Resource resource.
 type ResourceArgs struct {
-	Private     pulumi.StringInput
-	PrivateData DataInput
-	Public      pulumi.StringInput
-	PublicData  DataInput
+	Private          pulumi.StringInput
+	PrivateArray     pulumi.StringArrayInput
+	PrivateData      DataInput
+	PrivateDataArray DataArrayInput
+	PrivateDataMap   DataMapInput
+	PrivateMap       pulumi.StringMapInput
+	Public           pulumi.StringInput
+	PublicData       DataInput
 }
 
 func (ResourceArgs) ElementType() reflect.Type {
@@ -189,8 +229,24 @@ func (o ResourceOutput) Private() pulumi.StringOutput {
 	return o.ApplyT(func(v *Resource) pulumi.StringOutput { return v.Private }).(pulumi.StringOutput)
 }
 
+func (o ResourceOutput) PrivateArray() pulumi.StringArrayOutput {
+	return o.ApplyT(func(v *Resource) pulumi.StringArrayOutput { return v.PrivateArray }).(pulumi.StringArrayOutput)
+}
+
 func (o ResourceOutput) PrivateData() DataOutput {
 	return o.ApplyT(func(v *Resource) DataOutput { return v.PrivateData }).(DataOutput)
+}
+
+func (o ResourceOutput) PrivateDataArray() DataArrayOutput {
+	return o.ApplyT(func(v *Resource) DataArrayOutput { return v.PrivateDataArray }).(DataArrayOutput)
+}
+
+func (o ResourceOutput) PrivateDataMap() DataMapOutput {
+	return o.ApplyT(func(v *Resource) DataMapOutput { return v.PrivateDataMap }).(DataMapOutput)
+}
+
+func (o ResourceOutput) PrivateMap() pulumi.StringMapOutput {
+	return o.ApplyT(func(v *Resource) pulumi.StringMapOutput { return v.PrivateMap }).(pulumi.StringMapOutput)
 }
 
 func (o ResourceOutput) Public() pulumi.StringOutput {

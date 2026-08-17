@@ -19,6 +19,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"maps"
 	"math/big"
 	"strconv"
 	"strings"
@@ -340,6 +341,22 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 			}
 			return
 		}
+		// PCL treats ID as a string-like type that can be coerced to any
+		// primitive scalar. In Go the IDInput/IDOutput interfaces don't
+		// declare ToStringOutput/ToBoolOutput/etc, so the target field
+		// won't accept an IDInput directly. Emit an ApplyT that parses
+		// the ID string into the destination scalar.
+		if isFromOutput {
+			fromInner := model.ResolveOutputs(fromType)
+			if cns, ok := fromInner.(*model.ConstType); ok {
+				fromInner = cns.Type
+			}
+			if fromInner.Equals(model.IDType) && !to.Equals(model.IDType) {
+				if g.genIDConversion(w, from, to) {
+					return
+				}
+			}
+		}
 		switch arg := from.(type) {
 		case *model.TupleConsExpression:
 			g.genTupleConsExpression(w, arg, expr.Type())
@@ -362,7 +379,7 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 				// casting here too would double-wrap values like pulumi.String(pulumi.String(x)).
 				if _, hasSchema := pcl.GetSchemaForType(expr.Type()); !hasSchema {
 					switch scalarType {
-					case model.StringType, model.IntType, model.NumberType, model.BoolType, model.DynamicType:
+					case model.StringType, model.IntType, model.NumberType, model.BoolType, model.DynamicType, model.IDType:
 						if typeName := g.argumentTypeName(to, isOutput); typeName != "" {
 							g.Fgenf(w, "%s(", typeName)
 							g.genScopeTraversalExpression(w, arg, expr.Type())
@@ -371,14 +388,52 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 						}
 					default:
 						// For collection types (maps, objects, lists), wrap with pulumi.ToMap/ToArray.
+						// If the source has a typed Go representation (e.g. map[string]string,
+						// []int), use the matching typed converter (ToStringMap, ToIntArray)
+						// since pulumi.ToMap/ToArray only accept map[string]any / []any. For
+						// maps/arrays of Pulumi input interfaces (map[string]pulumi.XInput), a
+						// direct type cast to pulumi.XMap / pulumi.XArray suffices — the
+						// underlying types are identical and the named type satisfies
+						// pulumi.Input.
+						argGoType := g.argumentTypeName(arg.Type(), false)
 						switch scalarType.(type) {
 						case *model.ObjectType, *model.MapType:
-							g.Fgenf(w, "pulumi.ToMap(")
+							if elm, ok := strings.CutPrefix(argGoType, "map[string]"); ok {
+								if named, ok := pulumiInputElementCastName(elm); ok {
+									g.Fgenf(w, "pulumi.%sMap(", named)
+									g.genScopeTraversalExpression(w, arg, expr.Type())
+									g.Fgenf(w, ")")
+									return
+								}
+							}
+							fn := "pulumi.ToMap"
+							if elm, ok := strings.CutPrefix(argGoType, "map[string]"); ok &&
+								elm != "interface{}" {
+								if title, ok := pulumiConverterSuffix(elm); ok {
+									fn = "pulumi.To" + title + "Map"
+								}
+							}
+							g.Fgenf(w, "%s(", fn)
 							g.genScopeTraversalExpression(w, arg, expr.Type())
 							g.Fgenf(w, ")")
 							return
 						case *model.ListType, *model.TupleType:
-							g.Fgenf(w, "pulumi.ToArray(")
+							if elm, ok := strings.CutPrefix(argGoType, "[]"); ok {
+								if named, ok := pulumiInputElementCastName(elm); ok {
+									g.Fgenf(w, "pulumi.%sArray(", named)
+									g.genScopeTraversalExpression(w, arg, expr.Type())
+									g.Fgenf(w, ")")
+									return
+								}
+							}
+							fn := "pulumi.ToArray"
+							if elm, ok := strings.CutPrefix(argGoType, "[]"); ok &&
+								elm != "interface{}" {
+								if title, ok := pulumiConverterSuffix(elm); ok {
+									fn = "pulumi.To" + title + "Array"
+								}
+							}
+							g.Fgenf(w, "%s(", fn)
 							g.genScopeTraversalExpression(w, arg, expr.Type())
 							g.Fgenf(w, ")")
 							return
@@ -394,19 +449,7 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 			} else {
 				typeName := g.argumentTypeName(to, isOutput)
 				// IDOutput has a special case where it can be converted to a string
-				var isID bool
-				switch expr := from.(type) {
-				case *model.ScopeTraversalExpression:
-					last := expr.Traversal[len(expr.Traversal)-1]
-					if attr, ok := last.(hcl.TraverseAttr); ok && attr.Name == "id" {
-						isID = true
-					}
-				case *model.RelativeTraversalExpression:
-					last := expr.Traversal[len(expr.Traversal)-1]
-					if attr, ok := last.(hcl.TraverseAttr); ok && attr.Name == "id" {
-						isID = true
-					}
-				}
+				isID := model.ResolveOutputs(fromType).Equals(model.IDType)
 
 				if typeName == "" {
 					g.Fgenf(w, "%.v", from)
@@ -421,6 +464,18 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 					// interface type strips those methods and breaks use in
 					// pulumi.AssetOrArchiveArray, etc.
 					g.Fgenf(w, "%.v", from)
+				} else if isFromOutput &&
+					model.IsOptionalType(model.ResolveOutputs(fromType)) &&
+					pcl.UnwrapOption(model.ResolveOutputs(fromType)).Equals(to) {
+					// Optional scalar outputs are represented by pointer outputs in Go. When the
+					// destination is the corresponding optional input, the output already implements
+					// that input interface. Wrapping it in the value constructor would not compile.
+					g.Fgenf(w, "%.v", from)
+				} else if !isFromOutput && model.ResolveOutputs(fromType).Equals(model.DynamicType) {
+					if isOutput && to.Equals(model.DynamicType) {
+						typeName = "pulumi.AnyOutput"
+					}
+					g.Fgenf(w, "%.v.(%s)", from, typeName)
 				} else {
 					g.Fgenf(w, "%s(%.v)", typeName, from)
 				}
@@ -490,6 +545,8 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 
 			// Unlike other languages, Go cannot leave out trailing optional parameters, so
 			// every parameter is emitted, passing nil for absent optional ones.
+			savedPlainInvokeArgs := g.inPlainInvokeArgs
+			g.inPlainInvokeArgs = !pcl.IsOutputVersionInvokeCall(expr)
 			for _, param := range pcl.SortedFunctionParameters(expr) {
 				g.Fgen(w, ", ")
 				if value, ok := arguments[param.Name]; ok {
@@ -498,6 +555,7 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 					g.Fgen(w, "nil")
 				}
 			}
+			g.inPlainInvokeArgs = savedPlainInvokeArgs
 		} else if isOut {
 			outTypeName, err := outputVersionFunctionArgTypeName(outArgsType, g.externalCache)
 			if err != nil {
@@ -519,49 +577,52 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 			g.genObjectConsExpressionWithTypeName(w, outArgs, outArgsType, outTypeName)
 		} else {
 			g.Fgenf(w, "%s.%s(ctx, ", module, fn)
+			savedPlainInvokeArgs := g.inPlainInvokeArgs
+			g.inPlainInvokeArgs = true
 			g.Fgenf(w, "%.v", expr.Args[1])
+			g.inPlainInvokeArgs = savedPlainInvokeArgs
 		}
 
-		var optionsBag string
-		var buf bytes.Buffer
-		if len(expr.Args) == 3 {
-			if invokeOptions, ok := expr.Args[2].(*model.ObjectConsExpression); ok {
-				g.Fgen(&buf, ", ")
-				for i, item := range invokeOptions.Items {
-					last := i == len(invokeOptions.Items)-1
-					switch pcl.LiteralValueString(item.Key) {
-					case "provider":
-						g.Fgenf(&buf, "pulumi.Provider(%v)", item.Value)
-					case "parent":
-						g.Fgenf(&buf, "pulumi.Parent(%v)", item.Value)
-					case "version":
-						g.Fgenf(&buf, "pulumi.Version(%v)", item.Value)
-					case "pluginDownloadUrl":
-						g.Fgenf(&buf, "pulumi.PluginDownloadURL(%v)", item.Value)
-					case "dependsOn":
-						destType := model.NewListType(resourceType)
-						value, temps := g.lowerExpression(item.Value, destType)
-						contract.Assertf(len(temps) == 0, "can not have temporary variables when converting dependsOn option: %v", temps)
-						if isInputty(value.Type()) {
-							g.Fgenf(&buf, "pulumi.DependsOnInputs(%v)", value)
-						} else {
-							g.Fgenf(&buf, "pulumi.DependsOn(%v)", value)
-						}
+		var options []string
+		if g.isComponent && !pcl.InvokeOptionSet(expr, "parent") {
+			options = append(options, "pulumi.Parent(&componentResource)")
+		}
+		if invokeOptions, ok := pcl.InvokeOptions(expr); ok {
+			for _, item := range invokeOptions.Items {
+				var buf bytes.Buffer
+				switch pcl.LiteralValueString(item.Key) {
+				case "provider":
+					g.Fgenf(&buf, "pulumi.Provider(%v)", item.Value)
+				case "parent":
+					g.Fgenf(&buf, "pulumi.Parent(%v)", item.Value)
+				case "version":
+					g.Fgenf(&buf, "pulumi.Version(%v)", item.Value)
+				case "pluginDownloadUrl":
+					g.Fgenf(&buf, "pulumi.PluginDownloadURL(%v)", item.Value)
+				case "dependsOn":
+					destType := model.NewListType(resourceType)
+					value, temps := g.lowerExpression(item.Value, destType)
+					contract.Assertf(len(temps) == 0, "can not have temporary variables when converting dependsOn option: %v", temps)
+					if isInputty(value.Type()) {
+						g.Fgenf(&buf, "pulumi.DependsOnInputs(%v)", value)
+					} else {
+						g.Fgenf(&buf, "pulumi.DependsOn(%v)", value)
 					}
-
-					if !last {
-						g.Fgen(&buf, ", ")
-					}
+				default:
+					continue
 				}
+				options = append(options, buf.String())
 			}
+		}
+		if len(options) > 0 {
+			g.Fgenf(w, ", %s", strings.Join(options, ", "))
 		} else if !expr.Signature.MultiArgumentInputs {
 			// A multi-argument invoke passes its inputs positionally and takes invokeOptions as a
 			// trailing variadic parameter, so when there are no options nothing is emitted. Other
 			// invokes pass a single options argument positionally, defaulting to nil.
-			g.Fgenf(&buf, ", nil")
+			g.Fgen(w, ", nil")
 		}
-		optionsBag = buf.String()
-		g.Fgenf(w, "%v)", optionsBag)
+		g.Fgen(w, ")")
 	case "max":
 		g.Fgen(w, "max(")
 		for i, arg := range expr.Args {
@@ -695,15 +756,11 @@ func (g *generator) genMethodCall(w io.Writer, expr *model.FunctionCallExpressio
 	propTypes := map[string]model.Type{}
 	switch t := argsDestType.(type) {
 	case *model.ObjectType:
-		for name, propType := range t.Properties {
-			propTypes[name] = propType
-		}
+		maps.Copy(propTypes, t.Properties)
 	case *model.UnionType:
 		for _, elemType := range t.ElementTypes {
 			if objType, ok := elemType.(*model.ObjectType); ok {
-				for name, propType := range objType.Properties {
-					propTypes[name] = propType
-				}
+				maps.Copy(propTypes, objType.Properties)
 				break
 			}
 		}
@@ -723,11 +780,11 @@ func (g *generator) genMethodCall(w io.Writer, expr *model.FunctionCallExpressio
 			for _, item := range args.Items {
 				key := item.Key.(*model.LiteralValueExpression).Value.AsString()
 				if destType, ok := propTypes[key]; ok {
-					g.Fgenf(w, "%s: ", Title(key))
+					g.Fgenf(w, "%s: ", structFieldName(key))
 					g.genInputValue(w, item.Value, destType)
 					g.Fgenf(w, ",\n")
 				} else {
-					g.Fgenf(w, "%s: %.v,\n", Title(key), item.Value)
+					g.Fgenf(w, "%s: %.v,\n", structFieldName(key), item.Value)
 				}
 			}
 			g.Fprint(w, "}")
@@ -890,11 +947,32 @@ func (g *generator) genObjectConsExpression(
 	isInput bool,
 ) {
 	isInput = isInput || isInputty(destType)
+	// If the destination is a schema-typed object whose input shape exists
+	// (i.e. the SDK generates a paired ...Args type), we're populating that
+	// input shape. isInputty only detects a wrapping OutputType; for union
+	// members inside a resource input the model type is a bare ObjectType,
+	// so detect the InputShape directly to route to the ...Args form.
+	// Plain invokes are exempt: they take the plain argument structs, and
+	// their anonymous inputs object is tokened "<fn>Args", so routing it to
+	// the input shape would name a nonexistent "...ArgsArgs" type.
+	if !isInput && !g.inPlainInvokeArgs {
+		if schemaType, ok := pcl.GetSchemaForType(destType); ok {
+			if obj, ok := codegen.UnwrapType(schemaType).(*schema.ObjectType); ok && obj.InputShape != nil {
+				isInput = true
+			}
+		}
+	}
 
 	// Track plain object context for nested rendering. If we enter a
 	// non-plain (input) context, clear the flag so nested objects get &.
+	// However, if inPlainObjectField was already set (by the caller
+	// detecting a plain schema property), preserve it — plain properties
+	// use value semantics even when the model type contains OutputType.
 	savedPlain := g.inPlainObjectField
-	if isInput {
+	if g.inPlainObjectField {
+		// Plain properties use Go native types, not Pulumi input types.
+		isInput = false
+	} else if isInput {
 		g.inPlainObjectField = false
 	}
 	defer func() { g.inPlainObjectField = savedPlain }()
@@ -956,10 +1034,23 @@ func (g *generator) genObjectConsExpressionWithTypeName(
 			if isMap || strings.HasSuffix(typeName, "Map") {
 				g.Fgenf(w, "%s", strconv.Quote(lit))
 			} else {
-				g.Fgenf(w, "%s", Title(lit))
+				g.Fgenf(w, "%s", structFieldName(lit))
 			}
 		} else {
 			g.Fgenf(w, "%.v", item.Key)
+		}
+
+		// Check if this property is marked as plain in the schema.
+		// Plain properties use value types in the Go SDK (no pointer,
+		// concrete map/array types) regardless of whether the parent
+		// object is plain or not.
+		savedPlain := g.inPlainObjectField
+		if !isMap {
+			if lit, ok := g.literalKey(item.Key); ok {
+				if isSchemaPropertyPlain(destType, lit) {
+					g.inPlainObjectField = true
+				}
+			}
 		}
 
 		// When rendering a plain struct field, collection-typed properties
@@ -970,12 +1061,19 @@ func (g *generator) genObjectConsExpressionWithTypeName(
 		if g.inPlainObjectField && !isMap {
 			if lit, ok := g.literalKey(item.Key); ok {
 				if propType := g.plainPropertyType(destType, lit); propType != nil {
-					switch v := item.Value.(type) {
+					// Unwrap the value from any __convert intrinsic to
+					// get at the underlying expression type.
+					innerValue := item.Value
+					if fce, ok := innerValue.(*model.FunctionCallExpression); ok && fce.Name == pcl.IntrinsicConvert {
+						innerValue = fce.Args[0]
+					}
+					switch v := innerValue.(type) {
 					case *model.ObjectConsExpression:
 						if _, ok := propType.(*model.MapType); ok {
 							g.Fgenf(w, ": ")
 							g.genObjectConsExpression(w, v, propType, false)
 							g.Fgenf(w, ",\n")
+							g.inPlainObjectField = savedPlain
 							continue
 						}
 					case *model.TupleConsExpression:
@@ -983,6 +1081,7 @@ func (g *generator) genObjectConsExpressionWithTypeName(
 							g.Fgenf(w, ": ")
 							g.genTupleConsExpression(w, v, propType)
 							g.Fgenf(w, ",\n")
+							g.inPlainObjectField = savedPlain
 							continue
 						}
 					}
@@ -991,6 +1090,7 @@ func (g *generator) genObjectConsExpressionWithTypeName(
 		}
 
 		g.Fgenf(w, ": %.v,\n", item.Value)
+		g.inPlainObjectField = savedPlain
 	}
 
 	g.Fgenf(w, "}")
@@ -998,11 +1098,50 @@ func (g *generator) genObjectConsExpressionWithTypeName(
 
 // plainPropertyType returns the model type for a property of a plain struct.
 // It looks up the property by name in the model ObjectType's properties map.
+// When destType is a union (as created by InputType), it searches each element
+// for an ObjectType with the named property.
 func (g *generator) plainPropertyType(destType model.Type, key string) model.Type {
-	if obj, ok := destType.(*model.ObjectType); ok {
-		return obj.Properties[key]
+	switch dt := destType.(type) {
+	case *model.ObjectType:
+		return dt.Properties[key]
+	case *model.UnionType:
+		for _, et := range dt.ElementTypes {
+			if obj, ok := et.(*model.ObjectType); ok {
+				if pt, ok := obj.Properties[key]; ok {
+					return pt
+				}
+			}
+		}
 	}
 	return nil
+}
+
+// isSchemaPropertyPlain checks whether the named property is marked as Plain
+// in the schema ObjectType backing destType. This is used to detect plain
+// properties nested inside non-plain parents, where the Go SDK still expects
+// value types (no pointer, concrete map/array types).
+func isSchemaPropertyPlain(destType model.Type, propName string) bool {
+	schemaType, ok := pcl.GetSchemaForType(destType)
+	if !ok {
+		return false
+	}
+	objType, ok := codegen.UnwrapType(schemaType).(*schema.ObjectType)
+	if !ok {
+		return false
+	}
+	for _, prop := range objType.Properties {
+		if prop.Name == propName {
+			// A property is plain when its type is NOT wrapped in
+			// schema.InputType, meaning it uses value semantics in
+			// the Go SDK.
+			_, isInput := prop.Type.(*schema.InputType)
+			if optType, isOpt := prop.Type.(*schema.OptionalType); isOpt {
+				_, isInput = optType.ElementType.(*schema.InputType)
+			}
+			return !isInput
+		}
+	}
+	return false
 }
 
 func (g *generator) GenRelativeTraversalExpression(w io.Writer, expr *model.RelativeTraversalExpression) {
@@ -1121,9 +1260,14 @@ func (g *generator) genScopeTraversalExpression(
 				defer g.Fgenf(w, ")")
 			}
 		} else {
-			// Wrap the emitted expression in a type conversion.
-			g.Fgenf(w, "%s(", g.argumentTypeName(expr.Type(), isInput))
-			defer g.Fgenf(w, ")")
+			// skip wrapping ID in pulumi.String
+			to := model.ResolveOutputs(destType)
+			from := model.ResolveOutputs(expr.Type())
+			if !to.Equals(model.IDType) || !from.Equals(model.StringType) {
+				// Wrap the emitted expression in a type conversion.
+				g.Fgenf(w, "%s(", g.argumentTypeName(expr.Type(), isInput))
+				defer g.Fgenf(w, ")")
+			}
 		}
 	}
 
@@ -1324,10 +1468,26 @@ func (g *generator) argumentTypeName(destType model.Type, isInput bool) (result 
 	}
 
 	if schemaType, ok := pcl.GetSchemaForType(destType); ok {
-		return (&pkgContext{
-			pkg:              (&schema.Package{Name: "main"}).Reference(),
-			externalPackages: g.externalCache,
-		}).argsType(schemaType)
+		// When the model type is a union (e.g. from schema.InputType) and
+		// GetSchemaForType synthesizes a schema.UnionType from the element
+		// types, argsType returns "interface{}" because it doesn't handle
+		// schema unions. Skip the schema path in that case and let the union
+		// handler below resolve element types individually.
+		if _, isSchemaUnion := schemaType.(*schema.UnionType); !isSchemaUnion {
+			// PCL binding attaches the plain-shape ObjectType even in input
+			// positions (e.g. members of a discriminated union used as a
+			// resource input). When we're rendering as input, swap in the
+			// paired InputShape so argsType returns the ...Args form.
+			if isInput {
+				if obj, ok := codegen.UnwrapType(schemaType).(*schema.ObjectType); ok && obj.InputShape != nil {
+					schemaType = obj.InputShape
+				}
+			}
+			return (&pkgContext{
+				pkg:              (&schema.Package{Name: "main"}).Reference(),
+				externalPackages: g.externalCache,
+			}).argsType(schemaType)
+		}
 	}
 
 	switch destType {
@@ -1355,6 +1515,11 @@ func (g *generator) argumentTypeName(destType model.Type, isInput bool) (result 
 				return "pulumi.String"
 			}
 			return "string"
+		case *model.IDType:
+			if isInput {
+				return "pulumi.IDInput"
+			}
+			return "pulumi.ID"
 		case *model.BoolType:
 			if isInput {
 				return "pulumi.Bool"
@@ -1369,23 +1534,51 @@ func (g *generator) argumentTypeName(destType model.Type, isInput bool) (result 
 			return string(*destType)
 		}
 	case *model.ObjectType:
-
-		if isInput {
-			// check for element type uniformity and return appropriate type if so
-			allSameType := true
-			var elmType string
-			for _, v := range destType.Properties {
-				valType := g.argumentTypeName(v, true)
-				if elmType != "" && elmType != valType {
-					allSameType = false
-					break
-				}
-				elmType = valType
+		// If this ObjectType was synthesized from a component's config
+		// variable, we know the generated Go struct name — use it (as a
+		// pointer, matching how values are rendered) rather than falling
+		// back to map[string]interface{}.
+		if !isInput {
+			if md, ok := model.GetObjectTypeAnnotation[*ObjectTypeFromConfigMetadata](destType); ok {
+				return "*" + md.TypeName
 			}
+		}
+		// check for element type uniformity and return appropriate type if so
+		allSameType := true
+		anyOptional := false
+		var elmType string
+		for _, v := range destType.Properties {
+			if model.IsOptionalType(v) {
+				anyOptional = true
+			}
+			valType := g.argumentTypeName(v, isInput)
+			if elmType != "" && elmType != valType {
+				allSameType = false
+				break
+			}
+			elmType = valType
+		}
+		if isInput {
 			if allSameType && elmType != "" {
 				return elmType + "Map"
 			}
 			return "pulumi.Map"
+		}
+		// Optional properties resolve to `*T`, but the Go SDK doesn't expose
+		// typed `*T` map/array/output containers (no `StringPtrMapOutput`).
+		// Fall back to map[string]interface{} so downstream ToSecret/ApplyT
+		// casts continue to work.
+		if allSameType && elmType != "" && !anyOptional {
+			// Nested ObjectType values whose schema resolves to a `...Args`
+			// struct are rendered as `&FooArgs{...}` (see
+			// genObjectConsExpressionWithTypeName), so the map value type
+			// must be the pointer form.
+			if strings.HasSuffix(elmType, "Args") && !strings.HasSuffix(elmType, "OutputArgs") &&
+				!strings.HasPrefix(elmType, "*") && !strings.HasPrefix(elmType, "map[") &&
+				!strings.HasPrefix(elmType, "[]") && !strings.HasPrefix(elmType, "pulumi.") {
+				elmType = "*" + elmType
+			}
+			return "map[string]" + elmType
 		}
 		return "map[string]interface{}"
 	case *model.MapType:
@@ -1401,6 +1594,9 @@ func (g *generator) argumentTypeName(destType model.Type, isInput bool) (result 
 		if strings.HasPrefix(argTypeName, "pulumi.") && !isResourceTypeName {
 			if argTypeName == "pulumi.Any" {
 				return "pulumi.Array"
+			}
+			if argTypeName == "pulumi.IDInput" {
+				return "pulumi.IDArray"
 			}
 			return argTypeName + "Array"
 		}
@@ -1430,6 +1626,9 @@ func (g *generator) argumentTypeName(destType model.Type, isInput bool) (result 
 			if strings.HasPrefix(argTypeName, "pulumi.") && !isResourceTypeName {
 				if argTypeName == "pulumi.Any" {
 					return "pulumi.Array"
+				}
+				if argTypeName == "pulumi.IDInput" {
+					return "pulumi.IDArray"
 				}
 				return argTypeName + "Array"
 			}
@@ -1469,6 +1668,10 @@ func (g *generator) argumentTypeName(destType model.Type, isInput bool) (result 
 			case *model.MapType:
 				return g.argumentTypeName(ut, isInput)
 			case *model.ListType:
+				return g.argumentTypeName(ut, isInput)
+			case *model.ObjectType:
+				return g.argumentTypeName(ut, isInput)
+			case *model.OutputType:
 				return g.argumentTypeName(ut, isInput)
 			}
 		}
@@ -1524,7 +1727,7 @@ func (g *generator) genRelativeTraversal(w io.Writer,
 				if key.AsString() == "id" && shouldConvert {
 					g.Fgenf(w, ".ID()")
 				} else {
-					g.Fgenf(w, ".%s", Title(key.AsString()))
+					g.Fgenf(w, ".%s", structFieldName(key.AsString()))
 				}
 			}
 		case cty.Number:
@@ -1551,7 +1754,111 @@ func (g *generator) secretOutputTypeName(expr *model.FunctionCallExpression) str
 	if argGoType == "map[string]interface{}" {
 		return "pulumi.Map"
 	}
+	// If the argument has a typed Go representation (e.g. map[string]*string,
+	// []int), the runtime output type follows the same shape (StringPtrMap,
+	// IntArray) — infer directly rather than relying on argumentTypeName of
+	// the expression's OutputType, which can lose pointer-ness.
+	if suffix, ok := pulumiConverterSuffix(argGoType); ok {
+		return "pulumi." + suffix
+	}
 	return g.argumentTypeName(expr.Type(), false)
+}
+
+// genIDConversion emits an ApplyT-based cast from an ID-typed expression
+// to a primitive scalar `to`. Returns false if `to` isn't a scalar we know
+// how to parse an ID string into.
+func (g *generator) genIDConversion(w io.Writer, from model.Expression, to model.Type) bool {
+	switch to {
+	case model.StringType:
+		g.Fgenf(w, "%.v.ToIDOutput().ToStringOutput()", from)
+		return true
+	case model.BoolType:
+		g.importer.Import("strconv", "strconv")
+		g.Fgenf(w,
+			"%.v.ToIDOutput().ApplyT(func(id pulumi.ID) (bool, error) {"+
+				" return strconv.ParseBool(string(id)) }).(pulumi.BoolOutput)", from)
+		return true
+	case model.IntType:
+		g.importer.Import("strconv", "strconv")
+		g.Fgenf(w,
+			"%.v.ToIDOutput().ApplyT(func(id pulumi.ID) (int, error) {"+
+				" return strconv.Atoi(string(id)) }).(pulumi.IntOutput)", from)
+		return true
+	case model.NumberType:
+		g.importer.Import("strconv", "strconv")
+		g.Fgenf(w,
+			"%.v.ToIDOutput().ApplyT(func(id pulumi.ID) (float64, error) {"+
+				" return strconv.ParseFloat(string(id), 64) }).(pulumi.Float64Output)", from)
+		return true
+	}
+	return false
+}
+
+// pulumiConverterSuffix maps a Go type name (e.g. "string", "*bool",
+// "map[string]int", "[]string") to the corresponding suffix used in Pulumi's
+// generated typed constructors and outputs (e.g. "String", "BoolPtr",
+// "IntMap", "StringArray"). Returns false if the Go type has no matching
+// typed converter — for example named struct types, unknown opaques, or
+// pointer element types nested inside a Map/Array (no `StringPtrMapOutput`
+// exists in the SDK).
+func pulumiConverterSuffix(goType string) (string, bool) {
+	if elm, ok := strings.CutPrefix(goType, "map[string]"); ok {
+		inner, ok := pulumiScalarSuffix(elm)
+		if !ok {
+			return "", false
+		}
+		return inner + "Map", true
+	}
+	if elm, ok := strings.CutPrefix(goType, "[]"); ok {
+		inner, ok := pulumiScalarSuffix(elm)
+		if !ok {
+			return "", false
+		}
+		return inner + "Array", true
+	}
+	if elm, ok := strings.CutPrefix(goType, "*"); ok {
+		inner, ok := pulumiScalarSuffix(elm)
+		if !ok {
+			return "", false
+		}
+		return inner + "Ptr", true
+	}
+	return pulumiScalarSuffix(goType)
+}
+
+// pulumiInputElementCastName recognizes a Go element type of the form
+// "pulumi.XInput" and returns "X". This is used to convert a raw Go
+// map/slice of such element types (e.g. map[string]pulumi.IDInput) into
+// the corresponding named Pulumi container (pulumi.IDMap) via a direct
+// type cast — the underlying types are identical but the named type
+// satisfies pulumi.Input.
+func pulumiInputElementCastName(elm string) (string, bool) {
+	name, ok := strings.CutPrefix(elm, "pulumi.")
+	if !ok {
+		return "", false
+	}
+	name, ok = strings.CutSuffix(name, "Input")
+	if !ok || name == "" {
+		return "", false
+	}
+	return name, true
+}
+
+// pulumiScalarSuffix returns the Pulumi suffix for a scalar Go type. Only
+// primitive scalars have generated Ptr/Map/Array containers in the SDK, so
+// callers use this to gate composition of the compound suffixes above.
+func pulumiScalarSuffix(goType string) (string, bool) {
+	switch goType {
+	case "string":
+		return "String", true
+	case "bool":
+		return "Bool", true
+	case "int":
+		return "Int", true
+	case "float64":
+		return "Float64", true
+	}
+	return "", false
 }
 
 // isTypedStructRoot reports whether the traversable represents a root whose
@@ -1619,9 +1926,14 @@ func (g *generator) genMapKeyAccess(w io.Writer, source model.Traversable, key s
 
 	// Non-schema ObjectTypes are represented as map[string]interface{} in Go,
 	// so map access returns interface{} and needs a type assertion.
-	// MapTypes use typed Go maps (e.g., map[string]string), so no assertion
-	// is needed since the access already returns the correct type.
+	// MapTypes (and ObjectTypes that unify to a typed map) use typed Go maps
+	// (e.g., map[string]string), so no assertion is needed since the access
+	// already returns the correct type.
 	if objType, ok := sourceType.(*model.ObjectType); ok {
+		sourceGoType := g.argumentTypeName(sourceType, false)
+		if strings.HasPrefix(sourceGoType, "map[string]") && sourceGoType != "map[string]interface{}" {
+			return
+		}
 		if propType, hasProp := objType.Properties[key]; hasProp {
 			propType = model.ResolveOutputs(propType)
 			propType = pcl.UnwrapOption(propType)
@@ -1647,6 +1959,7 @@ func (g *generator) lowerExpression(expr model.Expression, typ model.Type) (
 	expr = pcl.RewritePropertyReferences(expr)
 	expr, diags := pcl.RewriteApplies(expr, nameInfo(0), false /*TODO*/)
 	expr, sTemps, splatDiags := g.rewriteSplat(expr, g.splatSpiller)
+	expr, fTemps, forDiags := g.rewriteForExpressions(expr, g.forSpiller)
 
 	expr, convertDiags := pcl.RewriteConversions(expr, typ)
 	expr, tTemps, ternDiags := g.rewriteTernaries(expr, g.ternaryTempSpiller)
@@ -1654,9 +1967,12 @@ func (g *generator) lowerExpression(expr model.Expression, typ model.Type) (
 	expr, oTemps, optDiags := g.rewriteOptionals(expr, g.optionalSpiller)
 	expr, cTemps := g.rewriteInlineCalls(expr)
 
-	bufferSize := len(tTemps) + len(jTemps) + len(sTemps) + len(oTemps) + len(cTemps)
+	bufferSize := len(tTemps) + len(jTemps) + len(sTemps) + len(fTemps) + len(oTemps) + len(cTemps)
 	temps := slice.Prealloc[any](bufferSize)
 	for _, t := range tTemps {
+		temps = append(temps, t)
+	}
+	for _, t := range fTemps {
 		temps = append(temps, t)
 	}
 	for _, t := range jTemps {
@@ -1675,6 +1991,7 @@ func (g *generator) lowerExpression(expr model.Expression, typ model.Type) (
 	diags = append(diags, ternDiags...)
 	diags = append(diags, jsonDiags...)
 	diags = append(diags, splatDiags...)
+	diags = append(diags, forDiags...)
 	diags = append(diags, optDiags...)
 	g.diagnostics = g.diagnostics.Extend(diags)
 	return expr, temps
@@ -1693,6 +2010,10 @@ func (g *generator) genNYI(w io.Writer, reason string, vs ...any) {
 func (g *generator) genApply(w io.Writer, expr *model.FunctionCallExpression) {
 	// Extract the list of outputs and the continuation expression from the `__apply` arguments.
 	applyArgs, then := pcl.ParseApplyCall(expr)
+	if source, accessor, ok := g.outputPropertyProjection(applyArgs, then); ok {
+		g.Fgenf(w, "%.v.%s()", source, accessor)
+		return
+	}
 	isInput := false
 	retType := g.argumentTypeName(then.Signature.ReturnType, isInput)
 	// TODO account for outputs in other namespaces like aws
@@ -1713,8 +2034,8 @@ func (g *generator) genApply(w io.Writer, expr *model.FunctionCallExpression) {
 		if isMap || isList {
 			typeAssertion = ".(" + deferredOutputCastTypeParameter(then.Signature.ReturnType) + ")"
 		} else {
-			if strings.HasPrefix(retType, "*") {
-				retType = Title(strings.TrimPrefix(retType, "*")) + "Ptr"
+			if after, ok := strings.CutPrefix(retType, "*"); ok {
+				retType = Title(after) + "Ptr"
 			}
 			typeAssertion = fmt.Sprintf(".(%sOutput)", retType)
 			if !strings.Contains(retType, ".") {
@@ -1737,6 +2058,87 @@ func (g *generator) genApply(w io.Writer, expr *model.FunctionCallExpression) {
 		g.genAnonymousFunctionExpression(w, allApplyThen, typeConvDecls, true)
 		g.Fgenf(w, ")%s", typeAssertion)
 	}
+}
+
+// outputPropertyProjection recognizes applies that only project a single property from an object output and returns the
+// generated Go SDK accessor for that property, if one exists. For example, it replaces
+//
+//	output.ApplyT(func(v T) (U, error) { return v.Property, nil }).(UOutput)
+//
+// with output.Property().
+func (g *generator) outputPropertyProjection(
+	applyArgs []model.Expression,
+	then *model.AnonymousFunctionExpression,
+) (model.Expression, string, bool) {
+	if len(applyArgs) != 1 || len(then.Parameters) != 1 {
+		return nil, "", false
+	}
+	if _, ok := applyArgs[0].Type().(*model.OutputType); !ok {
+		return nil, "", false
+	}
+
+	var rel hcl.Traversal
+	switch body := then.Body.(type) {
+	case *model.ScopeTraversalExpression:
+		if len(body.Parts) != 2 || body.Parts[0] != then.Parameters[0] {
+			return nil, "", false
+		}
+		rel = body.Traversal.SimpleSplit().Rel
+	case *model.RelativeTraversalExpression:
+		// Output-producing invokes use the callback parameter as the source of a relative traversal.
+		source, ok := body.Source.(*model.ScopeTraversalExpression)
+		if !ok || len(source.Parts) != 1 || source.Parts[0] != then.Parameters[0] || len(body.Parts) != 2 {
+			return nil, "", false
+		}
+		rel = body.Traversal
+	default:
+		return nil, "", false
+	}
+	if len(rel) != 1 {
+		return nil, "", false
+	}
+	attr, ok := rel[0].(hcl.TraverseAttr)
+	if !ok {
+		return nil, "", false
+	}
+
+	argType := model.ResolveOutputs(applyArgs[0].Type())
+	optionalObjectOutput := model.IsOptionalType(argType)
+	argType = pcl.UnwrapOption(argType)
+	objectType, ok := argType.(*model.ObjectType)
+	if !ok {
+		return nil, "", false
+	}
+	schemaType, ok := pcl.GetSchemaForType(objectType)
+	if !ok {
+		return nil, "", false
+	}
+	schemaObject, ok := schemaType.(*schema.ObjectType)
+	if !ok {
+		return nil, "", false
+	}
+	if _, ok := schemaObject.Property(attr.Name); !ok {
+		return nil, "", false
+	}
+
+	owner := schemaObject.PackageReference
+	if owner == nil {
+		return nil, "", false
+	}
+	goInfo := goPackageInfo(owner)
+	mod := tokenToPackage(owner, goInfo.ModuleToPackage, schemaObject.Token)
+	pkg, ok := g.contexts[owner.Name()][mod]
+	if !ok {
+		return nil, "", false
+	}
+	receiver := regularOutputReceiver
+	if optionalObjectOutput {
+		receiver = pointerOutputReceiver
+	}
+	if !pkg.supportsOutputPropertyAccessors(schemaObject, receiver) {
+		return nil, "", false
+	}
+	return applyArgs[0], outputPropertyAccessorName(attr.Name, receiver), true
 }
 
 // rewriteThenForAllApply rewrites an apply func after a .All replacing params with []interface{}
@@ -1831,32 +2233,13 @@ func (g *generator) literalKey(x model.Expression) (string, bool) {
 	return strKey, true
 }
 
-// functionPackage resolves the package that defines the function token. For
-// extensions the token lives in the base namespace but the owner is the
-// extension; fall back to the token prefix.
-func (g *generator) functionPackage(token string) string {
-	pkg, _, _, _ := pcl.DecomposeToken(token, hcl.Range{})
-	if _, ok := g.packages[pkg]; ok {
-		return pkg
-	}
-	for name, p := range g.packages {
-		if _, ok := p.GetFunction(token); ok {
-			return name
-		}
-	}
-	return pkg
-}
-
 // functionName computes the go package, module, and name for the given function token.
 func (g *generator) functionName(tokenArg model.Expression) (string, string, string, hcl.Diagnostics) {
 	token := tokenArg.(*model.TemplateExpression).Parts[0].(*model.LiteralValueExpression).Value.AsString()
 	tokenRange := tokenArg.SyntaxNode().Range()
 
-	// Compute the resource type from the Pulumi type token. The package that
-	// defines the function may differ from the token's namespace (e.g. an invoke
-	// that resolves through an extension), so prefer functionPackage.
-	_, _, member, diagnostics := pcl.DecomposeToken(token, tokenRange)
-	pkg := g.functionPackage(token)
+	// Compute the resource type from the Pulumi type token.
+	pkg, _, member, diagnostics := pcl.DecomposeToken(token, tokenRange)
 	module := g.resolveModule(token)
 	if strings.HasPrefix(member, "get") {
 		if g.useLookupInvokeForm(token) {

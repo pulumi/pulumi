@@ -304,6 +304,10 @@ func (e *testEnvironments) LoadEnvironment(ctx context.Context, name string) ([]
 	return bytes, rot128{}, nil
 }
 
+func (e *testEnvironments) AuthorizeImport(_ context.Context, _ string, _ string, _ bool) error {
+	return nil
+}
+
 type benchEnvironments struct {
 	defs  map[string][]byte
 	delay time.Duration
@@ -344,6 +348,10 @@ func (e *benchEnvironments) LoadEnvironment(ctx context.Context, name string) ([
 		return nil, nil, os.ErrNotExist
 	}
 	return bytes, rot128{}, nil
+}
+
+func (e *benchEnvironments) AuthorizeImport(_ context.Context, _ string, _ string, _ bool) error {
+	return nil
 }
 
 func sortEnvironmentDiagnostics(diags syntax.Diagnostics) {
@@ -456,11 +464,11 @@ func TestEval(t *testing.T) {
 				sortEnvironmentDiagnostics(loadDiags)
 
 				check, checkDiags := CheckEnvironment(t.Context(), environmentName, env, rot128{}, testProviders{},
-					&testEnvironments{basePath}, execContext, showSecrets)
+					&testEnvironments{basePath}, execContext, showSecrets, EvalOptions{TraceMode: TraceModeFull})
 				sortEnvironmentDiagnostics(checkDiags)
 
 				actual, evalDiags := EvalEnvironment(t.Context(), environmentName, env, rot128{}, testProviders{},
-					&testEnvironments{basePath}, execContext)
+					&testEnvironments{basePath}, execContext, EvalOptions{TraceMode: TraceModeFull})
 				sortEnvironmentDiagnostics(evalDiags)
 
 				var rotated *esc.Environment
@@ -477,6 +485,7 @@ func TestEval(t *testing.T) {
 						&testEnvironments{basePath},
 						execContext,
 						rotatePaths,
+						EvalOptions{TraceMode: TraceModeFull},
 					)
 					patches = rotationResult.Patches()
 				}
@@ -536,12 +545,12 @@ func TestEval(t *testing.T) {
 			require.Equal(t, expected.LoadDiags, diags)
 
 			check, diags := CheckEnvironment(t.Context(), environmentName, env, rot128{}, testProviders{},
-				&testEnvironments{basePath}, execContext, showSecrets)
+				&testEnvironments{basePath}, execContext, showSecrets, EvalOptions{TraceMode: TraceModeFull})
 			sortEnvironmentDiagnostics(diags)
 			require.Equal(t, expected.CheckDiags, diags)
 
 			actual, diags := EvalEnvironment(t.Context(), environmentName, env, rot128{}, testProviders{},
-				&testEnvironments{basePath}, execContext)
+				&testEnvironments{basePath}, execContext, EvalOptions{TraceMode: TraceModeFull})
 			sortEnvironmentDiagnostics(diags)
 			require.Equal(t, expected.EvalDiags, diags)
 
@@ -556,6 +565,7 @@ func TestEval(t *testing.T) {
 					&testEnvironments{basePath},
 					execContext,
 					rotatePaths,
+					EvalOptions{TraceMode: TraceModeFull},
 				)
 				var patches []*Patch
 				if rotationResult != nil {
@@ -649,6 +659,7 @@ func benchmarkEval(b *testing.B, openDelay, loadDelay time.Duration) {
 			testProviders{benchDelay: openDelay},
 			envs,
 			execContext,
+			EvalOptions{},
 		)
 		require.Empty(b, evalDiags)
 	}
@@ -699,7 +710,7 @@ func TestSyntaxErrorCheck(t *testing.T) {
 	require.NoError(t, err)
 
 	check, checkDiags := CheckEnvironment(t.Context(), environmentName, env, rot128{}, testProviders{},
-		&testEnvironments{}, execContext, false)
+		&testEnvironments{}, execContext, false, EvalOptions{})
 
 	assert.True(t, checkDiags.HasErrors())
 	require.NotNil(t, check)

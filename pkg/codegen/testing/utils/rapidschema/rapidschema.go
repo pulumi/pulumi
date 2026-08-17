@@ -24,6 +24,7 @@ package rapidschema
 
 import (
 	"fmt"
+	"slices"
 	"sort"
 
 	"github.com/blang/semver"
@@ -129,18 +130,36 @@ type pkgCtx struct {
 func drawPackageSpec(t *rapid.T) schema.PackageSpec {
 	name := drawPackageName(t, "pkgName")
 
+	ctx := &pkgCtx{
+		name:             name,
+		enumTokensByBase: map[string][]string{},
+		typeDefs:         map[string]schema.ComplexTypeSpec{},
+	}
+
+	nResources := rapid.IntRange(0, 4).Draw(t, "nResources")
+	resourceTokens := make([]string, nResources)
+	for i := range nResources {
+		module := drawModule(t, ctx, fmt.Sprintf("res%d:module", i))
+		resourceTokens[i] = fmt.Sprintf("%s:%s:Res%d", name, module, i)
+	}
+
+	resources := make(map[string]schema.ResourceSpec, nResources)
+	for _, tok := range resourceTokens {
+		resources[tok] = drawResourceSpec(t, ctx, tok)
+	}
+
+	spec := schema.PackageSpec{
+		Name:      name,
+		Version:   Version().Draw(t, "version").String(),
+		Types:     ctx.typeDefs,
+		Resources: resources,
+	}
+
 	emptyProvider := func() *schema.ResourceSpec {
 		// Provider is required by the binder; an empty object satisfies it
 		// without contributing any properties.
 		return &schema.ResourceSpec{ObjectTypeSpec: schema.ObjectTypeSpec{Type: "object"}}
 	}
-
-	// Settle the parameterization before drawing any tokens: extension
-	// parameterized packages must namespace their tokens under the base
-	// provider rather than their own name, so the token namespace has to be
-	// known up front.
-	var spec schema.PackageSpec
-	tokenNamespace := name
 	switch rapid.IntRange(0, 2).Draw(t, "parameterization") {
 	case 0:
 		spec.Provider = emptyProvider()
@@ -151,31 +170,7 @@ func drawPackageSpec(t *rapid.T) schema.PackageSpec {
 	case 2:
 		e := drawExtensionParameterizationSpec(t, "extensionParameterization")
 		spec.ExtensionParameterization = &e
-		tokenNamespace = e.BaseProvider.Name
 	}
-
-	ctx := &pkgCtx{
-		name:             tokenNamespace,
-		enumTokensByBase: map[string][]string{},
-		typeDefs:         map[string]schema.ComplexTypeSpec{},
-	}
-
-	nResources := rapid.IntRange(0, 4).Draw(t, "nResources")
-	resourceTokens := make([]string, nResources)
-	for i := 0; i < nResources; i++ {
-		module := drawModule(t, ctx, fmt.Sprintf("res%d:module", i))
-		resourceTokens[i] = fmt.Sprintf("%s:%s:Res%d", tokenNamespace, module, i)
-	}
-
-	resources := make(map[string]schema.ResourceSpec, nResources)
-	for _, tok := range resourceTokens {
-		resources[tok] = drawResourceSpec(t, ctx, tok)
-	}
-
-	spec.Name = name
-	spec.Version = Version().Draw(t, "version").String()
-	spec.Types = ctx.typeDefs
-	spec.Resources = resources
 
 	return spec
 }
@@ -328,7 +323,7 @@ func drawEnumBody(t *rapid.T, base, label string) schema.ComplexTypeSpec {
 	).Draw(t, label+":names")
 
 	specs := make([]schema.EnumValueSpec, n)
-	for i := 0; i < n; i++ {
+	for i := range n {
 		specs[i] = schema.EnumValueSpec{Name: names[i], Value: values[i]}
 	}
 	return schema.ComplexTypeSpec{
@@ -454,12 +449,7 @@ func isDirectObjectRef(spec schema.TypeSpec, ctx *pkgCtx) bool {
 		return false
 	}
 	tok := spec.Ref[len(prefix):]
-	for _, ot := range ctx.objectTokens {
-		if ot == tok {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(ctx.objectTokens, tok)
 }
 
 func drawPropertySpec(t *rapid.T, ctx *pkgCtx, label string, depth int) schema.PropertySpec {
@@ -551,7 +541,7 @@ func drawEnumToken(
 func drawUnionTypeSpec(t *rapid.T, ctx *pkgCtx, label string, depth int) schema.TypeSpec {
 	n := rapid.IntRange(2, 4).Draw(t, label+":unionLen")
 	members := make([]schema.TypeSpec, n)
-	for i := 0; i < n; i++ {
+	for i := range n {
 		members[i] = drawTypeSpec(t, ctx, fmt.Sprintf("%s:m%d", label, i), depth-1)
 	}
 	spec := schema.TypeSpec{OneOf: members}
@@ -567,7 +557,7 @@ func drawUnionTypeSpec(t *rapid.T, ctx *pkgCtx, label string, depth int) schema.
 		if rapid.Bool().Draw(t, label+":haveMapping") && len(ctx.objectTokens) > 0 {
 			mapping := make(map[string]string)
 			count := rapid.IntRange(1, len(ctx.objectTokens)).Draw(t, label+":mappingLen")
-			for i := 0; i < count; i++ {
+			for i := range count {
 				mapping[fmt.Sprintf("v%d", i)] = "#/types/" + ctx.objectTokens[i]
 			}
 			disc.Mapping = mapping

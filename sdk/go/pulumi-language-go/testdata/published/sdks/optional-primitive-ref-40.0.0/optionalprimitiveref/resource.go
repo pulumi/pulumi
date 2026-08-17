@@ -15,7 +15,8 @@ import (
 type Resource struct {
 	pulumi.CustomResourceState
 
-	Data DataOutput `pulumi:"data"`
+	Data         DataOutput    `pulumi:"data"`
+	OptionalData DataPtrOutput `pulumi:"optionalData"`
 }
 
 // NewResource registers a new resource with the given unique name, arguments, and options.
@@ -61,12 +62,14 @@ func (ResourceState) ElementType() reflect.Type {
 }
 
 type resourceArgs struct {
-	Data Data `pulumi:"data"`
+	Data         Data  `pulumi:"data"`
+	OptionalData *Data `pulumi:"optionalData"`
 }
 
 // The set of arguments for constructing a Resource resource.
 type ResourceArgs struct {
-	Data DataInput
+	Data         DataInput
+	OptionalData DataPtrInput
 }
 
 func (ResourceArgs) ElementType() reflect.Type {
@@ -108,6 +111,10 @@ func (o ResourceOutput) ToResourceOutputWithContext(ctx context.Context) Resourc
 
 func (o ResourceOutput) Data() DataOutput {
 	return o.ApplyT(func(v *Resource) DataOutput { return v.Data }).(DataOutput)
+}
+
+func (o ResourceOutput) OptionalData() DataPtrOutput {
+	return o.ApplyT(func(v *Resource) DataPtrOutput { return v.OptionalData }).(DataPtrOutput)
 }
 
 func init() {

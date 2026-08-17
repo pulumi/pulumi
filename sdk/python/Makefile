@@ -8,7 +8,7 @@ $(info    VERSION       = $(VERSION))
 $(info    PYPI_VERSION  = $(PYPI_VERSION))
 endif
 
-PROJECT_PKGS = $(shell go list -C cmd/pulumi-language-python ./...)
+LANGHOST_PKGS = $(shell go list -C cmd/pulumi-language-python ./...)
 
 _ := $(shell go build -o build/helpmakego github.com/iwahbe/helpmakego)
 
@@ -73,25 +73,30 @@ install_plugin:: build_plugin
 
 install:: install_package install_plugin
 
+test_go_fast::
+	@cd cmd/pulumi-language-python && \
+		$(GO_TEST_FAST) ${LANGHOST_PKGS}
+
 test_go:: $(TEST_ALL_DEPS)
 	@cd cmd/pulumi-language-python && \
-		$(GO_TEST) ${PROJECT_PKGS}
+		$(GO_TEST) ${LANGHOST_PKGS}
 
-test_fast:: $(TEST_ALL_DEPS)
-	. .venv/*/activate && ./scripts/test_fast.sh
+test_unit_fast:: ensure
+	. .venv/*/activate && ./scripts/test_unit.sh --fast
+
+test_unit:: $(TEST_ALL_DEPS)
+	. .venv/*/activate && ./scripts/test_unit.sh --coverage
+
+test_fast:: test_unit_fast test_go_fast
 
 test_auto:: $(TEST_ALL_DEPS)
 	. .venv/*/activate && ./scripts/test_auto.sh
 
-test_all:: test_fast test_auto test_go
+test_all:: test_unit test_auto test_go
 
-test_fast_lowest_deps:: ensure_lowest
-	. .venv/*/activate && ./scripts/test_fast.sh
-
-test_auto_lowest_deps:: ensure_lowest
+test_all_lowest_deps:: ensure_lowest
+	. .venv/*/activate && ./scripts/test_unit.sh --coverage
 	. .venv/*/activate && ./scripts/test_auto.sh
-
-test_all_lowest_deps:: test_fast_lowest_deps test_auto_lowest_deps
 
 PULUMI_TEST_ORG ?= $(shell pulumi whoami --json | jq ".organizations[0]")
 

@@ -26,10 +26,9 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 )
 
-// A small provider with a single resource "Resource" that has a single field "Data" which is a type whose
-// inner primitive fields are all optional. The resource's "data" property itself is required (both as input
-// and output). This exercises the codegen path where a program traverses an output object to reach an
-// optional scalar (e.g. `res.data.string` where the inner field is *string).
+// A small provider with a single resource "Resource" whose object properties have optional primitive fields.
+// The resource has both a required "data" property and an optional "optionalData" property so the language
+// tests can exercise traversals through both regular and pointer object outputs.
 type OptionalPrimitiveRefProvider struct {
 	plugin.UnimplementedProvider
 }
@@ -83,13 +82,15 @@ func (p *OptionalPrimitiveRefProvider) GetSchema(
 	}
 	// No "required" array: all inner fields are optional.
 
-	resourceProperties := map[string]schema.PropertySpec{
-		"data": {
-			TypeSpec: schema.TypeSpec{
-				Type: "ref",
-				Ref:  "#/types/optional-primitive-ref:index:Data",
-			},
+	dataProperty := schema.PropertySpec{
+		TypeSpec: schema.TypeSpec{
+			Type: "ref",
+			Ref:  "#/types/optional-primitive-ref:index:Data",
 		},
+	}
+	resourceProperties := map[string]schema.PropertySpec{
+		"data":         dataProperty,
+		"optionalData": dataProperty,
 	}
 	resourceRequired := []string{"data"}
 
@@ -124,7 +125,7 @@ func (p *OptionalPrimitiveRefProvider) GetSchema(
 func (p *OptionalPrimitiveRefProvider) CheckConfig(
 	_ context.Context, req plugin.CheckConfigRequest,
 ) (plugin.CheckConfigResponse, error) {
-	version, ok := req.News["version"]
+	version, ok := req.News.GetOk("version")
 	if !ok {
 		return plugin.CheckConfigResponse{
 			Failures: makeCheckFailure("version", "missing version"),
@@ -135,13 +136,13 @@ func (p *OptionalPrimitiveRefProvider) CheckConfig(
 			Failures: makeCheckFailure("version", "version is not a string"),
 		}, nil
 	}
-	if version.StringValue() != "40.0.0" {
+	if version.AsString() != "40.0.0" {
 		return plugin.CheckConfigResponse{
 			Failures: makeCheckFailure("version", "version is not 40.0.0"),
 		}, nil
 	}
 
-	if len(req.News) != 1 {
+	if req.News.Len() != 1 {
 		return plugin.CheckConfigResponse{
 			Failures: makeCheckFailure("", fmt.Sprintf("too many properties: %v", req.News)),
 		}, nil
@@ -165,75 +166,72 @@ func (p *OptionalPrimitiveRefProvider) Check(
 			Failures: makeCheckFailure("data", "missing value"),
 		}, nil
 	}
-	if !data.IsObject() {
-		return plugin.CheckResponse{
-			Failures: makeCheckFailure("data", "value is not an object"),
-		}, nil
-	}
-	if len(req.News) != 1 {
+	if len(req.News) > 2 {
 		return plugin.CheckResponse{
 			Failures: makeCheckFailure("", fmt.Sprintf("too many properties: %v", req.News)),
 		}, nil
 	}
+	if _, ok := req.News["optionalData"]; len(req.News) == 2 && !ok {
+		return plugin.CheckResponse{
+			Failures: makeCheckFailure("", fmt.Sprintf("unexpected properties: %v", req.News)),
+		}, nil
+	}
 
-	inner := data.ObjectValue()
-	for key, v := range inner {
-		switch key {
-		case "boolean":
-			if !v.IsBool() {
-				return plugin.CheckResponse{
-					Failures: makeCheckFailure(key, "value is not a boolean"),
-				}, nil
-			}
-		case "float":
-			if !v.IsNumber() {
-				return plugin.CheckResponse{
-					Failures: makeCheckFailure(key, "value is not a number"),
-				}, nil
-			}
-		case "integer":
-			if !v.IsNumber() {
-				return plugin.CheckResponse{
-					Failures: makeCheckFailure(key, "value is not a number"),
-				}, nil
-			}
-		case "string":
-			if !v.IsString() {
-				return plugin.CheckResponse{
-					Failures: makeCheckFailure(key, "value is not a string"),
-				}, nil
-			}
-		case "numberArray":
-			if !v.IsArray() {
-				return plugin.CheckResponse{
-					Failures: makeCheckFailure(key, "value is not an array"),
-				}, nil
-			}
-			for _, e := range v.ArrayValue() {
-				if !e.IsNumber() {
-					return plugin.CheckResponse{
-						Failures: makeCheckFailure(key, "array element is not a number"),
-					}, nil
+	checkData := func(name resource.PropertyKey, value resource.PropertyValue) []plugin.CheckFailure {
+		if !value.IsObject() {
+			return makeCheckFailure(name, "value is not an object")
+		}
+
+		for key, v := range value.ObjectValue() {
+			property := resource.PropertyKey(string(name) + "." + string(key))
+			switch key {
+			case "boolean":
+				if !v.IsBool() {
+					return makeCheckFailure(property, "value is not a boolean")
 				}
-			}
-		case "booleanMap":
-			if !v.IsObject() {
-				return plugin.CheckResponse{
-					Failures: makeCheckFailure(key, "value is not a map"),
-				}, nil
-			}
-			for _, e := range v.ObjectValue() {
-				if !e.IsBool() {
-					return plugin.CheckResponse{
-						Failures: makeCheckFailure(key, "map value is not a boolean"),
-					}, nil
+			case "float":
+				if !v.IsNumber() {
+					return makeCheckFailure(property, "value is not a number")
 				}
+			case "integer":
+				if !v.IsNumber() {
+					return makeCheckFailure(property, "value is not a number")
+				}
+			case "string":
+				if !v.IsString() {
+					return makeCheckFailure(property, "value is not a string")
+				}
+			case "numberArray":
+				if !v.IsArray() {
+					return makeCheckFailure(property, "value is not an array")
+				}
+				for _, e := range v.ArrayValue() {
+					if !e.IsNumber() {
+						return makeCheckFailure(property, "array element is not a number")
+					}
+				}
+			case "booleanMap":
+				if !v.IsObject() {
+					return makeCheckFailure(property, "value is not a map")
+				}
+				for _, e := range v.ObjectValue() {
+					if !e.IsBool() {
+						return makeCheckFailure(property, "map value is not a boolean")
+					}
+				}
+			default:
+				return makeCheckFailure(property, fmt.Sprintf("unexpected property: %s", key))
 			}
-		default:
-			return plugin.CheckResponse{
-				Failures: makeCheckFailure(resource.PropertyKey("data."+string(key)),
-					fmt.Sprintf("unexpected property: %s", key)),
-			}, nil
+		}
+		return nil
+	}
+
+	if failures := checkData("data", data); len(failures) != 0 {
+		return plugin.CheckResponse{Failures: failures}, nil
+	}
+	if optionalData, ok := req.News["optionalData"]; ok {
+		if failures := checkData("optionalData", optionalData); len(failures) != 0 {
+			return plugin.CheckResponse{Failures: failures}, nil
 		}
 	}
 

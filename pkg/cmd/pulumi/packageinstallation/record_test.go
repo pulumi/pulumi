@@ -159,16 +159,16 @@ func (w *recordingWorkspace) DownloadPlugin(
 	}, err
 }
 
-func (w *recordingWorkspace) New() (pkgWorkspace.W, error) {
-	w.start("New")
-	result, err := w.w.New()
+func (w *recordingWorkspace) New(dir string) (pkgWorkspace.W, error) {
+	w.start("New", dir)
+	result, err := w.w.New(dir)
 	w.finish(result, err)
 	return result, err
 }
 
-func (w *recordingWorkspace) ReadProject() (*workspace.Project, string, error) {
-	w.start("ReadProject")
-	project, path, err := w.w.ReadProject()
+func (w *recordingWorkspace) ReadProject(dir string) (*workspace.Project, string, error) {
+	w.start("ReadProject", dir)
+	project, path, err := w.w.ReadProject(dir)
 	w.finish(project, path, err)
 	return project, path, err
 }

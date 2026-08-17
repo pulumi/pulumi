@@ -135,6 +135,11 @@ var AccessToken = env.String("ACCESS_TOKEN",
 	"The access token used to authenticate with the Pulumi Service.",
 	env.Secret)
 
+var CredentialStore = env.String("CREDENTIAL_STORE",
+	`How to keep CLI credentials: "auto" encrypts them with a key protected by the operating `+
+		`system (macOS Keychain, Windows Credential Manager, Linux Secret Service, TPM) when such `+
+		`protection is usable, "os" requires it, and "plaintext" uses the plaintext credentials file.`)
+
 var DisableSecretCache = env.Bool("DISABLE_SECRET_CACHE",
 	"Disable caching encryption operations for unchanged stack secrets.")
 
@@ -168,8 +173,8 @@ var (
 		"Disables the warning about legacy stack files mixed with project-scoped stack files.",
 		env.Alternative("SELF_MANAGED_STATE_NO_LEGACY_WARNING"))
 
-	DIYBackendIgnoreDeprecationWarning = env.Bool("DIY_BACKEND_IGNORE_DEPRECATION_WARNING",
-		"Disables the warning about legacy stack mode being deprecated.")
+	DIYBackendIgnoreDeprecationError = env.Bool("DIY_BACKEND_IGNORE_DEPRECATION_ERROR",
+		"Disables the error about legacy stack mode being deprecated.")
 
 	DIYBackendLegacyLayout = env.Bool("DIY_BACKEND_LEGACY_LAYOUT",
 		"Uses the legacy layout for new buckets, which currently default to project-scoped stacks.",
@@ -193,11 +198,6 @@ var (
 
 	DIYBackendParallel = env.Int("DIY_BACKEND_PARALLEL",
 		"Number of parallel operations when fetching stacks and resources from the DIY backend.")
-)
-
-// Environment variables which affect Pulumi AI integrations
-var (
-	AIServiceEndpoint = env.String("AI_SERVICE_ENDPOINT", "Endpoint for Pulumi AI service")
 )
 
 var DisableValidation = env.Bool(

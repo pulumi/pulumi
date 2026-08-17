@@ -16,8 +16,12 @@ package stack
 
 import (
 	"fmt"
+	"maps"
 	"os"
+	"slices"
 	"strings"
+
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/secrets"
@@ -30,7 +34,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/maputil"
 	"github.com/spf13/cobra"
 )
 
@@ -210,7 +213,7 @@ func (edge *parentEdge) Color() string {
 // are calculated on-demand using the combination of the graph and the state.
 type dependencyVertex struct {
 	graph         *dependencyGraph
-	resource      *resource.State
+	resource      *pkgresource.State
 	incomingEdges []graph.Edge
 	outgoingEdges []graph.Edge
 	useShortName  bool
@@ -248,7 +251,7 @@ type dependencyGraph struct {
 // for simplicity, we define the root set of our dependency graph to be everything.
 func (dg *dependencyGraph) Roots() []graph.Edge {
 	rootEdges := slice.Prealloc[graph.Edge](len(dg.vertices))
-	for _, urn := range maputil.SortedKeys(dg.vertices) {
+	for _, urn := range slices.Sorted(maps.Keys(dg.vertices)) {
 		vertex := dg.vertices[urn]
 		edge := &dependencyEdge{
 			to:   vertex,
@@ -284,7 +287,7 @@ func makeDependencyGraph(snapshot *deploy.Snapshot, opts *graphCommandOptions) *
 			// If we have per-property dependency information, annotate the dependency edges
 			// we generate with the names of the properties associated with each dependency.
 			depBlame := make(map[resource.URN][]string)
-			for _, k := range maputil.SortedKeys(vertex.resource.PropertyDependencies) {
+			for _, k := range slices.Sorted(maps.Keys(vertex.resource.PropertyDependencies)) {
 				for _, dep := range vertex.resource.PropertyDependencies[k] {
 					depBlame[dep] = append(depBlame[dep], string(k))
 				}

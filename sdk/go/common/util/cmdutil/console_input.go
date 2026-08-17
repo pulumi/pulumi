@@ -19,11 +19,11 @@ package cmdutil
 import (
 	"io"
 
-	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/internal/third_party/textinput"
 )
 
 func readConsoleFancy(stdout io.Writer, stdin io.Reader, prompt string, secret bool) (string, error) {

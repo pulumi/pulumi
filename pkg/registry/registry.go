@@ -56,14 +56,17 @@ type Registry interface {
 
 	// ListTemplates retrieves registry-backed templates matching the given options.
 	//
-	// Pagination is handled by the iterator: implementations follow continuation
-	// tokens internally so callers see a single flat stream.
+	// The iterator yields one [apitype.ListTemplatesResponse] per service page:
+	// implementations follow continuation tokens internally, so callers iterate pages
+	// without managing pagination themselves. Fields that describe the request as a
+	// whole, such as [apitype.ListTemplatesResponse.VcsTemplateSourceTotals], are
+	// repeated on every page. Use [Templates] to iterate the individual templates.
 	//
 	// VCS-backed templates (those sourced from GitHub or GitLab repositories) are
 	// not returned by this method.
 	ListTemplates(
 		ctx context.Context, opts ListTemplatesOptions,
-	) iter.Seq2[apitype.TemplateMetadata, error]
+	) iter.Seq2[apitype.ListTemplatesResponse, error]
 
 	// DownloadTemplate downloads a template given the value of
 	// [apitype.TemplateMetadata].DownloadURL.
@@ -80,6 +83,32 @@ type ListTemplatesOptions struct {
 	// Search performs a case-insensitive partial match against the template
 	// name, display name, description, metadata values, and runtime language.
 	Search string
+	// Backing restricts results to the given backings. Listing
+	// [apitype.TemplateBackingVcs] makes the service fetch from the upstream provider, which
+	// is far slower than the other backings.
+	Backing []apitype.TemplateBacking
+}
+
+// Templates flattens the pages of a [Registry.ListTemplates] listing into the individual
+// templates they carry.
+func Templates(
+	pages iter.Seq2[apitype.ListTemplatesResponse, error],
+) iter.Seq2[apitype.TemplateMetadata, error] {
+	return func(yield func(apitype.TemplateMetadata, error) bool) {
+		for page, err := range pages {
+			if err != nil {
+				if !yield(apitype.TemplateMetadata{}, err) {
+					return
+				}
+				continue
+			}
+			for _, t := range page.Templates {
+				if !yield(t, nil) {
+					return
+				}
+			}
+		}
+	}
 }
 
 type registryKey struct{}
@@ -139,11 +168,11 @@ func (r *onDemandRegistry) GetTemplate(
 
 func (r *onDemandRegistry) ListTemplates(
 	ctx context.Context, opts ListTemplatesOptions,
-) iter.Seq2[apitype.TemplateMetadata, error] {
+) iter.Seq2[apitype.ListTemplatesResponse, error] {
 	impl, err := r.factory()
 	if err != nil {
-		return func(consumer func(apitype.TemplateMetadata, error) bool) {
-			consumer(apitype.TemplateMetadata{}, err)
+		return func(consumer func(apitype.ListTemplatesResponse, error) bool) {
+			consumer(apitype.ListTemplatesResponse{}, err)
 		}
 	}
 	return impl.ListTemplates(ctx, opts)

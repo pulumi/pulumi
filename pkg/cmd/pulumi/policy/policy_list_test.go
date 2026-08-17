@@ -52,7 +52,7 @@ func TestPolicyLsCmd_QueriesPolicyPacksByOrgNameNotUserName(t *testing.T) {
 	}
 
 	ws := &pkgWorkspace.MockContext{
-		ReadProjectF: func() (*workspace.Project, string, error) {
+		ReadProjectF: func(_ string) (*workspace.Project, string, error) {
 			return nil, "", workspace.ErrProjectNotFound
 		},
 	}

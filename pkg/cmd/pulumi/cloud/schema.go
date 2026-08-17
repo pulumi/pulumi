@@ -16,6 +16,8 @@ package cloud
 
 import (
 	"fmt"
+	"maps"
+	"slices"
 	"sort"
 	"strings"
 
@@ -61,9 +63,7 @@ func (c renderCtx) withStripProp(prop string) renderCtx {
 		return c
 	}
 	next := make(map[string]bool, len(c.stripDiscrimProps)+1)
-	for k, v := range c.stripDiscrimProps {
-		next[k] = v
-	}
+	maps.Copy(next, c.stripDiscrimProps)
 	next[prop] = true
 	c.stripDiscrimProps = next
 	return c
@@ -390,11 +390,8 @@ func (r *schemaRenderer) typeTag(s *base.Schema) string {
 		parts = append(parts, "format:"+s.Format)
 	}
 
-	for _, t := range s.Type {
-		if t == "null" {
-			parts = append(parts, "nullable")
-			break
-		}
+	if slices.Contains(s.Type, "null") {
+		parts = append(parts, "nullable")
 	}
 	if s.Nullable != nil && *s.Nullable {
 		parts = append(parts, "nullable")
@@ -571,9 +568,7 @@ func (st mdRenderState) withStripProp(prop string) mdRenderState {
 		return st
 	}
 	next := make(map[string]bool, len(st.stripDiscrimProps)+1)
-	for k, v := range st.stripDiscrimProps {
-		next[k] = v
-	}
+	maps.Copy(next, st.stripDiscrimProps)
 	next[prop] = true
 	st.stripDiscrimProps = next
 	return st
@@ -869,10 +864,8 @@ func (r *schemaRenderer) writeDiscriminatorMarkdown(b *strings.Builder, s *base.
 func (r *schemaRenderer) markdownTypeBadge(s *base.Schema) string {
 	name := r.markdownTypeName(s)
 	if s != nil {
-		for _, t := range s.Type {
-			if t == "null" {
-				return "`" + name + " | null`"
-			}
+		if slices.Contains(s.Type, "null") {
+			return "`" + name + " | null`"
 		}
 		if s.Nullable != nil && *s.Nullable {
 			return "`" + name + " | null`"

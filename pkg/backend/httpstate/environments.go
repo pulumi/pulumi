@@ -69,8 +69,10 @@ func (b *cloudBackend) OpenYAMLEnvironment(
 	org string,
 	yaml []byte,
 	duration time.Duration,
+	environmentOverrides map[string]string,
 ) (*esc.Environment, apitype.EnvironmentDiagnostics, error) {
-	id, diags, err := b.escClient.OpenYAMLEnvironment(ctx, org, yaml, duration)
+	id, diags, err := b.escClient.OpenYAMLEnvironment(ctx, org, yaml, duration,
+		client.OpenYAMLOption{EnvironmentOverrides: environmentOverrides})
 	if err != nil || len(diags) != 0 {
 		return nil, convertESCDiags(diags), err
 	}

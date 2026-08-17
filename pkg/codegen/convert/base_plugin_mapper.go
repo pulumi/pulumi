@@ -201,7 +201,15 @@ func (m *basePluginMapper) GetMapping(
 	ctx context.Context,
 	provider string,
 	hint *MapperPackageHint,
+	ecosystem string,
 ) ([]byte, error) {
+	// The ecosystem passed on the request identifies the mappings the caller consumes and takes precedence over
+	// the conversion key this mapper was configured with. When empty, fall back to the configured key.
+	key := m.conversionKey
+	if ecosystem != "" {
+		key = ecosystem
+	}
+
 	// See https://github.com/pulumi/pulumi/issues/14718 for why we need this lock. It may be possible to be
 	// smarter about this and only lock when mutating, or at least splitting to a read/write lock, but this is
 	// a quick fix to unblock providers. If you do attempt this then write tests to ensure this doesn't
@@ -270,12 +278,12 @@ func (m *basePluginMapper) GetMapping(
 		defer contract.IgnoreClose(providerPlugin)
 
 		mappings, err := providerPlugin.GetMappings(ctx, plugin.GetMappingsRequest{
-			Key: m.conversionKey,
+			Key: key,
 		})
 		if err != nil {
 			return nil, fmt.Errorf(
 				"could not get %s mappings for package %s: %w",
-				m.conversionKey, descriptor.PackageName(), err,
+				key, descriptor.PackageName(), err,
 			)
 		}
 
@@ -285,17 +293,17 @@ func (m *basePluginMapper) GetMapping(
 			}
 
 			mapping, err := providerPlugin.GetMapping(ctx, plugin.GetMappingRequest{
-				Key:      m.conversionKey,
+				Key:      key,
 				Provider: provider,
 			})
 			if err != nil {
-				return nil, fmt.Errorf("could not get advertized %s mapping for provider %s: %w", m.conversionKey, provider, err)
+				return nil, fmt.Errorf("could not get advertized %s mapping for provider %s: %w", key, provider, err)
 			}
 
 			if mapping.Provider != provider {
 				return nil, fmt.Errorf(
 					"unexpected provider in %s mapping response for provider %s: %s",
-					m.conversionKey, provider, mapping.Provider,
+					key, provider, mapping.Provider,
 				)
 			}
 
@@ -306,11 +314,11 @@ func (m *basePluginMapper) GetMapping(
 		// none of them matched. We'll try a blind GetMapping call with an empty provider name to see if the plugin has
 		// a mapping that matches that way.
 		mapping, err := providerPlugin.GetMapping(ctx, plugin.GetMappingRequest{
-			Key:      m.conversionKey,
+			Key:      key,
 			Provider: "",
 		})
 		if err != nil {
-			return nil, fmt.Errorf("could not get %s mapping for provider %s: %w", m.conversionKey, provider, err)
+			return nil, fmt.Errorf("could not get %s mapping for provider %s: %w", key, provider, err)
 		}
 
 		if mapping.Provider == provider {

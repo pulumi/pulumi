@@ -18,6 +18,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"slices"
+	"sync"
 
 	"github.com/blang/semver"
 
@@ -28,6 +30,13 @@ import (
 
 type SimpleInvokeProvider struct {
 	plugin.UnimplementedProvider
+
+	// The texts of the StringResources created (not previewed) by this
+	// provider instance. getText fails when called with a text that has not
+	// been created, so tests can detect invokes that run before the resource
+	// providing their argument exists.
+	mu      sync.Mutex
+	created []string
 }
 
 var _ plugin.Provider = (*SimpleInvokeProvider)(nil)
@@ -158,6 +167,32 @@ func (p *SimpleInvokeProvider) GetSchema(
 					},
 				},
 			},
+			"simple-invoke:index:getText": {
+				Inputs: &schema.ObjectTypeSpec{
+					Type: "object",
+					Properties: map[string]schema.PropertySpec{
+						"text": {
+							TypeSpec: schema.TypeSpec{
+								Type: "string",
+							},
+						},
+					},
+					Required: []string{"text"},
+				},
+				ReturnType: &schema.ReturnTypeSpec{
+					ObjectTypeSpec: &schema.ObjectTypeSpec{
+						Type: "object",
+						Properties: map[string]schema.PropertySpec{
+							"result": {
+								TypeSpec: schema.TypeSpec{
+									Type: "string",
+								},
+							},
+						},
+						Required: []string{"result"},
+					},
+				},
+			},
 		},
 	}
 
@@ -169,7 +204,7 @@ func (p *SimpleInvokeProvider) CheckConfig(
 	_ context.Context, req plugin.CheckConfigRequest,
 ) (plugin.CheckConfigResponse, error) {
 	// Expect just the version
-	version, ok := req.News["version"]
+	version, ok := req.News.GetOk("version")
 	if !ok {
 		return plugin.CheckConfigResponse{
 			Failures: makeCheckFailure("version", "missing version"),
@@ -180,13 +215,13 @@ func (p *SimpleInvokeProvider) CheckConfig(
 			Failures: makeCheckFailure("version", "version is not a string"),
 		}, nil
 	}
-	if version.StringValue() != "10.0.0" {
+	if version.AsString() != "10.0.0" {
 		return plugin.CheckConfigResponse{
 			Failures: makeCheckFailure("version", "version is not 10.0.0"),
 		}, nil
 	}
 
-	if len(req.News) != 1 {
+	if req.News.Len() != 1 {
 		return plugin.CheckConfigResponse{
 			Failures: makeCheckFailure("", fmt.Sprintf("too many properties: %v", req.News)),
 		}, nil
@@ -318,6 +353,48 @@ func (p *SimpleInvokeProvider) Invoke(
 				"secret":   secretResponse,
 			},
 		}, nil
+	case "simple-invoke:index:getText":
+		text, ok := req.Args["text"]
+		if !ok {
+			return plugin.InvokeResponse{
+				Failures: makeCheckFailure("text", "missing text"),
+			}, nil
+		}
+
+		if text.IsComputed() {
+			return plugin.InvokeResponse{
+				// providers should not get computed values (during preview)
+				// since we bail out early in the core SDKs or generated provider SDKs
+				// when we encounter unknowns
+				Failures: makeCheckFailure("text", "text is unknown when calling getText"),
+			}, nil
+		}
+
+		if !text.IsString() {
+			return plugin.InvokeResponse{
+				Failures: makeCheckFailure("text", "text is not a string"),
+			}, nil
+		}
+
+		p.mu.Lock()
+		created := slices.Contains(p.created, text.StringValue())
+		p.mu.Unlock()
+		if !created {
+			// SDKs must not call this invoke before the StringResource
+			// providing the text argument has been created, e.g. during
+			// preview, when the argument is known but the resource does not
+			// exist yet.
+			return plugin.InvokeResponse{
+				Failures: makeCheckFailure("text",
+					fmt.Sprintf("no StringResource with text %q has been created", text.StringValue())),
+			}, nil
+		}
+
+		return plugin.InvokeResponse{
+			Properties: resource.PropertyMap{
+				"result": resource.NewProperty(text.StringValue() + " world"),
+			},
+		}, nil
 	}
 	return plugin.InvokeResponse{}, fmt.Errorf("unknown function %v", req.Tok)
 }
@@ -350,14 +427,19 @@ func (p *SimpleInvokeProvider) Create(
 	}
 
 	id := "id"
+	text := "Goodbye"
 	if req.Preview {
 		id = ""
+	} else {
+		p.mu.Lock()
+		p.created = append(p.created, text)
+		p.mu.Unlock()
 	}
 
 	return plugin.CreateResponse{
 		ID: resource.ID(id),
 		Properties: resource.PropertyMap{
-			"text": resource.NewProperty("Goodbye"),
+			"text": resource.NewProperty(text),
 		},
 		Status: resource.StatusOK,
 	}, nil

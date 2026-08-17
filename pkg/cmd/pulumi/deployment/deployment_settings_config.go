@@ -80,7 +80,12 @@ func initializeDeploymentSettingsCmd(
 		IsInteractive: interactive,
 	}
 
-	project, _, err := ws.ReadProject()
+	cwd, err := os.Getwd()
+	if err != nil {
+		return nil, fmt.Errorf("getting current working directory: %w", err)
+	}
+
+	project, _, err := ws.ReadProject(cwd)
 	if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
 		return nil, err
 	}

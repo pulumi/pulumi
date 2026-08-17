@@ -72,7 +72,8 @@ func LoadProjectStack(
 		if err == nil {
 			sink.Warningf(
 				diag.Message("", "config file %s exists but will be ignored because this stack uses remote config"),
-				configFilePath)
+				configFilePath,
+			)
 		}
 		return stack.LoadRemoteConfig(ctx, project)
 	}
@@ -88,7 +89,7 @@ func SaveProjectStack(
 	if stack.ConfigLocation().IsRemote {
 		return stack.SaveRemoteConfig(ctx, ps)
 	}
-	return workspace.SaveProjectStack(stack.Ref().Name().Q(), ps)
+	return pkgWorkspace.SaveProjectStack(stack.Ref().Name().Q(), ps)
 }
 
 type LoadOption int
@@ -127,7 +128,7 @@ func RequireStack(ctx context.Context, sink diag.Sink, ws pkgWorkspace.Context, 
 	}
 
 	// Try to read the current project
-	project, root, err := ws.ReadProject()
+	project, root, err := ws.ReadProject("")
 	if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
 		return nil, err
 	}
@@ -173,7 +174,7 @@ func requireCurrentStack(
 	lm cmdBackend.LoginManager, lopt LoadOption, opts display.Options, configFile string,
 ) (backend.Stack, error) {
 	// Try to read the current project
-	project, _, err := ws.ReadProject()
+	project, _, err := ws.ReadProject("")
 	if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
 		return nil, err
 	}
@@ -211,7 +212,7 @@ func ChooseStack(ctx context.Context, sink diag.Sink, ws pkgWorkspace.Context,
 		return nil, errors.New(chooseStackErr)
 	}
 
-	proj, root, err := ws.ReadProject()
+	proj, root, err := ws.ReadProject("")
 	if err != nil {
 		return nil, err
 	}
@@ -324,7 +325,7 @@ func ChooseStack(ctx context.Context, sink diag.Sink, ws pkgWorkspace.Context,
 
 	// If setCurrent is true, we'll persist this choice so it'll be used for future CLI operations.
 	if lopt.SetCurrent() {
-		if err = state.SetCurrentStack(ws, stackRef.FullyQualifiedName().String()); err != nil {
+		if err = state.SetCurrentStack(ws, state.BackendURLKey(b), stackRef.FullyQualifiedName().String()); err != nil {
 			return nil, err
 		}
 	}
@@ -343,6 +344,12 @@ func InitStack(
 	}
 	return CreateStack(ctx, sink, ws, b, stackRef, root, nil, setCurrent, secretsProvider, useRemoteConfig, configFile)
 }
+
+// ErrSaveStackConfig wraps `SaveProjectStack` errors that occur in `CreateStack` after the
+// backend stack has already been successfully created. Callers can detect this case via
+// `errors.Is(err, ErrSaveStackConfig)` to know that the backend stack exists despite the error
+// (e.g. so they can clean it up).
+var ErrSaveStackConfig = errors.New("saving stack config")
 
 // CreateStack creates a stack with the given name, and optionally selects it as the current.
 func CreateStack(ctx context.Context, sink diag.Sink, ws pkgWorkspace.Context,
@@ -421,12 +428,12 @@ func CreateStack(ctx context.Context, sink diag.Sink, ws pkgWorkspace.Context,
 	if needsSave {
 		err = SaveProjectStack(ctx, stack, ps, configFile)
 		if err != nil {
-			return nil, fmt.Errorf("saving stack config: %w", err)
+			return nil, fmt.Errorf("%w: %w", ErrSaveStackConfig, err)
 		}
 	}
 
 	if setCurrent {
-		if err = state.SetCurrentStack(ws, stack.Ref().FullyQualifiedName().String()); err != nil {
+		if err = state.SetCurrentStack(ws, state.BackendURLKey(b), stack.Ref().FullyQualifiedName().String()); err != nil {
 			return nil, err
 		}
 	}
@@ -526,7 +533,8 @@ func SaveSnapshot(ctx context.Context, s backend.Stack, snapshot *deploy.Snapsho
 	if snapshot.PendingOperations != nil {
 		for _, op := range snapshot.PendingOperations {
 			msg := fmt.Sprintf(
-				"removing pending operation '%s' on '%s' from snapshot", op.Type, op.Resource.URN)
+				"removing pending operation '%s' on '%s' from snapshot", op.Type, op.Resource.URN,
+			)
 			cmdutil.Diag().Warningf(diag.Message(op.Resource.URN, msg))
 		}
 

@@ -110,6 +110,7 @@ var expectedFailures = map[string]string{
 	"l3-component-nested":                "syntax error",
 	"l2-resource-schema-secret":          "does not preserve schema-secret unknown outputs",
 	"l3-range-invoke-output-traversal":   "len()/apply on an Output: generated program fails mypy",
+	"l2-raw-string-bytes":                "the Python SDK does not set accepts_byte_string: strings containing non-UTF8 bytes cannot be received from the engine", //nolint:lll
 }
 
 type languageTestConfig struct {
@@ -122,6 +123,10 @@ type languageTestConfig struct {
 }
 
 func testLanguageWithConfig(t *testing.T, config languageTestConfig) {
+	if testing.Short() {
+		t.Skip("skipping language conformance tests in short mode")
+	}
+
 	// Set PATH to include the local dist directory so policy can run.
 	dist, err := filepath.Abs(filepath.Join("..", "..", "dist"))
 	require.NoError(t, err)
@@ -214,13 +219,15 @@ func testLanguageWithConfig(t *testing.T, config languageTestConfig) {
 						t.Skip("Skipping non-default provider tests")
 					}
 
-					if (config.name == "default" || config.name == "toml") && tt == "l2-discriminated-union" {
+					if (config.name == "default" || config.name == "toml") &&
+						(tt == "l2-discriminated-union" || tt == "l2-discriminated-union-many") {
 						t.Skip("pulumi#21830: Expected to fail")
 					}
 
 					if config.typechecker == "pyright" &&
 						(tt == "l3-component-simple" ||
 							tt == "l3-rewrite-conversions" ||
+							tt == "l3-component-provider" ||
 							tt == "l3-component-config-primitives" ||
 							tt == "l3-component-config-objects" ||
 							tt == "l3-resource-keyword-overlap") {

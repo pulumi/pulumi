@@ -46,59 +46,59 @@ func TestFieldMapper(t *testing.T) {
 
 	// Try some simple primitive decodes.
 	var s bag
-	err := md.DecodeValue(tree, reflect.TypeOf(bag{}), "b", &s.Bool, false)
+	err := md.DecodeValue(tree, reflect.TypeFor[bag](), "b", &s.Bool, false)
 	require.NoError(t, err)
 	assert.Equal(t, tree["b"], s.Bool)
-	err = md.DecodeValue(tree, reflect.TypeOf(bag{}), "b", &s.BoolP, false)
+	err = md.DecodeValue(tree, reflect.TypeFor[bag](), "b", &s.BoolP, false)
 	require.NoError(t, err)
 	assert.Equal(t, tree["b"], *s.BoolP)
-	err = md.DecodeValue(tree, reflect.TypeOf(bag{}), "s", &s.String, false)
+	err = md.DecodeValue(tree, reflect.TypeFor[bag](), "s", &s.String, false)
 	require.NoError(t, err)
 	assert.Equal(t, tree["s"], s.String)
-	err = md.DecodeValue(tree, reflect.TypeOf(bag{}), "s", &s.StringP, false)
+	err = md.DecodeValue(tree, reflect.TypeFor[bag](), "s", &s.StringP, false)
 	require.NoError(t, err)
 	assert.Equal(t, tree["s"], *s.StringP)
-	err = md.DecodeValue(tree, reflect.TypeOf(bag{}), "f", &s.Float64, false)
+	err = md.DecodeValue(tree, reflect.TypeFor[bag](), "f", &s.Float64, false)
 	require.NoError(t, err)
 	assert.Equal(t, tree["f"], s.Float64)
-	err = md.DecodeValue(tree, reflect.TypeOf(bag{}), "f", &s.Float64P, false)
+	err = md.DecodeValue(tree, reflect.TypeFor[bag](), "f", &s.Float64P, false)
 	require.NoError(t, err)
 	assert.Equal(t, tree["f"], *s.Float64P)
-	err = md.DecodeValue(tree, reflect.TypeOf(bag{}), "ss", &s.Strings, false)
+	err = md.DecodeValue(tree, reflect.TypeFor[bag](), "ss", &s.Strings, false)
 	require.NoError(t, err)
 	assert.Equal(t, tree["ss"], s.Strings)
-	err = md.DecodeValue(tree, reflect.TypeOf(bag{}), "ss", &s.StringsP, false)
+	err = md.DecodeValue(tree, reflect.TypeFor[bag](), "ss", &s.StringsP, false)
 	require.NoError(t, err)
 	assert.Equal(t, tree["ss"], *s.StringsP)
 
 	// Ensure any conversions work:
 	var sif string
 	err = md.DecodeValue(map[string]any{"x": any("hello")},
-		reflect.TypeOf(bag{}), "x", &sif, false)
+		reflect.TypeFor[bag](), "x", &sif, false)
 	require.NoError(t, err)
 	assert.Equal(t, "hello", sif)
 
 	var sifs []string
 	err = md.DecodeValue(map[string]any{"arr": []any{"a", "b", "c"}},
-		reflect.TypeOf(bag{}), "arr", &sifs, false)
+		reflect.TypeFor[bag](), "arr", &sifs, false)
 	require.NoError(t, err)
 	assert.Equal(t, []string{"a", "b", "c"}, sifs)
 
 	// Ensure missing optional fields are ignored:
 	s.String = "x"
-	err = md.DecodeValue(tree, reflect.TypeOf(bag{}), "missing", &s.String, true)
+	err = md.DecodeValue(tree, reflect.TypeFor[bag](), "missing", &s.String, true)
 	require.NoError(t, err)
 	assert.Equal(t, "x", s.String)
 
 	// Try some error conditions; first, wrong type:
 	s.String = "x"
-	err = md.DecodeValue(tree, reflect.TypeOf(bag{}), "b", &s.String, false)
+	err = md.DecodeValue(tree, reflect.TypeFor[bag](), "b", &s.String, false)
 	assert.EqualError(t, err, "Field 'b' on 'mapper.bag' must be a 'string'; got 'bool' instead")
 	assert.Equal(t, "x", s.String)
 
 	// Next, missing required field:
 	s.String = "x"
-	err = md.DecodeValue(tree, reflect.TypeOf(bag{}), "missing", &s.String, false)
+	err = md.DecodeValue(tree, reflect.TypeFor[bag](), "missing", &s.String, false)
 	assert.EqualError(t, err, "Missing required field 'missing' on 'mapper.bag'")
 	assert.Equal(t, "x", s.String)
 }
@@ -148,7 +148,7 @@ func TestMapperEncode(t *testing.T) {
 	assert.Equal(t, map[string]any{"a": "something", "b": nil}, m["mo"])
 
 	// Pointers
-	m, err = md.encode(reflect.Zero(reflect.TypeOf(&bag)))
+	m, err = md.encode(reflect.Zero(reflect.TypeFor[*bagtag]()))
 	require.NoError(t, err)
 	assert.Nil(t, m)
 	m, err = md.encode(reflect.ValueOf(&bag))
@@ -170,7 +170,7 @@ func TestMapperEncodeValue(t *testing.T) {
 		"a": "something",
 		"b": nil,
 	}
-	anyType := reflect.TypeOf((*any)(nil)).Elem()
+	anyType := reflect.TypeFor[any]()
 	assert.Equal(t, reflect.Interface, anyType.Kind())
 
 	md := &mapper{}
@@ -203,7 +203,7 @@ func TestMapperEncodeValue(t *testing.T) {
 	assert.Equal(t, float64(1.0), v)
 
 	// Pointers
-	v, err = md.encodeValue(reflect.Zero(reflect.TypeOf(&strdata)))
+	v, err = md.encodeValue(reflect.Zero(reflect.TypeFor[*string]()))
 	require.NoError(t, err)
 	assert.Nil(t, v)
 	v, err = md.encodeValue(reflect.ValueOf(&strdata))
@@ -211,7 +211,7 @@ func TestMapperEncodeValue(t *testing.T) {
 	assert.Equal(t, "something", v)
 
 	// Slices
-	v, err = md.encodeValue(reflect.Zero(reflect.TypeOf(slice)))
+	v, err = md.encodeValue(reflect.Zero(reflect.TypeFor[[]string]()))
 	require.NoError(t, err)
 	assert.Nil(t, v)
 	v, err = md.encodeValue(reflect.ValueOf(slice))
@@ -219,7 +219,7 @@ func TestMapperEncodeValue(t *testing.T) {
 	assert.Equal(t, []any{"something"}, v)
 
 	// Maps
-	v, err = md.encodeValue(reflect.Zero(reflect.TypeOf(mapdata)))
+	v, err = md.encodeValue(reflect.Zero(reflect.TypeFor[map[string]any]()))
 	require.NoError(t, err)
 	assert.Nil(t, v)
 	v, err = md.encodeValue(reflect.ValueOf(mapdata))
@@ -492,8 +492,8 @@ func TestCustomMapper(t *testing.T) {
 
 	md := New(&Opts{
 		CustomDecoders: Decoders{
-			reflect.TypeOf((*customInterface)(nil)).Elem(): decodeCustomInterface,
-			reflect.TypeOf(customStruct{}):                 decodeCustomStruct,
+			reflect.TypeFor[customInterface](): decodeCustomInterface,
+			reflect.TypeFor[customStruct]():    decodeCustomStruct,
 		},
 	})
 
@@ -518,10 +518,10 @@ func TestCustomMapper(t *testing.T) {
 
 func decodeCustomInterface(m Mapper, tree map[string]any) (any, error) {
 	var s customStruct
-	if err := m.DecodeValue(tree, reflect.TypeOf(s), "x", &s.X, false); err != nil {
+	if err := m.DecodeValue(tree, reflect.TypeFor[customStruct](), "x", &s.X, false); err != nil {
 		return nil, err
 	}
-	if err := m.DecodeValue(tree, reflect.TypeOf(s), "y", &s.Y, false); err != nil {
+	if err := m.DecodeValue(tree, reflect.TypeFor[customStruct](), "y", &s.Y, false); err != nil {
 		return nil, err
 	}
 	return customInterface(&s), nil
@@ -529,10 +529,10 @@ func decodeCustomInterface(m Mapper, tree map[string]any) (any, error) {
 
 func decodeCustomStruct(m Mapper, tree map[string]any) (any, error) {
 	var s customStruct
-	if err := m.DecodeValue(tree, reflect.TypeOf(s), "x", &s.X, false); err != nil {
+	if err := m.DecodeValue(tree, reflect.TypeFor[customStruct](), "x", &s.X, false); err != nil {
 		return nil, err
 	}
-	if err := m.DecodeValue(tree, reflect.TypeOf(s), "y", &s.Y, false); err != nil {
+	if err := m.DecodeValue(tree, reflect.TypeFor[customStruct](), "y", &s.Y, false); err != nil {
 		return nil, err
 	}
 	return s, nil

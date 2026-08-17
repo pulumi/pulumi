@@ -24,4 +24,4 @@ export const propertyDepsFromCall = component1.refs(({
         one: custom1,
         two: custom2,
     },
-})).apply(call => call.result);
+})).result;

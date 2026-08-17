@@ -16,6 +16,7 @@ package tools
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"os"
@@ -36,6 +37,7 @@ import (
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -368,7 +370,7 @@ func newProjectDir(t *testing.T) string {
 // an agent-injected PULUMI_ACCESS_TOKEN is honored rather than a token frozen at neo
 // startup — keeping the tool's identity in lockstep with `pulumi preview`.
 //
-//nolint:paralleltest // mutates the global cmdBackend.BackendInstance and process env
+//nolint:paralleltest // mutates the global cmdBackend.DefaultLoginManager and process env
 func TestPulumi_Run_ResolvesBackendFromLiveEnv(t *testing.T) {
 	dir := newProjectDir(t)
 
@@ -383,8 +385,7 @@ func TestPulumi_Run_ResolvesBackendFromLiveEnv(t *testing.T) {
 
 	var capturedToken string
 	var resolved bool
-	prev := cmdBackend.BackendInstance
-	cmdBackend.BackendInstance = &backend.MockBackend{
+	be := &backend.MockBackend{
 		ParseStackReferenceF: func(string) (backend.StackReference, error) {
 			resolved = true
 			// The agent-injected PULUMI_ACCESS_TOKEN must be visible here, proving the
@@ -393,10 +394,24 @@ func TestPulumi_Run_ResolvesBackendFromLiveEnv(t *testing.T) {
 			return nil, errors.New("stop after resolution")
 		},
 	}
-	t.Cleanup(func() { cmdBackend.BackendInstance = prev })
+	prev := cmdBackend.DefaultLoginManager
+	cmdBackend.DefaultLoginManager = &cmdBackend.MockLoginManager{
+		CurrentF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink,
+			url string, project *workspace.Project, setCurrent bool,
+		) (backend.Backend, error) {
+			return be, nil
+		},
+		LoginF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink,
+			url string, project *workspace.Project, setCurrent bool,
+			insecure bool, color colors.Colorization,
+		) (backend.Backend, error) {
+			return be, nil
+		},
+	}
+	t.Cleanup(func() { cmdBackend.DefaultLoginManager = prev })
 
 	ws := &pkgWorkspace.MockContext{
-		ReadProjectF: func() (*workspace.Project, string, error) {
+		ReadProjectF: func(_ string) (*workspace.Project, string, error) {
 			return &workspace.Project{Name: "p"}, dir, nil
 		},
 	}
@@ -428,21 +443,36 @@ func TestPulumi_Run_ResolvesBackendFromLiveEnv(t *testing.T) {
 //nolint:paralleltest // mutates the global cmdBackend.BackendInstance
 func TestPulumi_Run_PreviewAndUpResolveBackend(t *testing.T) {
 	for _, method := range []string{"pulumi_preview", "pulumi_up"} {
-		//nolint:paralleltest // mutates the global cmdBackend.BackendInstance
+		//nolint:paralleltest // mutates the global cmdBackend.DefaultLoginManager
 		t.Run(method, func(t *testing.T) {
 			dir := newProjectDir(t)
 
 			var resolved bool
-			cmdBackend.BackendInstance = &backend.MockBackend{
+			be := &backend.MockBackend{
 				ParseStackReferenceF: func(string) (backend.StackReference, error) {
 					resolved = true
 					return nil, errors.New("stop after resolution")
 				},
 			}
-			t.Cleanup(func() { cmdBackend.BackendInstance = nil })
+
+			prev := cmdBackend.DefaultLoginManager
+			cmdBackend.DefaultLoginManager = &cmdBackend.MockLoginManager{
+				CurrentF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink,
+					url string, project *workspace.Project, setCurrent bool,
+				) (backend.Backend, error) {
+					return be, nil
+				},
+				LoginF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink,
+					url string, project *workspace.Project, setCurrent bool,
+					insecure bool, color colors.Colorization,
+				) (backend.Backend, error) {
+					return be, nil
+				},
+			}
+			t.Cleanup(func() { cmdBackend.DefaultLoginManager = prev })
 
 			ws := &pkgWorkspace.MockContext{
-				ReadProjectF: func() (*workspace.Project, string, error) {
+				ReadProjectF: func(_ string) (*workspace.Project, string, error) {
 					return &workspace.Project{Name: "p"}, dir, nil
 				},
 			}

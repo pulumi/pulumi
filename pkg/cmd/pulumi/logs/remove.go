@@ -43,7 +43,7 @@ func newRemoveCmd() *cobra.Command {
 
 	command := &cobra.Command{
 		Use:     "remove",
-		Aliases: []string{"rm"},
+		Aliases: []string{"rm", "delete"},
 		Short:   "Remove automatic log files",
 		Long: "Remove automatic log files.\n" +
 			"\n" +
@@ -212,10 +212,7 @@ func chooseLogToRemove(logsDir string) (logEntry, error) {
 func printRemovalTable(out io.Writer, entries []logEntry) {
 	rows := slice.Prealloc[cmdutil.TableRow](len(entries))
 	for _, e := range entries {
-		stack := e.stack
-		if stack == "" {
-			stack = "(cli)"
-		}
+		stack := e.stackDisplay()
 		updateID := e.updateID
 		if updateID == "" {
 			updateID = "—"
@@ -244,10 +241,7 @@ func formatLogRemovalChoices(entries []logEntry) ([]string, map[string]string) {
 	rows := make([]row, len(entries))
 	stackWidth, createdWidth := 0, 0
 	for i, e := range entries {
-		stack := e.stack
-		if stack == "" {
-			stack = "(cli)"
-		}
+		stack := e.stackDisplay()
 		updateID := e.updateID
 		if updateID == "" {
 			updateID = "—"

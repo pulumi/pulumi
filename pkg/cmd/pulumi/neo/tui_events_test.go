@@ -36,6 +36,8 @@ func TestUIEventSealedInterface(t *testing.T) {
 		UIToolCompleted{Name: "filesystem__read", Args: json.RawMessage(`{}`), IsError: false},
 		UIError{Message: "boom"},
 		UIWarning{Message: "careful"},
+		UIReconnecting{},
+		UIReconnected{},
 		UICancelled{},
 		UITaskIdle{},
 		UISessionURL{URL: "https://example"},
@@ -55,5 +57,5 @@ func TestUIEventSealedInterface(t *testing.T) {
 	for _, e := range events {
 		e.uiEvent()
 	}
-	require.Len(t, events, 18, "bumped this when adding a new UIEvent variant")
+	require.Len(t, events, 20, "bumped this when adding a new UIEvent variant")
 }

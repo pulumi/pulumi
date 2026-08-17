@@ -190,6 +190,7 @@ func TestAgentModeUsesPulumiAPIAndLoginManagerWhenPulumiCredentialsUnreadable(t 
 	t.Setenv("PULUMI_API", "http://localhost:8080")
 	t.Setenv("PULUMI_HOME", "")
 	t.Setenv("PULUMI_CREDENTIALS_PATH", "")
+	t.Setenv("PULUMI_TEST_AGENT_PULUMI_DIR", t.TempDir())
 
 	login := &provisioningLoginManager{}
 	esc := &escCommand{
@@ -268,6 +269,7 @@ func TestFilestateBackend(t *testing.T) { //nolint:paralleltest,lll // non-threa
 	})}
 	err := esc.getCachedClient(t.Context())
 	assert.ErrorContains(t, err, "does not support Pulumi ESC")
+	assert.ErrorContains(t, err, "log into the Pulumi Cloud backend")
 }
 
 func TestEnvVarOverridesAccounts(t *testing.T) {

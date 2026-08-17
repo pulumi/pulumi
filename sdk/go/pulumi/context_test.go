@@ -29,6 +29,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -50,7 +52,7 @@ func TestLoggingFromApplyCausesNoPanics(t *testing.T) {
 	t.Parallel()
 
 	// Usually panics on iteration 100-200
-	for i := 0; i < 1000; i++ {
+	for i := range 1000 {
 		t.Logf("Iteration %d\n", i)
 		mocks := &testMonitor{}
 		err := RunErr(func(ctx *Context) error {
@@ -97,7 +99,7 @@ func TestLoggingFromResourceApplyCausesNoPanics(t *testing.T) {
 	t.Parallel()
 
 	// Usually panics on iteration 100-200
-	for i := 0; i < 1000; i++ {
+	for i := range 1000 {
 		t.Logf("Iteration %d\n", i)
 		mocks := &testMonitor{}
 		err := RunErr(func(ctx *Context) error {
@@ -152,7 +154,7 @@ func NewLoggingTestResource(
 func TestWaitingCausesNoPanics(t *testing.T) {
 	t.Parallel()
 
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		mocks := &testMonitor{}
 		err := RunErr(func(ctx *Context) error {
 			o, set, _ := ctx.NewOutput()
@@ -578,6 +580,16 @@ func resourceMonitorClientWithoutFeatures(
 	}
 }
 
+// GetDeploymentInfo returns Unimplemented so that feature detection falls back to
+// SupportsFeature, where notFeatures is applied.
+func (c *resmonClientWithFeatures) GetDeploymentInfo(
+	ctx context.Context,
+	req *emptypb.Empty,
+	opts ...grpc.CallOption,
+) (*pulumirpc.DeploymentInfo, error) {
+	return nil, status.Error(codes.Unimplemented, "GetDeploymentInfo is not implemented")
+}
+
 func (c *resmonClientWithFeatures) SupportsFeature(
 	ctx context.Context,
 	req *pulumirpc.SupportsFeatureRequest,
@@ -719,7 +731,7 @@ type callOutput struct {
 }
 
 func (c callOutput) ElementType() reflect.Type {
-	return reflect.TypeOf(callOutputType{})
+	return reflect.TypeFor[callOutputType]()
 }
 
 type callInput struct {
@@ -727,7 +739,7 @@ type callInput struct {
 }
 
 func (c callInput) ElementType() reflect.Type {
-	return reflect.TypeOf(callInputType{})
+	return reflect.TypeFor[callInputType]()
 }
 
 type callInputType struct {
@@ -931,6 +943,40 @@ func TestRegisterResourceOutputs(t *testing.T) {
 	require.Equal(t, int32(2), count.Load(), "RegisterResourceOutputs should be called exactly twice")
 }
 
+// This test checks that transforms and hooks are no-ops under the mock monitor, rather than errors/panics.
+func TestHooksAndTransformsNoop(t *testing.T) {
+	t.Parallel()
+
+	mocks := &testMonitor{}
+
+	err := RunErr(func(ctx *Context) error {
+		err := ctx.RegisterResourceTransform(func(_ context.Context, args *ResourceTransformArgs) *ResourceTransformResult {
+			return &ResourceTransformResult{Props: args.Props, Opts: args.Opts}
+		})
+		require.NoError(t, err)
+
+		hook, err := ctx.RegisterResourceHook("test-hook", func(args *ResourceHookArgs) error {
+			return nil
+		}, nil)
+		require.NoError(t, err)
+
+		transform := func(_ context.Context, args *ResourceTransformArgs) *ResourceTransformResult {
+			return &ResourceTransformResult{Props: args.Props, Opts: args.Opts}
+		}
+
+		_, err = NewLoggingTestResource(t, ctx, "res", String("A"),
+			Transforms([]ResourceTransform{transform}),
+			ResourceHooks(&ResourceHookBinding{
+				BeforeCreate: []*ResourceHook{hook},
+				AfterCreate:  []*ResourceHook{hook},
+			}),
+		)
+		require.NoError(t, err)
+		return nil
+	}, WithMocks("project", "stack", mocks))
+	require.NoError(t, err)
+}
+
 // packageRefMonitor is a mock monitor that tracks RegisterPackage calls and
 // returns configurable refs. It embeds mockMonitor for the full interface.
 type packageRefMonitor struct {
@@ -1059,7 +1105,7 @@ func TestGetOrRegisterPackageRef(t *testing.T) {
 		refs := make([]string, goroutines)
 		errs := make([]error, goroutines)
 
-		for i := 0; i < goroutines; i++ {
+		for i := range goroutines {
 			go func(idx int) {
 				defer wg.Done()
 				refs[idx], errs[idx] = ctx.GetOrRegisterPackageRef("pkg:1.0", dummyRegisterReq)
@@ -1067,7 +1113,7 @@ func TestGetOrRegisterPackageRef(t *testing.T) {
 		}
 		wg.Wait()
 
-		for i := 0; i < goroutines; i++ {
+		for i := range goroutines {
 			require.NoError(t, errs[i])
 			assert.Equal(t, "uuid-concurrent", refs[i])
 		}

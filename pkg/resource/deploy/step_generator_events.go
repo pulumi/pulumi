@@ -15,6 +15,7 @@
 package deploy
 
 import (
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 )
@@ -32,9 +33,9 @@ type ContinueResourceDiffEvent interface {
 	// The URN of the resource being continued.
 	URN() resource.URN
 	// The old state of the resource being continued.
-	Old() *resource.State
+	Old() *pkgresource.State
 	// The new state of the resource being continued.
-	New() *resource.State
+	New() *pkgresource.State
 	// The provider that should be used to continue the resource.
 	Provider() plugin.Provider
 	// The autonaming options that should be used to continue the resource.
@@ -49,8 +50,8 @@ type continueDiffResourceEvent struct {
 	diff           plugin.DiffResult
 	triggerReplace bool
 	urn            resource.URN
-	old            *resource.State
-	new            *resource.State
+	old            *pkgresource.State
+	new            *pkgresource.State
 	provider       plugin.Provider
 	autonaming     *plugin.AutonamingOptions
 	randomSeed     []byte
@@ -80,11 +81,11 @@ func (g *continueDiffResourceEvent) ReplacementTrigger() bool {
 	return g.triggerReplace
 }
 
-func (g *continueDiffResourceEvent) Old() *resource.State {
+func (g *continueDiffResourceEvent) Old() *pkgresource.State {
 	return g.old
 }
 
-func (g *continueDiffResourceEvent) New() *resource.State {
+func (g *continueDiffResourceEvent) New() *pkgresource.State {
 	return g.new
 }
 
@@ -106,19 +107,19 @@ type ContinueResourceRefreshEvent interface {
 	RegisterResourceEvent
 
 	URN() resource.URN
-	Old() *resource.State
-	New() *resource.State
+	Old() *pkgresource.State
+	New() *pkgresource.State
 	Invalid() bool
 	Error() error
 }
 
 type continueResourceRefreshEvent struct {
 	RegisterResourceEvent
-	urn     resource.URN    // the URN of the resource being processed.
-	old     *resource.State // the old state of the resource being processed.
-	new     *resource.State // the new state of the resource being processed.
-	invalid bool            // whether the resource is invalid.
-	err     error           // any error that occurred during refresh
+	urn     resource.URN       // the URN of the resource being processed.
+	old     *pkgresource.State // the old state of the resource being processed.
+	new     *pkgresource.State // the new state of the resource being processed.
+	invalid bool               // whether the resource is invalid.
+	err     error              // any error that occurred during refresh
 }
 
 var _ ContinueResourceRefreshEvent = (*continueResourceRefreshEvent)(nil)
@@ -129,11 +130,11 @@ func (g *continueResourceRefreshEvent) URN() resource.URN {
 	return g.urn
 }
 
-func (g *continueResourceRefreshEvent) Old() *resource.State {
+func (g *continueResourceRefreshEvent) Old() *pkgresource.State {
 	return g.old
 }
 
-func (g *continueResourceRefreshEvent) New() *resource.State {
+func (g *continueResourceRefreshEvent) New() *pkgresource.State {
 	return g.new
 }
 
@@ -152,8 +153,8 @@ type ContinueResourceImportEvent interface {
 
 	Error() error
 	URN() resource.URN
-	New() *resource.State
-	Old() *resource.State
+	New() *pkgresource.State
+	Old() *pkgresource.State
 	Provider() plugin.Provider
 	Invalid() bool
 	Recreating() bool
@@ -165,8 +166,8 @@ type continueResourceImportEvent struct {
 	RegisterResourceEvent
 	err        error
 	urn        resource.URN // the URN of the resource being processed.
-	old        *resource.State
-	new        *resource.State
+	old        *pkgresource.State
+	new        *pkgresource.State
 	provider   plugin.Provider
 	invalid    bool
 	recreating bool
@@ -188,11 +189,11 @@ func (g *continueResourceImportEvent) URN() resource.URN {
 	return g.urn
 }
 
-func (g *continueResourceImportEvent) Old() *resource.State {
+func (g *continueResourceImportEvent) Old() *pkgresource.State {
 	return g.old
 }
 
-func (g *continueResourceImportEvent) New() *resource.State {
+func (g *continueResourceImportEvent) New() *pkgresource.State {
 	return g.new
 }
 

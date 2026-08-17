@@ -683,7 +683,7 @@ class _CallbackServicer(callback_pb2_grpc.CallbacksServicer):
             for dependency in opts.replace_with:
                 urn = await dependency.urn.future()
                 if urn:
-                    result.replace_with.append(cast(str, urn))
+                    result.replace_with.append(urn)
         if opts.plugin_download_url:
             result.plugin_download_url = opts.plugin_download_url
         if opts.protect is not None:

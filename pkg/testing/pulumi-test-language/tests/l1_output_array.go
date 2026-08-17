@@ -55,8 +55,8 @@ func init() {
 						}),
 					}))
 
-					large := []resource.PropertyValue{}
-					for i := 0; i < 150; i++ {
+					large := make([]resource.PropertyValue, 0, 150)
+					for range 150 {
 						large = append(large, resource.NewProperty(lorem))
 					}
 					AssertPropertyMapMember(l, outputs, "large", resource.NewProperty(large))

@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"strings"
 	"sync"
 
@@ -68,6 +69,78 @@ func NewSnippetSource(ctx context.Context,
 	return src.run
 }
 
+// ValidateSnippet parses and binds a PCL resource snippet against its package schema.
+func ValidateSnippet(ctx context.Context, s resource.Snippet, loader schema.ReferenceLoader) error {
+	_, _, err := bindSnippetProgram(ctx, &s, loader)
+	return err
+}
+
+func bindSnippetProgram(
+	ctx context.Context,
+	snippet *resource.Snippet,
+	loader schema.ReferenceLoader,
+) (*pcl.Program, map[string]*schema.PackageDescriptor, error) {
+	// Build the schema.PackageDescriptor from the structurally-attached Snippet.Descriptor. The binder and
+	// interpreter both consult this to load the right (possibly parameterized) package schema.
+	var parameterization *schema.ParameterizationDescriptor
+	if snippet.Descriptor.Parameterization != nil {
+		parameterization = &schema.ParameterizationDescriptor{
+			Name:    snippet.Descriptor.Parameterization.Name,
+			Version: snippet.Descriptor.Parameterization.Version,
+			Value:   snippet.Descriptor.Parameterization.Value,
+		}
+	}
+	descriptor := &schema.PackageDescriptor{
+		Name:             snippet.Descriptor.Name,
+		Version:          snippet.Descriptor.Version,
+		DownloadURL:      snippet.Descriptor.DownloadURL,
+		Parameterization: parameterization,
+	}
+
+	// Determine the package name the binder will key the descriptor by. For unparameterized snippets this is
+	// the descriptor's Name; for parameterized snippets it's the parameterization's Name (the alias visible
+	// to PCL code). DecomposeToken on the snippet's Type gives us that key directly.
+	pkgName, _, _, diags := pcl.DecomposeToken(snippet.Type, hcl.Range{})
+	if diags.HasErrors() {
+		return nil, nil, fmt.Errorf("invalid snippet type %q: %s", snippet.Type, diags.Error())
+	}
+	packageDescriptors := map[string]*schema.PackageDescriptor{pkgName: descriptor}
+
+	// Parse the snippet as a resource body. Use the snippet's name in the filename so diagnostics
+	// distinguish between multiple snippets in the same update.
+	filename := fmt.Sprintf("<snippet:%s>", snippet.Name)
+	parser := hclsyntax.NewParser()
+	if err := parser.ParseFile(strings.NewReader(snippet.Code), filename); err != nil {
+		return nil, nil, fmt.Errorf("parse snippet: %w", err)
+	}
+	if parser.Diagnostics.HasErrors() {
+		return nil, nil, fmt.Errorf("parse snippet: %v", parser.Diagnostics)
+	}
+
+	// Pre-declare scope variables for References so the binder typechecks `producer.value` and friends
+	// without seeing a `resource` block for them. The runtime values are injected on the eval context
+	// further down once the registration observer has resolved each URN.
+	bindOpts := []pcl.BindOption{
+		pcl.PackageDescriptors(packageDescriptors),
+	}
+	if len(snippet.References) > 0 {
+		extras := make(map[string]*model.Variable, len(snippet.References))
+		for name := range snippet.References {
+			extras[name] = &model.Variable{Name: name, VariableType: model.DynamicType}
+		}
+		bindOpts = append(bindOpts, pcl.ExtraScopeVariables(extras))
+	}
+	program, diags, err := pcl.BindResourceProgram(
+		ctx, parser.Files[0], snippet.Name, snippet.Type, loader, bindOpts...)
+	if err != nil {
+		return nil, nil, fmt.Errorf("bind snippet: %w", err)
+	}
+	if diags.HasErrors() {
+		return nil, nil, fmt.Errorf("bind snippet: %v", diags)
+	}
+	return program, packageDescriptors, nil
+}
+
 func (s *snippet) run(resourceMonitorTarget string) *promise.Promise[struct{}] {
 	cts := &promise.CompletionSource[struct{}]{}
 
@@ -81,67 +154,9 @@ func (s *snippet) run(resourceMonitorTarget string) *promise.Promise[struct{}] {
 			fail(err)
 			return
 		}
-		// Build the schema.PackageDescriptor from the structurally-attached Snippet.Descriptor. The binder and
-		// interpreter both consult this to load the right (possibly parameterized) package schema.
-		var parameterization *schema.ParameterizationDescriptor
-		if s.snippet.Descriptor.Parameterization != nil {
-			parameterization = &schema.ParameterizationDescriptor{
-				Name:    s.snippet.Descriptor.Parameterization.Name,
-				Version: s.snippet.Descriptor.Parameterization.Version,
-				Value:   s.snippet.Descriptor.Parameterization.Value,
-			}
-		}
-		descriptor := &schema.PackageDescriptor{
-			Name:             s.snippet.Descriptor.Name,
-			Version:          s.snippet.Descriptor.Version,
-			DownloadURL:      s.snippet.Descriptor.DownloadURL,
-			Parameterization: parameterization,
-		}
-
-		// Determine the package name the binder will key the descriptor by. For unparameterized snippets this is
-		// the descriptor's Name; for parameterized snippets it's the parameterization's Name (the alias visible
-		// to PCL code). DecomposeToken on the snippet's Type gives us that key directly.
-		pkgName, _, _, diags := pcl.DecomposeToken(s.snippet.Type, hcl.Range{})
-		if diags.HasErrors() {
-			fail(fmt.Errorf("invalid snippet type %q: %s", s.snippet.Type, diags.Error()))
-			return
-		}
-		packageDescriptors := map[string]*schema.PackageDescriptor{pkgName: descriptor}
-
-		// Parse the snippet as a resource body. Use the snippet's name in the filename so diagnostics
-		// distinguish between multiple snippets in the same update.
-		filename := fmt.Sprintf("<snippet:%s>", s.snippet.Name)
-		parser := hclsyntax.NewParser()
-		if err := parser.ParseFile(strings.NewReader(s.snippet.Code), filename); err != nil {
-			fail(fmt.Errorf("parse snippet: %w", err))
-			return
-		}
-		if parser.Diagnostics.HasErrors() {
-			fail(fmt.Errorf("parse snippet: %v", parser.Diagnostics))
-			return
-		}
-
-		// Pre-declare scope variables for References so the binder typechecks `producer.value` and friends
-		// without seeing a `resource` block for them. The runtime values are injected on the eval context
-		// further down once the registration observer has resolved each URN.
-		bindOpts := []pcl.BindOption{
-			pcl.PackageDescriptors(packageDescriptors),
-		}
-		if len(s.snippet.References) > 0 {
-			extras := make(map[string]*model.Variable, len(s.snippet.References))
-			for name := range s.snippet.References {
-				extras[name] = &model.Variable{Name: name, VariableType: model.DynamicType}
-			}
-			bindOpts = append(bindOpts, pcl.ExtraScopeVariables(extras))
-		}
-		program, diags, err := pcl.BindResourceProgram(
-			parser.Files[0], s.snippet.Name, s.snippet.Type, s.loader, bindOpts...)
+		program, packageDescriptors, err := bindSnippetProgram(s.ctx, s.snippet, s.loader)
 		if err != nil {
-			fail(fmt.Errorf("bind snippet: %w", err))
-			return
-		}
-		if diags.HasErrors() {
-			fail(fmt.Errorf("bind snippet: %v", diags))
+			fail(err)
 			return
 		}
 
@@ -172,11 +187,11 @@ func (s *snippet) run(resourceMonitorTarget string) *promise.Promise[struct{}] {
 		// Dial the resource monitor and ask it for the deployment context the interpreter needs (project,
 		// stack, organization). The interpreter wires this into the eval context so `pulumi.project` etc.
 		// resolve to the same values the main program sees.
-		conn, err := grpc.NewClient(
-			resourceMonitorTarget,
+		dialOpts := append(rpcutil.TracingInterceptorDialOptions(),
 			grpc.WithTransportCredentials(insecure.NewCredentials()),
 			rpcutil.GrpcChannelOptions(),
 		)
+		conn, err := grpc.NewClient(resourceMonitorTarget, dialOpts...)
 		if err != nil {
 			fail(fmt.Errorf("connect to resource monitor: %w", err))
 			return
@@ -203,9 +218,7 @@ func (s *snippet) run(resourceMonitorTarget string) *promise.Promise[struct{}] {
 
 func snippetReferenceValue(urn resource.URN, reg URNRegistration) resource.PropertyValue {
 	obj := make(resource.PropertyMap, len(reg.Outputs)+4)
-	for k, v := range reg.Outputs {
-		obj[k] = v
-	}
+	maps.Copy(obj, reg.Outputs)
 	obj["urn"] = resource.NewProperty(string(urn))
 	obj["id"] = resource.NewProperty(string(reg.ID))
 	obj["__name"] = resource.NewProperty(urn.Name())

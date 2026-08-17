@@ -19,9 +19,12 @@ import (
 	"errors"
 	"fmt"
 	"path/filepath"
+	"slices"
 	"strings"
 	"sync/atomic"
 	"testing"
+
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
 
 	"github.com/blang/semver"
 	combinations "github.com/mxschmitt/golang-combinations"
@@ -876,12 +879,7 @@ func updateSpecificTargets(t *testing.T, targets, globTargets []string, targetDe
 }
 
 func contains(list []string, entry string) bool {
-	for _, e := range list {
-		if e == entry {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(list, entry)
 }
 
 func updateInvalidTarget(t *testing.T) {
@@ -1107,6 +1105,8 @@ func TestCreateDuringTargetedUpdate_UntargetedCreateReferencedByChangedTarget(t 
 
 		resA, err := monitor.RegisterResource("pkgA:m:typA", "a", true)
 		require.NoError(t, err)
+		assert.Equal(t, pulumirpc.Result_SUCCESS, resA.Result)
+		assert.True(t, resA.Unknown)
 
 		_, _ = monitor.RegisterResource("pkgA:m:typA", "b", true, deploytest.ResourceOptions{
 			Dependencies: []resource.URN{resA.URN},
@@ -1687,13 +1687,13 @@ func generateParentedTestDependencyGraph(t *testing.T, p *lt.TestPlan) (
 
 	newResource := func(urn, parent resource.URN, id resource.ID,
 		dependencies []resource.URN, propertyDeps propertyDependencies,
-	) *resource.State {
+	) *pkgresource.State {
 		return newResource(urn, parent, id, "", dependencies, propertyDeps,
 			nil, urn.Type() != resTypeComponent)
 	}
 
 	old := &deploy.Snapshot{
-		Resources: []*resource.State{
+		Resources: []*pkgresource.State{
 			newResource(urnA, "", "", nil, nil),
 			newResource(urnB, "", "", nil, nil),
 			newResource(urnC, "", "2", nil, nil),
@@ -1872,7 +1872,7 @@ func destroySpecificTargetsWithChildren(
 
 func newResource(urn, parent resource.URN, id resource.ID, provider string, dependencies []resource.URN,
 	propertyDeps propertyDependencies, outputs resource.PropertyMap, custom bool,
-) *resource.State {
+) *pkgresource.State {
 	inputs := resource.PropertyMap{}
 	for k := range propertyDeps {
 		inputs[k] = resource.NewProperty("foo")
@@ -1881,7 +1881,7 @@ func newResource(urn, parent resource.URN, id resource.ID, provider string, depe
 		outputs = resource.PropertyMap{}
 	}
 
-	return &resource.State{
+	return &pkgresource.State{
 		Type:                 urn.Type(),
 		URN:                  urn,
 		Custom:               custom,
@@ -1944,7 +1944,7 @@ func TestTargetedCreateDefaultProvider(t *testing.T) {
 }
 
 // Returns the resource with the matching URN, or nil.
-func findResourceByURN(rs []*resource.State, urn resource.URN) *resource.State {
+func findResourceByURN(rs []*pkgresource.State, urn resource.URN) *pkgresource.State {
 	for _, r := range rs {
 		if r.URN == urn {
 			return r
@@ -3275,6 +3275,10 @@ func TestTargetChangeAndSameProviderVersion(t *testing.T) {
 // Parents and aliases are of particular interest because they result in URN
 // changes.
 func TestUntargetedDependencyChainsArePreserved(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping large targeted-update matrix in short mode")
+	}
+
 	t.Parallel()
 
 	// Arrange.
@@ -4916,4 +4920,82 @@ func TestUntargetedRefreshedProviderUpdate(t *testing.T) {
 	require.NoError(t, err)
 	// The 2 we defined plus the new and old default provider for pkgA
 	require.Len(t, snap2.Resources, 4)
+}
+
+// Targeted operations must not configure providers that are only carried over from old state. A
+// provider whose configuration has become invalid (e.g. expired credentials) must not fail an
+// operation that targets only resources of other providers.
+func TestTargetedOperationSkipsUnrelatedProviderConfiguration(t *testing.T) {
+	t.Parallel()
+
+	var pkgACredentialsExpired atomic.Bool
+	var skipA atomic.Bool
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				ConfigureF: func(context.Context, plugin.ConfigureRequest) (plugin.ConfigureResponse, error) {
+					if pkgACredentialsExpired.Load() {
+						return plugin.ConfigureResponse{}, errors.New("no valid credential sources found")
+					}
+					return plugin.ConfigureResponse{}, nil
+				},
+			}, nil
+		}),
+		deploytest.NewProviderLoader("pkgB", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+	}
+
+	program := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		if !skipA.Load() {
+			_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
+			require.NoError(t, err)
+		}
+		_, err := monitor.RegisterResource("pkgB:m:typB", "resB", true)
+		require.NoError(t, err)
+		return nil
+	})
+
+	hostF := deploytest.NewPluginHostF(nil, nil, program, nil, nil, loaders...)
+	p := &lt.TestPlan{}
+	project := p.GetProject()
+
+	opts := lt.TestUpdateOptions{T: t, HostF: hostF}
+	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), opts, false, p.BackendClient, nil, "0")
+	require.NoError(t, err)
+	require.Len(t, snap.Resources, 4)
+
+	// pkgA's credentials "expire" and the program no longer registers resA, so both resA and its
+	// provider survive only as untargeted sames from the old state.
+	pkgACredentialsExpired.Store(true)
+	skipA.Store(true)
+
+	resA := resource.URN("urn:pulumi:test::test::pkgA:m:typA::resA")
+	resB := resource.URN("urn:pulumi:test::test::pkgB:m:typB::resB")
+	urnsOf := func(snap *deploy.Snapshot) []resource.URN {
+		return slice.Map(snap.Resources, func(r *pkgresource.State) resource.URN { return r.URN })
+	}
+	providerA := func(snap *deploy.Snapshot) resource.URN {
+		for _, r := range snap.Resources {
+			if r.Type == "pulumi:providers:pkgA" {
+				return r.URN
+			}
+		}
+		return ""
+	}
+
+	opts = lt.TestUpdateOptions{T: t, HostF: hostF}
+	opts.Targets = deploy.NewUrnTargetsFromUrns([]resource.URN{resB})
+	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), opts, false, p.BackendClient, nil, "1")
+	require.NoError(t, err)
+	require.Contains(t, urnsOf(snap), resA)
+	require.Contains(t, urnsOf(snap), resB)
+	require.NotEmpty(t, providerA(snap))
+
+	snap, err = lt.TestOp(Destroy).RunStep(project, p.GetTarget(t, snap), opts, false, p.BackendClient, nil, "2")
+	require.NoError(t, err)
+	require.Contains(t, urnsOf(snap), resA)
+	require.NotContains(t, urnsOf(snap), resB)
+	require.NotEmpty(t, providerA(snap))
 }

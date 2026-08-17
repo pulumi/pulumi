@@ -98,6 +98,52 @@ func tryExpressions(
 	return cty.NilVal, errors.New(buf.String())
 }
 
+func recoverExpression(
+	args []cty.Value,
+	getResource func(context.Context, resource.ResourceReference) (resource.PropertyMap, error),
+) (cty.Value, error) {
+	if len(args) != 2 {
+		return cty.NilVal, errors.New("recover requires a value and recovery expression")
+	}
+
+	valueClosure := customdecode.ExpressionClosureFromVal(args[0])
+	value, diags := valueClosure.Value()
+	if diags.HasErrors() {
+		return cty.NilVal, errors.New(diags.Error())
+	}
+
+	pv, err := ctyToPropertyValue(value)
+	if err == nil {
+		return propertyValueToCty(context.TODO(), getResource, pv)
+	}
+
+	var poison *poisonError
+	if !errors.As(err, &poison) {
+		return cty.NilVal, err
+	}
+
+	recoveryClosure := customdecode.ExpressionClosureFromVal(args[1])
+	childContext := recoveryClosure.EvalContext.NewChild()
+	childContext.Variables = map[string]cty.Value{
+		"error": cty.StringVal(poison.Error()),
+	}
+	recoveryClosure = &customdecode.ExpressionClosure{
+		Expression:  recoveryClosure.Expression,
+		EvalContext: childContext,
+	}
+
+	recoveredValue, diags := recoveryClosure.Value()
+	if diags.HasErrors() {
+		return cty.NilVal, errors.New(diags.Error())
+	}
+
+	recoveredPV, err := ctyToPropertyValue(recoveredValue)
+	if err != nil {
+		return cty.NilVal, err
+	}
+	return propertyValueToCty(context.TODO(), getResource, recoveredPV)
+}
+
 func (ectx *EvalContext) builtinFunctions() map[string]function.Function {
 	// If errorName is set and value is empty, the function will return an error with the given name. This is used for
 	// functions that are only supported in some contexts, like rootDirectory not always being available in `pulumi do`.
@@ -173,6 +219,23 @@ func (ectx *EvalContext) builtinFunctions() map[string]function.Function {
 		},
 		Impl: func(args []cty.Value, retType cty.Type) (cty.Value, error) {
 			return tryExpressions(args, ectx.getResource)
+		},
+	})
+
+	recoverFn := function.New(&function.Spec{
+		Params: []function.Parameter{
+			{
+				Name: "value",
+				Type: customdecode.ExpressionClosureType,
+			},
+			{
+				Name: "recovery",
+				Type: customdecode.ExpressionClosureType,
+			},
+		},
+		Type: function.StaticReturnType(cty.DynamicPseudoType),
+		Impl: func(args []cty.Value, retType cty.Type) (cty.Value, error) {
+			return recoverExpression(args, ectx.getResource)
 		},
 	})
 
@@ -298,9 +361,10 @@ func (ectx *EvalContext) builtinFunctions() map[string]function.Function {
 			}
 
 			marshalOpts := plugin.MarshalOptions{
-				KeepUnknowns:  true,
-				KeepSecrets:   true,
-				KeepResources: true,
+				KeepUnknowns:   true,
+				KeepSecrets:    true,
+				KeepResources:  true,
+				KeepByteString: true,
 			}
 			obj, err := plugin.MarshalProperties(argsPV.ObjectValue(), marshalOpts)
 			if err != nil {
@@ -308,8 +372,9 @@ func (ectx *EvalContext) builtinFunctions() map[string]function.Function {
 			}
 
 			request := &pulumirpc.ResourceInvokeRequest{
-				Tok:  token,
-				Args: obj,
+				Tok:               token,
+				Args:              obj,
+				AcceptsByteString: true,
 			}
 
 			if len(args) == 3 && !args[2].IsNull() {
@@ -355,6 +420,11 @@ func (ectx *EvalContext) builtinFunctions() map[string]function.Function {
 				}
 			}
 
+			request.DependsOn = make([]string, len(dependsOn))
+			for i, urn := range dependsOn {
+				request.DependsOn[i] = string(urn)
+			}
+
 			resp, err := ectx.invoke(context.TODO(), request)
 			if err != nil {
 				return cty.NilVal, fmt.Errorf("invoke engine: %w", err)
@@ -366,6 +436,13 @@ func (ectx *EvalContext) builtinFunctions() map[string]function.Function {
 					fmt.Fprintf(&buf, "- %s\n", failure)
 				}
 				return cty.NilVal, errors.New(buf.String())
+			}
+
+			if resp.Unknown {
+				return propertyValueToCty(context.TODO(), ectx.getResource, resource.NewProperty(resource.Output{
+					Known:        false,
+					Dependencies: dependsOn,
+				}))
 			}
 
 			resultPM, err := plugin.UnmarshalProperties(resp.GetReturn(), marshalOpts)
@@ -477,10 +554,14 @@ func (ectx *EvalContext) builtinFunctions() map[string]function.Function {
 				return cty.NilVal, errors.New("call self must have an id property of type string")
 			}
 
-			urn := urnVal.AsString()
+			// The ID is unknown when self is a resource still being created during a preview.
+			idPV := resource.MakeComputed(resource.NewProperty(""))
+			if id.IsKnown() {
+				idPV = resource.NewProperty(id.AsString())
+			}
 			argsPM["__self__"] = resource.NewProperty(resource.ResourceReference{
-				URN: resource.URN(urn),
-				ID:  resource.NewProperty(id.AsString()),
+				URN: resource.URN(urnVal.AsString()),
+				ID:  idPV,
 			})
 
 			marshalOpts := plugin.MarshalOptions{
@@ -488,6 +569,7 @@ func (ectx *EvalContext) builtinFunctions() map[string]function.Function {
 				KeepSecrets:      true,
 				KeepResources:    true,
 				KeepOutputValues: true,
+				KeepByteString:   true,
 			}
 			obj, err := plugin.MarshalProperties(argsPM, marshalOpts)
 			if err != nil {
@@ -495,8 +577,9 @@ func (ectx *EvalContext) builtinFunctions() map[string]function.Function {
 			}
 
 			request := &pulumirpc.ResourceCallRequest{
-				Tok:  fun.Token,
-				Args: obj,
+				Tok:               fun.Token,
+				Args:              obj,
+				AcceptsByteString: true,
 			}
 
 			var dependsOn []resource.URN
@@ -1022,6 +1105,19 @@ func (ectx *EvalContext) builtinFunctions() map[string]function.Function {
 		},
 	})
 
+	notImplementedFn := function.New(&function.Spec{
+		Params: []function.Parameter{
+			{
+				Name: "message",
+				Type: cty.String,
+			},
+		},
+		Type: function.StaticReturnType(cty.DynamicPseudoType),
+		Impl: func(args []cty.Value, retType cty.Type) (cty.Value, error) {
+			return cty.NilVal, errors.New(args[0].AsString())
+		},
+	})
+
 	return map[string]function.Function{
 		"cwd":                literalStringFn(ectx.workingDirectory, ""),
 		"rootDirectory":      literalStringFn(ectx.rootDirectory, "rootDirectory"),
@@ -1031,6 +1127,7 @@ func (ectx *EvalContext) builtinFunctions() map[string]function.Function {
 		"secret":             secretFn,
 		"unsecret":           unsecretFn,
 		"try":                tryFn,
+		"recover":            recoverFn,
 		"can":                canFn,
 		"getOutput":          getOutputFn,
 		"invoke":             invokeFn,
@@ -1048,6 +1145,7 @@ func (ectx *EvalContext) builtinFunctions() map[string]function.Function {
 		"element":            stdlib.ElementFunc,
 		"join":               stdlib.JoinFunc,
 		"length":             lengthFunc,
+		"notImplemented":     notImplementedFn,
 		"singleOrNone":       singleOrNoneFn,
 		"entries":            entriesFn,
 		"lookup":             stdlib.LookupFunc,

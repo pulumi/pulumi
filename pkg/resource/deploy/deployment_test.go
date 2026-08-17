@@ -21,6 +21,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/b64"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -30,9 +31,9 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
 )
 
-func newResource(name string) *resource.State {
+func newResource(name string) *pkgresource.State {
 	ty := tokens.Type("test")
-	return &resource.State{
+	return &pkgresource.State{
 		Type:    ty,
 		URN:     resource.NewURN(tokens.QName("teststack"), tokens.PackageName("pkg"), ty, ty, name),
 		Inputs:  make(resource.PropertyMap),
@@ -40,7 +41,7 @@ func newResource(name string) *resource.State {
 	}
 }
 
-func newSnapshot(resources []*resource.State, ops []resource.Operation) *Snapshot {
+func newSnapshot(resources []*pkgresource.State, ops []pkgresource.Operation) *Snapshot {
 	return NewSnapshot(Manifest{
 		Time:    time.Now(),
 		Version: version.Version,
@@ -53,11 +54,11 @@ func TestPendingOperationsDeployment(t *testing.T) {
 
 	resourceA := newResource("a")
 	resourceB := newResource("b")
-	snap := newSnapshot([]*resource.State{
+	snap := newSnapshot([]*pkgresource.State{
 		resourceA,
-	}, []resource.Operation{
+	}, []pkgresource.Operation{
 		{
-			Type:     resource.OperationTypeCreating,
+			Type:     pkgresource.OperationTypeCreating,
 			Resource: resourceB,
 		},
 	})

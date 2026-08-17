@@ -39,7 +39,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/maputil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -109,6 +108,7 @@ func GenerateProgram(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, 
 	for componentDir, component := range program.CollectComponents() {
 		componentFilename := strings.ReplaceAll(filepath.Base(componentDir), "-", "_")
 		componentName := component.DeclarationName()
+		pcl.MapProvidersAsResources(component.Program)
 		componentGenerator, err := newGenerator(component.Program)
 		if err != nil {
 			return files, componentGenerator.diagnostics, err
@@ -190,14 +190,14 @@ func (g *generator) genComponentDefinition(w io.Writer, component *pcl.Component
 	hasAnyInputVariables := len(configVars) > 0
 	if hasAnyInputVariables {
 		objectTypedConfigs := collectObjectTypedConfigVariables(component)
-		variableNames := maputil.SortedKeys(objectTypedConfigs)
+		variableNames := slices.Sorted(maps.Keys(objectTypedConfigs))
 		// generate resource args for this component
 		for _, variableName := range variableNames {
 			objectType := objectTypedConfigs[variableName]
 			objectTypeName := cgstrings.UppercaseFirst(variableName)
 			g.Fprintf(w, "class %s(TypedDict, total=False):\n", objectTypeName)
 			g.Indented(func() {
-				propertyNames := maputil.SortedKeys(objectType.Properties)
+				propertyNames := slices.Sorted(maps.Keys(objectType.Properties))
 				for _, propertyName := range propertyNames {
 					propertyType := objectType.Properties[propertyName]
 					inputType := componentInputElementType(propertyType)
@@ -679,7 +679,7 @@ func (g *generator) genPreamble(w io.Writer, program *pcl.Program, preambleHelpe
 			if pkg == "pulumi" {
 				continue
 			}
-			var packageName, schemaPkg string
+			var packageName string
 			if schemaRes != nil && schemaRes.PackageReference != nil {
 				pkgDef, err := schemaRes.PackageReference.Definition()
 				if err == nil {
@@ -690,14 +690,12 @@ func (g *generator) genPreamble(w io.Writer, program *pcl.Program, preambleHelpe
 				if packageName == "" {
 					packageName = PyPack(pkgDef.Namespace, pkgDef.Name)
 				}
-				schemaPkg = pkgDef.Name
 			} else {
 				packageName = "pulumi_" + makeValidIdentifier(pkg)
-				schemaPkg = pkg
 			}
 			importSet[packageName] = Import{
 				ImportAs: true,
-				Pkg:      g.ensurePackageImportAlias(schemaPkg, usedImportAliases),
+				Pkg:      g.ensurePackageImportAlias(pkg, usedImportAliases),
 			}
 		}
 		diags := n.VisitExpressions(nil, func(n model.Expression) (model.Expression, hcl.Diagnostics) {
@@ -705,17 +703,9 @@ func (g *generator) genPreamble(w io.Writer, program *pcl.Program, preambleHelpe
 				if call.Name == pcl.Invoke {
 					pkg, _, _, invokeDiags := functionName(call.Args[0])
 					contract.Assertf(len(invokeDiags) == 0, "unexpected diagnostics reported: %v", invokeDiags)
-					// Import an extension by its real package name but alias it under the
-					// token's base name, matching how its resources are imported.
-					packageName := "pulumi_" + makeValidIdentifier(pkg)
-					schemaPkg := pkg
-					if def := g.functionPackage(call.Args[0]); def != nil {
-						packageName = PyPack(def.Namespace, def.Name)
-						schemaPkg = def.Name
-					}
-					importSet[packageName] = Import{
+					importSet["pulumi_"+makeValidIdentifier(pkg)] = Import{
 						ImportAs: true,
-						Pkg:      g.ensurePackageImportAlias(schemaPkg, usedImportAliases),
+						Pkg:      g.ensurePackageImportAlias(pkg, usedImportAliases),
 					}
 				}
 				if i := g.getFunctionImports(call); len(i) > 0 && i[0] != "" {
@@ -837,15 +827,13 @@ func (g *generator) resourceTypeName(r *pcl.Resource) (string, hcl.Diagnostics) 
 	pkg, module, member, diagnostics := pcl.DecomposeToken(token, tokenRange)
 
 	// Normalize module.
-	schemaPkg := pkg
 	if r.Schema != nil {
-		schemaPkg = r.Schema.PackageReference.Name()
 		// pulumi:pulumi:* resources (e.g. StackReference) belong to the root of the
 		// package, not a "pulumi" submodule.
 		if r.Schema.PackageReference.Name() == "pulumi" && module == "pulumi" {
 			module = ""
 		}
-		pkgDef, err := r.Schema.PackageReference.Definition()
+		pkg, err := r.Schema.PackageReference.Definition()
 		if err != nil {
 			diagnostics = append(diagnostics, &hcl.Diagnostic{
 				Severity: hcl.DiagError,
@@ -854,9 +842,9 @@ func (g *generator) resourceTypeName(r *pcl.Resource) (string, hcl.Diagnostics) 
 				Subject:  r.Definition.Syntax.DefRange().Ptr(),
 			})
 		} else {
-			err = pkgDef.ImportLanguages(map[string]schema.Language{"python": Importer})
-			contract.AssertNoErrorf(err, "failed to import python language plugin for package %s", pkgDef.Name)
-			if lang, ok := pkgDef.Language["python"]; ok {
+			err = pkg.ImportLanguages(map[string]schema.Language{"python": Importer})
+			contract.AssertNoErrorf(err, "failed to import python language plugin for package %s", pkg.Name)
+			if lang, ok := pkg.Language["python"]; ok {
 				if pkgInfo, ok := lang.(PackageInfo); ok {
 					if m, ok := pkgInfo.ModuleNameOverrides[module]; ok {
 						module = m
@@ -866,16 +854,14 @@ func (g *generator) resourceTypeName(r *pcl.Resource) (string, hcl.Diagnostics) 
 		}
 	}
 
-	return tokenToQualifiedName(g.packageAlias(schemaPkg), module, member), diagnostics
+	return tokenToQualifiedName(g.packageAlias(pkg), module, member), diagnostics
 }
 
 func (g *generator) readResourceTypeName(r *pcl.ReadResource) (string, hcl.Diagnostics) {
 	token, tokenRange := r.GetToken()
 	pkg, module, member, diagnostics := pcl.DecomposeToken(token, tokenRange)
 
-	schemaPkg := pkg
 	if r.Schema != nil {
-		schemaPkg = r.Schema.PackageReference.Name()
 		pkgDef, err := r.Schema.PackageReference.Definition()
 		if err != nil {
 			diagnostics = append(diagnostics, &hcl.Diagnostic{
@@ -897,7 +883,7 @@ func (g *generator) readResourceTypeName(r *pcl.ReadResource) (string, hcl.Diagn
 		}
 	}
 
-	return tokenToQualifiedName(g.packageAlias(schemaPkg), module, member), diagnostics
+	return tokenToQualifiedName(g.packageAlias(pkg), module, member), diagnostics
 }
 
 func (g *generator) typedDictEnabled(expr model.Expression, typ model.Type) bool {
@@ -942,7 +928,7 @@ func (g *generator) argumentTypeName(expr model.Expression, destType model.Type)
 	tokenRange := expr.SyntaxNode().Range()
 
 	// Example: aws, s3/BucketLogging, BucketLogging, []Diagnostics
-	_, module, member, diagnostics := pcl.DecomposeToken(token, tokenRange)
+	pkgName, module, member, diagnostics := pcl.DecomposeToken(token, tokenRange)
 	contract.Assertf(len(diagnostics) == 0, "unexpected diagnostics reported: %v", diagnostics)
 
 	modName := objType.PackageReference.TokenToModule(token)
@@ -957,7 +943,7 @@ func (g *generator) argumentTypeName(expr model.Expression, destType model.Type)
 			}
 		}
 	}
-	return tokenToQualifiedName(g.packageAlias(objType.PackageReference.Name()), modName, member) + "Args"
+	return tokenToQualifiedName(g.packageAlias(pkgName), modName, member) + "Args"
 }
 
 // makeResourceName returns the expression that should be emitted for a resource's "name" parameter given its base name
@@ -1207,12 +1193,38 @@ func (g *generator) genHookNode(w io.Writer, h *pcl.Hook) {
 	hookName := h.LogicalName()
 
 	var cmdExprs []model.Expression
+	var cmdTemps []*quoteTemp
 	if tuple, ok := h.Command.(*model.TupleConsExpression); ok {
-		cmdExprs = tuple.Expressions
+		for _, expr := range tuple.Expressions {
+			expr, temps := g.lowerHookCommandExpression(expr)
+			cmdExprs = append(cmdExprs, expr)
+			cmdTemps = append(cmdTemps, temps...)
+		}
+	}
+
+	if h.Kind == pcl.HookKindError {
+		// Error hooks return whether the failed operation should be retried: retry if and
+		// only if the command exits successfully.
+		g.Fgenf(w, "%sdef %s(args):\n", g.Indent, fnName)
+		g.Indented(func() {
+			g.genTemps(w, cmdTemps)
+			g.Fgenf(w, "%sresult = subprocess.run([", g.Indent)
+			for i, arg := range cmdExprs {
+				if i > 0 {
+					g.Fgenf(w, ", ")
+				}
+				g.genPyStringArg(w, arg)
+			}
+			g.Fgenf(w, "], check=False)\n")
+			g.Fgenf(w, "%sreturn result.returncode == 0\n", g.Indent)
+		})
+		g.Fgenf(w, "%s%s = pulumi.ErrorHook(%q, %s)\n", g.Indent, pyName, hookName, fnName)
+		return
 	}
 
 	g.Fgenf(w, "%sdef %s(args):\n", g.Indent, fnName)
 	g.Indented(func() {
+		g.genTemps(w, cmdTemps)
 		g.Fgenf(w, "%ssubprocess.run([", g.Indent)
 		for i, arg := range cmdExprs {
 			if i > 0 {
@@ -1893,7 +1905,7 @@ func (g *generator) genConfigVariable(w io.Writer, v *pcl.ConfigVariable) {
 	g.genTemps(w, temps)
 
 	if v.Description != "" {
-		for _, line := range strings.Split(v.Description, "\n") {
+		for line := range strings.SplitSeq(v.Description, "\n") {
 			g.Fgenf(w, "%s# %s\n", g.Indent, line)
 		}
 	}

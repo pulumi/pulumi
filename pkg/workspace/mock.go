@@ -21,23 +21,23 @@ import (
 )
 
 type MockContext struct {
-	NewF                  func() (W, error)
-	ReadProjectF          func() (*workspace.Project, string, error)
+	NewF                  func(dir string) (W, error)
+	ReadProjectF          func(dir string) (*workspace.Project, string, error)
 	GetStoredCredentialsF func() (workspace.Credentials, error)
 	LoadPluginProjectAtF  func(ctx context.Context, path string) (*workspace.PluginProject, string, error)
 	LoadBaseProjectFromF  func(ctx context.Context, path string) (workspace.BaseProject, string, error)
 }
 
-func (c *MockContext) New() (W, error) {
+func (c *MockContext) New(dir string) (W, error) {
 	if c.NewF != nil {
-		return c.NewF()
+		return c.NewF(dir)
 	}
 	return nil, workspace.ErrProjectNotFound
 }
 
-func (c *MockContext) ReadProject() (*workspace.Project, string, error) {
+func (c *MockContext) ReadProject(dir string) (*workspace.Project, string, error) {
 	if c.ReadProjectF != nil {
-		return c.ReadProjectF()
+		return c.ReadProjectF(dir)
 	}
 	return nil, "", workspace.ErrProjectNotFound
 }

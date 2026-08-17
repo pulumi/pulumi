@@ -26,6 +26,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"maps"
 	"path"
 	"path/filepath"
 	"reflect"
@@ -306,8 +307,8 @@ func (mod *modContext) resourceType(r *schema.ResourceType) string {
 	}
 
 	// Is it a provider resource?
-	if strings.HasPrefix(r.Token, "pulumi:providers:") {
-		pkgName := strings.TrimPrefix(r.Token, "pulumi:providers:")
+	if after, ok := strings.CutPrefix(r.Token, "pulumi:providers:"); ok {
+		pkgName := after
 		return fmt.Sprintf("pulumi_%s.Provider", pkgName)
 	}
 
@@ -505,7 +506,7 @@ func relPathToRelImport(relPath string) string {
 	}
 	var relImport strings.Builder
 	relImport.WriteString(".")
-	for _, component := range strings.Split(relPath, "/") {
+	for component := range strings.SplitSeq(relPath, "/") {
 		if component == ".." {
 			relImport.WriteString(".")
 		} else {
@@ -2570,14 +2571,10 @@ func (mod *modContext) genInitDocstring(w io.Writer, res *schema.Resource, resou
 	return nil
 }
 
-func (mod *modContext) genComment(comment string, selfRef schema.DocRef, filterExamples bool) (string, error) {
-	if comment == "" {
-		return "", nil
-	}
-	if filterExamples {
-		comment = codegen.FilterExamples(comment, "python")
-	}
-	comment, err := mod.pkg.InterpretPulumiRefs(comment, func(ref schema.DocRef) (string, bool) {
+// docRefResolver returns a resolver for `{{% ref %}}` shortcodes that produces Python names. If
+// selfRef is set, refs within the same scope are returned unqualified.
+func (mod *modContext) docRefResolver(selfRef schema.DocRef) func(schema.DocRef) (string, bool) {
+	return func(ref schema.DocRef) (string, bool) {
 		var base string
 		switch ref.Kind {
 		case schema.DocRefKindResource, schema.DocRefKindResourceProperty:
@@ -2622,7 +2619,17 @@ func (mod *modContext) genComment(comment string, selfRef schema.DocRef, filterE
 		}
 
 		return fmt.Sprintf("%s.%s", base, property), true
-	})
+	}
+}
+
+func (mod *modContext) genComment(comment string, selfRef schema.DocRef, filterExamples bool) (string, error) {
+	if comment == "" {
+		return "", nil
+	}
+	if filterExamples {
+		comment = codegen.FilterExamples(comment, "python")
+	}
+	comment, err := mod.pkg.InterpretPulumiRefs(comment, mod.docRefResolver(selfRef))
 	if err != nil {
 		return "", fmt.Errorf("error interpreting Pulumi references in comment %q: %w", comment, err)
 	}
@@ -3518,9 +3525,7 @@ func GeneratePackage(
 		requires[namespace+"_"+ref.Name()] = ">=" + dep.Version.String()
 	}
 	// Add language specific dependenceis
-	for name, version := range info.Requires {
-		requires[name] = version
-	}
+	maps.Copy(requires, info.Requires)
 	// Add typing-extensions if we're using TypedDicts
 	if typedDictEnabled(info.InputTypes) {
 		requires["typing-extensions"] = ">=4.11,<5; python_version < \"3.11\""

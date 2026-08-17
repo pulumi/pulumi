@@ -14,6 +14,7 @@ linters:
     - importas
     - lll
     - misspell
+    - modernize
     - nakedret
     - nolintlint
     - paralleltest
@@ -29,6 +30,12 @@ linters:
     - requiredfield
     - noosexit
   settings:
+    modernize:
+      disable:
+        # This modernizer is not enabled by Go 1.26's go fix.
+        - unsafefuncs
+        # Some code reads omitempty tags at runtime, making this rewrite unsafe.
+        - omitzero
     custom:
       requiredfield:
         type: module
@@ -201,6 +208,10 @@ linters:
         text: 'deprecated: Please use types in:? cloud.google.com/go/logging/apiv2/loggingpb'
       - linters:
           - staticcheck
+        path: ^sdk/go/auto/
+        text: SA1019
+      - linters:
+          - staticcheck
         text: 'error strings should not end with punctuation or newlines'
       - linters:
           - staticcheck
@@ -233,12 +244,18 @@ linters:
           - forbidigo
         path: _test\.go$
         text: 'use (cmd\.OutOrStdout|cmd\.ErrOrStderr|fmt\.Fprint\*)'
+      # These modernizers are not enabled by Go 1.26's go fix. golangci-lint
+      # runs them but does not accept their names in modernize.disable.
+      - linters:
+          - modernize
+        text: '^(atomictypes|slicesbackward):'
     paths:
       - Godeps$
       - builtin$
       - node_modules
       - testdata$
       - third_party$
+      - third_party/
       - vendor$
 formatters:
   enable:
@@ -252,4 +269,5 @@ formatters:
       - node_modules
       - testdata$
       - third_party$
+      - third_party/
       - vendor$

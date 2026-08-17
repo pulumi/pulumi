@@ -1,0 +1,6 @@
+name: aliases_python
+description: A program that exercises alias scenarios (rename, retype, adopt, extract).
+runtime:
+  name: python
+  options:
+    toolchain: uv

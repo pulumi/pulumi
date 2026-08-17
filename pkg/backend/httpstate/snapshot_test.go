@@ -32,6 +32,8 @@ import (
 	"strings"
 	"testing"
 
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
+
 	"github.com/dustin/go-humanize"
 	"github.com/hexops/gotextdiff"
 	"github.com/stretchr/testify/assert"
@@ -221,7 +223,7 @@ func TestCloudSnapshotPersisterDeploymentSchemaVersion(t *testing.T) {
 
 	deploymentV3, version, features, err := stack.SerializeDeploymentWithMetadata(t.Context(),
 		&deploy.Snapshot{
-			Resources: []*resource.State{
+			Resources: []*pkgresource.State{
 				{URN: resource.URN("urn-1")},
 			},
 		}, false /*showSecrets*/)
@@ -245,7 +247,7 @@ func TestCloudSnapshotPersisterDeploymentSchemaVersion(t *testing.T) {
 
 	deploymentV3, version, features, err = stack.SerializeDeploymentWithMetadata(t.Context(),
 		&deploy.Snapshot{
-			Resources: []*resource.State{
+			Resources: []*pkgresource.State{
 				{
 					URN:                 resource.URN("urn-1"),
 					RefreshBeforeUpdate: true, // This is a v4 feature.
@@ -277,7 +279,7 @@ func TestCloudSnapshotPersisterDeploymentSchemaVersion(t *testing.T) {
 
 	deploymentV3, version, features, err = stack.SerializeDeploymentWithMetadata(t.Context(),
 		&deploy.Snapshot{
-			Resources: []*resource.State{
+			Resources: []*pkgresource.State{
 				{
 					URN: resource.URN("urn-1"),
 				},
@@ -303,7 +305,7 @@ func TestCloudSnapshotPersisterDeploymentSchemaVersion(t *testing.T) {
 
 	deploymentV3, version, features, err = stack.SerializeDeploymentWithMetadata(t.Context(),
 		&deploy.Snapshot{
-			Resources: []*resource.State{
+			Resources: []*pkgresource.State{
 				{URN: resource.URN("urn-1")},
 				{URN: resource.URN("urn-2")},
 			},
@@ -330,7 +332,7 @@ func TestCloudSnapshotPersisterDeploymentSchemaVersion(t *testing.T) {
 
 	deploymentV3, version, features, err = stack.SerializeDeploymentWithMetadata(t.Context(),
 		&deploy.Snapshot{
-			Resources: []*resource.State{
+			Resources: []*pkgresource.State{
 				{
 					URN:                 resource.URN("urn-1"),
 					RefreshBeforeUpdate: true, // This is a v4 feature.
@@ -360,7 +362,7 @@ func TestCloudSnapshotPersisterDeploymentSchemaVersion(t *testing.T) {
 
 	deploymentV3, version, features, err = stack.SerializeDeploymentWithMetadata(t.Context(),
 		&deploy.Snapshot{
-			Resources: []*resource.State{
+			Resources: []*pkgresource.State{
 				{
 					URN:                 resource.URN("urn-1"),
 					RefreshBeforeUpdate: true, // This is a v4 feature.
@@ -397,7 +399,7 @@ func TestCloudSnapshotPersisterDeploymentSchemaVersion(t *testing.T) {
 
 	deploymentV3, version, features, err = stack.SerializeDeploymentWithMetadata(t.Context(),
 		&deploy.Snapshot{
-			Resources: []*resource.State{
+			Resources: []*pkgresource.State{
 				{
 					URN: resource.URN("urn-1"),
 				},
@@ -422,7 +424,7 @@ func TestCloudSnapshotPersisterDeploymentSchemaVersion(t *testing.T) {
 
 	deploymentV3, version, features, err = stack.SerializeDeploymentWithMetadata(t.Context(),
 		&deploy.Snapshot{
-			Resources: []*resource.State{
+			Resources: []*pkgresource.State{
 				{
 					URN:                 resource.URN("urn-1"),
 					RefreshBeforeUpdate: true, // This is a v4 feature.
@@ -454,7 +456,7 @@ func TestCloudSnapshotPersisterDeploymentSchemaVersion(t *testing.T) {
 
 	deploymentV3, version, features, err = stack.SerializeDeploymentWithMetadata(t.Context(),
 		&deploy.Snapshot{
-			Resources: []*resource.State{
+			Resources: []*pkgresource.State{
 				{
 					URN: resource.URN("urn-1"),
 				},
@@ -479,7 +481,7 @@ func TestCloudSnapshotPersisterDeploymentSchemaVersion(t *testing.T) {
 
 	deploymentV3, version, features, err = stack.SerializeDeploymentWithMetadata(t.Context(),
 		&deploy.Snapshot{
-			Resources: []*resource.State{
+			Resources: []*pkgresource.State{
 				{
 					URN: resource.URN("urn-1"),
 				},
@@ -510,7 +512,7 @@ func TestCloudSnapshotPersisterDeploymentSchemaVersion(t *testing.T) {
 
 	deploymentV3, version, features, err = stack.SerializeDeploymentWithMetadata(t.Context(),
 		&deploy.Snapshot{
-			Resources: []*resource.State{
+			Resources: []*pkgresource.State{
 				{
 					URN:                 resource.URN("urn-1"),
 					RefreshBeforeUpdate: true, // This is a v4 feature.
@@ -540,7 +542,7 @@ func TestCloudSnapshotPersisterDeploymentSchemaVersion(t *testing.T) {
 
 	deploymentV3, version, features, err = stack.SerializeDeploymentWithMetadata(t.Context(),
 		&deploy.Snapshot{
-			Resources: []*resource.State{
+			Resources: []*pkgresource.State{
 				{
 					URN:                 resource.URN("urn-1"),
 					RefreshBeforeUpdate: true, // This is a v4 feature.
@@ -737,7 +739,7 @@ func TestCloudSnapshotPersisterUseOfDiffProtocol(t *testing.T) {
 
 	deploymentV3, version, features, err := stack.SerializeDeploymentWithMetadata(t.Context(),
 		&deploy.Snapshot{
-			Resources: []*resource.State{
+			Resources: []*pkgresource.State{
 				{
 					URN: resource.URN("urn-1"),
 				},
@@ -768,7 +770,7 @@ func TestCloudSnapshotPersisterUseOfDiffProtocol(t *testing.T) {
 
 	deploymentV3, version, features, err = stack.SerializeDeploymentWithMetadata(t.Context(),
 		&deploy.Snapshot{
-			Resources: []*resource.State{
+			Resources: []*pkgresource.State{
 				{
 					URN: resource.URN("urn-1"),
 				},
@@ -802,7 +804,7 @@ func TestCloudSnapshotPersisterUseOfDiffProtocol(t *testing.T) {
 
 	deploymentV3, version, features, err = stack.SerializeDeploymentWithMetadata(t.Context(),
 		&deploy.Snapshot{
-			Resources: []*resource.State{
+			Resources: []*pkgresource.State{
 				{
 					URN: resource.URN("urn-1"),
 				},
@@ -832,7 +834,7 @@ func TestCloudSnapshotPersisterUseOfDiffProtocol(t *testing.T) {
 
 	deploymentV3, version, features, err = stack.SerializeDeploymentWithMetadata(t.Context(),
 		&deploy.Snapshot{
-			Resources: []*resource.State{
+			Resources: []*pkgresource.State{
 				{
 					URN:                 resource.URN("urn-1"),
 					RefreshBeforeUpdate: true, // This is a v4 feature.
@@ -887,7 +889,7 @@ func generateSnapshots(t testing.TB, r *rand.Rand, resourceCount, resourcePayloa
 				pulumi.ResourceState
 			}
 
-			for i := 0; i < resourceCount; i++ {
+			for i := range resourceCount {
 				var dummy Dummy
 				err := ctx.RegisterComponentResource("examples:dummy:Dummy", fmt.Sprintf("dummy-%d", i), &dummy)
 				if err != nil {
@@ -1114,6 +1116,10 @@ func BenchmarkDiffStack(b *testing.B) {
 }
 
 func TestDiffStack(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping large checkpoint matrix in short mode")
+	}
+
 	t.Parallel()
 
 	testOrBenchmarkDiffStack(t, testDiffStack, dynamicCases)
@@ -1152,7 +1158,7 @@ var recordedCases = []diffStackCase{
 }
 
 func init() {
-	for _, c := range strings.Split(os.Getenv("PULUMI_TEST_CHECKPOINT_DIFFS"), ",") {
+	for c := range strings.SplitSeq(os.Getenv("PULUMI_TEST_CHECKPOINT_DIFFS"), ",") {
 		if c != "" {
 			recordedCases = append(recordedCases, recordedStackCase(c))
 		}
@@ -1170,6 +1176,10 @@ func TestDiffStackRecorded(t *testing.T) {
 }
 
 func TestMarshalDeployment(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping large checkpoint matrix in short mode")
+	}
+
 	t.Parallel()
 
 	if runtime.GOOS == "windows" {

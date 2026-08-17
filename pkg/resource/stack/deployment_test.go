@@ -23,6 +23,8 @@ import (
 	"testing"
 	"time"
 
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
+
 	"github.com/blang/semver"
 	combinations "github.com/mxschmitt/golang-combinations"
 	"github.com/stretchr/testify/assert"
@@ -30,21 +32,22 @@ import (
 	"pgregory.net/rapid"
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	resource_testing "github.com/pulumi/pulumi/pkg/v3/resource/testing"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/b64"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	rasset "github.com/pulumi/pulumi/sdk/v3/go/common/resource/asset"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
-	resource_testing "github.com/pulumi/pulumi/sdk/v3/go/common/resource/testing"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 // TestDeploymentSerialization creates a basic snapshot of a given resource state.
 func TestDeploymentSerialization(t *testing.T) {
 	t.Parallel()
-	res := resource.NewState{
+	res := pkgresource.NewState{
 		Type: tokens.Type("Test"),
 		URN: resource.NewURN(
 			tokens.QName("test"),
@@ -114,7 +117,7 @@ func TestDeploymentSerialization(t *testing.T) {
 		StackTrace:              nil,
 		IgnoreChanges:           nil,
 		ReplaceOnChanges:        nil,
-		ReplacementTrigger:      resource.NewNullProperty(),
+		ReplacementTrigger:      property.Value{},
 		RefreshBeforeUpdate:     false,
 		ViewOf:                  "",
 		ResourceHooks: map[resource.HookType][]string{
@@ -123,7 +126,7 @@ func TestDeploymentSerialization(t *testing.T) {
 		},
 		SnippetID: "",
 	}.Make()
-	dep, err := SerializeResource(t.Context(), res, config.NopEncrypter, false /* showSecrets */)
+	dep, _, err := SerializeResource(t.Context(), res, config.NopEncrypter, false /* showSecrets */)
 	require.NoError(t, err)
 
 	// assert some things about the deployment record:
@@ -223,14 +226,14 @@ func TestSerializeDeploymentWithMetadata(t *testing.T) {
 
 	tests := []struct {
 		name             string
-		resources        []*resource.State
+		resources        []*pkgresource.State
 		snippets         []resource.Snippet
 		expectedVersion  int
 		expectedFeatures []string
 	}{
 		{
 			name: "v3 deployment with no features",
-			resources: []*resource.State{
+			resources: []*pkgresource.State{
 				{
 					URN: "urn1",
 				},
@@ -240,7 +243,7 @@ func TestSerializeDeploymentWithMetadata(t *testing.T) {
 		},
 		{
 			name: "v4 deployment with snippets",
-			resources: []*resource.State{
+			resources: []*pkgresource.State{
 				{
 					URN: "urn1",
 				},
@@ -258,7 +261,7 @@ func TestSerializeDeploymentWithMetadata(t *testing.T) {
 		},
 		{
 			name: "v4 deployment with refreshBeforeUpdate",
-			resources: []*resource.State{
+			resources: []*pkgresource.State{
 				{
 					URN:                 "urn1",
 					RefreshBeforeUpdate: true,
@@ -269,7 +272,7 @@ func TestSerializeDeploymentWithMetadata(t *testing.T) {
 		},
 		{
 			name: "v4 deployment with views",
-			resources: []*resource.State{
+			resources: []*pkgresource.State{
 				{
 					URN: "urn1",
 				},
@@ -284,7 +287,7 @@ func TestSerializeDeploymentWithMetadata(t *testing.T) {
 		},
 		{
 			name: "v4 deployment with hooks",
-			resources: []*resource.State{
+			resources: []*pkgresource.State{
 				{
 					URN: "urn1",
 					ResourceHooks: map[resource.HookType][]string{
@@ -297,7 +300,7 @@ func TestSerializeDeploymentWithMetadata(t *testing.T) {
 		},
 		{
 			name: "v4 deployment with taint",
-			resources: []*resource.State{
+			resources: []*pkgresource.State{
 				{
 					URN:   "urn1",
 					Taint: true,
@@ -308,7 +311,7 @@ func TestSerializeDeploymentWithMetadata(t *testing.T) {
 		},
 		{
 			name: "v4 deployment with extension parameterization",
-			resources: []*resource.State{
+			resources: []*pkgresource.State{
 				{
 					URN:          "urn1",
 					ExtensionRef: "ref-1",
@@ -453,7 +456,7 @@ func TestResourceSnippetIDRoundTrip(t *testing.T) {
 	ctx := t.Context()
 
 	const snippetID = "89ed2ff3-1139-54c2-b53b-c3d9fb860da6"
-	res := &resource.State{
+	res := &pkgresource.State{
 		Type:      tokens.Type("pkgA:index:res"),
 		URN:       resource.NewURN("dev", "proj", "", tokens.Type("pkgA:index:res"), "r1"),
 		Custom:    true,
@@ -462,7 +465,7 @@ func TestResourceSnippetIDRoundTrip(t *testing.T) {
 		SnippetID: snippetID,
 	}
 
-	snap := &deploy.Snapshot{Resources: []*resource.State{res}}
+	snap := &deploy.Snapshot{Resources: []*pkgresource.State{res}}
 
 	untyped, err := SerializeUntypedDeployment(ctx, snap, nil)
 	require.NoError(t, err)
@@ -818,7 +821,7 @@ func TestDeserializeMissingSecretsManager(t *testing.T) {
 			Plugins: nil,
 		},
 		SecretsManager: nil,
-		Resources: []*resource.State{
+		Resources: []*pkgresource.State{
 			{
 				Type:         "pkg:index:type",
 				URN:          resource.URN(urn),
@@ -1010,7 +1013,8 @@ func LiteralArchiveObjectGenerator(maxDepth int) *rapid.Generator[map[string]any
 				rapid.OneOf(
 					AssetObjectGenerator().AsAny(),
 					ArchiveObjectGenerator(maxDepth-1).AsAny(),
-				), 0, 16)
+				), 0, 16,
+			)
 		} else {
 			contentsGenerator = rapid.Just(map[string]any{})
 		}
@@ -1122,7 +1126,7 @@ func TestSecretInputRoundTrip(t *testing.T) {
 
 	ctx := t.Context()
 
-	res := &resource.State{
+	res := &pkgresource.State{
 		URN:  "urn:pulumi:stack::project::pkg:index:type::name",
 		Type: "pkg:index:type",
 		Inputs: resource.NewPropertyMapFromMap(map[string]any{
@@ -1133,7 +1137,7 @@ func TestSecretInputRoundTrip(t *testing.T) {
 
 	sm := b64.NewBase64SecretsManager()
 
-	serialized, err := SerializeResource(ctx, res, sm.Encrypter(), false /* showSecrets */)
+	serialized, _, err := SerializeResource(ctx, res, sm.Encrypter(), false /* showSecrets */)
 	require.NoError(t, err)
 
 	deserialized, err := DeserializeResource(serialized, sm.Decrypter())
@@ -1246,4 +1250,95 @@ func TestDeserializeStackOutputs_SecretsInStackOutputs_Decrypted(t *testing.T) {
 		"hello":  resource.NewProperty("world"),
 		"secret": resource.MakeSecret(resource.NewProperty("super secret")),
 	}, outputs)
+}
+
+func TestSerializeByteString(t *testing.T) {
+	t.Parallel()
+	ctx := t.Context()
+
+	const raw = "\x00hello \x80\xfe\xff world\xf0\x28"
+
+	serialized, err := SerializePropertyValue(ctx, resource.NewProperty(raw), config.NopEncrypter, false)
+	require.NoError(t, err)
+	assert.Equal(t, map[string]any{
+		resource.SigKey: resource.ByteStringSig,
+		"value":         "AGhlbGxvIID+/yB3b3JsZPAo",
+	}, serialized)
+
+	// The serialized form must survive a JSON round trip, which plain strings containing invalid
+	// UTF-8 do not (encoding/json replaces invalid bytes with U+FFFD).
+	wire, err := wireValue(ctx, resource.NewProperty(raw))
+	require.NoError(t, err)
+	require.NoError(t, propertyValueSchema.Validate(wire))
+
+	deserialized, err := DeserializePropertyValue(wire, config.NopDecrypter)
+	require.NoError(t, err)
+	assert.Equal(t, resource.NewProperty(raw), deserialized)
+}
+
+// TestByteStringDeploymentRoundTrip verifies that a resource with a property containing non-UTF8
+// bytes round-trips through an untyped deployment and that the deployment is gated by the
+// "byteString" feature.
+func TestByteStringDeploymentRoundTrip(t *testing.T) {
+	t.Parallel()
+	ctx := t.Context()
+
+	const raw = "\x00hello \x80\xfe\xff world\xf0\x28"
+	res := &pkgresource.State{
+		Type:    tokens.Type("pkgA:index:res"),
+		URN:     resource.NewURN("dev", "proj", "", tokens.Type("pkgA:index:res"), "r1"),
+		Custom:  true,
+		Inputs:  resource.PropertyMap{"propA": resource.NewProperty(raw)},
+		Outputs: resource.PropertyMap{"propA": resource.MakeSecret(resource.NewProperty(raw))},
+	}
+
+	snap := &deploy.Snapshot{
+		Resources:      []*pkgresource.State{res},
+		SecretsManager: b64.NewBase64SecretsManager(),
+	}
+
+	untyped, err := SerializeUntypedDeployment(ctx, snap, nil)
+	require.NoError(t, err)
+	require.Equal(t, DeploymentSchemaVersionLatest, untyped.Version,
+		"presence of a non-UTF8 string should trigger the latest schema version")
+	require.Equal(t, []string{byteStringFeature}, untyped.Features,
+		"presence of a non-UTF8 string should advertise the byteString feature")
+	require.NoError(t, ValidateUntypedDeployment(untyped))
+
+	roundTripped, err := DeserializeUntypedDeployment(ctx, untyped, b64.Base64SecretsProvider)
+	require.NoError(t, err)
+	require.Len(t, roundTripped.Resources, 1)
+	assert.Equal(t, res.Inputs, roundTripped.Resources[0].Inputs)
+	assert.Equal(t, res.Outputs, roundTripped.Resources[0].Outputs)
+}
+
+func TestSerializeResourceReportsByteString(t *testing.T) {
+	t.Parallel()
+	ctx := t.Context()
+
+	const raw = "\x00hello \x80\xfe\xff world\xf0\x28"
+
+	makeState := func(outputs resource.PropertyMap) *pkgresource.State {
+		return &pkgresource.State{
+			Type:    tokens.Type("pkgA:index:res"),
+			URN:     resource.NewURN("dev", "proj", "", tokens.Type("pkgA:index:res"), "r1"),
+			Custom:  true,
+			Inputs:  resource.PropertyMap{},
+			Outputs: outputs,
+		}
+	}
+
+	// A raw byte string hidden inside a secret must still be reported: once serialized the secret is
+	// encrypted and the encoding is invisible to callers.
+	_, encoded, err := SerializeResource(ctx,
+		makeState(resource.PropertyMap{"out": resource.MakeSecret(resource.NewProperty(raw))}),
+		b64.NewBase64SecretsManager().Encrypter(), false)
+	require.NoError(t, err)
+	assert.True(t, encoded)
+
+	_, encoded, err = SerializeResource(ctx,
+		makeState(resource.PropertyMap{"out": resource.NewProperty("plain")}),
+		config.NopEncrypter, false)
+	require.NoError(t, err)
+	assert.False(t, encoded)
 }
