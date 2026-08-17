@@ -26,6 +26,8 @@ import (
 	"sort"
 	"strings"
 
+	mapset "github.com/deckarep/golang-set/v2"
+
 	"github.com/zclconf/go-cty/cty"
 
 	"github.com/hashicorp/hcl/v2"
@@ -92,7 +94,7 @@ func GenerateProgram(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, 
 	nodes := pcl.Linearize(program)
 
 	// Creating a list to store and later print helper methods if they turn out to be needed
-	preambleHelperMethods := codegen.NewStringSet()
+	preambleHelperMethods := mapset.NewSet[string]()
 
 	var main bytes.Buffer
 	g.genPreamble(&main, program, preambleHelperMethods)
@@ -117,7 +119,7 @@ func GenerateProgram(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, 
 		// mark the generator to target components
 		componentGenerator.isComponent = true
 
-		componentPreambleMethods := codegen.NewStringSet()
+		componentPreambleMethods := mapset.NewSet[string]()
 		var componentBuffer bytes.Buffer
 		// generate imports for the component
 		componentGenerator.genPreamble(&componentBuffer, component.Program, componentPreambleMethods)
@@ -486,23 +488,23 @@ func newGenerator(program *pcl.Program) (*generator, error) {
 	return g, nil
 }
 
-func makeUniqueName(base string, used codegen.StringSet) string {
+func makeUniqueName(base string, used mapset.Set[string]) string {
 	name := EnsureKeywordSafe(PyName(base))
-	if !used.Has(name) {
+	if !used.Contains(name) {
 		used.Add(name)
 		return name
 	}
 
 	for i := 1; ; i++ {
 		candidate := fmt.Sprintf("%s_%d", name, i)
-		if !used.Has(candidate) {
+		if !used.Contains(candidate) {
 			used.Add(candidate)
 			return candidate
 		}
 	}
 }
 
-func (g *generator) ensurePackageImportAlias(pkg string, used codegen.StringSet) string {
+func (g *generator) ensurePackageImportAlias(pkg string, used mapset.Set[string]) string {
 	pkgKey := makeValidIdentifier(pkg)
 	if alias, ok := g.packageImportAliases[pkgKey]; ok {
 		return alias
@@ -521,12 +523,9 @@ func (g *generator) packageAlias(pkg string) string {
 	return EnsureKeywordSafe(PyName(pkgKey))
 }
 
-func (g *generator) assignRootNodeIdentifiers(program *pcl.Program, reserved codegen.StringSet) {
+func (g *generator) assignRootNodeIdentifiers(program *pcl.Program, reserved mapset.Set[string]) {
 	g.nodeIdentifiers = map[string]string{}
-	used := codegen.NewStringSet()
-	for name := range reserved {
-		used.Add(name)
-	}
+	used := reserved.Clone()
 	for _, node := range program.Nodes {
 		var name string
 		switch n := node.(type) {
@@ -547,8 +546,8 @@ func (g *generator) assignRootNodeIdentifiers(program *pcl.Program, reserved cod
 	}
 }
 
-func (g *generator) importAliasIdentifiers() codegen.StringSet {
-	used := codegen.NewStringSet("pulumi")
+func (g *generator) importAliasIdentifiers() mapset.Set[string] {
+	used := mapset.NewSet("pulumi")
 	for _, alias := range g.packageImportAliases {
 		used.Add(alias)
 	}
@@ -627,11 +626,11 @@ func rewriteApplyLambdaBody(applyLambda *model.AnonymousFunctionExpression, args
 	return rewrittenBody
 }
 
-func (g *generator) genPreamble(w io.Writer, program *pcl.Program, preambleHelperMethods codegen.StringSet) {
+func (g *generator) genPreamble(w io.Writer, program *pcl.Program, preambleHelperMethods mapset.Set[string]) {
 	// Print the pulumi import at the top.
 	g.Fprintln(w, "import pulumi")
 	g.packageImportAliases = map[string]string{}
-	usedImportAliases := codegen.NewStringSet("pulumi")
+	usedImportAliases := mapset.NewSet("pulumi")
 
 	// Accumulate other imports for the various providers. Don't emit them yet, as we need to sort them later on.
 	type Import struct {
@@ -733,11 +732,11 @@ func (g *generator) genPreamble(w io.Writer, program *pcl.Program, preambleHelpe
 	}
 
 	var imports []string
-	importSetNames := codegen.NewStringSet()
+	importSetNames := mapset.NewSet[string]()
 	for k := range importSet {
 		importSetNames.Add(k)
 	}
-	for _, pkg := range importSetNames.SortedValues() {
+	for _, pkg := range mapset.Sorted(importSetNames) {
 		if pkg == "pulumi" {
 			continue
 		}
@@ -778,7 +777,7 @@ func (g *generator) genPreamble(w io.Writer, program *pcl.Program, preambleHelpe
 	g.Fprint(w, "\n")
 
 	// If we collected any helper methods that should be added, write them just before the main func
-	for _, preambleHelperMethodBody := range preambleHelperMethods.SortedValues() {
+	for _, preambleHelperMethodBody := range mapset.Sorted(preambleHelperMethods) {
 		g.Fprintf(w, "%s\n\n", preambleHelperMethodBody)
 	}
 }

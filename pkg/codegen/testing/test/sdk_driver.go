@@ -26,9 +26,9 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/stretchr/testify/require"
+	mapset "github.com/deckarep/golang-set/v2"
 
-	"github.com/pulumi/pulumi/pkg/v3/codegen"
+	"github.com/stretchr/testify/require"
 )
 
 // Defines an extra check logic that accepts the directory with the
@@ -46,11 +46,11 @@ type SDKTest struct {
 	// Skip checks, identified by "$language/$check".
 	// "$language/any" is special, skipping generating the
 	// code as well as all tests.
-	Skip codegen.StringSet
+	Skip mapset.Set[string]
 
 	// Do not compile the generated code for the languages in this set.
 	// This is a helper form of `Skip`.
-	SkipCompileCheck codegen.StringSet
+	SkipCompileCheck mapset.Set[string]
 
 	// Mutex to ensure only a single test operates on directory at a time
 	Mutex sync.Mutex
@@ -65,14 +65,14 @@ func (tt *SDKTest) ShouldSkipTest(language, test string) bool {
 
 	// Obey SkipCompileCheck to skip compile and test targets.
 	if tt.SkipCompileCheck != nil &&
-		tt.SkipCompileCheck.Has(language) &&
+		tt.SkipCompileCheck.Contains(language) &&
 		(test == language+"/compile" ||
 			test == language+"/test") {
 		return true
 	}
 
 	// Obey Skip.
-	if tt.Skip != nil && tt.Skip.Has(test) {
+	if tt.Skip != nil && tt.Skip.Contains(test) {
 		return true
 	}
 
@@ -82,10 +82,10 @@ func (tt *SDKTest) ShouldSkipTest(language, test string) bool {
 // ShouldSkipCodegen determines if codegen should be run. ShouldSkipCodegen=true
 // further implies no other tests will be run.
 func (tt *SDKTest) ShouldSkipCodegen(language string) bool {
-	return tt.Skip.Has(language + "/any")
+	return tt.Skip != nil && tt.Skip.Contains(language+"/any")
 }
 
-var allLanguages = codegen.NewStringSet(
+var allLanguages = mapset.NewSet(
 	"docs/any",
 	"dotnet/any",
 	"go/any",
@@ -106,7 +106,7 @@ var PulumiPulumiSDKTests = []*SDKTest{
 	{
 		Directory:        "external-resource-schema",
 		Description:      "External resource schema",
-		SkipCompileCheck: codegen.NewStringSet(TestGo, TestNodeJS, TestDotnet),
+		SkipCompileCheck: mapset.NewSet(TestGo, TestNodeJS, TestDotnet),
 	},
 	{
 		Directory:   "nested-module",
@@ -131,7 +131,7 @@ var PulumiPulumiSDKTests = []*SDKTest{
 	{
 		Directory:   "simple-schema-pyproject",
 		Description: "A simple schema that generates a pyproject.toml file",
-		Skip:        codegen.NewStringSet("go/any", "nodejs/any", "dotnet/any"),
+		Skip:        mapset.NewSet("go/any", "nodejs/any", "dotnet/any"),
 	},
 	{
 		Directory:   "simple-resource-schema",
@@ -144,7 +144,7 @@ var PulumiPulumiSDKTests = []*SDKTest{
 	{
 		Directory:        "simple-methods-schema",
 		Description:      "Simple schema with methods",
-		SkipCompileCheck: codegen.NewStringSet(TestNodeJS, TestGo),
+		SkipCompileCheck: mapset.NewSet(TestNodeJS, TestGo),
 	},
 	{
 		Directory:   "simple-methods-schema-single-value-returns",
@@ -153,7 +153,7 @@ var PulumiPulumiSDKTests = []*SDKTest{
 	{
 		Directory:   "methods-return-plain-resource",
 		Description: "Test returning plain Resource objects from methods",
-		Skip:        codegen.NewStringSet("dotnet/any"),
+		Skip:        mapset.NewSet("dotnet/any"),
 	},
 	{
 		Directory:   "simple-yaml-schema",
@@ -163,7 +163,7 @@ var PulumiPulumiSDKTests = []*SDKTest{
 		Directory:   "provider-config-schema",
 		Description: "Simple provider config schema",
 		// For golang skip check, see https://github.com/pulumi/pulumi/issues/11567
-		SkipCompileCheck: codegen.NewStringSet(TestDotnet, TestGo),
+		SkipCompileCheck: mapset.NewSet(TestDotnet, TestGo),
 	},
 	{
 		Directory:   "simple-resource-with-aliases",
@@ -172,13 +172,13 @@ var PulumiPulumiSDKTests = []*SDKTest{
 	{
 		Directory:        "resource-property-overlap",
 		Description:      "A resource with the same name as its property",
-		SkipCompileCheck: codegen.NewStringSet(TestDotnet, TestNodeJS),
+		SkipCompileCheck: mapset.NewSet(TestDotnet, TestNodeJS),
 	},
 	{
 		Directory:        "hyphen-url",
 		Description:      "A resource url with a hyphen in its path",
-		Skip:             codegen.NewStringSet("go/any"),
-		SkipCompileCheck: codegen.NewStringSet(TestNodeJS, TestPython),
+		Skip:             mapset.NewSet("go/any"),
+		SkipCompileCheck: mapset.NewSet(TestNodeJS, TestPython),
 	},
 	{
 		Directory:   "output-funcs",
@@ -187,13 +187,13 @@ var PulumiPulumiSDKTests = []*SDKTest{
 	{
 		Directory:        "output-funcs-edgeorder",
 		Description:      "Regresses Node compilation issues on a subset of azure-native",
-		SkipCompileCheck: codegen.NewStringSet(TestGo, TestPython),
-		Skip:             codegen.NewStringSet("nodejs/test"),
+		SkipCompileCheck: mapset.NewSet(TestGo, TestPython),
+		Skip:             mapset.NewSet("nodejs/test"),
 	},
 	{
 		Directory:        "output-funcs-tfbridge20",
 		Description:      "Similar to output-funcs, but with compatibility: tfbridge20, to simulate pulumi-aws use case",
-		SkipCompileCheck: codegen.NewStringSet(TestPython),
+		SkipCompileCheck: mapset.NewSet(TestPython),
 	},
 	{
 		Directory:   "cyclic-types",
@@ -202,12 +202,12 @@ var PulumiPulumiSDKTests = []*SDKTest{
 	{
 		Directory:   "regress-node-8110",
 		Description: "Test the fix for pulumi/pulumi#8110 nodejs compilation error",
-		Skip:        codegen.NewStringSet("go/test", "dotnet/test"),
+		Skip:        mapset.NewSet("go/test", "dotnet/test"),
 	},
 	{
 		Directory:   "dashed-import-schema",
 		Description: "Ensure that we handle all valid go import paths",
-		Skip:        codegen.NewStringSet("go/test", "dotnet/test"),
+		Skip:        mapset.NewSet("go/test", "dotnet/test"),
 	},
 	{
 		Directory:   "plain-and-default",
@@ -224,7 +224,7 @@ var PulumiPulumiSDKTests = []*SDKTest{
 	{
 		Directory:        "regress-8403",
 		Description:      "Regress pulumi/pulumi#8403",
-		SkipCompileCheck: codegen.NewStringSet(TestPython),
+		SkipCompileCheck: mapset.NewSet(TestPython),
 	},
 	{
 		Directory:   "different-package-name-conflict",
@@ -234,44 +234,44 @@ var PulumiPulumiSDKTests = []*SDKTest{
 	{
 		Directory:   "different-enum",
 		Description: "An enum in a different package namespace",
-		Skip:        codegen.NewStringSet("dotnet/compile"),
+		Skip:        mapset.NewSet("dotnet/compile"),
 	},
 	{
 		Directory:   "array-of-enum-map",
 		Description: "A schema with an array of maps where the values are enums. Issue pulumi/pulumi#14734",
-		Skip:        allLanguages.Except("go/any"),
+		Skip:        allLanguages.Difference(mapset.NewSet("go/any")),
 	},
 	{
 		Directory:   "azure-native-nested-types",
 		Description: "Condensed example of nested collection types from Azure Native",
-		Skip:        codegen.NewStringSet("go/any"),
+		Skip:        mapset.NewSet("go/any"),
 	},
 	{
 		Directory:   "regress-go-8664",
 		Description: "Regress pulumi/pulumi#8664 affecting Go",
-		Skip:        allLanguages.Except("go/any"),
+		Skip:        allLanguages.Difference(mapset.NewSet("go/any")),
 	},
 	{
 		Directory:   "regress-go-10527",
 		Description: "Regress pulumi/pulumi#10527 affecting Go",
-		Skip:        allLanguages.Except("go/any"),
+		Skip:        allLanguages.Difference(mapset.NewSet("go/any")),
 	},
 	{
 		Directory:   "regress-go-12971",
 		Description: "Regress pulumi/pulumi#12971 affecting Go",
-		Skip:        allLanguages.Except("go/any"),
+		Skip:        allLanguages.Difference(mapset.NewSet("go/any")),
 	},
 	{
 		Directory:   "regress-go-15478",
 		Description: "Regress pulumi/pulumi#15478 affecting Go ensuring SDK-gen doesn't panic",
-		Skip:        allLanguages.Except("go/any"),
+		Skip:        allLanguages.Difference(mapset.NewSet("go/any")),
 		// skipping the compile step because the generated code emits nested types that are not supported by the Go SDK
-		SkipCompileCheck: codegen.NewStringSet(TestGo),
+		SkipCompileCheck: mapset.NewSet(TestGo),
 	},
 	{
 		Directory:   "regress-py-12546",
 		Description: "Regress pulumi/pulumi#12546 affecting Python",
-		Skip:        allLanguages.Except("python/any"),
+		Skip:        allLanguages.Difference(mapset.NewSet("python/any")),
 	},
 	{
 		Directory:   "using-shared-types-in-config",
@@ -285,7 +285,7 @@ var PulumiPulumiSDKTests = []*SDKTest{
 		// relevant feature under test. To save time, we skip them.
 		//
 		// We need to see dotnet changes (paths) in the docs too.
-		Skip: allLanguages.Except("dotnet/any").Except("docs/any"),
+		Skip: allLanguages.Difference(mapset.NewSet("dotnet/any", "docs/any")),
 	},
 	{
 		Directory: "external-node-compatibility",
@@ -293,46 +293,47 @@ var PulumiPulumiSDKTests = []*SDKTest{
 		// external package (nodecompat) which doesn't have any compatibility modes set, so the
 		// referenced type should be `MyConfigArgs` (with the `Args` suffix) and not `MyConfig`.
 		Description:      "Ensure external package compatibility modes are used when referencing external types",
-		Skip:             allLanguages.Except("nodejs/any"),
-		SkipCompileCheck: codegen.NewStringSet(TestNodeJS),
+		Skip:             allLanguages.Difference(mapset.NewSet("nodejs/any")),
+		SkipCompileCheck: mapset.NewSet(TestNodeJS),
 	},
 	{
 		Directory: "external-go-import-aliases",
 		// The goalias package has its own import aliases, so those should be respected, unless there are local aliases.
 		// The other package doesn't have any import aliases, so none should be used, unless there are local aliases.
 		Description:      "Ensure external import aliases are honored, and any local import aliases override them",
-		Skip:             allLanguages.Except("go/any"),
-		SkipCompileCheck: codegen.NewStringSet(TestGo),
+		Skip:             allLanguages.Difference(mapset.NewSet("go/any")),
+		SkipCompileCheck: mapset.NewSet(TestGo),
 	},
 	{
 		Directory:   "external-python-same-module-name",
 		Description: "Ensure referencing external types/resources with the same module name are referenced correctly",
-		Skip:        allLanguages.Except("python/any"),
+		Skip:        allLanguages.Difference(mapset.NewSet("python/any")),
 	},
 	{
 		Directory:   "internal-dependencies-go",
 		Description: "Emit Go internal dependencies",
-		Skip:        allLanguages.Except("go/any"),
+		Skip:        allLanguages.Difference(mapset.NewSet("go/any")),
 	},
 	{
 		Directory:   "go-overridden-internal-module-name",
 		Description: "Go SDK where the internal module name is overridden to be 'utilities'",
-		Skip:        allLanguages.Except("go/any"),
+		Skip:        allLanguages.Difference(mapset.NewSet("go/any")),
 	},
 	{
 		Directory:   "go-plain-ref-repro",
 		Description: "Generate a resource that accepts a plain input type",
-		Skip:        allLanguages.Except("go/any"),
+		Skip:        allLanguages.Difference(mapset.NewSet("go/any")),
 	},
 	{
 		Directory:   "regress-py-tfbridge-611",
 		Description: "Regresses pulumi/pulumi-terraform-bridge#611",
-		Skip:        allLanguages.Except("python/any").Union(codegen.NewStringSet("python/test", "python/py_compile")),
+		Skip: allLanguages.Difference(mapset.NewSet("python/any")).
+			Union(mapset.NewSet("python/test", "python/py_compile")),
 	},
 	{
 		Directory:   "hyphenated-symbols",
 		Description: "Test that types can have names with hyphens in them",
-		Skip:        allLanguages.Except("go/any").Except("python/any").Except("dotnet/any"),
+		Skip:        allLanguages.Difference(mapset.NewSet("go/any", "python/any", "dotnet/any")),
 	},
 	{
 		Directory:   "provider-type-schema",
@@ -341,7 +342,7 @@ var PulumiPulumiSDKTests = []*SDKTest{
 	{
 		Directory:   "embedded-crd-types",
 		Description: "A schema with CRD types with package names different from the main package",
-		Skip:        codegen.NewStringSet("dotnet/any"),
+		Skip:        mapset.NewSet("dotnet/any"),
 	},
 	{
 		Directory:   "assets-and-archives",
@@ -350,42 +351,42 @@ var PulumiPulumiSDKTests = []*SDKTest{
 	{
 		Directory:   "regress-py-14012",
 		Description: "Regresses https://github.com/pulumi/pulumi/issues/14012",
-		Skip:        allLanguages.Except("python/any"),
+		Skip:        allLanguages.Difference(mapset.NewSet("python/any")),
 	},
 	{
 		Directory:   "regress-py-14539",
 		Description: "Regresses https://github.com/pulumi/pulumi/issues/14539",
-		Skip:        allLanguages.Except("python/any"),
+		Skip:        allLanguages.Difference(mapset.NewSet("python/any")),
 	},
 	{
 		Directory:   "output-funcs-go-generics-only",
 		Description: "Tests targeting the $fn_output code generation feature, only for Go generics == generics-only",
-		Skip:        allLanguages.Except("go/any"),
+		Skip:        allLanguages.Difference(mapset.NewSet("go/any")),
 	},
 	{
 		Directory:   "plain-and-default-go-generics-only",
 		Description: "resource with a plain default property works, only for Go generics == generics-only",
-		Skip:        allLanguages.Except("go/any"),
+		Skip:        allLanguages.Difference(mapset.NewSet("go/any")),
 	},
 	{
 		Directory:   "secrets-go-generics-only",
 		Description: "Generate a resource with secret properties, only for Go generics == generics-only",
-		Skip:        allLanguages.Except("go/any"),
+		Skip:        allLanguages.Difference(mapset.NewSet("go/any")),
 	},
 	{
 		Directory:   "simple-enum-schema-go-generics-only",
 		Description: "Simple schema with enum types, only for Go generics == generics-only",
-		Skip:        allLanguages.Except("go/any"),
+		Skip:        allLanguages.Difference(mapset.NewSet("go/any")),
 	},
 	{
 		Directory:   "simple-plain-schema-go-generics-only",
 		Description: "Simple schema with plain properties, only for Go generics == generics-only",
-		Skip:        allLanguages.Except("go/any"),
+		Skip:        allLanguages.Difference(mapset.NewSet("go/any")),
 	},
 	{
 		Directory:   "assets-and-archives-go-generics-only",
 		Description: "Testing generating a schema with assets and archives for go using generics-only",
-		Skip:        allLanguages.Except("go/any"),
+		Skip:        allLanguages.Difference(mapset.NewSet("go/any")),
 	},
 	{
 		Directory:   "urn-id-properties",
@@ -394,49 +395,49 @@ var PulumiPulumiSDKTests = []*SDKTest{
 	{
 		Directory:   "regress-py-12980",
 		Description: "Import resources across modules",
-		Skip:        allLanguages.Except("python/any"),
+		Skip:        allLanguages.Difference(mapset.NewSet("python/any")),
 	},
 	{
 		Directory:   "legacy-names",
 		Description: "Testing the use of snake_case names and tokens.",
-		Skip:        codegen.NewStringSet("go/test"),
+		Skip:        mapset.NewSet("go/test"),
 	},
 	{
 		Directory:   "kubernetes20",
 		Description: "Testing the kubernetes20 compatibility mode.",
-		Skip:        codegen.NewStringSet("go/test"),
+		Skip:        mapset.NewSet("go/test"),
 	},
 	{
 		Directory:   "python-typed-dict-setuppy",
 		Description: "Testing TypedDict generation for inputs.",
-		Skip:        allLanguages.Except("python/any"),
+		Skip:        allLanguages.Difference(mapset.NewSet("python/any")),
 	},
 	{
 		Directory:   "python-typed-dict-disabled-setuppy",
 		Description: "Do not generated TypedDict types for inputs.",
-		Skip:        allLanguages.Except("python/any"),
+		Skip:        allLanguages.Difference(mapset.NewSet("python/any")),
 	},
 	{
 		Directory:   "python-typed-dict-pyproject",
 		Description: "Testing TypedDict generation for inputs.",
-		Skip:        allLanguages.Except("python/any"),
+		Skip:        allLanguages.Difference(mapset.NewSet("python/any")),
 	},
 	{
 		Directory:   "overlay-supported-languages",
 		Description: "Testing restricting the languages an overlay supports.",
-		Skip:        allLanguages.Except("docs/any"),
+		Skip:        allLanguages.Difference(mapset.NewSet("docs/any")),
 	},
 	{
 		Directory: "regress-py-17219",
 		// The default behavior should be to generate classes and typed dicts.
 		Description: "Regress pulumi/pulumi#17219 affecting Python",
-		Skip:        allLanguages.Except("python/any"),
+		Skip:        allLanguages.Difference(mapset.NewSet("python/any")),
 	},
 	{
 		Directory: "go-parameterized-lifted-single-value-methods",
 		// Issue seen in pulumi/pulumi#20744 and pulumi/pulumi-terraform-bridge#3247
 		Description: "Testing Go parameterized SDK with a provider method with liftSingleValueMethodReturns",
-		Skip:        allLanguages.Except("go/any"),
+		Skip:        allLanguages.Difference(mapset.NewSet("go/any")),
 	},
 }
 

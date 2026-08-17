@@ -19,9 +19,10 @@ import (
 	"os"
 	"path/filepath"
 
+	mapset "github.com/deckarep/golang-set/v2"
+
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
-	"github.com/pulumi/pulumi/pkg/v3/codegen"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
 	syntax "github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -406,7 +407,7 @@ func (b *binder) bindComponent(node *Component) hcl.Diagnostics {
 			}
 			diagnostics = append(diagnostics, d)
 		}
-		attrNames := codegen.StringSet{}
+		attrNames := mapset.NewSet[string]()
 		for _, attr := range node.Inputs {
 			attrNames.Add(attr.Name)
 

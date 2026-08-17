@@ -26,8 +26,9 @@ import (
 	"sort"
 	"strings"
 
+	mapset "github.com/deckarep/golang-set/v2"
+
 	"github.com/hashicorp/hcl/v2"
-	"github.com/pulumi/pulumi/pkg/v3/codegen"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/cgstrings"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model/format"
@@ -63,7 +64,7 @@ type generator struct {
 	declaredNodeIdentifiers map[string]bool
 	nodeIdentifiers         map[string]string
 	packageImportAliases    map[string]string
-	importIdentifiers       codegen.StringSet
+	importIdentifiers       mapset.Set[string]
 	deferredOutputVariables []*pcl.DeferredOutputVariable
 
 	// rangeValueIsScalar is true while generating the body of a numeric `range`
@@ -502,32 +503,29 @@ func (g *generator) genComment(w io.Writer, comment syntax.Comment) {
 
 type programImports struct {
 	importStatements      []string
-	preambleHelperMethods codegen.StringSet
-	importAliases         codegen.StringSet
+	preambleHelperMethods mapset.Set[string]
+	importAliases         mapset.Set[string]
 }
 
-func makeUniqueName(base string, used codegen.StringSet) string {
+func makeUniqueName(base string, used mapset.Set[string]) string {
 	name := makeValidIdentifier(base)
-	if !used.Has(name) {
+	if !used.Contains(name) {
 		used.Add(name)
 		return name
 	}
 
 	for i := 2; ; i++ {
 		candidate := fmt.Sprintf("%s%d", name, i)
-		if !used.Has(candidate) {
+		if !used.Contains(candidate) {
 			used.Add(candidate)
 			return candidate
 		}
 	}
 }
 
-func (g *generator) assignRootNodeIdentifiers(program *pcl.Program, reserved codegen.StringSet) {
+func (g *generator) assignRootNodeIdentifiers(program *pcl.Program, reserved mapset.Set[string]) {
 	g.nodeIdentifiers = map[string]string{}
-	used := codegen.NewStringSet()
-	for name := range reserved {
-		used.Add(name)
-	}
+	used := reserved.Clone()
 
 	for _, node := range program.Nodes {
 		var name string
@@ -559,9 +557,9 @@ func (g *generator) nodeName(name string) string {
 }
 
 func (g *generator) collectProgramImports(program *pcl.Program) programImports {
-	importSet := codegen.NewStringSet("@pulumi/pulumi")
-	preambleHelperMethods := codegen.NewStringSet()
-	usedAliases := codegen.NewStringSet("pulumi")
+	importSet := mapset.NewSet("@pulumi/pulumi")
+	preambleHelperMethods := mapset.NewSet[string]()
+	usedAliases := mapset.NewSet("pulumi")
 
 	// This map tracks the package tokens by the associated import.
 	//
@@ -665,7 +663,7 @@ func (g *generator) collectProgramImports(program *pcl.Program) programImports {
 		}
 	}
 
-	sortedValues := importSet.SortedValues()
+	sortedValues := mapset.Sorted(importSet)
 	imports := slice.Prealloc[string](len(sortedValues))
 	for _, pkg := range sortedValues {
 		if pkg == "@pulumi/pulumi" {
@@ -677,7 +675,7 @@ func (g *generator) collectProgramImports(program *pcl.Program) programImports {
 		} else {
 			as = makeValidIdentifier(path.Base(pkg))
 		}
-		for i := 2; usedAliases.Has(as); i++ {
+		for i := 2; usedAliases.Contains(as); i++ {
 			as = fmt.Sprintf("%s%d", makeValidIdentifier(path.Base(pkg)), i)
 		}
 		usedAliases.Add(as)
@@ -687,10 +685,7 @@ func (g *generator) collectProgramImports(program *pcl.Program) programImports {
 		imports = append(imports, fmt.Sprintf("import * as %v from \"%v\";", as, pkg))
 	}
 	g.packageImportAliases = packageAliases
-	importIdentifiers := codegen.NewStringSet()
-	for alias := range usedAliases {
-		importIdentifiers.Add(alias)
-	}
+	importIdentifiers := usedAliases.Clone()
 	g.importIdentifiers = importIdentifiers
 
 	imports = append(imports, componentImports...)
@@ -724,7 +719,7 @@ func (g *generator) genPreamble(w io.Writer, program *pcl.Program) error {
 	g.Fprint(w, "\n")
 
 	// If we collected any helper methods that should be added, write them just before the main func
-	for _, preambleHelperMethodBody := range programImports.preambleHelperMethods.SortedValues() {
+	for _, preambleHelperMethodBody := range mapset.Sorted(programImports.preambleHelperMethods) {
 		g.Fprintf(w, "%s\n\n", preambleHelperMethodBody)
 	}
 	return nil
@@ -810,7 +805,7 @@ func (g *generator) genComponentResourceDefinition(w io.Writer, componentName st
 	g.Fprint(w, "\n")
 
 	// If we collected any helper methods that should be added, write them just before the main func
-	for _, preambleHelperMethodBody := range programImports.preambleHelperMethods.SortedValues() {
+	for _, preambleHelperMethodBody := range mapset.Sorted(programImports.preambleHelperMethods) {
 		g.Fprintf(w, "%s\n\n", preambleHelperMethodBody)
 	}
 

@@ -1,0 +1,4 @@
+component: pkg
+kind: chore
+body: Deprecate `codegen.StringSet` and `codegen.Set` in favor of `mapset.Set` from `github.com/deckarep/golang-set/v2`
+time: 2026-08-17T00:00:00Z
