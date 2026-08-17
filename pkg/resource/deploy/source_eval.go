@@ -813,12 +813,12 @@ func (rm *resmon) RegisterPackage(ctx context.Context,
 		ref := hashExtension(extension)
 
 		rm.extensionRefLock.Lock()
+		defer rm.extensionRefLock.Unlock()
 		if _, already := rm.extensionRefMap[ref]; already {
 			logging.V(5).Infof("ResourceMonitor.RegisterPackage(%v) matched %s", req, ref)
 			return &pulumirpc.RegisterPackageResponse{Ref: ref}, nil
 		}
 		rm.extensionRefMap[ref] = extensionRef{pi, extension}
-		rm.extensionRefLock.Unlock()
 
 		logging.V(5).Infof("ResourceMonitor.RegisterPackage(%v) created %s", req, ref)
 		return &pulumirpc.RegisterPackageResponse{Ref: ref}, nil
