@@ -17,34 +17,107 @@ package codegen
 import (
 	"os"
 	"path/filepath"
+	"sort"
 
-	mapset "github.com/deckarep/golang-set/v2"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
-// StringSet is a set of strings.
-//
-// Deprecated: use [mapset.Set] from github.com/deckarep/golang-set/v2 instead.
-type StringSet = mapset.Set[string]
+type StringSet map[string]struct{}
 
-// NewStringSet creates a new StringSet from the given values.
-//
-// Deprecated: use [mapset.NewSet] from github.com/deckarep/golang-set/v2 instead.
 func NewStringSet(values ...string) StringSet {
-	return mapset.NewSet(values...)
+	s := StringSet{}
+	for _, v := range values {
+		s.Add(v)
+	}
+	return s
 }
 
-// Set is a set of arbitrary comparable values.
-//
-// Deprecated: use [mapset.Set] from github.com/deckarep/golang-set/v2 instead.
-type Set = mapset.Set[any]
+func (ss StringSet) Add(s string) {
+	ss[s] = struct{}{}
+}
+
+func (ss StringSet) Any() bool {
+	return len(ss) > 0
+}
+
+func (ss StringSet) Delete(s string) {
+	delete(ss, s)
+}
+
+func (ss StringSet) Has(s string) bool {
+	_, ok := ss[s]
+	return ok
+}
+
+// StringSet.Except returns the string set setminus s.
+func (ss StringSet) Except(s string) StringSet {
+	return ss.Subtract(NewStringSet(s))
+}
+
+func (ss StringSet) SortedValues() []string {
+	values := slice.Prealloc[string](len(ss))
+	for v := range ss {
+		values = append(values, v)
+	}
+	sort.Strings(values)
+	return values
+}
+
+// Contains returns true if all elements of the subset are also present in the current set. It also returns true
+// if subset is empty.
+func (ss StringSet) Contains(subset StringSet) bool {
+	for v := range subset {
+		if !ss.Has(v) {
+			return false
+		}
+	}
+	return true
+}
+
+// Subtract returns a new string set with all elements of the current set that are not present in the other set.
+func (ss StringSet) Subtract(other StringSet) StringSet {
+	result := NewStringSet()
+	for v := range ss {
+		if !other.Has(v) {
+			result.Add(v)
+		}
+	}
+	return result
+}
+
+func (ss StringSet) Union(other StringSet) StringSet {
+	result := NewStringSet()
+	for v := range ss {
+		result.Add(v)
+	}
+	for v := range other {
+		result.Add(v)
+	}
+	return result
+}
+
+type Set map[any]struct{}
+
+func (s Set) Add(v any) {
+	s[v] = struct{}{}
+}
+
+func (s Set) Delete(v any) {
+	delete(s, v)
+}
+
+func (s Set) Has(v any) bool {
+	_, ok := s[v]
+	return ok
+}
 
 // CleanDir removes all existing files from a directory except those in the exclusions list.
 // Note: The exclusions currently don't function recursively, so you cannot exclude a single file
 // in a subdirectory, only entire subdirectories. This function will need improvements to be able to
 // target that use-case.
-func CleanDir(dirPath string, exclusions mapset.Set[string]) error {
+func CleanDir(dirPath string, exclusions StringSet) error {
 	subPaths, err := os.ReadDir(dirPath)
 	if err != nil {
 		return err
@@ -52,7 +125,7 @@ func CleanDir(dirPath string, exclusions mapset.Set[string]) error {
 
 	if len(subPaths) > 0 {
 		for _, path := range subPaths {
-			if !exclusions.Contains(path.Name()) {
+			if !exclusions.Has(path.Name()) {
 				err = os.RemoveAll(filepath.Join(dirPath, path.Name()))
 				if err != nil {
 					return err
