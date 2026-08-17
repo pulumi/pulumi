@@ -812,7 +812,7 @@ func (rm *resmon) RegisterPackage(ctx context.Context,
 		}
 		ref := hashExtension(extension)
 
-		if _, already := rm.packageRefMap[ref]; already {
+		if _, already := rm.extensionRefMap[ref]; already {
 			logging.V(5).Infof("ResourceMonitor.RegisterPackage(%v) matched %s", req, ref)
 			return &pulumirpc.RegisterPackageResponse{Ref: ref}, nil
 		}
