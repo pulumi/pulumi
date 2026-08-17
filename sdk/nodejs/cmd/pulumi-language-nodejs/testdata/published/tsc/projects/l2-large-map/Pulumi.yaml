@@ -1,0 +1,5 @@
+name: l2-large-map
+runtime:
+  name: nodejs
+  options:
+    typescript: false
