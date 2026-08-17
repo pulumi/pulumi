@@ -1,6 +1,0 @@
-component: cli/new
-kind: feat
-body: Ask for a cloud provider and language in interactive `pulumi new` instead of listing every template
-time: 2026-07-16T14:00:00Z
-custom:
-    PR: "24226"

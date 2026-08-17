@@ -1,4 +1,0 @@
-component: sdk/python
-kind: improvement
-body: Use the resource monitor's advertised feature set consistently throughout the Python SDK
-time: 2026-08-13T14:51:00.438832+02:00

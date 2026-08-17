@@ -1,4 +1,0 @@
-component: cli/do
-kind: fix
-body: Fix global project lookup
-time: 2026-08-14T17:01:25.243727+01:00
