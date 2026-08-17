@@ -1,0 +1,4 @@
+component: cli/display
+kind: fix
+body: Throttle the interactive progress renderer so large stacks no longer stall the engine's event stream
+time: 2026-08-17T12:02:46.670855+02:00

@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -309,4 +310,42 @@ func TestTreeRenderDoesntRenderBeforeItHasContent(t *testing.T) {
 		assert.Truef(t, treeRenderer.dirty,
 			"Expecting the renderer to be dirty after headers are initialized, and after a tick has happened")
 	}()
+}
+
+// slowWriter makes every frame expensive regardless of how fast the machine running
+// the test is.
+type slowWriter struct{}
+
+func (slowWriter) Write(p []byte) (int, error) {
+	time.Sleep(500 * time.Microsecond)
+	return len(p), nil
+}
+
+// TestTreeRendererCapsRenderLoad checks that expensive frames throttle the frame rate
+// instead of being drawn back-to-back. A frame holds the renderer's lock, so a renderer
+// that never keeps up starves the goroutine feeding it engine events. See #14732.
+func TestTreeRendererCapsRenderLoad(t *testing.T) {
+	t.Parallel()
+
+	term := terminal.NewMockTerminal(slowWriter{}, 80, 24, true)
+	treeRenderer, display := createRendererAndDisplay(term, true)
+	addManyNormalEvents(display, 200, "a message")
+
+	treeRenderer.ticker.Reset(16 * time.Millisecond)
+	defer func() {
+		treeRenderer.ticker.Stop()
+		close(treeRenderer.closed)
+	}()
+
+	var blocked time.Duration
+	start := time.Now()
+	for time.Since(start) < time.Second {
+		before := time.Now()
+		treeRenderer.markDirty()
+		blocked += time.Since(before)
+		time.Sleep(time.Millisecond)
+	}
+
+	load := float64(blocked) / float64(time.Since(start))
+	assert.Lessf(t, load, 0.5, "renderer held its lock %.0f%% of the time", load*100)
 }

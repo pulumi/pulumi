@@ -461,13 +461,35 @@ func (r *treeRenderer) clampLine(line string, maxWidth int) string {
 	return colors.TrimColorizedString(line, maxRowLength)
 }
 
+// maxRenderLoad bounds the share of wall-clock time the renderer may spend drawing
+// frames. A frame re-renders every row, so its cost grows with the size of the stack:
+// past a few thousand resources a frame takes longer than the tick interval and the
+// renderer draws back-to-back forever. That burns a core and, because a frame holds
+// r.m for its duration, blocks the markDirty calls made by the goroutine reading
+// engine events, which in turn backs up the whole event pipeline.
+const maxRenderLoad = 8
+
+// nextFrameTime returns the earliest time at which another frame may be drawn, given
+// when the last frame started and how long it took.
+func nextFrameTime(start time.Time, cost time.Duration) time.Time {
+	return start.Add(cost * maxRenderLoad)
+}
+
 func (r *treeRenderer) handleEvents() {
+	var nextFrame time.Time
 	for {
 		select {
 		case <-r.ticker.C:
+			start := time.Now()
+			if start.Before(nextFrame) {
+				continue
+			}
 			r.frame(false, false)
+			nextFrame = nextFrameTime(start, time.Since(start))
 		case key := <-r.keys:
 			r.handleKey(key)
+			// Scrolling must stay responsive, so let the next tick draw regardless.
+			nextFrame = time.Time{}
 		case <-r.closed:
 			return
 		}
