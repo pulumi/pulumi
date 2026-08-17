@@ -87,16 +87,6 @@ func isLocalComponent(state *pkgresource.State) bool {
 	return !state.Custom && state.Provider == ""
 }
 
-// makeComponentResourceOptions builds the options block for a local component resource, marking it as a component so
-// that binding and code generation know not to look for a package.
-func makeComponentResourceOptions(state *pkgresource.State, names NameTable) (*model.Block, error) {
-	options, err := makeResourceOptions(state, names, map[string]bool{})
-	if err != nil {
-		return nil, err
-	}
-	return appendResourceOption(options, "component", &model.LiteralValueExpression{Value: cty.True}), nil
-}
-
 // GenerateHCL2Definition generates a Pulumi HCL2 definition for a given resource.
 //
 // GenerateHCL2Definition will drop map entries who's type doesn't conform to the schema type.
@@ -128,10 +118,16 @@ func GenerateHCL2Definition(
 	contract.Assertf(sanitizeName(name) == name, "names should be sanitized by this point")
 
 	// Local component resources are declared by a Pulumi program rather than by a package schema, so there is no
-	// provider to look up and no schema to shape their inputs. Emit the type token as written and let code
-	// generation construct the SDK's base ComponentResource with it.
+	// provider to look up and no schema to shape their inputs. Emit a source-less component block naming the
+	// component by its type token, which code generation turns into a base ComponentResource construction.
 	if isLocalComponent(state) {
-		options, err := makeComponentResourceOptions(state, importState.Names)
+		typ := cty.StringVal(string(state.URN.Type()))
+		items = append(items, &model.Attribute{
+			Name:  "token",
+			Value: &model.TemplateExpression{Parts: []model.Expression{&model.LiteralValueExpression{Value: typ}}},
+		})
+
+		options, err := makeResourceOptions(state, importState.Names, map[string]bool{})
 		if err != nil {
 			return nil, nil, err
 		}
@@ -139,11 +135,10 @@ func GenerateHCL2Definition(
 			items = append(items, options)
 		}
 
-		typ := string(state.URN.Type())
 		return &model.Block{
-			Tokens: syntax.NewBlockTokens("resource", name, typ),
-			Type:   "resource",
-			Labels: []string{name, typ},
+			Tokens: syntax.NewBlockTokens("component", name),
+			Type:   "component",
+			Labels: []string{name},
 			Body:   &model.Body{Items: items},
 		}, nil, nil
 	}

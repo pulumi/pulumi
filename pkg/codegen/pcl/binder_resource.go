@@ -619,33 +619,6 @@ func (b *binder) typecheckBaseResourceAttributes(
 }
 
 // bindResourceTypes binds the input and output types for a resource.
-// isLocalComponentBlock reports whether a resource block carries `component = true` in its options. The options block
-// is only bound once the body has been processed, but the flag has to be known before then so that type binding can
-// skip resolving a package that does not exist, so it is read straight from the syntax here.
-func isLocalComponentBlock(block *hclsyntax.Block) bool {
-	if block == nil {
-		return false
-	}
-	for _, item := range block.Body.Blocks {
-		if item.Type != "options" {
-			continue
-		}
-		attr, ok := item.Body.Attributes["component"]
-		if !ok {
-			continue
-		}
-		// A bare `true` parses as a keyword rather than as a literal, so check for both.
-		if hcl.ExprAsKeyword(attr.Expr) == "true" {
-			return true
-		}
-		if value, diags := attr.Expr.Value(nil); !diags.HasErrors() &&
-			value.Type() == cty.Bool && value.True() {
-			return true
-		}
-	}
-	return false
-}
-
 func (b *binder) bindResourceTypes(ctx context.Context, node *Resource) hcl.Diagnostics {
 	// Set the input and output types to dynamic by default.
 	node.InputType, node.OutputType = model.DynamicType, model.DynamicType
@@ -661,14 +634,6 @@ func (b *binder) bindResourceTypes(ctx context.Context, node *Resource) hcl.Diag
 			inferredInputProperties[attr.Name] = attr.Type()
 		}
 		node.InputType = model.NewObjectType(inferredInputProperties)
-	}
-
-	// Local component resources have no package behind them, so there is no schema to resolve. Take the token as
-	// written and leave the inputs and outputs dynamic.
-	if isLocalComponentBlock(node.syntax) {
-		node.IsComponent = true
-		makeResourceDynamic()
-		return nil
 	}
 
 	res, resolvedToken, diagnostics := b.resolveSchemaResourceForBind(
@@ -774,9 +739,6 @@ func bindResourceOptions(options *model.Block) (*ResourceOptions, hcl.Diagnostic
 		case *model.Attribute:
 			var t model.Type
 			switch item.Name {
-			case "component":
-				t = model.BoolType
-				resourceOptions.Component = item.Value
 			case "aliases":
 				t = model.NewListType(AliasType)
 				resourceOptions.Aliases = item.Value

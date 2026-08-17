@@ -796,12 +796,17 @@ func (b *binder) declareNodes(ctx context.Context, file *syntax.File) (hcl.Diagn
 					return nil, err
 				}
 			case "component":
-				if len(item.Labels) != 2 {
-					diagnostics = append(diagnostics, labelsErrorf(item, "components must have exactly two labels"))
+				// The source is optional: a component declared without one has no body to bind, and names an
+				// existing component resource by its type token instead. See Component.Token.
+				if len(item.Labels) != 1 && len(item.Labels) != 2 {
+					diagnostics = append(diagnostics, labelsErrorf(item, "components must have one or two labels"))
 					continue
 				}
 				name := item.Labels[0]
-				source := item.Labels[1]
+				source := ""
+				if len(item.Labels) == 2 {
+					source = item.Labels[1]
+				}
 
 				v := &Component{
 					name:         name,

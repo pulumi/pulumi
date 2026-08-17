@@ -622,10 +622,6 @@ func (g *generator) collectProgramImports(program *pcl.Program) programImports {
 	for _, n := range program.Nodes {
 		switch n := n.(type) {
 		case *pcl.Resource:
-			// Local component resources are constructed from the pulumi SDK, not from a package.
-			if n.IsComponent {
-				continue
-			}
 			pkg, _, _, _ := pcl.DecomposeToken(n.GetToken())
 			var packageRef schema.PackageReference
 			if n.Schema != nil && n.Schema.PackageReference != nil {
@@ -640,6 +636,10 @@ func (g *generator) collectProgramImports(program *pcl.Program) programImports {
 			}
 			visitPkg(pkg, packageRef)
 		case *pcl.Component:
+			// A component declared without a source has no file to import from.
+			if n.Program == nil {
+				continue
+			}
 			componentDir := filepath.Base(n.DirPath())
 			componentName := n.DeclarationName()
 			dirAndName := componentDir + "-" + componentName
@@ -1466,19 +1466,14 @@ func (g *generator) genMapRangedCollection(
 
 // genResourceDeclaration handles the generation of instantiations of resources.
 func (g *generator) genResourceDeclaration(w io.Writer, r *pcl.Resource, needsDefinition bool) {
-	// Local component resources have no package to import from; they are constructed from the SDK's base
-	// ComponentResource, which takes the type token as its first argument.
-	qualifiedMemberName := "pulumi.ComponentResource"
-	if !r.IsComponent {
-		pkg, module, memberName, diagnostics := resourceTypeName(r)
-		g.diagnostics = append(g.diagnostics, diagnostics...)
+	pkg, module, memberName, diagnostics := resourceTypeName(r)
+	g.diagnostics = append(g.diagnostics, diagnostics...)
 
-		if module != "" {
-			module = "." + module
-		}
-
-		qualifiedMemberName = fmt.Sprintf("%s%s.%s", g.packageAlias(pkg), module, memberName)
+	if module != "" {
+		module = "." + module
 	}
+
+	qualifiedMemberName := fmt.Sprintf("%s%s.%s", g.packageAlias(pkg), module, memberName)
 
 	var hookVars map[string][]string
 	if r.Options != nil && r.Options.Hooks != nil {
@@ -1499,11 +1494,6 @@ func (g *generator) genResourceDeclaration(w io.Writer, r *pcl.Resource, needsDe
 	}
 
 	instantiate := func(resName string) {
-		if r.IsComponent {
-			token, _ := r.GetToken()
-			g.Fgenf(w, "new %s(%q, %s, {}%s)", qualifiedMemberName, token, resName, optionsBag)
-			return
-		}
 		g.Fgenf(w, "new %s(%s, {", qualifiedMemberName, resName)
 		indenter := func(f func()) { f() }
 		if len(r.Inputs) > 1 {
@@ -1827,6 +1817,16 @@ func (g *generator) genReadResource(w io.Writer, r *pcl.ReadResource) {
 
 // genResource handles the generation of instantiations of non-builtin resources.
 func (g *generator) genComponent(w io.Writer, component *pcl.Component) {
+	// A component declared without a source has no class to instantiate; construct the SDK's base
+	// ComponentResource with the type token that names it.
+	if component.Program == nil {
+		optionsBag := g.genResourceOptions(component.Options, nil, nil)
+		g.Fgenf(w, "%sconst %s = new pulumi.ComponentResource(%q, %s, {}%s);\n",
+			g.Indent, g.nodeName(component.Name()), component.Token,
+			g.makeResourceName(component.LogicalName(), ""), optionsBag)
+		return
+	}
+
 	componentName := component.DeclarationName()
 
 	optionsBag := g.genResourceOptions(component.Options, nil, nil)

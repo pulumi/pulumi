@@ -496,11 +496,11 @@ func TestGenerateLanguageDefinitionsGeneratesLocalComponents(t *testing.T) {
 
 	err := GenerateLanguageDefinitions(io.Discard, loader, generator, states, snapshot, nameTable)
 	require.NoError(t, err)
-	expectedCode := `resource parentComponent "company:product:CRClass" {
+	expectedCode := `component parentComponent {
     __logicalName = "example"
+    token = "company:product:CRClass"
 options {
 protect =true
-component = true
 
 }
 

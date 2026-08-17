@@ -34,9 +34,6 @@ type ResourceOptions struct {
 	// The definition of the resource options.
 	Definition *model.Block
 
-	// Marks the resource as a local component resource. See Resource.IsComponent.
-	Component model.Expression
-
 	// An experession that evaluates to a list of aliases for the resource.
 	Aliases model.Expression
 	// An expression to range over when instantiating the resource.
@@ -110,11 +107,6 @@ type Resource struct {
 	// When set to true, allows traversing unknown properties through a resource. i.e. `resource.unknownProperty`
 	// will be valid and the type of the traversal is dynamic. This property is set to false by default
 	LenientTraversal bool
-
-	// When set to true, this resource is a local component resource: one declared by a Pulumi program rather than
-	// by a package schema. There is no package to resolve, so the token is used verbatim and code generation emits
-	// a construction of the SDK's base ComponentResource type.
-	IsComponent bool
 
 	// Token is the type token for this resource.
 	token string

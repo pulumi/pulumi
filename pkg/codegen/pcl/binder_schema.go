@@ -338,10 +338,6 @@ func (b *binder) loadReferencedPackageSchemas(ctx context.Context, n Node) error
 
 	switch r := n.(type) {
 	case *Resource:
-		// Local component resources have no package to load; their token names the component itself.
-		if isLocalComponentBlock(r.syntax) {
-			return nil
-		}
 		token, tokenRange := r.GetToken()
 		packageName, mod, name, _ := DecomposeToken(token, tokenRange)
 		if packageName == "pulumi" && mod == "providers" {

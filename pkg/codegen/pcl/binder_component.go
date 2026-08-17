@@ -228,6 +228,63 @@ func includeSourceDirectoryInDiagnostics(diags hcl.Diagnostics, componentSourceD
 	}
 }
 
+// bindSourcelessComponent binds a component declared without a source. Such a component has no inner program, so the
+// only things to read from its body are the type token that names it and its resource options.
+func (b *binder) bindSourcelessComponent(node *Component, block *model.Block) hcl.Diagnostics {
+	var diagnostics hcl.Diagnostics
+
+	node.InputType = model.NewObjectType(map[string]model.Type{})
+	node.VariableType = model.DynamicType
+
+	var options *model.Block
+	for _, item := range block.Body.Items {
+		switch item := item.(type) {
+		case *model.Attribute:
+			switch item.Name {
+			case LogicalNamePropertyKey:
+				logicalName, lDiags := getStringAttrValue(item)
+				if lDiags != nil {
+					diagnostics = diagnostics.Append(lDiags)
+				} else {
+					node.logicalName = logicalName
+				}
+			case "token":
+				token, tDiags := getStringAttrValue(item)
+				if tDiags != nil {
+					diagnostics = diagnostics.Append(tDiags)
+				} else {
+					node.Token = token
+				}
+			default:
+				diagnostics = append(diagnostics, unsupportedAttribute(item.Name, item.Syntax.NameRange))
+			}
+		case *model.Block:
+			if item.Type != "options" {
+				diagnostics = append(diagnostics, unsupportedBlock(item.Type, item.Syntax.TypeRange))
+				continue
+			}
+			if options != nil {
+				diagnostics = append(diagnostics, duplicateBlock(item.Type, item.Syntax.TypeRange))
+				continue
+			}
+			options = item
+		}
+	}
+
+	if node.Token == "" {
+		diagnostics = append(diagnostics, errorf(node.SyntaxNode().Range(),
+			"a component declared without a source must set 'token' to the component's type token"))
+	}
+
+	if options != nil {
+		resourceOptions, optionsDiags := bindResourceOptions(options)
+		diagnostics = append(diagnostics, optionsDiags...)
+		node.Options = resourceOptions
+	}
+
+	return diagnostics
+}
+
 func (b *binder) bindComponent(node *Component) hcl.Diagnostics {
 	// When options { range = <expr> } is present
 	// We create a new scope for binding the component.
@@ -286,6 +343,12 @@ func (b *binder) bindComponent(node *Component) hcl.Diagnostics {
 
 	block, diagnostics := model.BindBlock(node.syntax, scopes, b.tokens, b.options.modelOptions()...)
 	node.Definition = block
+
+	// A component declared without a source has no body to bind. It names an existing component resource by its
+	// type token, so there is no inner program, no inputs and no directory on disk.
+	if node.source == "" {
+		return append(diagnostics, b.bindSourcelessComponent(node, block)...)
+	}
 
 	// check we can use components and load the program
 	if b.options.dirPath == "" {

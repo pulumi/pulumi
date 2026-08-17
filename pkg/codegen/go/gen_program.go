@@ -927,10 +927,6 @@ func (g *generator) collectImports(program *pcl.Program) (helpers codegen.String
 		}
 		switch r := n.(type) {
 		case *pcl.Resource:
-			// Local component resources are registered through the pulumi SDK, not constructed from a package.
-			if r.IsComponent {
-				continue
-			}
 			token, tokenRange := r.GetToken()
 			pkg, mod, name, _ := pcl.DecomposeToken(token, tokenRange)
 			if pkg == "pulumi" {
@@ -1661,31 +1657,6 @@ func (g *generator) genResource(w io.Writer, r *pcl.Resource) {
 	// Blockname is not always equal to resourceName or varName, it is often
 	// surrounded by quotes, or obfuscated when there is keyword overlap.
 	instantiate := func(varName, blockName, resourceName string, w io.Writer) {
-		// Local component resources have no package to construct from; they are registered against the SDK's
-		// base component state, which takes the type token directly.
-		if r.IsComponent {
-			receiver := "&pulumi.ResourceState{}"
-			if g.scopeTraversalRoots.Has(blockName) {
-				g.Fgenf(w, "%s := &pulumi.ResourceState{}\n", varName)
-				receiver = varName
-			}
-			assignment := ":="
-			if g.isErrAssigned {
-				assignment = "="
-			}
-			g.Fgenf(w, "err %s ctx.RegisterComponentResource(%q, %s, %s", assignment, token, resourceName, receiver)
-			g.isErrAssigned = true
-			g.genResourceOptions(w, options)
-			g.Fprint(w, ")\n")
-			g.Fgenf(w, "if err != nil {\n")
-			if g.isComponent {
-				g.Fgenf(w, "return nil, err\n")
-			} else {
-				g.Fgenf(w, "return err\n")
-			}
-			g.Fgenf(w, "}\n")
-			return
-		}
 		if g.scopeTraversalRoots.Has(blockName) || strings.HasPrefix(varName, "__") {
 			g.Fgenf(w, "%s, err := %s.New%s(ctx, %s, ", varName, modOrAlias, typ, resourceName)
 		} else {
@@ -2075,6 +2046,36 @@ func isDeferredOutputCast(expr model.Expression) bool {
 }
 
 func (g *generator) genComponent(w io.Writer, r *pcl.Component) {
+	// A component declared without a source has no type to construct; register the SDK's base component state
+	// against the type token that names it.
+	if r.Program == nil {
+		options, temps := g.lowerResourceOptions(r.Options, nil)
+		g.genTemps(w, temps)
+		varName := g.nodeName(r.Name())
+		g.Fgenf(w, "%s := &pulumi.ResourceState{}\n", varName)
+		assignment := ":="
+		if g.isErrAssigned {
+			assignment = "="
+		}
+		resourceName := fmt.Sprintf("%q", r.LogicalName())
+		if g.isComponent {
+			resourceName = fmt.Sprintf(`fmt.Sprintf("%%s-%s", name)`, r.LogicalName())
+		}
+		g.Fgenf(w, "err %s ctx.RegisterComponentResource(%q, %s, %s",
+			assignment, r.Token, resourceName, varName)
+		g.isErrAssigned = true
+		g.genResourceOptions(w, options)
+		g.Fgen(w, ")\n")
+		g.Fgenf(w, "if err != nil {\n")
+		if g.isComponent {
+			g.Fgenf(w, "return nil, err\n")
+		} else {
+			g.Fgenf(w, "return err\n")
+		}
+		g.Fgenf(w, "}\n")
+		return
+	}
+
 	resName, resNameVar := r.LogicalName(), g.nodeName(r.Name())
 	// Compute resource options
 	options, temps := g.lowerResourceOptions(r.Options, nil)
