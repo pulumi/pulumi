@@ -489,6 +489,71 @@ func TestModel_Update_KeyCtrlC_FirstPressCancelsWhenBusy(t *testing.T) {
 	assert.Equal(t, "Cancelling...", um.blocks[idx].label)
 }
 
+func TestModel_Update_FinalEventWhileCancellingSendsAbandon(t *testing.T) {
+	t.Parallel()
+
+	// A final event ending the turn while a cancel is in flight must tell the
+	// dispatcher to abandon its pending cancel retry — otherwise a stale retry
+	// could fire into a later turn and cancel it.
+	finalEvents := map[string]UIEvent{
+		"task_idle":               UITaskIdle{},
+		"cancelled":               UICancelled{},
+		"final_assistant_message": UIAssistantMessage{Content: "done", IsFinal: true},
+		"approval_request":        UIApprovalRequest{ApprovalID: "a-1", Message: "ok?"},
+	}
+	for name, ev := range finalEvents {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			outCh := make(chan outboundEvent, 2)
+			m := NewModel(ModelConfig{OutCh: outCh, Busy: true})
+
+			updated, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEsc})
+			um := updated.(Model)
+			require.True(t, um.cancelling, "ESC while busy must enter the cancelling substate")
+			select {
+			case sent := <-outCh:
+				_, isCancel := sent.event.(apitype.AgentUserEventCancel)
+				require.True(t, isCancel, "ESC must post a cancel, got %T", sent.event)
+			default:
+				t.Fatal("ESC did not enqueue a cancel event")
+			}
+
+			updated, _ = um.Update(ev)
+			um = updated.(Model)
+			assert.False(t, um.cancelling, "a final event must clear the cancelling substate")
+
+			select {
+			case sent := <-outCh:
+				assert.True(t, sent.abandonCancel,
+					"turn end while cancelling must enqueue an abandonCancel envelope")
+				assert.Nil(t, sent.event, "abandon envelopes must carry no wire event")
+			default:
+				t.Fatal("turn end while cancelling did not enqueue an abandonCancel envelope")
+			}
+		})
+	}
+}
+
+func TestModel_Update_FinalEventWithoutCancelStaysSilent(t *testing.T) {
+	t.Parallel()
+
+	// An ordinary turn end (no cancel in flight) must not emit anything on the
+	// outbound channel — this also keeps history replay silent.
+	outCh := make(chan outboundEvent, 1)
+	m := NewModel(ModelConfig{OutCh: outCh, Busy: true})
+
+	updated, _ := m.Update(UITaskIdle{})
+	um := updated.(Model)
+	assert.False(t, um.busy, "a final event must end the busy state")
+
+	select {
+	case sent := <-outCh:
+		t.Fatalf("turn end without a pending cancel must be silent, got %+v", sent)
+	default:
+	}
+}
+
 func TestModel_Update_KeyCtrlC_OtherKeyDisarms(t *testing.T) {
 	t.Parallel()
 
