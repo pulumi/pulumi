@@ -767,6 +767,60 @@ func TestBuildImportFile_regress_15068(t *testing.T) {
 	assert.ErrorContains(t, err, "could not parse provider reference")
 }
 
+// Regression test for https://github.com/pulumi/pulumi/issues/15454
+// Tests that when an existing explicit provider and an existing component resource share the same
+// logical name, the generated import file gives them distinct name table entries.
+func TestBuildImportFile_regress_15454(t *testing.T) {
+	t.Parallel()
+
+	const name = "same-name-for-provider-and-component-resource"
+
+	events := make(chan engine.Event)
+	importFilePromise := buildImportFile(t.Context(), events, sdkconfig.NopEncrypter)
+
+	events <- engine.NewEvent(engine.ResourcePreEventPayload{
+		Metadata: makeRootStackMetadata(deploy.OpSame),
+	})
+
+	providerState := makeStateMetadata(t, name, "pulumi:providers:aws", true, stateOptions{
+		Inputs: resource.NewPropertyMapFromMap(map[string]any{
+			"version": "6.22.0",
+		}),
+	})
+	uuid, err := uuid.NewV4()
+	require.NoError(t, err)
+	providerState.ID = resource.ID(uuid.String())
+	events <- engine.NewEvent(engine.ResourcePreEventPayload{
+		Metadata: makeMetadata(deploy.OpSame, providerState),
+	})
+
+	component := makeStateMetadata(t, name, "company:product:CRClass", false, stateOptions{})
+	events <- engine.NewEvent(engine.ResourcePreEventPayload{
+		Metadata: makeMetadata(deploy.OpSame, component),
+	})
+
+	providerRef, err := providers.NewReference(providerState.URN, providerState.ID)
+	require.NoError(t, err)
+	child := makeStateMetadata(t, "ssm-parameter", "aws:ssm/parameter:Parameter", true, stateOptions{
+		Parent:   component.URN,
+		Provider: &providerRef,
+	})
+	events <- engine.NewEvent(engine.ResourcePreEventPayload{
+		Metadata: makeMetadata(deploy.OpCreate, child),
+	})
+
+	close(events)
+
+	importFile, err := importFilePromise.Result(t.Context())
+	require.NoError(t, err)
+	require.Len(t, importFile.Resources, 1)
+
+	spec := importFile.Resources[0]
+	assert.NotEqual(t, spec.Parent, spec.Provider)
+	assert.Equal(t, component.URN, importFile.NameTable[spec.Parent])
+	assert.Equal(t, providerState.URN, importFile.NameTable[spec.Provider])
+}
+
 // Regression test for https://github.com/pulumi/pulumi/issues/24056
 // Tests that when multiple existing component resources share the same name,
 // generated import resources still reference the correct distinct parents.
