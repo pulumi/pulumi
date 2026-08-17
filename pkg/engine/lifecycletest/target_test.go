@@ -21,6 +21,7 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
 
@@ -4998,4 +4999,114 @@ func TestTargetedOperationSkipsUnrelatedProviderConfiguration(t *testing.T) {
 	require.Contains(t, urnsOf(snap), resA)
 	require.NotContains(t, urnsOf(snap), resB)
 	require.NotEmpty(t, providerA(snap))
+}
+
+// Regression test for https://github.com/pulumi/pulumi/issues/24303. A targeted preview
+// intermittently reports "Duplicate resource URN" for an untargeted resource after the
+// program removes dependency edges outside the targeted scope. The bug is racy, so we
+// run the targeted preview many times to try to catch it. Registrations are performed
+// concurrently from goroutines so they can actually race.
+func TestTargetedPreviewNoDuplicateURN_Issue24303(t *testing.T) {
+	t.Skip("Currently failing")
+	t.Parallel()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+	}
+
+	var captureDependencies bool
+
+	rollbackURN := func(i int) resource.URN {
+		return resource.URN(fmt.Sprintf("urn:pulumi:test::test::pkgA:m:typA::rollback-%d", i))
+	}
+	targetURN := resource.URN("urn:pulumi:test::test::pkgA:m:typA::target")
+
+	program := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		const rollbackCount = 3
+
+		// Kick off the rollback and target registrations in parallel — this mirrors
+		// the async SDK behaviour that the original repro relied on and is what makes
+		// the bug racy.
+		var rollbackWg sync.WaitGroup
+		rollbackErrs := make([]error, rollbackCount)
+		rollbackWg.Add(rollbackCount)
+		for i := range rollbackCount {
+			go func(i int) {
+				defer rollbackWg.Done()
+				_, rollbackErrs[i] = monitor.RegisterResource(
+					"pkgA:m:typA", fmt.Sprintf("rollback-%d", i), true)
+			}(i)
+		}
+
+		var targetWg sync.WaitGroup
+		var targetErr error
+		targetWg.Go(func() {
+			_, targetErr = monitor.RegisterResource("pkgA:m:typA", "target", true)
+		})
+
+		// Register the snapshot-marker in a goroutine too. When capture=true, it
+		// awaits the rollback resources (mirroring what the real SDK does when a
+		// resource has `depends_on` edges); when capture=false, it races freely
+		// alongside them.
+		var markerWg sync.WaitGroup
+		var markerErr error
+		markerWg.Go(func() {
+			opts := deploytest.ResourceOptions{}
+			if captureDependencies {
+				rollbackWg.Wait()
+				deps := make([]resource.URN, rollbackCount)
+				for i := range rollbackCount {
+					deps[i] = rollbackURN(i)
+				}
+				opts.Dependencies = deps
+			}
+			_, markerErr = monitor.RegisterResource("pkgA:m:typA", "snapshot-marker", true, opts)
+		})
+
+		rollbackWg.Wait()
+		for _, err := range rollbackErrs {
+			require.NoError(t, err)
+		}
+		targetWg.Wait()
+		require.NoError(t, targetErr)
+		markerWg.Wait()
+		require.NoError(t, markerErr)
+		return nil
+	})
+
+	hostF := deploytest.NewPluginHostF(nil, nil, program, nil, nil, loaders...)
+	p := &lt.TestPlan{}
+	project := p.GetProject()
+
+	// Initial update with capture=true — snapshot-marker depends on all rollback resources.
+	captureDependencies = true
+	opts := lt.TestUpdateOptions{
+		T:                t,
+		HostF:            hostF,
+		SkipDisplayTests: true,
+		UpdateOptions: UpdateOptions{
+			Parallel: 4,
+		},
+	}
+	snap, err := lt.TestOp(Update).Run(project, p.GetTarget(t, nil), opts, false, p.BackendClient, nil)
+	require.NoError(t, err)
+
+	// Flip capture off — the program will no longer register the depends_on edges from
+	// snapshot-marker to the rollback resources — but we never apply this state.
+	captureDependencies = false
+
+	// Run a targeted preview against only "target" many times. This should never fail —
+	// but pre-fix it can intermittently report a duplicate URN for one of the rollback
+	// resources.
+	previewOpts := opts
+	previewOpts.Targets = deploy.NewUrnTargetsFromUrns([]resource.URN{targetURN})
+
+	const iterations = 500
+	for i := range iterations {
+		_, err := lt.TestOp(Update).Run(
+			project, p.GetTarget(t, snap), previewOpts, true, p.BackendClient, nil)
+		require.NoErrorf(t, err, "targeted preview failed on iteration %d", i)
+	}
 }
