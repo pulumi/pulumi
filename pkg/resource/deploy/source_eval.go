@@ -421,6 +421,13 @@ func NewCallbacksClient(conn *grpc.ClientConn) *CallbacksClient {
 // DialOptions returns dial options to be used for the gRPC client.
 type DialOptions func(metadata any) []grpc.DialOption
 
+// The tuple of ProviderRequest and Extension that we save for an extension package in
+// `resmon.extensionRefMap`.
+type extensionRef struct {
+	provider  providers.ProviderRequest
+	extension apitype.Extension
+}
+
 // resmon implements the pulumirpc.ResourceMonitor interface and acts as the gateway between a language runtime's
 // evaluation of a program and the internal resource planning and deployment logic.
 type resmon struct {
@@ -476,7 +483,7 @@ type resmon struct {
 
 	extensionRefLock sync.RWMutex
 	// A map of UUIDs to the provider extension they respond to
-	extensionRefMap map[string]apitype.Extension
+	extensionRefMap map[string]extensionRef
 
 	// parameterizedExtensions tracks (providerRef, packageRef) pairs already
 	// passed to Parameterize so remote-component Construct calls don't repeat
@@ -552,7 +559,7 @@ func newResourceMonitor(
 		resourceHooks:           src.resourceHooks,
 		resourceTransforms:      map[resource.URN][]TransformFunction{},
 		packageRefMap:           map[string]providers.ProviderRequest{},
-		extensionRefMap:         map[string]apitype.Extension{},
+		extensionRefMap:         map[string]extensionRef{},
 		parameterizedExtensions: map[string]bool{},
 		grpcDialOptions:         src.plugctx.DialOptions,
 		observer:                src.observer,
@@ -811,10 +818,9 @@ func (rm *resmon) RegisterPackage(ctx context.Context,
 		}
 
 		rm.extensionRefLock.Lock()
-		rm.extensionRefMap[ref] = extension
+		rm.extensionRefMap[ref] = extensionRef{pi, extension}
 		rm.extensionRefLock.Unlock()
 
-		rm.packageRefMap[ref] = pi
 		logging.V(5).Infof("ResourceMonitor.RegisterPackage(%v) created %s", req, ref)
 		return &pulumirpc.RegisterPackageResponse{Ref: ref}, nil
 	}
@@ -847,9 +853,17 @@ func hashExtension(ext apitype.Extension) string {
 // lookupPackageRef returns the provider request for the given package ref,
 // holding the read lock for thread safety.
 func (rm *resmon) lookupPackageRef(ref string) (providers.ProviderRequest, bool) {
+	// First check the package refs
 	rm.packageRefLock.RLock()
-	defer rm.packageRefLock.RUnlock()
 	req, has := rm.packageRefMap[ref]
+	rm.packageRefLock.RUnlock()
+	if !has {
+		// Try the extension refs
+		rm.extensionRefLock.RLock()
+		extRef, has := rm.extensionRefMap[ref]
+		rm.extensionRefLock.RUnlock()
+		return extRef.provider, has
+	}
 	return req, has
 }
 
@@ -865,11 +879,12 @@ func (rm *resmon) ensureExtensionParameterizedForConstruct(
 		return nil
 	}
 	rm.extensionRefLock.RLock()
-	ext, isExtension := rm.extensionRefMap[packageRef]
+	extRef, isExtension := rm.extensionRefMap[packageRef]
 	rm.extensionRefLock.RUnlock()
 	if !isExtension {
 		return nil
 	}
+	ext := extRef.extension
 
 	key := providerRef.String() + "|" + packageRef
 	rm.parameterizedExtensionsLock.Lock()
@@ -2905,7 +2920,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		if packageRef := req.GetPackageRef(); packageRef != "" {
 			rm.extensionRefLock.RLock()
 			if e, has := rm.extensionRefMap[packageRef]; has {
-				ext = &e
+				ext = &e.extension
 				// Only carry the ref onto the event when there's an actual
 				// extension blob — replacement-param packageRefs don't belong
 				// in ResourceV3.ExtensionRef.
