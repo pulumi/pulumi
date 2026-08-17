@@ -818,6 +818,8 @@ func (rm *resmon) RegisterPackage(ctx context.Context,
 		}
 
 		rm.extensionRefLock.Lock()
+		_, has := rm.extensionRefMap[ref]
+		contract.Assertf(!has, "extension ref already added to map")
 		rm.extensionRefMap[ref] = extensionRef{pi, extension}
 		rm.extensionRefLock.Unlock()
 
