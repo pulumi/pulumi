@@ -1,4 +1,0 @@
-component: pkg
-kind: chore
-body: Use `mapset.Set` instead of `codegen.StringSet` and `codegen.Set` throughout codegen
-time: 2026-08-17T00:00:00Z
