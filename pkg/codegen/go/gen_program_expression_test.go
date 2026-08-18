@@ -224,6 +224,27 @@ func TestArgumentTypeName(t *testing.T) {
 			true, /*isInput*/
 		))
 
+	// Regression test for https://github.com/pulumi/pulumi/issues/24256:
+	// an object with a null (NoneType) property alongside typed nested data
+	// used to produce order-dependent output because Properties has random
+	// iteration order. The nested map type could "win" if visited first,
+	// yielding map[string]map[string]interface{} instead of the correct
+	// map[string]interface{}. Run many iterations to shake out map ordering.
+	// Freshly construct the map each iteration so Go's per-map iteration
+	// seed varies. In the input-side path (which does not consult
+	// anyOptional), a null (NoneType) property visited before typed
+	// entries used to leave elmType empty, letting the following typed
+	// value "win" and produce e.g. pulumi.StringMapMap instead of
+	// pulumi.Map.
+	for range 200 {
+		mixedNullObject := model.NewObjectType(map[string]model.Type{
+			"nested": model.NewObjectType(map[string]model.Type{"a": model.StringType}),
+			"null":   model.NoneType,
+		})
+		assert.Equal(t, "pulumi.Map",
+			g.argumentTypeName(mixedNullObject, true /*isInput*/))
+	}
+
 	// assert that the Output[T] + input=false is the same as T + input=true
 	// in this case where T = string
 	assert.Equal(t,

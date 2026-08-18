@@ -1,0 +1,4 @@
+component: codegen/go
+kind: fix
+body: Fix nondeterministic Go program codegen for objects that mix null and typed properties
+time: 2026-08-18T00:00:00.000000+00:00
