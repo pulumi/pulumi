@@ -34,6 +34,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
+	"github.com/pulumi/pulumi/pkg/v3/util/progress"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
@@ -618,13 +619,7 @@ func installPlugin(
 	var withDownloadProgress func(io.ReadCloser, int64) io.ReadCloser
 	if opts == nil {
 		withDownloadProgress = func(stream io.ReadCloser, size int64) io.ReadCloser {
-			return workspace.ReadCloserProgressBar(
-				stream,
-				os.Stderr,
-				size,
-				downloadMessage,
-				cmdutil.GetGlobalColorization(),
-			)
+			return progress.Stderr().Wrap(stream, size, downloadMessage, cmdutil.GetGlobalColorization())
 		}
 	} else {
 		withDownloadProgress = func(stream io.ReadCloser, size int64) io.ReadCloser {
