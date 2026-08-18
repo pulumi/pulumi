@@ -1,4 +1,0 @@
-component: sdkgen/go
-kind: fix
-body: Generate valid Go package clauses for schema modules whose names contain hyphens
-time: 2026-08-11T00:00:00Z
