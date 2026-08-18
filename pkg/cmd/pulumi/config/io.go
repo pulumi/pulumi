@@ -403,7 +403,7 @@ func ParseConfigKey(ws pkgWorkspace.Context, key string, path bool) (config.Key,
 }
 
 func PrettyKey(k config.Key) string {
-	proj, err := workspace.DetectProject()
+	proj, err := pkgWorkspace.DetectProject()
 	if err != nil {
 		return fmt.Sprintf("%s:%s", k.Namespace(), k.Name())
 	}
