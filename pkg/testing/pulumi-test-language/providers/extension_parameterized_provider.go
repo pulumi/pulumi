@@ -238,8 +238,8 @@ func (p *ExtensionParameterizedProvider) Invoke(
 		return plugin.InvokeResponse{}, fmt.Errorf("invalid invoke token %s, expected %s", req.Tok, expected)
 	}
 	return plugin.InvokeResponse{
-		Properties: resource.NewPropertyMapFromMap(map[string]any{
-			"greeting": string(value) + ", " + req.Args["name"].StringValue(),
+		Properties: property.NewMap(map[string]property.Value{
+			"greeting": property.New(string(value) + ", " + req.Args.Get("name").AsString()),
 		}),
 	}, nil
 }

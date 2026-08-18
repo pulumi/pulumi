@@ -162,12 +162,12 @@ func TestReplacementParameterizedProvider(t *testing.T) {
 				},
 				InvokeF: func(_ context.Context, req plugin.InvokeRequest) (plugin.InvokeResponse, error) {
 					assert.Equal(t, "pkgExt:index:func", req.Tok.String())
-					assert.Equal(t, resource.NewProperty("in"), req.Args["input"])
+					assert.Equal(t, resource.NewProperty("in"), resource.ToResourcePropertyValue(req.Args.Get("input")))
 
 					return plugin.InvokeResponse{
-						Properties: resource.PropertyMap{
-							"output": resource.NewProperty("in " + param),
-						},
+						Properties: property.NewMap(map[string]property.Value{
+							"output": property.New("in " + param),
+						}),
 					}, nil
 				},
 				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {

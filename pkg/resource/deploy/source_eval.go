@@ -1124,7 +1124,7 @@ func (rm *resmon) Invoke(
 	logging.V(5).Infof("ResourceMonitor.Invoke received: tok=%v #args=%v", tok, len(args))
 	resp, err := prov.Invoke(ctx, plugin.InvokeRequest{
 		Tok:     tok,
-		Args:    args,
+		Args:    resource.FromResourcePropertyMap(args),
 		Preview: rm.opts.DryRun,
 	})
 	if err != nil {
@@ -1139,7 +1139,7 @@ func (rm *resmon) Invoke(
 		keepResources = true
 	}
 
-	mret, err := plugin.MarshalProperties(resp.Properties, plugin.MarshalOptions{
+	mret, err := plugin.MarshalProperties(resource.ToResourcePropertyMap(resp.Properties), plugin.MarshalOptions{
 		Label:            label,
 		KeepUnknowns:     true,
 		KeepSecrets:      true,

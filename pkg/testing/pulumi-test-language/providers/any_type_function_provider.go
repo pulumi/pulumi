@@ -23,7 +23,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 type AnyTypeFunctionProvider struct {
@@ -171,7 +171,7 @@ func (p *AnyTypeFunctionProvider) Invoke(
 	ctx context.Context, req plugin.InvokeRequest,
 ) (plugin.InvokeResponse, error) {
 	if req.Tok == "any-type-function:index:dynListToDyn" {
-		value, ok := req.Args["inputs"]
+		value, ok := req.Args.GetOk("inputs")
 		if !ok {
 			return plugin.InvokeResponse{
 				Failures: makeCheckFailure("inputs", "missing inputs"),
@@ -185,11 +185,11 @@ func (p *AnyTypeFunctionProvider) Invoke(
 		}
 
 		return plugin.InvokeResponse{
-			Properties: resource.PropertyMap{
-				"result": resource.NewProperty(resource.PropertyMap{
-					"resultProperty": resource.NewProperty("resultValue"),
+			Properties: property.NewMap(map[string]property.Value{
+				"result": property.New(map[string]property.Value{
+					"resultProperty": property.New("resultValue"),
 				}),
-			},
+			}),
 		}, nil
 	}
 

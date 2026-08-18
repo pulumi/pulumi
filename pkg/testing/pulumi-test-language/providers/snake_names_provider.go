@@ -26,6 +26,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 // SnakeNamesProvider is used to test snake_case naming features in the Pulumi SDK, and that they are used
@@ -309,26 +310,26 @@ func (p *SnakeNamesProvider) Invoke(
 		return plugin.InvokeResponse{}, fmt.Errorf("unknown function %v", req.Tok)
 	}
 
-	nestedArr, ok := req.Args["nested"]
+	nestedArr, ok := req.Args.GetOk("nested")
 	if !ok {
 		return plugin.InvokeResponse{
 			Failures: makeCheckFailure("nested", "missing nested"),
 		}, nil
 	}
 
-	firstEntry := nestedArr.ArrayValue()[0].ObjectValue()
-	firstValue := firstEntry["value"].StringValue()
+	firstEntry := nestedArr.AsArray().AsSlice()[0].AsMap()
+	firstValue := firstEntry.Get("value").AsString()
 
 	return plugin.InvokeResponse{
-		Properties: resource.PropertyMap{
-			"nested_output": resource.NewProperty([]resource.PropertyValue{
-				resource.NewProperty(resource.PropertyMap{
-					"key": resource.NewProperty(resource.PropertyMap{
-						"value": resource.NewProperty(firstValue),
+		Properties: property.NewMap(map[string]property.Value{
+			"nested_output": property.New([]property.Value{
+				property.New(map[string]property.Value{
+					"key": property.New(map[string]property.Value{
+						"value": property.New(firstValue),
 					}),
 				}),
 			}),
-		},
+		}),
 	}, nil
 }
 

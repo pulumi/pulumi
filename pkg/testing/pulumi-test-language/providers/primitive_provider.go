@@ -319,13 +319,13 @@ func (p *PrimitiveProvider) Invoke(
 		assertField := func(key resource.PropertyKey, typ string,
 			assertType func(resource.PropertyValue) bool,
 		) *plugin.InvokeResponse {
-			v, ok := req.Args[key]
+			v, ok := req.Args.GetOk(string(key))
 			if !ok {
 				return &plugin.InvokeResponse{
 					Failures: makeCheckFailure(key, "missing value"),
 				}
 			}
-			if !assertType(unsecret(v)) {
+			if !assertType(unsecret(resource.ToResourcePropertyValue(v))) {
 				return &plugin.InvokeResponse{
 					Failures: makeCheckFailure(key, "value is not a "+typ),
 				}
@@ -354,7 +354,7 @@ func (p *PrimitiveProvider) Invoke(
 		if check != nil {
 			return *check, nil
 		}
-		for _, v := range unsecret(req.Args["numberArray"]).ArrayValue() {
+		for _, v := range unsecret(resource.ToResourcePropertyValue(req.Args.Get("numberArray"))).ArrayValue() {
 			if !unsecret(v).IsNumber() {
 				return plugin.InvokeResponse{
 					Failures: makeCheckFailure("numberArray", "array element is not a number"),
@@ -365,7 +365,7 @@ func (p *PrimitiveProvider) Invoke(
 		if check != nil {
 			return *check, nil
 		}
-		for _, v := range unsecret(req.Args["booleanMap"]).ObjectValue() {
+		for _, v := range unsecret(resource.ToResourcePropertyValue(req.Args.Get("booleanMap"))).ObjectValue() {
 			if !unsecret(v).IsBool() {
 				return plugin.InvokeResponse{
 					Failures: makeCheckFailure("booleanMap", "map value is not a boolean"),
@@ -373,7 +373,7 @@ func (p *PrimitiveProvider) Invoke(
 			}
 		}
 
-		if len(req.Args) != 6 {
+		if req.Args.Len() != 6 {
 			return plugin.InvokeResponse{
 				Failures: makeCheckFailure("", fmt.Sprintf("too many properties: %v", req.Args)),
 			}, nil

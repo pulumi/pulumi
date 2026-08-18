@@ -25,6 +25,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 type Provider struct {
@@ -231,7 +232,7 @@ func (prov *Provider) Construct(ctx context.Context, req plugin.ConstructRequest
 func (prov *Provider) Invoke(ctx context.Context, req plugin.InvokeRequest) (plugin.InvokeResponse, error) {
 	if prov.InvokeF == nil {
 		return plugin.InvokeResponse{
-			Properties: resource.PropertyMap{},
+			Properties: property.Map{},
 		}, nil
 	}
 	return prov.InvokeF(ctx, req)
