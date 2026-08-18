@@ -487,7 +487,7 @@ func bindSpec(spec schema.PackageSpec, loader schema.Loader) (*schema.Package, e
 		return nil, err
 	}
 	if diags.HasErrors() {
-		return nil, schema.DiagnosticsError(diags)
+		return nil, errors.Join(diags.Errs()...)
 	}
 	return pkg, nil
 }
