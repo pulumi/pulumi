@@ -149,7 +149,7 @@ func (se *stepExecutor) ExecuteSerial(chain chain) completionToken {
 
 	// Acquire a reader before publishing the chain. The worker that receives the chain releases it in executeChain
 	// after the whole chain finishes. This uses the "read" side of the lock because we're ok with as many workers as
-	// possible executing steps in parallel.
+	// possible executing chains in parallel.
 	se.workerLock.RLock()
 	select {
 	case se.incomingChains <- incomingChain{Chain: chain, CompletionChan: completion}:
@@ -163,12 +163,12 @@ func (se *stepExecutor) ExecuteSerial(chain chain) completionToken {
 	return completionToken{channel: completion}
 }
 
-// Locks the step executor from executing any more steps. This is used to synchronize with the step executor.
+// Locks the step executor from executing any more chains. This is used to synchronize with the step executor.
 func (se *stepExecutor) Lock() {
 	se.workerLock.Lock()
 }
 
-// Unlocks the step executor to allow it to execute more steps. This is used to synchronize with the step executor.
+// Unlocks the step executor to allow it to execute more chains. This is used to synchronize with the step executor.
 func (se *stepExecutor) Unlock() {
 	se.workerLock.Unlock()
 }
