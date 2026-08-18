@@ -387,7 +387,7 @@ func runNew(ctx context.Context, args newArgs) error {
 			args.remoteStackConfig, ""); err != nil {
 			return err
 		}
-		// The backend will print "Created stack '<stack>'" on success.
+		// cmdStack.CreateStack prints "Created stack '<stack>'" on success.
 		fmt.Fprintln(args.stdout)
 	}
 

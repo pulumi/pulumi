@@ -433,7 +433,7 @@ func NewUpCmd() *cobra.Command {
 				false /*setCurrent*/, yes, opts.Display, secretsProvider, false /*useRemoteConfig*/, configFile); err != nil {
 				return err
 			}
-			// The backend will print "Created stack '<stack>'." on success.
+			// cmdStack.CreateStack prints "Created stack '<stack>'" on success.
 		}
 
 		// Prompt for config values (if needed) and save.

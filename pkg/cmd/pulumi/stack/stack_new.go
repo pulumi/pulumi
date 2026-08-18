@@ -203,9 +203,12 @@ func (cmd *stackNewCmd) Run(ctx context.Context, args []string) error {
 		return projectErr
 	}
 
-	teams := sanitizeTeams(cmd.teams)
-	newStack, err := CreateStack(ctx, cmdutil.Diag(), ws, b, stackRef, root, teams,
-		!cmd.noSelect, cmd.secretsProvider, cmd.remoteConfig, "")
+	newStack, err := CreateStack(ctx, cmdutil.Diag(), ws, b, stackRef, root, CreateStackOptions{
+		Teams:           sanitizeTeams(cmd.teams),
+		SetCurrent:      !cmd.noSelect,
+		SecretsProvider: cmd.secretsProvider,
+		UseRemoteConfig: cmd.remoteConfig,
+	})
 	if err != nil {
 		if errors.Is(err, backend.ErrTeamsNotSupported) {
 			return fmt.Errorf("stack %s uses the %s backend: "+
