@@ -366,6 +366,26 @@ func parseKeyValuePair(pair string, path bool) (config.Key, string, error) {
 // foo.bar:buzz is a (namespace: foo.bar, key: buzz) if not path, and
 // (namespace: <project-name>, key: foo.bar:buzz) if path.
 func ParseConfigKey(ws pkgWorkspace.Context, key string, path bool) (config.Key, error) {
+	return parseConfigKey(key, path, func() (tokens.PackageName, error) {
+		cwd, err := os.Getwd()
+		if err != nil {
+			return "", fmt.Errorf("getting current working directory: %w", err)
+		}
+
+		proj, _, err := ws.ReadProject(cwd)
+		if err != nil {
+			return "", err
+		}
+		return proj.Name, nil
+	})
+}
+
+// ParseConfigKeyForProject is [ParseConfigKey] for callers that already know the project name.
+func ParseConfigKeyForProject(projectName tokens.PackageName, key string, path bool) (config.Key, error) {
+	return parseConfigKey(key, path, func() (tokens.PackageName, error) { return projectName, nil })
+}
+
+func parseConfigKey(key string, path bool, projectName func() (tokens.PackageName, error)) (config.Key, error) {
 	// If the key is a path, the namespacing requirement only applies to the
 	// top-level key, while sub-keys may have arbitrary names.
 	if path {
@@ -375,7 +395,7 @@ func ParseConfigKey(ws pkgWorkspace.Context, key string, path bool) (config.Key,
 		bracketOrDotIndex := strings.IndexAny(key, "[.")
 		if bracketOrDotIndex > 0 {
 			topSegment := key[:bracketOrDotIndex]
-			topKey, err := ParseConfigKey(ws, topSegment, false)
+			topKey, err := parseConfigKey(topSegment, false, projectName)
 			if err != nil {
 				return config.Key{}, err
 			}
@@ -386,17 +406,12 @@ func ParseConfigKey(ws pkgWorkspace.Context, key string, path bool) (config.Key,
 	// As a convenience, we'll treat any key with no delimiter as if:
 	// <program-name>:<key> had been written instead
 	if !strings.Contains(key, tokens.TokenDelimiter) {
-		cwd, err := os.Getwd()
-		if err != nil {
-			return config.Key{}, fmt.Errorf("getting current working directory: %w", err)
-		}
-
-		proj, _, err := ws.ReadProject(cwd)
+		name, err := projectName()
 		if err != nil {
 			return config.Key{}, err
 		}
 
-		return config.ParseKey(fmt.Sprintf("%s:%s", proj.Name, key))
+		return config.ParseKey(fmt.Sprintf("%s:%s", name, key))
 	}
 
 	return config.ParseKey(key)
@@ -408,11 +423,12 @@ func PrettyKey(k config.Key) string {
 		return fmt.Sprintf("%s:%s", k.Namespace(), k.Name())
 	}
 
-	return prettyKeyForProject(k, proj)
+	return PrettyKeyForProject(k, proj.Name)
 }
 
-func prettyKeyForProject(k config.Key, proj *workspace.Project) string {
-	if k.Namespace() == string(proj.Name) {
+// PrettyKeyForProject is [PrettyKey] for callers that already know the project name.
+func PrettyKeyForProject(k config.Key, projectName tokens.PackageName) string {
+	if k.Namespace() == string(projectName) {
 		return k.Name()
 	}
 

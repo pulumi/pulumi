@@ -32,6 +32,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 
@@ -196,116 +197,174 @@ func promptForConfig(
 	opts display.Options,
 	configFile string,
 ) (config.Map, error) {
+	encrypter, decrypter, err := stackCrypters(ctx, sink, ssml, project, stack, configFile)
+	if err != nil {
+		return nil, err
+	}
+
+	values, err := resolveTemplateConfig(project.Name, templateConfig, commandLineConfig, stackConfig, decrypter)
+	if err != nil {
+		return nil, err
+	}
+	if err := askTemplateConfig(values, prompt, yes, askAll, opts); err != nil {
+		return nil, err
+	}
+
+	return encryptTemplateConfig(ctx, encrypter, values, commandLineConfig)
+}
+
+// A template config entry, held as plaintext so values can be gathered before a stack exists to
+// encrypt secrets.
+type templateConfigValue struct {
+	// As the template declared it; stable when the project name changes.
+	templateKey string
+	key         config.Key
+	value       string
+	secret      bool
+	promptText  string // "Description (pretty:key)"
+	// Never re-asked: the answer would lose to the --config value at save time.
+	fromFlag bool
+}
+
+func (v templateConfigValue) unset() bool {
+	return !v.fromFlag && v.value == ""
+}
+
+func resolveTemplateConfig(
+	projectName tokens.PackageName,
+	templateConfig map[string]workspace.ProjectTemplateConfigValue,
+	commandLineConfig config.Map,
+	stackConfig config.Map,
+	decrypter config.Decrypter,
+) ([]templateConfigValue, error) {
 	// Convert `string` keys to `config.Key`. If a string key is missing a delimiter,
 	// the project name will be prepended.
-	parsedTemplateConfig := make(map[config.Key]workspace.ProjectTemplateConfigValue)
-	for k, v := range templateConfig {
-		parsedKey, parseErr := cmdConfig.ParseConfigKey(pkgWorkspace.Instance, k, false)
-		if parseErr != nil {
-			return nil, parseErr
+	templateKeys := make(map[config.Key]string, len(templateConfig))
+	keys := make(config.KeyArray, 0, len(templateConfig))
+	for k := range templateConfig {
+		parsedKey, err := cmdConfig.ParseConfigKeyForProject(projectName, k, false)
+		if err != nil {
+			return nil, err
 		}
-		parsedTemplateConfig[parsedKey] = v
+		templateKeys[parsedKey] = k
+		keys = append(keys, parsedKey)
 	}
 
 	// Sort keys. Note that we use the fully qualified module member here instead of a `prettyKey` so that
 	// all config values for the current program are prompted one after another.
-	var keys config.KeyArray
-	for k := range parsedTemplateConfig {
-		keys = append(keys, k)
-	}
 	sort.Sort(keys)
 
-	// We need to load the stack config here for the secret manager
-	ps, err := cmdStack.LoadProjectStack(ctx, sink, project, stack, configFile)
-	if err != nil {
-		return nil, fmt.Errorf("loading stack config: %w", err)
-	}
-
-	sm, state, err := ssml.GetSecretsManager(ctx, stack, ps)
-	if err != nil {
-		return nil, err
-	}
-	if state != cmdStack.SecretsManagerUnchanged {
-		if err = cmdStack.SaveProjectStack(ctx, stack, ps, configFile); err != nil {
-			return nil, fmt.Errorf("saving stack config: %w", err)
-		}
-	}
-	encrypter := sm.Encrypter()
-	decrypter := sm.Decrypter()
-
-	c := make(config.Map)
-
+	values := make([]templateConfigValue, 0, len(keys))
 	for _, k := range keys {
-		// If it was passed as a command line flag, use it without prompting.
-		if val, ok := commandLineConfig[k]; ok {
-			c[k] = val
-			continue
+		templateKey := templateKeys[k]
+		tcv := templateConfig[templateKey]
+
+		promptText := cmdConfig.PrettyKeyForProject(k, projectName)
+		if tcv.Description != "" {
+			promptText = tcv.Description + " (" + promptText + ")"
+		}
+		entry := templateConfigValue{
+			templateKey: templateKey,
+			key:         k,
+			secret:      tcv.Secret,
+			promptText:  promptText,
 		}
 
-		templateConfigValue := parsedTemplateConfig[k]
-
-		// Prepare a default value.
-		var defaultValue string
-		var secret bool
-		if stackConfig != nil {
-			// Use the stack's existing value as the default.
-			if val, ok := stackConfig[k]; ok {
-				// It's OK to pass a nil or non-nil crypter for non-secret values.
-				value, err := val.Value(decrypter)
-				if err != nil {
-					return nil, err
-				}
-				defaultValue = value
-			}
-		}
-		if defaultValue == "" {
-			defaultValue = templateConfigValue.Default
-		}
-		if !secret {
-			secret = templateConfigValue.Secret
-		}
-
-		// Prepare the prompt.
-		promptText := cmdConfig.PrettyKey(k)
-		if templateConfigValue.Description != "" {
-			promptText = templateConfigValue.Description + " (" + promptText + ")"
-		}
-
-		// Prompt.
-		value, err := prompt(yes, promptText, defaultValue, secret, nil, opts)
-		if err != nil {
-			return nil, err
-		}
-
-		if value == "" {
-			// Don't add empty values to the config.
-			continue
-		}
-
-		// Encrypt the value if needed.
-		var v config.Value
-		if secret {
-			enc, err := encrypter.EncryptValue(ctx, value)
+		if flagValue, ok := commandLineConfig[k]; ok {
+			plain, err := flagValue.Value(config.NopDecrypter)
 			if err != nil {
 				return nil, err
 			}
-			v = config.NewSecureValue(enc)
+			entry.value, entry.fromFlag = plain, true
+		} else if stackValue, ok := stackConfig[k]; ok {
+			// It's OK to pass a nil or non-nil crypter for non-secret values.
+			plain, err := stackValue.Value(decrypter)
+			if err != nil {
+				return nil, err
+			}
+			entry.value = plain
+		}
+		if entry.value == "" && !entry.fromFlag {
+			entry.value = tcv.Default
+		}
+		values = append(values, entry)
+	}
+	return values, nil
+}
+
+// The scope of keys askTemplateConfig prompts for; keys fixed by a --config flag are never asked.
+type askScope int
+
+const (
+	askAll askScope = iota
+	askUnset
+)
+
+func askTemplateConfig(
+	values []templateConfigValue, prompt promptForValueFunc,
+	yes bool, scope askScope, opts display.Options,
+) error {
+	for i, v := range values {
+		if v.fromFlag || (scope == askUnset && !v.unset()) {
+			continue
+		}
+		answer, err := prompt(yes, v.promptText, v.value, v.secret, nil, opts)
+		if err != nil {
+			return err
+		}
+		values[i].value = answer
+	}
+	return nil
+}
+
+// commandLineConfig is merged as-is so --config values keep their parsed structure and win even
+// for keys the template does not declare.
+func encryptTemplateConfig(
+	ctx context.Context, encrypter config.Encrypter,
+	values []templateConfigValue, commandLineConfig config.Map,
+) (config.Map, error) {
+	c := make(config.Map, len(values)+len(commandLineConfig))
+	maps.Copy(c, commandLineConfig)
+	for _, v := range values {
+		if _, ok := c[v.key]; ok {
+			continue
+		}
+		if v.value == "" {
+			// Don't add empty values to the config.
+			continue
+		}
+		if v.secret {
+			enc, err := encrypter.EncryptValue(ctx, v.value)
+			if err != nil {
+				return nil, err
+			}
+			c[v.key] = config.NewSecureValue(enc)
 		} else {
-			v = config.NewValue(value)
-		}
-
-		// Save it.
-		c[k] = v
-	}
-
-	// Add any other config values from the command line.
-	for k, v := range commandLineConfig {
-		if _, ok := c[k]; !ok {
-			c[k] = v
+			c[v.key] = config.NewValue(v.value)
 		}
 	}
-
 	return c, nil
+}
+
+func stackCrypters(
+	ctx context.Context, sink diag.Sink, ssml cmdStack.SecretsManagerLoader,
+	project *workspace.Project, s backend.Stack, configFile string,
+) (config.Encrypter, config.Decrypter, error) {
+	ps, err := cmdStack.LoadProjectStack(ctx, sink, project, s, configFile)
+	if err != nil {
+		return nil, nil, fmt.Errorf("loading stack config: %w", err)
+	}
+
+	sm, state, err := ssml.GetSecretsManager(ctx, s, ps)
+	if err != nil {
+		return nil, nil, err
+	}
+	if state != cmdStack.SecretsManagerUnchanged {
+		if err = cmdStack.SaveProjectStack(ctx, s, ps, configFile); err != nil {
+			return nil, nil, fmt.Errorf("saving stack config: %w", err)
+		}
+	}
+	return sm.Encrypter(), sm.Decrypter(), nil
 }
 
 // ParseConfig parses the config values passed via command line flags.
@@ -313,11 +372,28 @@ func promptForConfig(
 // in configArray as ["aws:region=us-east-1", "foo:bar=blah"].
 // This function converts the array into a config.Map.
 func ParseConfig(configArray []string, path bool) (config.Map, error) {
+	return parseConfig(configArray, path, func(key string) (config.Key, error) {
+		return cmdConfig.ParseConfigKey(pkgWorkspace.Instance, key, path)
+	})
+}
+
+// ParseConfigForProject is [ParseConfig] for callers that already know the project name.
+func ParseConfigForProject(
+	projectName tokens.PackageName, configArray []string, path bool,
+) (config.Map, error) {
+	return parseConfig(configArray, path, func(key string) (config.Key, error) {
+		return cmdConfig.ParseConfigKeyForProject(projectName, key, path)
+	})
+}
+
+func parseConfig(
+	configArray []string, path bool, parseKey func(string) (config.Key, error),
+) (config.Map, error) {
 	configMap := make(config.Map)
 	for _, c := range configArray {
 		kvp := strings.SplitN(c, "=", 2)
 
-		key, err := cmdConfig.ParseConfigKey(pkgWorkspace.Instance, kvp[0], path)
+		key, err := parseKey(kvp[0])
 		if err != nil {
 			return nil, err
 		}

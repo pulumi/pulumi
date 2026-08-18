@@ -17,6 +17,8 @@ package newcmd
 import (
 	"context"
 	"fmt"
+	"io"
+	"os"
 	"strings"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
@@ -72,43 +74,64 @@ func PromptAndCreateStack(ctx context.Context, sink diag.Sink, ws pkgWorkspace.C
 		ConfigFile:      configFile,
 	}
 	if stack != "" {
-		stackName, err := buildStackName(ctx, b, stack)
-		if err != nil {
-			return nil, err
-		}
-		s, err := cmdStack.InitStack(ctx, sink, ws, b, stackName, root, createOpts)
-		if err != nil {
-			return nil, err
-		}
-		return s, nil
+		return createStack(ctx, sink, ws, b, stack, root, createOpts)
 	}
 
+	stackName, err := promptStackName(os.Stdout, b, prompt, defaultStackName, yes, opts) //nolint:forbidigo
+	if err != nil {
+		return nil, err
+	}
+	s, _, err := createStackWithRetry(ctx, sink, os.Stdout, ws, b, prompt, //nolint:forbidigo
+		stackName, root, yes, opts, createOpts)
+	return s, err
+}
+
+const defaultStackName = "dev"
+
+func promptStackName(
+	w io.Writer, b backend.Backend, prompt promptForValueFunc, defaultName string,
+	yes bool, opts display.Options,
+) (string, error) {
 	if b.SupportsOrganizations() {
-		// Helper used by multiple commands; uses process stdout.
-		fmt.Print("Please enter your desired stack name.\n" + //nolint:forbidigo
-			"To create a stack in an organization, " +
+		fmt.Fprint(w, "Please enter your desired stack name.\n"+
+			"To create a stack in an organization, "+
 			"use the format <org-name>/<stack-name> (e.g. `acmecorp/dev`).\n")
 	}
+	return prompt(yes, "Stack name", defaultName, false, b.ValidateStackName, opts)
+}
 
+func createStack(ctx context.Context, sink diag.Sink, ws pkgWorkspace.Context, b backend.Backend,
+	stackName, root string, opts cmdStack.CreateStackOptions,
+) (backend.Stack, error) {
+	formatted, err := buildStackName(ctx, b, stackName)
+	if err != nil {
+		return nil, err
+	}
+	return cmdStack.InitStack(ctx, sink, ws, b, formatted, root, opts)
+}
+
+// The returned name includes the organization, which the passed-in name may not.
+func createStackWithRetry(ctx context.Context, sink diag.Sink, w io.Writer, ws pkgWorkspace.Context,
+	b backend.Backend, prompt promptForValueFunc, stackName, root string, yes bool,
+	opts display.Options, createOpts cmdStack.CreateStackOptions,
+) (backend.Stack, string, error) {
 	for {
-		stackName, err := prompt(yes, "Stack name", "dev", false, b.ValidateStackName, opts)
+		formatted, err := buildStackName(ctx, b, stackName)
 		if err != nil {
-			return nil, err
+			return nil, "", err
 		}
-		formattedStackName, err := buildStackName(ctx, b, stackName)
-		if err != nil {
-			return nil, err
+		s, err := cmdStack.InitStack(ctx, sink, ws, b, formatted, root, createOpts)
+		if err == nil {
+			return s, formatted, nil
 		}
-		s, err := cmdStack.InitStack(ctx, sink, ws, b, formattedStackName, root, createOpts)
-		if err != nil {
-			if !yes {
-				// Let the user know about the error and loop around to try again.
-				fmt.Printf("Sorry, could not create stack '%s': %v\n", stackName, err) //nolint:forbidigo
-				continue
-			}
-			return nil, err
+		if yes {
+			return nil, "", err
 		}
-		return s, nil
+		// Let the user know about the error and loop around to try again.
+		fmt.Fprintf(w, "Sorry, could not create stack '%s': %v\n", stackName, err)
+		if stackName, err = prompt(yes, "Stack name", defaultStackName, false, b.ValidateStackName, opts); err != nil {
+			return nil, "", err
+		}
 	}
 }
 
