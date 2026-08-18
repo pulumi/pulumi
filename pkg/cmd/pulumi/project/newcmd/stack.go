@@ -77,12 +77,12 @@ func PromptAndCreateStack(ctx context.Context, sink diag.Sink, ws pkgWorkspace.C
 		return createStack(ctx, sink, ws, b, stack, root, createOpts)
 	}
 
-	// Helper used by multiple commands, with no writer of its own; the blurb goes to process stdout.
 	stackName, err := promptStackName(os.Stdout, b, prompt, defaultStackName, yes, opts) //nolint:forbidigo
 	if err != nil {
 		return nil, err
 	}
-	s, _, err := createStackWithRetry(ctx, sink, ws, b, prompt, stackName, root, yes, opts, createOpts)
+	s, _, err := createStackWithRetry(ctx, sink, os.Stdout, ws, b, prompt, //nolint:forbidigo
+		stackName, root, yes, opts, createOpts)
 	return s, err
 }
 
@@ -110,9 +110,8 @@ func createStack(ctx context.Context, sink diag.Sink, ws pkgWorkspace.Context, b
 	return cmdStack.InitStack(ctx, sink, ws, b, formatted, root, opts)
 }
 
-// The returned name is org-resolved; [backend.StackReference.String] elides the org when it is
-// the default.
-func createStackWithRetry(ctx context.Context, sink diag.Sink, ws pkgWorkspace.Context,
+// The returned name includes the organization, which the passed-in name may not.
+func createStackWithRetry(ctx context.Context, sink diag.Sink, w io.Writer, ws pkgWorkspace.Context,
 	b backend.Backend, prompt promptForValueFunc, stackName, root string, yes bool,
 	opts display.Options, createOpts cmdStack.CreateStackOptions,
 ) (backend.Stack, string, error) {
@@ -129,7 +128,7 @@ func createStackWithRetry(ctx context.Context, sink diag.Sink, ws pkgWorkspace.C
 			return nil, "", err
 		}
 		// Let the user know about the error and loop around to try again.
-		fmt.Printf("Sorry, could not create stack '%s': %v\n", stackName, err) //nolint:forbidigo
+		fmt.Fprintf(w, "Sorry, could not create stack '%s': %v\n", stackName, err)
 		if stackName, err = prompt(yes, "Stack name", defaultStackName, false, b.ValidateStackName, opts); err != nil {
 			return nil, "", err
 		}

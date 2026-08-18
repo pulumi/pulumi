@@ -308,7 +308,7 @@ func TestSetFail(t *testing.T) {
 func TestTemplateConfigResolvesWithoutPrompting(t *testing.T) {
 	t.Parallel()
 
-	values, err := resolveTemplateDefaults(
+	values, err := resolveTemplateConfig(
 		"proj",
 		map[string]workspace.ProjectTemplateConfigValue{
 			"aws:region":  {Description: "The AWS region to deploy into", Default: "us-east-1"},
@@ -349,7 +349,7 @@ func TestTemplateConfigResolvesWithoutPrompting(t *testing.T) {
 func TestTemplateConfigAsksForEveryKey(t *testing.T) {
 	t.Parallel()
 
-	values, err := resolveTemplateDefaults(
+	values, err := resolveTemplateConfig(
 		"proj",
 		map[string]workspace.ProjectTemplateConfigValue{
 			"aws:region": {Default: "us-east-1"},
@@ -387,7 +387,7 @@ func TestTemplateConfigNamespacesBareKeys(t *testing.T) {
 
 	// A bare key takes the project's namespace. Resolving it must not depend on a Pulumi.yaml
 	// being on disk, which it is not when the guided flow gathers config before creating one.
-	values, err := resolveTemplateDefaults(
+	values, err := resolveTemplateConfig(
 		"my-proj",
 		map[string]workspace.ProjectTemplateConfigValue{
 			"bucketName": {Description: "The bucket"},
@@ -412,7 +412,7 @@ func TestTemplateConfigNamespacesBareKeys(t *testing.T) {
 func TestTemplateConfigOrdersKeys(t *testing.T) {
 	t.Parallel()
 
-	values, err := resolveTemplateDefaults(
+	values, err := resolveTemplateConfig(
 		"proj",
 		map[string]workspace.ProjectTemplateConfigValue{
 			"b:two": {Default: "2"}, "a:one": {Default: "1"},

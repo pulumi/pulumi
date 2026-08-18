@@ -17,6 +17,7 @@ package newcmd
 import (
 	"context"
 	"errors"
+	"io"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -82,8 +83,9 @@ func TestPromptAndCreateStackNamedStackHardErrors(t *testing.T) {
 	assert.Equal(t, []string{"named"}, created)
 }
 
-//nolint:paralleltest // uses process stdout
 func TestCreateStackWithRetryRepromptsOnFailure(t *testing.T) {
+	t.Parallel()
+
 	var created []string
 	b := stackCreationBackend(t, 1, &created)
 	names := []string{"second"}
@@ -96,7 +98,7 @@ func TestCreateStackWithRetryRepromptsOnFailure(t *testing.T) {
 		return name, nil
 	}
 
-	s, resolved, err := createStackWithRetry(t.Context(), cmdutil.Diag(), pkgWorkspace.Instance,
+	s, resolved, err := createStackWithRetry(t.Context(), cmdutil.Diag(), io.Discard, pkgWorkspace.Instance,
 		b, prompt, "first", t.TempDir(), false, display.Options{},
 		cmdStack.CreateStackOptions{SecretsProvider: "default", Quiet: true})
 
@@ -106,8 +108,9 @@ func TestCreateStackWithRetryRepromptsOnFailure(t *testing.T) {
 	require.NotNil(t, s)
 }
 
-//nolint:paralleltest // uses process stdout
 func TestCreateStackWithRetryDefaultOrgFailureIsFatal(t *testing.T) {
+	t.Parallel()
+
 	var created []string
 	b := stackCreationBackend(t, 1, &created)
 	b.GetDefaultOrgF = func(ctx context.Context) (string, error) {
@@ -120,7 +123,7 @@ func TestCreateStackWithRetryDefaultOrgFailureIsFatal(t *testing.T) {
 		return "", nil
 	}
 
-	s, resolved, err := createStackWithRetry(t.Context(), cmdutil.Diag(), pkgWorkspace.Instance,
+	s, resolved, err := createStackWithRetry(t.Context(), cmdutil.Diag(), io.Discard, pkgWorkspace.Instance,
 		b, prompt, "first", t.TempDir(), false, display.Options{},
 		cmdStack.CreateStackOptions{SecretsProvider: "default", Quiet: true})
 

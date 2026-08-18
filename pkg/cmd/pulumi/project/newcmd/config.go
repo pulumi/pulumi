@@ -202,7 +202,7 @@ func promptForConfig(
 		return nil, err
 	}
 
-	values, err := resolveTemplateDefaults(project.Name, templateConfig, commandLineConfig, stackConfig, decrypter)
+	values, err := resolveTemplateConfig(project.Name, templateConfig, commandLineConfig, stackConfig, decrypter)
 	if err != nil {
 		return nil, err
 	}
@@ -230,7 +230,7 @@ func (v templateConfigValue) unset() bool {
 	return !v.fromFlag && v.value == ""
 }
 
-func resolveTemplateDefaults(
+func resolveTemplateConfig(
 	projectName tokens.PackageName,
 	templateConfig map[string]workspace.ProjectTemplateConfigValue,
 	commandLineConfig config.Map,
