@@ -5189,7 +5189,7 @@ func TestTargetedUpdateAppliesNewInputs_Issue24303(t *testing.T) {
 					"pkgA:m:typA", fmt.Sprintf("rollback-%d", i), true,
 					deploytest.ResourceOptions{
 						Inputs: resource.PropertyMap{
-							"value": resource.NewStringProperty(rollbackValue.Load().(string)),
+							"value": resource.NewProperty(rollbackValue.Load().(string)),
 						},
 					})
 			}(i)
@@ -5265,9 +5265,9 @@ func TestTargetedUpdateAppliesNewInputs_Issue24303(t *testing.T) {
 	// superseding the speculative same with a real update), we'd see "initial" here.
 	found := 0
 	for _, r := range snap.Resources {
-		if strings.HasPrefix(string(r.URN.Name()), "rollback-") {
+		if strings.HasPrefix(r.URN.Name(), "rollback-") {
 			found++
-			require.Equal(t, resource.NewStringProperty("updated"), r.Inputs["value"],
+			require.Equal(t, resource.NewProperty("updated"), r.Inputs["value"],
 				"rollback resource %s did not receive updated inputs", r.URN)
 		}
 	}
