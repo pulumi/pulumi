@@ -2174,6 +2174,13 @@ func TestDescribeBackendURL(t *testing.T) {
 			expected:   `"file:///tmp/state?no_tmp_dir=yes"`,
 		},
 		{
+			name:       "no_tmp_dir on another scheme is not ours to strip",
+			original:   "s3://bucket?endpoint=127.0.0.1:9000",
+			normalized: "s3://bucket?endpoint=http%3A%2F%2F127.0.0.1%3A9000&no_tmp_dir=true",
+			expected: `"s3://bucket?endpoint=127.0.0.1:9000"` +
+				` (resolved to "s3://bucket?endpoint=http%3A%2F%2F127.0.0.1%3A9000&no_tmp_dir=true")`,
+		},
+		{
 			name:       "translated S3 parameters are new information",
 			original:   "s3://bucket?endpoint=127.0.0.1:9000&disableSSL=true",
 			normalized: "s3://bucket?disable_https=true&endpoint=http%3A%2F%2F127.0.0.1%3A9000",
