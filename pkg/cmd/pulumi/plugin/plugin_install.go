@@ -44,6 +44,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/spf13/cobra"
+	"golang.org/x/sync/errgroup"
 )
 
 func newPluginInstallCmd() *cobra.Command {
@@ -92,6 +93,9 @@ func newPluginInstallCmd() *cobra.Command {
 		"reinstall", false, "Reinstall a plugin even if it already exists")
 	cmd.PersistentFlags().StringVar(&picmd.checksum,
 		"checksum", "", "The expected SHA256 checksum for the plugin archive")
+	cmd.PersistentFlags().IntVar(&picmd.parallel,
+		"parallel", 4, "The max number of concurrent installs to perform. "+
+			"Parallelism of less than 1 implies unbounded parallelism")
 
 	return cmd
 }
@@ -102,6 +106,7 @@ type pluginInstallCmd struct {
 	file      string
 	reinstall bool
 	checksum  string
+	parallel  int
 
 	diag     diag.Sink
 	env      env.Env
@@ -269,6 +274,11 @@ func (cmd *pluginInstallCmd) Run(ctx context.Context, args []string) error {
 	}
 
 	// Now for each kind, name, version pair, download it from the release website, and install it.
+	var group errgroup.Group
+	if cmd.parallel > 0 {
+		group.SetLimit(cmd.parallel)
+	}
+
 	for _, install := range installs {
 		label := fmt.Sprintf("[%s plugin %s]", install.Kind, install)
 
@@ -288,14 +298,13 @@ func (cmd *pluginInstallCmd) Run(ctx context.Context, args []string) error {
 			}
 		}
 
-		cmd.diag.Infoerrf(diag.Message("", "%s installing"), label)
-		err := cmd.installPluginSpec(ctx, label, install, cmd.file, cmd.diag, cmd.stderr, cmd.color, cmd.reinstall)
-		if err != nil {
-			return err
-		}
+		group.Go(func() error {
+			cmd.diag.Infoerrf(diag.Message("", "%s installing"), label)
+			return cmd.installPluginSpec(ctx, label, install, cmd.file, cmd.diag, cmd.stderr, cmd.color, cmd.reinstall)
+		})
 	}
 
-	return nil
+	return group.Wait()
 }
 
 func installPluginSpec(
