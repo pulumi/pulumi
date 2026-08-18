@@ -337,7 +337,7 @@ func (p *ModuleFormatProvider) Invoke(
 ) (plugin.InvokeResponse, error) {
 	switch req.Tok {
 	case "module-format:index_concatWorld:concatWorld", "module-format:mod_concatWorld:concatWorld", "module-format:mod/nested_concatWorld:concatWorld": //nolint:lll
-		value, ok := req.Args["value"]
+		value, ok := req.Args.GetOk("value")
 		if !ok {
 			return plugin.InvokeResponse{
 				Failures: makeCheckFailure("value", "missing value"),
@@ -360,9 +360,9 @@ func (p *ModuleFormatProvider) Invoke(
 		}
 
 		return plugin.InvokeResponse{
-			Properties: resource.PropertyMap{
-				"result": resource.NewProperty(value.StringValue() + " world"),
-			},
+			Properties: property.NewMap(map[string]property.Value{
+				"result": property.New(value.AsString() + " world"),
+			}),
 		}, nil
 	}
 	return plugin.InvokeResponse{}, fmt.Errorf("unknown function %v", req.Tok)

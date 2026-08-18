@@ -55,6 +55,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil/rpcerror"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
@@ -2224,7 +2225,7 @@ func (p *provider) Invoke(ctx context.Context, req InvokeRequest) (InvokeRespons
 	contract.Assertf(req.Tok != "", "Invoke requires a token")
 
 	label := fmt.Sprintf("%s.Invoke(%s)", p.label(), req.Tok)
-	logging.V(7).Infof("%s executing (#args=%d)", label, len(req.Args))
+	logging.V(7).Infof("%s executing (#args=%d)", label, req.Args.Len())
 
 	// Ensure that the plugin is configured.
 	client := p.clientRaw
@@ -2235,10 +2236,11 @@ func (p *provider) Invoke(ctx context.Context, req InvokeRequest) (InvokeRespons
 
 	// If the provider is not fully configured, return an empty property map.
 	if !pcfg.known {
-		return InvokeResponse{Properties: resource.PropertyMap{}}, nil
+		return InvokeResponse{Properties: property.Map{}}, nil
 	}
 
-	margs, err := MarshalProperties(req.Args, MarshalOptions{
+	args := resource.ToResourcePropertyMap(req.Args)
+	margs, err := MarshalProperties(args, MarshalOptions{
 		Label:          label + ".args",
 		KeepSecrets:    protocol.acceptSecrets,
 		KeepResources:  protocol.acceptResources,
@@ -2278,7 +2280,7 @@ func (p *provider) Invoke(ctx context.Context, req InvokeRequest) (InvokeRespons
 		failures = append(failures, CheckFailure{resource.PropertyKey(failure.Property), failure.Reason})
 	}
 
-	if req.Args.ContainsSecrets() && !protocol.acceptSecrets {
+	if args.ContainsSecrets() && !protocol.acceptSecrets {
 		for k, v := range ret {
 			if v.IsSecret() || (v.IsOutput() && v.OutputValue().Secret) {
 				continue
@@ -2289,7 +2291,7 @@ func (p *provider) Invoke(ctx context.Context, req InvokeRequest) (InvokeRespons
 
 	logging.V(7).Infof("%s success (#ret=%d,#failures=%d) success", label, len(ret), len(failures))
 	return InvokeResponse{
-		Properties: ret,
+		Properties: resource.FromResourcePropertyMap(ret),
 		Failures:   failures,
 	}, nil
 }

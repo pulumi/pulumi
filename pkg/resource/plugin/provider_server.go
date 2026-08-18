@@ -998,14 +998,14 @@ func (p *providerServer) Invoke(ctx context.Context, req *pulumirpc.InvokeReques
 
 	resp, err := p.provider.Invoke(ctx, InvokeRequest{
 		Tok:     tokens.ModuleMember(req.GetTok()),
-		Args:    args,
+		Args:    resource.FromResourcePropertyMap(args),
 		Preview: req.GetPreview(),
 	})
 	if err != nil {
 		return nil, err
 	}
 
-	rpcResult, err := MarshalProperties(resp.Properties, p.marshalOptions("result"))
+	rpcResult, err := MarshalProperties(resource.ToResourcePropertyMap(resp.Properties), p.marshalOptions("result"))
 	if err != nil {
 		return nil, err
 	}

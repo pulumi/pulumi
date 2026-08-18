@@ -26,6 +26,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 type SimpleInvokeProvider struct {
@@ -235,7 +236,7 @@ func (p *SimpleInvokeProvider) Invoke(
 ) (plugin.InvokeResponse, error) {
 	switch req.Tok {
 	case "simple-invoke:index:myInvoke":
-		value, ok := req.Args["value"]
+		value, ok := req.Args.GetOk("value")
 		if !ok {
 			return plugin.InvokeResponse{
 				Failures: makeCheckFailure("value", "missing value"),
@@ -258,12 +259,12 @@ func (p *SimpleInvokeProvider) Invoke(
 		}
 
 		return plugin.InvokeResponse{
-			Properties: resource.PropertyMap{
-				"result": resource.NewProperty(value.StringValue() + " world"),
-			},
+			Properties: property.NewMap(map[string]property.Value{
+				"result": property.New(value.AsString() + " world"),
+			}),
 		}, nil
 	case "simple-invoke:index:myInvokeScalar":
-		value, ok := req.Args["value"]
+		value, ok := req.Args.GetOk("value")
 		if !ok {
 			return plugin.InvokeResponse{
 				Failures: makeCheckFailure("value", "missing value"),
@@ -288,24 +289,24 @@ func (p *SimpleInvokeProvider) Invoke(
 		// Single value returns work because SDKs automatically extract single value returns in their
 		// invoke implementations.
 		return plugin.InvokeResponse{
-			Properties: resource.PropertyMap{
-				"result": resource.NewProperty(true),
-			},
+			Properties: property.NewMap(map[string]property.Value{
+				"result": property.New(true),
+			}),
 		}, nil
 	case "simple-invoke:index:unit":
-		if len(req.Args) > 0 {
+		if req.Args.Len() > 0 {
 			return plugin.InvokeResponse{
 				Failures: makeCheckFailure("", fmt.Sprintf("too many properties: %v", req.Args)),
 			}, nil
 		}
 
 		return plugin.InvokeResponse{
-			Properties: resource.PropertyMap{
-				"result": resource.NewProperty("Hello world"),
-			},
+			Properties: property.NewMap(map[string]property.Value{
+				"result": property.New("Hello world"),
+			}),
 		}, nil
 	case "simple-invoke:index:secretInvoke":
-		value, ok := req.Args["value"]
+		value, ok := req.Args.GetOk("value")
 		if !ok {
 			return plugin.InvokeResponse{
 				Failures: makeCheckFailure("value", "missing value"),
@@ -318,10 +319,7 @@ func (p *SimpleInvokeProvider) Invoke(
 			}, nil
 		}
 
-		valueIsSecret := value.IsSecret()
-		if valueIsSecret {
-			value = value.SecretValue().Element
-		}
+		valueIsSecret := value.Secret()
 
 		if !value.IsString() {
 			reason := fmt.Sprintf("value is not a string: %#v", value)
@@ -330,7 +328,7 @@ func (p *SimpleInvokeProvider) Invoke(
 			}, nil
 		}
 
-		secretResponse, ok := req.Args["secretResponse"]
+		secretResponse, ok := req.Args.GetOk("secretResponse")
 		if !ok {
 			return plugin.InvokeResponse{
 				Failures: makeCheckFailure("secretResponse", "missing secretResponse"),
@@ -343,18 +341,18 @@ func (p *SimpleInvokeProvider) Invoke(
 		}
 
 		// if the secretResponse is true, wrap the response as a secret
-		response := resource.NewProperty(value.StringValue() + " world")
-		if secretResponse.BoolValue() || valueIsSecret {
-			response = resource.MakeSecret(response)
+		response := property.New(value.AsString() + " world")
+		if secretResponse.AsBool() || valueIsSecret {
+			response = response.WithSecret(true)
 		}
 		return plugin.InvokeResponse{
-			Properties: resource.PropertyMap{
+			Properties: property.NewMap(map[string]property.Value{
 				"response": response,
 				"secret":   secretResponse,
-			},
+			}),
 		}, nil
 	case "simple-invoke:index:getText":
-		text, ok := req.Args["text"]
+		text, ok := req.Args.GetOk("text")
 		if !ok {
 			return plugin.InvokeResponse{
 				Failures: makeCheckFailure("text", "missing text"),
@@ -377,7 +375,7 @@ func (p *SimpleInvokeProvider) Invoke(
 		}
 
 		p.mu.Lock()
-		created := slices.Contains(p.created, text.StringValue())
+		created := slices.Contains(p.created, text.AsString())
 		p.mu.Unlock()
 		if !created {
 			// SDKs must not call this invoke before the StringResource
@@ -386,14 +384,14 @@ func (p *SimpleInvokeProvider) Invoke(
 			// exist yet.
 			return plugin.InvokeResponse{
 				Failures: makeCheckFailure("text",
-					fmt.Sprintf("no StringResource with text %q has been created", text.StringValue())),
+					fmt.Sprintf("no StringResource with text %q has been created", text.AsString())),
 			}, nil
 		}
 
 		return plugin.InvokeResponse{
-			Properties: resource.PropertyMap{
-				"result": resource.NewProperty(text.StringValue() + " world"),
-			},
+			Properties: property.NewMap(map[string]property.Value{
+				"result": property.New(text.AsString() + " world"),
+			}),
 		}, nil
 	}
 	return plugin.InvokeResponse{}, fmt.Errorf("unknown function %v", req.Tok)

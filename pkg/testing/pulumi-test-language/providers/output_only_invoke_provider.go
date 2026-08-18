@@ -24,6 +24,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 type OutputOnlyInvokeProvider struct {
@@ -203,7 +204,7 @@ func (p *OutputOnlyInvokeProvider) Invoke(
 ) (plugin.InvokeResponse, error) {
 	switch req.Tok {
 	case "output-only-invoke:index:myInvoke":
-		value, ok := req.Args["value"]
+		value, ok := req.Args.GetOk("value")
 		if !ok {
 			return plugin.InvokeResponse{
 				Failures: makeCheckFailure("value", "missing value"),
@@ -226,12 +227,12 @@ func (p *OutputOnlyInvokeProvider) Invoke(
 		}
 
 		return plugin.InvokeResponse{
-			Properties: resource.PropertyMap{
-				"result": resource.NewProperty(value.StringValue() + " world"),
-			},
+			Properties: property.NewMap(map[string]property.Value{
+				"result": property.New(value.AsString() + " world"),
+			}),
 		}, nil
 	case "output-only-invoke:index:myInvokeScalar":
-		value, ok := req.Args["value"]
+		value, ok := req.Args.GetOk("value")
 		if !ok {
 			return plugin.InvokeResponse{
 				Failures: makeCheckFailure("value", "missing value"),
@@ -256,24 +257,24 @@ func (p *OutputOnlyInvokeProvider) Invoke(
 		// Single value returns work because SDKs automatically extract single value returns in their
 		// invoke implementations.
 		return plugin.InvokeResponse{
-			Properties: resource.PropertyMap{
-				"result": resource.NewProperty(true),
-			},
+			Properties: property.NewMap(map[string]property.Value{
+				"result": property.New(true),
+			}),
 		}, nil
 	case "output-only-invoke:index:unit":
-		if len(req.Args) > 0 {
+		if req.Args.Len() > 0 {
 			return plugin.InvokeResponse{
 				Failures: makeCheckFailure("", fmt.Sprintf("too many properties: %v", req.Args)),
 			}, nil
 		}
 
 		return plugin.InvokeResponse{
-			Properties: resource.PropertyMap{
-				"result": resource.NewProperty("Hello world"),
-			},
+			Properties: property.NewMap(map[string]property.Value{
+				"result": property.New("Hello world"),
+			}),
 		}, nil
 	case "output-only-invoke:index:secretInvoke":
-		value, ok := req.Args["value"]
+		value, ok := req.Args.GetOk("value")
 		if !ok {
 			return plugin.InvokeResponse{
 				Failures: makeCheckFailure("value", "missing value"),
@@ -293,7 +294,7 @@ func (p *OutputOnlyInvokeProvider) Invoke(
 			}, nil
 		}
 
-		secretResponse, ok := req.Args["secretResponse"]
+		secretResponse, ok := req.Args.GetOk("secretResponse")
 		if !ok {
 			return plugin.InvokeResponse{
 				Failures: makeCheckFailure("secretResponse", "missing secretResponse"),
@@ -306,15 +307,15 @@ func (p *OutputOnlyInvokeProvider) Invoke(
 		}
 
 		// if the secretResponse is true, wrap the response as a secret
-		response := resource.NewProperty(value.StringValue() + " world")
-		if secretResponse.BoolValue() {
-			response = resource.MakeSecret(response)
+		response := property.New(value.AsString() + " world")
+		if secretResponse.AsBool() {
+			response = response.WithSecret(true)
 		}
 		return plugin.InvokeResponse{
-			Properties: resource.PropertyMap{
+			Properties: property.NewMap(map[string]property.Value{
 				"response": response,
 				"secret":   secretResponse,
-			},
+			}),
 		}, nil
 	}
 	return plugin.InvokeResponse{}, fmt.Errorf("unknown function %v", req.Tok)

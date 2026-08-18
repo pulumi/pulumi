@@ -254,14 +254,14 @@ func (p *ComponentProvider) Invoke(
 	if req.Tok != "component:index:identity" {
 		return plugin.InvokeResponse{}, fmt.Errorf("unknown function %v", req.Tok)
 	}
-	input, ok := req.Args["input"]
+	input, ok := req.Args.GetOk("input")
 	if !ok || !input.IsString() {
 		return plugin.InvokeResponse{}, errors.New("missing string argument 'input'")
 	}
 	return plugin.InvokeResponse{
-		Properties: resource.PropertyMap{
+		Properties: property.NewMap(map[string]property.Value{
 			"result": input,
-		},
+		}),
 	}, nil
 }
 

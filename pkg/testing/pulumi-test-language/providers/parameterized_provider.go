@@ -302,20 +302,18 @@ func (p *ParameterizedProvider) Invoke(
 		return plugin.InvokeResponse{}, fmt.Errorf("invalid function token: %s. Expected %s", req.Tok, functionToken)
 	}
 
-	input, ok := req.Args["input"]
+	input, ok := req.Args.GetOk("input")
 	if !ok {
 		return plugin.InvokeResponse{}, errors.New("missing required argument 'input'")
 	}
 	if !input.IsString() {
-		return plugin.InvokeResponse{}, fmt.Errorf("expected input to be a string, got %s", input.TypeString())
-	}
-
-	outputs := resource.PropertyMap{
-		"output": resource.NewProperty(input.StringValue() + string(p.parameterValue)),
+		return plugin.InvokeResponse{}, fmt.Errorf("expected input to be a string, got %v", input)
 	}
 
 	return plugin.InvokeResponse{
-		Properties: outputs,
+		Properties: property.NewMap(map[string]property.Value{
+			"output": property.New(input.AsString() + string(p.parameterValue)),
+		}),
 	}, nil
 }
 

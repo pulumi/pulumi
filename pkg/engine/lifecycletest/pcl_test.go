@@ -36,6 +36,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 // pclSnippetTestProvider returns a loader for a single-resource "pkgA" provider whose schema is
@@ -679,12 +680,12 @@ func TestPclSnippetInvoke(t *testing.T) {
 					return plugin.CreateResponse{ID: resource.ID(id), Properties: cr.Properties}, nil
 				},
 				InvokeF: func(_ context.Context, req plugin.InvokeRequest) (plugin.InvokeResponse, error) {
-					input := req.Args["input"].StringValue()
+					input := req.Args.Get("input").AsString()
 					invoked = append(invoked, input)
 					return plugin.InvokeResponse{
-						Properties: resource.PropertyMap{
-							"result": resource.NewProperty("echoed: " + input),
-						},
+						Properties: property.NewMap(map[string]property.Value{
+							"result": property.New("echoed: " + input),
+						}),
 					}, nil
 				},
 			}, nil
