@@ -1,0 +1,4 @@
+component: cli/package
+kind: fix
+body: Report every schema validation error when `pulumi package add` fails to bind a package schema
+time: 2026-08-18T12:43:22.327108+02:00
