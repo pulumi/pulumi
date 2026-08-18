@@ -1,0 +1,4 @@
+component: cli/plugin
+kind: improvement
+body: Add `--parallel` flag to `pulumi plugin install`
+time: 2026-08-18T14:40:42.541237344+02:00
