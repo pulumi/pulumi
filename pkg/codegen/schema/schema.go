@@ -202,6 +202,20 @@ type UnionType struct {
 	Discriminator string
 	// Mapping is an optional object to hold mappings between payload values and schema names or references.
 	Mapping map[string]string
+	// DiscriminatedCases is Mapping resolved to the object types it selects, keyed by discriminator
+	// value. The binder sets it only when every entry resolves to an object type that is a member of
+	// the union and every member is reachable through the mapping; it is nil otherwise, and the
+	// binder reports why. Use it rather than resolving Mapping by hand.
+	//
+	// The object types are always plain shapes, so the map survives the input/plain rewrites in
+	// codegen.ResolvedType and codegen.PlainType unchanged. Reach the input shape through
+	// ObjectType.InputShape.
+	DiscriminatedCases map[string]*ObjectType
+}
+
+// IsDiscriminated reports whether a value of the union can be told apart by its discriminator value.
+func (t *UnionType) IsDiscriminated() bool {
+	return len(t.DiscriminatedCases) > 0
 }
 
 func (t *UnionType) String() string {
