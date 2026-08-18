@@ -117,9 +117,9 @@ func TestDeletedWithDependentReplacedOnDeleteBeforeReplace(t *testing.T) {
 	require.Equal(t, "created-id-3", snap.Resources[1].ID.String())
 	require.Equal(t, "created-id-4", snap.Resources[2].ID.String())
 
-	// Delete-before-replace deletes the dependent by explicit RPC before T; the DeletedWith
-	// delete-skip does not apply because T is tracked as a replace, not a delete.
-	require.Equal(t, []resource.URN{urnD, urnT}, deleted)
+	// Old T is deleted as part of the replacement, so D's own Delete call is skipped; the
+	// provider deletes D as a side effect of deleting T.
+	require.Equal(t, []resource.URN{urnT}, deleted)
 }
 
 // A DeletedWith chain (T <- D <- D2) must replace transitively when the root is replaced.
@@ -215,9 +215,9 @@ func TestDeletedWithTransitiveChain(t *testing.T) {
 	require.Equal(t, "created-id-5", snap.Resources[2].ID.String())
 	require.Equal(t, "created-id-6", snap.Resources[3].ID.String())
 
-	// D is deleted by explicit RPC before T, but D2's Delete is skipped because its DeletedWith
-	// target D is itself being deleted in this deployment.
-	require.Equal(t, []resource.URN{urnD, urnT}, deleted)
+	// Only T's Delete is called: D2's is skipped because its DeletedWith target D is being
+	// deleted, and D's is skipped because its DeletedWith target T is being deleted.
+	require.Equal(t, []resource.URN{urnT}, deleted)
 }
 
 // The same cascade must apply when T defaults to create-before-delete, since the cascade is

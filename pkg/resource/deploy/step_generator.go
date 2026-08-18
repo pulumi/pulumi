@@ -2141,6 +2141,9 @@ func (sg *stepGenerator) continueStepsFromDiff(diffEvent ContinueResourceDiffEve
 				// currently pending replace resource will get removed from the state when the CreateReplacementStep is
 				// successful.
 				if !old.PendingReplacement {
+					// Mark the old resource as deleted so that dependents DeletedWith it can see the
+					// deletion and skip their own provider Delete calls.
+					sg.deletes[old.URN] = true
 					oldViews := sg.deployment.GetOldViews(old.URN)
 					steps = append(steps, NewDeleteReplacementStep(sg.deployment, sg.deletes, old, true, oldViews))
 				}
