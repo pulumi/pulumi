@@ -199,7 +199,7 @@ async function exec(
     const env = additionalEnv ? { ...additionalEnv } : undefined;
 
     try {
-        const proc = execa(command, args, { env, cwd });
+        const proc = execa(command, args, { env, cwd, maxBuffer: Infinity });
 
         if (onError && proc.stderr) {
             proc.stderr!.on("data", (data: any) => {
