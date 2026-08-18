@@ -18,9 +18,10 @@ import (
 	"context"
 	"slices"
 
+	mapset "github.com/deckarep/golang-set/v2"
+
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
-	"github.com/pulumi/pulumi/pkg/v3/codegen"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
@@ -131,7 +132,7 @@ func (b *binder) bindNode(ctx context.Context, node Node) hcl.Diagnostics {
 
 // getDependencies returns the dependencies for the given node.
 func (b *binder) getDependencies(node Node) []Node {
-	depSet := codegen.Set{}
+	depSet := mapset.NewSet[Node]()
 	var deps []Node
 	visit := func(node hclsyntax.Node) hcl.Diagnostics {
 		var depName string
@@ -147,7 +148,7 @@ func (b *binder) getDependencies(node Node) []Node {
 
 		// Missing reference errors will be issued during expression binding.
 		referent, _ := b.root.BindReference(depName)
-		if node, ok := referent.(Node); ok && !depSet.Has(node) {
+		if node, ok := referent.(Node); ok && !depSet.Contains(node) {
 			depSet.Add(node)
 			deps = append(deps, node)
 		}

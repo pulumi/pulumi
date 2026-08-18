@@ -20,6 +20,8 @@ import (
 	"maps"
 	"slices"
 
+	mapset "github.com/deckarep/golang-set/v2"
+
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 
 	"github.com/hashicorp/hcl/v2"
@@ -578,7 +580,7 @@ func (b *binder) typecheckBaseResourceAttributes(
 		}
 		diagnostics = append(diagnostics, d)
 	}
-	attrNames := codegen.StringSet{}
+	attrNames := mapset.NewSet[string]()
 	for _, attr := range inputs {
 		attrNames.Add(attr.Name)
 
@@ -604,7 +606,7 @@ func (b *binder) typecheckBaseResourceAttributes(
 
 	for _, k := range slices.Sorted(maps.Keys(objectType.Properties)) {
 		typ := objectType.Properties[k]
-		if model.IsOptionalType(typ) || attrNames.Has(k) {
+		if model.IsOptionalType(typ) || attrNames.Contains(k) {
 			// The type is present or optional. No error.
 			continue
 		}

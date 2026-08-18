@@ -34,6 +34,8 @@ import (
 	"strconv"
 	"strings"
 
+	mapset "github.com/deckarep/golang-set/v2"
+
 	"github.com/BurntSushi/toml"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
@@ -62,7 +64,9 @@ type typeDetails struct {
 	plainType          bool
 }
 
-type imports codegen.StringSet
+type imports struct{ mapset.Set[string] }
+
+func newImports() imports { return imports{mapset.NewSet[string]()} }
 
 // defaultMinPythonVersion is what we use as the minimum version field in generated
 // package metadata if the schema does not provide a value. This version corresponds
@@ -76,29 +80,24 @@ func (imports imports) addType(mod *modContext, t *schema.ObjectType, input bool
 
 func (imports imports) addTypeIf(mod *modContext, t *schema.ObjectType, input bool, predicate func(imp string) bool) {
 	if imp := mod.importObjectType(t, input); imp != "" && (predicate == nil || predicate(imp)) {
-		codegen.StringSet(imports).Add(imp)
+		imports.Add(imp)
 	}
 }
 
 func (imports imports) addEnum(mod *modContext, enum *schema.EnumType) {
 	if imp := mod.importEnumType(enum); imp != "" {
-		codegen.StringSet(imports).Add(imp)
+		imports.Add(imp)
 	}
 }
 
 func (imports imports) addResource(mod *modContext, r *schema.ResourceType) {
 	if imp := mod.importResourceType(r); imp != "" {
-		codegen.StringSet(imports).Add(imp)
+		imports.Add(imp)
 	}
 }
 
 func (imports imports) strings() []string {
-	result := slice.Prealloc[string](len(imports))
-	for imp := range imports {
-		result = append(result, imp)
-	}
-	sort.Strings(result)
-	return result
+	return mapset.Sorted(imports.Set)
 }
 
 type modLocator struct {
@@ -840,7 +839,7 @@ func (mod *modContext) fullyQualifiedImportName() string {
 // genInit emits an __init__.py module, optionally re-exporting other members or submodules.
 func (mod *modContext) genInit(exports []string) string {
 	w := &bytes.Buffer{}
-	mod.genHeader(w, false /*needsSDK*/, nil, nil)
+	mod.genHeader(w, false /*needsSDK*/, imports{}, nil)
 	if mod.isConfig {
 		fmt.Fprintf(w, "import sys\n")
 		fmt.Fprintf(w, "from .vars import _ExportableConfig\n")
@@ -1055,7 +1054,7 @@ func (mod *modContext) importResourceType(r *schema.ResourceType) string {
 func (mod *modContext) genConfig(variables []*schema.Property) (string, error) {
 	w := &bytes.Buffer{}
 
-	imports := imports{}
+	imports := newImports()
 	mod.collectImports(variables, imports, false /*input*/)
 
 	mod.genHeader(w, true /*needsSDK*/, imports, nil)
@@ -1147,7 +1146,7 @@ func genConfigVarType(configVar *schema.Property) string {
 func (mod *modContext) genConfigStubs(variables []*schema.Property) (string, error) {
 	w := &bytes.Buffer{}
 
-	imports := imports{}
+	imports := newImports()
 	mod.collectImports(variables, imports, false /*input*/)
 
 	mod.genHeader(w, true /*needsSDK*/, imports, nil)
@@ -1186,7 +1185,7 @@ func (mod *modContext) genTypes(dir string, fs codegen.Fs) error {
 			return nil
 		}
 
-		imports := imports{}
+		imports := newImports()
 		var emitted [][]*schema.Property
 		for _, t := range mod.types {
 			if t.IsOverlay {
@@ -1365,7 +1364,7 @@ func resourceName(res *schema.Resource) string {
 func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 	w := &bytes.Buffer{}
 
-	imports := imports{}
+	imports := newImports()
 	emitted := [][]*schema.Property{res.Properties, res.InputProperties}
 	mod.collectImportsForResource(res.Properties, imports, false /*input*/, res)
 	mod.collectImportsForResource(res.InputProperties, imports, true /*input*/, res)
@@ -1547,7 +1546,7 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 	fmt.Fprintf(w, "            __props__ = %[1]s.__new__(%[1]s)\n\n", resourceArgsName)
 	fmt.Fprintf(w, "")
 
-	ins := codegen.NewStringSet()
+	ins := mapset.NewSet[string]()
 	for _, prop := range res.InputProperties {
 		pname := InitParamName(prop.Name)
 		var arg any
@@ -1605,7 +1604,7 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 	for _, prop := range res.Properties {
 		// Default any pure output properties to None.  This ensures they are available as properties, even if
 		// they don't ever get assigned a real value, and get documentation if available.
-		if !ins.Has(prop.Name) {
+		if !ins.Contains(prop.Name) {
 			fmt.Fprintf(w, "            __props__.__dict__[%q] = None\n", PyName(prop.Name))
 		}
 
@@ -1696,7 +1695,7 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 			fmt.Fprintf(w, "        __props__ = %[1]s.__new__(%[1]s)\n\n", resourceArgsName)
 		}
 
-		stateInputs := codegen.NewStringSet()
+		stateInputs := mapset.NewSet[string]()
 		if res.StateInputs != nil {
 			for _, prop := range res.StateInputs.Properties {
 				stateInputs.Add(prop.Name)
@@ -1704,7 +1703,7 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 			}
 		}
 		for _, prop := range res.Properties {
-			if !stateInputs.Has(prop.Name) {
+			if !stateInputs.Contains(prop.Name) {
 				fmt.Fprintf(w, "        __props__.__dict__[%q] = None\n", PyName(prop.Name))
 			}
 		}
@@ -1991,7 +1990,7 @@ func (mod *modContext) genMethods(w io.Writer, res *schema.Resource) error {
 func (mod *modContext) genFunction(fun *schema.Function) (string, error) {
 	w := &bytes.Buffer{}
 
-	imports := imports{}
+	imports := newImports()
 	if fun.Inputs != nil {
 		mod.collectImports(fun.Inputs.Properties, imports, true)
 	}
@@ -2265,7 +2264,7 @@ func returnTypeObject(fun *schema.Function) *schema.ObjectType {
 
 func (mod *modContext) genEnums(w io.Writer, enums []*schema.EnumType) error {
 	// Header
-	mod.genHeader(w, false /*needsSDK*/, nil, nil)
+	mod.genHeader(w, false /*needsSDK*/, imports{}, nil)
 
 	fmt.Fprintf(w, "import pulumi\n")
 	// Enum import
@@ -2420,7 +2419,7 @@ func genPackageMetadata(
 	tool string, pkg *schema.Package, pyPkgName string, requires map[string]string,
 ) (string, error) {
 	w := &bytes.Buffer{}
-	(&modContext{tool: tool}).genHeader(w, false /*needsSDK*/, nil, nil)
+	(&modContext{tool: tool}).genHeader(w, false /*needsSDK*/, imports{}, nil)
 
 	// Now create a standard Python package from the metadata.
 	fmt.Fprintf(w, "import errno\n")
@@ -2850,11 +2849,11 @@ func (mod *modContext) typeString(t schema.Type, opts typeStringOpts) string {
 			return "Any"
 		}
 
-		elementTypeSet := codegen.NewStringSet()
+		elementTypeSet := mapset.NewSet[string]()
 		elements := slice.Prealloc[string](len(t.ElementTypes))
 		for _, e := range t.ElementTypes {
 			et := mod.typeString(e, opts)
-			if !elementTypeSet.Has(et) {
+			if !elementTypeSet.Contains(et) {
 				elementTypeSet.Add(et)
 				elements = append(elements, et)
 			}

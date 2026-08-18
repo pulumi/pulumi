@@ -17,9 +17,10 @@ package pcl
 import (
 	"fmt"
 
+	mapset "github.com/deckarep/golang-set/v2"
+
 	"github.com/hashicorp/hcl/v2"
 	"github.com/pulumi/inflector"
-	"github.com/pulumi/pulumi/pkg/v3/codegen"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/zclconf/go-cty/cty"
@@ -75,7 +76,7 @@ type observeContext struct {
 	callbackParams  []*model.Variable
 	paramReferences []*model.ScopeTraversalExpression
 
-	assignedNames codegen.StringSet
+	assignedNames mapset.Set[string]
 	nameCounts    map[string]int
 }
 
@@ -276,7 +277,7 @@ func (ctx *observeContext) disambiguateName(name string) string {
 		name = "arg"
 	}
 
-	if !ctx.assignedNames.Has(name) {
+	if !ctx.assignedNames.Contains(name) {
 		return name
 	}
 
@@ -632,7 +633,7 @@ func (ctx *observeContext) PreVisit(expr model.Expression) (model.Expression, hc
 				applyRewriter: ctx.applyRewriter,
 				parent:        ctx,
 				root:          expr,
-				assignedNames: codegen.StringSet{},
+				assignedNames: mapset.NewSet[string](),
 				nameCounts:    map[string]int{},
 			}
 		} else {
@@ -687,7 +688,7 @@ func (ctx *inspectContext) PreVisit(expr model.Expression) (model.Expression, hc
 			applyRewriter: ctx.applyRewriter,
 			parent:        ctx,
 			root:          expr,
-			assignedNames: codegen.StringSet{},
+			assignedNames: mapset.NewSet[string](),
 			nameCounts:    map[string]int{},
 		}
 		ctx.activeContext = observeCtx

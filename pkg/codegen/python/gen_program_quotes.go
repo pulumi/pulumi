@@ -19,9 +19,10 @@ import (
 	"slices"
 	"strings"
 
+	mapset "github.com/deckarep/golang-set/v2"
+
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
-	"github.com/pulumi/pulumi/pkg/v3/codegen"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
@@ -163,18 +164,18 @@ type quoteAllocations struct {
 
 type quoteAllocator struct {
 	allocations *quoteAllocations
-	allocated   codegen.StringSet
+	allocated   mapset.Set[string]
 	stack       []model.Expression
 }
 
 func (qa *quoteAllocator) allocate(longString bool) (string, bool) {
 	if longString {
-		if !qa.allocated.Has(`"`) && !qa.allocated.Has(`"""`) {
+		if !qa.allocated.Contains(`"`) && !qa.allocated.Contains(`"""`) {
 			qa.allocated.Add(`"""`)
 			return `"""`, true
 		}
 
-		if !qa.allocated.Has(`'`) && !qa.allocated.Has(`'''`) {
+		if !qa.allocated.Contains(`'`) && !qa.allocated.Contains(`'''`) {
 			qa.allocated.Add(`'''`)
 			return `'''`, true
 		}
@@ -182,12 +183,12 @@ func (qa *quoteAllocator) allocate(longString bool) (string, bool) {
 		return "", false
 	}
 
-	if !qa.allocated.Has(`"`) {
+	if !qa.allocated.Contains(`"`) {
 		qa.allocated.Add(`"`)
 		return `"`, true
 	}
 
-	if !qa.allocated.Has(`'`) {
+	if !qa.allocated.Contains(`'`) {
 		qa.allocated.Add(`'`)
 		return `'`, true
 	}
@@ -196,7 +197,7 @@ func (qa *quoteAllocator) allocate(longString bool) (string, bool) {
 }
 
 func (qa *quoteAllocator) free(quotes string) {
-	qa.allocated.Delete(quotes)
+	qa.allocated.Remove(quotes)
 }
 
 func (qa *quoteAllocator) inTemplate() bool {
@@ -250,7 +251,7 @@ func (qa *quoteAllocator) allocateExpression(x model.Expression) (model.Expressi
 		return x, nil
 	}
 
-	allocator := &quoteAllocator{allocated: codegen.StringSet{}, allocations: qa.allocations}
+	allocator := &quoteAllocator{allocated: mapset.NewSet[string](), allocations: qa.allocations}
 	value, valueDiags := model.VisitExpression(x, allocator.allocateExpression, allocator.freeExpression)
 
 	temp := &quoteTemp{
@@ -315,7 +316,7 @@ func (g *generator) rewriteQuotes(x model.Expression) (model.Expression, []*quot
 	allocations := &quoteAllocations{
 		quotes: g.quotes,
 	}
-	allocator := &quoteAllocator{allocated: codegen.StringSet{}, allocations: allocations}
+	allocator := &quoteAllocator{allocated: mapset.NewSet[string](), allocations: allocations}
 	x, rewriteDiags2 := model.VisitExpression(x, allocator.allocateExpression, allocator.freeExpression)
 
 	diagnostics := slices.Concat(rewriteDiags1, rewriteDiags2)

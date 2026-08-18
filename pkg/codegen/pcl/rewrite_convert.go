@@ -17,6 +17,8 @@ package pcl
 import (
 	"strings"
 
+	mapset "github.com/deckarep/golang-set/v2"
+
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
@@ -44,12 +46,12 @@ func sameSchemaTypes(xt, yt model.Type) bool {
 		return false
 	}
 
-	types := codegen.Set{}
+	types := mapset.NewSet[schema.Type]()
 	for _, t := range xu.ElementTypes {
 		types.Add(t)
 	}
 	for _, t := range yu.ElementTypes {
-		if !types.Has(t) {
+		if !types.Contains(t) {
 			return false
 		}
 	}

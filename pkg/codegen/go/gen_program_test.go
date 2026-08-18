@@ -21,6 +21,8 @@ import (
 	"strings"
 	"testing"
 
+	mapset "github.com/deckarep/golang-set/v2"
+
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 
@@ -28,7 +30,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/pulumi/pulumi/pkg/v3/codegen"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model/format"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
@@ -451,7 +452,7 @@ func newTestGenerator(t *testing.T, testFile string) *generator {
 		optionalSpiller:     &optionalSpiller{},
 		inlineInvokeSpiller: &inlineInvokeSpiller{},
 		callSpiller:         &callSpiller{},
-		scopeTraversalRoots: codegen.NewStringSet(),
+		scopeTraversalRoots: mapset.NewSet[string](),
 		arrayHelpers:        make(map[string]*promptToInputArrayHelper),
 		importer:            newFileImporter(),
 	}
@@ -587,7 +588,7 @@ func TestReplacementTriggerInputConversion(t *testing.T) {
 		optionalSpiller:     &optionalSpiller{},
 		inlineInvokeSpiller: &inlineInvokeSpiller{},
 		callSpiller:         &callSpiller{},
-		scopeTraversalRoots: codegen.NewStringSet(),
+		scopeTraversalRoots: mapset.NewSet[string](),
 		arrayHelpers:        make(map[string]*promptToInputArrayHelper),
 		importer:            newFileImporter(),
 	}
