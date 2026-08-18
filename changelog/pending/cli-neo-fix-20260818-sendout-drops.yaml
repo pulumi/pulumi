@@ -1,0 +1,7 @@
+component: cli/neo
+kind: fix
+body: Fix approval replies and mode changes being silently dropped when the
+    outbound event queue is full
+time: 2026-08-18T00:00:00Z
+custom:
+    PR: "24370"

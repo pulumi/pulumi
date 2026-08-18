@@ -699,18 +699,26 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// scheduled this tick.
 		if msg.gen == m.approvalDebounceGen {
 			next := m.approvalMode
-			m.sendOut(outboundEvent{
+			if !m.sendOut(outboundEvent{
 				update: &client.UpdateNeoTaskOptions{ApprovalMode: &next},
-			})
+			}) {
+				// Outbound channel full — re-arm the debounce so the update
+				// retries rather than silently leaving the server on the old
+				// mode. The retried tick re-reads approvalMode, so latest
+				// value still wins.
+				return m, m.scheduleApprovalDebounce()
+			}
 		}
 		return m, nil
 
 	case permissionDebounceTickMsg:
 		if msg.gen == m.permissionDebounceGen {
 			next := m.permissionMode
-			m.sendOut(outboundEvent{
+			if !m.sendOut(outboundEvent{
 				update: &client.UpdateNeoTaskOptions{PermissionMode: &next},
-			})
+			}) {
+				return m, m.schedulePermissionDebounce()
+			}
 		}
 		return m, nil
 
@@ -873,7 +881,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					if text == "" {
 						return m, nil
 					}
-					m.sendOut(outboundEvent{
+					// Drop-on-full send: bail before any state mutation so the
+					// prompt stays pending, the draft survives, and Enter
+					// retries — otherwise the TUI would show the answer as
+					// submitted while the agent waits forever for it.
+					if !m.sendOut(outboundEvent{
 						event: apitype.AgentUserEventUserConfirmation{
 							Type:       userEventUserConfirmation,
 							ApprovalID: m.pendingApprovalID,
@@ -881,7 +893,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 							Message:    text,
 						},
 						planMode: m.planMode,
-					})
+					}) {
+						return m, m.appendWarningBlock("Answer not sent — press Enter to try again.")
+					}
 					m.clearPendingPrompt()
 					answerCmd := m.commitBlock(block{kind: blockAnswerSubmitted, raw: text})
 					return m, tea.Batch(answerCmd, m.showBusy(thinkingLabel, shimmerVerb))
@@ -892,7 +906,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					denialMsg = text
 				}
 				wasPlanApproval := m.pendingApprovalType == approvalTypePlanExit
-				m.sendOut(outboundEvent{
+				// See the question path above — a dropped confirmation must
+				// keep the approval pending rather than pretend it was sent.
+				if !m.sendOut(outboundEvent{
 					event: apitype.AgentUserEventUserConfirmation{
 						Type:       userEventUserConfirmation,
 						ApprovalID: m.pendingApprovalID,
@@ -900,7 +916,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						Message:    denialMsg,
 					},
 					planMode: m.planMode,
-				})
+				}) {
+					return m, m.appendWarningBlock("Reply not sent — press Enter to try again.")
+				}
 				// Approving a plan exits plan mode server-side (the PlanModeTracker
 				// stops gating writes), so mirror that locally. Denial leaves the
 				// mode on — the agent will re-plan and gate-out again on the next
