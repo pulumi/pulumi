@@ -630,7 +630,7 @@ func newSnippetDeletionTracker(deleted map[string]bool, oldResources []*pkgresou
 		t.surviving[id] = 0
 	}
 	for _, r := range oldResources {
-		if r == nil || r.ViewOf != "" {
+		if r == nil || r.ViewOf != "" || r.Delete {
 			continue
 		}
 		if _, ok := t.surviving[r.SnippetID]; ok {
@@ -643,12 +643,11 @@ func newSnippetDeletionTracker(deleted map[string]bool, oldResources []*pkgresou
 // recordStep notes when a successfully applied step removed a resource registered by one of the
 // tracked snippets.
 func (t *snippetDeletionTracker) recordStep(step deploy.Step) {
-	if step.Op() != deploy.OpDelete && step.Op() != deploy.OpDeleteReplaced &&
-		step.Op() != deploy.OpRemovePendingReplace {
+	if step.Op() != deploy.OpDelete && step.Op() != deploy.OpRemovePendingReplace {
 		return
 	}
 	old := step.Old()
-	if old == nil || old.ViewOf != "" {
+	if old == nil || old.ViewOf != "" || old.Delete {
 		return
 	}
 	t.mu.Lock()

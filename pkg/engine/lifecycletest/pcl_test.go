@@ -2336,8 +2336,8 @@ func pclSnippetResourceNames(snap *deploy.Snapshot) map[string]bool {
 func TestPclSnippetDeleteFailureKeepsSnippet(t *testing.T) {
 	t.Parallel()
 
-	var deleteFails atomic.Bool
-	p := pclSnippetDeleteFailPlan(t, func(plugin.DeleteRequest) bool { return deleteFails.Load() })
+	deleteFails := false
+	p := pclSnippetDeleteFailPlan(t, func(plugin.DeleteRequest) bool { return deleteFails })
 
 	snippetUUID := newPclSnippetUUID(t)
 	snap := deploy.NewSnapshot(deploy.Manifest{}, nil, nil, nil, deploy.SnapshotMetadata{}, []resource.Snippet{
@@ -2349,7 +2349,7 @@ func TestPclSnippetDeleteFailureKeepsSnippet(t *testing.T) {
 	require.Len(t, snap.Resources, 2)
 
 	// Delete the snippet the way `pulumi do delete` does, with the provider delete failing.
-	deleteFails.Store(true)
+	deleteFails = true
 	deleteOpts := p.Options
 	deleteOpts.UpdateOptions = UpdateOptions{
 		Snippets:       map[uuid.UUID]*resource.Snippet{uuid.Must(uuid.FromString(snippetUUID)): nil},
@@ -2363,7 +2363,7 @@ func TestPclSnippetDeleteFailureKeepsSnippet(t *testing.T) {
 	require.True(t, pclSnippetResourceNames(snap)["test-resource"], "failed delete must keep the resource")
 
 	// Retrying once the provider works again deletes the resource and removes the snippet.
-	deleteFails.Store(false)
+	deleteFails = false
 	snap, err = lt.TestOp(Update).RunStep(
 		p.GetProject(), p.GetTarget(t, snap), deleteOpts, false, p.BackendClient, nil, "2")
 	require.NoError(t, err)
@@ -2377,9 +2377,9 @@ func TestPclSnippetDeleteFailureKeepsSnippet(t *testing.T) {
 func TestPclSnippetDeletePartialFailure(t *testing.T) {
 	t.Parallel()
 
-	var r1DeleteFails atomic.Bool
+	r1DeleteFails := false
 	p := pclSnippetDeleteFailPlan(t, func(req plugin.DeleteRequest) bool {
-		return r1DeleteFails.Load() && req.URN.Name() == "r1"
+		return r1DeleteFails && req.URN.Name() == "r1"
 	})
 
 	s1UUID := newPclSnippetUUID(t)
@@ -2395,7 +2395,7 @@ func TestPclSnippetDeletePartialFailure(t *testing.T) {
 
 	// Delete both snippets with r1's delete failing: s1 must survive with its resource, s2 and
 	// r2 must be gone.
-	r1DeleteFails.Store(true)
+	r1DeleteFails = true
 	deleteOpts := p.Options
 	deleteOpts.UpdateOptions = UpdateOptions{
 		Snippets: map[uuid.UUID]*resource.Snippet{
@@ -2415,7 +2415,7 @@ func TestPclSnippetDeletePartialFailure(t *testing.T) {
 	require.False(t, names["r2"], "successful delete must remove its resource")
 
 	// Retrying the remaining snippet once the provider works removes everything.
-	r1DeleteFails.Store(false)
+	r1DeleteFails = false
 	deleteOpts.UpdateOptions = UpdateOptions{
 		Snippets:       map[uuid.UUID]*resource.Snippet{uuid.Must(uuid.FromString(s1UUID)): nil},
 		TargetSnippets: []string{s1UUID},
@@ -2427,17 +2427,17 @@ func TestPclSnippetDeletePartialFailure(t *testing.T) {
 	require.Empty(t, pclSnippetResourceNames(snap), "all snippet resources should be gone")
 }
 
-// TestPclSnippetDeleteWithPendingDelete checks that a snippet whose resource has both a live copy
-// and a pending-delete copy in the snapshot (from an earlier failed replacement delete) is only
-// removed once both copies are gone.
+// TestPclSnippetDeleteWithPendingDelete checks that pending-delete copies left behind by an
+// earlier failed replacement do not keep a snippet alive: once the live resource is deleted the
+// snippet is removed even if the copy's own deletion failed, and the copy is then cleaned up by
+// the ordinary pending-delete retry without the resource being recreated.
 func TestPclSnippetDeleteWithPendingDelete(t *testing.T) {
 	t.Parallel()
 
-	var failAll atomic.Bool
-	var failID atomic.Value
-	failID.Store("")
+	failAll := false
+	failID := ""
 	p := pclSnippetDeleteFailPlan(t, func(req plugin.DeleteRequest) bool {
-		return failAll.Load() || (failID.Load().(string) != "" && failID.Load().(string) == string(req.ID))
+		return failAll || (failID != "" && failID == string(req.ID))
 	})
 
 	snippetUUID := newPclSnippetUUID(t)
@@ -2451,7 +2451,7 @@ func TestPclSnippetDeleteWithPendingDelete(t *testing.T) {
 	// Change an input that requires replacement, with all deletes failing: the new copy is
 	// created but the old one cannot be deleted, leaving it in the snapshot as a pending delete.
 	// Both copies carry the snippet's UUID.
-	failAll.Store(true)
+	failAll = true
 	snap.Snippets[0].Code = `propA = false`
 	snap, err = lt.TestOp(Update).RunStep(
 		p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
@@ -2472,10 +2472,10 @@ func TestPclSnippetDeleteWithPendingDelete(t *testing.T) {
 	require.Equal(t, snippetUUID, live.SnippetID)
 	require.Equal(t, snippetUUID, pending.SnippetID)
 
-	// Delete the snippet with only the live copy's delete failing: the pending copy is removed,
-	// but the snippet must survive because its live resource is still in the stack.
-	failAll.Store(false)
-	failID.Store(string(live.ID))
+	// Delete the snippet with only the pending copy's delete failing: the live resource is gone,
+	// so the snippet is removed even though the operation failed and the copy remains.
+	failAll = false
+	failID = string(pending.ID)
 	deleteOpts := p.Options
 	deleteOpts.UpdateOptions = UpdateOptions{
 		Snippets:        map[uuid.UUID]*resource.Snippet{uuid.Must(uuid.FromString(snippetUUID)): nil},
@@ -2485,20 +2485,20 @@ func TestPclSnippetDeleteWithPendingDelete(t *testing.T) {
 	snap, err = lt.TestOp(Update).RunStep(
 		p.GetProject(), p.GetTarget(t, snap), deleteOpts, false, p.BackendClient, nil, "2")
 	require.ErrorContains(t, err, "no valid credential sources found")
-	require.Len(t, snap.Snippets, 1, "the snippet must survive while its live resource remains")
+	require.Empty(t, snap.Snippets, "the snippet must not be kept alive by a pending-delete copy")
 	count := 0
 	for _, r := range snap.Resources {
 		if r.Type == "pkgA:index:res" {
 			count++
-			require.False(t, r.Delete, "the pending-delete copy should be gone")
+			require.True(t, r.Delete, "only the pending-delete copy should remain")
 		}
 	}
 	require.Equal(t, 1, count)
 
-	// Retrying with a working provider removes the remaining copy and the snippet.
-	failID.Store("")
+	// The next update retries the pending delete and, with the snippet gone, recreates nothing.
+	failID = ""
 	snap, err = lt.TestOp(Update).RunStep(
-		p.GetProject(), p.GetTarget(t, snap), deleteOpts, false, p.BackendClient, nil, "3")
+		p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "3")
 	require.NoError(t, err)
 	require.Empty(t, snap.Snippets)
 	require.Empty(t, pclSnippetResourceNames(snap))
