@@ -2276,3 +2276,230 @@ options {
 	require.Equal(t, resource.PropertyMap{"propA": resource.NewProperty(false)}, res.Inputs)
 	require.Contains(t, res.Provider, providerURN, "the resource should still use the explicit provider")
 }
+
+// pclSnippetDeleteFailPlan returns a TestPlan whose pkgA provider fails deletes for which
+// failDelete returns true.
+func pclSnippetDeleteFailPlan(t *testing.T, failDelete func(plugin.DeleteRequest) bool) *lt.TestPlan {
+	t.Helper()
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				GetSchemaF: func(_ context.Context, _ plugin.GetSchemaRequest) (plugin.GetSchemaResponse, error) {
+					return plugin.GetSchemaResponse{Schema: []byte(pclSnippetSchemaPropA)}, nil
+				},
+				CreateF: func(_ context.Context, cr plugin.CreateRequest) (plugin.CreateResponse, error) {
+					id, err := uuid.NewV4()
+					if err != nil {
+						return plugin.CreateResponse{}, err
+					}
+					return plugin.CreateResponse{ID: resource.ID(id.String()), Properties: cr.Properties}, nil
+				},
+				DiffF: func(_ context.Context, req plugin.DiffRequest) (plugin.DiffResult, error) {
+					if !req.OldInputs["propA"].DeepEquals(req.NewInputs["propA"]) {
+						return plugin.DiffResult{Changes: plugin.DiffSome, ReplaceKeys: []resource.PropertyKey{"propA"}}, nil
+					}
+					return plugin.DiffResult{}, nil
+				},
+				DeleteF: func(_ context.Context, req plugin.DeleteRequest) (plugin.DeleteResponse, error) {
+					if failDelete(req) {
+						return plugin.DeleteResponse{Status: resource.StatusUnknown}, errors.New("no valid credential sources found")
+					}
+					return plugin.DeleteResponse{Status: resource.StatusOK}, nil
+				},
+			}, nil
+		}),
+	}
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, _ *deploytest.ResourceMonitor) error {
+		return nil
+	})
+	return &lt.TestPlan{
+		Options: lt.TestUpdateOptions{
+			SkipDisplayTests: true,
+			T:                t,
+			HostF:            deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...),
+		},
+	}
+}
+
+func pclSnippetResourceNames(snap *deploy.Snapshot) map[string]bool {
+	names := map[string]bool{}
+	for _, r := range snap.Resources {
+		if r.Type == "pkgA:index:res" {
+			names[r.URN.Name()] = true
+		}
+	}
+	return names
+}
+
+// TestPclSnippetDeleteFailureKeepsSnippet checks that a snippet is only removed from the snapshot
+// once its resource has actually been deleted, so a failed delete can be retried.
+func TestPclSnippetDeleteFailureKeepsSnippet(t *testing.T) {
+	t.Parallel()
+
+	deleteFails := false
+	p := pclSnippetDeleteFailPlan(t, func(plugin.DeleteRequest) bool { return deleteFails })
+
+	snippetUUID := newPclSnippetUUID(t)
+	snap := deploy.NewSnapshot(deploy.Manifest{}, nil, nil, nil, deploy.SnapshotMetadata{}, []resource.Snippet{
+		pclSnippetForRes(snippetUUID, "test-resource", `propA = true`),
+	}, nil)
+	snap, err := lt.TestOp(Update).RunStep(
+		p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "0")
+	require.NoError(t, err)
+	require.Len(t, snap.Resources, 2)
+
+	// Delete the snippet the way `pulumi do delete` does, with the provider delete failing.
+	deleteFails = true
+	deleteOpts := p.Options
+	deleteOpts.UpdateOptions = UpdateOptions{
+		Snippets:       map[uuid.UUID]*resource.Snippet{uuid.Must(uuid.FromString(snippetUUID)): nil},
+		TargetSnippets: []string{snippetUUID},
+	}
+	snap, err = lt.TestOp(Update).RunStep(
+		p.GetProject(), p.GetTarget(t, snap), deleteOpts, false, p.BackendClient, nil, "1")
+	require.ErrorContains(t, err, "no valid credential sources found")
+	require.Len(t, snap.Snippets, 1, "failed delete must keep the snippet")
+	require.Equal(t, snippetUUID, snap.Snippets[0].UUID)
+	require.True(t, pclSnippetResourceNames(snap)["test-resource"], "failed delete must keep the resource")
+
+	// Retrying once the provider works again deletes the resource and removes the snippet.
+	deleteFails = false
+	snap, err = lt.TestOp(Update).RunStep(
+		p.GetProject(), p.GetTarget(t, snap), deleteOpts, false, p.BackendClient, nil, "2")
+	require.NoError(t, err)
+	require.Empty(t, snap.Snippets)
+	require.Empty(t, pclSnippetResourceNames(snap), "snippet resource should be gone")
+}
+
+// TestPclSnippetDeletePartialFailure checks that when several snippets are deleted in one
+// operation and only some resource deletes fail, only the snippets whose resources survived are
+// kept.
+func TestPclSnippetDeletePartialFailure(t *testing.T) {
+	t.Parallel()
+
+	r1DeleteFails := false
+	p := pclSnippetDeleteFailPlan(t, func(req plugin.DeleteRequest) bool {
+		return r1DeleteFails && req.URN.Name() == "r1"
+	})
+
+	s1UUID := newPclSnippetUUID(t)
+	s2UUID := newPclSnippetUUID(t)
+	snap := deploy.NewSnapshot(deploy.Manifest{}, nil, nil, nil, deploy.SnapshotMetadata{}, []resource.Snippet{
+		pclSnippetForRes(s1UUID, "r1", `propA = true`),
+		pclSnippetForRes(s2UUID, "r2", `propA = false`),
+	}, nil)
+	snap, err := lt.TestOp(Update).RunStep(
+		p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "0")
+	require.NoError(t, err)
+	require.Len(t, snap.Resources, 3)
+
+	// Delete both snippets with r1's delete failing: s1 must survive with its resource, s2 and
+	// r2 must be gone.
+	r1DeleteFails = true
+	deleteOpts := p.Options
+	deleteOpts.UpdateOptions = UpdateOptions{
+		Snippets: map[uuid.UUID]*resource.Snippet{
+			uuid.Must(uuid.FromString(s1UUID)): nil,
+			uuid.Must(uuid.FromString(s2UUID)): nil,
+		},
+		TargetSnippets:  []string{s1UUID, s2UUID},
+		ContinueOnError: true,
+	}
+	snap, err = lt.TestOp(Update).RunStep(
+		p.GetProject(), p.GetTarget(t, snap), deleteOpts, false, p.BackendClient, nil, "1")
+	require.ErrorContains(t, err, "no valid credential sources found")
+	require.Len(t, snap.Snippets, 1)
+	require.Equal(t, s1UUID, snap.Snippets[0].UUID)
+	names := pclSnippetResourceNames(snap)
+	require.True(t, names["r1"], "failed delete must keep its resource")
+	require.False(t, names["r2"], "successful delete must remove its resource")
+
+	// Retrying the remaining snippet once the provider works removes everything.
+	r1DeleteFails = false
+	deleteOpts.UpdateOptions = UpdateOptions{
+		Snippets:       map[uuid.UUID]*resource.Snippet{uuid.Must(uuid.FromString(s1UUID)): nil},
+		TargetSnippets: []string{s1UUID},
+	}
+	snap, err = lt.TestOp(Update).RunStep(
+		p.GetProject(), p.GetTarget(t, snap), deleteOpts, false, p.BackendClient, nil, "2")
+	require.NoError(t, err)
+	require.Empty(t, snap.Snippets)
+	require.Empty(t, pclSnippetResourceNames(snap), "all snippet resources should be gone")
+}
+
+// TestPclSnippetDeleteWithPendingDelete checks that pending-delete copies left behind by an
+// earlier failed replacement do not keep a snippet alive: once the live resource is deleted the
+// snippet is removed even if the copy's own deletion failed, and the copy is then cleaned up by
+// the ordinary pending-delete retry without the resource being recreated.
+func TestPclSnippetDeleteWithPendingDelete(t *testing.T) {
+	t.Parallel()
+
+	failAll := false
+	failID := ""
+	p := pclSnippetDeleteFailPlan(t, func(req plugin.DeleteRequest) bool {
+		return failAll || (failID != "" && failID == string(req.ID))
+	})
+
+	snippetUUID := newPclSnippetUUID(t)
+	snap := deploy.NewSnapshot(deploy.Manifest{}, nil, nil, nil, deploy.SnapshotMetadata{}, []resource.Snippet{
+		pclSnippetForRes(snippetUUID, "test-resource", `propA = true`),
+	}, nil)
+	snap, err := lt.TestOp(Update).RunStep(
+		p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "0")
+	require.NoError(t, err)
+
+	// Change an input that requires replacement, with all deletes failing: the new copy is
+	// created but the old one cannot be deleted, leaving it in the snapshot as a pending delete.
+	// Both copies carry the snippet's UUID.
+	failAll = true
+	snap.Snippets[0].Code = `propA = false`
+	snap, err = lt.TestOp(Update).RunStep(
+		p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
+	require.ErrorContains(t, err, "no valid credential sources found")
+	var live, pending *pkgresource.State
+	for _, r := range snap.Resources {
+		if r.Type != "pkgA:index:res" {
+			continue
+		}
+		if r.Delete {
+			pending = r
+		} else {
+			live = r
+		}
+	}
+	require.NotNil(t, live, "the replacement copy should be live in the snapshot")
+	require.NotNil(t, pending, "the failed replacement delete should leave a pending-delete copy")
+	require.Equal(t, snippetUUID, live.SnippetID)
+	require.Equal(t, snippetUUID, pending.SnippetID)
+
+	// Delete the snippet with only the pending copy's delete failing: the live resource is gone,
+	// so the snippet is removed even though the operation failed and the copy remains.
+	failAll = false
+	failID = string(pending.ID)
+	deleteOpts := p.Options
+	deleteOpts.UpdateOptions = UpdateOptions{
+		Snippets:        map[uuid.UUID]*resource.Snippet{uuid.Must(uuid.FromString(snippetUUID)): nil},
+		TargetSnippets:  []string{snippetUUID},
+		ContinueOnError: true,
+	}
+	snap, err = lt.TestOp(Update).RunStep(
+		p.GetProject(), p.GetTarget(t, snap), deleteOpts, false, p.BackendClient, nil, "2")
+	require.ErrorContains(t, err, "no valid credential sources found")
+	require.Empty(t, snap.Snippets, "the snippet must not be kept alive by a pending-delete copy")
+	count := 0
+	for _, r := range snap.Resources {
+		if r.Type == "pkgA:index:res" {
+			count++
+			require.True(t, r.Delete, "only the pending-delete copy should remain")
+		}
+	}
+	require.Equal(t, 1, count)
+
+	// The next update retries the pending delete and, with the snippet gone, recreates nothing.
+	failID = ""
+	snap, err = lt.TestOp(Update).RunStep(
+		p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "3")
+	require.NoError(t, err)
+	require.Empty(t, snap.Snippets)
+	require.Empty(t, pclSnippetResourceNames(snap))
+}
