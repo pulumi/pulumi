@@ -106,6 +106,11 @@ type stepGenerator struct {
 	pendingUntargetedSames    []Step
 	pendingUntargetedSameURNs map[resource.URN]bool
 
+	// URNs for which a speculative untargeted same step has been emitted. These are emitted for
+	// old-state dependencies of untargeted resources that have not registered yet; the program
+	// may still register them, in which case the registration must not be treated as a duplicate.
+	speculativeSames map[resource.URN]bool
+
 	pendingDeletes map[*pkgresource.State]bool         // set of resources (not URNs!) that are pending deletion
 	providers      map[resource.URN]*pkgresource.State // URN map of providers that we have seen so far.
 
@@ -279,7 +284,7 @@ func (sg *stepGenerator) generateURN(
 ) (resource.URN, error) {
 	// Generate a URN for this new resource, confirm we haven't seen it before in this deployment.
 	urn := sg.deployment.generateURN(parent, ty, name)
-	if sg.urns[urn] {
+	if sg.urns[urn] && !sg.speculativeSames[urn] {
 		// TODO[pulumi/pulumi-framework#19]: improve this error message!
 		return "", sg.bailDiag(diag.GetDuplicateResourceURNError(urn), urn)
 	}
@@ -1550,6 +1555,25 @@ func (sg *stepGenerator) continueStepsFromImport(
 	if old != nil {
 		contract.Assertf(old != nil, "must have old resource if hasOld is true")
 
+		// If we already speculatively copied this resource's old state forward on behalf of an
+		// untargeted dependent, the snapshot already holds it in the right place. Complete the
+		// registration without writing it a second time.
+		if sg.speculativeSames[urn] {
+			delete(sg.speculativeSames, urn)
+			if !isTargeted {
+				// Emitting a step here would write the resource to the snapshot a second time.
+				// Complete the registration directly instead. Note that we hand it a fresh copy
+				// of the old state rather than the state the speculative step wrote, which is
+				// owned by that step and may still be being written.
+				event.Done(&RegisterResult{State: old.Copy()})
+				return nil, false, nil
+			}
+			// The resource is targeted after all (e.g. via --target-dependents), so it may need
+			// a real step. We cannot retract the state we already wrote, so bail rather than
+			// risk a duplicate in the snapshot.
+			return nil, false, sg.bailDiag(diag.GetDuplicateResourceURNError(urn), urn)
+		}
+
 		// If the user requested only specific resources to update, and this resource was not in
 		// that set, then we should emit a SameStep for it.
 		if !isTargeted {
@@ -1734,6 +1758,13 @@ func (sg *stepGenerator) continueStepsFromImport(
 				new := old.Copy()
 				new.ID = ""
 				rootStep := NewUntargetedSameStep(sg.deployment, event, old, new)
+				if event == nil {
+					// This step is speculative: it was emitted on behalf of a dependency that
+					// has not been registered. The program may yet register it, in which case
+					// that registration must not be treated as a duplicate, nor written to the
+					// snapshot a second time.
+					sg.speculativeSames[old.URN] = true
+				}
 				steps = append(steps, rootStep)
 				return steps, nil
 			}
@@ -3605,6 +3636,7 @@ func newStepGenerator(
 		skippedCreates:            make(map[resource.URN]bool),
 		pendingDeletes:            make(map[*pkgresource.State]bool),
 		pendingUntargetedSameURNs: make(map[resource.URN]bool),
+		speculativeSames:          make(map[resource.URN]bool),
 		providers:                 make(map[resource.URN]*pkgresource.State),
 		dependentReplaceKeys:      make(map[resource.URN][]resource.PropertyKey),
 		aliased:                   make(map[resource.URN]resource.URN),
