@@ -2032,9 +2032,13 @@ func (i *Interpreter) registerReadResource(ctx context.Context, res *pcl.ReadRes
 	}
 	dependencies = append(dependencies, getAllDependencies(idVal)...)
 
+	unwrappedID, idDeps := unwrapOutputs(idVal)
+	for _, dep := range idDeps {
+		dependencies = append(dependencies, string(dep))
+	}
 	idStr := plugin.UnknownStringValue
-	if idVal.IsString() {
-		idStr = idVal.StringValue()
+	if unwrappedID.IsString() {
+		idStr = unwrappedID.StringValue()
 	}
 
 	request := &pulumirpc.ReadResourceRequest{

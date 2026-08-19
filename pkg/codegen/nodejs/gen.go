@@ -896,8 +896,17 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFil
 			// The lookup case:
 			fmt.Fprintf(w, "        if (opts.id) {\n")
 			fmt.Fprintf(w, "            const state = argsOrState as %[1]s | undefined;\n", stateType)
+			stateInputNames := codegen.NewStringSet()
 			for _, prop := range r.StateInputs.Properties {
+				stateInputNames.Add(prop.Name)
 				fmt.Fprintf(w, "            resourceInputs[\"%[1]s\"] = state?.%[1]s;\n", prop.Name)
+			}
+			// Add resolvers for output-only properties so that they resolve to unknown
+			// during a preview when the id is unknown.
+			for _, prop := range r.Properties {
+				if !stateInputNames.Has(prop.Name) {
+					fmt.Fprintf(w, "            resourceInputs[\"%[1]s\"] = undefined /*out*/;\n", prop.Name)
+				}
 			}
 			// The creation case (with args):
 			fmt.Fprintf(w, "        } else {\n")
