@@ -5128,7 +5128,6 @@ func TestTargetedPreviewNoDuplicateURN_Issue24303(t *testing.T) {
 // The bare-minimum "just short-circuit" fix would leave the old inputs in place and
 // fail this assertion.
 func TestTargetedUpdateAppliesNewInputs_Issue24303(t *testing.T) {
-	t.Skip("Currently failing")
 	t.Parallel()
 
 	loaders := []*deploytest.ProviderLoader{
@@ -5272,4 +5271,63 @@ func TestTargetedUpdateAppliesNewInputs_Issue24303(t *testing.T) {
 		}
 	}
 	require.Equal(t, rollbackCount, found, "expected all rollback resources in snapshot")
+}
+
+// A targeted resource that depends on an untargeted one whose same step has been held back must
+// still be written after it. See https://github.com/pulumi/pulumi/issues/24303.
+func TestTargetedStepAfterDeferredUntargetedSame(t *testing.T) {
+	t.Parallel()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+	}
+
+	aURN := resource.URN("urn:pulumi:test::test::pkgA:m:typA::a")
+	uURN := resource.URN("urn:pulumi:test::test::pkgA:m:typA::u")
+	vURN := resource.URN("urn:pulumi:test::test::pkgA:m:typA::v")
+
+	// When set, u no longer depends on a, so a is free to register after the resources that used
+	// to precede it. u's old state still carries the edge, so u may only be written after a.
+	var dropEdge bool
+
+	program := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		uOpts := deploytest.ResourceOptions{}
+		if !dropEdge {
+			_, err := monitor.RegisterResource("pkgA:m:typA", "a", true)
+			require.NoError(t, err)
+			uOpts.Dependencies = []resource.URN{aURN}
+		}
+
+		_, err := monitor.RegisterResource("pkgA:m:typA", "u", true, uOpts)
+		require.NoError(t, err)
+
+		_, err = monitor.RegisterResource("pkgA:m:typA", "v", true, deploytest.ResourceOptions{
+			Dependencies: []resource.URN{uURN},
+		})
+		require.NoError(t, err)
+
+		if dropEdge {
+			_, err = monitor.RegisterResource("pkgA:m:typA", "a", true)
+			require.NoError(t, err)
+		}
+		return nil
+	})
+
+	hostF := deploytest.NewPluginHostF(nil, nil, program, nil, nil, loaders...)
+	p := &lt.TestPlan{}
+	project := p.GetProject()
+	opts := lt.TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true}
+
+	snap, err := lt.TestOp(Update).Run(project, p.GetTarget(t, nil), opts, false, p.BackendClient, nil)
+	require.NoError(t, err)
+
+	dropEdge = true
+	targeted := opts
+	targeted.Targets = deploy.NewUrnTargetsFromUrns([]resource.URN{vURN})
+
+	snap, err = lt.TestOp(Update).Run(project, p.GetTarget(t, snap), targeted, false, p.BackendClient, nil)
+	require.NoError(t, err)
+	require.NoError(t, snap.VerifyIntegrity())
 }

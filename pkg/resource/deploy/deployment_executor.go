@@ -326,6 +326,23 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context) (_ *Plan, err e
 			// Exit if we've seen a nil event and the step generator has no more async work to do. See the comment at
 			// the top of the loop for more details.
 			if seenNil && ex.asyncEventsExpected == 0 {
+				// The program has finished registering, so any same steps held back waiting on
+				// registrations that never came can now be emitted. Locking the step executor
+				// waits for the in-flight chains, so these land after everything registered.
+				ex.stepExec.Lock()
+				deferredSames, deferErr := ex.stepGen.FlushDeferredSames()
+				ex.stepExec.Unlock()
+				if deferErr != nil {
+					if !result.IsBail(deferErr) {
+						ex.reportError("", deferErr)
+					}
+					cancel()
+					return false, result.BailError(deferErr)
+				}
+				if len(deferredSames) > 0 {
+					ex.stepExec.ExecuteSerial(deferredSames).Wait(ctx)
+				}
+
 				// Check targets before performDeletes mutates the initial Snapshot.
 				targetErr := ex.checkTargets(ex.deployment.opts.Targets)
 
