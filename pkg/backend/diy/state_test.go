@@ -24,6 +24,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"gocloud.dev/blob"
 
+	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
@@ -40,6 +41,37 @@ type spyBucket struct {
 	copyCalls   int
 	deleteCalls int
 	writeCalls  int
+}
+
+// cancelingWriteBucket cancels the write context instead of writing the selected key.
+type cancelingWriteBucket struct {
+	Bucket
+
+	targetKey string
+	cancel    context.CancelFunc
+
+	mu        sync.Mutex
+	attempted bool
+}
+
+func (b *cancelingWriteBucket) WriteAll(
+	ctx context.Context, key string, p []byte, opts *blob.WriterOptions,
+) error {
+	if key != b.targetKey {
+		return b.Bucket.WriteAll(ctx, key, p, opts)
+	}
+
+	b.mu.Lock()
+	b.attempted = true
+	b.mu.Unlock()
+	b.cancel()
+	return ctx.Err()
+}
+
+func (b *cancelingWriteBucket) attemptedWrite() bool {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.attempted
 }
 
 func (s *spyBucket) Exists(ctx context.Context, key string) (bool, error) {
@@ -233,6 +265,95 @@ func TestSaveCheckpointBucketOps(t *testing.T) {
 				tt.wantExistsCalls, spy.existsCalls)
 		})
 	}
+}
+
+// TestSaveCheckpointPreservesActiveCheckpointOnCompressionTransitionFailure verifies that a failed
+// write to a new compression variant does not make the existing stack unavailable.
+func TestSaveCheckpointPreservesActiveCheckpointOnCompressionTransitionFailure(t *testing.T) {
+	t.Parallel()
+
+	stateDir := t.TempDir()
+	ctx := t.Context()
+	project := &workspace.Project{Name: "testproj"}
+
+	// Create the existing checkpoint without compression.
+	b, err := newDIYBackend(
+		ctx, diagtest.LogSink(t),
+		"file://"+filepath.ToSlash(stateDir),
+		project,
+		&diyBackendOptions{Env: env.NewEnv(env.MapStore{})},
+	)
+	require.NoError(t, err)
+
+	ref, err := b.ParseStackReference("transition-failure")
+	require.NoError(t, err)
+	_, err = b.CreateStack(ctx, ref, "", nil, nil)
+	require.NoError(t, err)
+
+	// Reopen the backend with gzip enabled so the next save changes the active key.
+	b, err = newDIYBackend(
+		ctx, diagtest.LogSink(t),
+		"file://"+filepath.ToSlash(stateDir),
+		project,
+		&diyBackendOptions{Env: env.NewEnv(env.MapStore{
+			env.DIYBackendGzip.Var().Name(): "true",
+		})},
+	)
+	require.NoError(t, err)
+
+	ref, err = b.ParseStackReference("transition-failure")
+	require.NoError(t, err)
+	diyRef := ref.(*diyBackendReference)
+
+	stackBefore, err := b.GetStack(ctx, ref)
+	require.NoError(t, err)
+	require.NotNil(t, stackBefore)
+	namesBefore, _, err := b.ListStackNames(ctx, backend.ListStackNamesFilter{}, nil)
+	require.NoError(t, err)
+	require.Len(t, namesBefore, 1)
+
+	checkpointBefore, version, features, err := b.getCheckpoint(ctx, diyRef)
+	require.NoError(t, err)
+	versionedCheckpoint, err := marshalVersionedCheckpoint(version, features, checkpointBefore)
+	require.NoError(t, err)
+
+	innerBucket := b.bucket
+	oldPath := b.stackPath(ctx, diyRef)
+	oldBytes, err := innerBucket.ReadAll(ctx, oldPath)
+	require.NoError(t, err)
+	targetPath := oldPath + encoding.GZIPExt
+
+	// Cancel on the target write so retry termination is immediate and deterministic.
+	writeCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	failingBucket := &cancelingWriteBucket{
+		Bucket:    innerBucket,
+		targetKey: targetPath,
+		cancel:    cancel,
+	}
+	b.bucket = failingBucket
+
+	_, _, saveErr := b.saveCheckpoint(writeCtx, diyRef, versionedCheckpoint)
+
+	// Collect every externally observable result before asserting so a failure cannot hide stack disappearance.
+	oldBytesAfter, oldReadErr := innerBucket.ReadAll(ctx, oldPath)
+	targetExists, targetExistsErr := innerBucket.Exists(ctx, targetPath)
+	stackAfter, getStackErr := b.GetStack(ctx, ref)
+	namesAfter, _, listErr := b.ListStackNames(ctx, backend.ListStackNamesFilter{}, nil)
+	checkpointAfter, _, _, checkpointErr := b.getCheckpoint(ctx, diyRef)
+
+	assert.ErrorIs(t, saveErr, context.Canceled)
+	assert.True(t, failingBucket.attemptedWrite())
+	assert.NoError(t, oldReadErr)
+	assert.Equal(t, oldBytes, oldBytesAfter)
+	assert.NoError(t, targetExistsErr)
+	assert.False(t, targetExists)
+	assert.NoError(t, getStackErr)
+	assert.NotNil(t, stackAfter)
+	assert.NoError(t, listErr)
+	assert.Len(t, namesAfter, 1)
+	assert.NoError(t, checkpointErr)
+	assert.Equal(t, checkpointBefore, checkpointAfter)
 }
 
 // TestSaveCheckpointTransitionCleansUpOldFile verifies that when switching
