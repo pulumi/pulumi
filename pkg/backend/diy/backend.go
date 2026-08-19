@@ -280,7 +280,8 @@ func newDIYBackend(
 
 	bucket, err := blobmux.OpenBucket(ctx, u)
 	if err != nil {
-		return nil, fmt.Errorf("unable to open bucket %s: %w", u, err)
+		return nil, fmt.Errorf("unable to open %s %s: %w",
+			stateStoreNoun(originalURL), describeBackendURL(originalURL, u, err), err)
 	}
 
 	if !strings.HasPrefix(u, FilePathPrefix) {
@@ -567,6 +568,47 @@ func (b *diyBackend) upgradeStack(
 	}
 
 	return nil
+}
+
+// stateStoreNoun names what a backend URL points at, so that errors do not call a local
+// directory or a database a "bucket" — go-cloud's vocabulary rather than the user's.
+func stateStoreNoun(originalURL string) string {
+	switch {
+	case strings.HasPrefix(originalURL, FilePathPrefix):
+		return "state directory"
+	case strings.HasPrefix(originalURL, "postgres://"):
+		return "state database"
+	default:
+		return "bucket"
+	}
+}
+
+// describeBackendURL names the backend for an error message: the URL as configured, plus
+// the normalized form when normalization changed something the user did not write.
+func describeBackendURL(originalURL, normalized string, cause error) string {
+	resolved := withoutInjectedNoTmpDir(originalURL, normalized)
+	if resolved == originalURL || strings.Contains(cause.Error(), resolved) {
+		return fmt.Sprintf("%q", originalURL)
+	}
+	return fmt.Sprintf("%q (resolved to %q)", originalURL, resolved)
+}
+
+// withoutInjectedNoTmpDir strips the no_tmp_dir parameter that massageBlobPath adds
+func withoutInjectedNoTmpDir(originalURL, normalized string) string {
+	if !strings.HasPrefix(originalURL, FilePathPrefix) || strings.Contains(originalURL, "no_tmp_dir") {
+		return normalized
+	}
+	u, err := url.Parse(normalized)
+	if err != nil {
+		return normalized
+	}
+	query := u.Query()
+	if query.Get("no_tmp_dir") == "" {
+		return normalized
+	}
+	query.Del("no_tmp_dir")
+	u.RawQuery = query.Encode()
+	return u.String()
 }
 
 // massageBlobPath takes the path the user provided and converts it to an appropriate form go-cloud
