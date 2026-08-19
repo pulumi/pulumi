@@ -16,6 +16,7 @@ package packages
 
 import (
 	"context"
+	"encoding/json"
 	"path/filepath"
 	"runtime"
 	"testing"
@@ -294,4 +295,29 @@ func TestSetSpecNamespace(t *testing.T) {
 			assert.Equal(t, tt.wantNamespace, schemaSpec.Namespace)
 		})
 	}
+}
+
+// TestBindSpecReportsAllDiagnostics checks that an invalid schema surfaces every validation
+// diagnostic, rather than the first one plus "and N other diagnostic(s)".
+// Regression test for https://github.com/pulumi/pulumi/issues/21609.
+func TestBindSpecReportsAllDiagnostics(t *testing.T) {
+	t.Parallel()
+
+	const invalid = `{
+	  "name": "bad",
+	  "version": "1.0.0",
+	  "resources": {
+	    "bad:index:One": { "type": "object", "properties": { "a": { "type": "bogus" } } },
+	    "bad:index:Two": { "type": "object", "properties": { "b": { "type": "alsoBogus" } } }
+	  }
+	}`
+
+	var spec schema.PackageSpec
+	require.NoError(t, json.Unmarshal([]byte(invalid), &spec))
+
+	_, err := BindSpec(spec, schema.NewNullLoader())
+	require.Error(t, err)
+	assert.NotContains(t, err.Error(), "other diagnostic(s)")
+	assert.Contains(t, err.Error(), "#/resources/bad:index:One/properties/a/type: unknown type kind bogus")
+	assert.Contains(t, err.Error(), "#/resources/bad:index:Two/properties/b/type: unknown type kind alsoBogus")
 }
