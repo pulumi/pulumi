@@ -1,0 +1,4 @@
+component: cli/policy
+kind: fix
+body: Make `policy group ls` respect the default org
+time: 2026-08-19T15:25:12.518766964+02:00
