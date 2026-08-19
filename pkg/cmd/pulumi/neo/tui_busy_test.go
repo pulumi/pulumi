@@ -268,6 +268,82 @@ func TestBusy_EscIgnoredWhileApprovalPending(t *testing.T) {
 	}
 }
 
+// TestBusy_EscRetryableAfterCancelPostFailure — pulumi/pulumi-service#44059:
+// when the dispatcher gives up delivering a cancel and reports UICancelFailed,
+// the cancelling substate must clear so a later ESC can retry instead of
+// being swallowed and leaving the TUI in "Cancelling..." forever.
+func TestBusy_EscRetryableAfterCancelPostFailure(t *testing.T) {
+	t.Parallel()
+
+	ch := make(chan UIEvent, 4)
+	outCh := make(chan outboundEvent, 4)
+	model := tea.Model(NewModel(ModelConfig{EventCh: ch, OutCh: outCh, Busy: true}))
+
+	// First ESC posts a cancel and enters the cancelling substate.
+	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyEsc})
+	require.True(t, model.(Model).cancelling)
+	select {
+	case ev := <-outCh:
+		_, ok := ev.event.(apitype.AgentUserEventCancel)
+		require.True(t, ok, "first ESC must post an AgentUserEventCancel")
+	default:
+		t.Fatal("first ESC did not post any user event")
+	}
+
+	// The dispatcher exhausted its cancel retries and reported the failure.
+	model, _ = model.Update(UICancelFailed{
+		Message: "[409] Conflict: cannot respond while a request is still ongoing",
+	})
+	m := model.(Model)
+	require.False(t, m.cancelling, "UICancelFailed must clear the cancelling substate")
+	require.True(t, m.busy, "the turn is still live after a failed cancel")
+
+	// A second ESC must retry the cancel instead of being swallowed.
+	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyEsc})
+	m = model.(Model)
+	select {
+	case ev := <-outCh:
+		_, ok := ev.event.(apitype.AgentUserEventCancel)
+		require.True(t, ok, "retry ESC must post an AgentUserEventCancel, got %T", ev.event)
+	default:
+		t.Fatalf("ESC after a failed cancel POST must retry the cancel (cancelling=%v)", m.cancelling)
+	}
+}
+
+// TestBusy_EscWithFullOutChannelNotSilentlyDropped — pulumi/pulumi-service#44059:
+// ESC must not claim to be cancelling when the cancel event was never
+// enqueued. sendOut is a non-blocking send, so with a full outbound channel
+// the model must stay out of the cancelling substate and let the next ESC
+// retry.
+func TestBusy_EscWithFullOutChannelNotSilentlyDropped(t *testing.T) {
+	t.Parallel()
+
+	ch := make(chan UIEvent, 4)
+	outCh := make(chan outboundEvent, 1)
+	outCh <- outboundEvent{event: apitype.AgentUserEventUserMessage{}} // fill the channel
+	model := tea.Model(NewModel(ModelConfig{EventCh: ch, OutCh: outCh, Busy: true}))
+
+	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyEsc})
+	m := model.(Model)
+
+	// Drain the channel and look for the cancel.
+	foundCancel := false
+	for {
+		select {
+		case ev := <-outCh:
+			if _, ok := ev.event.(apitype.AgentUserEventCancel); ok {
+				foundCancel = true
+			}
+			continue
+		default:
+		}
+		break
+	}
+	if m.cancelling && !foundCancel {
+		t.Fatal("ESC entered the cancelling state without a cancel event ever being enqueued")
+	}
+}
+
 // TestBusy_UnopinionatedEventsWhenIdle — warnings, session URLs, foreign
 // user messages arriving while the TUI is idle must NOT spin up the
 // indicator. These events fall through labelForUIEvent's default branch;

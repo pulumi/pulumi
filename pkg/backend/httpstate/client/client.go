@@ -2983,6 +2983,9 @@ func (pc *Client) StreamNeoTaskEvents(
 func (pc *Client) PostNeoTaskUserEvent(
 	ctx context.Context, orgName, taskID string, body any,
 ) error {
+	ctx, cancel := context.WithTimeout(ctx, NeoRequestTimeout)
+	defer cancel()
+
 	path := fmt.Sprintf("/api/preview/agents/%s/tasks/%s", orgName, taskID)
 	return pc.restCall(ctx, http.MethodPost, path, nil, struct {
 		Event any `json:"event"`
