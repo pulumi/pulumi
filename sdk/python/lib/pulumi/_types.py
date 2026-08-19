@@ -763,8 +763,8 @@ def _constrained_union_members(
         for member in members
         if (constants := _literal_constants(member))
     )
-    # Every member has to be reachable, otherwise a value belonging to an unconstrained member
-    # would be attributed to one of the others.
+    # A union is only discriminated when every member is tagged. If one is not, a value of that
+    # member could satisfy another member's constants and be mistyped, so do not guess.
     if len(constrained) != len(members):
         return None
     return constrained
@@ -803,6 +803,29 @@ def _same_constant(expected: Any, actual: Any) -> bool:
     return expected == actual
 
 
+def _member_matches(
+    member: type, constants: tuple[tuple[str, Any], ...], value: abc.Mapping
+) -> bool:
+    """
+    Reports whether `value` satisfies `constants`: at least one is present and agrees, and none
+    disagree. A constant absent from `value` neither confirms nor rules out its member, so a value
+    mentioning none of them matches nothing.
+    """
+    confirmed = False
+    for name, expected in constants:
+        actual = _lookup(value, name)
+        if actual is MISSING:
+            python_name = _py_name_for(member, name)
+            if python_name is not None:
+                actual = _lookup(value, python_name)
+        if actual is MISSING:
+            continue
+        if not _same_constant(expected, actual):
+            return False
+        confirmed = True
+    return confirmed
+
+
 def reduce_discriminated_union(typ: Any, value: abc.Mapping) -> Optional[type]:
     """
     Returns the single member of the union `typ` whose constants `value` satisfies, or None if no
@@ -812,27 +835,7 @@ def reduce_discriminated_union(typ: Any, value: abc.Mapping) -> Optional[type]:
     if members is None:
         return None
 
-    # A constant absent from `value` neither confirms nor rules out its member, so a member needs
-    # at least one present-and-agreeing constant. Otherwise a value mentioning none of them would
-    # match every member.
-    candidates = []
-    for member, constants in members:
-        confirmed = False
-        for name, expected in constants:
-            actual = _lookup(value, name)
-            if actual is MISSING:
-                python_name = _py_name_for(member, name)
-                if python_name is not None:
-                    actual = _lookup(value, python_name)
-            if actual is MISSING:
-                continue
-            if not _same_constant(expected, actual):
-                break
-            confirmed = True
-        else:
-            if confirmed:
-                candidates.append(member)
-
+    candidates = [m for m, constants in members if _member_matches(m, constants, value)]
     if len(candidates) != 1:
         return None
     return candidates[0]

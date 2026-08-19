@@ -1304,8 +1304,9 @@ def translate_output_properties(
         typ = None
 
     if isinstance(output, dict):
-        # A value matching no single member, which is what an SDK older than the provider sees, is
-        # left untyped rather than rejected.
+        # Nothing below handles a union, so an unreduced one raises. A value matching no single
+        # member, such as a variant added to the provider since this SDK was generated, is left
+        # untyped instead.
         if typ is not None and _types.is_discriminated_union(typ):
             typ = _types.reduce_discriminated_union(typ, output)
 
