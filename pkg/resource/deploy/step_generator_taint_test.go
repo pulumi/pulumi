@@ -158,6 +158,7 @@ func TestTaintedResourceDiff(t *testing.T) {
 	done := make(chan *RegisterResult)
 	event := &registerResourceEvent{
 		goal: pkgresource.NewGoal{
+			Conditional:             false,
 			Type:                    urn.Type(),
 			Name:                    urn.Name(),
 			Custom:                  true,
@@ -394,6 +395,7 @@ func TestDiffWithTaintedResource(t *testing.T) {
 			done := make(chan *RegisterResult)
 			event := &registerResourceEvent{
 				goal: pkgresource.NewGoal{
+					Conditional:             false,
 					Type:                    urn.Type(),
 					Name:                    urn.Name(),
 					Custom:                  true,

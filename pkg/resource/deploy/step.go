@@ -84,6 +84,9 @@ type Step interface {
 	Fail()
 	// Calling Skip will mark the step as skipped.
 	Skip()
+
+	// True if this is a conditional step and should be displayed but not acted on.
+	Conditional() bool
 }
 
 // SameStep is a mutating step that does nothing.
@@ -169,6 +172,7 @@ func (s *SameStep) Old() *pkgresource.State { return s.old }
 func (s *SameStep) New() *pkgresource.State { return s.new }
 func (s *SameStep) Res() *pkgresource.State { return s.new }
 func (s *SameStep) Logical() bool           { return true }
+func (s *SameStep) Conditional() bool       { return false }
 
 func (s *SameStep) Apply() (resource.Status, StepCompleteFunc, error) {
 	s.new.Lock.Lock()
@@ -241,11 +245,12 @@ type CreateStep struct {
 	replacing     bool                           // true if this is a create due to a replacement.
 	pendingDelete bool                           // true if this replacement should create a pending delete.
 	provider      plugin.Provider                // the optional provider to use.
+	conditional   bool                           // true if this is a conditional resource.
 }
 
 var _ Step = (*CreateStep)(nil)
 
-func NewCreateStep(deployment *Deployment, reg RegisterResourceEvent, new *pkgresource.State) Step {
+func NewCreateStep(deployment *Deployment, reg RegisterResourceEvent, new *pkgresource.State, conditional bool) Step {
 	contract.Requiref(reg != nil, "reg", "must not be nil")
 
 	contract.Requiref(new != nil, "new", "must not be nil")
@@ -259,9 +264,10 @@ func NewCreateStep(deployment *Deployment, reg RegisterResourceEvent, new *pkgre
 	contract.Requiref(new.ViewOf == "", "new", "must not be a view")
 
 	return &CreateStep{
-		deployment: deployment,
-		reg:        reg,
-		new:        new,
+		deployment:  deployment,
+		reg:         reg,
+		new:         new,
+		conditional: conditional,
 	}
 }
 
@@ -317,6 +323,7 @@ func (s *CreateStep) Diffs() []resource.PropertyKey                { return s.di
 func (s *CreateStep) DetailedDiff() map[string]plugin.PropertyDiff { return s.detailedDiff }
 func (s *CreateStep) Logical() bool                                { return !s.replacing }
 func (s *CreateStep) IsUntargeted() bool                           { return false }
+func (s *CreateStep) Conditional() bool                            { return s.conditional }
 
 func (s *CreateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 	if err := s.Deployment().RunHooks(
@@ -369,9 +376,11 @@ func (s *CreateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 					Type:                  s.new.URN.Type(),
 					Properties:            s.new.Inputs,
 					Timeout:               s.new.CustomTimeouts.Create,
-					Preview:               s.deployment.opts.DryRun,
 					ResourceStatusAddress: resourceStatusAddress,
 					ResourceStatusToken:   resourceStatusToken,
+					// If this step is conditional ask the provider to treat like a preview, i.e. give us the best
+					// information you can but don't actually do anything.
+					Preview: s.deployment.opts.DryRun || s.conditional,
 				})
 
 				if err == nil {
@@ -599,6 +608,7 @@ func (s *DeleteStep) New() *pkgresource.State { return nil }
 func (s *DeleteStep) Res() *pkgresource.State { return s.old }
 func (s *DeleteStep) Logical() bool           { return !s.replacing }
 func (s *DeleteStep) IsUntargeted() bool      { return false }
+func (s *DeleteStep) Conditional() bool       { return false }
 
 func isDeletedWith(with resource.URN, otherDeletions map[resource.URN]bool) bool {
 	if with == "" {
@@ -879,6 +889,7 @@ func (s *RemovePendingReplaceStep) New() *pkgresource.State { return nil }
 func (s *RemovePendingReplaceStep) Res() *pkgresource.State { return s.old }
 func (s *RemovePendingReplaceStep) Logical() bool           { return false }
 func (s *RemovePendingReplaceStep) IsUntargeted() bool      { return false }
+func (s *RemovePendingReplaceStep) Conditional() bool       { return false }
 
 func (s *RemovePendingReplaceStep) Apply() (resource.Status, StepCompleteFunc, error) {
 	return resource.StatusOK, nil, nil
@@ -956,6 +967,7 @@ func (s *UpdateStep) Logical() bool                                { return true
 func (s *UpdateStep) IsUntargeted() bool                           { return false }
 func (s *UpdateStep) Diffs() []resource.PropertyKey                { return s.diffs }
 func (s *UpdateStep) DetailedDiff() map[string]plugin.PropertyDiff { return s.detailedDiff }
+func (s *UpdateStep) Conditional() bool                            { return false }
 
 func (s *UpdateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 	// Always propagate the ID and timestamps even in previews and refreshes.
@@ -1201,6 +1213,7 @@ func (s *ReplaceStep) Diffs() []resource.PropertyKey                { return s.d
 func (s *ReplaceStep) DetailedDiff() map[string]plugin.PropertyDiff { return s.detailedDiff }
 func (s *ReplaceStep) Logical() bool                                { return true }
 func (s *ReplaceStep) IsUntargeted() bool                           { return false }
+func (s *ReplaceStep) Conditional() bool                            { return false }
 
 func (s *ReplaceStep) Apply() (resource.Status, StepCompleteFunc, error) {
 	// If this is a pending delete, we should have marked the old resource for deletion in the CreateReplacement step.
@@ -1304,6 +1317,7 @@ func (s *ReadStep) New() *pkgresource.State { return s.new }
 func (s *ReadStep) Res() *pkgresource.State { return s.new }
 func (s *ReadStep) Logical() bool           { return !s.replacing }
 func (s *ReadStep) IsUntargeted() bool      { return false }
+func (s *ReadStep) Conditional() bool       { return false }
 
 func (s *ReadStep) Apply() (resource.Status, StepCompleteFunc, error) {
 	urn := s.new.URN
@@ -1501,6 +1515,7 @@ func (s *RefreshStep) Logical() bool                                { return fal
 func (s *RefreshStep) IsUntargeted() bool                           { return false }
 func (s *RefreshStep) Diffs() []resource.PropertyKey                { return s.diff.ChangedKeys }
 func (s *RefreshStep) DetailedDiff() map[string]plugin.PropertyDiff { return s.diff.DetailedDiff }
+func (s *RefreshStep) Conditional() bool                            { return false }
 
 func (s *RefreshStep) IsInternal() bool {
 	return s.internal
@@ -1822,6 +1837,7 @@ func (s *ExtensionParameterizeStep) IsUntargeted() bool      { return false }
 func (s *ExtensionParameterizeStep) Deployment() *Deployment { return s.deployment }
 func (s *ExtensionParameterizeStep) Fail()                   {}
 func (s *ExtensionParameterizeStep) Skip()                   {}
+func (s *ExtensionParameterizeStep) Conditional() bool       { return false }
 
 type ImportStep struct {
 	deployment    *Deployment           // the current deployment.
@@ -1930,6 +1946,7 @@ func (s *ImportStep) New() *pkgresource.State      { return s.new }
 func (s *ImportStep) Res() *pkgresource.State      { return s.new }
 func (s *ImportStep) Logical() bool                { return !s.replacing }
 func (s *ImportStep) IsUntargeted() bool           { return false }
+func (s *ImportStep) Conditional() bool            { return false }
 
 // mergeSuppliedProperties fills the gaps in properties read from the provider with properties supplied
 // by the import: a supplied value is used where the read one is missing or null, so values a provider's
@@ -2322,14 +2339,18 @@ func ColorProgress(op display.StepOp) string {
 }
 
 // Prefix returns a suggested prefix for lines of this op type.
-func Prefix(op display.StepOp, done bool) string {
+func Prefix(conditional bool, op display.StepOp, done bool) string {
 	var color string
 	if done {
 		color = Color(op)
 	} else {
 		color = ColorProgress(op)
 	}
-	return color + RawPrefix(op)
+	prefix := " "
+	if conditional {
+		prefix = "?"
+	}
+	return color + prefix + RawPrefix(op)
 }
 
 // RawPrefix returns the uncolorized prefix text.
@@ -2477,6 +2498,7 @@ func (s *DiffStep) New() *pkgresource.State { return s.new }
 func (s *DiffStep) Res() *pkgresource.State { return s.new }
 func (s *DiffStep) Logical() bool           { return true }
 func (s *DiffStep) IsUntargeted() bool      { return false }
+func (s *DiffStep) Conditional() bool       { return false }
 
 func (s *DiffStep) Apply() (resource.Status, StepCompleteFunc, error) {
 	// DiffStep is a special step in that we're just using it as a way to get access to the parallel step
@@ -2596,6 +2618,7 @@ func (s *ViewStep) Logical() bool {
 }
 
 func (s *ViewStep) IsUntargeted() bool { return false }
+func (s *ViewStep) Conditional() bool  { return false }
 
 func (s *ViewStep) ResultOp() display.StepOp {
 	return s.resultOp

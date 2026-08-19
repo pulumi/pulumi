@@ -2399,7 +2399,8 @@ hooks: (f = msg.getHooks()) && proto.pulumirpc.RegisterResourceRequest.ResourceH
 hidediffsList: (f = jspb.Message.getRepeatedField(msg, 37)) == null ? undefined : f,
 envvarmappingsMap: (f = msg.getEnvvarmappingsMap()) ? f.toObject(includeInstance, undefined) : [],
 snippetid: jspb.Message.getFieldWithDefault(msg, 40, ""),
-acceptsByteString: jspb.Message.getBooleanFieldWithDefault(msg, 42, false)
+acceptsByteString: jspb.Message.getBooleanFieldWithDefault(msg, 42, false),
+conditional: jspb.Message.getBooleanFieldWithDefault(msg, 43, false)
   };
 
   if (includeInstance) {
@@ -2619,6 +2620,10 @@ proto.pulumirpc.RegisterResourceRequest.deserializeBinaryFromReader = function(m
     case 42:
       var value = /** @type {boolean} */ (reader.readBool());
       msg.setAcceptsByteString(value);
+      break;
+    case 43:
+      var value = /** @type {boolean} */ (reader.readBool());
+      msg.setConditional(value);
       break;
     default:
       reader.skipField();
@@ -2936,6 +2941,13 @@ proto.pulumirpc.RegisterResourceRequest.serializeBinaryToWriter = function(messa
   if (f) {
     writer.writeBool(
       42,
+      f
+    );
+  }
+  f = message.getConditional();
+  if (f) {
+    writer.writeBool(
+      43,
       f
     );
   }
@@ -4864,6 +4876,24 @@ proto.pulumirpc.RegisterResourceRequest.prototype.getAcceptsByteString = functio
  */
 proto.pulumirpc.RegisterResourceRequest.prototype.setAcceptsByteString = function(value) {
   return jspb.Message.setProto3BooleanField(this, 42, value);
+};
+
+
+/**
+ * optional bool conditional = 43;
+ * @return {boolean}
+ */
+proto.pulumirpc.RegisterResourceRequest.prototype.getConditional = function() {
+  return /** @type {boolean} */ (jspb.Message.getBooleanFieldWithDefault(this, 43, false));
+};
+
+
+/**
+ * @param {boolean} value
+ * @return {!proto.pulumirpc.RegisterResourceRequest} returns this
+ */
+proto.pulumirpc.RegisterResourceRequest.prototype.setConditional = function(value) {
+  return jspb.Message.setProto3BooleanField(this, 43, value);
 };
 
 

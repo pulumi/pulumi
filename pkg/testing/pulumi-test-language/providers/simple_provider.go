@@ -33,6 +33,9 @@ type SimpleProvider struct {
 
 	// PluginDownloadURL is an optional URL to include in the schema
 	PluginDownloadURL string
+
+	// If true the provider will return unknown outputs for the value property in preview.
+	UnknownOutputs bool
 }
 
 var _ plugin.Provider = (*SimpleProvider)(nil)
@@ -172,9 +175,16 @@ func (p *SimpleProvider) Create(
 		id = ""
 	}
 
+	properties := req.Properties
+	if p.UnknownOutputs && req.Preview {
+		properties = resource.PropertyMap{
+			"value": resource.MakeComputed(resource.NewProperty("")),
+		}
+	}
+
 	return plugin.CreateResponse{
 		ID:         resource.ID(id),
-		Properties: req.Properties,
+		Properties: properties,
 		Status:     resource.StatusOK,
 	}, nil
 }

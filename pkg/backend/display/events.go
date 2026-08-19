@@ -322,6 +322,7 @@ func convertStepEventMetadata(md engine.StepEventMetadata, showSecrets bool) api
 		DetailedDiff: detailedDiff,
 		Logical:      md.Logical,
 		Provider:     md.Provider,
+		Conditional:  md.Conditional,
 	}
 }
 
@@ -596,6 +597,7 @@ func convertJSONStepEventMetadata(md apitype.StepEventMetadata) engine.StepEvent
 		DetailedDiff: detailedDiff,
 		Logical:      md.Logical,
 		Provider:     md.Provider,
+		Conditional:  md.Conditional,
 	}
 }
 

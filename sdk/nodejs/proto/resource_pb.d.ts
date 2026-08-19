@@ -342,6 +342,8 @@ export class RegisterResourceRequest extends jspb.Message {
     setSnippetid(value: string): RegisterResourceRequest;
     getAcceptsByteString(): boolean;
     setAcceptsByteString(value: boolean): RegisterResourceRequest;
+    getConditional(): boolean;
+    setConditional(value: boolean): RegisterResourceRequest;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): RegisterResourceRequest.AsObject;
@@ -401,6 +403,7 @@ export namespace RegisterResourceRequest {
         envvarmappingsMap: Array<[string, string]>,
         snippetid: string,
         acceptsByteString: boolean,
+        conditional: boolean,
     }
 
 

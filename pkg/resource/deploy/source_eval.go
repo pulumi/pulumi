@@ -2706,10 +2706,10 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		"ResourceMonitor.RegisterResource received: t=%v, name=%v, custom=%v, #props=%v, parent=%v, protect=%v, "+
 			"provider=%v, deps=%v, deleteBeforeReplace=%v, ignoreChanges=%v, aliases=%v, customTimeouts=%v, "+
 			"providers=%v, replaceOnChanges=%v, replaceWith=%v, replacementTrigger=%v, retainOnDelete=%v, deletedWith=%v, "+
-			"resourceHooks=%v, hideDiffs=%v",
+			"resourceHooks=%v, hideDiffs=%v, conditional=%v",
 		t, name, custom, len(props), parent, protect, providerRef, rawDependencies, opts.DeleteBeforeReplace, ignoreChanges,
 		parsedAliases, customTimeouts, providerRefs, replaceOnChanges, replaceWith, replacementTrigger, retainOnDelete,
-		deletedWith, resourceHooks, hiddenDiffs,
+		deletedWith, resourceHooks, hiddenDiffs, req.Conditional,
 	)
 
 	// If this is a remote component, fetch its provider and issue the construct call. Otherwise, register the resource.
@@ -2898,6 +2898,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 			StackTrace:              stackTrace,
 			ResourceHooks:           resourceHooks,
 			SnippetID:               req.GetSnippetId(),
+			Conditional:             req.Conditional,
 		}.Make()
 
 		var ext *apitype.Extension

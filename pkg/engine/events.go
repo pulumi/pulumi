@@ -352,6 +352,7 @@ type StepEventMetadata struct {
 	Logical      bool                           // true if this step represents a logical operation in the program.
 	Provider     string                         // the provider that performed this step.
 	Untargeted   bool                           // true if this same-step's resource was not included in the operation.
+	Conditional  bool                           // true if this step is conditional and was not acted on.
 }
 
 func (m *StepEventMetadata) LockState() {
@@ -541,6 +542,7 @@ func makeStepEventMetadata(op display.StepOp, step deploy.Step, debug bool, show
 		Logical:      step.Logical(),
 		Provider:     step.Provider(),
 		Untargeted:   step.IsUntargeted(),
+		Conditional:  step.Conditional(),
 	}
 }
 

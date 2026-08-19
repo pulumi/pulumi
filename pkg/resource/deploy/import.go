@@ -284,7 +284,7 @@ func (i *importer) getOrCreateStackResource(ctx context.Context) (resource.URN, 
 		SnippetID:               "",
 	}.Make()
 	// TODO(seqnum) should stacks be created with 1? When do they ever get recreated/replaced?
-	if !i.executeSerial(ctx, NewCreateStep(i.deployment, noopEvent(0), state)) {
+	if !i.executeSerial(ctx, NewCreateStep(i.deployment, noopEvent(0), state, false)) {
 		return "", false, false
 	}
 	return urn, true, true
@@ -488,7 +488,7 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 
 		// Set a dummy goal so the resource is tracked as managed.
 		i.deployment.goals.Store(urn, &pkgresource.Goal{})
-		steps = append(steps, NewCreateStep(i.deployment, noopEvent(0), state))
+		steps = append(steps, NewCreateStep(i.deployment, noopEvent(0), state, false))
 	}
 
 	// Create steps for explicit providers not in state, using their full inputs from the
@@ -585,7 +585,7 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 		}
 
 		i.deployment.goals.Store(providerURN, &pkgresource.Goal{})
-		steps = append(steps, NewCreateStep(i.deployment, noopEvent(0), state))
+		steps = append(steps, NewCreateStep(i.deployment, noopEvent(0), state, false))
 	}
 
 	// Issue the create steps.

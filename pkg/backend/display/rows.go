@@ -549,7 +549,7 @@ func writeShortDiff(changesBuf io.StringWriter, diff *resource.ObjectDiff, inclu
 
 func writePropertyKeys(b io.StringWriter, keys []string, op display.StepOp) {
 	if len(keys) > 0 {
-		writeString(b, strings.Trim(deploy.Prefix(op, true /*done*/), " "))
+		writeString(b, strings.Trim(deploy.Prefix(false, op, true /*done*/), " "))
 
 		sort.Strings(keys)
 

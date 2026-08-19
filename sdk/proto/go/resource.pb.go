@@ -674,8 +674,11 @@ type RegisterResourceRequest struct {
 	// When true operations may return strings containing bytes that are not valid UTF-8, marshaled as objects
 	// carrying the byte string signature and a base64 encoding of the string's bytes.
 	AcceptsByteString bool `protobuf:"varint,42,opt,name=accepts_byte_string,json=acceptsByteString,proto3" json:"accepts_byte_string,omitempty"`
-	unknownFields     protoimpl.UnknownFields
-	sizeCache         protoimpl.SizeCache
+	// if true this registration is conditional and should not be actually acted on but should be displayed to
+	// the user as a possibility.
+	Conditional   bool `protobuf:"varint,43,opt,name=conditional,proto3" json:"conditional,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *RegisterResourceRequest) Reset() {
@@ -998,6 +1001,13 @@ func (x *RegisterResourceRequest) GetSnippetId() string {
 func (x *RegisterResourceRequest) GetAcceptsByteString() bool {
 	if x != nil {
 		return x.AcceptsByteString
+	}
+	return false
+}
+
+func (x *RegisterResourceRequest) GetConditional() bool {
+	if x != nil {
+		return x.Conditional
 	}
 	return false
 }
@@ -3239,7 +3249,7 @@ const file_pulumi_resource_proto_rawDesc = "" +
 	"\x03urn\x18\x01 \x01(\tR\x03urn\x127\n" +
 	"\n" +
 	"properties\x18\x02 \x01(\v2\x17.google.protobuf.StructR\n" +
-	"properties\"\x9f\x16\n" +
+	"properties\"\xc1\x16\n" +
 	"\x17RegisterResourceRequest\x12\x12\n" +
 	"\x04type\x18\x01 \x01(\tR\x04type\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x16\n" +
@@ -3291,7 +3301,8 @@ const file_pulumi_resource_proto_rawDesc = "" +
 	"\thideDiffs\x18% \x03(\tR\thideDiffs\x12^\n" +
 	"\x0eenvVarMappings\x18) \x03(\v26.pulumirpc.RegisterResourceRequest.EnvVarMappingsEntryR\x0eenvVarMappings\x12\x1c\n" +
 	"\tsnippetId\x18( \x01(\tR\tsnippetId\x12.\n" +
-	"\x13accepts_byte_string\x18* \x01(\bR\x11acceptsByteString\x1a*\n" +
+	"\x13accepts_byte_string\x18* \x01(\bR\x11acceptsByteString\x12 \n" +
+	"\vconditional\x18+ \x01(\bR\vconditional\x1a*\n" +
 	"\x14PropertyDependencies\x12\x12\n" +
 	"\x04urns\x18\x01 \x03(\tR\x04urns\x1al\n" +
 	"\x0eCustomTimeouts\x12\x16\n" +

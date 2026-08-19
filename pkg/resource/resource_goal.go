@@ -76,6 +76,8 @@ type Goal struct {
 	ResourceHooks map[resource.HookType][]string
 	// If set, the UUID of the snippet that registered this resource.
 	SnippetID string
+	// If true this is a conditional resource, that shouldn't actually be acted on but needs displaying to the user.
+	Conditional bool
 }
 
 // NewGoal is used to construct Goal values. The dataflow for Goal is rather sensitive, so all fields are required.
@@ -160,6 +162,9 @@ type NewGoal struct {
 
 	// If set, the UUID of the snippet that registered this resource.
 	SnippetID string // required
+
+	// If true this is a conditional resource, that shouldn't actually be acted on but needs displaying to the user.
+	Conditional bool // required
 }
 
 // Make consumes the NewGoal to create a *Goal.
@@ -195,5 +200,6 @@ func (g NewGoal) Make() *Goal {
 		StackTrace:              g.StackTrace,
 		ResourceHooks:           g.ResourceHooks,
 		SnippetID:               g.SnippetID,
+		Conditional:             g.Conditional,
 	}
 }

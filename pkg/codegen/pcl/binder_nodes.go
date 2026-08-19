@@ -122,6 +122,9 @@ func (b *binder) bindNode(ctx context.Context, node Node) hcl.Diagnostics {
 	case *PulumiBlock:
 		diags := b.bindPulumi(node)
 		diagnostics = append(diagnostics, diags...)
+	case *Condition:
+		diags := b.bindCondition(ctx, node)
+		diagnostics = append(diagnostics, diags...)
 	default:
 		contract.Failf("unexpected node of type %T (%v)", node, node.SyntaxNode().Range())
 	}

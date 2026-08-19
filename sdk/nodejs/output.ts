@@ -14,7 +14,7 @@
 
 import { Resource } from "./resource";
 import * as settings from "./runtime/settings";
-import { getDeferredOutputSources } from "./runtime/state";
+import { getDeferredOutputSources, runConditional } from "./runtime/state";
 import * as utils from "./utils";
 
 /* eslint-disable no-shadow, @typescript-eslint/no-shadow */
@@ -458,7 +458,17 @@ function copyResources(resources: Set<Resource> | Resource[] | Resource) {
     return copy;
 }
 
-async function liftInnerOutput(allResources: Set<Resource>, value: any, isKnown: boolean, isSecret: boolean) {
+async function liftInnerOutput(
+    allResources: Set<Resource>,
+    value: any,
+    isKnown: boolean,
+    isSecret: boolean,
+): Promise<{
+    allResources: Set<Resource>;
+    value: any;
+    isKnown: boolean;
+    isSecret: boolean;
+}> {
     if (!Output.isInstance(value)) {
         // 'value' itself wasn't an output, no need to transform any of the data we got.
         return { allResources, value, isKnown, isSecret };
@@ -494,7 +504,12 @@ async function applyHelperAsync<T, U>(
     isSecret: boolean,
     func: (t: T) => Input<U>,
     runWithUnknowns: boolean,
-) {
+): Promise<{
+    allResources: Set<Resource>;
+    value: any;
+    isKnown: boolean;
+    isSecret: boolean;
+}> {
     // Only perform the apply if the engine was able to give us an actual value
     // for this Output.
     const doApply = isKnown || runWithUnknowns;
@@ -1338,4 +1353,88 @@ export function recover<T>(o: Output<T>, func: (err: any) => Input<T>): Output<T
         data.then((d) => d.allResources),
     );
     return <Output<T>>(<any>result);
+}
+
+/**
+ * {@link cond} takes a condition and two functions. If the condition is true, it
+ * evaluates the first function, otherwise it evaluates the second function.
+ *
+ * If the condition is unknown both functions will be invoked and any resources
+ * created inside will be marked as conditional.
+ */
+export function cond<T>(condition: Input<boolean>, ifTrue: () => Output<T>, ifFalse: () => Output<T>): Output<T> {
+    const o = output(condition);
+
+    const applied = Promise.all([o.allResources!(), o.promise(/*withUnknowns*/ true), o.isKnown, o.isSecret]).then<{
+        allResources: Set<Resource>;
+        value: any;
+        isKnown: boolean;
+        isSecret: boolean;
+    }>(([allResources, value, isKnown, isSecret]) => {
+        if (isKnown) {
+            // Simple case we just run the branch that is true
+            const v: void = undefined;
+            if (value) {
+                return applyHelperAsync<void, T>(allResources, v, isKnown, isSecret, ifTrue, false);
+            } else {
+                return applyHelperAsync<void, T>(allResources, v, isKnown, isSecret, ifFalse, false);
+            }
+        }
+
+        // Else if condition is unknown we need to run _both_ branches but within a conditional context so
+        // that the resources created inside are marked as conditional.
+        const ifTruePromise = runConditional(() =>
+            applyHelperAsync<void, T>(allResources, undefined, true, isSecret, ifTrue, false),
+        );
+        const ifFalsePromise = runConditional(() =>
+            applyHelperAsync<void, T>(allResources, undefined, true, isSecret, ifFalse, false),
+        );
+
+        // We can't combine the value from two branches, so we always return an unknown value here.
+        return Promise.all([ifTruePromise, ifFalsePromise]).then(([ifTrueValue, ifFalseValue]) => {
+            return {
+                allResources: utils.union(ifTrueValue.allResources, ifFalseValue.allResources),
+                value: undefined,
+                isKnown: false,
+                isSecret: ifTrueValue.isSecret || ifFalseValue.isSecret,
+            };
+        });
+    });
+
+    const result = new OutputImpl<T>(
+        o.resources(),
+        applied.then((a) => a.value),
+        applied.then((a) => a.isKnown),
+        applied.then((a) => a.isSecret),
+        applied.then((a) => a.allResources),
+    );
+    return <Output<T>>(<any>result);
+}
+
+export function boundedFor<T, U>(
+    array: Output<T[]>,
+    limit: number,
+    func: (item: Output<T>, index: number) => Output<U>,
+): Output<U[]> {
+    const results = [] as Output<U | undefined>[];
+
+    for (let i = 0; i < limit; ++i) {
+        results[i] = cond(
+            array.apply((a) => a.length > i),
+            () =>
+                func(
+                    array.apply((a) => a[i]),
+                    i,
+                ),
+            () => output(undefined),
+        );
+    }
+
+    return all([array, results]).apply(([a, r]) => {
+        const result = [];
+        for (let i = 0; i < Math.min(a.length, limit); ++i) {
+            result[i] = r[i] as U;
+        }
+        return result;
+    });
 }

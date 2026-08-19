@@ -306,7 +306,7 @@ func renderSummaryEvent(event engine.SummaryEventPayload, resourcesErrored int,
 
 				// Print a summary of the changes of this kind
 				fprintIgnoreError(out, opts.Color.Colorize(
-					fmt.Sprintf("    %s%d %s%s%s\n", deploy.Prefix(op, true /*done*/), c, planTo, opDescription, colors.Reset)))
+					fmt.Sprintf("    %s%d %s%s%s\n", deploy.Prefix(false, op, true /*done*/), c, planTo, opDescription, colors.Reset)))
 			}
 		}
 	}

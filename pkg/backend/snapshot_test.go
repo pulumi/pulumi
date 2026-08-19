@@ -687,7 +687,7 @@ func TestRecordingCreateSuccess(t *testing.T) {
 	resourceA := NewResource("a")
 	snap := NewSnapshot(nil)
 	manager, sp := MockSetup(t, snap)
-	step := deploy.NewCreateStep(nil, &MockRegisterResourceEvent{}, resourceA)
+	step := deploy.NewCreateStep(nil, &MockRegisterResourceEvent{}, resourceA, false)
 	mutation, err := manager.BeginMutation(step)
 	require.NoError(t, err)
 
@@ -716,7 +716,7 @@ func TestRecordingCreateFailure(t *testing.T) {
 	resourceA := NewResource("a")
 	snap := NewSnapshot(nil)
 	manager, sp := MockSetup(t, snap)
-	step := deploy.NewCreateStep(nil, &MockRegisterResourceEvent{}, resourceA)
+	step := deploy.NewCreateStep(nil, &MockRegisterResourceEvent{}, resourceA, false)
 	mutation, err := manager.BeginMutation(step)
 	require.NoError(t, err)
 

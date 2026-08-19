@@ -3580,3 +3580,12 @@ outer:
 		t.Fatal("timed out waiting for program to complete")
 	}
 }
+
+func TestConditionalResource(t *testing.T) {
+	t.Parallel()
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:          "conditional_resource",
+		Dependencies: []string{"@pulumi/pulumi"},
+		Quick:        true,
+	})
+}

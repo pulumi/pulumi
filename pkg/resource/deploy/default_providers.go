@@ -163,6 +163,7 @@ func (d *defaultProviders) newRegisterDefaultProviderEvent(
 	done := make(chan *RegisterResult)
 	event := &registerResourceEvent{
 		goal: pkgresource.NewGoal{
+			Conditional:             false,
 			Type:                    sdkproviders.MakeProviderType(req.Package()),
 			Name:                    req.DefaultName(),
 			Custom:                  true,

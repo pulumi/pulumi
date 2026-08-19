@@ -233,6 +233,11 @@ export interface Store {
     pendingResourceRegistrations: Map<Resource, PendingResourceRegistration>;
 
     deferredOutputSources: WeakMap<object, object>;
+
+    /**
+     * Within an unknown conditional.
+     */
+    conditional: boolean;
 }
 
 /**
@@ -294,6 +299,8 @@ export function getPendingResourceRegistrations(): Map<Resource, PendingResource
  * @internal
  */
 export class LocalStore implements Store {
+    callbacks?: ICallbackServer | undefined;
+    conditional = false;
     settings = {
         options: {
             organization: process.env[nodeEnvKeys.organization],
@@ -438,19 +445,23 @@ export function withLocalStorage<R>(callback: (...args1: any[]) => R, ...args: a
 /**
  * @internal
  */
+export function runConditional<R>(callback: () => R): R {
+    const store = getStore();
+    const newStore = {
+        ...store,
+        conditional: true,
+    };
+    return asyncLocalStorage.run(newStore, () => {
+        return callback();
+    });
+}
+
+/**
+ * @internal
+ */
 export function getLocalStore(): Store | undefined {
     return global.asyncLocalStorage.getStore();
 }
-
-(<any>getLocalStore).captureReplacement = () => {
-    const returnFunc = () => {
-        if (global.globalStore === undefined) {
-            global.globalStore = new LocalStore();
-        }
-        return global.globalStore;
-    };
-    return returnFunc;
-};
 
 /**
  * @internal

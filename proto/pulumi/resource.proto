@@ -265,6 +265,10 @@ message RegisterResourceRequest {
     // When true operations may return strings containing bytes that are not valid UTF-8, marshaled as objects
     // carrying the byte string signature and a base64 encoding of the string's bytes.
     bool accepts_byte_string = 42;
+
+    // if true this registration is conditional and should not be actually acted on but should be displayed to
+    // the user as a possibility.
+    bool conditional = 43;
 }
 
 enum Result {

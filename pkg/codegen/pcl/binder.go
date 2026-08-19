@@ -842,6 +842,21 @@ func (b *binder) declareNodes(ctx context.Context, file *syntax.File) (hcl.Diagn
 				}
 				diags := b.declareNode(PulumiBlockName, v)
 				diagnostics = append(diagnostics, diags...)
+			case "condition":
+				if len(item.Labels) != 1 {
+					diagnostics = append(diagnostics, labelsErrorf(item, "conditions must have exactly one label"))
+					continue
+				}
+
+				name := item.Labels[0]
+
+				v := &Condition{
+					name:   name,
+					syntax: item,
+				}
+
+				diags := b.declareNode(name, v)
+				diagnostics = append(diagnostics, diags...)
 			}
 		}
 	}

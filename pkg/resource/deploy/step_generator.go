@@ -1783,7 +1783,7 @@ func (sg *stepGenerator) continueStepsFromImport(
 
 	sg.creates[urn] = true
 	logging.V(7).Infof("Planner decided to create '%v' (inputs=%v)", urn, new.Inputs)
-	return []Step{NewCreateStep(sg.deployment, event, new)}, false, nil
+	return []Step{NewCreateStep(sg.deployment, event, new, goal.Conditional)}, false, nil
 }
 
 func (sg *stepGenerator) generateStepsFromDiff(

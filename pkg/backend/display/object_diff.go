@@ -75,11 +75,17 @@ func printStepHeader(b io.StringWriter, step engine.StepEventMetadata, showURNs 
 		// show a locked symbol, since we are either newly protecting this resource, or retaining protection.
 		extra = " 🔒"
 	}
+
+	maybe := ""
+	if step.Conditional {
+		maybe = "maybe "
+	}
+
 	op := addRetainStatusFlag(string(step.Op), step)
 	if showURNs {
-		writeString(b, fmt.Sprintf("%s: (%s)%s\n", string(step.URN), op, extra))
+		writeString(b, fmt.Sprintf("%s: (%s%s)%s\n", string(step.URN), maybe, op, extra))
 	} else {
-		writeString(b, fmt.Sprintf("%s: (%s)%s\n", string(step.Type), op, extra))
+		writeString(b, fmt.Sprintf("%s: (%s%s)%s\n", string(step.Type), maybe, op, extra))
 	}
 }
 
@@ -153,7 +159,7 @@ func getResourcePropertiesSummary(step engine.StepEventMetadata, indent int, sho
 	writeString(&b, getIndentationString(indent, op, false))
 
 	// First, print out the operation's prefix.
-	writeString(&b, deploy.Prefix(op, true /*done*/))
+	writeString(&b, deploy.Prefix(step.Conditional, op, true /*done*/))
 
 	// Next, print the resource type (or full URN if --urns is set).
 	printStepHeader(&b, step, showURNs)
