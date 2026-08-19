@@ -1,0 +1,4 @@
+component: cli/import
+kind: fix
+body: Generate a component resource definition when importing local components
+time: 2026-08-12T12:45:49.913419+02:00

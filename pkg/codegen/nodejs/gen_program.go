@@ -634,6 +634,10 @@ func (g *generator) collectProgramImports(program *pcl.Program) programImports {
 			}
 			visitPkg(pkg, packageRef)
 		case *pcl.Component:
+			// A component declared without a source has no file to import from.
+			if n.Program == nil {
+				continue
+			}
 			componentDir := filepath.Base(n.DirPath())
 			componentName := n.DeclarationName()
 			dirAndName := componentDir + "-" + componentName
@@ -1808,6 +1812,29 @@ func (g *generator) genReadResource(w io.Writer, r *pcl.ReadResource) {
 
 // genResource handles the generation of instantiations of non-builtin resources.
 func (g *generator) genComponent(w io.Writer, component *pcl.Component) {
+	// A component declared without a source has no class to instantiate; construct the SDK's base
+	// ComponentResource with the type token that names it.
+	if component.Program == nil {
+		optionsBag := g.genResourceOptions(component.Options, nil, nil)
+		g.Fgenf(w, "%sconst %s = new pulumi.ComponentResource(%q, %s, {",
+			g.Indent, g.nodeName(component.Name()), component.Token,
+			g.makeResourceName(component.LogicalName(), ""))
+		if len(component.Inputs) > 0 {
+			g.Indented(func() {
+				for _, attr := range component.Inputs {
+					propertyName := attr.Name
+					if !isLegalIdentifier(propertyName) {
+						propertyName = fmt.Sprintf("%q", propertyName)
+					}
+					g.Fgenf(w, "\n%s%s: %.v,", g.Indent, propertyName, attr.Value)
+				}
+			})
+			g.Fgenf(w, "\n%s", g.Indent)
+		}
+		g.Fgenf(w, "}%s);\n", optionsBag)
+		return
+	}
+
 	componentName := component.DeclarationName()
 
 	optionsBag := g.genResourceOptions(component.Options, nil, nil)

@@ -37,8 +37,13 @@ type Component struct {
 	// the name of block declaration
 	name string
 
-	// The location of the source for the component.
+	// The location of the source for the component. Empty when the component is declared without one, in which
+	// case it names an existing component resource rather than defining one, and Token is set instead.
 	source string
+
+	// Token is the type token of an existing component resource, set only when the component has no source. Code
+	// generation constructs the SDK's base ComponentResource with it instead of declaring a class.
+	Token string
 
 	// the full (absolute) path of the component directory
 	dirPath string

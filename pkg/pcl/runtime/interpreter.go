@@ -2017,8 +2017,14 @@ func (i *Interpreter) registerComponent(ctx context.Context, component *pcl.Comp
 	}
 
 	componentName := i.effectiveName(component.LogicalName())
+	// A component declared without a source names an existing component resource by its type token; otherwise the
+	// token is synthesised from the declaration.
+	componentType := component.Token
+	if componentType == "" {
+		componentType = "components:index:" + component.DeclarationName()
+	}
 	request := &pulumirpc.RegisterResourceRequest{
-		Type:                 "components:index:" + component.DeclarationName(),
+		Type:                 componentType,
 		Name:                 componentName,
 		Custom:               false,
 		Object:               obj,
@@ -2092,6 +2098,12 @@ func (i *Interpreter) registerComponent(ctx context.Context, component *pcl.Comp
 		}}
 	}
 
+	// A component declared without a source has no inner program to interpret and no outputs, but its variable
+	// must still be published so that children can parent to it.
+	if component.Program == nil {
+		return i.setComponentVariable(ctx, component, resp, nil)
+	}
+
 	componentInterpreter := &Interpreter{
 		program:     component.Program,
 		info:        i.info,
@@ -2159,6 +2171,16 @@ func (i *Interpreter) registerComponent(ctx context.Context, component *pcl.Comp
 		}}
 	}
 
+	return i.setComponentVariable(ctx, component, resp, componentOutputs)
+}
+
+// setComponentVariable publishes a registered component as a variable so that later nodes can reference it.
+func (i *Interpreter) setComponentVariable(
+	ctx context.Context,
+	component *pcl.Component,
+	resp *pulumirpc.RegisterResourceResponse,
+	componentOutputs resource.PropertyMap,
+) hcl.Diagnostics {
 	componentObject := resource.PropertyMap{
 		"id":  resource.NewProperty(resp.GetId()),
 		"urn": resource.NewProperty(resp.GetUrn()),
