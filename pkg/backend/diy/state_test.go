@@ -333,8 +333,9 @@ func TestSaveCheckpointPreservesActiveCheckpointOnCompressionTransitionFailure(t
 	}
 	b.bucket = failingBucket
 
-	_, _, saveErr := b.saveCheckpoint(writeCtx, diyRef, versionedCheckpoint)
+	backupFile, _, saveErr := b.saveCheckpoint(writeCtx, diyRef, versionedCheckpoint)
 	assert.ErrorIs(t, saveErr, context.Canceled)
+	assert.Equal(t, oldPath+".bak", backupFile)
 	assert.True(t, failingBucket.attemptedWrite())
 
 	oldBytesAfter, err := innerBucket.ReadAll(ctx, oldPath)
