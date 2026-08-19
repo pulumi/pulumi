@@ -79,6 +79,8 @@ func SimplifyInputUnion(t schema.Type) schema.Type {
 		DefaultType:   union.DefaultType,
 		Discriminator: union.Discriminator,
 		Mapping:       union.Mapping,
+		// The cases are plain shapes, so unwrapping the elements does not invalidate them.
+		DiscriminatedCases: union.DiscriminatedCases,
 	}
 }
 
@@ -207,6 +209,8 @@ func resolvedType(t schema.Type, plainObjects bool) schema.Type {
 			DefaultType:   typ.DefaultType,
 			Discriminator: typ.Discriminator,
 			Mapping:       typ.Mapping,
+			// The cases are plain shapes, so resolving the elements does not invalidate them.
+			DiscriminatedCases: typ.DiscriminatedCases,
 		}
 	default:
 		return t

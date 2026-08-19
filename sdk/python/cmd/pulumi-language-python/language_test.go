@@ -219,9 +219,13 @@ func testLanguageWithConfig(t *testing.T, config languageTestConfig) {
 						t.Skip("Skipping non-default provider tests")
 					}
 
+					// Assigning an output straight into an input is only accepted because
+					// `pulumi.InputType` admits `Mapping[str, Any]`. The dict input types drop that
+					// escape hatch, so the assignment is rejected there for any object type, not
+					// just for a union.
 					if (config.name == "default" || config.name == "toml") &&
-						(tt == "l2-discriminated-union" || tt == "l2-discriminated-union-many") {
-						t.Skip("pulumi#21830: Expected to fail")
+						tt == "l2-discriminated-union-many" {
+						t.Skip("pulumi#21830: assigning an output into an input is rejected without the Mapping escape hatch")
 					}
 
 					if config.typechecker == "pyright" &&
