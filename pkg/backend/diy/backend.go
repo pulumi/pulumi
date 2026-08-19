@@ -582,10 +582,7 @@ func describeBackendURL(originalURL, normalized string, cause error) string {
 	return fmt.Sprintf("%q (resolved to %q)", originalURL, resolved)
 }
 
-// withoutInjectedNoTmpDir strips the no_tmp_dir parameter that massageBlobPath adds, unless
-// the user set it themselves, in which case it is theirs to see. Only file:// URLs are
-// considered, since that is the only scheme massageBlobPath injects it for — another backend
-// may use a parameter of that name for its own purposes.
+// withoutInjectedNoTmpDir strips the no_tmp_dir parameter that massageBlobPath adds
 func withoutInjectedNoTmpDir(originalURL, normalized string) string {
 	if !strings.HasPrefix(originalURL, FilePathPrefix) || strings.Contains(originalURL, "no_tmp_dir") {
 		return normalized
