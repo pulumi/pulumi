@@ -1,0 +1,4 @@
+component: cli
+kind: improvement
+body: Fix progress bar rendering for parallel plugin installs
+time: 2026-08-19T10:09:42.757252411+02:00

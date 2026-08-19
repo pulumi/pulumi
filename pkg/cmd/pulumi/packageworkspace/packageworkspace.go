@@ -35,6 +35,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/v3/util"
 	"github.com/pulumi/pulumi/pkg/v3/util/cmdutil"
+	"github.com/pulumi/pulumi/pkg/v3/util/progress"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
@@ -67,6 +68,7 @@ func New(
 		pkgworkspace,
 		pctx, stdout, stderr,
 		options, parentSpan,
+		progress.NewGroup(stderr),
 		new(sync.Mutex),
 		map[string][]schema.PackageReference{},
 	}
@@ -84,6 +86,7 @@ type Workspace struct {
 	stdout, stderr io.Writer
 	options        Options
 	parentSpan     opentracing.Span
+	bars           *progress.Group
 
 	unlinkedProjectsM *sync.Mutex
 	unlinkedProjects  map[string][]schema.PackageReference
@@ -177,8 +180,8 @@ func (w Workspace) DownloadPlugin(
 
 	wrapper := func(stream io.ReadCloser, size int64) io.ReadCloser {
 		// Renders a progress bar to stderr in interactive terminals and prints a plain message otherwise.
-		return workspace.ReadCloserProgressBar(
-			stream, w.stderr, size, "Downloading provider "+pluginSpec.Name, diagutils.GetGlobalColorization())
+		return w.bars.Wrap(
+			stream, size, "Downloading provider "+pluginSpec.Name, diagutils.GetGlobalColorization())
 	}
 
 	retry := func(err error, attempt int, limit int, delay time.Duration) {
@@ -198,8 +201,8 @@ func (w Workspace) DownloadPlugin(
 	// is what finishes the bar.
 	var unpackStream io.ReadCloser = downloadedFile
 	if fi, statErr := downloadedFile.Stat(); statErr == nil {
-		unpackStream = workspace.ReadCloserProgressBar(
-			downloadedFile, w.stderr, fi.Size(),
+		unpackStream = w.bars.Wrap(
+			downloadedFile, fi.Size(),
 			"Unpacking provider "+pluginSpec.Name, diagutils.GetGlobalColorization())
 	}
 	cleanup, err := pluginstorage.UnpackContents(
