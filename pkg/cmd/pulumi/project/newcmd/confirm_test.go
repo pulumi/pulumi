@@ -168,6 +168,11 @@ func guidedNewTestBackend(t *testing.T) (b *backend.MockBackend, created *[]stri
 	b.GetStackF = func(ctx context.Context, ref backend.StackReference) (backend.Stack, error) {
 		return nil, nil
 	}
+	b.ListStackNamesF = func(ctx context.Context, filter backend.ListStackNamesFilter,
+		token backend.ContinuationToken,
+	) ([]backend.StackReference, backend.ContinuationToken, error) {
+		return nil, nil, nil
+	}
 	b.GetLatestConfigurationF = func(ctx context.Context, s backend.Stack) (backend.LatestConfiguration, error) {
 		return backend.LatestConfiguration{}, backenderr.ErrNoPreviousDeployment
 	}
@@ -506,7 +511,7 @@ template:
 }
 
 //nolint:paralleltest // changes directory for process, mocks login manager
-func TestGuidedNewCollidingDefaultNameFallsThrough(t *testing.T) {
+func TestGuidedNewCollidingDefaultNameAsksThenConfirms(t *testing.T) {
 	guidedRepoTemplate(t, "aws-python", guidedConfigTemplateYAML)
 	tempdir := tempProjectDir(t)
 	t.Chdir(tempdir)
@@ -518,9 +523,7 @@ func TestGuidedNewCollidingDefaultNameFallsThrough(t *testing.T) {
 	}
 	mockCurrentBackend(t, b)
 
-	// selects: "AWS", "Python" — and nothing else: scriptedSelect fails the test on an
-	// unexpected confirmation select, proving the flow fell through to sequential prompts.
-	selectOne, _ := scriptedSelect(t, "AWS", "Python")
+	selectOne, _ := scriptedSelect(t, "AWS", "Python", confirmYes)
 	var prompts []string
 	var out, errOut bytes.Buffer
 	args := newArgs{
@@ -537,11 +540,57 @@ func TestGuidedNewCollidingDefaultNameFallsThrough(t *testing.T) {
 	err := runNew(t.Context(), args)
 	require.NoError(t, err)
 
-	require.NotEmpty(t, prompts)
-	assert.Equal(t, "Project name="+defaultName, prompts[0],
-		"the sequential prompts must run, starting with the project name")
-	assert.NotContains(t, out.String(), "Project name:  ")
+	assert.Equal(t, []string{"Project name=" + defaultName}, prompts,
+		"an unusable default name is the only thing asked before the block")
+	assert.Contains(t, out.String(), "Project name:  fresh-name",
+		"the block confirms the name that was just chosen")
+	assert.Contains(t, out.String(), "Stack name:    my-org/dev")
 	require.Equal(t, []string{"my-org/dev"}, *created)
-	assert.Contains(t, errOut.String(), "Created stack 'my-org/dev'",
-		"the sequential fallback announces the created stack")
+}
+
+//nolint:paralleltest // changes directory for process, mocks login manager
+func TestGuidedNewExistingStackNameAsksBeforeBlock(t *testing.T) {
+	guidedRepoTemplate(t, "aws-python", guidedConfigTemplateYAML)
+	tempdir := tempProjectDir(t)
+	t.Chdir(tempdir)
+
+	b, created := guidedNewTestBackend(t)
+	var listedProjects []string
+	b.ListStackNamesF = func(ctx context.Context, filter backend.ListStackNamesFilter,
+		token backend.ContinuationToken,
+	) ([]backend.StackReference, backend.ContinuationToken, error) {
+		require.NotNil(t, filter.Project)
+		listedProjects = append(listedProjects, *filter.Project)
+		return []backend.StackReference{
+			&backend.MockStackReference{NameV: tokens.MustParseStackName("dev")},
+		}, nil, nil
+	}
+	mockCurrentBackend(t, b)
+
+	selectOne, _ := scriptedSelect(t, "AWS", "Python", confirmYes)
+	var prompts []string
+	var out, errOut bytes.Buffer
+	args := newArgs{
+		interactive: true,
+		// A name given up front can name a project that already has stacks, so the default
+		// stack name is checked before the block proposes it.
+		name:                 "my-project",
+		prompt:               countingPrompt(map[string]string{"Stack name": "prod"}, &prompts),
+		promptRuntimeOptions: runtimeOptionsNone,
+		languageTemplate:     languageTemplateMock,
+		selectOne:            selectOne,
+		secretsProvider:      "default",
+		stdout:               &out,
+		stderr:               &errOut,
+	}
+
+	err := runNew(t.Context(), args)
+	require.NoError(t, err)
+
+	assert.Equal(t, []string{"my-project"}, listedProjects)
+	assert.Equal(t, []string{"Stack name="}, prompts,
+		"a taken stack name is asked for before the block, with no default to accept")
+	assert.Contains(t, out.String(), "Stack 'my-org/dev' already exists.")
+	assert.Contains(t, out.String(), "Stack name:    my-org/prod")
+	require.Equal(t, []string{"my-org/prod"}, *created)
 }

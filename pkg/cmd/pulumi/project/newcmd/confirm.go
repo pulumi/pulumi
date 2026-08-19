@@ -105,11 +105,11 @@ func printPreamble(w io.Writer, opts display.Options) {
 	fmt.Fprintln(w,
 		opts.Color.Colorize(
 			colors.Highlight("Enter a value or leave blank to accept the (default), and press <ENTER>.",
-				"<ENTER>", colors.BrightCyan+colors.Bold),
+				"<ENTER>", colors.SpecPrompt),
 		))
 	fmt.Fprintln(w,
 		opts.Color.Colorize(
-			colors.Highlight("Press ^C at any time to quit.", "^C", colors.BrightCyan+colors.Bold),
+			colors.Highlight("Press ^C at any time to quit.", "^C", colors.SpecPrompt),
 		))
 	fmt.Fprintln(w)
 }
@@ -143,9 +143,8 @@ func promptSequentialValues(
 	ctx context.Context, b backend.Backend, orgName string, defaults projectDefaults,
 	args newArgs, opts display.Options,
 ) (string, string, error) {
-	// The guided flow's questions already set the tone, so no preamble when falling back from it.
 	hasAtLeastOnePrompt := (args.name == "") || (args.description == "") || (!args.generateOnly && args.stack == "")
-	if !args.yes && hasAtLeastOnePrompt && !args.useGuidedFlow() {
+	if !args.yes && hasAtLeastOnePrompt {
 		printPreamble(args.stdout, opts)
 	}
 
@@ -167,10 +166,7 @@ func promptNameAndDescription(
 
 	var err error
 	if name == "" {
-		validate := func(s string) error {
-			return validateProjectName(ctx, b, orgName, s, args.generateOnly, opts)
-		}
-		if name, err = args.prompt(args.yes, "Project name", defaultName, false, validate, opts); err != nil {
+		if name, err = promptProjectName(ctx, b, orgName, defaultName, args, opts); err != nil {
 			return "", "", err
 		}
 	}
@@ -186,8 +182,18 @@ func promptNameAndDescription(
 	return name, description, nil
 }
 
-// A nil result means this run is not on the guided path, or that its defaults are unusable, and
-// the sequential prompts should run instead.
+func promptProjectName(
+	ctx context.Context, b backend.Backend, orgName, defaultName string,
+	args newArgs, opts display.Options,
+) (string, error) {
+	validate := func(s string) error {
+		return validateProjectName(ctx, b, orgName, s, args.generateOnly, opts)
+	}
+	return args.prompt(args.yes, "Project name", defaultName, false, validate, opts)
+}
+
+// A nil result means this run is not on the guided path, and the sequential prompts should run
+// instead.
 func confirmGuidedValues(
 	ctx context.Context, b backend.Backend, orgName string, defaults projectDefaults,
 	template cmdTemplates.ProjectTemplate, args newArgs, opts display.Options,
@@ -203,17 +209,25 @@ func confirmGuidedValues(
 	if !shows.name && !shows.description && !shows.stack {
 		return nil, nil
 	}
-	if shows.name && defaults.nameErr != nil {
-		// The sequential prompts already handle an unusable default coherently.
-		return nil, nil
-	}
 
 	c := &confirmedNew{name: defaults.name, description: defaults.description}
 
 	var err error
+	projectIsNew := shows.name && defaults.nameErr == nil
+	if shows.name && defaults.nameErr != nil {
+		if c.name, err = promptProjectName(ctx, b, orgName, c.name, args, opts); err != nil {
+			return nil, err
+		}
+	}
 	if shows.stack {
 		if c.stackName, err = buildStackName(ctx, b, defaultStackName); err != nil {
 			return nil, err
+		}
+		// A project the backend has never heard of has no stacks to collide with.
+		if !projectIsNew {
+			if err = c.avoidExistingStack(ctx, b, args, opts); err != nil {
+				return nil, err
+			}
 		}
 		if err = c.promptUnsetConfig(template, args, opts); err != nil {
 			return nil, err
@@ -247,7 +261,9 @@ func confirmGuidedValues(
 		return nil, err
 	}
 	if shows.stack {
-		if c.stackName, err = promptStackName(args.stdout, b, args.prompt, c.stackName, false, opts); err != nil {
+		if c.stackName, err = promptStackName(
+			args.stdout, b, args.prompt, c.stackName, false, opts, b.ValidateStackName,
+		); err != nil {
 			return nil, err
 		}
 		if err = c.repromptConfig(template, args, opts); err != nil {
@@ -255,6 +271,68 @@ func confirmGuidedValues(
 		}
 	}
 	return c, nil
+}
+
+// avoidExistingStack asks for another stack name when the default is already taken. The answer
+// can still go stale before creation, which createStackWithRetry handles.
+func (c *confirmedNew) avoidExistingStack(
+	ctx context.Context, b backend.Backend, args newArgs, opts display.Options,
+) error {
+	org, stack := splitStackName(c.stackName)
+	taken, err := projectStackNames(ctx, b, org, c.name)
+	if err != nil || !taken[stack] {
+		// A backend that cannot list the project's stacks leaves the collision to creation time.
+		return nil
+	}
+
+	fmt.Fprintf(args.stdout, "\nStack '%s' already exists.\n", c.stackName)
+	validate := func(s string) error {
+		if err := b.ValidateStackName(s); err != nil {
+			return err
+		}
+		if _, name := splitStackName(s); taken[name] {
+			return errors.New("a stack with that name already exists in this project")
+		}
+		return nil
+	}
+	name, err := promptStackName(args.stdout, b, args.prompt, "", args.yes, opts, validate)
+	if err != nil {
+		return err
+	}
+	c.stackName, err = buildStackName(ctx, b, name)
+	return err
+}
+
+func projectStackNames(
+	ctx context.Context, b backend.Backend, orgName, projectName string,
+) (map[string]bool, error) {
+	filter := backend.ListStackNamesFilter{Project: &projectName}
+	if orgName != "" {
+		filter.Organization = &orgName
+	}
+
+	names := map[string]bool{}
+	var token backend.ContinuationToken
+	for {
+		refs, next, err := b.ListStackNames(ctx, filter, token)
+		if err != nil {
+			return nil, err
+		}
+		for _, ref := range refs {
+			names[ref.Name().String()] = true
+		}
+		if next == nil {
+			return names, nil
+		}
+		token = next
+	}
+}
+
+func splitStackName(stackName string) (string, string) {
+	if i := strings.LastIndex(stackName, "/"); i >= 0 {
+		return stackName[:i], stackName[i+1:]
+	}
+	return "", stackName
 }
 
 // resolveConfigDefaults resolves defaults under the project name chosen so far, including any key

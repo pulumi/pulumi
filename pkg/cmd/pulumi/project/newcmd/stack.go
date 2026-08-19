@@ -77,7 +77,8 @@ func PromptAndCreateStack(ctx context.Context, sink diag.Sink, ws pkgWorkspace.C
 		return createStack(ctx, sink, ws, b, stack, root, createOpts)
 	}
 
-	stackName, err := promptStackName(os.Stdout, b, prompt, defaultStackName, yes, opts) //nolint:forbidigo
+	stackName, err := promptStackName(os.Stdout, b, prompt, //nolint:forbidigo
+		defaultStackName, yes, opts, b.ValidateStackName)
 	if err != nil {
 		return nil, err
 	}
@@ -90,14 +91,14 @@ const defaultStackName = "dev"
 
 func promptStackName(
 	w io.Writer, b backend.Backend, prompt promptForValueFunc, defaultName string,
-	yes bool, opts display.Options,
+	yes bool, opts display.Options, validate func(string) error,
 ) (string, error) {
 	if b.SupportsOrganizations() {
 		fmt.Fprint(w, "Please enter your desired stack name.\n"+
 			"To create a stack in an organization, "+
 			"use the format <org-name>/<stack-name> (e.g. `acmecorp/dev`).\n")
 	}
-	return prompt(yes, "Stack name", defaultName, false, b.ValidateStackName, opts)
+	return prompt(yes, "Stack name", defaultName, false, validate, opts)
 }
 
 func createStack(ctx context.Context, sink diag.Sink, ws pkgWorkspace.Context, b backend.Backend,
