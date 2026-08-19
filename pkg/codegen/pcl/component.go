@@ -20,6 +20,9 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
+	"github.com/zclconf/go-cty/cty"
+
+	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
 )
 
@@ -109,6 +112,15 @@ func (c *Component) DeclarationName() string {
 
 func (c *Component) Type() model.Type {
 	return c.VariableType
+}
+
+// Value looks up the component's value in the HCL evaluation context, allowing
+// expressions like `myComponent.someOutput` to be evaluated at runtime.
+func (c *Component) Value(context *hcl.EvalContext) (cty.Value, hcl.Diagnostics) {
+	if value, hasValue := hcl2.LookupVariable(context, c.Name()); hasValue {
+		return value, nil
+	}
+	return cty.DynamicVal, nil
 }
 
 func (c *Component) Traverse(traverser hcl.Traverser) (model.Traversable, hcl.Diagnostics) {
