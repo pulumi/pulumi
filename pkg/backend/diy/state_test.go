@@ -347,11 +347,11 @@ func TestSaveCheckpointPreservesActiveCheckpointOnCompressionTransitionFailure(t
 
 	stackAfter, err := b.GetStack(ctx, ref)
 	require.NoError(t, err)
-	assert.NotNil(t, stackAfter)
+	require.NotNil(t, stackAfter)
 
 	namesAfter, _, err := b.ListStackNames(ctx, backend.ListStackNamesFilter{}, nil)
 	require.NoError(t, err)
-	assert.Len(t, namesAfter, 1)
+	require.Len(t, namesAfter, 1)
 
 	checkpointAfter, _, _, err := b.getCheckpoint(ctx, diyRef)
 	require.NoError(t, err)
