@@ -241,14 +241,16 @@ func New(ctx context.Context, d diag.Sink,
 	})
 	escClient := esc_client.New(client.UserAgent(), cloudURL, apiToken, insecure)
 
-	config, err := workspace.GetPulumiConfig()
-	if err != nil && !os.IsNotExist(err) {
-		return nil, fmt.Errorf("get Pulumi config: %w", err)
-	}
-	var org string
-	if beConfig, ok := config.BackendConfig[cloudURL]; ok {
-		if beConfig.DefaultOrg != "" {
-			org = beConfig.DefaultOrg
+	org := env.DefaultOrg.Value()
+	if org == "" {
+		config, err := workspace.GetPulumiConfig()
+		if err != nil && !os.IsNotExist(err) {
+			return nil, fmt.Errorf("get Pulumi config: %w", err)
+		}
+		if beConfig, ok := config.BackendConfig[cloudURL]; ok {
+			if beConfig.DefaultOrg != "" {
+				org = beConfig.DefaultOrg
+			}
 		}
 	}
 
