@@ -310,7 +310,7 @@ func (b *diyBackend) saveCheckpoint(
 		case encoding.CompressionZstd:
 			oldFile = filePlain + encoding.ZSTDExt
 		}
-		if backupTarget(ctx, b.bucket, oldFile, true) == "" {
+		if backupFile = backupTarget(ctx, b.bucket, oldFile, true); backupFile == "" {
 			oldFile = ""
 		}
 	}

@@ -334,25 +334,27 @@ func TestSaveCheckpointPreservesActiveCheckpointOnCompressionTransitionFailure(t
 	b.bucket = failingBucket
 
 	_, _, saveErr := b.saveCheckpoint(writeCtx, diyRef, versionedCheckpoint)
-
-	// Collect every externally observable result before asserting so a failure cannot hide stack disappearance.
-	oldBytesAfter, oldReadErr := innerBucket.ReadAll(ctx, oldPath)
-	targetExists, targetExistsErr := innerBucket.Exists(ctx, targetPath)
-	stackAfter, getStackErr := b.GetStack(ctx, ref)
-	namesAfter, _, listErr := b.ListStackNames(ctx, backend.ListStackNamesFilter{}, nil)
-	checkpointAfter, _, _, checkpointErr := b.getCheckpoint(ctx, diyRef)
-
 	assert.ErrorIs(t, saveErr, context.Canceled)
 	assert.True(t, failingBucket.attemptedWrite())
-	assert.NoError(t, oldReadErr)
+
+	oldBytesAfter, err := innerBucket.ReadAll(ctx, oldPath)
+	require.NoError(t, err)
 	assert.Equal(t, oldBytes, oldBytesAfter)
-	assert.NoError(t, targetExistsErr)
+
+	targetExists, err := innerBucket.Exists(ctx, targetPath)
+	require.NoError(t, err)
 	assert.False(t, targetExists)
-	assert.NoError(t, getStackErr)
+
+	stackAfter, err := b.GetStack(ctx, ref)
+	require.NoError(t, err)
 	assert.NotNil(t, stackAfter)
-	assert.NoError(t, listErr)
+
+	namesAfter, _, err := b.ListStackNames(ctx, backend.ListStackNamesFilter{}, nil)
+	require.NoError(t, err)
 	assert.Len(t, namesAfter, 1)
-	assert.NoError(t, checkpointErr)
+
+	checkpointAfter, _, _, err := b.getCheckpoint(ctx, diyRef)
+	require.NoError(t, err)
 	assert.Equal(t, checkpointBefore, checkpointAfter)
 }
 
