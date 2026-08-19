@@ -571,9 +571,7 @@ func stateStoreNoun(originalURL string) string {
 }
 
 // describeBackendURL names the backend for an error message: the URL as configured, plus
-// the normalized form when normalization changed something the user did not write. The
-// injected no_tmp_dir parameter is ignored, and a cause that already quotes the normalized
-// URL (go-cloud's S3 errors do) suppresses it rather than printing it twice.
+// the normalized form when normalization changed something the user did not write.
 func describeBackendURL(originalURL, normalized string, cause error) string {
 	resolved := withoutInjectedNoTmpDir(originalURL, normalized)
 	if resolved == originalURL || strings.Contains(cause.Error(), resolved) {
