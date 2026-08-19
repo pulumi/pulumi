@@ -5284,32 +5284,33 @@ func TestTargetedStepAfterDeferredUntargetedSame(t *testing.T) {
 		}),
 	}
 
-	aURN := resource.URN("urn:pulumi:test::test::pkgA:m:typA::a")
-	uURN := resource.URN("urn:pulumi:test::test::pkgA:m:typA::u")
-	vURN := resource.URN("urn:pulumi:test::test::pkgA:m:typA::v")
+	oldDependencyURN := resource.URN("urn:pulumi:test::test::pkgA:m:typA::old-dependency")
+	deferredURN := resource.URN("urn:pulumi:test::test::pkgA:m:typA::deferred")
+	targetedURN := resource.URN("urn:pulumi:test::test::pkgA:m:typA::targeted")
 
-	// When set, u no longer depends on a, so a is free to register after the resources that used
-	// to precede it. u's old state still carries the edge, so u may only be written after a.
+	// When set, the program no longer declares the dependency, so old-dependency is free to
+	// register after the resources that used to precede it. deferred's old state still carries
+	// the edge, so deferred may only be written after old-dependency.
 	var dropEdge bool
 
 	program := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		uOpts := deploytest.ResourceOptions{}
+		deferredOpts := deploytest.ResourceOptions{}
 		if !dropEdge {
-			_, err := monitor.RegisterResource("pkgA:m:typA", "a", true)
+			_, err := monitor.RegisterResource("pkgA:m:typA", "old-dependency", true)
 			require.NoError(t, err)
-			uOpts.Dependencies = []resource.URN{aURN}
+			deferredOpts.Dependencies = []resource.URN{oldDependencyURN}
 		}
 
-		_, err := monitor.RegisterResource("pkgA:m:typA", "u", true, uOpts)
+		_, err := monitor.RegisterResource("pkgA:m:typA", "deferred", true, deferredOpts)
 		require.NoError(t, err)
 
-		_, err = monitor.RegisterResource("pkgA:m:typA", "v", true, deploytest.ResourceOptions{
-			Dependencies: []resource.URN{uURN},
+		_, err = monitor.RegisterResource("pkgA:m:typA", "targeted", true, deploytest.ResourceOptions{
+			Dependencies: []resource.URN{deferredURN},
 		})
 		require.NoError(t, err)
 
 		if dropEdge {
-			_, err = monitor.RegisterResource("pkgA:m:typA", "a", true)
+			_, err = monitor.RegisterResource("pkgA:m:typA", "old-dependency", true)
 			require.NoError(t, err)
 		}
 		return nil
@@ -5324,10 +5325,10 @@ func TestTargetedStepAfterDeferredUntargetedSame(t *testing.T) {
 	require.NoError(t, err)
 
 	dropEdge = true
-	targeted := opts
-	targeted.Targets = deploy.NewUrnTargetsFromUrns([]resource.URN{vURN})
+	targetedOpts := opts
+	targetedOpts.Targets = deploy.NewUrnTargetsFromUrns([]resource.URN{targetedURN})
 
-	snap, err = lt.TestOp(Update).Run(project, p.GetTarget(t, snap), targeted, false, p.BackendClient, nil)
+	snap, err = lt.TestOp(Update).Run(project, p.GetTarget(t, snap), targetedOpts, false, p.BackendClient, nil)
 	require.NoError(t, err)
 	require.NoError(t, snap.VerifyIntegrity())
 }
