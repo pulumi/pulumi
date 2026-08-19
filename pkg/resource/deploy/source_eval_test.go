@@ -40,6 +40,7 @@ import (
 
 	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
+	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
 	sdkproviders "github.com/pulumi/pulumi/sdk/v3/go/common/providers"
@@ -2742,6 +2743,52 @@ func TestResmonCancel(t *testing.T) {
 
 	// Cancel always returns nil or a joinErrors.
 	assert.Equal(t, errors.Join(err), rm.Cancel(t.Context()))
+}
+
+func TestRegisterPackageSameExtensionThreeTimesDoesNotDeadlock(t *testing.T) {
+	t.Parallel()
+
+	rm := &resmon{
+		packageRefMap:   map[string]providers.ProviderRequest{},
+		extensionRefMap: map[string]extensionRef{},
+	}
+	req := &pulumirpc.RegisterPackageRequest{
+		Name:    "pkgA",
+		Version: "1.0.0",
+		Extension: &pulumirpc.Parameterization{
+			Name:    "pkgA-ext",
+			Version: "1.0.0",
+			Value:   []byte("extension-value"),
+		},
+	}
+
+	type result struct {
+		refs []string
+		err  error
+	}
+	done := make(chan result, 1)
+	go func() {
+		refs := make([]string, 0, 3)
+		for range 3 {
+			resp, err := rm.RegisterPackage(t.Context(), req)
+			if err != nil {
+				done <- result{err: err}
+				return
+			}
+			refs = append(refs, resp.Ref)
+		}
+		done <- result{refs: refs}
+	}()
+
+	select {
+	case res := <-done:
+		require.NoError(t, res.err)
+		require.Len(t, res.refs, 3)
+		assert.Equal(t, res.refs[0], res.refs[1])
+		assert.Equal(t, res.refs[0], res.refs[2])
+	case <-time.After(2 * time.Second):
+		t.Fatal("RegisterPackage deadlocked when registering the same extension package three times")
+	}
 }
 
 func TestGetDeploymentInfo(t *testing.T) {
