@@ -322,7 +322,7 @@ func (g *generator) genComponentDefinition(w io.Writer, component *pcl.Component
 
 			outputVars := component.Program.OutputVariables()
 			for _, output := range outputVars {
-				g.Fgenf(w, "%sself.%s = %v\n", g.Indent, output.Name(), output.Value)
+				g.Fgenf(w, "%sself.%s = %v\n", g.Indent, PyName(output.Name()), output.Value)
 			}
 
 			if len(outputVars) == 0 {
