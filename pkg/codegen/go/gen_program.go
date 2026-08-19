@@ -894,7 +894,7 @@ func (g *generator) collectTypeImports(program *pcl.Program, t schema.Type) {
 		}
 		g.addPulumiImport(pkg, vPath, mod, name)
 	case *schema.ResourceType:
-		token = t.Token
+		token = t.Token.String()
 		if t.Resource != nil {
 			packageRef = t.Resource.PackageReference
 		}

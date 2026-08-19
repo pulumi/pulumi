@@ -171,7 +171,7 @@ func TestInterpretPulumiRefs(t *testing.T) {
 		result, err := pkg.InterpretPulumiRefs(description, func(ref schema.DocRef) (string, bool) {
 			if ref.Kind == schema.DocRefKindResource {
 				rt := ref.Type.(*schema.ResourceType)
-				tok := tokens.Type(rt.Token)
+				tok := tokens.Type(rt.Token.String())
 				return tok.Module().Name().String() + "." + tok.Name().String(), true
 			}
 			return "", false
@@ -282,7 +282,7 @@ func TestInterpretPulumiRefs(t *testing.T) {
 		result, err := pkg.InterpretPulumiRefs(pkg.Description, func(ref schema.DocRef) (string, bool) {
 			switch ref.Kind { //nolint:exhaustive // test doesn't care about other cases
 			case schema.DocRefKindResource:
-				return ref.Type.(*schema.ResourceType).Token, true
+				return ref.Type.(*schema.ResourceType).Token.String(), true
 			case schema.DocRefKindType:
 				if obj, ok := ref.Type.(*schema.ObjectType); ok {
 					return obj.Token, true
