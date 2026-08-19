@@ -336,10 +336,34 @@ func TestDefaultOrgConfiguration(t *testing.T) { //nolint:paralleltest,lll // no
 		},
 	}
 
+	t.Run("prefers environment variable", func(t *testing.T) { //nolint:paralleltest,lll // non-thread-safe shared state
+		// The user has set PULUMI_DEFAULT_ORGANIZATION and configured a default org (in an isolated PULUMI_HOME):
+		envDefaultOrg := "env-default-org"
+		t.Setenv("PULUMI_DEFAULT_ORGANIZATION", envDefaultOrg)
+		t.Setenv("PULUMI_HOME", t.TempDir())
+		require.NoError(t, pulumi_workspace.SetBackendConfigDefaultOrg(backend, "my-default-org"))
+
+		testClient := testPulumiClient{}
+		esc := &escCommand{
+			command: "esc",
+			login:   &testLoginManager{creds: creds},
+			ws:      mockWorkspace(creds),
+			newClient: func(userAgent, backendURL, accessToken string, insecure bool) client.Client {
+				return &testClient
+			},
+		}
+
+		err := esc.getCachedClient(t.Context())
+
+		require.NoError(t, err)
+		assert.Equal(t, envDefaultOrg, esc.account.DefaultOrg)
+	})
+
 	t.Run("prefers user configuration", func(t *testing.T) { //nolint:paralleltest,lll // non-thread-safe shared state
 		// GIVEN
 		// The user has configured a default org (in an isolated PULUMI_HOME):
 		userConfiguredDefaultOrg := "my-default-org"
+		t.Setenv("PULUMI_DEFAULT_ORGANIZATION", "")
 		t.Setenv("PULUMI_HOME", t.TempDir())
 		require.NoError(t, pulumi_workspace.SetBackendConfigDefaultOrg(backend, userConfiguredDefaultOrg))
 
@@ -364,6 +388,7 @@ func TestDefaultOrgConfiguration(t *testing.T) { //nolint:paralleltest,lll // no
 	t.Run("falls back to backend client configuration", func(t *testing.T) { //nolint:paralleltest,lll // non-thread-safe shared state
 		// GIVEN
 		// The user has not configured a default org (isolated, empty PULUMI_HOME):
+		t.Setenv("PULUMI_DEFAULT_ORGANIZATION", "")
 		t.Setenv("PULUMI_HOME", t.TempDir())
 
 		// But the backend has an opinion on the default org:
@@ -392,6 +417,7 @@ func TestDefaultOrgConfiguration(t *testing.T) { //nolint:paralleltest,lll // no
 	t.Run("falls back to individual org as last resort", func(t *testing.T) { //nolint:paralleltest,lll // non-thread-safe shared state
 		// GIVEN
 		// The user has not configured a default org (isolated, empty PULUMI_HOME):
+		t.Setenv("PULUMI_DEFAULT_ORGANIZATION", "")
 		t.Setenv("PULUMI_HOME", t.TempDir())
 
 		// And the service has no opinion:

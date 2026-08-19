@@ -23,6 +23,10 @@ import (
 )
 
 func getBackendConfigDefaultOrg(project *workspace.Project) (string, error) {
+	if defaultOrg := env.DefaultOrg.Value(); defaultOrg != "" {
+		return defaultOrg, nil
+	}
+
 	config, err := workspace.GetPulumiConfig()
 	if err != nil && !os.IsNotExist(err) {
 		return "", err
