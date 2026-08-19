@@ -1,0 +1,6 @@
+component: cli/neo
+kind: fix
+body: Always advertise the `terminal` auth method type on the ACP initialize response so editors can run `pulumi login` for authentication
+time: 2026-07-23T00:00:00+00:00
+custom:
+  PR: ""
