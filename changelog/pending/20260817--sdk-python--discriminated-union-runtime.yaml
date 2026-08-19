@@ -1,6 +1,4 @@
 component: sdk/python
 kind: improvement
-body: Resolve discriminated unions by their discriminator tag when serializing inputs
-    and translating outputs, so a value of a union type is named correctly on the wire
-    whether it is a generated class or a plain dict
+body: Correctly resolve discriminated unions by their tag
 time: 2026-08-17T00:00:00+00:00
