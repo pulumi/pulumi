@@ -367,6 +367,29 @@ func stackCrypters(
 	return sm.Encrypter(), sm.Decrypter(), nil
 }
 
+func saveTemplateConfig(
+	ctx context.Context, sink diag.Sink, ssml cmdStack.SecretsManagerLoader, ws pkgWorkspace.Context,
+	project *workspace.Project, s backend.Stack, values []templateConfigValue,
+	commandLineConfig config.Map, configFile string,
+) error {
+	if len(values) == 0 && len(commandLineConfig) == 0 {
+		return nil
+	}
+
+	encrypter, _, err := stackCrypters(ctx, sink, ssml, project, s, configFile)
+	if err != nil {
+		return err
+	}
+	c, err := encryptTemplateConfig(ctx, encrypter, values, commandLineConfig)
+	if err != nil {
+		return err
+	}
+	if len(c) == 0 {
+		return nil
+	}
+	return SaveConfig(ctx, sink, ws, s, c, configFile)
+}
+
 // ParseConfig parses the config values passed via command line flags.
 // These are passed as `-c aws:region=us-east-1 -c foo:bar=blah` and end up
 // in configArray as ["aws:region=us-east-1", "foo:bar=blah"].
