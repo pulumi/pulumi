@@ -113,7 +113,7 @@ func collectResourceModuleInfos(mctx *modContext) []resourceModuleInfo {
 
 		if !res.IsProvider {
 			pkg := mctx.pkg.Name()
-			mod := schema.TokenToRuntimeModule(res.Token)
+			mod := schema.TokenToRuntimeModule(res.Token.String())
 			fqn := mctx.fullyQualifiedImportName()
 
 			rmi, found := byMod[mod]
@@ -122,7 +122,7 @@ func collectResourceModuleInfos(mctx *modContext) []resourceModuleInfo {
 				byMod[mod] = rmi
 			}
 
-			rmi.Classes[res.Token] = tokenToName(res.Token)
+			rmi.Classes[res.Token.String()] = tokenToName(res.Token.String())
 		}
 	}
 
@@ -174,7 +174,7 @@ func collectResourcePackageInfos(mctx *modContext) []resourcePackageInfo {
 
 		if res.IsProvider {
 			pkg := mctx.pkg.Name()
-			token := res.Token
+			token := res.Token.String()
 			fqn := mctx.fullyQualifiedImportName()
 			class := "Provider"
 			out = append(out, resourcePackageInfo{pkg, token, fqn, class})

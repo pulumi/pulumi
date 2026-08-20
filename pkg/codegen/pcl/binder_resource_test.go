@@ -36,7 +36,7 @@ func TestBindResourceOptions(t *testing.T) {
 	fooPkg := schema.Package{
 		Name: "foo",
 		Provider: &schema.Resource{
-			Token: "foo:index:Foo",
+			Token: schema.NewToken("foo", "index", "Foo"),
 			InputProperties: []*schema.Property{
 				{Name: "property", Type: schema.StringType},
 			},
@@ -46,7 +46,7 @@ func TestBindResourceOptions(t *testing.T) {
 		},
 		Resources: []*schema.Resource{
 			{
-				Token: "foo:index:Foo",
+				Token: schema.NewToken("foo", "index", "Foo"),
 				InputProperties: []*schema.Property{
 					{Name: "property", Type: schema.StringType},
 				},
@@ -170,7 +170,7 @@ func TestBindResourceProgram(t *testing.T) {
 	fooPkg := schema.Package{
 		Name: "foo",
 		Provider: &schema.Resource{
-			Token: "foo:index:Foo",
+			Token: schema.NewToken("foo", "index", "Foo"),
 			InputProperties: []*schema.Property{
 				{Name: "property", Type: schema.StringType},
 			},
@@ -180,7 +180,7 @@ func TestBindResourceProgram(t *testing.T) {
 		},
 		Resources: []*schema.Resource{
 			{
-				Token: "foo:index:Foo",
+				Token: schema.NewToken("foo", "index", "Foo"),
 				InputProperties: []*schema.Property{
 					{Name: "property", Type: schema.StringType},
 				},
@@ -238,7 +238,7 @@ func TestBindReadResourceOptions(t *testing.T) {
 	fooPkg := schema.Package{
 		Name: "foo",
 		Provider: &schema.Resource{
-			Token: "foo:index:Foo",
+			Token: schema.NewToken("foo", "index", "Foo"),
 			InputProperties: []*schema.Property{
 				{Name: "property", Type: schema.StringType},
 			},
@@ -248,7 +248,7 @@ func TestBindReadResourceOptions(t *testing.T) {
 		},
 		Resources: []*schema.Resource{
 			{
-				Token: "foo:index:Foo",
+				Token: schema.NewToken("foo", "index", "Foo"),
 				InputProperties: []*schema.Property{
 					{Name: "property", Type: schema.StringType},
 				},

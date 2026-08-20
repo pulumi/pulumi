@@ -390,7 +390,7 @@ type Resource struct {
 	// PackageReference is the PackageReference that defines the resource.
 	PackageReference PackageReference
 	// Token is the resource's Pulumi type token.
-	Token string
+	Token Token
 	// Comment is the description of the resource, if any.
 	Comment string
 	// IsProvider is true if the resource is a provider resource.
@@ -1276,7 +1276,7 @@ func (pkg *Package) MarshalSpec() (spec *PackageSpec, err error) {
 		if err != nil {
 			return nil, fmt.Errorf("marshaling resource '%v': %w", res.Token, err)
 		}
-		spec.Resources[res.Token] = r
+		spec.Resources[res.Token.String()] = r
 	}
 
 	for _, fn := range pkg.Functions {

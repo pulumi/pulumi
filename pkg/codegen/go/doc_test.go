@@ -222,7 +222,7 @@ func buildSelfRefFixture(t *testing.T) (*schema.Package, *schema.Resource, *sche
 
 	var widget *schema.Resource
 	for _, r := range pkg.Resources {
-		if r.Token == "demo:mod/widget:Widget" {
+		if r.Token.String() == "demo:mod/widget:Widget" {
 			widget = r
 		}
 	}

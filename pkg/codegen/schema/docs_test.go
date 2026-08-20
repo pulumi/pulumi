@@ -101,7 +101,7 @@ func getDocsForResource(r *Resource, isProvider bool) []doc {
 	if isProvider {
 		entity = "#/provider"
 	} else {
-		entity = "#/resources/" + url.PathEscape(r.Token)
+		entity = "#/resources/" + url.PathEscape(r.Token.String())
 	}
 
 	docs := slice.Prealloc[doc](2 + len(r.InputProperties) + len(r.Properties))

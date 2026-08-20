@@ -36,13 +36,13 @@ func TestRapidResourceValuesAreStructurallyTyped(t *testing.T) {
 	rapid.Check(t, func(t *rapid.T) {
 		pkg := rapidschema.Package().Draw(t, "pkg")
 		for _, r := range pkg.Resources {
-			inputs := rapidresource.ResourceInputs(r).Draw(t, "inputs:"+r.Token)
+			inputs := rapidresource.ResourceInputs(r).Draw(t, "inputs:"+r.Token.String())
 			assertMapStructurallyTyped(t, inputs, r.InputProperties)
 
-			outputs := rapidresource.ResourceProperties(r).Draw(t, "outputs:"+r.Token)
+			outputs := rapidresource.ResourceProperties(r).Draw(t, "outputs:"+r.Token.String())
 			assertMapStructurallyTyped(t, outputs, r.Properties)
 
-			state := rapidresource.ResourceState(r).Draw(t, "state:"+r.Token)
+			state := rapidresource.ResourceState(r).Draw(t, "state:"+r.Token.String())
 			if r.StateInputs == nil {
 				require.Nil(t, state, "state should be nil when StateInputs is nil")
 			} else {
