@@ -120,13 +120,21 @@ func resourceJSONFromEvent(p engine.ResourcePreEventPayload, opts Options) *Reso
 	return &r
 }
 
-// diffJSONFromStep flattens a step's property changes into a path → change map.
-// The diff itself is computed exactly as the human-readable display computes it
-// (renderDiff / getResourcePropertiesDetails); only the rendering differs.
+// diffJSONFromStep renders the diff computed by stepDiff — the same one the
+// human-readable display prints — as a flat path → change map.
 func diffJSONFromStep(m *engine.StepEventMetadata, refresh, showSecrets bool) map[string]PropertyDiffJSON {
-	// An OpSame diff is metadata-only (e.g. protect); see pulumi/pulumi#15944.
-	if m.Op == deploy.OpSame {
+	diff, include, _ := stepDiff(m, refresh)
+	if diff == nil {
 		return nil
+	}
+	if include != nil {
+		keep := make(map[resource.PropertyKey]bool, len(include))
+		for _, k := range include {
+			keep[k] = true
+		}
+		maps.DeleteFunc(diff.Adds, func(k resource.PropertyKey, _ resource.PropertyValue) bool { return !keep[k] })
+		maps.DeleteFunc(diff.Deletes, func(k resource.PropertyKey, _ resource.PropertyValue) bool { return !keep[k] })
+		maps.DeleteFunc(diff.Updates, func(k resource.PropertyKey, _ resource.ValueDiff) bool { return !keep[k] })
 	}
 
 	out := map[string]PropertyDiffJSON{}
@@ -140,43 +148,7 @@ func diffJSONFromStep(m *engine.StepEventMetadata, refresh, showSecrets bool) ma
 		}
 		out[path.String()] = entry
 	}
-
-	if m.DetailedDiff != nil && m.Old != nil && m.New != nil {
-		if diff, _ := engine.TranslateDetailedDiff(m, refresh); diff != nil {
-			flattenObjectDiff(nil, diff, add)
-		}
-	} else {
-		var olds, news resource.PropertyMap
-		var hide []resource.PropertyPath
-		var include []resource.PropertyKey
-		switch {
-		case m.Old != nil && m.New != nil:
-			isImport := m.Op == deploy.OpImport || m.Op == deploy.OpImportReplacement
-			if len(m.New.Outputs) > 0 && !isImport {
-				olds, news = m.Old.Outputs, m.New.Outputs
-			} else {
-				olds, news, include = m.Old.Inputs, m.New.Inputs, m.Diffs
-			}
-			hide = m.New.HideDiffs
-		case m.New != nil:
-			news = m.New.Inputs
-		case m.Old != nil:
-			olds = m.Old.Inputs
-		}
-
-		if diff, _ := diffOldNew(olds, news, hide); diff != nil {
-			if include != nil {
-				keep := make(map[resource.PropertyKey]bool, len(include))
-				for _, k := range include {
-					keep[k] = true
-				}
-				maps.DeleteFunc(diff.Adds, func(k resource.PropertyKey, _ resource.PropertyValue) bool { return !keep[k] })
-				maps.DeleteFunc(diff.Deletes, func(k resource.PropertyKey, _ resource.PropertyValue) bool { return !keep[k] })
-				maps.DeleteFunc(diff.Updates, func(k resource.PropertyKey, _ resource.ValueDiff) bool { return !keep[k] })
-			}
-			flattenObjectDiff(nil, diff, add)
-		}
-	}
+	flattenObjectDiff(nil, diff, add)
 
 	if len(out) == 0 {
 		return nil

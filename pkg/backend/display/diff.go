@@ -443,14 +443,20 @@ func renderDiff(
 	// An OpSame might have a diff due to metadata changes (e.g. protect) but we should never print a property diff,
 	// even if the properties appear to have changed. See https://github.com/pulumi/pulumi/issues/15944 for context.
 	if metadata.Op != deploy.OpSame {
-		if metadata.DetailedDiff != nil {
+		if metadata.Old != nil && metadata.New != nil {
 			var buf bytes.Buffer
-			if diff, hidden := engine.TranslateDetailedDiff(&metadata, refresh); diff != nil {
-				PrintObjectDiff(&buf, *diff, nil /*include*/, planning, indent+1,
+			diff, include, hidden := stepDiff(&metadata, refresh)
+			if diff == nil && len(hidden) > 0 {
+				// All diffs are hidden, but there was a diff.
+				diff = &resource.ObjectDiff{}
+			}
+			if diff != nil {
+				PrintObjectDiff(&buf, *diff, include, planning, indent+1,
 					opts.SummaryDiff, opts.TruncateOutput, debug, opts.ShowSecrets, hidden)
 			} else {
+				// If there's no diff, render the resource as if nothing changed.
 				PrintObject(
-					&buf, metadata.Old.Inputs, planning, indent+1, deploy.OpSame, true, /*prefix*/
+					&buf, metadata.New.Inputs, planning, indent+1, deploy.OpSame, true, /*prefix*/
 					opts.TruncateOutput, debug, opts.ShowSecrets)
 			}
 			details = buf.String()
