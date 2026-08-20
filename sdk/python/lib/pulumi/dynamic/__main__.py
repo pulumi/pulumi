@@ -16,7 +16,7 @@ import asyncio
 import base64
 import inspect
 from concurrent import futures
-from threading import Event, Lock
+from threading import Event, Lock, Thread
 from typing import Any, Optional
 import os
 import sys
@@ -38,16 +38,23 @@ _PROVIDER_CACHE: dict[str, ResourceProvider] = {}
 _PROVIDER_LOCK = Lock()
 
 
+# Coroutines run on a single event loop for the lifetime of the process, so that
+# a future created by one call can be awaited by another. `run_coroutine_threadsafe`
+# copies the calling thread's context, so ambient settings are preserved.
+_LOOP = asyncio.new_event_loop()
+Thread(target=_LOOP.run_forever, daemon=True).start()
+
+
+async def _resolve(awaitable: Any) -> Any:
+    return await awaitable
+
+
 # _sync runs `result` to completion if the provider implemented the method as a
 # coroutine function, otherwise it returns the value unchanged.
 def _sync(result: Any) -> Any:
     if not inspect.isawaitable(result):
         return result
-    loop = asyncio.new_event_loop()
-    try:
-        return loop.run_until_complete(result)
-    finally:
-        loop.close()
+    return asyncio.run_coroutine_threadsafe(_resolve(result), _LOOP).result()
 
 
 # get_provider deserializes the provider from the string found in
@@ -145,9 +152,7 @@ class DynamicResourceProviderServicer(ResourceProviderServicer):
             outs = result.outs
         outs[PROVIDER_KEY] = news[PROVIDER_KEY]
 
-        loop = asyncio.new_event_loop()
-        outs_proto = loop.run_until_complete(rpc.serialize_properties(outs, {}))
-        loop.close()
+        outs_proto = _sync(rpc.serialize_properties(outs, {}))
 
         fields = {"properties": outs_proto}
         return proto.UpdateResponse(**fields)
@@ -169,9 +174,7 @@ class DynamicResourceProviderServicer(ResourceProviderServicer):
         outs = result.outs if result.outs is not None else {}
         outs[PROVIDER_KEY] = props[PROVIDER_KEY]
 
-        loop = asyncio.new_event_loop()
-        outs_proto = loop.run_until_complete(rpc.serialize_properties(outs, {}))
-        loop.close()
+        outs_proto = _sync(rpc.serialize_properties(outs, {}))
 
         fields = {"id": result.id, "properties": outs_proto}
         return proto.CreateResponse(**fields)
@@ -190,9 +193,7 @@ class DynamicResourceProviderServicer(ResourceProviderServicer):
 
         inputs[PROVIDER_KEY] = news[PROVIDER_KEY]
 
-        loop = asyncio.new_event_loop()
-        inputs_proto = loop.run_until_complete(rpc.serialize_properties(inputs, {}))
-        loop.close()
+        inputs_proto = _sync(rpc.serialize_properties(inputs, {}))
 
         failures_proto = [
             proto.CheckFailure(property=f.property, reason=f.reason) for f in failures
@@ -230,8 +231,7 @@ class DynamicResourceProviderServicer(ResourceProviderServicer):
         outs = result.outs
         outs[PROVIDER_KEY] = props[PROVIDER_KEY]
 
-        loop = asyncio.new_event_loop()
-        outs_proto = loop.run_until_complete(rpc.serialize_properties(outs, {}))
+        outs_proto = _sync(rpc.serialize_properties(outs, {}))
 
         fields = {"id": result.id, "properties": outs_proto}
 
@@ -240,10 +240,8 @@ class DynamicResourceProviderServicer(ResourceProviderServicer):
         if result.inputs is not None:
             inputs = result.inputs.copy()
             inputs[PROVIDER_KEY] = props[PROVIDER_KEY]
-            inputs_proto = loop.run_until_complete(rpc.serialize_properties(inputs, {}))
+            inputs_proto = _sync(rpc.serialize_properties(inputs, {}))
             fields["inputs"] = inputs_proto
-
-        loop.close()
 
         return proto.ReadResponse(**fields)
 
