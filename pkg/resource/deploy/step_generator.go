@@ -2983,7 +2983,7 @@ func diffResource(d diag.Sink, urn resource.URN, id resource.ID, oldInputs, oldO
 	}
 	if diff.Changes == plugin.DiffUnknown {
 		new := processIgnoreChanges(d, urn, newInputs, oldInputs, ignoreChanges)
-		tmp := oldInputs.Diff(new)
+		tmp := unwrapResourceSecretsAndOutputs(oldInputs).Diff(unwrapResourceSecretsAndOutputs(new))
 		if tmp.AnyChanges() {
 			diff.Changes = plugin.DiffSome
 			diff.ChangedKeys = tmp.ChangedKeys()
@@ -2993,6 +2993,42 @@ func diffResource(d diag.Sink, urn resource.URN, id resource.ID, oldInputs, oldO
 		}
 	}
 	return diff, nil
+}
+
+func unwrapResourceSecretsAndOutputs(properties resource.PropertyMap) resource.PropertyMap {
+	unwrapped := make(resource.PropertyMap, len(properties))
+	for k, v := range properties {
+		unwrapped[k] = unwrapResourcePropertySecretsAndOutputs(v)
+	}
+	return unwrapped
+}
+
+func unwrapResourcePropertySecretsAndOutputs(value resource.PropertyValue) resource.PropertyValue {
+	switch {
+	case value.IsSecret():
+		return unwrapResourcePropertySecretsAndOutputs(value.SecretValue().Element)
+	case value.IsOutput():
+		return unwrapResourcePropertySecretsAndOutputs(value.OutputValue().Element)
+	case value.IsComputed():
+		return resource.NewProperty(resource.Computed{
+			Element: unwrapResourcePropertySecretsAndOutputs(value.Input().Element),
+		})
+	case value.IsArray():
+		elements := value.ArrayValue()
+		unwrapped := make([]resource.PropertyValue, len(elements))
+		for i, element := range elements {
+			unwrapped[i] = unwrapResourcePropertySecretsAndOutputs(element)
+		}
+		return resource.NewProperty(unwrapped)
+	case value.IsObject():
+		return resource.NewProperty(unwrapResourceSecretsAndOutputs(value.ObjectValue()))
+	case value.IsResourceReference():
+		ref := value.ResourceReferenceValue()
+		ref.ID = unwrapResourcePropertySecretsAndOutputs(ref.ID)
+		return resource.NewProperty(ref)
+	default:
+		return value
+	}
 }
 
 // issueCheckErrors prints any check errors to the diagnostics error sink.
