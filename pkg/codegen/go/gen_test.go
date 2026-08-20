@@ -25,6 +25,8 @@ import (
 	"strings"
 	"testing"
 
+	mapset "github.com/deckarep/golang-set/v2"
+
 	"gopkg.in/yaml.v3"
 
 	"github.com/stretchr/testify/assert"
@@ -41,7 +43,7 @@ import (
 func TestInputUsage(t *testing.T) {
 	t.Parallel()
 
-	pkg := &pkgContext{}
+	pkg := &pkgContext{schemaNames: mapset.NewSet[string]()}
 	arrayUsage := pkg.getInputUsage("FooArray")
 	assert.Equal(
 		t,

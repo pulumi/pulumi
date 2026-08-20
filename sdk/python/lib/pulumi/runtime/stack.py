@@ -27,6 +27,7 @@ import grpc
 
 from . import settings
 from ._instrumentation import wrap_with_context
+from .proto import resource_pb2
 from .. import _types, log
 from ..resource import (
     ComponentResource,
@@ -44,8 +45,7 @@ from .settings import (
     _get_rpc_manager,
     _load_monitor_feature_support,
     _shutdown_callbacks,
-    _sync_monitor_supports_transforms,
-    _sync_monitor_supports_invoke_transforms,
+    monitor_supports_feature,
     get_monitor,
     get_project,
     get_root_resource,
@@ -495,7 +495,7 @@ def register_resource_transform(t: ResourceTransform) -> None:
     """
     Add a transform to all future resources constructed in this Pulumi stack.
     """
-    if not _sync_monitor_supports_transforms():
+    if not monitor_supports_feature(resource_pb2.RESOURCE_MONITOR_FEATURE_TRANSFORMS):
         raise Exception(
             "The Pulumi CLI does not support transforms. Please update the Pulumi CLI."
         )
@@ -527,7 +527,9 @@ def register_invoke_transform(t: InvokeTransform) -> None:
     Add a transforms to all future invokes called in this Pulumi stack.
     """
 
-    if not _sync_monitor_supports_invoke_transforms():
+    if not monitor_supports_feature(
+        resource_pb2.RESOURCE_MONITOR_FEATURE_INVOKE_TRANSFORMS
+    ):
         raise Exception(
             "The Pulumi CLI does not support invoke transforms. Please update the Pulumi CLI."
         )

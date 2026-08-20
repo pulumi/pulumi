@@ -37,12 +37,12 @@ func chainDepth(v *esc.Value) int {
 // topologies without testdata files.
 type inlineEnvironments map[string][]byte
 
-func (e inlineEnvironments) LoadEnvironment(_ context.Context, name string) ([]byte, Decrypter, error) {
+func (e inlineEnvironments) LoadEnvironment(_ context.Context, name string) ([]byte, string, Decrypter, error) {
 	src, ok := e[name]
 	if !ok {
-		return nil, nil, os.ErrNotExist
+		return nil, "", nil, os.ErrNotExist
 	}
-	return src, rot128{}, nil
+	return src, name, rot128{}, nil
 }
 
 func (e inlineEnvironments) AuthorizeImport(_ context.Context, _ string, _ string, _ bool) error {

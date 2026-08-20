@@ -36,6 +36,7 @@ environments:
 ---
 > esc env get default/test --value detailed null
 {
+  "value": null,
   "trace": {
     "def": {
       "environment": "\u003cyaml\u003e",
@@ -517,6 +518,7 @@ environments:
 }
 > esc env get default/test --value detailed open
 {
+  "value": null,
   "unknown": true,
   "trace": {
     "def": {

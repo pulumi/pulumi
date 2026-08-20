@@ -23,7 +23,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 type ScalarReturnsProvider struct {
@@ -127,7 +127,7 @@ func (p *ScalarReturnsProvider) CheckConfig(
 	_ context.Context, req plugin.CheckConfigRequest,
 ) (plugin.CheckConfigResponse, error) {
 	// Expect just the version
-	version, ok := req.News["version"]
+	version, ok := req.News.GetOk("version")
 	if !ok {
 		return plugin.CheckConfigResponse{
 			Failures: makeCheckFailure("version", "missing version"),
@@ -138,13 +138,13 @@ func (p *ScalarReturnsProvider) CheckConfig(
 			Failures: makeCheckFailure("version", "version is not a string"),
 		}, nil
 	}
-	if version.StringValue() != "21.0.0" {
+	if version.AsString() != "21.0.0" {
 		return plugin.CheckConfigResponse{
 			Failures: makeCheckFailure("version", "version is not 21.0.0"),
 		}, nil
 	}
 
-	if len(req.News) != 1 {
+	if req.News.Len() != 1 {
 		return plugin.CheckConfigResponse{
 			Failures: makeCheckFailure("", fmt.Sprintf("too many properties: %v", req.News)),
 		}, nil
@@ -157,7 +157,7 @@ func (p *ScalarReturnsProvider) Invoke(
 	_ context.Context, req plugin.InvokeRequest,
 ) (plugin.InvokeResponse, error) {
 	if req.Tok == "scalar-returns:index:invokeSecret" {
-		value, ok := req.Args["value"]
+		value, ok := req.Args.GetOk("value")
 		if !ok {
 			return plugin.InvokeResponse{
 				Failures: makeCheckFailure("value", "missing value"),
@@ -182,13 +182,13 @@ func (p *ScalarReturnsProvider) Invoke(
 		// Single value returns work because SDKs automatically extract single value returns in their
 		// invoke implementations.
 		return plugin.InvokeResponse{
-			Properties: resource.PropertyMap{
-				"return": resource.MakeSecret(resource.NewProperty(float64(len(value.StringValue())))),
-			},
+			Properties: property.NewMap(map[string]property.Value{
+				"return": property.New(float64(len(value.AsString()))).WithSecret(true),
+			}),
 		}, nil
 	}
 	if req.Tok == "scalar-returns:index:invokeArray" {
-		value, ok := req.Args["value"]
+		value, ok := req.Args.GetOk("value")
 		if !ok {
 			return plugin.InvokeResponse{
 				Failures: makeCheckFailure("value", "missing value"),
@@ -210,26 +210,26 @@ func (p *ScalarReturnsProvider) Invoke(
 			}, nil
 		}
 
-		result := []resource.PropertyValue{}
-		for i := 0; i < len(value.StringValue()); i++ {
-			c := value.StringValue()[i]
+		result := []property.Value{}
+		for i := 0; i < len(value.AsString()); i++ {
+			c := value.AsString()[i]
 			if c == 'i' || c == 'o' || c == 'u' || c == 'e' || c == 'a' {
-				result = append(result, resource.NewProperty(true))
+				result = append(result, property.New(true))
 			} else {
-				result = append(result, resource.NewProperty(false))
+				result = append(result, property.New(false))
 			}
 		}
 
 		// Single value returns work because SDKs automatically extract single value returns in their
 		// invoke implementations.
 		return plugin.InvokeResponse{
-			Properties: resource.PropertyMap{
-				"thisCanBeAnything": resource.NewProperty(result),
-			},
+			Properties: property.NewMap(map[string]property.Value{
+				"thisCanBeAnything": property.New(result),
+			}),
 		}, nil
 	}
 	if req.Tok == "scalar-returns:index:invokeMap" {
-		value, ok := req.Args["value"]
+		value, ok := req.Args.GetOk("value")
 		if !ok {
 			return plugin.InvokeResponse{
 				Failures: makeCheckFailure("value", "missing value"),
@@ -251,18 +251,18 @@ func (p *ScalarReturnsProvider) Invoke(
 			}, nil
 		}
 
-		result := resource.NewProperty(resource.PropertyMap{
-			"value": resource.NewProperty(value.StringValue() + " world"),
+		result := property.New(map[string]property.Value{
+			"value": property.New(value.AsString() + " world"),
 		})
 
-		if value.StringValue() == "secret" {
-			result = resource.MakeSecret(result)
+		if value.AsString() == "secret" {
+			result = result.WithSecret(true)
 		}
 
 		return plugin.InvokeResponse{
-			Properties: resource.PropertyMap{
+			Properties: property.NewMap(map[string]property.Value{
 				"result": result,
-			},
+			}),
 		}, nil
 	}
 

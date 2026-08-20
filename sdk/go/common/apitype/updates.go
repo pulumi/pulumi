@@ -308,9 +308,8 @@ type StackRenameRequest struct {
 // This endpoint combines the functionality of CreateUpdate and StartUpdate into a single
 // API call to reduce latency during startup.
 type BeginUpdateRequest struct {
-	UpdateKind UpdateKind              `json:"updateKind"`
-	Program    UpdateProgramRequest    `json:"program"`
-	Tags       map[StackTagName]string `json:"tags,omitempty"`
+	UpdateKind UpdateKind           `json:"updateKind"`
+	Program    UpdateProgramRequest `json:"program"`
 	StartUpdateRequest
 }
 
@@ -320,6 +319,7 @@ type BeginUpdateRequest struct {
 type BeginUpdateResponse struct {
 	StartUpdateResponse
 	UpdateProgramResponse
-	Deployment UntypedDeployment `json:"deployment"`
-	Stack      Stack             `json:"stack"`
+	// Deployment may be omitted by the service; the client then fetches it separately.
+	Deployment *UntypedDeployment `json:"deployment,omitempty"`
+	Stack      Stack              `json:"stack"`
 }

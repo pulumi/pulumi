@@ -18,7 +18,12 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"io"
+	"io/fs"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -495,4 +500,185 @@ func TestLoginEnvConflict(t *testing.T) {
 		"Warning: The PULUMI_BACKEND_URL environment variable is set to "+
 			"'https://env-backend.example.com', which conflicts with the login URL "+
 			"'https://example.com'.")
+}
+
+// TestLoginErrorMessage tests that a failed login names the backend it failed against and,
+// when that backend came from configuration rather than the command line, points at the
+// source that actually needs changing.
+//
+//nolint:paralleltest // the project case changes the working directory
+func TestLoginErrorMessage(t *testing.T) {
+	credsF := func() (workspace.Credentials, error) {
+		return workspace.Credentials{Current: "file:///stored/state"}, nil
+	}
+
+	tests := []struct {
+		name string
+		args []string
+		ws   pkgWorkspace.Context
+		// inProjectDir runs the command from a directory holding a Pulumi.yaml, so that the
+		// project hint can name the real file.
+		inProjectDir bool
+		envVars      map[string]string
+		// resolveTo is the filesystem path the backend URL normalizes to, when that differs
+		// from the URL itself. Defaults to the URL's own path.
+		resolveTo   string
+		contains    []string
+		notContains []string
+	}{
+		{
+			name: "stored credentials point at pulumi login",
+			ws: &pkgWorkspace.MockContext{
+				GetStoredCredentialsF: credsF,
+			},
+			contains: []string{`"file:///stored/state"`, "pulumi login <url>"},
+		},
+		{
+			name: "env var points at the environment",
+			ws: &pkgWorkspace.MockContext{
+				GetStoredCredentialsF: credsF,
+			},
+			envVars:  map[string]string{"PULUMI_BACKEND_URL": "file:///env/state"},
+			contains: []string{`"file:///env/state"`, "PULUMI_BACKEND_URL"},
+		},
+		{
+			name: "project setting points at the project file",
+			ws: &pkgWorkspace.MockContext{
+				ReadProjectF: func(string) (*workspace.Project, string, error) {
+					return &workspace.Project{
+						Backend: &workspace.ProjectBackend{URL: "file:///project/state"},
+					}, "", nil
+				},
+				GetStoredCredentialsF: credsF,
+			},
+			inProjectDir: true,
+			contains:     []string{`"file:///project/state"`, "Pulumi.yaml"},
+		},
+		{
+			name:        "explicit URL gets no hint",
+			args:        []string{"file:///explicit/state"},
+			ws:          &pkgWorkspace.MockContext{},
+			contains:    []string{`"file:///explicit/state"`},
+			notContains: []string{"This backend comes from", "stored Pulumi credentials"},
+		},
+		{
+			// A `~` path resolves to somewhere the URL does not name, so the resolved
+			// location has to survive.
+			name:      "resolved path is kept when it differs from the URL",
+			args:      []string{"file://~/state"},
+			ws:        &pkgWorkspace.MockContext{},
+			resolveTo: "/home/someone/state",
+			contains:  []string{`"file://~/state"`, "/home/someone/state"},
+		},
+		{
+			name:     "nothing configured falls back to the Pulumi Cloud",
+			ws:       &pkgWorkspace.MockContext{},
+			contains: []string{"could not log in to the Pulumi Cloud"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if tt.inProjectDir {
+				dir := t.TempDir()
+				require.NoError(t, os.WriteFile(filepath.Join(dir, "Pulumi.yaml"),
+					[]byte("name: loginproj\nruntime: nodejs\n"), 0o600))
+				t.Chdir(dir)
+			}
+
+			lm := &backend.MockLoginManager{
+				LoginF: func(
+					ctx context.Context,
+					ws pkgWorkspace.Context,
+					sink diag.Sink,
+					url string,
+					project *workspace.Project,
+					setCurrent bool,
+					insecure bool,
+					color colors.Colorization,
+				) (pkgBackend.Backend, error) {
+					// Mirror how the DIY backend reports a bucket it cannot open: the wrapper
+					// names the normalized URL, which carries internal query parameters, and
+					// the cause is a path error for the resolved location.
+					resolved := tt.resolveTo
+					if resolved == "" {
+						resolved = strings.TrimPrefix(url, "file://")
+					}
+					return nil, fmt.Errorf("unable to open bucket %s: %w", url+"?no_tmp_dir=true",
+						&fs.PathError{Op: "stat", Path: resolved, Err: fs.ErrNotExist})
+				},
+			}
+
+			cmd := NewLoginCmd(tt.ws, lm, env.NewEnv(env.MapStore(tt.envVars)))
+			cmd.SetOut(io.Discard)
+			cmd.SetErr(io.Discard)
+			cmd.SetContext(t.Context())
+			cmd.SetArgs(tt.args)
+
+			err := cmd.Execute()
+			require.Error(t, err)
+			for _, want := range tt.contains {
+				require.ErrorContains(t, err, want)
+			}
+			for _, unwanted := range tt.notContains {
+				require.NotContains(t, err.Error(), unwanted)
+			}
+			// The normalized URL and its internal query parameters are noise.
+			require.NotContains(t, err.Error(), "no_tmp_dir")
+		})
+	}
+}
+
+// TestUnwrapBucketOpenError checks that the DIY backend's wrapper is stripped whichever
+// noun it used for the backend scheme, since login names the URL itself.
+func TestUnwrapBucketOpenError(t *testing.T) {
+	t.Parallel()
+
+	notExist := &fs.PathError{Op: "stat", Path: "/srv/state", Err: fs.ErrNotExist}
+
+	tests := []struct {
+		name     string
+		err      error
+		cloudURL string
+		expected string
+	}{
+		{
+			name:     "bucket wrapper is stripped",
+			err:      fmt.Errorf("unable to open bucket %q: %w", "s3://state", notExist),
+			cloudURL: "file:///srv/state",
+			expected: "file does not exist",
+		},
+		{
+			name:     "state directory wrapper is stripped",
+			err:      fmt.Errorf("unable to open state directory %q: %w", "file:///srv/state", notExist),
+			cloudURL: "file:///srv/state",
+			expected: "file does not exist",
+		},
+		{
+			name:     "state database wrapper is stripped",
+			err:      fmt.Errorf("unable to open state database %q: %w", "postgres://db", errors.New("no route to host")),
+			cloudURL: "postgres://db",
+			expected: "no route to host",
+		},
+		{
+			name:     "a resolved path that the URL does not name is kept",
+			err:      fmt.Errorf("unable to open state directory %q: %w", "file://~/state", notExist),
+			cloudURL: "file://~/state",
+			expected: "stat /srv/state: file does not exist",
+		},
+		{
+			name:     "an unrelated error is left alone",
+			err:      errors.New("could not read access token"),
+			cloudURL: "https://api.pulumi.com",
+			expected: "could not read access token",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			assert.Equal(t, tt.expected, unwrapBucketOpenError(tt.err, tt.cloudURL).Error())
+		})
+	}
 }

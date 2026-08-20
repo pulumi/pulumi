@@ -46,6 +46,9 @@ func (m MockRegisterResourceEvent) Goal() *pkgresource.Goal            { return 
 func (m MockRegisterResourceEvent) Done(result *deploy.RegisterResult) {}
 func (m MockRegisterResourceEvent) Extension() *apitype.Extension      { return nil }
 func (m MockRegisterResourceEvent) ExtensionRef() apitype.ExtensionRef { return "" }
+func (m MockRegisterResourceEvent) StateMigrations() []deploy.StateMigrationFunction {
+	return nil
+}
 
 type MockStackPersister struct {
 	SavedSnapshots []*apitype.DeploymentV3

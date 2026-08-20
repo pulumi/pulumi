@@ -34,6 +34,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/pluginstorage"
 	"github.com/pulumi/pulumi/pkg/v3/registry"
+	"github.com/pulumi/pulumi/pkg/v3/util/progress"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
@@ -44,6 +45,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/spf13/cobra"
+	"golang.org/x/sync/errgroup"
 )
 
 func newPluginInstallCmd() *cobra.Command {
@@ -92,6 +94,9 @@ func newPluginInstallCmd() *cobra.Command {
 		"reinstall", false, "Reinstall a plugin even if it already exists")
 	cmd.PersistentFlags().StringVar(&picmd.checksum,
 		"checksum", "", "The expected SHA256 checksum for the plugin archive")
+	cmd.PersistentFlags().IntVar(&picmd.parallel,
+		"parallel", 4, "The max number of concurrent installs to perform. "+
+			"Parallelism of less than 1 implies unbounded parallelism")
 
 	return cmd
 }
@@ -102,6 +107,7 @@ type pluginInstallCmd struct {
 	file      string
 	reinstall bool
 	checksum  string
+	parallel  int
 
 	diag     diag.Sink
 	env      env.Env
@@ -116,7 +122,7 @@ type pluginInstallCmd struct {
 	installPluginSpec func(
 		ctx context.Context, label string,
 		install workspace.PluginDescriptor, file string,
-		sink diag.Sink, stderr io.Writer, color colors.Colorization, reinstall bool,
+		sink diag.Sink, bars *progress.Group, color colors.Colorization, reinstall bool,
 	) error // == installPluginSpec
 }
 
@@ -269,6 +275,12 @@ func (cmd *pluginInstallCmd) Run(ctx context.Context, args []string) error {
 	}
 
 	// Now for each kind, name, version pair, download it from the release website, and install it.
+	bars := progress.NewGroup(cmd.stderr)
+	var group errgroup.Group
+	if cmd.parallel > 0 {
+		group.SetLimit(cmd.parallel)
+	}
+
 	for _, install := range installs {
 		label := fmt.Sprintf("[%s plugin %s]", install.Kind, install)
 
@@ -288,20 +300,19 @@ func (cmd *pluginInstallCmd) Run(ctx context.Context, args []string) error {
 			}
 		}
 
-		cmd.diag.Infoerrf(diag.Message("", "%s installing"), label)
-		err := cmd.installPluginSpec(ctx, label, install, cmd.file, cmd.diag, cmd.stderr, cmd.color, cmd.reinstall)
-		if err != nil {
-			return err
-		}
+		group.Go(func() error {
+			cmd.diag.Infoerrf(diag.Message("", "%s installing"), label)
+			return cmd.installPluginSpec(ctx, label, install, cmd.file, cmd.diag, bars, cmd.color, cmd.reinstall)
+		})
 	}
 
-	return nil
+	return group.Wait()
 }
 
 func installPluginSpec(
 	ctx context.Context, label string,
 	install workspace.PluginDescriptor, file string,
-	sink diag.Sink, stderr io.Writer, color colors.Colorization, reinstall bool,
+	sink diag.Sink, bars *progress.Group, color colors.Colorization, reinstall bool,
 ) error {
 	// If we got here, actually try to do the download.
 	var source string
@@ -309,7 +320,7 @@ func installPluginSpec(
 	var err error
 	if file == "" {
 		withProgress := func(stream io.ReadCloser, size int64) io.ReadCloser {
-			return workspace.ReadCloserProgressBar(stream, stderr, size, "Downloading plugin", color)
+			return bars.Wrap(stream, size, fmt.Sprintf("Downloading plugin %s", install), color)
 		}
 		retry := func(err error, attempt int, limit int, delay time.Duration) {
 			sink.Warningf(
@@ -327,7 +338,7 @@ func installPluginSpec(
 		// content (and thus this stream) when it returns, which is what finishes the bar.
 		var unpackStream io.ReadCloser = r
 		if fi, statErr := r.Stat(); statErr == nil {
-			unpackStream = workspace.ReadCloserProgressBar(r, stderr, fi.Size(), "Unpacking plugin", color)
+			unpackStream = bars.Wrap(r, fi.Size(), fmt.Sprintf("Unpacking plugin %s", install), color)
 		}
 
 		payload = pluginstorage.TarPlugin(unpackStream)

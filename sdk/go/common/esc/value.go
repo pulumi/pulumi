@@ -35,7 +35,7 @@ type ValueType interface {
 type Value struct {
 	// Value holds the concrete representation of the value. May be nil, bool, json.Number, string, []Value, or
 	// map[string]Value.
-	Value any `json:"value,omitempty"`
+	Value any `json:"value"`
 
 	// Secret is true if this value is secret.
 	Secret bool `json:"secret,omitempty"`

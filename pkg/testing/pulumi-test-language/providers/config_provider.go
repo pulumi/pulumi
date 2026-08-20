@@ -24,6 +24,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 // Config provider is a small provider to test things related to provider configuration and explicit provider resources.
@@ -143,24 +144,24 @@ func (p *ConfigProvider) CheckConfig(
 ) (plugin.CheckConfigResponse, error) {
 	// We should have the version but also name and pluginDownloadURL
 
-	check := func(required bool, key resource.PropertyKey, expected string) *plugin.CheckConfigResponse {
-		value, ok := req.News[key]
+	check := func(required bool, key string, expected string) *plugin.CheckConfigResponse {
+		value, ok := req.News.GetOk(key)
 		if !ok {
 			if required {
 				return &plugin.CheckConfigResponse{
-					Failures: makeCheckFailure(key, fmt.Sprintf("missing %s", key)),
+					Failures: makeCheckFailure(resource.PropertyKey(key), "missing "+key),
 				}
 			}
 			return nil
 		}
 		if !value.IsString() {
 			return &plugin.CheckConfigResponse{
-				Failures: makeCheckFailure(key, fmt.Sprintf("%s is not a string", key)),
+				Failures: makeCheckFailure(resource.PropertyKey(key), key+" is not a string"),
 			}
 		}
-		if expected != "" && value.StringValue() != expected {
+		if expected != "" && value.AsString() != expected {
 			return &plugin.CheckConfigResponse{
-				Failures: makeCheckFailure(key, fmt.Sprintf("%s is not %s", key, expected)),
+				Failures: makeCheckFailure(resource.PropertyKey(key), fmt.Sprintf("%s is not %s", key, expected)),
 			}
 		}
 		return nil
@@ -181,7 +182,7 @@ func (p *ConfigProvider) CheckConfig(
 		return *ok, nil
 	}
 
-	if len(req.News) > 3 {
+	if req.News.Len() > 3 {
 		return plugin.CheckConfigResponse{
 			Failures: makeCheckFailure("", fmt.Sprintf("too many properties: %v", req.News)),
 		}, nil
@@ -197,7 +198,7 @@ func (p *ConfigProvider) Invoke(
 		return plugin.InvokeResponse{}, fmt.Errorf("unknown function %v", req.Tok)
 	}
 
-	text, ok := req.Args["text"]
+	text, ok := req.Args.GetOk("text")
 	if !ok {
 		return plugin.InvokeResponse{
 			Failures: makeCheckFailure("text", "missing text"),
@@ -210,9 +211,9 @@ func (p *ConfigProvider) Invoke(
 	}
 
 	return plugin.InvokeResponse{
-		Properties: resource.PropertyMap{
-			"text": resource.NewProperty(p.name + ": " + text.StringValue()),
-		},
+		Properties: property.NewMap(map[string]property.Value{
+			"text": property.New(p.name + ": " + text.AsString()),
+		}),
 	}, nil
 }
 

@@ -166,6 +166,11 @@ type deploymentOptions struct {
 	// Resources to import, if this is an import.
 	imports []deploy.Import
 
+	// the snippet list persisted before the deployment runs, and the tracker deciding which
+	// held-back snippet deletions may be persisted afterwards (see Update)
+	snippetsPrePersist []resource.Snippet
+	snippetDeletions   *snippetDeletionTracker
+
 	// true if this deployment is (only) a refresh operation. This should not be
 	// confused with UpdateOptions.Refresh, which will be true whenever a refresh
 	// is happening as part of an operation (e.g. `up --refresh`).
@@ -265,7 +270,9 @@ func newDeployment(
 		return nil, err
 	}
 	if len(opts.Snippets) > 0 && !opts.DryRun {
-		if err := persistValidatedSnippets(baseCtx, ctx.SnapshotManager, target.Snapshot.Snippets, plugctx); err != nil {
+		if err := persistValidatedSnippets(
+			baseCtx, ctx.SnapshotManager, target.Snapshot.Snippets, opts.snippetsPrePersist, plugctx,
+		); err != nil {
 			contract.IgnoreClose(plugctx)
 			return nil, err
 		}

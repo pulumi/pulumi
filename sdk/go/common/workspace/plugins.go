@@ -40,15 +40,12 @@ import (
 	"time"
 
 	"github.com/blang/semver"
-	"github.com/cheggaaa/pb"
 	"github.com/djherbis/times"
 	"github.com/go-git/go-git/v6/plumbing"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/gitutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/httputil"
@@ -1374,6 +1371,22 @@ func (spec PluginDescriptor) String() string {
 	return spec.Name + version
 }
 
+// pluginLastUsedSuffix is the suffix of the sidecar file, next to a cached plugin's
+// directory, whose mtime records the last time the plugin was resolved for execution.
+// The directory's access time can't serve this purpose: executing a file doesn't update
+// its parent directory's atime, and atime updates are disabled by default on Windows and
+// throttled on Linux (relatime). See https://github.com/pulumi/pulumi/issues/4404.
+const pluginLastUsedSuffix = ".lastused"
+
+// markPluginUsed records, best-effort, that the cached plugin at dir is about to be run.
+func markPluginUsed(dir string) {
+	contract.Requiref(strings.LastIndexByte(dir, filepath.Separator) != (len(dir)-1),
+		"dir", "%q must not end in / or be empty", dir)
+	if err := os.WriteFile(dir+pluginLastUsedSuffix, nil, 0o600); err != nil {
+		logging.V(6).Infof("failed to record last-use time for %s: %v", dir, err)
+	}
+}
+
 // PluginFS captures the filesystem operations used by PluginInfo (see Delete and
 // setFileMetadata). It exists so that plugin removal and metadata lookups can be exercised
 // without touching the real filesystem. A PluginInfo with a nil FS uses the real filesystem.
@@ -1483,10 +1496,11 @@ func (info *PluginInfo) Delete() error {
 	if err := fs.RemoveAll(dir); err != nil {
 		return err
 	}
-	// Attempt to delete any leftover .partial or .lock files.
+	// Attempt to delete any leftover .partial, .lock, or .lastused files.
 	// Don't fail the operation if we can't delete these.
 	contract.IgnoreError(fs.Remove(dir + ".partial"))
 	contract.IgnoreError(fs.Remove(dir + ".lock"))
+	contract.IgnoreError(fs.Remove(dir + pluginLastUsedSuffix))
 	return nil
 }
 
@@ -1511,7 +1525,13 @@ func (info *PluginInfo) setFileMetadata() error {
 		info.installTime = tinfo.ModTime()
 	}
 
-	info.lastUsedTime = tinfo.AccessTime()
+	// Prefer the last-used marker written by markPluginUsed; the directory's access time
+	// is only a fallback, since atime is unreliable on most platforms.
+	if marker, err := info.filesystem().Stat(info.Path + pluginLastUsedSuffix); err == nil {
+		info.lastUsedTime = marker.ModTime()
+	} else {
+		info.lastUsedTime = tinfo.AccessTime()
+	}
 
 	return nil
 }
@@ -2068,7 +2088,7 @@ func IsPluginBundled(kind apitype.PluginKind, name string) bool {
 // possible to opt out of this behavior by setting PULUMI_IGNORE_AMBIENT_PLUGINS to any non-empty value.
 func GetPluginPath(ctx context.Context, d diag.Sink, spec PluginDescriptor, projectPlugins []ProjectPlugin,
 ) (string, error) {
-	info, path, err := getPluginInfoAndPath(ctx, d, spec, projectPlugins)
+	info, path, err := getPluginInfoAndPath(ctx, d, spec, projectPlugins, true /*markUsed*/)
 	if err != nil {
 		return "", err
 	}
@@ -2080,7 +2100,7 @@ func GetPluginPath(ctx context.Context, d diag.Sink, spec PluginDescriptor, proj
 
 func GetPluginInfo(ctx context.Context, d diag.Sink, spec PluginDescriptor, projectPlugins []ProjectPlugin,
 ) (*PluginInfo, error) {
-	info, path, err := getPluginInfoAndPath(ctx, d, spec, projectPlugins)
+	info, path, err := getPluginInfoAndPath(ctx, d, spec, projectPlugins, false /*markUsed*/)
 	if err != nil {
 		return nil, err
 	}
@@ -2111,11 +2131,15 @@ func getPluginPath(info *PluginInfo) string {
 //   - if found as an ambient plugin, nil and the path to the executable
 //   - if found in the pulumi dir's installed plugins, a PluginInfo and path to the executable
 //   - an error in all other cases.
+//
+// If markUsed is true and the plugin is resolved from the plugin cache, the plugin's
+// last-used time is recorded.
 func getPluginInfoAndPath(
 	ctx context.Context,
 	d diag.Sink,
 	spec PluginDescriptor,
 	projectPlugins []ProjectPlugin,
+	markUsed bool,
 ) (*PluginInfo, string, error) {
 	filename := spec.File()
 
@@ -2261,12 +2285,16 @@ func getPluginInfoAndPath(
 	}
 
 	_, subdir := spec.LocalName()
-	// If the plugin is located in a subdir, we need to fix up the path to include the subdir.
-	if subdir != "" && match != nil {
-		match.Path = filepath.Join(match.Path, subdir)
-	}
-
 	if match != nil {
+		if markUsed {
+			// Record last use against the plugin's root directory in the cache, before any
+			// subdir fixup, to match the paths reported by GetPlugins.
+			markPluginUsed(match.Path)
+		}
+		// If the plugin is located in a subdir, we need to fix up the path to include the subdir.
+		if subdir != "" {
+			match.Path = filepath.Join(match.Path, subdir)
+		}
 		matchPath := getPluginPath(match)
 		logging.V(6).Infof("GetPluginPath(%s, %s, %v, %s): found in cache at %s",
 			spec.Kind, spec.Name, spec.Version, spec.PluginDownloadURL, matchPath)
@@ -2432,32 +2460,6 @@ func SelectCompatiblePlugin(
 	return &bestMatch
 }
 
-// ReadCloserProgressBar displays a progress bar for the given closer and returns a wrapper closer to manipulate it.
-func ReadCloserProgressBar(
-	closer io.ReadCloser, w io.Writer, size int64, message string, colorization colors.Colorization,
-) io.ReadCloser {
-	if size == -1 || !cmdutil.Interactive() {
-		// We can't render a progress bar (unknown size, or non-interactive output), but still tell the
-		// user what's happening.
-		fmt.Fprintln(w, colorization.Colorize(colors.SpecUnimportant+message+colors.Reset))
-		return closer
-	}
-
-	// If we know the length of the download, show a progress bar.
-	bar := pb.New(int(size))
-	bar.Output = w
-	bar.Prefix(colorization.Colorize(colors.SpecUnimportant + message + ":"))
-	bar.Postfix(colorization.Colorize(colors.Reset))
-	bar.SetMaxWidth(80)
-	bar.SetUnits(pb.U_BYTES)
-	bar.Start()
-
-	return &barCloser{
-		bar:        bar,
-		readCloser: bar.NewProxyReader(closer),
-	}
-}
-
 // getCandidateExtensions returns a set of file extensions (including the dot seprator) which should be used when
 // probing for an executable file.
 func getCandidateExtensions() []string {
@@ -2573,18 +2575,4 @@ func getPluginSize(path string) (uint64, error) {
 		size += uint64(fs)
 	}
 	return size, nil
-}
-
-type barCloser struct {
-	bar        *pb.ProgressBar
-	readCloser io.ReadCloser
-}
-
-func (bc *barCloser) Read(dest []byte) (int, error) {
-	return bc.readCloser.Read(dest)
-}
-
-func (bc *barCloser) Close() error {
-	bc.bar.Finish()
-	return bc.readCloser.Close()
 }

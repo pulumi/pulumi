@@ -6,7 +6,7 @@ import builtins as _builtins
 import warnings
 import pulumi
 import pulumi.runtime
-from typing import Any, Mapping, Optional, Sequence, Union, overload
+from typing import Any, Mapping, Optional, Sequence, Union, overload, Literal
 from . import _utilities
 
 __all__ = [
@@ -25,7 +25,7 @@ __all__ = [
 @pulumi.input_type
 class Variant1Args:
     def __init__(__self__, *,
-                 discriminant_kind: pulumi.Input[_builtins.str],
+                 discriminant_kind: pulumi.Input[Literal['variant1']],
                  extra: pulumi.Input[Optional[_builtins.str]] = None,
                  payload: pulumi.Input[Optional[_builtins.str]] = None):
         pulumi.set(__self__, "discriminant_kind", 'variant1')
@@ -36,11 +36,11 @@ class Variant1Args:
 
     @_builtins.property
     @pulumi.getter(name="discriminantKind")
-    def discriminant_kind(self) -> pulumi.Input[_builtins.str]:
+    def discriminant_kind(self) -> pulumi.Input[Literal['variant1']]:
         return pulumi.get(self, "discriminant_kind")
 
     @discriminant_kind.setter
-    def discriminant_kind(self, value: pulumi.Input[_builtins.str]):
+    def discriminant_kind(self, value: pulumi.Input[Literal['variant1']]):
         pulumi.set(self, "discriminant_kind", value)
 
     @_builtins.property
@@ -65,7 +65,7 @@ class Variant1Args:
 @pulumi.input_type
 class Variant10Args:
     def __init__(__self__, *,
-                 discriminant_kind: pulumi.Input[_builtins.str],
+                 discriminant_kind: pulumi.Input[Literal['variant10']],
                  note: pulumi.Input[Optional[_builtins.str]] = None,
                  payload: pulumi.Input[Optional[_builtins.str]] = None):
         pulumi.set(__self__, "discriminant_kind", 'variant10')
@@ -76,11 +76,11 @@ class Variant10Args:
 
     @_builtins.property
     @pulumi.getter(name="discriminantKind")
-    def discriminant_kind(self) -> pulumi.Input[_builtins.str]:
+    def discriminant_kind(self) -> pulumi.Input[Literal['variant10']]:
         return pulumi.get(self, "discriminant_kind")
 
     @discriminant_kind.setter
-    def discriminant_kind(self, value: pulumi.Input[_builtins.str]):
+    def discriminant_kind(self, value: pulumi.Input[Literal['variant10']]):
         pulumi.set(self, "discriminant_kind", value)
 
     @_builtins.property
@@ -105,7 +105,7 @@ class Variant10Args:
 @pulumi.input_type
 class Variant2Args:
     def __init__(__self__, *,
-                 discriminant_kind: pulumi.Input[_builtins.str],
+                 discriminant_kind: pulumi.Input[Literal['variant2']],
                  extra: pulumi.Input[Optional[_builtins.str]] = None,
                  payload: pulumi.Input[Optional[_builtins.str]] = None):
         pulumi.set(__self__, "discriminant_kind", 'variant2')
@@ -116,11 +116,11 @@ class Variant2Args:
 
     @_builtins.property
     @pulumi.getter(name="discriminantKind")
-    def discriminant_kind(self) -> pulumi.Input[_builtins.str]:
+    def discriminant_kind(self) -> pulumi.Input[Literal['variant2']]:
         return pulumi.get(self, "discriminant_kind")
 
     @discriminant_kind.setter
-    def discriminant_kind(self, value: pulumi.Input[_builtins.str]):
+    def discriminant_kind(self, value: pulumi.Input[Literal['variant2']]):
         pulumi.set(self, "discriminant_kind", value)
 
     @_builtins.property
@@ -145,7 +145,7 @@ class Variant2Args:
 @pulumi.input_type
 class Variant3Args:
     def __init__(__self__, *,
-                 discriminant_kind: pulumi.Input[_builtins.str],
+                 discriminant_kind: pulumi.Input[Literal['variant3']],
                  count: pulumi.Input[Optional[_builtins.int]] = None,
                  payload: pulumi.Input[Optional[_builtins.str]] = None):
         pulumi.set(__self__, "discriminant_kind", 'variant3')
@@ -156,11 +156,11 @@ class Variant3Args:
 
     @_builtins.property
     @pulumi.getter(name="discriminantKind")
-    def discriminant_kind(self) -> pulumi.Input[_builtins.str]:
+    def discriminant_kind(self) -> pulumi.Input[Literal['variant3']]:
         return pulumi.get(self, "discriminant_kind")
 
     @discriminant_kind.setter
-    def discriminant_kind(self, value: pulumi.Input[_builtins.str]):
+    def discriminant_kind(self, value: pulumi.Input[Literal['variant3']]):
         pulumi.set(self, "discriminant_kind", value)
 
     @_builtins.property
@@ -185,7 +185,7 @@ class Variant3Args:
 @pulumi.input_type
 class Variant4Args:
     def __init__(__self__, *,
-                 discriminant_kind: pulumi.Input[_builtins.str],
+                 discriminant_kind: pulumi.Input[Literal['variant4']],
                  enabled: pulumi.Input[Optional[_builtins.bool]] = None,
                  payload: pulumi.Input[Optional[_builtins.str]] = None):
         pulumi.set(__self__, "discriminant_kind", 'variant4')
@@ -196,11 +196,11 @@ class Variant4Args:
 
     @_builtins.property
     @pulumi.getter(name="discriminantKind")
-    def discriminant_kind(self) -> pulumi.Input[_builtins.str]:
+    def discriminant_kind(self) -> pulumi.Input[Literal['variant4']]:
         return pulumi.get(self, "discriminant_kind")
 
     @discriminant_kind.setter
-    def discriminant_kind(self, value: pulumi.Input[_builtins.str]):
+    def discriminant_kind(self, value: pulumi.Input[Literal['variant4']]):
         pulumi.set(self, "discriminant_kind", value)
 
     @_builtins.property
@@ -225,7 +225,7 @@ class Variant4Args:
 @pulumi.input_type
 class Variant5Args:
     def __init__(__self__, *,
-                 discriminant_kind: pulumi.Input[_builtins.str],
+                 discriminant_kind: pulumi.Input[Literal['variant5']],
                  label: pulumi.Input[Optional[_builtins.str]] = None,
                  payload: pulumi.Input[Optional[_builtins.str]] = None):
         pulumi.set(__self__, "discriminant_kind", 'variant5')
@@ -236,11 +236,11 @@ class Variant5Args:
 
     @_builtins.property
     @pulumi.getter(name="discriminantKind")
-    def discriminant_kind(self) -> pulumi.Input[_builtins.str]:
+    def discriminant_kind(self) -> pulumi.Input[Literal['variant5']]:
         return pulumi.get(self, "discriminant_kind")
 
     @discriminant_kind.setter
-    def discriminant_kind(self, value: pulumi.Input[_builtins.str]):
+    def discriminant_kind(self, value: pulumi.Input[Literal['variant5']]):
         pulumi.set(self, "discriminant_kind", value)
 
     @_builtins.property
@@ -265,7 +265,7 @@ class Variant5Args:
 @pulumi.input_type
 class Variant6Args:
     def __init__(__self__, *,
-                 discriminant_kind: pulumi.Input[_builtins.str],
+                 discriminant_kind: pulumi.Input[Literal['variant6']],
                  code: pulumi.Input[Optional[_builtins.int]] = None,
                  payload: pulumi.Input[Optional[_builtins.str]] = None):
         pulumi.set(__self__, "discriminant_kind", 'variant6')
@@ -276,11 +276,11 @@ class Variant6Args:
 
     @_builtins.property
     @pulumi.getter(name="discriminantKind")
-    def discriminant_kind(self) -> pulumi.Input[_builtins.str]:
+    def discriminant_kind(self) -> pulumi.Input[Literal['variant6']]:
         return pulumi.get(self, "discriminant_kind")
 
     @discriminant_kind.setter
-    def discriminant_kind(self, value: pulumi.Input[_builtins.str]):
+    def discriminant_kind(self, value: pulumi.Input[Literal['variant6']]):
         pulumi.set(self, "discriminant_kind", value)
 
     @_builtins.property
@@ -305,7 +305,7 @@ class Variant6Args:
 @pulumi.input_type
 class Variant7Args:
     def __init__(__self__, *,
-                 discriminant_kind: pulumi.Input[_builtins.str],
+                 discriminant_kind: pulumi.Input[Literal['variant7']],
                  message: pulumi.Input[Optional[_builtins.str]] = None,
                  payload: pulumi.Input[Optional[_builtins.str]] = None):
         pulumi.set(__self__, "discriminant_kind", 'variant7')
@@ -316,11 +316,11 @@ class Variant7Args:
 
     @_builtins.property
     @pulumi.getter(name="discriminantKind")
-    def discriminant_kind(self) -> pulumi.Input[_builtins.str]:
+    def discriminant_kind(self) -> pulumi.Input[Literal['variant7']]:
         return pulumi.get(self, "discriminant_kind")
 
     @discriminant_kind.setter
-    def discriminant_kind(self, value: pulumi.Input[_builtins.str]):
+    def discriminant_kind(self, value: pulumi.Input[Literal['variant7']]):
         pulumi.set(self, "discriminant_kind", value)
 
     @_builtins.property
@@ -345,7 +345,7 @@ class Variant7Args:
 @pulumi.input_type
 class Variant8Args:
     def __init__(__self__, *,
-                 discriminant_kind: pulumi.Input[_builtins.str],
+                 discriminant_kind: pulumi.Input[Literal['variant8']],
                  payload: pulumi.Input[Optional[_builtins.str]] = None,
                  size: pulumi.Input[Optional[_builtins.int]] = None):
         pulumi.set(__self__, "discriminant_kind", 'variant8')
@@ -356,11 +356,11 @@ class Variant8Args:
 
     @_builtins.property
     @pulumi.getter(name="discriminantKind")
-    def discriminant_kind(self) -> pulumi.Input[_builtins.str]:
+    def discriminant_kind(self) -> pulumi.Input[Literal['variant8']]:
         return pulumi.get(self, "discriminant_kind")
 
     @discriminant_kind.setter
-    def discriminant_kind(self, value: pulumi.Input[_builtins.str]):
+    def discriminant_kind(self, value: pulumi.Input[Literal['variant8']]):
         pulumi.set(self, "discriminant_kind", value)
 
     @_builtins.property
@@ -385,7 +385,7 @@ class Variant8Args:
 @pulumi.input_type
 class Variant9Args:
     def __init__(__self__, *,
-                 discriminant_kind: pulumi.Input[_builtins.str],
+                 discriminant_kind: pulumi.Input[Literal['variant9']],
                  flag: pulumi.Input[Optional[_builtins.bool]] = None,
                  payload: pulumi.Input[Optional[_builtins.str]] = None):
         pulumi.set(__self__, "discriminant_kind", 'variant9')
@@ -396,11 +396,11 @@ class Variant9Args:
 
     @_builtins.property
     @pulumi.getter(name="discriminantKind")
-    def discriminant_kind(self) -> pulumi.Input[_builtins.str]:
+    def discriminant_kind(self) -> pulumi.Input[Literal['variant9']]:
         return pulumi.get(self, "discriminant_kind")
 
     @discriminant_kind.setter
-    def discriminant_kind(self, value: pulumi.Input[_builtins.str]):
+    def discriminant_kind(self, value: pulumi.Input[Literal['variant9']]):
         pulumi.set(self, "discriminant_kind", value)
 
     @_builtins.property

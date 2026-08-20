@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"context"
+	"crypto/rand"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -25,6 +26,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -54,6 +56,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/diagtest"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/securestore"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -756,7 +759,7 @@ func TestCurrentInvalidAgentCredentialsWithActiveClaimDoesNotSignup(t *testing.T
 	})
 	require.NoError(t, err)
 
-	account, err := defaultLoginManager{}.currentOrSignupAgentAccount(t.Context(), server.URL, false, true, "codex")
+	account, err := defaultLoginManager{}.currentOrSignupAgentAccount(t.Context(), server.URL, false, true, "codex", nil)
 	require.ErrorIs(t, err, ErrUnauthorized)
 	assert.Nil(t, account)
 	assert.Equal(t, 0, signupCalls)
@@ -805,7 +808,7 @@ func TestCurrentRejectedAgentCredentialsWithUnexpiredTokenDoesNotSignup(t *testi
 	})
 	require.NoError(t, err)
 
-	account, err := defaultLoginManager{}.currentOrSignupAgentAccount(t.Context(), server.URL, false, true, "codex")
+	account, err := defaultLoginManager{}.currentOrSignupAgentAccount(t.Context(), server.URL, false, true, "codex", nil)
 	require.ErrorIs(t, err, ErrUnauthorized)
 	require.ErrorIs(t, err, backenderr.LoginRequiredError{})
 	assert.ErrorContains(t, err, "ask the user to run `pulumi login`")
@@ -855,7 +858,7 @@ func TestCurrentValidAgentCredentialsWithExpiredClaimDoesNotSignup(t *testing.T)
 	require.NoError(t, err)
 
 	ctx := ContextWithAgentCredentialUse(t.Context())
-	account, err := defaultLoginManager{}.currentOrSignupAgentAccount(ctx, server.URL, false, true, "codex")
+	account, err := defaultLoginManager{}.currentOrSignupAgentAccount(ctx, server.URL, false, true, "codex", nil)
 	require.NoError(t, err)
 	require.NotNil(t, account)
 	assert.Equal(t, "valid-agent-token", account.AccessToken)
@@ -937,7 +940,7 @@ func TestCurrentSignupAgentAccountStoresClaimTokenURL(t *testing.T) {
 	t.Cleanup(server.Close)
 
 	ctx := ContextWithAgentCredentialUse(t.Context())
-	account, err := defaultLoginManager{}.currentOrSignupAgentAccount(ctx, server.URL, false, true, "codex")
+	account, err := defaultLoginManager{}.currentOrSignupAgentAccount(ctx, server.URL, false, true, "codex", nil)
 	require.NoError(t, err)
 	require.NotNil(t, account)
 	assert.Equal(t, "agent-token", account.AccessToken)
@@ -1009,7 +1012,7 @@ func TestCurrentSignupAgentAccountStoresRefreshToken(t *testing.T) {
 	t.Cleanup(server.Close)
 
 	ctx := ContextWithAgentCredentialUse(t.Context())
-	account, err := defaultLoginManager{}.currentOrSignupAgentAccount(ctx, server.URL, false, true, "codex")
+	account, err := defaultLoginManager{}.currentOrSignupAgentAccount(ctx, server.URL, false, true, "codex", nil)
 	require.NoError(t, err)
 	require.NotNil(t, account)
 	assert.Equal(t, "agent-access-token", account.AccessToken)
@@ -1075,7 +1078,7 @@ func TestCurrentSignupAgentAccountWithoutRefreshTokenLeavesAccountEmpty(t *testi
 	t.Cleanup(server.Close)
 
 	ctx := ContextWithAgentCredentialUse(t.Context())
-	account, err := defaultLoginManager{}.currentOrSignupAgentAccount(ctx, server.URL, false, true, "codex")
+	account, err := defaultLoginManager{}.currentOrSignupAgentAccount(ctx, server.URL, false, true, "codex", nil)
 	require.NoError(t, err)
 	require.NotNil(t, account)
 	assert.Equal(t, "agent-access-token", account.AccessToken)
@@ -1154,7 +1157,7 @@ func TestCurrentSignupAgentAccountReplacesExistingRefreshTokenOnResignup(t *test
 	}, true))
 
 	ctx := ContextWithAgentCredentialUse(t.Context())
-	account, err := defaultLoginManager{}.currentOrSignupAgentAccount(ctx, server.URL, false, true, "codex")
+	account, err := defaultLoginManager{}.currentOrSignupAgentAccount(ctx, server.URL, false, true, "codex", nil)
 	require.NoError(t, err)
 	require.NotNil(t, account)
 	assert.Equal(t, "new-access-token", account.AccessToken)
@@ -1227,7 +1230,7 @@ func TestCurrentAgentAccountRefreshesLocallyExpiredAccessTokenInsteadOfResigning
 	}, true))
 
 	ctx := ContextWithAgentCredentialUse(t.Context())
-	account, err := defaultLoginManager{}.currentOrSignupAgentAccount(ctx, server.URL, false, true, "codex")
+	account, err := defaultLoginManager{}.currentOrSignupAgentAccount(ctx, server.URL, false, true, "codex", nil)
 	require.NoError(t, err)
 	require.NotNil(t, account)
 	assert.Equal(t, "fresh-access-token", account.AccessToken,
@@ -1308,7 +1311,7 @@ func TestCurrentSignupAgentAccountRequiresResponseFields(t *testing.T) {
 			}))
 			t.Cleanup(server.Close)
 
-			account, err := defaultLoginManager{}.currentOrSignupAgentAccount(t.Context(), server.URL, false, true, "codex")
+			account, err := defaultLoginManager{}.currentOrSignupAgentAccount(t.Context(), server.URL, false, true, "codex", nil)
 			require.ErrorContains(t, err, tt.wantErr)
 			assert.Nil(t, account)
 		})
@@ -1553,11 +1556,20 @@ func TestNewDefaultOrgResolution(t *testing.T) {
 
 	tests := []struct {
 		name                 string
+		envOrg               string
 		configuredOrg        string
 		serviceOrg           string
 		expectedOrg          string
 		expectedDefaultCalls int
 	}{
+		{
+			name:                 "prefers env var default org",
+			envOrg:               "env-org",
+			configuredOrg:        "configured-org",
+			serviceOrg:           "service-org",
+			expectedOrg:          "env-org",
+			expectedDefaultCalls: 0,
+		},
 		{
 			name:                 "prefers configured default org",
 			configuredOrg:        "configured-org",
@@ -1576,6 +1588,7 @@ func TestNewDefaultOrgResolution(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Setenv("PULUMI_HOME", t.TempDir())
+			t.Setenv("PULUMI_DEFAULT_ORGANIZATION", tt.envOrg)
 
 			defaultOrgCalls := 0
 			server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
@@ -1614,12 +1627,65 @@ func TestNewDefaultOrgResolution(t *testing.T) {
 			b, err := New(ctx, diagtest.LogSink(t), server.URL, nil, false)
 			require.NoError(t, err)
 
+			// New spawns goroutines that may log to the test's diag sink;
+			// wait for them before the test finishes.
+			cb := b.(*cloudBackend)
+			_, _ = cb.capabilities.Result(ctx)
+			_, _ = cb.userInfo.Result(ctx)
+
 			org, err := b.GetDefaultOrg(ctx)
 			require.NoError(t, err)
 			assert.Equal(t, tt.expectedOrg, org)
 			assert.Equal(t, tt.expectedDefaultCalls, defaultOrgCalls)
 		})
 	}
+}
+
+//nolint:paralleltest // mutates PULUMI_HOME-backed credentials/config
+func TestParseStackReferenceExplicitOrgBeatsEnvVar(t *testing.T) {
+	ctx := t.Context()
+
+	t.Setenv("PULUMI_HOME", t.TempDir())
+	t.Setenv("PULUMI_DEFAULT_ORGANIZATION", "env-org")
+
+	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		switch req.URL.Path {
+		case "/api/capabilities":
+			err := json.NewEncoder(rw).Encode(apitype.CapabilitiesResponse{})
+			require.NoError(t, err)
+		case "/api/user":
+			err := json.NewEncoder(rw).Encode(map[string]any{
+				"githubLogin":   "test-user",
+				"organizations": []map[string]string{},
+			})
+			require.NoError(t, err)
+		default:
+			panic(fmt.Sprintf("Path not supported: %v", req.URL.Path))
+		}
+	}))
+	t.Cleanup(server.Close)
+
+	err := workspace.StoreAccount(server.URL, workspace.Account{
+		AccessToken: testJWT,
+	}, true)
+	require.NoError(t, err)
+
+	b, err := New(ctx, diagtest.LogSink(t), server.URL, &workspace.Project{Name: "proj"}, false)
+	require.NoError(t, err)
+
+	// New spawns goroutines that may log to the test's diag sink;
+	// wait for them before the test finishes.
+	cb := b.(*cloudBackend)
+	_, _ = cb.capabilities.Result(ctx)
+	_, _ = cb.userInfo.Result(ctx)
+
+	ref, err := b.ParseStackReference("explicit-org/proj/stack")
+	require.NoError(t, err)
+	assert.Equal(t, "explicit-org", ref.(cloudBackendReference).owner)
+
+	ref, err = b.ParseStackReference("stack")
+	require.NoError(t, err)
+	assert.Equal(t, "env-org", ref.(cloudBackendReference).owner)
 }
 
 //nolint:paralleltest // mutates global state
@@ -3020,6 +3086,75 @@ func (nopBatchDecrypter) BatchDecrypt(context.Context, []string) ([]string, erro
 
 func (nopBatchDecrypter) Enqueue(context.Context, string, *resource.Secret) error {
 	return nil
+}
+
+// Regression test: an undecryptable credentials file must surface its
+// actionable error from Current instead of degrading into "not logged in".
+// Mirrors the report: PULUMI_BACKEND_URL set (so no earlier read fails),
+// explicit credentials path, no env token, no agent environment.
+//
+//nolint:paralleltest // mutates environment
+func TestCurrentSurfacesUndecryptableCredentials(t *testing.T) {
+	t.Setenv("PULUMI_CREDENTIALS_PATH", t.TempDir())
+	t.Setenv("PULUMI_ACCESS_TOKEN", "")
+
+	// An envelope recording a backend that exists on no platform is
+	// undecryptable everywhere, which is what a lost key looks like.
+	unreachable := securestore.Backend("not-a-real-backend")
+	key := make([]byte, 32)
+	_, err := rand.Read(key)
+	require.NoError(t, err)
+	cloudURL := "https://api.undecryptable-current.example.com"
+	payload, err := json.Marshal(workspace.Credentials{
+		Current:      cloudURL,
+		AccessTokens: map[string]string{cloudURL: "pul-lost"},
+	})
+	require.NoError(t, err)
+	envelope, err := securestore.Seal(key, unreachable, payload)
+	require.NoError(t, err)
+	credsFile := filepath.Join(os.Getenv("PULUMI_CREDENTIALS_PATH"), "credentials.json")
+	require.NoError(t, os.WriteFile(credsFile, envelope, 0o600))
+
+	_, err = defaultLoginManager{}.Current(t.Context(), cloudURL, false, false)
+	require.Error(t, err, "Current must not treat an undecryptable file as logged-out")
+	assert.True(t, workspace.IsUndecryptableCredentials(err))
+	assert.Contains(t, err.Error(), "pulumi login")
+}
+
+//nolint:paralleltest // mutates env vars and credentials on disk
+func TestCurrentEnvTokenDoesNotBypassUndecryptableCredentials(t *testing.T) {
+	// While PULUMI_ACCESS_TOKEN is persisted into the credentials file,
+	// proceeding despite an undecryptable file would end in a write over an
+	// envelope that may only be temporarily unreadable. Surface the
+	// actionable error instead; revisit once the env token is no longer
+	// written to disk.
+	credsDir := t.TempDir()
+	t.Setenv(workspace.PulumiCredentialsPathEnvVar, credsDir)
+	t.Setenv("PULUMI_ACCESS_TOKEN", "env-token")
+
+	key := make([]byte, 32)
+	envelope, err := securestore.Seal(key, securestore.Backend("test-unsupported"), []byte(`{}`))
+	require.NoError(t, err)
+	require.NoError(t, os.WriteFile(filepath.Join(credsDir, "credentials.json"), envelope, 0o600))
+
+	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		err := json.NewEncoder(rw).Encode(map[string]any{
+			"githubLogin":   "env-user",
+			"organizations": []map[string]string{},
+		})
+		require.NoError(t, err)
+	}))
+	t.Cleanup(server.Close)
+
+	account, err := NewLoginManager().Current(t.Context(), server.URL, false, true)
+	require.Error(t, err)
+	assert.Nil(t, account)
+	assert.True(t, workspace.IsUndecryptableCredentials(err),
+		"the typed error must surface so callers can point at recovery, got: %v", err)
+
+	raw, err := os.ReadFile(filepath.Join(credsDir, "credentials.json"))
+	require.NoError(t, err)
+	assert.Equal(t, envelope, raw, "the unreadable file must be left untouched")
 }
 
 func TestShowDeploymentEventsResult(t *testing.T) {

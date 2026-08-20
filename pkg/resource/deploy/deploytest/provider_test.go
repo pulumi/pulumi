@@ -23,6 +23,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -111,20 +112,20 @@ func TestProvider(t *testing.T) {
 					req plugin.CheckConfigRequest,
 				) (plugin.CheckConfigResponse, error) {
 					assert.Equal(t, resource.URN("expected-urn"), req.URN)
-					assert.Equal(t, resource.NewProperty("old-value"), req.Olds["old"])
-					assert.Equal(t, resource.NewProperty("new-value"), req.News["new"])
+					assert.Equal(t, property.New("old-value"), req.Olds.Get("old"))
+					assert.Equal(t, property.New("new-value"), req.News.Get("new"))
 					called = true
 					return plugin.CheckConfigResponse{}, expectedErr
 				},
 			}
 			_, err := prov.CheckConfig(t.Context(), plugin.CheckConfigRequest{
 				URN: resource.URN("expected-urn"),
-				Olds: resource.PropertyMap{
-					"old": resource.NewProperty("old-value"),
-				},
-				News: resource.PropertyMap{
-					"new": resource.NewProperty("new-value"),
-				},
+				Olds: property.NewMap(map[string]property.Value{
+					"old": property.New("old-value"),
+				}),
+				News: property.NewMap(map[string]property.Value{
+					"new": property.New("new-value"),
+				}),
 				AllowUnknowns: true,
 			})
 			assert.ErrorIs(t, err, expectedErr)
@@ -134,15 +135,15 @@ func TestProvider(t *testing.T) {
 			t.Parallel()
 			prov := &Provider{}
 			resp, err := prov.CheckConfig(t.Context(), plugin.CheckConfigRequest{
-				News: resource.PropertyMap{
-					"expected": resource.NewProperty("expected-value"),
-				},
+				News: property.NewMap(map[string]property.Value{
+					"expected": property.New("expected-value"),
+				}),
 				AllowUnknowns: true,
 			})
 			require.NoError(t, err)
 			assert.Empty(t, resp.Failures)
 			// Should return the news.
-			assert.Equal(t, resource.NewProperty("expected-value"), resp.Properties["expected"])
+			assert.Equal(t, property.New("expected-value"), resp.Properties.Get("expected"))
 		})
 	})
 	t.Run("Construct", func(t *testing.T) {
@@ -255,9 +256,9 @@ func TestProvider(t *testing.T) {
 		t.Parallel()
 		t.Run("has InvokeF", func(t *testing.T) {
 			t.Parallel()
-			expectedPropertyMap := resource.PropertyMap{
-				"key": resource.NewProperty("expected-value"),
-			}
+			expectedPropertyMap := property.NewMap(map[string]property.Value{
+				"key": property.New("expected-value"),
+			})
 			var called bool
 			prov := &Provider{
 				InvokeF: func(_ context.Context, req plugin.InvokeRequest) (plugin.InvokeResponse, error) {
@@ -279,7 +280,7 @@ func TestProvider(t *testing.T) {
 			resp, err := prov.Invoke(t.Context(), plugin.InvokeRequest{})
 			require.NoError(t, err)
 			assert.Empty(t, resp.Failures)
-			assert.Equal(t, resource.PropertyMap{}, resp.Properties)
+			assert.Equal(t, property.Map{}, resp.Properties)
 		})
 	})
 	t.Run("Call", func(t *testing.T) {

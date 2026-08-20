@@ -108,7 +108,7 @@ type BuiltinExpr struct {
 // A Range defines a range within an environment definition.
 type Range struct {
 	// The name of the environment.
-	Environment string `json:"environment,omitempty"`
+	Environment string `json:"environment"`
 
 	// The beginning of the range.
 	Begin Pos `json:"begin"`

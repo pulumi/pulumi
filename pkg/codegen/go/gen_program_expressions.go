@@ -471,6 +471,11 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 					// destination is the corresponding optional input, the output already implements
 					// that input interface. Wrapping it in the value constructor would not compile.
 					g.Fgenf(w, "%.v", from)
+				} else if !isFromOutput && model.ResolveOutputs(fromType).Equals(model.DynamicType) {
+					if isOutput && to.Equals(model.DynamicType) {
+						typeName = "pulumi.AnyOutput"
+					}
+					g.Fgenf(w, "%.v.(%s)", from, typeName)
 				} else {
 					g.Fgenf(w, "%s(%.v)", typeName, from)
 				}
@@ -775,11 +780,11 @@ func (g *generator) genMethodCall(w io.Writer, expr *model.FunctionCallExpressio
 			for _, item := range args.Items {
 				key := item.Key.(*model.LiteralValueExpression).Value.AsString()
 				if destType, ok := propTypes[key]; ok {
-					g.Fgenf(w, "%s: ", Title(key))
+					g.Fgenf(w, "%s: ", structFieldName(key))
 					g.genInputValue(w, item.Value, destType)
 					g.Fgenf(w, ",\n")
 				} else {
-					g.Fgenf(w, "%s: %.v,\n", Title(key), item.Value)
+					g.Fgenf(w, "%s: %.v,\n", structFieldName(key), item.Value)
 				}
 			}
 			g.Fprint(w, "}")
@@ -1029,7 +1034,7 @@ func (g *generator) genObjectConsExpressionWithTypeName(
 			if isMap || strings.HasSuffix(typeName, "Map") {
 				g.Fgenf(w, "%s", strconv.Quote(lit))
 			} else {
-				g.Fgenf(w, "%s", Title(lit))
+				g.Fgenf(w, "%s", structFieldName(lit))
 			}
 		} else {
 			g.Fgenf(w, "%.v", item.Key)
@@ -1547,6 +1552,15 @@ func (g *generator) argumentTypeName(destType model.Type, isInput bool) (result 
 				anyOptional = true
 			}
 			valType := g.argumentTypeName(v, isInput)
+			// A null property (NoneType) yields an empty type name. It can't
+			// be represented by any typed map, and treating it as compatible
+			// with the first non-empty type produces order-dependent output
+			// because Properties is a map with randomized iteration. Break
+			// uniformity so we fall back to map[string]interface{}.
+			if valType == "" {
+				allSameType = false
+				break
+			}
 			if elmType != "" && elmType != valType {
 				allSameType = false
 				break
@@ -1722,7 +1736,7 @@ func (g *generator) genRelativeTraversal(w io.Writer,
 				if key.AsString() == "id" && shouldConvert {
 					g.Fgenf(w, ".ID()")
 				} else {
-					g.Fgenf(w, ".%s", Title(key.AsString()))
+					g.Fgenf(w, ".%s", structFieldName(key.AsString()))
 				}
 			}
 		case cty.Number:
@@ -1954,6 +1968,7 @@ func (g *generator) lowerExpression(expr model.Expression, typ model.Type) (
 	expr = pcl.RewritePropertyReferences(expr)
 	expr, diags := pcl.RewriteApplies(expr, nameInfo(0), false /*TODO*/)
 	expr, sTemps, splatDiags := g.rewriteSplat(expr, g.splatSpiller)
+	expr, fTemps, forDiags := g.rewriteForExpressions(expr, g.forSpiller)
 
 	expr, convertDiags := pcl.RewriteConversions(expr, typ)
 	expr, tTemps, ternDiags := g.rewriteTernaries(expr, g.ternaryTempSpiller)
@@ -1961,9 +1976,12 @@ func (g *generator) lowerExpression(expr model.Expression, typ model.Type) (
 	expr, oTemps, optDiags := g.rewriteOptionals(expr, g.optionalSpiller)
 	expr, cTemps := g.rewriteInlineCalls(expr)
 
-	bufferSize := len(tTemps) + len(jTemps) + len(sTemps) + len(oTemps) + len(cTemps)
+	bufferSize := len(tTemps) + len(jTemps) + len(sTemps) + len(fTemps) + len(oTemps) + len(cTemps)
 	temps := slice.Prealloc[any](bufferSize)
 	for _, t := range tTemps {
+		temps = append(temps, t)
+	}
+	for _, t := range fTemps {
 		temps = append(temps, t)
 	}
 	for _, t := range jTemps {
@@ -1982,6 +2000,7 @@ func (g *generator) lowerExpression(expr model.Expression, typ model.Type) (
 	diags = append(diags, ternDiags...)
 	diags = append(diags, jsonDiags...)
 	diags = append(diags, splatDiags...)
+	diags = append(diags, forDiags...)
 	diags = append(diags, optDiags...)
 	g.diagnostics = g.diagnostics.Extend(diags)
 	return expr, temps

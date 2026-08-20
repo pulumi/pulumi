@@ -228,7 +228,7 @@ func (p *IndexModProvider) GetSchema(
 func (p *IndexModProvider) CheckConfig(
 	_ context.Context, req plugin.CheckConfigRequest,
 ) (plugin.CheckConfigResponse, error) {
-	version, ok := req.News["version"]
+	version, ok := req.News.GetOk("version")
 	if !ok {
 		return plugin.CheckConfigResponse{
 			Failures: makeCheckFailure("version", "missing version"),
@@ -239,13 +239,13 @@ func (p *IndexModProvider) CheckConfig(
 			Failures: makeCheckFailure("version", "version is not a string"),
 		}, nil
 	}
-	if version.StringValue() != p.version() {
+	if version.AsString() != p.version() {
 		return plugin.CheckConfigResponse{
 			Failures: makeCheckFailure("version", "version is not "+p.version()),
 		}, nil
 	}
 
-	if len(req.News) != 1 {
+	if req.News.Len() != 1 {
 		return plugin.CheckConfigResponse{
 			Failures: makeCheckFailure("", fmt.Sprintf("too many properties: %v", req.News)),
 		}, nil
@@ -259,7 +259,7 @@ func (p *IndexModProvider) Invoke(
 ) (plugin.InvokeResponse, error) {
 	switch req.Tok {
 	case "index-mod:indexMine:concatWorld", "index-mod:indexMine/nested:concatWorld":
-		value, ok := req.Args["value"]
+		value, ok := req.Args.GetOk("value")
 		if !ok {
 			return plugin.InvokeResponse{
 				Failures: makeCheckFailure("value", "missing value"),
@@ -279,9 +279,9 @@ func (p *IndexModProvider) Invoke(
 		}
 
 		return plugin.InvokeResponse{
-			Properties: resource.PropertyMap{
-				"result": resource.NewProperty(value.StringValue() + " world"),
-			},
+			Properties: property.NewMap(map[string]property.Value{
+				"result": property.New(value.AsString() + " world"),
+			}),
 		}, nil
 	}
 	return plugin.InvokeResponse{}, fmt.Errorf("unknown function %v", req.Tok)

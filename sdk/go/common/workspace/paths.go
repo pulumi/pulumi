@@ -19,23 +19,21 @@ import (
 	"fmt"
 	"io/fs"
 	"os"
-	"os/user"
 	"path/filepath"
 	"strings"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/agentdetect"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/pulumihome"
 )
 
 const (
 	// BookkeepingDir is the name of our bookkeeping folder, we store state here (like .git for git).
-	BookkeepingDir = ".pulumi"
+	BookkeepingDir = pulumihome.BookkeepingDir
 	// PluginDir is the name of the directory containing plugins.
 	PluginDir = "plugins"
 	// PolicyDir is the name of the directory that holds policy packs.
@@ -81,13 +79,17 @@ func DetectProjectStackPath(stackName tokens.QName) (*Project, string, error) {
 		return nil, "", err
 	}
 
+	return proj, ProjectStackPath(projPath, proj, stackName), nil
+}
+
+// ProjectStackPath returns the stack-specific Pulumi.<stack-name>.<ext> path for the given project. Use this when the
+// project location is already known (e.g. from a caller-supplied root) so the caller does not have to walk from CWD.
+func ProjectStackPath(projPath string, proj *Project, stackName tokens.QName) string {
 	fileName := fmt.Sprintf("%s.%s%s", ProjectFile, qnameFileName(stackName), filepath.Ext(projPath))
-
 	if proj.StackConfigDir != "" {
-		return proj, filepath.Join(filepath.Dir(projPath), proj.StackConfigDir, fileName), nil
+		return filepath.Join(filepath.Dir(projPath), proj.StackConfigDir, fileName)
 	}
-
-	return proj, filepath.Join(filepath.Dir(projPath), fileName), nil
+	return filepath.Join(filepath.Dir(projPath), fileName)
 }
 
 var (
@@ -193,21 +195,6 @@ func DetectPolicyPackPathAt(path string) (string, error) {
 	return "", nil
 }
 
-// DetectProject loads the closest project from the current working directory, or an error if not found.
-func DetectProject() (*Project, error) {
-	proj, _, err := detectProjectAndPath()
-	return proj, err
-}
-
-func DetectProjectStack(diags diag.Sink, stackName tokens.QName) (*ProjectStack, error) {
-	project, path, err := DetectProjectStackPath(stackName)
-	if err != nil {
-		return nil, err
-	}
-
-	return LoadProjectStack(diags, project, path)
-}
-
 // detectProjectAndPath loads the closest package from the current working directory, or an error if not found.  It
 // also returns the path where the package was found.
 func detectProjectAndPath() (*Project, string, error) {
@@ -291,23 +278,7 @@ func isMarkupFile(path string, expect string) bool {
 
 // GetPulumiHomeDir returns the path of the '.pulumi' folder where Pulumi puts its artifacts.
 func GetPulumiHomeDir() (string, error) {
-	// Allow the folder we use to be overridden by an environment variable
-	dir := env.Home.Value()
-	if dir != "" {
-		return dir, nil
-	}
-
-	// Otherwise, use the current user's home dir + .pulumi
-	user, err := user.Current()
-	if err != nil {
-		return "", fmt.Errorf("getting current user: %w", err)
-	}
-
-	if user == nil || user.HomeDir == "" {
-		return "", fmt.Errorf("could not find user home directory, set %s", env.Home.Var().Name())
-	}
-
-	return filepath.Join(user.HomeDir, BookkeepingDir), nil
+	return pulumihome.Dir()
 }
 
 // GetPulumiPath returns the path to a file or directory under the '.pulumi' folder. It joins the path of

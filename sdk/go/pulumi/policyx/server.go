@@ -19,17 +19,165 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"google.golang.org/grpc"
 	pbempty "google.golang.org/protobuf/types/known/emptypb"
 	"google.golang.org/protobuf/types/known/structpb"
 )
+
+func convertAnalyzerProvider(provider *plugin.AnalyzerProviderResource) AnalyzerProviderResource {
+	if provider == nil {
+		return AnalyzerProviderResource{}
+	}
+	return AnalyzerProviderResource{
+		Type:       string(provider.Type),
+		Properties: resource.FromResourcePropertyMap(provider.Properties),
+		URN:        string(provider.URN),
+		Name:       provider.Name,
+	}
+}
+
+func convertProtoAnalyzerProvider(
+	provider *pulumirpc.AnalyzerProviderResource,
+	label string,
+) (*plugin.AnalyzerProviderResource, error) {
+	if provider == nil {
+		return nil, nil
+	}
+
+	properties, err := plugin.UnmarshalProperties(provider.GetProperties(), plugin.MarshalOptions{
+		Label:            label,
+		KeepUnknowns:     true,
+		KeepSecrets:      true,
+		KeepResources:    true,
+		KeepOutputValues: true,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return &plugin.AnalyzerProviderResource{
+		Type:       tokens.Type(provider.GetType()),
+		Properties: properties,
+		URN:        resource.URN(provider.GetUrn()),
+		Name:       provider.GetName(),
+	}, nil
+}
+
+func formatTimeout(seconds float64) string {
+	if seconds == 0 {
+		return ""
+	}
+	return (time.Duration(seconds * float64(time.Second))).String()
+}
+
+func convertProtoAnalyzerResourceOptions(options *pulumirpc.AnalyzerResourceOptions) plugin.AnalyzerResourceOptions {
+	if options == nil {
+		return plugin.AnalyzerResourceOptions{}
+	}
+
+	var deleteBeforeReplace *bool
+	if options.GetDeleteBeforeReplaceDefined() {
+		value := options.GetDeleteBeforeReplace()
+		deleteBeforeReplace = &value
+	}
+
+	var customTimeouts resource.CustomTimeouts
+	if timeouts := options.GetCustomTimeouts(); timeouts != nil {
+		customTimeouts = resource.CustomTimeouts{
+			Create: timeouts.GetCreate(),
+			Update: timeouts.GetUpdate(),
+			Delete: timeouts.GetDelete(),
+			Read:   timeouts.GetRead(),
+		}
+	}
+
+	additionalSecretOutputs := make([]resource.PropertyKey, len(options.GetAdditionalSecretOutputs()))
+	for i, output := range options.GetAdditionalSecretOutputs() {
+		additionalSecretOutputs[i] = resource.PropertyKey(output)
+	}
+
+	aliasURNs := make([]resource.URN, len(options.GetAliases()))
+	for i, alias := range options.GetAliases() {
+		aliasURNs[i] = resource.URN(alias)
+	}
+
+	return plugin.AnalyzerResourceOptions{
+		Protect:                 options.GetProtect(),
+		IgnoreChanges:           options.GetIgnoreChanges(),
+		DeleteBeforeReplace:     deleteBeforeReplace,
+		AdditionalSecretOutputs: additionalSecretOutputs,
+		AliasURNs:               aliasURNs,
+		CustomTimeouts:          customTimeouts,
+		Parent:                  resource.URN(options.GetParent()),
+	}
+}
+
+func convertProtoPropertyDependencies(
+	dependencies map[string]*pulumirpc.AnalyzerPropertyDependencies,
+) map[string][]string {
+	propertyDependencies := make(map[string][]string)
+	for key, deps := range dependencies {
+		if len(deps.GetUrns()) > 0 {
+			propertyDependencies[key] = deps.GetUrns()
+		}
+	}
+	return propertyDependencies
+}
+
+func convertAnalyzerResourceOptions(options plugin.AnalyzerResourceOptions) pulumi.ResourceOptions {
+	var customTimeouts *pulumi.CustomTimeouts
+	if options.CustomTimeouts.IsNotEmpty() {
+		customTimeouts = &pulumi.CustomTimeouts{
+			Create: formatTimeout(options.CustomTimeouts.Create),
+			Update: formatTimeout(options.CustomTimeouts.Update),
+			Delete: formatTimeout(options.CustomTimeouts.Delete),
+			Read:   formatTimeout(options.CustomTimeouts.Read),
+		}
+	}
+
+	aliases := make([]pulumi.Alias, 0, len(options.Aliases)+len(options.AliasURNs))
+	for _, alias := range options.Aliases {
+		aliases = append(aliases, pulumi.Alias{URN: pulumi.URN(alias.GetURN())})
+	}
+	for _, alias := range options.AliasURNs {
+		aliases = append(aliases, pulumi.Alias{URN: pulumi.URN(alias)})
+	}
+
+	additionalSecretOutputs := make([]string, len(options.AdditionalSecretOutputs))
+	for i, output := range options.AdditionalSecretOutputs {
+		additionalSecretOutputs[i] = string(output)
+	}
+
+	return pulumi.ResourceOptions{
+		AdditionalSecretOutputs: additionalSecretOutputs,
+		Aliases:                 aliases,
+		CustomTimeouts:          customTimeouts,
+		DeleteBeforeReplace:     options.DeleteBeforeReplace != nil && *options.DeleteBeforeReplace,
+		IgnoreChanges:           options.IgnoreChanges,
+		Protect:                 options.Protect,
+	}
+}
+
+func convertAnalyzerResource(r plugin.AnalyzerResource) AnalyzerResource {
+	return AnalyzerResource{
+		Type:       string(r.Type),
+		Properties: resource.FromResourcePropertyMap(r.Properties),
+		URN:        string(r.URN),
+		Name:       r.Name,
+		Options:    convertAnalyzerResourceOptions(r.Options),
+		Provider:   convertAnalyzerProvider(r.Provider),
+		Parent:     string(r.Options.Parent),
+	}
+}
 
 // Main starts the analyzer server with the provided policy pack factory function.
 func Main(policyPack func(*pulumi.Context) (PolicyPack, error)) error {
@@ -238,21 +386,24 @@ func (srv *analyzerServer) Analyze(
 					return nil, fmt.Errorf("failed to unmarshal properties for policy %q: %w", p.Name(), err)
 				}
 
+				provider, err := convertProtoAnalyzerProvider(req.GetProvider(),
+					fmt.Sprintf("%s.%s.analyze.provider", srv.policyPack.Name(), p.Name()))
+				if err != nil {
+					return nil, fmt.Errorf("failed to unmarshal provider for policy %q: %w", p.Name(), err)
+				}
+
 				args := ResourceValidationArgs{
 					Manager:   policyManager,
 					Config:    config.Properties,
 					StackTags: srv.stacktags,
-					Resource: AnalyzerResource{
-						Type:                 req.GetType(),
-						Properties:           resource.FromResourcePropertyMap(pm),
-						URN:                  req.GetUrn(),
-						Name:                 req.GetName(),
-						Options:              pulumi.ResourceOptions{},
-						Provider:             AnalyzerProviderResource{},
-						Parent:               "",  /* TODO */
-						Dependencies:         nil, /* TODO */
-						PropertyDependencies: nil, /* TODO */
-					},
+					Resource: convertAnalyzerResource(plugin.AnalyzerResource{
+						Type:       tokens.Type(req.GetType()),
+						Properties: pm,
+						URN:        resource.URN(req.GetUrn()),
+						Name:       req.GetName(),
+						Options:    convertProtoAnalyzerResourceOptions(req.GetOptions()),
+						Provider:   provider,
+					}),
 				}
 
 				err = p.Validate(ctx, args)
@@ -296,18 +447,21 @@ func (srv *analyzerServer) Remediate(
 			}
 
 			if !disabled {
+				provider, err := convertProtoAnalyzerProvider(req.GetProvider(),
+					fmt.Sprintf("%s.%s.remediate.provider", srv.policyPack.Name(), p.Name()))
+				if err != nil {
+					return nil, fmt.Errorf("failed to unmarshal provider for policy %q: %w", p.Name(), err)
+				}
+
 				args := ResourceRemediationArgs{
-					Resource: AnalyzerResource{
-						Type:                 req.GetType(),
-						Properties:           props,
-						URN:                  req.GetUrn(),
-						Name:                 req.GetName(),
-						Options:              pulumi.ResourceOptions{},
-						Provider:             AnalyzerProviderResource{},
-						Parent:               "",  /* TODO */
-						Dependencies:         nil, /* TODO */
-						PropertyDependencies: nil, /* TODO */
-					},
+					Resource: convertAnalyzerResource(plugin.AnalyzerResource{
+						Type:       tokens.Type(req.GetType()),
+						Properties: resource.ToResourcePropertyMap(props),
+						URN:        resource.URN(req.GetUrn()),
+						Name:       req.GetName(),
+						Options:    convertProtoAnalyzerResourceOptions(req.GetOptions()),
+						Provider:   provider,
+					}),
 					Config: config.Properties,
 				}
 
@@ -351,8 +505,85 @@ func (srv *analyzerServer) AnalyzeStack(ctx context.Context, req *pulumirpc.Anal
 	AnalyzeResponse,
 	error,
 ) {
-	// TODO: Implement stack analysis
-	return &pulumirpc.AnalyzeResponse{}, nil
+	var ds []*pulumirpc.AnalyzeDiagnostic
+	policyManager := &policyManager{}
+
+	resources := make([]AnalyzerResource, 0, len(req.GetResources()))
+	for _, r := range req.GetResources() {
+		pm, err := plugin.UnmarshalProperties(r.GetProperties(), plugin.MarshalOptions{
+			Label:            srv.policyPack.Name() + ".analyzeStack",
+			KeepUnknowns:     true,
+			KeepSecrets:      true,
+			KeepResources:    true,
+			KeepOutputValues: true,
+		})
+		if err != nil {
+			return nil, fmt.Errorf("failed to unmarshal properties for resource %q: %w", r.GetUrn(), err)
+		}
+
+		provider, err := convertProtoAnalyzerProvider(r.GetProvider(), srv.policyPack.Name()+".analyzeStack.provider")
+		if err != nil {
+			return nil, fmt.Errorf("failed to unmarshal provider for resource %q: %w", r.GetUrn(), err)
+		}
+
+		analyzerResource := convertAnalyzerResource(plugin.AnalyzerResource{
+			Type:       tokens.Type(r.GetType()),
+			Properties: pm,
+			URN:        resource.URN(r.GetUrn()),
+			Name:       r.GetName(),
+			Options:    convertProtoAnalyzerResourceOptions(r.GetOptions()),
+			Provider:   provider,
+		})
+		analyzerResource.Parent = r.GetParent()
+		analyzerResource.Dependencies = r.GetDependencies()
+		analyzerResource.PropertyDependencies = convertProtoPropertyDependencies(r.GetPropertyDependencies())
+		resources = append(resources, analyzerResource)
+	}
+
+	for _, p := range srv.policyPack.Policies() {
+		p, ok := p.(StackValidationPolicy)
+		if !ok {
+			continue
+		}
+		config, hasConfig := srv.config[p.Name()]
+
+		enforcementLevel := p.EnforcementLevel()
+		if hasConfig {
+			enforcementLevel = config.EnforcementLevel
+		}
+
+		if enforcementLevel == EnforcementLevelDisabled {
+			continue
+		}
+
+		policyManager.reportViolation = func(message string, urn string) {
+			violationMessage := p.Description()
+			if message != "" {
+				violationMessage += "\n" + message
+			}
+
+			ds = append(ds, &pulumirpc.AnalyzeDiagnostic{
+				PolicyName:        p.Name(),
+				PolicyPackName:    srv.policyPack.Name(),
+				PolicyPackVersion: srv.policyPack.Version().String(),
+				Description:       p.Description(),
+				Message:           violationMessage,
+				EnforcementLevel:  pulumirpc.EnforcementLevel(enforcementLevel),
+				Urn:               urn,
+			})
+		}
+
+		args := StackValidationArgs{
+			Manager:   policyManager,
+			Resources: resources,
+		}
+
+		if err := p.Validate(ctx, args); err != nil {
+			return nil, fmt.Errorf("failed to validate stack with policy %q: %w", p.Name(), err)
+		}
+	}
+
+	return &pulumirpc.AnalyzeResponse{Diagnostics: ds}, nil
 }
 
 func (srv *analyzerServer) Cancel(ctx context.Context, req *pbempty.Empty) (*pbempty.Empty, error) {

@@ -26,7 +26,6 @@ import (
 	"sort"
 	"strconv"
 	"strings"
-	"sync"
 	"unicode"
 
 	"github.com/gofrs/uuid"
@@ -65,28 +64,7 @@ func startSpinner(prefix string) func() {
 		prefix, nil, cmdutil.GetGlobalColorization(), 8 /*timesPerSecond*/, !cmdutil.Interactive(),
 	)
 	spinner.Tick()
-	stop := make(chan struct{})
-	stopped := make(chan struct{})
-	go func() {
-		defer close(stopped)
-		for {
-			select {
-			case <-ticker.C:
-				spinner.Tick()
-			case <-stop:
-				spinner.Reset()
-				return
-			}
-		}
-	}()
-	var once sync.Once
-	return func() {
-		once.Do(func() {
-			ticker.Stop()
-			close(stop)
-			<-stopped
-		})
-	}
+	return cmdutil.SpinUntilStopped(spinner, ticker)
 }
 
 type functionEvalContext struct {
@@ -611,6 +589,43 @@ func mergeAbsentAttributeLiteralsIntoPCL(
 			return nil, fmt.Errorf("parse %s base %s: no attribute produced", fileType, name)
 		}
 		body.SetAttributeRaw(name, attr.Expr().BuildTokens(nil))
+	}
+	return file.Bytes(), nil
+}
+
+// mergePCLAttributesIntoPCL takes the top-level attributes from `patch` and writes them into
+// `source`, overriding any attribute of the same name and preserving all other content (existing
+// attributes, blocks, and comments). Non-attribute content in `patch` (blocks, comments) is
+// ignored — patch semantics only touch inputs.
+func mergePCLAttributesIntoPCL(
+	source []byte, sourceFilename string, patch []byte, patchFilename string,
+) ([]byte, error) {
+	if len(patch) == 0 {
+		return source, nil
+	}
+	patchFile, diags := hclwrite.ParseConfig(patch, patchFilename, hcl.Pos{Line: 1, Column: 1})
+	if diags.HasErrors() {
+		return nil, diags
+	}
+	patchAttrs := patchFile.Body().Attributes()
+	if len(patchAttrs) == 0 {
+		return source, nil
+	}
+	if len(source) > 0 && source[len(source)-1] != '\n' {
+		source = append(append([]byte{}, source...), '\n')
+	}
+	file, diags := hclwrite.ParseConfig(source, sourceFilename, hcl.Pos{Line: 1, Column: 1})
+	if diags.HasErrors() {
+		return nil, diags
+	}
+	body := file.Body()
+	names := make([]string, 0, len(patchAttrs))
+	for name := range patchAttrs {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	for _, name := range names {
+		body.SetAttributeRaw(name, patchAttrs[name].Expr().BuildTokens(nil))
 	}
 	return file.Bytes(), nil
 }

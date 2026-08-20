@@ -15,7 +15,7 @@
         "test": "nyc --no-clean --temp-dir ../../.nyc_output mocha 'bin/tests/**/*.spec.js'"
     },
     "devDependencies": {
-        "nyc": "15.1.0",
+        "nyc": "18.0.0",
         "@types/mocha": "^10.0.0",
         "@types/node": "14.18.63",
         "@types/pascalcase": "^1.0.3",

@@ -86,9 +86,15 @@ func newPolicyGroupListCmd() *cobra.Command {
 			if len(cliArgs) > 0 {
 				orgName = cliArgs[0]
 			} else {
-				orgName, _, _, err = b.CurrentUser()
+				orgName, err = b.GetDefaultOrg(ctx)
 				if err != nil {
 					return err
+				}
+				if orgName == "" {
+					orgName, _, _, err = b.CurrentUser()
+					if err != nil {
+						return err
+					}
 				}
 			}
 

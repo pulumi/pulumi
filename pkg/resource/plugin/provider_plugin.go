@@ -55,6 +55,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil/rpcerror"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
@@ -681,9 +682,9 @@ func (p *provider) CheckConfig(ctx context.Context, req CheckConfigRequest) (Che
 		"req.Type (%s) != req.URN.Type() (%s)", req.Type, req.URN.Type())
 
 	label := fmt.Sprintf("%s.CheckConfig(%s)", p.label(), req.URN)
-	logging.V(7).Infof("%s executing (#olds=%d,#news=%d)", label, len(req.Olds), len(req.News))
+	logging.V(7).Infof("%s executing (#olds=%d,#news=%d)", label, req.Olds.Len(), req.News.Len())
 
-	molds, err := MarshalProperties(req.Olds, MarshalOptions{
+	molds, err := MarshalProperties(resource.ToResourcePropertyMap(req.Olds), MarshalOptions{
 		Label:        label + ".olds",
 		KeepUnknowns: req.AllowUnknowns,
 		PropagateNil: true,
@@ -692,7 +693,8 @@ func (p *provider) CheckConfig(ctx context.Context, req CheckConfigRequest) (Che
 		return CheckConfigResponse{}, err
 	}
 
-	mnews, err := MarshalProperties(req.News, MarshalOptions{
+	news := resource.ToResourcePropertyMap(req.News)
+	mnews, err := MarshalProperties(news, MarshalOptions{
 		Label:        label + ".news",
 		KeepUnknowns: req.AllowUnknowns,
 		PropagateNil: true,
@@ -744,9 +746,12 @@ func (p *provider) CheckConfig(ctx context.Context, req CheckConfigRequest) (Che
 	}
 
 	// Copy over any secret annotations, since we could not pass any to the provider, and return.
-	annotateSecrets(inputs, req.News)
+	annotateSecrets(inputs, news)
 	logging.V(7).Infof("%s success: inputs=#%d failures=#%d", label, len(inputs), len(failures))
-	return CheckConfigResponse{Properties: inputs, Failures: failures}, nil
+	return CheckConfigResponse{
+		Properties: resource.FromResourcePropertyMap(inputs),
+		Failures:   failures,
+	}, nil
 }
 
 func decodeDetailedDiff(resp *pulumirpc.DiffResponse) map[string]PropertyDiff {
@@ -2210,7 +2215,7 @@ func (p *provider) Construct(ctx context.Context, req ConstructRequest) (Constru
 	logging.V(7).Infof("%s success: #outputs=%d", label, len(outputs))
 	return ConstructResponse{
 		URN:                resource.URN(resp.GetUrn()),
-		Outputs:            outputs,
+		Outputs:            resource.FromResourcePropertyMap(outputs),
 		OutputDependencies: outputDependencies,
 	}, nil
 }
@@ -2220,7 +2225,7 @@ func (p *provider) Invoke(ctx context.Context, req InvokeRequest) (InvokeRespons
 	contract.Assertf(req.Tok != "", "Invoke requires a token")
 
 	label := fmt.Sprintf("%s.Invoke(%s)", p.label(), req.Tok)
-	logging.V(7).Infof("%s executing (#args=%d)", label, len(req.Args))
+	logging.V(7).Infof("%s executing (#args=%d)", label, req.Args.Len())
 
 	// Ensure that the plugin is configured.
 	client := p.clientRaw
@@ -2231,10 +2236,11 @@ func (p *provider) Invoke(ctx context.Context, req InvokeRequest) (InvokeRespons
 
 	// If the provider is not fully configured, return an empty property map.
 	if !pcfg.known {
-		return InvokeResponse{Properties: resource.PropertyMap{}}, nil
+		return InvokeResponse{Properties: property.Map{}}, nil
 	}
 
-	margs, err := MarshalProperties(req.Args, MarshalOptions{
+	args := resource.ToResourcePropertyMap(req.Args)
+	margs, err := MarshalProperties(args, MarshalOptions{
 		Label:          label + ".args",
 		KeepSecrets:    protocol.acceptSecrets,
 		KeepResources:  protocol.acceptResources,
@@ -2274,7 +2280,7 @@ func (p *provider) Invoke(ctx context.Context, req InvokeRequest) (InvokeRespons
 		failures = append(failures, CheckFailure{resource.PropertyKey(failure.Property), failure.Reason})
 	}
 
-	if req.Args.ContainsSecrets() && !protocol.acceptSecrets {
+	if args.ContainsSecrets() && !protocol.acceptSecrets {
 		for k, v := range ret {
 			if v.IsSecret() || (v.IsOutput() && v.OutputValue().Secret) {
 				continue
@@ -2285,7 +2291,7 @@ func (p *provider) Invoke(ctx context.Context, req InvokeRequest) (InvokeRespons
 
 	logging.V(7).Infof("%s success (#ret=%d,#failures=%d) success", label, len(ret), len(failures))
 	return InvokeResponse{
-		Properties: ret,
+		Properties: resource.FromResourcePropertyMap(ret),
 		Failures:   failures,
 	}, nil
 }

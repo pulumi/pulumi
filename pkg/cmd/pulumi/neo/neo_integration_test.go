@@ -66,6 +66,11 @@ type neoFakeServer struct {
 	// it via endStream ends the stream cleanly.
 	streamSend chan []byte
 	endOnce    sync.Once
+
+	// userEventStatus, when set, lets a test override the response status for
+	// individual PostNeoTaskUserEvent bodies. Return 0 for the default 200.
+	// Guarded by mu; set it before starting runNeo.
+	userEventStatus func(body []byte) int
 }
 
 type recordedPost struct {
@@ -178,7 +183,19 @@ func newNeoFakeServer(t *testing.T) *neoFakeServer {
 			body, _ := io.ReadAll(r.Body)
 			s.mu.Lock()
 			s.posts = append(s.posts, recordedPost{path: r.URL.Path, body: body})
+			statusFn := s.userEventStatus
 			s.mu.Unlock()
+			if statusFn != nil {
+				if status := statusFn(body); status != 0 {
+					w.Header().Set("Content-Type", "application/json")
+					w.WriteHeader(status)
+					_ = json.NewEncoder(w).Encode(apitype.ErrorResponse{
+						Code:    status,
+						Message: "cannot respond while a request is still ongoing",
+					})
+					return
+				}
+			}
 			w.WriteHeader(http.StatusOK)
 		})
 
@@ -1000,4 +1017,100 @@ func TestRunNeoIntegration_DisableIntegrationsSendsEmptyList(t *testing.T) {
 		"--disable-integrations must send an explicit enabledIntegrations field")
 	assert.Equal(t, []any{}, body["enabledIntegrations"],
 		"--disable-integrations must send an empty enabledIntegrations array")
+}
+
+// TestRunNeoIntegration_EscDuringPendingTool_CancelNotLost — end-to-end
+// pin for pulumi/pulumi-service#44059: when the service rejects a user_cancel
+// with 409 (it does so whenever the task is parked on a CLI tool call), the
+// CLI must not wedge in "Cancelling..." — the dispatcher auto-retries the
+// cancel, so a second user_cancel POST must show up.
+//
+//nolint:paralleltest,lll // mutates package globals (DefaultLoginManager, pkgWorkspace.Instance, newTeaProgram, isInteractive)
+func TestRunNeoIntegration_EscDuringPendingTool_CancelNotLost(t *testing.T) {
+	isolateWorkspace(t)
+	srv := newNeoFakeServer(t)
+
+	// The service 409s user_cancel events (the parked-task behavior); every
+	// other user event (exec_tool_call, tool_result) keeps succeeding.
+	srv.mu.Lock()
+	srv.userEventStatus = func(body []byte) int {
+		if bytes.Contains(body, []byte(userEventUserCancel)) {
+			return http.StatusConflict
+		}
+		return 0
+	}
+	srv.mu.Unlock()
+
+	installNeoTestEnv(t, srv, true /*interactive*/)
+
+	var (
+		programMu sync.Mutex
+		program   *tea.Program
+	)
+	prevProgram := newTeaProgram
+	newTeaProgram = func(m tea.Model) *tea.Program {
+		p := tea.NewProgram(
+			m,
+			tea.WithInput(nil),
+			tea.WithOutput(io.Discard),
+			tea.WithoutSignals(),
+			tea.WithoutSignalHandler(),
+			tea.WithoutRenderer(),
+		)
+		programMu.Lock()
+		program = p
+		programMu.Unlock()
+		return p
+	}
+	t.Cleanup(func() { newTeaProgram = prevProgram })
+
+	done := make(chan error, 1)
+	go func() { done <- runNeoTest(t.Context(), "do a thing", t.TempDir()) }()
+
+	// Wait for the TUI and the SSE stream, i.e. a running busy turn.
+	var p *tea.Program
+	deadline := time.Now().Add(testWaitTimeout)
+	for time.Now().Before(deadline) {
+		programMu.Lock()
+		p = program
+		programMu.Unlock()
+		if p != nil {
+			break
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	require.NotNil(t, p, "runNeo never constructed the tea.Program")
+	require.True(t, srv.awaitStreamConnect(t, testWaitTimeout), "SSE stream never opened")
+
+	countCancelPosts := func() int {
+		n := 0
+		for _, post := range srv.recordedPosts() {
+			if strings.Contains(string(post.body), userEventUserCancel) {
+				n++
+			}
+		}
+		return n
+	}
+
+	// First ESC posts the cancel, which the server rejects with 409.
+	p.Send(tea.KeyPressMsg{Code: tea.KeyEsc})
+	require.Eventually(t, func() bool { return countCancelPosts() >= 1 },
+		testWaitTimeout, 20*time.Millisecond, "first ESC never posted a user_cancel")
+
+	// After the 409, the dispatcher must auto-retry the cancel (first retry
+	// fires after ~1s of backoff), so a second user_cancel post shows up
+	// without any further user input.
+	require.Eventually(t, func() bool { return countCancelPosts() >= 2 },
+		5*time.Second, 100*time.Millisecond,
+		"a 409-rejected cancel must be retried instead of dropped")
+
+	p.Quit()
+	select {
+	case err := <-done:
+		if err != nil {
+			require.ErrorIs(t, err, context.Canceled, "unexpected error from runNeo: %v", err)
+		}
+	case <-time.After(testWaitTimeout):
+		t.Fatal("runNeo did not return after tea.Quit")
+	}
 }

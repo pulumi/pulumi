@@ -25,6 +25,8 @@ import (
 	"strings"
 	"testing"
 
+	mapset "github.com/deckarep/golang-set/v2"
+
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 
 	"github.com/blang/semver"
@@ -32,7 +34,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/pulumi/pulumi/pkg/v3/codegen"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
@@ -49,14 +50,14 @@ func transpiled(dir string) string {
 	return filepath.Join(transpiledExamplesDir, dir)
 }
 
-var allProgLanguages = codegen.NewStringSet(TestDotnet, TestPython, TestGo, TestNodeJS)
+var allProgLanguages = mapset.NewSet(TestDotnet, TestPython, TestGo, TestNodeJS)
 
 type ProgramTest struct {
 	Directory          string
 	Description        string
-	Skip               codegen.StringSet
-	ExpectNYIDiags     codegen.StringSet
-	SkipCompile        codegen.StringSet
+	Skip               mapset.Set[string]
+	ExpectNYIDiags     mapset.Set[string]
+	SkipCompile        mapset.Set[string]
 	BindOptions        []pcl.BindOption
 	MockPluginVersions map[string]string
 	PluginContext      *plugin.Context
@@ -93,7 +94,7 @@ var PulumiPulumiProgramTests = []ProgramTest{
 		// compiling and type checking involves downloading the real package to
 		// check against. Because we are checking against the "other" package
 		// (which doesn't exist), this does not work.
-		SkipCompile: codegen.NewStringSet(TestNodeJS, TestDotnet, TestGo),
+		SkipCompile: mapset.NewSet(TestNodeJS, TestDotnet, TestGo),
 	},
 	{
 		Directory:   "traverse-union-repro",
@@ -118,7 +119,7 @@ var PulumiPulumiProgramTests = []ProgramTest{
 	{
 		Directory:   "components",
 		Description: "Components",
-		SkipCompile: codegen.NewStringSet(TestGo),
+		SkipCompile: mapset.NewSet(TestGo),
 	},
 	{
 		Directory:   "throw-not-implemented",
@@ -127,23 +128,23 @@ var PulumiPulumiProgramTests = []ProgramTest{
 	{
 		Directory:   "python-reserved",
 		Description: "Test python reserved words aren't used",
-		Skip:        allProgLanguages.Except(TestPython),
+		Skip:        allProgLanguages.Difference(mapset.NewSet(TestPython)),
 	},
 	{
 		Directory:   "invoke-inside-conditional-range",
 		Description: "Using the result of an invoke inside a conditional range expression of a resource",
-		Skip:        allProgLanguages.Except(TestNodeJS).Except(TestDotnet),
+		Skip:        allProgLanguages.Difference(mapset.NewSet(TestNodeJS, TestDotnet)),
 		SkipCompile: allProgLanguages,
 	},
 	{
 		Directory:   "output-name-conflict",
 		Description: "Tests whether we are able to generate programs where output variables have same id as config var",
-		SkipCompile: codegen.NewStringSet(TestGo),
+		SkipCompile: mapset.NewSet(TestGo),
 	},
 	{
 		Directory:   "snowflake-python-12998",
 		Description: "Tests regression for issue https://github.com/pulumi/pulumi/issues/12998",
-		Skip:        allProgLanguages.Except(TestPython),
+		Skip:        allProgLanguages.Difference(mapset.NewSet(TestPython)),
 		SkipCompile: allProgLanguages,
 		BindOptions: []pcl.BindOption{pcl.AllowMissingVariables, pcl.AllowMissingProperties},
 	},
@@ -167,7 +168,7 @@ var PulumiPulumiProgramTests = []ProgramTest{
 	{
 		Directory:   "interpolated-string-keys",
 		Description: "Tests that interpolated string keys are supported in maps. ",
-		Skip:        allProgLanguages.Except(TestNodeJS).Except(TestPython),
+		Skip:        allProgLanguages.Difference(mapset.NewSet(TestNodeJS, TestPython)),
 	},
 }
 
@@ -180,27 +181,27 @@ var PulumiPulumiYAMLProgramTests = []ProgramTest{
 	{
 		Directory:   transpiled("pulumi-variable"),
 		Description: "Pulumi variable",
-		Skip:        codegen.NewStringSet(TestGo, TestNodeJS, TestDotnet),
+		Skip:        mapset.NewSet(TestGo, TestNodeJS, TestDotnet),
 	},
 	{
 		Directory:   transpiled("random"),
 		Description: "Random",
-		Skip:        codegen.NewStringSet(TestNodeJS),
+		Skip:        mapset.NewSet(TestNodeJS),
 	},
 	{
 		Directory:   transpiled("readme"),
 		Description: "README",
-		Skip:        codegen.NewStringSet(TestGo, TestDotnet),
+		Skip:        mapset.NewSet(TestGo, TestDotnet),
 	},
 	{
 		Directory:   transpiled("stackreference-consumer"),
 		Description: "Stack reference consumer",
-		Skip:        codegen.NewStringSet(TestGo, TestNodeJS, TestDotnet),
+		Skip:        mapset.NewSet(TestGo, TestNodeJS, TestDotnet),
 	},
 	{
 		Directory:   transpiled("stackreference-producer"),
 		Description: "Stack reference producer",
-		Skip:        codegen.NewStringSet(TestGo, TestDotnet),
+		Skip:        mapset.NewSet(TestGo, TestDotnet),
 	},
 }
 
@@ -208,7 +209,7 @@ var PulumiPulumiYAMLProgramTests = []ProgramTest{
 //
 // The arguments are to be read:
 // (Testing environment, path to generated code, set of dependencies)
-type CheckProgramOutput = func(*testing.T, string, codegen.StringSet)
+type CheckProgramOutput = func(*testing.T, string, mapset.Set[string])
 
 // Generates a program from a pcl.Program
 type GenProgram = func(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, error)
@@ -285,12 +286,12 @@ func TestProgramCodegen(
 			// and can OOM in CI with too many running.
 
 			var err error
-			if tt.Skip.Has(testcase.Language) {
+			if tt.Skip != nil && tt.Skip.Contains(testcase.Language) {
 				t.Skip()
 				return
 			}
 
-			expectNYIDiags := tt.ExpectNYIDiags.Has(testcase.Language)
+			expectNYIDiags := tt.ExpectNYIDiags != nil && tt.ExpectNYIDiags.Contains(testcase.Language)
 
 			testInputDir := filepath.Join(testcase.inputDirectory(), tt.Directory+"-pp")
 			pclFile := filepath.Join(testInputDir, tt.Directory+".pp")
@@ -417,8 +418,8 @@ func TestProgramCodegen(
 					}
 				}
 			}
-			if !skipCompile && testcase.Check != nil && !tt.SkipCompile.Has(testcase.Language) {
-				extraPulumiPackages := codegen.NewStringSet()
+			if !skipCompile && testcase.Check != nil && (tt.SkipCompile == nil || !tt.SkipCompile.Contains(testcase.Language)) {
+				extraPulumiPackages := mapset.NewSet[string]()
 				collectExtraPulumiPackages(program, extraPulumiPackages)
 				testcase.Check(t, expectedFile, extraPulumiPackages)
 			}
@@ -426,7 +427,7 @@ func TestProgramCodegen(
 	}
 }
 
-func collectExtraPulumiPackages(program *pcl.Program, extraPulumiPackages codegen.StringSet) {
+func collectExtraPulumiPackages(program *pcl.Program, extraPulumiPackages mapset.Set[string]) {
 	for _, n := range program.Nodes {
 		switch r := n.(type) {
 		case *pcl.Resource:

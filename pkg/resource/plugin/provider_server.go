@@ -296,15 +296,15 @@ func (p *providerServer) CheckConfig(ctx context.Context,
 		URN:           urn,
 		Name:          req.Name,
 		Type:          tokens.Type(req.Type),
-		Olds:          state,
-		News:          inputs,
+		Olds:          resource.FromResourcePropertyMap(state),
+		News:          resource.FromResourcePropertyMap(inputs),
 		AllowUnknowns: true,
 	})
 	if err != nil {
 		return nil, p.checkNYI("CheckConfig", err)
 	}
 
-	rpcInputs, err := MarshalProperties(resp.Properties, p.marshalOptions("inputs"))
+	rpcInputs, err := MarshalProperties(resource.ToResourcePropertyMap(resp.Properties), p.marshalOptions("inputs"))
 	if err != nil {
 		return nil, err
 	}
@@ -969,7 +969,7 @@ func (p *providerServer) Construct(ctx context.Context,
 
 	opts := p.marshalOptions("outputs")
 	opts.KeepOutputValues = req.AcceptsOutputValues
-	outputs, err := MarshalProperties(resp.Outputs, opts)
+	outputs, err := MarshalProperties(resource.ToResourcePropertyMap(resp.Outputs), opts)
 	if err != nil {
 		return nil, err
 	}
@@ -998,14 +998,14 @@ func (p *providerServer) Invoke(ctx context.Context, req *pulumirpc.InvokeReques
 
 	resp, err := p.provider.Invoke(ctx, InvokeRequest{
 		Tok:     tokens.ModuleMember(req.GetTok()),
-		Args:    args,
+		Args:    resource.FromResourcePropertyMap(args),
 		Preview: req.GetPreview(),
 	})
 	if err != nil {
 		return nil, err
 	}
 
-	rpcResult, err := MarshalProperties(resp.Properties, p.marshalOptions("result"))
+	rpcResult, err := MarshalProperties(resource.ToResourcePropertyMap(resp.Properties), p.marshalOptions("result"))
 	if err != nil {
 		return nil, err
 	}

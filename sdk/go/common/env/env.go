@@ -100,6 +100,10 @@ var ContinueOnError = env.Bool("CONTINUE_ON_ERROR",
 var BackendURL = env.String("BACKEND_URL",
 	"Set the backend that will be used instead of the currently logged in backend or the current project's backend.")
 
+var DefaultOrg = env.String("DEFAULT_ORGANIZATION",
+	"Set the default organization to use when the organization is not otherwise specified. Takes precedence over "+
+		"any default organization set with `pulumi org set-default`.")
+
 // Neo environment variables
 
 var SuppressNeoLink = env.Bool("SUPPRESS_NEO_LINK",
@@ -134,6 +138,11 @@ var Parallel = env.Int("PARALLEL",
 var AccessToken = env.String("ACCESS_TOKEN",
 	"The access token used to authenticate with the Pulumi Service.",
 	env.Secret)
+
+var CredentialStore = env.String("CREDENTIAL_STORE",
+	`How to keep CLI credentials: "auto" encrypts them with a key protected by the operating `+
+		`system (macOS Keychain, Windows Credential Manager, Linux Secret Service, TPM) when such `+
+		`protection is usable, "os" requires it, and "plaintext" uses the plaintext credentials file.`)
 
 var DisableSecretCache = env.Bool("DISABLE_SECRET_CACHE",
 	"Disable caching encryption operations for unchanged stack secrets.")

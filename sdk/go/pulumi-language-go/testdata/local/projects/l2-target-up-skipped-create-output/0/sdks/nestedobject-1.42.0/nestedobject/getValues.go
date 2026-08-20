@@ -30,12 +30,8 @@ type GetValuesResult struct {
 }
 
 func GetValuesOutput(ctx *pulumi.Context, args GetValuesOutputArgs, opts ...pulumi.InvokeOption) GetValuesResultOutput {
-	return pulumi.ToOutputWithContext(ctx.Context(), args).
-		ApplyT(func(v interface{}) (GetValuesResultOutput, error) {
-			args := v.(GetValuesArgs)
-			options := pulumi.InvokeOutputOptions{InvokeOptions: internal.PkgInvokeDefaultOpts(opts)}
-			return ctx.InvokeOutput("nestedobject:index:getValues", args, GetValuesResultOutput{}, options).(GetValuesResultOutput), nil
-		}).(GetValuesResultOutput)
+	options := pulumi.InvokeOutputOptions{InvokeOptions: internal.PkgInvokeDefaultOpts(opts)}
+	return ctx.InvokeOutput("nestedobject:index:getValues", args, GetValuesResultOutput{}, options).(GetValuesResultOutput)
 }
 
 type GetValuesOutputArgs struct {

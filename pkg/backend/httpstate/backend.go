@@ -205,13 +205,6 @@ type userInfo struct {
 	tokenInfo     *workspace.TokenInformation
 }
 
-// cachedUpdateData holds deployment and stack metadata fetched from BeginUpdate.
-type cachedUpdateData struct {
-	deployment *apitype.UntypedDeployment
-	stackTags  map[apitype.StackTagName]string
-	stackRef   backend.StackReference
-}
-
 type cloudBackend struct {
 	d            diag.Sink
 	url          string
@@ -224,9 +217,6 @@ type cloudBackend struct {
 	// The current project, if any.
 	currentProject              *workspace.Project
 	neoEnabledForCurrentProject *bool
-
-	// Cached data from BeginUpdate to avoid extra HTTP calls.
-	cachedUpdateData *cachedUpdateData
 }
 
 // Assert we implement the backend.Backend and backend.SpecificDeploymentExporter interfaces.
@@ -251,14 +241,16 @@ func New(ctx context.Context, d diag.Sink,
 	})
 	escClient := esc_client.New(client.UserAgent(), cloudURL, apiToken, insecure)
 
-	config, err := workspace.GetPulumiConfig()
-	if err != nil && !os.IsNotExist(err) {
-		return nil, fmt.Errorf("get Pulumi config: %w", err)
-	}
-	var org string
-	if beConfig, ok := config.BackendConfig[cloudURL]; ok {
-		if beConfig.DefaultOrg != "" {
-			org = beConfig.DefaultOrg
+	org := env.DefaultOrg.Value()
+	if org == "" {
+		config, err := workspace.GetPulumiConfig()
+		if err != nil && !os.IsNotExist(err) {
+			return nil, fmt.Errorf("get Pulumi config: %w", err)
+		}
+		if beConfig, ok := config.BackendConfig[cloudURL]; ok {
+			if beConfig.DefaultOrg != "" {
+				org = beConfig.DefaultOrg
+			}
 		}
 	}
 
@@ -576,6 +568,11 @@ func (m defaultLoginManager) Current(
 	if err == nil && existingAccount.HasCredential() {
 		logging.V(7).Infof("Found stored credentials for %q in default credentials", cloudURL)
 	} else if err != nil {
+		// Even with PULUMI_ACCESS_TOKEN set: the token is persisted to this
+		// same file, so proceeding would end in a write over the envelope.
+		if workspace.IsUndecryptableCredentials(err) {
+			return nil, err
+		}
 		logging.V(7).Infof("Could not read default credentials for %q: %v", cloudURL, err)
 	}
 	if err == nil && existingAccount.HasCredential() &&
@@ -608,7 +605,7 @@ func (m defaultLoginManager) Current(
 				return nil, err
 			}
 			logging.V(7).Infof("Detected agent mode (%s); checking shared agent credentials", agent)
-			return m.currentOrSignupAgentAccount(ctx, cloudURL, insecure, setCurrent, agent)
+			return m.currentOrSignupAgentAccount(ctx, cloudURL, insecure, setCurrent, agent, err)
 		}
 		// No access token available, this isn't an error per-se but we don't have a backend.
 		logging.V(7).Infof("No access token or agent mode detected for %q", cloudURL)
@@ -649,6 +646,7 @@ func (m defaultLoginManager) currentOrSignupAgentAccount(
 	insecure bool,
 	setCurrent bool,
 	agentName string,
+	defaultCredsErr error,
 ) (*workspace.Account, error) {
 	now := time.Now()
 	if deleted, err := workspace.DeleteExpiredAgentCredentials(now); err != nil {
@@ -701,6 +699,12 @@ func (m defaultLoginManager) currentOrSignupAgentAccount(
 		logging.V(7).Infof("Shared agent credentials for %q are not valid; creating a new agent account", cloudURL)
 	} else {
 		logging.V(7).Infof("No shared agent credentials found for %q; creating a new agent account", cloudURL)
+	}
+
+	// An undecryptable credentials file must surface its actionable error,
+	// not be papered over with a fresh ephemeral agent identity.
+	if workspace.IsUndecryptableCredentials(defaultCredsErr) {
+		return nil, defaultCredsErr
 	}
 
 	logging.V(7).Infof("Calling agent signup endpoint for %q", cloudURL)
@@ -1337,10 +1341,9 @@ func (b *cloudBackend) CreateStack(
 
 	stack, err := newStack(ctx, apistack, b)
 	if err != nil {
-		fmt.Printf("Created stack '%s'\n", stack.Ref())
+		return nil, err
 	}
-
-	return stack, err
+	return stack, nil
 }
 
 func (b *cloudBackend) ListStacks(
@@ -1778,77 +1781,14 @@ func (b *cloudBackend) createAndStartUpdate(
 	if err != nil {
 		return client.UpdateIdentifier{}, updateMetadata{}, err
 	}
-
 	metadata := apitype.UpdateMetadata{
 		Message:     op.M.Message,
 		Environment: op.M.Environment,
 	}
-
-	tags, err := backend.GetMergedStackTags(ctx, stack, op.Root, op.Proj, op.StackConfiguration.Config)
+	update, updateDetails, err := b.client.CreateUpdate(
+		ctx, action, stackID, op.Proj, op.StackConfiguration.Config, metadata, op.Opts.Engine, dryRun)
 	if err != nil {
-		return client.UpdateIdentifier{}, updateMetadata{}, fmt.Errorf("getting stack tags: %w", err)
-	}
-
-	var update client.UpdateIdentifier
-	var version int
-	var token string
-	var journalVersion int64
-	var requiredPolicies []apitype.RequiredPolicy
-	var messages []apitype.Message
-	var isNeoIntegrationEnabled bool
-
-	if b.Capabilities(ctx).BeginUpdate && os.Getenv("PULUMI_DISABLE_BEGIN_UPDATE") != "true" {
-		logging.V(7).Infof("Using combined begin-update endpoint for %s", stackRef)
-		resp, err := b.client.BeginUpdate(
-			ctx, action, stackID, op.Proj, op.StackConfiguration.Config,
-			metadata, op.Opts.Engine, tags, dryRun)
-		if err != nil {
-			if err, ok := err.(*apitype.ErrorResponse); ok && err.Code == 409 {
-				conflict := backenderr.ConflictingUpdateError{Err: err}
-				return client.UpdateIdentifier{}, updateMetadata{}, conflict
-			}
-			return client.UpdateIdentifier{}, updateMetadata{}, err
-		}
-
-		update = client.UpdateIdentifier{
-			StackIdentifier: stackID,
-			UpdateKind:      action,
-			UpdateID:        resp.UpdateID,
-		}
-		version = resp.Version
-		token = resp.Token
-		journalVersion = resp.JournalVersion
-		requiredPolicies = resp.RequiredPolicies
-		messages = resp.Messages
-		isNeoIntegrationEnabled = resp.AISettings.CopilotIsEnabled
-
-		// Cache the deployment, stack tags, and stack for later use.
-		b.cachedUpdateData = &cachedUpdateData{
-			deployment: &resp.Deployment,
-			stackTags:  resp.Stack.Tags,
-			stackRef:   stackRef,
-		}
-	} else {
-		logging.V(7).Infof("Using legacy create+start update endpoints for %s", stackRef)
-		var updateDetails client.CreateUpdateDetails
-		update, updateDetails, err = b.client.CreateUpdate(
-			ctx, action, stackID, op.Proj, op.StackConfiguration.Config, metadata, op.Opts.Engine, dryRun)
-		if err != nil {
-			return client.UpdateIdentifier{}, updateMetadata{}, err
-		}
-
-		requiredPolicies = updateDetails.RequiredPolicies
-		messages = updateDetails.Messages
-		isNeoIntegrationEnabled = updateDetails.IsNeoIntegrationEnabled
-
-		version, token, journalVersion, err = b.client.StartUpdate(ctx, update, tags)
-		if err != nil {
-			if err, ok := err.(*apitype.ErrorResponse); ok && err.Code == 409 {
-				conflict := backenderr.ConflictingUpdateError{Err: err}
-				return client.UpdateIdentifier{}, updateMetadata{}, conflict
-			}
-			return client.UpdateIdentifier{}, updateMetadata{}, err
-		}
+		return client.UpdateIdentifier{}, updateMetadata{}, err
 	}
 
 	//
@@ -1863,7 +1803,7 @@ func (b *cloudBackend) createAndStartUpdate(
 	// Once this API is implemented, we can safely move these lines to the plugin-gathering code,
 	// which is much closer to being the "correct" place for this stuff.
 	//
-	for _, policy := range requiredPolicies {
+	for _, policy := range updateDetails.RequiredPolicies {
 		op.Opts.Engine.RequiredPolicies = append(
 			op.Opts.Engine.RequiredPolicies, newCloudRequiredPolicy(b.client, b, policy, update.Owner))
 	}
@@ -1871,6 +1811,21 @@ func (b *cloudBackend) createAndStartUpdate(
 	// Provide ESC environment resolver for local policy packs.
 	op.Opts.Engine.PolicyEnvResolver = NewLocalPolicyEnvironmentResolver(b, update.Owner)
 
+	// Start the update. We use this opportunity to pass new tags to the service, to pick up any
+	// metadata changes.
+	tags, err := backend.GetMergedStackTags(ctx, stack, op.Root, op.Proj, op.StackConfiguration.Config)
+	if err != nil {
+		return client.UpdateIdentifier{}, updateMetadata{}, fmt.Errorf("getting stack tags: %w", err)
+	}
+
+	version, token, journalVersion, err := b.client.StartUpdate(ctx, update, tags)
+	if err != nil {
+		if err, ok := err.(*apitype.ErrorResponse); ok && err.Code == 409 {
+			conflict := backenderr.ConflictingUpdateError{Err: err}
+			return client.UpdateIdentifier{}, updateMetadata{}, conflict
+		}
+		return client.UpdateIdentifier{}, updateMetadata{}, err
+	}
 	// Any non-preview update will be considered part of the stack's update history.
 	if action != apitype.PreviewUpdate {
 		logging.V(7).Infof("Stack %s being updated to version %d", stackRef, version)
@@ -1881,7 +1836,7 @@ func (b *cloudBackend) createAndStartUpdate(
 		userName = "unknown"
 	}
 	// Check if the user's org (stack's owner) has Neo enabled. If not, we don't show the link to Neo.
-	isNeoEnabled := isNeoIntegrationEnabled
+	isNeoEnabled := updateDetails.IsNeoIntegrationEnabled
 	b.neoEnabledForCurrentProject = &isNeoEnabled
 	neoEnabledValueString := "is"
 	continuationString := ""
@@ -1903,7 +1858,7 @@ func (b *cloudBackend) createAndStartUpdate(
 	return update, updateMetadata{
 		version:        version,
 		leaseToken:     token,
-		messages:       messages,
+		messages:       updateDetails.Messages,
 		journalVersion: journalVersion,
 	}, nil
 }
@@ -2369,11 +2324,6 @@ func (b *cloudBackend) ExportDeploymentForVersion(
 func (b *cloudBackend) exportDeployment(
 	ctx context.Context, stackRef backend.StackReference, version *int,
 ) (*apitype.UntypedDeployment, error) {
-	if version == nil && b.cachedUpdateData != nil && b.cachedUpdateData.stackRef.String() == stackRef.String() {
-		logging.V(7).Infof("Using cached deployment from begin-update for %s", stackRef)
-		return b.cachedUpdateData.deployment, nil
-	}
-
 	stack, err := b.getCloudStackIdentifier(stackRef)
 	if err != nil {
 		return nil, err

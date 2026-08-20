@@ -39,13 +39,10 @@ import (
 func TestPrettyKeyForProject(t *testing.T) {
 	t.Parallel()
 
-	proj := &workspace.Project{
-		Name:    tokens.PackageName("test-package"),
-		Runtime: workspace.NewProjectRuntimeInfo("nodejs", nil),
-	}
+	projectName := tokens.PackageName("test-package")
 
-	assert.Equal(t, "foo", prettyKeyForProject(config.MustMakeKey("test-package", "foo"), proj))
-	assert.Equal(t, "other-package:bar", prettyKeyForProject(config.MustMakeKey("other-package", "bar"), proj))
+	assert.Equal(t, "foo", PrettyKeyForProject(config.MustMakeKey("test-package", "foo"), projectName))
+	assert.Equal(t, "other-package:bar", PrettyKeyForProject(config.MustMakeKey("other-package", "bar"), projectName))
 	assert.Panics(t, func() { config.MustMakeKey("other:package", "bar") })
 }
 

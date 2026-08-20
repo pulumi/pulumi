@@ -3791,9 +3791,7 @@ func TestRequiredObjectCycles(t *testing.T) {
 	})
 }
 
-// TestBindSpecReservedPackageNames asserts that the package names "pulumi" and "input" are rejected at bind time.
-// "pulumi" is reserved for the builtin package/provider resources; "input" is reserved for `pulumi do` to use as
-// a flag-vs-token discriminator.
+// TestBindSpecReservedPackageNames asserts that reserved package names are rejected at bind time.
 func TestBindSpecReservedPackageNames(t *testing.T) {
 	t.Parallel()
 

@@ -20,6 +20,8 @@ import (
 	"strings"
 	"sync"
 
+	mapset "github.com/deckarep/golang-set/v2"
+
 	"github.com/blang/semver"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
@@ -334,7 +336,7 @@ func (b *binder) getReadPkgOpts(node *ReadResource) packageOpts {
 // loadReferencedPackageSchemas loads the schemas for any packages referenced by a given node.
 func (b *binder) loadReferencedPackageSchemas(ctx context.Context, n Node) error {
 	var pkgOpts packageOpts
-	packageNames := codegen.StringSet{}
+	packageNames := mapset.NewSet[string]()
 
 	switch r := n.(type) {
 	case *Resource:
@@ -376,7 +378,7 @@ func (b *binder) loadReferencedPackageSchemas(ctx context.Context, n Node) error
 	})
 	contract.Assertf(len(diags) == 0, "unexpected diagnostics: %v", diags)
 
-	for _, name := range packageNames.SortedValues() {
+	for _, name := range mapset.Sorted(packageNames) {
 		if _, ok := b.referencedPackages[name]; ok && pkgOpts.version == "" || name == "" {
 			continue
 		}

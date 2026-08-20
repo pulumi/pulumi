@@ -123,8 +123,8 @@ func (s *Store) FallbackReason() error { return s.fallbackReason }
 
 // Both callers have established the user opted in, so prompting is governed
 // by attendance alone.
-func candidates(pulumiHome string) []backendImpl {
-	return platformCandidatesHook(someoneCanAnswerAPasswordDialog(), pulumiHome)
+func candidates() []backendImpl {
+	return platformCandidatesHook(someoneCanAnswerAPasswordDialog())
 }
 
 var platformCandidatesHook = platformCandidates
@@ -132,9 +132,7 @@ var platformCandidatesHook = platformCandidates
 // Resolve picks the backend for writing. A plaintext resolution is not an
 // error: its key operations fail with ErrUnavailable, which callers take as
 // the signal to keep plaintext behavior.
-//
-// pulumiHome locates file-based key material; empty disables that backend.
-func Resolve(mode Mode, pulumiHome string) (*Store, error) {
+func Resolve(mode Mode) (*Store, error) {
 	switch mode {
 	case ModePlaintext, ModeDefault:
 		return &Store{b: backendImpl{id: BackendPlaintext}}, nil
@@ -144,7 +142,7 @@ func Resolve(mode Mode, pulumiHome string) (*Store, error) {
 	}
 
 	var firstErr error
-	for _, cand := range candidates(pulumiHome) {
+	for _, cand := range candidates() {
 		outcome, err := cand.available()
 		switch outcome {
 		case Ready:
@@ -179,11 +177,11 @@ func Resolve(mode Mode, pulumiHome string) (*Store, error) {
 
 // ForBackend returns a store for the backend that produced an existing
 // envelope, regardless of mode — reading data back must always be attempted.
-func ForBackend(id Backend, pulumiHome string) (*Store, error) {
+func ForBackend(id Backend) (*Store, error) {
 	if id == BackendPlaintext {
 		return &Store{b: backendImpl{id: BackendPlaintext}}, nil
 	}
-	for _, cand := range candidates(pulumiHome) {
+	for _, cand := range candidates() {
 		if cand.id == id {
 			outcome, err := cand.available()
 			if outcome == Declined {
