@@ -285,6 +285,33 @@ class NextSerializationTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(urn, res)
 
     @pulumi_test
+    async def test_mock_resource_reference(self):
+        class ResourceReferenceMocks(MyMocks):
+            def new_resource(self, args: MockResourceArgs):
+                if args.typ == "test:index:component-with-resource":
+                    return [
+                        None,
+                        {"resource": MyCustomResource(f"{args.name}-resource")},
+                    ]
+                return super().new_resource(args)
+
+        class ComponentWithResource(ComponentResource):
+            def __init__(self, name: str):
+                super().__init__(
+                    "test:index:component-with-resource",
+                    name,
+                    {"resource": None},
+                )
+
+        rpc.register_resource_module("test", "index", MyResourceModule())
+        set_mocks(ResourceReferenceMocks())
+
+        component = ComponentWithResource("test")
+
+        resource = await component.resource.future()
+        self.assertIsInstance(resource, MyCustomResource)
+
+    @pulumi_test
     async def test_string_asset(self):
         asset = StringAsset("Python 3 is cool")
         prop = await rpc.serialize_property(asset, [], None)

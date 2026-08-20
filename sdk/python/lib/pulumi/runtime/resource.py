@@ -27,7 +27,7 @@ from collections.abc import Awaitable, Mapping, Sequence
 
 import grpc
 
-from ._instrumentation import wrap_with_context
+from ._context import wrap_with_context
 from google.protobuf import struct_pb2
 
 from .. import _types, log

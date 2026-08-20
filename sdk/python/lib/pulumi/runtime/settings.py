@@ -18,7 +18,7 @@ Runtime settings and configuration.
 
 from __future__ import annotations
 
-from ._instrumentation import wrap_with_context
+from ._context import wrap_with_context
 
 import asyncio
 import base64
