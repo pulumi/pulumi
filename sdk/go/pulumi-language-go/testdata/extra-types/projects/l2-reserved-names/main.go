@@ -17,7 +17,8 @@ func main() {
 		if err != nil {
 			return err
 		}
-		ctx.Export("elementType", elem.ElementType_.GetElementType_())
+		ctx.Export("elementType", elem.ElementType_)
+		ctx.Export("nested", elem.ElementType_.GetElementType_())
 		return nil
 	})
 }
