@@ -1134,7 +1134,9 @@ func (b *cloudBackend) ParseStackReference(s string) (backend.StackReference, er
 
 	if qualifiedName.Project == "" {
 		if b.currentProject == nil {
-			return nil, errors.New("no current project found, pass the fully qualified stack name (org/project/stack)")
+			return nil, errors.New("no Pulumi.yaml project file found; " +
+				"either run this command from a directory containing a Pulumi project, " +
+				"or pass the fully qualified stack name (org/project/stack)")
 		}
 
 		qualifiedName.Project = b.currentProject.Name.String()

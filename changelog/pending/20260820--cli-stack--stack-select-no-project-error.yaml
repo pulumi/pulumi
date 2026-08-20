@@ -1,0 +1,6 @@
+component: cli/stack
+kind: fix
+body: Give a clearer error message when selecting a stack by name outside a directory with a Pulumi.yaml project file
+time: 2026-08-20T00:00:00Z
+custom:
+    PR: "0"
