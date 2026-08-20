@@ -1,4 +1,0 @@
-component: cli/do
-kind: fix
-body: Keep snippets when delete fails, so delete can be retried
-time: 2026-08-18T11:33:39.573721677+02:00

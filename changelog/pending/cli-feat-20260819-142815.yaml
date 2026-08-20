@@ -1,4 +1,0 @@
-component: cli
-kind: feat
-body: Introduce `PULUMI_DEFAULT_ORGANIZATION` to be able to set the default org
-time: 2026-08-19T14:28:15.720763832+02:00

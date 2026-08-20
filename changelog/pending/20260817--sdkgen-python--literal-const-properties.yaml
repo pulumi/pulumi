@@ -1,4 +1,0 @@
-component: sdkgen/python
-kind: improvement
-body: Type constant properties as Literal[value] instead of their primitive type
-time: 2026-08-17T00:00:00Z

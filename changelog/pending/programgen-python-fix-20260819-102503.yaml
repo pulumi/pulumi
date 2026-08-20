@@ -1,4 +1,0 @@
-component: programgen/python
-kind: fix
-body: Fix casing of local component outputs
-time: 2026-08-19T10:25:03.05574+01:00

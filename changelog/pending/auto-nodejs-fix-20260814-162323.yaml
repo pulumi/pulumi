@@ -1,4 +1,0 @@
-component: auto/nodejs
-kind: fix
-body: Remove Node.js Automation API output buffer limit
-time: 2026-08-14T16:23:23.588424+02:00
