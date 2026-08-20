@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"fmt"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -312,40 +313,53 @@ func TestTreeRenderDoesntRenderBeforeItHasContent(t *testing.T) {
 	}()
 }
 
-// slowWriter makes every frame expensive regardless of how fast the machine running
-// the test is.
-type slowWriter struct{}
+// frameCounter counts the frames a renderer draws. Every frame begins with a carriage
+// return, and none of the content this file renders contains one.
+type frameCounter struct {
+	m sync.Mutex
+	n int
+}
 
-func (slowWriter) Write(p []byte) (int, error) {
-	time.Sleep(500 * time.Microsecond)
+func (c *frameCounter) Write(p []byte) (int, error) {
+	c.m.Lock()
+	defer c.m.Unlock()
+	c.n += bytes.Count(p, []byte("\r"))
 	return len(p), nil
 }
 
-// TestTreeRendererCapsRenderLoad checks that expensive frames throttle the frame rate
-// instead of being drawn back-to-back. A frame holds the renderer's lock, so a renderer
-// that never keeps up starves the goroutine feeding it engine events. See #14732.
-func TestTreeRendererCapsRenderLoad(t *testing.T) {
+func (c *frameCounter) frames() int {
+	c.m.Lock()
+	defer c.m.Unlock()
+	return c.n
+}
+
+// TestTreeRendererFrameRate checks that the renderer draws no faster than the display
+// actually changes. A frame re-renders every row and holds the renderer's lock while it
+// does, so on a large stack a high frame rate starves the goroutine feeding it engine
+// events and slows the operation itself down. See #14732.
+func TestTreeRendererFrameRate(t *testing.T) {
 	t.Parallel()
 
-	term := terminal.NewMockTerminal(slowWriter{}, 80, 24, true)
+	var counter frameCounter
+	term := terminal.NewMockTerminal(&counter, 80, 24, true)
 	treeRenderer, display := createRendererAndDisplay(term, true)
 	addManyNormalEvents(display, 200, "a message")
 
-	treeRenderer.ticker.Reset(16 * time.Millisecond)
+	// createRendererAndDisplay stops the ticker, so restart it to draw at the real rate.
+	treeRenderer.ticker.Reset(frameInterval)
 	defer func() {
 		treeRenderer.ticker.Stop()
 		close(treeRenderer.closed)
 	}()
 
-	var blocked time.Duration
+	// Keep the display permanently dirty, so that every tick draws.
 	start := time.Now()
 	for time.Since(start) < time.Second {
-		before := time.Now()
 		treeRenderer.markDirty()
-		blocked += time.Since(before)
 		time.Sleep(time.Millisecond)
 	}
 
-	load := float64(blocked) / float64(time.Since(start))
-	assert.Lessf(t, load, 0.5, "renderer held its lock %.0f%% of the time", load*100)
+	fps := float64(counter.frames()) / time.Since(start).Seconds()
+	assert.Greaterf(t, fps, 5.0, "renderer drew %.0f frames per second", fps)
+	assert.Lessf(t, fps, 25.0, "renderer drew %.0f frames per second", fps)
 }

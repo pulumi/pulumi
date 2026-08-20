@@ -61,6 +61,14 @@ type treeRenderer struct {
 	maxTreeTableOffset int // The maximum scroll offset.
 }
 
+// frameInterval is how often the renderer redraws. A frame re-renders every row, so its
+// cost grows with the size of the stack, and it holds r.m while it does, which blocks the
+// markDirty calls made by the goroutine reading engine events. Drawing more often than the
+// display actually changes therefore slows the operation itself down on large stacks.
+// Nothing animates faster than the one second tick that drives the elapsed times and the
+// suffix, so this only bounds how quickly a new row appears.
+const frameInterval = 60 * time.Millisecond
+
 func newInteractiveRenderer(term terminal.Terminal, permalink string, opts Options) progressRenderer {
 	// Something about the tree renderer--possibly the raw terminal--does not yet play well with Windows, so for now
 	// we fall back to the legacy renderer on that platform.
@@ -73,7 +81,7 @@ func newInteractiveRenderer(term terminal.Terminal, permalink string, opts Optio
 		opts:      opts,
 		term:      term,
 		permalink: permalink,
-		ticker:    time.NewTicker(16 * time.Millisecond),
+		ticker:    time.NewTicker(frameInterval),
 		keys:      make(chan string),
 		closed:    make(chan bool),
 	}
@@ -461,35 +469,16 @@ func (r *treeRenderer) clampLine(line string, maxWidth int) string {
 	return colors.TrimColorizedString(line, maxRowLength)
 }
 
-// maxRenderLoad bounds the share of wall-clock time the renderer may spend drawing
-// frames. A frame re-renders every row, so its cost grows with the size of the stack:
-// past a few thousand resources a frame takes longer than the tick interval and the
-// renderer draws back-to-back forever. That burns a core and, because a frame holds
-// r.m for its duration, blocks the markDirty calls made by the goroutine reading
-// engine events, which in turn backs up the whole event pipeline.
-const maxRenderLoad = 8
-
-// nextFrameTime returns the earliest time at which another frame may be drawn, given
-// when the last frame started and how long it took.
-func nextFrameTime(start time.Time, cost time.Duration) time.Time {
-	return start.Add(cost * maxRenderLoad)
-}
-
 func (r *treeRenderer) handleEvents() {
-	var nextFrame time.Time
 	for {
 		select {
 		case <-r.ticker.C:
-			start := time.Now()
-			if start.Before(nextFrame) {
-				continue
-			}
 			r.frame(false, false)
-			nextFrame = nextFrameTime(start, time.Since(start))
 		case key := <-r.keys:
 			r.handleKey(key)
-			// Scrolling must stay responsive, so let the next tick draw regardless.
-			nextFrame = time.Time{}
+			// handleKey marks the display dirty. Draw it now rather than waiting for the
+			// next tick, so that scrolling stays responsive whatever the frame interval is.
+			r.frame(false, false)
 		case <-r.closed:
 			return
 		}
