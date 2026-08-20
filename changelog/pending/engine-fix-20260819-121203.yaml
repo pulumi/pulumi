@@ -1,0 +1,4 @@
+component: engine
+kind: fix
+body: Fix an intermittent "Duplicate resource URN" failure during targeted operations when the program removes a dependency edge on an untargeted resource
+time: 2026-08-19T12:12:03.743911+02:00
