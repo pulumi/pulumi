@@ -1,0 +1,4 @@
+component: cli
+kind: fix
+body: Preserve property values in JSON event conversion when the state contains blinded secrets, which now surface as "[secret]"
+time: 2026-08-12T14:37:46.036667+02:00

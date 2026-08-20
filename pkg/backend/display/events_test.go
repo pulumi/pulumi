@@ -26,6 +26,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/stretchr/testify/assert"
@@ -91,6 +92,27 @@ func TestSummaryEventResultRoundTrip(t *testing.T) {
 	require.NoError(t, err)
 	payload := roundTripped.Payload().(engine.SummaryEventPayload)
 	assert.Equal(t, original.Result, payload.Result)
+}
+
+// TestConvertJSONStepEventStateMetadataBlindedSecrets verifies that blinded secrets in serialized
+// state deserialize as the string "[secret]" instead of dropping the entire property map.
+func TestConvertJSONStepEventStateMetadataBlindedSecrets(t *testing.T) {
+	t.Parallel()
+
+	md := convertJSONStepEventStateMetadata(&apitype.StepEventStateMetadata{
+		Inputs: map[string]any{
+			"plain": "hello",
+			"password": map[string]any{
+				resource.SigKey: resource.SecretSig,
+				"ciphertext":    "[secret]",
+			},
+		},
+	})
+
+	require.NotNil(t, md)
+	assert.Equal(t, resource.NewProperty("hello"), md.Inputs["plain"])
+	require.True(t, md.Inputs["password"].IsSecret())
+	assert.Equal(t, resource.NewProperty("[secret]"), md.Inputs["password"].SecretValue().Element)
 }
 
 // TestConvertJSONEventExhaustive tests that all fields of the EngineEvent type are handled by ConvertJSONEvent.

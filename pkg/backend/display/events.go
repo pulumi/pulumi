@@ -21,6 +21,7 @@ import (
 	"maps"
 	"math"
 	"regexp"
+	"strconv"
 	"time"
 
 	"github.com/pulumi/pulumi/pkg/v3/display"
@@ -599,6 +600,19 @@ func convertJSONStepEventMetadata(md apitype.StepEventMetadata) engine.StepEvent
 	}
 }
 
+// jsonBlindingDecrypter decrypts blinded secrets to the JSON-encoded string "[secret]".
+// Deserialization expects decrypted plaintext to be valid JSON, so config.BlindingCrypter's
+// bare "[secret]" would fail to parse and drop the entire property map.
+type jsonBlindingDecrypter struct{}
+
+func (jsonBlindingDecrypter) DecryptValue(ctx context.Context, _ string) (string, error) {
+	return strconv.Quote("[secret]"), nil
+}
+
+func (d jsonBlindingDecrypter) BatchDecrypt(ctx context.Context, ciphertexts []string) ([]string, error) {
+	return config.DefaultBatchDecrypt(ctx, d, ciphertexts)
+}
+
 // convertJSONStepEventStateMetadata converts the internal StepEventStateMetadata to the API type
 // we send over the wire.
 //
@@ -609,7 +623,7 @@ func convertJSONStepEventStateMetadata(md *apitype.StepEventStateMetadata) *engi
 		return nil
 	}
 
-	crypter := config.BlindingCrypter
+	crypter := jsonBlindingDecrypter{}
 	inputs, err := stack.DeserializeProperties(md.Inputs, crypter)
 	contract.IgnoreError(err)
 
