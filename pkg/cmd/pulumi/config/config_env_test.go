@@ -197,12 +197,12 @@ func mapEvalDiags(diags syntax.Diagnostics) apitype.EnvironmentDiagnostics {
 type envDefMap map[string]string
 
 // LoadEnvironment loads the definition for the environment with the given name.
-func (m envDefMap) LoadEnvironment(ctx context.Context, name string) ([]byte, eval.Decrypter, error) {
+func (m envDefMap) LoadEnvironment(ctx context.Context, name string) ([]byte, string, eval.Decrypter, error) {
 	def, ok := m[name]
 	if !ok {
-		return nil, nil, errors.New("not found")
+		return nil, "", nil, errors.New("not found")
 	}
-	return []byte(def), nil, nil
+	return []byte(def), name, nil, nil
 }
 
 func (m envDefMap) AuthorizeImport(_ context.Context, _ string, _ string, _ bool) error {
