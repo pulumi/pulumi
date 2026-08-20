@@ -606,7 +606,6 @@ def output_type_to_dict(obj: Any) -> dict[str, Any]:
             fget = deprecated_callable
 
         value = fget(obj)  # type: ignore
-        # We treat properties with a value of None as if they don't exist.
         if value is not None:
             result[pulumi_name] = value
     return result

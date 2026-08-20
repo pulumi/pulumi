@@ -210,7 +210,6 @@ class InputTypeTests(unittest.TestCase):
                 _types.output_type_to_dict(t),
             )
 
-            # Properties with a value of None are treated as if they don't exist.
             t2 = _types.output_type_from_dict(typ, {"firstValue": "hello"})
             self.assertEqual({"firstValue": "hello"}, _types.output_type_to_dict(t2))
 
