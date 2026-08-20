@@ -3223,6 +3223,12 @@ func TestNodejsComponentProviderRun(t *testing.T) {
 					out, err = cmd.CombinedOutput()
 					require.NoError(t, err, "%s failed with: %s", cmd.String(), string(out))
 
+					if runtime == "python" {
+						// Layer the locally-built core SDK on top of the venv so the
+						// host program exercises local SDK changes.
+						ptesting.InstallDependencies(t, info.Root)
+					}
+
 					return nil
 				},
 				Dir:             filepath.Join("component_provider", "nodejs", "component-provider-host"),
