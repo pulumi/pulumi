@@ -2983,14 +2983,11 @@ func diffResource(d diag.Sink, urn resource.URN, id resource.ID, oldInputs, oldO
 	}
 	if diff.Changes == plugin.DiffUnknown {
 		new := processIgnoreChanges(d, urn, newInputs, oldInputs, ignoreChanges)
-		tmp := oldInputs.Diff(new)
+		tmp := unwrapResourceSecretsAndOutputs(oldInputs).Diff(unwrapResourceSecretsAndOutputs(new))
 		if tmp.AnyChanges() {
 			diff.Changes = plugin.DiffSome
-			unwrapped := unwrapResourceSecretsAndOutputs(oldInputs).Diff(unwrapResourceSecretsAndOutputs(new))
-			if unwrapped.AnyChanges() {
-				diff.ChangedKeys = unwrapped.ChangedKeys()
-				diff.DetailedDiff = plugin.NewDetailedDiffFromObjectDiff(unwrapped, true /* inputDiff */)
-			}
+			diff.ChangedKeys = tmp.ChangedKeys()
+			diff.DetailedDiff = plugin.NewDetailedDiffFromObjectDiff(tmp, true /* inputDiff */)
 		} else {
 			diff.Changes = plugin.DiffNone
 		}
