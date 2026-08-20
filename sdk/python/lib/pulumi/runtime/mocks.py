@@ -21,9 +21,17 @@ import logging
 from abc import ABC, abstractmethod
 from typing import NamedTuple, Optional
 
+import grpc
 from google.protobuf import empty_pb2
 
-from ..runtime.proto import engine_pb2, provider_pb2, resource_pb2
+from ..runtime.proto import (
+    callback_pb2,
+    callback_pb2_grpc,
+    engine_pb2,
+    provider_pb2,
+    resource_pb2,
+)
+from ._grpc_settings import _GRPC_CHANNEL_OPTIONS
 from ..runtime.stack import Stack, run_pulumi_func
 from . import rpc, rpc_manager
 from .settings import (
@@ -52,7 +60,8 @@ def test(fn):
 
         _sync_await(
             run_pulumi_func(
-                lambda: _sync_await(Output.from_input(fn(*args, **kwargs)).future())
+                lambda: _sync_await(Output.from_input(fn(*args, **kwargs)).future()),
+                shutdown_callbacks=False,
             )
         )
 
@@ -156,9 +165,20 @@ class MockMonitor:
     mocks: Mocks
     resources: dict[str, ResourceRegistration]
 
+    _stack_transforms: list[callback_pb2.Callback]
+    _stack_invoke_transforms: list[callback_pb2.Callback]
+    _resource_transforms: dict[str, list[callback_pb2.Callback]]
+    _parents: dict[str, str]
+    _callback_stubs: dict[str, callback_pb2_grpc.CallbacksStub]
+
     def __init__(self, mocks: Mocks):
         self.mocks = mocks
         self.resources = {}
+        self._stack_transforms = []
+        self._stack_invoke_transforms = []
+        self._resource_transforms = {}
+        self._parents = {}
+        self._callback_stubs = {}
 
     def make_urn(self, parent: str, type_: str, name: str) -> str:
         if parent != "":
@@ -175,11 +195,105 @@ class MockMonitor:
 
         return dict(self.resources)
 
+    def _callback_stub(self, target: str) -> callback_pb2_grpc.CallbacksStub:
+        stub = self._callback_stubs.get(target)
+        if stub is None:
+            stub = callback_pb2_grpc.CallbacksStub(
+                grpc.insecure_channel(target, options=_GRPC_CHANNEL_OPTIONS)
+            )
+            self._callback_stubs[target] = stub
+        return stub
+
+    def _transform_resource_options(
+        self, request
+    ) -> resource_pb2.TransformResourceOptions:
+        opts = resource_pb2.TransformResourceOptions(
+            depends_on=request.dependencies,
+            ignore_changes=request.ignoreChanges,
+            replace_on_changes=request.replaceOnChanges,
+            version=request.version,
+            aliases=request.aliases,
+            provider=request.provider,
+            providers=request.providers,
+            plugin_download_url=request.pluginDownloadURL,
+            deleted_with=request.deletedWith,
+            replace_with=request.replace_with,
+            additional_secret_outputs=request.additionalSecretOutputs,
+            plugin_checksums=request.pluginChecksums,
+            hide_diff=request.hideDiffs,
+            **{"import": request.importId},
+        )
+        if request.HasField("protect"):
+            opts.protect = request.protect
+        if request.HasField("retainOnDelete"):
+            opts.retain_on_delete = request.retainOnDelete
+        if request.deleteBeforeReplaceDefined or request.deleteBeforeReplace:
+            opts.delete_before_replace = request.deleteBeforeReplace
+        if request.HasField("customTimeouts"):
+            opts.custom_timeouts.CopyFrom(request.customTimeouts)
+        if request.HasField("hooks"):
+            opts.hooks.CopyFrom(request.hooks)
+        if request.HasField("replacement_trigger"):
+            opts.replacement_trigger.CopyFrom(request.replacement_trigger)
+        return opts
+
+    def _invoke_callback(self, callback, request) -> bytes:
+        stub = self._callback_stub(callback.target)
+        resp = stub.Invoke(
+            callback_pb2.CallbackInvokeRequest(
+                token=callback.token, request=request.SerializeToString()
+            )
+        )
+        return resp.response
+
+    def _invoke_transform(self, callback, request, props, opts):
+        transform_request = resource_pb2.TransformRequest(
+            type=request.type,
+            name=request.name,
+            custom=request.custom or False,
+            parent=request.parent,
+            properties=props,
+            options=opts,
+        )
+        response = resource_pb2.TransformResponse.FromString(
+            self._invoke_callback(callback, transform_request)
+        )
+        new_props = response.properties if response.HasField("properties") else props
+        new_opts = response.options if response.HasField("options") else opts
+        return new_props, new_opts
+
+    def _invoke_invoke_transform(self, callback, token, args, opts):
+        transform_request = resource_pb2.TransformInvokeRequest(
+            token=token, args=args, options=opts
+        )
+        response = resource_pb2.TransformInvokeResponse.FromString(
+            self._invoke_callback(callback, transform_request)
+        )
+        new_args = response.args if response.HasField("args") else args
+        new_opts = response.options if response.HasField("options") else opts
+        return new_args, new_opts
+
     def Invoke(self, request):
         # Ensure we have an event loop on this thread because it's needed when deserializing resource references.
         _ensure_event_loop()
 
-        args = rpc.deserialize_properties(request.args)
+        args_struct = request.args
+        provider = request.provider
+        invoke_transforms = list(self._stack_invoke_transforms)
+        if invoke_transforms:
+            invoke_opts = resource_pb2.TransformInvokeOptions(
+                provider=request.provider,
+                version=request.version,
+                plugin_download_url=request.pluginDownloadURL,
+                plugin_checksums=request.pluginChecksums,
+            )
+            for callback in invoke_transforms:
+                args_struct, invoke_opts = self._invoke_invoke_transform(
+                    callback, request.tok, args_struct, invoke_opts
+                )
+            provider = invoke_opts.provider
+
+        args = rpc.deserialize_properties(args_struct)
 
         if request.tok == "pulumi:pulumi:getResource":
             registered_resource = self.resources.get(args["urn"])
@@ -191,9 +305,7 @@ class MockMonitor:
             fields = {"failures": None, "return": ret_proto}
             return resource_pb2.ResourceInvokeResponse(**fields)
 
-        call_args = MockCallArgs(
-            token=request.tok, args=args, provider=request.provider
-        )
+        call_args = MockCallArgs(token=request.tok, args=args, provider=provider)
         tup = self.mocks.call(call_args)
         if isinstance(tup, dict):
             (ret, failures) = (tup, None)
@@ -243,14 +355,33 @@ class MockMonitor:
         # Ensure we have an event loop on this thread because it's needed when deserializing resource references.
         _ensure_event_loop()
 
-        inputs = rpc.deserialize_properties(request.object)
+        transforms = list(request.transforms)
+        parent = request.parent
+        while parent:
+            transforms.extend(self._resource_transforms.get(parent, []))
+            parent = self._parents.get(parent, "")
+        transforms.extend(self._stack_transforms)
+
+        props_struct = request.object
+        provider = request.provider
+        import_id = request.importId
+        if transforms:
+            opts = self._transform_resource_options(request)
+            for callback in transforms:
+                props_struct, opts = self._invoke_transform(
+                    callback, request, props_struct, opts
+                )
+            provider = opts.provider
+            import_id = getattr(opts, "import")
+
+        inputs = rpc.deserialize_properties(props_struct)
 
         resource_args = MockResourceArgs(
             typ=request.type,
             name=request.name,
             inputs=inputs,
-            provider=request.provider,
-            resource_id=request.importId,
+            provider=provider,
+            resource_id=import_id,
             custom=request.custom or False,
         )
         id_, state = self.mocks.new_resource(resource_args)
@@ -258,10 +389,28 @@ class MockMonitor:
         obj_proto = _sync_await(rpc.serialize_properties(state, {}))
 
         self.resources[urn] = MockMonitor.ResourceRegistration(urn, id_, state)
+        if request.transforms:
+            self._resource_transforms[urn] = list(request.transforms)
+        if request.parent:
+            self._parents[urn] = request.parent
 
         return resource_pb2.RegisterResourceResponse(urn=urn, id=id_, object=obj_proto)
 
     def RegisterResourceOutputs(self, request):
+        return empty_pb2.Empty()
+
+    def RegisterStackTransform(self, request):
+        self._stack_transforms.append(request)
+        return empty_pb2.Empty()
+
+    def RegisterStackInvokeTransform(self, request):
+        self._stack_invoke_transforms.append(request)
+        return empty_pb2.Empty()
+
+    def RegisterResourceHook(self, request):
+        return empty_pb2.Empty()
+
+    def RegisterErrorHook(self, request):
         return empty_pb2.Empty()
 
     def SupportsFeature(self, request):
@@ -352,6 +501,7 @@ def set_mocks(
         stack=stack if stack is not None else "stack",
         dry_run=preview,
         organization=organization,
+        callbacks=None,
     )
     configure(settings)
 

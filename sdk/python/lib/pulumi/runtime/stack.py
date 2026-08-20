@@ -53,7 +53,7 @@ from .settings import (
     is_dry_run,
     set_root_resource,
 )
-from .sync_await import _sync_await
+from .sync_await import _ensure_event_loop, _sync_await
 
 if TYPE_CHECKING:
     from ..output import Inputs
@@ -132,6 +132,7 @@ class ResourceRegistrationFailed(Exception):
 
 async def run_pulumi_func(
     func: Callable[[], Optional[Awaitable[None]]],
+    shutdown_callbacks: bool = True,
 ) -> None:
     # Run the function and grab any exception it generates
     ex: Optional[BaseException] = None
@@ -149,8 +150,9 @@ async def run_pulumi_func(
         if ex is None:
             await _wait_for_shutdown()
     finally:
-        # Finally, we must always shutdown the callbacks server when we're done.
-        await _shutdown_callbacks()
+        # Finally, shutdown the callbacks server when we're done.
+        if shutdown_callbacks:
+            await _shutdown_callbacks()
 
     # By now, all tasks have exited and we're good to go.
     log.debug("run_pulumi_func completed")
@@ -482,6 +484,13 @@ def register_stack_transformation(t: ResourceTransformation):
         root_resource._transformations = root_resource._transformations + [t]
 
 
+def _wait_for_pending_rpcs() -> None:
+    pending = asyncio.all_tasks(_ensure_event_loop())
+    rpcs = {task for task in pending if task.get_coro().__name__ == "rpc_wrapper"}  # type: ignore
+    if rpcs:
+        _sync_await(asyncio.gather(*rpcs))
+
+
 def register_resource_transform(t: ResourceTransform) -> None:
     """
     Add a transform to all future resources constructed in this Pulumi stack.
@@ -494,9 +503,7 @@ def register_resource_transform(t: ResourceTransform) -> None:
     # We need to make sure all the current resource registrations are finished before
     # registering the transforms.  Do so by waiting for all RPCs to complete, before
     # we go ahead and register the transform.
-    pending = asyncio.all_tasks()
-    rpcs = {task for task in pending if task.get_coro().__name__ == "rpc_wrapper"}  # type: ignore
-    _sync_await(asyncio.gather(*rpcs))
+    _wait_for_pending_rpcs()
 
     callbacks = _sync_await(_get_callbacks())
     if callbacks is None:
@@ -528,9 +535,7 @@ def register_invoke_transform(t: InvokeTransform) -> None:
     # We need to make sure all the current invokes are finished before
     # registering the transforms.  Do so by waiting for all RPCs to
     # complete, before we go ahead and register the transform.
-    pending = asyncio.all_tasks()
-    rpcs = {task for task in pending if task.get_coro().__name__ == "rpc_wrapper"}  # type: ignore
-    _sync_await(asyncio.gather(*rpcs))
+    _wait_for_pending_rpcs()
 
     callbacks = _sync_await(_get_callbacks())
     if callbacks is None:
