@@ -39,7 +39,9 @@ type logWriter struct {
 	// Holds buffered text for the next write or flush
 	// if we haven't yet seen a newline.
 	buff bytes.Buffer
-	mu   sync.Mutex // guards buff
+	// Set once the test has finished, after which we must not log to it.
+	done bool
+	mu   sync.Mutex // guards buff and done
 }
 
 var _ io.Writer = (*logWriter)(nil)
@@ -49,7 +51,8 @@ var _ io.Writer = (*logWriter)(nil)
 // It ensures that each line is logged separately.
 //
 // Any trailing buffered text that does not end with a newline
-// is flushed when the test finishes.
+// is flushed when the test finishes. Writes that arrive after that,
+// from goroutines that outlive the test, are discarded.
 //
 // The returned writer is safe for concurrent use
 // from multiple parallel tests.
@@ -61,13 +64,19 @@ func LogWriter(t testing.TB) io.Writer {
 // that prepends the given prefix to each line.
 func LogWriterPrefixed(t testing.TB, prefix string) io.Writer {
 	w := logWriter{t: t, prefix: prefix}
-	t.Cleanup(w.flush)
+	t.Cleanup(w.finish)
 	return &w
 }
 
 func (w *logWriter) Write(bs []byte) (int, error) {
 	w.mu.Lock()
 	defer w.mu.Unlock()
+
+	if w.done {
+		// Logging to a test that has finished races with the test framework's
+		// own teardown, so drop the write.
+		return len(bs), nil
+	}
 
 	w.t.Helper() // so that the log message points to the caller
 
@@ -103,10 +112,15 @@ func (w *logWriter) Write(bs []byte) (int, error) {
 	return total, nil
 }
 
-// flush flushes buffered text, even if it doesn't end with a newline.
-func (w *logWriter) flush() {
+// finish flushes buffered text, even if it doesn't end with a newline, and
+// stops later writes from reaching the test.
+func (w *logWriter) finish() {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+
 	if w.buff.Len() > 0 {
 		w.t.Logf("%s%s", w.prefix, w.buff.String())
 		w.buff.Reset()
 	}
+	w.done = true
 }
