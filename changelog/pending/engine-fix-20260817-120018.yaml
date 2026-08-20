@@ -1,4 +1,0 @@
-component: engine
-kind: fix
-body: Fix the engine returning extension package refs for non-parameterised packages against the same base
-time: 2026-08-17T12:00:18.757953413+01:00

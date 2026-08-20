@@ -1,6 +1,0 @@
-component: cli/new
-kind: feat
-body: Show a single confirmation of project, stack, and config defaults in interactive `pulumi new` instead of prompting for each value
-time: 2026-08-06T00:00:00+00:00
-custom:
-  PR: "24223"

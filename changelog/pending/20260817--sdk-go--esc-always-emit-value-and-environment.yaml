@@ -1,4 +1,0 @@
-component: sdk/go
-kind: fix
-body: Always emit the `value` and `environment` keys when serializing `esc.Value` and `esc.Range`, matching the fields the ESC OpenAPI contract marks required
-time: 2026-08-17T00:00:00+00:00
