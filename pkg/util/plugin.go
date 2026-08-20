@@ -28,7 +28,7 @@ import (
 // bundled with the `pulumi` binary and must be downloaded on demand.
 var knownLanguageRuntimes = map[string]semver.Version{
 	// renovate: datasource=github-releases depName=pulumi/pulumi-hcl extractVersion=^v(?<version>.+)$
-	"hcl": semver.MustParse("0.15.0"),
+	"hcl": semver.MustParse("0.16.0"),
 }
 
 // SetKnownPluginDownloadURL fills in metadata on the given PluginDescriptor that the CLI
