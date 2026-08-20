@@ -675,6 +675,10 @@ func (i *Interpreter) executeProgramNodes(ctx context.Context) (resource.Propert
 			if err := i.registerResource(ctx, node); err != nil {
 				return fmt.Errorf("failed to register resource %s: %w", node.Name(), err)
 			}
+		case *pcl.ReadResource:
+			if err := i.registerReadResource(ctx, node); err != nil {
+				return fmt.Errorf("failed to read resource %s: %w", node.Name(), err)
+			}
 		case *pcl.Component:
 			if err := i.registerComponent(ctx, node); err != nil {
 				return fmt.Errorf("failed to register component %s: %w", node.Name(), err)
@@ -1976,6 +1980,109 @@ func (i *Interpreter) registerResourceWith(
 	})
 
 	return propertyValueToCty(ctx, i.getResource, result)
+}
+
+func (i *Interpreter) registerReadResource(ctx context.Context, res *pcl.ReadResource) error {
+	logicalName := i.effectiveName(res.LogicalName())
+	token, _ := res.GetToken()
+	schemaResource, err := i.lookupResource(ctx, token)
+	if err != nil {
+		return fmt.Errorf("lookup resource schema for token %s: %w", token, err)
+	}
+	if schemaResource != nil {
+		token = schemaResource.Token
+	}
+
+	// The bindable inputs are "id" plus the schema's state inputs.
+	properties := []*schema.Property{{Name: "id", Type: schema.StringType}}
+	if schemaResource != nil && schemaResource.StateInputs != nil {
+		properties = append(properties, schemaResource.StateInputs.Properties...)
+	}
+
+	inputs, poison, diags := i.evalContext.EvaluateObject(res.Inputs, res.InputType, properties)
+	if poison != nil {
+		i.evalContext.SetVariable(res.Name(), makePoisonValue(*poison))
+		return nil
+	}
+	if diags.HasErrors() {
+		return diags
+	}
+
+	idVal, hasID := inputs["id"]
+	if !hasID {
+		return fmt.Errorf("read resource %s is missing the id attribute", res.Name())
+	}
+	delete(inputs, "id")
+
+	marshalOpts := plugin.MarshalOptions{
+		KeepUnknowns:   true,
+		KeepSecrets:    true,
+		KeepResources:  true,
+		KeepByteString: true,
+	}
+	obj, err := plugin.MarshalProperties(inputs, marshalOpts)
+	if err != nil {
+		return err
+	}
+	marshalOpts.KeepOutputValues = true
+
+	dependencies := []string{}
+	for _, val := range inputs {
+		dependencies = append(dependencies, getAllDependencies(val)...)
+	}
+	dependencies = append(dependencies, getAllDependencies(idVal)...)
+
+	var idStr string
+	if idVal.IsString() {
+		idStr = idVal.StringValue()
+	} else {
+		idStr = plugin.UnknownStringValue
+	}
+
+	request := &pulumirpc.ReadResourceRequest{
+		Id:                idStr,
+		Type:              token,
+		Name:              logicalName,
+		Parent:            i.stackURN,
+		Properties:        obj,
+		Dependencies:      dependencies,
+		AcceptSecrets:     true,
+		AcceptResources:   true,
+		AcceptsByteString: true,
+	}
+	request.PackageRef = i.getPackageRefFromToken(token)
+
+	resp, err := i.monitor.ReadResource(ctx, request)
+	if err != nil {
+		return err
+	}
+
+	outputs, err := plugin.UnmarshalProperties(resp.GetProperties(), marshalOpts)
+	if err != nil {
+		return err
+	}
+
+	outputs["id"] = resource.NewProperty(idStr)
+	outputs["urn"] = resource.NewProperty(resp.GetUrn())
+	outputs["__name"] = resource.NewProperty(logicalName)
+	outputs["__type"] = resource.NewProperty(token)
+
+	if schemaResource != nil {
+		fillSchemaOutputs(outputs, schemaResource.Properties, i.info.DryRun)
+	}
+
+	result := resource.NewProperty(resource.Output{
+		Element:      resource.NewProperty(outputs),
+		Dependencies: []resource.URN{resource.URN(resp.GetUrn())},
+		Known:        true,
+	})
+
+	ctyResult, err := propertyValueToCty(ctx, i.getResource, result)
+	if err != nil {
+		return err
+	}
+	i.evalContext.SetVariable(res.Name(), ctyResult)
+	return nil
 }
 
 func (i *Interpreter) registerComponent(ctx context.Context, component *pcl.Component) hcl.Diagnostics {
