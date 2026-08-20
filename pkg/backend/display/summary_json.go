@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"maps"
 	"os"
 	"time"
 
@@ -112,34 +113,24 @@ func resourceJSONFromEvent(p engine.ResourcePreEventPayload, opts Options) *Reso
 	}
 
 	r := NewResourceJSON(p.Metadata.URN, apitype.OpType(p.Metadata.Op), parent)
-	if opts.Type == DisplayDiff {
+	// Imports only have their diff once outputs arrive, mirroring renderDiffResourcePreEvent.
+	if opts.Type == DisplayDiff && p.Metadata.Op != deploy.OpImport {
 		r.Diff = diffJSONFromStep(&p.Metadata, false /* refresh */, opts.ShowSecrets)
 	}
 	return &r
 }
 
-// diffJSONFromStep flattens a step's property changes into a path → change map,
-// using the same sources as the human-readable diff display.
+// diffJSONFromStep flattens a step's property changes into a path → change map.
+// The diff itself is computed exactly as the human-readable display computes it
+// (renderDiff / getResourcePropertiesDetails); only the rendering differs.
 func diffJSONFromStep(m *engine.StepEventMetadata, refresh, showSecrets bool) map[string]PropertyDiffJSON {
 	// An OpSame diff is metadata-only (e.g. protect); see pulumi/pulumi#15944.
 	if m.Op == deploy.OpSame {
 		return nil
 	}
 
-	var hidden []resource.PropertyPath
-	if m.New != nil {
-		hidden = m.New.HideDiffs
-	} else if m.Old != nil {
-		hidden = m.Old.HideDiffs
-	}
-
 	out := map[string]PropertyDiffJSON{}
 	add := func(path resource.PropertyPath, kind string, old, new *resource.PropertyValue) {
-		for _, h := range hidden {
-			if h.Contains(path) {
-				return
-			}
-		}
 		entry := PropertyDiffJSON{Kind: kind}
 		if old != nil {
 			entry.Old = propertyValueJSON(*old, showSecrets)
@@ -150,26 +141,40 @@ func diffJSONFromStep(m *engine.StepEventMetadata, refresh, showSecrets bool) ma
 		out[path.String()] = entry
 	}
 
-	switch {
-	case m.DetailedDiff != nil && m.Old != nil && m.New != nil:
+	if m.DetailedDiff != nil && m.Old != nil && m.New != nil {
 		if diff, _ := engine.TranslateDetailedDiff(m, refresh); diff != nil {
 			flattenObjectDiff(nil, diff, add)
 		}
-	case m.Old != nil && m.New != nil:
-		if diff := m.Old.Inputs.Diff(m.New.Inputs, resource.IsInternalPropertyKey); diff != nil {
+	} else {
+		var olds, news resource.PropertyMap
+		var hide []resource.PropertyPath
+		var include []resource.PropertyKey
+		switch {
+		case m.Old != nil && m.New != nil:
+			isImport := m.Op == deploy.OpImport || m.Op == deploy.OpImportReplacement
+			if len(m.New.Outputs) > 0 && !isImport {
+				olds, news = m.Old.Outputs, m.New.Outputs
+			} else {
+				olds, news, include = m.Old.Inputs, m.New.Inputs, m.Diffs
+			}
+			hide = m.New.HideDiffs
+		case m.New != nil:
+			news = m.New.Inputs
+		case m.Old != nil:
+			olds = m.Old.Inputs
+		}
+
+		if diff, _ := diffOldNew(olds, news, hide); diff != nil {
+			if include != nil {
+				keep := make(map[resource.PropertyKey]bool, len(include))
+				for _, k := range include {
+					keep[k] = true
+				}
+				maps.DeleteFunc(diff.Adds, func(k resource.PropertyKey, _ resource.PropertyValue) bool { return !keep[k] })
+				maps.DeleteFunc(diff.Deletes, func(k resource.PropertyKey, _ resource.PropertyValue) bool { return !keep[k] })
+				maps.DeleteFunc(diff.Updates, func(k resource.PropertyKey, _ resource.ValueDiff) bool { return !keep[k] })
+			}
 			flattenObjectDiff(nil, diff, add)
-		}
-	case m.New != nil:
-		for k, v := range m.New.Inputs {
-			if !resource.IsInternalPropertyKey(k) {
-				add(resource.PropertyPath{string(k)}, "add", nil, &v)
-			}
-		}
-	case m.Old != nil:
-		for k, v := range m.Old.Inputs {
-			if !resource.IsInternalPropertyKey(k) {
-				add(resource.PropertyPath{string(k)}, "delete", &v, nil)
-			}
 		}
 	}
 
@@ -284,11 +289,13 @@ func tapSummaryJSON(in <-chan engine.Event, opts Options) <-chan engine.Event {
 					}
 				}
 			case engine.ResourceOutputsEvent:
-				// Refresh diffs only arrive on the outputs event, rewritten as an update or delete.
+				// Import and refresh diffs only arrive on the outputs event,
+				// mirroring renderDiffResourceOutputsEvent.
 				if payload, ok := e.Payload().(engine.ResourceOutputsEventPayload); ok && opts.Type == DisplayDiff {
 					m := payload.Metadata
-					if refreshed[m.URN] && ((m.Op == deploy.OpUpdate && m.DetailedDiff != nil) || m.Op == deploy.OpDelete) {
-						diff := diffJSONFromStep(&m, true /* refresh */, opts.ShowSecrets)
+					refresh := refreshed[m.URN]
+					if m.Op == deploy.OpImport || (refresh && m.Op == deploy.OpUpdate) {
+						diff := diffJSONFromStep(&m, refresh, opts.ShowSecrets)
 						for i := range resources {
 							if resources[i].URN == string(m.URN) {
 								resources[i].Diff = diff

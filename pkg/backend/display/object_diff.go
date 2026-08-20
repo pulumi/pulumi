@@ -774,14 +774,12 @@ func shortHash(hash string) string {
 	return hash
 }
 
-func printOldNewDiffs(
-	b *bytes.Buffer, olds resource.PropertyMap, news resource.PropertyMap, include []resource.PropertyKey,
-	planning bool, indent int, op display.StepOp, summary bool, truncateOutput bool, debug bool, showSecrets bool,
-	hidePaths []resource.PropertyPath,
-) {
+// diffOldNew diffs two property maps the way the diff display does: internal
+// keys are ignored, and diffs under hidePaths are suppressed and reported as
+// the second return value (sorted and de-duplicated).
+func diffOldNew(olds, news resource.PropertyMap, hidePaths []resource.PropertyPath,
+) (*resource.ObjectDiff, []resource.PropertyPath) {
 	var hiddenDiffs []resource.PropertyPath
-
-	// Get the full diff structure between the two, and print it (recursively).
 	diff := olds.DiffWithOptions(news,
 		resource.IgnoreKeyFunc(resource.IsInternalPropertyKey),
 		resource.IgnorePathFunc(func(path resource.PropertyPath) bool {
@@ -795,13 +793,22 @@ func printOldNewDiffs(
 		}),
 	)
 
-	// Ensure that our paths are unique and sorted
 	slices.SortFunc(hiddenDiffs, func(a, b resource.PropertyPath) int {
 		return cmp.Compare(a.String(), b.String())
 	})
 	hiddenDiffs = slices.CompactFunc(hiddenDiffs, func(a, b resource.PropertyPath) bool {
 		return a.String() == b.String()
 	})
+
+	return diff, hiddenDiffs
+}
+
+func printOldNewDiffs(
+	b *bytes.Buffer, olds resource.PropertyMap, news resource.PropertyMap, include []resource.PropertyKey,
+	planning bool, indent int, op display.StepOp, summary bool, truncateOutput bool, debug bool, showSecrets bool,
+	hidePaths []resource.PropertyPath,
+) {
+	diff, hiddenDiffs := diffOldNew(olds, news, hidePaths)
 
 	// We have hidden all the diffs, but there was a diff.
 	if diff == nil && len(hiddenDiffs) > 0 {

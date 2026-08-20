@@ -323,6 +323,51 @@ func TestDiffJSONFromStep_CreateAndDelete(t *testing.T) {
 	assert.Equal(t, map[string]PropertyDiffJSON{"acl": {Kind: "delete", Old: "private"}}, got)
 }
 
+func TestDiffJSONFromStep_OutputsPreferredWhenPresent(t *testing.T) {
+	t.Parallel()
+
+	// Mirrors getResourcePropertiesDetails: once new outputs exist (e.g. a
+	// refresh-discovered update), the diff compares outputs, not inputs.
+	urn := resource.NewURN("dev", "myapp", "", "aws:s3/bucket:Bucket", "mybucket")
+	meta := engine.StepEventMetadata{
+		Op:  deploy.OpUpdate,
+		URN: urn,
+		Old: &engine.StepEventStateMetadata{URN: urn, Outputs: resource.PropertyMap{
+			"acl": resource.NewProperty("private"),
+		}},
+		New: &engine.StepEventStateMetadata{URN: urn, Outputs: resource.PropertyMap{
+			"acl": resource.NewProperty("public-read"),
+		}},
+	}
+
+	got := diffJSONFromStep(&meta, true, false)
+	assert.Equal(t, map[string]PropertyDiffJSON{"acl": {Kind: "update", Old: "private", New: "public-read"}}, got)
+}
+
+func TestDiffJSONFromStep_RespectsChangedKeys(t *testing.T) {
+	t.Parallel()
+
+	// Mirrors the human display: when the provider reports which keys changed
+	// (step.Diffs), other textual differences are not part of the diff.
+	urn := resource.NewURN("dev", "myapp", "", "aws:s3/bucket:Bucket", "mybucket")
+	meta := engine.StepEventMetadata{
+		Op:    deploy.OpUpdate,
+		URN:   urn,
+		Diffs: []resource.PropertyKey{"acl"},
+		Old: &engine.StepEventStateMetadata{URN: urn, Inputs: resource.PropertyMap{
+			"acl":  resource.NewProperty("private"),
+			"etag": resource.NewProperty("abc"),
+		}},
+		New: &engine.StepEventStateMetadata{URN: urn, Inputs: resource.PropertyMap{
+			"acl":  resource.NewProperty("public-read"),
+			"etag": resource.NewProperty("def"),
+		}},
+	}
+
+	got := diffJSONFromStep(&meta, false, false)
+	assert.Equal(t, map[string]PropertyDiffJSON{"acl": {Kind: "update", Old: "private", New: "public-read"}}, got)
+}
+
 func TestDiffJSONFromStep_SameNeverReportsDiff(t *testing.T) {
 	t.Parallel()
 
