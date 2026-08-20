@@ -1548,7 +1548,7 @@ func TestSingleResourceIgnoreChanges(t *testing.T) {
 			resource.NewProperty("foo"),
 			resource.NewProperty("bar"),
 		})),
-	}, nil, []display.StepOp{deploy.OpUpdate}, "ignore-secret")
+	}, nil, []display.StepOp{deploy.OpSame}, "ignore-secret")
 
 	// Now check that changing a value (but not secretness) can be ignored
 	_ = updateProgramWithProps(snap, resource.PropertyMap{
