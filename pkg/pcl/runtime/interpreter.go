@@ -2062,7 +2062,7 @@ func (i *Interpreter) registerReadResource(ctx context.Context, res *pcl.ReadRes
 		return err
 	}
 
-	outputs["id"] = resource.NewProperty(idStr)
+	outputs["id"] = resource.NewProperty(request.Id)
 	outputs["urn"] = resource.NewProperty(resp.GetUrn())
 	outputs["__name"] = resource.NewProperty(logicalName)
 	outputs["__type"] = resource.NewProperty(token)
