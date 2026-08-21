@@ -277,7 +277,7 @@ func parseField(name string, dest reflect.Value, node syntax.Node) syntax.Diagno
 
 	if dest.CanAddr() && dest.Addr().Type().AssignableTo(nonNilDeclType) {
 		// destination is T, and must be a record type (right now)
-		defaultValue := (dest.Addr().Interface().(nonNilDecl)).defaultValue()
+		defaultValue := dest.Addr().Interface().(nonNilDecl).defaultValue()
 		switch x := defaultValue.(type) {
 		case parseDecl:
 			pdiags := x.parse(name, node)
