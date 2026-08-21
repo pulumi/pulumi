@@ -1444,8 +1444,10 @@ func TestModel_Update_UIAssistantMessage_HandoffCommitsToScrollback(t *testing.T
 func TestModel_Update_UIToolStarted_ShowsBusyBlock(t *testing.T) {
 	t.Parallel()
 
+	// Tool lifecycle events never start the spinner from idle, so start
+	// busy, as the hand-off assistant_message leaves it in real flows.
 	ch := make(chan UIEvent, 4)
-	m := NewModel(ModelConfig{EventCh: ch})
+	m := NewModel(ModelConfig{EventCh: ch, Busy: true})
 	updated, _ := m.Update(UIToolStarted{
 		Name: "filesystem__read",
 		Args: json.RawMessage(`{"file_path":"/x"}`),
