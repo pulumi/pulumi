@@ -91,7 +91,7 @@ func (yarn *yarnClassic) Install(ctx context.Context, dir string, production boo
 
 		// Don't sleep after the last attempt
 		if attempt < maxRetries-1 {
-			delay := time.Second * time.Duration(2^attempt) // Exponential backoff: 1s, 2s, 4s
+			delay := time.Second * time.Duration(1<<attempt) // Exponential backoff: 1s, 2s, 4s
 			logging.V(5).Infof("yarn install failed (attempt %d/%d), retrying in %v: %v",
 				attempt+1, maxRetries, delay, err)
 
