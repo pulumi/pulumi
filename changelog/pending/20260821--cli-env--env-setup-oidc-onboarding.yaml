@@ -1,0 +1,6 @@
+component: cli/env
+kind: feat
+body: Add `pulumi env setup {aws,azure,gcp}` to configure cloud OIDC trust and create the ESC environments that use it
+time: 2026-08-21T00:00:00Z
+custom:
+    PR: "23911"
