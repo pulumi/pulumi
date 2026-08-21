@@ -141,8 +141,6 @@ func TestDoCmdShowResourcesSubcommand(t *testing.T) {
 // Regression: `pulumi do show-resources` must fall back to the auto-materialized global project
 // and its default stack when CWD is not itself a Pulumi project. Pre-fix, RequireStack landed in
 // ChooseStack in non-interactive mode and failed instead of provisioning the global stack.
-//
-//nolint:paralleltest // Uses t.Chdir and t.Setenv.
 func TestDoCmdShowResourcesFallsBackToGlobalProject(t *testing.T) {
 	// CWD has no Pulumi.yaml; PULUMI_HOME hosts the global fallback project.
 	t.Chdir(t.TempDir())

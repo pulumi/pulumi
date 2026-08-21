@@ -37,27 +37,27 @@ func TestLogSink(t *testing.T) {
 	}{
 		{
 			desc: "debug",
-			fn:   (diag.Sink).Debugf,
+			fn:   diag.Sink.Debugf,
 			want: "[stdout] debug: msg",
 		},
 		{
 			desc: "info",
-			fn:   (diag.Sink).Infof,
+			fn:   diag.Sink.Infof,
 			want: "[stdout] msg",
 		},
 		{
 			desc: "infoerr",
-			fn:   (diag.Sink).Infoerrf,
+			fn:   diag.Sink.Infoerrf,
 			want: "[stderr] msg",
 		},
 		{
 			desc: "warning",
-			fn:   (diag.Sink).Warningf,
+			fn:   diag.Sink.Warningf,
 			want: "[stderr] warning: msg",
 		},
 		{
 			desc: "error",
-			fn:   (diag.Sink).Errorf,
+			fn:   diag.Sink.Errorf,
 			want: "[stderr] error: msg",
 		},
 	}

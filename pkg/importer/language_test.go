@@ -46,7 +46,6 @@ func TestGenerateLanguageDefinition(t *testing.T) {
 	cases, err := readTestCases("testdata/cases.json")
 	require.NoError(t, err)
 
-	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
 	for _, s := range cases.Resources {
 		t.Run(string(s.URN), func(t *testing.T) {
 			t.Parallel()

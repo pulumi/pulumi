@@ -51,7 +51,7 @@ func TestProviderServer_Configure_variables(t *testing.T) {
 
 	ctx := t.Context()
 	_, err := srv.Configure(ctx, &pulumirpc.ConfigureRequest{
-		Variables: map[string]string{
+		Variables: map[string]string{ //nolint:staticcheck
 			"ns:foo": `"bar"`,
 			"ns:baz": "42",
 			"ns:qux": `{"a": "str", "b": true}`,

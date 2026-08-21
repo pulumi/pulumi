@@ -2189,7 +2189,7 @@ func getPluginInfoAndPath(
 
 	// If we have a version of the plugin on its $PATH, use it, unless we have opted out of this behavior explicitly.
 	// This supports development scenarios.
-	includeAmbient := !(env.IgnoreAmbientPlugins.Value())
+	includeAmbient := !env.IgnoreAmbientPlugins.Value()
 	var ambientPath string
 	if includeAmbient {
 		if path, err := exec.LookPath(filename); err == nil {
@@ -2571,7 +2571,6 @@ func getPluginSize(path string) (uint64, error) {
 		if fs < 0 {
 			return 0, fmt.Errorf("file size is negative: %d", fs)
 		}
-		//nolint:gosec // Guarded by the check above.
 		size += uint64(fs)
 	}
 	return size, nil

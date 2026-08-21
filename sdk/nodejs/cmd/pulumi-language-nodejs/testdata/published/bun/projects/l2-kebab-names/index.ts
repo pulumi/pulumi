@@ -11,3 +11,4 @@ const first = new kebab_names.kebab_module.SomeResource("first", {
     },
 });
 const second = new kebab_names.kebab_module.AnotherResource("second", {theInput: first.theOutput.nestedOutput});
+export const theOutput = first.theOutput;

@@ -46,8 +46,6 @@ var (
 
 // This type alias is a hack to embed the internal.ResourceState type
 // into pulumi.ResourceState without exporting the field to the public API.
-//
-//nolint:unused
 type internalResourceState = internal.ResourceState
 
 // ResourceState is the base
@@ -278,7 +276,7 @@ type Resource interface {
 	keepDependency() bool
 }
 
-var _ internal.Resource = (Resource)(nil)
+var _ internal.Resource = Resource(nil)
 
 // CustomResource is a cloud resource whose create, read, update, and delete (CRUD) operations are managed by performing
 // external operations on some physical entity.  The engine understands how to diff and perform partial updates of them,
@@ -868,7 +866,7 @@ func DependsOn(o []Resource) ResourceOrInvokeOption {
 // resources.
 type resourceDependencySet []Resource
 
-var _ dependencySet = (resourceDependencySet)(nil)
+var _ dependencySet = resourceDependencySet(nil)
 
 func (rs resourceDependencySet) addDeps(ctx context.Context, deps map[URN]Resource, from Resource) error {
 	for _, r := range rs {
@@ -1111,8 +1109,6 @@ func Transforms(o []ResourceTransform) ResourceOption {
 }
 
 // URN_ is an optional URN of a previously-registered resource of this type to read from the engine.
-//
-//nolint:revive
 func URN_(o string) ResourceOption {
 	return resourceOption(func(ro *resourceOptions) {
 		ro.URN = o

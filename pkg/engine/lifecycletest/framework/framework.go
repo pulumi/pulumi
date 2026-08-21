@@ -803,7 +803,7 @@ func (o TestUpdateOptions) Options() engine.UpdateOptions {
 	opts := o.UpdateOptions
 	// Set a sensible parallel count because most tests leave this zero.
 	if opts.Parallel == 0 {
-		opts.Parallel = int32(runtime.NumCPU()) //nolint:gosec // NumCPU isn't going to overflow int32
+		opts.Parallel = int32(runtime.NumCPU())
 	}
 
 	return opts

@@ -26,7 +26,6 @@ func runSystemPager(pager []string, stdout, stderr io.Writer, f func(context.Con
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	//nolint:gosec
 	cmd := exec.Command(pager[0], pager[1:]...)
 	cmd.Stdout = stdout
 	cmd.Stderr = stderr

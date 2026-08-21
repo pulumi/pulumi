@@ -535,7 +535,7 @@ func writeTar(ctx context.Context, reader *tar.Reader, dst string) error {
 				return fmt.Errorf("invalid file mode for %q: %02x", header.Name, header.Mode)
 			}
 
-			fileMode := os.FileMode(header.Mode) //nolint:gosec // We checked the overflow
+			fileMode := os.FileMode(header.Mode)
 			err := os.Mkdir(target, fileMode)
 			if err != nil && !errors.Is(err, fs.ErrExist) {
 				return err
@@ -546,7 +546,7 @@ func writeTar(ctx context.Context, reader *tar.Reader, dst string) error {
 				return fmt.Errorf("invalid file mode for %q: %02x", header.Name, header.Mode)
 			}
 
-			fileMode := os.FileMode(header.Mode) //nolint:gosec // We checked the overflow
+			fileMode := os.FileMode(header.Mode)
 			f, err := os.OpenFile(target, os.O_CREATE|os.O_RDWR, fileMode)
 			if err != nil {
 				return err

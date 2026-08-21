@@ -49,7 +49,6 @@ func TestAuthRequiredMessageSkipsOutsideAgentMode(t *testing.T) {
 	assert.Empty(t, AuthRequiredMessage(time.Now()))
 }
 
-//nolint:paralleltest // mutates env vars
 func TestMaybePrintClaimWarningSkipsMissingClaim(t *testing.T) {
 	t.Setenv("CODEX_SANDBOX", "1")
 	t.Setenv("PULUMI_TEST_AGENT_PULUMI_DIR", t.TempDir())
@@ -59,7 +58,6 @@ func TestMaybePrintClaimWarningSkipsMissingClaim(t *testing.T) {
 	assert.Empty(t, output.String())
 }
 
-//nolint:paralleltest // mutates env vars
 func TestAuthRequiredMessageSkipsMissingClaim(t *testing.T) {
 	t.Setenv("CODEX_SANDBOX", "1")
 	t.Setenv("PULUMI_TEST_AGENT_PULUMI_DIR", t.TempDir())
@@ -67,7 +65,6 @@ func TestAuthRequiredMessageSkipsMissingClaim(t *testing.T) {
 	assert.Empty(t, AuthRequiredMessage(time.Now()))
 }
 
-//nolint:paralleltest // mutates env vars and shared temporary agent credentials
 func TestMaybePrintClaimWarningSkipsDeletedExpiredAgentCredentials(t *testing.T) {
 	t.Setenv("CODEX_SANDBOX", "1")
 	t.Setenv("PULUMI_TEST_AGENT_PULUMI_DIR", t.TempDir())
@@ -96,7 +93,6 @@ func TestMaybePrintClaimWarningSkipsDeletedExpiredAgentCredentials(t *testing.T)
 	assert.Empty(t, output.String())
 }
 
-//nolint:paralleltest // mutates env vars and shared temporary agent credentials
 func TestMaybePrintClaimWarningSkipsUnreadableAgentAccount(t *testing.T) {
 	t.Setenv("CODEX_SANDBOX", "1")
 	agentDir := t.TempDir()
@@ -118,7 +114,6 @@ func TestMaybePrintClaimWarningSkipsUnreadableAgentAccount(t *testing.T) {
 	assert.Empty(t, output.String())
 }
 
-//nolint:paralleltest // mutates shared temporary agent credentials
 func TestMaybePrintClaimWarningRequiresAgentCredentialsUsed(t *testing.T) {
 	oldAgentCreds, err := workspace.GetAgentStoredCredentials()
 	require.NoError(t, err)
@@ -154,7 +149,6 @@ func TestMaybePrintClaimWarningRequiresAgentCredentialsUsed(t *testing.T) {
 	assert.Empty(t, output.String())
 }
 
-//nolint:paralleltest // mutates shared temporary agent credentials
 func TestMaybePrintClaimWarningPrintsForUsedAgentCredentials(t *testing.T) {
 	oldAgentCreds, err := workspace.GetAgentStoredCredentials()
 	require.NoError(t, err)
@@ -193,7 +187,6 @@ func TestMaybePrintClaimWarningPrintsForUsedAgentCredentials(t *testing.T) {
 	assert.Contains(t, output.String(), "CLAIM_URL=https://app.pulumi.com/claim/used")
 }
 
-//nolint:paralleltest // mutates env vars and shared temporary agent credentials
 func TestAuthRequiredMessagePrintsClaimInstructionWhenTokenExpiredButClaimValid(t *testing.T) {
 	oldAgentCreds, err := workspace.GetAgentStoredCredentials()
 	require.NoError(t, err)
@@ -239,7 +232,6 @@ func TestAuthRequiredMessagePrintsClaimInstructionWhenTokenExpiredButClaimValid(
 	assert.NotContains(t, message, "ACTION_REQUIRED=Tell the user to run pulumi login.")
 }
 
-//nolint:paralleltest // mutates env vars, shared temporary agent credentials, and package global
 func TestAuthRequiredMessageChecksClaimWhenTokenLocallyValidButRejected(t *testing.T) {
 	oldAgentCreds, err := workspace.GetAgentStoredCredentials()
 	require.NoError(t, err)
@@ -284,7 +276,6 @@ func TestAuthRequiredMessageChecksClaimWhenTokenLocallyValidButRejected(t *testi
 	assert.NotContains(t, message, "ACTION_REQUIRED=Tell the user to run pulumi login.")
 }
 
-//nolint:paralleltest // mutates env vars and shared temporary agent credentials
 func TestAuthRequiredMessageUsesDefaultClaimValidator(t *testing.T) {
 	t.Setenv("CODEX_SANDBOX", "1")
 	t.Setenv("PULUMI_TEST_AGENT_PULUMI_DIR", t.TempDir())
@@ -317,7 +308,6 @@ func TestAuthRequiredMessageUsesDefaultClaimValidator(t *testing.T) {
 	assert.NotContains(t, message, "CLAIM_URL=")
 }
 
-//nolint:paralleltest // mutates env vars and shared temporary agent credentials
 func TestAuthRequiredMessageWithoutClaimTokenUsesLocalTokenState(t *testing.T) {
 	t.Setenv("CODEX_SANDBOX", "1")
 	t.Setenv("PULUMI_TEST_AGENT_PULUMI_DIR", t.TempDir())
@@ -343,7 +333,6 @@ func TestAuthRequiredMessageWithoutClaimTokenUsesLocalTokenState(t *testing.T) {
 	assert.NotContains(t, message, "CLAIM_URL=")
 }
 
-//nolint:paralleltest // mutates env vars, shared temporary agent credentials, and package global
 func TestAuthRequiredMessageOmitsClaimURLWhenClaimIsNotClaimable(t *testing.T) {
 	oldAgentCreds, err := workspace.GetAgentStoredCredentials()
 	require.NoError(t, err)
@@ -392,7 +381,6 @@ func TestAuthRequiredMessageOmitsClaimURLWhenClaimIsNotClaimable(t *testing.T) {
 	assert.True(t, claim.ClaimUnavailableAt.Equal(now))
 }
 
-//nolint:paralleltest // mutates env vars, shared temporary agent credentials, and package global
 func TestAuthRequiredMessageSkipsValidationWhenClaimMarkedUnavailable(t *testing.T) {
 	oldAgentCreds, err := workspace.GetAgentStoredCredentials()
 	require.NoError(t, err)
@@ -437,7 +425,6 @@ func TestAuthRequiredMessageSkipsValidationWhenClaimMarkedUnavailable(t *testing
 	assert.Contains(t, message, "claim URL is no longer claimable")
 }
 
-//nolint:paralleltest // mutates env vars, shared temporary agent credentials, and package global
 func TestAuthRequiredMessageFallsBackToLocalClaimWhenValidationFails(t *testing.T) {
 	oldAgentCreds, err := workspace.GetAgentStoredCredentials()
 	require.NoError(t, err)

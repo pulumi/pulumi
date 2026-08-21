@@ -18,7 +18,7 @@ on:
 env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   # Must match the `version:` field in .custom-gcl.yml.
-  GOLANGCI_LINT_VERSION: v2.12.2
+  GOLANGCI_LINT_VERSION: v2.13.0
 
 jobs:
   golangci:
@@ -102,7 +102,7 @@ jobs:
           action: jdx/mise-action@v2
           with: |
             experimental: true
-            cache_key_prefix: mise-npm-shell-out-v0
+            cache_key_prefix: mise-npm-shell-out-v1
       - name: Check Protobufs
         run: make check_proto
 

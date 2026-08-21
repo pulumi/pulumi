@@ -283,7 +283,7 @@ func (b *cloudBackend) getTarget(ctx context.Context, secretsProvider secrets.Pr
 }
 
 func isDebugDiagEvent(e engine.Event) bool {
-	return e.Type == engine.DiagEvent && (e.Payload().(engine.DiagEventPayload)).Severity == diag.Debug
+	return e.Type == engine.DiagEvent && e.Payload().(engine.DiagEventPayload).Severity == diag.Debug
 }
 
 // isUntargetedEvent reports if a resource that was not included in a target-constrained operation.

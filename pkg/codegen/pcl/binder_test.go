@@ -55,7 +55,6 @@ func TestBindProgram(t *testing.T) {
 		bindOptions[r.Directory+"-pp"] = r.BindOptions
 	}
 
-	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
 	for _, v := range testdata {
 		if !v.IsDir() {
 			continue

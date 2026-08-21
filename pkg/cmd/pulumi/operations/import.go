@@ -1303,7 +1303,6 @@ func NewImportCmd() *cobra.Command {
 		//nolint:lll
 		&providerSpec, "provider", "", "The name and URN of the provider to use for the import in the format name=urn, where name is the variable name for the provider resource")
 	cmd.PersistentFlags().StringSliceVar(
-		//nolint:lll
 		&properties, "properties", nil, "The property names to use for the import in the format name1,name2")
 	cmd.PersistentFlags().StringVarP(
 		&importFilePath, "file", "f", "", "The path to a JSON-encoded file containing a list of resources to import")
