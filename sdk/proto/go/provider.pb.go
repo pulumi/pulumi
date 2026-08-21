@@ -721,26 +721,22 @@ type ConfigureRequest struct {
 	// that they too can be passed as strings. For instance, the following configuration:
 	//
 	// ```
-	//
-	//	{
-	//	  "a": 42,
-	//	  "b": {
-	//	    "c": "hello",
-	//	    "d": true
-	//	  }
-	//	}
-	//
+	// {
+	//   "a": 42,
+	//   "b": {
+	//     "c": "hello",
+	//     "d": true
+	//   }
+	// }
 	// ```
 	//
 	// should be encoded as:
 	//
 	// ```
-	//
-	//	{
-	//	  "a": "42",
-	//	  "b": "{\"c\":\"hello\",\"d\":true}"
-	//	}
-	//
+	// {
+	//   "a": "42",
+	//   "b": "{\"c\":\"hello\",\"d\":true}"
+	// }
 	// ```
 	//
 	// Deprecated: Marked as deprecated in pulumi/provider.proto.
