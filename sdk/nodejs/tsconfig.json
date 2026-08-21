@@ -131,6 +131,7 @@
         "tests/provider/experimental/analyzer.spec.ts",
         "tests/provider/experimental/schema.spec.ts",
         "tests_with_mocks/mocks.spec.ts",
+        "tests_with_mocks/transforms.spec.ts",
         "tests_with_mocks/pendingRegistrations.spec.ts",
         "npm/testdata/nested/project/index.ts",
         "types/arborist.d.ts",
