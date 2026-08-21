@@ -180,7 +180,7 @@ func interpretPulumiRefs(
 			} else if ref.Type != nil {
 				name = ref.Type.String()
 			} else if ref.Function != nil {
-				name = ref.Function.Token
+				name = ref.Function.Token.String()
 			} else {
 				name = ref.Ref
 			}
@@ -390,7 +390,7 @@ func DocRefForResource(r *Resource) DocRef {
 
 // DocRefForFunction returns a DocRef for the given function.
 func DocRefForFunction(f *Function) DocRef {
-	return DocRef{Kind: DocRefKindFunction, Function: f, Ref: "#/functions/" + url.PathEscape(f.Token)}
+	return DocRef{Kind: DocRefKindFunction, Function: f, Ref: "#/functions/" + url.PathEscape(f.Token.String())}
 }
 
 type internalDocRef struct {

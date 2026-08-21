@@ -80,7 +80,7 @@ func getDocsForObjectType(path string, t *ObjectType) []doc {
 }
 
 func getDocsForFunction(f *Function) []doc {
-	entity := "#/functions/" + url.PathEscape(f.Token)
+	entity := "#/functions/" + url.PathEscape(f.Token.String())
 	docs := []doc{
 		{entity: entity + "/description", content: f.Comment},
 		{entity: entity + "/deprecationMessage", content: f.DeprecationMessage},

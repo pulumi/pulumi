@@ -385,11 +385,11 @@ func (mod *modContext) docRefResolver(selfRef schema.DocRef) func(schema.DocRef)
 		case schema.DocRefKindResourceInputProperty:
 			base = tokenToName(ref.ResourceToken()) + "Args"
 		case schema.DocRefKindFunction:
-			base = tokenToFunctionName(ref.Function.Token)
+			base = tokenToFunctionName(ref.Function.Token.String())
 		case schema.DocRefKindFunctionInputProperty:
-			base = tokenToName(ref.Function.Token) + "Args"
+			base = tokenToName(ref.Function.Token.String()) + "Args"
 		case schema.DocRefKindFunctionOutputProperty:
-			base = tokenToName(ref.Function.Token) + "Result"
+			base = tokenToName(ref.Function.Token.String()) + "Result"
 		case schema.DocRefKindType, schema.DocRefKindTypeProperty:
 			base = tokenToName(ref.Type.String())
 		case schema.DocRefKindUnknown:
@@ -1211,7 +1211,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFil
 }
 
 func (mod *modContext) functionReturnType(fun *schema.Function) string {
-	name := tokenToFunctionName(fun.Token)
+	name := tokenToFunctionName(fun.Token.String())
 	if fun.ReturnType == nil {
 		return "void"
 	}
@@ -1254,7 +1254,7 @@ func runtimeInvokeFunction(fun *schema.Function, plain bool) string {
 }
 
 func (mod *modContext) genFunctionDefinition(w io.Writer, fun *schema.Function, plain bool) (functionFileInfo, error) {
-	name := tokenToFunctionName(fun.Token)
+	name := tokenToFunctionName(fun.Token.String())
 	info := functionFileInfo{}
 
 	// Write the TypeDoc/JSDoc for the data source function.
@@ -2176,9 +2176,9 @@ func (mod *modContext) gen(fs codegen.Fs) error {
 			return err
 		}
 
-		fileName := cgstrings.Camel(tokenToName(f.Token)) + ".ts"
+		fileName := cgstrings.Camel(tokenToName(f.Token.String())) + ".ts"
 		if mod.isReservedSourceFileName(fileName) {
-			fileName = cgstrings.Camel(tokenToName(f.Token)) + "_.ts"
+			fileName = cgstrings.Camel(tokenToName(f.Token.String())) + "_.ts"
 		}
 		addFunctionFile(funInfo, fileName, buffer.String())
 	}
@@ -2881,7 +2881,7 @@ func generateModuleContextMap(tool string, pkg *schema.Package, extraFiles map[s
 	// Clear the input and outputs sets: we want the visitors below to touch the transitive closure of types reachable
 	// from function inputs and outputs, including types that have already been visited.
 	for _, f := range pkg.Functions {
-		mod := getModFromToken(f.Token)
+		mod := getModFromToken(f.Token.String())
 		if !f.IsMethod {
 			mod.functions = append(mod.functions, f)
 		}

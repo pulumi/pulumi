@@ -145,11 +145,11 @@ func TestTypeNameCodegen(
 		}
 		for _, f := range pkg.Functions {
 			if f.Inputs != nil {
-				runTests("/functions/"+f.Token+"/inputs/properties", f.Inputs.Properties, false)
+				runTests("/functions/"+f.Token.String()+"/inputs/properties", f.Inputs.Properties, false)
 			}
 			if f.ReturnType != nil {
 				if objectType, ok := f.ReturnType.(*schema.ObjectType); ok && objectType != nil {
-					runTests("/functions/"+f.Token+"/outputs/properties", objectType.Properties, false)
+					runTests("/functions/"+f.Token.String()+"/outputs/properties", objectType.Properties, false)
 				}
 			}
 		}

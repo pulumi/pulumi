@@ -431,7 +431,8 @@ func evaluateFunctionFile(
 		return attrs, inputType, properties, diags
 	}
 	return evaluateFile(
-		ctx, path, fileType, inputFormat, fn.Token, bind, loadConverter, loaderTarget, packageDescriptor, evalContext,
+		ctx, path, fileType, inputFormat, fn.Token.String(), bind, loadConverter, loaderTarget, packageDescriptor,
+		evalContext,
 		inputFlags,
 	)
 }

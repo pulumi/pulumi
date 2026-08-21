@@ -159,7 +159,7 @@ func TestGetFunctionName(t *testing.T) {
 
 	names := map[string]string{}
 	for _, f := range pkg.Functions {
-		names[f.Token] = d.GetFunctionName(f)
+		names[f.Token.String()] = d.GetFunctionName(f)
 	}
 
 	assert.Equal(t, map[string]string{
@@ -236,7 +236,7 @@ func buildSelfRefFixture(t *testing.T) (*schema.Package, *schema.Resource, *sche
 	require.NotNil(t, settings)
 	var getWidget *schema.Function
 	for _, f := range pkg.Functions {
-		if f.Token == "demo:mod:getWidget" {
+		if f.Token.String() == "demo:mod:getWidget" {
 			getWidget = f
 		}
 	}

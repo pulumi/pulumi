@@ -1689,7 +1689,7 @@ func TestIsOverlay(t *testing.T) {
 			}
 		}
 		for _, v := range pkg.Functions {
-			if strings.Contains(v.Token, "Overlay") {
+			if strings.Contains(v.Token.String(), "Overlay") {
 				assert.Truef(t, v.IsOverlay, "function %q", v.Token)
 			} else {
 				assert.Falsef(t, v.IsOverlay, "function %q", v.Token)
@@ -1738,12 +1738,12 @@ func TestOverlaySupportedLanguages(t *testing.T) {
 			}
 		}
 		for _, v := range pkg.Functions {
-			if strings.Contains(v.Token, "Overlay") {
+			if strings.Contains(v.Token.String(), "Overlay") {
 				assert.Truef(t, v.IsOverlay, "function %q", v.Token)
 			} else {
 				assert.Falsef(t, v.IsOverlay, "function %q", v.Token)
 			}
-			if strings.Contains(v.Token, "ConstrainedLanguages") {
+			if strings.Contains(v.Token.String(), "ConstrainedLanguages") {
 				assert.Equalf(t, []string{"go", "nodejs", "python"}, v.OverlaySupportedLanguages, "resource %q", v.Token)
 			} else {
 				assert.Nilf(t, v.OverlaySupportedLanguages, "resource %q", v.Token)
@@ -2551,7 +2551,7 @@ func TestFunctionToFunctionSpecTurnaround(t *testing.T) {
 			name: "return-type-plain",
 			fn: &Function{
 				PackageReference: nil,
-				Token:            "token",
+				Token:            NewToken("pkg", "index", "fn"),
 				ReturnType:       IntType,
 				ReturnTypePlain:  true,
 				Plain:            true,
@@ -2581,13 +2581,13 @@ func TestFunctionToFunctionSpecTurnaround(t *testing.T) {
 				spec: packageSpecSource{
 					&PackageSpec{
 						Functions: map[string]FunctionSpec{
-							"token": tc.fspec,
+							"pkg:index:fn": tc.fspec,
 						},
 					},
 				},
 				functionDefs: map[string]*Function{},
 			}
-			fn, diags, err := ts.bindFunctionDef("token", ValidationOptions{
+			fn, diags, err := ts.bindFunctionDef("pkg:index:fn", ValidationOptions{
 				AllowDanglingReferences: true,
 			})
 			require.NoError(t, err)
@@ -2997,6 +2997,12 @@ func TestFunctionToken(t *testing.T) {
 					Summary:  "#/functions/123:index:getFunction: invalid token '123:index:getFunction' (must have package name 'test')",
 					Detail:   "",
 				},
+				{
+					Severity: hcl.DiagError,
+					Summary: "#/functions/123:index:getFunction: invalid token \"123:index:getFunction\": " +
+						"invalid package \"123\": must match ^[a-zA-Z][-a-zA-Z0-9_]*$",
+					Detail: "",
+				},
 			},
 		},
 		{
@@ -3012,6 +3018,12 @@ func TestFunctionToken(t *testing.T) {
 					Severity: hcl.DiagError,
 					Summary:  "#/functions/test:123:getFunction: does not match pattern '^[a-zA-Z][-a-zA-Z0-9_]*:([^0-9][a-zA-Z0-9._/-]*)?:[^0-9][a-zA-Z0-9._/-]*$'",
 					Detail:   "",
+				},
+				{
+					Severity: hcl.DiagError,
+					Summary: "#/functions/test:123:getFunction: invalid token \"test:123:getFunction\": " +
+						"invalid module \"123\": must match ^([^0-9:][a-zA-Z0-9._/-]*)?$",
+					Detail: "",
 				},
 			},
 		},
@@ -3037,6 +3049,10 @@ func TestFunctionToken(t *testing.T) {
 
 			require.NoError(t, err)
 			assert.Equal(t, tt.expected, diags)
+			if tt.expected.HasErrors() {
+				assert.Empty(t, pkg.Functions, "functions with malformed tokens are not bound")
+				return
+			}
 
 			// Test marshaling
 			newSpec, err := pkg.MarshalSpec()
@@ -3441,7 +3457,7 @@ func TestGetWithModuleFormat(t *testing.T) {
 
 		f, ok := pkg.GetFunction("test:mod:getThing")
 		require.True(t, ok)
-		assert.Equal(t, "test:mod_v2:getThing", f.Token)
+		assert.Equal(t, NewToken("test", "mod_v2", "getThing"), f.Token)
 
 		typ, ok := pkg.GetType("test:mod:ThingBlock")
 		require.True(t, ok)
@@ -3471,7 +3487,7 @@ func TestGetWithModuleFormat(t *testing.T) {
 		f, ok, err := pkg.Functions().Get("test:mod:getThing")
 		require.NoError(t, err)
 		require.True(t, ok)
-		assert.Equal(t, "test:mod_v2:getThing", f.Token)
+		assert.Equal(t, NewToken("test", "mod_v2", "getThing"), f.Token)
 
 		typ, ok, err := pkg.Types().Get("test:mod:ThingBlock")
 		require.NoError(t, err)

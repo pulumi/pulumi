@@ -345,7 +345,7 @@ func (ectx *EvalContext) builtinFunctions() map[string]function.Function {
 			}
 			// Use the canonical schema token (the alias lookup in Get may have resolved a
 			// normalized form like "pkg:index:name" to the source-form "pkg:index_name:name").
-			token = fun.Token
+			token = fun.Token.String()
 
 			argsPV, err := ctyToPropertyValue(args[1])
 			if err != nil {
@@ -577,7 +577,7 @@ func (ectx *EvalContext) builtinFunctions() map[string]function.Function {
 			}
 
 			request := &pulumirpc.ResourceCallRequest{
-				Tok:               fun.Token,
+				Tok:               fun.Token.String(),
 				Args:              obj,
 				AcceptsByteString: true,
 			}

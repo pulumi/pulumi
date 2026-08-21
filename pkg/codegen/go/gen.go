@@ -3275,8 +3275,8 @@ func (pkg *pkgContext) docRefFunctionName(f *schema.Function) string {
 		return ""
 	}
 
-	name := tokenToName(f.Token)
-	mod := pkg.tokenToPackage(f.Token)
+	name := tokenToName(f.Token.String())
+	mod := pkg.tokenToPackage(f.Token.String())
 	if modPkg, ok := pkg.packages[mod]; ok {
 		if override, ok := modPkg.functionNames[f]; ok {
 			name = override
@@ -4935,10 +4935,10 @@ func generatePackageContextMap(tool string, pkg schema.PackageReference, goInfo 
 			continue
 		}
 
-		pkg := getPkgFromToken(f.Token)
+		pkg := getPkgFromToken(f.Token.String())
 		pkg.functions = append(pkg.functions, f)
 
-		name := tokenToName(f.Token)
+		name := tokenToName(f.Token.String())
 
 		if pkg.names.Contains(name) ||
 			pkg.names.Contains(name+"Args") ||
@@ -5294,7 +5294,7 @@ func GeneratePackage(tool string,
 				continue
 			}
 
-			fileName := path.Join(mod, cgstrings.Camel(tokenToName(f.Token))+".go")
+			fileName := path.Join(mod, cgstrings.Camel(tokenToName(f.Token.String()))+".go")
 			code, err := pkg.genFunctionCodeFile(f)
 			if err != nil {
 				return nil, err

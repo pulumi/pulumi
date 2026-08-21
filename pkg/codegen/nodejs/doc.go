@@ -109,7 +109,7 @@ func (d DocLanguageHelper) GetResourceName(r *schema.Resource) string {
 }
 
 func (d DocLanguageHelper) GetFunctionName(f *schema.Function) string {
-	return tokenToFunctionName(f.Token)
+	return tokenToFunctionName(f.Token.String())
 }
 
 // GetResourceFunctionResultName returns the name of the result type when a function is used to lookup

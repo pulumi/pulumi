@@ -114,13 +114,13 @@ func (d DocLanguageHelper) GetResourceName(r *schema.Resource) string {
 }
 
 func (d DocLanguageHelper) GetFunctionName(f *schema.Function) string {
-	return PyName(tokenToName(f.Token))
+	return PyName(tokenToName(f.Token.String()))
 }
 
 // GetResourceFunctionResultName returns the name of the result type when a function is used to lookup
 // an existing resource.
 func (d DocLanguageHelper) GetResourceFunctionResultName(modName string, f *schema.Function) string {
-	return cgstrings.UppercaseFirst(tokenToName(f.Token)) + "Result"
+	return cgstrings.UppercaseFirst(tokenToName(f.Token.String())) + "Result"
 }
 
 // ResolveDocRef renders a single doc ref as a Python name. It honours per-package
