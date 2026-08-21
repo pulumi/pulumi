@@ -217,6 +217,11 @@ removed and enforced to be validated.`)
 
 var DisableRegistryResolve = env.Bool("DISABLE_REGISTRY_RESOLVE", "Use the Pulumi Registry to resolve package names")
 
+var DoSkipRecheck = env.Bool("DO_SKIP_RECHECK", "Skip the single re-read `pulumi do` performs after "+
+	"a failed delete or patch. That re-read is what lets a resource deleted concurrently be reported "+
+	"as not found rather than as a provider error; disabling it trades that signal for one fewer API "+
+	"call per failing operation, which can be worth it while a provider is rate limiting.")
+
 // Environment variables that affect template discovery and caching
 var (
 	// TemplatePath is a path to the folder where templates are stored.

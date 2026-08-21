@@ -1,0 +1,28 @@
+component: cli/do
+kind: bugfix
+body: |-
+  Treat a resource read back as an echoed ID over emptied state as not found. Some bridged
+  providers answer that way once the resource is gone, and `pulumi do --stateless delete` went on
+  to call Delete with no state, which the provider rejected with an error such as
+  `MissingParameter: groupName or groupId` — indistinguishable from a real failure to a caller
+  retrying the delete. `read` and `patch` report it as not found as well, and `upsert` now creates
+  the resource instead of trying to update one that is no longer there.
+
+  Operations that report a missing resource now exit with code 10 (`ExitResourceNotFound`) instead
+  of the generic 1, so callers can tell "already gone, stop retrying" from "this failed, retry"
+  without matching on error text. The message is unchanged.
+
+  A delete or patch that fails is now re-read once, so a resource deleted concurrently by someone
+  else is also reported as not found rather than surfacing the provider's own already-gone error.
+  The original error is kept whenever the re-read is inconclusive. `upsert` is unaffected: it
+  creates what it does not find, so a failure there stays retryable.
+
+  The re-read costs one extra API call per failing delete or patch, and can be switched off with
+  `PULUMI_DO_SKIP_RECHECK=true` while a provider is rate limiting. Both the classification of each
+  pre-flight read and each re-read are recorded as structured log events (`pulumi.do.read.verdict`
+  and `pulumi.do.mutation.recheck`), visible with `-v=1 --logtostderr`.
+
+  This covers resources whose read comes back emptied. It does not change cases where a resource is
+  reported missing because the provider could not resolve the ID it was given, such as the
+  `aws:cloudwatch/eventTarget` create/read ID-format mismatch, which is a provider-side bug.
+time: 2026-08-04T00:00:00+00:00
