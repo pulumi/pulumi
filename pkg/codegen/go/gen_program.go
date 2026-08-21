@@ -879,10 +879,10 @@ func (g *generator) collectTypeImports(program *pcl.Program, t schema.Type) {
 		}
 		return
 	case *schema.ObjectType:
-		token = t.Token
+		token = t.Token.String()
 		packageRef = t.PackageReference
 	case *schema.EnumType:
-		token = t.Token
+		token = t.Token.String()
 		packageRef = t.PackageReference
 	case *schema.TokenType:
 		token = t.Token

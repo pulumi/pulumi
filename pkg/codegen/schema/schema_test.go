@@ -306,7 +306,7 @@ var enumTests = []struct {
 	{"bad-enum-3.json", true, nil},
 	{"bad-enum-4.json", true, nil},
 	{"good-enum-1.json", false, &EnumType{
-		Token:       "fake-provider:module1:Color",
+		Token:       NewToken("fake-provider", "module1", "Color"),
 		ElementType: stringType,
 		Elements: []*Enum{
 			{Value: "Red"},
@@ -316,7 +316,7 @@ var enumTests = []struct {
 		},
 	}},
 	{"good-enum-2.json", false, &EnumType{
-		Token:       "fake-provider:module1:Number",
+		Token:       NewToken("fake-provider", "module1", "Number"),
 		ElementType: intType,
 		Elements: []*Enum{
 			{Value: int32(1), Name: "One"},
@@ -326,7 +326,7 @@ var enumTests = []struct {
 		},
 	}},
 	{"good-enum-3.json", false, &EnumType{
-		Token:       "fake-provider:module1:Boolean",
+		Token:       NewToken("fake-provider", "module1", "Boolean"),
 		ElementType: boolType,
 		Elements: []*Enum{
 			{Value: true, Name: "One"},
@@ -334,7 +334,7 @@ var enumTests = []struct {
 		},
 	}},
 	{"good-enum-4.json", false, &EnumType{
-		Token:       "fake-provider:module1:Number2",
+		Token:       NewToken("fake-provider", "module1", "Number2"),
 		ElementType: numberType,
 		Comment:     "what a great description",
 		Elements: []*Enum{
@@ -1681,7 +1681,7 @@ func TestIsOverlay(t *testing.T) {
 		for _, v := range pkg.Types {
 			switch v := v.(type) {
 			case *ObjectType:
-				if strings.Contains(v.Token, "Overlay") {
+				if strings.Contains(v.Token.String(), "Overlay") {
 					assert.Truef(t, v.IsOverlay, "object type %q", v.Token)
 				} else {
 					assert.Falsef(t, v.IsOverlay, "object type %q", v.Token)
@@ -1729,7 +1729,7 @@ func TestOverlaySupportedLanguages(t *testing.T) {
 		for _, v := range pkg.Types {
 			switch v := v.(type) {
 			case *ObjectType:
-				if strings.Contains(v.Token, "Overlay") {
+				if strings.Contains(v.Token.String(), "Overlay") {
 					assert.Truef(t, v.IsOverlay, "object type %q", v.Token)
 				} else {
 					assert.Falsef(t, v.IsOverlay, "object type %q", v.Token)
@@ -3461,7 +3461,7 @@ func TestGetWithModuleFormat(t *testing.T) {
 
 		typ, ok := pkg.GetType("test:mod:ThingBlock")
 		require.True(t, ok)
-		assert.Equal(t, "test:mod_v2:ThingBlock", typ.(*ObjectType).Token)
+		assert.Equal(t, NewToken("test", "mod_v2", "ThingBlock"), typ.(*ObjectType).Token)
 
 		rt, ok := pkg.GetResourceType("test:mod:Thing")
 		require.True(t, ok)
@@ -3492,7 +3492,7 @@ func TestGetWithModuleFormat(t *testing.T) {
 		typ, ok, err := pkg.Types().Get("test:mod:ThingBlock")
 		require.NoError(t, err)
 		require.True(t, ok)
-		assert.Equal(t, "test:mod_v2:ThingBlock", typ.(*ObjectType).Token)
+		assert.Equal(t, NewToken("test", "mod_v2", "ThingBlock"), typ.(*ObjectType).Token)
 
 		rt, ok, err := pkg.Resources().GetType("test:mod:Thing")
 		require.NoError(t, err)

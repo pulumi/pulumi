@@ -292,14 +292,14 @@ func (mod *modContext) typeAst(t schema.Type, input bool, constValue any) tstype
 		}
 		return tstypes.Identifier(fmt.Sprintf("pulumi.Input<%s>", typ))
 	case *schema.EnumType:
-		return tstypes.Identifier(mod.objectType(t.PackageReference, nil, t.Token, input, false, true))
+		return tstypes.Identifier(mod.objectType(t.PackageReference, nil, t.Token.String(), input, false, true))
 	case *schema.ArrayType:
 		return tstypes.Array(mod.typeAst(t.ElementType, input, constValue))
 	case *schema.MapType:
 		return tstypes.StringMap(mod.typeAst(t.ElementType, input, constValue))
 	case *schema.ObjectType:
 		details := mod.details(t)
-		return tstypes.Identifier(mod.objectType(t.PackageReference, details, t.Token, input, t.IsInputShape(), false))
+		return tstypes.Identifier(mod.objectType(t.PackageReference, details, t.Token.String(), input, t.IsInputShape(), false))
 	case *schema.ResourceType:
 		return tstypes.Identifier(mod.resourceType(t))
 	case *schema.TokenType:
@@ -1512,7 +1512,7 @@ func (mod *modContext) genType(w io.Writer, obj *schema.ObjectType, input bool, 
 
 // getObjectName recovers the name of `obj` as a type.
 func (mod *modContext) getObjectName(obj *schema.ObjectType, input bool) string {
-	name := tokenToName(obj.Token)
+	name := tokenToName(obj.Token.String())
 
 	details := mod.details(obj)
 
@@ -1933,7 +1933,7 @@ func (mod *modContext) getNamespaces() map[string]*namespace {
 			continue
 		}
 
-		modName := mod.pkg.TokenToModule(t.Token)
+		modName := mod.pkg.TokenToModule(t.Token.String())
 		if override, ok := mod.modToPkg[modName]; ok {
 			modName = override
 		}
@@ -1957,7 +1957,7 @@ func (mod *modContext) genNamespace(w io.Writer, ns *namespace, input bool, leve
 		return objectTypeLessThan(ns.types[i], ns.types[j])
 	})
 	sort.Slice(ns.enums, func(i, j int) bool {
-		return tokenToName(ns.enums[i].Token) < tokenToName(ns.enums[j].Token)
+		return tokenToName(ns.enums[i].Token.String()) < tokenToName(ns.enums[j].Token.String())
 	})
 	for i, t := range ns.types {
 		if input && mod.details(t).inputType || !input && mod.details(t).outputType {
@@ -1995,7 +1995,7 @@ func enumMemberName(typeName string, member *schema.Enum) (string, error) {
 
 func (mod *modContext) genEnum(w io.Writer, enum *schema.EnumType) error {
 	indent := "    "
-	enumName := tokenToName(enum.Token)
+	enumName := tokenToName(enum.Token.String())
 	fmt.Fprintf(w, "export const %s = {\n", enumName)
 	ref := schema.DocRef{}
 	for _, e := range enum.Elements {
@@ -2892,7 +2892,7 @@ func generateModuleContextMap(tool string, pkg *schema.Package, extraFiles map[s
 
 			if f.NeedsOutputVersion() {
 				visitObjectTypes(f.Inputs.InputShape.Properties, func(t *schema.ObjectType) {
-					for _, mod := range []*modContext{types, getModFromToken(t.Token)} {
+					for _, mod := range []*modContext{types, getModFromToken(t.Token.String())} {
 						det := mod.details(t)
 						det.inputType = true
 						det.usedInFunctionOutputVersionInputs = true
@@ -2929,7 +2929,7 @@ func generateModuleContextMap(tool string, pkg *schema.Package, extraFiles map[s
 		case *schema.EnumType:
 			if !typ.IsOverlay {
 				info.ContainsEnums = true
-				mod := getModFromToken(typ.Token)
+				mod := getModFromToken(typ.Token.String())
 				mod.enums = append(mod.enums, typ)
 			}
 		default:
@@ -3114,7 +3114,7 @@ export async function getPackage(): Promise<string | undefined> {
 
 // Used to sort ObjectType values.
 func objectTypeLessThan(a, b *schema.ObjectType) bool {
-	switch strings.Compare(tokenToName(a.Token), tokenToName(b.Token)) {
+	switch strings.Compare(tokenToName(a.Token.String()), tokenToName(b.Token.String())) {
 	case -1:
 		return true
 	case 0:

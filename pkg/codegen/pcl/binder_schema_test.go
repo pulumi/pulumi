@@ -71,7 +71,7 @@ func TestGetSchemaForType(t *testing.T) {
 	t.Parallel()
 
 	newObj := func(i int) (*model.ObjectType, schema.Type) {
-		t := &schema.ObjectType{Token: fmt.Sprintf("pkg:mod:Type%d", i)}
+		t := &schema.ObjectType{Token: schema.NewToken("pkg", "mod", fmt.Sprintf("Type%d", i))}
 		return model.NewObjectType(map[string]model.Type{
 			fmt.Sprintf("field%d", i): model.StringType,
 		}, t), t

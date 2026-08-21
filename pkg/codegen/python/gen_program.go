@@ -927,7 +927,7 @@ func (g *generator) argumentTypeName(expr model.Expression, destType model.Type)
 		return ""
 	}
 
-	token := objType.Token
+	token := objType.Token.String()
 	tokenRange := expr.SyntaxNode().Range()
 
 	// Example: aws, s3/BucketLogging, BucketLogging, []Diagnostics

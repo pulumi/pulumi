@@ -855,9 +855,9 @@ func outputVersionFunctionArgTypeName(t model.Type, cache *Cache) (string, error
 	var ty string
 	if pkg.isExternalReference(objType) {
 		extPkg, _ := pkg.contextForExternalReference(objType)
-		ty = extPkg.tokenToType(objType.Token)
+		ty = extPkg.tokenToType(objType.Token.String())
 	} else {
-		ty = pkg.tokenToType(objType.Token)
+		ty = pkg.tokenToType(objType.Token.String())
 	}
 
 	return strings.TrimSuffix(ty, "Args") + "OutputArgs", nil
@@ -980,7 +980,7 @@ func (g *generator) genObjectConsExpression(
 	typeName := g.argumentTypeName(destType, isInput)
 	if schemaType, ok := pcl.GetSchemaForType(destType); ok {
 		if obj, ok := codegen.UnwrapType(schemaType).(*schema.ObjectType); ok {
-			if g.useLookupInvokeForm(obj.Token) {
+			if g.useLookupInvokeForm(obj.Token.String()) {
 				typeName = strings.Replace(typeName, ".Get", ".Lookup", 1)
 			}
 		}
@@ -2135,7 +2135,7 @@ func (g *generator) outputPropertyProjection(
 		return nil, "", false
 	}
 	goInfo := goPackageInfo(owner)
-	mod := tokenToPackage(owner, goInfo.ModuleToPackage, schemaObject.Token)
+	mod := tokenToPackage(owner, goInfo.ModuleToPackage, schemaObject.Token.String())
 	pkg, ok := g.contexts[owner.Name()][mod]
 	if !ok {
 		return nil, "", false

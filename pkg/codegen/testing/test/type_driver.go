@@ -132,8 +132,8 @@ func TestTypeNameCodegen(
 					continue
 				}
 
-				runTests("#/types/"+o.Token+"/properties", o.Properties, false)
-				runTests("#/types/"+o.InputShape.Token+"/properties", o.InputShape.Properties, true)
+				runTests("#/types/"+o.Token.String()+"/properties", o.Properties, false)
+				runTests("#/types/"+o.InputShape.Token.String()+"/properties", o.InputShape.Properties, true)
 			}
 		}
 		for _, r := range pkg.Resources {

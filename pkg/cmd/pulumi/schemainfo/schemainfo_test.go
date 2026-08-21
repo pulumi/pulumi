@@ -79,7 +79,7 @@ func TestTypeString(t *testing.T) {
 		{name: "map", typ: &schema.MapType{ElementType: schema.StringType}, expected: "Map<string>"},
 		{
 			name:     "object reference keeps its full token",
-			typ:      &schema.ObjectType{Token: "aws:lambda/function:FunctionConfig"},
+			typ:      &schema.ObjectType{Token: schema.NewToken("aws", "lambda/function", "FunctionConfig")},
 			expected: "aws:lambda/function:FunctionConfig",
 		},
 	}
