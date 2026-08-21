@@ -40,6 +40,8 @@ func New(cmd base.PulumiCommand) *API {
 // run is the single choke point through which every generated method reaches
 // the CLI. Callers hand in their accumulated base options and the resolved
 // argument vector; run adapts those into the shape PulumiCommand expects.
+//
+//nolint:unused // used by generated commands.go in the same package
 func (a *API) run(
 	ctx context.Context,
 	opts base.BaseOptions,
