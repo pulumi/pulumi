@@ -128,7 +128,7 @@ func (d DocLanguageHelper) GetEnumName(e *schema.Enum, typeName string) (string,
 }
 
 func (d DocLanguageHelper) GetResourceName(r *schema.Resource) string {
-	pkg, ok := d.packages[tokenToPackage(r.PackageReference, d.goPkgInfo.ModuleToPackage, r.Token.String())]
+	pkg, ok := d.packages[tokenToPackage(r.PackageReference, d.goPkgInfo.ModuleToPackage, r.Token)]
 	if !ok {
 		return rawResourceName(r)
 	}
@@ -136,11 +136,11 @@ func (d DocLanguageHelper) GetResourceName(r *schema.Resource) string {
 }
 
 func (d DocLanguageHelper) GetFunctionName(f *schema.Function) string {
-	funcName := tokenToName(f.Token.String())
+	funcName := tokenToName(f.Token)
 	if d.topLevelPkg == nil {
 		return funcName
 	}
-	pkg, ok := d.packages[tokenToPackage(d.topLevelPkg, d.goPkgInfo.ModuleToPackage, f.Token.String())]
+	pkg, ok := d.packages[tokenToPackage(d.topLevelPkg, d.goPkgInfo.ModuleToPackage, f.Token)]
 	if !ok {
 		return funcName
 	}

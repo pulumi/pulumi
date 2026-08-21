@@ -128,8 +128,8 @@ func Title(s string) string {
 // should be generated into.
 //
 // For example, it converts: "pkg:someModule:Resource" to "somemodule".
-func tokenToPackage(pkg schema.PackageReference, overrides map[string]string, tok string) string {
-	return moduleToPackage(overrides, pkg.TokenToModule(tok))
+func tokenToPackage(pkg schema.PackageReference, overrides map[string]string, tok schema.Token) string {
+	return moduleToPackage(overrides, pkg.TokenToModule(tok.String()))
 }
 
 // moduleToPackage accepts a *Pulumi module* and returns name of the *Go package* that it
@@ -225,20 +225,15 @@ func (pkg *pkgContext) detailsForType(t schema.Type) *typeDetails {
 	return details
 }
 
-func (pkg *pkgContext) tokenToPackage(tok string) string {
+func (pkg *pkgContext) tokenToPackage(tok schema.Token) string {
 	return tokenToPackage(pkg.pkg, pkg.modToPkg, tok)
 }
 
-func (pkg *pkgContext) tokenToType(tok string) string {
-	// token := pkg : module : member
-	// module := path/to/module
-
-	components := strings.Split(tok, ":")
-	contract.Assertf(len(components) == 3, "tok: %s", tok)
+func (pkg *pkgContext) tokenToType(tok schema.Token) string {
 	contract.Assertf(pkg != nil, "pkg is nil. token %s", tok)
 	contract.Assertf(pkg.pkg != nil, "pkg.pkg is nil. token %s", tok)
 
-	mod, name := pkg.tokenToPackage(tok), components[2]
+	mod, name := pkg.tokenToPackage(tok), tok.Name()
 
 	// Handle method-related tokens like "Resource/callResult" → "ResourceCallResult".
 	// Method function tokens use the format "ResourceName/methodName" in the name component,
@@ -251,7 +246,7 @@ func (pkg *pkgContext) tokenToType(tok string) string {
 		newName, renamed := modPkg.renamed[name]
 		if renamed {
 			name = newName
-		} else if modPkg.duplicateTokens[strings.ToLower(tok)] {
+		} else if modPkg.duplicateTokens[strings.ToLower(tok.String())] {
 			// maintain support for duplicate tokens for types and resources in Kubernetes
 			name += "Type"
 		}
@@ -280,7 +275,7 @@ func (pkg *pkgContext) tokenToType(tok string) string {
 // Resolve a enum type to its name.
 func (pkg *pkgContext) resolveEnumType(t *schema.EnumType) string {
 	if !pkg.isExternalReference(t) {
-		return pkg.tokenToEnum(t.Token.String())
+		return pkg.tokenToEnum(t.Token)
 	}
 
 	extPkgCtx, _ := pkg.contextForExternalReference(t)
@@ -288,16 +283,11 @@ func (pkg *pkgContext) resolveEnumType(t *schema.EnumType) string {
 	return enumType
 }
 
-func (pkg *pkgContext) tokenToEnum(tok string) string {
-	// token := pkg : module : member
-	// module := path/to/module
-
-	components := strings.Split(tok, ":")
-	contract.Assertf(len(components) == 3, "Token must have 3 components, got %d", len(components))
+func (pkg *pkgContext) tokenToEnum(tok schema.Token) string {
 	contract.Assertf(pkg != nil, "pkg is nil. token %s", tok)
 	contract.Assertf(pkg.pkg != nil, "pkg.pkg is nil. token %s", tok)
 
-	mod, name := pkg.tokenToPackage(tok), components[2]
+	mod, name := pkg.tokenToPackage(tok), tok.Name()
 
 	name = Title(name)
 
@@ -305,7 +295,7 @@ func (pkg *pkgContext) tokenToEnum(tok string) string {
 		newName, renamed := modPkg.renamed[name]
 		if renamed {
 			name = newName
-		} else if modPkg.duplicateTokens[tok] {
+		} else if modPkg.duplicateTokens[tok.String()] {
 			// If the package containing the enum's token already has a resource or type with the
 			// same name, add an `Enum` suffix.
 			name += "Enum"
@@ -316,7 +306,7 @@ func (pkg *pkgContext) tokenToEnum(tok string) string {
 		return name
 	}
 	if mod == "" {
-		mod = components[0]
+		mod = tok.Pkg()
 	}
 
 	var importPath string
@@ -329,12 +319,7 @@ func (pkg *pkgContext) tokenToEnum(tok string) string {
 	return importPath + "." + name
 }
 
-func (pkg *pkgContext) tokenToResource(tok string) string {
-	// token := pkg : module : member
-	// module := path/to/module
-
-	components := strings.Split(tok, ":")
-	contract.Assertf(len(components) == 3, "Token must have 3 components, got %d", len(components))
+func (pkg *pkgContext) tokenToResource(tok schema.Token) string {
 	if pkg == nil {
 		panic(fmt.Errorf("pkg is nil. token %s", tok))
 	}
@@ -343,16 +328,16 @@ func (pkg *pkgContext) tokenToResource(tok string) string {
 	}
 
 	// Is it a provider resource?
-	if components[0] == "pulumi" && components[1] == "providers" {
+	if tok.Pkg() == "pulumi" && tok.Module() == "providers" {
 		// When the provider belongs to the package we're currently generating code for, omit the
 		// package-qualified prefix so the name resolves against the local package.
-		if pkg.pkg != nil && components[2] == pkg.pkg.Name() {
+		if pkg.pkg != nil && tok.Name() == pkg.pkg.Name() {
 			return "Provider"
 		}
-		return components[2] + ".Provider"
+		return tok.Name() + ".Provider"
 	}
 
-	mod, name := pkg.tokenToPackage(tok), components[2]
+	mod, name := pkg.tokenToPackage(tok), tok.Name()
 
 	name = Title(name)
 
@@ -360,7 +345,7 @@ func (pkg *pkgContext) tokenToResource(tok string) string {
 		return name
 	}
 	if mod == "" {
-		mod = components[0]
+		mod = tok.Pkg()
 	}
 
 	var importPath string
@@ -373,19 +358,24 @@ func (pkg *pkgContext) tokenToResource(tok string) string {
 	return importPath + "." + name
 }
 
-func tokenToModule(tok string) string {
-	// token := pkg : module : member
-	// module := path/to/module
-
-	components := strings.Split(tok, ":")
-	contract.Assertf(len(components) == 3, "Token must have 3 components, got %d", len(components))
-	return components[1]
+func tokenToName(tok schema.Token) string {
+	return Title(tok.Name())
 }
 
-func tokenToName(tok string) string {
-	components := strings.Split(tok, ":")
-	contract.Assertf(len(components) == 3, "Token must have 3 components, got %d", len(components))
-	return Title(components[2])
+// typeToken returns the token of a named type (object, enum, resource, or opaque token type).
+// For any other type it returns the zero Token.
+func typeToken(t schema.Type) schema.Token {
+	switch t := t.(type) {
+	case *schema.ObjectType:
+		return t.Token
+	case *schema.EnumType:
+		return t.Token
+	case *schema.ResourceType:
+		return t.Token
+	case *schema.TokenType:
+		return t.Token
+	}
+	return schema.Token{}
 }
 
 // disambiguatedResourceName gets the name of a resource as it should appear in source, resolving conflicts in the process.
@@ -402,7 +392,7 @@ func rawResourceName(r *schema.Resource) string {
 	if r.IsProvider {
 		return "Provider"
 	}
-	return tokenToName(r.Token.String())
+	return tokenToName(r.Token)
 }
 
 // If `nil` is a valid value of type `t`.
@@ -459,7 +449,7 @@ func (pkg *pkgContext) inputType(t schema.Type) (result string) {
 		if t.UnderlyingType != nil {
 			return pkg.inputType(t.UnderlyingType)
 		}
-		return pkg.tokenToType(t.Token.String()) + "Input"
+		return pkg.tokenToType(t.Token) + "Input"
 	case *schema.UnionType:
 		// If the union is actually a relaxed enum type, use the underlying
 		// type for the input instead
@@ -625,7 +615,7 @@ func (pkg *pkgContext) argsTypeImpl(t schema.Type) (result string) {
 		if t.UnderlyingType != nil {
 			return pkg.argsTypeImpl(t.UnderlyingType)
 		}
-		return pkg.tokenToType(t.Token.String())
+		return pkg.tokenToType(t.Token)
 	case *schema.UnionType:
 		// If the union is actually a relaxed enum type, use the underlying
 		// type for the input instead
@@ -718,7 +708,7 @@ func (pkg *pkgContext) typeStringImpl(t schema.Type, argsType bool) string {
 		if t.UnderlyingType != nil {
 			return pkg.typeStringImpl(t.UnderlyingType, argsType)
 		}
-		return pkg.tokenToType(t.Token.String())
+		return pkg.tokenToType(t.Token)
 	case *schema.UnionType:
 		// If the union is actually a relaxed enum type, use the underlying
 		// type for the enum instead
@@ -768,28 +758,28 @@ func (pkg *pkgContext) isExternalReference(t schema.Type) bool {
 
 // Return if `t` is external to `pkg`. If so, the associated foreign schema.Package is returned.
 func (pkg *pkgContext) isExternalReferenceWithPackage(t schema.Type) (
-	isExternal bool, extPkg schema.PackageReference, token string,
+	isExternal bool, extPkg schema.PackageReference, token schema.Token,
 ) {
 	switch typ := t.(type) {
 	case *schema.ObjectType:
 		isExternal = typ.PackageReference != nil && !codegen.PkgEquals(typ.PackageReference, pkg.pkg)
 		if isExternal {
 			extPkg = typ.PackageReference
-			token = typ.Token.String()
+			token = typ.Token
 		}
 		return isExternal, extPkg, token
 	case *schema.ResourceType:
 		isExternal = typ.Resource != nil && pkg.pkg != nil && !codegen.PkgEquals(typ.Resource.PackageReference, pkg.pkg)
 		if isExternal {
 			extPkg = typ.Resource.PackageReference
-			token = typ.Token.String()
+			token = typ.Token
 		}
 		return isExternal, extPkg, token
 	case *schema.EnumType:
 		isExternal = pkg.pkg != nil && !codegen.PkgEquals(typ.PackageReference, pkg.pkg)
 		if isExternal {
 			extPkg = typ.PackageReference
-			token = typ.Token.String()
+			token = typ.Token
 		}
 		return isExternal, extPkg, token
 	}
@@ -802,10 +792,10 @@ func (pkg *pkgContext) isExternalReferenceWithPackage(t schema.Type) (
 // optional and convert the type to a pointer if necessary.
 func (pkg *pkgContext) resolveResourceType(t *schema.ResourceType) string {
 	if !pkg.isExternalReference(t) {
-		return pkg.tokenToResource(t.Token.String())
+		return pkg.tokenToResource(t.Token)
 	}
 	extPkgCtx, _ := pkg.contextForExternalReference(t)
-	resType := extPkgCtx.tokenToResource(t.Token.String())
+	resType := extPkgCtx.tokenToResource(t.Token)
 	if !strings.Contains(resType, ".") {
 		resType = fmt.Sprintf("%s.%s", extPkgCtx.pkg.Name(), resType)
 	}
@@ -820,7 +810,7 @@ func (pkg *pkgContext) resolveObjectType(t *schema.ObjectType) string {
 	isExternal, _, _ := pkg.isExternalReferenceWithPackage(t)
 
 	if !isExternal {
-		name := pkg.tokenToType(t.Token.String())
+		name := pkg.tokenToType(t.Token)
 		if t.IsInputShape() {
 			return name + "Args"
 		}
@@ -927,7 +917,7 @@ func (pkg *pkgContext) outputTypeImpl(t schema.Type) string {
 		if t.UnderlyingType != nil {
 			return pkg.outputTypeImpl(t.UnderlyingType)
 		}
-		return pkg.tokenToType(t.Token.String()) + "Output"
+		return pkg.tokenToType(t.Token) + "Output"
 	case *schema.UnionType:
 		// If the union is actually a relaxed enum type, use the underlying
 		// type for the output instead
@@ -1081,7 +1071,7 @@ func (pkg *pkgContext) genericOutputTypeImpl(t schema.Type) string {
 			return pkg.genericOutputType(t.UnderlyingType)
 		}
 
-		tokenType := pkg.tokenToType(t.Token.String())
+		tokenType := pkg.tokenToType(t.Token)
 		return fmt.Sprintf("pulumix.Output[%s]", tokenType)
 	case *schema.UnionType:
 		// If the union is actually a relaxed enum type, use the underlying
@@ -1140,9 +1130,9 @@ func (pkg *pkgContext) docRefResolver(selfRef schema.DocRef) func(schema.DocRef)
 		var base string
 		switch ref.Kind {
 		case schema.DocRefKindResource, schema.DocRefKindResourceProperty:
-			base = pkg.tokenToResource(ref.ResourceToken())
+			base = pkg.tokenToResource(typeToken(ref.Type))
 		case schema.DocRefKindResourceInputProperty:
-			base = pkg.tokenToResource(ref.ResourceToken()) + "Args"
+			base = pkg.tokenToResource(typeToken(ref.Type)) + "Args"
 		case schema.DocRefKindFunction:
 			base = pkg.docRefFunctionName(ref.Function)
 		case schema.DocRefKindFunctionInputProperty:
@@ -1150,7 +1140,7 @@ func (pkg *pkgContext) docRefResolver(selfRef schema.DocRef) func(schema.DocRef)
 		case schema.DocRefKindFunctionOutputProperty:
 			base = pkg.docRefFunctionName(ref.Function)
 		case schema.DocRefKindType, schema.DocRefKindTypeProperty:
-			base = pkg.tokenToType(ref.Type.String())
+			base = pkg.tokenToType(typeToken(ref.Type))
 		case schema.DocRefKindUnknown:
 			return "", false
 		}
@@ -1524,9 +1514,9 @@ func (pkg *pkgContext) genPtrOutput(w io.Writer, baseName, elementType string) {
 }
 
 func (pkg *pkgContext) genEnum(w io.Writer, enumType *schema.EnumType, usingGenericTypes bool) error {
-	name := pkg.tokenToEnum(enumType.Token.String())
+	name := pkg.tokenToEnum(enumType.Token)
 
-	mod := pkg.tokenToPackage(enumType.Token.String())
+	mod := pkg.tokenToPackage(enumType.Token)
 	modPkg, ok := pkg.packages[mod]
 	contract.Assertf(ok, "Context for module %q not found", mod)
 
@@ -1985,7 +1975,7 @@ func (pkg *pkgContext) genInputTypes(
 ) error {
 	contract.Assertf(t.IsInputShape(), "Object type must have input shape")
 
-	name := pkg.tokenToType(t.Token.String())
+	name := pkg.tokenToType(t.Token)
 
 	// Generate the plain inputs.
 	if details.input {
@@ -2097,7 +2087,7 @@ func (pkg *pkgContext) genOutputTypes(w io.Writer, genArgs genOutputTypesArgs) e
 
 	name := genArgs.name
 	if name == "" {
-		name = pkg.tokenToType(t.Token.String())
+		name = pkg.tokenToType(t.Token)
 	}
 
 	typeDocRef := schema.DocRefForType(t)
@@ -3275,8 +3265,8 @@ func (pkg *pkgContext) docRefFunctionName(f *schema.Function) string {
 		return ""
 	}
 
-	name := tokenToName(f.Token.String())
-	mod := pkg.tokenToPackage(f.Token.String())
+	name := tokenToName(f.Token)
+	mod := pkg.tokenToPackage(f.Token)
 	if modPkg, ok := pkg.packages[mod]; ok {
 		if override, ok := modPkg.functionNames[f]; ok {
 			name = override
@@ -3702,7 +3692,7 @@ func (pkg *pkgContext) genType(w io.Writer, obj *schema.ObjectType, usingGeneric
 		return nil
 	}
 
-	plainName := pkg.tokenToType(obj.Token.String())
+	plainName := pkg.tokenToType(obj.Token)
 	if !usingGenericTypes {
 		if err := pkg.genPlainType(w, plainName, obj.Comment, "", obj.Properties); err != nil {
 			return err
@@ -3909,7 +3899,9 @@ func (pkg *pkgContext) nestedTypeToType(typ schema.Type) (string, bool) {
 	case *schema.UnionType:
 		return "", false
 	}
-	return strings.TrimSuffix(pkg.tokenToType(typ.String()), "Args"), true
+	tok := typeToken(typ)
+	contract.Assertf(!tok.IsZero(), "expected a named type, got %v", typ)
+	return strings.TrimSuffix(pkg.tokenToType(tok), "Args"), true
 }
 
 func (pkg *pkgContext) genTypeRegistrations(
@@ -3927,7 +3919,7 @@ func (pkg *pkgContext) genTypeRegistrations(
 				// This type is generated by the provider, so no further action is required.
 				continue
 			}
-			name, details := pkg.tokenToType(obj.Token.String()), pkg.detailsForType(obj)
+			name, details := pkg.tokenToType(obj.Token), pkg.detailsForType(obj)
 			if details.input {
 				fmt.Fprintf(w,
 					"\tpulumi.RegisterInputType(reflect.TypeOf((*%[1]sInput)(nil)).Elem(), %[1]sArgs{})\n", name)
@@ -3958,7 +3950,7 @@ func (pkg *pkgContext) genTypeRegistrations(
 			// This type is generated by the provider, so no further action is required.
 			continue
 		}
-		name, details := pkg.tokenToType(obj.Token.String()), pkg.detailsForType(obj)
+		name, details := pkg.tokenToType(obj.Token), pkg.detailsForType(obj)
 		if details.output {
 			fmt.Fprintf(w, "\tpulumi.RegisterOutputType(%sOutput{})\n", name)
 		}
@@ -3989,7 +3981,7 @@ func (pkg *pkgContext) genEnumRegistrations(w io.Writer) {
 			// Enums are guaranteed to have at least one element when they are
 			// bound into a schema.
 			contract.Assertf(len(e.Elements) > 0, "Enum must have at least one element")
-			name, details := pkg.tokenToEnum(e.Token.String()), pkg.detailsForType(e)
+			name, details := pkg.tokenToEnum(e.Token), pkg.detailsForType(e)
 			instance := fmt.Sprintf("%#v", e.Elements[0].Value)
 			if details.input || details.ptrInput {
 				fmt.Fprintf(w,
@@ -4013,7 +4005,7 @@ func (pkg *pkgContext) genEnumRegistrations(w io.Writer) {
 	}
 	// Register all output types
 	for _, e := range pkg.enums {
-		name, details := pkg.tokenToEnum(e.Token.String()), pkg.detailsForType(e)
+		name, details := pkg.tokenToEnum(e.Token), pkg.detailsForType(e)
 		if details.output || details.ptrOutput {
 			fmt.Fprintf(w, "\tpulumi.RegisterOutputType(%sOutput{})\n", name)
 			fmt.Fprintf(w, "\tpulumi.RegisterOutputType(%sPtrOutput{})\n", name)
@@ -4084,7 +4076,7 @@ func (pkg *pkgContext) getTypeImports(t schema.Type, recurse bool, importsAndAli
 
 	// Import an external type with `token` and return true.
 	// If the type is not external, return false.
-	importExternal := func(token string) bool {
+	importExternal := func(token schema.Token) bool {
 		if pkg.isExternalReference(t) {
 			extPkgCtx, _ := pkg.contextForExternalReference(t)
 			mod := extPkgCtx.tokenToPackage(token)
@@ -4101,11 +4093,11 @@ func (pkg *pkgContext) getTypeImports(t schema.Type, recurse bool, importsAndAli
 	case *schema.InputType:
 		pkg.getTypeImports(t.ElementType, recurse, importsAndAliases, seen)
 	case *schema.EnumType:
-		if importExternal(t.Token.String()) {
+		if importExternal(t.Token) {
 			break
 		}
 
-		mod := pkg.tokenToPackage(t.Token.String())
+		mod := pkg.tokenToPackage(t.Token)
 		if mod != pkg.mod {
 			p := path.Join(pkg.importBasePath, mod)
 			importsAndAliases[path.Join(pkg.importBasePath, mod)] = pkg.pkgImportAliases[p]
@@ -4115,11 +4107,11 @@ func (pkg *pkgContext) getTypeImports(t schema.Type, recurse bool, importsAndAli
 	case *schema.MapType:
 		pkg.getTypeImports(t.ElementType, recurse, importsAndAliases, seen)
 	case *schema.ObjectType:
-		if importExternal(t.Token.String()) {
+		if importExternal(t.Token) {
 			break
 		}
 
-		mod := pkg.tokenToPackage(t.Token.String())
+		mod := pkg.tokenToPackage(t.Token)
 		if mod != pkg.mod {
 			p := path.Join(pkg.importBasePath, mod)
 			importsAndAliases[path.Join(pkg.importBasePath, mod)] = pkg.pkgImportAliases[p]
@@ -4134,10 +4126,10 @@ func (pkg *pkgContext) getTypeImports(t schema.Type, recurse bool, importsAndAli
 			}
 		}
 	case *schema.ResourceType:
-		if importExternal(t.Token.String()) {
+		if importExternal(t.Token) {
 			break
 		}
-		mod := pkg.tokenToPackage(t.Token.String())
+		mod := pkg.tokenToPackage(t.Token)
 		if mod != pkg.mod {
 			p := path.Join(pkg.importBasePath, mod)
 			importsAndAliases[path.Join(pkg.importBasePath, mod)] = pkg.pkgImportAliases[p]
@@ -4442,7 +4434,7 @@ func (pkg *pkgContext) genResourceModule(w io.Writer) error {
 				continue
 			}
 
-			registrations.Add(tokenToModule(r.Token.String()))
+			registrations.Add(r.Token.Module())
 			fmt.Fprintf(w, "\tcase %q:\n", r.Token)
 			fmt.Fprintf(w, "\t\tr = &%s{}\n", disambiguatedResourceName(r, pkg))
 		}
@@ -4549,7 +4541,7 @@ func generatePackageContextMap(tool string, pkg schema.PackageReference, goInfo 
 		return pack
 	}
 
-	getPkgFromToken := func(token string) *pkgContext {
+	getPkgFromToken := func(token schema.Token) *pkgContext {
 		return getPkg(tokenToPackage(pkg, goInfo.ModuleToPackage, token))
 	}
 
@@ -4561,11 +4553,11 @@ func generatePackageContextMap(tool string, pkg schema.PackageReference, goInfo 
 		case *schema.MapType:
 			return getPkgFromType(t.ElementType)
 		case *schema.ObjectType:
-			return getPkgFromToken(t.Token.String())
+			return getPkgFromToken(t.Token)
 		case *schema.EnumType:
-			return getPkgFromToken(t.Token.String())
+			return getPkgFromToken(t.Token)
 		default:
-			return getPkgFromToken(t.String())
+			return getPkgFromToken(typeToken(t))
 		}
 	}
 
@@ -4609,7 +4601,7 @@ func generatePackageContextMap(tool string, pkg schema.PackageReference, goInfo 
 	populateDetailsForPropertyTypes = func(seen mapset.Set[string], props []*schema.Property, optional, input, output bool) {
 		for _, p := range props {
 			if obj, ok := codegen.UnwrapType(p.Type).(*schema.ObjectType); ok && p.Plain {
-				pkg := getPkgFromToken(obj.Token.String())
+				pkg := getPkgFromToken(obj.Token)
 				details := pkg.detailsForType(obj)
 				details.mark(true, false)
 				input = true
@@ -4633,14 +4625,14 @@ func generatePackageContextMap(tool string, pkg schema.PackageReference, goInfo 
 		case *schema.OptionalType:
 			populateDetailsForTypes(seen, typ.ElementType, true, input, output)
 		case *schema.ObjectType:
-			pkg := getPkgFromToken(typ.Token.String())
+			pkg := getPkgFromToken(typ.Token)
 			pkg.detailsForType(typ).mark(input || goInfo.GenerateExtraInputTypes, output)
 
 			if optional {
 				pkg.detailsForType(typ).markPtr(input || goInfo.GenerateExtraInputTypes, output)
 			}
 
-			pkg.schemaNames.Add(tokenToName(typ.Token.String()))
+			pkg.schemaNames.Add(tokenToName(typ.Token))
 
 			populateDetailsForPropertyTypes(seen, typ.Properties, optional, input, output)
 		case *schema.UnionType:
@@ -4648,14 +4640,14 @@ func generatePackageContextMap(tool string, pkg schema.PackageReference, goInfo 
 				populateDetailsForTypes(seen, e, optional, input, output)
 			}
 		case *schema.EnumType:
-			pkg := getPkgFromToken(typ.Token.String())
+			pkg := getPkgFromToken(typ.Token)
 			pkg.detailsForType(typ).mark(input || goInfo.GenerateExtraInputTypes, output)
 
 			if optional {
 				pkg.detailsForType(typ).markPtr(input || goInfo.GenerateExtraInputTypes, output)
 			}
 
-			pkg.schemaNames.Add(tokenToName(typ.Token.String()))
+			pkg.schemaNames.Add(tokenToName(typ.Token))
 		case *schema.ArrayType:
 			details := getPkgFromType(typ.ElementType).detailsForType(codegen.UnwrapType(typ.ElementType))
 			details.markArray(input || goInfo.GenerateExtraInputTypes, output)
@@ -4687,14 +4679,14 @@ func generatePackageContextMap(tool string, pkg schema.PackageReference, goInfo 
 			details := getPkgFromType(typ.ElementType).detailsForType(codegen.UnwrapType(typ.ElementType))
 			details.markMap(goInfo.GenerateExtraInputTypes, false)
 		case *schema.ObjectType:
-			pkg := getPkgFromToken(typ.Token.String())
+			pkg := getPkgFromToken(typ.Token)
 			if !typ.IsInputShape() {
 				pkg.types = append(pkg.types, typ)
 			}
 			populateDetailsForTypes(seenMap, typ, false, false, false)
 		case *schema.EnumType:
 			if !typ.IsOverlay {
-				pkg := getPkgFromToken(typ.Token.String())
+				pkg := getPkgFromToken(typ.Token)
 				pkg.enums = append(pkg.enums, typ)
 
 				populateDetailsForTypes(seenMap, typ, false, false, false)
@@ -4712,9 +4704,9 @@ func generatePackageContextMap(tool string, pkg schema.PackageReference, goInfo 
 			return
 		}
 		resSeen[strings.ToLower(r.Token.String())] = true
-		pkg := getPkgFromToken(r.Token.String())
+		pkg := getPkgFromToken(r.Token)
 		pkg.resources = append(pkg.resources, r)
-		pkg.schemaNames.Add(tokenToName(r.Token.String()))
+		pkg.schemaNames.Add(tokenToName(r.Token))
 
 		getNames := func(suffix string) []string {
 			names := []string{}
@@ -4808,7 +4800,7 @@ func generatePackageContextMap(tool string, pkg schema.PackageReference, goInfo 
 
 		switch t := t.(type) {
 		case *schema.ObjectType:
-			pkg := getPkgFromToken(t.Token.String())
+			pkg := getPkgFromToken(t.Token)
 			// maintain support for duplicate tokens for types and resources in Kubernetes
 			if resSeen[strings.ToLower(t.Token.String())] {
 				pkg.duplicateTokens[strings.ToLower(t.Token.String())] = true
@@ -4818,7 +4810,7 @@ func generatePackageContextMap(tool string, pkg schema.PackageReference, goInfo 
 			}
 			typeSeen[strings.ToLower(t.Token.String())] = true
 
-			name := pkg.tokenToType(t.Token.String())
+			name := pkg.tokenToType(t.Token)
 			suffixes := []string{"", "Type", "Typ"}
 			suffix := ""
 			suffixIndex := 0
@@ -4854,7 +4846,7 @@ func generatePackageContextMap(tool string, pkg schema.PackageReference, goInfo 
 				}
 			}
 		case *schema.EnumType:
-			pkg := getPkgFromToken(t.Token.String())
+			pkg := getPkgFromToken(t.Token)
 			if resSeen[t.Token.String()] {
 				pkg.duplicateTokens[strings.ToLower(t.Token.String())] = true
 			}
@@ -4863,7 +4855,7 @@ func generatePackageContextMap(tool string, pkg schema.PackageReference, goInfo 
 			}
 			typeSeen[t.Token.String()] = true
 
-			name := pkg.tokenToEnum(t.Token.String())
+			name := pkg.tokenToEnum(t.Token)
 			suffixes := []string{"", "Enum"}
 			suffix := ""
 			suffixIndex := 0
@@ -4935,10 +4927,10 @@ func generatePackageContextMap(tool string, pkg schema.PackageReference, goInfo 
 			continue
 		}
 
-		pkg := getPkgFromToken(f.Token.String())
+		pkg := getPkgFromToken(f.Token)
 		pkg.functions = append(pkg.functions, f)
 
-		name := tokenToName(f.Token.String())
+		name := tokenToName(f.Token)
 
 		if pkg.names.Contains(name) ||
 			pkg.names.Contains(name+"Args") ||
@@ -5017,7 +5009,7 @@ func LanguageResources(tool string, pkg *schema.Package) (map[string]LanguageRes
 			resources[r.Token.String()] = LanguageResource{
 				Resource: r,
 				Alias:    goPkgInfo.PackageImportAliases[packagePath],
-				Name:     tokenToName(r.Token.String()),
+				Name:     tokenToName(r.Token),
 				Package:  packagePath,
 			}
 		}
@@ -5294,7 +5286,7 @@ func GeneratePackage(tool string,
 				continue
 			}
 
-			fileName := path.Join(mod, cgstrings.Camel(tokenToName(f.Token.String()))+".go")
+			fileName := path.Join(mod, cgstrings.Camel(tokenToName(f.Token))+".go")
 			code, err := pkg.genFunctionCodeFile(f)
 			if err != nil {
 				return nil, err

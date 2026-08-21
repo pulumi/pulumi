@@ -281,7 +281,9 @@ func TestLanguageResources(t *testing.T) {
 
 			resources, err := LanguageResources("test", pkg)
 			for token, resource := range resources {
-				assert.Equal(t, tokenToName(token), resource.Name)
+				tok, err := schema.ParseToken(token)
+				require.NoError(t, err)
+				assert.Equal(t, tokenToName(tok), resource.Name)
 			}
 			require.NoError(t, err)
 		})
@@ -410,7 +412,9 @@ func TestTokenToType(t *testing.T) {
 		t.Run(tt.token+"=>"+tt.expected, func(t *testing.T) {
 			t.Parallel()
 
-			actual := tt.pkg.tokenToType(tt.token)
+			tok, err := schema.ParseToken(tt.token)
+			require.NoError(t, err)
+			actual := tt.pkg.tokenToType(tok)
 			assert.Equal(t, tt.expected, actual)
 		})
 	}
@@ -473,7 +477,9 @@ func TestTokenToResource(t *testing.T) {
 		t.Run(tt.token+"=>"+tt.expected, func(t *testing.T) {
 			t.Parallel()
 
-			actual := tt.pkg.tokenToResource(tt.token)
+			tok, err := schema.ParseToken(tt.token)
+			require.NoError(t, err)
+			actual := tt.pkg.tokenToResource(tok)
 			assert.Equal(t, tt.expected, actual)
 		})
 	}
