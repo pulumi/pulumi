@@ -106,6 +106,15 @@ class Resource(pulumi.CustomResource):
         __props__.__dict__["kind"] = None
         return Resource(resource_name, opts=opts, __props__=__props__)
 
+    @staticmethod
+    def exists(id: pulumi.Input[str],
+            opts: Optional[pulumi.ResourceOptions] = None) -> pulumi.Output[bool]:
+        __props__ = ResourceArgs.__new__(ResourceArgs)
+
+        __props__.__dict__["kind"] = None
+        __inst__ = Resource.__new__(Resource)
+        return pulumi.runtime.exists_resource(__inst__, 'constant:index:Resource', id, __props__, opts or pulumi.ResourceOptions())
+
     @_builtins.property
     @pulumi.getter
     def kind(self) -> pulumi.Output[Optional[Literal['Constant']]]:

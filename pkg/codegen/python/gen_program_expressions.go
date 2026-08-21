@@ -647,6 +647,9 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		g.Fgenf(w, "pulumi.Output.secret(%v)", expr.Args[0])
 	case "unsecret":
 		g.Fgenf(w, "pulumi.Output.unsecret(%v)", expr.Args[0])
+	case "resourceExists":
+		g.Fgenf(w, "pulumi.runtime.exists_resource(None, %v, %v, {}, pulumi.ResourceOptions())",
+			expr.Args[0], expr.Args[1])
 	case "split":
 		g.Fgenf(w, "%.16v.split(%.v)", expr.Args[1], expr.Args[0])
 	case "toBase64":

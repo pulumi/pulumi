@@ -1498,6 +1498,122 @@ func (ctx *Context) readPackageResource(
 	return nil
 }
 
+// ExistsResource checks whether a resource with the given type and ID exists.
+// It returns a BoolOutput that resolves to true if the resource exists, false otherwise.
+func (ctx *Context) ExistsResource(
+	t string, id IDInput, props Input, opts ...ResourceOption,
+) BoolOutput {
+	return ctx.existsPackageResource(t, id, props, "" /* packageRef */, opts...)
+}
+
+// ExistsPackageResource checks whether a resource with the given type and ID exists,
+// using the specified package reference. It returns a BoolOutput that resolves to true if
+// the resource exists, false otherwise.
+func (ctx *Context) ExistsPackageResource(
+	t string, id IDInput, props Input, packageRef string, opts ...ResourceOption,
+) BoolOutput {
+	return ctx.existsPackageResource(t, id, props, packageRef, opts...)
+}
+
+func (ctx *Context) existsPackageResource(
+	t string, id IDInput, props Input, packageRef string, opts ...ResourceOption,
+) BoolOutput {
+	output := ctx.newOutput(reflect.TypeOf(BoolOutput{}))
+
+	go func() {
+		options := merge(opts...)
+		if options.Parent == nil {
+			options.Parent = ctx.state.stack
+		}
+
+		// Merge providers.
+		providers, err := ctx.mergeProviders(t, options.Parent, options.Provider, options.Providers)
+		if err != nil {
+			internal.RejectOutput(output, err)
+			return
+		}
+
+		// Get the provider for the resource.
+		provider := getProvider(t, options.Provider, providers)
+
+		// Resolve the provider reference.
+		var providerRef string
+		if provider != nil {
+			pr, err := ctx.resolveProviderReference(provider)
+			if err != nil {
+				internal.RejectOutput(output, err)
+				return
+			}
+			providerRef = pr
+		}
+
+		// Resolve the parent URN.
+		var parentURN string
+		if options.Parent != nil {
+			urn, _, _, err := options.Parent.URN().awaitURN(context.TODO())
+			if err != nil {
+				internal.RejectOutput(output, err)
+				return
+			}
+			parentURN = string(urn)
+		}
+
+		// Await the ID.
+		idToCheck, known, _, err := id.ToIDOutput().awaitID(context.TODO())
+		if err != nil {
+			internal.RejectOutput(output, err)
+			return
+		}
+		if !known {
+			internal.ResolveOutput(output, false, false /* known */, false /* secret */, nil)
+			return
+		}
+
+		// Serialize properties if provided.
+		var rpcProps *structpb.Struct
+		if props != nil {
+			resolvedProps, _, _, err := marshalInputs(props)
+			if err != nil {
+				internal.RejectOutput(output, err)
+				return
+			}
+			rpcProps, err = plugin.MarshalProperties(
+				resolvedProps,
+				plugin.MarshalOptions{
+					KeepUnknowns:  true,
+					KeepSecrets:   true,
+					KeepResources: ctx.state.keepResources,
+				})
+			if err != nil {
+				internal.RejectOutput(output, err)
+				return
+			}
+		}
+
+		logging.V(9).Infof("ExistsResource(%s): RPC call being made", t)
+		resp, err := ctx.state.monitor.ExistsResource(ctx.ctx, &pulumirpc.ExistsResourceRequest{
+			Type:              t,
+			Id:                string(idToCheck),
+			Parent:            parentURN,
+			Properties:        rpcProps,
+			Provider:          providerRef,
+			Version:           options.Version,
+			PluginDownloadURL: options.PluginDownloadURL,
+			PackageRef:        packageRef,
+		})
+		if err != nil {
+			logging.V(9).Infof("ExistsResource(%s): error: %v", t, err)
+			internal.RejectOutput(output, err)
+			return
+		}
+
+		logging.V(9).Infof("ExistsResource(%s): success: exists=%v known=%v", t, resp.Exists, resp.Known)
+		internal.ResolveOutput(output, resp.Exists, resp.Known, false /* secret */, nil)
+	}()
+
+	return output.(BoolOutput)
+}
+
 func (ctx *Context) getResource(urn string) (*pulumirpc.RegisterResourceResponse, error) {
 	// This is a resource that already exists. Read its state from the engine.
 	resolvedArgsMap := resource.NewPropertyMapFromMap(map[string]any{
