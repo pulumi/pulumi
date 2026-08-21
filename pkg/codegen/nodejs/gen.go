@@ -252,7 +252,7 @@ func resourceName(r *schema.Resource) string {
 	if r.IsProvider {
 		return "Provider"
 	}
-	return tokenToName(r.Token)
+	return tokenToName(r.Token.String())
 }
 
 func (mod *modContext) resourceFileName(r *schema.Resource) string {
@@ -706,7 +706,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFil
 		fmt.Fprintf(w, "\n")
 	}
 
-	pulumiType := r.Token
+	pulumiType := r.Token.String()
 	if r.IsProvider {
 		pulumiType = mod.pkg.Name()
 	}
@@ -2353,7 +2353,7 @@ func (mod *modContext) genResourceModule(w io.Writer) {
 				continue
 			}
 
-			registrations.Add(schema.TokenToRuntimeModule(r.Token))
+			registrations.Add(schema.TokenToRuntimeModule(r.Token.String()))
 		}
 
 		fmt.Fprintf(w, "\nconst _module = {\n")
@@ -2855,7 +2855,7 @@ func generateModuleContextMap(tool string, pkg *schema.Package, extraFiles map[s
 			return
 		}
 
-		mod := getModFromToken(r.Token)
+		mod := getModFromToken(r.Token.String())
 		mod.resources = append(mod.resources, r)
 		visitObjectTypes(r.Properties, func(t *schema.ObjectType) {
 			types.details(t).outputType = true
@@ -3010,7 +3010,7 @@ func LanguageResources(pkg *schema.Package) (map[string]LanguageResource, error)
 				}
 				lr.Properties = append(lr.Properties, lp)
 			}
-			resources[r.Token] = lr
+			resources[r.Token.String()] = lr
 		}
 	}
 

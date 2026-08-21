@@ -137,10 +137,10 @@ func TestTypeNameCodegen(
 			}
 		}
 		for _, r := range pkg.Resources {
-			runTests("#/resources/"+r.Token+"/properties", r.Properties, false)
-			runTests("#/resources/"+r.Token+"/inputProperties", r.InputProperties, false)
+			runTests("#/resources/"+r.Token.String()+"/properties", r.Properties, false)
+			runTests("#/resources/"+r.Token.String()+"/inputProperties", r.InputProperties, false)
 			if r.StateInputs != nil {
-				runTests("#/resources/"+r.Token+"/properties", r.StateInputs.Properties, false)
+				runTests("#/resources/"+r.Token.String()+"/properties", r.StateInputs.Properties, false)
 			}
 		}
 		for _, f := range pkg.Functions {

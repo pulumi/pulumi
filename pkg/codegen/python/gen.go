@@ -704,11 +704,11 @@ func (mod *modContext) gen(fs codegen.Fs) error {
 		if err != nil {
 			return err
 		}
-		name := PyName(tokenToName(r.Token))
+		name := PyName(tokenToName(r.Token.String()))
 		if mod.compatibility == kubernetes20 {
 			// To maintain backward compatibility for kubernetes, the file names
 			// need to be CamelCase instead of the standard snake_case.
-			name = tokenToName(r.Token)
+			name = tokenToName(r.Token.String())
 		}
 		if r.IsProvider {
 			name = "provider"
@@ -1351,7 +1351,7 @@ func (mod *modContext) genAwaitableType(w io.Writer, obj *schema.ObjectType, fun
 }
 
 func resourceName(res *schema.Resource) string {
-	name := pyClassName(tokenToName(res.Token))
+	name := pyClassName(tokenToName(res.Token.String()))
 	if res.IsProvider {
 		name = "Provider"
 	}
@@ -1641,7 +1641,7 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 	}
 
 	// Finally, chain to the base constructor, which will actually register the resource.
-	tok := res.Token
+	tok := res.Token.String()
 	if res.IsProvider {
 		tok = mod.pkg.Name()
 	}
@@ -2566,7 +2566,7 @@ func (mod *modContext) genInitDocstring(w io.Writer, res *schema.Resource, resou
 		}
 		fmt.Fprintln(b, comment)
 	} else {
-		fmt.Fprintf(b, "Create a %s resource with the given unique name, props, and options.\n", tokenToName(res.Token))
+		fmt.Fprintf(b, "Create a %s resource with the given unique name, props, and options.\n", tokenToName(res.Token.String()))
 	}
 	fmt.Fprintln(b, "")
 
@@ -2661,7 +2661,7 @@ func (mod *modContext) genGetDocstring(w io.Writer, res *schema.Resource) error 
 	b := &bytes.Buffer{}
 
 	fmt.Fprintf(b, "Get an existing %s resource's state with the given name, id, and optional extra\n"+
-		"properties used to qualify the lookup.\n", tokenToName(res.Token))
+		"properties used to qualify the lookup.\n", tokenToName(res.Token.String()))
 	fmt.Fprintln(b, "")
 
 	fmt.Fprintln(b, ":param str resource_name: The unique name of the resulting resource.")
@@ -3332,7 +3332,7 @@ func generateModuleContextMap(tool string, pkg *schema.Package, info PackageInfo
 
 	// Find input and output types referenced by resources.
 	scanResource := func(r *schema.Resource) {
-		mod := getModFromToken(r.Token, pkg.Reference())
+		mod := getModFromToken(r.Token.String(), pkg.Reference())
 		mod.resources = append(mod.resources, r)
 		visitObjectTypes(r.Properties, func(t schema.Type) {
 			switch T := t.(type) {
@@ -3495,9 +3495,9 @@ func LanguageResources(tool string, pkg *schema.Package) (map[string]LanguageRes
 			lr := LanguageResource{
 				Resource: r,
 				Package:  packagePath,
-				Name:     pyClassName(tokenToName(r.Token)),
+				Name:     pyClassName(tokenToName(r.Token.String())),
 			}
-			resources[r.Token] = lr
+			resources[r.Token.String()] = lr
 		}
 	}
 

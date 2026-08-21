@@ -785,7 +785,7 @@ func BenchmarkGetPropertyNames(b *testing.B) {
 
 			var helper nodejs_codegen.DocLanguageHelper
 			for _, prop := range res.InputProperties {
-				helper.GetTypeName(partial.Reference(), prop.Type, false, partial.TokenToModule(res.Token))
+				helper.GetTypeName(partial.Reference(), prop.Type, false, partial.TokenToModule(res.Token.String()))
 			}
 		}
 	})
@@ -805,7 +805,7 @@ func BenchmarkGetPropertyNames(b *testing.B) {
 
 			var helper nodejs_codegen.DocLanguageHelper
 			for _, prop := range res.InputProperties {
-				helper.GetTypeName(partial, prop.Type, false, partial.TokenToModule(res.Token))
+				helper.GetTypeName(partial, prop.Type, false, partial.TokenToModule(res.Token.String()))
 			}
 		}
 	})

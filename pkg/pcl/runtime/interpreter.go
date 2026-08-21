@@ -1317,7 +1317,7 @@ func (i *Interpreter) registerResourceWith(
 		return cty.NilVal, fmt.Errorf("lookup resource schema for token %s: %w", token, err)
 	}
 	if schemaResource != nil {
-		token = schemaResource.Token
+		token = schemaResource.Token.String()
 	}
 
 	var properties []*schema.Property

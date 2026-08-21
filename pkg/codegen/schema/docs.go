@@ -385,7 +385,7 @@ func DocRefForType(t Type) DocRef {
 
 // DocRefForResource returns a DocRef for the given resource.
 func DocRefForResource(r *Resource) DocRef {
-	return DocRef{Kind: DocRefKindResource, Ref: "#/resources/" + url.PathEscape(r.Token)}
+	return DocRef{Kind: DocRefKindResource, Ref: "#/resources/" + url.PathEscape(r.Token.String())}
 }
 
 // DocRefForFunction returns a DocRef for the given function.

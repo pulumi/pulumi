@@ -236,7 +236,7 @@ func (pc *packageCommand) runStatefulSnippetUpdate(cmd *cobra.Command, args stat
 	// body by themselves.
 	inputFlags := collectInputFlags(cmd, "input", args.res.InputProperties)
 	code, resourceFilename, resourceNames, err := parseFile(
-		ctx, args.inputFile, "input", args.inputFormat, args.res.Token,
+		ctx, args.inputFile, "input", args.inputFormat, args.res.Token.String(),
 		pc.converter, pc.loaderTarget, pc.packageDescriptor, inputFlags, resourceInfos,
 	)
 	if err != nil {
@@ -250,7 +250,7 @@ func (pc *packageCommand) runStatefulSnippetUpdate(cmd *cobra.Command, args stat
 	// Snippet identity in the snapshot is (Name, Type) — reuse the existing UUID so the engine's
 	// applySnippetUpdates path replaces the snippet in place rather than adding a duplicate that
 	// would then race to register the same URN.
-	snippetUUID, existed, err := resolveSnippetUUID(snap, args.name, args.res.Token)
+	snippetUUID, existed, err := resolveSnippetUUID(snap, args.name, args.res.Token.String())
 	if err != nil {
 		return err
 	}
@@ -290,7 +290,7 @@ func (pc *packageCommand) runStatefulSnippetUpdate(cmd *cobra.Command, args stat
 	snippet := resource.Snippet{
 		UUID:       snippetUUID,
 		Name:       args.name,
-		Type:       args.res.Token,
+		Type:       args.res.Token.String(),
 		Code:       string(resourceCode),
 		Descriptor: packageDescriptorFromProto(pc.packageDescriptor),
 		References: mergedReferences,
@@ -354,7 +354,7 @@ func (pc *packageCommand) runStatefulSnippetPatch(
 	if snap != nil {
 		for i := range snap.Snippets {
 			s := snap.Snippets[i]
-			if s.Name == name && s.Type == res.Token {
+			if s.Name == name && s.Type == res.Token.String() {
 				existing = &s
 				break
 			}
@@ -376,7 +376,7 @@ func (pc *packageCommand) runStatefulSnippetPatch(
 
 	inputFlags := collectInputFlags(cmd, "input", res.InputProperties)
 	patch, patchFilename, resourceNames, err := parseFile(
-		ctx, inputFile, "input", inputFormat, res.Token,
+		ctx, inputFile, "input", inputFormat, res.Token.String(),
 		pc.converter, pc.loaderTarget, pc.packageDescriptor, inputFlags, resourceInfos,
 	)
 	if err != nil {
@@ -461,7 +461,7 @@ func (pc *packageCommand) runStatefulSnippetDelete(
 		return fmt.Errorf("load stack snapshot: %w", err)
 	}
 
-	snippetUUID, exists, err := resolveSnippetUUID(snap, name, res.Token)
+	snippetUUID, exists, err := resolveSnippetUUID(snap, name, res.Token.String())
 	if err != nil {
 		return err
 	}
@@ -473,7 +473,7 @@ func (pc *packageCommand) runStatefulSnippetDelete(
 		Snippets: []resource.Snippet{{
 			UUID: snippetUUID,
 			Name: name,
-			Type: res.Token,
+			Type: res.Token.String(),
 		}},
 		Stack:       stack,
 		DryRun:      pc.dryrun,

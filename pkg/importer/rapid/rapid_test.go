@@ -64,7 +64,7 @@ func hasSelectableResource(pkg *schema.Package) bool {
 
 func findResourceByToken(pkg *schema.Package, typ tokens.Type) *schema.Resource {
 	for _, r := range pkg.Resources {
-		if r.Token == string(typ) {
+		if r.Token.String() == string(typ) {
 			return r
 		}
 	}

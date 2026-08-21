@@ -1006,11 +1006,7 @@ func (t *types) bindResourceTypeDef(token string, options ValidationOptions) (*R
 	if res == nil {
 		return nil, diags, nil
 	}
-	tok, err := ParseToken(token)
-	if err != nil {
-		return nil, diags.Append(errorf(memberPath("resources", token), "%v", err)), nil
-	}
-	typ := &ResourceType{Token: tok, Resource: res}
+	typ := &ResourceType{Token: res.Token, Resource: res}
 	t.resources[token] = typ
 	return typ, diags, nil
 }
@@ -2163,22 +2159,23 @@ func (t *types) bindResourceDef(
 		if specErr != nil || !ok {
 			return nil, nil, err
 		}
-		t.resourceDefs[token] = res
 
 		path := memberPath("resources", token)
 		if diag := validatePrintableName(path, "resource name", token); diag != nil {
 			diags = diags.Append(diag)
 		}
-		parts := strings.Split(token, ":")
-		if len(parts) == 3 {
-			name := parts[2]
-			if isReservedKeyword(name) {
-				diags = diags.Append(errorf(path, "%s", name+" is a reserved name, cannot name resource"))
-			}
+		tok, parseErr := ParseToken(token)
+		if parseErr != nil {
+			return nil, diags.Append(errorf(path, "%v", parseErr)), nil
+		}
+		t.resourceDefs[token] = res
+
+		if name := tok.Name(); isReservedKeyword(name) {
+			diags = diags.Append(errorf(path, "%s", name+" is a reserved name, cannot name resource"))
 		}
 
 		var rDiags hcl.Diagnostics
-		rDiags, err = t.bindResourceDetails(path, token, spec, res, options)
+		rDiags, err = t.bindResourceDetails(path, tok, spec, res, options)
 		diags = append(diags, rDiags...)
 	}
 	if err != nil {
@@ -2188,12 +2185,18 @@ func (t *types) bindResourceDef(
 }
 
 func (t *types) bindResourceDetails(
-	path,
-	token string,
+	path string,
+	tok Token,
 	spec ResourceSpec,
 	decl *Resource, options ValidationOptions,
 ) (hcl.Diagnostics, error) {
 	var diags hcl.Diagnostics
+	token := tok.String()
+
+	// Set the token eagerly: binding the resource's members can recursively resolve references to
+	// this same resource (e.g. a method's __self__ parameter) before the full declaration below is
+	// assigned.
+	decl.Token = tok
 
 	if len(spec.Plain) > 0 {
 		diags = diags.Append(errorf(path+"/plain", "plain has been removed; property types must be marked as plain instead"))
@@ -2277,7 +2280,7 @@ func (t *types) bindResourceDetails(
 
 	*decl = Resource{
 		PackageReference:          t.externalPackage(),
-		Token:                     token,
+		Token:                     tok,
 		Comment:                   spec.Description,
 		InputProperties:           inputProperties,
 		Properties:                properties,
@@ -2301,7 +2304,11 @@ func (t *types) bindProvider(decl *Resource, options ValidationOptions) (hcl.Dia
 	}
 	contract.Assertf(ok, "provider resource %q not found", t.pkg.Name)
 
-	diags, err := t.bindResourceDetails("#/provider", "pulumi:providers:"+t.pkg.Name, spec, decl, options)
+	tok, err := ParseToken("pulumi:providers:" + t.pkg.Name)
+	if err != nil {
+		return hcl.Diagnostics{errorf("#/provider", "%v", err)}, nil
+	}
+	diags, err := t.bindResourceDetails("#/provider", tok, spec, decl, options)
 	if err != nil {
 		return diags, err
 	}
@@ -2380,9 +2387,7 @@ func (t *types) finishResources(
 		resources = append(resources, res.Resource)
 	}
 
-	sort.Slice(resources, func(i, j int) bool {
-		return resources[i].Token < resources[j].Token
-	})
+	slices.SortFunc(resources, func(a, b *Resource) int { return a.Token.Cmp(b.Token) })
 
 	var providerResource *Resource
 	if provider != nil {

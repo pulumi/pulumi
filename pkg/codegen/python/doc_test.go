@@ -109,7 +109,7 @@ func TestResolveDocRef(t *testing.T) {
 			t.Parallel()
 			var bucket *schema.Resource
 			for _, r := range pkg.Resources {
-				if r.Token == "aws:s3/bucket:Bucket" {
+				if r.Token.String() == "aws:s3/bucket:Bucket" {
 					bucket = r
 				}
 			}

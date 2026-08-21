@@ -63,7 +63,7 @@ func resourceSchemaHelp(res *schema.Resource) string {
 }
 
 func (pc *packageCommand) newResourceCommand(res *schema.Resource) *cobra.Command {
-	_, _, name, diags := pcl.DecomposeToken(res.Token, hcl.Range{})
+	_, _, name, diags := pcl.DecomposeToken(res.Token.String(), hcl.Range{})
 	contract.Assertf(!diags.HasErrors(), "token should decompose")
 
 	shorthelp := fmt.Sprintf("Operate on the %s resource", name)
@@ -535,7 +535,7 @@ func (pc *packageCommand) newResourceListCommand(res *schema.Resource) *cobra.Co
 					limit = count - int64(len(results))
 				}
 				stream, err := pc.provider.List(ctx, plugin.ListRequest{
-					Token:             tokens.Type(res.Token),
+					Token:             tokens.Type(res.Token.String()),
 					Query:             resource.FromResourcePropertyMap(query),
 					Limit:             limit,
 					ContinuationToken: continuation,
@@ -596,7 +596,8 @@ func evaluateResourceListFile(
 		return attrs, inputType, res.ListInputs.Properties, diags
 	}
 	return evaluateFile(
-		ctx, path, fileType, inputFormat, res.Token, bind, loadConverter, loaderTarget, packageDescriptor, evalContext,
+		ctx, path, fileType, inputFormat, res.Token.String(), bind, loadConverter, loaderTarget, packageDescriptor,
+		evalContext,
 		inputFlags,
 	)
 }
@@ -606,7 +607,7 @@ func (pc *packageCommand) checkResourceInputs(
 ) (resource.PropertyMap, error) {
 	checked, err := pc.provider.Check(ctx, plugin.CheckRequest{
 		URN:  urn,
-		Type: tokens.Type(res.Token),
+		Type: tokens.Type(res.Token.String()),
 		Olds: olds,
 		News: news,
 	})

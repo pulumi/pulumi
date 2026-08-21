@@ -448,7 +448,8 @@ func evaluateResourceFile(
 		return attrs, inputType, res.InputProperties, diags
 	}
 	return evaluateFile(
-		ctx, path, fileType, inputFormat, res.Token, bind, loadConverter, loaderTarget, packageDescriptor, evalContext,
+		ctx, path, fileType, inputFormat, res.Token.String(), bind, loadConverter, loaderTarget, packageDescriptor,
+		evalContext,
 		inputFlags,
 	)
 }
@@ -883,9 +884,9 @@ var doDisplayStack = tokens.MustParseStackName("dev")
 const doDisplayProject tokens.PackageName = "default"
 
 func resourceURN(res *schema.Resource) resource.URN {
-	_, _, name, diags := pcl.DecomposeToken(res.Token, hcl.Range{})
+	_, _, name, diags := pcl.DecomposeToken(res.Token.String(), hcl.Range{})
 	contract.Assertf(!diags.HasErrors(), "token should decompose")
-	return resource.NewURN(doDisplayStack.Q(), doDisplayProject, "", tokens.Type(res.Token), name)
+	return resource.NewURN(doDisplayStack.Q(), doDisplayProject, "", tokens.Type(res.Token.String()), name)
 }
 
 func (pc *packageCommand) configureProvider(cmd *cobra.Command, ctx context.Context) error {

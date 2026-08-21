@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"maps"
 	"reflect"
+	"slices"
 	"sort"
 	"sync"
 
@@ -315,7 +316,7 @@ func (p packageDefResources) Range() ResourcesIter {
 
 func (p packageDefResources) Get(token string) (*Resource, bool, error) {
 	// Extension parameterizations have no provider of their own, so Provider is nil.
-	if p.Provider != nil && token == p.Provider.Token {
+	if p.Provider != nil && token == p.Provider.Token.String() {
 		return p.Provider, true, nil
 	}
 
@@ -334,7 +335,7 @@ type packageDefResourcesIter struct {
 }
 
 func (i *packageDefResourcesIter) Token() string {
-	return i.r.Token
+	return i.r.Token.String()
 }
 
 func (i *packageDefResourcesIter) Resource() (*Resource, error) {
@@ -833,9 +834,7 @@ func (p *PartialPackage) Snapshot() (*Package, error) {
 	for token, res := range p.types.resourceDefs {
 		resources, resourceDefs[token] = append(resources, res), res
 	}
-	sort.Slice(resources, func(i, j int) bool {
-		return resources[i].Token < resources[j].Token
-	})
+	slices.SortFunc(resources, func(a, b *Resource) int { return a.Token.Cmp(b.Token) })
 
 	functions := slice.Prealloc[*Function](len(p.types.functionDefs))
 	functionDefs := make(map[string]*Function, len(p.types.functionDefs))

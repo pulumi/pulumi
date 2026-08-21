@@ -685,7 +685,7 @@ func TestImportResourceRef(t *testing.T) {
 			false,
 			func(pkg *Package) {
 				for _, r := range pkg.Resources {
-					if r.Token == "example::OtherResource" {
+					if r.Token == NewToken("example", "", "OtherResource") {
 						for _, p := range r.Properties {
 							if p.Name == "foo" {
 								assert.IsType(t, &ResourceType{}, plainType(p.Type))
@@ -712,13 +712,13 @@ func TestImportResourceRef(t *testing.T) {
 
 				for _, r := range pkg.Resources {
 					switch r.Token {
-					case "example::Cat":
+					case NewToken("example", "", "Cat"):
 						for _, p := range r.Properties {
 							if p.Name == "name" {
 								assert.IsType(t, stringType, plainType(p.Type))
 							}
 						}
-					case "example::Workload":
+					case NewToken("example", "", "Workload"):
 						for _, p := range r.Properties {
 							if p.Name == "pod" {
 								assert.IsType(t, &ObjectType{}, plainType(p.Type))
@@ -1672,7 +1672,7 @@ func TestIsOverlay(t *testing.T) {
 			t.Error(err)
 		}
 		for _, v := range pkg.Resources {
-			if strings.Contains(v.Token, "Overlay") {
+			if strings.Contains(v.Token.String(), "Overlay") {
 				assert.Truef(t, v.IsOverlay, "resource %q", v.Token)
 			} else {
 				assert.Falsef(t, v.IsOverlay, "resource %q", v.Token)
@@ -1715,12 +1715,12 @@ func TestOverlaySupportedLanguages(t *testing.T) {
 			t.Error(err)
 		}
 		for _, v := range pkg.Resources {
-			if strings.Contains(v.Token, "Overlay") {
+			if strings.Contains(v.Token.String(), "Overlay") {
 				assert.Truef(t, v.IsOverlay, "resource %q", v.Token)
 			} else {
 				assert.Falsef(t, v.IsOverlay, "resource %q", v.Token)
 			}
-			if strings.Contains(v.Token, "ConstrainedLanguages") {
+			if strings.Contains(v.Token.String(), "ConstrainedLanguages") {
 				assert.Equalf(t, []string{"go", "nodejs", "python"}, v.OverlaySupportedLanguages, "resource %q", v.Token)
 			} else {
 				assert.Nilf(t, v.OverlaySupportedLanguages, "resource %q", v.Token)
@@ -2160,7 +2160,7 @@ func TestMarshalResourceWithLanguageSettings(t *testing.T) {
 		Type: stringType,
 	}
 	r := Resource{
-		Token: "xyz:index:resource",
+		Token: NewToken("xyz", "index", "resource"),
 		Properties: []*Property{
 			prop,
 		},
@@ -2180,7 +2180,7 @@ func TestMarshalResourceWithLanguageSettings(t *testing.T) {
 		},
 		Provider: &Resource{
 			IsProvider: true,
-			Token:      "provider",
+			Token:      NewToken("pulumi", "providers", "xyz"),
 		},
 		Resources: []*Resource{
 			&r,
@@ -2188,7 +2188,7 @@ func TestMarshalResourceWithLanguageSettings(t *testing.T) {
 	}
 	pspec, err := p.MarshalSpec()
 	require.NoError(t, err)
-	res, ok := pspec.Resources[r.Token]
+	res, ok := pspec.Resources[r.Token.String()]
 	assert.True(t, ok)
 	assert.Contains(t, res.Language, "csharp")
 	assert.IsType(t, RawMessage{}, res.Language["csharp"])
@@ -2237,7 +2237,7 @@ func TestResourceListInputsRoundtrip(t *testing.T) {
 
 	require.Len(t, pkg.Resources, 1)
 	res := pkg.Resources[0]
-	require.Equal(t, "test:index:Widget", res.Token)
+	require.Equal(t, NewToken("test", "index", "Widget"), res.Token)
 	require.NotNil(t, res.ListInputs)
 	scope, ok := res.ListInputs.Property("scope")
 	require.True(t, ok)
@@ -3396,7 +3396,7 @@ func TestGetWithIndexAliases(t *testing.T) {
 	for _, query := range []string{"test:index:Thing", "test::Thing", "test:Thing"} {
 		r, ok := pkg.GetResource(query)
 		require.Truef(t, ok, "query %q should resolve", query)
-		assert.Equal(t, "test:index:Thing", r.Token)
+		assert.Equal(t, NewToken("test", "index", "Thing"), r.Token)
 	}
 }
 
@@ -3437,7 +3437,7 @@ func TestGetWithModuleFormat(t *testing.T) {
 
 		r, ok := pkg.GetResource("test:mod:Thing")
 		require.True(t, ok)
-		assert.Equal(t, "test:mod_v2:Thing", r.Token)
+		assert.Equal(t, NewToken("test", "mod_v2", "Thing"), r.Token)
 
 		f, ok := pkg.GetFunction("test:mod:getThing")
 		require.True(t, ok)
@@ -3466,7 +3466,7 @@ func TestGetWithModuleFormat(t *testing.T) {
 		r, ok, err := pkg.Resources().Get("test:mod:Thing")
 		require.NoError(t, err)
 		require.True(t, ok)
-		assert.Equal(t, "test:mod_v2:Thing", r.Token)
+		assert.Equal(t, NewToken("test", "mod_v2", "Thing"), r.Token)
 
 		f, ok, err := pkg.Functions().Get("test:mod:getThing")
 		require.NoError(t, err)

@@ -93,7 +93,7 @@ func drawSample(t *rapid.T, pkg *schema.Package, pickable []*schema.Resource) *S
 
 	inputs := rapidresource.ResourceInputs(r).Draw(t, "inputs")
 
-	typ := tokens.Type(r.Token)
+	typ := tokens.Type(r.Token.String())
 	name := drawIdentifier(t, "resource-name")
 	state := &pkgresource.State{
 		Type:                typ,
@@ -145,7 +145,7 @@ func drawSatellite(
 	taken map[resource.URN]bool, i int,
 ) *pkgresource.State {
 	sR := pickable[rapid.IntRange(0, len(pickable)-1).Draw(t, fmt.Sprintf("satellite-%d-resource-idx", i))]
-	sTyp := tokens.Type(sR.Token)
+	sTyp := tokens.Type(sR.Token.String())
 	urn := rapid.Custom(func(t *rapid.T) resource.URN {
 		name := drawIdentifier(t, fmt.Sprintf("satellite-%d-name", i))
 		return resource.NewURN(stackName, projectName, "", sTyp, name)
