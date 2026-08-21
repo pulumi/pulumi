@@ -20,7 +20,6 @@ import (
 	//nolint:gosec // sha1 used for non-cryptographic fingerprinting only
 	"crypto/sha1"
 	"crypto/tls"
-	"crypto/x509"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -497,7 +496,7 @@ type ThumbprintProvider interface {
 
 type DefaultThumbprintProvider struct{}
 
-// GetRootCertThumbprint retrieves the SHA1 thumbprint of the root CA certificate
+// GetCertThumbprint retrieves the SHA1 thumbprint of the top intermediate CA certificate
 // for the given hostname.
 func (DefaultThumbprintProvider) GetCertThumbprint(host string) (string, error) {
 	conn, err := tls.DialWithDialer(
@@ -516,14 +515,9 @@ func (DefaultThumbprintProvider) GetCertThumbprint(host string) (string, error) 
 		return "", errors.New("no certificates found")
 	}
 
-	// Use the top intermediate cert if possible, which should be 2nd to last
+	// AWS wants the thumbprint of the top intermediate CA, which is the last cert in the chain.
 	// https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_providers_create_oidc_verify-thumbprint.html
-	var cert *x509.Certificate
-	if len(certs) == 1 {
-		cert = certs[0]
-	} else {
-		cert = certs[len(certs)-2]
-	}
+	cert := certs[len(certs)-1]
 
 	// SHA-1 is required by AWS for certificate thumbprints
 	//nolint:gosec // G401: SHA-1 required by AWS OIDC thumbprint API
