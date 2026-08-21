@@ -124,6 +124,14 @@ type Options struct {
 	ShowSecrets bool
 	// Analyzers is the list of policy analyzers to run during this deployment.
 	Analyzers []plugin.Analyzer
+
+	// WorkflowProgressor advances pulumi:index:Workflow resources after the source completes. Injected by
+	// pkg/engine; nil disables workflow progression.
+	WorkflowProgressor WorkflowProgressor
+	// RootParent, if set, parents every resource registered without a parent under the given resource,
+	// and restricts the delete sweep to resources of the deployment's own project. It is set for the
+	// nested deployments a WorkflowProgressor runs for workflow nodes; their roots nest under the node.
+	RootParent resource.URN
 }
 
 // DegreeOfParallelism returns the degree of parallelism that should be used during the
@@ -686,6 +694,11 @@ func (d *Deployment) Diag() diag.Sink                           { return d.ctx.D
 func (d *Deployment) Prev() *Snapshot                           { return d.prev }
 func (d *Deployment) Olds() map[resource.URN]*pkgresource.State { return d.olds }
 func (d *Deployment) Source() Source                            { return d.source }
+func (d *Deployment) Events() Events                            { return d.events }
+func (d *Deployment) Options() *Options                         { return d.opts }
+
+// News returns the new resource states this deployment has produced so far.
+func (d *Deployment) News() *gsync.Map[resource.URN, *pkgresource.State] { return d.news }
 
 // IgnoresProtect returns true if the step's deployment has been configured to ignore the protect
 // resource option (i.e. --ignore-protect was set), allowing protected resources to be deleted.

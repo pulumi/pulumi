@@ -78,14 +78,17 @@ type stepGenerator struct {
 	// report them all at once.
 	sawError bool
 
-	urns      map[resource.URN]bool // set of URNs discovered for this deployment
-	reads     map[resource.URN]bool // set of URNs read for this deployment
-	deletes   map[resource.URN]bool // set of URNs deleted in this deployment
-	replaces  map[resource.URN]bool // set of URNs replaced in this deployment
-	updates   map[resource.URN]bool // set of URNs updated in this deployment
-	creates   map[resource.URN]bool // set of URNs created in this deployment
-	imports   map[resource.URN]bool // set of URNs imported in this deployment
-	sames     map[resource.URN]bool // set of URNs that were not changed in this deployment
+	urns     map[resource.URN]bool // set of URNs discovered for this deployment
+	reads    map[resource.URN]bool // set of URNs read for this deployment
+	deletes  map[resource.URN]bool // set of URNs deleted in this deployment
+	replaces map[resource.URN]bool // set of URNs replaced in this deployment
+	updates  map[resource.URN]bool // set of URNs updated in this deployment
+	creates  map[resource.URN]bool // set of URNs created in this deployment
+	imports  map[resource.URN]bool // set of URNs imported in this deployment
+	sames    map[resource.URN]bool // set of URNs that were not changed in this deployment
+	// kept holds resources of the previous snapshot managed by a workflow's nested deployments; the
+	// delete sweep leaves them alone (see WorkflowHost.Keep).
+	kept      map[resource.URN]bool
 	refreshes map[resource.URN]bool // set of URNs that were refreshed in this deployment
 
 	refreshAliasLock sync.Mutex // lock to protect calls to deployment.depGraph.Alias
@@ -267,6 +270,16 @@ func (sg *stepGenerator) checkParent(parent resource.URN, resourceType tokens.Ty
 	return parent, nil
 }
 
+// rootParent parents the roots of a nested workflow-node deployment under the node resource (see
+// Options.RootParent), so they nest under it in the display, the dependency graph and delete ordering. It
+// is applied to states after URN generation, so it never alters URNs.
+func (sg *stepGenerator) rootParent(parent resource.URN) resource.URN {
+	if parent == "" && sg.deployment.opts.RootParent != "" {
+		return sg.deployment.opts.RootParent
+	}
+	return parent
+}
+
 // bailDiag prints the given diagnostic to the error stream and then returns a bail error with the same message.
 func (sg *stepGenerator) bailDiag(diag *diag.Diag, args ...any) error {
 	sg.deployment.Diag().Errorf(diag, args...)
@@ -316,7 +329,7 @@ func (sg *stepGenerator) GenerateReadSteps(event ReadResourceEvent) ([]Step, err
 		ID:                      event.ID(),
 		Inputs:                  event.Properties(),
 		Outputs:                 make(resource.PropertyMap),
-		Parent:                  parent,
+		Parent:                  sg.rootParent(parent),
 		Protect:                 false,
 		Taint:                   false,
 		External:                true,
@@ -811,7 +824,7 @@ func (sg *stepGenerator) generateResourceSteps(
 		ID:                      "",
 		Inputs:                  resource.ToResourcePropertyMap(goal.Properties),
 		Outputs:                 nil,
-		Parent:                  goal.Parent,
+		Parent:                  sg.rootParent(goal.Parent),
 		Protect:                 protectState,
 		Taint:                   false,
 		External:                false,
@@ -1146,7 +1159,7 @@ func (sg *stepGenerator) continueStepsFromRefresh(
 					ID:                      "",
 					Inputs:                  resource.ToResourcePropertyMap(goal.Properties),
 					Outputs:                 nil,
-					Parent:                  goal.Parent,
+					Parent:                  sg.rootParent(goal.Parent),
 					Protect:                 new.Protect,
 					Taint:                   false,
 					External:                false,
@@ -2246,7 +2259,8 @@ func (sg *stepGenerator) isOperatedOn(urn resource.URN) bool {
 	if aliased {
 		urn = alias
 	}
-	return sg.sames[urn] || sg.updates[urn] || sg.replaces[urn] || sg.reads[urn] || sg.refreshes[urn]
+	return sg.sames[urn] || sg.updates[urn] || sg.replaces[urn] || sg.reads[urn] || sg.refreshes[urn] ||
+		sg.kept[urn]
 	// NOTE: we deliberately do not check sg.deletes here, as it is possible for us to issue multiple
 	// delete steps for the same URN if the old checkpoint contained pending deletes.
 }
@@ -2371,6 +2385,12 @@ func (sg *stepGenerator) GenerateDeletes(targetsOpt UrnTargets, excludesOpt UrnT
 			if res.ViewOf != "" {
 				// This is a view of another resource, so we don't need to delete it.
 				// The owning resource is responsible for publishing delete steps for its views.
+				continue
+			}
+
+			if sg.deployment.opts.RootParent != "" && res.URN.Project() != sg.deployment.source.Project() {
+				// A nested workflow-node deployment sweeps only its own project: its snapshot also
+				// carries the parent chain it nests under, which belongs to the enclosing deployment.
 				continue
 			}
 
@@ -3597,6 +3617,7 @@ func newStepGenerator(
 		reads:                     make(map[resource.URN]bool),
 		creates:                   make(map[resource.URN]bool),
 		sames:                     make(map[resource.URN]bool),
+		kept:                      make(map[resource.URN]bool),
 		imports:                   make(map[resource.URN]bool),
 		replaces:                  make(map[resource.URN]bool),
 		updates:                   make(map[resource.URN]bool),

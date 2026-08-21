@@ -1,0 +1,31 @@
+<{%fg 13%}><{%bold%}>View Live: <{%underline%}><{%fg 12%}>http://example.com<{%reset%}>
+
+
+ <{%bold%}><{%fg 3%}>~ <{%reset%}> pulumi:index:Workflow wf <{%bold%}><{%fg 3%}>updating<{%reset%}> [diff: <{%fg 3%}>~edges,nodes<{%reset%}><{%reset%}>]
+ <{%fg 3%}>~ <{%reset%}> pulumi:index:Workflow wf <{%fg 3%}>updated<{%reset%}> [diff: <{%fg 3%}>~edges,nodes<{%reset%}><{%reset%}>]
+ <{%bold%}><{%reset%}>  <{%reset%}> pulumi:index:WorkflowNode dev <{%bold%}><{%reset%}><{%reset%}> 
+ <{%bold%}><{%reset%}>  <{%reset%}> pulumi:index:WorkflowNode prod <{%bold%}><{%reset%}><{%reset%}> 
+ <{%fg 3%}>~ <{%reset%}> pulumi:index:Workflow wf <{%fg 3%}>updated<{%reset%}> [diff: <{%fg 3%}>~edges,nodes<{%reset%}><{%reset%}>]; <{%reset%}>workflow
+ <{%fg 3%}>~ <{%reset%}> pulumi:index:Workflow wf <{%fg 3%}>updated<{%reset%}> [diff: <{%fg 3%}>~edges,nodes<{%reset%}><{%reset%}>]; <{%reset%}>workflow
+ <{%fg 3%}>~ <{%reset%}> pulumi:index:Workflow wf <{%fg 3%}>updated<{%reset%}> [diff: <{%fg 3%}>~edges,nodes<{%reset%}><{%reset%}>]; <{%reset%}>workflow
+ <{%fg 3%}>~ <{%reset%}> pulumi:index:Workflow wf <{%fg 3%}>updated<{%reset%}> [diff: <{%fg 3%}>~edges,nodes<{%reset%}><{%reset%}>]; <{%reset%}>workflow
+ <{%fg 3%}>~ <{%reset%}> pulumi:index:Workflow wf <{%fg 3%}>updated<{%reset%}> [diff: <{%fg 3%}>~edges,nodes<{%reset%}><{%reset%}>]; <{%reset%}>workflow
+ <{%fg 3%}>~ <{%reset%}> pulumi:index:Workflow wf <{%fg 3%}>updated<{%reset%}> [diff: <{%fg 3%}>~edges,nodes<{%reset%}><{%reset%}>]; <{%reset%}>workflow
+ <{%bold%}><{%fg 2%}>+ <{%reset%}> pulumi:pulumi:Stack test-wf-wf-prod-test <{%bold%}><{%fg 2%}>creating<{%reset%}> 
+ <{%bold%}><{%fg 2%}>+ <{%reset%}> pkgA:m:typA prod <{%bold%}><{%fg 2%}>creating<{%reset%}> 
+ <{%fg 2%}>+ <{%reset%}> pkgA:m:typA prod <{%fg 2%}>created<{%reset%}> 
+ <{%fg 3%}>~ <{%reset%}> pulumi:index:Workflow wf <{%fg 3%}>updated<{%reset%}> [diff: <{%fg 3%}>~edges,nodes<{%reset%}><{%reset%}>]; <{%reset%}>workflow
+ <{%fg 3%}>~ <{%reset%}> pulumi:index:Workflow wf <{%fg 3%}>updated<{%reset%}> [diff: <{%fg 3%}>~edges,nodes<{%reset%}><{%reset%}>]; <{%reset%}>workflow
+ <{%bold%}><{%reset%}>  <{%reset%}> pulumi:pulumi:Stack test-wf-wf-dev-test <{%bold%}><{%reset%}><{%reset%}> 
+ <{%bold%}><{%reset%}>  <{%reset%}> pkgA:m:typA dev <{%bold%}><{%reset%}><{%reset%}> 
+ <{%fg 3%}>~ <{%reset%}> pulumi:index:Workflow wf <{%fg 3%}>updated<{%reset%}> [diff: <{%fg 3%}>~edges,nodes<{%reset%}><{%reset%}>]; <{%reset%}>workflow
+ <{%reset%}>  <{%reset%}> pulumi:pulumi:Stack test-wf-wf-dev-test <{%reset%}><{%reset%}> 
+ <{%fg 2%}>+ <{%reset%}> pulumi:pulumi:Stack test-wf-wf-prod-test <{%fg 2%}>created<{%reset%}> 
+ <{%reset%}>  <{%reset%}> pulumi:pulumi:Stack project-stack <{%reset%}><{%reset%}> 
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    <{%fg 2%}>+ 2 created<{%reset%}>
+    <{%fg 3%}>~ 1 updated<{%reset%}>
+    <{%bold%}>3 changes<{%reset%}>. 4 unchanged
+
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s
+

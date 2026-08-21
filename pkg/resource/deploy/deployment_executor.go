@@ -326,6 +326,21 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context) (_ *Plan, err e
 			// Exit if we've seen a nil event and the step generator has no more async work to do. See the comment at
 			// the top of the loop for more details.
 			if seenNil && ex.asyncEventsExpected == 0 {
+				// The source is done, so every workflow registration (and its step) has completed:
+				// advance workflows now, before deletes are generated, so that resources their
+				// nodes created or deleted this run are settled by sweep time.
+				if p := ex.deployment.opts.WorkflowProgressor; p != nil && ex.stepGen.mode == updateMode {
+					if perr := p.Progress(ctx, ex.deployment, &workflowHost{ex: ex}); perr != nil {
+						if !result.IsBail(perr) {
+							ex.reportError("", perr)
+						}
+						// The post-steps phase will not run: shut the step executor down here so
+						// WaitForCompletion does not wait forever.
+						ex.stepExec.SignalCompletion()
+						return false, result.BailError(perr)
+					}
+				}
+
 				// Check targets before performDeletes mutates the initial Snapshot.
 				targetErr := ex.checkTargets(ex.deployment.opts.Targets)
 

@@ -303,6 +303,8 @@ func newDeployment(
 		ShowSecrets:               opts.ShowSecrets,
 		Analyzers:                 opts.LoadedAnalyzers,
 	}
+	deplOpts.WorkflowProgressor = newWorkflowProgressor(
+		plugctx, ctx.BackendClient, resourceHooks, target.Name, target.Organization, deplOpts.Parallel)
 
 	var depl *deploy.Deployment
 	if !opts.isImport {

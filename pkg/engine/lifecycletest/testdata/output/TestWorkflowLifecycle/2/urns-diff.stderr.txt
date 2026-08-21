@@ -1,0 +1,50 @@
+<{%reset%}>workflow
+  dev
+cursors
+<{%reset%}>
+<{%reset%}>workflow
+  dev
+  prod
+cursors
+<{%reset%}>
+<{%reset%}>workflow
+  dev
+    └─ promote ─▶ prod
+  prod
+cursors
+<{%reset%}>
+<{%reset%}>workflow
+  dev
+    └─ promote ─▶ prod
+  prod
+cursors
+  release#1 — checking promote
+<{%reset%}>
+<{%reset%}>workflow
+  dev
+    └─ promote ─▶ prod
+  prod
+cursors
+  release#1 — parked
+<{%reset%}>
+<{%reset%}>workflow
+  dev
+    └─ promote ─▶ prod
+  prod ◀ release#1
+cursors
+  release#1 @ prod — running prod
+<{%reset%}>
+<{%reset%}>workflow
+  dev
+    └─ promote ─▶ prod
+  prod ◀ release#1
+cursors
+  release#1 @ prod — parked
+<{%reset%}>
+<{%reset%}>workflow
+  dev
+    └─ promote ─▶ prod
+  prod ◀ release#1
+cursors
+  release#1 @ prod — parked
+<{%reset%}>

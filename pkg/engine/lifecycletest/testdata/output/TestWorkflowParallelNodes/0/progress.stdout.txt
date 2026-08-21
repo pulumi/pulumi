@@ -1,0 +1,38 @@
+<{%fg 13%}><{%bold%}>View Live: <{%underline%}><{%fg 12%}>http://example.com<{%reset%}>
+
+
+ <{%bold%}><{%fg 2%}>+ <{%reset%}> pulumi:index:Workflow wf <{%bold%}><{%fg 2%}>creating<{%reset%}> 
+ <{%fg 2%}>+ <{%reset%}> pulumi:index:Workflow wf <{%fg 2%}>created<{%reset%}> 
+ <{%bold%}><{%fg 2%}>+ <{%reset%}> pulumi:index:WorkflowNode a1 <{%bold%}><{%fg 2%}>creating<{%reset%}> 
+ <{%bold%}><{%fg 2%}>+ <{%reset%}> pulumi:index:WorkflowNode a2 <{%bold%}><{%fg 2%}>creating<{%reset%}> 
+ <{%bold%}><{%fg 2%}>+ <{%reset%}> pulumi:index:WorkflowNode b1 <{%bold%}><{%fg 2%}>creating<{%reset%}> 
+ <{%bold%}><{%fg 2%}>+ <{%reset%}> pulumi:index:WorkflowNode b2 <{%bold%}><{%fg 2%}>creating<{%reset%}> 
+ <{%fg 2%}>+ <{%reset%}> pulumi:index:Workflow wf <{%fg 2%}>created<{%reset%}> <{%reset%}>workflow
+ <{%fg 2%}>+ <{%reset%}> pulumi:index:Workflow wf <{%fg 2%}>created<{%reset%}> <{%reset%}>workflow
+ <{%fg 2%}>+ <{%reset%}> pulumi:index:Workflow wf <{%fg 2%}>created<{%reset%}> <{%reset%}>workflow
+ <{%fg 2%}>+ <{%reset%}> pulumi:index:Workflow wf <{%fg 2%}>created<{%reset%}> <{%reset%}>workflow
+ <{%fg 2%}>+ <{%reset%}> pulumi:index:Workflow wf <{%fg 2%}>created<{%reset%}> <{%reset%}>workflow
+ <{%fg 2%}>+ <{%reset%}> pulumi:index:Workflow wf <{%fg 2%}>created<{%reset%}> <{%reset%}>workflow
+ <{%fg 2%}>+ <{%reset%}> pulumi:index:Workflow wf <{%fg 2%}>created<{%reset%}> <{%reset%}>workflow
+ <{%fg 2%}>+ <{%reset%}> pulumi:index:Workflow wf <{%fg 2%}>created<{%reset%}> <{%reset%}>workflow
+ <{%fg 2%}>+ <{%reset%}> pulumi:index:Workflow wf <{%fg 2%}>created<{%reset%}> <{%reset%}>workflow
+ <{%fg 2%}>+ <{%reset%}> pulumi:index:Workflow wf <{%fg 2%}>created<{%reset%}> <{%reset%}>workflow
+ <{%fg 2%}>+ <{%reset%}> pulumi:index:Workflow wf <{%fg 2%}>created<{%reset%}> <{%reset%}>workflow
+ <{%fg 2%}>+ <{%reset%}> pulumi:index:Workflow wf <{%fg 2%}>created<{%reset%}> <{%reset%}>workflow
+ <{%fg 2%}>+ <{%reset%}> pulumi:index:Workflow wf <{%fg 2%}>created<{%reset%}> <{%reset%}>workflow
+ <{%fg 2%}>+ <{%reset%}> pulumi:index:Workflow wf <{%fg 2%}>created<{%reset%}> <{%reset%}>workflow
+ <{%bold%}><{%fg 2%}>+ <{%reset%}> pkgA:m:typA b2 <{%bold%}><{%fg 2%}>creating<{%reset%}> 
+ <{%bold%}><{%fg 2%}>+ <{%reset%}> pkgA:m:typA a2 <{%bold%}><{%fg 2%}>creating<{%reset%}> 
+ <{%fg 2%}>+ <{%reset%}> pkgA:m:typA b2 <{%fg 2%}>created<{%reset%}> 
+ <{%fg 2%}>+ <{%reset%}> pkgA:m:typA a2 <{%fg 2%}>created<{%reset%}> 
+ <{%fg 2%}>+ <{%reset%}> pulumi:index:Workflow wf <{%fg 2%}>created<{%reset%}> <{%reset%}>workflow
+ <{%fg 2%}>+ <{%reset%}> pulumi:index:Workflow wf <{%fg 2%}>created<{%reset%}> <{%reset%}>workflow
+ <{%fg 2%}>+ <{%reset%}> pulumi:index:Workflow wf <{%fg 2%}>created<{%reset%}> <{%reset%}>workflow
+ <{%fg 2%}>+ <{%reset%}> pulumi:index:Workflow wf <{%fg 2%}>created<{%reset%}> <{%reset%}>workflow
+ <{%fg 2%}>+ <{%reset%}> pulumi:index:Workflow wf <{%fg 2%}>created<{%reset%}> <{%reset%}>workflow
+ <{%reset%}>  <{%reset%}> pulumi:pulumi:Stack project-stack <{%reset%}><{%reset%}> 
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    <{%fg 2%}>+ 7 created<{%reset%}>
+
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s
+

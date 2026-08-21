@@ -1,0 +1,28 @@
+<{%fg 13%}><{%bold%}>View Live: <{%underline%}><{%fg 12%}>http://example.com<{%reset%}>
+
+
+ <{%bold%}><{%fg 2%}>+ <{%reset%}> urn:pulumi:test::test::pulumi:index:Workflow::wf <{%bold%}><{%fg 2%}>creating<{%reset%}> 
+ <{%fg 2%}>+ <{%reset%}> urn:pulumi:test::test::pulumi:index:Workflow::wf <{%fg 2%}>created<{%reset%}> 
+ <{%bold%}><{%fg 2%}>+ <{%reset%}> urn:pulumi:test::test::pulumi:index:Workflow$pulumi:index:WorkflowNode::dev <{%bold%}><{%fg 2%}>creating<{%reset%}> 
+ <{%bold%}><{%fg 2%}>+ <{%reset%}> urn:pulumi:test::test::pulumi:index:Workflow$pulumi:index:WorkflowNode::prod <{%bold%}><{%fg 2%}>creating<{%reset%}> 
+ <{%fg 2%}>+ <{%reset%}> urn:pulumi:test::test::pulumi:index:Workflow::wf <{%fg 2%}>created<{%reset%}> <{%reset%}>workflow
+ <{%fg 2%}>+ <{%reset%}> urn:pulumi:test::test::pulumi:index:Workflow::wf <{%fg 2%}>created<{%reset%}> <{%reset%}>workflow
+ <{%fg 2%}>+ <{%reset%}> urn:pulumi:test::test::pulumi:index:Workflow::wf <{%fg 2%}>created<{%reset%}> <{%reset%}>workflow
+ <{%fg 2%}>+ <{%reset%}> urn:pulumi:test::test::pulumi:index:Workflow::wf <{%fg 2%}>created<{%reset%}> <{%reset%}>workflow
+ <{%fg 2%}>+ <{%reset%}> urn:pulumi:test::test::pulumi:index:Workflow::wf <{%fg 2%}>created<{%reset%}> <{%reset%}>workflow
+ <{%fg 2%}>+ <{%reset%}> urn:pulumi:test::test::pulumi:index:Workflow::wf <{%fg 2%}>created<{%reset%}> <{%reset%}>workflow
+ <{%fg 2%}>+ <{%reset%}> urn:pulumi:test::test::pulumi:index:Workflow::wf <{%fg 2%}>created<{%reset%}> <{%reset%}>workflow
+ <{%fg 2%}>+ <{%reset%}> urn:pulumi:test::test::pulumi:index:Workflow::wf <{%fg 2%}>created<{%reset%}> <{%reset%}>workflow
+ <{%fg 2%}>+ <{%reset%}> urn:pulumi:test::test::pulumi:index:Workflow::wf <{%fg 2%}>created<{%reset%}> <{%reset%}>workflow
+ <{%bold%}><{%fg 2%}>+ <{%reset%}> urn:pulumi:test::test-wf-wf-dev::pulumi:pulumi:Stack::test-wf-wf-dev-test <{%bold%}><{%fg 2%}>creating<{%reset%}> 
+ <{%bold%}><{%fg 2%}>+ <{%reset%}> urn:pulumi:test::test-wf-wf-dev::pkgA:m:typA::dev <{%bold%}><{%fg 2%}>creating<{%reset%}> 
+ <{%fg 2%}>+ <{%reset%}> urn:pulumi:test::test-wf-wf-dev::pkgA:m:typA::dev <{%fg 2%}>created<{%reset%}> 
+ <{%fg 2%}>+ <{%reset%}> urn:pulumi:test::test::pulumi:index:Workflow::wf <{%fg 2%}>created<{%reset%}> <{%reset%}>workflow
+ <{%fg 2%}>+ <{%reset%}> urn:pulumi:test::test::pulumi:index:Workflow::wf <{%fg 2%}>created<{%reset%}> <{%reset%}>workflow
+ <{%fg 2%}>+ <{%reset%}> urn:pulumi:test::test-wf-wf-dev::pulumi:pulumi:Stack::test-wf-wf-dev-test <{%fg 2%}>created<{%reset%}> 
+ <{%reset%}>  <{%reset%}> urn:pulumi:stack::project::pulumi:pulumi:Stack::project-stack <{%reset%}><{%reset%}> 
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    <{%fg 2%}>+ 5 created<{%reset%}>
+
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s
+
