@@ -459,7 +459,7 @@ func (pkg *pkgContext) inputType(t schema.Type) (result string) {
 		if t.UnderlyingType != nil {
 			return pkg.inputType(t.UnderlyingType)
 		}
-		return pkg.tokenToType(t.Token) + "Input"
+		return pkg.tokenToType(t.Token.String()) + "Input"
 	case *schema.UnionType:
 		// If the union is actually a relaxed enum type, use the underlying
 		// type for the input instead
@@ -625,7 +625,7 @@ func (pkg *pkgContext) argsTypeImpl(t schema.Type) (result string) {
 		if t.UnderlyingType != nil {
 			return pkg.argsTypeImpl(t.UnderlyingType)
 		}
-		return pkg.tokenToType(t.Token)
+		return pkg.tokenToType(t.Token.String())
 	case *schema.UnionType:
 		// If the union is actually a relaxed enum type, use the underlying
 		// type for the input instead
@@ -718,7 +718,7 @@ func (pkg *pkgContext) typeStringImpl(t schema.Type, argsType bool) string {
 		if t.UnderlyingType != nil {
 			return pkg.typeStringImpl(t.UnderlyingType, argsType)
 		}
-		return pkg.tokenToType(t.Token)
+		return pkg.tokenToType(t.Token.String())
 	case *schema.UnionType:
 		// If the union is actually a relaxed enum type, use the underlying
 		// type for the enum instead
@@ -927,7 +927,7 @@ func (pkg *pkgContext) outputTypeImpl(t schema.Type) string {
 		if t.UnderlyingType != nil {
 			return pkg.outputTypeImpl(t.UnderlyingType)
 		}
-		return pkg.tokenToType(t.Token) + "Output"
+		return pkg.tokenToType(t.Token.String()) + "Output"
 	case *schema.UnionType:
 		// If the union is actually a relaxed enum type, use the underlying
 		// type for the output instead
@@ -1081,7 +1081,7 @@ func (pkg *pkgContext) genericOutputTypeImpl(t schema.Type) string {
 			return pkg.genericOutputType(t.UnderlyingType)
 		}
 
-		tokenType := pkg.tokenToType(t.Token)
+		tokenType := pkg.tokenToType(t.Token.String())
 		return fmt.Sprintf("pulumix.Output[%s]", tokenType)
 	case *schema.UnionType:
 		// If the union is actually a relaxed enum type, use the underlying

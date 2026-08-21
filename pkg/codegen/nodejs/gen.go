@@ -303,7 +303,7 @@ func (mod *modContext) typeAst(t schema.Type, input bool, constValue any) tstype
 	case *schema.ResourceType:
 		return tstypes.Identifier(mod.resourceType(t))
 	case *schema.TokenType:
-		return tstypes.Identifier(tokenToName(t.Token))
+		return tstypes.Identifier(tokenToName(t.Token.String()))
 	case *schema.UnionType:
 		if !input && mod.disableUnionOutputTypes {
 			if t.DefaultType != nil {
@@ -1620,7 +1620,7 @@ func (mod *modContext) getTypeImportsForResource(t schema.Type, recurse bool, ex
 
 		return resourceOrTokenImport(t.Token.String())
 	case *schema.TokenType:
-		return resourceOrTokenImport(t.Token)
+		return resourceOrTokenImport(t.Token.String())
 	case *schema.UnionType:
 		needsTypes := false
 		for _, e := range t.ElementTypes {

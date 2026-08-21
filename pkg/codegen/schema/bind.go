@@ -930,7 +930,7 @@ func hashTypeInto(h hash.Hash64, t Type) {
 		writeStr(t.Token.String())
 	case *TokenType:
 		writeTag(10)
-		writeStr(t.Token)
+		writeStr(t.Token.String())
 	case *InvalidType:
 		writeTag(11)
 	default:
@@ -1118,7 +1118,12 @@ func (t *types) bindTypeSpecRef(
 		// If the type is not a known type, bind it as an opaque token type.
 		tokenType, ok := t.tokens[ref.Token]
 		if !ok {
-			tokenType = &TokenType{Token: ref.Token}
+			tok, err := ParseToken(ref.Token)
+			if err != nil {
+				typ, diags := invalidType(errorf(path, "%v", err))
+				return typ, diags, nil
+			}
+			tokenType = &TokenType{Token: tok}
 			if spec.Type != "" {
 				ut, primDiags := t.bindPrimitiveType(path, spec.Type)
 				diags = diags.Extend(primDiags)
@@ -1856,7 +1861,7 @@ func compareTypes(a, b Type) int {
 	case *InvalidType, nil:
 		return 0 // All invalid types are the same
 	case *TokenType:
-		return strings.Compare(a.Token, b.(*TokenType).Token)
+		return a.Token.Cmp(b.(*TokenType).Token)
 	case *InputType:
 		return compareTypes(a.ElementType, b.(*InputType).ElementType)
 	default:
