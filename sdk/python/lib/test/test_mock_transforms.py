@@ -106,25 +106,23 @@ def extra_invoke_transform(args: pulumi.InvokeTransformArgs):
     return pulumi.InvokeTransformResult(new_args, args.opts)
 
 
-def test_registration_is_accepted_by_mocks_without_transform_hooks(setup_mocks):
+@pulumi.runtime.test
+async def test_registration_is_accepted_by_mocks_without_transform_hooks(setup_mocks):
     monitor = setup_mocks
 
-    @pulumi.runtime.test
-    async def check():
-        pulumi.runtime.register_resource_transform(tags_transform)
-        pulumi.runtime.register_invoke_transform(extra_invoke_transform)
+    pulumi.runtime.register_resource_transform(tags_transform)
+    pulumi.runtime.register_invoke_transform(extra_invoke_transform)
 
-        res = MyResource("res", {"tags": {"group": "webservers"}})
-        tags = await res.tags.future()
-        assert tags == {"group": "webservers"}
-
-    check()
+    res = MyResource("res", {"tags": {"group": "webservers"}})
+    tags = await res.tags.future()
+    assert tags == {"group": "webservers"}
 
     assert monitor.get_registered_transforms() == [tags_transform]
     assert monitor.get_registered_invoke_transforms() == [extra_invoke_transform]
 
 
-def test_registered_transforms_are_exposed(setup_transform_aware_mocks):
+@pulumi.runtime.test
+async def test_registered_transforms_are_exposed(setup_transform_aware_mocks):
     monitor = setup_transform_aware_mocks
 
     def other_transform(args: pulumi.ResourceTransformArgs):
@@ -138,33 +136,28 @@ def test_registered_transforms_are_exposed(setup_transform_aware_mocks):
     assert monitor.get_registered_invoke_transforms() == [extra_invoke_transform]
 
 
-def test_manually_applying_stack_transforms(setup_transform_aware_mocks):
+@pulumi.runtime.test
+async def test_manually_applying_stack_transforms(setup_transform_aware_mocks):
     pulumi.runtime.register_resource_transform(tags_transform)
 
-    @pulumi.runtime.test
-    async def check():
-        res = MyResource("res", {"tags": {"group": "webservers"}})
-        tags = await res.tags.future()
-        assert tags == {"group": "webservers", "foo": "bar"}
-
-    check()
+    res = MyResource("res", {"tags": {"group": "webservers"}})
+    tags = await res.tags.future()
+    assert tags == {"group": "webservers", "foo": "bar"}
 
 
-def test_manually_applying_resource_transforms(setup_transform_aware_mocks):
-    @pulumi.runtime.test
-    async def check():
-        res = MyResource(
-            "res",
-            {"tags": {"group": "webservers"}},
-            opts=pulumi.ResourceOptions(transforms=[tags_transform]),
-        )
-        tags = await res.tags.future()
-        assert tags == {"group": "webservers", "foo": "bar"}
-
-    check()
+@pulumi.runtime.test
+async def test_manually_applying_resource_transforms(setup_transform_aware_mocks):
+    res = MyResource(
+        "res",
+        {"tags": {"group": "webservers"}},
+        opts=pulumi.ResourceOptions(transforms=[tags_transform]),
+    )
+    tags = await res.tags.future()
+    assert tags == {"group": "webservers", "foo": "bar"}
 
 
-def test_manually_applying_invoke_transforms(setup_transform_aware_mocks):
+@pulumi.runtime.test
+async def test_manually_applying_invoke_transforms(setup_transform_aware_mocks):
     pulumi.runtime.register_invoke_transform(extra_invoke_transform)
 
     result = pulumi.runtime.invoke("test:index:MyFunction", {"orig": "value"}).value

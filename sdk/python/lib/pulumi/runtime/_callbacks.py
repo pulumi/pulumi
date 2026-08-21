@@ -77,7 +77,7 @@ class _CallbackServicer(callback_pb2_grpc.CallbacksServicer):
         self._callbacks = {}
         self._transforms = {}
         self._monitor = monitor
-        self._loop = asyncio.get_event_loop()
+        self._loop = asyncio.get_running_loop()
         self._server = aio.server(options=_GRPC_CHANNEL_OPTIONS)
         callback_pb2_grpc.add_CallbacksServicer_to_server(self, self._server)
         port = self._server.add_insecure_port(address="127.0.0.1:0")
@@ -101,7 +101,7 @@ class _CallbackServicer(callback_pb2_grpc.CallbacksServicer):
         #
         # Stopping a grpc.aio server from a different event loop than it was created
         # on raises a RuntimeError, so only stop servicers created on the current loop.
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         for servicer in list(cls._servicers):
             if servicer._loop is not loop:
                 continue

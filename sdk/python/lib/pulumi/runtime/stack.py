@@ -53,7 +53,7 @@ from .settings import (
     is_dry_run,
     set_root_resource,
 )
-from .sync_await import _ensure_event_loop, _sync_await
+from .sync_await import _sync_await
 
 if TYPE_CHECKING:
     from ..output import Inputs
@@ -483,7 +483,7 @@ def register_stack_transformation(t: ResourceTransformation):
 
 
 def _wait_for_pending_rpcs() -> None:
-    pending = asyncio.all_tasks(_ensure_event_loop())
+    pending = asyncio.all_tasks()
     rpcs = {task for task in pending if task.get_coro().__name__ == "rpc_wrapper"}  # type: ignore
     if rpcs:
         _sync_await(asyncio.gather(*rpcs))
