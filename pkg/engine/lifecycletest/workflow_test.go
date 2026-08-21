@@ -148,6 +148,19 @@ func workflowCursors(t *testing.T, snap *deploy.Snapshot) map[string]string {
 	return nil
 }
 
+// nodeRecord returns the workflow's authoritative record of node (its node resource's outputs only mirror it
+// as of the node's last run).
+func nodeRecord(t *testing.T, snap *deploy.Snapshot, node string) resource.PropertyMap {
+	t.Helper()
+	for _, res := range snap.Resources {
+		if res.Type == deploy.WorkflowType {
+			return res.Outputs["records"].ObjectValue()[resource.PropertyKey(node)].ObjectValue()
+		}
+	}
+	require.Fail(t, "workflow resource not found in snapshot")
+	return nil
+}
+
 func findResource(snap *deploy.Snapshot, urn resource.URN) *pkgresource.State {
 	for _, res := range snap.Resources {
 		if res.URN == urn {
@@ -173,6 +186,7 @@ func TestWorkflowLifecycle(t *testing.T) {
 	promote := false
 	withProd := true
 
+	var registered resource.PropertyMap // the outputs the program receives for the workflow
 	programF := deploytest.NewLanguageRuntimeF(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		nodes := resource.PropertyMap{
 			"dev": resource.NewProperty(resource.PropertyMap{"program": callbackProperty(h.program("dev"))}),
@@ -190,7 +204,7 @@ func TestWorkflowLifecycle(t *testing.T) {
 				}),
 			}))
 		}
-		_, err := monitor.RegisterResource(deploy.WorkflowType, "wf", true, deploytest.ResourceOptions{
+		resp, err := monitor.RegisterResource(deploy.WorkflowType, "wf", true, deploytest.ResourceOptions{
 			Inputs: resource.PropertyMap{
 				"nodes": resource.NewProperty(nodes),
 				"edges": resource.NewProperty(edges),
@@ -203,6 +217,7 @@ func TestWorkflowLifecycle(t *testing.T) {
 			},
 		})
 		require.NoError(t, err)
+		registered = resp.Outputs
 		return nil
 	})
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
@@ -211,21 +226,26 @@ func TestWorkflowLifecycle(t *testing.T) {
 	project := p.GetProject()
 
 	wfURN := resource.URN("urn:pulumi:test::test::pulumi:index:Workflow::wf")
-	devNode := resource.URN("urn:pulumi:test::test::pulumi:index:Workflow$pulumi:index:WorkflowNode::dev")
-	prodNode := resource.URN("urn:pulumi:test::test::pulumi:index:Workflow$pulumi:index:WorkflowNode::prod")
-	// Node program resources live in the main snapshot, namespaced by a per-node project qualifier, with
-	// the program's root stack parented under the node resource. (Children of a root stack carry no type
-	// prefix in their URNs.)
+	// Node resources and their programs' resources live in the main snapshot, namespaced by a per-node
+	// project qualifier: the node resource under the workflow, the program's root stack parented under
+	// the node resource. (Children of a root stack carry no type prefix in their URNs.)
+	devNode := resource.URN("urn:pulumi:test::test-wf-wf-dev::pulumi:index:Workflow$pulumi:index:WorkflowNode::dev")
+	prodNode := resource.URN("urn:pulumi:test::test-wf-wf-prod::pulumi:index:Workflow$pulumi:index:WorkflowNode::prod")
 	devStack := resource.URN("urn:pulumi:test::test-wf-wf-dev::pulumi:pulumi:Stack::test-wf-wf-dev-test")
 	devRes := resource.URN("urn:pulumi:test::test-wf-wf-dev::pkgA:m:typA::dev")
 	prodStack := resource.URN("urn:pulumi:test::test-wf-wf-prod::pulumi:pulumi:Stack::test-wf-wf-prod-test")
 	prodRes := resource.URN("urn:pulumi:test::test-wf-wf-prod::pkgA:m:typA::prod")
 
 	// Up 0: the entry places release#1 at dev, whose program runs on arrival. The gate fails, so the
-	// cursor parks at dev. Both node resources exist; only dev has program resources.
+	// cursor parks at dev. Both node resources exist; only dev has program resources. The workflow
+	// advanced before its registration completed, so the program saw this run's cursors.
 	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
 	require.NoError(t, err)
 	assert.Equal(t, map[string]string{"release#1": "dev"}, workflowCursors(t, snap))
+	require.Contains(t, registered, resource.PropertyKey("cursors"))
+	assert.Equal(t, []resource.PropertyValue{resource.NewProperty(resource.PropertyMap{
+		"name": resource.NewProperty("release#1"), "node": resource.NewProperty("dev"),
+	})}, registered["cursors"].ArrayValue())
 	assert.Equal(t, []bool{false}, h.runsOf("dev"))
 	assert.Empty(t, h.runsOf("prod"))
 	require.NotNil(t, findResource(snap, devNode))
@@ -239,10 +259,12 @@ func TestWorkflowLifecycle(t *testing.T) {
 	assert.Equal(t, devStack, dev.Parent)
 	assert.Equal(t, resource.PropertyMap{"image": resource.NewProperty("v1")}, dev.Inputs)
 	assert.Nil(t, findResource(snap, prodRes))
-	devState := findResource(snap, devNode).Outputs
+	devState := nodeRecord(t, snap, "dev")
 	assert.Equal(t, "release#1", devState["occupant"].StringValue())
 	visits := devState["visits"].ArrayValue()
 	require.Len(t, visits, 1)
+	// The node resource mirrors its record.
+	assert.Equal(t, devState, findResource(snap, devNode).Outputs)
 	assert.Equal(t, "release#1", visits[0].ObjectValue()["cursor"].StringValue())
 	assert.Equal(t, resource.PropertyMap{
 		"image":    resource.NewProperty("v1"),
@@ -270,14 +292,14 @@ func TestWorkflowLifecycle(t *testing.T) {
 	assert.Equal(t, map[string]any{"image": "v1", "deployed": "dev"}, h.lastValues["prod"])
 	require.NotNil(t, findResource(snap, devRes))
 	require.NotNil(t, findResource(snap, prodRes))
-	devState = findResource(snap, devNode).Outputs
+	devState = nodeRecord(t, snap, "dev")
 	_, occupied := devState["occupant"]
 	assert.False(t, occupied)
 	visits = devState["visits"].ArrayValue()
 	require.Len(t, visits, 1)
 	_, left := visits[0].ObjectValue()["left"]
 	assert.True(t, left, "the visit to dev is closed")
-	assert.Equal(t, "release#1", findResource(snap, prodNode).Outputs["occupant"].StringValue())
+	assert.Equal(t, "release#1", nodeRecord(t, snap, "prod")["occupant"].StringValue())
 
 	// A preview runs no callbacks and moves nothing, but plans no deletion of node resources or their
 	// programs' resources either.

@@ -3,8 +3,6 @@
 
  <{%bold%}><{%fg 2%}>+ <{%reset%}> pulumi:index:Workflow wf <{%bold%}><{%fg 2%}>creating<{%reset%}> 
  <{%fg 2%}>+ <{%reset%}> pulumi:index:Workflow wf <{%fg 2%}>created<{%reset%}> 
- <{%bold%}><{%fg 2%}>+ <{%reset%}> pulumi:index:WorkflowNode dev <{%bold%}><{%fg 2%}>creating<{%reset%}> 
- <{%bold%}><{%fg 2%}>+ <{%reset%}> pulumi:index:WorkflowNode prod <{%bold%}><{%fg 2%}>creating<{%reset%}> 
  <{%fg 2%}>+ <{%reset%}> pulumi:index:Workflow wf <{%fg 2%}>created<{%reset%}> <{%reset%}>workflow: no cursors
  <{%fg 2%}>+ <{%reset%}> pulumi:index:Workflow wf <{%fg 2%}>created<{%reset%}> <{%reset%}>workflow: no cursors
  <{%fg 2%}>+ <{%reset%}> pulumi:index:Workflow wf <{%fg 2%}>created<{%reset%}> <{%reset%}>workflow: no cursors
@@ -14,10 +12,12 @@
  <{%fg 2%}>+ <{%reset%}> pulumi:index:Workflow wf <{%fg 2%}>created<{%reset%}> <{%reset%}>workflow: release#1 @ dev — parked
  <{%fg 2%}>+ <{%reset%}> pulumi:index:Workflow wf <{%fg 2%}>created<{%reset%}> <{%reset%}>workflow: release#1 @ dev — parked
  <{%fg 2%}>+ <{%reset%}> pulumi:index:Workflow wf <{%fg 2%}>created<{%reset%}> <{%reset%}>workflow: release#1 @ dev — running dev
+ <{%bold%}><{%fg 2%}>+ <{%reset%}> pulumi:index:WorkflowNode dev <{%bold%}><{%fg 2%}>creating<{%reset%}> 
  <{%bold%}><{%fg 2%}>+ <{%reset%}> pulumi:pulumi:Stack test-wf-wf-dev-test <{%bold%}><{%fg 2%}>creating<{%reset%}> 
  <{%bold%}><{%fg 2%}>+ <{%reset%}> pkgA:m:typA dev <{%bold%}><{%fg 2%}>creating<{%reset%}> 
  <{%fg 2%}>+ <{%reset%}> pkgA:m:typA dev <{%fg 2%}>created<{%reset%}> 
  <{%fg 2%}>+ <{%reset%}> pulumi:index:Workflow wf <{%fg 2%}>created<{%reset%}> <{%reset%}>workflow: release#1 @ dev — parked
+ <{%bold%}><{%fg 2%}>+ <{%reset%}> pulumi:index:WorkflowNode prod <{%bold%}><{%fg 2%}>creating<{%reset%}> 
  <{%fg 2%}>+ <{%reset%}> pulumi:index:Workflow wf <{%fg 2%}>created<{%reset%}> <{%reset%}>workflow: release#1 @ dev — parked
  <{%fg 2%}>+ <{%reset%}> pulumi:index:Workflow wf <{%fg 2%}>created<{%reset%}> <{%reset%}>workflow: release#1 @ dev — parked
  <{%fg 2%}>+ <{%reset%}> pulumi:pulumi:Stack test-wf-wf-dev-test <{%fg 2%}>created<{%reset%}> 

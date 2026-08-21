@@ -3,10 +3,6 @@
 
  <{%bold%}><{%fg 2%}>+ <{%reset%}> urn:pulumi:test::test::pulumi:index:Workflow::wf <{%bold%}><{%fg 2%}>creating<{%reset%}> 
  <{%fg 2%}>+ <{%reset%}> urn:pulumi:test::test::pulumi:index:Workflow::wf <{%fg 2%}>created<{%reset%}> 
- <{%bold%}><{%fg 2%}>+ <{%reset%}> urn:pulumi:test::test::pulumi:index:Workflow$pulumi:index:WorkflowNode::a1 <{%bold%}><{%fg 2%}>creating<{%reset%}> 
- <{%bold%}><{%fg 2%}>+ <{%reset%}> urn:pulumi:test::test::pulumi:index:Workflow$pulumi:index:WorkflowNode::a2 <{%bold%}><{%fg 2%}>creating<{%reset%}> 
- <{%bold%}><{%fg 2%}>+ <{%reset%}> urn:pulumi:test::test::pulumi:index:Workflow$pulumi:index:WorkflowNode::b1 <{%bold%}><{%fg 2%}>creating<{%reset%}> 
- <{%bold%}><{%fg 2%}>+ <{%reset%}> urn:pulumi:test::test::pulumi:index:Workflow$pulumi:index:WorkflowNode::b2 <{%bold%}><{%fg 2%}>creating<{%reset%}> 
  <{%fg 2%}>+ <{%reset%}> urn:pulumi:test::test::pulumi:index:Workflow::wf <{%fg 2%}>created<{%reset%}> <{%reset%}>workflow: no cursors
  <{%fg 2%}>+ <{%reset%}> urn:pulumi:test::test::pulumi:index:Workflow::wf <{%fg 2%}>created<{%reset%}> <{%reset%}>workflow: no cursors
  <{%fg 2%}>+ <{%reset%}> urn:pulumi:test::test::pulumi:index:Workflow::wf <{%fg 2%}>created<{%reset%}> <{%reset%}>workflow: no cursors
@@ -17,18 +13,22 @@
  <{%fg 2%}>+ <{%reset%}> urn:pulumi:test::test::pulumi:index:Workflow::wf <{%fg 2%}>created<{%reset%}> <{%reset%}>workflow: a#1 @ a1 — parked; b#2 @ b1 — parked
  <{%fg 2%}>+ <{%reset%}> urn:pulumi:test::test::pulumi:index:Workflow::wf <{%fg 2%}>created<{%reset%}> <{%reset%}>workflow: a#1 @ a1 — parked; b#2 @ b1 — checking b1-b2
  <{%fg 2%}>+ <{%reset%}> urn:pulumi:test::test::pulumi:index:Workflow::wf <{%fg 2%}>created<{%reset%}> <{%reset%}>workflow: a#1 @ a1 — checking a1-a2; b#2 @ b1 — checking b1-b2
- <{%fg 2%}>+ <{%reset%}> urn:pulumi:test::test::pulumi:index:Workflow::wf <{%fg 2%}>created<{%reset%}> <{%reset%}>workflow: a#1 @ a1 — parked; b#2 @ b1 — checking b1-b2
- <{%fg 2%}>+ <{%reset%}> urn:pulumi:test::test::pulumi:index:Workflow::wf <{%fg 2%}>created<{%reset%}> <{%reset%}>workflow: a#1 @ a2 — running a2; b#2 @ b1 — checking b1-b2
- <{%fg 2%}>+ <{%reset%}> urn:pulumi:test::test::pulumi:index:Workflow::wf <{%fg 2%}>created<{%reset%}> <{%reset%}>workflow: a#1 @ a2 — running a2; b#2 @ b1 — parked
+ <{%fg 2%}>+ <{%reset%}> urn:pulumi:test::test::pulumi:index:Workflow::wf <{%fg 2%}>created<{%reset%}> <{%reset%}>workflow: a#1 @ a1 — checking a1-a2; b#2 @ b1 — parked
+ <{%fg 2%}>+ <{%reset%}> urn:pulumi:test::test::pulumi:index:Workflow::wf <{%fg 2%}>created<{%reset%}> <{%reset%}>workflow: a#1 @ a1 — parked; b#2 @ b1 — parked
+ <{%fg 2%}>+ <{%reset%}> urn:pulumi:test::test::pulumi:index:Workflow::wf <{%fg 2%}>created<{%reset%}> <{%reset%}>workflow: a#1 @ a1 — parked; b#2 @ b2 — running b2
  <{%fg 2%}>+ <{%reset%}> urn:pulumi:test::test::pulumi:index:Workflow::wf <{%fg 2%}>created<{%reset%}> <{%reset%}>workflow: a#1 @ a2 — running a2; b#2 @ b2 — running b2
+ <{%bold%}><{%fg 2%}>+ <{%reset%}> urn:pulumi:test::test-wf-wf-a2::pulumi:index:Workflow$pulumi:index:WorkflowNode::a2 <{%bold%}><{%fg 2%}>creating<{%reset%}> 
+ <{%bold%}><{%fg 2%}>+ <{%reset%}> urn:pulumi:test::test-wf-wf-b2::pulumi:index:Workflow$pulumi:index:WorkflowNode::b2 <{%bold%}><{%fg 2%}>creating<{%reset%}> 
  <{%bold%}><{%fg 2%}>+ <{%reset%}> urn:pulumi:test::test-wf-wf-b2::pkgA:m:typA::b2 <{%bold%}><{%fg 2%}>creating<{%reset%}> 
  <{%bold%}><{%fg 2%}>+ <{%reset%}> urn:pulumi:test::test-wf-wf-a2::pkgA:m:typA::a2 <{%bold%}><{%fg 2%}>creating<{%reset%}> 
  <{%fg 2%}>+ <{%reset%}> urn:pulumi:test::test-wf-wf-b2::pkgA:m:typA::b2 <{%fg 2%}>created<{%reset%}> 
  <{%fg 2%}>+ <{%reset%}> urn:pulumi:test::test-wf-wf-a2::pkgA:m:typA::a2 <{%fg 2%}>created<{%reset%}> 
- <{%fg 2%}>+ <{%reset%}> urn:pulumi:test::test::pulumi:index:Workflow::wf <{%fg 2%}>created<{%reset%}> <{%reset%}>workflow: a#1 @ a2 — running a2; b#2 @ b2 — parked
+ <{%fg 2%}>+ <{%reset%}> urn:pulumi:test::test::pulumi:index:Workflow::wf <{%fg 2%}>created<{%reset%}> <{%reset%}>workflow: a#1 @ a2 — parked; b#2 @ b2 — running b2
  <{%fg 2%}>+ <{%reset%}> urn:pulumi:test::test::pulumi:index:Workflow::wf <{%fg 2%}>created<{%reset%}> <{%reset%}>workflow: a#1 @ a2 — parked; b#2 @ b2 — parked
  <{%fg 2%}>+ <{%reset%}> urn:pulumi:test::test::pulumi:index:Workflow::wf <{%fg 2%}>created<{%reset%}> <{%reset%}>workflow: a#1 @ a2 — parked; b#2 @ b2 — parked
  <{%fg 2%}>+ <{%reset%}> urn:pulumi:test::test::pulumi:index:Workflow::wf <{%fg 2%}>created<{%reset%}> <{%reset%}>workflow: a#1 @ a2 — parked; b#2 @ b2 — parked
+ <{%bold%}><{%fg 2%}>+ <{%reset%}> urn:pulumi:test::test-wf-wf-b1::pulumi:index:Workflow$pulumi:index:WorkflowNode::b1 <{%bold%}><{%fg 2%}>creating<{%reset%}> 
+ <{%bold%}><{%fg 2%}>+ <{%reset%}> urn:pulumi:test::test-wf-wf-a1::pulumi:index:Workflow$pulumi:index:WorkflowNode::a1 <{%bold%}><{%fg 2%}>creating<{%reset%}> 
  <{%fg 2%}>+ <{%reset%}> urn:pulumi:test::test::pulumi:index:Workflow::wf <{%fg 2%}>created<{%reset%}> <{%reset%}>workflow: a#1 @ a2 — parked; b#2 @ b2 — parked
  <{%fg 2%}>+ <{%reset%}> urn:pulumi:test::test::pulumi:index:Workflow::wf <{%fg 2%}>created<{%reset%}> <{%reset%}>workflow: a#1 @ a2 — parked; b#2 @ b2 — parked
  <{%reset%}>  <{%reset%}> urn:pulumi:stack::project::pulumi:pulumi:Stack::project-stack <{%reset%}><{%reset%}> 

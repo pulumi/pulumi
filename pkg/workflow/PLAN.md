@@ -200,17 +200,20 @@ registered inside a node program progresses whenever that node runs.
 
 1. Program registers the workflow (callbacks registered with the language
    host's callback server; graph + entries sent as inputs).
-2. Engine runs `Progress`. Each cursor movement invokes the engine: node
-   resource Create/Update with the node program run as a nested deployment
-   inside it; conditions/merges are callbacks. Event ↔ step: `NodeStarted/
-   Succeeded/Failed` → node step; `NodeUndefined` → delete subgraph + node.
+2. The workflow's Create/Update step commits its state; then, before the
+   program's registration completes, the engine runs `Progress`. Each cursor
+   movement runs the node program as a nested deployment that registers the
+   node resource under the workflow and the program's resources under the
+   node; conditions/merges are callbacks. The program receives this run's
+   cursors/diagram as the resource's outputs.
 3. After Progress, every existing (visited at least once) node that did not
    run during this Progress is reconciled: its program is run as a real
    nested deployment in normal mode against its subgraph, in parallel across
    nodes, producing whatever steps reconciliation yields. There is no `Same`
    shortcut; the run is what keeps children alive. Nodes that ran during
-   Progress are skipped; never-visited nodes have nothing to run.
-4. Workflow outputs updated.
+   Progress are skipped; never-visited nodes and waypoints get a nested
+   deployment that registers just their node resource.
+4. Workflow outputs (state, node records, cursors, diagram) recorded.
 
 ## 6. Protocol
 

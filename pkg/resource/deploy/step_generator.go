@@ -78,17 +78,14 @@ type stepGenerator struct {
 	// report them all at once.
 	sawError bool
 
-	urns     map[resource.URN]bool // set of URNs discovered for this deployment
-	reads    map[resource.URN]bool // set of URNs read for this deployment
-	deletes  map[resource.URN]bool // set of URNs deleted in this deployment
-	replaces map[resource.URN]bool // set of URNs replaced in this deployment
-	updates  map[resource.URN]bool // set of URNs updated in this deployment
-	creates  map[resource.URN]bool // set of URNs created in this deployment
-	imports  map[resource.URN]bool // set of URNs imported in this deployment
-	sames    map[resource.URN]bool // set of URNs that were not changed in this deployment
-	// kept holds resources of the previous snapshot managed by a workflow's nested deployments; the
-	// delete sweep leaves them alone (see WorkflowHost.Keep).
-	kept      map[resource.URN]bool
+	urns      map[resource.URN]bool // set of URNs discovered for this deployment
+	reads     map[resource.URN]bool // set of URNs read for this deployment
+	deletes   map[resource.URN]bool // set of URNs deleted in this deployment
+	replaces  map[resource.URN]bool // set of URNs replaced in this deployment
+	updates   map[resource.URN]bool // set of URNs updated in this deployment
+	creates   map[resource.URN]bool // set of URNs created in this deployment
+	imports   map[resource.URN]bool // set of URNs imported in this deployment
+	sames     map[resource.URN]bool // set of URNs that were not changed in this deployment
 	refreshes map[resource.URN]bool // set of URNs that were refreshed in this deployment
 
 	refreshAliasLock sync.Mutex // lock to protect calls to deployment.depGraph.Alias
@@ -244,7 +241,7 @@ func (sg *stepGenerator) checkParent(parent resource.URN, resourceType tokens.Ty
 	// If it is set check the parent exists.
 	if parent != "" {
 		// The parent for this resource hasn't been registered yet. That's an error and we can't continue.
-		if _, hasParent := sg.urns[parent]; !hasParent {
+		if _, hasParent := sg.urns[parent]; !hasParent && !sg.isAnchor(parent) {
 			return "", fmt.Errorf("could not find parent resource %v", parent)
 		}
 	} else { //nolint:staticcheck // https://github.com/pulumi/pulumi/issues/10950
@@ -268,6 +265,17 @@ func (sg *stepGenerator) checkParent(parent resource.URN, resourceType tokens.Ty
 	}
 
 	return parent, nil
+}
+
+// isAnchor reports whether urn is a resource of the enclosing deployment that a nested workflow-node
+// deployment carries in its base snapshot and may parent its node resource under.
+func (sg *stepGenerator) isAnchor(urn resource.URN) bool {
+	d := sg.deployment
+	if d == nil || d.opts == nil || d.opts.RootParent == "" {
+		return false
+	}
+	_, anchored := d.olds[urn]
+	return anchored
 }
 
 // rootParent parents the roots of a nested workflow-node deployment under the node resource (see
@@ -2260,7 +2268,7 @@ func (sg *stepGenerator) isOperatedOn(urn resource.URN) bool {
 		urn = alias
 	}
 	return sg.sames[urn] || sg.updates[urn] || sg.replaces[urn] || sg.reads[urn] || sg.refreshes[urn] ||
-		sg.kept[urn]
+		sg.deployment.isKept(urn)
 	// NOTE: we deliberately do not check sg.deletes here, as it is possible for us to issue multiple
 	// delete steps for the same URN if the old checkpoint contained pending deletes.
 }
@@ -3617,7 +3625,6 @@ func newStepGenerator(
 		reads:                     make(map[resource.URN]bool),
 		creates:                   make(map[resource.URN]bool),
 		sames:                     make(map[resource.URN]bool),
-		kept:                      make(map[resource.URN]bool),
 		imports:                   make(map[resource.URN]bool),
 		replaces:                  make(map[resource.URN]bool),
 		updates:                   make(map[resource.URN]bool),

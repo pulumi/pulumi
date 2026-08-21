@@ -88,25 +88,13 @@ func newWorkflowProgressor(
 	}
 }
 
-func (x *workflowProgressor) Progress(ctx context.Context, d *deploy.Deployment, host deploy.WorkflowHost) error {
-	var wfs []*pkgresource.State
-	d.News().Range(func(_ resource.URN, s *pkgresource.State) bool {
-		if s.Type == deploy.WorkflowType {
-			wfs = append(wfs, s)
-		}
-		return true
-	})
-	slices.SortFunc(wfs, func(a, b *pkgresource.State) int {
-		return strings.Compare(string(a.URN), string(b.URN))
-	})
-
-	var errs []error
-	for _, wf := range wfs {
-		if err := x.progressWorkflow(ctx, d, host, wf); err != nil {
-			errs = append(errs, fmt.Errorf("workflow %v: %w", wf.URN, err))
-		}
+func (x *workflowProgressor) Progress(
+	ctx context.Context, d *deploy.Deployment, wf *pkgresource.State, host deploy.WorkflowHost,
+) error {
+	if err := x.progressWorkflow(ctx, d, host, wf); err != nil {
+		return fmt.Errorf("workflow %v: %w", wf.URN, err)
 	}
-	return errors.Join(errs...)
+	return nil
 }
 
 // wfCallback identifies a closure in the user's program, reachable via the callbacks service.
@@ -135,12 +123,13 @@ type wfEntry struct {
 	Inputs resource.PropertyMap
 }
 
-// wfState is the durable state of a workflow, persisted under "state" in the resource's outputs.
+// wfState is the durable state of a workflow, persisted under "state" in the resource's outputs. Node
+// records are persisted beside it under "records".
 type wfState struct {
 	Workflow       json.RawMessage   `json:"workflow,omitempty"` // pkg/workflow's saved cursors
 	Entries        map[string]wfSeed `json:"entries"`            // the last placement of each entry
 	NextGeneration int               `json:"nextGeneration"`
-	Nodes          []string          `json:"nodes"` // every node with a resource, for finding them again
+	Nodes          []string          `json:"nodes"` // every node with resources, for finding them again
 }
 
 type wfSeed struct {
@@ -148,7 +137,8 @@ type wfSeed struct {
 	Generation int    `json:"generation"`
 }
 
-// A nodeRecord is what a node resource's outputs persist: its occupant and visit history.
+// A nodeRecord is a node's occupant and visit history. The workflow's outputs hold the authoritative
+// records; each node resource's outputs mirror its own as of the node's last run.
 type nodeRecord struct {
 	Occupant string
 	History  []*nodeVisit // newest first
@@ -181,9 +171,8 @@ type workflowRun struct {
 	// m guards everything below: node programs run on concurrent goroutines.
 	m       sync.Mutex
 	nodes   map[string]*nodeRecord
-	nodeRes map[string]*pkgresource.State // the registered node resources, by node
-	slices  map[string][]*pkgresource.State
-	touched map[string]bool // nodes whose program ran this up
+	slices  map[string][]*pkgresource.State // each node's resources in the previous snapshot, then as run
+	touched map[string]bool                 // nodes whose nested deployment ran this up
 	display *display.Model
 
 	reconciling atomic.Bool // Set while pkg/workflow reconciles, so node functions know why they run
@@ -198,54 +187,47 @@ func (x *workflowProgressor) progressWorkflow(
 	}
 	wf.Lock.Lock()
 	st, err := parseWorkflowState(wf.Outputs)
+	if err == nil {
+		// The step's outputs carry the previous run's records forward (see the builtin provider).
+		var nodes map[string]*nodeRecord
+		nodes, err = parseNodeRecords(wf.Outputs)
+		if err == nil {
+			wf.Lock.Unlock()
+			cfg, cerr := d.Target().Config.Decrypt(d.Target().Decrypter)
+			if cerr != nil {
+				return fmt.Errorf("decrypting config for node programs: %w", cerr)
+			}
+			run := &workflowRun{
+				x: x, d: d, host: host, wf: wf, g: g, st: st,
+				project: d.Source().Project(),
+				config:  make(map[string]string, len(cfg)),
+				nodes:   nodes,
+				slices:  map[string][]*pkgresource.State{},
+				touched: map[string]bool{},
+				display: display.New(),
+			}
+			for k, v := range cfg {
+				run.config[k.String()] = v
+			}
+			for _, k := range d.Target().Config.SecureKeys() {
+				run.secretKeys = append(run.secretKeys, k.String())
+			}
+			if d.Options().DryRun {
+				return run.preview()
+			}
+			return run.progress(ctx)
+		}
+	}
 	wf.Lock.Unlock()
-	if err != nil {
-		return err
-	}
-	cfg, err := d.Target().Config.Decrypt(d.Target().Decrypter)
-	if err != nil {
-		return fmt.Errorf("decrypting config for node programs: %w", err)
-	}
-	run := &workflowRun{
-		x: x, d: d, host: host, wf: wf, g: g, st: st,
-		project: d.Source().Project(),
-		config:  make(map[string]string, len(cfg)),
-		nodes:   map[string]*nodeRecord{},
-		nodeRes: map[string]*pkgresource.State{},
-		slices:  map[string][]*pkgresource.State{},
-		touched: map[string]bool{},
-		display: display.New(),
-	}
-	for k, v := range cfg {
-		run.config[k.String()] = v
-	}
-	for _, k := range d.Target().Config.SecureKeys() {
-		run.secretKeys = append(run.secretKeys, k.String())
-	}
-	if d.Options().DryRun {
-		return run.preview(ctx)
-	}
-	return run.progress(ctx)
+	return err
 }
 
-// preview is what a dry run does for a workflow: nothing moves and no callback runs, but the node resources
-// are registered so the plan shows them (and the sweep leaves the resources of their programs alone), and
-// the diagram of the last run is shown.
-func (run *workflowRun) preview(ctx context.Context) error {
+// preview is what a dry run does for a workflow: nothing moves and no callback runs, but the resources of
+// the nodes' programs are kept out of the sweep, and the diagram of the last run is shown.
+func (run *workflowRun) preview() error {
 	defined := slices.Sorted(maps.Keys(run.g.nodes))
 	run.loadPrev()
-	var keep []resource.URN
-	for _, node := range defined {
-		for _, res := range run.slices[node] {
-			keep = append(keep, res.URN)
-		}
-	}
-	run.host.Keep(keep...)
-	for _, node := range defined {
-		if _, err := run.host.RegisterResource(ctx, run.nodeGoal(node)); err != nil {
-			return fmt.Errorf("registering node %q: %w", node, err)
-		}
-	}
+	run.keep(defined)
 	run.wf.Lock.Lock()
 	diagram, ok := run.wf.Outputs["diagram"]
 	run.wf.Lock.Unlock()
@@ -255,47 +237,21 @@ func (run *workflowRun) preview(ctx context.Context) error {
 	return nil
 }
 
-func (run *workflowRun) nodeGoal(node string) *pkgresource.Goal {
-	return &pkgresource.Goal{
-		Type:   deploy.WorkflowNodeType,
-		Name:   node,
-		Parent: run.wf.URN,
-		Properties: property.NewMap(map[string]property.Value{
-			"workflow": property.New(string(run.wf.URN)),
-			"node":     property.New(node),
-		}),
-	}
-}
-
 func (run *workflowRun) progress(ctx context.Context) error {
 	defined := slices.Sorted(maps.Keys(run.g.nodes))
 
-	// 1. Recover what the previous snapshot knows: each node's record and the resources of its program.
+	// 1. Recover the resources of each node's program from the previous snapshot, and keep the defined
+	// nodes' out of the deployment's sweep: their nested deployments manage them.
 	run.loadPrev()
-	var keep []resource.URN
-	for _, node := range defined {
-		for _, res := range run.slices[node] {
-			keep = append(keep, res.URN)
-		}
-	}
-	run.host.Keep(keep...)
+	run.keep(defined)
 
-	// 2. Register the node resources, as the program would have, so the nested deployments can nest
-	// their roots under them.
-	for _, node := range defined {
-		res, err := run.host.RegisterResource(ctx, run.nodeGoal(node))
-		if err != nil {
-			return fmt.Errorf("registering node %q: %w", node, err)
-		}
-		run.nodeRes[node] = res
-	}
-
-	// 3. Build the workflow: restored cursors, nodes, edges, then the entries that changed.
+	// 2. Build the workflow: restored cursors, nodes, edges, then the entries that changed.
 	if err := run.define(defined); err != nil {
 		return err
 	}
 
-	// 4. Advance it, then reconcile every existing node whose program did not run.
+	// 3. Advance it, then reconcile every existing node whose program did not run, and register the
+	// node resource of every defined node whose nested deployment has not run this up.
 	updates := make(chan workflow.WorkflowUpdate)
 	rendered := make(chan struct{})
 	go func() {
@@ -320,45 +276,49 @@ func (run *workflowRun) progress(ctx context.Context) error {
 		if err := run.reconcileVacated(ctx, defined); err != nil {
 			errs = append(errs, err)
 		}
+		if err := run.registerUntouched(ctx, defined); err != nil {
+			errs = append(errs, err)
+		}
 	}
 	close(updates)
 	<-rendered
 
-	// 5. Persist: node records (occupants, visit history) and the workflow's own state. Cursor positions
-	// survive even a failed run.
+	// 4. Persist the workflow's state: its cursors, node records and diagram. Cursor positions survive
+	// even a failed run.
 	if err := run.persist(defined); err != nil {
 		errs = append(errs, err)
 	}
 	return errors.Join(errs...)
 }
 
-// loadPrev recovers node records and program resources from the previous snapshot.
+// loadPrev recovers each known node's resources from the previous snapshot.
 func (run *workflowRun) loadPrev() {
 	prev := run.d.Prev()
 	if prev == nil {
 		return
 	}
-	known := map[string]bool{}
+	projects := map[tokens.PackageName]string{}
 	for _, node := range run.st.Nodes {
-		known[node] = true
+		projects[run.sliceProject(node)] = node
 	}
 	for node := range run.g.nodes {
-		known[node] = true
-	}
-	projects := map[tokens.PackageName]string{}
-	urns := map[resource.URN]string{}
-	for node := range known {
 		projects[run.sliceProject(node)] = node
-		urns[run.nodeURN(node)] = node
 	}
 	for _, res := range prev.Resources {
-		if node, ok := urns[res.URN]; ok {
-			run.nodes[node] = parseNodeRecord(res.Outputs)
-		}
 		if node, ok := projects[res.URN.Project()]; ok {
 			run.slices[node] = append(run.slices[node], res)
 		}
 	}
+}
+
+func (run *workflowRun) keep(defined []string) {
+	var keep []resource.URN
+	for _, node := range defined {
+		for _, res := range run.slices[node] {
+			keep = append(keep, res.URN)
+		}
+	}
+	run.host.Keep(keep...)
 }
 
 // define builds the pkg/workflow instance for this run.
@@ -444,21 +404,7 @@ func (run *workflowRun) nodeFunc(node string) workflow.NodeFunc {
 		program := run.g.nodes[node]
 		run.m.Unlock()
 
-		outputs, err := inputs, error(nil)
-		if program != nil {
-			outputs, err = run.runNode(ctx, node, *program, c.Label, inputs, reconcile)
-		}
-		run.m.Lock()
-		defer run.m.Unlock()
-		rec.LastRun = time.Now().UTC()
-		if visit := rec.current(c.Label); visit != nil {
-			visit.Ran = true
-			if err != nil {
-				visit.Error = err.Error()
-			} else {
-				visit.Outputs, visit.Error = outputs, ""
-			}
-		}
+		outputs, err := run.runNode(ctx, node, program, c.Label, inputs, reconcile)
 		if err != nil {
 			return property.Map{}, fmt.Errorf("node %q: %w", node, err)
 		}
@@ -483,15 +429,8 @@ func (run *workflowRun) reconcileVacated(ctx context.Context, defined []string) 
 		}
 		last := rec.History[0]
 		wg.Go(func() {
-			_, err := run.runNode(ctx, node, *program, last.Cursor, last.Inputs, true)
-			run.m.Lock()
-			defer run.m.Unlock()
-			rec.LastRun = time.Now().UTC()
-			if err != nil {
+			if _, err := run.runNode(ctx, node, program, last.Cursor, last.Inputs, true); err != nil {
 				errs[i] = fmt.Errorf("reconciling node %q: %w", node, err)
-				last.Error = err.Error()
-			} else {
-				last.Error = ""
 			}
 		})
 	}
@@ -519,12 +458,9 @@ func (run *workflowRun) persist(defined []string) error {
 			}
 		}
 	}
-	var errs []error
-	for _, node := range defined {
-		rec := run.record(node)
-		if err := run.host.RegisterResourceOutputs(run.nodeRes[node].URN, rec.properties()); err != nil {
-			errs = append(errs, fmt.Errorf("recording node %q: %w", node, err))
-		}
+	records := resource.PropertyMap{}
+	for node, rec := range run.nodes {
+		records[resource.PropertyKey(node)] = resource.NewProperty(rec.properties())
 	}
 	run.st.Workflow = run.w.State()
 	run.st.Nodes = defined
@@ -545,12 +481,36 @@ func (run *workflowRun) persist(defined []string) error {
 	outputs := run.wf.Outputs.Copy()
 	run.wf.Lock.Unlock()
 	outputs["state"] = resource.NewProperty(string(state))
+	outputs["records"] = resource.NewProperty(records)
 	outputs["cursors"] = resource.ToResourcePropertyValue(property.New(cursors))
 	outputs["diagram"] = resource.NewProperty(diagram)
 	run.x.plugctx.Diag.Infof(diag.RawMessage(run.wf.URN, diagram))
 	if err := run.host.RegisterResourceOutputs(run.wf.URN, outputs); err != nil {
-		errs = append(errs, fmt.Errorf("persisting workflow state: %w", err))
+		return fmt.Errorf("persisting workflow state: %w", err)
 	}
+	return nil
+}
+
+// registerUntouched runs a nested deployment for every defined node whose nested deployment has not run
+// this up (a waypoint, or a node never visited), so that every defined node has its resource and its
+// record is current.
+func (run *workflowRun) registerUntouched(ctx context.Context, defined []string) error {
+	var wg sync.WaitGroup
+	errs := make([]error, len(defined))
+	for i, node := range defined {
+		run.m.Lock()
+		skip := run.touched[node]
+		run.m.Unlock()
+		if skip {
+			continue
+		}
+		wg.Go(func() {
+			if err := run.runNested(ctx, node, nil); err != nil {
+				errs[i] = fmt.Errorf("node %q: %w", node, err)
+			}
+		})
+	}
+	wg.Wait()
 	return errors.Join(errs...)
 }
 
@@ -609,6 +569,25 @@ func (rec *nodeRecord) properties() resource.PropertyMap {
 		out["lastRun"] = resource.NewProperty(rec.LastRun.Format(time.RFC3339Nano))
 	}
 	return out
+}
+
+// parseNodeRecords reads the records persisted under "records" in a workflow's outputs.
+func parseNodeRecords(outputs resource.PropertyMap) (map[string]*nodeRecord, error) {
+	records := map[string]*nodeRecord{}
+	v, ok := outputs["records"]
+	if !ok {
+		return records, nil
+	}
+	if !v.IsObject() {
+		return nil, errors.New(`invalid workflow state: "records" must be an object`)
+	}
+	for node, rv := range v.ObjectValue() {
+		if !rv.IsObject() {
+			return nil, fmt.Errorf("invalid workflow state: node %q record must be an object", node)
+		}
+		records[string(node)] = parseNodeRecord(rv.ObjectValue())
+	}
+	return records, nil
 }
 
 func parseNodeRecord(outputs resource.PropertyMap) *nodeRecord {
@@ -693,19 +672,20 @@ func (run *workflowRun) sliceProject(node string) tokens.PackageName {
 	return tokens.PackageName(fmt.Sprintf("%s-wf-%s-%s", run.project, run.wf.URN.Name(), node))
 }
 
+// nodeURN is the URN of node's resource: registered by its nested deployment under the workflow.
 func (run *workflowRun) nodeURN(node string) resource.URN {
-	return resource.NewURN(run.wf.URN.Stack(), run.project, run.wf.URN.QualifiedType(), deploy.WorkflowNodeType, node)
+	return resource.NewURN(
+		run.wf.URN.Stack(), run.sliceProject(node), run.wf.URN.QualifiedType(), deploy.WorkflowNodeType, node)
 }
 
 // sliceSnapshot is the previous state a node's nested deployment runs against: the node's resources plus
-// the parent chain they nest under, which the nested dependency graph requires.
+// the workflow and its parent chain, which they nest under and the nested dependency graph requires.
 func (run *workflowRun) sliceSnapshot(node string) *deploy.Snapshot {
 	run.m.Lock()
 	slice := run.slices[node]
-	nodeRes := run.nodeRes[node]
 	run.m.Unlock()
 	var anchors []*pkgresource.State
-	for res := nodeRes; res != nil; {
+	for res := run.wf; res != nil; {
 		anchors = append([]*pkgresource.State{res}, anchors...)
 		parent, _ := run.d.News().Load(res.Parent)
 		res = parent
@@ -721,58 +701,31 @@ func (run *workflowRun) sliceSnapshot(node string) *deploy.Snapshot {
 		manifest, prev.SecretsManager, resources, nil, deploy.SnapshotMetadata{}, nil, prev.Extensions)
 }
 
-// runNode runs node's program as a nested deployment for cursor, entered with inputs. It returns the
-// values the program left on the cursor.
+// runNode runs node's program (if any) as a nested deployment for cursor, entered with inputs, and records
+// the outcome on the cursor's visit. It returns the values the program left on the cursor; a node without
+// a program leaves them as they are.
 func (run *workflowRun) runNode(
-	ctx context.Context, node string, program wfCallback, cursor string, inputs property.Map, reconcile bool,
+	ctx context.Context, node string, program *wfCallback, cursor string, inputs property.Map, reconcile bool,
 ) (property.Map, error) {
-	x := run.x
-	project := run.sliceProject(node)
-	var outputs property.Map
-	runner := func(monitorAddr string) *promise.Promise[struct{}] {
-		cs := &promise.CompletionSource[struct{}]{}
-		go func() {
-			req := &pulumirpc.WorkflowNodeRequest{
-				MonitorAddr:      monitorAddr,
-				EngineAddr:       x.plugctx.Host.ServerAddr(),
-				Project:          string(project),
-				Stack:            x.stackName.String(),
-				Organization:     string(x.organization),
-				Config:           run.config,
-				ConfigSecretKeys: run.secretKeys,
-				Parallel:         x.parallel,
-				Node:             node,
-				Cursor:           &pulumirpc.WorkflowCursor{Name: cursor, Values: marshalValues(inputs)},
-				View:             run.view(),
-				Reconcile:        reconcile,
-			}
-			var resp pulumirpc.WorkflowNodeResponse
-			if err := x.invoke(ctx, program, req, &resp); err != nil {
-				cs.Reject(err)
-				return
-			}
-			values, err := unmarshalValues(resp.Outputs)
-			if err != nil {
-				cs.Reject(err)
-				return
-			}
-			outputs = values
-			cs.Fulfill(struct{}{})
-		}()
-		return cs.Promise()
+	if program == nil {
+		return inputs, run.runNested(ctx, node, nil)
 	}
-	err := run.runNested(ctx, node, func(target *deploy.Target, panicErrs chan<- error) deploy.Source {
-		runinfo := &deploy.EvalRunInfo{
-			Proj: &workspace.Project{
-				Name:    project,
-				Runtime: workspace.NewProjectRuntimeInfo("workflow-node", nil),
-			},
-			Pwd:     x.plugctx.Pwd,
-			Program: ".",
-			Target:  target,
+	var outputs property.Map
+	err := run.runNested(ctx, node, func(ctx context.Context, monitorAddr string) error {
+		err := run.invokeProgram(ctx, node, *program, monitorAddr, cursor, inputs, reconcile, &outputs)
+		run.m.Lock()
+		defer run.m.Unlock()
+		rec := run.record(node)
+		rec.LastRun = time.Now().UTC()
+		if visit := rec.current(cursor); visit != nil {
+			visit.Ran = true
+			if err != nil {
+				visit.Error = err.Error()
+			} else {
+				visit.Outputs, visit.Error = outputs, ""
+			}
 		}
-		return deploy.NewEvalSource(x.plugctx, runinfo, nil, x.resourceHooks,
-			deploy.EvalSourceOptions{Parallel: x.parallel}, panicErrs, nil, runner)
+		return err
 	})
 	if err != nil {
 		return property.Map{}, err
@@ -780,16 +733,63 @@ func (run *workflowRun) runNode(
 	return outputs, nil
 }
 
-// runNested executes a nested deployment for node. Its steps flow through the outer deployment's events,
-// persisting into the shared snapshot and rendering in the display; they are also journaled locally to
-// compute the node's resulting resources, which replace the slice even on failure, so retries see what
-// committed.
-func (run *workflowRun) runNested(
-	ctx context.Context,
-	node string,
-	makeSource func(target *deploy.Target, panicErrs chan<- error) deploy.Source,
+// invokeProgram runs a node program callback against the nested monitor, storing what it left on the
+// cursor in outputs.
+func (run *workflowRun) invokeProgram(
+	ctx context.Context, node string, program wfCallback, monitorAddr, cursor string,
+	inputs property.Map, reconcile bool, outputs *property.Map,
 ) error {
 	x := run.x
+	req := &pulumirpc.WorkflowNodeRequest{
+		MonitorAddr:      monitorAddr,
+		EngineAddr:       x.plugctx.Host.ServerAddr(),
+		Project:          string(run.sliceProject(node)),
+		Stack:            x.stackName.String(),
+		Organization:     string(x.organization),
+		Config:           run.config,
+		ConfigSecretKeys: run.secretKeys,
+		Parallel:         x.parallel,
+		Node:             node,
+		Cursor:           &pulumirpc.WorkflowCursor{Name: cursor, Values: marshalValues(inputs)},
+		View:             run.view(),
+		Reconcile:        reconcile,
+	}
+	var resp pulumirpc.WorkflowNodeResponse
+	if err := x.invoke(ctx, program, req, &resp); err != nil {
+		return err
+	}
+	values, err := unmarshalValues(resp.Outputs)
+	if err != nil {
+		return err
+	}
+	*outputs = values
+	return nil
+}
+
+// runNested executes a nested deployment for node. It registers the node's resource under the workflow,
+// runs program (if any) against the nested monitor, and records the node's record as the resource's
+// outputs. Its steps flow through the outer deployment's events, persisting into the shared snapshot and
+// rendering in the display; they are also journaled locally to compute the node's resulting resources,
+// which replace the slice even on failure, so retries see what committed.
+func (run *workflowRun) runNested(
+	ctx context.Context, node string, program func(ctx context.Context, monitorAddr string) error,
+) error {
+	x := run.x
+	run.m.Lock()
+	run.touched[node] = true
+	run.m.Unlock()
+	project := run.sliceProject(node)
+	runner := func(monitorAddr string) *promise.Promise[struct{}] {
+		cs := &promise.CompletionSource[struct{}]{}
+		go func() {
+			if err := run.registerNode(ctx, node, monitorAddr, program); err != nil {
+				cs.Reject(err)
+				return
+			}
+			cs.Fulfill(struct{}{})
+		}()
+		return cs.Promise()
+	}
 	prev := run.sliceSnapshot(node)
 	outer := run.d.Target()
 	target := &deploy.Target{
@@ -802,14 +802,24 @@ func (run *workflowRun) runNested(
 	}
 	// ponytail: buffered channel bounds panic reports; a hung nested deployment is not recovered here.
 	panicErrs := make(chan error, 16)
-	source := makeSource(target, panicErrs)
+	runinfo := &deploy.EvalRunInfo{
+		Proj: &workspace.Project{
+			Name:    project,
+			Runtime: workspace.NewProjectRuntimeInfo("workflow-node", nil),
+		},
+		Pwd:     x.plugctx.Pwd,
+		Program: ".",
+		Target:  target,
+	}
+	source := deploy.NewEvalSource(x.plugctx, runinfo, nil, x.resourceHooks,
+		deploy.EvalSourceOptions{Parallel: x.parallel}, panicErrs, nil, runner)
 
 	journal := NewTestJournal()
 	journal.SkipVerify = true
 	events := &workflowTeeEvents{outer: run.d.Events(), journal: journal}
 	opts := &deploy.Options{
 		Parallel:           x.parallel,
-		RootParent:         run.nodeRes[node].URN,
+		RootParent:         run.nodeURN(node),
 		WorkflowProgressor: x, // Workflows inside node programs progress with the node
 	}
 	depl, err := deploy.NewDeployment(
@@ -829,7 +839,6 @@ func (run *workflowRun) runNested(
 
 	snap, snapErr := journal.Snap(prev)
 	if snap != nil {
-		project := run.sliceProject(node)
 		var resources []*pkgresource.State
 		for _, res := range snap.Resources {
 			if res.URN.Project() == project {
@@ -841,6 +850,52 @@ func (run *workflowRun) runNested(
 		run.m.Unlock()
 	}
 	return errors.Join(execErr, snapErr)
+}
+
+// registerNode is the program of a node's nested deployment: it registers the node resource under the
+// workflow, runs the node's program (if any) — whose roots the nested deployment parents under the node
+// resource — and records the node's record as the resource's outputs.
+func (run *workflowRun) registerNode(
+	ctx context.Context, node, monitorAddr string, program func(ctx context.Context, monitorAddr string) error,
+) error {
+	conn, err := grpc.NewClient(monitorAddr,
+		grpc.WithTransportCredentials(insecure.NewCredentials()), rpcutil.GrpcChannelOptions())
+	if err != nil {
+		return fmt.Errorf("connecting to the nested resource monitor: %w", err)
+	}
+	defer contract.IgnoreClose(conn)
+	monitor := pulumirpc.NewResourceMonitorClient(conn)
+	inputs, err := plugin.MarshalProperties(resource.PropertyMap{
+		"workflow": resource.NewProperty(string(run.wf.URN)),
+		"node":     resource.NewProperty(node),
+	}, plugin.MarshalOptions{})
+	if err != nil {
+		return err
+	}
+	reg, err := monitor.RegisterResource(ctx, &pulumirpc.RegisterResourceRequest{
+		Type:   string(deploy.WorkflowNodeType),
+		Name:   node,
+		Parent: string(run.wf.URN),
+		Object: inputs,
+	})
+	if err != nil {
+		return fmt.Errorf("registering node resource: %w", err)
+	}
+	var programErr error
+	if program != nil {
+		programErr = program(ctx, monitorAddr)
+	}
+	run.m.Lock()
+	record := run.record(node).properties()
+	run.m.Unlock()
+	outputs, err := plugin.MarshalProperties(record, plugin.MarshalOptions{KeepSecrets: true, KeepResources: true})
+	if err != nil {
+		return errors.Join(programErr, err)
+	}
+	_, err = monitor.RegisterResourceOutputs(ctx, &pulumirpc.RegisterResourceOutputsRequest{
+		Urn: reg.Urn, Outputs: outputs,
+	})
+	return errors.Join(programErr, err)
 }
 
 // workflowTeeEvents forwards nested-deployment events to the outer deployment's events (shared snapshot

@@ -271,9 +271,9 @@ func (w *Context) fail(err error) {
 type Workflow struct {
 	pulumi.CustomResourceState
 
-	// The cursors of the workflow after the last up: objects with a "name" and a "node".
+	// The cursors of the workflow after this up advanced it: objects with a "name" and a "node".
 	Cursors pulumi.ArrayOutput `pulumi:"cursors"`
-	// A rendering of the workflow after the last up.
+	// A rendering of the workflow after this up advanced it.
 	Diagram pulumi.StringOutput `pulumi:"diagram"`
 }
 

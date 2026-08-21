@@ -16,11 +16,8 @@ package deploy
 
 import (
 	"context"
-	"fmt"
-	"sync"
 
 	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 )
@@ -33,78 +30,38 @@ const (
 	WorkflowNodeType tokens.Type = "pulumi:index:WorkflowNode"
 )
 
-// A WorkflowProgressor advances pulumi:index:Workflow resources. The deployment executor calls it once
-// per update, after the source has completed (so every workflow registration and its step have finished)
-// and before deletes are generated. Progressing a workflow means running nested deployments for its
-// nodes; that machinery lives in pkg/engine, so the progressor is injected from there via
-// Options.WorkflowProgressor. A nil progressor means workflows do not advance.
+// A WorkflowProgressor advances pulumi:index:Workflow resources. The step executor calls it for a
+// workflow's Create or Update step once the step's state is committed and before the program's
+// registration completes, so that the workflow's nodes (nested deployments whose resources nest under
+// the workflow) are recorded after it and the outputs the program receives are those of this run. That
+// machinery lives in pkg/engine, so the progressor is injected from there via Options.WorkflowProgressor.
+// A nil progressor means workflows do not advance.
 type WorkflowProgressor interface {
-	Progress(ctx context.Context, d *Deployment, host WorkflowHost) error
+	Progress(ctx context.Context, d *Deployment, wf *pkgresource.State, host WorkflowHost) error
 }
 
 // A WorkflowHost lets a WorkflowProgressor act within the deployment it is progressing.
 type WorkflowHost interface {
-	// RegisterResource registers a resource as the program would have, runs its step and returns the
-	// resulting state.
-	RegisterResource(ctx context.Context, goal *pkgresource.Goal) (*pkgresource.State, error)
-	// RegisterResourceOutputs records outputs on a registered resource, through the executor's regular
-	// path so the change is persisted and displayed like any other outputs registration.
+	// RegisterResourceOutputs records the workflow's outputs through the executor's regular path, so the
+	// change is persisted and displayed like any other outputs registration and the program sees it.
 	RegisterResourceOutputs(urn resource.URN, outputs resource.PropertyMap) error
 	// Keep marks resources of the previous snapshot as managed by a workflow's nested deployments: the
 	// deployment's own delete sweep leaves them alone.
 	Keep(urns ...resource.URN)
 }
 
-// workflowHost is the executor's WorkflowHost. Its methods may be called concurrently.
+// workflowHost is the step executor's WorkflowHost.
 type workflowHost struct {
-	m  sync.Mutex
-	ex *deploymentExecutor
-}
-
-func (h *workflowHost) RegisterResource(ctx context.Context, goal *pkgresource.Goal) (*pkgresource.State, error) {
-	done := make(chan *RegisterResult, 1)
-	h.m.Lock()
-	err := h.ex.handleSingleEvent(ctx, &workflowRegisterEvent{goal: goal, done: done})
-	h.m.Unlock()
-	if err != nil {
-		return nil, err
-	}
-	select {
-	case res := <-done:
-		if res.Result == ResultStateFailed {
-			return nil, fmt.Errorf("registering %v failed", goal.Type)
-		}
-		return res.State, nil
-	case <-ctx.Done():
-		return nil, ctx.Err()
-	}
+	se *stepExecutor
 }
 
 func (h *workflowHost) RegisterResourceOutputs(urn resource.URN, outputs resource.PropertyMap) error {
-	h.m.Lock()
-	defer h.m.Unlock()
-	return h.ex.stepExec.ExecuteRegisterResourceOutputs(&workflowOutputsEvent{urn: urn, outputs: outputs})
+	return h.se.ExecuteRegisterResourceOutputs(&workflowOutputsEvent{urn: urn, outputs: outputs})
 }
 
 func (h *workflowHost) Keep(urns ...resource.URN) {
-	h.m.Lock()
-	defer h.m.Unlock()
-	for _, urn := range urns {
-		h.ex.stepGen.kept[urn] = true
-	}
+	h.se.deployment.Keep(urns...)
 }
-
-// workflowRegisterEvent is the synthetic RegisterResourceEvent behind WorkflowHost.RegisterResource.
-type workflowRegisterEvent struct {
-	goal *pkgresource.Goal
-	done chan *RegisterResult
-}
-
-func (e *workflowRegisterEvent) event()                             {}
-func (e *workflowRegisterEvent) Goal() *pkgresource.Goal            { return e.goal }
-func (e *workflowRegisterEvent) Done(result *RegisterResult)        { e.done <- result }
-func (e *workflowRegisterEvent) Extension() *apitype.Extension      { return nil }
-func (e *workflowRegisterEvent) ExtensionRef() apitype.ExtensionRef { return "" }
 
 // workflowOutputsEvent is the synthetic RegisterResourceOutputsEvent behind
 // WorkflowHost.RegisterResourceOutputs.

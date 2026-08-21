@@ -4,8 +4,8 @@
 <{%reset%}><{%fg 3%}>      ~ [0]: <{%reset%}><{%fg 3%}>{
 <{%reset%}><{%fg 3%}>              ~ conditions: <{%reset%}><{%fg 3%}>{
 <{%reset%}><{%fg 3%}>                  ~ promote: <{%reset%}><{%fg 3%}>{
-<{%reset%}><{%reset%}>                        target: <{%reset%}><{%reset%}>"127.0.0.1:56700"<{%reset%}><{%reset%}>
-<{%reset%}><{%fg 3%}>                      ~ token : <{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 1%}>d4a<{%reset%}><{%reset%}>09<{%reset%}><{%fg 1%}>595-830c-4112-a90f-0c61eb8651ac<{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 3%}> => <{%reset%}><{%fg 3%}>"<{%reset%}><{%reset%}>09<{%reset%}><{%fg 2%}>11ed30-a6de-47b2-b918-9f5d46d97378<{%reset%}><{%fg 3%}>"
+<{%reset%}><{%reset%}>                        target: <{%reset%}><{%reset%}>"127.0.0.1:62984"<{%reset%}><{%reset%}>
+<{%reset%}><{%fg 3%}>                      ~ token : <{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 1%}>f4cc6cb6-e051-4862-889a-fe57c12aec16<{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 3%}> => <{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 2%}>d9e818f0-fca0-46c0-b980-5f9f1faf3b0b<{%reset%}><{%fg 3%}>"
 <{%reset%}><{%fg 3%}>                    }
 <{%reset%}><{%fg 3%}>                }
 <{%reset%}><{%reset%}>                from      : <{%reset%}><{%reset%}>"dev"<{%reset%}><{%reset%}>
@@ -25,14 +25,14 @@
 <{%reset%}><{%fg 3%}>  ~ nodes  : <{%reset%}><{%fg 3%}>{
 <{%reset%}><{%fg 3%}>      ~ dev : <{%reset%}><{%fg 3%}>{
 <{%reset%}><{%fg 3%}>          ~ program: <{%reset%}><{%fg 3%}>{
-<{%reset%}><{%reset%}>                target: <{%reset%}><{%reset%}>"127.0.0.1:56700"<{%reset%}><{%reset%}>
-<{%reset%}><{%fg 3%}>              ~ token : <{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 1%}>2cd3551a-52c7<{%reset%}><{%reset%}>-4<{%reset%}><{%fg 1%}>6f<{%reset%}><{%reset%}>5<{%reset%}><{%fg 1%}>-880<{%reset%}><{%reset%}>f<{%reset%}><{%reset%}>-<{%reset%}><{%fg 1%}>8c9c17<{%reset%}><{%reset%}>a5<{%reset%}><{%reset%}>d<{%reset%}><{%fg 1%}>89<{%reset%}><{%reset%}>6<{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 3%}> => <{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 2%}>72798d55-e340<{%reset%}><{%reset%}>-4<{%reset%}><{%reset%}>5<{%reset%}><{%reset%}>f<{%reset%}><{%fg 2%}>6<{%reset%}><{%reset%}>-<{%reset%}><{%reset%}>a5<{%reset%}><{%fg 2%}>5a-2a4e67a2ca<{%reset%}><{%reset%}>d<{%reset%}><{%reset%}>6<{%reset%}><{%fg 3%}>"
+<{%reset%}><{%reset%}>                target: <{%reset%}><{%reset%}>"127.0.0.1:62984"<{%reset%}><{%reset%}>
+<{%reset%}><{%fg 3%}>              ~ token : <{%reset%}><{%fg 3%}>"<{%reset%}><{%reset%}>8<{%reset%}><{%fg 1%}>d4d0656-acc4<{%reset%}><{%reset%}>-4<{%reset%}><{%fg 1%}>917-<{%reset%}><{%reset%}>b2<{%reset%}><{%fg 1%}>b7-e41244496fb5<{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 3%}> => <{%reset%}><{%fg 3%}>"<{%reset%}><{%reset%}>8<{%reset%}><{%fg 2%}>26fc2bf-0ac3<{%reset%}><{%reset%}>-4<{%reset%}><{%reset%}>b2<{%reset%}><{%fg 2%}>0-a0cc-121d86f7b9d1<{%reset%}><{%fg 3%}>"
 <{%reset%}><{%fg 3%}>            }
 <{%reset%}><{%fg 3%}>        }
 <{%reset%}><{%fg 3%}>      ~ prod: <{%reset%}><{%fg 3%}>{
 <{%reset%}><{%fg 3%}>          ~ program: <{%reset%}><{%fg 3%}>{
-<{%reset%}><{%reset%}>                target: <{%reset%}><{%reset%}>"127.0.0.1:56700"<{%reset%}><{%reset%}>
-<{%reset%}><{%fg 3%}>              ~ token : <{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 1%}>cfd04812-<{%reset%}><{%reset%}>2d<{%reset%}><{%fg 1%}>14-43cc-8d9b-93b0d205ea<{%reset%}><{%reset%}>6d<{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 3%}> => <{%reset%}><{%fg 3%}>"<{%reset%}><{%reset%}>2d<{%reset%}><{%fg 2%}>496c33-ec8d-4426-bac6-f4e09e2<{%reset%}><{%reset%}>6d<{%reset%}><{%fg 2%}>9b8<{%reset%}><{%fg 3%}>"
+<{%reset%}><{%reset%}>                target: <{%reset%}><{%reset%}>"127.0.0.1:62984"<{%reset%}><{%reset%}>
+<{%reset%}><{%fg 3%}>              ~ token : <{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 1%}>d757e6a0-a41f-4d62-9cdd-0b556d4cfc8b<{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 3%}> => <{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 2%}>3bcbb338-4032-4c91-a7bf-3aabdbb3ea4d<{%reset%}><{%fg 3%}>"
 <{%reset%}><{%fg 3%}>            }
 <{%reset%}><{%fg 3%}>        }
 <{%reset%}><{%fg 3%}>    }
@@ -44,6 +44,28 @@
 <{%reset%}><{%reset%}>        }<{%reset%}><{%reset%}>
 <{%reset%}><{%reset%}>    ]<{%reset%}><{%reset%}>
 <{%reset%}><{%reset%}>    diagram: <{%reset%}><{%reset%}>"workflow: release#1 @ dev — parked\n  dev ◀ release#1\n    └─ promote ─▶ prod\n  prod\ncursors\n  release#1 @ dev — parked\n"<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>    records: <{%reset%}><{%reset%}>{
+<{%reset%}><{%reset%}>        dev : <{%reset%}><{%reset%}>{
+<{%reset%}><{%reset%}>            lastRun : <{%reset%}><{%reset%}>"2026-08-21T17:42:39.663246Z"<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>            occupant: <{%reset%}><{%reset%}>"release#1"<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>            visits  : <{%reset%}><{%reset%}>[
+<{%reset%}><{%reset%}>                [0]: <{%reset%}><{%reset%}>{
+<{%reset%}><{%reset%}>                    cursor : <{%reset%}><{%reset%}>"release#1"<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>                    entered: <{%reset%}><{%reset%}>"2026-08-21T17:42:39.660185Z"<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>                    inputs : <{%reset%}><{%reset%}>{
+<{%reset%}><{%reset%}>                        image: <{%reset%}><{%reset%}>"v1"<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>                    }<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>                    outputs: <{%reset%}><{%reset%}>{
+<{%reset%}><{%reset%}>                        deployed: <{%reset%}><{%reset%}>"dev"<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>                        image   : <{%reset%}><{%reset%}>"v1"<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>                    }<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>                }<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>            ]<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>        }<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>        prod: <{%reset%}><{%reset%}>{
+<{%reset%}><{%reset%}>            visits: <{%reset%}><{%reset%}>[]<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>        }<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>    }<{%reset%}><{%reset%}>
 <{%reset%}><{%reset%}>    state  : <{%reset%}><{%reset%}>(json) <{%reset%}><{%reset%}>{
 <{%reset%}><{%reset%}>        entries       : <{%reset%}><{%reset%}>{
 <{%reset%}><{%reset%}>            release: <{%reset%}><{%reset%}>{
@@ -75,21 +97,19 @@
 <{%reset%}><{%reset%}>        }<{%reset%}><{%reset%}>
 <{%reset%}><{%reset%}>    }<{%reset%}><{%reset%}>
 <{%reset%}><{%reset%}>
-<{%reset%}>    <{%reset%}>  urn:pulumi:test::test::pulumi:index:Workflow$pulumi:index:WorkflowNode::dev: (same)
-<{%reset%}>        [id=2]
-<{%reset%}><{%reset%}>    <{%reset%}>  urn:pulumi:test::test::pulumi:index:Workflow$pulumi:index:WorkflowNode::prod: (same)
+<{%reset%}>    <{%reset%}>  urn:pulumi:test::test-wf-wf-dev::pulumi:index:Workflow$pulumi:index:WorkflowNode::dev: (same)
 <{%reset%}>        [id=2]
 <{%reset%}><{%reset%}>        <{%reset%}>  urn:pulumi:test::test-wf-wf-dev::pulumi:pulumi:Stack::test-wf-wf-dev-test: (same)
 <{%reset%}>            [id=2]
 <{%reset%}><{%reset%}>            <{%reset%}>  urn:pulumi:test::test-wf-wf-dev::pkgA:m:typA::dev: (same)
 <{%reset%}>                [id=5]
 <{%reset%}><{%reset%}><{%reset%}>        --outputs:--<{%reset%}>
-<{%fg 3%}>      ~ lastRun : <{%reset%}><{%fg 3%}>"<{%reset%}><{%reset%}>2026-08-21T16:20:58.5<{%reset%}><{%fg 1%}>6874<{%reset%}><{%reset%}>Z<{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 3%}> => <{%reset%}><{%fg 3%}>"<{%reset%}><{%reset%}>2026-08-21T16:20:58.5<{%reset%}><{%fg 2%}>78665<{%reset%}><{%reset%}>Z<{%reset%}><{%fg 3%}>"
+<{%fg 3%}>      ~ lastRun : <{%reset%}><{%fg 3%}>"<{%reset%}><{%reset%}>2026-08-21T17:42:39.6<{%reset%}><{%fg 1%}>63246<{%reset%}><{%reset%}>Z<{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 3%}> => <{%reset%}><{%fg 3%}>"<{%reset%}><{%reset%}>2026-08-21T17:42:39.6<{%reset%}><{%fg 2%}>75577<{%reset%}><{%reset%}>Z<{%reset%}><{%fg 3%}>"
 <{%reset%}><{%reset%}>        occupant: <{%reset%}><{%reset%}>"release#1"<{%reset%}><{%reset%}>
 <{%reset%}><{%reset%}>        visits  : <{%reset%}><{%reset%}>[
 <{%reset%}><{%reset%}>            [0]: <{%reset%}><{%reset%}>{
 <{%reset%}><{%reset%}>                cursor : <{%reset%}><{%reset%}>"release#1"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                entered: <{%reset%}><{%reset%}>"2026-08-21T16:20:58.565873Z"<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>                entered: <{%reset%}><{%reset%}>"2026-08-21T17:42:39.660185Z"<{%reset%}><{%reset%}>
 <{%reset%}><{%reset%}>                inputs : <{%reset%}><{%reset%}>{
 <{%reset%}><{%reset%}>                    image: <{%reset%}><{%reset%}>"v1"<{%reset%}><{%reset%}>
 <{%reset%}><{%reset%}>                }<{%reset%}><{%reset%}>
@@ -99,7 +119,9 @@
 <{%reset%}><{%reset%}>                }<{%reset%}><{%reset%}>
 <{%reset%}><{%reset%}>            }<{%reset%}><{%reset%}>
 <{%reset%}><{%reset%}>        ]<{%reset%}><{%reset%}>
-<{%reset%}><{%fg 3%}>    --outputs:--<{%reset%}>
+<{%reset%}>    <{%reset%}>  urn:pulumi:test::test-wf-wf-prod::pulumi:index:Workflow$pulumi:index:WorkflowNode::prod: (same)
+<{%reset%}>        [id=2]
+<{%reset%}><{%reset%}><{%fg 3%}>    --outputs:--<{%reset%}>
 <{%reset%}>    cursors: <{%reset%}><{%reset%}>[
 <{%reset%}><{%reset%}>        [0]: <{%reset%}><{%reset%}>{
 <{%reset%}><{%reset%}>            name: <{%reset%}><{%reset%}>"release#1"<{%reset%}><{%reset%}>
@@ -107,6 +129,28 @@
 <{%reset%}><{%reset%}>        }<{%reset%}><{%reset%}>
 <{%reset%}><{%reset%}>    ]<{%reset%}><{%reset%}>
 <{%reset%}><{%reset%}>    diagram: <{%reset%}><{%reset%}>"workflow: release#1 @ dev — parked\n  dev ◀ release#1\n    └─ promote ─▶ prod\n  prod\ncursors\n  release#1 @ dev — parked\n"<{%reset%}><{%reset%}>
+<{%reset%}><{%fg 3%}>  ~ records: <{%reset%}><{%fg 3%}>{
+<{%reset%}><{%fg 3%}>      ~ dev : <{%reset%}><{%fg 3%}>{
+<{%reset%}><{%fg 3%}>          ~ lastRun : <{%reset%}><{%fg 3%}>"<{%reset%}><{%reset%}>2026-08-21T17:42:39.6<{%reset%}><{%fg 1%}>63246<{%reset%}><{%reset%}>Z<{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 3%}> => <{%reset%}><{%fg 3%}>"<{%reset%}><{%reset%}>2026-08-21T17:42:39.6<{%reset%}><{%fg 2%}>75577<{%reset%}><{%reset%}>Z<{%reset%}><{%fg 3%}>"
+<{%reset%}><{%reset%}>            occupant: <{%reset%}><{%reset%}>"release#1"<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>            visits  : <{%reset%}><{%reset%}>[
+<{%reset%}><{%reset%}>                [0]: <{%reset%}><{%reset%}>{
+<{%reset%}><{%reset%}>                    cursor : <{%reset%}><{%reset%}>"release#1"<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>                    entered: <{%reset%}><{%reset%}>"2026-08-21T17:42:39.660185Z"<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>                    inputs : <{%reset%}><{%reset%}>{
+<{%reset%}><{%reset%}>                        image: <{%reset%}><{%reset%}>"v1"<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>                    }<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>                    outputs: <{%reset%}><{%reset%}>{
+<{%reset%}><{%reset%}>                        deployed: <{%reset%}><{%reset%}>"dev"<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>                        image   : <{%reset%}><{%reset%}>"v1"<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>                    }<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>                }<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>            ]<{%reset%}><{%reset%}>
+<{%reset%}><{%fg 3%}>        }
+<{%reset%}><{%reset%}>        prod: <{%reset%}><{%reset%}>{
+<{%reset%}><{%reset%}>            visits: <{%reset%}><{%reset%}>[]<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>        }<{%reset%}><{%reset%}>
+<{%reset%}><{%fg 3%}>    }
 <{%reset%}><{%reset%}>    state  : <{%reset%}><{%reset%}>(json) <{%reset%}><{%reset%}>{
 <{%reset%}><{%reset%}>        entries       : <{%reset%}><{%reset%}>{
 <{%reset%}><{%reset%}>            release: <{%reset%}><{%reset%}>{

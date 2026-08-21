@@ -4,8 +4,8 @@
 <{%reset%}><{%fg 2%}>        [0]: <{%reset%}><{%fg 2%}>{
 <{%reset%}><{%fg 2%}>            conditions: <{%reset%}><{%fg 2%}>{
 <{%reset%}><{%fg 2%}>                go: <{%reset%}><{%fg 2%}>{
-<{%reset%}><{%fg 2%}>                    target: <{%reset%}><{%fg 2%}>"127.0.0.1:56701"<{%reset%}><{%fg 2%}>
-<{%reset%}><{%fg 2%}>                    token : <{%reset%}><{%fg 2%}>"54e34a54-1f5a-400e-a391-0910d3b3c189"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>                    target: <{%reset%}><{%fg 2%}>"127.0.0.1:62985"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>                    token : <{%reset%}><{%fg 2%}>"53a6dc41-7a93-4fe8-a6e6-dedec1651b1b"<{%reset%}><{%fg 2%}>
 <{%reset%}><{%fg 2%}>                }<{%reset%}><{%fg 2%}>
 <{%reset%}><{%fg 2%}>            }<{%reset%}><{%fg 2%}>
 <{%reset%}><{%fg 2%}>            from      : <{%reset%}><{%fg 2%}>"a1"<{%reset%}><{%fg 2%}>
@@ -16,8 +16,8 @@
 <{%reset%}><{%fg 2%}>        [1]: <{%reset%}><{%fg 2%}>{
 <{%reset%}><{%fg 2%}>            conditions: <{%reset%}><{%fg 2%}>{
 <{%reset%}><{%fg 2%}>                go: <{%reset%}><{%fg 2%}>{
-<{%reset%}><{%fg 2%}>                    target: <{%reset%}><{%fg 2%}>"127.0.0.1:56701"<{%reset%}><{%fg 2%}>
-<{%reset%}><{%fg 2%}>                    token : <{%reset%}><{%fg 2%}>"54e34a54-1f5a-400e-a391-0910d3b3c189"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>                    target: <{%reset%}><{%fg 2%}>"127.0.0.1:62985"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>                    token : <{%reset%}><{%fg 2%}>"53a6dc41-7a93-4fe8-a6e6-dedec1651b1b"<{%reset%}><{%fg 2%}>
 <{%reset%}><{%fg 2%}>                }<{%reset%}><{%fg 2%}>
 <{%reset%}><{%fg 2%}>            }<{%reset%}><{%fg 2%}>
 <{%reset%}><{%fg 2%}>            from      : <{%reset%}><{%fg 2%}>"b1"<{%reset%}><{%fg 2%}>
@@ -43,43 +43,35 @@
 <{%reset%}><{%fg 2%}>    nodes  : <{%reset%}><{%fg 2%}>{
 <{%reset%}><{%fg 2%}>        a1: <{%reset%}><{%fg 2%}>{
 <{%reset%}><{%fg 2%}>            program: <{%reset%}><{%fg 2%}>{
-<{%reset%}><{%fg 2%}>                target: <{%reset%}><{%fg 2%}>"127.0.0.1:56701"<{%reset%}><{%fg 2%}>
-<{%reset%}><{%fg 2%}>                token : <{%reset%}><{%fg 2%}>"085e442f-ef5f-4733-8aa7-b85fea3903b4"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>                target: <{%reset%}><{%fg 2%}>"127.0.0.1:62985"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>                token : <{%reset%}><{%fg 2%}>"a917fbc5-53d7-492b-9fd7-b70894d843b0"<{%reset%}><{%fg 2%}>
 <{%reset%}><{%fg 2%}>            }<{%reset%}><{%fg 2%}>
 <{%reset%}><{%fg 2%}>        }<{%reset%}><{%fg 2%}>
 <{%reset%}><{%fg 2%}>        a2: <{%reset%}><{%fg 2%}>{
 <{%reset%}><{%fg 2%}>            program: <{%reset%}><{%fg 2%}>{
-<{%reset%}><{%fg 2%}>                target: <{%reset%}><{%fg 2%}>"127.0.0.1:56701"<{%reset%}><{%fg 2%}>
-<{%reset%}><{%fg 2%}>                token : <{%reset%}><{%fg 2%}>"d41014a6-53da-4a4a-b6ec-0daa777e49fe"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>                target: <{%reset%}><{%fg 2%}>"127.0.0.1:62985"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>                token : <{%reset%}><{%fg 2%}>"14dc04c3-db1d-4554-bae6-74e2f5e4a158"<{%reset%}><{%fg 2%}>
 <{%reset%}><{%fg 2%}>            }<{%reset%}><{%fg 2%}>
 <{%reset%}><{%fg 2%}>        }<{%reset%}><{%fg 2%}>
 <{%reset%}><{%fg 2%}>        b1: <{%reset%}><{%fg 2%}>{
 <{%reset%}><{%fg 2%}>            program: <{%reset%}><{%fg 2%}>{
-<{%reset%}><{%fg 2%}>                target: <{%reset%}><{%fg 2%}>"127.0.0.1:56701"<{%reset%}><{%fg 2%}>
-<{%reset%}><{%fg 2%}>                token : <{%reset%}><{%fg 2%}>"c1c727ca-d09c-426d-b3ed-57672573f27c"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>                target: <{%reset%}><{%fg 2%}>"127.0.0.1:62985"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>                token : <{%reset%}><{%fg 2%}>"84886c7e-fbcc-45a9-a2ee-d0b443a6b1be"<{%reset%}><{%fg 2%}>
 <{%reset%}><{%fg 2%}>            }<{%reset%}><{%fg 2%}>
 <{%reset%}><{%fg 2%}>        }<{%reset%}><{%fg 2%}>
 <{%reset%}><{%fg 2%}>        b2: <{%reset%}><{%fg 2%}>{
 <{%reset%}><{%fg 2%}>            program: <{%reset%}><{%fg 2%}>{
-<{%reset%}><{%fg 2%}>                target: <{%reset%}><{%fg 2%}>"127.0.0.1:56701"<{%reset%}><{%fg 2%}>
-<{%reset%}><{%fg 2%}>                token : <{%reset%}><{%fg 2%}>"bbffde99-154f-404b-a73d-d964d47e3572"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>                target: <{%reset%}><{%fg 2%}>"127.0.0.1:62985"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>                token : <{%reset%}><{%fg 2%}>"052b1449-e93b-4474-a758-4ad28aacc852"<{%reset%}><{%fg 2%}>
 <{%reset%}><{%fg 2%}>            }<{%reset%}><{%fg 2%}>
 <{%reset%}><{%fg 2%}>        }<{%reset%}><{%fg 2%}>
 <{%reset%}><{%fg 2%}>    }<{%reset%}><{%fg 2%}>
 <{%reset%}><{%reset%}>    <{%fg 2%}>+ pulumi:index:WorkflowNode: (create)
-<{%fg 2%}>        [urn=urn:pulumi:test::test::pulumi:index:Workflow$pulumi:index:WorkflowNode::a1]
-<{%reset%}><{%fg 2%}>        node    : <{%reset%}><{%fg 2%}>"a1"<{%reset%}><{%fg 2%}>
-<{%reset%}><{%fg 2%}>        workflow: <{%reset%}><{%fg 2%}>"urn:pulumi:test::test::pulumi:index:Workflow::wf"<{%reset%}><{%fg 2%}>
-<{%reset%}><{%reset%}>    <{%fg 2%}>+ pulumi:index:WorkflowNode: (create)
-<{%fg 2%}>        [urn=urn:pulumi:test::test::pulumi:index:Workflow$pulumi:index:WorkflowNode::a2]
+<{%fg 2%}>        [urn=urn:pulumi:test::test-wf-wf-a2::pulumi:index:Workflow$pulumi:index:WorkflowNode::a2]
 <{%reset%}><{%fg 2%}>        node    : <{%reset%}><{%fg 2%}>"a2"<{%reset%}><{%fg 2%}>
 <{%reset%}><{%fg 2%}>        workflow: <{%reset%}><{%fg 2%}>"urn:pulumi:test::test::pulumi:index:Workflow::wf"<{%reset%}><{%fg 2%}>
 <{%reset%}><{%reset%}>    <{%fg 2%}>+ pulumi:index:WorkflowNode: (create)
-<{%fg 2%}>        [urn=urn:pulumi:test::test::pulumi:index:Workflow$pulumi:index:WorkflowNode::b1]
-<{%reset%}><{%fg 2%}>        node    : <{%reset%}><{%fg 2%}>"b1"<{%reset%}><{%fg 2%}>
-<{%reset%}><{%fg 2%}>        workflow: <{%reset%}><{%fg 2%}>"urn:pulumi:test::test::pulumi:index:Workflow::wf"<{%reset%}><{%fg 2%}>
-<{%reset%}><{%reset%}>    <{%fg 2%}>+ pulumi:index:WorkflowNode: (create)
-<{%fg 2%}>        [urn=urn:pulumi:test::test::pulumi:index:Workflow$pulumi:index:WorkflowNode::b2]
+<{%fg 2%}>        [urn=urn:pulumi:test::test-wf-wf-b2::pulumi:index:Workflow$pulumi:index:WorkflowNode::b2]
 <{%reset%}><{%fg 2%}>        node    : <{%reset%}><{%fg 2%}>"b2"<{%reset%}><{%fg 2%}>
 <{%reset%}><{%fg 2%}>        workflow: <{%reset%}><{%fg 2%}>"urn:pulumi:test::test::pulumi:index:Workflow::wf"<{%reset%}><{%fg 2%}>
 <{%reset%}><{%reset%}>        <{%fg 2%}>+ pkgA:m:typA: (create)
@@ -87,27 +79,12 @@
 <{%reset%}><{%reset%}>        <{%fg 2%}>+ pkgA:m:typA: (create)
 <{%fg 2%}>            [urn=urn:pulumi:test::test-wf-wf-a2::pkgA:m:typA::a2]
 <{%reset%}><{%reset%}><{%fg 2%}>        --outputs:--<{%reset%}>
-<{%fg 2%}>        lastRun : <{%reset%}><{%fg 2%}>"2026-08-21T16:20:58.568712Z"<{%reset%}><{%fg 2%}>
-<{%reset%}><{%fg 2%}>        occupant: <{%reset%}><{%fg 2%}>"a#1"<{%reset%}><{%fg 2%}>
-<{%reset%}><{%fg 2%}>        visits  : <{%reset%}><{%fg 2%}>[
-<{%reset%}><{%fg 2%}>            [0]: <{%reset%}><{%fg 2%}>{
-<{%reset%}><{%fg 2%}>                cursor : <{%reset%}><{%fg 2%}>"a#1"<{%reset%}><{%fg 2%}>
-<{%reset%}><{%fg 2%}>                entered: <{%reset%}><{%fg 2%}>"2026-08-21T16:20:58.565868Z"<{%reset%}><{%fg 2%}>
-<{%reset%}><{%fg 2%}>                inputs : <{%reset%}><{%fg 2%}>{
-<{%reset%}><{%fg 2%}>                    run: <{%reset%}><{%fg 2%}>"a1"<{%reset%}><{%fg 2%}>
-<{%reset%}><{%fg 2%}>                }<{%reset%}><{%fg 2%}>
-<{%reset%}><{%fg 2%}>                outputs: <{%reset%}><{%fg 2%}>{
-<{%reset%}><{%fg 2%}>                    run: <{%reset%}><{%fg 2%}>"a1"<{%reset%}><{%fg 2%}>
-<{%reset%}><{%fg 2%}>                }<{%reset%}><{%fg 2%}>
-<{%reset%}><{%fg 2%}>            }<{%reset%}><{%fg 2%}>
-<{%reset%}><{%fg 2%}>        ]<{%reset%}><{%fg 2%}>
-<{%reset%}><{%fg 2%}>        --outputs:--<{%reset%}>
-<{%fg 2%}>        lastRun : <{%reset%}><{%fg 2%}>"2026-08-21T16:20:58.568651Z"<{%reset%}><{%fg 2%}>
+<{%fg 2%}>        lastRun : <{%reset%}><{%fg 2%}>"2026-08-21T17:42:39.663267Z"<{%reset%}><{%fg 2%}>
 <{%reset%}><{%fg 2%}>        occupant: <{%reset%}><{%fg 2%}>"b#2"<{%reset%}><{%fg 2%}>
 <{%reset%}><{%fg 2%}>        visits  : <{%reset%}><{%fg 2%}>[
 <{%reset%}><{%fg 2%}>            [0]: <{%reset%}><{%fg 2%}>{
 <{%reset%}><{%fg 2%}>                cursor : <{%reset%}><{%fg 2%}>"b#2"<{%reset%}><{%fg 2%}>
-<{%reset%}><{%fg 2%}>                entered: <{%reset%}><{%fg 2%}>"2026-08-21T16:20:58.565931Z"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>                entered: <{%reset%}><{%fg 2%}>"2026-08-21T17:42:39.660189Z"<{%reset%}><{%fg 2%}>
 <{%reset%}><{%fg 2%}>                inputs : <{%reset%}><{%fg 2%}>{
 <{%reset%}><{%fg 2%}>                    run: <{%reset%}><{%fg 2%}>"b1"<{%reset%}><{%fg 2%}>
 <{%reset%}><{%fg 2%}>                }<{%reset%}><{%fg 2%}>
@@ -116,7 +93,30 @@
 <{%reset%}><{%fg 2%}>                }<{%reset%}><{%fg 2%}>
 <{%reset%}><{%fg 2%}>            }<{%reset%}><{%fg 2%}>
 <{%reset%}><{%fg 2%}>        ]<{%reset%}><{%fg 2%}>
-<{%reset%}><{%fg 2%}>    --outputs:--<{%reset%}>
+<{%reset%}><{%fg 2%}>        --outputs:--<{%reset%}>
+<{%fg 2%}>        lastRun : <{%reset%}><{%fg 2%}>"2026-08-21T17:42:39.66342Z"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>        occupant: <{%reset%}><{%fg 2%}>"a#1"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>        visits  : <{%reset%}><{%fg 2%}>[
+<{%reset%}><{%fg 2%}>            [0]: <{%reset%}><{%fg 2%}>{
+<{%reset%}><{%fg 2%}>                cursor : <{%reset%}><{%fg 2%}>"a#1"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>                entered: <{%reset%}><{%fg 2%}>"2026-08-21T17:42:39.660191Z"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>                inputs : <{%reset%}><{%fg 2%}>{
+<{%reset%}><{%fg 2%}>                    run: <{%reset%}><{%fg 2%}>"a1"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>                }<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>                outputs: <{%reset%}><{%fg 2%}>{
+<{%reset%}><{%fg 2%}>                    run: <{%reset%}><{%fg 2%}>"a1"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>                }<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>            }<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>        ]<{%reset%}><{%fg 2%}>
+<{%reset%}>    <{%fg 2%}>+ pulumi:index:WorkflowNode: (create)
+<{%fg 2%}>        [urn=urn:pulumi:test::test-wf-wf-b1::pulumi:index:Workflow$pulumi:index:WorkflowNode::b1]
+<{%reset%}><{%fg 2%}>        node    : <{%reset%}><{%fg 2%}>"b1"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>        workflow: <{%reset%}><{%fg 2%}>"urn:pulumi:test::test::pulumi:index:Workflow::wf"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%reset%}>    <{%fg 2%}>+ pulumi:index:WorkflowNode: (create)
+<{%fg 2%}>        [urn=urn:pulumi:test::test-wf-wf-a1::pulumi:index:Workflow$pulumi:index:WorkflowNode::a1]
+<{%reset%}><{%fg 2%}>        node    : <{%reset%}><{%fg 2%}>"a1"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>        workflow: <{%reset%}><{%fg 2%}>"urn:pulumi:test::test::pulumi:index:Workflow::wf"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%reset%}><{%fg 2%}>    --outputs:--<{%reset%}>
 <{%fg 2%}>    cursors: <{%reset%}><{%fg 2%}>[
 <{%reset%}><{%fg 2%}>        [0]: <{%reset%}><{%fg 2%}>{
 <{%reset%}><{%fg 2%}>            name: <{%reset%}><{%fg 2%}>"a#1"<{%reset%}><{%fg 2%}>
@@ -128,6 +128,46 @@
 <{%reset%}><{%fg 2%}>        }<{%reset%}><{%fg 2%}>
 <{%reset%}><{%fg 2%}>    ]<{%reset%}><{%fg 2%}>
 <{%reset%}><{%fg 2%}>    diagram: <{%reset%}><{%fg 2%}>"workflow: a#1 @ a2 — parked; b#2 @ b2 — parked\n  a1\n    └─ a1-a2 ─▶ a2\n  a2 ◀ a#1\n  b1\n    └─ b1-b2 ─▶ b2\n  b2 ◀ b#2\ncursors\n  a#1 @ a2 — parked\n  b#2 @ b2 — parked\n"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>    records: <{%reset%}><{%fg 2%}>{
+<{%reset%}><{%fg 2%}>        a1: <{%reset%}><{%fg 2%}>{
+<{%reset%}><{%fg 2%}>            visits: <{%reset%}><{%fg 2%}>[]<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>        }<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>        a2: <{%reset%}><{%fg 2%}>{
+<{%reset%}><{%fg 2%}>            lastRun : <{%reset%}><{%fg 2%}>"2026-08-21T17:42:39.66342Z"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>            occupant: <{%reset%}><{%fg 2%}>"a#1"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>            visits  : <{%reset%}><{%fg 2%}>[
+<{%reset%}><{%fg 2%}>                [0]: <{%reset%}><{%fg 2%}>{
+<{%reset%}><{%fg 2%}>                    cursor : <{%reset%}><{%fg 2%}>"a#1"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>                    entered: <{%reset%}><{%fg 2%}>"2026-08-21T17:42:39.660191Z"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>                    inputs : <{%reset%}><{%fg 2%}>{
+<{%reset%}><{%fg 2%}>                        run: <{%reset%}><{%fg 2%}>"a1"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>                    }<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>                    outputs: <{%reset%}><{%fg 2%}>{
+<{%reset%}><{%fg 2%}>                        run: <{%reset%}><{%fg 2%}>"a1"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>                    }<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>                }<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>            ]<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>        }<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>        b1: <{%reset%}><{%fg 2%}>{
+<{%reset%}><{%fg 2%}>            visits: <{%reset%}><{%fg 2%}>[]<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>        }<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>        b2: <{%reset%}><{%fg 2%}>{
+<{%reset%}><{%fg 2%}>            lastRun : <{%reset%}><{%fg 2%}>"2026-08-21T17:42:39.663267Z"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>            occupant: <{%reset%}><{%fg 2%}>"b#2"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>            visits  : <{%reset%}><{%fg 2%}>[
+<{%reset%}><{%fg 2%}>                [0]: <{%reset%}><{%fg 2%}>{
+<{%reset%}><{%fg 2%}>                    cursor : <{%reset%}><{%fg 2%}>"b#2"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>                    entered: <{%reset%}><{%fg 2%}>"2026-08-21T17:42:39.660189Z"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>                    inputs : <{%reset%}><{%fg 2%}>{
+<{%reset%}><{%fg 2%}>                        run: <{%reset%}><{%fg 2%}>"b1"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>                    }<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>                    outputs: <{%reset%}><{%fg 2%}>{
+<{%reset%}><{%fg 2%}>                        run: <{%reset%}><{%fg 2%}>"b1"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>                    }<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>                }<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>            ]<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>        }<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>    }<{%reset%}><{%fg 2%}>
 <{%reset%}><{%fg 2%}>    state  : <{%reset%}><{%fg 2%}>(json) <{%reset%}><{%fg 2%}>{
 <{%reset%}><{%fg 2%}>        entries       : <{%reset%}><{%fg 2%}>{
 <{%reset%}><{%fg 2%}>            a: <{%reset%}><{%fg 2%}>{
@@ -150,17 +190,6 @@
 <{%reset%}><{%fg 2%}>            cursors   : <{%reset%}><{%fg 2%}>[
 <{%reset%}><{%fg 2%}>                [0]: <{%reset%}><{%fg 2%}>{
 <{%reset%}><{%fg 2%}>                    entered: <{%reset%}><{%fg 2%}>{
-<{%reset%}><{%fg 2%}>                        run: <{%reset%}><{%fg 2%}>"b1"<{%reset%}><{%fg 2%}>
-<{%reset%}><{%fg 2%}>                    }<{%reset%}><{%fg 2%}>
-<{%reset%}><{%fg 2%}>                    id     : <{%reset%}><{%fg 2%}>"c2"<{%reset%}><{%fg 2%}>
-<{%reset%}><{%fg 2%}>                    label  : <{%reset%}><{%fg 2%}>"b#2"<{%reset%}><{%fg 2%}>
-<{%reset%}><{%fg 2%}>                    node   : <{%reset%}><{%fg 2%}>"b2"<{%reset%}><{%fg 2%}>
-<{%reset%}><{%fg 2%}>                    outputs: <{%reset%}><{%fg 2%}>{
-<{%reset%}><{%fg 2%}>                        run: <{%reset%}><{%fg 2%}>"b1"<{%reset%}><{%fg 2%}>
-<{%reset%}><{%fg 2%}>                    }<{%reset%}><{%fg 2%}>
-<{%reset%}><{%fg 2%}>                }<{%reset%}><{%fg 2%}>
-<{%reset%}><{%fg 2%}>                [1]: <{%reset%}><{%fg 2%}>{
-<{%reset%}><{%fg 2%}>                    entered: <{%reset%}><{%fg 2%}>{
 <{%reset%}><{%fg 2%}>                        run: <{%reset%}><{%fg 2%}>"a1"<{%reset%}><{%fg 2%}>
 <{%reset%}><{%fg 2%}>                    }<{%reset%}><{%fg 2%}>
 <{%reset%}><{%fg 2%}>                    id     : <{%reset%}><{%fg 2%}>"c1"<{%reset%}><{%fg 2%}>
@@ -168,6 +197,17 @@
 <{%reset%}><{%fg 2%}>                    node   : <{%reset%}><{%fg 2%}>"a2"<{%reset%}><{%fg 2%}>
 <{%reset%}><{%fg 2%}>                    outputs: <{%reset%}><{%fg 2%}>{
 <{%reset%}><{%fg 2%}>                        run: <{%reset%}><{%fg 2%}>"a1"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>                    }<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>                }<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>                [1]: <{%reset%}><{%fg 2%}>{
+<{%reset%}><{%fg 2%}>                    entered: <{%reset%}><{%fg 2%}>{
+<{%reset%}><{%fg 2%}>                        run: <{%reset%}><{%fg 2%}>"b1"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>                    }<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>                    id     : <{%reset%}><{%fg 2%}>"c2"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>                    label  : <{%reset%}><{%fg 2%}>"b#2"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>                    node   : <{%reset%}><{%fg 2%}>"b2"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>                    outputs: <{%reset%}><{%fg 2%}>{
+<{%reset%}><{%fg 2%}>                        run: <{%reset%}><{%fg 2%}>"b1"<{%reset%}><{%fg 2%}>
 <{%reset%}><{%fg 2%}>                    }<{%reset%}><{%fg 2%}>
 <{%reset%}><{%fg 2%}>                }<{%reset%}><{%fg 2%}>
 <{%reset%}><{%fg 2%}>            ]<{%reset%}><{%fg 2%}>
