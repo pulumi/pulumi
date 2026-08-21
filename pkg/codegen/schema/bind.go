@@ -2047,8 +2047,9 @@ func bindMethods(
 			diags = diags.Append(errorf(methodPath, "function %s is already a method", token))
 			continue
 		}
-		idx := strings.LastIndex(function.Token, "/")
-		if idx == -1 || function.Token[:idx] != resourceToken {
+		functionToken := function.Token.String()
+		idx := strings.LastIndex(functionToken, "/")
+		if idx == -1 || functionToken[:idx] != resourceToken {
 			d := errorf(methodPath, "invalid function token format %s", token)
 			d.Detail = fmt.Sprintf(`expected a token of the shape: "%s/<method name>"`, resourceToken)
 			diags = diags.Append(d)
@@ -2412,13 +2413,13 @@ func (t *types) bindFunctionDef(token string, options ValidationOptions) (*Funct
 	if diag := validatePrintableName(path, "function name", token); diag != nil {
 		diags = diags.Append(diag)
 	}
-	parts := strings.Split(token, ":")
-	if len(parts) == 3 {
-		name := parts[2]
-		if isReservedKeyword(name) {
-			diags = diags.Append(errorf(path, "%s", name+" is a reserved name, cannot name function"))
-			return nil, diags, errors.New(name + " is a reserved name, cannot name function")
-		}
+	tok, err := ParseToken(token)
+	if err != nil {
+		return nil, diags.Append(errorf(path, "%v", err)), nil
+	}
+	if name := tok.Name(); isReservedKeyword(name) {
+		diags = diags.Append(errorf(path, "%s", name+" is a reserved name, cannot name function"))
+		return nil, diags, errors.New(name + " is a reserved name, cannot name function")
 	}
 
 	// Check that spec.MultiArgumentInputs => spec.Inputs
@@ -2551,7 +2552,7 @@ func (t *types) bindFunctionDef(token string, options ValidationOptions) (*Funct
 
 	fn := &Function{
 		PackageReference:          t.externalPackage(),
-		Token:                     token,
+		Token:                     tok,
 		Comment:                   spec.Description,
 		Inputs:                    inputs,
 		MultiArgumentInputs:       len(spec.MultiArgumentInputs) > 0,
@@ -2580,11 +2581,11 @@ func (t *types) finishFunctions(tokens []string, options ValidationOptions) ([]*
 		if err != nil {
 			return nil, diags, fmt.Errorf("error binding function %v: %w", token, err)
 		}
-		functions = append(functions, f)
+		if f != nil {
+			functions = append(functions, f)
+		}
 	}
-	sort.Slice(functions, func(i, j int) bool {
-		return functions[i].Token < functions[j].Token
-	})
+	slices.SortFunc(functions, func(a, b *Function) int { return a.Token.Cmp(b.Token) })
 
 	return functions, diags, nil
 }

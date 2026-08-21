@@ -20,7 +20,6 @@ import (
 	"maps"
 	"reflect"
 	"slices"
-	"sort"
 	"sync"
 
 	"github.com/blang/semver"
@@ -369,7 +368,7 @@ type packageDefFunctionsIter struct {
 }
 
 func (i *packageDefFunctionsIter) Token() string {
-	return i.f.Token
+	return i.f.Token.String()
 }
 
 func (i *packageDefFunctionsIter) Function() (*Function, error) {
@@ -841,9 +840,7 @@ func (p *PartialPackage) Snapshot() (*Package, error) {
 	for token, fn := range p.types.functionDefs {
 		functions, functionDefs[token] = append(functions, fn), fn
 	}
-	sort.Slice(functions, func(i, j int) bool {
-		return functions[i].Token < functions[j].Token
-	})
+	slices.SortFunc(functions, func(a, b *Function) int { return a.Token.Cmp(b.Token) })
 
 	typeList, diags, err := p.types.finishTypes(nil, ValidationOptions{
 		AllowDanglingReferences: true,

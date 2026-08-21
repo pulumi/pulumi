@@ -730,7 +730,7 @@ func (mod *modContext) gen(fs codegen.Fs) error {
 		if err != nil {
 			return err
 		}
-		fnName := PyName(tokenToName(f.Token))
+		fnName := PyName(tokenToName(f.Token.String()))
 		if mod.conflictsWithChildModule(fnName) {
 			fnName = fnName + "_"
 		}
@@ -2005,7 +2005,7 @@ func (mod *modContext) genFunction(fun *schema.Function) (string, error) {
 	if returnTypeObj != nil {
 		baseName, awaitableName = awaitableTypeNames(returnTypeObj.Token)
 	}
-	name := PyName(tokenToName(fun.Token))
+	name := PyName(tokenToName(fun.Token.String()))
 
 	// Export only the symbols we want exported.
 	fmt.Fprintf(w, "__all__ = [\n")
@@ -2205,7 +2205,7 @@ func (mod *modContext) genFunDeprecationMessage(w io.Writer, fun *schema.Functio
 	if fun.DeprecationMessage == "" {
 		return
 	}
-	name := PyName(tokenToName(fun.Token))
+	name := PyName(tokenToName(fun.Token.String()))
 	fmt.Fprintf(w, "    pulumi.log.warn(\"\"\"%s is deprecated: %s\"\"\")\n", name, fun.DeprecationMessage)
 }
 
@@ -2601,11 +2601,11 @@ func (mod *modContext) docRefResolver(selfRef schema.DocRef) func(schema.DocRef)
 		case schema.DocRefKindResourceInputProperty:
 			base = mod.resourceArgsClassName(ref.Type.(*schema.ResourceType))
 		case schema.DocRefKindFunction:
-			base = PyName(tokenToName(ref.Function.Token))
+			base = PyName(tokenToName(ref.Function.Token.String()))
 		case schema.DocRefKindFunctionInputProperty:
-			base = cgstrings.UppercaseFirst(PyName(tokenToName(ref.Function.Token))) + "Args"
+			base = cgstrings.UppercaseFirst(PyName(tokenToName(ref.Function.Token.String()))) + "Args"
 		case schema.DocRefKindFunctionOutputProperty:
-			base = cgstrings.UppercaseFirst(PyName(tokenToName(ref.Function.Token))) + "Result"
+			base = cgstrings.UppercaseFirst(PyName(tokenToName(ref.Function.Token.String()))) + "Result"
 		case schema.DocRefKindType, schema.DocRefKindTypeProperty:
 			switch t := ref.Type.(type) {
 			case *schema.ObjectType:
@@ -3369,7 +3369,7 @@ func generateModuleContextMap(tool string, pkg *schema.Package, info PackageInfo
 
 	// Find input and output types referenced by functions.
 	for _, f := range pkg.Functions {
-		mod := getModFromToken(f.Token, f.PackageReference)
+		mod := getModFromToken(f.Token.String(), f.PackageReference)
 		if !f.IsMethod {
 			mod.functions = append(mod.functions, f)
 		}

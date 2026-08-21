@@ -288,7 +288,7 @@ func TestInterpretPulumiRefs(t *testing.T) {
 					return obj.Token, true
 				}
 			case schema.DocRefKindFunction:
-				return ref.Function.Token, true
+				return ref.Function.Token.String(), true
 			}
 			return "", false
 		})

@@ -136,11 +136,11 @@ func (d DocLanguageHelper) GetResourceName(r *schema.Resource) string {
 }
 
 func (d DocLanguageHelper) GetFunctionName(f *schema.Function) string {
-	funcName := tokenToName(f.Token)
+	funcName := tokenToName(f.Token.String())
 	if d.topLevelPkg == nil {
 		return funcName
 	}
-	pkg, ok := d.packages[tokenToPackage(d.topLevelPkg, d.goPkgInfo.ModuleToPackage, f.Token)]
+	pkg, ok := d.packages[tokenToPackage(d.topLevelPkg, d.goPkgInfo.ModuleToPackage, f.Token.String())]
 	if !ok {
 		return funcName
 	}

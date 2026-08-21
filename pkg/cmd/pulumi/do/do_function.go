@@ -58,7 +58,7 @@ func functionSchemaHelp(fn *schema.Function) string {
 }
 
 func (pc *packageCommand) newFunctionCommand(fn *schema.Function) *cobra.Command {
-	_, _, name, diags := pcl.DecomposeToken(fn.Token, hcl.Range{})
+	_, _, name, diags := pcl.DecomposeToken(fn.Token.String(), hcl.Range{})
 	contract.Assertf(!diags.HasErrors(), "token should decompose")
 
 	shorthelp := fmt.Sprintf("Invoke the %s function", name)
@@ -100,7 +100,7 @@ func (pc *packageCommand) newFunctionCommand(fn *schema.Function) *cobra.Command
 			}
 
 			response, err := pc.provider.Invoke(ctx, plugin.InvokeRequest{
-				Tok:     tokens.ModuleMember(fn.Token),
+				Tok:     tokens.ModuleMember(fn.Token.String()),
 				Args:    resource.FromResourcePropertyMap(inputs),
 				Preview: pc.dryrun,
 			})

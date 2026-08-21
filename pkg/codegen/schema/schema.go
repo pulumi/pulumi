@@ -544,7 +544,7 @@ type Function struct {
 	// PackageReference is the PackageReference that defines the function.
 	PackageReference PackageReference
 	// Token is the function's Pulumi type token.
-	Token string
+	Token Token
 	// Comment is the description of the function, if any.
 	Comment string
 	// Inputs is the bag of input values for the function, if any.
@@ -1284,7 +1284,7 @@ func (pkg *Package) MarshalSpec() (spec *PackageSpec, err error) {
 		if err != nil {
 			return nil, fmt.Errorf("marshaling function '%v': %w", fn.Token, err)
 		}
-		spec.Functions[fn.Token] = f
+		spec.Functions[fn.Token.String()] = f
 	}
 
 	return spec, nil
@@ -1408,7 +1408,7 @@ func (pkg *Package) marshalResource(r *Resource) (ResourceSpec, error) {
 	if len(r.Methods) != 0 {
 		methods = map[string]string{}
 		for _, m := range r.Methods {
-			methods[m.Name] = m.Function.Token
+			methods[m.Name] = m.Function.Token.String()
 		}
 	}
 
