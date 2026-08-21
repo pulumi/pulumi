@@ -1,0 +1,3 @@
+component: sdk/python
+kind: fix
+body: Support async CRUD methods in dynamic providers

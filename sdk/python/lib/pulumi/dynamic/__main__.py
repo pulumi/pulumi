@@ -14,8 +14,9 @@
 
 import asyncio
 import base64
+import inspect
 from concurrent import futures
-from threading import Event, Lock
+from threading import Event, Lock, Thread
 from typing import Any, Optional
 import os
 import sys
@@ -35,6 +36,25 @@ PROVIDER_KEY = "__provider"
 
 _PROVIDER_CACHE: dict[str, ResourceProvider] = {}
 _PROVIDER_LOCK = Lock()
+
+
+# Coroutines run on a single event loop for the lifetime of the process, so that
+# a future created by one call can be awaited by another. `run_coroutine_threadsafe`
+# copies the calling thread's context, so ambient settings are preserved.
+_LOOP = asyncio.new_event_loop()
+Thread(target=_LOOP.run_forever, daemon=True).start()
+
+
+async def _resolve(awaitable: Any) -> Any:
+    return await awaitable
+
+
+# _sync runs `result` to completion if the provider implemented the method as a
+# coroutine function, otherwise it returns the value unchanged.
+def _sync(result: Any) -> Any:
+    if not inspect.isawaitable(result):
+        return result
+    return asyncio.run_coroutine_threadsafe(_resolve(result), _LOOP).result()
 
 
 # get_provider deserializes the provider from the string found in
@@ -71,7 +91,7 @@ def get_provider(props: dict[str, Any], config: dict[str, Any]) -> ResourceProvi
                 provider = _deserialize(deserialize)
                 dyn_config = Config(raw_config=config, project_name=get_project())
                 req = ConfigureRequest(config=dyn_config)
-                provider.configure(req)
+                _sync(provider.configure(req))
                 _PROVIDER_CACHE[providerStr] = provider
 
     return provider
@@ -106,7 +126,7 @@ class DynamicResourceProviderServicer(ResourceProviderServicer):
             provider = get_provider(olds, self._config)
         else:
             provider = get_provider(news, self._config)
-        result = provider.diff(request.id, olds, news)
+        result = _sync(provider.diff(request.id, olds, news))
         fields = {}
         if result.changes is not None:
             if result.changes:
@@ -126,15 +146,13 @@ class DynamicResourceProviderServicer(ResourceProviderServicer):
         news = rpc.deserialize_properties(request.news)
         provider = get_provider(news, self._config)
 
-        result = provider.update(request.id, olds, news)
+        result = _sync(provider.update(request.id, olds, news))
         outs = {}
         if result.outs is not None:
             outs = result.outs
         outs[PROVIDER_KEY] = news[PROVIDER_KEY]
 
-        loop = asyncio.new_event_loop()
-        outs_proto = loop.run_until_complete(rpc.serialize_properties(outs, {}))
-        loop.close()
+        outs_proto = _sync(rpc.serialize_properties(outs, {}))
 
         fields = {"properties": outs_proto}
         return proto.UpdateResponse(**fields)
@@ -143,7 +161,7 @@ class DynamicResourceProviderServicer(ResourceProviderServicer):
         id_ = request.id
         props = rpc.deserialize_properties(request.properties)
         provider = get_provider(props, self._config)
-        provider.delete(id_, props)
+        _sync(provider.delete(id_, props))
         return empty_pb2.Empty()
 
     def Cancel(self, request, context):
@@ -152,13 +170,11 @@ class DynamicResourceProviderServicer(ResourceProviderServicer):
     def Create(self, request, context):
         props = rpc.deserialize_properties(request.properties)
         provider = get_provider(props, self._config)
-        result = provider.create(props)
+        result = _sync(provider.create(props))
         outs = result.outs if result.outs is not None else {}
         outs[PROVIDER_KEY] = props[PROVIDER_KEY]
 
-        loop = asyncio.new_event_loop()
-        outs_proto = loop.run_until_complete(rpc.serialize_properties(outs, {}))
-        loop.close()
+        outs_proto = _sync(rpc.serialize_properties(outs, {}))
 
         fields = {"id": result.id, "properties": outs_proto}
         return proto.CreateResponse(**fields)
@@ -171,15 +187,13 @@ class DynamicResourceProviderServicer(ResourceProviderServicer):
         else:
             provider = get_provider(news, self._config)
 
-        result = provider.check(olds, news)
+        result = _sync(provider.check(olds, news))
         inputs = result.inputs
         failures = result.failures
 
         inputs[PROVIDER_KEY] = news[PROVIDER_KEY]
 
-        loop = asyncio.new_event_loop()
-        inputs_proto = loop.run_until_complete(rpc.serialize_properties(inputs, {}))
-        loop.close()
+        inputs_proto = _sync(rpc.serialize_properties(inputs, {}))
 
         failures_proto = [
             proto.CheckFailure(property=f.property, reason=f.reason) for f in failures
@@ -213,12 +227,11 @@ class DynamicResourceProviderServicer(ResourceProviderServicer):
         id_ = request.id
         props = rpc.deserialize_properties(request.properties)
         provider = get_provider(props, self._config)
-        result = provider.read(id_, props)
+        result = _sync(provider.read(id_, props))
         outs = result.outs
         outs[PROVIDER_KEY] = props[PROVIDER_KEY]
 
-        loop = asyncio.new_event_loop()
-        outs_proto = loop.run_until_complete(rpc.serialize_properties(outs, {}))
+        outs_proto = _sync(rpc.serialize_properties(outs, {}))
 
         fields = {"id": result.id, "properties": outs_proto}
 
@@ -227,10 +240,8 @@ class DynamicResourceProviderServicer(ResourceProviderServicer):
         if result.inputs is not None:
             inputs = result.inputs.copy()
             inputs[PROVIDER_KEY] = props[PROVIDER_KEY]
-            inputs_proto = loop.run_until_complete(rpc.serialize_properties(inputs, {}))
+            inputs_proto = _sync(rpc.serialize_properties(inputs, {}))
             fields["inputs"] = inputs_proto
-
-        loop.close()
 
         return proto.ReadResponse(**fields)
 
@@ -259,4 +270,5 @@ def main():
         server.stop(0)
 
 
-main()
+if __name__ == "__main__":
+    main()
