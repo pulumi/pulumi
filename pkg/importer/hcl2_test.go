@@ -1369,7 +1369,7 @@ func TestStructuralTypeChecks(t *testing.T) {
 			URN: "urn:pulumi:s::p::pkg:index:R::r",
 			ID:  property.New("id"),
 		})
-		resType := &schema.ResourceType{Token: "pkg:index:R"}
+		resType := &schema.ResourceType{Token: schema.NewToken("pkg", "index", "R")}
 
 		assert.True(t, valueStructurallyTypedAs(value, resType))
 		assert.True(t, valueStructurallyTypedAs(value, schema.AnyResourceType))

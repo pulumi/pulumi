@@ -283,13 +283,13 @@ func (*ObjectType) isType() {}
 
 type ResourceType struct {
 	// Token is the type's Pulumi type token.
-	Token string
+	Token Token
 	// Resource is the type's underlying resource.
 	Resource *Resource
 }
 
 func (t *ResourceType) String() string {
-	return t.Token
+	return t.Token.String()
 }
 
 func (t *ResourceType) isType() {}
@@ -1612,7 +1612,7 @@ func (pkg *Package) marshalType(t Type, plain bool) TypeSpec {
 		}
 	case *ResourceType:
 		return TypeSpec{
-			Ref:   pkg.marshalTypeRef(t.Resource.PackageReference, "resources", t.Token),
+			Ref:   pkg.marshalTypeRef(t.Resource.PackageReference, "resources", t.Token.String()),
 			Plain: !plain,
 		}
 	case *TokenType:

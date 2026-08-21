@@ -194,7 +194,7 @@ func (mod *modContext) modNameAndName(pkg schema.PackageReference, t schema.Type
 		}
 		token, name = t.Token, namingCtx.unqualifiedObjectTypeName(t, input)
 	case *schema.ResourceType:
-		token, name = t.Token, tokenToName(t.Token)
+		token, name = t.Token.String(), tokenToName(t.Token.String())
 	}
 
 	modName = tokenToModule(token, pkg, info.ModuleNameOverrides)
@@ -302,13 +302,12 @@ func (mod *modContext) enumType(enum *schema.EnumType) string {
 
 func (mod *modContext) resourceType(r *schema.ResourceType) string {
 	if r.Resource == nil || codegen.PkgEquals(r.Resource.PackageReference, mod.pkg) {
-		return mod.tokenToResource(r.Token)
+		return mod.tokenToResource(r.Token.String())
 	}
 
 	// Is it a provider resource?
-	if after, ok := strings.CutPrefix(r.Token, "pulumi:providers:"); ok {
-		pkgName := after
-		return fmt.Sprintf("pulumi_%s.Provider", pkgName)
+	if r.Token.Pkg() == "pulumi" && r.Token.Module() == "providers" {
+		return fmt.Sprintf("pulumi_%s.Provider", r.Token.Name())
 	}
 
 	pkg := r.Resource.PackageReference
@@ -351,8 +350,8 @@ func (mod *modContext) tokenToResource(tok string) string {
 // `StorageClass`) genResource falls back to `<Resource>InitArgs`. Mirror that decision so
 // references in doc comments resolve to the same class name.
 func (mod *modContext) resourceArgsClassName(rt *schema.ResourceType) string {
-	base := mod.tokenToResource(rt.Token)
-	if _, exists, _ := mod.pkg.Types().Get(rt.Token); exists {
+	base := mod.tokenToResource(rt.Token.String())
+	if _, exists, _ := mod.pkg.Types().Get(rt.Token.String()); exists {
 		return base + "InitArgs"
 	}
 	return base + "Args"
@@ -1004,16 +1003,14 @@ func (mod *modContext) importResourceType(r *schema.ResourceType) string {
 		return "import " + PyPack(r.Resource.PackageReference.Namespace(), r.Resource.PackageReference.Name())
 	}
 
-	tok := r.Token
-	parts := strings.Split(tok, ":")
-	contract.Assertf(len(parts) == 3, "type token %q is not in the form '<pkg>:<mod>:<type>'", tok)
+	tok := r.Token.String()
 
 	// If it's a provider resource, import the top-level package unless we're currently generating
 	// code inside that same package, in which case we fall through to the relative-import path to
 	// avoid a circular `import pulumi_<pkg>` inside `pulumi_<pkg>`.
-	if parts[0] == "pulumi" && parts[1] == "providers" {
-		if mod.pkg == nil || parts[2] != mod.pkg.Name() {
-			return "import pulumi_" + parts[2]
+	if r.Token.Pkg() == "pulumi" && r.Token.Module() == "providers" {
+		if mod.pkg == nil || r.Token.Name() != mod.pkg.Name() {
+			return "import pulumi_" + r.Token.Name()
 		}
 	}
 
@@ -1022,11 +1019,11 @@ func (mod *modContext) importResourceType(r *schema.ResourceType) string {
 		// We want a relative import if we're in the same module: from .some_member import SomeMember
 		importPath := mod.getRelImportFromRoot(modName)
 
-		name := PyName(tokenToName(r.Token))
+		name := PyName(tokenToName(tok))
 		if mod.compatibility == kubernetes20 {
 			// To maintain backward compatibility for kubernetes, the file names
 			// need to be CamelCase instead of the standard snake_case.
-			name = tokenToName(r.Token)
+			name = tokenToName(tok)
 		}
 		if r.Resource != nil && r.Resource.IsProvider {
 			name = "provider"
@@ -3356,7 +3353,7 @@ func generateModuleContextMap(tool string, pkg *schema.Package, info PackageInfo
 				case *schema.ObjectType:
 					getModFromToken(T.Token, T.PackageReference).details(T).inputType = true
 				case *schema.ResourceType:
-					getModFromToken(T.Token, T.Resource.PackageReference)
+					getModFromToken(T.Token.String(), T.Resource.PackageReference)
 				}
 			})
 		}
@@ -3383,7 +3380,7 @@ func generateModuleContextMap(tool string, pkg *schema.Package, info PackageInfo
 					getModFromToken(T.Token, T.PackageReference).details(T).inputType = true
 					getModFromToken(T.Token, T.PackageReference).details(T).plainType = true
 				case *schema.ResourceType:
-					getModFromToken(T.Token, T.Resource.PackageReference)
+					getModFromToken(T.Token.String(), T.Resource.PackageReference)
 				}
 			})
 		}
@@ -3402,7 +3399,7 @@ func generateModuleContextMap(tool string, pkg *schema.Package, info PackageInfo
 					getModFromToken(T.Token, T.PackageReference).details(T).outputType = true
 					getModFromToken(T.Token, T.PackageReference).details(T).plainType = true
 				case *schema.ResourceType:
-					getModFromToken(T.Token, T.Resource.PackageReference)
+					getModFromToken(T.Token.String(), T.Resource.PackageReference)
 				}
 			})
 		}

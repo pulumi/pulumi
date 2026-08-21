@@ -924,7 +924,7 @@ func hashTypeInto(h hash.Hash64, t Type) {
 		}
 	case *ResourceType:
 		writeTag(8)
-		writeStr(t.Token)
+		writeStr(t.Token.String())
 	case *EnumType:
 		writeTag(9)
 		writeStr(t.Token)
@@ -1006,7 +1006,11 @@ func (t *types) bindResourceTypeDef(token string, options ValidationOptions) (*R
 	if res == nil {
 		return nil, diags, nil
 	}
-	typ := &ResourceType{Token: token, Resource: res}
+	tok, err := ParseToken(token)
+	if err != nil {
+		return nil, diags.Append(errorf(memberPath("resources", token), "%v", err)), nil
+	}
+	typ := &ResourceType{Token: tok, Resource: res}
 	t.resources[token] = typ
 	return typ, diags, nil
 }
@@ -1844,7 +1848,7 @@ func compareTypes(a, b Type) int {
 
 		return cmp.Compare(bToI(a.IsInputShape()), bToI(b.IsInputShape()))
 	case *ResourceType:
-		return strings.Compare(a.Token, b.(*ResourceType).Token)
+		return strings.Compare(a.Token.String(), b.(*ResourceType).Token.String())
 	case *EnumType:
 		return strings.Compare(a.Token, b.(*EnumType).Token)
 	case *InvalidType, nil:
@@ -2369,6 +2373,9 @@ func (t *types) finishResources(
 		diags = diags.Extend(resDiags)
 		if err != nil {
 			return nil, nil, diags, fmt.Errorf("error binding resource %v: %w", token, err)
+		}
+		if res == nil {
+			continue
 		}
 		resources = append(resources, res.Resource)
 	}

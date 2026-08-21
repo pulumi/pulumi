@@ -216,8 +216,8 @@ func (mod *modContext) objectType(pkg schema.PackageReference, details *typeDeta
 }
 
 func (mod *modContext) resourceType(r *schema.ResourceType) string {
-	if after, ok := strings.CutPrefix(r.Token, "pulumi:providers:"); ok {
-		pkgName := after
+	if r.Token.Pkg() == "pulumi" && r.Token.Module() == "providers" {
+		pkgName := r.Token.Name()
 		if pkgName == mod.pkg.Name() {
 			// Inside the package's own code, refer to the Provider type unqualified so it resolves
 			// against the local declaration rather than a (non-existent) namespace.
@@ -232,12 +232,12 @@ func (mod *modContext) resourceType(r *schema.ResourceType) string {
 	}
 	namingCtx, pkgName, external := mod.namingContext(pkg)
 	if !external {
-		name := tokenToName(r.Token)
+		name := tokenToName(r.Token.String())
 		return cgstrings.UppercaseFirst(name)
 	}
 
 	pkgName = externalModuleName(pkgName)
-	modName, name := namingCtx.tokenToModName(r.Token), tokenToName(r.Token)
+	modName, name := namingCtx.tokenToModName(r.Token.String()), tokenToName(r.Token.String())
 
 	return pkgName + modName + cgstrings.UppercaseFirst(name)
 }
@@ -1618,7 +1618,7 @@ func (mod *modContext) getTypeImportsForResource(t schema.Type, recurse bool, ex
 			return false
 		}
 
-		return resourceOrTokenImport(t.Token)
+		return resourceOrTokenImport(t.Token.String())
 	case *schema.TokenType:
 		return resourceOrTokenImport(t.Token)
 	case *schema.UnionType:

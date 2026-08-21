@@ -328,7 +328,7 @@ type DocRef struct {
 func (r DocRef) ResourceToken() string {
 	rt, ok := r.Type.(*ResourceType)
 	contract.Assertf(ok, "ResourceToken called on non-resource ref (kind=%v)", r.Kind)
-	return rt.Token
+	return rt.Token.String()
 }
 
 // tokenString extracts the token string from the Ref field.
@@ -373,7 +373,7 @@ func (r DocRef) IsWithin(other DocRef) bool {
 func DocRefForType(t Type) DocRef {
 	switch v := t.(type) {
 	case *ResourceType:
-		return DocRef{Kind: DocRefKindResource, Type: v, Ref: "#/resources/" + url.PathEscape(v.Token)}
+		return DocRef{Kind: DocRefKindResource, Type: v, Ref: "#/resources/" + url.PathEscape(v.Token.String())}
 	case *ObjectType:
 		return DocRef{Kind: DocRefKindType, Type: v, Ref: "#/types/" + url.PathEscape(v.Token)}
 	case *EnumType:

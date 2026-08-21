@@ -782,7 +782,7 @@ func (pkg *pkgContext) isExternalReferenceWithPackage(t schema.Type) (
 		isExternal = typ.Resource != nil && pkg.pkg != nil && !codegen.PkgEquals(typ.Resource.PackageReference, pkg.pkg)
 		if isExternal {
 			extPkg = typ.Resource.PackageReference
-			token = typ.Token
+			token = typ.Token.String()
 		}
 		return isExternal, extPkg, token
 	case *schema.EnumType:
@@ -802,10 +802,10 @@ func (pkg *pkgContext) isExternalReferenceWithPackage(t schema.Type) (
 // optional and convert the type to a pointer if necessary.
 func (pkg *pkgContext) resolveResourceType(t *schema.ResourceType) string {
 	if !pkg.isExternalReference(t) {
-		return pkg.tokenToResource(t.Token)
+		return pkg.tokenToResource(t.Token.String())
 	}
 	extPkgCtx, _ := pkg.contextForExternalReference(t)
-	resType := extPkgCtx.tokenToResource(t.Token)
+	resType := extPkgCtx.tokenToResource(t.Token.String())
 	if !strings.Contains(resType, ".") {
 		resType = fmt.Sprintf("%s.%s", extPkgCtx.pkg.Name(), resType)
 	}
@@ -4134,10 +4134,10 @@ func (pkg *pkgContext) getTypeImports(t schema.Type, recurse bool, importsAndAli
 			}
 		}
 	case *schema.ResourceType:
-		if importExternal(t.Token) {
+		if importExternal(t.Token.String()) {
 			break
 		}
-		mod := pkg.tokenToPackage(t.Token)
+		mod := pkg.tokenToPackage(t.Token.String())
 		if mod != pkg.mod {
 			p := path.Join(pkg.importBasePath, mod)
 			importsAndAliases[path.Join(pkg.importBasePath, mod)] = pkg.pkgImportAliases[p]

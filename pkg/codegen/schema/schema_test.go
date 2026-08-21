@@ -1547,7 +1547,7 @@ func TestMethods(t *testing.T) {
 				inputs := pkg.Resources[0].Methods[0].Function.Inputs.Properties
 				assert.Equal(t, "__self__", inputs[0].Name)
 				assert.Equal(t, &ResourceType{
-					Token:    pkg.Resources[0].Token,
+					Token:    NewToken("xyz", "index", "Foo"),
 					Resource: pkg.Resources[0],
 				}, inputs[0].Type)
 
@@ -3449,7 +3449,7 @@ func TestGetWithModuleFormat(t *testing.T) {
 
 		rt, ok := pkg.GetResourceType("test:mod:Thing")
 		require.True(t, ok)
-		assert.Equal(t, "test:mod_v2:Thing", rt.Token)
+		assert.Equal(t, NewToken("test", "mod_v2", "Thing"), rt.Token)
 	})
 
 	t.Run("PartialPackage", func(t *testing.T) {
@@ -3481,7 +3481,7 @@ func TestGetWithModuleFormat(t *testing.T) {
 		rt, ok, err := pkg.Resources().GetType("test:mod:Thing")
 		require.NoError(t, err)
 		require.True(t, ok)
-		assert.Equal(t, "test:mod_v2:Thing", rt.Token)
+		assert.Equal(t, NewToken("test", "mod_v2", "Thing"), rt.Token)
 	})
 }
 
