@@ -21,9 +21,10 @@ import (
 	"path/filepath"
 	"testing"
 
+	mapset "github.com/deckarep/golang-set/v2"
+
 	"github.com/stretchr/testify/require"
 
-	"github.com/pulumi/pulumi/pkg/v3/codegen"
 	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
 	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
 )
@@ -34,7 +35,7 @@ func GenerateNodeJSBatchTest(t *testing.T, rootDir string, genProgram GenProgram
 			Language:   "nodejs",
 			Extension:  "ts",
 			OutputFile: "index.ts",
-			Check: func(t *testing.T, path string, dependencies codegen.StringSet) {
+			Check: func(t *testing.T, path string, dependencies mapset.Set[string]) {
 				checkNodeJS(t, path, dependencies, true)
 			},
 			GenProgram: genProgram,
@@ -50,7 +51,7 @@ func GenerateNodeJSYAMLBatchTest(t *testing.T, rootDir string, genProgram GenPro
 			Language:   "nodejs",
 			Extension:  "ts",
 			OutputFile: "index.ts",
-			Check: func(t *testing.T, path string, dependencies codegen.StringSet) {
+			Check: func(t *testing.T, path string, dependencies mapset.Set[string]) {
 				checkNodeJS(t, path, dependencies, true)
 			},
 			GenProgram: genProgram,
@@ -58,7 +59,7 @@ func GenerateNodeJSYAMLBatchTest(t *testing.T, rootDir string, genProgram GenPro
 		})
 }
 
-func checkNodeJS(t *testing.T, path string, dependencies codegen.StringSet, linkLocal bool) {
+func checkNodeJS(t *testing.T, path string, dependencies mapset.Set[string], linkLocal bool) {
 	dir := filepath.Dir(path)
 
 	removeFile := func(name string) {
@@ -99,7 +100,7 @@ func checkNodeJS(t *testing.T, path string, dependencies codegen.StringSet, link
 	typeCheckNodeJS(t, path, dependencies, linkLocal)
 }
 
-func typeCheckNodeJS(t *testing.T, path string, _ codegen.StringSet, linkLocal bool) {
+func typeCheckNodeJS(t *testing.T, path string, _ mapset.Set[string], linkLocal bool) {
 	dir := filepath.Dir(path)
 
 	TypeCheckNodeJSPackage(t, dir, linkLocal)
@@ -129,9 +130,9 @@ func TypeCheckNodeJSPackage(t *testing.T, pwd string, linkLocal bool) {
 }
 
 // Returns the nodejs equivalent to the hcl2 package names provided.
-func nodejsPackages(t *testing.T, deps codegen.StringSet) map[string]string {
-	result := make(map[string]string, len(deps))
-	for _, d := range deps.SortedValues() {
+func nodejsPackages(t *testing.T, deps mapset.Set[string]) map[string]string {
+	result := make(map[string]string, deps.Cardinality())
+	for _, d := range mapset.Sorted(deps) {
 		pkgName := "@pulumi/" + d
 		set := func(pkgVersion string) {
 			result[pkgName] = "^" + pkgVersion

@@ -256,9 +256,9 @@ func TestProvider(t *testing.T) {
 		t.Parallel()
 		t.Run("has InvokeF", func(t *testing.T) {
 			t.Parallel()
-			expectedPropertyMap := resource.PropertyMap{
-				"key": resource.NewProperty("expected-value"),
-			}
+			expectedPropertyMap := property.NewMap(map[string]property.Value{
+				"key": property.New("expected-value"),
+			})
 			var called bool
 			prov := &Provider{
 				InvokeF: func(_ context.Context, req plugin.InvokeRequest) (plugin.InvokeResponse, error) {
@@ -280,7 +280,7 @@ func TestProvider(t *testing.T) {
 			resp, err := prov.Invoke(t.Context(), plugin.InvokeRequest{})
 			require.NoError(t, err)
 			assert.Empty(t, resp.Failures)
-			assert.Equal(t, resource.PropertyMap{}, resp.Properties)
+			assert.Equal(t, property.Map{}, resp.Properties)
 		})
 	})
 	t.Run("Call", func(t *testing.T) {

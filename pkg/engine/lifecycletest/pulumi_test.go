@@ -1548,7 +1548,7 @@ func TestSingleResourceIgnoreChanges(t *testing.T) {
 			resource.NewProperty("foo"),
 			resource.NewProperty("bar"),
 		})),
-	}, nil, []display.StepOp{deploy.OpUpdate}, "ignore-secret")
+	}, nil, []display.StepOp{deploy.OpSame}, "ignore-secret")
 
 	// Now check that changing a value (but not secretness) can be ignored
 	_ = updateProgramWithProps(snap, resource.PropertyMap{
@@ -2308,15 +2308,15 @@ func TestProviderPreviewUnknowns(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				InvokeF: func(_ context.Context, req plugin.InvokeRequest) (plugin.InvokeResponse, error) {
-					name := req.Args["name"]
+					name := req.Args.Get("name")
 					ret := "unexpected"
 					if name.IsString() {
-						ret = "Hello, " + name.StringValue() + "!"
+						ret = "Hello, " + name.AsString() + "!"
 					}
 
 					return plugin.InvokeResponse{
-						Properties: resource.NewPropertyMapFromMap(map[string]any{
-							"message": ret,
+						Properties: property.NewMap(map[string]property.Value{
+							"message": property.New(ret),
 						}),
 					}, nil
 				},

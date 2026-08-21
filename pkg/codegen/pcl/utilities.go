@@ -24,11 +24,12 @@ import (
 	"unicode"
 	"unicode/utf8"
 
+	mapset "github.com/deckarep/golang-set/v2"
+
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/zclconf/go-cty/cty"
 
 	"github.com/hashicorp/hcl/v2"
-	"github.com/pulumi/pulumi/pkg/v3/codegen"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model/format"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
@@ -130,8 +131,8 @@ func mutuallyDependant(a, b Node) bool {
 	return hasDependencyOn(a, b) && hasDependencyOn(b, a)
 }
 
-func linearizeNode(n Node, done codegen.Set, list *[]Node) {
-	if !done.Has(n) {
+func linearizeNode(n Node, done mapset.Set[Node], list *[]Node) {
+	if !done.Contains(n) {
 		for _, d := range n.GetDependencies() {
 			if !mutuallyDependant(n, d) {
 				linearizeNode(d, done, list)
@@ -174,17 +175,17 @@ func Linearize(p *Program) []Node {
 
 	// While the worklist is not empty, add the nodes in the file with the fewest unsatisfied dependencies on nodes in
 	// other files.
-	doneNodes, nodes := codegen.Set{}, slice.Prealloc[Node](len(p.Nodes))
+	doneNodes, nodes := mapset.NewSet[Node](), slice.Prealloc[Node](len(p.Nodes))
 	for len(worklist) > 0 {
 		// Recalculate file weights and find the file with the lowest weight.
 		var next *file
 		var nextIndex, nextWeight int
 		for i, f := range worklist {
-			weight, processed := 0, codegen.Set{}
+			weight, processed := 0, mapset.NewSet[Node]()
 			for _, n := range f.nodes {
 				for _, d := range n.GetDependencies() {
 					// We don't count nodes that we've already counted or nodes that have already been ordered.
-					if processed.Has(d) || doneNodes.Has(d) {
+					if processed.Contains(d) || doneNodes.Contains(d) {
 						continue
 					}
 

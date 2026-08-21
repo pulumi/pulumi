@@ -25,6 +25,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 // A small provider that uses documentation references for various properties. The correctness of documentation can't
@@ -297,18 +298,18 @@ func (p *DocsProvider) Invoke(
 		return plugin.InvokeResponse{}, fmt.Errorf("invalid function token: %s", req.Tok)
 	}
 
-	in := req.Args["in"]
+	in := req.Args.Get("in")
 	if !in.IsBool() {
 		return plugin.InvokeResponse{
 			Failures: makeCheckFailure("in", fmt.Sprintf("invalid argument 'in': %v", in)),
 		}, nil
 	}
 
-	out := !in.BoolValue()
+	out := !in.AsBool()
 
 	return plugin.InvokeResponse{
-		Properties: resource.NewPropertyMapFromMap(map[string]any{
-			"out": out,
+		Properties: property.NewMap(map[string]property.Value{
+			"out": property.New(out),
 		}),
 	}, nil
 }

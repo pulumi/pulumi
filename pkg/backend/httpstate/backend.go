@@ -241,14 +241,16 @@ func New(ctx context.Context, d diag.Sink,
 	})
 	escClient := esc_client.New(client.UserAgent(), cloudURL, apiToken, insecure)
 
-	config, err := workspace.GetPulumiConfig()
-	if err != nil && !os.IsNotExist(err) {
-		return nil, fmt.Errorf("get Pulumi config: %w", err)
-	}
-	var org string
-	if beConfig, ok := config.BackendConfig[cloudURL]; ok {
-		if beConfig.DefaultOrg != "" {
-			org = beConfig.DefaultOrg
+	org := env.DefaultOrg.Value()
+	if org == "" {
+		config, err := workspace.GetPulumiConfig()
+		if err != nil && !os.IsNotExist(err) {
+			return nil, fmt.Errorf("get Pulumi config: %w", err)
+		}
+		if beConfig, ok := config.BackendConfig[cloudURL]; ok {
+			if beConfig.DefaultOrg != "" {
+				org = beConfig.DefaultOrg
+			}
 		}
 	}
 
@@ -1132,7 +1134,9 @@ func (b *cloudBackend) ParseStackReference(s string) (backend.StackReference, er
 
 	if qualifiedName.Project == "" {
 		if b.currentProject == nil {
-			return nil, errors.New("no current project found, pass the fully qualified stack name (org/project/stack)")
+			return nil, errors.New("no Pulumi.yaml project file found; " +
+				"either run this command from a directory containing a Pulumi project, " +
+				"or pass the fully qualified stack name (org/project/stack)")
 		}
 
 		qualifiedName.Project = b.currentProject.Name.String()
@@ -1339,10 +1343,9 @@ func (b *cloudBackend) CreateStack(
 
 	stack, err := newStack(ctx, apistack, b)
 	if err != nil {
-		fmt.Printf("Created stack '%s'\n", stack.Ref())
+		return nil, err
 	}
-
-	return stack, err
+	return stack, nil
 }
 
 func (b *cloudBackend) ListStacks(

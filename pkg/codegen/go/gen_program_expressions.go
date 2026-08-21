@@ -1552,6 +1552,15 @@ func (g *generator) argumentTypeName(destType model.Type, isInput bool) (result 
 				anyOptional = true
 			}
 			valType := g.argumentTypeName(v, isInput)
+			// A null property (NoneType) yields an empty type name. It can't
+			// be represented by any typed map, and treating it as compatible
+			// with the first non-empty type produces order-dependent output
+			// because Properties is a map with randomized iteration. Break
+			// uniformity so we fall back to map[string]interface{}.
+			if valType == "" {
+				allSameType = false
+				break
+			}
 			if elmType != "" && elmType != valType {
 				allSameType = false
 				break

@@ -40,15 +40,12 @@ import (
 	"time"
 
 	"github.com/blang/semver"
-	"github.com/cheggaaa/pb"
 	"github.com/djherbis/times"
 	"github.com/go-git/go-git/v6/plumbing"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/gitutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/httputil"
@@ -2463,32 +2460,6 @@ func SelectCompatiblePlugin(
 	return &bestMatch
 }
 
-// ReadCloserProgressBar displays a progress bar for the given closer and returns a wrapper closer to manipulate it.
-func ReadCloserProgressBar(
-	closer io.ReadCloser, w io.Writer, size int64, message string, colorization colors.Colorization,
-) io.ReadCloser {
-	if size == -1 || !cmdutil.Interactive() {
-		// We can't render a progress bar (unknown size, or non-interactive output), but still tell the
-		// user what's happening.
-		fmt.Fprintln(w, colorization.Colorize(colors.SpecUnimportant+message+colors.Reset))
-		return closer
-	}
-
-	// If we know the length of the download, show a progress bar.
-	bar := pb.New(int(size))
-	bar.Output = w
-	bar.Prefix(colorization.Colorize(colors.SpecUnimportant + message + ":"))
-	bar.Postfix(colorization.Colorize(colors.Reset))
-	bar.SetMaxWidth(80)
-	bar.SetUnits(pb.U_BYTES)
-	bar.Start()
-
-	return &barCloser{
-		bar:        bar,
-		readCloser: bar.NewProxyReader(closer),
-	}
-}
-
 // getCandidateExtensions returns a set of file extensions (including the dot seprator) which should be used when
 // probing for an executable file.
 func getCandidateExtensions() []string {
@@ -2604,18 +2575,4 @@ func getPluginSize(path string) (uint64, error) {
 		size += uint64(fs)
 	}
 	return size, nil
-}
-
-type barCloser struct {
-	bar        *pb.ProgressBar
-	readCloser io.ReadCloser
-}
-
-func (bc *barCloser) Read(dest []byte) (int, error) {
-	return bc.readCloser.Read(dest)
-}
-
-func (bc *barCloser) Close() error {
-	bc.bar.Finish()
-	return bc.readCloser.Close()
 }

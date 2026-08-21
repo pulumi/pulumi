@@ -453,13 +453,9 @@ func (cmd *stackMigrateCmd) Run(
 		}
 	}()
 
-	targetStack, err = CreateStack(
-		ctx, sink, ws, targetBE, targetRef, root, nil,
-		false,
-		cmd.secretsProvider,
-		false,
-		"",
-	)
+	targetStack, err = CreateStack(ctx, sink, ws, targetBE, targetRef, root, CreateStackOptions{
+		SecretsProvider: cmd.secretsProvider,
+	})
 	if err != nil {
 		// Only adopt-and-rollback when ErrSaveStackConfig signals b.CreateStack succeeded.
 		// Other failures (AlreadyExists / OverLimit / network / SM construct) might leave a

@@ -1556,11 +1556,20 @@ func TestNewDefaultOrgResolution(t *testing.T) {
 
 	tests := []struct {
 		name                 string
+		envOrg               string
 		configuredOrg        string
 		serviceOrg           string
 		expectedOrg          string
 		expectedDefaultCalls int
 	}{
+		{
+			name:                 "prefers env var default org",
+			envOrg:               "env-org",
+			configuredOrg:        "configured-org",
+			serviceOrg:           "service-org",
+			expectedOrg:          "env-org",
+			expectedDefaultCalls: 0,
+		},
 		{
 			name:                 "prefers configured default org",
 			configuredOrg:        "configured-org",
@@ -1579,6 +1588,7 @@ func TestNewDefaultOrgResolution(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Setenv("PULUMI_HOME", t.TempDir())
+			t.Setenv("PULUMI_DEFAULT_ORGANIZATION", tt.envOrg)
 
 			defaultOrgCalls := 0
 			server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
@@ -1629,6 +1639,53 @@ func TestNewDefaultOrgResolution(t *testing.T) {
 			assert.Equal(t, tt.expectedDefaultCalls, defaultOrgCalls)
 		})
 	}
+}
+
+//nolint:paralleltest // mutates PULUMI_HOME-backed credentials/config
+func TestParseStackReferenceExplicitOrgBeatsEnvVar(t *testing.T) {
+	ctx := t.Context()
+
+	t.Setenv("PULUMI_HOME", t.TempDir())
+	t.Setenv("PULUMI_DEFAULT_ORGANIZATION", "env-org")
+
+	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		switch req.URL.Path {
+		case "/api/capabilities":
+			err := json.NewEncoder(rw).Encode(apitype.CapabilitiesResponse{})
+			require.NoError(t, err)
+		case "/api/user":
+			err := json.NewEncoder(rw).Encode(map[string]any{
+				"githubLogin":   "test-user",
+				"organizations": []map[string]string{},
+			})
+			require.NoError(t, err)
+		default:
+			panic(fmt.Sprintf("Path not supported: %v", req.URL.Path))
+		}
+	}))
+	t.Cleanup(server.Close)
+
+	err := workspace.StoreAccount(server.URL, workspace.Account{
+		AccessToken: testJWT,
+	}, true)
+	require.NoError(t, err)
+
+	b, err := New(ctx, diagtest.LogSink(t), server.URL, &workspace.Project{Name: "proj"}, false)
+	require.NoError(t, err)
+
+	// New spawns goroutines that may log to the test's diag sink;
+	// wait for them before the test finishes.
+	cb := b.(*cloudBackend)
+	_, _ = cb.capabilities.Result(ctx)
+	_, _ = cb.userInfo.Result(ctx)
+
+	ref, err := b.ParseStackReference("explicit-org/proj/stack")
+	require.NoError(t, err)
+	assert.Equal(t, "explicit-org", ref.(cloudBackendReference).owner)
+
+	ref, err = b.ParseStackReference("stack")
+	require.NoError(t, err)
+	assert.Equal(t, "env-org", ref.(cloudBackendReference).owner)
 }
 
 //nolint:paralleltest // mutates global state

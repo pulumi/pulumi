@@ -163,7 +163,9 @@ func RequireStack(ctx context.Context, sink diag.Sink, ws pkgWorkspace.Context, 
 			return nil, err
 		}
 
-		return CreateStack(ctx, sink, ws, b, stackRef, root, nil, lopt.SetCurrent(), "", false, configFile)
+		return CreateStack(ctx, sink, ws, b, stackRef, root, CreateStackOptions{
+			SetCurrent: lopt.SetCurrent(), ConfigFile: configFile,
+		})
 	}
 
 	return nil, backenderr.StackNotFoundError{StackName: stackName}
@@ -306,7 +308,9 @@ func ChooseStack(ctx context.Context, sink diag.Sink, ws pkgWorkspace.Context,
 			return nil, parseErr
 		}
 
-		return CreateStack(ctx, sink, ws, b, stackRef, root, nil, lopt.SetCurrent(), "", false, configFile)
+		return CreateStack(ctx, sink, ws, b, stackRef, root, CreateStackOptions{
+			SetCurrent: lopt.SetCurrent(), ConfigFile: configFile,
+		})
 	}
 
 	// With the stack name selected, look it up from the backend.
@@ -333,16 +337,32 @@ func ChooseStack(ctx context.Context, sink diag.Sink, ws pkgWorkspace.Context,
 	return stack, nil
 }
 
+// CreateStackOptions are the options for creating a stack from the CLI.
+type CreateStackOptions struct {
+	// Teams to grant access to the new stack.
+	Teams []string
+	// SetCurrent selects the new stack as the current one.
+	SetCurrent bool
+	// SecretsProvider names the secrets provider to configure the stack with.
+	SecretsProvider string
+	// UseRemoteConfig stores the stack's configuration in an ESC environment.
+	UseRemoteConfig bool
+	// ConfigFile overrides the path the stack's configuration is read from and written to.
+	ConfigFile string
+	// Quiet suppresses the "Created stack" announcement so the caller can own the creation summary.
+	Quiet bool
+}
+
 // InitStack creates the stack.
 func InitStack(
 	ctx context.Context, sink diag.Sink, ws pkgWorkspace.Context, b backend.Backend, stackName string,
-	root string, setCurrent bool, secretsProvider string, useRemoteConfig bool, configFile string,
+	root string, opts CreateStackOptions,
 ) (backend.Stack, error) {
 	stackRef, err := b.ParseStackReference(stackName)
 	if err != nil {
 		return nil, err
 	}
-	return CreateStack(ctx, sink, ws, b, stackRef, root, nil, setCurrent, secretsProvider, useRemoteConfig, configFile)
+	return CreateStack(ctx, sink, ws, b, stackRef, root, opts)
 }
 
 // ErrSaveStackConfig wraps `SaveProjectStack` errors that occur in `CreateStack` after the
@@ -353,11 +373,10 @@ var ErrSaveStackConfig = errors.New("saving stack config")
 
 // CreateStack creates a stack with the given name, and optionally selects it as the current.
 func CreateStack(ctx context.Context, sink diag.Sink, ws pkgWorkspace.Context,
-	b backend.Backend, stackRef backend.StackReference,
-	root string, teams []string, setCurrent bool,
-	secretsProvider string, useRemoteConfig bool, configFile string,
+	b backend.Backend, stackRef backend.StackReference, root string, opts CreateStackOptions,
 ) (backend.Stack, error) {
-	ps, needsSave, sm, err := createSecretsManagerForNewStack(ctx, sink, ws, b, stackRef, secretsProvider, configFile)
+	ps, needsSave, sm, err := createSecretsManagerForNewStack(
+		ctx, sink, ws, b, stackRef, opts.SecretsProvider, opts.ConfigFile)
 	if err != nil {
 		return nil, fmt.Errorf("could not create secrets manager for new stack: %w", err)
 	}
@@ -391,23 +410,23 @@ func CreateStack(ctx context.Context, sink diag.Sink, ws pkgWorkspace.Context,
 		}
 	}
 
-	opts := backend.CreateStackOptions{
-		Teams: teams,
+	backendOpts := backend.CreateStackOptions{
+		Teams: opts.Teams,
 	}
 
 	var escEnvironment string
-	if useRemoteConfig {
+	if opts.UseRemoteConfig {
 		proj, found := stackRef.Project()
 		if !found {
 			return nil, errors.New("could not get project from stack reference")
 		}
 		escEnvironment = proj.String() + "/" + stackRef.Name().String()
-		opts.Config = &apitype.StackConfig{
+		backendOpts.Config = &apitype.StackConfig{
 			Environment: escEnvironment,
 		}
 	}
 
-	stack, err := b.CreateStack(ctx, stackRef, root, initialState, &opts)
+	stack, err := b.CreateStack(ctx, stackRef, root, initialState, &backendOpts)
 	if err != nil {
 		// If it's a well-known error, don't wrap it.
 		if _, ok := err.(*backenderr.StackAlreadyExistsError); ok {
@@ -419,6 +438,10 @@ func CreateStack(ctx context.Context, sink diag.Sink, ws pkgWorkspace.Context,
 		return nil, fmt.Errorf("could not create stack: %w", err)
 	}
 
+	if !opts.Quiet {
+		sink.Infof(diag.Message("", "Created stack '%s'"), stack.Ref())
+	}
+
 	if escEnvironment != "" {
 		// Shared helper without a *cobra.Command writer; uses process stdout.
 		fmt.Printf("Created environment %s for stack configuration\n", escEnvironment) //nolint:forbidigo
@@ -426,13 +449,13 @@ func CreateStack(ctx context.Context, sink diag.Sink, ws pkgWorkspace.Context,
 
 	// Now that we've created the stack, we'll write out any necessary configuration changes.
 	if needsSave {
-		err = SaveProjectStack(ctx, stack, ps, configFile)
+		err = SaveProjectStack(ctx, stack, ps, opts.ConfigFile)
 		if err != nil {
 			return nil, fmt.Errorf("%w: %w", ErrSaveStackConfig, err)
 		}
 	}
 
-	if setCurrent {
+	if opts.SetCurrent {
 		if err = state.SetCurrentStack(ws, state.BackendURLKey(b), stack.Ref().FullyQualifiedName().String()); err != nil {
 			return nil, err
 		}

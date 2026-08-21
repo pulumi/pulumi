@@ -463,12 +463,12 @@ type ConstructResponse = ConstructResult
 
 type InvokeRequest struct {
 	Tok     tokens.ModuleMember
-	Args    resource.PropertyMap
+	Args    property.Map
 	Preview bool
 }
 
 type InvokeResponse struct {
-	Properties resource.PropertyMap
+	Properties property.Map
 	Failures   []CheckFailure
 }
 

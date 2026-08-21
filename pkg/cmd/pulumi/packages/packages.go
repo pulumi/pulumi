@@ -70,7 +70,7 @@ func BindSpecWithContext(
 		return nil, err
 	}
 	if diags.HasErrors() {
-		return nil, diags
+		return nil, errors.Join(diags.Errs()...)
 	}
 	return pkg, nil
 }

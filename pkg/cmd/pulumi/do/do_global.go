@@ -95,14 +95,8 @@ func ensureGlobalStack(
 		return nil, fmt.Errorf("look up global stack: %w", err)
 	}
 	if stack == nil {
-		stack, err = cmdStack.CreateStack(
-			ctx, sink, ws, b, ref, root,
-			nil,   /*teams*/
-			false, /*setCurrent — we handle selection ourselves below to target the global project*/
-			"",    /*secretsProvider*/
-			false, /*useRemoteConfig*/
-			"",    /*configFile*/
-		)
+		// SetCurrent stays off: we handle selection ourselves below to target the global project.
+		stack, err = cmdStack.CreateStack(ctx, sink, ws, b, ref, root, cmdStack.CreateStackOptions{})
 		if err != nil {
 			return nil, fmt.Errorf("create global stack: %w", err)
 		}

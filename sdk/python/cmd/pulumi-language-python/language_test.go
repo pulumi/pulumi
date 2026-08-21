@@ -220,7 +220,8 @@ func testLanguageWithConfig(t *testing.T, config languageTestConfig) {
 					}
 
 					if (config.name == "default" || config.name == "toml") &&
-						(tt == "l2-discriminated-union" || tt == "l2-discriminated-union-many") {
+						(tt == "l2-discriminated-union" || tt == "l2-discriminated-union-many" ||
+							tt == "l2-discriminated-union-marked-key") {
 						t.Skip("pulumi#21830: Expected to fail")
 					}
 
@@ -230,6 +231,7 @@ func testLanguageWithConfig(t *testing.T, config languageTestConfig) {
 							tt == "l3-component-provider" ||
 							tt == "l3-component-config-primitives" ||
 							tt == "l3-component-config-objects" ||
+							tt == "l3-map-keys" ||
 							tt == "l3-resource-keyword-overlap") {
 						t.Skipf("Skipping %s test with pyright due to issues with optional properties", tt)
 					}

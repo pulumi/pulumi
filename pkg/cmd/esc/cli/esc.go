@@ -29,6 +29,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/esc/cli/client"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -175,10 +176,15 @@ func valueOrDefault[T comparable](v, def T) T {
 }
 
 // Looks up the default org.
-// Prefers default org that the user has configured locally in their ~/.pulumi/config.json
+// Prefers the PULUMI_DEFAULT_ORGANIZATION environment variable, then the default org that the user
+// has configured locally in their ~/.pulumi/config.json.
 // If unset, then it will attempt to make an API call to the backend to determine the service's opinion
 // of which user organization should be the default; defaults to individual org otherwise if unset.
 func (esc *escCommand) lookupDefaultOrg(ctx context.Context, backendURL, username string) (string, error) {
+	if defaultOrg := env.DefaultOrg.Value(); defaultOrg != "" {
+		return defaultOrg, nil
+	}
+
 	// Read the locally-configured default org from Pulumi's shared config, exactly as the rest of
 	// the Pulumi CLI does (see pkg/backend/organizations.go).
 	cfg, err := workspace.GetPulumiConfig()

@@ -36,6 +36,8 @@ import (
 	"strings"
 	"sync"
 
+	mapset "github.com/deckarep/golang-set/v2"
+
 	"golang.org/x/mod/modfile"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
@@ -181,8 +183,8 @@ type pkgContext struct {
 	functions       []*schema.Function
 
 	// schemaNames tracks the names of types/resources as specified in the schema
-	schemaNames codegen.StringSet
-	names       codegen.StringSet
+	schemaNames mapset.Set[string]
+	names       mapset.Set[string]
 	renamed     map[string]string
 
 	// A mapping between external packages and their bound contents.
@@ -1291,14 +1293,14 @@ func (pkg *pkgContext) getUsageForNestedType(name, baseTypeName string) string {
 	}
 
 	if strings.HasSuffix(name, "Map") {
-		if pkg.schemaNames.Has(baseTypeName) {
+		if pkg.schemaNames.Contains(baseTypeName) {
 			return fmt.Sprintf("%s{ \"key\": %s }", name, example)
 		}
 		return fmt.Sprintf("%s{ \"key\": %s }", name, pkg.getUsageForNestedType(baseTypeName, trimmer(baseTypeName)))
 	}
 
 	if strings.HasSuffix(name, "Array") {
-		if pkg.schemaNames.Has(baseTypeName) {
+		if pkg.schemaNames.Contains(baseTypeName) {
 			return fmt.Sprintf("%s{ %s }", name, example)
 		}
 		return fmt.Sprintf("%s{ %s }", name, pkg.getUsageForNestedType(baseTypeName, trimmer(baseTypeName)))
@@ -1555,7 +1557,7 @@ func (pkg *pkgContext) genEnum(w io.Writer, enumType *schema.EnumType, usingGene
 			return err
 		}
 		e.Name = enumName
-		contract.Assertf(!modPkg.names.Has(e.Name), "Name collision for enum constant: %s for %s",
+		contract.Assertf(!modPkg.names.Contains(e.Name), "Name collision for enum constant: %s for %s",
 			e.Name, enumType.Token)
 
 		//nolint:exhaustive // Default case handles the rest of the values
@@ -2024,7 +2026,7 @@ func (pkg *pkgContext) genInputTypes(
 	}
 
 	// Generate the array input.
-	if details.arrayInput && !pkg.names.Has(name+"Array") && !usingGenericTypes {
+	if details.arrayInput && !pkg.names.Contains(name+"Array") && !usingGenericTypes {
 		if err := pkg.genInputInterface(w, name+"Array"); err != nil {
 			return err
 		}
@@ -2035,7 +2037,7 @@ func (pkg *pkgContext) genInputTypes(
 	}
 
 	// Generate the map input.
-	if details.mapInput && !pkg.names.Has(name+"Map") && !usingGenericTypes {
+	if details.mapInput && !pkg.names.Contains(name+"Map") && !usingGenericTypes {
 		if err := pkg.genInputInterface(w, name+"Map"); err != nil {
 			return err
 		}
@@ -2172,11 +2174,11 @@ func (pkg *pkgContext) genOutputTypes(w io.Writer, genArgs genOutputTypesArgs) e
 		}
 	}
 
-	if details.arrayOutput && !pkg.names.Has(name+"Array") && !genArgs.usingGenericTypes {
+	if details.arrayOutput && !pkg.names.Contains(name+"Array") && !genArgs.usingGenericTypes {
 		pkg.genArrayOutput(w, name, name)
 	}
 
-	if details.mapOutput && !pkg.names.Has(name+"Map") && !genArgs.usingGenericTypes {
+	if details.mapOutput && !pkg.names.Contains(name+"Map") && !genArgs.usingGenericTypes {
 		pkg.genMapOutput(w, name, name)
 	}
 	return nil
@@ -3631,7 +3633,7 @@ type objectProperty struct {
 //	}
 //
 // We do this using a rewriter that turns all fields involved in reference cycles into optional fields.
-func rewriteCyclicField(rewritten codegen.Set, path []objectProperty, op objectProperty) {
+func rewriteCyclicField(rewritten mapset.Set[*schema.ObjectType], path []objectProperty, op objectProperty) {
 	// If this property refers to an Input<> type, unwrap the type. This ensures that the plain and input shapes of an
 	// object type remain identical.
 	t := op.property.Type
@@ -3674,8 +3676,8 @@ func rewriteCyclicField(rewritten codegen.Set, path []objectProperty, op objectP
 	}
 }
 
-func rewriteCyclicFields(rewritten codegen.Set, path []objectProperty, obj *schema.ObjectType) {
-	if !rewritten.Has(obj) {
+func rewriteCyclicFields(rewritten mapset.Set[*schema.ObjectType], path []objectProperty, obj *schema.ObjectType) {
+	if !rewritten.Contains(obj) {
 		rewritten.Add(obj)
 		for _, property := range obj.Properties {
 			rewriteCyclicField(rewritten, path, objectProperty{obj, property})
@@ -3684,7 +3686,7 @@ func rewriteCyclicFields(rewritten codegen.Set, path []objectProperty, obj *sche
 }
 
 func rewriteCyclicObjectFields(pkg *schema.Package) {
-	rewritten := codegen.Set{}
+	rewritten := mapset.NewSet[*schema.ObjectType]()
 	for _, t := range pkg.Types {
 		if obj, ok := t.(*schema.ObjectType); ok && !obj.IsInputShape() {
 			rewriteCyclicFields(rewritten, nil, obj)
@@ -3934,11 +3936,11 @@ func (pkg *pkgContext) genTypeRegistrations(
 				fmt.Fprintf(w,
 					"\tpulumi.RegisterInputType(reflect.TypeOf((*%[1]sPtrInput)(nil)).Elem(), %[1]sArgs{})\n", name)
 			}
-			if details.arrayInput && !pkg.names.Has(name+"Array") {
+			if details.arrayInput && !pkg.names.Contains(name+"Array") {
 				fmt.Fprintf(w,
 					"\tpulumi.RegisterInputType(reflect.TypeOf((*%[1]sArrayInput)(nil)).Elem(), %[1]sArray{})\n", name)
 			}
-			if details.mapInput && !pkg.names.Has(name+"Map") {
+			if details.mapInput && !pkg.names.Contains(name+"Map") {
 				fmt.Fprintf(w,
 					"\tpulumi.RegisterInputType(reflect.TypeOf((*%[1]sMapInput)(nil)).Elem(), %[1]sMap{})\n", name)
 			}
@@ -4415,7 +4417,7 @@ func (pkg *pkgContext) genResourceModule(w io.Writer) error {
 	pkg.genHeader(w, []string{"fmt"}, imports, false /* isUtil */)
 
 	var provider *schema.Resource
-	registrations := codegen.StringSet{}
+	registrations := mapset.NewSet[string]()
 	if providerOnly := len(pkg.resources) == 1 && pkg.resources[0].IsProvider; providerOnly {
 		provider = pkg.resources[0]
 	} else {
@@ -4479,8 +4481,8 @@ func (pkg *pkgContext) genResourceModule(w io.Writer) error {
 	fmt.Fprintf(w, "\tif err != nil {\n")
 	fmt.Fprintf(w, "\t\tversion = semver.Version{Major: 1}\n")
 	fmt.Fprintf(w, "\t}\n")
-	if len(registrations) > 0 {
-		for _, mod := range registrations.SortedValues() {
+	if !registrations.IsEmpty() {
+		for _, mod := range mapset.Sorted(registrations) {
 			fmt.Fprintf(w, "\tpulumi.RegisterResourceModule(\n")
 			fmt.Fprintf(w, "\t\t%q,\n", pkg.pkg.Name())
 			fmt.Fprintf(w, "\t\t%q,\n", mod)
@@ -4527,8 +4529,8 @@ func generatePackageContextMap(tool string, pkg schema.PackageReference, goInfo 
 				importBasePath:                importBasePath,
 				rootPackageName:               goInfo.RootPackageName,
 				typeDetails:                   map[schema.Type]*typeDetails{},
-				names:                         codegen.NewStringSet(),
-				schemaNames:                   codegen.NewStringSet(),
+				names:                         mapset.NewSet[string](),
+				schemaNames:                   mapset.NewSet[string](),
 				renamed:                       map[string]string{},
 				duplicateTokens:               map[string]bool{},
 				functionNames:                 map[*schema.Function]string{},
@@ -4579,8 +4581,8 @@ func generatePackageContextMap(tool string, pkg schema.PackageReference, goInfo 
 	// In addition, if the optional property's type is itself an object type, we also need to generate pointer
 	// types corresponding to all of it's nested properties, as our accessor methods will lift `nil` into
 	// those nested types.
-	var populateDetailsForPropertyTypes func(seen codegen.StringSet, props []*schema.Property, optional, input, output bool)
-	var populateDetailsForTypes func(seen codegen.StringSet, schemaType schema.Type, optional, input, output bool)
+	var populateDetailsForPropertyTypes func(seen mapset.Set[string], props []*schema.Property, optional, input, output bool)
+	var populateDetailsForTypes func(seen mapset.Set[string], schemaType schema.Type, optional, input, output bool)
 
 	seenKey := func(t schema.Type, optional, input, output bool) string {
 		var key string
@@ -4604,7 +4606,7 @@ func generatePackageContextMap(tool string, pkg schema.PackageReference, goInfo 
 		return key
 	}
 
-	populateDetailsForPropertyTypes = func(seen codegen.StringSet, props []*schema.Property, optional, input, output bool) {
+	populateDetailsForPropertyTypes = func(seen mapset.Set[string], props []*schema.Property, optional, input, output bool) {
 		for _, p := range props {
 			if obj, ok := codegen.UnwrapType(p.Type).(*schema.ObjectType); ok && p.Plain {
 				pkg := getPkgFromToken(obj.Token)
@@ -4618,9 +4620,9 @@ func generatePackageContextMap(tool string, pkg schema.PackageReference, goInfo 
 		}
 	}
 
-	populateDetailsForTypes = func(seen codegen.StringSet, schemaType schema.Type, optional, input, output bool) {
+	populateDetailsForTypes = func(seen mapset.Set[string], schemaType schema.Type, optional, input, output bool) {
 		key := seenKey(schemaType, optional, input, output)
-		if seen.Has(key) {
+		if seen.Contains(key) {
 			return
 		}
 		seen.Add(key)
@@ -4675,7 +4677,7 @@ func generatePackageContextMap(tool string, pkg schema.PackageReference, goInfo 
 	// Use a string set to track object types that have already been processed.
 	// This avoids recursively processing the same type. For example, in the
 	// Kubernetes package, JSONSchemaProps have properties whose type is itself.
-	seenMap := codegen.NewStringSet()
+	seenMap := mapset.NewSet[string]()
 	for _, t := range def.Types {
 		switch typ := t.(type) {
 		case *schema.ArrayType:
@@ -4744,7 +4746,7 @@ func generatePackageContextMap(tool string, pkg schema.PackageReference, goInfo 
 			candidates := getNames(suffix)
 			conflict := false
 			for _, c := range candidates {
-				if pkg.names.Has(c) {
+				if pkg.names.Contains(c) {
 					conflict = true
 				}
 			}
@@ -4827,7 +4829,7 @@ func generatePackageContextMap(tool string, pkg schema.PackageReference, goInfo 
 				candidates := getNames(name, suffix)
 				conflict := false
 				for _, c := range candidates {
-					if pkg.names.Has(c) {
+					if pkg.names.Contains(c) {
 						conflict = true
 					}
 				}
@@ -4872,7 +4874,7 @@ func generatePackageContextMap(tool string, pkg schema.PackageReference, goInfo 
 				candidates := getNames(name, suffix)
 				conflict := false
 				for _, c := range candidates {
-					if pkg.names.Has(c) {
+					if pkg.names.Contains(c) {
 						conflict = true
 					}
 				}
@@ -4938,9 +4940,9 @@ func generatePackageContextMap(tool string, pkg schema.PackageReference, goInfo 
 
 		name := tokenToName(f.Token)
 
-		if pkg.names.Has(name) ||
-			pkg.names.Has(name+"Args") ||
-			pkg.names.Has(name+"Result") {
+		if pkg.names.Contains(name) ||
+			pkg.names.Contains(name+"Args") ||
+			pkg.names.Contains(name+"Result") {
 			switch {
 			case strings.HasPrefix(name, "New"):
 				name = "Create" + name[3:]

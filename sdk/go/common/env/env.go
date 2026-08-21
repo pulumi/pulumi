@@ -100,6 +100,10 @@ var ContinueOnError = env.Bool("CONTINUE_ON_ERROR",
 var BackendURL = env.String("BACKEND_URL",
 	"Set the backend that will be used instead of the currently logged in backend or the current project's backend.")
 
+var DefaultOrg = env.String("DEFAULT_ORGANIZATION",
+	"Set the default organization to use when the organization is not otherwise specified. Takes precedence over "+
+		"any default organization set with `pulumi org set-default`.")
+
 // Neo environment variables
 
 var SuppressNeoLink = env.Bool("SUPPRESS_NEO_LINK",

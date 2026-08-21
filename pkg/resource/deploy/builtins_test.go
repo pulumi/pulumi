@@ -159,9 +159,9 @@ func TestBuiltinProvider(t *testing.T) {
 				p := &builtinProvider{}
 				_, err := p.Invoke(t.Context(), plugin.InvokeRequest{
 					Tok: readStackOutputs,
-					Args: resource.PropertyMap{
-						"name": resource.NewProperty("res-name"),
-					},
+					Args: property.NewMap(map[string]property.Value{
+						"name": property.New("res-name"),
+					}),
 				})
 				assert.ErrorContains(t, err, "no backend client is available")
 			})
@@ -181,18 +181,18 @@ func TestBuiltinProvider(t *testing.T) {
 				}
 				resp, err := p.Invoke(t.Context(), plugin.InvokeRequest{
 					Tok: readStackOutputs,
-					Args: resource.PropertyMap{
-						"name": resource.NewProperty("res-name"),
-					},
+					Args: property.NewMap(map[string]property.Value{
+						"name": property.New("res-name"),
+					}),
 				})
 				require.NoError(t, err)
 				assert.True(t, called)
 				assert.Nil(t, resp.Failures)
 
-				assert.Equal(t, "res-name", resp.Properties["name"].V)
+				assert.Equal(t, "res-name", resp.Properties.Get("name").AsString())
 
-				assert.Equal(t, "foo", resp.Properties["outputs"].ObjectValue()["normal"].StringValue())
-				require.Len(t, resp.Properties["secretOutputNames"].V, 1)
+				assert.Equal(t, "foo", resp.Properties.Get("outputs").AsMap().Get("normal").AsString())
+				require.Equal(t, 1, resp.Properties.Get("secretOutputNames").AsArray().Len())
 			})
 		})
 		t.Run(readStackResourceOutputs, func(t *testing.T) {
@@ -202,9 +202,9 @@ func TestBuiltinProvider(t *testing.T) {
 				p := &builtinProvider{}
 				_, err := p.Invoke(t.Context(), plugin.InvokeRequest{
 					Tok: readStackResourceOutputs,
-					Args: resource.PropertyMap{
-						"stackName": resource.NewProperty("res-name"),
-					},
+					Args: property.NewMap(map[string]property.Value{
+						"stackName": property.New("res-name"),
+					}),
 				})
 				assert.ErrorContains(t, err, "no backend client is available")
 			})
@@ -221,9 +221,9 @@ func TestBuiltinProvider(t *testing.T) {
 				}
 				_, err := p.Invoke(t.Context(), plugin.InvokeRequest{
 					Tok: readStackResourceOutputs,
-					Args: resource.PropertyMap{
-						"stackName": resource.NewProperty("res-name"),
-					},
+					Args: property.NewMap(map[string]property.Value{
+						"stackName": property.New("res-name"),
+					}),
 				})
 				require.NoError(t, err)
 				assert.True(t, called)
@@ -250,13 +250,13 @@ func TestBuiltinProvider(t *testing.T) {
 
 				actual, err := p.Invoke(t.Context(), plugin.InvokeRequest{
 					Tok: getResource,
-					Args: resource.PropertyMap{
-						"urn": resource.NewProperty("res-name"),
-					},
+					Args: property.NewMap(map[string]property.Value{
+						"urn": property.New("res-name"),
+					}),
 				})
 
 				require.NoError(t, err)
-				assert.Equal(t, expected.Outputs, actual.Properties["state"].ObjectValue())
+				assert.Equal(t, resource.FromResourcePropertyMap(expected.Outputs), actual.Properties.Get("state").AsMap())
 			})
 
 			t.Run("ok read", func(t *testing.T) {
@@ -277,13 +277,13 @@ func TestBuiltinProvider(t *testing.T) {
 
 				actual, err := p.Invoke(t.Context(), plugin.InvokeRequest{
 					Tok: getResource,
-					Args: resource.PropertyMap{
-						"urn": resource.NewProperty("res-name"),
-					},
+					Args: property.NewMap(map[string]property.Value{
+						"urn": property.New("res-name"),
+					}),
 				})
 
 				require.NoError(t, err)
-				assert.Equal(t, expected.Outputs, actual.Properties["state"].ObjectValue())
+				assert.Equal(t, resource.FromResourcePropertyMap(expected.Outputs), actual.Properties.Get("state").AsMap())
 			})
 
 			t.Run("err", func(t *testing.T) {
@@ -294,9 +294,9 @@ func TestBuiltinProvider(t *testing.T) {
 				}
 				_, err := p.Invoke(t.Context(), plugin.InvokeRequest{
 					Tok: getResource,
-					Args: resource.PropertyMap{
-						"urn": resource.NewProperty("res-name"),
-					},
+					Args: property.NewMap(map[string]property.Value{
+						"urn": property.New("res-name"),
+					}),
 				})
 				assert.ErrorContains(t, err, "unknown resource")
 			})

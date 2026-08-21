@@ -296,19 +296,22 @@ func (b *diyBackend) saveCheckpoint(
 	// .json file to know the stack currently exists (see https://github.com/pulumi/pulumi/issues/9033 for
 	// context).
 	//
-	// We only back up the file we're about to write and, if the compression format changed, clean up the
-	// old format.
+	// We only back up the file we're about to write and, if the compression format changed, back up the
+	// old format. Keep the old format active until the replacement has been written successfully.
 	backupFile = backupTarget(ctx, b.bucket, file, true)
+	oldFile := ""
 	if existingCompression != b.compression {
-		// The compression format changed — clean up the old file.
 		filePlain := stripCompressionExt(file)
 		switch existingCompression {
 		case encoding.CompressionNone:
-			backupTarget(ctx, b.bucket, filePlain, false)
+			oldFile = filePlain
 		case encoding.CompressionGzip:
-			backupTarget(ctx, b.bucket, filePlain+encoding.GZIPExt, false)
+			oldFile = filePlain + encoding.GZIPExt
 		case encoding.CompressionZstd:
-			backupTarget(ctx, b.bucket, filePlain+encoding.ZSTDExt, false)
+			oldFile = filePlain + encoding.ZSTDExt
+		}
+		if backupFile = backupTarget(ctx, b.bucket, oldFile, true); backupFile == "" {
+			oldFile = ""
 		}
 	}
 
@@ -323,7 +326,7 @@ func (b *diyBackend) saveCheckpoint(
 		backoff := 1.2
 
 		// Retry the write 10 times in case of upstream bucket errors
-		_, _, err = retry.Until(ctx, retry.Acceptor{
+		accepted, _, err := retry.Until(ctx, retry.Acceptor{
 			Delay:    &delay,
 			MaxDelay: &maxDelay,
 			Backoff:  &backoff,
@@ -342,6 +345,15 @@ func (b *diyBackend) saveCheckpoint(
 		})
 		if err != nil {
 			return backupFile, "", err
+		}
+		if !accepted {
+			return backupFile, "", ctx.Err()
+		}
+	}
+
+	if oldFile != "" {
+		if err := b.bucket.Delete(ctx, oldFile); err != nil {
+			logging.V(5).Infof("error deleting source object after rename: %v (%v) skipping", oldFile, err)
 		}
 	}
 

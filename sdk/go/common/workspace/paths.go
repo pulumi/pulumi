@@ -22,7 +22,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/agentdetect"
@@ -194,21 +193,6 @@ func DetectPolicyPackPathAt(path string) (string, error) {
 		return packPath, nil
 	}
 	return "", nil
-}
-
-// DetectProject loads the closest project from the current working directory, or an error if not found.
-func DetectProject() (*Project, error) {
-	proj, _, err := detectProjectAndPath()
-	return proj, err
-}
-
-func DetectProjectStack(diags diag.Sink, stackName tokens.QName) (*ProjectStack, error) {
-	project, path, err := DetectProjectStackPath(stackName)
-	if err != nil {
-		return nil, err
-	}
-
-	return LoadProjectStack(diags, project, path)
 }
 
 // detectProjectAndPath loads the closest package from the current working directory, or an error if not found.  It

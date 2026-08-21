@@ -20,9 +20,10 @@ import (
 	"strings"
 	"testing"
 
+	mapset "github.com/deckarep/golang-set/v2"
+
 	"github.com/stretchr/testify/require"
 
-	"github.com/pulumi/pulumi/pkg/v3/codegen"
 	"github.com/pulumi/pulumi/sdk/v3/python/toolchain"
 )
 
@@ -52,7 +53,7 @@ func GeneratePythonYAMLBatchTest(t *testing.T, rootDir string, genProgram GenPro
 		})
 }
 
-func checkPython(t *testing.T, path string, _ codegen.StringSet) {
+func checkPython(t *testing.T, path string, _ mapset.Set[string]) {
 	CompilePython(t, filepath.Dir(path))
 }
 
