@@ -7,7 +7,7 @@ import * as outputs from "../types/output";
 
 export namespace kebab_module {
     export interface NestedInputArgs {
-        nestedValue: pulumi.Input<string>;
+        "nested-value": pulumi.Input<string>;
     }
 
 }

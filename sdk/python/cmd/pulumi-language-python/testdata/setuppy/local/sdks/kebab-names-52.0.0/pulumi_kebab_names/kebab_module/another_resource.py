@@ -26,7 +26,7 @@ class AnotherResourceArgs:
         pulumi.set(__self__, "the_input", the_input)
 
     @_builtins.property
-    @pulumi.getter(name="theInput")
+    @pulumi.getter(name="the-input")
     def the_input(self) -> pulumi.Input[_builtins.str]:
         return pulumi.get(self, "the_input")
 
@@ -112,7 +112,7 @@ class AnotherResource(pulumi.CustomResource):
         return AnotherResource(resource_name, opts=opts, __props__=__props__)
 
     @_builtins.property
-    @pulumi.getter(name="theInput")
+    @pulumi.getter(name="the-input")
     def the_input(self) -> pulumi.Output[_builtins.str]:
         return pulumi.get(self, "the_input")
 

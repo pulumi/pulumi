@@ -15,7 +15,7 @@ import (
 type SomeResource struct {
 	pulumi.CustomResourceState
 
-	TheOutput OutputItemOutput `pulumi:"theOutput"`
+	TheOutput OutputItemOutput `pulumi:"the-output"`
 }
 
 // NewSomeResource registers a new resource with the given unique name, arguments, and options.
@@ -65,7 +65,7 @@ func (SomeResourceState) ElementType() reflect.Type {
 
 type someResourceArgs struct {
 	Nested   NestedInput `pulumi:"nested"`
-	TheInput bool        `pulumi:"theInput"`
+	TheInput bool        `pulumi:"the-input"`
 }
 
 // The set of arguments for constructing a SomeResource resource.

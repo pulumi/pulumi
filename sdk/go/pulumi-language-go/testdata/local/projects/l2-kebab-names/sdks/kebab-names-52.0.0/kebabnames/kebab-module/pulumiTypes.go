@@ -14,7 +14,7 @@ import (
 var _ = internal.GetEnvOrDefault
 
 type NestedInput struct {
-	NestedValue string `pulumi:"nestedValue"`
+	NestedValue string `pulumi:"nested-value"`
 }
 
 // NestedInputInput is an input type that accepts NestedInputArgs and NestedInputOutput values.
@@ -29,7 +29,7 @@ type NestedInputInput interface {
 }
 
 type NestedInputArgs struct {
-	NestedValue pulumi.StringInput `pulumi:"nestedValue"`
+	NestedValue pulumi.StringInput `pulumi:"nested-value"`
 }
 
 func (NestedInputArgs) ElementType() reflect.Type {
@@ -63,7 +63,7 @@ func (o NestedInputOutput) NestedValue() pulumi.StringOutput {
 }
 
 type OutputItem struct {
-	NestedOutput string `pulumi:"nestedOutput"`
+	NestedOutput string `pulumi:"nested-output"`
 }
 
 type OutputItemOutput struct{ *pulumi.OutputState }
