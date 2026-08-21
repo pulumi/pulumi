@@ -159,6 +159,9 @@ lint_changelog::
 		echo "No pending changelog entries; skipping changie batch."; \
 	fi
 
+lint_changelog_style::
+	vale changelog/pending
+
 lint_pulumi_json::
 	# NOTE: github.com/santhosh-tekuri/jsonschema uses Go's regexp engine, but
 	# JSON schema says regexps should conform to ECMA 262.
