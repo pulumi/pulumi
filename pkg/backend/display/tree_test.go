@@ -236,12 +236,12 @@ func TestTreeRenderRewindsCorrectly(t *testing.T) {
 	assert.Equal(t, 14, treeRenderer.rewind, "Expected 14 lines to have been written")
 
 	// Hackily clear out the system messages.
-	(func() {
+	func() {
 		treeRenderer.display.eventMutex.Lock()
 		defer treeRenderer.display.eventMutex.Unlock()
 
 		treeRenderer.display.systemEventPayloads = nil
-	})()
+	}()
 
 	// Render another frame.
 	treeRenderer.rowUpdated(&resourceRowData{})

@@ -65,7 +65,9 @@ func installMockUpsertBackend(t *testing.T, snapshot *deploy.Snapshot) (pkgWorks
 		NewF: func(string) (pkgWorkspace.W, error) {
 			return &pkgWorkspace.MockW{
 				SettingsF: func() *pkgWorkspace.Settings {
-					return &pkgWorkspace.Settings{Stack: "myorg/proj/dev"}
+					return &pkgWorkspace.Settings{
+						Stack: "myorg/proj/dev", //nolint:staticcheck
+					}
 				},
 			}, nil
 		},

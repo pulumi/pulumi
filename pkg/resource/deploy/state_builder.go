@@ -30,7 +30,7 @@ type stateBuilder struct {
 // newStateBuilder creates a new builder atop the given state.
 func newStateBuilder(state *pkgresource.State) *stateBuilder {
 	return &stateBuilder{
-		state:    *(state.Copy()),
+		state:    *state.Copy(),
 		original: state,
 		edited:   false,
 	}
