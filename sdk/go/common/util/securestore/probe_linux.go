@@ -92,8 +92,7 @@ func probeSecretService(allowPrompt bool) (Outcome, error) {
 		}
 		return struct{}{}, nil
 	})
-	var locked lockedCollectionError
-	if errors.As(err, &locked) {
+	if locked, ok := errors.AsType[lockedCollectionError](err); ok {
 		unlockErr := unlockDefaultCollection(allowPrompt)
 		switch {
 		case unlockErr == nil:

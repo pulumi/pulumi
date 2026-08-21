@@ -233,8 +233,7 @@ func installWindows(ctx context.Context, version semver.Version, root string) er
 	cmd := exec.CommandContext(ctx, command, args...)
 	out, err := cmd.Output()
 	if err != nil {
-		var exitErr *exec.ExitError
-		if errors.As(err, &exitErr) {
+		if exitErr, ok := errors.AsType[*exec.ExitError](err); ok {
 			return fmt.Errorf("installation failed with %w\nSTDOUT: %s\nSTDERR: %s", err, out, string(exitErr.Stderr))
 		}
 		return fmt.Errorf("installation failed with %w: %s", err, out)
@@ -256,8 +255,7 @@ func installPosix(ctx context.Context, version semver.Version, root string) erro
 	cmd := exec.CommandContext(ctx, scriptPath, args...)
 	out, err := cmd.Output()
 	if err != nil {
-		var exitErr *exec.ExitError
-		if errors.As(err, &exitErr) {
+		if exitErr, ok := errors.AsType[*exec.ExitError](err); ok {
 			return fmt.Errorf("installation failed with %w\nSTDOUT: %s\nSTDERR: %s", err, out, string(exitErr.Stderr))
 		}
 		return fmt.Errorf("installation failed with %w: %s", err, out)

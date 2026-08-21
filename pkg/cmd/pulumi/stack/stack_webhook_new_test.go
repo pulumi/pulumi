@@ -56,13 +56,13 @@ func failingNewFactory(err error) stackWebhookNewClientFactory {
 func createdWebhook() apitype.Webhook {
 	return apitype.Webhook{
 		OrganizationName: "my-org",
-		ProjectName:      ptr("my-project"),
-		StackName:        ptr("dev"),
+		ProjectName:      new("my-project"),
+		StackName:        new("dev"),
 		Name:             "my-hook",
 		DisplayName:      "My Hook",
 		PayloadURL:       "https://example.com/webhook",
 		Active:           true,
-		Format:           ptr("raw"),
+		Format:           new("raw"),
 		HasSecret:        true,
 	}
 }

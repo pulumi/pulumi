@@ -239,7 +239,7 @@ func TestGetTypeName(t *testing.T) {
 			name:   "object",
 			schema: schema1,
 			typ:    mustToken(t, schema1.Types().Get, "pkg:index:simpleType"),
-			input:  ptr(true),
+			input:  new(true),
 
 			expected: map[language]string{
 				golang: "SimpleType",
@@ -251,7 +251,7 @@ func TestGetTypeName(t *testing.T) {
 			name:   "object",
 			schema: schema1,
 			typ:    mustToken(t, schema1.Types().Get, "pkg:index:simpleType"),
-			input:  ptr(false),
+			input:  new(false),
 
 			expected: map[language]string{
 				golang: "SimpleType",
@@ -263,7 +263,7 @@ func TestGetTypeName(t *testing.T) {
 			name:   "map-of-object",
 			schema: schema1,
 			typ:    &schema.MapType{ElementType: mustToken(t, schema1.Types().Get, "pkg:index:simpleType")},
-			input:  ptr(false),
+			input:  new(false),
 
 			expected: map[language]string{
 				golang: "map[string]SimpleType",
@@ -275,7 +275,7 @@ func TestGetTypeName(t *testing.T) {
 			name:   "module-object",
 			schema: schema1,
 			typ:    mustToken(t, schema1.Types().Get, "pkg:module:anotherType"),
-			input:  ptr(true),
+			input:  new(true),
 
 			expected: map[language]string{
 				golang: "module.AnotherType",
@@ -287,7 +287,7 @@ func TestGetTypeName(t *testing.T) {
 			name:   "module-object-from-module",
 			schema: schema1,
 			typ:    mustToken(t, schema1.Types().Get, "pkg:module:anotherType"),
-			input:  ptr(true),
+			input:  new(true),
 			module: "module",
 
 			expected: map[language]string{
@@ -312,7 +312,7 @@ func TestGetTypeName(t *testing.T) {
 			schema: schemaWithOverrides,
 			typ:    mustToken(t, schemaWithOverrides.Types().Get, "pkg:shouldoverride:simpleType"),
 			module: schemaWithOverrides.TokenToModule("pkg:shouldoverride:simpleType"),
-			input:  ptr(true),
+			input:  new(true),
 			expected: map[language]string{
 				golang: "SimpleType",
 				nodejs: "overridden.SimpleType",
@@ -323,7 +323,7 @@ func TestGetTypeName(t *testing.T) {
 			name:   "overridden-names",
 			schema: schemaWithOverrides,
 			typ:    mustToken(t, schemaWithOverrides.Types().Get, "pkg:shouldoverride:simpleType"),
-			input:  ptr(false),
+			input:  new(false),
 			expected: map[language]string{
 				golang: "overridden.SimpleType",
 				nodejs: "overridden.SimpleType",
@@ -830,8 +830,6 @@ func mustToken[T any](t *testing.T, get func(string) (T, bool, error), token str
 	require.True(t, ok)
 	return v
 }
-
-func ptr[T any](v T) *T { return &v }
 
 func marshalIntoRaw(t *testing.T, v any) schema.RawMessage {
 	b, err := json.Marshal(v)

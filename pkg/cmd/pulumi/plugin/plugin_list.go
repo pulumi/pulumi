@@ -104,10 +104,6 @@ type pluginInfoJSON struct {
 }
 
 func formatPluginsJSON(w io.Writer, plugins []workspace.PluginInfo) error {
-	makeStringRef := func(s string) *string {
-		return &s
-	}
-
 	jsonPluginInfo := make([]pluginInfoJSON, len(plugins))
 	for idx, plugin := range plugins {
 		var version string
@@ -127,11 +123,11 @@ func formatPluginsJSON(w io.Writer, plugins []workspace.PluginInfo) error {
 		}
 
 		if !installTime.IsZero() {
-			jsonPluginInfo[idx].InstallTime = makeStringRef(cmd.FormatTime(installTime.UTC()))
+			jsonPluginInfo[idx].InstallTime = new(cmd.FormatTime(installTime.UTC()))
 		}
 
 		if !lastUsedTime.IsZero() {
-			jsonPluginInfo[idx].LastUsedTime = makeStringRef(cmd.FormatTime(lastUsedTime.UTC()))
+			jsonPluginInfo[idx].LastUsedTime = new(cmd.FormatTime(lastUsedTime.UTC()))
 		}
 	}
 

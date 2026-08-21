@@ -60,8 +60,7 @@ func parseTemplateURL(templateName string) (*registry.URLInfo, error) {
 	if registry.IsRegistryURL(templateName) {
 		urlInfo, err := registry.ParseRegistryURL(templateName)
 		if err != nil {
-			var invalidRegistryURL *registry.InvalidRegistryURLError
-			if errors.As(err, &invalidRegistryURL) {
+			if invalidRegistryURL, ok := errors.AsType[*registry.InvalidRegistryURLError](err); ok {
 				// Wrap this particular error reason because formats other than the
 				// full registry:// URL format are supported by `pulumi new`.
 				if strings.Contains(invalidRegistryURL.Reason, "expected format") {
@@ -80,8 +79,7 @@ func parseTemplateURL(templateName string) (*registry.URLInfo, error) {
 	// 2. Try parsing as a partial registry URL
 	urlInfo, err := registry.ParsePartialRegistryURL(templateName, "templates")
 	if err != nil {
-		var missingVersion *registry.MissingVersionAfterAtSignError
-		if errors.As(err, &missingVersion) {
+		if _, ok := errors.AsType[*registry.MissingVersionAfterAtSignError](err); ok {
 			return nil, err
 		}
 

@@ -888,8 +888,7 @@ func (sm *SnapshotManager) saveSnapshot() error {
 	}
 	if !DisableIntegrityChecking && integrityError != nil {
 		if autoRepairErr != nil {
-			var sie *snapshot.SnapshotIntegrityError
-			if errors.As(integrityError, &sie) {
+			if sie, ok := errors.AsType[*snapshot.SnapshotIntegrityError](integrityError); ok {
 				sie.AutoRepairErr = autoRepairErr
 			}
 		}

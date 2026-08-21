@@ -1864,8 +1864,7 @@ func (d *pluginDownloader) downloadToFileWithRetry(ctx context.Context, pkgPlugi
 			}
 
 			// If the readErr is a checksum error don't retry.
-			var checksumErr *checksumError
-			if errors.As(readErr, &checksumErr) {
+			if _, ok := errors.AsType[*checksumError](readErr); ok {
 				return false, "", readErr
 			}
 

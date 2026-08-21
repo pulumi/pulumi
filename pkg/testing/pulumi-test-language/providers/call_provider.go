@@ -108,7 +108,7 @@ func (p *CallProvider) GetSchema(context.Context, plugin.GetSchemaRequest) (plug
 		Version:   "15.7.9",
 		Functions: map[string]schema.FunctionSpec{},
 		Resources: map[string]schema.ResourceSpec{},
-		Provider: ptr(customResource(
+		Provider: new(customResource(
 			"The `call` package's provider resource",
 			map[string]schema.PropertySpec{
 				"value": primitiveType("string"),
