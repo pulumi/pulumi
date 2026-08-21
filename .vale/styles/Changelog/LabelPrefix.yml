@@ -1,0 +1,8 @@
+extends: existence
+message: "Don't prefix the entry with '%s' - categorization belongs in the entry's component and kind fields; start with an imperative verb instead"
+link: https://github.com/pulumi/pulumi/blob/master/CONTRIBUTING.md#changelog-messages
+level: warning
+ignorecase: false
+scope: raw
+raw:
+  - '^(?:`[^`]+`|[A-Za-z][\w./-]*):\s'
