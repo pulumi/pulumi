@@ -529,6 +529,10 @@ func (c *testPulumiClient) GetDefaultOrg(ctx context.Context) (string, error) {
 	return c.defaultOrg, nil
 }
 
+func (c *testPulumiClient) GetOrganizationID(ctx context.Context, orgName string) (string, error) {
+	return "test-org-id", nil
+}
+
 func (c *testPulumiClient) ListEnvironments(
 	ctx context.Context,
 	continuationToken string,
