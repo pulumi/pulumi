@@ -229,7 +229,7 @@ func buildSelfRefFixture(t *testing.T) (*schema.Package, *schema.Resource, *sche
 	require.NotNil(t, widget)
 	var settings *schema.ObjectType
 	for _, typ := range pkg.Types {
-		if obj, ok := typ.(*schema.ObjectType); ok && obj.Token == "demo:mod/Settings:Settings" {
+		if obj, ok := typ.(*schema.ObjectType); ok && obj.Token.String() == "demo:mod/Settings:Settings" {
 			settings = obj
 		}
 	}

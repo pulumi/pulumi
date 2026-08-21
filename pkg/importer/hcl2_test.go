@@ -1175,12 +1175,12 @@ func TestStructuralTypeChecks(t *testing.T) {
 		// primitive type. valueStructurallyTypedAs must look through the enum
 		// to its ElementType so a primitive value can be accepted.
 		stringEnum := &schema.EnumType{
-			Token:       "a:index:S",
+			Token:       schema.NewToken("a", "index", "S"),
 			ElementType: schema.StringType,
 			Elements:    []*schema.Enum{{Value: "x"}, {Value: "y"}},
 		}
 		boolEnum := &schema.EnumType{
-			Token:       "a:index:B",
+			Token:       schema.NewToken("a", "index", "B"),
 			ElementType: schema.BoolType,
 			Elements:    []*schema.Enum{{Value: true}, {Value: false}},
 		}
@@ -1298,12 +1298,12 @@ func TestStructuralTypeChecks(t *testing.T) {
 		// reduction — otherwise the IsBool case never sees BoolType and the
 		// value is wrongly rejected.
 		boolEnum := &schema.EnumType{
-			Token:       "a:index:B",
+			Token:       schema.NewToken("a", "index", "B"),
 			ElementType: schema.BoolType,
 			Elements:    []*schema.Enum{{Value: true}, {Value: false}},
 		}
 		stringEnum := &schema.EnumType{
-			Token:       "a:index:S",
+			Token:       schema.NewToken("a", "index", "S"),
 			ElementType: schema.StringType,
 			Elements:    []*schema.Enum{{Value: "x"}, {Value: "y"}},
 		}

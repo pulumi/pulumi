@@ -312,7 +312,7 @@ func resolveUnionOfObjects(objectExpr *model.ObjectConsExpression, union *schema
 					continue
 				}
 
-				parsedObjectToken, err := tokens.ParseTypeToken(schemaObjectType.Token)
+				parsedObjectToken, err := tokens.ParseTypeToken(schemaObjectType.Token.String())
 				if err != nil {
 					continue
 				}

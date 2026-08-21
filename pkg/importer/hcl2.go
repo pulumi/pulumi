@@ -872,7 +872,7 @@ func reduceUnionType(schemaUnion *schema.UnionType, value property.Value) schema
 			// match it against the element type which should be an object
 			elementTypeObject, ok := codegen.UnwrapType(elementType).(*schema.ObjectType)
 			if ok {
-				elementTypeToken, parseError := tokens.ParseTypeToken(elementTypeObject.Token)
+				elementTypeToken, parseError := tokens.ParseTypeToken(elementTypeObject.Token.String())
 				if parseError != nil {
 					continue
 				}

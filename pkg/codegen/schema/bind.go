@@ -916,7 +916,7 @@ func hashTypeInto(h hash.Hash64, t Type) {
 		}
 	case *ObjectType:
 		writeTag(7)
-		writeStr(t.Token)
+		writeStr(t.Token.String())
 		if t.IsInputShape() {
 			writeTag(1)
 		} else {
@@ -927,7 +927,7 @@ func hashTypeInto(h hash.Hash64, t Type) {
 		writeStr(t.Token.String())
 	case *EnumType:
 		writeTag(9)
-		writeStr(t.Token)
+		writeStr(t.Token.String())
 	case *TokenType:
 		writeTag(10)
 		writeStr(t.Token)
@@ -955,13 +955,13 @@ func (t *types) bindTypeDef(token string, options ValidationOptions) (Type, hcl.
 	if diag := validatePrintableName(path, "type name", token); diag != nil {
 		diags = diags.Append(diag)
 	}
-	parts := strings.Split(token, ":")
-	if len(parts) == 3 {
-		name := parts[2]
-		if isReservedKeyword(name) {
-			diags = append(diags, errorf(path, "%s", name+" is a reserved name, cannot name type"))
-			return nil, diags, errors.New("type name " + name + " is reserved")
-		}
+	tok, err := ParseToken(token)
+	if err != nil {
+		return nil, diags.Append(errorf(path, "%v", err)), nil
+	}
+	if name := tok.Name(); isReservedKeyword(name) {
+		diags = append(diags, errorf(path, "%s", name+" is a reserved name, cannot name type"))
+		return nil, diags, errors.New("type name " + name + " is reserved")
 	}
 
 	// Is this an object type?
@@ -972,14 +972,14 @@ func (t *types) bindTypeDef(token string, options ValidationOptions) (Type, hcl.
 		// for identity. Types are interned based on their string representation, and the string representation of an
 		// object type is its token. While this doesn't affect object types directly, it breaks the interning of types
 		// that reference object types (e.g. arrays, maps, unions)
-		obj := &ObjectType{Token: token, IsOverlay: spec.IsOverlay, OverlaySupportedLanguages: spec.OverlaySupportedLanguages}
+		obj := &ObjectType{Token: tok, IsOverlay: spec.IsOverlay, OverlaySupportedLanguages: spec.OverlaySupportedLanguages}
 		obj.InputShape = &ObjectType{
-			Token: token, PlainShape: obj, IsOverlay: spec.IsOverlay,
+			Token: tok, PlainShape: obj, IsOverlay: spec.IsOverlay,
 			OverlaySupportedLanguages: spec.OverlaySupportedLanguages,
 		}
 		t.typeDefs[token] = obj
 
-		oDiags, err := t.bindObjectTypeDetails(path, obj, token, spec.ObjectTypeSpec, options)
+		oDiags, err := t.bindObjectTypeDetails(path, obj, tok, spec.ObjectTypeSpec, options)
 		diags = append(diags, oDiags...)
 		if err != nil {
 			return nil, diags, err
@@ -988,7 +988,7 @@ func (t *types) bindTypeDef(token string, options ValidationOptions) (Type, hcl.
 	}
 
 	// Otherwise, bind an enum type.
-	enum, eDiags := t.bindEnumType(token, spec)
+	enum, eDiags := t.bindEnumType(tok, spec)
 	diags = append(diags, eDiags...)
 	t.typeDefs[token] = enum
 	return enum, diags, nil
@@ -1464,7 +1464,7 @@ func (t *types) bindProperties(path string, properties map[string]PropertySpec, 
 	return result, propertyMap, diags, nil
 }
 
-func (t *types) bindObjectTypeDetails(path string, obj *ObjectType, token string,
+func (t *types) bindObjectTypeDetails(path string, obj *ObjectType, tok Token,
 	spec ObjectTypeSpec,
 	options ValidationOptions,
 ) (hcl.Diagnostics, error) {
@@ -1492,7 +1492,7 @@ func (t *types) bindObjectTypeDetails(path string, obj *ObjectType, token string
 	language := makeLanguageMap(spec.Language)
 
 	obj.PackageReference = t.externalPackage()
-	obj.Token = token
+	obj.Token = tok
 	obj.Comment = spec.Description
 	obj.Language = language
 	obj.Properties = properties
@@ -1501,7 +1501,7 @@ func (t *types) bindObjectTypeDetails(path string, obj *ObjectType, token string
 	obj.OverlaySupportedLanguages = spec.OverlaySupportedLanguages
 
 	obj.InputShape.PackageReference = t.externalPackage()
-	obj.InputShape.Token = token
+	obj.InputShape.Token = tok
 	obj.InputShape.Comment = spec.Description
 	obj.InputShape.Language = language
 	obj.InputShape.Properties = inputProperties
@@ -1512,10 +1512,16 @@ func (t *types) bindObjectTypeDetails(path string, obj *ObjectType, token string
 
 // bindAnonymousObjectType is used for binding object types that do not appear as part of a package's defined types.
 // This includes state inputs for resources that have them and function inputs and outputs.
+// suffixToken returns tok with suffix appended to its name component, used to name the anonymous
+// object types (inputs, outputs, state) attached to a resource or function.
+func suffixToken(tok Token, suffix string) Token {
+	return NewToken(tok.Pkg(), tok.Module(), tok.Name()+suffix)
+}
+
 // Object types defined by a package are bound by bindTypeDef.
 func (t *types) bindAnonymousObjectType(
-	path,
-	token string,
+	path string,
+	tok Token,
 	spec ObjectTypeSpec,
 	options ValidationOptions,
 ) (*ObjectType, hcl.Diagnostics, error) {
@@ -1524,17 +1530,17 @@ func (t *types) bindAnonymousObjectType(
 	obj.IsOverlay = spec.IsOverlay
 	obj.OverlaySupportedLanguages = spec.OverlaySupportedLanguages
 
-	diags, err := t.bindObjectTypeDetails(path, obj, token, spec, options)
+	diags, err := t.bindObjectTypeDetails(path, obj, tok, spec, options)
 	if err != nil {
 		return nil, diags, err
 	}
 	return obj, diags, nil
 }
 
-func (t *types) bindEnumType(token string, spec ComplexTypeSpec) (*EnumType, hcl.Diagnostics) {
+func (t *types) bindEnumType(tok Token, spec ComplexTypeSpec) (*EnumType, hcl.Diagnostics) {
 	var diags hcl.Diagnostics
 
-	path := memberPath("types", token)
+	path := memberPath("types", tok.String())
 
 	typ, typDiags := t.bindPrimitiveType(path+"/type", spec.Type)
 	diags = diags.Extend(typDiags)
@@ -1564,7 +1570,7 @@ func (t *types) bindEnumType(token string, spec ComplexTypeSpec) (*EnumType, hcl
 
 	return &EnumType{
 		PackageReference: t.externalPackage(),
-		Token:            token,
+		Token:            tok,
 		Elements:         values,
 		ElementType:      typ,
 		Comment:          spec.Description,
@@ -1590,10 +1596,10 @@ func validateNoRequiredObjectCycles(typeList []Type) hcl.Diagnostics {
 			objects = append(objects, obj)
 		}
 	}
-	sort.Slice(objects, func(i, j int) bool { return objects[i].Token < objects[j].Token })
+	slices.SortFunc(objects, func(a, b *ObjectType) int { return a.Token.Cmp(b.Token) })
 
 	var diags hcl.Diagnostics
-	reported := map[string]bool{}
+	reported := map[Token]bool{}
 	for _, obj := range objects {
 		if reported[obj.Token] {
 			continue
@@ -1601,10 +1607,10 @@ func validateNoRequiredObjectCycles(typeList []Type) hcl.Diagnostics {
 		if cycle := findRequiredObjectCycle(obj, nil, map[*ObjectType]bool{}); cycle != nil {
 			tokens := make([]string, len(cycle))
 			for i, c := range cycle {
-				tokens[i] = c.Token
+				tokens[i] = c.Token.String()
 				reported[c.Token] = true
 			}
-			diags = diags.Append(errorf(memberPath("types", obj.Token),
+			diags = diags.Append(errorf(memberPath("types", obj.Token.String()),
 				"object type has unsatisfiable required-property cycle: %s",
 				strings.Join(tokens, " -> ")))
 		}
@@ -1832,7 +1838,7 @@ func compareTypes(a, b Type) int {
 		return 0
 	case *ObjectType:
 		b := b.(*ObjectType)
-		if c := strings.Compare(a.Token, b.Token); c != 0 {
+		if c := a.Token.Cmp(b.Token); c != 0 {
 			return c
 		}
 		bToI := func(b bool) int8 {
@@ -1844,9 +1850,9 @@ func compareTypes(a, b Type) int {
 
 		return cmp.Compare(bToI(a.IsInputShape()), bToI(b.IsInputShape()))
 	case *ResourceType:
-		return strings.Compare(a.Token.String(), b.(*ResourceType).Token.String())
+		return a.Token.Cmp(b.(*ResourceType).Token)
 	case *EnumType:
-		return strings.Compare(a.Token, b.(*EnumType).Token)
+		return a.Token.Cmp(b.(*EnumType).Token)
 	case *InvalidType, nil:
 		return 0 // All invalid types are the same
 	case *TokenType:
@@ -2256,7 +2262,8 @@ func (t *types) bindResourceDetails(
 			}
 		}
 
-		si, stateDiags, err := t.bindAnonymousObjectType(path+"/stateInputs", token+"Args", *spec.StateInputs, options)
+		si, stateDiags, err := t.bindAnonymousObjectType(
+			path+"/stateInputs", suffixToken(tok, "Args"), *spec.StateInputs, options)
 		diags = diags.Extend(stateDiags)
 		if err != nil {
 			return diags, fmt.Errorf("error binding inputs for %v: %w", token, err)
@@ -2266,7 +2273,8 @@ func (t *types) bindResourceDetails(
 
 	var listInputs *ObjectType
 	if spec.ListInputs != nil {
-		li, listDiags, err := t.bindAnonymousObjectType(path+"/listInputs", token+"ListArgs", *spec.ListInputs, options)
+		li, listDiags, err := t.bindAnonymousObjectType(
+			path+"/listInputs", suffixToken(tok, "ListArgs"), *spec.ListInputs, options)
 		diags = diags.Extend(listDiags)
 		if err != nil {
 			return diags, fmt.Errorf("error binding list inputs for %v: %w", token, err)
@@ -2431,7 +2439,7 @@ func (t *types) bindFunctionDef(token string, options ValidationOptions) (*Funct
 	}
 	var inputs *ObjectType
 	if spec.Inputs != nil {
-		ins, inDiags, err := t.bindAnonymousObjectType(path+"/inputs", token+"Args", *spec.Inputs, options)
+		ins, inDiags, err := t.bindAnonymousObjectType(path+"/inputs", suffixToken(tok, "Args"), *spec.Inputs, options)
 		diags = diags.Extend(inDiags)
 		if err != nil {
 			return nil, diags, fmt.Errorf("error binding inputs for function %v: %w", token, err)
@@ -2495,7 +2503,7 @@ func (t *types) bindFunctionDef(token string, options ValidationOptions) (*Funct
 			// bind as an object type
 			outs, outDiags, err := t.bindAnonymousObjectType(
 				path+"/outputs",
-				token+"Result",
+				suffixToken(tok, "Result"),
 				*spec.ReturnType.ObjectTypeSpec,
 				options,
 			)
@@ -2522,7 +2530,7 @@ func (t *types) bindFunctionDef(token string, options ValidationOptions) (*Funct
 		}
 	} else if spec.Outputs != nil {
 		// bind the outputs when the specs don't rely on the new ReturnType field
-		outs, outDiags, err := t.bindAnonymousObjectType(path+"/outputs", token+"Result", *spec.Outputs, options)
+		outs, outDiags, err := t.bindAnonymousObjectType(path+"/outputs", suffixToken(tok, "Result"), *spec.Outputs, options)
 		diags = diags.Extend(outDiags)
 		if err != nil {
 			return nil, diags, fmt.Errorf("error binding outputs for function %v: %w", token, err)

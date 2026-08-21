@@ -185,14 +185,14 @@ func (mod *modContext) modNameAndName(pkg schema.PackageReference, t schema.Type
 	var token string
 	switch t := t.(type) {
 	case *schema.EnumType:
-		token, name = t.Token, tokenToName(t.Token)
+		token, name = t.Token.String(), tokenToName(t.Token.String())
 	case *schema.ObjectType:
 		namingCtx := &modContext{
 			pkg:              pkg,
 			modNameOverrides: info.ModuleNameOverrides,
 			compatibility:    info.Compatibility,
 		}
-		token, name = t.Token, namingCtx.unqualifiedObjectTypeName(t, input)
+		token, name = t.Token.String(), namingCtx.unqualifiedObjectTypeName(t, input)
 	case *schema.ResourceType:
 		token, name = t.Token.String(), tokenToName(t.Token.String())
 	}
@@ -205,7 +205,7 @@ func (mod *modContext) modNameAndName(pkg schema.PackageReference, t schema.Type
 }
 
 func (mod *modContext) unqualifiedObjectTypeName(t *schema.ObjectType, input bool) string {
-	name := tokenToName(t.Token)
+	name := tokenToName(t.Token.String())
 
 	if mod.compatibility != tfbridge20 && mod.compatibility != kubernetes20 {
 		if t.IsInputShape() {
@@ -248,7 +248,7 @@ func (mod *modContext) objectType(t *schema.ObjectType, input bool, forDict bool
 		return fmt.Sprintf("'%s.%s%s%s'", PyPack(t.PackageReference.Namespace(), t.PackageReference.Name()), modName, prefix, name)
 	}
 
-	modName, name := mod.tokenToModule(t.Token), mod.unqualifiedObjectTypeName(t, input)
+	modName, name := mod.tokenToModule(t.Token.String()), mod.unqualifiedObjectTypeName(t, input)
 	if forDict {
 		name = name + "Dict"
 	}
@@ -271,7 +271,7 @@ func (mod *modContext) objectType(t *schema.ObjectType, input bool, forDict bool
 }
 
 func (mod *modContext) enumType(enum *schema.EnumType) string {
-	tok := enum.Token
+	tok := enum.Token.String()
 	pkgName, modName, name := enum.PackageReference.Name(), mod.tokenToModule(tok), tokenToName(tok)
 
 	if pkgName == mod.pkg.Name() && modName == "" && mod.mod != "" {
@@ -952,7 +952,7 @@ func (mod *modContext) importObjectType(t *schema.ObjectType, input bool) string
 		return "import " + PyPack(t.PackageReference.Namespace(), t.PackageReference.Name())
 	}
 
-	tok := t.Token
+	tok := t.Token.String()
 	parts := strings.Split(tok, ":")
 	contract.Assertf(len(parts) == 3, "type token %q is not in the form '<pkg>:<mod>:<type>'", tok)
 
@@ -983,7 +983,7 @@ func (mod *modContext) importEnumType(e *schema.EnumType) string {
 		return "import " + PyPack(e.PackageReference.Namespace(), e.PackageReference.Name())
 	}
 
-	modName := mod.tokenToModule(e.Token)
+	modName := mod.tokenToModule(e.Token.String())
 	if modName == mod.mod {
 		return "from ._enums import *"
 	}
@@ -1273,7 +1273,7 @@ func awaitableTypeNames(tok string) (baseName, awaitableName string) {
 }
 
 func (mod *modContext) genAwaitableType(w io.Writer, obj *schema.ObjectType, fun *schema.Function) (string, error) {
-	baseName, awaitableName := awaitableTypeNames(obj.Token)
+	baseName, awaitableName := awaitableTypeNames(obj.Token.String())
 
 	// Produce a class definition with optional """ comment.
 	fmt.Fprint(w, "@pulumi.output_type\n")
@@ -2003,7 +2003,7 @@ func (mod *modContext) genFunction(fun *schema.Function) (string, error) {
 
 	var baseName, awaitableName string
 	if returnTypeObj != nil {
-		baseName, awaitableName = awaitableTypeNames(returnTypeObj.Token)
+		baseName, awaitableName = awaitableTypeNames(returnTypeObj.Token.String())
 	}
 	name := PyName(tokenToName(fun.Token.String()))
 
@@ -2038,7 +2038,7 @@ func (mod *modContext) genFunction(fun *schema.Function) (string, error) {
 			return "", err
 		}
 		rets = returnTypeObj.Properties
-		originalOutputTypeName, _ = awaitableTypeNames(returnTypeObj.Token)
+		originalOutputTypeName, _ = awaitableTypeNames(returnTypeObj.Token.String())
 		retTypeNameOutput = fmt.Sprintf("pulumi.Output[%s]", originalOutputTypeName)
 		fmt.Fprintf(w, "\n\n")
 	} else if returnType != nil {
@@ -2270,7 +2270,7 @@ func (mod *modContext) genEnums(w io.Writer, enums []*schema.EnumType) error {
 	// Export only the symbols we want exported.
 	fmt.Fprintf(w, "__all__ = [\n")
 	for _, enum := range enums {
-		fmt.Fprintf(w, "    '%s',\n", tokenToName(enum.Token))
+		fmt.Fprintf(w, "    '%s',\n", tokenToName(enum.Token.String()))
 	}
 	fmt.Fprintf(w, "]\n\n\n")
 
@@ -2287,7 +2287,7 @@ func (mod *modContext) genEnums(w io.Writer, enums []*schema.EnumType) error {
 
 func (mod *modContext) genEnum(w io.Writer, enum *schema.EnumType) error {
 	indent := "    "
-	enumName := tokenToName(enum.Token)
+	enumName := tokenToName(enum.Token.String())
 	underlyingType := mod.typeString(enum.ElementType, typeStringOpts{})
 
 	switch enum.ElementType {
@@ -2609,9 +2609,9 @@ func (mod *modContext) docRefResolver(selfRef schema.DocRef) func(schema.DocRef)
 		case schema.DocRefKindType, schema.DocRefKindTypeProperty:
 			switch t := ref.Type.(type) {
 			case *schema.ObjectType:
-				base = tokenToName(t.Token) + "Args"
+				base = tokenToName(t.Token.String()) + "Args"
 			case *schema.EnumType:
-				base = tokenToName(t.Token)
+				base = tokenToName(t.Token.String())
 			}
 		case schema.DocRefKindUnknown:
 			return "", false
@@ -3326,7 +3326,7 @@ func generateModuleContextMap(tool string, pkg *schema.Package, info PackageInfo
 
 	visitObjectTypes(pkg.Config, func(t schema.Type) {
 		if t, ok := t.(*schema.ObjectType); ok {
-			getModFromToken(t.Token, t.PackageReference).details(t).outputType = true
+			getModFromToken(t.Token.String(), t.PackageReference).details(t).outputType = true
 		}
 	})
 
@@ -3337,21 +3337,21 @@ func generateModuleContextMap(tool string, pkg *schema.Package, info PackageInfo
 		visitObjectTypes(r.Properties, func(t schema.Type) {
 			switch T := t.(type) {
 			case *schema.ObjectType:
-				getModFromToken(T.Token, T.PackageReference).details(T).outputType = true
-				getModFromToken(T.Token, T.PackageReference).details(T).resourceOutputType = true
+				getModFromToken(T.Token.String(), T.PackageReference).details(T).outputType = true
+				getModFromToken(T.Token.String(), T.PackageReference).details(T).resourceOutputType = true
 			}
 		})
 		visitObjectTypes(r.InputProperties, func(t schema.Type) {
 			switch T := t.(type) {
 			case *schema.ObjectType:
-				getModFromToken(T.Token, T.PackageReference).details(T).inputType = true
+				getModFromToken(T.Token.String(), T.PackageReference).details(T).inputType = true
 			}
 		})
 		if r.StateInputs != nil {
 			visitObjectTypes(r.StateInputs.Properties, func(t schema.Type) {
 				switch T := t.(type) {
 				case *schema.ObjectType:
-					getModFromToken(T.Token, T.PackageReference).details(T).inputType = true
+					getModFromToken(T.Token.String(), T.PackageReference).details(T).inputType = true
 				case *schema.ResourceType:
 					getModFromToken(T.Token.String(), T.Resource.PackageReference)
 				}
@@ -3377,8 +3377,8 @@ func generateModuleContextMap(tool string, pkg *schema.Package, info PackageInfo
 			visitObjectTypes(f.Inputs.Properties, func(t schema.Type) {
 				switch T := t.(type) {
 				case *schema.ObjectType:
-					getModFromToken(T.Token, T.PackageReference).details(T).inputType = true
-					getModFromToken(T.Token, T.PackageReference).details(T).plainType = true
+					getModFromToken(T.Token.String(), T.PackageReference).details(T).inputType = true
+					getModFromToken(T.Token.String(), T.PackageReference).details(T).plainType = true
 				case *schema.ResourceType:
 					getModFromToken(T.Token.String(), T.Resource.PackageReference)
 				}
@@ -3396,8 +3396,8 @@ func generateModuleContextMap(tool string, pkg *schema.Package, info PackageInfo
 			visitObjectTypes(returnType.Properties, func(t schema.Type) {
 				switch T := t.(type) {
 				case *schema.ObjectType:
-					getModFromToken(T.Token, T.PackageReference).details(T).outputType = true
-					getModFromToken(T.Token, T.PackageReference).details(T).plainType = true
+					getModFromToken(T.Token.String(), T.PackageReference).details(T).outputType = true
+					getModFromToken(T.Token.String(), T.PackageReference).details(T).plainType = true
 				case *schema.ResourceType:
 					getModFromToken(T.Token.String(), T.Resource.PackageReference)
 				}
@@ -3409,14 +3409,14 @@ func generateModuleContextMap(tool string, pkg *schema.Package, info PackageInfo
 	for _, t := range pkg.Types {
 		switch typ := t.(type) {
 		case *schema.ObjectType:
-			mod := getModFromToken(typ.Token, typ.PackageReference)
+			mod := getModFromToken(typ.Token.String(), typ.PackageReference)
 			d := mod.details(typ)
 			if d.inputType || d.outputType {
 				mod.types = append(mod.types, typ)
 			}
 		case *schema.EnumType:
 			if !typ.IsOverlay {
-				mod := getModFromToken(typ.Token, pkg.Reference())
+				mod := getModFromToken(typ.Token.String(), pkg.Reference())
 				mod.enums = append(mod.enums, typ)
 			}
 		default:
@@ -3447,7 +3447,7 @@ func generateModuleContextMap(tool string, pkg *schema.Package, info PackageInfo
 				return nil
 			}
 
-			return getModFromToken(t.Token, t.PackageReference)
+			return getModFromToken(t.Token.String(), t.PackageReference)
 		},
 	}
 

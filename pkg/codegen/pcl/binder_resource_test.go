@@ -634,7 +634,7 @@ func TestBindResourceQuotedPropertyKeys(t *testing.T) {
 		require.Truef(t, ok, "object literal has no schema type annotation")
 		objType, ok := schemaType.(*schema.ObjectType)
 		require.Truef(t, ok, "expected an object type annotation, got %T", schemaType)
-		require.Equal(t, token, objType.Token)
+		require.Equal(t, token, objType.Token.String())
 	}
 
 	requireAnnotatedWith(spec.Value, "foo:index:Spec")

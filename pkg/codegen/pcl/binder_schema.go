@@ -443,7 +443,7 @@ func (b *binder) schemaTypeToType(src schema.Type) model.Type {
 		for _, el := range src.Elements {
 			values = append(values, buildEnumValue(el.Value))
 		}
-		tk := canonicalizeToken(src.Token, src.PackageReference)
+		tk := canonicalizeToken(src.Token.String(), src.PackageReference)
 		return model.NewEnumType(tk, elType, values, enumSchemaType{src})
 	case *schema.ObjectType:
 		if t, ok := b.schemaTypes[src]; ok {
@@ -655,7 +655,7 @@ func getDiscriminatedUnionObjectItem(t model.Type) (string, model.Type) {
 	case *model.ObjectType:
 		if schemaType, ok := GetSchemaForType(t); ok {
 			if objType, ok := schemaType.(*schema.ObjectType); ok {
-				return objType.Token, t
+				return objType.Token.String(), t
 			}
 		}
 	case *model.OutputType:

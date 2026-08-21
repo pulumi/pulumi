@@ -375,9 +375,9 @@ func DocRefForType(t Type) DocRef {
 	case *ResourceType:
 		return DocRef{Kind: DocRefKindResource, Type: v, Ref: "#/resources/" + url.PathEscape(v.Token.String())}
 	case *ObjectType:
-		return DocRef{Kind: DocRefKindType, Type: v, Ref: "#/types/" + url.PathEscape(v.Token)}
+		return DocRef{Kind: DocRefKindType, Type: v, Ref: "#/types/" + url.PathEscape(v.Token.String())}
 	case *EnumType:
-		return DocRef{Kind: DocRefKindType, Type: v, Ref: "#/types/" + url.PathEscape(v.Token)}
+		return DocRef{Kind: DocRefKindType, Type: v, Ref: "#/types/" + url.PathEscape(v.Token.String())}
 	default:
 		return DocRef{}
 	}

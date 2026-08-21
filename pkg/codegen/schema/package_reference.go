@@ -288,9 +288,9 @@ type packageDefTypesIter struct {
 
 func (i *packageDefTypesIter) Token() string {
 	if obj, ok := i.t.(*ObjectType); ok {
-		return obj.Token
+		return obj.Token.String()
 	}
-	return i.t.(*EnumType).Token
+	return i.t.(*EnumType).Token.String()
 }
 
 func (i *packageDefTypesIter) Type() (Type, error) {

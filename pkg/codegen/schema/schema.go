@@ -160,7 +160,7 @@ type EnumType struct {
 	// PackageReference is the PackageReference that defines the resource.
 	PackageReference PackageReference
 	// Token is the type's Pulumi type token.
-	Token string
+	Token Token
 	// Comment is the description of the type, if any.
 	Comment string
 	// Elements are the predefined enum values.
@@ -186,7 +186,7 @@ type Enum struct {
 }
 
 func (t *EnumType) String() string {
-	return t.Token
+	return t.Token.String()
 }
 
 func (*EnumType) isType() {}
@@ -224,7 +224,7 @@ type ObjectType struct {
 	// PackageReference is the PackageReference that defines the resource.
 	PackageReference PackageReference
 	// Token is the type's Pulumi type token.
-	Token string
+	Token Token
 	// Comment is the description of the type, if any.
 	Comment string
 	// Properties is the list of the type's properties.
@@ -274,9 +274,9 @@ func (t *ObjectType) Property(name string) (*Property, bool) {
 
 func (t *ObjectType) String() string {
 	if t.PlainShape != nil {
-		return t.Token + "•Input"
+		return t.Token.String() + "•Input"
 	}
-	return t.Token
+	return t.Token.String()
 }
 
 func (*ObjectType) isType() {}
@@ -1265,9 +1265,9 @@ func (pkg *Package) MarshalSpec() (spec *PackageSpec, err error) {
 			if err != nil {
 				return nil, fmt.Errorf("marshaling type '%v': %w", t.Token, err)
 			}
-			spec.Types[t.Token] = o
+			spec.Types[t.Token.String()] = o
 		case *EnumType:
-			spec.Types[t.Token] = pkg.marshalEnum(t)
+			spec.Types[t.Token.String()] = pkg.marshalEnum(t)
 		}
 	}
 
@@ -1602,12 +1602,12 @@ func (pkg *Package) marshalType(t Type, plain bool) TypeSpec {
 		}
 	case *ObjectType:
 		return TypeSpec{
-			Ref:   pkg.marshalTypeRef(t.PackageReference, "types", t.Token),
+			Ref:   pkg.marshalTypeRef(t.PackageReference, "types", t.Token.String()),
 			Plain: !plain,
 		}
 	case *EnumType:
 		return TypeSpec{
-			Ref:   pkg.marshalTypeRef(t.PackageReference, "types", t.Token),
+			Ref:   pkg.marshalTypeRef(t.PackageReference, "types", t.Token.String()),
 			Plain: !plain,
 		}
 	case *ResourceType:

@@ -116,7 +116,7 @@ func TestResolveDocRef(t *testing.T) {
 			require.NotNil(t, bucket)
 			var corsRule *schema.ObjectType
 			for _, typ := range pkg.Types {
-				if obj, ok := typ.(*schema.ObjectType); ok && obj.Token == "aws:s3/BucketCorsRule:BucketCorsRule" {
+				if obj, ok := typ.(*schema.ObjectType); ok && obj.Token.String() == "aws:s3/BucketCorsRule:BucketCorsRule" {
 					corsRule = obj
 				}
 			}
