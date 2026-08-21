@@ -40,7 +40,7 @@ type GraphClient interface {
 	UpdateAppRegistration(ctx context.Context, appObjectID string, notes, description, homePageURL *string) error
 	FindFederatedCredential(
 		ctx context.Context, appObjectID, issuer, subject, audience string,
-	) (found bool, err error)
+	) (credentialID, name string, found bool, err error)
 	CreateFederatedCredential(
 		ctx context.Context, appObjectID, name, issuer, subject, audience, description string,
 	) (credentialID string, err error)
@@ -200,22 +200,22 @@ func (c *graphClient) UpdateAppRegistration(
 
 func (c *graphClient) FindFederatedCredential(
 	ctx context.Context, appObjectID, issuer, subject, audience string,
-) (found bool, err error) {
+) (credentialID, name string, found bool, err error) {
 	resp, err := c.do(ctx, http.MethodGet,
 		"/applications/"+url.PathEscape(appObjectID)+"/federatedIdentityCredentials", nil, nil)
 	if err != nil {
-		return false, err
+		return "", "", false, err
 	}
 	var list graphList[graphFedCred]
 	if err := runtime.UnmarshalAsJSON(resp, &list); err != nil {
-		return false, err
+		return "", "", false, err
 	}
 	for _, fc := range list.Value {
 		if fc.Issuer == issuer && fc.Subject == subject && slices.Contains(fc.Audiences, audience) {
-			return true, nil
+			return fc.ID, fc.Name, true, nil
 		}
 	}
-	return false, nil
+	return "", "", false, nil
 }
 
 func (c *graphClient) CreateFederatedCredential(

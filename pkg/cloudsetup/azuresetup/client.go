@@ -364,16 +364,16 @@ func (c *client) findOrCreateFederatedIdentityCredential(
 	oidcIssuer := c.oidcIssuer
 
 	// Check if a federated identity credential already exists with the same issuer, subject, and audience
-	found, err := c.graphClient.FindFederatedCredential(ctx, appObjectID, oidcIssuer, subject, audience)
+	existingID, existingName, found, err := c.graphClient.FindFederatedCredential(
+		ctx, appObjectID, oidcIssuer, subject, audience)
 	if err != nil {
 		return cloudsetup.CloudSetupResource{}, err
 	}
 	if found {
-		name := "pulumi-esc-oidc-credential-" + uuid.NewString()
 		return cloudsetup.CloudSetupResource{
 			Type:   ResourceTypeAzureFederatedCredential,
-			ID:     fmt.Sprintf("%s/%s", appObjectID, name),
-			Name:   name,
+			ID:     existingID,
+			Name:   existingName,
 			Status: cloudsetup.ResourceStatusExisting,
 		}, nil
 	}
