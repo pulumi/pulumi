@@ -2032,11 +2032,9 @@ func (i *Interpreter) registerReadResource(ctx context.Context, res *pcl.ReadRes
 	}
 	dependencies = append(dependencies, getAllDependencies(idVal)...)
 
-	var idStr string
+	idStr := plugin.UnknownStringValue
 	if idVal.IsString() {
 		idStr = idVal.StringValue()
-	} else {
-		idStr = plugin.UnknownStringValue
 	}
 
 	request := &pulumirpc.ReadResourceRequest{
