@@ -482,6 +482,13 @@ def register_stack_transformation(t: ResourceTransformation):
         root_resource._transformations = root_resource._transformations + [t]
 
 
+def _wait_for_pending_rpcs() -> None:
+    pending = asyncio.all_tasks()
+    rpcs = {task for task in pending if task.get_coro().__name__ == "rpc_wrapper"}  # type: ignore
+    if rpcs:
+        _sync_await(asyncio.gather(*rpcs))
+
+
 def register_resource_transform(t: ResourceTransform) -> None:
     """
     Add a transform to all future resources constructed in this Pulumi stack.
@@ -494,9 +501,7 @@ def register_resource_transform(t: ResourceTransform) -> None:
     # We need to make sure all the current resource registrations are finished before
     # registering the transforms.  Do so by waiting for all RPCs to complete, before
     # we go ahead and register the transform.
-    pending = asyncio.all_tasks()
-    rpcs = {task for task in pending if task.get_coro().__name__ == "rpc_wrapper"}  # type: ignore
-    _sync_await(asyncio.gather(*rpcs))
+    _wait_for_pending_rpcs()
 
     callbacks = _sync_await(_get_callbacks())
     if callbacks is None:
@@ -528,9 +533,7 @@ def register_invoke_transform(t: InvokeTransform) -> None:
     # We need to make sure all the current invokes are finished before
     # registering the transforms.  Do so by waiting for all RPCs to
     # complete, before we go ahead and register the transform.
-    pending = asyncio.all_tasks()
-    rpcs = {task for task in pending if task.get_coro().__name__ == "rpc_wrapper"}  # type: ignore
-    _sync_await(asyncio.gather(*rpcs))
+    _wait_for_pending_rpcs()
 
     callbacks = _sync_await(_get_callbacks())
     if callbacks is None:
