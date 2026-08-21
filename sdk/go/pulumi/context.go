@@ -3123,7 +3123,6 @@ func (ctx *Context) getSourcePositionForFrame(frame runtime.Frame) *pulumirpc.So
 
 	line := int32(-1)
 	if frame.Line <= math.MaxInt32 {
-		//nolint:gosec
 		line = int32(frame.Line)
 	}
 	return &pulumirpc.SourcePosition{

@@ -177,22 +177,19 @@ func TestCheckVersionRange(t *testing.T) {
 			name:               "too old",
 			cliVersion:         "2.9.0",
 			pulumiVersionRange: ">=3.0.0",
-			//nolint:lll
-			expectedError: "CLI version 2.9.0 does not satisfy the version range \">=3.0.0\"",
+			expectedError:      "CLI version 2.9.0 does not satisfy the version range \">=3.0.0\"",
 		},
 		{
 			name:               "too new",
 			cliVersion:         "4.0.0",
 			pulumiVersionRange: "<4.0.0",
-			//nolint:lll
-			expectedError: "CLI version 4.0.0 does not satisfy the version range \"<4.0.0\"",
+			expectedError:      "CLI version 4.0.0 does not satisfy the version range \"<4.0.0\"",
 		},
 		{
 			name:               "exclude",
 			cliVersion:         "3.1.0",
 			pulumiVersionRange: ">=3.0.0 !3.1.0",
-			//nolint:lll
-			expectedError: "CLI version 3.1.0 does not satisfy the version range \">=3.0.0 !3.1.0\"",
+			expectedError:      "CLI version 3.1.0 does not satisfy the version range \">=3.0.0 !3.1.0\"",
 		},
 		{
 			name:               "exclude 2",
@@ -223,8 +220,7 @@ func TestCheckVersionRange(t *testing.T) {
 			name:               "cli dev version bad",
 			cliVersion:         "3.215.0-alpha.x75fc436",
 			pulumiVersionRange: ">=3.215.0",
-			//nolint:lll
-			expectedError: "CLI version 3.215.0-alpha.x75fc436 does not satisfy the version range \">=3.215.0\"",
+			expectedError:      "CLI version 3.215.0-alpha.x75fc436 does not satisfy the version range \">=3.215.0\"",
 		},
 	}
 

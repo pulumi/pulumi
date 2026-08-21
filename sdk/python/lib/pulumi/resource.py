@@ -481,7 +481,8 @@ class ResourceOptions:
     deleted_with: Optional["Resource"]
     """
     If set, the providers Delete method will not be called for this resource
-    if specified resource is being deleted as well.
+    if specified resource is being deleted as well. If the named resource is
+    being replaced, this resource will be replaced as well.
     """
 
     replace_with: Optional[list["Resource"]]
@@ -578,7 +579,8 @@ class ResourceOptions:
                rarely be used.
         :param Optional[bool] retain_on_delete: If set to True, the providers Delete method will not be called for this resource.
         :param Optional[Resource] deleted_with: If set, the providers Delete method will not be called for this resource
-               if specified resource is being deleted as well.
+               if specified resource is being deleted as well. If the named resource is being replaced, this resource
+               will be replaced as well.
         :param Optional[List[Resource]] replace_with: If set, this resource will also be replaced whenever any of the provided resources are replaced.
         :param Optional[ResourceHookBinding] hooks: Optional resource hooks to bind to this resource. The hooks will be
                 invoked during certain step of the lifecycle of the resource.

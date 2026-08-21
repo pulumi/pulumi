@@ -1209,8 +1209,6 @@ size = 3
 // for `pulumi do` under the global-project fallback), DefaultRunStatefulUpdate must not fail with
 // "no Pulumi.yaml project file found" from a CWD-based lookup. req.Root points at the fallback
 // project, and the stack config file path must be resolved from that, not from CWD.
-//
-//nolint:paralleltest // Uses t.Chdir and t.Setenv.
 func TestDefaultRunStatefulUpdateGlobalProjectFromUnrelatedCwd(t *testing.T) {
 	// CWD has no Pulumi.yaml.
 	cwd := t.TempDir()

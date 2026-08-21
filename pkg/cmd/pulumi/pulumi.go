@@ -944,7 +944,7 @@ func diffMinorVersions(v1 semver.Version, v2 semver.Version) int64 {
 		return 0
 	}
 
-	return int64(v2.Minor - v1.Minor) //nolint:gosec
+	return int64(v2.Minor - v1.Minor)
 }
 
 // getUpgradeCommand returns a command that will upgrade the CLI to the newest version. If we can not determine how

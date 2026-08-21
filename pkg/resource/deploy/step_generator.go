@@ -1718,7 +1718,6 @@ func (sg *stepGenerator) continueStepsFromImport(
 								)
 							}
 
-							//nolint:govet
 							return nil, result.BailErrorf("%s", message)
 						}
 
@@ -2072,7 +2071,7 @@ func (sg *stepGenerator) continueStepsFromDiff(diffEvent ContinueResourceDiffEve
 					}
 				}
 
-				replacedWith, err := sg.findResourcesReplacedWith(urn)
+				replacedWith, err := sg.findDependentCascadeReplacements(urn)
 				if err != nil {
 					return nil, err
 				}
@@ -2141,6 +2140,9 @@ func (sg *stepGenerator) continueStepsFromDiff(diffEvent ContinueResourceDiffEve
 				// currently pending replace resource will get removed from the state when the CreateReplacementStep is
 				// successful.
 				if !old.PendingReplacement {
+					// Mark the old resource as deleted so that dependents DeletedWith it can see the
+					// deletion and skip their own provider Delete calls.
+					sg.deletes[old.URN] = true
 					oldViews := sg.deployment.GetOldViews(old.URN)
 					steps = append(steps, NewDeleteReplacementStep(sg.deployment, sg.deletes, old, true, oldViews))
 				}
@@ -2643,7 +2645,7 @@ func (sg *stepGenerator) determineAllowedResourcesToDeleteFromTargets(
 				return nil, err
 			}
 
-			replacedWith, err := sg.findResourcesReplacedWith(target)
+			replacedWith, err := sg.findDependentCascadeReplacements(target)
 			if err != nil {
 				return nil, err
 			}
@@ -2902,6 +2904,16 @@ func (sg *stepGenerator) diff(
 				return plugin.DiffResult{Changes: plugin.DiffSome, ReplaceKeys: []resource.PropertyKey{"replaceWith"}}, nil, nil
 			}
 		}
+	}
+
+	// Check if this resource should be replaced because the resource it is DeletedWith is being replaced.
+	if new.DeletedWith != "" && sg.replaces[new.DeletedWith] {
+		logging.V(7).Infof(
+			"Resource %v marked for replacement because %v (its DeletedWith resource) is being replaced",
+			urn,
+			new.DeletedWith,
+		)
+		return plugin.DiffResult{Changes: plugin.DiffSome, ReplaceKeys: []resource.PropertyKey{"deletedWith"}}, nil, nil
 	}
 
 	// Before diffing the resource, diff the provider field. If the provider field changes, we may or may
@@ -3303,6 +3315,12 @@ func (sg *stepGenerator) calculateDependentReplacements(root *pkgresource.State)
 			}
 		}
 
+		// A resource deleted with a replaced resource is destroyed by that delete, so it must be replaced
+		// regardless of property diffs.
+		if r.DeletedWith != "" && replaceSet[r.DeletedWith] {
+			return true, nil, nil
+		}
+
 		// Scan the properties of this resource in order to determine whether or not any of them depend on a resource
 		// that requires replacement and build a set of input properties for the provider diff.
 		hasDependencyInReplaceSet, inputsForDiff := false, resource.PropertyMap{}
@@ -3396,15 +3414,18 @@ func (sg *stepGenerator) calculateDependentReplacements(root *pkgresource.State)
 	return toReplace, nil
 }
 
-// If we want resource X to `replace_with` resource Y, then every time we want
-// to replace Y, we have to search for replace X to include it in the
-// replacement set.
-func (sg *stepGenerator) findResourcesReplacedWith(urn resource.URN) ([]dependentReplace, error) {
+// If we want resource X to `replace_with` or be `deletedWith` resource Y, then every time we want
+// to replace Y, we have to search for and replace X to include it in the replacement set.
+func (sg *stepGenerator) findDependentCascadeReplacements(urn resource.URN) ([]dependentReplace, error) {
 	resources := []dependentReplace{}
 	seen := map[resource.URN]bool{}
 
+	cascades := func(state *pkgresource.State) bool {
+		return (state.ReplaceWith != nil && slices.Contains(state.ReplaceWith, urn)) || state.DeletedWith == urn
+	}
+
 	sg.deployment.news.Range(func(check resource.URN, state *pkgresource.State) bool {
-		if !seen[check] && state.ReplaceWith != nil && slices.Contains(state.ReplaceWith, urn) {
+		if !seen[check] && cascades(state) {
 			resources = append(resources, dependentReplace{res: state, keys: []resource.PropertyKey{}})
 			seen[check] = true
 		}
@@ -3412,7 +3433,7 @@ func (sg *stepGenerator) findResourcesReplacedWith(urn resource.URN) ([]dependen
 	})
 
 	for check, state := range sg.deployment.olds {
-		if !seen[check] && state.ReplaceWith != nil && slices.Contains(state.ReplaceWith, urn) {
+		if !seen[check] && cascades(state) {
 			resources = append(resources, dependentReplace{res: state, keys: []resource.PropertyKey{}})
 			seen[check] = true
 		}

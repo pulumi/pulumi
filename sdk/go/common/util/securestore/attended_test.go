@@ -29,7 +29,6 @@ func disableInteractive(t *testing.T, disable bool) {
 	t.Cleanup(func() { cmdutil.DisableInteractive = prev })
 }
 
-//nolint:paralleltest // mutates interactivity globals and the environment
 func TestNonInteractiveForbidsPrompting(t *testing.T) {
 	disableInteractive(t, true)
 	t.Setenv("GITHUB_ACTIONS", "")
@@ -39,7 +38,6 @@ func TestNonInteractiveForbidsPrompting(t *testing.T) {
 	assert.False(t, someoneCanAnswerAPasswordDialog())
 }
 
-//nolint:paralleltest // mutates interactivity globals and the environment
 func TestDetectionWithoutAStatedPreference(t *testing.T) {
 	disableInteractive(t, false)
 
@@ -76,7 +74,6 @@ func TestDetectionWithoutAStatedPreference(t *testing.T) {
 	}
 }
 
-//nolint:paralleltest // mutates interactivity globals and the environment
 func TestWarningsHaveAnAudienceWhenNoDialogCanBeShown(t *testing.T) {
 	disableInteractive(t, false)
 	t.Setenv("GITHUB_ACTIONS", "")

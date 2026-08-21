@@ -54,7 +54,6 @@ func TestDetectProjectAndPath(t *testing.T) {
 	assert.Equal(t, "nodejs", project.Runtime.name)
 }
 
-//nolint:paralleltest // mutates env vars and shared agent Pulumi directory
 func TestPulumiHomeDirForPathFallsBackToAgentDir(t *testing.T) {
 	oldAgentPulumiDir := agentPulumiDir
 	agentPulumiDir = filepath.Join(t.TempDir(), BookkeepingDir)
@@ -74,7 +73,6 @@ func TestPulumiHomeDirForPathFallsBackToAgentDir(t *testing.T) {
 	assert.Equal(t, agentPulumiDir, dir)
 }
 
-//nolint:paralleltest // mutates env vars and shared agent Pulumi directory
 func TestPulumiHomeDirForPathKeepsWritableHomeForAgent(t *testing.T) {
 	oldAgentPulumiDir := agentPulumiDir
 	agentPulumiDir = filepath.Join(t.TempDir(), BookkeepingDir)
@@ -92,7 +90,6 @@ func TestPulumiHomeDirForPathKeepsWritableHomeForAgent(t *testing.T) {
 	assert.Equal(t, home, dir)
 }
 
-//nolint:paralleltest // mutates env vars and shared agent Pulumi directory
 func TestPulumiHomeDirForPathKeepsExplicitPath(t *testing.T) {
 	oldAgentPulumiDir := agentPulumiDir
 	agentPulumiDir = filepath.Join(t.TempDir(), BookkeepingDir)

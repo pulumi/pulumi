@@ -61,7 +61,7 @@ func (yarn *yarnClassic) Name() string {
 }
 
 func (yarn *yarnClassic) Version() (semver.Version, error) {
-	cmd := exec.Command(yarn.executable, "--version") //nolint:gosec
+	cmd := exec.Command(yarn.executable, "--version")
 	output, err := cmd.Output()
 	if err != nil {
 		return semver.Version{}, errutil.ErrorWithStderr(err, cmd.String())
@@ -114,7 +114,6 @@ func (yarn *yarnClassic) installCmd(ctx context.Context, production bool) *exec.
 		args = append(args, "--production")
 	}
 
-	//nolint:gosec // False positive on tained command execution. We aren't accepting input from the user here.
 	return exec.CommandContext(ctx, yarn.executable, args...)
 }
 
@@ -176,7 +175,6 @@ func (yarn *yarnClassic) Pack(ctx context.Context, dir string, stderr io.Writer)
 		contract.IgnoreError(os.Remove(packfile))
 	}()
 
-	//nolint:gosec // False positive on tained command execution. We aren't accepting input from the user here.
 	command := exec.CommandContext(ctx, yarn.executable, "pack", "--filename", packfile)
 	command.Dir = dir
 

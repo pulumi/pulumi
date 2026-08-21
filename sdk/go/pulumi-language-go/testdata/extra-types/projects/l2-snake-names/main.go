@@ -17,6 +17,7 @@ func main() {
 		if err != nil {
 			return err
 		}
+		ctx.Export("theOutput", first.The_output)
 		// Datasource outputs are correctly translated
 		_, err = cool_module.NewAnother_resource(ctx, "third", &cool_module.Another_resourceArgs{
 			The_input: cool_module.Some_dataOutput(ctx, cool_module.Some_dataOutputArgs{

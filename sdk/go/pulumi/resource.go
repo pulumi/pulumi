@@ -46,8 +46,6 @@ var (
 
 // This type alias is a hack to embed the internal.ResourceState type
 // into pulumi.ResourceState without exporting the field to the public API.
-//
-//nolint:unused
 type internalResourceState = internal.ResourceState
 
 // ResourceState is the base
@@ -1111,8 +1109,6 @@ func Transforms(o []ResourceTransform) ResourceOption {
 }
 
 // URN_ is an optional URN of a previously-registered resource of this type to read from the engine.
-//
-//nolint:revive
 func URN_(o string) ResourceOption {
 	return resourceOption(func(ro *resourceOptions) {
 		ro.URN = o
@@ -1155,7 +1151,8 @@ func RetainOnDelete(b bool) ResourceOption {
 }
 
 // If set, the providers Delete method will not be called for this resource
-// if specified resource is being deleted as well.
+// if specified resource is being deleted as well. If the named resource is
+// being replaced, this resource will be replaced as well.
 func DeletedWith(r Resource) ResourceOption {
 	return resourceOption(func(ro *resourceOptions) {
 		ro.DeletedWith = r

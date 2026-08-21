@@ -33,7 +33,6 @@ import (
 
 // mapPaths returns the set of all possible paths in c.
 func mapPaths(t *testing.T, c Map) []Key {
-	//nolint:prealloc
 	var paths []Key
 	for k, v := range c {
 		obj, err := v.ToObject()
@@ -52,7 +51,7 @@ func mapPaths(t *testing.T, c Map) []Key {
 func valuePaths(o any) []resource.PropertyPath {
 	switch o := o.(type) {
 	case []any:
-		var paths []resource.PropertyPath //nolint:prealloc // recursive function with unknown depth
+		var paths []resource.PropertyPath
 		for i, v := range o {
 			paths = append(paths, resource.PropertyPath{i})
 			for _, p := range valuePaths(v) {

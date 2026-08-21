@@ -177,7 +177,6 @@ func TestParseAndRenderDocs(t *testing.T) {
 				t.Fatalf("could not bind package: %v", diags)
 			}
 
-			//nolint:paralleltest // these are large, compute heavy tests. keep them in a single thread
 			for _, doc := range getDocsForPackage(pkg) {
 				original := []byte(doc.content)
 				expected := ParseDocs(original)

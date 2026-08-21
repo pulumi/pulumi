@@ -6,4 +6,5 @@ import pulumi_reservednames as reservednames
 elem = reservednames.ElementType("elem", element_type={
     "element_type": "nested",
 })
-pulumi.export("elementType", elem.element_type.element_type)
+pulumi.export("elementType", elem.element_type)
+pulumi.export("nested", elem.element_type.element_type)

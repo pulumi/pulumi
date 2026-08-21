@@ -282,7 +282,7 @@ func openInEditorInternal(editor, filename string) error {
 	// Launching an editor subprocess; wire it to the actual terminal so the
 	// user can interact with it. Using the cobra writers (which may be
 	// buffered or piped) would break vim/emacs/etc.
-	cmd := exec.Command(args[0], args[1:]...) //nolint:gosec
+	cmd := exec.Command(args[0], args[1:]...)
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout //nolint:forbidigo
 	cmd.Stderr = os.Stderr //nolint:forbidigo

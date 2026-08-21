@@ -68,7 +68,7 @@ func (noCredsLoginManager) LoginWithOIDCToken(
 	return nil, errors.New("unauthorized")
 }
 
-func TestNoCreds(t *testing.T) { //nolint:paralleltest,lll // non-thread-safe shared state
+func TestNoCreds(t *testing.T) { //nolint:paralleltest // non-thread-safe shared state
 	esc := &escCommand{
 		ws:    mockWorkspace(pulumi_workspace.Credentials{}),
 		login: noCredsLoginManager(0),
@@ -117,7 +117,7 @@ func (invalidatedCredsLoginManager) LoginWithOIDCToken(
 }
 
 // Test for https://github.com/pulumi/esc/issues/367
-func TestCurrentAccountButInvalidToken(t *testing.T) { //nolint:paralleltest,lll // non-thread-safe shared state
+func TestCurrentAccountButInvalidToken(t *testing.T) { //nolint:paralleltest // non-thread-safe shared state
 	esc := &escCommand{
 		command: "esc",
 		ws: mockWorkspace(pulumi_workspace.Credentials{
@@ -245,7 +245,7 @@ func TestPulumiBackendURLEnvOverridesPulumiAPI(t *testing.T) {
 	assert.Contains(t, login.accounts, "http://localhost:8081")
 }
 
-func TestInvalidSelfHostedBackend(t *testing.T) { //nolint:paralleltest,lll // non-thread-safe shared state
+func TestInvalidSelfHostedBackend(t *testing.T) { //nolint:paralleltest // non-thread-safe shared state
 	esc := &escCommand{ws: mockWorkspace(pulumi_workspace.Credentials{
 		Current: "http://pulumi.com",
 		Accounts: map[string]pulumi_workspace.Account{
@@ -260,7 +260,7 @@ func TestInvalidSelfHostedBackend(t *testing.T) { //nolint:paralleltest,lll // n
 	assert.ErrorContains(t, err, "pulumi login")
 }
 
-func TestFilestateBackend(t *testing.T) { //nolint:paralleltest,lll // non-thread-safe shared state
+func TestFilestateBackend(t *testing.T) { //nolint:paralleltest // non-thread-safe shared state
 	esc := &escCommand{ws: mockWorkspace(pulumi_workspace.Credentials{
 		Current: "gs://foo",
 		Accounts: map[string]pulumi_workspace.Account{
@@ -323,7 +323,7 @@ func TestEnvVarOverridesAccounts(t *testing.T) {
 	assert.Equal(t, esc.client.URL(), "https://api.pulumi.com")
 }
 
-func TestDefaultOrgConfiguration(t *testing.T) { //nolint:paralleltest,lll // non-thread-safe shared state
+func TestDefaultOrgConfiguration(t *testing.T) {
 	username := "test-user"
 	backend := "https://api.pulumi.com"
 	creds := pulumi_workspace.Credentials{
@@ -336,7 +336,7 @@ func TestDefaultOrgConfiguration(t *testing.T) { //nolint:paralleltest,lll // no
 		},
 	}
 
-	t.Run("prefers environment variable", func(t *testing.T) { //nolint:paralleltest,lll // non-thread-safe shared state
+	t.Run("prefers environment variable", func(t *testing.T) {
 		// The user has set PULUMI_DEFAULT_ORGANIZATION and configured a default org (in an isolated PULUMI_HOME):
 		envDefaultOrg := "env-default-org"
 		t.Setenv("PULUMI_DEFAULT_ORGANIZATION", envDefaultOrg)
@@ -359,7 +359,7 @@ func TestDefaultOrgConfiguration(t *testing.T) { //nolint:paralleltest,lll // no
 		assert.Equal(t, envDefaultOrg, esc.account.DefaultOrg)
 	})
 
-	t.Run("prefers user configuration", func(t *testing.T) { //nolint:paralleltest,lll // non-thread-safe shared state
+	t.Run("prefers user configuration", func(t *testing.T) {
 		// GIVEN
 		// The user has configured a default org (in an isolated PULUMI_HOME):
 		userConfiguredDefaultOrg := "my-default-org"
@@ -385,7 +385,7 @@ func TestDefaultOrgConfiguration(t *testing.T) { //nolint:paralleltest,lll // no
 		assert.Equal(t, userConfiguredDefaultOrg, esc.account.DefaultOrg)
 	})
 
-	t.Run("falls back to backend client configuration", func(t *testing.T) { //nolint:paralleltest,lll // non-thread-safe shared state
+	t.Run("falls back to backend client configuration", func(t *testing.T) {
 		// GIVEN
 		// The user has not configured a default org (isolated, empty PULUMI_HOME):
 		t.Setenv("PULUMI_DEFAULT_ORGANIZATION", "")
@@ -414,7 +414,7 @@ func TestDefaultOrgConfiguration(t *testing.T) { //nolint:paralleltest,lll // no
 		assert.Equal(t, serviceDefaultOrg, esc.account.DefaultOrg)
 	})
 
-	t.Run("falls back to individual org as last resort", func(t *testing.T) { //nolint:paralleltest,lll // non-thread-safe shared state
+	t.Run("falls back to individual org as last resort", func(t *testing.T) {
 		// GIVEN
 		// The user has not configured a default org (isolated, empty PULUMI_HOME):
 		t.Setenv("PULUMI_DEFAULT_ORGANIZATION", "")

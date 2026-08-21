@@ -30,7 +30,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
-//nolint:paralleltest // uses t.Setenv
 func TestPolicyLsCmd_QueriesPolicyPacksByOrgNameNotUserName(t *testing.T) {
 	t.Setenv("PULUMI_HOME", t.TempDir())
 

@@ -6,6 +6,13 @@ resource "elem" "reservednames:index:ElementType" {
     }
 }
 
+# The whole object checks that languages serialize typed objects in stack outputs with
+# their wire-format (camelCase) keys; the nested string exercises traversal through the
+# renamed members.
 output "elementType" {
+    value = elem.elementType
+}
+
+output "nested" {
     value = elem.elementType.elementType
 }
