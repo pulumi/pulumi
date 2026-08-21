@@ -15,7 +15,7 @@
 /* eslint-disable */
 
 import * as assert from "assert";
-import { all, Input, output } from "../output";
+import { all, Input, Inputs, output } from "../output";
 import {
     allAliases,
     ComponentResource,
@@ -27,6 +27,8 @@ import {
     ProviderResource,
 } from "../resource";
 import * as runtime from "../runtime";
+import { PulumiCommand } from "../automation";
+import { loadTypeScriptCompilerOptions } from "../tsutils";
 
 class MyResource extends ComponentResource {
     constructor(name: string, opts?: ComponentResourceOptions) {
@@ -247,6 +249,57 @@ describe("ComponentResource", () => {
         const y = await output(component.Y).promise();
         assert.strictEqual(y, true);
     });
+});
+
+describe("ComponentResource sendComponentInputs", () => {
+    runtime.setMocks({
+        call: (_) => {
+            throw new Error("unexpected call");
+        },
+        newResource: (args) => {
+            return {id: '$(args.name)-id', state: args.inputs };
+        },
+    });
+
+    it("does not transfer inputs to outputs by default", async () => {
+        class TestComp extends ComponentResource {
+            constructor(name: string, args: Inputs, opts?: ComponentResourceOptions) {
+                super("test:index:TestComp",name,args,opts);
+            }
+        }
+
+        //with this fix, this should cause promise leaks even with Output-like values
+        const comp = new TestComp("test-default", { foo: "bar", num: 42 });
+        const urn = await comp.urn.promise();
+        assert.ok(urn);
+    });
+
+    it("sends inputs when sendComponentInputs is true", async () => {
+        class TestComp extends ComponentResource {
+            constructor(name: string, args: Inputs, opts?: ComponentResourceOptions) {
+                super("test:index:TestComp",name,args,opts);
+            }
+        }
+
+        //with this fix, this should cause promise leaks even with Output-like values
+        const comp = new TestComp("test-send", { foo: "bar"}, { sendComponentInputs: true});
+        const urn = await comp.urn.promise();
+        assert.ok(urn);
+    });
+
+    it("always sends inputs for remote components", async () => {
+        class TestComp extends ComponentResource {
+            constructor(name: string, args: Inputs, opts?: ComponentResourceOptions) {
+                super("test:index:TestComp",name,args,opts, /*remote:*/ true);
+            }
+        }
+
+        //with this fix, this should cause promise leaks even with Output-like values
+        const comp = new TestComp("test-remote", { foo: "bar"});
+        const urn = await comp.urn.promise();
+        assert.ok(urn);
+    });
+    
 });
 
 describe("RemoteComponentResource", () => {
