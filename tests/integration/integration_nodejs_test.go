@@ -3223,6 +3223,12 @@ func TestNodejsComponentProviderRun(t *testing.T) {
 					out, err = cmd.CombinedOutput()
 					require.NoError(t, err, "%s failed with: %s", cmd.String(), string(out))
 
+					if runtime == "python" {
+						// Layer the locally-built core SDK on top of the venv so the
+						// host program exercises local SDK changes.
+						ptesting.InstallDependencies(t, info.Root)
+					}
+
 					return nil
 				},
 				Dir:             filepath.Join("component_provider", "nodejs", "component-provider-host"),
@@ -3249,17 +3255,9 @@ func TestNodejsComponentProviderRun(t *testing.T) {
 					require.Contains(t, stack.Outputs["aResourceOutputUrn"], "RandomPet::comp-pet")
 					require.Equal(t, "hello", stack.Outputs["aString"].(string))
 					require.Equal(t, "d", stack.Outputs["enumOutput"].(string))
-					if runtime == "python" {
-						// The output is stored in the stack as a plain object,
-						// but that means for Python the keys are snake_case.
-						require.Equal(t, float64(14), aComplexTypeOutput["a_number"].(float64))
-						nestedComplexType := aComplexTypeOutput["nested_complex_type"].(map[string]any)
-						require.Equal(t, float64(18), nestedComplexType["a_number"].(float64))
-					} else {
-						require.Equal(t, float64(14), aComplexTypeOutput["aNumber"].(float64))
-						nestedComplexType := aComplexTypeOutput["nestedComplexType"].(map[string]any)
-						require.Equal(t, float64(18), nestedComplexType["aNumber"].(float64))
-					}
+					require.Equal(t, float64(14), aComplexTypeOutput["aNumber"].(float64))
+					nestedComplexType := aComplexTypeOutput["nestedComplexType"].(map[string]any)
+					require.Equal(t, float64(18), nestedComplexType["aNumber"].(float64))
 				},
 			})
 		})

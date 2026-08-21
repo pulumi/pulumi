@@ -190,6 +190,29 @@ class InputTypeTests(unittest.TestCase):
             _types.output_type_types(MyOutputType),
         )
 
+    def test_output_type_to_dict(self):
+        types = [
+            MyOutputType,
+            MyOutputTypeDict,
+            MyOutputTypeTranslated,
+            MyOutputTypeDictTranslated,
+            MyDeclaredPropertiesOutputType,
+            MyDeclaredPropertiesOutputTypeDict,
+            MyDeclaredPropertiesOutputTypeTranslated,
+            MyDeclaredPropertiesOutputTypeDictTranslated,
+        ]
+        for typ in types:
+            t = _types.output_type_from_dict(
+                typ, {"firstValue": "hello", "secondValue": 42}
+            )
+            self.assertEqual(
+                {"firstValue": "hello", "secondValue": 42},
+                _types.output_type_to_dict(t),
+            )
+
+            t2 = _types.output_type_from_dict(typ, {"firstValue": "hello"})
+            self.assertEqual({"firstValue": "hello"}, _types.output_type_to_dict(t2))
+
     def test_output_type(self):
         types = [
             (MyOutputType, False),

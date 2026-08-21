@@ -49,7 +49,12 @@ func init() {
 					assert.Equal(l, want, elem.Outputs, "expected the echoed elementType output")
 
 					stack := RequireSingleResource(l, snap.Resources, "pulumi:pulumi:Stack")
-					AssertPropertyMapMember(l, stack.Outputs, "elementType", resource.NewProperty("nested"))
+					// The whole object checks that languages serialize typed objects in
+					// stack outputs with their wire-format (camelCase) keys.
+					AssertPropertyMapMember(l, stack.Outputs, "elementType", resource.NewProperty(resource.PropertyMap{
+						"elementType": resource.NewProperty("nested"),
+					}))
+					AssertPropertyMapMember(l, stack.Outputs, "nested", resource.NewProperty("nested"))
 				},
 			},
 		},

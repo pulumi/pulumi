@@ -28,7 +28,7 @@ import grpc
 from . import settings
 from ._instrumentation import wrap_with_context
 from .proto import resource_pb2
-from .. import log
+from .. import _types, log
 from ..resource import (
     ComponentResource,
     Resource,
@@ -423,6 +423,15 @@ def massage_complex(attr: Any, seen: list[Any]) -> Any:
             if not is_dry_run()
             else {**serialized_attr, "@isPulumiResource": True}
         )
+
+    # Output types store their values under Python (snake_case) names; convert them to
+    # dicts keyed by their Pulumi (wire-format) names so stack outputs match the names
+    # other languages serialize.
+    if _types.is_output_type(type(attr)):
+        return {
+            key: massage(value, seen)
+            for key, value in _types.output_type_to_dict(attr).items()
+        }
 
     # first check if the value is an actual dictionary.  If so, massage the values of it to deeply
     # make sure this is a popo.
