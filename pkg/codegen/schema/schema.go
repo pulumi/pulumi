@@ -2482,3 +2482,96 @@ type PartialPackageSpec struct {
 	// Functions is a map from token to FunctionSpec that describes the set of functions defined by this package.
 	Functions map[string]json.RawMessage `json:"functions,omitempty" yaml:"functions,omitempty"`
 }
+
+// Token is a parsed schema token of the form "pkg:mod:name". The module component may be empty;
+// an empty module is preserved as-is (not normalized to "index") so that tokens round-trip
+// byte-for-byte: generated SDKs embed token strings (e.g. in a resource's type) and existing
+// stacks depend on the original spelling.
+type Token struct{ pkg, mod, name string }
+
+// These mirror the per-component character classes of pulumi.json#/$defs/functionToken, the
+// loosest token pattern accepted by the metaschema.
+var (
+	tokenPkgRegexp  = regexp.MustCompile(`^[a-zA-Z][-a-zA-Z0-9_]*$`)
+	tokenModRegexp  = regexp.MustCompile(`^([^0-9:][a-zA-Z0-9._/-]*)?$`)
+	tokenNameRegexp = regexp.MustCompile(`^[^0-9:][a-zA-Z0-9._/-]*$`)
+)
+
+func validateTokenParts(pkg, mod, name string) error {
+	if !tokenPkgRegexp.MatchString(pkg) {
+		return fmt.Errorf("invalid package %q: must match %s", pkg, tokenPkgRegexp)
+	}
+	if !tokenModRegexp.MatchString(mod) {
+		return fmt.Errorf("invalid module %q: must match %s", mod, tokenModRegexp)
+	}
+	if !tokenNameRegexp.MatchString(name) {
+		return fmt.Errorf("invalid name %q: must match %s", name, tokenNameRegexp)
+	}
+	return nil
+}
+
+// ParseToken parses a schema token of the form "pkg:mod:name".
+func ParseToken(s string) (Token, error) {
+	pkg, rest, ok := strings.Cut(s, ":")
+	if !ok {
+		return Token{}, fmt.Errorf("invalid token %q: expected three ':' separated parts", s)
+	}
+	mod, name, ok := strings.Cut(rest, ":")
+	if !ok || strings.IndexByte(name, ':') >= 0 {
+		return Token{}, fmt.Errorf("invalid token %q: expected three ':' separated parts", s)
+	}
+	if err := validateTokenParts(pkg, mod, name); err != nil {
+		return Token{}, fmt.Errorf("invalid token %q: %w", s, err)
+	}
+	return Token{pkg: pkg, mod: mod, name: name}, nil
+}
+
+func NewToken(pkg, mod, name string) Token {
+	err := validateTokenParts(pkg, mod, name)
+	contract.Requiref(err == nil, "token", "%v", err)
+	return Token{pkg, mod, name}
+}
+
+func (t Token) Pkg() string    { return t.pkg }
+func (t Token) Module() string { return t.mod }
+func (t Token) Name() string   { return t.name }
+
+// IsZero reports whether t is the zero Token, which denotes the absence of a token (e.g. an
+// anonymous object type). The zero Token's string form is "".
+func (t Token) IsZero() bool { return t == Token{} }
+
+func (t Token) String() string {
+	if t.IsZero() {
+		return ""
+	}
+	return t.pkg + ":" + t.mod + ":" + t.name
+}
+
+func (t Token) MarshalText() ([]byte, error) { return []byte(t.String()), nil }
+
+func (t *Token) UnmarshalText(b []byte) error {
+	if len(b) == 0 {
+		*t = Token{}
+		return nil
+	}
+	tok, err := ParseToken(string(b))
+	if err != nil {
+		return err
+	}
+	*t = tok
+	return nil
+}
+
+func (t Token) AppendText(b []byte) ([]byte, error) {
+	return append(b, t.String()...), nil
+}
+
+func (t Token) GoString() string {
+	return fmt.Sprintf("schema.NewToken(%q, %q, %q)", t.pkg, t.mod, t.name)
+}
+
+// Cmp compares two tokens by their string form, returning -1, 0, or +1.
+func (t Token) Cmp(other Token) int { return strings.Compare(t.String(), other.String()) }
+
+// Less reports whether t sorts before other.
+func (t Token) Less(other Token) bool { return t.Cmp(other) == -1 }
