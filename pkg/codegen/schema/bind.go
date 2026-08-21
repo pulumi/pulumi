@@ -2288,8 +2288,17 @@ func (t *types) bindResourceDetails(
 	}
 
 	aliases := slice.Prealloc[*Alias](len(spec.Aliases))
-	for _, a := range spec.Aliases {
-		aliases = append(aliases, &Alias{compatibility: a.compatibility, Type: a.Type})
+	for i, a := range spec.Aliases {
+		var aliasType Token
+		if a.Type != "" {
+			var err error
+			aliasType, err = ParseToken(a.Type)
+			if err != nil {
+				diags = diags.Append(errorf(fmt.Sprintf("%s/aliases/%d/type", path, i), "%v", err))
+				continue
+			}
+		}
+		aliases = append(aliases, &Alias{compatibility: a.compatibility, Type: aliasType})
 	}
 
 	*decl = Resource{

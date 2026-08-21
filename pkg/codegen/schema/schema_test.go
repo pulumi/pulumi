@@ -4098,3 +4098,30 @@ func TestMissingPropertyRefErrors(t *testing.T) {
 	assert.Contains(t, summaries,
 		"#/types/test:index:SomeType/description: property 'nonExistent' not found on type 'test:index:SomeType'")
 }
+
+func TestBindResourceAliasToken(t *testing.T) {
+	t.Parallel()
+
+	bind := func(aliasType string) (*Package, hcl.Diagnostics) {
+		pkg, diags, err := BindSpec(PackageSpec{
+			Name: "test",
+			Resources: map[string]ResourceSpec{
+				"test:index:Thing": {Aliases: []AliasSpec{{Type: aliasType}}},
+			},
+		}, NewNullLoader(), ValidationOptions{AllowDanglingReferences: true})
+		require.NoError(t, err)
+		return pkg, diags
+	}
+
+	pkg, diags := bind("test:index:OldThing")
+	require.False(t, diags.HasErrors(), "%v", diags)
+	require.Len(t, pkg.Resources, 1)
+	assert.Equal(t, []*Alias{{Type: NewToken("test", "index", "OldThing")}}, pkg.Resources[0].Aliases)
+
+	_, diags = bind("not a token")
+	assert.Equal(t, hcl.Diagnostics{{
+		Severity: hcl.DiagError,
+		Summary: `#/resources/test:index:Thing/aliases/0/type: invalid token "not a token": ` +
+			`expected three ':' separated parts`,
+	}}, diags)
+}

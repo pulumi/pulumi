@@ -382,7 +382,7 @@ type Alias struct {
 	compatibility bool
 
 	// The type alias.
-	Type string
+	Type Token
 }
 
 // Resource describes a Pulumi resource.
@@ -1400,7 +1400,7 @@ func (pkg *Package) marshalResource(r *Resource) (ResourceSpec, error) {
 	for _, a := range r.Aliases {
 		aliases = append(aliases, AliasSpec{
 			compatibility: a.compatibility,
-			Type:          a.Type,
+			Type:          a.Type.String(),
 		})
 	}
 
