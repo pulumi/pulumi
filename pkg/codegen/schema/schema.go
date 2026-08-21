@@ -298,13 +298,13 @@ func (t *ResourceType) isType() {}
 // that can be used in place of the token.
 type TokenType struct {
 	// Token is the type's Pulumi type token.
-	Token string
+	Token Token
 	// Underlying type is the type's underlying type, if any.
 	UnderlyingType Type
 }
 
 func (t *TokenType) String() string {
-	return t.Token
+	return t.Token.String()
 }
 
 func (*TokenType) isType() {}
@@ -1623,7 +1623,7 @@ func (pkg *Package) marshalType(t Type, plain bool) TypeSpec {
 
 		return TypeSpec{
 			Type:  defaultType,
-			Ref:   pkg.marshalTypeRef(pkg.Reference(), "types", t.Token),
+			Ref:   pkg.marshalTypeRef(pkg.Reference(), "types", t.Token.String()),
 			Plain: !plain,
 		}
 	default:

@@ -885,7 +885,7 @@ func (g *generator) collectTypeImports(program *pcl.Program, t schema.Type) {
 		token = t.Token.String()
 		packageRef = t.PackageReference
 	case *schema.TokenType:
-		token = t.Token
+		token = t.Token.String()
 		pkg, _, name, _ := pcl.DecomposeToken(token, hcl.Range{})
 		mod := g.resolveModule(token)
 		vPath, err := g.getVersionPath(program, pkg)
