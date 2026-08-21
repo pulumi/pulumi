@@ -168,6 +168,36 @@ func (p *SimpleInvokeProvider) GetSchema(
 					},
 				},
 			},
+			// echoMap returns its stringMap argument unchanged. Used to verify that map keys
+			// (including keys starting with "__") survive a round-trip through an invoke.
+			"simple-invoke:index:echoMap": {
+				Inputs: &schema.ObjectTypeSpec{
+					Type: "object",
+					Properties: map[string]schema.PropertySpec{
+						"stringMap": {
+							TypeSpec: schema.TypeSpec{
+								Type:                 "object",
+								AdditionalProperties: &schema.TypeSpec{Type: "string"},
+							},
+						},
+					},
+					Required: []string{"stringMap"},
+				},
+				ReturnType: &schema.ReturnTypeSpec{
+					ObjectTypeSpec: &schema.ObjectTypeSpec{
+						Type: "object",
+						Properties: map[string]schema.PropertySpec{
+							"stringMap": {
+								TypeSpec: schema.TypeSpec{
+									Type:                 "object",
+									AdditionalProperties: &schema.TypeSpec{Type: "string"},
+								},
+							},
+						},
+						Required: []string{"stringMap"},
+					},
+				},
+			},
 			"simple-invoke:index:getText": {
 				Inputs: &schema.ObjectTypeSpec{
 					Type: "object",
@@ -350,6 +380,16 @@ func (p *SimpleInvokeProvider) Invoke(
 				"response": response,
 				"secret":   secretResponse,
 			}),
+		}, nil
+	case "simple-invoke:index:echoMap":
+		sm, ok := req.Args.GetOk("stringMap")
+		if !ok {
+			return plugin.InvokeResponse{
+				Failures: makeCheckFailure("stringMap", "missing stringMap"),
+			}, nil
+		}
+		return plugin.InvokeResponse{
+			Properties: property.NewMap(map[string]property.Value{"stringMap": sm}),
 		}, nil
 	case "simple-invoke:index:getText":
 		text, ok := req.Args.GetOk("text")

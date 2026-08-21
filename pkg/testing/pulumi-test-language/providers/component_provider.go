@@ -212,9 +212,41 @@ func (p *ComponentProvider) GetSchema(context.Context, plugin.GetSchemaRequest) 
 			},
 		},
 	}
+	// echoMap returns its stringMap argument unchanged. Used to verify that map keys
+	// (including keys starting with "__") survive a round-trip through a remote method call.
+	pkg.Functions["component:index:ComponentCallable/echoMap"] = schema.FunctionSpec{
+		Inputs: &schema.ObjectTypeSpec{
+			Type: "object",
+			Properties: map[string]schema.PropertySpec{
+				"__self__": refType("#/resources/component:index:ComponentCallable"),
+				"stringMap": {
+					TypeSpec: schema.TypeSpec{
+						Type:                 "object",
+						AdditionalProperties: &schema.TypeSpec{Type: "string"},
+					},
+				},
+			},
+			Required: []string{"__self__", "stringMap"},
+		},
+		ReturnType: &schema.ReturnTypeSpec{
+			ObjectTypeSpec: &schema.ObjectTypeSpec{
+				Type: "object",
+				Properties: map[string]schema.PropertySpec{
+					"stringMap": {
+						TypeSpec: schema.TypeSpec{
+							Type:                 "object",
+							AdditionalProperties: &schema.TypeSpec{Type: "string"},
+						},
+					},
+				},
+				Required: []string{"stringMap"},
+			},
+		},
+	}
 	callableResource.Methods = map[string]string{
 		"identity": "component:index:ComponentCallable/identity",
 		"prefixed": "component:index:ComponentCallable/prefixed",
+		"echoMap":  "component:index:ComponentCallable/echoMap",
 	}
 
 	pkg.Resources["component:index:ComponentCallable"] = callableResource
@@ -713,6 +745,16 @@ func (p *ComponentProvider) Call(
 		return p.callComponentCallableIdentity(ctx, req, monitor)
 	case "component:index:ComponentCallable/prefixed":
 		return p.callComponentCallablePrefixed(ctx, req, monitor)
+	case "component:index:ComponentCallable/echoMap":
+		sm, ok := req.Args.GetOk("stringMap")
+		if !ok {
+			return plugin.CallResponse{
+				Failures: makeCheckFailure("stringMap", "missing stringMap"),
+			}, nil
+		}
+		return plugin.CallResponse{
+			Return: property.NewMap(map[string]property.Value{"stringMap": sm}),
+		}, nil
 	}
 
 	return plugin.CallResponse{}, fmt.Errorf("unknown function %v", req.Tok)

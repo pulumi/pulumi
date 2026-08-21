@@ -46,6 +46,13 @@ export class ComponentCallable extends pulumi.ComponentResource {
         super(ComponentCallable.__pulumiType, name, resourceInputs, opts, true /*remote*/);
     }
 
+    echoMap(args: ComponentCallable.EchoMapArgs): pulumi.Output<ComponentCallable.EchoMapResult> {
+        return pulumi.runtime.call("component:index:ComponentCallable/echoMap", {
+            "__self__": this,
+            "stringMap": args.stringMap,
+        }, this);
+    }
+
     /**
      * The `identity` method of the `ComponentCallable` component resource. Returns the component's `value` unaltered.
      */
@@ -74,6 +81,20 @@ export interface ComponentCallableArgs {
 }
 
 export namespace ComponentCallable {
+    /**
+     * The set of arguments for the ComponentCallable.echoMap method.
+     */
+    export interface EchoMapArgs {
+        stringMap: pulumi.Input<{[key: string]: pulumi.Input<string>}>;
+    }
+
+    /**
+     * The results of the ComponentCallable.echoMap method.
+     */
+    export interface EchoMapResult {
+        readonly stringMap: {[key: string]: string};
+    }
+
     /**
      * The results of the ComponentCallable.identity method.
      */
