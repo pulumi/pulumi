@@ -1,0 +1,34 @@
+{
+  "nextCursor": 3,
+  "cursors": [
+    {
+      "id": "c1",
+      "label": "v7",
+      "node": "plan",
+      "value": {
+        "phase": 1,
+        "version": "7"
+      }
+    },
+    {
+      "id": "c2",
+      "label": "us-west",
+      "node": "verify-us-west",
+      "value": {
+        "region": "us-west",
+        "verified": true,
+        "version": "7"
+      }
+    },
+    {
+      "id": "c3",
+      "label": "us-east",
+      "node": "verify-us-east",
+      "value": {
+        "region": "us-east",
+        "verified": true,
+        "version": "7"
+      }
+    }
+  ]
+}

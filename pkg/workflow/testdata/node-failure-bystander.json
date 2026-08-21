@@ -1,0 +1,304 @@
+[
+  {
+    "type": "NodeDefined",
+    "event": {
+      "id": "start-bad"
+    }
+  },
+  {
+    "type": "NodeDefined",
+    "event": {
+      "id": "start-good"
+    }
+  },
+  {
+    "type": "NodeDefined",
+    "event": {
+      "id": "deploy"
+    }
+  },
+  {
+    "type": "NodeDefined",
+    "event": {
+      "id": "build"
+    }
+  },
+  {
+    "type": "NodeDefined",
+    "event": {
+      "id": "done"
+    }
+  },
+  {
+    "type": "EdgeDefined",
+    "event": {
+      "name": "go",
+      "from": "start-bad",
+      "to": "deploy"
+    }
+  },
+  {
+    "type": "EdgeDefined",
+    "event": {
+      "name": "go",
+      "from": "start-good",
+      "to": "build"
+    }
+  },
+  {
+    "type": "EdgeDefined",
+    "event": {
+      "name": "built",
+      "from": "build",
+      "to": "done"
+    }
+  },
+  {
+    "type": "CursorAdded",
+    "event": {
+      "node": "start-bad",
+      "cursor": {
+        "id": "c1",
+        "label": "bad"
+      },
+      "inputs": {
+        "version": "bad"
+      }
+    }
+  },
+  {
+    "type": "CursorAdded",
+    "event": {
+      "node": "start-good",
+      "cursor": {
+        "id": "c2",
+        "label": "good"
+      },
+      "inputs": {
+        "version": "good"
+      }
+    }
+  },
+  {
+    "type": "EdgeStarted",
+    "event": {
+      "name": "go",
+      "from": "start-bad",
+      "to": "deploy",
+      "inputs": {
+        "version": "bad"
+      }
+    }
+  },
+  {
+    "type": "EdgeFinished",
+    "event": {
+      "name": "go",
+      "from": "start-bad",
+      "to": "deploy",
+      "pass": true
+    }
+  },
+  {
+    "type": "EdgeStarted",
+    "event": {
+      "name": "go",
+      "from": "start-good",
+      "to": "build",
+      "inputs": {
+        "version": "good"
+      }
+    }
+  },
+  {
+    "type": "EdgeFinished",
+    "event": {
+      "name": "go",
+      "from": "start-good",
+      "to": "build",
+      "pass": true
+    }
+  },
+  {
+    "type": "NodeStarted",
+    "event": {
+      "id": "deploy",
+      "inputs": {
+        "version": "bad"
+      }
+    }
+  },
+  {
+    "type": "NodeFailed",
+    "event": {
+      "id": "deploy",
+      "error": "deploy exploded"
+    }
+  },
+  {
+    "type": "NodeUntouched",
+    "event": {
+      "id": "start-bad"
+    }
+  },
+  {
+    "type": "NodeUntouched",
+    "event": {
+      "id": "start-good"
+    }
+  },
+  {
+    "type": "NodeUntouched",
+    "event": {
+      "id": "build"
+    }
+  },
+  {
+    "type": "NodeUntouched",
+    "event": {
+      "id": "done"
+    }
+  },
+  {
+    "type": "ProgressReturned",
+    "error": "deploy exploded"
+  },
+  {
+    "type": "Note",
+    "note": "the bad release is fixed"
+  },
+  {
+    "type": "EdgeStarted",
+    "event": {
+      "name": "go",
+      "from": "start-bad",
+      "to": "deploy",
+      "inputs": {
+        "version": "bad"
+      }
+    }
+  },
+  {
+    "type": "EdgeFinished",
+    "event": {
+      "name": "go",
+      "from": "start-bad",
+      "to": "deploy",
+      "pass": true
+    }
+  },
+  {
+    "type": "EdgeStarted",
+    "event": {
+      "name": "go",
+      "from": "start-good",
+      "to": "build",
+      "inputs": {
+        "version": "good"
+      }
+    }
+  },
+  {
+    "type": "EdgeFinished",
+    "event": {
+      "name": "go",
+      "from": "start-good",
+      "to": "build",
+      "pass": true
+    }
+  },
+  {
+    "type": "NodeStarted",
+    "event": {
+      "id": "deploy",
+      "inputs": {
+        "version": "bad"
+      }
+    }
+  },
+  {
+    "type": "NodeSucceeded",
+    "event": {
+      "id": "deploy",
+      "outputs": {
+        "deployed": true,
+        "version": "bad"
+      }
+    }
+  },
+  {
+    "type": "NodeStarted",
+    "event": {
+      "id": "build",
+      "inputs": {
+        "version": "good"
+      }
+    }
+  },
+  {
+    "type": "NodeSucceeded",
+    "event": {
+      "id": "build",
+      "outputs": {
+        "built": true,
+        "version": "good"
+      }
+    }
+  },
+  {
+    "type": "EdgeStarted",
+    "event": {
+      "name": "built",
+      "from": "build",
+      "to": "done",
+      "inputs": {
+        "built": true,
+        "version": "good"
+      }
+    }
+  },
+  {
+    "type": "EdgeFinished",
+    "event": {
+      "name": "built",
+      "from": "build",
+      "to": "done",
+      "pass": true
+    }
+  },
+  {
+    "type": "NodeStarted",
+    "event": {
+      "id": "done",
+      "inputs": {
+        "built": true,
+        "version": "good"
+      }
+    }
+  },
+  {
+    "type": "NodeSucceeded",
+    "event": {
+      "id": "done",
+      "outputs": {
+        "built": true,
+        "version": "good"
+      }
+    }
+  },
+  {
+    "type": "NodeUntouched",
+    "event": {
+      "id": "start-bad"
+    }
+  },
+  {
+    "type": "NodeUntouched",
+    "event": {
+      "id": "start-good"
+    }
+  },
+  {
+    "type": "ProgressReturned"
+  }
+]

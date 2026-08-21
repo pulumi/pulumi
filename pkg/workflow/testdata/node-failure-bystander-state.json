@@ -1,0 +1,21 @@
+{
+  "nextCursor": 2,
+  "cursors": [
+    {
+      "id": "c1",
+      "label": "bad",
+      "node": "start-bad",
+      "value": {
+        "version": "bad"
+      }
+    },
+    {
+      "id": "c2",
+      "label": "good",
+      "node": "start-good",
+      "value": {
+        "version": "good"
+      }
+    }
+  ]
+}

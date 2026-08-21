@@ -1,0 +1,75 @@
+[
+  {
+    "type": "NodeDefined",
+    "event": {
+      "id": "start"
+    }
+  },
+  {
+    "type": "NodeDefined",
+    "event": {
+      "id": "boom"
+    }
+  },
+  {
+    "type": "EdgeDefined",
+    "event": {
+      "name": "go",
+      "from": "start",
+      "to": "boom"
+    }
+  },
+  {
+    "type": "CursorAdded",
+    "event": {
+      "node": "start",
+      "cursor": {
+        "id": "c1",
+        "label": ""
+      },
+      "inputs": {}
+    }
+  },
+  {
+    "type": "EdgeStarted",
+    "event": {
+      "name": "go",
+      "from": "start",
+      "to": "boom",
+      "inputs": {}
+    }
+  },
+  {
+    "type": "EdgeFinished",
+    "event": {
+      "name": "go",
+      "from": "start",
+      "to": "boom",
+      "pass": true
+    }
+  },
+  {
+    "type": "NodeStarted",
+    "event": {
+      "id": "boom",
+      "inputs": {}
+    }
+  },
+  {
+    "type": "NodeFailed",
+    "event": {
+      "id": "boom",
+      "error": "deploy exploded"
+    }
+  },
+  {
+    "type": "NodeUntouched",
+    "event": {
+      "id": "start"
+    }
+  },
+  {
+    "type": "ProgressReturned",
+    "error": "deploy exploded"
+  }
+]

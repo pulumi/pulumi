@@ -1,0 +1,1036 @@
+[
+  {
+    "type": "NodeDefined",
+    "event": {
+      "id": "release-requested"
+    }
+  },
+  {
+    "type": "NodeDefined",
+    "event": {
+      "id": "deploy-green"
+    }
+  },
+  {
+    "type": "NodeDefined",
+    "event": {
+      "id": "verify-green"
+    }
+  },
+  {
+    "type": "NodeDefined",
+    "event": {
+      "id": "switch-traffic"
+    }
+  },
+  {
+    "type": "NodeDefined",
+    "event": {
+      "id": "decommission-blue"
+    }
+  },
+  {
+    "type": "NodeDefined",
+    "event": {
+      "id": "rollback"
+    }
+  },
+  {
+    "type": "EdgeDefined",
+    "event": {
+      "name": "start",
+      "from": "release-requested",
+      "to": "deploy-green"
+    }
+  },
+  {
+    "type": "EdgeDefined",
+    "event": {
+      "name": "deployed",
+      "from": "deploy-green",
+      "to": "verify-green"
+    }
+  },
+  {
+    "type": "EdgeDefined",
+    "event": {
+      "name": "healthy-and-approved",
+      "from": "verify-green",
+      "to": "switch-traffic",
+      "andEdges": [
+        {
+          "name": "healthy-and-approved[0]",
+          "from": "verify-green",
+          "to": "switch-traffic"
+        },
+        {
+          "name": "healthy-and-approved[1]",
+          "from": "verify-green",
+          "to": "switch-traffic"
+        }
+      ]
+    }
+  },
+  {
+    "type": "EdgeDefined",
+    "event": {
+      "name": "unhealthy-or-timeout",
+      "from": "verify-green",
+      "to": "rollback",
+      "orEdges": [
+        {
+          "name": "unhealthy-or-timeout[0]",
+          "from": "verify-green",
+          "to": "rollback"
+        },
+        {
+          "name": "unhealthy-or-timeout[1]",
+          "from": "verify-green",
+          "to": "rollback"
+        }
+      ]
+    }
+  },
+  {
+    "type": "EdgeDefined",
+    "event": {
+      "name": "switched",
+      "from": "switch-traffic",
+      "to": "decommission-blue"
+    }
+  },
+  {
+    "type": "CursorAdded",
+    "event": {
+      "node": "release-requested",
+      "cursor": {
+        "id": "c1",
+        "label": "release 2.0"
+      },
+      "inputs": {
+        "version": "2.0"
+      }
+    }
+  },
+  {
+    "type": "EdgeStarted",
+    "event": {
+      "name": "start",
+      "from": "release-requested",
+      "to": "deploy-green",
+      "inputs": {
+        "version": "2.0"
+      }
+    }
+  },
+  {
+    "type": "EdgeFinished",
+    "event": {
+      "name": "start",
+      "from": "release-requested",
+      "to": "deploy-green",
+      "pass": true
+    }
+  },
+  {
+    "type": "NodeStarted",
+    "event": {
+      "id": "deploy-green",
+      "inputs": {
+        "version": "2.0"
+      }
+    }
+  },
+  {
+    "type": "NodeSucceeded",
+    "event": {
+      "id": "deploy-green",
+      "outputs": {
+        "url": "https://green.example.com/2.0",
+        "version": "2.0"
+      }
+    }
+  },
+  {
+    "type": "EdgeStarted",
+    "event": {
+      "name": "deployed",
+      "from": "deploy-green",
+      "to": "verify-green",
+      "inputs": {
+        "url": "https://green.example.com/2.0",
+        "version": "2.0"
+      }
+    }
+  },
+  {
+    "type": "EdgeFinished",
+    "event": {
+      "name": "deployed",
+      "from": "deploy-green",
+      "to": "verify-green",
+      "pass": true
+    }
+  },
+  {
+    "type": "NodeStarted",
+    "event": {
+      "id": "verify-green",
+      "inputs": {
+        "url": "https://green.example.com/2.0",
+        "version": "2.0"
+      }
+    }
+  },
+  {
+    "type": "NodeSucceeded",
+    "event": {
+      "id": "verify-green",
+      "outputs": {
+        "healthy": true,
+        "url": "https://green.example.com/2.0",
+        "version": "2.0"
+      }
+    }
+  },
+  {
+    "type": "EdgeStarted",
+    "event": {
+      "name": "healthy-and-approved",
+      "from": "verify-green",
+      "to": "switch-traffic",
+      "inputs": {
+        "healthy": true,
+        "url": "https://green.example.com/2.0",
+        "version": "2.0"
+      }
+    }
+  },
+  {
+    "type": "EdgeStarted",
+    "event": {
+      "name": "healthy-and-approved[0]",
+      "from": "verify-green",
+      "to": "switch-traffic",
+      "inputs": {
+        "healthy": true,
+        "url": "https://green.example.com/2.0",
+        "version": "2.0"
+      }
+    }
+  },
+  {
+    "type": "EdgeFinished",
+    "event": {
+      "name": "healthy-and-approved[0]",
+      "from": "verify-green",
+      "to": "switch-traffic",
+      "pass": true
+    }
+  },
+  {
+    "type": "EdgeStarted",
+    "event": {
+      "name": "healthy-and-approved[1]",
+      "from": "verify-green",
+      "to": "switch-traffic",
+      "inputs": {
+        "healthy": true,
+        "url": "https://green.example.com/2.0",
+        "version": "2.0"
+      }
+    }
+  },
+  {
+    "type": "EdgeFinished",
+    "event": {
+      "name": "healthy-and-approved[1]",
+      "from": "verify-green",
+      "to": "switch-traffic",
+      "pass": false
+    }
+  },
+  {
+    "type": "EdgeFinished",
+    "event": {
+      "name": "healthy-and-approved",
+      "from": "verify-green",
+      "to": "switch-traffic",
+      "pass": false
+    }
+  },
+  {
+    "type": "EdgeStarted",
+    "event": {
+      "name": "unhealthy-or-timeout",
+      "from": "verify-green",
+      "to": "rollback",
+      "inputs": {
+        "healthy": true,
+        "url": "https://green.example.com/2.0",
+        "version": "2.0"
+      }
+    }
+  },
+  {
+    "type": "EdgeStarted",
+    "event": {
+      "name": "unhealthy-or-timeout[0]",
+      "from": "verify-green",
+      "to": "rollback",
+      "inputs": {
+        "healthy": true,
+        "url": "https://green.example.com/2.0",
+        "version": "2.0"
+      }
+    }
+  },
+  {
+    "type": "EdgeFinished",
+    "event": {
+      "name": "unhealthy-or-timeout[0]",
+      "from": "verify-green",
+      "to": "rollback",
+      "pass": false
+    }
+  },
+  {
+    "type": "EdgeStarted",
+    "event": {
+      "name": "unhealthy-or-timeout[1]",
+      "from": "verify-green",
+      "to": "rollback",
+      "inputs": {
+        "healthy": true,
+        "url": "https://green.example.com/2.0",
+        "version": "2.0"
+      }
+    }
+  },
+  {
+    "type": "EdgeFinished",
+    "event": {
+      "name": "unhealthy-or-timeout[1]",
+      "from": "verify-green",
+      "to": "rollback",
+      "pass": false
+    }
+  },
+  {
+    "type": "EdgeFinished",
+    "event": {
+      "name": "unhealthy-or-timeout",
+      "from": "verify-green",
+      "to": "rollback",
+      "pass": false
+    }
+  },
+  {
+    "type": "NodeUntouched",
+    "event": {
+      "id": "release-requested"
+    }
+  },
+  {
+    "type": "NodeUntouched",
+    "event": {
+      "id": "switch-traffic"
+    }
+  },
+  {
+    "type": "NodeUntouched",
+    "event": {
+      "id": "decommission-blue"
+    }
+  },
+  {
+    "type": "NodeUntouched",
+    "event": {
+      "id": "rollback"
+    }
+  },
+  {
+    "type": "ProgressReturned"
+  },
+  {
+    "type": "Note",
+    "note": "operator approves the traffic switch"
+  },
+  {
+    "type": "EdgeStarted",
+    "event": {
+      "name": "healthy-and-approved",
+      "from": "verify-green",
+      "to": "switch-traffic",
+      "inputs": {
+        "healthy": true,
+        "url": "https://green.example.com/2.0",
+        "version": "2.0"
+      }
+    }
+  },
+  {
+    "type": "EdgeStarted",
+    "event": {
+      "name": "healthy-and-approved[0]",
+      "from": "verify-green",
+      "to": "switch-traffic",
+      "inputs": {
+        "healthy": true,
+        "url": "https://green.example.com/2.0",
+        "version": "2.0"
+      }
+    }
+  },
+  {
+    "type": "EdgeFinished",
+    "event": {
+      "name": "healthy-and-approved[0]",
+      "from": "verify-green",
+      "to": "switch-traffic",
+      "pass": true
+    }
+  },
+  {
+    "type": "EdgeStarted",
+    "event": {
+      "name": "healthy-and-approved[1]",
+      "from": "verify-green",
+      "to": "switch-traffic",
+      "inputs": {
+        "healthy": true,
+        "url": "https://green.example.com/2.0",
+        "version": "2.0"
+      }
+    }
+  },
+  {
+    "type": "EdgeFinished",
+    "event": {
+      "name": "healthy-and-approved[1]",
+      "from": "verify-green",
+      "to": "switch-traffic",
+      "pass": true
+    }
+  },
+  {
+    "type": "EdgeFinished",
+    "event": {
+      "name": "healthy-and-approved",
+      "from": "verify-green",
+      "to": "switch-traffic",
+      "pass": true
+    }
+  },
+  {
+    "type": "NodeStarted",
+    "event": {
+      "id": "switch-traffic",
+      "inputs": {
+        "healthy": true,
+        "url": "https://green.example.com/2.0",
+        "version": "2.0"
+      }
+    }
+  },
+  {
+    "type": "NodeSucceeded",
+    "event": {
+      "id": "switch-traffic",
+      "outputs": {
+        "healthy": true,
+        "live": "green",
+        "url": "https://green.example.com/2.0",
+        "version": "2.0"
+      }
+    }
+  },
+  {
+    "type": "EdgeStarted",
+    "event": {
+      "name": "switched",
+      "from": "switch-traffic",
+      "to": "decommission-blue",
+      "inputs": {
+        "healthy": true,
+        "live": "green",
+        "url": "https://green.example.com/2.0",
+        "version": "2.0"
+      }
+    }
+  },
+  {
+    "type": "EdgeFinished",
+    "event": {
+      "name": "switched",
+      "from": "switch-traffic",
+      "to": "decommission-blue",
+      "pass": true
+    }
+  },
+  {
+    "type": "NodeStarted",
+    "event": {
+      "id": "decommission-blue",
+      "inputs": {
+        "healthy": true,
+        "live": "green",
+        "url": "https://green.example.com/2.0",
+        "version": "2.0"
+      }
+    }
+  },
+  {
+    "type": "NodeSucceeded",
+    "event": {
+      "id": "decommission-blue",
+      "outputs": {
+        "blue": "deleted",
+        "healthy": true,
+        "live": "green",
+        "url": "https://green.example.com/2.0",
+        "version": "2.0"
+      }
+    }
+  },
+  {
+    "type": "NodeUntouched",
+    "event": {
+      "id": "release-requested"
+    }
+  },
+  {
+    "type": "NodeUntouched",
+    "event": {
+      "id": "deploy-green"
+    }
+  },
+  {
+    "type": "NodeUntouched",
+    "event": {
+      "id": "verify-green"
+    }
+  },
+  {
+    "type": "NodeUntouched",
+    "event": {
+      "id": "rollback"
+    }
+  },
+  {
+    "type": "ProgressReturned"
+  },
+  {
+    "type": "Note",
+    "note": "release 2.0 done; a broken release 3.0 starts"
+  },
+  {
+    "type": "CursorAdded",
+    "event": {
+      "node": "release-requested",
+      "cursor": {
+        "id": "c2",
+        "label": "release 3.0"
+      },
+      "inputs": {
+        "version": "3.0"
+      }
+    }
+  },
+  {
+    "type": "EdgeStarted",
+    "event": {
+      "name": "start",
+      "from": "release-requested",
+      "to": "deploy-green",
+      "inputs": {
+        "version": "3.0"
+      }
+    }
+  },
+  {
+    "type": "EdgeFinished",
+    "event": {
+      "name": "start",
+      "from": "release-requested",
+      "to": "deploy-green",
+      "pass": true
+    }
+  },
+  {
+    "type": "NodeStarted",
+    "event": {
+      "id": "deploy-green",
+      "inputs": {
+        "version": "3.0"
+      }
+    }
+  },
+  {
+    "type": "NodeSucceeded",
+    "event": {
+      "id": "deploy-green",
+      "outputs": {
+        "url": "https://green.example.com/3.0",
+        "version": "3.0"
+      }
+    }
+  },
+  {
+    "type": "EdgeStarted",
+    "event": {
+      "name": "deployed",
+      "from": "deploy-green",
+      "to": "verify-green",
+      "inputs": {
+        "url": "https://green.example.com/3.0",
+        "version": "3.0"
+      }
+    }
+  },
+  {
+    "type": "EdgeFinished",
+    "event": {
+      "name": "deployed",
+      "from": "deploy-green",
+      "to": "verify-green",
+      "pass": true
+    }
+  },
+  {
+    "type": "NodeStarted",
+    "event": {
+      "id": "verify-green",
+      "inputs": {
+        "url": "https://green.example.com/3.0",
+        "version": "3.0"
+      }
+    }
+  },
+  {
+    "type": "NodeSucceeded",
+    "event": {
+      "id": "verify-green",
+      "outputs": {
+        "healthy": false,
+        "url": "https://green.example.com/3.0",
+        "version": "3.0"
+      }
+    }
+  },
+  {
+    "type": "EdgeStarted",
+    "event": {
+      "name": "healthy-and-approved",
+      "from": "verify-green",
+      "to": "switch-traffic",
+      "inputs": {
+        "healthy": false,
+        "url": "https://green.example.com/3.0",
+        "version": "3.0"
+      }
+    }
+  },
+  {
+    "type": "EdgeStarted",
+    "event": {
+      "name": "healthy-and-approved[0]",
+      "from": "verify-green",
+      "to": "switch-traffic",
+      "inputs": {
+        "healthy": false,
+        "url": "https://green.example.com/3.0",
+        "version": "3.0"
+      }
+    }
+  },
+  {
+    "type": "EdgeFinished",
+    "event": {
+      "name": "healthy-and-approved[0]",
+      "from": "verify-green",
+      "to": "switch-traffic",
+      "pass": false
+    }
+  },
+  {
+    "type": "EdgeFinished",
+    "event": {
+      "name": "healthy-and-approved",
+      "from": "verify-green",
+      "to": "switch-traffic",
+      "pass": false
+    }
+  },
+  {
+    "type": "EdgeStarted",
+    "event": {
+      "name": "unhealthy-or-timeout",
+      "from": "verify-green",
+      "to": "rollback",
+      "inputs": {
+        "healthy": false,
+        "url": "https://green.example.com/3.0",
+        "version": "3.0"
+      }
+    }
+  },
+  {
+    "type": "EdgeStarted",
+    "event": {
+      "name": "unhealthy-or-timeout[0]",
+      "from": "verify-green",
+      "to": "rollback",
+      "inputs": {
+        "healthy": false,
+        "url": "https://green.example.com/3.0",
+        "version": "3.0"
+      }
+    }
+  },
+  {
+    "type": "EdgeFinished",
+    "event": {
+      "name": "unhealthy-or-timeout[0]",
+      "from": "verify-green",
+      "to": "rollback",
+      "pass": true
+    }
+  },
+  {
+    "type": "EdgeFinished",
+    "event": {
+      "name": "unhealthy-or-timeout",
+      "from": "verify-green",
+      "to": "rollback",
+      "pass": true
+    }
+  },
+  {
+    "type": "NodeStarted",
+    "event": {
+      "id": "rollback",
+      "inputs": {
+        "healthy": false,
+        "url": "https://green.example.com/3.0",
+        "version": "3.0"
+      }
+    }
+  },
+  {
+    "type": "NodeSucceeded",
+    "event": {
+      "id": "rollback",
+      "outputs": {
+        "healthy": false,
+        "live": "blue",
+        "url": "https://green.example.com/3.0",
+        "version": "3.0"
+      }
+    }
+  },
+  {
+    "type": "NodeUntouched",
+    "event": {
+      "id": "release-requested"
+    }
+  },
+  {
+    "type": "NodeUntouched",
+    "event": {
+      "id": "switch-traffic"
+    }
+  },
+  {
+    "type": "NodeUntouched",
+    "event": {
+      "id": "decommission-blue"
+    }
+  },
+  {
+    "type": "ProgressReturned"
+  },
+  {
+    "type": "Note",
+    "note": "release 3.1 stalls waiting for approval until the approval window times out"
+  },
+  {
+    "type": "CursorAdded",
+    "event": {
+      "node": "release-requested",
+      "cursor": {
+        "id": "c3",
+        "label": "release 3.1"
+      },
+      "inputs": {
+        "version": "3.1"
+      }
+    }
+  },
+  {
+    "type": "EdgeStarted",
+    "event": {
+      "name": "start",
+      "from": "release-requested",
+      "to": "deploy-green",
+      "inputs": {
+        "version": "3.1"
+      }
+    }
+  },
+  {
+    "type": "EdgeFinished",
+    "event": {
+      "name": "start",
+      "from": "release-requested",
+      "to": "deploy-green",
+      "pass": true
+    }
+  },
+  {
+    "type": "NodeStarted",
+    "event": {
+      "id": "deploy-green",
+      "inputs": {
+        "version": "3.1"
+      }
+    }
+  },
+  {
+    "type": "NodeSucceeded",
+    "event": {
+      "id": "deploy-green",
+      "outputs": {
+        "url": "https://green.example.com/3.1",
+        "version": "3.1"
+      }
+    }
+  },
+  {
+    "type": "EdgeStarted",
+    "event": {
+      "name": "deployed",
+      "from": "deploy-green",
+      "to": "verify-green",
+      "inputs": {
+        "url": "https://green.example.com/3.1",
+        "version": "3.1"
+      }
+    }
+  },
+  {
+    "type": "EdgeFinished",
+    "event": {
+      "name": "deployed",
+      "from": "deploy-green",
+      "to": "verify-green",
+      "pass": true
+    }
+  },
+  {
+    "type": "NodeStarted",
+    "event": {
+      "id": "verify-green",
+      "inputs": {
+        "url": "https://green.example.com/3.1",
+        "version": "3.1"
+      }
+    }
+  },
+  {
+    "type": "NodeSucceeded",
+    "event": {
+      "id": "verify-green",
+      "outputs": {
+        "healthy": false,
+        "url": "https://green.example.com/3.1",
+        "version": "3.1"
+      }
+    }
+  },
+  {
+    "type": "EdgeStarted",
+    "event": {
+      "name": "healthy-and-approved",
+      "from": "verify-green",
+      "to": "switch-traffic",
+      "inputs": {
+        "healthy": false,
+        "url": "https://green.example.com/3.1",
+        "version": "3.1"
+      }
+    }
+  },
+  {
+    "type": "EdgeStarted",
+    "event": {
+      "name": "healthy-and-approved[0]",
+      "from": "verify-green",
+      "to": "switch-traffic",
+      "inputs": {
+        "healthy": false,
+        "url": "https://green.example.com/3.1",
+        "version": "3.1"
+      }
+    }
+  },
+  {
+    "type": "EdgeFinished",
+    "event": {
+      "name": "healthy-and-approved[0]",
+      "from": "verify-green",
+      "to": "switch-traffic",
+      "pass": false
+    }
+  },
+  {
+    "type": "EdgeFinished",
+    "event": {
+      "name": "healthy-and-approved",
+      "from": "verify-green",
+      "to": "switch-traffic",
+      "pass": false
+    }
+  },
+  {
+    "type": "EdgeStarted",
+    "event": {
+      "name": "unhealthy-or-timeout",
+      "from": "verify-green",
+      "to": "rollback",
+      "inputs": {
+        "healthy": false,
+        "url": "https://green.example.com/3.1",
+        "version": "3.1"
+      }
+    }
+  },
+  {
+    "type": "EdgeStarted",
+    "event": {
+      "name": "unhealthy-or-timeout[0]",
+      "from": "verify-green",
+      "to": "rollback",
+      "inputs": {
+        "healthy": false,
+        "url": "https://green.example.com/3.1",
+        "version": "3.1"
+      }
+    }
+  },
+  {
+    "type": "EdgeFinished",
+    "event": {
+      "name": "unhealthy-or-timeout[0]",
+      "from": "verify-green",
+      "to": "rollback",
+      "pass": true
+    }
+  },
+  {
+    "type": "EdgeFinished",
+    "event": {
+      "name": "unhealthy-or-timeout",
+      "from": "verify-green",
+      "to": "rollback",
+      "pass": true
+    }
+  },
+  {
+    "type": "NodeStarted",
+    "event": {
+      "id": "rollback",
+      "inputs": {
+        "healthy": false,
+        "url": "https://green.example.com/3.1",
+        "version": "3.1"
+      }
+    }
+  },
+  {
+    "type": "NodeSucceeded",
+    "event": {
+      "id": "rollback",
+      "outputs": {
+        "healthy": false,
+        "live": "blue",
+        "url": "https://green.example.com/3.1",
+        "version": "3.1"
+      }
+    }
+  },
+  {
+    "type": "CursorReplaced",
+    "event": {
+      "old": {
+        "id": "c2",
+        "label": "release 3.0"
+      },
+      "new": {
+        "id": "c3",
+        "label": "release 3.1"
+      },
+      "node": "rollback"
+    }
+  },
+  {
+    "type": "NodeUntouched",
+    "event": {
+      "id": "release-requested"
+    }
+  },
+  {
+    "type": "NodeUntouched",
+    "event": {
+      "id": "switch-traffic"
+    }
+  },
+  {
+    "type": "NodeUntouched",
+    "event": {
+      "id": "decommission-blue"
+    }
+  },
+  {
+    "type": "ProgressReturned"
+  },
+  {
+    "type": "NodeUntouched",
+    "event": {
+      "id": "release-requested"
+    }
+  },
+  {
+    "type": "NodeUntouched",
+    "event": {
+      "id": "deploy-green"
+    }
+  },
+  {
+    "type": "NodeUntouched",
+    "event": {
+      "id": "verify-green"
+    }
+  },
+  {
+    "type": "NodeUntouched",
+    "event": {
+      "id": "switch-traffic"
+    }
+  },
+  {
+    "type": "NodeUntouched",
+    "event": {
+      "id": "decommission-blue"
+    }
+  },
+  {
+    "type": "NodeUntouched",
+    "event": {
+      "id": "rollback"
+    }
+  },
+  {
+    "type": "ProgressReturned"
+  }
+]

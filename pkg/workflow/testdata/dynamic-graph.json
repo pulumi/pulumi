@@ -1,0 +1,266 @@
+[
+  {
+    "type": "NodeDefined",
+    "event": {
+      "id": "done"
+    }
+  },
+  {
+    "type": "NodeDefined",
+    "event": {
+      "id": "start"
+    }
+  },
+  {
+    "type": "NodeDefined",
+    "event": {
+      "id": "plan"
+    }
+  },
+  {
+    "type": "EdgeDefined",
+    "event": {
+      "name": "planning",
+      "from": "start",
+      "to": "plan"
+    }
+  },
+  {
+    "type": "CursorAdded",
+    "event": {
+      "node": "start",
+      "cursor": {
+        "id": "c1",
+        "label": "expanding"
+      },
+      "inputs": {
+        "here": "plan",
+        "remaining": [
+          "us",
+          "eu"
+        ]
+      }
+    }
+  },
+  {
+    "type": "EdgeStarted",
+    "event": {
+      "name": "planning",
+      "from": "start",
+      "to": "plan",
+      "inputs": {
+        "here": "plan",
+        "remaining": [
+          "us",
+          "eu"
+        ]
+      }
+    }
+  },
+  {
+    "type": "EdgeFinished",
+    "event": {
+      "name": "planning",
+      "from": "start",
+      "to": "plan",
+      "pass": true
+    }
+  },
+  {
+    "type": "NodeStarted",
+    "event": {
+      "id": "plan",
+      "inputs": {
+        "here": "plan",
+        "remaining": [
+          "us",
+          "eu"
+        ]
+      }
+    }
+  },
+  {
+    "type": "NodeDefined",
+    "event": {
+      "id": "deploy-us"
+    }
+  },
+  {
+    "type": "EdgeDefined",
+    "event": {
+      "name": "next",
+      "from": "plan",
+      "to": "deploy-us"
+    }
+  },
+  {
+    "type": "NodeSucceeded",
+    "event": {
+      "id": "plan",
+      "outputs": {
+        "here": "deploy-us",
+        "remaining": [
+          "eu"
+        ]
+      }
+    }
+  },
+  {
+    "type": "EdgeStarted",
+    "event": {
+      "name": "next",
+      "from": "plan",
+      "to": "deploy-us",
+      "inputs": {
+        "here": "deploy-us",
+        "remaining": [
+          "eu"
+        ]
+      }
+    }
+  },
+  {
+    "type": "EdgeFinished",
+    "event": {
+      "name": "next",
+      "from": "plan",
+      "to": "deploy-us",
+      "pass": true
+    }
+  },
+  {
+    "type": "NodeStarted",
+    "event": {
+      "id": "deploy-us",
+      "inputs": {
+        "here": "deploy-us",
+        "remaining": [
+          "eu"
+        ]
+      }
+    }
+  },
+  {
+    "type": "NodeDefined",
+    "event": {
+      "id": "deploy-eu"
+    }
+  },
+  {
+    "type": "EdgeDefined",
+    "event": {
+      "name": "next",
+      "from": "deploy-us",
+      "to": "deploy-eu"
+    }
+  },
+  {
+    "type": "NodeSucceeded",
+    "event": {
+      "id": "deploy-us",
+      "outputs": {
+        "here": "deploy-eu",
+        "remaining": []
+      }
+    }
+  },
+  {
+    "type": "EdgeStarted",
+    "event": {
+      "name": "next",
+      "from": "deploy-us",
+      "to": "deploy-eu",
+      "inputs": {
+        "here": "deploy-eu",
+        "remaining": []
+      }
+    }
+  },
+  {
+    "type": "EdgeFinished",
+    "event": {
+      "name": "next",
+      "from": "deploy-us",
+      "to": "deploy-eu",
+      "pass": true
+    }
+  },
+  {
+    "type": "NodeStarted",
+    "event": {
+      "id": "deploy-eu",
+      "inputs": {
+        "here": "deploy-eu",
+        "remaining": []
+      }
+    }
+  },
+  {
+    "type": "EdgeDefined",
+    "event": {
+      "name": "finished",
+      "from": "deploy-eu",
+      "to": "done"
+    }
+  },
+  {
+    "type": "NodeSucceeded",
+    "event": {
+      "id": "deploy-eu",
+      "outputs": {
+        "here": "deploy-eu",
+        "remaining": []
+      }
+    }
+  },
+  {
+    "type": "EdgeStarted",
+    "event": {
+      "name": "finished",
+      "from": "deploy-eu",
+      "to": "done",
+      "inputs": {
+        "here": "deploy-eu",
+        "remaining": []
+      }
+    }
+  },
+  {
+    "type": "EdgeFinished",
+    "event": {
+      "name": "finished",
+      "from": "deploy-eu",
+      "to": "done",
+      "pass": true
+    }
+  },
+  {
+    "type": "NodeStarted",
+    "event": {
+      "id": "done",
+      "inputs": {
+        "here": "deploy-eu",
+        "remaining": []
+      }
+    }
+  },
+  {
+    "type": "NodeSucceeded",
+    "event": {
+      "id": "done",
+      "outputs": {
+        "here": "deploy-eu",
+        "remaining": []
+      }
+    }
+  },
+  {
+    "type": "NodeUntouched",
+    "event": {
+      "id": "start"
+    }
+  },
+  {
+    "type": "ProgressReturned"
+  }
+]
