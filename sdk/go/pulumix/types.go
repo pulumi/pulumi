@@ -92,7 +92,7 @@ func InputElementType(t reflect.Type) (e reflect.Type, ok bool) {
 		return nil, false
 	}
 
-	input, ok := reflect.Zero(t).Interface().(internal.Input)
+	input, ok := reflect.TypeAssert[internal.Input](reflect.Zero(t))
 	if !ok {
 		// Doesn't implement Input interface.
 		return nil, false

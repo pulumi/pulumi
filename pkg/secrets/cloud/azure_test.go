@@ -248,5 +248,5 @@ func TestAzureKeyVaultKeyError(t *testing.T) {
 `
 
 	_, err := NewCloudSecretsManagerFromState([]byte(cloudState))
-	require.ErrorContains(t, err, "unmarshalling state: illegal base64 data at input byte 3")
+	require.ErrorContains(t, err, "illegal base64 data at input byte 3")
 }

@@ -306,12 +306,12 @@ func TestGetCLIMetadata(t *testing.T) {
 		},
 		{
 			name: "no set flags",
-			cmd: (func() *cobra.Command {
+			cmd: func() *cobra.Command {
 				cmd := &cobra.Command{Use: "no-set"}
 				cmd.Flags().Bool("bool", false, "bool flag")
 				cmd.Flags().String("string", "", "string flag")
 				return cmd
-			})(),
+			}(),
 			environ: []string{},
 			metadata: map[string]string{
 				"Command":     "no-set",
@@ -321,7 +321,7 @@ func TestGetCLIMetadata(t *testing.T) {
 		},
 		{
 			name: "one set bool flag",
-			cmd: (func() *cobra.Command {
+			cmd: func() *cobra.Command {
 				cmd := &cobra.Command{Use: "one-set"}
 				cmd.Flags().Bool("bool", false, "bool flag")
 				cmd.Flags().String("string", "", "string flag")
@@ -332,7 +332,7 @@ func TestGetCLIMetadata(t *testing.T) {
 				require.NoError(t, err)
 
 				return cmd
-			})(),
+			}(),
 			metadata: map[string]string{
 				"Command":     "one-set",
 				"Flags":       "--bool",
@@ -341,7 +341,7 @@ func TestGetCLIMetadata(t *testing.T) {
 		},
 		{
 			name: "one set string flag",
-			cmd: (func() *cobra.Command {
+			cmd: func() *cobra.Command {
 				cmd := &cobra.Command{Use: "one-set"}
 				cmd.Flags().Bool("bool", false, "bool flag")
 				cmd.Flags().String("string", "", "string flag")
@@ -352,7 +352,7 @@ func TestGetCLIMetadata(t *testing.T) {
 				require.NoError(t, err)
 
 				return cmd
-			})(),
+			}(),
 			metadata: map[string]string{
 				"Command":     "one-set",
 				"Flags":       "--string",
@@ -361,7 +361,7 @@ func TestGetCLIMetadata(t *testing.T) {
 		},
 		{
 			name: "multiple set flags",
-			cmd: (func() *cobra.Command {
+			cmd: func() *cobra.Command {
 				cmd := &cobra.Command{Use: "multiple-set"}
 				cmd.Flags().Bool("bool", false, "bool flag")
 				cmd.Flags().String("string", "", "string flag")
@@ -372,7 +372,7 @@ func TestGetCLIMetadata(t *testing.T) {
 				require.NoError(t, err)
 
 				return cmd
-			})(),
+			}(),
 			metadata: map[string]string{
 				"Command":     "multiple-set",
 				"Flags":       "--bool --string",
@@ -381,7 +381,7 @@ func TestGetCLIMetadata(t *testing.T) {
 		},
 		{
 			name: "longer command path",
-			cmd: (func() *cobra.Command {
+			cmd: func() *cobra.Command {
 				parent := &cobra.Command{Use: "parent"}
 				err := parent.Execute()
 				require.NoError(t, err)
@@ -390,7 +390,7 @@ func TestGetCLIMetadata(t *testing.T) {
 				parent.AddCommand(cmd)
 
 				return cmd
-			})(),
+			}(),
 			metadata: map[string]string{
 				"Command":     "parent multiple-set",
 				"Flags":       "",
@@ -399,12 +399,12 @@ func TestGetCLIMetadata(t *testing.T) {
 		},
 		{
 			name: "no valid PULUMI_ env variables",
-			cmd: (func() *cobra.Command {
+			cmd: func() *cobra.Command {
 				cmd := &cobra.Command{Use: "version"}
 				err := cmd.Execute()
 				require.NoError(t, err)
 				return cmd
-			})(),
+			}(),
 			environ: []string{"PULUMICOPILOT=true", "OTHER_FLAG=true", "PULUMI_NO_EQUALS_SIGN"},
 			metadata: map[string]string{
 				"Command":     "version",
@@ -414,12 +414,12 @@ func TestGetCLIMetadata(t *testing.T) {
 		},
 		{
 			name: "has valid PULUMI_ env variables",
-			cmd: (func() *cobra.Command {
+			cmd: func() *cobra.Command {
 				cmd := &cobra.Command{Use: "version"}
 				err := cmd.Execute()
 				require.NoError(t, err)
 				return cmd
-			})(),
+			}(),
 			environ: []string{"PULUMI_EXPERIMENTAL=true", "PULUMI_COPILOT=true"},
 			metadata: map[string]string{
 				"Command":     "version",
@@ -489,7 +489,7 @@ func TestGetCLIMetadata(t *testing.T) {
 		},
 		{
 			name: "plugin run with argument",
-			cmd: (func() *cobra.Command {
+			cmd: func() *cobra.Command {
 				cmd := &cobra.Command{Use: "pulumi"}
 				pluginCmd := &cobra.Command{Use: "plugin"}
 				cmd.AddCommand(pluginCmd)
@@ -498,7 +498,7 @@ func TestGetCLIMetadata(t *testing.T) {
 				err := pluginRunCmd.Execute()
 				require.NoError(t, err)
 				return pluginRunCmd
-			})(),
+			}(),
 			environ: []string{"PULUMI_EXPERIMENTAL=true", "PULUMI_COPILOT=true"},
 			args:    []string{"my-plugin"},
 			metadata: map[string]string{

@@ -134,7 +134,13 @@ func (sm *SnapshotManager) mutate(mutator func() bool) error {
 	result := make(chan error)
 	select {
 	case sm.mutationRequests <- mutationRequest{mutator: mutator, result: result}:
-		return <-result
+		// You'd think you could just `return <-result` here but it trips up staticcheck thinking that nil is never
+		// returned from this method.
+		err := <-result
+		if err != nil {
+			return err
+		}
+		return nil
 	case <-sm.cancel:
 		return errors.New("snapshot manager closed")
 	}

@@ -3889,13 +3889,11 @@ func containsSummary(log []events.EngineEvent) bool {
 
 func collectEvents(eventChannel <-chan events.EngineEvent, events *[]events.EngineEvent) *sync.WaitGroup {
 	var wg sync.WaitGroup
-	wg.Add(1)
-	go (func() {
+	wg.Go(func() {
 		for event := range eventChannel {
 			*events = append(*events, event)
 		}
-		wg.Done()
-	})()
+	})
 	return &wg
 }
 

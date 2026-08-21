@@ -65,7 +65,7 @@ func collectPrintln(cmd tea.Cmd) []string {
 	if v.Kind() == reflect.Slice && v.Type().Name() == "sequenceMsg" {
 		var out []string
 		for i := 0; i < v.Len(); i++ {
-			if c, ok := v.Index(i).Interface().(tea.Cmd); ok {
+			if c, ok := reflect.TypeAssert[tea.Cmd](v.Index(i)); ok {
 				out = append(out, collectPrintln(c)...)
 			}
 		}

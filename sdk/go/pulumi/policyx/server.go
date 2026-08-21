@@ -76,7 +76,7 @@ func formatTimeout(seconds float64) string {
 	if seconds == 0 {
 		return ""
 	}
-	return (time.Duration(seconds * float64(time.Second))).String()
+	return time.Duration(seconds * float64(time.Second)).String()
 }
 
 func convertProtoAnalyzerResourceOptions(options *pulumirpc.AnalyzerResourceOptions) plugin.AnalyzerResourceOptions {

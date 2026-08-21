@@ -811,7 +811,9 @@ func TestStackMigrate_RejectsExistingTargetStack(t *testing.T) { //nolint: paral
 		NewF: func(string) (pkgWorkspace.W, error) {
 			return &pkgWorkspace.MockW{
 				SettingsF: func() *pkgWorkspace.Settings {
-					return &pkgWorkspace.Settings{Stack: "dev"}
+					return &pkgWorkspace.Settings{
+						Stack: "dev", //nolint:staticcheck
+					}
 				},
 			}, nil
 		},
@@ -949,7 +951,9 @@ func TestStackMigrate_RollsBackOnImportFailure(t *testing.T) { //nolint: paralle
 		NewF: func(string) (pkgWorkspace.W, error) {
 			return &pkgWorkspace.MockW{
 				SettingsF: func() *pkgWorkspace.Settings {
-					return &pkgWorkspace.Settings{Stack: "dev"}
+					return &pkgWorkspace.Settings{
+						Stack: "dev", //nolint:staticcheck
+					}
 				},
 			}, nil
 		},
@@ -1092,7 +1096,9 @@ func TestStackMigrate_RollsBackTargetConfigOnImportFailure(t *testing.T) { //nol
 		NewF: func(string) (pkgWorkspace.W, error) {
 			return &pkgWorkspace.MockW{
 				SettingsF: func() *pkgWorkspace.Settings {
-					return &pkgWorkspace.Settings{Stack: "dev"}
+					return &pkgWorkspace.Settings{
+						Stack: "dev", //nolint:staticcheck
+					}
 				},
 			}, nil
 		},
@@ -1214,7 +1220,9 @@ func TestStackMigrate_DoesNotRollbackOnAlreadyExistsRace(t *testing.T) { //nolin
 		NewF: func(string) (pkgWorkspace.W, error) {
 			return &pkgWorkspace.MockW{
 				SettingsF: func() *pkgWorkspace.Settings {
-					return &pkgWorkspace.Settings{Stack: "dev"}
+					return &pkgWorkspace.Settings{
+						Stack: "dev", //nolint:staticcheck
+					}
 				},
 			}, nil
 		},
@@ -1357,7 +1365,9 @@ func TestStackMigrate_ReencryptsConfigSecret(t *testing.T) { //nolint: parallelt
 		NewF: func(string) (pkgWorkspace.W, error) {
 			return &pkgWorkspace.MockW{
 				SettingsF: func() *pkgWorkspace.Settings {
-					return &pkgWorkspace.Settings{Stack: "dev"}
+					return &pkgWorkspace.Settings{
+						Stack: "dev", //nolint:staticcheck
+					}
 				},
 			}, nil
 		},
@@ -1549,7 +1559,9 @@ func TestStackMigrate_ReencryptsStateSecret(t *testing.T) { //nolint: parallelte
 		NewF: func(string) (pkgWorkspace.W, error) {
 			return &pkgWorkspace.MockW{
 				SettingsF: func() *pkgWorkspace.Settings {
-					return &pkgWorkspace.Settings{Stack: "dev"}
+					return &pkgWorkspace.Settings{
+						Stack: "dev", //nolint:staticcheck
+					}
 				},
 			}, nil
 		},
@@ -1696,7 +1708,9 @@ func TestStackMigrate_BacksUpSameNameConfigFile(t *testing.T) { //nolint: parall
 		NewF: func(string) (pkgWorkspace.W, error) {
 			return &pkgWorkspace.MockW{
 				SettingsF: func() *pkgWorkspace.Settings {
-					return &pkgWorkspace.Settings{Stack: "dev"}
+					return &pkgWorkspace.Settings{
+						Stack: "dev", //nolint:staticcheck
+					}
 				},
 			}, nil
 		},
@@ -1822,7 +1836,9 @@ func TestStackMigrate_BackupAvoidsClobberingExistingBak(t *testing.T) { //nolint
 		NewF: func(string) (pkgWorkspace.W, error) {
 			return &pkgWorkspace.MockW{
 				SettingsF: func() *pkgWorkspace.Settings {
-					return &pkgWorkspace.Settings{Stack: "dev"}
+					return &pkgWorkspace.Settings{
+						Stack: "dev", //nolint:staticcheck
+					}
 				},
 			}, nil
 		},
@@ -1979,7 +1995,9 @@ func TestStackMigrate_RewritesURNsOnRename(t *testing.T) { //nolint: paralleltes
 		NewF: func(string) (pkgWorkspace.W, error) {
 			return &pkgWorkspace.MockW{
 				SettingsF: func() *pkgWorkspace.Settings {
-					return &pkgWorkspace.Settings{Stack: "dev"}
+					return &pkgWorkspace.Settings{
+						Stack: "dev", //nolint:staticcheck
+					}
 				},
 			}, nil
 		},
@@ -2187,7 +2205,9 @@ func TestStackMigrate_RewritesURNsInAuxiliaryFields(t *testing.T) { //nolint: pa
 		NewF: func(string) (pkgWorkspace.W, error) {
 			return &pkgWorkspace.MockW{
 				SettingsF: func() *pkgWorkspace.Settings {
-					return &pkgWorkspace.Settings{Stack: "dev"}
+					return &pkgWorkspace.Settings{
+						Stack: "dev", //nolint:staticcheck
+					}
 				},
 			}, nil
 		},
@@ -2374,7 +2394,9 @@ func TestStackMigrate_RewritesProjectOnTargetWithNewProject(t *testing.T) { //no
 		NewF: func(string) (pkgWorkspace.W, error) {
 			return &pkgWorkspace.MockW{
 				SettingsF: func() *pkgWorkspace.Settings {
-					return &pkgWorkspace.Settings{Stack: "dev"}
+					return &pkgWorkspace.Settings{
+						Stack: "dev", //nolint:staticcheck
+					}
 				},
 			}, nil
 		},
@@ -2523,7 +2545,9 @@ func TestStackMigrate_RollsBackOnSaveStackConfigError(t *testing.T) {
 		NewF: func(string) (pkgWorkspace.W, error) {
 			return &pkgWorkspace.MockW{
 				SettingsF: func() *pkgWorkspace.Settings {
-					return &pkgWorkspace.Settings{Stack: "dev"}
+					return &pkgWorkspace.Settings{
+						Stack: "dev", //nolint:staticcheck
+					}
 				},
 			}, nil
 		},
@@ -2642,7 +2666,9 @@ func TestStackMigrate_WarnsWhenSaveStackConfigCleanupProbeFails(t *testing.T) {
 		NewF: func(string) (pkgWorkspace.W, error) {
 			return &pkgWorkspace.MockW{
 				SettingsF: func() *pkgWorkspace.Settings {
-					return &pkgWorkspace.Settings{Stack: "dev"}
+					return &pkgWorkspace.Settings{
+						Stack: "dev", //nolint:staticcheck
+					}
 				},
 			}, nil
 		},
@@ -2792,7 +2818,9 @@ func TestStackMigrate_RenameLegacyRefFallsBackToLocalProject(t *testing.T) { //n
 		NewF: func(string) (pkgWorkspace.W, error) {
 			return &pkgWorkspace.MockW{
 				SettingsF: func() *pkgWorkspace.Settings {
-					return &pkgWorkspace.Settings{Stack: "dev"}
+					return &pkgWorkspace.Settings{
+						Stack: "dev", //nolint:staticcheck
+					}
 				},
 			}, nil
 		},
@@ -3057,7 +3085,9 @@ func TestStackMigrate_ReplacesPreExistingTargetConfig(t *testing.T) { //nolint: 
 		NewF: func(string) (pkgWorkspace.W, error) {
 			return &pkgWorkspace.MockW{
 				SettingsF: func() *pkgWorkspace.Settings {
-					return &pkgWorkspace.Settings{Stack: "dev"}
+					return &pkgWorkspace.Settings{
+						Stack: "dev", //nolint:staticcheck
+					}
 				},
 			}, nil
 		},

@@ -216,7 +216,7 @@ type TestingT interface {
 
 var (
 	_ TestingT         = (*L)(nil)
-	_ require.TestingT = (TestingT)(nil) // ensure testify compatibility
+	_ require.TestingT = TestingT(nil) // ensure testify compatibility
 )
 
 type LanguageTest struct {
