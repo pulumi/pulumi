@@ -442,6 +442,10 @@ export class CallbackServer implements ICallbackServer {
         };
         const uuid = randomUUID();
         this._callbacks.set(uuid, tryCb);
+        const monitor = this._monitor as any;
+        if (typeof monitor.recordTransformCallback === "function") {
+            monitor.recordTransformCallback(uuid, transform);
+        }
         const req = new Callback();
         req.setToken(uuid);
         req.setTarget(await this._target);
@@ -539,6 +543,10 @@ export class CallbackServer implements ICallbackServer {
         };
         const uuid = randomUUID();
         this._callbacks.set(uuid, tryCb);
+        const monitor = this._monitor as any;
+        if (typeof monitor.recordTransformCallback === "function") {
+            monitor.recordTransformCallback(uuid, transform);
+        }
         const req = new Callback();
         req.setToken(uuid);
         req.setTarget(await this._target);
