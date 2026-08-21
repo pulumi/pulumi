@@ -124,7 +124,7 @@ func TestResourceJSONFromEvent_SkipsInternal(t *testing.T) {
 	urn := resource.NewURN("dev", "myapp", "", "aws:s3/bucket:Bucket", "mybucket")
 	payload := makePreEvent(deploy.OpCreate, urn, "parent-urn", "", true /* internal */)
 
-	got := resourceJSONFromEvent(payload, Options{})
+	got := resourceJSONFromEvent(payload, false)
 	assert.Nil(t, got, "internal events must not surface in the summary")
 }
 
@@ -134,7 +134,7 @@ func TestResourceJSONFromEvent_SkipsSameByDefault(t *testing.T) {
 	urn := resource.NewURN("dev", "myapp", "", "aws:s3/bucket:Bucket", "mybucket")
 	payload := makePreEvent(deploy.OpSame, urn, "parent-urn", "", false)
 
-	got := resourceJSONFromEvent(payload, Options{})
+	got := resourceJSONFromEvent(payload, false)
 	assert.Nil(t, got, "same resources are filtered out unless --show-sames is set")
 }
 
@@ -144,7 +144,7 @@ func TestResourceJSONFromEvent_IncludesSameWhenShowSames(t *testing.T) {
 	urn := resource.NewURN("dev", "myapp", "", "aws:s3/bucket:Bucket", "mybucket")
 	payload := makePreEvent(deploy.OpSame, urn, "parent-urn", "", false)
 
-	got := resourceJSONFromEvent(payload, Options{ShowSameResources: true})
+	got := resourceJSONFromEvent(payload, true)
 	require.NotNil(t, got)
 	assert.Equal(t, apitype.OpType("same"), got.Op)
 }
@@ -156,7 +156,7 @@ func TestResourceJSONFromEvent_ExtractsTypeAndName(t *testing.T) {
 	parentURN := resource.NewURN("dev", "myapp", "", "pulumi:pulumi:Stack", "myapp-dev")
 	payload := makePreEvent(deploy.OpUpdate, urn, parentURN, "", false)
 
-	got := resourceJSONFromEvent(payload, Options{})
+	got := resourceJSONFromEvent(payload, false)
 	require.NotNil(t, got)
 	assert.Equal(t, string(urn), got.URN)
 	assert.Equal(t, "aws:s3/bucket:Bucket", got.Type)
@@ -181,7 +181,7 @@ func TestResourceJSONFromEvent_ParentFallsBackToOldOnDelete(t *testing.T) {
 		},
 	}
 
-	got := resourceJSONFromEvent(payload, Options{})
+	got := resourceJSONFromEvent(payload, false)
 	require.NotNil(t, got)
 	assert.Equal(t, string(parentURN), got.Parent)
 	assert.Equal(t, apitype.OpType("delete"), got.Op)
@@ -386,11 +386,11 @@ func TestDiffJSONFromStep_SameNeverReportsDiff(t *testing.T) {
 	assert.Nil(t, diffJSONFromStep(&meta, false, false))
 }
 
-func TestResourceJSONFromEvent_DiffOnlyInDiffMode(t *testing.T) {
+func TestTapSummaryJSON_DiffOnlyInDiffMode(t *testing.T) {
 	t.Parallel()
 
 	urn := resource.NewURN("dev", "myapp", "", "aws:s3/bucket:Bucket", "mybucket")
-	payload := engine.ResourcePreEventPayload{
+	pre := engine.ResourcePreEventPayload{
 		Metadata: engine.StepEventMetadata{
 			Op:  deploy.OpUpdate,
 			URN: urn,
@@ -403,13 +403,26 @@ func TestResourceJSONFromEvent_DiffOnlyInDiffMode(t *testing.T) {
 		},
 	}
 
-	got := resourceJSONFromEvent(payload, Options{})
-	require.NotNil(t, got)
-	assert.Nil(t, got.Diff, "diff must not be populated without --diff")
+	run := func(opts Options) SummaryJSON {
+		in := make(chan engine.Event, 2)
+		in <- engine.NewEvent(pre)
+		in <- engine.NewEvent(engine.SummaryEventPayload{Result: apitype.OperationResultSucceeded})
+		close(in)
 
-	got = resourceJSONFromEvent(payload, Options{Type: DisplayDiff})
-	require.NotNil(t, got)
-	assert.Equal(t, PropertyDiffJSON{Kind: "update", Old: "private", New: "public-read"}, got.Diff["acl"])
+		var buf bytes.Buffer
+		opts.Stdout = &buf
+		for range tapSummaryJSON(in, opts) { //nolint:revive // intentional drain
+		}
+		var summary SummaryJSON
+		require.NoError(t, json.Unmarshal(buf.Bytes(), &summary))
+		require.Len(t, summary.Resources, 1)
+		return summary
+	}
+
+	assert.Nil(t, run(Options{}).Resources[0].Diff, "diff must not be populated without --diff")
+	assert.Equal(t,
+		PropertyDiffJSON{Kind: "update", Old: "private", New: "public-read"},
+		run(Options{Type: DisplayDiff}).Resources[0].Diff["acl"])
 }
 
 func TestTapSummaryJSON_RefreshDiffFromOutputsEvent(t *testing.T) {

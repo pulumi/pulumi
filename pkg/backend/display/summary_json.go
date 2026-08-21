@@ -94,11 +94,11 @@ func summaryJSONFromEvent(p engine.SummaryEventPayload) SummaryJSON {
 // per-resource JSON shape. Returns nil when the event should be skipped:
 // internal events never surface to users, and `same` (unchanged) resources are
 // omitted unless the display is configured to show them.
-func resourceJSONFromEvent(p engine.ResourcePreEventPayload, opts Options) *ResourceJSON {
+func resourceJSONFromEvent(p engine.ResourcePreEventPayload, showSames bool) *ResourceJSON {
 	if p.Internal {
 		return nil
 	}
-	if p.Metadata.Op == deploy.OpSame && !opts.ShowSameResources {
+	if p.Metadata.Op == deploy.OpSame && !showSames {
 		return nil
 	}
 
@@ -113,10 +113,6 @@ func resourceJSONFromEvent(p engine.ResourcePreEventPayload, opts Options) *Reso
 	}
 
 	r := NewResourceJSON(p.Metadata.URN, apitype.OpType(p.Metadata.Op), parent)
-	// Imports only have their diff once outputs arrive, mirroring renderDiffResourcePreEvent.
-	if opts.Type == DisplayDiff && p.Metadata.Op != deploy.OpImport {
-		r.Diff = diffJSONFromStep(&p.Metadata, false /* refresh */, opts.ShowSecrets)
-	}
 	return &r
 }
 
@@ -248,25 +244,23 @@ func tapSummaryJSON(in <-chan engine.Event, opts Options) <-chan engine.Event {
 	go func() {
 		defer close(out)
 		var resources []ResourceJSON
-		refreshed := map[resource.URN]bool{}
+		seen := map[resource.URN]engine.StepEventMetadata{}
 		for e := range in {
 			switch e.Type { //nolint:exhaustive
 			case engine.ResourcePreEvent:
 				if payload, ok := e.Payload().(engine.ResourcePreEventPayload); ok {
-					if payload.Metadata.Op == deploy.OpRefresh {
-						refreshed[payload.Metadata.URN] = true
-					}
-					if r := resourceJSONFromEvent(payload, opts); r != nil {
+					diffNow := diffAtPreEvent(payload.Metadata, seen)
+					if r := resourceJSONFromEvent(payload, opts.ShowSameResources); r != nil {
+						if diffNow && opts.Type == DisplayDiff {
+							r.Diff = diffJSONFromStep(&payload.Metadata, false /* refresh */, opts.ShowSecrets)
+						}
 						resources = append(resources, *r)
 					}
 				}
 			case engine.ResourceOutputsEvent:
-				// Import and refresh diffs only arrive on the outputs event,
-				// mirroring renderDiffResourceOutputsEvent.
 				if payload, ok := e.Payload().(engine.ResourceOutputsEventPayload); ok && opts.Type == DisplayDiff {
 					m := payload.Metadata
-					refresh := refreshed[m.URN]
-					if m.Op == deploy.OpImport || (refresh && m.Op == deploy.OpUpdate) {
+					if refresh, ready := diffAtOutputsEvent(m, seen); ready {
 						diff := diffJSONFromStep(&m, refresh, opts.ShowSecrets)
 						for i := range resources {
 							if resources[i].URN == string(m.URN) {
