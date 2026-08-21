@@ -267,9 +267,7 @@ async def _get_callbacks() -> Optional[_CallbackServicer]:
         return callbacks
 
     monitor = SETTINGS.monitor
-    if monitor is None or not isinstance(
-        monitor, resource_pb2_grpc.ResourceMonitorStub
-    ):
+    if monitor is None:
         return None
 
     callbacks = _CallbackServicer(monitor)
