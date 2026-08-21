@@ -1718,7 +1718,6 @@ func (sg *stepGenerator) continueStepsFromImport(
 								)
 							}
 
-							//nolint:govet
 							return nil, result.BailErrorf("%s", message)
 						}
 

@@ -24,7 +24,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestSettingsFlagsAreSubsetOfEnvFlags(t *testing.T) { //nolint:paralleltest,lll // non-thread-safe shared state
+func TestSettingsFlagsAreSubsetOfEnvFlags(t *testing.T) { //nolint:paralleltest // non-thread-safe shared state
 	tests := []struct {
 		parent []string
 		subset []string
@@ -43,7 +43,7 @@ func TestSettingsFlagsAreSubsetOfEnvFlags(t *testing.T) { //nolint:paralleltest,
 
 	esc := New(&Options{})
 
-	for _, tt := range tests { //nolint:paralleltest,lll // non-thread-safe shared state
+	for _, tt := range tests { //nolint:paralleltest // non-thread-safe shared state
 		t.Run(tt.subset[len(tt.subset)-1], func(t *testing.T) {
 			parentCmd := findCommand(esc, tt.parent)
 			subsetCmd := findCommand(esc, tt.subset)

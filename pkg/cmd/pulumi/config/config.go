@@ -813,7 +813,6 @@ func (c *configSetCmd) Run(
 	switch {
 	case len(args) == 2:
 		value = args[1]
-	//nolint:gosec // os.Stdin.Fd() == 0: uintptr -> int conversion is always safe
 	case !term.IsTerminal(int(stdin.Fd())):
 		b, readerr := io.ReadAll(stdin)
 		if readerr != nil {

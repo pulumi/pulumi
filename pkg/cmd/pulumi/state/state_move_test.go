@@ -599,7 +599,6 @@ func TestEmptySourceStack(t *testing.T) {
 	assert.ErrorContains(t, err, "source stack has no resources")
 }
 
-//nolint:paralleltest // changest directory for process
 func TestEmptyDestStack(t *testing.T) {
 	ctx := t.Context()
 	tmpDir := t.TempDir()
@@ -991,7 +990,6 @@ func TestMoveRootStack(t *testing.T) {
 		destSnapshot.Resources[2].Parent)
 }
 
-//nolint:paralleltest // changes directory for process
 func TestMoveSecret(t *testing.T) {
 	providerURN := resource.NewURN("sourceStack", "test", "", "pulumi:providers:a", "default_1_0_0")
 	sourceResources := []*pkgresource.State{

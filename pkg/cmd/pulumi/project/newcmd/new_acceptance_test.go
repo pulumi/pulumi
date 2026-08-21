@@ -191,7 +191,6 @@ func TestCreatingProjectWithDefaultName(t *testing.T) {
 	assert.Equal(t, defaultProjectName, proj.Name.String())
 }
 
-//nolint:paralleltest // mutates environment variables
 func TestCreatingProjectWithPulumiBackendURL(t *testing.T) {
 	skipIfShortOrNoPulumiAccessToken(t)
 	ctx := t.Context()

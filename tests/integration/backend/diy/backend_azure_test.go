@@ -22,7 +22,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-//nolint:paralleltest // this test sets the global login state
 func TestAzureLoginSasToken(t *testing.T) {
 	t.Chdir("project")
 	cloudURL := "azblob://pulumitesting?storage_account=pulumitesting"
@@ -44,7 +43,6 @@ func TestAzureLoginSasToken(t *testing.T) {
 	loginAndCreateStack(t, cloudURL)
 }
 
-//nolint:paralleltest // this test uses the global azure login state
 func TestAzureLoginAzLogin(t *testing.T) {
 	// NOTE: This test requires a valid AZURE_CLIENT_SECRET. Unfortunately the longest time these
 	// can be valid is 2 years. When this test fails (after 2027-12-22), the secret will need to
@@ -64,7 +62,6 @@ func TestAzureLoginAzLogin(t *testing.T) {
 	// Make sure we don't use the SAS token for login here
 	t.Setenv("AZURE_STORAGE_SAS_TOKEN", "")
 
-	//nolint:gosec // this is a test
 	out, err := exec.Command("az", "login", "--service-principal",
 		"--username", os.Getenv("AZURE_CLIENT_ID"),
 		"--password", os.Getenv("AZURE_CLIENT_SECRET"),

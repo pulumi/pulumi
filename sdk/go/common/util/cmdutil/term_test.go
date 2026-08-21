@@ -406,7 +406,7 @@ func (p testProgram) Build(t *testing.T) (cmd *exec.Cmd) {
 			t.Skipf("Skipping test: could not find python3 or python executable")
 			return nil
 		}
-		return exec.Command(pythonBin, append([]string{src}, p.args...)...) //nolint:gosec
+		return exec.Command(pythonBin, append([]string{src}, p.args...)...)
 
 	default:
 		t.Fatalf("unknown test program kind: %v", p.kind)

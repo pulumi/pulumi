@@ -2254,13 +2254,11 @@ func TestNestedConfig(t *testing.T) {
 	projYAML, err := os.ReadFile(filepath.Join(srcDir, "Pulumi.yaml"))
 	require.NoError(t, err)
 
-	//nolint:gosec // writing test fixture to temp dir
 	require.NoError(t, os.WriteFile(filepath.Join(pDir, "Pulumi.yaml"), projYAML, 0o600))
 	stackYAML, err := os.ReadFile(filepath.Join(srcDir, "Pulumi.dev.yaml"))
 	require.NoError(t, err)
 
 	stackCfgName := "Pulumi." + sName + ".yaml"
-	//nolint:gosec // writing test fixture to temp dir
 	require.NoError(t, os.WriteFile(filepath.Join(pDir, stackCfgName), stackYAML, 0o600))
 
 	s, err := UpsertStackLocalSource(ctx, stackName, pDir)

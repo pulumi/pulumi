@@ -51,7 +51,6 @@ func TestGetPermalink(t *testing.T) {
 		"failed parsing":     {testee: testPermalink, err: ErrParsePermalinkFailed},
 	}
 
-	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
 	for name, test := range tests {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()

@@ -33,7 +33,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/pkg/v3/engine"
-	. "github.com/pulumi/pulumi/pkg/v3/engine" //nolint:revive
+	. "github.com/pulumi/pulumi/pkg/v3/engine"
 	lt "github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest/framework"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
@@ -382,7 +382,6 @@ func TestRefreshInitFailure(t *testing.T) {
 func TestRefreshWithDelete(t *testing.T) {
 	t.Parallel()
 
-	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
 	for _, parallelFactor := range []int32{1, 4} {
 		t.Run(fmt.Sprintf("parallel-%d", parallelFactor), func(t *testing.T) {
 			t.Parallel()

@@ -689,7 +689,6 @@ func TestListTemplates(t *testing.T) {
 		mockClient := newMockClient(mockServer)
 
 		// Call ListTemplates and collect results
-		//nolint:prealloc // capacity unknown ahead of time
 		searchResults := []apitype.TemplateMetadata{}
 		for tmpl, err := range registry.Templates(mockClient.ListTemplates(
 			t.Context(), registry.ListTemplatesOptions{Name: "my-template"},
@@ -788,7 +787,6 @@ func TestListTemplates(t *testing.T) {
 
 		mockClient := newMockClient(mockServer)
 
-		//nolint:prealloc // capacity unknown ahead of time
 		searchResults := []apitype.TemplateMetadata{}
 		for tmpl, err := range registry.Templates(mockClient.ListTemplates(
 			t.Context(), registry.ListTemplatesOptions{Name: "my-template"},

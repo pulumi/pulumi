@@ -96,7 +96,6 @@ var success = []JSONTestCaseSuccess{
 
 func TestParsePolicyPackConfigFromAPISuccess(t *testing.T) {
 	t.Parallel()
-	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
 	for _, test := range success {
 		t.Run(fmt.Sprintf("%v", test), func(t *testing.T) {
 			t.Parallel()
@@ -168,7 +167,6 @@ func TestParsePolicyPackConfigSuccess(t *testing.T) {
 		})
 	tests = append(tests, success...)
 
-	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
 	for _, test := range tests {
 		t.Run(fmt.Sprintf("%v", test), func(t *testing.T) {
 			t.Parallel()
@@ -202,7 +200,6 @@ func TestParsePolicyPackConfigFail(t *testing.T) {
 		`{"foo":{"enforcementLevel":""}}`,
 		`{"foo":{"enforcementLevel":"bar"}}`,
 	}
-	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
 	for _, test := range tests {
 		t.Run(test, func(t *testing.T) {
 			t.Parallel()
@@ -333,7 +330,6 @@ func TestExtractEnforcementLevelSuccess(t *testing.T) {
 		},
 	}
 
-	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
 	for _, test := range tests {
 		t.Run(fmt.Sprintf("%v", test), func(t *testing.T) {
 			t.Parallel()
@@ -385,7 +381,6 @@ func TestExtractEnforcementLevelFail(t *testing.T) {
 		},
 	}
 
-	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
 	for _, test := range tests {
 		t.Run(fmt.Sprintf("%v", test), func(t *testing.T) {
 			t.Parallel()

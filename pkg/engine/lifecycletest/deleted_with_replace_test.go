@@ -20,7 +20,7 @@ import (
 	"testing"
 
 	"github.com/blang/semver"
-	. "github.com/pulumi/pulumi/pkg/v3/engine" //nolint:revive
+	. "github.com/pulumi/pulumi/pkg/v3/engine"
 	lt "github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest/framework"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"

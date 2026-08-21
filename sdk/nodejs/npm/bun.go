@@ -59,7 +59,7 @@ func (bun *bunManager) Name() string {
 }
 
 func (bun *bunManager) Version() (semver.Version, error) {
-	cmd := exec.Command(bun.executable, "--version") //nolint:gosec
+	cmd := exec.Command(bun.executable, "--version")
 	output, err := cmd.Output()
 	if err != nil {
 		return semver.Version{}, errutil.ErrorWithStderr(err, cmd.String())
@@ -91,7 +91,6 @@ func (bun *bunManager) installCmd(ctx context.Context, production bool) *exec.Cm
 	// 	args = append(args, "--production")
 	// }
 
-	//nolint:gosec // False positive on tained command execution. We aren't accepting input from the user here.
 	return exec.CommandContext(ctx, bun.executable, args...)
 }
 
@@ -130,7 +129,6 @@ func (bun *bunManager) Link(ctx context.Context, dir, packageName, path string) 
 	if err != nil {
 		return fmt.Errorf("error marshaling dependencies to JSON: %w", err)
 	}
-	//nolint:gosec // json data is escaped
 	cmd = exec.CommandContext(ctx, "bun", "pm", "pkg", "set", "--json", "trustedDependencies="+string(jsonData))
 	cmd.Dir = dir
 	if out, err := cmd.CombinedOutput(); err != nil {
@@ -156,7 +154,6 @@ type packageDotJSON struct {
 }
 
 func (bun *bunManager) Pack(ctx context.Context, dir string, stderr io.Writer) ([]byte, error) {
-	//nolint:gosec // False positive on tainted command execution. We aren't accepting input from the user here.
 	command := exec.CommandContext(ctx, bun.executable, "pm", "pack")
 	command.Dir = dir
 

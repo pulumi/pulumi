@@ -98,7 +98,7 @@ func TestStartEventLogger_ClosesOutputOnInputClose(t *testing.T) {
 
 	drained := make(chan struct{})
 	go func() {
-		for range outEvents { //nolint:revive // intentional drain
+		for range outEvents {
 		}
 		close(drained)
 	}()

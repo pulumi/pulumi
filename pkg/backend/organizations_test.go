@@ -22,7 +22,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-//nolint:paralleltest // mutates environment variables
 func TestGetBackendConfigDefaultOrg(t *testing.T) {
 	t.Run("prefers PULUMI_DEFAULT_ORGANIZATION over configured default org", func(t *testing.T) {
 		t.Setenv("PULUMI_HOME", t.TempDir())
