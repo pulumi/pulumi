@@ -103,24 +103,6 @@ def _initialize_tracing() -> None:
 _initialize_tracing()
 
 
-def wrap_with_context(fn):
-    """Wrap a callable so it runs with the current OTel context.
-
-    Use this when passing callables to run_in_executor, since thread pool
-    threads do not inherit the OTel context from the calling thread.
-    """
-    ctx = otel_context.get_current()
-
-    def wrapper(*args, **kwargs):
-        token = otel_context.attach(ctx)
-        try:
-            return fn(*args, **kwargs)
-        finally:
-            otel_context.detach(token)
-
-    return wrapper
-
-
 async def shutdown_tracing() -> None:
     """
     Shutdown the tracer provider and flush any pending spans.
