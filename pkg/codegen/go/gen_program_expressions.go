@@ -269,7 +269,9 @@ func (g *generator) genSafeEnum(w io.Writer, to *model.EnumType, dest model.Type
 	return func(member *schema.Enum) {
 		// We know the enum value at the call site, so we can directly stamp in a
 		// valid enum instance. We don't need to convert.
-		enumName := tokenToName(to.Token)
+		enumTok, parseErr := schema.ParseToken(to.Token)
+		contract.AssertNoErrorf(parseErr, "enum token %q", to.Token)
+		enumName := tokenToName(enumTok)
 		memberTag := member.Name
 		if memberTag == "" {
 			memberTag = member.Value.(string)
@@ -721,7 +723,7 @@ func (g *generator) genMethodCall(w io.Writer, expr *model.FunctionCallExpressio
 
 	// Get the disambiguated resource name and module alias.
 	token, tokenRange := res.GetToken()
-	pkg, _, _, _ := pcl.DecomposeToken(token, tokenRange)
+	pkg, _, name, _ := pcl.DecomposeToken(token, tokenRange)
 	mod := g.resolveModule(token)
 	originalMod := mod
 	if mod == "" || strings.HasPrefix(mod, "/") || mod == IndexToken {
@@ -736,7 +738,7 @@ func (g *generator) genMethodCall(w io.Writer, expr *model.FunctionCallExpressio
 			resourceName = rawResourceName(res.GetSchema())
 		}
 	} else {
-		resourceName = tokenToName(token)
+		resourceName = Title(name)
 	}
 	modOrAlias := g.getModOrAlias(pkg, mod, originalMod)
 
@@ -855,9 +857,9 @@ func outputVersionFunctionArgTypeName(t model.Type, cache *Cache) (string, error
 	var ty string
 	if pkg.isExternalReference(objType) {
 		extPkg, _ := pkg.contextForExternalReference(objType)
-		ty = extPkg.tokenToType(objType.Token.String())
+		ty = extPkg.tokenToType(objType.Token)
 	} else {
-		ty = pkg.tokenToType(objType.Token.String())
+		ty = pkg.tokenToType(objType.Token)
 	}
 
 	return strings.TrimSuffix(ty, "Args") + "OutputArgs", nil
@@ -2135,7 +2137,7 @@ func (g *generator) outputPropertyProjection(
 		return nil, "", false
 	}
 	goInfo := goPackageInfo(owner)
-	mod := tokenToPackage(owner, goInfo.ModuleToPackage, schemaObject.Token.String())
+	mod := tokenToPackage(owner, goInfo.ModuleToPackage, schemaObject.Token)
 	pkg, ok := g.contexts[owner.Name()][mod]
 	if !ok {
 		return nil, "", false
