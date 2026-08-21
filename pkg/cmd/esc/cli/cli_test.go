@@ -2065,7 +2065,7 @@ func TestCLI(t *testing.T) {
 	path := filepath.Join("testdata")
 	entries, err := os.ReadDir(path)
 	require.NoError(t, err)
-	for _, e := range entries { //nolint:paralleltest,lll // non-thread-safe shared state
+	for _, e := range entries { //nolint:paralleltest // non-thread-safe shared state
 		t.Run(e.Name(), func(t *testing.T) {
 			if runtime.GOOS == "windows" && e.Name() == "run.yaml" {
 				// run.yaml exercises Unix shell semantics (source, echo -n, and file

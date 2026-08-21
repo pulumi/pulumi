@@ -36,9 +36,9 @@ func encodeSealedBlob(priv, pub []byte) ([]byte, error) {
 		return nil, fmt.Errorf("TPM sealed blob is implausibly large (%d/%d bytes)", len(priv), len(pub))
 	}
 	out := make([]byte, 0, 4+len(priv)+len(pub))
-	out = binary.BigEndian.AppendUint16(out, uint16(len(priv))) //nolint:gosec // bounds checked above
+	out = binary.BigEndian.AppendUint16(out, uint16(len(priv)))
 	out = append(out, priv...)
-	out = binary.BigEndian.AppendUint16(out, uint16(len(pub))) //nolint:gosec // bounds checked above
+	out = binary.BigEndian.AppendUint16(out, uint16(len(pub)))
 	out = append(out, pub...)
 	return out, nil
 }

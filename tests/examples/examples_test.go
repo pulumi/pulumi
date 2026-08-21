@@ -51,14 +51,12 @@ func getBaseOptions() integration.ProgramTestOptions {
 func runWithBackends(t *testing.T, makeOpts func(t *testing.T) integration.ProgramTestOptions) {
 	t.Parallel()
 
-	//nolint:paralleltest // ProgramTest calls t.Parallel()
 	t.Run("local", func(t *testing.T) {
 		test := makeOpts(t)
 		test.CloudURL = integration.MakeTempBackend(t)
 		integration.ProgramTest(t, &test)
 	})
 
-	//nolint:paralleltest // ProgramTest calls t.Parallel()
 	t.Run("service", func(t *testing.T) {
 		if os.Getenv("PULUMI_TEST_USE_SERVICE") != "true" {
 			t.Skip("Skipping: PULUMI_TEST_USE_SERVICE is not \"true\"")

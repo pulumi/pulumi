@@ -33,7 +33,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/pkg/v3/display"
-	. "github.com/pulumi/pulumi/pkg/v3/engine" //nolint:revive
+	. "github.com/pulumi/pulumi/pkg/v3/engine"
 	lt "github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest/framework"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
@@ -136,7 +136,6 @@ func TestDestroyTarget(t *testing.T) {
 	// Try refreshing a stack with combinations of the above resources as target to destroy.
 	subsets := combinations.All(complexTestDependencyGraphNames)
 
-	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
 	for _, subset := range subsets {
 		// limit to up to 3 resources to destroy.  This keeps the test running time under
 		// control as it only generates a few hundred combinations instead of several thousand.
@@ -748,7 +747,6 @@ func TestUpdateTarget(t *testing.T) {
 	// Try refreshing a stack with combinations of the above resources as target to destroy.
 	subsets := combinations.All(complexTestDependencyGraphNames)
 
-	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
 	for _, subset := range subsets {
 		// limit to up to 3 resources to destroy.  This keeps the test running time under
 		// control as it only generates a few hundred combinations instead of several thousand.

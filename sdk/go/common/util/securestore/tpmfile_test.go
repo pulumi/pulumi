@@ -83,7 +83,6 @@ func TestTPMFileStoreAvailableCreatesDir(t *testing.T) {
 	assert.Empty(t, entries)
 }
 
-//nolint:paralleltest // t.Setenv forbids parallel runs
 func TestTPMFileStoreResolvesUnderPulumiHome(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("PULUMI_HOME", home)

@@ -131,7 +131,6 @@ func TestNoMigrationWhenModeUnset(t *testing.T) {
 	assert.False(t, securestore.IsEnvelope(raw), "no migration without opt-in")
 }
 
-//nolint:paralleltest // t.Setenv and the package-global secure-store mock forbid parallel runs
 func TestEncryptedFileReadableRegardlessOfMode(t *testing.T) {
 	pinSecureCreds(t, "auto")
 	require.NoError(t, StoreCredentials(testCreds()))
@@ -172,7 +171,6 @@ func TestDeleteAllAccountsRemovesKey(t *testing.T) {
 	assert.ErrorIs(t, err, securestore.ErrKeyNotFound)
 }
 
-//nolint:paralleltest // t.Setenv and the package-global secure-store mock forbid parallel runs
 func TestAgentCredentialsEncryptedToo(t *testing.T) {
 	pinSecureCreds(t, "auto")
 	t.Setenv("PULUMI_TEST_AGENT_PULUMI_DIR", t.TempDir())
@@ -257,7 +255,6 @@ func TestKeyFailureFallbackWarnsWithReason(t *testing.T) {
 	assert.Contains(t, out, "keychain hiccup", "the warning must carry the reason")
 }
 
-//nolint:paralleltest // t.Setenv and the package-global secure-store mock forbid parallel runs
 func TestRecoveryDowngradeToPlaintextWarns(t *testing.T) {
 	// A previously encrypted user whose store disappeared between losing the
 	// key and logging back in is being downgraded — warn about it.
@@ -277,7 +274,6 @@ func TestRecoveryDowngradeToPlaintextWarns(t *testing.T) {
 	assert.Contains(t, out, "plaintext")
 }
 
-//nolint:paralleltest // t.Setenv and the package-global secure-store mock forbid parallel runs
 func TestUnsetModePreservesExistingEncryption(t *testing.T) {
 	pinSecureCreds(t, "auto")
 	require.NoError(t, StoreCredentials(testCreds()))
@@ -301,7 +297,6 @@ func TestUnsetModePreservesExistingEncryption(t *testing.T) {
 	assert.Equal(t, "pul-second-token", creds.AccessTokens["https://api.other.com"])
 }
 
-//nolint:paralleltest // t.Setenv and the package-global secure-store mock forbid parallel runs
 func TestExplicitPlaintextModeDowngrades(t *testing.T) {
 	pinSecureCreds(t, "auto")
 	require.NoError(t, StoreCredentials(testCreds()))
@@ -356,7 +351,6 @@ func TestResetStoredCredentialsClearsUndecryptableState(t *testing.T) {
 	assert.Empty(t, creds.AccessTokens)
 }
 
-//nolint:paralleltest // t.Setenv and the package-global secure-store mock forbid parallel runs
 func TestLogoutDeletesKeyForUnparseableEnvelopeRegardlessOfMode(t *testing.T) {
 	// The envelope proves encryption was in use, so logout must clean up the
 	// key even in plaintext mode — the recorded backend is unknowable here.
@@ -429,7 +423,6 @@ func TestWriteRefusesToClobberFutureEnvelope(t *testing.T) {
 	}
 }
 
-//nolint:paralleltest // t.Setenv and the package-global secure-store mock forbid parallel runs
 func TestDeclinedUnlockNeverWritesPlaintext(t *testing.T) {
 	t.Setenv(PulumiCredentialsPathEnvVar, t.TempDir())
 	t.Setenv("PULUMI_CREDENTIAL_STORE", "auto")
@@ -501,7 +494,6 @@ func TestLostKeyStillAllowsRecovery(t *testing.T) {
 	assert.True(t, IsUndecryptableCredentials(err))
 }
 
-//nolint:paralleltest // t.Setenv and the package-global secure-store mock forbid parallel runs
 func TestDeclinedUnlockOnStickyWriteKeepsTheEnvelope(t *testing.T) {
 	// Must fail rather than fall through to "refusing to overwrite".
 	pinSecureCreds(t, "auto")
@@ -550,7 +542,6 @@ func TestModeIsCaseInsensitive(t *testing.T) {
 	assert.True(t, securestore.IsEnvelope(raw), `"OS" must mean "os", not silent plaintext`)
 }
 
-//nolint:paralleltest // t.Setenv, the package-global secure-store mock, and the real credentials file
 func TestAgentFallbackSurfacesUndecryptableCredentials(t *testing.T) {
 	// Operates on the real credentials path (saved and restored) with the
 	// agent dir redirected, following the established agent-test pattern.
@@ -584,7 +575,6 @@ func TestAgentFallbackSurfacesUndecryptableCredentials(t *testing.T) {
 	assert.True(t, IsUndecryptableCredentials(err))
 }
 
-//nolint:paralleltest // t.Setenv and the package-global secure-store mock forbid parallel runs
 func TestWriteUpgradesToStrongerBackend(t *testing.T) {
 	// Data must be re-encrypted under a stronger backend once one appears,
 	// staying readable throughout via the envelope's recorded backend.
@@ -630,7 +620,6 @@ func TestWriteUpgradesToStrongerBackend(t *testing.T) {
 	require.NoError(t, err)
 }
 
-//nolint:paralleltest // t.Setenv and the package-global secure-store mock forbid parallel runs
 func TestRecoveryFromLostKeyStaysEncrypted(t *testing.T) {
 	// Recovery is not the explicit "plaintext" opt-out.
 	pinSecureCreds(t, "auto")
@@ -657,7 +646,6 @@ func TestRecoveryFromLostKeyStaysEncrypted(t *testing.T) {
 	assert.Equal(t, "pul-secret-token", creds.AccessTokens["https://api.pulumi.com"])
 }
 
-//nolint:paralleltest // t.Setenv and the package-global secure-store mock forbid parallel runs
 func TestRecoveryInExplicitPlaintextModeWritesPlaintext(t *testing.T) {
 	pinSecureCreds(t, "auto")
 	require.NoError(t, StoreCredentials(testCreds()))

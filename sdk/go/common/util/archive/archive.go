@@ -93,7 +93,6 @@ func extractFile(r *tar.Reader, header *tar.Header, dir string) error {
 		if header.Mode > math.MaxUint32 {
 			return fmt.Errorf("unexpected file mode %v for %s", header.Mode, header.Name)
 		}
-		//nolint:gosec // int64 -> uint32 conversion guarded above
 		dst, err := os.OpenFile(path, os.O_CREATE|os.O_RDWR, os.FileMode(header.Mode))
 		if err != nil {
 			return fmt.Errorf("opening file %s for extraction: %w", path, err)
@@ -101,7 +100,6 @@ func extractFile(r *tar.Reader, header *tar.Header, dir string) error {
 		defer contract.IgnoreClose(dst)
 
 		// We're not concerned with potential tarbombs, so disable gosec.
-		//nolint:gosec
 		if _, err = io.Copy(dst, r); err != nil {
 			return fmt.Errorf("untarring file %s: %w", path, err)
 		}

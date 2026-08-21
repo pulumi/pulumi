@@ -2423,7 +2423,7 @@ func TestStackMigrate_RewritesProjectOnTargetWithNewProject(t *testing.T) { //no
 // Positive ErrSaveStackConfig path: b.CreateStack succeeds but the post-create
 // SaveProjectStack fails, so CreateStack returns ErrSaveStackConfig. The migrate command must
 // adopt the orphaned backend stack and the deferred rollback must remove it.
-func TestStackMigrate_RollsBackOnSaveStackConfigError(t *testing.T) { //nolint: paralleltest
+func TestStackMigrate_RollsBackOnSaveStackConfigError(t *testing.T) {
 	wd := t.TempDir()
 	t.Chdir(wd)
 	require.NoError(t, os.WriteFile("Pulumi.yaml", []byte("name: proj\nruntime: mock"), 0o600))
@@ -2551,7 +2551,7 @@ func TestStackMigrate_RollsBackOnSaveStackConfigError(t *testing.T) { //nolint: 
 	assert.Equal(t, "dev", removedRef)
 }
 
-func TestStackMigrate_WarnsWhenSaveStackConfigCleanupProbeFails(t *testing.T) { //nolint: paralleltest
+func TestStackMigrate_WarnsWhenSaveStackConfigCleanupProbeFails(t *testing.T) {
 	wd := t.TempDir()
 	t.Chdir(wd)
 	require.NoError(t, os.WriteFile("Pulumi.yaml", []byte("name: proj\nruntime: mock"), 0o600))

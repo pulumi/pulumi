@@ -74,7 +74,7 @@ func TestInitLoggingIgnoresLogToStderrWithOTel(t *testing.T) {
 // TestInitLoggingSkipsLogFileWithOTel verifies that no local log file is
 // created when logs are exported over OTel: the engine receives the records
 // and writes them to its own log output.
-func TestInitLoggingSkipsLogFileWithOTel(t *testing.T) { //nolint:paralleltest // mutates global logging state
+func TestInitLoggingSkipsLogFileWithOTel(t *testing.T) {
 	t.Setenv("PULUMI_LOG_OTLP_ENDPOINT", "127.0.0.1:1")
 
 	prevLog, prevV, prevFlow := LogToStderr, Verbose, LogFlow

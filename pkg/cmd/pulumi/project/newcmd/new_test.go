@@ -1009,7 +1009,6 @@ func TestPulumiPromptRuntimeOptions(t *testing.T) {
 	require.Equal(t, "someValue", proj.Runtime.Options()["someOption"])
 }
 
-//nolint:paralleltest // Sets a mock login manager
 func TestPulumiNewWithOrgTemplates(t *testing.T) {
 	// Set environment variable to disable registry resolution and use org templates
 	t.Setenv("PULUMI_DISABLE_REGISTRY_RESOLVE", "true")
@@ -1108,7 +1107,6 @@ func singlePage(templates ...apitype.TemplateMetadata) iter.Seq2[apitype.ListTem
 	}
 }
 
-//nolint:paralleltest // Sets a mock login manager
 func TestPulumiNewWithRegistryTemplates(t *testing.T) {
 	t.Setenv("PULUMI_DISABLE_REGISTRY_RESOLVE", "false")
 	t.Setenv("PULUMI_EXPERIMENTAL", "true")
@@ -1232,7 +1230,6 @@ Available Templates:
 	assert.Equal(t, "", stderr.String())
 }
 
-//nolint:paralleltest // Sets a mock login manager, changes the directory
 func TestPulumiNewOrgTemplate(t *testing.T) {
 	// Set environment variable to disable registry resolution and use org templates
 	t.Setenv("PULUMI_DISABLE_REGISTRY_RESOLVE", "true")

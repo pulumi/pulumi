@@ -104,7 +104,6 @@ func parseSourcePosition(raw string) (*pulumirpc.SourcePosition, error) {
 		if err != nil {
 			return nil, err
 		}
-		//nolint:gosec // ParseInt will return an error if the size is too large.
 		pos.Line = int32(l)
 	}
 	if col != "" {
@@ -112,7 +111,6 @@ func parseSourcePosition(raw string) (*pulumirpc.SourcePosition, error) {
 		if err != nil {
 			return nil, err
 		}
-		//nolint:gosec // ParseInt will return an error if the size is too large.
 		pos.Column = int32(c)
 	}
 

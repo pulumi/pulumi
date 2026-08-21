@@ -295,7 +295,6 @@ func (i *Interpreter) registerHookNode(ctx context.Context, h *pcl.Hook) error {
 			return nil, fmt.Errorf("hook %s: command must not be empty", hookName)
 		}
 
-		//nolint:gosec // G204: command is provided by user PCL program
 		cmd := exec.CommandContext(ctx, cmdArgs[0], cmdArgs[1:]...)
 		cmd.Dir = workingDir
 		if out, runErr := cmd.CombinedOutput(); runErr != nil {

@@ -63,8 +63,6 @@ func TestPrintfNodeJS(t *testing.T) {
 }
 
 // TestYarnNodeJS exercises ProgramTest's yarn path
-//
-//nolint:paralleltest // t.Setenv requires a serial test.
 func TestYarnNodeJS(t *testing.T) {
 	t.Setenv("PULUMI_TEST_USE_NPM", "false")
 	integration.ProgramTest(t, &integration.ProgramTestOptions{

@@ -70,7 +70,7 @@ import (
 
 func defaultParallel() int32 {
 	// Initialize parallel from environment if available, otherwise use defaultParallel
-	osDefaultParallel := int32(runtime.GOMAXPROCS(0)) * 4 //nolint:gosec
+	osDefaultParallel := int32(runtime.GOMAXPROCS(0)) * 4
 	// GOMAXPROCS is an int32 internally, but the GOMAXPROCS function returns an int.
 	var defaultParallel int32
 	if p := env.Parallel.Value(); p > 0 {
@@ -79,7 +79,7 @@ func defaultParallel() int32 {
 			slog.Warn("Parallel value exceeds maximum allowed value, capping", "value", p, "max", math.MaxInt32)
 			defaultParallel = math.MaxInt32
 		} else {
-			defaultParallel = int32(p) //nolint:gosec
+			defaultParallel = int32(p)
 		}
 	} else {
 		defaultParallel = osDefaultParallel

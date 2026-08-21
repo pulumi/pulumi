@@ -25,7 +25,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestDescribe(t *testing.T) { //nolint:paralleltest,lll // non-thread-safe shared state
+func TestDescribe(t *testing.T) { //nolint:paralleltest // non-thread-safe shared state
 	syntax, diags, err := eval.LoadYAMLBytes("def", []byte(def))
 	require.NoError(t, err)
 	require.Empty(t, diags)
@@ -109,7 +109,7 @@ func TestDescribe(t *testing.T) { //nolint:paralleltest,lll // non-thread-safe s
 	})
 }
 
-func TestDescribeOpen(t *testing.T) { //nolint:paralleltest,lll // non-thread-safe shared state
+func TestDescribeOpen(t *testing.T) { //nolint:paralleltest // non-thread-safe shared state
 	syntax, diags, err := eval.LoadYAMLBytes(
 		"def",
 		[]byte(`{"values": {"open": {"fn::open": {"provider": "test", "inputs": {"address": "foo"}}}}}`),

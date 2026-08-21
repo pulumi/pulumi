@@ -43,7 +43,6 @@ func getAwsCaller(t *testing.T) (context.Context, aws.Config) {
 	return ctx, cfg
 }
 
-//nolint:paralleltest // this test sets the global login state
 func TestAwsLogin(t *testing.T) {
 	t.Chdir("project")
 

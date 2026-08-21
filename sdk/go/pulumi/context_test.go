@@ -380,7 +380,6 @@ func TestMergeProviders(t *testing.T) {
 			expected:  []string{"t2"},
 		},
 	}
-	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
 	for i, tt := range tests {
 		t.Run(strconv.Itoa(i), func(t *testing.T) {
 			t.Parallel()

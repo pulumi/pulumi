@@ -506,7 +506,6 @@ func TestArchiveJar(t *testing.T) {
 	validateTestDirArchive(t, arch, 4)
 }
 
-//nolint:unused // Used by tests that are currently skipped
 func findRepositoryRoot() (string, error) {
 	wd, err := os.Getwd()
 	if err != nil {

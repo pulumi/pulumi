@@ -79,7 +79,6 @@ func TestHaveNewerDevVersion(t *testing.T) {
 	assert.False(t, haveNewerDevVersion(devVer, newerPatchCurVer))
 }
 
-//nolint:paralleltest // changes environment variables and globals
 func TestGetCLIVersionInfo_Simple(t *testing.T) {
 	// Arrange.
 	pulumiHome := t.TempDir()
@@ -118,7 +117,6 @@ func TestGetCLIVersionInfo_Simple(t *testing.T) {
 	require.Equal(t, "0.0.0", devVer.String())
 }
 
-//nolint:paralleltest // changes environment variables and globals
 func TestGetCLIVersionInfo_TimesOut(t *testing.T) {
 	// Arrange.
 	pulumiHome := t.TempDir()
@@ -154,7 +152,6 @@ func TestGetCLIVersionInfo_TimesOut(t *testing.T) {
 	require.ErrorContains(t, err, "context deadline exceeded")
 }
 
-//nolint:paralleltest // changes environment variables and globals
 func TestGetCLIVersionInfo_SendsMetadataToPulumiCloud(t *testing.T) {
 	// Arrange.
 	pulumiHome := t.TempDir()
@@ -222,7 +219,6 @@ func TestGetCLIVersionInfo_SendsMetadataToPulumiCloud(t *testing.T) {
 	require.Equal(t, metadata["Flags"], flagsHeader)
 }
 
-//nolint:paralleltest // changes environment variables and globals
 func TestGetCLIVersionInfo_DoesNotSendMetadataToOtherBackends(t *testing.T) {
 	// Arrange.
 	pulumiHome := t.TempDir()
@@ -533,7 +529,6 @@ func newDoTestCmd() *cobra.Command {
 	return doCmd
 }
 
-//nolint:paralleltest // changes environment variables and globals
 func TestCheckForUpdate_AlwaysChecksVersion(t *testing.T) {
 	// Arrange.
 	pulumiHome := t.TempDir()
@@ -570,7 +565,6 @@ func TestCheckForUpdate_AlwaysChecksVersion(t *testing.T) {
 	require.Equal(t, 3, callCount, "should call API every time")
 }
 
-//nolint:paralleltest // changes environment variables and globals
 func TestCheckForUpdate_CachesPrompts(t *testing.T) {
 	realVersion := version.Version
 	t.Cleanup(func() {
@@ -662,7 +656,6 @@ func TestCheckForUpdate_HandlesAPIFailures(t *testing.T) {
 	require.Nil(t, second)
 }
 
-//nolint:paralleltest // changes environment variables and globals
 func TestCheckForUpdate_WorksCorrectlyWithDevVersions(t *testing.T) {
 	realVersion := version.Version
 	t.Cleanup(func() {
@@ -725,7 +718,6 @@ func TestCheckForUpdate_WorksCorrectlyWithDevVersions(t *testing.T) {
 	require.Contains(t, expired.diag.Message, "upgrade from version '1.0.0-11-g4ff08363' to '1.0.0-12-gdeadbeef'")
 }
 
-//nolint:paralleltest // changes environment variables and globals
 func TestCheckForUpdate_WorksCorrectlyWithLocalVersions(t *testing.T) {
 	// Arrange.
 	realVersion := version.Version
@@ -772,7 +764,6 @@ func TestCheckForUpdate_WorksCorrectlyWithLocalVersions(t *testing.T) {
 	require.Nil(t, alwaysNilDiag)
 }
 
-//nolint:paralleltest // changes environment variables and globals
 func TestCheckForUpdate_WorksCorrectlyWithDifferentMajorVersions(t *testing.T) {
 	realVersion := version.Version
 	t.Cleanup(func() {
@@ -835,7 +826,6 @@ func TestCheckForUpdate_WorksCorrectlyWithDifferentMajorVersions(t *testing.T) {
 	require.Contains(t, expired.diag.Message, "upgrade from version '1.0.0' to '2.0.3'")
 }
 
-//nolint:paralleltest // changes environment variables and globals
 func TestCheckForUpdate_WorksCorrectlyWithVeryOldMinorVersions(t *testing.T) {
 	realVersion := version.Version
 	t.Cleanup(func() {

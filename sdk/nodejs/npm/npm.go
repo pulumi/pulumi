@@ -58,7 +58,7 @@ func (node *npmManager) Name() string {
 }
 
 func (node *npmManager) Version() (semver.Version, error) {
-	cmd := exec.Command(node.executable, "--version") //nolint:gosec
+	cmd := exec.Command(node.executable, "--version")
 	output, err := cmd.Output()
 	if err != nil {
 		return semver.Version{}, errutil.ErrorWithStderr(err, cmd.String())
@@ -88,7 +88,6 @@ func (node *npmManager) installCmd(ctx context.Context, production bool) *exec.C
 		args = append(args, "--production")
 	}
 
-	//nolint:gosec // False positive on tained command execution. We aren't accepting input from the user here.
 	return exec.CommandContext(ctx, node.executable, args...)
 }
 
@@ -123,7 +122,6 @@ func (node *npmManager) Link(ctx context.Context, dir, packageName, path string)
 	if err != nil {
 		return fmt.Errorf("error marshaling allowScripts to JSON: %w", err)
 	}
-	//nolint:gosec
 	cmd = exec.CommandContext(ctx, "npm", "pkg", "set", "--json", "allowScripts="+string(jsonData))
 	cmd.Dir = dir
 	if out, err := cmd.CombinedOutput(); err != nil {
@@ -139,7 +137,6 @@ func (node *npmManager) ListPackages(
 }
 
 func (node *npmManager) Pack(ctx context.Context, dir string, stderr io.Writer) ([]byte, error) {
-	//nolint:gosec // False positive on tained command execution. We aren't accepting input from the user here.
 	command := exec.CommandContext(ctx, node.executable, "pack", "--loglevel=error")
 	command.Dir = dir
 
