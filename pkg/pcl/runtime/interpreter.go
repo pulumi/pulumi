@@ -2024,6 +2024,7 @@ func (i *Interpreter) registerReadResource(ctx context.Context, res *pcl.ReadRes
 	if err != nil {
 		return err
 	}
+	// The rest of this method can send output values
 	marshalOpts.KeepOutputValues = true
 
 	dependencies := []string{}
