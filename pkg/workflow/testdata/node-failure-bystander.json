@@ -85,6 +85,10 @@
       "name": "go",
       "from": "start-bad",
       "to": "deploy",
+      "cursor": {
+        "id": "c1",
+        "label": "bad"
+      },
       "inputs": {
         "version": "bad"
       }
@@ -96,7 +100,12 @@
       "name": "go",
       "from": "start-bad",
       "to": "deploy",
-      "pass": true
+      "cursor": {
+        "id": "c1",
+        "label": "bad"
+      },
+      "pass": true,
+      "outputs": {}
     }
   },
   {
@@ -105,6 +114,10 @@
       "name": "go",
       "from": "start-good",
       "to": "build",
+      "cursor": {
+        "id": "c2",
+        "label": "good"
+      },
       "inputs": {
         "version": "good"
       }
@@ -116,13 +129,22 @@
       "name": "go",
       "from": "start-good",
       "to": "build",
-      "pass": true
+      "cursor": {
+        "id": "c2",
+        "label": "good"
+      },
+      "pass": true,
+      "outputs": {}
     }
   },
   {
     "type": "NodeStarted",
     "event": {
       "id": "deploy",
+      "cursor": {
+        "id": "c1",
+        "label": "bad"
+      },
       "inputs": {
         "version": "bad"
       }
@@ -132,6 +154,10 @@
     "type": "NodeFailed",
     "event": {
       "id": "deploy",
+      "cursor": {
+        "id": "c1",
+        "label": "bad"
+      },
       "error": "deploy exploded"
     }
   },
@@ -173,6 +199,10 @@
       "name": "go",
       "from": "start-bad",
       "to": "deploy",
+      "cursor": {
+        "id": "c1",
+        "label": "bad"
+      },
       "inputs": {
         "version": "bad"
       }
@@ -184,7 +214,12 @@
       "name": "go",
       "from": "start-bad",
       "to": "deploy",
-      "pass": true
+      "cursor": {
+        "id": "c1",
+        "label": "bad"
+      },
+      "pass": true,
+      "outputs": {}
     }
   },
   {
@@ -193,6 +228,10 @@
       "name": "go",
       "from": "start-good",
       "to": "build",
+      "cursor": {
+        "id": "c2",
+        "label": "good"
+      },
       "inputs": {
         "version": "good"
       }
@@ -204,13 +243,22 @@
       "name": "go",
       "from": "start-good",
       "to": "build",
-      "pass": true
+      "cursor": {
+        "id": "c2",
+        "label": "good"
+      },
+      "pass": true,
+      "outputs": {}
     }
   },
   {
     "type": "NodeStarted",
     "event": {
       "id": "deploy",
+      "cursor": {
+        "id": "c1",
+        "label": "bad"
+      },
       "inputs": {
         "version": "bad"
       }
@@ -220,6 +268,10 @@
     "type": "NodeSucceeded",
     "event": {
       "id": "deploy",
+      "cursor": {
+        "id": "c1",
+        "label": "bad"
+      },
       "outputs": {
         "deployed": true,
         "version": "bad"
@@ -230,6 +282,10 @@
     "type": "NodeStarted",
     "event": {
       "id": "build",
+      "cursor": {
+        "id": "c2",
+        "label": "good"
+      },
       "inputs": {
         "version": "good"
       }
@@ -239,6 +295,10 @@
     "type": "NodeSucceeded",
     "event": {
       "id": "build",
+      "cursor": {
+        "id": "c2",
+        "label": "good"
+      },
       "outputs": {
         "built": true,
         "version": "good"
@@ -251,6 +311,10 @@
       "name": "built",
       "from": "build",
       "to": "done",
+      "cursor": {
+        "id": "c2",
+        "label": "good"
+      },
       "inputs": {
         "built": true,
         "version": "good"
@@ -263,13 +327,22 @@
       "name": "built",
       "from": "build",
       "to": "done",
-      "pass": true
+      "cursor": {
+        "id": "c2",
+        "label": "good"
+      },
+      "pass": true,
+      "outputs": {}
     }
   },
   {
     "type": "NodeStarted",
     "event": {
       "id": "done",
+      "cursor": {
+        "id": "c2",
+        "label": "good"
+      },
       "inputs": {
         "built": true,
         "version": "good"
@@ -280,6 +353,10 @@
     "type": "NodeSucceeded",
     "event": {
       "id": "done",
+      "cursor": {
+        "id": "c2",
+        "label": "good"
+      },
       "outputs": {
         "built": true,
         "version": "good"

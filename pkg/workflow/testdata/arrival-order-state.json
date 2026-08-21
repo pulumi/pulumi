@@ -5,7 +5,7 @@
       "id": "c2",
       "label": "bad",
       "node": "start-bad",
-      "value": {
+      "entered": {
         "version": "bad"
       }
     },
@@ -13,7 +13,7 @@
       "id": "c3",
       "label": "queued",
       "node": "staging",
-      "value": {
+      "entered": {
         "version": "queued"
       }
     },
@@ -21,7 +21,10 @@
       "id": "c1",
       "label": "good",
       "node": "staging",
-      "value": {
+      "entered": {
+        "version": "good"
+      },
+      "outputs": {
         "env": "staging",
         "version": "good"
       }

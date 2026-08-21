@@ -202,6 +202,10 @@
       "name": "planning",
       "from": "start",
       "to": "plan",
+      "cursor": {
+        "id": "c1",
+        "label": "v7"
+      },
       "inputs": {
         "version": "7"
       }
@@ -213,13 +217,22 @@
       "name": "planning",
       "from": "start",
       "to": "plan",
-      "pass": true
+      "cursor": {
+        "id": "c1",
+        "label": "v7"
+      },
+      "pass": true,
+      "outputs": {}
     }
   },
   {
     "type": "NodeStarted",
     "event": {
       "id": "plan",
+      "cursor": {
+        "id": "c1",
+        "label": "v7"
+      },
       "inputs": {
         "version": "7"
       }
@@ -255,6 +268,10 @@
     "type": "NodeSucceeded",
     "event": {
       "id": "plan",
+      "cursor": {
+        "id": "c1",
+        "label": "v7"
+      },
       "outputs": {
         "phase": 1,
         "version": "7"
@@ -267,6 +284,10 @@
       "name": "queued",
       "from": "queue-us-west",
       "to": "deploy-us-west",
+      "cursor": {
+        "id": "c2",
+        "label": "us-west"
+      },
       "inputs": {
         "version": "7"
       }
@@ -278,7 +299,12 @@
       "name": "queued",
       "from": "queue-us-west",
       "to": "deploy-us-west",
-      "pass": true
+      "cursor": {
+        "id": "c2",
+        "label": "us-west"
+      },
+      "pass": true,
+      "outputs": {}
     }
   },
   {
@@ -287,6 +313,10 @@
       "name": "queued",
       "from": "queue-us-east",
       "to": "deploy-us-east",
+      "cursor": {
+        "id": "c3",
+        "label": "us-east"
+      },
       "inputs": {
         "version": "7"
       }
@@ -298,13 +328,22 @@
       "name": "queued",
       "from": "queue-us-east",
       "to": "deploy-us-east",
-      "pass": true
+      "cursor": {
+        "id": "c3",
+        "label": "us-east"
+      },
+      "pass": true,
+      "outputs": {}
     }
   },
   {
     "type": "NodeStarted",
     "event": {
       "id": "deploy-us-west",
+      "cursor": {
+        "id": "c2",
+        "label": "us-west"
+      },
       "inputs": {
         "version": "7"
       }
@@ -314,6 +353,10 @@
     "type": "NodeSucceeded",
     "event": {
       "id": "deploy-us-west",
+      "cursor": {
+        "id": "c2",
+        "label": "us-west"
+      },
       "outputs": {
         "region": "us-west",
         "version": "7"
@@ -324,6 +367,10 @@
     "type": "NodeStarted",
     "event": {
       "id": "deploy-us-east",
+      "cursor": {
+        "id": "c3",
+        "label": "us-east"
+      },
       "inputs": {
         "version": "7"
       }
@@ -333,6 +380,10 @@
     "type": "NodeSucceeded",
     "event": {
       "id": "deploy-us-east",
+      "cursor": {
+        "id": "c3",
+        "label": "us-east"
+      },
       "outputs": {
         "region": "us-east",
         "version": "7"
@@ -345,6 +396,10 @@
       "name": "deployed",
       "from": "deploy-us-west",
       "to": "verify-us-west",
+      "cursor": {
+        "id": "c2",
+        "label": "us-west"
+      },
       "inputs": {
         "region": "us-west",
         "version": "7"
@@ -357,7 +412,12 @@
       "name": "deployed",
       "from": "deploy-us-west",
       "to": "verify-us-west",
-      "pass": true
+      "cursor": {
+        "id": "c2",
+        "label": "us-west"
+      },
+      "pass": true,
+      "outputs": {}
     }
   },
   {
@@ -366,6 +426,10 @@
       "name": "deployed",
       "from": "deploy-us-east",
       "to": "verify-us-east",
+      "cursor": {
+        "id": "c3",
+        "label": "us-east"
+      },
       "inputs": {
         "region": "us-east",
         "version": "7"
@@ -378,13 +442,22 @@
       "name": "deployed",
       "from": "deploy-us-east",
       "to": "verify-us-east",
-      "pass": true
+      "cursor": {
+        "id": "c3",
+        "label": "us-east"
+      },
+      "pass": true,
+      "outputs": {}
     }
   },
   {
     "type": "NodeStarted",
     "event": {
       "id": "verify-us-west",
+      "cursor": {
+        "id": "c2",
+        "label": "us-west"
+      },
       "inputs": {
         "region": "us-west",
         "version": "7"
@@ -395,6 +468,10 @@
     "type": "NodeSucceeded",
     "event": {
       "id": "verify-us-west",
+      "cursor": {
+        "id": "c2",
+        "label": "us-west"
+      },
       "outputs": {
         "region": "us-west",
         "verified": true,
@@ -406,6 +483,10 @@
     "type": "NodeStarted",
     "event": {
       "id": "verify-us-east",
+      "cursor": {
+        "id": "c3",
+        "label": "us-east"
+      },
       "inputs": {
         "region": "us-east",
         "version": "7"
@@ -416,6 +497,10 @@
     "type": "NodeSucceeded",
     "event": {
       "id": "verify-us-east",
+      "cursor": {
+        "id": "c3",
+        "label": "us-east"
+      },
       "outputs": {
         "region": "us-east",
         "verified": true,
@@ -429,6 +514,10 @@
       "name": "abort",
       "from": "verify-us-west",
       "to": "halt-us-west",
+      "cursor": {
+        "id": "c2",
+        "label": "us-west"
+      },
       "inputs": {
         "region": "us-west",
         "verified": true,
@@ -442,7 +531,12 @@
       "name": "abort",
       "from": "verify-us-west",
       "to": "halt-us-west",
-      "pass": false
+      "cursor": {
+        "id": "c2",
+        "label": "us-west"
+      },
+      "pass": false,
+      "outputs": {}
     }
   },
   {
@@ -451,6 +545,10 @@
       "name": "us-metrics-good",
       "from": "verify-us-west",
       "to": "deploy-eu",
+      "cursor": {
+        "id": "c2",
+        "label": "us-west"
+      },
       "inputs": {
         "region": "us-west",
         "verified": true,
@@ -464,7 +562,12 @@
       "name": "us-metrics-good",
       "from": "verify-us-west",
       "to": "deploy-eu",
-      "pass": true
+      "cursor": {
+        "id": "c2",
+        "label": "us-west"
+      },
+      "pass": true,
+      "outputs": {}
     }
   },
   {
@@ -473,6 +576,10 @@
       "name": "us-metrics-good",
       "from": "verify-us-east",
       "to": "deploy-eu",
+      "cursor": {
+        "id": "c3",
+        "label": "us-east"
+      },
       "inputs": {
         "region": "us-east",
         "verified": true,
@@ -486,7 +593,12 @@
       "name": "us-metrics-good",
       "from": "verify-us-east",
       "to": "deploy-eu",
-      "pass": false
+      "cursor": {
+        "id": "c3",
+        "label": "us-east"
+      },
+      "pass": false,
+      "outputs": {}
     }
   },
   {
@@ -495,6 +607,10 @@
       "name": "abort",
       "from": "verify-us-east",
       "to": "halt-us-east",
+      "cursor": {
+        "id": "c3",
+        "label": "us-east"
+      },
       "inputs": {
         "region": "us-east",
         "verified": true,
@@ -508,7 +624,12 @@
       "name": "abort",
       "from": "verify-us-east",
       "to": "halt-us-east",
-      "pass": false
+      "cursor": {
+        "id": "c3",
+        "label": "us-east"
+      },
+      "pass": false,
+      "outputs": {}
     }
   },
   {
@@ -578,6 +699,10 @@
       "name": "abort",
       "from": "verify-us-west",
       "to": "halt-us-west",
+      "cursor": {
+        "id": "c2",
+        "label": "us-west"
+      },
       "inputs": {
         "region": "us-west",
         "verified": true,
@@ -591,7 +716,12 @@
       "name": "abort",
       "from": "verify-us-west",
       "to": "halt-us-west",
-      "pass": true
+      "cursor": {
+        "id": "c2",
+        "label": "us-west"
+      },
+      "pass": true,
+      "outputs": {}
     }
   },
   {
@@ -600,6 +730,10 @@
       "name": "abort",
       "from": "verify-us-east",
       "to": "halt-us-east",
+      "cursor": {
+        "id": "c3",
+        "label": "us-east"
+      },
       "inputs": {
         "region": "us-east",
         "verified": true,
@@ -613,13 +747,22 @@
       "name": "abort",
       "from": "verify-us-east",
       "to": "halt-us-east",
-      "pass": true
+      "cursor": {
+        "id": "c3",
+        "label": "us-east"
+      },
+      "pass": true,
+      "outputs": {}
     }
   },
   {
     "type": "NodeStarted",
     "event": {
       "id": "halt-us-west",
+      "cursor": {
+        "id": "c2",
+        "label": "us-west"
+      },
       "inputs": {
         "region": "us-west",
         "verified": true,
@@ -631,6 +774,10 @@
     "type": "NodeSucceeded",
     "event": {
       "id": "halt-us-west",
+      "cursor": {
+        "id": "c2",
+        "label": "us-west"
+      },
       "outputs": {
         "halted": true,
         "region": "us-west",
@@ -643,6 +790,10 @@
     "type": "NodeStarted",
     "event": {
       "id": "halt-us-east",
+      "cursor": {
+        "id": "c3",
+        "label": "us-east"
+      },
       "inputs": {
         "region": "us-east",
         "verified": true,
@@ -654,6 +805,10 @@
     "type": "NodeSucceeded",
     "event": {
       "id": "halt-us-east",
+      "cursor": {
+        "id": "c3",
+        "label": "us-east"
+      },
       "outputs": {
         "halted": true,
         "region": "us-east",

@@ -47,12 +47,14 @@
       "to": "deploy",
       "andEdges": [
         {
-          "name": "retry[0]",
+          "name": "retry",
+          "condition": "attempts-left",
           "from": "deploy",
           "to": "deploy"
         },
         {
-          "name": "retry[1]",
+          "name": "retry",
+          "condition": "failed",
           "from": "deploy",
           "to": "deploy"
         }
@@ -67,12 +69,14 @@
       "to": "give-up",
       "andEdges": [
         {
-          "name": "exhausted[0]",
+          "name": "exhausted",
+          "condition": "exhausted",
           "from": "deploy",
           "to": "give-up"
         },
         {
-          "name": "exhausted[1]",
+          "name": "exhausted",
+          "condition": "failed",
           "from": "deploy",
           "to": "give-up"
         }
@@ -98,6 +102,10 @@
       "name": "start",
       "from": "start",
       "to": "deploy",
+      "cursor": {
+        "id": "c1",
+        "label": "three attempts"
+      },
       "inputs": {
         "maxAttempts": 3
       }
@@ -109,13 +117,22 @@
       "name": "start",
       "from": "start",
       "to": "deploy",
-      "pass": true
+      "cursor": {
+        "id": "c1",
+        "label": "three attempts"
+      },
+      "pass": true,
+      "outputs": {}
     }
   },
   {
     "type": "NodeStarted",
     "event": {
       "id": "deploy",
+      "cursor": {
+        "id": "c1",
+        "label": "three attempts"
+      },
       "inputs": {
         "maxAttempts": 3
       }
@@ -125,6 +142,10 @@
     "type": "NodeSucceeded",
     "event": {
       "id": "deploy",
+      "cursor": {
+        "id": "c1",
+        "label": "three attempts"
+      },
       "outputs": {
         "attempts": 1,
         "maxAttempts": 3,
@@ -138,6 +159,10 @@
       "name": "succeeded",
       "from": "deploy",
       "to": "done",
+      "cursor": {
+        "id": "c1",
+        "label": "three attempts"
+      },
       "inputs": {
         "attempts": 1,
         "maxAttempts": 3,
@@ -151,7 +176,12 @@
       "name": "succeeded",
       "from": "deploy",
       "to": "done",
-      "pass": false
+      "cursor": {
+        "id": "c1",
+        "label": "three attempts"
+      },
+      "pass": false,
+      "outputs": {}
     }
   },
   {
@@ -160,6 +190,10 @@
       "name": "retry",
       "from": "deploy",
       "to": "deploy",
+      "cursor": {
+        "id": "c1",
+        "label": "three attempts"
+      },
       "inputs": {
         "attempts": 1,
         "maxAttempts": 3,
@@ -170,31 +204,32 @@
   {
     "type": "EdgeStarted",
     "event": {
-      "name": "retry[0]",
+      "name": "retry",
+      "condition": "attempts-left",
       "from": "deploy",
       "to": "deploy",
+      "cursor": {
+        "id": "c1",
+        "label": "three attempts"
+      },
       "inputs": {
         "attempts": 1,
         "maxAttempts": 3,
         "ok": false
       }
-    }
-  },
-  {
-    "type": "EdgeFinished",
-    "event": {
-      "name": "retry[0]",
-      "from": "deploy",
-      "to": "deploy",
-      "pass": true
     }
   },
   {
     "type": "EdgeStarted",
     "event": {
-      "name": "retry[1]",
+      "name": "retry",
+      "condition": "failed",
       "from": "deploy",
       "to": "deploy",
+      "cursor": {
+        "id": "c1",
+        "label": "three attempts"
+      },
       "inputs": {
         "attempts": 1,
         "maxAttempts": 3,
@@ -205,10 +240,31 @@
   {
     "type": "EdgeFinished",
     "event": {
-      "name": "retry[1]",
+      "name": "retry",
+      "condition": "attempts-left",
       "from": "deploy",
       "to": "deploy",
-      "pass": true
+      "cursor": {
+        "id": "c1",
+        "label": "three attempts"
+      },
+      "pass": true,
+      "outputs": {}
+    }
+  },
+  {
+    "type": "EdgeFinished",
+    "event": {
+      "name": "retry",
+      "condition": "failed",
+      "from": "deploy",
+      "to": "deploy",
+      "cursor": {
+        "id": "c1",
+        "label": "three attempts"
+      },
+      "pass": true,
+      "outputs": {}
     }
   },
   {
@@ -217,13 +273,22 @@
       "name": "retry",
       "from": "deploy",
       "to": "deploy",
-      "pass": true
+      "cursor": {
+        "id": "c1",
+        "label": "three attempts"
+      },
+      "pass": true,
+      "outputs": {}
     }
   },
   {
     "type": "NodeStarted",
     "event": {
       "id": "deploy",
+      "cursor": {
+        "id": "c1",
+        "label": "three attempts"
+      },
       "inputs": {
         "attempts": 1,
         "maxAttempts": 3,
@@ -235,6 +300,10 @@
     "type": "NodeSucceeded",
     "event": {
       "id": "deploy",
+      "cursor": {
+        "id": "c1",
+        "label": "three attempts"
+      },
       "outputs": {
         "attempts": 2,
         "maxAttempts": 3,
@@ -248,6 +317,10 @@
       "name": "succeeded",
       "from": "deploy",
       "to": "done",
+      "cursor": {
+        "id": "c1",
+        "label": "three attempts"
+      },
       "inputs": {
         "attempts": 2,
         "maxAttempts": 3,
@@ -261,7 +334,12 @@
       "name": "succeeded",
       "from": "deploy",
       "to": "done",
-      "pass": false
+      "cursor": {
+        "id": "c1",
+        "label": "three attempts"
+      },
+      "pass": false,
+      "outputs": {}
     }
   },
   {
@@ -270,6 +348,10 @@
       "name": "retry",
       "from": "deploy",
       "to": "deploy",
+      "cursor": {
+        "id": "c1",
+        "label": "three attempts"
+      },
       "inputs": {
         "attempts": 2,
         "maxAttempts": 3,
@@ -280,31 +362,32 @@
   {
     "type": "EdgeStarted",
     "event": {
-      "name": "retry[0]",
+      "name": "retry",
+      "condition": "attempts-left",
       "from": "deploy",
       "to": "deploy",
+      "cursor": {
+        "id": "c1",
+        "label": "three attempts"
+      },
       "inputs": {
         "attempts": 2,
         "maxAttempts": 3,
         "ok": false
       }
-    }
-  },
-  {
-    "type": "EdgeFinished",
-    "event": {
-      "name": "retry[0]",
-      "from": "deploy",
-      "to": "deploy",
-      "pass": true
     }
   },
   {
     "type": "EdgeStarted",
     "event": {
-      "name": "retry[1]",
+      "name": "retry",
+      "condition": "failed",
       "from": "deploy",
       "to": "deploy",
+      "cursor": {
+        "id": "c1",
+        "label": "three attempts"
+      },
       "inputs": {
         "attempts": 2,
         "maxAttempts": 3,
@@ -315,10 +398,31 @@
   {
     "type": "EdgeFinished",
     "event": {
-      "name": "retry[1]",
+      "name": "retry",
+      "condition": "attempts-left",
       "from": "deploy",
       "to": "deploy",
-      "pass": true
+      "cursor": {
+        "id": "c1",
+        "label": "three attempts"
+      },
+      "pass": true,
+      "outputs": {}
+    }
+  },
+  {
+    "type": "EdgeFinished",
+    "event": {
+      "name": "retry",
+      "condition": "failed",
+      "from": "deploy",
+      "to": "deploy",
+      "cursor": {
+        "id": "c1",
+        "label": "three attempts"
+      },
+      "pass": true,
+      "outputs": {}
     }
   },
   {
@@ -327,13 +431,22 @@
       "name": "retry",
       "from": "deploy",
       "to": "deploy",
-      "pass": true
+      "cursor": {
+        "id": "c1",
+        "label": "three attempts"
+      },
+      "pass": true,
+      "outputs": {}
     }
   },
   {
     "type": "NodeStarted",
     "event": {
       "id": "deploy",
+      "cursor": {
+        "id": "c1",
+        "label": "three attempts"
+      },
       "inputs": {
         "attempts": 2,
         "maxAttempts": 3,
@@ -345,6 +458,10 @@
     "type": "NodeSucceeded",
     "event": {
       "id": "deploy",
+      "cursor": {
+        "id": "c1",
+        "label": "three attempts"
+      },
       "outputs": {
         "attempts": 3,
         "maxAttempts": 3,
@@ -358,6 +475,10 @@
       "name": "succeeded",
       "from": "deploy",
       "to": "done",
+      "cursor": {
+        "id": "c1",
+        "label": "three attempts"
+      },
       "inputs": {
         "attempts": 3,
         "maxAttempts": 3,
@@ -371,13 +492,22 @@
       "name": "succeeded",
       "from": "deploy",
       "to": "done",
-      "pass": true
+      "cursor": {
+        "id": "c1",
+        "label": "three attempts"
+      },
+      "pass": true,
+      "outputs": {}
     }
   },
   {
     "type": "NodeStarted",
     "event": {
       "id": "done",
+      "cursor": {
+        "id": "c1",
+        "label": "three attempts"
+      },
       "inputs": {
         "attempts": 3,
         "maxAttempts": 3,
@@ -389,6 +519,10 @@
     "type": "NodeSucceeded",
     "event": {
       "id": "done",
+      "cursor": {
+        "id": "c1",
+        "label": "three attempts"
+      },
       "outputs": {
         "attempts": 3,
         "maxAttempts": 3,
@@ -434,6 +568,10 @@
       "name": "start",
       "from": "start",
       "to": "deploy",
+      "cursor": {
+        "id": "c2",
+        "label": "two attempts"
+      },
       "inputs": {
         "maxAttempts": 2
       }
@@ -445,13 +583,22 @@
       "name": "start",
       "from": "start",
       "to": "deploy",
-      "pass": true
+      "cursor": {
+        "id": "c2",
+        "label": "two attempts"
+      },
+      "pass": true,
+      "outputs": {}
     }
   },
   {
     "type": "NodeStarted",
     "event": {
       "id": "deploy",
+      "cursor": {
+        "id": "c2",
+        "label": "two attempts"
+      },
       "inputs": {
         "maxAttempts": 2
       }
@@ -461,6 +608,10 @@
     "type": "NodeSucceeded",
     "event": {
       "id": "deploy",
+      "cursor": {
+        "id": "c2",
+        "label": "two attempts"
+      },
       "outputs": {
         "attempts": 1,
         "maxAttempts": 2,
@@ -474,6 +625,10 @@
       "name": "succeeded",
       "from": "deploy",
       "to": "done",
+      "cursor": {
+        "id": "c2",
+        "label": "two attempts"
+      },
       "inputs": {
         "attempts": 1,
         "maxAttempts": 2,
@@ -487,7 +642,12 @@
       "name": "succeeded",
       "from": "deploy",
       "to": "done",
-      "pass": false
+      "cursor": {
+        "id": "c2",
+        "label": "two attempts"
+      },
+      "pass": false,
+      "outputs": {}
     }
   },
   {
@@ -496,6 +656,10 @@
       "name": "retry",
       "from": "deploy",
       "to": "deploy",
+      "cursor": {
+        "id": "c2",
+        "label": "two attempts"
+      },
       "inputs": {
         "attempts": 1,
         "maxAttempts": 2,
@@ -506,31 +670,32 @@
   {
     "type": "EdgeStarted",
     "event": {
-      "name": "retry[0]",
+      "name": "retry",
+      "condition": "attempts-left",
       "from": "deploy",
       "to": "deploy",
+      "cursor": {
+        "id": "c2",
+        "label": "two attempts"
+      },
       "inputs": {
         "attempts": 1,
         "maxAttempts": 2,
         "ok": false
       }
-    }
-  },
-  {
-    "type": "EdgeFinished",
-    "event": {
-      "name": "retry[0]",
-      "from": "deploy",
-      "to": "deploy",
-      "pass": true
     }
   },
   {
     "type": "EdgeStarted",
     "event": {
-      "name": "retry[1]",
+      "name": "retry",
+      "condition": "failed",
       "from": "deploy",
       "to": "deploy",
+      "cursor": {
+        "id": "c2",
+        "label": "two attempts"
+      },
       "inputs": {
         "attempts": 1,
         "maxAttempts": 2,
@@ -541,10 +706,31 @@
   {
     "type": "EdgeFinished",
     "event": {
-      "name": "retry[1]",
+      "name": "retry",
+      "condition": "attempts-left",
       "from": "deploy",
       "to": "deploy",
-      "pass": true
+      "cursor": {
+        "id": "c2",
+        "label": "two attempts"
+      },
+      "pass": true,
+      "outputs": {}
+    }
+  },
+  {
+    "type": "EdgeFinished",
+    "event": {
+      "name": "retry",
+      "condition": "failed",
+      "from": "deploy",
+      "to": "deploy",
+      "cursor": {
+        "id": "c2",
+        "label": "two attempts"
+      },
+      "pass": true,
+      "outputs": {}
     }
   },
   {
@@ -553,13 +739,22 @@
       "name": "retry",
       "from": "deploy",
       "to": "deploy",
-      "pass": true
+      "cursor": {
+        "id": "c2",
+        "label": "two attempts"
+      },
+      "pass": true,
+      "outputs": {}
     }
   },
   {
     "type": "NodeStarted",
     "event": {
       "id": "deploy",
+      "cursor": {
+        "id": "c2",
+        "label": "two attempts"
+      },
       "inputs": {
         "attempts": 1,
         "maxAttempts": 2,
@@ -571,6 +766,10 @@
     "type": "NodeSucceeded",
     "event": {
       "id": "deploy",
+      "cursor": {
+        "id": "c2",
+        "label": "two attempts"
+      },
       "outputs": {
         "attempts": 2,
         "maxAttempts": 2,
@@ -584,6 +783,10 @@
       "name": "succeeded",
       "from": "deploy",
       "to": "done",
+      "cursor": {
+        "id": "c2",
+        "label": "two attempts"
+      },
       "inputs": {
         "attempts": 2,
         "maxAttempts": 2,
@@ -597,7 +800,12 @@
       "name": "succeeded",
       "from": "deploy",
       "to": "done",
-      "pass": false
+      "cursor": {
+        "id": "c2",
+        "label": "two attempts"
+      },
+      "pass": false,
+      "outputs": {}
     }
   },
   {
@@ -606,6 +814,10 @@
       "name": "retry",
       "from": "deploy",
       "to": "deploy",
+      "cursor": {
+        "id": "c2",
+        "label": "two attempts"
+      },
       "inputs": {
         "attempts": 2,
         "maxAttempts": 2,
@@ -616,31 +828,32 @@
   {
     "type": "EdgeStarted",
     "event": {
-      "name": "retry[0]",
+      "name": "retry",
+      "condition": "attempts-left",
       "from": "deploy",
       "to": "deploy",
+      "cursor": {
+        "id": "c2",
+        "label": "two attempts"
+      },
       "inputs": {
         "attempts": 2,
         "maxAttempts": 2,
         "ok": false
       }
-    }
-  },
-  {
-    "type": "EdgeFinished",
-    "event": {
-      "name": "retry[0]",
-      "from": "deploy",
-      "to": "deploy",
-      "pass": true
     }
   },
   {
     "type": "EdgeStarted",
     "event": {
-      "name": "retry[1]",
+      "name": "retry",
+      "condition": "failed",
       "from": "deploy",
       "to": "deploy",
+      "cursor": {
+        "id": "c2",
+        "label": "two attempts"
+      },
       "inputs": {
         "attempts": 2,
         "maxAttempts": 2,
@@ -651,10 +864,31 @@
   {
     "type": "EdgeFinished",
     "event": {
-      "name": "retry[1]",
+      "name": "retry",
+      "condition": "attempts-left",
       "from": "deploy",
       "to": "deploy",
-      "pass": false
+      "cursor": {
+        "id": "c2",
+        "label": "two attempts"
+      },
+      "pass": false,
+      "outputs": {}
+    }
+  },
+  {
+    "type": "EdgeFinished",
+    "event": {
+      "name": "retry",
+      "condition": "failed",
+      "from": "deploy",
+      "to": "deploy",
+      "cursor": {
+        "id": "c2",
+        "label": "two attempts"
+      },
+      "pass": true,
+      "outputs": {}
     }
   },
   {
@@ -663,7 +897,12 @@
       "name": "retry",
       "from": "deploy",
       "to": "deploy",
-      "pass": false
+      "cursor": {
+        "id": "c2",
+        "label": "two attempts"
+      },
+      "pass": false,
+      "outputs": {}
     }
   },
   {
@@ -672,6 +911,10 @@
       "name": "exhausted",
       "from": "deploy",
       "to": "give-up",
+      "cursor": {
+        "id": "c2",
+        "label": "two attempts"
+      },
       "inputs": {
         "attempts": 2,
         "maxAttempts": 2,
@@ -682,31 +925,32 @@
   {
     "type": "EdgeStarted",
     "event": {
-      "name": "exhausted[0]",
+      "name": "exhausted",
+      "condition": "exhausted",
       "from": "deploy",
       "to": "give-up",
+      "cursor": {
+        "id": "c2",
+        "label": "two attempts"
+      },
       "inputs": {
         "attempts": 2,
         "maxAttempts": 2,
         "ok": false
       }
-    }
-  },
-  {
-    "type": "EdgeFinished",
-    "event": {
-      "name": "exhausted[0]",
-      "from": "deploy",
-      "to": "give-up",
-      "pass": true
     }
   },
   {
     "type": "EdgeStarted",
     "event": {
-      "name": "exhausted[1]",
+      "name": "exhausted",
+      "condition": "failed",
       "from": "deploy",
       "to": "give-up",
+      "cursor": {
+        "id": "c2",
+        "label": "two attempts"
+      },
       "inputs": {
         "attempts": 2,
         "maxAttempts": 2,
@@ -717,10 +961,31 @@
   {
     "type": "EdgeFinished",
     "event": {
-      "name": "exhausted[1]",
+      "name": "exhausted",
+      "condition": "exhausted",
       "from": "deploy",
       "to": "give-up",
-      "pass": true
+      "cursor": {
+        "id": "c2",
+        "label": "two attempts"
+      },
+      "pass": true,
+      "outputs": {}
+    }
+  },
+  {
+    "type": "EdgeFinished",
+    "event": {
+      "name": "exhausted",
+      "condition": "failed",
+      "from": "deploy",
+      "to": "give-up",
+      "cursor": {
+        "id": "c2",
+        "label": "two attempts"
+      },
+      "pass": true,
+      "outputs": {}
     }
   },
   {
@@ -729,13 +994,22 @@
       "name": "exhausted",
       "from": "deploy",
       "to": "give-up",
-      "pass": true
+      "cursor": {
+        "id": "c2",
+        "label": "two attempts"
+      },
+      "pass": true,
+      "outputs": {}
     }
   },
   {
     "type": "NodeStarted",
     "event": {
       "id": "give-up",
+      "cursor": {
+        "id": "c2",
+        "label": "two attempts"
+      },
       "inputs": {
         "attempts": 2,
         "maxAttempts": 2,
@@ -747,6 +1021,10 @@
     "type": "NodeSucceeded",
     "event": {
       "id": "give-up",
+      "cursor": {
+        "id": "c2",
+        "label": "two attempts"
+      },
       "outputs": {
         "attempts": 2,
         "maxAttempts": 2,

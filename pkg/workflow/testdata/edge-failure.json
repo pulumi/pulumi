@@ -36,6 +36,10 @@
       "name": "metrics-ok",
       "from": "start",
       "to": "done",
+      "cursor": {
+        "id": "c1",
+        "label": ""
+      },
       "inputs": {}
     }
   },
@@ -45,6 +49,10 @@
       "name": "metrics-ok",
       "from": "start",
       "to": "done",
+      "cursor": {
+        "id": "c1",
+        "label": ""
+      },
       "error": "metrics backend unreachable"
     }
   },
@@ -74,6 +82,10 @@
       "name": "metrics-ok",
       "from": "start",
       "to": "done",
+      "cursor": {
+        "id": "c1",
+        "label": ""
+      },
       "inputs": {}
     }
   },
@@ -83,13 +95,22 @@
       "name": "metrics-ok",
       "from": "start",
       "to": "done",
-      "pass": true
+      "cursor": {
+        "id": "c1",
+        "label": ""
+      },
+      "pass": true,
+      "outputs": {}
     }
   },
   {
     "type": "NodeStarted",
     "event": {
       "id": "done",
+      "cursor": {
+        "id": "c1",
+        "label": ""
+      },
       "inputs": {}
     }
   },
@@ -97,6 +118,10 @@
     "type": "NodeSucceeded",
     "event": {
       "id": "done",
+      "cursor": {
+        "id": "c1",
+        "label": ""
+      },
       "outputs": {}
     }
   },

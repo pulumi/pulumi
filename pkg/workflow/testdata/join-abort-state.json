@@ -5,7 +5,10 @@
       "id": "c1",
       "label": "v7",
       "node": "plan",
-      "value": {
+      "entered": {
+        "version": "7"
+      },
+      "outputs": {
         "phase": 1,
         "version": "7"
       }
@@ -14,7 +17,12 @@
       "id": "c2",
       "label": "us-west",
       "node": "halt-us-west",
-      "value": {
+      "entered": {
+        "region": "us-west",
+        "verified": true,
+        "version": "7"
+      },
+      "outputs": {
         "halted": true,
         "region": "us-west",
         "verified": true,
@@ -25,7 +33,12 @@
       "id": "c3",
       "label": "us-east",
       "node": "halt-us-east",
-      "value": {
+      "entered": {
+        "region": "us-east",
+        "verified": true,
+        "version": "7"
+      },
+      "outputs": {
         "halted": true,
         "region": "us-east",
         "verified": true,

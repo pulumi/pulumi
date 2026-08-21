@@ -1,0 +1,565 @@
+[
+  {
+    "type": "NodeDefined",
+    "event": {
+      "id": "start"
+    }
+  },
+  {
+    "type": "NodeDefined",
+    "event": {
+      "id": "via-and"
+    }
+  },
+  {
+    "type": "NodeDefined",
+    "event": {
+      "id": "via-or"
+    }
+  },
+  {
+    "type": "NodeDefined",
+    "event": {
+      "id": "end"
+    }
+  },
+  {
+    "type": "EdgeDefined",
+    "event": {
+      "name": "blocked",
+      "from": "start",
+      "to": "end",
+      "andEdges": [
+        {
+          "name": "blocked",
+          "condition": "never",
+          "from": "start",
+          "to": "end"
+        },
+        {
+          "name": "blocked",
+          "condition": "sets",
+          "from": "start",
+          "to": "end"
+        }
+      ]
+    }
+  },
+  {
+    "type": "EdgeDefined",
+    "event": {
+      "name": "and",
+      "from": "start",
+      "to": "via-and",
+      "andEdges": [
+        {
+          "name": "and",
+          "condition": "a",
+          "from": "start",
+          "to": "via-and"
+        },
+        {
+          "name": "and",
+          "condition": "b",
+          "from": "start",
+          "to": "via-and"
+        }
+      ]
+    }
+  },
+  {
+    "type": "EdgeDefined",
+    "event": {
+      "name": "or",
+      "from": "via-and",
+      "to": "via-or",
+      "orEdges": [
+        {
+          "name": "or",
+          "condition": "first",
+          "from": "via-and",
+          "to": "via-or"
+        },
+        {
+          "name": "or",
+          "condition": "second",
+          "from": "via-and",
+          "to": "via-or"
+        },
+        {
+          "name": "or",
+          "condition": "third",
+          "from": "via-and",
+          "to": "via-or"
+        }
+      ]
+    }
+  },
+  {
+    "type": "EdgeDefined",
+    "event": {
+      "name": "done",
+      "from": "via-or",
+      "to": "end"
+    }
+  },
+  {
+    "type": "CursorAdded",
+    "event": {
+      "node": "start",
+      "cursor": {
+        "id": "c1",
+        "label": ""
+      },
+      "inputs": {
+        "start": "yes"
+      }
+    }
+  },
+  {
+    "type": "EdgeStarted",
+    "event": {
+      "name": "blocked",
+      "from": "start",
+      "to": "end",
+      "cursor": {
+        "id": "c1",
+        "label": ""
+      },
+      "inputs": {
+        "start": "yes"
+      }
+    }
+  },
+  {
+    "type": "EdgeStarted",
+    "event": {
+      "name": "blocked",
+      "condition": "never",
+      "from": "start",
+      "to": "end",
+      "cursor": {
+        "id": "c1",
+        "label": ""
+      },
+      "inputs": {
+        "start": "yes"
+      }
+    }
+  },
+  {
+    "type": "EdgeStarted",
+    "event": {
+      "name": "blocked",
+      "condition": "sets",
+      "from": "start",
+      "to": "end",
+      "cursor": {
+        "id": "c1",
+        "label": ""
+      },
+      "inputs": {
+        "start": "yes"
+      }
+    }
+  },
+  {
+    "type": "EdgeFinished",
+    "event": {
+      "name": "blocked",
+      "condition": "never",
+      "from": "start",
+      "to": "end",
+      "cursor": {
+        "id": "c1",
+        "label": ""
+      },
+      "pass": false,
+      "outputs": {}
+    }
+  },
+  {
+    "type": "EdgeFinished",
+    "event": {
+      "name": "blocked",
+      "condition": "sets",
+      "from": "start",
+      "to": "end",
+      "cursor": {
+        "id": "c1",
+        "label": ""
+      },
+      "pass": true,
+      "outputs": {
+        "blocked": "yes"
+      }
+    }
+  },
+  {
+    "type": "EdgeFinished",
+    "event": {
+      "name": "blocked",
+      "from": "start",
+      "to": "end",
+      "cursor": {
+        "id": "c1",
+        "label": ""
+      },
+      "pass": false,
+      "outputs": {
+        "blocked": "yes"
+      }
+    }
+  },
+  {
+    "type": "EdgeStarted",
+    "event": {
+      "name": "and",
+      "from": "start",
+      "to": "via-and",
+      "cursor": {
+        "id": "c1",
+        "label": ""
+      },
+      "inputs": {
+        "start": "yes"
+      }
+    }
+  },
+  {
+    "type": "EdgeStarted",
+    "event": {
+      "name": "and",
+      "condition": "a",
+      "from": "start",
+      "to": "via-and",
+      "cursor": {
+        "id": "c1",
+        "label": ""
+      },
+      "inputs": {
+        "start": "yes"
+      }
+    }
+  },
+  {
+    "type": "EdgeStarted",
+    "event": {
+      "name": "and",
+      "condition": "b",
+      "from": "start",
+      "to": "via-and",
+      "cursor": {
+        "id": "c1",
+        "label": ""
+      },
+      "inputs": {
+        "start": "yes"
+      }
+    }
+  },
+  {
+    "type": "EdgeFinished",
+    "event": {
+      "name": "and",
+      "condition": "a",
+      "from": "start",
+      "to": "via-and",
+      "cursor": {
+        "id": "c1",
+        "label": ""
+      },
+      "pass": true,
+      "outputs": {
+        "a": "a",
+        "who": "a"
+      }
+    }
+  },
+  {
+    "type": "EdgeFinished",
+    "event": {
+      "name": "and",
+      "condition": "b",
+      "from": "start",
+      "to": "via-and",
+      "cursor": {
+        "id": "c1",
+        "label": ""
+      },
+      "pass": true,
+      "outputs": {
+        "b": "b",
+        "who": "b"
+      }
+    }
+  },
+  {
+    "type": "EdgeFinished",
+    "event": {
+      "name": "and",
+      "from": "start",
+      "to": "via-and",
+      "cursor": {
+        "id": "c1",
+        "label": ""
+      },
+      "pass": true,
+      "outputs": {
+        "a": "a",
+        "b": "b",
+        "who": "a"
+      }
+    }
+  },
+  {
+    "type": "NodeStarted",
+    "event": {
+      "id": "via-and",
+      "cursor": {
+        "id": "c1",
+        "label": ""
+      },
+      "inputs": {
+        "a": "a",
+        "b": "b",
+        "start": "yes",
+        "who": "a"
+      }
+    }
+  },
+  {
+    "type": "NodeSucceeded",
+    "event": {
+      "id": "via-and",
+      "cursor": {
+        "id": "c1",
+        "label": ""
+      },
+      "outputs": {
+        "a": "a",
+        "b": "b",
+        "start": "yes",
+        "who": "a"
+      }
+    }
+  },
+  {
+    "type": "EdgeStarted",
+    "event": {
+      "name": "or",
+      "from": "via-and",
+      "to": "via-or",
+      "cursor": {
+        "id": "c1",
+        "label": ""
+      },
+      "inputs": {
+        "a": "a",
+        "b": "b",
+        "start": "yes",
+        "who": "a"
+      }
+    }
+  },
+  {
+    "type": "EdgeStarted",
+    "event": {
+      "name": "or",
+      "condition": "first",
+      "from": "via-and",
+      "to": "via-or",
+      "cursor": {
+        "id": "c1",
+        "label": ""
+      },
+      "inputs": {
+        "a": "a",
+        "b": "b",
+        "start": "yes",
+        "who": "a"
+      }
+    }
+  },
+  {
+    "type": "EdgeFinished",
+    "event": {
+      "name": "or",
+      "condition": "first",
+      "from": "via-and",
+      "to": "via-or",
+      "cursor": {
+        "id": "c1",
+        "label": ""
+      },
+      "pass": false,
+      "outputs": {}
+    }
+  },
+  {
+    "type": "EdgeStarted",
+    "event": {
+      "name": "or",
+      "condition": "second",
+      "from": "via-and",
+      "to": "via-or",
+      "cursor": {
+        "id": "c1",
+        "label": ""
+      },
+      "inputs": {
+        "a": "a",
+        "b": "b",
+        "start": "yes",
+        "who": "a"
+      }
+    }
+  },
+  {
+    "type": "EdgeFinished",
+    "event": {
+      "name": "or",
+      "condition": "second",
+      "from": "via-and",
+      "to": "via-or",
+      "cursor": {
+        "id": "c1",
+        "label": ""
+      },
+      "pass": true,
+      "outputs": {
+        "or": "second"
+      }
+    }
+  },
+  {
+    "type": "EdgeFinished",
+    "event": {
+      "name": "or",
+      "from": "via-and",
+      "to": "via-or",
+      "cursor": {
+        "id": "c1",
+        "label": ""
+      },
+      "pass": true,
+      "outputs": {
+        "or": "second"
+      }
+    }
+  },
+  {
+    "type": "NodeStarted",
+    "event": {
+      "id": "via-or",
+      "cursor": {
+        "id": "c1",
+        "label": ""
+      },
+      "inputs": {
+        "a": "a",
+        "b": "b",
+        "or": "second",
+        "start": "yes",
+        "who": "a"
+      }
+    }
+  },
+  {
+    "type": "NodeSucceeded",
+    "event": {
+      "id": "via-or",
+      "cursor": {
+        "id": "c1",
+        "label": ""
+      },
+      "outputs": {
+        "a": "a",
+        "b": "b",
+        "or": "second",
+        "start": "yes",
+        "who": "a"
+      }
+    }
+  },
+  {
+    "type": "EdgeStarted",
+    "event": {
+      "name": "done",
+      "from": "via-or",
+      "to": "end",
+      "cursor": {
+        "id": "c1",
+        "label": ""
+      },
+      "inputs": {
+        "a": "a",
+        "b": "b",
+        "or": "second",
+        "start": "yes",
+        "who": "a"
+      }
+    }
+  },
+  {
+    "type": "EdgeFinished",
+    "event": {
+      "name": "done",
+      "from": "via-or",
+      "to": "end",
+      "cursor": {
+        "id": "c1",
+        "label": ""
+      },
+      "pass": true,
+      "outputs": {
+        "edge": "done"
+      }
+    }
+  },
+  {
+    "type": "NodeStarted",
+    "event": {
+      "id": "end",
+      "cursor": {
+        "id": "c1",
+        "label": ""
+      },
+      "inputs": {
+        "a": "a",
+        "b": "b",
+        "edge": "done",
+        "or": "second",
+        "start": "yes",
+        "who": "a"
+      }
+    }
+  },
+  {
+    "type": "NodeSucceeded",
+    "event": {
+      "id": "end",
+      "cursor": {
+        "id": "c1",
+        "label": ""
+      },
+      "outputs": {
+        "a": "a",
+        "b": "b",
+        "edge": "done",
+        "or": "second",
+        "start": "yes",
+        "who": "a"
+      }
+    }
+  },
+  {
+    "type": "NodeUntouched",
+    "event": {
+      "id": "start"
+    }
+  },
+  {
+    "type": "ProgressReturned"
+  }
+]

@@ -5,7 +5,11 @@
       "id": "c2",
       "label": "B",
       "node": "prod",
-      "value": {
+      "entered": {
+        "env": "staging",
+        "version": "B"
+      },
+      "outputs": {
         "env": "prod",
         "version": "B"
       }
@@ -14,7 +18,11 @@
       "id": "c3",
       "label": "C",
       "node": "soak",
-      "value": {
+      "entered": {
+        "env": "staging",
+        "version": "C"
+      },
+      "outputs": {
         "env": "staging",
         "version": "C"
       }

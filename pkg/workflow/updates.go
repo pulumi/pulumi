@@ -39,40 +39,48 @@ func (NodeUndefined) isWorkflowUpdate()  {}
 func (CursorReplaced) isWorkflowUpdate() {}
 func (NodeUntouched) isWorkflowUpdate()  {}
 
+// NodeStarted reports that node ID's function started running for Cursor, which entered with Inputs.
 type NodeStarted struct {
 	ID     string       `json:"id"`
+	Cursor Cursor       `json:"cursor"`
 	Inputs property.Map `json:"inputs"`
 }
 
 func (e NodeStarted) MarshalJSON() ([]byte, error) {
 	return json.Marshal(struct {
 		ID     string `json:"id"`
+		Cursor Cursor `json:"cursor"`
 		Inputs any    `json:"inputs"`
-	}{e.ID, propertyJSON(e.Inputs)})
+	}{e.ID, e.Cursor, propertyJSON(e.Inputs)})
 }
 
+// NodeSucceeded reports that node ID's function produced Outputs, the values Cursor leaves the node with.
 type NodeSucceeded struct {
 	ID      string       `json:"id"`
+	Cursor  Cursor       `json:"cursor"`
 	Outputs property.Map `json:"outputs"`
 }
 
 func (e NodeSucceeded) MarshalJSON() ([]byte, error) {
 	return json.Marshal(struct {
 		ID      string `json:"id"`
+		Cursor  Cursor `json:"cursor"`
 		Outputs any    `json:"outputs"`
-	}{e.ID, propertyJSON(e.Outputs)})
+	}{e.ID, e.Cursor, propertyJSON(e.Outputs)})
 }
 
 type NodeFailed struct {
-	ID    string `json:"id"`
-	Error error  `json:"error"`
+	ID     string `json:"id"`
+	Cursor Cursor `json:"cursor"`
+	Error  error  `json:"error"`
 }
 
 func (e NodeFailed) MarshalJSON() ([]byte, error) {
 	return json.Marshal(struct {
-		ID    string `json:"id"`
-		Error string `json:"error"`
-	}{e.ID, e.Error.Error()})
+		ID     string `json:"id"`
+		Cursor Cursor `json:"cursor"`
+		Error  string `json:"error"`
+	}{e.ID, e.Cursor, e.Error.Error()})
 }
 
 type NodeDefined struct {
@@ -101,39 +109,60 @@ type EdgeDefined struct {
 	JoinEdges []EdgeDefined `json:"joinEdges,omitempty"`
 }
 
+// EdgeIdentity names an edge; for one condition of a composite edge, Condition names it within the edge.
 type EdgeIdentity struct {
-	Name string `json:"name"`
-	From Node   `json:"from"`
-	To   Node   `json:"to"`
+	Name      string `json:"name"`
+	Condition string `json:"condition,omitempty"`
+	From      Node   `json:"from"`
+	To        Node   `json:"to"`
 }
 
+// EdgeStarted reports that an edge (or one of its conditions) is being asked of Cursor, whose node
+// produced Inputs.
 type EdgeStarted struct {
 	EdgeIdentity
+	Cursor Cursor       `json:"cursor"`
 	Inputs property.Map `json:"inputs"`
 }
 
 func (e EdgeStarted) MarshalJSON() ([]byte, error) {
 	return json.Marshal(struct {
 		EdgeIdentity
-		Inputs any `json:"inputs"`
-	}{e.EdgeIdentity, propertyJSON(e.Inputs)})
+		Cursor Cursor `json:"cursor"`
+		Inputs any    `json:"inputs"`
+	}{e.EdgeIdentity, e.Cursor, propertyJSON(e.Inputs)})
 }
 
+// EdgeFinished reports an edge's (or condition's) answer for Cursor. Outputs overlay the cursor's values
+// if it crosses the edge because of this answer.
 type EdgeFinished struct {
 	EdgeIdentity
-	Pass bool `json:"pass"`
+	Cursor  Cursor       `json:"cursor"`
+	Pass    bool         `json:"pass"`
+	Outputs property.Map `json:"outputs"`
+}
+
+func (e EdgeFinished) MarshalJSON() ([]byte, error) {
+	return json.Marshal(struct {
+		EdgeIdentity
+		Cursor  Cursor `json:"cursor"`
+		Pass    bool   `json:"pass"`
+		Outputs any    `json:"outputs"`
+	}{e.EdgeIdentity, e.Cursor, e.Pass, propertyJSON(e.Outputs)})
 }
 
 type EdgeFailed struct {
 	EdgeIdentity
-	Error error `json:"error"`
+	Cursor Cursor `json:"cursor"`
+	Error  error  `json:"error"`
 }
 
 func (e EdgeFailed) MarshalJSON() ([]byte, error) {
 	return json.Marshal(struct {
 		EdgeIdentity
-		Error string `json:"error"`
-	}{e.EdgeIdentity, e.Error.Error()})
+		Cursor Cursor `json:"cursor"`
+		Error  string `json:"error"`
+	}{e.EdgeIdentity, e.Cursor, e.Error.Error()})
 }
 
 type CursorAdded struct {

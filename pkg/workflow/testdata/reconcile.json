@@ -1,0 +1,404 @@
+[
+  {
+    "type": "NodeDefined",
+    "event": {
+      "id": "start"
+    }
+  },
+  {
+    "type": "NodeDefined",
+    "event": {
+      "id": "deploy"
+    }
+  },
+  {
+    "type": "NodeDefined",
+    "event": {
+      "id": "done"
+    }
+  },
+  {
+    "type": "EdgeDefined",
+    "event": {
+      "name": "start",
+      "from": "start",
+      "to": "deploy"
+    }
+  },
+  {
+    "type": "EdgeDefined",
+    "event": {
+      "name": "healthy",
+      "from": "deploy",
+      "to": "done"
+    }
+  },
+  {
+    "type": "CursorAdded",
+    "event": {
+      "node": "start",
+      "cursor": {
+        "id": "c1",
+        "label": ""
+      },
+      "inputs": {
+        "runs": 0
+      }
+    }
+  },
+  {
+    "type": "EdgeStarted",
+    "event": {
+      "name": "start",
+      "from": "start",
+      "to": "deploy",
+      "cursor": {
+        "id": "c1",
+        "label": ""
+      },
+      "inputs": {
+        "runs": 0
+      }
+    }
+  },
+  {
+    "type": "EdgeFinished",
+    "event": {
+      "name": "start",
+      "from": "start",
+      "to": "deploy",
+      "cursor": {
+        "id": "c1",
+        "label": ""
+      },
+      "pass": true,
+      "outputs": {}
+    }
+  },
+  {
+    "type": "NodeStarted",
+    "event": {
+      "id": "deploy",
+      "cursor": {
+        "id": "c1",
+        "label": ""
+      },
+      "inputs": {
+        "runs": 0
+      }
+    }
+  },
+  {
+    "type": "NodeSucceeded",
+    "event": {
+      "id": "deploy",
+      "cursor": {
+        "id": "c1",
+        "label": ""
+      },
+      "outputs": {
+        "healthy": false,
+        "runs": 1
+      }
+    }
+  },
+  {
+    "type": "EdgeStarted",
+    "event": {
+      "name": "healthy",
+      "from": "deploy",
+      "to": "done",
+      "cursor": {
+        "id": "c1",
+        "label": ""
+      },
+      "inputs": {
+        "healthy": false,
+        "runs": 1
+      }
+    }
+  },
+  {
+    "type": "EdgeFinished",
+    "event": {
+      "name": "healthy",
+      "from": "deploy",
+      "to": "done",
+      "cursor": {
+        "id": "c1",
+        "label": ""
+      },
+      "pass": false,
+      "outputs": {}
+    }
+  },
+  {
+    "type": "NodeUntouched",
+    "event": {
+      "id": "start"
+    }
+  },
+  {
+    "type": "NodeUntouched",
+    "event": {
+      "id": "done"
+    }
+  },
+  {
+    "type": "ProgressReturned"
+  },
+  {
+    "type": "Note",
+    "note": "deploy ran on arrival, so it is not reconciled; start has no cursor"
+  },
+  {
+    "type": "ReconcileReturned"
+  },
+  {
+    "type": "Note",
+    "note": "run 2: the cursor is parked on deploy, which is reconciled from the values it entered with"
+  },
+  {
+    "type": "EdgeStarted",
+    "event": {
+      "name": "healthy",
+      "from": "deploy",
+      "to": "done",
+      "cursor": {
+        "id": "c1",
+        "label": ""
+      },
+      "inputs": {
+        "healthy": false,
+        "runs": 1
+      }
+    }
+  },
+  {
+    "type": "EdgeFinished",
+    "event": {
+      "name": "healthy",
+      "from": "deploy",
+      "to": "done",
+      "cursor": {
+        "id": "c1",
+        "label": ""
+      },
+      "pass": false,
+      "outputs": {}
+    }
+  },
+  {
+    "type": "NodeUntouched",
+    "event": {
+      "id": "start"
+    }
+  },
+  {
+    "type": "NodeUntouched",
+    "event": {
+      "id": "deploy"
+    }
+  },
+  {
+    "type": "NodeUntouched",
+    "event": {
+      "id": "done"
+    }
+  },
+  {
+    "type": "ProgressReturned"
+  },
+  {
+    "type": "NodeStarted",
+    "event": {
+      "id": "deploy",
+      "cursor": {
+        "id": "c1",
+        "label": ""
+      },
+      "inputs": {
+        "runs": 0
+      }
+    }
+  },
+  {
+    "type": "NodeSucceeded",
+    "event": {
+      "id": "deploy",
+      "cursor": {
+        "id": "c1",
+        "label": ""
+      },
+      "outputs": {
+        "healthy": false,
+        "runs": 1
+      }
+    }
+  },
+  {
+    "type": "ReconcileReturned"
+  },
+  {
+    "type": "Note",
+    "note": "run 3: the world healed, but the edge sees the previous run's outputs; reconcile sees the world"
+  },
+  {
+    "type": "EdgeStarted",
+    "event": {
+      "name": "healthy",
+      "from": "deploy",
+      "to": "done",
+      "cursor": {
+        "id": "c1",
+        "label": ""
+      },
+      "inputs": {
+        "healthy": false,
+        "runs": 1
+      }
+    }
+  },
+  {
+    "type": "EdgeFinished",
+    "event": {
+      "name": "healthy",
+      "from": "deploy",
+      "to": "done",
+      "cursor": {
+        "id": "c1",
+        "label": ""
+      },
+      "pass": false,
+      "outputs": {}
+    }
+  },
+  {
+    "type": "NodeUntouched",
+    "event": {
+      "id": "start"
+    }
+  },
+  {
+    "type": "NodeUntouched",
+    "event": {
+      "id": "deploy"
+    }
+  },
+  {
+    "type": "NodeUntouched",
+    "event": {
+      "id": "done"
+    }
+  },
+  {
+    "type": "ProgressReturned"
+  },
+  {
+    "type": "NodeStarted",
+    "event": {
+      "id": "deploy",
+      "cursor": {
+        "id": "c1",
+        "label": ""
+      },
+      "inputs": {
+        "runs": 0
+      }
+    }
+  },
+  {
+    "type": "NodeSucceeded",
+    "event": {
+      "id": "deploy",
+      "cursor": {
+        "id": "c1",
+        "label": ""
+      },
+      "outputs": {
+        "healthy": true,
+        "runs": 1
+      }
+    }
+  },
+  {
+    "type": "ReconcileReturned"
+  },
+  {
+    "type": "Note",
+    "note": "run 4: the edge takes the fresh outputs"
+  },
+  {
+    "type": "EdgeStarted",
+    "event": {
+      "name": "healthy",
+      "from": "deploy",
+      "to": "done",
+      "cursor": {
+        "id": "c1",
+        "label": ""
+      },
+      "inputs": {
+        "healthy": true,
+        "runs": 1
+      }
+    }
+  },
+  {
+    "type": "EdgeFinished",
+    "event": {
+      "name": "healthy",
+      "from": "deploy",
+      "to": "done",
+      "cursor": {
+        "id": "c1",
+        "label": ""
+      },
+      "pass": true,
+      "outputs": {}
+    }
+  },
+  {
+    "type": "NodeStarted",
+    "event": {
+      "id": "done",
+      "cursor": {
+        "id": "c1",
+        "label": ""
+      },
+      "inputs": {
+        "healthy": true,
+        "runs": 1
+      }
+    }
+  },
+  {
+    "type": "NodeSucceeded",
+    "event": {
+      "id": "done",
+      "cursor": {
+        "id": "c1",
+        "label": ""
+      },
+      "outputs": {
+        "healthy": true,
+        "runs": 1
+      }
+    }
+  },
+  {
+    "type": "NodeUntouched",
+    "event": {
+      "id": "start"
+    }
+  },
+  {
+    "type": "NodeUntouched",
+    "event": {
+      "id": "deploy"
+    }
+  },
+  {
+    "type": "ProgressReturned"
+  }
+]

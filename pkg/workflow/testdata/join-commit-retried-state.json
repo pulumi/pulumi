@@ -5,7 +5,10 @@
       "id": "c1",
       "label": "v7",
       "node": "plan",
-      "value": {
+      "entered": {
+        "version": "7"
+      },
+      "outputs": {
         "phase": 1,
         "version": "7"
       }
@@ -14,7 +17,7 @@
       "id": "c4",
       "label": "merged",
       "node": "verify-us-east",
-      "value": {
+      "entered": {
         "verify-us-east": {
           "region": "us-east",
           "verified": true,
