@@ -250,7 +250,7 @@ func tapSummaryJSON(in <-chan engine.Event, opts Options) <-chan engine.Event {
 		var resources []ResourceJSON
 		refreshed := map[resource.URN]bool{}
 		for e := range in {
-			switch e.Type { //nolint:exhaustive // we only care about a few event types here
+			switch e.Type { //nolint:exhaustive
 			case engine.ResourcePreEvent:
 				if payload, ok := e.Payload().(engine.ResourcePreEventPayload); ok {
 					if payload.Metadata.Op == deploy.OpRefresh {
