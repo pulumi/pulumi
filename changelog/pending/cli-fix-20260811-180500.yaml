@@ -1,0 +1,7 @@
+component: cli/neo
+kind: fix
+body: Cancelling a task now interrupts a running local tool call instead of waiting
+    for it to finish
+time: 2026-08-11T18:05:00+03:00
+custom:
+    PR: "24268"
