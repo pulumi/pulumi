@@ -132,10 +132,11 @@ func (m *Model) remove(c workflow.Cursor) {
 	m.cursors = slices.DeleteFunc(m.cursors, func(x *cursor) bool { return x.id == c.ID })
 }
 
-// Render draws the model: the graph, then one line per cursor.
+// Render draws the model: a one-line summary of every cursor (so that a display showing only the first
+// line still tells what is happening), then the graph, then one line per cursor.
 func (m *Model) Render() string {
 	var b strings.Builder
-	b.WriteString("workflow\n")
+	b.WriteString("workflow: " + m.Summary() + "\n")
 	for _, id := range m.nodes {
 		b.WriteString("  " + id)
 		if m.undefined[id] {
@@ -161,17 +162,33 @@ func (m *Model) Render() string {
 	}
 	b.WriteString("cursors\n")
 	for _, c := range m.cursors {
-		b.WriteString("  " + c.name())
-		if c.node != "" {
-			b.WriteString(" @ " + c.node)
-		}
-		b.WriteString(" — " + c.status())
-		if c.err != nil {
-			b.WriteString(" (error: " + c.err.Error() + ")")
-		}
-		b.WriteString("\n")
+		b.WriteString("  " + c.line() + "\n")
 	}
 	return b.String()
+}
+
+// Summary describes every cursor in one line.
+func (m *Model) Summary() string {
+	if len(m.cursors) == 0 {
+		return "no cursors"
+	}
+	lines := make([]string, len(m.cursors))
+	for i, c := range m.cursors {
+		lines[i] = c.line()
+	}
+	return strings.Join(lines, "; ")
+}
+
+func (c *cursor) line() string {
+	s := c.name()
+	if c.node != "" {
+		s += " @ " + c.node
+	}
+	s += " — " + c.status()
+	if c.err != nil {
+		s += " (error: " + c.err.Error() + ")"
+	}
+	return s
 }
 
 func describe(e workflow.EdgeDefined) string {

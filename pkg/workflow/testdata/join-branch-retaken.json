@@ -194,7 +194,10 @@
         "label": "v7"
       },
       "pass": true,
-      "outputs": {}
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
     }
   },
   {
@@ -276,7 +279,10 @@
         "label": "us-west"
       },
       "pass": true,
-      "outputs": {}
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
     }
   },
   {
@@ -305,7 +311,10 @@
         "label": "us-east"
       },
       "pass": true,
-      "outputs": {}
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
     }
   },
   {
@@ -389,7 +398,10 @@
         "label": "us-west"
       },
       "pass": true,
-      "outputs": {}
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
     }
   },
   {
@@ -419,7 +431,10 @@
         "label": "us-east"
       },
       "pass": true,
-      "outputs": {}
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
     }
   },
   {
@@ -508,7 +523,10 @@
         "label": "us-west"
       },
       "pass": true,
-      "outputs": {}
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
     }
   },
   {
@@ -539,7 +557,10 @@
         "label": "us-east"
       },
       "pass": false,
-      "outputs": {}
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
     }
   },
   {
@@ -632,7 +653,10 @@
         "label": "us-west"
       },
       "pass": true,
-      "outputs": {}
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
     }
   },
   {
@@ -663,7 +687,10 @@
         "label": "us-east"
       },
       "pass": false,
-      "outputs": {}
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
     }
   },
   {
@@ -692,7 +719,10 @@
         "label": "us-west hotfix"
       },
       "pass": true,
-      "outputs": {}
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
     }
   },
   {
@@ -749,7 +779,10 @@
         "label": "us-west hotfix"
       },
       "pass": true,
-      "outputs": {}
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
     }
   },
   {
@@ -823,7 +856,10 @@
         "label": "us-west hotfix"
       },
       "pass": true,
-      "outputs": {}
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
     }
   },
   {
@@ -854,7 +890,10 @@
         "label": "us-east"
       },
       "pass": false,
-      "outputs": {}
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
     }
   },
   {
@@ -952,7 +991,10 @@
         "label": "us-west hotfix"
       },
       "pass": true,
-      "outputs": {}
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
     }
   },
   {
@@ -983,7 +1025,10 @@
         "label": "us-east"
       },
       "pass": true,
-      "outputs": {}
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
     }
   },
   {
@@ -997,17 +1042,20 @@
         "label": "us-west hotfix"
       },
       "pass": true,
-      "outputs": {
-        "verify-us-east": {
-          "region": "us-east",
-          "verified": true,
-          "version": "7"
+      "overlay": {
+        "values": {
+          "verify-us-east": {
+            "region": "us-east",
+            "verified": true,
+            "version": "7"
+          },
+          "verify-us-west": {
+            "region": "us-west",
+            "verified": true,
+            "version": "7.1"
+          }
         },
-        "verify-us-west": {
-          "region": "us-west",
-          "verified": true,
-          "version": "7.1"
-        }
+        "deleted": []
       }
     }
   },
@@ -1111,7 +1159,10 @@
         "label": "merged"
       },
       "pass": true,
-      "outputs": {}
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
     }
   },
   {
@@ -1198,7 +1249,10 @@
         "label": "merged"
       },
       "pass": true,
-      "outputs": {}
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
     }
   },
   {

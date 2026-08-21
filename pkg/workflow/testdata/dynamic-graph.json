@@ -72,7 +72,10 @@
         "label": "expanding"
       },
       "pass": true,
-      "outputs": {}
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
     }
   },
   {
@@ -151,7 +154,10 @@
         "label": "expanding"
       },
       "pass": true,
-      "outputs": {}
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
     }
   },
   {
@@ -225,7 +231,10 @@
         "label": "expanding"
       },
       "pass": true,
-      "outputs": {}
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
     }
   },
   {
@@ -291,7 +300,10 @@
         "label": "expanding"
       },
       "pass": true,
-      "outputs": {}
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
     }
   },
   {

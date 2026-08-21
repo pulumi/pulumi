@@ -1,26 +1,26 @@
-<{%reset%}>workflow
+<{%reset%}>workflow: no cursors
   a1
 cursors
 <{%reset%}>
-<{%reset%}>workflow
+<{%reset%}>workflow: no cursors
   a1
   a2
 cursors
 <{%reset%}>
-<{%reset%}>workflow
+<{%reset%}>workflow: no cursors
   a1
   a2
   b1
 cursors
 <{%reset%}>
-<{%reset%}>workflow
+<{%reset%}>workflow: no cursors
   a1
   a2
   b1
   b2
 cursors
 <{%reset%}>
-<{%reset%}>workflow
+<{%reset%}>workflow: no cursors
   a1
     └─ a1-a2 ─▶ a2
   a2
@@ -28,7 +28,7 @@ cursors
   b2
 cursors
 <{%reset%}>
-<{%reset%}>workflow
+<{%reset%}>workflow: no cursors
   a1
     └─ a1-a2 ─▶ a2
   a2
@@ -37,7 +37,7 @@ cursors
   b2
 cursors
 <{%reset%}>
-<{%reset%}>workflow
+<{%reset%}>workflow: a#1 @ a1 — parked
   a1 ◀ a#1
     └─ a1-a2 ─▶ a2
   a2
@@ -47,7 +47,7 @@ cursors
 cursors
   a#1 @ a1 — parked
 <{%reset%}>
-<{%reset%}>workflow
+<{%reset%}>workflow: a#1 @ a1 — parked; b#2 @ b1 — parked
   a1 ◀ a#1
     └─ a1-a2 ─▶ a2
   a2
@@ -58,7 +58,7 @@ cursors
   a#1 @ a1 — parked
   b#2 @ b1 — parked
 <{%reset%}>
-<{%reset%}>workflow
+<{%reset%}>workflow: a#1 @ a1 — parked; b#2 @ b1 — checking b1-b2
   a1 ◀ a#1
     └─ a1-a2 ─▶ a2
   a2
@@ -69,7 +69,7 @@ cursors
   a#1 @ a1 — parked
   b#2 @ b1 — checking b1-b2
 <{%reset%}>
-<{%reset%}>workflow
+<{%reset%}>workflow: a#1 @ a1 — checking a1-a2; b#2 @ b1 — checking b1-b2
   a1 ◀ a#1
     └─ a1-a2 ─▶ a2
   a2
@@ -80,7 +80,7 @@ cursors
   a#1 @ a1 — checking a1-a2
   b#2 @ b1 — checking b1-b2
 <{%reset%}>
-<{%reset%}>workflow
+<{%reset%}>workflow: a#1 @ a1 — parked; b#2 @ b1 — checking b1-b2
   a1 ◀ a#1
     └─ a1-a2 ─▶ a2
   a2
@@ -91,18 +91,18 @@ cursors
   a#1 @ a1 — parked
   b#2 @ b1 — checking b1-b2
 <{%reset%}>
-<{%reset%}>workflow
-  a1 ◀ a#1
+<{%reset%}>workflow: a#1 @ a2 — running a2; b#2 @ b1 — checking b1-b2
+  a1
     └─ a1-a2 ─▶ a2
-  a2
+  a2 ◀ a#1
   b1 ◀ b#2
     └─ b1-b2 ─▶ b2
   b2
 cursors
-  a#1 @ a1 — parked
-  b#2 @ b1 — parked
+  a#1 @ a2 — running a2
+  b#2 @ b1 — checking b1-b2
 <{%reset%}>
-<{%reset%}>workflow
+<{%reset%}>workflow: a#1 @ a2 — running a2; b#2 @ b1 — parked
   a1
     └─ a1-a2 ─▶ a2
   a2 ◀ a#1
@@ -113,7 +113,7 @@ cursors
   a#1 @ a2 — running a2
   b#2 @ b1 — parked
 <{%reset%}>
-<{%reset%}>workflow
+<{%reset%}>workflow: a#1 @ a2 — running a2; b#2 @ b2 — running b2
   a1
     └─ a1-a2 ─▶ a2
   a2 ◀ a#1
@@ -124,7 +124,7 @@ cursors
   a#1 @ a2 — running a2
   b#2 @ b2 — running b2
 <{%reset%}>
-<{%reset%}>workflow
+<{%reset%}>workflow: a#1 @ a2 — running a2; b#2 @ b2 — parked
   a1
     └─ a1-a2 ─▶ a2
   a2 ◀ a#1
@@ -132,10 +132,10 @@ cursors
     └─ b1-b2 ─▶ b2
   b2 ◀ b#2
 cursors
-  a#1 @ a2 — parked
-  b#2 @ b2 — running b2
+  a#1 @ a2 — running a2
+  b#2 @ b2 — parked
 <{%reset%}>
-<{%reset%}>workflow
+<{%reset%}>workflow: a#1 @ a2 — parked; b#2 @ b2 — parked
   a1
     └─ a1-a2 ─▶ a2
   a2 ◀ a#1
@@ -146,7 +146,7 @@ cursors
   a#1 @ a2 — parked
   b#2 @ b2 — parked
 <{%reset%}>
-<{%reset%}>workflow
+<{%reset%}>workflow: a#1 @ a2 — parked; b#2 @ b2 — parked
   a1
     └─ a1-a2 ─▶ a2
   a2 ◀ a#1
@@ -157,7 +157,18 @@ cursors
   a#1 @ a2 — parked
   b#2 @ b2 — parked
 <{%reset%}>
-<{%reset%}>workflow
+<{%reset%}>workflow: a#1 @ a2 — parked; b#2 @ b2 — parked
+  a1
+    └─ a1-a2 ─▶ a2
+  a2 ◀ a#1
+  b1
+    └─ b1-b2 ─▶ b2
+  b2 ◀ b#2
+cursors
+  a#1 @ a2 — parked
+  b#2 @ b2 — parked
+<{%reset%}>
+<{%reset%}>workflow: a#1 @ a2 — parked; b#2 @ b2 — parked
   a1
     └─ a1-a2 ─▶ a2
   a2 ◀ a#1

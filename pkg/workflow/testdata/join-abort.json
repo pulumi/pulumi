@@ -222,7 +222,10 @@
         "label": "v7"
       },
       "pass": true,
-      "outputs": {}
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
     }
   },
   {
@@ -304,7 +307,10 @@
         "label": "us-west"
       },
       "pass": true,
-      "outputs": {}
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
     }
   },
   {
@@ -333,7 +339,10 @@
         "label": "us-east"
       },
       "pass": true,
-      "outputs": {}
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
     }
   },
   {
@@ -417,7 +426,10 @@
         "label": "us-west"
       },
       "pass": true,
-      "outputs": {}
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
     }
   },
   {
@@ -447,7 +459,10 @@
         "label": "us-east"
       },
       "pass": true,
-      "outputs": {}
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
     }
   },
   {
@@ -536,7 +551,10 @@
         "label": "us-west"
       },
       "pass": false,
-      "outputs": {}
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
     }
   },
   {
@@ -567,7 +585,10 @@
         "label": "us-west"
       },
       "pass": true,
-      "outputs": {}
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
     }
   },
   {
@@ -598,7 +619,10 @@
         "label": "us-east"
       },
       "pass": false,
-      "outputs": {}
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
     }
   },
   {
@@ -629,7 +653,10 @@
         "label": "us-east"
       },
       "pass": false,
-      "outputs": {}
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
     }
   },
   {
@@ -721,7 +748,10 @@
         "label": "us-west"
       },
       "pass": true,
-      "outputs": {}
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
     }
   },
   {
@@ -752,7 +782,10 @@
         "label": "us-east"
       },
       "pass": true,
-      "outputs": {}
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
     }
   },
   {

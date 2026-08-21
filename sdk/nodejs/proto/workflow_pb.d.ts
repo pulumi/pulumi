@@ -263,6 +263,10 @@ export class WorkflowConditionResponse extends jspb.Message {
     clearOverlay(): void;
     getOverlay(): google_protobuf_struct_pb.Struct | undefined;
     setOverlay(value?: google_protobuf_struct_pb.Struct): WorkflowConditionResponse;
+    clearDeletedList(): void;
+    getDeletedList(): Array<string>;
+    setDeletedList(value: Array<string>): WorkflowConditionResponse;
+    addDeleted(value: string, index?: number): string;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): WorkflowConditionResponse.AsObject;
@@ -278,6 +282,7 @@ export namespace WorkflowConditionResponse {
     export type AsObject = {
         pass: boolean,
         overlay?: google_protobuf_struct_pb.Struct.AsObject,
+        deletedList: Array<string>,
     }
 }
 

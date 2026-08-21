@@ -72,7 +72,10 @@
         "label": ""
       },
       "pass": true,
-      "outputs": {}
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
     }
   },
   {
@@ -129,7 +132,10 @@
         "label": ""
       },
       "pass": false,
-      "outputs": {}
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
     }
   },
   {
@@ -185,7 +191,10 @@
         "label": ""
       },
       "pass": false,
-      "outputs": {}
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
     }
   },
   {
@@ -270,7 +279,10 @@
         "label": ""
       },
       "pass": false,
-      "outputs": {}
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
     }
   },
   {
@@ -355,7 +367,10 @@
         "label": ""
       },
       "pass": true,
-      "outputs": {}
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
     }
   },
   {

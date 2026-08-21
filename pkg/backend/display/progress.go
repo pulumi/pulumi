@@ -573,8 +573,10 @@ func (display *ProgressDisplay) addIndentations(treeNodes []*treeNode, isRoot bo
 	}
 }
 
+// convertNodesToRows flattens the tree into table rows. If blocks is non-nil it receives, for each row, the
+// lines of the row's status block (see statusBlock), or nil.
 func (display *ProgressDisplay) convertNodesToRows(
-	nodes []*treeNode, maxSuffixLength int, rows *[][]string, maxColumnLengths *[]int,
+	nodes []*treeNode, maxSuffixLength int, rows *[][]string, maxColumnLengths *[]int, blocks *[][]string,
 ) {
 	for _, node := range nodes {
 		if len(*maxColumnLengths) == 0 {
@@ -599,9 +601,31 @@ func (display *ProgressDisplay) convertNodesToRows(
 		}
 
 		*rows = append(*rows, colorizedColumns)
+		if blocks != nil {
+			*blocks = append(*blocks, display.statusBlock(node.row))
+		}
 
-		display.convertNodesToRows(node.childNodes, maxSuffixLength, rows, maxColumnLengths)
+		display.convertNodesToRows(node.childNodes, maxSuffixLength, rows, maxColumnLengths, blocks)
 	}
+}
+
+// statusBlock returns the lines beyond the first of a resource's latest ephemeral status message, to be
+// shown beneath its row while the operation is in progress. The info column shows the first line; a
+// resource reporting multi-line status (a workflow's diagram) gets the rest rendered live under it.
+func (display *ProgressDisplay) statusBlock(row Row) []string {
+	resourceRow, ok := row.(ResourceRow)
+	if !ok || display.done.Load() {
+		return nil
+	}
+	last := resourceRow.DiagInfo().LastDiag
+	if last == nil || !last.Ephemeral {
+		return nil
+	}
+	lines := splitIntoDisplayableLines(display.renderProgressDiagEvent(*last, true /*includePrefix*/))
+	if len(lines) <= 1 {
+		return nil
+	}
+	return lines[1:]
 }
 
 type sortable []*treeNode

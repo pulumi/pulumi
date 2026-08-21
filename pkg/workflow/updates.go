@@ -133,22 +133,13 @@ func (e EdgeStarted) MarshalJSON() ([]byte, error) {
 	}{e.EdgeIdentity, e.Cursor, propertyJSON(e.Inputs)})
 }
 
-// EdgeFinished reports an edge's (or condition's) answer for Cursor. Outputs overlay the cursor's values
+// EdgeFinished reports an edge's (or condition's) answer for Cursor. Overlay applies to the cursor's values
 // if it crosses the edge because of this answer.
 type EdgeFinished struct {
 	EdgeIdentity
-	Cursor  Cursor       `json:"cursor"`
-	Pass    bool         `json:"pass"`
-	Outputs property.Map `json:"outputs"`
-}
-
-func (e EdgeFinished) MarshalJSON() ([]byte, error) {
-	return json.Marshal(struct {
-		EdgeIdentity
-		Cursor  Cursor `json:"cursor"`
-		Pass    bool   `json:"pass"`
-		Outputs any    `json:"outputs"`
-	}{e.EdgeIdentity, e.Cursor, e.Pass, propertyJSON(e.Outputs)})
+	Cursor  Cursor  `json:"cursor"`
+	Pass    bool    `json:"pass"`
+	Overlay Overlay `json:"overlay"`
 }
 
 type EdgeFailed struct {

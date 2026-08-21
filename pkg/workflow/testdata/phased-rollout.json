@@ -194,7 +194,10 @@
         "label": "v7"
       },
       "pass": true,
-      "outputs": {}
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
     }
   },
   {
@@ -276,7 +279,10 @@
         "label": "us-west"
       },
       "pass": true,
-      "outputs": {}
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
     }
   },
   {
@@ -305,7 +311,10 @@
         "label": "us-east"
       },
       "pass": true,
-      "outputs": {}
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
     }
   },
   {
@@ -389,7 +398,10 @@
         "label": "us-west"
       },
       "pass": true,
-      "outputs": {}
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
     }
   },
   {
@@ -419,7 +431,10 @@
         "label": "us-east"
       },
       "pass": true,
-      "outputs": {}
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
     }
   },
   {
@@ -508,7 +523,10 @@
         "label": "us-west"
       },
       "pass": false,
-      "outputs": {}
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
     }
   },
   {
@@ -588,7 +606,10 @@
         "label": "us-west"
       },
       "pass": true,
-      "outputs": {}
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
     }
   },
   {
@@ -619,7 +640,10 @@
         "label": "us-east"
       },
       "pass": false,
-      "outputs": {}
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
     }
   },
   {
@@ -729,7 +753,10 @@
         "label": "us-west"
       },
       "pass": true,
-      "outputs": {}
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
     }
   },
   {
@@ -760,7 +787,10 @@
         "label": "us-east"
       },
       "pass": true,
-      "outputs": {}
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
     }
   },
   {
@@ -774,17 +804,20 @@
         "label": "us-east"
       },
       "pass": true,
-      "outputs": {
-        "verify-us-east": {
-          "region": "us-east",
-          "verified": true,
-          "version": "7"
+      "overlay": {
+        "values": {
+          "verify-us-east": {
+            "region": "us-east",
+            "verified": true,
+            "version": "7"
+          },
+          "verify-us-west": {
+            "region": "us-west",
+            "verified": true,
+            "version": "7"
+          }
         },
-        "verify-us-west": {
-          "region": "us-west",
-          "verified": true,
-          "version": "7"
-        }
+        "deleted": []
       }
     }
   },
@@ -888,7 +921,10 @@
         "label": "merged"
       },
       "pass": true,
-      "outputs": {}
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
     }
   },
   {
@@ -975,7 +1011,10 @@
         "label": "merged"
       },
       "pass": false,
-      "outputs": {}
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
     }
   },
   {
@@ -1082,7 +1121,10 @@
         "label": "merged"
       },
       "pass": true,
-      "outputs": {}
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
     }
   },
   {

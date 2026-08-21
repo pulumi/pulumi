@@ -32,14 +32,16 @@ func identity(_ context.Context, _ workflow.Workflow, _ workflow.Cursor, in prop
 	return in, nil
 }
 
-func always(context.Context, workflow.Workflow, workflow.Cursor, property.Map) (bool, property.Map, error) {
-	return true, property.Map{}, nil
+func always(context.Context, workflow.Workflow, workflow.Cursor, property.Map) (bool, workflow.Overlay, error) {
+	return true, workflow.Overlay{}, nil
 }
 
 func flag(key string) workflow.EdgeFunc {
-	return func(_ context.Context, _ workflow.Workflow, _ workflow.Cursor, in property.Map) (bool, property.Map, error) {
+	return func(_ context.Context, _ workflow.Workflow, _ workflow.Cursor, in property.Map) (
+		bool, workflow.Overlay, error,
+	) {
 		v := in.Get(key)
-		return v.IsBool() && v.AsBool(), property.Map{}, nil
+		return v.IsBool() && v.AsBool(), workflow.Overlay{}, nil
 	}
 }
 
@@ -93,7 +95,7 @@ func TestRender(t *testing.T) {
 		return m.Render()
 	}
 
-	assert.Equal(t, `workflow
+	assert.Equal(t, `workflow: release#4 @ dev — running dev; release#3 @ dev — parked
   ci
     └─ nightly ─▶ dev
   dev ◀ release#4, release#3
@@ -110,7 +112,7 @@ cursors
 		return ok
 	}))
 
-	assert.Equal(t, `workflow
+	assert.Equal(t, `workflow: release#4 @ dev — parked; release#3 @ staging — checking prod gate/manual approval
   ci
     └─ nightly ─▶ dev
   dev ◀ release#4
@@ -127,7 +129,7 @@ cursors
 		return ok && e.Condition != ""
 	}))
 
-	assert.Equal(t, `workflow
+	assert.Equal(t, `workflow: release#4 @ dev — parked; release#3 @ prod — parked
   ci
     └─ nightly ─▶ dev
   dev ◀ release#4

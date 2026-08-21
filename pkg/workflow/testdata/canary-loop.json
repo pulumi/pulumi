@@ -136,7 +136,10 @@
         "label": "canary"
       },
       "pass": true,
-      "outputs": {}
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
     }
   },
   {
@@ -193,7 +196,10 @@
         "label": "canary"
       },
       "pass": true,
-      "outputs": {}
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
     }
   },
   {
@@ -286,7 +292,10 @@
         "label": "canary"
       },
       "pass": false,
-      "outputs": {}
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
     }
   },
   {
@@ -301,7 +310,10 @@
         "label": "canary"
       },
       "pass": true,
-      "outputs": {}
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
     }
   },
   {
@@ -315,7 +327,10 @@
         "label": "canary"
       },
       "pass": false,
-      "outputs": {}
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
     }
   },
   {
@@ -380,7 +395,10 @@
         "label": "canary"
       },
       "pass": false,
-      "outputs": {}
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
     }
   },
   {
@@ -395,7 +413,10 @@
         "label": "canary"
       },
       "pass": false,
-      "outputs": {}
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
     }
   },
   {
@@ -409,7 +430,10 @@
         "label": "canary"
       },
       "pass": false,
-      "outputs": {}
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
     }
   },
   {
@@ -439,7 +463,10 @@
         "label": "canary"
       },
       "pass": false,
-      "outputs": {}
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
     }
   },
   {
@@ -529,7 +556,10 @@
         "label": "canary"
       },
       "pass": true,
-      "outputs": {}
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
     }
   },
   {
@@ -544,7 +574,10 @@
         "label": "canary"
       },
       "pass": true,
-      "outputs": {}
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
     }
   },
   {
@@ -558,7 +591,10 @@
         "label": "canary"
       },
       "pass": true,
-      "outputs": {}
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
     }
   },
   {
@@ -616,7 +652,10 @@
         "label": "canary"
       },
       "pass": true,
-      "outputs": {}
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
     }
   },
   {
@@ -709,7 +748,10 @@
         "label": "canary"
       },
       "pass": false,
-      "outputs": {}
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
     }
   },
   {
@@ -724,7 +766,10 @@
         "label": "canary"
       },
       "pass": true,
-      "outputs": {}
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
     }
   },
   {
@@ -738,7 +783,10 @@
         "label": "canary"
       },
       "pass": false,
-      "outputs": {}
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
     }
   },
   {
@@ -803,7 +851,10 @@
         "label": "canary"
       },
       "pass": false,
-      "outputs": {}
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
     }
   },
   {
@@ -818,7 +869,10 @@
         "label": "canary"
       },
       "pass": false,
-      "outputs": {}
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
     }
   },
   {
@@ -832,7 +886,10 @@
         "label": "canary"
       },
       "pass": false,
-      "outputs": {}
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
     }
   },
   {
@@ -862,7 +919,10 @@
         "label": "canary"
       },
       "pass": false,
-      "outputs": {}
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
     }
   },
   {
@@ -952,7 +1012,10 @@
         "label": "canary"
       },
       "pass": true,
-      "outputs": {}
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
     }
   },
   {
@@ -967,7 +1030,10 @@
         "label": "canary"
       },
       "pass": true,
-      "outputs": {}
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
     }
   },
   {
@@ -981,7 +1047,10 @@
         "label": "canary"
       },
       "pass": true,
-      "outputs": {}
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
     }
   },
   {
@@ -1039,7 +1108,10 @@
         "label": "canary"
       },
       "pass": true,
-      "outputs": {}
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
     }
   },
   {
@@ -1132,7 +1204,10 @@
         "label": "canary"
       },
       "pass": false,
-      "outputs": {}
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
     }
   },
   {
@@ -1147,7 +1222,10 @@
         "label": "canary"
       },
       "pass": false,
-      "outputs": {}
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
     }
   },
   {
@@ -1161,7 +1239,10 @@
         "label": "canary"
       },
       "pass": false,
-      "outputs": {}
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
     }
   },
   {
@@ -1226,7 +1307,10 @@
         "label": "canary"
       },
       "pass": true,
-      "outputs": {}
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
     }
   },
   {
@@ -1241,7 +1325,10 @@
         "label": "canary"
       },
       "pass": false,
-      "outputs": {}
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
     }
   },
   {
@@ -1255,7 +1342,10 @@
         "label": "canary"
       },
       "pass": false,
-      "outputs": {}
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
     }
   },
   {
@@ -1285,7 +1375,10 @@
         "label": "canary"
       },
       "pass": false,
-      "outputs": {}
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
     }
   },
   {
@@ -1375,7 +1468,10 @@
         "label": "canary"
       },
       "pass": false,
-      "outputs": {}
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
     }
   },
   {
@@ -1390,7 +1486,10 @@
         "label": "canary"
       },
       "pass": false,
-      "outputs": {}
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
     }
   },
   {
@@ -1404,7 +1503,10 @@
         "label": "canary"
       },
       "pass": false,
-      "outputs": {}
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
     }
   },
   {
@@ -1469,7 +1571,10 @@
         "label": "canary"
       },
       "pass": true,
-      "outputs": {}
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
     }
   },
   {
@@ -1484,7 +1589,10 @@
         "label": "canary"
       },
       "pass": false,
-      "outputs": {}
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
     }
   },
   {
@@ -1498,7 +1606,10 @@
         "label": "canary"
       },
       "pass": false,
-      "outputs": {}
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
     }
   },
   {
@@ -1528,7 +1639,10 @@
         "label": "canary"
       },
       "pass": true,
-      "outputs": {}
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
     }
   },
   {

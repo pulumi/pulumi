@@ -4,8 +4,8 @@
 <{%reset%}><{%fg 2%}>        [0]: <{%reset%}><{%fg 2%}>{
 <{%reset%}><{%fg 2%}>            conditions: <{%reset%}><{%fg 2%}>{
 <{%reset%}><{%fg 2%}>                promote: <{%reset%}><{%fg 2%}>{
-<{%reset%}><{%fg 2%}>                    target: <{%reset%}><{%fg 2%}>"127.0.0.1:55012"<{%reset%}><{%fg 2%}>
-<{%reset%}><{%fg 2%}>                    token : <{%reset%}><{%fg 2%}>"120e9dcf-2763-4d7e-84a3-35ae3567e05d"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>                    target: <{%reset%}><{%fg 2%}>"127.0.0.1:56700"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>                    token : <{%reset%}><{%fg 2%}>"d4a09595-830c-4112-a90f-0c61eb8651ac"<{%reset%}><{%fg 2%}>
 <{%reset%}><{%fg 2%}>                }<{%reset%}><{%fg 2%}>
 <{%reset%}><{%fg 2%}>            }<{%reset%}><{%fg 2%}>
 <{%reset%}><{%fg 2%}>            from      : <{%reset%}><{%fg 2%}>"dev"<{%reset%}><{%fg 2%}>
@@ -25,14 +25,14 @@
 <{%reset%}><{%fg 2%}>    nodes  : <{%reset%}><{%fg 2%}>{
 <{%reset%}><{%fg 2%}>        dev : <{%reset%}><{%fg 2%}>{
 <{%reset%}><{%fg 2%}>            program: <{%reset%}><{%fg 2%}>{
-<{%reset%}><{%fg 2%}>                target: <{%reset%}><{%fg 2%}>"127.0.0.1:55012"<{%reset%}><{%fg 2%}>
-<{%reset%}><{%fg 2%}>                token : <{%reset%}><{%fg 2%}>"f1b84e49-fca7-4412-8ea6-bfd1caaa4b85"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>                target: <{%reset%}><{%fg 2%}>"127.0.0.1:56700"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>                token : <{%reset%}><{%fg 2%}>"2cd3551a-52c7-46f5-880f-8c9c17a5d896"<{%reset%}><{%fg 2%}>
 <{%reset%}><{%fg 2%}>            }<{%reset%}><{%fg 2%}>
 <{%reset%}><{%fg 2%}>        }<{%reset%}><{%fg 2%}>
 <{%reset%}><{%fg 2%}>        prod: <{%reset%}><{%fg 2%}>{
 <{%reset%}><{%fg 2%}>            program: <{%reset%}><{%fg 2%}>{
-<{%reset%}><{%fg 2%}>                target: <{%reset%}><{%fg 2%}>"127.0.0.1:55012"<{%reset%}><{%fg 2%}>
-<{%reset%}><{%fg 2%}>                token : <{%reset%}><{%fg 2%}>"c014e93e-2877-4714-a7d2-fda9363306cc"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>                target: <{%reset%}><{%fg 2%}>"127.0.0.1:56700"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>                token : <{%reset%}><{%fg 2%}>"cfd04812-2d14-43cc-8d9b-93b0d205ea6d"<{%reset%}><{%fg 2%}>
 <{%reset%}><{%fg 2%}>            }<{%reset%}><{%fg 2%}>
 <{%reset%}><{%fg 2%}>        }<{%reset%}><{%fg 2%}>
 <{%reset%}><{%fg 2%}>    }<{%reset%}><{%fg 2%}>
@@ -50,12 +50,12 @@
 <{%fg 2%}>                [urn=urn:pulumi:test::test-wf-wf-dev::pkgA:m:typA::dev]
 <{%reset%}><{%fg 2%}>                image: <{%reset%}><{%fg 2%}>"v1"<{%reset%}><{%fg 2%}>
 <{%reset%}><{%reset%}><{%fg 2%}>        --outputs:--<{%reset%}>
-<{%fg 2%}>        lastRun : <{%reset%}><{%fg 2%}>"2026-08-21T15:59:19.179735Z"<{%reset%}><{%fg 2%}>
+<{%fg 2%}>        lastRun : <{%reset%}><{%fg 2%}>"2026-08-21T16:20:58.56874Z"<{%reset%}><{%fg 2%}>
 <{%reset%}><{%fg 2%}>        occupant: <{%reset%}><{%fg 2%}>"release#1"<{%reset%}><{%fg 2%}>
 <{%reset%}><{%fg 2%}>        visits  : <{%reset%}><{%fg 2%}>[
 <{%reset%}><{%fg 2%}>            [0]: <{%reset%}><{%fg 2%}>{
 <{%reset%}><{%fg 2%}>                cursor : <{%reset%}><{%fg 2%}>"release#1"<{%reset%}><{%fg 2%}>
-<{%reset%}><{%fg 2%}>                entered: <{%reset%}><{%fg 2%}>"2026-08-21T15:59:19.176573Z"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>                entered: <{%reset%}><{%fg 2%}>"2026-08-21T16:20:58.565873Z"<{%reset%}><{%fg 2%}>
 <{%reset%}><{%fg 2%}>                inputs : <{%reset%}><{%fg 2%}>{
 <{%reset%}><{%fg 2%}>                    image: <{%reset%}><{%fg 2%}>"v1"<{%reset%}><{%fg 2%}>
 <{%reset%}><{%fg 2%}>                }<{%reset%}><{%fg 2%}>
@@ -72,7 +72,7 @@
 <{%reset%}><{%fg 2%}>            node: <{%reset%}><{%fg 2%}>"dev"<{%reset%}><{%fg 2%}>
 <{%reset%}><{%fg 2%}>        }<{%reset%}><{%fg 2%}>
 <{%reset%}><{%fg 2%}>    ]<{%reset%}><{%fg 2%}>
-<{%reset%}><{%fg 2%}>    diagram: <{%reset%}><{%fg 2%}>"workflow\n  dev ◀ release#1\n    └─ promote ─▶ prod\n  prod\ncursors\n  release#1 @ dev — parked\n"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>    diagram: <{%reset%}><{%fg 2%}>"workflow: release#1 @ dev — parked\n  dev ◀ release#1\n    └─ promote ─▶ prod\n  prod\ncursors\n  release#1 @ dev — parked\n"<{%reset%}><{%fg 2%}>
 <{%reset%}><{%fg 2%}>    state  : <{%reset%}><{%fg 2%}>(json) <{%reset%}><{%fg 2%}>{
 <{%reset%}><{%fg 2%}>        entries       : <{%reset%}><{%fg 2%}>{
 <{%reset%}><{%fg 2%}>            release: <{%reset%}><{%fg 2%}>{

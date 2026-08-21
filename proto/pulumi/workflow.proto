@@ -103,9 +103,10 @@ message WorkflowConditionRequest {
 
 message WorkflowConditionResponse {
     bool pass = 1;
-    // Values the condition set on the cursor. They take effect only if the cursor moves across the
-    // edge because of this evaluation.
+    // Values the condition set on the cursor, and keys it deleted. They take effect only if the cursor
+    // moves across the edge because of this evaluation.
     google.protobuf.Struct overlay = 2;
+    repeated string deleted = 3;
 }
 
 // The request to decide a join once a cursor waits on each of its branches.

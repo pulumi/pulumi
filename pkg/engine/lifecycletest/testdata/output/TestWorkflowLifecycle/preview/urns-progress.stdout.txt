@@ -5,11 +5,11 @@
  <{%fg 3%}>~ <{%reset%}> urn:pulumi:test::test::pulumi:index:Workflow::wf <{%fg 3%}>updated<{%reset%}> [diff: <{%fg 3%}>~edges,nodes<{%reset%}><{%reset%}>]
  <{%bold%}><{%reset%}>  <{%reset%}> urn:pulumi:test::test::pulumi:index:Workflow$pulumi:index:WorkflowNode::dev <{%bold%}><{%reset%}><{%reset%}> 
  <{%bold%}><{%reset%}>  <{%reset%}> urn:pulumi:test::test::pulumi:index:Workflow$pulumi:index:WorkflowNode::prod <{%bold%}><{%reset%}><{%reset%}> 
- <{%fg 3%}>~ <{%reset%}> urn:pulumi:test::test::pulumi:index:Workflow::wf <{%fg 3%}>updated<{%reset%}> [diff: <{%fg 3%}>~edges,nodes<{%reset%}><{%reset%}>]; <{%reset%}>workflow
+ <{%fg 3%}>~ <{%reset%}> urn:pulumi:test::test::pulumi:index:Workflow::wf <{%fg 3%}>updated<{%reset%}> [diff: <{%fg 3%}>~edges,nodes<{%reset%}><{%reset%}>]; <{%reset%}>workflow: release#1 @ prod — parked
  <{%reset%}>  <{%reset%}> urn:pulumi:stack::project::pulumi:pulumi:Stack::project-stack <{%reset%}><{%reset%}> 
 <{%fg 13%}><{%bold%}>Diagnostics:<{%reset%}>
   <{%fg 12%}>urn:pulumi:test::test::pulumi:index:Workflow::wf:<{%reset%}>
-    <{%reset%}>workflow
+    <{%reset%}>workflow: release#1 @ prod — parked
       dev
         └─ promote ─▶ prod
       prod ◀ release#1

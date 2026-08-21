@@ -549,9 +549,10 @@ func (x *WorkflowConditionRequest) GetCondition() string {
 type WorkflowConditionResponse struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	Pass  bool                   `protobuf:"varint,1,opt,name=pass,proto3" json:"pass,omitempty"`
-	// Values the condition set on the cursor. They take effect only if the cursor moves across the
-	// edge because of this evaluation.
+	// Values the condition set on the cursor, and keys it deleted. They take effect only if the cursor
+	// moves across the edge because of this evaluation.
 	Overlay       *structpb.Struct `protobuf:"bytes,2,opt,name=overlay,proto3" json:"overlay,omitempty"`
+	Deleted       []string         `protobuf:"bytes,3,rep,name=deleted,proto3" json:"deleted,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -596,6 +597,13 @@ func (x *WorkflowConditionResponse) GetPass() bool {
 func (x *WorkflowConditionResponse) GetOverlay() *structpb.Struct {
 	if x != nil {
 		return x.Overlay
+	}
+	return nil
+}
+
+func (x *WorkflowConditionResponse) GetDeleted() []string {
+	if x != nil {
+		return x.Deleted
 	}
 	return nil
 }
@@ -825,10 +833,11 @@ const file_pulumi_workflow_proto_rawDesc = "" +
 	"\x06cursor\x18\x01 \x01(\v2\x19.pulumirpc.WorkflowCursorR\x06cursor\x12+\n" +
 	"\x04view\x18\x02 \x01(\v2\x17.pulumirpc.WorkflowViewR\x04view\x12\x12\n" +
 	"\x04edge\x18\x03 \x01(\tR\x04edge\x12\x1c\n" +
-	"\tcondition\x18\x04 \x01(\tR\tcondition\"b\n" +
+	"\tcondition\x18\x04 \x01(\tR\tcondition\"|\n" +
 	"\x19WorkflowConditionResponse\x12\x12\n" +
 	"\x04pass\x18\x01 \x01(\bR\x04pass\x121\n" +
-	"\aoverlay\x18\x02 \x01(\v2\x17.google.protobuf.StructR\aoverlay\"\xf6\x01\n" +
+	"\aoverlay\x18\x02 \x01(\v2\x17.google.protobuf.StructR\aoverlay\x12\x18\n" +
+	"\adeleted\x18\x03 \x03(\tR\adeleted\"\xf6\x01\n" +
 	"\x14WorkflowMergeRequest\x12I\n" +
 	"\n" +
 	"candidates\x18\x01 \x03(\v2).pulumirpc.WorkflowMergeRequest.CandidateR\n" +

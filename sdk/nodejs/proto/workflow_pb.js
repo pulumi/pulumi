@@ -188,7 +188,7 @@ if (goog.DEBUG && !COMPILED) {
  * @constructor
  */
 proto.pulumirpc.WorkflowConditionResponse = function(opt_data) {
-  jspb.Message.initialize(this, opt_data, 0, -1, null, null);
+  jspb.Message.initialize(this, opt_data, 0, -1, proto.pulumirpc.WorkflowConditionResponse.repeatedFields_, null);
 };
 goog.inherits(proto.pulumirpc.WorkflowConditionResponse, jspb.Message);
 if (goog.DEBUG && !COMPILED) {
@@ -2127,6 +2127,13 @@ proto.pulumirpc.WorkflowConditionRequest.prototype.setCondition = function(value
 
 
 
+/**
+ * List of repeated fields within this message type.
+ * @private {!Array<number>}
+ * @const
+ */
+proto.pulumirpc.WorkflowConditionResponse.repeatedFields_ = [3];
+
 
 
 if (jspb.Message.GENERATE_TO_OBJECT) {
@@ -2159,7 +2166,8 @@ proto.pulumirpc.WorkflowConditionResponse.prototype.toObject = function(opt_incl
 proto.pulumirpc.WorkflowConditionResponse.toObject = function(includeInstance, msg) {
   var f, obj = {
 pass: jspb.Message.getBooleanFieldWithDefault(msg, 1, false),
-overlay: (f = msg.getOverlay()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f)
+overlay: (f = msg.getOverlay()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
+deletedList: (f = jspb.Message.getRepeatedField(msg, 3)) == null ? undefined : f
   };
 
   if (includeInstance) {
@@ -2205,6 +2213,10 @@ proto.pulumirpc.WorkflowConditionResponse.deserializeBinaryFromReader = function
       reader.readMessage(value,google_protobuf_struct_pb.Struct.deserializeBinaryFromReader);
       msg.setOverlay(value);
       break;
+    case 3:
+      var value = /** @type {string} */ (reader.readString());
+      msg.addDeleted(value);
+      break;
     default:
       reader.skipField();
       break;
@@ -2247,6 +2259,13 @@ proto.pulumirpc.WorkflowConditionResponse.serializeBinaryToWriter = function(mes
       2,
       f,
       google_protobuf_struct_pb.Struct.serializeBinaryToWriter
+    );
+  }
+  f = message.getDeletedList();
+  if (f.length > 0) {
+    writer.writeRepeatedString(
+      3,
+      f
     );
   }
 };
@@ -2304,6 +2323,43 @@ proto.pulumirpc.WorkflowConditionResponse.prototype.clearOverlay = function() {
  */
 proto.pulumirpc.WorkflowConditionResponse.prototype.hasOverlay = function() {
   return jspb.Message.getField(this, 2) != null;
+};
+
+
+/**
+ * repeated string deleted = 3;
+ * @return {!Array<string>}
+ */
+proto.pulumirpc.WorkflowConditionResponse.prototype.getDeletedList = function() {
+  return /** @type {!Array<string>} */ (jspb.Message.getRepeatedField(this, 3));
+};
+
+
+/**
+ * @param {!Array<string>} value
+ * @return {!proto.pulumirpc.WorkflowConditionResponse} returns this
+ */
+proto.pulumirpc.WorkflowConditionResponse.prototype.setDeletedList = function(value) {
+  return jspb.Message.setField(this, 3, value || []);
+};
+
+
+/**
+ * @param {string} value
+ * @param {number=} opt_index
+ * @return {!proto.pulumirpc.WorkflowConditionResponse} returns this
+ */
+proto.pulumirpc.WorkflowConditionResponse.prototype.addDeleted = function(value, opt_index) {
+  return jspb.Message.addToRepeatedField(this, 3, value, opt_index);
+};
+
+
+/**
+ * Clears the list making it empty but non-null.
+ * @return {!proto.pulumirpc.WorkflowConditionResponse} returns this
+ */
+proto.pulumirpc.WorkflowConditionResponse.prototype.clearDeletedList = function() {
+  return this.setDeletedList([]);
 };
 
 

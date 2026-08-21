@@ -36,14 +36,10 @@ type Cursor struct {
 	m       sync.Mutex
 	sets    map[string]any
 	deleted map[string]bool
-	// Outputs may be set only in a node program, where they resolve when the program ends.
-	allowOutputs bool
 }
 
-func newCursor(name string, values resource.PropertyMap, allowOutputs bool) *Cursor {
-	return &Cursor{
-		name: name, values: values, sets: map[string]any{}, deleted: map[string]bool{}, allowOutputs: allowOutputs,
-	}
+func newCursor(name string, values resource.PropertyMap) *Cursor {
+	return &Cursor{name: name, values: values, sets: map[string]any{}, deleted: map[string]bool{}}
 }
 
 // Name returns the cursor's name, unique within its workflow.
@@ -58,7 +54,7 @@ func (c *Cursor) Set(key string, v any) {
 	delete(c.deleted, key)
 }
 
-// Delete removes key. It is only honored in a node program.
+// Delete removes key.
 func (c *Cursor) Delete(key string) {
 	c.m.Lock()
 	defer c.m.Unlock()

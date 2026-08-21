@@ -1,4 +1,4 @@
-<{%reset%}>workflow
+<{%reset%}>workflow: release#1 @ prod — parked
   dev
     └─ promote ─▶ prod
   prod ◀ release#1

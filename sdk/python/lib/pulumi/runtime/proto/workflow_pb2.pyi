@@ -308,19 +308,23 @@ class WorkflowConditionResponse(google.protobuf.message.Message):
 
     PASS_FIELD_NUMBER: builtins.int
     OVERLAY_FIELD_NUMBER: builtins.int
+    DELETED_FIELD_NUMBER: builtins.int
     @property
     def overlay(self) -> google.protobuf.struct_pb2.Struct:
-        """Values the condition set on the cursor. They take effect only if the cursor moves across the
-        edge because of this evaluation.
+        """Values the condition set on the cursor, and keys it deleted. They take effect only if the cursor
+        moves across the edge because of this evaluation.
         """
 
+    @property
+    def deleted(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]: ...
     def __init__(
         self,
         *,
         overlay: google.protobuf.struct_pb2.Struct | None = ...,
+        deleted: collections.abc.Iterable[builtins.str] | None = ...,
     ) -> None: ...
     def HasField(self, field_name: typing.Literal["overlay", b"overlay"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing.Literal["overlay", b"overlay", "pass", b"pass"]) -> None: ...
+    def ClearField(self, field_name: typing.Literal["deleted", b"deleted", "overlay", b"overlay", "pass", b"pass"]) -> None: ...
 
 global___WorkflowConditionResponse = WorkflowConditionResponse
 

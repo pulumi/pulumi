@@ -140,9 +140,62 @@ type (
 	// values the cursor leaves the node with.
 	NodeFunc = func(ctx context.Context, w Workflow, c Cursor, inputs property.Map) (property.Map, error)
 	// An EdgeFunc decides whether cursor c, whose node produced inputs, may cross the edge. The returned
-	// map overlays the cursor's values if it crosses because of this decision; it is discarded otherwise.
-	EdgeFunc = func(ctx context.Context, w Workflow, c Cursor, inputs property.Map) (bool, property.Map, error)
+	// Overlay applies to the cursor's values if it crosses because of this decision; it is discarded
+	// otherwise.
+	EdgeFunc = func(ctx context.Context, w Workflow, c Cursor, inputs property.Map) (bool, Overlay, error)
 )
+
+// An Overlay is what an edge does to a cursor's values as the cursor crosses it: keys it deletes and
+// values it sets.
+type Overlay struct {
+	Values  property.Map
+	Deleted []string
+}
+
+func (o Overlay) MarshalJSON() ([]byte, error) {
+	deleted := o.Deleted
+	if deleted == nil {
+		deleted = []string{}
+	}
+	return json.Marshal(struct {
+		Values  any      `json:"values"`
+		Deleted []string `json:"deleted"`
+	}{propertyJSON(o.Values), deleted})
+}
+
+// Apply returns m with o's deletions and then its values applied.
+func (o Overlay) Apply(m property.Map) property.Map {
+	if len(o.Deleted) == 0 && o.Values.Len() == 0 {
+		return m
+	}
+	out := m.AsMap()
+	for _, k := range o.Deleted {
+		delete(out, k)
+	}
+	maps.Insert(out, o.Values.All)
+	return property.NewMap(out)
+}
+
+// over composes o on top of under: o's deletions and values win.
+func (o Overlay) over(under Overlay) Overlay {
+	values := under.Values.AsMap()
+	for _, k := range o.Deleted {
+		delete(values, k)
+	}
+	maps.Insert(values, o.Values.All)
+	var deleted []string
+	for _, k := range under.Deleted {
+		if _, set := o.Values.GetOk(k); !set {
+			deleted = append(deleted, k)
+		}
+	}
+	for _, k := range o.Deleted {
+		if !slices.Contains(deleted, k) {
+			deleted = append(deleted, k)
+		}
+	}
+	return Overlay{Values: property.NewMap(values), Deleted: deleted}
+}
 
 // Node identifies a node of a Workflow. It serializes as the node's ID.
 type Node struct{ id string }
@@ -168,8 +221,8 @@ func (w Workflow) NewNode(id string, f NodeFunc) Node {
 	w.emit(NodeDefined{ID: id})
 	w.register(id, f, w.g.NewNode(func(ctx context.Context, _ fsa.FSA[cursor], _ fsa.Edge, c cursor) error {
 		w.m.Lock()
-		inputs := merge(c.value(), c.overlay)
-		c.overlay = property.Map{}
+		inputs := c.overlay.Apply(c.value())
+		c.overlay = Overlay{}
 		clear(c.reached) // Entering a node starts a fresh visit
 		w.m.Unlock()
 		return w.run(ctx, id, f, c, inputs)
@@ -217,19 +270,19 @@ func (w Workflow) AddCursor(n Node, label string, inputs property.Map) {
 // A node's outgoing edges are asked in definition order and the first to pass is taken.
 func (w Workflow) NewEdge(name string, from, to Node, edge EdgeFunc) {
 	ident := EdgeIdentity{Name: name, From: from, To: to}
-	w.addEdge(EdgeDefined{EdgeIdentity: ident}, from, func(ctx context.Context, c cursor) (bool, property.Map, error) {
+	w.addEdge(EdgeDefined{EdgeIdentity: ident}, from, func(ctx context.Context, c cursor) (bool, Overlay, error) {
 		return w.eval(ctx, ident, edge, c)
 	})
 }
 
 // NewOrEdge defines an edge taken when any of conds returns true. Conditions are asked one at a time in
-// the order of their names and the first true short-circuits; only its overlay applies.
+// the order of their names and the first true short-circuits; only its Overlay applies.
 func (w Workflow) NewOrEdge(name string, from, to Node, conds map[string]EdgeFunc) {
 	w.composite(name, from, to, conds, false)
 }
 
 // NewAndEdge defines an edge taken when all of conds return true. Conditions are asked together; their
-// overlays merge, the first in the order of their names winning a key set by several.
+// Overlays compose, the first in the order of their names winning a key several set or delete.
 func (w Workflow) NewAndEdge(name string, from, to Node, conds map[string]EdgeFunc) {
 	w.composite(name, from, to, conds, true)
 }
@@ -248,10 +301,10 @@ func (w Workflow) composite(name string, from, to Node, conds map[string]EdgeFun
 			def.OrEdges = append(def.OrEdges, EdgeDefined{EdgeIdentity: children[i]})
 		}
 	}
-	w.addEdge(def, from, func(ctx context.Context, c cursor) (bool, property.Map, error) {
+	w.addEdge(def, from, func(ctx context.Context, c cursor) (bool, Overlay, error) {
 		w.emit(EdgeStarted{EdgeIdentity: ident, Cursor: c.Cursor(), Inputs: c.get(w.workflow)})
 		var pass bool
-		var outputs property.Map
+		var outputs Overlay
 		var err error
 		if all {
 			pass, outputs, err = w.evalAll(ctx, children, names, conds, c)
@@ -260,9 +313,9 @@ func (w Workflow) composite(name string, from, to Node, conds map[string]EdgeFun
 		}
 		if err != nil {
 			w.emit(EdgeFailed{EdgeIdentity: ident, Cursor: c.Cursor(), Error: err})
-			return false, property.Map{}, err
+			return false, Overlay{}, err
 		}
-		w.emit(EdgeFinished{EdgeIdentity: ident, Cursor: c.Cursor(), Pass: pass, Outputs: outputs})
+		w.emit(EdgeFinished{EdgeIdentity: ident, Cursor: c.Cursor(), Pass: pass, Overlay: outputs})
 		return pass, outputs, nil
 	})
 }
@@ -271,14 +324,14 @@ func (w Workflow) composite(name string, from, to Node, conds map[string]EdgeFun
 // stream is deterministic.
 func (w Workflow) evalAll(
 	ctx context.Context, children []EdgeIdentity, names []string, conds map[string]EdgeFunc, c cursor,
-) (bool, property.Map, error) {
+) (bool, Overlay, error) {
 	ident, inputs := c.Cursor(), c.get(w.workflow)
 	for _, child := range children {
 		w.emit(EdgeStarted{EdgeIdentity: child, Cursor: ident, Inputs: inputs})
 	}
 	type answer struct {
 		pass    bool
-		outputs property.Map
+		outputs Overlay
 		err     error
 	}
 	answers := make([]answer, len(names))
@@ -294,7 +347,7 @@ func (w Workflow) evalAll(
 		})
 	}
 	wg.Wait()
-	pass, outputs := true, property.Map{}
+	pass := true
 	var errs []error
 	for i, a := range answers {
 		if a.err != nil {
@@ -302,12 +355,15 @@ func (w Workflow) evalAll(
 			errs = append(errs, a.err)
 			continue
 		}
-		w.emit(EdgeFinished{EdgeIdentity: children[i], Cursor: ident, Pass: a.pass, Outputs: a.outputs})
+		w.emit(EdgeFinished{EdgeIdentity: children[i], Cursor: ident, Pass: a.pass, Overlay: a.outputs})
 		pass = pass && a.pass
-		outputs = merge(a.outputs, outputs) // Earlier names win
 	}
 	if len(errs) > 0 {
-		return false, property.Map{}, errors.Join(errs...)
+		return false, Overlay{}, errors.Join(errs...)
+	}
+	var outputs Overlay
+	for i := len(answers) - 1; i >= 0; i-- {
+		outputs = answers[i].outputs.over(outputs) // Earlier names win
 	}
 	return pass, outputs, nil
 }
@@ -315,17 +371,17 @@ func (w Workflow) evalAll(
 // Ask conditions one at a time until one passes.
 func (w Workflow) evalAny(
 	ctx context.Context, children []EdgeIdentity, names []string, conds map[string]EdgeFunc, c cursor,
-) (bool, property.Map, error) {
+) (bool, Overlay, error) {
 	for i, name := range names {
 		if err := ctx.Err(); err != nil {
-			return false, property.Map{}, err // The run was aborted: ask nothing more
+			return false, Overlay{}, err // The run was aborted: ask nothing more
 		}
 		pass, outputs, err := w.eval(ctx, children[i], conds[name], c)
 		if err != nil || pass {
 			return pass, outputs, err
 		}
 	}
-	return false, property.Map{}, nil
+	return false, Overlay{}, nil
 }
 
 type JoinEdgeArg struct {
@@ -339,7 +395,7 @@ type JoinEdgeArg struct {
 type MergeFunc = func(ctx context.Context, candidates []MergeCandidate) (bool, MergedCursor, error)
 
 // MergeCandidate is a cursor waiting on a join branch, in the order of the join's From nodes. Inputs are
-// the values its node produced, overlaid with what its branch's Edge set.
+// the values its node produced, with its branch Edge's Overlay applied.
 type MergeCandidate struct {
 	From   Node
 	Cursor Cursor
@@ -399,9 +455,9 @@ type join struct {
 
 // The condition asked of a cursor on from[k]: pass for the cursor that finds every branch occupied and
 // every branch edge passing, merging the others into it.
-func (w Workflow) joinCond(j *join, k int) func(context.Context, cursor) (bool, property.Map, error) {
-	return func(ctx context.Context, me cursor) (bool, property.Map, error) {
-		none := property.Map{}
+func (w Workflow) joinCond(j *join, k int) func(context.Context, cursor) (bool, Overlay, error) {
+	return func(ctx context.Context, me cursor) (bool, Overlay, error) {
+		none := Overlay{}
 		w.m.Lock()
 		if me.mergedJoin == j.ident.Name && me.mergedOn == j.from[k].From.id {
 			w.m.Unlock()
@@ -425,7 +481,7 @@ func (w Workflow) joinCond(j *join, k int) func(context.Context, cursor) (bool, 
 			if err != nil || !pass {
 				return false, none, err
 			}
-			candidates[i] = MergeCandidate{From: j.from[i].From, Cursor: p.ident, Inputs: merge(p.value, outputs)}
+			candidates[i] = MergeCandidate{From: j.from[i].From, Cursor: p.ident, Inputs: outputs.Apply(p.value)}
 		}
 		if err := ctx.Err(); err != nil {
 			return false, none, err
@@ -435,7 +491,9 @@ func (w Workflow) joinCond(j *join, k int) func(context.Context, cursor) (bool, 
 			w.emit(EdgeFailed{EdgeIdentity: j.ident, Cursor: me.Cursor(), Error: err})
 			return false, none, err
 		}
-		w.emit(EdgeFinished{EdgeIdentity: j.ident, Cursor: me.Cursor(), Pass: accept, Outputs: merged.Inputs})
+		w.emit(EdgeFinished{
+			EdgeIdentity: j.ident, Cursor: me.Cursor(), Pass: accept, Overlay: Overlay{Values: merged.Inputs},
+		})
 		if !accept {
 			return false, none, nil
 		}
@@ -471,7 +529,7 @@ func (w Workflow) joinCond(j *join, k int) func(context.Context, cursor) (bool, 
 			p.consumed = p.cursorData != me.cursorData // Its own in-flight conditions must not act
 		}
 		me.id, me.label = joined.New.ID, joined.New.Label
-		me.entered, me.outputs, me.ran, me.overlay = merged.Inputs, property.Map{}, false, property.Map{}
+		me.entered, me.outputs, me.ran, me.overlay = merged.Inputs, property.Map{}, false, Overlay{}
 		me.mergedJoin, me.mergedOn = j.ident.Name, j.from[k].From.id
 		me.leaving = true // Decided: no other join may take me from here on
 		w.m.Unlock()
@@ -508,7 +566,7 @@ func (w *workflow) participantsLocked(j *join) ([]participant, bool) {
 	return present, true
 }
 
-func (w Workflow) addEdge(def EdgeDefined, from Node, cond func(context.Context, cursor) (bool, property.Map, error)) {
+func (w Workflow) addEdge(def EdgeDefined, from Node, cond func(context.Context, cursor) (bool, Overlay, error)) {
 	fromNode, to := w.fsaNode(def.From), w.fsaNode(def.To)
 	w.emit(def)
 	w.g.NewEdge(w.guard(from, "", cond), fromNode, to)
@@ -519,12 +577,12 @@ func (w Workflow) addEdge(def EdgeDefined, from Node, cond func(context.Context,
 // (named by joinName for the join's own edges), and a pass is recorded atomically with the check so
 // that a join cannot merge a cursor that is leaving.
 func (w *workflow) guard(
-	from Node, joinName string, cond func(context.Context, cursor) (bool, property.Map, error),
+	from Node, joinName string, cond func(context.Context, cursor) (bool, Overlay, error),
 ) fsa.ConditionFunc[cursor] {
 	return func(ctx context.Context, _ fsa.FSA[cursor], c cursor) (fsa.ConditionResult, error) {
 		w.m.Lock()
-		c.leaving = false          // Being asked here means the cursor is here
-		c.overlay = property.Map{} // And that no earlier pass completed
+		c.leaving = false     // Being asked here means the cursor is here
+		c.overlay = Overlay{} // And that no earlier pass completed
 		if c.mergedOn != "" && c.mergedOn != from.id {
 			c.mergedJoin, c.mergedOn = "", "" // Being asked elsewhere means the merged cursor's move completed
 		}
@@ -551,20 +609,20 @@ func (w *workflow) guard(
 }
 
 // Ask edge of c, reporting the outcome as events.
-func (w Workflow) eval(ctx context.Context, ident EdgeIdentity, edge EdgeFunc, c cursor) (bool, property.Map, error) {
+func (w Workflow) eval(ctx context.Context, ident EdgeIdentity, edge EdgeFunc, c cursor) (bool, Overlay, error) {
 	return w.evalValues(ctx, ident, edge, c.Cursor(), c.get(w.workflow))
 }
 
 func (w Workflow) evalValues(
 	ctx context.Context, ident EdgeIdentity, edge EdgeFunc, c Cursor, inputs property.Map,
-) (bool, property.Map, error) {
+) (bool, Overlay, error) {
 	w.emit(EdgeStarted{EdgeIdentity: ident, Cursor: c, Inputs: inputs})
 	pass, outputs, err := edge(ctx, w, c, inputs)
 	if err != nil {
 		w.emit(EdgeFailed{EdgeIdentity: ident, Cursor: c, Error: err})
-		return false, property.Map{}, err
+		return false, Overlay{}, err
 	}
-	w.emit(EdgeFinished{EdgeIdentity: ident, Cursor: c, Pass: pass, Outputs: outputs})
+	w.emit(EdgeFinished{EdgeIdentity: ident, Cursor: c, Pass: pass, Overlay: outputs})
 	return pass, outputs, nil
 }
 
@@ -836,7 +894,7 @@ type cursorData struct {
 	entered    property.Map
 	outputs    property.Map
 	ran        bool
-	overlay    property.Map   // Set by the edge the cursor is crossing; applied as it enters the next node
+	overlay    Overlay        // Of the edge the cursor is crossing; applied as it enters the next node
 	consumed   bool           // Merged into another cursor by a join and removed; inert if still asked
 	leaving    bool           // A condition passed; the cursor is moving away and must not be merged
 	reached    map[*join]bool // Joins asked of this cursor during its current visit
@@ -859,13 +917,3 @@ func (c cursor) get(w *workflow) property.Map {
 }
 
 func (c *cursorData) Cursor() Cursor { return Cursor{ID: c.id, Label: c.label} }
-
-// merge returns base with over's entries set on top of it.
-func merge(base, over property.Map) property.Map {
-	if over.Len() == 0 {
-		return base
-	}
-	m := base.AsMap()
-	maps.Insert(m, over.All)
-	return property.NewMap(m)
-}

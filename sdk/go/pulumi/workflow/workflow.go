@@ -396,7 +396,7 @@ func nodeCallback(w *Context, run NodeFunc) func(context.Context, []byte) (proto
 			if err != nil {
 				return nil, err
 			}
-			c := newCursor(req.GetCursor().GetName(), values, true)
+			c := newCursor(req.GetCursor().GetName(), values)
 			info := pulumi.RunInfo{
 				Project:          req.Project,
 				Stack:            req.Stack,
@@ -440,12 +440,12 @@ func conditionCallback(w *Context, cond EdgeFunc) func(context.Context, []byte) 
 			if err != nil {
 				return nil, err
 			}
-			c := newCursor(req.GetCursor().GetName(), values, false)
+			c := newCursor(req.GetCursor().GetName(), values)
 			pass, err := cond(context.WithValue(cbCtx, viewKey{}, req.View), c)
 			if err != nil {
 				return nil, err
 			}
-			overlay, err := c.overlay()
+			overlay, deleted, err := c.overlay()
 			if err != nil {
 				return nil, err
 			}
@@ -453,7 +453,7 @@ func conditionCallback(w *Context, cond EdgeFunc) func(context.Context, []byte) 
 			if err != nil {
 				return nil, err
 			}
-			return &pulumirpc.WorkflowConditionResponse{Pass: pass, Overlay: s}, nil
+			return &pulumirpc.WorkflowConditionResponse{Pass: pass, Overlay: s, Deleted: deleted}, nil
 		})
 	}
 }
@@ -471,7 +471,7 @@ func mergeCallback(w *Context, merge MergeFunc) func(context.Context, []byte) (p
 				if err != nil {
 					return nil, err
 				}
-				candidates[i] = Candidate{From: Node{cand.From}, Cursor: newCursor(cand.GetCursor().GetName(), values, false)}
+				candidates[i] = Candidate{From: Node{cand.From}, Cursor: newCursor(cand.GetCursor().GetName(), values)}
 			}
 			merged, err := merge(context.WithValue(cbCtx, viewKey{}, req.View), candidates)
 			if err != nil {
@@ -515,22 +515,19 @@ func (c *Cursor) outgoing() (resource.PropertyMap, error) {
 	return out, nil
 }
 
-// overlay computes what an edge callback wrote.
-func (c *Cursor) overlay() (resource.PropertyMap, error) {
+// overlay computes what an edge callback set and deleted.
+func (c *Cursor) overlay() (resource.PropertyMap, []string, error) {
 	c.m.Lock()
 	defer c.m.Unlock()
-	if len(c.deleted) > 0 {
-		return nil, fmt.Errorf("Delete(%q) is only supported in a node program", slices.Sorted(maps.Keys(c.deleted))[0])
-	}
 	out := resource.PropertyMap{}
 	for key, v := range c.sets {
 		pv, err := marshalPlain(v)
 		if err != nil {
-			return nil, fmt.Errorf("value %q: %w", key, err)
+			return nil, nil, fmt.Errorf("value %q: %w", key, err)
 		}
 		out[resource.PropertyKey(key)] = pv
 	}
-	return out, nil
+	return out, slices.Sorted(maps.Keys(c.deleted)), nil
 }
 
 // marshalPlain marshals a value that may not be an Output.

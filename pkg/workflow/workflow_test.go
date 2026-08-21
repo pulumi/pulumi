@@ -109,14 +109,16 @@ func mustNode(t *testing.T, w workflow.Workflow, id string) workflow.Node {
 
 // An edge condition that sets nothing on the cursor.
 func cond(f func(in property.Map) (bool, error)) workflow.EdgeFunc {
-	return func(_ context.Context, _ workflow.Workflow, _ workflow.Cursor, in property.Map) (bool, property.Map, error) {
+	return func(_ context.Context, _ workflow.Workflow, _ workflow.Cursor, in property.Map) (
+		bool, workflow.Overlay, error,
+	) {
 		pass, err := f(in)
-		return pass, property.Map{}, err
+		return pass, workflow.Overlay{}, err
 	}
 }
 
-func always(context.Context, workflow.Workflow, workflow.Cursor, property.Map) (bool, property.Map, error) {
-	return true, property.Map{}, nil
+func always(context.Context, workflow.Workflow, workflow.Cursor, property.Map) (bool, workflow.Overlay, error) {
+	return true, workflow.Overlay{}, nil
 }
 
 // Passes when the value at key is a bool that is true.
@@ -128,7 +130,9 @@ func flag(key string) workflow.EdgeFunc {
 }
 
 func not(f workflow.EdgeFunc) workflow.EdgeFunc {
-	return func(ctx context.Context, w workflow.Workflow, c workflow.Cursor, in property.Map) (bool, property.Map, error) {
+	return func(ctx context.Context, w workflow.Workflow, c workflow.Cursor, in property.Map) (
+		bool, workflow.Overlay, error,
+	) {
 		ok, out, err := f(ctx, w, c, in)
 		return !ok, out, err
 	}
@@ -827,15 +831,16 @@ func TestArrivalOrderSurvivesRestore(t *testing.T) {
 	assert.ElementsMatch(t, before["cursors"], after["cursors"])
 }
 
-// An edge condition that passes and sets extra on the cursor.
-func setting(extra map[string]property.Value) workflow.EdgeFunc {
-	return func(context.Context, workflow.Workflow, workflow.Cursor, property.Map) (bool, property.Map, error) {
-		return true, pmap(extra), nil
+// An edge condition that passes, setting extra on the cursor and deleting the given keys.
+func setting(extra map[string]property.Value, deleting ...string) workflow.EdgeFunc {
+	return func(context.Context, workflow.Workflow, workflow.Cursor, property.Map) (bool, workflow.Overlay, error) {
+		return true, workflow.Overlay{Values: pmap(extra), Deleted: deleting}, nil
 	}
 }
 
-// Edge overlays: what a condition sets reaches the next node only if the cursor crosses that edge because
-// of it. Conditions of an And merge with the first name winning; only the passing condition of an Or counts.
+// Edge overlays: what a condition sets or deletes reaches the next node only if the cursor crosses that
+// edge because of it. Conditions of an And compose with the first name winning; only the passing condition
+// of an Or counts.
 func TestEdgeOverlays(t *testing.T) {
 	t.Parallel()
 	w := workflow.New()
@@ -845,24 +850,26 @@ func TestEdgeOverlays(t *testing.T) {
 	end := w.NewNode("end", with(nil))
 	// The failing condition's overlay is discarded with the edge.
 	w.NewAndEdge("blocked", start, end, conds(map[string]workflow.EdgeFunc{
-		"sets": setting(map[string]property.Value{"blocked": str("yes")}), "never": flag("never"),
+		"sets": setting(map[string]property.Value{"blocked": str("yes")}, "start"), "never": flag("never"),
 	}))
+	// a wins over b: "who" is a's, "gone" stays deleted although b sets it, and b's deletion of "keep" goes
+	// through since a leaves it alone.
 	w.NewAndEdge("and", start, viaAnd, conds(map[string]workflow.EdgeFunc{
-		"b": setting(map[string]property.Value{"who": str("b"), "b": str("b")}),
-		"a": setting(map[string]property.Value{"who": str("a"), "a": str("a")}),
+		"b": setting(map[string]property.Value{"who": str("b"), "b": str("b"), "gone": str("b")}, "keep"),
+		"a": setting(map[string]property.Value{"who": str("a"), "a": str("a")}, "gone"),
 	}))
 	w.NewOrEdge("or", viaAnd, viaOr, conds(map[string]workflow.EdgeFunc{
 		"first":  cond(func(property.Map) (bool, error) { return false, nil }),
 		"second": setting(map[string]property.Value{"or": str("second")}),
 		"third":  setting(map[string]property.Value{"or": str("third")}),
 	}))
-	w.NewEdge("done", viaOr, end, setting(map[string]property.Value{"edge": str("done")}))
+	w.NewEdge("done", viaOr, end, setting(map[string]property.Value{"edge": str("done")}, "start"))
 
 	r := &recorder{t: t, w: w}
-	w.AddCursor(start, "", pmap(map[string]property.Value{"start": str("yes")}))
+	w.AddCursor(start, "", pmap(map[string]property.Value{"start": str("yes"), "gone": num(1), "keep": num(2)}))
 	require.NoError(t, r.progress())
 	assert.Equal(t, pmap(map[string]property.Value{
-		"start": str("yes"), "who": str("a"), "a": str("a"), "b": str("b"), "or": str("second"), "edge": str("done"),
+		"who": str("a"), "a": str("a"), "b": str("b"), "or": str("second"), "edge": str("done"),
 	}), w.GetState(end).Outputs)
 	r.golden("edge-overlays")
 }

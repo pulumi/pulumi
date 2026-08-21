@@ -112,6 +112,8 @@
         "label": ""
       },
       "inputs": {
+        "gone": 1,
+        "keep": 2,
         "start": "yes"
       }
     }
@@ -127,6 +129,8 @@
         "label": ""
       },
       "inputs": {
+        "gone": 1,
+        "keep": 2,
         "start": "yes"
       }
     }
@@ -143,6 +147,8 @@
         "label": ""
       },
       "inputs": {
+        "gone": 1,
+        "keep": 2,
         "start": "yes"
       }
     }
@@ -159,6 +165,8 @@
         "label": ""
       },
       "inputs": {
+        "gone": 1,
+        "keep": 2,
         "start": "yes"
       }
     }
@@ -175,7 +183,10 @@
         "label": ""
       },
       "pass": false,
-      "outputs": {}
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
     }
   },
   {
@@ -190,8 +201,13 @@
         "label": ""
       },
       "pass": true,
-      "outputs": {
-        "blocked": "yes"
+      "overlay": {
+        "values": {
+          "blocked": "yes"
+        },
+        "deleted": [
+          "start"
+        ]
       }
     }
   },
@@ -206,8 +222,13 @@
         "label": ""
       },
       "pass": false,
-      "outputs": {
-        "blocked": "yes"
+      "overlay": {
+        "values": {
+          "blocked": "yes"
+        },
+        "deleted": [
+          "start"
+        ]
       }
     }
   },
@@ -222,6 +243,8 @@
         "label": ""
       },
       "inputs": {
+        "gone": 1,
+        "keep": 2,
         "start": "yes"
       }
     }
@@ -238,6 +261,8 @@
         "label": ""
       },
       "inputs": {
+        "gone": 1,
+        "keep": 2,
         "start": "yes"
       }
     }
@@ -254,6 +279,8 @@
         "label": ""
       },
       "inputs": {
+        "gone": 1,
+        "keep": 2,
         "start": "yes"
       }
     }
@@ -270,9 +297,14 @@
         "label": ""
       },
       "pass": true,
-      "outputs": {
-        "a": "a",
-        "who": "a"
+      "overlay": {
+        "values": {
+          "a": "a",
+          "who": "a"
+        },
+        "deleted": [
+          "gone"
+        ]
       }
     }
   },
@@ -288,9 +320,15 @@
         "label": ""
       },
       "pass": true,
-      "outputs": {
-        "b": "b",
-        "who": "b"
+      "overlay": {
+        "values": {
+          "b": "b",
+          "gone": "b",
+          "who": "b"
+        },
+        "deleted": [
+          "keep"
+        ]
       }
     }
   },
@@ -305,10 +343,16 @@
         "label": ""
       },
       "pass": true,
-      "outputs": {
-        "a": "a",
-        "b": "b",
-        "who": "a"
+      "overlay": {
+        "values": {
+          "a": "a",
+          "b": "b",
+          "who": "a"
+        },
+        "deleted": [
+          "keep",
+          "gone"
+        ]
       }
     }
   },
@@ -393,7 +437,10 @@
         "label": ""
       },
       "pass": false,
-      "outputs": {}
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
     }
   },
   {
@@ -427,8 +474,11 @@
         "label": ""
       },
       "pass": true,
-      "outputs": {
-        "or": "second"
+      "overlay": {
+        "values": {
+          "or": "second"
+        },
+        "deleted": []
       }
     }
   },
@@ -443,8 +493,11 @@
         "label": ""
       },
       "pass": true,
-      "outputs": {
-        "or": "second"
+      "overlay": {
+        "values": {
+          "or": "second"
+        },
+        "deleted": []
       }
     }
   },
@@ -512,8 +565,13 @@
         "label": ""
       },
       "pass": true,
-      "outputs": {
-        "edge": "done"
+      "overlay": {
+        "values": {
+          "edge": "done"
+        },
+        "deleted": [
+          "start"
+        ]
       }
     }
   },
@@ -530,7 +588,6 @@
         "b": "b",
         "edge": "done",
         "or": "second",
-        "start": "yes",
         "who": "a"
       }
     }
@@ -548,7 +605,6 @@
         "b": "b",
         "edge": "done",
         "or": "second",
-        "start": "yes",
         "who": "a"
       }
     }

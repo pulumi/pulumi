@@ -1,61 +1,68 @@
-<{%reset%}>workflow
+<{%reset%}>workflow: no cursors
   dev
 cursors
 <{%reset%}>
-<{%reset%}>workflow
+<{%reset%}>workflow: no cursors
   dev
   prod
 cursors
 <{%reset%}>
-<{%reset%}>workflow
+<{%reset%}>workflow: no cursors
   dev
     └─ promote ─▶ prod
   prod
 cursors
 <{%reset%}>
-<{%reset%}>workflow
+<{%reset%}>workflow: release#1 @ dev — parked
   dev ◀ release#1
     └─ promote ─▶ prod
   prod
 cursors
   release#1 @ dev — parked
 <{%reset%}>
-<{%reset%}>workflow
+<{%reset%}>workflow: release#1 @ dev — checking promote
   dev ◀ release#1
     └─ promote ─▶ prod
   prod
 cursors
   release#1 @ dev — checking promote
 <{%reset%}>
-<{%reset%}>workflow
+<{%reset%}>workflow: release#1 @ dev — parked
   dev ◀ release#1
     └─ promote ─▶ prod
   prod
 cursors
   release#1 @ dev — parked
 <{%reset%}>
-<{%reset%}>workflow
+<{%reset%}>workflow: release#1 @ dev — parked
   dev ◀ release#1
     └─ promote ─▶ prod
   prod
 cursors
   release#1 @ dev — parked
 <{%reset%}>
-<{%reset%}>workflow
+<{%reset%}>workflow: release#1 @ dev — parked
   dev ◀ release#1
     └─ promote ─▶ prod
   prod
 cursors
   release#1 @ dev — parked
 <{%reset%}>
-<{%reset%}>workflow
+<{%reset%}>workflow: release#1 @ dev — running dev
   dev ◀ release#1
     └─ promote ─▶ prod
   prod
 cursors
   release#1 @ dev — running dev
 <{%reset%}>
-<{%reset%}>workflow
+<{%reset%}>workflow: release#1 @ dev — parked
+  dev ◀ release#1
+    └─ promote ─▶ prod
+  prod
+cursors
+  release#1 @ dev — parked
+<{%reset%}>
+<{%reset%}>workflow: release#1 @ dev — parked
   dev ◀ release#1
     └─ promote ─▶ prod
   prod

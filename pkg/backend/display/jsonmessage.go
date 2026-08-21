@@ -283,7 +283,7 @@ func (r *messageRenderer) render(done bool) {
 
 	var rows [][]string
 	var maxColumnLengths []int
-	r.display.convertNodesToRows(rootNodes, maxSuffixLength, &rows, &maxColumnLengths)
+	r.display.convertNodesToRows(rootNodes, maxSuffixLength, &rows, &maxColumnLengths, nil)
 
 	removeInfoColumnIfUnneeded(rows)
 

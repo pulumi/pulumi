@@ -419,8 +419,8 @@ func (run *workflowRun) define(defined []string) error {
 	return nil
 }
 
-func passEdge(context.Context, workflow.Workflow, workflow.Cursor, property.Map) (bool, property.Map, error) {
-	return true, property.Map{}, nil
+func passEdge(context.Context, workflow.Workflow, workflow.Cursor, property.Map) (bool, workflow.Overlay, error) {
+	return true, workflow.Overlay{}, nil
 }
 
 func cursorLabel(name string, generation int) string { return fmt.Sprintf("%s#%d", name, generation) }
@@ -547,6 +547,7 @@ func (run *workflowRun) persist(defined []string) error {
 	outputs["state"] = resource.NewProperty(string(state))
 	outputs["cursors"] = resource.ToResourcePropertyValue(property.New(cursors))
 	outputs["diagram"] = resource.NewProperty(diagram)
+	run.x.plugctx.Diag.Infof(diag.RawMessage(run.wf.URN, diagram))
 	if err := run.host.RegisterResourceOutputs(run.wf.URN, outputs); err != nil {
 		errs = append(errs, fmt.Errorf("persisting workflow state: %w", err))
 	}
@@ -914,7 +915,7 @@ func (t *workflowTeeEvents) OnPolicyAnalyzeStackSummary(s plugin.PolicySummary) 
 
 func (run *workflowRun) condFunc(edge, cond string, cb wfCallback) workflow.EdgeFunc {
 	return func(ctx context.Context, _ workflow.Workflow, c workflow.Cursor, inputs property.Map) (
-		bool, property.Map, error,
+		bool, workflow.Overlay, error,
 	) {
 		req := &pulumirpc.WorkflowConditionRequest{
 			Cursor:    &pulumirpc.WorkflowCursor{Name: c.Label, Values: marshalValues(inputs)},
@@ -924,13 +925,13 @@ func (run *workflowRun) condFunc(edge, cond string, cb wfCallback) workflow.Edge
 		}
 		var resp pulumirpc.WorkflowConditionResponse
 		if err := run.x.invoke(ctx, cb, req, &resp); err != nil {
-			return false, property.Map{}, fmt.Errorf("edge %q condition %q: %w", edge, cond, err)
+			return false, workflow.Overlay{}, fmt.Errorf("edge %q condition %q: %w", edge, cond, err)
 		}
-		overlay, err := unmarshalValues(resp.Overlay)
+		values, err := unmarshalValues(resp.Overlay)
 		if err != nil {
-			return false, property.Map{}, fmt.Errorf("edge %q condition %q: %w", edge, cond, err)
+			return false, workflow.Overlay{}, fmt.Errorf("edge %q condition %q: %w", edge, cond, err)
 		}
-		return resp.Pass, overlay, nil
+		return resp.Pass, workflow.Overlay{Values: values, Deleted: resp.Deleted}, nil
 	}
 }
 
