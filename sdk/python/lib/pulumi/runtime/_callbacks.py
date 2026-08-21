@@ -95,6 +95,10 @@ class _CallbackServicer(callback_pb2_grpc.CallbacksServicer):
 
     @classmethod
     async def shutdown(cls):
+        # A Pulumi program only has a single event loop, but the servicers list is
+        # shared process-wide, and a single process can run many programs on
+        # different loops, e.g. mock-based tests.
+        #
         # Stopping a grpc.aio server from a different event loop than it was created
         # on raises a RuntimeError, so only stop servicers created on the current loop.
         loop = asyncio.get_event_loop()
