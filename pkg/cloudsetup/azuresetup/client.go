@@ -305,8 +305,10 @@ func (c *client) findOrCreateAppRegistration(
 
 	// Check if app registration with same name and signin audience already exists
 	appObjectID, appClientID, found, err := c.graphClient.FindAppRegistrationByName(ctx, displayName, signInAudience)
-
-	if err == nil && found {
+	if err != nil {
+		return cloudsetup.CloudSetupResource{}, "", "", err
+	}
+	if found {
 		return appRegistrationResource(appObjectID, appClientID, displayName, cloudsetup.ResourceStatusExisting),
 			appObjectID, appClientID, nil
 	}
@@ -363,8 +365,10 @@ func (c *client) findOrCreateFederatedIdentityCredential(
 
 	// Check if a federated identity credential already exists with the same issuer, subject, and audience
 	found, err := c.graphClient.FindFederatedCredential(ctx, appObjectID, oidcIssuer, subject, audience)
-
-	if err == nil && found {
+	if err != nil {
+		return cloudsetup.CloudSetupResource{}, err
+	}
+	if found {
 		name := "pulumi-esc-oidc-credential-" + uuid.NewString()
 		return cloudsetup.CloudSetupResource{
 			Type:   ResourceTypeAzureFederatedCredential,
@@ -396,8 +400,10 @@ func (c *client) findOrCreateServicePrincipal(
 ) (cloudsetup.CloudSetupResource, string, error) {
 	// Check if a service principal already exists for this app ID
 	principalID, found, err := c.graphClient.FindServicePrincipalByAppID(ctx, appClientID)
-
-	if err == nil && found {
+	if err != nil {
+		return cloudsetup.CloudSetupResource{}, "", err
+	}
+	if found {
 		return cloudsetup.CloudSetupResource{
 			Type:   ResourceTypeAzureServicePrincipal,
 			ID:     principalID,
