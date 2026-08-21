@@ -154,8 +154,10 @@ type runResult struct {
 	passes  map[int]int   // cursor value -> conditions passed
 	entries map[int]int   // cursor value -> nodes entered
 	lastAt  map[int]int   // cursor value -> last known node index
-	entered map[int][]int // node index -> cursor values that entered it, in order
+	entered map[int][]int // node index -> cursor values that arrived there (entered or were placed), in order
 	created int
+	// cursor value -> (by, at) as reported by OnReplace
+	replaced map[int][2]int
 }
 
 // Build the spec into a machine and run one Progress over it, recording every callback. Visits are
@@ -165,19 +167,28 @@ type runResult struct {
 func runSpec(spec machineSpec, runner fsa.Runner) *runResult {
 	var mu sync.Mutex
 	res := &runResult{
-		final:   map[int]int{},
-		parked:  map[int]int{},
-		outDeg:  make([]int, spec.numNodes),
-		passes:  map[int]int{},
-		entries: map[int]int{},
-		lastAt:  map[int]int{},
-		entered: map[int][]int{},
+		final:    map[int]int{},
+		parked:   map[int]int{},
+		outDeg:   make([]int, spec.numNodes),
+		passes:   map[int]int{},
+		entries:  map[int]int{},
+		lastAt:   map[int]int{},
+		entered:  map[int][]int{},
+		replaced: map[int][2]int{},
 	}
-	machine := fsa.New[int]()
-
-	visits := make([]int, spec.total)
 	nodes := make([]fsa.Node, spec.numNodes)
 	nodeIndex := map[fsa.Node]int{}
+	machine := fsa.New(fsa.OnReplace(func(replaced, by int, at fsa.Node) {
+		mu.Lock()
+		defer mu.Unlock()
+		if _, dup := res.replaced[replaced]; dup {
+			res.violations = append(res.violations, fmt.Sprintf("cursor %d replaced twice", replaced))
+		}
+		res.replaced[replaced] = [2]int{by, nodeIndex[at]}
+		res.log = append(res.log, fmt.Sprintf("replace c%d by c%d at n%d", replaced, by, nodeIndex[at]))
+	}))
+
+	visits := make([]int, spec.total)
 	events := 0
 	pending := slices.Clone(spec.mutations)
 
@@ -237,6 +248,7 @@ func runSpec(spec machineSpec, runner fsa.Runner) *runResult {
 		v := res.created
 		res.created++
 		res.lastAt[v] = at
+		res.entered[at] = append(res.entered[at], v) // Placing is an arrival
 		mu.Unlock()
 		machine.NewCursor(v, nodes[at])
 	}
@@ -302,9 +314,11 @@ func checkOutcome(t *rapid.T, res *runResult) {
 	require.Equal(t, res.passes, res.entries)
 
 	// Cursor conservation: survivors were created, and every vanished cursor was overwritten — some
-	// other cursor entered the node it was last seen on.
+	// other cursor arrived at the node it was last seen on — and reported as replaced there, by a cursor
+	// that arrived there. Survivors were never reported.
 	for v := range res.final {
 		require.Less(t, v, res.created)
+		require.NotContains(t, res.replaced, v, "cursor %d was reported replaced but survived", v)
 	}
 	for v := range res.created {
 		if _, alive := res.final[v]; alive {
@@ -313,7 +327,12 @@ func checkOutcome(t *rapid.T, res *runResult) {
 		last := res.lastAt[v]
 		overwritten := slices.ContainsFunc(res.entered[last], func(o int) bool { return o != v })
 		require.True(t, overwritten,
-			"cursor %d vanished from node %d, which no other cursor ever entered", v, last)
+			"cursor %d vanished from node %d, which no other cursor ever arrived at", v, last)
+		require.Contains(t, res.replaced, v, "cursor %d vanished without being reported replaced", v)
+		by, at := res.replaced[v][0], res.replaced[v][1]
+		require.Equal(t, last, at)
+		require.NotEqual(t, v, by)
+		require.Contains(t, res.entered[at], by, "cursor %d was replaced by %d, which never arrived at node %d", v, by, at)
 	}
 }
 
@@ -333,10 +352,10 @@ func TestRapidConditionOncePerVisit(t *testing.T) {
 func TestRapidConcurrentRunner(t *testing.T) {
 	t.Parallel()
 
-	goRunner := fsa.Runner(func(ctx context.Context, f func(context.Context)) error {
+	goRunner := func(ctx context.Context, f func(context.Context)) error {
 		go f(ctx)
 		return nil
-	})
+	}
 	rapid.Check(t, func(t *rapid.T) {
 		checkOutcome(t, runSpec(genSpec(t), goRunner))
 	})

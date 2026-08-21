@@ -17,6 +17,7 @@ package fsa_test
 import (
 	"context"
 	"errors"
+	"fmt"
 	"maps"
 	"slices"
 	"sync"
@@ -148,11 +149,19 @@ func TestOccupantEscapes(t *testing.T) {
 	}, maps.Collect(machine.Cursors))
 }
 
-// A cursor arriving at a node whose occupant cannot move overwrites the occupant.
+// A cursor arriving at a node whose occupant cannot move overwrites the occupant, which is reported to
+// the OnReplace hook.
 func TestStuckOccupantOverwritten(t *testing.T) {
 	t.Parallel()
 
-	machine := fsa.New[string]()
+	type replaced struct {
+		old, by string
+		at      fsa.Node
+	}
+	var replacements []replaced
+	machine := fsa.New(fsa.OnReplace(func(old, by string, at fsa.Node) {
+		replacements = append(replacements, replaced{old, by, at})
+	}))
 	n0 := machine.NewNode(nopNode[string])
 	n1 := machine.NewNode(nopNode[string])
 	n2 := machine.NewNode(func(context.Context, fsa.FSA[string], fsa.Edge, string) error {
@@ -174,6 +183,7 @@ func TestStuckOccupantOverwritten(t *testing.T) {
 	assert.Equal(t, map[string]fsa.Node{
 		"x": n1,
 	}, maps.Collect(machine.Parked))
+	assert.Equal(t, []replaced{{"y", "x", n1}}, replacements)
 }
 
 // Two cursors concurrently moving to the same node is a race and reported as an error.
@@ -263,10 +273,10 @@ func TestFailureSwallowsCancellationCollateral(t *testing.T) {
 	machine.NewEdge(pass, boomSrc, boomDst)
 	machine.NewCursor("boom", boomSrc)
 
-	goRunner := fsa.Runner(func(ctx context.Context, f func(context.Context)) error {
+	goRunner := func(ctx context.Context, f func(context.Context)) error {
 		go f(ctx)
 		return nil
-	})
+	}
 
 	err := machine.Progress(t.Context(), goRunner)
 	assert.ErrorIs(t, err, errBoom)
@@ -523,10 +533,10 @@ func TestConcurrentRunner(t *testing.T) {
 		want[i] = dst
 	}
 
-	goRunner := fsa.Runner(func(ctx context.Context, f func(context.Context)) error {
+	goRunner := func(ctx context.Context, f func(context.Context)) error {
 		go f(ctx)
 		return nil
-	})
+	}
 
 	require.NoError(t, machine.Progress(t.Context(), goRunner))
 
@@ -536,4 +546,171 @@ func TestConcurrentRunner(t *testing.T) {
 		wantEntered[i] = 1
 	}
 	assert.Equal(t, wantEntered, entered)
+}
+
+// A run that fails still commits every cursor whose entry function returned nil. An occupant of the
+// entered node that the abort left unsettled is not overwritten yet: it stays beside the arrival and, on
+// the next Progress, either moves away or is overwritten once it settles.
+func TestSucceededEntryCommitsDuringFailure(t *testing.T) {
+	t.Parallel()
+
+	for _, occupantEscapes := range []bool{true, false} {
+		t.Run(fmt.Sprintf("occupantEscapes=%t", occupantEscapes), func(t *testing.T) {
+			t.Parallel()
+
+			type replaced struct {
+				old, by string
+				at      fsa.Node
+			}
+			var replacements []replaced
+			machine := fsa.New(fsa.OnReplace(func(old, by string, at fsa.Node) {
+				replacements = append(replacements, replaced{old, by, at})
+			}))
+			var nY fsa.Node
+			n0 := machine.NewNode(nopNode[string])
+			n1 := machine.NewNode(nopNode[string])
+			nZ := machine.NewNode(nopNode[string])
+			// Entering nX fails the run — after placing an occupant on nY that the abort will leave
+			// unsettled, since no condition is started once the run is failing.
+			nX := machine.NewNode(func(_ context.Context, m fsa.FSA[string], _ fsa.Edge, _ string) error {
+				m.NewCursor("occupant", nY)
+				return errors.New("entry exploded")
+			})
+			nY = machine.NewNode(nopNode[string])
+			machine.NewEdge(passOnce[string](), n0, nX)
+			machine.NewEdge(passOnce[string](), n1, nY)
+			machine.NewEdge(func(_ context.Context, _ fsa.FSA[string], v string) (fsa.ConditionResult, error) {
+				if v == "occupant" && occupantEscapes {
+					return fsa.ConditionPass, nil
+				}
+				return fsa.ConditionFail, nil
+			}, nY, nZ)
+			// The mover's entry is dispatched first, so it completes before the failure aborts the run.
+			machine.NewCursor("mover", n1)
+			machine.NewCursor("failing", n0)
+
+			require.EqualError(t, machine.Progress(t.Context(), fsa.SyncRunner), "entry exploded")
+			assert.Equal(t, map[string]fsa.Node{
+				"failing":  n0,
+				"mover":    nY, // Committed although the run failed
+				"occupant": nY, // Not overwritten yet: it has not had its chance to move
+			}, maps.Collect(machine.Cursors))
+			assert.Empty(t, replacements)
+
+			require.NoError(t, machine.Progress(t.Context(), fsa.SyncRunner))
+			if occupantEscapes {
+				assert.Equal(t, map[string]fsa.Node{
+					"failing":  n0,
+					"mover":    nY,
+					"occupant": nZ,
+				}, maps.Collect(machine.Cursors))
+				assert.Empty(t, replacements)
+			} else {
+				assert.Equal(t, map[string]fsa.Node{
+					"failing": n0,
+					"mover":   nY,
+				}, maps.Collect(machine.Cursors))
+				assert.Equal(t, []replaced{{"occupant", "mover", nY}}, replacements)
+			}
+		})
+	}
+}
+
+// Placing a cursor on an occupied node is an arrival: the occupant is overwritten once it settles
+// without having moved away, which the next Progress decides.
+func TestPlacementIsAnArrival(t *testing.T) {
+	t.Parallel()
+
+	for _, occupantEscapes := range []bool{true, false} {
+		t.Run(fmt.Sprintf("occupantEscapes=%t", occupantEscapes), func(t *testing.T) {
+			t.Parallel()
+
+			var replacements []string
+			machine := fsa.New(fsa.OnReplace(func(old, by string, _ fsa.Node) {
+				replacements = append(replacements, old+" by "+by)
+			}))
+			n0 := machine.NewNode(nopNode[string])
+			n1 := machine.NewNode(nopNode[string])
+			machine.NewEdge(func(_ context.Context, _ fsa.FSA[string], v string) (fsa.ConditionResult, error) {
+				if v == "occupant" && occupantEscapes {
+					return fsa.ConditionPass, nil
+				}
+				return fsa.ConditionFail, nil
+			}, n0, n1)
+			machine.NewCursor("occupant", n0)
+			machine.NewCursor("arrival", n0)
+			var order []string
+			for c := range machine.Cursors {
+				order = append(order, c)
+			}
+			assert.Equal(t, []string{"occupant", "arrival"}, order, "Cursors iterates in arrival order")
+
+			require.NoError(t, machine.Progress(t.Context(), fsa.SyncRunner))
+			if occupantEscapes {
+				assert.Equal(t, map[string]fsa.Node{"occupant": n1, "arrival": n0}, maps.Collect(machine.Cursors))
+				assert.Empty(t, replacements)
+			} else {
+				assert.Equal(t, map[string]fsa.Node{"arrival": n0}, maps.Collect(machine.Cursors))
+				assert.Equal(t, []string{"occupant by arrival"}, replacements)
+			}
+		})
+	}
+}
+
+// Placing a cursor during Progress on a node whose occupant is already settled overwrites it at once.
+func TestPlacementOverwritesSettledOccupant(t *testing.T) {
+	t.Parallel()
+
+	var replacements []string
+	machine := fsa.New(fsa.OnReplace(func(old, by string, _ fsa.Node) {
+		replacements = append(replacements, old+" by "+by)
+	}))
+	n0 := machine.NewNode(nopNode[string])
+	nX := machine.NewNode(nopNode[string])
+	nY := machine.NewNode(func(_ context.Context, m fsa.FSA[string], _ fsa.Edge, _ string) error {
+		m.NewCursor("arrival", n0) // The occupant of n0 has already parked by now
+		return nil
+	})
+	machine.NewEdge(func(context.Context, fsa.FSA[string], string) (fsa.ConditionResult, error) {
+		return fsa.ConditionFail, nil
+	}, n0, nX)
+	machine.NewEdge(passOnce[string](), nX, nY)
+	machine.NewCursor("occupant", n0)
+	machine.NewCursor("placer", nX)
+
+	require.NoError(t, machine.Progress(t.Context(), fsa.SyncRunner))
+	assert.Equal(t, map[string]fsa.Node{"arrival": n0, "placer": nY}, maps.Collect(machine.Cursors))
+	assert.Equal(t, []string{"occupant by arrival"}, replacements)
+}
+
+// Removed cursors cease without an overwrite; work in flight for them is discarded.
+func TestRemove(t *testing.T) {
+	t.Parallel()
+
+	var replacements []string
+	machine := fsa.New(fsa.OnReplace(func(old, by string, _ fsa.Node) {
+		replacements = append(replacements, old+" by "+by)
+	}))
+	var entered []string
+	n0 := machine.NewNode(nopNode[string])
+	n1 := machine.NewNode(func(_ context.Context, _ fsa.FSA[string], _ fsa.Edge, v string) error {
+		entered = append(entered, v)
+		return nil
+	})
+	var removeMe fsa.CursorRef
+	machine.NewEdge(func(_ context.Context, m fsa.FSA[string], v string) (fsa.ConditionResult, error) {
+		if v == "remover" {
+			// The other cursor's condition for this edge is in the same batch: its pass is discarded.
+			require.True(t, m.Remove(removeMe))
+			require.False(t, m.Remove(removeMe), "already gone")
+		}
+		return fsa.ConditionPass, nil
+	}, n0, n1)
+	machine.NewCursor("remover", n0)
+	removeMe = machine.NewCursor("removed", n0)
+
+	require.NoError(t, machine.Progress(t.Context(), fsa.SyncRunner))
+	assert.Equal(t, map[string]fsa.Node{"remover": n1}, maps.Collect(machine.Cursors))
+	assert.Equal(t, []string{"remover"}, entered)
+	assert.Empty(t, replacements)
 }
