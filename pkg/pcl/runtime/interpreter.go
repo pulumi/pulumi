@@ -2030,7 +2030,6 @@ func (i *Interpreter) registerReadResource(ctx context.Context, res *pcl.ReadRes
 	for _, val := range inputs {
 		dependencies = append(dependencies, getAllDependencies(val)...)
 	}
-	dependencies = append(dependencies, getAllDependencies(idVal)...)
 
 	unwrappedID, idDeps := unwrapOutputs(idVal)
 	for _, dep := range idDeps {
