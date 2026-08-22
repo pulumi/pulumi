@@ -181,6 +181,13 @@ var programOverrides = map[string]*testingrpc.PrepareLanguageTestsRequest_Progra
 			filepath.Join("testdata", "overrides", "l2-resource-elide-unknowns"),
 		},
 	},
+
+	// Programgen wraps the id expression in pulumi.ID(...) which doesn't compile when the id is an output.
+	"l2-resource-read-unknown": {
+		Paths: []string{
+			filepath.Join("testdata", "overrides", "l2-resource-read-unknown"),
+		},
+	},
 }
 
 // The conformance suite runs in three configurations, one top-level test
