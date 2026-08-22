@@ -6,7 +6,7 @@
 
 module github.com/pulumi/pulumi/sdk/v3/go/tools/automation/tests/runtime
 
-go 1.26
+go 1.26.6
 
 replace github.com/pulumi/pulumi/sdk/v3 => ../../../../..
 
