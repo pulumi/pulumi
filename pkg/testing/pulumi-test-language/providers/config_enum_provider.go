@@ -140,7 +140,7 @@ func (p *ConfigEnumProvider) Create(
 }
 
 func (p *ConfigEnumProvider) GetPluginInfo(context.Context) (plugin.PluginInfo, error) {
-	return plugin.PluginInfo{Version: ptr(p.version())}, nil
+	return plugin.PluginInfo{Version: new(p.version())}, nil
 }
 
 func (p *ConfigEnumProvider) SignalCancellation(context.Context) error { return nil }

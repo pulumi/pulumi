@@ -1224,7 +1224,7 @@ func TestDestroyV2TargetChildWithNewParent(t *testing.T) {
 		require.NoError(t, err)
 
 		res1, err := monitor.RegisterResource("pkgA:m:typA", "future-parent", false, deploytest.ResourceOptions{
-			RetainOnDelete: ptr(true),
+			RetainOnDelete: new(true),
 			Provider:       prov0Ref.String(),
 		})
 		require.NoError(t, err)

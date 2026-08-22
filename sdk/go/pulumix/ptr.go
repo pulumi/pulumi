@@ -73,7 +73,7 @@ func Ptr[T any](v T) PtrOutput[T] {
 //	var s pulumi.StringOutput = ... // implements Input[string]
 //	ps := PtrOf(s)                  // implements Input[*string]
 func PtrOf[T any, I Input[T]](i I) PtrOutput[T] {
-	po := Apply[T](i, func(v T) *T { return &v })
+	po := Apply[T](i, func(v T) *T { return new(v) })
 	return Cast[PtrOutput[T], *T](po)
 }
 

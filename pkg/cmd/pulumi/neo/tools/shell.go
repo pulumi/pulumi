@@ -226,8 +226,7 @@ func (s *Shell) run(ctx context.Context, command string, dir string, timeout tim
 		Truncated: stdout.truncated || stderr.truncated,
 	}
 	if err != nil {
-		var exitErr *exec.ExitError
-		if errors.As(err, &exitErr) {
+		if exitErr, ok := errors.AsType[*exec.ExitError](err); ok {
 			res.ExitCode = exitErr.ExitCode()
 		} else {
 			res.Err = err.Error()

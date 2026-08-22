@@ -418,8 +418,7 @@ func prepareNeoRuntime(ctx context.Context, stderr io.Writer, cwdFlag string) (*
 		return nil, err
 	}
 	cloudBe, err := resolveNeoCloudBackend(ctx, be)
-	var upgradeErr neoUpgradeRequiredError
-	if errors.As(err, &upgradeErr) {
+	if upgradeErr, ok := errors.AsType[neoUpgradeRequiredError](err); ok {
 		// Print the upgrade message bare (no "error:" prefix) and bail.
 		return nil, result.FprintBailf(stderr, "%s", upgradeErr.msg)
 	}

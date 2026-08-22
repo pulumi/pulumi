@@ -417,8 +417,7 @@ func (se *stepExecutor) executeChain(workerID int, chain chain) {
 			se.log(workerID, "step %v on %v failed, signalling cancellation", step.Op(), step.URN())
 			se.cancelDueToError(err, step)
 
-			var saf StepApplyFailed
-			if !errors.As(err, &saf) {
+			if _, ok := errors.AsType[StepApplyFailed](err); !ok {
 				// Step application errors are recorded by the OnResourceStepPost callback. This is confusing,
 				// but it means that at this level we shouldn't be logging any errors that came from there.
 				//

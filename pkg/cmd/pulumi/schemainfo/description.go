@@ -26,8 +26,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 )
 
-func ptr[T any](v T) *T { return &v }
-
 // helpWrapWidth is the column at which description text is wrapped.
 const helpWrapWidth = 80
 
@@ -46,7 +44,7 @@ var markerReplacer = strings.NewReplacer(linkStartMarker, "", linkEndMarker, "")
 func helpMarkdownStyle(styled bool) ansi.StyleConfig {
 	style := ansi.StyleConfig{
 		Document:   ansi.StyleBlock{StylePrimitive: ansi.StylePrimitive{BlockSuffix: "\n"}},
-		BlockQuote: ansi.StyleBlock{Indent: ptr(uint(1)), IndentToken: ptr("│ ")},
+		BlockQuote: ansi.StyleBlock{Indent: new(uint(1)), IndentToken: new("│ ")},
 		Paragraph:  ansi.StyleBlock{},
 		List:       ansi.StyleList{LevelIndent: 2},
 		// glamour only applies the URL's block prefix and suffix when the link has separate text,
@@ -60,12 +58,12 @@ func helpMarkdownStyle(styled bool) ansi.StyleConfig {
 		style.Code = ansi.StyleBlock{StylePrimitive: ansi.StylePrimitive{BlockPrefix: "`", BlockSuffix: "`"}}
 		return style
 	}
-	style.Heading = ansi.StyleBlock{StylePrimitive: ansi.StylePrimitive{Bold: ptr(true)}}
-	style.Strong = ansi.StylePrimitive{Bold: ptr(true)}
-	style.Emph = ansi.StylePrimitive{Italic: ptr(true)}
-	style.Link.Underline = ptr(true)
-	style.LinkText.Bold = ptr(true)
-	style.Code = ansi.StyleBlock{StylePrimitive: ansi.StylePrimitive{Bold: ptr(true), Italic: ptr(true)}}
+	style.Heading = ansi.StyleBlock{StylePrimitive: ansi.StylePrimitive{Bold: new(true)}}
+	style.Strong = ansi.StylePrimitive{Bold: new(true)}
+	style.Emph = ansi.StylePrimitive{Italic: new(true)}
+	style.Link.Underline = new(true)
+	style.LinkText.Bold = new(true)
+	style.Code = ansi.StyleBlock{StylePrimitive: ansi.StylePrimitive{Bold: new(true), Italic: new(true)}}
 	return style
 }
 

@@ -850,8 +850,7 @@ func determinePluginVersion(packageVersion string) (string, error) {
 func debugCommand(ctx context.Context, opts toolchain.PythonOptions) ([]string, *debugger, error) {
 	err := checkForPackage(ctx, "debugpy", opts)
 	if err != nil {
-		var installError *NotInstalledError
-		if errors.As(err, &installError) {
+		if installError, ok := errors.AsType[*NotInstalledError](err); ok {
 			return nil, nil, fmt.Errorf("debugpy is not installed. %s", installError.InstallMessage)
 		}
 		return nil, nil, err
@@ -1128,8 +1127,7 @@ func (host *pythonLanguageHost) Run(ctx context.Context, req *pulumirpc.RunReque
 		typecheckerCmd.Dir = req.Info.ProgramDirectory
 		err = checkForPackage(ctx, typechecker, opts)
 		if err != nil {
-			var installError *NotInstalledError
-			if errors.As(err, &installError) {
+			if installError, ok := errors.AsType[*NotInstalledError](err); ok {
 				return nil, fmt.Errorf("The typechecker option is set to %s, but %s is not installed. %s",
 					typechecker, typechecker, installError.InstallMessage)
 			}
@@ -1709,8 +1707,7 @@ func (host *pythonLanguageHost) RunPlugin(
 	}
 
 	if err = run(); err != nil {
-		var exiterr *exec.ExitError
-		if errors.As(err, &exiterr) {
+		if exiterr, ok := errors.AsType[*exec.ExitError](err); ok {
 			if status, ok := exiterr.Sys().(syscall.WaitStatus); ok {
 				return server.Send(&pulumirpc.RunPluginResponse{
 					Output: &pulumirpc.RunPluginResponse_Exitcode{Exitcode: int32(status.ExitStatus())},

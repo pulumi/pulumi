@@ -172,7 +172,7 @@ func (p *DiscriminatedUnionManyProvider) CheckConfig(
 
 func (p *DiscriminatedUnionManyProvider) GetPluginInfo(context.Context) (plugin.PluginInfo, error) {
 	return plugin.PluginInfo{
-		Version: ptr(p.version()),
+		Version: new(p.version()),
 	}, nil
 }
 

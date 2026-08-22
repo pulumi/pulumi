@@ -55,8 +55,6 @@ func failingFactory(err error) stackWebhookListClientFactory {
 	}
 }
 
-func ptr(s string) *string { return &s }
-
 func sampleWebhooks() []apitype.Webhook {
 	return []apitype.Webhook{
 		{
@@ -65,7 +63,7 @@ func sampleWebhooks() []apitype.Webhook {
 			DisplayName:      "Deploy Hook",
 			PayloadURL:       "https://example.com/webhook",
 			Active:           true,
-			Format:           ptr("raw"),
+			Format:           new("raw"),
 			Groups:           []string{"stacks"},
 			Filters:          []string{"stack_update"},
 		},
@@ -75,7 +73,7 @@ func sampleWebhooks() []apitype.Webhook {
 			DisplayName:      "Slack Notifications",
 			PayloadURL:       "https://hooks.slack.com/services/T00/B00/xxx",
 			Active:           false,
-			Format:           ptr("slack"),
+			Format:           new("slack"),
 			Groups:           []string{"stacks", "deployments"},
 			Filters:          []string{"stack_update", "drift_detected"},
 		},

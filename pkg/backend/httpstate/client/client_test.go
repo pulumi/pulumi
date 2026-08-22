@@ -1089,7 +1089,7 @@ func TestListPackages(t *testing.T) {
 
 				responseData, err = json.Marshal(apitype.ListPackagesResponse{
 					Packages:          firstPagePackages,
-					ContinuationToken: ptr("next-page-token-1"),
+					ContinuationToken: new("next-page-token-1"),
 				})
 				require.NoError(t, err)
 			case 1:
@@ -1099,7 +1099,7 @@ func TestListPackages(t *testing.T) {
 
 				responseData, err = json.Marshal(apitype.ListPackagesResponse{
 					Packages:          secondPagePackages,
-					ContinuationToken: ptr("next-page-token-2"),
+					ContinuationToken: new("next-page-token-2"),
 				})
 				require.NoError(t, err)
 			case 2:

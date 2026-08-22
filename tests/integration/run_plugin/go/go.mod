@@ -1,6 +1,6 @@
 module github.com/pulumi/pulumi/tests/run_plugin
 
-go 1.25.11
+go 1.26.6
 
 require github.com/pulumi/pulumi/sdk/v3 v3.259.0
 

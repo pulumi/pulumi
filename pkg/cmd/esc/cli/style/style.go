@@ -22,10 +22,6 @@ import (
 	"github.com/muesli/termenv"
 )
 
-func ptr[T any](v T) *T {
-	return &v
-}
-
 func Glamour(w io.Writer, options ...glamour.TermRendererOption) (*glamour.TermRenderer, error) {
 	opts := make([]glamour.TermRendererOption, 0, 2+len(options))
 	opts = append(opts, glamour.WithStyles(Default()), glamour.WithColorProfile(Profile(w)))

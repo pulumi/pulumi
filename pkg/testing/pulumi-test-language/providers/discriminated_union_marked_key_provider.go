@@ -136,7 +136,7 @@ func (p *DiscriminatedUnionMarkedKeyProvider) CheckConfig(
 
 func (p *DiscriminatedUnionMarkedKeyProvider) GetPluginInfo(context.Context) (plugin.PluginInfo, error) {
 	return plugin.PluginInfo{
-		Version: ptr(p.version()),
+		Version: new(p.version()),
 	}, nil
 }
 

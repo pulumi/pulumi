@@ -44,8 +44,7 @@ func FindExecutable(program string) (string, error) {
 		notFoundPaths := make([]string, 0, 3)
 		for _, suffix := range []string{".exe", ".cmd", ".ps1"} {
 			found, err := findExecutableWithSuffix(program, suffix)
-			var notFoundErr *NotFoundError
-			if errors.As(err, &notFoundErr) {
+			if notFoundErr, ok := errors.AsType[*NotFoundError](err); ok {
 				notFoundPaths = append(notFoundPaths, notFoundErr.Path)
 				continue
 			} else if err != nil {
