@@ -1993,8 +1993,8 @@ func GetPolicyDir(orgName string) (string, error) {
 	return GetPulumiPath(PolicyDir, orgName)
 }
 
-// GetPolicyPath finds a PolicyPack by its name version, as well as a bool marked true if the path
-// already exists and is a directory.
+// GetPolicyPath finds a PolicyPack by its name and version, as well as a bool marked true if the path
+// contains a policy project file.
 func GetPolicyPath(orgName, name, version string) (string, bool, error) {
 	policiesDir, err := GetPolicyDir(orgName)
 	if err != nil {
@@ -2003,16 +2003,23 @@ func GetPolicyPath(orgName, name, version string) (string, bool, error) {
 
 	policyPackPath := path.Join(policiesDir, fmt.Sprintf("pulumi-analyzer-%s-v%s", name, version))
 
-	file, err := os.Stat(policyPackPath)
-	if err == nil && file.IsDir() {
-		// PolicyPack exists. Return.
+	projectPath := filepath.Join(policyPackPath, "PulumiPolicy.yaml")
+	file, err := os.Stat(projectPath)
+	if err == nil {
+		if file.IsDir() {
+			return policyPackPath, false, nil
+		}
+		if _, err := os.Stat(policyPackPath + ".partial"); err == nil {
+			return policyPackPath, false, nil
+		} else if !os.IsNotExist(err) {
+			return "", false, err
+		}
 		return policyPackPath, true, nil
-	} else if err != nil && !os.IsNotExist(err) {
-		// Error trying to inspect PolicyPack FS entry. Return error.
+	}
+	if !os.IsNotExist(err) {
 		return "", false, err
 	}
 
-	// Not found. Return empty path.
 	return policyPackPath, false, nil
 }
 

@@ -40,6 +40,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/archive"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/nodejs/npm"
@@ -497,6 +498,12 @@ func (pack *cloudPolicyPack) Remove(ctx context.Context, op backend.PolicyPackOp
 const packageDir = "package"
 
 func installRequiredPolicy(ctx *plugin.Context, finalDir string, tgz io.ReadCloser, stdout, stderr io.Writer) error {
+	return installRequiredPolicyWithHook(ctx, finalDir, tgz, stdout, stderr, nil)
+}
+
+func installRequiredPolicyWithHook(
+	ctx *plugin.Context, finalDir string, tgz io.ReadCloser, stdout, stderr io.Writer, beforeLock func(),
+) error {
 	// If part of the directory tree is missing, os.MkdirTemp will return an error, so make sure
 	// the path we're going to create the temporary folder in actually exists.
 	if err := os.MkdirAll(filepath.Dir(finalDir), 0o700); err != nil {
@@ -514,9 +521,11 @@ func installRequiredPolicy(ctx *plugin.Context, finalDir string, tgz io.ReadClos
 		return fmt.Errorf("creating plugin root: %w", err)
 	}
 
-	// If we early out of this function, try to remove the temp folder we created.
+	// Cleanup is best effort: returning a cleanup error could hide the installation error.
 	defer func() {
-		contract.IgnoreError(os.RemoveAll(tempDir))
+		if err := os.RemoveAll(tempDir); err != nil {
+			logging.V(7).Infof("Failed to clean up temporary policy pack directory %q: %v", tempDir, err)
+		}
 	}()
 
 	// Uncompress the policy pack.
@@ -529,18 +538,50 @@ func installRequiredPolicy(ctx *plugin.Context, finalDir string, tgz io.ReadClos
 	// "Installing policy pack" progress bar before dependency installation begins.
 	contract.IgnoreClose(tgz)
 
-	logging.V(7).Infof("Unpacking policy pack %q %q\n", tempDir, finalDir)
+	if beforeLock != nil {
+		beforeLock()
+	}
+	mutex := fsutil.NewFileMutex(finalDir + ".lock")
+	if err := mutex.Lock(); err != nil {
+		return fmt.Errorf("locking policy pack installation: %w", err)
+	}
+	defer func() {
+		if err := mutex.Unlock(); err != nil {
+			logging.V(7).Infof("Failed to unlock policy pack installation %q: %v", finalDir, err)
+		}
+	}()
 
-	// If two calls to `plugin install` for the same plugin are racing, the second one will be
-	// unable to rename the directory. That's OK, just ignore the error. The temp directory created
-	// as part of the install will be cleaned up when we exit by the defer above.
-	//
-	//nolint:forbidigo // historic os.Rename usage
-	if err := os.Rename(tempPackageDir, finalDir); err != nil && !os.IsExist(err) {
-		return fmt.Errorf("moving plugin: %w", err)
+	partialPath := finalDir + ".partial"
+	projPath := filepath.Join(finalDir, "PulumiPolicy.yaml")
+	if file, err := os.Stat(projPath); err == nil && !file.IsDir() {
+		if _, err := os.Stat(partialPath); os.IsNotExist(err) {
+			return nil
+		} else if err != nil {
+			return fmt.Errorf("checking partial policy pack installation: %w", err)
+		}
+	} else if err != nil && !os.IsNotExist(err) {
+		return fmt.Errorf("checking policy pack installation: %w", err)
 	}
 
-	projPath := filepath.Join(finalDir, "PulumiPolicy.yaml")
+	if err := os.WriteFile(partialPath, nil, 0o600); err != nil {
+		return fmt.Errorf("marking policy pack installation partial: %w", err)
+	}
+	if err := os.RemoveAll(finalDir); err != nil {
+		return fmt.Errorf("removing partial policy pack installation: %w", err)
+	}
+	//nolint:forbidigo // finalDir must retain its stable path while language dependencies are installed
+	if err := os.Rename(tempPackageDir, finalDir); err != nil {
+		return fmt.Errorf("moving plugin: %w", err)
+	}
+	installComplete := false
+	defer func() {
+		if !installComplete {
+			if err := os.RemoveAll(finalDir); err != nil {
+				logging.V(7).Infof("Failed to clean up partial policy pack directory %q: %v", finalDir, err)
+			}
+		}
+	}()
+
 	proj, err := workspace.LoadPolicyPack(projPath)
 	if err != nil {
 		return fmt.Errorf("failed to load policy project at %s: %w", finalDir, err)
@@ -573,5 +614,9 @@ func installRequiredPolicy(ctx *plugin.Context, finalDir string, tgz io.ReadClos
 		return fmt.Errorf("installing dependencies: %w", err)
 	}
 
+	if err := os.Remove(partialPath); err != nil {
+		return fmt.Errorf("marking policy pack installation complete: %w", err)
+	}
+	installComplete = true
 	return nil
 }
