@@ -220,7 +220,7 @@ func testLanguageWithConfig(t *testing.T, config languageTestConfig) {
 					}
 
 					if (config.name == "default" || config.name == "toml") &&
-						(tt == "l2-discriminated-union" || tt == "l2-discriminated-union-many" ||
+						(tt == "l2-discriminated-union-many" ||
 							tt == "l2-discriminated-union-marked-key") {
 						t.Skip("pulumi#21830: Expected to fail")
 					}
