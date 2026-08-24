@@ -1,0 +1,3 @@
+name: workflow-smoke
+runtime: go
+description: A small workflow driving random resources through a gated join.
