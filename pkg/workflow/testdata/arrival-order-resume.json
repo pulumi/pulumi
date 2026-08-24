@@ -63,6 +63,10 @@
       "name": "go",
       "from": "start-bad",
       "to": "deploy-bad",
+      "cursor": {
+        "id": "c2",
+        "label": "bad"
+      },
       "inputs": {
         "version": "bad"
       }
@@ -74,7 +78,15 @@
       "name": "go",
       "from": "start-bad",
       "to": "deploy-bad",
-      "pass": true
+      "cursor": {
+        "id": "c2",
+        "label": "bad"
+      },
+      "pass": true,
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
     }
   },
   {
@@ -83,6 +95,10 @@
       "name": "promote",
       "from": "staging",
       "to": "prod",
+      "cursor": {
+        "id": "c3",
+        "label": "queued"
+      },
       "inputs": {
         "version": "queued"
       }
@@ -94,7 +110,15 @@
       "name": "promote",
       "from": "staging",
       "to": "prod",
-      "pass": false
+      "cursor": {
+        "id": "c3",
+        "label": "queued"
+      },
+      "pass": false,
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
     }
   },
   {
@@ -103,6 +127,10 @@
       "name": "promote",
       "from": "staging",
       "to": "prod",
+      "cursor": {
+        "id": "c1",
+        "label": "good"
+      },
       "inputs": {
         "env": "staging",
         "version": "good"
@@ -115,7 +143,15 @@
       "name": "promote",
       "from": "staging",
       "to": "prod",
-      "pass": false
+      "cursor": {
+        "id": "c1",
+        "label": "good"
+      },
+      "pass": false,
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
     }
   },
   {
@@ -136,6 +172,10 @@
     "type": "NodeStarted",
     "event": {
       "id": "deploy-bad",
+      "cursor": {
+        "id": "c2",
+        "label": "bad"
+      },
       "inputs": {
         "version": "bad"
       }
@@ -145,6 +185,10 @@
     "type": "NodeSucceeded",
     "event": {
       "id": "deploy-bad",
+      "cursor": {
+        "id": "c2",
+        "label": "bad"
+      },
       "outputs": {
         "version": "bad"
       }

@@ -1,0 +1,130 @@
+// Copyright 2026, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+import "google/protobuf/struct.proto";
+import "google/protobuf/timestamp.proto";
+
+package pulumirpc;
+
+option go_package = "github.com/pulumi/pulumi/sdk/v3/proto/go;pulumirpc";
+
+// The messages exchanged between the engine and a program's workflow callbacks (node programs, edge
+// conditions and join merges), carried as the request and response bytes of the Callbacks service.
+// A program registers one callback per node program, per edge condition and per join merge, and
+// references them in the inputs of its pulumi:index:Workflow resource.
+
+// A cursor as seen by a callback: its identity and the values it carries.
+message WorkflowCursor {
+    // The cursor's name, unique within its workflow.
+    string name = 1;
+    // The cursor's values. A node program sees the values the cursor entered its node with; an edge
+    // condition sees the values the node it leaves produced.
+    google.protobuf.Struct values = 2;
+}
+
+// One visit of a cursor to a node, as recorded in the node's history.
+message WorkflowVisit {
+    // The visiting cursor's name.
+    string cursor = 1;
+    // When the cursor entered the node.
+    google.protobuf.Timestamp entered = 2;
+    // When the cursor left the node; unset while it is still there.
+    google.protobuf.Timestamp left = 3;
+    // The values the cursor entered with.
+    google.protobuf.Struct inputs = 4;
+    // The values the node program produced; unset until the program has run.
+    google.protobuf.Struct outputs = 5;
+    // The error of the node program's last run, if it failed.
+    string error = 6;
+}
+
+// The state of one node: what every callback may observe about it.
+message WorkflowNodeState {
+    // The name of the cursor on the node, if any.
+    string occupant = 1;
+    // The node's visits, newest first.
+    repeated WorkflowVisit history = 2;
+    // When the node program last ran; unset if it never has.
+    google.protobuf.Timestamp last_run = 3;
+}
+
+// A snapshot of a workflow's nodes, taken when a callback is dispatched.
+message WorkflowView {
+    map<string, WorkflowNodeState> nodes = 1;
+}
+
+// The request to run a node program. The program runs as a nested Pulumi program against the
+// resource monitor at monitor_addr.
+message WorkflowNodeRequest {
+    string monitor_addr = 1;
+    string engine_addr = 2;
+    string project = 3;
+    string stack = 4;
+    string organization = 5;
+    map<string, string> config = 6;
+    repeated string config_secret_keys = 7;
+    int32 parallel = 8;
+    // The node being run.
+    string node = 9;
+    // The cursor the program runs for, carrying the values it entered the node with.
+    WorkflowCursor cursor = 10;
+    WorkflowView view = 11;
+    // True when the program is re-run to reconcile the node rather than because a cursor arrived.
+    bool reconcile = 12;
+}
+
+message WorkflowNodeResponse {
+    // The values the program set on its cursor. They are applied over the cursor's values to produce
+    // the values the cursor leaves the node with.
+    google.protobuf.Struct outputs = 1;
+}
+
+// The request to evaluate one condition of an edge.
+message WorkflowConditionRequest {
+    WorkflowCursor cursor = 1;
+    WorkflowView view = 2;
+    // The edge and the condition within it.
+    string edge = 3;
+    string condition = 4;
+}
+
+message WorkflowConditionResponse {
+    bool pass = 1;
+    // Values the condition set on the cursor, and keys it deleted. They take effect only if the cursor
+    // moves across the edge because of this evaluation.
+    google.protobuf.Struct overlay = 2;
+    repeated string deleted = 3;
+}
+
+// The request to decide a join once a cursor waits on each of its branches.
+message WorkflowMergeRequest {
+    message Candidate {
+        // The node the cursor waits on.
+        string from = 1;
+        WorkflowCursor cursor = 2;
+    }
+    repeated Candidate candidates = 1;
+    WorkflowView view = 2;
+    string edge = 3;
+}
+
+message WorkflowMergeResponse {
+    // False rejects the merge: every candidate stays where it is.
+    bool merge = 1;
+    // The merged cursor's name and values.
+    string name = 2;
+    google.protobuf.Struct values = 3;
+}

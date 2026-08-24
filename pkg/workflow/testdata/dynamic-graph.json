@@ -48,6 +48,10 @@
       "name": "planning",
       "from": "start",
       "to": "plan",
+      "cursor": {
+        "id": "c1",
+        "label": "expanding"
+      },
       "inputs": {
         "here": "plan",
         "remaining": [
@@ -63,13 +67,25 @@
       "name": "planning",
       "from": "start",
       "to": "plan",
-      "pass": true
+      "cursor": {
+        "id": "c1",
+        "label": "expanding"
+      },
+      "pass": true,
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
     }
   },
   {
     "type": "NodeStarted",
     "event": {
       "id": "plan",
+      "cursor": {
+        "id": "c1",
+        "label": "expanding"
+      },
       "inputs": {
         "here": "plan",
         "remaining": [
@@ -97,6 +113,10 @@
     "type": "NodeSucceeded",
     "event": {
       "id": "plan",
+      "cursor": {
+        "id": "c1",
+        "label": "expanding"
+      },
       "outputs": {
         "here": "deploy-us",
         "remaining": [
@@ -111,6 +131,10 @@
       "name": "next",
       "from": "plan",
       "to": "deploy-us",
+      "cursor": {
+        "id": "c1",
+        "label": "expanding"
+      },
       "inputs": {
         "here": "deploy-us",
         "remaining": [
@@ -125,13 +149,25 @@
       "name": "next",
       "from": "plan",
       "to": "deploy-us",
-      "pass": true
+      "cursor": {
+        "id": "c1",
+        "label": "expanding"
+      },
+      "pass": true,
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
     }
   },
   {
     "type": "NodeStarted",
     "event": {
       "id": "deploy-us",
+      "cursor": {
+        "id": "c1",
+        "label": "expanding"
+      },
       "inputs": {
         "here": "deploy-us",
         "remaining": [
@@ -158,6 +194,10 @@
     "type": "NodeSucceeded",
     "event": {
       "id": "deploy-us",
+      "cursor": {
+        "id": "c1",
+        "label": "expanding"
+      },
       "outputs": {
         "here": "deploy-eu",
         "remaining": []
@@ -170,6 +210,10 @@
       "name": "next",
       "from": "deploy-us",
       "to": "deploy-eu",
+      "cursor": {
+        "id": "c1",
+        "label": "expanding"
+      },
       "inputs": {
         "here": "deploy-eu",
         "remaining": []
@@ -182,13 +226,25 @@
       "name": "next",
       "from": "deploy-us",
       "to": "deploy-eu",
-      "pass": true
+      "cursor": {
+        "id": "c1",
+        "label": "expanding"
+      },
+      "pass": true,
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
     }
   },
   {
     "type": "NodeStarted",
     "event": {
       "id": "deploy-eu",
+      "cursor": {
+        "id": "c1",
+        "label": "expanding"
+      },
       "inputs": {
         "here": "deploy-eu",
         "remaining": []
@@ -207,6 +263,10 @@
     "type": "NodeSucceeded",
     "event": {
       "id": "deploy-eu",
+      "cursor": {
+        "id": "c1",
+        "label": "expanding"
+      },
       "outputs": {
         "here": "deploy-eu",
         "remaining": []
@@ -219,6 +279,10 @@
       "name": "finished",
       "from": "deploy-eu",
       "to": "done",
+      "cursor": {
+        "id": "c1",
+        "label": "expanding"
+      },
       "inputs": {
         "here": "deploy-eu",
         "remaining": []
@@ -231,13 +295,25 @@
       "name": "finished",
       "from": "deploy-eu",
       "to": "done",
-      "pass": true
+      "cursor": {
+        "id": "c1",
+        "label": "expanding"
+      },
+      "pass": true,
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
     }
   },
   {
     "type": "NodeStarted",
     "event": {
       "id": "done",
+      "cursor": {
+        "id": "c1",
+        "label": "expanding"
+      },
       "inputs": {
         "here": "deploy-eu",
         "remaining": []
@@ -248,6 +324,10 @@
     "type": "NodeSucceeded",
     "event": {
       "id": "done",
+      "cursor": {
+        "id": "c1",
+        "label": "expanding"
+      },
       "outputs": {
         "here": "deploy-eu",
         "remaining": []

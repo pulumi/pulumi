@@ -627,6 +627,14 @@ func (se *stepExecutor) continueExecuteStep(payload any, workerID int, step Step
 		}
 	}
 
+	// A workflow advances once its own state is saved and before its registration completes: its nodes'
+	// resources are recorded after it in the snapshot, and the program receives the outputs of this run.
+	var progressErr error
+	if p := se.deployment.opts.WorkflowProgressor; p != nil && err == nil && step.New() != nil &&
+		step.New().Type == WorkflowType && (step.Op() == OpCreate || step.Op() == OpUpdate) {
+		progressErr = p.Progress(se.ctx, se.deployment, step.New(), &workflowHost{se: se})
+	}
+
 	// Calling stepComplete allows steps that depend on this step to continue. OnResourceStepPost saved the results
 	// of the step in the snapshot, so we are ready to go.
 	if stepComplete != nil {
@@ -637,6 +645,11 @@ func (se *stepExecutor) continueExecuteStep(payload any, workerID int, step Step
 	if err != nil {
 		se.log(workerID, "step %v on %v failed with an error: %v", step.Op(), step.URN(), err)
 		return StepApplyFailed{err}
+	}
+	if progressErr != nil {
+		se.log(workerID, "workflow %v failed to progress: %v", step.URN(), progressErr)
+		se.deployment.Diag().Errorf(diag.RawMessage(step.URN(), progressErr.Error()))
+		return StepApplyFailed{progressErr}
 	}
 
 	// If the step succeeded but recorded a post-step error (e.g. a failing after-hook), cancel further execution to

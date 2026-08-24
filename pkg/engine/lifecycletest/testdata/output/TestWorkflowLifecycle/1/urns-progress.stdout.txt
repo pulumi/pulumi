@@ -1,0 +1,37 @@
+<{%fg 13%}><{%bold%}>View Live: <{%underline%}><{%fg 12%}>http://example.com<{%reset%}>
+
+
+ <{%bold%}><{%fg 3%}>~ <{%reset%}> urn:pulumi:test::test::pulumi:index:Workflow::wf <{%bold%}><{%fg 3%}>updating<{%reset%}> [diff: <{%fg 3%}>~edges,nodes<{%reset%}><{%reset%}>]
+ <{%fg 3%}>~ <{%reset%}> urn:pulumi:test::test::pulumi:index:Workflow::wf <{%fg 3%}>updated<{%reset%}> [diff: <{%fg 3%}>~edges,nodes<{%reset%}><{%reset%}>]
+ <{%fg 3%}>~ <{%reset%}> urn:pulumi:test::test::pulumi:index:Workflow::wf <{%fg 3%}>updated<{%reset%}> [diff: <{%fg 3%}>~edges,nodes<{%reset%}><{%reset%}>]; <{%reset%}>workflow: no cursors
+ <{%fg 3%}>~ <{%reset%}> urn:pulumi:test::test::pulumi:index:Workflow::wf <{%fg 3%}>updated<{%reset%}> [diff: <{%fg 3%}>~edges,nodes<{%reset%}><{%reset%}>]; <{%reset%}>workflow: no cursors
+ <{%fg 3%}>~ <{%reset%}> urn:pulumi:test::test::pulumi:index:Workflow::wf <{%fg 3%}>updated<{%reset%}> [diff: <{%fg 3%}>~edges,nodes<{%reset%}><{%reset%}>]; <{%reset%}>workflow: no cursors
+ <{%fg 3%}>~ <{%reset%}> urn:pulumi:test::test::pulumi:index:Workflow::wf <{%fg 3%}>updated<{%reset%}> [diff: <{%fg 3%}>~edges,nodes<{%reset%}><{%reset%}>]; <{%reset%}>workflow: release#1 — checking promote
+ <{%fg 3%}>~ <{%reset%}> urn:pulumi:test::test::pulumi:index:Workflow::wf <{%fg 3%}>updated<{%reset%}> [diff: <{%fg 3%}>~edges,nodes<{%reset%}><{%reset%}>]; <{%reset%}>workflow: release#1 — parked
+ <{%fg 3%}>~ <{%reset%}> urn:pulumi:test::test::pulumi:index:Workflow::wf <{%fg 3%}>updated<{%reset%}> [diff: <{%fg 3%}>~edges,nodes<{%reset%}><{%reset%}>]; <{%reset%}>workflow: release#1 — parked
+ <{%fg 3%}>~ <{%reset%}> urn:pulumi:test::test::pulumi:index:Workflow::wf <{%fg 3%}>updated<{%reset%}> [diff: <{%fg 3%}>~edges,nodes<{%reset%}><{%reset%}>]; <{%reset%}>workflow: release#1 — parked
+ <{%fg 3%}>~ <{%reset%}> urn:pulumi:test::test::pulumi:index:Workflow::wf <{%fg 3%}>updated<{%reset%}> [diff: <{%fg 3%}>~edges,nodes<{%reset%}><{%reset%}>]; <{%reset%}>workflow: release#1 @ dev — running dev
+ <{%bold%}><{%reset%}>  <{%reset%}> urn:pulumi:test::test-wf-wf-dev::pulumi:index:Workflow$pulumi:index:WorkflowNode::dev <{%bold%}><{%reset%}><{%reset%}> 
+ <{%bold%}><{%reset%}>  <{%reset%}> urn:pulumi:test::test-wf-wf-dev::pulumi:pulumi:Stack::test-wf-wf-dev-test <{%bold%}><{%reset%}><{%reset%}> 
+ <{%bold%}><{%reset%}>  <{%reset%}> urn:pulumi:test::test-wf-wf-dev::pkgA:m:typA::dev <{%bold%}><{%reset%}><{%reset%}> 
+ <{%fg 3%}>~ <{%reset%}> urn:pulumi:test::test::pulumi:index:Workflow::wf <{%fg 3%}>updated<{%reset%}> [diff: <{%fg 3%}>~edges,nodes<{%reset%}><{%reset%}>]; <{%reset%}>workflow: release#1 @ dev — parked
+ <{%bold%}><{%reset%}>  <{%reset%}> urn:pulumi:test::test-wf-wf-prod::pulumi:index:Workflow$pulumi:index:WorkflowNode::prod <{%bold%}><{%reset%}><{%reset%}> 
+ <{%fg 3%}>~ <{%reset%}> urn:pulumi:test::test::pulumi:index:Workflow::wf <{%fg 3%}>updated<{%reset%}> [diff: <{%fg 3%}>~edges,nodes<{%reset%}><{%reset%}>]; <{%reset%}>workflow: release#1 @ dev — parked
+ <{%fg 3%}>~ <{%reset%}> urn:pulumi:test::test::pulumi:index:Workflow::wf <{%fg 3%}>updated<{%reset%}> [diff: <{%fg 3%}>~edges,nodes<{%reset%}><{%reset%}>]; <{%reset%}>workflow: release#1 @ dev — parked
+ <{%reset%}>  <{%reset%}> urn:pulumi:test::test-wf-wf-dev::pulumi:pulumi:Stack::test-wf-wf-dev-test <{%reset%}><{%reset%}> 
+ <{%reset%}>  <{%reset%}> urn:pulumi:stack::project::pulumi:pulumi:Stack::project-stack <{%reset%}><{%reset%}> 
+<{%fg 13%}><{%bold%}>Diagnostics:<{%reset%}>
+  <{%fg 12%}>urn:pulumi:test::test::pulumi:index:Workflow::wf:<{%reset%}>
+    <{%reset%}>workflow: release#1 @ dev — parked
+      dev ◀ release#1
+        └─ promote ─▶ prod
+      prod
+    cursors
+      release#1 @ dev — parked
+
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    <{%fg 3%}>~ 1 updated<{%reset%}>
+    4 unchanged
+
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s
+

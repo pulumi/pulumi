@@ -36,6 +36,10 @@
       "name": "go",
       "from": "start",
       "to": "boom",
+      "cursor": {
+        "id": "c1",
+        "label": ""
+      },
       "inputs": {}
     }
   },
@@ -45,13 +49,25 @@
       "name": "go",
       "from": "start",
       "to": "boom",
-      "pass": true
+      "cursor": {
+        "id": "c1",
+        "label": ""
+      },
+      "pass": true,
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
     }
   },
   {
     "type": "NodeStarted",
     "event": {
       "id": "boom",
+      "cursor": {
+        "id": "c1",
+        "label": ""
+      },
       "inputs": {}
     }
   },
@@ -59,6 +75,10 @@
     "type": "NodeFailed",
     "event": {
       "id": "boom",
+      "cursor": {
+        "id": "c1",
+        "label": ""
+      },
       "error": "deploy exploded"
     }
   },

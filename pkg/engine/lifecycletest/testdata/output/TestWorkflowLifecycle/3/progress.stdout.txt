@@ -1,0 +1,34 @@
+<{%fg 13%}><{%bold%}>View Live: <{%underline%}><{%fg 12%}>http://example.com<{%reset%}>
+
+
+ <{%bold%}><{%fg 3%}>~ <{%reset%}> pulumi:index:Workflow wf <{%bold%}><{%fg 3%}>updating<{%reset%}> [diff: <{%fg 3%}>~edges,nodes<{%reset%}><{%reset%}>]
+ <{%fg 3%}>~ <{%reset%}> pulumi:index:Workflow wf <{%fg 3%}>updated<{%reset%}> [diff: <{%fg 3%}>~edges,nodes<{%reset%}><{%reset%}>]
+ <{%fg 3%}>~ <{%reset%}> pulumi:index:Workflow wf <{%fg 3%}>updated<{%reset%}> [diff: <{%fg 3%}>~edges,nodes<{%reset%}><{%reset%}>]; <{%reset%}>workflow: no cursors
+ <{%fg 3%}>~ <{%reset%}> pulumi:index:Workflow wf <{%fg 3%}>updated<{%reset%}> [diff: <{%fg 3%}>~edges,nodes<{%reset%}><{%reset%}>]; <{%reset%}>workflow: release#1 @ prod — parked
+ <{%fg 3%}>~ <{%reset%}> pulumi:index:Workflow wf <{%fg 3%}>updated<{%reset%}> [diff: <{%fg 3%}>~edges,nodes<{%reset%}><{%reset%}>]; <{%reset%}>workflow: release#1 @ prod — parked
+ <{%bold%}><{%reset%}>  <{%reset%}> pulumi:index:WorkflowNode dev <{%bold%}><{%reset%}><{%reset%}> 
+ <{%bold%}><{%reset%}>  <{%reset%}> pulumi:pulumi:Stack test-wf-wf-dev-test <{%bold%}><{%reset%}><{%reset%}> 
+ <{%bold%}><{%reset%}>  <{%reset%}> pkgA:m:typA dev <{%bold%}><{%reset%}><{%reset%}> 
+ <{%fg 3%}>~ <{%reset%}> pulumi:index:Workflow wf <{%fg 3%}>updated<{%reset%}> [diff: <{%fg 3%}>~edges,nodes<{%reset%}><{%reset%}>]; <{%reset%}>workflow: release#1 @ prod — parked
+ <{%fg 3%}>~ <{%reset%}> pulumi:index:Workflow wf <{%fg 3%}>updated<{%reset%}> [diff: <{%fg 3%}>~edges,nodes<{%reset%}><{%reset%}>]; <{%reset%}>workflow: release#1 @ prod — parked
+ <{%bold%}><{%fg 1%}>- <{%reset%}> pkgA:m:typA prod <{%bold%}><{%fg 1%}>deleting<{%reset%}> 
+ <{%fg 1%}>- <{%reset%}> pkgA:m:typA prod <{%fg 1%}>deleted<{%reset%}> 
+ <{%bold%}><{%fg 1%}>- <{%reset%}> pulumi:pulumi:Stack test-wf-wf-prod-test <{%bold%}><{%fg 1%}>deleting<{%reset%}> 
+ <{%bold%}><{%fg 1%}>- <{%reset%}> pulumi:index:WorkflowNode prod <{%bold%}><{%fg 1%}>deleting<{%reset%}> 
+ <{%reset%}>  <{%reset%}> pulumi:pulumi:Stack test-wf-wf-dev-test <{%reset%}><{%reset%}> 
+ <{%reset%}>  <{%reset%}> pulumi:pulumi:Stack project-stack <{%reset%}><{%reset%}> 
+<{%fg 13%}><{%bold%}>Diagnostics:<{%reset%}>
+  <{%fg 12%}>pulumi:index:Workflow (wf):<{%reset%}>
+    <{%reset%}>workflow: release#1 @ prod — parked
+      dev
+      prod (undefined) ◀ release#1
+    cursors
+      release#1 @ prod — parked
+
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    <{%fg 3%}>~ 1 updated<{%reset%}>
+    <{%fg 1%}>- 3 deleted<{%reset%}>
+    <{%bold%}>4 changes<{%reset%}>. 3 unchanged
+
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s
+

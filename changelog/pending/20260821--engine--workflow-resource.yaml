@@ -1,0 +1,5 @@
+component: engine
+kind: feat
+body: Add the built-in `pulumi:index:Workflow` resource, a durable workflow whose nodes are nested
+    Pulumi programs advanced once per `pulumi up`, with a Go SDK in `pulumi/workflow`
+time: 2026-08-21T16:00:00Z

@@ -124,6 +124,14 @@ type Options struct {
 	ShowSecrets bool
 	// Analyzers is the list of policy analyzers to run during this deployment.
 	Analyzers []plugin.Analyzer
+
+	// WorkflowProgressor advances pulumi:index:Workflow resources after the source completes. Injected by
+	// pkg/engine; nil disables workflow progression.
+	WorkflowProgressor WorkflowProgressor
+	// RootParent, if set, parents every resource registered without a parent under the given resource,
+	// and restricts the delete sweep to resources of the deployment's own project. It is set for the
+	// nested deployments a WorkflowProgressor runs for workflow nodes; their roots nest under the node.
+	RootParent resource.URN
 }
 
 // DegreeOfParallelism returns the degree of parallelism that should be used during the
@@ -334,6 +342,10 @@ type Deployment struct {
 	hasRefreshBeforeUpdateResources bool
 	// a map of all old non-deleted resources.
 	olds map[resource.URN]*pkgresource.State
+	// Resources of the previous snapshot managed by a workflow's nested deployments; the delete sweep
+	// leaves them alone. See WorkflowHost.Keep.
+	keptM sync.Mutex
+	kept  map[resource.URN]bool
 	// a map of all old resources
 	allOlds map[resource.URN][]*pkgresource.State
 	// a map of all old resource views, keyed by the owning resource's URN.
@@ -686,6 +698,30 @@ func (d *Deployment) Diag() diag.Sink                           { return d.ctx.D
 func (d *Deployment) Prev() *Snapshot                           { return d.prev }
 func (d *Deployment) Olds() map[resource.URN]*pkgresource.State { return d.olds }
 func (d *Deployment) Source() Source                            { return d.source }
+func (d *Deployment) Events() Events                            { return d.events }
+func (d *Deployment) Options() *Options                         { return d.opts }
+
+// News returns the new resource states this deployment has produced so far.
+func (d *Deployment) News() *gsync.Map[resource.URN, *pkgresource.State] { return d.news }
+
+// Keep marks resources of the previous snapshot as managed by a workflow's nested deployments, so that
+// the deployment's own delete sweep leaves them alone.
+func (d *Deployment) Keep(urns ...resource.URN) {
+	d.keptM.Lock()
+	defer d.keptM.Unlock()
+	if d.kept == nil {
+		d.kept = map[resource.URN]bool{}
+	}
+	for _, urn := range urns {
+		d.kept[urn] = true
+	}
+}
+
+func (d *Deployment) isKept(urn resource.URN) bool {
+	d.keptM.Lock()
+	defer d.keptM.Unlock()
+	return d.kept[urn]
+}
 
 // IgnoresProtect returns true if the step's deployment has been configured to ignore the protect
 // resource option (i.e. --ignore-protect was set), allowing protected resources to be deleted.

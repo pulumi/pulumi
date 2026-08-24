@@ -170,13 +170,17 @@ func (r *treeRenderer) render(termWidth int) {
 
 	var treeTableRows [][]string
 	var maxColumnLengths []int
-	r.display.convertNodesToRows(rootNodes, maxSuffixLength, &treeTableRows, &maxColumnLengths)
+	var blocks [][]string
+	r.display.convertNodesToRows(rootNodes, maxSuffixLength, &treeTableRows, &maxColumnLengths, &blocks)
 	removeInfoColumnIfUnneeded(treeTableRows)
 
 	r.treeTableRows = r.treeTableRows[:0]
-	for _, row := range treeTableRows {
+	for i, row := range treeTableRows {
 		rendered := renderRow(row, maxColumnLengths)
 		r.treeTableRows = append(r.treeTableRows, rendered)
+		for _, line := range blocks[i] {
+			r.treeTableRows = append(r.treeTableRows, "      "+line)
+		}
 	}
 
 	// If we are not explicitly showing unchanged resources, we'll display a

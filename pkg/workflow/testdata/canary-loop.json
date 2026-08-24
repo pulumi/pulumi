@@ -53,12 +53,14 @@
       "to": "shift-traffic",
       "andEdges": [
         {
-          "name": "healthy-and-more-to-shift[0]",
+          "name": "healthy-and-more-to-shift",
+          "condition": "healthy",
           "from": "observe",
           "to": "shift-traffic"
         },
         {
-          "name": "healthy-and-more-to-shift[1]",
+          "name": "healthy-and-more-to-shift",
+          "condition": "more-to-shift",
           "from": "observe",
           "to": "shift-traffic"
         }
@@ -73,12 +75,14 @@
       "to": "done",
       "andEdges": [
         {
-          "name": "healthy-and-fully-shifted[0]",
+          "name": "healthy-and-fully-shifted",
+          "condition": "fully-shifted",
           "from": "observe",
           "to": "done"
         },
         {
-          "name": "healthy-and-fully-shifted[1]",
+          "name": "healthy-and-fully-shifted",
+          "condition": "healthy",
           "from": "observe",
           "to": "done"
         }
@@ -112,6 +116,10 @@
       "name": "start",
       "from": "start",
       "to": "shift-traffic",
+      "cursor": {
+        "id": "c1",
+        "label": "canary"
+      },
       "inputs": {
         "version": "8"
       }
@@ -123,13 +131,25 @@
       "name": "start",
       "from": "start",
       "to": "shift-traffic",
-      "pass": true
+      "cursor": {
+        "id": "c1",
+        "label": "canary"
+      },
+      "pass": true,
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
     }
   },
   {
     "type": "NodeStarted",
     "event": {
       "id": "shift-traffic",
+      "cursor": {
+        "id": "c1",
+        "label": "canary"
+      },
       "inputs": {
         "version": "8"
       }
@@ -139,6 +159,10 @@
     "type": "NodeSucceeded",
     "event": {
       "id": "shift-traffic",
+      "cursor": {
+        "id": "c1",
+        "label": "canary"
+      },
       "outputs": {
         "percent": 10,
         "version": "8"
@@ -151,6 +175,10 @@
       "name": "shifted",
       "from": "shift-traffic",
       "to": "observe",
+      "cursor": {
+        "id": "c1",
+        "label": "canary"
+      },
       "inputs": {
         "percent": 10,
         "version": "8"
@@ -163,13 +191,25 @@
       "name": "shifted",
       "from": "shift-traffic",
       "to": "observe",
-      "pass": true
+      "cursor": {
+        "id": "c1",
+        "label": "canary"
+      },
+      "pass": true,
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
     }
   },
   {
     "type": "NodeStarted",
     "event": {
       "id": "observe",
+      "cursor": {
+        "id": "c1",
+        "label": "canary"
+      },
       "inputs": {
         "percent": 10,
         "version": "8"
@@ -180,6 +220,10 @@
     "type": "NodeSucceeded",
     "event": {
       "id": "observe",
+      "cursor": {
+        "id": "c1",
+        "label": "canary"
+      },
       "outputs": {
         "percent": 10,
         "version": "8"
@@ -192,6 +236,10 @@
       "name": "healthy-and-more-to-shift",
       "from": "observe",
       "to": "shift-traffic",
+      "cursor": {
+        "id": "c1",
+        "label": "canary"
+      },
       "inputs": {
         "percent": 10,
         "version": "8"
@@ -201,9 +249,31 @@
   {
     "type": "EdgeStarted",
     "event": {
-      "name": "healthy-and-more-to-shift[0]",
+      "name": "healthy-and-more-to-shift",
+      "condition": "healthy",
       "from": "observe",
       "to": "shift-traffic",
+      "cursor": {
+        "id": "c1",
+        "label": "canary"
+      },
+      "inputs": {
+        "percent": 10,
+        "version": "8"
+      }
+    }
+  },
+  {
+    "type": "EdgeStarted",
+    "event": {
+      "name": "healthy-and-more-to-shift",
+      "condition": "more-to-shift",
+      "from": "observe",
+      "to": "shift-traffic",
+      "cursor": {
+        "id": "c1",
+        "label": "canary"
+      },
       "inputs": {
         "percent": 10,
         "version": "8"
@@ -213,10 +283,37 @@
   {
     "type": "EdgeFinished",
     "event": {
-      "name": "healthy-and-more-to-shift[0]",
+      "name": "healthy-and-more-to-shift",
+      "condition": "healthy",
       "from": "observe",
       "to": "shift-traffic",
-      "pass": false
+      "cursor": {
+        "id": "c1",
+        "label": "canary"
+      },
+      "pass": false,
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
+    }
+  },
+  {
+    "type": "EdgeFinished",
+    "event": {
+      "name": "healthy-and-more-to-shift",
+      "condition": "more-to-shift",
+      "from": "observe",
+      "to": "shift-traffic",
+      "cursor": {
+        "id": "c1",
+        "label": "canary"
+      },
+      "pass": true,
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
     }
   },
   {
@@ -225,7 +322,15 @@
       "name": "healthy-and-more-to-shift",
       "from": "observe",
       "to": "shift-traffic",
-      "pass": false
+      "cursor": {
+        "id": "c1",
+        "label": "canary"
+      },
+      "pass": false,
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
     }
   },
   {
@@ -234,6 +339,10 @@
       "name": "healthy-and-fully-shifted",
       "from": "observe",
       "to": "done",
+      "cursor": {
+        "id": "c1",
+        "label": "canary"
+      },
       "inputs": {
         "percent": 10,
         "version": "8"
@@ -243,9 +352,31 @@
   {
     "type": "EdgeStarted",
     "event": {
-      "name": "healthy-and-fully-shifted[0]",
+      "name": "healthy-and-fully-shifted",
+      "condition": "fully-shifted",
       "from": "observe",
       "to": "done",
+      "cursor": {
+        "id": "c1",
+        "label": "canary"
+      },
+      "inputs": {
+        "percent": 10,
+        "version": "8"
+      }
+    }
+  },
+  {
+    "type": "EdgeStarted",
+    "event": {
+      "name": "healthy-and-fully-shifted",
+      "condition": "healthy",
+      "from": "observe",
+      "to": "done",
+      "cursor": {
+        "id": "c1",
+        "label": "canary"
+      },
       "inputs": {
         "percent": 10,
         "version": "8"
@@ -255,10 +386,37 @@
   {
     "type": "EdgeFinished",
     "event": {
-      "name": "healthy-and-fully-shifted[0]",
+      "name": "healthy-and-fully-shifted",
+      "condition": "fully-shifted",
       "from": "observe",
       "to": "done",
-      "pass": false
+      "cursor": {
+        "id": "c1",
+        "label": "canary"
+      },
+      "pass": false,
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
+    }
+  },
+  {
+    "type": "EdgeFinished",
+    "event": {
+      "name": "healthy-and-fully-shifted",
+      "condition": "healthy",
+      "from": "observe",
+      "to": "done",
+      "cursor": {
+        "id": "c1",
+        "label": "canary"
+      },
+      "pass": false,
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
     }
   },
   {
@@ -267,7 +425,15 @@
       "name": "healthy-and-fully-shifted",
       "from": "observe",
       "to": "done",
-      "pass": false
+      "cursor": {
+        "id": "c1",
+        "label": "canary"
+      },
+      "pass": false,
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
     }
   },
   {
@@ -276,6 +442,10 @@
       "name": "unhealthy",
       "from": "observe",
       "to": "rollback",
+      "cursor": {
+        "id": "c1",
+        "label": "canary"
+      },
       "inputs": {
         "percent": 10,
         "version": "8"
@@ -288,7 +458,15 @@
       "name": "unhealthy",
       "from": "observe",
       "to": "rollback",
-      "pass": false
+      "cursor": {
+        "id": "c1",
+        "label": "canary"
+      },
+      "pass": false,
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
     }
   },
   {
@@ -322,6 +500,10 @@
       "name": "healthy-and-more-to-shift",
       "from": "observe",
       "to": "shift-traffic",
+      "cursor": {
+        "id": "c1",
+        "label": "canary"
+      },
       "inputs": {
         "percent": 10,
         "version": "8"
@@ -331,30 +513,31 @@
   {
     "type": "EdgeStarted",
     "event": {
-      "name": "healthy-and-more-to-shift[0]",
+      "name": "healthy-and-more-to-shift",
+      "condition": "healthy",
       "from": "observe",
       "to": "shift-traffic",
+      "cursor": {
+        "id": "c1",
+        "label": "canary"
+      },
       "inputs": {
         "percent": 10,
         "version": "8"
       }
-    }
-  },
-  {
-    "type": "EdgeFinished",
-    "event": {
-      "name": "healthy-and-more-to-shift[0]",
-      "from": "observe",
-      "to": "shift-traffic",
-      "pass": true
     }
   },
   {
     "type": "EdgeStarted",
     "event": {
-      "name": "healthy-and-more-to-shift[1]",
+      "name": "healthy-and-more-to-shift",
+      "condition": "more-to-shift",
       "from": "observe",
       "to": "shift-traffic",
+      "cursor": {
+        "id": "c1",
+        "label": "canary"
+      },
       "inputs": {
         "percent": 10,
         "version": "8"
@@ -364,10 +547,37 @@
   {
     "type": "EdgeFinished",
     "event": {
-      "name": "healthy-and-more-to-shift[1]",
+      "name": "healthy-and-more-to-shift",
+      "condition": "healthy",
       "from": "observe",
       "to": "shift-traffic",
-      "pass": true
+      "cursor": {
+        "id": "c1",
+        "label": "canary"
+      },
+      "pass": true,
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
+    }
+  },
+  {
+    "type": "EdgeFinished",
+    "event": {
+      "name": "healthy-and-more-to-shift",
+      "condition": "more-to-shift",
+      "from": "observe",
+      "to": "shift-traffic",
+      "cursor": {
+        "id": "c1",
+        "label": "canary"
+      },
+      "pass": true,
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
     }
   },
   {
@@ -376,13 +586,25 @@
       "name": "healthy-and-more-to-shift",
       "from": "observe",
       "to": "shift-traffic",
-      "pass": true
+      "cursor": {
+        "id": "c1",
+        "label": "canary"
+      },
+      "pass": true,
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
     }
   },
   {
     "type": "NodeStarted",
     "event": {
       "id": "shift-traffic",
+      "cursor": {
+        "id": "c1",
+        "label": "canary"
+      },
       "inputs": {
         "percent": 10,
         "version": "8"
@@ -393,6 +615,10 @@
     "type": "NodeSucceeded",
     "event": {
       "id": "shift-traffic",
+      "cursor": {
+        "id": "c1",
+        "label": "canary"
+      },
       "outputs": {
         "percent": 50,
         "version": "8"
@@ -405,6 +631,10 @@
       "name": "shifted",
       "from": "shift-traffic",
       "to": "observe",
+      "cursor": {
+        "id": "c1",
+        "label": "canary"
+      },
       "inputs": {
         "percent": 50,
         "version": "8"
@@ -417,13 +647,25 @@
       "name": "shifted",
       "from": "shift-traffic",
       "to": "observe",
-      "pass": true
+      "cursor": {
+        "id": "c1",
+        "label": "canary"
+      },
+      "pass": true,
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
     }
   },
   {
     "type": "NodeStarted",
     "event": {
       "id": "observe",
+      "cursor": {
+        "id": "c1",
+        "label": "canary"
+      },
       "inputs": {
         "percent": 50,
         "version": "8"
@@ -434,6 +676,10 @@
     "type": "NodeSucceeded",
     "event": {
       "id": "observe",
+      "cursor": {
+        "id": "c1",
+        "label": "canary"
+      },
       "outputs": {
         "percent": 50,
         "version": "8"
@@ -446,6 +692,10 @@
       "name": "healthy-and-more-to-shift",
       "from": "observe",
       "to": "shift-traffic",
+      "cursor": {
+        "id": "c1",
+        "label": "canary"
+      },
       "inputs": {
         "percent": 50,
         "version": "8"
@@ -455,9 +705,31 @@
   {
     "type": "EdgeStarted",
     "event": {
-      "name": "healthy-and-more-to-shift[0]",
+      "name": "healthy-and-more-to-shift",
+      "condition": "healthy",
       "from": "observe",
       "to": "shift-traffic",
+      "cursor": {
+        "id": "c1",
+        "label": "canary"
+      },
+      "inputs": {
+        "percent": 50,
+        "version": "8"
+      }
+    }
+  },
+  {
+    "type": "EdgeStarted",
+    "event": {
+      "name": "healthy-and-more-to-shift",
+      "condition": "more-to-shift",
+      "from": "observe",
+      "to": "shift-traffic",
+      "cursor": {
+        "id": "c1",
+        "label": "canary"
+      },
       "inputs": {
         "percent": 50,
         "version": "8"
@@ -467,10 +739,37 @@
   {
     "type": "EdgeFinished",
     "event": {
-      "name": "healthy-and-more-to-shift[0]",
+      "name": "healthy-and-more-to-shift",
+      "condition": "healthy",
       "from": "observe",
       "to": "shift-traffic",
-      "pass": false
+      "cursor": {
+        "id": "c1",
+        "label": "canary"
+      },
+      "pass": false,
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
+    }
+  },
+  {
+    "type": "EdgeFinished",
+    "event": {
+      "name": "healthy-and-more-to-shift",
+      "condition": "more-to-shift",
+      "from": "observe",
+      "to": "shift-traffic",
+      "cursor": {
+        "id": "c1",
+        "label": "canary"
+      },
+      "pass": true,
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
     }
   },
   {
@@ -479,7 +778,15 @@
       "name": "healthy-and-more-to-shift",
       "from": "observe",
       "to": "shift-traffic",
-      "pass": false
+      "cursor": {
+        "id": "c1",
+        "label": "canary"
+      },
+      "pass": false,
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
     }
   },
   {
@@ -488,6 +795,10 @@
       "name": "healthy-and-fully-shifted",
       "from": "observe",
       "to": "done",
+      "cursor": {
+        "id": "c1",
+        "label": "canary"
+      },
       "inputs": {
         "percent": 50,
         "version": "8"
@@ -497,9 +808,31 @@
   {
     "type": "EdgeStarted",
     "event": {
-      "name": "healthy-and-fully-shifted[0]",
+      "name": "healthy-and-fully-shifted",
+      "condition": "fully-shifted",
       "from": "observe",
       "to": "done",
+      "cursor": {
+        "id": "c1",
+        "label": "canary"
+      },
+      "inputs": {
+        "percent": 50,
+        "version": "8"
+      }
+    }
+  },
+  {
+    "type": "EdgeStarted",
+    "event": {
+      "name": "healthy-and-fully-shifted",
+      "condition": "healthy",
+      "from": "observe",
+      "to": "done",
+      "cursor": {
+        "id": "c1",
+        "label": "canary"
+      },
       "inputs": {
         "percent": 50,
         "version": "8"
@@ -509,10 +842,37 @@
   {
     "type": "EdgeFinished",
     "event": {
-      "name": "healthy-and-fully-shifted[0]",
+      "name": "healthy-and-fully-shifted",
+      "condition": "fully-shifted",
       "from": "observe",
       "to": "done",
-      "pass": false
+      "cursor": {
+        "id": "c1",
+        "label": "canary"
+      },
+      "pass": false,
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
+    }
+  },
+  {
+    "type": "EdgeFinished",
+    "event": {
+      "name": "healthy-and-fully-shifted",
+      "condition": "healthy",
+      "from": "observe",
+      "to": "done",
+      "cursor": {
+        "id": "c1",
+        "label": "canary"
+      },
+      "pass": false,
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
     }
   },
   {
@@ -521,7 +881,15 @@
       "name": "healthy-and-fully-shifted",
       "from": "observe",
       "to": "done",
-      "pass": false
+      "cursor": {
+        "id": "c1",
+        "label": "canary"
+      },
+      "pass": false,
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
     }
   },
   {
@@ -530,6 +898,10 @@
       "name": "unhealthy",
       "from": "observe",
       "to": "rollback",
+      "cursor": {
+        "id": "c1",
+        "label": "canary"
+      },
       "inputs": {
         "percent": 50,
         "version": "8"
@@ -542,7 +914,15 @@
       "name": "unhealthy",
       "from": "observe",
       "to": "rollback",
-      "pass": false
+      "cursor": {
+        "id": "c1",
+        "label": "canary"
+      },
+      "pass": false,
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
     }
   },
   {
@@ -576,6 +956,10 @@
       "name": "healthy-and-more-to-shift",
       "from": "observe",
       "to": "shift-traffic",
+      "cursor": {
+        "id": "c1",
+        "label": "canary"
+      },
       "inputs": {
         "percent": 50,
         "version": "8"
@@ -585,30 +969,31 @@
   {
     "type": "EdgeStarted",
     "event": {
-      "name": "healthy-and-more-to-shift[0]",
+      "name": "healthy-and-more-to-shift",
+      "condition": "healthy",
       "from": "observe",
       "to": "shift-traffic",
+      "cursor": {
+        "id": "c1",
+        "label": "canary"
+      },
       "inputs": {
         "percent": 50,
         "version": "8"
       }
-    }
-  },
-  {
-    "type": "EdgeFinished",
-    "event": {
-      "name": "healthy-and-more-to-shift[0]",
-      "from": "observe",
-      "to": "shift-traffic",
-      "pass": true
     }
   },
   {
     "type": "EdgeStarted",
     "event": {
-      "name": "healthy-and-more-to-shift[1]",
+      "name": "healthy-and-more-to-shift",
+      "condition": "more-to-shift",
       "from": "observe",
       "to": "shift-traffic",
+      "cursor": {
+        "id": "c1",
+        "label": "canary"
+      },
       "inputs": {
         "percent": 50,
         "version": "8"
@@ -618,10 +1003,37 @@
   {
     "type": "EdgeFinished",
     "event": {
-      "name": "healthy-and-more-to-shift[1]",
+      "name": "healthy-and-more-to-shift",
+      "condition": "healthy",
       "from": "observe",
       "to": "shift-traffic",
-      "pass": true
+      "cursor": {
+        "id": "c1",
+        "label": "canary"
+      },
+      "pass": true,
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
+    }
+  },
+  {
+    "type": "EdgeFinished",
+    "event": {
+      "name": "healthy-and-more-to-shift",
+      "condition": "more-to-shift",
+      "from": "observe",
+      "to": "shift-traffic",
+      "cursor": {
+        "id": "c1",
+        "label": "canary"
+      },
+      "pass": true,
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
     }
   },
   {
@@ -630,13 +1042,25 @@
       "name": "healthy-and-more-to-shift",
       "from": "observe",
       "to": "shift-traffic",
-      "pass": true
+      "cursor": {
+        "id": "c1",
+        "label": "canary"
+      },
+      "pass": true,
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
     }
   },
   {
     "type": "NodeStarted",
     "event": {
       "id": "shift-traffic",
+      "cursor": {
+        "id": "c1",
+        "label": "canary"
+      },
       "inputs": {
         "percent": 50,
         "version": "8"
@@ -647,6 +1071,10 @@
     "type": "NodeSucceeded",
     "event": {
       "id": "shift-traffic",
+      "cursor": {
+        "id": "c1",
+        "label": "canary"
+      },
       "outputs": {
         "percent": 100,
         "version": "8"
@@ -659,6 +1087,10 @@
       "name": "shifted",
       "from": "shift-traffic",
       "to": "observe",
+      "cursor": {
+        "id": "c1",
+        "label": "canary"
+      },
       "inputs": {
         "percent": 100,
         "version": "8"
@@ -671,13 +1103,25 @@
       "name": "shifted",
       "from": "shift-traffic",
       "to": "observe",
-      "pass": true
+      "cursor": {
+        "id": "c1",
+        "label": "canary"
+      },
+      "pass": true,
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
     }
   },
   {
     "type": "NodeStarted",
     "event": {
       "id": "observe",
+      "cursor": {
+        "id": "c1",
+        "label": "canary"
+      },
       "inputs": {
         "percent": 100,
         "version": "8"
@@ -688,6 +1132,10 @@
     "type": "NodeSucceeded",
     "event": {
       "id": "observe",
+      "cursor": {
+        "id": "c1",
+        "label": "canary"
+      },
       "outputs": {
         "percent": 100,
         "version": "8"
@@ -700,6 +1148,10 @@
       "name": "healthy-and-more-to-shift",
       "from": "observe",
       "to": "shift-traffic",
+      "cursor": {
+        "id": "c1",
+        "label": "canary"
+      },
       "inputs": {
         "percent": 100,
         "version": "8"
@@ -709,9 +1161,31 @@
   {
     "type": "EdgeStarted",
     "event": {
-      "name": "healthy-and-more-to-shift[0]",
+      "name": "healthy-and-more-to-shift",
+      "condition": "healthy",
       "from": "observe",
       "to": "shift-traffic",
+      "cursor": {
+        "id": "c1",
+        "label": "canary"
+      },
+      "inputs": {
+        "percent": 100,
+        "version": "8"
+      }
+    }
+  },
+  {
+    "type": "EdgeStarted",
+    "event": {
+      "name": "healthy-and-more-to-shift",
+      "condition": "more-to-shift",
+      "from": "observe",
+      "to": "shift-traffic",
+      "cursor": {
+        "id": "c1",
+        "label": "canary"
+      },
       "inputs": {
         "percent": 100,
         "version": "8"
@@ -721,10 +1195,37 @@
   {
     "type": "EdgeFinished",
     "event": {
-      "name": "healthy-and-more-to-shift[0]",
+      "name": "healthy-and-more-to-shift",
+      "condition": "healthy",
       "from": "observe",
       "to": "shift-traffic",
-      "pass": false
+      "cursor": {
+        "id": "c1",
+        "label": "canary"
+      },
+      "pass": false,
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
+    }
+  },
+  {
+    "type": "EdgeFinished",
+    "event": {
+      "name": "healthy-and-more-to-shift",
+      "condition": "more-to-shift",
+      "from": "observe",
+      "to": "shift-traffic",
+      "cursor": {
+        "id": "c1",
+        "label": "canary"
+      },
+      "pass": false,
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
     }
   },
   {
@@ -733,7 +1234,15 @@
       "name": "healthy-and-more-to-shift",
       "from": "observe",
       "to": "shift-traffic",
-      "pass": false
+      "cursor": {
+        "id": "c1",
+        "label": "canary"
+      },
+      "pass": false,
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
     }
   },
   {
@@ -742,6 +1251,10 @@
       "name": "healthy-and-fully-shifted",
       "from": "observe",
       "to": "done",
+      "cursor": {
+        "id": "c1",
+        "label": "canary"
+      },
       "inputs": {
         "percent": 100,
         "version": "8"
@@ -751,9 +1264,31 @@
   {
     "type": "EdgeStarted",
     "event": {
-      "name": "healthy-and-fully-shifted[0]",
+      "name": "healthy-and-fully-shifted",
+      "condition": "fully-shifted",
       "from": "observe",
       "to": "done",
+      "cursor": {
+        "id": "c1",
+        "label": "canary"
+      },
+      "inputs": {
+        "percent": 100,
+        "version": "8"
+      }
+    }
+  },
+  {
+    "type": "EdgeStarted",
+    "event": {
+      "name": "healthy-and-fully-shifted",
+      "condition": "healthy",
+      "from": "observe",
+      "to": "done",
+      "cursor": {
+        "id": "c1",
+        "label": "canary"
+      },
       "inputs": {
         "percent": 100,
         "version": "8"
@@ -763,10 +1298,37 @@
   {
     "type": "EdgeFinished",
     "event": {
-      "name": "healthy-and-fully-shifted[0]",
+      "name": "healthy-and-fully-shifted",
+      "condition": "fully-shifted",
       "from": "observe",
       "to": "done",
-      "pass": false
+      "cursor": {
+        "id": "c1",
+        "label": "canary"
+      },
+      "pass": true,
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
+    }
+  },
+  {
+    "type": "EdgeFinished",
+    "event": {
+      "name": "healthy-and-fully-shifted",
+      "condition": "healthy",
+      "from": "observe",
+      "to": "done",
+      "cursor": {
+        "id": "c1",
+        "label": "canary"
+      },
+      "pass": false,
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
     }
   },
   {
@@ -775,7 +1337,15 @@
       "name": "healthy-and-fully-shifted",
       "from": "observe",
       "to": "done",
-      "pass": false
+      "cursor": {
+        "id": "c1",
+        "label": "canary"
+      },
+      "pass": false,
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
     }
   },
   {
@@ -784,6 +1354,10 @@
       "name": "unhealthy",
       "from": "observe",
       "to": "rollback",
+      "cursor": {
+        "id": "c1",
+        "label": "canary"
+      },
       "inputs": {
         "percent": 100,
         "version": "8"
@@ -796,7 +1370,15 @@
       "name": "unhealthy",
       "from": "observe",
       "to": "rollback",
-      "pass": false
+      "cursor": {
+        "id": "c1",
+        "label": "canary"
+      },
+      "pass": false,
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
     }
   },
   {
@@ -830,6 +1412,10 @@
       "name": "healthy-and-more-to-shift",
       "from": "observe",
       "to": "shift-traffic",
+      "cursor": {
+        "id": "c1",
+        "label": "canary"
+      },
       "inputs": {
         "percent": 100,
         "version": "8"
@@ -839,9 +1425,31 @@
   {
     "type": "EdgeStarted",
     "event": {
-      "name": "healthy-and-more-to-shift[0]",
+      "name": "healthy-and-more-to-shift",
+      "condition": "healthy",
       "from": "observe",
       "to": "shift-traffic",
+      "cursor": {
+        "id": "c1",
+        "label": "canary"
+      },
+      "inputs": {
+        "percent": 100,
+        "version": "8"
+      }
+    }
+  },
+  {
+    "type": "EdgeStarted",
+    "event": {
+      "name": "healthy-and-more-to-shift",
+      "condition": "more-to-shift",
+      "from": "observe",
+      "to": "shift-traffic",
+      "cursor": {
+        "id": "c1",
+        "label": "canary"
+      },
       "inputs": {
         "percent": 100,
         "version": "8"
@@ -851,10 +1459,37 @@
   {
     "type": "EdgeFinished",
     "event": {
-      "name": "healthy-and-more-to-shift[0]",
+      "name": "healthy-and-more-to-shift",
+      "condition": "healthy",
       "from": "observe",
       "to": "shift-traffic",
-      "pass": false
+      "cursor": {
+        "id": "c1",
+        "label": "canary"
+      },
+      "pass": false,
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
+    }
+  },
+  {
+    "type": "EdgeFinished",
+    "event": {
+      "name": "healthy-and-more-to-shift",
+      "condition": "more-to-shift",
+      "from": "observe",
+      "to": "shift-traffic",
+      "cursor": {
+        "id": "c1",
+        "label": "canary"
+      },
+      "pass": false,
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
     }
   },
   {
@@ -863,7 +1498,15 @@
       "name": "healthy-and-more-to-shift",
       "from": "observe",
       "to": "shift-traffic",
-      "pass": false
+      "cursor": {
+        "id": "c1",
+        "label": "canary"
+      },
+      "pass": false,
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
     }
   },
   {
@@ -872,6 +1515,10 @@
       "name": "healthy-and-fully-shifted",
       "from": "observe",
       "to": "done",
+      "cursor": {
+        "id": "c1",
+        "label": "canary"
+      },
       "inputs": {
         "percent": 100,
         "version": "8"
@@ -881,9 +1528,31 @@
   {
     "type": "EdgeStarted",
     "event": {
-      "name": "healthy-and-fully-shifted[0]",
+      "name": "healthy-and-fully-shifted",
+      "condition": "fully-shifted",
       "from": "observe",
       "to": "done",
+      "cursor": {
+        "id": "c1",
+        "label": "canary"
+      },
+      "inputs": {
+        "percent": 100,
+        "version": "8"
+      }
+    }
+  },
+  {
+    "type": "EdgeStarted",
+    "event": {
+      "name": "healthy-and-fully-shifted",
+      "condition": "healthy",
+      "from": "observe",
+      "to": "done",
+      "cursor": {
+        "id": "c1",
+        "label": "canary"
+      },
       "inputs": {
         "percent": 100,
         "version": "8"
@@ -893,10 +1562,37 @@
   {
     "type": "EdgeFinished",
     "event": {
-      "name": "healthy-and-fully-shifted[0]",
+      "name": "healthy-and-fully-shifted",
+      "condition": "fully-shifted",
       "from": "observe",
       "to": "done",
-      "pass": false
+      "cursor": {
+        "id": "c1",
+        "label": "canary"
+      },
+      "pass": true,
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
+    }
+  },
+  {
+    "type": "EdgeFinished",
+    "event": {
+      "name": "healthy-and-fully-shifted",
+      "condition": "healthy",
+      "from": "observe",
+      "to": "done",
+      "cursor": {
+        "id": "c1",
+        "label": "canary"
+      },
+      "pass": false,
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
     }
   },
   {
@@ -905,7 +1601,15 @@
       "name": "healthy-and-fully-shifted",
       "from": "observe",
       "to": "done",
-      "pass": false
+      "cursor": {
+        "id": "c1",
+        "label": "canary"
+      },
+      "pass": false,
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
     }
   },
   {
@@ -914,6 +1618,10 @@
       "name": "unhealthy",
       "from": "observe",
       "to": "rollback",
+      "cursor": {
+        "id": "c1",
+        "label": "canary"
+      },
       "inputs": {
         "percent": 100,
         "version": "8"
@@ -926,13 +1634,25 @@
       "name": "unhealthy",
       "from": "observe",
       "to": "rollback",
-      "pass": true
+      "cursor": {
+        "id": "c1",
+        "label": "canary"
+      },
+      "pass": true,
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
     }
   },
   {
     "type": "NodeStarted",
     "event": {
       "id": "rollback",
+      "cursor": {
+        "id": "c1",
+        "label": "canary"
+      },
       "inputs": {
         "percent": 100,
         "version": "8"
@@ -943,6 +1663,10 @@
     "type": "NodeSucceeded",
     "event": {
       "id": "rollback",
+      "cursor": {
+        "id": "c1",
+        "label": "canary"
+      },
       "outputs": {
         "percent": 0,
         "version": "8"

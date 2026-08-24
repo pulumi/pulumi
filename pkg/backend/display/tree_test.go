@@ -20,6 +20,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 
@@ -309,4 +310,40 @@ func TestTreeRenderDoesntRenderBeforeItHasContent(t *testing.T) {
 		assert.Truef(t, treeRenderer.dirty,
 			"Expecting the renderer to be dirty after headers are initialized, and after a tick has happened")
 	}()
+}
+
+// A resource's latest ephemeral status message is shown beneath its row, beyond its first line, while the
+// operation is in progress: this is how a workflow's diagram is rendered live.
+func TestTreeRenderStatusBlock(t *testing.T) {
+	t.Parallel()
+
+	var buf bytes.Buffer
+	term := terminal.NewMockTerminal(&buf, 200, 100, true)
+	treeRenderer, display := createRendererAndDisplay(term, true)
+	urn := resource.NewURN("stack", "project", "", "pulumi:index:Workflow", "pipeline")
+	display.processNormalEvent(engine.NewEvent(engine.DiagEventPayload{
+		URN:       urn,
+		Ephemeral: true,
+		Severity:  diag.Info,
+		Message:   "workflow: release#1 @ dev — running dev\n  ci\n    └─ start ─▶ dev\n  dev ◀ release#1\n",
+	}))
+	treeRenderer.markDirty()
+	treeRenderer.frame(false /* locked */, false /* done */)
+
+	rows := make([]string, 0, len(treeRenderer.treeTableRows))
+	for _, row := range treeRenderer.treeTableRows {
+		rows = append(rows, colors.Never.Colorize(row))
+	}
+	// The header, the implicit stack row, the workflow row and the three block lines.
+	require.Len(t, rows, 6, "rows: %q", rows)
+	assert.True(t, strings.HasSuffix(rows[2], "workflow: release#1 @ dev — running dev"), rows[2])
+	assert.Equal(t, []string{"        ci", "          └─ start ─▶ dev", "        dev ◀ release#1"}, rows[3:])
+
+	// A later single-line status replaces the block.
+	display.processNormalEvent(engine.NewEvent(engine.DiagEventPayload{
+		URN: urn, Ephemeral: true, Severity: diag.Info, Message: "done",
+	}))
+	treeRenderer.markDirty()
+	treeRenderer.frame(false /* locked */, false /* done */)
+	require.Len(t, treeRenderer.treeTableRows, 3)
 }

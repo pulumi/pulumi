@@ -204,6 +204,10 @@
       "name": "us-metrics-good",
       "from": "verify-us-west",
       "to": "deploy-eu",
+      "cursor": {
+        "id": "c2",
+        "label": "us-west"
+      },
       "inputs": {
         "region": "us-west",
         "verified": true,
@@ -217,7 +221,15 @@
       "name": "us-metrics-good",
       "from": "verify-us-west",
       "to": "deploy-eu",
-      "pass": true
+      "cursor": {
+        "id": "c2",
+        "label": "us-west"
+      },
+      "pass": true,
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
     }
   },
   {
@@ -226,6 +238,10 @@
       "name": "us-metrics-good",
       "from": "verify-us-east",
       "to": "deploy-eu",
+      "cursor": {
+        "id": "c3",
+        "label": "us-east"
+      },
       "inputs": {
         "region": "us-east",
         "verified": true,
@@ -239,7 +255,15 @@
       "name": "us-metrics-good",
       "from": "verify-us-east",
       "to": "deploy-eu",
-      "pass": true
+      "cursor": {
+        "id": "c3",
+        "label": "us-east"
+      },
+      "pass": true,
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
     }
   },
   {
@@ -248,7 +272,26 @@
       "name": "us-metrics-good",
       "from": null,
       "to": "deploy-eu",
-      "pass": true
+      "cursor": {
+        "id": "c3",
+        "label": "us-east"
+      },
+      "pass": true,
+      "overlay": {
+        "values": {
+          "verify-us-east": {
+            "region": "us-east",
+            "verified": true,
+            "version": "7"
+          },
+          "verify-us-west": {
+            "region": "us-west",
+            "verified": true,
+            "version": "7"
+          }
+        },
+        "deleted": []
+      }
     }
   },
   {
@@ -274,6 +317,10 @@
     "type": "NodeStarted",
     "event": {
       "id": "deploy-eu",
+      "cursor": {
+        "id": "c4",
+        "label": "merged"
+      },
       "inputs": {
         "verify-us-east": {
           "region": "us-east",
@@ -292,6 +339,10 @@
     "type": "NodeSucceeded",
     "event": {
       "id": "deploy-eu",
+      "cursor": {
+        "id": "c4",
+        "label": "merged"
+      },
       "outputs": {
         "region": "eu",
         "verify-us-east": {
@@ -313,6 +364,10 @@
       "name": "deployed",
       "from": "deploy-eu",
       "to": "verify-eu",
+      "cursor": {
+        "id": "c4",
+        "label": "merged"
+      },
       "inputs": {
         "region": "eu",
         "verify-us-east": {
@@ -334,13 +389,25 @@
       "name": "deployed",
       "from": "deploy-eu",
       "to": "verify-eu",
-      "pass": true
+      "cursor": {
+        "id": "c4",
+        "label": "merged"
+      },
+      "pass": true,
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
     }
   },
   {
     "type": "NodeStarted",
     "event": {
       "id": "verify-eu",
+      "cursor": {
+        "id": "c4",
+        "label": "merged"
+      },
       "inputs": {
         "region": "eu",
         "verify-us-east": {
@@ -360,6 +427,10 @@
     "type": "NodeSucceeded",
     "event": {
       "id": "verify-eu",
+      "cursor": {
+        "id": "c4",
+        "label": "merged"
+      },
       "outputs": {
         "region": "eu",
         "verified": true,
@@ -382,6 +453,10 @@
       "name": "eu-metrics-good",
       "from": "verify-eu",
       "to": "done",
+      "cursor": {
+        "id": "c4",
+        "label": "merged"
+      },
       "inputs": {
         "region": "eu",
         "verified": true,
@@ -404,7 +479,15 @@
       "name": "eu-metrics-good",
       "from": "verify-eu",
       "to": "done",
-      "pass": false
+      "cursor": {
+        "id": "c4",
+        "label": "merged"
+      },
+      "pass": false,
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
     }
   },
   {
@@ -480,6 +563,10 @@
       "name": "eu-metrics-good",
       "from": "verify-eu",
       "to": "done",
+      "cursor": {
+        "id": "c4",
+        "label": "merged"
+      },
       "inputs": {
         "region": "eu",
         "verified": true,
@@ -502,13 +589,25 @@
       "name": "eu-metrics-good",
       "from": "verify-eu",
       "to": "done",
-      "pass": true
+      "cursor": {
+        "id": "c4",
+        "label": "merged"
+      },
+      "pass": true,
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
     }
   },
   {
     "type": "NodeStarted",
     "event": {
       "id": "done",
+      "cursor": {
+        "id": "c4",
+        "label": "merged"
+      },
       "inputs": {
         "region": "eu",
         "verified": true,
@@ -529,6 +628,10 @@
     "type": "NodeSucceeded",
     "event": {
       "id": "done",
+      "cursor": {
+        "id": "c4",
+        "label": "merged"
+      },
       "outputs": {
         "region": "eu",
         "verified": true,

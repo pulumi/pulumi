@@ -1,0 +1,19 @@
+<{%fg 13%}><{%bold%}>View Live: <{%underline%}><{%fg 12%}>http://example.com<{%reset%}>
+
+
+ <{%bold%}><{%fg 3%}>~ <{%reset%}> pulumi:index:Workflow wf <{%bold%}><{%fg 3%}>updating<{%reset%}> [diff: <{%fg 3%}>~edges,nodes<{%reset%}><{%reset%}>]
+ <{%fg 3%}>~ <{%reset%}> pulumi:index:Workflow wf <{%fg 3%}>updated<{%reset%}> [diff: <{%fg 3%}>~edges,nodes<{%reset%}><{%reset%}>]
+ <{%fg 3%}>~ <{%reset%}> pulumi:index:Workflow wf <{%fg 3%}>updated<{%reset%}> [diff: <{%fg 3%}>~edges,nodes<{%reset%}><{%reset%}>]; <{%reset%}>workflow: release#1 @ prod — parked
+ <{%reset%}>  <{%reset%}> pulumi:pulumi:Stack project-stack <{%reset%}><{%reset%}> 
+<{%fg 13%}><{%bold%}>Diagnostics:<{%reset%}>
+  <{%fg 12%}>pulumi:index:Workflow (wf):<{%reset%}>
+    <{%reset%}>workflow: release#1 @ prod — parked
+      dev
+        └─ promote ─▶ prod
+      prod ◀ release#1
+    cursors
+      release#1 @ prod — parked
+
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    <{%fg 3%}>~ 1 to update<{%reset%}>
+

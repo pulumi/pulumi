@@ -1,0 +1,29 @@
+<{%reset%}>workflow: no cursors
+  dev
+cursors
+<{%reset%}>
+<{%reset%}>workflow: release#1 @ dev — parked
+  dev ◀ release#1
+cursors
+  release#1 @ dev — parked
+<{%reset%}>
+<{%reset%}>workflow: release#1 @ dev — parked
+  dev ◀ release#1
+cursors
+  release#1 @ dev — parked
+<{%reset%}>
+<{%reset%}>workflow: release#1 @ dev — running dev
+  dev ◀ release#1
+cursors
+  release#1 @ dev — running dev
+<{%reset%}>
+<{%reset%}>workflow: release#1 @ dev — parked
+  dev ◀ release#1
+cursors
+  release#1 @ dev — parked
+<{%reset%}>
+<{%reset%}>workflow: release#1 @ dev — parked
+  dev ◀ release#1
+cursors
+  release#1 @ dev — parked
+<{%reset%}>

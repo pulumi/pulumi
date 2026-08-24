@@ -107,36 +107,52 @@ func mustNode(t *testing.T, w workflow.Workflow, id string) workflow.Node {
 	return n
 }
 
-func always(context.Context, workflow.Workflow, property.Map) (bool, error) { return true, nil }
-
-// Passes when the value at key is a bool that is true.
-func flag(key string) workflow.EdgeFunc {
-	return func(_ context.Context, _ workflow.Workflow, in property.Map) (bool, error) {
-		v := in.Get(key)
-		return v.IsBool() && v.AsBool(), nil
+// An edge condition that sets nothing on the cursor.
+func cond(f func(in property.Map) (bool, error)) workflow.EdgeFunc {
+	return func(_ context.Context, _ workflow.Workflow, _ workflow.Cursor, in property.Map) (
+		bool, workflow.Overlay, error,
+	) {
+		pass, err := f(in)
+		return pass, workflow.Overlay{}, err
 	}
 }
 
+func always(context.Context, workflow.Workflow, workflow.Cursor, property.Map) (bool, workflow.Overlay, error) {
+	return true, workflow.Overlay{}, nil
+}
+
+// Passes when the value at key is a bool that is true.
+func flag(key string) workflow.EdgeFunc {
+	return cond(func(in property.Map) (bool, error) {
+		v := in.Get(key)
+		return v.IsBool() && v.AsBool(), nil
+	})
+}
+
 func not(f workflow.EdgeFunc) workflow.EdgeFunc {
-	return func(ctx context.Context, w workflow.Workflow, in property.Map) (bool, error) {
-		ok, err := f(ctx, w, in)
-		return !ok, err
+	return func(ctx context.Context, w workflow.Workflow, c workflow.Cursor, in property.Map) (
+		bool, workflow.Overlay, error,
+	) {
+		ok, out, err := f(ctx, w, c, in)
+		return !ok, out, err
 	}
 }
 
 // Passes when *v is true; the test flips v to simulate the world changing between Progress calls.
 func external(v *bool) workflow.EdgeFunc {
-	return func(context.Context, workflow.Workflow, property.Map) (bool, error) { return *v, nil }
+	return cond(func(property.Map) (bool, error) { return *v, nil })
 }
 
 // A node that merges extra keys into its inputs.
 func with(extra map[string]property.Value) workflow.NodeFunc {
-	return func(_ context.Context, _ workflow.Workflow, in property.Map) (property.Map, error) {
+	return func(_ context.Context, _ workflow.Workflow, _ workflow.Cursor, in property.Map) (property.Map, error) {
 		out := in.AsMap()
 		maps.Copy(out, extra)
 		return property.NewMap(out), nil
 	}
 }
+
+func conds(m map[string]workflow.EdgeFunc) map[string]workflow.EdgeFunc { return m }
 
 // A blue/green deployment: deploy the green stack, verify it, wait for a human to approve the traffic
 // switch, then decommission blue. An unhealthy green stack (or an approval that times out) rolls back.
@@ -147,7 +163,7 @@ func TestBlueGreen(t *testing.T) {
 
 	// AddCursor does not run the node it places the cursor on, so releases start on a node of their own.
 	requested := w.NewNode("release-requested", with(nil))
-	deploy := w.NewNode("deploy-green", func(_ context.Context, _ workflow.Workflow, in property.Map) (
+	deploy := w.NewNode("deploy-green", func(_ context.Context, _ workflow.Workflow, _ workflow.Cursor, in property.Map) (
 		property.Map, error,
 	) {
 		return pmap(map[string]property.Value{
@@ -155,7 +171,7 @@ func TestBlueGreen(t *testing.T) {
 			"url":     str("https://green.example.com/" + in.Get("version").AsString()),
 		}), nil
 	})
-	verify := w.NewNode("verify-green", func(_ context.Context, _ workflow.Workflow, in property.Map) (
+	verify := w.NewNode("verify-green", func(_ context.Context, _ workflow.Workflow, _ workflow.Cursor, in property.Map) (
 		property.Map, error,
 	) {
 		// Only version 2.x is healthy in this simulation.
@@ -168,8 +184,12 @@ func TestBlueGreen(t *testing.T) {
 
 	w.NewEdge("start", requested, deploy, always)
 	w.NewEdge("deployed", deploy, verify, always)
-	w.NewAndEdge("healthy-and-approved", verify, switchTraffic, flag("healthy"), external(&approved))
-	w.NewOrEdge("unhealthy-or-timeout", verify, rollback, not(flag("healthy")), external(&timedOut))
+	w.NewAndEdge("healthy-and-approved", verify, switchTraffic, conds(map[string]workflow.EdgeFunc{
+		"healthy": flag("healthy"), "approved": external(&approved),
+	}))
+	w.NewOrEdge("unhealthy-or-timeout", verify, rollback, conds(map[string]workflow.EdgeFunc{
+		"unhealthy": not(flag("healthy")), "timeout": external(&timedOut),
+	}))
 	w.NewEdge("switched", switchTraffic, decommission, always)
 
 	r := &recorder{t: t, w: w}
@@ -233,20 +253,22 @@ func (ro *rollout) define(w workflow.Workflow) (start, done workflow.Node) {
 	verify := map[string]workflow.Node{}
 	for _, region := range append(ro.usRegions, "eu") {
 		queue[region] = w.NewNode("queue-"+region, with(nil))
-		deploy[region] = w.NewNode("deploy-"+region, func(ctx context.Context, w workflow.Workflow, in property.Map) (
-			property.Map, error,
-		) {
+		deploy[region] = w.NewNode("deploy-"+region, func(
+			ctx context.Context, w workflow.Workflow, c workflow.Cursor, in property.Map,
+		) (property.Map, error) {
 			if ro.broken[region] {
 				return property.Map{}, fmt.Errorf("deploy to %s failed", region)
 			}
-			return with(map[string]property.Value{"region": str(region)})(ctx, w, in)
+			return with(map[string]property.Value{"region": str(region)})(ctx, w, c, in)
 		})
 		w.NewEdge("queued", queue[region], deploy[region], always)
 		verify[region] = w.NewNode("verify-"+region, with(map[string]property.Value{"verified": boolean(true)}))
 		w.NewEdge("deployed", deploy[region], verify[region], always)
 	}
 	start = w.NewNode("start", with(nil))
-	plan := w.NewNode("plan", func(_ context.Context, w workflow.Workflow, in property.Map) (property.Map, error) {
+	plan := w.NewNode("plan", func(
+		_ context.Context, w workflow.Workflow, _ workflow.Cursor, in property.Map,
+	) (property.Map, error) {
 		for _, region := range ro.usRegions {
 			w.AddCursor(queue[region], region, in)
 		}
@@ -339,7 +361,9 @@ func TestNodeFailure(t *testing.T) {
 	t.Parallel()
 	w := workflow.New()
 	start := w.NewNode("start", with(nil))
-	boom := w.NewNode("boom", func(context.Context, workflow.Workflow, property.Map) (property.Map, error) {
+	boom := w.NewNode("boom", func(
+		context.Context, workflow.Workflow, workflow.Cursor, property.Map,
+	) (property.Map, error) {
 		return property.Map{}, errors.New("deploy exploded")
 	})
 	w.NewEdge("go", start, boom, always)
@@ -389,7 +413,7 @@ func TestCanaryLoop(t *testing.T) {
 	w := workflow.New()
 
 	start := w.NewNode("start", with(nil))
-	shift := w.NewNode("shift-traffic", func(_ context.Context, _ workflow.Workflow, in property.Map) (
+	shift := w.NewNode("shift-traffic", func(_ context.Context, _ workflow.Workflow, _ workflow.Cursor, in property.Map) (
 		property.Map, error,
 	) {
 		percent := steps[0]
@@ -403,17 +427,21 @@ func TestCanaryLoop(t *testing.T) {
 	rollback := w.NewNode("rollback", with(map[string]property.Value{"percent": num(0)}))
 
 	metricsAre := func(want string) workflow.EdgeFunc {
-		return func(_ context.Context, _ workflow.Workflow, in property.Map) (bool, error) {
+		return cond(func(in property.Map) (bool, error) {
 			return metrics[in.Get("percent").AsNumber()] == want, nil
-		}
+		})
 	}
-	fullyShifted := func(_ context.Context, _ workflow.Workflow, in property.Map) (bool, error) {
+	fullyShifted := cond(func(in property.Map) (bool, error) {
 		return in.Get("percent").AsNumber() == 100, nil
-	}
+	})
 	w.NewEdge("start", start, shift, always)
 	w.NewEdge("shifted", shift, observe, always)
-	w.NewAndEdge("healthy-and-more-to-shift", observe, shift, metricsAre("good"), not(fullyShifted))
-	w.NewAndEdge("healthy-and-fully-shifted", observe, done, metricsAre("good"), fullyShifted)
+	w.NewAndEdge("healthy-and-more-to-shift", observe, shift, conds(map[string]workflow.EdgeFunc{
+		"healthy": metricsAre("good"), "more-to-shift": not(fullyShifted),
+	}))
+	w.NewAndEdge("healthy-and-fully-shifted", observe, done, conds(map[string]workflow.EdgeFunc{
+		"healthy": metricsAre("good"), "fully-shifted": fullyShifted,
+	}))
 	w.NewEdge("unhealthy", observe, rollback, metricsAre("bad"))
 
 	r := &recorder{t: t, w: w}
@@ -440,7 +468,9 @@ func TestRetry(t *testing.T) {
 	t.Parallel()
 	w := workflow.New()
 	start := w.NewNode("start", with(nil))
-	deploy := w.NewNode("deploy", func(_ context.Context, _ workflow.Workflow, in property.Map) (property.Map, error) {
+	deploy := w.NewNode("deploy", func(
+		_ context.Context, _ workflow.Workflow, _ workflow.Cursor, in property.Map,
+	) (property.Map, error) {
 		attempts := float64(1)
 		if in.Get("attempts").IsNumber() {
 			attempts = in.Get("attempts").AsNumber() + 1
@@ -451,13 +481,17 @@ func TestRetry(t *testing.T) {
 	done := w.NewNode("done", with(nil))
 	giveUp := w.NewNode("give-up", with(nil))
 
-	exhausted := func(_ context.Context, _ workflow.Workflow, in property.Map) (bool, error) {
+	exhausted := cond(func(in property.Map) (bool, error) {
 		return in.Get("attempts").AsNumber() >= in.Get("maxAttempts").AsNumber(), nil
-	}
+	})
 	w.NewEdge("start", start, deploy, always)
 	w.NewEdge("succeeded", deploy, done, flag("ok"))
-	w.NewAndEdge("retry", deploy, deploy, not(flag("ok")), not(exhausted))
-	w.NewAndEdge("exhausted", deploy, giveUp, not(flag("ok")), exhausted)
+	w.NewAndEdge("retry", deploy, deploy, conds(map[string]workflow.EdgeFunc{
+		"failed": not(flag("ok")), "attempts-left": not(exhausted),
+	}))
+	w.NewAndEdge("exhausted", deploy, giveUp, conds(map[string]workflow.EdgeFunc{
+		"failed": not(flag("ok")), "exhausted": exhausted,
+	}))
 
 	r := &recorder{t: t, w: w}
 	w.AddCursor(start, "three attempts", pmap(map[string]property.Value{"maxAttempts": num(3)}))
@@ -483,9 +517,9 @@ func TestContendedEnvironment(t *testing.T) {
 	prod := w.NewNode("prod", with(map[string]property.Value{"env": str("prod")}))
 	w.NewEdge("deploy", queue, staging, always)
 	w.NewEdge("deployed", staging, soak, always)
-	w.NewEdge("soaked", soak, prod, func(_ context.Context, _ workflow.Workflow, in property.Map) (bool, error) {
+	w.NewEdge("soaked", soak, prod, cond(func(in property.Map) (bool, error) {
 		return soaked[in.Get("version").AsString()], nil
-	})
+	}))
 	release := func(v string) property.Map { return pmap(map[string]property.Value{"version": str(v)}) }
 
 	r := &recorder{t: t, w: w}
@@ -557,8 +591,8 @@ func TestDynamicGraph(t *testing.T) {
 	t.Parallel()
 	w := workflow.New()
 	done := w.NewNode("done", with(nil))
-	var expand func(context.Context, workflow.Workflow, property.Map) (property.Map, error)
-	expand = func(_ context.Context, w workflow.Workflow, in property.Map) (property.Map, error) {
+	var expand func(context.Context, workflow.Workflow, workflow.Cursor, property.Map) (property.Map, error)
+	expand = func(_ context.Context, w workflow.Workflow, _ workflow.Cursor, in property.Map) (property.Map, error) {
 		remaining := in.Get("remaining").AsArray().AsSlice()
 		from, ok := w.NodeByID(in.Get("here").AsString())
 		require.True(t, ok)
@@ -594,7 +628,9 @@ func TestNodeFailureWithBystander(t *testing.T) {
 	// Two releases at one node that both move at once is a race, so each release has its own start.
 	startBad := w.NewNode("start-bad", with(nil))
 	startGood := w.NewNode("start-good", with(nil))
-	deploy := w.NewNode("deploy", func(_ context.Context, _ workflow.Workflow, in property.Map) (property.Map, error) {
+	deploy := w.NewNode("deploy", func(
+		_ context.Context, _ workflow.Workflow, _ workflow.Cursor, in property.Map,
+	) (property.Map, error) {
 		if broken {
 			return property.Map{}, errors.New("deploy exploded")
 		}
@@ -624,12 +660,12 @@ func TestEdgeFailure(t *testing.T) {
 	w := workflow.New()
 	start := w.NewNode("start", with(nil))
 	done := w.NewNode("done", with(nil))
-	w.NewEdge("metrics-ok", start, done, func(context.Context, workflow.Workflow, property.Map) (bool, error) {
+	w.NewEdge("metrics-ok", start, done, cond(func(property.Map) (bool, error) {
 		if metricsDown {
 			return false, errors.New("metrics backend unreachable")
 		}
 		return true, nil
-	})
+	}))
 
 	r := &recorder{t: t, w: w}
 	w.AddCursor(start, "", property.Map{})
@@ -646,9 +682,9 @@ func TestJoinAbort(t *testing.T) {
 	t.Parallel()
 	ro := newRollout()
 	metricsBad := map[string]*bool{"us-west": new(bool), "us-east": new(bool)}
-	anyBad := func(context.Context, workflow.Workflow, property.Map) (bool, error) {
+	anyBad := cond(func(property.Map) (bool, error) {
 		return *metricsBad["us-west"] || *metricsBad["us-east"], nil
-	}
+	})
 	w := workflow.New()
 	start, done := ro.define(w)
 	// Both regions aborting into one node in the same step would be a race, so each has its own.
@@ -753,7 +789,9 @@ func TestArrivalOrderSurvivesRestore(t *testing.T) {
 		prod := w.NewNode("prod", with(nil))
 		// Failing, this deploy first queues another release straight onto staging; the abort leaves that
 		// release unsettled there while the good release's entry into staging is committed beside it.
-		w.NewNode("deploy-bad", func(_ context.Context, w workflow.Workflow, in property.Map) (property.Map, error) {
+		w.NewNode("deploy-bad", func(
+			_ context.Context, w workflow.Workflow, _ workflow.Cursor, in property.Map,
+		) (property.Map, error) {
 			if !broken {
 				return in, nil
 			}
@@ -791,4 +829,135 @@ func TestArrivalOrderSurvivesRestore(t *testing.T) {
 	require.NoError(t, json.Unmarshal(resumed.State(), &after))
 	assert.Equal(t, before["nextCursor"], after["nextCursor"])
 	assert.ElementsMatch(t, before["cursors"], after["cursors"])
+}
+
+// An edge condition that passes, setting extra on the cursor and deleting the given keys.
+func setting(extra map[string]property.Value, deleting ...string) workflow.EdgeFunc {
+	return func(context.Context, workflow.Workflow, workflow.Cursor, property.Map) (bool, workflow.Overlay, error) {
+		return true, workflow.Overlay{Values: pmap(extra), Deleted: deleting}, nil
+	}
+}
+
+// Edge overlays: what a condition sets or deletes reaches the next node only if the cursor crosses that
+// edge because of it. Conditions of an And compose with the first name winning; only the passing condition
+// of an Or counts.
+func TestEdgeOverlays(t *testing.T) {
+	t.Parallel()
+	w := workflow.New()
+	start := w.NewNode("start", with(nil))
+	viaAnd := w.NewNode("via-and", with(nil))
+	viaOr := w.NewNode("via-or", with(nil))
+	end := w.NewNode("end", with(nil))
+	// The failing condition's overlay is discarded with the edge.
+	w.NewAndEdge("blocked", start, end, conds(map[string]workflow.EdgeFunc{
+		"sets": setting(map[string]property.Value{"blocked": str("yes")}, "start"), "never": flag("never"),
+	}))
+	// a wins over b: "who" is a's, "gone" stays deleted although b sets it, and b's deletion of "keep" goes
+	// through since a leaves it alone.
+	w.NewAndEdge("and", start, viaAnd, conds(map[string]workflow.EdgeFunc{
+		"b": setting(map[string]property.Value{"who": str("b"), "b": str("b"), "gone": str("b")}, "keep"),
+		"a": setting(map[string]property.Value{"who": str("a"), "a": str("a")}, "gone"),
+	}))
+	w.NewOrEdge("or", viaAnd, viaOr, conds(map[string]workflow.EdgeFunc{
+		"first":  cond(func(property.Map) (bool, error) { return false, nil }),
+		"second": setting(map[string]property.Value{"or": str("second")}),
+		"third":  setting(map[string]property.Value{"or": str("third")}),
+	}))
+	w.NewEdge("done", viaOr, end, setting(map[string]property.Value{"edge": str("done")}, "start"))
+
+	r := &recorder{t: t, w: w}
+	w.AddCursor(start, "", pmap(map[string]property.Value{"start": str("yes"), "gone": num(1), "keep": num(2)}))
+	require.NoError(t, r.progress())
+	assert.Equal(t, pmap(map[string]property.Value{
+		"who": str("a"), "a": str("a"), "b": str("b"), "or": str("second"), "edge": str("done"),
+	}), w.GetState(end).Outputs)
+	r.golden("edge-overlays")
+}
+
+// Reconcile re-runs the node function for parked cursors from the values they entered with, so a node
+// whose function depends on the world converges on every run, and its edges see the fresh outputs.
+func TestReconcile(t *testing.T) {
+	t.Parallel()
+	healthy := false
+	w := workflow.New()
+	start := w.NewNode("start", with(nil))
+	deploy := w.NewNode("deploy", func(_ context.Context, _ workflow.Workflow, _ workflow.Cursor, in property.Map) (
+		property.Map, error,
+	) {
+		return in.Set("healthy", boolean(healthy)).Set("runs", num(in.Get("runs").AsNumber()+1)), nil
+	})
+	done := w.NewNode("done", with(nil))
+	w.NewEdge("start", start, deploy, always)
+	w.NewEdge("healthy", deploy, done, flag("healthy"))
+
+	r := &recorder{t: t, w: w}
+	reconcile := func() {
+		updates := make(chan workflow.WorkflowUpdate)
+		finished := make(chan struct{})
+		go func() {
+			defer close(finished)
+			for u := range updates {
+				r.events = append(r.events, recorded{Type: strings.TrimPrefix(fmt.Sprintf("%T", u), "workflow."), Event: u})
+			}
+		}()
+		err := w.Reconcile(t.Context(), fsa.SyncRunner, updates)
+		close(updates)
+		<-finished
+		rec := recorded{Type: "ReconcileReturned"}
+		if err != nil {
+			rec.Error = err.Error()
+		}
+		r.events = append(r.events, rec)
+	}
+	w.AddCursor(start, "", pmap(map[string]property.Value{"runs": num(0)}))
+	require.NoError(t, r.progress())
+	r.note("deploy ran on arrival, so it is not reconciled; start has no cursor")
+	reconcile()
+	r.note("run 2: the cursor is parked on deploy, which is reconciled from the values it entered with")
+	require.NoError(t, r.progress())
+	reconcile()
+	r.note("run 3: the world healed, but the edge sees the previous run's outputs; reconcile sees the world")
+	healthy = true
+	require.NoError(t, r.progress())
+	reconcile()
+	r.note("run 4: the edge takes the fresh outputs")
+	require.NoError(t, r.progress())
+	assert.Equal(t, pmap(map[string]property.Value{"runs": num(1), "healthy": boolean(true)}), w.GetState(done).Outputs)
+
+	var cursors []string
+	w.Cursors(func(c workflow.Cursor, n workflow.Node) bool {
+		cursors = append(cursors, c.ID+"@"+n.ID())
+		return true
+	})
+	assert.Equal(t, []string{"c1@done"}, cursors)
+	r.golden("reconcile")
+}
+
+// A self-loop: an edge from a node to itself re-enters the node with its overlay applied, giving the new
+// visit fresh entered values — how a failed release rolls a node back to the last good one.
+func TestSelfLoop(t *testing.T) {
+	t.Parallel()
+	w := workflow.New()
+	start := w.NewNode("start", with(nil))
+	prod := w.NewNode("prod", with(nil))
+	w.NewEdge("enter", start, prod, always)
+	w.NewEdge("rollback", prod, prod, func(
+		_ context.Context, _ workflow.Workflow, _ workflow.Cursor, in property.Map,
+	) (bool, workflow.Overlay, error) {
+		if in.Get("sha").AsString() != "bad" {
+			return false, workflow.Overlay{}, nil
+		}
+		return true, workflow.Overlay{Values: pmap(map[string]property.Value{"sha": str("good")})}, nil
+	})
+	r := &recorder{t: t, w: w}
+	w.AddCursor(start, "release", pmap(map[string]property.Value{"sha": str("bad")}))
+	require.NoError(t, r.progress())
+	cursors := map[string]string{}
+	w.Cursors(func(c workflow.Cursor, n workflow.Node) bool {
+		cursors[c.Label] = n.ID()
+		return true
+	})
+	assert.Equal(t, map[string]string{"release": "prod"}, cursors)
+	assert.Equal(t, "good", w.GetState(prod).Outputs.Get("sha").AsString())
+	r.golden("self-loop")
 }

@@ -66,6 +66,10 @@
       "name": "deploy",
       "from": "queue",
       "to": "staging",
+      "cursor": {
+        "id": "c1",
+        "label": "A"
+      },
       "inputs": {
         "version": "A"
       }
@@ -77,13 +81,25 @@
       "name": "deploy",
       "from": "queue",
       "to": "staging",
-      "pass": true
+      "cursor": {
+        "id": "c1",
+        "label": "A"
+      },
+      "pass": true,
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
     }
   },
   {
     "type": "NodeStarted",
     "event": {
       "id": "staging",
+      "cursor": {
+        "id": "c1",
+        "label": "A"
+      },
       "inputs": {
         "version": "A"
       }
@@ -93,6 +109,10 @@
     "type": "NodeSucceeded",
     "event": {
       "id": "staging",
+      "cursor": {
+        "id": "c1",
+        "label": "A"
+      },
       "outputs": {
         "env": "staging",
         "version": "A"
@@ -105,6 +125,10 @@
       "name": "deployed",
       "from": "staging",
       "to": "soak",
+      "cursor": {
+        "id": "c1",
+        "label": "A"
+      },
       "inputs": {
         "env": "staging",
         "version": "A"
@@ -117,13 +141,25 @@
       "name": "deployed",
       "from": "staging",
       "to": "soak",
-      "pass": true
+      "cursor": {
+        "id": "c1",
+        "label": "A"
+      },
+      "pass": true,
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
     }
   },
   {
     "type": "NodeStarted",
     "event": {
       "id": "soak",
+      "cursor": {
+        "id": "c1",
+        "label": "A"
+      },
       "inputs": {
         "env": "staging",
         "version": "A"
@@ -134,6 +170,10 @@
     "type": "NodeSucceeded",
     "event": {
       "id": "soak",
+      "cursor": {
+        "id": "c1",
+        "label": "A"
+      },
       "outputs": {
         "env": "staging",
         "version": "A"
@@ -146,6 +186,10 @@
       "name": "soaked",
       "from": "soak",
       "to": "prod",
+      "cursor": {
+        "id": "c1",
+        "label": "A"
+      },
       "inputs": {
         "env": "staging",
         "version": "A"
@@ -158,7 +202,15 @@
       "name": "soaked",
       "from": "soak",
       "to": "prod",
-      "pass": false
+      "cursor": {
+        "id": "c1",
+        "label": "A"
+      },
+      "pass": false,
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
     }
   },
   {
@@ -199,6 +251,10 @@
       "name": "soaked",
       "from": "soak",
       "to": "prod",
+      "cursor": {
+        "id": "c1",
+        "label": "A"
+      },
       "inputs": {
         "env": "staging",
         "version": "A"
@@ -211,7 +267,15 @@
       "name": "soaked",
       "from": "soak",
       "to": "prod",
-      "pass": false
+      "cursor": {
+        "id": "c1",
+        "label": "A"
+      },
+      "pass": false,
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
     }
   },
   {
@@ -220,6 +284,10 @@
       "name": "deploy",
       "from": "queue",
       "to": "staging",
+      "cursor": {
+        "id": "c2",
+        "label": "B"
+      },
       "inputs": {
         "version": "B"
       }
@@ -231,13 +299,25 @@
       "name": "deploy",
       "from": "queue",
       "to": "staging",
-      "pass": true
+      "cursor": {
+        "id": "c2",
+        "label": "B"
+      },
+      "pass": true,
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
     }
   },
   {
     "type": "NodeStarted",
     "event": {
       "id": "staging",
+      "cursor": {
+        "id": "c2",
+        "label": "B"
+      },
       "inputs": {
         "version": "B"
       }
@@ -247,6 +327,10 @@
     "type": "NodeSucceeded",
     "event": {
       "id": "staging",
+      "cursor": {
+        "id": "c2",
+        "label": "B"
+      },
       "outputs": {
         "env": "staging",
         "version": "B"
@@ -259,6 +343,10 @@
       "name": "deployed",
       "from": "staging",
       "to": "soak",
+      "cursor": {
+        "id": "c2",
+        "label": "B"
+      },
       "inputs": {
         "env": "staging",
         "version": "B"
@@ -271,13 +359,25 @@
       "name": "deployed",
       "from": "staging",
       "to": "soak",
-      "pass": true
+      "cursor": {
+        "id": "c2",
+        "label": "B"
+      },
+      "pass": true,
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
     }
   },
   {
     "type": "NodeStarted",
     "event": {
       "id": "soak",
+      "cursor": {
+        "id": "c2",
+        "label": "B"
+      },
       "inputs": {
         "env": "staging",
         "version": "B"
@@ -288,6 +388,10 @@
     "type": "NodeSucceeded",
     "event": {
       "id": "soak",
+      "cursor": {
+        "id": "c2",
+        "label": "B"
+      },
       "outputs": {
         "env": "staging",
         "version": "B"
@@ -314,6 +418,10 @@
       "name": "soaked",
       "from": "soak",
       "to": "prod",
+      "cursor": {
+        "id": "c2",
+        "label": "B"
+      },
       "inputs": {
         "env": "staging",
         "version": "B"
@@ -326,7 +434,15 @@
       "name": "soaked",
       "from": "soak",
       "to": "prod",
-      "pass": false
+      "cursor": {
+        "id": "c2",
+        "label": "B"
+      },
+      "pass": false,
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
     }
   },
   {
@@ -354,6 +470,10 @@
       "name": "soaked",
       "from": "soak",
       "to": "prod",
+      "cursor": {
+        "id": "c2",
+        "label": "B"
+      },
       "inputs": {
         "env": "staging",
         "version": "B"
@@ -366,7 +486,15 @@
       "name": "soaked",
       "from": "soak",
       "to": "prod",
-      "pass": false
+      "cursor": {
+        "id": "c2",
+        "label": "B"
+      },
+      "pass": false,
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
     }
   },
   {
@@ -419,6 +547,10 @@
       "name": "soaked",
       "from": "soak",
       "to": "prod",
+      "cursor": {
+        "id": "c2",
+        "label": "B"
+      },
       "inputs": {
         "env": "staging",
         "version": "B"
@@ -431,7 +563,15 @@
       "name": "soaked",
       "from": "soak",
       "to": "prod",
-      "pass": true
+      "cursor": {
+        "id": "c2",
+        "label": "B"
+      },
+      "pass": true,
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
     }
   },
   {
@@ -440,6 +580,10 @@
       "name": "deploy",
       "from": "queue",
       "to": "staging",
+      "cursor": {
+        "id": "c3",
+        "label": "C"
+      },
       "inputs": {
         "version": "C"
       }
@@ -451,13 +595,25 @@
       "name": "deploy",
       "from": "queue",
       "to": "staging",
-      "pass": true
+      "cursor": {
+        "id": "c3",
+        "label": "C"
+      },
+      "pass": true,
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
     }
   },
   {
     "type": "NodeStarted",
     "event": {
       "id": "prod",
+      "cursor": {
+        "id": "c2",
+        "label": "B"
+      },
       "inputs": {
         "env": "staging",
         "version": "B"
@@ -468,6 +624,10 @@
     "type": "NodeSucceeded",
     "event": {
       "id": "prod",
+      "cursor": {
+        "id": "c2",
+        "label": "B"
+      },
       "outputs": {
         "env": "prod",
         "version": "B"
@@ -478,6 +638,10 @@
     "type": "NodeStarted",
     "event": {
       "id": "staging",
+      "cursor": {
+        "id": "c3",
+        "label": "C"
+      },
       "inputs": {
         "version": "C"
       }
@@ -487,6 +651,10 @@
     "type": "NodeSucceeded",
     "event": {
       "id": "staging",
+      "cursor": {
+        "id": "c3",
+        "label": "C"
+      },
       "outputs": {
         "env": "staging",
         "version": "C"
@@ -499,6 +667,10 @@
       "name": "deployed",
       "from": "staging",
       "to": "soak",
+      "cursor": {
+        "id": "c3",
+        "label": "C"
+      },
       "inputs": {
         "env": "staging",
         "version": "C"
@@ -511,13 +683,25 @@
       "name": "deployed",
       "from": "staging",
       "to": "soak",
-      "pass": true
+      "cursor": {
+        "id": "c3",
+        "label": "C"
+      },
+      "pass": true,
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
     }
   },
   {
     "type": "NodeStarted",
     "event": {
       "id": "soak",
+      "cursor": {
+        "id": "c3",
+        "label": "C"
+      },
       "inputs": {
         "env": "staging",
         "version": "C"
@@ -528,6 +712,10 @@
     "type": "NodeSucceeded",
     "event": {
       "id": "soak",
+      "cursor": {
+        "id": "c3",
+        "label": "C"
+      },
       "outputs": {
         "env": "staging",
         "version": "C"
@@ -540,6 +728,10 @@
       "name": "soaked",
       "from": "soak",
       "to": "prod",
+      "cursor": {
+        "id": "c3",
+        "label": "C"
+      },
       "inputs": {
         "env": "staging",
         "version": "C"
@@ -552,7 +744,15 @@
       "name": "soaked",
       "from": "soak",
       "to": "prod",
-      "pass": false
+      "cursor": {
+        "id": "c3",
+        "label": "C"
+      },
+      "pass": false,
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
     }
   },
   {

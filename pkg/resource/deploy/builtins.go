@@ -147,6 +147,17 @@ func (p *builtinProvider) Check(_ context.Context, req plugin.CheckRequest) (plu
 			}, nil
 		}
 		return plugin.CheckResponse{Properties: req.News}, nil
+	case WorkflowType:
+		for k := range req.News {
+			switch k {
+			case "nodes", "edges", "entries":
+			default:
+				return plugin.CheckResponse{
+					Failures: []plugin.CheckFailure{{Property: k, Reason: fmt.Sprintf("unknown property \"%v\"", k)}},
+				}, nil
+			}
+		}
+		return plugin.CheckResponse{Properties: req.News}, nil
 	case stashType:
 		for k := range req.News {
 			if k != "input" {
@@ -192,6 +203,10 @@ func (p *builtinProvider) Diff(_ context.Context, req plugin.DiffRequest) (plugi
 		}
 
 		return plugin.DiffResult{Changes: plugin.DiffNone}, nil
+	case WorkflowType:
+		// A workflow advances on every up, so it always has work to do: report a diff unconditionally so
+		// the engine issues an Update even when the graph is unchanged.
+		return plugin.DiffResult{Changes: plugin.DiffSome}, nil
 	default:
 		return plugin.DiffResult{}, fmt.Errorf("unrecognized resource type '%v'", typ)
 	}
@@ -241,6 +256,18 @@ func (p *builtinProvider) Create(ctx context.Context, req plugin.CreateRequest) 
 			},
 			Status: resource.StatusOK,
 		}, nil
+	case WorkflowType:
+		// The step only records the workflow's definition; the executor's WorkflowProgressor advances
+		// it after the source completes and records its state as outputs.
+		var id resource.ID
+		if !req.Preview {
+			uuid, err := uuid.NewV4()
+			if err != nil {
+				return plugin.CreateResponse{Status: resource.StatusOK}, err
+			}
+			id = resource.ID(uuid.String())
+		}
+		return plugin.CreateResponse{ID: id, Properties: workflowState(req.Properties, nil), Status: resource.StatusOK}, nil
 	default:
 		return plugin.CreateResponse{}, fmt.Errorf("unrecognized resource type '%v'", typ)
 	}
@@ -249,6 +276,8 @@ func (p *builtinProvider) Create(ctx context.Context, req plugin.CreateRequest) 
 func (p *builtinProvider) Update(_ context.Context, req plugin.UpdateRequest) (plugin.UpdateResponse, error) {
 	typ := req.URN.Type()
 	switch typ { //nolint:exhaustive
+	case WorkflowType:
+		return plugin.UpdateResponse{Properties: workflowState(req.NewInputs, req.OldOutputs), Status: resource.StatusOK}, nil
 	case stashType:
 		properties := resource.PropertyMap{
 			"input":  req.NewInputs["input"],
@@ -265,10 +294,24 @@ func (p *builtinProvider) Update(_ context.Context, req plugin.UpdateRequest) (p
 }
 
 func (p *builtinProvider) Delete(_ context.Context, req plugin.DeleteRequest) (plugin.DeleteResponse, error) {
-	contract.Assertf(req.URN.Type() == stackReferenceType || req.URN.Type() == stashType,
-		"expected resource type %v or %v, got %v", stackReferenceType, stashType, req.URN.Type())
+	typ := req.URN.Type()
+	contract.Assertf(typ == stackReferenceType || typ == stashType || typ == WorkflowType,
+		"expected resource type %v, %v or %v, got %v", stackReferenceType, stashType, WorkflowType, typ)
 
 	return plugin.DeleteResponse{Status: resource.StatusOK}, nil
+}
+
+// workflowState is a workflow's state after a Create or Update: the definition echoed, with everything
+// the WorkflowProgressor recorded on the previous run (its durable state, cursors, diagram) carried over
+// from the old outputs until the progressor records this run's.
+func workflowState(news, olds resource.PropertyMap) resource.PropertyMap {
+	outs := news.Copy()
+	for k, v := range olds {
+		if _, input := news[k]; !input {
+			outs[k] = v
+		}
+	}
+	return outs
 }
 
 func (p *builtinProvider) List(context.Context, plugin.ListRequest) (*plugin.ListStream, error) {

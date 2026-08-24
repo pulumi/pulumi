@@ -1,0 +1,22 @@
+<{%reset%}>workflow: no cursors
+  dev
+cursors
+<{%reset%}>
+<{%reset%}>workflow: release#1 @ prod — parked
+  dev
+  prod (undefined) ◀ release#1
+cursors
+  release#1 @ prod — parked
+<{%reset%}>
+<{%reset%}>workflow: release#1 @ prod — parked
+  dev
+  prod (undefined) ◀ release#1
+cursors
+  release#1 @ prod — parked
+<{%reset%}>
+<{%reset%}>workflow: release#1 @ prod — parked
+  dev
+  prod (undefined) ◀ release#1
+cursors
+  release#1 @ prod — parked
+<{%reset%}>

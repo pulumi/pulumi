@@ -59,12 +59,14 @@
       "to": "switch-traffic",
       "andEdges": [
         {
-          "name": "healthy-and-approved[0]",
+          "name": "healthy-and-approved",
+          "condition": "approved",
           "from": "verify-green",
           "to": "switch-traffic"
         },
         {
-          "name": "healthy-and-approved[1]",
+          "name": "healthy-and-approved",
+          "condition": "healthy",
           "from": "verify-green",
           "to": "switch-traffic"
         }
@@ -79,12 +81,14 @@
       "to": "rollback",
       "orEdges": [
         {
-          "name": "unhealthy-or-timeout[0]",
+          "name": "unhealthy-or-timeout",
+          "condition": "timeout",
           "from": "verify-green",
           "to": "rollback"
         },
         {
-          "name": "unhealthy-or-timeout[1]",
+          "name": "unhealthy-or-timeout",
+          "condition": "unhealthy",
           "from": "verify-green",
           "to": "rollback"
         }
@@ -118,6 +122,10 @@
       "name": "start",
       "from": "release-requested",
       "to": "deploy-green",
+      "cursor": {
+        "id": "c1",
+        "label": "release 2.0"
+      },
       "inputs": {
         "version": "2.0"
       }
@@ -129,13 +137,25 @@
       "name": "start",
       "from": "release-requested",
       "to": "deploy-green",
-      "pass": true
+      "cursor": {
+        "id": "c1",
+        "label": "release 2.0"
+      },
+      "pass": true,
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
     }
   },
   {
     "type": "NodeStarted",
     "event": {
       "id": "deploy-green",
+      "cursor": {
+        "id": "c1",
+        "label": "release 2.0"
+      },
       "inputs": {
         "version": "2.0"
       }
@@ -145,6 +165,10 @@
     "type": "NodeSucceeded",
     "event": {
       "id": "deploy-green",
+      "cursor": {
+        "id": "c1",
+        "label": "release 2.0"
+      },
       "outputs": {
         "url": "https://green.example.com/2.0",
         "version": "2.0"
@@ -157,6 +181,10 @@
       "name": "deployed",
       "from": "deploy-green",
       "to": "verify-green",
+      "cursor": {
+        "id": "c1",
+        "label": "release 2.0"
+      },
       "inputs": {
         "url": "https://green.example.com/2.0",
         "version": "2.0"
@@ -169,13 +197,25 @@
       "name": "deployed",
       "from": "deploy-green",
       "to": "verify-green",
-      "pass": true
+      "cursor": {
+        "id": "c1",
+        "label": "release 2.0"
+      },
+      "pass": true,
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
     }
   },
   {
     "type": "NodeStarted",
     "event": {
       "id": "verify-green",
+      "cursor": {
+        "id": "c1",
+        "label": "release 2.0"
+      },
       "inputs": {
         "url": "https://green.example.com/2.0",
         "version": "2.0"
@@ -186,6 +226,10 @@
     "type": "NodeSucceeded",
     "event": {
       "id": "verify-green",
+      "cursor": {
+        "id": "c1",
+        "label": "release 2.0"
+      },
       "outputs": {
         "healthy": true,
         "url": "https://green.example.com/2.0",
@@ -199,6 +243,10 @@
       "name": "healthy-and-approved",
       "from": "verify-green",
       "to": "switch-traffic",
+      "cursor": {
+        "id": "c1",
+        "label": "release 2.0"
+      },
       "inputs": {
         "healthy": true,
         "url": "https://green.example.com/2.0",
@@ -209,31 +257,32 @@
   {
     "type": "EdgeStarted",
     "event": {
-      "name": "healthy-and-approved[0]",
+      "name": "healthy-and-approved",
+      "condition": "approved",
       "from": "verify-green",
       "to": "switch-traffic",
+      "cursor": {
+        "id": "c1",
+        "label": "release 2.0"
+      },
       "inputs": {
         "healthy": true,
         "url": "https://green.example.com/2.0",
         "version": "2.0"
       }
-    }
-  },
-  {
-    "type": "EdgeFinished",
-    "event": {
-      "name": "healthy-and-approved[0]",
-      "from": "verify-green",
-      "to": "switch-traffic",
-      "pass": true
     }
   },
   {
     "type": "EdgeStarted",
     "event": {
-      "name": "healthy-and-approved[1]",
+      "name": "healthy-and-approved",
+      "condition": "healthy",
       "from": "verify-green",
       "to": "switch-traffic",
+      "cursor": {
+        "id": "c1",
+        "label": "release 2.0"
+      },
       "inputs": {
         "healthy": true,
         "url": "https://green.example.com/2.0",
@@ -244,10 +293,37 @@
   {
     "type": "EdgeFinished",
     "event": {
-      "name": "healthy-and-approved[1]",
+      "name": "healthy-and-approved",
+      "condition": "approved",
       "from": "verify-green",
       "to": "switch-traffic",
-      "pass": false
+      "cursor": {
+        "id": "c1",
+        "label": "release 2.0"
+      },
+      "pass": false,
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
+    }
+  },
+  {
+    "type": "EdgeFinished",
+    "event": {
+      "name": "healthy-and-approved",
+      "condition": "healthy",
+      "from": "verify-green",
+      "to": "switch-traffic",
+      "cursor": {
+        "id": "c1",
+        "label": "release 2.0"
+      },
+      "pass": true,
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
     }
   },
   {
@@ -256,7 +332,15 @@
       "name": "healthy-and-approved",
       "from": "verify-green",
       "to": "switch-traffic",
-      "pass": false
+      "cursor": {
+        "id": "c1",
+        "label": "release 2.0"
+      },
+      "pass": false,
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
     }
   },
   {
@@ -265,6 +349,10 @@
       "name": "unhealthy-or-timeout",
       "from": "verify-green",
       "to": "rollback",
+      "cursor": {
+        "id": "c1",
+        "label": "release 2.0"
+      },
       "inputs": {
         "healthy": true,
         "url": "https://green.example.com/2.0",
@@ -275,9 +363,14 @@
   {
     "type": "EdgeStarted",
     "event": {
-      "name": "unhealthy-or-timeout[0]",
+      "name": "unhealthy-or-timeout",
+      "condition": "timeout",
       "from": "verify-green",
       "to": "rollback",
+      "cursor": {
+        "id": "c1",
+        "label": "release 2.0"
+      },
       "inputs": {
         "healthy": true,
         "url": "https://green.example.com/2.0",
@@ -288,18 +381,32 @@
   {
     "type": "EdgeFinished",
     "event": {
-      "name": "unhealthy-or-timeout[0]",
+      "name": "unhealthy-or-timeout",
+      "condition": "timeout",
       "from": "verify-green",
       "to": "rollback",
-      "pass": false
+      "cursor": {
+        "id": "c1",
+        "label": "release 2.0"
+      },
+      "pass": false,
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
     }
   },
   {
     "type": "EdgeStarted",
     "event": {
-      "name": "unhealthy-or-timeout[1]",
+      "name": "unhealthy-or-timeout",
+      "condition": "unhealthy",
       "from": "verify-green",
       "to": "rollback",
+      "cursor": {
+        "id": "c1",
+        "label": "release 2.0"
+      },
       "inputs": {
         "healthy": true,
         "url": "https://green.example.com/2.0",
@@ -310,10 +417,19 @@
   {
     "type": "EdgeFinished",
     "event": {
-      "name": "unhealthy-or-timeout[1]",
+      "name": "unhealthy-or-timeout",
+      "condition": "unhealthy",
       "from": "verify-green",
       "to": "rollback",
-      "pass": false
+      "cursor": {
+        "id": "c1",
+        "label": "release 2.0"
+      },
+      "pass": false,
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
     }
   },
   {
@@ -322,7 +438,15 @@
       "name": "unhealthy-or-timeout",
       "from": "verify-green",
       "to": "rollback",
-      "pass": false
+      "cursor": {
+        "id": "c1",
+        "label": "release 2.0"
+      },
+      "pass": false,
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
     }
   },
   {
@@ -362,6 +486,10 @@
       "name": "healthy-and-approved",
       "from": "verify-green",
       "to": "switch-traffic",
+      "cursor": {
+        "id": "c1",
+        "label": "release 2.0"
+      },
       "inputs": {
         "healthy": true,
         "url": "https://green.example.com/2.0",
@@ -372,31 +500,32 @@
   {
     "type": "EdgeStarted",
     "event": {
-      "name": "healthy-and-approved[0]",
+      "name": "healthy-and-approved",
+      "condition": "approved",
       "from": "verify-green",
       "to": "switch-traffic",
+      "cursor": {
+        "id": "c1",
+        "label": "release 2.0"
+      },
       "inputs": {
         "healthy": true,
         "url": "https://green.example.com/2.0",
         "version": "2.0"
       }
-    }
-  },
-  {
-    "type": "EdgeFinished",
-    "event": {
-      "name": "healthy-and-approved[0]",
-      "from": "verify-green",
-      "to": "switch-traffic",
-      "pass": true
     }
   },
   {
     "type": "EdgeStarted",
     "event": {
-      "name": "healthy-and-approved[1]",
+      "name": "healthy-and-approved",
+      "condition": "healthy",
       "from": "verify-green",
       "to": "switch-traffic",
+      "cursor": {
+        "id": "c1",
+        "label": "release 2.0"
+      },
       "inputs": {
         "healthy": true,
         "url": "https://green.example.com/2.0",
@@ -407,10 +536,37 @@
   {
     "type": "EdgeFinished",
     "event": {
-      "name": "healthy-and-approved[1]",
+      "name": "healthy-and-approved",
+      "condition": "approved",
       "from": "verify-green",
       "to": "switch-traffic",
-      "pass": true
+      "cursor": {
+        "id": "c1",
+        "label": "release 2.0"
+      },
+      "pass": true,
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
+    }
+  },
+  {
+    "type": "EdgeFinished",
+    "event": {
+      "name": "healthy-and-approved",
+      "condition": "healthy",
+      "from": "verify-green",
+      "to": "switch-traffic",
+      "cursor": {
+        "id": "c1",
+        "label": "release 2.0"
+      },
+      "pass": true,
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
     }
   },
   {
@@ -419,13 +575,25 @@
       "name": "healthy-and-approved",
       "from": "verify-green",
       "to": "switch-traffic",
-      "pass": true
+      "cursor": {
+        "id": "c1",
+        "label": "release 2.0"
+      },
+      "pass": true,
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
     }
   },
   {
     "type": "NodeStarted",
     "event": {
       "id": "switch-traffic",
+      "cursor": {
+        "id": "c1",
+        "label": "release 2.0"
+      },
       "inputs": {
         "healthy": true,
         "url": "https://green.example.com/2.0",
@@ -437,6 +605,10 @@
     "type": "NodeSucceeded",
     "event": {
       "id": "switch-traffic",
+      "cursor": {
+        "id": "c1",
+        "label": "release 2.0"
+      },
       "outputs": {
         "healthy": true,
         "live": "green",
@@ -451,6 +623,10 @@
       "name": "switched",
       "from": "switch-traffic",
       "to": "decommission-blue",
+      "cursor": {
+        "id": "c1",
+        "label": "release 2.0"
+      },
       "inputs": {
         "healthy": true,
         "live": "green",
@@ -465,13 +641,25 @@
       "name": "switched",
       "from": "switch-traffic",
       "to": "decommission-blue",
-      "pass": true
+      "cursor": {
+        "id": "c1",
+        "label": "release 2.0"
+      },
+      "pass": true,
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
     }
   },
   {
     "type": "NodeStarted",
     "event": {
       "id": "decommission-blue",
+      "cursor": {
+        "id": "c1",
+        "label": "release 2.0"
+      },
       "inputs": {
         "healthy": true,
         "live": "green",
@@ -484,6 +672,10 @@
     "type": "NodeSucceeded",
     "event": {
       "id": "decommission-blue",
+      "cursor": {
+        "id": "c1",
+        "label": "release 2.0"
+      },
       "outputs": {
         "blue": "deleted",
         "healthy": true,
@@ -543,6 +735,10 @@
       "name": "start",
       "from": "release-requested",
       "to": "deploy-green",
+      "cursor": {
+        "id": "c2",
+        "label": "release 3.0"
+      },
       "inputs": {
         "version": "3.0"
       }
@@ -554,13 +750,25 @@
       "name": "start",
       "from": "release-requested",
       "to": "deploy-green",
-      "pass": true
+      "cursor": {
+        "id": "c2",
+        "label": "release 3.0"
+      },
+      "pass": true,
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
     }
   },
   {
     "type": "NodeStarted",
     "event": {
       "id": "deploy-green",
+      "cursor": {
+        "id": "c2",
+        "label": "release 3.0"
+      },
       "inputs": {
         "version": "3.0"
       }
@@ -570,6 +778,10 @@
     "type": "NodeSucceeded",
     "event": {
       "id": "deploy-green",
+      "cursor": {
+        "id": "c2",
+        "label": "release 3.0"
+      },
       "outputs": {
         "url": "https://green.example.com/3.0",
         "version": "3.0"
@@ -582,6 +794,10 @@
       "name": "deployed",
       "from": "deploy-green",
       "to": "verify-green",
+      "cursor": {
+        "id": "c2",
+        "label": "release 3.0"
+      },
       "inputs": {
         "url": "https://green.example.com/3.0",
         "version": "3.0"
@@ -594,13 +810,25 @@
       "name": "deployed",
       "from": "deploy-green",
       "to": "verify-green",
-      "pass": true
+      "cursor": {
+        "id": "c2",
+        "label": "release 3.0"
+      },
+      "pass": true,
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
     }
   },
   {
     "type": "NodeStarted",
     "event": {
       "id": "verify-green",
+      "cursor": {
+        "id": "c2",
+        "label": "release 3.0"
+      },
       "inputs": {
         "url": "https://green.example.com/3.0",
         "version": "3.0"
@@ -611,6 +839,10 @@
     "type": "NodeSucceeded",
     "event": {
       "id": "verify-green",
+      "cursor": {
+        "id": "c2",
+        "label": "release 3.0"
+      },
       "outputs": {
         "healthy": false,
         "url": "https://green.example.com/3.0",
@@ -624,6 +856,10 @@
       "name": "healthy-and-approved",
       "from": "verify-green",
       "to": "switch-traffic",
+      "cursor": {
+        "id": "c2",
+        "label": "release 3.0"
+      },
       "inputs": {
         "healthy": false,
         "url": "https://green.example.com/3.0",
@@ -634,9 +870,32 @@
   {
     "type": "EdgeStarted",
     "event": {
-      "name": "healthy-and-approved[0]",
+      "name": "healthy-and-approved",
+      "condition": "approved",
       "from": "verify-green",
       "to": "switch-traffic",
+      "cursor": {
+        "id": "c2",
+        "label": "release 3.0"
+      },
+      "inputs": {
+        "healthy": false,
+        "url": "https://green.example.com/3.0",
+        "version": "3.0"
+      }
+    }
+  },
+  {
+    "type": "EdgeStarted",
+    "event": {
+      "name": "healthy-and-approved",
+      "condition": "healthy",
+      "from": "verify-green",
+      "to": "switch-traffic",
+      "cursor": {
+        "id": "c2",
+        "label": "release 3.0"
+      },
       "inputs": {
         "healthy": false,
         "url": "https://green.example.com/3.0",
@@ -647,10 +906,37 @@
   {
     "type": "EdgeFinished",
     "event": {
-      "name": "healthy-and-approved[0]",
+      "name": "healthy-and-approved",
+      "condition": "approved",
       "from": "verify-green",
       "to": "switch-traffic",
-      "pass": false
+      "cursor": {
+        "id": "c2",
+        "label": "release 3.0"
+      },
+      "pass": false,
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
+    }
+  },
+  {
+    "type": "EdgeFinished",
+    "event": {
+      "name": "healthy-and-approved",
+      "condition": "healthy",
+      "from": "verify-green",
+      "to": "switch-traffic",
+      "cursor": {
+        "id": "c2",
+        "label": "release 3.0"
+      },
+      "pass": false,
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
     }
   },
   {
@@ -659,7 +945,15 @@
       "name": "healthy-and-approved",
       "from": "verify-green",
       "to": "switch-traffic",
-      "pass": false
+      "cursor": {
+        "id": "c2",
+        "label": "release 3.0"
+      },
+      "pass": false,
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
     }
   },
   {
@@ -668,6 +962,10 @@
       "name": "unhealthy-or-timeout",
       "from": "verify-green",
       "to": "rollback",
+      "cursor": {
+        "id": "c2",
+        "label": "release 3.0"
+      },
       "inputs": {
         "healthy": false,
         "url": "https://green.example.com/3.0",
@@ -678,9 +976,14 @@
   {
     "type": "EdgeStarted",
     "event": {
-      "name": "unhealthy-or-timeout[0]",
+      "name": "unhealthy-or-timeout",
+      "condition": "timeout",
       "from": "verify-green",
       "to": "rollback",
+      "cursor": {
+        "id": "c2",
+        "label": "release 3.0"
+      },
       "inputs": {
         "healthy": false,
         "url": "https://green.example.com/3.0",
@@ -691,10 +994,55 @@
   {
     "type": "EdgeFinished",
     "event": {
-      "name": "unhealthy-or-timeout[0]",
+      "name": "unhealthy-or-timeout",
+      "condition": "timeout",
       "from": "verify-green",
       "to": "rollback",
-      "pass": true
+      "cursor": {
+        "id": "c2",
+        "label": "release 3.0"
+      },
+      "pass": false,
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
+    }
+  },
+  {
+    "type": "EdgeStarted",
+    "event": {
+      "name": "unhealthy-or-timeout",
+      "condition": "unhealthy",
+      "from": "verify-green",
+      "to": "rollback",
+      "cursor": {
+        "id": "c2",
+        "label": "release 3.0"
+      },
+      "inputs": {
+        "healthy": false,
+        "url": "https://green.example.com/3.0",
+        "version": "3.0"
+      }
+    }
+  },
+  {
+    "type": "EdgeFinished",
+    "event": {
+      "name": "unhealthy-or-timeout",
+      "condition": "unhealthy",
+      "from": "verify-green",
+      "to": "rollback",
+      "cursor": {
+        "id": "c2",
+        "label": "release 3.0"
+      },
+      "pass": true,
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
     }
   },
   {
@@ -703,13 +1051,25 @@
       "name": "unhealthy-or-timeout",
       "from": "verify-green",
       "to": "rollback",
-      "pass": true
+      "cursor": {
+        "id": "c2",
+        "label": "release 3.0"
+      },
+      "pass": true,
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
     }
   },
   {
     "type": "NodeStarted",
     "event": {
       "id": "rollback",
+      "cursor": {
+        "id": "c2",
+        "label": "release 3.0"
+      },
       "inputs": {
         "healthy": false,
         "url": "https://green.example.com/3.0",
@@ -721,6 +1081,10 @@
     "type": "NodeSucceeded",
     "event": {
       "id": "rollback",
+      "cursor": {
+        "id": "c2",
+        "label": "release 3.0"
+      },
       "outputs": {
         "healthy": false,
         "live": "blue",
@@ -773,6 +1137,10 @@
       "name": "start",
       "from": "release-requested",
       "to": "deploy-green",
+      "cursor": {
+        "id": "c3",
+        "label": "release 3.1"
+      },
       "inputs": {
         "version": "3.1"
       }
@@ -784,13 +1152,25 @@
       "name": "start",
       "from": "release-requested",
       "to": "deploy-green",
-      "pass": true
+      "cursor": {
+        "id": "c3",
+        "label": "release 3.1"
+      },
+      "pass": true,
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
     }
   },
   {
     "type": "NodeStarted",
     "event": {
       "id": "deploy-green",
+      "cursor": {
+        "id": "c3",
+        "label": "release 3.1"
+      },
       "inputs": {
         "version": "3.1"
       }
@@ -800,6 +1180,10 @@
     "type": "NodeSucceeded",
     "event": {
       "id": "deploy-green",
+      "cursor": {
+        "id": "c3",
+        "label": "release 3.1"
+      },
       "outputs": {
         "url": "https://green.example.com/3.1",
         "version": "3.1"
@@ -812,6 +1196,10 @@
       "name": "deployed",
       "from": "deploy-green",
       "to": "verify-green",
+      "cursor": {
+        "id": "c3",
+        "label": "release 3.1"
+      },
       "inputs": {
         "url": "https://green.example.com/3.1",
         "version": "3.1"
@@ -824,13 +1212,25 @@
       "name": "deployed",
       "from": "deploy-green",
       "to": "verify-green",
-      "pass": true
+      "cursor": {
+        "id": "c3",
+        "label": "release 3.1"
+      },
+      "pass": true,
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
     }
   },
   {
     "type": "NodeStarted",
     "event": {
       "id": "verify-green",
+      "cursor": {
+        "id": "c3",
+        "label": "release 3.1"
+      },
       "inputs": {
         "url": "https://green.example.com/3.1",
         "version": "3.1"
@@ -841,6 +1241,10 @@
     "type": "NodeSucceeded",
     "event": {
       "id": "verify-green",
+      "cursor": {
+        "id": "c3",
+        "label": "release 3.1"
+      },
       "outputs": {
         "healthy": false,
         "url": "https://green.example.com/3.1",
@@ -854,6 +1258,10 @@
       "name": "healthy-and-approved",
       "from": "verify-green",
       "to": "switch-traffic",
+      "cursor": {
+        "id": "c3",
+        "label": "release 3.1"
+      },
       "inputs": {
         "healthy": false,
         "url": "https://green.example.com/3.1",
@@ -864,9 +1272,32 @@
   {
     "type": "EdgeStarted",
     "event": {
-      "name": "healthy-and-approved[0]",
+      "name": "healthy-and-approved",
+      "condition": "approved",
       "from": "verify-green",
       "to": "switch-traffic",
+      "cursor": {
+        "id": "c3",
+        "label": "release 3.1"
+      },
+      "inputs": {
+        "healthy": false,
+        "url": "https://green.example.com/3.1",
+        "version": "3.1"
+      }
+    }
+  },
+  {
+    "type": "EdgeStarted",
+    "event": {
+      "name": "healthy-and-approved",
+      "condition": "healthy",
+      "from": "verify-green",
+      "to": "switch-traffic",
+      "cursor": {
+        "id": "c3",
+        "label": "release 3.1"
+      },
       "inputs": {
         "healthy": false,
         "url": "https://green.example.com/3.1",
@@ -877,10 +1308,37 @@
   {
     "type": "EdgeFinished",
     "event": {
-      "name": "healthy-and-approved[0]",
+      "name": "healthy-and-approved",
+      "condition": "approved",
       "from": "verify-green",
       "to": "switch-traffic",
-      "pass": false
+      "cursor": {
+        "id": "c3",
+        "label": "release 3.1"
+      },
+      "pass": false,
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
+    }
+  },
+  {
+    "type": "EdgeFinished",
+    "event": {
+      "name": "healthy-and-approved",
+      "condition": "healthy",
+      "from": "verify-green",
+      "to": "switch-traffic",
+      "cursor": {
+        "id": "c3",
+        "label": "release 3.1"
+      },
+      "pass": false,
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
     }
   },
   {
@@ -889,7 +1347,15 @@
       "name": "healthy-and-approved",
       "from": "verify-green",
       "to": "switch-traffic",
-      "pass": false
+      "cursor": {
+        "id": "c3",
+        "label": "release 3.1"
+      },
+      "pass": false,
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
     }
   },
   {
@@ -898,6 +1364,10 @@
       "name": "unhealthy-or-timeout",
       "from": "verify-green",
       "to": "rollback",
+      "cursor": {
+        "id": "c3",
+        "label": "release 3.1"
+      },
       "inputs": {
         "healthy": false,
         "url": "https://green.example.com/3.1",
@@ -908,9 +1378,14 @@
   {
     "type": "EdgeStarted",
     "event": {
-      "name": "unhealthy-or-timeout[0]",
+      "name": "unhealthy-or-timeout",
+      "condition": "timeout",
       "from": "verify-green",
       "to": "rollback",
+      "cursor": {
+        "id": "c3",
+        "label": "release 3.1"
+      },
       "inputs": {
         "healthy": false,
         "url": "https://green.example.com/3.1",
@@ -921,10 +1396,55 @@
   {
     "type": "EdgeFinished",
     "event": {
-      "name": "unhealthy-or-timeout[0]",
+      "name": "unhealthy-or-timeout",
+      "condition": "timeout",
       "from": "verify-green",
       "to": "rollback",
-      "pass": true
+      "cursor": {
+        "id": "c3",
+        "label": "release 3.1"
+      },
+      "pass": false,
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
+    }
+  },
+  {
+    "type": "EdgeStarted",
+    "event": {
+      "name": "unhealthy-or-timeout",
+      "condition": "unhealthy",
+      "from": "verify-green",
+      "to": "rollback",
+      "cursor": {
+        "id": "c3",
+        "label": "release 3.1"
+      },
+      "inputs": {
+        "healthy": false,
+        "url": "https://green.example.com/3.1",
+        "version": "3.1"
+      }
+    }
+  },
+  {
+    "type": "EdgeFinished",
+    "event": {
+      "name": "unhealthy-or-timeout",
+      "condition": "unhealthy",
+      "from": "verify-green",
+      "to": "rollback",
+      "cursor": {
+        "id": "c3",
+        "label": "release 3.1"
+      },
+      "pass": true,
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
     }
   },
   {
@@ -933,13 +1453,25 @@
       "name": "unhealthy-or-timeout",
       "from": "verify-green",
       "to": "rollback",
-      "pass": true
+      "cursor": {
+        "id": "c3",
+        "label": "release 3.1"
+      },
+      "pass": true,
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
     }
   },
   {
     "type": "NodeStarted",
     "event": {
       "id": "rollback",
+      "cursor": {
+        "id": "c3",
+        "label": "release 3.1"
+      },
       "inputs": {
         "healthy": false,
         "url": "https://green.example.com/3.1",
@@ -951,6 +1483,10 @@
     "type": "NodeSucceeded",
     "event": {
       "id": "rollback",
+      "cursor": {
+        "id": "c3",
+        "label": "release 3.1"
+      },
       "outputs": {
         "healthy": false,
         "live": "blue",

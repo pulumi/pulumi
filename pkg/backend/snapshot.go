@@ -85,6 +85,14 @@ type SnapshotManager struct {
 	// been added to `resources` by other operations but need to be filtered out before writing the snapshot.
 	dones map[*pkgresource.State]bool
 
+	// The set of URNs this plan has produced new states for. Normally each URN is stepped at most once
+	// per plan and completion order is a valid dependency order; workflow node deployments can step the
+	// same URN several times in one plan (a node re-entered around a cycle), which re-appends
+	// dependencies (like a default provider) after resources recorded earlier that refer to them.
+	// Seeing a repeat sets needsToposort so Snap restores a valid order.
+	steppedURNs   map[resource.URN]bool
+	needsToposort bool
+
 	completeOps      map[*pkgresource.State]bool // The set of resources that have completed their operation
 	mutationRequests chan<- mutationRequest      // The queue of mutation requests, to be retired serially by the manager
 	cancel           chan bool                   // A channel used to request cancellation of any new mutation requests.
@@ -672,6 +680,10 @@ func (sm *SnapshotManager) markDone(state *pkgresource.State) {
 func (sm *SnapshotManager) markNew(state *pkgresource.State) {
 	contract.Requiref(state != nil, "state", "must not be nil")
 	sm.resources = append(sm.resources, state)
+	if sm.steppedURNs[state.URN] {
+		sm.needsToposort = true
+	}
+	sm.steppedURNs[state.URN] = true
 	logging.V(9).Infof("Appended new state snapshot to be written: %v", state.URN)
 }
 
@@ -794,7 +806,16 @@ func (sm *SnapshotManager) Snap() *deploy.Snapshot {
 	snapExtensions, missing := deploy.MapExtensions(resources, sm.extensions, sm.baseSnapshot)
 	contract.Assertf(len(missing) == 0, "snapshot references unknown extensions: %v", missing)
 
-	return deploy.NewSnapshot(manifest, secretsManager, resources, operations, metadata, snippets, snapExtensions)
+	snap := deploy.NewSnapshot(manifest, secretsManager, resources, operations, metadata, snippets, snapExtensions)
+	if sm.needsToposort {
+		// A URN was stepped more than once this plan (see steppedURNs), so completion order is not a
+		// dependency order: restore one. A sort failure (a genuinely dangling reference) is left for
+		// integrity verification to report on the unsorted snapshot.
+		if err := snap.Toposort(); err != nil {
+			logging.V(5).Infof("SnapshotManager: failed to toposort snapshot: %v", err)
+		}
+	}
+	return snap
 }
 
 func (sm *SnapshotManager) Deployment() (apitype.TypedDeployment, error) {
@@ -995,6 +1016,7 @@ func NewSnapshotManager(
 		secretsManager:   secretsManager,
 		baseSnapshot:     baseSnap,
 		dones:            make(map[*pkgresource.State]bool),
+		steppedURNs:      make(map[resource.URN]bool),
 		completeOps:      make(map[*pkgresource.State]bool),
 		mutationRequests: mutationRequests,
 		cancel:           cancel,

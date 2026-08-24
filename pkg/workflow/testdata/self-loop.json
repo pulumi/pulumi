@@ -1,0 +1,202 @@
+[
+  {
+    "type": "NodeDefined",
+    "event": {
+      "id": "start"
+    }
+  },
+  {
+    "type": "NodeDefined",
+    "event": {
+      "id": "prod"
+    }
+  },
+  {
+    "type": "EdgeDefined",
+    "event": {
+      "name": "enter",
+      "from": "start",
+      "to": "prod"
+    }
+  },
+  {
+    "type": "EdgeDefined",
+    "event": {
+      "name": "rollback",
+      "from": "prod",
+      "to": "prod"
+    }
+  },
+  {
+    "type": "CursorAdded",
+    "event": {
+      "node": "start",
+      "cursor": {
+        "id": "c1",
+        "label": "release"
+      },
+      "inputs": {
+        "sha": "bad"
+      }
+    }
+  },
+  {
+    "type": "EdgeStarted",
+    "event": {
+      "name": "enter",
+      "from": "start",
+      "to": "prod",
+      "cursor": {
+        "id": "c1",
+        "label": "release"
+      },
+      "inputs": {
+        "sha": "bad"
+      }
+    }
+  },
+  {
+    "type": "EdgeFinished",
+    "event": {
+      "name": "enter",
+      "from": "start",
+      "to": "prod",
+      "cursor": {
+        "id": "c1",
+        "label": "release"
+      },
+      "pass": true,
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
+    }
+  },
+  {
+    "type": "NodeStarted",
+    "event": {
+      "id": "prod",
+      "cursor": {
+        "id": "c1",
+        "label": "release"
+      },
+      "inputs": {
+        "sha": "bad"
+      }
+    }
+  },
+  {
+    "type": "NodeSucceeded",
+    "event": {
+      "id": "prod",
+      "cursor": {
+        "id": "c1",
+        "label": "release"
+      },
+      "outputs": {
+        "sha": "bad"
+      }
+    }
+  },
+  {
+    "type": "EdgeStarted",
+    "event": {
+      "name": "rollback",
+      "from": "prod",
+      "to": "prod",
+      "cursor": {
+        "id": "c1",
+        "label": "release"
+      },
+      "inputs": {
+        "sha": "bad"
+      }
+    }
+  },
+  {
+    "type": "EdgeFinished",
+    "event": {
+      "name": "rollback",
+      "from": "prod",
+      "to": "prod",
+      "cursor": {
+        "id": "c1",
+        "label": "release"
+      },
+      "pass": true,
+      "overlay": {
+        "values": {
+          "sha": "good"
+        },
+        "deleted": []
+      }
+    }
+  },
+  {
+    "type": "NodeStarted",
+    "event": {
+      "id": "prod",
+      "cursor": {
+        "id": "c1",
+        "label": "release"
+      },
+      "inputs": {
+        "sha": "good"
+      }
+    }
+  },
+  {
+    "type": "NodeSucceeded",
+    "event": {
+      "id": "prod",
+      "cursor": {
+        "id": "c1",
+        "label": "release"
+      },
+      "outputs": {
+        "sha": "good"
+      }
+    }
+  },
+  {
+    "type": "EdgeStarted",
+    "event": {
+      "name": "rollback",
+      "from": "prod",
+      "to": "prod",
+      "cursor": {
+        "id": "c1",
+        "label": "release"
+      },
+      "inputs": {
+        "sha": "good"
+      }
+    }
+  },
+  {
+    "type": "EdgeFinished",
+    "event": {
+      "name": "rollback",
+      "from": "prod",
+      "to": "prod",
+      "cursor": {
+        "id": "c1",
+        "label": "release"
+      },
+      "pass": false,
+      "overlay": {
+        "values": {},
+        "deleted": []
+      }
+    }
+  },
+  {
+    "type": "NodeUntouched",
+    "event": {
+      "id": "start"
+    }
+  },
+  {
+    "type": "ProgressReturned"
+  }
+]
