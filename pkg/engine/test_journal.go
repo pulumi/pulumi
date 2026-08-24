@@ -87,7 +87,6 @@ func (entries JournalEntries) Snap(base *deploy.Snapshot) (*deploy.Snapshot, err
 			}
 		case TestJournalEntryFailure, TestJournalEntrySuccess:
 			switch e.Step.Op() {
-			//nolint:lll
 			case deploy.OpCreate, deploy.OpCreateReplacement, deploy.OpRead, deploy.OpReadReplacement, deploy.OpUpdate,
 				deploy.OpImport, deploy.OpImportReplacement:
 				doneOps[e.Step.New()] = true

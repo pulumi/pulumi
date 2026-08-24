@@ -885,7 +885,9 @@ func TestCurrentStackIdentity(t *testing.T) {
 				}
 				return &pkgWorkspace.MockW{
 					SettingsF: func() *pkgWorkspace.Settings {
-						return &pkgWorkspace.Settings{Stack: stack}
+						return &pkgWorkspace.Settings{
+							Stack: stack, //nolint:staticcheck
+						}
 					},
 				}, nil
 			},
@@ -936,7 +938,9 @@ func TestDoCmdFunctionInvokeWithStackContext(t *testing.T) {
 		NewF: func(_ string) (pkgWorkspace.W, error) {
 			return &pkgWorkspace.MockW{
 				SettingsF: func() *pkgWorkspace.Settings {
-					return &pkgWorkspace.Settings{Stack: "acme/my-project/dev"}
+					return &pkgWorkspace.Settings{
+						Stack: "acme/my-project/dev", //nolint:staticcheck
+					}
 				},
 			}, nil
 		},

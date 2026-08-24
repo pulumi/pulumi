@@ -79,7 +79,6 @@ func TestHaveNewerDevVersion(t *testing.T) {
 	assert.False(t, haveNewerDevVersion(devVer, newerPatchCurVer))
 }
 
-//nolint:paralleltest // changes environment variables and globals
 func TestGetCLIVersionInfo_Simple(t *testing.T) {
 	// Arrange.
 	pulumiHome := t.TempDir()
@@ -118,7 +117,6 @@ func TestGetCLIVersionInfo_Simple(t *testing.T) {
 	require.Equal(t, "0.0.0", devVer.String())
 }
 
-//nolint:paralleltest // changes environment variables and globals
 func TestGetCLIVersionInfo_TimesOut(t *testing.T) {
 	// Arrange.
 	pulumiHome := t.TempDir()
@@ -154,7 +152,6 @@ func TestGetCLIVersionInfo_TimesOut(t *testing.T) {
 	require.ErrorContains(t, err, "context deadline exceeded")
 }
 
-//nolint:paralleltest // changes environment variables and globals
 func TestGetCLIVersionInfo_SendsMetadataToPulumiCloud(t *testing.T) {
 	// Arrange.
 	pulumiHome := t.TempDir()
@@ -222,7 +219,6 @@ func TestGetCLIVersionInfo_SendsMetadataToPulumiCloud(t *testing.T) {
 	require.Equal(t, metadata["Flags"], flagsHeader)
 }
 
-//nolint:paralleltest // changes environment variables and globals
 func TestGetCLIVersionInfo_DoesNotSendMetadataToOtherBackends(t *testing.T) {
 	// Arrange.
 	pulumiHome := t.TempDir()
@@ -310,12 +306,12 @@ func TestGetCLIMetadata(t *testing.T) {
 		},
 		{
 			name: "no set flags",
-			cmd: (func() *cobra.Command {
+			cmd: func() *cobra.Command {
 				cmd := &cobra.Command{Use: "no-set"}
 				cmd.Flags().Bool("bool", false, "bool flag")
 				cmd.Flags().String("string", "", "string flag")
 				return cmd
-			})(),
+			}(),
 			environ: []string{},
 			metadata: map[string]string{
 				"Command":     "no-set",
@@ -325,7 +321,7 @@ func TestGetCLIMetadata(t *testing.T) {
 		},
 		{
 			name: "one set bool flag",
-			cmd: (func() *cobra.Command {
+			cmd: func() *cobra.Command {
 				cmd := &cobra.Command{Use: "one-set"}
 				cmd.Flags().Bool("bool", false, "bool flag")
 				cmd.Flags().String("string", "", "string flag")
@@ -336,7 +332,7 @@ func TestGetCLIMetadata(t *testing.T) {
 				require.NoError(t, err)
 
 				return cmd
-			})(),
+			}(),
 			metadata: map[string]string{
 				"Command":     "one-set",
 				"Flags":       "--bool",
@@ -345,7 +341,7 @@ func TestGetCLIMetadata(t *testing.T) {
 		},
 		{
 			name: "one set string flag",
-			cmd: (func() *cobra.Command {
+			cmd: func() *cobra.Command {
 				cmd := &cobra.Command{Use: "one-set"}
 				cmd.Flags().Bool("bool", false, "bool flag")
 				cmd.Flags().String("string", "", "string flag")
@@ -356,7 +352,7 @@ func TestGetCLIMetadata(t *testing.T) {
 				require.NoError(t, err)
 
 				return cmd
-			})(),
+			}(),
 			metadata: map[string]string{
 				"Command":     "one-set",
 				"Flags":       "--string",
@@ -365,7 +361,7 @@ func TestGetCLIMetadata(t *testing.T) {
 		},
 		{
 			name: "multiple set flags",
-			cmd: (func() *cobra.Command {
+			cmd: func() *cobra.Command {
 				cmd := &cobra.Command{Use: "multiple-set"}
 				cmd.Flags().Bool("bool", false, "bool flag")
 				cmd.Flags().String("string", "", "string flag")
@@ -376,7 +372,7 @@ func TestGetCLIMetadata(t *testing.T) {
 				require.NoError(t, err)
 
 				return cmd
-			})(),
+			}(),
 			metadata: map[string]string{
 				"Command":     "multiple-set",
 				"Flags":       "--bool --string",
@@ -385,7 +381,7 @@ func TestGetCLIMetadata(t *testing.T) {
 		},
 		{
 			name: "longer command path",
-			cmd: (func() *cobra.Command {
+			cmd: func() *cobra.Command {
 				parent := &cobra.Command{Use: "parent"}
 				err := parent.Execute()
 				require.NoError(t, err)
@@ -394,7 +390,7 @@ func TestGetCLIMetadata(t *testing.T) {
 				parent.AddCommand(cmd)
 
 				return cmd
-			})(),
+			}(),
 			metadata: map[string]string{
 				"Command":     "parent multiple-set",
 				"Flags":       "",
@@ -403,12 +399,12 @@ func TestGetCLIMetadata(t *testing.T) {
 		},
 		{
 			name: "no valid PULUMI_ env variables",
-			cmd: (func() *cobra.Command {
+			cmd: func() *cobra.Command {
 				cmd := &cobra.Command{Use: "version"}
 				err := cmd.Execute()
 				require.NoError(t, err)
 				return cmd
-			})(),
+			}(),
 			environ: []string{"PULUMICOPILOT=true", "OTHER_FLAG=true", "PULUMI_NO_EQUALS_SIGN"},
 			metadata: map[string]string{
 				"Command":     "version",
@@ -418,12 +414,12 @@ func TestGetCLIMetadata(t *testing.T) {
 		},
 		{
 			name: "has valid PULUMI_ env variables",
-			cmd: (func() *cobra.Command {
+			cmd: func() *cobra.Command {
 				cmd := &cobra.Command{Use: "version"}
 				err := cmd.Execute()
 				require.NoError(t, err)
 				return cmd
-			})(),
+			}(),
 			environ: []string{"PULUMI_EXPERIMENTAL=true", "PULUMI_COPILOT=true"},
 			metadata: map[string]string{
 				"Command":     "version",
@@ -493,7 +489,7 @@ func TestGetCLIMetadata(t *testing.T) {
 		},
 		{
 			name: "plugin run with argument",
-			cmd: (func() *cobra.Command {
+			cmd: func() *cobra.Command {
 				cmd := &cobra.Command{Use: "pulumi"}
 				pluginCmd := &cobra.Command{Use: "plugin"}
 				cmd.AddCommand(pluginCmd)
@@ -502,7 +498,7 @@ func TestGetCLIMetadata(t *testing.T) {
 				err := pluginRunCmd.Execute()
 				require.NoError(t, err)
 				return pluginRunCmd
-			})(),
+			}(),
 			environ: []string{"PULUMI_EXPERIMENTAL=true", "PULUMI_COPILOT=true"},
 			args:    []string{"my-plugin"},
 			metadata: map[string]string{
@@ -533,7 +529,6 @@ func newDoTestCmd() *cobra.Command {
 	return doCmd
 }
 
-//nolint:paralleltest // changes environment variables and globals
 func TestCheckForUpdate_AlwaysChecksVersion(t *testing.T) {
 	// Arrange.
 	pulumiHome := t.TempDir()
@@ -570,7 +565,6 @@ func TestCheckForUpdate_AlwaysChecksVersion(t *testing.T) {
 	require.Equal(t, 3, callCount, "should call API every time")
 }
 
-//nolint:paralleltest // changes environment variables and globals
 func TestCheckForUpdate_CachesPrompts(t *testing.T) {
 	realVersion := version.Version
 	t.Cleanup(func() {
@@ -662,7 +656,6 @@ func TestCheckForUpdate_HandlesAPIFailures(t *testing.T) {
 	require.Nil(t, second)
 }
 
-//nolint:paralleltest // changes environment variables and globals
 func TestCheckForUpdate_WorksCorrectlyWithDevVersions(t *testing.T) {
 	realVersion := version.Version
 	t.Cleanup(func() {
@@ -725,7 +718,6 @@ func TestCheckForUpdate_WorksCorrectlyWithDevVersions(t *testing.T) {
 	require.Contains(t, expired.diag.Message, "upgrade from version '1.0.0-11-g4ff08363' to '1.0.0-12-gdeadbeef'")
 }
 
-//nolint:paralleltest // changes environment variables and globals
 func TestCheckForUpdate_WorksCorrectlyWithLocalVersions(t *testing.T) {
 	// Arrange.
 	realVersion := version.Version
@@ -772,7 +764,6 @@ func TestCheckForUpdate_WorksCorrectlyWithLocalVersions(t *testing.T) {
 	require.Nil(t, alwaysNilDiag)
 }
 
-//nolint:paralleltest // changes environment variables and globals
 func TestCheckForUpdate_WorksCorrectlyWithDifferentMajorVersions(t *testing.T) {
 	realVersion := version.Version
 	t.Cleanup(func() {
@@ -835,7 +826,6 @@ func TestCheckForUpdate_WorksCorrectlyWithDifferentMajorVersions(t *testing.T) {
 	require.Contains(t, expired.diag.Message, "upgrade from version '1.0.0' to '2.0.3'")
 }
 
-//nolint:paralleltest // changes environment variables and globals
 func TestCheckForUpdate_WorksCorrectlyWithVeryOldMinorVersions(t *testing.T) {
 	realVersion := version.Version
 	t.Cleanup(func() {

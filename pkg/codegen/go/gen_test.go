@@ -405,7 +405,6 @@ func TestTokenToType(t *testing.T) {
 			expected: "dns.DnsKeySpec",
 		},
 	}
-	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
 	for _, tt := range tests {
 		t.Run(tt.token+"=>"+tt.expected, func(t *testing.T) {
 			t.Parallel()
@@ -468,7 +467,6 @@ func TestTokenToResource(t *testing.T) {
 			expected: "dns.Policy",
 		},
 	}
-	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
 	for _, tt := range tests {
 		t.Run(tt.token+"=>"+tt.expected, func(t *testing.T) {
 			t.Parallel()

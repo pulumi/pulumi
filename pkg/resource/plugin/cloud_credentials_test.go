@@ -21,7 +21,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-//nolint:paralleltest // these subtests use t.Setenv
 func TestPulumiCloudCredentialEnv(t *testing.T) {
 	t.Run("cloud login injects api address and token", func(t *testing.T) {
 		t.Setenv("PULUMI_BACKEND_URL", "https://api.example.com")

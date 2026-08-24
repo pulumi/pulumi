@@ -61,7 +61,7 @@ func (pnpm *pnpmManager) Name() string {
 }
 
 func (pnpm *pnpmManager) Version() (semver.Version, error) {
-	cmd := exec.Command(pnpm.executable, "--version") //nolint:gosec
+	cmd := exec.Command(pnpm.executable, "--version")
 	output, err := cmd.Output()
 	if err != nil {
 		return semver.Version{}, errutil.ErrorWithStderr(err, cmd.String())
@@ -89,7 +89,6 @@ func (pnpm *pnpmManager) installCmd(ctx context.Context, production bool) *exec.
 		args = append(args, "--production")
 	}
 
-	//nolint:gosec // False positive on tained command execution. We aren't accepting input from the user here.
 	return exec.CommandContext(ctx, pnpm.executable, args...)
 }
 
@@ -168,7 +167,6 @@ func (pnpm *pnpmManager) mergeProjectConfig(
 	if err != nil {
 		return fmt.Errorf("error marshaling %s to JSON: %w", setting, err)
 	}
-	//nolint:gosec // json data is escaped
 	set := exec.CommandContext(ctx, "pnpm", "config", "set", setting, string(data), "--location", "project", "--json")
 	set.Dir = dir
 	if out, err := set.CombinedOutput(); err != nil {
@@ -184,7 +182,6 @@ func (pnpm *pnpmManager) ListPackages(
 }
 
 func (pnpm *pnpmManager) Pack(ctx context.Context, dir string, stderr io.Writer) ([]byte, error) {
-	//nolint:gosec // False positive on tained command execution. We aren't accepting input from the user here.
 	command := exec.CommandContext(ctx, pnpm.executable, "pack", "--use-stderr")
 	command.Dir = dir
 

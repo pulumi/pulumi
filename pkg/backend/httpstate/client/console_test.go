@@ -75,7 +75,6 @@ func TestConsoleURL(t *testing.T) {
 	})
 }
 
-//nolint:paralleltest // sets env var, must be run in isolation
 func TestAgentClaimURL(t *testing.T) {
 	assert.Equal(t,
 		"https://app.pulumi.com/claim/abc123",

@@ -6,4 +6,5 @@ import * as reservednames from "@pulumi/reservednames";
 const elem = new reservednames.ElementType("elem", {elementType: {
     elementType: "nested",
 }});
-export const elementType = elem.elementType.elementType;
+export const elementType = elem.elementType;
+export const nested = elem.elementType.elementType;

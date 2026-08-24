@@ -326,7 +326,9 @@ func TestResolveTaskTarget_WorkspaceStackOwnerWinsOverDefaultOrg(t *testing.T) {
 		NewF: func(_ string) (pkgWorkspace.W, error) {
 			return &pkgWorkspace.MockW{
 				SettingsF: func() *pkgWorkspace.Settings {
-					return &pkgWorkspace.Settings{Stack: "otherorg/proj/dev"}
+					return &pkgWorkspace.Settings{
+						Stack: "otherorg/proj/dev", //nolint:staticcheck
+					}
 				},
 			}, nil
 		},

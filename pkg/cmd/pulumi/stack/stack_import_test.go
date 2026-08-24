@@ -43,7 +43,7 @@ func TestStackImport_ChangeServiceSecrets(t *testing.T) {
 	t.Parallel()
 
 	settings := &pkgWorkspace.Settings{
-		Stack: "org/proj/stk",
+		Stack: "org/proj/stk", //nolint:staticcheck
 	}
 	w := &pkgWorkspace.MockW{
 		SettingsF: func() *pkgWorkspace.Settings {
@@ -169,7 +169,9 @@ func TestStackImport_ServiceSecrets_DefaultSecretManagerMutatesProjectStack(t *t
 
 	w := &pkgWorkspace.MockW{
 		SettingsF: func() *pkgWorkspace.Settings {
-			return &pkgWorkspace.Settings{Stack: "org/proj/stk"}
+			return &pkgWorkspace.Settings{
+				Stack: "org/proj/stk", //nolint:staticcheck
+			}
 		},
 	}
 

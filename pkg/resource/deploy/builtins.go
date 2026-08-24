@@ -331,7 +331,7 @@ func (p *builtinProvider) Construct(context.Context, plugin.ConstructRequest) (p
 
 const (
 	readStackOutputs         = "pulumi:pulumi:readStackOutputs"
-	readStackResourceOutputs = "pulumi:pulumi:readStackResourceOutputs" //nolint:gosec // not a credential
+	readStackResourceOutputs = "pulumi:pulumi:readStackResourceOutputs"
 	getResource              = "pulumi:pulumi:getResource"
 )
 

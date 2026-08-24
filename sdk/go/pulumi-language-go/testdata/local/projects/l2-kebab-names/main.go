@@ -25,6 +25,7 @@ func main() {
 		if err != nil {
 			return err
 		}
+		ctx.Export("theOutput", first.TheOutput)
 		return nil
 	})
 }

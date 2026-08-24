@@ -1,0 +1,4 @@
+component: sdk/python
+kind: improvement
+body: Allow transforms to be mocked
+time: 2026-08-20T15:53:23.245504123+02:00

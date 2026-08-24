@@ -11,3 +11,8 @@ resource "first" "kebab-names:kebab-module:someResource" {
 resource "second" "kebab-names:kebab-module:anotherResource" {
     theInput = first.theOutput.nestedOutput
 }
+
+// Whole objects in stack outputs keep their wire-format keys
+output "theOutput" {
+    value = first.theOutput
+}

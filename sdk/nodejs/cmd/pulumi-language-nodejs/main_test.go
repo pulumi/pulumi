@@ -85,7 +85,7 @@ func TestArgumentConstruction(t *testing.T) {
 
 		host := &nodeLanguageHost{}
 		rr := &pulumirpc.RunRequest{
-			Program: "foobar",
+			Program: "foobar", //nolint:staticcheck
 			Info: &pulumirpc.ProgramInfo{
 				RootDirectory:    "/foo/bar",
 				ProgramDirectory: "/foo/bar",
@@ -480,7 +480,7 @@ func TestGetProgramDependencies(t *testing.T) {
 		})
 		host := &nodeLanguageHost{}
 		_, err := host.GetProgramDependencies(t.Context(), &pulumirpc.GetProgramDependenciesRequest{
-			Program: testDir,
+			Program: testDir, //nolint:staticcheck
 			Info: &pulumirpc.ProgramInfo{
 				RootDirectory:    testDir,
 				ProgramDirectory: testDir,
@@ -505,7 +505,7 @@ func TestGetProgramDependencies(t *testing.T) {
 		})
 		host := &nodeLanguageHost{}
 		_, err := host.GetProgramDependencies(t.Context(), &pulumirpc.GetProgramDependenciesRequest{
-			Program: testDir,
+			Program: testDir, //nolint:staticcheck
 			Info: &pulumirpc.ProgramInfo{
 				RootDirectory:    testDir,
 				ProgramDirectory: testDir,
@@ -541,7 +541,7 @@ func TestGetProgramDependencies(t *testing.T) {
 		})
 		host := &nodeLanguageHost{}
 		resp, err := host.GetProgramDependencies(t.Context(), &pulumirpc.GetProgramDependenciesRequest{
-			Program: testDir,
+			Program: testDir, //nolint:staticcheck
 			Info: &pulumirpc.ProgramInfo{
 				RootDirectory:    testDir,
 				ProgramDirectory: testDir,
@@ -581,7 +581,7 @@ func TestGetProgramDependencies(t *testing.T) {
 		subdir := filepath.Join(testDir, "subdir")
 		host := &nodeLanguageHost{}
 		resp, err := host.GetProgramDependencies(t.Context(), &pulumirpc.GetProgramDependenciesRequest{
-			Program: subdir,
+			Program: subdir, //nolint:staticcheck
 			Info: &pulumirpc.ProgramInfo{
 				RootDirectory:    subdir,
 				ProgramDirectory: subdir,
@@ -620,7 +620,7 @@ func TestGetProgramDependencies(t *testing.T) {
 		})
 		host := &nodeLanguageHost{}
 		resp, err := host.GetProgramDependencies(t.Context(), &pulumirpc.GetProgramDependenciesRequest{
-			Program: testDir,
+			Program: testDir, //nolint:staticcheck
 			Info: &pulumirpc.ProgramInfo{
 				RootDirectory:    testDir,
 				ProgramDirectory: testDir,
@@ -675,7 +675,7 @@ func TestGetProgramDependencies(t *testing.T) {
 		})
 		host := &nodeLanguageHost{}
 		resp, err := host.GetProgramDependencies(t.Context(), &pulumirpc.GetProgramDependenciesRequest{
-			Program: testDir,
+			Program: testDir, //nolint:staticcheck
 			Info: &pulumirpc.ProgramInfo{
 				RootDirectory:    testDir,
 				ProgramDirectory: testDir,
@@ -732,7 +732,7 @@ func TestGetProgramDependencies(t *testing.T) {
 		subdir := filepath.Join(testDir, "subdir")
 		host := &nodeLanguageHost{}
 		resp, err := host.GetProgramDependencies(t.Context(), &pulumirpc.GetProgramDependenciesRequest{
-			Program: subdir,
+			Program: subdir, //nolint:staticcheck
 			Info: &pulumirpc.ProgramInfo{
 				RootDirectory:    subdir,
 				ProgramDirectory: subdir,

@@ -622,7 +622,6 @@ func TestSDKCodegen(t *testing.T, opts *SDKCodegenOptions) { // revive:disable-l
 			sort.Strings(checkOrder)
 
 			// Perform the checks.
-			//nolint:paralleltest // test functions are ordered
 			for _, check := range checkOrder {
 				t.Run(check, func(t *testing.T) {
 					if !runToolchainChecks() {

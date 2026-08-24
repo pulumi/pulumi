@@ -136,7 +136,7 @@ func getOutputState(v reflect.Value) (*OutputState, bool) {
 	if !v.IsValid() || !v.CanInterface() {
 		return nil, false
 	}
-	out, ok := v.Interface().(Output)
+	out, ok := reflect.TypeAssert[Output](v)
 	if !ok {
 		return nil, false
 	}
@@ -513,7 +513,7 @@ func (ap *applier) Call(ctx context.Context, in reflect.Value) (reflect.Value, e
 		// Using the 'x, ok' form for cast here
 		// gracefully handles the case when results[1]
 		// is nil.
-		err, _ = results[1].Interface().(error)
+		err, _ = reflect.TypeAssert[error](results[1])
 	}
 
 	return out, err
@@ -626,7 +626,7 @@ func (o *OutputState) applyTWithApplier(ctx context.Context, ap *applier) Output
 		}
 		var fulfilledDeps []Resource
 		fulfilledDeps = append(fulfilledDeps, deps...)
-		if resultOutput, ok := out.Interface().(Output); ok {
+		if resultOutput, ok := reflect.TypeAssert[Output](out); ok {
 			fulfilledDeps = append(fulfilledDeps, resultOutput.getState().dependencies()...)
 		}
 		// Fulfill the result.
@@ -815,7 +815,7 @@ func awaitInputs(ctx context.Context, v, resolved reflect.Value) (bool, bool, []
 	// await it.
 	valueType, isInput := v.Type(), false
 	if v.CanInterface() && valueType.Implements(inputType) {
-		input, ok := v.Interface().(Input)
+		input, ok := reflect.TypeAssert[Input](v)
 		if !ok {
 			// A non-input type is already fully-resolved.
 			return true, false, nil, nil
@@ -1116,7 +1116,7 @@ func OutputWithDependencies(ctx context.Context, o Output, deps ...Resource) Out
 
 		var fulfilledDeps []Resource
 		fulfilledDeps = append(fulfilledDeps, deps...)
-		if resultOutput, ok := val.Interface().(Output); ok {
+		if resultOutput, ok := reflect.TypeAssert[Output](val); ok {
 			fulfilledDeps = append(fulfilledDeps, resultOutput.getState().dependencies()...)
 		}
 		// Fulfill the result.

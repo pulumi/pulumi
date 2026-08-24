@@ -1783,7 +1783,6 @@ func TestDisableDefaultProviders(t *testing.T) {
 			})
 		}
 	}
-	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
 	for _, tt := range cases {
 		var name []string
 		if tt.disableDefault {

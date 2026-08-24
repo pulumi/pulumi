@@ -1114,7 +1114,7 @@ func TestJSONMarshalNested(t *testing.T) {
 	}()
 	json := JSONMarshal(out)
 	v, known, secret, deps, err := await(json)
-	assert.EqualError(t, err, "json: error calling MarshalJSON for type pulumi.AnyOutput: outputs can not be marshaled to JSON")
+	assert.EqualError(t, err, "json: error calling MarshalJSON for type *pulumi.AnyOutput: outputs can not be marshaled to JSON")
 	assert.True(t, known)
 	assert.False(t, secret)
 	assert.Nil(t, deps)

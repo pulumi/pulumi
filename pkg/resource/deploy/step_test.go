@@ -583,7 +583,7 @@ func TestReadStep(t *testing.T) {
 
 			// News should be updated.
 			require.Len(t, s.new.InitErrors, 1)
-			assert.Equal(t, (resource.PropertyMap)(nil), s.new.Inputs)
+			assert.Equal(t, resource.PropertyMap(nil), s.new.Inputs)
 			assert.Equal(t, resource.PropertyMap{
 				"outputs-key": resource.NewProperty("expected-value"),
 			}, s.new.Outputs)

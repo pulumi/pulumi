@@ -35,7 +35,6 @@ func initLoader(b testing.TB, options pluginLoaderCacheOptions) ReferenceLoader 
 	cwd, err := os.Getwd()
 	require.NoError(b, err)
 	sink := diagtest.LogSink(b)
-	//nolint:usetesting // plugin.NewContext manages gRPC providers; b.Context cancels too early
 	pluginHost, err := pkghost.New(context.WithoutCancel(b.Context()), sink, sink, nil, nil,
 		NewLoaderServerFromContext, nil, nil)
 	require.NoError(b, err)

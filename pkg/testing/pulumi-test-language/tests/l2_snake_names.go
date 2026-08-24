@@ -61,6 +61,15 @@ func init() {
 					assert.Equal(l, resource.PropertyMap{
 						"the_input": resource.NewProperty("fuzz"),
 					}, third.Outputs)
+
+					stack := RequireSingleResource(l, res.Snap.Resources, "pulumi:pulumi:Stack")
+					AssertPropertyMapMember(l, stack.Outputs, "theOutput", resource.NewProperty(resource.PropertyMap{
+						"someKey": resource.NewProperty([]resource.PropertyValue{
+							resource.NewProperty(resource.PropertyMap{
+								"nested_output": resource.NewProperty("nested"),
+							}),
+						}),
+					}))
 				},
 			},
 		},

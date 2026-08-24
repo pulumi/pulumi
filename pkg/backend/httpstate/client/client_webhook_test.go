@@ -62,7 +62,7 @@ func TestListStackWebhooks(t *testing.T) {
 		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			gotPath = r.URL.Path
 			w.Header().Set("Content-Type", "application/json")
-			err := json.NewEncoder(w).Encode(want) //nolint:gosec // test data
+			err := json.NewEncoder(w).Encode(want)
 			require.NoError(t, err)
 		}))
 		defer srv.Close()
@@ -476,7 +476,7 @@ func TestUpdateStackWebhook(t *testing.T) {
 			err := json.NewDecoder(r.Body).Decode(&gotBody)
 			require.NoError(t, err)
 			w.Header().Set("Content-Type", "application/json")
-			err = json.NewEncoder(w).Encode(want) //nolint:gosec // test data
+			err = json.NewEncoder(w).Encode(want)
 			require.NoError(t, err)
 		}))
 		defer srv.Close()

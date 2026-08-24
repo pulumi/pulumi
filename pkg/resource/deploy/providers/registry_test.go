@@ -734,7 +734,6 @@ func TestCRUDBadVersion(t *testing.T) {
 	assert.Nil(t, check.Properties)
 }
 
-//nolint:paralleltest
 func TestLoadProvider_missingError(t *testing.T) {
 	var count int
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

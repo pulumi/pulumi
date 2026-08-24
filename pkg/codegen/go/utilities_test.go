@@ -38,7 +38,6 @@ func TestMakeSafeEnumName(t *testing.T) {
 		{"Dev(NoSLA)_Standard_D11_v2", "TypeName_Dev_NoSLA_Standard_D11_v2", false},
 		{"Standard_E8as_v4+1TB_PS", "TypeName_Standard_E8as_v4_1TB_PS", false},
 	}
-	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
 	for _, tt := range tests {
 		t.Run(tt.input, func(t *testing.T) {
 			t.Parallel()

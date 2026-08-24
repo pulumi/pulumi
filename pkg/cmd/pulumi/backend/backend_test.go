@@ -31,7 +31,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-//nolint:paralleltest // mutates environment and shared temporary agent credentials
 func TestGetCurrentCloudURLFallsBackToAgentCredentials(t *testing.T) {
 	clearAIAgentEnv(t)
 	oldAgentCreds, err := workspace.GetAgentStoredCredentials()
@@ -63,7 +62,6 @@ func TestGetCurrentCloudURLFallsBackToAgentCredentials(t *testing.T) {
 	assert.Equal(t, "https://api.agent.example", url)
 }
 
-//nolint:paralleltest // mutates environment and shared temporary agent credentials
 func TestGetCurrentCloudURLReturnsEmptyAgentCurrent(t *testing.T) {
 	clearAIAgentEnv(t)
 	t.Setenv(env.BackendURL.Var().Name(), "")
@@ -81,7 +79,6 @@ func TestGetCurrentCloudURLReturnsEmptyAgentCurrent(t *testing.T) {
 	assert.Empty(t, url)
 }
 
-//nolint:paralleltest // mutates environment and shared temporary agent credentials
 func TestGetCurrentCloudURLReturnsAgentCredentialReadError(t *testing.T) {
 	clearAIAgentEnv(t)
 	t.Setenv(env.BackendURL.Var().Name(), "")
@@ -100,7 +97,6 @@ func TestGetCurrentCloudURLReturnsAgentCredentialReadError(t *testing.T) {
 	require.ErrorContains(t, err, "could not get cloud url from agent credentials")
 }
 
-//nolint:paralleltest // mutates environment
 func TestGetCurrentCloudURLDoesNotFallbackWithExplicitPath(t *testing.T) {
 	clearAIAgentEnv(t)
 	t.Setenv(env.BackendURL.Var().Name(), "")
@@ -117,7 +113,6 @@ func TestGetCurrentCloudURLDoesNotFallbackWithExplicitPath(t *testing.T) {
 	require.ErrorIs(t, err, assert.AnError)
 }
 
-//nolint:paralleltest // mutates environment
 func TestGetCurrentCloudURLReturnsDefaultCredentialErrorsOutsideAgents(t *testing.T) {
 	clearAIAgentEnv(t)
 	t.Setenv(env.BackendURL.Var().Name(), "")
@@ -132,7 +127,6 @@ func TestGetCurrentCloudURLReturnsDefaultCredentialErrorsOutsideAgents(t *testin
 	require.ErrorIs(t, err, assert.AnError)
 }
 
-//nolint:paralleltest // mutates environment
 func TestGetCurrentCloudURLReturnsDefaultCloudURL(t *testing.T) {
 	clearAIAgentEnv(t)
 	t.Setenv(env.BackendURL.Var().Name(), "https://api.default-current.example.com")
@@ -142,7 +136,6 @@ func TestGetCurrentCloudURLReturnsDefaultCloudURL(t *testing.T) {
 	assert.Equal(t, "https://api.default-current.example.com", url)
 }
 
-//nolint:paralleltest // mutates environment
 func TestCurrentBackendReturnsCloudURLError(t *testing.T) {
 	clearAIAgentEnv(t)
 	t.Setenv(env.BackendURL.Var().Name(), "")
@@ -157,7 +150,6 @@ func TestCurrentBackendReturnsCloudURLError(t *testing.T) {
 	assert.Nil(t, backend)
 }
 
-//nolint:paralleltest // mutates environment
 func TestNonInteractiveCurrentBackendReturnsCloudURLError(t *testing.T) {
 	clearAIAgentEnv(t)
 	t.Setenv(env.BackendURL.Var().Name(), "")
@@ -172,7 +164,6 @@ func TestNonInteractiveCurrentBackendReturnsCloudURLError(t *testing.T) {
 	assert.Nil(t, backend)
 }
 
-//nolint:paralleltest // mutates environment
 func TestNonInteractiveCurrentBackendPassesDefaultURL(t *testing.T) {
 	clearAIAgentEnv(t)
 	t.Setenv(env.BackendURL.Var().Name(), "https://api.noninteractive.example.com")

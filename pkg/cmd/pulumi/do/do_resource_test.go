@@ -1048,7 +1048,9 @@ func providerFlagStackContext(
 		NewF: func(_ string) (pkgWorkspace.W, error) {
 			return &pkgWorkspace.MockW{
 				SettingsF: func() *pkgWorkspace.Settings {
-					return &pkgWorkspace.Settings{Stack: "myorg/proj/dev"}
+					return &pkgWorkspace.Settings{
+						Stack: "myorg/proj/dev", //nolint:staticcheck
+					}
 				},
 			}, nil
 		},

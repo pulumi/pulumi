@@ -339,7 +339,6 @@ func (edit *envEditCommand) editWithYAMLEditor(
 		contract.IgnoreError(err)
 	}()
 
-	//nolint:gosec
 	cmd := exec.Command(editor[0], append(editor[1:], filename)...)
 	cmd.Stdin = edit.env.esc.stdin
 	cmd.Stdout = edit.env.esc.stdout

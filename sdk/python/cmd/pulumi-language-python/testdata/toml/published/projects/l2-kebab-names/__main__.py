@@ -10,3 +10,4 @@ first = kebab_names.kebab_module.SomeResource("first",
         "nested_value": "nested",
     })
 second = kebab_names.kebab_module.AnotherResource("second", the_input=first.the_output.nested_output)
+pulumi.export("theOutput", first.the_output)

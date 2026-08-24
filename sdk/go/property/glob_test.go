@@ -69,7 +69,7 @@ func genTextGlobPath() *rapid.Generator[tup[string, Glob]] {
 		rapid.Just(ret{"[*]", Splat}), // Index Splat
 		// Number
 		rapid.Map(rapid.Uint64().Filter(func(i uint64) bool { return i < math.MaxInt64 }), func(i uint64) ret {
-			return ret{"[" + strconv.FormatInt(int64(i), 10) + "]", IndexSegment{i}} //nolint:gosec // checked above
+			return ret{"[" + strconv.FormatInt(int64(i), 10) + "]", IndexSegment{i}}
 		}),
 		// Unquoted property path
 		rapid.Map(rapid.StringMatching("[a-zA-Z_][a-zA-Z0-9_]*"), func(s string) ret {

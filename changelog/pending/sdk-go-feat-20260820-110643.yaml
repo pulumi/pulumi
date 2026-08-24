@@ -1,0 +1,4 @@
+component: sdk/go
+kind: feat
+body: Support Go 1.27
+time: 2026-08-20T11:06:43.07961+01:00

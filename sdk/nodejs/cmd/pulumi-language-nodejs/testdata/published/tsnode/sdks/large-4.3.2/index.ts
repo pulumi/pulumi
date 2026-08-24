@@ -5,6 +5,11 @@ import * as pulumi from "@pulumi/pulumi";
 import * as utilities from "./utilities";
 
 // Export members:
+export { MapArgs } from "./map";
+export type Map = import("./map").Map;
+export const Map: typeof import("./map").Map = null as any;
+utilities.lazyLoad(exports, ["Map"], () => require("./map"));
+
 export { ProviderArgs } from "./provider";
 export type Provider = import("./provider").Provider;
 export const Provider: typeof import("./provider").Provider = null as any;
@@ -20,6 +25,8 @@ const _module = {
     version: utilities.getVersion(),
     construct: (name: string, type: string, urn: string): pulumi.Resource => {
         switch (type) {
+            case "large:index:Map":
+                return new Map(name, <any>undefined, { urn })
             case "large:index:String":
                 return new String(name, <any>undefined, { urn })
             default:

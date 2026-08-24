@@ -41,7 +41,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
-	. "github.com/pulumi/pulumi/pkg/v3/engine" //nolint:revive
+	. "github.com/pulumi/pulumi/pkg/v3/engine"
 	lt "github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest/framework"
 	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
@@ -1548,7 +1548,7 @@ func TestSingleResourceIgnoreChanges(t *testing.T) {
 			resource.NewProperty("foo"),
 			resource.NewProperty("bar"),
 		})),
-	}, nil, []display.StepOp{deploy.OpUpdate}, "ignore-secret")
+	}, nil, []display.StepOp{deploy.OpSame}, "ignore-secret")
 
 	// Now check that changing a value (but not secretness) can be ignored
 	_ = updateProgramWithProps(snap, resource.PropertyMap{

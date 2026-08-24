@@ -1128,7 +1128,7 @@ func (p *provider) Configure(ctx context.Context, req ConfigureRequest) (Configu
 			AcceptResources:        true,
 			SendsOldInputs:         true,
 			SendsOldInputsToDelete: true,
-			Variables:              variables,
+			Variables:              variables, //nolint:staticcheck
 			Args:                   minputs,
 		})
 		if err != nil {

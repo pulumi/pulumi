@@ -19,12 +19,17 @@ Mocks for testing.
 import functools
 import logging
 from abc import ABC, abstractmethod
-from typing import NamedTuple, Optional
+from typing import TYPE_CHECKING, NamedTuple, Optional
 
 from google.protobuf import empty_pb2
 
-from ..runtime.proto import engine_pb2, provider_pb2, resource_pb2
+from ..runtime.proto import (
+    engine_pb2,
+    provider_pb2,
+    resource_pb2,
+)
 from ..runtime.stack import Stack, run_pulumi_func
+from ._callbacks import _CallbackServicer
 from . import rpc, rpc_manager
 from .settings import (
     Settings,
@@ -35,6 +40,10 @@ from .settings import (
     SETTINGS,
 )
 from .sync_await import _ensure_event_loop, _sync_await
+
+if TYPE_CHECKING:
+    from ..invoke import InvokeTransform
+    from ..resource import ResourceTransform
 
 
 def test(fn):
@@ -70,6 +79,7 @@ class MockResourceArgs:
     provider: Optional[str] = None
     resource_id: Optional[str] = None
     custom: Optional[bool] = None
+    transforms: "list[ResourceTransform]"
 
     def __init__(
         self,
@@ -79,6 +89,7 @@ class MockResourceArgs:
         provider: Optional[str] = None,
         resource_id: Optional[str] = None,
         custom: Optional[bool] = None,
+        transforms: Optional["list[ResourceTransform]"] = None,
     ) -> None:
         """
         :param str typ: The token that indicates which resource type is being constructed. This token is of the form "package:module:type".
@@ -87,6 +98,7 @@ class MockResourceArgs:
         :param str provider: The identifier of the provider instance being used to manage this resource.
         :param str resource_id: The physical identifier of an existing resource to read or import.
         :param bool custom: Specifies whether or not the resource is Custom (i.e. managed by a resource provider).
+        :param list transforms: The transforms declared in the resource's options. The mock monitor does not run them.
         """
         self.typ = typ
         self.name = name
@@ -94,6 +106,7 @@ class MockResourceArgs:
         self.provider = provider
         self.resource_id = resource_id
         self.custom = custom
+        self.transforms = transforms or []
 
 
 class MockCallArgs:
@@ -142,6 +155,34 @@ class Mocks(ABC):
         """
         return "", {}
 
+    def register_transform(self, transform: "ResourceTransform") -> None:
+        """
+        register_transform is called when a stack transform is registered. The mock monitor
+        does not run transforms; implementations that want to exercise them can record the
+        transform here and call it from `new_resource`.
+
+        :param ResourceTransform transform.
+        """
+
+    def register_invoke_transform(self, transform: "InvokeTransform") -> None:
+        """
+        register_invoke_transform is called when a stack invoke transform is registered. The
+        mock monitor does not run transforms; implementations that want to exercise them can
+        record the transform here and call it from `call`.
+
+        :param InvokeTransform transform.
+        """
+
+
+def _resolve_callbacks(callbacks) -> list:
+    by_token = {}
+    for servicer in _CallbackServicer._servicers:
+        for fn, token in servicer._transforms.items():
+            by_token[token] = fn
+    return [
+        by_token[callback.token] for callback in callbacks if callback.token in by_token
+    ]
+
 
 class MockMonitor:
     class ResourceRegistration(NamedTuple):
@@ -156,9 +197,14 @@ class MockMonitor:
     mocks: Mocks
     resources: dict[str, ResourceRegistration]
 
+    _stack_transforms: "list[ResourceTransform]"
+    _stack_invoke_transforms: "list[InvokeTransform]"
+
     def __init__(self, mocks: Mocks):
         self.mocks = mocks
         self.resources = {}
+        self._stack_transforms = []
+        self._stack_invoke_transforms = []
 
     def make_urn(self, parent: str, type_: str, name: str) -> str:
         if parent != "":
@@ -174,6 +220,22 @@ class MockMonitor:
         """
 
         return dict(self.resources)
+
+    def get_registered_transforms(self) -> "list[ResourceTransform]":
+        """
+        get_registered_transforms returns the resource transforms registered with this monitor.
+        The mock monitor does not run them; tests that want to exercise them can call them
+        from their `Mocks.new_resource` implementation.
+        """
+        return list(self._stack_transforms)
+
+    def get_registered_invoke_transforms(self) -> "list[InvokeTransform]":
+        """
+        get_registered_invoke_transforms returns the invoke transforms registered with this
+        monitor. The mock monitor does not run them; tests that want to exercise them can
+        call them from their `Mocks.call` implementation.
+        """
+        return list(self._stack_invoke_transforms)
 
     def Invoke(self, request):
         # Ensure we have an event loop on this thread because it's needed when deserializing resource references.
@@ -252,6 +314,7 @@ class MockMonitor:
             provider=request.provider,
             resource_id=request.importId,
             custom=request.custom or False,
+            transforms=_resolve_callbacks(request.transforms),
         )
         id_, state = self.mocks.new_resource(resource_args)
 
@@ -262,6 +325,24 @@ class MockMonitor:
         return resource_pb2.RegisterResourceResponse(urn=urn, id=id_, object=obj_proto)
 
     def RegisterResourceOutputs(self, request):
+        return empty_pb2.Empty()
+
+    def RegisterStackTransform(self, request):
+        for transform in _resolve_callbacks([request]):
+            self._stack_transforms.append(transform)
+            self.mocks.register_transform(transform)
+        return empty_pb2.Empty()
+
+    def RegisterStackInvokeTransform(self, request):
+        for transform in _resolve_callbacks([request]):
+            self._stack_invoke_transforms.append(transform)
+            self.mocks.register_invoke_transform(transform)
+        return empty_pb2.Empty()
+
+    def RegisterResourceHook(self, request):
+        return empty_pb2.Empty()
+
+    def RegisterErrorHook(self, request):
         return empty_pb2.Empty()
 
     def SupportsFeature(self, request):
@@ -352,6 +433,7 @@ def set_mocks(
         stack=stack if stack is not None else "stack",
         dry_run=preview,
         organization=organization,
+        callbacks=None,
     )
     configure(settings)
 

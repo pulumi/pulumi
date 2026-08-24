@@ -152,7 +152,7 @@ linters:
     nakedret:
       max-func-lines: 60
     nolintlint:
-      allow-unused: true
+      allow-unused: false
     forbidigo:
       forbid:
         - pattern: ^assert.NoError$
