@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+import { InvokeTransform } from "../invoke";
+import { ResourceTransform } from "../resource";
 import { deserializeProperties, serializeProperties } from "./rpc";
 import { getProject, getStack, setMockOptions } from "./settings";
 import { getStore } from "./state";
@@ -57,6 +59,12 @@ export interface MockResourceArgs {
      * import.
      */
     id?: string;
+
+    /**
+     * The transforms declared in the resource's options. The mock monitor does
+     * not run them.
+     */
+    transforms?: ResourceTransform[];
 }
 
 /**
@@ -118,12 +126,36 @@ export interface Mocks {
      * @param args MockResourceArgs
      */
     newResource(args: MockResourceArgs): MockResourceResult | Promise<MockResourceResult>;
+
+    /**
+     * Called when a stack transform is registered. The mock monitor does not
+     * run transforms; implementations that want to exercise them can record the
+     * transform here and call it from {@link newResource}.
+     *
+     * @param transform ResourceTransform
+     */
+    registerTransform?(transform: ResourceTransform): void;
+
+    /**
+     * Called when a stack invoke transform is registered. The mock monitor does
+     * not run transforms; implementations that want to exercise them can record
+     * the transform here and call it from {@link call}.
+     *
+     * @param transform InvokeTransform
+     */
+    registerInvokeTransform?(transform: InvokeTransform): void;
 }
 
 export class MockMonitor {
     readonly resources = new Map<string, { urn: string; id: string | null; state: any }>();
 
+    private readonly transformCallbacks = new Map<string, ResourceTransform | InvokeTransform>();
+
     constructor(readonly mocks: Mocks) {}
+
+    public recordTransformCallback(token: string, transform: ResourceTransform | InvokeTransform) {
+        this.transformCallbacks.set(token, transform);
+    }
 
     private newUrn(parent: string, type: string, name: string): string {
         if (parent) {
@@ -190,6 +222,11 @@ export class MockMonitor {
 
     public async registerResource(req: any, callback: (err: any, innerResponse: any) => void) {
         try {
+            const transforms = req
+                .getTransformsList()
+                .map((cb: any) => this.transformCallbacks.get(cb.getToken()))
+                .filter((transform: any) => transform !== undefined) as ResourceTransform[];
+
             const result: MockResourceResult = await this.mocks.newResource({
                 type: req.getType(),
                 name: req.getName(),
@@ -197,6 +234,7 @@ export class MockMonitor {
                 provider: req.getProvider(),
                 custom: req.getCustom(),
                 id: req.getImportid(),
+                transforms: transforms,
             });
 
             const urn = this.newUrn(req.getParent(), req.getType(), req.getName());
@@ -230,6 +268,22 @@ export class MockMonitor {
         } catch (err) {
             callback(err, undefined);
         }
+    }
+
+    public registerStackTransform(req: any, callback: (err: any, innerResponse: any) => void) {
+        const transform = this.transformCallbacks.get(req.getToken());
+        if (transform !== undefined) {
+            this.mocks.registerTransform?.(transform as ResourceTransform);
+        }
+        callback(null, {});
+    }
+
+    public registerStackInvokeTransform(req: any, callback: (err: any, innerResponse: any) => void) {
+        const transform = this.transformCallbacks.get(req.getToken());
+        if (transform !== undefined) {
+            this.mocks.registerInvokeTransform?.(transform as InvokeTransform);
+        }
+        callback(null, {});
     }
 
     public supportsFeature(req: any, callback: (err: any, innerResponse: any) => void) {
@@ -303,7 +357,8 @@ export async function setMocks(
     store.supportsDeletedWith = true;
     store.supportsReplaceWith = true;
     store.supportsAliasSpecs = true;
-    store.supportsTransforms = false;
+    store.supportsTransforms = true;
+    store.supportsInvokeTransforms = true;
     store.supportsParameterization = true;
     store.supportsResourceHooks = true;
     store.supportsErrorHooks = true;
