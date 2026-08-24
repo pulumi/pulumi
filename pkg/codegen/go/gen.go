@@ -4199,6 +4199,47 @@ func ExtractImportBasePath(extPkg schema.PackageReference) string {
 	return fmt.Sprintf("%s/go/%s", modpath, name)
 }
 
+// ModuleAndImportPath returns the Go module path and the root import path of the SDK that
+// GeneratePackage writes for pkg. The module path is the module statement of the generated go.mod
+// file. The import path addresses the directory that holds the root package of that module.
+//
+// ExtractModulePath and ExtractImportBasePath derive both paths from the package reference alone,
+// so they disagree with the SDK on disk when the schema sets modulePath or importBasePath. Use this
+// function instead when the paths must match an SDK that GeneratePackage wrote.
+func ModuleAndImportPath(pkg *schema.Package) (string, string) {
+	var info GoPackageInfo
+	if goInfo, ok := pkg.Language["go"].(GoPackageInfo); ok {
+		info = goInfo
+	}
+
+	modulePath := ExtractModulePath(pkg.Reference())
+	if info.ModulePath != "" {
+		modulePath = info.ModulePath
+	} else if info.ImportBasePath != "" {
+		// The go.mod file sits one directory above the root package, so the module path is the
+		// import base path without its last element.
+		modulePath = path.Dir(info.ImportBasePath)
+	}
+
+	if !pkg.SupportPack {
+		// A legacy SDK gets no generated go.mod file. Its root package sits under the "go"
+		// directory of a module that the package author writes, so the import path does not
+		// derive from the module path.
+		if info.ImportBasePath != "" {
+			return modulePath, info.ImportBasePath
+		}
+		return modulePath, ExtractImportBasePath(pkg.Reference())
+	}
+
+	if pkg.ExtensionParameterization != nil {
+		modulePath = pkg.Name
+	}
+
+	root, err := packageRoot(pkg.Reference())
+	contract.AssertNoErrorf(err, "We generated the ref from a pkg, so we know its a valid ref")
+	return modulePath, path.Join(modulePath, root)
+}
+
 func (pkg *pkgContext) getImports(member any, importsAndAliases map[string]string) {
 	seen := map[schema.Type]struct{}{}
 	switch member := member.(type) {
@@ -5490,20 +5531,7 @@ func GeneratePackage(tool string,
 
 	// create a go.mod file with references to local dependencies
 	if pkg.SupportPack {
-		modulePath := ExtractModulePath(pkg.Reference())
-		if langInfo, found := pkg.Language["go"]; found {
-			goInfo, ok := langInfo.(GoPackageInfo)
-			if ok && goInfo.ModulePath != "" {
-				modulePath = goInfo.ModulePath
-			} else if ok && goInfo.ImportBasePath != "" {
-				// if support pack is enabled we can infer the module path from the
-				// import base path, which is one up from the import base (ie without the package name).
-				modulePath = path.Dir(goInfo.ImportBasePath)
-			}
-		}
-		if pkg.ExtensionParameterization != nil {
-			modulePath = pkg.Name
-		}
+		modulePath, _ := ModuleAndImportPath(pkg)
 
 		var gomod modfile.File
 		err = gomod.AddModuleStmt(modulePath)
