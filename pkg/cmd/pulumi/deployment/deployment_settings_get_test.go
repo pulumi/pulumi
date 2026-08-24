@@ -830,32 +830,57 @@ func TestDeploymentSettingsGet_EnvironmentVariableValues(t *testing.T) {
 func TestDeploymentSettingsGet_ValueColumnFitsPrintedLabels(t *testing.T) {
 	t.Parallel()
 
-	settings := func(vars map[string]apitype.SecretValue) *apitype.DeploymentSettings {
-		return &apitype.DeploymentSettings{
-			SourceContext: &apitype.SourceContext{
-				Git: &apitype.SourceContextGit{RepoURL: "https://example.com/acme/infra"},
-			},
-			Operation: &apitype.OperationContext{EnvironmentVariables: vars},
-		}
-	}
-
-	text, _ := renderBoth(t, settings(map[string]apitype.SecretValue{"FOO": {Value: "bar"}}))
-	assert.Equal(t, `Source: Git
+	cases := []struct {
+		name string
+		vars map[string]apitype.SecretValue
+		want string
+	}{
+		{
+			name: "the column shrinks to the labels present",
+			vars: map[string]apitype.SecretValue{"FOO": {Value: "bar"}},
+			want: `Source: Git
   Repository: https://example.com/acme/infra
 
 Environment variables
   FOO:        bar
-`, text)
-
-	text, _ = renderBoth(t, settings(map[string]apitype.SecretValue{
-		"A_LONG_ENVIRONMENT_VARIABLE_NAME": {Value: "bar"},
-	}))
-	assert.Equal(t, `Source: Git
-  Repository:                       https://example.com/acme/infra
+`,
+		},
+		{
+			name: "labels are measured by display width",
+			vars: map[string]apitype.SecretValue{"ラベル": {Value: "bar"}},
+			want: `Source: Git
+  Repository: https://example.com/acme/infra
 
 Environment variables
-  A_LONG_ENVIRONMENT_VARIABLE_NAME: bar
-`, text)
+  ラベル:     bar
+`,
+		},
+		{
+			name: "a label past the old width overflows its own line",
+			vars: map[string]apitype.SecretValue{"A_VERY_LONG_ENVIRONMENT_VARIABLE_NAME": {Value: "bar"}},
+			want: `Source: Git
+  Repository:                    https://example.com/acme/infra
+
+Environment variables
+  A_VERY_LONG_ENVIRONMENT_VARIABLE_NAME: bar
+`,
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			text, _ := renderBoth(t, &apitype.DeploymentSettings{
+				SourceContext: &apitype.SourceContext{
+					Git: &apitype.SourceContextGit{RepoURL: "https://example.com/acme/infra"},
+				},
+				Operation: &apitype.OperationContext{EnvironmentVariables: tc.vars},
+			})
+
+			assert.Equal(t, tc.want, text)
+		})
+	}
 }
 
 func TestDeploymentSettingsGet_ExecutorImageDetails(t *testing.T) {
