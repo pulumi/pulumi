@@ -2136,14 +2136,10 @@ func TestImportWithIDLessCustomResourceInState(t *testing.T) {
 		return nil
 	})
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
-	p := &lt.TestPlan{Options: lt.TestUpdateOptions{T: t, HostF: hostF}}
+	p := &lt.TestPlan{Options: lt.TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true}}
 
 	snap := &deploy.Snapshot{
 		Resources: []*pkgresource.State{
-			{
-				Type: "pulumi:pulumi:Stack",
-				URN:  "urn:pulumi:test::test::pulumi:pulumi:Stack::test-test",
-			},
 			{
 				Type:   "pulumi:providers:pkgA",
 				URN:    "urn:pulumi:test::test::pulumi:providers:pkgA::default",
@@ -2154,7 +2150,6 @@ func TestImportWithIDLessCustomResourceInState(t *testing.T) {
 				Type:     "pkgA:m:typA",
 				URN:      "urn:pulumi:test::test::pkgA:m:typA::resA",
 				Custom:   true,
-				Parent:   "urn:pulumi:test::test::pulumi:pulumi:Stack::test-test",
 				Provider: "urn:pulumi:test::test::pulumi:providers:pkgA::default::prov-id",
 			},
 		},

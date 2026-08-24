@@ -39,9 +39,9 @@ func main() {
 		}
 
 		_, err = newComponent("CustomTimeouts", pulumi.Timeouts(&pulumi.CustomTimeouts{
-			Create: "1m",
-			Update: "2m",
-			Delete: "3m",
+			Create: ("1m"),
+			Update: ("2m"),
+			Delete: ("3m"),
 		}))
 		if err != nil {
 			return err
