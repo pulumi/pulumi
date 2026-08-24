@@ -44,6 +44,8 @@ func TestWorkflowSmoke(t *testing.T) {
 		Dependencies: []string{"github.com/pulumi/pulumi/sdk/v3=" + sdk},
 		Config:       map[string]string{"sha": "abc", "approve": "false"},
 		Quick:        true,
+		// The program uses the random provider, which CI must be allowed to download.
+		Env: []string{"PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION=false"},
 	})
 	t.Cleanup(func() {
 		pt.TestFinished = true
