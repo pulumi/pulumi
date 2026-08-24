@@ -10,6 +10,11 @@ export type AnotherResource = import("./anotherResource").AnotherResource;
 export const AnotherResource: typeof import("./anotherResource").AnotherResource = null as any;
 utilities.lazyLoad(exports, ["AnotherResource"], () => require("./anotherResource"));
 
+export { DoSomethingArgs, DoSomethingResult, DoSomethingOutputArgs } from "./doSomething";
+export const doSomething: typeof import("./doSomething").doSomething = null as any;
+export const doSomethingOutput: typeof import("./doSomething").doSomethingOutput = null as any;
+utilities.lazyLoad(exports, ["doSomething","doSomethingOutput"], () => require("./doSomething"));
+
 export { SomeResourceArgs } from "./someResource";
 export type SomeResource = import("./someResource").SomeResource;
 export const SomeResource: typeof import("./someResource").SomeResource = null as any;

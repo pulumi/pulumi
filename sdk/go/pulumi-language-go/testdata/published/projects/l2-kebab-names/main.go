@@ -25,6 +25,12 @@ func main() {
 			return err
 		}
 		ctx.Export("theOutput", first.TheOutput)
+		ctx.Export("invoked", kebabmodule.DoSomethingOutput(ctx, kebabmodule.DoSomethingOutputArgs{
+			TheInput: pulumi.String("hello"),
+			Nested: &kebabmodule.DefaultsInputArgs{
+				Value: pulumi.String("nested"),
+			},
+		}, nil).TheOutput())
 		return nil
 	})
 }

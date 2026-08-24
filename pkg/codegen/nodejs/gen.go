@@ -504,24 +504,24 @@ func (mod *modContext) genPlainObjectDefaultFunc(w io.Writer, name string,
 			if err != nil {
 				return err
 			}
-			defaults = append(defaults, fmt.Sprintf("%s: (val.%s) ?? %s", p.Name, p.Name, dv))
+			defaults = append(defaults, fmt.Sprintf("%s: (val%s) ?? %s", propertyName(p.Name), propertyAccessor(p.Name), dv))
 		} else if funcName := mod.provideDefaultsFuncName(p.Type, input); funcName != "" {
 			var compositeObject string
 			if codegen.IsNOptionalInput(p.Type) {
 				if !p.IsRequired() {
 					compositeObject = fmt.Sprintf(
-						"pulumi.output(val.%s).apply(v => v === undefined ? undefined : %s(v))",
-						p.Name, funcName)
+						"pulumi.output(val%s).apply(v => v === undefined ? undefined : %s(v))",
+						propertyAccessor(p.Name), funcName)
 				} else {
-					compositeObject = fmt.Sprintf("pulumi.output(val.%s).apply(%s)", p.Name, funcName)
+					compositeObject = fmt.Sprintf("pulumi.output(val%s).apply(%s)", propertyAccessor(p.Name), funcName)
 				}
 			} else {
-				compositeObject = fmt.Sprintf("%s(val.%s)", funcName, p.Name)
+				compositeObject = fmt.Sprintf("%s(val%s)", funcName, propertyAccessor(p.Name))
 				if !p.IsRequired() {
-					compositeObject = fmt.Sprintf("(val.%s ? %s : undefined)", p.Name, compositeObject)
+					compositeObject = fmt.Sprintf("(val%s ? %s : undefined)", propertyAccessor(p.Name), compositeObject)
 				}
 			}
-			defaults = append(defaults, fmt.Sprintf("%s: %s", p.Name, compositeObject))
+			defaults = append(defaults, fmt.Sprintf("%s: %s", propertyName(p.Name), compositeObject))
 		}
 	}
 
@@ -1360,7 +1360,7 @@ func (mod *modContext) genFunctionDefinition(w io.Writer, fun *schema.Function, 
 		if fun.Inputs != nil {
 			for _, p := range fun.Inputs.Properties {
 				// Pass the argument to the invocation.
-				body := "args." + p.Name
+				body := "args" + propertyAccessor(p.Name)
 				if fun.MultiArgumentInputs {
 					body = p.Name
 				}
@@ -1376,7 +1376,7 @@ func (mod *modContext) genFunctionDefinition(w io.Writer, fun *schema.Function, 
 						}
 					} else {
 						body = fmt.Sprintf("%s(%s)", name, body)
-						body = fmt.Sprintf("args.%s ? %s : undefined", p.Name, body)
+						body = fmt.Sprintf("args%s ? %s : undefined", propertyAccessor(p.Name), body)
 					}
 				}
 				fmt.Fprintf(w, "        \"%[1]s\": %[2]s,\n", p.Name, body)

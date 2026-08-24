@@ -939,14 +939,22 @@ func (g *generator) argumentTypeName(expr model.Expression, destType model.Type)
 	// Normalize module.
 	pkg, err := objType.PackageReference.Definition()
 	contract.AssertNoErrorf(err, "error loading definition for package %q", objType.PackageReference.Name())
+	compatibility := ""
 	if lang, ok := pkg.Language["python"]; ok {
 		if pkgInfo, ok := lang.(PackageInfo); ok {
 			if m, ok := pkgInfo.ModuleNameOverrides[module]; ok {
 				modName = m
 			}
+			compatibility = pkgInfo.Compatibility
 		}
 	}
-	return tokenToQualifiedName(g.packageAlias(pkgName), modName, member) + "Args"
+	name := tokenToQualifiedName(g.packageAlias(pkgName), modName, member)
+	// Match unqualifiedObjectTypeName in gen.go: schema-native SDKs only name input-shape object
+	// types with an "Args" suffix, so plain object types (e.g. plain function inputs) go without.
+	if objType.IsInputShape() || compatibility == tfbridge20 || compatibility == kubernetes20 {
+		name += "Args"
+	}
+	return name
 }
 
 // makeResourceName returns the expression that should be emitted for a resource's "name" parameter given its base name

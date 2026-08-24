@@ -26,11 +26,13 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 // KebabNamesProvider is used to test that kebab-case names are handled correctly across sdk-gen and
-// program-gen: in the package name, module names, resource names, object type names and property
-// names.
+// program-gen: in the package name, module names, resource names, object type names, function names
+// and property names. The defaults-input type carries a property with a schema default value, so
+// generated provide-defaults helpers are exercised for kebab-case property names.
 type KebabNamesProvider struct {
 	plugin.UnimplementedProvider
 }
@@ -63,6 +65,24 @@ func (p *KebabNamesProvider) GetSchema(
 						},
 					},
 					Required: []string{"nested-value"},
+				},
+			},
+			// The only always-set property is the single-word "value": Python TypedDict inputs
+			// are serialized without input type information for invokes, so multi-word keys
+			// would reach the provider untranslated.
+			"kebab-names:kebab-module:defaults-input": {
+				ObjectTypeSpec: schema.ObjectTypeSpec{
+					Type: "object",
+					Properties: map[string]schema.PropertySpec{
+						"value": {
+							TypeSpec: schema.TypeSpec{Type: "string"},
+						},
+						"default-value": {
+							TypeSpec: schema.TypeSpec{Type: "string"},
+							Default:  "defaulted",
+						},
+					},
+					Required: []string{"value"},
 				},
 			},
 			"kebab-names:kebab-module:output-item": {
@@ -118,6 +138,35 @@ func (p *KebabNamesProvider) GetSchema(
 					},
 				},
 				RequiredInputs: []string{"the-input"},
+			},
+		},
+		Functions: map[string]schema.FunctionSpec{
+			"kebab-names:kebab-module:do-something": {
+				Inputs: &schema.ObjectTypeSpec{
+					Type: "object",
+					Properties: map[string]schema.PropertySpec{
+						"the-input": {
+							TypeSpec: schema.TypeSpec{Type: "string"},
+						},
+						"nested": {
+							TypeSpec: schema.TypeSpec{
+								Ref: "#/types/kebab-names:kebab-module:defaults-input",
+							},
+						},
+					},
+					Required: []string{"the-input"},
+				},
+				ReturnType: &schema.ReturnTypeSpec{
+					ObjectTypeSpec: &schema.ObjectTypeSpec{
+						Type: "object",
+						Properties: map[string]schema.PropertySpec{
+							"the-output": {
+								TypeSpec: schema.TypeSpec{Type: "string"},
+							},
+						},
+						Required: []string{"the-output"},
+					},
+				},
 			},
 		},
 	}
@@ -240,6 +289,50 @@ func (p *KebabNamesProvider) Create(
 			Status: resource.StatusUnknown,
 		}, fmt.Errorf("invalid URN type: %s", typ)
 	}
+}
+
+func (p *KebabNamesProvider) Invoke(
+	_ context.Context, req plugin.InvokeRequest,
+) (plugin.InvokeResponse, error) {
+	if req.Tok != "kebab-names:kebab-module:do-something" {
+		return plugin.InvokeResponse{}, fmt.Errorf("unknown function %v", req.Tok)
+	}
+
+	theInput, ok := req.Args.GetOk("the-input")
+	if !ok || !theInput.IsString() {
+		return plugin.InvokeResponse{
+			Failures: makeCheckFailure("the-input", fmt.Sprintf("missing string the-input: %v", req.Args)),
+		}, nil
+	}
+
+	nested, ok := req.Args.GetOk("nested")
+	if !ok || !nested.IsMap() {
+		return plugin.InvokeResponse{
+			Failures: makeCheckFailure("nested", fmt.Sprintf("missing object nested: %v", req.Args)),
+		}, nil
+	}
+	nestedValue, ok := nested.AsMap().GetOk("value")
+	if !ok || !nestedValue.IsString() {
+		return plugin.InvokeResponse{
+			Failures: makeCheckFailure("nested", fmt.Sprintf("missing string value: %v", nested)),
+		}, nil
+	}
+	// Whether the schema default for default-value is applied client-side varies by SDK: typed
+	// inputs (Node.js, Go, Python classes) apply it, but Python dict inputs bypass the input
+	// class __init__ where defaults are set. Tolerate its absence, but reject any other value.
+	if defaultValue, ok := nested.AsMap().GetOk("default-value"); ok {
+		if !defaultValue.IsString() || defaultValue.AsString() != "defaulted" {
+			return plugin.InvokeResponse{
+				Failures: makeCheckFailure("nested", fmt.Sprintf("default-value is not \"defaulted\": %v", nested)),
+			}, nil
+		}
+	}
+
+	return plugin.InvokeResponse{
+		Properties: property.NewMap(map[string]property.Value{
+			"the-output": property.New(theInput.AsString() + " " + nestedValue.AsString()),
+		}),
+	}, nil
 }
 
 func (p *KebabNamesProvider) GetPluginInfo(context.Context) (plugin.PluginInfo, error) {

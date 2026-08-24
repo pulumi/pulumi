@@ -266,13 +266,19 @@ func functionName(tokenArg model.Expression) (string, string, string, hcl.Diagno
 	tokenRange := tokenArg.SyntaxNode().Range()
 
 	// Compute the resource type from the Pulumi type token.
-	pkg, module, member, diagnostics := pcl.DecomposeToken(token, tokenRange)
+	pkg, module, _, diagnostics := pcl.DecomposeToken(token, tokenRange)
 	// the index module is not put into a submodule
 	if module == "index" {
 		module = ""
 	}
-	module = strings.ToLower(strings.ReplaceAll(module, "/", "."))
-	return pkg, module, member, diagnostics
+	// Each segment becomes a property access on the package, so segments that aren't legal
+	// identifiers (e.g. containing hyphens) use the sanitized name the SDK exports them under.
+	segments := strings.Split(strings.ToLower(module), "/")
+	for i, segment := range segments {
+		segments[i] = makeValidModuleSegment(segment)
+	}
+	module = strings.Join(segments, ".")
+	return pkg, module, tokenToFunctionName(token), diagnostics
 }
 
 func (g *generator) genRange(w io.Writer, call *model.FunctionCallExpression, entries bool) {

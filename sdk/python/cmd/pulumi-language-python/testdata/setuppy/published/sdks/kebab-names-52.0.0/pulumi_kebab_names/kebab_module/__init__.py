@@ -7,6 +7,7 @@ from .. import _utilities
 import typing
 # Export this package's modules as members:
 from .another_resource import *
+from .do_something import *
 from .some_resource import *
 from ._inputs import *
 from . import outputs

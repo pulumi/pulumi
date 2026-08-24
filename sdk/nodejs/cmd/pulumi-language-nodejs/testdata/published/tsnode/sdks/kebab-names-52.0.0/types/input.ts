@@ -5,7 +5,37 @@ import * as pulumi from "@pulumi/pulumi";
 import * as inputs from "../types/input";
 import * as outputs from "../types/output";
 
+import * as utilities from "../utilities";
+
 export namespace kebab_module {
+    export interface DefaultsInput {
+        "default-value"?: string;
+        value: string;
+    }
+    /**
+     * defaultsInputProvideDefaults sets the appropriate defaults for DefaultsInput
+     */
+    export function defaultsInputProvideDefaults(val: DefaultsInput): DefaultsInput {
+        return {
+            ...val,
+            "default-value": (val["default-value"]) ?? "defaulted",
+        };
+    }
+
+    export interface DefaultsInputArgs {
+        "default-value"?: pulumi.Input<string | undefined>;
+        value: pulumi.Input<string>;
+    }
+    /**
+     * defaultsInputArgsProvideDefaults sets the appropriate defaults for DefaultsInputArgs
+     */
+    export function defaultsInputArgsProvideDefaults(val: DefaultsInputArgs): DefaultsInputArgs {
+        return {
+            ...val,
+            "default-value": (val["default-value"]) ?? "defaulted",
+        };
+    }
+
     export interface NestedInputArgs {
         "nested-value": pulumi.Input<string>;
     }

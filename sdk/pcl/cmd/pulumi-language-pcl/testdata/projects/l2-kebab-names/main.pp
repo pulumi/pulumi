@@ -15,3 +15,14 @@ resource "second" "kebab-names:kebab-module:another-resource" {
 output "theOutput" {
     value = first.the-output
 }
+
+// The function name and its argument and result property names are kebab-case. The nested object
+// type carries a property with a schema default value.
+output "invoked" {
+    value = invoke("kebab-names:kebab-module:do-something", {
+        the-input = "hello"
+        nested = {
+            value = "nested"
+        }
+    }).the-output
+}
