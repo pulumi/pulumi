@@ -520,9 +520,10 @@ func (p pluginProvider) GetSchema(
 		return plugin.GetSchemaResponse{}, err
 	}
 
-	// Git based plugins are allowed to not be self-referential: know their version
-	// and pluginDownloadURL. That requires the launching infrastructure to inject
-	// that information into the returned schema.
+	// Git based plugins and plugins with an explicit pluginDownloadURL are allowed to
+	// not be self-referential: know their version and pluginDownloadURL. That requires
+	// the launching infrastructure to inject that information into the returned
+	// schema, mirroring what [packages.SchemaFromSchemaSource] does for `package add`.
 	//
 	// TODO[https://github.com/pulumi/pulumi/issues/21258]: Download lock files would
 	// allow us to push this deeper through the plugin loading process.
@@ -530,8 +531,9 @@ func (p pluginProvider) GetSchema(
 	if p.originalSpec.Version != "" {
 		source += "@" + p.originalSpec.Version
 	}
-	pd, err := workspace.NewPluginDescriptor(ctx, source, apitype.ResourcePlugin, nil, "", nil)
-	if err != nil || !pd.IsGitPlugin() {
+	pd, err := workspace.NewPluginDescriptor(ctx, source, apitype.ResourcePlugin, nil,
+		p.originalSpec.PluginDownloadURL, nil)
+	if err != nil || pd.PluginDownloadURL == "" {
 		return resp, nil
 	}
 
@@ -549,7 +551,9 @@ func (p pluginProvider) GetSchema(
 	}
 
 	pkgSpec.PluginDownloadURL = pd.PluginDownloadURL
-	if pd.Version != nil {
+	// Git based plugins don't know their own version, so inject it. Other plugins
+	// self-report their version in their schema, which we leave alone.
+	if pd.IsGitPlugin() && pd.Version != nil {
 		pkgSpec.Version = pd.Version.String()
 	}
 	if pkgSpec.Namespace == "" {
