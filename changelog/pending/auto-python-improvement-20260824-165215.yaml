@@ -1,0 +1,4 @@
+component: auto/python
+kind: improvement
+body: Allow `refresh`, `preview_refresh`, and `preview_destroy` to request rich diffs
+time: 2026-08-24T16:52:15+02:00
