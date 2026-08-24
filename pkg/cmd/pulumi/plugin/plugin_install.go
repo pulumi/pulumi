@@ -404,8 +404,7 @@ func (cmd *pluginInstallCmd) resolvePluginSpec(
 			AllowNonInvertableLocalWorkspaceResolution: cmd.reinstall,
 		})
 	if err != nil {
-		var packageNotFoundErr *packageresolution.PackageNotFoundError
-		if errors.As(err, &packageNotFoundErr) {
+		if packageNotFoundErr, ok := errors.AsType[*packageresolution.PackageNotFoundError](err); ok {
 			for _, suggested := range packageNotFoundErr.Suggestions() {
 				cmd.diag.Infof(diag.Message("", "%s/%s/%s@%s is a similar package"),
 					suggested.Source, suggested.Publisher, suggested.Name,

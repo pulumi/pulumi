@@ -101,8 +101,8 @@ func structFields(t reflect.Type) []reflect.StructField {
 	for len(fldtypes) > 0 {
 		fldtype := fldtypes[0]
 		fldtypes = fldtypes[1:]
-		for i := 0; i < fldtype.NumField(); i++ {
-			if fldinfo := fldtype.Field(i); fldinfo.Anonymous {
+		for fldinfo := range fldtype.Fields() {
+			if fldinfo.Anonymous {
 				// If an embedded struct, push it onto the queue to visit.
 				if fldinfo.Type.Kind() == reflect.Struct {
 					fldtypes = append(fldtypes, fldinfo.Type)

@@ -738,10 +738,10 @@ func writeResourceRegistrationStatements(t require.TestingT, rs []*ResourceSpec)
 					}
 
 					if r.Protect {
-						g.writeLine("Protect: ptr(true),")
+						g.writeLine("Protect: new(true),")
 					}
 					if r.RetainOnDelete {
-						g.writeLine("RetainOnDelete: ptr(true),")
+						g.writeLine("RetainOnDelete: new(true),")
 					}
 
 					if r.Provider != "" {

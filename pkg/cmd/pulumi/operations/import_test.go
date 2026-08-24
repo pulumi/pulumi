@@ -681,10 +681,6 @@ func TestParseImportFileUnknownValues(t *testing.T) {
 	}
 }
 
-func ptr[T any](v T) *T {
-	return &v
-}
-
 func TestMakeImportFileFromResourceListInputsOutputs(t *testing.T) {
 	t.Parallel()
 
@@ -693,10 +689,11 @@ func TestMakeImportFileFromResourceListInputsOutputs(t *testing.T) {
 			Type: "aws:s3/bucket:Bucket",
 			Name: "thing",
 			ID:   "thing-id",
-			Inputs: ptr(property.NewMap(map[string]property.Value{
+			Inputs: new(property.NewMap(map[string]property.Value{
 				"password": property.New("shh").WithSecret(true),
 			})),
-			Outputs: ptr(property.NewMap(map[string]property.Value{
+
+			Outputs: new(property.NewMap(map[string]property.Value{
 				"arn": property.New("some:arn"),
 			})),
 		},

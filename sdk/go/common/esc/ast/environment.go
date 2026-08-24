@@ -359,8 +359,7 @@ func parseRecord(objName string, dest recordDecl, node syntax.Node, noMatchWarni
 
 		if !hasMatch && noMatchWarning {
 			var fieldNames []string
-			for i := 0; i < t.NumField(); i++ {
-				f := t.Field(i)
+			for f := range t.Fields() {
 				if f.IsExported() {
 					fieldNames = append(fieldNames, fmt.Sprintf("'%s'", camel(f.Name)))
 				}

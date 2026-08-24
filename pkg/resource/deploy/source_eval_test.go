@@ -2560,14 +2560,6 @@ func TestRequestFromNodeJS(t *testing.T) {
 func TestTransformAliasForNodeJSCompat(t *testing.T) {
 	t.Parallel()
 
-	sptr := func(s string) *string {
-		return &s
-	}
-
-	bptr := func(b bool) *bool {
-		return &b
-	}
-
 	makeAlias := func(parent *string, noParent *bool, name string) *pulumirpc.Alias {
 		spec := &pulumirpc.Alias_Spec{
 			Name: name,
@@ -2593,33 +2585,33 @@ func TestTransformAliasForNodeJSCompat(t *testing.T) {
 	}{
 		{
 			name:     `{Parent: "", NoParent: true} (transformed)`,
-			input:    makeAlias(nil, bptr(true), ""),
+			input:    makeAlias(nil, new(true), ""),
 			expected: makeAlias(nil, nil, ""),
 		},
 		{
 			name:     `{Parent: "", NoParent: false} (transformed)`,
-			input:    makeAlias(sptr(""), nil, ""),
-			expected: makeAlias(nil, bptr(true), ""),
+			input:    makeAlias(new(""), nil, ""),
+			expected: makeAlias(nil, new(true), ""),
 		},
 		{
 			name:     `{Parent: "", NoParent: false, Name: "name"} (transformed)`,
-			input:    makeAlias(sptr(""), nil, "name"),
-			expected: makeAlias(nil, bptr(true), "name"),
+			input:    makeAlias(new(""), nil, "name"),
+			expected: makeAlias(nil, new(true), "name"),
 		},
 		{
 			name:     `{Parent: "", NoParent: true, Name: "name"} (transformed)`,
-			input:    makeAlias(nil, bptr(true), "name"),
+			input:    makeAlias(nil, new(true), "name"),
 			expected: makeAlias(nil, nil, "name"),
 		},
 		{
 			name:     `{Parent: "foo", NoParent: false} (no transform)`,
-			input:    makeAlias(sptr("foo"), nil, ""),
-			expected: makeAlias(sptr("foo"), nil, ""),
+			input:    makeAlias(new("foo"), nil, ""),
+			expected: makeAlias(new("foo"), nil, ""),
 		},
 		{
 			name:     `{Parent: "foo", NoParent: false, Name: "name"} (no transform)`,
-			input:    makeAlias(sptr("foo"), nil, "name"),
-			expected: makeAlias(sptr("foo"), nil, "name"),
+			input:    makeAlias(new("foo"), nil, "name"),
+			expected: makeAlias(new("foo"), nil, "name"),
 		},
 	}
 	for _, tt := range tests {

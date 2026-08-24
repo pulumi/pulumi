@@ -393,8 +393,8 @@ func loadProvider(ctx context.Context, pkg tokens.Package, version *semver.Versi
 	// version of a plugin is required which are not picked up by initial pass of required plugin
 	// installations or because of bugs in GetRequiredPlugins. Instead of reporting an error, we first try to
 	// install the plugin now, and only error if we can't do that.
-	var me *workspace.MissingError
-	if !errors.As(err, &me) {
+	_, ok := errors.AsType[*workspace.MissingError](err)
+	if !ok {
 		// Not a MissingError, return the original error.
 		return nil, err
 	}

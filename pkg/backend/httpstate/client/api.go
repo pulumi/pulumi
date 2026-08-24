@@ -300,10 +300,6 @@ func (t updateToken) Get(ctx context.Context) (string, error) {
 	return t.source.GetToken(ctx)
 }
 
-func ptr[T any](v T) *T {
-	return &v
-}
-
 // retryPolicy defines the policy for retrying requests by httpClient.Do.
 type retryPolicy int
 
@@ -431,11 +427,11 @@ func (c *defaultHTTPClient) Do(req *http.Request, policy retryPolicy) (*http.Res
 	// maximum delay is reached. Stop after maxRetryCount requests have
 	// been made.
 	opts := httputil.RetryOpts{
-		Delay:    ptr(time.Second),
-		Backoff:  ptr(2.0),
-		MaxDelay: ptr(30 * time.Second),
+		Delay:    new(time.Second),
+		Backoff:  new(2.0),
+		MaxDelay: new(30 * time.Second),
 
-		MaxRetryCount:         ptr(4),
+		MaxRetryCount:         new(4),
 		HandshakeTimeoutsOnly: !policy.shouldRetry(req),
 	}
 	return httputil.DoWithRetryOpts(req, &tracingClient, opts)
@@ -579,8 +575,7 @@ func pulumiAPICall(ctx context.Context,
 
 		if resp.StatusCode == 401 {
 			loginErr := backenderr.LoginRequiredError{}
-			var errResp *apitype.ErrorResponse
-			if errors.As(err, &errResp) {
+			if errResp, ok := errors.AsType[*apitype.ErrorResponse](err); ok {
 				for _, e := range errResp.Errors {
 					if (e.ErrorType == "saml_reauth_required" || e.ErrorType == "saml_login_required") && e.Attribute != nil {
 						if u := CloudConsoleURL(cloudAPI, "signin", "sso", *e.Attribute, "reauth"); u != "" {

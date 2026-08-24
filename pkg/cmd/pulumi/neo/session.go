@@ -249,12 +249,10 @@ func isTransientStreamError(err error) bool {
 	if errors.As(err, &ne) && ne.Timeout() {
 		return true
 	}
-	var ue *url.Error
-	if errors.As(err, &ue) {
+	if ue, ok := errors.AsType[*url.Error](err); ok {
 		return !errors.Is(ue.Err, context.Canceled)
 	}
-	var streamErr http2.StreamError
-	if errors.As(err, &streamErr) {
+	if streamErr, ok := errors.AsType[http2.StreamError](err); ok {
 		if streamErr.Code == http2.ErrCodeInternal ||
 			streamErr.Code == http2.ErrCodeCancel ||
 			streamErr.Code == http2.ErrCodeRefusedStream {

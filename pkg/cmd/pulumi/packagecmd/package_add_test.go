@@ -36,8 +36,6 @@ import (
 func TestLoadEnclosingTarget(t *testing.T) {
 	t.Parallel()
 
-	ptr := func(s string) *string { return &s }
-
 	tests := []struct {
 		name  string
 		files map[string]string
@@ -54,7 +52,7 @@ func TestLoadEnclosingTarget(t *testing.T) {
 			wd: ".",
 			expected: addTarget{
 				installRoot:     ".",
-				projectFilePath: ptr("PulumiPlugin.yaml"),
+				projectFilePath: new("PulumiPlugin.yaml"),
 				proj: &workspace.PluginProject{
 					Runtime: workspace.NewProjectRuntimeInfo("nodejs", nil),
 				},
@@ -68,7 +66,7 @@ func TestLoadEnclosingTarget(t *testing.T) {
 			wd: "subdir/nested",
 			expected: addTarget{
 				installRoot:     ".",
-				projectFilePath: ptr("PulumiPlugin.yaml"),
+				projectFilePath: new("PulumiPlugin.yaml"),
 				proj: &workspace.PluginProject{
 					Runtime: workspace.NewProjectRuntimeInfo("nodejs", nil),
 				},
@@ -82,7 +80,7 @@ func TestLoadEnclosingTarget(t *testing.T) {
 			wd: ".",
 			expected: addTarget{
 				installRoot:     ".",
-				projectFilePath: ptr("Pulumi.yaml"),
+				projectFilePath: new("Pulumi.yaml"),
 				proj: &workspace.Project{
 					Name:    "test-project",
 					Runtime: workspace.NewProjectRuntimeInfo("nodejs", nil),
@@ -97,7 +95,7 @@ func TestLoadEnclosingTarget(t *testing.T) {
 			wd: "nested/deep/subdir",
 			expected: addTarget{
 				installRoot:     ".",
-				projectFilePath: ptr("Pulumi.yaml"),
+				projectFilePath: new("Pulumi.yaml"),
 				proj: &workspace.Project{
 					Name:    "test-project",
 					Runtime: workspace.NewProjectRuntimeInfo("nodejs", nil),
@@ -113,7 +111,7 @@ func TestLoadEnclosingTarget(t *testing.T) {
 			wd: "plugin/subdir",
 			expected: addTarget{
 				installRoot:     "plugin",
-				projectFilePath: ptr("plugin/PulumiPlugin.yaml"),
+				projectFilePath: new("plugin/PulumiPlugin.yaml"),
 				proj: &workspace.PluginProject{
 					Runtime: workspace.NewProjectRuntimeInfo("nodejs", nil),
 				},
@@ -128,7 +126,7 @@ func TestLoadEnclosingTarget(t *testing.T) {
 			wd: "project/subdir",
 			expected: addTarget{
 				installRoot:     "project",
-				projectFilePath: ptr("project/Pulumi.yaml"),
+				projectFilePath: new("project/Pulumi.yaml"),
 				proj: &workspace.Project{
 					Name:    "test-project",
 					Runtime: workspace.NewProjectRuntimeInfo("nodejs", nil),
@@ -175,7 +173,7 @@ func TestLoadEnclosingTarget(t *testing.T) {
 			actual.reg = nil
 			tt.expected.installRoot = filepath.Join(root, tt.expected.installRoot)
 			require.NotNil(t, tt.expected.projectFilePath)
-			tt.expected.projectFilePath = ptr(filepath.Join(root, *tt.expected.projectFilePath))
+			tt.expected.projectFilePath = new(filepath.Join(root, *tt.expected.projectFilePath))
 			if p, ok := actual.proj.(*workspace.Project); ok {
 				// Create a copy of actual.proj up to private keys. This
 				// way, we get a clean comparison.

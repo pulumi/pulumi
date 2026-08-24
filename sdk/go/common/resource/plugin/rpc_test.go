@@ -1173,9 +1173,6 @@ func TestOutputValueMarshaling(t *testing.T) {
 func TestOutputValueUnmarshaling(t *testing.T) {
 	t.Parallel()
 
-	ptr := func(v resource.PropertyValue) *resource.PropertyValue {
-		return &v
-	}
 	tests := []struct {
 		name     string
 		opts     MarshalOptions
@@ -1213,7 +1210,7 @@ func TestOutputValueUnmarshaling(t *testing.T) {
 					},
 				},
 			},
-			expected: ptr(resource.NewProperty("hello")),
+			expected: new(resource.NewProperty("hello")),
 		},
 		{
 			name: "known with deps (default)",
@@ -1241,7 +1238,7 @@ func TestOutputValueUnmarshaling(t *testing.T) {
 					},
 				},
 			},
-			expected: ptr(resource.NewProperty("hello")),
+			expected: new(resource.NewProperty("hello")),
 		},
 		{
 			name: "secret (default)",
@@ -1262,7 +1259,7 @@ func TestOutputValueUnmarshaling(t *testing.T) {
 					},
 				},
 			},
-			expected: ptr(resource.NewProperty("shhh")),
+			expected: new(resource.NewProperty("shhh")),
 		},
 		{
 			name: "secret with deps (default)",
@@ -1293,7 +1290,7 @@ func TestOutputValueUnmarshaling(t *testing.T) {
 					},
 				},
 			},
-			expected: ptr(resource.NewProperty("shhh")),
+			expected: new(resource.NewProperty("shhh")),
 		},
 		{
 			name: "unknown secret (default)",
@@ -1355,7 +1352,7 @@ func TestOutputValueUnmarshaling(t *testing.T) {
 					},
 				},
 			},
-			expected: ptr(resource.MakeComputed(resource.NewProperty(""))),
+			expected: new(resource.MakeComputed(resource.NewProperty(""))),
 		},
 		{
 			name: "unknown with deps (KeepUnknowns)",
@@ -1381,7 +1378,7 @@ func TestOutputValueUnmarshaling(t *testing.T) {
 					},
 				},
 			},
-			expected: ptr(resource.MakeComputed(resource.NewProperty(""))),
+			expected: new(resource.MakeComputed(resource.NewProperty(""))),
 		},
 		{
 			name: "unknown secret (KeepUnknowns)",
@@ -1400,7 +1397,7 @@ func TestOutputValueUnmarshaling(t *testing.T) {
 					},
 				},
 			},
-			expected: ptr(resource.MakeComputed(resource.NewProperty(""))),
+			expected: new(resource.MakeComputed(resource.NewProperty(""))),
 		},
 		{
 			name: "unknown secret with deps (KeepUnknowns)",
@@ -1429,7 +1426,7 @@ func TestOutputValueUnmarshaling(t *testing.T) {
 					},
 				},
 			},
-			expected: ptr(resource.MakeComputed(resource.NewProperty(""))),
+			expected: new(resource.MakeComputed(resource.NewProperty(""))),
 		},
 		{
 			name: "secret (KeepUnknowns)",
@@ -1451,7 +1448,7 @@ func TestOutputValueUnmarshaling(t *testing.T) {
 					},
 				},
 			},
-			expected: ptr(resource.NewProperty("shhh")),
+			expected: new(resource.NewProperty("shhh")),
 		},
 		{
 			name: "secret with deps (KeepUnknowns)",
@@ -1483,7 +1480,7 @@ func TestOutputValueUnmarshaling(t *testing.T) {
 					},
 				},
 			},
-			expected: ptr(resource.NewProperty("shhh")),
+			expected: new(resource.NewProperty("shhh")),
 		},
 		{
 			name: "secret (KeepSecrets)",
@@ -1505,7 +1502,7 @@ func TestOutputValueUnmarshaling(t *testing.T) {
 					},
 				},
 			},
-			expected: ptr(resource.MakeSecret(resource.NewProperty("shhh"))),
+			expected: new(resource.MakeSecret(resource.NewProperty("shhh"))),
 		},
 		{
 			name: "secret with deps (KeepSecrets)",
@@ -1537,7 +1534,7 @@ func TestOutputValueUnmarshaling(t *testing.T) {
 					},
 				},
 			},
-			expected: ptr(resource.MakeSecret(resource.NewProperty("shhh"))),
+			expected: new(resource.MakeSecret(resource.NewProperty("shhh"))),
 		},
 		{
 			name: "unknown secret (KeepUnknowns, KeepSecrets)",
@@ -1556,7 +1553,7 @@ func TestOutputValueUnmarshaling(t *testing.T) {
 					},
 				},
 			},
-			expected: ptr(resource.MakeSecret(resource.MakeComputed(resource.NewProperty("")))),
+			expected: new(resource.MakeSecret(resource.MakeComputed(resource.NewProperty("")))),
 		},
 		{
 			name: "unknown secret with deps (KeepUnknowns, KeepSecrets)",
@@ -1585,7 +1582,7 @@ func TestOutputValueUnmarshaling(t *testing.T) {
 					},
 				},
 			},
-			expected: ptr(resource.MakeSecret(resource.MakeComputed(resource.NewProperty("")))),
+			expected: new(resource.MakeSecret(resource.MakeComputed(resource.NewProperty("")))),
 		},
 	}
 	for _, tt := range tests {

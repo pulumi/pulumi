@@ -42,8 +42,6 @@ import (
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
-func ptr[T any](v T) *T { return &v }
-
 func TestAnnotateSecrets(t *testing.T) {
 	t.Parallel()
 
@@ -465,7 +463,7 @@ func TestProvider_DeleteRequests(t *testing.T) {
 			p := NewProviderWithClient(newTestContext(t), client, false /* disablePreview */)
 
 			// We have to configure before we can use Delete.
-			_, err := p.Configure(t.Context(), ConfigureRequest{Type: ptr(tokens.Type("pulumi:providers:test"))})
+			_, err := p.Configure(t.Context(), ConfigureRequest{Type: new(tokens.Type("pulumi:providers:test"))})
 			require.NoError(t, err, "Configure failed")
 
 			// Act.
@@ -541,10 +539,10 @@ func TestProvider_ConstructOptions(t *testing.T) {
 		{
 			desc: "protect",
 			give: ConstructOptions{
-				Protect: ptr(true),
+				Protect: new(true),
 			},
 			want: &pulumirpc.ConstructRequest{
-				Protect: ptr(true),
+				Protect: new(true),
 			},
 		},
 		{
@@ -615,10 +613,10 @@ func TestProvider_ConstructOptions(t *testing.T) {
 		{
 			desc: "delete before replace",
 			give: ConstructOptions{
-				DeleteBeforeReplace: ptr(true),
+				DeleteBeforeReplace: new(true),
 			},
 			want: &pulumirpc.ConstructRequest{
-				DeleteBeforeReplace: ptr(true),
+				DeleteBeforeReplace: new(true),
 			},
 		},
 		{
@@ -651,10 +649,10 @@ func TestProvider_ConstructOptions(t *testing.T) {
 		{
 			desc: "retain on delete",
 			give: ConstructOptions{
-				RetainOnDelete: ptr(true),
+				RetainOnDelete: new(true),
 			},
 			want: &pulumirpc.ConstructRequest{
-				RetainOnDelete: ptr(true),
+				RetainOnDelete: new(true),
 			},
 		},
 	}
@@ -702,7 +700,7 @@ func TestProvider_ConstructOptions(t *testing.T) {
 			p := NewProviderWithClient(newTestContext(t), client, false /* disablePreview */)
 
 			// Must configure before we can use Construct.
-			_, err := p.Configure(t.Context(), ConfigureRequest{Type: ptr(tokens.Type("pulumi:providers:test"))})
+			_, err := p.Configure(t.Context(), ConfigureRequest{Type: new(tokens.Type("pulumi:providers:test"))})
 			require.NoError(t, err, "configure failed")
 
 			_, err = p.Construct(t.Context(),
@@ -780,7 +778,7 @@ func TestProvider_ConfigureDeleteRace(t *testing.T) {
 	// and then wait until Delete has finished.
 	<-deleting
 	_, err := p.Configure(t.Context(), ConfigureRequest{
-		Type:   ptr(tokens.Type("pulumi:providers:test")),
+		Type:   new(tokens.Type("pulumi:providers:test")),
 		Inputs: props,
 	})
 	require.NoError(t, err)
@@ -1047,7 +1045,7 @@ func TestProvider_List(t *testing.T) {
 			}
 
 			p := NewProviderWithClient(newTestContext(t), client, false /* disablePreview */)
-			_, err := p.Configure(t.Context(), ConfigureRequest{Type: ptr(tokens.Type("pulumi:providers:test"))})
+			_, err := p.Configure(t.Context(), ConfigureRequest{Type: new(tokens.Type("pulumi:providers:test"))})
 			require.NoError(t, err)
 
 			stream, err := p.List(t.Context(), ListRequest{
@@ -1086,7 +1084,7 @@ func TestProvider_List_YieldsStreamError(t *testing.T) {
 	}
 
 	p := NewProviderWithClient(newTestContext(t), client, false /* disablePreview */)
-	_, err := p.Configure(t.Context(), ConfigureRequest{Type: ptr(tokens.Type("pulumi:providers:test"))})
+	_, err := p.Configure(t.Context(), ConfigureRequest{Type: new(tokens.Type("pulumi:providers:test"))})
 	require.NoError(t, err)
 
 	stream, err := p.List(t.Context(), ListRequest{Token: "pkgA:index:Thing"})
@@ -1133,7 +1131,7 @@ func TestProvider_List_EarlyBreakCancelsRPC(t *testing.T) {
 	}
 
 	p := NewProviderWithClient(newTestContext(t), client, false /* disablePreview */)
-	_, err := p.Configure(t.Context(), ConfigureRequest{Type: ptr(tokens.Type("pulumi:providers:test"))})
+	_, err := p.Configure(t.Context(), ConfigureRequest{Type: new(tokens.Type("pulumi:providers:test"))})
 	require.NoError(t, err)
 
 	stream, err := p.List(t.Context(), ListRequest{Token: "pkgA:index:Thing"})
@@ -1176,7 +1174,7 @@ func TestProvider_List_FullDrainCancelsRPC(t *testing.T) {
 	}
 
 	p := NewProviderWithClient(newTestContext(t), client, false /* disablePreview */)
-	_, err := p.Configure(t.Context(), ConfigureRequest{Type: ptr(tokens.Type("pulumi:providers:test"))})
+	_, err := p.Configure(t.Context(), ConfigureRequest{Type: new(tokens.Type("pulumi:providers:test"))})
 	require.NoError(t, err)
 
 	stream, err := p.List(t.Context(), ListRequest{Token: "pkgA:index:Thing"})
@@ -1205,7 +1203,7 @@ func TestProvider_List_StreamErrorCancelsRPC(t *testing.T) {
 	}
 
 	p := NewProviderWithClient(newTestContext(t), client, false /* disablePreview */)
-	_, err := p.Configure(t.Context(), ConfigureRequest{Type: ptr(tokens.Type("pulumi:providers:test"))})
+	_, err := p.Configure(t.Context(), ConfigureRequest{Type: new(tokens.Type("pulumi:providers:test"))})
 	require.NoError(t, err)
 
 	stream, err := p.List(t.Context(), ListRequest{Token: "pkgA:index:Thing"})
@@ -1240,7 +1238,7 @@ func TestProvider_List_StopsEarly(t *testing.T) {
 	}
 
 	p := NewProviderWithClient(newTestContext(t), client, false /* disablePreview */)
-	_, err := p.Configure(t.Context(), ConfigureRequest{Type: ptr(tokens.Type("pulumi:providers:test"))})
+	_, err := p.Configure(t.Context(), ConfigureRequest{Type: new(tokens.Type("pulumi:providers:test"))})
 	require.NoError(t, err)
 
 	stream, err := p.List(t.Context(), ListRequest{Token: "pkgA:index:Thing"})
@@ -1429,7 +1427,7 @@ func TestProvider_PartialFailure_RefreshBeforeUpdate(t *testing.T) {
 
 	p := NewProviderWithClient(newTestContext(t), client, false /* disablePreview */)
 
-	_, err := p.Configure(t.Context(), ConfigureRequest{Type: ptr(tokens.Type("pulumi:providers:test"))})
+	_, err := p.Configure(t.Context(), ConfigureRequest{Type: new(tokens.Type("pulumi:providers:test"))})
 	require.NoError(t, err, "configure failed")
 
 	var initErr *InitError
