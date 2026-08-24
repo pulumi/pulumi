@@ -190,6 +190,13 @@ func runStackText(ctx context.Context, s backend.Stack, out io.Writer, args stac
 		if snap.Manifest.Version != "" {
 			fmt.Fprintf(out, "    Pulumi version used: %s\n", snap.Manifest.Version)
 		}
+		var typ string
+		if snap.SecretsManager != nil {
+			typ = snap.SecretsManager.Type()
+		}
+		if typ != "" {
+			fmt.Fprintf(out, "    Secrets provider: %s\n", typ)
+		}
 		for _, p := range snap.Manifest.Plugins {
 			var pluginVersion string
 			if p.Version == nil {
