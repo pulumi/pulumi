@@ -518,14 +518,10 @@ func buildAdvancedView(o *apitype.OperationContextOptions) *advancedView {
 	}
 }
 
-// settingsText buffers the rendered lines so the value column can be sized from the labels this
-// output actually prints. Sizing it from every label the renderer knows about pads the output for
-// sections that were skipped.
 type settingsText struct {
 	lines []settingsTextLine
 }
 
-// A line with no label is written verbatim.
 type settingsTextLine struct {
 	label string
 	value string
@@ -553,19 +549,24 @@ func (t *settingsText) empty() bool {
 	return len(t.lines) == 0
 }
 
+// maxLabelWidth caps the column so one long environment variable name cannot indent every other
+// value. It is the width output was padded to before, so nothing renders wider than it used to.
+const maxLabelWidth = 32
+
 func (t *settingsText) flush(w io.Writer) {
 	width := 0
 	for _, l := range t.lines {
-		if len(l.label) > width {
-			width = len(l.label)
-		}
+		width = max(width, cmdutil.MeasureText(l.label))
 	}
+	width = min(width, maxLabelWidth)
+
 	for _, l := range t.lines {
 		if l.label == "" {
 			fmt.Fprintln(w, l.value)
 			continue
 		}
-		fmt.Fprintf(w, "%-*s %s\n", width, l.label, l.value)
+		padding := strings.Repeat(" ", max(0, width-cmdutil.MeasureText(l.label)))
+		fmt.Fprintf(w, "%s%s %s\n", l.label, padding, l.value)
 	}
 }
 
