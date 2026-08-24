@@ -2359,6 +2359,17 @@ func TestGetPolicyPathRequiresPolicyProjectFile(t *testing.T) {
 			},
 		},
 		{
+			name: "project path is symlink",
+			setup: func(t *testing.T, policyPath string) {
+				require.NoError(t, os.MkdirAll(policyPath, 0o700))
+				target := filepath.Join(t.TempDir(), "PulumiPolicy.yaml")
+				require.NoError(t, os.WriteFile(target, []byte("runtime: nodejs\n"), 0o600))
+				if err := os.Symlink(target, filepath.Join(policyPath, "PulumiPolicy.yaml")); err != nil {
+					t.Skipf("creating symlink: %v", err)
+				}
+			},
+		},
+		{
 			name: "project path is file",
 			setup: func(t *testing.T, policyPath string) {
 				require.NoError(t, os.MkdirAll(policyPath, 0o700))
@@ -2374,6 +2385,17 @@ func TestGetPolicyPathRequiresPolicyProjectFile(t *testing.T) {
 				require.NoError(t, os.WriteFile(
 					filepath.Join(policyPath, "PulumiPolicy.yaml"), []byte("runtime: nodejs\n"), 0o600))
 				require.NoError(t, os.WriteFile(policyPath+".partial", nil, 0o600))
+			},
+		},
+		{
+			name: "project file with dangling partial marker symlink",
+			setup: func(t *testing.T, policyPath string) {
+				require.NoError(t, os.MkdirAll(policyPath, 0o700))
+				require.NoError(t, os.WriteFile(
+					filepath.Join(policyPath, "PulumiPolicy.yaml"), []byte("runtime: nodejs\n"), 0o600))
+				if err := os.Symlink(filepath.Join(t.TempDir(), "missing"), policyPath+".partial"); err != nil {
+					t.Skipf("creating symlink: %v", err)
+				}
 			},
 		},
 	}

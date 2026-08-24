@@ -2004,12 +2004,12 @@ func GetPolicyPath(orgName, name, version string) (string, bool, error) {
 	policyPackPath := path.Join(policiesDir, fmt.Sprintf("pulumi-analyzer-%s-v%s", name, version))
 
 	projectPath := filepath.Join(policyPackPath, "PulumiPolicy.yaml")
-	file, err := os.Stat(projectPath)
+	file, err := os.Lstat(projectPath)
 	if err == nil {
-		if file.IsDir() {
+		if !file.Mode().IsRegular() {
 			return policyPackPath, false, nil
 		}
-		if _, err := os.Stat(policyPackPath + ".partial"); err == nil {
+		if _, err := os.Lstat(policyPackPath + ".partial"); err == nil {
 			return policyPackPath, false, nil
 		} else if !os.IsNotExist(err) {
 			return "", false, err

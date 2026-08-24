@@ -739,6 +739,38 @@ func TestInstallRequiredPolicyCleansUpDependencyFailure(t *testing.T) {
 	assert.Equal(t, 2, runtime.installCalls, "a second install should retry dependency installation")
 }
 
+func TestInstallRequiredPolicyReplacesDanglingPartialMarkerSymlink(t *testing.T) {
+	t.Parallel()
+
+	sourceDir := t.TempDir()
+	require.NoError(t, os.WriteFile(
+		filepath.Join(sourceDir, "PulumiPolicy.yaml"), []byte("runtime: test\n"), 0o600))
+	tgz, err := archive.TGZ(sourceDir, packageDir, false)
+	require.NoError(t, err)
+
+	runtime := &failingDependencyLanguageRuntime{}
+	host := &plugin.MockHost{
+		LanguageRuntimeF: func(_ *plugin.Context, name string) (plugin.LanguageRuntime, error) {
+			assert.Equal(t, "test", name)
+			return runtime, nil
+		},
+	}
+	ctx, err := plugin.NewContextWithHost(t.Context(), nil, nil, host, sourceDir, sourceDir, nil)
+	require.NoError(t, err)
+	t.Cleanup(func() { require.NoError(t, ctx.Close()) })
+
+	finalDir := filepath.Join(t.TempDir(), "policy")
+	markerTarget := filepath.Join(t.TempDir(), "marker-target")
+	if err := os.Symlink(markerTarget, finalDir+".partial"); err != nil {
+		t.Skipf("creating symlink: %v", err)
+	}
+
+	err = installRequiredPolicy(ctx, finalDir, io.NopCloser(bytes.NewReader(tgz)), io.Discard, io.Discard)
+	require.ErrorContains(t, err, "installing dependencies: dependency install failed")
+	_, statErr := os.Stat(markerTarget)
+	assert.True(t, os.IsNotExist(statErr), "install must not follow a stale marker symlink")
+}
+
 func TestInstallRequiredPolicyUsesCompletedConcurrentInstall(t *testing.T) {
 	t.Parallel()
 
