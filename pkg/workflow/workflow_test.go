@@ -932,3 +932,32 @@ func TestReconcile(t *testing.T) {
 	assert.Equal(t, []string{"c1@done"}, cursors)
 	r.golden("reconcile")
 }
+
+// A self-loop: an edge from a node to itself re-enters the node with its overlay applied, giving the new
+// visit fresh entered values — how a failed release rolls a node back to the last good one.
+func TestSelfLoop(t *testing.T) {
+	t.Parallel()
+	w := workflow.New()
+	start := w.NewNode("start", with(nil))
+	prod := w.NewNode("prod", with(nil))
+	w.NewEdge("enter", start, prod, always)
+	w.NewEdge("rollback", prod, prod, func(
+		_ context.Context, _ workflow.Workflow, _ workflow.Cursor, in property.Map,
+	) (bool, workflow.Overlay, error) {
+		if in.Get("sha").AsString() != "bad" {
+			return false, workflow.Overlay{}, nil
+		}
+		return true, workflow.Overlay{Values: pmap(map[string]property.Value{"sha": str("good")})}, nil
+	})
+	r := &recorder{t: t, w: w}
+	w.AddCursor(start, "release", pmap(map[string]property.Value{"sha": str("bad")}))
+	require.NoError(t, r.progress())
+	cursors := map[string]string{}
+	w.Cursors(func(c workflow.Cursor, n workflow.Node) bool {
+		cursors[c.Label] = n.ID()
+		return true
+	})
+	assert.Equal(t, map[string]string{"release": "prod"}, cursors)
+	assert.Equal(t, "good", w.GetState(prod).Outputs.Get("sha").AsString())
+	r.golden("self-loop")
+}
