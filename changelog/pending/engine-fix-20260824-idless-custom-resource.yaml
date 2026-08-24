@@ -1,0 +1,4 @@
+component: engine
+kind: fix
+body: Report a clear error instead of panicking when the stack's state contains a custom resource with no ID
+time: 2026-08-24T00:00:00Z
