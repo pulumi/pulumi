@@ -15,6 +15,7 @@
 package workflow_test
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -90,6 +91,8 @@ func golden(t *testing.T, name string, got []byte) {
 	}
 	want, err := os.ReadFile(path)
 	require.NoError(t, err, "run with PULUMI_ACCEPT=1 to create the golden file")
+	// A Windows checkout with autocrlf leaves the golden with CRLF line endings.
+	want = bytes.ReplaceAll(want, []byte("\r\n"), []byte("\n"))
 	require.Equal(t, string(want), string(got))
 }
 
