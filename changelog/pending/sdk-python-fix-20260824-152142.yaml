@@ -1,0 +1,4 @@
+component: sdk/python
+kind: fix
+body: Preserve all providers passed to remote components in Python programs
+time: 2026-08-24T15:21:42+02:00
