@@ -1,0 +1,4 @@
+component: cli/new
+kind: fix
+body: Reject zip template entries that resolve outside the extraction directory
+time: 2026-08-24T00:00:00Z
