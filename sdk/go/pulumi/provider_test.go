@@ -653,7 +653,7 @@ func TestConstructInputsCopyTo(t *testing.T) {
 			input: resource.NewProperty("hello"),
 			args:  &StringPtrArgs{},
 			assert: func(t *testing.T, actual any) {
-				assert.Equal(t, stringPtr("hello"), actual)
+				assert.Equal(t, new("hello"), actual)
 			},
 		},
 		{
