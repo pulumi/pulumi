@@ -187,7 +187,7 @@ func (p *OutputProvider) CheckConfig(
 	_ context.Context, req plugin.CheckConfigRequest,
 ) (plugin.CheckConfigResponse, error) {
 	// Expect just the version
-	version, ok := req.News["version"]
+	version, ok := req.News.GetOk("version")
 	if !ok {
 		return plugin.CheckConfigResponse{
 			Failures: makeCheckFailure("version", "missing version"),
@@ -198,31 +198,31 @@ func (p *OutputProvider) CheckConfig(
 			Failures: makeCheckFailure("version", "version is not a string"),
 		}, nil
 	}
-	if version.StringValue() != "23.0.0" {
+	if version.AsString() != "23.0.0" {
 		return plugin.CheckConfigResponse{
 			Failures: makeCheckFailure("version", "version is not 23.0.0"),
 		}, nil
 	}
 
-	elide, hasElide := req.News["elideUnknowns"]
+	elide, hasElide := req.News.GetOk("elideUnknowns")
 	if hasElide {
 		if elide.IsString() {
-			_, err := strconv.ParseBool(elide.StringValue())
+			_, err := strconv.ParseBool(elide.AsString())
 			if err != nil {
 				return plugin.CheckConfigResponse{
 					Failures: makeCheckFailure("elideUnknowns",
-						fmt.Sprintf("elideUnknowns is not a boolean: '%v'", elide.StringValue())),
+						fmt.Sprintf("elideUnknowns is not a boolean: '%v'", elide.AsString())),
 				}, nil
 			}
 		} else if !elide.IsBool() {
 			return plugin.CheckConfigResponse{
 				Failures: makeCheckFailure("elideUnknowns",
-					fmt.Sprintf("elideUnknowns is not a boolean: %v", elide.TypeString())),
+					"elideUnknowns is not a boolean"),
 			}, nil
 		}
 	}
 
-	if (!hasElide && len(req.News) != 1) || (hasElide && len(req.News) != 2) {
+	if (!hasElide && req.News.Len() != 1) || (hasElide && req.News.Len() != 2) {
 		return plugin.CheckConfigResponse{
 			Failures: makeCheckFailure("", fmt.Sprintf("too many properties: %v", req.News)),
 		}, nil

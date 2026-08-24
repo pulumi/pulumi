@@ -44,7 +44,7 @@
         '/^pkg/util/plugin\\.go$/',
       ],
       matchStrings: [
-        '// renovate: datasource=(?<datasource>\\S+) depName=(?<depName>\\S+)(?: extractVersion=(?<extractVersion>\\S+))?\\s+Version:\\s+semver\\.MustParse\\("(?<currentValue>[^"]+)"\\)',
+        '// renovate: datasource=(?<datasource>\\S+) depName=(?<depName>\\S+)(?: extractVersion=(?<extractVersion>\\S+))?\\s+"[^"]+":\\s+semver\\.MustParse\\("(?<currentValue>[^"]+)"\\)',
       ],
     },
   ],

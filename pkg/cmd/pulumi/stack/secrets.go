@@ -146,11 +146,11 @@ func readStackConfiguration(ctx context.Context, sink diag.Sink, ws pkgWorkspace
 		if configFile != "" {
 			return workspace.LoadProjectStack(sink, project, configFile)
 		}
-		return workspace.DetectProjectStack(sink, stackRef.Name().Q())
+		return pkgWorkspace.DetectProjectStack(sink, stackRef.Name().Q())
 	}
 	ps, err := LoadProjectStack(ctx, sink, project, s, configFile)
 	if configFile == "" && (err != nil || ps == nil) {
-		return workspace.DetectProjectStack(sink, stackRef.Name().Q())
+		return pkgWorkspace.DetectProjectStack(sink, stackRef.Name().Q())
 	}
 
 	return ps, err
@@ -335,7 +335,7 @@ func needsSaveProjectStackAfterSecretManger(
 }
 
 func ValidateSecretsProvider(typ string) error {
-	kind := strings.SplitN(typ, ":", 2)[0]
+	kind, _, _ := strings.Cut(typ, ":")
 	supportedKinds := []string{"default", "passphrase", "awskms", "azurekeyvault", "gcpkms", "hashivault"}
 	if slices.Contains(supportedKinds, kind) {
 		return nil

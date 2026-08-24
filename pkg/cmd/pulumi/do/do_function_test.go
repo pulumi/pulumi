@@ -32,11 +32,11 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/archive"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/asset"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -45,7 +45,7 @@ func TestDoCmdWithFunctionHelpArgPrintsHelp(t *testing.T) {
 	t.Parallel()
 
 	mlm := &cmdBackend.MockLoginManager{}
-	mws := &pkgWorkspace.MockContext{}
+	mws := newTestWorkspace(t)
 	loader := func(ctx context.Context, pctx *plugin.Context, wd, source string) (plugin.Provider, error) {
 		assert.Equal(t, "azure", source)
 		spec := schema.PackageSpec{
@@ -145,7 +145,7 @@ Flags:
       --provider string        The URN of a provider resource in the current stack whose inputs to use as the base of the provider configuration (requires a stack context)
       --provider-file string   Path to a file containing provider configuration
       --show-secrets           Show secret values in output
-      --stateless              Run create/patch/delete directly against the provider without persisting state. Required for now: the stateful (engine-driven) implementation is still in development, so patch/delete error out unless --stateless is set.
+      --stateless              Run create/patch/delete directly against the provider without persisting state.
 `
 	assert.Equal(t, expected, stdout.String())
 }
@@ -154,7 +154,7 @@ func TestDoCmdFunctionInvoke(t *testing.T) {
 	t.Parallel()
 
 	mlm := &cmdBackend.MockLoginManager{}
-	mws := &pkgWorkspace.MockContext{}
+	mws := newTestWorkspace(t)
 	loader := func(ctx context.Context, pctx *plugin.Context, wd, source string) (plugin.Provider, error) {
 		assert.Equal(t, "azure", source)
 		spec := schema.PackageSpec{
@@ -196,15 +196,15 @@ func TestDoCmdFunctionInvoke(t *testing.T) {
 				InvokeF: func(ctx context.Context, req plugin.InvokeRequest) (plugin.InvokeResponse, error) {
 					assert.False(t, req.Preview, "expected Preview to be false")
 					assert.Equal(t, "azure:index:myFunction", string(req.Tok))
-					assert.Equal(t, "hello", req.Args["param1"].StringValue())
-					assert.Equal(t, 42.0, req.Args["param2"].NumberValue())
-					assert.Equal(t, true, req.Args["param3"].BoolValue())
+					assert.Equal(t, "hello", req.Args.Get("param1").AsString())
+					assert.Equal(t, 42.0, req.Args.Get("param2").AsNumber())
+					assert.Equal(t, true, req.Args.Get("param3").AsBool())
 					return plugin.InvokeResponse{
-						Properties: resource.PropertyMap{
-							"output1": resource.NewProperty("world"),
-							"output2": resource.NewProperty(43.0),
-							"output3": resource.NewProperty(false),
-						},
+						Properties: property.NewMap(map[string]property.Value{
+							"output1": property.New("world"),
+							"output2": property.New(43.0),
+							"output3": property.New(false),
+						}),
 					}, nil
 				},
 			},
@@ -239,7 +239,7 @@ func TestDoCmdFunctionInvokeFiltersOutputsToSchema(t *testing.T) {
 	t.Parallel()
 
 	mlm := &cmdBackend.MockLoginManager{}
-	mws := &pkgWorkspace.MockContext{}
+	mws := newTestWorkspace(t)
 	loader := func(ctx context.Context, pctx *plugin.Context, wd, source string) (plugin.Provider, error) {
 		assert.Equal(t, "azure", source)
 		spec := schema.PackageSpec{
@@ -259,11 +259,11 @@ func TestDoCmdFunctionInvokeFiltersOutputsToSchema(t *testing.T) {
 			MockProvider: plugin.MockProvider{
 				InvokeF: func(ctx context.Context, req plugin.InvokeRequest) (plugin.InvokeResponse, error) {
 					return plugin.InvokeResponse{
-						Properties: resource.PropertyMap{
-							"result":     resource.NewProperty("visible"),
-							"__defaults": resource.NewProperty([]resource.PropertyValue{resource.NewProperty("internal")}),
-							"extra":      resource.NewProperty("hidden"),
-						},
+						Properties: property.NewMap(map[string]property.Value{
+							"result":     property.New("visible"),
+							"__defaults": property.New([]property.Value{property.New("internal")}),
+							"extra":      property.New("hidden"),
+						}),
 					}, nil
 				},
 			},
@@ -293,7 +293,7 @@ func TestDoCmdFunctionInvokeFiltersNestedObjectsInCollections(t *testing.T) {
 	t.Parallel()
 
 	mlm := &cmdBackend.MockLoginManager{}
-	mws := &pkgWorkspace.MockContext{}
+	mws := newTestWorkspace(t)
 	loader := func(ctx context.Context, pctx *plugin.Context, wd, source string) (plugin.Provider, error) {
 		spec := schema.PackageSpec{
 			Name: "azure",
@@ -332,31 +332,31 @@ func TestDoCmdFunctionInvokeFiltersNestedObjectsInCollections(t *testing.T) {
 				},
 			},
 		}
-		extras := resource.PropertyMap{
-			"__defaults": resource.NewProperty([]resource.PropertyValue{resource.NewProperty("internal")}),
-			"extra":      resource.NewProperty("hidden"),
+		extras := map[string]property.Value{
+			"__defaults": property.New([]property.Value{property.New("internal")}),
+			"extra":      property.New("hidden"),
 		}
-		listItem := resource.PropertyMap{
-			"name":       resource.NewProperty("list-item"),
+		listItem := property.NewMap(map[string]property.Value{
+			"name":       property.New("list-item"),
 			"__defaults": extras["__defaults"],
 			"extra":      extras["extra"],
-		}
-		mapItem := resource.PropertyMap{
-			"name":       resource.NewProperty("map-item"),
+		})
+		mapItem := property.NewMap(map[string]property.Value{
+			"name":       property.New("map-item"),
 			"__defaults": extras["__defaults"],
 			"extra":      extras["extra"],
-		}
+		})
 		return &testProvider{
 			spec: spec,
 			MockProvider: plugin.MockProvider{
 				InvokeF: func(ctx context.Context, req plugin.InvokeRequest) (plugin.InvokeResponse, error) {
 					return plugin.InvokeResponse{
-						Properties: resource.PropertyMap{
-							"items": resource.NewProperty([]resource.PropertyValue{resource.NewProperty(listItem)}),
-							"itemsByKey": resource.NewProperty(resource.PropertyMap{
-								"a": resource.NewProperty(mapItem),
+						Properties: property.NewMap(map[string]property.Value{
+							"items": property.New([]property.Value{property.New(listItem)}),
+							"itemsByKey": property.New(map[string]property.Value{
+								"a": property.New(mapItem),
 							}),
-						},
+						}),
 					}, nil
 				},
 			},
@@ -392,7 +392,7 @@ func TestDoCmdFunctionInvokeReturnType(t *testing.T) {
 	t.Parallel()
 
 	mlm := &cmdBackend.MockLoginManager{}
-	mws := &pkgWorkspace.MockContext{}
+	mws := newTestWorkspace(t)
 	loader := func(ctx context.Context, pctx *plugin.Context, wd, source string) (plugin.Provider, error) {
 		assert.Equal(t, "azure", source)
 		spec := schema.PackageSpec{
@@ -412,9 +412,9 @@ func TestDoCmdFunctionInvokeReturnType(t *testing.T) {
 			MockProvider: plugin.MockProvider{
 				InvokeF: func(ctx context.Context, req plugin.InvokeRequest) (plugin.InvokeResponse, error) {
 					return plugin.InvokeResponse{
-						Properties: resource.PropertyMap{
-							"result": resource.NewProperty("visible"),
-						},
+						Properties: property.NewMap(map[string]property.Value{
+							"result": property.New("visible"),
+						}),
 					}, nil
 				},
 			},
@@ -439,7 +439,7 @@ func TestDoCmdFunctionInvokeReturnTypeFiltersSchema(t *testing.T) {
 	t.Parallel()
 
 	mlm := &cmdBackend.MockLoginManager{}
-	mws := &pkgWorkspace.MockContext{}
+	mws := newTestWorkspace(t)
 	loader := func(ctx context.Context, pctx *plugin.Context, wd, source string) (plugin.Provider, error) {
 		assert.Equal(t, "azure", source)
 		spec := schema.PackageSpec{
@@ -482,18 +482,18 @@ func TestDoCmdFunctionInvokeReturnTypeFiltersSchema(t *testing.T) {
 			MockProvider: plugin.MockProvider{
 				InvokeF: func(ctx context.Context, req plugin.InvokeRequest) (plugin.InvokeResponse, error) {
 					return plugin.InvokeResponse{
-						Properties: resource.PropertyMap{
-							"payload": resource.NewProperty(resource.PropertyMap{
-								"name": resource.NewProperty("visible"),
-								"details": resource.NewProperty(resource.PropertyMap{
-									"enabled":    resource.NewProperty(true),
-									"__defaults": resource.NewProperty([]resource.PropertyValue{resource.NewProperty("internal")}),
-									"extra":      resource.NewProperty("hidden"),
+						Properties: property.NewMap(map[string]property.Value{
+							"payload": property.New(map[string]property.Value{
+								"name": property.New("visible"),
+								"details": property.New(map[string]property.Value{
+									"enabled":    property.New(true),
+									"__defaults": property.New([]property.Value{property.New("internal")}),
+									"extra":      property.New("hidden"),
 								}),
-								"__defaults": resource.NewProperty([]resource.PropertyValue{resource.NewProperty("internal")}),
-								"extra":      resource.NewProperty("hidden"),
+								"__defaults": property.New([]property.Value{property.New("internal")}),
+								"extra":      property.New("hidden"),
 							}),
-						},
+						}),
 					}, nil
 				},
 			},
@@ -523,7 +523,7 @@ func TestDoCmdFunctionInvokeReturnTypeFiltersSchemaSecrets(t *testing.T) {
 	t.Parallel()
 
 	mlm := &cmdBackend.MockLoginManager{}
-	mws := &pkgWorkspace.MockContext{}
+	mws := newTestWorkspace(t)
 	loader := func(ctx context.Context, pctx *plugin.Context, wd, source string) (plugin.Provider, error) {
 		assert.Equal(t, "azure", source)
 		spec := schema.PackageSpec{
@@ -566,18 +566,18 @@ func TestDoCmdFunctionInvokeReturnTypeFiltersSchemaSecrets(t *testing.T) {
 			MockProvider: plugin.MockProvider{
 				InvokeF: func(ctx context.Context, req plugin.InvokeRequest) (plugin.InvokeResponse, error) {
 					return plugin.InvokeResponse{
-						Properties: resource.PropertyMap{
-							"payload": resource.NewProperty(resource.PropertyMap{
-								"name": resource.NewProperty("visible"),
-								"details": resource.MakeSecret(resource.NewProperty(resource.PropertyMap{
-									"enabled":    resource.NewProperty(true),
-									"__defaults": resource.NewProperty([]resource.PropertyValue{resource.NewProperty("internal")}),
-									"extra":      resource.NewProperty("hidden"),
-								})),
-								"__defaults": resource.NewProperty([]resource.PropertyValue{resource.NewProperty("internal")}),
-								"extra":      resource.NewProperty("hidden"),
+						Properties: property.NewMap(map[string]property.Value{
+							"payload": property.New(map[string]property.Value{
+								"name": property.New("visible"),
+								"details": property.New(map[string]property.Value{
+									"enabled":    property.New(true),
+									"__defaults": property.New([]property.Value{property.New("internal")}),
+									"extra":      property.New("hidden"),
+								}).WithSecret(true),
+								"__defaults": property.New([]property.Value{property.New("internal")}),
+								"extra":      property.New("hidden"),
 							}),
-						},
+						}),
 					}, nil
 				},
 			},
@@ -619,7 +619,7 @@ func TestDoCmdFunctionInvokeNestedModule(t *testing.T) {
 	t.Parallel()
 
 	mlm := &cmdBackend.MockLoginManager{}
-	mws := &pkgWorkspace.MockContext{}
+	mws := newTestWorkspace(t)
 	loader := func(ctx context.Context, pctx *plugin.Context, wd, source string) (plugin.Provider, error) {
 		assert.Equal(t, "pkg", source)
 		spec := schema.PackageSpec{
@@ -646,11 +646,11 @@ func TestDoCmdFunctionInvokeNestedModule(t *testing.T) {
 			MockProvider: plugin.MockProvider{
 				InvokeF: func(ctx context.Context, req plugin.InvokeRequest) (plugin.InvokeResponse, error) {
 					assert.Equal(t, "pkg:mod1/mod2:fun", string(req.Tok))
-					assert.Equal(t, "hello", req.Args["param"].StringValue())
+					assert.Equal(t, "hello", req.Args.Get("param").AsString())
 					return plugin.InvokeResponse{
-						Properties: resource.PropertyMap{
-							"result": resource.NewProperty("world"),
-						},
+						Properties: property.NewMap(map[string]property.Value{
+							"result": property.New("world"),
+						}),
 					}, nil
 				},
 			},
@@ -682,7 +682,7 @@ func TestDoCmdFunctionInvoke_MissingRequiredInput(t *testing.T) {
 	t.Parallel()
 
 	mlm := &cmdBackend.MockLoginManager{}
-	mws := &pkgWorkspace.MockContext{}
+	mws := newTestWorkspace(t)
 	loader := func(ctx context.Context, pctx *plugin.Context, wd, source string) (plugin.Provider, error) {
 		assert.Equal(t, "azure", source)
 		spec := schema.PackageSpec{
@@ -743,7 +743,7 @@ func TestDoCmdFunctionInvoke_NoInputFileWithRequired(t *testing.T) {
 	t.Parallel()
 
 	mlm := &cmdBackend.MockLoginManager{}
-	mws := &pkgWorkspace.MockContext{}
+	mws := newTestWorkspace(t)
 	loader := func(ctx context.Context, pctx *plugin.Context, wd, source string) (plugin.Provider, error) {
 		spec := schema.PackageSpec{
 			Name: "azure",
@@ -859,7 +859,7 @@ param3 = {
 			t.Parallel()
 
 			mlm := &cmdBackend.MockLoginManager{}
-			mws := &pkgWorkspace.MockContext{}
+			mws := newTestWorkspace(t)
 			loader := func(ctx context.Context, pctx *plugin.Context, wd, source string) (plugin.Provider, error) {
 				assert.Equal(t, "azure", source)
 				spec := schema.PackageSpec{
@@ -924,7 +924,7 @@ func TestDoCmdFunctionInvokeInputFileForInputlessFunction(t *testing.T) {
 	t.Parallel()
 
 	mlm := &cmdBackend.MockLoginManager{}
-	mws := &pkgWorkspace.MockContext{}
+	mws := newTestWorkspace(t)
 	loader := func(ctx context.Context, pctx *plugin.Context, wd, source string) (plugin.Provider, error) {
 		spec := schema.PackageSpec{
 			Name: "azure",
@@ -969,7 +969,7 @@ func TestDoCmdFunctionInvokeInputFileRejectsHCLBlocks(t *testing.T) {
 	t.Parallel()
 
 	mlm := &cmdBackend.MockLoginManager{}
-	mws := &pkgWorkspace.MockContext{}
+	mws := newTestWorkspace(t)
 	loader := func(ctx context.Context, pctx *plugin.Context, wd, source string) (plugin.Provider, error) {
 		spec := schema.PackageSpec{
 			Name: "azure",
@@ -1022,7 +1022,7 @@ func TestDoCmdFunctionInvokeInputFileSchemaConversions(t *testing.T) {
 	t.Parallel()
 
 	mlm := &cmdBackend.MockLoginManager{}
-	mws := &pkgWorkspace.MockContext{}
+	mws := newTestWorkspace(t)
 	loader := func(ctx context.Context, pctx *plugin.Context, wd, source string) (plugin.Provider, error) {
 		assert.Equal(t, "azure", source)
 		spec := schema.PackageSpec{
@@ -1048,13 +1048,13 @@ func TestDoCmdFunctionInvokeInputFileSchemaConversions(t *testing.T) {
 			spec: spec,
 			MockProvider: plugin.MockProvider{
 				InvokeF: func(ctx context.Context, req plugin.InvokeRequest) (plugin.InvokeResponse, error) {
-					assert.Equal(t, "44", req.Args["param1"].StringValue())
-					assert.True(t, req.Args["param2"].BoolValue())
-					assert.Equal(t, 45.0, req.Args["param3"].NumberValue())
+					assert.Equal(t, "44", req.Args.Get("param1").AsString())
+					assert.True(t, req.Args.Get("param2").AsBool())
+					assert.Equal(t, 45.0, req.Args.Get("param3").AsNumber())
 					return plugin.InvokeResponse{
-						Properties: resource.PropertyMap{
-							"output1": resource.NewProperty("world"),
-						},
+						Properties: property.NewMap(map[string]property.Value{
+							"output1": property.New("world"),
+						}),
 					}, nil
 				},
 			},
@@ -1087,7 +1087,7 @@ func TestDoCmdFunctionInvokeDryRun(t *testing.T) {
 	t.Parallel()
 
 	mlm := &cmdBackend.MockLoginManager{}
-	mws := &pkgWorkspace.MockContext{}
+	mws := newTestWorkspace(t)
 	loader := func(ctx context.Context, pctx *plugin.Context, wd, source string) (plugin.Provider, error) {
 		assert.Equal(t, "azure", source)
 		spec := schema.PackageSpec{
@@ -1129,15 +1129,15 @@ func TestDoCmdFunctionInvokeDryRun(t *testing.T) {
 				InvokeF: func(ctx context.Context, req plugin.InvokeRequest) (plugin.InvokeResponse, error) {
 					assert.Truef(t, req.Preview, "expected Preview to be true")
 					assert.Equal(t, "azure:index:myFunction", string(req.Tok))
-					assert.Equal(t, "hello", req.Args["param1"].StringValue())
-					assert.Equal(t, 42.0, req.Args["param2"].NumberValue())
-					assert.Equal(t, true, req.Args["param3"].BoolValue())
+					assert.Equal(t, "hello", req.Args.Get("param1").AsString())
+					assert.Equal(t, 42.0, req.Args.Get("param2").AsNumber())
+					assert.Equal(t, true, req.Args.Get("param3").AsBool())
 					return plugin.InvokeResponse{
-						Properties: resource.PropertyMap{
-							"output1": resource.NewProperty("world"),
-							"output2": resource.NewProperty(43.0),
-							"output3": resource.MakeComputed(resource.NewProperty("")),
-						},
+						Properties: property.NewMap(map[string]property.Value{
+							"output1": property.New("world"),
+							"output2": property.New(43.0),
+							"output3": property.New(property.Computed),
+						}),
 					}, nil
 				},
 			},
@@ -1172,7 +1172,7 @@ func TestDoCmdFunctionInvokeWithBuiltinFunctions(t *testing.T) {
 	t.Parallel()
 
 	mlm := &cmdBackend.MockLoginManager{}
-	mws := &pkgWorkspace.MockContext{}
+	mws := newTestWorkspace(t)
 	loader := func(ctx context.Context, pctx *plugin.Context, wd, source string) (plugin.Provider, error) {
 		assert.Equal(t, "azure", source)
 		spec := schema.PackageSpec{
@@ -1205,12 +1205,12 @@ func TestDoCmdFunctionInvokeWithBuiltinFunctions(t *testing.T) {
 			spec: spec,
 			MockProvider: plugin.MockProvider{
 				InvokeF: func(ctx context.Context, req plugin.InvokeRequest) (plugin.InvokeResponse, error) {
-					assert.Equal(t, `{"value":true}`, req.Args["param1"].StringValue())
-					assert.Equal(t, 6.0, req.Args["param2"].NumberValue())
+					assert.Equal(t, `{"value":true}`, req.Args.Get("param1").AsString())
+					assert.Equal(t, 6.0, req.Args.Get("param2").AsNumber())
 					return plugin.InvokeResponse{
-						Properties: resource.PropertyMap{
-							"ok": resource.NewProperty(true),
-						},
+						Properties: property.NewMap(map[string]property.Value{
+							"ok": property.New(true),
+						}),
 					}, nil
 				},
 			},
@@ -1231,73 +1231,6 @@ param2 = max(1, length(split(":", "a:b:c")), 6)
 	cmd.SetArgs([]string{"azure:index:myFunction", "--input", "pcl", "--input-file", inputFile})
 	err := cmd.Execute()
 	require.NoError(t, err)
-}
-
-func TestDoCmdFunctionInvokeWithUnsupportedBuiltinFunction(t *testing.T) {
-	t.Parallel()
-
-	tests := []struct {
-		name     string
-		input    string
-		expected string
-	}{
-		{
-			name:     "project",
-			input:    `param1 = project()`,
-			expected: "project is not supported",
-		},
-		{
-			name:     "rootDirectory",
-			input:    `param1 = rootDirectory()`,
-			expected: "rootDirectory is not supported",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-
-			mlm := &cmdBackend.MockLoginManager{}
-			mws := &pkgWorkspace.MockContext{}
-			loader := func(ctx context.Context, pctx *plugin.Context, wd, source string) (plugin.Provider, error) {
-				spec := schema.PackageSpec{
-					Name: "azure",
-					Functions: map[string]schema.FunctionSpec{
-						"azure:index:myFunction": {
-							Inputs: &schema.ObjectTypeSpec{
-								Properties: map[string]schema.PropertySpec{
-									"param1": {
-										TypeSpec: schema.TypeSpec{
-											Type: "string",
-										},
-									},
-								},
-							},
-							Outputs: &schema.ObjectTypeSpec{
-								Properties: map[string]schema.PropertySpec{
-									"output1": {TypeSpec: schema.TypeSpec{Type: "string"}},
-									"output2": {TypeSpec: schema.TypeSpec{Type: "number"}},
-									"output3": {TypeSpec: schema.TypeSpec{Type: "boolean"}},
-								},
-							},
-						},
-					},
-				}
-				return &testProvider{spec: spec}, nil
-			}
-
-			var stdout bytes.Buffer
-			cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin, nil)
-			cmd.SetOut(&stdout)
-			cmd.SetErr(&stdout)
-
-			inputFile := writeHCLFile(t, "inputs.pcl", tt.input)
-
-			cmd.SetArgs([]string{"azure:index:myFunction", "--input", "pcl", "--input-file", inputFile})
-			err := cmd.Execute()
-			require.ErrorContains(t, err, tt.expected)
-		})
-	}
 }
 
 func TestDoCmdFunctionInvokeWithProjectContext(t *testing.T) {
@@ -1348,13 +1281,13 @@ func TestDoCmdFunctionInvokeWithProjectContext(t *testing.T) {
 			spec: spec,
 			MockProvider: plugin.MockProvider{
 				InvokeF: func(ctx context.Context, req plugin.InvokeRequest) (plugin.InvokeResponse, error) {
-					assert.Equal(t, mainDir, req.Args["pwd"].StringValue())
-					assert.Equal(t, root, req.Args["root"].StringValue())
-					assert.Equal(t, "my-project", req.Args["project"].StringValue())
+					assert.Equal(t, mainDir, req.Args.Get("pwd").AsString())
+					assert.Equal(t, root, req.Args.Get("root").AsString())
+					assert.Equal(t, "my-project", req.Args.Get("project").AsString())
 					return plugin.InvokeResponse{
-						Properties: resource.PropertyMap{
-							"ok": resource.NewProperty(true),
-						},
+						Properties: property.NewMap(map[string]property.Value{
+							"ok": property.New(true),
+						}),
 					}, nil
 				},
 			},
@@ -1382,7 +1315,7 @@ func TestDoCmdFunctionInvokeWithConfiguration(t *testing.T) {
 
 	configureCalled := false
 	mlm := &cmdBackend.MockLoginManager{}
-	mws := &pkgWorkspace.MockContext{}
+	mws := newTestWorkspace(t)
 	loader := func(ctx context.Context, pctx *plugin.Context, wd, source string) (plugin.Provider, error) {
 		assert.Equal(t, "azure", source)
 		spec := schema.PackageSpec{
@@ -1438,15 +1371,15 @@ func TestDoCmdFunctionInvokeWithConfiguration(t *testing.T) {
 				InvokeF: func(ctx context.Context, req plugin.InvokeRequest) (plugin.InvokeResponse, error) {
 					assert.False(t, req.Preview, "expected Preview to be false")
 					assert.Equal(t, "azure:index:myFunction", string(req.Tok))
-					assert.Equal(t, "hello", req.Args["param1"].StringValue())
-					assert.Equal(t, 42.0, req.Args["param2"].NumberValue())
-					assert.Equal(t, true, req.Args["param3"].BoolValue())
+					assert.Equal(t, "hello", req.Args.Get("param1").AsString())
+					assert.Equal(t, 42.0, req.Args.Get("param2").AsNumber())
+					assert.Equal(t, true, req.Args.Get("param3").AsBool())
 					return plugin.InvokeResponse{
-						Properties: resource.PropertyMap{
-							"output1": resource.NewProperty("world"),
-							"output2": resource.NewProperty(43.0),
-							"output3": resource.NewProperty(false),
-						},
+						Properties: property.NewMap(map[string]property.Value{
+							"output1": property.New("world"),
+							"output2": property.New(43.0),
+							"output3": property.New(false),
+						}),
 					}, nil
 				},
 			},
@@ -1490,7 +1423,7 @@ func TestDoCmdFunctionInvokeNestedResults(t *testing.T) {
 	t.Parallel()
 
 	mlm := &cmdBackend.MockLoginManager{}
-	mws := &pkgWorkspace.MockContext{}
+	mws := newTestWorkspace(t)
 	loader := func(ctx context.Context, pctx *plugin.Context, wd, source string) (plugin.Provider, error) {
 		assert.Equal(t, "azure", source)
 		spec := schema.PackageSpec{
@@ -1527,16 +1460,16 @@ func TestDoCmdFunctionInvokeNestedResults(t *testing.T) {
 					assert.Equal(t, "azure:index:myFunction", string(req.Tok))
 					assert.Empty(t, req.Args, "expected Args to be empty")
 					return plugin.InvokeResponse{
-						Properties: resource.PropertyMap{
-							"secret": resource.MakeSecret(resource.NewProperty("hello")),
-							"list": resource.NewProperty([]resource.PropertyValue{
-								resource.NewProperty("a"),
-								resource.NewProperty("b"),
+						Properties: property.NewMap(map[string]property.Value{
+							"secret": property.New("hello").WithSecret(true),
+							"list": property.New([]property.Value{
+								property.New("a"),
+								property.New("b"),
 							}),
-							"object": resource.NewProperty(resource.PropertyMap{
-								"nested": resource.NewProperty("value"),
+							"object": property.New(map[string]property.Value{
+								"nested": property.New("value"),
 							}),
-						},
+						}),
 					}, nil
 				},
 			},
@@ -1570,7 +1503,7 @@ func TestDoCmdFunctionInvokeShowSecrets(t *testing.T) {
 	t.Parallel()
 
 	mlm := &cmdBackend.MockLoginManager{}
-	mws := &pkgWorkspace.MockContext{}
+	mws := newTestWorkspace(t)
 	loader := func(ctx context.Context, pctx *plugin.Context, wd, source string) (plugin.Provider, error) {
 		assert.Equal(t, "azure", source)
 		spec := schema.PackageSpec{
@@ -1598,12 +1531,12 @@ func TestDoCmdFunctionInvokeShowSecrets(t *testing.T) {
 			MockProvider: plugin.MockProvider{
 				InvokeF: func(ctx context.Context, req plugin.InvokeRequest) (plugin.InvokeResponse, error) {
 					return plugin.InvokeResponse{
-						Properties: resource.PropertyMap{
-							"secret": resource.MakeSecret(resource.NewProperty("hello")),
-							"object": resource.NewProperty(resource.PropertyMap{
-								"nested": resource.MakeSecret(resource.NewProperty("value")),
+						Properties: property.NewMap(map[string]property.Value{
+							"secret": property.New("hello").WithSecret(true),
+							"object": property.New(map[string]property.Value{
+								"nested": property.New("value").WithSecret(true),
 							}),
-						},
+						}),
 					}, nil
 				},
 			},
@@ -1640,7 +1573,7 @@ func TestDoCmdFunctionInvokeAssetArchiveResults(t *testing.T) {
 	require.NoError(t, err)
 
 	mlm := &cmdBackend.MockLoginManager{}
-	mws := &pkgWorkspace.MockContext{}
+	mws := newTestWorkspace(t)
 	loader := func(ctx context.Context, pctx *plugin.Context, wd, source string) (plugin.Provider, error) {
 		assert.Equal(t, "azure", source)
 		spec := schema.PackageSpec{
@@ -1669,10 +1602,10 @@ func TestDoCmdFunctionInvokeAssetArchiveResults(t *testing.T) {
 			MockProvider: plugin.MockProvider{
 				InvokeF: func(ctx context.Context, req plugin.InvokeRequest) (plugin.InvokeResponse, error) {
 					return plugin.InvokeResponse{
-						Properties: resource.PropertyMap{
-							"asset":   resource.NewProperty(textAsset),
-							"archive": resource.NewProperty(literalArchive),
-						},
+						Properties: property.NewMap(map[string]property.Value{
+							"asset":   property.New(textAsset),
+							"archive": property.New(literalArchive),
+						}),
 					}, nil
 				},
 			},
@@ -1722,7 +1655,7 @@ func TestDoCmdFunctionInvokeWithParameterizedPackage(t *testing.T) {
 	subpackageVersion := semver.MustParse("1.2.3")
 
 	mlm := &cmdBackend.MockLoginManager{}
-	mws := &pkgWorkspace.MockContext{}
+	mws := newTestWorkspace(t)
 	loader := func(ctx context.Context, pctx *plugin.Context, wd, source string) (plugin.Provider, error) {
 		// shlex-split takes only the first token as the plugin source; the rest go to Parameterize.
 		assert.Equal(t, "terraform-provider", source)
@@ -1784,11 +1717,11 @@ func TestDoCmdFunctionInvokeWithParameterizedPackage(t *testing.T) {
 				},
 				InvokeF: func(ctx context.Context, req plugin.InvokeRequest) (plugin.InvokeResponse, error) {
 					assert.Equal(t, "myparam:index:myFunction", string(req.Tok))
-					assert.Equal(t, "hello", req.Args["x"].StringValue())
+					assert.Equal(t, "hello", req.Args.Get("x").AsString())
 					return plugin.InvokeResponse{
-						Properties: resource.PropertyMap{
-							"y": resource.NewProperty("world"),
-						},
+						Properties: property.NewMap(map[string]property.Value{
+							"y": property.New("world"),
+						}),
 					}, nil
 				},
 			},
@@ -1823,7 +1756,7 @@ func TestDoCmdFunctionInvokeWithYAMLInputFile(t *testing.T) {
 	t.Parallel()
 
 	mlm := &cmdBackend.MockLoginManager{}
-	mws := &pkgWorkspace.MockContext{}
+	mws := newTestWorkspace(t)
 	yamlHost := func(_ context.Context, d, statusD diag.Sink) (plugin.Host, error) {
 		// Serve the standard schema loader so the context exposes a non-empty LoaderAddr, which
 		// `do` forwards to the converter as its TargetLoader.
@@ -1907,15 +1840,15 @@ param3 = true
 			MockProvider: plugin.MockProvider{
 				InvokeF: func(ctx context.Context, req plugin.InvokeRequest) (plugin.InvokeResponse, error) {
 					assert.Equal(t, "azure:index:myFunction", string(req.Tok))
-					assert.Equal(t, "hello", req.Args["param1"].StringValue())
-					assert.Equal(t, 42.0, req.Args["param2"].NumberValue())
-					assert.Equal(t, true, req.Args["param3"].BoolValue())
+					assert.Equal(t, "hello", req.Args.Get("param1").AsString())
+					assert.Equal(t, 42.0, req.Args.Get("param2").AsNumber())
+					assert.Equal(t, true, req.Args.Get("param3").AsBool())
 					return plugin.InvokeResponse{
-						Properties: resource.PropertyMap{
-							"output1": resource.NewProperty("world"),
-							"output2": resource.NewProperty(43.0),
-							"output3": resource.NewProperty(false),
-						},
+						Properties: property.NewMap(map[string]property.Value{
+							"output1": property.New("world"),
+							"output2": property.New(43.0),
+							"output3": property.New(false),
+						}),
 					}, nil
 				},
 			},
@@ -1952,7 +1885,7 @@ func TestDoCmdFunctionInvokeYAMLInputByDefault(t *testing.T) {
 	t.Parallel()
 
 	mlm := &cmdBackend.MockLoginManager{}
-	mws := &pkgWorkspace.MockContext{}
+	mws := newTestWorkspace(t)
 	yamlHost := func(_ context.Context, d, statusD diag.Sink) (plugin.Host, error) {
 		// Serve the standard schema loader so the context exposes a non-empty LoaderAddr, which
 		// `do` forwards to the converter as its TargetLoader.
@@ -2002,9 +1935,9 @@ func TestDoCmdFunctionInvokeYAMLInputByDefault(t *testing.T) {
 			spec: spec,
 			MockProvider: plugin.MockProvider{
 				InvokeF: func(ctx context.Context, req plugin.InvokeRequest) (plugin.InvokeResponse, error) {
-					assert.Equal(t, "hello", req.Args["x"].StringValue())
+					assert.Equal(t, "hello", req.Args.Get("x").AsString())
 					return plugin.InvokeResponse{
-						Properties: resource.PropertyMap{"y": resource.NewProperty("world")},
+						Properties: property.NewMap(map[string]property.Value{"y": property.New("world")}),
 					}, nil
 				},
 			},
@@ -2035,7 +1968,7 @@ func TestDoCmdFunctionInvokeWithYAMLInputFileParameterized(t *testing.T) {
 	t.Parallel()
 
 	mlm := &cmdBackend.MockLoginManager{}
-	mws := &pkgWorkspace.MockContext{}
+	mws := newTestWorkspace(t)
 	yamlHost := func(_ context.Context, d, statusD diag.Sink) (plugin.Host, error) {
 		// Serve the standard schema loader so the context exposes a non-empty LoaderAddr, which
 		// `do` forwards to the converter as its TargetLoader.
@@ -2106,9 +2039,9 @@ func TestDoCmdFunctionInvokeWithYAMLInputFileParameterized(t *testing.T) {
 					return plugin.ParameterizeResponse{Name: "myparam", Version: subVersion}, nil
 				},
 				InvokeF: func(ctx context.Context, req plugin.InvokeRequest) (plugin.InvokeResponse, error) {
-					assert.Equal(t, "hello", req.Args["x"].StringValue())
+					assert.Equal(t, "hello", req.Args.Get("x").AsString())
 					return plugin.InvokeResponse{
-						Properties: resource.PropertyMap{"y": resource.NewProperty("world")},
+						Properties: property.NewMap(map[string]property.Value{"y": property.New("world")}),
 					}, nil
 				},
 			},
@@ -2137,7 +2070,7 @@ func TestDoCmdFunctionInvokeParameterizedSchemaWithoutArgs(t *testing.T) {
 	t.Parallel()
 
 	mlm := &cmdBackend.MockLoginManager{}
-	mws := &pkgWorkspace.MockContext{}
+	mws := newTestWorkspace(t)
 	loader := func(ctx context.Context, pctx *plugin.Context, wd, source string) (plugin.Provider, error) {
 		assert.Equal(t, "azure", source)
 		spec := schema.PackageSpec{
@@ -2180,7 +2113,7 @@ func TestDoCmdFunctionInvokeWithYAMLProviderFile(t *testing.T) {
 
 	configureCalled := false
 	mlm := &cmdBackend.MockLoginManager{}
-	mws := &pkgWorkspace.MockContext{}
+	mws := newTestWorkspace(t)
 	yamlHost := func(_ context.Context, d, statusD diag.Sink) (plugin.Host, error) {
 		// Serve the standard schema loader so the context exposes a non-empty LoaderAddr, which
 		// `do` forwards to the converter as its TargetLoader.
@@ -2243,7 +2176,7 @@ func TestDoCmdFunctionInvokeWithYAMLProviderFile(t *testing.T) {
 				},
 				InvokeF: func(ctx context.Context, req plugin.InvokeRequest) (plugin.InvokeResponse, error) {
 					return plugin.InvokeResponse{
-						Properties: resource.PropertyMap{"output1": resource.NewProperty("world")},
+						Properties: property.NewMap(map[string]property.Value{"output1": property.New("world")}),
 					}, nil
 				},
 			},
@@ -2271,7 +2204,7 @@ func TestDoCmdFunctionInvokeWithUnknownInputFormat(t *testing.T) {
 	t.Parallel()
 
 	mlm := &cmdBackend.MockLoginManager{}
-	mws := &pkgWorkspace.MockContext{}
+	mws := newTestWorkspace(t)
 	host := func(_ context.Context, d, statusD diag.Sink) (plugin.Host, error) {
 		return &plugin.MockHost{}, nil
 	}
@@ -2329,7 +2262,7 @@ func TestDoCmdFunctionInvokeWithConverterMissingConvertSnippet(t *testing.T) {
 	t.Parallel()
 
 	mlm := &cmdBackend.MockLoginManager{}
-	mws := &pkgWorkspace.MockContext{}
+	mws := newTestWorkspace(t)
 	host := func(_ context.Context, d, statusD diag.Sink) (plugin.Host, error) {
 		return &plugin.MockHost{}, nil
 	}
@@ -2388,7 +2321,7 @@ func TestDoCmdFunctionInvokeWithConverterDiagnostics(t *testing.T) {
 	t.Parallel()
 
 	mlm := &cmdBackend.MockLoginManager{}
-	mws := &pkgWorkspace.MockContext{}
+	mws := newTestWorkspace(t)
 	host := func(_ context.Context, d, statusD diag.Sink) (plugin.Host, error) {
 		return &plugin.MockHost{}, nil
 	}
@@ -2455,7 +2388,7 @@ func TestDoCmdFunctionInvokeWithConverterReturningInvalidPCL(t *testing.T) {
 	t.Parallel()
 
 	mlm := &cmdBackend.MockLoginManager{}
-	mws := &pkgWorkspace.MockContext{}
+	mws := newTestWorkspace(t)
 	host := func(_ context.Context, d, statusD diag.Sink) (plugin.Host, error) {
 		return &plugin.MockHost{}, nil
 	}
@@ -2520,7 +2453,7 @@ func TestDoCmdFunctionInvokeWithFlags(t *testing.T) {
 
 	configureCalled := false
 	mlm := &cmdBackend.MockLoginManager{}
-	mws := &pkgWorkspace.MockContext{}
+	mws := newTestWorkspace(t)
 	loader := func(ctx context.Context, pctx *plugin.Context, wd, source string) (plugin.Provider, error) {
 		assert.Equal(t, "azure", source)
 		spec := schema.PackageSpec{
@@ -2559,11 +2492,11 @@ func TestDoCmdFunctionInvokeWithFlags(t *testing.T) {
 					return plugin.ConfigureResponse{}, nil
 				},
 				InvokeF: func(ctx context.Context, req plugin.InvokeRequest) (plugin.InvokeResponse, error) {
-					assert.Equal(t, "p1", req.Args["in1"].StringValue())
-					assert.Equal(t, "p2", req.Args["inTwo"].StringValue())
-					assert.Equal(t, true, req.Args["dryRun"].BoolValue())
+					assert.Equal(t, "p1", req.Args.Get("in1").AsString())
+					assert.Equal(t, "p2", req.Args.Get("inTwo").AsString())
+					assert.Equal(t, true, req.Args.Get("dryRun").AsBool())
 					return plugin.InvokeResponse{
-						Properties: resource.PropertyMap{"output1": resource.NewProperty("world")},
+						Properties: property.NewMap(map[string]property.Value{"output1": property.New("world")}),
 					}, nil
 				},
 			},
@@ -2595,7 +2528,7 @@ func TestDoCmdFunctionInvokeWithYAMLFlags(t *testing.T) {
 
 	configureCalled := false
 	mlm := &cmdBackend.MockLoginManager{}
-	mws := &pkgWorkspace.MockContext{}
+	mws := newTestWorkspace(t)
 	yamlHost := func(_ context.Context, d, statusD diag.Sink) (plugin.Host, error) {
 		// Serve the standard schema loader so the context exposes a non-empty LoaderAddr, which
 		// `do` forwards to the converter as its TargetLoader.
@@ -2687,11 +2620,11 @@ func TestDoCmdFunctionInvokeWithYAMLFlags(t *testing.T) {
 					return plugin.ConfigureResponse{}, nil
 				},
 				InvokeF: func(ctx context.Context, req plugin.InvokeRequest) (plugin.InvokeResponse, error) {
-					assert.Equal(t, "p1", req.Args["in1"].StringValue())
-					assert.Equal(t, "p2", req.Args["inTwo"].StringValue())
-					assert.Equal(t, true, req.Args["dryRun"].BoolValue())
+					assert.Equal(t, "p1", req.Args.Get("in1").AsString())
+					assert.Equal(t, "p2", req.Args.Get("inTwo").AsString())
+					assert.Equal(t, true, req.Args.Get("dryRun").AsBool())
 					return plugin.InvokeResponse{
-						Properties: resource.PropertyMap{"output1": resource.NewProperty("world")},
+						Properties: property.NewMap(map[string]property.Value{"output1": property.New("world")}),
 					}, nil
 				},
 			},
@@ -2786,9 +2719,9 @@ func TestDoCmdFunctionInvokeWithYAMLInputFlagsNoInputFile(t *testing.T) {
 			spec: spec,
 			MockProvider: plugin.MockProvider{
 				InvokeF: func(ctx context.Context, req plugin.InvokeRequest) (plugin.InvokeResponse, error) {
-					assert.Equal(t, "outstring", req.Args["message"].StringValue())
+					assert.Equal(t, "outstring", req.Args.Get("message").AsString())
 					return plugin.InvokeResponse{
-						Properties: resource.PropertyMap{"output1": resource.NewProperty("world")},
+						Properties: property.NewMap(map[string]property.Value{"output1": property.New("world")}),
 					}, nil
 				},
 			},
@@ -2814,7 +2747,7 @@ func TestDoCmdFunctionInvokeWithPlainFlagsSkipsConverter(t *testing.T) {
 	t.Parallel()
 
 	mlm := &cmdBackend.MockLoginManager{}
-	mws := &pkgWorkspace.MockContext{}
+	mws := newTestWorkspace(t)
 	loader := func(ctx context.Context, pctx *plugin.Context, wd, source string) (plugin.Provider, error) {
 		assert.Equal(t, "azure", source)
 		spec := schema.PackageSpec{
@@ -2841,9 +2774,9 @@ func TestDoCmdFunctionInvokeWithPlainFlagsSkipsConverter(t *testing.T) {
 				InvokeF: func(ctx context.Context, req plugin.InvokeRequest) (plugin.InvokeResponse, error) {
 					assert.Equal(t,
 						"convert: allow empty files):\nwith ${not.interpolated} and %{no.directive}",
-						req.Args["message"].StringValue())
+						req.Args.Get("message").AsString())
 					return plugin.InvokeResponse{
-						Properties: resource.PropertyMap{"output1": resource.NewProperty("world")},
+						Properties: property.NewMap(map[string]property.Value{"output1": property.New("world")}),
 					}, nil
 				},
 			},
@@ -2939,11 +2872,11 @@ func TestDoCmdFunctionInvokeWithYAMLExpression(t *testing.T) {
 			spec: spec,
 			MockProvider: plugin.MockProvider{
 				InvokeF: func(ctx context.Context, req plugin.InvokeRequest) (plugin.InvokeResponse, error) {
-					assert.Equal(t, 37.0, req.Args["number"].NumberValue())
-					assert.Equal(t, 45.0, req.Args["expr"].SecretValue().Element.NumberValue())
-					assert.Equal(t, false, req.Args["flag"].BoolValue())
+					assert.Equal(t, 37.0, req.Args.Get("number").AsNumber())
+					assert.Equal(t, 45.0, req.Args.Get("expr").AsNumber())
+					assert.Equal(t, false, req.Args.Get("flag").AsBool())
 					return plugin.InvokeResponse{
-						Properties: resource.PropertyMap{"output1": resource.NewProperty("world")},
+						Properties: property.NewMap(map[string]property.Value{"output1": property.New("world")}),
 					}, nil
 				},
 			},

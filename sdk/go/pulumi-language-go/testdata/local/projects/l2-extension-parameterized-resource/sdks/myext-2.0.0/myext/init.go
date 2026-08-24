@@ -21,9 +21,9 @@ func (m *module) Version() semver.Version {
 
 func (m *module) Construct(ctx *pulumi.Context, name, typ, urn string) (r pulumi.Resource, err error) {
 	switch typ {
-	case "extbase:index:Greeting":
+	case "myext:index:Greeting":
 		r = &Greeting{}
-	case "extbase:index:GreetingComponent":
+	case "myext:index:GreetingComponent":
 		r = &GreetingComponent{}
 	default:
 		return nil, fmt.Errorf("unknown resource type: %s", typ)

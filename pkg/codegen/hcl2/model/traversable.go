@@ -64,7 +64,7 @@ func GetTraverserKey(t hcl.Traverser) (cty.Value, Type) {
 		return cty.StringVal(t.Name), StringType
 	case hcl.TraverseIndex:
 		if t.Key.Type().Equals(typeCapsule) {
-			return cty.DynamicVal, *(t.Key.EncapsulatedValue().(*Type))
+			return cty.DynamicVal, *t.Key.EncapsulatedValue().(*Type)
 		}
 		return t.Key, ctyTypeToType(t.Key.Type(), false)
 	default:

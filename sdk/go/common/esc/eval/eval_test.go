@@ -287,9 +287,9 @@ type testEnvironments struct {
 	root string
 }
 
-func (e *testEnvironments) LoadEnvironment(ctx context.Context, name string) ([]byte, Decrypter, error) {
+func (e *testEnvironments) LoadEnvironment(ctx context.Context, name string) ([]byte, string, Decrypter, error) {
 	if e.root == "" {
-		return nil, nil, os.ErrNotExist
+		return nil, "", nil, os.ErrNotExist
 	}
 
 	bytes, err := os.ReadFile(filepath.Join(e.root, name+".yaml"))
@@ -297,11 +297,11 @@ func (e *testEnvironments) LoadEnvironment(ctx context.Context, name string) ([]
 		// Normalize to an OS-independent error: os.ReadFile's message and path
 		// separators differ across platforms, which breaks golden comparisons on Windows.
 		if errors.Is(err, os.ErrNotExist) {
-			return nil, nil, fmt.Errorf("environment %q not found", name)
+			return nil, "", nil, fmt.Errorf("environment %q not found", name)
 		}
-		return nil, nil, err
+		return nil, "", nil, err
 	}
-	return bytes, rot128{}, nil
+	return bytes, name, rot128{}, nil
 }
 
 func (e *testEnvironments) AuthorizeImport(_ context.Context, _ string, _ string, _ bool) error {
@@ -340,14 +340,14 @@ func newBenchEnvironments(root string, delay time.Duration) (*benchEnvironments,
 	return &benchEnvironments{defs, delay}, nil
 }
 
-func (e *benchEnvironments) LoadEnvironment(ctx context.Context, name string) ([]byte, Decrypter, error) {
+func (e *benchEnvironments) LoadEnvironment(ctx context.Context, name string) ([]byte, string, Decrypter, error) {
 	time.Sleep(e.delay)
 
 	bytes, ok := e.defs[name]
 	if !ok {
-		return nil, nil, os.ErrNotExist
+		return nil, "", nil, os.ErrNotExist
 	}
-	return bytes, rot128{}, nil
+	return bytes, name, rot128{}, nil
 }
 
 func (e *benchEnvironments) AuthorizeImport(_ context.Context, _ string, _ string, _ bool) error {
@@ -385,6 +385,63 @@ func normalize[T any](t *testing.T, v T) T {
 	err = dec.Decode(&decoded)
 	require.NoError(t, err)
 	return decoded
+}
+
+type importAuthorization struct {
+	importer string
+	imported string
+}
+
+type overrideEnvironments struct {
+	defs           map[string]string
+	overrides      map[string]string
+	authorizations []importAuthorization
+}
+
+func (e *overrideEnvironments) LoadEnvironment(_ context.Context, name string) ([]byte, string, Decrypter, error) {
+	resolved, ok := e.overrides[name]
+	if !ok {
+		resolved = name
+	}
+	def, ok := e.defs[resolved]
+	if !ok {
+		return nil, "", nil, os.ErrNotExist
+	}
+	return []byte(def), resolved, rot128{}, nil
+}
+
+func (e *overrideEnvironments) AuthorizeImport(_ context.Context, importer, imported string, _ bool) error {
+	e.authorizations = append(e.authorizations, importAuthorization{importer: importer, imported: imported})
+	return nil
+}
+
+func TestEvalEnvironmentUsesResolvedImportName(t *testing.T) {
+	t.Parallel()
+
+	env, diags, err := LoadYAMLBytes("root", []byte(`imports:
+  - dev
+values:
+  importedEnvironmentName: ${imports.dev.environmentName}
+`))
+	require.NoError(t, err)
+	require.False(t, diags.HasErrors(), "%v", diags)
+
+	execContext, err := esc.NewExecContext(nil)
+	require.NoError(t, err)
+	environments := &overrideEnvironments{
+		defs: map[string]string{
+			"prod":  "imports:\n  - child\nvalues:\n  environmentName: ${context.currentEnvironment.name}\n",
+			"child": "values: {}\n",
+		},
+		overrides: map[string]string{"dev": "prod"},
+	}
+	result, diags := EvalEnvironment(
+		t.Context(), "root", env, rot128{}, testProviders{}, environments, execContext, EvalOptions{},
+	)
+	require.False(t, diags.HasErrors(), "%v", diags)
+	require.NotNil(t, result)
+	assert.Equal(t, "prod", result.Properties["importedEnvironmentName"].Value)
+	assert.Contains(t, environments.authorizations, importAuthorization{importer: "prod", imported: "child"})
 }
 
 func TestEval(t *testing.T) {

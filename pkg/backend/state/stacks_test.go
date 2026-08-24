@@ -169,7 +169,7 @@ func TestCurrentStack(t *testing.T) {
 	t.Run("legacy cloud selection is ignored on local backend", func(t *testing.T) {
 		t.Parallel()
 		settings := &pkgWorkspace.Settings{
-			Stack: "cloud-org/my-project/my-stack",
+			Stack: "cloud-org/my-project/my-stack", //nolint:staticcheck
 		}
 		ws := &pkgWorkspace.MockContext{
 			NewF: func(string) (pkgWorkspace.W, error) {

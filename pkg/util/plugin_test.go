@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//nolint:revive // Legacy package name we don't want to change
 package util
 
 import (
@@ -67,9 +66,8 @@ func TestKnownLanguageRuntimeHCL(t *testing.T) {
 	spec.Version = nil
 
 	assert.Equal(t, workspace.PluginDescriptor{
-		Name:              "hcl",
-		Kind:              apitype.LanguagePlugin,
-		PluginDownloadURL: "github://api.github.com/pulumi-labs/pulumi-hcl",
+		Name: "hcl",
+		Kind: apitype.LanguagePlugin,
 	}, spec)
 }
 
@@ -83,11 +81,10 @@ func TestKnownLanguageRuntimePreservesExplicitVersion(t *testing.T) {
 		Version: &explicit,
 	}
 	res := SetKnownPluginDownloadURL(&spec)
-	assert.True(t, res)
+	assert.False(t, res)
 	assert.Equal(t, workspace.PluginDescriptor{
-		Name:              "hcl",
-		Kind:              apitype.LanguagePlugin,
-		PluginDownloadURL: "github://api.github.com/pulumi-labs/pulumi-hcl",
-		Version:           &explicit,
+		Name:    "hcl",
+		Kind:    apitype.LanguagePlugin,
+		Version: &explicit,
 	}, spec)
 }

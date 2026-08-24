@@ -299,7 +299,7 @@ func TestPack(t *testing.T) {
 
 			require.NoError(t, err)
 			// check that the artifact contains a package.json
-			b, err := gzip.NewReader(bytes.NewReader((artifact)))
+			b, err := gzip.NewReader(bytes.NewReader(artifact))
 			require.NoError(t, err)
 			tr := tar.NewReader(b)
 			for {

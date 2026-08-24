@@ -25,7 +25,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	. "github.com/pulumi/pulumi/pkg/v3/engine" //nolint:revive
+	. "github.com/pulumi/pulumi/pkg/v3/engine"
 	lt "github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest/framework"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
@@ -137,6 +137,8 @@ func TestExtensionParameterizedProvider(t *testing.T) {
 			Name: "ext-a", Version: "1.0.0", Value: []byte("blob-a"),
 		})
 		require.NoError(t, err)
+
+		assert.Equal(t, refA, refADup, "a byte-identical extension must yield the same ref")
 		return nil
 	})
 

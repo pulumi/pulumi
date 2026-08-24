@@ -186,11 +186,11 @@ func bindSpec(ctx context.Context, spec PackageSpec, languages map[string]Langua
 
 	diags = diags.Extend(spec.validateTypeTokens())
 
-	// Disallow the package names "pulumi" and "input". "pulumi" is reserved for the builtin package and provider
-	// resources, and "input" is reserved for `pulumi do` to use as a discriminator for input flags.
+	// Disallow package names reserved by Pulumi.
 	if (!options.AllowPulumiPackage && spec.Name == "pulumi") || spec.Name == "input" {
 		diags = diags.Append(errorf("#/name",
-			"invalid package name '%s' (package names 'pulumi' and 'input' are reserved)", spec.Name))
+			"invalid package name '%s' (package names 'pulumi' and 'input' are reserved)",
+			spec.Name))
 	}
 
 	config, configDiags, err := bindConfig(spec.Config, types, options)
@@ -622,13 +622,7 @@ func (spec *PackageSpec) validateTypeToken(
 
 	modules, ok := allowedNameSpecs[parts[0]]
 	if !ok {
-		// Extension tokens must use the base provider's namespace, not the
-		// extension's own name, so point the author at the base.
-		expectedName := spec.Name
-		if spec.ExtensionParameterization != nil {
-			expectedName = spec.ExtensionParameterization.BaseProvider.Name
-		}
-		err := errorf(path, "invalid token '%s' (must have package name '%s')", token, expectedName)
+		err := errorf(path, "invalid token '%s' (must have package name '%s')", token, spec.Name)
 		diags = diags.Append(err)
 	}
 	if (parts[1] == "" || strings.EqualFold(parts[1], "index")) && strings.EqualFold(parts[2], "provider") {
@@ -669,16 +663,7 @@ func (spec *PackageSpec) validateTypeToken(
 // This is for validating non-reference type tokens.
 func (spec *PackageSpec) validateTypeTokens() hcl.Diagnostics {
 	var diags hcl.Diagnostics
-	allowedNameSpecs := map[string][]string{}
-	if spec.ExtensionParameterization != nil {
-		// Extension resources are served at runtime by the base provider, and the
-		// whole base->extension resolution path is keyed on the base namespace, so
-		// their tokens must use the base provider's name — not the extension's own
-		// (renamed-SDK) name.
-		allowedNameSpecs[spec.ExtensionParameterization.BaseProvider.Name] = nil
-	} else {
-		allowedNameSpecs[spec.Name] = nil
-	}
+	allowedNameSpecs := map[string][]string{spec.Name: nil}
 	for _, prefix := range spec.AllowedPackageNames {
 		allowedNameSpecs[prefix] = nil
 	}
@@ -1320,7 +1305,6 @@ func bindConstValue(path, kind string, value any, typ Type) (any, hcl.Diagnostic
 			if i < math.MinInt32 || i > math.MaxInt32 {
 				return nil, typeError("integer")
 			}
-			//nolint:gosec // int -> int32 conversion is guarded above.
 			return int32(i), nil
 		}
 

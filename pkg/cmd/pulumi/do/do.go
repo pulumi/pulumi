@@ -149,6 +149,18 @@ func NewDoCmd(
 		if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
 			return nil, nil, fmt.Errorf("read project: %w", err)
 		}
+		usedGlobalProjectFallback := false
+		// Fall back to the auto-materialized global project under $PULUMI_HOME so that stateful
+		// `pulumi do` subcommands work without the user having to run `pulumi new` / `pulumi
+		// stack init` first. ensureGlobalProject only touches the filesystem; the matching
+		// `default` stack is created lazily by the stateful command path.
+		if proj == nil {
+			proj, root, err = ensureGlobalProject()
+			if err != nil {
+				return nil, nil, err
+			}
+			usedGlobalProjectFallback = true
+		}
 		// If we're inside a Pulumi project, the working directory the plugin host runs in should be
 		// the project's pwd, not whatever the user happened to invoke `pulumi` from. Snapshot that
 		// here so plugin.NewContext / pluginFromSource see the project-relative path; the rest of
@@ -286,6 +298,7 @@ func NewDoCmd(
 			wd:                wd,
 			proj:              proj,
 			root:              root,
+			globalFallback:    usedGlobalProjectFallback,
 			ws:                ws,
 			lm:                lm,
 			diagFwd:           diagFwd,
@@ -328,12 +341,12 @@ func NewDoCmd(
 				}
 			}
 		}
-		// Copy the flags from the `do` command to this new subcommand
-		cmd.LocalNonPersistentFlags().VisitAll(func(f *pflag.Flag) {
-			subcmd.Flags().AddFlag(f)
-		})
+		// Copy the flags from the `do` command onto the dynamic subcommand as persistent flags
+		// so they're visible on every operation subcommand (create/patch/read/...). Skip any
+		// that the subcmd already declares — a schema input named e.g. "dry-run" registers an
+		// alias flag on the leaf that would otherwise collide.
 		cmd.LocalFlags().VisitAll(func(f *pflag.Flag) {
-			if subcmd.Flags().Lookup(f.Name) == nil {
+			if subcmd.Flags().Lookup(f.Name) == nil && subcmd.PersistentFlags().Lookup(f.Name) == nil {
 				subcmd.PersistentFlags().AddFlag(f)
 			}
 		})
@@ -401,6 +414,7 @@ e.g. pulumi do --package "name@version param1 \"multi word param\""
 
 Resource operations: list, create, read, patch, delete
 Functions are invoked directly by name.
+Built-in commands: show-resources
 
 Provider plugins are auto-installed on first use; you don't need to run
 'pulumi plugin install' ahead of time. Run 'pulumi plugin list' to see what is
@@ -418,6 +432,11 @@ Simple properties can also be set with flags: --<property> <value> takes the
 value as a literal, while --<property>+ <value> parses the value as an
 expression in the input format (e.g. YAML interpolations or fn:: invocations).`,
 		DisableFlagParsing: true,
+		// Provider tokens like `aws:s3:Bucket` are not registered as cobra subcommands (the
+		// dispatch is dynamic in RunE), so accept arbitrary positional args here. Without this,
+		// cobra's default legacyArgs check rejects unknown positionals when the command has any
+		// real children (e.g. `show-resources`).
+		Args: cobra.ArbitraryArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			subcmd, cleanup, err := buildSubcommand(cmd, args)
 			if cleanup != nil {
@@ -456,20 +475,24 @@ expression in the input format (e.g. YAML interpolations or fn:: invocations).`,
 		}
 	})
 
-	cmd.PersistentFlags().BoolVar(&dryrun, "dry-run", false, "Run the operation in preview mode")
-	cmd.PersistentFlags().BoolVar(&showSecrets, "show-secrets", false, "Show secret values in output")
-	cmd.PersistentFlags().StringVar(&output, "output", "",
+	// These flags apply to the dynamically-constructed resource/function subcommands and are
+	// consumed via the manual flags.Parse in buildSubcommand. They're declared as local (not
+	// persistent) so they don't leak onto real cobra children like `show-resources`, which has
+	// its own flag set. The copy loop in buildSubcommand replicates them onto each dynamic leaf.
+	cmd.Flags().BoolVar(&dryrun, "dry-run", false, "Run the operation in preview mode")
+	cmd.Flags().BoolVar(&showSecrets, "show-secrets", false, "Show secret values in output")
+	cmd.Flags().StringVar(&output, "output", "",
 		"Output format for resource operation results (supported: default, json)")
-	cmd.PersistentFlags().BoolVar(&stateless, "stateless", false,
-		"Run create/patch/delete directly against the provider without persisting state. "+
-			"Required for now: the stateful (engine-driven) implementation is still in development, "+
-			"so patch/delete error out unless --stateless is set.")
-	cmd.PersistentFlags().StringVar(
+	cmd.Flags().BoolVar(&stateless, "stateless", false,
+		"Run create/patch/delete directly against the provider without persisting state.")
+	cmd.Flags().StringVar(
 		&pkg, "package", "", "The package to load, in the form 'name@version' or "+
 			"a path to a plugin binary or folder. If the package supports "+
 			"parameterization, additional space-separated parameters can be "+
 			"included after the package name, e.g. --package \"name@version "+
 			"param1 \\\"multi word param\\\"\"")
+
+	cmd.AddCommand(newShowResourcesCommand(ws, lm))
 
 	return cmd
 }
@@ -482,8 +505,14 @@ expression in the input format (e.g. YAML interpolations or fn:: invocations).`,
 //
 // Errors reading the workspace are swallowed: the stack identity is best-effort context for PCL
 // evaluation, not a hard requirement, and `do` must stay usable when no workspace is configured.
-func currentStackIdentity(ws pkgWorkspace.Context) (organization, stack string) {
-	w, err := ws.New("")
+func currentStackIdentity(ws pkgWorkspace.Context, globalFallback bool, root string) (organization, stack string) {
+	dir := ""
+	// The global fallback project lives outside the process cwd; read its workspace settings
+	// directly so PCL sees the selected stack the same as it would in a real project.
+	if globalFallback {
+		dir = root
+	}
+	w, err := ws.New(dir)
 	if err != nil {
 		return "", ""
 	}
@@ -527,6 +556,9 @@ type packageCommand struct {
 	wd   string
 	proj *workspace.Project
 	root string
+	// globalFallback is true only when buildSubcommand synthesized pc.proj from
+	// $PULUMI_HOME/default-global-project because no real project was found.
+	globalFallback bool
 
 	// ws / lm let configureProvider open the current stack's backend when --provider is set so it
 	// can read the referenced provider resource's Inputs. Plumbed from NewDoCmd.
@@ -552,7 +584,7 @@ func (pc *packageCommand) evalContext() functionEvalContext {
 		// When a stack is selected in the workspace, expose its organization and short name to the
 		// PCL runtime so input files can reference pulumi.organization / pulumi.stack the same way
 		// a program would.
-		ec.Organization, ec.Stack = currentStackIdentity(pc.ws)
+		ec.Organization, ec.Stack = currentStackIdentity(pc.ws, pc.globalFallback, pc.root)
 	}
 	return ec
 }

@@ -21,7 +21,7 @@ import (
 	"testing"
 
 	"github.com/blang/semver"
-	. "github.com/pulumi/pulumi/pkg/v3/engine" //nolint:revive
+	. "github.com/pulumi/pulumi/pkg/v3/engine"
 	lt "github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest/framework"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
@@ -569,7 +569,7 @@ func TestResourceHookComponentAfterDelete(t *testing.T) {
 					require.NoError(t, err)
 					return plugin.ConstructResponse{
 						URN:     res.URN,
-						Outputs: outs,
+						Outputs: resource.FromResourcePropertyMap(outs),
 					}, nil
 				},
 			}, nil
@@ -1163,7 +1163,7 @@ func TestResourceHookComponent(t *testing.T) {
 					require.NoError(t, err)
 					return plugin.ConstructResponse{
 						URN:     res.URN,
-						Outputs: outs,
+						Outputs: resource.FromResourcePropertyMap(outs),
 					}, nil
 				},
 			}, nil

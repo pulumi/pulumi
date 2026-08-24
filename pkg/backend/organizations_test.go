@@ -22,6 +22,30 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestGetBackendConfigDefaultOrg(t *testing.T) {
+	t.Run("prefers PULUMI_DEFAULT_ORGANIZATION over configured default org", func(t *testing.T) {
+		t.Setenv("PULUMI_HOME", t.TempDir())
+		t.Setenv("PULUMI_BACKEND_URL", "https://api.example.com")
+		t.Setenv("PULUMI_DEFAULT_ORGANIZATION", "env-org")
+		require.NoError(t, workspace.SetBackendConfigDefaultOrg("https://api.example.com", "configured-org"))
+
+		org, err := getBackendConfigDefaultOrg(nil)
+		require.NoError(t, err)
+		assert.Equal(t, "env-org", org)
+	})
+
+	t.Run("falls back to configured default org", func(t *testing.T) {
+		t.Setenv("PULUMI_HOME", t.TempDir())
+		t.Setenv("PULUMI_BACKEND_URL", "https://api.example.com")
+		t.Setenv("PULUMI_DEFAULT_ORGANIZATION", "")
+		require.NoError(t, workspace.SetBackendConfigDefaultOrg("https://api.example.com", "configured-org"))
+
+		org, err := getBackendConfigDefaultOrg(nil)
+		require.NoError(t, err)
+		assert.Equal(t, "configured-org", org)
+	})
+}
+
 func TestGetLegacyDefaultOrgFallback(t *testing.T) {
 	t.Parallel()
 

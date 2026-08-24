@@ -7,7 +7,7 @@ import warnings
 import sys
 import pulumi
 import pulumi.runtime
-from typing import Any, Mapping, Optional, Sequence, Union, overload
+from typing import Any, Mapping, Optional, Sequence, Union, overload, Literal
 if sys.version_info >= (3, 11):
     from typing import NotRequired, TypedDict, TypeAlias
 else:
@@ -616,14 +616,14 @@ class Pav2MeterDetailsResponse(dict):
     Billing type PAV2 meter details
     """
     def __init__(__self__, *,
-                 billing_type: _builtins.str,
+                 billing_type: Literal['Pav2'],
                  charging_type: _builtins.str,
                  meter_guid: _builtins.str,
                  multiplier: _builtins.float):
         """
         Billing type PAV2 meter details
 
-        :param _builtins.str billing_type: Represents billing type.
+        :param Literal['Pav2'] billing_type: Represents billing type.
                Expected value is 'Pav2'.
         :param _builtins.str charging_type: Charging type.
         :param _builtins.str meter_guid: Validation status of requested data center and transport.
@@ -636,7 +636,7 @@ class Pav2MeterDetailsResponse(dict):
 
     @_builtins.property
     @pulumi.getter(name="billingType")
-    def billing_type(self) -> _builtins.str:
+    def billing_type(self) -> Literal['Pav2']:
         """
         Represents billing type.
         Expected value is 'Pav2'.
@@ -974,7 +974,7 @@ class PurchaseMeterDetailsResponse(dict):
     Billing type Purchase meter details
     """
     def __init__(__self__, *,
-                 billing_type: _builtins.str,
+                 billing_type: Literal['Purchase'],
                  charging_type: _builtins.str,
                  multiplier: _builtins.float,
                  product_id: _builtins.str,
@@ -983,7 +983,7 @@ class PurchaseMeterDetailsResponse(dict):
         """
         Billing type Purchase meter details
 
-        :param _builtins.str billing_type: Represents billing type.
+        :param Literal['Purchase'] billing_type: Represents billing type.
                Expected value is 'Purchase'.
         :param _builtins.str charging_type: Charging type.
         :param _builtins.float multiplier: Billing unit applicable for Pav2 billing
@@ -1000,7 +1000,7 @@ class PurchaseMeterDetailsResponse(dict):
 
     @_builtins.property
     @pulumi.getter(name="billingType")
-    def billing_type(self) -> _builtins.str:
+    def billing_type(self) -> Literal['Purchase']:
         """
         Represents billing type.
         Expected value is 'Purchase'.

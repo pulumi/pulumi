@@ -19,7 +19,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 	"os"
+	"path/filepath"
 
 	"github.com/blang/semver"
 	"github.com/gofrs/uuid"
@@ -29,6 +31,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	backendSecrets "github.com/pulumi/pulumi/pkg/v3/backend/secrets"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/autonames"
 	cmdConfig "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/config"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/metadata"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
@@ -55,7 +58,7 @@ import (
 // UUID against any existing snippet of the same Name+Type); the resolved Stack is passed through
 // here so the hook doesn't repeat the load.
 type StatefulUpdateRequest struct {
-	Snippet     resource.Snippet
+	Snippets    []resource.Snippet
 	Stack       backend.Stack
 	DryRun      bool
 	Yes         bool
@@ -68,7 +71,8 @@ type StatefulUpdateRequest struct {
 
 // StatefulUpdateResult carries whatever the caller wants to render after the update.
 type StatefulUpdateResult struct {
-	SnippetUUID string
+	// SnippetUUIDs in the same order as StatefulUpdateRequest.Snippets.
+	SnippetUUIDs []string
 }
 
 // RunStatefulUpdateFunc is the injection point for driving the backend update/preview operation.
@@ -104,7 +108,6 @@ func (pc *packageCommand) newStatefulResourceUpsertCommand(res *schema.Resource)
 				inputFormat:   inputFormat,
 				resourcesFile: resourcesFile,
 				yes:           yes,
-				verb:          "upserted",
 				requireFresh:  false,
 			})
 		},
@@ -185,7 +188,6 @@ type statefulSnippetUpdate struct {
 	inputFormat   string
 	resourcesFile string
 	yes           bool
-	verb          string // completion-message verb, e.g. "created" or "upserted"
 	// requireFresh errors when a snippet with the same (Name, Type) already exists in the stack —
 	// the invariant `create` enforces to distinguish itself from `upsert`.
 	requireFresh bool
@@ -197,9 +199,7 @@ type statefulSnippetUpdate struct {
 func (pc *packageCommand) runStatefulSnippetUpdate(cmd *cobra.Command, args statefulSnippetUpdate) error {
 	contract.Assertf(pc.runStatefulUpdate != nil, "stateful snippet update is not wired up in this build")
 
-	if pc.proj == nil {
-		return fmt.Errorf("`%s` requires a Pulumi project (run inside a project directory)", cmd.Name())
-	}
+	contract.Assertf(pc.proj != nil, "project must be set (the global fallback should have supplied one)")
 	if err := pc.requireYesIfNonInteractive(args.yes); err != nil {
 		return err
 	}
@@ -210,23 +210,22 @@ func (pc *packageCommand) runStatefulSnippetUpdate(cmd *cobra.Command, args stat
 	// stack is threaded through to runStatefulUpdate so it doesn't re-load. We also use the same
 	// snapshot to resolve resource-reference package metadata before conversion.
 	displayOpts := display.Options{Color: cmdutil.GetGlobalColorization()}
-	stack, err := cmdStack.RequireStack(
-		ctx, pc.diagFwd, pc.ws, pc.lm,
-		"",                                 /*stackName — use currently selected*/
-		cmdStack.LoadOnly, displayOpts, "", /*configFile*/
-	)
+	stack, err := pc.loadStackForStateful(ctx, displayOpts)
 	if err != nil {
-		return fmt.Errorf("load stack: %w", err)
+		return err
 	}
 	snap, err := stack.Snapshot(ctx, backendSecrets.DefaultProvider)
 	if err != nil {
 		return fmt.Errorf("load stack snapshot: %w", err)
 	}
 
-	resources, err := readResourceReferences(args.resourcesFile)
+	userResources, err := readResourceReferences(args.resourcesFile)
 	if err != nil {
 		return err
 	}
+	// Merge the auto-assigned identifiers (derived from the stack snapshot) with the user's
+	// --resources-file. User entries win on collision.
+	resources := autonames.Merge(autonames.ResourceNames(snap), userResources)
 	resourceInfos, err := resourceReferenceInfos(resources, snap)
 	if err != nil {
 		return err
@@ -259,39 +258,52 @@ func (pc *packageCommand) runStatefulSnippetUpdate(cmd *cobra.Command, args stat
 		return fmt.Errorf("resource %s %q already exists in stack %s; use `upsert` to replace it",
 			args.res.Token, args.name, stack.Ref())
 	}
-	// Handle bare --provider: reference the given provider URN from the resource snippet and
-	// inject an options { provider = provider } block into its PCL.
-	if pc.providerURN != "" {
-		// Pick an identifier for the injected provider reference that doesn't collide with a
-		// user-supplied resource reference of the same name.
-		providerRefName := "provider"
-		for i := 2; ; i++ {
-			if _, taken := references[providerRefName]; !taken {
-				break
-			}
-			providerRefName = fmt.Sprintf("provider%d", i)
+	// Pick an identifier for the injected provider reference that doesn't collide with a
+	// user-supplied resource reference of the same name.
+	providerRefName := "provider"
+	for i := 2; ; i++ {
+		if _, taken := references[providerRefName]; !taken {
+			break
 		}
-		if references == nil {
-			references = map[string]string{}
-		}
-		references[providerRefName] = pc.providerURN
-		code, err = injectProviderOptionInPCL(code, resourceFilename, providerRefName)
-		if err != nil {
-			return fmt.Errorf("inject provider option: %w", err)
-		}
+		providerRefName = fmt.Sprintf("provider%d", i)
 	}
+	providerSnippet, provReferences, resourceCode, err := pc.buildProviderSnippet(
+		ctx, cmd, snap, stack, args.name+"-provider", providerRefName, code, resourceFilename,
+	)
+	if err != nil {
+		return err
+	}
+
+	mergedReferences := references
+	for k, v := range provReferences {
+		if mergedReferences == nil {
+			mergedReferences = map[string]string{}
+		}
+		mergedReferences[k] = v
+	}
+	// Trim the reference map to just the identifiers the resource's PCL body actually references
+	// before persisting. Auto-derived entries that aren't used would freeze URNs from the current
+	// snapshot into state and go stale if those resources change. The provider-injected identifier
+	// (in provReferences) is always kept — buildProviderSnippet injected it into resourceCode.
+	mergedReferences = filterReferencesByPCLUsage(mergedReferences, resourceCode, resourceFilename)
 
 	snippet := resource.Snippet{
 		UUID:       snippetUUID,
 		Name:       args.name,
 		Type:       args.res.Token,
-		Code:       string(code),
+		Code:       string(resourceCode),
 		Descriptor: packageDescriptorFromProto(pc.packageDescriptor),
-		References: references,
+		References: mergedReferences,
 	}
 
+	snippets := []resource.Snippet{}
+	if providerSnippet != nil {
+		snippets = append(snippets, *providerSnippet)
+	}
+	snippets = append(snippets, snippet)
+
 	result, err := pc.runStatefulUpdate(ctx, cmd.Flags(), StatefulUpdateRequest{
-		Snippet:     snippet,
+		Snippets:    snippets,
 		Stack:       stack,
 		DryRun:      pc.dryrun,
 		Yes:         args.yes,
@@ -303,10 +315,129 @@ func (pc *packageCommand) runStatefulSnippetUpdate(cmd *cobra.Command, args stat
 	if err != nil {
 		return err
 	}
-	if result != nil && !pc.dryrun {
-		fmt.Fprintf(cmd.OutOrStdout(), "%s %s (snippet %s)\n", args.verb, args.name, result.SnippetUUID)
+	if result != nil && !pc.dryrun && len(result.SnippetUUIDs) > 0 {
+		verb := "Created"
+		if existed {
+			verb = "Updated"
+		}
+		fmt.Fprintf(cmd.OutOrStdout(), "%s %s (snippet %s)\n",
+			verb, args.name, result.SnippetUUIDs[len(result.SnippetUUIDs)-1])
 	}
 	return nil
+}
+
+// runStatefulSnippetPatch finds the existing snippet for (name, res.Token), overlays the patch
+// inputs onto its PCL Code, and re-runs the stateful update. The snippet's UUID, References,
+// and Descriptor are preserved so the engine treats this as an in-place update.
+func (pc *packageCommand) runStatefulSnippetPatch(
+	cmd *cobra.Command, res *schema.Resource, name, inputFile, inputFormat, resourcesFile string, yes bool,
+) error {
+	contract.Assertf(pc.runStatefulUpdate != nil, "stateful snippet update is not wired up in this build")
+
+	contract.Assertf(pc.proj != nil, "project must be set (the global fallback should have supplied one)")
+	if err := pc.requireYesIfNonInteractive(yes); err != nil {
+		return err
+	}
+
+	ctx := cmd.Context()
+	displayOpts := display.Options{Color: cmdutil.GetGlobalColorization()}
+	stack, err := pc.loadStackForStateful(ctx, displayOpts)
+	if err != nil {
+		return err
+	}
+	snap, err := stack.Snapshot(ctx, backendSecrets.DefaultProvider)
+	if err != nil {
+		return fmt.Errorf("load stack snapshot: %w", err)
+	}
+
+	var existing *resource.Snippet
+	if snap != nil {
+		for i := range snap.Snippets {
+			s := snap.Snippets[i]
+			if s.Name == name && s.Type == res.Token {
+				existing = &s
+				break
+			}
+		}
+	}
+	if existing == nil {
+		return fmt.Errorf("resource %s %q does not exist in stack %s", res.Token, name, stack.Ref())
+	}
+
+	userResources, err := readResourceReferences(resourcesFile)
+	if err != nil {
+		return err
+	}
+	resources := autonames.Merge(autonames.ResourceNames(snap), userResources)
+	resourceInfos, err := resourceReferenceInfos(resources, snap)
+	if err != nil {
+		return err
+	}
+
+	inputFlags := collectInputFlags(cmd, "input", res.InputProperties)
+	patch, patchFilename, resourceNames, err := parseFile(
+		ctx, inputFile, "input", inputFormat, res.Token,
+		pc.converter, pc.loaderTarget, pc.packageDescriptor, inputFlags, resourceInfos,
+	)
+	if err != nil {
+		return fmt.Errorf("read input file: %w", err)
+	}
+	patchReferences, err := applyResourceNameRemaps(resources, resourceNames)
+	if err != nil {
+		return err
+	}
+	references, err := mergePatchReferences(existing.References, patchReferences)
+	if err != nil {
+		return err
+	}
+
+	sourceFilename := fmt.Sprintf("<snippet %s>", existing.UUID)
+	merged, err := mergePCLAttributesIntoPCL([]byte(existing.Code), sourceFilename, patch, patchFilename)
+	if err != nil {
+		return fmt.Errorf("merge patch inputs: %w", err)
+	}
+	references = filterReferencesByPCLUsage(references, merged, sourceFilename)
+
+	patched := *existing
+	patched.Code = string(merged)
+	patched.References = references
+
+	result, err := pc.runStatefulUpdate(ctx, cmd.Flags(), StatefulUpdateRequest{
+		Snippets:    []resource.Snippet{patched},
+		Stack:       stack,
+		DryRun:      pc.dryrun,
+		Yes:         yes,
+		ShowSecrets: pc.showSecrets,
+		Proj:        pc.proj,
+		Root:        pc.root,
+		Sink:        pc.diagFwd,
+	})
+	if err != nil {
+		return err
+	}
+	if result != nil && !pc.dryrun && len(result.SnippetUUIDs) > 0 {
+		fmt.Fprintf(cmd.OutOrStdout(), "Patched %s (snippet %s)\n", name, result.SnippetUUIDs[len(result.SnippetUUIDs)-1])
+	}
+	return nil
+}
+
+func mergePatchReferences(existing, patch map[string]string) (map[string]string, error) {
+	if len(existing) == 0 && len(patch) == 0 {
+		return nil, nil
+	}
+
+	merged := make(map[string]string, len(existing)+len(patch))
+	maps.Copy(merged, existing)
+	for name, urn := range patch {
+		if existingURN, ok := merged[name]; ok && existingURN != urn {
+			return nil, fmt.Errorf(
+				"resource reference %q already points to %s and cannot be patched to point to %s",
+				name, existingURN, urn,
+			)
+		}
+		merged[name] = urn
+	}
+	return merged, nil
 }
 
 func (pc *packageCommand) runStatefulSnippetDelete(
@@ -314,22 +445,16 @@ func (pc *packageCommand) runStatefulSnippetDelete(
 ) error {
 	contract.Assertf(pc.runStatefulUpdate != nil, "stateful snippet update is not wired up in this build")
 
-	if pc.proj == nil {
-		return fmt.Errorf("`%s` requires a Pulumi project (run inside a project directory)", cmd.Name())
-	}
+	contract.Assertf(pc.proj != nil, "project must be set (the global fallback should have supplied one)")
 	if err := pc.requireYesIfNonInteractive(yes); err != nil {
 		return err
 	}
 
 	ctx := cmd.Context()
 	displayOpts := display.Options{Color: cmdutil.GetGlobalColorization()}
-	stack, err := cmdStack.RequireStack(
-		ctx, pc.diagFwd, pc.ws, pc.lm,
-		"",                                 /*stackName — use currently selected*/
-		cmdStack.LoadOnly, displayOpts, "", /*configFile*/
-	)
+	stack, err := pc.loadStackForStateful(ctx, displayOpts)
 	if err != nil {
-		return fmt.Errorf("load stack: %w", err)
+		return err
 	}
 	snap, err := stack.Snapshot(ctx, backendSecrets.DefaultProvider)
 	if err != nil {
@@ -345,11 +470,11 @@ func (pc *packageCommand) runStatefulSnippetDelete(
 	}
 
 	result, err := pc.runStatefulUpdate(ctx, cmd.Flags(), StatefulUpdateRequest{
-		Snippet: resource.Snippet{
+		Snippets: []resource.Snippet{{
 			UUID: snippetUUID,
 			Name: name,
 			Type: res.Token,
-		},
+		}},
 		Stack:       stack,
 		DryRun:      pc.dryrun,
 		Yes:         yes,
@@ -362,8 +487,8 @@ func (pc *packageCommand) runStatefulSnippetDelete(
 	if err != nil {
 		return err
 	}
-	if result != nil && !pc.dryrun {
-		fmt.Fprintf(cmd.OutOrStdout(), "deleted %s (snippet %s)\n", name, result.SnippetUUID)
+	if result != nil && !pc.dryrun && len(result.SnippetUUIDs) > 0 {
+		fmt.Fprintf(cmd.OutOrStdout(), "Deleted %s (snippet %s)\n", name, result.SnippetUUIDs[0])
 	}
 	return nil
 }
@@ -382,7 +507,9 @@ func addStatefulSnippetUpdateFlags(
 			"  {\n"+
 			"    \"myBucket\": \"urn:pulumi:dev::my-project::aws:s3/bucket:Bucket::my-bucket\",\n"+
 			"    \"myVpc\":    \"urn:pulumi:dev::my-project::aws:ec2/vpc:Vpc::my-vpc\"\n"+
-			"  }")
+			"  }\n"+
+			"Identifiers for existing stack resources are auto-assigned; run `pulumi do show-resources`\n"+
+			"to see them. Entries in this file take precedence over any auto-assigned identifier.")
 	cmd.Flags().BoolVar(yes, "yes", false,
 		"Automatically approve and perform the operation without a confirmation prompt")
 	addInputFlags(cmd, "input", inputs)
@@ -575,6 +702,86 @@ func resolveSnippetUUID(snap *deploy.Snapshot, name, resourceToken string) (stri
 	return fresh.String(), false, nil
 }
 
+// buildProviderSnippet decides whether the resource being upserted needs an inline provider
+// snippet. It returns (providerSnippet, resourceReferences, updatedResourceCode) for the caller to
+// stitch into the resource snippet. Three cases:
+//   - Default provider: no --provider, no provider overrides — returns (nil, nil, resourceCode).
+//   - Bare --provider: --provider set, no overrides — returns (nil, references, resourceCode with
+//     options { provider = provider }).
+//   - Materialize: provider overrides given (with or without --provider) — returns a provider
+//     snippet whose Code carries the overrides overlaid on top of any base --provider inputs, plus
+//     the resource references + injected options block.
+func (pc *packageCommand) buildProviderSnippet(
+	ctx context.Context, cmd *cobra.Command, snap *deploy.Snapshot,
+	stack backend.Stack, providerName, providerRefName string, resourceCode []byte, resourceFilename string,
+) (*resource.Snippet, map[string]string, []byte, error) {
+	providerFlags := collectInputFlags(cmd, pc.spec.Name(), pc.providerDef.InputProperties)
+	hasOverrides := pc.providerFile != "" || len(providerFlags) > 0
+	if pc.providerURN == "" && !hasOverrides {
+		return nil, nil, resourceCode, nil
+	}
+
+	stackShortName := stack.Ref().Name().String()
+	providerType := "pulumi:providers:" + pc.spec.Name()
+
+	providerURN := resource.URN(pc.providerURN)
+	var providerSnippet *resource.Snippet
+	if hasOverrides {
+		providerCode, providerFilename, _, err := parseFile(
+			ctx, pc.providerFile, "provider", pc.format, "",
+			pc.converter, pc.loaderTarget, pc.packageDescriptor, providerFlags, nil,
+		)
+		if err != nil {
+			return nil, nil, nil, fmt.Errorf("parse provider file: %w", err)
+		}
+
+		if pc.providerURN != "" {
+			base, err := pc.loadProviderInputsFromStack(ctx, resource.URN(pc.providerURN))
+			if err != nil {
+				return nil, nil, nil, fmt.Errorf("--provider: %w", err)
+			}
+			baseLiterals := make(map[string]string, len(base))
+			for k, v := range base {
+				// Skip engine bookkeeping (__internal) and the pinned plugin version — carrying
+				// these into a new snippet would collide with the plugin selection the descriptor
+				// already encodes.
+				if k == "__internal" || k == "version" {
+					continue
+				}
+				lit, err := propertyValueToPCLLiteral(string(k), v)
+				if err != nil {
+					return nil, nil, nil, fmt.Errorf("--provider: %w", err)
+				}
+				baseLiterals[string(k)] = lit
+			}
+			providerCode, err = mergeAbsentAttributeLiteralsIntoPCL(providerCode, providerFilename, "provider", baseLiterals)
+			if err != nil {
+				return nil, nil, nil, fmt.Errorf("merge --provider base inputs: %w", err)
+			}
+		}
+
+		providerURN = resource.CreateURN(providerName, providerType, "", string(pc.proj.Name), stackShortName)
+		providerUUID, _, err := resolveSnippetUUID(snap, providerName, providerType)
+		if err != nil {
+			return nil, nil, nil, err
+		}
+		providerSnippet = &resource.Snippet{
+			UUID:       providerUUID,
+			Name:       providerName,
+			Type:       providerType,
+			Code:       string(providerCode),
+			Descriptor: packageDescriptorFromProto(pc.packageDescriptor),
+		}
+	}
+
+	refs := map[string]string{providerRefName: string(providerURN)}
+	newCode, err := injectProviderOptionInPCL(resourceCode, resourceFilename, providerRefName)
+	if err != nil {
+		return nil, nil, nil, fmt.Errorf("inject provider option: %w", err)
+	}
+	return providerSnippet, refs, newCode, nil
+}
+
 // DefaultRunStatefulUpdate is the production implementation of the runStatefulUpdate hook. The
 // caller (typically the upsert command) has already loaded the stack and picked the snippet's
 // UUID; this function loads config + secrets and calls the backend preview/update entrypoint with
@@ -593,7 +800,12 @@ func DefaultRunStatefulUpdate(
 	}
 
 	ssml := cmdStack.SecretsManagerLoader{FallbackToState: true}
-	cfg, sm, err := cmdConfig.GetStackConfiguration(ctx, req.Sink, ssml, req.Stack, req.Proj, "", nil)
+	// Compute the stack config file path from req.Root rather than letting LoadProjectStack walk
+	// upward from CWD — for `pulumi do` we may be running outside any Pulumi project directory
+	// (with req.Proj/req.Root supplied by the global fallback under $PULUMI_HOME).
+	configFile := workspace.ProjectStackPath(
+		filepath.Join(req.Root, workspace.ProjectFile+".yaml"), req.Proj, req.Stack.Ref().Name().Q())
+	cfg, sm, err := cmdConfig.GetStackConfiguration(ctx, req.Sink, ssml, req.Stack, req.Proj, configFile, nil)
 	if err != nil {
 		return nil, fmt.Errorf("get stack configuration: %w", err)
 	}
@@ -604,18 +816,34 @@ func DefaultRunStatefulUpdate(
 	}
 	cmdutil.SetStringSpanAttributes(ctx, m.Environment)
 
-	snippetUUIDVal, err := uuid.FromString(req.Snippet.UUID)
-	if err != nil {
-		return nil, fmt.Errorf("snippet uuid: %w", err)
+	if len(req.Snippets) == 0 {
+		return nil, errors.New("stateful update requires at least one snippet")
 	}
-	var snippet *resource.Snippet
-	if !req.Delete {
-		snippet = &req.Snippet
+	snippets := map[uuid.UUID]*resource.Snippet{}
+	targetSnippets := make([]string, 0, len(req.Snippets))
+	uuids := make([]string, 0, len(req.Snippets))
+	for i := range req.Snippets {
+		s := req.Snippets[i]
+		snippetUUIDVal, err := uuid.FromString(s.UUID)
+		if err != nil {
+			return nil, fmt.Errorf("snippet uuid: %w", err)
+		}
+		if _, dup := snippets[snippetUUIDVal]; dup {
+			return nil, fmt.Errorf("duplicate snippet uuid %s in stateful update request", s.UUID)
+		}
+		if req.Delete {
+			snippets[snippetUUIDVal] = nil
+		} else {
+			snippet := s
+			snippets[snippetUUIDVal] = &snippet
+		}
+		targetSnippets = append(targetSnippets, snippetUUIDVal.String())
+		uuids = append(uuids, s.UUID)
 	}
 
 	engineOpts := engine.UpdateOptions{
-		Snippets:       map[uuid.UUID]*resource.Snippet{snippetUUIDVal: snippet},
-		TargetSnippets: []string{snippetUUIDVal.String()},
+		Snippets:       snippets,
+		TargetSnippets: targetSnippets,
 		ShowSecrets:    req.ShowSecrets,
 	}
 
@@ -642,7 +870,7 @@ func DefaultRunStatefulUpdate(
 		return nil, err
 	}
 
-	return &StatefulUpdateResult{SnippetUUID: req.Snippet.UUID}, nil
+	return &StatefulUpdateResult{SnippetUUIDs: uuids}, nil
 }
 
 // packageDescriptorFromProto lifts the codegen-RPC schema request into the resource-layer

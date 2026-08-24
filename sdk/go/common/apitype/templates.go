@@ -47,9 +47,40 @@ type TemplateMetadata struct {
 	Metadata   map[string]string `json:"metadata,omitempty"`
 }
 
+// TemplateBacking is where a template's contents come from. The service fetches VCS-backed
+// templates from the provider on every request, so a listing that includes them is considerably
+// slower than one that does not.
+type TemplateBacking string
+
+const (
+	// TemplateBackingPulumi is Pulumi's own getting-started templates.
+	TemplateBackingPulumi TemplateBacking = "pulumi"
+	// TemplateBackingRegistry is templates published to the Pulumi Registry.
+	TemplateBackingRegistry TemplateBacking = "registry"
+	// TemplateBackingVcs is templates in a collection an organization configured against a
+	// version control provider.
+	TemplateBackingVcs TemplateBacking = "vcs"
+)
+
 type ListTemplatesResponse struct {
 	Templates         []TemplateMetadata `json:"templates"`
 	ContinuationToken *string            `json:"continuationToken,omitempty"`
+	// Diagnostics reports collections that could not be read. Such a collection is skipped
+	// rather than failing the request.
+	Diagnostics []string `json:"diagnostics,omitempty"`
+	// VcsTemplateSourceTotals counts the VCS-backed template collections each of the caller's
+	// organizations has configured. It is unaffected by the request's filters and pagination,
+	// so it describes organizations whose templates the response itself does not carry.
+	VcsTemplateSourceTotals []OrgVcsTemplateSourceTotal `json:"vcsTemplateSourceTotals,omitempty"`
+}
+
+// OrgVcsTemplateSourceTotal reports how many VCS-backed template collections an organization has
+// configured. Organizations with none are omitted from a listing, as is Pulumi's own collection,
+// so an entry means the organization has at least one collection of its own. A collection may
+// hold any number of templates, including none.
+type OrgVcsTemplateSourceTotal struct {
+	OrgLogin string `json:"orgLogin"`
+	Total    int    `json:"total"`
 }
 
 // A pulumi template remote where the source URL contains

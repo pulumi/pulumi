@@ -38,6 +38,7 @@ func TestUIEventSealedInterface(t *testing.T) {
 		UIWarning{Message: "careful"},
 		UIReconnecting{},
 		UIReconnected{},
+		UICancelFailed{Message: "cancel lost"},
 		UICancelled{},
 		UITaskIdle{},
 		UISessionURL{URL: "https://example"},
@@ -57,5 +58,5 @@ func TestUIEventSealedInterface(t *testing.T) {
 	for _, e := range events {
 		e.uiEvent()
 	}
-	require.Len(t, events, 20, "bumped this when adding a new UIEvent variant")
+	require.Len(t, events, 21, "bumped this when adding a new UIEvent variant")
 }

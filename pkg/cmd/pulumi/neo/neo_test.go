@@ -326,7 +326,9 @@ func TestResolveTaskTarget_WorkspaceStackOwnerWinsOverDefaultOrg(t *testing.T) {
 		NewF: func(_ string) (pkgWorkspace.W, error) {
 			return &pkgWorkspace.MockW{
 				SettingsF: func() *pkgWorkspace.Settings {
-					return &pkgWorkspace.Settings{Stack: "otherorg/proj/dev"}
+					return &pkgWorkspace.Settings{
+						Stack: "otherorg/proj/dev", //nolint:staticcheck
+					}
 				},
 			}, nil
 		},
@@ -900,10 +902,16 @@ func TestDispatchUserEvents_WarnsOnPostFailure(t *testing.T) {
 
 	// A backend error during PostNeoTaskUserEvent must surface as a UIWarning
 	// — losing a single user event shouldn't tear down the dispatcher loop.
+	// (Cancels are the exception: they get queued and retried, see
+	// TestDispatchUserEvents_RetriesCancelOnPostFailure.)
 	uiCh := make(chan UIEvent, 4)
 
 	out := make(chan outboundEvent, 1)
-	out <- outboundEvent{event: apitype.AgentUserEventCancel{Type: userEventUserCancel}}
+	out <- outboundEvent{event: apitype.AgentUserEventUserConfirmation{
+		Type:       userEventUserConfirmation,
+		ApprovalID: "approval-1",
+		Approved:   true,
+	}}
 	close(out)
 
 	err := dispatchUserEvents(t.Context(), out, uiCh, true,
@@ -925,6 +933,293 @@ func TestDispatchUserEvents_WarnsOnPostFailure(t *testing.T) {
 	require.Len(t, got, 1)
 	assert.Contains(t, got[0].Message, "failed to send event")
 	assert.Contains(t, got[0].Message, "network down")
+}
+
+// TestDispatchUserEvents_RetriesCancelOnPostFailure — a failed user_cancel
+// post must be retried with backoff rather than dropped: the service rejects
+// cancels while the task is parked on a local tool call, and the retry is
+// what lands the cancel once the task resumes (pulumi/pulumi-service#44059).
+func TestDispatchUserEvents_RetriesCancelOnPostFailure(t *testing.T) {
+	t.Parallel()
+
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+
+	uiCh := make(chan UIEvent, 8)
+	out := make(chan outboundEvent, 1)
+	var attempts atomic.Int32
+
+	done := make(chan error, 1)
+	go func() {
+		done <- dispatchUserEvents(ctx, out, uiCh, true,
+			func() string { return "task-1" },
+			noopSpawn,
+			func(context.Context, string, any) error {
+				if attempts.Add(1) == 1 {
+					return errors.New("[409] Conflict: cannot respond while a request is still ongoing")
+				}
+				return nil
+			},
+			noopUpdateTask)
+	}()
+
+	out <- outboundEvent{event: apitype.AgentUserEventCancel{Type: userEventUserCancel}}
+
+	require.Eventually(t, func() bool { return attempts.Load() >= 2 },
+		3*time.Second, 20*time.Millisecond, "cancel must be retried after a failed post")
+
+	cancel()
+	select {
+	case err := <-done:
+		require.NoError(t, err)
+	case <-time.After(time.Second):
+		t.Fatal("dispatcher did not exit after ctx cancel")
+	}
+}
+
+// TestDispatchUserEvents_CancelRetriesExhaustedEmitsUICancelFailed — when
+// every retry fails, the dispatcher must give up and emit UICancelFailed so
+// the TUI can unlock ESC for a manual retry.
+//
+//nolint:paralleltest // mutates the package backoff and retry-cap vars
+func TestDispatchUserEvents_CancelRetriesExhaustedEmitsUICancelFailed(t *testing.T) {
+	prevInitial := userMessageRetryInitialBackoff
+	prevMax := userMessageRetryMaxBackoff
+	prevAttempts := cancelMaxPostAttempts
+	userMessageRetryInitialBackoff = time.Millisecond
+	userMessageRetryMaxBackoff = 2 * time.Millisecond
+	cancelMaxPostAttempts = 3
+	t.Cleanup(func() {
+		userMessageRetryInitialBackoff = prevInitial
+		userMessageRetryMaxBackoff = prevMax
+		cancelMaxPostAttempts = prevAttempts
+	})
+
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+
+	uiCh := make(chan UIEvent, 8)
+	out := make(chan outboundEvent, 1)
+	var attempts atomic.Int32
+
+	done := make(chan error, 1)
+	go func() {
+		done <- dispatchUserEvents(ctx, out, uiCh, true,
+			func() string { return "task-1" },
+			noopSpawn,
+			func(context.Context, string, any) error {
+				attempts.Add(1)
+				return errors.New("still parked")
+			},
+			noopUpdateTask)
+	}()
+
+	out <- outboundEvent{event: apitype.AgentUserEventCancel{Type: userEventUserCancel}}
+
+	var failed *UICancelFailed
+	deadline := time.After(3 * time.Second)
+	for failed == nil {
+		select {
+		case evt := <-uiCh:
+			if f, ok := evt.(UICancelFailed); ok {
+				failed = &f
+			}
+		case <-deadline:
+			t.Fatalf("timed out waiting for UICancelFailed; attempts=%d", attempts.Load())
+		}
+	}
+	assert.Contains(t, failed.Message, "still parked")
+	assert.Equal(t, int32(3), attempts.Load(), "give-up must happen after cancelMaxPostAttempts posts")
+
+	cancel()
+	select {
+	case err := <-done:
+		require.NoError(t, err)
+	case <-time.After(time.Second):
+		t.Fatal("dispatcher did not exit after ctx cancel")
+	}
+}
+
+// TestDispatchUserEvents_AbandonCancelStopsRetries — an abandonCancel envelope
+// (sent by the TUI when the turn ends) must disarm a pending cancel retry so a
+// stale cancel can't fire into a later turn.
+//
+//nolint:paralleltest // mutates the package backoff vars
+func TestDispatchUserEvents_AbandonCancelStopsRetries(t *testing.T) {
+	prevInitial := userMessageRetryInitialBackoff
+	prevMax := userMessageRetryMaxBackoff
+	userMessageRetryInitialBackoff = 10 * time.Millisecond
+	userMessageRetryMaxBackoff = 20 * time.Millisecond
+	t.Cleanup(func() {
+		userMessageRetryInitialBackoff = prevInitial
+		userMessageRetryMaxBackoff = prevMax
+	})
+
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+
+	uiCh := make(chan UIEvent, 16)
+	out := make(chan outboundEvent, 2)
+	var attempts atomic.Int32
+
+	done := make(chan error, 1)
+	go func() {
+		done <- dispatchUserEvents(ctx, out, uiCh, true,
+			func() string { return "task-1" },
+			noopSpawn,
+			func(context.Context, string, any) error {
+				attempts.Add(1)
+				return errors.New("still parked")
+			},
+			noopUpdateTask)
+	}()
+
+	out <- outboundEvent{event: apitype.AgentUserEventCancel{Type: userEventUserCancel}}
+	require.Eventually(t, func() bool { return attempts.Load() >= 1 },
+		3*time.Second, 5*time.Millisecond, "cancel was never posted")
+
+	out <- outboundEvent{abandonCancel: true}
+
+	// Long enough that an un-disarmed retry loop would exhaust all
+	// cancelMaxPostAttempts posts (~150ms at the shrunk backoff) and emit
+	// UICancelFailed.
+	time.Sleep(500 * time.Millisecond)
+	assert.Less(t, int(attempts.Load()), cancelMaxPostAttempts,
+		"abandonCancel must stop the retry loop before exhaustion")
+	for {
+		select {
+		case evt := <-uiCh:
+			if _, isFailed := evt.(UICancelFailed); isFailed {
+				t.Fatal("abandoned cancel must not surface UICancelFailed")
+			}
+			continue
+		default:
+		}
+		break
+	}
+
+	cancel()
+	select {
+	case err := <-done:
+		require.NoError(t, err)
+	case <-time.After(time.Second):
+		t.Fatal("dispatcher did not exit after ctx cancel")
+	}
+}
+
+// TestDispatchUserEvents_AbandonCancelBeforeTaskReadyIsSilent — the abandon
+// envelope carries a nil event, so it must be handled before the empty-taskID
+// gate or it would surface a spurious "task not ready" warning (reachable when
+// a lazily-created task errors out and UIError ends the turn).
+func TestDispatchUserEvents_AbandonCancelBeforeTaskReadyIsSilent(t *testing.T) {
+	t.Parallel()
+
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+
+	uiCh := make(chan UIEvent, 4)
+	out := make(chan outboundEvent, 1)
+
+	done := make(chan error, 1)
+	go func() {
+		done <- dispatchUserEvents(ctx, out, uiCh, true,
+			func() string { return "" },
+			noopSpawn,
+			func(context.Context, string, any) error { return nil },
+			noopUpdateTask)
+	}()
+
+	out <- outboundEvent{abandonCancel: true}
+
+	select {
+	case evt := <-uiCh:
+		t.Fatalf("abandonCancel with no task must be silent, got %T", evt)
+	case <-time.After(200 * time.Millisecond):
+	}
+
+	cancel()
+	select {
+	case err := <-done:
+		require.NoError(t, err)
+	case <-time.After(time.Second):
+		t.Fatal("dispatcher did not exit after ctx cancel")
+	}
+}
+
+// TestDispatchUserEvents_UserMessageAbandonsStaleCancel — backstop for a
+// dropped abandon envelope: the TUI can only emit a non-cancel user event
+// after the turn ended, so its arrival must also disarm a pending cancel.
+//
+//nolint:paralleltest // mutates the package backoff vars
+func TestDispatchUserEvents_UserMessageAbandonsStaleCancel(t *testing.T) {
+	prevInitial := userMessageRetryInitialBackoff
+	prevMax := userMessageRetryMaxBackoff
+	userMessageRetryInitialBackoff = 10 * time.Millisecond
+	userMessageRetryMaxBackoff = 20 * time.Millisecond
+	t.Cleanup(func() {
+		userMessageRetryInitialBackoff = prevInitial
+		userMessageRetryMaxBackoff = prevMax
+	})
+
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+
+	uiCh := make(chan UIEvent, 16)
+	out := make(chan outboundEvent, 2)
+	var cancelAttempts, messagePosts atomic.Int32
+
+	done := make(chan error, 1)
+	go func() {
+		done <- dispatchUserEvents(ctx, out, uiCh, true,
+			func() string { return "task-1" },
+			noopSpawn,
+			func(_ context.Context, _ string, body any) error {
+				switch body.(type) {
+				case apitype.AgentUserEventCancel:
+					cancelAttempts.Add(1)
+					return errors.New("still parked")
+				case apitype.AgentUserEventUserMessage:
+					messagePosts.Add(1)
+				}
+				return nil
+			},
+			noopUpdateTask)
+	}()
+
+	out <- outboundEvent{event: apitype.AgentUserEventCancel{Type: userEventUserCancel}}
+	require.Eventually(t, func() bool { return cancelAttempts.Load() >= 1 },
+		3*time.Second, 5*time.Millisecond, "cancel was never posted")
+
+	out <- outboundEvent{event: apitype.AgentUserEventUserMessage{
+		Type:    userEventUserMessage,
+		Content: "next turn",
+	}}
+	require.Eventually(t, func() bool { return messagePosts.Load() == 1 },
+		3*time.Second, 5*time.Millisecond, "user message was never posted")
+
+	// See TestDispatchUserEvents_AbandonCancelStopsRetries for the window.
+	time.Sleep(500 * time.Millisecond)
+	assert.Less(t, int(cancelAttempts.Load()), cancelMaxPostAttempts,
+		"a user message must disarm the stale cancel retry loop")
+	for {
+		select {
+		case evt := <-uiCh:
+			if _, isFailed := evt.(UICancelFailed); isFailed {
+				t.Fatal("disarmed cancel must not surface UICancelFailed")
+			}
+			continue
+		default:
+		}
+		break
+	}
+
+	cancel()
+	select {
+	case err := <-done:
+		require.NoError(t, err)
+	case <-time.After(time.Second):
+		t.Fatal("dispatcher did not exit after ctx cancel")
+	}
 }
 
 func TestDispatchUserEvents_RetriesUserMessageOnTransientPostFailure(t *testing.T) {

@@ -24,6 +24,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 // MultiArgumentInvokeProvider exposes a function that uses multiArgumentInputs, so its inputs are
@@ -124,7 +125,7 @@ func (p *MultiArgumentInvokeProvider) CheckConfig(
 	_ context.Context, req plugin.CheckConfigRequest,
 ) (plugin.CheckConfigResponse, error) {
 	// Expect just the version
-	version, ok := req.News["version"]
+	version, ok := req.News.GetOk("version")
 	if !ok {
 		return plugin.CheckConfigResponse{
 			Failures: makeCheckFailure("version", "missing version"),
@@ -135,13 +136,13 @@ func (p *MultiArgumentInvokeProvider) CheckConfig(
 			Failures: makeCheckFailure("version", "version is not a string"),
 		}, nil
 	}
-	if version.StringValue() != "44.0.0" {
+	if version.AsString() != "44.0.0" {
 		return plugin.CheckConfigResponse{
 			Failures: makeCheckFailure("version", "version is not 44.0.0"),
 		}, nil
 	}
 
-	if len(req.News) != 1 {
+	if req.News.Len() != 1 {
 		return plugin.CheckConfigResponse{
 			Failures: makeCheckFailure("", fmt.Sprintf("too many properties: %v", req.News)),
 		}, nil
@@ -157,7 +158,7 @@ func (p *MultiArgumentInvokeProvider) Invoke(
 		return plugin.InvokeResponse{}, fmt.Errorf("unknown function %v", req.Tok)
 	}
 
-	first, ok := req.Args["first"]
+	first, ok := req.Args.GetOk("first")
 	if !ok {
 		return plugin.InvokeResponse{
 			Failures: makeCheckFailure("first", "missing first"),
@@ -169,21 +170,21 @@ func (p *MultiArgumentInvokeProvider) Invoke(
 		}, nil
 	}
 
-	result := first.StringValue()
+	result := first.AsString()
 	// "second" is optional; when provided it is appended to the result.
-	if second, ok := req.Args["second"]; ok && !second.IsNull() {
+	if second, ok := req.Args.GetOk("second"); ok && !second.IsNull() {
 		if !second.IsString() {
 			return plugin.InvokeResponse{
 				Failures: makeCheckFailure("second", "second is not a string"),
 			}, nil
 		}
-		result += " " + second.StringValue()
+		result += " " + second.AsString()
 	}
 
 	return plugin.InvokeResponse{
-		Properties: resource.PropertyMap{
-			"result": resource.NewProperty(result),
-		},
+		Properties: property.NewMap(map[string]property.Value{
+			"result": property.New(result),
+		}),
 	}, nil
 }
 

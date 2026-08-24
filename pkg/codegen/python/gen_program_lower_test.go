@@ -17,8 +17,9 @@ package python
 import (
 	"testing"
 
+	mapset "github.com/deckarep/golang-set/v2"
+
 	"github.com/hashicorp/hcl/v2"
-	"github.com/pulumi/pulumi/pkg/v3/codegen"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -45,7 +46,7 @@ func TestParseProxyApplyWithCallExpression(t *testing.T) {
 	}
 	require.Empty(t, body.Typecheck(false))
 
-	parameters := codegen.Set{}
+	parameters := mapset.NewSet[model.Traversable]()
 	parameters.Add(parameter)
 	projection, ok := (&generator{}).parseProxyApply(parameters, []model.Expression{call}, body)
 	require.True(t, ok)
@@ -81,7 +82,7 @@ func TestParseProxyApplyWithOutputMemberName(t *testing.T) {
 	}
 	require.Empty(t, body.Typecheck(false))
 
-	parameters := codegen.Set{}
+	parameters := mapset.NewSet[model.Traversable]()
 	parameters.Add(parameter)
 	_, ok := (&generator{}).parseProxyApply(parameters, []model.Expression{call}, body)
 	assert.False(t, ok)

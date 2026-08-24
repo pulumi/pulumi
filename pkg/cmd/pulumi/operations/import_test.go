@@ -18,16 +18,20 @@ import (
 	"bytes"
 	"encoding/json"
 	"io"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/pkg/v3/importer"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
+	resourcestack "github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	sdkconfig "github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -616,6 +620,71 @@ func TestParseImportFileProviderInputs(t *testing.T) {
 	assert.Equal(t, resource.NewProperty("6.0.0"), imports[0].ProviderInputs["version"])
 }
 
+func TestParseImportFileUnknownValues(t *testing.T) {
+	t.Parallel()
+
+	// The marker the stack serialisation uses to stand in for an unknown value.
+	unknown, err := resourcestack.SerializePropertyValue(
+		t.Context(), resource.MakeComputed(resource.NewProperty("")), sdkconfig.NopEncrypter, false)
+	require.NoError(t, err)
+
+	providerURN := resource.URN("urn:pulumi:stack::proj::pulumi:providers:aws::my-prov")
+	spec := importSpec{
+		Name:     "thing",
+		ID:       "thing-id",
+		Type:     "aws:s3:Bucket",
+		Provider: "my-prov",
+	}
+
+	tests := []struct {
+		field string
+		give  func(importSpec) importFile
+	}{
+		{
+			field: "providerInputs",
+			give: func(spec importSpec) importFile {
+				return importFile{
+					Resources: []importSpec{spec},
+					ProviderInputs: map[string]map[string]any{
+						"my-prov": {"region": unknown, "version": "6.0.0"},
+					},
+				}
+			},
+		},
+		{
+			field: "inputs",
+			give: func(spec importSpec) importFile {
+				spec.Inputs = map[string]any{"bucket": unknown}
+				return importFile{Resources: []importSpec{spec}}
+			},
+		},
+		{
+			field: "outputs",
+			give: func(spec importSpec) importFile {
+				spec.Outputs = map[string]any{"arn": []any{unknown}}
+				return importFile{Resources: []importSpec{spec}}
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.field, func(t *testing.T) {
+			t.Parallel()
+
+			f := tt.give(spec)
+			f.NameTable = map[string]resource.URN{"my-prov": providerURN}
+
+			_, _, err := parseImportFile(f, tokens.MustParseStackName("stack"), "proj", false, sdkconfig.NopDecrypter)
+			assert.ErrorContains(t, err,
+				"the "+tt.field+" for resource 'thing' of type 'aws:s3:Bucket' contain unknown values")
+		})
+	}
+}
+
+func ptr[T any](v T) *T {
+	return &v
+}
+
 func TestMakeImportFileFromResourceListInputsOutputs(t *testing.T) {
 	t.Parallel()
 
@@ -624,12 +693,12 @@ func TestMakeImportFileFromResourceListInputsOutputs(t *testing.T) {
 			Type: "aws:s3/bucket:Bucket",
 			Name: "thing",
 			ID:   "thing-id",
-			Inputs: resource.PropertyMap{
-				"password": resource.MakeSecret(resource.NewProperty("shh")),
-			},
-			Outputs: resource.PropertyMap{
-				"arn": resource.NewProperty("some:arn"),
-			},
+			Inputs: ptr(property.NewMap(map[string]property.Value{
+				"password": property.New("shh").WithSecret(true),
+			})),
+			Outputs: ptr(property.NewMap(map[string]property.Value{
+				"arn": property.New("some:arn"),
+			})),
 		},
 	})
 	require.NoError(t, err)
@@ -931,4 +1000,27 @@ func TestImportCmd_OutputAndJSONMutuallyExclusive(t *testing.T) {
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "none of the others can be",
 		"expected cobra's mutually-exclusive error, got: %v", err)
+}
+
+// TestImportCmd_TerraformConverterRejectedInHclProject verifies that
+// `pulumi import --from terraform` is rejected in a Pulumi HCL project. The
+// Terraform converter writes statically bridged providers into state, but
+// pulumi-hcl runs resources through the dynamic Terraform bridge, so the next
+// preview would show a delete and create for every resource.
+//
+//nolint:paralleltest // changes process working directory
+func TestImportCmd_TerraformConverterRejectedInHclProject(t *testing.T) {
+	dir := t.TempDir()
+	err := os.WriteFile(filepath.Join(dir, "Pulumi.yaml"), []byte("name: test\nruntime: hcl\n"), 0o600)
+	require.NoError(t, err)
+	t.Chdir(dir)
+
+	cmd := NewImportCmd()
+	cmd.SetArgs([]string{"--from", "terraform", "--yes"})
+	cmd.SetOut(io.Discard)
+	cmd.SetErr(io.Discard)
+
+	err = cmd.Execute()
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "pulumi import --from hcl")
 }

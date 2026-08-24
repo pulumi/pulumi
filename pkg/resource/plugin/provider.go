@@ -184,12 +184,12 @@ type CheckConfigRequest struct {
 	URN           resource.URN
 	Name          string
 	Type          tokens.Type
-	Olds, News    resource.PropertyMap
+	Olds, News    property.Map
 	AllowUnknowns bool
 }
 
 type CheckConfigResponse struct {
-	Properties resource.PropertyMap
+	Properties property.Map
 	Failures   []CheckFailure
 }
 
@@ -371,7 +371,7 @@ type ListRequest struct {
 	Token tokens.Type
 	// Query is an optional provider-defined filter over resource state. It may contain unknown values, in which case
 	// the provider should respond with a [ListResponse] whose Computed flag is set.
-	Query resource.PropertyMap
+	Query property.Map
 	// Limit caps the total number of results across the entire enumeration. A value of zero means "no limit". The
 	// provider may return fewer results than Limit even when more match.
 	Limit int64
@@ -463,12 +463,12 @@ type ConstructResponse = ConstructResult
 
 type InvokeRequest struct {
 	Tok     tokens.ModuleMember
-	Args    resource.PropertyMap
+	Args    property.Map
 	Preview bool
 }
 
 type InvokeResponse struct {
-	Properties resource.PropertyMap
+	Properties property.Map
 	Failures   []CheckFailure
 }
 
@@ -970,7 +970,7 @@ type ConstructResult struct {
 	// The URN of the constructed component resource.
 	URN resource.URN
 	// The output properties of the component resource.
-	Outputs resource.PropertyMap
+	Outputs property.Map
 	// The resources that each output property depends on.
 	OutputDependencies map[resource.PropertyKey][]resource.URN
 }

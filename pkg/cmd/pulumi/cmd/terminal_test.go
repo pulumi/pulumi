@@ -37,12 +37,18 @@ func TestOptimalPageSize(t *testing.T) {
 	assert.Equal(t, 3, opt(3, 15))
 	assert.Equal(t, 4, opt(4, 15))
 	assert.Equal(t, 5, opt(5, 15))
-	assert.Equal(t, 1, opt(6, 15))
-	assert.Equal(t, 2, opt(7, 15))
-	assert.Equal(t, 3, opt(8, 15))
+	assert.Equal(t, 6, opt(6, 15))
+	assert.Equal(t, 7, opt(7, 15))
+	assert.Equal(t, 8, opt(8, 15))
+	assert.Equal(t, 10, opt(10, 15))
 
 	// Case 2: termHeight <= nopts
 	assert.Equal(t, 10, opt(15, 15))
 	assert.Equal(t, 10, opt(16, 15))
 	assert.Equal(t, 10, opt(17, 15))
+
+	// Case 3: termHeight <= buffer, no room to subtract
+	assert.Equal(t, 3, opt(3, 3))
+	assert.Equal(t, 3, opt(10, 3))
+	assert.Equal(t, 0, opt(0, 3))
 }

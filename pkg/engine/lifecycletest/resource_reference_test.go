@@ -24,7 +24,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	. "github.com/pulumi/pulumi/pkg/v3/engine" //nolint:revive
+	. "github.com/pulumi/pulumi/pkg/v3/engine"
 	lt "github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest/framework"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
@@ -407,7 +407,7 @@ func TestResourceReferences_NameAndTypeFilledByEngine(t *testing.T) {
 
 					return plugin.ConstructResponse{
 						URN:     component.URN,
-						Outputs: outputs,
+						Outputs: resource.FromResourcePropertyMap(outputs),
 					}, nil
 				},
 			}, nil

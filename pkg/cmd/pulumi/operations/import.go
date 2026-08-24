@@ -70,6 +70,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil/rpcerror"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 func parseResourceSpec(spec string) (string, resource.URN, error) {
@@ -96,11 +97,12 @@ func parseResourceSpec(spec string) (string, resource.URN, error) {
 func makeImportFileFromResourceList(ctx context.Context, resources []plugin.ResourceImport) (importFile, error) {
 	// Serialized with secrets in plain text, marked with the secret signature: the converter response
 	// carries them the same way, and parseImportFile deserializes them back into secret values.
-	serialize := func(props resource.PropertyMap, name, kind string) (map[string]any, error) {
+	serialize := func(props *property.Map, name, kind string) (map[string]any, error) {
 		if props == nil {
 			return nil, nil
 		}
-		serialized, err := resourcestack.SerializeProperties(ctx, props, sdkconfig.NopEncrypter, true /*showSecrets*/)
+		mprops := resource.ToResourcePropertyMap(*props)
+		serialized, err := resourcestack.SerializeProperties(ctx, mprops, sdkconfig.NopEncrypter, true /*showSecrets*/)
 		if err != nil {
 			return nil, fmt.Errorf("serializing %s for resource %q: %w", kind, name, err)
 		}
@@ -660,6 +662,17 @@ func parseImportFile(
 			}
 		}
 
+		for field, props := range map[string]resource.PropertyMap{
+			"inputs":         imp.Inputs,
+			"outputs":        imp.Outputs,
+			"providerInputs": imp.ProviderInputs,
+		} {
+			if props.ContainsUnknowns() {
+				pusherrf("the %v for %v contain unknown values; fill them in before importing",
+					field, describeResource(i, spec))
+			}
+		}
+
 		imports[i] = imp
 	}
 
@@ -878,6 +891,11 @@ func NewImportCmd() *cobra.Command {
 				return err
 			}
 
+			if from == "terraform" && importFilePath == "" && proj.Runtime.Name() == "hcl" {
+				return errors.New("`pulumi import --from terraform` will produce state that doesn't line up " +
+					"with Pulumi's HCL runtime.\nYou should run `pulumi import --from hcl` instead.")
+			}
+
 			ssml := cmdStack.NewStackSecretsManagerLoaderFromEnv()
 
 			cwd, err := os.Getwd()
@@ -962,17 +980,20 @@ func NewImportCmd() *cobra.Command {
 
 				mapperServer := convert.NewMapperServer(mapper)
 				loaderServer := schema.NewLoaderServer(schema.NewPluginLoader(pCtx))
+				resolverServer := packageworkspace.NewResolverServer(reg)(pCtx)
 				grpcServer, err := plugin.NewServer(pCtx,
 					convert.MapperRegistration(mapperServer),
-					schema.LoaderRegistration(loaderServer))
+					schema.LoaderRegistration(loaderServer),
+					packageworkspace.ResolverRegistration(resolverServer))
 				if err != nil {
 					return err
 				}
 
 				resp, err := converter.ConvertState(ctx, &plugin.ConvertStateRequest{
-					MapperTarget: grpcServer.Addr(),
-					Args:         args,
-					LoaderTarget: grpcServer.Addr(),
+					MapperTarget:   grpcServer.Addr(),
+					Args:           args,
+					LoaderTarget:   grpcServer.Addr(),
+					ResolverTarget: grpcServer.Addr(),
 				})
 				if err != nil {
 					rpcErr := rpcerror.Convert(err)
@@ -1282,7 +1303,6 @@ func NewImportCmd() *cobra.Command {
 		//nolint:lll
 		&providerSpec, "provider", "", "The name and URN of the provider to use for the import in the format name=urn, where name is the variable name for the provider resource")
 	cmd.PersistentFlags().StringSliceVar(
-		//nolint:lll
 		&properties, "properties", nil, "The property names to use for the import in the format name1,name2")
 	cmd.PersistentFlags().StringVarP(
 		&importFilePath, "file", "f", "", "The path to a JSON-encoded file containing a list of resources to import")

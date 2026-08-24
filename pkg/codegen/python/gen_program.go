@@ -26,6 +26,8 @@ import (
 	"sort"
 	"strings"
 
+	mapset "github.com/deckarep/golang-set/v2"
+
 	"github.com/zclconf/go-cty/cty"
 
 	"github.com/hashicorp/hcl/v2"
@@ -92,7 +94,7 @@ func GenerateProgram(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, 
 	nodes := pcl.Linearize(program)
 
 	// Creating a list to store and later print helper methods if they turn out to be needed
-	preambleHelperMethods := codegen.NewStringSet()
+	preambleHelperMethods := mapset.NewSet[string]()
 
 	var main bytes.Buffer
 	g.genPreamble(&main, program, preambleHelperMethods)
@@ -117,7 +119,7 @@ func GenerateProgram(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, 
 		// mark the generator to target components
 		componentGenerator.isComponent = true
 
-		componentPreambleMethods := codegen.NewStringSet()
+		componentPreambleMethods := mapset.NewSet[string]()
 		var componentBuffer bytes.Buffer
 		// generate imports for the component
 		componentGenerator.genPreamble(&componentBuffer, component.Program, componentPreambleMethods)
@@ -320,7 +322,7 @@ func (g *generator) genComponentDefinition(w io.Writer, component *pcl.Component
 
 			outputVars := component.Program.OutputVariables()
 			for _, output := range outputVars {
-				g.Fgenf(w, "%sself.%s = %v\n", g.Indent, output.Name(), output.Value)
+				g.Fgenf(w, "%sself.%s = %v\n", g.Indent, PyName(output.Name()), output.Value)
 			}
 
 			if len(outputVars) == 0 {
@@ -486,23 +488,23 @@ func newGenerator(program *pcl.Program) (*generator, error) {
 	return g, nil
 }
 
-func makeUniqueName(base string, used codegen.StringSet) string {
+func makeUniqueName(base string, used mapset.Set[string]) string {
 	name := EnsureKeywordSafe(PyName(base))
-	if !used.Has(name) {
+	if !used.Contains(name) {
 		used.Add(name)
 		return name
 	}
 
 	for i := 1; ; i++ {
 		candidate := fmt.Sprintf("%s_%d", name, i)
-		if !used.Has(candidate) {
+		if !used.Contains(candidate) {
 			used.Add(candidate)
 			return candidate
 		}
 	}
 }
 
-func (g *generator) ensurePackageImportAlias(pkg string, used codegen.StringSet) string {
+func (g *generator) ensurePackageImportAlias(pkg string, used mapset.Set[string]) string {
 	pkgKey := makeValidIdentifier(pkg)
 	if alias, ok := g.packageImportAliases[pkgKey]; ok {
 		return alias
@@ -521,12 +523,9 @@ func (g *generator) packageAlias(pkg string) string {
 	return EnsureKeywordSafe(PyName(pkgKey))
 }
 
-func (g *generator) assignRootNodeIdentifiers(program *pcl.Program, reserved codegen.StringSet) {
+func (g *generator) assignRootNodeIdentifiers(program *pcl.Program, reserved mapset.Set[string]) {
 	g.nodeIdentifiers = map[string]string{}
-	used := codegen.NewStringSet()
-	for name := range reserved {
-		used.Add(name)
-	}
+	used := reserved.Clone()
 	for _, node := range program.Nodes {
 		var name string
 		switch n := node.(type) {
@@ -547,8 +546,8 @@ func (g *generator) assignRootNodeIdentifiers(program *pcl.Program, reserved cod
 	}
 }
 
-func (g *generator) importAliasIdentifiers() codegen.StringSet {
-	used := codegen.NewStringSet("pulumi")
+func (g *generator) importAliasIdentifiers() mapset.Set[string] {
+	used := mapset.NewSet("pulumi")
 	for _, alias := range g.packageImportAliases {
 		used.Add(alias)
 	}
@@ -627,11 +626,11 @@ func rewriteApplyLambdaBody(applyLambda *model.AnonymousFunctionExpression, args
 	return rewrittenBody
 }
 
-func (g *generator) genPreamble(w io.Writer, program *pcl.Program, preambleHelperMethods codegen.StringSet) {
+func (g *generator) genPreamble(w io.Writer, program *pcl.Program, preambleHelperMethods mapset.Set[string]) {
 	// Print the pulumi import at the top.
 	g.Fprintln(w, "import pulumi")
 	g.packageImportAliases = map[string]string{}
-	usedImportAliases := codegen.NewStringSet("pulumi")
+	usedImportAliases := mapset.NewSet("pulumi")
 
 	// Accumulate other imports for the various providers. Don't emit them yet, as we need to sort them later on.
 	type Import struct {
@@ -679,7 +678,7 @@ func (g *generator) genPreamble(w io.Writer, program *pcl.Program, preambleHelpe
 			if pkg == "pulumi" {
 				continue
 			}
-			var packageName, schemaPkg string
+			var packageName string
 			if schemaRes != nil && schemaRes.PackageReference != nil {
 				pkgDef, err := schemaRes.PackageReference.Definition()
 				if err == nil {
@@ -690,14 +689,12 @@ func (g *generator) genPreamble(w io.Writer, program *pcl.Program, preambleHelpe
 				if packageName == "" {
 					packageName = PyPack(pkgDef.Namespace, pkgDef.Name)
 				}
-				schemaPkg = pkgDef.Name
 			} else {
 				packageName = "pulumi_" + makeValidIdentifier(pkg)
-				schemaPkg = pkg
 			}
 			importSet[packageName] = Import{
 				ImportAs: true,
-				Pkg:      g.ensurePackageImportAlias(schemaPkg, usedImportAliases),
+				Pkg:      g.ensurePackageImportAlias(pkg, usedImportAliases),
 			}
 		}
 		diags := n.VisitExpressions(nil, func(n model.Expression) (model.Expression, hcl.Diagnostics) {
@@ -705,17 +702,9 @@ func (g *generator) genPreamble(w io.Writer, program *pcl.Program, preambleHelpe
 				if call.Name == pcl.Invoke {
 					pkg, _, _, invokeDiags := functionName(call.Args[0])
 					contract.Assertf(len(invokeDiags) == 0, "unexpected diagnostics reported: %v", invokeDiags)
-					// Import an extension by its real package name but alias it under the
-					// token's base name, matching how its resources are imported.
-					packageName := "pulumi_" + makeValidIdentifier(pkg)
-					schemaPkg := pkg
-					if def := g.functionPackage(call.Args[0]); def != nil {
-						packageName = PyPack(def.Namespace, def.Name)
-						schemaPkg = def.Name
-					}
-					importSet[packageName] = Import{
+					importSet["pulumi_"+makeValidIdentifier(pkg)] = Import{
 						ImportAs: true,
-						Pkg:      g.ensurePackageImportAlias(schemaPkg, usedImportAliases),
+						Pkg:      g.ensurePackageImportAlias(pkg, usedImportAliases),
 					}
 				}
 				if i := g.getFunctionImports(call); len(i) > 0 && i[0] != "" {
@@ -743,11 +732,11 @@ func (g *generator) genPreamble(w io.Writer, program *pcl.Program, preambleHelpe
 	}
 
 	var imports []string
-	importSetNames := codegen.NewStringSet()
+	importSetNames := mapset.NewSet[string]()
 	for k := range importSet {
 		importSetNames.Add(k)
 	}
-	for _, pkg := range importSetNames.SortedValues() {
+	for _, pkg := range mapset.Sorted(importSetNames) {
 		if pkg == "pulumi" {
 			continue
 		}
@@ -770,6 +759,10 @@ func (g *generator) genPreamble(w io.Writer, program *pcl.Program, preambleHelpe
 	seenComponentImports := map[string]bool{}
 	for _, node := range program.Nodes {
 		if component, ok := node.(*pcl.Component); ok {
+			// A component declared without a source has no module to import from.
+			if component.Program == nil {
+				continue
+			}
 			componentPath := strings.ReplaceAll(filepath.Base(component.DirPath()), "-", "_")
 			componentName := component.DeclarationName()
 			pathAndName := componentPath + "-" + componentName
@@ -788,7 +781,7 @@ func (g *generator) genPreamble(w io.Writer, program *pcl.Program, preambleHelpe
 	g.Fprint(w, "\n")
 
 	// If we collected any helper methods that should be added, write them just before the main func
-	for _, preambleHelperMethodBody := range preambleHelperMethods.SortedValues() {
+	for _, preambleHelperMethodBody := range mapset.Sorted(preambleHelperMethods) {
 		g.Fprintf(w, "%s\n\n", preambleHelperMethodBody)
 	}
 }
@@ -837,15 +830,13 @@ func (g *generator) resourceTypeName(r *pcl.Resource) (string, hcl.Diagnostics) 
 	pkg, module, member, diagnostics := pcl.DecomposeToken(token, tokenRange)
 
 	// Normalize module.
-	schemaPkg := pkg
 	if r.Schema != nil {
-		schemaPkg = r.Schema.PackageReference.Name()
 		// pulumi:pulumi:* resources (e.g. StackReference) belong to the root of the
 		// package, not a "pulumi" submodule.
 		if r.Schema.PackageReference.Name() == "pulumi" && module == "pulumi" {
 			module = ""
 		}
-		pkgDef, err := r.Schema.PackageReference.Definition()
+		pkg, err := r.Schema.PackageReference.Definition()
 		if err != nil {
 			diagnostics = append(diagnostics, &hcl.Diagnostic{
 				Severity: hcl.DiagError,
@@ -854,9 +845,9 @@ func (g *generator) resourceTypeName(r *pcl.Resource) (string, hcl.Diagnostics) 
 				Subject:  r.Definition.Syntax.DefRange().Ptr(),
 			})
 		} else {
-			err = pkgDef.ImportLanguages(map[string]schema.Language{"python": Importer})
-			contract.AssertNoErrorf(err, "failed to import python language plugin for package %s", pkgDef.Name)
-			if lang, ok := pkgDef.Language["python"]; ok {
+			err = pkg.ImportLanguages(map[string]schema.Language{"python": Importer})
+			contract.AssertNoErrorf(err, "failed to import python language plugin for package %s", pkg.Name)
+			if lang, ok := pkg.Language["python"]; ok {
 				if pkgInfo, ok := lang.(PackageInfo); ok {
 					if m, ok := pkgInfo.ModuleNameOverrides[module]; ok {
 						module = m
@@ -866,16 +857,14 @@ func (g *generator) resourceTypeName(r *pcl.Resource) (string, hcl.Diagnostics) 
 		}
 	}
 
-	return tokenToQualifiedName(g.packageAlias(schemaPkg), module, member), diagnostics
+	return tokenToQualifiedName(g.packageAlias(pkg), module, member), diagnostics
 }
 
 func (g *generator) readResourceTypeName(r *pcl.ReadResource) (string, hcl.Diagnostics) {
 	token, tokenRange := r.GetToken()
 	pkg, module, member, diagnostics := pcl.DecomposeToken(token, tokenRange)
 
-	schemaPkg := pkg
 	if r.Schema != nil {
-		schemaPkg = r.Schema.PackageReference.Name()
 		pkgDef, err := r.Schema.PackageReference.Definition()
 		if err != nil {
 			diagnostics = append(diagnostics, &hcl.Diagnostic{
@@ -897,7 +886,7 @@ func (g *generator) readResourceTypeName(r *pcl.ReadResource) (string, hcl.Diagn
 		}
 	}
 
-	return tokenToQualifiedName(g.packageAlias(schemaPkg), module, member), diagnostics
+	return tokenToQualifiedName(g.packageAlias(pkg), module, member), diagnostics
 }
 
 func (g *generator) typedDictEnabled(expr model.Expression, typ model.Type) bool {
@@ -942,7 +931,7 @@ func (g *generator) argumentTypeName(expr model.Expression, destType model.Type)
 	tokenRange := expr.SyntaxNode().Range()
 
 	// Example: aws, s3/BucketLogging, BucketLogging, []Diagnostics
-	_, module, member, diagnostics := pcl.DecomposeToken(token, tokenRange)
+	pkgName, module, member, diagnostics := pcl.DecomposeToken(token, tokenRange)
 	contract.Assertf(len(diagnostics) == 0, "unexpected diagnostics reported: %v", diagnostics)
 
 	modName := objType.PackageReference.TokenToModule(token)
@@ -957,7 +946,7 @@ func (g *generator) argumentTypeName(expr model.Expression, destType model.Type)
 			}
 		}
 	}
-	return tokenToQualifiedName(g.packageAlias(objType.PackageReference.Name()), modName, member) + "Args"
+	return tokenToQualifiedName(g.packageAlias(pkgName), modName, member) + "Args"
 }
 
 // makeResourceName returns the expression that should be emitted for a resource's "name" parameter given its base name
@@ -1207,8 +1196,13 @@ func (g *generator) genHookNode(w io.Writer, h *pcl.Hook) {
 	hookName := h.LogicalName()
 
 	var cmdExprs []model.Expression
+	var cmdTemps []*quoteTemp
 	if tuple, ok := h.Command.(*model.TupleConsExpression); ok {
-		cmdExprs = tuple.Expressions
+		for _, expr := range tuple.Expressions {
+			expr, temps := g.lowerHookCommandExpression(expr)
+			cmdExprs = append(cmdExprs, expr)
+			cmdTemps = append(cmdTemps, temps...)
+		}
 	}
 
 	if h.Kind == pcl.HookKindError {
@@ -1216,6 +1210,7 @@ func (g *generator) genHookNode(w io.Writer, h *pcl.Hook) {
 		// only if the command exits successfully.
 		g.Fgenf(w, "%sdef %s(args):\n", g.Indent, fnName)
 		g.Indented(func() {
+			g.genTemps(w, cmdTemps)
 			g.Fgenf(w, "%sresult = subprocess.run([", g.Indent)
 			for i, arg := range cmdExprs {
 				if i > 0 {
@@ -1232,6 +1227,7 @@ func (g *generator) genHookNode(w io.Writer, h *pcl.Hook) {
 
 	g.Fgenf(w, "%sdef %s(args):\n", g.Indent, fnName)
 	g.Indented(func() {
+		g.genTemps(w, cmdTemps)
 		g.Fgenf(w, "%ssubprocess.run([", g.Indent)
 		for i, arg := range cmdExprs {
 			if i > 0 {
@@ -1728,6 +1724,37 @@ func (g *generator) genReadResource(w io.Writer, r *pcl.ReadResource) {
 
 // genComponent handles the generation of instantiations of non-builtin resources.
 func (g *generator) genComponent(w io.Writer, r *pcl.Component) {
+	// A component declared without a source has no class to instantiate; construct the SDK's base
+	// ComponentResource with the type token that names it.
+	if r.Program == nil {
+		optionsBag, temps := g.lowerResourceOptions(r.Options, nil)
+		// Lowering an input can introduce temporaries, which are statements in their own right; collect them all
+		// so that they are emitted before the assignment that uses them rather than inside it.
+		inputs := make([]*model.Attribute, len(r.Inputs))
+		for i, attr := range r.Inputs {
+			value, valueTemps := g.lowerExpression(attr.Value, attr.Value.Type())
+			temps = append(temps, valueTemps...)
+			inputs[i] = &model.Attribute{Name: attr.Name, Value: value}
+		}
+		g.genTemps(w, temps)
+
+		g.Fgenf(w, "%s%s = pulumi.ComponentResource(%q, %s", g.Indent, g.nodeName(r.Name()), r.Token,
+			g.makeResourceName(r.LogicalName(), ""))
+		if len(inputs) > 0 {
+			g.Fgen(w, ", {")
+			for i, attr := range inputs {
+				if i > 0 {
+					g.Fgen(w, ", ")
+				}
+				g.Fgenf(w, "%q: %.v", attr.Name, attr.Value)
+			}
+			g.Fgen(w, "}")
+		}
+		g.genResourceOptions(w, optionsBag, len(inputs) != 0, nil)
+		g.Fgen(w, ")\n")
+		return
+	}
+
 	componentName := r.DeclarationName()
 	optionsBag, temps := g.lowerResourceOptions(r.Options, nil)
 	name := r.LogicalName()

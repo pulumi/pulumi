@@ -93,18 +93,19 @@ func (pc *packageCommand) newResourceCommand(res *schema.Resource) *cobra.Comman
 		"The URN of a provider resource in the current stack whose inputs to use as the "+
 			"base of the provider configuration (requires a stack context)")
 	addPersistentInputFlags(cmd, pc.spec.Name(), pc.providerDef.InputProperties)
-	// `create` and `upsert` have different UX between stateful (takes a resource <name> and adds a
+	// `create`/`upsert`/`patch` have different UX between stateful (takes a resource <name> and adds a
 	// snippet to the stack) and stateless (uses the resource type's short name and calls the
 	// provider directly), so the command trees diverge here.
 	if pc.stateless {
 		cmd.AddCommand(pc.newStatelessResourceCreateCommand(res))
 		cmd.AddCommand(pc.newStatelessResourceUpsertCommand(res))
+		cmd.AddCommand(pc.newStatelessResourcePatchCommand(res))
 	} else {
 		cmd.AddCommand(pc.newStatefulResourceCreateCommand(res))
 		cmd.AddCommand(pc.newStatefulResourceUpsertCommand(res))
+		cmd.AddCommand(pc.newStatefulResourcePatchCommand(res))
 	}
 	cmd.AddCommand(pc.newResourceReadCommand(res))
-	cmd.AddCommand(pc.newResourcePatchCommand(res))
 	cmd.AddCommand(pc.newResourceDeleteCommand(res))
 	if res.ListInputs != nil {
 		cmd.AddCommand(pc.newResourceListCommand(res))
@@ -137,7 +138,6 @@ func (pc *packageCommand) newStatefulResourceCreateCommand(res *schema.Resource)
 				inputFormat:   inputFormat,
 				resourcesFile: resourcesFile,
 				yes:           yes,
-				verb:          "created",
 				requireFresh:  true,
 			})
 		},
@@ -282,7 +282,40 @@ func (pc *packageCommand) newResourceReadCommand(res *schema.Resource) *cobra.Co
 	}
 }
 
-func (pc *packageCommand) newResourcePatchCommand(res *schema.Resource) *cobra.Command {
+// newStatefulResourcePatchCommand patches the existing snippet for (name, res.Token) by
+// overriding only the top-level PCL attributes the user supplies. The rest of the snippet's
+// code — other attributes, options blocks, comments — and its References/Descriptor are
+// preserved verbatim.
+func (pc *packageCommand) newStatefulResourcePatchCommand(res *schema.Resource) *cobra.Command {
+	var inputFile string
+	var inputFormat string
+	var resourcesFile string
+	var yes bool
+	cmd := &cobra.Command{
+		Use:   "patch <name>",
+		Short: "Patch a resource",
+		Long: "Patch a resource.\n\n" +
+			"Only the inputs supplied here override the corresponding attributes in the existing " +
+			"resource snippet; all other snippet content is preserved. Fails if no resource with " +
+			"the given name exists.",
+		Args: cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			contract.Assertf(!pc.stateless, "stateful patch should not be registered in stateless mode")
+			return pc.runStatefulSnippetPatch(cmd, res, args[0], inputFile, inputFormat, resourcesFile, yes)
+		},
+	}
+	cmd.Flags().StringVar(&inputFormat, "input", "yaml",
+		"Format of the resource inputs file (any language name supported by an installed converter)")
+	cmd.Flags().StringVar(&inputFile, "input-file", "", "Path to a file containing resource inputs")
+	cmd.Flags().StringVar(&resourcesFile, "resources-file", "",
+		"Path to a JSON file mapping identifiers to resource URNs that input expressions may reference")
+	cmd.Flags().BoolVar(&yes, "yes", false,
+		"Automatically approve and perform the operation without a confirmation prompt")
+	addInputFlags(cmd, "input", res.InputProperties)
+	return cmd
+}
+
+func (pc *packageCommand) newStatelessResourcePatchCommand(res *schema.Resource) *cobra.Command {
 	var inputFile string
 	var inputFormat string
 	var yes bool
@@ -291,9 +324,7 @@ func (pc *packageCommand) newResourcePatchCommand(res *schema.Resource) *cobra.C
 		Short: "Patch a resource",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if !pc.stateless {
-				return errStatefulNotImplemented("patch")
-			}
+			contract.Assertf(pc.stateless, "stateless patch should not be registered in stateful mode")
 			if err := pc.requireYesIfNonInteractive(yes); err != nil {
 				return err
 			}
@@ -505,7 +536,7 @@ func (pc *packageCommand) newResourceListCommand(res *schema.Resource) *cobra.Co
 				}
 				stream, err := pc.provider.List(ctx, plugin.ListRequest{
 					Token:             tokens.Type(res.Token),
-					Query:             query,
+					Query:             resource.FromResourcePropertyMap(query),
 					Limit:             limit,
 					ContinuationToken: continuation,
 				})
@@ -561,7 +592,7 @@ func evaluateResourceListFile(
 	contract.Assertf(res.ListInputs != nil, "should not call evaluateResourceListFile for resources without list inputs")
 
 	bind := func(file *hclsyntax.File) ([]*model.Attribute, model.Type, []*schema.Property, hcl.Diagnostics) {
-		attrs, inputType, diags := pcl.BindResourceList(file, res)
+		attrs, inputType, diags := pcl.BindResourceList(ctx, file, res)
 		return attrs, inputType, res.ListInputs.Properties, diags
 	}
 	return evaluateFile(
@@ -637,14 +668,6 @@ func (pc *packageCommand) printListResults(cmd *cobra.Command, results []plugin.
 	}
 	fmt.Fprint(cmd.OutOrStdout(), output)
 	return nil
-}
-
-// errStatefulNotImplemented is returned from create/patch/delete when the user did not pass
-// --stateless. The stateful (engine-driven) implementation of these operations is the planned
-// default but isn't built yet, so for now the only working path is opting in to the stateless one.
-func errStatefulNotImplemented(op string) error {
-	return fmt.Errorf("`%s` is not yet implemented in stateful mode; pass --stateless to use the "+
-		"direct-provider implementation", op)
 }
 
 func formatDeleteSummary(res *schema.Resource, id resource.ID, dryrun bool) string {

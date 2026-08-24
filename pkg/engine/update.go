@@ -22,6 +22,7 @@ import (
 	"io"
 	"maps"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 	"sync"
@@ -30,6 +31,7 @@ import (
 	"github.com/gofrs/uuid"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/display"
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
 	resourceanalyzer "github.com/pulumi/pulumi/pkg/v3/resource/analyzer"
 	"github.com/pulumi/pulumi/pkg/v3/resource/autonaming"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
@@ -39,6 +41,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
@@ -552,8 +555,35 @@ func Update(u UpdateInfo, ctx *Context, opts UpdateOptions, dryRun bool) (
 	if err != nil {
 		return nil, nil, err
 	}
+	// Snippet deletions are held back until the resources they registered are gone: removing a
+	// snippet whose resource delete then fails would orphan the resource with no way to retry
+	// the deletion.
+	var snippetsPre []resource.Snippet
+	var snippetDeletions *snippetDeletionTracker
 	if len(opts.Snippets) > 0 {
 		u.Target = targetWithSnippets(u.Target, effectiveSnippets)
+
+		upserts := make(map[uuid.UUID]*resource.Snippet, len(opts.Snippets))
+		deleted := map[string]bool{}
+		for id, snippet := range opts.Snippets {
+			if snippet == nil {
+				deleted[id.String()] = true
+				continue
+			}
+			upserts[id] = snippet
+		}
+		snippetsPre = effectiveSnippets
+		if len(deleted) > 0 {
+			snippetsPre, err = applySnippetUpdates(baseSnippets, upserts)
+			if err != nil {
+				return nil, nil, err
+			}
+			var oldResources []*pkgresource.State
+			if u.Target != nil && u.Target.Snapshot != nil {
+				oldResources = u.Target.Snapshot.Resources
+			}
+			snippetDeletions = newSnippetDeletionTracker(deleted, oldResources)
+		}
 	}
 
 	info, err := newDeploymentContext(ctx.Cancel.Base(), u, "update", ctx.ParentSpan)
@@ -574,35 +604,99 @@ func Update(u UpdateInfo, ctx *Context, opts UpdateOptions, dryRun bool) (
 	// We skip the target check here because the targeted resource may not exist yet.
 
 	return update(ctx, info, &deploymentOptions{
-		UpdateOptions: opts,
-		SourceFunc:    newUpdateSource,
-		Events:        emitter,
-		Diag:          newEventSink(emitter, false),
-		StatusDiag:    newEventSink(emitter, true),
-		DryRun:        dryRun,
-		pluginManager: ctx.PluginManager,
+		UpdateOptions:      opts,
+		SourceFunc:         newUpdateSource,
+		Events:             emitter,
+		Diag:               newEventSink(emitter, false),
+		StatusDiag:         newEventSink(emitter, true),
+		DryRun:             dryRun,
+		pluginManager:      ctx.PluginManager,
+		snippetsPrePersist: snippetsPre,
+		snippetDeletions:   snippetDeletions,
 	})
 }
 
+// snippetDeletionTracker counts, for each snippet being deleted, how many old resources it
+// registered are still in the stack. A snippet's deletion is only persisted once its count
+// reaches zero, so a failed resource delete keeps its snippet and can be retried.
+type snippetDeletionTracker struct {
+	mu        sync.Mutex
+	surviving map[string]int
+}
+
+func newSnippetDeletionTracker(deleted map[string]bool, oldResources []*pkgresource.State) *snippetDeletionTracker {
+	t := &snippetDeletionTracker{surviving: make(map[string]int, len(deleted))}
+	for id := range deleted {
+		t.surviving[id] = 0
+	}
+	for _, r := range oldResources {
+		if r == nil || r.ViewOf != "" || r.Delete {
+			continue
+		}
+		if _, ok := t.surviving[r.SnippetID]; ok {
+			t.surviving[r.SnippetID]++
+		}
+	}
+	return t
+}
+
+// recordStep notes when a successfully applied step removed a resource registered by one of the
+// tracked snippets.
+func (t *snippetDeletionTracker) recordStep(step deploy.Step) {
+	if step.Op() != deploy.OpDelete && step.Op() != deploy.OpRemovePendingReplace {
+		return
+	}
+	old := step.Old()
+	if old == nil || old.ViewOf != "" || old.Delete {
+		return
+	}
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	if _, ok := t.surviving[old.SnippetID]; ok {
+		t.surviving[old.SnippetID]--
+	}
+}
+
+// remaining filters snippets down to those that must still be persisted, dropping the tracked
+// deletions whose resources are all gone. The second return value reports whether anything was
+// dropped.
+func (t *snippetDeletionTracker) remaining(snippets []resource.Snippet) ([]resource.Snippet, bool) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	dropped := false
+	out := slice.Prealloc[resource.Snippet](len(snippets))
+	for _, s := range snippets {
+		if n, ok := t.surviving[s.UUID]; ok && n <= 0 {
+			dropped = true
+			continue
+		}
+		out = append(out, s)
+	}
+	return out, dropped
+}
+
+// persistValidatedSnippets validates the snippets in validate and persists the persist list on
+// the snapshot manager; the two differ for deletions, which are persisted only after the
+// deployment succeeds.
 func persistValidatedSnippets(
 	ctx context.Context,
 	manager SnapshotManager,
-	snippets []resource.Snippet,
+	validate, persist []resource.Snippet,
 	plugctx *plugin.Context,
 ) error {
 	if manager == nil {
 		return nil
 	}
 	loader := schema.NewPluginLoader(plugctx)
-	for _, snippet := range snippets {
+	for _, snippet := range validate {
 		if err := ctx.Err(); err != nil {
 			return err
 		}
-		if err := deploy.ValidateSnippet(snippet, loader); err != nil {
+		if err := deploy.ValidateSnippet(ctx, snippet, loader); err != nil {
 			return err
 		}
 	}
-	return manager.SetSnippets(snippets)
+	return manager.SetSnippets(persist)
 }
 
 func installPlugins(
@@ -1057,7 +1151,7 @@ func newUpdateSource(ctx context.Context,
 	program := deploy.NewProgramSource(plugctx, runinfo, evalOpts, panicErrs)
 
 	var observer *deploy.RegistrationObserver
-	// Now create sources for _any_ snippets in the snapshot and mux them with the main source.
+	// Now create sources for snippets in the snapshot and mux them with the main source.
 	if target.Snapshot != nil && len(target.Snapshot.Snippets) > 0 {
 		// Create a registration observer so concurrent sources (the program + any snippet sources below) can wait for
 		// each other's RegisterResource calls. The resource monitor publishes outputs on the observer; snippet sources
@@ -1067,8 +1161,26 @@ func newUpdateSource(ctx context.Context,
 		// We need a loader for snippets
 		loader := schema.NewPluginLoader(plugctx)
 
-		snippetSources := make([]func(string) *promise.Promise[struct{}], len(target.Snapshot.Snippets))
-		for i, snippet := range target.Snapshot.Snippets {
+		// When the operation targets specific snippets, evaluate only those; everything else is
+		// carried forward from old state, so references into it are resolved from that state
+		// (matching what an untargeted replay would publish).
+		replaySnippets := target.Snapshot.Snippets
+		if len(opts.TargetSnippets) > 0 {
+			replaySnippets = slice.Prealloc[resource.Snippet](len(target.Snapshot.Snippets))
+			for _, snippet := range target.Snapshot.Snippets {
+				if slices.Contains(opts.TargetSnippets, snippet.UUID) {
+					replaySnippets = append(replaySnippets, snippet)
+				}
+			}
+			for _, r := range target.Snapshot.Resources {
+				if r != nil && !r.Delete && !slices.Contains(opts.TargetSnippets, r.SnippetID) {
+					observer.Resolve(r.URN, r.ID, r.Outputs)
+				}
+			}
+		}
+
+		snippetSources := make([]func(string) *promise.Promise[struct{}], len(replaySnippets))
+		for i, snippet := range replaySnippets {
 			snippetSources[i] = deploy.NewSnippetSource(
 				ctx, snippet, loader, runinfo.ProjectRoot, runinfo.Pwd, observer)
 		}
@@ -1108,6 +1220,14 @@ func update(
 
 	// Execute the deployment.
 	plan, changes, err := deployment.run(ctx)
+
+	if !opts.DryRun && opts.snippetDeletions != nil && ctx.SnapshotManager != nil {
+		if remaining, dropped := opts.snippetDeletions.remaining(opts.snippetsPrePersist); dropped {
+			if serr := ctx.SnapshotManager.SetSnippets(remaining); serr != nil {
+				err = errors.Join(err, fmt.Errorf("persist snippet deletions: %w", serr))
+			}
+		}
+	}
 
 	if ctx.FinalizeUpdateFunc != nil {
 		ctx.FinalizeUpdateFunc()
@@ -1221,6 +1341,10 @@ func (acts *updateActions) OnResourceStepPost(
 		steps := atomic.LoadInt32(&acts.Steps)
 		acts.Opts.Events.resourceOperationFailedEvent(step, status, steps, acts.Opts.Debug, acts.Opts.ShowSecrets)
 	} else {
+		if t := acts.Opts.snippetDeletions; t != nil {
+			t.recordStep(step)
+		}
+
 		op, record := step.Op(), step.Logical()
 		if acts.Opts.isRefresh && op == deploy.OpRefresh {
 			// Refreshes are handled specially.

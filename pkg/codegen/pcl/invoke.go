@@ -96,11 +96,11 @@ func invokeTokenArgument(args []model.Expression) (
 // when present and otherwise loading the package's default version. The default version is loaded
 // (rather than failing) because the concrete version may not yet be known; see the note in
 // binder_resource.go.
-func (b *binder) loadPackageSchema(pkg string) (*packageSchema, error) {
+func (b *binder) loadPackageSchema(ctx context.Context, pkg string) (*packageSchema, error) {
 	if descriptor, ok := b.packageDescriptors[pkg]; ok {
-		return b.options.packageCache.loadPackageSchemaFromDescriptor(b.options.loader, descriptor)
+		return b.options.packageCache.loadPackageSchemaFromDescriptor(ctx, b.options.loader, descriptor)
 	}
-	return b.options.packageCache.loadPackageSchema(context.TODO(), b.options.loader, pkg, "", "")
+	return b.options.packageCache.loadPackageSchema(ctx, b.options.loader, pkg, "", "")
 }
 
 // annotateObjectProperties annotates the properties of an object expression with the
@@ -159,7 +159,9 @@ func annotateObjectProperties(modelType model.Type, schemaType schema.Type) {
 	}
 }
 
-func (b *binder) bindInvokeSignature(args []model.Expression) (model.StaticFunctionSignature, hcl.Diagnostics) {
+func (b *binder) bindInvokeSignature(
+	ctx context.Context, args []model.Expression,
+) (model.StaticFunctionSignature, hcl.Diagnostics) {
 	if len(args) < 1 {
 		return b.zeroSignature(), nil
 	}
@@ -174,11 +176,14 @@ func (b *binder) bindInvokeSignature(args []model.Expression) (model.StaticFunct
 		return b.zeroSignature(), diagnostics
 	}
 
-	// The function token's package portion may be a plain package or a base
-	// provider whose functions are supplied by an extension layered on it; the
-	// function is defined by whichever candidate schema contains the token.
-	candidates, err := b.candidateSchemasForToken(context.TODO(), pkg)
-	if len(candidates) == 0 {
+	var pkgSchema *packageSchema
+	var err error
+	if packageDescriptor, ok := b.packageDescriptors[pkg]; ok {
+		pkgSchema, err = b.options.packageCache.loadPackageSchemaFromDescriptor(ctx, b.options.loader, packageDescriptor)
+	} else {
+		pkgSchema, err = b.options.packageCache.loadPackageSchema(ctx, b.options.loader, pkg, "", "")
+	}
+	if err != nil {
 		if b.options.skipInvokeTypecheck {
 			return b.zeroSignature(), nil
 		}
@@ -188,26 +193,14 @@ func (b *binder) bindInvokeSignature(args []model.Expression) (model.StaticFunct
 		return b.zeroSignature(), hcl.Diagnostics{asWarningDiagnostic(e)}
 	}
 
-	var fn *schema.Function
-	var canonicalToken string
-	for _, candidate := range candidates {
-		function, tk, found, err := candidate.LookupFunction(token)
-		if err != nil {
-			if b.options.skipInvokeTypecheck {
-				return b.zeroSignature(), nil
-			}
+	fn, tk, ok, err := pkgSchema.LookupFunction(token)
+	if err != nil {
+		if b.options.skipInvokeTypecheck {
+			return b.zeroSignature(), nil
+		}
 
-			return b.zeroSignature(), hcl.Diagnostics{functionLoadError(token, err, tokenRange)}
-		}
-		if found {
-			fn, canonicalToken = function, tk
-			if _, ok := b.referencedPackages[candidate.schema.Name()]; !ok {
-				b.referencedPackages[candidate.schema.Name()] = candidate.schema
-			}
-			break
-		}
-	}
-	if fn == nil {
+		return b.zeroSignature(), hcl.Diagnostics{functionLoadError(token, err, tokenRange)}
+	} else if !ok {
 		if b.options.skipInvokeTypecheck {
 			return b.zeroSignature(), nil
 		}
@@ -215,7 +208,7 @@ func (b *binder) bindInvokeSignature(args []model.Expression) (model.StaticFunct
 		return b.zeroSignature(), hcl.Diagnostics{unknownFunction(token, tokenRange)}
 	}
 
-	lit.Value = cty.StringVal(canonicalToken)
+	lit.Value = cty.StringVal(tk)
 
 	if len(args) < 2 {
 		return b.zeroSignature(), hcl.Diagnostics{errorf(tokenRange, "missing second arg")}

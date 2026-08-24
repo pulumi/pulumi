@@ -1,4 +1,0 @@
-component: cli
-kind: fix
-body: Make --remote not require a Pulumi.yaml file to be present
-time: 2026-07-30T14:48:23.377094232+02:00

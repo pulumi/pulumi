@@ -2985,6 +2985,9 @@ func (pc *Client) StreamNeoTaskEvents(
 func (pc *Client) PostNeoTaskUserEvent(
 	ctx context.Context, orgName, taskID string, body any,
 ) error {
+	ctx, cancel := context.WithTimeout(ctx, NeoRequestTimeout)
+	defer cancel()
+
 	path := fmt.Sprintf("/api/preview/agents/%s/tasks/%s", orgName, taskID)
 	return pc.restCall(ctx, http.MethodPost, path, nil, struct {
 		Event any `json:"event"`
@@ -3374,7 +3377,7 @@ func (pc *Client) ListPackages(ctx context.Context, name *string) iter.Seq2[apit
 
 func (pc *Client) ListTemplates(
 	ctx context.Context, opts registry.ListTemplatesOptions,
-) iter.Seq2[apitype.TemplateMetadata, error] {
+) iter.Seq2[apitype.ListTemplatesResponse, error] {
 	query := url.Values{}
 	query.Set("limit", "499")
 	if opts.Name != "" {
@@ -3386,9 +3389,12 @@ func (pc *Client) ListTemplates(
 	if opts.Search != "" {
 		query.Set("search", opts.Search)
 	}
+	for _, backing := range opts.Backing {
+		query.Add("backing", string(backing))
+	}
 
 	var continuationToken *string
-	return func(f func(apitype.TemplateMetadata, error) bool) {
+	return func(f func(apitype.ListTemplatesResponse, error) bool) {
 		for {
 			pageQuery := query
 			if continuationToken != nil {
@@ -3400,13 +3406,11 @@ func (pc *Client) ListTemplates(
 			var resp apitype.ListTemplatesResponse
 			err := pc.restCall(ctx, "GET", "/api/registry/templates?"+pageQuery.Encode(), nil, nil, &resp)
 			if err != nil {
-				f(apitype.TemplateMetadata{}, err)
+				f(apitype.ListTemplatesResponse{}, err)
 				return
 			}
-			for _, v := range resp.Templates {
-				if !f(v, nil) {
-					return
-				}
+			if !f(resp, nil) {
+				return
 			}
 			continuationToken = resp.ContinuationToken
 			if continuationToken == nil {

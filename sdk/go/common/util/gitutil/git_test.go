@@ -757,6 +757,32 @@ func TestGitCloneAndCheckoutRevision(t *testing.T) {
 	}
 }
 
+// TestGitCloneOrPullThroughAbsoluteSymlink is a regression test for
+// https://github.com/pulumi/pulumi/issues/24286: cloning into a path that
+// traverses a symlink with an absolute target (e.g. a home directory
+// symlinked to an NFS mount) must work. go-git v6 accesses local paths
+// through os.Root, which rejects absolute symlink targets.
+func TestGitCloneOrPullThroughAbsoluteSymlink(t *testing.T) {
+	t.Parallel()
+
+	base := t.TempDir()
+	real := filepath.Join(base, "real")
+	require.NoError(t, os.Mkdir(real, 0o755))
+	link := filepath.Join(base, "link")
+	require.NoError(t, os.Symlink(real, link))
+	dest := filepath.Join(link, "templates")
+
+	ref := plumbing.NewBranchReferenceName("main")
+
+	// Clone, then run again to exercise the pull path.
+	require.NoError(t, GitCloneOrPull(t.Context(), "testdata/revision-test.git", ref, dest, false))
+	require.NoError(t, GitCloneOrPull(t.Context(), "testdata/revision-test.git", ref, dest, false))
+
+	content, err := os.ReadFile(filepath.Join(dest, "test"))
+	require.NoError(t, err)
+	assert.Equal(t, "HEAD\n", string(content))
+}
+
 func TestGetLatestTagOrHash(t *testing.T) {
 	t.Parallel()
 

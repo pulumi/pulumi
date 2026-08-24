@@ -689,11 +689,10 @@ func TestListTemplates(t *testing.T) {
 		mockClient := newMockClient(mockServer)
 
 		// Call ListTemplates and collect results
-		//nolint:prealloc // capacity unknown ahead of time
 		searchResults := []apitype.TemplateMetadata{}
-		for tmpl, err := range mockClient.ListTemplates(
+		for tmpl, err := range registry.Templates(mockClient.ListTemplates(
 			t.Context(), registry.ListTemplatesOptions{Name: "my-template"},
-		) {
+		)) {
 			require.NoError(t, err)
 			searchResults = append(searchResults, tmpl)
 		}
@@ -788,11 +787,10 @@ func TestListTemplates(t *testing.T) {
 
 		mockClient := newMockClient(mockServer)
 
-		//nolint:prealloc // capacity unknown ahead of time
 		searchResults := []apitype.TemplateMetadata{}
-		for tmpl, err := range mockClient.ListTemplates(
+		for tmpl, err := range registry.Templates(mockClient.ListTemplates(
 			t.Context(), registry.ListTemplatesOptions{Name: "my-template"},
-		) {
+		)) {
 			require.NoError(t, err)
 			searchResults = append(searchResults, tmpl)
 		}

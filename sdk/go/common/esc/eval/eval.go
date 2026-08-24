@@ -49,7 +49,7 @@ type ProviderLoader interface {
 // An EnvironmentLoader provides the environment evaluator the capability to load imported environment definitions.
 type EnvironmentLoader interface {
 	// LoadEnvironment loads the definition for the environment with the given name.
-	LoadEnvironment(ctx context.Context, name string) ([]byte, Decrypter, error)
+	LoadEnvironment(ctx context.Context, name string) (yaml []byte, resolvedName string, decrypter Decrypter, err error)
 
 	// AuthorizeImport reports whether the environment named by importer may import the environment named by imported.
 	AuthorizeImport(ctx context.Context, importer string, imported string, importerIsRoot bool) error
@@ -247,6 +247,7 @@ type evalContext struct {
 	rotating     bool                 // true if we are invoking rotators
 	showSecrets  bool                 // true if secrets should be decrypted during validation
 	name         string               // the name of the environment
+	declaredName string               // the declared name used to cache the environment
 	env          *ast.EnvironmentDecl // the root of the environment AST
 	isRootEnv    bool                 // true if this environment is the root of evaluation (not an import)
 	decrypter    Decrypter            // the decrypter to use for the environment
@@ -291,6 +292,7 @@ func newEvalContext(
 		rotating:       rotating,
 		showSecrets:    showSecrets,
 		name:           name,
+		declaredName:   name,
 		env:            env,
 		isRootEnv:      isRootEnv,
 		decrypter:      decrypter,
@@ -506,7 +508,7 @@ func (e *evalContext) isReserveTopLevelKey(k string) bool {
 func (e *evalContext) evaluate() (*value, syntax.Diagnostics) {
 	mine := &imported{evaluating: true}
 	defer func() { mine.evaluating = false }()
-	e.imports[e.name] = mine
+	e.imports[e.declaredName] = mine
 
 	// Evaluate context. We prepare the context values to later evaluate interpolations.
 	e.evaluateContext()
@@ -620,13 +622,13 @@ func (e *evalContext) evaluateImport(expr ast.Expr, name string) (*value, bool) 
 		}
 		val = imported.value
 	} else {
-		bytes, dec, err := e.environments.LoadEnvironment(e.ctx, name)
+		bytes, resolvedName, dec, err := e.environments.LoadEnvironment(e.ctx, name)
 		if err != nil {
 			e.errorf(expr, "%s", err.Error())
 			return nil, false
 		}
 
-		env, diags, err := LoadYAMLBytes(name, bytes)
+		env, diags, err := LoadYAMLBytes(resolvedName, bytes)
 		e.diags.Extend(diags...)
 		if err != nil {
 			e.errorf(expr, "%s", err.Error())
@@ -637,7 +639,8 @@ func (e *evalContext) evaluateImport(expr ast.Expr, name string) (*value, bool) 
 		}
 
 		// we only want to rotate the root environment, so set rotating flag to false when evaluating imports
-		imp := newEvalContext(e.ctx, e.validating, false, name, env, false, dec, e.providers, e.environments, e.imports, e.execContext, e.showSecrets, nil) //nolint:lll
+		imp := newEvalContext(e.ctx, e.validating, false, resolvedName, env, false, dec, e.providers, e.environments, e.imports, e.execContext, e.showSecrets, nil) //nolint:lll
+		imp.declaredName = name
 		imp.traceMode = e.traceMode
 		v, diags := imp.evaluate()
 		e.diags.Extend(diags...)

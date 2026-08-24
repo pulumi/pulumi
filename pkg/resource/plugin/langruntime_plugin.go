@@ -338,9 +338,9 @@ func (h *langhost) getRequiredPlugins(ctx context.Context, info ProgramInfo) ([]
 	// this is deprecated and will be removed in a future release, but we use it for backcompat for now until
 	// all language hosts are update to GetRequiredPackages.
 	resp, err := h.client.GetRequiredPlugins(ctx, &pulumirpc.GetRequiredPluginsRequest{ //nolint:staticcheck
-		Project: "deprecated",
-		Pwd:     info.ProgramDirectory(),
-		Program: info.EntryPoint(),
+		Project: "deprecated",            //nolint:staticcheck
+		Pwd:     info.ProgramDirectory(), //nolint:staticcheck
+		Program: info.EntryPoint(),       //nolint:staticcheck
 		Info:    minfo,
 	})
 	if err != nil {
@@ -408,14 +408,14 @@ func (h *langhost) Run(ctx context.Context, info RunInfo) (string, bool, error) 
 	resp, err := h.client.Run(ctx, &pulumirpc.RunRequest{
 		MonitorAddress:   info.MonitorAddress,
 		Pwd:              info.Pwd,
-		Program:          info.Info.EntryPoint(),
+		Program:          info.Info.EntryPoint(), //nolint:staticcheck
 		Args:             info.Args,
 		Project:          info.Project,
 		Stack:            info.Stack,
 		Config:           config,
 		ConfigSecretKeys: configSecretKeys,
 		DryRun:           info.DryRun,
-		QueryMode:        info.QueryMode,
+		QueryMode:        info.QueryMode, //nolint:staticcheck
 		Parallel:         info.Parallel,
 		Organization:     info.Organization,
 		Info:             minfo,
@@ -485,7 +485,7 @@ func (h *langhost) InstallDependencies(ctx context.Context, request InstallDepen
 	}
 
 	resp, err := h.client.InstallDependencies(ctx, &pulumirpc.InstallDependenciesRequest{
-		Directory:               request.Info.ProgramDirectory(),
+		Directory:               request.Info.ProgramDirectory(), //nolint:staticcheck
 		IsTerminal:              cmdutil.GetGlobalColorization() != colors.Never,
 		Info:                    minfo,
 		UseLanguageVersionTools: request.UseLanguageVersionTools,

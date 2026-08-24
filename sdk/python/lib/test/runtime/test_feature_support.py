@@ -58,7 +58,6 @@ class LegacyMonitor:
 def configure_monitor(monitor):
     s = Settings(project="project", stack="stack")
     s.monitor = monitor
-    s.feature_support = {}
     settings.configure(s)
 
 
@@ -71,7 +70,8 @@ async def test_loads_features_from_get_deployment_info():
             resource_pb2.RESOURCE_MONITOR_FEATURE_ALIAS_SPECS,
             resource_pb2.RESOURCE_MONITOR_FEATURE_TRANSFORMS,
             resource_pb2.RESOURCE_MONITOR_FEATURE_RESOURCE_HOOKS,
-            # Features with no legacy string ID never show up in feature_support.
+            resource_pb2.RESOURCE_MONITOR_FEATURE_INVOKE_DEPENDS_ON,
+            # Features the SDK does not track never show up in feature_support.
             resource_pb2.RESOURCE_MONITOR_FEATURE_BYTE_STRING,
         ]
     )
@@ -79,18 +79,14 @@ async def test_loads_features_from_get_deployment_info():
 
     await _load_monitor_feature_support()
 
-    assert settings.SETTINGS.feature_support.fget() == {
-        "secrets": True,
-        "resourceReferences": True,
-        "outputValues": False,
-        "deletedWith": False,
-        "replaceWith": False,
-        "aliasSpecs": True,
-        "transforms": True,
-        "invokeTransforms": False,
-        "parameterization": False,
-        "resourceHooks": True,
-        "errorHooks": False,
+    assert settings.SETTINGS.monitor_features == {
+        resource_pb2.RESOURCE_MONITOR_FEATURE_SECRETS,
+        resource_pb2.RESOURCE_MONITOR_FEATURE_RESOURCE_REFERENCES,
+        resource_pb2.RESOURCE_MONITOR_FEATURE_ALIAS_SPECS,
+        resource_pb2.RESOURCE_MONITOR_FEATURE_TRANSFORMS,
+        resource_pb2.RESOURCE_MONITOR_FEATURE_RESOURCE_HOOKS,
+        resource_pb2.RESOURCE_MONITOR_FEATURE_INVOKE_DEPENDS_ON,
+        resource_pb2.RESOURCE_MONITOR_FEATURE_BYTE_STRING,
     }
     assert monitor.supports_feature_calls == 0
 
@@ -102,18 +98,10 @@ async def test_falls_back_to_supports_feature_when_unimplemented():
 
     await _load_monitor_feature_support()
 
-    assert settings.SETTINGS.feature_support.fget() == {
-        "secrets": True,
-        "resourceReferences": False,
-        "outputValues": True,
-        "deletedWith": False,
-        "replaceWith": False,
-        "aliasSpecs": False,
-        "transforms": False,
-        "invokeTransforms": True,
-        "parameterization": False,
-        "resourceHooks": False,
-        "errorHooks": False,
+    assert settings.SETTINGS.monitor_features == {
+        resource_pb2.RESOURCE_MONITOR_FEATURE_SECRETS,
+        resource_pb2.RESOURCE_MONITOR_FEATURE_OUTPUT_VALUES,
+        resource_pb2.RESOURCE_MONITOR_FEATURE_INVOKE_TRANSFORMS,
     }
     assert sorted(monitor.probed) == [
         "aliasSpecs",

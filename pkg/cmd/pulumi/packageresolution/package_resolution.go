@@ -360,6 +360,13 @@ func Resolve(
 		return remoteResolution()
 	}
 
+	// If this used to work (like "aws") or if the user has specified a
+	// pluginDownloadURL themselves, then pass it through.
+	if registry.IsPreRegistryPackage(spec.Source) || spec.PluginDownloadURL != "" ||
+		util.SetKnownPluginDownloadURL(&naivePackageDescriptor.PluginDescriptor) {
+		return remoteResolution()
+	}
+
 	var registryNotFoundErr error
 	var registryQueryErr error
 
@@ -418,13 +425,6 @@ func Resolve(
 		} else {
 			registryQueryErr = fmt.Errorf("%w: %w", ErrRegistryQuery, err)
 		}
-	}
-
-	// If this used to work (like "aws") or if the user has specified a
-	// pluginDownloadURL themselves, then pass it through.
-	if registry.IsPreRegistryPackage(spec.Source) || spec.PluginDownloadURL != "" ||
-		util.SetKnownPluginDownloadURL(&naivePackageDescriptor.PluginDescriptor) {
-		return remoteResolution()
 	}
 
 	if registryQueryErr != nil {

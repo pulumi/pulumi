@@ -13,7 +13,6 @@ func main() {
 		var multipleSimpleComponents []*SimpleComponent
 		for index := 0; index < 10; index++ {
 			key0 := index
-			_ := index
 			__res, err := NewSimpleComponent(ctx, fmt.Sprintf("multipleSimpleComponents-%v", key0), nil)
 			if err != nil {
 				return err
@@ -32,7 +31,7 @@ func main() {
 				0,
 				1,
 			},
-			CidrBlocks: map[string]interface{}{
+			CidrBlocks: map[string]string{
 				"one": "uno",
 				"two": "dos",
 			},
@@ -49,7 +48,7 @@ func main() {
 					Name: "Second",
 				},
 			},
-			DeploymentZones: map[string]interface{}{
+			DeploymentZones: map[string]*DeploymentZonesArgs{
 				"first": &DeploymentZonesArgs{
 					Zone: "First zone",
 				},

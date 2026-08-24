@@ -21,7 +21,6 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
-	"errors"
 	"fmt"
 	"iter"
 	"net/http"
@@ -37,7 +36,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
-	cmdTemplates "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/templates"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/pkg/v3/registry"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
@@ -471,8 +469,8 @@ func TestInvalidTemplateName(t *testing.T) {
 					Mock: registry.Mock{
 						ListTemplatesF: func(
 							ctx context.Context, opts registry.ListTemplatesOptions,
-						) iter.Seq2[apitype.TemplateMetadata, error] {
-							return func(yield func(apitype.TemplateMetadata, error) bool) {}
+						) iter.Seq2[apitype.ListTemplatesResponse, error] {
+							return singlePage()
 						},
 					},
 				}
@@ -620,8 +618,8 @@ func TestValidateStackRefAndProjectName(t *testing.T) {
 				Mock: registry.Mock{
 					ListTemplatesF: func(
 						ctx context.Context, opts registry.ListTemplatesOptions,
-					) iter.Seq2[apitype.TemplateMetadata, error] {
-						return func(yield func(apitype.TemplateMetadata, error) bool) {}
+					) iter.Seq2[apitype.ListTemplatesResponse, error] {
+						return singlePage()
 					},
 				},
 			}
@@ -698,8 +696,8 @@ func TestProjectExists(t *testing.T) {
 				Mock: registry.Mock{
 					ListTemplatesF: func(
 						ctx context.Context, opts registry.ListTemplatesOptions,
-					) iter.Seq2[apitype.TemplateMetadata, error] {
-						return func(yield func(apitype.TemplateMetadata, error) bool) {}
+					) iter.Seq2[apitype.ListTemplatesResponse, error] {
+						return singlePage()
 					},
 				},
 			}
@@ -850,8 +848,8 @@ func TestPulumiNewConflictingProject(t *testing.T) {
 				Mock: registry.Mock{
 					ListTemplatesF: func(
 						ctx context.Context, opts registry.ListTemplatesOptions,
-					) iter.Seq2[apitype.TemplateMetadata, error] {
-						return func(yield func(apitype.TemplateMetadata, error) bool) {}
+					) iter.Seq2[apitype.ListTemplatesResponse, error] {
+						return singlePage()
 					},
 				},
 			}
@@ -883,7 +881,9 @@ func TestPulumiNewConflictingProject(t *testing.T) {
 func TestPulumiNewSetsTemplateTag(t *testing.T) {
 	tests := []struct {
 		argument string
-		prompted string
+		// answers drives the guided prompts when no template is named. Empty means the
+		// invocation names one and never prompts.
+		answers  []any
 		expected string
 		remote   bool
 	}{
@@ -897,14 +897,14 @@ func TestPulumiNewSetsTemplateTag(t *testing.T) {
 			remote:   true,
 		},
 		{
-			prompted: "python",
+			answers:  []any{"Basic Pulumi Program", "Python", confirmYes},
 			expected: "python",
 		},
 	}
 	for _, tt := range tests {
 		name := tt.argument
 		if name == "" {
-			name = tt.prompted
+			name = tt.expected
 		}
 		t.Run(name, func(t *testing.T) {
 			if tt.remote {
@@ -918,8 +918,8 @@ func TestPulumiNewSetsTemplateTag(t *testing.T) {
 							Mock: registry.Mock{
 								ListTemplatesF: func(
 									ctx context.Context, opts registry.ListTemplatesOptions,
-								) iter.Seq2[apitype.TemplateMetadata, error] {
-									return func(yield func(apitype.TemplateMetadata, error) bool) {}
+								) iter.Seq2[apitype.ListTemplatesResponse, error] {
+									return singlePage()
 								},
 							},
 						}
@@ -931,14 +931,13 @@ func TestPulumiNewSetsTemplateTag(t *testing.T) {
 			t.Chdir(tempdir)
 			uniqueProjectName := filepath.Base(tempdir) + "test"
 
-			chooseTemplateMock := func(templates []cmdTemplates.Template, opts display.Options,
-			) (cmdTemplates.Template, error) {
-				for _, template := range templates {
-					if template.Name() == tt.prompted {
-						return template, nil
-					}
-				}
-				return nil, errors.New("template not found")
+			prompted := len(tt.answers) > 0
+			selectOne := func(string, []string, display.Options) (int, error) {
+				t.Error("a named template must not prompt")
+				return 0, nil
+			}
+			if prompted {
+				selectOne, _ = scriptedSelect(t, tt.answers...)
 			}
 
 			runtimeOptionsMock := func(ctx *plugin.Context, language plugin.LanguageRuntime,
@@ -949,15 +948,14 @@ func TestPulumiNewSetsTemplateTag(t *testing.T) {
 			}
 
 			args := newArgs{
-				interactive:          tt.prompted != "",
+				interactive:          prompted,
 				generateOnly:         true,
-				yes:                  tt.prompted == "",
-				templateMode:         true,
+				yes:                  !prompted,
 				name:                 projectName,
 				prompt:               promptMock(uniqueProjectName, stackName),
 				promptRuntimeOptions: runtimeOptionsMock,
 				languageTemplate:     languageTemplateMock,
-				chooseTemplate:       chooseTemplateMock,
+				selectOne:            selectOne,
 				secretsProvider:      "default",
 				templateNameOrURL:    tt.argument,
 			}
@@ -994,7 +992,6 @@ func TestPulumiPromptRuntimeOptions(t *testing.T) {
 		interactive:          false,
 		generateOnly:         true,
 		yes:                  true,
-		templateMode:         true,
 		name:                 projectName,
 		prompt:               ui.PromptForValue,
 		promptRuntimeOptions: runtimeOptionsMock,
@@ -1012,7 +1009,6 @@ func TestPulumiPromptRuntimeOptions(t *testing.T) {
 	require.Equal(t, "someValue", proj.Runtime.Options()["someOption"])
 }
 
-//nolint:paralleltest // Sets a mock login manager
 func TestPulumiNewWithOrgTemplates(t *testing.T) {
 	// Set environment variable to disable registry resolution and use org templates
 	t.Setenv("PULUMI_DISABLE_REGISTRY_RESOLVE", "true")
@@ -1060,8 +1056,8 @@ func TestPulumiNewWithOrgTemplates(t *testing.T) {
 				Mock: registry.Mock{
 					ListTemplatesF: func(
 						ctx context.Context, opts registry.ListTemplatesOptions,
-					) iter.Seq2[apitype.TemplateMetadata, error] {
-						return func(yield func(apitype.TemplateMetadata, error) bool) {}
+					) iter.Seq2[apitype.ListTemplatesResponse, error] {
+						return singlePage()
 					},
 				},
 			}
@@ -1104,7 +1100,13 @@ Available Templates:
 
 func ptr[T any](v T) *T { return &v }
 
-//nolint:paralleltest // Sets a mock login manager
+// singlePage answers a template listing with one page holding the given templates.
+func singlePage(templates ...apitype.TemplateMetadata) iter.Seq2[apitype.ListTemplatesResponse, error] {
+	return func(yield func(apitype.ListTemplatesResponse, error) bool) {
+		yield(apitype.ListTemplatesResponse{Templates: templates}, nil)
+	}
+}
+
 func TestPulumiNewWithRegistryTemplates(t *testing.T) {
 	t.Setenv("PULUMI_DISABLE_REGISTRY_RESOLVE", "false")
 	t.Setenv("PULUMI_EXPERIMENTAL", "true")
@@ -1112,19 +1114,12 @@ func TestPulumiNewWithRegistryTemplates(t *testing.T) {
 		Mock: registry.Mock{
 			ListTemplatesF: func(
 				ctx context.Context, opts registry.ListTemplatesOptions,
-			) iter.Seq2[apitype.TemplateMetadata, error] {
-				return func(yield func(apitype.TemplateMetadata, error) bool) {
-					if !yield(apitype.TemplateMetadata{
-						Name: "template-1", Description: ptr("Describe 1"), Publisher: "Some org",
-					}, nil) {
-						return
-					}
-					if !yield(apitype.TemplateMetadata{
-						Name: "template-2", Description: ptr("Describe 2"), RepoSlug: ptr("some-org/repo"), Source: "github",
-					}, nil) {
-						return
-					}
-				}
+			) iter.Seq2[apitype.ListTemplatesResponse, error] {
+				return singlePage(apitype.TemplateMetadata{
+					Name: "template-1", Description: ptr("Describe 1"), Publisher: "Some org",
+				}, apitype.TemplateMetadata{
+					Name: "template-2", Description: ptr("Describe 2"), RepoSlug: ptr("some-org/repo"), Source: "github",
+				})
 			},
 		},
 	}
@@ -1209,9 +1204,9 @@ func TestPulumiNewWithoutTemplateSupport(t *testing.T) {
 				Mock: registry.Mock{
 					ListTemplatesF: func(
 						ctx context.Context, opts registry.ListTemplatesOptions,
-					) iter.Seq2[apitype.TemplateMetadata, error] {
-						assert.Equal(t, registry.ListTemplatesOptions{}, opts)
-						return func(yield func(apitype.TemplateMetadata, error) bool) {}
+					) iter.Seq2[apitype.ListTemplatesResponse, error] {
+						require.Len(t, opts.Backing, 1, "browsing splits the listing, one backing per fetch")
+						return singlePage()
 					},
 				},
 			}
@@ -1235,7 +1230,6 @@ Available Templates:
 	assert.Equal(t, "", stderr.String())
 }
 
-//nolint:paralleltest // Sets a mock login manager, changes the directory
 func TestPulumiNewOrgTemplate(t *testing.T) {
 	// Set environment variable to disable registry resolution and use org templates
 	t.Setenv("PULUMI_DISABLE_REGISTRY_RESOLVE", "true")
@@ -1296,8 +1290,8 @@ resources:
 				Mock: registry.Mock{
 					ListTemplatesF: func(
 						ctx context.Context, opts registry.ListTemplatesOptions,
-					) iter.Seq2[apitype.TemplateMetadata, error] {
-						return func(yield func(apitype.TemplateMetadata, error) bool) {}
+					) iter.Seq2[apitype.ListTemplatesResponse, error] {
+						return singlePage()
 					},
 				},
 			}

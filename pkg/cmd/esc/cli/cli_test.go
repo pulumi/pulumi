@@ -201,7 +201,7 @@ type testEnvironments struct {
 	environments map[string]*testEnvironment
 }
 
-func (e *testEnvironments) LoadEnvironment(ctx context.Context, ref string) ([]byte, eval.Decrypter, error) {
+func (e *testEnvironments) LoadEnvironment(ctx context.Context, ref string) ([]byte, string, eval.Decrypter, error) {
 	var name string
 
 	// This "emulates" the backend behavior of resolving refs
@@ -214,9 +214,9 @@ func (e *testEnvironments) LoadEnvironment(ctx context.Context, ref string) ([]b
 
 	env, ok := e.environments[name]
 	if !ok {
-		return nil, nil, errors.New("not found")
+		return nil, "", nil, errors.New("not found")
 	}
-	return env.latest().yaml, rot128{}, nil
+	return env.latest().yaml, ref, rot128{}, nil
 }
 
 func (e *testEnvironments) AuthorizeImport(_ context.Context, _ string, _ string, _ bool) error {
@@ -2065,7 +2065,7 @@ func TestCLI(t *testing.T) {
 	path := filepath.Join("testdata")
 	entries, err := os.ReadDir(path)
 	require.NoError(t, err)
-	for _, e := range entries { //nolint:paralleltest,lll // non-thread-safe shared state
+	for _, e := range entries { //nolint:paralleltest // non-thread-safe shared state
 		t.Run(e.Name(), func(t *testing.T) {
 			if runtime.GOOS == "windows" && e.Name() == "run.yaml" {
 				// run.yaml exercises Unix shell semantics (source, echo -n, and file

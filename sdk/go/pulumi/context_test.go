@@ -380,7 +380,6 @@ func TestMergeProviders(t *testing.T) {
 			expected:  []string{"t2"},
 		},
 	}
-	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
 	for i, tt := range tests {
 		t.Run(strconv.Itoa(i), func(t *testing.T) {
 			t.Parallel()
@@ -975,6 +974,156 @@ func TestHooksAndTransformsNoop(t *testing.T) {
 		return nil
 	}, WithMocks("project", "stack", mocks))
 	require.NoError(t, err)
+}
+
+type transformsTestMonitor struct {
+	testMonitor
+	transforms       []ResourceTransform
+	invokeTransforms []InvokeTransform
+}
+
+func (m *transformsTestMonitor) RegisterTransform(t ResourceTransform) {
+	m.transforms = append(m.transforms, t)
+}
+
+func (m *transformsTestMonitor) RegisterInvokeTransform(t InvokeTransform) {
+	m.invokeTransforms = append(m.invokeTransforms, t)
+}
+
+func TestMockTransformsNotRun(t *testing.T) {
+	t.Parallel()
+
+	var inputs resource.PropertyMap
+	var resourceTransforms []ResourceTransform
+	mocks := &testMonitor{
+		NewResourceF: func(args MockResourceArgs) (string, resource.PropertyMap, error) {
+			if args.Name == "res" {
+				inputs = args.Inputs
+				resourceTransforms = args.Transforms
+			}
+			return args.Name + "_id", args.Inputs, nil
+		},
+	}
+
+	err := RunErr(func(ctx *Context) error {
+		transform := func(_ context.Context, args *ResourceTransformArgs) *ResourceTransformResult {
+			props := args.Props
+			props["foo"] = String("transformed")
+			return &ResourceTransformResult{Props: props, Opts: args.Opts}
+		}
+		err := ctx.RegisterResourceTransform(transform)
+		require.NoError(t, err)
+
+		var res testResource2
+		return ctx.RegisterResource("test:resource:type", "res", &testResource2Inputs{Foo: String("orig")}, &res,
+			Transforms([]ResourceTransform{transform}))
+	}, WithMocks("project", "stack", mocks))
+	require.NoError(t, err)
+
+	require.Equal(t, resource.NewProperty("orig"), inputs["foo"])
+
+	require.Len(t, resourceTransforms, 1)
+	result := resourceTransforms[0](t.Context(), &ResourceTransformArgs{
+		Custom: true,
+		Type:   "test:resource:type",
+		Name:   "res",
+		Props:  Map{"foo": String("orig")},
+		Opts:   ResourceOptions{},
+	})
+	require.NotNil(t, result)
+	require.Equal(t, Map{"foo": String("transformed")}, result.Props)
+}
+
+func TestMockTransformsExposed(t *testing.T) {
+	t.Parallel()
+
+	mock := &transformsTestMonitor{}
+	var gotProps Map
+	mock.NewResourceF = func(args MockResourceArgs) (string, resource.PropertyMap, error) {
+		if args.Name != "res" {
+			return args.Name + "_id", args.Inputs, nil
+		}
+		props := Map{"foo": String(args.Inputs["foo"].StringValue())}
+		for _, transform := range append(append([]ResourceTransform{}, args.Transforms...), mock.transforms...) {
+			result := transform(t.Context(), &ResourceTransformArgs{
+				Custom: args.Custom,
+				Type:   args.TypeToken,
+				Name:   args.Name,
+				Props:  props,
+				Opts:   ResourceOptions{},
+			})
+			if result != nil {
+				props = result.Props
+			}
+		}
+		gotProps = props
+		return args.Name + "_id", args.Inputs, nil
+	}
+
+	err := RunErr(func(ctx *Context) error {
+		err := ctx.RegisterResourceTransform(
+			func(_ context.Context, args *ResourceTransformArgs) *ResourceTransformResult {
+				props := args.Props
+				props["stack"] = String("yes")
+				return &ResourceTransformResult{Props: props, Opts: args.Opts}
+			})
+		require.NoError(t, err)
+
+		ownTransform := func(_ context.Context, args *ResourceTransformArgs) *ResourceTransformResult {
+			props := args.Props
+			props["own"] = String("yes")
+			return &ResourceTransformResult{Props: props, Opts: args.Opts}
+		}
+
+		var res testResource2
+		return ctx.RegisterResource("test:resource:type", "res", &testResource2Inputs{Foo: String("orig")}, &res,
+			Transforms([]ResourceTransform{ownTransform}))
+	}, WithMocks("project", "stack", mock))
+	require.NoError(t, err)
+
+	require.Equal(t, Map{
+		"foo":   String("orig"),
+		"own":   String("yes"),
+		"stack": String("yes"),
+	}, gotProps)
+}
+
+func TestMockInvokeTransformExposed(t *testing.T) {
+	t.Parallel()
+
+	mock := &transformsTestMonitor{}
+	var gotArgs Map
+	mock.CallF = func(args MockCallArgs) (resource.PropertyMap, error) {
+		callArgs := Map{"bang": String(args.Args["bang"].StringValue())}
+		for _, transform := range mock.invokeTransforms {
+			result := transform(t.Context(), &InvokeTransformArgs{
+				Token: args.Token,
+				Args:  callArgs,
+				Opts:  InvokeOptions{},
+			})
+			if result != nil {
+				callArgs = result.Args
+			}
+		}
+		gotArgs = callArgs
+		return resource.PropertyMap{"foo": resource.NewProperty("result")}, nil
+	}
+
+	err := RunErr(func(ctx *Context) error {
+		err := ctx.RegisterInvokeTransform(
+			func(_ context.Context, args *InvokeTransformArgs) *InvokeTransformResult {
+				newArgs := args.Args
+				newArgs["extra"] = String("added")
+				return &InvokeTransformResult{Args: newArgs, Opts: args.Opts}
+			})
+		require.NoError(t, err)
+
+		var result invokeResult
+		return ctx.Invoke("test:index:MyFunction", invokeArgs{Bang: "3", Bar: "4"}, &result)
+	}, WithMocks("project", "stack", mock))
+	require.NoError(t, err)
+
+	require.Equal(t, Map{"bang": String("3"), "extra": String("added")}, gotArgs)
 }
 
 // packageRefMonitor is a mock monitor that tracks RegisterPackage calls and

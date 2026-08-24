@@ -89,7 +89,7 @@ func newDoResourceCommand(
 	t.Helper()
 
 	mlm := &cmdBackend.MockLoginManager{}
-	mws := &pkgWorkspace.MockContext{}
+	mws := newTestWorkspace(t)
 	loader := func(ctx context.Context, pctx *plugin.Context, wd, source string) (plugin.Provider, error) {
 		assert.Equal(t, "azure", source)
 		return provider, nil
@@ -154,7 +154,7 @@ Flags:
       --provider string        The URN of a provider resource in the current stack whose inputs to use as the base of the provider configuration (requires a stack context)
       --provider-file string   Path to a file containing provider configuration
       --show-secrets           Show secret values in output
-      --stateless              Run create/patch/delete directly against the provider without persisting state. Required for now: the stateful (engine-driven) implementation is still in development, so patch/delete error out unless --stateless is set.
+      --stateless              Run create/patch/delete directly against the provider without persisting state.
 
 Use "do azure:index:myResource [command] --help" for more information about a command.
 `
@@ -209,7 +209,7 @@ Flags:
       --provider string        The URN of a provider resource in the current stack whose inputs to use as the base of the provider configuration (requires a stack context)
       --provider-file string   Path to a file containing provider configuration
       --show-secrets           Show secret values in output
-      --stateless              Run create/patch/delete directly against the provider without persisting state. Required for now: the stateful (engine-driven) implementation is still in development, so patch/delete error out unless --stateless is set.
+      --stateless              Run create/patch/delete directly against the provider without persisting state.
 
 Use "do azure:index:myResource [command] --help" for more information about a command.
 `
@@ -630,7 +630,7 @@ func TestDoCmdResourceList(t *testing.T) {
 			MockProvider: plugin.MockProvider{
 				ListF: func(ctx context.Context, req plugin.ListRequest) (*plugin.ListStream, error) {
 					calls = append(calls, req)
-					assert.Equal(t, "prod", req.Query["prefix"].StringValue())
+					assert.Equal(t, "prod", req.Query.Get("prefix").AsString())
 					return plugin.NewListStream([]plugin.ListResult{{ID: "1", Name: "one"}}, "next"), nil
 				},
 			},
@@ -1048,7 +1048,9 @@ func providerFlagStackContext(
 		NewF: func(_ string) (pkgWorkspace.W, error) {
 			return &pkgWorkspace.MockW{
 				SettingsF: func() *pkgWorkspace.Settings {
-					return &pkgWorkspace.Settings{Stack: "myorg/proj/dev"}
+					return &pkgWorkspace.Settings{
+						Stack: "myorg/proj/dev", //nolint:staticcheck
+					}
 				},
 			}, nil
 		},

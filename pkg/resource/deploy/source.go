@@ -101,6 +101,9 @@ type RegisterResourceEvent interface {
 	// ExtensionRef returns the per-deployment UUID identifying which extension
 	// registration this resource came from.
 	ExtensionRef() apitype.ExtensionRef
+	// StateMigrations returns the state migration functions to apply to the prior state of this resource and its
+	// descendants before diffing.
+	StateMigrations() []StateMigrationFunction
 }
 
 // RegisterResult is the state of the resource after it has been registered.

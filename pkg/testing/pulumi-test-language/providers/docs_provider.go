@@ -25,6 +25,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 // A small provider that uses documentation references for various properties. The correctness of documentation can't
@@ -181,7 +182,7 @@ func (p *DocsProvider) CheckConfig(
 	_ context.Context, req plugin.CheckConfigRequest,
 ) (plugin.CheckConfigResponse, error) {
 	// Expect just the version
-	version, ok := req.News["version"]
+	version, ok := req.News.GetOk("version")
 	if !ok {
 		return plugin.CheckConfigResponse{
 			Failures: makeCheckFailure("version", "missing version"),
@@ -192,13 +193,13 @@ func (p *DocsProvider) CheckConfig(
 			Failures: makeCheckFailure("version", "version is not a string"),
 		}, nil
 	}
-	if version.StringValue() != "28.0.0" {
+	if version.AsString() != "28.0.0" {
 		return plugin.CheckConfigResponse{
 			Failures: makeCheckFailure("version", "version is not 28.0.0"),
 		}, nil
 	}
 
-	if len(req.News) != 1 {
+	if req.News.Len() != 1 {
 		return plugin.CheckConfigResponse{
 			Failures: makeCheckFailure("", fmt.Sprintf("too many properties: %v", req.News)),
 		}, nil
@@ -297,18 +298,18 @@ func (p *DocsProvider) Invoke(
 		return plugin.InvokeResponse{}, fmt.Errorf("invalid function token: %s", req.Tok)
 	}
 
-	in := req.Args["in"]
+	in := req.Args.Get("in")
 	if !in.IsBool() {
 		return plugin.InvokeResponse{
 			Failures: makeCheckFailure("in", fmt.Sprintf("invalid argument 'in': %v", in)),
 		}, nil
 	}
 
-	out := !in.BoolValue()
+	out := !in.AsBool()
 
 	return plugin.InvokeResponse{
-		Properties: resource.NewPropertyMapFromMap(map[string]any{
-			"out": out,
+		Properties: property.NewMap(map[string]property.Value{
+			"out": property.New(out),
 		}),
 	}, nil
 }

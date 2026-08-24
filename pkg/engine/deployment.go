@@ -166,6 +166,11 @@ type deploymentOptions struct {
 	// Resources to import, if this is an import.
 	imports []deploy.Import
 
+	// the snippet list persisted before the deployment runs, and the tracker deciding which
+	// held-back snippet deletions may be persisted afterwards (see Update)
+	snippetsPrePersist []resource.Snippet
+	snippetDeletions   *snippetDeletionTracker
+
 	// true if this deployment is (only) a refresh operation. This should not be
 	// confused with UpdateOptions.Refresh, which will be true whenever a refresh
 	// is happening as part of an operation (e.g. `up --refresh`).
@@ -247,7 +252,7 @@ func newDeployment(
 
 	// Set up a goroutine that will signal cancellation to the source if the caller context
 	// is cancelled.
-	cancelCtx, cancelFunc := context.WithCancel(context.Background())
+	cancelCtx, cancelFunc := context.WithCancel(context.WithoutCancel(baseCtx))
 	go deploy.PanicRecovery(panicErrsChannel, func() {
 		<-ctx.Cancel.Canceled()
 		logging.V(7).Infof("engine.newDeployment(...): received cancellation signal")
@@ -265,7 +270,9 @@ func newDeployment(
 		return nil, err
 	}
 	if len(opts.Snippets) > 0 && !opts.DryRun {
-		if err := persistValidatedSnippets(baseCtx, ctx.SnapshotManager, target.Snapshot.Snippets, plugctx); err != nil {
+		if err := persistValidatedSnippets(
+			baseCtx, ctx.SnapshotManager, target.Snapshot.Snippets, opts.snippetsPrePersist, plugctx,
+		); err != nil {
 			contract.IgnoreClose(plugctx)
 			return nil, err
 		}
@@ -417,6 +424,9 @@ func (deployment *deployment) run(cancelCtx *Context) (*deploy.Plan, display.Res
 	// Inject our opentracing span into the context.
 	if deployment.Ctx.TracingSpan != nil {
 		ctx = opentracing.ContextWithSpan(ctx, deployment.Ctx.TracingSpan)
+	}
+	if deployment.Ctx.otelSpan != nil {
+		ctx = trace.ContextWithSpan(ctx, deployment.Ctx.otelSpan)
 	}
 
 	// Emit an appropriate prelude event.

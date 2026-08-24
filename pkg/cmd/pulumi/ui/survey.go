@@ -208,6 +208,36 @@ func PromptUserErr(
 	colorization colors.Colorization,
 	surveyAskOpts ...survey.AskOpt,
 ) (string, error) {
+	var response string
+	if err := askSelect(msg, options, defaultOption, colorization, &response, surveyAskOpts...); err != nil {
+		return "", err
+	}
+	return response, nil
+}
+
+// PromptUserIndexErr is like PromptUserErr but identifies the selection by index rather than by
+// value, so callers need not map display labels back to what they represent.
+func PromptUserIndexErr(
+	msg string,
+	options []string,
+	colorization colors.Colorization,
+	surveyAskOpts ...survey.AskOpt,
+) (int, error) {
+	var response surveycore.OptionAnswer
+	if err := askSelect(msg, options, "", colorization, &response, surveyAskOpts...); err != nil {
+		return 0, err
+	}
+	return response.Index, nil
+}
+
+func askSelect(
+	msg string,
+	options []string,
+	defaultOption string,
+	colorization colors.Colorization,
+	response any,
+	surveyAskOpts ...survey.AskOpt,
+) error {
 	prompt := "\b" + colorization.Colorize(colors.SpecPrompt+msg+colors.Reset)
 	disableSurveyColorOnce()
 
@@ -219,15 +249,15 @@ func PromptUserErr(
 		}),
 	)
 
-	var response string
-	if err := survey.AskOne(&survey.Select{
+	sel := &survey.Select{
 		Message: prompt,
 		Options: options,
-		Default: defaultOption,
-	}, &response, allSurveyAskOpts...); err != nil {
-		return "", err
 	}
-	return response, nil
+	// survey rejects any non-nil default that is not one of the options, including "".
+	if defaultOption != "" {
+		sel.Default = defaultOption
+	}
+	return survey.AskOne(sel, response, allSurveyAskOpts...)
 }
 
 // PromptUserMultiSkippable wraps over promptUserMulti making it skippable through the "yes" parameter

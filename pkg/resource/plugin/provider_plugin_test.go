@@ -962,7 +962,7 @@ func (c *stubClient) Update(
 // drainListStream iterates stream.Items, collecting results into a slice and stopping at the first error.
 func drainListStream(t *testing.T, stream *ListStream) []ListResult {
 	t.Helper()
-	var got []ListResult //nolint:prealloc // Items is an iter
+	var got []ListResult
 	for item, err := range stream.Items {
 		require.NoError(t, err)
 		got = append(got, item)

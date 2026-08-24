@@ -36,8 +36,7 @@ func http2ServerAndClient(handler http.Handler) (*httptest.Server, *http.Client)
 	// httptest.StartTLS will set NextProtos to ["http/1.1"] if it's unset, so we need to add
 	// HTTP/2 eagerly before starting the server.
 	server := httptest.NewUnstartedServer(handler)
-	server.TLS = &tls.Config{ //nolint:gosec
-
+	server.TLS = &tls.Config{
 		NextProtos: []string{http2.NextProtoTLS},
 	}
 	server.StartTLS()
@@ -199,6 +198,27 @@ func TestRetry429ContextCanceledDuringWait(t *testing.T) {
 	require.Error(t, err)
 	assert.ErrorIs(t, err, context.DeadlineExceeded)
 	assert.Less(t, time.Since(start), 5*time.Second)
+}
+
+func TestRetryContextCanceledDuringBackoff(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer server.Close()
+
+	ctx, cancel := context.WithTimeout(t.Context(), 200*time.Millisecond)
+	defer cancel()
+	req, err := http.NewRequestWithContext(ctx, "POST", server.URL, strings.NewReader("hello, server"))
+	require.NoError(t, err)
+
+	delay := 10 * time.Second
+	start := time.Now()
+	_, err = DoWithRetryOpts(req, server.Client(), RetryOpts{Delay: &delay}) //nolint:bodyclose // no response on error
+	require.Error(t, err)
+	assert.ErrorIs(t, err, context.DeadlineExceeded)
+	assert.Less(t, time.Since(start), 5*time.Second, "the backoff must not outlive the request context")
 }
 
 func TestRetry503MaintenanceRetriesBeyondMaxRetryCount(t *testing.T) {

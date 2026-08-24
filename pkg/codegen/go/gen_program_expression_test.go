@@ -192,7 +192,7 @@ func TestArgumentTypeName(t *testing.T) {
 	})
 
 	plainUniformObjectType := g.argumentTypeName(uniformObjectType, false /*isInput*/)
-	assert.Equal(t, "map[string]interface{}", plainUniformObjectType)
+	assert.Equal(t, "map[string]int", plainUniformObjectType)
 	inputUniformObjectType := g.argumentTypeName(uniformObjectType, true /*isInput*/)
 	assert.Equal(t, "pulumi.IntMap", inputUniformObjectType)
 
@@ -223,6 +223,27 @@ func TestArgumentTypeName(t *testing.T) {
 			model.NewObjectType(map[string]model.Type{"k": model.NewListType(pcl.AssetType)}),
 			true, /*isInput*/
 		))
+
+	// Regression test for https://github.com/pulumi/pulumi/issues/24256:
+	// an object with a null (NoneType) property alongside typed nested data
+	// used to produce order-dependent output because Properties has random
+	// iteration order. The nested map type could "win" if visited first,
+	// yielding map[string]map[string]interface{} instead of the correct
+	// map[string]interface{}. Run many iterations to shake out map ordering.
+	// Freshly construct the map each iteration so Go's per-map iteration
+	// seed varies. In the input-side path (which does not consult
+	// anyOptional), a null (NoneType) property visited before typed
+	// entries used to leave elmType empty, letting the following typed
+	// value "win" and produce e.g. pulumi.StringMapMap instead of
+	// pulumi.Map.
+	for range 200 {
+		mixedNullObject := model.NewObjectType(map[string]model.Type{
+			"nested": model.NewObjectType(map[string]model.Type{"a": model.StringType}),
+			"null":   model.NoneType,
+		})
+		assert.Equal(t, "pulumi.Map",
+			g.argumentTypeName(mixedNullObject, true /*isInput*/))
+	}
 
 	// assert that the Output[T] + input=false is the same as T + input=true
 	// in this case where T = string
@@ -325,7 +346,7 @@ func TestConditionalExpression(t *testing.T) {
 		},
 		{
 			hcl2Expr: "{foo = true ? 2.5 : 0.5}",
-			goCode:   "var tmp0 float64\nif true {\ntmp0 = 2.5\n} else {\ntmp0 = 0.5\n}\nmap[string]interface{}{\n\"foo\": tmp0,\n}",
+			goCode:   "var tmp0 float64\nif true {\ntmp0 = 2.5\n} else {\ntmp0 = 0.5\n}\nmap[string]float64{\n\"foo\": tmp0,\n}",
 		},
 	}
 	genFunc := func(w io.Writer, g *generator, e model.Expression) {
@@ -347,17 +368,21 @@ func TestObjectConsExpression(t *testing.T) {
 	scope := env.scope()
 	cases := []exprTestCase{
 		{
+			hcl2Expr: "{foo = 1.5, bar = \"baz\"}",
+			goCode:   "map[string]interface{}{\n\"foo\": 1.5,\n\"bar\": \"baz\",\n}",
+		},
+		{
 			// TODO probably a bug in the binder. Single value objects should just be maps
 			hcl2Expr: "{foo = 1.5}",
-			goCode:   "map[string]interface{}{\n\"foo\": 1.5,\n}",
+			goCode:   "map[string]float64{\n\"foo\": 1.5,\n}",
 		},
 		{
 			hcl2Expr: "{\"foo\" = 1.5}",
-			goCode:   "map[string]interface{}{\n\"foo\": 1.5,\n}",
+			goCode:   "map[string]float64{\n\"foo\": 1.5,\n}",
 		},
 		{
 			hcl2Expr: "{1 = 1.5}",
-			goCode:   "map[string]interface{}{\n\"1\": 1.5,\n}",
+			goCode:   "map[string]float64{\n\"1\": 1.5,\n}",
 		},
 		{
 			hcl2Expr: "{(a) = 1.5}",

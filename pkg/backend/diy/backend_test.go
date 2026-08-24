@@ -850,7 +850,7 @@ func TestDIYBackendRejectsStackInitOptions(t *testing.T) {
 }
 
 func TestLegacyFolderStructure(t *testing.T) {
-	t.Parallel()
+	t.Setenv("PULUMI_DIY_BACKEND_IGNORE_DEPRECATION_ERROR", "true")
 
 	// Make a dummy stack file in the legacy location
 	tmpDir := t.TempDir()
@@ -924,6 +924,7 @@ func TestOptIntoLegacyFolderStructure(t *testing.T) {
 	ctx := t.Context()
 	s := make(env.MapStore)
 	s[env.DIYBackendLegacyLayout.Var().Name()] = "true"
+	s[env.DIYBackendIgnoreDeprecationError.Var().Name()] = "true"
 	b, err := newDIYBackend(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), nil,
 		&diyBackendOptions{Env: env.NewEnv(s)},
 	)
@@ -1189,7 +1190,7 @@ func TestNew_legacyFileWarning(t *testing.T) {
 }
 
 func TestLegacyUpgrade(t *testing.T) {
-	t.Parallel()
+	t.Setenv("PULUMI_DIY_BACKEND_IGNORE_DEPRECATION_ERROR", "true")
 
 	// Make a dummy stack file in the legacy location
 	tmpDir := t.TempDir()
@@ -1258,7 +1259,7 @@ func TestLegacyUpgrade(t *testing.T) {
 }
 
 func TestLegacyUpgrade_partial(t *testing.T) {
-	t.Parallel()
+	t.Setenv("PULUMI_DIY_BACKEND_IGNORE_DEPRECATION_ERROR", "true")
 
 	// Verifies that we can upgrade a subset of stacks.
 
@@ -1303,7 +1304,7 @@ func TestLegacyUpgrade_partial(t *testing.T) {
 // When a stack project could not be determined,
 // we should fill it in with ProjectsForDetachedStacks.
 func TestLegacyUpgrade_ProjectsForDetachedStacks(t *testing.T) {
-	t.Parallel()
+	t.Setenv("PULUMI_DIY_BACKEND_IGNORE_DEPRECATION_ERROR", "true")
 
 	stateDir := t.TempDir()
 	bucket, err := fileblob.OpenBucket(stateDir, nil)
@@ -1372,7 +1373,7 @@ func TestLegacyUpgrade_ProjectsForDetachedStacks(t *testing.T) {
 // and ProjectsForDetachedStacks returns an error,
 // the upgrade should fail.
 func TestLegacyUpgrade_ProjectsForDetachedStacks_error(t *testing.T) {
-	t.Parallel()
+	t.Setenv("PULUMI_DIY_BACKEND_IGNORE_DEPRECATION_ERROR", "true")
 
 	stateDir := t.TempDir()
 	bucket, err := fileblob.OpenBucket(stateDir, nil)
@@ -1428,7 +1429,7 @@ func TestLegacyUpgrade_ProjectsForDetachedStacks_error(t *testing.T) {
 // If an upgrade failed because we couldn't write the meta.yaml,
 // the stacks should be left in legacy mode.
 func TestLegacyUpgrade_writeMetaError(t *testing.T) {
-	t.Parallel()
+	t.Setenv("PULUMI_DIY_BACKEND_IGNORE_DEPRECATION_ERROR", "true")
 
 	stateDir := t.TempDir()
 	bucket, err := fileblob.OpenBucket(stateDir, nil)
@@ -1505,7 +1506,7 @@ func TestSerializeTimestampRFC3339(t *testing.T) {
 }
 
 func TestUpgrade_manyFailures(t *testing.T) {
-	t.Parallel()
+	t.Setenv("PULUMI_DIY_BACKEND_IGNORE_DEPRECATION_ERROR", "true")
 
 	const (
 		numStacks    = 100
@@ -2140,4 +2141,103 @@ func TestJSONCheckpointIsCompact(t *testing.T) {
 	var compact bytes.Buffer
 	require.NoError(t, json.Compact(&compact, data))
 	assert.Equal(t, compact.String(), string(data))
+}
+
+// TestDescribeBackendURL checks that a failed bucket open names the URL the user configured,
+// and adds the normalized form only when normalization changed something they did not write.
+func TestDescribeBackendURL(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name       string
+		original   string
+		normalized string
+		cause      error
+		expected   string
+	}{
+		{
+			name:       "injected no_tmp_dir is not worth reporting",
+			original:   "file:///tmp/state",
+			normalized: "file:///tmp/state?no_tmp_dir=true",
+			expected:   `"file:///tmp/state"`,
+		},
+		{
+			name:       "a resolved tilde path is new information",
+			original:   "file://~/state",
+			normalized: "file:///home/someone/state?no_tmp_dir=true",
+			expected:   `"file://~/state" (resolved to "file:///home/someone/state")`,
+		},
+		{
+			name:       "no_tmp_dir set by the user is theirs to see",
+			original:   "file:///tmp/state?no_tmp_dir=yes",
+			normalized: "file:///tmp/state?no_tmp_dir=yes",
+			expected:   `"file:///tmp/state?no_tmp_dir=yes"`,
+		},
+		{
+			name:       "no_tmp_dir on another scheme is not ours to strip",
+			original:   "s3://bucket?endpoint=127.0.0.1:9000",
+			normalized: "s3://bucket?endpoint=http%3A%2F%2F127.0.0.1%3A9000&no_tmp_dir=true",
+			expected: `"s3://bucket?endpoint=127.0.0.1:9000"` +
+				` (resolved to "s3://bucket?endpoint=http%3A%2F%2F127.0.0.1%3A9000&no_tmp_dir=true")`,
+		},
+		{
+			name:       "translated S3 parameters are new information",
+			original:   "s3://bucket?endpoint=127.0.0.1:9000&disableSSL=true",
+			normalized: "s3://bucket?disable_https=true&endpoint=http%3A%2F%2F127.0.0.1%3A9000",
+			expected: `"s3://bucket?endpoint=127.0.0.1:9000&disableSSL=true"` +
+				` (resolved to "s3://bucket?disable_https=true&endpoint=http%3A%2F%2F127.0.0.1%3A9000")`,
+		},
+		{
+			name:       "a cause that already names the resolved URL is not repeated",
+			original:   "s3://bucket?endpoint=127.0.0.1:9000&disableSSL=true",
+			normalized: "s3://bucket?disable_https=true&endpoint=http%3A%2F%2F127.0.0.1%3A9000",
+			cause: errors.New(
+				"open bucket s3://bucket?disable_https=true&endpoint=http%3A%2F%2F127.0.0.1%3A9000: no credentials"),
+			expected: `"s3://bucket?endpoint=127.0.0.1:9000&disableSSL=true"`,
+		},
+		{
+			name:       "an untouched cloud URL is reported once",
+			original:   "azblob://container",
+			normalized: "azblob://container",
+			expected:   `"azblob://container"`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			cause := tt.cause
+			if cause == nil {
+				cause = errors.New("some failure")
+			}
+			assert.Equal(t, tt.expected, describeBackendURL(tt.original, tt.normalized, cause))
+		})
+	}
+}
+
+// TestStateStoreNoun checks that errors do not call a local directory or a database a
+// "bucket", which is go-cloud's vocabulary rather than the user's.
+func TestStateStoreNoun(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		url      string
+		expected string
+	}{
+		{"file:///tmp/state", "state directory"},
+		{"file://~", "state directory"},
+		{"postgres://user:pw@localhost:5432/pulumi", "state database"},
+		{"s3://my-state", "bucket"},
+		{"gs://my-state", "bucket"},
+		{"azblob://my-state", "bucket"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.url, func(t *testing.T) {
+			t.Parallel()
+
+			assert.Equal(t, tt.expected, stateStoreNoun(tt.url))
+		})
+	}
 }

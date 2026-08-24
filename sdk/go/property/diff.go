@@ -161,7 +161,8 @@ type IgnorePathFunc func(path Path) bool
 // The passed in property path will be mutated via append.
 type InitialPropertyPath Path
 
-func (opt IgnoreKeyFunc) apply(o *diffOptions)       { o.ignoreKeyFuncs = append(o.ignoreKeyFuncs, opt) }
+func (opt IgnoreKeyFunc) apply(o *diffOptions) { o.ignoreKeyFuncs = append(o.ignoreKeyFuncs, opt) }
+
 func (opt IgnorePathFunc) apply(o *diffOptions)      { o.ignorePathFunc = append(o.ignorePathFunc, opt) }
 func (opt InitialPropertyPath) apply(o *diffOptions) { o.initialPath = Path(opt) }
 

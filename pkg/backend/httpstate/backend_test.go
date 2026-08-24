@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"context"
+	"crypto/rand"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -25,10 +26,14 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
 	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
@@ -51,15 +56,26 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/diagtest"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/securestore"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 // testJWT is a test JWT token used in tests.
 //
 //nolint:lll // JWT token is long
 const testJWT = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c"
+
+func TestCommandNameContext(t *testing.T) {
+	t.Parallel()
+
+	_, ok := commandNameFromContext(t.Context())
+	assert.False(t, ok)
+
+	ctx := ContextWithCommandName(t.Context(), "pulumi new")
+	name, ok := commandNameFromContext(ctx)
+	assert.True(t, ok)
+	assert.Equal(t, "pulumi new", name)
+}
 
 //nolint:paralleltest // mutates global configuration
 func TestEnabledFullyQualifiedStackNames(t *testing.T) {
@@ -100,7 +116,6 @@ func TestEnabledFullyQualifiedStackNames(t *testing.T) {
 	assert.Equal(t, expected, actual)
 }
 
-//nolint:paralleltest // mutates env vars and global state
 func TestMissingPulumiAccessToken(t *testing.T) {
 	t.Setenv("PULUMI_ACCESS_TOKEN", "")
 	t.Setenv("AI_AGENT", "")
@@ -129,7 +144,6 @@ func TestMissingPulumiAccessToken(t *testing.T) {
 	}
 }
 
-//nolint:paralleltest // mutates env vars and shared temporary agent credentials
 func TestGetBackendAccountDoesNotFallbackToAgentCredentialsWithExplicitPath(t *testing.T) {
 	oldAgentCreds, err := workspace.GetAgentStoredCredentials()
 	require.NoError(t, err)
@@ -157,7 +171,6 @@ func TestGetBackendAccountDoesNotFallbackToAgentCredentialsWithExplicitPath(t *t
 	assert.Empty(t, account.AccessToken)
 }
 
-//nolint:paralleltest // mutates env vars and shared temporary agent credentials
 func TestCurrentEnvTokenFailsWithInaccessibleExplicitPath(t *testing.T) {
 	oldAgentCreds, err := workspace.GetAgentStoredCredentials()
 	require.NoError(t, err)
@@ -197,7 +210,6 @@ func TestCurrentEnvTokenFailsWithInaccessibleExplicitPath(t *testing.T) {
 	assert.Empty(t, agentAccount.AccessToken)
 }
 
-//nolint:paralleltest // mutates env vars and shared temporary agent credentials
 func TestCurrentEnvTokenStoresInDefaultPathWhenWritable(t *testing.T) {
 	oldAgentCreds, err := workspace.GetAgentStoredCredentials()
 	require.NoError(t, err)
@@ -239,7 +251,6 @@ func TestCurrentEnvTokenStoresInDefaultPathWhenWritable(t *testing.T) {
 	assert.Empty(t, agentAccount.AccessToken)
 }
 
-//nolint:paralleltest // mutates env vars and credentials on disk
 func TestCurrentRefreshesAccessTokenOn401WhenRefreshTokenStored(t *testing.T) {
 	pulumiHome := t.TempDir()
 	t.Setenv("PULUMI_HOME", pulumiHome)
@@ -305,7 +316,6 @@ func TestCurrentRefreshesAccessTokenOn401WhenRefreshTokenStored(t *testing.T) {
 		"validateStoredAccount must stamp LastValidatedAt when it actually validates")
 }
 
-//nolint:paralleltest // mutates environment
 func TestCurrentRefreshesFromRefreshOnlyStoredAccount(t *testing.T) {
 	// HasCredential opens the gate for accounts with a refresh token but no access token. The
 	// wrapper mints the first access token on the initial 401 from an empty bearer.
@@ -355,7 +365,6 @@ func TestCurrentRefreshesFromRefreshOnlyStoredAccount(t *testing.T) {
 	assert.Equal(t, "bob", account.Username)
 }
 
-//nolint:paralleltest // mutates environment
 func TestCurrentPersistsRotatedRefreshToken(t *testing.T) {
 	// True rotation: the refresh-token grant returns a refresh token DIFFERENT from the one we
 	// sent. The wrapper updates the in-memory account and the writeback persists the rotated
@@ -414,7 +423,6 @@ func TestCurrentPersistsRotatedRefreshToken(t *testing.T) {
 		"credentials.json must reflect the rotated refresh token")
 }
 
-//nolint:paralleltest // mutates environment
 func TestCurrentPreservesRefreshTokenWhenGrantResponseOmitsIt(t *testing.T) {
 	// RFC 6749 §6: omitted (or empty) refresh_token in the grant response means "keep using
 	// yours" — the server is not signalling termination. credentials.json must hold onto the
@@ -483,7 +491,6 @@ func TestValidateStoredAccountSkipsNetworkWhenNoCredential(t *testing.T) {
 	assert.Empty(t, account.AccessToken)
 }
 
-//nolint:paralleltest // mutates environment
 func TestCurrentRefreshesLocallyExpiredAccessTokenWhenRefreshTokenStored(t *testing.T) {
 	// Cold-start with a locally-expired access token: validateStoredAccount must take the refresh
 	// path instead of hard-failing, so the next call silently mints a fresh access token and
@@ -559,7 +566,6 @@ func TestCurrentRefreshesLocallyExpiredAccessTokenWhenRefreshTokenStored(t *test
 		"the new ExpiresAt must be in the future (roughly now + ExpiresIn)")
 }
 
-//nolint:paralleltest // mutates env vars and shared temporary agent credentials
 func TestCurrentPreservesExpiresAtWhenServerAcceptsLocallyExpiredAccessToken(t *testing.T) {
 	// Cold-start with a locally-expired access token whose server-side TTL is actually still
 	// valid: validateStoredAccount enters the refresh-or-fetch branch and /api/user succeeds
@@ -610,7 +616,6 @@ func TestCurrentPreservesExpiresAtWhenServerAcceptsLocallyExpiredAccessToken(t *
 		"ExpiresAt must survive the merge so the banner and cold-start path keep working")
 }
 
-//nolint:paralleltest // mutates env vars and shared temporary agent credentials
 func TestCurrentReturnsNoAccountWhenAccessTokenLocallyExpiredAndNoRefreshToken(t *testing.T) {
 	// Cold-start with a locally-expired access token but no refresh token must short-circuit
 	// before hitting the network — preserves the pre-refresh-token behavior for accounts that
@@ -743,7 +748,7 @@ func TestCurrentInvalidAgentCredentialsWithActiveClaimDoesNotSignup(t *testing.T
 	})
 	require.NoError(t, err)
 
-	account, err := defaultLoginManager{}.currentOrSignupAgentAccount(t.Context(), server.URL, false, true, "codex")
+	account, err := defaultLoginManager{}.currentOrSignupAgentAccount(t.Context(), server.URL, false, true, "codex", nil)
 	require.ErrorIs(t, err, ErrUnauthorized)
 	assert.Nil(t, account)
 	assert.Equal(t, 0, signupCalls)
@@ -792,7 +797,7 @@ func TestCurrentRejectedAgentCredentialsWithUnexpiredTokenDoesNotSignup(t *testi
 	})
 	require.NoError(t, err)
 
-	account, err := defaultLoginManager{}.currentOrSignupAgentAccount(t.Context(), server.URL, false, true, "codex")
+	account, err := defaultLoginManager{}.currentOrSignupAgentAccount(t.Context(), server.URL, false, true, "codex", nil)
 	require.ErrorIs(t, err, ErrUnauthorized)
 	require.ErrorIs(t, err, backenderr.LoginRequiredError{})
 	assert.ErrorContains(t, err, "ask the user to run `pulumi login`")
@@ -842,7 +847,7 @@ func TestCurrentValidAgentCredentialsWithExpiredClaimDoesNotSignup(t *testing.T)
 	require.NoError(t, err)
 
 	ctx := ContextWithAgentCredentialUse(t.Context())
-	account, err := defaultLoginManager{}.currentOrSignupAgentAccount(ctx, server.URL, false, true, "codex")
+	account, err := defaultLoginManager{}.currentOrSignupAgentAccount(ctx, server.URL, false, true, "codex", nil)
 	require.NoError(t, err)
 	require.NotNil(t, account)
 	assert.Equal(t, "valid-agent-token", account.AccessToken)
@@ -859,7 +864,6 @@ func TestCurrentValidAgentCredentialsWithExpiredClaimDoesNotSignup(t *testing.T)
 	assert.Empty(t, fromDefault.AccessToken, "agent-sourced account must not be copied into default credentials")
 }
 
-//nolint:paralleltest // mutates shared temporary agent credentials and console env
 func TestCurrentSignupAgentAccountStoresClaimTokenURL(t *testing.T) {
 	oldAgentCreds, err := workspace.GetAgentStoredCredentials()
 	require.NoError(t, err)
@@ -924,7 +928,7 @@ func TestCurrentSignupAgentAccountStoresClaimTokenURL(t *testing.T) {
 	t.Cleanup(server.Close)
 
 	ctx := ContextWithAgentCredentialUse(t.Context())
-	account, err := defaultLoginManager{}.currentOrSignupAgentAccount(ctx, server.URL, false, true, "codex")
+	account, err := defaultLoginManager{}.currentOrSignupAgentAccount(ctx, server.URL, false, true, "codex", nil)
 	require.NoError(t, err)
 	require.NotNil(t, account)
 	assert.Equal(t, "agent-token", account.AccessToken)
@@ -942,7 +946,6 @@ func TestCurrentSignupAgentAccountStoresClaimTokenURL(t *testing.T) {
 	assert.Equal(t, server.URL, claim.CloudURL)
 }
 
-//nolint:paralleltest // mutates shared temporary agent credentials
 func TestCurrentSignupAgentAccountStoresRefreshToken(t *testing.T) {
 	// The refresh token returned by agent signup must land in the stored Account so the
 	// auto-refresh wrapper can use it once the access token expires.
@@ -996,7 +999,7 @@ func TestCurrentSignupAgentAccountStoresRefreshToken(t *testing.T) {
 	t.Cleanup(server.Close)
 
 	ctx := ContextWithAgentCredentialUse(t.Context())
-	account, err := defaultLoginManager{}.currentOrSignupAgentAccount(ctx, server.URL, false, true, "codex")
+	account, err := defaultLoginManager{}.currentOrSignupAgentAccount(ctx, server.URL, false, true, "codex", nil)
 	require.NoError(t, err)
 	require.NotNil(t, account)
 	assert.Equal(t, "agent-access-token", account.AccessToken)
@@ -1009,7 +1012,6 @@ func TestCurrentSignupAgentAccountStoresRefreshToken(t *testing.T) {
 		"signup-returned refresh token must be persisted to the agent credentials file")
 }
 
-//nolint:paralleltest // mutates shared temporary agent credentials
 func TestCurrentSignupAgentAccountWithoutRefreshTokenLeavesAccountEmpty(t *testing.T) {
 	// Back-compat with a server that doesn't (yet) issue refresh tokens at signup: the response
 	// omits refreshToken and the CLI must not error or invent a value.
@@ -1062,7 +1064,7 @@ func TestCurrentSignupAgentAccountWithoutRefreshTokenLeavesAccountEmpty(t *testi
 	t.Cleanup(server.Close)
 
 	ctx := ContextWithAgentCredentialUse(t.Context())
-	account, err := defaultLoginManager{}.currentOrSignupAgentAccount(ctx, server.URL, false, true, "codex")
+	account, err := defaultLoginManager{}.currentOrSignupAgentAccount(ctx, server.URL, false, true, "codex", nil)
 	require.NoError(t, err)
 	require.NotNil(t, account)
 	assert.Equal(t, "agent-access-token", account.AccessToken)
@@ -1073,7 +1075,6 @@ func TestCurrentSignupAgentAccountWithoutRefreshTokenLeavesAccountEmpty(t *testi
 	assert.Empty(t, stored.RefreshToken, "no refreshToken in response → none persisted")
 }
 
-//nolint:paralleltest // mutates shared temporary agent credentials
 func TestCurrentSignupAgentAccountReplacesExistingRefreshTokenOnResignup(t *testing.T) {
 	// When existing agent creds are no longer valid AND the stored refresh token is rejected by
 	// the server, the CLI falls through to re-signup. The refresh token returned by the new
@@ -1141,7 +1142,7 @@ func TestCurrentSignupAgentAccountReplacesExistingRefreshTokenOnResignup(t *test
 	}, true))
 
 	ctx := ContextWithAgentCredentialUse(t.Context())
-	account, err := defaultLoginManager{}.currentOrSignupAgentAccount(ctx, server.URL, false, true, "codex")
+	account, err := defaultLoginManager{}.currentOrSignupAgentAccount(ctx, server.URL, false, true, "codex", nil)
 	require.NoError(t, err)
 	require.NotNil(t, account)
 	assert.Equal(t, "new-access-token", account.AccessToken)
@@ -1153,7 +1154,6 @@ func TestCurrentSignupAgentAccountReplacesExistingRefreshTokenOnResignup(t *test
 		"re-signup must replace the stale refresh token, not preserve it")
 }
 
-//nolint:paralleltest // mutates shared temporary agent credentials
 func TestCurrentAgentAccountRefreshesLocallyExpiredAccessTokenInsteadOfResigning(t *testing.T) {
 	// Cold-start in agent mode with a locally-expired access token but a valid refresh token:
 	// validateStoredAccount must refresh through /api/oauth/token instead of falling through to
@@ -1214,7 +1214,7 @@ func TestCurrentAgentAccountRefreshesLocallyExpiredAccessTokenInsteadOfResigning
 	}, true))
 
 	ctx := ContextWithAgentCredentialUse(t.Context())
-	account, err := defaultLoginManager{}.currentOrSignupAgentAccount(ctx, server.URL, false, true, "codex")
+	account, err := defaultLoginManager{}.currentOrSignupAgentAccount(ctx, server.URL, false, true, "codex", nil)
 	require.NoError(t, err)
 	require.NotNil(t, account)
 	assert.Equal(t, "fresh-access-token", account.AccessToken,
@@ -1230,7 +1230,6 @@ func TestCurrentAgentAccountRefreshesLocallyExpiredAccessTokenInsteadOfResigning
 	assert.Equal(t, "stored-refresh-token", stored.RefreshToken)
 }
 
-//nolint:paralleltest // mutates shared temporary agent credentials
 func TestCurrentSignupAgentAccountRequiresResponseFields(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -1295,14 +1294,13 @@ func TestCurrentSignupAgentAccountRequiresResponseFields(t *testing.T) {
 			}))
 			t.Cleanup(server.Close)
 
-			account, err := defaultLoginManager{}.currentOrSignupAgentAccount(t.Context(), server.URL, false, true, "codex")
+			account, err := defaultLoginManager{}.currentOrSignupAgentAccount(t.Context(), server.URL, false, true, "codex", nil)
 			require.ErrorContains(t, err, tt.wantErr)
 			assert.Nil(t, account)
 		})
 	}
 }
 
-//nolint:paralleltest // mutates env vars, global interactive mode, shared temporary agent credentials, and console env
 func TestLoginUsesAgentSignupInNonInteractiveAgentMode(t *testing.T) {
 	oldAgentCreds, err := workspace.GetAgentStoredCredentials()
 	require.NoError(t, err)
@@ -1534,17 +1532,25 @@ func TestDefaultOrganizationPriority(t *testing.T) {
 	}
 }
 
-//nolint:paralleltest // mutates PULUMI_HOME-backed credentials/config
 func TestNewDefaultOrgResolution(t *testing.T) {
 	ctx := t.Context()
 
 	tests := []struct {
 		name                 string
+		envOrg               string
 		configuredOrg        string
 		serviceOrg           string
 		expectedOrg          string
 		expectedDefaultCalls int
 	}{
+		{
+			name:                 "prefers env var default org",
+			envOrg:               "env-org",
+			configuredOrg:        "configured-org",
+			serviceOrg:           "service-org",
+			expectedOrg:          "env-org",
+			expectedDefaultCalls: 0,
+		},
 		{
 			name:                 "prefers configured default org",
 			configuredOrg:        "configured-org",
@@ -1563,6 +1569,7 @@ func TestNewDefaultOrgResolution(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Setenv("PULUMI_HOME", t.TempDir())
+			t.Setenv("PULUMI_DEFAULT_ORGANIZATION", tt.envOrg)
 
 			defaultOrgCalls := 0
 			server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
@@ -1601,12 +1608,64 @@ func TestNewDefaultOrgResolution(t *testing.T) {
 			b, err := New(ctx, diagtest.LogSink(t), server.URL, nil, false)
 			require.NoError(t, err)
 
+			// New spawns goroutines that may log to the test's diag sink;
+			// wait for them before the test finishes.
+			cb := b.(*cloudBackend)
+			_, _ = cb.capabilities.Result(ctx)
+			_, _ = cb.userInfo.Result(ctx)
+
 			org, err := b.GetDefaultOrg(ctx)
 			require.NoError(t, err)
 			assert.Equal(t, tt.expectedOrg, org)
 			assert.Equal(t, tt.expectedDefaultCalls, defaultOrgCalls)
 		})
 	}
+}
+
+func TestParseStackReferenceExplicitOrgBeatsEnvVar(t *testing.T) {
+	ctx := t.Context()
+
+	t.Setenv("PULUMI_HOME", t.TempDir())
+	t.Setenv("PULUMI_DEFAULT_ORGANIZATION", "env-org")
+
+	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		switch req.URL.Path {
+		case "/api/capabilities":
+			err := json.NewEncoder(rw).Encode(apitype.CapabilitiesResponse{})
+			require.NoError(t, err)
+		case "/api/user":
+			err := json.NewEncoder(rw).Encode(map[string]any{
+				"githubLogin":   "test-user",
+				"organizations": []map[string]string{},
+			})
+			require.NoError(t, err)
+		default:
+			panic(fmt.Sprintf("Path not supported: %v", req.URL.Path))
+		}
+	}))
+	t.Cleanup(server.Close)
+
+	err := workspace.StoreAccount(server.URL, workspace.Account{
+		AccessToken: testJWT,
+	}, true)
+	require.NoError(t, err)
+
+	b, err := New(ctx, diagtest.LogSink(t), server.URL, &workspace.Project{Name: "proj"}, false)
+	require.NoError(t, err)
+
+	// New spawns goroutines that may log to the test's diag sink;
+	// wait for them before the test finishes.
+	cb := b.(*cloudBackend)
+	_, _ = cb.capabilities.Result(ctx)
+	_, _ = cb.userInfo.Result(ctx)
+
+	ref, err := b.ParseStackReference("explicit-org/proj/stack")
+	require.NoError(t, err)
+	assert.Equal(t, "explicit-org", ref.(cloudBackendReference).owner)
+
+	ref, err = b.ParseStackReference("stack")
+	require.NoError(t, err)
+	assert.Equal(t, "env-org", ref.(cloudBackendReference).owner)
 }
 
 //nolint:paralleltest // mutates global state
@@ -3009,6 +3068,72 @@ func (nopBatchDecrypter) Enqueue(context.Context, string, *resource.Secret) erro
 	return nil
 }
 
+// Regression test: an undecryptable credentials file must surface its
+// actionable error from Current instead of degrading into "not logged in".
+// Mirrors the report: PULUMI_BACKEND_URL set (so no earlier read fails),
+// explicit credentials path, no env token, no agent environment.
+func TestCurrentSurfacesUndecryptableCredentials(t *testing.T) {
+	t.Setenv("PULUMI_CREDENTIALS_PATH", t.TempDir())
+	t.Setenv("PULUMI_ACCESS_TOKEN", "")
+
+	// An envelope recording a backend that exists on no platform is
+	// undecryptable everywhere, which is what a lost key looks like.
+	unreachable := securestore.Backend("not-a-real-backend")
+	key := make([]byte, 32)
+	_, err := rand.Read(key)
+	require.NoError(t, err)
+	cloudURL := "https://api.undecryptable-current.example.com"
+	payload, err := json.Marshal(workspace.Credentials{
+		Current:      cloudURL,
+		AccessTokens: map[string]string{cloudURL: "pul-lost"},
+	})
+	require.NoError(t, err)
+	envelope, err := securestore.Seal(key, unreachable, payload)
+	require.NoError(t, err)
+	credsFile := filepath.Join(os.Getenv("PULUMI_CREDENTIALS_PATH"), "credentials.json")
+	require.NoError(t, os.WriteFile(credsFile, envelope, 0o600))
+
+	_, err = defaultLoginManager{}.Current(t.Context(), cloudURL, false, false)
+	require.Error(t, err, "Current must not treat an undecryptable file as logged-out")
+	assert.True(t, workspace.IsUndecryptableCredentials(err))
+	assert.Contains(t, err.Error(), "pulumi login")
+}
+
+func TestCurrentEnvTokenDoesNotBypassUndecryptableCredentials(t *testing.T) {
+	// While PULUMI_ACCESS_TOKEN is persisted into the credentials file,
+	// proceeding despite an undecryptable file would end in a write over an
+	// envelope that may only be temporarily unreadable. Surface the
+	// actionable error instead; revisit once the env token is no longer
+	// written to disk.
+	credsDir := t.TempDir()
+	t.Setenv(workspace.PulumiCredentialsPathEnvVar, credsDir)
+	t.Setenv("PULUMI_ACCESS_TOKEN", "env-token")
+
+	key := make([]byte, 32)
+	envelope, err := securestore.Seal(key, securestore.Backend("test-unsupported"), []byte(`{}`))
+	require.NoError(t, err)
+	require.NoError(t, os.WriteFile(filepath.Join(credsDir, "credentials.json"), envelope, 0o600))
+
+	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		err := json.NewEncoder(rw).Encode(map[string]any{
+			"githubLogin":   "env-user",
+			"organizations": []map[string]string{},
+		})
+		require.NoError(t, err)
+	}))
+	t.Cleanup(server.Close)
+
+	account, err := NewLoginManager().Current(t.Context(), server.URL, false, true)
+	require.Error(t, err)
+	assert.Nil(t, account)
+	assert.True(t, workspace.IsUndecryptableCredentials(err),
+		"the typed error must surface so callers can point at recovery, got: %v", err)
+
+	raw, err := os.ReadFile(filepath.Join(credsDir, "credentials.json"))
+	require.NoError(t, err)
+	assert.Equal(t, envelope, raw, "the unreadable file must be left untouched")
+}
+
 func TestShowDeploymentEventsResult(t *testing.T) {
 	t.Parallel()
 
@@ -3069,7 +3194,7 @@ func TestShowDeploymentEventsResult(t *testing.T) {
 	}
 }
 
-func TestCheckDeploymentResult(t *testing.T) {
+func TestRunDeploymentResult(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
@@ -3088,23 +3213,41 @@ func TestCheckDeploymentResult(t *testing.T) {
 			t.Parallel()
 
 			server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
-				require.Equal(t, "/api/stacks/org/proj/stack/deployments/deployment-id", req.URL.Path)
-				err := json.NewEncoder(rw).Encode(apitype.GetDeploymentResponse{
-					ID:     "deployment-id",
-					Status: tt.status,
-				})
+				var err error
+				switch {
+				case req.Method == http.MethodPost && req.URL.Path == "/api/stacks/org/proj/stack/deployments":
+					err = json.NewEncoder(rw).Encode(apitype.CreateDeploymentResponse{ID: "deployment-id"})
+				case req.URL.Path == "/api/stacks/org/proj/stack/deployments/deployment-id/logs":
+					err = json.NewEncoder(rw).Encode(apitype.DeploymentLogs{
+						Lines: []apitype.DeploymentLogLine{
+							{Header: "Get source"},
+							{Line: "fetching source\n"},
+						},
+					})
+				case req.URL.Path == "/api/stacks/org/proj/stack/deployments/deployment-id":
+					err = json.NewEncoder(rw).Encode(apitype.GetDeploymentResponse{
+						ID:     "deployment-id",
+						Status: tt.status,
+					})
+				default:
+					require.Failf(t, "unexpected request", "%v %v", req.Method, req.URL.Path)
+				}
 				require.NoError(t, err)
 			}))
 			t.Cleanup(server.Close)
 
 			b := &cloudBackend{client: client.NewClient(server.URL, "fake-token", true, nil)}
-			stackID := client.StackIdentifier{
-				Owner:   "org",
-				Project: "proj",
-				Stack:   tokens.MustParseStackName("stack"),
+			stackRef := cloudBackendReference{
+				owner:   "org",
+				project: "proj",
+				name:    tokens.MustParseStackName("stack"),
+				b:       b,
 			}
+			opts := display.Options{Color: colors.Never, Stdout: io.Discard, Stderr: io.Discard}
 
-			err := b.checkDeploymentResult(t.Context(), stackID, "deployment-id")
+			err := b.RunDeployment(t.Context(), stackRef, apitype.CreateDeploymentRequest{
+				Op: apitype.Update,
+			}, opts, "", false)
 			if tt.wantErr == "" {
 				require.NoError(t, err)
 			} else {

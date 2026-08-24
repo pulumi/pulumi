@@ -22,13 +22,14 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	. "github.com/pulumi/pulumi/pkg/v3/engine" //nolint:revive
+	. "github.com/pulumi/pulumi/pkg/v3/engine"
 	lt "github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest/framework"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 func TestPreviewInvoke(t *testing.T) {
@@ -47,9 +48,9 @@ func TestPreviewInvoke(t *testing.T) {
 				InvokeF: func(ctx context.Context, req plugin.InvokeRequest) (plugin.InvokeResponse, error) {
 					assert.Equal(t, expectPreview, req.Preview)
 					return plugin.InvokeResponse{
-						Properties: resource.PropertyMap{
-							"result": resource.NewProperty("invoked"),
-						},
+						Properties: property.NewMap(map[string]property.Value{
+							"result": property.New("invoked"),
+						}),
 					}, nil
 				},
 			}, nil
@@ -93,9 +94,9 @@ func TestInvokeParentResolvesComponentProviders(t *testing.T) {
 				},
 				InvokeF: func(ctx context.Context, req plugin.InvokeRequest) (plugin.InvokeResponse, error) {
 					return plugin.InvokeResponse{
-						Properties: resource.PropertyMap{
-							"instance": resource.NewProperty(instance),
-						},
+						Properties: property.NewMap(map[string]property.Value{
+							"instance": property.New(instance),
+						}),
 					}, nil
 				},
 			}, nil
@@ -185,9 +186,11 @@ func TestInvokeDependsOnRemoteComponent(t *testing.T) {
 				},
 				InvokeF: func(_ context.Context, req plugin.InvokeRequest) (plugin.InvokeResponse, error) {
 					invoked = true
-					return plugin.InvokeResponse{Properties: resource.PropertyMap{
-						"result": resource.NewProperty("read"),
-					}}, nil
+					return plugin.InvokeResponse{
+						Properties: property.NewMap(map[string]property.Value{
+							"result": property.New("read"),
+						}),
+					}, nil
 				},
 			}, nil
 		}),
@@ -267,9 +270,11 @@ func TestInvokeDependsOnNestedRemoteComponent(t *testing.T) {
 				},
 				InvokeF: func(_ context.Context, req plugin.InvokeRequest) (plugin.InvokeResponse, error) {
 					invoked = true
-					return plugin.InvokeResponse{Properties: resource.PropertyMap{
-						"result": resource.NewProperty("read"),
-					}}, nil
+					return plugin.InvokeResponse{
+						Properties: property.NewMap(map[string]property.Value{
+							"result": property.New("read"),
+						}),
+					}, nil
 				},
 			}, nil
 		}),
@@ -328,9 +333,11 @@ func TestInvokeDependsOnPendingCustomResource(t *testing.T) {
 			return &deploytest.Provider{
 				InvokeF: func(_ context.Context, req plugin.InvokeRequest) (plugin.InvokeResponse, error) {
 					invoked = true
-					return plugin.InvokeResponse{Properties: resource.PropertyMap{
-						"result": resource.NewProperty("read"),
-					}}, nil
+					return plugin.InvokeResponse{
+						Properties: property.NewMap(map[string]property.Value{
+							"result": property.New("read"),
+						}),
+					}, nil
 				},
 			}, nil
 		}),
@@ -378,9 +385,11 @@ func TestInvokeDependsOnStopsAtCustomResources(t *testing.T) {
 			return &deploytest.Provider{
 				InvokeF: func(_ context.Context, req plugin.InvokeRequest) (plugin.InvokeResponse, error) {
 					invoked = true
-					return plugin.InvokeResponse{Properties: resource.PropertyMap{
-						"result": resource.NewProperty("read"),
-					}}, nil
+					return plugin.InvokeResponse{
+						Properties: property.NewMap(map[string]property.Value{
+							"result": property.New("read"),
+						}),
+					}, nil
 				},
 			}, nil
 		}),
@@ -433,9 +442,11 @@ func TestInvokeDependsOnTargetedUp(t *testing.T) {
 			return &deploytest.Provider{
 				InvokeF: func(_ context.Context, req plugin.InvokeRequest) (plugin.InvokeResponse, error) {
 					invoked = true
-					return plugin.InvokeResponse{Properties: resource.PropertyMap{
-						"result": resource.NewProperty("read"),
-					}}, nil
+					return plugin.InvokeResponse{
+						Properties: property.NewMap(map[string]property.Value{
+							"result": property.New("read"),
+						}),
+					}, nil
 				},
 			}, nil
 		}),
@@ -486,9 +497,11 @@ func TestInvokeDependsOnDestroyRunProgram(t *testing.T) {
 				},
 				InvokeF: func(_ context.Context, _ plugin.InvokeRequest) (plugin.InvokeResponse, error) {
 					invoked++
-					return plugin.InvokeResponse{Properties: resource.PropertyMap{
-						"result": resource.NewProperty("read"),
-					}}, nil
+					return plugin.InvokeResponse{
+						Properties: property.NewMap(map[string]property.Value{
+							"result": property.New("read"),
+						}),
+					}, nil
 				},
 			}, nil
 		}),
@@ -567,9 +580,9 @@ func TestSecretsInvoke(t *testing.T) {
 				InvokeF: func(ctx context.Context, req plugin.InvokeRequest) (plugin.InvokeResponse, error) {
 					assert.Equal(t, expectPreview, req.Preview)
 					return plugin.InvokeResponse{
-						Properties: resource.PropertyMap{
-							"result": resource.NewProperty("invoked"),
-						},
+						Properties: property.NewMap(map[string]property.Value{
+							"result": property.New("invoked"),
+						}),
 					}, nil
 				},
 			}, nil

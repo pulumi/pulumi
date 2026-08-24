@@ -381,6 +381,7 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 			}
 			ctx = cmdutil.ContextWithProcessStartTime(ctx, processStartTime)
 			ctx = httpstate.ContextWithAgentCredentialUse(ctx)
+			ctx = httpstate.ContextWithCommandName(ctx, cmd.CommandPath())
 			cmd.SetContext(ctx)
 
 			cmdutil.InitPprofServer(ctx)
@@ -943,7 +944,7 @@ func diffMinorVersions(v1 semver.Version, v2 semver.Version) int64 {
 		return 0
 	}
 
-	return (int64)(v2.Minor - v1.Minor) //nolint:gosec
+	return int64(v2.Minor - v1.Minor)
 }
 
 // getUpgradeCommand returns a command that will upgrade the CLI to the newest version. If we can not determine how

@@ -23,6 +23,7 @@ import (
 	"github.com/hashicorp/hcl/v2"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	codegenrpc "github.com/pulumi/pulumi/sdk/v3/proto/go/codegen"
 	"github.com/stretchr/testify/assert"
@@ -181,13 +182,13 @@ func TestConverterPlugin_State(t *testing.T) {
 	assert.Equal(t, "test:parent", res.Parent)
 	assert.Equal(t, []string{"prop1", "prop2"}, res.Properties)
 	assert.Equal(t, "test:provider", res.Provider)
-	assert.Equal(t, resource.PropertyMap{
-		"region": resource.NewProperty("us-east-1"),
-		"secret": resource.MakeSecret(resource.NewProperty("shh")),
-	}, res.Inputs)
-	assert.Equal(t, resource.PropertyMap{
-		"arn": resource.NewProperty("test:arn"),
-	}, res.Outputs)
+	assert.Equal(t, ptr(property.NewMap(map[string]property.Value{
+		"region": property.New("us-east-1"),
+		"secret": property.New("shh").WithSecret(true),
+	})), res.Inputs)
+	assert.Equal(t, ptr(property.NewMap(map[string]property.Value{
+		"arn": property.New("test:arn"),
+	})), res.Outputs)
 
 	diag := resp.Diagnostics[0]
 	assert.Equal(t, hcl.DiagError, diag.Severity)

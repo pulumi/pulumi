@@ -490,21 +490,21 @@ func NewProviderFromPath(host Host, ctx *Context, path string) (Provider, error)
 			return nil, err
 		}
 	}
-	return &cancelOnCloseProvider{Provider: p}, nil
+	return &cancelOnCloseProvider{provider: p}, nil
 }
 
 // cancelOnCloseProvider wraps a Provider so that Close sends a Cancel RPC before shutting down the plugin process. This
 // is used for providers created via NewProviderFromPath, which are not managed by a Host and therefore don't get Cancel
 // via the host's close sequence.
 type cancelOnCloseProvider struct {
-	Provider
+	*provider
 }
 
 func (p *cancelOnCloseProvider) Close() error {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.WithoutCancel(p.requestContext()), 5*time.Second)
 	defer cancel()
 	contract.IgnoreError(p.SignalCancellation(ctx))
-	return p.Provider.Close()
+	return p.provider.Close()
 }
 
 func NewProviderWithClient(ctx *Context, client pulumirpc.ResourceProviderClient,
@@ -1128,7 +1128,7 @@ func (p *provider) Configure(ctx context.Context, req ConfigureRequest) (Configu
 			AcceptResources:        true,
 			SendsOldInputs:         true,
 			SendsOldInputsToDelete: true,
-			Variables:              variables,
+			Variables:              variables, //nolint:staticcheck
 			Args:                   minputs,
 		})
 		if err != nil {

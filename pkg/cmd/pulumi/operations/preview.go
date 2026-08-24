@@ -22,6 +22,7 @@ import (
 	"log/slog"
 	"maps"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -245,11 +246,29 @@ func buildImportFile(
 					contract.Assertf(preEvent.Metadata.Res.State != nil,
 						"%s: expected State to be non-nil for provider", urn)
 					if fullInputs := preEvent.Metadata.Res.State.Inputs; len(fullInputs) > 0 {
-						var serErr error
-						inputs, serErr = stack.SerializeProperties(ctx, fullInputs, enc, false)
-						if serErr != nil {
-							return importFile{}, fmt.Errorf(
-								"could not serialize provider inputs for %s: %w", urn, serErr)
+						// Anything not known during the preview would be written out as the unknown
+						// placeholder, which is not a value the import system can use.
+						known, unknown := resource.PropertyMap{}, []string{}
+						for _, k := range fullInputs.StableKeys() {
+							if fullInputs[k].ContainsUnknowns() {
+								unknown = append(unknown, string(k))
+								continue
+							}
+							known[k] = fullInputs[k]
+						}
+						if len(unknown) > 0 {
+							cmdutil.Diag().Warningf(diag.Message(urn,
+								"configuration of provider %s is not known during the preview and has "+
+									"been omitted from the import file, fill it in before importing: %s"),
+								urn, strings.Join(unknown, ", "))
+						}
+						if len(known) > 0 {
+							var serErr error
+							inputs, serErr = stack.SerializeProperties(ctx, known, enc, false)
+							if serErr != nil {
+								return importFile{}, fmt.Errorf(
+									"could not serialize provider inputs for %s: %w", urn, serErr)
+							}
 						}
 					}
 				} else {

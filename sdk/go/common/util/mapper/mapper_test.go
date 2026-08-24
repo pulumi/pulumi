@@ -136,7 +136,7 @@ func TestMapperEncode(t *testing.T) {
 	require.Len(t, m, 0)
 
 	// Nil (interface)
-	m, err = md.Encode((AnInterface)(nil))
+	m, err = md.Encode(AnInterface(nil))
 	require.NoError(t, err)
 	require.Len(t, m, 0)
 

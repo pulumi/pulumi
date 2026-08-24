@@ -114,11 +114,11 @@ func (c *templateListCmd) Run(ctx context.Context, out io.Writer, args templateL
 	// Pagination is handled inside the registry iterator; we collect into a slice
 	// so both renderers can take a stable, deterministic view.
 	templates := []apitype.TemplateMetadata{}
-	for tmpl, err := range reg.ListTemplates(ctx, registry.ListTemplatesOptions{
+	for tmpl, err := range registry.Templates(reg.ListTemplates(ctx, registry.ListTemplatesOptions{
 		Name:   args.name,
 		Org:    args.org,
 		Search: args.search,
-	}) {
+	})) {
 		if err != nil {
 			return fmt.Errorf("listing templates: %w", err)
 		}

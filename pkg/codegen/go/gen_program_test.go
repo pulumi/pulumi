@@ -21,6 +21,8 @@ import (
 	"strings"
 	"testing"
 
+	mapset "github.com/deckarep/golang-set/v2"
+
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 
@@ -28,7 +30,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/pulumi/pulumi/pkg/v3/codegen"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model/format"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
@@ -447,10 +448,11 @@ func newTestGenerator(t *testing.T, testFile string) *generator {
 		jsonTempSpiller:     &jsonSpiller{},
 		ternaryTempSpiller:  &tempSpiller{},
 		splatSpiller:        &splatSpiller{},
+		forSpiller:          &forSpiller{},
 		optionalSpiller:     &optionalSpiller{},
 		inlineInvokeSpiller: &inlineInvokeSpiller{},
 		callSpiller:         &callSpiller{},
-		scopeTraversalRoots: codegen.NewStringSet(),
+		scopeTraversalRoots: mapset.NewSet[string](),
 		arrayHelpers:        make(map[string]*promptToInputArrayHelper),
 		importer:            newFileImporter(),
 	}
@@ -473,6 +475,49 @@ func parseAndBindProgram(t *testing.T,
 	}
 
 	return pcl.BindProgram(parser.Files, schema.NewPluginLoader(utils.NewContext(testdataPath)), options...)
+}
+
+func TestPlainInvokeUsesPlainArgTypes(t *testing.T) {
+	t.Parallel()
+
+	source := `
+policy = invoke("infra:index:getPolicyDocument", {
+	statements = [{
+		sid = "1"
+	}]
+})`
+
+	program, diags, err := parseAndBindProgram(t, source, "plain_invoke.pp")
+	require.NoError(t, err)
+	require.False(t, diags.HasErrors())
+
+	files, diags, err := GenerateProgram(program)
+	require.NoError(t, err)
+	require.False(t, diags.HasErrors())
+
+	assert.Equal(t, `package main
+
+import (
+	"example.com/pulumi-infra/sdk/go/infra"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+)
+
+func main() {
+	pulumi.Run(func(ctx *pulumi.Context) error {
+		_, err := infra.GetPolicyDocument(ctx, &infra.GetPolicyDocumentArgs{
+			Statements: []infra.GetPolicyDocumentStatement{
+				{
+					Sid: pulumi.StringRef("1"),
+				},
+			},
+		}, nil)
+		if err != nil {
+			return err
+		}
+		return nil
+	})
+}
+`, string(files["main.go"]))
 }
 
 func TestGenerateProjectDoesNotPanicWhenMissingVersion(t *testing.T) {
@@ -539,10 +584,11 @@ func TestReplacementTriggerInputConversion(t *testing.T) {
 		jsonTempSpiller:     &jsonSpiller{},
 		ternaryTempSpiller:  &tempSpiller{},
 		splatSpiller:        &splatSpiller{},
+		forSpiller:          &forSpiller{},
 		optionalSpiller:     &optionalSpiller{},
 		inlineInvokeSpiller: &inlineInvokeSpiller{},
 		callSpiller:         &callSpiller{},
-		scopeTraversalRoots: codegen.NewStringSet(),
+		scopeTraversalRoots: mapset.NewSet[string](),
 		arrayHelpers:        make(map[string]*promptToInputArrayHelper),
 		importer:            newFileImporter(),
 	}

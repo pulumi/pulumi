@@ -40,8 +40,6 @@ type PackageDescriptor struct {
 }
 
 // Snippet represents a snippet of PCL that should be associated with a stack. The engine reruns these in deployments.
-//
-//nolint:lll
 type Snippet struct {
 	// UUID is the stable identity of this snippet within the snapshot.
 	UUID string `json:"uuid" yaml:"uuid"`

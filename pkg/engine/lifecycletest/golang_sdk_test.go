@@ -24,7 +24,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/pkg/v3/display"
-	. "github.com/pulumi/pulumi/pkg/v3/engine" //nolint:revive
+	. "github.com/pulumi/pulumi/pkg/v3/engine"
 	lt "github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest/framework"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
@@ -442,7 +442,7 @@ func TestProviderInheritanceGolangLifecycle(t *testing.T) {
 				},
 			}
 			v.InvokeF = func(_ context.Context, req plugin.InvokeRequest) (plugin.InvokeResponse, error) {
-				assert.True(t, v.Config.DeepEquals(req.Args))
+				assert.True(t, v.Config.DeepEquals(resource.ToResourcePropertyMap(req.Args)))
 				return plugin.InvokeResponse{}, nil
 			}
 			return v, nil
@@ -467,7 +467,7 @@ func TestProviderInheritanceGolangLifecycle(t *testing.T) {
 				},
 			}
 			v.InvokeF = func(_ context.Context, req plugin.InvokeRequest) (plugin.InvokeResponse, error) {
-				assert.True(t, v.Config.DeepEquals(req.Args))
+				assert.True(t, v.Config.DeepEquals(resource.ToResourcePropertyMap(req.Args)))
 				return plugin.InvokeResponse{}, nil
 			}
 			return v, nil
@@ -739,7 +739,7 @@ func TestRemoteComponentGolang(t *testing.T) {
 
 					return plugin.ConstructResponse{
 						URN:     resp.URN,
-						Outputs: outs,
+						Outputs: resource.FromResourcePropertyMap(outs),
 					}, nil
 				},
 			}, nil

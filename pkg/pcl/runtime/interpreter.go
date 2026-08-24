@@ -81,11 +81,7 @@ type Interpreter struct {
 	// the resource is registered as "myComp-res". Nested components accumulate the prefix.
 	namePrefix string
 
-	// packageRefs maps a fully-qualified token (resource, function, or
-	// pulumi:providers:<pkg>) to the package reference RegisterPackage returned.
-	// Keying on the exact token, not package name, keeps extensions that share the
-	// base provider's namespace distinct. A miss resolves to the empty ref, and so
-	// to the default provider.
+	// packageRefs are package references returned by RegisterPackage keyed by package name.
 	packageRefs map[string]string
 
 	// callbacks is the server that handles resource hook callbacks.
@@ -299,7 +295,6 @@ func (i *Interpreter) registerHookNode(ctx context.Context, h *pcl.Hook) error {
 			return nil, fmt.Errorf("hook %s: command must not be empty", hookName)
 		}
 
-		//nolint:gosec // G204: command is provided by user PCL program
 		cmd := exec.CommandContext(ctx, cmdArgs[0], cmdArgs[1:]...)
 		cmd.Dir = workingDir
 		if out, runErr := cmd.CombinedOutput(); runErr != nil {
@@ -679,6 +674,10 @@ func (i *Interpreter) executeProgramNodes(ctx context.Context) (resource.Propert
 			if err := i.registerResource(ctx, node); err != nil {
 				return fmt.Errorf("failed to register resource %s: %w", node.Name(), err)
 			}
+		case *pcl.ReadResource:
+			if err := i.registerReadResource(ctx, node); err != nil {
+				return fmt.Errorf("failed to read resource %s: %w", node.Name(), err)
+			}
 		case *pcl.Component:
 			if err := i.registerComponent(ctx, node); err != nil {
 				return fmt.Errorf("failed to register component %s: %w", node.Name(), err)
@@ -716,28 +715,23 @@ func (i *Interpreter) lookupResource(ctx context.Context, token string) (*schema
 		pkgName = typ
 	}
 
-	var loadErr error
-	for _, descriptor := range i.lookupPackageDescriptors(pkgName) {
-		pkgref, err := i.loader.LoadPackageReferenceV2(ctx, descriptor)
-		if err != nil {
-			loadErr = errors.Join(loadErr, fmt.Errorf("load package for token %s: %w", token, err))
-			continue
-		}
-		if pkg == "pulumi" && mod == "providers" {
-			return pkgref.Provider()
-		}
-		schemaResource, ok, err := pkgref.Resources().Get(token)
-		if err != nil {
-			return nil, fmt.Errorf("get resource from package for token %s: %w", token, err)
-		}
-		if ok {
-			return schemaResource, nil
-		}
+	descriptor := i.lookupPackageDescriptor(pkgName)
+	pkgref, err := i.loader.LoadPackageReferenceV2(ctx, descriptor)
+	if err != nil {
+		return nil, fmt.Errorf("load package for token %s: %w", token, err)
 	}
-	if loadErr != nil {
-		return nil, loadErr
+	if pkg == "pulumi" && mod == "providers" {
+		return pkgref.Provider()
 	}
-	return nil, fmt.Errorf("get resource from package for token %s", token)
+	resources := pkgref.Resources()
+	schemaResource, ok, err := resources.Get(token)
+	if err != nil {
+		return nil, fmt.Errorf("get resource from package for token %s: %w", token, err)
+	}
+	if !ok {
+		return nil, fmt.Errorf("get resource from package for token %s", token)
+	}
+	return schemaResource, nil
 }
 
 func (i *Interpreter) lookupFunction(ctx context.Context, token string) (*schema.Function, error) {
@@ -746,42 +740,27 @@ func (i *Interpreter) lookupFunction(ctx context.Context, token string) (*schema
 
 	token = fmt.Sprintf("%s:%s:%s", pkg, mod, typ)
 
-	var loadErr error
-	for _, descriptor := range i.lookupPackageDescriptors(pkg) {
-		pkgref, err := i.loader.LoadPackageReferenceV2(ctx, descriptor)
-		if err != nil {
-			loadErr = errors.Join(loadErr, fmt.Errorf("load package for token %s: %w", token, err))
-			continue
-		}
-		schemaFunction, ok, err := pkgref.Functions().Get(token)
-		if err != nil {
-			return nil, fmt.Errorf("get function from package for token %s: %w", token, err)
-		}
-		if ok {
-			return schemaFunction, nil
-		}
+	descriptor := i.lookupPackageDescriptor(pkg)
+	pkgref, err := i.loader.LoadPackageReferenceV2(ctx, descriptor)
+	if err != nil {
+		return nil, fmt.Errorf("load package for token %s: %w", token, err)
 	}
-	if loadErr != nil {
-		return nil, loadErr
+	functions := pkgref.Functions()
+	schemaFunction, ok, err := functions.Get(token)
+	if err != nil {
+		return nil, fmt.Errorf("get function from package for token %s: %w", token, err)
 	}
-	return nil, fmt.Errorf("get function from package for token %s", token)
+	if !ok {
+		return nil, fmt.Errorf("get function from package for token %s", token)
+	}
+	return schemaFunction, nil
 }
 
-// lookupPackageDescriptors returns the packages a pkgName-namespaced token could
-// resolve to: pkgName itself plus every extension layered on it.
-func (i *Interpreter) lookupPackageDescriptors(pkgName string) []*schema.PackageDescriptor {
-	var candidates []*schema.PackageDescriptor
+func (i *Interpreter) lookupPackageDescriptor(pkgName string) *schema.PackageDescriptor {
 	if descriptor, ok := i.info.PackageDescriptors[pkgName]; ok && descriptor != nil {
-		candidates = append(candidates, descriptor)
-	} else {
-		candidates = append(candidates, &schema.PackageDescriptor{Name: pkgName})
+		return descriptor
 	}
-	for _, descriptor := range i.info.PackageDescriptors {
-		if descriptor != nil && descriptor.Parameterization != nil && descriptor.Name == pkgName {
-			candidates = append(candidates, descriptor)
-		}
-	}
-	return candidates
+	return &schema.PackageDescriptor{Name: pkgName}
 }
 
 func PackageNameFromToken(token string) (string, error) {
@@ -798,7 +777,11 @@ func PackageNameFromToken(token string) (string, error) {
 	return pkg, nil
 }
 
-func (i *Interpreter) getPackageRefFromToken(token string) string { return i.packageRefs[token] }
+func (i *Interpreter) getPackageRefFromToken(token string) string {
+	pkgName, err := PackageNameFromToken(token)
+	contract.AssertNoErrorf(err, "invalid token %q", token)
+	return i.packageRefs[pkgName]
+}
 
 func (i *Interpreter) registerPackages(ctx context.Context) error {
 	if i.monitor == nil {
@@ -855,15 +838,8 @@ func (i *Interpreter) registerPackages(ctx context.Context) error {
 			return fmt.Errorf("register package %q returned empty reference", key)
 		}
 
-		// Index every token the package defines, plus its provider ref (see packageRefs).
-		ref := resp.GetRef()
-		i.packageRefs["pulumi:providers:"+descriptor.PackageName()] = ref
-		for _, r := range def.Resources {
-			i.packageRefs[r.Token] = ref
-		}
-		for _, f := range def.Functions {
-			i.packageRefs[f.Token] = ref
-		}
+		i.packageRefs[key] = resp.GetRef()
+		i.packageRefs[descriptor.PackageName()] = resp.GetRef()
 	}
 
 	return nil
@@ -2005,6 +1981,108 @@ func (i *Interpreter) registerResourceWith(
 	return propertyValueToCty(ctx, i.getResource, result)
 }
 
+func (i *Interpreter) registerReadResource(ctx context.Context, res *pcl.ReadResource) error {
+	logicalName := i.effectiveName(res.LogicalName())
+	token, _ := res.GetToken()
+	schemaResource, err := i.lookupResource(ctx, token)
+	if err != nil {
+		return fmt.Errorf("lookup resource schema for token %s: %w", token, err)
+	}
+	if schemaResource != nil {
+		token = schemaResource.Token
+	}
+
+	// The bindable inputs are "id" plus the schema's state inputs.
+	properties := []*schema.Property{{Name: "id", Type: schema.StringType}}
+	if schemaResource != nil && schemaResource.StateInputs != nil {
+		properties = append(properties, schemaResource.StateInputs.Properties...)
+	}
+
+	inputs, poison, diags := i.evalContext.EvaluateObject(res.Inputs, res.InputType, properties)
+	if poison != nil {
+		i.evalContext.SetVariable(res.Name(), makePoisonValue(*poison))
+		return nil
+	}
+	if diags.HasErrors() {
+		return diags
+	}
+
+	idVal, hasID := inputs["id"]
+	if !hasID {
+		return fmt.Errorf("read resource %s is missing the id attribute", res.Name())
+	}
+	delete(inputs, "id")
+
+	marshalOpts := plugin.MarshalOptions{
+		KeepUnknowns:   true,
+		KeepSecrets:    true,
+		KeepResources:  true,
+		KeepByteString: true,
+	}
+	obj, err := plugin.MarshalProperties(inputs, marshalOpts)
+	if err != nil {
+		return err
+	}
+	// The rest of this method can send output values
+	marshalOpts.KeepOutputValues = true
+
+	dependencies := []string{}
+	for _, val := range inputs {
+		dependencies = append(dependencies, getAllDependencies(val)...)
+	}
+	dependencies = append(dependencies, getAllDependencies(idVal)...)
+
+	idStr := plugin.UnknownStringValue
+	if idVal.IsString() {
+		idStr = idVal.StringValue()
+	}
+
+	request := &pulumirpc.ReadResourceRequest{
+		Id:                idStr,
+		Type:              token,
+		Name:              logicalName,
+		Parent:            i.stackURN,
+		Properties:        obj,
+		Dependencies:      dependencies,
+		AcceptSecrets:     true,
+		AcceptResources:   true,
+		AcceptsByteString: true,
+	}
+	request.PackageRef = i.getPackageRefFromToken(token)
+
+	resp, err := i.monitor.ReadResource(ctx, request)
+	if err != nil {
+		return err
+	}
+
+	outputs, err := plugin.UnmarshalProperties(resp.GetProperties(), marshalOpts)
+	if err != nil {
+		return err
+	}
+
+	outputs["id"] = resource.NewProperty(request.Id)
+	outputs["urn"] = resource.NewProperty(resp.GetUrn())
+	outputs["__name"] = resource.NewProperty(logicalName)
+	outputs["__type"] = resource.NewProperty(token)
+
+	if schemaResource != nil {
+		fillSchemaOutputs(outputs, schemaResource.Properties, i.info.DryRun)
+	}
+
+	result := resource.NewProperty(resource.Output{
+		Element:      resource.NewProperty(outputs),
+		Dependencies: []resource.URN{resource.URN(resp.GetUrn())},
+		Known:        true,
+	})
+
+	ctyResult, err := propertyValueToCty(ctx, i.getResource, result)
+	if err != nil {
+		return err
+	}
+	i.evalContext.SetVariable(res.Name(), ctyResult)
+	return nil
+}
+
 func (i *Interpreter) registerComponent(ctx context.Context, component *pcl.Component) hcl.Diagnostics {
 	inputs, poison, diags := i.evalContext.EvaluateObject(component.Inputs, component.InputType, nil)
 	if poison != nil {
@@ -2044,8 +2122,14 @@ func (i *Interpreter) registerComponent(ctx context.Context, component *pcl.Comp
 	}
 
 	componentName := i.effectiveName(component.LogicalName())
+	// A component declared without a source names an existing component resource by its type token; otherwise the
+	// token is synthesised from the declaration.
+	componentType := component.Token
+	if componentType == "" {
+		componentType = "components:index:" + component.DeclarationName()
+	}
 	request := &pulumirpc.RegisterResourceRequest{
-		Type:                 "components:index:" + component.DeclarationName(),
+		Type:                 componentType,
 		Name:                 componentName,
 		Custom:               false,
 		Object:               obj,
@@ -2119,6 +2203,12 @@ func (i *Interpreter) registerComponent(ctx context.Context, component *pcl.Comp
 		}}
 	}
 
+	// A component declared without a source has no inner program to interpret and no outputs, but its variable
+	// must still be published so that children can parent to it.
+	if component.Program == nil {
+		return i.setComponentVariable(ctx, component, resp, nil)
+	}
+
 	componentInterpreter := &Interpreter{
 		program:     component.Program,
 		info:        i.info,
@@ -2186,6 +2276,16 @@ func (i *Interpreter) registerComponent(ctx context.Context, component *pcl.Comp
 		}}
 	}
 
+	return i.setComponentVariable(ctx, component, resp, componentOutputs)
+}
+
+// setComponentVariable publishes a registered component as a variable so that later nodes can reference it.
+func (i *Interpreter) setComponentVariable(
+	ctx context.Context,
+	component *pcl.Component,
+	resp *pulumirpc.RegisterResourceResponse,
+	componentOutputs resource.PropertyMap,
+) hcl.Diagnostics {
 	componentObject := resource.PropertyMap{
 		"id":  resource.NewProperty(resp.GetId()),
 		"urn": resource.NewProperty(resp.GetUrn()),

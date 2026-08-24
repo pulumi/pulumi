@@ -502,7 +502,7 @@ func ConvertJSONEvent(apiEvent apitype.EngineEvent) (engine.Event, error) {
 		event = engine.NewEvent(engine.ResourceOperationFailedPayload{
 			Metadata: convertJSONStepEventMetadata(p.Metadata),
 			Status:   resource.Status(p.Status),
-			Steps:    int32(p.Steps), //nolint:gosec // We only ever write int32 sized values to the API.
+			Steps:    int32(p.Steps),
 		})
 
 	case apiEvent.PolicyLoadEvent != nil:

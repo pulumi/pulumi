@@ -35,10 +35,10 @@ import (
 	"github.com/gofrs/uuid"
 
 	"gocloud.dev/blob"
-	_ "gocloud.dev/blob/azureblob" // driver for azblob://
-	_ "gocloud.dev/blob/fileblob"  // driver for file://
-	"gocloud.dev/blob/gcsblob"     // driver for gs://
-	_ "gocloud.dev/blob/s3blob"    // driver for s3://
+	"gocloud.dev/blob/azureblob"  // driver for azblob://
+	_ "gocloud.dev/blob/fileblob" // driver for file://
+	"gocloud.dev/blob/gcsblob"    // driver for gs://
+	_ "gocloud.dev/blob/s3blob"   // driver for s3://
 	"gocloud.dev/gcerrors"
 
 	"github.com/pulumi/pulumi/pkg/v3/authhelpers"
@@ -265,9 +265,23 @@ func newDIYBackend(
 		}
 	}
 
+	// go-cloud's default azblob opener refuses to open buckets when
+	// AZURE_STORAGE_SAS_TOKEN is set and the URL overrides the service
+	// endpoint, e.g. via the storage_account query parameter. The backend URL
+	// is provided by the user at login rather than an untrusted source, so use
+	// a custom opener without that restriction to keep such URLs working.
+	if p.Scheme == azureblob.Scheme {
+		blobmux = &blob.URLMux{}
+		blobmux.RegisterBucket(azureblob.Scheme, &azureblob.URLOpener{
+			MakeClient:        azureblob.NewDefaultClient,
+			ServiceURLOptions: *azureblob.NewDefaultServiceURLOptions(),
+		})
+	}
+
 	bucket, err := blobmux.OpenBucket(ctx, u)
 	if err != nil {
-		return nil, fmt.Errorf("unable to open bucket %s: %w", u, err)
+		return nil, fmt.Errorf("unable to open %s %s: %w",
+			stateStoreNoun(originalURL), describeBackendURL(originalURL, u, err), err)
 	}
 
 	if !strings.HasPrefix(u, FilePathPrefix) {
@@ -345,8 +359,8 @@ func newDIYBackend(
 
 	// If we're not in project mode and the user hasn't disabled the warning, warn that legacy mode is deprecated and
 	// due to be removed.
-	if !projectMode && !opts.Env.GetBool(env.DIYBackendIgnoreDeprecationWarning) {
-		d.Warningf(diag.Message("", `
+	if !projectMode && !opts.Env.GetBool(env.DIYBackendIgnoreDeprecationError) {
+		return nil, errors.New(`
 ================================================================================
 Legacy DIY state is deprecated, please upgrade your state to project mode using:
 'pulumi state upgrade'
@@ -354,8 +368,8 @@ Legacy DIY state is deprecated, please upgrade your state to project mode using:
 It is due to be removed in a future release before the end of this year (2026).
 If you have any feedback or concerns, please let us know by commenting on the
 issue at https://github.com/pulumi/pulumi/issues/19566.
-Set PULUMI_DIY_BACKEND_IGNORE_DEPRECATION_WARNING=1 to disable this warning.
-================================================================================`))
+Set PULUMI_DIY_BACKEND_IGNORE_DEPRECATION_ERROR=1 to disable this error.
+================================================================================`)
 	}
 
 	// If we're not in project mode, or we've disabled the warning, we're done.
@@ -554,6 +568,47 @@ func (b *diyBackend) upgradeStack(
 	}
 
 	return nil
+}
+
+// stateStoreNoun names what a backend URL points at, so that errors do not call a local
+// directory or a database a "bucket" — go-cloud's vocabulary rather than the user's.
+func stateStoreNoun(originalURL string) string {
+	switch {
+	case strings.HasPrefix(originalURL, FilePathPrefix):
+		return "state directory"
+	case strings.HasPrefix(originalURL, "postgres://"):
+		return "state database"
+	default:
+		return "bucket"
+	}
+}
+
+// describeBackendURL names the backend for an error message: the URL as configured, plus
+// the normalized form when normalization changed something the user did not write.
+func describeBackendURL(originalURL, normalized string, cause error) string {
+	resolved := withoutInjectedNoTmpDir(originalURL, normalized)
+	if resolved == originalURL || strings.Contains(cause.Error(), resolved) {
+		return fmt.Sprintf("%q", originalURL)
+	}
+	return fmt.Sprintf("%q (resolved to %q)", originalURL, resolved)
+}
+
+// withoutInjectedNoTmpDir strips the no_tmp_dir parameter that massageBlobPath adds
+func withoutInjectedNoTmpDir(originalURL, normalized string) string {
+	if !strings.HasPrefix(originalURL, FilePathPrefix) || strings.Contains(originalURL, "no_tmp_dir") {
+		return normalized
+	}
+	u, err := url.Parse(normalized)
+	if err != nil {
+		return normalized
+	}
+	query := u.Query()
+	if query.Get("no_tmp_dir") == "" {
+		return normalized
+	}
+	query.Del("no_tmp_dir")
+	u.RawQuery = query.Encode()
+	return u.String()
 }
 
 // massageBlobPath takes the path the user provided and converts it to an appropriate form go-cloud
@@ -848,10 +903,7 @@ func (b *diyBackend) CreateStack(
 		}
 	}
 
-	stack := newStack(diyStackRef, b)
-	b.d.Infof(diag.Message("", "Created stack '%s'"), stack.Ref())
-
-	return stack, nil
+	return newStack(diyStackRef, b), nil
 }
 
 func (b *diyBackend) GetStack(ctx context.Context, stackRef backend.StackReference) (backend.Stack, error) {
@@ -1145,12 +1197,7 @@ func (b *diyBackend) PackPolicies(
 func (b *diyBackend) Preview(ctx context.Context, stack backend.Stack,
 	op backend.UpdateOperation, events chan<- engine.Event,
 ) (*deploy.Plan, sdkDisplay.ResourceChanges, error) {
-	// We can skip PreviewThenPromptThenExecute and just go straight to Execute.
-	opts := backend.ApplierOptions{
-		DryRun:   true,
-		ShowLink: true,
-	}
-	return b.apply(ctx, apitype.PreviewUpdate, stack, op, opts, events)
+	return backend.Preview(ctx, stack, op, b.apply, events)
 }
 
 func (b *diyBackend) Update(ctx context.Context, stack backend.Stack,

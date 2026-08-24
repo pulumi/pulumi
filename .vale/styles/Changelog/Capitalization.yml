@@ -1,0 +1,7 @@
+extends: existence
+message: "Changelog entries should start with a capital letter"
+link: https://github.com/pulumi/pulumi/blob/master/CONTRIBUTING.md#changelog-messages
+level: warning
+scope: raw
+raw:
+  - '^[a-z]'

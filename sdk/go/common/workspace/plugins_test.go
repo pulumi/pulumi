@@ -597,7 +597,7 @@ func TestPluginDownload(t *testing.T) {
 			return newMockReadCloser(expectedBytes)
 		}
 
-		chksum := "039058c6f2c0cb492c533b0a4d14ef77cc0f78abccced5287d84a1a2011cfb81" //nolint:gosec
+		chksum := "039058c6f2c0cb492c533b0a4d14ef77cc0f78abccced5287d84a1a2011cfb81"
 
 		t.Run("Invalid Checksum", func(t *testing.T) {
 			spec := PluginDescriptor{
@@ -719,7 +719,6 @@ func TestPluginDownload(t *testing.T) {
 				return nil, -1, &downloadError{code: 401}
 			}
 
-			//nolint:lll
 			if req.URL.String() ==
 				"https://api.github.com/repos/pulumi/pulumi-mockdl/releases/tags/v4.32.0" {
 				assert.Equal(t, "", req.Header.Get("Authorization"))
@@ -1265,7 +1264,6 @@ func TestDownloadToFile_retries(t *testing.T) {
 	assert.Equal(t, numRequests, numRetries)
 }
 
-//nolint:paralleltest // changes directory for process
 func TestUnmarshalProjectWithProviderList(t *testing.T) {
 	t.Parallel()
 	tempdir := t.TempDir()
@@ -1748,7 +1746,7 @@ func TestPluginInfoShimless(t *testing.T) {
 	pathDir := t.TempDir()
 
 	pluginPath := filepath.Join(pathDir, "pulumi-resource-mock")
-	err := os.MkdirAll(pluginPath, 0o700) //nolint: gosec
+	err := os.MkdirAll(pluginPath, 0o700)
 	require.NoError(t, err)
 	err = os.WriteFile(filepath.Join(pluginPath, "PulumiPlugin.yaml"), []byte(`runtime: nodejs`), 0o600)
 	require.NoError(t, err)
@@ -1820,6 +1818,60 @@ func TestProjectPluginsWithSymlink(t *testing.T) {
 		})
 	require.NoError(t, err)
 	assert.Equal(t, filepath.Join(tempdir, "symlink", "pulumi-resource-aws"), path)
+}
+
+func TestLastUsedTimeFromMarker(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	pluginDir := filepath.Join(dir, "resource-mock-v1.0.0")
+	require.NoError(t, os.Mkdir(pluginDir, 0o700))
+
+	markPluginUsed(pluginDir)
+
+	stat, err := os.Stat(pluginDir + pluginLastUsedSuffix)
+	require.NoError(t, err)
+
+	version := semver.MustParse("1.0.0")
+	info := PluginInfo{
+		Name:    "mock",
+		Kind:    apitype.ResourcePlugin,
+		Version: &version,
+		Path:    pluginDir,
+	}
+	assert.Equal(t, stat.ModTime(), info.LastUsedTime())
+
+	require.NoError(t, info.Delete())
+	_, err = os.Stat(pluginDir + pluginLastUsedSuffix)
+	assert.True(t, os.IsNotExist(err))
+}
+
+func TestGetPluginPathMarksLastUsed(t *testing.T) {
+	ctx := t.Context()
+	home := t.TempDir()
+	t.Setenv("PULUMI_HOME", home)
+	t.Setenv("PULUMI_IGNORE_AMBIENT_PLUGINS", "true")
+
+	pluginDir := filepath.Join(home, "plugins", "resource-mock-v1.0.0")
+	require.NoError(t, os.MkdirAll(pluginDir, 0o700))
+	err := os.WriteFile(filepath.Join(pluginDir, "pulumi-resource-mock"), []byte{}, 0o700) //nolint:gosec
+	require.NoError(t, err)
+
+	version := semver.MustParse("1.0.0")
+	spec := PluginDescriptor{Name: "mock", Kind: apitype.ResourcePlugin, Version: &version}
+
+	// Querying plugin info is not a use.
+	_, err = GetPluginInfo(ctx, diagtest.LogSink(t), spec, nil)
+	require.NoError(t, err)
+	_, err = os.Stat(pluginDir + pluginLastUsedSuffix)
+	assert.True(t, os.IsNotExist(err))
+
+	// Resolving the plugin's path for execution is.
+	path, err := GetPluginPath(ctx, diagtest.LogSink(t), spec, nil)
+	require.NoError(t, err)
+	assert.Equal(t, filepath.Join(pluginDir, "pulumi-resource-mock"), path)
+	_, err = os.Stat(pluginDir + pluginLastUsedSuffix)
+	require.NoError(t, err)
 }
 
 func TestNewPluginSpec(t *testing.T) {

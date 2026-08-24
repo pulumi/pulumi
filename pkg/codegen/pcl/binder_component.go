@@ -19,9 +19,10 @@ import (
 	"os"
 	"path/filepath"
 
+	mapset "github.com/deckarep/golang-set/v2"
+
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
-	"github.com/pulumi/pulumi/pkg/v3/codegen"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
 	syntax "github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -228,6 +229,66 @@ func includeSourceDirectoryInDiagnostics(diags hcl.Diagnostics, componentSourceD
 	}
 }
 
+// bindSourcelessComponent binds a component declared without a source. Such a component has no inner program, so there
+// is no schema to shape its inputs: every attribute other than the type token is taken as an input of its own type.
+func (b *binder) bindSourcelessComponent(node *Component, block *model.Block) hcl.Diagnostics {
+	var diagnostics hcl.Diagnostics
+
+	node.VariableType = model.DynamicType
+
+	inputProperties := map[string]model.Type{}
+	var options *model.Block
+	for _, item := range block.Body.Items {
+		switch item := item.(type) {
+		case *model.Attribute:
+			switch item.Name {
+			case LogicalNamePropertyKey:
+				logicalName, lDiags := getStringAttrValue(item)
+				if lDiags != nil {
+					diagnostics = diagnostics.Append(lDiags)
+				} else {
+					node.logicalName = logicalName
+				}
+			case "token":
+				token, tDiags := getStringAttrValue(item)
+				if tDiags != nil {
+					diagnostics = diagnostics.Append(tDiags)
+				} else {
+					node.Token = token
+				}
+			default:
+				node.Inputs = append(node.Inputs, item)
+				inputProperties[item.Name] = item.Value.Type()
+			}
+		case *model.Block:
+			if item.Type != "options" {
+				diagnostics = append(diagnostics, unsupportedBlock(item.Type, item.Syntax.TypeRange))
+				continue
+			}
+			if options != nil {
+				diagnostics = append(diagnostics, duplicateBlock(item.Type, item.Syntax.TypeRange))
+				continue
+			}
+			options = item
+		}
+	}
+
+	node.InputType = model.NewObjectType(inputProperties)
+
+	if node.Token == "" {
+		diagnostics = append(diagnostics, errorf(node.SyntaxNode().Range(),
+			"a component declared without a source must set 'token' to the component's type token"))
+	}
+
+	if options != nil {
+		resourceOptions, optionsDiags := bindResourceOptions(options)
+		diagnostics = append(diagnostics, optionsDiags...)
+		node.Options = resourceOptions
+	}
+
+	return diagnostics
+}
+
 func (b *binder) bindComponent(node *Component) hcl.Diagnostics {
 	// When options { range = <expr> } is present
 	// We create a new scope for binding the component.
@@ -286,6 +347,12 @@ func (b *binder) bindComponent(node *Component) hcl.Diagnostics {
 
 	block, diagnostics := model.BindBlock(node.syntax, scopes, b.tokens, b.options.modelOptions()...)
 	node.Definition = block
+
+	// A component declared without a source has no body to bind. It names an existing component resource by its
+	// type token, so there is no inner program, no inputs and no directory on disk.
+	if node.source == "" {
+		return append(diagnostics, b.bindSourcelessComponent(node, block)...)
+	}
 
 	// check we can use components and load the program
 	if b.options.dirPath == "" {
@@ -375,6 +442,13 @@ func (b *binder) bindComponent(node *Component) hcl.Diagnostics {
 				}
 				continue
 			}
+			// 'token' only names an existing component resource, which is what a component without a source
+			// does; a component with a source declares one, so the two are mutually exclusive.
+			if item.Name == "token" {
+				diagnostics = append(diagnostics, errorf(item.Syntax.NameRange,
+					"'token' may only be set on a component declared without a source"))
+				continue
+			}
 			// all other attributes are part of the inputs
 			_, knownInput := componentInputs[item.Name]
 
@@ -406,7 +480,7 @@ func (b *binder) bindComponent(node *Component) hcl.Diagnostics {
 			}
 			diagnostics = append(diagnostics, d)
 		}
-		attrNames := codegen.StringSet{}
+		attrNames := mapset.NewSet[string]()
 		for _, attr := range node.Inputs {
 			attrNames.Add(attr.Name)
 

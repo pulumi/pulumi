@@ -26,11 +26,11 @@ import (
 	"sort"
 	"strconv"
 	"strings"
-	"sync"
 	"unicode"
 
 	"github.com/gofrs/uuid"
 	"github.com/hashicorp/hcl/v2"
+	hclv2syntax "github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/hashicorp/hcl/v2/hclwrite"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -64,28 +64,7 @@ func startSpinner(prefix string) func() {
 		prefix, nil, cmdutil.GetGlobalColorization(), 8 /*timesPerSecond*/, !cmdutil.Interactive(),
 	)
 	spinner.Tick()
-	stop := make(chan struct{})
-	stopped := make(chan struct{})
-	go func() {
-		defer close(stopped)
-		for {
-			select {
-			case <-ticker.C:
-				spinner.Tick()
-			case <-stop:
-				spinner.Reset()
-				return
-			}
-		}
-	}()
-	var once sync.Once
-	return func() {
-		once.Do(func() {
-			ticker.Stop()
-			close(stop)
-			<-stopped
-		})
-	}
+	return cmdutil.SpinUntilStopped(spinner, ticker)
 }
 
 type functionEvalContext struct {
@@ -444,7 +423,7 @@ func evaluateFunctionFile(
 	inputFlags map[string]inputFlagValue,
 ) (resource.PropertyMap, error) {
 	bind := func(file *hclsyntax.File) ([]*model.Attribute, model.Type, []*schema.Property, hcl.Diagnostics) {
-		attrs, inputType, diags := pcl.BindFunction(file, fn)
+		attrs, inputType, diags := pcl.BindFunction(ctx, file, fn)
 		var properties []*schema.Property
 		if fn.Inputs != nil {
 			properties = fn.Inputs.Properties
@@ -465,7 +444,7 @@ func evaluateResourceFile(
 	bindOpts ...pcl.BindOption,
 ) (resource.PropertyMap, error) {
 	bind := func(file *hclsyntax.File) ([]*model.Attribute, model.Type, []*schema.Property, hcl.Diagnostics) {
-		attrs, inputType, diags := pcl.BindResource(file, res, bindOpts...)
+		attrs, inputType, diags := pcl.BindResource(ctx, file, res, bindOpts...)
 		return attrs, inputType, res.InputProperties, diags
 	}
 	return evaluateFile(
@@ -572,6 +551,85 @@ func mergeAttributeLiteralsIntoPCL(
 	return out, nil
 }
 
+// mergeAbsentAttributeLiteralsIntoPCL is the sibling of mergeAttributeLiteralsIntoPCL that only
+// sets a top-level attribute when it is not already present. Used to overlay --provider base inputs
+// beneath the user's --provider-file / --<flag> overrides without clobbering them.
+func mergeAbsentAttributeLiteralsIntoPCL(
+	source []byte, filename, fileType string, attrs map[string]string,
+) ([]byte, error) {
+	if len(attrs) == 0 {
+		return source, nil
+	}
+	if len(source) > 0 && source[len(source)-1] != '\n' {
+		source = append(append([]byte{}, source...), '\n')
+	}
+	file, diags := hclwrite.ParseConfig(source, filename, hcl.Pos{Line: 1, Column: 1})
+	if diags.HasErrors() {
+		return nil, diags
+	}
+	body := file.Body()
+	names := make([]string, 0, len(attrs))
+	for name := range attrs {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	overlayName := fmt.Sprintf("%s base for %s", fileType, filename)
+	for _, name := range names {
+		if body.GetAttribute(name) != nil {
+			continue
+		}
+		overlay, diags := hclwrite.ParseConfig(
+			fmt.Appendf(nil, "%s = %s\n", name, attrs[name]), overlayName, hcl.Pos{Line: 1, Column: 1},
+		)
+		if diags.HasErrors() {
+			return nil, fmt.Errorf("parse %s base %s: %w", fileType, name, diags)
+		}
+		attr := overlay.Body().GetAttribute(name)
+		if attr == nil {
+			return nil, fmt.Errorf("parse %s base %s: no attribute produced", fileType, name)
+		}
+		body.SetAttributeRaw(name, attr.Expr().BuildTokens(nil))
+	}
+	return file.Bytes(), nil
+}
+
+// mergePCLAttributesIntoPCL takes the top-level attributes from `patch` and writes them into
+// `source`, overriding any attribute of the same name and preserving all other content (existing
+// attributes, blocks, and comments). Non-attribute content in `patch` (blocks, comments) is
+// ignored — patch semantics only touch inputs.
+func mergePCLAttributesIntoPCL(
+	source []byte, sourceFilename string, patch []byte, patchFilename string,
+) ([]byte, error) {
+	if len(patch) == 0 {
+		return source, nil
+	}
+	patchFile, diags := hclwrite.ParseConfig(patch, patchFilename, hcl.Pos{Line: 1, Column: 1})
+	if diags.HasErrors() {
+		return nil, diags
+	}
+	patchAttrs := patchFile.Body().Attributes()
+	if len(patchAttrs) == 0 {
+		return source, nil
+	}
+	if len(source) > 0 && source[len(source)-1] != '\n' {
+		source = append(append([]byte{}, source...), '\n')
+	}
+	file, diags := hclwrite.ParseConfig(source, sourceFilename, hcl.Pos{Line: 1, Column: 1})
+	if diags.HasErrors() {
+		return nil, diags
+	}
+	body := file.Body()
+	names := make([]string, 0, len(patchAttrs))
+	for name := range patchAttrs {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	for _, name := range names {
+		body.SetAttributeRaw(name, patchAttrs[name].Expr().BuildTokens(nil))
+	}
+	return file.Bytes(), nil
+}
+
 // injectProviderOptionInPCL rewrites a resource snippet's PCL to reference the (external) provider
 // snippet's URN via the given identifier (declared by the snippet's References map). If the
 // source already has a top-level `options` block, `provider = <name>` is added inside it (unless
@@ -609,6 +667,83 @@ func injectProviderOptionInPCL(source []byte, filename, name string) ([]byte, er
 	newBlock := body.AppendNewBlock("options", nil)
 	newBlock.Body().SetAttributeRaw("provider", providerTokens)
 	return file.Bytes(), nil
+}
+
+// propertyValueToPCLLiteral serializes a resource.PropertyValue into a PCL literal fragment
+// suitable for embedding as an attribute value (e.g. `"foo"`, `{ a = 1 }`). Only value-shaped
+// kinds are supported — computed/output/asset/archive/resource-reference values would need engine
+// support to encode, so they return an error naming the offending attribute.
+func propertyValueToPCLLiteral(name string, v resource.PropertyValue) (string, error) {
+	switch {
+	case v.IsNull():
+		return string(hclwrite.TokensForValue(cty.NullVal(cty.DynamicPseudoType)).Bytes()), nil
+	case v.IsBool():
+		return string(hclwrite.TokensForValue(cty.BoolVal(v.BoolValue())).Bytes()), nil
+	case v.IsNumber():
+		return string(hclwrite.TokensForValue(cty.NumberFloatVal(v.NumberValue())).Bytes()), nil
+	case v.IsString():
+		return string(hclwrite.TokensForValue(cty.StringVal(v.StringValue())).Bytes()), nil
+	case v.IsArray():
+		arr := v.ArrayValue()
+		if len(arr) == 0 {
+			return "[]", nil
+		}
+		elems := make([]string, len(arr))
+		for i, el := range arr {
+			ev, err := propertyValueToPCLLiteral(name, el)
+			if err != nil {
+				return "", err
+			}
+			elems[i] = ev
+		}
+		return "[" + strings.Join(elems, ", ") + "]", nil
+	case v.IsObject():
+		obj := v.ObjectValue()
+		if len(obj) == 0 {
+			return "{}", nil
+		}
+		keys := make([]string, 0, len(obj))
+		for k := range obj {
+			keys = append(keys, string(k))
+		}
+		sort.Strings(keys)
+		lines := make([]string, 0, len(keys)+2)
+		lines = append(lines, "{")
+		for _, key := range keys {
+			val := obj[resource.PropertyKey(key)]
+			fv, err := propertyValueToPCLLiteral(name+"."+key, val)
+			if err != nil {
+				return "", err
+			}
+			lines = append(lines, fmt.Sprintf("  %s = %s", pclObjectKeyLiteral(key), strings.ReplaceAll(fv, "\n", "\n  ")))
+		}
+		lines = append(lines, "}")
+		return strings.Join(lines, "\n"), nil
+	case v.IsSecret():
+		lit, err := propertyValueToPCLLiteral(name, v.SecretValue().Element)
+		if err != nil {
+			return "", err
+		}
+		return fmt.Sprintf("secret(%s)", lit), nil
+	case v.IsAsset():
+		return "", fmt.Errorf("provider config attribute %q of type asset is not yet supported", name)
+	case v.IsArchive():
+		return "", fmt.Errorf("provider config attribute %q of type archive is not yet supported", name)
+	case v.IsResourceReference():
+		return "", fmt.Errorf("provider config attribute %q of type resource reference is not yet supported", name)
+	case v.IsComputed(), v.IsOutput():
+		return "", fmt.Errorf(
+			"provider config attribute %q has a computed/output value and cannot be materialized", name,
+		)
+	}
+	return "", fmt.Errorf("provider config attribute %q has an unsupported value kind", name)
+}
+
+func pclObjectKeyLiteral(key string) string {
+	if hclv2syntax.ValidIdentifier(key) {
+		return key
+	}
+	return string(hclwrite.TokensForValue(cty.StringVal(key)).Bytes())
 }
 
 func pclLiteral(flag inputFlagValue) (string, error) {
