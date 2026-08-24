@@ -219,12 +219,6 @@ func testLanguageWithConfig(t *testing.T, config languageTestConfig) {
 						t.Skip("Skipping non-default provider tests")
 					}
 
-					if (config.name == "default" || config.name == "toml") &&
-						tt == "l2-discriminated-union-marked-key" {
-						t.Skip("pulumi#21830: Expected to fail")
-					}
-
-
 					if config.typechecker == "pyright" &&
 						(tt == "l3-component-simple" ||
 							tt == "l3-rewrite-conversions" ||
