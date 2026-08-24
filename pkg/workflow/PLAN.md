@@ -73,7 +73,8 @@ func pulumi.NewWorkflow(ctx *pulumi.Context, name string,
 
 type Context struct{ /* unexported */ }
 func (w *Context) Node(name string, run NodeFunc) Node              // run == nil → waypoint
-func (w *Context) Cursor(at Node, name string, inputs pulumi.Map)   // declarative entry (§3)
+func (w *Context) Cursor(at Node, name string, inputs pulumi.Map)   // declarative entry via a "<name>-entry" waypoint (§3)
+func (w *Context) CursorAt(at Node, name string, inputs pulumi.Map) // declarative entry placed directly on at (§3)
 func (w *Context) Edge(name string, from, to Node, cond EdgeFunc)
 func (w *Context) And (name string, from, to Node, conds EdgeMap)
 func (w *Context) Or  (name string, from, to Node, conds EdgeMap)
@@ -161,10 +162,16 @@ caused by that invocation; otherwise discarded.
   `Set`s ride that condition's overlay, so under `And` it may run N times and
   is discarded if the edge fails.
 
-**Entries are declarative.** `w.Cursor(node, name, inputs)`: the engine diffs
-resolved inputs against the last-placed value for `name`. Changed or new ⇒ an
-arrival at `node` (FSA replacement rules apply; `CursorReplaced` if an
-occupant is overwritten). Unchanged ⇒ no-op. Removed from the program ⇒ the
+**Entries are declarative.** The engine diffs resolved inputs against the
+last-placed value for `name`. Changed or new ⇒ a placement (FSA replacement
+rules apply; `CursorReplaced` if an occupant is overwritten). Unchanged ⇒
+no-op. Placement is not an arrival: the placed node's program first runs when
+the workflow reconciles, after this up's edges were asked. `w.Cursor(node,
+name, inputs)` is SDK sugar that recovers arrival semantics: it places the
+cursor on a synthetic `"<name>-entry"` waypoint with an always-passing `enter`
+edge into `node`, so the cursor *moves* into `node` — running its program
+before its outgoing edges — within the same up. `w.CursorAt(node, name,
+inputs)` places directly on `node`. Removed from the program ⇒ the
 cursor it placed keeps going. Cursor ids are `name#generation`; merged cursors
 take `Merged.Name` with a fresh generation. Unknown inputs are rejected in `up`.
 

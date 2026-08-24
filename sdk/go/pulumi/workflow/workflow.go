@@ -156,10 +156,30 @@ func (w *Context) Node(name string, run NodeFunc) Node {
 	return Node{name}
 }
 
-// Cursor declares a cursor entry named name at node at. The engine places a cursor there whenever the
-// resolved inputs differ from the last placement of name; an unchanged entry is a no-op. Cursors are
-// named name#generation.
+// Cursor declares a cursor entry named name that enters the workflow at at. The cursor is placed on a
+// synthetic entry node (named "<name>-entry", with no program) and crosses an always-passing edge into
+// at — an arrival, so at's program runs before at's outgoing edges are asked, within the same up. Use
+// [Context.CursorAt] to place a cursor directly on a node instead.
 func (w *Context) Cursor(at Node, name string, inputs pulumi.Map) {
+	if !w.defined(at) {
+		return
+	}
+	entry := w.Node(name+"-entry", nil)
+	if w.err != nil {
+		return
+	}
+	w.Edge("enter", entry, at, func(context.Context, *Cursor) (bool, error) { return true, nil })
+	w.CursorAt(entry, name, inputs)
+}
+
+// CursorAt declares a cursor entry named name placed directly on node at: the engine places a cursor
+// there whenever the resolved inputs differ from the last placement of name; an unchanged entry is a
+// no-op. Cursors are named name#generation.
+//
+// Placement is not an arrival: at's program first runs when the workflow reconciles, after this up's
+// edges were asked, so a freshly placed cursor's edges see only the entry inputs and the cursor leaves
+// at on a later up at the earliest. [Context.Cursor] arranges an arrival instead.
+func (w *Context) CursorAt(at Node, name string, inputs pulumi.Map) {
 	if !w.defined(at) {
 		return
 	}
