@@ -704,6 +704,10 @@ func TestRetryWaitWarner(t *testing.T) {
 
 		w.onRetryWait(time.Second, mkRes(http.StatusServiceUnavailable))
 		require.Len(t, sink.Messages[diag.Warning], 1)
+
+		// A fresh episode is not paced by the previous episode's warning.
+		w.onRetryWait(15*time.Second, mkRes(http.StatusServiceUnavailable))
+		require.Len(t, sink.Messages[diag.Warning], 2)
 	})
 
 	t.Run("nil warner and nil sink are safe", func(t *testing.T) {

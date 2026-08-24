@@ -396,23 +396,20 @@ type defaultHTTPClient struct {
 }
 
 const (
-	// serverWaitWarningThreshold is the cumulative server-directed wait after
-	// which the user is told the client is waiting; shorter blips stay silent.
+	// Warn only once cumulative server-directed waits pass the threshold, then
+	// at most once per interval; shorter blips stay silent.
 	serverWaitWarningThreshold = 10 * time.Second
-	// serverWaitRewarnInterval paces repeat warnings while waits continue.
-	serverWaitRewarnInterval = time.Minute
+	serverWaitRewarnInterval   = time.Minute
 )
 
-// retryWaitWarner tells the user about server-directed retry waits, such as
-// sitting out a maintenance window. State is shared across a client's requests
-// so concurrent waiters produce one warning per interval, not one each.
+// retryWaitWarner tells the user about server-directed retry waits. State is
+// shared across a client's requests so concurrent waiters warn once, not each.
 type retryWaitWarner struct {
 	diag diag.Sink
 
 	mu       sync.Mutex
 	waited   time.Duration
 	lastWarn time.Time
-	warned   bool
 }
 
 func (w *retryWaitWarner) onRetryWait(delay time.Duration, res *http.Response) {
@@ -422,11 +419,10 @@ func (w *retryWaitWarner) onRetryWait(delay time.Duration, res *http.Response) {
 	w.mu.Lock()
 	w.waited += delay
 	if w.waited < serverWaitWarningThreshold ||
-		(w.warned && time.Since(w.lastWarn) < serverWaitRewarnInterval) {
+		(!w.lastWarn.IsZero() && time.Since(w.lastWarn) < serverWaitRewarnInterval) {
 		w.mu.Unlock()
 		return
 	}
-	w.warned = true
 	w.lastWarn = time.Now()
 	w.mu.Unlock()
 
@@ -446,8 +442,8 @@ func (w *retryWaitWarner) onSuccess() {
 		return
 	}
 	w.mu.Lock()
-	warned := w.warned
-	w.warned = false
+	warned := !w.lastWarn.IsZero()
+	w.lastWarn = time.Time{}
 	w.waited = 0
 	w.mu.Unlock()
 	if warned {

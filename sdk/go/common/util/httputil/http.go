@@ -27,18 +27,14 @@ import (
 
 const maxRetryAfterDelay = 30 * time.Second
 
-// shouldRetryHeader is the response header through which the server explicitly
-// directs retry behavior, overriding the caller's policy in either direction:
-// "true" means the request was not processed and is safe to retry regardless of
-// method; "false" means do not retry. Only consulted on error responses
-// (status >= 400). Follows the x-should-retry convention used by
-// Stainless-generated SDKs (OpenAI, Anthropic).
+// shouldRetryHeader lets the server override the caller's retry policy on
+// error responses: "true" forces a retry, "false" forbids one. Follows the
+// x-should-retry convention used by Stainless-generated SDKs.
 const shouldRetryHeader = "X-Pulumi-Should-Retry"
 
 // retryAfterHeaderDelay returns the uncapped delay from a Retry-After header
-// (RFC 9110 delay-seconds or HTTP-date). ok is false if the header is absent or
-// malformed. An HTTP-date in the past yields a zero delay: valid, meaning
-// "retry now".
+// (RFC 9110 delay-seconds or HTTP-date); ok is false if absent or malformed.
+// A past HTTP-date is a valid zero delay.
 func retryAfterHeaderDelay(res *http.Response, now time.Time) (time.Duration, bool) {
 	header := res.Header.Get("Retry-After")
 	if header == "" {
@@ -46,7 +42,7 @@ func retryAfterHeaderDelay(res *http.Response, now time.Time) (time.Duration, bo
 	}
 	var delay time.Duration
 	if seconds, err := strconv.Atoi(header); err == nil {
-		// delay-seconds is 1*DIGIT per the RFC; negative values are malformed.
+		// delay-seconds is 1*DIGIT per the RFC; negative is malformed.
 		if seconds < 0 {
 			return 0, false
 		}
@@ -82,9 +78,8 @@ type RetryOpts struct {
 	// These timeouts are safe to retry even on POST requests, since we know the actual request hasn't been sent yet.
 	HandshakeTimeoutsOnly bool
 
-	// OnRetryWait, if set, is called before honoring a server-directed wait (a
-	// Retry-After on a 429 or 503 response) with the delay about to be waited and
-	// the response that requested it.
+	// OnRetryWait, if set, is called before honoring a server-directed wait
+	// (Retry-After on a 429 or 503 response).
 	OnRetryWait func(delay time.Duration, res *http.Response)
 }
 
@@ -115,8 +110,7 @@ func doWithRetry(req *http.Request, client *http.Client, opts RetryOpts) (*http.
 		maxRetryCount = *opts.MaxRetryCount
 	}
 
-	// Maintenance rounds (503 + Retry-After) don't count against the retry
-	// budget; attempts below subtracts them from retry.Until's try counter.
+	// Maintenance rounds (503 + Retry-After) don't count against the retry budget.
 	maintenanceRounds := 0
 
 	acceptor := retry.Acceptor{
@@ -138,8 +132,6 @@ func doWithRetry(req *http.Request, client *http.Client, opts RetryOpts) (*http.
 
 			res, resErr := client.Do(req)
 
-			// On error responses the server can explicitly direct retry behavior via
-			// X-Pulumi-Should-Retry, overriding the caller's policy in either direction.
 			serverSaysRetry := false
 			if resErr == nil && res.StatusCode >= 400 {
 				switch res.Header.Get(shouldRetryHeader) {
@@ -158,10 +150,8 @@ func doWithRetry(req *http.Request, client *http.Client, opts RetryOpts) (*http.
 				return true, res, resErr
 			}
 
-			// A 503 carrying Retry-After signals planned unavailability (maintenance):
-			// honor the server's delay uncapped and don't count the attempt against
-			// the retry budget — keep retrying for as long as the server keeps
-			// signaling. Pacing for zero delays comes from the acceptor's backoff.
+			// A 503 with Retry-After signals planned unavailability: honor the delay
+			// uncapped and keep retrying for as long as the server keeps signaling.
 			if resErr == nil && res.StatusCode == http.StatusServiceUnavailable {
 				if delay, ok := retryAfterHeaderDelay(res, time.Now()); ok {
 					maintenanceRounds++

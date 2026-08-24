@@ -130,9 +130,8 @@ func RenewLeaseFunc(
 		tok, err := client.RenewUpdateLease(
 			ctx, update, currentToken, duration)
 		if err != nil {
-			// 401 (surfaced as LoginRequiredError) and 403 mean the token is expired
-			// or invalid; 409 means the update is no longer in progress. Renewing can
-			// never succeed again, so stop the token refresh loop.
+			// On 401 (surfaced as LoginRequiredError), 403, and 409 renewing can never
+			// succeed again, so stop the token refresh loop.
 			var apierr *apitype.ErrorResponse
 			var loginErr backenderr.LoginRequiredError
 			if errors.As(err, &loginErr) ||
