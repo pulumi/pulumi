@@ -204,6 +204,13 @@ jobs:
           with: |
             experimental: true
       - run: make lint_changelog
+      - name: Lint changelog message style (advisory)
+        if: github.event_name == 'pull_request'
+        uses: vale-cli/vale-action@518a9136acc6e6668ce7c00d367051e0941e87ff # v3.0.0
+        with:
+          version: 3.17.1
+          files: changelog/pending
+          sync: false
 
   pulumi-json:
     name: Lint pulumi.json
