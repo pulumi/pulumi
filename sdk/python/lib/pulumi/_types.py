@@ -747,13 +747,20 @@ def _is_optional_type(tp):
     return False
 
 
-def _literal_constants(cls: type) -> tuple[tuple[str, Any], ...]:
+# A property a union member pins to a constant: its Pulumi name and the pinned value.
+_Constant = tuple[str, Any]
+
+# A union member and the constants it pins.
+_ConstrainedMember = tuple[type, tuple[_Constant, ...]]
+
+
+def _literal_constants(cls: type) -> tuple[_Constant, ...]:
     """
     Returns the properties of `cls` that codegen typed as a single-value `Literal`, which is how a
     schema constant is rendered, keyed by their Pulumi name.
     """
     types_of = input_type_types if is_input_type(cls) else output_type_types
-    constants: list[tuple[str, Any]] = []
+    constants: list[_Constant] = []
     for name, tp in types_of(cls).items():
         if get_origin(tp) is not Literal:
             continue
@@ -766,9 +773,7 @@ def _literal_constants(cls: type) -> tuple[tuple[str, Any], ...]:
 
 
 @functools.cache
-def _constrained_union_members(
-    typ: Any,
-) -> Optional[tuple[tuple[type, tuple[tuple[str, Any], ...]], ...]]:
+def _constrained_union_members(typ: Any) -> Optional[tuple[_ConstrainedMember, ...]]:
     """
     Returns each member of the union paired with the constants it pins, or None if `typ` is not a
     union whose members can all be told apart this way. Args that carry no metadata of their own,
@@ -831,7 +836,10 @@ def _same_constant(expected: Any, actual: Any) -> bool:
 
 
 def _member_matches(
-    member: type, constants: tuple[tuple[str, Any], ...], value: abc.Mapping
+    member: type,
+    constants: tuple[_Constant, ...],
+    value: abc.Mapping,
+    name_for: Callable[[type, str], Optional[str]],
 ) -> bool:
     """
     Reports whether `value` satisfies `constants`: at least one is present and agrees, and none
@@ -840,11 +848,10 @@ def _member_matches(
     """
     confirmed = False
     for name, expected in constants:
-        actual = _lookup(value, name)
-        if actual is MISSING:
-            python_name = _py_name_for(member, name)
-            if python_name is not None:
-                actual = _lookup(value, python_name)
+        lookup_name = name_for(member, name)
+        if lookup_name is None:
+            continue
+        actual = _lookup(value, lookup_name)
         if actual is MISSING:
             continue
         if not _same_constant(expected, actual):
@@ -853,19 +860,39 @@ def _member_matches(
     return confirmed
 
 
-def reduce_discriminated_union(typ: Any, value: abc.Mapping) -> Optional[type]:
-    """
-    Returns the single member of the union `typ` whose constants `value` satisfies, or None if no
-    single member matches. `value` may be keyed by Pulumi or by Python names.
-    """
+def _reduce_discriminated_union(
+    typ: Any, value: abc.Mapping, name_for: Callable[[type, str], Optional[str]]
+) -> Optional[type]:
     members = _constrained_union_members(typ)
     if members is None:
         return None
 
-    candidates = [m for m, constants in members if _member_matches(m, constants, value)]
+    candidates = [
+        m for m, constants in members if _member_matches(m, constants, value, name_for)
+    ]
     if len(candidates) != 1:
         return None
     return candidates[0]
+
+
+def reduce_discriminated_union_by_pulumi_name(
+    typ: Any, value: abc.Mapping
+) -> Optional[type]:
+    """
+    Returns the single member of the union `typ` whose constants `value` satisfies, or None if no
+    single member matches. For values keyed by Pulumi names, as the engine sends them.
+    """
+    return _reduce_discriminated_union(typ, value, lambda _, name: name)
+
+
+def reduce_discriminated_union_by_python_name(
+    typ: Any, value: abc.Mapping
+) -> Optional[type]:
+    """
+    Returns the single member of the union `typ` whose constants `value` satisfies, or None if no
+    single member matches. For values keyed by Python names, as a user writes them.
+    """
+    return _reduce_discriminated_union(typ, value, _py_name_for)
 
 
 def _globals_for_cls(cls: type) -> Optional[dict[str, Any]]:

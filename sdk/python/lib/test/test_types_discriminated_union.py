@@ -122,6 +122,17 @@ class SameConstantB(dict):
     kind: Literal["same"] = pulumi.property("kind")
 
 
+# The constant's Pulumi and Python names differ, so each entry point reads only its own.
+@pulumi.output_type
+class TheVersionOne(dict):
+    the_version: Literal[1] = pulumi.property("theVersion")
+
+
+@pulumi.output_type
+class TheVersionTwo(dict):
+    the_version: Literal[2] = pulumi.property("theVersion")
+
+
 @pulumi.output_type
 class Untagged(dict):
     name: str = pulumi.property("name")
@@ -144,13 +155,13 @@ def translate(output, typ):
 class ReduceTests(unittest.TestCase):
     def test_reduces_to_the_member_the_constants_select(self):
         self.assertIs(
-            _types.reduce_discriminated_union(
+            _types.reduce_discriminated_union_by_pulumi_name(
                 InputUnion, {"kind": "cat", "livesLeft": 9}
             ),
             CatArgs,
         )
         self.assertIs(
-            _types.reduce_discriminated_union(
+            _types.reduce_discriminated_union_by_pulumi_name(
                 OutputUnion, {"kind": "dog", "goodBoy": True}
             ),
             Dog,
@@ -159,7 +170,7 @@ class ReduceTests(unittest.TestCase):
     def test_reduces_by_python_name(self):
         # A user writing a dict by hand uses the Python name of the property.
         self.assertIs(
-            _types.reduce_discriminated_union(
+            _types.reduce_discriminated_union_by_python_name(
                 OutputUnion, {"kind": "cat", "lives_left": 9}
             ),
             Cat,
@@ -168,11 +179,13 @@ class ReduceTests(unittest.TestCase):
     def test_members_sharing_a_shape_stay_distinct(self):
         union = Union[Metric, Imperial]
         self.assertIs(
-            _types.reduce_discriminated_union(union, {"kind": "metric", "amount": 1.0}),
+            _types.reduce_discriminated_union_by_pulumi_name(
+                union, {"kind": "metric", "amount": 1.0}
+            ),
             Metric,
         )
         self.assertIs(
-            _types.reduce_discriminated_union(
+            _types.reduce_discriminated_union_by_pulumi_name(
                 union, {"kind": "imperial", "amount": 1.0}
             ),
             Imperial,
@@ -183,13 +196,13 @@ class ReduceTests(unittest.TestCase):
         # property. The whole set is matched, and the property that actually differs decides.
         union = Union[ConfigMap, Secret]
         self.assertIs(
-            _types.reduce_discriminated_union(
+            _types.reduce_discriminated_union_by_pulumi_name(
                 union, {"kind": "ConfigMap", "apiVersion": "v1", "data": "d"}
             ),
             ConfigMap,
         )
         self.assertIs(
-            _types.reduce_discriminated_union(
+            _types.reduce_discriminated_union_by_pulumi_name(
                 union, {"kind": "Secret", "apiVersion": "v1", "data": "d"}
             ),
             Secret,
@@ -198,7 +211,7 @@ class ReduceTests(unittest.TestCase):
     def test_a_shared_constant_alone_does_not_decide(self):
         # `apiVersion` agrees with both members, so it must not select one on its own.
         self.assertIsNone(
-            _types.reduce_discriminated_union(
+            _types.reduce_discriminated_union_by_pulumi_name(
                 Union[ConfigMap, Secret], {"apiVersion": "v1"}
             )
         )
@@ -206,49 +219,86 @@ class ReduceTests(unittest.TestCase):
     def test_non_string_constants(self):
         union = Union[VersionOne, VersionTwo]
         self.assertIs(
-            _types.reduce_discriminated_union(union, {"version": 1, "legacy": True}),
+            _types.reduce_discriminated_union_by_pulumi_name(
+                union, {"version": 1, "legacy": True}
+            ),
             VersionOne,
         )
         self.assertIs(
-            _types.reduce_discriminated_union(union, {"version": 2, "legacy": False}),
+            _types.reduce_discriminated_union_by_pulumi_name(
+                union, {"version": 2, "legacy": False}
+            ),
             VersionTwo,
         )
 
     def test_bool_is_not_confused_with_int(self):
         # `True == 1` in Python, so a bool constant must not match an integer value.
         self.assertIsNone(
-            _types.reduce_discriminated_union(
+            _types.reduce_discriminated_union_by_pulumi_name(
                 Union[VersionOne, VersionTwo], {"version": 1, "legacy": 1}
             )
         )
 
     def test_absent_constants_select_nothing(self):
         self.assertIsNone(
-            _types.reduce_discriminated_union(OutputUnion, {"goodBoy": True})
+            _types.reduce_discriminated_union_by_pulumi_name(
+                OutputUnion, {"goodBoy": True}
+            )
         )
 
     def test_unknown_constant_selects_nothing(self):
         # An SDK older than the provider sees a value it does not know. It must not raise.
         self.assertIsNone(
-            _types.reduce_discriminated_union(OutputUnion, {"kind": "fish"})
+            _types.reduce_discriminated_union_by_pulumi_name(
+                OutputUnion, {"kind": "fish"}
+            )
         )
 
     def test_members_that_cannot_be_told_apart(self):
         self.assertIsNone(
-            _types.reduce_discriminated_union(
+            _types.reduce_discriminated_union_by_pulumi_name(
                 Union[SameConstantA, SameConstantB], {"kind": "same"}
             )
         )
 
     def test_member_without_constants_is_not_a_union(self):
         self.assertIsNone(
-            _types.reduce_discriminated_union(Union[Cat, Untagged], {"kind": "cat"})
+            _types.reduce_discriminated_union_by_pulumi_name(
+                Union[Cat, Untagged], {"kind": "cat"}
+            )
         )
 
     def test_non_union_and_single_member(self):
-        self.assertIsNone(_types.reduce_discriminated_union(Cat, {"kind": "cat"}))
         self.assertIsNone(
-            _types.reduce_discriminated_union(Optional[Cat], {"kind": "cat"})
+            _types.reduce_discriminated_union_by_pulumi_name(Cat, {"kind": "cat"})
+        )
+        self.assertIsNone(
+            _types.reduce_discriminated_union_by_pulumi_name(
+                Optional[Cat], {"kind": "cat"}
+            )
+        )
+
+
+class DirectionTests(unittest.TestCase):
+    # Each entry point reads the value under one naming convention only.
+    def test_pulumi_names_resolve_on_the_pulumi_side(self):
+        union = Union[TheVersionOne, TheVersionTwo]
+        self.assertIs(
+            _types.reduce_discriminated_union_by_pulumi_name(union, {"theVersion": 2}),
+            TheVersionTwo,
+        )
+        self.assertIsNone(
+            _types.reduce_discriminated_union_by_pulumi_name(union, {"the_version": 2})
+        )
+
+    def test_python_names_resolve_on_the_python_side(self):
+        union = Union[TheVersionOne, TheVersionTwo]
+        self.assertIs(
+            _types.reduce_discriminated_union_by_python_name(union, {"the_version": 2}),
+            TheVersionTwo,
+        )
+        self.assertIsNone(
+            _types.reduce_discriminated_union_by_python_name(union, {"theVersion": 2})
         )
 
 
