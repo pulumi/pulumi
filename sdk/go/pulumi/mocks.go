@@ -48,6 +48,16 @@ type MockResourceMonitorWithMethodCall interface {
 	MethodCall(args MockCallArgs) (resource.PropertyMap, error)
 }
 
+// MockResourceMonitorWithTransforms is an optional interface that mock resource monitors
+// can implement to be notified of stack transform registrations. The mock monitor does
+// not run transforms; implementations that want to exercise them can record them here and
+// call them from NewResource or Call.
+type MockResourceMonitorWithTransforms interface {
+	MockResourceMonitor
+	RegisterTransform(t ResourceTransform)
+	RegisterInvokeTransform(t InvokeTransform)
+}
+
 // mockResourceMonitorWithRegisterResource is a mock resource monitor that
 // also implements the RegisterResource method. A new resource monitor interface
 // is created to avoid needing to implement additional methods for existing implementations
@@ -103,6 +113,9 @@ type MockResourceArgs struct {
 	ID string
 	// Custom specifies whether or not the resource is Custom (i.e. managed by a resource provider).
 	Custom bool
+	// Transforms are the transforms declared in the resource's options. The mock monitor
+	// does not run them.
+	Transforms []ResourceTransform
 	// Full register RPC call, if available.
 	RegisterRPC *pulumirpc.RegisterResourceRequest
 	// Full read RPC call, if available
@@ -116,6 +129,40 @@ type mockMonitor struct {
 	stack     string
 	mocks     MockResourceMonitor
 	resources sync.Map // map[string]resource.PropertyMap
+
+	transformsLock           sync.Mutex
+	transformCallbacks       map[string]ResourceTransform
+	invokeTransformCallbacks map[string]InvokeTransform
+}
+
+func (m *mockMonitor) recordTransform(token string, t ResourceTransform) {
+	m.transformsLock.Lock()
+	defer m.transformsLock.Unlock()
+	if m.transformCallbacks == nil {
+		m.transformCallbacks = map[string]ResourceTransform{}
+	}
+	m.transformCallbacks[token] = t
+}
+
+func (m *mockMonitor) recordInvokeTransform(token string, t InvokeTransform) {
+	m.transformsLock.Lock()
+	defer m.transformsLock.Unlock()
+	if m.invokeTransformCallbacks == nil {
+		m.invokeTransformCallbacks = map[string]InvokeTransform{}
+	}
+	m.invokeTransformCallbacks[token] = t
+}
+
+func (m *mockMonitor) resolveTransforms(callbacks []*pulumirpc.Callback) []ResourceTransform {
+	m.transformsLock.Lock()
+	defer m.transformsLock.Unlock()
+	var transforms []ResourceTransform
+	for _, callback := range callbacks {
+		if t, has := m.transformCallbacks[callback.GetToken()]; has {
+			transforms = append(transforms, t)
+		}
+	}
+	return transforms
 }
 
 func (m *mockMonitor) newURN(parent, typ, name string) string {
@@ -327,6 +374,7 @@ func (m *mockMonitor) RegisterResource(ctx context.Context, in *pulumirpc.Regist
 		Provider:    in.GetProvider(),
 		ID:          in.GetImportId(),
 		Custom:      in.GetCustom(),
+		Transforms:  m.resolveTransforms(in.GetTransforms()),
 		RegisterRPC: in,
 	})
 	if err != nil {
@@ -386,12 +434,34 @@ func (m *mockMonitor) RegisterResourceOutputs(ctx context.Context, in *pulumirpc
 func (m *mockMonitor) RegisterStackTransform(ctx context.Context, in *pulumirpc.Callback,
 	opts ...grpc.CallOption,
 ) (*emptypb.Empty, error) {
+	mocks, ok := m.mocks.(MockResourceMonitorWithTransforms)
+	if !ok {
+		return &emptypb.Empty{}, nil
+	}
+
+	m.transformsLock.Lock()
+	t, has := m.transformCallbacks[in.GetToken()]
+	m.transformsLock.Unlock()
+	if has {
+		mocks.RegisterTransform(t)
+	}
 	return &emptypb.Empty{}, nil
 }
 
 func (m *mockMonitor) RegisterStackInvokeTransform(ctx context.Context, in *pulumirpc.Callback,
 	opts ...grpc.CallOption,
 ) (*emptypb.Empty, error) {
+	mocks, ok := m.mocks.(MockResourceMonitorWithTransforms)
+	if !ok {
+		return &emptypb.Empty{}, nil
+	}
+
+	m.transformsLock.Lock()
+	t, has := m.invokeTransformCallbacks[in.GetToken()]
+	m.transformsLock.Unlock()
+	if has {
+		mocks.RegisterInvokeTransform(t)
+	}
 	return &emptypb.Empty{}, nil
 }
 
