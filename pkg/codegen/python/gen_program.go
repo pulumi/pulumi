@@ -820,7 +820,7 @@ func tokenToQualifiedName(pkgAlias, module, member string) string {
 		module = "." + module
 	}
 
-	return fmt.Sprintf("%s%s.%s", pkgAlias, module, cgstrings.UppercaseFirst(member))
+	return fmt.Sprintf("%s%s.%s", pkgAlias, module, cgstrings.UppercaseFirst(cgstrings.Unhyphenate(member)))
 }
 
 // resourceTypeName computes the qualified name of a python resource.

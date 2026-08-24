@@ -30,7 +30,7 @@ func NewAnotherResource(ctx *pulumi.Context,
 	}
 	opts = internal.PkgResourceDefaultOpts(opts)
 	var resource AnotherResource
-	err := ctx.RegisterResource("kebab-names:kebab-module:anotherResource", name, args, &resource, opts...)
+	err := ctx.RegisterResource("kebab-names:kebab-module:another-resource", name, args, &resource, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -42,7 +42,7 @@ func NewAnotherResource(ctx *pulumi.Context,
 func GetAnotherResource(ctx *pulumi.Context,
 	name string, id pulumi.IDInput, state *AnotherResourceState, opts ...pulumi.ResourceOption) (*AnotherResource, error) {
 	var resource AnotherResource
-	err := ctx.ReadResource("kebab-names:kebab-module:anotherResource", name, id, state, &resource, opts...)
+	err := ctx.ReadResource("kebab-names:kebab-module:another-resource", name, id, state, &resource, opts...)
 	if err != nil {
 		return nil, err
 	}

@@ -2984,7 +2984,7 @@ func TestFunctionToken(t *testing.T) {
 			expected: hcl.Diagnostics{
 				{
 					Severity: hcl.DiagError,
-					Summary:  "#/functions/123:index:getFunction: doesn't validate with '/$defs/functionToken'",
+					Summary:  "#/functions/123:index:getFunction: doesn't validate with '/$defs/token'",
 					Detail:   "",
 				},
 				{
@@ -3005,7 +3005,7 @@ func TestFunctionToken(t *testing.T) {
 			expected: hcl.Diagnostics{
 				{
 					Severity: hcl.DiagError,
-					Summary:  "#/functions/test:123:getFunction: doesn't validate with '/$defs/functionToken'",
+					Summary:  "#/functions/test:123:getFunction: doesn't validate with '/$defs/token'",
 					Detail:   "",
 				},
 				{

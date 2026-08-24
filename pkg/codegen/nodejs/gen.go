@@ -245,7 +245,7 @@ func (mod *modContext) resourceType(r *schema.ResourceType) string {
 func tokenToName(tok string) string {
 	components := strings.Split(tok, ":")
 	contract.Assertf(len(components) == 3, "malformed token %v", tok)
-	return cgstrings.UppercaseFirst(components[2])
+	return cgstrings.UppercaseFirst(cgstrings.Unhyphenate(components[2]))
 }
 
 func resourceName(r *schema.Resource) string {

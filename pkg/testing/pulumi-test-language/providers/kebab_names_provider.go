@@ -29,8 +29,8 @@ import (
 )
 
 // KebabNamesProvider is used to test that kebab-case names are handled correctly across sdk-gen and
-// program-gen: in the package name, module names and property names. Resource and object type names
-// cannot be kebab-case yet: the metaschema forbids hyphens in the member segment of a token.
+// program-gen: in the package name, module names, resource names, object type names and property
+// names.
 type KebabNamesProvider struct {
 	plugin.UnimplementedProvider
 }
@@ -54,7 +54,7 @@ func (p *KebabNamesProvider) GetSchema(
 		Name:    "kebab-names",
 		Version: "52.0.0",
 		Types: map[string]schema.ComplexTypeSpec{
-			"kebab-names:kebab-module:nestedInput": {
+			"kebab-names:kebab-module:nested-input": {
 				ObjectTypeSpec: schema.ObjectTypeSpec{
 					Type: "object",
 					Properties: map[string]schema.PropertySpec{
@@ -65,7 +65,7 @@ func (p *KebabNamesProvider) GetSchema(
 					Required: []string{"nested-value"},
 				},
 			},
-			"kebab-names:kebab-module:outputItem": {
+			"kebab-names:kebab-module:output-item": {
 				ObjectTypeSpec: schema.ObjectTypeSpec{
 					Type: "object",
 					Properties: map[string]schema.PropertySpec{
@@ -78,13 +78,13 @@ func (p *KebabNamesProvider) GetSchema(
 			},
 		},
 		Resources: map[string]schema.ResourceSpec{
-			"kebab-names:kebab-module:someResource": {
+			"kebab-names:kebab-module:some-resource": {
 				ObjectTypeSpec: schema.ObjectTypeSpec{
 					Type: "object",
 					Properties: map[string]schema.PropertySpec{
 						"the-output": {
 							TypeSpec: schema.TypeSpec{
-								Ref: "#/types/kebab-names:kebab-module:outputItem",
+								Ref: "#/types/kebab-names:kebab-module:output-item",
 							},
 						},
 					},
@@ -96,13 +96,13 @@ func (p *KebabNamesProvider) GetSchema(
 					},
 					"nested": {
 						TypeSpec: schema.TypeSpec{
-							Ref: "#/types/kebab-names:kebab-module:nestedInput",
+							Ref: "#/types/kebab-names:kebab-module:nested-input",
 						},
 					},
 				},
 				RequiredInputs: []string{"the-input", "nested"},
 			},
-			"kebab-names:kebab-module:anotherResource": {
+			"kebab-names:kebab-module:another-resource": {
 				ObjectTypeSpec: schema.ObjectTypeSpec{
 					Type: "object",
 					Properties: map[string]schema.PropertySpec{
@@ -157,7 +157,7 @@ func (p *KebabNamesProvider) Check(
 	_ context.Context, req plugin.CheckRequest,
 ) (plugin.CheckResponse, error) {
 	switch typ := req.URN.Type(); typ {
-	case "kebab-names:kebab-module:someResource":
+	case "kebab-names:kebab-module:some-resource":
 		if _, ok := req.News["the-input"]; !ok {
 			return plugin.CheckResponse{
 				Failures: makeCheckFailure("the-input", "missing the-input"),
@@ -174,7 +174,7 @@ func (p *KebabNamesProvider) Check(
 			}, nil
 		}
 		return plugin.CheckResponse{Properties: req.News}, nil
-	case "kebab-names:kebab-module:anotherResource":
+	case "kebab-names:kebab-module:another-resource":
 		if _, ok := req.News["the-input"]; !ok {
 			return plugin.CheckResponse{
 				Failures: makeCheckFailure("the-input", "missing the-input"),
@@ -204,7 +204,7 @@ func (p *KebabNamesProvider) Create(
 	}
 
 	switch typ := req.URN.Type(); typ {
-	case "kebab-names:kebab-module:someResource":
+	case "kebab-names:kebab-module:some-resource":
 		nested, ok := req.Properties["nested"]
 		if !ok {
 			return plugin.CreateResponse{Status: resource.StatusUnknown}, errors.New("missing nested property")
@@ -219,7 +219,7 @@ func (p *KebabNamesProvider) Create(
 			},
 			Status: resource.StatusOK,
 		}, nil
-	case "kebab-names:kebab-module:anotherResource":
+	case "kebab-names:kebab-module:another-resource":
 		theInput, ok := req.Properties["the-input"]
 		if !ok {
 			return plugin.CreateResponse{Status: resource.StatusUnknown}, errors.New("missing the-input property")

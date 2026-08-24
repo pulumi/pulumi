@@ -20,9 +20,9 @@ const _module = {
     version: utilities.getVersion(),
     construct: (name: string, type: string, urn: string): pulumi.Resource => {
         switch (type) {
-            case "kebab-names:kebab-module:anotherResource":
+            case "kebab-names:kebab-module:another-resource":
                 return new AnotherResource(name, <any>undefined, { urn })
-            case "kebab-names:kebab-module:someResource":
+            case "kebab-names:kebab-module:some-resource":
                 return new SomeResource(name, <any>undefined, { urn })
             default:
                 throw new Error(`unknown resource type ${type}`);

@@ -35,7 +35,7 @@ class AnotherResourceArgs:
         pulumi.set(self, "the_input", value)
 
 
-@pulumi.type_token("kebab-names:kebab-module:anotherResource")
+@pulumi.type_token("kebab-names:kebab-module:another-resource")
 class AnotherResource(pulumi.CustomResource):
     @overload
     def __init__(__self__,
@@ -87,7 +87,7 @@ class AnotherResource(pulumi.CustomResource):
                 raise TypeError("Missing required property 'the_input'")
             __props__.__dict__["the_input"] = the_input
         super(AnotherResource, __self__).__init__(
-            'kebab-names:kebab-module:anotherResource',
+            'kebab-names:kebab-module:another-resource',
             resource_name,
             __props__,
             opts)

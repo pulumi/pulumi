@@ -1,8 +1,8 @@
 import * as pulumi from "@pulumi/pulumi";
 import * as kebab_names from "@pulumi/kebab-names";
 
-// The package name, module name and property names are kebab-case. Resource and object type names
-// cannot be kebab-case yet: the metaschema forbids hyphens in the member segment of a token.
+// The package name, module name, resource names, object type names and property names are all
+// kebab-case.
 const first = new kebab_names.kebab_module.SomeResource("first", {
     "the-input": true,
     nested: {

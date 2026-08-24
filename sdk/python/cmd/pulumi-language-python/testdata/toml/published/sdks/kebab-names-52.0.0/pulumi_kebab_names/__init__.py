@@ -23,8 +23,8 @@ _utilities.register(
   "mod": "kebab-module",
   "fqn": "pulumi_kebab_names.kebab_module",
   "classes": {
-   "kebab-names:kebab-module:anotherResource": "AnotherResource",
-   "kebab-names:kebab-module:someResource": "SomeResource"
+   "kebab-names:kebab-module:another-resource": "AnotherResource",
+   "kebab-names:kebab-module:some-resource": "SomeResource"
   }
  }
 ]

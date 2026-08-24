@@ -48,7 +48,7 @@ class SomeResourceArgs:
         pulumi.set(self, "the_input", value)
 
 
-@pulumi.type_token("kebab-names:kebab-module:someResource")
+@pulumi.type_token("kebab-names:kebab-module:some-resource")
 class SomeResource(pulumi.CustomResource):
     @overload
     def __init__(__self__,
@@ -106,7 +106,7 @@ class SomeResource(pulumi.CustomResource):
             __props__.__dict__["the_input"] = the_input
             __props__.__dict__["the_output"] = None
         super(SomeResource, __self__).__init__(
-            'kebab-names:kebab-module:someResource',
+            'kebab-names:kebab-module:some-resource',
             resource_name,
             __props__,
             opts)
