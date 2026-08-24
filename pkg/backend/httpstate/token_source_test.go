@@ -93,8 +93,7 @@ func TestTokenSourceWithQuicklyExpiringInitialToken(t *testing.T) {
 func TestTokenSourceWithClient(t *testing.T) {
 	t.Parallel()
 
-	// Statuses on which the token source must stop renewing: the token is expired
-	// or invalid (401, 403), or the update is no longer in progress (409).
+	// Statuses on which the token source must stop renewing.
 	cases := []struct {
 		status      int
 		body        string
