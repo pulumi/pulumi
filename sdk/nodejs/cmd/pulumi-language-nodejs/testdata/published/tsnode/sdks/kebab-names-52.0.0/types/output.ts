@@ -7,7 +7,7 @@ import * as outputs from "../types/output";
 
 export namespace kebab_module {
     export interface OutputItem {
-        nestedOutput: string;
+        "nested-output": string;
     }
 
 }

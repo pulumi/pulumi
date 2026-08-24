@@ -23,7 +23,7 @@ class OutputItem(dict):
     @staticmethod
     def __key_warning(key: str):
         suggest = None
-        if key == "nestedOutput":
+        if key == "nested-output":
             suggest = "nested_output"
 
         if suggest:
@@ -42,7 +42,7 @@ class OutputItem(dict):
         pulumi.set(__self__, "nested_output", nested_output)
 
     @_builtins.property
-    @pulumi.getter(name="nestedOutput")
+    @pulumi.getter(name="nested-output")
     def nested_output(self) -> _builtins.str:
         return pulumi.get(self, "nested_output")
 

@@ -67,10 +67,10 @@ func isLegalIdentifierPart(c rune) bool {
 
 // isLegalIdentifier returns true if s is a legal JavaScript identifier as per ECMA-262.
 func isLegalIdentifier(s string) bool {
-	if isReservedWord(s) {
-		return false
-	}
+	return !isReservedWord(s) && isLegalIdentifierName(s)
+}
 
+func isLegalIdentifierName(s string) bool {
 	reader := strings.NewReader(s)
 	c, _, _ := reader.ReadRune()
 	if !isLegalIdentifierStart(c) {
@@ -106,6 +106,27 @@ func makeValidIdentifier(name string) string {
 		return "_" + name
 	}
 	return name
+}
+
+func propertyName(name string) string {
+	if isLegalIdentifierName(name) {
+		return name
+	}
+	return fmt.Sprintf("%q", name)
+}
+
+func propertyAccessor(name string) string {
+	if isLegalIdentifierName(name) {
+		return "." + name
+	}
+	return fmt.Sprintf("[%q]", name)
+}
+
+func optionalPropertyAccessor(name string) string {
+	if isLegalIdentifierName(name) {
+		return "?." + name
+	}
+	return fmt.Sprintf("?.[%q]", name)
 }
 
 // makeValidModuleSegment converts one `/`-separated segment of a module path into the (possibly
