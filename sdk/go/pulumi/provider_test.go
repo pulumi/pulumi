@@ -580,10 +580,6 @@ func assertOutputEqual(t *testing.T, value any, known bool, secret bool, deps ma
 func TestConstructInputsCopyTo(t *testing.T) {
 	t.Parallel()
 
-	stringPtr := func(v string) *string {
-		return &v
-	}
-
 	tests := []struct {
 		name          string
 		input         resource.PropertyValue
