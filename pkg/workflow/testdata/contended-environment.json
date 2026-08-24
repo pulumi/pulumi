@@ -1,0 +1,567 @@
+[
+  {
+    "type": "NodeDefined",
+    "event": {
+      "id": "queue"
+    }
+  },
+  {
+    "type": "NodeDefined",
+    "event": {
+      "id": "staging"
+    }
+  },
+  {
+    "type": "NodeDefined",
+    "event": {
+      "id": "soak"
+    }
+  },
+  {
+    "type": "NodeDefined",
+    "event": {
+      "id": "prod"
+    }
+  },
+  {
+    "type": "EdgeDefined",
+    "event": {
+      "name": "deploy",
+      "from": "queue",
+      "to": "staging"
+    }
+  },
+  {
+    "type": "EdgeDefined",
+    "event": {
+      "name": "deployed",
+      "from": "staging",
+      "to": "soak"
+    }
+  },
+  {
+    "type": "EdgeDefined",
+    "event": {
+      "name": "soaked",
+      "from": "soak",
+      "to": "prod"
+    }
+  },
+  {
+    "type": "CursorAdded",
+    "event": {
+      "node": "queue",
+      "cursor": {
+        "id": "c1",
+        "label": "A"
+      },
+      "inputs": {
+        "version": "A"
+      }
+    }
+  },
+  {
+    "type": "EdgeStarted",
+    "event": {
+      "name": "deploy",
+      "from": "queue",
+      "to": "staging",
+      "inputs": {
+        "version": "A"
+      }
+    }
+  },
+  {
+    "type": "EdgeFinished",
+    "event": {
+      "name": "deploy",
+      "from": "queue",
+      "to": "staging",
+      "pass": true
+    }
+  },
+  {
+    "type": "NodeStarted",
+    "event": {
+      "id": "staging",
+      "inputs": {
+        "version": "A"
+      }
+    }
+  },
+  {
+    "type": "NodeSucceeded",
+    "event": {
+      "id": "staging",
+      "outputs": {
+        "env": "staging",
+        "version": "A"
+      }
+    }
+  },
+  {
+    "type": "EdgeStarted",
+    "event": {
+      "name": "deployed",
+      "from": "staging",
+      "to": "soak",
+      "inputs": {
+        "env": "staging",
+        "version": "A"
+      }
+    }
+  },
+  {
+    "type": "EdgeFinished",
+    "event": {
+      "name": "deployed",
+      "from": "staging",
+      "to": "soak",
+      "pass": true
+    }
+  },
+  {
+    "type": "NodeStarted",
+    "event": {
+      "id": "soak",
+      "inputs": {
+        "env": "staging",
+        "version": "A"
+      }
+    }
+  },
+  {
+    "type": "NodeSucceeded",
+    "event": {
+      "id": "soak",
+      "outputs": {
+        "env": "staging",
+        "version": "A"
+      }
+    }
+  },
+  {
+    "type": "EdgeStarted",
+    "event": {
+      "name": "soaked",
+      "from": "soak",
+      "to": "prod",
+      "inputs": {
+        "env": "staging",
+        "version": "A"
+      }
+    }
+  },
+  {
+    "type": "EdgeFinished",
+    "event": {
+      "name": "soaked",
+      "from": "soak",
+      "to": "prod",
+      "pass": false
+    }
+  },
+  {
+    "type": "NodeUntouched",
+    "event": {
+      "id": "queue"
+    }
+  },
+  {
+    "type": "NodeUntouched",
+    "event": {
+      "id": "prod"
+    }
+  },
+  {
+    "type": "ProgressReturned"
+  },
+  {
+    "type": "Note",
+    "note": "B arrives while A is still soaking: A is superseded"
+  },
+  {
+    "type": "CursorAdded",
+    "event": {
+      "node": "queue",
+      "cursor": {
+        "id": "c2",
+        "label": "B"
+      },
+      "inputs": {
+        "version": "B"
+      }
+    }
+  },
+  {
+    "type": "EdgeStarted",
+    "event": {
+      "name": "soaked",
+      "from": "soak",
+      "to": "prod",
+      "inputs": {
+        "env": "staging",
+        "version": "A"
+      }
+    }
+  },
+  {
+    "type": "EdgeFinished",
+    "event": {
+      "name": "soaked",
+      "from": "soak",
+      "to": "prod",
+      "pass": false
+    }
+  },
+  {
+    "type": "EdgeStarted",
+    "event": {
+      "name": "deploy",
+      "from": "queue",
+      "to": "staging",
+      "inputs": {
+        "version": "B"
+      }
+    }
+  },
+  {
+    "type": "EdgeFinished",
+    "event": {
+      "name": "deploy",
+      "from": "queue",
+      "to": "staging",
+      "pass": true
+    }
+  },
+  {
+    "type": "NodeStarted",
+    "event": {
+      "id": "staging",
+      "inputs": {
+        "version": "B"
+      }
+    }
+  },
+  {
+    "type": "NodeSucceeded",
+    "event": {
+      "id": "staging",
+      "outputs": {
+        "env": "staging",
+        "version": "B"
+      }
+    }
+  },
+  {
+    "type": "EdgeStarted",
+    "event": {
+      "name": "deployed",
+      "from": "staging",
+      "to": "soak",
+      "inputs": {
+        "env": "staging",
+        "version": "B"
+      }
+    }
+  },
+  {
+    "type": "EdgeFinished",
+    "event": {
+      "name": "deployed",
+      "from": "staging",
+      "to": "soak",
+      "pass": true
+    }
+  },
+  {
+    "type": "NodeStarted",
+    "event": {
+      "id": "soak",
+      "inputs": {
+        "env": "staging",
+        "version": "B"
+      }
+    }
+  },
+  {
+    "type": "NodeSucceeded",
+    "event": {
+      "id": "soak",
+      "outputs": {
+        "env": "staging",
+        "version": "B"
+      }
+    }
+  },
+  {
+    "type": "CursorReplaced",
+    "event": {
+      "old": {
+        "id": "c1",
+        "label": "A"
+      },
+      "new": {
+        "id": "c2",
+        "label": "B"
+      },
+      "node": "soak"
+    }
+  },
+  {
+    "type": "EdgeStarted",
+    "event": {
+      "name": "soaked",
+      "from": "soak",
+      "to": "prod",
+      "inputs": {
+        "env": "staging",
+        "version": "B"
+      }
+    }
+  },
+  {
+    "type": "EdgeFinished",
+    "event": {
+      "name": "soaked",
+      "from": "soak",
+      "to": "prod",
+      "pass": false
+    }
+  },
+  {
+    "type": "NodeUntouched",
+    "event": {
+      "id": "queue"
+    }
+  },
+  {
+    "type": "NodeUntouched",
+    "event": {
+      "id": "prod"
+    }
+  },
+  {
+    "type": "ProgressReturned"
+  },
+  {
+    "type": "Note",
+    "note": "A finishes soaking, but it is gone"
+  },
+  {
+    "type": "EdgeStarted",
+    "event": {
+      "name": "soaked",
+      "from": "soak",
+      "to": "prod",
+      "inputs": {
+        "env": "staging",
+        "version": "B"
+      }
+    }
+  },
+  {
+    "type": "EdgeFinished",
+    "event": {
+      "name": "soaked",
+      "from": "soak",
+      "to": "prod",
+      "pass": false
+    }
+  },
+  {
+    "type": "NodeUntouched",
+    "event": {
+      "id": "queue"
+    }
+  },
+  {
+    "type": "NodeUntouched",
+    "event": {
+      "id": "staging"
+    }
+  },
+  {
+    "type": "NodeUntouched",
+    "event": {
+      "id": "soak"
+    }
+  },
+  {
+    "type": "NodeUntouched",
+    "event": {
+      "id": "prod"
+    }
+  },
+  {
+    "type": "ProgressReturned"
+  },
+  {
+    "type": "Note",
+    "note": "B finishes soaking as C arrives: B moves on before C takes the soak environment"
+  },
+  {
+    "type": "CursorAdded",
+    "event": {
+      "node": "queue",
+      "cursor": {
+        "id": "c3",
+        "label": "C"
+      },
+      "inputs": {
+        "version": "C"
+      }
+    }
+  },
+  {
+    "type": "EdgeStarted",
+    "event": {
+      "name": "soaked",
+      "from": "soak",
+      "to": "prod",
+      "inputs": {
+        "env": "staging",
+        "version": "B"
+      }
+    }
+  },
+  {
+    "type": "EdgeFinished",
+    "event": {
+      "name": "soaked",
+      "from": "soak",
+      "to": "prod",
+      "pass": true
+    }
+  },
+  {
+    "type": "EdgeStarted",
+    "event": {
+      "name": "deploy",
+      "from": "queue",
+      "to": "staging",
+      "inputs": {
+        "version": "C"
+      }
+    }
+  },
+  {
+    "type": "EdgeFinished",
+    "event": {
+      "name": "deploy",
+      "from": "queue",
+      "to": "staging",
+      "pass": true
+    }
+  },
+  {
+    "type": "NodeStarted",
+    "event": {
+      "id": "prod",
+      "inputs": {
+        "env": "staging",
+        "version": "B"
+      }
+    }
+  },
+  {
+    "type": "NodeSucceeded",
+    "event": {
+      "id": "prod",
+      "outputs": {
+        "env": "prod",
+        "version": "B"
+      }
+    }
+  },
+  {
+    "type": "NodeStarted",
+    "event": {
+      "id": "staging",
+      "inputs": {
+        "version": "C"
+      }
+    }
+  },
+  {
+    "type": "NodeSucceeded",
+    "event": {
+      "id": "staging",
+      "outputs": {
+        "env": "staging",
+        "version": "C"
+      }
+    }
+  },
+  {
+    "type": "EdgeStarted",
+    "event": {
+      "name": "deployed",
+      "from": "staging",
+      "to": "soak",
+      "inputs": {
+        "env": "staging",
+        "version": "C"
+      }
+    }
+  },
+  {
+    "type": "EdgeFinished",
+    "event": {
+      "name": "deployed",
+      "from": "staging",
+      "to": "soak",
+      "pass": true
+    }
+  },
+  {
+    "type": "NodeStarted",
+    "event": {
+      "id": "soak",
+      "inputs": {
+        "env": "staging",
+        "version": "C"
+      }
+    }
+  },
+  {
+    "type": "NodeSucceeded",
+    "event": {
+      "id": "soak",
+      "outputs": {
+        "env": "staging",
+        "version": "C"
+      }
+    }
+  },
+  {
+    "type": "EdgeStarted",
+    "event": {
+      "name": "soaked",
+      "from": "soak",
+      "to": "prod",
+      "inputs": {
+        "env": "staging",
+        "version": "C"
+      }
+    }
+  },
+  {
+    "type": "EdgeFinished",
+    "event": {
+      "name": "soaked",
+      "from": "soak",
+      "to": "prod",
+      "pass": false
+    }
+  },
+  {
+    "type": "NodeUntouched",
+    "event": {
+      "id": "queue"
+    }
+  },
+  {
+    "type": "ProgressReturned"
+  }
+]

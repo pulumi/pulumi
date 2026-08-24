@@ -1,0 +1,35 @@
+{
+  "nextCursor": 4,
+  "cursors": [
+    {
+      "id": "c1",
+      "label": "v7",
+      "node": "plan",
+      "value": {
+        "phase": 1,
+        "version": "7"
+      }
+    },
+    {
+      "id": "c4",
+      "label": "merged",
+      "node": "verify-us-east",
+      "value": {
+        "verify-us-east": {
+          "region": "us-east",
+          "verified": true,
+          "version": "7"
+        },
+        "verify-us-west": {
+          "region": "us-west",
+          "verified": true,
+          "version": "7"
+        }
+      },
+      "merged": {
+        "join": "us-metrics-good",
+        "node": "verify-us-east"
+      }
+    }
+  ]
+}

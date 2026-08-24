@@ -1,0 +1,30 @@
+{
+  "nextCursor": 3,
+  "cursors": [
+    {
+      "id": "c2",
+      "label": "bad",
+      "node": "start-bad",
+      "value": {
+        "version": "bad"
+      }
+    },
+    {
+      "id": "c3",
+      "label": "queued",
+      "node": "staging",
+      "value": {
+        "version": "queued"
+      }
+    },
+    {
+      "id": "c1",
+      "label": "good",
+      "node": "staging",
+      "value": {
+        "env": "staging",
+        "version": "good"
+      }
+    }
+  ]
+}

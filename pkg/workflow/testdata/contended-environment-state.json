@@ -1,0 +1,23 @@
+{
+  "nextCursor": 3,
+  "cursors": [
+    {
+      "id": "c2",
+      "label": "B",
+      "node": "prod",
+      "value": {
+        "env": "prod",
+        "version": "B"
+      }
+    },
+    {
+      "id": "c3",
+      "label": "C",
+      "node": "soak",
+      "value": {
+        "env": "staging",
+        "version": "C"
+      }
+    }
+  ]
+}

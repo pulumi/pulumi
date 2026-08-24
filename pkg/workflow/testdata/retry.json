@@ -1,0 +1,772 @@
+[
+  {
+    "type": "NodeDefined",
+    "event": {
+      "id": "start"
+    }
+  },
+  {
+    "type": "NodeDefined",
+    "event": {
+      "id": "deploy"
+    }
+  },
+  {
+    "type": "NodeDefined",
+    "event": {
+      "id": "done"
+    }
+  },
+  {
+    "type": "NodeDefined",
+    "event": {
+      "id": "give-up"
+    }
+  },
+  {
+    "type": "EdgeDefined",
+    "event": {
+      "name": "start",
+      "from": "start",
+      "to": "deploy"
+    }
+  },
+  {
+    "type": "EdgeDefined",
+    "event": {
+      "name": "succeeded",
+      "from": "deploy",
+      "to": "done"
+    }
+  },
+  {
+    "type": "EdgeDefined",
+    "event": {
+      "name": "retry",
+      "from": "deploy",
+      "to": "deploy",
+      "andEdges": [
+        {
+          "name": "retry[0]",
+          "from": "deploy",
+          "to": "deploy"
+        },
+        {
+          "name": "retry[1]",
+          "from": "deploy",
+          "to": "deploy"
+        }
+      ]
+    }
+  },
+  {
+    "type": "EdgeDefined",
+    "event": {
+      "name": "exhausted",
+      "from": "deploy",
+      "to": "give-up",
+      "andEdges": [
+        {
+          "name": "exhausted[0]",
+          "from": "deploy",
+          "to": "give-up"
+        },
+        {
+          "name": "exhausted[1]",
+          "from": "deploy",
+          "to": "give-up"
+        }
+      ]
+    }
+  },
+  {
+    "type": "CursorAdded",
+    "event": {
+      "node": "start",
+      "cursor": {
+        "id": "c1",
+        "label": "three attempts"
+      },
+      "inputs": {
+        "maxAttempts": 3
+      }
+    }
+  },
+  {
+    "type": "EdgeStarted",
+    "event": {
+      "name": "start",
+      "from": "start",
+      "to": "deploy",
+      "inputs": {
+        "maxAttempts": 3
+      }
+    }
+  },
+  {
+    "type": "EdgeFinished",
+    "event": {
+      "name": "start",
+      "from": "start",
+      "to": "deploy",
+      "pass": true
+    }
+  },
+  {
+    "type": "NodeStarted",
+    "event": {
+      "id": "deploy",
+      "inputs": {
+        "maxAttempts": 3
+      }
+    }
+  },
+  {
+    "type": "NodeSucceeded",
+    "event": {
+      "id": "deploy",
+      "outputs": {
+        "attempts": 1,
+        "maxAttempts": 3,
+        "ok": false
+      }
+    }
+  },
+  {
+    "type": "EdgeStarted",
+    "event": {
+      "name": "succeeded",
+      "from": "deploy",
+      "to": "done",
+      "inputs": {
+        "attempts": 1,
+        "maxAttempts": 3,
+        "ok": false
+      }
+    }
+  },
+  {
+    "type": "EdgeFinished",
+    "event": {
+      "name": "succeeded",
+      "from": "deploy",
+      "to": "done",
+      "pass": false
+    }
+  },
+  {
+    "type": "EdgeStarted",
+    "event": {
+      "name": "retry",
+      "from": "deploy",
+      "to": "deploy",
+      "inputs": {
+        "attempts": 1,
+        "maxAttempts": 3,
+        "ok": false
+      }
+    }
+  },
+  {
+    "type": "EdgeStarted",
+    "event": {
+      "name": "retry[0]",
+      "from": "deploy",
+      "to": "deploy",
+      "inputs": {
+        "attempts": 1,
+        "maxAttempts": 3,
+        "ok": false
+      }
+    }
+  },
+  {
+    "type": "EdgeFinished",
+    "event": {
+      "name": "retry[0]",
+      "from": "deploy",
+      "to": "deploy",
+      "pass": true
+    }
+  },
+  {
+    "type": "EdgeStarted",
+    "event": {
+      "name": "retry[1]",
+      "from": "deploy",
+      "to": "deploy",
+      "inputs": {
+        "attempts": 1,
+        "maxAttempts": 3,
+        "ok": false
+      }
+    }
+  },
+  {
+    "type": "EdgeFinished",
+    "event": {
+      "name": "retry[1]",
+      "from": "deploy",
+      "to": "deploy",
+      "pass": true
+    }
+  },
+  {
+    "type": "EdgeFinished",
+    "event": {
+      "name": "retry",
+      "from": "deploy",
+      "to": "deploy",
+      "pass": true
+    }
+  },
+  {
+    "type": "NodeStarted",
+    "event": {
+      "id": "deploy",
+      "inputs": {
+        "attempts": 1,
+        "maxAttempts": 3,
+        "ok": false
+      }
+    }
+  },
+  {
+    "type": "NodeSucceeded",
+    "event": {
+      "id": "deploy",
+      "outputs": {
+        "attempts": 2,
+        "maxAttempts": 3,
+        "ok": false
+      }
+    }
+  },
+  {
+    "type": "EdgeStarted",
+    "event": {
+      "name": "succeeded",
+      "from": "deploy",
+      "to": "done",
+      "inputs": {
+        "attempts": 2,
+        "maxAttempts": 3,
+        "ok": false
+      }
+    }
+  },
+  {
+    "type": "EdgeFinished",
+    "event": {
+      "name": "succeeded",
+      "from": "deploy",
+      "to": "done",
+      "pass": false
+    }
+  },
+  {
+    "type": "EdgeStarted",
+    "event": {
+      "name": "retry",
+      "from": "deploy",
+      "to": "deploy",
+      "inputs": {
+        "attempts": 2,
+        "maxAttempts": 3,
+        "ok": false
+      }
+    }
+  },
+  {
+    "type": "EdgeStarted",
+    "event": {
+      "name": "retry[0]",
+      "from": "deploy",
+      "to": "deploy",
+      "inputs": {
+        "attempts": 2,
+        "maxAttempts": 3,
+        "ok": false
+      }
+    }
+  },
+  {
+    "type": "EdgeFinished",
+    "event": {
+      "name": "retry[0]",
+      "from": "deploy",
+      "to": "deploy",
+      "pass": true
+    }
+  },
+  {
+    "type": "EdgeStarted",
+    "event": {
+      "name": "retry[1]",
+      "from": "deploy",
+      "to": "deploy",
+      "inputs": {
+        "attempts": 2,
+        "maxAttempts": 3,
+        "ok": false
+      }
+    }
+  },
+  {
+    "type": "EdgeFinished",
+    "event": {
+      "name": "retry[1]",
+      "from": "deploy",
+      "to": "deploy",
+      "pass": true
+    }
+  },
+  {
+    "type": "EdgeFinished",
+    "event": {
+      "name": "retry",
+      "from": "deploy",
+      "to": "deploy",
+      "pass": true
+    }
+  },
+  {
+    "type": "NodeStarted",
+    "event": {
+      "id": "deploy",
+      "inputs": {
+        "attempts": 2,
+        "maxAttempts": 3,
+        "ok": false
+      }
+    }
+  },
+  {
+    "type": "NodeSucceeded",
+    "event": {
+      "id": "deploy",
+      "outputs": {
+        "attempts": 3,
+        "maxAttempts": 3,
+        "ok": true
+      }
+    }
+  },
+  {
+    "type": "EdgeStarted",
+    "event": {
+      "name": "succeeded",
+      "from": "deploy",
+      "to": "done",
+      "inputs": {
+        "attempts": 3,
+        "maxAttempts": 3,
+        "ok": true
+      }
+    }
+  },
+  {
+    "type": "EdgeFinished",
+    "event": {
+      "name": "succeeded",
+      "from": "deploy",
+      "to": "done",
+      "pass": true
+    }
+  },
+  {
+    "type": "NodeStarted",
+    "event": {
+      "id": "done",
+      "inputs": {
+        "attempts": 3,
+        "maxAttempts": 3,
+        "ok": true
+      }
+    }
+  },
+  {
+    "type": "NodeSucceeded",
+    "event": {
+      "id": "done",
+      "outputs": {
+        "attempts": 3,
+        "maxAttempts": 3,
+        "ok": true
+      }
+    }
+  },
+  {
+    "type": "NodeUntouched",
+    "event": {
+      "id": "start"
+    }
+  },
+  {
+    "type": "NodeUntouched",
+    "event": {
+      "id": "give-up"
+    }
+  },
+  {
+    "type": "ProgressReturned"
+  },
+  {
+    "type": "Note",
+    "note": "a second release only gets two attempts"
+  },
+  {
+    "type": "CursorAdded",
+    "event": {
+      "node": "start",
+      "cursor": {
+        "id": "c2",
+        "label": "two attempts"
+      },
+      "inputs": {
+        "maxAttempts": 2
+      }
+    }
+  },
+  {
+    "type": "EdgeStarted",
+    "event": {
+      "name": "start",
+      "from": "start",
+      "to": "deploy",
+      "inputs": {
+        "maxAttempts": 2
+      }
+    }
+  },
+  {
+    "type": "EdgeFinished",
+    "event": {
+      "name": "start",
+      "from": "start",
+      "to": "deploy",
+      "pass": true
+    }
+  },
+  {
+    "type": "NodeStarted",
+    "event": {
+      "id": "deploy",
+      "inputs": {
+        "maxAttempts": 2
+      }
+    }
+  },
+  {
+    "type": "NodeSucceeded",
+    "event": {
+      "id": "deploy",
+      "outputs": {
+        "attempts": 1,
+        "maxAttempts": 2,
+        "ok": false
+      }
+    }
+  },
+  {
+    "type": "EdgeStarted",
+    "event": {
+      "name": "succeeded",
+      "from": "deploy",
+      "to": "done",
+      "inputs": {
+        "attempts": 1,
+        "maxAttempts": 2,
+        "ok": false
+      }
+    }
+  },
+  {
+    "type": "EdgeFinished",
+    "event": {
+      "name": "succeeded",
+      "from": "deploy",
+      "to": "done",
+      "pass": false
+    }
+  },
+  {
+    "type": "EdgeStarted",
+    "event": {
+      "name": "retry",
+      "from": "deploy",
+      "to": "deploy",
+      "inputs": {
+        "attempts": 1,
+        "maxAttempts": 2,
+        "ok": false
+      }
+    }
+  },
+  {
+    "type": "EdgeStarted",
+    "event": {
+      "name": "retry[0]",
+      "from": "deploy",
+      "to": "deploy",
+      "inputs": {
+        "attempts": 1,
+        "maxAttempts": 2,
+        "ok": false
+      }
+    }
+  },
+  {
+    "type": "EdgeFinished",
+    "event": {
+      "name": "retry[0]",
+      "from": "deploy",
+      "to": "deploy",
+      "pass": true
+    }
+  },
+  {
+    "type": "EdgeStarted",
+    "event": {
+      "name": "retry[1]",
+      "from": "deploy",
+      "to": "deploy",
+      "inputs": {
+        "attempts": 1,
+        "maxAttempts": 2,
+        "ok": false
+      }
+    }
+  },
+  {
+    "type": "EdgeFinished",
+    "event": {
+      "name": "retry[1]",
+      "from": "deploy",
+      "to": "deploy",
+      "pass": true
+    }
+  },
+  {
+    "type": "EdgeFinished",
+    "event": {
+      "name": "retry",
+      "from": "deploy",
+      "to": "deploy",
+      "pass": true
+    }
+  },
+  {
+    "type": "NodeStarted",
+    "event": {
+      "id": "deploy",
+      "inputs": {
+        "attempts": 1,
+        "maxAttempts": 2,
+        "ok": false
+      }
+    }
+  },
+  {
+    "type": "NodeSucceeded",
+    "event": {
+      "id": "deploy",
+      "outputs": {
+        "attempts": 2,
+        "maxAttempts": 2,
+        "ok": false
+      }
+    }
+  },
+  {
+    "type": "EdgeStarted",
+    "event": {
+      "name": "succeeded",
+      "from": "deploy",
+      "to": "done",
+      "inputs": {
+        "attempts": 2,
+        "maxAttempts": 2,
+        "ok": false
+      }
+    }
+  },
+  {
+    "type": "EdgeFinished",
+    "event": {
+      "name": "succeeded",
+      "from": "deploy",
+      "to": "done",
+      "pass": false
+    }
+  },
+  {
+    "type": "EdgeStarted",
+    "event": {
+      "name": "retry",
+      "from": "deploy",
+      "to": "deploy",
+      "inputs": {
+        "attempts": 2,
+        "maxAttempts": 2,
+        "ok": false
+      }
+    }
+  },
+  {
+    "type": "EdgeStarted",
+    "event": {
+      "name": "retry[0]",
+      "from": "deploy",
+      "to": "deploy",
+      "inputs": {
+        "attempts": 2,
+        "maxAttempts": 2,
+        "ok": false
+      }
+    }
+  },
+  {
+    "type": "EdgeFinished",
+    "event": {
+      "name": "retry[0]",
+      "from": "deploy",
+      "to": "deploy",
+      "pass": true
+    }
+  },
+  {
+    "type": "EdgeStarted",
+    "event": {
+      "name": "retry[1]",
+      "from": "deploy",
+      "to": "deploy",
+      "inputs": {
+        "attempts": 2,
+        "maxAttempts": 2,
+        "ok": false
+      }
+    }
+  },
+  {
+    "type": "EdgeFinished",
+    "event": {
+      "name": "retry[1]",
+      "from": "deploy",
+      "to": "deploy",
+      "pass": false
+    }
+  },
+  {
+    "type": "EdgeFinished",
+    "event": {
+      "name": "retry",
+      "from": "deploy",
+      "to": "deploy",
+      "pass": false
+    }
+  },
+  {
+    "type": "EdgeStarted",
+    "event": {
+      "name": "exhausted",
+      "from": "deploy",
+      "to": "give-up",
+      "inputs": {
+        "attempts": 2,
+        "maxAttempts": 2,
+        "ok": false
+      }
+    }
+  },
+  {
+    "type": "EdgeStarted",
+    "event": {
+      "name": "exhausted[0]",
+      "from": "deploy",
+      "to": "give-up",
+      "inputs": {
+        "attempts": 2,
+        "maxAttempts": 2,
+        "ok": false
+      }
+    }
+  },
+  {
+    "type": "EdgeFinished",
+    "event": {
+      "name": "exhausted[0]",
+      "from": "deploy",
+      "to": "give-up",
+      "pass": true
+    }
+  },
+  {
+    "type": "EdgeStarted",
+    "event": {
+      "name": "exhausted[1]",
+      "from": "deploy",
+      "to": "give-up",
+      "inputs": {
+        "attempts": 2,
+        "maxAttempts": 2,
+        "ok": false
+      }
+    }
+  },
+  {
+    "type": "EdgeFinished",
+    "event": {
+      "name": "exhausted[1]",
+      "from": "deploy",
+      "to": "give-up",
+      "pass": true
+    }
+  },
+  {
+    "type": "EdgeFinished",
+    "event": {
+      "name": "exhausted",
+      "from": "deploy",
+      "to": "give-up",
+      "pass": true
+    }
+  },
+  {
+    "type": "NodeStarted",
+    "event": {
+      "id": "give-up",
+      "inputs": {
+        "attempts": 2,
+        "maxAttempts": 2,
+        "ok": false
+      }
+    }
+  },
+  {
+    "type": "NodeSucceeded",
+    "event": {
+      "id": "give-up",
+      "outputs": {
+        "attempts": 2,
+        "maxAttempts": 2,
+        "ok": false
+      }
+    }
+  },
+  {
+    "type": "NodeUntouched",
+    "event": {
+      "id": "start"
+    }
+  },
+  {
+    "type": "NodeUntouched",
+    "event": {
+      "id": "done"
+    }
+  },
+  {
+    "type": "ProgressReturned"
+  }
+]

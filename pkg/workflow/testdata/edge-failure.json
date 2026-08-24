@@ -1,0 +1,112 @@
+[
+  {
+    "type": "NodeDefined",
+    "event": {
+      "id": "start"
+    }
+  },
+  {
+    "type": "NodeDefined",
+    "event": {
+      "id": "done"
+    }
+  },
+  {
+    "type": "EdgeDefined",
+    "event": {
+      "name": "metrics-ok",
+      "from": "start",
+      "to": "done"
+    }
+  },
+  {
+    "type": "CursorAdded",
+    "event": {
+      "node": "start",
+      "cursor": {
+        "id": "c1",
+        "label": ""
+      },
+      "inputs": {}
+    }
+  },
+  {
+    "type": "EdgeStarted",
+    "event": {
+      "name": "metrics-ok",
+      "from": "start",
+      "to": "done",
+      "inputs": {}
+    }
+  },
+  {
+    "type": "EdgeFailed",
+    "event": {
+      "name": "metrics-ok",
+      "from": "start",
+      "to": "done",
+      "error": "metrics backend unreachable"
+    }
+  },
+  {
+    "type": "NodeUntouched",
+    "event": {
+      "id": "start"
+    }
+  },
+  {
+    "type": "NodeUntouched",
+    "event": {
+      "id": "done"
+    }
+  },
+  {
+    "type": "ProgressReturned",
+    "error": "metrics backend unreachable"
+  },
+  {
+    "type": "Note",
+    "note": "metrics backend is back"
+  },
+  {
+    "type": "EdgeStarted",
+    "event": {
+      "name": "metrics-ok",
+      "from": "start",
+      "to": "done",
+      "inputs": {}
+    }
+  },
+  {
+    "type": "EdgeFinished",
+    "event": {
+      "name": "metrics-ok",
+      "from": "start",
+      "to": "done",
+      "pass": true
+    }
+  },
+  {
+    "type": "NodeStarted",
+    "event": {
+      "id": "done",
+      "inputs": {}
+    }
+  },
+  {
+    "type": "NodeSucceeded",
+    "event": {
+      "id": "done",
+      "outputs": {}
+    }
+  },
+  {
+    "type": "NodeUntouched",
+    "event": {
+      "id": "start"
+    }
+  },
+  {
+    "type": "ProgressReturned"
+  }
+]

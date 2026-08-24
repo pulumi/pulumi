@@ -1,0 +1,773 @@
+[
+  {
+    "type": "NodeDefined",
+    "event": {
+      "id": "queue-us-west"
+    }
+  },
+  {
+    "type": "NodeDefined",
+    "event": {
+      "id": "deploy-us-west"
+    }
+  },
+  {
+    "type": "EdgeDefined",
+    "event": {
+      "name": "queued",
+      "from": "queue-us-west",
+      "to": "deploy-us-west"
+    }
+  },
+  {
+    "type": "NodeDefined",
+    "event": {
+      "id": "verify-us-west"
+    }
+  },
+  {
+    "type": "EdgeDefined",
+    "event": {
+      "name": "deployed",
+      "from": "deploy-us-west",
+      "to": "verify-us-west"
+    }
+  },
+  {
+    "type": "NodeDefined",
+    "event": {
+      "id": "queue-us-east"
+    }
+  },
+  {
+    "type": "NodeDefined",
+    "event": {
+      "id": "deploy-us-east"
+    }
+  },
+  {
+    "type": "EdgeDefined",
+    "event": {
+      "name": "queued",
+      "from": "queue-us-east",
+      "to": "deploy-us-east"
+    }
+  },
+  {
+    "type": "NodeDefined",
+    "event": {
+      "id": "verify-us-east"
+    }
+  },
+  {
+    "type": "EdgeDefined",
+    "event": {
+      "name": "deployed",
+      "from": "deploy-us-east",
+      "to": "verify-us-east"
+    }
+  },
+  {
+    "type": "NodeDefined",
+    "event": {
+      "id": "queue-eu"
+    }
+  },
+  {
+    "type": "NodeDefined",
+    "event": {
+      "id": "deploy-eu"
+    }
+  },
+  {
+    "type": "EdgeDefined",
+    "event": {
+      "name": "queued",
+      "from": "queue-eu",
+      "to": "deploy-eu"
+    }
+  },
+  {
+    "type": "NodeDefined",
+    "event": {
+      "id": "verify-eu"
+    }
+  },
+  {
+    "type": "EdgeDefined",
+    "event": {
+      "name": "deployed",
+      "from": "deploy-eu",
+      "to": "verify-eu"
+    }
+  },
+  {
+    "type": "NodeDefined",
+    "event": {
+      "id": "start"
+    }
+  },
+  {
+    "type": "NodeDefined",
+    "event": {
+      "id": "plan"
+    }
+  },
+  {
+    "type": "EdgeDefined",
+    "event": {
+      "name": "planning",
+      "from": "start",
+      "to": "plan"
+    }
+  },
+  {
+    "type": "EdgeDefined",
+    "event": {
+      "name": "us-metrics-good",
+      "from": null,
+      "to": "deploy-eu",
+      "joinEdges": [
+        {
+          "name": "us-metrics-good",
+          "from": "verify-us-west",
+          "to": "deploy-eu"
+        },
+        {
+          "name": "us-metrics-good",
+          "from": "verify-us-east",
+          "to": "deploy-eu"
+        }
+      ]
+    }
+  },
+  {
+    "type": "NodeDefined",
+    "event": {
+      "id": "done"
+    }
+  },
+  {
+    "type": "EdgeDefined",
+    "event": {
+      "name": "eu-metrics-good",
+      "from": "verify-eu",
+      "to": "done"
+    }
+  },
+  {
+    "type": "CursorAdded",
+    "event": {
+      "node": "start",
+      "cursor": {
+        "id": "c1",
+        "label": "v7"
+      },
+      "inputs": {
+        "version": "7"
+      }
+    }
+  },
+  {
+    "type": "EdgeStarted",
+    "event": {
+      "name": "planning",
+      "from": "start",
+      "to": "plan",
+      "inputs": {
+        "version": "7"
+      }
+    }
+  },
+  {
+    "type": "EdgeFinished",
+    "event": {
+      "name": "planning",
+      "from": "start",
+      "to": "plan",
+      "pass": true
+    }
+  },
+  {
+    "type": "NodeStarted",
+    "event": {
+      "id": "plan",
+      "inputs": {
+        "version": "7"
+      }
+    }
+  },
+  {
+    "type": "CursorAdded",
+    "event": {
+      "node": "queue-us-west",
+      "cursor": {
+        "id": "c2",
+        "label": "us-west"
+      },
+      "inputs": {
+        "version": "7"
+      }
+    }
+  },
+  {
+    "type": "CursorAdded",
+    "event": {
+      "node": "queue-us-east",
+      "cursor": {
+        "id": "c3",
+        "label": "us-east"
+      },
+      "inputs": {
+        "version": "7"
+      }
+    }
+  },
+  {
+    "type": "NodeSucceeded",
+    "event": {
+      "id": "plan",
+      "outputs": {
+        "phase": 1,
+        "version": "7"
+      }
+    }
+  },
+  {
+    "type": "EdgeStarted",
+    "event": {
+      "name": "queued",
+      "from": "queue-us-west",
+      "to": "deploy-us-west",
+      "inputs": {
+        "version": "7"
+      }
+    }
+  },
+  {
+    "type": "EdgeFinished",
+    "event": {
+      "name": "queued",
+      "from": "queue-us-west",
+      "to": "deploy-us-west",
+      "pass": true
+    }
+  },
+  {
+    "type": "EdgeStarted",
+    "event": {
+      "name": "queued",
+      "from": "queue-us-east",
+      "to": "deploy-us-east",
+      "inputs": {
+        "version": "7"
+      }
+    }
+  },
+  {
+    "type": "EdgeFinished",
+    "event": {
+      "name": "queued",
+      "from": "queue-us-east",
+      "to": "deploy-us-east",
+      "pass": true
+    }
+  },
+  {
+    "type": "NodeStarted",
+    "event": {
+      "id": "deploy-us-west",
+      "inputs": {
+        "version": "7"
+      }
+    }
+  },
+  {
+    "type": "NodeSucceeded",
+    "event": {
+      "id": "deploy-us-west",
+      "outputs": {
+        "region": "us-west",
+        "version": "7"
+      }
+    }
+  },
+  {
+    "type": "NodeStarted",
+    "event": {
+      "id": "deploy-us-east",
+      "inputs": {
+        "version": "7"
+      }
+    }
+  },
+  {
+    "type": "NodeSucceeded",
+    "event": {
+      "id": "deploy-us-east",
+      "outputs": {
+        "region": "us-east",
+        "version": "7"
+      }
+    }
+  },
+  {
+    "type": "EdgeStarted",
+    "event": {
+      "name": "deployed",
+      "from": "deploy-us-west",
+      "to": "verify-us-west",
+      "inputs": {
+        "region": "us-west",
+        "version": "7"
+      }
+    }
+  },
+  {
+    "type": "EdgeFinished",
+    "event": {
+      "name": "deployed",
+      "from": "deploy-us-west",
+      "to": "verify-us-west",
+      "pass": true
+    }
+  },
+  {
+    "type": "EdgeStarted",
+    "event": {
+      "name": "deployed",
+      "from": "deploy-us-east",
+      "to": "verify-us-east",
+      "inputs": {
+        "region": "us-east",
+        "version": "7"
+      }
+    }
+  },
+  {
+    "type": "EdgeFinished",
+    "event": {
+      "name": "deployed",
+      "from": "deploy-us-east",
+      "to": "verify-us-east",
+      "pass": true
+    }
+  },
+  {
+    "type": "NodeStarted",
+    "event": {
+      "id": "verify-us-west",
+      "inputs": {
+        "region": "us-west",
+        "version": "7"
+      }
+    }
+  },
+  {
+    "type": "NodeSucceeded",
+    "event": {
+      "id": "verify-us-west",
+      "outputs": {
+        "region": "us-west",
+        "verified": true,
+        "version": "7"
+      }
+    }
+  },
+  {
+    "type": "NodeStarted",
+    "event": {
+      "id": "verify-us-east",
+      "inputs": {
+        "region": "us-east",
+        "version": "7"
+      }
+    }
+  },
+  {
+    "type": "NodeSucceeded",
+    "event": {
+      "id": "verify-us-east",
+      "outputs": {
+        "region": "us-east",
+        "verified": true,
+        "version": "7"
+      }
+    }
+  },
+  {
+    "type": "EdgeStarted",
+    "event": {
+      "name": "us-metrics-good",
+      "from": "verify-us-west",
+      "to": "deploy-eu",
+      "inputs": {
+        "region": "us-west",
+        "verified": true,
+        "version": "7"
+      }
+    }
+  },
+  {
+    "type": "EdgeFinished",
+    "event": {
+      "name": "us-metrics-good",
+      "from": "verify-us-west",
+      "to": "deploy-eu",
+      "pass": true
+    }
+  },
+  {
+    "type": "EdgeStarted",
+    "event": {
+      "name": "us-metrics-good",
+      "from": "verify-us-east",
+      "to": "deploy-eu",
+      "inputs": {
+        "region": "us-east",
+        "verified": true,
+        "version": "7"
+      }
+    }
+  },
+  {
+    "type": "EdgeFinished",
+    "event": {
+      "name": "us-metrics-good",
+      "from": "verify-us-east",
+      "to": "deploy-eu",
+      "pass": true
+    }
+  },
+  {
+    "type": "EdgeFinished",
+    "event": {
+      "name": "us-metrics-good",
+      "from": null,
+      "to": "deploy-eu",
+      "pass": true
+    }
+  },
+  {
+    "type": "CursorsJoined",
+    "event": {
+      "old": [
+        {
+          "id": "c2",
+          "label": "us-west"
+        },
+        {
+          "id": "c3",
+          "label": "us-east"
+        }
+      ],
+      "new": {
+        "id": "c4",
+        "label": "merged"
+      }
+    }
+  },
+  {
+    "type": "NodeStarted",
+    "event": {
+      "id": "deploy-eu",
+      "inputs": {
+        "verify-us-east": {
+          "region": "us-east",
+          "verified": true,
+          "version": "7"
+        },
+        "verify-us-west": {
+          "region": "us-west",
+          "verified": true,
+          "version": "7"
+        }
+      }
+    }
+  },
+  {
+    "type": "NodeFailed",
+    "event": {
+      "id": "deploy-eu",
+      "error": "deploy to eu failed"
+    }
+  },
+  {
+    "type": "NodeUntouched",
+    "event": {
+      "id": "queue-us-west"
+    }
+  },
+  {
+    "type": "NodeUntouched",
+    "event": {
+      "id": "queue-us-east"
+    }
+  },
+  {
+    "type": "NodeUntouched",
+    "event": {
+      "id": "queue-eu"
+    }
+  },
+  {
+    "type": "NodeUntouched",
+    "event": {
+      "id": "verify-eu"
+    }
+  },
+  {
+    "type": "NodeUntouched",
+    "event": {
+      "id": "start"
+    }
+  },
+  {
+    "type": "NodeUntouched",
+    "event": {
+      "id": "done"
+    }
+  },
+  {
+    "type": "ProgressReturned",
+    "error": "deploy to eu failed"
+  },
+  {
+    "type": "Note",
+    "note": "eu is fixed"
+  },
+  {
+    "type": "NodeStarted",
+    "event": {
+      "id": "deploy-eu",
+      "inputs": {
+        "verify-us-east": {
+          "region": "us-east",
+          "verified": true,
+          "version": "7"
+        },
+        "verify-us-west": {
+          "region": "us-west",
+          "verified": true,
+          "version": "7"
+        }
+      }
+    }
+  },
+  {
+    "type": "NodeSucceeded",
+    "event": {
+      "id": "deploy-eu",
+      "outputs": {
+        "region": "eu",
+        "verify-us-east": {
+          "region": "us-east",
+          "verified": true,
+          "version": "7"
+        },
+        "verify-us-west": {
+          "region": "us-west",
+          "verified": true,
+          "version": "7"
+        }
+      }
+    }
+  },
+  {
+    "type": "EdgeStarted",
+    "event": {
+      "name": "deployed",
+      "from": "deploy-eu",
+      "to": "verify-eu",
+      "inputs": {
+        "region": "eu",
+        "verify-us-east": {
+          "region": "us-east",
+          "verified": true,
+          "version": "7"
+        },
+        "verify-us-west": {
+          "region": "us-west",
+          "verified": true,
+          "version": "7"
+        }
+      }
+    }
+  },
+  {
+    "type": "EdgeFinished",
+    "event": {
+      "name": "deployed",
+      "from": "deploy-eu",
+      "to": "verify-eu",
+      "pass": true
+    }
+  },
+  {
+    "type": "NodeStarted",
+    "event": {
+      "id": "verify-eu",
+      "inputs": {
+        "region": "eu",
+        "verify-us-east": {
+          "region": "us-east",
+          "verified": true,
+          "version": "7"
+        },
+        "verify-us-west": {
+          "region": "us-west",
+          "verified": true,
+          "version": "7"
+        }
+      }
+    }
+  },
+  {
+    "type": "NodeSucceeded",
+    "event": {
+      "id": "verify-eu",
+      "outputs": {
+        "region": "eu",
+        "verified": true,
+        "verify-us-east": {
+          "region": "us-east",
+          "verified": true,
+          "version": "7"
+        },
+        "verify-us-west": {
+          "region": "us-west",
+          "verified": true,
+          "version": "7"
+        }
+      }
+    }
+  },
+  {
+    "type": "EdgeStarted",
+    "event": {
+      "name": "eu-metrics-good",
+      "from": "verify-eu",
+      "to": "done",
+      "inputs": {
+        "region": "eu",
+        "verified": true,
+        "verify-us-east": {
+          "region": "us-east",
+          "verified": true,
+          "version": "7"
+        },
+        "verify-us-west": {
+          "region": "us-west",
+          "verified": true,
+          "version": "7"
+        }
+      }
+    }
+  },
+  {
+    "type": "EdgeFinished",
+    "event": {
+      "name": "eu-metrics-good",
+      "from": "verify-eu",
+      "to": "done",
+      "pass": true
+    }
+  },
+  {
+    "type": "NodeStarted",
+    "event": {
+      "id": "done",
+      "inputs": {
+        "region": "eu",
+        "verified": true,
+        "verify-us-east": {
+          "region": "us-east",
+          "verified": true,
+          "version": "7"
+        },
+        "verify-us-west": {
+          "region": "us-west",
+          "verified": true,
+          "version": "7"
+        }
+      }
+    }
+  },
+  {
+    "type": "NodeSucceeded",
+    "event": {
+      "id": "done",
+      "outputs": {
+        "region": "eu",
+        "verified": true,
+        "verify-us-east": {
+          "region": "us-east",
+          "verified": true,
+          "version": "7"
+        },
+        "verify-us-west": {
+          "region": "us-west",
+          "verified": true,
+          "version": "7"
+        }
+      }
+    }
+  },
+  {
+    "type": "NodeUntouched",
+    "event": {
+      "id": "queue-us-west"
+    }
+  },
+  {
+    "type": "NodeUntouched",
+    "event": {
+      "id": "deploy-us-west"
+    }
+  },
+  {
+    "type": "NodeUntouched",
+    "event": {
+      "id": "verify-us-west"
+    }
+  },
+  {
+    "type": "NodeUntouched",
+    "event": {
+      "id": "queue-us-east"
+    }
+  },
+  {
+    "type": "NodeUntouched",
+    "event": {
+      "id": "deploy-us-east"
+    }
+  },
+  {
+    "type": "NodeUntouched",
+    "event": {
+      "id": "verify-us-east"
+    }
+  },
+  {
+    "type": "NodeUntouched",
+    "event": {
+      "id": "queue-eu"
+    }
+  },
+  {
+    "type": "NodeUntouched",
+    "event": {
+      "id": "start"
+    }
+  },
+  {
+    "type": "NodeUntouched",
+    "event": {
+      "id": "plan"
+    }
+  },
+  {
+    "type": "ProgressReturned"
+  }
+]

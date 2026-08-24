@@ -1,0 +1,979 @@
+[
+  {
+    "type": "NodeDefined",
+    "event": {
+      "id": "start"
+    }
+  },
+  {
+    "type": "NodeDefined",
+    "event": {
+      "id": "shift-traffic"
+    }
+  },
+  {
+    "type": "NodeDefined",
+    "event": {
+      "id": "observe"
+    }
+  },
+  {
+    "type": "NodeDefined",
+    "event": {
+      "id": "done"
+    }
+  },
+  {
+    "type": "NodeDefined",
+    "event": {
+      "id": "rollback"
+    }
+  },
+  {
+    "type": "EdgeDefined",
+    "event": {
+      "name": "start",
+      "from": "start",
+      "to": "shift-traffic"
+    }
+  },
+  {
+    "type": "EdgeDefined",
+    "event": {
+      "name": "shifted",
+      "from": "shift-traffic",
+      "to": "observe"
+    }
+  },
+  {
+    "type": "EdgeDefined",
+    "event": {
+      "name": "healthy-and-more-to-shift",
+      "from": "observe",
+      "to": "shift-traffic",
+      "andEdges": [
+        {
+          "name": "healthy-and-more-to-shift[0]",
+          "from": "observe",
+          "to": "shift-traffic"
+        },
+        {
+          "name": "healthy-and-more-to-shift[1]",
+          "from": "observe",
+          "to": "shift-traffic"
+        }
+      ]
+    }
+  },
+  {
+    "type": "EdgeDefined",
+    "event": {
+      "name": "healthy-and-fully-shifted",
+      "from": "observe",
+      "to": "done",
+      "andEdges": [
+        {
+          "name": "healthy-and-fully-shifted[0]",
+          "from": "observe",
+          "to": "done"
+        },
+        {
+          "name": "healthy-and-fully-shifted[1]",
+          "from": "observe",
+          "to": "done"
+        }
+      ]
+    }
+  },
+  {
+    "type": "EdgeDefined",
+    "event": {
+      "name": "unhealthy",
+      "from": "observe",
+      "to": "rollback"
+    }
+  },
+  {
+    "type": "CursorAdded",
+    "event": {
+      "node": "start",
+      "cursor": {
+        "id": "c1",
+        "label": "canary"
+      },
+      "inputs": {
+        "version": "8"
+      }
+    }
+  },
+  {
+    "type": "EdgeStarted",
+    "event": {
+      "name": "start",
+      "from": "start",
+      "to": "shift-traffic",
+      "inputs": {
+        "version": "8"
+      }
+    }
+  },
+  {
+    "type": "EdgeFinished",
+    "event": {
+      "name": "start",
+      "from": "start",
+      "to": "shift-traffic",
+      "pass": true
+    }
+  },
+  {
+    "type": "NodeStarted",
+    "event": {
+      "id": "shift-traffic",
+      "inputs": {
+        "version": "8"
+      }
+    }
+  },
+  {
+    "type": "NodeSucceeded",
+    "event": {
+      "id": "shift-traffic",
+      "outputs": {
+        "percent": 10,
+        "version": "8"
+      }
+    }
+  },
+  {
+    "type": "EdgeStarted",
+    "event": {
+      "name": "shifted",
+      "from": "shift-traffic",
+      "to": "observe",
+      "inputs": {
+        "percent": 10,
+        "version": "8"
+      }
+    }
+  },
+  {
+    "type": "EdgeFinished",
+    "event": {
+      "name": "shifted",
+      "from": "shift-traffic",
+      "to": "observe",
+      "pass": true
+    }
+  },
+  {
+    "type": "NodeStarted",
+    "event": {
+      "id": "observe",
+      "inputs": {
+        "percent": 10,
+        "version": "8"
+      }
+    }
+  },
+  {
+    "type": "NodeSucceeded",
+    "event": {
+      "id": "observe",
+      "outputs": {
+        "percent": 10,
+        "version": "8"
+      }
+    }
+  },
+  {
+    "type": "EdgeStarted",
+    "event": {
+      "name": "healthy-and-more-to-shift",
+      "from": "observe",
+      "to": "shift-traffic",
+      "inputs": {
+        "percent": 10,
+        "version": "8"
+      }
+    }
+  },
+  {
+    "type": "EdgeStarted",
+    "event": {
+      "name": "healthy-and-more-to-shift[0]",
+      "from": "observe",
+      "to": "shift-traffic",
+      "inputs": {
+        "percent": 10,
+        "version": "8"
+      }
+    }
+  },
+  {
+    "type": "EdgeFinished",
+    "event": {
+      "name": "healthy-and-more-to-shift[0]",
+      "from": "observe",
+      "to": "shift-traffic",
+      "pass": false
+    }
+  },
+  {
+    "type": "EdgeFinished",
+    "event": {
+      "name": "healthy-and-more-to-shift",
+      "from": "observe",
+      "to": "shift-traffic",
+      "pass": false
+    }
+  },
+  {
+    "type": "EdgeStarted",
+    "event": {
+      "name": "healthy-and-fully-shifted",
+      "from": "observe",
+      "to": "done",
+      "inputs": {
+        "percent": 10,
+        "version": "8"
+      }
+    }
+  },
+  {
+    "type": "EdgeStarted",
+    "event": {
+      "name": "healthy-and-fully-shifted[0]",
+      "from": "observe",
+      "to": "done",
+      "inputs": {
+        "percent": 10,
+        "version": "8"
+      }
+    }
+  },
+  {
+    "type": "EdgeFinished",
+    "event": {
+      "name": "healthy-and-fully-shifted[0]",
+      "from": "observe",
+      "to": "done",
+      "pass": false
+    }
+  },
+  {
+    "type": "EdgeFinished",
+    "event": {
+      "name": "healthy-and-fully-shifted",
+      "from": "observe",
+      "to": "done",
+      "pass": false
+    }
+  },
+  {
+    "type": "EdgeStarted",
+    "event": {
+      "name": "unhealthy",
+      "from": "observe",
+      "to": "rollback",
+      "inputs": {
+        "percent": 10,
+        "version": "8"
+      }
+    }
+  },
+  {
+    "type": "EdgeFinished",
+    "event": {
+      "name": "unhealthy",
+      "from": "observe",
+      "to": "rollback",
+      "pass": false
+    }
+  },
+  {
+    "type": "NodeUntouched",
+    "event": {
+      "id": "start"
+    }
+  },
+  {
+    "type": "NodeUntouched",
+    "event": {
+      "id": "done"
+    }
+  },
+  {
+    "type": "NodeUntouched",
+    "event": {
+      "id": "rollback"
+    }
+  },
+  {
+    "type": "ProgressReturned"
+  },
+  {
+    "type": "Note",
+    "note": "10% looks good"
+  },
+  {
+    "type": "EdgeStarted",
+    "event": {
+      "name": "healthy-and-more-to-shift",
+      "from": "observe",
+      "to": "shift-traffic",
+      "inputs": {
+        "percent": 10,
+        "version": "8"
+      }
+    }
+  },
+  {
+    "type": "EdgeStarted",
+    "event": {
+      "name": "healthy-and-more-to-shift[0]",
+      "from": "observe",
+      "to": "shift-traffic",
+      "inputs": {
+        "percent": 10,
+        "version": "8"
+      }
+    }
+  },
+  {
+    "type": "EdgeFinished",
+    "event": {
+      "name": "healthy-and-more-to-shift[0]",
+      "from": "observe",
+      "to": "shift-traffic",
+      "pass": true
+    }
+  },
+  {
+    "type": "EdgeStarted",
+    "event": {
+      "name": "healthy-and-more-to-shift[1]",
+      "from": "observe",
+      "to": "shift-traffic",
+      "inputs": {
+        "percent": 10,
+        "version": "8"
+      }
+    }
+  },
+  {
+    "type": "EdgeFinished",
+    "event": {
+      "name": "healthy-and-more-to-shift[1]",
+      "from": "observe",
+      "to": "shift-traffic",
+      "pass": true
+    }
+  },
+  {
+    "type": "EdgeFinished",
+    "event": {
+      "name": "healthy-and-more-to-shift",
+      "from": "observe",
+      "to": "shift-traffic",
+      "pass": true
+    }
+  },
+  {
+    "type": "NodeStarted",
+    "event": {
+      "id": "shift-traffic",
+      "inputs": {
+        "percent": 10,
+        "version": "8"
+      }
+    }
+  },
+  {
+    "type": "NodeSucceeded",
+    "event": {
+      "id": "shift-traffic",
+      "outputs": {
+        "percent": 50,
+        "version": "8"
+      }
+    }
+  },
+  {
+    "type": "EdgeStarted",
+    "event": {
+      "name": "shifted",
+      "from": "shift-traffic",
+      "to": "observe",
+      "inputs": {
+        "percent": 50,
+        "version": "8"
+      }
+    }
+  },
+  {
+    "type": "EdgeFinished",
+    "event": {
+      "name": "shifted",
+      "from": "shift-traffic",
+      "to": "observe",
+      "pass": true
+    }
+  },
+  {
+    "type": "NodeStarted",
+    "event": {
+      "id": "observe",
+      "inputs": {
+        "percent": 50,
+        "version": "8"
+      }
+    }
+  },
+  {
+    "type": "NodeSucceeded",
+    "event": {
+      "id": "observe",
+      "outputs": {
+        "percent": 50,
+        "version": "8"
+      }
+    }
+  },
+  {
+    "type": "EdgeStarted",
+    "event": {
+      "name": "healthy-and-more-to-shift",
+      "from": "observe",
+      "to": "shift-traffic",
+      "inputs": {
+        "percent": 50,
+        "version": "8"
+      }
+    }
+  },
+  {
+    "type": "EdgeStarted",
+    "event": {
+      "name": "healthy-and-more-to-shift[0]",
+      "from": "observe",
+      "to": "shift-traffic",
+      "inputs": {
+        "percent": 50,
+        "version": "8"
+      }
+    }
+  },
+  {
+    "type": "EdgeFinished",
+    "event": {
+      "name": "healthy-and-more-to-shift[0]",
+      "from": "observe",
+      "to": "shift-traffic",
+      "pass": false
+    }
+  },
+  {
+    "type": "EdgeFinished",
+    "event": {
+      "name": "healthy-and-more-to-shift",
+      "from": "observe",
+      "to": "shift-traffic",
+      "pass": false
+    }
+  },
+  {
+    "type": "EdgeStarted",
+    "event": {
+      "name": "healthy-and-fully-shifted",
+      "from": "observe",
+      "to": "done",
+      "inputs": {
+        "percent": 50,
+        "version": "8"
+      }
+    }
+  },
+  {
+    "type": "EdgeStarted",
+    "event": {
+      "name": "healthy-and-fully-shifted[0]",
+      "from": "observe",
+      "to": "done",
+      "inputs": {
+        "percent": 50,
+        "version": "8"
+      }
+    }
+  },
+  {
+    "type": "EdgeFinished",
+    "event": {
+      "name": "healthy-and-fully-shifted[0]",
+      "from": "observe",
+      "to": "done",
+      "pass": false
+    }
+  },
+  {
+    "type": "EdgeFinished",
+    "event": {
+      "name": "healthy-and-fully-shifted",
+      "from": "observe",
+      "to": "done",
+      "pass": false
+    }
+  },
+  {
+    "type": "EdgeStarted",
+    "event": {
+      "name": "unhealthy",
+      "from": "observe",
+      "to": "rollback",
+      "inputs": {
+        "percent": 50,
+        "version": "8"
+      }
+    }
+  },
+  {
+    "type": "EdgeFinished",
+    "event": {
+      "name": "unhealthy",
+      "from": "observe",
+      "to": "rollback",
+      "pass": false
+    }
+  },
+  {
+    "type": "NodeUntouched",
+    "event": {
+      "id": "start"
+    }
+  },
+  {
+    "type": "NodeUntouched",
+    "event": {
+      "id": "done"
+    }
+  },
+  {
+    "type": "NodeUntouched",
+    "event": {
+      "id": "rollback"
+    }
+  },
+  {
+    "type": "ProgressReturned"
+  },
+  {
+    "type": "Note",
+    "note": "50% looks good"
+  },
+  {
+    "type": "EdgeStarted",
+    "event": {
+      "name": "healthy-and-more-to-shift",
+      "from": "observe",
+      "to": "shift-traffic",
+      "inputs": {
+        "percent": 50,
+        "version": "8"
+      }
+    }
+  },
+  {
+    "type": "EdgeStarted",
+    "event": {
+      "name": "healthy-and-more-to-shift[0]",
+      "from": "observe",
+      "to": "shift-traffic",
+      "inputs": {
+        "percent": 50,
+        "version": "8"
+      }
+    }
+  },
+  {
+    "type": "EdgeFinished",
+    "event": {
+      "name": "healthy-and-more-to-shift[0]",
+      "from": "observe",
+      "to": "shift-traffic",
+      "pass": true
+    }
+  },
+  {
+    "type": "EdgeStarted",
+    "event": {
+      "name": "healthy-and-more-to-shift[1]",
+      "from": "observe",
+      "to": "shift-traffic",
+      "inputs": {
+        "percent": 50,
+        "version": "8"
+      }
+    }
+  },
+  {
+    "type": "EdgeFinished",
+    "event": {
+      "name": "healthy-and-more-to-shift[1]",
+      "from": "observe",
+      "to": "shift-traffic",
+      "pass": true
+    }
+  },
+  {
+    "type": "EdgeFinished",
+    "event": {
+      "name": "healthy-and-more-to-shift",
+      "from": "observe",
+      "to": "shift-traffic",
+      "pass": true
+    }
+  },
+  {
+    "type": "NodeStarted",
+    "event": {
+      "id": "shift-traffic",
+      "inputs": {
+        "percent": 50,
+        "version": "8"
+      }
+    }
+  },
+  {
+    "type": "NodeSucceeded",
+    "event": {
+      "id": "shift-traffic",
+      "outputs": {
+        "percent": 100,
+        "version": "8"
+      }
+    }
+  },
+  {
+    "type": "EdgeStarted",
+    "event": {
+      "name": "shifted",
+      "from": "shift-traffic",
+      "to": "observe",
+      "inputs": {
+        "percent": 100,
+        "version": "8"
+      }
+    }
+  },
+  {
+    "type": "EdgeFinished",
+    "event": {
+      "name": "shifted",
+      "from": "shift-traffic",
+      "to": "observe",
+      "pass": true
+    }
+  },
+  {
+    "type": "NodeStarted",
+    "event": {
+      "id": "observe",
+      "inputs": {
+        "percent": 100,
+        "version": "8"
+      }
+    }
+  },
+  {
+    "type": "NodeSucceeded",
+    "event": {
+      "id": "observe",
+      "outputs": {
+        "percent": 100,
+        "version": "8"
+      }
+    }
+  },
+  {
+    "type": "EdgeStarted",
+    "event": {
+      "name": "healthy-and-more-to-shift",
+      "from": "observe",
+      "to": "shift-traffic",
+      "inputs": {
+        "percent": 100,
+        "version": "8"
+      }
+    }
+  },
+  {
+    "type": "EdgeStarted",
+    "event": {
+      "name": "healthy-and-more-to-shift[0]",
+      "from": "observe",
+      "to": "shift-traffic",
+      "inputs": {
+        "percent": 100,
+        "version": "8"
+      }
+    }
+  },
+  {
+    "type": "EdgeFinished",
+    "event": {
+      "name": "healthy-and-more-to-shift[0]",
+      "from": "observe",
+      "to": "shift-traffic",
+      "pass": false
+    }
+  },
+  {
+    "type": "EdgeFinished",
+    "event": {
+      "name": "healthy-and-more-to-shift",
+      "from": "observe",
+      "to": "shift-traffic",
+      "pass": false
+    }
+  },
+  {
+    "type": "EdgeStarted",
+    "event": {
+      "name": "healthy-and-fully-shifted",
+      "from": "observe",
+      "to": "done",
+      "inputs": {
+        "percent": 100,
+        "version": "8"
+      }
+    }
+  },
+  {
+    "type": "EdgeStarted",
+    "event": {
+      "name": "healthy-and-fully-shifted[0]",
+      "from": "observe",
+      "to": "done",
+      "inputs": {
+        "percent": 100,
+        "version": "8"
+      }
+    }
+  },
+  {
+    "type": "EdgeFinished",
+    "event": {
+      "name": "healthy-and-fully-shifted[0]",
+      "from": "observe",
+      "to": "done",
+      "pass": false
+    }
+  },
+  {
+    "type": "EdgeFinished",
+    "event": {
+      "name": "healthy-and-fully-shifted",
+      "from": "observe",
+      "to": "done",
+      "pass": false
+    }
+  },
+  {
+    "type": "EdgeStarted",
+    "event": {
+      "name": "unhealthy",
+      "from": "observe",
+      "to": "rollback",
+      "inputs": {
+        "percent": 100,
+        "version": "8"
+      }
+    }
+  },
+  {
+    "type": "EdgeFinished",
+    "event": {
+      "name": "unhealthy",
+      "from": "observe",
+      "to": "rollback",
+      "pass": false
+    }
+  },
+  {
+    "type": "NodeUntouched",
+    "event": {
+      "id": "start"
+    }
+  },
+  {
+    "type": "NodeUntouched",
+    "event": {
+      "id": "done"
+    }
+  },
+  {
+    "type": "NodeUntouched",
+    "event": {
+      "id": "rollback"
+    }
+  },
+  {
+    "type": "ProgressReturned"
+  },
+  {
+    "type": "Note",
+    "note": "100% looks bad"
+  },
+  {
+    "type": "EdgeStarted",
+    "event": {
+      "name": "healthy-and-more-to-shift",
+      "from": "observe",
+      "to": "shift-traffic",
+      "inputs": {
+        "percent": 100,
+        "version": "8"
+      }
+    }
+  },
+  {
+    "type": "EdgeStarted",
+    "event": {
+      "name": "healthy-and-more-to-shift[0]",
+      "from": "observe",
+      "to": "shift-traffic",
+      "inputs": {
+        "percent": 100,
+        "version": "8"
+      }
+    }
+  },
+  {
+    "type": "EdgeFinished",
+    "event": {
+      "name": "healthy-and-more-to-shift[0]",
+      "from": "observe",
+      "to": "shift-traffic",
+      "pass": false
+    }
+  },
+  {
+    "type": "EdgeFinished",
+    "event": {
+      "name": "healthy-and-more-to-shift",
+      "from": "observe",
+      "to": "shift-traffic",
+      "pass": false
+    }
+  },
+  {
+    "type": "EdgeStarted",
+    "event": {
+      "name": "healthy-and-fully-shifted",
+      "from": "observe",
+      "to": "done",
+      "inputs": {
+        "percent": 100,
+        "version": "8"
+      }
+    }
+  },
+  {
+    "type": "EdgeStarted",
+    "event": {
+      "name": "healthy-and-fully-shifted[0]",
+      "from": "observe",
+      "to": "done",
+      "inputs": {
+        "percent": 100,
+        "version": "8"
+      }
+    }
+  },
+  {
+    "type": "EdgeFinished",
+    "event": {
+      "name": "healthy-and-fully-shifted[0]",
+      "from": "observe",
+      "to": "done",
+      "pass": false
+    }
+  },
+  {
+    "type": "EdgeFinished",
+    "event": {
+      "name": "healthy-and-fully-shifted",
+      "from": "observe",
+      "to": "done",
+      "pass": false
+    }
+  },
+  {
+    "type": "EdgeStarted",
+    "event": {
+      "name": "unhealthy",
+      "from": "observe",
+      "to": "rollback",
+      "inputs": {
+        "percent": 100,
+        "version": "8"
+      }
+    }
+  },
+  {
+    "type": "EdgeFinished",
+    "event": {
+      "name": "unhealthy",
+      "from": "observe",
+      "to": "rollback",
+      "pass": true
+    }
+  },
+  {
+    "type": "NodeStarted",
+    "event": {
+      "id": "rollback",
+      "inputs": {
+        "percent": 100,
+        "version": "8"
+      }
+    }
+  },
+  {
+    "type": "NodeSucceeded",
+    "event": {
+      "id": "rollback",
+      "outputs": {
+        "percent": 0,
+        "version": "8"
+      }
+    }
+  },
+  {
+    "type": "NodeUntouched",
+    "event": {
+      "id": "start"
+    }
+  },
+  {
+    "type": "NodeUntouched",
+    "event": {
+      "id": "shift-traffic"
+    }
+  },
+  {
+    "type": "NodeUntouched",
+    "event": {
+      "id": "observe"
+    }
+  },
+  {
+    "type": "NodeUntouched",
+    "event": {
+      "id": "done"
+    }
+  },
+  {
+    "type": "ProgressReturned"
+  }
+]
