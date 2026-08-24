@@ -35,8 +35,9 @@ var ErrPulumiCloudUnauthorized = errors.New("unauthorized")
 
 // Sanitize archive file pathing from "G305: Zip Slip vulnerability"
 func sanitizeArchivePath(d, t string) (v string, err error) {
-	v = filepath.Join(d, t)
-	if strings.HasPrefix(v, filepath.Clean(d)) {
+	cleanDir := filepath.Clean(d)
+	v = filepath.Join(cleanDir, t)
+	if v == cleanDir || strings.HasPrefix(v, cleanDir+string(os.PathSeparator)) {
 		return v, nil
 	}
 
