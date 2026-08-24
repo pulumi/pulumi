@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"regexp"
 	"sort"
 	"strings"
 
@@ -447,6 +448,39 @@ func (esc *escCommand) changeRequestURL(ref environmentRef, changeRequestID stri
 	return path + "?version=" + changeRequestID
 }
 
+// draftAlreadyExistsRegexp matches the service's error for an environment that already holds an open
+// draft, capturing the ID of the change request that holds it.
+var draftAlreadyExistsRegexp = regexp.MustCompile(`a draft already exists for this environment \(change request ([^)]+)\)`) //nolint:lll
+
+// draftConflictError rewrites the service's "a draft already exists" error, which points at raw REST
+// endpoints, into an error that spells out the CLI commands that resolve the conflict. It returns nil
+// if err is not a draft conflict.
+func (esc *escCommand) draftConflictError(ref environmentRef, err error) error {
+	var errResp *client.EnvironmentErrorResponse
+	if !errors.As(err, &errResp) {
+		return nil
+	}
+	match := draftAlreadyExistsRegexp.FindStringSubmatch(errResp.Message)
+	if match == nil {
+		return nil
+	}
+	changeRequestID := match[1]
+
+	var b strings.Builder
+	fmt.Fprintf(&b, "%v already has a draft (change request %v)\n\n", ref.String(), changeRequestID)
+	fmt.Fprintf(&b, "To update that draft, re-run this command with --draft=%v\n\n", changeRequestID)
+	fmt.Fprintf(&b, "To submit it for approval, run:\n")
+	fmt.Fprintf(&b, "    %v api /api/change-requests/%v/%v/submit -X POST --body '{}'\n\n",
+		esc.command, ref.orgName, changeRequestID)
+	fmt.Fprintf(&b, "To discard it and clear the lock, run:\n")
+	fmt.Fprintf(&b, "    %v api /api/change-requests/%v/%v/close -X POST --body '{}'",
+		esc.command, ref.orgName, changeRequestID)
+	if url := esc.changeRequestURL(ref, changeRequestID); url != "" {
+		fmt.Fprintf(&b, "\n\nChange request URL: %v", url)
+	}
+	return errors.New(b.String())
+}
+
 // updateEnvironment updates an environment.
 // If draft is empty, the environment is directly updated.
 // If draft is "new", a change request is created and submitted.
@@ -470,6 +504,9 @@ func (esc *escCommand) updateEnvironment(
 			tag,
 		)
 		if err != nil {
+			if conflict := esc.draftConflictError(ref, err); conflict != nil {
+				return nil, conflict
+			}
 			return nil, fmt.Errorf("creating environment draft: %w", err)
 		}
 		if !client.DiagnosticsHaveErrors(diags) {
