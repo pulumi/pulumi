@@ -448,3 +448,61 @@ func TestWorkflowParallelNodes(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, map[string]string{"a#1": "a2", "b#2": "b2"}, workflowCursors(t, snap))
 }
+
+// TestWorkflowUnknownEntryInputs: unknown entry inputs are tolerated by a preview, which never places
+// cursors, and rejected by an up, which must diff them against the last placement.
+func TestWorkflowUnknownEntryInputs(t *testing.T) {
+	t.Parallel()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+	}
+	h := newWorkflowHarness(t)
+
+	unknown := true
+	programF := deploytest.NewLanguageRuntimeF(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		image := resource.NewProperty("v1")
+		if unknown {
+			image = resource.MakeComputed(resource.NewProperty(""))
+		}
+		_, err := monitor.RegisterResource(deploy.WorkflowType, "wf", true, deploytest.ResourceOptions{
+			Inputs: resource.PropertyMap{
+				"nodes": resource.NewProperty(resource.PropertyMap{
+					"dev": resource.NewProperty(resource.PropertyMap{"program": callbackProperty(h.program("dev"))}),
+				}),
+				"entries": resource.NewProperty(resource.PropertyMap{
+					"release": resource.NewProperty(resource.PropertyMap{
+						"node":   resource.NewProperty("dev"),
+						"inputs": resource.NewProperty(resource.PropertyMap{"image": image}),
+					}),
+				}),
+			},
+		})
+		if unknown {
+			return err // An up with unknown inputs is expected to fail its registration.
+		}
+		require.NoError(t, err)
+		return nil
+	})
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
+
+	p := &lt.TestPlan{Options: lt.TestUpdateOptions{T: t, HostF: hostF}}
+	project := p.GetProject()
+
+	// A first-deployment preview: the entry's inputs are unknown, and nothing is placed.
+	_, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, true, p.BackendClient, nil, "0")
+	require.NoError(t, err)
+
+	// The up resolves them and places the cursor.
+	unknown = false
+	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "1")
+	require.NoError(t, err)
+	assert.Equal(t, map[string]string{"release#1": "dev"}, workflowCursors(t, snap))
+
+	// An up whose entry inputs are unknown is rejected.
+	unknown = true
+	_, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "2")
+	assert.ErrorContains(t, err, `entry "release": inputs must be known`)
+}

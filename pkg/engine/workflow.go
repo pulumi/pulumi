@@ -366,6 +366,11 @@ func (run *workflowRun) define(defined []string) error {
 	}
 	for _, name := range slices.Sorted(maps.Keys(run.g.entries)) {
 		entry := run.g.entries[name]
+		// Unknown inputs cannot be diffed against the last placement. A preview never places (or even
+		// reaches here), so only an up rejects them.
+		if entry.Inputs.ContainsUnknowns() {
+			return fmt.Errorf("entry %q: inputs must be known", name)
+		}
 		hash := stableHash(entry.Inputs)
 		seed, placed := run.st.Entries[name]
 		if placed && seed.Hash == hash {
@@ -1142,9 +1147,6 @@ func parseWorkflowGraph(news resource.PropertyMap) (*wfGraph, error) {
 			inputs, err := propObject(o, "inputs")
 			if err != nil {
 				return nil, fmt.Errorf("entry %q: %w", name, err)
-			}
-			if inputs.ContainsUnknowns() {
-				return nil, fmt.Errorf("entry %q: inputs must be known", name)
 			}
 			g.entries[string(name)] = wfEntry{Node: node, Inputs: inputs}
 		}

@@ -1,0 +1,19 @@
+<{%fg 2%}>+ urn:pulumi:test::test::pulumi:index:Workflow::wf: (create)
+<{%fg 2%}>    entries: <{%reset%}><{%fg 2%}>{
+<{%reset%}><{%fg 2%}>        release: <{%reset%}><{%fg 2%}>{
+<{%reset%}><{%fg 2%}>            inputs: <{%reset%}><{%fg 2%}>{
+<{%reset%}><{%fg 2%}>                image: <{%reset%}><{%fg 2%}>[unknown]<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>            }<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>            node  : <{%reset%}><{%fg 2%}>"dev"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>        }<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>    }<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>    nodes  : <{%reset%}><{%fg 2%}>{
+<{%reset%}><{%fg 2%}>        dev: <{%reset%}><{%fg 2%}>{
+<{%reset%}><{%fg 2%}>            program: <{%reset%}><{%fg 2%}>{
+<{%reset%}><{%fg 2%}>                target: <{%reset%}><{%fg 2%}>"127.0.0.1:60285"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>                token : <{%reset%}><{%fg 2%}>"f70c4cdc-3a65-46df-a7a6-427679eef10d"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>            }<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>        }<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>    }<{%reset%}><{%fg 2%}>
+<{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    <{%fg 2%}>+ 1 to create<{%reset%}>

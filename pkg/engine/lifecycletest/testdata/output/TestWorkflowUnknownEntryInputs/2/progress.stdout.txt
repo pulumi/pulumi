@@ -1,0 +1,21 @@
+<{%fg 13%}><{%bold%}>View Live: <{%underline%}><{%fg 12%}>http://example.com<{%reset%}>
+
+
+ <{%bold%}><{%fg 3%}>~ <{%reset%}> pulumi:index:Workflow wf <{%bold%}><{%fg 3%}>updating<{%reset%}> [diff: <{%fg 3%}>~entries,nodes<{%reset%}><{%reset%}>]
+ <{%fg 3%}>~ <{%reset%}> pulumi:index:Workflow wf <{%fg 3%}>updated<{%reset%}> [diff: <{%fg 3%}>~entries,nodes<{%reset%}><{%reset%}>]
+ <{%fg 3%}>~ <{%reset%}> pulumi:index:Workflow wf <{%fg 1%}>**updating failed**<{%reset%}> [diff: <{%fg 3%}>~entries,nodes<{%reset%}><{%reset%}>]; <{%fg 1%}>error: <{%reset%}><{%reset%}>workflow urn:pulumi:test::test::pulumi:index:Workflow::wf: entry "release": inputs must be known<{%reset%}>
+ <{%bold%}><{%reset%}>  <{%reset%}> pulumi:pulumi:Stack project-stack <{%bold%}><{%reset%}><{%reset%}> <{%fg 1%}>error: <{%reset%}><{%reset%}>update failed<{%reset%}>
+ <{%reset%}>  <{%reset%}> pulumi:pulumi:Stack project-stack <{%fg 1%}>**failed**<{%reset%}> 1 <{%fg 1%}>error<{%reset%}>
+<{%fg 13%}><{%bold%}>Diagnostics:<{%reset%}>
+  <{%fg 12%}>pulumi:index:Workflow (wf):<{%reset%}>
+    <{%fg 1%}>error: <{%reset%}><{%reset%}>workflow urn:pulumi:test::test::pulumi:index:Workflow::wf: entry "release": inputs must be known<{%reset%}>
+
+  <{%fg 12%}>pulumi:pulumi:Stack (project-stack):<{%reset%}>
+    <{%fg 1%}>error: <{%reset%}><{%reset%}>update failed<{%reset%}>
+
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    <{%fg 3%}>~ 1 updated<{%reset%}>
+    <{%fg 1%}>2 errored<{%reset%}>
+
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s
+

@@ -1,0 +1,30 @@
+<{%fg 13%}><{%bold%}>View Live: <{%underline%}><{%fg 12%}>http://example.com<{%reset%}>
+
+
+ <{%bold%}><{%fg 2%}>+ <{%reset%}> urn:pulumi:test::test::pulumi:index:Workflow::wf <{%bold%}><{%fg 2%}>creating<{%reset%}> 
+ <{%fg 2%}>+ <{%reset%}> urn:pulumi:test::test::pulumi:index:Workflow::wf <{%fg 2%}>created<{%reset%}> 
+ <{%fg 2%}>+ <{%reset%}> urn:pulumi:test::test::pulumi:index:Workflow::wf <{%fg 2%}>created<{%reset%}> <{%reset%}>workflow: no cursors
+ <{%fg 2%}>+ <{%reset%}> urn:pulumi:test::test::pulumi:index:Workflow::wf <{%fg 2%}>created<{%reset%}> <{%reset%}>workflow: release#1 @ dev — parked
+ <{%fg 2%}>+ <{%reset%}> urn:pulumi:test::test::pulumi:index:Workflow::wf <{%fg 2%}>created<{%reset%}> <{%reset%}>workflow: release#1 @ dev — parked
+ <{%fg 2%}>+ <{%reset%}> urn:pulumi:test::test::pulumi:index:Workflow::wf <{%fg 2%}>created<{%reset%}> <{%reset%}>workflow: release#1 @ dev — running dev
+ <{%bold%}><{%fg 2%}>+ <{%reset%}> urn:pulumi:test::test-wf-wf-dev::pulumi:index:Workflow$pulumi:index:WorkflowNode::dev <{%bold%}><{%fg 2%}>creating<{%reset%}> 
+ <{%bold%}><{%fg 2%}>+ <{%reset%}> urn:pulumi:test::test-wf-wf-dev::pulumi:pulumi:Stack::test-wf-wf-dev-test <{%bold%}><{%fg 2%}>creating<{%reset%}> 
+ <{%bold%}><{%fg 2%}>+ <{%reset%}> urn:pulumi:test::test-wf-wf-dev::pkgA:m:typA::dev <{%bold%}><{%fg 2%}>creating<{%reset%}> 
+ <{%fg 2%}>+ <{%reset%}> urn:pulumi:test::test-wf-wf-dev::pkgA:m:typA::dev <{%fg 2%}>created<{%reset%}> 
+ <{%fg 2%}>+ <{%reset%}> urn:pulumi:test::test::pulumi:index:Workflow::wf <{%fg 2%}>created<{%reset%}> <{%reset%}>workflow: release#1 @ dev — parked
+ <{%fg 2%}>+ <{%reset%}> urn:pulumi:test::test::pulumi:index:Workflow::wf <{%fg 2%}>created<{%reset%}> <{%reset%}>workflow: release#1 @ dev — parked
+ <{%fg 2%}>+ <{%reset%}> urn:pulumi:test::test::pulumi:index:Workflow::wf <{%fg 2%}>created<{%reset%}> <{%reset%}>workflow: release#1 @ dev — parked
+ <{%fg 2%}>+ <{%reset%}> urn:pulumi:test::test-wf-wf-dev::pulumi:pulumi:Stack::test-wf-wf-dev-test <{%fg 2%}>created<{%reset%}> 
+ <{%reset%}>  <{%reset%}> urn:pulumi:stack::project::pulumi:pulumi:Stack::project-stack <{%reset%}><{%reset%}> 
+<{%fg 13%}><{%bold%}>Diagnostics:<{%reset%}>
+  <{%fg 12%}>urn:pulumi:test::test::pulumi:index:Workflow::wf:<{%reset%}>
+    <{%reset%}>workflow: release#1 @ dev — parked
+      dev ◀ release#1
+    cursors
+      release#1 @ dev — parked
+
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    <{%fg 2%}>+ 4 created<{%reset%}>
+
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s
+
