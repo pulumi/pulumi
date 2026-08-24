@@ -294,7 +294,13 @@ type Workflow struct {
 	// The cursors of the workflow after this up advanced it: objects with a "name" and a "node".
 	Cursors pulumi.ArrayOutput `pulumi:"cursors"`
 	// A rendering of the workflow after this up advanced it.
+	//
+	// NOTE: the diagram as a resource output is a PoC affordance and does not go into prod.
 	Diagram pulumi.StringOutput `pulumi:"diagram"`
+	// The record of each node after this up advanced the workflow: its occupant and its visits (newest
+	// first), each visit an object with the values its cursor entered ("inputs") and left ("outputs")
+	// with.
+	Records pulumi.MapOutput `pulumi:"records"`
 }
 
 // New registers a workflow resource whose definition def builds.

@@ -197,7 +197,8 @@ registered inside a node program progresses whenever that node runs.
 
 - `pulumi:index:Workflow` (builtin provider). Inputs: nodes and edges
   (callback tokens, condition names, kinds), entries. Outputs: cursors
-  `[{id, node, entered}]`, last event summary.
+  `[{id, node, entered}]`, node records, the diagram (a PoC affordance —
+  the diagram as a resource output does not go into prod).
 - `pulumi:index:WorkflowNode`, child of the workflow, one per defined node.
   State: occupant, visits (`entered`/`outgoing`/times/err), `lastRun`. The
   node program's resources are its children; each run is a nested deployment
