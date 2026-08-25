@@ -841,13 +841,16 @@ func (t *types) newArrayType(elementType Type) Type {
 
 func (t *types) newUnionType(
 	elements []Type, defaultType Type, discriminator string, mapping map[string]string,
+	discriminatedCases map[string]*ObjectType,
 ) *UnionType {
 	union := &UnionType{
-		ElementTypes:  elements,
-		DefaultType:   defaultType,
-		Discriminator: discriminator,
-		Mapping:       mapping,
+		ElementTypes:       elements,
+		DefaultType:        defaultType,
+		Discriminator:      discriminator,
+		Mapping:            mapping,
+		DiscriminatedCases: discriminatedCases,
 	}
+	// DiscriminatedCases is derived from the fields the hash already covers, so it is not hashed.
 	key := hashType(union)
 	if typ, ok := t.unions[key]; ok {
 		return typ
@@ -1184,15 +1187,126 @@ func (t *types) bindTypeSpecOneOf(
 
 	var discriminator string
 	var mapping map[string]string
+	var cases map[string]*ObjectType
 	if spec.Discriminator != nil {
 		if spec.Discriminator.PropertyName == "" {
 			diags = diags.Append(errorf(path, "discriminator must provide a property name"))
 		}
 		discriminator = spec.Discriminator.PropertyName
 		mapping = spec.Discriminator.Mapping
+
+		var caseDiags hcl.Diagnostics
+		var err error
+		cases, caseDiags, err = t.bindDiscriminatedCases(path, elements, mapping, inputShape, options)
+		diags = diags.Extend(caseDiags)
+		if err != nil {
+			return nil, diags, err
+		}
 	}
 
-	return t.newUnionType(elements, defaultType, discriminator, mapping), diags, nil
+	return t.newUnionType(elements, defaultType, discriminator, mapping, cases), diags, nil
+}
+
+// bindDiscriminatedCases resolves a discriminator mapping to the object types it selects. It returns
+// nil when the union cannot be dispatched on its discriminator, so that a consumer never has to
+// decide for itself whether a mapping is usable.
+//
+// The failures are reported as warnings rather than errors. A schema that binds today must keep
+// binding, and these shapes reach us from provider schemas already published to the registry. The
+// generated code degrades the way it did before the mapping was resolved here.
+func (t *types) bindDiscriminatedCases(
+	path string,
+	elements []Type,
+	mapping map[string]string,
+	inputShape bool,
+	options ValidationOptions,
+) (map[string]*ObjectType, hcl.Diagnostics, error) {
+	var diags hcl.Diagnostics
+	if len(mapping) == 0 {
+		return nil, diags, nil
+	}
+
+	members := map[string]*ObjectType{}
+	for _, e := range elements {
+		obj, ok := unwrapType(e).(*ObjectType)
+		if !ok {
+			diags = diags.Append(warningf(path,
+				"discriminator is ignored: every member of the union must be an object type"))
+			return nil, diags, nil
+		}
+		members[plainObjectShape(obj).Token] = plainObjectShape(obj)
+	}
+
+	cases := map[string]*ObjectType{}
+	covered := map[string]bool{}
+	for _, value := range slices.Sorted(maps.Keys(mapping)) {
+		ref := mapping[value]
+		// The spec allows a bare schema name here as well as a reference, but nothing consumes that
+		// form, so say so rather than silently dropping the mapping.
+		if !strings.HasPrefix(ref, "#/types/") {
+			diags = diags.Append(warningf(path,
+				"discriminator is ignored: mapping %q must be a reference of the form '#/types/<token>', got %q",
+				value, ref))
+			return nil, diags, nil
+		}
+
+		typ, refDiags, err := t.bindTypeSpec(path, TypeSpec{Ref: ref}, inputShape, options)
+		diags = diags.Extend(refDiags)
+		if err != nil {
+			return nil, diags, err
+		}
+
+		obj, ok := unwrapType(typ).(*ObjectType)
+		if !ok {
+			diags = diags.Append(warningf(path,
+				"discriminator is ignored: mapping %q does not resolve to an object type", value))
+			return nil, diags, nil
+		}
+		plain := plainObjectShape(obj)
+		if _, ok := members[plain.Token]; !ok {
+			diags = diags.Append(warningf(path,
+				"discriminator is ignored: mapping %q resolves to %q, which is not a member of the union",
+				value, plain.Token))
+			return nil, diags, nil
+		}
+
+		cases[value] = plain
+		covered[plain.Token] = true
+	}
+
+	// Compare the covered tokens rather than the counts. Two values may name the same member, which
+	// keeps the counts equal while leaving another member with no entry.
+	if len(covered) != len(members) {
+		diags = diags.Append(warningf(path,
+			"discriminator is ignored: the mapping reaches %d of the %d members of the union",
+			len(covered), len(members)))
+		return nil, diags, nil
+	}
+
+	return cases, diags, nil
+}
+
+// plainObjectShape returns the non-input shape of an object type.
+func plainObjectShape(obj *ObjectType) *ObjectType {
+	if obj.PlainShape != nil {
+		return obj.PlainShape
+	}
+	return obj
+}
+
+// unwrapType strips the Optional and Input wrappers from t. It mirrors codegen.UnwrapType, which
+// this package cannot use because codegen imports it.
+func unwrapType(t Type) Type {
+	for {
+		switch typ := t.(type) {
+		case *InputType:
+			t = typ.ElementType
+		case *OptionalType:
+			t = typ.ElementType
+		default:
+			return t
+		}
+	}
 }
 
 func (t *types) bindTypeSpec(

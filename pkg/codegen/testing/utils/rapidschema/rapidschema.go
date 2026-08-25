@@ -539,10 +539,30 @@ func drawEnumToken(
 }
 
 func drawUnionTypeSpec(t *rapid.T, ctx *pkgCtx, label string, depth int) schema.TypeSpec {
-	n := rapid.IntRange(2, 4).Draw(t, label+":unionLen")
-	members := make([]schema.TypeSpec, n)
-	for i := range n {
-		members[i] = drawTypeSpec(t, ctx, fmt.Sprintf("%s:m%d", label, i), depth-1)
+	haveDiscriminator := rapid.Bool().Draw(t, label+":haveDiscriminator")
+	// A mapping only binds when every one of its entries names a distinct object type that is a
+	// member of the union, so build the union out of object refs whenever one is drawn. Mapping to
+	// arbitrary tokens in the package produces a union that cannot be dispatched on, which the
+	// binder reports rather than resolves.
+	haveMapping := haveDiscriminator &&
+		rapid.Bool().Draw(t, label+":haveMapping") &&
+		len(ctx.objectTokens) >= 2
+
+	var members []schema.TypeSpec
+	var tokens []string
+	if haveMapping {
+		n := rapid.IntRange(2, min(4, len(ctx.objectTokens))).Draw(t, label+":unionLen")
+		tokens = ctx.objectTokens[:n]
+		members = make([]schema.TypeSpec, n)
+		for i, token := range tokens {
+			members[i] = schema.TypeSpec{Ref: "#/types/" + token}
+		}
+	} else {
+		n := rapid.IntRange(2, 4).Draw(t, label+":unionLen")
+		members = make([]schema.TypeSpec, n)
+		for i := range n {
+			members[i] = drawTypeSpec(t, ctx, fmt.Sprintf("%s:m%d", label, i), depth-1)
+		}
 	}
 	spec := schema.TypeSpec{OneOf: members}
 
@@ -550,15 +570,14 @@ func drawUnionTypeSpec(t *rapid.T, ctx *pkgCtx, label string, depth int) schema.
 		spec.Type = rapid.SampledFrom(primitiveTypeNames).Draw(t, label+":unionType")
 	}
 
-	if rapid.Bool().Draw(t, label+":haveDiscriminator") {
+	if haveDiscriminator {
 		disc := &schema.DiscriminatorSpec{
 			PropertyName: drawPropertyName(t, label+":discProp"),
 		}
-		if rapid.Bool().Draw(t, label+":haveMapping") && len(ctx.objectTokens) > 0 {
-			mapping := make(map[string]string)
-			count := rapid.IntRange(1, len(ctx.objectTokens)).Draw(t, label+":mappingLen")
-			for i := range count {
-				mapping[fmt.Sprintf("v%d", i)] = "#/types/" + ctx.objectTokens[i]
+		if haveMapping {
+			mapping := make(map[string]string, len(tokens))
+			for i, token := range tokens {
+				mapping[fmt.Sprintf("v%d", i)] = "#/types/" + token
 			}
 			disc.Mapping = mapping
 		}

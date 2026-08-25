@@ -4082,3 +4082,154 @@ func TestMissingPropertyRefErrors(t *testing.T) {
 	assert.Contains(t, summaries,
 		"#/types/test:index:SomeType/description: property 'nonExistent' not found on type 'test:index:SomeType'")
 }
+
+// TestBindDiscriminatedCases covers bindDiscriminatedCases: a discriminator mapping is resolved to
+// the object types it selects, and a mapping that cannot be dispatched on leaves DiscriminatedCases
+// nil with a warning rather than failing the bind.
+func TestBindDiscriminatedCases(t *testing.T) {
+	t.Parallel()
+
+	refSpec := func(token string) TypeSpec { return TypeSpec{Ref: "#/types/" + token} }
+	variant := func() ComplexTypeSpec {
+		return ComplexTypeSpec{ObjectTypeSpec: ObjectTypeSpec{
+			Type:       "object",
+			Properties: map[string]PropertySpec{"kind": {TypeSpec: TypeSpec{Type: "string"}}},
+			Required:   []string{"kind"},
+		}}
+	}
+
+	// A package whose Holder type has a `union` property that is a discriminated union of A and B.
+	pkgWithMapping := func(oneOf []TypeSpec, mapping map[string]string) PackageSpec {
+		return PackageSpec{
+			Name: "test", Version: "1.0.0",
+			Types: map[string]ComplexTypeSpec{
+				"test:index:A": variant(),
+				"test:index:B": variant(),
+				// Outside every union built here, for the mapping-outside-the-union case.
+				"test:index:C": variant(),
+				"test:index:Holder": {ObjectTypeSpec: ObjectTypeSpec{
+					Type: "object",
+					Properties: map[string]PropertySpec{"union": {TypeSpec: TypeSpec{
+						OneOf: oneOf,
+						Discriminator: &DiscriminatorSpec{
+							PropertyName: "kind",
+							Mapping:      mapping,
+						},
+					}}},
+				}},
+			},
+		}
+	}
+
+	bothVariants := []TypeSpec{refSpec("test:index:A"), refSpec("test:index:B")}
+
+	// unionOf digs the bound union out of the Holder type.
+	unionOf := func(t *testing.T, pkg *Package) *UnionType {
+		t.Helper()
+		for _, typ := range pkg.Types {
+			obj, ok := typ.(*ObjectType)
+			if !ok || obj.Token != "test:index:Holder" || obj.IsInputShape() {
+				continue
+			}
+			union, ok := unwrapType(obj.Properties[0].Type).(*UnionType)
+			require.True(t, ok, "Holder.union should bind to a union")
+			return union
+		}
+		t.Fatal("Holder type not found")
+		return nil
+	}
+
+	bind := func(t *testing.T, spec PackageSpec) (*Package, hcl.Diagnostics) {
+		t.Helper()
+		pkg, diags, err := BindSpec(spec, NewNullLoader(), ValidationOptions{})
+		require.NoError(t, err)
+		return pkg, diags
+	}
+
+	t.Run("ResolvesMappingToObjectTypes", func(t *testing.T) {
+		t.Parallel()
+		pkg, diags := bind(t, pkgWithMapping(bothVariants, map[string]string{
+			"a": "#/types/test:index:A",
+			"b": "#/types/test:index:B",
+		}))
+		assert.Empty(t, diags)
+
+		union := unionOf(t, pkg)
+		require.True(t, union.IsDiscriminated())
+		assert.Equal(t, "kind", union.Discriminator)
+		assert.Len(t, union.DiscriminatedCases, 2)
+		assert.Equal(t, "test:index:A", union.DiscriminatedCases["a"].Token)
+		assert.Equal(t, "test:index:B", union.DiscriminatedCases["b"].Token)
+		// The cases are always plain shapes, so they survive the input/plain rewrites in codegen.
+		assert.False(t, union.DiscriminatedCases["a"].IsInputShape())
+	})
+
+	t.Run("NoMappingIsNotDiscriminated", func(t *testing.T) {
+		t.Parallel()
+		pkg, diags := bind(t, pkgWithMapping(bothVariants, nil))
+		assert.Empty(t, diags)
+		assert.False(t, unionOf(t, pkg).IsDiscriminated())
+	})
+
+	t.Run("MappingOutsideTheUnionWarns", func(t *testing.T) {
+		t.Parallel()
+		spec := pkgWithMapping(bothVariants, map[string]string{
+			"a": "#/types/test:index:A",
+			"c": "#/types/test:index:C",
+		})
+		pkg, diags := bind(t, spec)
+		assert.False(t, diags.HasErrors(), "a bad mapping must not fail the bind")
+		assert.False(t, unionOf(t, pkg).IsDiscriminated())
+		require.NotEmpty(t, diags)
+		assert.Contains(t, diags[len(diags)-1].Summary, "is not a member of the union")
+	})
+
+	t.Run("PartialMappingWarns", func(t *testing.T) {
+		t.Parallel()
+		pkg, diags := bind(t, pkgWithMapping(bothVariants, map[string]string{
+			"a": "#/types/test:index:A",
+		}))
+		assert.False(t, diags.HasErrors())
+		assert.False(t, unionOf(t, pkg).IsDiscriminated())
+		require.NotEmpty(t, diags)
+		assert.Contains(t, diags[len(diags)-1].Summary, "reaches 1 of the 2 members")
+	})
+
+	// Two values naming the same member keeps the counts equal while leaving a member unreachable.
+	// Counting entries rather than covered members misses this.
+	t.Run("DuplicateTargetLeavingAMemberUnreachableWarns", func(t *testing.T) {
+		t.Parallel()
+		pkg, diags := bind(t, pkgWithMapping(bothVariants, map[string]string{
+			"a":      "#/types/test:index:A",
+			"aAgain": "#/types/test:index:A",
+		}))
+		assert.False(t, diags.HasErrors())
+		assert.False(t, unionOf(t, pkg).IsDiscriminated())
+		require.NotEmpty(t, diags)
+		assert.Contains(t, diags[len(diags)-1].Summary, "reaches 1 of the 2 members")
+	})
+
+	t.Run("BareSchemaNameWarns", func(t *testing.T) {
+		t.Parallel()
+		pkg, diags := bind(t, pkgWithMapping(bothVariants, map[string]string{
+			"a": "A",
+			"b": "#/types/test:index:B",
+		}))
+		assert.False(t, diags.HasErrors())
+		assert.False(t, unionOf(t, pkg).IsDiscriminated())
+		require.NotEmpty(t, diags)
+		assert.Contains(t, diags[len(diags)-1].Summary, "must be a reference of the form")
+	})
+
+	t.Run("NonObjectMemberWarns", func(t *testing.T) {
+		t.Parallel()
+		pkg, diags := bind(t, pkgWithMapping(
+			[]TypeSpec{refSpec("test:index:A"), {Type: "string"}},
+			map[string]string{"a": "#/types/test:index:A"},
+		))
+		assert.False(t, diags.HasErrors())
+		assert.False(t, unionOf(t, pkg).IsDiscriminated())
+		require.NotEmpty(t, diags)
+		assert.Contains(t, diags[len(diags)-1].Summary, "must be an object type")
+	})
+}

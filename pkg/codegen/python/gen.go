@@ -2765,6 +2765,24 @@ func (mod *modContext) propertyTypeString(prop *schema.Property, t schema.Type, 
 	return mod.typeString(t, opts)
 }
 
+// unionElementsString renders a union as `Union[...]` over the distinct renderings of its members.
+func (mod *modContext) unionElementsString(t *schema.UnionType, opts typeStringOpts) string {
+	elementTypeSet := mapset.NewSet[string]()
+	elements := slice.Prealloc[string](len(t.ElementTypes))
+	for _, e := range t.ElementTypes {
+		et := mod.typeString(e, opts)
+		if !elementTypeSet.Contains(et) {
+			elementTypeSet.Add(et)
+			elements = append(elements, et)
+		}
+	}
+
+	if len(elements) == 1 {
+		return elements[0]
+	}
+	return fmt.Sprintf("Union[%s]", strings.Join(elements, ", "))
+}
+
 func (mod *modContext) typeString(t schema.Type, opts typeStringOpts) string {
 	switch t := t.(type) {
 	case *schema.OptionalType:
@@ -2855,26 +2873,19 @@ func (mod *modContext) typeString(t schema.Type, opts typeStringOpts) string {
 					return mod.typeString(typ.ElementType, opts)
 				}
 			}
+			// A discriminated union of object types keeps its members on the output side too: the
+			// runtime reduces a value to the member its constants select, so there is no need to
+			// degrade to `Any` the way an undiscriminated union still does.
+			if t.IsDiscriminated() {
+				return mod.unionElementsString(t, opts)
+			}
 			if t.DefaultType != nil {
 				return mod.typeString(t.DefaultType, opts)
 			}
 			return "Any"
 		}
 
-		elementTypeSet := mapset.NewSet[string]()
-		elements := slice.Prealloc[string](len(t.ElementTypes))
-		for _, e := range t.ElementTypes {
-			et := mod.typeString(e, opts)
-			if !elementTypeSet.Contains(et) {
-				elementTypeSet.Add(et)
-				elements = append(elements, et)
-			}
-		}
-
-		if len(elements) == 1 {
-			return elements[0]
-		}
-		return fmt.Sprintf("Union[%s]", strings.Join(elements, ", "))
+		return mod.unionElementsString(t, opts)
 	default:
 		builtin := func(name string, forDocs bool) string {
 			if forDocs {
