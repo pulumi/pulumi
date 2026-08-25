@@ -1,0 +1,4 @@
+component: cli/state
+kind: feat
+body: Add `pulumi state eject` to turn stateful snippets into Pulumi program code
+time: 2026-08-25T00:00:00Z
