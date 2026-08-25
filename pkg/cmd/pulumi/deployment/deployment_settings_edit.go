@@ -512,8 +512,8 @@ func runDeploymentSettingsEdit(
 }
 
 func isNotFound(err error) bool {
-	var errResp *apitype.ErrorResponse
-	return errors.As(err, &errResp) && errResp.Code == http.StatusNotFound
+	errResp, ok := errors.AsType[*apitype.ErrorResponse](err)
+	return ok && errResp.Code == http.StatusNotFound
 }
 
 // marshalAndValidatePatch turns the constructed map into bytes, then decodes those bytes into
