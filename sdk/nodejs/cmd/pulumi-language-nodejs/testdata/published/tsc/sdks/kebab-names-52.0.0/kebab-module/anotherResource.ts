@@ -18,7 +18,7 @@ export class AnotherResource extends pulumi.CustomResource {
     }
 
     /** @internal */
-    public static readonly __pulumiType = 'kebab-names:kebab-module:anotherResource';
+    public static readonly __pulumiType = 'kebab-names:kebab-module:another-resource';
 
     /**
      * Returns true if the given object is an instance of AnotherResource.  This is designed to work even

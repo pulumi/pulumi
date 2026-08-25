@@ -62,6 +62,7 @@ func init() {
 					AssertPropertyMapMember(l, stack.Outputs, "theOutput", resource.NewProperty(resource.PropertyMap{
 						"nested-output": resource.NewProperty("nested"),
 					}))
+					AssertPropertyMapMember(l, stack.Outputs, "invoked", resource.NewProperty("hello nested"))
 				},
 			},
 		},

@@ -13,6 +13,178 @@ import (
 
 var _ = internal.GetEnvOrDefault
 
+type DefaultsInput struct {
+	DefaultValue *string `pulumi:"default-value"`
+	Value        string  `pulumi:"value"`
+}
+
+// Defaults sets the appropriate defaults for DefaultsInput
+func (val *DefaultsInput) Defaults() *DefaultsInput {
+	if val == nil {
+		return nil
+	}
+	tmp := *val
+	if tmp.DefaultValue == nil {
+		defaultValue_ := "defaulted"
+		tmp.DefaultValue = &defaultValue_
+	}
+	return &tmp
+}
+
+// DefaultsInputInput is an input type that accepts DefaultsInputArgs and DefaultsInputOutput values.
+// You can construct a concrete instance of `DefaultsInputInput` via:
+//
+//	DefaultsInputArgs{...}
+type DefaultsInputInput interface {
+	pulumi.Input
+
+	ToDefaultsInputOutput() DefaultsInputOutput
+	ToDefaultsInputOutputWithContext(context.Context) DefaultsInputOutput
+}
+
+type DefaultsInputArgs struct {
+	DefaultValue pulumi.StringPtrInput `pulumi:"default-value"`
+	Value        pulumi.StringInput    `pulumi:"value"`
+}
+
+// Defaults sets the appropriate defaults for DefaultsInputArgs
+func (val *DefaultsInputArgs) Defaults() *DefaultsInputArgs {
+	if val == nil {
+		return nil
+	}
+	tmp := *val
+	if tmp.DefaultValue == nil {
+		tmp.DefaultValue = pulumi.StringPtr("defaulted")
+	}
+	return &tmp
+}
+func (DefaultsInputArgs) ElementType() reflect.Type {
+	return reflect.TypeOf((*DefaultsInput)(nil)).Elem()
+}
+
+func (i DefaultsInputArgs) ToDefaultsInputOutput() DefaultsInputOutput {
+	return i.ToDefaultsInputOutputWithContext(context.Background())
+}
+
+func (i DefaultsInputArgs) ToDefaultsInputOutputWithContext(ctx context.Context) DefaultsInputOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(DefaultsInputOutput)
+}
+
+func (i DefaultsInputArgs) ToDefaultsInputPtrOutput() DefaultsInputPtrOutput {
+	return i.ToDefaultsInputPtrOutputWithContext(context.Background())
+}
+
+func (i DefaultsInputArgs) ToDefaultsInputPtrOutputWithContext(ctx context.Context) DefaultsInputPtrOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(DefaultsInputOutput).ToDefaultsInputPtrOutputWithContext(ctx)
+}
+
+// DefaultsInputPtrInput is an input type that accepts DefaultsInputArgs, DefaultsInputPtr and DefaultsInputPtrOutput values.
+// You can construct a concrete instance of `DefaultsInputPtrInput` via:
+//
+//	        DefaultsInputArgs{...}
+//
+//	or:
+//
+//	        nil
+type DefaultsInputPtrInput interface {
+	pulumi.Input
+
+	ToDefaultsInputPtrOutput() DefaultsInputPtrOutput
+	ToDefaultsInputPtrOutputWithContext(context.Context) DefaultsInputPtrOutput
+}
+
+type defaultsInputPtrType DefaultsInputArgs
+
+func DefaultsInputPtr(v *DefaultsInputArgs) DefaultsInputPtrInput {
+	return (*defaultsInputPtrType)(v)
+}
+
+func (*defaultsInputPtrType) ElementType() reflect.Type {
+	return reflect.TypeOf((**DefaultsInput)(nil)).Elem()
+}
+
+func (i *defaultsInputPtrType) ToDefaultsInputPtrOutput() DefaultsInputPtrOutput {
+	return i.ToDefaultsInputPtrOutputWithContext(context.Background())
+}
+
+func (i *defaultsInputPtrType) ToDefaultsInputPtrOutputWithContext(ctx context.Context) DefaultsInputPtrOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(DefaultsInputPtrOutput)
+}
+
+type DefaultsInputOutput struct{ *pulumi.OutputState }
+
+func (DefaultsInputOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*DefaultsInput)(nil)).Elem()
+}
+
+func (o DefaultsInputOutput) ToDefaultsInputOutput() DefaultsInputOutput {
+	return o
+}
+
+func (o DefaultsInputOutput) ToDefaultsInputOutputWithContext(ctx context.Context) DefaultsInputOutput {
+	return o
+}
+
+func (o DefaultsInputOutput) ToDefaultsInputPtrOutput() DefaultsInputPtrOutput {
+	return o.ToDefaultsInputPtrOutputWithContext(context.Background())
+}
+
+func (o DefaultsInputOutput) ToDefaultsInputPtrOutputWithContext(ctx context.Context) DefaultsInputPtrOutput {
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v DefaultsInput) *DefaultsInput {
+		return &v
+	}).(DefaultsInputPtrOutput)
+}
+
+func (o DefaultsInputOutput) DefaultValue() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v DefaultsInput) *string { return v.DefaultValue }).(pulumi.StringPtrOutput)
+}
+
+func (o DefaultsInputOutput) Value() pulumi.StringOutput {
+	return o.ApplyT(func(v DefaultsInput) string { return v.Value }).(pulumi.StringOutput)
+}
+
+type DefaultsInputPtrOutput struct{ *pulumi.OutputState }
+
+func (DefaultsInputPtrOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((**DefaultsInput)(nil)).Elem()
+}
+
+func (o DefaultsInputPtrOutput) ToDefaultsInputPtrOutput() DefaultsInputPtrOutput {
+	return o
+}
+
+func (o DefaultsInputPtrOutput) ToDefaultsInputPtrOutputWithContext(ctx context.Context) DefaultsInputPtrOutput {
+	return o
+}
+
+func (o DefaultsInputPtrOutput) Elem() DefaultsInputOutput {
+	return o.ApplyT(func(v *DefaultsInput) DefaultsInput {
+		if v != nil {
+			return *v
+		}
+		var ret DefaultsInput
+		return ret
+	}).(DefaultsInputOutput)
+}
+
+func (o DefaultsInputPtrOutput) DefaultValue() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v *DefaultsInput) *string {
+		if v == nil {
+			return nil
+		}
+		return v.DefaultValue
+	}).(pulumi.StringPtrOutput)
+}
+
+func (o DefaultsInputPtrOutput) Value() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v *DefaultsInput) *string {
+		if v == nil {
+			return nil
+		}
+		return &v.Value
+	}).(pulumi.StringPtrOutput)
+}
+
 type NestedInput struct {
 	NestedValue string `pulumi:"nested-value"`
 }
@@ -85,7 +257,11 @@ func (o OutputItemOutput) NestedOutput() pulumi.StringOutput {
 }
 
 func init() {
+	pulumi.RegisterInputType(reflect.TypeOf((*DefaultsInputInput)(nil)).Elem(), DefaultsInputArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*DefaultsInputPtrInput)(nil)).Elem(), DefaultsInputArgs{})
 	pulumi.RegisterInputType(reflect.TypeOf((*NestedInputInput)(nil)).Elem(), NestedInputArgs{})
+	pulumi.RegisterOutputType(DefaultsInputOutput{})
+	pulumi.RegisterOutputType(DefaultsInputPtrOutput{})
 	pulumi.RegisterOutputType(NestedInputOutput{})
 	pulumi.RegisterOutputType(OutputItemOutput{})
 }

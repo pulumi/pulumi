@@ -236,10 +236,6 @@ func testLanguageWithConfig(t *testing.T, config languageTestConfig) {
 						t.Skipf("Skipping %s test with pyright due to issues with optional properties", tt)
 					}
 
-					if config.name == "classes" && tt == "l2-snake-names" {
-						t.Skip(`"EntryArgs" is not a known attribute of module "pulumi_snake_names.cool_module"`)
-					}
-
 					if expected, ok := expectedFailures[tt]; ok {
 						t.Skipf("Skipping known failure: %s", expected)
 					}

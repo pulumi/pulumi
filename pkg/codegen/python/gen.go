@@ -365,7 +365,7 @@ func tokenToName(tok string) string {
 	components := strings.Split(tok, ":")
 	contract.Assertf(len(components) == 3, "malformed token %v", tok)
 
-	return cgstrings.UppercaseFirst(components[2])
+	return cgstrings.UppercaseFirst(cgstrings.Unhyphenate(components[2]))
 }
 
 // tokenToModule accepts a *Pulumi token* and returns name of the *Python module* that it

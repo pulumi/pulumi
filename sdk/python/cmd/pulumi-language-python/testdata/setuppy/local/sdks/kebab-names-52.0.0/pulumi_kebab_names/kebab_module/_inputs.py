@@ -15,9 +15,45 @@ else:
 from .. import _utilities
 
 __all__ = [
+    'DefaultsInput',
+    'DefaultsInputDict',
     'NestedInputArgs',
     'NestedInputArgsDict',
 ]
+
+class DefaultsInputDict(TypedDict):
+    value: _builtins.str
+    default_value: NotRequired[_builtins.str]
+
+@pulumi.input_type
+class DefaultsInput:
+    def __init__(__self__, *,
+                 value: _builtins.str,
+                 default_value: Optional[_builtins.str] = None):
+        pulumi.set(__self__, "value", value)
+        if default_value is None:
+            default_value = 'defaulted'
+        if default_value is not None:
+            pulumi.set(__self__, "default_value", default_value)
+
+    @_builtins.property
+    @pulumi.getter
+    def value(self) -> _builtins.str:
+        return pulumi.get(self, "value")
+
+    @value.setter
+    def value(self, value: _builtins.str):
+        pulumi.set(self, "value", value)
+
+    @_builtins.property
+    @pulumi.getter(name="default-value")
+    def default_value(self) -> Optional[_builtins.str]:
+        return pulumi.get(self, "default_value")
+
+    @default_value.setter
+    def default_value(self, value: Optional[_builtins.str]):
+        pulumi.set(self, "default_value", value)
+
 
 class NestedInputArgsDict(TypedDict):
     nested_value: pulumi.Input[_builtins.str]

@@ -21,6 +21,7 @@
     "files": [
         "index.ts",
         "kebab-module/anotherResource.ts",
+        "kebab-module/doSomething.ts",
         "kebab-module/index.ts",
         "kebab-module/someResource.ts",
         "provider.ts",

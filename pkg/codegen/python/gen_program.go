@@ -72,6 +72,12 @@ type generator struct {
 	// name.
 	rangeVariable string
 
+	// resourceInputObjectTokens memoizes, per package name, the tokens of object
+	// types reachable from resource input properties. sdk-gen exports an "<Name>Args"
+	// input class for exactly these; object types used only by function inputs are
+	// exported under their plain name.
+	resourceInputObjectTokens map[string]codegen.StringSet
+
 	// insideApplyLambda is set while generating the body of an __apply callback.
 	insideApplyLambda bool
 	// applyLambdaType holds the destination type for the current resource input.
@@ -820,7 +826,7 @@ func tokenToQualifiedName(pkgAlias, module, member string) string {
 		module = "." + module
 	}
 
-	return fmt.Sprintf("%s%s.%s", pkgAlias, module, cgstrings.UppercaseFirst(member))
+	return fmt.Sprintf("%s%s.%s", pkgAlias, module, cgstrings.UppercaseFirst(cgstrings.Unhyphenate(member)))
 }
 
 // resourceTypeName computes the qualified name of a python resource.
@@ -939,14 +945,57 @@ func (g *generator) argumentTypeName(expr model.Expression, destType model.Type)
 	// Normalize module.
 	pkg, err := objType.PackageReference.Definition()
 	contract.AssertNoErrorf(err, "error loading definition for package %q", objType.PackageReference.Name())
+	compatibility := ""
 	if lang, ok := pkg.Language["python"]; ok {
 		if pkgInfo, ok := lang.(PackageInfo); ok {
 			if m, ok := pkgInfo.ModuleNameOverrides[module]; ok {
 				modName = m
 			}
+			compatibility = pkgInfo.Compatibility
 		}
 	}
-	return tokenToQualifiedName(g.packageAlias(pkgName), modName, member) + "Args"
+	name := tokenToQualifiedName(g.packageAlias(pkgName), modName, member)
+	// Match sdk-gen's naming: input-shape object types (and everything under the tfbridge20 and
+	// kubernetes20 compatibility modes) get an "Args" suffix. A plain-shape object type is named
+	// "<Name>Args" only when the SDK also exports that input class, which it does for types
+	// reachable from resource inputs; types used only by function inputs keep their plain name.
+	if objType.IsInputShape() || compatibility == tfbridge20 || compatibility == kubernetes20 ||
+		g.usedByResourceInputs(objType, pkg) {
+		name += "Args"
+	}
+	return name
+}
+
+// usedByResourceInputs reports whether obj is reachable from the input properties of any
+// resource in pkg, which is when python sdk-gen generates an "<Name>Args" input class for it.
+func (g *generator) usedByResourceInputs(obj *schema.ObjectType, pkg *schema.Package) bool {
+	if g.resourceInputObjectTokens == nil {
+		g.resourceInputObjectTokens = map[string]codegen.StringSet{}
+	}
+	tokens, ok := g.resourceInputObjectTokens[pkg.Name]
+	if !ok {
+		tokens = codegen.StringSet{}
+		scan := func(r *schema.Resource) {
+			if r == nil {
+				return
+			}
+			properties := r.InputProperties
+			if r.StateInputs != nil {
+				properties = append(slices.Clip(properties), r.StateInputs.Properties...)
+			}
+			visitObjectTypes(properties, func(t schema.Type) {
+				if T, ok := t.(*schema.ObjectType); ok {
+					tokens.Add(T.Token)
+				}
+			})
+		}
+		scan(pkg.Provider)
+		for _, r := range pkg.Resources {
+			scan(r)
+		}
+		g.resourceInputObjectTokens[pkg.Name] = tokens
+	}
+	return tokens.Has(obj.Token)
 }
 
 // makeResourceName returns the expression that should be emitted for a resource's "name" parameter given its base name

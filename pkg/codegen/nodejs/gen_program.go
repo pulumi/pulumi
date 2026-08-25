@@ -1120,7 +1120,7 @@ func resourceTypeName(r *pcl.Resource) (string, string, string, hcl.Diagnostics)
 		module = moduleName(module, r.Schema.PackageReference)
 	}
 
-	return pkg, module, cgstrings.UppercaseFirst(member), diagnostics
+	return pkg, module, cgstrings.UppercaseFirst(cgstrings.Unhyphenate(member)), diagnostics
 }
 
 func readResourceTypeName(r *pcl.ReadResource) (string, string, string, hcl.Diagnostics) {
@@ -1130,7 +1130,7 @@ func readResourceTypeName(r *pcl.ReadResource) (string, string, string, hcl.Diag
 		module = moduleName(module, r.Schema.PackageReference)
 	}
 
-	return pkg, module, cgstrings.UppercaseFirst(member), diagnostics
+	return pkg, module, cgstrings.UppercaseFirst(cgstrings.Unhyphenate(member)), diagnostics
 }
 
 func moduleName(module string, pkg schema.PackageReference) string {
