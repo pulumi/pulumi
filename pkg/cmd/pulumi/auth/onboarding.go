@@ -34,7 +34,7 @@ import (
 )
 
 const (
-	getStartedURL    = "https://www.pulumi.com/docs/get-started/"
+	getStartedURL    = "https://www.pulumi.com/docs/get-started/?utm_source=cli"
 	newProjectAnswer = "Create a new Pulumi project"
 	guideAnswer      = "View the getting started guide"
 	skipAnswer       = "Skip for now"

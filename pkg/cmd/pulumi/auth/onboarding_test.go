@@ -17,6 +17,7 @@ package auth
 import (
 	"context"
 	"errors"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -27,6 +28,15 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func TestGetStartedURLTracksCLISource(t *testing.T) {
+	t.Parallel()
+
+	guideURL, err := url.Parse(getStartedURL)
+	require.NoError(t, err)
+	assert.Equal(t, "cli", guideURL.Query().Get("utm_source"))
+	require.Len(t, guideURL.Query(), 1)
+}
 
 func TestOfferFirstStepSaysNothingToAUserWithStacks(t *testing.T) {
 	t.Parallel()
