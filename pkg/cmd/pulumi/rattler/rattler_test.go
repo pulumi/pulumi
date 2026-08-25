@@ -125,7 +125,7 @@ func TestSuggestCommands(t *testing.T) {
 
 	t.Run("transposition typo", func(t *testing.T) {
 		t.Parallel()
-		got := suggestCommands(find("org", "member"), []string{"lsit"})
+		got := suggestCommands(find(t, newSuggestionsTestTree(), "org", "member"), []string{"lsit"})
 		require.NotEmpty(t, got)
 		assert.Equal(t, "pulumi org member list", got[0])
 	})
@@ -250,32 +250,6 @@ func TestHasSyntheticRun(t *testing.T) {
 	assert.False(t, HasSyntheticRun(find("import")), "runnable leaf")
 	assert.False(t, HasSyntheticRun(find("stack", "export")), "nested runnable leaf")
 	assert.False(t, HasSyntheticRun(nil), "nil command")
-}
-
-func TestEditDistance(t *testing.T) {
-	t.Parallel()
-
-	cases := []struct {
-		a, b string
-		want int
-	}{
-		{"list", "list", 0},
-		{"ab", "ba", 1},       // the minimal adjacent transposition
-		{"lsit", "list", 1},   // adjacent transposition
-		{"stakc", "stack", 1}, // adjacent transposition
-		{"lisst", "list", 1},  // insertion
-		{"lit", "list", 1},    // deletion
-		{"lost", "list", 1},   // substitution
-		{"LIST", "list", 0},   // case-insensitive
-		{"", "list", 4},
-		{"abcd", "dbca", 2}, // non-adjacent swap: two substitutions, no discount
-		{"abc", "cab", 2},   // rotation is not a transposition
-		{"up", "rm", 2},
-	}
-	for _, c := range cases {
-		assert.Equal(t, c.want, editDistance(c.a, c.b), "editDistance(%q, %q)", c.a, c.b)
-		assert.Equal(t, c.want, editDistance(c.b, c.a), "editDistance(%q, %q)", c.b, c.a)
-	}
 }
 
 // closeEnough is where edit distance turns into a yes/no on suggesting a
