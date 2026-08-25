@@ -388,6 +388,63 @@ func (t *tracingTransport) RoundTrip(req *http.Request) (*http.Response, error) 
 // using the specified *http.Client, with retry support.
 type defaultHTTPClient struct {
 	client *http.Client
+	warner *retryWaitWarner
+}
+
+const (
+	// Warn only once cumulative server-directed waits pass the threshold, then
+	// at most once per interval; shorter blips stay silent.
+	serverWaitWarningThreshold = 10 * time.Second
+	serverWaitRewarnInterval   = time.Minute
+)
+
+// retryWaitWarner tells the user about server-directed retry waits. State is
+// shared across a client's requests so concurrent waiters warn once, not each.
+type retryWaitWarner struct {
+	diag diag.Sink
+
+	mu       sync.Mutex
+	waited   time.Duration
+	lastWarn time.Time
+}
+
+func (w *retryWaitWarner) onRetryWait(delay time.Duration, res *http.Response) {
+	if w == nil || w.diag == nil {
+		return
+	}
+	w.mu.Lock()
+	w.waited += delay
+	if w.waited < serverWaitWarningThreshold ||
+		(!w.lastWarn.IsZero() && time.Since(w.lastWarn) < serverWaitRewarnInterval) {
+		w.mu.Unlock()
+		return
+	}
+	w.lastWarn = time.Now()
+	w.mu.Unlock()
+
+	cause := "the service is temporarily unavailable"
+	if res.StatusCode != http.StatusServiceUnavailable {
+		cause = "the request was rate-limited"
+	}
+	suffix := "; retrying... ^C to stop"
+	if delay >= serverWaitWarningThreshold {
+		suffix = fmt.Sprintf("; retrying in %v... ^C to stop", delay)
+	}
+	w.diag.Warningf(diag.Message("" /*urn*/, cause+suffix))
+}
+
+func (w *retryWaitWarner) onSuccess() {
+	if w == nil || w.diag == nil {
+		return
+	}
+	w.mu.Lock()
+	warned := !w.lastWarn.IsZero()
+	w.lastWarn = time.Time{}
+	w.waited = 0
+	w.mu.Unlock()
+	if warned {
+		w.diag.Infoerrf(diag.Message("" /*urn*/, "the service is available again; resuming"))
+	}
 }
 
 func (c *defaultHTTPClient) Do(req *http.Request, policy retryPolicy) (*http.Response, error) {
@@ -433,8 +490,13 @@ func (c *defaultHTTPClient) Do(req *http.Request, policy retryPolicy) (*http.Res
 
 		MaxRetryCount:         new(4),
 		HandshakeTimeoutsOnly: !policy.shouldRetry(req),
+		OnRetryWait:           c.warner.onRetryWait,
 	}
-	return httputil.DoWithRetryOpts(req, &tracingClient, opts)
+	res, err := httputil.DoWithRetryOpts(req, &tracingClient, opts)
+	if err == nil && res.StatusCode < 400 {
+		c.warner.onSuccess()
+	}
+	return res, err
 }
 
 // pulumiAPICall makes an HTTP request to the Pulumi API.

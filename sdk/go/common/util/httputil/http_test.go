@@ -221,6 +221,304 @@ func TestRetryContextCanceledDuringBackoff(t *testing.T) {
 	assert.Less(t, time.Since(start), 5*time.Second, "the backoff must not outlive the request context")
 }
 
+func TestRetry503MaintenanceRetriesBeyondMaxRetryCount(t *testing.T) {
+	t.Parallel()
+
+	tries := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		tries++
+		if tries <= 6 {
+			w.Header().Set("Retry-After", "0")
+			w.WriteHeader(http.StatusServiceUnavailable)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	req, err := http.NewRequest("POST", server.URL, strings.NewReader("hello, server"))
+	require.NoError(t, err)
+
+	delay := time.Millisecond
+	maxRetryCount := 3
+	res, err := DoWithRetryOpts(req, server.Client(), RetryOpts{
+		Delay:         &delay,
+		MaxRetryCount: &maxRetryCount,
+	})
+	require.NoError(t, err)
+	defer res.Body.Close()
+
+	// 503s carrying Retry-After don't count against the retry budget.
+	assert.Equal(t, 7, tries)
+	assert.Equal(t, http.StatusOK, res.StatusCode)
+}
+
+func TestRetry503MaintenanceRoundsPreserveRetryBudget(t *testing.T) {
+	t.Parallel()
+
+	tries := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		tries++
+		switch {
+		case tries <= 5:
+			w.Header().Set("Retry-After", "0")
+			w.WriteHeader(http.StatusServiceUnavailable)
+		case tries <= 7:
+			w.WriteHeader(http.StatusInternalServerError)
+		default:
+			w.WriteHeader(http.StatusOK)
+		}
+	}))
+	defer server.Close()
+
+	req, err := http.NewRequest("POST", server.URL, strings.NewReader("hello, server"))
+	require.NoError(t, err)
+
+	delay := time.Millisecond
+	maxRetryCount := 3
+	res, err := DoWithRetryOpts(req, server.Client(), RetryOpts{
+		Delay:         &delay,
+		MaxRetryCount: &maxRetryCount,
+	})
+	require.NoError(t, err)
+	defer res.Body.Close()
+
+	// The full 5xx budget is still available after the maintenance rounds.
+	assert.Equal(t, 8, tries)
+	assert.Equal(t, http.StatusOK, res.StatusCode)
+}
+
+func TestRetry503HonorsRetryAfter(t *testing.T) {
+	t.Parallel()
+
+	tries := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		tries++
+		if tries == 1 {
+			w.Header().Set("Retry-After", "1")
+			w.WriteHeader(http.StatusServiceUnavailable)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	req, err := http.NewRequest("POST", server.URL, strings.NewReader("hello, server"))
+	require.NoError(t, err)
+
+	delay := time.Millisecond
+	start := time.Now()
+	res, err := DoWithRetryOpts(req, server.Client(), RetryOpts{Delay: &delay})
+	require.NoError(t, err)
+	defer res.Body.Close()
+
+	assert.Equal(t, 2, tries)
+	assert.Equal(t, http.StatusOK, res.StatusCode)
+	assert.GreaterOrEqual(t, time.Since(start), time.Second)
+}
+
+func TestRetry503NotRetriedUnderHandshakeTimeoutsOnly(t *testing.T) {
+	t.Parallel()
+
+	tries := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		tries++
+		w.Header().Set("Retry-After", "0")
+		w.WriteHeader(http.StatusServiceUnavailable)
+	}))
+	defer server.Close()
+
+	req, err := http.NewRequest("POST", server.URL, strings.NewReader("hello, server"))
+	require.NoError(t, err)
+
+	delay := time.Millisecond
+	res, err := DoWithRetryOpts(req, server.Client(), RetryOpts{
+		Delay:                 &delay,
+		HandshakeTimeoutsOnly: true,
+	})
+	require.NoError(t, err)
+	defer res.Body.Close()
+
+	assert.Equal(t, 1, tries)
+	assert.Equal(t, http.StatusServiceUnavailable, res.StatusCode)
+}
+
+func TestRetry503WithoutRetryAfterUsesBudget(t *testing.T) {
+	t.Parallel()
+
+	tries := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		tries++
+		w.WriteHeader(http.StatusServiceUnavailable)
+	}))
+	defer server.Close()
+
+	req, err := http.NewRequest("POST", server.URL, strings.NewReader("hello, server"))
+	require.NoError(t, err)
+
+	delay := time.Millisecond
+	maxRetryCount := 3
+	res, err := DoWithRetryOpts(req, server.Client(), RetryOpts{
+		Delay:         &delay,
+		MaxRetryCount: &maxRetryCount,
+	})
+	require.NoError(t, err)
+	defer res.Body.Close()
+
+	assert.Equal(t, 3, tries)
+	assert.Equal(t, http.StatusServiceUnavailable, res.StatusCode)
+}
+
+func TestRetry503ContextCanceledDuringWait(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Retry-After", "20")
+		w.WriteHeader(http.StatusServiceUnavailable)
+	}))
+	defer server.Close()
+
+	ctx, cancel := context.WithTimeout(t.Context(), 200*time.Millisecond)
+	defer cancel()
+	req, err := http.NewRequestWithContext(ctx, "POST", server.URL, strings.NewReader("hello, server"))
+	require.NoError(t, err)
+
+	delay := time.Millisecond
+	start := time.Now()
+	_, err = DoWithRetryOpts(req, server.Client(), RetryOpts{Delay: &delay}) //nolint:bodyclose // no response on error
+	require.Error(t, err)
+	assert.ErrorIs(t, err, context.DeadlineExceeded)
+	assert.Less(t, time.Since(start), 5*time.Second)
+}
+
+func TestRetryHeaderTrueForcesRetryUnderHandshakeTimeoutsOnly(t *testing.T) {
+	t.Parallel()
+
+	tries := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		tries++
+		if tries == 1 {
+			w.Header().Set("X-Pulumi-Should-Retry", "true")
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	req, err := http.NewRequest("POST", server.URL, strings.NewReader("hello, server"))
+	require.NoError(t, err)
+
+	delay := time.Millisecond
+	res, err := DoWithRetryOpts(req, server.Client(), RetryOpts{
+		Delay:                 &delay,
+		HandshakeTimeoutsOnly: true,
+	})
+	require.NoError(t, err)
+	defer res.Body.Close()
+
+	assert.Equal(t, 2, tries)
+	assert.Equal(t, http.StatusOK, res.StatusCode)
+}
+
+func TestRetryHeaderFalseSuppresses5xxRetry(t *testing.T) {
+	t.Parallel()
+
+	tries := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		tries++
+		w.Header().Set("X-Pulumi-Should-Retry", "false")
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer server.Close()
+
+	req, err := http.NewRequest("POST", server.URL, strings.NewReader("hello, server"))
+	require.NoError(t, err)
+
+	delay := time.Millisecond
+	res, err := DoWithRetryOpts(req, server.Client(), RetryOpts{Delay: &delay})
+	require.NoError(t, err)
+	defer res.Body.Close()
+
+	assert.Equal(t, 1, tries)
+	assert.Equal(t, http.StatusInternalServerError, res.StatusCode)
+}
+
+func TestRetryHeaderFalseSuppresses429Retry(t *testing.T) {
+	t.Parallel()
+
+	tries := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		tries++
+		w.Header().Set("X-Pulumi-Should-Retry", "false")
+		w.Header().Set("Retry-After", "1")
+		w.WriteHeader(http.StatusTooManyRequests)
+	}))
+	defer server.Close()
+
+	req, err := http.NewRequest("POST", server.URL, strings.NewReader("hello, server"))
+	require.NoError(t, err)
+
+	delay := time.Millisecond
+	res, err := DoWithRetryOpts(req, server.Client(), RetryOpts{Delay: &delay})
+	require.NoError(t, err)
+	defer res.Body.Close()
+
+	assert.Equal(t, 1, tries)
+	assert.Equal(t, http.StatusTooManyRequests, res.StatusCode)
+}
+
+func TestRetryHeaderTrueOnNonServerErrorStillBudgeted(t *testing.T) {
+	t.Parallel()
+
+	tries := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		tries++
+		w.Header().Set("X-Pulumi-Should-Retry", "true")
+		w.WriteHeader(http.StatusBadRequest)
+	}))
+	defer server.Close()
+
+	req, err := http.NewRequest("POST", server.URL, strings.NewReader("hello, server"))
+	require.NoError(t, err)
+
+	delay := time.Millisecond
+	maxRetryCount := 3
+	res, err := DoWithRetryOpts(req, server.Client(), RetryOpts{
+		Delay:         &delay,
+		MaxRetryCount: &maxRetryCount,
+	})
+	require.NoError(t, err)
+	defer res.Body.Close()
+
+	// A confused server sending should-retry on a non-5xx can't loop us forever.
+	assert.Equal(t, 3, tries)
+	assert.Equal(t, http.StatusBadRequest, res.StatusCode)
+}
+
+func TestRetryHeaderIgnoredOnSuccess(t *testing.T) {
+	t.Parallel()
+
+	tries := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		tries++
+		w.Header().Set("X-Pulumi-Should-Retry", "true")
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	req, err := http.NewRequest("POST", server.URL, strings.NewReader("hello, server"))
+	require.NoError(t, err)
+
+	delay := time.Millisecond
+	res, err := DoWithRetryOpts(req, server.Client(), RetryOpts{Delay: &delay})
+	require.NoError(t, err)
+	defer res.Body.Close()
+
+	assert.Equal(t, 1, tries)
+	assert.Equal(t, http.StatusOK, res.StatusCode)
+}
+
 func TestRetryAfterDelay(t *testing.T) {
 	t.Parallel()
 
@@ -245,4 +543,87 @@ func TestRetryAfterDelay(t *testing.T) {
 	assert.InDelta(t, 5, retryAfterDelay(future, now).Seconds(), 1.1)
 	past := mk(now.Add(-5 * time.Second).UTC().Format(http.TimeFormat))
 	assert.Equal(t, time.Duration(0), retryAfterDelay(past, now))
+}
+
+func TestRetryAfterHeaderDelay(t *testing.T) {
+	t.Parallel()
+
+	now := time.Now()
+	mk := func(value string) *http.Response {
+		res := &http.Response{Header: http.Header{}}
+		if value != "" {
+			res.Header.Set("Retry-After", value)
+		}
+		return res
+	}
+
+	check := func(value string, wantDelay time.Duration, wantOK bool) {
+		delay, ok := retryAfterHeaderDelay(mk(value), now)
+		assert.Equal(t, wantOK, ok, "value %q", value)
+		assert.Equal(t, wantDelay, delay, "value %q", value)
+	}
+
+	check("", 0, false)
+	check("garbage", 0, false)
+	check("-3", 0, false)
+	check("0", 0, true)
+	check("2", 2*time.Second, true)
+	// The uncapped form is what 503 maintenance waits use.
+	check("3000", 3000*time.Second, true)
+
+	// HTTP-date form, second precision.
+	future := mk(now.Add(5 * time.Second).UTC().Format(http.TimeFormat))
+	delay, ok := retryAfterHeaderDelay(future, now)
+	assert.True(t, ok)
+	assert.InDelta(t, 5, delay.Seconds(), 1.1)
+	// A date in the past is valid per RFC 9110 and means "retry now".
+	past := mk(now.Add(-5 * time.Second).UTC().Format(http.TimeFormat))
+	delay, ok = retryAfterHeaderDelay(past, now)
+	assert.True(t, ok)
+	assert.Equal(t, time.Duration(0), delay)
+}
+
+func TestRetryOnRetryWaitCalledForServerDirectedWaits(t *testing.T) {
+	t.Parallel()
+
+	for _, status := range []int{http.StatusServiceUnavailable, http.StatusTooManyRequests} {
+		t.Run(strconv.Itoa(status), func(t *testing.T) {
+			t.Parallel()
+
+			tries := 0
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				tries++
+				if tries == 1 {
+					w.Header().Set("Retry-After", "1")
+					w.WriteHeader(status)
+					return
+				}
+				w.WriteHeader(http.StatusOK)
+			}))
+			defer server.Close()
+
+			req, err := http.NewRequest("POST", server.URL, strings.NewReader("hello, server"))
+			require.NoError(t, err)
+
+			type waitCall struct {
+				delay  time.Duration
+				status int
+			}
+			var calls []waitCall
+			delay := time.Millisecond
+			res, err := DoWithRetryOpts(req, server.Client(), RetryOpts{
+				Delay: &delay,
+				OnRetryWait: func(delay time.Duration, res *http.Response) {
+					calls = append(calls, waitCall{delay: delay, status: res.StatusCode})
+				},
+			})
+			require.NoError(t, err)
+			defer res.Body.Close()
+
+			assert.Equal(t, http.StatusOK, res.StatusCode)
+			require.Len(t, calls, 1)
+			assert.Equal(t, time.Second, calls[0].delay)
+			assert.Equal(t, status, calls[0].status)
+		})
+	}
 }

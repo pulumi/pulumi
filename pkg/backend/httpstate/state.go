@@ -34,6 +34,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/property"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
+	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
@@ -129,9 +130,12 @@ func RenewLeaseFunc(
 		tok, err := client.RenewUpdateLease(
 			ctx, update, currentToken, duration)
 		if err != nil {
-			// Translate 403 status codes to expired token errors to stop the token refresh loop.
+			// On 401 (surfaced as LoginRequiredError), 403, and 409 renewing can never
+			// succeed again, so stop the token refresh loop.
 			var apierr *apitype.ErrorResponse
-			if errors.As(err, &apierr) && apierr.Code == 403 {
+			var loginErr backenderr.LoginRequiredError
+			if errors.As(err, &loginErr) ||
+				(errors.As(err, &apierr) && (apierr.Code == 403 || apierr.Code == 409)) {
 				return "", time.Time{}, expiredTokenError{err}
 			}
 			return "", time.Time{}, err
