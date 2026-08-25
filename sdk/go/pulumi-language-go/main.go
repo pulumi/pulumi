@@ -1667,7 +1667,10 @@ func (host *goLanguageHost) Link(
 		// Resolve both paths the way the SDK generator does, so that the replace directive
 		// addresses the generated module and the printed import path addresses the package
 		// directory inside it.
-		modulePath, importPath := codegen.ModuleAndImportPath(pkg)
+		modulePath, importPath, err := codegen.ModuleAndImportPath(pkg)
+		if err != nil {
+			return nil, err
+		}
 
 		modules[modulePath] = dep.Path
 		// The relative path used in the replace directive must start with `./` or `.\`.
