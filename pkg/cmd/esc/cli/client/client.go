@@ -915,7 +915,8 @@ func (pc *client) OpenEnvironment(
 		ErrorResponse: &errResp,
 	})
 	if err != nil {
-		if diags, ok := errors.AsType[*EnvironmentErrorResponse](err); ok && diags.Code == http.StatusBadRequest && len(diags.Diagnostics) != 0 {
+		if diags, ok := errors.AsType[*EnvironmentErrorResponse](err); ok &&
+			diags.Code == http.StatusBadRequest && len(diags.Diagnostics) != 0 {
 			return "", diags.Diagnostics, nil
 		}
 		return "", nil, err
@@ -947,7 +948,8 @@ func (pc *client) OpenEnvironmentDraft(
 		ErrorResponse: &errResp,
 	})
 	if err != nil {
-		if diags, ok := errors.AsType[*EnvironmentErrorResponse](err); ok && diags.Code == http.StatusBadRequest && len(diags.Diagnostics) != 0 {
+		if diags, ok := errors.AsType[*EnvironmentErrorResponse](err); ok &&
+			diags.Code == http.StatusBadRequest && len(diags.Diagnostics) != 0 {
 			return "", diags.Diagnostics, nil
 		}
 		return "", nil, err
@@ -976,7 +978,8 @@ func (pc *client) RotateEnvironment(
 		ErrorResponse: &errResp,
 	})
 	if err != nil {
-		if diags, ok := errors.AsType[*EnvironmentErrorResponse](err); ok && diags.Code == http.StatusBadRequest && len(diags.Diagnostics) != 0 {
+		if diags, ok := errors.AsType[*EnvironmentErrorResponse](err); ok &&
+			diags.Code == http.StatusBadRequest && len(diags.Diagnostics) != 0 {
 			return nil, diags.Diagnostics, nil
 		}
 		return nil, nil, err
@@ -1007,7 +1010,8 @@ func (pc *client) CheckYAMLEnvironment(
 		ErrorResponse: &errResp,
 	})
 	if err != nil {
-		if diags, ok := errors.AsType[*EnvironmentErrorResponse](err); ok && diags.Code == http.StatusBadRequest && len(diags.Diagnostics) != 0 {
+		if diags, ok := errors.AsType[*EnvironmentErrorResponse](err); ok &&
+			diags.Code == http.StatusBadRequest && len(diags.Diagnostics) != 0 {
 			return nil, diags.Diagnostics, nil
 		}
 		return nil, nil, err
@@ -1047,7 +1051,8 @@ func (pc *client) OpenYAMLEnvironment(
 		ErrorResponse: &errResp,
 	})
 	if err != nil {
-		if diags, ok := errors.AsType[*EnvironmentErrorResponse](err); ok && diags.Code == http.StatusBadRequest && len(diags.Diagnostics) != 0 {
+		if diags, ok := errors.AsType[*EnvironmentErrorResponse](err); ok &&
+			diags.Code == http.StatusBadRequest && len(diags.Diagnostics) != 0 {
 			return "", diags.Diagnostics, nil
 		}
 		return "", nil, err
