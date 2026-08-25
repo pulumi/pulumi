@@ -726,7 +726,7 @@ async def serialize_property(
         if typ is not None:
             # A union carries no metadata of its own, so reduce it to the member the value's
             # constants select and translate using that member's names.
-            case = _types.reduce_discriminated_union_by_python_name(typ, value)
+            case = _types.reduce_discriminated_union(typ, value, _types._py_name_for)
             if case is not None:
                 typ = case
 
@@ -1308,7 +1308,7 @@ def translate_output_properties(
         # member, such as a variant added to the provider since this SDK was generated, is left
         # untyped instead.
         if typ is not None and _types.is_discriminated_union(typ):
-            typ = _types.reduce_discriminated_union_by_pulumi_name(typ, output)
+            typ = _types.reduce_discriminated_union(typ, output, lambda _, name: name)
 
         # Function called to lookup a type for a given key.
         # The default always returns None.

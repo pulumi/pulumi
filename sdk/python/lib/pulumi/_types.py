@@ -860,9 +860,15 @@ def _member_matches(
     return confirmed
 
 
-def _reduce_discriminated_union(
+def reduce_discriminated_union(
     typ: Any, value: abc.Mapping, name_for: Callable[[type, str], Optional[str]]
 ) -> Optional[type]:
+    """
+    Returns the single member of the union `typ` whose constants `value` satisfies, or None if no
+    single member matches. `name_for` maps a member and a constant's Pulumi name to the name to
+    look up in `value`: pass `_py_name_for` for Python-keyed values, or the identity for
+    Pulumi-keyed values as the engine sends them.
+    """
     members = _constrained_union_members(typ)
     if members is None:
         return None
@@ -873,26 +879,6 @@ def _reduce_discriminated_union(
     if len(candidates) != 1:
         return None
     return candidates[0]
-
-
-def reduce_discriminated_union_by_pulumi_name(
-    typ: Any, value: abc.Mapping
-) -> Optional[type]:
-    """
-    Returns the single member of the union `typ` whose constants `value` satisfies, or None if no
-    single member matches. For values keyed by Pulumi names, as the engine sends them.
-    """
-    return _reduce_discriminated_union(typ, value, lambda _, name: name)
-
-
-def reduce_discriminated_union_by_python_name(
-    typ: Any, value: abc.Mapping
-) -> Optional[type]:
-    """
-    Returns the single member of the union `typ` whose constants `value` satisfies, or None if no
-    single member matches. For values keyed by Python names, as a user writes them.
-    """
-    return _reduce_discriminated_union(typ, value, _py_name_for)
 
 
 def _globals_for_cls(cls: type) -> Optional[dict[str, Any]]:
