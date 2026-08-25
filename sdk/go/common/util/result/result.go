@@ -61,8 +61,7 @@ func IsBail(err error) bool {
 		return false
 	}
 
-	var bail *bailError
-	ok := errors.As(err, &bail)
+	_, ok := errors.AsType[*bailError](err)
 	return ok
 }
 

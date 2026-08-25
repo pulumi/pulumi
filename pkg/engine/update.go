@@ -788,8 +788,8 @@ func loadPolicyAnalyzer(
 		return analyzer, nil
 	}
 
-	var me *workspace.MissingError
-	if !errors.As(err, &me) {
+	me, ok := errors.AsType[*workspace.MissingError](err)
+	if !ok {
 		return nil, err
 	}
 

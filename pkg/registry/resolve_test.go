@@ -653,8 +653,8 @@ func TestResolvePackageFromName(t *testing.T) {
 				t.Parallel()
 				_, err := ResolvePackageFromName(ctx, mockReg, tc, nil)
 				assert.Error(t, err)
-				var invalidErr InvalidIdentifierError
-				assert.True(t, errors.As(err, &invalidErr))
+				_, ok := errors.AsType[InvalidIdentifierError](err)
+				assert.True(t, ok)
 				assert.Contains(t, err.Error(), tc)
 			})
 		}
@@ -945,7 +945,7 @@ func TestResolveTemplateFromName(t *testing.T) {
 
 		_, err := ResolveTemplateFromName(ctx, mockReg, "a/b/c/d", nil)
 		assert.Error(t, err)
-		var invalidErr InvalidIdentifierError
-		assert.True(t, errors.As(err, &invalidErr))
+		_, ok := errors.AsType[InvalidIdentifierError](err)
+		assert.True(t, ok)
 	})
 }

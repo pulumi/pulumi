@@ -43,8 +43,8 @@ func LoadConverterPlugin(
 	if err != nil {
 		// If NewConverter returns a MissingError, we can try and install the plugin if it was missing and try again,
 		// unless auto plugin installs are turned off.
-		var me *workspace.MissingError
-		if !errors.As(err, &me) || env.DisableAutomaticPluginAcquisition.Value() {
+		_, ok := errors.AsType[*workspace.MissingError](err)
+		if !ok || env.DisableAutomaticPluginAcquisition.Value() {
 			// Not a MissingError, return the original error.
 			return nil, fmt.Errorf("load %q: %w", name, err)
 		}

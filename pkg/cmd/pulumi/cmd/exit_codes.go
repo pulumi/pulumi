@@ -89,31 +89,32 @@ func ExitCodeFor(err error) int {
 	}
 
 	// Stack context problems.
+	_, isStackNotFound := errors.AsType[backenderr.StackNotFoundError](err)
+	_, isNoStacks := errors.AsType[backenderr.NoStacksError](err)
+	_, isNoStackSelected := errors.AsType[backenderr.NoStackSelectedError](err)
+	_, isStackStateNotFound := errors.AsType[backenderr.StackStateNotFoundError](err)
 	switch {
-	case errors.As(err, &backenderr.StackNotFoundError{}),
-		errors.As(err, &backenderr.NoStacksError{}),
-		errors.As(err, &backenderr.NoStackSelectedError{}),
-		errors.As(err, &backenderr.StackStateNotFoundError{}):
+	case isStackNotFound, isNoStacks, isNoStackSelected, isStackStateNotFound:
 		return ExitStackNotFound
 	}
 
 	// User-initiated cancellation.
-	if errors.As(err, &backenderr.CancelledError{}) {
+	if _, ok := errors.AsType[backenderr.CancelledError](err); ok {
 		return ExitCancelled
 	}
 
 	// Expectation / invariant failures like --expect-no-changes.
-	if errors.As(err, &backenderr.NoChangesExpectedError{}) {
+	if _, ok := errors.AsType[backenderr.NoChangesExpectedError](err); ok {
 		return ExitNoChanges
 	}
 
 	// Non-interactive mode without confirmation flags.
-	if errors.As(err, &backenderr.NoConfirmationInNonInteractiveError{}) {
+	if _, ok := errors.AsType[backenderr.NoConfirmationInNonInteractiveError](err); ok {
 		return ExitConfigurationError
 	}
 
 	// Command was invoked with malformed input
-	if errors.As(err, &ConfigurationError{}) {
+	if _, ok := errors.AsType[ConfigurationError](err); ok {
 		return ExitConfigurationError
 	}
 

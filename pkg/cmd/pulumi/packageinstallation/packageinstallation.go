@@ -143,11 +143,10 @@ type RunPlugin = func(ctx context.Context, wd string) (plugin.Provider, error)
 // if it's unset.
 //
 // If a cyclic dependency is found, then an instance of [ErrorCyclicDependencies] will be
-// returned. It can be accessed with [errors.As]:
+// returned. It can be accessed with [errors.AsType]:
 //
 //	_, err := packageinstallation.InstallPlugin(...)
-//	var cycle packageinstallation.ErrorCyclicDependencies
-//	if errors.As(err, &cycle) {
+//	if cycle, ok := errors.AsType[packageinstallation.ErrorCyclicDependencies](err); ok {
 //		fmt.Println(cycle.Cycle)
 //	}
 func InstallPlugin(
@@ -313,8 +312,8 @@ func (ErrorCyclicDependencies) Error() string { return "cyclic dependency" }
 func (err ErrorCyclicDependencies) Unwrap() error { return err.underlying }
 
 func wrapCycleError(err error) error {
-	var cycle pdag.ErrorCycle[step]
-	if !errors.As(err, &cycle) {
+	cycle, ok := errors.AsType[pdag.ErrorCycle[step]](err)
+	if !ok {
 		return err
 	}
 	steps := cycle.Cycle

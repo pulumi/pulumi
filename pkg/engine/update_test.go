@@ -185,8 +185,8 @@ func TestLoadPolicyAnalyzer(t *testing.T) {
 		assert.ErrorContains(t, err, "required analyzer plugin has not been installed")
 
 		// The original MissingError should be wrapped, not replaced.
-		var me *workspace.MissingError
-		assert.True(t, errors.As(err, &me))
+		_, ok := errors.AsType[*workspace.MissingError](err)
+		assert.True(t, ok)
 	})
 
 	t.Run("MissingError with auto-install retries and succeeds", func(t *testing.T) {
@@ -260,8 +260,8 @@ func TestLoadPolicyAnalyzer(t *testing.T) {
 		assert.ErrorContains(t, err, "failed to automatically install analyzer plugin")
 
 		// The original MissingError should be wrapped.
-		var me *workspace.MissingError
-		assert.True(t, errors.As(err, &me))
+		_, ok := errors.AsType[*workspace.MissingError](err)
+		assert.True(t, ok)
 	})
 
 	t.Run("MissingError after successful install wraps retry error", func(t *testing.T) {
@@ -296,8 +296,8 @@ func TestLoadPolicyAnalyzer(t *testing.T) {
 			`could not start policy pack "my-policy" because the built-in analyzer `+
 				`plugin that runs policy plugins is missing`)
 
-		var me *workspace.MissingError
-		assert.True(t, errors.As(err, &me))
+		_, ok := errors.AsType[*workspace.MissingError](err)
+		assert.True(t, ok)
 	})
 }
 

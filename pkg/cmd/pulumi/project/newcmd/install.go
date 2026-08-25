@@ -145,7 +145,7 @@ func InstallPackagesFromProject(
 		Concurrency: parallelism,
 	}
 	continuation, err := packageinstallation.InstallProjectPlugins(ctx, proj, root, opts, registry, ws)
-	if e := (packageinstallation.ErrorCyclicDependencies{}); errors.As(err, &e) {
+	if e, ok := errors.AsType[packageinstallation.ErrorCyclicDependencies](err); ok {
 		err = cmdDiag.FormatCyclicInstallError(ctx, e, root)
 	}
 

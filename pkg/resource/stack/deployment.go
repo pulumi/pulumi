@@ -1214,15 +1214,15 @@ func secretPropertyValueFromPlaintext(plaintext string) (resource.PropertyValue,
 // FormatDeploymentDeserializationError formats deployment-related errors into user-friendly messages.
 // It handles version compatibility errors and unsupported feature errors.
 func FormatDeploymentDeserializationError(err error, stackName string) error {
-	var unsupportedErr *ErrDeploymentUnsupportedFeatures
-
-	switch {
-	case errors.As(err, &unsupportedErr):
+	if unsupportedErr, ok := errors.AsType[*ErrDeploymentUnsupportedFeatures](err); ok {
 		return fmt.Errorf(
 			"the stack '%s' uses features that are not supported by this version of the Pulumi CLI: %s. "+
 				"Please update your version of the Pulumi CLI",
 			stackName, strings.Join(unsupportedErr.Features, ", "),
 		)
+	}
+
+	switch {
 	case errors.Is(err, ErrDeploymentSchemaVersionTooOld):
 		return fmt.Errorf("the stack '%s' is too old to be used by this version of the Pulumi CLI",
 			stackName)

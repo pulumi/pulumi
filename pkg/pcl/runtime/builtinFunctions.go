@@ -117,8 +117,8 @@ func recoverExpression(
 		return propertyValueToCty(context.TODO(), getResource, pv)
 	}
 
-	var poison *poisonError
-	if !errors.As(err, &poison) {
+	poison, ok := errors.AsType[*poisonError](err)
+	if !ok {
 		return cty.NilVal, err
 	}
 

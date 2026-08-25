@@ -96,8 +96,8 @@ func TestRunLs_RejectsRawAndMarkdown(t *testing.T) {
 			t.Parallel()
 			err := runLs(t.Context(), io.Discard, io.Discard, out, true, false, false)
 			require.Error(t, err)
-			var apiErr *APIError
-			require.True(t, errors.As(err, &apiErr))
+			apiErr, ok := errors.AsType[*APIError](err)
+			require.True(t, ok)
 			assert.Equal(t, ErrInvalidFlags, apiErr.Envelope.Error.Code)
 			assert.Equal(t, cmdutil.ExitConfigurationError, apiErr.ExitCode)
 			assert.Equal(t, "output", apiErr.Envelope.Error.Field)

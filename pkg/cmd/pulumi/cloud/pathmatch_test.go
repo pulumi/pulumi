@@ -93,8 +93,8 @@ func TestMatchPath_MethodMismatch(t *testing.T) {
 		&Operation{Method: "POST", Path: "/api/user"},
 	)
 	_, err := MatchPath(idx, "GET", "/api/user")
-	var apiErr *APIError
-	require.True(t, errors.As(err, &apiErr))
+	apiErr, ok := errors.AsType[*APIError](err)
+	require.True(t, ok)
 	assert.Equal(t, cmdutil.ExitCodeError, apiErr.ExitCode)
 	assert.Equal(t, ErrNoMatch, apiErr.Envelope.Error.Code)
 }
@@ -158,8 +158,8 @@ func TestMatchByOperationID_NoMatch(t *testing.T) {
 	)
 	_, err := MatchByOperationID(idx, "Nonexistent")
 	assert.Error(t, err)
-	var apiErr *APIError
-	require.True(t, errors.As(err, &apiErr))
+	apiErr, ok := errors.AsType[*APIError](err)
+	require.True(t, ok)
 	assert.Equal(t, ErrNoMatch, apiErr.Envelope.Error.Code)
 }
 
@@ -342,8 +342,8 @@ func TestMatchPath_SuggestsOperationIDWhenInputLooksLikeOne(t *testing.T) {
 	)
 	_, err := MatchPath(idx, "GET", "ListAccounts")
 	require.Error(t, err)
-	var apiErr *APIError
-	require.True(t, errors.As(err, &apiErr))
+	apiErr, ok := errors.AsType[*APIError](err)
+	require.True(t, ok)
 	// The suggestion mentioning operation-ID usage should be present.
 	found := false
 	for _, s := range apiErr.Envelope.Error.Suggestions {

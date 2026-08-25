@@ -265,7 +265,5 @@ func (s *SnapshotIntegrityError) ForReadWithMetadata(
 // event that there is no such SnapshotIntegrityError, the first element will be
 // nil.
 func AsSnapshotIntegrityError(err error) (*SnapshotIntegrityError, bool) {
-	var sie *SnapshotIntegrityError
-	ok := errors.As(err, &sie)
-	return sie, ok
+	return errors.AsType[*SnapshotIntegrityError](err)
 }

@@ -122,8 +122,8 @@ func TestRunWithEnvelope_ReturnsErrorNotExit(t *testing.T) {
 
 	// Contract: error is returned, not swallowed by os.Exit.
 	require.Error(t, got, "wrapper must return the error, not call os.Exit")
-	var returned *APIError
-	require.True(t, errors.As(got, &returned))
+	returned, ok := errors.AsType[*APIError](got)
+	require.True(t, ok)
 	assert.Equal(t, cmdutil.ExitCodeError, returned.ExitCode)
 	// Envelope was written, and Silent is flipped so DisplayErrorMessage won't duplicate.
 	assert.True(t, returned.Silent, "runWithEnvelope must mark the error Silent after writing the envelope")
@@ -143,8 +143,8 @@ func TestRunWithEnvelope_WrapsGenericError(t *testing.T) {
 	cmd.SetErr(&bytes.Buffer{})
 	got := wrapped(cmd, nil)
 
-	var apiErr *APIError
-	require.True(t, errors.As(got, &apiErr))
+	apiErr, ok := errors.AsType[*APIError](got)
+	require.True(t, ok)
 	assert.Equal(t, cmdutil.ExitInternalError, apiErr.ExitCode)
 	assert.True(t, apiErr.Silent)
 }
