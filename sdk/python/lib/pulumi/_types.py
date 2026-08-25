@@ -276,6 +276,7 @@ from collections import abc
 from collections.abc import Callable, Iterator
 from typing import (
     Any,
+    Literal,
     Optional,
     TypeVar,
     Union,
@@ -744,6 +745,140 @@ def _is_optional_type(tp):
     if _is_union_type(tp):
         return any(_is_optional_type(tt) for tt in typing.get_args(tp))
     return False
+
+
+# A property a union member pins to a constant: its Pulumi name and the pinned value.
+_Constant = tuple[str, Any]
+
+# A union member and the constants it pins.
+_ConstrainedMember = tuple[type, tuple[_Constant, ...]]
+
+
+def _literal_constants(cls: type) -> tuple[_Constant, ...]:
+    """
+    Returns the properties of `cls` that codegen typed as a single-value `Literal`, which is how a
+    schema constant is rendered, keyed by their Pulumi name.
+    """
+    types_of = input_type_types if is_input_type(cls) else output_type_types
+    constants: list[_Constant] = []
+    for name, tp in types_of(cls).items():
+        if get_origin(tp) is not Literal:
+            continue
+        args = typing.get_args(tp)
+        # A schema constant is a bool, an integer or a string. Numbers are excluded because
+        # `typing.Literal` does not admit floats, so codegen leaves them as their primitive type.
+        if len(args) == 1 and isinstance(args[0], (bool, int, str)):
+            constants.append((name, args[0]))
+    return tuple(constants)
+
+
+@functools.cache
+def _constrained_union_members(typ: Any) -> Optional[tuple[_ConstrainedMember, ...]]:
+    """
+    Returns each member of the union paired with the constants it pins, or None if `typ` is not a
+    union whose members can all be told apart this way. Args that carry no metadata of their own,
+    such as `None`, `Awaitable`, `Output` and the `TypedDict` alternative, are ignored.
+    """
+    if not _is_union_type(typ):
+        return None
+
+    members = [
+        arg
+        for arg in typing.get_args(typ)
+        if isinstance(arg, type) and (is_input_type(arg) or is_output_type(arg))
+    ]
+    if len(members) < 2:
+        return None
+
+    constrained = tuple(
+        (member, constants)
+        for member in members
+        if (constants := _literal_constants(member))
+    )
+    # A union is only discriminated when every member is tagged. If one is not, a value of that
+    # member could satisfy another member's constants and be mistyped, so do not guess.
+    if len(constrained) != len(members):
+        return None
+    return constrained
+
+
+def is_discriminated_union(typ: Any) -> bool:
+    """
+    Reports whether a value of `typ` can be reduced to one of its members.
+    """
+    return _constrained_union_members(typ) is not None
+
+
+def _py_name_for(cls: type, pulumi_name: str) -> Optional[str]:
+    """
+    Returns the Python name of the property of `cls` whose Pulumi name is `pulumi_name`.
+    """
+    for python_name, name, _ in _py_properties(cls):
+        if name == pulumi_name:
+            return python_name
+    return None
+
+
+def _lookup(value: abc.Mapping, key: str) -> Any:
+    # An output type is a dict subclass that warns when a Pulumi name is read through `get` or
+    # `[]`, to steer users towards its property getters. Read the underlying dict directly so
+    # that looking for a constant does not warn.
+    if isinstance(value, dict):
+        return dict.get(value, key, MISSING)
+    return value.get(key, MISSING)
+
+
+def _same_constant(expected: Any, actual: Any) -> bool:
+    # `True == 1` in Python, so compare booleans only against booleans.
+    if isinstance(expected, bool) != isinstance(actual, bool):
+        return False
+    return expected == actual
+
+
+def _member_matches(
+    member: type,
+    constants: tuple[_Constant, ...],
+    value: abc.Mapping,
+    name_for: Callable[[type, str], Optional[str]],
+) -> bool:
+    """
+    Reports whether `value` satisfies `constants`: at least one is present and agrees, and none
+    disagree. A constant absent from `value` neither confirms nor rules out its member, so a value
+    mentioning none of them matches nothing.
+    """
+    confirmed = False
+    for name, expected in constants:
+        lookup_name = name_for(member, name)
+        if lookup_name is None:
+            continue
+        actual = _lookup(value, lookup_name)
+        if actual is MISSING:
+            continue
+        if not _same_constant(expected, actual):
+            return False
+        confirmed = True
+    return confirmed
+
+
+def reduce_discriminated_union(
+    typ: Any, value: abc.Mapping, name_for: Callable[[type, str], Optional[str]]
+) -> Optional[type]:
+    """
+    Returns the single member of the union `typ` whose constants `value` satisfies, or None if no
+    single member matches. `name_for` maps a member and a constant's Pulumi name to the name to
+    look up in `value`: pass `_py_name_for` for Python-keyed values, or the identity for
+    Pulumi-keyed values as the engine sends them.
+    """
+    members = _constrained_union_members(typ)
+    if members is None:
+        return None
+
+    candidates = [
+        m for m, constants in members if _member_matches(m, constants, value, name_for)
+    ]
+    if len(candidates) != 1:
+        return None
+    return candidates[0]
 
 
 def _globals_for_cls(cls: type) -> Optional[dict[str, Any]]:
