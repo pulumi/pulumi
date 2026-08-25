@@ -116,7 +116,7 @@ func TestTranslateLegacyS3Params(t *testing.T) {
 	})
 }
 
-func TestTranslateLegacyS3ParamsChecksumEnvVar(t *testing.T) { //nolint:paralleltest // uses t.Setenv
+func TestTranslateLegacyS3ParamsChecksumEnvVar(t *testing.T) {
 	t.Setenv("AWS_REQUEST_CHECKSUM_CALCULATION", "when_supported")
 
 	give := "s3://bucket?endpoint=https://example.com"

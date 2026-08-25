@@ -32,10 +32,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/python/toolchain"
 )
 
-func ptr[T any](v T) *T {
-	return &v
-}
-
 // TestEmptyPython simply tests that we can run an empty Python project.
 //
 //nolint:paralleltest // ProgramTest calls t.Parallel()
@@ -92,7 +88,7 @@ func TestDynamicPython(t *testing.T) {
 				}
 			},
 		}},
-		UseSharedVirtualEnv: ptr(false),
+		UseSharedVirtualEnv: new(false),
 	})
 }
 
@@ -121,7 +117,7 @@ func TestDynamicPythonReadInputs(t *testing.T) {
 				}
 			}
 		},
-		UseSharedVirtualEnv: ptr(false),
+		UseSharedVirtualEnv: new(false),
 	})
 }
 
@@ -184,7 +180,7 @@ func optsForConstructPython(
 			"secret": "this super secret is encrypted",
 		},
 		Quick:               true,
-		UseSharedVirtualEnv: ptr(false),
+		UseSharedVirtualEnv: new(false),
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 			require.NotNil(t, stackInfo.Deployment)
 			if assert.Equal(t, expectedResourceCount, len(stackInfo.Deployment.Resources)) {
@@ -465,7 +461,6 @@ func TestUv(t *testing.T) {
 		// On windows, when running in parallel, we can run into issues when Uv tries
 		// to write the same cache file concurrently. This is the same issue we see
 		// for Poetry https://github.com/pulumi/pulumi/pull/17337
-		//nolint:paralleltest
 		t.Run(test.template, func(t *testing.T) {
 			if runtime.GOOS != "windows" {
 				t.Parallel()

@@ -81,7 +81,7 @@ func MockInit(t *testing.T) {
 	t.Helper()
 	mem := &memStore{}
 	prev := platformCandidatesHook
-	platformCandidatesHook = func(bool, string) []backendImpl {
+	platformCandidatesHook = func(bool) []backendImpl {
 		return []backendImpl{{id: BackendMock, store: mem, wrap: rawWrapper{}}}
 	}
 	t.Cleanup(func() { platformCandidatesHook = prev })
@@ -93,7 +93,7 @@ func MockInitDual(t *testing.T) (promote func()) {
 	enabled := false
 	weak, strong := &memStore{}, &memStore{}
 	prev := platformCandidatesHook
-	platformCandidatesHook = func(bool, string) []backendImpl {
+	platformCandidatesHook = func(bool) []backendImpl {
 		return []backendImpl{
 			{id: BackendMockStrong, store: &gatedStore{inner: strong, enabled: &enabled}, wrap: rawWrapper{}},
 			{id: BackendMock, store: weak, wrap: rawWrapper{}},

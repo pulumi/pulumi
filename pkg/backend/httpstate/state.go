@@ -130,8 +130,7 @@ func RenewLeaseFunc(
 			ctx, update, currentToken, duration)
 		if err != nil {
 			// Translate 403 status codes to expired token errors to stop the token refresh loop.
-			var apierr *apitype.ErrorResponse
-			if errors.As(err, &apierr) && apierr.Code == 403 {
+			if apierr, ok := errors.AsType[*apitype.ErrorResponse](err); ok && apierr.Code == 403 {
 				return "", time.Time{}, expiredTokenError{err}
 			}
 			return "", time.Time{}, err
@@ -283,7 +282,7 @@ func (b *cloudBackend) getTarget(ctx context.Context, secretsProvider secrets.Pr
 }
 
 func isDebugDiagEvent(e engine.Event) bool {
-	return e.Type == engine.DiagEvent && (e.Payload().(engine.DiagEventPayload)).Severity == diag.Debug
+	return e.Type == engine.DiagEvent && e.Payload().(engine.DiagEventPayload).Severity == diag.Debug
 }
 
 // isUntargetedEvent reports if a resource that was not included in a target-constrained operation.

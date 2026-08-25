@@ -254,10 +254,6 @@ func TestResourceOptionMergingDeleteBeforeReplace(t *testing.T) {
 func TestResourceOptionComposite(t *testing.T) {
 	t.Parallel()
 
-	ptr := func(b bool) *bool {
-		return &b
-	}
-
 	tests := []struct {
 		name  string
 		input []ResourceOption
@@ -274,7 +270,7 @@ func TestResourceOptionComposite(t *testing.T) {
 				DeleteBeforeReplace(true),
 			},
 			want: &resourceOptions{
-				DeleteBeforeReplace: ptr(true),
+				DeleteBeforeReplace: new(true),
 			},
 		},
 		{
@@ -284,7 +280,7 @@ func TestResourceOptionComposite(t *testing.T) {
 				DeleteBeforeReplace(false),
 			},
 			want: &resourceOptions{
-				DeleteBeforeReplace: ptr(false),
+				DeleteBeforeReplace: new(false),
 			},
 		},
 		{
@@ -295,7 +291,7 @@ func TestResourceOptionComposite(t *testing.T) {
 				DeleteBeforeReplace(true),
 			},
 			want: &resourceOptions{
-				DeleteBeforeReplace: ptr(true),
+				DeleteBeforeReplace: new(true),
 			},
 		},
 		{
@@ -305,8 +301,8 @@ func TestResourceOptionComposite(t *testing.T) {
 				Protect(true),
 			},
 			want: &resourceOptions{
-				DeleteBeforeReplace: ptr(true),
-				Protect:             ptr(true),
+				DeleteBeforeReplace: new(true),
+				Protect:             new(true),
 			},
 		},
 	}

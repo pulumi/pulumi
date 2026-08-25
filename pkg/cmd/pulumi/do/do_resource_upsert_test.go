@@ -65,7 +65,9 @@ func installMockUpsertBackend(t *testing.T, snapshot *deploy.Snapshot) (pkgWorks
 		NewF: func(string) (pkgWorkspace.W, error) {
 			return &pkgWorkspace.MockW{
 				SettingsF: func() *pkgWorkspace.Settings {
-					return &pkgWorkspace.Settings{Stack: "myorg/proj/dev"}
+					return &pkgWorkspace.Settings{
+						Stack: "myorg/proj/dev", //nolint:staticcheck
+					}
 				},
 			}, nil
 		},
@@ -1201,6 +1203,68 @@ size = 3
 `, got.Snippets[len(got.Snippets)-1].Code)
 	_ = stdout
 	_ = stderr
+}
+
+// Regression: when invoked from a directory that isn't itself a Pulumi project (the common case
+// for `pulumi do` under the global-project fallback), DefaultRunStatefulUpdate must not fail with
+// "no Pulumi.yaml project file found" from a CWD-based lookup. req.Root points at the fallback
+// project, and the stack config file path must be resolved from that, not from CWD.
+func TestDefaultRunStatefulUpdateGlobalProjectFromUnrelatedCwd(t *testing.T) {
+	// CWD has no Pulumi.yaml.
+	cwd := t.TempDir()
+	t.Chdir(cwd)
+
+	// $PULUMI_HOME hosts the global fallback project.
+	home := t.TempDir()
+	t.Setenv("PULUMI_HOME", home)
+	proj, root, err := ensureGlobalProject()
+	require.NoError(t, err)
+
+	stackRef := &backend.MockStackReference{
+		StringV:             "organization/" + globalProjectName + "/default",
+		NameV:               tokens.MustParseStackName(globalStackName),
+		FullyQualifiedNameV: "organization/" + globalProjectName + "/default",
+	}
+	var previewCalled bool
+	mockBackend := &backend.MockBackend{
+		PreviewF: func(_ context.Context, _ backend.Stack, op backend.UpdateOperation,
+		) (*deploy.Plan, sdkDisplay.ResourceChanges, error) {
+			previewCalled = true
+			require.Len(t, op.Opts.Engine.TargetSnippets, 1)
+			return nil, nil, nil
+		},
+	}
+	mockStack := &backend.MockStack{
+		RefF:            func() backend.StackReference { return stackRef },
+		ConfigLocationF: func() backend.StackConfigLocation { return backend.StackConfigLocation{IsRemote: false} },
+		DefaultSecretManagerF: func(context.Context, *workspace.ProjectStack) (secrets.Manager, error) {
+			return b64.NewBase64SecretsManager(), nil
+		},
+		SnapshotF: func(context.Context, secrets.Provider) (*deploy.Snapshot, error) {
+			return &deploy.Snapshot{SecretsManager: b64.NewBase64SecretsManager()}, nil
+		},
+		BackendF: func() backend.Backend { return mockBackend },
+	}
+	var stdout, stderr bytes.Buffer
+
+	_, err = DefaultRunStatefulUpdate(
+		t.Context(), pflag.NewFlagSet("test", pflag.ContinueOnError), StatefulUpdateRequest{
+			Snippets: []resource.Snippet{{
+				UUID:       "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+				Name:       "myres",
+				Type:       "azure:index:myResource",
+				Code:       `name = "myres"`,
+				Descriptor: resource.PackageDescriptor{Name: "azure"},
+			}},
+			Stack:  mockStack,
+			DryRun: true,
+			Proj:   proj,
+			Root:   root,
+			Sink:   diag.DefaultSink(&stdout, &stderr, diag.FormatOptions{Color: colors.Never}),
+		},
+	)
+	require.NoError(t, err, "must not fail with a CWD-based project lookup when req.Root is supplied")
+	require.True(t, previewCalled)
 }
 
 //nolint:paralleltest // Uses t.Chdir

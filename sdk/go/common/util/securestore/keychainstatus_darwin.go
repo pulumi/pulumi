@@ -84,7 +84,7 @@ func withoutKeychainUI[T any](fn func() (T, error)) (T, error) {
 			ErrUnavailable, osStatusError(status))
 	}
 	// Leaving interaction disabled would break every later keychain user.
-	defer sec.keychainSetUserInteractionOK(true) //nolint:errcheck // best effort restore
+	defer sec.keychainSetUserInteractionOK(true)
 	return fn()
 }
 

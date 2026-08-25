@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//nolint:revive // Legacy package name we don't want to change
 package util
 
 import (
@@ -28,7 +27,7 @@ import (
 // bundled with the `pulumi` binary and must be downloaded on demand.
 var knownLanguageRuntimes = map[string]semver.Version{
 	// renovate: datasource=github-releases depName=pulumi/pulumi-hcl extractVersion=^v(?<version>.+)$
-	"hcl": semver.MustParse("0.15.0"),
+	"hcl": semver.MustParse("0.16.1"),
 }
 
 // SetKnownPluginDownloadURL fills in metadata on the given PluginDescriptor that the CLI

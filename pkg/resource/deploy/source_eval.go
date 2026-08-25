@@ -103,6 +103,8 @@ type EvalSourceOptions struct {
 	DisableResourceReferences bool
 	// true to disable output value support.
 	DisableOutputValues bool
+	// true if this deployment can safely execute and persist state migrations.
+	SupportsStateMigrations bool
 	// AttachDebugger is the list of things to debug.  This can be "program", "all", "plugins", or "plugin:<plugin-name>".
 	AttachDebugger []string
 }
@@ -401,6 +403,14 @@ type TransformInvokeFunction func(
 	opts *pulumirpc.TransformInvokeOptions,
 ) (resource.PropertyMap, *pulumirpc.TransformInvokeOptions, error)
 
+// A state migration function that can be applied to the prior state of a resource and the prior state of all
+// resources transitively parented to it. oldState is a JSON-encoded array of apitype.ResourceV3 values. The
+// returned newState is the transformed array, or nil if the prior state is unchanged. successors maps each URN
+// removed from oldState to the URN in newState that assumes its role.
+type StateMigrationFunction func(
+	ctx context.Context, urn resource.URN, oldState []byte,
+) (newState []byte, successors map[resource.URN]resource.URN, err error)
+
 type CallbacksClient struct {
 	pulumirpc.CallbacksClient
 
@@ -421,6 +431,13 @@ func NewCallbacksClient(conn *grpc.ClientConn) *CallbacksClient {
 // DialOptions returns dial options to be used for the gRPC client.
 type DialOptions func(metadata any) []grpc.DialOption
 
+// The tuple of ProviderRequest and Extension that we save for an extension package in
+// `resmon.extensionRefMap`.
+type extensionRef struct {
+	provider  providers.ProviderRequest
+	extension apitype.Extension
+}
+
 // resmon implements the pulumirpc.ResourceMonitor interface and acts as the gateway between a language runtime's
 // evaluation of a program and the internal resource planning and deployment logic.
 type resmon struct {
@@ -428,6 +445,10 @@ type resmon struct {
 
 	pendingTransforms     map[string][]TransformFunction // pending transformation functions for a constructed resource
 	pendingTransformsLock sync.Mutex
+
+	// pending state migration functions for a constructed resource
+	pendingStateMigrations     map[string][]StateMigrationFunction
+	pendingStateMigrationsLock sync.Mutex
 
 	parents     map[resource.URN]resource.URN // map of child URNs to their parent URNs
 	parentsLock sync.Mutex
@@ -476,7 +497,7 @@ type resmon struct {
 
 	extensionRefLock sync.RWMutex
 	// A map of UUIDs to the provider extension they respond to
-	extensionRefMap map[string]apitype.Extension
+	extensionRefMap map[string]extensionRef
 
 	// parameterizedExtensions tracks (providerRef, packageRef) pairs already
 	// passed to Parameterize so remote-component Construct calls don't repeat
@@ -536,6 +557,7 @@ func newResourceMonitor(
 		workingDirectory:        src.runinfo.Pwd,
 		sourcePositions:         newSourcePositions(src.runinfo.ProjectRoot),
 		pendingTransforms:       map[string][]TransformFunction{},
+		pendingStateMigrations:  map[string][]StateMigrationFunction{},
 		parents:                 map[resource.URN]resource.URN{},
 		resGoals:                map[resource.URN]pkgresource.Goal{},
 		componentProviders:      map[resource.URN]map[string]string{},
@@ -552,7 +574,7 @@ func newResourceMonitor(
 		resourceHooks:           src.resourceHooks,
 		resourceTransforms:      map[resource.URN][]TransformFunction{},
 		packageRefMap:           map[string]providers.ProviderRequest{},
-		extensionRefMap:         map[string]apitype.Extension{},
+		extensionRefMap:         map[string]extensionRef{},
 		parameterizedExtensions: map[string]bool{},
 		grpcDialOptions:         src.plugctx.DialOptions,
 		observer:                src.observer,
@@ -613,6 +635,7 @@ func (rm *resmon) GetCallbacksClient(target string) (*CallbacksClient, error) {
 	dialOpts := append(
 		rpcutil.TracingInterceptorDialOptions(),
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		rpcutil.GrpcChannelOptions(),
 	)
 	if rm.grpcDialOptions != nil {
 		opts := rm.grpcDialOptions(map[string]any{
@@ -805,16 +828,14 @@ func (rm *resmon) RegisterPackage(ctx context.Context,
 		}
 		ref := hashExtension(extension)
 
-		if _, already := rm.packageRefMap[ref]; already {
+		rm.extensionRefLock.Lock()
+		defer rm.extensionRefLock.Unlock()
+		if _, already := rm.extensionRefMap[ref]; already {
 			logging.V(5).Infof("ResourceMonitor.RegisterPackage(%v) matched %s", req, ref)
 			return &pulumirpc.RegisterPackageResponse{Ref: ref}, nil
 		}
+		rm.extensionRefMap[ref] = extensionRef{pi, extension}
 
-		rm.extensionRefLock.Lock()
-		rm.extensionRefMap[ref] = extension
-		rm.extensionRefLock.Unlock()
-
-		rm.packageRefMap[ref] = pi
 		logging.V(5).Infof("ResourceMonitor.RegisterPackage(%v) created %s", req, ref)
 		return &pulumirpc.RegisterPackageResponse{Ref: ref}, nil
 	}
@@ -847,9 +868,17 @@ func hashExtension(ext apitype.Extension) string {
 // lookupPackageRef returns the provider request for the given package ref,
 // holding the read lock for thread safety.
 func (rm *resmon) lookupPackageRef(ref string) (providers.ProviderRequest, bool) {
+	// First check the package refs
 	rm.packageRefLock.RLock()
-	defer rm.packageRefLock.RUnlock()
 	req, has := rm.packageRefMap[ref]
+	rm.packageRefLock.RUnlock()
+	if !has {
+		// Try the extension refs
+		rm.extensionRefLock.RLock()
+		extRef, has := rm.extensionRefMap[ref]
+		rm.extensionRefLock.RUnlock()
+		return extRef.provider, has
+	}
 	return req, has
 }
 
@@ -865,11 +894,12 @@ func (rm *resmon) ensureExtensionParameterizedForConstruct(
 		return nil
 	}
 	rm.extensionRefLock.RLock()
-	ext, isExtension := rm.extensionRefMap[packageRef]
+	extRef, isExtension := rm.extensionRefMap[packageRef]
 	rm.extensionRefLock.RUnlock()
 	if !isExtension {
 		return nil
 	}
+	ext := extRef.extension
 
 	key := providerRef.String() + "|" + packageRef
 	rm.parameterizedExtensionsLock.Lock()
@@ -995,6 +1025,9 @@ func (rm *resmon) supportedMonitorFeatures() []pulumirpc.ResourceMonitorFeature 
 	}
 	if rm.supportsFeatureID("sendsOptionsToHooks") {
 		features = append(features, pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_SENDS_OPTIONS_TO_HOOKS)
+	}
+	if rm.opts.SupportsStateMigrations {
+		features = append(features, pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_STATE_MIGRATIONS)
 	}
 	return append(features,
 		pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_BYTE_STRING,
@@ -1124,7 +1157,7 @@ func (rm *resmon) Invoke(
 	logging.V(5).Infof("ResourceMonitor.Invoke received: tok=%v #args=%v", tok, len(args))
 	resp, err := prov.Invoke(ctx, plugin.InvokeRequest{
 		Tok:     tok,
-		Args:    args,
+		Args:    resource.FromResourcePropertyMap(args),
 		Preview: rm.opts.DryRun,
 	})
 	if err != nil {
@@ -1139,7 +1172,7 @@ func (rm *resmon) Invoke(
 		keepResources = true
 	}
 
-	mret, err := plugin.MarshalProperties(resp.Properties, plugin.MarshalOptions{
+	mret, err := plugin.MarshalProperties(resource.ToResourcePropertyMap(resp.Properties), plugin.MarshalOptions{
 		Label:            label,
 		KeepUnknowns:     true,
 		KeepSecrets:      true,
@@ -1598,6 +1631,48 @@ func (rm *resmon) wrapTransformCallback(cb *pulumirpc.Callback) (TransformFuncti
 		logging.V(5).Infof("Transform: props=%v opts=%v", newProps, newOpts)
 
 		return newProps, newOpts, nil
+	}, nil
+}
+
+// Wrap the state migration callback so the engine can call the callback server, which will then execute the
+// function.  The wrapper takes care of all the necessary marshalling and unmarshalling.
+func (rm *resmon) wrapStateMigrationCallback(cb *pulumirpc.Callback) (StateMigrationFunction, error) {
+	client, err := rm.GetCallbacksClient(cb.Target)
+	if err != nil {
+		return nil, err
+	}
+
+	token := cb.Token
+	return func(ctx context.Context, urn resource.URN, oldState []byte) ([]byte, map[resource.URN]resource.URN, error) {
+		logging.V(5).Infof("StateMigration: urn=%v", urn)
+
+		request, err := proto.Marshal(&pulumirpc.StateMigrationRequest{
+			Urn:      string(urn),
+			OldState: oldState,
+		})
+		if err != nil {
+			return nil, nil, fmt.Errorf("marshaling state migration request: %w", err)
+		}
+
+		resp, err := client.Invoke(ctx, &pulumirpc.CallbackInvokeRequest{
+			Token:   token,
+			Request: request,
+		})
+		if err != nil {
+			logging.V(5).Infof("state migration callback error: %v", err)
+			return nil, nil, err
+		}
+
+		var response pulumirpc.StateMigrationResponse
+		if err := proto.Unmarshal(resp.Response, &response); err != nil {
+			return nil, nil, fmt.Errorf("unmarshaling state migration response: %w", err)
+		}
+
+		successors := make(map[resource.URN]resource.URN, len(response.Successors))
+		for oldURN, newURN := range response.Successors {
+			successors[resource.URN(oldURN)] = resource.URN(newURN)
+		}
+		return response.NewState, successors, nil
 	}, nil
 }
 
@@ -2206,6 +2281,11 @@ func errorToMessage(err error, inputs resource.PropertyMap) string {
 func (rm *resmon) RegisterResource(ctx context.Context,
 	req *pulumirpc.RegisterResourceRequest,
 ) (*pulumirpc.RegisterResourceResponse, error) {
+	if len(req.GetStateMigrations()) > 0 && !rm.opts.SupportsStateMigrations {
+		return nil, rpcerror.New(codes.FailedPrecondition,
+			"state migrations are not supported by this deployment")
+	}
+
 	// Communicate the type, name, and object information to the iterator that is awaiting us.
 	name := req.GetName()
 	custom := req.GetCustom()
@@ -2429,6 +2509,33 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		}
 		props = newProps
 		opts = newOpts
+	}
+
+	// Collect the state migrations registered for this resource. A registration for a constructed resource
+	// reuses the migrations saved by the remote registration that requested construction, mirroring the pending
+	// transform handoff above.
+	var stateMigrations []StateMigrationFunction
+	err = func() error {
+		rm.pendingStateMigrationsLock.Lock()
+		defer rm.pendingStateMigrationsLock.Unlock()
+
+		if pending, ok := rm.pendingStateMigrations[pendingKey]; ok {
+			delete(rm.pendingStateMigrations, pendingKey)
+			stateMigrations = pending
+		} else {
+			stateMigrations, err = slice.MapError(req.StateMigrations, rm.wrapStateMigrationCallback)
+			if err != nil {
+				return err
+			}
+			// We only need to save this for remote calls
+			if remote && len(stateMigrations) > 0 {
+				rm.pendingStateMigrations[pendingKey] = stateMigrations
+			}
+		}
+		return nil
+	}()
+	if err != nil {
+		return nil, fmt.Errorf("collect state migrations: %w", err)
 	}
 
 	// We handle updating the providers map to include the providers field of the parent if
@@ -2808,7 +2915,12 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 				"resource monitor shut down while waiting for construct to complete")
 		}
 
-		result = &RegisterResult{State: &pkgresource.State{URN: constructResult.URN, Outputs: constructResult.Outputs}}
+		result = &RegisterResult{
+			State: &pkgresource.State{
+				URN:     constructResult.URN,
+				Outputs: resource.ToResourcePropertyMap(constructResult.Outputs),
+			},
+		}
 
 		// The provider may have returned OutputValues in "Outputs", we need to downgrade them to Computed or
 		// Secret but also add them to the outputDeps map.
@@ -2900,7 +3012,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		if packageRef := req.GetPackageRef(); packageRef != "" {
 			rm.extensionRefLock.RLock()
 			if e, has := rm.extensionRefMap[packageRef]; has {
-				ext = &e
+				ext = &e.extension
 				// Only carry the ref onto the event when there's an actual
 				// extension blob — replacement-param packageRefs don't belong
 				// in ResourceV3.ExtensionRef.
@@ -2910,10 +3022,11 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		}
 		// Send the goal state to the engine.
 		step := &registerResourceEvent{
-			goal:         goal,
-			done:         make(chan *RegisterResult),
-			extension:    ext,
-			extensionRef: extRef,
+			goal:            goal,
+			done:            make(chan *RegisterResult),
+			extension:       ext,
+			extensionRef:    extRef,
+			stateMigrations: stateMigrations,
 		}
 
 		select {
@@ -3190,10 +3303,11 @@ func (rm *resmon) RegisterResourceOutputs(ctx context.Context,
 }
 
 type registerResourceEvent struct {
-	goal         *pkgresource.Goal    // the resource goal state produced by the iterator.
-	done         chan *RegisterResult // the channel to communicate with after the resource state is available.
-	extension    *apitype.Extension   // optional extension data if this came from an extension package
-	extensionRef apitype.ExtensionRef // extension reference
+	goal            *pkgresource.Goal        // the resource goal state produced by the iterator.
+	done            chan *RegisterResult     // the channel to communicate with after the resource state is available.
+	extension       *apitype.Extension       // optional extension data if this came from an extension package
+	extensionRef    apitype.ExtensionRef     // extension reference
+	stateMigrations []StateMigrationFunction // state migrations to apply to the prior state before diffing.
 }
 
 var _ RegisterResourceEvent = (*registerResourceEvent)(nil)
@@ -3210,6 +3324,10 @@ func (g *registerResourceEvent) Extension() *apitype.Extension {
 
 func (g *registerResourceEvent) ExtensionRef() apitype.ExtensionRef {
 	return g.extensionRef
+}
+
+func (g *registerResourceEvent) StateMigrations() []StateMigrationFunction {
+	return g.stateMigrations
 }
 
 func (g *registerResourceEvent) Done(result *RegisterResult) {

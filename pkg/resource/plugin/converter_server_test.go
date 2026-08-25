@@ -80,11 +80,12 @@ func (c *testConverter) ConvertState(
 				Parent:     "test:parent",
 				Properties: []string{"prop1", "prop2"},
 				Provider:   "test:provider",
-				Inputs: ptr(property.NewMap(map[string]property.Value{
+				Inputs: new(property.NewMap(map[string]property.Value{
 					"region": property.New("us-east-1"),
 					"secret": property.New("shh").WithSecret(true),
 				})),
-				Outputs: ptr(property.NewMap(map[string]property.Value{
+
+				Outputs: new(property.NewMap(map[string]property.Value{
 					"arn": property.New("test:arn"),
 				})),
 			},

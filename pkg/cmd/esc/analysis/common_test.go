@@ -82,11 +82,11 @@ func (testProviders) LoadRotator(ctx context.Context, name string) (esc.Rotator,
 
 type testEnvironments struct{}
 
-func (testEnvironments) LoadEnvironment(ctx context.Context, name string) ([]byte, eval.Decrypter, error) {
+func (testEnvironments) LoadEnvironment(ctx context.Context, name string) ([]byte, string, eval.Decrypter, error) {
 	if name != "a" {
-		return nil, nil, errors.New("not found")
+		return nil, "", nil, errors.New("not found")
 	}
-	return []byte(`{"values": {}}`), nil, nil
+	return []byte(`{"values": {}}`), name, nil, nil
 }
 
 func (testEnvironments) AuthorizeImport(_ context.Context, _ string, _ string, _ bool) error {

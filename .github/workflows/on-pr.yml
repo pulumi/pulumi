@@ -43,6 +43,8 @@ jobs:
       contents: read
       # To sign artifacts.
       id-token: write
+      # To comment changelog style findings on PRs.
+      pull-requests: write
     with:
       ref: ${{ github.head_ref }}
       version: ${{ needs.info.outputs.version }}

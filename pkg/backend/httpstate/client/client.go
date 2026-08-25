@@ -385,8 +385,7 @@ func (pc *Client) ValidateAgentClaim(ctx context.Context, claimToken string) (bo
 	if err == nil {
 		return true, nil
 	}
-	var errResp *apitype.ErrorResponse
-	if errors.As(err, &errResp) && errResp.Code == http.StatusNotFound {
+	if errResp, ok := errors.AsType[*apitype.ErrorResponse](err); ok && errResp.Code == http.StatusNotFound {
 		return false, nil
 	}
 	return false, err
@@ -2689,8 +2688,7 @@ func is404(err error) bool {
 	if err == nil {
 		return false
 	}
-	var errResp *apitype.ErrorResponse
-	if errors.As(err, &errResp) && errResp.Code == http.StatusNotFound {
+	if errResp, ok := errors.AsType[*apitype.ErrorResponse](err); ok && errResp.Code == http.StatusNotFound {
 		return true
 	}
 	return false
@@ -2983,6 +2981,9 @@ func (pc *Client) StreamNeoTaskEvents(
 func (pc *Client) PostNeoTaskUserEvent(
 	ctx context.Context, orgName, taskID string, body any,
 ) error {
+	ctx, cancel := context.WithTimeout(ctx, NeoRequestTimeout)
+	defer cancel()
+
 	path := fmt.Sprintf("/api/preview/agents/%s/tasks/%s", orgName, taskID)
 	return pc.restCall(ctx, http.MethodPost, path, nil, struct {
 		Event any `json:"event"`

@@ -249,9 +249,8 @@ func TestListPackages(t *testing.T) {
 		"PULUMI_API": server.URL,
 	}))
 
-	//nolint:prealloc // capacity unknown ahead of time
 	results := []apitype.PackageMetadata{}
-	for pkg, err := range client.ListPackages(ctx, ptr("castai")) {
+	for pkg, err := range client.ListPackages(ctx, new("castai")) {
 		require.NoError(t, err)
 		results = append(results, pkg)
 	}
@@ -308,14 +307,11 @@ func TestListPackagesNoMatches(t *testing.T) {
 		"PULUMI_API": server.URL,
 	}))
 
-	//nolint:prealloc // capacity unknown ahead of time
 	results := []apitype.PackageMetadata{}
-	for pkg, err := range client.ListPackages(ctx, ptr("404-not-found")) {
+	for pkg, err := range client.ListPackages(ctx, new("404-not-found")) {
 		require.NoError(t, err)
 		results = append(results, pkg)
 	}
 
 	assert.Equal(t, []apitype.PackageMetadata{}, results)
 }
-
-func ptr[T any](v T) *T { return &v }

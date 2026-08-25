@@ -67,6 +67,7 @@ class _CallbackServicer(callback_pb2_grpc.CallbacksServicer):
     _monitor: resource_pb2_grpc.ResourceMonitorStub
     _server: aio.Server
     _target: str
+    _loop: asyncio.AbstractEventLoop
 
     _transforms: dict[Union[ResourceTransform, InvokeTransform], str]
 
@@ -76,6 +77,7 @@ class _CallbackServicer(callback_pb2_grpc.CallbacksServicer):
         self._callbacks = {}
         self._transforms = {}
         self._monitor = monitor
+        self._loop = asyncio.get_running_loop()
         self._server = aio.server(options=_GRPC_CHANNEL_OPTIONS)
         callback_pb2_grpc.add_CallbacksServicer_to_server(self, self._server)
         port = self._server.add_insecure_port(address="127.0.0.1:0")
@@ -93,7 +95,17 @@ class _CallbackServicer(callback_pb2_grpc.CallbacksServicer):
 
     @classmethod
     async def shutdown(cls):
-        for servicer in cls._servicers:
+        # A Pulumi program only has a single event loop, but the servicers list is
+        # shared process-wide, and a single process can run many programs on
+        # different loops, e.g. mock-based tests.
+        #
+        # Stopping a grpc.aio server from a different event loop than it was created
+        # on raises a RuntimeError, so only stop servicers created on the current loop.
+        loop = asyncio.get_running_loop()
+        for servicer in list(cls._servicers):
+            if servicer._loop is not loop:
+                continue
+            cls._servicers.remove(servicer)
             await servicer._server.stop(grace=0)
 
     async def Invoke(

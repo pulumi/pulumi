@@ -537,7 +537,7 @@ func TestDynamicPythonDisableSerializationAsSecret(t *testing.T) {
 				}
 			},
 		}},
-		UseSharedVirtualEnv: ptr(false),
+		UseSharedVirtualEnv: new(false),
 	})
 }
 
@@ -2064,17 +2064,9 @@ func TestPythonComponentProviderRun(t *testing.T) {
 					require.Equal(t, "HELLO", stack.Outputs["strOutput"].(string))
 					require.Equal(t, float64(84), stack.Outputs["optionalIntOutput"].(float64))
 					complexOutput := stack.Outputs["complexOutput"].(map[string]any)
-					if runtime == "python" {
-						// The output is stored in the stack as a plain object,
-						// but that means for Python the keys are snake_case.
-						require.Equal(t, "complex_str_output_value", complexOutput["str_value"].(string))
-						nested := complexOutput["nested_value"].(map[string]any)
-						require.Equal(t, "nested_str_plain_value", nested["value"].(string))
-					} else {
-						require.Equal(t, "complex_str_output_value", complexOutput["strValue"].(string))
-						nested := complexOutput["nestedValue"].(map[string]any)
-						require.Equal(t, "nested_str_plain_value", nested["value"].(string))
-					}
+					require.Equal(t, "complex_str_output_value", complexOutput["strValue"].(string))
+					nested := complexOutput["nestedValue"].(map[string]any)
+					require.Equal(t, "nested_str_plain_value", nested["value"].(string))
 					require.Equal(t, []any{"A", "B", "C"}, stack.Outputs["listOutput"].([]any))
 					require.Equal(t, map[string]any{
 						"a": float64(2),

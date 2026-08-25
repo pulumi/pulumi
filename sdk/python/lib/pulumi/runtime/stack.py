@@ -26,8 +26,9 @@ import grpc
 
 
 from . import settings
-from ._instrumentation import wrap_with_context
-from .. import log
+from ._context import wrap_with_context
+from .proto import resource_pb2
+from .. import _types, log
 from ..resource import (
     ComponentResource,
     Resource,
@@ -44,8 +45,7 @@ from .settings import (
     _get_rpc_manager,
     _load_monitor_feature_support,
     _shutdown_callbacks,
-    _sync_monitor_supports_transforms,
-    _sync_monitor_supports_invoke_transforms,
+    monitor_supports_feature,
     get_monitor,
     get_project,
     get_root_resource,
@@ -424,6 +424,15 @@ def massage_complex(attr: Any, seen: list[Any]) -> Any:
             else {**serialized_attr, "@isPulumiResource": True}
         )
 
+    # Output types store their values under Python (snake_case) names; convert them to
+    # dicts keyed by their Pulumi (wire-format) names so stack outputs match the names
+    # other languages serialize.
+    if _types.is_output_type(type(attr)):
+        return {
+            key: massage(value, seen)
+            for key, value in _types.output_type_to_dict(attr).items()
+        }
+
     # first check if the value is an actual dictionary.  If so, massage the values of it to deeply
     # make sure this is a popo.
     if isinstance(attr, dict):
@@ -482,11 +491,18 @@ def register_stack_transformation(t: ResourceTransformation):
         root_resource._transformations = root_resource._transformations + [t]
 
 
+def _wait_for_pending_rpcs() -> None:
+    pending = asyncio.all_tasks()
+    rpcs = {task for task in pending if task.get_coro().__name__ == "rpc_wrapper"}  # type: ignore
+    if rpcs:
+        _sync_await(asyncio.gather(*rpcs))
+
+
 def register_resource_transform(t: ResourceTransform) -> None:
     """
     Add a transform to all future resources constructed in this Pulumi stack.
     """
-    if not _sync_monitor_supports_transforms():
+    if not monitor_supports_feature(resource_pb2.RESOURCE_MONITOR_FEATURE_TRANSFORMS):
         raise Exception(
             "The Pulumi CLI does not support transforms. Please update the Pulumi CLI."
         )
@@ -494,9 +510,7 @@ def register_resource_transform(t: ResourceTransform) -> None:
     # We need to make sure all the current resource registrations are finished before
     # registering the transforms.  Do so by waiting for all RPCs to complete, before
     # we go ahead and register the transform.
-    pending = asyncio.all_tasks()
-    rpcs = {task for task in pending if task.get_coro().__name__ == "rpc_wrapper"}  # type: ignore
-    _sync_await(asyncio.gather(*rpcs))
+    _wait_for_pending_rpcs()
 
     callbacks = _sync_await(_get_callbacks())
     if callbacks is None:
@@ -518,7 +532,9 @@ def register_invoke_transform(t: InvokeTransform) -> None:
     Add a transforms to all future invokes called in this Pulumi stack.
     """
 
-    if not _sync_monitor_supports_invoke_transforms():
+    if not monitor_supports_feature(
+        resource_pb2.RESOURCE_MONITOR_FEATURE_INVOKE_TRANSFORMS
+    ):
         raise Exception(
             "The Pulumi CLI does not support invoke transforms. Please update the Pulumi CLI."
         )
@@ -526,9 +542,7 @@ def register_invoke_transform(t: InvokeTransform) -> None:
     # We need to make sure all the current invokes are finished before
     # registering the transforms.  Do so by waiting for all RPCs to
     # complete, before we go ahead and register the transform.
-    pending = asyncio.all_tasks()
-    rpcs = {task for task in pending if task.get_coro().__name__ == "rpc_wrapper"}  # type: ignore
-    _sync_await(asyncio.gather(*rpcs))
+    _wait_for_pending_rpcs()
 
     callbacks = _sync_await(_get_callbacks())
     if callbacks is None:

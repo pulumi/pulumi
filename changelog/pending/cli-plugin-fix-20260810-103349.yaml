@@ -1,7 +1,0 @@
-component: cli/plugin
-kind: fix
-body: Track when a plugin was last run so `pulumi plugin ls` reports an accurate
-  last-used time on all platforms
-time: 2026-08-10T10:33:49.000000-04:00
-custom:
-  PR: "24251"

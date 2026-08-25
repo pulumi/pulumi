@@ -154,7 +154,7 @@ Flags:
       --provider string        The URN of a provider resource in the current stack whose inputs to use as the base of the provider configuration (requires a stack context)
       --provider-file string   Path to a file containing provider configuration
       --show-secrets           Show secret values in output
-      --stateless              Run create/patch/delete directly against the provider without persisting state. Required for delete until stateful delete is implemented.
+      --stateless              Run create/patch/delete directly against the provider without persisting state.
 
 Use "do azure:index:myResource [command] --help" for more information about a command.
 `
@@ -209,7 +209,7 @@ Flags:
       --provider string        The URN of a provider resource in the current stack whose inputs to use as the base of the provider configuration (requires a stack context)
       --provider-file string   Path to a file containing provider configuration
       --show-secrets           Show secret values in output
-      --stateless              Run create/patch/delete directly against the provider without persisting state. Required for delete until stateful delete is implemented.
+      --stateless              Run create/patch/delete directly against the provider without persisting state.
 
 Use "do azure:index:myResource [command] --help" for more information about a command.
 `
@@ -1048,7 +1048,9 @@ func providerFlagStackContext(
 		NewF: func(_ string) (pkgWorkspace.W, error) {
 			return &pkgWorkspace.MockW{
 				SettingsF: func() *pkgWorkspace.Settings {
-					return &pkgWorkspace.Settings{Stack: "myorg/proj/dev"}
+					return &pkgWorkspace.Settings{
+						Stack: "myorg/proj/dev", //nolint:staticcheck
+					}
 				},
 			}, nil
 		},

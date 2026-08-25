@@ -76,7 +76,6 @@ func TestConcurrentCredentialsWrites(t *testing.T) {
 	wg.Wait()
 }
 
-//nolint:paralleltest // mutates environment
 func TestCredentialsDoNotFallbackToTemp(t *testing.T) {
 	t.Setenv("PULUMI_CREDENTIALS_PATH", "")
 
@@ -89,7 +88,6 @@ func TestCredentialsDoNotFallbackToTemp(t *testing.T) {
 	require.Error(t, err)
 }
 
-//nolint:paralleltest // mutates environment
 func TestExplicitCredentialsPathDoesNotFallbackToTemp(t *testing.T) {
 	credentialsParent := t.TempDir()
 	credentialsPath := filepath.Join(credentialsParent, "not-a-directory")
@@ -187,7 +185,6 @@ func TestAccountSaveWritesToSourceFile(t *testing.T) {
 	})
 }
 
-//nolint:paralleltest // mutates environment and package global
 func TestGetAccountWithAgentFallbackUsesRefreshOnlyDefaultAccount(t *testing.T) {
 	// An account with only a refresh token (no access token) must be treated as usable rather
 	// than skipped in favour of the agent fallback — the wrapper will mint the first access
@@ -217,7 +214,6 @@ func TestGetAccountWithAgentFallbackUsesRefreshOnlyDefaultAccount(t *testing.T) 
 	assert.Empty(t, account.AccessToken)
 }
 
-//nolint:paralleltest // mutates environment
 func TestAccountRefreshTokenRoundTrip(t *testing.T) {
 	// The refresh token is held off-the-wire and exchanged at /api/oauth/token for short-lived
 	// access tokens. It needs to survive credentials.json read/write so the CLI can use it across
@@ -327,7 +323,6 @@ func TestGetAgentAccountUsesLegacyAccessTokenMap(t *testing.T) {
 	assert.Empty(t, account.AccessToken)
 }
 
-//nolint:paralleltest // mutates env vars and package global
 func TestAgentPulumiDirTestOverride(t *testing.T) {
 	oldAgentPulumiDir := agentPulumiDir
 	agentPulumiDir = filepath.Join(t.TempDir(), ".pulumi")
@@ -370,7 +365,6 @@ func TestGetAgentAccessTokenExpiresAt(t *testing.T) {
 	assert.True(t, valid)
 }
 
-//nolint:paralleltest // mutates environment, default credentials, and package global
 func TestGetAccountWithAgentFallbackPrefersDefaultCredentials(t *testing.T) {
 	oldCreds, err := GetStoredCredentials()
 	require.NoError(t, err)
@@ -396,7 +390,6 @@ func TestGetAccountWithAgentFallbackPrefersDefaultCredentials(t *testing.T) {
 	assert.Equal(t, "default-token", account.AccessToken)
 }
 
-//nolint:paralleltest // mutates environment and package global
 func TestGetAccountWithAgentFallbackUsesAgentCredentials(t *testing.T) {
 	oldAgentPulumiDir := agentPulumiDir
 	agentPulumiDir = filepath.Join(t.TempDir(), ".pulumi")
@@ -418,7 +411,6 @@ func TestGetAccountWithAgentFallbackUsesAgentCredentials(t *testing.T) {
 	assert.Equal(t, "agent-token", account.AccessToken)
 }
 
-//nolint:paralleltest // mutates environment and package global
 func TestGetAccountWithAgentFallbackDoesNotMergeFieldsAcrossFiles(t *testing.T) {
 	// File-as-a-unit invariant on the read side: a default account with an access token but no
 	// refresh token must not silently acquire a refresh token from the agent file. The loaded
@@ -452,7 +444,6 @@ func TestGetAccountWithAgentFallbackDoesNotMergeFieldsAcrossFiles(t *testing.T) 
 		"fields from the agent file must not leak into a default-sourced account")
 }
 
-//nolint:paralleltest // mutates environment and package global
 func TestGetAccountWithAgentFallbackDisabledOutsideAgentMode(t *testing.T) {
 	oldAgentPulumiDir := agentPulumiDir
 	agentPulumiDir = filepath.Join(t.TempDir(), ".pulumi")
@@ -474,7 +465,6 @@ func TestGetAccountWithAgentFallbackDisabledOutsideAgentMode(t *testing.T) {
 	assert.Empty(t, account.AccessToken)
 }
 
-//nolint:paralleltest // mutates environment and package global
 func TestGetAccountWithAgentFallbackDisabledWithExplicitHome(t *testing.T) {
 	oldAgentPulumiDir := agentPulumiDir
 	agentPulumiDir = filepath.Join(t.TempDir(), ".pulumi")
@@ -496,7 +486,6 @@ func TestGetAccountWithAgentFallbackDisabledWithExplicitHome(t *testing.T) {
 	assert.Empty(t, account.AccessToken)
 }
 
-//nolint:paralleltest // mutates environment and package global
 func TestGetAccountWithAgentFallbackDisabledWithExplicitCredentialsPath(t *testing.T) {
 	oldAgentPulumiDir := agentPulumiDir
 	agentPulumiDir = filepath.Join(t.TempDir(), ".pulumi")
@@ -629,7 +618,6 @@ func TestDefaultAgentPulumiDir(t *testing.T) {
 	assert.Equal(t, filepath.Join("/tmp", BookkeepingDir), defaultAgentPulumiDir())
 }
 
-//nolint:paralleltest // mutates environment and package global
 func TestAgentPulumiConfigUsesDefaultPathWhenWritable(t *testing.T) {
 	oldAgentPulumiDir := agentPulumiDir
 	agentPulumiDir = filepath.Join(t.TempDir(), ".pulumi")
@@ -829,7 +817,6 @@ func TestDeleteAllBackendConfigPathError(t *testing.T) {
 	require.ErrorContains(t, err, "failed to create")
 }
 
-//nolint:paralleltest // mutates environment and package global
 func TestAgentPulumiConfigExplicitPathDoesNotFallbackToAgentPath(t *testing.T) {
 	oldAgentPulumiDir := agentPulumiDir
 	agentPulumiDir = filepath.Join(t.TempDir(), ".pulumi")
@@ -848,7 +835,6 @@ func TestAgentPulumiConfigExplicitPathDoesNotFallbackToAgentPath(t *testing.T) {
 	require.True(t, os.IsNotExist(err))
 }
 
-//nolint:paralleltest // mutates environment and package global
 func TestAgentPulumiConfigExplicitHomeDoesNotFallbackToAgentPath(t *testing.T) {
 	oldAgentPulumiDir := agentPulumiDir
 	agentPulumiDir = filepath.Join(t.TempDir(), ".pulumi")

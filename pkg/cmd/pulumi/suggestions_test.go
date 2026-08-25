@@ -77,8 +77,6 @@ func TestListAliases(t *testing.T) {
 
 // A bare `pulumi` is a group command like any other: it prints help but exits
 // non-zero.
-//
-//nolint:paralleltest // NewPulumiCmd registers env vars in a process-wide registry
 func TestBareRootPrintsHelpAndFails(t *testing.T) {
 	// A bare invocation reaches the root's RunE, so the persistent init hooks
 	// run; keep the async update check from hitting the network.

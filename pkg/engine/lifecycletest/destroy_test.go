@@ -29,7 +29,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/pkg/v3/engine"
-	. "github.com/pulumi/pulumi/pkg/v3/engine" //nolint:revive
+	. "github.com/pulumi/pulumi/pkg/v3/engine"
 	lt "github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest/framework"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
@@ -1224,7 +1224,7 @@ func TestDestroyV2TargetChildWithNewParent(t *testing.T) {
 		require.NoError(t, err)
 
 		res1, err := monitor.RegisterResource("pkgA:m:typA", "future-parent", false, deploytest.ResourceOptions{
-			RetainOnDelete: ptr(true),
+			RetainOnDelete: new(true),
 			Provider:       prov0Ref.String(),
 		})
 		require.NoError(t, err)

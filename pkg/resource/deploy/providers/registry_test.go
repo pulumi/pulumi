@@ -25,6 +25,7 @@ import (
 	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 
 	"github.com/blang/semver"
 
@@ -54,8 +55,8 @@ type testProvider struct {
 	pkg         tokens.Package
 	version     semver.Version
 	configured  bool
-	checkConfig func(resource.URN, resource.PropertyMap,
-		resource.PropertyMap, bool) (resource.PropertyMap, []plugin.CheckFailure, error)
+	checkConfig func(resource.URN, property.Map,
+		property.Map, bool) (property.Map, []plugin.CheckFailure, error)
 	diffConfig func(resource.URN, resource.PropertyMap, resource.PropertyMap, bool, []string) (plugin.DiffResult, error)
 	config     func(resource.PropertyMap) error
 }
@@ -173,8 +174,8 @@ func newSimpleLoader(t *testing.T, pkg, version string, config func(resource.Pro
 			pkg:     pkg,
 			version: ver,
 			checkConfig: func(urn resource.URN, olds,
-				news resource.PropertyMap, allowUnknowns bool,
-			) (resource.PropertyMap, []plugin.CheckFailure, error) {
+				news property.Map, allowUnknowns bool,
+			) (property.Map, []plugin.CheckFailure, error) {
 				return news, nil, nil
 			},
 			diffConfig: func(urn resource.URN, olds, news resource.PropertyMap,
@@ -456,8 +457,8 @@ func TestCRUDPreview(t *testing.T) {
 				pkg:     pkg,
 				version: ver,
 				checkConfig: func(urn resource.URN, olds,
-					news resource.PropertyMap, allowUnknowns bool,
-				) (resource.PropertyMap, []plugin.CheckFailure, error) {
+					news property.Map, allowUnknowns bool,
+				) (property.Map, []plugin.CheckFailure, error) {
 					return news, nil, nil
 				},
 				diffConfig: func(urn resource.URN, olds, news resource.PropertyMap,
@@ -733,7 +734,6 @@ func TestCRUDBadVersion(t *testing.T) {
 	assert.Nil(t, check.Properties)
 }
 
-//nolint:paralleltest
 func TestLoadProvider_missingError(t *testing.T) {
 	var count int
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -1133,7 +1133,7 @@ func TestEnvMappingsPassedToHost(t *testing.T) {
 				pkg:     tokens.Package(descriptor.Name),
 				version: semver.MustParse("1.0.0"),
 				//nolint:lll
-				checkConfig: func(urn resource.URN, olds, news resource.PropertyMap, allowUnknowns bool) (resource.PropertyMap, []plugin.CheckFailure, error) {
+				checkConfig: func(urn resource.URN, olds, news property.Map, allowUnknowns bool) (property.Map, []plugin.CheckFailure, error) {
 					return news, nil, nil
 				},
 				//nolint:lll
@@ -1214,8 +1214,8 @@ func TestSameUpdateRace_UpdateFirst(t *testing.T) {
 					pkg:     "pkgA",
 					version: semver.MustParse("1.0.0"),
 					checkConfig: func(
-						urn resource.URN, olds, news resource.PropertyMap, allowUnknowns bool,
-					) (resource.PropertyMap, []plugin.CheckFailure, error) {
+						urn resource.URN, olds, news property.Map, allowUnknowns bool,
+					) (property.Map, []plugin.CheckFailure, error) {
 						return news, nil, nil
 					},
 					diffConfig: func(
@@ -1302,8 +1302,8 @@ func TestSameUpdateRace_SameFirst(t *testing.T) {
 					pkg:     "pkgA",
 					version: semver.MustParse("1.0.0"),
 					checkConfig: func(
-						urn resource.URN, olds, news resource.PropertyMap, allowUnknowns bool,
-					) (resource.PropertyMap, []plugin.CheckFailure, error) {
+						urn resource.URN, olds, news property.Map, allowUnknowns bool,
+					) (property.Map, []plugin.CheckFailure, error) {
 						return news, nil, nil
 					},
 					diffConfig: func(
@@ -1401,8 +1401,8 @@ func TestSameUpdateRace_Concurrent(t *testing.T) {
 							pkg:     "pkgA",
 							version: semver.MustParse("1.0.0"),
 							checkConfig: func(
-								urn resource.URN, olds, news resource.PropertyMap, allowUnknowns bool,
-							) (resource.PropertyMap, []plugin.CheckFailure, error) {
+								urn resource.URN, olds, news property.Map, allowUnknowns bool,
+							) (property.Map, []plugin.CheckFailure, error) {
 								return news, nil, nil
 							},
 							diffConfig: func(

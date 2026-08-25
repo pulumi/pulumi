@@ -24,10 +24,10 @@ import (
 	"time"
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
+	"github.com/pulumi/pulumi/pkg/v3/util/progress"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 // installPolicyPack downloads and installs a policy pack with progress reporting.
@@ -58,13 +58,7 @@ func installPolicyPack(
 	var withDownloadProgress func(io.ReadCloser, int64) io.ReadCloser
 	if opts == nil {
 		withDownloadProgress = func(stream io.ReadCloser, size int64) io.ReadCloser {
-			return workspace.ReadCloserProgressBar(
-				stream,
-				os.Stderr,
-				size,
-				downloadMessage,
-				cmdutil.GetGlobalColorization(),
-			)
+			return progress.Stderr().Wrap(stream, size, downloadMessage, cmdutil.GetGlobalColorization())
 		}
 	} else {
 		withDownloadProgress = func(stream io.ReadCloser, size int64) io.ReadCloser {

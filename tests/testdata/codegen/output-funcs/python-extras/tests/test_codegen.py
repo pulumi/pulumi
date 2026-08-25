@@ -137,12 +137,10 @@ def test_func_with_all_optional_inputs(my_mocks):
 
 @pulumi.runtime.test
 def test_func_with_default_value(my_mocks):
-    # TODO defaults from schema not recognized
-    # https://github.com/pulumi/pulumi/issues/7815
     return assert_function_matches_table(func_with_default_value_output,
         [
-            ({}, 'a=None b=None', r),
-            ({'a': out('my-a')}, 'a=my-a b=None', r),
+            ({}, 'a=None b=b-default', r),
+            ({'a': out('my-a')}, 'a=my-a b=b-default', r),
             ({'a': out('my-a'), 'b': out('my-b')}, 'a=my-a b=my-b', r),
         ])
 

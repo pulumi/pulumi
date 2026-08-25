@@ -1027,7 +1027,6 @@ func TestListPackages(t *testing.T) {
 
 		// Call ListPackages and collect results
 		searchName := "my-package"
-		//nolint:prealloc // capacity unknown ahead of time
 		searchResults := []apitype.PackageMetadata{}
 		for pkg, err := range mockClient.ListPackages(t.Context(), &searchName) {
 			require.NoError(t, err)
@@ -1090,7 +1089,7 @@ func TestListPackages(t *testing.T) {
 
 				responseData, err = json.Marshal(apitype.ListPackagesResponse{
 					Packages:          firstPagePackages,
-					ContinuationToken: ptr("next-page-token-1"),
+					ContinuationToken: new("next-page-token-1"),
 				})
 				require.NoError(t, err)
 			case 1:
@@ -1100,7 +1099,7 @@ func TestListPackages(t *testing.T) {
 
 				responseData, err = json.Marshal(apitype.ListPackagesResponse{
 					Packages:          secondPagePackages,
-					ContinuationToken: ptr("next-page-token-2"),
+					ContinuationToken: new("next-page-token-2"),
 				})
 				require.NoError(t, err)
 			case 2:
@@ -1122,7 +1121,6 @@ func TestListPackages(t *testing.T) {
 		mockClient := newMockClient(mockServer)
 
 		searchName := "my-package"
-		//nolint:prealloc // capacity unknown ahead of time
 		searchResults := []apitype.PackageMetadata{}
 		for pkg, err := range mockClient.ListPackages(t.Context(), &searchName) {
 			require.NoError(t, err)

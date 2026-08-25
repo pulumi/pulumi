@@ -70,7 +70,7 @@ func BindSpecWithContext(
 		return nil, err
 	}
 	if diags.HasErrors() {
-		return nil, diags
+		return nil, errors.Join(diags.Errs()...)
 	}
 	return pkg, nil
 }
@@ -84,8 +84,7 @@ func InstallPackage(stdout io.Writer, ws pkgWorkspace.Context, proj workspace.Ba
 	pkgSpec, specOverride, err := SchemaFromSchemaSource(ws, pctx, schemaSource, parameters, registry, e, concurrency,
 		asExtension, pluginDownloadURL)
 	if err != nil {
-		var diagErr hcl.Diagnostics
-		if errors.As(err, &diagErr) {
+		if diagErr, ok := errors.AsType[hcl.Diagnostics](err); ok {
 			return nil, nil, nil, fmt.Errorf("failed to get schema. Diagnostics: %w", errors.Join(diagErr.Errs()...))
 		}
 		return nil, nil, nil, fmt.Errorf("failed to get schema: %w", err)

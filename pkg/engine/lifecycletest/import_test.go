@@ -29,7 +29,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
-	. "github.com/pulumi/pulumi/pkg/v3/engine" //nolint:revive
+	. "github.com/pulumi/pulumi/pkg/v3/engine"
 	lt "github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest/framework"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
@@ -38,6 +38,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 func TestImportOption(t *testing.T) {
@@ -676,6 +677,159 @@ func diffImportResource(
 		Changes:      plugin.DiffSome,
 		DetailedDiff: detailedDiff,
 	}, nil
+}
+
+func TestImportThenSecretValueDoesNotReplace(t *testing.T) {
+	t.Parallel()
+
+	valueDiff := func(_ context.Context, req plugin.DiffRequest) (plugin.DiffResult, error) {
+		old := resource.FromResourcePropertyMap(req.OldOutputs)
+		new := resource.FromResourcePropertyMap(req.NewInputs)
+		sameSecretValue := old.Get("foo").Equals(new.Get("foo").WithSecret(false).WithDependencies(nil))
+		sameOutputValue := old.Get("fromOutput").Equals(new.Get("fromOutput").WithSecret(false).WithDependencies(nil))
+		if sameSecretValue && sameOutputValue {
+			return plugin.DiffResult{Changes: plugin.DiffNone}, nil
+		}
+		return plugin.DiffResult{
+			Changes:     plugin.DiffSome,
+			ReplaceKeys: []resource.PropertyKey{"foo", "fromOutput"},
+		}, nil
+	}
+
+	diffUnknown := func(context.Context, plugin.DiffRequest) (plugin.DiffResult, error) {
+		return plugin.DiffResult{Changes: plugin.DiffUnknown}, nil
+	}
+
+	for _, tt := range []struct {
+		name  string
+		diffF func(context.Context, plugin.DiffRequest) (plugin.DiffResult, error)
+	}{
+		{
+			name:  "provider diffs by value",
+			diffF: valueDiff,
+		},
+		{
+			name:  "engine diffs DiffUnknown",
+			diffF: diffUnknown,
+		},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			readInputs := resource.PropertyMap{
+				"foo":        resource.NewProperty("bar"),
+				"fromOutput": resource.NewProperty("output-value"),
+			}
+			readOutputs := resource.PropertyMap{
+				"foo":        resource.NewProperty("bar"),
+				"fromOutput": resource.NewProperty("output-value"),
+			}
+
+			loaders := []*deploytest.ProviderLoader{
+				deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+					return &deploytest.Provider{
+						DiffF: tt.diffF,
+						CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+							return plugin.CreateResponse{
+								ID:         "created-id",
+								Properties: req.Properties,
+								Status:     resource.StatusOK,
+							}, nil
+						},
+						UpdateF: func(_ context.Context, req plugin.UpdateRequest) (plugin.UpdateResponse, error) {
+							return plugin.UpdateResponse{
+								Properties: req.NewInputs,
+								Status:     resource.StatusOK,
+							}, nil
+						},
+						ReadF: func(context.Context, plugin.ReadRequest) (plugin.ReadResponse, error) {
+							return plugin.ReadResponse{
+								ReadResult: plugin.ReadResult{
+									ID:      "imported-id",
+									Inputs:  readInputs,
+									Outputs: readOutputs,
+								},
+								Status: resource.StatusOK,
+							}, nil
+						},
+					}, nil
+				}),
+			}
+
+			inputs := resource.PropertyMap{
+				"foo": resource.MakeSecret(resource.NewProperty("bar")),
+				"fromOutput": resource.NewProperty(resource.Output{
+					Element: resource.NewProperty("output-value"),
+					Known:   true,
+				}),
+			}
+			programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+				_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+					Inputs:           inputs,
+					ReplaceOnChanges: []string{"foo", "fromOutput"},
+				})
+				require.NoError(t, err)
+				return nil
+			})
+			hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
+
+			p := &lt.TestPlan{
+				Options: lt.TestUpdateOptions{
+					T:                t,
+					HostF:            hostF,
+					SkipDisplayTests: true,
+				},
+			}
+
+			project := p.GetProject()
+			snap, err := lt.ImportOp([]deploy.Import{{
+				Type: "pkgA:m:typA",
+				Name: "resA",
+				ID:   "imported-id",
+			}}).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
+			require.NoError(t, err)
+			require.NotNil(t, snap)
+
+			resURN := p.NewURN("pkgA:m:typA", "resA", "")
+			imported := findImportTestResourceByURN(snap, resURN)
+			require.NotNil(t, imported)
+			assert.False(t, imported.Inputs["foo"].IsSecret())
+			assert.False(t, imported.Inputs["fromOutput"].IsOutput())
+
+			snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient,
+				func(_ workspace.Project, _ deploy.Target, entries JournalEntries, _ []Event, err error) error {
+					ops := []display.StepOp{}
+					for _, entry := range entries {
+						if entry.Kind == TestJournalEntrySuccess && entry.Step.URN() == resURN {
+							ops = append(ops, entry.Step.Op())
+						}
+					}
+					assert.NotContains(t, ops, deploy.OpReplace)
+					assert.NotContains(t, ops, deploy.OpCreateReplacement)
+					assert.NotContains(t, ops, deploy.OpDeleteReplaced)
+					assert.NotEmpty(t, ops)
+					return err
+				}, "1")
+			require.NoError(t, err)
+			require.NotNil(t, snap)
+			updated := findImportTestResourceByURN(snap, resURN)
+			require.NotNil(t, updated)
+			assert.True(t, updated.Inputs["foo"].IsSecret())
+			fromOutput := resource.FromResourcePropertyValue(updated.Inputs["fromOutput"]).
+				WithSecret(false).
+				WithDependencies(nil)
+			assert.True(t, property.New("output-value").Equals(fromOutput))
+		})
+	}
+}
+
+func findImportTestResourceByURN(snap *deploy.Snapshot, urn resource.URN) *pkgresource.State {
+	for _, res := range snap.Resources {
+		if res.URN == urn {
+			return res
+		}
+	}
+	return nil
 }
 
 func TestImportPlan(t *testing.T) {
@@ -1713,7 +1867,7 @@ func TestImportWithFailedUpdate(t *testing.T) {
 		"foo": resource.NewProperty("baz"),
 	}
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		_, _ = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{ //nolint:errcheck
+		_, _ = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 			Inputs:   inputs,
 			ImportID: importID,
 		})

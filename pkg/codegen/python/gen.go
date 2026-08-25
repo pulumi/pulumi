@@ -34,6 +34,8 @@ import (
 	"strconv"
 	"strings"
 
+	mapset "github.com/deckarep/golang-set/v2"
+
 	"github.com/BurntSushi/toml"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
@@ -62,7 +64,9 @@ type typeDetails struct {
 	plainType          bool
 }
 
-type imports codegen.StringSet
+type imports struct{ mapset.Set[string] }
+
+func newImports() imports { return imports{mapset.NewSet[string]()} }
 
 // defaultMinPythonVersion is what we use as the minimum version field in generated
 // package metadata if the schema does not provide a value. This version corresponds
@@ -76,29 +80,24 @@ func (imports imports) addType(mod *modContext, t *schema.ObjectType, input bool
 
 func (imports imports) addTypeIf(mod *modContext, t *schema.ObjectType, input bool, predicate func(imp string) bool) {
 	if imp := mod.importObjectType(t, input); imp != "" && (predicate == nil || predicate(imp)) {
-		codegen.StringSet(imports).Add(imp)
+		imports.Add(imp)
 	}
 }
 
 func (imports imports) addEnum(mod *modContext, enum *schema.EnumType) {
 	if imp := mod.importEnumType(enum); imp != "" {
-		codegen.StringSet(imports).Add(imp)
+		imports.Add(imp)
 	}
 }
 
 func (imports imports) addResource(mod *modContext, r *schema.ResourceType) {
 	if imp := mod.importResourceType(r); imp != "" {
-		codegen.StringSet(imports).Add(imp)
+		imports.Add(imp)
 	}
 }
 
 func (imports imports) strings() []string {
-	result := slice.Prealloc[string](len(imports))
-	for imp := range imports {
-		result = append(result, imp)
-	}
-	sort.Strings(result)
-	return result
+	return mapset.Sorted(imports.Set)
 }
 
 type modLocator struct {
@@ -366,7 +365,7 @@ func tokenToName(tok string) string {
 	components := strings.Split(tok, ":")
 	contract.Assertf(len(components) == 3, "malformed token %v", tok)
 
-	return cgstrings.UppercaseFirst(components[2])
+	return cgstrings.UppercaseFirst(cgstrings.Unhyphenate(components[2]))
 }
 
 // tokenToModule accepts a *Pulumi token* and returns name of the *Python module* that it
@@ -473,7 +472,7 @@ func (mod *modContext) generateCommonImports(w io.Writer, imports imports, typin
 	fmt.Fprintf(w, "\n")
 }
 
-func (mod *modContext) genHeader(w io.Writer, needsSDK bool, imports imports) {
+func (mod *modContext) genHeader(w io.Writer, needsSDK bool, imports imports, extraTypings []string) {
 	genStandardHeader(w, mod.tool)
 
 	// Always import builtins as we use fully qualified type names `builtins.int` rather than just `int`.
@@ -481,9 +480,22 @@ func (mod *modContext) genHeader(w io.Writer, needsSDK bool, imports imports) {
 
 	// If needed, emit the standard Pulumi SDK import statement.
 	if needsSDK {
-		typings := typingImports()
+		typings := append(typingImports(), extraTypings...)
 		mod.generateCommonImports(w, imports, typings)
 	}
+}
+
+// literalTyping returns the extra typing import needed when any of props is a constant, since
+// propertyTypeString renders constant properties as Literal[value].
+func literalTyping(props ...[]*schema.Property) []string {
+	for _, ps := range props {
+		for _, p := range ps {
+			if p.ConstValue != nil && codegen.UnwrapType(p.Type) != schema.NumberType {
+				return []string{"Literal"}
+			}
+		}
+	}
+	return nil
 }
 
 func (mod *modContext) genFunctionHeader(w io.Writer, function *schema.Function, imports imports) {
@@ -491,6 +503,9 @@ func (mod *modContext) genFunctionHeader(w io.Writer, function *schema.Function,
 	typings := typingImports()
 	if function.Outputs == nil || len(function.Outputs.Properties) == 0 {
 		typings = append(typings, "Awaitable")
+	}
+	if obj, ok := function.ReturnType.(*schema.ObjectType); ok {
+		typings = append(typings, literalTyping(obj.Properties)...)
 	}
 
 	// Always import builtins as we use fully qualified type names `builtins.int` rather than just `int`.
@@ -824,7 +839,7 @@ func (mod *modContext) fullyQualifiedImportName() string {
 // genInit emits an __init__.py module, optionally re-exporting other members or submodules.
 func (mod *modContext) genInit(exports []string) string {
 	w := &bytes.Buffer{}
-	mod.genHeader(w, false /*needsSDK*/, nil)
+	mod.genHeader(w, false /*needsSDK*/, imports{}, nil)
 	if mod.isConfig {
 		fmt.Fprintf(w, "import sys\n")
 		fmt.Fprintf(w, "from .vars import _ExportableConfig\n")
@@ -1039,10 +1054,10 @@ func (mod *modContext) importResourceType(r *schema.ResourceType) string {
 func (mod *modContext) genConfig(variables []*schema.Property) (string, error) {
 	w := &bytes.Buffer{}
 
-	imports := imports{}
+	imports := newImports()
 	mod.collectImports(variables, imports, false /*input*/)
 
-	mod.genHeader(w, true /*needsSDK*/, imports)
+	mod.genHeader(w, true /*needsSDK*/, imports, nil)
 	fmt.Fprintf(w, "import types\n")
 	fmt.Fprintf(w, "\n")
 
@@ -1131,10 +1146,10 @@ func genConfigVarType(configVar *schema.Property) string {
 func (mod *modContext) genConfigStubs(variables []*schema.Property) (string, error) {
 	w := &bytes.Buffer{}
 
-	imports := imports{}
+	imports := newImports()
 	mod.collectImports(variables, imports, false /*input*/)
 
-	mod.genHeader(w, true /*needsSDK*/, imports)
+	mod.genHeader(w, true /*needsSDK*/, imports, nil)
 
 	// Emit an entry for all config variables.
 	for _, p := range variables {
@@ -1170,11 +1185,15 @@ func (mod *modContext) genTypes(dir string, fs codegen.Fs) error {
 			return nil
 		}
 
-		imports := imports{}
+		imports := newImports()
+		var emitted [][]*schema.Property
 		for _, t := range mod.types {
 			if t.IsOverlay {
 				// This type is generated by the provider, so no further action is required.
 				continue
+			}
+			if (input && mod.details(t).inputType) || (!input && mod.details(t).outputType) {
+				emitted = append(emitted, t.Properties)
 			}
 
 			if input && mod.details(t).inputType {
@@ -1200,7 +1219,7 @@ func (mod *modContext) genTypes(dir string, fs codegen.Fs) error {
 			imports.addEnum(mod, e)
 		}
 
-		mod.genHeader(w, true /*needsSDK*/, imports)
+		mod.genHeader(w, true /*needsSDK*/, imports, literalTyping(emitted...))
 
 		// Export only the symbols we want exported.
 		fmt.Fprintf(w, "__all__ = [\n")
@@ -1301,7 +1320,7 @@ func (mod *modContext) genAwaitableType(w io.Writer, obj *schema.ObjectType, fun
 	// Note that deprecation messages will be emitted on access to the property, rather than initialization.
 	// This avoids spamming end users with irrelevant deprecation messages.
 	if err := mod.genProperties(w, obj.Properties, false /*setters*/, "", func(prop *schema.Property) string {
-		return mod.typeString(prop.Type, typeStringOpts{})
+		return mod.propertyTypeString(prop, prop.Type, typeStringOpts{})
 	}); err != nil {
 		return "", err
 	}
@@ -1345,10 +1364,12 @@ func resourceName(res *schema.Resource) string {
 func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 	w := &bytes.Buffer{}
 
-	imports := imports{}
+	imports := newImports()
+	emitted := [][]*schema.Property{res.Properties, res.InputProperties}
 	mod.collectImportsForResource(res.Properties, imports, false /*input*/, res)
 	mod.collectImportsForResource(res.InputProperties, imports, true /*input*/, res)
 	if res.StateInputs != nil {
+		emitted = append(emitted, res.StateInputs.Properties)
 		mod.collectImportsForResource(res.StateInputs.Properties, imports, true /*input*/, res)
 	}
 	for _, method := range res.Methods {
@@ -1357,6 +1378,7 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 		}
 		returnType := returnTypeObject(method.Function)
 		if returnType != nil {
+			emitted = append(emitted, returnType.Properties)
 			mod.collectImportsForResource(returnType.Properties, imports, false /*input*/, res)
 		} else if method.Function.ReturnTypePlain {
 			mod.collectImportsForResource([]*schema.Property{{
@@ -1367,7 +1389,7 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 		}
 	}
 
-	mod.genHeader(w, true /*needsSDK*/, imports)
+	mod.genHeader(w, true /*needsSDK*/, imports, literalTyping(emitted...))
 
 	name := resourceName(res)
 
@@ -1459,7 +1481,7 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 
 		// If there's an argument type, emit it.
 		for _, prop := range res.InputProperties {
-			ty := mod.typeString(codegen.OptionalType(prop), typeStringOpts{input: true, acceptMapping: true})
+			ty := mod.propertyTypeString(prop, codegen.OptionalType(prop), typeStringOpts{input: true, acceptMapping: true})
 			fmt.Fprintf(w, ",\n                 %s: %s = None", InitParamName(prop.Name), ty)
 		}
 
@@ -1524,7 +1546,7 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 	fmt.Fprintf(w, "            __props__ = %[1]s.__new__(%[1]s)\n\n", resourceArgsName)
 	fmt.Fprintf(w, "")
 
-	ins := codegen.NewStringSet()
+	ins := mapset.NewSet[string]()
 	for _, prop := range res.InputProperties {
 		pname := InitParamName(prop.Name)
 		var arg any
@@ -1582,7 +1604,7 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 	for _, prop := range res.Properties {
 		// Default any pure output properties to None.  This ensures they are available as properties, even if
 		// they don't ever get assigned a real value, and get documentation if available.
-		if !ins.Has(prop.Name) {
+		if !ins.Contains(prop.Name) {
 			fmt.Fprintf(w, "            __props__.__dict__[%q] = None\n", PyName(prop.Name))
 		}
 
@@ -1654,7 +1676,7 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 		if hasStateInputs {
 			for _, prop := range res.StateInputs.Properties {
 				pname := InitParamName(prop.Name)
-				ty := mod.typeString(codegen.OptionalType(prop), typeStringOpts{input: true, acceptMapping: true})
+				ty := mod.propertyTypeString(prop, codegen.OptionalType(prop), typeStringOpts{input: true, acceptMapping: true})
 				fmt.Fprintf(w, ",\n            %s: %s = None", pname, ty)
 			}
 		}
@@ -1673,7 +1695,7 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 			fmt.Fprintf(w, "        __props__ = %[1]s.__new__(%[1]s)\n\n", resourceArgsName)
 		}
 
-		stateInputs := codegen.NewStringSet()
+		stateInputs := mapset.NewSet[string]()
 		if res.StateInputs != nil {
 			for _, prop := range res.StateInputs.Properties {
 				stateInputs.Add(prop.Name)
@@ -1681,7 +1703,7 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 			}
 		}
 		for _, prop := range res.Properties {
-			if !stateInputs.Has(prop.Name) {
+			if !stateInputs.Contains(prop.Name) {
 				fmt.Fprintf(w, "        __props__.__dict__[%q] = None\n", PyName(prop.Name))
 			}
 		}
@@ -1691,7 +1713,7 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 
 	// Write out Python property getters for each of the resource's properties.
 	if err := mod.genProperties(w, res.Properties, false /*setters*/, "", func(prop *schema.Property) string {
-		ty := mod.typeString(prop.Type, typeStringOpts{})
+		ty := mod.propertyTypeString(prop, prop.Type, typeStringOpts{})
 		return fmt.Sprintf("pulumi.Output[%s]", ty)
 	}); err != nil {
 		return "", err
@@ -1799,7 +1821,7 @@ func (mod *modContext) genMethodReturnType(w io.Writer, method *schema.Method) (
 	// Note that deprecation messages will be emitted on access to the property, rather than initialization.
 	// This avoids spamming end users with irrelevant deprecation messages.
 	if err := mod.genProperties(w, properties, false /*setters*/, "    ", func(prop *schema.Property) string {
-		return mod.typeString(prop.Type, typeStringOpts{})
+		return mod.propertyTypeString(prop, prop.Type, typeStringOpts{})
 	}); err != nil {
 		return "", err
 	}
@@ -1968,7 +1990,7 @@ func (mod *modContext) genMethods(w io.Writer, res *schema.Resource) error {
 func (mod *modContext) genFunction(fun *schema.Function) (string, error) {
 	w := &bytes.Buffer{}
 
-	imports := imports{}
+	imports := newImports()
 	if fun.Inputs != nil {
 		mod.collectImports(fun.Inputs.Properties, imports, true)
 	}
@@ -2051,6 +2073,18 @@ func (mod *modContext) genFunction(fun *schema.Function) (string, error) {
 			return err
 		}
 		mod.genFunDeprecationMessage(w, fun)
+		for _, arg := range args {
+			if arg.DefaultValue == nil {
+				continue
+			}
+			pname := PyName(arg.Name)
+			dv, err := getDefaultValue(arg.DefaultValue, codegen.UnwrapType(arg.Type))
+			if err != nil {
+				return err
+			}
+			fmt.Fprintf(w, "    if %s is None:\n", pname)
+			fmt.Fprintf(w, "        %s = %s\n", pname, dv)
+		}
 		// Copy the function arguments into a dictionary.
 		fmt.Fprintf(w, "    __args__ = dict()\n")
 		for _, arg := range args {
@@ -2242,7 +2276,7 @@ func returnTypeObject(fun *schema.Function) *schema.ObjectType {
 
 func (mod *modContext) genEnums(w io.Writer, enums []*schema.EnumType) error {
 	// Header
-	mod.genHeader(w, false /*needsSDK*/, nil)
+	mod.genHeader(w, false /*needsSDK*/, imports{}, nil)
 
 	fmt.Fprintf(w, "import pulumi\n")
 	// Enum import
@@ -2397,7 +2431,7 @@ func genPackageMetadata(
 	tool string, pkg *schema.Package, pyPkgName string, requires map[string]string,
 ) (string, error) {
 	w := &bytes.Buffer{}
-	(&modContext{tool: tool}).genHeader(w, false /*needsSDK*/, nil)
+	(&modContext{tool: tool}).genHeader(w, false /*needsSDK*/, imports{}, nil)
 
 	// Now create a standard Python package from the metadata.
 	fmt.Fprintf(w, "import errno\n")
@@ -2688,7 +2722,7 @@ func (mod *modContext) genPropDocstring(w io.Writer, name string, docRef schema.
 		return nil
 	}
 
-	ty := mod.typeString(codegen.RequiredType(prop), typeStringOpts{input: true, acceptMapping: acceptMapping})
+	ty := mod.propertyTypeString(prop, codegen.RequiredType(prop), typeStringOpts{input: true, acceptMapping: acceptMapping})
 	comment, err := mod.genComment(prop.Comment, docRef, false /*filterExamples*/)
 	if err != nil {
 		return err
@@ -2721,6 +2755,14 @@ type typeStringOpts struct {
 	forDict bool
 	// Whether these types are going to be used in the docs
 	forDocs bool
+	// The property's constant value, if any; primitive leaves render as Literal[value].
+	constValue any
+}
+
+// propertyTypeString is typeString for a property's type, narrowing constant properties to a Literal.
+func (mod *modContext) propertyTypeString(prop *schema.Property, t schema.Type, opts typeStringOpts) string {
+	opts.constValue = prop.ConstValue
+	return mod.typeString(t, opts)
 }
 
 func (mod *modContext) typeString(t schema.Type, opts typeStringOpts) string {
@@ -2819,11 +2861,11 @@ func (mod *modContext) typeString(t schema.Type, opts typeStringOpts) string {
 			return "Any"
 		}
 
-		elementTypeSet := codegen.NewStringSet()
+		elementTypeSet := mapset.NewSet[string]()
 		elements := slice.Prealloc[string](len(t.ElementTypes))
 		for _, e := range t.ElementTypes {
 			et := mod.typeString(e, opts)
-			if !elementTypeSet.Has(et) {
+			if !elementTypeSet.Contains(et) {
 				elementTypeSet.Add(et)
 				elements = append(elements, et)
 			}
@@ -2839,6 +2881,13 @@ func (mod *modContext) typeString(t schema.Type, opts typeStringOpts) string {
 				return name
 			}
 			return "_builtins." + name
+		}
+
+		// typing.Literal does not admit floats, so number constants keep their primitive type.
+		if opts.constValue != nil && (t == schema.BoolType || t == schema.IntType || t == schema.StringType) {
+			v, err := getPrimitiveValue(opts.constValue)
+			contract.AssertNoErrorf(err, "constant values are validated by schema binding")
+			return fmt.Sprintf("Literal[%s]", v)
 		}
 
 		switch t {
@@ -3037,9 +3086,9 @@ func (mod *modContext) genType(w io.Writer, name, comment string, properties []*
 	}
 	for _, prop := range props {
 		pname := PyName(prop.Name)
-		ty := mod.typeString(prop.Type, typeStringOpts{input: input})
+		ty := mod.propertyTypeString(prop, prop.Type, typeStringOpts{input: input})
 		if prop.DefaultValue != nil {
-			ty = mod.typeString(codegen.OptionalType(prop), typeStringOpts{input: input})
+			ty = mod.propertyTypeString(prop, codegen.OptionalType(prop), typeStringOpts{input: input})
 		}
 
 		var defaultValue string
@@ -3105,7 +3154,7 @@ func (mod *modContext) genType(w io.Writer, name, comment string, properties []*
 
 	// Generate properties. Input types have getters and setters, output types only have getters.
 	if err := mod.genProperties(w, props, input /*setters*/, "", func(prop *schema.Property) string {
-		return mod.typeString(prop.Type, typeStringOpts{input: input})
+		return mod.propertyTypeString(prop, prop.Type, typeStringOpts{input: input})
 	}); err != nil {
 		return err
 	}
@@ -3145,7 +3194,7 @@ func (mod *modContext) genDictType(w io.Writer, name, comment string, properties
 
 	for _, prop := range props {
 		pname := PyName(prop.Name)
-		ty := mod.typeString(prop.Type, typeStringOpts{input: true, forDict: true})
+		ty := mod.propertyTypeString(prop, prop.Type, typeStringOpts{input: true, forDict: true})
 		fmt.Fprintf(w, "%s%s: %s\n", indent, pname, ty)
 		if prop.Comment != "" {
 			propComment, err := mod.genComment(prop.Comment, docRef, false /*filterExamples*/)

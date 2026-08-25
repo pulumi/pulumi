@@ -43,6 +43,7 @@ from pulumi.runtime import (
     set_mocks,
     settings,
 )
+from pulumi.runtime.proto import resource_pb2
 
 import pulumi
 from pulumi import UNKNOWN, Input, Output, input_type
@@ -198,13 +199,15 @@ class NextSerializationTests(unittest.IsolatedAsyncioTestCase):
         urn = await res.urn.future()
         id = await res.id.future()
 
-        settings.SETTINGS.feature_support["resourceReferences"] = False
+        settings.SETTINGS.monitor_features = set()
         deps = []
         prop = await rpc.serialize_property(res, deps, None)
         self.assertListEqual([res], deps)
         self.assertEqual(id, prop)
 
-        settings.SETTINGS.feature_support["resourceReferences"] = True
+        settings.SETTINGS.monitor_features = {
+            resource_pb2.RESOURCE_MONITOR_FEATURE_RESOURCE_REFERENCES
+        }
         deps = []
         prop = await rpc.serialize_property(res, deps, None)
         self.assertListEqual([res, res], deps)
@@ -228,13 +231,15 @@ class NextSerializationTests(unittest.IsolatedAsyncioTestCase):
         urn = await res.urn.future()
         id = await res.id.future()
 
-        settings.SETTINGS.feature_support["resourceReferences"] = False
+        settings.SETTINGS.monitor_features = set()
         deps = []
         prop = await rpc.serialize_property(res, deps, None)
         self.assertListEqual([res], deps)
         self.assertEqual(id, prop)
 
-        settings.SETTINGS.feature_support["resourceReferences"] = True
+        settings.SETTINGS.monitor_features = {
+            resource_pb2.RESOURCE_MONITOR_FEATURE_RESOURCE_REFERENCES
+        }
         deps = []
         prop = await rpc.serialize_property(res, deps, None)
         self.assertListEqual([res, res], deps)
@@ -257,13 +262,15 @@ class NextSerializationTests(unittest.IsolatedAsyncioTestCase):
         res = MyComponentResource("test")
         urn = await res.urn.future()
 
-        settings.SETTINGS.feature_support["resourceReferences"] = False
+        settings.SETTINGS.monitor_features = set()
         deps = []
         prop = await rpc.serialize_property(res, deps, None)
         self.assertListEqual([res], deps)
         self.assertEqual(urn, prop)
 
-        settings.SETTINGS.feature_support["resourceReferences"] = True
+        settings.SETTINGS.monitor_features = {
+            resource_pb2.RESOURCE_MONITOR_FEATURE_RESOURCE_REFERENCES
+        }
         deps = []
         prop = await rpc.serialize_property(res, deps, None)
         self.assertListEqual([res], deps)
@@ -276,6 +283,33 @@ class NextSerializationTests(unittest.IsolatedAsyncioTestCase):
         rpc._RESOURCE_MODULES.clear()
         res = rpc.deserialize_properties(prop)
         self.assertEqual(urn, res)
+
+    @pulumi_test
+    async def test_mock_resource_reference(self):
+        class ResourceReferenceMocks(MyMocks):
+            def new_resource(self, args: MockResourceArgs):
+                if args.typ == "test:index:component-with-resource":
+                    return [
+                        None,
+                        {"resource": MyCustomResource(f"{args.name}-resource")},
+                    ]
+                return super().new_resource(args)
+
+        class ComponentWithResource(ComponentResource):
+            def __init__(self, name: str):
+                super().__init__(
+                    "test:index:component-with-resource",
+                    name,
+                    {"resource": None},
+                )
+
+        rpc.register_resource_module("test", "index", MyResourceModule())
+        set_mocks(ResourceReferenceMocks())
+
+        component = ComponentWithResource("test")
+
+        resource = await component.resource.future()
+        self.assertIsInstance(resource, MyCustomResource)
 
     @pulumi_test
     async def test_string_asset(self):
@@ -1692,7 +1726,9 @@ class OutputValueSerializationTests(unittest.IsolatedAsyncioTestCase):
 
     @pulumi_test
     async def test_serialize(self):
-        settings.SETTINGS.feature_support["outputValues"] = True
+        settings.SETTINGS.monitor_features = {
+            resource_pb2.RESOURCE_MONITOR_FEATURE_OUTPUT_VALUES
+        }
 
         def gen_test_parameters():
             for value in [None, 0, 1, "", "hi", {}, []]:
@@ -1746,7 +1782,9 @@ class OutputValueSerializationTests(unittest.IsolatedAsyncioTestCase):
 
     @pulumi_test
     async def test_serialize_nested_dict(self):
-        settings.SETTINGS.feature_support["outputValues"] = True
+        settings.SETTINGS.monitor_features = {
+            resource_pb2.RESOURCE_MONITOR_FEATURE_OUTPUT_VALUES
+        }
 
         inputs = {
             "value": {
@@ -1791,7 +1829,11 @@ async def test_serialize_resource_references_dependencies():
         yield (False, False, {custom1, custom2})
 
     for supports, exclude, expected in gen_test_parameters():
-        settings.SETTINGS.feature_support["resourceReferences"] = supports
+        settings.SETTINGS.monitor_features = (
+            {resource_pb2.RESOURCE_MONITOR_FEATURE_RESOURCE_REFERENCES}
+            if supports
+            else set()
+        )
         property_deps = {}
         await rpc.serialize_properties(
             inputs, property_deps, exclude_resource_refs_from_deps=exclude

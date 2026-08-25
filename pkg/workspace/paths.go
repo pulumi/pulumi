@@ -15,9 +15,27 @@
 package workspace
 
 import (
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	sdkWorkspace "github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
+
+// DetectProject loads the closest project from the current working directory, or an error if not found.
+func DetectProject() (*sdkWorkspace.Project, error) {
+	path, err := sdkWorkspace.DetectProjectPath()
+	if err != nil {
+		return nil, err
+	}
+	return sdkWorkspace.LoadProject(path)
+}
+
+func DetectProjectStack(diags diag.Sink, stackName tokens.QName) (*sdkWorkspace.ProjectStack, error) {
+	project, path, err := sdkWorkspace.DetectProjectStackPath(stackName)
+	if err != nil {
+		return nil, err
+	}
+	return sdkWorkspace.LoadProjectStack(diags, project, path)
+}
 
 const (
 	// BackupDir is the name of the folder where backup stack information is stored.

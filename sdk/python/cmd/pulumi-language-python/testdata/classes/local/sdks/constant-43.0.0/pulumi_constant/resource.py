@@ -6,7 +6,7 @@ import builtins as _builtins
 import warnings
 import pulumi
 import pulumi.runtime
-from typing import Any, Mapping, Optional, Sequence, Union, overload
+from typing import Any, Mapping, Optional, Sequence, Union, overload, Literal
 from . import _utilities
 
 __all__ = ['ResourceArgs', 'Resource']
@@ -14,7 +14,7 @@ __all__ = ['ResourceArgs', 'Resource']
 @pulumi.input_type
 class ResourceArgs:
     def __init__(__self__, *,
-                 kind: pulumi.Input[_builtins.str]):
+                 kind: pulumi.Input[Literal['Constant']]):
         """
         The set of arguments for constructing a Resource resource.
         """
@@ -22,11 +22,11 @@ class ResourceArgs:
 
     @_builtins.property
     @pulumi.getter
-    def kind(self) -> pulumi.Input[_builtins.str]:
+    def kind(self) -> pulumi.Input[Literal['Constant']]:
         return pulumi.get(self, "kind")
 
     @kind.setter
-    def kind(self, value: pulumi.Input[_builtins.str]):
+    def kind(self, value: pulumi.Input[Literal['Constant']]):
         pulumi.set(self, "kind", value)
 
 
@@ -36,7 +36,7 @@ class Resource(pulumi.CustomResource):
     def __init__(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 kind: pulumi.Input[Optional[_builtins.str]] = None,
+                 kind: pulumi.Input[Optional[Literal['Constant']]] = None,
                  __props__=None):
         """
         Create a Resource resource with the given unique name, props, and options.
@@ -68,7 +68,7 @@ class Resource(pulumi.CustomResource):
     def _internal_init(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 kind: pulumi.Input[Optional[_builtins.str]] = None,
+                 kind: pulumi.Input[Optional[Literal['Constant']]] = None,
                  __props__=None):
         opts = pulumi.ResourceOptions.merge(_utilities.get_resource_opts_defaults(), opts)
         if not isinstance(opts, pulumi.ResourceOptions):
@@ -108,6 +108,6 @@ class Resource(pulumi.CustomResource):
 
     @_builtins.property
     @pulumi.getter
-    def kind(self) -> pulumi.Output[Optional[_builtins.str]]:
+    def kind(self) -> pulumi.Output[Optional[Literal['Constant']]]:
         return pulumi.get(self, "kind")
 

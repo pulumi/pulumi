@@ -34,6 +34,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -884,7 +885,9 @@ func TestCurrentStackIdentity(t *testing.T) {
 				}
 				return &pkgWorkspace.MockW{
 					SettingsF: func() *pkgWorkspace.Settings {
-						return &pkgWorkspace.Settings{Stack: stack}
+						return &pkgWorkspace.Settings{
+							Stack: stack, //nolint:staticcheck
+						}
 					},
 				}, nil
 			},
@@ -935,7 +938,9 @@ func TestDoCmdFunctionInvokeWithStackContext(t *testing.T) {
 		NewF: func(_ string) (pkgWorkspace.W, error) {
 			return &pkgWorkspace.MockW{
 				SettingsF: func() *pkgWorkspace.Settings {
-					return &pkgWorkspace.Settings{Stack: "acme/my-project/dev"}
+					return &pkgWorkspace.Settings{
+						Stack: "acme/my-project/dev", //nolint:staticcheck
+					}
 				},
 			}, nil
 		},
@@ -964,13 +969,13 @@ func TestDoCmdFunctionInvokeWithStackContext(t *testing.T) {
 			spec: spec,
 			MockProvider: plugin.MockProvider{
 				InvokeF: func(ctx context.Context, req plugin.InvokeRequest) (plugin.InvokeResponse, error) {
-					assert.Equal(t, "acme", req.Args["organization"].StringValue())
-					assert.Equal(t, "my-project", req.Args["project"].StringValue())
-					assert.Equal(t, "dev", req.Args["stack"].StringValue())
+					assert.Equal(t, "acme", req.Args.Get("organization").AsString())
+					assert.Equal(t, "my-project", req.Args.Get("project").AsString())
+					assert.Equal(t, "dev", req.Args.Get("stack").AsString())
 					return plugin.InvokeResponse{
-						Properties: resource.PropertyMap{
-							"ok": resource.NewProperty(true),
-						},
+						Properties: property.NewMap(map[string]property.Value{
+							"ok": property.New(true),
+						}),
 					}, nil
 				},
 			},
@@ -1042,9 +1047,9 @@ func TestDoCmdFunctionInvokeWithoutStackContext(t *testing.T) {
 				spec: makeSpec(),
 				MockProvider: plugin.MockProvider{
 					InvokeF: func(ctx context.Context, req plugin.InvokeRequest) (plugin.InvokeResponse, error) {
-						assert.Equal(t, "my-project", req.Args["project"].StringValue())
+						assert.Equal(t, "my-project", req.Args.Get("project").AsString())
 						return plugin.InvokeResponse{
-							Properties: resource.PropertyMap{"ok": resource.NewProperty(true)},
+							Properties: property.NewMap(map[string]property.Value{"ok": property.New(true)}),
 						}, nil
 					},
 				},

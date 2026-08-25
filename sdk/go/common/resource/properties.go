@@ -111,8 +111,6 @@ type Secret struct {
 //     be null.
 //   - The ID may be unknown (in which case it will be the unknown property value)
 //   - Otherwise, the ID must be a string.
-//
-//nolint:revive
 type ResourceReference struct {
 	URN            URN
 	Name           string

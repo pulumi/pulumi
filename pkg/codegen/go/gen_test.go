@@ -25,6 +25,8 @@ import (
 	"strings"
 	"testing"
 
+	mapset "github.com/deckarep/golang-set/v2"
+
 	"gopkg.in/yaml.v3"
 
 	"github.com/stretchr/testify/assert"
@@ -41,7 +43,7 @@ import (
 func TestInputUsage(t *testing.T) {
 	t.Parallel()
 
-	pkg := &pkgContext{}
+	pkg := &pkgContext{schemaNames: mapset.NewSet[string]()}
 	arrayUsage := pkg.getInputUsage("FooArray")
 	assert.Equal(
 		t,
@@ -403,7 +405,6 @@ func TestTokenToType(t *testing.T) {
 			expected: "dns.DnsKeySpec",
 		},
 	}
-	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
 	for _, tt := range tests {
 		t.Run(tt.token+"=>"+tt.expected, func(t *testing.T) {
 			t.Parallel()
@@ -466,7 +467,6 @@ func TestTokenToResource(t *testing.T) {
 			expected: "dns.Policy",
 		},
 	}
-	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
 	for _, tt := range tests {
 		t.Run(tt.token+"=>"+tt.expected, func(t *testing.T) {
 			t.Parallel()

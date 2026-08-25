@@ -27,6 +27,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/stretchr/testify/require"
 
+	"github.com/pulumi/pulumi/pkg/v3/codegen/nodejs"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/utils"
@@ -45,7 +46,6 @@ func TestGenerateLanguageDefinition(t *testing.T) {
 	cases, err := readTestCases("testdata/cases.json")
 	require.NoError(t, err)
 
-	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
 	for _, s := range cases.Resources {
 		t.Run(string(s.URN), func(t *testing.T) {
 			t.Parallel()
@@ -431,4 +431,104 @@ parent = parentComponent
 }
 `
 	assert.Equal(t, expectedCode, generatedProgram.String())
+}
+
+func TestGenerateLanguageDefinitionsGeneratesLocalComponents(t *testing.T) {
+	t.Parallel()
+
+	loader := schema.NewPluginLoader(utils.NewContext(testdataPath))
+
+	var generatedProgram strings.Builder
+	var generatedTypeScript string
+	generator := func(_ io.Writer, p *pcl.Program) error {
+		for _, content := range p.Source() {
+			generatedProgram.WriteString(content)
+		}
+		files, _, err := nodejs.GenerateProgram(p)
+		require.NoError(t, err)
+		generatedTypeScript = string(files["index.ts"])
+		return nil
+	}
+
+	componentURN := resource.NewURN("dev", "project", "", "company:product:CRClass", "example")
+	childURN := resource.NewURN(
+		"dev",
+		"project",
+		"company:product:CRClass",
+		"random:index/randomPet:RandomPet",
+		"randomPet")
+
+	nameTable := NameTable{
+		componentURN: "parentComponent",
+	}
+
+	snapshot := []*pkgresource.State{
+		{
+			ID:     "123",
+			Custom: true,
+			Type:   "pulumi:providers:random",
+			URN:    "urn:pulumi:stack::project::pulumi:providers:random::default_123",
+		},
+	}
+
+	resources := []apitype.ResourceV3{
+		{
+			URN:     componentURN,
+			Type:    "company:product:CRClass",
+			Protect: true,
+		},
+		{
+			URN:      childURN,
+			Custom:   true,
+			Type:     "random:index/randomPet:RandomPet",
+			Parent:   componentURN,
+			Provider: fmt.Sprintf("%s::%s", snapshot[0].URN, snapshot[0].ID),
+		},
+	}
+
+	states := slice.Prealloc[*pkgresource.State](len(resources))
+	for _, r := range resources {
+		state, err := stack.DeserializeResource(r, config.NopDecrypter)
+		require.NoError(t, err)
+		states = append(states, state)
+	}
+
+	err := GenerateLanguageDefinitions(io.Discard, loader, generator, states, snapshot, nameTable)
+	require.NoError(t, err)
+	expectedCode := `component parentComponent {
+    __logicalName = "example"
+    token = "company:product:CRClass"
+options {
+protect =true
+
+}
+
+}
+
+package random {
+    baseProviderName = "random"
+
+}
+
+resource randomPet "random:index/randomPet:RandomPet" {
+options {
+parent = parentComponent
+
+}
+
+}
+`
+	assert.Equal(t, expectedCode, generatedProgram.String())
+
+	expectedTypeScript := `import * as pulumi from "@pulumi/pulumi";
+import * as random from "@pulumi/random";
+
+const parentComponent = new pulumi.ComponentResource("company:product:CRClass", "example", {}, {
+    protect: true,
+});
+const randomPet = new random.RandomPet("randomPet", {}, {
+    parent: parentComponent,
+});
+`
+	assert.Equal(t, expectedTypeScript, generatedTypeScript)
 }

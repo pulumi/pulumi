@@ -95,7 +95,6 @@ func NewWriterFromKey(w io.Writer, key *PreparedKey) (*Writer, error) {
 	header := make([]byte, 0, len(Magic)+1+2+len(key.headerData))
 	header = append(header, Magic...)
 	header = append(header, Version)
-	//nolint:gosec // bounded by 65535 check in PrepareKey / NewPreparedKey
 	header = binary.BigEndian.AppendUint16(header, uint16(len(key.headerData)))
 	header = append(header, key.headerData...)
 	if _, err := w.Write(header); err != nil {
@@ -198,7 +197,7 @@ func (elw *Writer) writeChunk(plaintext []byte) error {
 	ciphertext := elw.aesgcm.Seal(nil, nonce[:], compressed.Bytes(), nil)
 
 	// Chunk frame: 4-byte payload length, then nonce, then ciphertext+tag.
-	payloadLen := uint32(nonceSize + len(ciphertext)) //nolint:gosec // bounded by chunk size
+	payloadLen := uint32(nonceSize + len(ciphertext))
 	var lenBuf [4]byte
 	binary.BigEndian.PutUint32(lenBuf[:], payloadLen)
 

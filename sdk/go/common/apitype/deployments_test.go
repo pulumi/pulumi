@@ -310,7 +310,7 @@ func TestSecretValueRoundTripJSON(t *testing.T) {
 // emits a bare string when only Reference is set and an object otherwise. The same
 // staged convergence is planned (see pulumi/pulumi-service TYPE_MIGRATION_PLAN.md
 // Phase 1a). Unlike SecretValue, DockerImage's UnmarshalJSON already accepts both
-// forms, so no compat-read code change is needed in the CLI — but we lock in the
+// forms, so no compat-read code change is needed in the CLI, but we lock in the
 // current MarshalJSON output and the dual-form UnmarshalJSON behavior so a future
 // flip is intentional and reviewable.
 
@@ -341,6 +341,11 @@ func TestDockerImageMarshalJSONUnchanged(t *testing.T) {
 				},
 			},
 			want: `{"reference":"alpine:latest","credentials":{"username":"user","password":{"secret":"pw"}}}`,
+		},
+		{
+			name: "isDefault emits object even without credentials",
+			in:   DockerImage{Reference: "alpine:latest", IsDefault: true},
+			want: `{"reference":"alpine:latest","isDefault":true}`,
 		},
 	}
 
@@ -387,6 +392,11 @@ func TestDockerImageUnmarshalJSON(t *testing.T) {
 				},
 			},
 		},
+		{
+			name:  "object with isDefault",
+			input: `{"reference":"alpine:latest","isDefault":true}`,
+			want:  DockerImage{Reference: "alpine:latest", IsDefault: true},
+		},
 	}
 
 	for _, tc := range cases {
@@ -395,6 +405,524 @@ func TestDockerImageUnmarshalJSON(t *testing.T) {
 			var got DockerImage
 			require.NoError(t, json.Unmarshal([]byte(tc.input), &got))
 			assert.Equal(t, tc.want, got)
+
+			marshaled, err := json.Marshal(&tc.want)
+			require.NoError(t, err)
+			var back DockerImage
+			require.NoError(t, json.Unmarshal(marshaled, &back))
+			assert.Equal(t, tc.want, back)
+		})
+	}
+}
+
+// TestDeploymentSettingsVCSRoundTrip covers the provider-discriminated VCS union. The service
+// rejects a vcs object whose provider it does not recognize, so the discriminator must be emitted
+// even when every other field is zero.
+func TestDeploymentSettingsVCSRoundTrip(t *testing.T) {
+	t.Parallel()
+
+	deployPR := int64(42)
+
+	cases := []struct {
+		name string
+		in   DeploymentSettingsVCS
+		want string
+	}{
+		{
+			name: "github provider only",
+			in:   DeploymentSettingsVCS{Provider: VCSProviderGitHub},
+			want: `{"provider":"github"}`,
+		},
+		{
+			name: "gitlab provider only",
+			in:   DeploymentSettingsVCS{Provider: VCSProviderGitLab},
+			want: `{"provider":"gitlab"}`,
+		},
+		{
+			name: "azure devops provider only",
+			in:   DeploymentSettingsVCS{Provider: VCSProviderAzureDevOps},
+			want: `{"provider":"azure_devops"}`,
+		},
+		{
+			name: "bitbucket provider only",
+			in:   DeploymentSettingsVCS{Provider: VCSProviderBitbucket},
+			want: `{"provider":"bitbucket"}`,
+		},
+		{
+			name: "custom provider only",
+			in:   DeploymentSettingsVCS{Provider: VCSProviderCustom},
+			want: `{"provider":"custom"}`,
+		},
+		{
+			name: "github fully populated",
+			in: DeploymentSettingsVCS{
+				Provider:            VCSProviderGitHub,
+				Repository:          "acme/infra",
+				DeployCommits:       true,
+				DeployTags:          true,
+				Paths:               []string{"infra/**", "**/{apps,libs}/**"},
+				TagFilters:          []string{"v*"},
+				InstallationID:      "12345",
+				PullRequestTemplate: true,
+				PreviewPullRequests: true,
+				DeployPullRequest:   &deployPR,
+				ReviewStackLabels:   []string{"deploy"},
+			},
+			want: `{
+				"provider": "github",
+				"repository": "acme/infra",
+				"deployCommits": true,
+				"deployTags": true,
+				"paths": ["infra/**", "**/{apps,libs}/**"],
+				"tagFilters": ["v*"],
+				"installationId": "12345",
+				"pullRequestTemplate": true,
+				"previewPullRequests": true,
+				"deployPullRequest": 42,
+				"reviewStackLabels": ["deploy"]
+			}`,
+		},
+		{
+			name: "gitlab fully populated",
+			in: DeploymentSettingsVCS{
+				Provider:            VCSProviderGitLab,
+				Repository:          "acme/infra",
+				DeployCommits:       true,
+				DeployTags:          true,
+				Paths:               []string{"infra/**"},
+				TagFilters:          []string{"v*"},
+				InstallationID:      "67890",
+				PullRequestTemplate: true,
+				PreviewPullRequests: true,
+				DeployPullRequest:   &deployPR,
+			},
+			want: `{
+				"provider": "gitlab",
+				"repository": "acme/infra",
+				"deployCommits": true,
+				"deployTags": true,
+				"paths": ["infra/**"],
+				"tagFilters": ["v*"],
+				"installationId": "67890",
+				"pullRequestTemplate": true,
+				"previewPullRequests": true,
+				"deployPullRequest": 42
+			}`,
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			got, err := json.Marshal(tc.in)
+			require.NoError(t, err)
+			assert.JSONEq(t, tc.want, string(got))
+
+			var back DeploymentSettingsVCS
+			require.NoError(t, json.Unmarshal(got, &back))
+			assert.Equal(t, tc.in, back)
+		})
+	}
+}
+
+func TestDeploymentRoleRoundTrip(t *testing.T) {
+	t.Parallel()
+
+	identifier := "arn:aws:iam::123456789012:role/pulumi"
+
+	cases := []struct {
+		name string
+		in   DeploymentRole
+		want string
+	}{
+		{
+			name: "id only",
+			in:   DeploymentRole{ID: "role-1"},
+			want: `{"id":"role-1"}`,
+		},
+		{
+			name: "empty id is emitted",
+			in:   DeploymentRole{},
+			want: `{"id":""}`,
+		},
+		{
+			name: "fully populated",
+			in:   DeploymentRole{ID: "role-1", Name: "deployer", DefaultIdentifier: &identifier},
+			want: `{"id":"role-1","name":"deployer","defaultIdentifier":"arn:aws:iam::123456789012:role/pulumi"}`,
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			got, err := json.Marshal(tc.in)
+			require.NoError(t, err)
+			assert.JSONEq(t, tc.want, string(got))
+
+			var back DeploymentRole
+			require.NoError(t, json.Unmarshal(got, &back))
+			assert.Equal(t, tc.in, back)
+		})
+	}
+}
+
+func TestCacheOptionsRoundTrip(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name string
+		in   CacheOptions
+		want string
+	}{
+		{name: "disabled", in: CacheOptions{}, want: `{"enable":false}`},
+		{name: "enabled", in: CacheOptions{Enable: true}, want: `{"enable":true}`},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			got, err := json.Marshal(tc.in)
+			require.NoError(t, err)
+			assert.JSONEq(t, tc.want, string(got))
+
+			var back CacheOptions
+			require.NoError(t, json.Unmarshal(got, &back))
+			assert.Equal(t, tc.in, back)
+		})
+	}
+}
+
+func TestSourceContextHgRoundTrip(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name string
+		in   SourceContextHg
+		want string
+	}{
+		{
+			name: "repo and branch",
+			in:   SourceContextHg{RepoURL: "https://hg.example.com/infra", Branch: "default"},
+			want: `{"repoUrl":"https://hg.example.com/infra","branch":"default"}`,
+		},
+		{
+			name: "fully populated",
+			in: SourceContextHg{
+				RepoURL:  "https://hg.example.com/infra",
+				Branch:   "default",
+				RepoDir:  "infra",
+				Revision: "9f2c1a",
+				HgAuth: &GitAuthConfig{
+					BasicAuth: &BasicAuth{
+						UserName: SecretValue{Value: "user"},
+						Password: SecretValue{Value: "pw", Secret: true},
+					},
+				},
+			},
+			want: `{
+				"repoUrl": "https://hg.example.com/infra",
+				"branch": "default",
+				"repoDir": "infra",
+				"revision": "9f2c1a",
+				"hgAuth": {"basicAuth": {"userName": "user", "password": {"secret": "pw"}}}
+			}`,
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			got, err := json.Marshal(tc.in)
+			require.NoError(t, err)
+			assert.JSONEq(t, tc.want, string(got))
+
+			var back SourceContextHg
+			require.NoError(t, json.Unmarshal(got, &back))
+			assert.Equal(t, tc.in, back)
+		})
+	}
+}
+
+func TestSourceContextTemplateRoundTrip(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name string
+		in   SourceContextTemplate
+		want string
+	}{
+		{
+			name: "registry source url",
+			in:   SourceContextTemplate{SourceURL: "registry://templates/source/pulumi/aws-vpc@2.1.0"},
+			want: `{"sourceUrl":"registry://templates/source/pulumi/aws-vpc@2.1.0"}`,
+		},
+		{
+			name: "inherited project source url",
+			in:   SourceContextTemplate{ProjectSourceURL: "https://github.com/acme/templates"},
+			want: `{"projectSourceUrl":"https://github.com/acme/templates"}`,
+		},
+		{
+			name: "vcs source url with auth",
+			in: SourceContextTemplate{
+				SourceURL: "https://github.com/acme/templates",
+				GitAuth: &GitAuthConfig{
+					PersonalAccessToken: &SecretValue{Value: "token", Secret: true},
+				},
+				ProjectSourceURL: "https://github.com/acme/project-templates",
+			},
+			want: `{
+				"sourceUrl": "https://github.com/acme/templates",
+				"gitAuth": {"accessToken": {"secret": "token"}},
+				"projectSourceUrl": "https://github.com/acme/project-templates"
+			}`,
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			got, err := json.Marshal(tc.in)
+			require.NoError(t, err)
+			assert.JSONEq(t, tc.want, string(got))
+
+			var back SourceContextTemplate
+			require.NoError(t, json.Unmarshal(got, &back))
+			assert.Equal(t, tc.in, back)
+		})
+	}
+}
+
+// TestDeploymentSettingsRoundTrip decodes whole settings bodies and re-encodes them, so a field
+// missing from the CLI type shows up as a dropped key rather than as a silently ignored one.
+func TestDeploymentSettingsRoundTrip(t *testing.T) {
+	t.Parallel()
+
+	deployPR := int64(7)
+
+	cases := []struct {
+		name string
+		wire string
+		want DeploymentSettings
+	}{
+		{
+			name: "github vcs",
+			wire: `{
+				"version": 3,
+				"source": "console",
+				"vcs": {
+					"provider": "github",
+					"repository": "acme/infra",
+					"deployCommits": true,
+					"paths": ["infra/**"],
+					"installationId": "12345",
+					"reviewStackLabels": ["deploy"]
+				},
+				"cacheOptions": {"enable": true}
+			}`,
+			want: DeploymentSettings{
+				Version:        3,
+				SettingsSource: new(DeploymentSettingsSourceConsole),
+				VCS: &DeploymentSettingsVCS{
+					Provider:          VCSProviderGitHub,
+					Repository:        "acme/infra",
+					DeployCommits:     true,
+					Paths:             []string{"infra/**"},
+					InstallationID:    "12345",
+					ReviewStackLabels: []string{"deploy"},
+				},
+				CacheOptions: &CacheOptions{Enable: true},
+			},
+		},
+		{
+			name: "gitlab vcs",
+			wire: `{
+				"version": 4,
+				"source": "gitlab-review-stack",
+				"vcs": {
+					"provider": "gitlab",
+					"repository": "acme/infra",
+					"deployTags": true,
+					"tagFilters": ["v*"],
+					"previewPullRequests": true,
+					"deployPullRequest": 7
+				}
+			}`,
+			want: DeploymentSettings{
+				Version:        4,
+				SettingsSource: new(DeploymentSettingsSourceGitLabReviewStack),
+				VCS: &DeploymentSettingsVCS{
+					Provider:            VCSProviderGitLab,
+					Repository:          "acme/infra",
+					DeployTags:          true,
+					TagFilters:          []string{"v*"},
+					PreviewPullRequests: true,
+					DeployPullRequest:   &deployPR,
+				},
+			},
+		},
+		{
+			name: "azure devops vcs",
+			wire: `{
+				"source": "azure-devops-review-stack",
+				"vcs": {"provider": "azure_devops", "repository": "acme/infra", "pullRequestTemplate": true}
+			}`,
+			want: DeploymentSettings{
+				SettingsSource: new(DeploymentSettingsSourceAzureDevOpsReviewStack),
+				VCS: &DeploymentSettingsVCS{
+					Provider:            VCSProviderAzureDevOps,
+					Repository:          "acme/infra",
+					PullRequestTemplate: true,
+				},
+			},
+		},
+		{
+			name: "bitbucket vcs",
+			wire: `{
+				"source": "bitbucket-review-stack",
+				"vcs": {"provider": "bitbucket", "repository": "acme/infra"}
+			}`,
+			want: DeploymentSettings{
+				SettingsSource: new(DeploymentSettingsSourceBitBucketReviewStack),
+				VCS:            &DeploymentSettingsVCS{Provider: VCSProviderBitbucket, Repository: "acme/infra"},
+			},
+		},
+		{
+			name: "custom vcs",
+			wire: `{
+				"source": "api",
+				"vcs": {"provider": "custom", "repository": "https://vcs.example.com/acme/infra"}
+			}`,
+			want: DeploymentSettings{
+				SettingsSource: new(DeploymentSettingsSourceAPI),
+				VCS: &DeploymentSettingsVCS{
+					Provider:   VCSProviderCustom,
+					Repository: "https://vcs.example.com/acme/infra",
+				},
+			},
+		},
+		{
+			name: "legacy github block",
+			wire: `{
+				"source": "github-gitops",
+				"gitHub": {
+					"repository": "acme/infra",
+					"installationId": "12345",
+					"reviewStackLabels": ["deploy"],
+					"deployTags": true,
+					"tagFilters": ["v*"]
+				}
+			}`,
+			want: DeploymentSettings{
+				SettingsSource: new(DeploymentSettingsSourceGitHubGitOps),
+				GitHub: &DeploymentSettingsGitHub{
+					Repository:        "acme/infra",
+					InstallationID:    "12345",
+					ReviewStackLabels: []string{"deploy"},
+					DeployTags:        true,
+					TagFilters:        []string{"v*"},
+				},
+			},
+		},
+		{
+			name: "git source with tag",
+			wire: `{
+				"sourceContext": {
+					"git": {
+						"repoUrl": "https://github.com/acme/infra",
+						"branch": "",
+						"tag": "v1.2.3",
+						"commit": "abc123"
+					}
+				}
+			}`,
+			want: DeploymentSettings{
+				SourceContext: &SourceContext{
+					Git: &SourceContextGit{
+						RepoURL: "https://github.com/acme/infra",
+						Tag:     "v1.2.3",
+						Commit:  "abc123",
+					},
+				},
+			},
+		},
+		{
+			name: "mercurial source",
+			wire: `{
+				"sourceContext": {
+					"hg": {"repoUrl": "https://hg.example.com/infra", "branch": "default", "revision": "9f2c1a"}
+				}
+			}`,
+			want: DeploymentSettings{
+				SourceContext: &SourceContext{
+					Hg: &SourceContextHg{
+						RepoURL:  "https://hg.example.com/infra",
+						Branch:   "default",
+						Revision: "9f2c1a",
+					},
+				},
+			},
+		},
+		{
+			name: "template source",
+			wire: `{
+				"sourceContext": {
+					"template": {
+						"sourceUrl": "registry://templates/source/pulumi/aws-vpc@2.1.0",
+						"projectSourceUrl": "https://github.com/acme/templates"
+					}
+				}
+			}`,
+			want: DeploymentSettings{
+				SourceContext: &SourceContext{
+					Template: &SourceContextTemplate{
+						SourceURL:        "registry://templates/source/pulumi/aws-vpc@2.1.0",
+						ProjectSourceURL: "https://github.com/acme/templates",
+					},
+				},
+			},
+		},
+		{
+			name: "deployment role",
+			wire: `{
+				"operationContext": {
+					"preRunCommands": null,
+					"operation": "",
+					"environmentVariables": null,
+					"role": {"id": "role-1", "name": "deployer"}
+				}
+			}`,
+			want: DeploymentSettings{
+				Operation: &OperationContext{
+					Role: &DeploymentRole{ID: "role-1", Name: "deployer"},
+				},
+			},
+		},
+		{
+			name: "default executor image",
+			wire: `{
+				"executorContext": {
+					"workingDirectory": "",
+					"executorImage": {"reference": "acme/img:1", "isDefault": true}
+				}
+			}`,
+			want: DeploymentSettings{
+				Executor: &ExecutorContext{
+					ExecutorImage: &DockerImage{Reference: "acme/img:1", IsDefault: true},
+				},
+			},
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			var got DeploymentSettings
+			require.NoError(t, json.Unmarshal([]byte(tc.wire), &got))
+			assert.Equal(t, tc.want, got)
+
+			out, err := json.Marshal(got)
+			require.NoError(t, err)
+			assert.JSONEq(t, tc.wire, string(out))
 		})
 	}
 }

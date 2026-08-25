@@ -43,8 +43,6 @@ import (
 // keeps the public surface stable if we ever change the struct's fields.
 func newAPI() *automation.API { return automation.New(nil) }
 
-func ptr[T any](v T) *T { return &v }
-
 // runStdout invokes fn and returns the rendered CLI command line. It is a
 // thin wrapper that fails the test on error so individual cases stay
 // focussed on the command string they care about.
@@ -72,7 +70,7 @@ func TestCancel_Empty(t *testing.T) {
 func TestCancel_WithStackName(t *testing.T) {
 	api := newAPI()
 	got := runStdout(t, func() (string, error) {
-		r, err := api.Cancel(t.Context(), ptr("my-stack"))
+		r, err := api.Cancel(t.Context(), new("my-stack"))
 		return r.Stdout, err
 	})
 	want := "pulumi cancel --yes -- my-stack"

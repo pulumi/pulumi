@@ -25,7 +25,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/pkg/v3/engine"
-	. "github.com/pulumi/pulumi/pkg/v3/engine" //nolint:revive
+	. "github.com/pulumi/pulumi/pkg/v3/engine"
 	lt "github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest/framework"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
@@ -221,7 +221,7 @@ func TestProtectedDeleteChainsWithDuplicateDeletedResources(t *testing.T) {
 		require.NoError(t, err)
 
 		_, err = monitor.RegisterResource("pkgA:modA:typA", "resB", true, deploytest.ResourceOptions{
-			Protect:      ptr(true),
+			Protect:      new(true),
 			Dependencies: []resource.URN{resA.URN},
 		})
 		require.NoError(t, err)
@@ -269,7 +269,7 @@ func TestProtectedDeleteChainsWithDuplicateDeletedResources(t *testing.T) {
 		require.NoError(t, err)
 
 		_, err = monitor.RegisterResource("pkgA:modA:typA", "resB", true, deploytest.ResourceOptions{
-			Protect:      ptr(true),
+			Protect:      new(true),
 			Dependencies: []resource.URN{resA.URN},
 		})
 		require.NoError(t, err)
@@ -350,12 +350,12 @@ func TestIgnoreProtect(t *testing.T) {
 
 		if creating {
 			_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
-				Protect: ptr(true),
+				Protect: new(true),
 			})
 			require.NoError(t, err)
 
 			_, err = monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
-				Protect: ptr(true),
+				Protect: new(true),
 			})
 			require.NoError(t, err)
 		}
@@ -447,7 +447,7 @@ func TestIgnoreProtectReplace(t *testing.T) {
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 			Inputs:  inputsA,
-			Protect: ptr(true),
+			Protect: new(true),
 		})
 		require.NoError(t, err)
 
@@ -535,7 +535,7 @@ func TestIgnoreProtectDBRChain(t *testing.T) {
 			Inputs:       inputsB,
 			Dependencies: []resource.URN{respA.URN},
 			PropertyDeps: inputDepsB,
-			Protect:      ptr(true),
+			Protect:      new(true),
 		})
 		require.NoError(t, err)
 
@@ -593,7 +593,7 @@ func TestIgnoreProtectDestroy(t *testing.T) {
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
-			Protect: ptr(true),
+			Protect: new(true),
 		})
 		require.NoError(t, err)
 
@@ -629,8 +629,4 @@ func TestIgnoreProtectDestroy(t *testing.T) {
 		RunStep(p.GetProject(), p.GetTarget(t, snap), ignoreProtectOptions, false, p.BackendClient, nil, "2")
 	require.NoError(t, err)
 	require.Len(t, snap.Resources, 0)
-}
-
-func ptr[T any](v T) *T {
-	return &v
 }

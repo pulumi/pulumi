@@ -40,6 +40,7 @@ import (
 
 	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
+	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
 	sdkproviders "github.com/pulumi/pulumi/sdk/v3/go/common/providers"
@@ -169,8 +170,9 @@ func (g *testRegEvent) Done(result *RegisterResult) {
 	g.result = result
 }
 
-func (g *testRegEvent) Extension() *apitype.Extension      { return g.extension }
-func (g *testRegEvent) ExtensionRef() apitype.ExtensionRef { return g.extensionRef }
+func (g *testRegEvent) Extension() *apitype.Extension             { return g.extension }
+func (g *testRegEvent) ExtensionRef() apitype.ExtensionRef        { return g.extensionRef }
+func (g *testRegEvent) StateMigrations() []StateMigrationFunction { return nil }
 
 func fixedProgram(steps []RegisterResourceEvent) deploytest.ProgramFunc {
 	return func(_ plugin.RunInfo, resmon *deploytest.ResourceMonitor) error {
@@ -1264,9 +1266,9 @@ func TestRegistrationObserverRemoteComponentNotResolvedOnRegister(t *testing.T) 
 		) (plugin.ConstructResponse, error) {
 			return plugin.ConstructResponse{
 				URN: resource.NewURN(runInfo.Target.Name.Q(), runInfo.Proj.Name, "", req.Type, req.Name),
-				Outputs: resource.PropertyMap{
-					"constructed": resource.NewProperty("v"),
-				},
+				Outputs: property.NewMap(map[string]property.Value{
+					"constructed": property.New("v"),
+				}),
 			}, nil
 		},
 	}
@@ -1781,7 +1783,6 @@ func TestDisableDefaultProviders(t *testing.T) {
 			})
 		}
 	}
-	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
 	for _, tt := range cases {
 		var name []string
 		if tt.disableDefault {
@@ -2559,14 +2560,6 @@ func TestRequestFromNodeJS(t *testing.T) {
 func TestTransformAliasForNodeJSCompat(t *testing.T) {
 	t.Parallel()
 
-	sptr := func(s string) *string {
-		return &s
-	}
-
-	bptr := func(b bool) *bool {
-		return &b
-	}
-
 	makeAlias := func(parent *string, noParent *bool, name string) *pulumirpc.Alias {
 		spec := &pulumirpc.Alias_Spec{
 			Name: name,
@@ -2592,33 +2585,33 @@ func TestTransformAliasForNodeJSCompat(t *testing.T) {
 	}{
 		{
 			name:     `{Parent: "", NoParent: true} (transformed)`,
-			input:    makeAlias(nil, bptr(true), ""),
+			input:    makeAlias(nil, new(true), ""),
 			expected: makeAlias(nil, nil, ""),
 		},
 		{
 			name:     `{Parent: "", NoParent: false} (transformed)`,
-			input:    makeAlias(sptr(""), nil, ""),
-			expected: makeAlias(nil, bptr(true), ""),
+			input:    makeAlias(new(""), nil, ""),
+			expected: makeAlias(nil, new(true), ""),
 		},
 		{
 			name:     `{Parent: "", NoParent: false, Name: "name"} (transformed)`,
-			input:    makeAlias(sptr(""), nil, "name"),
-			expected: makeAlias(nil, bptr(true), "name"),
+			input:    makeAlias(new(""), nil, "name"),
+			expected: makeAlias(nil, new(true), "name"),
 		},
 		{
 			name:     `{Parent: "", NoParent: true, Name: "name"} (transformed)`,
-			input:    makeAlias(nil, bptr(true), "name"),
+			input:    makeAlias(nil, new(true), "name"),
 			expected: makeAlias(nil, nil, "name"),
 		},
 		{
 			name:     `{Parent: "foo", NoParent: false} (no transform)`,
-			input:    makeAlias(sptr("foo"), nil, ""),
-			expected: makeAlias(sptr("foo"), nil, ""),
+			input:    makeAlias(new("foo"), nil, ""),
+			expected: makeAlias(new("foo"), nil, ""),
 		},
 		{
 			name:     `{Parent: "foo", NoParent: false, Name: "name"} (no transform)`,
-			input:    makeAlias(sptr("foo"), nil, "name"),
-			expected: makeAlias(sptr("foo"), nil, "name"),
+			input:    makeAlias(new("foo"), nil, "name"),
+			expected: makeAlias(new("foo"), nil, "name"),
 		},
 	}
 	for _, tt := range tests {
@@ -2744,6 +2737,52 @@ func TestResmonCancel(t *testing.T) {
 	assert.Equal(t, errors.Join(err), rm.Cancel(t.Context()))
 }
 
+func TestRegisterPackageSameExtensionThreeTimesDoesNotDeadlock(t *testing.T) {
+	t.Parallel()
+
+	rm := &resmon{
+		packageRefMap:   map[string]providers.ProviderRequest{},
+		extensionRefMap: map[string]extensionRef{},
+	}
+	req := &pulumirpc.RegisterPackageRequest{
+		Name:    "pkgA",
+		Version: "1.0.0",
+		Extension: &pulumirpc.Parameterization{
+			Name:    "pkgA-ext",
+			Version: "1.0.0",
+			Value:   []byte("extension-value"),
+		},
+	}
+
+	type result struct {
+		refs []string
+		err  error
+	}
+	done := make(chan result, 1)
+	go func() {
+		refs := make([]string, 0, 3)
+		for range 3 {
+			resp, err := rm.RegisterPackage(t.Context(), req)
+			if err != nil {
+				done <- result{err: err}
+				return
+			}
+			refs = append(refs, resp.Ref)
+		}
+		done <- result{refs: refs}
+	}()
+
+	select {
+	case res := <-done:
+		require.NoError(t, res.err)
+		require.Len(t, res.refs, 3)
+		assert.Equal(t, res.refs[0], res.refs[1])
+		assert.Equal(t, res.refs[0], res.refs[2])
+	case <-time.After(2 * time.Second):
+		t.Fatal("RegisterPackage deadlocked when registering the same extension package three times")
+	}
+}
+
 func TestGetDeploymentInfo(t *testing.T) {
 	t.Parallel()
 
@@ -2783,6 +2822,7 @@ func TestGetDeploymentInfo(t *testing.T) {
 			Parallel:                  17,
 			DisableOutputValues:       true,
 			DisableResourceReferences: false,
+			SupportsStateMigrations:   true,
 		},
 	}, &providerSourceMock{}, nil, nil, nil, nil, programComplete.Promise(), cfg, secretKeys,
 		opentracing.SpanFromContext(t.Context()))
@@ -2815,6 +2855,7 @@ func TestGetDeploymentInfo(t *testing.T) {
 	assert.Contains(t, features, pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_RESOURCE_REFERENCES)
 	assert.NotContains(t, features, pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_OUTPUT_VALUES)
 	assert.Contains(t, features, pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_INVOKE_DEPENDS_ON)
+	assert.Contains(t, features, pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_STATE_MIGRATIONS)
 }
 
 func TestSourceEvalServeOptions(t *testing.T) {
@@ -3579,6 +3620,17 @@ func TestReadResource(t *testing.T) {
 
 func TestRegisterResource(t *testing.T) {
 	t.Parallel()
+	t.Run("rejects state migrations when unsupported", func(t *testing.T) {
+		t.Parallel()
+
+		rm := &resmon{}
+		_, err := rm.RegisterResource(t.Context(), &pulumirpc.RegisterResourceRequest{
+			StateMigrations: []*pulumirpc.Callback{{}},
+		})
+		require.Error(t, err)
+		assert.Equal(t, codes.FailedPrecondition, status.Code(err))
+		assert.ErrorContains(t, err, "state migrations are not supported by this deployment")
+	})
 	t.Run("gracefully handle cancellation", func(t *testing.T) {
 		t.Parallel()
 		t.Run("resource monitor shut down while sending resource registration", func(t *testing.T) {

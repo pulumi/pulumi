@@ -65,7 +65,7 @@ func collectPrintln(cmd tea.Cmd) []string {
 	if v.Kind() == reflect.Slice && v.Type().Name() == "sequenceMsg" {
 		var out []string
 		for i := 0; i < v.Len(); i++ {
-			if c, ok := v.Index(i).Interface().(tea.Cmd); ok {
+			if c, ok := reflect.TypeAssert[tea.Cmd](v.Index(i)); ok {
 				out = append(out, collectPrintln(c)...)
 			}
 		}
@@ -487,6 +487,71 @@ func TestModel_Update_KeyCtrlC_FirstPressCancelsWhenBusy(t *testing.T) {
 	idx := um.findBlockKind(blockBusy)
 	require.NotEqual(t, -1, idx)
 	assert.Equal(t, "Cancelling...", um.blocks[idx].label)
+}
+
+func TestModel_Update_FinalEventWhileCancellingSendsAbandon(t *testing.T) {
+	t.Parallel()
+
+	// A final event ending the turn while a cancel is in flight must tell the
+	// dispatcher to abandon its pending cancel retry — otherwise a stale retry
+	// could fire into a later turn and cancel it.
+	finalEvents := map[string]UIEvent{
+		"task_idle":               UITaskIdle{},
+		"cancelled":               UICancelled{},
+		"final_assistant_message": UIAssistantMessage{Content: "done", IsFinal: true},
+		"approval_request":        UIApprovalRequest{ApprovalID: "a-1", Message: "ok?"},
+	}
+	for name, ev := range finalEvents {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			outCh := make(chan outboundEvent, 2)
+			m := NewModel(ModelConfig{OutCh: outCh, Busy: true})
+
+			updated, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEsc})
+			um := updated.(Model)
+			require.True(t, um.cancelling, "ESC while busy must enter the cancelling substate")
+			select {
+			case sent := <-outCh:
+				_, isCancel := sent.event.(apitype.AgentUserEventCancel)
+				require.True(t, isCancel, "ESC must post a cancel, got %T", sent.event)
+			default:
+				t.Fatal("ESC did not enqueue a cancel event")
+			}
+
+			updated, _ = um.Update(ev)
+			um = updated.(Model)
+			assert.False(t, um.cancelling, "a final event must clear the cancelling substate")
+
+			select {
+			case sent := <-outCh:
+				assert.True(t, sent.abandonCancel,
+					"turn end while cancelling must enqueue an abandonCancel envelope")
+				assert.Nil(t, sent.event, "abandon envelopes must carry no wire event")
+			default:
+				t.Fatal("turn end while cancelling did not enqueue an abandonCancel envelope")
+			}
+		})
+	}
+}
+
+func TestModel_Update_FinalEventWithoutCancelStaysSilent(t *testing.T) {
+	t.Parallel()
+
+	// An ordinary turn end (no cancel in flight) must not emit anything on the
+	// outbound channel — this also keeps history replay silent.
+	outCh := make(chan outboundEvent, 1)
+	m := NewModel(ModelConfig{OutCh: outCh, Busy: true})
+
+	updated, _ := m.Update(UITaskIdle{})
+	um := updated.(Model)
+	assert.False(t, um.busy, "a final event must end the busy state")
+
+	select {
+	case sent := <-outCh:
+		t.Fatalf("turn end without a pending cancel must be silent, got %+v", sent)
+	default:
+	}
 }
 
 func TestModel_Update_KeyCtrlC_OtherKeyDisarms(t *testing.T) {
@@ -1091,6 +1156,53 @@ func TestModel_Update_KeyEnter_Approval_ApproveYes(t *testing.T) {
 	}
 }
 
+func TestModel_Update_KeyEnter_Approval_FullOutChannelKeepsPromptPending(t *testing.T) {
+	t.Parallel()
+
+	// With a full outbound channel the confirmation is never enqueued, so
+	// Enter must NOT commit the choice — otherwise the TUI shows it as
+	// submitted and goes busy while the agent waits forever for an answer
+	// that was never sent, with no recovery route (see #24267 follow-up).
+	for _, in := range []string{"yes", "no, use the staging stack"} {
+		t.Run(in, func(t *testing.T) {
+			t.Parallel()
+			outCh := make(chan outboundEvent, 1)
+			outCh <- outboundEvent{event: apitype.AgentUserEventUserMessage{}} // fill the channel
+			m := newApprovalPendingModel(t, outCh)
+			m.textInput.SetValue(in)
+
+			updated, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+			um := updated.(Model)
+
+			assert.True(t, um.pendingApproval, "a dropped send must keep the approval pending")
+			assert.Equal(t, "appr_1", um.pendingApprovalID)
+			assert.Equal(t, in, um.textInput.Value(), "the draft must survive for the retry")
+			assert.False(t, um.busy, "must not go busy when nothing was sent")
+			assert.Equal(t, -1, um.findBlockKind(blockApprovalChoice),
+				"the choice must not be committed as sent")
+			idx := um.findBlockKind(blockWarning)
+			require.NotEqual(t, -1, idx, "a dropped reply must surface a warning")
+			assert.Contains(t, um.blocks[idx].rendered, "not sent")
+
+			// Drain the channel; the retry Enter must land the confirmation
+			// and clear the prompt.
+			<-outCh
+			updated, _ = um.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+			um = updated.(Model)
+			select {
+			case got := <-outCh:
+				conf, ok := got.event.(apitype.AgentUserEventUserConfirmation)
+				require.True(t, ok, "expected UserConfirmation, got %T", got.event)
+				assert.Equal(t, "appr_1", conf.ApprovalID)
+				assert.Equal(t, isAffirmative(in), conf.Approved)
+			default:
+				t.Fatal("retry Enter must post the confirmation")
+			}
+			assert.False(t, um.pendingApproval, "the retry must clear the prompt")
+		})
+	}
+}
+
 func TestModel_Update_KeyEnter_Approval_DenyWithReason(t *testing.T) {
 	t.Parallel()
 
@@ -1332,8 +1444,10 @@ func TestModel_Update_UIAssistantMessage_HandoffCommitsToScrollback(t *testing.T
 func TestModel_Update_UIToolStarted_ShowsBusyBlock(t *testing.T) {
 	t.Parallel()
 
+	// Tool lifecycle events never start the spinner from idle, so start
+	// busy, as the hand-off assistant_message leaves it in real flows.
 	ch := make(chan UIEvent, 4)
-	m := NewModel(ModelConfig{EventCh: ch})
+	m := NewModel(ModelConfig{EventCh: ch, Busy: true})
 	updated, _ := m.Update(UIToolStarted{
 		Name: "filesystem__read",
 		Args: json.RawMessage(`{"file_path":"/x"}`),
@@ -1952,6 +2066,55 @@ func TestModel_Update_AnswerQuestion_EmptyInputIsNoOp(t *testing.T) {
 
 	assert.True(t, m.pendingApproval, "empty Enter must leave the question pending")
 	assert.True(t, m.pendingIsQuestion, "pendingIsQuestion must remain set")
+}
+
+func TestModel_Update_AnswerQuestion_FullOutChannelKeepsQuestionPending(t *testing.T) {
+	t.Parallel()
+
+	// Same guard as the approval path: a dropped answer must keep the
+	// question pending with the draft intact instead of rendering
+	// "Answered" and going busy on a send that never happened.
+	outCh := make(chan outboundEvent, 1)
+	outCh <- outboundEvent{event: apitype.AgentUserEventUserMessage{}} // fill the channel
+	m := NewModel(ModelConfig{OutCh: outCh, EventCh: make(chan UIEvent, 4)})
+
+	updated, _ := m.Update(UIApprovalRequest{
+		ApprovalID:   "appr_q5",
+		Message:      "Which region?",
+		ApprovalType: "general",
+		ToolName:     "ux__ask_user",
+	})
+	m = updated.(Model)
+	require.True(t, m.pendingIsQuestion)
+	m.textInput.SetValue("us-west-2")
+
+	updated, _ = m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	m = updated.(Model)
+
+	assert.True(t, m.pendingApproval, "a dropped send must keep the question pending")
+	assert.True(t, m.pendingIsQuestion)
+	assert.Equal(t, "us-west-2", m.textInput.Value(), "the draft answer must survive for the retry")
+	assert.False(t, m.busy, "must not go busy when nothing was sent")
+	assert.Equal(t, -1, m.findBlockKind(blockAnswerSubmitted),
+		"the answer must not show as submitted")
+	idx := m.findBlockKind(blockWarning)
+	require.NotEqual(t, -1, idx, "a dropped answer must surface a warning")
+	assert.Contains(t, m.blocks[idx].rendered, "not sent")
+
+	// Drain the channel; the retry Enter must land the answer.
+	<-outCh
+	updated, _ = m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	m = updated.(Model)
+	select {
+	case got := <-outCh:
+		conf, ok := got.event.(apitype.AgentUserEventUserConfirmation)
+		require.True(t, ok, "expected UserConfirmation, got %T", got.event)
+		assert.Equal(t, "appr_q5", conf.ApprovalID)
+		assert.Equal(t, "us-west-2", conf.Message)
+	default:
+		t.Fatal("retry Enter must post the answer")
+	}
+	assert.False(t, m.pendingIsQuestion, "the retry must clear the prompt")
 }
 
 func TestQuestionWrapsToTerminalWidth(t *testing.T) {
@@ -3004,6 +3167,79 @@ func TestModel_Update_ApprovalDebounceTick_StaleGenDoesNotDispatch(t *testing.T)
 	case ev := <-outCh:
 		t.Fatalf("stale-gen tick must not dispatch, got %#v", ev)
 	default:
+	}
+}
+
+func TestModel_Update_ApprovalDebounceTick_FullOutChannelRearms(t *testing.T) {
+	t.Parallel()
+
+	// A tick that fires into a full outbound channel drops the update
+	// (sendOut is non-blocking). It must re-arm the debounce so the PATCH
+	// retries, instead of silently leaving the server on the previous mode.
+	outCh := make(chan outboundEvent, 1)
+	outCh <- outboundEvent{event: apitype.AgentUserEventUserMessage{}} // fill the channel
+	m := NewModel(ModelConfig{
+		OutCh:               outCh,
+		MessageSent:         true,
+		TaskCreated:         true,
+		InitialApprovalMode: client.NeoApprovalModeManual,
+	})
+
+	updated, _ := m.Update(tea.KeyPressMsg{Code: 'a', Mod: tea.ModCtrl})
+	m = updated.(Model)
+	gen := m.approvalDebounceGen
+
+	updated, cmd := m.Update(approvalDebounceTickMsg{gen: gen})
+	m = updated.(Model)
+	require.NotNil(t, cmd, "a dropped update must return a re-arm Tick command")
+	assert.Equal(t, gen+1, m.approvalDebounceGen, "the re-arm must advance the gen")
+
+	// Drain the channel; the re-armed tick must dispatch the update.
+	<-outCh
+	updated, _ = m.Update(approvalDebounceTickMsg{gen: m.approvalDebounceGen})
+	_ = updated
+	select {
+	case got := <-outCh:
+		require.NotNil(t, got.update, "the re-armed tick must dispatch an update")
+		require.NotNil(t, got.update.ApprovalMode)
+		assert.Equal(t, client.NeoApprovalModeBalanced, *got.update.ApprovalMode)
+	default:
+		t.Fatal("the re-armed tick must dispatch once the channel drains")
+	}
+}
+
+func TestModel_Update_PermissionDebounceTick_FullOutChannelRearms(t *testing.T) {
+	t.Parallel()
+
+	// Permission-mode counterpart of the approval re-arm test above.
+	outCh := make(chan outboundEvent, 1)
+	outCh <- outboundEvent{event: apitype.AgentUserEventUserMessage{}} // fill the channel
+	m := NewModel(ModelConfig{
+		OutCh:                 outCh,
+		MessageSent:           true,
+		TaskCreated:           true,
+		InitialPermissionMode: client.NeoPermissionModeDefault,
+	})
+
+	updated, _ := m.Update(tea.KeyPressMsg{Code: 'r', Mod: tea.ModCtrl})
+	m = updated.(Model)
+	gen := m.permissionDebounceGen
+
+	updated, cmd := m.Update(permissionDebounceTickMsg{gen: gen})
+	m = updated.(Model)
+	require.NotNil(t, cmd, "a dropped update must return a re-arm Tick command")
+	assert.Equal(t, gen+1, m.permissionDebounceGen, "the re-arm must advance the gen")
+
+	<-outCh
+	updated, _ = m.Update(permissionDebounceTickMsg{gen: m.permissionDebounceGen})
+	_ = updated
+	select {
+	case got := <-outCh:
+		require.NotNil(t, got.update, "the re-armed tick must dispatch an update")
+		require.NotNil(t, got.update.PermissionMode)
+		assert.Equal(t, client.NeoPermissionModeReadOnly, *got.update.PermissionMode)
+	default:
+		t.Fatal("the re-armed tick must dispatch once the channel drains")
 	}
 }
 

@@ -125,6 +125,7 @@ environments:
   },
   "trace": {
     "def": {
+      "environment": "",
       "begin": {
         "line": 0,
         "column": 0,

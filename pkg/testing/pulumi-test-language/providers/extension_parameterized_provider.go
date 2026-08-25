@@ -26,6 +26,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 // ExtensionParameterizedProvider models a base plugin that accepts extension
@@ -222,9 +223,9 @@ func (p *ExtensionParameterizedProvider) Construct(
 	token := extName + ":index:GreetingComponent"
 	return plugin.ConstructResponse{
 		URN: resource.CreateURN(req.Name, token, req.Parent, req.Info.Project, req.Info.Stack),
-		Outputs: resource.PropertyMap{
-			"parameterValue": resource.NewProperty(string(value) + "Component"),
-		},
+		Outputs: property.NewMap(map[string]property.Value{
+			"parameterValue": property.New(string(value) + "Component"),
+		}),
 	}, nil
 }
 
@@ -237,8 +238,8 @@ func (p *ExtensionParameterizedProvider) Invoke(
 		return plugin.InvokeResponse{}, fmt.Errorf("invalid invoke token %s, expected %s", req.Tok, expected)
 	}
 	return plugin.InvokeResponse{
-		Properties: resource.NewPropertyMapFromMap(map[string]any{
-			"greeting": string(value) + ", " + req.Args["name"].StringValue(),
+		Properties: property.NewMap(map[string]property.Value{
+			"greeting": property.New(string(value) + ", " + req.Args.Get("name").AsString()),
 		}),
 	}, nil
 }

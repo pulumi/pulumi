@@ -1305,7 +1305,6 @@ func bindConstValue(path, kind string, value any, typ Type) (any, hcl.Diagnostic
 			if i < math.MinInt32 || i > math.MaxInt32 {
 				return nil, typeError("integer")
 			}
-			//nolint:gosec // int -> int32 conversion is guarded above.
 			return int32(i), nil
 		}
 

@@ -393,8 +393,8 @@ func loadProvider(ctx context.Context, pkg tokens.Package, version *semver.Versi
 	// version of a plugin is required which are not picked up by initial pass of required plugin
 	// installations or because of bugs in GetRequiredPlugins. Instead of reporting an error, we first try to
 	// install the plugin now, and only error if we can't do that.
-	var me *workspace.MissingError
-	if !errors.As(err, &me) {
+	_, ok := errors.AsType[*workspace.MissingError](err)
+	if !ok {
 		// Not a MissingError, return the original error.
 		return nil, err
 	}
@@ -672,8 +672,8 @@ func (r *Registry) Check(ctx context.Context, req plugin.CheckRequest) (plugin.C
 	// Check the provider's config. If the check fails, unload the provider.
 	resp, err := provider.CheckConfig(ctx, plugin.CheckConfigRequest{
 		URN:           req.URN,
-		Olds:          FilterProviderConfig(req.Olds),
-		News:          FilterProviderConfig(req.News),
+		Olds:          resource.FromResourcePropertyMap(FilterProviderConfig(req.Olds)),
+		News:          resource.FromResourcePropertyMap(FilterProviderConfig(req.News)),
 		AllowUnknowns: true,
 	})
 	if len(resp.Failures) != 0 || err != nil {
@@ -683,19 +683,18 @@ func (r *Registry) Check(ctx context.Context, req plugin.CheckRequest) (plugin.C
 
 	// Create a provider reference using the URN and the unconfigured ID and register the provider.
 	r.setProvider(mustNewReference(req.URN, UnconfiguredID), provider)
-	if resp.Properties == nil {
-		resp.Properties = resource.PropertyMap{}
-	}
+
+	properties := resource.ToResourcePropertyMap(resp.Properties)
 
 	// If the provider tries to drop the versions field reset it back to the original value.
-	if _, ok := resp.Properties[versionKey]; !ok {
+	if _, ok := properties[versionKey]; !ok {
 		// Only set it if we had it originally
 		if _, ok := req.News[versionKey]; ok {
-			resp.Properties[versionKey] = req.News[versionKey]
+			properties[versionKey] = req.News[versionKey]
 		}
 	}
 	// If the provider tries to change the version field return an error
-	if newV, ok := resp.Properties[versionKey]; ok {
+	if newV, ok := properties[versionKey]; ok {
 		if oldV, ok := req.News[versionKey]; ok {
 			if !oldV.DeepEquals(newV) {
 				return plugin.CheckResponse{}, fmt.Errorf("provider %q attempted to change version from %q to %q",
@@ -708,13 +707,13 @@ func (r *Registry) Check(ctx context.Context, req plugin.CheckRequest) (plugin.C
 	// properties returned from the plugin. Only add __internal back if it was originally in the inputs.
 	if _, has := req.News[internalKey]; has {
 		// Before we reset it warn the user that the providers data is being discarded
-		if _, has := resp.Properties[internalKey]; has {
+		if _, has := properties[internalKey]; has {
 			r.pctx.Host.Log(diag.Warning, req.URN, "provider attempted to use __internal key that is reserved by the engine", 0)
 		}
-		resp.Properties[internalKey] = req.News[internalKey]
+		properties[internalKey] = req.News[internalKey]
 	}
 
-	return plugin.CheckResponse{Properties: resp.Properties}, nil
+	return plugin.CheckResponse{Properties: properties}, nil
 }
 
 // RegisterAliases informs the registry that the new provider object with the given URN is aliased to the given list

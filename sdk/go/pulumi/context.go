@@ -595,6 +595,10 @@ func (ctx *Context) registerTransform(t ResourceTransform) (*pulumirpc.Callback,
 		return nil, fmt.Errorf("registering callback: %w", err)
 	}
 
+	if mm, ok := ctx.state.monitor.(*mockMonitor); ok {
+		mm.recordTransform(cb.Token, t)
+	}
+
 	return cb, nil
 }
 
@@ -712,6 +716,10 @@ func (ctx *Context) registerInvokeTransform(t InvokeTransform) (*pulumirpc.Callb
 	cb, err := ctx.state.callbacks.RegisterCallback(callback)
 	if err != nil {
 		return nil, fmt.Errorf("registering callback: %w", err)
+	}
+
+	if mm, ok := ctx.state.monitor.(*mockMonitor); ok {
+		mm.recordInvokeTransform(cb.Token, t)
 	}
 
 	return cb, nil
@@ -3123,7 +3131,6 @@ func (ctx *Context) getSourcePositionForFrame(frame runtime.Frame) *pulumirpc.So
 
 	line := int32(-1)
 	if frame.Line <= math.MaxInt32 {
-		//nolint:gosec
 		line = int32(frame.Line)
 	}
 	return &pulumirpc.SourcePosition{

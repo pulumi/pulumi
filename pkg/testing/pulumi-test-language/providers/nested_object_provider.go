@@ -24,6 +24,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 type NestedObjectProvider struct {
@@ -213,7 +214,7 @@ func (p *NestedObjectProvider) Invoke(
 		return plugin.InvokeResponse{}, fmt.Errorf("unknown function %v", req.Tok)
 	}
 
-	names, ok := req.Args["names"]
+	names, ok := req.Args.GetOk("names")
 	if !ok || !names.IsArray() {
 		return plugin.InvokeResponse{
 			Failures: makeCheckFailure("names", "missing names list"),
@@ -221,9 +222,9 @@ func (p *NestedObjectProvider) Invoke(
 	}
 
 	return plugin.InvokeResponse{
-		Properties: resource.PropertyMap{
+		Properties: property.NewMap(map[string]property.Value{
 			"results": names,
-		},
+		}),
 	}, nil
 }
 
@@ -282,7 +283,7 @@ func (p *NestedObjectProvider) Update(
 
 func (p *NestedObjectProvider) GetPluginInfo(context.Context) (plugin.PluginInfo, error) {
 	return plugin.PluginInfo{
-		Version: ptr(p.version()),
+		Version: new(p.version()),
 	}, nil
 }
 

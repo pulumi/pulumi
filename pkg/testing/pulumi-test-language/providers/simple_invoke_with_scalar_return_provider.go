@@ -24,6 +24,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 type SimpleInvokeWithScalarReturnProvider struct {
@@ -106,7 +107,7 @@ func (p *SimpleInvokeWithScalarReturnProvider) CheckConfig(
 	_ context.Context, req plugin.CheckConfigRequest,
 ) (plugin.CheckConfigResponse, error) {
 	// Expect just the version
-	version, ok := req.News["version"]
+	version, ok := req.News.GetOk("version")
 	if !ok {
 		return plugin.CheckConfigResponse{
 			Failures: makeCheckFailure("version", "missing version"),
@@ -117,13 +118,13 @@ func (p *SimpleInvokeWithScalarReturnProvider) CheckConfig(
 			Failures: makeCheckFailure("version", "version is not a string"),
 		}, nil
 	}
-	if version.StringValue() != "17.0.0" {
+	if version.AsString() != "17.0.0" {
 		return plugin.CheckConfigResponse{
 			Failures: makeCheckFailure("version", "version is not 17.0.0"),
 		}, nil
 	}
 
-	if len(req.News) != 1 {
+	if req.News.Len() != 1 {
 		return plugin.CheckConfigResponse{
 			Failures: makeCheckFailure("", fmt.Sprintf("too many properties: %v", req.News)),
 		}, nil
@@ -136,7 +137,7 @@ func (p *SimpleInvokeWithScalarReturnProvider) Invoke(
 	_ context.Context, req plugin.InvokeRequest,
 ) (plugin.InvokeResponse, error) {
 	if req.Tok == "simple-invoke-with-scalar-return:index:myInvokeScalar" {
-		value, ok := req.Args["value"]
+		value, ok := req.Args.GetOk("value")
 		if !ok {
 			return plugin.InvokeResponse{
 				Failures: makeCheckFailure("value", "missing value"),
@@ -161,9 +162,9 @@ func (p *SimpleInvokeWithScalarReturnProvider) Invoke(
 		// Single value returns work because SDKs automatically extract single value returns in their
 		// invoke implementations.
 		return plugin.InvokeResponse{
-			Properties: resource.PropertyMap{
-				"result": resource.NewProperty(true),
-			},
+			Properties: property.NewMap(map[string]property.Value{
+				"result": property.New(true),
+			}),
 		}, nil
 	}
 

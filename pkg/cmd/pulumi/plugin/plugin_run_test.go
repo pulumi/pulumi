@@ -72,7 +72,6 @@ func TestCreatePluginRPCServer(t *testing.T) {
 	defer server2.Close()
 }
 
-//nolint:paralleltest // Cannot use t.Parallel() because this test uses t.Setenv
 func TestNewInstallPluginFunc_DisabledAcquisition(t *testing.T) {
 	// Set environment to disable automatic plugin acquisition
 	t.Setenv("PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION", "true")
@@ -92,7 +91,6 @@ func TestNewInstallPluginFunc_DisabledAcquisition(t *testing.T) {
 	assert.Nil(t, version, "should return nil when automatic plugin acquisition is disabled")
 }
 
-//nolint:paralleltest // Cannot use t.Parallel() because this test uses t.Setenv
 func TestNewInstallPluginFunc_PluginInstallError(t *testing.T) {
 	// Clear the environment variable to enable automatic acquisition
 	t.Setenv("PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION", "false")
@@ -113,7 +111,6 @@ func TestNewInstallPluginFunc_PluginInstallError(t *testing.T) {
 	assert.Nil(t, version, "should return nil when plugin installation fails")
 }
 
-//nolint:paralleltest // Cannot use t.Parallel() because this test uses t.Setenv
 func TestPluginRunCommand(t *testing.T) {
 	// Skip on Windows - test uses bash script which is not cross-platform
 	if runtime.GOOS == "windows" {

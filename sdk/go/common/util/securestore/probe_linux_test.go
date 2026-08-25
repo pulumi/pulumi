@@ -40,7 +40,7 @@ func statePrompting(t *testing.T, attended bool) *[]bool {
 	t.Helper()
 	var granted []bool
 	restore := platformCandidatesHook
-	platformCandidatesHook = func(allowPrompt bool, _ string) []backendImpl {
+	platformCandidatesHook = func(allowPrompt bool) []backendImpl {
 		granted = append(granted, allowPrompt)
 		return nil
 	}
@@ -63,19 +63,19 @@ func statePrompting(t *testing.T, attended bool) *[]bool {
 func TestPromptPolicy(t *testing.T) {
 	granted := statePrompting(t, true)
 
-	_, _ = Resolve(ModeAuto, "")
+	_, _ = Resolve(ModeAuto)
 	assert.True(t, (*granted)[0], "auto opted in, so it may ask rather than downgrade")
 
 	*granted = nil
-	_, _ = Resolve(ModeOS, "")
+	_, _ = Resolve(ModeOS)
 	assert.True(t, (*granted)[0], "os may ask")
 
 	*granted = nil
-	_, _ = ForBackend(BackendLinuxSecretService, "")
+	_, _ = ForBackend(BackendLinuxSecretService)
 	assert.True(t, (*granted)[0], "reading an encrypted file may ask")
 
 	*granted = nil
-	_, _ = Resolve(ModeDefault, "")
+	_, _ = Resolve(ModeDefault)
 	assert.Empty(t, *granted, "the default mode never reaches a backend")
 }
 
@@ -83,11 +83,11 @@ func TestPromptPolicy(t *testing.T) {
 func TestPromptPolicyUnattended(t *testing.T) {
 	granted := statePrompting(t, false)
 
-	_, _ = Resolve(ModeOS, "")
+	_, _ = Resolve(ModeOS)
 	assert.False(t, (*granted)[0], "--non-interactive forbids prompting even in os mode")
 
 	*granted = nil
-	_, _ = ForBackend(BackendLinuxSecretService, "")
+	_, _ = ForBackend(BackendLinuxSecretService)
 	assert.False(t, (*granted)[0], "reads must not ask when nobody can answer")
 }
 

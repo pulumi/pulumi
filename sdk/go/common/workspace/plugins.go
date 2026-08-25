@@ -40,15 +40,12 @@ import (
 	"time"
 
 	"github.com/blang/semver"
-	"github.com/cheggaaa/pb"
 	"github.com/djherbis/times"
 	"github.com/go-git/go-git/v6/plumbing"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/gitutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/httputil"
@@ -577,8 +574,8 @@ func (source *githubSource) getHTTPResponse(
 	//   and trying again.  This can be useful for example if the user has a fine grained token, which when set doesn't
 	//   allow access to public repositories.
 	// All other errors are returned as is.
-	var downErr *downloadError
-	if !errors.As(err, &downErr) || !isRateLimitError(downErr) {
+	downErr, ok := errors.AsType[*downloadError](err)
+	if !ok || !isRateLimitError(downErr) {
 		// If we see a 401 or 403 error and we're using a token we'll disable that token and try again
 		if downErr != nil && (downErr.code == 401 || downErr.code == 403) && source.token != "" {
 			source.token = ""
@@ -1867,14 +1864,13 @@ func (d *pluginDownloader) downloadToFileWithRetry(ctx context.Context, pkgPlugi
 			}
 
 			// If the readErr is a checksum error don't retry.
-			var checksumErr *checksumError
-			if errors.As(readErr, &checksumErr) {
+			if _, ok := errors.AsType[*checksumError](readErr); ok {
 				return false, "", readErr
 			}
 
 			// Don't retry, since the request was processed and rejected.
-			var downloadErr *downloadError
-			if errors.As(readErr, &downloadErr) && (downloadErr.code == 404 || downloadErr.code == 403) {
+			if downloadErr, ok := errors.AsType[*downloadError](readErr); ok &&
+				(downloadErr.code == 404 || downloadErr.code == 403) {
 				return false, "", readErr
 			}
 
@@ -2192,7 +2188,7 @@ func getPluginInfoAndPath(
 
 	// If we have a version of the plugin on its $PATH, use it, unless we have opted out of this behavior explicitly.
 	// This supports development scenarios.
-	includeAmbient := !(env.IgnoreAmbientPlugins.Value())
+	includeAmbient := !env.IgnoreAmbientPlugins.Value()
 	var ambientPath string
 	if includeAmbient {
 		if path, err := exec.LookPath(filename); err == nil {
@@ -2463,32 +2459,6 @@ func SelectCompatiblePlugin(
 	return &bestMatch
 }
 
-// ReadCloserProgressBar displays a progress bar for the given closer and returns a wrapper closer to manipulate it.
-func ReadCloserProgressBar(
-	closer io.ReadCloser, w io.Writer, size int64, message string, colorization colors.Colorization,
-) io.ReadCloser {
-	if size == -1 || !cmdutil.Interactive() {
-		// We can't render a progress bar (unknown size, or non-interactive output), but still tell the
-		// user what's happening.
-		fmt.Fprintln(w, colorization.Colorize(colors.SpecUnimportant+message+colors.Reset))
-		return closer
-	}
-
-	// If we know the length of the download, show a progress bar.
-	bar := pb.New(int(size))
-	bar.Output = w
-	bar.Prefix(colorization.Colorize(colors.SpecUnimportant + message + ":"))
-	bar.Postfix(colorization.Colorize(colors.Reset))
-	bar.SetMaxWidth(80)
-	bar.SetUnits(pb.U_BYTES)
-	bar.Start()
-
-	return &barCloser{
-		bar:        bar,
-		readCloser: bar.NewProxyReader(closer),
-	}
-}
-
 // getCandidateExtensions returns a set of file extensions (including the dot seprator) which should be used when
 // probing for an executable file.
 func getCandidateExtensions() []string {
@@ -2600,22 +2570,7 @@ func getPluginSize(path string) (uint64, error) {
 		if fs < 0 {
 			return 0, fmt.Errorf("file size is negative: %d", fs)
 		}
-		//nolint:gosec // Guarded by the check above.
 		size += uint64(fs)
 	}
 	return size, nil
-}
-
-type barCloser struct {
-	bar        *pb.ProgressBar
-	readCloser io.ReadCloser
-}
-
-func (bc *barCloser) Read(dest []byte) (int, error) {
-	return bc.readCloser.Read(dest)
-}
-
-func (bc *barCloser) Close() error {
-	bc.bar.Finish()
-	return bc.readCloser.Close()
 }

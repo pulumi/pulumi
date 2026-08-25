@@ -1,4 +1,0 @@
-component: cli/package
-kind: fix
-body: Maintain `--server` when adding to the packages section of Pulumi.yaml
-time: 2026-08-04T23:03:26.506575+01:00

@@ -24,7 +24,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	. "github.com/pulumi/pulumi/pkg/v3/engine" //nolint:revive
+	. "github.com/pulumi/pulumi/pkg/v3/engine"
 	lt "github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest/framework"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
@@ -162,12 +162,12 @@ func TestReplacementParameterizedProvider(t *testing.T) {
 				},
 				InvokeF: func(_ context.Context, req plugin.InvokeRequest) (plugin.InvokeResponse, error) {
 					assert.Equal(t, "pkgExt:index:func", req.Tok.String())
-					assert.Equal(t, resource.NewProperty("in"), req.Args["input"])
+					assert.Equal(t, resource.NewProperty("in"), resource.ToResourcePropertyValue(req.Args.Get("input")))
 
 					return plugin.InvokeResponse{
-						Properties: resource.PropertyMap{
-							"output": resource.NewProperty("in " + param),
-						},
+						Properties: property.NewMap(map[string]property.Value{
+							"output": property.New("in " + param),
+						}),
 					}, nil
 				},
 				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
@@ -218,9 +218,9 @@ func TestReplacementParameterizedProvider(t *testing.T) {
 
 					return plugin.ConstructResponse{
 						URN: resource.NewURN("", "", "", req.Type, req.Name),
-						Outputs: resource.PropertyMap{
-							"output": resource.NewProperty("output"),
-						},
+						Outputs: property.NewMap(map[string]property.Value{
+							"output": property.New("output"),
+						}),
 						OutputDependencies: map[resource.PropertyKey][]resource.URN{
 							"output": {"urn:pulumi:stack::m::typA::resB"},
 						},

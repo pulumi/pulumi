@@ -43,13 +43,13 @@ func (m *mockWebhookGetClient) GetStackWebhook(
 func sampleWebhook() apitype.Webhook {
 	return apitype.Webhook{
 		OrganizationName: "my-org",
-		ProjectName:      ptr("my-project"),
-		StackName:        ptr("dev"),
+		ProjectName:      new("my-project"),
+		StackName:        new("dev"),
 		Name:             "deploy-hook",
 		DisplayName:      "Deploy Hook",
 		PayloadURL:       "https://example.com/webhook",
 		Active:           true,
-		Format:           ptr("raw"),
+		Format:           new("raw"),
 		Groups:           []string{"stacks"},
 		Filters:          []string{"stack_update"},
 		HasSecret:        true,

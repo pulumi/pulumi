@@ -31,6 +31,7 @@ import (
 	"github.com/gofrs/uuid"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/display"
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
 	resourceanalyzer "github.com/pulumi/pulumi/pkg/v3/resource/analyzer"
 	"github.com/pulumi/pulumi/pkg/v3/resource/autonaming"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
@@ -554,8 +555,35 @@ func Update(u UpdateInfo, ctx *Context, opts UpdateOptions, dryRun bool) (
 	if err != nil {
 		return nil, nil, err
 	}
+	// Snippet deletions are held back until the resources they registered are gone: removing a
+	// snippet whose resource delete then fails would orphan the resource with no way to retry
+	// the deletion.
+	var snippetsPre []resource.Snippet
+	var snippetDeletions *snippetDeletionTracker
 	if len(opts.Snippets) > 0 {
 		u.Target = targetWithSnippets(u.Target, effectiveSnippets)
+
+		upserts := make(map[uuid.UUID]*resource.Snippet, len(opts.Snippets))
+		deleted := map[string]bool{}
+		for id, snippet := range opts.Snippets {
+			if snippet == nil {
+				deleted[id.String()] = true
+				continue
+			}
+			upserts[id] = snippet
+		}
+		snippetsPre = effectiveSnippets
+		if len(deleted) > 0 {
+			snippetsPre, err = applySnippetUpdates(baseSnippets, upserts)
+			if err != nil {
+				return nil, nil, err
+			}
+			var oldResources []*pkgresource.State
+			if u.Target != nil && u.Target.Snapshot != nil {
+				oldResources = u.Target.Snapshot.Resources
+			}
+			snippetDeletions = newSnippetDeletionTracker(deleted, oldResources)
+		}
 	}
 
 	info, err := newDeploymentContext(ctx.Cancel.Base(), u, "update", ctx.ParentSpan)
@@ -576,27 +604,91 @@ func Update(u UpdateInfo, ctx *Context, opts UpdateOptions, dryRun bool) (
 	// We skip the target check here because the targeted resource may not exist yet.
 
 	return update(ctx, info, &deploymentOptions{
-		UpdateOptions: opts,
-		SourceFunc:    newUpdateSource,
-		Events:        emitter,
-		Diag:          newEventSink(emitter, false),
-		StatusDiag:    newEventSink(emitter, true),
-		DryRun:        dryRun,
-		pluginManager: ctx.PluginManager,
+		UpdateOptions:      opts,
+		SourceFunc:         newUpdateSource,
+		Events:             emitter,
+		Diag:               newEventSink(emitter, false),
+		StatusDiag:         newEventSink(emitter, true),
+		DryRun:             dryRun,
+		pluginManager:      ctx.PluginManager,
+		snippetsPrePersist: snippetsPre,
+		snippetDeletions:   snippetDeletions,
 	})
 }
 
+// snippetDeletionTracker counts, for each snippet being deleted, how many old resources it
+// registered are still in the stack. A snippet's deletion is only persisted once its count
+// reaches zero, so a failed resource delete keeps its snippet and can be retried.
+type snippetDeletionTracker struct {
+	mu        sync.Mutex
+	surviving map[string]int
+}
+
+func newSnippetDeletionTracker(deleted map[string]bool, oldResources []*pkgresource.State) *snippetDeletionTracker {
+	t := &snippetDeletionTracker{surviving: make(map[string]int, len(deleted))}
+	for id := range deleted {
+		t.surviving[id] = 0
+	}
+	for _, r := range oldResources {
+		if r == nil || r.ViewOf != "" || r.Delete {
+			continue
+		}
+		if _, ok := t.surviving[r.SnippetID]; ok {
+			t.surviving[r.SnippetID]++
+		}
+	}
+	return t
+}
+
+// recordStep notes when a successfully applied step removed a resource registered by one of the
+// tracked snippets.
+func (t *snippetDeletionTracker) recordStep(step deploy.Step) {
+	if step.Op() != deploy.OpDelete && step.Op() != deploy.OpRemovePendingReplace {
+		return
+	}
+	old := step.Old()
+	if old == nil || old.ViewOf != "" || old.Delete {
+		return
+	}
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	if _, ok := t.surviving[old.SnippetID]; ok {
+		t.surviving[old.SnippetID]--
+	}
+}
+
+// remaining filters snippets down to those that must still be persisted, dropping the tracked
+// deletions whose resources are all gone. The second return value reports whether anything was
+// dropped.
+func (t *snippetDeletionTracker) remaining(snippets []resource.Snippet) ([]resource.Snippet, bool) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	dropped := false
+	out := slice.Prealloc[resource.Snippet](len(snippets))
+	for _, s := range snippets {
+		if n, ok := t.surviving[s.UUID]; ok && n <= 0 {
+			dropped = true
+			continue
+		}
+		out = append(out, s)
+	}
+	return out, dropped
+}
+
+// persistValidatedSnippets validates the snippets in validate and persists the persist list on
+// the snapshot manager; the two differ for deletions, which are persisted only after the
+// deployment succeeds.
 func persistValidatedSnippets(
 	ctx context.Context,
 	manager SnapshotManager,
-	snippets []resource.Snippet,
+	validate, persist []resource.Snippet,
 	plugctx *plugin.Context,
 ) error {
 	if manager == nil {
 		return nil
 	}
 	loader := schema.NewPluginLoader(plugctx)
-	for _, snippet := range snippets {
+	for _, snippet := range validate {
 		if err := ctx.Err(); err != nil {
 			return err
 		}
@@ -604,7 +696,7 @@ func persistValidatedSnippets(
 			return err
 		}
 	}
-	return manager.SetSnippets(snippets)
+	return manager.SetSnippets(persist)
 }
 
 func installPlugins(
@@ -696,8 +788,8 @@ func loadPolicyAnalyzer(
 		return analyzer, nil
 	}
 
-	var me *workspace.MissingError
-	if !errors.As(err, &me) {
+	me, ok := errors.AsType[*workspace.MissingError](err)
+	if !ok {
 		return nil, err
 	}
 
@@ -717,8 +809,7 @@ func loadPolicyAnalyzer(
 
 	analyzer, err = plugctx.Host.PolicyAnalyzer(plugctx, name, path, opts)
 	if err != nil {
-		var retryMe *workspace.MissingError
-		if errors.As(err, &retryMe) {
+		if retryMe, ok := errors.AsType[*workspace.MissingError](err); ok {
 			return nil, policyAnalyzerMissingError(name, retryMe)
 		}
 		return nil, err
@@ -1129,6 +1220,14 @@ func update(
 	// Execute the deployment.
 	plan, changes, err := deployment.run(ctx)
 
+	if !opts.DryRun && opts.snippetDeletions != nil && ctx.SnapshotManager != nil {
+		if remaining, dropped := opts.snippetDeletions.remaining(opts.snippetsPrePersist); dropped {
+			if serr := ctx.SnapshotManager.SetSnippets(remaining); serr != nil {
+				err = errors.Join(err, fmt.Errorf("persist snippet deletions: %w", serr))
+			}
+		}
+	}
+
 	if ctx.FinalizeUpdateFunc != nil {
 		ctx.FinalizeUpdateFunc()
 	}
@@ -1241,6 +1340,10 @@ func (acts *updateActions) OnResourceStepPost(
 		steps := atomic.LoadInt32(&acts.Steps)
 		acts.Opts.Events.resourceOperationFailedEvent(step, status, steps, acts.Opts.Debug, acts.Opts.ShowSecrets)
 	} else {
+		if t := acts.Opts.snippetDeletions; t != nil {
+			t.recordStep(step)
+		}
+
 		op, record := step.Op(), step.Logical()
 		if acts.Opts.isRefresh && op == deploy.OpRefresh {
 			// Refreshes are handled specially.

@@ -26,6 +26,8 @@ import (
 	"sort"
 	"strings"
 
+	mapset "github.com/deckarep/golang-set/v2"
+
 	"github.com/zclconf/go-cty/cty"
 
 	"github.com/hashicorp/hcl/v2"
@@ -70,6 +72,12 @@ type generator struct {
 	// name.
 	rangeVariable string
 
+	// resourceInputObjectTokens memoizes, per package name, the tokens of object
+	// types reachable from resource input properties. sdk-gen exports an "<Name>Args"
+	// input class for exactly these; object types used only by function inputs are
+	// exported under their plain name.
+	resourceInputObjectTokens map[string]codegen.StringSet
+
 	// insideApplyLambda is set while generating the body of an __apply callback.
 	insideApplyLambda bool
 	// applyLambdaType holds the destination type for the current resource input.
@@ -92,7 +100,7 @@ func GenerateProgram(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, 
 	nodes := pcl.Linearize(program)
 
 	// Creating a list to store and later print helper methods if they turn out to be needed
-	preambleHelperMethods := codegen.NewStringSet()
+	preambleHelperMethods := mapset.NewSet[string]()
 
 	var main bytes.Buffer
 	g.genPreamble(&main, program, preambleHelperMethods)
@@ -117,7 +125,7 @@ func GenerateProgram(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, 
 		// mark the generator to target components
 		componentGenerator.isComponent = true
 
-		componentPreambleMethods := codegen.NewStringSet()
+		componentPreambleMethods := mapset.NewSet[string]()
 		var componentBuffer bytes.Buffer
 		// generate imports for the component
 		componentGenerator.genPreamble(&componentBuffer, component.Program, componentPreambleMethods)
@@ -320,7 +328,7 @@ func (g *generator) genComponentDefinition(w io.Writer, component *pcl.Component
 
 			outputVars := component.Program.OutputVariables()
 			for _, output := range outputVars {
-				g.Fgenf(w, "%sself.%s = %v\n", g.Indent, output.Name(), output.Value)
+				g.Fgenf(w, "%sself.%s = %v\n", g.Indent, PyName(output.Name()), output.Value)
 			}
 
 			if len(outputVars) == 0 {
@@ -486,23 +494,23 @@ func newGenerator(program *pcl.Program) (*generator, error) {
 	return g, nil
 }
 
-func makeUniqueName(base string, used codegen.StringSet) string {
+func makeUniqueName(base string, used mapset.Set[string]) string {
 	name := EnsureKeywordSafe(PyName(base))
-	if !used.Has(name) {
+	if !used.Contains(name) {
 		used.Add(name)
 		return name
 	}
 
 	for i := 1; ; i++ {
 		candidate := fmt.Sprintf("%s_%d", name, i)
-		if !used.Has(candidate) {
+		if !used.Contains(candidate) {
 			used.Add(candidate)
 			return candidate
 		}
 	}
 }
 
-func (g *generator) ensurePackageImportAlias(pkg string, used codegen.StringSet) string {
+func (g *generator) ensurePackageImportAlias(pkg string, used mapset.Set[string]) string {
 	pkgKey := makeValidIdentifier(pkg)
 	if alias, ok := g.packageImportAliases[pkgKey]; ok {
 		return alias
@@ -521,12 +529,9 @@ func (g *generator) packageAlias(pkg string) string {
 	return EnsureKeywordSafe(PyName(pkgKey))
 }
 
-func (g *generator) assignRootNodeIdentifiers(program *pcl.Program, reserved codegen.StringSet) {
+func (g *generator) assignRootNodeIdentifiers(program *pcl.Program, reserved mapset.Set[string]) {
 	g.nodeIdentifiers = map[string]string{}
-	used := codegen.NewStringSet()
-	for name := range reserved {
-		used.Add(name)
-	}
+	used := reserved.Clone()
 	for _, node := range program.Nodes {
 		var name string
 		switch n := node.(type) {
@@ -547,8 +552,8 @@ func (g *generator) assignRootNodeIdentifiers(program *pcl.Program, reserved cod
 	}
 }
 
-func (g *generator) importAliasIdentifiers() codegen.StringSet {
-	used := codegen.NewStringSet("pulumi")
+func (g *generator) importAliasIdentifiers() mapset.Set[string] {
+	used := mapset.NewSet("pulumi")
 	for _, alias := range g.packageImportAliases {
 		used.Add(alias)
 	}
@@ -627,11 +632,11 @@ func rewriteApplyLambdaBody(applyLambda *model.AnonymousFunctionExpression, args
 	return rewrittenBody
 }
 
-func (g *generator) genPreamble(w io.Writer, program *pcl.Program, preambleHelperMethods codegen.StringSet) {
+func (g *generator) genPreamble(w io.Writer, program *pcl.Program, preambleHelperMethods mapset.Set[string]) {
 	// Print the pulumi import at the top.
 	g.Fprintln(w, "import pulumi")
 	g.packageImportAliases = map[string]string{}
-	usedImportAliases := codegen.NewStringSet("pulumi")
+	usedImportAliases := mapset.NewSet("pulumi")
 
 	// Accumulate other imports for the various providers. Don't emit them yet, as we need to sort them later on.
 	type Import struct {
@@ -733,11 +738,11 @@ func (g *generator) genPreamble(w io.Writer, program *pcl.Program, preambleHelpe
 	}
 
 	var imports []string
-	importSetNames := codegen.NewStringSet()
+	importSetNames := mapset.NewSet[string]()
 	for k := range importSet {
 		importSetNames.Add(k)
 	}
-	for _, pkg := range importSetNames.SortedValues() {
+	for _, pkg := range mapset.Sorted(importSetNames) {
 		if pkg == "pulumi" {
 			continue
 		}
@@ -760,6 +765,10 @@ func (g *generator) genPreamble(w io.Writer, program *pcl.Program, preambleHelpe
 	seenComponentImports := map[string]bool{}
 	for _, node := range program.Nodes {
 		if component, ok := node.(*pcl.Component); ok {
+			// A component declared without a source has no module to import from.
+			if component.Program == nil {
+				continue
+			}
 			componentPath := strings.ReplaceAll(filepath.Base(component.DirPath()), "-", "_")
 			componentName := component.DeclarationName()
 			pathAndName := componentPath + "-" + componentName
@@ -778,7 +787,7 @@ func (g *generator) genPreamble(w io.Writer, program *pcl.Program, preambleHelpe
 	g.Fprint(w, "\n")
 
 	// If we collected any helper methods that should be added, write them just before the main func
-	for _, preambleHelperMethodBody := range preambleHelperMethods.SortedValues() {
+	for _, preambleHelperMethodBody := range mapset.Sorted(preambleHelperMethods) {
 		g.Fprintf(w, "%s\n\n", preambleHelperMethodBody)
 	}
 }
@@ -817,7 +826,7 @@ func tokenToQualifiedName(pkgAlias, module, member string) string {
 		module = "." + module
 	}
 
-	return fmt.Sprintf("%s%s.%s", pkgAlias, module, cgstrings.UppercaseFirst(member))
+	return fmt.Sprintf("%s%s.%s", pkgAlias, module, cgstrings.UppercaseFirst(cgstrings.Unhyphenate(member)))
 }
 
 // resourceTypeName computes the qualified name of a python resource.
@@ -936,14 +945,57 @@ func (g *generator) argumentTypeName(expr model.Expression, destType model.Type)
 	// Normalize module.
 	pkg, err := objType.PackageReference.Definition()
 	contract.AssertNoErrorf(err, "error loading definition for package %q", objType.PackageReference.Name())
+	compatibility := ""
 	if lang, ok := pkg.Language["python"]; ok {
 		if pkgInfo, ok := lang.(PackageInfo); ok {
 			if m, ok := pkgInfo.ModuleNameOverrides[module]; ok {
 				modName = m
 			}
+			compatibility = pkgInfo.Compatibility
 		}
 	}
-	return tokenToQualifiedName(g.packageAlias(pkgName), modName, member) + "Args"
+	name := tokenToQualifiedName(g.packageAlias(pkgName), modName, member)
+	// Match sdk-gen's naming: input-shape object types (and everything under the tfbridge20 and
+	// kubernetes20 compatibility modes) get an "Args" suffix. A plain-shape object type is named
+	// "<Name>Args" only when the SDK also exports that input class, which it does for types
+	// reachable from resource inputs; types used only by function inputs keep their plain name.
+	if objType.IsInputShape() || compatibility == tfbridge20 || compatibility == kubernetes20 ||
+		g.usedByResourceInputs(objType, pkg) {
+		name += "Args"
+	}
+	return name
+}
+
+// usedByResourceInputs reports whether obj is reachable from the input properties of any
+// resource in pkg, which is when python sdk-gen generates an "<Name>Args" input class for it.
+func (g *generator) usedByResourceInputs(obj *schema.ObjectType, pkg *schema.Package) bool {
+	if g.resourceInputObjectTokens == nil {
+		g.resourceInputObjectTokens = map[string]codegen.StringSet{}
+	}
+	tokens, ok := g.resourceInputObjectTokens[pkg.Name]
+	if !ok {
+		tokens = codegen.StringSet{}
+		scan := func(r *schema.Resource) {
+			if r == nil {
+				return
+			}
+			properties := r.InputProperties
+			if r.StateInputs != nil {
+				properties = append(slices.Clip(properties), r.StateInputs.Properties...)
+			}
+			visitObjectTypes(properties, func(t schema.Type) {
+				if T, ok := t.(*schema.ObjectType); ok {
+					tokens.Add(T.Token)
+				}
+			})
+		}
+		scan(pkg.Provider)
+		for _, r := range pkg.Resources {
+			scan(r)
+		}
+		g.resourceInputObjectTokens[pkg.Name] = tokens
+	}
+	return tokens.Has(obj.Token)
 }
 
 // makeResourceName returns the expression that should be emitted for a resource's "name" parameter given its base name
@@ -1721,6 +1773,37 @@ func (g *generator) genReadResource(w io.Writer, r *pcl.ReadResource) {
 
 // genComponent handles the generation of instantiations of non-builtin resources.
 func (g *generator) genComponent(w io.Writer, r *pcl.Component) {
+	// A component declared without a source has no class to instantiate; construct the SDK's base
+	// ComponentResource with the type token that names it.
+	if r.Program == nil {
+		optionsBag, temps := g.lowerResourceOptions(r.Options, nil)
+		// Lowering an input can introduce temporaries, which are statements in their own right; collect them all
+		// so that they are emitted before the assignment that uses them rather than inside it.
+		inputs := make([]*model.Attribute, len(r.Inputs))
+		for i, attr := range r.Inputs {
+			value, valueTemps := g.lowerExpression(attr.Value, attr.Value.Type())
+			temps = append(temps, valueTemps...)
+			inputs[i] = &model.Attribute{Name: attr.Name, Value: value}
+		}
+		g.genTemps(w, temps)
+
+		g.Fgenf(w, "%s%s = pulumi.ComponentResource(%q, %s", g.Indent, g.nodeName(r.Name()), r.Token,
+			g.makeResourceName(r.LogicalName(), ""))
+		if len(inputs) > 0 {
+			g.Fgen(w, ", {")
+			for i, attr := range inputs {
+				if i > 0 {
+					g.Fgen(w, ", ")
+				}
+				g.Fgenf(w, "%q: %.v", attr.Name, attr.Value)
+			}
+			g.Fgen(w, "}")
+		}
+		g.genResourceOptions(w, optionsBag, len(inputs) != 0, nil)
+		g.Fgen(w, ")\n")
+		return
+	}
+
 	componentName := r.DeclarationName()
 	optionsBag, temps := g.lowerResourceOptions(r.Options, nil)
 	name := r.LogicalName()

@@ -16,7 +16,9 @@ package do
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"sort"
 
@@ -26,6 +28,7 @@ import (
 
 	hclsyntax "github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
 
+	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	backendSecrets "github.com/pulumi/pulumi/pkg/v3/backend/secrets"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/autonames"
@@ -36,6 +39,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 // filterReferencesByPCLUsage returns the subset of refs whose keys appear as top-level identifier
@@ -132,10 +136,7 @@ func runShowResources(cmd *cobra.Command, ws pkgWorkspace.Context, lm cmdBackend
 	})
 	sink := &forwardingSink{base: base}
 	displayOpts := display.Options{Color: cmdutil.GetGlobalColorization()}
-	stack, err := cmdStack.RequireStack(
-		ctx, sink, ws, lm,
-		"", cmdStack.LoadOnly, displayOpts, "",
-	)
+	stack, err := loadStackForShowResources(ctx, sink, ws, lm, displayOpts)
 	if err != nil {
 		return fmt.Errorf("load stack: %w", err)
 	}
@@ -152,6 +153,29 @@ func runShowResources(cmd *cobra.Command, ws pkgWorkspace.Context, lm cmdBackend
 	}
 	contract.Failf("unsupported output format %q", output)
 	return nil
+}
+
+// loadStackForShowResources mirrors packageCommand.loadStackForStateful: if there's no Pulumi
+// project rooted at the CWD, fall back to the auto-materialized global project under
+// $PULUMI_HOME and its `default` stack so `pulumi do show-resources` works with the same
+// zero-setup story as the stateful `do` subcommands. Otherwise use the workspace's currently
+// selected stack via RequireStack.
+func loadStackForShowResources(
+	ctx context.Context, sink diag.Sink, ws pkgWorkspace.Context, lm cmdBackend.LoginManager,
+	opts display.Options,
+) (backend.Stack, error) {
+	proj, _, err := ws.ReadProject("")
+	if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
+		return nil, err
+	}
+	if proj == nil {
+		proj, root, err := ensureGlobalProject()
+		if err != nil {
+			return nil, err
+		}
+		return ensureGlobalStack(ctx, sink, ws, lm, proj, root, opts)
+	}
+	return cmdStack.RequireStack(ctx, sink, ws, lm, "", cmdStack.LoadOnly, opts, "")
 }
 
 func printShowResourcesText(cmd *cobra.Command, names map[string]string) error {

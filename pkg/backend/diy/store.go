@@ -176,8 +176,9 @@ func (p *projectReferenceStore) ParseReference(stackRef string) (*diyBackendRefe
 	if project == "" {
 		currentProject := p.currentProject()
 		if currentProject == nil {
-			return nil, errors.New("if you're using the --stack flag, " +
-				"pass the fully qualified name (organization/project/stack)")
+			return nil, errors.New("no Pulumi.yaml project file found; " +
+				"either run this command from a directory containing a Pulumi project, " +
+				"or pass the fully qualified stack name (organization/project/stack)")
 		}
 
 		project = currentProject.Name.String()

@@ -18,7 +18,7 @@ on:
 env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   # Must match the `version:` field in .custom-gcl.yml.
-  GOLANGCI_LINT_VERSION: v2.12.2
+  GOLANGCI_LINT_VERSION: v2.13.0
 
 jobs:
   golangci:
@@ -102,7 +102,7 @@ jobs:
           action: jdx/mise-action@v2
           with: |
             experimental: true
-            cache_key_prefix: mise-npm-shell-out-v0
+            cache_key_prefix: mise-npm-shell-out-v1
       - name: Check Protobufs
         run: make check_proto
 
@@ -185,6 +185,10 @@ jobs:
   changelog:
     name: Lint changelog entries
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      # To comment changelog style findings on PRs.
+      pull-requests: write
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
         with:
@@ -204,6 +208,14 @@ jobs:
           with: |
             experimental: true
       - run: make lint_changelog
+      - name: Lint changelog message style (advisory)
+        if: github.event_name == 'pull_request'
+        uses: vale-cli/vale-action@518a9136acc6e6668ce7c00d367051e0941e87ff # v3.0.0
+        with:
+          version: 3.17.1
+          files: changelog/pending
+          sync: false
+          reporter: github-pr-review
 
   pulumi-json:
     name: Lint pulumi.json

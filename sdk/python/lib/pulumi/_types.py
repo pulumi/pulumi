@@ -584,6 +584,33 @@ def output_type(cls: type[T]) -> type[T]:
     return cls
 
 
+def output_type_to_dict(obj: Any) -> dict[str, Any]:
+    """
+    Returns a dict for the output type.
+
+    The keys of the dict are Pulumi (wire-format) names that should not be translated.
+    """
+    cls = type(obj)
+    assert is_output_type(cls)
+
+    result: dict[str, Any] = {}
+    for _, pulumi_name, prop in _py_properties(cls):  # type: ignore[arg-type] # https://github.com/python/mypy/issues/11470
+        fget = prop.fget
+
+        # If the property has a _pulumi_deprecated_callable attribute, use that
+        # as the getter. We do this so as to bypass the warnings which would
+        # otherwise be emitted, which are not appropriate here since the user
+        # has not written code that makes use of a deprecated identifier.
+        deprecated_callable = prop.fget.__dict__.get(_PULUMI_DEPRECATED_CALLABLE)
+        if deprecated_callable is not None:
+            fget = deprecated_callable
+
+        value = fget(obj)  # type: ignore
+        if value is not None:
+            result[pulumi_name] = value
+    return result
+
+
 def output_type_from_dict(cls: type[T], output: dict[str, Any]) -> T:
     assert isinstance(output, dict)
     assert is_output_type(cls)

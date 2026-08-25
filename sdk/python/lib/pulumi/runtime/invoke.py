@@ -24,7 +24,7 @@ from collections.abc import Awaitable
 
 import grpc
 
-from ._instrumentation import wrap_with_context
+from ._context import wrap_with_context
 from google.protobuf import struct_pb2
 
 from semver import VersionInfo
@@ -41,7 +41,7 @@ from .settings import (
     get_monitor,
     grpc_error_to_exception,
     handle_grpc_error,
-    monitor_supports_invoke_depends_on,
+    monitor_supports_feature,
 )
 from .sync_await import _sync_await
 
@@ -291,7 +291,9 @@ def _invoke(
                 resources_to_wait_for = resources_to_wait_for.union(deps)
             # The expanded set of dependencies, including children of components.
             expanded_deps = await rpc._expand_dependencies(resources_to_wait_for, None)
-            if await monitor_supports_invoke_depends_on():
+            if monitor_supports_feature(
+                resource_pb2.RESOURCE_MONITOR_FEATURE_INVOKE_DEPENDS_ON
+            ):
                 invoke_depends_on = list(expanded_deps.keys())
             else:
                 # Older engines cannot gate invokes: if we depend on any

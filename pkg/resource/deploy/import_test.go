@@ -30,6 +30,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/urn"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi-internal/gsync"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -201,8 +202,8 @@ func TestImporter(t *testing.T) {
 									// NOT just ambient config from GetPackageConfig.
 									// The registry's FilterProviderConfig strips internal fields
 									// but passes through user config like "region".
-									assert.Equal(t, resource.NewProperty("eu-west-1"),
-										req.News["region"])
+									assert.Equal(t, property.New("eu-west-1"),
+										req.News.Get("region"))
 									return plugin.CheckConfigResponse{}, expectedErr
 								},
 							}, nil
@@ -246,8 +247,8 @@ func TestImporter(t *testing.T) {
 								) (plugin.CheckConfigResponse, error) {
 									// The inputs come from the declared provider entry, not the
 									// referencing import, which carries none.
-									assert.Equal(t, resource.NewProperty("eu-west-1"),
-										req.News["region"])
+									assert.Equal(t, property.New("eu-west-1"),
+										req.News.Get("region"))
 									return plugin.CheckConfigResponse{}, expectedErr
 								},
 							}, nil

@@ -18,7 +18,7 @@ Runtime settings and configuration.
 
 from __future__ import annotations
 
-from ._instrumentation import wrap_with_context
+from ._context import wrap_with_context
 
 import asyncio
 import base64
@@ -72,7 +72,7 @@ class Settings:
         self.parallel = parallel
         self.dry_run = dry_run
         self.legacy_apply_enabled = legacy_apply_enabled
-        self.feature_support = {}
+        self.monitor_features = set()
         self.organization = organization
         # Caches package references returned by `RegisterPackage` for
         # parameterized providers. Scoped to the deployment so concurrent inline
@@ -146,7 +146,7 @@ class Settings:
     def legacy_apply_enabled(self) -> Optional[bool]: ...
 
     @contextproperty
-    def feature_support(self) -> Optional[dict]: ...
+    def monitor_features(self) -> set[int]: ...  # type: ignore
 
     @contextproperty
     def package_refs(self) -> Optional[dict]: ...
@@ -267,9 +267,7 @@ async def _get_callbacks() -> Optional[_CallbackServicer]:
         return callbacks
 
     monitor = SETTINGS.monitor
-    if monitor is None or not isinstance(
-        monitor, resource_pb2_grpc.ResourceMonitorStub
-    ):
+    if monitor is None:
         return None
 
     callbacks = _CallbackServicer(monitor)
@@ -325,16 +323,8 @@ def require_pulumi_version(rg: str) -> None:
             raise grpc_error_to_exception(exn) from None
 
 
-async def monitor_supports_feature(feature: str) -> bool:
-    if feature not in SETTINGS.feature_support:
-        monitor = SETTINGS.monitor
-        if not monitor:
-            return False
-
-        result = await _monitor_supports_feature(monitor, feature)
-        SETTINGS.feature_support[feature] = result
-
-    return SETTINGS.feature_support[feature]
+def monitor_supports_feature(feature: int) -> bool:
+    return feature in SETTINGS.monitor_features
 
 
 def grpc_error_to_exception(exn: grpc.RpcError) -> Exception:
@@ -355,42 +345,6 @@ def grpc_error_to_exception(exn: grpc.RpcError) -> Exception:
 
 def handle_grpc_error(exn: grpc.RpcError) -> NoReturn:
     raise grpc_error_to_exception(exn)
-
-
-async def monitor_supports_secrets() -> bool:
-    return await monitor_supports_feature("secrets")
-
-
-async def monitor_supports_resource_references() -> bool:
-    return await monitor_supports_feature("resourceReferences")
-
-
-async def monitor_supports_output_values() -> bool:
-    return await monitor_supports_feature("outputValues")
-
-
-async def monitor_supports_deleted_with() -> bool:
-    return await monitor_supports_feature("deletedWith")
-
-
-async def monitor_supports_replace_with() -> bool:
-    return await monitor_supports_feature("replaceWith")
-
-
-async def monitor_supports_alias_specs() -> bool:
-    return await monitor_supports_feature("aliasSpecs")
-
-
-def _sync_monitor_supports_transforms() -> bool:
-    return SETTINGS.feature_support.get("transforms", False)
-
-
-def _sync_monitor_supports_invoke_transforms() -> bool:
-    return SETTINGS.feature_support.get("invokeTransforms", False)
-
-
-def _sync_monitor_supports_parameterization() -> bool:
-    return SETTINGS.feature_support.get("parameterization", False)
 
 
 async def register_package(
@@ -426,7 +380,9 @@ async def register_package(
     if existing is not None:
         return existing
 
-    if not _sync_monitor_supports_parameterization():
+    if not monitor_supports_feature(
+        resource_pb2.RESOURCE_MONITOR_FEATURE_PARAMETERIZATION
+    ):
         raise Exception(
             "The Pulumi CLI does not support parameterization. Please update the Pulumi CLI."
         )
@@ -453,19 +409,6 @@ async def register_package(
     ref = response.ref
     package_refs[key] = ref
     return ref
-
-
-async def monitor_supports_resource_hooks() -> bool:
-    return await monitor_supports_feature("resourceHooks")
-
-
-async def monitor_supports_error_hooks() -> bool:
-    return await monitor_supports_feature("errorHooks")
-
-
-async def monitor_supports_invoke_depends_on() -> bool:
-    # Advertised by GetDeploymentInfo only, so an engine that predates that RPC never has it.
-    return SETTINGS.feature_support.get(_INVOKE_DEPENDS_ON, False)
 
 
 def reset_options(
@@ -496,7 +439,7 @@ def reset_options(
     )
 
 
-async def _monitor_supports_feature(
+async def _probe_monitor_feature(
     monitor: resource_pb2_grpc.ResourceMonitorStub, feature: str
 ) -> bool:
     req = resource_pb2.SupportsFeatureRequest(id=feature)
@@ -532,14 +475,6 @@ _LEGACY_FEATURE_MAPPING = {
     "errorHooks": resource_pb2.RESOURCE_MONITOR_FEATURE_ERROR_HOOKS,
 }
 
-# Features that have no legacy ID, keyed in feature_support by their own name.
-_INVOKE_DEPENDS_ON = "invokeDependsOn"
-
-_FEATURE_MAPPING = {
-    **_LEGACY_FEATURE_MAPPING,
-    _INVOKE_DEPENDS_ON: resource_pb2.RESOURCE_MONITOR_FEATURE_INVOKE_DEPENDS_ON,
-}
-
 
 async def _load_monitor_feature_support():
     if not SETTINGS.monitor:
@@ -552,17 +487,20 @@ async def _load_monitor_feature_support():
                 lambda: SETTINGS.monitor.GetDeploymentInfo(empty_pb2.Empty())
             ),
         )
-        for feature, value in _FEATURE_MAPPING.items():
-            SETTINGS.feature_support[feature] = (
-                value in deployment_info.supportedFeatures
-            )
+        SETTINGS.monitor_features = set(deployment_info.supportedFeatures)
 
     except grpc.RpcError as exn:
         if exn.code() != grpc.StatusCode.UNIMPLEMENTED:
             handle_grpc_error(exn)
-        await asyncio.gather(
+        legacy_features = list(_LEGACY_FEATURE_MAPPING)
+        supported = await asyncio.gather(
             *(
-                monitor_supports_feature(feature)
-                for feature in sorted(_LEGACY_FEATURE_MAPPING)
+                _probe_monitor_feature(SETTINGS.monitor, feature)
+                for feature in legacy_features
             )
         )
+        SETTINGS.monitor_features = {
+            _LEGACY_FEATURE_MAPPING[feature]
+            for feature, has_support in zip(legacy_features, supported)
+            if has_support
+        }

@@ -1,4 +1,0 @@
-component: cli/cloud
-kind: fix
-body: "`pulumi api`: repeated `-H`/`--header` values for the same header name now all reach the wire, instead of each one silently overwriting the last"
-time: 2026-08-03T00:00:00+00:00

@@ -85,8 +85,7 @@ func newStackSelectCmd() *cobra.Command {
 
 				s, stackErr := b.GetStack(ctx, stackRef)
 				if stackErr != nil {
-					var notFound backenderr.NotFoundError
-					if errors.As(stackErr, &notFound) {
+					if _, ok := errors.AsType[backenderr.NotFoundError](stackErr); ok {
 						return backenderr.StackNotFoundError{StackName: stackRef.String()}
 					}
 					return stackErr
@@ -95,7 +94,9 @@ func newStackSelectCmd() *cobra.Command {
 				}
 				// If create flag was passed and stack was not found, create it and select it.
 				if create && stack != "" {
-					s, err := InitStack(ctx, sink, ws, b, stack, root, false, secretsProvider, false /*useRemoteConfig*/, "")
+					s, err := InitStack(ctx, sink, ws, b, stack, root, CreateStackOptions{
+						SecretsProvider: secretsProvider,
+					})
 					if err != nil {
 						return err
 					}

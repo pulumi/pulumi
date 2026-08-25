@@ -23,10 +23,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func ptr[T any](v T) *T {
-	return &v
-}
-
 func TestObjectBasic(t *testing.T) {
 	t.Parallel()
 	type Embedded struct {
@@ -80,7 +76,7 @@ func TestObjectBasic(t *testing.T) {
 		String:   "syntax",
 		Array:    []string{"hello", "world"},
 		Object:   map[string]string{"hello": "world"},
-		Ptr:      ptr("syntax"),
+		Ptr:      new("syntax"),
 		Any:      "value",
 	}
 
@@ -191,12 +187,12 @@ func TestInvalidEncode(t *testing.T) {
 		node syntax.Node
 		into any
 	}{
-		{syntax.Boolean(true), ptr(42)},
-		{syntax.Number(json.Number("3.14")), ptr(42)},
-		{syntax.Number(json.Number("3.14")), ptr("hello")},
-		{syntax.String("syntax"), ptr(42)},
-		{syntax.Array(syntax.String("hello"), syntax.String("world")), ptr(42)},
-		{syntax.Object(syntax.ObjectProperty(syntax.String("hello"), syntax.String("world"))), ptr(42)},
+		{syntax.Boolean(true), new(42)},
+		{syntax.Number(json.Number("3.14")), new(42)},
+		{syntax.Number(json.Number("3.14")), new("hello")},
+		{syntax.String("syntax"), new(42)},
+		{syntax.Array(syntax.String("hello"), syntax.String("world")), new(42)},
+		{syntax.Object(syntax.ObjectProperty(syntax.String("hello"), syntax.String("world"))), new(42)},
 	}
 	for _, c := range cases {
 		t.Run(c.node.String(), func(t *testing.T) {

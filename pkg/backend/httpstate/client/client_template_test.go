@@ -689,7 +689,6 @@ func TestListTemplates(t *testing.T) {
 		mockClient := newMockClient(mockServer)
 
 		// Call ListTemplates and collect results
-		//nolint:prealloc // capacity unknown ahead of time
 		searchResults := []apitype.TemplateMetadata{}
 		for tmpl, err := range registry.Templates(mockClient.ListTemplates(
 			t.Context(), registry.ListTemplatesOptions{Name: "my-template"},
@@ -757,7 +756,7 @@ func TestListTemplates(t *testing.T) {
 
 				responseData, err = json.Marshal(apitype.ListTemplatesResponse{
 					Templates:         firstPageTemplates,
-					ContinuationToken: ptr("next-page-token-1"),
+					ContinuationToken: new("next-page-token-1"),
 				})
 				require.NoError(t, err)
 			case 1:
@@ -767,7 +766,7 @@ func TestListTemplates(t *testing.T) {
 
 				responseData, err = json.Marshal(apitype.ListTemplatesResponse{
 					Templates:         secondPageTemplates,
-					ContinuationToken: ptr("next-page-token-2"),
+					ContinuationToken: new("next-page-token-2"),
 				})
 				require.NoError(t, err)
 			case 2:
@@ -788,7 +787,6 @@ func TestListTemplates(t *testing.T) {
 
 		mockClient := newMockClient(mockServer)
 
-		//nolint:prealloc // capacity unknown ahead of time
 		searchResults := []apitype.TemplateMetadata{}
 		for tmpl, err := range registry.Templates(mockClient.ListTemplates(
 			t.Context(), registry.ListTemplatesOptions{Name: "my-template"},

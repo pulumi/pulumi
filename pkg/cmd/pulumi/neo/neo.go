@@ -63,6 +63,13 @@ const nonInteractivePromptPreamble = "<details><summary>non-interactive mode</su
 var (
 	userMessageRetryInitialBackoff = 1 * time.Second
 	userMessageRetryMaxBackoff     = 30 * time.Second
+
+	// cancelMaxPostAttempts bounds the total user_cancel posts (the initial
+	// one plus automatic retries). With userMessageRetryDelay backoff, 8
+	// posts span roughly 90 seconds — enough to outlast most local tool calls
+	// (during which the service 409s cancels because the task is parked)
+	// without retrying forever against a task that will never accept one.
+	cancelMaxPostAttempts = 8
 )
 
 // neoTaskCreator is the slice of the cloud client that creates Neo tasks.
@@ -110,8 +117,8 @@ func entityDroppedWarning(orgName, projectName, stackRefName string, err error) 
 // rejection. Matched on the message because the service doesn't expose a stable
 // error code for this case.
 func isInvalidEntitiesError(err error) bool {
-	var errResp *apitype.ErrorResponse
-	if !errors.As(err, &errResp) {
+	errResp, ok := errors.AsType[*apitype.ErrorResponse](err)
+	if !ok {
 		return false
 	}
 	return strings.Contains(strings.ToLower(errResp.Message), "invalid entit")
@@ -135,6 +142,11 @@ type outboundEvent struct {
 	// posting a user event. Used by Ctrl+A / Ctrl+R after the first message has
 	// been sent, so cloud ApprovalHandler picks up the new mode immediately.
 	update *client.UpdateNeoTaskOptions
+	// abandonCancel, when true, tells the dispatcher to drop any pending
+	// user_cancel retry: the TUI sends it when a final event ends the turn the
+	// cancel targeted, so a stale retry can't fire into a later turn. event is
+	// nil on these envelopes.
+	abandonCancel bool
 }
 
 // Indirection points for the integration test in neo_integration_test.go.
@@ -406,8 +418,7 @@ func prepareNeoRuntime(ctx context.Context, stderr io.Writer, cwdFlag string) (*
 		return nil, err
 	}
 	cloudBe, err := resolveNeoCloudBackend(ctx, be)
-	var upgradeErr neoUpgradeRequiredError
-	if errors.As(err, &upgradeErr) {
+	if upgradeErr, ok := errors.AsType[neoUpgradeRequiredError](err); ok {
 		// Print the upgrade message bare (no "error:" prefix) and bail.
 		return nil, result.FprintBailf(stderr, "%s", upgradeErr.msg)
 	}
@@ -968,6 +979,12 @@ func dispatchUserEvents(
 	var retryTimer *time.Timer
 	var retryC <-chan time.Time
 	retryNow := false
+
+	// Single-slot retry state for the in-flight user_cancel; see cancelRetry.
+	cancel := &cancelRetry{}
+	postCancel := func() {
+		cancel.post(ctx, getTaskID(), postEvent, uiCh)
+	}
 	stopRetryTimer := func() {
 		if retryTimer != nil {
 			retryTimer.Stop()
@@ -1008,9 +1025,29 @@ func dispatchUserEvents(
 			retryTimer = nil
 			retryC = nil
 			retryNow = true
+		case <-cancel.timerC:
+			cancel.timerC = nil
+			if cancel.pending {
+				postCancel()
+			}
 		case ob, ok := <-outCh:
 			if !ok {
 				return nil
+			}
+			// An abandon envelope (the TUI saw the turn end) or any non-cancel
+			// user event proves a pending cancel is stale and disarms its retry
+			// so it can't fire into a later turn. The non-cancel case is the
+			// backstop for a dropped abandon (sendOut is drop-on-full): the TUI
+			// can only emit another user event after the turn ended. Mode
+			// updates (nil event) don't count — they're legal while a cancel is
+			// in flight. Checked before the taskID gate: the abandon envelope's
+			// nil event would otherwise trip the "task not ready" warning when
+			// the abandon races task creation.
+			if ob.abandonCancel || (cancel.pending && ob.event != nil && !isCancelEvent(ob.event)) {
+				cancel.disarm()
+				if ob.abandonCancel {
+					continue
+				}
 			}
 			if msg, isMsg := ob.event.(apitype.AgentUserEventUserMessage); isMsg && !taskCreated {
 				taskCreated = true
@@ -1046,11 +1083,70 @@ func dispatchUserEvents(
 				}
 				continue
 			}
+			if isCancelEvent(ob.event) {
+				if !cancel.pending {
+					cancel.pending = true
+					postCancel()
+				}
+				continue
+			}
 			if err := postEvent(ctx, taskID, ob.event); err != nil {
 				sendUI(uiCh, UIWarning{Message: "failed to send event: " + err.Error()})
 			}
 		}
 	}
+}
+
+// cancelRetry is the dispatcher's single-slot retry state for the in-flight
+// user_cancel. A failed post is retried on its own timer rather than being
+// dropped: the service rejects cancels while the task is parked on a local
+// tool call, and the retry is what eventually lands the cancel once the tool
+// result posts. Repeated ESC presses while a cancel is pending are
+// deduplicated against the one slot.
+type cancelRetry struct {
+	pending  bool
+	failures int
+	// timerC is the armed retry timer's channel; nil when no retry is
+	// scheduled. Disarming just nils it — no Timer.Stop needed, the orphaned
+	// timer fires into its own buffered channel and gets collected.
+	timerC <-chan time.Time
+}
+
+func (c *cancelRetry) disarm() {
+	c.pending = false
+	c.failures = 0
+	c.timerC = nil
+}
+
+// post sends the user_cancel and, on failure, arms the retry timer — giving up
+// with UICancelFailed after cancelMaxPostAttempts posts so the TUI can unlock
+// ESC for a manual retry.
+func (c *cancelRetry) post(
+	ctx context.Context,
+	taskID string,
+	postEvent func(ctx context.Context, taskID string, body any) error,
+	uiCh chan<- UIEvent,
+) {
+	err := postEvent(ctx, taskID, apitype.AgentUserEventCancel{Type: userEventUserCancel})
+	if err == nil {
+		c.disarm()
+		return
+	}
+	c.failures++
+	if c.failures == 1 {
+		sendUI(uiCh, UIWarning{Message: "cancel not accepted yet, retrying: " + err.Error()})
+	}
+	if c.failures >= cancelMaxPostAttempts {
+		sendUI(uiCh, UICancelFailed{Message: err.Error()})
+		c.disarm()
+		return
+	}
+	c.timerC = time.NewTimer(userMessageRetryDelay(c.failures)).C
+}
+
+func isCancelEvent(event any) bool {
+	_, ok := event.(apitype.AgentUserEventCancel)
+	return ok
 }
 
 type queuedUserMessage struct {

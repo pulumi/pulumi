@@ -17,8 +17,9 @@ package python
 import (
 	"strings"
 
+	mapset "github.com/deckarep/golang-set/v2"
+
 	"github.com/hashicorp/hcl/v2"
-	"github.com/pulumi/pulumi/pkg/v3/codegen"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/zclconf/go-cty/cty"
@@ -26,7 +27,7 @@ import (
 
 // Keep this set in sync with the non-private members of Output in sdk/python/lib/pulumi/output.py.
 // Output.__getattr__ cannot project properties whose names are already defined by Output.
-var outputMemberNames = codegen.NewStringSet(
+var outputMemberNames = mapset.NewSet(
 	"all",
 	"apply",
 	"concat",
@@ -60,26 +61,26 @@ func canLiftOutputTraversal(traversal hcl.Traversal) bool {
 		}
 
 		// Attribute lifting uses Output.__getattr__, so it cannot project names already defined by Output.
-		if strings.HasPrefix(name, "_") || outputMemberNames.Has(name) {
+		if strings.HasPrefix(name, "_") || outputMemberNames.Contains(name) {
 			return false
 		}
 	}
 	return true
 }
 
-func isDirectParameterReference(parameters codegen.Set, x model.Expression) bool {
+func isDirectParameterReference(parameters mapset.Set[model.Traversable], x model.Expression) bool {
 	scopeTraversal, ok := x.(*model.ScopeTraversalExpression)
 	if !ok || len(scopeTraversal.Parts) != 1 {
 		return false
 	}
 
-	return parameters.Has(scopeTraversal.Parts[0])
+	return parameters.Contains(scopeTraversal.Parts[0])
 }
 
-func parameterRelativeTraversal(parameters codegen.Set, x model.Expression) (hcl.Traversal, bool) {
+func parameterRelativeTraversal(parameters mapset.Set[model.Traversable], x model.Expression) (hcl.Traversal, bool) {
 	switch x := x.(type) {
 	case *model.ScopeTraversalExpression:
-		if !parameters.Has(x.Parts[0]) {
+		if !parameters.Contains(x.Parts[0]) {
 			return nil, false
 		}
 		return x.Traversal.SimpleSplit().Rel, true
@@ -101,7 +102,7 @@ func parameterRelativeTraversal(parameters codegen.Set, x model.Expression) (hcl
 //
 // Each of these patterns matches an apply that can be handled by `pulumi.Output`'s `__getitem__` or `__getattr__`
 // method. The rewritten expressions will use those methods rather than calling `apply`.
-func (g *generator) parseProxyApply(parameters codegen.Set, args []model.Expression,
+func (g *generator) parseProxyApply(parameters mapset.Set[model.Traversable], args []model.Expression,
 	then model.Expression,
 ) (model.Expression, bool) {
 	if len(args) != 1 {
@@ -167,7 +168,7 @@ func (g *generator) lowerProxyApplies(expr model.Expression) (model.Expression, 
 		// Parse the apply call.
 		args, then := pcl.ParseApplyCall(apply)
 
-		parameters := codegen.Set{}
+		parameters := mapset.NewSet[model.Traversable]()
 		for _, p := range then.Parameters {
 			parameters.Add(p)
 		}

@@ -128,8 +128,7 @@ func (ectx *EvalContext) Evaluate(expr model.Expression) (resource.PropertyValue
 	}
 	pv, err := ctyToPropertyValue(value)
 	if err != nil {
-		var poison *poisonError
-		if errors.As(err, &poison) {
+		if poison, ok := errors.AsType[*poisonError](err); ok {
 			return resource.PropertyValue{}, &poison.name, nil
 		}
 		diags = append(diags, &hcl.Diagnostic{

@@ -60,8 +60,7 @@ func parseTemplateURL(templateName string) (*registry.URLInfo, error) {
 	if registry.IsRegistryURL(templateName) {
 		urlInfo, err := registry.ParseRegistryURL(templateName)
 		if err != nil {
-			var invalidRegistryURL *registry.InvalidRegistryURLError
-			if errors.As(err, &invalidRegistryURL) {
+			if invalidRegistryURL, ok := errors.AsType[*registry.InvalidRegistryURLError](err); ok {
 				// Wrap this particular error reason because formats other than the
 				// full registry:// URL format are supported by `pulumi new`.
 				if strings.Contains(invalidRegistryURL.Reason, "expected format") {
@@ -80,8 +79,7 @@ func parseTemplateURL(templateName string) (*registry.URLInfo, error) {
 	// 2. Try parsing as a partial registry URL
 	urlInfo, err := registry.ParsePartialRegistryURL(templateName, "templates")
 	if err != nil {
-		var missingVersion *registry.MissingVersionAfterAtSignError
-		if errors.As(err, &missingVersion) {
+		if _, ok := errors.AsType[*registry.MissingVersionAfterAtSignError](err); ok {
 			return nil, err
 		}
 
@@ -368,7 +366,7 @@ func (f *fetch) listOrgTemplates(ctx context.Context, templateName string, e env
 	handleOrg := func(org string) {
 		slog.InfoContext(ctx, "Checking for templates", "org", org)
 		orgTemplates, err := b.ListTemplates(ctx, org)
-		if apiError := new(apitype.ErrorResponse); errors.As(err, &apiError) {
+		if apiError, ok := errors.AsType[*apitype.ErrorResponse](err); ok {
 			// This is what happens when we try to access org templates for an org that hasn't enabled org templates.
 			if apiError.Code == 402 {
 				slog.InfoContext(ctx, "does not have access to org templates", "org", org, "code", apiError.Code)
@@ -535,7 +533,7 @@ func writeTar(ctx context.Context, reader *tar.Reader, dst string) error {
 				return fmt.Errorf("invalid file mode for %q: %02x", header.Name, header.Mode)
 			}
 
-			fileMode := os.FileMode(header.Mode) //nolint:gosec // We checked the overflow
+			fileMode := os.FileMode(header.Mode)
 			err := os.Mkdir(target, fileMode)
 			if err != nil && !errors.Is(err, fs.ErrExist) {
 				return err
@@ -546,7 +544,7 @@ func writeTar(ctx context.Context, reader *tar.Reader, dst string) error {
 				return fmt.Errorf("invalid file mode for %q: %02x", header.Name, header.Mode)
 			}
 
-			fileMode := os.FileMode(header.Mode) //nolint:gosec // We checked the overflow
+			fileMode := os.FileMode(header.Mode)
 			f, err := os.OpenFile(target, os.O_CREATE|os.O_RDWR, fileMode)
 			if err != nil {
 				return err

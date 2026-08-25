@@ -319,8 +319,8 @@ func runWithEnvelope(fn func(*cobra.Command, []string) error) func(*cobra.Comman
 		if err == nil {
 			return nil
 		}
-		var apiErr *APIError
-		if !errors.As(err, &apiErr) {
+		apiErr, ok := errors.AsType[*APIError](err)
+		if !ok {
 			apiErr = &APIError{
 				ExitCode: cmdutil.ExitInternalError,
 				Envelope: ErrorEnvelope{Error: *errorDetailFromErr(err)},

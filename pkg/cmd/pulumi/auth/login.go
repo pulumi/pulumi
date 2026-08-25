@@ -17,6 +17,7 @@ package auth
 import (
 	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"slices"
@@ -57,61 +58,68 @@ func NewLoginCmd(ws pkgWorkspace.Context, lm backend.LoginManager, store env.Env
 
 	cmd := &cobra.Command{
 		Use:   "login",
-		Short: "Log in to the Pulumi Cloud",
-		Long: "Log in to the Pulumi Cloud.\n" +
+		Short: "Log in to a Pulumi state backend",
+		Long: "Log in to a Pulumi state backend.\n" +
 			"\n" +
-			"The Pulumi Cloud manages your stack's state reliably. Simply run\n" +
+			"With no arguments, this command logs in to Pulumi Cloud:\n" +
 			"\n" +
 			"    $ pulumi login\n" +
 			"\n" +
-			"and this command will prompt you for an access token, including a way to launch your web browser to\n" +
-			"easily obtain one. You can script by using `PULUMI_ACCESS_TOKEN` environment variable.\n" +
+			"If `PULUMI_ACCESS_TOKEN` is set, that token is used. Otherwise, the command prompts for an\n" +
+			"access token and offers to open a browser where you can create one.\n" +
 			"\n" +
-			"By default, this will log in to the managed Pulumi Cloud backend.\n" +
-			"If you prefer to log in to a self-hosted Pulumi Cloud backend, specify a URL. For example, run\n" +
+			"To log in to a self-hosted Pulumi Cloud, pass its API URL:\n" +
 			"\n" +
 			"    $ pulumi login https://api.pulumi.acmecorp.com\n" +
 			"\n" +
-			"to log in to a self-hosted Pulumi Cloud running at the api.pulumi.acmecorp.com domain.\n" +
+			"For either, `--default-org` sets the organization to use when a command doesn't name one, and\n" +
+			"`--interactive` lists the accounts you're already logged in to so you can choose among them.\n" +
 			"\n" +
-			"For `https://` URLs, the CLI will speak REST to a Pulumi Cloud that manages state and concurrency control.\n" +
-			"You can specify a default org to use when logging into the Pulumi Cloud backend or a " +
-			"self-hosted Pulumi Cloud.\n" +
+			"To manage state yourself, pass the URL of a supported storage backend instead. Pulumi stores\n" +
+			"state under a `.pulumi` directory at that location, and backing it up and coordinating access\n" +
+			"across a team is then up to you:\n" +
 			"\n" +
-			"If you prefer to operate Pulumi independently of a Pulumi Cloud, and entirely local to your computer,\n" +
-			"pass `file://<path>`, where `<path>` will be where state checkpoints will be stored. For instance,\n" +
+			"    $ pulumi login file://~                                    # local filesystem\n" +
+			"    $ pulumi login s3://my-pulumi-state-bucket                 # AWS S3\n" +
+			"    $ pulumi login gs://my-pulumi-state-bucket                 # Google Cloud Storage\n" +
+			"    $ pulumi login azblob://my-pulumi-state-bucket             # Azure Blob Storage\n" +
+			"    $ pulumi login postgres://user:password@host:5432/database # PostgreSQL\n" +
 			"\n" +
-			"    $ pulumi login file://~\n" +
-			"\n" +
-			"will store your state information on your computer underneath `~/.pulumi`. It is then up to you to\n" +
-			"manage this state, including backing it up, using it in a team environment, and so on.\n" +
-			"\n" +
-			"As a shortcut, you may pass --local to use your home directory (this is an alias for `file://~`):\n" +
-			"\n" +
-			"    $ pulumi login --local\n" +
-			"\n" +
-			"Additionally, you may leverage supported object storage backends from one of the cloud providers " +
-			"to manage the state independent of the Pulumi Cloud. For instance,\n" +
-			"\n" +
-			"AWS S3:\n" +
-			"\n" +
-			"    $ pulumi login s3://my-pulumi-state-bucket\n" +
-			"\n" +
-			"GCP GCS:\n" +
-			"\n" +
-			"    $ pulumi login gs://my-pulumi-state-bucket\n" +
-			"\n" +
-			"Azure Blob:\n" +
-			"\n" +
-			"    $ pulumi login azblob://my-pulumi-state-bucket\n" +
-			"\n" +
-			"PostgreSQL:\n" +
-			"\n" +
-			"    $ pulumi login postgres://username:password@hostname:5432/database\n",
+			"`--local` is a shortcut for `file://~`, which stores state under `~/.pulumi`.\n",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			displayOptions := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
+			}
+
+			// Login performs the plaintext-to-encrypted migration itself, so
+			// the "will encrypt on the next login" warning would be stale by
+			// the time this command exits.
+			workspace.SuppressPlaintextPendingWarning()
+
+			// Clearly fixable conditions (a locked or momentarily unavailable
+			// store) surface as ordinary errors that leave the file alone and
+			// never reach this path. What does reach it may still be
+			// recoverable — e.g. by switching back to the OS credential store
+			// provider that holds the key — so ask before destroying it.
+			// Automation cannot answer and needs login to succeed, so
+			// non-interactive runs replace the file as before.
+			if _, err := workspace.GetStoredCredentials(); workspace.IsUndecryptableCredentials(err) {
+				fmt.Fprintf(cmd.ErrOrStderr(),
+					"warning: existing stored credentials can no longer be decrypted: %v\n", err)
+				if cmdutil.Interactive() {
+					replace := false
+					if err := survey.AskOne(&survey.Confirm{
+						Message: "Replace the stored credentials with the ones from this login?",
+						Default: false,
+					}, &replace, ui.SurveyIcons(displayOptions.Color)); err != nil || !replace {
+						return errors.New("login cancelled: restore the OS credential store protecting the " +
+							"existing credentials, or run `pulumi logout --all` to discard them")
+					}
+				}
+				if err := workspace.ResetStoredCredentials(); err != nil {
+					return fmt.Errorf("removing undecryptable credentials: %w", err)
+				}
 			}
 
 			// If a <cloud> was specified as an argument, use it.
@@ -152,6 +160,10 @@ func NewLoginCmd(ws pkgWorkspace.Context, lm backend.LoginManager, store env.Env
 				return err
 			}
 
+			// Where the backend URL came from, so that a failure below can tell the user how
+			// to correct it. Stays "none" when the user named the backend themselves.
+			var urlSource pkgWorkspace.CloudURLSource
+
 			isInteractive := cmdutil.Interactive() && interactive
 			if cloudURL == "" && isInteractive {
 				creds, err := pkgWorkspace.Instance.GetStoredCredentials()
@@ -169,7 +181,7 @@ func NewLoginCmd(ws pkgWorkspace.Context, lm backend.LoginManager, store env.Env
 			}
 			if cloudURL == "" {
 				var err error
-				cloudURL, err = pkgWorkspace.GetCurrentCloudURL(ws, store, project)
+				cloudURL, urlSource, err = pkgWorkspace.GetCurrentCloudURLWithSource(ws, store, project)
 				if err != nil {
 					return fmt.Errorf("could not determine current cloud: %w", err)
 				}
@@ -231,7 +243,7 @@ func NewLoginCmd(ws pkgWorkspace.Context, lm backend.LoginManager, store env.Env
 			}
 
 			if err != nil {
-				return fmt.Errorf("problem logging in: %w", err)
+				return loginError(cloudURL, urlSource, cwd, err)
 			}
 
 			if diy.IsDIYBackendURL(cloudURL) {
@@ -285,6 +297,73 @@ func NewLoginCmd(ws pkgWorkspace.Context, lm backend.LoginManager, store env.Env
 	)
 
 	return cmd
+}
+
+// loginError describes a failed login attempt: what we tried to log in to, why it
+// failed, and — when the backend was resolved from configuration rather than named on
+// the command line — where that backend came from and how to change it.
+func loginError(cloudURL string, source pkgWorkspace.CloudURLSource, cwd string, err error) error {
+	err = unwrapBucketOpenError(err, cloudURL)
+
+	// An empty URL means nothing is configured at all, in which case we fell back to
+	// the Pulumi Cloud rather than to a URL we could name.
+	if cloudURL == "" {
+		return fmt.Errorf("could not log in to the Pulumi Cloud: %w", err)
+	}
+
+	if hint := backendSourceHint(source, cwd); hint != "" {
+		return fmt.Errorf("could not log in to the state backend %q: %w\n\n%s", cloudURL, err, hint)
+	}
+	return fmt.Errorf("could not log in to the state backend %q: %w", cloudURL, err)
+}
+
+// backendSourceHint explains how to change the backend, which depends on where it was
+// configured. A URL from the environment or from the project file takes precedence over
+// stored credentials, so for those two neither `pulumi login` nor `pulumi logout` helps.
+// Returns the empty string when the user named the backend themselves.
+func backendSourceHint(source pkgWorkspace.CloudURLSource, cwd string) string {
+	switch source {
+	case pkgWorkspace.CloudURLSourceEnv:
+		return fmt.Sprintf("This backend comes from the %s environment variable, which takes precedence "+
+			"over `pulumi login`. Unset it to log in to a different backend.",
+			env.BackendURL.Var().Name())
+	case pkgWorkspace.CloudURLSourceProject:
+		// ws.ReadProject reports the project's directory, so find the file itself to name it.
+		where := "your project file"
+		if path, err := workspace.DetectProjectPathFrom(cwd); err == nil && path != "" {
+			where = path
+		}
+		return fmt.Sprintf("This backend comes from the `backend` setting in %s, which takes precedence "+
+			"over your stored credentials. Edit or remove that setting to log in to a different backend.",
+			where)
+	case pkgWorkspace.CloudURLSourceCredentials:
+		return "This is the backend recorded in your stored Pulumi credentials. To log in to a different " +
+			"one, run `pulumi login <url>` — for example, `pulumi login https://api.pulumi.com`."
+	case pkgWorkspace.CloudURLSourceNone:
+		return ""
+	}
+	return ""
+}
+
+// unwrapBucketOpenError strips the DIY backend's open wrapper (see the "unable to open"
+// errors in pkg/backend/diy/backend.go), which repeats a URL we already name ourselves.
+// The noun varies with the backend scheme — bucket, state directory, state database — so
+// only the part common to all of them is matched.
+func unwrapBucketOpenError(err error, cloudURL string) error {
+	if !strings.HasPrefix(err.Error(), "unable to open ") {
+		return err
+	}
+	cause := errors.Unwrap(err)
+	if cause == nil {
+		return err
+	}
+	// A file:// failure is a path error naming a location we have usually shown already, in
+	// which case only the reason is worth keeping. When the path differs from the configured
+	// URL — a `~` or relative path that got resolved — it is new information, so keep it.
+	if pathErr, ok := errors.AsType[*fs.PathError](cause); ok && strings.Contains(cloudURL, pathErr.Path) {
+		return pathErr.Err
+	}
+	return cause
 }
 
 func validateCloudBackendType(typ string) error {

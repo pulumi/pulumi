@@ -26,8 +26,9 @@ import (
 	"sort"
 	"strings"
 
+	mapset "github.com/deckarep/golang-set/v2"
+
 	"github.com/hashicorp/hcl/v2"
-	"github.com/pulumi/pulumi/pkg/v3/codegen"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/cgstrings"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model/format"
@@ -63,7 +64,7 @@ type generator struct {
 	declaredNodeIdentifiers map[string]bool
 	nodeIdentifiers         map[string]string
 	packageImportAliases    map[string]string
-	importIdentifiers       codegen.StringSet
+	importIdentifiers       mapset.Set[string]
 	deferredOutputVariables []*pcl.DeferredOutputVariable
 
 	// rangeValueIsScalar is true while generating the body of a numeric `range`
@@ -502,32 +503,29 @@ func (g *generator) genComment(w io.Writer, comment syntax.Comment) {
 
 type programImports struct {
 	importStatements      []string
-	preambleHelperMethods codegen.StringSet
-	importAliases         codegen.StringSet
+	preambleHelperMethods mapset.Set[string]
+	importAliases         mapset.Set[string]
 }
 
-func makeUniqueName(base string, used codegen.StringSet) string {
+func makeUniqueName(base string, used mapset.Set[string]) string {
 	name := makeValidIdentifier(base)
-	if !used.Has(name) {
+	if !used.Contains(name) {
 		used.Add(name)
 		return name
 	}
 
 	for i := 2; ; i++ {
 		candidate := fmt.Sprintf("%s%d", name, i)
-		if !used.Has(candidate) {
+		if !used.Contains(candidate) {
 			used.Add(candidate)
 			return candidate
 		}
 	}
 }
 
-func (g *generator) assignRootNodeIdentifiers(program *pcl.Program, reserved codegen.StringSet) {
+func (g *generator) assignRootNodeIdentifiers(program *pcl.Program, reserved mapset.Set[string]) {
 	g.nodeIdentifiers = map[string]string{}
-	used := codegen.NewStringSet()
-	for name := range reserved {
-		used.Add(name)
-	}
+	used := reserved.Clone()
 
 	for _, node := range program.Nodes {
 		var name string
@@ -559,9 +557,9 @@ func (g *generator) nodeName(name string) string {
 }
 
 func (g *generator) collectProgramImports(program *pcl.Program) programImports {
-	importSet := codegen.NewStringSet("@pulumi/pulumi")
-	preambleHelperMethods := codegen.NewStringSet()
-	usedAliases := codegen.NewStringSet("pulumi")
+	importSet := mapset.NewSet("@pulumi/pulumi")
+	preambleHelperMethods := mapset.NewSet[string]()
+	usedAliases := mapset.NewSet("pulumi")
 
 	// This map tracks the package tokens by the associated import.
 	//
@@ -636,6 +634,10 @@ func (g *generator) collectProgramImports(program *pcl.Program) programImports {
 			}
 			visitPkg(pkg, packageRef)
 		case *pcl.Component:
+			// A component declared without a source has no file to import from.
+			if n.Program == nil {
+				continue
+			}
 			componentDir := filepath.Base(n.DirPath())
 			componentName := n.DeclarationName()
 			dirAndName := componentDir + "-" + componentName
@@ -665,7 +667,7 @@ func (g *generator) collectProgramImports(program *pcl.Program) programImports {
 		}
 	}
 
-	sortedValues := importSet.SortedValues()
+	sortedValues := mapset.Sorted(importSet)
 	imports := slice.Prealloc[string](len(sortedValues))
 	for _, pkg := range sortedValues {
 		if pkg == "@pulumi/pulumi" {
@@ -677,7 +679,7 @@ func (g *generator) collectProgramImports(program *pcl.Program) programImports {
 		} else {
 			as = makeValidIdentifier(path.Base(pkg))
 		}
-		for i := 2; usedAliases.Has(as); i++ {
+		for i := 2; usedAliases.Contains(as); i++ {
 			as = fmt.Sprintf("%s%d", makeValidIdentifier(path.Base(pkg)), i)
 		}
 		usedAliases.Add(as)
@@ -687,10 +689,7 @@ func (g *generator) collectProgramImports(program *pcl.Program) programImports {
 		imports = append(imports, fmt.Sprintf("import * as %v from \"%v\";", as, pkg))
 	}
 	g.packageImportAliases = packageAliases
-	importIdentifiers := codegen.NewStringSet()
-	for alias := range usedAliases {
-		importIdentifiers.Add(alias)
-	}
+	importIdentifiers := usedAliases.Clone()
 	g.importIdentifiers = importIdentifiers
 
 	imports = append(imports, componentImports...)
@@ -724,7 +723,7 @@ func (g *generator) genPreamble(w io.Writer, program *pcl.Program) error {
 	g.Fprint(w, "\n")
 
 	// If we collected any helper methods that should be added, write them just before the main func
-	for _, preambleHelperMethodBody := range programImports.preambleHelperMethods.SortedValues() {
+	for _, preambleHelperMethodBody := range mapset.Sorted(programImports.preambleHelperMethods) {
 		g.Fprintf(w, "%s\n\n", preambleHelperMethodBody)
 	}
 	return nil
@@ -810,7 +809,7 @@ func (g *generator) genComponentResourceDefinition(w io.Writer, componentName st
 	g.Fprint(w, "\n")
 
 	// If we collected any helper methods that should be added, write them just before the main func
-	for _, preambleHelperMethodBody := range programImports.preambleHelperMethods.SortedValues() {
+	for _, preambleHelperMethodBody := range mapset.Sorted(programImports.preambleHelperMethods) {
 		g.Fprintf(w, "%s\n\n", preambleHelperMethodBody)
 	}
 
@@ -1121,7 +1120,7 @@ func resourceTypeName(r *pcl.Resource) (string, string, string, hcl.Diagnostics)
 		module = moduleName(module, r.Schema.PackageReference)
 	}
 
-	return pkg, module, cgstrings.UppercaseFirst(member), diagnostics
+	return pkg, module, cgstrings.UppercaseFirst(cgstrings.Unhyphenate(member)), diagnostics
 }
 
 func readResourceTypeName(r *pcl.ReadResource) (string, string, string, hcl.Diagnostics) {
@@ -1131,7 +1130,7 @@ func readResourceTypeName(r *pcl.ReadResource) (string, string, string, hcl.Diag
 		module = moduleName(module, r.Schema.PackageReference)
 	}
 
-	return pkg, module, cgstrings.UppercaseFirst(member), diagnostics
+	return pkg, module, cgstrings.UppercaseFirst(cgstrings.Unhyphenate(member)), diagnostics
 }
 
 func moduleName(module string, pkg schema.PackageReference) string {
@@ -1152,7 +1151,14 @@ func moduleName(module string, pkg schema.PackageReference) string {
 	if module == "index" {
 		return ""
 	}
-	return strings.ToLower(strings.ReplaceAll(module, "/", "."))
+	// Each segment becomes a property access on the package, so segments that aren't
+	// legal identifiers (e.g. containing hyphens) use the sanitized name the SDK
+	// exports them under.
+	segments := strings.Split(strings.ToLower(module), "/")
+	for i, segment := range segments {
+		segments[i] = makeValidModuleSegment(segment)
+	}
+	return strings.Join(segments, ".")
 }
 
 // makeResourceName returns the expression that should be emitted for a resource's "name" parameter given its base name
@@ -1806,6 +1812,29 @@ func (g *generator) genReadResource(w io.Writer, r *pcl.ReadResource) {
 
 // genResource handles the generation of instantiations of non-builtin resources.
 func (g *generator) genComponent(w io.Writer, component *pcl.Component) {
+	// A component declared without a source has no class to instantiate; construct the SDK's base
+	// ComponentResource with the type token that names it.
+	if component.Program == nil {
+		optionsBag := g.genResourceOptions(component.Options, nil, nil)
+		g.Fgenf(w, "%sconst %s = new pulumi.ComponentResource(%q, %s, {",
+			g.Indent, g.nodeName(component.Name()), component.Token,
+			g.makeResourceName(component.LogicalName(), ""))
+		if len(component.Inputs) > 0 {
+			g.Indented(func() {
+				for _, attr := range component.Inputs {
+					propertyName := attr.Name
+					if !isLegalIdentifier(propertyName) {
+						propertyName = fmt.Sprintf("%q", propertyName)
+					}
+					g.Fgenf(w, "\n%s%s: %.v,", g.Indent, propertyName, attr.Value)
+				}
+			})
+			g.Fgenf(w, "\n%s", g.Indent)
+		}
+		g.Fgenf(w, "}%s);\n", optionsBag)
+		return
+	}
+
 	componentName := component.DeclarationName()
 
 	optionsBag := g.genResourceOptions(component.Options, nil, nil)

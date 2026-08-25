@@ -29,7 +29,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/pkg/v3/display"
-	. "github.com/pulumi/pulumi/pkg/v3/engine" //nolint:revive
+	. "github.com/pulumi/pulumi/pkg/v3/engine"
 	lt "github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest/framework"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
@@ -43,6 +43,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 func TestSingleResourceDefaultProviderLifecycle(t *testing.T) {
@@ -2147,8 +2148,8 @@ func TestInternalFiltered(t *testing.T) {
 					return plugin.DiffResult{}, nil
 				},
 				CheckConfigF: func(_ context.Context, req plugin.CheckConfigRequest) (plugin.CheckConfigResponse, error) {
-					assert.NotContains(t, req.News, internalKey)
-					assert.NotContains(t, req.Olds, internalKey)
+					assert.NotContains(t, req.News.AsMap(), string(internalKey))
+					assert.NotContains(t, req.Olds.AsMap(), string(internalKey))
 					return plugin.CheckConfigResponse{}, nil
 				},
 				ConfigureF: func(_ context.Context, req plugin.ConfigureRequest) (plugin.ConfigureResponse, error) {
@@ -2172,8 +2173,8 @@ func TestInternalFiltered(t *testing.T) {
 					return plugin.DiffResult{}, nil
 				},
 				CheckConfigF: func(_ context.Context, req plugin.CheckConfigRequest) (plugin.CheckConfigResponse, error) {
-					assert.NotContains(t, req.News, internalKey)
-					assert.NotContains(t, req.Olds, internalKey)
+					assert.NotContains(t, req.News.AsMap(), string(internalKey))
+					assert.NotContains(t, req.Olds.AsMap(), string(internalKey))
 					return plugin.CheckConfigResponse{}, nil
 				},
 				ConfigureF: func(_ context.Context, req plugin.ConfigureRequest) (plugin.ConfigureResponse, error) {
@@ -2422,10 +2423,10 @@ func TestDroppedVersion(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				CheckConfigF: func(_ context.Context, req plugin.CheckConfigRequest) (plugin.CheckConfigResponse, error) {
-					news := req.News.Copy()
+					news := req.News.AsMap()
 					delete(news, "version")
 					return plugin.CheckConfigResponse{
-						Properties: news,
+						Properties: property.NewMap(news),
 					}, nil
 				},
 			}, nil
@@ -2469,10 +2470,10 @@ func TestChangedVersion(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				CheckConfigF: func(_ context.Context, req plugin.CheckConfigRequest) (plugin.CheckConfigResponse, error) {
-					news := req.News.Copy()
-					news["version"] = resource.NewProperty("2.0.0")
+					news := req.News.AsMap()
+					news["version"] = property.New("2.0.0")
 					return plugin.CheckConfigResponse{
-						Properties: news,
+						Properties: property.NewMap(news),
 					}, nil
 				},
 			}, nil
@@ -2510,12 +2511,12 @@ func TestInternalKey(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				CheckConfigF: func(_ context.Context, req plugin.CheckConfigRequest) (plugin.CheckConfigResponse, error) {
-					news := req.News.Copy()
-					news["__internal"] = resource.NewProperty(resource.NewPropertyMapFromMap(map[string]any{
-						"some": "internal data",
+					news := req.News.AsMap()
+					news["__internal"] = property.New(property.NewMap(map[string]property.Value{
+						"some": property.New("internal data"),
 					}))
 					return plugin.CheckConfigResponse{
-						Properties: news,
+						Properties: property.NewMap(news),
 					}, nil
 				},
 			}, nil

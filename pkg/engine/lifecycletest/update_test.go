@@ -596,7 +596,7 @@ func TestUntargetedComponentResource(t *testing.T) {
 
 					return plugin.ConstructResponse{
 						URN:     resp.URN,
-						Outputs: outs,
+						Outputs: resource.FromResourcePropertyMap(outs),
 					}, nil
 				},
 			}, nil
@@ -838,7 +838,7 @@ func TestTargetedUpdateRefreshWithDeletedParent(t *testing.T) {
 
 		_, err = monitor.RegisterResource("pkgA:m:TypeA", "res-shared", true, deploytest.ResourceOptions{
 			Provider:       provRef.String(),
-			RetainOnDelete: ptr(true),
+			RetainOnDelete: new(true),
 		})
 		require.NoError(t, err)
 
@@ -847,7 +847,7 @@ func TestTargetedUpdateRefreshWithDeletedParent(t *testing.T) {
 		// and so will be marked for deletion during the targeted update.
 		_, err = monitor.RegisterResource("pkgA:m:TypeB", "res-target", false, deploytest.ResourceOptions{
 			Provider:       provRef.String(),
-			RetainOnDelete: ptr(true),
+			RetainOnDelete: new(true),
 		})
 		require.NoError(t, err)
 

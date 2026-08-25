@@ -471,7 +471,7 @@ func getSSHPublicKeys(user string, host string, sshConfig sshUserSettings) (*git
 	// Attempt to load the key. If this is an interactive session and the key
 	// is passphrase-protected we will prompt the user to enter a passphrase.
 	signer, err := ssh.ParsePrivateKey(privateKeyBytes)
-	if errors.As(err, new(*ssh.PassphraseMissingError)) {
+	if _, ok := errors.AsType[*ssh.PassphraseMissingError](err); ok {
 		passphrase := env.GitSSHPassphrase.Value()
 
 		if passphrase == "" && cmdutil.Interactive() {
@@ -516,6 +516,24 @@ func expandHomeDir(path string) (string, error) {
 	return filepath.Join(home, path[1:]), nil
 }
 
+// resolveSymlinks resolves symbolic links in path. go-git v6 uses os.Root for local paths, which rejects symlinks with
+// absolute targets, so cloning into such a path (e.g. a home directory symlinked to an NFS mount) would fail. Resolving
+// the clone destination is safe: os.Root's checks against malicious symlinks inside cloned repos still apply. If path
+// does not exist yet, its closest existing ancestor is resolved instead and the remaining components are re-appended.
+// On any other error the path is returned unchanged.
+func resolveSymlinks(path string) string {
+	resolved, err := filepath.EvalSymlinks(path)
+	if err == nil {
+		return resolved
+	}
+	if errors.Is(err, os.ErrNotExist) {
+		if dir := filepath.Dir(path); dir != path {
+			return filepath.Join(resolveSymlinks(dir), filepath.Base(path))
+		}
+	}
+	return path
+}
+
 // GitCloneAndCheckoutCommit clones the Git repository and checkouts the specified commit.
 func GitCloneAndCheckoutCommit(ctx context.Context, url string, commit plumbing.Hash, path string) error {
 	logging.V(10).Infof("Attempting to clone from %s at commit %v and path %s", url, commit, path)
@@ -524,7 +542,7 @@ func GitCloneAndCheckoutCommit(ctx context.Context, url string, commit plumbing.
 	if err != nil {
 		return err
 	}
-	repo, err := git.PlainCloneContext(ctx, path, &git.CloneOptions{
+	repo, err := git.PlainCloneContext(ctx, resolveSymlinks(path), &git.CloneOptions{
 		URL:           u,
 		ClientOptions: gitClientOptions(auth),
 	})
@@ -551,7 +569,7 @@ func GitCloneAndCheckoutRevision(ctx context.Context, url string, revision plumb
 	if err != nil {
 		return err
 	}
-	repo, err := git.PlainCloneContext(ctx, path, &git.CloneOptions{
+	repo, err := git.PlainCloneContext(ctx, resolveSymlinks(path), &git.CloneOptions{
 		URL:           u,
 		ClientOptions: gitClientOptions(auth),
 	})
@@ -598,6 +616,8 @@ func GitCloneOrPull(
 func gitCloneOrPull(
 	ctx context.Context, url string, referenceName plumbing.ReferenceName, path string, shallow bool,
 ) error {
+	path = resolveSymlinks(path)
+
 	// For shallow clones, use a depth of 1.
 	depth := 0
 	if shallow {

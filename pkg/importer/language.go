@@ -188,21 +188,25 @@ func GenerateLanguageDefinitions(
 		// Keep track of packages we've seen, we assume package names are unique.
 		seenPkgs := mapset.NewSet[string]()
 
-		for i, state := range states {
+		for _, state := range states {
 			hcl2Def, pkgDesc, err := GenerateHCL2Definition(loader, state, importState)
 			if err != nil {
 				return nil, nil, err
 			}
 			pre := ""
-			if i > 0 {
+			if hcl2Text.Len() > 0 {
 				pre = "\n"
 			}
 
-			pkgName := pkgDesc.Name
-			if pkgDesc.Parameterization != nil {
-				pkgName = pkgDesc.Parameterization.Name
+			// Local component resources have no package behind them, so there is no package block to emit.
+			pkgName := ""
+			if pkgDesc != nil {
+				pkgName = pkgDesc.Name
+				if pkgDesc.Parameterization != nil {
+					pkgName = pkgDesc.Parameterization.Name
+				}
 			}
-			if !seenPkgs.Contains(pkgName) {
+			if pkgDesc != nil && !seenPkgs.Contains(pkgName) {
 				seenPkgs.Add(pkgName)
 
 				items := make([]model.BodyItem, 0)

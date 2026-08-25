@@ -28,6 +28,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
@@ -295,11 +296,11 @@ func (p *ConfigGrpcProvider) Invoke(
 ) (plugin.InvokeResponse, error) {
 	switch {
 	case string(req.Tok) == fmt.Sprintf("%s:index:toSecret", p.pkg()):
-		secreted := req.Args.Copy()
+		secreted := req.Args.AsMap()
 		for k, v := range secreted {
-			secreted[k] = resource.MakeSecret(v)
+			secreted[k] = v.WithSecret(true)
 		}
-		return plugin.InvokeResponse{Properties: secreted}, nil
+		return plugin.InvokeResponse{Properties: property.NewMap(secreted)}, nil
 	default:
 		return plugin.InvokeResponse{}, errors.New("Unknown function")
 	}

@@ -146,21 +146,29 @@ func (se *stepExecutor) ExecuteSerial(chain chain) completionToken {
 	// If one is pending, we should exit early - we will shortly be tearing down the engine and exiting.
 
 	completion := make(chan bool)
+
+	// Acquire a reader before publishing the chain. The worker that receives the chain releases it in executeChain
+	// after the whole chain finishes. This uses the "read" side of the lock because we're ok with as many workers as
+	// possible executing chains in parallel.
+	se.workerLock.RLock()
 	select {
 	case se.incomingChains <- incomingChain{Chain: chain, CompletionChan: completion}:
+		// The matching RUnlock is deferred by executeChain.
+		return completionToken{channel: completion}
 	case <-se.ctx.Done():
 		close(completion)
+		se.workerLock.RUnlock()
 	}
 
 	return completionToken{channel: completion}
 }
 
-// Locks the step executor from executing any more steps. This is used to synchronize with the step executor.
+// Locks the step executor from executing any more chains. This is used to synchronize with the step executor.
 func (se *stepExecutor) Lock() {
 	se.workerLock.Lock()
 }
 
-// Unlocks the step executor to allow it to execute more steps. This is used to synchronize with the step executor.
+// Unlocks the step executor to allow it to execute more chains. This is used to synchronize with the step executor.
 func (se *stepExecutor) Unlock() {
 	se.workerLock.Unlock()
 }
@@ -394,6 +402,8 @@ func (se *stepExecutor) WaitForCompletion() {
 // executeChain executes a chain, one step at a time. If any step in the chain fails to execute, or if the
 // context is canceled, the chain stops execution.
 func (se *stepExecutor) executeChain(workerID int, chain chain) {
+	defer se.workerLock.RUnlock()
+
 	for _, step := range chain {
 		select {
 		case <-se.ctx.Done():
@@ -402,19 +412,12 @@ func (se *stepExecutor) executeChain(workerID int, chain chain) {
 		default:
 		}
 
-		// Take the work lock before executing the step, this uses the "read" side of the lock because we're ok with as
-		// many workers as possible executing steps in parallel.
-		se.workerLock.RLock()
 		err := se.executeStep(workerID, step)
-		// Regardless of error we need to release the lock here.
-		se.workerLock.RUnlock()
-
 		if err != nil {
 			se.log(workerID, "step %v on %v failed, signalling cancellation", step.Op(), step.URN())
 			se.cancelDueToError(err, step)
 
-			var saf StepApplyFailed
-			if !errors.As(err, &saf) {
+			if _, ok := errors.AsType[StepApplyFailed](err); !ok {
 				// Step application errors are recorded by the OnResourceStepPost callback. This is confusing,
 				// but it means that at this level we shouldn't be logging any errors that came from there.
 				//
@@ -440,7 +443,7 @@ func (se *stepExecutor) cancelDueToError(err error, step Step) {
 	// these are deletes there's nothing replied to the user program, it's safe to continue past them. There
 	// are no observable effects in the user program, its just the CLI will be able to continue past and
 	// report any other issues.
-	if errors.As(err, &deleteProtectedError{}) {
+	if _, ok := errors.AsType[deleteProtectedError](err); ok {
 		continueOnError = true
 	}
 

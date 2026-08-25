@@ -1,4 +1,0 @@
-component: cli/state
-kind: feat
-body: Implement `pulumi state get` to show individual resources
-time: 2026-08-04T17:49:15.907560535+02:00

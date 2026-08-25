@@ -101,22 +101,23 @@ func (pc *packageCommand) newFunctionCommand(fn *schema.Function) *cobra.Command
 
 			response, err := pc.provider.Invoke(ctx, plugin.InvokeRequest{
 				Tok:     tokens.ModuleMember(fn.Token),
-				Args:    inputs,
+				Args:    resource.FromResourcePropertyMap(inputs),
 				Preview: pc.dryrun,
 			})
 			if err != nil {
 				return err
 			}
 
+			outputProperties := resource.ToResourcePropertyMap(response.Properties)
 			var result resource.PropertyValue
 			if fn.Outputs != nil {
-				result = resource.NewProperty(filterOutputs(response.Properties, fn.Outputs.Properties))
+				result = resource.NewProperty(filterOutputs(outputProperties, fn.Outputs.Properties))
 			} else if fn.ReturnType != nil {
-				if len(response.Properties) != 1 {
-					return fmt.Errorf("expected exactly one return value from function but got %d", len(response.Properties))
+				if len(outputProperties) != 1 {
+					return fmt.Errorf("expected exactly one return value from function but got %d", len(outputProperties))
 				}
 
-				for _, value := range response.Properties {
+				for _, value := range outputProperties {
 					result = filterOutput(value, fn.ReturnType)
 					break
 				}

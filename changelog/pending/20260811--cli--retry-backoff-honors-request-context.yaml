@@ -1,6 +1,0 @@
-component: cli
-kind: fix
-body: Exit promptly when a command is cancelled while an HTTP request is being retried
-time: 2026-08-11T12:40:00Z
-custom:
-    PR: "24276"

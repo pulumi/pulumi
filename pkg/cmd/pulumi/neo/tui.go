@@ -699,18 +699,26 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// scheduled this tick.
 		if msg.gen == m.approvalDebounceGen {
 			next := m.approvalMode
-			m.sendOut(outboundEvent{
+			if !m.sendOut(outboundEvent{
 				update: &client.UpdateNeoTaskOptions{ApprovalMode: &next},
-			})
+			}) {
+				// Outbound channel full — re-arm the debounce so the update
+				// retries rather than silently leaving the server on the old
+				// mode. The retried tick re-reads approvalMode, so latest
+				// value still wins.
+				return m, m.scheduleApprovalDebounce()
+			}
 		}
 		return m, nil
 
 	case permissionDebounceTickMsg:
 		if msg.gen == m.permissionDebounceGen {
 			next := m.permissionMode
-			m.sendOut(outboundEvent{
+			if !m.sendOut(outboundEvent{
 				update: &client.UpdateNeoTaskOptions{PermissionMode: &next},
-			})
+			}) {
+				return m, m.schedulePermissionDebounce()
+			}
 		}
 		return m, nil
 
@@ -763,10 +771,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// users who reach for Ctrl+C don't need to learn ESC to abort.
 			// Same guards as the ESC handler below.
 			if m.busy && !m.pendingApproval && !m.cancelling {
-				m.sendOut(outboundEvent{event: apitype.AgentUserEventCancel{Type: userEventUserCancel}})
-				m.cancelling = true
-				cancelCmd := m.showBusy("Cancelling...", shimmerVerb)
-				return m, tea.Batch(cancelCmd, disarmCmd)
+				return m, tea.Batch(m.tryStartCancel(), disarmCmd)
 			}
 			return m, disarmCmd
 		}
@@ -852,17 +857,17 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// ESC clears a non-empty textarea; with an empty box it asks the
 		// agent to abort. The cancelling flag overrides the spinner label
 		// until the backend acknowledges via cancelled / error / a new
-		// final assistant_message. Skipped during a pending approval — the
-		// agent is already paused for us there.
+		// final assistant_message — or until UICancelFailed reports the
+		// dispatcher gave up delivering the cancel, which re-enables ESC.
+		// Skipped during a pending approval — the agent is already paused
+		// for us there.
 		if keyStr == "esc" {
 			if m.textInput.Value() != "" {
 				m.textInput.Reset()
 				return m, nil
 			}
 			if m.busy && !m.pendingApproval && !m.cancelling {
-				m.sendOut(outboundEvent{event: apitype.AgentUserEventCancel{Type: userEventUserCancel}})
-				m.cancelling = true
-				return m, m.showBusy("Cancelling...", shimmerVerb)
+				return m, m.tryStartCancel()
 			}
 			return m, nil
 		}
@@ -876,7 +881,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					if text == "" {
 						return m, nil
 					}
-					m.sendOut(outboundEvent{
+					// Drop-on-full send: bail before any state mutation so the
+					// prompt stays pending, the draft survives, and Enter
+					// retries — otherwise the TUI would show the answer as
+					// submitted while the agent waits forever for it.
+					if !m.sendOut(outboundEvent{
 						event: apitype.AgentUserEventUserConfirmation{
 							Type:       userEventUserConfirmation,
 							ApprovalID: m.pendingApprovalID,
@@ -884,7 +893,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 							Message:    text,
 						},
 						planMode: m.planMode,
-					})
+					}) {
+						return m, m.appendWarningBlock("Answer not sent — press Enter to try again.")
+					}
 					m.clearPendingPrompt()
 					answerCmd := m.commitBlock(block{kind: blockAnswerSubmitted, raw: text})
 					return m, tea.Batch(answerCmd, m.showBusy(thinkingLabel, shimmerVerb))
@@ -895,7 +906,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					denialMsg = text
 				}
 				wasPlanApproval := m.pendingApprovalType == approvalTypePlanExit
-				m.sendOut(outboundEvent{
+				// See the question path above — a dropped confirmation must
+				// keep the approval pending rather than pretend it was sent.
+				if !m.sendOut(outboundEvent{
 					event: apitype.AgentUserEventUserConfirmation{
 						Type:       userEventUserConfirmation,
 						ApprovalID: m.pendingApprovalID,
@@ -903,7 +916,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						Message:    denialMsg,
 					},
 					planMode: m.planMode,
-				})
+				}) {
+					return m, m.appendWarningBlock("Reply not sent — press Enter to try again.")
+				}
 				// Approving a plan exits plan mode server-side (the PlanModeTracker
 				// stops gating writes), so mirror that locally. Denial leaves the
 				// mode on — the agent will re-plan and gate-out again on the next
@@ -1056,6 +1071,19 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case UIWarning:
 		cmds = append(cmds, m.applyBusyForEvent(msg))
 		cmds = append(cmds, m.appendWarningBlock(msg.Message))
+		cmds = append(cmds, waitForEvent(m.eventCh))
+
+	case UICancelFailed:
+		// The dispatcher gave up delivering the cancel. Clear the cancelling
+		// substate so ESC works again, and restore a live spinner label — the
+		// turn is still running. Deliberately not routed through
+		// labelForUIEvent: a failure arriving after the turn already ended
+		// must not resurrect the spinner.
+		m.cancelling = false
+		if m.busy {
+			cmds = append(cmds, m.showBusy(thinkingLabel, shimmerVerb))
+		}
+		cmds = append(cmds, m.appendWarningBlock("Cancel failed: "+msg.Message+" — press Esc to retry."))
 		cmds = append(cmds, waitForEvent(m.eventCh))
 
 	case UIReconnecting:
@@ -1608,6 +1636,13 @@ func (m *Model) printlnBlock(rendered string) tea.Cmd {
 // the user's cancel request is in flight).
 func (m *Model) applyBusyForEvent(ev UIEvent) tea.Cmd {
 	if isFinalUIEvent(ev) {
+		if m.cancelling {
+			// The turn the pending cancel targeted is over — tell the
+			// dispatcher to drop its retry so it can't fire into a later turn.
+			// A dropped send is backstopped dispatcher-side: any later
+			// non-cancel user event also disarms the stale cancel.
+			m.sendOut(outboundEvent{abandonCancel: true})
+		}
 		m.cancelling = false
 		m.endBusy()
 		return nil
@@ -1620,6 +1655,16 @@ func (m *Model) applyBusyForEvent(ev UIEvent) tea.Cmd {
 		// Non-opinionated event (warning, foreign user message, session URL,
 		// non-final tick): leave the busy state exactly as it is.
 		return nil
+	}
+	// Tool lifecycle events relabel an existing busy indicator but never
+	// start one from idle: a killed tool's late UIToolCompleted arrives
+	// after the cancelled event already ended the turn, and resurrecting
+	// the spinner then would block input forever.
+	switch ev.(type) {
+	case UIToolStarted, UIToolProgress, UIToolCompleted:
+		if !m.busy {
+			return nil
+		}
 	}
 	return m.showBusy(label, shim)
 }
@@ -1741,6 +1786,19 @@ func (m *Model) schedulePermissionDebounce() tea.Cmd {
 	return tea.Tick(modeToggleDebounce, func(time.Time) tea.Msg {
 		return permissionDebounceTickMsg{gen: gen}
 	})
+}
+
+// tryStartCancel enqueues a user_cancel and enters the cancelling substate,
+// returning the "Cancelling..." spinner command. When the outbound channel is
+// full nothing was enqueued, so the model stays out of the cancelling substate
+// and warns instead — the next press retries. Shared by the ESC and Ctrl+C
+// handlers, which apply the same busy/approval/cancelling guards first.
+func (m *Model) tryStartCancel() tea.Cmd {
+	if !m.sendOut(outboundEvent{event: apitype.AgentUserEventCancel{Type: userEventUserCancel}}) {
+		return m.appendWarningBlock("Cancel not sent — press Esc or Ctrl+C to try again.")
+	}
+	m.cancelling = true
+	return m.showBusy("Cancelling...", shimmerVerb)
 }
 
 // sendOut is a non-blocking send on the outbound channel. Returns true on

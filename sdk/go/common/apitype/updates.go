@@ -303,3 +303,23 @@ type StackRenameRequest struct {
 	NewName    string `json:"newName"`
 	NewProject string `json:"newProject"`
 }
+
+// BeginUpdateRequest is the combined request for creating and starting an update.
+// This endpoint combines the functionality of CreateUpdate and StartUpdate into a single
+// API call to reduce latency during startup.
+type BeginUpdateRequest struct {
+	UpdateKind UpdateKind           `json:"updateKind"`
+	Program    UpdateProgramRequest `json:"program"`
+	StartUpdateRequest
+}
+
+// BeginUpdateResponse is the combined response from creating and starting an update.
+// It includes all data needed to begin the engine execution, including the deployment
+// and stack metadata, eliminating the need for separate API calls.
+type BeginUpdateResponse struct {
+	StartUpdateResponse
+	UpdateProgramResponse
+	// Deployment may be omitted by the service; the client then fetches it separately.
+	Deployment *UntypedDeployment `json:"deployment,omitempty"`
+	Stack      Stack              `json:"stack"`
+}

@@ -35,6 +35,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/v3/util"
 	"github.com/pulumi/pulumi/pkg/v3/util/cmdutil"
+	"github.com/pulumi/pulumi/pkg/v3/util/progress"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
@@ -67,6 +68,7 @@ func New(
 		pkgworkspace,
 		pctx, stdout, stderr,
 		options, parentSpan,
+		progress.NewGroup(stderr),
 		new(sync.Mutex),
 		map[string][]schema.PackageReference{},
 	}
@@ -84,6 +86,7 @@ type Workspace struct {
 	stdout, stderr io.Writer
 	options        Options
 	parentSpan     opentracing.Span
+	bars           *progress.Group
 
 	unlinkedProjectsM *sync.Mutex
 	unlinkedProjects  map[string][]schema.PackageReference
@@ -177,8 +180,8 @@ func (w Workspace) DownloadPlugin(
 
 	wrapper := func(stream io.ReadCloser, size int64) io.ReadCloser {
 		// Renders a progress bar to stderr in interactive terminals and prints a plain message otherwise.
-		return workspace.ReadCloserProgressBar(
-			stream, w.stderr, size, "Downloading provider "+pluginSpec.Name, diagutils.GetGlobalColorization())
+		return w.bars.Wrap(
+			stream, size, "Downloading provider "+pluginSpec.Name, diagutils.GetGlobalColorization())
 	}
 
 	retry := func(err error, attempt int, limit int, delay time.Duration) {
@@ -198,8 +201,8 @@ func (w Workspace) DownloadPlugin(
 	// is what finishes the bar.
 	var unpackStream io.ReadCloser = downloadedFile
 	if fi, statErr := downloadedFile.Stat(); statErr == nil {
-		unpackStream = workspace.ReadCloserProgressBar(
-			downloadedFile, w.stderr, fi.Size(),
+		unpackStream = w.bars.Wrap(
+			downloadedFile, fi.Size(),
 			"Unpacking provider "+pluginSpec.Name, diagutils.GetGlobalColorization())
 	}
 	cleanup, err := pluginstorage.UnpackContents(
@@ -487,7 +490,7 @@ func bindSpec(spec schema.PackageSpec, loader schema.Loader) (*schema.Package, e
 		return nil, err
 	}
 	if diags.HasErrors() {
-		return nil, diags
+		return nil, errors.Join(diags.Errs()...)
 	}
 	return pkg, nil
 }
@@ -517,9 +520,10 @@ func (p pluginProvider) GetSchema(
 		return plugin.GetSchemaResponse{}, err
 	}
 
-	// Git based plugins are allowed to not be self-referential: know their version
-	// and pluginDownloadURL. That requires the launching infrastructure to inject
-	// that information into the returned schema.
+	// Git based plugins and plugins with an explicit pluginDownloadURL are allowed to
+	// not be self-referential: know their version and pluginDownloadURL. That requires
+	// the launching infrastructure to inject that information into the returned
+	// schema, mirroring what [packages.SchemaFromSchemaSource] does for `package add`.
 	//
 	// TODO[https://github.com/pulumi/pulumi/issues/21258]: Download lock files would
 	// allow us to push this deeper through the plugin loading process.
@@ -527,8 +531,9 @@ func (p pluginProvider) GetSchema(
 	if p.originalSpec.Version != "" {
 		source += "@" + p.originalSpec.Version
 	}
-	pd, err := workspace.NewPluginDescriptor(ctx, source, apitype.ResourcePlugin, nil, "", nil)
-	if err != nil || !pd.IsGitPlugin() {
+	pd, err := workspace.NewPluginDescriptor(ctx, source, apitype.ResourcePlugin, nil,
+		p.originalSpec.PluginDownloadURL, nil)
+	if err != nil || pd.PluginDownloadURL == "" {
 		return resp, nil
 	}
 
@@ -546,7 +551,9 @@ func (p pluginProvider) GetSchema(
 	}
 
 	pkgSpec.PluginDownloadURL = pd.PluginDownloadURL
-	if pd.Version != nil {
+	// Git based plugins don't know their own version, so inject it. Other plugins
+	// self-report their version in their schema, which we leave alone.
+	if pd.IsGitPlugin() && pd.Version != nil {
 		pkgSpec.Version = pd.Version.String()
 	}
 	if pkgSpec.Namespace == "" {
