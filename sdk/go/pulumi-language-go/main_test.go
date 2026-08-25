@@ -25,7 +25,6 @@ import (
 	"os/exec"
 	"path"
 	"path/filepath"
-	"runtime"
 	"testing"
 	"time"
 
@@ -634,8 +633,24 @@ func TestLinkImportInstructions(t *testing.T) {
 			expectedModule: "github.com/example/File/sdk/go",
 		},
 		{
+			// The import base path replaces the default that the namespace builds, so the
+			// absent namespace makes no difference.
+			name:           "import base path only and no namespace",
+			goInfo:         map[string]any{"importBasePath": "github.com/example/File/sdk/go/File"},
+			expectedImport: "github.com/example/File/sdk/go/File",
+			expectedModule: "github.com/example/File/sdk/go",
+		},
+		{
 			name:           "module path only",
 			namespace:      "example",
+			goInfo:         map[string]any{"modulePath": "github.com/example/File/sdk/go"},
+			expectedImport: "github.com/example/File/sdk/go/file",
+			expectedModule: "github.com/example/File/sdk/go",
+		},
+		{
+			// The module path replaces the default that the namespace builds, and the package
+			// name still gives the directory of the root package.
+			name:           "module path only and no namespace",
 			goInfo:         map[string]any{"modulePath": "github.com/example/File/sdk/go"},
 			expectedImport: "github.com/example/File/sdk/go/file",
 			expectedModule: "github.com/example/File/sdk/go",
@@ -686,10 +701,7 @@ func TestLinkImportInstructions(t *testing.T) {
 
 	// The replace directive uses a relative path, which must start with the separator of the
 	// host platform. Build the same prefix that Link builds.
-	relativeStart := "./"
-	if runtime.GOOS == "windows" {
-		relativeStart = ".\\"
-	}
+	relativeStart := "." + string(filepath.Separator)
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
