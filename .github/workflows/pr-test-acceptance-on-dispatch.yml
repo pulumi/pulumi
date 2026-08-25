@@ -57,6 +57,8 @@ jobs:
       contents: read
       # To sign artifacts.
       id-token: write
+      # Requested by the changelog lint job; unused on dispatch runs.
+      pull-requests: write
     with:
       ref: refs/pull/${{ github.event.client_payload.pull_request.number }}/merge
       version: ${{ needs.info.outputs.version }}
