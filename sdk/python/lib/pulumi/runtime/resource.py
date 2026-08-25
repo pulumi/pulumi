@@ -1356,18 +1356,15 @@ def convert_providers(
     """
     Merge all providers opts (opts.provider and both list and dict forms of opts.providers) into a single dict.
     """
-    if provider is not None:
-        return convert_providers(None, [provider])
-
     if providers is None:
-        return {}
+        result: dict[str, ProviderResource] = {}
+    elif isinstance(providers, Mapping):
+        result = dict(providers)
+    else:
+        result = {p.package: p for p in providers}
 
-    if isinstance(providers, Mapping):
-        return providers
-
-    result = {}
-    for p in providers:
-        result[p.package] = p
+    if provider is not None:
+        result[provider.package] = provider
 
     return result
 

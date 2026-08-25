@@ -73,8 +73,7 @@ func newEnvSettingsSetCmd(env *envCommand, registry *EnvSettingsRegistry) *cobra
 
 			err = env.esc.client.PatchEnvironmentSettings(ctx, ref.orgName, ref.projectName, ref.envName, req)
 			if err != nil {
-				var errResp *apitype.ErrorResponse
-				if errors.As(err, &errResp) {
+				if errResp, ok := errors.AsType[*apitype.ErrorResponse](err); ok {
 					if errResp.Code == http.StatusForbidden {
 						return errors.New("permission denied: insufficient permissions to update settings")
 					}

@@ -58,13 +58,13 @@ func stubEditFactory(c stackWebhookEditClient) stackWebhookEditClientFactory {
 func existingWebhook() apitype.Webhook {
 	return apitype.Webhook{
 		OrganizationName: "my-org",
-		ProjectName:      ptr("my-project"),
-		StackName:        ptr("dev"),
+		ProjectName:      new("my-project"),
+		StackName:        new("dev"),
 		Name:             "my-hook",
 		DisplayName:      "My Hook",
 		PayloadURL:       "https://example.com/webhook",
 		Active:           true,
-		Format:           ptr("raw"),
+		Format:           new("raw"),
 		Groups:           []string{"stacks"},
 		Filters:          []string{"deployment_queued"},
 		HasSecret:        true,

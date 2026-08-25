@@ -1785,8 +1785,7 @@ func (host *nodeLanguageHost) RunPlugin(
 	}
 
 	if err := run(); err != nil {
-		var exiterr *exec.ExitError
-		if errors.As(err, &exiterr) {
+		if exiterr, ok := errors.AsType[*exec.ExitError](err); ok {
 			// The program ran, but exited with a non-zero error code.  This will happen often, since user
 			// errors will trigger this.  So, the error message should look as nice as possible.
 			if status, stok := exiterr.Sys().(syscall.WaitStatus); stok {

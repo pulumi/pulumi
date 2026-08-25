@@ -74,8 +74,7 @@ func ExitCodeFor(err error) int {
 	// / etc.) reaches the shell instead of collapsing to the generic bail
 	// default. Checked before the bail branch because processCmdErrors
 	// wraps these in a BailError to suppress double-printing the message.
-	var apiErr *cloud.APIError
-	if errors.As(err, &apiErr) {
+	if apiErr, ok := errors.AsType[*cloud.APIError](err); ok {
 		return apiErr.ExitCode
 	}
 

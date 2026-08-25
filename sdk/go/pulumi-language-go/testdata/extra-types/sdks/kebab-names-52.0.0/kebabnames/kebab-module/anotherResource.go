@@ -15,7 +15,7 @@ import (
 type AnotherResource struct {
 	pulumi.CustomResourceState
 
-	TheInput pulumi.StringOutput `pulumi:"theInput"`
+	TheInput pulumi.StringOutput `pulumi:"the-input"`
 }
 
 // NewAnotherResource registers a new resource with the given unique name, arguments, and options.
@@ -61,7 +61,7 @@ func (AnotherResourceState) ElementType() reflect.Type {
 }
 
 type anotherResourceArgs struct {
-	TheInput string `pulumi:"theInput"`
+	TheInput string `pulumi:"the-input"`
 }
 
 // The set of arguments for constructing a AnotherResource resource.

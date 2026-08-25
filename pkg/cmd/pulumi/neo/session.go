@@ -55,6 +55,18 @@ type ToolHandler interface {
 	Invoke(ctx context.Context, method string, args json.RawMessage) (any, error)
 }
 
+// toolBatch is one assistant message's worth of CLI tool calls queued for the tool
+// worker.
+type toolBatch struct {
+	ctx   context.Context
+	calls []apitype.AgentBackendEventToolCall
+}
+
+// batchQueueCap bounds the tool-batch queue. The protocol is turn-based, so more
+// than one queued batch is already anomalous; if the queue fills, enqueueBatch
+// blocks the drain loop rather than dropping work.
+const batchQueueCap = 8
+
 // EventStreamer is the subset of *client.Client we depend on for the SSE event stream and
 // for posting CLI tool result user events back to the Neo task. It is an interface so the
 // loop can be unit-tested without a live HTTP backend.
@@ -89,14 +101,57 @@ type Session struct {
 	// assistant_message with no pending CLI tool calls is written to it and Run
 	// returns nil.
 	Output io.Writer
+
+	// Tool-worker state, initialized by Run.
+	//
+	// batches queues one entry per assistant message with CLI tool calls. A single
+	// worker goroutine consumes it, keeping batches serialized (tools/pulumi.go's
+	// process-global os.Chdir depends on this) while drainStream keeps reading the
+	// SSE stream (pulumi/pulumi-service#44059).
+	batches chan toolBatch
+	// batchErrs delivers the first fatal runBatch error back to drainStream/Run.
+	batchErrs chan error
+	// batchCtx/batchCancel cover every batch enqueued since the last cancelled
+	// event. Only the Run goroutine touches them, so no locking is needed.
+	batchCtx    context.Context
+	batchCancel context.CancelFunc
 }
 
 // Run drives the loop. It blocks until ctx is cancelled (clean shutdown, returns nil),
 // the stream ends cleanly (returns nil), or an unrecoverable error occurs (returns the
 // error). Mid-stream network drops are reopened silently with Last-Event-ID so the
 // server replays missed events; the user sees no signal unless the retry budget is
-// exhausted.
+// exhausted. Run must be called at most once per Session.
 func (s *Session) Run(ctx context.Context) error {
+	s.batches = make(chan toolBatch, batchQueueCap)
+	s.batchErrs = make(chan error, 1)
+	workerDone := make(chan struct{})
+	go s.toolWorker(workerDone)
+
+	err := s.streamLoop(ctx)
+
+	// On an error exit, stop the in-flight tool promptly. On a clean exit let
+	// the worker drain first so the final batch still posts its result.
+	if err != nil && s.batchCancel != nil {
+		s.batchCancel()
+	}
+	close(s.batches)
+	<-workerDone
+	if s.batchCancel != nil {
+		s.batchCancel()
+	}
+	if err == nil {
+		select {
+		case err = <-s.batchErrs:
+		default:
+		}
+	}
+	return err
+}
+
+// streamLoop opens and drains the SSE stream until the session ends, reconnecting
+// transparently (with Last-Event-ID resume) on transient failures.
+func (s *Session) streamLoop(ctx context.Context) error {
 	var (
 		lastEventID = s.LastEventID
 		failures    int
@@ -153,6 +208,8 @@ func (s *Session) drainStream(
 		select {
 		case <-ctx.Done():
 			return gotEvent, nil
+		case err := <-s.batchErrs:
+			return gotEvent, err
 		case evt, ok := <-stream:
 			if !ok {
 				return gotEvent, nil
@@ -192,12 +249,10 @@ func isTransientStreamError(err error) bool {
 	if errors.As(err, &ne) && ne.Timeout() {
 		return true
 	}
-	var ue *url.Error
-	if errors.As(err, &ue) {
+	if ue, ok := errors.AsType[*url.Error](err); ok {
 		return !errors.Is(ue.Err, context.Canceled)
 	}
-	var streamErr http2.StreamError
-	if errors.As(err, &streamErr) {
+	if streamErr, ok := errors.AsType[http2.StreamError](err); ok {
 		if streamErr.Code == http2.ErrCodeInternal ||
 			streamErr.Code == http2.ErrCodeCancel ||
 			streamErr.Code == http2.ErrCodeRefusedStream {
@@ -260,6 +315,13 @@ func (s *Session) handleEvent(ctx context.Context, raw []byte) error {
 		s.logf("warning: skipping malformed backend event: %v", err)
 		return nil
 	}
+	if head.Type == backendEventCancelled {
+		if s.batchCancel != nil {
+			s.batchCancel()
+			s.batchCancel = nil
+		}
+		return nil
+	}
 	if head.Type != backendEventAssistantMessage {
 		return nil
 	}
@@ -293,12 +355,50 @@ func (s *Session) handleEvent(ctx context.Context, raw []byte) error {
 		}
 		return nil
 	}
-	return s.runBatch(ctx, cliCalls)
+	return s.enqueueBatch(ctx, cliCalls)
+}
+
+// enqueueBatch hands the batch to the tool worker so the drain loop keeps reading
+// the stream while tools run. Every batch since the last cancelled event shares
+// one context: a single cancel stops the running batch and everything queued
+// behind it.
+func (s *Session) enqueueBatch(ctx context.Context, calls []apitype.AgentBackendEventToolCall) error {
+	if s.batchCancel == nil {
+		s.batchCtx, s.batchCancel = context.WithCancel(ctx)
+	}
+	select {
+	case s.batches <- toolBatch{ctx: s.batchCtx, calls: calls}:
+		return nil
+	case err := <-s.batchErrs:
+		// A blocked enqueue must not mask a fatal worker error.
+		return err
+	case <-ctx.Done():
+		return nil
+	}
+}
+
+// toolWorker executes queued batches one at a time, in arrival order, until Run
+// closes the intake. It is per-Run, not per-stream, so it survives reconnects and
+// keeps running after a batch error.
+func (s *Session) toolWorker(done chan<- struct{}) {
+	defer close(done)
+	for batch := range s.batches {
+		if err := s.runBatch(batch.ctx, batch.calls); err != nil {
+			select {
+			case s.batchErrs <- err:
+			default:
+			}
+		}
+	}
 }
 
 func (s *Session) runBatch(ctx context.Context, calls []apitype.AgentBackendEventToolCall) error {
 	items := make([]apitype.AgentUserEventToolResultItem, 0, len(calls))
 	for _, call := range calls {
+		// The agent isn't waiting for results from a cancelled turn.
+		if ctx.Err() != nil {
+			return nil
+		}
 		sendUI(s.UIEvents, UIToolStarted{Name: call.Name, Args: call.Args})
 
 		// The agent runtime relies on exec_tool_call to transition the call into its
@@ -311,6 +411,10 @@ func (s *Session) runBatch(ctx context.Context, calls []apitype.AgentBackendEven
 			Name:       call.Name,
 		}
 		if err := s.Client.PostNeoTaskUserEvent(ctx, s.OrgName, s.TaskID, execEvt); err != nil {
+			// A post failure caused by cancellation is not session-fatal.
+			if ctx.Err() != nil {
+				return nil
+			}
 			return fmt.Errorf("posting exec_tool_call for %q: %w", call.Name, err)
 		}
 
@@ -334,6 +438,9 @@ func (s *Session) runBatch(ctx context.Context, calls []apitype.AgentBackendEven
 		})
 	}
 
+	if ctx.Err() != nil {
+		return nil
+	}
 	result := apitype.AgentUserEventToolResult{
 		Type:        userEventToolResult,
 		ToolResults: items,

@@ -210,8 +210,7 @@ func GenerateHCL2Definition(
 		//
 		// https://github.com/pulumi/pulumi/issues/18271 tracks the issue of whether we can do a bit better here (e.g.
 		// allowing semver-compatible version differences but not any others).
-		var versionMismatchErr *schema.PackageReferenceVersionMismatchError
-		if !errors.As(err, &versionMismatchErr) {
+		if _, ok := errors.AsType[*schema.PackageReferenceVersionMismatchError](err); !ok {
 			return nil, nil, fmt.Errorf("loading package '%v': %w", pkgDesc, err)
 		}
 	}

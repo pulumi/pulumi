@@ -49,6 +49,7 @@ export class Resource extends pulumi.CustomResource {
         if (opts.id) {
             const state = argsOrState as ResourceState | undefined;
             resourceInputs["lookup"] = state?.lookup;
+            resourceInputs["value"] = undefined /*out*/;
         } else {
             const args = argsOrState as ResourceArgs | undefined;
             if (args?.value === undefined && !opts.urn) {

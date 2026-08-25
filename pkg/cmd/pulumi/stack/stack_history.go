@@ -167,10 +167,6 @@ type configValueJSON struct {
 }
 
 func buildUpdatesJSON(updates []backend.UpdateInfo, decrypter config.Decrypter) ([]updateInfoJSON, error) {
-	makeStringRef := func(s string) *string {
-		return &s
-	}
-
 	updatesJSON := make([]updateInfoJSON, len(updates))
 	for idx, update := range updates {
 		info := updateInfoJSON{
@@ -191,9 +187,9 @@ func buildUpdatesJSON(updates []backend.UpdateInfo, decrypter config.Decrypter) 
 				if err != nil {
 					// We don't actually want to error here
 					// we are just going to mark as "UNKNOWN" and then let the command continue
-					configValue.Value = makeStringRef(errorDecryptingValue)
+					configValue.Value = new(errorDecryptingValue)
 				} else {
-					configValue.Value = makeStringRef(value)
+					configValue.Value = new(value)
 
 					if value != "" && v.Object() {
 						var obj any
@@ -208,7 +204,7 @@ func buildUpdatesJSON(updates []backend.UpdateInfo, decrypter config.Decrypter) 
 		}
 		info.Result = string(update.Result)
 		if update.Result != backend.InProgressResult {
-			info.EndTime = makeStringRef(cmd.FormatTime(time.Unix(update.EndTime, 0).UTC()))
+			info.EndTime = new(cmd.FormatTime(time.Unix(update.EndTime, 0).UTC()))
 			resourceChanges := make(map[string]int)
 			for k, v := range update.ResourceChanges {
 				resourceChanges[string(k)] = v

@@ -71,16 +71,12 @@ func doWithRetry(client *http.Client, req *http.Request, policy retryPolicy) (*h
 	// maximum delay is reached. Stop after maxRetryCount requests have
 	// been made.
 	opts := httputil.RetryOpts{
-		Delay:    ptr(time.Second),
-		Backoff:  ptr(float64(2.0)),
-		MaxDelay: ptr(30 * time.Second),
+		Delay:    new(time.Second),
+		Backoff:  new(float64(2.0)),
+		MaxDelay: new(30 * time.Second),
 
-		MaxRetryCount:         ptr(int(4)),
+		MaxRetryCount:         new(int(4)),
 		HandshakeTimeoutsOnly: !policy.shouldRetry(req),
 	}
 	return httputil.DoWithRetryOpts(req, client, opts)
-}
-
-func ptr[T any](v T) *T {
-	return &v
 }

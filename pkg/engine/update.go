@@ -809,8 +809,7 @@ func loadPolicyAnalyzer(
 
 	analyzer, err = plugctx.Host.PolicyAnalyzer(plugctx, name, path, opts)
 	if err != nil {
-		var retryMe *workspace.MissingError
-		if errors.As(err, &retryMe) {
+		if retryMe, ok := errors.AsType[*workspace.MissingError](err); ok {
 			return nil, policyAnalyzerMissingError(name, retryMe)
 		}
 		return nil, err

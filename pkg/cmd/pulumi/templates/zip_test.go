@@ -57,6 +57,14 @@ func TestSanitizeArchivePath(t *testing.T) {
 			fileName:   "../../../../../../../../../../tmp/bar",
 			shouldFail: true,
 		},
+		{
+			// A sibling directory that shares the destination as a string prefix
+			// must not be treated as inside it.
+			testName:   "sibling_prefix_escape",
+			dir:        "foo",
+			fileName:   "../foo-evil/bar",
+			shouldFail: true,
+		},
 	}
 
 	for _, tt := range tests {

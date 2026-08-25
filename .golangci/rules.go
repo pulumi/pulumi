@@ -14,16 +14,15 @@ func deferIgnoreClose(m dsl.Matcher) {
 		Suggest("defer contract.IgnoreClose($x)")
 }
 
-// ptrHelperName forbids private pointer-wrapper helpers whose body is just
-// `return &v` from being named anything other than `ptr`. It catches both the
-// monomorphic form (e.g. `intPtr`, `strPtr`, `continuationPtr`) and the generic
-// form (e.g. `func ref[T any](v T) *T { return &v }`). This avoids unnecessary
-// duplication.
-func ptrHelperName(m dsl.Matcher) {
+// ptrHelper forbids private pointer-wrapper helpers whose body is just
+// `return &v`. Use Go 1.26's `new(expr)` instead of adding a helper like
+// `func ptr[T any](v T) *T { return &v }`.
+func ptrHelper(m dsl.Matcher) {
 	m.Match(
 		`func $name($v $T) *$T { return &$v }`,
-		`func $name[$T $_]($v $T) *$T { return &$v }`,
+		`func $name[$T any]($v $T) *$T { return &$v }`,
+		`$name := func($v $T) *$T { return &$v }`,
 	).
-		Where(m["name"].Text != "ptr" && m["name"].Text.Matches(`^[a-z]`)).
-		Report(`pointer-wrapping helper "$name" must be named "ptr"; prefer a single generic func ptr[T any](v T) *T { return &v }`)
+		Where(m["name"].Text.Matches(`^[a-z]`)).
+		Report(`pointer-wrapping helper "$name" is unnecessary; use new(expr) instead`)
 }

@@ -1808,17 +1808,17 @@ func (g *generator) genReadResource(w io.Writer, r *pcl.ReadResource) {
 
 	instantiate := func(varName, resourceName string, w io.Writer) {
 		if g.scopeTraversalRoots.Contains(r.Name()) || strings.HasPrefix(varName, "__") {
-			g.Fgenf(w, "%s, err := %s.Get%s(ctx, %s, pulumi.ID(%.v), ", varName, modOrAlias, typ, resourceName, idExpr)
+			g.Fgenf(w, "%s, err := %s.Get%s(ctx, %s, %.v, ", varName, modOrAlias, typ, resourceName, idExpr)
 		} else {
 			assignment := ":="
 			if g.isErrAssigned {
 				assignment = "="
 			}
 			if g.assignResourcesToVariables {
-				g.Fgenf(w, "%s, err := %s.Get%s(ctx, %s, pulumi.ID(%.v), ",
+				g.Fgenf(w, "%s, err := %s.Get%s(ctx, %s, %.v, ",
 					strcase.ToLowerCamel(resourceName), modOrAlias, typ, resourceName, idExpr)
 			} else {
-				g.Fgenf(w, "_, err %s %s.Get%s(ctx, %s, pulumi.ID(%.v), ",
+				g.Fgenf(w, "_, err %s %s.Get%s(ctx, %s, %.v, ",
 					assignment, modOrAlias, typ, resourceName, idExpr)
 			}
 		}
@@ -2191,7 +2191,7 @@ func (g *generator) genComponent(w io.Writer, r *pcl.Component) {
 		if len(componentInputs) > 0 {
 			g.Fgenf(w, "&%sArgs{\n", componentName)
 			for _, attr := range componentInputs {
-				g.Fgenf(w, "%s: %.v,\n", strings.Title(attr.Name), attr.Value)
+				g.Fgenf(w, "%s: %.v,\n", Title(attr.Name), attr.Value)
 			}
 			g.Fprint(w, "}")
 		} else {

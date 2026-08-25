@@ -756,7 +756,7 @@ func TestListTemplates(t *testing.T) {
 
 				responseData, err = json.Marshal(apitype.ListTemplatesResponse{
 					Templates:         firstPageTemplates,
-					ContinuationToken: ptr("next-page-token-1"),
+					ContinuationToken: new("next-page-token-1"),
 				})
 				require.NoError(t, err)
 			case 1:
@@ -766,7 +766,7 @@ func TestListTemplates(t *testing.T) {
 
 				responseData, err = json.Marshal(apitype.ListTemplatesResponse{
 					Templates:         secondPageTemplates,
-					ContinuationToken: ptr("next-page-token-2"),
+					ContinuationToken: new("next-page-token-2"),
 				})
 				require.NoError(t, err)
 			case 2:

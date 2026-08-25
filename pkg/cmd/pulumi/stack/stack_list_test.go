@@ -37,10 +37,6 @@ import (
 func TestParseTagFilter(t *testing.T) {
 	t.Parallel()
 
-	p := func(s string) *string {
-		return &s
-	}
-
 	tests := []struct {
 		Filter    string
 		WantName  string
@@ -53,14 +49,14 @@ func TestParseTagFilter(t *testing.T) {
 		{Filter: "tag-name123", WantName: "tag-name123"},
 
 		// Tag name and value
-		{Filter: "tag-name123=tag value", WantName: "tag-name123", WantValue: p("tag value")},
-		{Filter: "tag-name123=tag value:with-colon", WantName: "tag-name123", WantValue: p("tag value:with-colon")},
-		{Filter: "tag-name123=tag value=with-equal", WantName: "tag-name123", WantValue: p("tag value=with-equal")},
+		{Filter: "tag-name123=tag value", WantName: "tag-name123", WantValue: new("tag value")},
+		{Filter: "tag-name123=tag value:with-colon", WantName: "tag-name123", WantValue: new("tag value:with-colon")},
+		{Filter: "tag-name123=tag value=with-equal", WantName: "tag-name123", WantValue: new("tag value=with-equal")},
 
 		// Degenerate cases
-		{Filter: "=", WantName: "", WantValue: p("")},
-		{Filter: "no tag value=", WantName: "no tag value", WantValue: p("")},
-		{Filter: "=no tag name", WantName: "", WantValue: p("no tag name")},
+		{Filter: "=", WantName: "", WantValue: new("")},
+		{Filter: "no tag value=", WantName: "no tag value", WantValue: new("")},
+		{Filter: "=no tag name", WantName: "", WantValue: new("no tag name")},
 	}
 
 	for _, test := range tests {
@@ -76,10 +72,6 @@ func TestParseTagFilter(t *testing.T) {
 			}
 		}
 	}
-}
-
-func newContToken(s string) backend.ContinuationToken {
-	return &s
 }
 
 // mockStackSummary implements the backend.StackSummary interface.
@@ -129,13 +121,13 @@ func TestListStacksPagination(t *testing.T) {
 			summaries: []backend.StackSummary{
 				&mockStackSummary{name: "stack-in-page-1"},
 			},
-			outContToken: newContToken("first-cont-token-response"),
+			outContToken: new("first-cont-token-response"),
 		},
 
 		// Pages 2 and 3. We don't expect a backend to return a nil result of StackSummary objects,
 		// but we do expect the situation to be handled gracefully by the CLI.
-		{nil, newContToken("second-cont-token-response")},
-		{[]backend.StackSummary{}, newContToken("third-cont-token-response")},
+		{nil, new("second-cont-token-response")},
+		{[]backend.StackSummary{}, new("third-cont-token-response")},
 
 		// Page 4.
 		{

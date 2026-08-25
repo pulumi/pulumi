@@ -1098,8 +1098,6 @@ Available Templates:
 	assert.Equal(t, "", stderr.String())
 }
 
-func ptr[T any](v T) *T { return &v }
-
 // singlePage answers a template listing with one page holding the given templates.
 func singlePage(templates ...apitype.TemplateMetadata) iter.Seq2[apitype.ListTemplatesResponse, error] {
 	return func(yield func(apitype.ListTemplatesResponse, error) bool) {
@@ -1116,9 +1114,9 @@ func TestPulumiNewWithRegistryTemplates(t *testing.T) {
 				ctx context.Context, opts registry.ListTemplatesOptions,
 			) iter.Seq2[apitype.ListTemplatesResponse, error] {
 				return singlePage(apitype.TemplateMetadata{
-					Name: "template-1", Description: ptr("Describe 1"), Publisher: "Some org",
+					Name: "template-1", Description: new("Describe 1"), Publisher: "Some org",
 				}, apitype.TemplateMetadata{
-					Name: "template-2", Description: ptr("Describe 2"), RepoSlug: ptr("some-org/repo"), Source: "github",
+					Name: "template-2", Description: new("Describe 2"), RepoSlug: new("some-org/repo"), Source: "github",
 				})
 			},
 		},

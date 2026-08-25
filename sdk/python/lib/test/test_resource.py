@@ -23,6 +23,7 @@ import pytest_asyncio
 from pulumi.resource import DependencyProviderResource
 from pulumi.runtime import settings, mocks
 from pulumi.runtime.proto import resource_pb2
+from pulumi.runtime.resource import convert_providers
 from pulumi import ResourceOptions
 from pulumi.runtime.rpc import ERROR_ON_DEPENDENCY_CYCLES_VAR
 import pulumi
@@ -37,6 +38,32 @@ async def test_get_package():
         "urn:pulumi:stack::project::pulumi:providers:aws::default_4_13_0"
     )
     assert "aws" == res.package
+
+
+def test_convert_providers_merges_provider_with_provider_mapping():
+    aws_provider = mock.Mock(package="aws")
+    old_component_provider = mock.Mock(package="component")
+    component_provider = mock.Mock(package="component")
+    providers = {
+        "aws": aws_provider,
+        "component": old_component_provider,
+    }
+
+    result = convert_providers(component_provider, providers)
+
+    assert result["aws"] is aws_provider
+    assert result["component"] is component_provider
+    assert providers["component"] is old_component_provider
+
+
+def test_convert_providers_merges_provider_with_provider_sequence():
+    aws_provider = mock.Mock(package="aws")
+    component_provider = mock.Mock(package="component")
+
+    result = convert_providers(component_provider, [aws_provider])
+
+    assert result["aws"] is aws_provider
+    assert result["component"] is component_provider
 
 
 @pytest.fixture(autouse=True)

@@ -283,7 +283,7 @@ func (p *NestedObjectProvider) Update(
 
 func (p *NestedObjectProvider) GetPluginInfo(context.Context) (plugin.PluginInfo, error) {
 	return plugin.PluginInfo{
-		Version: ptr(p.version()),
+		Version: new(p.version()),
 	}, nil
 }
 

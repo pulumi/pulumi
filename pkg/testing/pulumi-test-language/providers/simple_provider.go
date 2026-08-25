@@ -197,7 +197,7 @@ func (p *SimpleProvider) Update(
 
 func (p *SimpleProvider) GetPluginInfo(context.Context) (plugin.PluginInfo, error) {
 	return plugin.PluginInfo{
-		Version: ptr(p.version()),
+		Version: new(p.version()),
 	}, nil
 }
 
@@ -255,5 +255,3 @@ func (p *SimpleProvider) Read(ctx context.Context, req plugin.ReadRequest) (plug
 		Status: resource.StatusOK,
 	}, nil
 }
-
-func ptr[T any](v T) *T { return &v }

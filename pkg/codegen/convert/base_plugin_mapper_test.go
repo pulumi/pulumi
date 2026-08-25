@@ -80,7 +80,7 @@ func TestBasePluginMapper_InstalledPluginMatches(t *testing.T) {
 			{
 				Name:    "provider",
 				Kind:    apitype.ResourcePlugin,
-				Version: semverMustParse("1.0.0"),
+				Version: new(semver.MustParse("1.0.0")),
 			},
 		},
 	}
@@ -133,7 +133,7 @@ func TestBasePluginMapper_EcosystemOverridesConversionKey(t *testing.T) {
 			{
 				Name:    "provider",
 				Kind:    apitype.ResourcePlugin,
-				Version: semverMustParse("1.0.0"),
+				Version: new(semver.MustParse("1.0.0")),
 			},
 		},
 	}
@@ -185,7 +185,7 @@ func TestBasePluginMapper_MappedNameDiffersFromPulumiName(t *testing.T) {
 			{
 				Name:    "pulumiProvider",
 				Kind:    apitype.ResourcePlugin,
-				Version: semverMustParse("1.0.0"),
+				Version: new(semver.MustParse("1.0.0")),
 			},
 		},
 	}
@@ -247,7 +247,7 @@ func TestBasePluginMapper_NoPluginMatches_ButCanBeInstalled(t *testing.T) {
 			{
 				Name:    "pulumiProvider",
 				Kind:    apitype.ResourcePlugin,
-				Version: semverMustParse("1.0.0"),
+				Version: new(semver.MustParse("1.0.0")),
 			},
 		},
 	}
@@ -308,12 +308,12 @@ func TestBasePluginMapper_UseMatchingNameFirst(t *testing.T) {
 			{
 				Name:    "otherProvider",
 				Kind:    apitype.ResourcePlugin,
-				Version: semverMustParse("1.0.0"),
+				Version: new(semver.MustParse("1.0.0")),
 			},
 			{
 				Name:    "provider",
 				Kind:    apitype.ResourcePlugin,
-				Version: semverMustParse("1.0.0"),
+				Version: new(semver.MustParse("1.0.0")),
 			},
 		},
 	}
@@ -367,12 +367,12 @@ func TestBasePluginMapper_MappedNamesDifferFromPulumiName(t *testing.T) {
 			{
 				Name:    "pulumiProviderAws",
 				Kind:    apitype.ResourcePlugin,
-				Version: semverMustParse("1.0.0"),
+				Version: new(semver.MustParse("1.0.0")),
 			},
 			{
 				Name:    "pulumiProviderGcp",
 				Kind:    apitype.ResourcePlugin,
-				Version: semverMustParse("1.0.0"),
+				Version: new(semver.MustParse("1.0.0")),
 			},
 		},
 	}
@@ -462,12 +462,12 @@ func TestBasePluginMapper_MappedNamesDifferFromPulumiNameWithHint(t *testing.T) 
 			{
 				Name:    "pulumiProviderAws",
 				Kind:    apitype.ResourcePlugin,
-				Version: semverMustParse("1.0.0"),
+				Version: new(semver.MustParse("1.0.0")),
 			},
 			{
 				Name:    "pulumiProviderGcp",
 				Kind:    apitype.ResourcePlugin,
-				Version: semverMustParse("1.0.0"),
+				Version: new(semver.MustParse("1.0.0")),
 			},
 		},
 	}
@@ -524,12 +524,12 @@ func TestBasePluginMapper_MappedNamesDifferFromPulumiNameWithParameterizedHint(t
 			{
 				Name:    "pulumiProviderAws",
 				Kind:    apitype.ResourcePlugin,
-				Version: semverMustParse("1.0.0"),
+				Version: new(semver.MustParse("1.0.0")),
 			},
 			{
 				Name:    "terraform-provider",
 				Kind:    apitype.ResourcePlugin,
-				Version: semverMustParse("1.0.0"),
+				Version: new(semver.MustParse("1.0.0")),
 			},
 		},
 	}
@@ -596,7 +596,7 @@ func TestBasePluginMapper_MappedNamesDifferFromPulumiNameWithUnusableParameteriz
 			{
 				Name:    "pulumiProviderAws",
 				Kind:    apitype.ResourcePlugin,
-				Version: semverMustParse("1.0.0"),
+				Version: new(semver.MustParse("1.0.0")),
 			},
 		},
 	}
@@ -659,7 +659,7 @@ func TestBasePluginMapper_InfiniteLoopRegression(t *testing.T) {
 			{
 				Name:    "pulumiProviderAws",
 				Kind:    apitype.ResourcePlugin,
-				Version: semverMustParse("1.0.0"),
+				Version: new(semver.MustParse("1.0.0")),
 			},
 		},
 	}
@@ -751,9 +751,4 @@ func (prov *testProvider) GetMappings(
 	}
 	keys, err := prov.GetMappingsF(req.Key)
 	return plugin.GetMappingsResponse{Keys: keys}, err
-}
-
-func semverMustParse(s string) *semver.Version {
-	v := semver.MustParse(s)
-	return &v
 }
