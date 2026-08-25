@@ -447,12 +447,30 @@ func runNew(ctx context.Context, args newArgs) error {
 		}
 	}
 
-	fmt.Fprintln(args.stdout,
-		opts.Color.Colorize(
-			colors.BrightGreen+colors.Bold+"Your new project is ready to go!"+colors.Reset,
-		)+
-			" "+cmdutil.EmojiOr("✨", ""))
-	fmt.Fprintln(args.stdout)
+	// Best-effort cloud credentials preflight; advisory only, never fails the command.
+	credentialsWarned := false
+	if s != nil && shouldCheckAWSCredentials(args, template) {
+		if ps, err := cmdStack.LoadProjectStack(ctx, cmdutil.Diag(), proj, s, ""); err == nil {
+			load := func() (plugin.Provider, error) {
+				return pluginCtx.Host.Provider(pluginCtx,
+					workspace.PluginDescriptor{Kind: apitype.ResourcePlugin, Name: awsPackageName},
+					env.Global())
+			}
+			credentialsWarned = checkAWSCredentials(ctx, load, awsConfigProperties(ps.Config), args.stdout, opts,
+				defaultCredentialsPreflightTimeout)
+		}
+	}
+
+	// The celebratory line rings false right after a credentials warning; the warning
+	// already tells the user the project was created successfully.
+	if !credentialsWarned {
+		fmt.Fprintln(args.stdout,
+			opts.Color.Colorize(
+				colors.BrightGreen+colors.Bold+"Your new project is ready to go!"+colors.Reset,
+			)+
+				" "+cmdutil.EmojiOr("✨", ""))
+		fmt.Fprintln(args.stdout)
+	}
 
 	if confirmed != nil {
 		// Any other stack announced itself as it was created, or already existed.
