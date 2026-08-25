@@ -1379,6 +1379,13 @@ func (mod *modContext) genFunctionDefinition(w io.Writer, fun *schema.Function, 
 						body = fmt.Sprintf("args%s ? %s : undefined", propertyAccessor(p.Name), body)
 					}
 				}
+				if p.DefaultValue != nil {
+					dv, err := mod.getDefaultValue(p.DefaultValue, codegen.UnwrapType(p.Type))
+					if err != nil {
+						return info, err
+					}
+					body = fmt.Sprintf("(%s) ?? %s", body, dv)
+				}
 				fmt.Fprintf(w, "        \"%[1]s\": %[2]s,\n", p.Name, body)
 			}
 		}

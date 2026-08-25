@@ -10,6 +10,11 @@ export const getText: typeof import("./getText").getText = null as any;
 export const getTextOutput: typeof import("./getText").getTextOutput = null as any;
 utilities.lazyLoad(exports, ["getText","getTextOutput"], () => require("./getText"));
 
+export { InvokeWithDefaultArgs, InvokeWithDefaultResult, InvokeWithDefaultOutputArgs } from "./invokeWithDefault";
+export const invokeWithDefault: typeof import("./invokeWithDefault").invokeWithDefault = null as any;
+export const invokeWithDefaultOutput: typeof import("./invokeWithDefault").invokeWithDefaultOutput = null as any;
+utilities.lazyLoad(exports, ["invokeWithDefault","invokeWithDefaultOutput"], () => require("./invokeWithDefault"));
+
 export { MyInvokeArgs, MyInvokeResult, MyInvokeOutputArgs } from "./myInvoke";
 export const myInvoke: typeof import("./myInvoke").myInvoke = null as any;
 export const myInvokeOutput: typeof import("./myInvoke").myInvokeOutput = null as any;
