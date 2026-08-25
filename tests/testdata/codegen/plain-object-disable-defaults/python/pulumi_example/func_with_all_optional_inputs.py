@@ -53,6 +53,8 @@ def func_with_all_optional_inputs(a: Optional[Union['HelmReleaseSettings', 'Helm
     :param Union['HelmReleaseSettings', 'HelmReleaseSettingsDict'] a: Property A
     :param _builtins.str b: Property B
     """
+    if b is None:
+        b = 'defValue'
     __args__ = dict()
     __args__['a'] = a
     __args__['b'] = b
@@ -70,6 +72,8 @@ def func_with_all_optional_inputs_output(a: pulumi.Input[Optional[Optional[Union
     :param Union['HelmReleaseSettings', 'HelmReleaseSettingsDict'] a: Property A
     :param _builtins.str b: Property B
     """
+    if b is None:
+        b = 'defValue'
     __args__ = dict()
     __args__['a'] = a
     __args__['b'] = b
