@@ -38,6 +38,8 @@ jobs:
       contents: read
       # To sign artifacts.
       id-token: write
+      # Requested by the changelog lint job; unused on push events.
+      pull-requests: write
     with:
       ref: ${{ github.ref }}
       version: ${{ needs.info.outputs.version }}

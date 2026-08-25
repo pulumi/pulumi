@@ -27,6 +27,8 @@ jobs:
     permissions:
       contents: read
       id-token: write
+      # Requested by the changelog lint job; unused on scheduled runs.
+      pull-requests: write
     with:
       ref: ${{ github.ref }}
       version: ${{ needs.info.outputs.version }}
