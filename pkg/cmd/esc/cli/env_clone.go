@@ -53,8 +53,7 @@ func newEnvCloneCmd(env *envCommand) *cobra.Command {
 			// also be returned in this case.
 			// If the original ref is using a legacy ID of just env name return an error
 			// Otherwise we will ignore any conflict errors and assume the user meant <project-name>/<env-name>
-			var ambiguousIdErr ambiguousIdentifierError
-			if err != nil && !errors.As(err, &ambiguousIdErr) {
+			if _, ok := errors.AsType[ambiguousIdentifierError](err); err != nil && !ok {
 				return err
 			}
 

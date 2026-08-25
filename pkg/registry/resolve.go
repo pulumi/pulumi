@@ -152,8 +152,7 @@ func ResolvePackageFromName(
 }
 
 func GetSuggestedPackages(err error) []apitype.PackageMetadata {
-	var suggestions errorSuggestedPackages
-	errors.As(err, &suggestions)
+	suggestions, _ := errors.AsType[errorSuggestedPackages](err)
 	return suggestions.packages
 }
 

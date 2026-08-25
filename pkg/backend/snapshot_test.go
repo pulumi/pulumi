@@ -1117,8 +1117,8 @@ func TestSnapshotAutoRepairErrorIsSurfacedWhenRepairFails(t *testing.T) {
 	err := sm.saveSnapshot()
 
 	require.ErrorContains(t, err, "failed to verify snapshot")
-	var sie *snapshot.SnapshotIntegrityError
-	require.True(t, errors.As(err, &sie))
+	sie, ok := errors.AsType[*snapshot.SnapshotIntegrityError](err)
+	require.True(t, ok)
 	require.NotNil(t, sie.AutoRepairErr)
 	event := <-events
 	assert.Equal(t, engine.ErrorEvent, event.Type)

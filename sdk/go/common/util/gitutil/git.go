@@ -471,7 +471,7 @@ func getSSHPublicKeys(user string, host string, sshConfig sshUserSettings) (*git
 	// Attempt to load the key. If this is an interactive session and the key
 	// is passphrase-protected we will prompt the user to enter a passphrase.
 	signer, err := ssh.ParsePrivateKey(privateKeyBytes)
-	if errors.As(err, new(*ssh.PassphraseMissingError)) {
+	if _, ok := errors.AsType[*ssh.PassphraseMissingError](err); ok {
 		passphrase := env.GitSSHPassphrase.Value()
 
 		if passphrase == "" && cmdutil.Interactive() {

@@ -75,9 +75,8 @@ func processCmdErrors(ctx context.Context, err error, stderr io.Writer) error {
 	// `pulumi api` errors have already had their structured envelope
 	// written to stderr by runWithEnvelope, so suppress the generic
 	// message print. ExitCodeFor still recovers the semantic exit code via
-	// errors.As.
-	var apiErr *cloud.APIError
-	if errors.As(err, &apiErr) && apiErr.Silent {
+	// errors.AsType.
+	if apiErr, ok := errors.AsType[*cloud.APIError](err); ok && apiErr.Silent {
 		return result.BailError(err)
 	}
 
@@ -109,10 +108,10 @@ func processCmdErrors(ctx context.Context, err error, stderr io.Writer) error {
 }
 
 func isAuthRequiredError(err error) bool {
-	var apiErr *apitype.ErrorResponse
+	apiErr, ok := errors.AsType[*apitype.ErrorResponse](err)
 	return errors.Is(err, backenderr.LoginRequiredError{}) ||
 		errors.Is(err, httpstate.ErrUnauthorized) ||
-		errors.As(err, &apiErr) && apiErr.Code == http.StatusUnauthorized
+		ok && apiErr.Code == http.StatusUnauthorized
 }
 
 // A type-specific handler for engine.DecryptErrors that prints out help text

@@ -84,8 +84,7 @@ func newEnvRmCmd(env *envCommand) *cobra.Command {
 
 				err = env.esc.client.DeleteEnvironment(ctx, ref.orgName, ref.projectName, ref.envName)
 				if err != nil {
-					var errResp *apitype.ErrorResponse
-					if errors.As(err, &errResp) && errResp.Code == http.StatusConflict &&
+					if errResp, ok := errors.AsType[*apitype.ErrorResponse](err); ok && errResp.Code == http.StatusConflict &&
 						strings.Contains(errResp.Message, "protect") {
 						return fmt.Errorf(
 							"cannot delete environment: deletion protection is enabled. Disable deletion protection with 'esc env settings set %s deletion-protected false' before deleting", //nolint:lll

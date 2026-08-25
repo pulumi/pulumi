@@ -366,7 +366,7 @@ func (f *fetch) listOrgTemplates(ctx context.Context, templateName string, e env
 	handleOrg := func(org string) {
 		slog.InfoContext(ctx, "Checking for templates", "org", org)
 		orgTemplates, err := b.ListTemplates(ctx, org)
-		if apiError := new(apitype.ErrorResponse); errors.As(err, &apiError) {
+		if apiError, ok := errors.AsType[*apitype.ErrorResponse](err); ok {
 			// This is what happens when we try to access org templates for an org that hasn't enabled org templates.
 			if apiError.Code == 402 {
 				slog.InfoContext(ctx, "does not have access to org templates", "org", org, "code", apiError.Code)

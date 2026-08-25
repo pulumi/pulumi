@@ -14,6 +14,11 @@ func deferIgnoreClose(m dsl.Matcher) {
 		Suggest("defer contract.IgnoreClose($x)")
 }
 
+func errorsAs(m dsl.Matcher) {
+	m.Match(`errors.As($err, $target)`).
+		Report("use errors.AsType[T] instead of errors.As")
+}
+
 // ptrHelper forbids private pointer-wrapper helpers whose body is just
 // `return &v`. Use Go 1.26's `new(expr)` instead of adding a helper like
 // `func ptr[T any](v T) *T { return &v }`.

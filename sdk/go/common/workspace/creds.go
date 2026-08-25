@@ -435,8 +435,8 @@ func (e *UndecryptableCredentialsError) Error() string { return e.Err.Error() }
 func (e *UndecryptableCredentialsError) Unwrap() error { return e.Err }
 
 func IsUndecryptableCredentials(err error) bool {
-	var undecryptable *UndecryptableCredentialsError
-	return errors.As(err, &undecryptable)
+	_, ok := errors.AsType[*UndecryptableCredentialsError](err)
+	return ok
 }
 
 func decryptCredentials(credsFile string, data []byte) ([]byte, error) {

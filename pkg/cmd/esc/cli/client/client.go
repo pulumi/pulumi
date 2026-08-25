@@ -769,8 +769,7 @@ func (pc *client) UpdateEnvironment(
 		ErrorResponse: &errResp,
 	})
 	if err != nil {
-		var diags *EnvironmentErrorResponse
-		if errors.As(err, &diags) && len(diags.Diagnostics) != 0 {
+		if diags, ok := errors.AsType[*EnvironmentErrorResponse](err); ok && len(diags.Diagnostics) != 0 {
 			return diags.Diagnostics, 0, nil
 		}
 		return nil, 0, err
@@ -811,8 +810,7 @@ func (pc *client) CreateEnvironmentDraft(
 		ErrorResponse: &errResp,
 	})
 	if err != nil {
-		var diags *EnvironmentErrorResponse
-		if errors.As(err, &diags) && len(diags.Diagnostics) != 0 {
+		if diags, ok := errors.AsType[*EnvironmentErrorResponse](err); ok && len(diags.Diagnostics) != 0 {
 			return "", diags.Diagnostics, nil
 		}
 		return "", nil, err
@@ -863,8 +861,7 @@ func (pc *client) UpdateEnvironmentDraft(
 		ErrorResponse: &errResp,
 	})
 	if err != nil {
-		var diags *EnvironmentErrorResponse
-		if errors.As(err, &diags) && len(diags.Diagnostics) != 0 {
+		if diags, ok := errors.AsType[*EnvironmentErrorResponse](err); ok && len(diags.Diagnostics) != 0 {
 			return diags.Diagnostics, nil
 		}
 		return nil, err
@@ -918,8 +915,7 @@ func (pc *client) OpenEnvironment(
 		ErrorResponse: &errResp,
 	})
 	if err != nil {
-		var diags *EnvironmentErrorResponse
-		if errors.As(err, &diags) && diags.Code == http.StatusBadRequest && len(diags.Diagnostics) != 0 {
+		if diags, ok := errors.AsType[*EnvironmentErrorResponse](err); ok && diags.Code == http.StatusBadRequest && len(diags.Diagnostics) != 0 {
 			return "", diags.Diagnostics, nil
 		}
 		return "", nil, err
@@ -951,8 +947,7 @@ func (pc *client) OpenEnvironmentDraft(
 		ErrorResponse: &errResp,
 	})
 	if err != nil {
-		var diags *EnvironmentErrorResponse
-		if errors.As(err, &diags) && diags.Code == http.StatusBadRequest && len(diags.Diagnostics) != 0 {
+		if diags, ok := errors.AsType[*EnvironmentErrorResponse](err); ok && diags.Code == http.StatusBadRequest && len(diags.Diagnostics) != 0 {
 			return "", diags.Diagnostics, nil
 		}
 		return "", nil, err
@@ -981,8 +976,7 @@ func (pc *client) RotateEnvironment(
 		ErrorResponse: &errResp,
 	})
 	if err != nil {
-		var diags *EnvironmentErrorResponse
-		if errors.As(err, &diags) && diags.Code == http.StatusBadRequest && len(diags.Diagnostics) != 0 {
+		if diags, ok := errors.AsType[*EnvironmentErrorResponse](err); ok && diags.Code == http.StatusBadRequest && len(diags.Diagnostics) != 0 {
 			return nil, diags.Diagnostics, nil
 		}
 		return nil, nil, err
@@ -1013,8 +1007,7 @@ func (pc *client) CheckYAMLEnvironment(
 		ErrorResponse: &errResp,
 	})
 	if err != nil {
-		var diags *EnvironmentErrorResponse
-		if errors.As(err, &diags) && diags.Code == http.StatusBadRequest && len(diags.Diagnostics) != 0 {
+		if diags, ok := errors.AsType[*EnvironmentErrorResponse](err); ok && diags.Code == http.StatusBadRequest && len(diags.Diagnostics) != 0 {
 			return nil, diags.Diagnostics, nil
 		}
 		return nil, nil, err
@@ -1054,8 +1047,7 @@ func (pc *client) OpenYAMLEnvironment(
 		ErrorResponse: &errResp,
 	})
 	if err != nil {
-		var diags *EnvironmentErrorResponse
-		if errors.As(err, &diags) && diags.Code == http.StatusBadRequest && len(diags.Diagnostics) != 0 {
+		if diags, ok := errors.AsType[*EnvironmentErrorResponse](err); ok && diags.Code == http.StatusBadRequest && len(diags.Diagnostics) != 0 {
 			return "", diags.Diagnostics, nil
 		}
 		return "", nil, err

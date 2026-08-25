@@ -86,8 +86,8 @@ func newPluginRunCmd() *cobra.Command {
 				pluginPath, err = workspace.GetPluginPath(ctx, d, pluginSpec, nil)
 				if err != nil {
 					// Try to install the plugin, unless auto plugin installs are turned off.
-					var me *workspace.MissingError
-					if !errors.As(err, &me) || env.DisableAutomaticPluginAcquisition.Value() {
+					_, ok := errors.AsType[*workspace.MissingError](err)
+					if !ok || env.DisableAutomaticPluginAcquisition.Value() {
 						// Not a MissingError, return the original error.
 						return fmt.Errorf("could not get plugin path: %w", err)
 					}

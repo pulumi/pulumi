@@ -153,8 +153,8 @@ func TestResolveBindings_MissingParamErrorSuggestsFlag(t *testing.T) {
 	}
 	_, _, err := resolveBindings(mr, nil, nil)
 	require.Error(t, err)
-	var apiErr *APIError
-	require.True(t, errors.As(err, &apiErr))
+	apiErr, ok := errors.AsType[*APIError](err)
+	require.True(t, ok)
 	assert.Equal(t, ErrMissingContext, apiErr.Envelope.Error.Code)
 	joined := strings.Join(apiErr.Envelope.Error.Suggestions, "|")
 	assert.Contains(t, joined, "-F poolId=")
@@ -175,8 +175,8 @@ func TestResolveBindings_NullFieldRejected(t *testing.T) {
 	}
 	_, _, err := resolveBindings(mr, fields, nil)
 	require.Error(t, err)
-	var apiErr *APIError
-	require.True(t, errors.As(err, &apiErr))
+	apiErr, ok := errors.AsType[*APIError](err)
+	require.True(t, ok)
 	assert.Equal(t, ErrInvalidFlags, apiErr.Envelope.Error.Code)
 }
 
@@ -260,8 +260,8 @@ func TestNegotiateAccept_MarkdownNotDeclared(t *testing.T) {
 	}
 	_, err := negotiateAccept(op, "markdown")
 	require.Error(t, err)
-	var apiErr *APIError
-	require.True(t, errors.As(err, &apiErr))
+	apiErr, ok := errors.AsType[*APIError](err)
+	require.True(t, ok)
 	assert.Equal(t, ErrInvalidFlags, apiErr.Envelope.Error.Code)
 	joined := strings.Join(apiErr.Envelope.Error.Suggestions, "|")
 	assert.Contains(t, joined, "application/json")
@@ -272,8 +272,8 @@ func TestNegotiateAccept_InvalidValue(t *testing.T) {
 	t.Parallel()
 	_, err := negotiateAccept(&Operation{}, "yaml")
 	require.Error(t, err)
-	var apiErr *APIError
-	require.True(t, errors.As(err, &apiErr))
+	apiErr, ok := errors.AsType[*APIError](err)
+	require.True(t, ok)
 	assert.Equal(t, ErrInvalidFlags, apiErr.Envelope.Error.Code)
 }
 
@@ -544,8 +544,8 @@ func TestValidateFlagCombos_BodyAndInputMutuallyExclusive(t *testing.T) {
 		input:           "payload.json",
 	})
 	require.Error(t, err)
-	var apiErr *APIError
-	require.True(t, errors.As(err, &apiErr))
+	apiErr, ok := errors.AsType[*APIError](err)
+	require.True(t, ok)
 	assert.Equal(t, ErrInvalidFlags, apiErr.Envelope.Error.Code)
 	assert.Equal(t, cmdutil.ExitConfigurationError, apiErr.ExitCode)
 }
@@ -562,8 +562,8 @@ func TestValidateFlagCombos_SilentAndVerboseMutuallyExclusive(t *testing.T) {
 		verbose:         true,
 	})
 	require.Error(t, err)
-	var apiErr *APIError
-	require.True(t, errors.As(err, &apiErr))
+	apiErr, ok := errors.AsType[*APIError](err)
+	require.True(t, ok)
 	assert.Equal(t, ErrInvalidFlags, apiErr.Envelope.Error.Code)
 	assert.Equal(t, cmdutil.ExitConfigurationError, apiErr.ExitCode)
 }
@@ -819,16 +819,16 @@ func TestHandleResponse(t *testing.T) {
 		err := handleResponse(&buf, io.Discard, newResp(500, "application/json", `{"code":500}`),
 			&apiCommand{silent: true})
 		require.Error(t, err)
-		var apiErr *APIError
-		require.True(t, errors.As(err, &apiErr))
+		apiErr, ok := errors.AsType[*APIError](err)
+		require.True(t, ok)
 		assert.Equal(t, cmdutil.ExitCodeError, apiErr.ExitCode)
 	})
 	t.Run("4xx_returns_apierror", func(t *testing.T) {
 		t.Parallel()
 		err := handleResponse(io.Discard, io.Discard, newResp(404, "application/json", `{"code":404}`), &apiCommand{})
 		require.Error(t, err)
-		var apiErr *APIError
-		require.True(t, errors.As(err, &apiErr))
+		apiErr, ok := errors.AsType[*APIError](err)
+		require.True(t, ok)
 		assert.Equal(t, cmdutil.ExitCodeError, apiErr.ExitCode)
 		assert.Equal(t, ErrHTTP4xx, apiErr.Envelope.Error.Code)
 	})
@@ -836,8 +836,8 @@ func TestHandleResponse(t *testing.T) {
 		t.Parallel()
 		err := handleResponse(io.Discard, io.Discard, newResp(401, "application/json", `{"code":401}`), &apiCommand{})
 		require.Error(t, err)
-		var apiErr *APIError
-		require.True(t, errors.As(err, &apiErr))
+		apiErr, ok := errors.AsType[*APIError](err)
+		require.True(t, ok)
 		assert.Equal(t, cmdutil.ExitAuthenticationError, apiErr.ExitCode)
 	})
 }
