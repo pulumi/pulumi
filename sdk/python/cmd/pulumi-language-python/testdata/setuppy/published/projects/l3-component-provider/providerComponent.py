@@ -3,7 +3,7 @@ from pulumi import Input
 from typing import Optional, Dict, TypedDict, Any
 import pulumi_config as config
 
-class ProviderComponentArgs(TypedDict, total=False):
+class ProviderComponentArgs(TypedDict):
     text: Input[str]
 
 class ProviderComponent(pulumi.ComponentResource):

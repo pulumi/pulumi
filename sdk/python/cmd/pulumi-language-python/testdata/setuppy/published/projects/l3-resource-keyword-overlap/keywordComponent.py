@@ -3,7 +3,7 @@ from pulumi import Input
 from typing import Optional, Dict, TypedDict, Any
 import pulumi_simple as simple
 
-class KeywordComponentArgs(TypedDict, total=False):
+class KeywordComponentArgs(TypedDict):
     input: Input[bool]
 
 class KeywordComponent(pulumi.ComponentResource):

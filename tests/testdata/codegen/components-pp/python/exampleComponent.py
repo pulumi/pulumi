@@ -2,25 +2,26 @@ import pulumi
 from pulumi import Input
 from simpleComponent import SimpleComponent
 from typing import Optional, Dict, TypedDict, Any
+from typing_extensions import NotRequired
 import pulumi_random as random
 
-class DeploymentZones(TypedDict, total=False):
-    zone: Input[str]
+class DeploymentZones(TypedDict):
+    zone: NotRequired[Input[str]]
 
-class GithubApp(TypedDict, total=False):
-    id: Input[str]
-    keyBase64: Input[str]
-    webhookSecret: Input[str]
+class GithubApp(TypedDict):
+    id: NotRequired[Input[str]]
+    keyBase64: NotRequired[Input[str]]
+    webhookSecret: NotRequired[Input[str]]
 
-class Servers(TypedDict, total=False):
-    name: Input[str]
+class Servers(TypedDict):
+    name: NotRequired[Input[str]]
 
-class ExampleComponentArgs(TypedDict, total=False):
+class ExampleComponentArgs(TypedDict):
     input: Input[str]
     cidrBlocks: Input[Dict[str, str]]
-    githubApp: Input[GithubApp]
-    servers: Input[list(Servers)]
-    deploymentZones: Input[Dict[str, DeploymentZones]]
+    githubApp: NotRequired[Input[GithubApp]]
+    servers: NotRequired[Input[list(Servers)]]
+    deploymentZones: NotRequired[Input[Dict[str, DeploymentZones]]]
     ipAddress: Input[list[int]]
 
 class ExampleComponent(pulumi.ComponentResource):

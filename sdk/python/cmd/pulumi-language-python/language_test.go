@@ -219,17 +219,6 @@ func testLanguageWithConfig(t *testing.T, config languageTestConfig) {
 						t.Skip("Skipping non-default provider tests")
 					}
 
-					if config.typechecker == "pyright" &&
-						(tt == "l3-component-simple" ||
-							tt == "l3-rewrite-conversions" ||
-							tt == "l3-component-provider" ||
-							tt == "l3-component-config-primitives" ||
-							tt == "l3-component-config-objects" ||
-							tt == "l3-map-keys" ||
-							tt == "l3-resource-keyword-overlap") {
-						t.Skipf("Skipping %s test with pyright due to issues with optional properties", tt)
-					}
-
 					if expected, ok := expectedFailures[tt]; ok {
 						t.Skipf("Skipping known failure: %s", expected)
 					}

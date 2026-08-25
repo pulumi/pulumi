@@ -3,7 +3,7 @@ from pulumi import Input
 from typing import Optional, Dict, TypedDict, Any
 import pulumi_primitive as primitive
 
-class ConvertedArgs(TypedDict, total=False):
+class ConvertedArgs(TypedDict):
     boolean: Input[bool]
     float: Input[float]
     integer: Input[int]

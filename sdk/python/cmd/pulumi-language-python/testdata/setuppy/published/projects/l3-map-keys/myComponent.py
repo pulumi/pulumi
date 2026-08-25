@@ -3,7 +3,7 @@ from pulumi import Input
 from typing import Optional, Dict, TypedDict, Any
 import pulumi_primitive as primitive
 
-class MyComponentArgs(TypedDict, total=False):
+class MyComponentArgs(TypedDict):
     booleanMap: Input[Dict[str, bool]]
 
 class MyComponent(pulumi.ComponentResource):

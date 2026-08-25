@@ -30,6 +30,7 @@ dependencies = [
     'pyyaml~=6.0',
     'debugpy~=1.8.7',
     "packaging>=26.0",
+    'typing-extensions>=4.11,<5',
     # OpenTelemetry dependencies for tracing
     'opentelemetry-api>=1.20.0',
     'opentelemetry-sdk>=1.20.0',

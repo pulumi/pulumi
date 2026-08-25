@@ -3,7 +3,7 @@ from pulumi import Input
 from typing import Optional, Dict, TypedDict, Any
 import pulumi_primitive as primitive
 
-class PrimitiveComponentArgs(TypedDict, total=False):
+class PrimitiveComponentArgs(TypedDict):
     numberArray: Input[list[float]]
     booleanMap: Input[Dict[str, bool]]
 
