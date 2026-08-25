@@ -27,8 +27,7 @@ import (
 const maxRetryAfterDelay = 30 * time.Second
 
 // shouldRetryHeader lets the server override the caller's retry policy on
-// error responses: "true" forces a retry, "false" forbids one. Follows the
-// x-should-retry convention used by Stainless-generated SDKs.
+// error responses: "true" forces a retry, "false" forbids one.
 const shouldRetryHeader = "X-Pulumi-Should-Retry"
 
 // retryAfterHeaderDelay returns the uncapped delay from a Retry-After header
