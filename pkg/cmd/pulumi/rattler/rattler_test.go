@@ -123,6 +123,13 @@ func TestSuggestCommands(t *testing.T) {
 		assert.Empty(t, got)
 	})
 
+	t.Run("transposition typo", func(t *testing.T) {
+		t.Parallel()
+		got := suggestCommands(find(t, newSuggestionsTestTree(), "org", "member"), []string{"lsit"})
+		require.NotEmpty(t, got)
+		assert.Equal(t, "pulumi org member list", got[0])
+	})
+
 	t.Run("hidden commands are not suggested", func(t *testing.T) {
 		t.Parallel()
 		got := suggestCommands(newSuggestionsTestTree(), []string{"secret-cmd"})
@@ -243,6 +250,41 @@ func TestHasSyntheticRun(t *testing.T) {
 	assert.False(t, HasSyntheticRun(find("import")), "runnable leaf")
 	assert.False(t, HasSyntheticRun(find("stack", "export")), "nested runnable leaf")
 	assert.False(t, HasSyntheticRun(nil), "nil command")
+}
+
+// closeEnough is where edit distance turns into a yes/no on suggesting a
+// command, so these cases double as a catalog of which typos we catch:
+// one edit for words under six runes, two for longer ones, with adjacent
+// swaps counting as a single edit.
+func TestCloseEnough(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		a, b string
+		want bool
+	}{
+		// Adjacent transpositions are one edit, so they fit even the
+		// short-word threshold.
+		{"lsit", "list", true},
+		{"stakc", "stack", true},
+		{"confgi", "config", true},
+		{"detsroy", "destroy", true},
+		// Single-rune slips.
+		{"previw", "preview", true},
+		{"lost", "list", true},
+		// Two edits are tolerated only in words of six runes or more...
+		{"import", "export", true}, // ranking still prefers exact matches
+		{"abcdef", "fbcdea", true}, // ...which admits non-adjacent swaps,
+		{"abcd", "dbca", false},    // but not in shorter words.
+		{"stack", "state", false},
+		{"up", "rm", false},
+		{"new", "ls", false},
+		{"xyzzyq", "list", false},
+	}
+	for _, c := range cases {
+		assert.Equal(t, c.want, closeEnough(c.a, c.b), "closeEnough(%q, %q)", c.a, c.b)
+		assert.Equal(t, c.want, closeEnough(c.b, c.a), "closeEnough(%q, %q)", c.b, c.a)
+	}
 }
 
 func TestNormalize(t *testing.T) {

@@ -32,9 +32,9 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
-	"github.com/texttheater/golang-levenshtein/levenshtein"
 
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
+	"github.com/pulumi/pulumi/pkg/v3/util/editdistance"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 )
 
@@ -354,11 +354,13 @@ func normalize(token string) []string {
 	return parts
 }
 
-// closeEnough scales the allowed edit distance with the longer string.
+// closeEnough scales the allowed edit distance with the longer string. Both
+// words are expected to be lowercased already (see normalize), as the
+// distance is case-sensitive.
 func closeEnough(a, b string) bool {
 	threshold := 2
 	if max(len(a), len(b)) < 6 {
 		threshold = 1
 	}
-	return levenshtein.DistanceForStrings([]rune(a), []rune(b), levenshtein.DefaultOptionsWithSub) <= threshold
+	return editdistance.OSA(a, b) <= threshold
 }

@@ -724,6 +724,12 @@ async def serialize_property(
         # If we have type information, we'll use it to do name translations rather than using
         # any passed-in input_transformer.
         if typ is not None:
+            # A union carries no metadata of its own, so reduce it to the member the value's
+            # constants select and translate using that member's names.
+            case = _types.reduce_discriminated_union(typ, value, _types._py_name_for)
+            if case is not None:
+                typ = case
+
             if _types.is_input_type(typ):
                 # If it's intended to be an input type, translate using the type's metadata.
                 py_name_to_pulumi_name = _types.input_type_py_to_pulumi_names(typ)
@@ -1298,6 +1304,12 @@ def translate_output_properties(
         typ = None
 
     if isinstance(output, dict):
+        # Nothing below handles a union, so an unreduced one raises. A value matching no single
+        # member, such as a variant added to the provider since this SDK was generated, is left
+        # untyped instead.
+        if typ is not None and _types.is_discriminated_union(typ):
+            typ = _types.reduce_discriminated_union(typ, output, lambda _, name: name)
+
         # Function called to lookup a type for a given key.
         # The default always returns None.
         get_type: Callable[[str], Optional[type]] = lambda k: None
