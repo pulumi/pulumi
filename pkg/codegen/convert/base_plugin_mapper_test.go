@@ -52,12 +52,13 @@ func TestBasePluginMapper_UsesEntries(t *testing.T) {
 	err := os.WriteFile(mappingFile, []byte("entrydata"), 0o600)
 	require.NoError(t, err)
 
-	mapper, err := NewBasePluginMapper(
+	mapper, err := newBasePluginMapper(
 		ws,
 		"key", /*conversionKey*/
 		providerFactory,
 		installPlugin,
 		[]string{mappingFile},
+		mapperCacheOptions{disableFileCache: true},
 	)
 	require.NoError(t, err)
 	require.NotNil(t, mapper)
@@ -105,12 +106,13 @@ func TestBasePluginMapper_InstalledPluginMatches(t *testing.T) {
 		return nil
 	}
 
-	mapper, err := NewBasePluginMapper(
+	mapper, err := newBasePluginMapper(
 		ws,
 		"key", /*conversionKey*/
 		providerFactory,
 		installPlugin,
 		nil, /*mappings*/
+		mapperCacheOptions{disableFileCache: true},
 	)
 	require.NoError(t, err)
 	require.NotNil(t, mapper)
@@ -156,12 +158,13 @@ func TestBasePluginMapper_EcosystemOverridesConversionKey(t *testing.T) {
 		return nil
 	}
 
-	mapper, err := NewBasePluginMapper(
+	mapper, err := newBasePluginMapper(
 		ws,
 		"key", /*conversionKey*/
 		providerFactory,
 		installPlugin,
 		nil, /*mappings*/
+		mapperCacheOptions{disableFileCache: true},
 	)
 	require.NoError(t, err)
 	require.NotNil(t, mapper)
@@ -217,12 +220,13 @@ func TestBasePluginMapper_MappedNameDiffersFromPulumiName(t *testing.T) {
 		return nil
 	}
 
-	mapper, err := NewBasePluginMapper(
+	mapper, err := newBasePluginMapper(
 		ws,
 		"key", /*conversionKey*/
 		providerFactory,
 		installPlugin,
 		nil, /*mappings*/
+		mapperCacheOptions{disableFileCache: true},
 	)
 	require.NoError(t, err)
 	require.NotNil(t, mapper)
@@ -278,12 +282,13 @@ func TestBasePluginMapper_NoPluginMatches_ButCanBeInstalled(t *testing.T) {
 		return &ver
 	}
 
-	mapper, err := NewBasePluginMapper(
+	mapper, err := newBasePluginMapper(
 		ws,
 		"key", /*conversionKey*/
 		providerFactory,
 		installPlugin,
 		nil, /*mappings*/
+		mapperCacheOptions{disableFileCache: true},
 	)
 	require.NoError(t, err)
 	require.NotNil(t, mapper)
@@ -338,12 +343,13 @@ func TestBasePluginMapper_UseMatchingNameFirst(t *testing.T) {
 		return nil
 	}
 
-	mapper, err := NewBasePluginMapper(
+	mapper, err := newBasePluginMapper(
 		ws,
 		"key", /*conversionKey*/
 		providerFactory,
 		installPlugin,
 		nil, /*mappings*/
+		mapperCacheOptions{disableFileCache: true},
 	)
 	require.NoError(t, err)
 	require.NotNil(t, mapper)
@@ -424,12 +430,13 @@ func TestBasePluginMapper_MappedNamesDifferFromPulumiName(t *testing.T) {
 		return nil
 	}
 
-	mapper, err := NewBasePluginMapper(
+	mapper, err := newBasePluginMapper(
 		ws,
 		"key", /*conversionKey*/
 		providerFactory,
 		installPlugin,
 		nil, /*mappings*/
+		mapperCacheOptions{disableFileCache: true},
 	)
 	require.NoError(t, err)
 	require.NotNil(t, mapper)
@@ -492,12 +499,13 @@ func TestBasePluginMapper_MappedNamesDifferFromPulumiNameWithHint(t *testing.T) 
 		return nil
 	}
 
-	mapper, err := NewBasePluginMapper(
+	mapper, err := newBasePluginMapper(
 		ws,
 		"key", /*conversionKey*/
 		providerFactory,
 		installPlugin,
 		nil, /*mappings*/
+		mapperCacheOptions{disableFileCache: true},
 	)
 	require.NoError(t, err)
 	require.NotNil(t, mapper)
@@ -560,12 +568,13 @@ func TestBasePluginMapper_MappedNamesDifferFromPulumiNameWithParameterizedHint(t
 		return nil
 	}
 
-	mapper, err := NewBasePluginMapper(
+	mapper, err := newBasePluginMapper(
 		ws,
 		"key", /*conversionKey*/
 		providerFactory,
 		installPlugin,
 		nil, /*mappings*/
+		mapperCacheOptions{disableFileCache: true},
 	)
 	require.NoError(t, err)
 	require.NotNil(t, mapper)
@@ -624,12 +633,13 @@ func TestBasePluginMapper_MappedNamesDifferFromPulumiNameWithUnusableParameteriz
 		return nil
 	}
 
-	mapper, err := NewBasePluginMapper(
+	mapper, err := newBasePluginMapper(
 		ws,
 		"key", /*conversionKey*/
 		providerFactory,
 		installPlugin,
 		nil, /*mappings*/
+		mapperCacheOptions{disableFileCache: true},
 	)
 	require.NoError(t, err)
 	require.NotNil(t, mapper)
@@ -691,12 +701,13 @@ func TestBasePluginMapper_InfiniteLoopRegression(t *testing.T) {
 		return nil
 	}
 
-	mapper, err := NewBasePluginMapper(
+	mapper, err := newBasePluginMapper(
 		ws,
 		"key", /*conversionKey*/
 		providerFactory,
 		installPlugin,
 		nil, /*mappings*/
+		mapperCacheOptions{disableFileCache: true},
 	)
 	require.NoError(t, err)
 	require.NotNil(t, mapper)
