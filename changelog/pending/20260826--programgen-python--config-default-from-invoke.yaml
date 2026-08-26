@@ -1,0 +1,4 @@
+component: programgen/python
+kind: fix
+body: Add type annotations for config variables default values coming from invokes
+time: 2026-08-26T14:20:37+02:00
