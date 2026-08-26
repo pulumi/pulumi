@@ -48,14 +48,14 @@ import (
 	sdkWorkspace "github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
-func newStateEjectCommand(ws pkgWorkspace.Context, lm cmdBackend.LoginManager) *cobra.Command {
+func newStatePromoteCommand(ws pkgWorkspace.Context, lm cmdBackend.LoginManager) *cobra.Command {
 	var stackName string
 	var yes bool
 
 	cmd := &cobra.Command{
-		Use:   "eject <snippet-name>",
-		Short: "Eject a snippet from state into Pulumi program code",
-		Long: `Eject a snippet from state into Pulumi program code
+		Use:   "promote <snippet-name>",
+		Short: "Promote a snippet from state into Pulumi program code",
+		Long: `Promote a snippet from state into Pulumi program code
 
 This command generates Pulumi program code for a stateful snippet, prints the
 generated files, then removes the snippet from the stack while leaving the
@@ -63,7 +63,7 @@ resources it registered in state. The argument is the snippet's logical name.
 
 This command must be run from a real Pulumi project so the generated code has
 a backing project runtime.`,
-		Example: "pulumi state eject myBucket",
+		Example: "pulumi state promote myBucket",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			sink := cmdutil.Diag()
@@ -87,11 +87,11 @@ a backing project runtime.`,
 				return fmt.Errorf("no state found for stack %s", s.Ref())
 			}
 
-			snippet, err := resolveSnippetForEject(snap, args[0])
+			snippet, err := resolveSnippetForPromote(snap, args[0])
 			if err != nil {
 				return err
 			}
-			if err := validateSnippetEjectReferences(snap, snippet); err != nil {
+			if err := validateSnippetPromoteReferences(snap, snippet); err != nil {
 				return err
 			}
 
@@ -105,7 +105,7 @@ a backing project runtime.`,
 			err = runTotalStateEditWithPrompt(ctx, sink, ws, lm, stackName, !yes,
 				func(opts display.Options, snap *deploy.Snapshot) error {
 					var err error
-					cleared, err = ejectSnippetFromSnapshot(snap, snippet)
+					cleared, err = promoteSnippetFromSnapshot(snap, snippet)
 					return err
 				},
 				"This command will remove the snippet from state and leave its resources in state. Confirm?")
@@ -113,7 +113,7 @@ a backing project runtime.`,
 				return err
 			}
 			fmt.Fprintf(cmd.OutOrStdout(),
-				"\nSnippet %q ejected from state; %d resource(s) retained\n",
+				"\nSnippet %q promoted from state; %d resource(s) retained\n",
 				snippet.Name, cleared)
 			return nil
 		},
@@ -139,15 +139,15 @@ func requireProject(ws pkgWorkspace.Context) (*sdkWorkspace.Project, string, err
 		return nil, "", err
 	}
 	if project == nil {
-		return nil, "", errors.New("pulumi state eject must be run from a Pulumi project")
+		return nil, "", errors.New("pulumi state promote must be run from a Pulumi project")
 	}
 	if project.Runtime.Name() == "" {
-		return nil, "", errors.New("pulumi state eject requires a project runtime")
+		return nil, "", errors.New("pulumi state promote requires a project runtime")
 	}
 	return project, root, nil
 }
 
-func ejectSnippetFromSnapshot(snap *deploy.Snapshot, expected resource.Snippet) (int, error) {
+func promoteSnippetFromSnapshot(snap *deploy.Snapshot, expected resource.Snippet) (int, error) {
 	if snap == nil {
 		return 0, errors.New("no state found")
 	}
@@ -173,7 +173,7 @@ func ejectSnippetFromSnapshot(snap *deploy.Snapshot, expected resource.Snippet) 
 	return cleared, nil
 }
 
-func resolveSnippetForEject(snap *deploy.Snapshot, name string) (resource.Snippet, error) {
+func resolveSnippetForPromote(snap *deploy.Snapshot, name string) (resource.Snippet, error) {
 	var matches []resource.Snippet
 	for _, snippet := range snap.Snippets {
 		if snippet.Name == name {
@@ -191,7 +191,7 @@ func resolveSnippetForEject(snap *deploy.Snapshot, name string) (resource.Snippe
 	}
 }
 
-func validateSnippetEjectReferences(snap *deploy.Snapshot, snippet resource.Snippet) error {
+func validateSnippetPromoteReferences(snap *deploy.Snapshot, snippet resource.Snippet) error {
 	for name, rawURN := range snippet.References {
 		urn := resource.URN(rawURN)
 		if !urn.IsValid() {
@@ -201,7 +201,7 @@ func validateSnippetEjectReferences(snap *deploy.Snapshot, snippet resource.Snip
 			if res.URN == urn && res.SnippetID != "" {
 				return fmt.Errorf(
 					"snippet reference %q points to %q, which was produced by snippet %q; "+
-						"pulumi state eject does not yet support references to other snippets",
+						"pulumi state promote does not yet support references to other snippets",
 					name, rawURN, res.SnippetID)
 			}
 		}
@@ -272,7 +272,7 @@ func generateSnippetProgram(
 
 	files, diagnostics, err := languagePlugin.GenerateProgram(
 		pctx.Request(),
-		map[string]string{"eject.pp": snippetPCLSource(snippet)},
+		map[string]string{"promote.pp": snippetPCLSource(snippet)},
 		grpcServer.Addr(),
 		false,
 	)

@@ -35,8 +35,8 @@ troubleshooting a stack or when performing specific edits that otherwise would r
 	constrictor.AttachArguments(cmd, constrictor.NoArgs)
 
 	cmd.AddCommand(newStateDeleteCommand(pkgWorkspace.Instance, cmdBackend.DefaultLoginManager))
-	cmd.AddCommand(newStateEjectCommand(pkgWorkspace.Instance, cmdBackend.DefaultLoginManager))
 	cmd.AddCommand(newStateGetCommand(pkgWorkspace.Instance, cmdBackend.DefaultLoginManager))
+	cmd.AddCommand(newStatePromoteCommand(pkgWorkspace.Instance, cmdBackend.DefaultLoginManager))
 	cmd.AddCommand(newStateEditCommand())
 	cmd.AddCommand(newStateMoveCommand())
 	cmd.AddCommand(newStateProtectCommand())

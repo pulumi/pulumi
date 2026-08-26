@@ -26,7 +26,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 )
 
-func TestEjectSnippetFromSnapshot_RemovesSnippetAndClearsResourceOwnership(t *testing.T) {
+func TestPromoteSnippetFromSnapshot_RemovesSnippetAndClearsResourceOwnership(t *testing.T) {
 	t.Parallel()
 
 	const snippetID = "3fa85f64-5717-4562-b3fc-2c963f66afa6"
@@ -44,7 +44,7 @@ func TestEjectSnippetFromSnapshot_RemovesSnippetAndClearsResourceOwnership(t *te
 	}
 
 	expected := snap.Snippets[1]
-	cleared, err := ejectSnippetFromSnapshot(snap, expected)
+	cleared, err := promoteSnippetFromSnapshot(snap, expected)
 	require.NoError(t, err)
 
 	assert.Equal(t, 1, cleared)
@@ -54,14 +54,14 @@ func TestEjectSnippetFromSnapshot_RemovesSnippetAndClearsResourceOwnership(t *te
 	assert.Equal(t, "other-snippet", snap.Resources[1].SnippetID)
 }
 
-func TestEjectSnippetFromSnapshot_MissingSnippet(t *testing.T) {
+func TestPromoteSnippetFromSnapshot_MissingSnippet(t *testing.T) {
 	t.Parallel()
 
-	_, err := ejectSnippetFromSnapshot(&deploy.Snapshot{}, resource.Snippet{UUID: "missing"})
+	_, err := promoteSnippetFromSnapshot(&deploy.Snapshot{}, resource.Snippet{UUID: "missing"})
 	require.ErrorContains(t, err, `no snippet "missing" exists`)
 }
 
-func TestResolveSnippetForEject_ByName(t *testing.T) {
+func TestResolveSnippetForPromote_ByName(t *testing.T) {
 	t.Parallel()
 
 	const snippetID = "3fa85f64-5717-4562-b3fc-2c963f66afa6"
@@ -69,19 +69,19 @@ func TestResolveSnippetForEject_ByName(t *testing.T) {
 		Snippets: []resource.Snippet{{UUID: snippetID, Name: "bucket", Type: "aws:s3/bucket:Bucket"}},
 	}
 
-	snippet, err := resolveSnippetForEject(snap, "bucket")
+	snippet, err := resolveSnippetForPromote(snap, "bucket")
 	require.NoError(t, err)
 	assert.Equal(t, snippetID, snippet.UUID)
 }
 
-func TestResolveSnippetForEject_UnknownName(t *testing.T) {
+func TestResolveSnippetForPromote_UnknownName(t *testing.T) {
 	t.Parallel()
 
-	_, err := resolveSnippetForEject(&deploy.Snapshot{}, "bucket")
+	_, err := resolveSnippetForPromote(&deploy.Snapshot{}, "bucket")
 	require.ErrorContains(t, err, `no snippet named "bucket" exists`)
 }
 
-func TestResolveSnippetForEject_AmbiguousName(t *testing.T) {
+func TestResolveSnippetForPromote_AmbiguousName(t *testing.T) {
 	t.Parallel()
 
 	snap := &deploy.Snapshot{
@@ -91,11 +91,11 @@ func TestResolveSnippetForEject_AmbiguousName(t *testing.T) {
 		},
 	}
 
-	_, err := resolveSnippetForEject(snap, "bucket")
+	_, err := resolveSnippetForPromote(snap, "bucket")
 	require.ErrorContains(t, err, `snippet name "bucket" is ambiguous`)
 }
 
-func TestValidateSnippetEjectReferences_AllowsNonSnippetResource(t *testing.T) {
+func TestValidateSnippetPromoteReferences_AllowsNonSnippetResource(t *testing.T) {
 	t.Parallel()
 
 	urn := resource.URN("urn:pulumi:dev::proj::aws:s3/bucket:Bucket::source")
@@ -111,10 +111,10 @@ func TestValidateSnippetEjectReferences_AllowsNonSnippetResource(t *testing.T) {
 		References: map[string]string{"source": string(urn)},
 	}
 
-	require.NoError(t, validateSnippetEjectReferences(snap, snippet))
+	require.NoError(t, validateSnippetPromoteReferences(snap, snippet))
 }
 
-func TestValidateSnippetEjectReferences_RejectsSnippetResource(t *testing.T) {
+func TestValidateSnippetPromoteReferences_RejectsSnippetResource(t *testing.T) {
 	t.Parallel()
 
 	urn := resource.URN("urn:pulumi:dev::proj::aws:s3/bucket:Bucket::source")
@@ -130,7 +130,7 @@ func TestValidateSnippetEjectReferences_RejectsSnippetResource(t *testing.T) {
 		References: map[string]string{"source": string(urn)},
 	}
 
-	err := validateSnippetEjectReferences(snap, snippet)
+	err := validateSnippetPromoteReferences(snap, snippet)
 	require.ErrorContains(t, err, "does not yet support references to other snippets")
 	require.ErrorContains(t, err, "source-snippet")
 }

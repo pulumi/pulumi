@@ -1354,10 +1354,10 @@ func TestDoCommandLocalCommand(t *testing.T) {
 		"stdout did not start with hello\nActual:\n%s", stdout)
 }
 
-// Smoke test for `pulumi state eject`: create two snippet-produced resources with `pulumi do create`
-// where the second references the first's output, then eject the first snippet and check that the
+// Smoke test for `pulumi state promote`: create two snippet-produced resources with `pulumi do create`
+// where the second references the first's output, then promote the first snippet and check that the
 // printed code contains the expected TypeScript for the resource.
-func TestStateEjectSnippet(t *testing.T) {
+func TestStatePromoteSnippet(t *testing.T) {
 	t.Parallel()
 
 	e := ptesting.NewEnvironment(t)
@@ -1374,10 +1374,10 @@ func TestStateEjectSnippet(t *testing.T) {
 
 	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 	// The random-typescript template gives us a TypeScript project with @pulumi/random already
-	// wired up, which is what the eject codegen needs to resolve the RandomPet schema.
+	// wired up, which is what the promote codegen needs to resolve the RandomPet schema.
 	e.RunCommand("pulumi", "new", "random-typescript", "--yes")
 
-	// First snippet: a RandomPet with a distinctive prefix so we can spot it in the ejected code.
+	// First snippet: a RandomPet with a distinctive prefix so we can spot it in the promoted code.
 	e.WriteTestFile("parent.pcl", `prefix = "smoke"`+"\n")
 	e.RunCommand("pulumi", "do", "random:index/randomPet:RandomPet", "create", "parentPet",
 		"--input", "pcl", "--input-file", "parent.pcl", "--yes")
@@ -1388,10 +1388,10 @@ func TestStateEjectSnippet(t *testing.T) {
 	e.RunCommand("pulumi", "do", "random:index/randomPet:RandomPet", "create", "childPet",
 		"--input", "pcl", "--input-file", "child.pcl", "--yes")
 
-	stdout, _ := e.RunCommand("pulumi", "state", "eject", "parentPet", "--yes")
+	stdout, _ := e.RunCommand("pulumi", "state", "promote", "parentPet", "--yes")
 	assert.Contains(t, stdout, `new random.RandomPet("parentPet"`)
 	assert.Contains(t, stdout, `prefix: "smoke"`)
-	assert.Contains(t, stdout, `Snippet "parentPet" ejected from state`)
+	assert.Contains(t, stdout, `Snippet "parentPet" promoted from state`)
 
 	// The state should still contain the parent's underlying resource but the parentPet snippet
 	// should be gone — only the childPet snippet remains.
@@ -1411,7 +1411,7 @@ func TestStateEjectSnippet(t *testing.T) {
 			break
 		}
 	}
-	assert.True(t, parentFound, "parentPet resource should still be in state after eject")
+	assert.True(t, parentFound, "parentPet resource should still be in state after promote")
 }
 
 // Sanity test that we can `pulumi new -y` and then do some basic operations like stack selection and config.
