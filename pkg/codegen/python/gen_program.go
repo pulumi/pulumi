@@ -136,16 +136,18 @@ func GenerateProgram(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, 
 	return files, g.diagnostics, nil
 }
 
+// For Python 3.13 and earlier, Pyright treats TypedDict keys as class-scoped variables, so a key named "float" shadows
+// the builtin in later annotations. Qualify with `builtins` to avoid the ambiguity.
 func componentInputElementType(pclType model.Type) string {
 	switch pclType {
 	case model.BoolType:
-		return "bool"
+		return "_builtins.bool"
 	case model.IntType:
-		return "int"
+		return "_builtins.int"
 	case model.NumberType:
-		return "float"
+		return "_builtins.float"
 	case model.StringType:
-		return "str"
+		return "_builtins.str"
 	default:
 		switch pclType := pclType.(type) {
 		case *model.ListType:
@@ -153,7 +155,7 @@ func componentInputElementType(pclType model.Type) string {
 			return fmt.Sprintf("list[%s]", elementType)
 		case *model.MapType:
 			elementType := componentInputElementType(pclType.ElementType)
-			return fmt.Sprintf("Dict[str, %s]", elementType)
+			return fmt.Sprintf("Dict[_builtins.str, %s]", elementType)
 		// Reduce option(T) to just T. TypedDict key optionality is emitted separately.
 		case *model.UnionType:
 			if len(pclType.ElementTypes) == 2 && pclType.ElementTypes[0] == model.NoneType {
@@ -808,6 +810,9 @@ func (g *generator) genPreamble(w io.Writer, program *pcl.Program, preambleHelpe
 
 	if g.isComponent {
 		// add typing information
+		if len(program.ConfigVariables()) > 0 {
+			imports = append(imports, "import builtins as _builtins")
+		}
 		imports = append(imports, "from typing import Optional, Dict, TypedDict, Any")
 		if componentProgramNeedsNotRequired(program) {
 			imports = append(imports, "from typing_extensions import NotRequired")

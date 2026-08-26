@@ -1,10 +1,11 @@
 import pulumi
 from pulumi import Input
 from typing import Optional, Dict, TypedDict, Any
+import builtins as _builtins
 import pulumi_config as config
 
 class ProviderComponentArgs(TypedDict):
-    text: Input[str]
+    text: Input[_builtins.str]
 
 class ProviderComponent(pulumi.ComponentResource):
     def __init__(self, name: str, args: ProviderComponentArgs, opts:Optional[pulumi.ResourceOptions] = None):

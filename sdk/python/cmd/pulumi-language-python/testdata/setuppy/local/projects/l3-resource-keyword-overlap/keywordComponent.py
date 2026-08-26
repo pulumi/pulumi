@@ -1,10 +1,11 @@
 import pulumi
 from pulumi import Input
 from typing import Optional, Dict, TypedDict, Any
+import builtins as _builtins
 import pulumi_simple as simple
 
 class KeywordComponentArgs(TypedDict):
-    input: Input[bool]
+    input: Input[_builtins.bool]
 
 class KeywordComponent(pulumi.ComponentResource):
     def __init__(self, name: str, args: KeywordComponentArgs, opts:Optional[pulumi.ResourceOptions] = None):
