@@ -357,6 +357,12 @@ class ProviderServicer(ResourceProviderServicer):
             await context.abort_with_status(status)
             # We already aborted at this point
             raise
+        except RunError:
+            raise
+        except Exception as e:  # noqa
+            stack = traceback.extract_tb(e.__traceback__)[:]
+            pretty_stack = "".join(traceback.format_list(stack))
+            raise Exception(f"{str(e)}:\n{pretty_stack}")
 
     async def _call(self, request: proto.CallRequest, context):
         assert isinstance(request, proto.CallRequest), (
@@ -460,10 +466,17 @@ class ProviderServicer(ResourceProviderServicer):
     async def Invoke(
         self, request: proto.InvokeRequest, context
     ) -> proto.InvokeResponse:
-        args = rpc.deserialize_properties(request.args, keep_unknowns=False)
-        result = self.provider.invoke(token=request.tok, args=args)
-        response = await self._invoke_response(result)
-        return response
+        try:
+            args = rpc.deserialize_properties(request.args, keep_unknowns=False)
+            result = self.provider.invoke(token=request.tok, args=args)
+            response = await self._invoke_response(result)
+            return response
+        except RunError:
+            raise
+        except Exception as e:  # noqa
+            stack = traceback.extract_tb(e.__traceback__)[:]
+            pretty_stack = "".join(traceback.format_list(stack))
+            raise Exception(f"{str(e)}:\n{pretty_stack}")
 
     async def Configure(self, request, context) -> proto.ConfigureResponse:
         return proto.ConfigureResponse(

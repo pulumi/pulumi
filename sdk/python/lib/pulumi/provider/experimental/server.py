@@ -71,6 +71,20 @@ class ComponentInitError(Exception):
         self.inner = inner
 
 
+def _raise_with_traceback(fn):
+    async def wrapper(self, request, context):
+        try:
+            return await fn(self, request, context)
+        except NotImplementedError:
+            raise
+        except Exception as e:  # noqa
+            stack = traceback.extract_tb(e.__traceback__)[:]
+            pretty_stack = "".join(traceback.format_list(stack))
+            raise Exception(f"{str(e)}:\n{pretty_stack}")
+
+    return wrapper
+
+
 class ProviderServicer(ResourceProviderServicer):
     """Implements a subset of `ResourceProvider` methods to support
     `Construct` and other methods invoked by the engine when the user
@@ -297,6 +311,10 @@ class ProviderServicer(ResourceProviderServicer):
             await context.abort_with_status(status)
             # We already aborted at this point
             raise
+        except Exception as e:  # noqa
+            stack = traceback.extract_tb(e.__traceback__)[:]
+            pretty_stack = "".join(traceback.format_list(stack))
+            raise Exception(f"{str(e)}:\n{pretty_stack}")
 
     async def _call(self, request: proto.CallRequest, context):
         assert isinstance(request, proto.CallRequest), (
@@ -385,6 +403,7 @@ class ProviderServicer(ResourceProviderServicer):
         getattr(resp, "return").CopyFrom(return_value)
         return resp
 
+    @_raise_with_traceback
     async def Parameterize(
         self, request: proto.ParameterizeRequest, context
     ) -> proto.ParameterizeResponse:
@@ -410,6 +429,7 @@ class ProviderServicer(ResourceProviderServicer):
             version=resp.version,
         )
 
+    @_raise_with_traceback
     async def Invoke(
         self, request: proto.InvokeRequest, context
     ) -> proto.InvokeResponse:
@@ -432,6 +452,7 @@ class ProviderServicer(ResourceProviderServicer):
             ]
         return proto.InvokeResponse(**ret)
 
+    @_raise_with_traceback
     async def GetSchema(
         self, request: proto.GetSchemaRequest, context
     ) -> proto.GetSchemaResponse:
@@ -444,6 +465,7 @@ class ProviderServicer(ResourceProviderServicer):
         )
         return proto.GetSchemaResponse(schema=resp.schema or "")
 
+    @_raise_with_traceback
     async def CheckConfig(self, request: pulumi.runtime.proto.CheckRequest, context):
         resp = await self._provider.check_config(
             provider.CheckRequest(
@@ -465,6 +487,7 @@ class ProviderServicer(ResourceProviderServicer):
             else None,
         )
 
+    @_raise_with_traceback
     async def DiffConfig(self, request, context):
         resp = await self._provider.diff_config(
             provider.DiffRequest(
@@ -488,6 +511,7 @@ class ProviderServicer(ResourceProviderServicer):
             hasDetailedDiff=True,
         )
 
+    @_raise_with_traceback
     async def Configure(
         self, request: proto.ConfigureRequest, context
     ) -> proto.ConfigureResponse:
@@ -506,6 +530,7 @@ class ProviderServicer(ResourceProviderServicer):
             supportsPreview=resp.supports_preview,
         )
 
+    @_raise_with_traceback
     async def Check(self, request: proto.CheckRequest, context):
         resp = await self._provider.check(
             provider.CheckRequest(
@@ -530,6 +555,7 @@ class ProviderServicer(ResourceProviderServicer):
             failures=failures,
         )
 
+    @_raise_with_traceback
     async def Diff(self, request: proto.DiffRequest, context):
         resp = await self._provider.diff(
             provider.DiffRequest(
@@ -570,6 +596,7 @@ class ProviderServicer(ResourceProviderServicer):
             hasDetailedDiff=True,
         )
 
+    @_raise_with_traceback
     async def Create(self, request, context):
         resp = await self._provider.create(
             provider.CreateRequest(
@@ -584,6 +611,7 @@ class ProviderServicer(ResourceProviderServicer):
             properties=PropertyValue.marshal_map(resp.properties),
         )
 
+    @_raise_with_traceback
     async def Update(self, request, context):
         resp = await self._provider.update(
             provider.UpdateRequest(
@@ -600,6 +628,7 @@ class ProviderServicer(ResourceProviderServicer):
             properties=PropertyValue.marshal_map(resp.properties),
         )
 
+    @_raise_with_traceback
     async def Delete(self, request, context):
         await self._provider.delete(
             provider.DeleteRequest(
@@ -611,6 +640,7 @@ class ProviderServicer(ResourceProviderServicer):
         )
         return empty_pb2.Empty()
 
+    @_raise_with_traceback
     async def Read(self, request, context):
         resp = await self._provider.read(
             provider.ReadRequest(
