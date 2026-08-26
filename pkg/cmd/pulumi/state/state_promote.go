@@ -211,11 +211,33 @@ func validateSnippetPromoteReferences(snap *deploy.Snapshot, snippet resource.Sn
 	return nil
 }
 
-// snippetPCLSource renders a snippet as a PCL `resource` block. Name and Type
-// are quoted with Go's %q; this is safe for the identifier-shaped values Pulumi
-// uses (resource names and token strings), which do not exercise Go-only escape
+// snippetPCLSource renders the PCL source we send to the language plugin: one placeholder
+// `resource` block for each non-snippet URN the snippet references, followed by the snippet's
+// own `resource` block. Placeholders let PCL binding resolve identifiers like `producer.id` —
+// the user is expected to replace them with the real resource reference after pasting the
+// generated code. Name and Type are quoted with Go's %q; this is safe for the identifier-shaped
+// values Pulumi uses (resource names and token strings), which do not exercise Go-only escape
 // sequences that PCL/HCL would reject.
 func snippetPCLSource(snippet resource.Snippet) string {
+	names := make([]string, 0, len(snippet.References))
+	for name := range snippet.References {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+
+	var b strings.Builder
+	for _, name := range names {
+		urn := resource.URN(snippet.References[name])
+		fmt.Fprintf(&b,
+			"# Placeholder for %s; replace with the real resource reference in your program.\n",
+			urn)
+		fmt.Fprintf(&b, "resource %q %q {\n", name, string(urn.Type()))
+		if logical := urn.Name(); logical != name {
+			fmt.Fprintf(&b, "\t__logicalName = %q\n", logical)
+		}
+		b.WriteString("}\n\n")
+	}
+
 	code := strings.TrimRight(snippet.Code, "\n")
 	if code != "" {
 		lines := strings.Split(code, "\n")
@@ -226,7 +248,8 @@ func snippetPCLSource(snippet resource.Snippet) string {
 		}
 		code = "\n" + strings.Join(lines, "\n") + "\n"
 	}
-	return fmt.Sprintf("resource %q %q {%s}\n", snippet.Name, snippet.Type, code)
+	fmt.Fprintf(&b, "resource %q %q {%s}\n", snippet.Name, snippet.Type, code)
+	return b.String()
 }
 
 func generateSnippetProgram(

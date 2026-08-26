@@ -1420,6 +1420,24 @@ Snippet "parentPet" promoted from state; 1 resource(s) retained
 		}
 	}
 	assert.True(t, parentFound, "parentPet resource should still be in state after promote")
+
+	// Now promote childPet, which references parentPet — parentPet is no longer a snippet, so the
+	// promote should emit a placeholder resource block for it so PCL binding can resolve the ref.
+	childStdout, _ := e.RunCommand("pulumi", "state", "promote", "childPet", "--yes")
+	assert.Equal(t, `Generated code for snippet "childPet":
+
+index.ts
+========
+import * as pulumi from "@pulumi/pulumi";
+import * as random from "@pulumi/random";
+
+// Placeholder for urn:pulumi:dev::proj::random:index/randomPet:RandomPet::parentPet;`+
+		` replace with the real resource reference in your program.
+const parentPet = new random.RandomPet("parentPet", {});
+const childPet = new random.RandomPet("childPet", {prefix: parentPet.id});
+
+Snippet "childPet" promoted from state; 1 resource(s) retained
+`, childStdout)
 }
 
 // Sanity test that we can `pulumi new -y` and then do some basic operations like stack selection and config.

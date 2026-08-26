@@ -150,6 +150,36 @@ func TestSnippetPCLSource(t *testing.T) {
 		"}\n", src)
 }
 
+func TestSnippetPCLSource_InjectsPlaceholdersForReferences(t *testing.T) {
+	t.Parallel()
+
+	parentURN := resource.URN("urn:pulumi:dev::proj::random:index/randomPet:RandomPet::parentPet")
+	renamedURN := resource.URN("urn:pulumi:dev::proj::random:index/randomPet:RandomPet::actualName")
+	snippet := resource.Snippet{
+		Name: "childPet",
+		Type: "random:index/randomPet:RandomPet",
+		Code: "prefix = parentPet.id\nsuffix = renamed.id\n",
+		References: map[string]string{
+			"parentPet": string(parentURN),
+			"renamed":   string(renamedURN),
+		},
+	}
+
+	expected := "# Placeholder for urn:pulumi:dev::proj::random:index/randomPet:RandomPet::parentPet;" +
+		" replace with the real resource reference in your program.\n" +
+		"resource \"parentPet\" \"random:index/randomPet:RandomPet\" {\n}\n\n" +
+		"# Placeholder for urn:pulumi:dev::proj::random:index/randomPet:RandomPet::actualName;" +
+		" replace with the real resource reference in your program.\n" +
+		"resource \"renamed\" \"random:index/randomPet:RandomPet\" {\n" +
+		"\t__logicalName = \"actualName\"\n}\n\n" +
+		"resource \"childPet\" \"random:index/randomPet:RandomPet\" {\n" +
+		"\tprefix = parentPet.id\n" +
+		"\tsuffix = renamed.id\n" +
+		"}\n"
+
+	assert.Equal(t, expected, snippetPCLSource(snippet))
+}
+
 func TestPrintGeneratedSnippetProgram(t *testing.T) {
 	t.Parallel()
 
