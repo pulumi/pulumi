@@ -1389,9 +1389,17 @@ func TestStatePromoteSnippet(t *testing.T) {
 		"--input", "pcl", "--input-file", "child.pcl", "--yes")
 
 	stdout, _ := e.RunCommand("pulumi", "state", "promote", "parentPet", "--yes")
-	assert.Contains(t, stdout, `new random.RandomPet("parentPet"`)
-	assert.Contains(t, stdout, `prefix: "smoke"`)
-	assert.Contains(t, stdout, `Snippet "parentPet" promoted from state`)
+	assert.Equal(t, `Generated code for snippet "parentPet":
+
+index.ts
+========
+import * as pulumi from "@pulumi/pulumi";
+import * as random from "@pulumi/random";
+
+const parentPet = new random.RandomPet("parentPet", {prefix: "smoke"});
+
+Snippet "parentPet" promoted from state; 1 resource(s) retained
+`, stdout)
 
 	// The state should still contain the parent's underlying resource but the parentPet snippet
 	// should be gone — only the childPet snippet remains.
