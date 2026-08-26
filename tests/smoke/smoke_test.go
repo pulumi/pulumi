@@ -1354,6 +1354,51 @@ func TestDoCommandLocalCommand(t *testing.T) {
 		"stdout did not start with hello\nActual:\n%s", stdout)
 }
 
+// Smoke test for `pulumi state eject`: create two snippet-produced resources with `pulumi do create`
+// where the second references the first's output, then eject the first snippet and check that the
+// printed code contains the expected TypeScript for the resource.
+func TestStateEjectSnippet(t *testing.T) {
+	t.Parallel()
+
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+
+	// Allow auto-acquiring the random provider and any missing plugins.
+	e.Env = append(e.Env, "PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION=false")
+
+	// `new` wants to work in an empty directory but our use of a local url means we have a
+	// ".pulumi" directory at root, so scaffold in a subdirectory.
+	projectDir := filepath.Join(e.RootPath, "project")
+	require.NoError(t, os.Mkdir(projectDir, 0o700))
+	e.CWD = projectDir
+
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+	// The random-typescript template gives us a TypeScript project with @pulumi/random already
+	// wired up, which is what the eject codegen needs to resolve the RandomPet schema.
+	e.RunCommand("pulumi", "new", "random-typescript", "--yes")
+
+	// First snippet: a RandomPet with a distinctive prefix so we can spot it in the ejected code.
+	e.WriteTestFile("parent.pcl", `prefix = "smoke"`+"\n")
+	e.RunCommand("pulumi", "do", "random:index/randomPet:RandomPet", "create", "parentPet",
+		"--input", "pcl", "--input-file", "parent.pcl", "--yes")
+
+	// Second snippet: another RandomPet whose prefix is the parent pet's id. The `parentPet`
+	// identifier resolves to the first snippet's URN via the auto-name table.
+	e.WriteTestFile("child.pcl", "prefix = parentPet.id\n")
+	e.RunCommand("pulumi", "do", "random:index/randomPet:RandomPet", "create", "childPet",
+		"--input", "pcl", "--input-file", "child.pcl", "--yes")
+
+	stdout, _ := e.RunCommand("pulumi", "state", "eject", "parentPet", "--yes")
+	assert.Contains(t, stdout, `new random.RandomPet("parentPet"`)
+	assert.Contains(t, stdout, `prefix: "smoke"`)
+	assert.Contains(t, stdout, `Snippet "parentPet" ejected from state`)
+
+	// The state should still contain the underlying resource but no longer the snippet.
+	stackJSON, _ := e.RunCommand("pulumi", "stack", "export")
+	assert.Contains(t, stackJSON, "random:index/randomPet:RandomPet")
+	assert.NotContains(t, stackJSON, `"name":"parentPet","type":"random:index/randomPet:RandomPet"`)
+}
+
 // Sanity test that we can `pulumi new -y` and then do some basic operations like stack selection and config.
 func TestPulumiNewEmptyOperations(t *testing.T) {
 	t.Parallel()
