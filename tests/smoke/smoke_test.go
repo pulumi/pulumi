@@ -1393,10 +1393,25 @@ func TestStateEjectSnippet(t *testing.T) {
 	assert.Contains(t, stdout, `prefix: "smoke"`)
 	assert.Contains(t, stdout, `Snippet "parentPet" ejected from state`)
 
-	// The state should still contain the underlying resource but no longer the snippet.
-	stackJSON, _ := e.RunCommand("pulumi", "stack", "export")
-	assert.Contains(t, stackJSON, "random:index/randomPet:RandomPet")
-	assert.NotContains(t, stackJSON, `"name":"parentPet","type":"random:index/randomPet:RandomPet"`)
+	// The state should still contain the parent's underlying resource but the parentPet snippet
+	// should be gone — only the childPet snippet remains.
+	stackJSONStr, _ := e.RunCommand("pulumi", "stack", "export")
+	var untyped apitype.UntypedDeployment
+	require.NoError(t, json.Unmarshal([]byte(stackJSONStr), &untyped))
+	var deployment apitype.DeploymentV3
+	require.NoError(t, json.Unmarshal(untyped.Deployment, &deployment))
+
+	require.Len(t, deployment.Snippets, 1, "expected only the childPet snippet to remain")
+	assert.Equal(t, "childPet", deployment.Snippets[0].Name)
+
+	var parentFound bool
+	for _, r := range deployment.Resources {
+		if r.URN.Name() == "parentPet" && r.Type == "random:index/randomPet:RandomPet" {
+			parentFound = true
+			break
+		}
+	}
+	assert.True(t, parentFound, "parentPet resource should still be in state after eject")
 }
 
 // Sanity test that we can `pulumi new -y` and then do some basic operations like stack selection and config.
