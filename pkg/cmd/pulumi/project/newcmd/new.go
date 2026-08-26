@@ -429,6 +429,7 @@ func runNew(ctx context.Context, args newArgs) error {
 	}
 
 	// Install dependencies, but only if we have a runtime to install with.
+	var packages []workspace.PackageDescriptor
 	if !args.generateOnly && proj.Runtime.Name() != "" {
 		registry := cmdCmd.NewDefaultRegistry(
 			ctx, cmdBackend.DefaultLoginManager, pkgWorkspace.Instance, proj, cmdutil.Diag(), env.Global(),
@@ -441,20 +442,19 @@ func runNew(ctx context.Context, args newArgs) error {
 		if err := InstallDependencies(pluginCtx, &proj.Runtime, entryPoint); err != nil {
 			return err
 		}
-		if err := InstallRequiredPackages(ctx, pluginCtx, proj, root, entryPoint,
-			continuation, -1, false, registry, args.stderr, args.stderr); err != nil {
+		packages, err = InstallRequiredPackages(ctx, pluginCtx, proj, root, entryPoint,
+			continuation, -1, false, registry, args.stderr, args.stderr)
+		if err != nil {
 			return err
 		}
 	}
 
 	// Best-effort cloud credentials preflight; advisory only, never fails the command.
 	credentialsWarned := false
-	if cp, ok := credentialsCheckProvider(args, template); ok && s != nil {
+	if cp, pkg, ok := credentialsCheckProvider(args, packages); ok && s != nil {
 		if ps, err := cmdStack.LoadProjectStack(ctx, cmdutil.Diag(), proj, s, ""); err == nil {
 			load := func() (plugin.Provider, error) {
-				return pluginCtx.Host.Provider(pluginCtx,
-					workspace.PluginDescriptor{Kind: apitype.ResourcePlugin, Name: cp.pkg},
-					env.Global())
+				return pluginCtx.Host.Provider(pluginCtx, pkg.PluginDescriptor, env.Global())
 			}
 			credentialsWarned = checkCloudCredentials(ctx, cp, load, providerConfigProperties(cp, ps.Config),
 				args.stdout, opts, defaultCredentialsPreflightTimeout)

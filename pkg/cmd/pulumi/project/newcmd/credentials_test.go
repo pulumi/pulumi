@@ -21,9 +21,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
-	cmdTemplates "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/templates"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -34,82 +35,95 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-var awsProvider, azureProvider = cloudProviders[0], cloudProviders[1]
+var awsProvider, azureProvider, gcpProvider = cloudProviders[0], cloudProviders[1], cloudProviders[2]
 
-func awsTemplate() cmdTemplates.ProjectTemplate {
-	return cmdTemplates.ProjectTemplate{
-		Config: map[string]workspace.ProjectTemplateConfigValue{
-			"aws:region": {Description: "The AWS region to deploy into", Default: "us-east-1"},
-		},
-	}
+func awsPackages() []workspace.PackageDescriptor {
+	return []workspace.PackageDescriptor{resourcePackage("aws", "7.0.0")}
+}
+
+func resourcePackage(name, version string) workspace.PackageDescriptor {
+	v := semver.MustParse(version)
+	return workspace.PackageDescriptor{PluginDescriptor: workspace.PluginDescriptor{
+		Kind:    apitype.ResourcePlugin,
+		Name:    name,
+		Version: &v,
+	}}
 }
 
 func TestCredentialsCheckProvider(t *testing.T) {
 	tests := []struct {
 		name     string
 		args     newArgs
-		template cmdTemplates.ProjectTemplate
+		packages []workspace.PackageDescriptor
 		env      string
 		expected string // provider package, or "" when no check should run
 	}{
 		{
-			name:     "aws template interactive",
+			name:     "aws package interactive",
 			args:     newArgs{interactive: true},
-			template: awsTemplate(),
+			packages: awsPackages(),
 			expected: "aws",
 		},
 		{
-			name: "azure-native template interactive",
-			args: newArgs{interactive: true},
-			template: cmdTemplates.ProjectTemplate{
-				Config: map[string]workspace.ProjectTemplateConfigValue{
-					"azure-native:location": {Default: "WestUS2"},
-				},
-			},
+			name:     "azure-native package interactive",
+			args:     newArgs{interactive: true},
+			packages: []workspace.PackageDescriptor{resourcePackage("azure-native", "3.0.0")},
 			expected: "azure-native",
 		},
 		{
-			name:     "no template config",
+			name: "no packages",
+			args: newArgs{interactive: true},
+		},
+		{
+			name:     "classic azure package does not match",
 			args:     newArgs{interactive: true},
-			template: cmdTemplates.ProjectTemplate{},
+			packages: []workspace.PackageDescriptor{resourcePackage("azure", "6.0.0")},
 		},
 		{
-			name: "classic azure namespace does not match",
-			args: newArgs{interactive: true},
-			template: cmdTemplates.ProjectTemplate{
-				Config: map[string]workspace.ProjectTemplateConfigValue{
-					"azure:location": {},
-				},
-			},
+			name:     "gcp package interactive",
+			args:     newArgs{interactive: true},
+			packages: []workspace.PackageDescriptor{resourcePackage("gcp", "8.0.0")},
+			expected: "gcp",
 		},
 		{
-			name: "gcp template",
+			name:     "random package",
+			args:     newArgs{interactive: true},
+			packages: []workspace.PackageDescriptor{resourcePackage("random", "4.0.0")},
+		},
+		{
+			name:     "multiple packages",
+			args:     newArgs{interactive: true},
+			packages: []workspace.PackageDescriptor{resourcePackage("random", "4.0.0"), resourcePackage("aws", "7.0.0")},
+			expected: "aws",
+		},
+		{
+			name: "parameterized package on an aws base plugin does not match",
 			args: newArgs{interactive: true},
-			template: cmdTemplates.ProjectTemplate{
-				Config: map[string]workspace.ProjectTemplateConfigValue{
-					"gcp:project": {},
-				},
-			},
+			packages: func() []workspace.PackageDescriptor {
+				pkg := resourcePackage("aws", "7.0.0")
+				pkg.Parameterization = &workspace.Parameterization{Name: "other", Version: semver.MustParse("1.0.0")}
+				return []workspace.PackageDescriptor{pkg}
+			}(),
 		},
 		{
 			name:     "non-interactive",
 			args:     newArgs{interactive: false},
-			template: awsTemplate(),
+			packages: awsPackages(),
 		},
 		{
 			name:     "generate-only",
 			args:     newArgs{interactive: true, generateOnly: true},
-			template: awsTemplate(),
+			packages: awsPackages(),
 		},
 		{
 			name:     "offline",
 			args:     newArgs{interactive: true, offline: true},
-			template: awsTemplate(),
+			packages: awsPackages(),
 		},
 		{
 			name:     "kill switch",
 			args:     newArgs{interactive: true},
-			template: awsTemplate(),
+			packages: awsPackages(),
 			env:      "true",
 		},
 	}
@@ -118,9 +132,15 @@ func TestCredentialsCheckProvider(t *testing.T) {
 			if tt.env != "" {
 				t.Setenv("PULUMI_SKIP_NEW_CREDENTIALS_CHECK", tt.env)
 			}
-			cp, ok := credentialsCheckProvider(tt.args, tt.template)
+			cp, pkg, ok := credentialsCheckProvider(tt.args, tt.packages)
 			assert.Equal(t, tt.expected != "", ok)
 			assert.Equal(t, tt.expected, cp.pkg)
+			if ok {
+				// The exact package the program depends on is what gets loaded.
+				assert.Equal(t, tt.expected, pkg.Name)
+				assert.Equal(t, apitype.ResourcePlugin, pkg.Kind)
+				require.NotNil(t, pkg.Version)
+			}
 		})
 	}
 }
@@ -132,6 +152,7 @@ func TestProviderConfigProperties(t *testing.T) {
 		config.MustMakeKey("aws", "region"):            config.NewValue("us-east-1"),
 		config.MustMakeKey("aws", "secret"):            config.NewSecureValue("ciphertext"),
 		config.MustMakeKey("azure-native", "location"): config.NewValue("WestUS2"),
+		config.MustMakeKey("gcp", "project"):           config.NewValue("my-project"),
 		config.MustMakeKey("proj", "etcetc"):           config.NewValue("unrelated"),
 	}
 	props := providerConfigProperties(awsProvider, cfg)
@@ -141,6 +162,10 @@ func TestProviderConfigProperties(t *testing.T) {
 	props = providerConfigProperties(azureProvider, cfg)
 	require.Equal(t, 1, props.Len())
 	assert.Equal(t, "WestUS2", props.Get("location").AsString())
+
+	props = providerConfigProperties(gcpProvider, cfg)
+	require.Equal(t, 1, props.Len())
+	assert.Equal(t, "my-project", props.Get("project").AsString())
 }
 
 func TestCheckCloudCredentialsRPCError(t *testing.T) {
@@ -293,6 +318,34 @@ func TestCheckCloudCredentialsAzureConfigureError(t *testing.T) {
 	assert.Contains(t, out, "    failed to get authorizer: please run `az login`")
 	assert.Contains(t, out, "may fail until Azure credentials are configured")
 	assert.Contains(t, out, azureProvider.docURL)
+}
+
+func TestCheckCloudCredentialsGCPConfigureError(t *testing.T) {
+	t.Parallel()
+
+	mock := &plugin.MockProvider{
+		CheckConfigF: func(_ context.Context, req plugin.CheckConfigRequest) (plugin.CheckConfigResponse, error) {
+			assert.Equal(t, "pulumi:providers:gcp", string(req.URN.Type()))
+			return plugin.CheckConfigResponse{Properties: req.News}, nil
+		},
+		ConfigureF: func(_ context.Context, req plugin.ConfigureRequest) (plugin.ConfigureResponse, error) {
+			assert.Equal(t, "pulumi:providers:gcp", string(*req.Type))
+			return plugin.ConfigureResponse{},
+				status.Error(codes.Unknown, "google: could not find default credentials")
+		},
+	}
+
+	var buf bytes.Buffer
+	warned := checkCloudCredentials(t.Context(), gcpProvider,
+		func() (plugin.Provider, error) { return mock, nil },
+		property.Map{}, &buf, display.Options{Color: colors.Never}, time.Second)
+	assert.True(t, warned)
+
+	out := buf.String()
+	assert.Contains(t, out, "Could not validate your Google Cloud credentials")
+	assert.Contains(t, out, "    google: could not find default credentials")
+	assert.Contains(t, out, "may fail until Google Cloud credentials are configured")
+	assert.Contains(t, out, gcpProvider.docURL)
 }
 
 func TestCheckCloudCredentialsConfigureNotCalledOnCheckFailure(t *testing.T) {

@@ -23,7 +23,6 @@ import (
 	"time"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
-	cmdTemplates "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/templates"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
@@ -32,6 +31,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil/rpcerror"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"google.golang.org/grpc/status"
 )
@@ -62,24 +62,34 @@ var cloudProviders = []cloudProvider{
 		displayName: "Azure",
 		docURL:      "https://www.pulumi.com/registry/packages/azure-native/installation-configuration/",
 	},
+	{
+		pkg:         "gcp",
+		displayName: "Google Cloud",
+		docURL:      "https://www.pulumi.com/registry/packages/gcp/installation-configuration/",
+	},
 }
 
 // credentialsCheckProvider returns the cloud provider whose credentials should be
 // preflighted for this run, if any: only for interactive runs that actually set up a
-// project from a template configuring a known cloud provider, and only when the user
-// hasn't opted out.
-func credentialsCheckProvider(args newArgs, template cmdTemplates.ProjectTemplate) (cloudProvider, bool) {
+// project whose program depends on a known cloud provider package, and only when the
+// user hasn't opted out. The matching package descriptor is returned so that the exact
+// provider version the program uses can be loaded.
+func credentialsCheckProvider(
+	args newArgs, packages []workspace.PackageDescriptor,
+) (cloudProvider, workspace.PackageDescriptor, bool) {
 	if !args.interactive || args.generateOnly || args.offline || env.SkipNewCredentialsCheck.Value() {
-		return cloudProvider{}, false
+		return cloudProvider{}, workspace.PackageDescriptor{}, false
 	}
 	for _, cp := range cloudProviders {
-		for key := range template.Config {
-			if strings.HasPrefix(key, cp.pkg+":") {
-				return cp, true
+		for _, pkg := range packages {
+			// A parameterized package's plugin name is the base plugin (e.g. terraform-provider),
+			// not the cloud provider itself.
+			if pkg.Name == cp.pkg && pkg.Parameterization == nil {
+				return cp, pkg, true
 			}
 		}
 	}
-	return cloudProvider{}, false
+	return cloudProvider{}, workspace.PackageDescriptor{}, false
 }
 
 // providerConfigProperties extracts the plaintext values in the provider's config
