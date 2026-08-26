@@ -136,16 +136,18 @@ func GenerateProgram(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, 
 	return files, g.diagnostics, nil
 }
 
+// For Python 3.13 and earlier, Pyright treats TypedDict keys as class-scoped variables, so a key named "float" shadows
+// the builtin in later annotations. Qualify with `builtins` to avoid the ambiguity.
 func componentInputElementType(pclType model.Type) string {
 	switch pclType {
 	case model.BoolType:
-		return "bool"
+		return "_builtins.bool"
 	case model.IntType:
-		return "int"
+		return "_builtins.int"
 	case model.NumberType:
-		return "float"
+		return "_builtins.float"
 	case model.StringType:
-		return "str"
+		return "_builtins.str"
 	default:
 		switch pclType := pclType.(type) {
 		case *model.ListType:
@@ -153,9 +155,8 @@ func componentInputElementType(pclType model.Type) string {
 			return fmt.Sprintf("list[%s]", elementType)
 		case *model.MapType:
 			elementType := componentInputElementType(pclType.ElementType)
-			return fmt.Sprintf("Dict[str, %s]", elementType)
-		// reduce option(T) to just T
-		// the TypedDict has total=False which means all properties are optional by default
+			return fmt.Sprintf("Dict[_builtins.str, %s]", elementType)
+		// Reduce option(T) to just T. TypedDict key optionality is emitted separately.
 		case *model.UnionType:
 			if len(pclType.ElementTypes) == 2 && pclType.ElementTypes[0] == model.NoneType {
 				return componentInputElementType(pclType.ElementTypes[1])
@@ -167,6 +168,33 @@ func componentInputElementType(pclType model.Type) string {
 			return "Any"
 		}
 	}
+}
+
+type componentTypedDictProperty struct {
+	name     string
+	typ      string
+	optional bool
+}
+
+func (g *generator) genComponentTypedDict(
+	w io.Writer,
+	name string,
+	properties []componentTypedDictProperty,
+) {
+	g.Fgenf(w, "class %s(TypedDict):\n", name)
+	g.Indented(func() {
+		if len(properties) == 0 {
+			g.Fgenf(w, "%spass\n", g.Indent)
+			return
+		}
+		for _, property := range properties {
+			propertyType := property.typ
+			if property.optional {
+				propertyType = fmt.Sprintf("NotRequired[%s]", propertyType)
+			}
+			g.Fgenf(w, "%s%s: %s\n", g.Indent, property.name, propertyType)
+		}
+	})
 }
 
 // collectObjectTypedConfigVariables returns the object types in config variables need to be emitted
@@ -193,6 +221,33 @@ func collectObjectTypedConfigVariables(component *pcl.Component) map[string]*mod
 	return objectTypes
 }
 
+func componentProgramNeedsNotRequired(program *pcl.Program) bool {
+	for _, configVar := range program.ConfigVariables() {
+		if configVar.DefaultValue != nil || configVar.Nullable {
+			return true
+		}
+
+		var objectType *model.ObjectType
+		switch configType := configVar.Type().(type) {
+		case *model.ObjectType:
+			objectType = configType
+		case *model.ListType:
+			objectType, _ = configType.ElementType.(*model.ObjectType)
+		case *model.MapType:
+			objectType, _ = configType.ElementType.(*model.ObjectType)
+		}
+		if objectType != nil {
+			for _, propertyType := range objectType.Properties {
+				if model.IsOptionalType(propertyType) {
+					return true
+				}
+			}
+		}
+	}
+
+	return false
+}
+
 func (g *generator) genComponentDefinition(w io.Writer, component *pcl.Component, componentName string) {
 	configVars := component.Program.ConfigVariables()
 	hasAnyInputVariables := len(configVars) > 0
@@ -203,53 +258,52 @@ func (g *generator) genComponentDefinition(w io.Writer, component *pcl.Component
 		for _, variableName := range variableNames {
 			objectType := objectTypedConfigs[variableName]
 			objectTypeName := cgstrings.UppercaseFirst(variableName)
-			g.Fprintf(w, "class %s(TypedDict, total=False):\n", objectTypeName)
-			g.Indented(func() {
-				propertyNames := slices.Sorted(maps.Keys(objectType.Properties))
-				for _, propertyName := range propertyNames {
-					propertyType := objectType.Properties[propertyName]
-					inputType := componentInputElementType(propertyType)
-					g.Fprintf(w, "%s%s: Input[%s]\n",
-						g.Indent,
-						propertyName,
-						inputType)
-				}
-			})
+			propertyNames := slices.Sorted(maps.Keys(objectType.Properties))
+			properties := slice.Prealloc[componentTypedDictProperty](len(propertyNames))
+			for _, propertyName := range propertyNames {
+				propertyType := objectType.Properties[propertyName]
+				properties = append(properties, componentTypedDictProperty{
+					name:     propertyName,
+					typ:      fmt.Sprintf("Input[%s]", componentInputElementType(propertyType)),
+					optional: model.IsOptionalType(propertyType),
+				})
+			}
+			g.genComponentTypedDict(w, objectTypeName, properties)
 			g.Fgen(w, "\n")
 		}
 
 		// emit args class
-		g.Fgenf(w, "class %sArgs(TypedDict, total=False):\n", componentName)
-		g.Indented(func() {
-			// define constructor args
-			for _, configVar := range configVars {
-				argName := configVar.Name()
-				argType := componentInputElementType(configVar.Type())
-				switch configType := configVar.Type().(type) {
+		properties := slice.Prealloc[componentTypedDictProperty](len(configVars))
+		for _, configVar := range configVars {
+			argName := configVar.Name()
+			argType := componentInputElementType(configVar.Type())
+			switch configType := configVar.Type().(type) {
+			case *model.ObjectType:
+				// for objects of type T, generate T as is
+				argType = cgstrings.UppercaseFirst(configVar.Name())
+			case *model.ListType:
+				// for list(T) where T is an object type, generate List[T]
+				switch configType.ElementType.(type) {
 				case *model.ObjectType:
-					// for objects of type T, generate T as is
-					argType = cgstrings.UppercaseFirst(configVar.Name())
-				case *model.ListType:
-					// for list(T) where T is an object type, generate List[T]
-					switch configType.ElementType.(type) {
-					case *model.ObjectType:
-						objectTypeName := cgstrings.UppercaseFirst(configVar.Name())
-						argType = fmt.Sprintf("list(%s)", objectTypeName)
-					}
-				case *model.MapType:
-					// for map(T) where T is an object type, generate Dict[str, T]
-					switch configType.ElementType.(type) {
-					case *model.ObjectType:
-						objectTypeName := cgstrings.UppercaseFirst(configVar.Name())
-						argType = fmt.Sprintf("Dict[str, %s]", objectTypeName)
-					}
+					objectTypeName := cgstrings.UppercaseFirst(configVar.Name())
+					argType = fmt.Sprintf("list(%s)", objectTypeName)
 				}
-
-				argType = fmt.Sprintf("Input[%s]", argType)
-				g.Fgenf(w, "%s%s: %s", g.Indent, argName, argType)
-				g.Fgen(w, "\n")
+			case *model.MapType:
+				// for map(T) where T is an object type, generate Dict[str, T]
+				switch configType.ElementType.(type) {
+				case *model.ObjectType:
+					objectTypeName := cgstrings.UppercaseFirst(configVar.Name())
+					argType = fmt.Sprintf("Dict[str, %s]", objectTypeName)
+				}
 			}
-		})
+
+			properties = append(properties, componentTypedDictProperty{
+				name:     argName,
+				typ:      fmt.Sprintf("Input[%s]", argType),
+				optional: configVar.DefaultValue != nil || configVar.Nullable,
+			})
+		}
+		g.genComponentTypedDict(w, componentName+"Args", properties)
 
 		g.Fgen(w, "\n")
 	}
@@ -756,7 +810,13 @@ func (g *generator) genPreamble(w io.Writer, program *pcl.Program, preambleHelpe
 
 	if g.isComponent {
 		// add typing information
+		if len(program.ConfigVariables()) > 0 {
+			imports = append(imports, "import builtins as _builtins")
+		}
 		imports = append(imports, "from typing import Optional, Dict, TypedDict, Any")
+		if componentProgramNeedsNotRequired(program) {
+			imports = append(imports, "from typing_extensions import NotRequired")
+		}
 		imports = append(imports, "from pulumi import Input")
 	} else if needsTypingAny {
 		imports = append(imports, "from typing import Any")

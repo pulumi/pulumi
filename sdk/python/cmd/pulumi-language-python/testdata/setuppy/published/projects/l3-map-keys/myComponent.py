@@ -1,10 +1,11 @@
 import pulumi
 from pulumi import Input
 from typing import Optional, Dict, TypedDict, Any
+import builtins as _builtins
 import pulumi_primitive as primitive
 
-class MyComponentArgs(TypedDict, total=False):
-    booleanMap: Input[Dict[str, bool]]
+class MyComponentArgs(TypedDict):
+    booleanMap: Input[Dict[_builtins.str, _builtins.bool]]
 
 class MyComponent(pulumi.ComponentResource):
     def __init__(self, name: str, args: MyComponentArgs, opts:Optional[pulumi.ResourceOptions] = None):

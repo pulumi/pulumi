@@ -1,0 +1,4 @@
+component: programgen/python
+kind: fix
+body: Mark required component inputs as required in generated Python TypedDicts
+time: 2026-08-25T15:37:30+02:00

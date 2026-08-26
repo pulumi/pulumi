@@ -24,6 +24,13 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestComponentInputElementTypeUsesQualifiedBuiltins(t *testing.T) {
+	t.Parallel()
+
+	assert.Equal(t, "_builtins.float", componentInputElementType(model.NumberType))
+	assert.Equal(t, "list[_builtins.float]", componentInputElementType(&model.ListType{ElementType: model.NumberType}))
+}
+
 func TestFunctionInvokeBindsArgumentObjectType(t *testing.T) {
 	t.Parallel()
 
