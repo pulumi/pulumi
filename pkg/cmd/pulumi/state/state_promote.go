@@ -187,7 +187,9 @@ func resolveSnippetForPromote(snap *deploy.Snapshot, name string) (resource.Snip
 		return matches[0], nil
 	default:
 		return resource.Snippet{}, fmt.Errorf(
-			"snippet name %q is ambiguous: %d snippets share this name", name, len(matches))
+			"snippet name %q is ambiguous: %d snippets share this name\n"+
+				"This is a bug! We would appreciate a report: https://github.com/pulumi/pulumi/issues/",
+			name, len(matches))
 	}
 }
 
