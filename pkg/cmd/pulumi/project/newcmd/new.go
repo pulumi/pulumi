@@ -449,15 +449,15 @@ func runNew(ctx context.Context, args newArgs) error {
 
 	// Best-effort cloud credentials preflight; advisory only, never fails the command.
 	credentialsWarned := false
-	if s != nil && shouldCheckAWSCredentials(args, template) {
+	if cp, ok := credentialsCheckProvider(args, template); ok && s != nil {
 		if ps, err := cmdStack.LoadProjectStack(ctx, cmdutil.Diag(), proj, s, ""); err == nil {
 			load := func() (plugin.Provider, error) {
 				return pluginCtx.Host.Provider(pluginCtx,
-					workspace.PluginDescriptor{Kind: apitype.ResourcePlugin, Name: awsPackageName},
+					workspace.PluginDescriptor{Kind: apitype.ResourcePlugin, Name: cp.pkg},
 					env.Global())
 			}
-			credentialsWarned = checkAWSCredentials(ctx, load, awsConfigProperties(ps.Config), args.stdout, opts,
-				defaultCredentialsPreflightTimeout)
+			credentialsWarned = checkCloudCredentials(ctx, cp, load, providerConfigProperties(cp, ps.Config),
+				args.stdout, opts, defaultCredentialsPreflightTimeout)
 		}
 	}
 
