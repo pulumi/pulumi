@@ -33,39 +33,62 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil/rpcerror"
 	"github.com/pulumi/pulumi/sdk/v3/go/property"
+	"google.golang.org/grpc/status"
 )
 
-const (
-	awsPackageName = "aws"
-	//nolint:gosec // this is a documentation URL, not a credential
-	awsCredentialsDocURL = "https://www.pulumi.com/registry/packages/aws/installation-configuration/"
+// The credentials preflight may probe STS, IMDS or Azure CLI/IMDS; timeouts on hosts
+// without instance metadata are the slow path, so give the check a generous but bounded budget.
+const defaultCredentialsPreflightTimeout = 15 * time.Second
 
-	// The credentials preflight may probe STS or IMDS; IMDS timeouts on non-EC2 hosts
-	// are the slow path, so give the check a generous but bounded budget.
-	defaultCredentialsPreflightTimeout = 15 * time.Second
-)
-
-// shouldCheckAWSCredentials reports whether the best-effort AWS credentials preflight
-// should run: only for interactive runs that actually set up a project from an AWS
-// template, and only when the user hasn't opted out.
-func shouldCheckAWSCredentials(args newArgs, template cmdTemplates.ProjectTemplate) bool {
-	if !args.interactive || args.generateOnly || args.offline || env.SkipNewCredentialsCheck.Value() {
-		return false
-	}
-	for key := range template.Config {
-		if strings.HasPrefix(key, awsPackageName+":") {
-			return true
-		}
-	}
-	return false
+// cloudProvider describes a provider package whose Configure validates cloud credentials,
+// making it a candidate for the `pulumi new` credentials preflight.
+type cloudProvider struct {
+	// pkg is the provider package name, which is also the stack config namespace.
+	pkg string
+	// displayName is how the cloud is referred to in warnings.
+	displayName string
+	// docURL points at the provider's installation & configuration docs.
+	docURL string
 }
 
-// awsConfigProperties extracts the plaintext aws:-namespaced values from the saved
-// stack config for use as CheckConfig inputs. Secure values are skipped.
-func awsConfigProperties(cfg config.Map) property.Map {
+var cloudProviders = []cloudProvider{
+	{
+		pkg:         "aws",
+		displayName: "AWS",
+		docURL:      "https://www.pulumi.com/registry/packages/aws/installation-configuration/",
+	},
+	{
+		pkg:         "azure-native",
+		displayName: "Azure",
+		docURL:      "https://www.pulumi.com/registry/packages/azure-native/installation-configuration/",
+	},
+}
+
+// credentialsCheckProvider returns the cloud provider whose credentials should be
+// preflighted for this run, if any: only for interactive runs that actually set up a
+// project from a template configuring a known cloud provider, and only when the user
+// hasn't opted out.
+func credentialsCheckProvider(args newArgs, template cmdTemplates.ProjectTemplate) (cloudProvider, bool) {
+	if !args.interactive || args.generateOnly || args.offline || env.SkipNewCredentialsCheck.Value() {
+		return cloudProvider{}, false
+	}
+	for _, cp := range cloudProviders {
+		for key := range template.Config {
+			if strings.HasPrefix(key, cp.pkg+":") {
+				return cp, true
+			}
+		}
+	}
+	return cloudProvider{}, false
+}
+
+// providerConfigProperties extracts the plaintext values in the provider's config
+// namespace from the saved stack config for use as CheckConfig inputs. Secure values
+// are skipped.
+func providerConfigProperties(cp cloudProvider, cfg config.Map) property.Map {
 	m := map[string]property.Value{}
 	for k, v := range cfg {
-		if k.Namespace() != awsPackageName || v.Secure() {
+		if k.Namespace() != cp.pkg || v.Secure() {
 			continue
 		}
 		plain, err := v.Value(config.NopDecrypter)
@@ -77,16 +100,17 @@ func awsConfigProperties(cfg config.Map) property.Map {
 	return property.NewMap(m)
 }
 
-// providerLoadFunc loads the AWS resource provider; satisfied in production by a
+// providerLoadFunc loads the cloud resource provider; satisfied in production by a
 // closure over the plugin host and in tests by a mock factory.
 type providerLoadFunc func() (plugin.Provider, error)
 
-// checkAWSCredentials runs a best-effort credentials preflight by calling the AWS
-// provider's CheckConfig, which validates credentials for bridged providers. It
-// prints an advisory warning on failure and never fails the command. It reports
-// whether a warning was printed.
-func checkAWSCredentials(
+// checkCloudCredentials runs a best-effort credentials preflight by calling the cloud
+// provider's CheckConfig and then Configure, which is where providers validate
+// credentials and initialise their clients. It prints an advisory warning on failure
+// and never fails the command. It reports whether a warning was printed.
+func checkCloudCredentials(
 	ctx context.Context,
+	cp cloudProvider,
 	load providerLoadFunc,
 	news property.Map,
 	stdout io.Writer,
@@ -95,11 +119,15 @@ func checkAWSCredentials(
 ) bool {
 	prov, err := load()
 	if err != nil {
-		slog.DebugContext(ctx, "skipping AWS credentials check", "err", err)
+		slog.DebugContext(ctx, "skipping credentials check", "provider", cp.pkg, "err", err)
 		return false
 	}
 
-	urn := resource.NewURN("dev", "default", "", tokens.Type("pulumi:providers:"+awsPackageName), "default")
+	// A single deadline bounds the whole preflight: CheckConfig plus Configure.
+	tctx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
+
+	urn := resource.NewURN("dev", "default", "", tokens.Type("pulumi:providers:"+cp.pkg), "default")
 
 	type result struct {
 		resp plugin.CheckConfigResponse
@@ -116,30 +144,43 @@ func checkAWSCredentials(
 	var r result
 	select {
 	case r = <-ch:
-		contract.IgnoreClose(prov)
-	case <-time.After(timeout):
-		slog.DebugContext(ctx, "AWS credentials check timed out")
-		return false
-	case <-ctx.Done():
+	case <-tctx.Done():
+		slog.DebugContext(ctx, "credentials check timed out or was cancelled", "provider", cp.pkg)
 		return false
 	}
 
+	var configureErr error
 	if r.err == nil && len(r.resp.Failures) == 0 {
+		configureErr = configureProvider(tctx, prov, urn, r.resp.Properties, news)
+		if configureErr != nil && tctx.Err() != nil {
+			// Timed out or cancelled while waiting on Configure; stay silent as above.
+			slog.DebugContext(ctx, "credentials check timed out or was cancelled", "provider", cp.pkg)
+			return false
+		}
+	}
+	contract.IgnoreClose(prov)
+
+	if r.err == nil && len(r.resp.Failures) == 0 && configureErr == nil {
 		return false
 	}
 
 	warning := opts.Color.Colorize(colors.SpecWarning + "warning:" + colors.Reset)
 	switch {
-	case r.err != nil:
-		fmt.Fprintf(stdout, "%s Could not validate your AWS credentials:\n", warning)
-		for line := range strings.SplitSeq(strings.TrimSpace(rpcerror.Convert(r.err).Message()), "\n") {
+	case r.err != nil || configureErr != nil:
+		err := r.err
+		if err == nil {
+			err = configureErr
+		}
+		fmt.Fprintf(stdout, "%s Could not validate your %s credentials:\n", warning, cp.displayName)
+		for line := range strings.SplitSeq(strings.TrimSpace(errorMessage(err)), "\n") {
 			fmt.Fprintf(stdout, "    %s\n", line)
 		}
-		fmt.Fprintln(stdout, "Your project was created successfully, "+
-			"but `pulumi up` may fail until AWS credentials are configured.")
-		fmt.Fprintf(stdout, "For help configuring credentials, see %s\n\n", awsCredentialsDocURL)
+		fmt.Fprintf(stdout, "Your project was created successfully, "+
+			"but `pulumi up` may fail until %s credentials are configured.\n", cp.displayName)
+		fmt.Fprintf(stdout, "For help configuring credentials, see %s\n\n", cp.docURL)
 	case len(r.resp.Failures) > 0:
-		fmt.Fprintf(stdout, "%s The AWS provider reported problems with this stack's configuration:\n", warning)
+		fmt.Fprintf(stdout, "%s The %s provider reported problems with this stack's configuration:\n",
+			warning, cp.displayName)
 		for _, f := range r.resp.Failures {
 			reason := strings.ReplaceAll(strings.TrimSpace(f.Reason), "\n", "\n    ")
 			if f.Property != "" {
@@ -150,7 +191,44 @@ func checkAWSCredentials(
 		}
 		fmt.Fprintln(stdout, "Your project was created successfully, "+
 			"but `pulumi up` may fail until this is resolved.")
-		fmt.Fprintf(stdout, "For help configuring the AWS provider, see %s\n\n", awsCredentialsDocURL)
+		fmt.Fprintf(stdout, "For help configuring the %s provider, see %s\n\n", cp.displayName, cp.docURL)
 	}
 	return true
+}
+
+// configureProvider calls Configure with the checked config and waits for it to
+// complete, returning any error it produced. Plugin-backed providers run Configure
+// asynchronously, so the result is awaited through plugin.ConfigureAwaiter.
+func configureProvider(
+	ctx context.Context, prov plugin.Provider, urn resource.URN, checked, news property.Map,
+) error {
+	inputs := checked
+	if inputs.Len() == 0 {
+		inputs = news
+	}
+	name := urn.Name()
+	typ := urn.Type()
+	id := resource.ID("preflight")
+	if _, err := prov.Configure(ctx, plugin.ConfigureRequest{
+		URN:    &urn,
+		Name:   &name,
+		Type:   &typ,
+		ID:     &id,
+		Inputs: resource.ToResourcePropertyMap(inputs),
+	}); err != nil {
+		return err
+	}
+	if awaiter, ok := prov.(plugin.ConfigureAwaiter); ok {
+		return awaiter.AwaitConfigure(ctx)
+	}
+	return nil
+}
+
+// errorMessage unwraps gRPC status errors to their message so the provider's own
+// wording is shown without the "rpc error: code = ..." prefix.
+func errorMessage(err error) string {
+	if _, ok := status.FromError(err); ok {
+		return rpcerror.Convert(err).Message()
+	}
+	return err.Error()
 }

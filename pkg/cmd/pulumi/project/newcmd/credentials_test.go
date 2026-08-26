@@ -34,6 +34,8 @@ import (
 	"google.golang.org/grpc/status"
 )
 
+var awsProvider, azureProvider = cloudProviders[0], cloudProviders[1]
+
 func awsTemplate() cmdTemplates.ProjectTemplate {
 	return cmdTemplates.ProjectTemplate{
 		Config: map[string]workspace.ProjectTemplateConfigValue{
@@ -42,35 +44,43 @@ func awsTemplate() cmdTemplates.ProjectTemplate {
 	}
 }
 
-func TestShouldCheckAWSCredentials(t *testing.T) {
+func TestCredentialsCheckProvider(t *testing.T) {
 	tests := []struct {
 		name     string
 		args     newArgs
 		template cmdTemplates.ProjectTemplate
 		env      string
-		expected bool
+		expected string // provider package, or "" when no check should run
 	}{
 		{
 			name:     "aws template interactive",
 			args:     newArgs{interactive: true},
 			template: awsTemplate(),
-			expected: true,
+			expected: "aws",
+		},
+		{
+			name: "azure-native template interactive",
+			args: newArgs{interactive: true},
+			template: cmdTemplates.ProjectTemplate{
+				Config: map[string]workspace.ProjectTemplateConfigValue{
+					"azure-native:location": {Default: "WestUS2"},
+				},
+			},
+			expected: "azure-native",
 		},
 		{
 			name:     "no template config",
 			args:     newArgs{interactive: true},
 			template: cmdTemplates.ProjectTemplate{},
-			expected: false,
 		},
 		{
-			name: "aws-native namespace does not match",
+			name: "classic azure namespace does not match",
 			args: newArgs{interactive: true},
 			template: cmdTemplates.ProjectTemplate{
 				Config: map[string]workspace.ProjectTemplateConfigValue{
-					"aws-native:region": {},
+					"azure:location": {},
 				},
 			},
-			expected: false,
 		},
 		{
 			name: "gcp template",
@@ -80,32 +90,27 @@ func TestShouldCheckAWSCredentials(t *testing.T) {
 					"gcp:project": {},
 				},
 			},
-			expected: false,
 		},
 		{
 			name:     "non-interactive",
 			args:     newArgs{interactive: false},
 			template: awsTemplate(),
-			expected: false,
 		},
 		{
 			name:     "generate-only",
 			args:     newArgs{interactive: true, generateOnly: true},
 			template: awsTemplate(),
-			expected: false,
 		},
 		{
 			name:     "offline",
 			args:     newArgs{interactive: true, offline: true},
 			template: awsTemplate(),
-			expected: false,
 		},
 		{
 			name:     "kill switch",
 			args:     newArgs{interactive: true},
 			template: awsTemplate(),
 			env:      "true",
-			expected: false,
 		},
 	}
 	for _, tt := range tests {
@@ -113,25 +118,32 @@ func TestShouldCheckAWSCredentials(t *testing.T) {
 			if tt.env != "" {
 				t.Setenv("PULUMI_SKIP_NEW_CREDENTIALS_CHECK", tt.env)
 			}
-			assert.Equal(t, tt.expected, shouldCheckAWSCredentials(tt.args, tt.template))
+			cp, ok := credentialsCheckProvider(tt.args, tt.template)
+			assert.Equal(t, tt.expected != "", ok)
+			assert.Equal(t, tt.expected, cp.pkg)
 		})
 	}
 }
 
-func TestAWSConfigProperties(t *testing.T) {
+func TestProviderConfigProperties(t *testing.T) {
 	t.Parallel()
 
 	cfg := config.Map{
-		config.MustMakeKey("aws", "region"):  config.NewValue("us-east-1"),
-		config.MustMakeKey("aws", "secret"):  config.NewSecureValue("ciphertext"),
-		config.MustMakeKey("proj", "etcetc"): config.NewValue("unrelated"),
+		config.MustMakeKey("aws", "region"):            config.NewValue("us-east-1"),
+		config.MustMakeKey("aws", "secret"):            config.NewSecureValue("ciphertext"),
+		config.MustMakeKey("azure-native", "location"): config.NewValue("WestUS2"),
+		config.MustMakeKey("proj", "etcetc"):           config.NewValue("unrelated"),
 	}
-	props := awsConfigProperties(cfg)
+	props := providerConfigProperties(awsProvider, cfg)
 	require.Equal(t, 1, props.Len())
 	assert.Equal(t, "us-east-1", props.Get("region").AsString())
+
+	props = providerConfigProperties(azureProvider, cfg)
+	require.Equal(t, 1, props.Len())
+	assert.Equal(t, "WestUS2", props.Get("location").AsString())
 }
 
-func TestCheckAWSCredentialsRPCError(t *testing.T) {
+func TestCheckCloudCredentialsRPCError(t *testing.T) {
 	t.Parallel()
 
 	closed := false
@@ -152,7 +164,7 @@ func TestCheckAWSCredentialsRPCError(t *testing.T) {
 
 	var buf bytes.Buffer
 	news := property.NewMap(map[string]property.Value{"region": property.New("us-east-1")})
-	warned := checkAWSCredentials(t.Context(),
+	warned := checkCloudCredentials(t.Context(), awsProvider,
 		func() (plugin.Provider, error) { return mock, nil },
 		news, &buf, display.Options{Color: colors.Never}, time.Second)
 	assert.True(t, warned)
@@ -162,11 +174,11 @@ func TestCheckAWSCredentialsRPCError(t *testing.T) {
 	assert.Contains(t, out, "Could not validate your AWS credentials")
 	assert.Contains(t, out, "unable to validate AWS credentials.")
 	assert.Contains(t, out, "    Details: no valid credential sources found")
-	assert.Contains(t, out, awsCredentialsDocURL)
+	assert.Contains(t, out, awsProvider.docURL)
 	assert.True(t, closed)
 }
 
-func TestCheckAWSCredentialsFailures(t *testing.T) {
+func TestCheckCloudCredentialsFailures(t *testing.T) {
 	t.Parallel()
 
 	mock := &plugin.MockProvider{
@@ -179,7 +191,7 @@ func TestCheckAWSCredentialsFailures(t *testing.T) {
 	}
 
 	var buf bytes.Buffer
-	warned := checkAWSCredentials(t.Context(),
+	warned := checkCloudCredentials(t.Context(), awsProvider,
 		func() (plugin.Provider, error) { return mock, nil },
 		property.Map{}, &buf, display.Options{Color: colors.Never}, time.Second)
 	assert.True(t, warned)
@@ -188,28 +200,179 @@ func TestCheckAWSCredentialsFailures(t *testing.T) {
 	assert.Contains(t, out, "The AWS provider reported problems with this stack's configuration")
 	assert.Contains(t, out, "    region: expected a valid region")
 	assert.Contains(t, out, "    unable to validate AWS credentials.\n    Details: no valid credential sources found")
-	assert.Contains(t, out, awsCredentialsDocURL)
+	assert.Contains(t, out, awsProvider.docURL)
 }
 
-func TestCheckAWSCredentialsSuccess(t *testing.T) {
+func TestCheckCloudCredentialsSuccess(t *testing.T) {
 	t.Parallel()
 
+	configured := false
 	mock := &plugin.MockProvider{
 		CheckConfigF: func(_ context.Context, req plugin.CheckConfigRequest) (plugin.CheckConfigResponse, error) {
 			return plugin.CheckConfigResponse{Properties: req.News}, nil
 		},
+		ConfigureF: func(_ context.Context, req plugin.ConfigureRequest) (plugin.ConfigureResponse, error) {
+			configured = true
+			require.NotNil(t, req.URN)
+			require.NotNil(t, req.Name)
+			require.NotNil(t, req.Type)
+			require.NotNil(t, req.ID)
+			assert.Equal(t, "pulumi:providers:aws", string(*req.Type))
+			assert.Equal(t, "default", *req.Name)
+			assert.Equal(t, "us-east-1", req.Inputs["region"].StringValue())
+			return plugin.ConfigureResponse{}, nil
+		},
 	}
 
 	var buf bytes.Buffer
-	warned := checkAWSCredentials(t.Context(),
+	news := property.NewMap(map[string]property.Value{"region": property.New("us-east-1")})
+	warned := checkCloudCredentials(t.Context(), awsProvider,
 		func() (plugin.Provider, error) { return mock, nil },
-		property.Map{}, &buf, display.Options{Color: colors.Never}, time.Second)
+		news, &buf, display.Options{Color: colors.Never}, time.Second)
 
 	assert.False(t, warned)
+	assert.True(t, configured)
 	assert.Empty(t, buf.String())
 }
 
-func TestCheckAWSCredentialsTimeout(t *testing.T) {
+func TestCheckCloudCredentialsConfigureError(t *testing.T) {
+	t.Parallel()
+
+	closed := false
+	mock := &plugin.MockProvider{
+		CheckConfigF: func(_ context.Context, req plugin.CheckConfigRequest) (plugin.CheckConfigResponse, error) {
+			return plugin.CheckConfigResponse{Properties: req.News}, nil
+		},
+		ConfigureF: func(context.Context, plugin.ConfigureRequest) (plugin.ConfigureResponse, error) {
+			return plugin.ConfigureResponse{},
+				status.Error(codes.Unknown, "unable to validate AWS credentials.\nDetails: InvalidClientTokenId")
+		},
+		CloseF: func() error {
+			closed = true
+			return nil
+		},
+	}
+
+	var buf bytes.Buffer
+	warned := checkCloudCredentials(t.Context(), awsProvider,
+		func() (plugin.Provider, error) { return mock, nil },
+		property.Map{}, &buf, display.Options{Color: colors.Never}, time.Second)
+	assert.True(t, warned)
+
+	out := buf.String()
+	assert.Contains(t, out, "Could not validate your AWS credentials")
+	assert.Contains(t, out, "    unable to validate AWS credentials.\n    Details: InvalidClientTokenId")
+	assert.NotContains(t, out, "rpc error")
+	assert.Contains(t, out, awsProvider.docURL)
+	assert.True(t, closed)
+}
+
+func TestCheckCloudCredentialsAzureConfigureError(t *testing.T) {
+	t.Parallel()
+
+	mock := &plugin.MockProvider{
+		CheckConfigF: func(_ context.Context, req plugin.CheckConfigRequest) (plugin.CheckConfigResponse, error) {
+			assert.Equal(t, "pulumi:providers:azure-native", string(req.URN.Type()))
+			return plugin.CheckConfigResponse{Properties: req.News}, nil
+		},
+		ConfigureF: func(_ context.Context, req plugin.ConfigureRequest) (plugin.ConfigureResponse, error) {
+			assert.Equal(t, "pulumi:providers:azure-native", string(*req.Type))
+			return plugin.ConfigureResponse{},
+				status.Error(codes.Unknown, "failed to get authorizer: please run `az login`")
+		},
+	}
+
+	var buf bytes.Buffer
+	warned := checkCloudCredentials(t.Context(), azureProvider,
+		func() (plugin.Provider, error) { return mock, nil },
+		property.Map{}, &buf, display.Options{Color: colors.Never}, time.Second)
+	assert.True(t, warned)
+
+	out := buf.String()
+	assert.Contains(t, out, "Could not validate your Azure credentials")
+	assert.Contains(t, out, "    failed to get authorizer: please run `az login`")
+	assert.Contains(t, out, "may fail until Azure credentials are configured")
+	assert.Contains(t, out, azureProvider.docURL)
+}
+
+func TestCheckCloudCredentialsConfigureNotCalledOnCheckFailure(t *testing.T) {
+	t.Parallel()
+
+	mock := &plugin.MockProvider{
+		CheckConfigF: func(context.Context, plugin.CheckConfigRequest) (plugin.CheckConfigResponse, error) {
+			return plugin.CheckConfigResponse{Failures: []plugin.CheckFailure{{Reason: "bad"}}}, nil
+		},
+		ConfigureF: func(context.Context, plugin.ConfigureRequest) (plugin.ConfigureResponse, error) {
+			t.Fatal("Configure must not be called when CheckConfig fails")
+			return plugin.ConfigureResponse{}, nil
+		},
+	}
+
+	var buf bytes.Buffer
+	warned := checkCloudCredentials(t.Context(), awsProvider,
+		func() (plugin.Provider, error) { return mock, nil },
+		property.Map{}, &buf, display.Options{Color: colors.Never}, time.Second)
+	assert.True(t, warned)
+	assert.Contains(t, buf.String(), "    bad")
+}
+
+// awaitingProvider mimics plugin-backed providers, whose Configure completes
+// asynchronously and reports its result through AwaitConfigure.
+type awaitingProvider struct {
+	*plugin.MockProvider
+	await func(context.Context) error
+}
+
+func (p *awaitingProvider) AwaitConfigure(ctx context.Context) error { return p.await(ctx) }
+
+func TestCheckCloudCredentialsAwaitConfigure(t *testing.T) {
+	t.Parallel()
+
+	newMock := func() *plugin.MockProvider {
+		return &plugin.MockProvider{
+			CheckConfigF: func(_ context.Context, req plugin.CheckConfigRequest) (plugin.CheckConfigResponse, error) {
+				return plugin.CheckConfigResponse{Properties: req.News}, nil
+			},
+			ConfigureF: func(context.Context, plugin.ConfigureRequest) (plugin.ConfigureResponse, error) {
+				return plugin.ConfigureResponse{}, nil
+			},
+		}
+	}
+
+	t.Run("error is surfaced", func(t *testing.T) {
+		t.Parallel()
+
+		prov := &awaitingProvider{MockProvider: newMock(), await: func(context.Context) error {
+			return errors.New("missing required configuration key \"aws:region\": where AWS operations will take place")
+		}}
+
+		var buf bytes.Buffer
+		warned := checkCloudCredentials(t.Context(), awsProvider,
+			func() (plugin.Provider, error) { return prov, nil },
+			property.Map{}, &buf, display.Options{Color: colors.Never}, time.Second)
+		assert.True(t, warned)
+		assert.Contains(t, buf.String(), "Could not validate your AWS credentials")
+		assert.Contains(t, buf.String(), "    missing required configuration key \"aws:region\"")
+	})
+
+	t.Run("timeout is silent", func(t *testing.T) {
+		t.Parallel()
+
+		prov := &awaitingProvider{MockProvider: newMock(), await: func(ctx context.Context) error {
+			<-ctx.Done()
+			return ctx.Err()
+		}}
+
+		var buf bytes.Buffer
+		warned := checkCloudCredentials(t.Context(), awsProvider,
+			func() (plugin.Provider, error) { return prov, nil },
+			property.Map{}, &buf, display.Options{Color: colors.Never}, 10*time.Millisecond)
+		assert.False(t, warned)
+		assert.Empty(t, buf.String())
+	})
+}
+
+func TestCheckCloudCredentialsTimeout(t *testing.T) {
 	t.Parallel()
 
 	release := make(chan struct{})
@@ -225,7 +388,7 @@ func TestCheckAWSCredentialsTimeout(t *testing.T) {
 	var warned bool
 	done := make(chan struct{})
 	go func() {
-		warned = checkAWSCredentials(t.Context(),
+		warned = checkCloudCredentials(t.Context(), awsProvider,
 			func() (plugin.Provider, error) { return mock, nil },
 			property.Map{}, &buf, display.Options{Color: colors.Never}, 10*time.Millisecond)
 		close(done)
@@ -234,17 +397,17 @@ func TestCheckAWSCredentialsTimeout(t *testing.T) {
 	select {
 	case <-done:
 	case <-time.After(5 * time.Second):
-		t.Fatal("checkAWSCredentials did not return after its timeout")
+		t.Fatal("checkCloudCredentials did not return after its timeout")
 	}
 	assert.False(t, warned)
 	assert.Empty(t, buf.String())
 }
 
-func TestCheckAWSCredentialsLoaderError(t *testing.T) {
+func TestCheckCloudCredentialsLoaderError(t *testing.T) {
 	t.Parallel()
 
 	var buf bytes.Buffer
-	warned := checkAWSCredentials(t.Context(),
+	warned := checkCloudCredentials(t.Context(), awsProvider,
 		func() (plugin.Provider, error) { return nil, errors.New("no such plugin") },
 		property.Map{}, &buf, display.Options{Color: colors.Never}, time.Second)
 

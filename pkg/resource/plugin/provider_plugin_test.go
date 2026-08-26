@@ -1488,3 +1488,43 @@ func TestProvider_PartialFailure(t *testing.T) {
 		RefreshBeforeUpdate: true,
 	}, updateResp)
 }
+
+func TestProviderAwaitConfigure(t *testing.T) {
+	t.Parallel()
+
+	t.Run("error", func(t *testing.T) {
+		t.Parallel()
+
+		client := &stubClient{
+			ConfigureF: func(*pulumirpc.ConfigureRequest) (*pulumirpc.ConfigureResponse, error) {
+				return nil, status.Error(codes.Unknown, "unable to validate AWS credentials")
+			},
+		}
+		p := NewProviderWithClient(newTestContext(t), client, false /* disablePreview */)
+		_, err := p.Configure(t.Context(), ConfigureRequest{Type: new(tokens.Type("pulumi:providers:test"))})
+		require.NoError(t, err)
+
+		awaiter, ok := p.(ConfigureAwaiter)
+		require.True(t, ok)
+		err = awaiter.AwaitConfigure(t.Context())
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "unable to validate AWS credentials")
+	})
+
+	t.Run("success", func(t *testing.T) {
+		t.Parallel()
+
+		client := &stubClient{
+			ConfigureF: func(*pulumirpc.ConfigureRequest) (*pulumirpc.ConfigureResponse, error) {
+				return &pulumirpc.ConfigureResponse{}, nil
+			},
+		}
+		p := NewProviderWithClient(newTestContext(t), client, false /* disablePreview */)
+		_, err := p.Configure(t.Context(), ConfigureRequest{Type: new(tokens.Type("pulumi:providers:test"))})
+		require.NoError(t, err)
+
+		awaiter, ok := p.(ConfigureAwaiter)
+		require.True(t, ok)
+		require.NoError(t, awaiter.AwaitConfigure(t.Context()))
+	})
+}

@@ -229,6 +229,13 @@ type ConfigureRequest struct {
 
 type ConfigureResponse struct{}
 
+// ConfigureAwaiter is optionally implemented by providers whose Configure completes asynchronously.
+// Callers that need the result of Configure before issuing any other call can type-assert for it.
+type ConfigureAwaiter interface {
+	// AwaitConfigure blocks until Configure has completed and returns its error, if any.
+	AwaitConfigure(ctx context.Context) error
+}
+
 // The mode that controls how the provider handles the proposed name. If not specified, defaults to `Propose`.
 type AutonamingMode int32
 
