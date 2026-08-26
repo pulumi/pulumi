@@ -1431,7 +1431,7 @@ index.ts
 import * as pulumi from "@pulumi/pulumi";
 import * as random from "@pulumi/random";
 
-// Placeholder for urn:pulumi:dev::proj::random:index/randomPet:RandomPet::parentPet;`+
+// Placeholder for urn:pulumi:dev::project::random:index/randomPet:RandomPet::parentPet;`+
 		` replace with the real resource reference in your program.
 const parentPet = new random.RandomPet("parentPet", {});
 const childPet = new random.RandomPet("childPet", {prefix: parentPet.id});
