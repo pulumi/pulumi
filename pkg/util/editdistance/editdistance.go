@@ -26,8 +26,7 @@ package editdistance
 // minimum number of single-rune insertions, deletions, substitutions, and
 // adjacent transpositions needed to turn one into the other.
 //
-// The comparison is case-sensitive; callers wanting case-insensitive matching
-// should normalize case before calling.
+// The comparison is case-sensitive.
 func OSA(a, b string) int {
 	ra, rb := []rune(a), []rune(b)
 
