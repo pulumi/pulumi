@@ -245,8 +245,7 @@ func isTransientStreamError(err error) bool {
 		errors.Is(err, io.ErrUnexpectedEOF) {
 		return true
 	}
-	var ne net.Error
-	if errors.As(err, &ne) && ne.Timeout() {
+	if ne, ok := errors.AsType[net.Error](err); ok && ne.Timeout() {
 		return true
 	}
 	if ue, ok := errors.AsType[*url.Error](err); ok {
@@ -260,8 +259,8 @@ func isTransientStreamError(err error) bool {
 		}
 		return false
 	}
-	var oe *net.OpError
-	return errors.As(err, &oe)
+	_, ok := errors.AsType[*net.OpError](err)
+	return ok
 }
 
 // backoffDelay returns the wait before the Nth (1-based) reconnect attempt: exponential

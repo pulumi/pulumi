@@ -255,7 +255,8 @@ func (LoginRequiredError) Is(other error) bool {
 // authorization failure (login required, forbidden, or a missing env var
 // required for non-interactive auth).
 func IsAuthError(err error) bool {
-	return errors.As(err, &LoginRequiredError{}) ||
-		errors.As(err, &ForbiddenError{}) ||
-		errors.As(err, &MissingEnvVarForNonInteractiveError{})
+	_, isLoginRequired := errors.AsType[LoginRequiredError](err)
+	_, isForbidden := errors.AsType[ForbiddenError](err)
+	_, isMissingEnvVar := errors.AsType[MissingEnvVarForNonInteractiveError](err)
+	return isLoginRequired || isForbidden || isMissingEnvVar
 }

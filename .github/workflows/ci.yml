@@ -300,6 +300,10 @@ jobs:
     needs: [setup]
     if: ${{ inputs.lint }}
     uses: ./.github/workflows/ci-lint.yml
+    permissions:
+      contents: read
+      # To comment changelog style findings on PRs.
+      pull-requests: write
     strategy:
       fail-fast: ${{ inputs.fail-fast }}
     with:

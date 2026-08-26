@@ -127,8 +127,7 @@ func IsLocalPluginPath(ctx context.Context, source string) bool {
 	// For other cases, we need to be careful about how we interpret the source, so let's parse the spec
 	// and check if it has a download URL.
 	pluginSpec, err := workspace.NewPluginDescriptor(ctx, source, apitype.ResourcePlugin, nil, "", nil)
-	var pluginErr workspace.PluginVersionNotFoundError
-	if err != nil && !errors.As(err, &pluginErr) {
+	if _, ok := errors.AsType[workspace.PluginVersionNotFoundError](err); err != nil && !ok {
 		// If we can't parse it as a plugin spec, assume it's a local path
 		return true
 	}

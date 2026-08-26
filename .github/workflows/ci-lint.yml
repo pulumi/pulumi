@@ -185,6 +185,10 @@ jobs:
   changelog:
     name: Lint changelog entries
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      # To comment changelog style findings on PRs.
+      pull-requests: write
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
         with:
@@ -211,6 +215,7 @@ jobs:
           version: 3.17.1
           files: changelog/pending
           sync: false
+          reporter: github-pr-review
 
   pulumi-json:
     name: Lint pulumi.json

@@ -494,8 +494,8 @@ func (l *pluginLoader) loadSchemaBytes(
 	pluginInfo, err := l.pctx.Host.ResolvePlugin(l.pctx, pluginSpecFromPackageDescriptor(descriptor))
 	if err != nil {
 		// Try and install the plugin if it was missing and try again, unless auto plugin installs are turned off.
-		var missingError *workspace.MissingError
-		if !errors.As(err, &missingError) || env.DisableAutomaticPluginAcquisition.Value() {
+		_, ok := errors.AsType[*workspace.MissingError](err)
+		if !ok || env.DisableAutomaticPluginAcquisition.Value() {
 			return nil, nil, err
 		}
 

@@ -2073,6 +2073,18 @@ func (mod *modContext) genFunction(fun *schema.Function) (string, error) {
 			return err
 		}
 		mod.genFunDeprecationMessage(w, fun)
+		for _, arg := range args {
+			if arg.DefaultValue == nil {
+				continue
+			}
+			pname := PyName(arg.Name)
+			dv, err := getDefaultValue(arg.DefaultValue, codegen.UnwrapType(arg.Type))
+			if err != nil {
+				return err
+			}
+			fmt.Fprintf(w, "    if %s is None:\n", pname)
+			fmt.Fprintf(w, "        %s = %s\n", pname, dv)
+		}
 		// Copy the function arguments into a dictionary.
 		fmt.Fprintf(w, "    __args__ = dict()\n")
 		for _, arg := range args {

@@ -385,8 +385,7 @@ func (pc *Client) ValidateAgentClaim(ctx context.Context, claimToken string) (bo
 	if err == nil {
 		return true, nil
 	}
-	var errResp *apitype.ErrorResponse
-	if errors.As(err, &errResp) && errResp.Code == http.StatusNotFound {
+	if errResp, ok := errors.AsType[*apitype.ErrorResponse](err); ok && errResp.Code == http.StatusNotFound {
 		return false, nil
 	}
 	return false, err
@@ -2689,8 +2688,7 @@ func is404(err error) bool {
 	if err == nil {
 		return false
 	}
-	var errResp *apitype.ErrorResponse
-	if errors.As(err, &errResp) && errResp.Code == http.StatusNotFound {
+	if errResp, ok := errors.AsType[*apitype.ErrorResponse](err); ok && errResp.Code == http.StatusNotFound {
 		return true
 	}
 	return false

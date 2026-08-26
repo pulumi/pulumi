@@ -117,8 +117,8 @@ func entityDroppedWarning(orgName, projectName, stackRefName string, err error) 
 // rejection. Matched on the message because the service doesn't expose a stable
 // error code for this case.
 func isInvalidEntitiesError(err error) bool {
-	var errResp *apitype.ErrorResponse
-	if !errors.As(err, &errResp) {
+	errResp, ok := errors.AsType[*apitype.ErrorResponse](err)
+	if !ok {
 		return false
 	}
 	return strings.Contains(strings.ToLower(errResp.Message), "invalid entit")

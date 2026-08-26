@@ -443,7 +443,7 @@ func (se *stepExecutor) cancelDueToError(err error, step Step) {
 	// these are deletes there's nothing replied to the user program, it's safe to continue past them. There
 	// are no observable effects in the user program, its just the CLI will be able to continue past and
 	// report any other issues.
-	if errors.As(err, &deleteProtectedError{}) {
+	if _, ok := errors.AsType[deleteProtectedError](err); ok {
 		continueOnError = true
 	}
 

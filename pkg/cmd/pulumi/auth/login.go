@@ -360,8 +360,7 @@ func unwrapBucketOpenError(err error, cloudURL string) error {
 	// A file:// failure is a path error naming a location we have usually shown already, in
 	// which case only the reason is worth keeping. When the path differs from the configured
 	// URL — a `~` or relative path that got resolved — it is new information, so keep it.
-	var pathErr *fs.PathError
-	if errors.As(cause, &pathErr) && strings.Contains(cloudURL, pathErr.Path) {
+	if pathErr, ok := errors.AsType[*fs.PathError](cause); ok && strings.Contains(cloudURL, pathErr.Path) {
 		return pathErr.Err
 	}
 	return cause

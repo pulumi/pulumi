@@ -113,6 +113,32 @@ func (p *SimpleInvokeProvider) GetSchema(
 					},
 				},
 			},
+			"simple-invoke:index:invokeWithDefault": {
+				Inputs: &schema.ObjectTypeSpec{
+					Type: "object",
+					Properties: map[string]schema.PropertySpec{
+						"value": {
+							TypeSpec: schema.TypeSpec{
+								Type: "string",
+							},
+							Default: "default",
+						},
+					},
+				},
+				ReturnType: &schema.ReturnTypeSpec{
+					ObjectTypeSpec: &schema.ObjectTypeSpec{
+						Type: "object",
+						Properties: map[string]schema.PropertySpec{
+							"result": {
+								TypeSpec: schema.TypeSpec{
+									Type: "string",
+								},
+							},
+						},
+						Required: []string{"result"},
+					},
+				},
+			},
 			"simple-invoke:index:unit": {
 				Inputs: &schema.ObjectTypeSpec{
 					Type: "object",
@@ -291,6 +317,25 @@ func (p *SimpleInvokeProvider) Invoke(
 		return plugin.InvokeResponse{
 			Properties: property.NewMap(map[string]property.Value{
 				"result": property.New(value.AsString() + " world"),
+			}),
+		}, nil
+	case "simple-invoke:index:invokeWithDefault":
+		value, ok := req.Args.GetOk("value")
+		if !ok {
+			return plugin.InvokeResponse{
+				Failures: makeCheckFailure("value", "missing value"),
+			}, nil
+		}
+
+		if !value.IsString() {
+			return plugin.InvokeResponse{
+				Failures: makeCheckFailure("value", "is not a string"),
+			}, nil
+		}
+
+		return plugin.InvokeResponse{
+			Properties: property.NewMap(map[string]property.Value{
+				"result": value,
 			}),
 		}, nil
 	case "simple-invoke:index:myInvokeScalar":

@@ -34,7 +34,7 @@ func (f *fetch) listProjectTemplates(
 ) {
 	repo, err := get(ctx, templateNamePathOrURL, scope == ScopeLocal, templateKind)
 	if err != nil {
-		if notFound := (TemplateNotFoundError{}); errors.As(err, &notFound) {
+		if notFound, ok := errors.AsType[TemplateNotFoundError](err); ok {
 			f.addErrorOnEmpty(notFound)
 			return
 		}

@@ -22,6 +22,7 @@
         "echoMap.ts",
         "getText.ts",
         "index.ts",
+        "invokeWithDefault.ts",
         "myInvoke.ts",
         "provider.ts",
         "secretInvoke.ts",
