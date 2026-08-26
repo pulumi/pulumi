@@ -2386,7 +2386,7 @@ func TestProviderPreviewUnknowns(t *testing.T) {
 					})
 					require.NoError(t, err)
 
-					outs := resource.PropertyMap{"foo": req.Inputs["name"]}
+					outs := resource.PropertyMap{"foo": resource.ToResourcePropertyValue(req.Inputs.Get("name"))}
 					err = monitor.RegisterResourceOutputs(resp.URN, outs)
 					require.NoError(t, err)
 

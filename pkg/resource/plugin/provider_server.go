@@ -960,7 +960,7 @@ func (p *providerServer) Construct(ctx context.Context,
 		Type:    typ,
 		Name:    name,
 		Parent:  parent,
-		Inputs:  inputs,
+		Inputs:  resource.FromResourcePropertyMap(inputs),
 		Options: options,
 	})
 	if err != nil {

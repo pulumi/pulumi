@@ -278,9 +278,9 @@ func (p *PlainComponentProvider) Construct(
 	}
 
 	// Build the label from the plain inputs.
-	name := req.Inputs["name"].StringValue()
-	settings := req.Inputs["settings"].ObjectValue()
-	enabled := settings["enabled"].BoolValue()
+	name := req.Inputs.Get("name").AsString()
+	settings := req.Inputs.Get("settings").AsMap()
+	enabled := settings.Get("enabled").AsBool()
 	label := name
 	if !enabled {
 		label = name + " (disabled)"

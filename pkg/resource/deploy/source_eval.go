@@ -2903,7 +2903,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 				Type:    t,
 				Name:    name,
 				Parent:  parent,
-				Inputs:  props,
+				Inputs:  resource.FromResourcePropertyMap(props),
 				Options: options,
 			})
 			if err != nil {

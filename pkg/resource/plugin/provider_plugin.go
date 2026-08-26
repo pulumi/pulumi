@@ -1996,10 +1996,9 @@ func (p *provider) List(ctx context.Context, req ListRequest) (*ListStream, erro
 func (p *provider) Construct(ctx context.Context, req ConstructRequest) (ConstructResponse, error) {
 	contract.Assertf(req.Type != "", "Construct requires a type")
 	contract.Assertf(req.Name != "", "Construct requires a name")
-	contract.Assertf(req.Inputs != nil, "Construct requires input properties")
 
 	label := fmt.Sprintf("%s.Construct(%s, %s, %s)", p.label(), req.Type, req.Name, req.Parent)
-	logging.V(7).Infof("%s executing (#inputs=%v)", label, len(req.Inputs))
+	logging.V(7).Infof("%s executing (#inputs=%v)", label, req.Inputs.Len())
 
 	// Ensure that the plugin is configured.
 	client := p.clientRaw
@@ -2040,7 +2039,7 @@ func (p *provider) Construct(ctx context.Context, req ConstructRequest) (Constru
 	}
 
 	// Marshal the input properties.
-	minputs, err := MarshalProperties(req.Inputs, MarshalOptions{
+	minputs, err := MarshalProperties(resource.ToResourcePropertyMap(req.Inputs), MarshalOptions{
 		Label:          label + ".inputs",
 		KeepUnknowns:   true,
 		KeepSecrets:    protocol.acceptSecrets,
