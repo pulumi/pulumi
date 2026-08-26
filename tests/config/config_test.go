@@ -423,7 +423,7 @@ func TestConfigCommandsUsingEnvironments(t *testing.T) {
 	integration.CreateBasicPulumiRepo(e)
 	e.RunCommand("pulumi", "org", "set-default", getTestOrg())
 	stackName := ptesting.RandomStackName()
-	e.RunCommand("pulumi", "stack", "init", stackName)
+	e.StackInit(stackName)
 
 	// check config is empty
 	stdout, _ := e.RunCommand("pulumi", "config")

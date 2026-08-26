@@ -24,7 +24,7 @@ import {
     ProjectSettings,
     Stack,
 } from "../../automation";
-import { getTestOrg, getTestSuffix, withTestBackend } from "./util";
+import { getTestOrg, getTestSuffix, withStack, withTestBackend } from "./util";
 import { Config } from "../../config";
 
 describe("LocalWorkspace - Config", () => {
@@ -38,39 +38,43 @@ describe("LocalWorkspace - Config", () => {
         const stackName = fullyQualifiedStackName(getTestOrg(), projectName, `int_test${getTestSuffix()}`);
         const stack = await Stack.create(stackName, ws);
 
-        const config = {
-            plain: { value: "abc" },
-            secret: { value: "def", secret: true },
-        };
-        let caught = 0;
+        await withStack(
+            stack,
+            async () => {
+                const config = {
+                    plain: { value: "abc" },
+                    secret: { value: "def", secret: true },
+                };
+                let caught = 0;
 
-        const plainKey = normalizeConfigKey("plain", projectName);
-        const secretKey = normalizeConfigKey("secret", projectName);
+                const plainKey = normalizeConfigKey("plain", projectName);
+                const secretKey = normalizeConfigKey("secret", projectName);
 
-        try {
-            await stack.getConfig(plainKey);
-        } catch (error) {
-            caught++;
-        }
-        assert.strictEqual(caught, 1, "expected config get on empty value to throw");
+                try {
+                    await stack.getConfig(plainKey);
+                } catch (error) {
+                    caught++;
+                }
+                assert.strictEqual(caught, 1, "expected config get on empty value to throw");
 
-        let values = await stack.getAllConfig();
-        assert.strictEqual(Object.keys(values).length, 0, "expected stack config to be empty");
-        await stack.setAllConfig(config);
-        values = await stack.getAllConfig();
-        assert.strictEqual(values[plainKey].value, "abc");
-        assert.strictEqual(values[plainKey].secret, false);
-        assert.strictEqual(values[secretKey].value, "def");
-        assert.strictEqual(values[secretKey].secret, true);
+                let values = await stack.getAllConfig();
+                assert.strictEqual(Object.keys(values).length, 0, "expected stack config to be empty");
+                await stack.setAllConfig(config);
+                values = await stack.getAllConfig();
+                assert.strictEqual(values[plainKey].value, "abc");
+                assert.strictEqual(values[plainKey].secret, false);
+                assert.strictEqual(values[secretKey].value, "def");
+                assert.strictEqual(values[secretKey].secret, true);
 
-        await stack.removeConfig("plain");
-        values = await stack.getAllConfig();
-        assert.strictEqual(Object.keys(values).length, 1, "expected stack config to have 1 value");
-        await stack.setConfig("foo", { value: "bar" });
-        values = await stack.getAllConfig();
-        assert.strictEqual(Object.keys(values).length, 2, "expected stack config to have 2 values");
-
-        await ws.removeStack(stackName);
+                await stack.removeConfig("plain");
+                values = await stack.getAllConfig();
+                assert.strictEqual(Object.keys(values).length, 1, "expected stack config to have 1 value");
+                await stack.setConfig("foo", { value: "bar" });
+                values = await stack.getAllConfig();
+                assert.strictEqual(Object.keys(values).length, 2, "expected stack config to have 2 values");
+            },
+            { destroy: false },
+        );
     });
     it(`config_flag_like`, async () => {
         const projectName = "config_flag_like";
@@ -81,24 +85,28 @@ describe("LocalWorkspace - Config", () => {
         const ws = await LocalWorkspace.create(withTestBackend({ projectSettings }));
         const stackName = fullyQualifiedStackName(getTestOrg(), projectName, `int_test${getTestSuffix()}`);
         const stack = await Stack.create(stackName, ws);
-        await stack.setConfig("key", { value: "-value" });
-        await stack.setConfig("secret-key", { value: "-value", secret: true });
-        const values = await stack.getAllConfig();
-        assert.strictEqual(values["config_flag_like:key"].value, "-value");
-        assert.strictEqual(values["config_flag_like:key"].secret, false);
-        assert.strictEqual(values["config_flag_like:secret-key"].value, "-value");
-        assert.strictEqual(values["config_flag_like:secret-key"].secret, true);
-        await stack.setAllConfig({
-            key: { value: "-value2" },
-            "secret-key": { value: "-value2", secret: true },
-        });
-        const values2 = await stack.getAllConfig();
-        assert.strictEqual(values2["config_flag_like:key"].value, "-value2");
-        assert.strictEqual(values2["config_flag_like:key"].secret, false);
-        assert.strictEqual(values2["config_flag_like:secret-key"].value, "-value2");
-        assert.strictEqual(values2["config_flag_like:secret-key"].secret, true);
-
-        await ws.removeStack(stackName);
+        await withStack(
+            stack,
+            async () => {
+                await stack.setConfig("key", { value: "-value" });
+                await stack.setConfig("secret-key", { value: "-value", secret: true });
+                const values = await stack.getAllConfig();
+                assert.strictEqual(values["config_flag_like:key"].value, "-value");
+                assert.strictEqual(values["config_flag_like:key"].secret, false);
+                assert.strictEqual(values["config_flag_like:secret-key"].value, "-value");
+                assert.strictEqual(values["config_flag_like:secret-key"].secret, true);
+                await stack.setAllConfig({
+                    key: { value: "-value2" },
+                    "secret-key": { value: "-value2", secret: true },
+                });
+                const values2 = await stack.getAllConfig();
+                assert.strictEqual(values2["config_flag_like:key"].value, "-value2");
+                assert.strictEqual(values2["config_flag_like:key"].secret, false);
+                assert.strictEqual(values2["config_flag_like:secret-key"].value, "-value2");
+                assert.strictEqual(values2["config_flag_like:secret-key"].secret, true);
+            },
+            { destroy: false },
+        );
     });
     it(`Config path`, async () => {
         const projectName = "node_test";
@@ -110,82 +118,86 @@ describe("LocalWorkspace - Config", () => {
         const stackName = fullyQualifiedStackName(getTestOrg(), projectName, `int_test${getTestSuffix()}`);
         const stack = await Stack.create(stackName, ws);
 
-        // test backward compatibility
-        await stack.setConfig("key1", { value: "value1" });
-        // test new flag without subPath
-        await stack.setConfig("key2", { value: "value2" }, false);
-        // test new flag with subPath
-        await stack.setConfig("key3.subKey1", { value: "value3" }, true);
-        // test secret
-        await stack.setConfig("key4", { value: "value4", secret: true });
-        // test subPath and key as secret
-        await stack.setConfig("key5.subKey1", { value: "value5", secret: true }, true);
-        // test string with dots
-        await stack.setConfig("key6.subKey1", { value: "value6", secret: true });
-        // test string with dots
-        await stack.setConfig("key7.subKey1", { value: "value7", secret: true }, false);
-        // test subPath
-        await stack.setConfig("key7.subKey2", { value: "value8" }, true);
-        // test subPath
-        await stack.setConfig("key7.subKey3", { value: "value9" }, true);
+        await withStack(
+            stack,
+            async () => {
+                // test backward compatibility
+                await stack.setConfig("key1", { value: "value1" });
+                // test new flag without subPath
+                await stack.setConfig("key2", { value: "value2" }, false);
+                // test new flag with subPath
+                await stack.setConfig("key3.subKey1", { value: "value3" }, true);
+                // test secret
+                await stack.setConfig("key4", { value: "value4", secret: true });
+                // test subPath and key as secret
+                await stack.setConfig("key5.subKey1", { value: "value5", secret: true }, true);
+                // test string with dots
+                await stack.setConfig("key6.subKey1", { value: "value6", secret: true });
+                // test string with dots
+                await stack.setConfig("key7.subKey1", { value: "value7", secret: true }, false);
+                // test subPath
+                await stack.setConfig("key7.subKey2", { value: "value8" }, true);
+                // test subPath
+                await stack.setConfig("key7.subKey3", { value: "value9" }, true);
 
-        // test backward compatibility
-        const cv1 = await stack.getConfig("key1");
-        assert.strictEqual(cv1.value, "value1");
-        assert.strictEqual(cv1.secret, false);
+                // test backward compatibility
+                const cv1 = await stack.getConfig("key1");
+                assert.strictEqual(cv1.value, "value1");
+                assert.strictEqual(cv1.secret, false);
 
-        // test new flag without subPath
-        const cv2 = await stack.getConfig("key2", false);
-        assert.strictEqual(cv2.value, "value2");
-        assert.strictEqual(cv2.secret, false);
+                // test new flag without subPath
+                const cv2 = await stack.getConfig("key2", false);
+                assert.strictEqual(cv2.value, "value2");
+                assert.strictEqual(cv2.secret, false);
 
-        // test new flag with subPath
-        const cv3 = await stack.getConfig("key3.subKey1", true);
-        assert.strictEqual(cv3.value, "value3");
-        assert.strictEqual(cv3.secret, false);
+                // test new flag with subPath
+                const cv3 = await stack.getConfig("key3.subKey1", true);
+                assert.strictEqual(cv3.value, "value3");
+                assert.strictEqual(cv3.secret, false);
 
-        // test secret
-        const cv4 = await stack.getConfig("key4");
-        assert.strictEqual(cv4.value, "value4");
-        assert.strictEqual(cv4.secret, true);
+                // test secret
+                const cv4 = await stack.getConfig("key4");
+                assert.strictEqual(cv4.value, "value4");
+                assert.strictEqual(cv4.secret, true);
 
-        // test subPath and key as secret
-        const cv5 = await stack.getConfig("key5.subKey1", true);
-        assert.strictEqual(cv5.value, "value5");
-        assert.strictEqual(cv5.secret, true);
+                // test subPath and key as secret
+                const cv5 = await stack.getConfig("key5.subKey1", true);
+                assert.strictEqual(cv5.value, "value5");
+                assert.strictEqual(cv5.secret, true);
 
-        // test string with dots
-        const cv6 = await stack.getConfig("key6.subKey1");
-        assert.strictEqual(cv6.value, "value6");
-        assert.strictEqual(cv6.secret, true);
+                // test string with dots
+                const cv6 = await stack.getConfig("key6.subKey1");
+                assert.strictEqual(cv6.value, "value6");
+                assert.strictEqual(cv6.secret, true);
 
-        // test string with dots
-        const cv7 = await stack.getConfig("key7.subKey1", false);
-        assert.strictEqual(cv7.value, "value7");
-        assert.strictEqual(cv7.secret, true);
+                // test string with dots
+                const cv7 = await stack.getConfig("key7.subKey1", false);
+                assert.strictEqual(cv7.value, "value7");
+                assert.strictEqual(cv7.secret, true);
 
-        // test string with dots
-        const cv8 = await stack.getConfig("key7.subKey2", true);
-        assert.strictEqual(cv8.value, "value8");
-        assert.strictEqual(cv8.secret, false);
+                // test string with dots
+                const cv8 = await stack.getConfig("key7.subKey2", true);
+                assert.strictEqual(cv8.value, "value8");
+                assert.strictEqual(cv8.secret, false);
 
-        // test string with dots
-        const cv9 = await stack.getConfig("key7.subKey3", true);
-        assert.strictEqual(cv9.value, "value9");
-        assert.strictEqual(cv9.secret, false);
+                // test string with dots
+                const cv9 = await stack.getConfig("key7.subKey3", true);
+                assert.strictEqual(cv9.value, "value9");
+                assert.strictEqual(cv9.secret, false);
 
-        await stack.removeConfig("key1");
-        await stack.removeConfig("key2", false);
-        await stack.removeConfig("key3", false);
-        await stack.removeConfig("key4", false);
-        await stack.removeConfig("key5", false);
-        await stack.removeConfig("key6.subKey1", false);
-        await stack.removeConfig("key7.subKey1", false);
+                await stack.removeConfig("key1");
+                await stack.removeConfig("key2", false);
+                await stack.removeConfig("key3", false);
+                await stack.removeConfig("key4", false);
+                await stack.removeConfig("key5", false);
+                await stack.removeConfig("key6.subKey1", false);
+                await stack.removeConfig("key7.subKey1", false);
 
-        const cfg = await stack.getAllConfig();
-        assert.strictEqual(cfg["node_test:key7"].value, '{"subKey2":"value8","subKey3":"value9"}');
-
-        await ws.removeStack(stackName);
+                const cfg = await stack.getAllConfig();
+                assert.strictEqual(cfg["node_test:key7"].value, '{"subKey2":"value8","subKey3":"value9"}');
+            },
+            { destroy: false },
+        );
     });
     it(`setAllConfigJson`, async () => {
         const projectName = "config_json_test";
@@ -197,36 +209,40 @@ describe("LocalWorkspace - Config", () => {
         const stackName = fullyQualifiedStackName(getTestOrg(), projectName, `int_test${getTestSuffix()}`);
         const stack = await Stack.create(stackName, ws);
 
-        // Set config using JSON format
-        const configJson = JSON.stringify({
-            [`${projectName}:plainKey`]: {
-                value: "plainValue",
-                secret: false,
+        await withStack(
+            stack,
+            async () => {
+                // Set config using JSON format
+                const configJson = JSON.stringify({
+                    [`${projectName}:plainKey`]: {
+                        value: "plainValue",
+                        secret: false,
+                    },
+                    [`${projectName}:secretKey`]: {
+                        value: "secretValue",
+                        secret: true,
+                    },
+                    [`${projectName}:numberKey`]: {
+                        value: "42",
+                        secret: false,
+                    },
+                });
+
+                await stack.setAllConfigJson(configJson);
+
+                // Verify the config was set correctly
+                const allConfig = await stack.getAllConfig();
+
+                assert.strictEqual(allConfig[`${projectName}:plainKey`].value, "plainValue");
+                assert.strictEqual(allConfig[`${projectName}:plainKey`].secret, false);
+
+                assert.strictEqual(allConfig[`${projectName}:secretKey`].secret, true);
+
+                assert.strictEqual(allConfig[`${projectName}:numberKey`].value, "42");
+                assert.strictEqual(allConfig[`${projectName}:numberKey`].secret, false);
             },
-            [`${projectName}:secretKey`]: {
-                value: "secretValue",
-                secret: true,
-            },
-            [`${projectName}:numberKey`]: {
-                value: "42",
-                secret: false,
-            },
-        });
-
-        await stack.setAllConfigJson(configJson);
-
-        // Verify the config was set correctly
-        const allConfig = await stack.getAllConfig();
-
-        assert.strictEqual(allConfig[`${projectName}:plainKey`].value, "plainValue");
-        assert.strictEqual(allConfig[`${projectName}:plainKey`].secret, false);
-
-        assert.strictEqual(allConfig[`${projectName}:secretKey`].secret, true);
-
-        assert.strictEqual(allConfig[`${projectName}:numberKey`].value, "42");
-        assert.strictEqual(allConfig[`${projectName}:numberKey`].secret, false);
-
-        await ws.removeStack(stackName);
+            { destroy: false },
+        );
     });
     // This test verifies that nested config (maps and lists) can be read from a Pulumi.<stack>.yaml file.
     // We should not include secrets in this config, because the secret encryption is only valid within
@@ -265,8 +281,11 @@ describe("LocalWorkspace - Config", () => {
             assert.strictEqual(list.secret, false);
             assert.strictEqual(list.value, '["one","two","three"]');
         } finally {
-            fs.unlinkSync(dstConfig);
-            await stack.workspace.removeStack(stackName);
+            try {
+                fs.unlinkSync(dstConfig);
+            } finally {
+                await stack.workspace.removeStack(stackName, { force: true });
+            }
         }
     });
     // TODO[https://github.com/pulumi/pulumi/issues/7127]: Re-enabled the warning.

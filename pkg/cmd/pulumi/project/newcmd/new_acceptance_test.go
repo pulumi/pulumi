@@ -15,6 +15,7 @@
 package newcmd
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -59,14 +60,14 @@ func TestRegress13774(t *testing.T) {
 	}
 
 	// Create new project.
+	removeStackOnCleanup(t, tempdir, args.stack)
 	err := runNew(t.Context(), args)
-	defer removeStack(t, tempdir, args.stack)
 	require.NoError(t, err)
 
 	// Create new stack on an existing project.
 	args.stack = strings.Join([]string{orgName, projectName, "dev"}, "/")
+	removeStackOnCleanup(t, tempdir, args.stack)
 	err = runNew(t.Context(), args)
-	defer removeStack(t, tempdir, args.stack)
 	require.NoError(t, err, "should be able to run `pulumi new` successfully on an existing project")
 }
 
@@ -91,11 +92,11 @@ func TestCreatingStackWithArgsSpecifiedName(t *testing.T) {
 		languageTemplate:  languageTemplateMock,
 	}
 
+	removeStackOnCleanup(t, tempdir, orgStackName)
 	err := runNew(t.Context(), args)
 	require.NoError(t, err)
 
 	assert.Equal(t, fullStackName, loadStackName(t))
-	removeStack(t, tempdir, orgStackName)
 }
 
 //nolint:paralleltest // changes directory for process
@@ -126,6 +127,7 @@ func TestCreatingStackWithNumericName(t *testing.T) {
 		languageTemplate:  languageTemplateMock,
 	}
 
+	removeStackOnCleanup(t, tempdir, orgStackName)
 	err := runNew(t.Context(), args)
 	require.NoError(t, err)
 
@@ -135,7 +137,6 @@ func TestCreatingStackWithNumericName(t *testing.T) {
 	assert.Equal(t, p.Name.String(), numericProjectName)
 
 	assert.Equal(t, fullStackName, loadStackName(t))
-	removeStack(t, tempdir, orgStackName)
 }
 
 //nolint:paralleltest // changes directory for process
@@ -157,11 +158,11 @@ func TestCreatingStackWithPromptedName(t *testing.T) {
 		languageTemplate:  languageTemplateMock,
 	}
 
+	removeStackOnCleanup(t, tempdir, orgStackName)
 	err := runNew(t.Context(), args)
 	require.NoError(t, err)
 
 	assert.Equal(t, fullStackName, loadStackName(t))
-	removeStack(t, tempdir, orgStackName)
 }
 
 //nolint:paralleltest // changes directory for process
@@ -182,10 +183,9 @@ func TestCreatingProjectWithDefaultName(t *testing.T) {
 		languageTemplate:  languageTemplateMock,
 	}
 
+	removeStackOnCleanup(t, tempdir, stackName)
 	err := runNew(t.Context(), args)
 	require.NoError(t, err)
-
-	removeStack(t, tempdir, stackName)
 
 	proj := loadProject(t, tempdir)
 	assert.Equal(t, defaultProjectName, proj.Name.String())
@@ -328,17 +328,27 @@ func loadStackName(t *testing.T) string {
 	return name
 }
 
-func removeStack(t *testing.T, dir, name string) {
-	project := loadProject(t, dir)
-	ctx := t.Context()
-	b, err := backend.CurrentBackend(ctx, pkgWorkspace.Instance, backend.DefaultLoginManager, project, display.Options{})
-	require.NoError(t, err)
-	ref, err := b.ParseStackReference(name)
-	require.NoError(t, err)
-	stack, err := b.GetStack(t.Context(), ref)
-	require.NoError(t, err)
-	_, err = b.RemoveStack(t.Context(), stack, false /*force*/, false /*removeBackups*/)
-	require.NoError(t, err)
+// removeStackOnCleanup arranges for the named stack to be removed when the test ends. Register it
+// before the assertion guarding creation: `pulumi new` can create the stack and then fail.
+func removeStackOnCleanup(t *testing.T, dir, name string) {
+	t.Helper()
+	t.Cleanup(func() {
+		//nolint:usetesting // t.Context is already canceled by the time cleanup functions run.
+		ctx := context.Background()
+		project := loadProject(t, dir)
+		b, err := backend.CurrentBackend(ctx, pkgWorkspace.Instance, backend.DefaultLoginManager,
+			project, display.Options{})
+		require.NoError(t, err)
+		ref, err := b.ParseStackReference(name)
+		require.NoError(t, err)
+		stack, err := b.GetStack(ctx, ref)
+		require.NoError(t, err)
+		if stack == nil {
+			return
+		}
+		_, err = b.RemoveStack(ctx, stack, true /*force*/, false /*removeBackups*/)
+		require.NoError(t, err)
+	})
 }
 
 func skipIfShortOrNoPulumiAccessToken(t *testing.T) {

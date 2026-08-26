@@ -928,7 +928,7 @@ func TestStackTags(t *testing.T) {
 	integration.CreateBasicPulumiRepo(e)
 	e.ImportDirectory("testdata/simple_tags")
 
-	e.RunCommand("pulumi", "stack", "init", stackName)
+	e.StackInit(stackName)
 
 	e.RunCommand("pulumi", "stack", "tag", "set", "tagA", "valueA")
 	e.RunCommand("pulumi", "stack", "tag", "set", "tagB", "valueB")
@@ -988,6 +988,7 @@ func TestNewStackConflictingOrg(t *testing.T) {
 	}
 	for _, org := range orgs {
 		stackRef := fmt.Sprintf("%s/%s/stack", org, project)
+		e.RemoveStackOnExit(stackRef)
 		e.RunCommand("pulumi", "new", "yaml", "-s", stackRef, "--yes", "--force")
 		e.RunCommand("pulumi", "up", "--yes")
 		e.RunCommand("pulumi", "destroy", "--yes", "--remove")
@@ -1017,7 +1018,7 @@ func TestEmptyStackRm(t *testing.T) {
 	for _, backend := range backends {
 		e.Backend = backend
 
-		e.RunCommand("pulumi", "stack", "init", stack)
+		e.StackInit(stack)
 
 		e.RunCommand("pulumi", "up", "--yes")
 		// The stack should just have the default stack resource in it

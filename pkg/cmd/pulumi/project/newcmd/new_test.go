@@ -127,11 +127,11 @@ func TestCreatingStackWithArgsSpecifiedOrgName(t *testing.T) {
 		languageTemplate:  languageTemplateMock,
 	}
 
+	removeStackOnCleanup(t, tempdir, orgStackName)
 	err := runNew(t.Context(), args)
 	require.NoError(t, err)
 
 	assert.Equal(t, fullStackName, loadStackName(t))
-	removeStack(t, tempdir, orgStackName)
 }
 
 //nolint:paralleltest // changes directory for process
@@ -153,11 +153,11 @@ func TestCreatingStackWithPromptedOrgName(t *testing.T) {
 		languageTemplate:  languageTemplateMock,
 	}
 
+	removeStackOnCleanup(t, tempdir, orgStackName)
 	err := runNew(t.Context(), args)
 	require.NoError(t, err)
 
 	assert.Equal(t, fullStackName, loadStackName(t))
-	removeStack(t, tempdir, orgStackName)
 }
 
 //nolint:paralleltest // changes directory for process
@@ -181,11 +181,11 @@ func TestCreatingStackWithArgsSpecifiedFullNameSucceeds(t *testing.T) {
 		languageTemplate:  languageTemplateMock,
 	}
 
+	removeStackOnCleanup(t, tempdir, fullStackName)
 	err := runNew(t.Context(), args)
 	require.NoError(t, err)
 
 	assert.Equal(t, fullStackName, loadStackName(t))
-	removeStack(t, tempdir, fullStackName)
 }
 
 //nolint:paralleltest // changes directory for process
@@ -207,10 +207,9 @@ func TestCreatingProjectWithArgsSpecifiedName(t *testing.T) {
 		languageTemplate:  languageTemplateMock,
 	}
 
+	removeStackOnCleanup(t, tempdir, stackName)
 	err := runNew(t.Context(), args)
 	require.NoError(t, err)
-
-	removeStack(t, tempdir, stackName)
 
 	proj := loadProject(t, tempdir)
 	assert.Equal(t, uniqueProjectName, proj.Name.String())
@@ -232,10 +231,9 @@ func TestCreatingProjectWithPromptedName(t *testing.T) {
 		languageTemplate:  languageTemplateMock,
 	}
 
+	removeStackOnCleanup(t, tempdir, stackName)
 	err := runNew(t.Context(), args)
 	require.NoError(t, err)
-
-	removeStack(t, tempdir, stackName)
 
 	proj := loadProject(t, tempdir)
 	assert.Equal(t, uniqueProjectName, proj.Name.String())
@@ -380,6 +378,7 @@ func TestCreatingProjectWithEmptyConfig(t *testing.T) {
 		languageTemplate:  languageTemplateMock,
 	}
 
+	removeStackOnCleanup(t, tempdir, stackName)
 	err := runNew(t.Context(), args)
 	require.NoError(t, err)
 
@@ -388,8 +387,6 @@ func TestCreatingProjectWithEmptyConfig(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.NotContains(t, projStack.Config, config.MustMakeKey("aws", "region"))
-
-	removeStack(t, tempdir, stackName)
 }
 
 //nolint:paralleltest // changes directory for process, mocks login manager

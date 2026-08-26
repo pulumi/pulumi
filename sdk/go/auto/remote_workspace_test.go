@@ -230,12 +230,7 @@ func testRemoteStackGitSource(
 		t.Errorf("failed to initialize stack, err: %v", err)
 		t.FailNow()
 	}
-
-	defer func() {
-		// -- pulumi stack rm --
-		err = s.stack.Workspace().RemoveStack(ctx, s.Name())
-		assert.Nil(t, err, "failed to remove stack. Resources have leaked.")
-	}()
+	removeStackOnCleanup(t, &s.stack)
 
 	// -- pulumi up --
 	res, err := s.Up(ctx)

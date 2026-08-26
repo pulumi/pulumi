@@ -425,33 +425,35 @@ async function testLifecycle(fn: (args: RemoteGitProgramArgs, opts?: RemoteWorks
         },
     );
 
-    // pulumi up
-    const upRes = await stack.up();
-    assert.strictEqual(Object.keys(upRes.outputs).length, 3);
-    assert.strictEqual(upRes.outputs["exp_static"].value, "foo");
-    assert.strictEqual(upRes.outputs["exp_static"].secret, false);
-    assert.strictEqual(upRes.outputs["exp_cfg"].value, "abc");
-    assert.strictEqual(upRes.outputs["exp_cfg"].secret, false);
-    assert.strictEqual(upRes.outputs["exp_secret"].value, "secret");
-    assert.strictEqual(upRes.outputs["exp_secret"].secret, true);
-    assert.strictEqual(upRes.summary.kind, "update");
-    assert.strictEqual(upRes.summary.result, "succeeded");
+    try {
+        // pulumi up
+        const upRes = await stack.up();
+        assert.strictEqual(Object.keys(upRes.outputs).length, 3);
+        assert.strictEqual(upRes.outputs["exp_static"].value, "foo");
+        assert.strictEqual(upRes.outputs["exp_static"].secret, false);
+        assert.strictEqual(upRes.outputs["exp_cfg"].value, "abc");
+        assert.strictEqual(upRes.outputs["exp_cfg"].secret, false);
+        assert.strictEqual(upRes.outputs["exp_secret"].value, "secret");
+        assert.strictEqual(upRes.outputs["exp_secret"].secret, true);
+        assert.strictEqual(upRes.summary.kind, "update");
+        assert.strictEqual(upRes.summary.result, "succeeded");
 
-    // pulumi preview
-    const preRes = await stack.preview();
-    assert.strictEqual(preRes.changeSummary.same, 1);
+        // pulumi preview
+        const preRes = await stack.preview();
+        assert.strictEqual(preRes.changeSummary.same, 1);
 
-    // pulumi refresh
-    const refRes = await stack.refresh();
-    assert.strictEqual(refRes.summary.kind, "refresh");
-    assert.strictEqual(refRes.summary.result, "succeeded");
+        // pulumi refresh
+        const refRes = await stack.refresh();
+        assert.strictEqual(refRes.summary.kind, "refresh");
+        assert.strictEqual(refRes.summary.result, "succeeded");
 
-    // pulumi destroy
-    const destroyRes = await stack.destroy();
-    assert.strictEqual(destroyRes.summary.kind, "destroy");
-    assert.strictEqual(destroyRes.summary.result, "succeeded");
-
-    await (await LocalWorkspace.create({})).removeStack(stackName);
+        // pulumi destroy
+        const destroyRes = await stack.destroy();
+        assert.strictEqual(destroyRes.summary.kind, "destroy");
+        assert.strictEqual(destroyRes.summary.result, "succeeded");
+    } finally {
+        await (await LocalWorkspace.create({})).removeStack(stackName, { force: true });
+    }
 }
 
 describe("isFullyQualifiedStackName", () => {

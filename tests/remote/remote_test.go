@@ -137,7 +137,7 @@ func TestRemoteLifecycle(t *testing.T) {
 	stack := strings.ToLower("p-t-remotelifecycle-" + randomSuffix())
 	fullyQualifiedStack := fmt.Sprintf("%s/%s/%s", owner, proj, stack)
 
-	e.RunCommand("pulumi", "stack", "init", "--no-select", "--stack", fullyQualifiedStack)
+	e.StackInit(fullyQualifiedStack, "--no-select")
 
 	args := func(command string) []string {
 		return []string{

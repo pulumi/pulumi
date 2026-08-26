@@ -917,10 +917,15 @@ func ProgramTest(t *testing.T, opts *ProgramTestOptions) {
 	}
 }
 
-// ProgramTestManualLifeCycle returns a ProgramTester than must be manually controlled in terms of its lifecycle
+// ProgramTestManualLifeCycle returns a ProgramTester than must be manually controlled in terms of
+// its lifecycle. If the test has not run TestLifeCycleDestroy by the time it ends, the stack is
+// destroyed and removed for it.
 func ProgramTestManualLifeCycle(t *testing.T, opts *ProgramTestOptions) *ProgramTester {
 	prepareProgram(t, opts)
 	pt := newProgramTester(t, opts)
+	// Tests driving the lifecycle by hand routinely abort on a failed assertion before reaching
+	// their own TestLifeCycleDestroy call, which would otherwise strand the stack.
+	t.Cleanup(pt.destroyStackIfInitialized)
 	return pt
 }
 
@@ -943,6 +948,15 @@ type ProgramTester struct {
 	projdir        string              // the project directory we use for this run
 	TestFinished   bool                // whether or not the test if finished
 	pulumiHome     string              // The directory PULUMI_HOME will be set to
+
+	// stackInitialized records that `pulumi stack init` succeeded, so cleanup must remove the stack.
+	stackInitialized bool
+	// stackCleanedUp guards TestLifeCycleDestroy against running twice: a manual-lifecycle test
+	// calls it explicitly and the backstop calls it again. Reset by TestLifeCycleInitialize.
+	stackCleanedUp bool
+	// createdEnvironments is what cleanup removes; opts.CreateEnvironments is not a substitute,
+	// since a failure part way through creates only some of them.
+	createdEnvironments []string
 }
 
 func newProgramTester(t *testing.T, opts *ProgramTestOptions) *ProgramTester {
@@ -964,6 +978,15 @@ func newProgramTester(t *testing.T, opts *ProgramTestOptions) *ProgramTester {
 		maxStepTries:   maxStepTries,
 		pulumiHome:     home,
 	}
+}
+
+// RetainFailedStacksEnvVar leaves the stacks of failing tests in place for debugging. Off by
+// default: nothing reclaims them.
+const RetainFailedStacksEnvVar = "PULUMI_TEST_RETAIN_FAILED_STACKS"
+
+// RetainFailedStacks reports whether stacks belonging to failing tests should be left in place.
+func RetainFailedStacks() bool {
+	return cmdutil.IsTruthy(os.Getenv(RetainFailedStacksEnvVar))
 }
 
 // MakeTempBackend creates a temporary backend directory which will clean up on test exit.
@@ -1417,8 +1440,11 @@ func (pt *ProgramTester) checkTestFailure() error {
 	return nil
 }
 
-// TestCleanUp cleans up the temporary directory that a test used
+// TestCleanUp removes any surviving stack and then the temporary directories. That order matters:
+// removing the stack needs the project directory and PULUMI_HOME.
 func (pt *ProgramTester) TestCleanUp() {
+	pt.destroyStackIfInitialized()
+
 	testFinished := pt.TestFinished
 	if pt.tmpdir != "" {
 		if !testFinished || pt.t.Failed() {
@@ -1462,21 +1488,22 @@ func (pt *ProgramTester) TestLifeCycleInitAndDestroy() error {
 		defer pt.TestCleanUp()
 	}
 
-	err = pt.TestLifeCycleInitialize()
-	if err != nil {
-		return fmt.Errorf("initializing test project: %w", err)
-	}
-
 	destroyStack := func() {
 		destroyErr := pt.TestLifeCycleDestroy()
 		require.NoError(pt.t, destroyErr)
 	}
+	// Registered before initialization: a failure after `stack init` would otherwise strand it.
 	if pt.opts.DestroyOnCleanup {
 		// Allow other tests to refer to this stack until the test is complete.
 		pt.t.Cleanup(destroyStack)
 	} else {
 		// Ensure that before we exit, we attempt to destroy and remove the stack.
 		defer destroyStack()
+	}
+
+	err = pt.TestLifeCycleInitialize()
+	if err != nil {
+		return fmt.Errorf("initializing test project: %w", err)
 	}
 
 	if err = pt.TestPreviewUpdateAndEdits(); err != nil {
@@ -1581,6 +1608,7 @@ func (pt *ProgramTester) TestLifeCycleInitialize() error {
 	if err := pt.runPulumiCommand("pulumi-stack-init", stackInitArgs, dir, false); err != nil {
 		return err
 	}
+	pt.stackInitialized, pt.stackCleanedUp = true, false
 
 	if len(pt.opts.Config)+len(pt.opts.Secrets) > 0 {
 		setAllArgs := []string{"config", "set-all"}
@@ -1636,6 +1664,7 @@ func (pt *ProgramTester) TestLifeCycleInitialize() error {
 		if err := pt.runPulumiCommand("pulumi-env-init", initArgs, dir, false); err != nil {
 			return err
 		}
+		pt.createdEnvironments = append(pt.createdEnvironments, name)
 	}
 
 	if len(pt.opts.Environments) != 0 {
@@ -1669,49 +1698,80 @@ func (pt *ProgramTester) TestLifeCycleInitialize() error {
 	return nil
 }
 
-// TestLifeCycleDestroy destroys a stack and removes it
+// destroyStackIfInitialized is a backstop, not a test step: unlike TestLifeCycleDestroy it does
+// nothing unless this tester created the stack, and it never fails the test.
+func (pt *ProgramTester) destroyStackIfInitialized() {
+	if !pt.stackInitialized {
+		return
+	}
+	if err := pt.TestLifeCycleDestroy(); err != nil {
+		pt.t.Logf("error removing stack %q: %v", pt.opts.GetStackNameWithOwner(), err)
+	}
+}
+
+// TestLifeCycleDestroy destroys a stack and removes it, including for a failing test.
+// PULUMI_TEST_RETAIN_FAILED_STACKS and PULUMI_TEST_FORCE_STACK_REMOVAL adjust that; both are off by
+// default.
 func (pt *ProgramTester) TestLifeCycleDestroy() error {
-	if pt.projdir != "" {
-		// Destroy and remove the stack.
-		pt.t.Log("Destroying stack")
-		destroy := []string{"destroy", "--non-interactive", "--yes", "--skip-preview"}
-		if pt.opts.GetDebugUpdates() {
-			destroy = append(destroy, "-d")
-		}
-		if pt.opts.JSONOutput {
-			destroy = append(destroy, "--json")
-		}
-		if pt.opts.DestroyExcludeProtected {
-			destroy = append(destroy, "--exclude-protected")
-		}
-		if pt.opts.DestroyCommandlineFlags != nil {
-			destroy = append(destroy, pt.opts.DestroyCommandlineFlags...)
-		}
-		if err := pt.runPulumiCommand("pulumi-destroy", destroy, pt.projdir, false); err != nil {
-			return err
-		}
+	if pt.projdir == "" || pt.stackCleanedUp {
+		return nil
+	}
+	// Set up front: the later hooks run microseconds later in the same defer chain, so retrying
+	// there only repeats a slow destroy.
+	pt.stackCleanedUp = true
 
-		if pt.t.Failed() {
-			pt.t.Logf("Test failed, retaining stack '%s'", pt.opts.GetStackNameWithOwner())
-			return nil
-		}
+	pt.t.Log("Destroying stack")
+	destroy := []string{"destroy", "--non-interactive", "--yes", "--skip-preview"}
+	if pt.opts.GetDebugUpdates() {
+		destroy = append(destroy, "-d")
+	}
+	if pt.opts.JSONOutput {
+		destroy = append(destroy, "--json")
+	}
+	if pt.opts.DestroyExcludeProtected {
+		destroy = append(destroy, "--exclude-protected")
+	}
+	if pt.opts.DestroyCommandlineFlags != nil {
+		destroy = append(destroy, pt.opts.DestroyCommandlineFlags...)
+	}
+	force := ptesting.ForceStackRemoval()
+	destroyErr := pt.runPulumiCommand("pulumi-destroy", destroy, pt.projdir, false)
+	if destroyErr != nil && !force {
+		// Resources the stack still manages would be orphaned by removing it, so it stays.
+		return destroyErr
+	}
 
-		if !pt.opts.SkipStackRemoval {
-			err := pt.runPulumiCommand("pulumi-stack-rm", []string{"stack", "rm", "--yes"}, pt.projdir, false)
-			if err != nil {
-				return err
-			}
-		}
+	var errs []error
+	if destroyErr != nil {
+		errs = append(errs, destroyErr)
+	}
 
-		for _, env := range pt.opts.CreateEnvironments {
-			name := pt.opts.getEnvNameWithOwner(env.Name)
-			err := pt.runPulumiCommand("pulumi-env-rm", []string{"env", "rm", "--yes", name}, pt.projdir, false)
-			if err != nil {
-				return err
-			}
+	if pt.t.Failed() && RetainFailedStacks() {
+		pt.t.Logf("Test failed, retaining stack '%s'", pt.opts.GetStackNameWithOwner())
+		return errors.Join(errs...)
+	}
+
+	// Forcing overrides SkipStackRemoval, whose whole purpose is to retain a stack for inspection.
+	if force || !pt.opts.SkipStackRemoval {
+		rm := []string{"stack", "rm", "--yes"}
+		if force {
+			// Resources may remain in the checkpoint, from a failed destroy or from protected ones.
+			rm = append(rm, "--force")
+		}
+		if err := pt.runPulumiCommand("pulumi-stack-rm", rm, pt.projdir, false); err != nil {
+			errs = append(errs, err)
 		}
 	}
-	return nil
+
+	// Remove environments even if stack removal failed; they leak just as durably.
+	for _, name := range pt.createdEnvironments {
+		err := pt.runPulumiCommand("pulumi-env-rm", []string{"env", "rm", "--yes", name}, pt.projdir, false)
+		if err != nil {
+			errs = append(errs, err)
+		}
+	}
+
+	return errors.Join(errs...)
 }
 
 // TestPreviewUpdateAndEdits runs the preview, update, and any relevant edits

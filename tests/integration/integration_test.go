@@ -228,9 +228,9 @@ func testDestroyStackRef(e *ptesting.Environment, organization string) {
 
 	if organization != "" {
 		qualifiedStackName := fmt.Sprintf("%s/%s", organization, stackName)
-		e.RunCommand("pulumi", "stack", "init", qualifiedStackName)
+		e.StackInit(qualifiedStackName)
 	} else {
-		e.RunCommand("pulumi", "stack", "init", stackName)
+		e.StackInit(stackName)
 	}
 
 	e.InstallDependencies()
@@ -946,7 +946,7 @@ func testConstructResourceOptions(t *testing.T, dir string, deps []string) {
 		Quick:                   true,
 		NoParallel:              true, // already called by tests
 		DestroyExcludeProtected: true, // test contains protected resources
-		SkipStackRemoval:        true, // protected resources prevent stack removal
+		SkipStackRemoval:        true, // protected resources prevent unforced stack removal
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 			validate(t, stackInfo.Deployment.Resources)
 		},
@@ -961,9 +961,9 @@ func testProjectRename(e *ptesting.Environment, organization string) {
 
 	if organization != "" {
 		qualifiedStackName := fmt.Sprintf("%s/%s", organization, stackName)
-		e.RunCommand("pulumi", "stack", "init", qualifiedStackName)
+		e.StackInit(qualifiedStackName)
 	} else {
-		e.RunCommand("pulumi", "stack", "init", stackName)
+		e.StackInit(stackName)
 	}
 
 	e.InstallDependencies()
@@ -973,6 +973,7 @@ func testProjectRename(e *ptesting.Environment, organization string) {
 	stackRef := organization + "/" + newProjectName + "/" + stackName
 
 	e.RunCommand("pulumi", "stack", "rename", stackRef)
+	e.RemoveStackOnExit(stackRef)
 
 	// Rename the project name in the yaml file
 	projFilename := filepath.Join(e.CWD, "Pulumi.yaml")
@@ -1074,14 +1075,14 @@ func testStackRmConfig(e *ptesting.Environment, organization string) {
 	// Create a stack in the go project
 	e.CWD = goDir
 	e.ImportDirectory("empty/go")
-	e.RunCommand("pulumi", "stack", "init", qualifiedStackName)
+	e.StackInit(qualifiedStackName)
 	// Create a config value to ensure there's a Pulumi.<name>.yaml file.
 	e.RunCommand("pulumi", "config", "set", "key", "value")
 
 	// Now create the js project
 	e.CWD = jsDir
 	e.ImportDirectory("empty/nodejs")
-	e.RunCommand("pulumi", "stack", "init", qualifiedStackName)
+	e.StackInit(qualifiedStackName)
 	// Create a config value to ensure there's a Pulumi.<name>.yaml file.
 	e.RunCommand("pulumi", "config", "set", "key", "value")
 

@@ -157,33 +157,34 @@ def test_remote_workspace_stack_lifecycle(factory):
         ),
     )
 
-    # pulumi up
-    up_res = stack.up()
-    assert len(up_res.outputs) == 3
-    assert up_res.outputs["exp_static"].value == "foo"
-    assert not up_res.outputs["exp_static"].secret
-    assert up_res.outputs["exp_cfg"].value == "abc"
-    assert not up_res.outputs["exp_cfg"].secret
-    assert up_res.outputs["exp_secret"].value == "secret"
-    assert up_res.outputs["exp_secret"].secret
-    assert up_res.summary.kind == "update"
-    assert up_res.summary.result == "succeeded"
+    try:
+        # pulumi up
+        up_res = stack.up()
+        assert len(up_res.outputs) == 3
+        assert up_res.outputs["exp_static"].value == "foo"
+        assert not up_res.outputs["exp_static"].secret
+        assert up_res.outputs["exp_cfg"].value == "abc"
+        assert not up_res.outputs["exp_cfg"].secret
+        assert up_res.outputs["exp_secret"].value == "secret"
+        assert up_res.outputs["exp_secret"].secret
+        assert up_res.summary.kind == "update"
+        assert up_res.summary.result == "succeeded"
 
-    # pulumi preview
-    preview_result = stack.preview()
-    assert preview_result.change_summary.get(OpType.SAME) == 1
+        # pulumi preview
+        preview_result = stack.preview()
+        assert preview_result.change_summary.get(OpType.SAME) == 1
 
-    # pulumi refresh
-    refresh_res = stack.refresh()
-    assert refresh_res.summary.kind == "refresh"
-    assert refresh_res.summary.result == "succeeded"
+        # pulumi refresh
+        refresh_res = stack.refresh()
+        assert refresh_res.summary.kind == "refresh"
+        assert refresh_res.summary.result == "succeeded"
 
-    # pulumi destroy
-    destroy_res = stack.destroy()
-    assert destroy_res.summary.kind == "destroy"
-    assert destroy_res.summary.result == "succeeded"
-
-    LocalWorkspace().remove_stack(stack_name)
+        # pulumi destroy
+        destroy_res = stack.destroy()
+        assert destroy_res.summary.kind == "destroy"
+        assert destroy_res.summary.result == "succeeded"
+    finally:
+        LocalWorkspace().remove_stack(stack_name, force=True)
 
 
 @pytest.mark.parametrize(

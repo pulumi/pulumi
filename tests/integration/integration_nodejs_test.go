@@ -223,7 +223,7 @@ func TestRemoveWithResourcesBlocked(t *testing.T) {
 	contract.AssertNoErrorf(err, "resource.NewUniqueHex should not fail with no maximum length is set")
 
 	e.ImportDirectory("single_resource")
-	e.RunCommand("pulumi", "stack", "init", stackName)
+	e.StackInit(stackName)
 	e.InstallDependencies()
 	e.RunCommand("pulumi", "up", "--non-interactive", "--yes", "--skip-preview")
 	_, stderr := e.RunCommandExpectError("pulumi", "stack", "rm", "--yes")

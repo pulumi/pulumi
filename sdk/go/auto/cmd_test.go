@@ -139,8 +139,9 @@ func TestNoGlobalPulumi(t *testing.T) {
 	projectName := "autoInstall"
 	stackName := ptesting.RandomStackName()
 
-	_, err = UpsertStackInlineSource(ctx, stackName, projectName, deployFunc, Pulumi(pulumiCommand))
+	s, err := UpsertStackInlineSource(ctx, stackName, projectName, deployFunc, Pulumi(pulumiCommand))
 	require.NoError(t, err)
+	removeStackOnCleanup(t, &s)
 }
 
 func TestVersionWithVerboseEnv(t *testing.T) {

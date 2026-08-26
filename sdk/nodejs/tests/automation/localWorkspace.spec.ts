@@ -510,13 +510,17 @@ describe("LocalWorkspace", () => {
             withTestBackend({}, "inline_node"),
         );
 
-        await stack.up({ userAgent });
+        await withStack(
+            stack,
+            async () => {
+                await stack.up({ userAgent });
 
-        // we shouldn't be able to remove the stack without force
-        // since the stack has an active resource
-        await assert.rejects(stack.workspace.removeStack(stackName));
-
-        await stack.workspace.removeStack(stackName, { force: true });
+                // we shouldn't be able to remove the stack without force
+                // since the stack has an active resource
+                await assert.rejects(stack.workspace.removeStack(stackName));
+            },
+            { destroy: false },
+        );
 
         // we shouldn't be able to select the stack after it's been removed
         // we expect this error
@@ -540,13 +544,21 @@ describe("LocalWorkspace", () => {
             withTestBackend({}, "inline_node"),
         );
 
-        await stack.up({ userAgent });
+        let removed = false;
+        try {
+            await stack.up({ userAgent });
 
-        // Act.
-        await stack.destroy({ userAgent, remove: true });
+            // Act.
+            await stack.destroy({ userAgent, remove: true });
+            removed = true;
 
-        // Assert.
-        await assert.rejects(stack.workspace.selectStack(stackName));
+            // Assert.
+            await assert.rejects(stack.workspace.selectStack(stackName));
+        } finally {
+            if (!removed) {
+                await stack.workspace.removeStack(stackName, { force: true });
+            }
+        }
     });
     // Regression test for https://github.com/pulumi/pulumi/issues/17613
     it(`does not hang on a failed input`, async function () {
@@ -572,9 +584,9 @@ describe("LocalWorkspace", () => {
             withTestBackend({}, "inline_node"),
         );
 
-        await assert.rejects(stack.up(), /input rejected/);
-
-        await stack.destroy({ remove: true });
+        await withStack(stack, async () => {
+            await assert.rejects(stack.up(), /input rejected/);
+        });
     });
     it(`refreshes with refresh option`, async () => {
         // We create a simple program, and scan the output for an indication
@@ -590,19 +602,27 @@ describe("LocalWorkspace", () => {
             { stackName, projectName, program },
             withTestBackend({}, "inline_node"),
         );
-        // • First, run Up so we can set the initial state.
-        await stack.up({ userAgent });
-        // • Next, run preview with refresh and check that the refresh was performed.
-        const refresh = true;
-        const previewRes = await stack.preview({ userAgent, refresh });
-        assert.match(previewRes.stdout, /refreshing/);
-        assert.strictEqual(previewRes.changeSummary.same, 1, "preview expected 1 same (the stack)");
+        let removed = false;
+        try {
+            // • First, run Up so we can set the initial state.
+            await stack.up({ userAgent });
+            // • Next, run preview with refresh and check that the refresh was performed.
+            const refresh = true;
+            const previewRes = await stack.preview({ userAgent, refresh });
+            assert.match(previewRes.stdout, /refreshing/);
+            assert.strictEqual(previewRes.changeSummary.same, 1, "preview expected 1 same (the stack)");
 
-        const upRes = await stack.up({ userAgent, refresh });
-        assert.match(upRes.stdout, /refreshing/);
+            const upRes = await stack.up({ userAgent, refresh });
+            assert.match(upRes.stdout, /refreshing/);
 
-        const destroyRes = await stack.destroy({ userAgent, refresh, remove: true });
-        assert.match(destroyRes.stdout, /refreshing/);
+            const destroyRes = await stack.destroy({ userAgent, refresh, remove: true });
+            removed = true;
+            assert.match(destroyRes.stdout, /refreshing/);
+        } finally {
+            if (!removed) {
+                await stack.workspace.removeStack(stackName, { force: true });
+            }
+        }
     });
     it(`operations accept configFile option`, async () => {
         // We are testing that the configFile option is accepted by the operations.

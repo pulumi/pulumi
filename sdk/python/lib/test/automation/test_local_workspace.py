@@ -152,43 +152,46 @@ class TestLocalWorkspace(unittest.TestCase):
 
         # Create a stack
         ws.create_stack(stack_1_name)
-        stacks = ws.list_stacks()
-        stack_1 = get_stack(stacks, listed_stack_1_name)
+        try:
+            stacks = ws.list_stacks()
+            stack_1 = get_stack(stacks, listed_stack_1_name)
 
-        # Check the stack exists
-        self.assertIsNotNone(stack_1)
-        # Check that it's current
-        self.assertTrue(stack_1.current)
+            # Check the stack exists
+            self.assertIsNotNone(stack_1)
+            # Check that it's current
+            self.assertTrue(stack_1.current)
 
-        # Create another stack
-        ws.create_stack(stack_2_name)
-        stacks = ws.list_stacks()
-        stack_1 = get_stack(stacks, listed_stack_1_name)
-        stack_2 = get_stack(stacks, listed_stack_2_name)
+            # Create another stack
+            ws.create_stack(stack_2_name)
+            try:
+                stacks = ws.list_stacks()
+                stack_1 = get_stack(stacks, listed_stack_1_name)
+                stack_2 = get_stack(stacks, listed_stack_2_name)
 
-        # Check the second stack exists
-        self.assertIsNotNone(stack_2)
-        # Check that second stack is current but the first is not
-        self.assertFalse(stack_1.current)
-        self.assertTrue(stack_2.current)
+                # Check the second stack exists
+                self.assertIsNotNone(stack_2)
+                # Check that second stack is current but the first is not
+                self.assertFalse(stack_1.current)
+                self.assertTrue(stack_2.current)
 
-        # Select the first stack again
-        ws.select_stack(stack_1_name)
-        stacks = ws.list_stacks()
-        stack_1 = get_stack(stacks, listed_stack_1_name)
+                # Select the first stack again
+                ws.select_stack(stack_1_name)
+                stacks = ws.list_stacks()
+                stack_1 = get_stack(stacks, listed_stack_1_name)
 
-        # Check the first stack is now current
-        self.assertTrue(stack_1.current)
+                # Check the first stack is now current
+                self.assertTrue(stack_1.current)
 
-        # Get the current stack info
-        current_stack = ws.stack()
+                # Get the current stack info
+                current_stack = ws.stack()
 
-        # Check that the name matches stack 1
-        self.assertEqual(current_stack.name, listed_stack_1_name)
+                # Check that the name matches stack 1
+                self.assertEqual(current_stack.name, listed_stack_1_name)
+            finally:
+                ws.remove_stack(stack_2_name, force=True)
+        finally:
+            ws.remove_stack(stack_1_name, force=True)
 
-        # Remove both stacks
-        ws.remove_stack(stack_1_name)
-        ws.remove_stack(stack_2_name)
         stacks = ws.list_stacks()
         stack_1 = get_stack(stacks, listed_stack_1_name)
         stack_2 = get_stack(stacks, listed_stack_2_name)
@@ -244,10 +247,12 @@ class TestLocalWorkspace(unittest.TestCase):
         stack_name = stack_namer(project_name)
 
         stack = Stack.create(stack_name, ws)
-        stack.rename(stack_name + "_renamed")
-
-        # This will throw if the renamed stack doesn't exist.
-        ws.remove_stack(stack_name + "_renamed")
+        try:
+            stack.rename(stack_name + "_renamed")
+        finally:
+            # rename updates stack.name as soon as the backend rename lands, so this removes
+            # whichever name actually exists.
+            ws.remove_stack(stack.name, force=True)
 
     def test_config_env_functions(self):
         if get_test_org() != "moolumi":
@@ -425,9 +430,9 @@ class TestLocalWorkspace(unittest.TestCase):
         ws = LocalWorkspace(work_dir=get_test_path("data", "import"))
         stack_name = stack_namer("import")
         stack = Stack.create(stack_name, ws)
-        random_plugin_version = "4.16.3"
-        ws.install_plugin("random", random_plugin_version)
         with stack_cleanup(stack, destroy=False):
+            random_plugin_version = "4.16.3"
+            ws.install_plugin("random", random_plugin_version)
             result = stack.import_resources(
                 protect=False,
                 resources=[
@@ -1080,14 +1085,13 @@ class TestLocalWorkspace(unittest.TestCase):
             stack_name, program=pulumi_program_with_resource, project_name=project_name
         )
 
-        stack.up()
+        with stack_cleanup(stack, destroy=False):
+            stack.up()
 
-        # we shouldn't be able to remove the stack without force
-        # since the stack has an active resource
-        with self.assertRaises(CommandError):
-            stack.workspace.remove_stack(stack_name)
-
-        stack.workspace.remove_stack(stack_name, force=True)
+            # we shouldn't be able to remove the stack without force
+            # since the stack has an active resource
+            with self.assertRaises(CommandError):
+                stack.workspace.remove_stack(stack_name)
 
         # we shouldn't be able to select the stack after it's been removed
         # we expect this error
@@ -1102,14 +1106,20 @@ class TestLocalWorkspace(unittest.TestCase):
             stack_name, program=pulumi_program_with_resource, project_name=project_name
         )
 
-        stack.up()
+        removed = False
+        try:
+            stack.up()
 
-        # Act.
-        stack.destroy(remove=True)
+            # Act.
+            stack.destroy(remove=True)
+            removed = True
 
-        # Assert.
-        with self.assertRaises(StackNotFoundError):
-            stack.workspace.select_stack(stack_name)
+            # Assert.
+            with self.assertRaises(StackNotFoundError):
+                stack.workspace.select_stack(stack_name)
+        finally:
+            if not removed:
+                stack.workspace.remove_stack(stack_name, force=True)
 
     def test_stack_lifecycle_async_inline_program(self):
         project_name = "async_inline_python"

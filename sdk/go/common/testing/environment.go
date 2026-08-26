@@ -27,6 +27,7 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
 	"github.com/stretchr/testify/require"
 )
@@ -59,6 +60,26 @@ type Environment struct {
 	NoPassphrase bool
 	// Content to pass on stdin, if any
 	Stdin io.Reader
+
+	// Stacks created through StackInit, to be removed when the environment is torn down.
+	stacks []trackedStack
+}
+
+// trackedStack pairs a stack with the directory it was created in, which is what lets the CLI
+// resolve an unqualified stack name back to its project.
+type trackedStack struct {
+	name    string
+	dir     string
+	backend string
+}
+
+// ForceStackRemovalEnvVar removes a stack whose destroy failed. Only set it where the resources it
+// still manages are not real; against a real provider it orphans cloud infrastructure.
+const ForceStackRemovalEnvVar = "PULUMI_TEST_FORCE_STACK_REMOVAL"
+
+// ForceStackRemoval reports whether a stack should be removed even if its destroy failed.
+func ForceStackRemoval() bool {
+	return cmdutil.IsTruthy(os.Getenv(ForceStackRemovalEnvVar))
 }
 
 // WriteYarnRCForTest writes a .yarnrc file which sets global configuration for every yarn inovcation. We use this
@@ -87,11 +108,76 @@ func NewEnvironment(t *testing.T) *Environment {
 	require.NoError(t, err, "creating temp PULUMI_HOME directory")
 
 	t.Logf("Created new test environment:  %v", root)
-	return &Environment{
+	e := &Environment{
 		T:        t,
 		HomePath: home,
 		RootPath: root,
 		CWD:      root,
+	}
+	// Backstop for tests that call neither DeleteEnvironment nor DeleteIfNotFailed; both of those
+	// remove the tracked stacks themselves.
+	t.Cleanup(e.RemoveStacks)
+	return e
+}
+
+// StackInit runs `pulumi stack init` and removes the stack when the environment is torn down.
+// Prefer it to a bare `stack init`, which leaks whenever an assertion aborts the test before the
+// trailing `stack rm`.
+func (e *Environment) StackInit(stackName string, args ...string) (string, string) {
+	e.Helper()
+	// Only once creation succeeds: a name that was already taken belongs to someone else.
+	stdout, stderr := e.RunCommand("pulumi", append([]string{"stack", "init", stackName}, args...)...)
+	e.RemoveStackOnExit(stackName)
+	return stdout, stderr
+}
+
+// RemoveStackOnExit arranges for the named stack to be removed when the environment is torn down.
+// Use it for stacks created by something other than StackInit, such as `pulumi new`.
+func (e *Environment) RemoveStackOnExit(stackName string) {
+	e.stacks = append(e.stacks, trackedStack{name: stackName, dir: e.CWD, backend: e.Backend})
+}
+
+// RemoveStacks destroys, then removes, the stacks tracked by StackInit and RemoveStackOnExit. It is
+// idempotent, and logs rather than fails, since it runs during teardown.
+func (e *Environment) RemoveStacks() {
+	e.Helper()
+	stacks, backend := e.stacks, e.Backend
+	e.stacks = nil
+	defer func() { e.Backend = backend }()
+
+	for _, stack := range stacks {
+		// The environment's backend may have moved on since the stack was created.
+		e.Backend = stack.backend
+		e.removeStack(stack)
+	}
+}
+
+func (e *Environment) removeStack(stack trackedStack) {
+	e.Helper()
+	// Not e.Context(): teardown can run as a t.Cleanup, by which point it is already canceled.
+	ctx := context.Background()
+
+	run := func(args ...string) (string, error) {
+		args = append(args, "--stack", stack.name)
+		_, stderr, err := e.getCommandResultsIn(ctx, stack.dir, "pulumi", args...)
+		return stderr, err
+	}
+
+	destroyed := true
+	if stderr, err := run("destroy", "--yes", "--skip-preview", "--non-interactive"); err != nil {
+		if strings.Contains(stderr, "no stack named") {
+			return
+		}
+		e.Logf("error destroying stack %q: %v: %s", stack.name, err, stderr)
+		destroyed = false
+	}
+
+	rm := []string{"stack", "rm", "--yes"}
+	if destroyed || ForceStackRemoval() {
+		rm = append(rm, "--force")
+	}
+	if stderr, err := run(rm...); err != nil {
+		e.Logf("error removing stack %q, it has leaked: %v: %s", stack.name, err, stderr)
 	}
 }
 
@@ -122,6 +208,8 @@ func (e *Environment) ImportDirectory(path string) {
 // DeleteEnvironment deletes the environment's HomePath and RootPath, and everything underneath them.
 func (e *Environment) DeleteEnvironment() {
 	e.Helper()
+	// Stacks first: removing them needs the credentials and plugins under these directories.
+	e.RemoveStacks()
 	for _, path := range []string{e.HomePath, e.RootPath} {
 		if err := os.RemoveAll(path); err != nil {
 			// In CI, Windows sometimes lags behind in marking a resource
@@ -137,7 +225,10 @@ func (e *Environment) DeleteEnvironment() {
 func (e *Environment) DeleteIfNotFailed() {
 	if !e.Failed() {
 		e.DeleteEnvironment()
+		return
 	}
+	// The files stay for debugging, but the stacks must not: they are never reclaimed.
+	e.RemoveStacks()
 }
 
 // PathExists returns whether or not a file or directory exists relative to Environment's working directory.

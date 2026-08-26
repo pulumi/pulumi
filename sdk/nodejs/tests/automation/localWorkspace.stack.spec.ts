@@ -31,8 +31,11 @@ describe("LocalWorkspace - Stack", () => {
         const ws = await LocalWorkspace.create(withTestBackend({ projectSettings }));
         const stackName = fullyQualifiedStackName(getTestOrg(), projectName, `int_test${getTestSuffix()}`);
         await ws.createStack(stackName);
-        await ws.selectStack(stackName);
-        await ws.removeStack(stackName);
+        try {
+            await ws.selectStack(stackName);
+        } finally {
+            await ws.removeStack(stackName, { force: true });
+        }
     });
 
     it(`create/select/createOrSelect Stack`, async () => {
@@ -288,18 +291,20 @@ describe("LocalWorkspace - Stack", () => {
         const ws = await LocalWorkspace.create(withTestBackend({ projectSettings }));
         const stackNamer = () => `int_test${getTestSuffix()}`;
         const stackNames: string[] = [];
-        for (let i = 0; i < 2; i++) {
-            const stackName = fullyQualifiedStackName(getTestOrg(), projectName, stackNamer());
-            stackNames[i] = stackName;
-            await Stack.create(stackName, ws);
-            const stackSummary = await ws.stack();
-            assert.strictEqual(stackSummary?.current, true);
-            const stacks = await ws.listStacks();
-            assert.strictEqual(stacks.length, i + 1);
-        }
-
-        for (const name of stackNames) {
-            await ws.removeStack(name);
+        try {
+            for (let i = 0; i < 2; i++) {
+                const stackName = fullyQualifiedStackName(getTestOrg(), projectName, stackNamer());
+                await Stack.create(stackName, ws);
+                stackNames.push(stackName);
+                const stackSummary = await ws.stack();
+                assert.strictEqual(stackSummary?.current, true);
+                const stacks = await ws.listStacks();
+                assert.strictEqual(stacks.length, i + 1);
+            }
+        } finally {
+            for (const name of stackNames) {
+                await ws.removeStack(name, { force: true });
+            }
         }
     });
 
@@ -352,34 +357,38 @@ describe("LocalWorkspace - Stack", () => {
             withTestBackend({}, "inline_node"),
         );
 
-        await stack.up({ userAgent });
-        stack.workspace.selectStack(stackName);
+        await withStack(
+            stack,
+            async () => {
+                await stack.up({ userAgent });
+                stack.workspace.selectStack(stackName);
 
-        let returned = "";
-        const renameRes = await stack.rename({
-            stackName: stackRenamed,
-            onOutput: (e) => {
-                returned += e;
+                let returned = "";
+                const renameRes = await stack.rename({
+                    stackName: stackRenamed,
+                    onOutput: (e) => {
+                        returned += e;
+                    },
+                });
+
+                const after = (await stack.workspace.listStacks()).find((x) => x.name.startsWith(shortName));
+
+                assert.strictEqual(returned, `Renamed ${shortName} to ${shortRenamed}\n`);
+                assert.strictEqual(after?.name, shortRenamed);
+
+                if (process.env.PULUMI_ACCESS_TOKEN) {
+                    // TODO: We don't have the right summary.kind for rename operations in the filestate backend.
+                    assert.strictEqual(renameRes.summary.kind, "rename");
+                }
+                assert.strictEqual(renameRes.summary.result, "succeeded");
+
+                // pulumi destroy
+                const destroyRes = await stack.destroy({ userAgent });
+                assert.strictEqual(destroyRes.summary.kind, "destroy");
+                assert.strictEqual(destroyRes.summary.result, "succeeded");
             },
-        });
-
-        const after = (await stack.workspace.listStacks()).find((x) => x.name.startsWith(shortName));
-
-        assert.strictEqual(returned, `Renamed ${shortName} to ${shortRenamed}\n`);
-        assert.strictEqual(after?.name, shortRenamed);
-
-        if (process.env.PULUMI_ACCESS_TOKEN) {
-            // TODO: We don't have the right summary.kind for rename operations in the filestate backend.
-            assert.strictEqual(renameRes.summary.kind, "rename");
-        }
-        assert.strictEqual(renameRes.summary.result, "succeeded");
-
-        // pulumi destroy
-        const destroyRes = await stack.destroy({ userAgent });
-        assert.strictEqual(destroyRes.summary.kind, "destroy");
-        assert.strictEqual(destroyRes.summary.result, "succeeded");
-
-        await stack.workspace.removeStack(stackRenamed);
+            { destroy: false },
+        );
     });
 
     it(`successfully initializes multiple stacks`, async () => {
@@ -395,12 +404,25 @@ describe("LocalWorkspace - Stack", () => {
         const stackNames = Array.from(Array(10).keys()).map((_) =>
             fullyQualifiedStackName(getTestOrg(), projectName, `int_test${getTestSuffix()}`),
         );
-        const stacks = await Promise.all(
-            stackNames.map(async (stackName) =>
+        const results = await Promise.allSettled(
+            stackNames.map((stackName) =>
                 LocalWorkspace.createStack({ stackName, projectName, program }, withTestBackend({}, "inline_node")),
             ),
         );
-        await Promise.all(stacks.map((stack) => stack.workspace.removeStack(stack.name)));
+        try {
+            for (const result of results) {
+                if (result.status === "rejected") {
+                    throw result.reason;
+                }
+            }
+        } finally {
+            const created = results.filter(
+                (result): result is PromiseFulfilledResult<Stack> => result.status === "fulfilled",
+            );
+            await Promise.allSettled(
+                created.map((result) => result.value.workspace.removeStack(result.value.name, { force: true })),
+            );
+        }
     });
 
     it(`imports and exports stacks`, async () => {

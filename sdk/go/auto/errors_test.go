@@ -44,14 +44,9 @@ func TestConcurrentUpdateError(t *testing.T) {
 	pDir := filepath.Join(".", "test", "errors", "conflict_error")
 	s, err := NewStackLocalSource(ctx, stackName, pDir)
 	require.NoErrorf(t, err, "failed to initialize stack")
+	removeStackOnCleanup(t, &s)
 
 	s.Workspace().SetEnvVar("PULUMI_TEST_BLOCK_FILE", block)
-
-	defer func() {
-		// -- pulumi stack rm --
-		err = s.Workspace().RemoveStack(ctx, s.Name())
-		assert.Nil(t, err, "failed to remove stack. Resources have leaked.")
-	}()
 
 	c := make(chan error)
 
@@ -91,12 +86,7 @@ func TestInlineConcurrentUpdateError(t *testing.T) {
 		return nil
 	})
 	require.NoErrorf(t, err, "failed to initialize stack")
-
-	defer func() {
-		// -- pulumi stack rm --
-		err = s.Workspace().RemoveStack(ctx, s.Name())
-		assert.Nil(t, err, "failed to remove stack. Resources have leaked.")
-	}()
+	removeStackOnCleanup(t, &s)
 
 	c := make(chan error)
 
@@ -135,12 +125,7 @@ func TestCompilationErrorGo(t *testing.T) {
 		t.Errorf("failed to initialize stack, err: %v", err)
 		t.FailNow()
 	}
-
-	defer func() {
-		// -- pulumi stack rm --
-		err = s.Workspace().RemoveStack(ctx, s.Name())
-		assert.Nil(t, err, "failed to remove stack. Resources have leaked.")
-	}()
+	removeStackOnCleanup(t, &s)
 
 	_, err = s.Up(ctx)
 	assert.True(t, IsCompilationError(err), "%v is not a compilation error", err)
@@ -189,12 +174,7 @@ func TestCreateStack409Error(t *testing.T) {
 		t.Errorf("failed to initialize stack, err: %v", err)
 		t.FailNow()
 	}
-
-	defer func() {
-		// -- pulumi stack rm --
-		err = s.Workspace().RemoveStack(ctx, s.Name())
-		assert.Nil(t, err, "failed to remove stack. Resources have leaked.")
-	}()
+	removeStackOnCleanup(t, &s)
 
 	// initialize workspace for dupe stack
 	opts := []LocalWorkspaceOption{WorkDir(pDir)}
@@ -223,12 +203,7 @@ func TestCompilationErrorDotnet(t *testing.T) {
 		t.Errorf("failed to initialize stack, err: %v", err)
 		t.FailNow()
 	}
-
-	defer func() {
-		// -- pulumi stack rm --
-		err = s.Workspace().RemoveStack(ctx, s.Name())
-		assert.Nil(t, err, "failed to remove stack. Resources have leaked.")
-	}()
+	removeStackOnCleanup(t, &s)
 
 	_, err = s.Up(ctx)
 	assert.True(t, IsCompilationError(err), "%v is not a compilation error", err)
@@ -265,12 +240,7 @@ func TestCompilationErrorTypescript(t *testing.T) {
 		t.Errorf("failed to initialize stack, err: %v", err)
 		t.FailNow()
 	}
-
-	defer func() {
-		// -- pulumi stack rm --
-		err = s.Workspace().RemoveStack(ctx, s.Name())
-		assert.Nil(t, err, "failed to remove stack. Resources have leaked.")
-	}()
+	removeStackOnCleanup(t, &s)
 
 	_, err = s.Up(ctx)
 	assert.True(t, IsCompilationError(err), "%v is not a compilation error", err)
@@ -300,12 +270,7 @@ func TestRuntimeErrorGo(t *testing.T) {
 		t.Errorf("failed to initialize stack, err: %v", err)
 		t.FailNow()
 	}
-
-	defer func() {
-		// -- pulumi stack rm --
-		err = s.Workspace().RemoveStack(ctx, s.Name())
-		assert.Nil(t, err, "failed to remove stack. Resources have leaked.")
-	}()
+	removeStackOnCleanup(t, &s)
 
 	_, err = s.Up(ctx)
 	assert.True(t, IsRuntimeError(err), "%v is not a runtime error", err)
@@ -334,12 +299,7 @@ func TestRuntimeErrorInlineGo(t *testing.T) {
 		t.Errorf("failed to initialize stack, err: %v", err)
 		t.FailNow()
 	}
-
-	defer func() {
-		// -- pulumi stack rm --
-		err = s.Workspace().RemoveStack(ctx, s.Name())
-		assert.Nil(t, err, "failed to remove stack. Resources have leaked.")
-	}()
+	removeStackOnCleanup(t, &s)
 
 	_, err = s.Up(ctx)
 	assert.True(t, IsRuntimeError(err), "%v is not a runtime error", err)
@@ -407,12 +367,7 @@ func TestRuntimeErrorPython(t *testing.T) {
 		t.Errorf("failed to initialize stack, err: %v", err)
 		t.FailNow()
 	}
-
-	defer func() {
-		// -- pulumi stack rm --
-		err = s.Workspace().RemoveStack(ctx, s.Name())
-		assert.Nil(t, err, "failed to remove stack. Resources have leaked.")
-	}()
+	removeStackOnCleanup(t, &s)
 
 	_, err = s.Up(ctx)
 	assert.True(t, IsRuntimeError(err), "%v is not a runtime error", err)
@@ -450,12 +405,7 @@ func TestRuntimeErrorJavascript(t *testing.T) {
 		t.Errorf("failed to initialize stack, err: %v", err)
 		t.FailNow()
 	}
-
-	defer func() {
-		// -- pulumi stack rm --
-		err = s.Workspace().RemoveStack(ctx, s.Name())
-		assert.Nil(t, err, "failed to remove stack. Resources have leaked.")
-	}()
+	removeStackOnCleanup(t, &s)
 
 	_, err = s.Up(ctx)
 	assert.True(t, IsRuntimeError(err), "%v is not a runtime error", err)
@@ -492,12 +442,7 @@ func TestRuntimeErrorTypescript(t *testing.T) {
 		t.Errorf("failed to initialize stack, err: %v", err)
 		t.FailNow()
 	}
-
-	defer func() {
-		// -- pulumi stack rm --
-		err = s.Workspace().RemoveStack(ctx, s.Name())
-		assert.Nil(t, err, "failed to remove stack. Resources have leaked.")
-	}()
+	removeStackOnCleanup(t, &s)
 
 	_, err = s.Up(ctx)
 	assert.True(t, IsRuntimeError(err), "%v is not a runtime error", err)
@@ -525,12 +470,7 @@ func TestRuntimeErrorDotnet(t *testing.T) {
 		t.Errorf("failed to initialize stack, err: %v", err)
 		t.FailNow()
 	}
-
-	defer func() {
-		// -- pulumi stack rm --
-		err = s.Workspace().RemoveStack(ctx, s.Name())
-		assert.Nil(t, err, "failed to remove stack. Resources have leaked.")
-	}()
+	removeStackOnCleanup(t, &s)
 
 	_, err = s.Up(ctx)
 	assert.True(t, IsRuntimeError(err), "%v is not a runtime error", err)

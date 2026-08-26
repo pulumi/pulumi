@@ -113,15 +113,11 @@ func TestWorkspaceSecretsProvider(t *testing.T) {
 	}
 
 	s := mkstack("password")
+	removeStackOnCleanup(t, &s)
 
-	defer func() {
-		err := os.Unsetenv("PULUMI_CONFIG_PASSPHRASE")
-		require.NoError(t, err, "failed to unset EnvVar.")
-
-		// -- pulumi stack rm --
-		err = s.Workspace().RemoveStack(ctx, s.Name())
-		require.NoError(t, err, "failed to remove stack. Resources have leaked.")
-	}()
+	t.Cleanup(func() {
+		require.NoError(t, os.Unsetenv("PULUMI_CONFIG_PASSPHRASE"), "failed to unset EnvVar.")
+	})
 
 	passwordVal := "Password1234!"
 	err := s.SetConfig(ctx, "MySecretDatabasePassword", ConfigValue{Value: passwordVal, Secret: true})
@@ -191,6 +187,8 @@ func TestRemoveWithForce(t *testing.T) {
 		t.Errorf("failed to initialize stack, err: %v", err)
 		t.FailNow()
 	}
+
+	removeStackOnCleanup(t, &s)
 
 	err = s.SetAllConfig(ctx, cfg)
 	if err != nil {
@@ -271,12 +269,7 @@ func TestNewStackLocalSource(t *testing.T) {
 		t.Errorf("failed to initialize stack, err: %v", err)
 		t.FailNow()
 	}
-
-	defer func() {
-		// -- pulumi stack rm --
-		err = s.Workspace().RemoveStack(ctx, s.Name())
-		require.NoError(t, err, "failed to remove stack. Resources have leaked.")
-	}()
+	removeStackOnCleanup(t, &s)
 
 	err = s.SetAllConfig(ctx, cfg)
 	if err != nil {
@@ -384,12 +377,7 @@ func TestUpsertStackLocalSource(t *testing.T) {
 		t.Errorf("failed to initialize stack, err: %v", err)
 		t.FailNow()
 	}
-
-	defer func() {
-		// -- pulumi stack rm --
-		err = s.Workspace().RemoveStack(ctx, s.Name())
-		require.NoError(t, err, "failed to remove stack. Resources have leaked.")
-	}()
+	removeStackOnCleanup(t, &s)
 
 	err = s.SetAllConfig(ctx, cfg)
 	if err != nil {
@@ -496,12 +484,7 @@ func TestNewStackRemoteSource(t *testing.T) {
 		t.Errorf("failed to initialize stack, err: %v", err)
 		t.FailNow()
 	}
-
-	defer func() {
-		// -- pulumi stack rm --
-		err = s.Workspace().RemoveStack(ctx, s.Name())
-		require.NoError(t, err, "failed to remove stack. Resources have leaked.")
-	}()
+	removeStackOnCleanup(t, &s)
 
 	err = s.SetAllConfig(ctx, cfg)
 	if err != nil {
@@ -590,12 +573,7 @@ func TestUpsertStackRemoteSource(t *testing.T) {
 		t.Errorf("failed to initialize stack, err: %v", err)
 		t.FailNow()
 	}
-
-	defer func() {
-		// -- pulumi stack rm --
-		err = s.Workspace().RemoveStack(ctx, s.Name())
-		require.NoError(t, err, "failed to remove stack. Resources have leaked.")
-	}()
+	removeStackOnCleanup(t, &s)
 
 	err = s.SetAllConfig(ctx, cfg)
 	if err != nil {
@@ -699,12 +677,7 @@ func TestNewStackRemoteSourceWithSetup(t *testing.T) {
 		t.Errorf("failed to initialize stack, err: %v", err)
 		t.FailNow()
 	}
-
-	defer func() {
-		// -- pulumi stack rm --
-		err = s.Workspace().RemoveStack(ctx, s.Name())
-		require.NoError(t, err, "failed to remove stack. Resources have leaked.")
-	}()
+	removeStackOnCleanup(t, &s)
 
 	err = s.SetAllConfig(ctx, cfg)
 	if err != nil {
@@ -808,12 +781,7 @@ func TestUpsertStackRemoteSourceWithSetup(t *testing.T) {
 		t.Errorf("failed to initialize stack, err: %v", err)
 		t.FailNow()
 	}
-
-	defer func() {
-		// -- pulumi stack rm --
-		err = s.Workspace().RemoveStack(ctx, s.Name())
-		require.NoError(t, err, "failed to remove stack. Resources have leaked.")
-	}()
+	removeStackOnCleanup(t, &s)
 
 	err = s.SetAllConfig(ctx, cfg)
 	if err != nil {
@@ -903,12 +871,7 @@ func TestNewStackInlineSource(t *testing.T) {
 		t.Errorf("failed to initialize stack, err: %v", err)
 		t.FailNow()
 	}
-
-	defer func() {
-		// -- pulumi stack rm --
-		err = s.Workspace().RemoveStack(ctx, s.Name())
-		require.NoError(t, err, "failed to remove stack. Resources have leaked.")
-	}()
+	removeStackOnCleanup(t, &s)
 
 	require.NoError(t, s.SetAllConfig(ctx, cfg))
 
@@ -986,13 +949,7 @@ func TestStackLifecycleInlineProgramRemoveWithoutDestroy(t *testing.T) {
 		t.Errorf("failed to initialize stack, err: %v", err)
 		t.FailNow()
 	}
-
-	defer func() {
-		_, err = s.Destroy(ctx)
-		require.NoError(t, err, "failed to destroy stack. Resources have leaked.")
-		err = s.Workspace().RemoveStack(ctx, s.Name())
-		require.NoError(t, err, "failed to remove stack. Resources have leaked.")
-	}()
+	removeStackOnCleanup(t, &s)
 
 	_, err = s.Up(ctx, optup.UserAgent(agent), optup.Refresh())
 	require.NoError(t, err, "up failed")
@@ -1024,6 +981,8 @@ func TestStackLifecycleInlineProgramDestroyWithRemove(t *testing.T) {
 		t.Errorf("failed to initialize stack, err: %v", err)
 		t.FailNow()
 	}
+
+	removeStackOnCleanup(t, &s)
 
 	_, err = s.Up(ctx, optup.UserAgent(agent), optup.Refresh())
 	require.NoError(t, err, "up failed")
@@ -1069,12 +1028,7 @@ func TestUpsertStackInlineSourceParallel(t *testing.T) {
 				t.Errorf("failed to initialize stack, err: %v", err)
 				t.FailNow()
 			}
-
-			t.Cleanup(func() {
-				// -- pulumi stack rm --
-				err = s.Workspace().RemoveStack(ctx, s.Name())
-				require.NoError(t, err, "failed to remove stack. Resources have leaked.")
-			})
+			removeStackOnCleanup(t, &s)
 
 			err = s.SetAllConfig(ctx, cfg)
 			if err != nil {
@@ -1154,6 +1108,7 @@ func TestNestedStackFails(t *testing.T) {
 		t.Errorf("failed to initialize stack, err: %v", err)
 		t.FailNow()
 	}
+	removeStackOnCleanup(t, &nestedStack)
 
 	// initialize
 	s, err := NewStackInlineSource(testCtx, parentstackName, "parent", func(ctx *pulumi.Context) error {
@@ -1164,15 +1119,7 @@ func TestNestedStackFails(t *testing.T) {
 		t.Errorf("failed to initialize stack, err: %v", err)
 		t.FailNow()
 	}
-
-	defer func() {
-		// -- pulumi stack rm --
-		err = s.Workspace().RemoveStack(testCtx, s.Name())
-		require.NoError(t, err, "failed to remove stack. Resources have leaked.")
-
-		err = nestedStack.Workspace().RemoveStack(testCtx, nestedStack.Name())
-		require.NoError(t, err, "failed to remove stack. Resources have leaked.")
-	}()
+	removeStackOnCleanup(t, &s)
 
 	result, err := s.Up(testCtx)
 
@@ -1221,12 +1168,7 @@ func TestErrorProgressStreams(t *testing.T) {
 		t.Errorf("failed to initialize stack, err: %v", err)
 		t.FailNow()
 	}
-
-	defer func() {
-		// -- pulumi stack rm --
-		err := s.Workspace().RemoveStack(ctx, s.Name(), optremove.Force())
-		require.NoError(t, err, "failed to remove stack. Resources have leaked.")
-	}()
+	removeStackOnCleanup(t, &s)
 
 	// -- pulumi up --
 	var upErr bytes.Buffer
@@ -1288,12 +1230,7 @@ func TestProgressStreams(t *testing.T) {
 		t.Errorf("failed to initialize stack, err: %v", err)
 		t.FailNow()
 	}
-
-	defer func() {
-		// -- pulumi stack rm --
-		err = s.Workspace().RemoveStack(ctx, s.Name())
-		require.NoError(t, err, "failed to remove stack. Resources have leaked.")
-	}()
+	removeStackOnCleanup(t, &s)
 
 	err = s.SetAllConfig(ctx, cfg)
 	if err != nil {
@@ -1359,12 +1296,7 @@ func TestImportExportStack(t *testing.T) {
 		t.Errorf("failed to initialize stack, err: %v", err)
 		t.FailNow()
 	}
-
-	defer func() {
-		// -- pulumi stack rm --
-		err = s.Workspace().RemoveStack(ctx, s.Name())
-		require.NoError(t, err, "failed to remove stack. Resources have leaked.")
-	}()
+	removeStackOnCleanup(t, &s)
 
 	err = s.SetAllConfig(ctx, cfg)
 	if err != nil {
@@ -1418,11 +1350,7 @@ func TestConfigFlagLike(t *testing.T) {
 		t.Errorf("failed to initialize stack, err: %v", err)
 		t.FailNow()
 	}
-
-	defer func() {
-		err = s.Workspace().RemoveStack(ctx, s.Name())
-		require.NoError(t, err, "failed to remove stack. Resources have leaked.")
-	}()
+	removeStackOnCleanup(t, &s)
 
 	err = s.SetConfig(ctx, "key", ConfigValue{"-value", false})
 	if err != nil {
@@ -1482,18 +1410,17 @@ func TestConfigWithOptions(t *testing.T) {
 		t.Errorf("failed to initialize stack, err: %v", err)
 		t.FailNow()
 	}
+	removeStackOnCleanup(t, &s)
 
 	configYAML := ptesting.RandomStackName() + ".yaml"
 	configJSON := ptesting.RandomStackName() + ".json"
 
-	defer func() {
-		err = s.Workspace().RemoveStack(ctx, stackName)
-		require.NoError(t, err, "failed to remove stack. Resources have leaked.")
-		err = os.RemoveAll(filepath.Join(s.Workspace().WorkDir(), configJSON))
-		require.NoError(t, err, "failed to remove test.json. File has leaked.")
-		err = os.RemoveAll(filepath.Join(s.Workspace().WorkDir(), configYAML))
-		require.NoError(t, err, "failed to remove test.yaml. File has leaked.")
-	}()
+	t.Cleanup(func() {
+		require.NoError(t, os.RemoveAll(filepath.Join(s.Workspace().WorkDir(), configJSON)),
+			"failed to remove test.json. File has leaked.")
+		require.NoError(t, os.RemoveAll(filepath.Join(s.Workspace().WorkDir(), configYAML)),
+			"failed to remove test.yaml. File has leaked.")
+	})
 
 	// test backward compatibility
 	err = s.SetConfigWithOptions(ctx, "key1", ConfigValue{"value1", false}, nil)
@@ -1897,18 +1824,17 @@ func TestConfigAllWithOptions(t *testing.T) {
 		t.Errorf("failed to initialize stack, err: %v", err)
 		t.FailNow()
 	}
+	removeStackOnCleanup(t, &s)
 
 	configYAML := ptesting.RandomStackName() + ".yaml"
 	configJSON := ptesting.RandomStackName() + ".json"
 
-	defer func() {
-		err = s.Workspace().RemoveStack(ctx, stackName)
-		require.NoError(t, err, "failed to remove stack. Resources have leaked.")
-		err = os.RemoveAll(filepath.Join(s.Workspace().WorkDir(), configJSON))
-		require.NoError(t, err, "failed to remove test.json. File has leaked.")
-		err = os.RemoveAll(filepath.Join(s.Workspace().WorkDir(), configYAML))
-		require.NoError(t, err, "failed to remove test.yaml. File has leaked.")
-	}()
+	t.Cleanup(func() {
+		require.NoError(t, os.RemoveAll(filepath.Join(s.Workspace().WorkDir(), configJSON)),
+			"failed to remove test.json. File has leaked.")
+		require.NoError(t, os.RemoveAll(filepath.Join(s.Workspace().WorkDir(), configYAML)),
+			"failed to remove test.yaml. File has leaked.")
+	})
 
 	err = s.SetAllConfigWithOptions(ctx, ConfigMap{
 		"key1": ConfigValue{
@@ -2185,11 +2111,7 @@ func TestSetAllConfigJson(t *testing.T) {
 	pDir := filepath.Join(".", "test", "testproj")
 	s, err := NewStackLocalSource(ctx, stackName, pDir)
 	require.NoError(t, err, "failed to initialize stack")
-
-	defer func() {
-		err = s.Workspace().RemoveStack(ctx, stackName)
-		require.NoError(t, err, "failed to remove stack. Resources have leaked.")
-	}()
+	removeStackOnCleanup(t, &s)
 
 	// Set config using JSON format
 	configJSON := `{
@@ -2263,11 +2185,7 @@ func TestNestedConfig(t *testing.T) {
 
 	s, err := UpsertStackLocalSource(ctx, stackName, pDir)
 	require.NoError(t, err)
-
-	defer func() {
-		err := s.Workspace().RemoveStack(ctx, stackName)
-		require.NoError(t, err, "failed to remove stack. Resources have leaked.")
-	}()
+	removeStackOnCleanup(t, &s)
 
 	// Also retrieve the stack settings directly from the yaml file and
 	// make sure the config agrees with the config loaded by Pulumi.
@@ -2320,11 +2238,7 @@ func TestEnvFunctions(t *testing.T) {
 	pDir := filepath.Join(".", "test", pName)
 	s, err := UpsertStackLocalSource(ctx, stackName, pDir)
 	require.NoError(t, err, "failed to initialize stack, err: %v", err)
-
-	defer func() {
-		err = s.Workspace().RemoveStack(ctx, stackName)
-		require.NoError(t, err, "failed to remove stack. Resources have leaked.")
-	}()
+	removeStackOnCleanup(t, &s)
 
 	// Errors when trying to add a non-existent env
 	assert.Error(t, s.AddEnvironments(ctx, "non-existent-env"))
@@ -2343,22 +2257,21 @@ func TestEnvFunctions(t *testing.T) {
 	assert.Equal(t, "test_value", cfg["testproj:new_key"].Value)
 	assert.Equal(t, "business", cfg["testproj:also"].Value)
 
-	err = s.RemoveEnvironment(ctx, "automation-api-test-env")
+	require.NoError(t, s.RemoveEnvironment(ctx, "automation-api-test-env"), "removing environment failed")
 	envs, err = s.ListEnvironments(ctx)
 	require.NoError(t, err, "listing environments failed, err: %v", err)
 	assert.Equal(t, []string{"automation-api-test-env-2"}, envs)
 
-	require.NoError(t, err, "removing environment failed, err: %v", err)
 	_, err = s.GetConfig(ctx, "new_key")
 	assert.Error(t, err)
 	v, err := s.GetConfig(ctx, "also")
+	require.NoError(t, err, "getting config failed, err: %v", err)
 	assert.Equal(t, "business", v.Value)
 
-	err = s.RemoveEnvironment(ctx, "automation-api-test-env-2")
+	require.NoError(t, s.RemoveEnvironment(ctx, "automation-api-test-env-2"), "removing environment failed")
 	envs, err = s.ListEnvironments(ctx)
 	require.NoError(t, err, "listing environments failed, err: %v", err)
 	require.Len(t, envs, 0)
-	require.NoError(t, err, "removing environment failed, err: %v", err)
 	_, err = s.GetConfig(ctx, "also")
 	assert.Error(t, err)
 
@@ -2388,11 +2301,7 @@ func TestTagFunctions(t *testing.T) {
 		t.FailNow()
 	}
 	ws := s.Workspace()
-
-	defer func() {
-		err = s.Workspace().RemoveStack(ctx, s.Name(), optremove.Force())
-		require.NoError(t, err, "failed to remove stack.")
-	}()
+	removeStackOnCleanup(t, &s)
 
 	// -- lists tag values --
 	tags, err := ws.ListTags(ctx, stackName)
@@ -2449,12 +2358,7 @@ func TestStructuredOutput(t *testing.T) {
 		t.Errorf("failed to initialize stack, err: %v", err)
 		t.FailNow()
 	}
-
-	defer func() {
-		// -- pulumi stack rm --
-		err = s.Workspace().RemoveStack(ctx, s.Name())
-		require.NoError(t, err, "failed to remove stack. Resources have leaked.")
-	}()
+	removeStackOnCleanup(t, &s)
 
 	err = s.SetAllConfig(ctx, cfg)
 	if err != nil {
@@ -2561,10 +2465,7 @@ func TestStackImportResources(t *testing.T) {
 		t.Errorf("failed to initialize stack, err: %v", err)
 		t.FailNow()
 	}
-	defer func() {
-		err = stack.Workspace().RemoveStack(ctx, stack.Name(), optremove.Force())
-		require.NoError(t, err, "failed to remove stack.")
-	}()
+	removeStackOnCleanup(t, &stack)
 
 	randomPluginVersion := "4.16.3"
 	err = stack.Workspace().InstallPlugin(ctx, "random", randomPluginVersion)
@@ -2603,10 +2504,7 @@ func TestStackImportResourcesWithoutGenerateCode(t *testing.T) {
 	pDir := filepath.Join(".", "test", "import")
 	stack, err := UpsertStackLocalSource(ctx, stackName, pDir)
 	require.NoError(t, err, "failed to initialize stack")
-	defer func() {
-		err = stack.Workspace().RemoveStack(ctx, stack.Name(), optremove.Force())
-		require.NoError(t, err, "failed to remove stack.")
-	}()
+	removeStackOnCleanup(t, &stack)
 
 	randomPluginVersion := "4.16.3"
 	err = stack.Workspace().InstallPlugin(ctx, "random", randomPluginVersion)
@@ -2665,12 +2563,7 @@ func TestSupportsStackOutputs(t *testing.T) {
 		t.Errorf("failed to initialize stack, err: %v", err)
 		t.FailNow()
 	}
-
-	defer func() {
-		// -- pulumi stack rm --
-		err = s.Workspace().RemoveStack(ctx, s.Name())
-		require.NoError(t, err, "failed to remove stack. Resources have leaked.")
-	}()
+	removeStackOnCleanup(t, &s)
 
 	err = s.SetAllConfig(ctx, cfg)
 	if err != nil {
@@ -2857,14 +2750,9 @@ func TestProjectSettingsRespected(t *testing.T) {
 	stack, err := NewStackInlineSource(ctx, stackName, badProjectName, func(ctx *pulumi.Context) error {
 		return nil
 	}, WorkDir(filepath.Join(".", "test", pName)))
-
-	defer func() {
-		// -- pulumi stack rm --
-		err = stack.Workspace().RemoveStack(ctx, stack.Name())
-		require.NoError(t, err, "failed to remove stack. Resources have leaked.")
-	}()
-
 	require.NoError(t, err)
+	removeStackOnCleanup(t, &stack)
+
 	projectSettings, err := stack.workspace.ProjectSettings(ctx)
 	require.NoError(t, err)
 	assert.Equal(t, projectSettings.Name, tokens.PackageName("correct_project"))
@@ -2894,12 +2782,7 @@ func TestSaveStackSettings(t *testing.T) {
 		return nil
 	}, opts...)
 	require.NoError(t, err, "failed to initialize stack, err: %v", err)
-
-	defer func() {
-		// -- pulumi stack rm --
-		err = s.Workspace().RemoveStack(ctx, s.Name())
-		require.NoError(t, err, "failed to remove stack. Resources have leaked.")
-	}()
+	removeStackOnCleanup(t, &s)
 
 	// first load settings for created stack
 	stackConfig, err := s.Workspace().StackSettings(ctx, stackName)
@@ -3211,12 +3094,7 @@ func TestConfigSecretWarnings(t *testing.T) {
 		t.Errorf("failed to initialize stack, err: %v", err)
 		t.FailNow()
 	}
-
-	defer func() {
-		// -- pulumi stack rm --
-		err = s.Workspace().RemoveStack(ctx, s.Name())
-		require.NoError(t, err, "failed to remove stack. Resources have leaked.")
-	}()
+	removeStackOnCleanup(t, &s)
 
 	err = s.SetAllConfig(ctx, cfg)
 	if err != nil {
@@ -3383,11 +3261,7 @@ func TestWhoAmIDetailed(t *testing.T) {
 		t.Errorf("failed to initialize stack, err: %v", err)
 		t.FailNow()
 	}
-
-	defer func() {
-		err = s.Workspace().RemoveStack(ctx, s.Name())
-		require.NoError(t, err, "failed to remove stack. Resources have leaked.")
-	}()
+	removeStackOnCleanup(t, &s)
 
 	whoAmIDetailedInfo, err := s.Workspace().WhoAmIDetails(ctx)
 	if err != nil {
@@ -3930,11 +3804,7 @@ func TestStackLifecycleInlineProgramRunProgram(t *testing.T) {
 		t.Errorf("failed to initialize stack, err: %v", err)
 		t.FailNow()
 	}
-
-	defer func() {
-		err = s.Workspace().RemoveStack(ctx, s.Name(), optremove.Force())
-		require.NoError(t, err, "failed to remove stack.")
-	}()
+	removeStackOnCleanup(t, &s)
 
 	_, err = s.Up(ctx, optup.UserAgent(agent), optup.Refresh())
 	require.NoError(t, err, "up failed")
