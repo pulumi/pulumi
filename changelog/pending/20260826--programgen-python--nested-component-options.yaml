@@ -1,0 +1,4 @@
+component: programgen/python
+kind: fix
+body: Generate valid Python when a component with inputs instantiates another component
+time: 2026-08-26T15:55:12+02:00

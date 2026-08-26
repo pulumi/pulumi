@@ -1936,14 +1936,13 @@ func (g *generator) genComponent(w io.Writer, r *pcl.Component) {
 					}
 				}
 			}
+			if hasInputVariables {
+				g.Fgen(w, "}")
+			}
 			g.genResourceOptions(w, optionsBag, len(r.Inputs) != 0, nil)
 		})
 
-		if hasInputVariables {
-			g.Fgenf(w, "%s})", g.Indent)
-		} else {
-			g.Fgen(w, ")")
-		}
+		g.Fgen(w, ")")
 	}
 
 	if r.Options != nil && r.Options.Range != nil {
