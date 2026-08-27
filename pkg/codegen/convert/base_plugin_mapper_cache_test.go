@@ -29,30 +29,30 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 )
 
-// Tests that a mapping served by a plugin is cached on disk and that a subsequent mapper serves the same request
-// from that cache without instantiating the plugin.
-func TestBasePluginMapper_DiskCacheWarmHit(t *testing.T) {
-	t.Setenv("PULUMI_HOME", t.TempDir())
-
-	// Arrange.
+// cacheTestMapper builds a workspace holding a single plugin at version 1.0.0 that maps mappedProvider, and returns a
+// constructor for fresh mappers over it along with a count of provider instantiations. The payload is read at mapping
+// time, so tests can change it between calls.
+func cacheTestMapper(
+	t *testing.T, pluginName, pluginPath, mappedProvider string, payload *[]byte,
+) (func() Mapper, *int) {
 	ws := &testWorkspace{
 		infos: []workspace.PluginInfo{
 			{
-				Name:    "provider",
+				Name:    pluginName,
 				Kind:    apitype.ResourcePlugin,
 				Version: new(semver.MustParse("1.0.0")),
-				Path:    t.TempDir(),
+				Path:    pluginPath,
 			},
 		},
 	}
 
-	factoryCalls := 0
+	factoryCalls := new(int)
 	providerFactory := func(descriptor workspace.PackageDescriptor) (plugin.Provider, error) {
-		factoryCalls++
+		*factoryCalls++
 		return &testProvider{
-			pkg: "provider",
+			pkg: pluginName,
 			GetMappingF: func(key, provider string) ([]byte, string, error) {
-				return []byte("data"), "provider", nil
+				return *payload, mappedProvider, nil
 			},
 		}, nil
 	}
@@ -62,7 +62,7 @@ func TestBasePluginMapper_DiskCacheWarmHit(t *testing.T) {
 		return nil
 	}
 
-	newMapper := func() Mapper {
+	return func() Mapper {
 		mapper, err := NewBasePluginMapper(
 			ws,
 			"key", /*conversionKey*/
@@ -72,7 +72,17 @@ func TestBasePluginMapper_DiskCacheWarmHit(t *testing.T) {
 		)
 		require.NoError(t, err)
 		return mapper
-	}
+	}, factoryCalls
+}
+
+// Tests that a mapping served by a plugin is cached on disk and that a subsequent mapper serves the same request
+// from that cache without instantiating the plugin.
+func TestBasePluginMapper_DiskCacheWarmHit(t *testing.T) {
+	t.Setenv("PULUMI_HOME", t.TempDir())
+
+	// Arrange.
+	payload := []byte("data")
+	newMapper, factoryCalls := cacheTestMapper(t, "provider", t.TempDir(), "provider", &payload)
 
 	// Act.
 	data, err := newMapper().GetMapping(t.Context(), "provider", nil /*hint*/, "" /*ecosystem*/)
@@ -80,7 +90,7 @@ func TestBasePluginMapper_DiskCacheWarmHit(t *testing.T) {
 	// Assert.
 	require.NoError(t, err)
 	assert.Equal(t, []byte("data"), data)
-	assert.Equal(t, 1, factoryCalls)
+	assert.Equal(t, 1, *factoryCalls)
 
 	// Act.
 	//
@@ -91,7 +101,7 @@ func TestBasePluginMapper_DiskCacheWarmHit(t *testing.T) {
 	// Assert.
 	require.NoError(t, err)
 	assert.Equal(t, []byte("data"), data)
-	assert.Equal(t, 1, factoryCalls)
+	assert.Equal(t, 1, *factoryCalls)
 }
 
 // Tests that cached mappings for parameterized plugins are keyed by their parameterization: the same
@@ -100,44 +110,8 @@ func TestBasePluginMapper_DiskCacheParameterization(t *testing.T) {
 	t.Setenv("PULUMI_HOME", t.TempDir())
 
 	// Arrange.
-	ws := &testWorkspace{
-		infos: []workspace.PluginInfo{
-			{
-				Name:    "terraform-provider",
-				Kind:    apitype.ResourcePlugin,
-				Version: new(semver.MustParse("1.0.0")),
-				Path:    t.TempDir(),
-			},
-		},
-	}
-
-	factoryCalls := 0
-	providerFactory := func(descriptor workspace.PackageDescriptor) (plugin.Provider, error) {
-		factoryCalls++
-		return &testProvider{
-			pkg: "terraform-provider",
-			GetMappingF: func(key, provider string) ([]byte, string, error) {
-				return []byte("datagcp"), "gcp", nil
-			},
-		}, nil
-	}
-
-	installPlugin := func(pluginName string) *semver.Version {
-		t.Fatal("should not be called")
-		return nil
-	}
-
-	newMapper := func() Mapper {
-		mapper, err := NewBasePluginMapper(
-			ws,
-			"key", /*conversionKey*/
-			providerFactory,
-			installPlugin,
-			nil, /*mappings*/
-		)
-		require.NoError(t, err)
-		return mapper
-	}
+	payload := []byte("datagcp")
+	newMapper, factoryCalls := cacheTestMapper(t, "terraform-provider", t.TempDir(), "gcp", &payload)
 
 	hint := &MapperPackageHint{
 		PluginName: "terraform-provider",
@@ -154,7 +128,7 @@ func TestBasePluginMapper_DiskCacheParameterization(t *testing.T) {
 	// Assert.
 	require.NoError(t, err)
 	assert.Equal(t, []byte("datagcp"), data)
-	assert.Equal(t, 1, factoryCalls)
+	assert.Equal(t, 1, *factoryCalls)
 
 	// Act.
 	//
@@ -164,7 +138,7 @@ func TestBasePluginMapper_DiskCacheParameterization(t *testing.T) {
 	// Assert.
 	require.NoError(t, err)
 	assert.Equal(t, []byte("datagcp"), data)
-	assert.Equal(t, 1, factoryCalls)
+	assert.Equal(t, 1, *factoryCalls)
 
 	// Act.
 	//
@@ -182,7 +156,7 @@ func TestBasePluginMapper_DiskCacheParameterization(t *testing.T) {
 	// Assert.
 	require.NoError(t, err)
 	assert.Equal(t, []byte("datagcp"), data)
-	assert.Equal(t, 2, factoryCalls)
+	assert.Equal(t, 2, *factoryCalls)
 }
 
 // Tests that a cached mapping that predates the plugin's installation is discarded and refreshed.
@@ -190,45 +164,8 @@ func TestBasePluginMapper_DiskCacheStaleAfterReinstall(t *testing.T) {
 	t.Setenv("PULUMI_HOME", t.TempDir())
 
 	// Arrange.
-	ws := &testWorkspace{
-		infos: []workspace.PluginInfo{
-			{
-				Name:    "provider",
-				Kind:    apitype.ResourcePlugin,
-				Version: new(semver.MustParse("1.0.0")),
-				Path:    t.TempDir(),
-			},
-		},
-	}
-
 	payload := []byte("data1")
-	factoryCalls := 0
-	providerFactory := func(descriptor workspace.PackageDescriptor) (plugin.Provider, error) {
-		factoryCalls++
-		return &testProvider{
-			pkg: "provider",
-			GetMappingF: func(key, provider string) ([]byte, string, error) {
-				return payload, "provider", nil
-			},
-		}, nil
-	}
-
-	installPlugin := func(pluginName string) *semver.Version {
-		t.Fatal("should not be called")
-		return nil
-	}
-
-	newMapper := func() Mapper {
-		mapper, err := NewBasePluginMapper(
-			ws,
-			"key", /*conversionKey*/
-			providerFactory,
-			installPlugin,
-			nil, /*mappings*/
-		)
-		require.NoError(t, err)
-		return mapper
-	}
+	newMapper, factoryCalls := cacheTestMapper(t, "provider", t.TempDir(), "provider", &payload)
 
 	// Act.
 	data, err := newMapper().GetMapping(t.Context(), "provider", nil /*hint*/, "" /*ecosystem*/)
@@ -236,7 +173,7 @@ func TestBasePluginMapper_DiskCacheStaleAfterReinstall(t *testing.T) {
 	// Assert.
 	require.NoError(t, err)
 	assert.Equal(t, []byte("data1"), data)
-	assert.Equal(t, 1, factoryCalls)
+	assert.Equal(t, 1, *factoryCalls)
 
 	// Arrange.
 	//
@@ -254,7 +191,7 @@ func TestBasePluginMapper_DiskCacheStaleAfterReinstall(t *testing.T) {
 	// Assert.
 	require.NoError(t, err)
 	assert.Equal(t, []byte("data2"), data)
-	assert.Equal(t, 2, factoryCalls)
+	assert.Equal(t, 2, *factoryCalls)
 
 	content, err := os.ReadFile(cachePath)
 	require.NoError(t, err)
@@ -269,43 +206,8 @@ func TestBasePluginMapper_DiskCacheUnknownInstallTime(t *testing.T) {
 	// Arrange.
 	//
 	// The plugin has no path on disk, so its install time is unknown.
-	ws := &testWorkspace{
-		infos: []workspace.PluginInfo{
-			{
-				Name:    "provider",
-				Kind:    apitype.ResourcePlugin,
-				Version: new(semver.MustParse("1.0.0")),
-			},
-		},
-	}
-
-	factoryCalls := 0
-	providerFactory := func(descriptor workspace.PackageDescriptor) (plugin.Provider, error) {
-		factoryCalls++
-		return &testProvider{
-			pkg: "provider",
-			GetMappingF: func(key, provider string) ([]byte, string, error) {
-				return []byte("data"), "provider", nil
-			},
-		}, nil
-	}
-
-	installPlugin := func(pluginName string) *semver.Version {
-		t.Fatal("should not be called")
-		return nil
-	}
-
-	newMapper := func() Mapper {
-		mapper, err := NewBasePluginMapper(
-			ws,
-			"key", /*conversionKey*/
-			providerFactory,
-			installPlugin,
-			nil, /*mappings*/
-		)
-		require.NoError(t, err)
-		return mapper
-	}
+	payload := []byte("data")
+	newMapper, factoryCalls := cacheTestMapper(t, "provider", "" /*pluginPath*/, "provider", &payload)
 
 	// Act.
 	data, err := newMapper().GetMapping(t.Context(), "provider", nil /*hint*/, "" /*ecosystem*/)
@@ -313,7 +215,7 @@ func TestBasePluginMapper_DiskCacheUnknownInstallTime(t *testing.T) {
 	// Assert.
 	require.NoError(t, err)
 	assert.Equal(t, []byte("data"), data)
-	assert.Equal(t, 1, factoryCalls)
+	assert.Equal(t, 1, *factoryCalls)
 
 	cachePath, err := mappingFilePath("key", "provider", "provider", semver.MustParse("1.0.0"), nil)
 	require.NoError(t, err)
@@ -329,5 +231,5 @@ func TestBasePluginMapper_DiskCacheUnknownInstallTime(t *testing.T) {
 	// Assert.
 	require.NoError(t, err)
 	assert.Equal(t, []byte("data"), data)
-	assert.Equal(t, 2, factoryCalls)
+	assert.Equal(t, 2, *factoryCalls)
 }
