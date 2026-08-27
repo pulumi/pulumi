@@ -120,7 +120,11 @@ func TestPermalinkForDisplayWithAgentCredentials(t *testing.T) {
 
 			permalink, label := permalinkForDisplay(ctx, testCloudURL, testViewLiveLink)
 			assert.Equal(t, tt.want, permalink)
-			assert.Equal(t, agentClaimPermalinkLabel, label)
+			if tt.want != "" {
+				assert.Equal(t, agentClaimPermalinkLabel, label)
+			} else {
+				assert.Empty(t, label)
+			}
 		})
 	}
 }

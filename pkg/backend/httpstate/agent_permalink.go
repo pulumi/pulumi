@@ -45,5 +45,5 @@ func permalinkForDisplay(ctx context.Context, cloudURL, permalink string) (strin
 		claim.CloudURL == cloudURL && claim.Active(time.Now()) {
 		return claim.ClaimURL, agentClaimPermalinkLabel
 	}
-	return "", agentClaimPermalinkLabel
+	return "", ""
 }
