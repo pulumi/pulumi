@@ -452,8 +452,8 @@ func runNew(ctx context.Context, args newArgs) error {
 	// Advisory only; never fails the command.
 	credentialsWarned := preflightCloudCredentials(ctx, args, pluginHost, proj, root, s, packages, opts)
 
-	// The celebratory line rings false right after a credentials warning; the warning
-	// already tells the user the project was created successfully.
+	// The credentials check prints its own "project was created successfully" line
+	// alongside the warning, so don't repeat it here.
 	if !credentialsWarned {
 		fmt.Fprintln(args.stdout,
 			opts.Color.Colorize(
