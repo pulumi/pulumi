@@ -112,6 +112,24 @@ func (g *generator) GetPrecedence(expr model.Expression) int {
 }
 
 func (g *generator) GenAnonymousFunctionExpression(w io.Writer, expr *model.AnonymousFunctionExpression) {
+	rangeCapture := ""
+	if g.rangeVariable != "" && referencesRange(expr.Body) {
+		rangeCapture = "_" + g.rangeVariable
+		for {
+			conflicts := false
+			for _, p := range expr.Signature.Parameters {
+				if PyName(p.Name) == rangeCapture {
+					conflicts = true
+					break
+				}
+			}
+			if !conflicts {
+				break
+			}
+			rangeCapture = "_" + rangeCapture
+		}
+	}
+
 	g.Fgen(w, "lambda")
 	for i, p := range expr.Signature.Parameters {
 		if i > 0 {
@@ -119,8 +137,37 @@ func (g *generator) GenAnonymousFunctionExpression(w io.Writer, expr *model.Anon
 		}
 		g.Fgenf(w, " %s", PyName(p.Name))
 	}
+	if rangeCapture != "" {
+		if len(expr.Signature.Parameters) > 0 {
+			g.Fgen(w, ",")
+		}
+		// Python closures capture loop variables by reference. A default argument
+		// snapshots the value for the current resource-range iteration.
+		g.Fgenf(w, " %s=%s", rangeCapture, g.rangeVariable)
+	}
 
-	g.Fgenf(w, ": %.v", expr.Body)
+	g.Fgen(w, ": ")
+	if rangeCapture == "" {
+		g.Fgenf(w, "%.v", expr.Body)
+		return
+	}
+
+	previousRangeVariable := g.rangeVariable
+	g.rangeVariable = rangeCapture
+	g.Fgenf(w, "%.v", expr.Body)
+	g.rangeVariable = previousRangeVariable
+}
+
+func referencesRange(expr model.Expression) bool {
+	found := false
+	_, _ = model.VisitExpression(expr, model.IdentityVisitor,
+		func(expr model.Expression) (model.Expression, hcl.Diagnostics) {
+			if traversal, ok := expr.(*model.ScopeTraversalExpression); ok && traversal.RootName == "range" {
+				found = true
+			}
+			return expr, nil
+		})
+	return found
 }
 
 // isNoneLiteral reports whether expr is the `null`/`None` literal, so equality
@@ -630,10 +677,14 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		g.Fgen(w, ")")
 	case "length":
 		argType := pcl.UnwrapOption(model.ResolveOutputs(expr.Args[0].Type()))
+		functionName := "len"
 		if model.StringType.AssignableFrom(argType) {
-			g.Fgenf(w, "grapheme_length(%.v)", expr.Args[0])
+			functionName = "grapheme_length"
+		}
+		if model.ContainsOutputs(expr.Args[0].Type()) {
+			g.Fgenf(w, "pulumi.Output.from_input(%.v).apply(lambda value: %s(value))", expr.Args[0], functionName)
 		} else {
-			g.Fgenf(w, "len(%.v)", expr.Args[0])
+			g.Fgenf(w, "%s(%.v)", functionName, expr.Args[0])
 		}
 	case "lookup":
 		g.Fgenf(w, "%.16v.get(%.v, %.v)",
