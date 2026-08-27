@@ -725,7 +725,7 @@ async def serialize_property(
         # any passed-in input_transformer.
         if typ is not None:
             # A union carries no metadata of its own, so reduce it to the member the value's
-            # constants select and translate using that member's names.
+            # wire shape selects and translate using that member's names.
             case = _types.reduce_discriminated_union(typ, value, _types._py_name_for)
             if case is not None:
                 typ = case
