@@ -267,6 +267,7 @@
 
 import builtins
 import collections.abc
+import enum
 import functools
 import inspect
 import sys
@@ -720,71 +721,69 @@ def _is_optional_type(tp):
     return False
 
 
-def _literal_constants(cls: type) -> tuple[tuple[str, Any], ...]:
+# The sentinel the engine uses for values that are unknown during preview. It mirrors
+# runtime.rpc.UNKNOWN, which cannot be imported here without an import cycle.
+_UNKNOWN = "04da6b54-80e4-46f7-96ec-b56ff0331ba9"
+
+
+def _is_plumbing_arg(arg: Any) -> bool:
     """
-    Returns the properties of `cls` that codegen typed as a single-value `Literal`, which is how a
-    schema constant is rendered, keyed by their Pulumi name.
+    Reports whether a union arg is runtime plumbing rather than a member of its own: the
+    `Awaitable` and `Output` wrappers an `Input` carries, and the `TypedDict` alternatives, which
+    duplicate a sibling member.
     """
-    types_of = input_type_types if is_input_type(cls) else output_type_types
-    constants: list[tuple[str, Any]] = []
-    for name, tp in types_of(cls).items():
-        if get_origin(tp) is not Literal:
-            continue
-        args = typing.get_args(tp)
-        # A schema constant is a bool, an integer or a string. Numbers are excluded because
-        # `typing.Literal` does not admit floats, so codegen leaves them as their primitive type.
-        if len(args) == 1 and isinstance(args[0], (bool, int, str)):
-            constants.append((name, args[0]))
-    return tuple(constants)
+    from . import Output
+
+    if arg is Output or get_origin(arg) is Output:
+        return True
+    if isinstance(arg, typing.ForwardRef):
+        # `Input` quotes its "Output[T]" arg; in a union built outside a class body the reference
+        # is never resolved.
+        return arg.__forward_arg__.startswith("Output[")
+    if get_origin(arg) in (abc.Awaitable, abc.Coroutine):
+        return True
+    return typing.is_typeddict(arg)
+
+
+def _wire_matchable(arg: Any) -> bool:
+    """
+    Reports whether the wire shape of `arg` is known well enough to test a value against it.
+    `Any` and unrecognized annotations are not: a value might always belong to them.
+    """
+    if arg is Any:
+        return False
+    if origin := get_origin(arg):
+        return origin in (list, abc.Sequence, dict, abc.Mapping, Literal)
+    return inspect.isclass(arg)
 
 
 @functools.cache
-def _constrained_union_members(
-    typ: Any,
-) -> Optional[tuple[tuple[type, tuple[tuple[str, Any], ...]], ...]]:
+def _wire_union_members(typ: Any) -> Optional[tuple[Any, ...]]:
     """
-    Returns each member of the union paired with the constants it pins, or None if `typ` is not a
-    union whose members can all be told apart this way. Args that carry no metadata of their own,
-    such as `None`, `Awaitable`, `Output` and the `TypedDict` alternative, are ignored.
+    Returns the members of the union `typ` a wire value could belong to, or None if `typ` is not
+    a union with at least two of them. `None` and plumbing args are dropped; a union carrying a
+    member whose shape cannot be tested (such as `Any`) is rejected outright, since a value might
+    always belong to it.
     """
     if not _is_union_type(typ):
         return None
-
-    members = [
-        arg
-        for arg in typing.get_args(typ)
-        if isinstance(arg, type) and (is_input_type(arg) or is_output_type(arg))
-    ]
+    members = []
+    for arg in typing.get_args(typ):
+        if arg is type(None) or _is_plumbing_arg(arg):
+            continue
+        if not _wire_matchable(arg):
+            return None
+        members.append(arg)
     if len(members) < 2:
         return None
-
-    constrained = tuple(
-        (member, constants)
-        for member in members
-        if (constants := _literal_constants(member))
-    )
-    # Every member has to be reachable, otherwise a value belonging to an unconstrained member
-    # would be attributed to one of the others.
-    if len(constrained) != len(members):
-        return None
-    return constrained
+    return tuple(members)
 
 
 def is_discriminated_union(typ: Any) -> bool:
     """
     Reports whether a value of `typ` can be reduced to one of its members.
     """
-    return _constrained_union_members(typ) is not None
-
-
-def _py_name_for(cls: type, pulumi_name: str) -> Optional[str]:
-    """
-    Returns the Python name of the property of `cls` whose Pulumi name is `pulumi_name`.
-    """
-    for python_name, name, _ in _py_properties(cls):
-        if name == pulumi_name:
-            return python_name
-    return None
+    return _wire_union_members(typ) is not None
 
 
 def _lookup(value: abc.Mapping, key: str) -> Any:
@@ -803,36 +802,138 @@ def _same_constant(expected: Any, actual: Any) -> bool:
     return expected == actual
 
 
-def reduce_discriminated_union(typ: Any, value: abc.Mapping) -> Optional[type]:
+def _wire_matches(value: Any, typ: Any) -> bool:
     """
-    Returns the single member of the union `typ` whose constants `value` satisfies, or None if no
-    single member matches. `value` may be keyed by Pulumi or by Python names.
+    Reports whether `value` can belong to `typ` on the wire. Values that cannot be examined —
+    outputs, awaitables, and the engine's unknown sentinel — match every type, so an unknown
+    never rules out the member a value actually belongs to; at worst it leaves the reduction
+    ambiguous.
     """
-    members = _constrained_union_members(typ)
+    from . import Output
+
+    if isinstance(value, Output) or inspect.isawaitable(value):
+        return True
+    if isinstance(value, str) and value == _UNKNOWN:
+        return True
+
+    if typ is Any or typ is None:
+        return True
+    if typ is type(None):
+        return value is None
+    if _is_union_type(typ):
+        return any(
+            _wire_matches(value, arg)
+            for arg in typing.get_args(typ)
+            if not _is_plumbing_arg(arg)
+        )
+
+    origin = get_origin(typ)
+    if origin is Literal:
+        return any(_same_constant(arg, value) for arg in typing.get_args(typ))
+    if typ is list or origin in (list, abc.Sequence):
+        if not isinstance(value, abc.Sequence) or isinstance(value, (str, bytes)):
+            return False
+        args = typing.get_args(typ)
+        return not args or all(_wire_matches(v, args[0]) for v in value)
+    if typ is dict or origin in (dict, abc.Mapping):
+        if not isinstance(value, abc.Mapping):
+            return False
+        args = typing.get_args(typ)
+        return len(args) != 2 or all(_wire_matches(v, args[1]) for v in value.values())
+
+    if not inspect.isclass(typ):
+        # An annotation we do not understand cannot rule anything out.
+        return True
+    if typ is bool:
+        return isinstance(value, bool)
+    if typ in (int, float):
+        # All wire numbers arrive as floats, so int and float are one shape; `True == 1` in
+        # Python, so booleans are excluded.
+        return isinstance(value, (int, float)) and not isinstance(value, bool)
+    if is_input_type(typ) or is_output_type(typ):
+        return _object_wire_matches(value, typ)
+    if issubclass(typ, enum.Enum):
+        return isinstance(value, typ) or any(
+            _same_constant(member.value, value) for member in typ
+        )
+    if typing.is_typeddict(typ):
+        # TypedDict classes do not support isinstance checks.
+        return isinstance(value, abc.Mapping)
+    return isinstance(value, typ)
+
+
+def _object_wire_matches(value: Any, cls: type) -> bool:
+    """
+    Reports whether `value` can be a `cls` under the closed reading: every key names a declared
+    property (by Pulumi or by Python name), required properties are present, and every present
+    value matches its property's annotation.
+    """
+    if isinstance(value, cls):
+        return True
+    if not isinstance(value, abc.Mapping):
+        return False
+
+    properties = _py_properties(cls)
+    # `set` is shadowed by this module's pulumi.set.
+    declared = {
+        name
+        for python_name, pulumi_name, _ in properties
+        for name in (python_name, pulumi_name)
+    }
+    if any(key not in declared for key in value):
+        return False
+
+    property_types = (
+        input_type_types(cls) if is_input_type(cls) else output_type_types(cls)
+    )
+    required = _required_property_names(cls)
+    for python_name, pulumi_name, _ in properties:
+        v = _lookup(value, pulumi_name)
+        if v is MISSING:
+            v = _lookup(value, python_name)
+        if v is MISSING or v is None:
+            if pulumi_name in required:
+                return False
+            continue
+        annotation = property_types.get(pulumi_name)
+        if annotation is not None and not _wire_matches(v, annotation):
+            return False
+    return True
+
+
+@functools.cache
+def _required_property_names(cls: type) -> frozenset[str]:
+    """
+    Returns the Pulumi names of the properties of `cls` whose declared annotation does not admit
+    None. input_type_types and output_type_types unwrap Optional, so requiredness has to be read
+    off the raw getter annotations.
+    """
+    from . import Output
+
+    globalns = _globals_for_cls(cls)
+    localns = {"Output": Output, "T": type(None)}
+    required = []
+    for _, pulumi_name, prop in _py_properties(cls):
+        return_hint = get_type_hints(prop.fget, globalns=globalns, localns=localns).get(
+            "return"
+        )
+        if return_hint is not None and not _is_optional_type(return_hint):
+            required.append(pulumi_name)
+    return frozenset(required)
+
+
+def reduce_discriminated_union(typ: Any, value: abc.Mapping) -> Optional[Any]:
+    """
+    Returns the single member of the union `typ` that `value` can belong to on the wire, or None
+    when no member — or more than one — matches. `value` may be keyed by Pulumi or by Python
+    names. An object member matches under the closed reading: every key names a declared
+    property, required properties are present, and every present value, constants included,
+    matches its annotation.
+    """
+    members = _wire_union_members(typ)
     if members is None:
         return None
-
-    # A constant absent from `value` neither confirms nor rules out its member, so a member needs
-    # at least one present-and-agreeing constant. Otherwise a value mentioning none of them would
-    # match every member.
-    candidates = []
-    for member, constants in members:
-        confirmed = False
-        for name, expected in constants:
-            actual = _lookup(value, name)
-            if actual is MISSING:
-                python_name = _py_name_for(member, name)
-                if python_name is not None:
-                    actual = _lookup(value, python_name)
-            if actual is MISSING:
-                continue
-            if not _same_constant(expected, actual):
-                break
-            confirmed = True
-        else:
-            if confirmed:
-                candidates.append(member)
-
+    candidates = [member for member in members if _wire_matches(value, member)]
     if len(candidates) != 1:
         return None
     return candidates[0]
