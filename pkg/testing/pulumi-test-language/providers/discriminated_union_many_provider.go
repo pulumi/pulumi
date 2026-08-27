@@ -131,7 +131,14 @@ func (p *DiscriminatedUnionManyProvider) GetSchema(
 	pkg := schema.PackageSpec{
 		Name:    string(p.pkg()),
 		Version: p.version().String(),
-		Types:   types,
+		// Typed discriminated unions are opt-in per language; opt in for every language that
+		// gates them behind fullyTypedUnions so the conformance tests exercise the typed path.
+		Language: map[string]schema.RawMessage{
+			"csharp": schema.RawMessage(`{"fullyTypedUnions": true}`),
+			"java":   schema.RawMessage(`{"fullyTypedUnions": true}`),
+			"python": schema.RawMessage(`{"fullyTypedUnions": true}`),
+		},
+		Types: types,
 		Resources: map[string]schema.ResourceSpec{
 			fmt.Sprintf("%s:index:SubsetExample", p.pkg()): {
 				ObjectTypeSpec: schema.ObjectTypeSpec{

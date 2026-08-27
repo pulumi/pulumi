@@ -95,6 +95,7 @@ func (d DocLanguageHelper) GetTypeName(pkg schema.PackageReference, t schema.Typ
 		mod:              moduleToPythonModule(relativeToModule, info.ModuleNameOverrides),
 		modNameOverrides: info.ModuleNameOverrides,
 		typeDetails:      map[*schema.ObjectType]*typeDetails{},
+		fullyTypedUnions: info.FullyTypedUnions,
 	}
 	typeName := mod.typeString(t, typeStringOpts{input: input, forDocs: true})
 

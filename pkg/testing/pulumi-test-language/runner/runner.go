@@ -411,12 +411,31 @@ func (l *providerLoader) LoadPackageReferenceV2(
 	}
 	spec.Meta.SupportPack = true
 
-	// Set the LanguageInfo field if given
+	// Merge in the LanguageInfo field if given. A core provider may set language options of its
+	// own (e.g. fullyTypedUnions on the discriminated union providers), so the harness's keys
+	// overlay the provider's rather than replacing them.
 	if l.languageInfo != "" {
-		// We don't expect the language field to be set in the core providers, they should be language agnostic
-		spec.Language = map[string]schema.RawMessage{
-			l.language: schema.RawMessage(l.languageInfo),
+		merged := map[string]interface{}{}
+		if existing, ok := spec.Language[l.language]; ok {
+			if err := json.Unmarshal(existing, &merged); err != nil {
+				return nil, err
+			}
 		}
+		overlay := map[string]interface{}{}
+		if err := json.Unmarshal([]byte(l.languageInfo), &overlay); err != nil {
+			return nil, err
+		}
+		for k, v := range overlay {
+			merged[k] = v
+		}
+		raw, err := json.Marshal(merged)
+		if err != nil {
+			return nil, err
+		}
+		if spec.Language == nil {
+			spec.Language = map[string]schema.RawMessage{}
+		}
+		spec.Language[l.language] = schema.RawMessage(raw)
 	}
 
 	p, err := schema.ImportPartialSpecWithContext(ctx, spec, nil, l)

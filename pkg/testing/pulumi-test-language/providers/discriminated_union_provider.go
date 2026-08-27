@@ -103,6 +103,13 @@ func (p *DiscriminatedUnionProvider) GetSchema(
 	pkg := schema.PackageSpec{
 		Name:    string(p.pkg()),
 		Version: p.version().String(),
+		// Typed discriminated unions are opt-in per language; opt in for every language that
+		// gates them behind fullyTypedUnions so the conformance tests exercise the typed path.
+		Language: map[string]schema.RawMessage{
+			"csharp": schema.RawMessage(`{"fullyTypedUnions": true}`),
+			"java":   schema.RawMessage(`{"fullyTypedUnions": true}`),
+			"python": schema.RawMessage(`{"fullyTypedUnions": true}`),
+		},
 		Types: map[string]schema.ComplexTypeSpec{
 			fmt.Sprintf("%s:index:VariantOne", p.pkg()): {ObjectTypeSpec: variantOneType},
 			fmt.Sprintf("%s:index:VariantTwo", p.pkg()): {ObjectTypeSpec: variantTwoType},

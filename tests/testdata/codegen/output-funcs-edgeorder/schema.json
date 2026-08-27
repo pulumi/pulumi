@@ -10,6 +10,9 @@
     },
     "go": {
       "generateExtraInputTypes": true
+    },
+    "python": {
+      "fullyTypedUnions": true
     }
   },
   "functions": {

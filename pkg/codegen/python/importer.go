@@ -65,6 +65,12 @@ type PackageInfo struct {
 	// - "classes": Args classes only
 	// - "classes-and-dicts" (default): TypedDicts side-by-side with Args classes.
 	InputTypes string `json:"inputTypes,omitempty"`
+
+	// Types every discriminated union output as the Union of its members instead of Any.
+	//
+	// Turning this on changes the type of every discriminated-union-valued output property, so
+	// it is a breaking change to the generated SDK. Providers opt in as part of a major version.
+	FullyTypedUnions bool `json:"fullyTypedUnions,omitempty"`
 }
 
 // Importer implements schema.Language for Python.

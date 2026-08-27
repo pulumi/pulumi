@@ -132,6 +132,9 @@ type modContext struct {
 
 	// Controls what types are used for inputs, see PackageInfo.InputTypes.
 	inputTypes string
+
+	// Types discriminated union outputs, see PackageInfo.FullyTypedUnions.
+	fullyTypedUnions bool
 }
 
 func (mod *modContext) isTopLevel() bool {
@@ -2873,10 +2876,11 @@ func (mod *modContext) typeString(t schema.Type, opts typeStringOpts) string {
 					return mod.typeString(typ.ElementType, opts)
 				}
 			}
-			// A discriminated union of object types keeps its members on the output side too: the
-			// runtime reduces a value to the member its constants select, so there is no need to
-			// degrade to `Any` the way an undiscriminated union still does.
-			if t.IsDiscriminated() {
+			// Under the fullyTypedUnions option a discriminated union of object types keeps its
+			// members on the output side too: the runtime reduces a value to the member its
+			// constants select, so there is no need to degrade to `Any` the way an
+			// undiscriminated union still does.
+			if mod.fullyTypedUnions && t.IsDiscriminated() {
 				return mod.unionElementsString(t, opts)
 			}
 			if t.DefaultType != nil {
@@ -3317,6 +3321,7 @@ func generateModuleContextMap(tool string, pkg *schema.Package, info PackageInfo
 				compatibility:                info.Compatibility,
 				liftSingleValueMethodReturns: info.LiftSingleValueMethodReturns,
 				inputTypes:                   info.InputTypes,
+				fullyTypedUnions:             info.FullyTypedUnions,
 			}
 
 			if modName != "" && codegen.PkgEquals(p, pkg.Reference()) {

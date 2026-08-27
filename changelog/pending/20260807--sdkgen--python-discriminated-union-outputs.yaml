@@ -1,6 +1,7 @@
 component: sdkgen
 kind: improvement
-body: Generate precise Python output types for discriminated unions. An array of a
-    union was typed `Sequence[Any]` and a scalar union `Any`, while the matching
-    getters on the generated Args classes were already typed
+body: Generate precise Python output types for discriminated unions when a package
+    opts in through `language.python.fullyTypedUnions`. An array of a union was
+    typed `Sequence[Any]` and a scalar union `Any`, while the matching getters on
+    the generated Args classes were already typed
 time: 2026-08-07T00:00:00+00:00
