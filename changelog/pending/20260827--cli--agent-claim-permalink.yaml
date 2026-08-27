@@ -1,0 +1,5 @@
+component: cli
+kind: fix
+body: Show the agent account's claim URL instead of an inaccessible View Live link
+    when running on ephemeral agent credentials
+time: 2026-08-27T00:00:00Z
