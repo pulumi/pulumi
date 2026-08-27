@@ -47,8 +47,6 @@ func resourcePackage(name, version string) workspace.PackageDescriptor {
 	}}
 }
 
-// runCheck runs checkCloudCredentials against prov with a bounded context and returns
-// whether it warned and what it printed.
 func runCheck(
 	t *testing.T, cp cloudProvider, prov plugin.Provider, news property.Map, timeout time.Duration,
 ) (bool, string) {
@@ -60,7 +58,6 @@ func runCheck(
 	return warned, buf.String()
 }
 
-// echoCheckConfig accepts the news as-is, the common case for a well-formed config.
 func echoCheckConfig(_ context.Context, req plugin.CheckConfigRequest) (plugin.CheckConfigResponse, error) {
 	return plugin.CheckConfigResponse{Properties: req.News}, nil
 }

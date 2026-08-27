@@ -449,7 +449,7 @@ func runNew(ctx context.Context, args newArgs) error {
 		}
 	}
 
-	// Best-effort cloud credentials preflight; advisory only, never fails the command.
+	// Advisory only; never fails the command.
 	credentialsWarned := preflightCloudCredentials(ctx, args, pluginHost, proj, root, s, packages, opts)
 
 	// The celebratory line rings false right after a credentials warning; the warning
