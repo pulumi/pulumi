@@ -1208,6 +1208,22 @@ func (rm *resmon) trackSettledResource(state *pkgresource.State, parent resource
 	rm.registrations.Track(urn, parent, custom, id != "")
 }
 
+func configLogValue(cfg map[config.Key]string, secretKeys []config.Key) resource.PropertyMap {
+	secret := make(map[config.Key]struct{}, len(secretKeys))
+	for _, k := range secretKeys {
+		secret[k] = struct{}{}
+	}
+	m := make(resource.PropertyMap, len(cfg))
+	for k, v := range cfg {
+		pv := resource.NewProperty(v)
+		if _, ok := secret[k]; ok {
+			pv = resource.MakeSecret(pv)
+		}
+		m[resource.PropertyKey(k.String())] = pv
+	}
+	return m
+}
+
 // Call dynamically executes a method in the provider associated with a component resource.
 func (rm *resmon) Call(ctx context.Context, req *pulumirpc.ResourceCallRequest) (*pulumirpc.CallResponse, error) {
 	// Fetch the token and load up the resource provider if necessary.
@@ -1368,8 +1384,11 @@ func (rm *resmon) Call(ctx context.Context, req *pulumirpc.ResourceCallRequest) 
 	}
 
 	// Do the all and then return the arguments.
+	loggedInfo := info
+	loggedInfo.Config = nil
 	logging.V(5).Infof(
-		"ResourceMonitor.Call received: tok=%v #args=%v #info=%v #options=%v", tok, len(args), info, options,
+		"ResourceMonitor.Call received: tok=%v #args=%v #info=%v config=%v #options=%v",
+		tok, len(args), loggedInfo, configLogValue(info.Config, rm.constructInfo.ConfigSecretKeys), options,
 	)
 	ret, err := prov.Call(ctx, plugin.CallRequest{
 		Tok:     tok,
