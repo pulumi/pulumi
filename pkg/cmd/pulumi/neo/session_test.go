@@ -1819,7 +1819,7 @@ func TestSession_UserCancelEventCancelsInFlightBatch(t *testing.T) {
 		"partial output captured before the cancel must reach the agent")
 	assert.Equal(t, "c2", result.ToolResults[1].ToolCallID)
 	assert.True(t, result.ToolResults[1].IsError)
-	assert.Equal(t, cancelledContent, result.ToolResults[1].Content)
+	assert.Equal(t, cancelledContent(), result.ToolResults[1].Content)
 	select {
 	case <-secondRan:
 		t.Fatal("a call queued behind the cancelled one must not start")

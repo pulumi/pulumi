@@ -21,11 +21,9 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"os/signal"
 	"path/filepath"
 	"strings"
 	"sync"
-	"syscall"
 	"time"
 
 	tea "charm.land/bubbletea/v2"
@@ -503,7 +501,7 @@ func runNeo(ctx context.Context, stdout, stderr io.Writer, opts neoRunOptions) e
 		if opts.printMode {
 			session.Output = stdout
 		}
-		return runNonInteractiveSession(ctx, session, stderr)
+		return session.Run(ctx)
 	}
 
 	uiCh := make(chan UIEvent, 64)
@@ -732,44 +730,6 @@ func runNeoResume(
 		LastEventID: lastEventID,
 		Log:         stderr,
 	}
-	return runNonInteractiveSession(ctx, session, stderr)
-}
-
-// runNonInteractiveSession runs the session with Ctrl+C wired the way the TUI's
-// ESC is: the first interrupt posts a user_cancel so the agent stops the turn
-// (and, via the echoed event, kills any running local tool and reports it
-// cancelled); a second interrupt, or a failed post, tears the session down.
-func runNonInteractiveSession(ctx context.Context, session *Session, stderr io.Writer) error {
-	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
-
-	sigCh := make(chan os.Signal, 1)
-	signal.Notify(sigCh, os.Interrupt, syscall.SIGTERM)
-	defer signal.Stop(sigCh)
-
-	go func() {
-		select {
-		case <-ctx.Done():
-			return
-		case <-sigCh:
-		}
-		fmt.Fprintln(stderr, "Cancelling... (press Ctrl+C again to exit immediately)")
-		postCtx, postCancel := context.WithTimeout(ctx, 10*time.Second)
-		defer postCancel()
-		err := session.Client.PostNeoTaskUserEvent(
-			postCtx, session.OrgName, session.TaskID, apitype.AgentUserEventCancel{Type: userEventUserCancel})
-		if err != nil {
-			fmt.Fprintf(stderr, "error: cancel not sent: %v\n", err)
-			cancel()
-			return
-		}
-		select {
-		case <-ctx.Done():
-		case <-sigCh:
-			cancel()
-		}
-	}()
-
 	return session.Run(ctx)
 }
 
@@ -951,7 +911,7 @@ func historyUIEventsFromUserInput(
 		}
 		return events
 	default:
-		return uiEventsFromUserInput(eventBody)
+		return uiEventsFromUserInput(eventBody, nil)
 	}
 }
 

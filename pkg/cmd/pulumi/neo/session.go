@@ -115,17 +115,20 @@ type Session struct {
 	// event. Only the Run goroutine touches them, so no locking is needed.
 	batchCtx    context.Context
 	batchCancel context.CancelFunc
-	// ownCalls holds the tool_call_ids this session executes. The service
-	// echoes every posted user event back on the stream; echoes of our own
-	// exec_tool_call/tool_result would otherwise render as a second tool
-	// block in the TUI. Only the Run goroutine touches it.
+	// ownCalls holds the tool_call_ids this session executes and has not yet
+	// seen echoed back as a tool_result. The service echoes every posted user
+	// event on the stream; echoes of our own exec_tool_call/tool_result would
+	// otherwise render as a second tool block in the TUI, so it is only
+	// maintained when UIEvents is set. Only the Run goroutine touches it.
 	ownCalls map[string]struct{}
 }
 
-// cancelledContent is the tool_result content for a call the user cancelled
-// before it produced its own result (never started, or a handler with no
-// cancelled marker of its own).
-var cancelledContent = map[string]any{"error": "cancelled by the user", "cancelled": true}
+// cancelledContent returns the tool_result content for a call the user
+// cancelled before it produced its own result (never started, or a handler
+// with no cancelled marker of its own). It mirrors tools.ShellResult's shape.
+func cancelledContent() map[string]any {
+	return map[string]any{"error": "cancelled by the user", "cancelled": true}
+}
 
 // toolResultPostTimeout bounds the tool_result post once the batch context is
 // cancelled: that post is what resumes the parked turn, so it must survive the
@@ -322,9 +325,7 @@ func (s *Session) handleEvent(ctx context.Context, raw []byte) error {
 			s.batchCancel = nil
 		}
 		// Forward user input echoes to the TUI so the user's messages are visible.
-		if body, ok := s.stripOwnToolEchoes(env.EventBody); ok {
-			s.forwardUserInputToUI(body)
-		}
+		s.forwardUserInputToUI(env.EventBody)
 		return nil
 	}
 
@@ -346,12 +347,8 @@ func (s *Session) handleEvent(ctx context.Context, raw []byte) error {
 			s.batchCancel()
 			s.batchCancel = nil
 		}
-		// A cancelled turn never produces a final assistant message, so the
-		// single-shot session would otherwise wait on the open stream forever.
-		if s.Output != nil {
-			return errSessionDone
-		}
-		return nil
+		// A cancelled turn never produces a final assistant message.
+		return s.turnEnded("")
 	}
 	if head.Type != backendEventAssistantMessage {
 		return nil
@@ -377,68 +374,29 @@ func (s *Session) handleEvent(ctx context.Context, raw []byte) error {
 		// the turn is complete and the TUI can re-enable input.
 		if msg.IsFinal {
 			sendUI(s.UIEvents, UITaskIdle{})
-			if s.Output != nil {
-				if msg.Content != "" {
-					fmt.Fprintln(s.Output, msg.Content)
-				}
-				return errSessionDone
-			}
+			return s.turnEnded(msg.Content)
 		}
 		return nil
 	}
 	return s.enqueueBatch(ctx, cliCalls)
 }
 
+// turnEnded is called once the agent's turn is over, with the final message
+// content if there was one. A single-shot session (Output set) prints it and
+// ends; an interactive session keeps draining the stream for the next turn.
+func (s *Session) turnEnded(content string) error {
+	if s.Output == nil {
+		return nil
+	}
+	if content != "" {
+		fmt.Fprintln(s.Output, content)
+	}
+	return errSessionDone
+}
+
 func isUserCancelBody(eventBody json.RawMessage) bool {
 	var head apitype.AgentBackendEventHeader
 	return json.Unmarshal(eventBody, &head) == nil && head.Type == userEventUserCancel
-}
-
-// stripOwnToolEchoes drops the echoes of this session's own exec_tool_call and
-// tool_result posts from a userInput body before it reaches the TUI, which has
-// already rendered those calls from runBatch. Tool events from other clients
-// pass through; the second return is false when nothing is left to forward.
-func (s *Session) stripOwnToolEchoes(eventBody json.RawMessage) (json.RawMessage, bool) {
-	var head apitype.AgentBackendEventHeader
-	if err := json.Unmarshal(eventBody, &head); err != nil {
-		return eventBody, true
-	}
-	switch head.Type {
-	case userEventExecToolCall:
-		var evt apitype.AgentUserEventExecToolCall
-		if err := json.Unmarshal(eventBody, &evt); err != nil {
-			return eventBody, true
-		}
-		if _, own := s.ownCalls[evt.ToolCallID]; own {
-			return nil, false
-		}
-	case userEventToolResult:
-		var evt apitype.AgentUserEventToolResult
-		if err := json.Unmarshal(eventBody, &evt); err != nil {
-			return eventBody, true
-		}
-		foreign := evt.ToolResults[:0:0]
-		for _, item := range evt.ToolResults {
-			if _, own := s.ownCalls[item.ToolCallID]; own {
-				delete(s.ownCalls, item.ToolCallID)
-				continue
-			}
-			foreign = append(foreign, item)
-		}
-		if len(foreign) == len(evt.ToolResults) {
-			return eventBody, true
-		}
-		if len(foreign) == 0 {
-			return nil, false
-		}
-		evt.ToolResults = foreign
-		body, err := json.Marshal(evt)
-		if err != nil {
-			return eventBody, true
-		}
-		return body, true
-	}
-	return eventBody, true
 }
 
 // enqueueBatch hands the batch to the tool worker so the drain loop keeps reading
@@ -449,11 +407,13 @@ func (s *Session) enqueueBatch(ctx context.Context, calls []apitype.AgentBackend
 	if s.batchCancel == nil {
 		s.batchCtx, s.batchCancel = context.WithCancel(ctx)
 	}
-	if s.ownCalls == nil {
-		s.ownCalls = map[string]struct{}{}
-	}
-	for _, call := range calls {
-		s.ownCalls[call.ToolCallID] = struct{}{}
+	if s.UIEvents != nil {
+		if s.ownCalls == nil {
+			s.ownCalls = map[string]struct{}{}
+		}
+		for _, call := range calls {
+			s.ownCalls[call.ToolCallID] = struct{}{}
+		}
 	}
 	select {
 	case s.batches <- toolBatch{ctx: s.batchCtx, calls: calls}:
@@ -484,14 +444,10 @@ func (s *Session) toolWorker(done chan<- struct{}) {
 func (s *Session) runBatch(ctx context.Context, calls []apitype.AgentBackendEventToolCall) error {
 	items := make([]apitype.AgentUserEventToolResultItem, 0, len(calls))
 	for _, call := range calls {
-		var result apitype.AgentUserEventToolResultItem
-		if ctx.Err() != nil {
-			// The user cancelled the turn: report the remaining calls as cancelled
-			// rather than starting them, so every tool_call_id gets a result.
-			result = apitype.AgentUserEventToolResultItem{
-				ToolCallID: call.ToolCallID, Name: call.Name, IsError: true, Content: cancelledContent,
-			}
-		} else {
+		// Once the user has cancelled the turn the remaining calls are not
+		// started; invokeToolCall reports them cancelled so every tool_call_id
+		// still gets a result.
+		if ctx.Err() == nil {
 			sendUI(s.UIEvents, UIToolStarted{Name: call.Name, Args: call.Args})
 
 			// The agent runtime relies on exec_tool_call to transition the call into its
@@ -510,9 +466,9 @@ func (s *Session) runBatch(ctx context.Context, calls []apitype.AgentBackendEven
 				}
 				return fmt.Errorf("posting exec_tool_call for %q: %w", call.Name, err)
 			}
-
-			result = s.invokeToolCall(ctx, call)
 		}
+
+		result := s.invokeToolCall(ctx, call)
 		items = append(items, result)
 
 		// Marshal a JSON copy for the overlay. A failure shouldn't abort the
@@ -551,11 +507,18 @@ func (s *Session) runBatch(ctx context.Context, calls []apitype.AgentBackendEven
 // invokeToolCall dispatches a single tool call to the appropriate handler by splitting
 // the tool name on "__" into server and method. Errors are returned as
 // AgentUserEventToolResultItem with IsError=true rather than propagated, so the agent can
-// retry or report.
+// retry or report. A call whose context is cancelled — before it starts or while the
+// handler runs — is always reported as an error, with whatever partial value the
+// handler captured, so the agent never mistakes it for a completed call.
 func (s *Session) invokeToolCall(
 	ctx context.Context, call apitype.AgentBackendEventToolCall,
 ) apitype.AgentUserEventToolResultItem {
 	res := apitype.AgentUserEventToolResultItem{ToolCallID: call.ToolCallID, Name: call.Name}
+	if ctx.Err() != nil {
+		res.IsError = true
+		res.Content = cancelledContent()
+		return res
+	}
 
 	server, method, ok := strings.Cut(call.Name, "__")
 	if !ok {
@@ -570,28 +533,18 @@ func (s *Session) invokeToolCall(
 		return res
 	}
 	value, err := handler.Invoke(ctx, method, call.Args)
-	if err != nil {
-		res.IsError = true
+	cancelled := errors.Is(ctx.Err(), context.Canceled)
+	res.IsError = err != nil || cancelled
+	switch {
+	case value != nil:
 		// Handlers may return a partial value alongside an error (e.g. shell
-		// timeout). Prefer that value so the agent sees what was captured.
-		if value != nil {
-			res.Content = value
-		} else if errors.Is(ctx.Err(), context.Canceled) {
-			res.Content = cancelledContent
-		} else {
-			res.Content = map[string]string{"error": err.Error()}
-		}
-		return res
+		// timeout or cancel). Prefer it so the agent sees what was captured.
+		res.Content = value
+	case cancelled:
+		res.Content = cancelledContent()
+	case err != nil:
+		res.Content = map[string]string{"error": err.Error()}
 	}
-	if errors.Is(ctx.Err(), context.Canceled) {
-		// The handler finished (or was killed) after the user cancelled; the
-		// agent must not treat whatever it returned as a completed call.
-		res.IsError = true
-		if value == nil {
-			value = cancelledContent
-		}
-	}
-	res.Content = value
 	return res
 }
 
@@ -718,12 +671,16 @@ func (s *Session) forwardUserInputToUI(eventBody json.RawMessage) {
 		return
 	}
 
-	for _, event := range uiEventsFromUserInput(eventBody) {
+	for _, event := range uiEventsFromUserInput(eventBody, s.ownCalls) {
 		sendUI(s.UIEvents, event)
 	}
 }
 
-func uiEventsFromUserInput(eventBody json.RawMessage) []UIEvent {
+// uiEventsFromUserInput translates an echoed user event into UI events. Echoes
+// of the calls in ownCalls (this session's own exec_tool_call/tool_result posts,
+// already rendered by runBatch) are skipped and their tool_result echo removes
+// them from the set; a nil set forwards everything.
+func uiEventsFromUserInput(eventBody json.RawMessage, ownCalls map[string]struct{}) []UIEvent {
 	// Peek at the inner type; we reuse AgentBackendEventHeader because it's just
 	// a Type field and the JSON shape on the user-input side matches.
 	var head apitype.AgentBackendEventHeader
@@ -754,6 +711,9 @@ func uiEventsFromUserInput(eventBody json.RawMessage) []UIEvent {
 		if err := json.Unmarshal(eventBody, &evt); err != nil {
 			return nil
 		}
+		if _, own := ownCalls[evt.ToolCallID]; own {
+			return nil
+		}
 		return []UIEvent{UIToolStarted{Name: evt.Name}}
 	case userEventToolResult:
 		var evt apitype.AgentUserEventToolResult
@@ -762,6 +722,10 @@ func uiEventsFromUserInput(eventBody json.RawMessage) []UIEvent {
 		}
 		events := make([]UIEvent, 0, len(evt.ToolResults))
 		for _, result := range evt.ToolResults {
+			if _, own := ownCalls[result.ToolCallID]; own {
+				delete(ownCalls, result.ToolCallID)
+				continue
+			}
 			resultRaw, err := json.Marshal(result.Content)
 			if err != nil {
 				resultRaw, _ = json.Marshal(map[string]string{
