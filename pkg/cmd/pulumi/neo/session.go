@@ -23,7 +23,6 @@ import (
 	"math/rand/v2"
 	"net"
 	"net/url"
-	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -116,10 +115,11 @@ type Session struct {
 	// event. Only the Run goroutine touches them, so no locking is needed.
 	batchCtx    context.Context
 	batchCancel context.CancelFunc
-	// batchSeq is the SSE sequence of the assistant_message that enqueued the
-	// current batch. A user_cancel replayed from before it must not kill a
-	// later tool.
-	batchSeq int64
+	// ownCalls holds the tool_call_ids this session executes. The service
+	// echoes every posted user event back on the stream; echoes of our own
+	// exec_tool_call/tool_result would otherwise render as a second tool
+	// block in the TUI. Only the Run goroutine touches it.
+	ownCalls map[string]struct{}
 }
 
 // cancelledContent is the tool_result content for a call the user cancelled
@@ -240,7 +240,7 @@ func (s *Session) drainStream(
 				*lastEventID = evt.ID
 			}
 			gotEvent = true
-			if err := s.handleEvent(ctx, evt.ID, evt.Data); err != nil {
+			if err := s.handleEvent(ctx, evt.Data); err != nil {
 				return gotEvent, err
 			}
 		}
@@ -304,7 +304,7 @@ func sleepCtx(ctx context.Context, d time.Duration) bool {
 	}
 }
 
-func (s *Session) handleEvent(ctx context.Context, eventID string, raw []byte) error {
+func (s *Session) handleEvent(ctx context.Context, raw []byte) error {
 	var env apitype.AgentConsoleEvent
 	if err := json.Unmarshal(raw, &env); err != nil {
 		s.logf("warning: skipping malformed Neo console event: %v", err)
@@ -315,12 +315,16 @@ func (s *Session) handleEvent(ctx context.Context, eventID string, raw []byte) e
 		// the API's) on the stream. Stop the in-flight batch right away rather
 		// than waiting for the runtime's parked-cancel grace to expire; runBatch
 		// then posts the cancelled tool_result that resumes and ends the turn.
-		if isUserCancelBody(env.EventBody) && s.batchCancel != nil && !s.cancelPredatesBatch(eventID) {
+		// Events arrive in stream order and reconnects resume after the last
+		// processed event, so a cancel seen here always postdates the batch.
+		if isUserCancelBody(env.EventBody) && s.batchCancel != nil {
 			s.batchCancel()
 			s.batchCancel = nil
 		}
 		// Forward user input echoes to the TUI so the user's messages are visible.
-		s.forwardUserInputToUI(env.EventBody)
+		if body, ok := s.stripOwnToolEchoes(env.EventBody); ok {
+			s.forwardUserInputToUI(body)
+		}
 		return nil
 	}
 
@@ -382,7 +386,7 @@ func (s *Session) handleEvent(ctx context.Context, eventID string, raw []byte) e
 		}
 		return nil
 	}
-	return s.enqueueBatch(ctx, eventID, cliCalls)
+	return s.enqueueBatch(ctx, cliCalls)
 }
 
 func isUserCancelBody(eventBody json.RawMessage) bool {
@@ -390,32 +394,66 @@ func isUserCancelBody(eventBody json.RawMessage) bool {
 	return json.Unmarshal(eventBody, &head) == nil && head.Type == userEventUserCancel
 }
 
-// cancelPredatesBatch reports whether a user_cancel carrying eventID was
-// emitted before the current batch's assistant_message, i.e. it belongs to an
-// earlier turn (replayed on reconnect) and must not kill the running tool.
-// Unparseable ids are treated as fresh.
-func (s *Session) cancelPredatesBatch(eventID string) bool {
-	seq, ok := parseEventSeq(eventID)
-	return ok && seq < s.batchSeq
-}
-
-func parseEventSeq(eventID string) (int64, bool) {
-	seq, err := strconv.ParseInt(eventID, 10, 64)
-	return seq, err == nil
+// stripOwnToolEchoes drops the echoes of this session's own exec_tool_call and
+// tool_result posts from a userInput body before it reaches the TUI, which has
+// already rendered those calls from runBatch. Tool events from other clients
+// pass through; the second return is false when nothing is left to forward.
+func (s *Session) stripOwnToolEchoes(eventBody json.RawMessage) (json.RawMessage, bool) {
+	var head apitype.AgentBackendEventHeader
+	if err := json.Unmarshal(eventBody, &head); err != nil {
+		return eventBody, true
+	}
+	switch head.Type {
+	case userEventExecToolCall:
+		var evt apitype.AgentUserEventExecToolCall
+		if err := json.Unmarshal(eventBody, &evt); err != nil {
+			return eventBody, true
+		}
+		if _, own := s.ownCalls[evt.ToolCallID]; own {
+			return nil, false
+		}
+	case userEventToolResult:
+		var evt apitype.AgentUserEventToolResult
+		if err := json.Unmarshal(eventBody, &evt); err != nil {
+			return eventBody, true
+		}
+		foreign := evt.ToolResults[:0:0]
+		for _, item := range evt.ToolResults {
+			if _, own := s.ownCalls[item.ToolCallID]; own {
+				delete(s.ownCalls, item.ToolCallID)
+				continue
+			}
+			foreign = append(foreign, item)
+		}
+		if len(foreign) == len(evt.ToolResults) {
+			return eventBody, true
+		}
+		if len(foreign) == 0 {
+			return nil, false
+		}
+		evt.ToolResults = foreign
+		body, err := json.Marshal(evt)
+		if err != nil {
+			return eventBody, true
+		}
+		return body, true
+	}
+	return eventBody, true
 }
 
 // enqueueBatch hands the batch to the tool worker so the drain loop keeps reading
 // the stream while tools run. Every batch since the last cancelled event shares
 // one context: a single cancel stops the running batch and everything queued
 // behind it.
-func (s *Session) enqueueBatch(
-	ctx context.Context, eventID string, calls []apitype.AgentBackendEventToolCall,
-) error {
+func (s *Session) enqueueBatch(ctx context.Context, calls []apitype.AgentBackendEventToolCall) error {
 	if s.batchCancel == nil {
 		s.batchCtx, s.batchCancel = context.WithCancel(ctx)
 	}
-	if seq, ok := parseEventSeq(eventID); ok {
-		s.batchSeq = seq
+	if s.ownCalls == nil {
+		s.ownCalls = map[string]struct{}{}
+	}
+	for _, call := range calls {
+		s.ownCalls[call.ToolCallID] = struct{}{}
 	}
 	select {
 	case s.batches <- toolBatch{ctx: s.batchCtx, calls: calls}:

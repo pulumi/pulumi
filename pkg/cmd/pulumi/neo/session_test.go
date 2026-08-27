@@ -1740,13 +1740,13 @@ func TestSession_CancelledEventCancelsInFlightBatchContext(t *testing.T) {
 	assert.Equal(t, []string{"c1"}, errorIDs)
 }
 
-func mustUserInputEnvelope(t *testing.T, id string, inner any) []byte {
+func mustUserInputEnvelope(t *testing.T, inner any) []byte {
 	t.Helper()
 	body, err := json.Marshal(inner)
 	require.NoError(t, err)
 	out, err := json.Marshal(apitype.AgentConsoleEvent{
 		Type:      consoleEventUserInput,
-		ID:        id,
+		ID:        "evt-2",
 		EventBody: body,
 	})
 	require.NoError(t, err)
@@ -1783,25 +1783,20 @@ func TestSession_UserCancelEventCancelsInFlightBatch(t *testing.T) {
 	done := make(chan error, 1)
 	go func() { done <- s.Run(t.Context()) }()
 
-	streamer.stream <- client.NeoStreamEvent{ID: "10", Data: mustAgentResponseEnvelope(t,
-		apitype.AgentBackendEventAssistantMessage{
-			Type: backendEventAssistantMessage,
-			ToolCalls: []apitype.AgentBackendEventToolCall{
-				{ToolCallID: "c1", Name: "blocking__run", Args: json.RawMessage(`{}`), ExecutionMode: toolExecutionModeCLI},
-				{ToolCallID: "c2", Name: "probe__run", Args: json.RawMessage(`{}`), ExecutionMode: toolExecutionModeCLI},
-			},
-		})}
+	streamer.stream <- client.NeoStreamEvent{Data: mustAgentResponseEnvelope(t, apitype.AgentBackendEventAssistantMessage{
+		Type: backendEventAssistantMessage,
+		ToolCalls: []apitype.AgentBackendEventToolCall{
+			{ToolCallID: "c1", Name: "blocking__run", Args: json.RawMessage(`{}`), ExecutionMode: toolExecutionModeCLI},
+			{ToolCallID: "c2", Name: "probe__run", Args: json.RawMessage(`{}`), ExecutionMode: toolExecutionModeCLI},
+		},
+	})}
 	select {
 	case <-started:
 	case <-time.After(5 * time.Second):
 		t.Fatal("tool handler never started")
 	}
 
-	// A stale cancel replayed from before this turn must be ignored.
-	streamer.stream <- client.NeoStreamEvent{ID: "3", Data: mustUserInputEnvelope(t, "3",
-		apitype.AgentUserEventCancel{Type: userEventUserCancel})}
-	// A fresh one stops the batch.
-	streamer.stream <- client.NeoStreamEvent{ID: "11", Data: mustUserInputEnvelope(t, "11",
+	streamer.stream <- client.NeoStreamEvent{Data: mustUserInputEnvelope(t,
 		apitype.AgentUserEventCancel{Type: userEventUserCancel})}
 
 	var result apitype.AgentUserEventToolResult
@@ -1840,61 +1835,69 @@ func TestSession_UserCancelEventCancelsInFlightBatch(t *testing.T) {
 	}
 }
 
-// TestSession_StaleUserCancelIgnored verifies that a user_cancel replayed from
-// an earlier turn does not kill a later tool.
-func TestSession_StaleUserCancelIgnored(t *testing.T) {
+// TestSession_OwnToolEchoesNotForwardedToUI verifies that the service's echo
+// of this session's own exec_tool_call/tool_result posts does not reach the
+// TUI (which already rendered the call from runBatch), while the same events
+// from another client still do.
+func TestSession_OwnToolEchoesNotForwardedToUI(t *testing.T) {
 	t.Parallel()
 
 	streamer := newFakeStreamer()
-	started := make(chan struct{})
-	release := make(chan struct{})
-	ctxErr := make(chan error, 1)
-	h := &probeHandler{invoke: func(ctx context.Context) (any, error) {
-		close(started)
-		<-release
-		ctxErr <- ctx.Err()
-		return map[string]any{"ok": true}, nil
-	}}
+	uiCh := make(chan UIEvent, 32)
 	s := &Session{
 		Client:   streamer,
-		Handlers: map[string]ToolHandler{"probe": h},
+		Handlers: map[string]ToolHandler{"probe": &fakeHandler{wantMethod: "run", result: map[string]any{"ok": true}}},
 		OrgName:  "org",
 		TaskID:   "task",
+		UIEvents: uiCh,
 	}
-
 	done := make(chan error, 1)
 	go func() { done <- s.Run(t.Context()) }()
 
-	streamer.stream <- client.NeoStreamEvent{ID: "10", Data: mustAgentResponseEnvelope(t,
-		apitype.AgentBackendEventAssistantMessage{
-			Type: backendEventAssistantMessage,
-			ToolCalls: []apitype.AgentBackendEventToolCall{
-				{ToolCallID: "c1", Name: "probe__run", Args: json.RawMessage(`{}`), ExecutionMode: toolExecutionModeCLI},
-			},
-		})}
-	select {
-	case <-started:
-	case <-time.After(5 * time.Second):
-		t.Fatal("tool handler never started")
-	}
-	streamer.stream <- client.NeoStreamEvent{ID: "3", Data: mustUserInputEnvelope(t, "3",
-		apitype.AgentUserEventCancel{Type: userEventUserCancel})}
-	// Give the drain loop a chance to (wrongly) act on the stale cancel.
-	time.Sleep(50 * time.Millisecond)
-	close(release)
+	streamer.stream <- client.NeoStreamEvent{Data: mustAgentResponseEnvelope(t, apitype.AgentBackendEventAssistantMessage{
+		Type: backendEventAssistantMessage,
+		ToolCalls: []apitype.AgentBackendEventToolCall{
+			{ToolCallID: "c1", Name: "probe__run", Args: json.RawMessage(`{}`), ExecutionMode: toolExecutionModeCLI},
+		},
+	})}
+	require.Eventually(t, func() bool {
+		streamer.mu.Lock()
+		defer streamer.mu.Unlock()
+		return len(streamer.posted) == 2
+	}, 2*time.Second, 10*time.Millisecond)
 
-	select {
-	case err := <-ctxErr:
-		require.NoError(t, err, "a stale user_cancel must not cancel the tool context")
-	case <-time.After(5 * time.Second):
-		t.Fatal("tool never finished")
-	}
+	// Echoes of our own posts, then the same events from a foreign client.
+	streamer.stream <- client.NeoStreamEvent{Data: mustUserInputEnvelope(t,
+		apitype.AgentUserEventExecToolCall{Type: userEventExecToolCall, ToolCallID: "c1", Name: "probe__run"})}
+	streamer.stream <- client.NeoStreamEvent{Data: mustUserInputEnvelope(t, apitype.AgentUserEventToolResult{
+		Type:        userEventToolResult,
+		ToolResults: []apitype.AgentUserEventToolResultItem{{ToolCallID: "c1", Name: "probe__run", Content: "x"}},
+	})}
+	streamer.stream <- client.NeoStreamEvent{Data: mustUserInputEnvelope(t,
+		apitype.AgentUserEventExecToolCall{Type: userEventExecToolCall, ToolCallID: "other", Name: "foreign__run"})}
+	streamer.stream <- client.NeoStreamEvent{Data: mustUserInputEnvelope(t, apitype.AgentUserEventToolResult{
+		Type:        userEventToolResult,
+		ToolResults: []apitype.AgentUserEventToolResultItem{{ToolCallID: "other", Name: "foreign__run", Content: "y"}},
+	})}
 	close(streamer.stream)
 	select {
-	case <-done:
+	case err := <-done:
+		require.NoError(t, err)
 	case <-time.After(5 * time.Second):
 		t.Fatal("session did not exit")
 	}
+	close(uiCh)
+
+	var names []string
+	for ev := range uiCh {
+		switch e := ev.(type) {
+		case UIToolStarted:
+			names = append(names, "start:"+e.Name)
+		case UIToolCompleted:
+			names = append(names, "done:"+e.Name)
+		}
+	}
+	assert.Equal(t, []string{"start:probe__run", "done:probe__run", "start:foreign__run", "done:foreign__run"}, names)
 }
 
 // TestSession_BatchesRunSeriallyAcrossAssistantMessages locks down that tool
