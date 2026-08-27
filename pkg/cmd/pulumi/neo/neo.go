@@ -501,7 +501,7 @@ func runNeo(ctx context.Context, stdout, stderr io.Writer, opts neoRunOptions) e
 		if opts.printMode {
 			session.Output = stdout
 		}
-		return session.Run(ctx)
+		return runNonInteractiveSession(ctx, session, stderr)
 	}
 
 	uiCh := make(chan UIEvent, 64)
@@ -730,7 +730,7 @@ func runNeoResume(
 		LastEventID: lastEventID,
 		Log:         stderr,
 	}
-	return session.Run(ctx)
+	return runNonInteractiveSession(ctx, session, stderr)
 }
 
 func runNeoResumeTUI(
