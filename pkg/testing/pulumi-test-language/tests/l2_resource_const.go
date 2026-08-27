@@ -35,6 +35,9 @@ func init() {
 					RequireSingleResource(l, res.Snap.Resources, "constant:index:Resource")
 
 					AssertPropertyMapMember(l, stack.Outputs, "kind", resource.NewProperty("Constant"))
+					AssertPropertyMapMember(l, stack.Outputs, "flag", resource.NewProperty(true))
+					AssertPropertyMapMember(l, stack.Outputs, "count", resource.NewProperty(3.0))
+					AssertPropertyMapMember(l, stack.Outputs, "ratio", resource.NewProperty(1.5))
 				},
 			},
 		},

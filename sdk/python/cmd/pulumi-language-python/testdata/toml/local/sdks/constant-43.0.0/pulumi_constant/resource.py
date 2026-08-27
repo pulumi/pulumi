@@ -19,11 +19,35 @@ __all__ = ['ResourceArgs', 'Resource']
 @pulumi.input_type
 class ResourceArgs:
     def __init__(__self__, *,
-                 kind: pulumi.Input[Literal['Constant']]):
+                 count: pulumi.Input[Literal[3]],
+                 flag: pulumi.Input[Literal[True]],
+                 kind: pulumi.Input[Literal['Constant']],
+                 ratio: pulumi.Input[_builtins.float]):
         """
         The set of arguments for constructing a Resource resource.
         """
+        pulumi.set(__self__, "count", 3)
+        pulumi.set(__self__, "flag", True)
         pulumi.set(__self__, "kind", 'Constant')
+        pulumi.set(__self__, "ratio", 1.5)
+
+    @_builtins.property
+    @pulumi.getter
+    def count(self) -> pulumi.Input[Literal[3]]:
+        return pulumi.get(self, "count")
+
+    @count.setter
+    def count(self, value: pulumi.Input[Literal[3]]):
+        pulumi.set(self, "count", value)
+
+    @_builtins.property
+    @pulumi.getter
+    def flag(self) -> pulumi.Input[Literal[True]]:
+        return pulumi.get(self, "flag")
+
+    @flag.setter
+    def flag(self, value: pulumi.Input[Literal[True]]):
+        pulumi.set(self, "flag", value)
 
     @_builtins.property
     @pulumi.getter
@@ -34,6 +58,15 @@ class ResourceArgs:
     def kind(self, value: pulumi.Input[Literal['Constant']]):
         pulumi.set(self, "kind", value)
 
+    @_builtins.property
+    @pulumi.getter
+    def ratio(self) -> pulumi.Input[_builtins.float]:
+        return pulumi.get(self, "ratio")
+
+    @ratio.setter
+    def ratio(self, value: pulumi.Input[_builtins.float]):
+        pulumi.set(self, "ratio", value)
+
 
 @pulumi.type_token("constant:index:Resource")
 class Resource(pulumi.CustomResource):
@@ -41,7 +74,10 @@ class Resource(pulumi.CustomResource):
     def __init__(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
+                 count: pulumi.Input[Optional[Literal[3]]] = None,
+                 flag: pulumi.Input[Optional[Literal[True]]] = None,
                  kind: pulumi.Input[Optional[Literal['Constant']]] = None,
+                 ratio: pulumi.Input[Optional[_builtins.float]] = None,
                  __props__=None):
         """
         Create a Resource resource with the given unique name, props, and options.
@@ -73,7 +109,10 @@ class Resource(pulumi.CustomResource):
     def _internal_init(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
+                 count: pulumi.Input[Optional[Literal[3]]] = None,
+                 flag: pulumi.Input[Optional[Literal[True]]] = None,
                  kind: pulumi.Input[Optional[Literal['Constant']]] = None,
+                 ratio: pulumi.Input[Optional[_builtins.float]] = None,
                  __props__=None):
         opts = pulumi.ResourceOptions.merge(_utilities.get_resource_opts_defaults(), opts)
         if not isinstance(opts, pulumi.ResourceOptions):
@@ -83,9 +122,18 @@ class Resource(pulumi.CustomResource):
                 raise TypeError('__props__ is only valid when passed in combination with a valid opts.id to get an existing resource')
             __props__ = ResourceArgs.__new__(ResourceArgs)
 
+            if count is None and not opts.urn:
+                raise TypeError("Missing required property 'count'")
+            __props__.__dict__["count"] = 3
+            if flag is None and not opts.urn:
+                raise TypeError("Missing required property 'flag'")
+            __props__.__dict__["flag"] = True
             if kind is None and not opts.urn:
                 raise TypeError("Missing required property 'kind'")
             __props__.__dict__["kind"] = 'Constant'
+            if ratio is None and not opts.urn:
+                raise TypeError("Missing required property 'ratio'")
+            __props__.__dict__["ratio"] = 1.5
         super(Resource, __self__).__init__(
             'constant:index:Resource',
             resource_name,
@@ -108,11 +156,29 @@ class Resource(pulumi.CustomResource):
 
         __props__ = ResourceArgs.__new__(ResourceArgs)
 
+        __props__.__dict__["count"] = None
+        __props__.__dict__["flag"] = None
         __props__.__dict__["kind"] = None
+        __props__.__dict__["ratio"] = None
         return Resource(resource_name, opts=opts, __props__=__props__)
+
+    @_builtins.property
+    @pulumi.getter
+    def count(self) -> pulumi.Output[Optional[Literal[3]]]:
+        return pulumi.get(self, "count")
+
+    @_builtins.property
+    @pulumi.getter
+    def flag(self) -> pulumi.Output[Optional[Literal[True]]]:
+        return pulumi.get(self, "flag")
 
     @_builtins.property
     @pulumi.getter
     def kind(self) -> pulumi.Output[Optional[Literal['Constant']]]:
         return pulumi.get(self, "kind")
+
+    @_builtins.property
+    @pulumi.getter
+    def ratio(self) -> pulumi.Output[Optional[_builtins.float]]:
+        return pulumi.get(self, "ratio")
 

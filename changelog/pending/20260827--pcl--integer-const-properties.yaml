@@ -1,0 +1,4 @@
+component: pcl
+kind: fix
+body: Fix a crash when binding a schema property with an integer constant value
+time: 2026-08-27T00:00:00+00:00
