@@ -1,0 +1,4 @@
+component: programgen/python
+kind: fix
+body: Support final argument expansion for min and max in Python programs
+time: 2026-08-27T12:05:45+02:00
