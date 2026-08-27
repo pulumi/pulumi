@@ -530,6 +530,12 @@ func (se *stepExecutor) continueExecuteStep(payload any, workerID int, step Step
 			} else {
 				if v, has := newState.Outputs[k]; has && !v.IsSecret() {
 					newState.Outputs[k] = resource.MakeSecret(v)
+				} else if !has && se.deployment.opts.DryRun {
+					// During preview a provider may elide unknown outputs entirely rather than
+					// returning them as computed values. Synthesize a secret unknown so downstream
+					// consumers (stack outputs, SDK deserialization) see the secret marker that
+					// additionalSecretOutputs promised.
+					newState.Outputs[k] = resource.MakeSecret(resource.MakeComputed(resource.NewProperty("")))
 				} else if !has { //nolint:staticcheck // https://github.com/pulumi/pulumi/issues/9926
 					// TODO (https://github.com/pulumi/pulumi/issues/9926): We want to re-enable this warning
 					// but it requires that providers always return back _every_ output even in preview. We
