@@ -102,6 +102,11 @@ func rewriteConversions(x model.Expression, to model.Type, diags *hcl.Diagnostic
 		x.Value, typecheck = rewriteConversions(x.Value, valueType.(model.Type), diags)
 	case *model.FunctionCallExpression:
 		args := x.Args
+		var expandedFinal model.Expression
+		if x.ExpandFinal && len(args) > 0 {
+			expandedFinal = args[len(args)-1]
+			args = args[:len(args)-1]
+		}
 		for _, param := range x.Signature.Parameters {
 			if len(args) == 0 {
 				break
@@ -113,6 +118,9 @@ func rewriteConversions(x model.Expression, to model.Type, diags *hcl.Diagnostic
 			for i := range args {
 				args[i], _ = rewriteConversions(args[i], model.InputType(x.Signature.VarargsParameter.Type), diags)
 			}
+		}
+		if expandedFinal != nil {
+			x.Args[len(x.Args)-1], _ = rewriteConversions(expandedFinal, expandedFinal.Type(), diags)
 		}
 	case *model.IndexExpression:
 		x.Key, _ = rewriteConversions(x.Key, x.KeyType(), diags)
