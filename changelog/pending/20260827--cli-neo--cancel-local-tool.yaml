@@ -1,4 +1,4 @@
 component: cli/neo
 kind: fix
-body: Cancelling a Neo task now stops the running local tool immediately and reports it as cancelled
+body: Stop the running local tool immediately when a Neo task is cancelled and report it as cancelled
 time: 2026-08-27T00:00:00Z
