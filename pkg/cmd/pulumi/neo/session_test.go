@@ -1981,3 +1981,68 @@ func TestSession_BatchesRunSeriallyAcrossAssistantMessages(t *testing.T) {
 	require.Len(t, res2.ToolResults, 1)
 	assert.Equal(t, "c2", res2.ToolResults[0].ToolCallID)
 }
+
+// cancellingStreamer cancels the batch context from inside the first
+// exec_tool_call post and reports that post as failed, mimicking a request
+// torn down by the user's cancel mid-flight.
+type cancellingStreamer struct {
+	fakeStreamer
+	cancel context.CancelFunc
+	once   sync.Once
+}
+
+func (c *cancellingStreamer) PostNeoTaskUserEvent(ctx context.Context, org, task string, body any) error {
+	if _, ok := body.(apitype.AgentUserEventExecToolCall); ok {
+		var cancelled bool
+		c.once.Do(func() {
+			c.cancel()
+			cancelled = true
+		})
+		if cancelled {
+			_ = c.fakeStreamer.PostNeoTaskUserEvent(ctx, org, task, body)
+			return errors.New("connection reset")
+		}
+	}
+	return c.fakeStreamer.PostNeoTaskUserEvent(ctx, org, task, body)
+}
+
+// TestSession_ExecToolCallPostFailureUnderCancelStillPostsToolResult pins the
+// behaviour of a failed exec_tool_call post when the failure is caused by the
+// batch being cancelled: the batch must not abort, both calls are reported
+// cancelled, and a single tool_result covering every call is still posted so
+// the parked runtime can end the turn.
+func TestSession_ExecToolCallPostFailureUnderCancelStillPostsToolResult(t *testing.T) {
+	t.Parallel()
+
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+	streamer := &cancellingStreamer{fakeStreamer: *newFakeStreamer(), cancel: cancel}
+	ran := false
+	handlers := map[string]ToolHandler{
+		"probe": &probeHandler{invoke: func(context.Context) (any, error) {
+			ran = true
+			return map[string]any{"ok": true}, nil
+		}},
+	}
+	s := &Session{Client: streamer, Handlers: handlers, OrgName: "org", TaskID: "task"}
+
+	err := s.runBatch(ctx, []apitype.AgentBackendEventToolCall{
+		{ToolCallID: "c1", Name: "probe__run", Args: json.RawMessage(`{}`), ExecutionMode: toolExecutionModeCLI},
+		{ToolCallID: "c2", Name: "probe__run", Args: json.RawMessage(`{}`), ExecutionMode: toolExecutionModeCLI},
+	})
+	require.NoError(t, err, "a cancel-induced exec_tool_call failure must not be session-fatal")
+	assert.False(t, ran, "no handler may run once the batch context is cancelled")
+
+	streamer.mu.Lock()
+	defer streamer.mu.Unlock()
+	require.Len(t, streamer.posted, 2, "one failed exec_tool_call, then the tool_result")
+	_, ok := streamer.posted[0].(apitype.AgentUserEventExecToolCall)
+	require.True(t, ok)
+	result, ok := streamer.posted[1].(apitype.AgentUserEventToolResult)
+	require.True(t, ok)
+	require.Len(t, result.ToolResults, 2)
+	for _, item := range result.ToolResults {
+		assert.True(t, item.IsError, "%s must be reported as an error", item.ToolCallID)
+		assert.Equal(t, cancelledContent(), item.Content)
+	}
+}
