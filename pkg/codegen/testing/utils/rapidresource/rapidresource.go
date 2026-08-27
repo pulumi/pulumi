@@ -20,6 +20,7 @@ package rapidresource
 
 import (
 	"fmt"
+	"strings"
 
 	"pgregory.net/rapid"
 
@@ -27,9 +28,10 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/archive"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/asset"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/urn"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/property"
-	propertytest "github.com/pulumi/pulumi/sdk/v3/go/property/testing"
 )
 
 // ResourceInputs returns a generator for a property.Map matching the
@@ -70,51 +72,52 @@ func propertyMapGenerator(props []*schema.Property) *rapid.Generator[property.Ma
 }
 
 // drawPropertyMap emits a property.Map for the given property list. Required
-// properties are always present; optional properties are sometimes absent,
-// sometimes explicitly null, and sometimes carry a typed value. At depth 0
-// optional properties are always absent: this bounds otherwise-unbounded
-// optional cycles (which the schema does not forbid because a null value
-// always terminates them).
+// properties are always present; optional properties are sometimes absent, and
+// when present their value comes from drawPropertyValue (which may still draw
+// an explicit null through the optional type). At depth 0 optional properties
+// are always absent: this bounds otherwise-unbounded optional cycles (which
+// the schema does not forbid because a null value always terminates them).
 func drawPropertyMap(t *rapid.T, props []*schema.Property, depth int) property.Map {
 	out := map[string]property.Value{}
 	for _, p := range props {
 		label := "prop:" + p.Name
 		if _, isOpt := p.Type.(*schema.OptionalType); isOpt {
-			if depth <= 0 {
+			if depth <= 0 || !rapid.Bool().Draw(t, label+":present") {
 				continue
 			}
-			switch rapid.IntRange(0, 2).Draw(t, label+":mode") {
-			case 0:
-				continue
-			case 1:
-				out[p.Name] = property.Value{}
-			case 2:
-				out[p.Name] = drawPropertyValue(t, p, label, depth)
-			}
-		} else {
-			out[p.Name] = drawPropertyValue(t, p, label, depth)
 		}
+		out[p.Name] = drawPropertyValue(t, p, label, depth)
 	}
 	return property.NewMap(out)
 }
 
 // drawPropertyValue emits a value for p: its declared constant when it has
-// one, otherwise a value drawn from its type.
+// one (or an explicit null when the constant property is optional), otherwise
+// a value drawn from its type.
 func drawPropertyValue(t *rapid.T, p *schema.Property, label string, depth int) property.Value {
 	if p.ConstValue != nil {
 		// A constant consumes no randomness, and rapid rejects a generator
 		// group that draws nothing ("group did not use any data"); pad with
 		// one throwaway bit so a group of only constants stays legal.
 		rapid.Bool().Draw(t, label+":pad")
+		if _, isOpt := p.Type.(*schema.OptionalType); isOpt && rapid.Bool().Draw(t, label+":null") {
+			return property.Value{}
+		}
 		return liftGoValue(p.ConstValue)
 	}
-	return drawValue(t, codegen.UnwrapType(p.Type), label, depth)
+	return drawValue(t, p.Type, label, depth)
 }
 
 // drawValue emits a property.Value matching typ. The schema is free of
 // object cycles, but values may still nest indefinitely through
 // Array<T>/Map<T> chains; depth caps that.
 func drawValue(t *rapid.T, typ schema.Type, label string, depth int) property.Value {
+	if opt, ok := typ.(*schema.OptionalType); ok {
+		if rapid.Bool().Draw(t, label+":null") {
+			return property.Value{}
+		}
+		return drawValue(t, opt.ElementType, label, depth)
+	}
 	if tok, ok := typ.(*schema.TokenType); ok {
 		if tok.UnderlyingType != nil {
 			return drawValue(t, tok.UnderlyingType, label, depth)
@@ -166,13 +169,18 @@ func drawValue(t *rapid.T, typ schema.Type, label string, depth int) property.Va
 		}
 		return property.New(m)
 	case *schema.ObjectType:
+		if len(tt.Properties) == 0 {
+			// An empty object consumes no randomness, and rapid rejects a
+			// generator group that draws nothing; pad with one throwaway bit.
+			rapid.Bool().Draw(t, label+":pad")
+		}
 		return property.New(drawPropertyMap(t, tt.Properties, depth-1))
 	case *schema.UnionType:
 		return drawUnionValue(t, tt, label, depth)
 	case *schema.EnumType:
 		return drawEnumValue(t, tt, label)
 	case *schema.ResourceType:
-		return drawResourceReferenceValue(t, label)
+		return drawResourceReferenceValue(t, tt, label)
 	}
 
 	panic(fmt.Sprintf("rapidresource: unhandled schema type %T (%v)", typ, typ))
@@ -324,8 +332,21 @@ func toPropertyGoValue(v any) any {
 	return v
 }
 
-func drawResourceReferenceValue(t *rapid.T, label string) property.Value {
+// drawResourceReferenceValue emits a reference to a resource of typ's type.
+func drawResourceReferenceValue(t *rapid.T, typ *schema.ResourceType, label string) property.Value {
+	component := rapid.String().
+		Filter(func(s string) bool { return !strings.Contains(s, urn.NameDelimiter) })
+	var parentType tokens.Type
+	if rapid.Bool().Draw(t, label+":haveParent") {
+		parentType = tokens.Type(component.Draw(t, label+":parent"))
+	}
 	return property.New(property.ResourceReference{
-		URN: propertytest.URN().Draw(t, label+":urn"),
+		URN: urn.New(
+			tokens.QName(component.Draw(t, label+":stack")),
+			tokens.PackageName(component.Draw(t, label+":project")),
+			parentType,
+			tokens.Type(typ.Token),
+			rapid.String().Draw(t, label+":name"),
+		),
 	})
 }
