@@ -89,13 +89,26 @@ func drawPropertyMap(t *rapid.T, props []*schema.Property, depth int) property.M
 			case 1:
 				out[p.Name] = property.Value{}
 			case 2:
-				out[p.Name] = drawValue(t, codegen.UnwrapType(p.Type), label, depth)
+				out[p.Name] = drawPropertyValue(t, p, label, depth)
 			}
 		} else {
-			out[p.Name] = drawValue(t, codegen.UnwrapType(p.Type), label, depth)
+			out[p.Name] = drawPropertyValue(t, p, label, depth)
 		}
 	}
 	return property.NewMap(out)
+}
+
+// drawPropertyValue emits a value for p: its declared constant when it has
+// one, otherwise a value drawn from its type.
+func drawPropertyValue(t *rapid.T, p *schema.Property, label string, depth int) property.Value {
+	if p.ConstValue != nil {
+		// A constant consumes no randomness, and rapid rejects a generator
+		// group that draws nothing ("group did not use any data"); pad with
+		// one throwaway bit so a group of only constants stays legal.
+		rapid.Bool().Draw(t, label+":pad")
+		return liftGoValue(p.ConstValue)
+	}
+	return drawValue(t, codegen.UnwrapType(p.Type), label, depth)
 }
 
 // drawValue emits a property.Value matching typ. The schema is free of
@@ -286,11 +299,17 @@ func drawEnumValue(t *rapid.T, e *schema.EnumType, label string) property.Value 
 		return drawValue(t, e.ElementType, label+":eunderlying", 0)
 	}
 	idx := rapid.IntRange(0, len(e.Elements)-1).Draw(t, label+":eidx")
-	v, err := property.Any(toPropertyGoValue(e.Elements[idx].Value))
+	return liftGoValue(e.Elements[idx].Value)
+}
+
+// liftGoValue lifts a bound schema constant (bool, int32, float64, or string)
+// into a property.Value, widening integers to float64.
+func liftGoValue(v any) property.Value {
+	pv, err := property.Any(toPropertyGoValue(v))
 	if err != nil {
-		panic(fmt.Sprintf("rapidresource: enum value %v (%[1]T): %v", e.Elements[idx].Value, err))
+		panic(fmt.Sprintf("rapidresource: value %v (%[1]T): %v", v, err))
 	}
-	return v
+	return pv
 }
 
 func toPropertyGoValue(v any) any {
