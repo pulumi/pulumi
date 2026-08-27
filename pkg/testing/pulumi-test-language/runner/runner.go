@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"maps"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -415,19 +416,17 @@ func (l *providerLoader) LoadPackageReferenceV2(
 	// own (e.g. fullyTypedUnions on the discriminated union providers), so the harness's keys
 	// overlay the provider's rather than replacing them.
 	if l.languageInfo != "" {
-		merged := map[string]interface{}{}
+		merged := map[string]any{}
 		if existing, ok := spec.Language[l.language]; ok {
 			if err := json.Unmarshal(existing, &merged); err != nil {
 				return nil, err
 			}
 		}
-		overlay := map[string]interface{}{}
+		overlay := map[string]any{}
 		if err := json.Unmarshal([]byte(l.languageInfo), &overlay); err != nil {
 			return nil, err
 		}
-		for k, v := range overlay {
-			merged[k] = v
-		}
+		maps.Copy(merged, overlay)
 		raw, err := json.Marshal(merged)
 		if err != nil {
 			return nil, err

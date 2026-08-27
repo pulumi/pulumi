@@ -244,10 +244,19 @@ func TestProviderSchemas(t *testing.T) {
 			require.NoError(t, err, "bind schema for provider %s: %v", spec.Name, err)
 			require.False(t, diags.HasErrors(), "bind schema for provider %s: %v", spec.Name, diags)
 
-			// Ensure that none of the language options are set, conformance tests are supposed to be language
-			// agnostic.
-			assert.Empty(t, pkg.Language,
-				"provider %s has language options set in schema", pkg.Name)
+			// Ensure that none of the language options are set, conformance tests are supposed to be
+			// language agnostic. The one exception is fullyTypedUnions, the per-language opt-in for
+			// typed discriminated unions, which the discriminated union providers set for every
+			// language that gates on it.
+			for lang, raw := range spec.Language {
+				var options map[string]json.RawMessage
+				require.NoError(t, json.Unmarshal(raw, &options),
+					"provider %s has invalid language options for %s", spec.Name, lang)
+				for option := range options {
+					assert.Equal(t, "fullyTypedUnions", option,
+						"provider %s sets language option %s.%s in schema", spec.Name, lang, option)
+				}
+			}
 			for name, res := range pkg.Resources {
 				assert.Empty(t, res.Language,
 					"provider %s resource %s has language options set in schema", pkg.Name, name)

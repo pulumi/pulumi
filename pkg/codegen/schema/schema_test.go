@@ -4157,7 +4157,7 @@ func TestBindDiscriminatedCases(t *testing.T) {
 		union := unionOf(t, pkg)
 		require.True(t, union.IsDiscriminated())
 		assert.Equal(t, "kind", union.Discriminator)
-		assert.Len(t, union.DiscriminatedCases, 2)
+		require.Len(t, union.DiscriminatedCases, 2)
 		assert.Equal(t, "test:index:A", union.DiscriminatedCases["a"].Token)
 		assert.Equal(t, "test:index:B", union.DiscriminatedCases["b"].Token)
 		// The cases are always plain shapes, so they survive the input/plain rewrites in codegen.
