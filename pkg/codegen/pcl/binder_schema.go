@@ -544,6 +544,8 @@ func (b *binder) schemaTypeToTypeOrConst(typ schema.Type, prop *schema.Property)
 		switch v := prop.ConstValue.(type) {
 		case bool:
 			value = cty.BoolVal(v)
+		case int32:
+			value = cty.NumberIntVal(int64(v))
 		case float64:
 			value = cty.NumberFloatVal(v)
 		case string:
