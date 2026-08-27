@@ -5,6 +5,11 @@ import * as pulumi from "@pulumi/pulumi";
 import * as utilities from "./utilities";
 
 // Export members:
+export { EchoMapArgs, EchoMapResult, EchoMapOutputArgs } from "./echoMap";
+export const echoMap: typeof import("./echoMap").echoMap = null as any;
+export const echoMapOutput: typeof import("./echoMap").echoMapOutput = null as any;
+utilities.lazyLoad(exports, ["echoMap","echoMapOutput"], () => require("./echoMap"));
+
 export { GetTextArgs, GetTextResult, GetTextOutputArgs } from "./getText";
 export const getText: typeof import("./getText").getText = null as any;
 export const getTextOutput: typeof import("./getText").getTextOutput = null as any;
