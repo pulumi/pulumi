@@ -831,6 +831,51 @@ async def test_construct_component_init_error():
             assert "Component initialization failed" in e.details()
 
 
+class ThrowingCallProvider(Provider):
+    def __init__(self):
+        super().__init__("1.0.0")
+
+    def call(self, token: str, args: Inputs) -> CallResult:
+        raise ValueError("oops in call")
+
+    def invoke(self, token: str, args):
+        raise ValueError("oops in invoke")
+
+
+@pytest.mark.asyncio
+async def test_call_error_includes_stack_trace():
+    provider = ThrowingCallProvider()
+    servicer = ProviderServicer(provider, [], "")
+
+    async with provider_servicer_stub(servicer) as stub:
+        request = proto.CallRequest(tok="test:index:call")
+
+        try:
+            await stub.Call(request)
+            assert False, "Expected error to be raised"
+        except grpc.aio.AioRpcError as e:
+            assert e.code() == grpc.StatusCode.UNKNOWN
+            assert "oops in call" in e.details()
+            assert 'raise ValueError("oops in call")' in e.details()
+
+
+@pytest.mark.asyncio
+async def test_invoke_error_includes_stack_trace():
+    provider = ThrowingCallProvider()
+    servicer = ProviderServicer(provider, [], "")
+
+    async with provider_servicer_stub(servicer) as stub:
+        request = proto.InvokeRequest(tok="test:index:fn")
+
+        try:
+            await stub.Invoke(request)
+            assert False, "Expected error to be raised"
+        except grpc.aio.AioRpcError as e:
+            assert e.code() == grpc.StatusCode.UNKNOWN
+            assert "oops in invoke" in e.details()
+            assert 'raise ValueError("oops in invoke")' in e.details()
+
+
 def parse_grpc_error_details(grpc_error: grpc.aio.AioRpcError) -> dict:
     error_details = {
         "message": grpc_error.details(),

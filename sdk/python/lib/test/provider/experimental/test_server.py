@@ -15,6 +15,7 @@
 import asyncio
 from typing import Optional
 
+import grpc
 import pytest
 
 from pulumi.provider.experimental import provider
@@ -84,3 +85,61 @@ async def test_construct_and_call_can_run_concurrently():
         assert construct_response.urn.endswith("::test-resource")
         assert test_provider.construct_stack_after_call == "construct-stack"
         assert test_provider.construct_config_after_call == "construct-config"
+
+
+class ThrowingCallProvider(provider.Provider):
+    async def call(self, request: provider.CallRequest) -> provider.CallResponse:
+        raise ValueError("oops in call")
+
+    async def create(self, request: provider.CreateRequest) -> provider.CreateResponse:
+        raise ValueError("oops in create")
+
+
+@pytest.mark.asyncio
+async def test_call_error_includes_stack_trace():
+    test_provider = ThrowingCallProvider()
+    servicer = ProviderServicer([], "1.0.0", test_provider, "")
+
+    async with provider_servicer_stub(servicer) as stub:
+        request = proto.CallRequest(tok="test:index:call")
+
+        try:
+            await stub.Call(request)
+            assert False, "Expected error to be raised"
+        except grpc.aio.AioRpcError as e:
+            assert e.code() == grpc.StatusCode.UNKNOWN
+            assert "oops in call" in e.details()
+            assert 'raise ValueError("oops in call")' in e.details()
+
+
+@pytest.mark.asyncio
+async def test_create_error_includes_stack_trace():
+    test_provider = ThrowingCallProvider()
+    servicer = ProviderServicer([], "1.0.0", test_provider, "")
+
+    async with provider_servicer_stub(servicer) as stub:
+        request = proto.CreateRequest()
+
+        try:
+            await stub.Create(request)
+            assert False, "Expected error to be raised"
+        except grpc.aio.AioRpcError as e:
+            assert e.code() == grpc.StatusCode.UNKNOWN
+            assert "oops in create" in e.details()
+            assert 'raise ValueError("oops in create")' in e.details()
+
+
+@pytest.mark.asyncio
+async def test_not_implemented_passes_through():
+    test_provider = ThrowingCallProvider()
+    servicer = ProviderServicer([], "1.0.0", test_provider, "")
+
+    async with provider_servicer_stub(servicer) as stub:
+        request = proto.DeleteRequest()
+
+        try:
+            await stub.Delete(request)
+            assert False, "Expected error to be raised"
+        except grpc.aio.AioRpcError as e:
+            assert "The method 'delete' is not implemented" in e.details()
+            assert "Traceback" not in e.details()
