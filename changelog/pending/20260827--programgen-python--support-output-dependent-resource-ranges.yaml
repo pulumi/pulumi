@@ -1,0 +1,4 @@
+component: programgen/python
+kind: fix
+body: Generate valid Python for output-dependent resource ranges
+time: 2026-08-27T13:50:57+02:00
