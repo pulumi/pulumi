@@ -1,4 +1,4 @@
 component: cli
 kind: improvement
-body: Pressing Ctrl+C during `pulumi neo --print` or `pulumi neo resume` now cancels the running task; pressing it again exits immediately
+body: Cancel the running task when Ctrl+C is pressed during `pulumi neo --print` or `pulumi neo resume`, and exit immediately on a second Ctrl+C
 time: 2026-08-27T00:00:00Z
