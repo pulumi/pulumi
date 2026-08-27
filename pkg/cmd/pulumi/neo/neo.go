@@ -21,9 +21,11 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/signal"
 	"path/filepath"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
 
 	tea "charm.land/bubbletea/v2"
@@ -65,10 +67,9 @@ var (
 	userMessageRetryMaxBackoff     = 30 * time.Second
 
 	// cancelMaxPostAttempts bounds the total user_cancel posts (the initial
-	// one plus automatic retries). With userMessageRetryDelay backoff, 8
-	// posts span roughly 90 seconds — enough to outlast most local tool calls
-	// (during which the service 409s cancels because the task is parked)
-	// without retrying forever against a task that will never accept one.
+	// one plus automatic retries). The service accepts cancels while the task
+	// is parked on a local tool call, so retries only cover transient failures;
+	// with userMessageRetryDelay backoff, 8 posts span roughly 90 seconds.
 	cancelMaxPostAttempts = 8
 )
 
@@ -502,7 +503,7 @@ func runNeo(ctx context.Context, stdout, stderr io.Writer, opts neoRunOptions) e
 		if opts.printMode {
 			session.Output = stdout
 		}
-		return session.Run(ctx)
+		return runNonInteractiveSession(ctx, session, stderr)
 	}
 
 	uiCh := make(chan UIEvent, 64)
@@ -731,6 +732,44 @@ func runNeoResume(
 		LastEventID: lastEventID,
 		Log:         stderr,
 	}
+	return runNonInteractiveSession(ctx, session, stderr)
+}
+
+// runNonInteractiveSession runs the session with Ctrl+C wired the way the TUI's
+// ESC is: the first interrupt posts a user_cancel so the agent stops the turn
+// (and, via the echoed event, kills any running local tool and reports it
+// cancelled); a second interrupt, or a failed post, tears the session down.
+func runNonInteractiveSession(ctx context.Context, session *Session, stderr io.Writer) error {
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	sigCh := make(chan os.Signal, 1)
+	signal.Notify(sigCh, os.Interrupt, syscall.SIGTERM)
+	defer signal.Stop(sigCh)
+
+	go func() {
+		select {
+		case <-ctx.Done():
+			return
+		case <-sigCh:
+		}
+		fmt.Fprintln(stderr, "Cancelling... (press Ctrl+C again to exit immediately)")
+		postCtx, postCancel := context.WithTimeout(ctx, 10*time.Second)
+		defer postCancel()
+		err := session.Client.PostNeoTaskUserEvent(
+			postCtx, session.OrgName, session.TaskID, apitype.AgentUserEventCancel{Type: userEventUserCancel})
+		if err != nil {
+			fmt.Fprintf(stderr, "error: cancel not sent: %v\n", err)
+			cancel()
+			return
+		}
+		select {
+		case <-ctx.Done():
+		case <-sigCh:
+			cancel()
+		}
+	}()
+
 	return session.Run(ctx)
 }
 
@@ -1099,10 +1138,8 @@ func dispatchUserEvents(
 
 // cancelRetry is the dispatcher's single-slot retry state for the in-flight
 // user_cancel. A failed post is retried on its own timer rather than being
-// dropped: the service rejects cancels while the task is parked on a local
-// tool call, and the retry is what eventually lands the cancel once the tool
-// result posts. Repeated ESC presses while a cancel is pending are
-// deduplicated against the one slot.
+// dropped, so a transient error doesn't lose the user's cancel. Repeated ESC
+// presses while a cancel is pending are deduplicated against the one slot.
 type cancelRetry struct {
 	pending  bool
 	failures int
