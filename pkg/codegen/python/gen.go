@@ -2843,10 +2843,15 @@ func (mod *modContext) typeString(t schema.Type, opts typeStringOpts) string {
 					return mod.typeString(typ.ElementType, opts)
 				}
 			}
-			if t.DefaultType != nil {
-				return mod.typeString(t.DefaultType, opts)
+			// A discriminated union of object types keeps its members on the output side too: the
+			// runtime reduces a value to the member its constants select, so only an
+			// undiscriminatable union degrades to its default type or `Any`.
+			if !codegen.IsWireDiscriminatableUnionType(t) {
+				if t.DefaultType != nil {
+					return mod.typeString(t.DefaultType, opts)
+				}
+				return "Any"
 			}
-			return "Any"
 		}
 
 		elementTypeSet := mapset.NewSet[string]()

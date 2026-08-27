@@ -1,0 +1,40 @@
+# 2026/08/27 14:55:10.162151 [TestWireDiscriminatableUnionsAttributeUniquely] [rapid] draw members: 2
+# 2026/08/27 14:55:10.162154 [TestWireDiscriminatableUnionsAttributeUniquely] [rapid] draw m0:kind: "resource"
+# 2026/08/27 14:55:10.162155 [TestWireDiscriminatableUnionsAttributeUniquely] [rapid] draw m0:token: "pkg:index:A"
+# 2026/08/27 14:55:10.162155 [TestWireDiscriminatableUnionsAttributeUniquely] [rapid] draw m1:kind: "bool"
+# 2026/08/27 14:55:10.162156 [TestWireDiscriminatableUnionsAttributeUniquely] [rapid] draw perm: []schema.Type{(*schema.ResourceType)(0x72f7838852a8), 0x1}
+# 2026/08/27 14:55:10.162162 [TestWireDiscriminatableUnionsAttributeUniquely] [rapid] draw member: 0
+# 2026/08/27 14:55:10.162164 [TestWireDiscriminatableUnionsAttributeUniquely] [rapid] draw value: property.New(property.ResourceReference{URN:"urn:pulumi:::::::pkg:index:A:::", Name:"", Type:"", ID:property.New(property.Null), PackageVersion:""})
+# 2026/08/27 14:55:10.162205 [TestWireDiscriminatableUnionsAttributeUniquely] 
+# 	Error Trace:	/Users/ianwahbe/go/src/github.com/pulumi/pulumi/pkg/codegen/utilities_rapid_test.go:102
+# 	            				/Users/ianwahbe/go/src/github.com/pulumi/pulumi/pkg/codegen/utilities_rapid_test.go:59
+# 	            				/Users/ianwahbe/go/pkg/mod/pgregory.net/rapid@v1.2.0/engine.go:371
+# 	            				/Users/ianwahbe/go/pkg/mod/pgregory.net/rapid@v1.2.0/engine.go:380
+# 	            				/Users/ianwahbe/go/pkg/mod/pgregory.net/rapid@v1.2.0/engine.go:205
+# 	            				/Users/ianwahbe/go/pkg/mod/pgregory.net/rapid@v1.2.0/engine.go:120
+# 	            				/Users/ianwahbe/go/src/github.com/pulumi/pulumi/pkg/codegen/utilities_rapid_test.go:44
+# 	Error:      	Should be true
+# 	Test:       	TestWireDiscriminatableUnionsAttributeUniquely
+# 	Messages:   	value {false [] {urn:pulumi:::::::pkg:index:A:::   {false [] <nil>} }} does not match the member pkg:index:A it was drawn from
+# 
+v0.4.8#5244911718647759502
+0x0
+0x0
+0x0
+0x9867f1f40f739
+0xb
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x5555555555555
+0x0
+0xc05c654ab866b
+0x12
+0x0

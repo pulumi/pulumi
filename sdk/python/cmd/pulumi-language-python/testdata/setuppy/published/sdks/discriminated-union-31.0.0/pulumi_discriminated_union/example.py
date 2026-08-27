@@ -4,9 +4,14 @@
 
 import builtins as _builtins
 import warnings
+import sys
 import pulumi
 import pulumi.runtime
 from typing import Any, Mapping, Optional, Sequence, Union, overload
+if sys.version_info >= (3, 11):
+    from typing import NotRequired, TypedDict, TypeAlias
+else:
+    from typing_extensions import NotRequired, TypedDict, TypeAlias
 from . import _utilities
 from . import outputs
 from ._inputs import *
@@ -51,8 +56,8 @@ class Example(pulumi.CustomResource):
     def __init__(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 array_of_union_of: pulumi.Input[Optional[Sequence[pulumi.Input[Union[pulumi.InputType['VariantOneArgs'], pulumi.InputType['VariantTwoArgs']]]]]] = None,
-                 union_of: pulumi.Input[Optional[Union[pulumi.InputType['VariantOneArgs'], pulumi.InputType['VariantTwoArgs']]]] = None,
+                 array_of_union_of: pulumi.Input[Optional[Sequence[pulumi.Input[Union[Union['VariantOneArgs', 'VariantOneArgsDict'], Union['VariantTwoArgs', 'VariantTwoArgsDict']]]]]] = None,
+                 union_of: pulumi.Input[Optional[Union[Union['VariantOneArgs', 'VariantOneArgsDict'], Union['VariantTwoArgs', 'VariantTwoArgsDict']]]] = None,
                  __props__=None):
         """
         Create a Example resource with the given unique name, props, and options.
@@ -84,8 +89,8 @@ class Example(pulumi.CustomResource):
     def _internal_init(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 array_of_union_of: pulumi.Input[Optional[Sequence[pulumi.Input[Union[pulumi.InputType['VariantOneArgs'], pulumi.InputType['VariantTwoArgs']]]]]] = None,
-                 union_of: pulumi.Input[Optional[Union[pulumi.InputType['VariantOneArgs'], pulumi.InputType['VariantTwoArgs']]]] = None,
+                 array_of_union_of: pulumi.Input[Optional[Sequence[pulumi.Input[Union[Union['VariantOneArgs', 'VariantOneArgsDict'], Union['VariantTwoArgs', 'VariantTwoArgsDict']]]]]] = None,
+                 union_of: pulumi.Input[Optional[Union[Union['VariantOneArgs', 'VariantOneArgsDict'], Union['VariantTwoArgs', 'VariantTwoArgsDict']]]] = None,
                  __props__=None):
         opts = pulumi.ResourceOptions.merge(_utilities.get_resource_opts_defaults(), opts)
         if not isinstance(opts, pulumi.ResourceOptions):
