@@ -68,7 +68,7 @@ type basePluginMapper struct {
 
 // mapperCacheOptions is a bag of flags for tuning the caching behaviour of a basePluginMapper, for testing.
 type mapperCacheOptions struct {
-	// disableFileCache disables the on-disk mapping cache in ~/.pulumi/mappings.
+	// disableFileCache disables the on-disk mapping cache in $PULUMI_HOME/mappings.
 	disableFileCache bool
 }
 
@@ -209,7 +209,7 @@ func newBasePluginMapper(
 }
 
 // mappingFilePath returns the path to the mapping cache file for the given request. Mappings are cached in
-// ~/.pulumi/mappings/ with a filename encoding the conversion key, source provider, plugin name and version, and a
+// $PULUMI_HOME/mappings/ with a filename encoding the conversion key, source provider, plugin name and version, and a
 // hash of the parameterization so different sources remain distinct.
 func mappingFilePath(
 	key, provider, pluginName string,
