@@ -507,6 +507,25 @@ func TestGetAccountWithAgentFallbackDisabledWithExplicitCredentialsPath(t *testi
 	assert.Empty(t, account.AccessToken)
 }
 
+func TestAgentClaimActive(t *testing.T) {
+	t.Parallel()
+
+	now := time.Now()
+	past := now.Add(-time.Hour)
+	future := now.Add(time.Hour)
+
+	assert.True(t, AgentClaim{ClaimURL: "https://app.example.com/claim/t", ValidUntil: future}.Active(now))
+	assert.True(t, AgentClaim{ClaimURL: "https://app.example.com/claim/t"}.Active(now),
+		"a claim with no recorded expiry is active")
+	assert.False(t, AgentClaim{ValidUntil: future}.Active(now), "a claim without a URL is not active")
+	assert.False(t, AgentClaim{ClaimURL: "https://app.example.com/claim/t", ValidUntil: past}.Active(now))
+	assert.False(t, AgentClaim{
+		ClaimURL:           "https://app.example.com/claim/t",
+		ValidUntil:         future,
+		ClaimUnavailableAt: &past,
+	}.Active(now))
+}
+
 func TestFormatAgentClaimInstruction(t *testing.T) {
 	t.Parallel()
 

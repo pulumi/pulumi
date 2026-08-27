@@ -26,34 +26,24 @@ import (
 const agentClaimPermalinkLabel = "Claim this account to view in Pulumi Cloud"
 
 // permalinkForDisplay returns the permalink to display for an update together
-// with an optional label override. When the CLI runs on shared ephemeral
-// agent-account credentials, the console permalink points at the agent's
-// organization, which the user cannot access until the account is claimed, so
-// the account's claim URL is shown instead; when the claim is no longer usable
-// the permalink is suppressed entirely.
+// with an optional label override. It answers two distinct questions in order:
+//
+//  1. Whose credentials ran this update? When they are the user's own, the
+//     console permalink is reachable and is returned unchanged. Only actual
+//     credential use counts here: a leftover claim file in the shared agent
+//     store must not affect commands that ran on user credentials.
+//  2. The update ran on ephemeral agent-account credentials, so the permalink
+//     points at the agent's organization, which the user cannot open until the
+//     account is claimed. Show the claim URL while the claim is active for
+//     this backend, and otherwise show nothing at all — never the unreachable
+//     permalink.
 func permalinkForDisplay(ctx context.Context, cloudURL, permalink string) (string, string) {
 	if !AgentCredentialsUsed(ctx, cloudURL) {
 		return permalink, ""
 	}
-	claim, err := workspace.GetAgentClaim()
-	if err != nil {
-		return "", ""
+	if claim, err := workspace.GetAgentClaim(); err == nil &&
+		claim.CloudURL == cloudURL && claim.Active(time.Now()) {
+		return claim.ClaimURL, agentClaimPermalinkLabel
 	}
-	return agentClaimPermalink(claim, cloudURL, time.Now()), agentClaimPermalinkLabel
-}
-
-// agentClaimPermalink returns the claim URL to display in place of a console
-// permalink, or "" when the claim cannot be surfaced: it belongs to a
-// different backend, has expired, or is no longer claimable.
-func agentClaimPermalink(claim workspace.AgentClaim, cloudURL string, now time.Time) string {
-	if claim.ClaimURL == "" || claim.CloudURL != cloudURL {
-		return ""
-	}
-	if claim.ClaimUnavailableAt != nil {
-		return ""
-	}
-	if !claim.ValidUntil.IsZero() && !claim.ValidUntil.After(now) {
-		return ""
-	}
-	return claim.ClaimURL
+	return "", agentClaimPermalinkLabel
 }

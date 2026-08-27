@@ -45,7 +45,7 @@ type Options struct {
 	TruncateOutput           bool                // true if we should truncate long outputs
 	SuppressOutputs          bool                // true to suppress output summarization, e.g. if contains sensitive info.
 	SuppressPermalink        bool                // true to suppress state permalink (including in DIY backends)
-	PermalinkLabel           string              // overrides the label shown before the permalink (default "View Live")
+	PermalinkLabel           string              // overrides the label shown before the permalink
 	SummaryDiff              bool                // true if diff display should be summarized.
 	IsInteractive            bool                // true if we should display things interactively.
 	Type                     Type                // type of display (rich diff, progress, or query).

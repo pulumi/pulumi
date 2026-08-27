@@ -30,21 +30,35 @@ const (
 	testViewLiveLink = "https://app.pulumi.com/org/proj/stack/updates/1"
 )
 
-func TestAgentClaimPermalink(t *testing.T) {
-	t.Parallel()
+func TestPermalinkForDisplayWithoutAgentCredentials(t *testing.T) {
+	t.Setenv("PULUMI_TEST_AGENT_PULUMI_DIR", t.TempDir())
 
-	now := time.Now()
-	past := now.Add(-time.Hour)
-	future := now.Add(time.Hour)
+	// A leftover claim in the shared agent store must not affect commands
+	// that ran on user credentials.
+	require.NoError(t, workspace.StoreAgentClaim(workspace.AgentClaim{
+		ClaimURL:   testClaimURL,
+		CloudURL:   testCloudURL,
+		ValidUntil: time.Now().Add(24 * time.Hour),
+	}))
+
+	ctx := ContextWithAgentCredentialUse(t.Context())
+	permalink, label := permalinkForDisplay(ctx, testCloudURL, testViewLiveLink)
+	assert.Equal(t, testViewLiveLink, permalink)
+	assert.Empty(t, label)
+}
+
+func TestPermalinkForDisplayWithAgentCredentials(t *testing.T) {
+	past := time.Now().Add(-time.Hour)
+	future := time.Now().Add(24 * time.Hour)
 
 	tests := []struct {
 		name  string
-		claim workspace.AgentClaim
+		claim *workspace.AgentClaim
 		want  string
 	}{
 		{
-			name: "valid claim",
-			claim: workspace.AgentClaim{
+			name: "active claim",
+			claim: &workspace.AgentClaim{
 				ClaimURL:   testClaimURL,
 				CloudURL:   testCloudURL,
 				ValidUntil: future,
@@ -53,20 +67,20 @@ func TestAgentClaimPermalink(t *testing.T) {
 		},
 		{
 			name: "no expiry recorded",
-			claim: workspace.AgentClaim{
+			claim: &workspace.AgentClaim{
 				ClaimURL: testClaimURL,
 				CloudURL: testCloudURL,
 			},
 			want: testClaimURL,
 		},
 		{
-			name:  "no claim",
-			claim: workspace.AgentClaim{},
+			name:  "no claim stored",
+			claim: nil,
 			want:  "",
 		},
 		{
 			name: "different backend",
-			claim: workspace.AgentClaim{
+			claim: &workspace.AgentClaim{
 				ClaimURL:   testClaimURL,
 				CloudURL:   "https://api.other.example.com",
 				ValidUntil: future,
@@ -75,7 +89,7 @@ func TestAgentClaimPermalink(t *testing.T) {
 		},
 		{
 			name: "expired claim",
-			claim: workspace.AgentClaim{
+			claim: &workspace.AgentClaim{
 				ClaimURL:   testClaimURL,
 				CloudURL:   testCloudURL,
 				ValidUntil: past,
@@ -84,7 +98,7 @@ func TestAgentClaimPermalink(t *testing.T) {
 		},
 		{
 			name: "claim marked unavailable",
-			claim: workspace.AgentClaim{
+			claim: &workspace.AgentClaim{
 				ClaimURL:           testClaimURL,
 				CloudURL:           testCloudURL,
 				ValidUntil:         future,
@@ -96,52 +110,17 @@ func TestAgentClaimPermalink(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-			assert.Equal(t, tt.want, agentClaimPermalink(tt.claim, testCloudURL, now))
+			t.Setenv("PULUMI_TEST_AGENT_PULUMI_DIR", t.TempDir())
+			if tt.claim != nil {
+				require.NoError(t, workspace.StoreAgentClaim(*tt.claim))
+			}
+
+			ctx := ContextWithAgentCredentialUse(t.Context())
+			MarkAgentCredentialsUsed(ctx, testCloudURL)
+
+			permalink, label := permalinkForDisplay(ctx, testCloudURL, testViewLiveLink)
+			assert.Equal(t, tt.want, permalink)
+			assert.Equal(t, agentClaimPermalinkLabel, label)
 		})
 	}
-}
-
-func TestPermalinkForDisplayWithoutAgentCredentials(t *testing.T) {
-	t.Setenv("PULUMI_TEST_AGENT_PULUMI_DIR", t.TempDir())
-
-	ctx := ContextWithAgentCredentialUse(t.Context())
-	permalink, label := permalinkForDisplay(ctx, testCloudURL, testViewLiveLink)
-	assert.Equal(t, testViewLiveLink, permalink)
-	assert.Empty(t, label)
-}
-
-func TestPermalinkForDisplayWithAgentCredentials(t *testing.T) {
-	t.Setenv("PULUMI_TEST_AGENT_PULUMI_DIR", t.TempDir())
-
-	require.NoError(t, workspace.StoreAgentClaim(workspace.AgentClaim{
-		ClaimURL:   testClaimURL,
-		CloudURL:   testCloudURL,
-		ValidUntil: time.Now().Add(24 * time.Hour),
-	}))
-
-	ctx := ContextWithAgentCredentialUse(t.Context())
-	MarkAgentCredentialsUsed(ctx, testCloudURL)
-
-	permalink, label := permalinkForDisplay(ctx, testCloudURL, testViewLiveLink)
-	assert.Equal(t, testClaimURL, permalink)
-	assert.Equal(t, agentClaimPermalinkLabel, label)
-}
-
-func TestPermalinkForDisplayWithAgentCredentialsAndUnusableClaim(t *testing.T) {
-	t.Setenv("PULUMI_TEST_AGENT_PULUMI_DIR", t.TempDir())
-
-	unavailableAt := time.Now().Add(-time.Minute)
-	require.NoError(t, workspace.StoreAgentClaim(workspace.AgentClaim{
-		ClaimURL:           testClaimURL,
-		CloudURL:           testCloudURL,
-		ValidUntil:         time.Now().Add(24 * time.Hour),
-		ClaimUnavailableAt: &unavailableAt,
-	}))
-
-	ctx := ContextWithAgentCredentialUse(t.Context())
-	MarkAgentCredentialsUsed(ctx, testCloudURL)
-
-	permalink, _ := permalinkForDisplay(ctx, testCloudURL, testViewLiveLink)
-	assert.Empty(t, permalink)
 }
