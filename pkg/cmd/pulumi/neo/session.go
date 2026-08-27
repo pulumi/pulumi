@@ -455,7 +455,6 @@ func (s *Session) runBatch(ctx context.Context, calls []apitype.AgentBackendEven
 				Name:       call.Name,
 			}
 			if err := s.Client.PostNeoTaskUserEvent(ctx, s.OrgName, s.TaskID, execEvt); err != nil {
-				// A post failure caused by cancellation is not session-fatal.
 				// A post failure caused by cancellation is not session-fatal:
 				// fall through so invokeToolCall reports this call cancelled
 				// like any other and the batch still posts its tool_result.
