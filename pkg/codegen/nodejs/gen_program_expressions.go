@@ -656,6 +656,9 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 			if i > 0 {
 				g.Fgen(w, ", ")
 			}
+			if expr.ExpandFinal && i == len(expr.Args)-1 {
+				g.Fgen(w, "...")
+			}
 			g.Fgenf(w, "%v", arg)
 		}
 		g.Fgen(w, ")")
@@ -664,6 +667,9 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		for i, arg := range expr.Args {
 			if i > 0 {
 				g.Fgen(w, ", ")
+			}
+			if expr.ExpandFinal && i == len(expr.Args)-1 {
+				g.Fgen(w, "...")
 			}
 			g.Fgenf(w, "%v", arg)
 		}
