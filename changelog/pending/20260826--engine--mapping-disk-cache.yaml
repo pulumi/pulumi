@@ -1,0 +1,5 @@
+component: engine
+kind: improvement
+body: Cache provider mapping results on disk so repeated plans do not boot a provider
+    to re-fetch an unchanged mapping
+time: 2026-08-26T00:00:00Z

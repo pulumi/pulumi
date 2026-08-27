@@ -15,18 +15,25 @@
 package convert
 
 import (
+	"bytes"
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/blang/semver"
+	"github.com/natefinch/atomic"
 	"github.com/pulumi/pulumi/pkg/v3/pluginstorage"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -38,6 +45,9 @@ type basePluginMapper struct {
 	// "terraform" is an example of a conversion key which identifies mapping requests where the results are expected to
 	// map Terraform resources to Pulumi resources, for instance.
 	conversionKey string
+
+	// The plugin storage context used to enumerate installed plugins.
+	pluginContext pluginstorage.Context
 
 	// A factory function that the mapper can use to instantiate provider plugins.
 	providerFactory ProviderFactory
@@ -51,11 +61,24 @@ type basePluginMapper struct {
 	// A list of hardcoded mappings read from files supplied to the mapper at construction time that will take priority
 	// over any mappings returned by plugins.
 	entries map[string][]byte
+
+	// Options for tuning caching behaviour, exposed for testing.
+	cacheOptions mapperCacheOptions
+}
+
+// mapperCacheOptions is a bag of flags for tuning the caching behaviour of a basePluginMapper, for testing.
+type mapperCacheOptions struct {
+	// disableFileCache disables the on-disk mapping cache in $PULUMI_HOME/mappings.
+	disableFileCache bool
 }
 
 type basePluginMapperSpec struct {
 	name    string
 	version semver.Version
+
+	// Metadata for the installed plugin, when known. Its install time governs the freshness of on-disk cached
+	// mappings; specs without metadata (e.g. providers attached via PULUMI_DEBUG_PROVIDERS) are never cached.
+	info *workspace.PluginInfo
 }
 
 // parseDebugProviderNames returns the provider names listed in a
@@ -84,6 +107,18 @@ func NewBasePluginMapper(
 	installPlugin func(pluginName string) *semver.Version,
 	mappings []string,
 ) (Mapper, error) {
+	return newBasePluginMapper(
+		pluginContext, conversionKey, providerFactory, installPlugin, mappings, mapperCacheOptions{})
+}
+
+func newBasePluginMapper(
+	pluginContext pluginstorage.Context,
+	conversionKey string,
+	providerFactory ProviderFactory,
+	installPlugin func(pluginName string) *semver.Version,
+	mappings []string,
+	cacheOptions mapperCacheOptions,
+) (Mapper, error) {
 	contract.Requiref(pluginContext != nil, "pluginContext", "must not be nil")
 	contract.Requiref(providerFactory != nil, "providerFactory", "must not be nil")
 
@@ -100,18 +135,14 @@ func NewBasePluginMapper(
 	// should in most cases be fine. If a user case comes up where this is not fine we can provide the manual workaround
 	// that this is based on what is locally installed, not what is published and so the user can just delete the higher
 	// version plugins from their cache.
-	latestVersions := make(map[string]semver.Version)
+	latestVersions := make(map[string]workspace.PluginInfo)
 	for _, plugin := range allPlugins {
 		if plugin.Kind != apitype.ResourcePlugin {
 			continue
 		}
 
-		if cur, has := latestVersions[plugin.Name]; has {
-			if plugin.Version.GT(cur) {
-				latestVersions[plugin.Name] = *plugin.Version
-			}
-		} else {
-			latestVersions[plugin.Name] = *plugin.Version
+		if cur, has := latestVersions[plugin.Name]; !has || plugin.Version.GT(*cur.Version) {
+			latestVersions[plugin.Name] = plugin
 		}
 	}
 
@@ -124,12 +155,13 @@ func NewBasePluginMapper(
 			continue
 		}
 
-		version, has := latestVersions[plugin.Name]
+		info, has := latestVersions[plugin.Name]
 		contract.Assertf(has, "latest version should be in map")
 
 		plugins = append(plugins, basePluginMapperSpec{
 			name:    plugin.Name,
-			version: version,
+			version: *info.Version,
+			info:    &info,
 		})
 		seen[plugin.Name] = true
 	}
@@ -167,11 +199,83 @@ func NewBasePluginMapper(
 
 	return &basePluginMapper{
 		conversionKey:   conversionKey,
+		pluginContext:   pluginContext,
 		providerFactory: providerFactory,
 		installPlugin:   installPlugin,
 		pluginSpecs:     plugins,
 		entries:         entries,
+		cacheOptions:    cacheOptions,
 	}, nil
+}
+
+// mappingFilePath returns the path to the mapping cache file for the given request. Mappings are cached in
+// $PULUMI_HOME/mappings/ with a filename encoding the conversion key, source provider, plugin name and version, and a
+// hash of the parameterization so different sources remain distinct.
+func mappingFilePath(
+	key, provider, pluginName string,
+	version semver.Version,
+	parameterization *workspace.Parameterization,
+) (string, error) {
+	fileName := fmt.Sprintf("%s-%s-%s-%s", key, provider, pluginName, version)
+	if parameterization != nil {
+		paramBytes, err := json.Marshal(parameterization)
+		contract.AssertNoErrorf(err, "Parameterization should be marshalable to JSON")
+		h := sha256.Sum256(paramBytes)
+		fileName += "-" + hex.EncodeToString(h[:6])
+	}
+	fileName += ".mapping"
+	return workspace.GetPulumiPath("mappings", fileName)
+}
+
+// loadCachedMapping reads a cached mapping from the given path. It returns false if the plugin's install time is
+// unknown, or if the cache file does not exist or predates the plugin's installation.
+func loadCachedMapping(path string, pluginInstallTime time.Time) ([]byte, bool) {
+	if pluginInstallTime.IsZero() {
+		return nil, false
+	}
+
+	stat, err := os.Stat(path)
+	if err != nil || pluginInstallTime.After(stat.ModTime()) {
+		return nil, false
+	}
+
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, false
+	}
+	return data, true
+}
+
+// writeCachedMapping writes a mapping to the given cache path. Writes are best-effort, matching the schema cache in
+// pkg/codegen/schema: failures are logged and otherwise ignored.
+func writeCachedMapping(path string, data []byte) {
+	if path == "" {
+		return
+	}
+	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
+		logging.V(3).Infof("failed to create mapping cache directory for %s: %v", path, err)
+		return
+	}
+	if err := atomic.WriteFile(path, bytes.NewReader(data)); err != nil {
+		logging.V(3).Infof("failed to cache mapping at %s: %v", path, err)
+	}
+}
+
+// findPluginInfo re-enumerates installed plugins to locate metadata for the named plugin at the given version,
+// typically after a mid-run install. It returns nil if the plugin cannot be found.
+func (m *basePluginMapper) findPluginInfo(
+	ctx context.Context, name string, version semver.Version,
+) *workspace.PluginInfo {
+	allPlugins, err := m.pluginContext.GetPlugins(ctx)
+	if err != nil {
+		return nil
+	}
+	for _, p := range allPlugins {
+		if p.Kind == apitype.ResourcePlugin && p.Name == name && p.Version != nil && p.Version.EQ(version) {
+			return &p
+		}
+	}
+	return nil
 }
 
 // Implements Mapper.GetMapping. A plugin mapper will try to resolve mappings by first building a list of candidate
@@ -250,6 +354,7 @@ func (m *basePluginMapper) GetMapping(
 			m.pluginSpecs = append(m.pluginSpecs, basePluginMapperSpec{
 				name:    pluginName,
 				version: *version,
+				info:    m.findPluginInfo(ctx, pluginName, *version),
 			})
 			m.pluginSpecs[0], m.pluginSpecs[i] = m.pluginSpecs[i], m.pluginSpecs[0]
 		}
@@ -268,6 +373,20 @@ func (m *basePluginMapper) GetMapping(
 		// parameterization information, we will pass that to the plugin as part of its instantiation.
 		if mapperSpec.name == pluginName && hint != nil && hint.Parameterization != nil {
 			descriptor.Parameterization = hint.Parameterization
+		}
+
+		// Successful mapping responses are cached on disk, since a mapping is fully determined by the plugin (with
+		// any parameterization) and the request. On a cache hit we can skip booting the plugin entirely.
+		var cachePath string
+		if !m.cacheOptions.disableFileCache && mapperSpec.info != nil {
+			cachePath, err = mappingFilePath(key, provider, mapperSpec.name, mapperSpec.version, descriptor.Parameterization)
+			if err != nil {
+				// Non-fatal: proceed without file caching.
+				cachePath = ""
+			}
+			if mapping, ok := loadCachedMapping(cachePath, mapperSpec.info.InstallTime()); ok {
+				return mapping, nil
+			}
 		}
 
 		providerPlugin, err := m.providerFactory(descriptor)
@@ -307,6 +426,7 @@ func (m *basePluginMapper) GetMapping(
 				)
 			}
 
+			writeCachedMapping(cachePath, mapping.Data)
 			return mapping.Data, nil
 		}
 
@@ -322,6 +442,7 @@ func (m *basePluginMapper) GetMapping(
 		}
 
 		if mapping.Provider == provider {
+			writeCachedMapping(cachePath, mapping.Data)
 			return mapping.Data, nil
 		}
 	}
