@@ -706,6 +706,10 @@ func (g *generator) genPreamble(w io.Writer, program *pcl.Program, preambleHelpe
 		switch r := n.(type) {
 		case *pcl.Hook:
 			importSet["subprocess"] = Import{ImportAs: false}
+		case *pcl.ConfigVariable:
+			if configVariableNeedsInputAnnotation(r) && configVariableInputElementType(r.Type()) == "Any" {
+				needsTypingAny = true
+			}
 		case *pcl.Resource:
 			if r.Options != nil && r.Options.Range != nil {
 				needsTypingAny = true
@@ -2010,6 +2014,30 @@ func (g *generator) genTemps(w io.Writer, temps []*quoteTemp) {
 	}
 }
 
+func configVariableNeedsInputAnnotation(v *pcl.ConfigVariable) bool {
+	if v.DefaultValue == nil {
+		return false
+	}
+
+	return model.ContainsOutputs(v.Type()) || model.ContainsPromises(v.Type()) ||
+		model.ContainsOutputs(v.DefaultValue.Type()) || model.ContainsPromises(v.DefaultValue.Type())
+}
+
+func configVariableInputElementType(t model.Type) string {
+	switch pcl.UnwrapOption(model.ResolveOutputs(t)) {
+	case model.BoolType:
+		return "bool"
+	case model.IntType:
+		return "int"
+	case model.NumberType:
+		return "float"
+	case model.StringType:
+		return "str"
+	default:
+		return "Any"
+	}
+}
+
 func (g *generator) genConfigVariable(w io.Writer, v *pcl.ConfigVariable) {
 	// TODO(pdg): trivia
 
@@ -2053,7 +2081,12 @@ func (g *generator) genConfigVariable(w io.Writer, v *pcl.ConfigVariable) {
 		}
 	}
 	name := g.nodeName(v.Name())
-	g.Fgenf(w, "%s%s = config.%s%s(\"%s\")\n", g.Indent, name, getOrRequire, getType, v.LogicalName())
+	typeAnnotation := ""
+	if configVariableNeedsInputAnnotation(v) {
+		typeAnnotation = fmt.Sprintf(": pulumi.Input[%s] | None", configVariableInputElementType(v.Type()))
+	}
+	g.Fgenf(w, "%s%s%s = config.%s%s(\"%s\")\n",
+		g.Indent, name, typeAnnotation, getOrRequire, getType, v.LogicalName())
 	if defaultValue != nil {
 		g.Fgenf(w, "%sif %s is None:\n", g.Indent, name)
 		g.Indented(func() {
