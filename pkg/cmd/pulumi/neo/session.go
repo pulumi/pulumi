@@ -130,11 +130,6 @@ func cancelledContent() map[string]any {
 	return map[string]any{"error": "cancelled by the user", "cancelled": true}
 }
 
-// toolResultPostTimeout bounds the tool_result post once the batch context is
-// cancelled: that post is what resumes the parked turn, so it must survive the
-// cancel but not hang shutdown.
-const toolResultPostTimeout = 30 * time.Second
-
 // Run drives the loop. It blocks until ctx is cancelled (clean shutdown, returns nil),
 // the stream ends cleanly (returns nil), or an unrecoverable error occurs (returns the
 // error). Mid-stream network drops are reopened silently with Last-Event-ID so the
@@ -496,9 +491,9 @@ func (s *Session) runBatch(ctx context.Context, calls []apitype.AgentBackendEven
 	}
 	// Post on a context that survives the cancel: the runtime is parked on
 	// this result, and receiving it (with the calls marked cancelled) is what
-	// lets it end the turn immediately instead of after its grace period.
-	postCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), toolResultPostTimeout)
-	defer cancel()
+	// lets it end the turn immediately instead of after its grace period. The
+	// client bounds the request with its own timeout, so this cannot hang shutdown.
+	postCtx := context.WithoutCancel(ctx)
 	if err := s.Client.PostNeoTaskUserEvent(postCtx, s.OrgName, s.TaskID, result); err != nil {
 		s.logf("error: posting tool_result: %v", err)
 	}
