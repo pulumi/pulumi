@@ -15,14 +15,63 @@
 package python
 
 import (
+	"bytes"
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model/format"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func TestLengthOfOutput(t *testing.T) {
+	t.Parallel()
+
+	values := model.VariableReference(&model.Variable{
+		Name:         "values",
+		VariableType: model.NewOutputType(model.NewListType(model.StringType)),
+	})
+	expr := &model.FunctionCallExpression{
+		Name: "length",
+		Signature: model.StaticFunctionSignature{
+			Parameters: []model.Parameter{{Name: "value", Type: values.Type()}},
+			ReturnType: model.NewOutputType(model.IntType),
+		},
+		Args: []model.Expression{values},
+	}
+
+	g := &generator{}
+	g.Formatter = format.NewFormatter(g)
+	var result bytes.Buffer
+	g.GenFunctionCallExpression(&result, expr)
+
+	assert.Equal(t, "pulumi.Output.from_input(values).apply(lambda value: len(value))", result.String())
+}
+
+func TestApplyLambdaCapturesRangeValue(t *testing.T) {
+	t.Parallel()
+
+	rangeVariable := &model.Variable{Name: "range", VariableType: model.DynamicType}
+	valueParameter := &model.Variable{Name: "value", VariableType: model.DynamicType}
+	expr := &model.AnonymousFunctionExpression{
+		Signature: model.StaticFunctionSignature{
+			Parameters: []model.Parameter{{Name: "value", Type: model.DynamicType}},
+			ReturnType: model.DynamicType,
+		},
+		Parameters: []*model.Variable{valueParameter},
+		Body:       model.VariableReference(rangeVariable),
+	}
+
+	g := &generator{rangeVariable: "routes_range"}
+	g.Formatter = format.NewFormatter(g)
+	var result bytes.Buffer
+	g.GenAnonymousFunctionExpression(&result, expr)
+
+	assert.Equal(t, "lambda value, _routes_range=routes_range: _routes_range", result.String())
+	assert.Equal(t, "routes_range", g.rangeVariable)
+}
 
 func TestComponentInputElementTypeUsesQualifiedBuiltins(t *testing.T) {
 	t.Parallel()
