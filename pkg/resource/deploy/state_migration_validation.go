@@ -39,7 +39,7 @@ func validateStateMigrationContext(
 	}
 	if len(snap.PendingOperations) > 0 {
 		return fmt.Errorf("state migration for %s cannot change state while the snapshot has %d pending "+
-			"operation(s); resolve them before migrating %s", urn, len(snap.PendingOperations), urn)
+			"operation(s); resolve them before migrating %s, by running 'pulumi refresh'", urn, len(snap.PendingOperations), urn)
 	}
 	// Snippet references are persisted separately from resource state and are not part of StateMigrationTransaction.
 	for _, snippet := range snap.Snippets {

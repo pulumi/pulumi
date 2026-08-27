@@ -50,7 +50,6 @@ func (sg *stepGenerator) prepareStateMigrationTransaction(
 	for _, state := range d.prev.Resources {
 		if priorSubtreeSet[state] {
 			if state == lastPriorResource {
-				// Insert the result
 				preparedPriorResources = append(preparedPriorResources, resultSubtree...)
 			}
 			continue // The state is part of the prior subtree; skip it.
