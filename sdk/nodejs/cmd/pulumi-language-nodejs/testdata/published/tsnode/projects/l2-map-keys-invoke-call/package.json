@@ -1,0 +1,12 @@
+{
+	"name": "l2-map-keys-invoke-call",
+	"devDependencies": {
+		"@types/node": "^20"
+	},
+	"dependencies": {
+		"typescript": "^4.7.0",
+		"@pulumi/pulumi": "ROOT/artifacts/pulumi-pulumi-CORE.VERSION.tgz",
+		"@pulumi/component": "ROOT/artifacts/pulumi-component-13.3.7.tgz",
+		"@pulumi/simple-invoke": "ROOT/artifacts/pulumi-simple-invoke-10.0.0.tgz"
+	}
+}

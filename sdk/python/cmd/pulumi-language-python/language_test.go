@@ -101,13 +101,11 @@ func runTestingHost(t *testing.T) (string, testingrpc.LanguageTestClient) {
 
 // Add test names here that are expected to fail and the reason why they are failing
 var expectedFailures = map[string]string{
-	"l2-config-default-from-invoke":      "config default from an invoke is Output[Any], not str | None; fails mypy",
 	"l1-builtin-try":                     "Temporarily disabled until pr #18915 is submitted",
 	"l1-expand-final":                    "Python program generation does not support `...` argument expansion",
 	"l1-builtin-can":                     "Temporarily disabled until pr #18916 is submitted",
 	"l3-deferred-outputs":                "does not type-check",
 	"l3-component-primitive-conversions": "primitive conversions accepted by PCL bind, but not lowered correctly by SDK generators", //nolint:lll
-	"l3-component-nested":                "syntax error",
 	"l2-resource-schema-secret":          "does not preserve schema-secret unknown outputs",
 	"l3-range-invoke-output-traversal":   "len()/apply on an Output: generated program fails mypy",
 	"l2-raw-string-bytes":                "the Python SDK does not set accepts_byte_string: strings containing non-UTF8 bytes cannot be received from the engine", //nolint:lll
@@ -222,17 +220,6 @@ func testLanguageWithConfig(t *testing.T, config languageTestConfig) {
 					if (config.name == "default" || config.name == "toml") &&
 						(tt == "l2-discriminated-union-many" || tt == "l2-discriminated-union-marked-key") {
 						t.Skip("pulumi#21830: an output assigned into an input is rejected without the Mapping escape hatch")
-					}
-
-					if config.typechecker == "pyright" &&
-						(tt == "l3-component-simple" ||
-							tt == "l3-rewrite-conversions" ||
-							tt == "l3-component-provider" ||
-							tt == "l3-component-config-primitives" ||
-							tt == "l3-component-config-objects" ||
-							tt == "l3-map-keys" ||
-							tt == "l3-resource-keyword-overlap") {
-						t.Skipf("Skipping %s test with pyright due to issues with optional properties", tt)
 					}
 
 					if expected, ok := expectedFailures[tt]; ok {

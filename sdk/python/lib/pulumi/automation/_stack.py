@@ -645,6 +645,7 @@ class Stack:
         run_program: Optional[bool] = None,
         config_file: Optional[str] = None,
         program: Optional[PulumiFn] = None,
+        diff: Optional[bool] = None,
     ) -> RefreshResult:
         """
         Compares the current stack’s resource state with the state known to exist in the actual
@@ -675,6 +676,7 @@ class Stack:
         :param run_program: Run the program in the workspace to refresh the stack
         :param config_file: Path to a Pulumi config file to use for this update.
         :param program: The inline program.
+        :param diff: Display operation as a rich diff showing the overall change.
         :returns: RefreshResult
         """
         program = program or self.workspace.program
@@ -774,6 +776,7 @@ class Stack:
         run_program: Optional[bool] = None,
         config_file: Optional[str] = None,
         program: Optional[PulumiFn] = None,
+        diff: Optional[bool] = None,
     ) -> PreviewResult:
         """
         Performs a dry-run refresh of the stack, returning pending changes.
@@ -802,6 +805,7 @@ class Stack:
         :param run_program: Run the program in the workspace to refresh the stack
         :param config_file: Path to a Pulumi config file to use for this update.
         :param program: The inline program.
+        :param diff: Display operation as a rich diff showing the overall change.
         :returns: PreviewResult
         """
         program = program or self.workspace.program
@@ -1076,6 +1080,7 @@ class Stack:
         run_program: Optional[bool] = None,
         config_file: Optional[str] = None,
         program: Optional[PulumiFn] = None,
+        diff: Optional[bool] = None,
     ) -> PreviewResult:
         """
         Performs a dry-run deletion of resources in a stack, leaving all history and configuration intact.
@@ -1104,6 +1109,7 @@ class Stack:
         :param run_program: Run the program in the workspace to destroy the stack
         :param config_file: Path to a Pulumi config file to use for this update.
         :param program: The inline program.
+        :param diff: Display operation as a rich diff showing the overall change.
         :returns: DestroyResult
         """
         program = program or self.workspace.program

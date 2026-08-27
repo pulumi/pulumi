@@ -101,6 +101,25 @@ class ComponentCallable(pulumi.ComponentResource):
         return pulumi.get(self, "value")
 
     @pulumi.output_type
+    class EchoMapResult:
+        def __init__(__self__, string_map=None):
+            if string_map and not isinstance(string_map, dict):
+                raise TypeError("Expected argument 'string_map' to be a dict")
+            pulumi.set(__self__, "string_map", string_map)
+
+        @_builtins.property
+        @pulumi.getter(name="stringMap")
+        def string_map(self) -> Mapping[str, _builtins.str]:
+            return pulumi.get(self, "string_map")
+
+    def echo_map(__self__, *,
+                 string_map: pulumi.Input[Mapping[str, pulumi.Input[_builtins.str]]]) -> pulumi.Output['ComponentCallable.EchoMapResult']:
+        __args__ = dict()
+        __args__['__self__'] = __self__
+        __args__['stringMap'] = string_map
+        return pulumi.runtime.call('component:index:ComponentCallable/echoMap', __args__, res=__self__, typ=ComponentCallable.EchoMapResult)
+
+    @pulumi.output_type
     class IdentityResult:
         def __init__(__self__, result=None):
             if result and not isinstance(result, str):

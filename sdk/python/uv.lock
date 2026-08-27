@@ -1042,6 +1042,7 @@ dependencies = [
     { name = "protobuf" },
     { name = "pyyaml" },
     { name = "semver" },
+    { name = "typing-extensions" },
 ]
 
 [package.dev-dependencies]
@@ -1077,6 +1078,7 @@ requires-dist = [
     { name = "protobuf", specifier = ">=3.20.3,<7" },
     { name = "pyyaml", specifier = "~=6.0" },
     { name = "semver", specifier = "~=3.0" },
+    { name = "typing-extensions", specifier = ">=4.11,<5" },
 ]
 
 [package.metadata.requires-dev]

@@ -821,10 +821,69 @@ func methodSchemaHasArgs(res *schema.Resource, methodName string) bool {
 	return true
 }
 
+// extractCollectionType finds the first *model.MapType (or *model.ListType) reachable
+// through option/union wrappers on t. Method-call arg types are typically shaped like
+// union(map(union(output(string), string)), output(map(string))), so a direct type
+// assertion misses the underlying collection.
+func extractCollectionType[T model.Type](t model.Type) (T, bool) {
+	var zero T
+	switch t := pcl.UnwrapOption(t).(type) {
+	case T:
+		return t, true
+	case *model.UnionType:
+		for _, ut := range t.ElementTypes {
+			if got, ok := extractCollectionType[T](ut); ok {
+				return got, true
+			}
+		}
+	case *model.OutputType:
+		return extractCollectionType[T](t.ElementType)
+	case *model.PromiseType:
+		return extractCollectionType[T](t.ElementType)
+	}
+	return zero, false
+}
+
 // genInputValue generates a value expression with the appropriate input type wrapper
 // (e.g. pulumi.String("x")) based on the destination type. This is used for method
 // call args where the binder doesn't individually wrap each field value with __convert.
 func (g *generator) genInputValue(w io.Writer, value model.Expression, destType model.Type) {
+	// Composite values need to be built as composite literals whose element values are
+	// individually wrapped in the appropriate pulumi input type, e.g.
+	//   pulumi.StringMap{"k": pulumi.String("v")}
+	// rather than
+	//   pulumi.StringMap(map[string]string{"k": "v"})
+	// which is not a valid Go type conversion.
+	switch v := value.(type) {
+	case *model.ObjectConsExpression:
+		if mapType, ok := extractCollectionType[*model.MapType](destType); ok {
+			typeName := g.argumentTypeName(destType, true)
+			g.Fgenf(w, "%s{\n", typeName)
+			for _, item := range v.Items {
+				g.Fgenf(w, "%.v: ", item.Key)
+				g.genInputValue(w, item.Value, mapType.ElementType)
+				g.Fgenf(w, ",\n")
+			}
+			g.Fgenf(w, "}")
+			return
+		}
+		g.genObjectConsExpression(w, v, destType, true /*isInput*/)
+		return
+	case *model.TupleConsExpression:
+		if listType, ok := extractCollectionType[*model.ListType](destType); ok {
+			typeName := g.argumentTypeName(destType, true)
+			g.Fgenf(w, "%s{\n", typeName)
+			for _, elem := range v.Expressions {
+				g.genInputValue(w, elem, listType.ElementType)
+				g.Fgenf(w, ",\n")
+			}
+			g.Fgenf(w, "}")
+			return
+		}
+		g.genTupleConsExpression(w, v, destType)
+		return
+	}
+
 	typeName := g.argumentTypeName(destType, true)
 	if typeName != "" && strings.HasPrefix(typeName, "pulumi.") {
 		g.Fgenf(w, "%s(%.v)", typeName, value)
