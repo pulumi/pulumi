@@ -450,16 +450,7 @@ func runNew(ctx context.Context, args newArgs) error {
 	}
 
 	// Best-effort cloud credentials preflight; advisory only, never fails the command.
-	credentialsWarned := false
-	if cp, pkg, ok := credentialsCheckProvider(args, packages); ok && s != nil {
-		if ps, err := cmdStack.LoadProjectStack(ctx, cmdutil.Diag(), proj, s, ""); err == nil {
-			load := func() (plugin.Provider, error) {
-				return pluginCtx.Host.Provider(pluginCtx, pkg.PluginDescriptor, env.Global())
-			}
-			credentialsWarned = checkCloudCredentials(ctx, cp, load, providerConfigProperties(cp, ps.Config),
-				args.stdout, opts, defaultCredentialsPreflightTimeout)
-		}
-	}
+	credentialsWarned := preflightCloudCredentials(ctx, args, pluginHost, proj, root, s, packages, opts)
 
 	// The celebratory line rings false right after a credentials warning; the warning
 	// already tells the user the project was created successfully.
