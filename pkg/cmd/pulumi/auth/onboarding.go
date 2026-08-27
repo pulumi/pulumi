@@ -34,10 +34,11 @@ import (
 )
 
 const (
-	getStartedURL    = "https://www.pulumi.com/docs/get-started/"
-	newProjectAnswer = "Create a new Pulumi project"
-	guideAnswer      = "View the getting started guide"
-	skipAnswer       = "Skip for now"
+	getStartedURL              = "https://www.pulumi.com/docs/get-started/"
+	getStartedURLWithCLISource = getStartedURL + "?utm_source=cli"
+	newProjectAnswer           = "Create a new Pulumi project"
+	guideAnswer                = "View the getting started guide"
+	skipAnswer                 = "Skip for now"
 )
 
 // offerFirstStep offers a user with no stacks a path into their first project. It runs after login
@@ -77,7 +78,7 @@ func offerFirstStep(
 		return runNew(ctx, cwd, opts)
 	case guideAnswer:
 		fmt.Fprintln(out, "\nOpening the getting started guide in your web browser...")
-		if err := browser.OpenURL(getStartedURL); err != nil {
+		if err := browser.OpenURL(getStartedURLWithCLISource); err != nil {
 			fmt.Fprintf(out, "\nWe couldn't launch your web browser for some reason. Please visit:\n\n"+
 				"%s\n\nto get started.\n", getStartedURL)
 		}
