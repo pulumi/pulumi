@@ -155,7 +155,14 @@ type ShellResult struct {
 	Err       string `json:"error,omitempty"`
 	Truncated bool   `json:"truncated,omitempty"`
 	TimedOut  bool   `json:"timed_out,omitempty"`
+	// Cancelled is set when the user cancelled the turn while the command was
+	// running; the process tree was killed and stdout/stderr hold partial output.
+	Cancelled bool `json:"cancelled,omitempty"`
 }
+
+// ErrCancelled is the error the shell tool returns when the user cancels the
+// turn while a command is running.
+var ErrCancelled = errors.New("shell command cancelled by the user")
 
 // TimeoutError is the error the shell tool returns when a command exceeds its
 // timeout. Both the local runner and the Neo ACP editor-terminal runner return
@@ -235,6 +242,11 @@ func (s *Shell) run(ctx context.Context, command string, dir string, timeout tim
 	if errors.Is(runCtx.Err(), context.DeadlineExceeded) {
 		res.TimedOut = true
 		return res, TimeoutError(timeout)
+	}
+	if errors.Is(ctx.Err(), context.Canceled) {
+		res.Cancelled = true
+		res.Err = ErrCancelled.Error()
+		return res, ErrCancelled
 	}
 	return res, nil
 }

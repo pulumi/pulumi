@@ -1642,9 +1642,9 @@ func TestSession_CancelledEventDeliveredWhileLocalToolRuns(t *testing.T) {
 }
 
 // TestSession_CancelledEventCancelsInFlightBatchContext verifies that a
-// server-side cancelled event cancels the running tool's context, that no
-// tool_result is posted for the cancelled turn, and that the next turn's
-// batch runs with a fresh context.
+// server-side cancelled event cancels the running tool's context, that the
+// cancelled turn still posts an error tool_result for the interrupted call,
+// and that the next turn's batch runs with a fresh context.
 func TestSession_CancelledEventCancelsInFlightBatchContext(t *testing.T) {
 	t.Parallel()
 
@@ -1715,12 +1715,13 @@ func TestSession_CancelledEventCancelsInFlightBatchContext(t *testing.T) {
 		t.Fatal("session did not exit")
 	}
 
-	// The cancelled turn posts exec_tool_call but no tool_result; the fresh
-	// turn posts both.
+	// Both turns post exec_tool_call and a tool_result; the cancelled one is
+	// flagged as an error so the agent doesn't treat it as completed.
 	streamer.mu.Lock()
 	defer streamer.mu.Unlock()
 	var execNames []string
 	var resultIDs []string
+	var errorIDs []string
 	for _, p := range streamer.posted {
 		switch evt := p.(type) {
 		case apitype.AgentUserEventExecToolCall:
@@ -1728,11 +1729,175 @@ func TestSession_CancelledEventCancelsInFlightBatchContext(t *testing.T) {
 		case apitype.AgentUserEventToolResult:
 			for _, item := range evt.ToolResults {
 				resultIDs = append(resultIDs, item.ToolCallID)
+				if item.IsError {
+					errorIDs = append(errorIDs, item.ToolCallID)
+				}
 			}
 		}
 	}
 	assert.Equal(t, []string{"blocking__run", "probe__run"}, execNames)
-	assert.Equal(t, []string{"c2"}, resultIDs)
+	assert.Equal(t, []string{"c1", "c2"}, resultIDs)
+	assert.Equal(t, []string{"c1"}, errorIDs)
+}
+
+func mustUserInputEnvelope(t *testing.T, inner any) []byte {
+	t.Helper()
+	body, err := json.Marshal(inner)
+	require.NoError(t, err)
+	out, err := json.Marshal(apitype.AgentConsoleEvent{
+		Type:      consoleEventUserInput,
+		ID:        "evt-2",
+		EventBody: body,
+	})
+	require.NoError(t, err)
+	return out
+}
+
+// TestSession_UserCancelEventCancelsInFlightBatch verifies that a user_cancel
+// echoed on the stream (from ESC, the console, or the API) stops the running
+// local tool immediately and posts a tool_result marking every call in the
+// batch cancelled, so the runtime can end the turn without waiting for its
+// parked-cancel grace period.
+func TestSession_UserCancelEventCancelsInFlightBatch(t *testing.T) {
+	t.Parallel()
+
+	streamer := newFakeStreamer()
+	started := make(chan struct{})
+	blocking := &probeHandler{invoke: func(ctx context.Context) (any, error) {
+		close(started)
+		<-ctx.Done()
+		return map[string]any{"stdout": "partial"}, ctx.Err()
+	}}
+	secondRan := make(chan struct{}, 1)
+	second := &probeHandler{invoke: func(ctx context.Context) (any, error) {
+		secondRan <- struct{}{}
+		return map[string]any{"ok": true}, nil
+	}}
+	s := &Session{
+		Client:   streamer,
+		Handlers: map[string]ToolHandler{"blocking": blocking, "probe": second},
+		OrgName:  "org",
+		TaskID:   "task",
+	}
+
+	done := make(chan error, 1)
+	go func() { done <- s.Run(t.Context()) }()
+
+	streamer.stream <- client.NeoStreamEvent{Data: mustAgentResponseEnvelope(t, apitype.AgentBackendEventAssistantMessage{
+		Type: backendEventAssistantMessage,
+		ToolCalls: []apitype.AgentBackendEventToolCall{
+			{ToolCallID: "c1", Name: "blocking__run", Args: json.RawMessage(`{}`), ExecutionMode: toolExecutionModeCLI},
+			{ToolCallID: "c2", Name: "probe__run", Args: json.RawMessage(`{}`), ExecutionMode: toolExecutionModeCLI},
+		},
+	})}
+	select {
+	case <-started:
+	case <-time.After(5 * time.Second):
+		t.Fatal("tool handler never started")
+	}
+
+	streamer.stream <- client.NeoStreamEvent{Data: mustUserInputEnvelope(t,
+		apitype.AgentUserEventCancel{Type: userEventUserCancel})}
+
+	var result apitype.AgentUserEventToolResult
+	require.Eventually(t, func() bool {
+		streamer.mu.Lock()
+		defer streamer.mu.Unlock()
+		for _, p := range streamer.posted {
+			if r, ok := p.(apitype.AgentUserEventToolResult); ok {
+				result = r
+				return true
+			}
+		}
+		return false
+	}, 2*time.Second, 10*time.Millisecond, "user_cancel must produce a tool_result promptly")
+
+	require.Len(t, result.ToolResults, 2)
+	assert.Equal(t, "c1", result.ToolResults[0].ToolCallID)
+	assert.True(t, result.ToolResults[0].IsError)
+	assert.Equal(t, map[string]any{"stdout": "partial"}, result.ToolResults[0].Content,
+		"partial output captured before the cancel must reach the agent")
+	assert.Equal(t, "c2", result.ToolResults[1].ToolCallID)
+	assert.True(t, result.ToolResults[1].IsError)
+	assert.Equal(t, cancelledContent(), result.ToolResults[1].Content)
+	select {
+	case <-secondRan:
+		t.Fatal("a call queued behind the cancelled one must not start")
+	default:
+	}
+
+	close(streamer.stream)
+	select {
+	case err := <-done:
+		require.NoError(t, err)
+	case <-time.After(5 * time.Second):
+		t.Fatal("session did not exit")
+	}
+}
+
+// TestSession_OwnToolEchoesNotForwardedToUI verifies that the service's echo
+// of this session's own exec_tool_call/tool_result posts does not reach the
+// TUI (which already rendered the call from runBatch), while the same events
+// from another client still do.
+func TestSession_OwnToolEchoesNotForwardedToUI(t *testing.T) {
+	t.Parallel()
+
+	streamer := newFakeStreamer()
+	uiCh := make(chan UIEvent, 32)
+	s := &Session{
+		Client:   streamer,
+		Handlers: map[string]ToolHandler{"probe": &fakeHandler{wantMethod: "run", result: map[string]any{"ok": true}}},
+		OrgName:  "org",
+		TaskID:   "task",
+		UIEvents: uiCh,
+	}
+	done := make(chan error, 1)
+	go func() { done <- s.Run(t.Context()) }()
+
+	streamer.stream <- client.NeoStreamEvent{Data: mustAgentResponseEnvelope(t, apitype.AgentBackendEventAssistantMessage{
+		Type: backendEventAssistantMessage,
+		ToolCalls: []apitype.AgentBackendEventToolCall{
+			{ToolCallID: "c1", Name: "probe__run", Args: json.RawMessage(`{}`), ExecutionMode: toolExecutionModeCLI},
+		},
+	})}
+	require.Eventually(t, func() bool {
+		streamer.mu.Lock()
+		defer streamer.mu.Unlock()
+		return len(streamer.posted) == 2
+	}, 2*time.Second, 10*time.Millisecond)
+
+	// Echoes of our own posts, then the same events from a foreign client.
+	streamer.stream <- client.NeoStreamEvent{Data: mustUserInputEnvelope(t,
+		apitype.AgentUserEventExecToolCall{Type: userEventExecToolCall, ToolCallID: "c1", Name: "probe__run"})}
+	streamer.stream <- client.NeoStreamEvent{Data: mustUserInputEnvelope(t, apitype.AgentUserEventToolResult{
+		Type:        userEventToolResult,
+		ToolResults: []apitype.AgentUserEventToolResultItem{{ToolCallID: "c1", Name: "probe__run", Content: "x"}},
+	})}
+	streamer.stream <- client.NeoStreamEvent{Data: mustUserInputEnvelope(t,
+		apitype.AgentUserEventExecToolCall{Type: userEventExecToolCall, ToolCallID: "other", Name: "foreign__run"})}
+	streamer.stream <- client.NeoStreamEvent{Data: mustUserInputEnvelope(t, apitype.AgentUserEventToolResult{
+		Type:        userEventToolResult,
+		ToolResults: []apitype.AgentUserEventToolResultItem{{ToolCallID: "other", Name: "foreign__run", Content: "y"}},
+	})}
+	close(streamer.stream)
+	select {
+	case err := <-done:
+		require.NoError(t, err)
+	case <-time.After(5 * time.Second):
+		t.Fatal("session did not exit")
+	}
+	close(uiCh)
+
+	var names []string
+	for ev := range uiCh {
+		switch e := ev.(type) {
+		case UIToolStarted:
+			names = append(names, "start:"+e.Name)
+		case UIToolCompleted:
+			names = append(names, "done:"+e.Name)
+		}
+	}
+	assert.Equal(t, []string{"start:probe__run", "done:probe__run", "start:foreign__run", "done:foreign__run"}, names)
 }
 
 // TestSession_BatchesRunSeriallyAcrossAssistantMessages locks down that tool
@@ -1815,4 +1980,69 @@ func TestSession_BatchesRunSeriallyAcrossAssistantMessages(t *testing.T) {
 	require.True(t, ok)
 	require.Len(t, res2.ToolResults, 1)
 	assert.Equal(t, "c2", res2.ToolResults[0].ToolCallID)
+}
+
+// cancellingStreamer cancels the batch context from inside the first
+// exec_tool_call post and reports that post as failed, mimicking a request
+// torn down by the user's cancel mid-flight.
+type cancellingStreamer struct {
+	fakeStreamer
+	cancel context.CancelFunc
+	once   sync.Once
+}
+
+func (c *cancellingStreamer) PostNeoTaskUserEvent(ctx context.Context, org, task string, body any) error {
+	if _, ok := body.(apitype.AgentUserEventExecToolCall); ok {
+		var cancelled bool
+		c.once.Do(func() {
+			c.cancel()
+			cancelled = true
+		})
+		if cancelled {
+			_ = c.fakeStreamer.PostNeoTaskUserEvent(ctx, org, task, body)
+			return errors.New("connection reset")
+		}
+	}
+	return c.fakeStreamer.PostNeoTaskUserEvent(ctx, org, task, body)
+}
+
+// TestSession_ExecToolCallPostFailureUnderCancelStillPostsToolResult pins the
+// behaviour of a failed exec_tool_call post when the failure is caused by the
+// batch being cancelled: the batch must not abort, both calls are reported
+// cancelled, and a single tool_result covering every call is still posted so
+// the parked runtime can end the turn.
+func TestSession_ExecToolCallPostFailureUnderCancelStillPostsToolResult(t *testing.T) {
+	t.Parallel()
+
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+	streamer := &cancellingStreamer{fakeStreamer: *newFakeStreamer(), cancel: cancel}
+	ran := false
+	handlers := map[string]ToolHandler{
+		"probe": &probeHandler{invoke: func(context.Context) (any, error) {
+			ran = true
+			return map[string]any{"ok": true}, nil
+		}},
+	}
+	s := &Session{Client: streamer, Handlers: handlers, OrgName: "org", TaskID: "task"}
+
+	err := s.runBatch(ctx, []apitype.AgentBackendEventToolCall{
+		{ToolCallID: "c1", Name: "probe__run", Args: json.RawMessage(`{}`), ExecutionMode: toolExecutionModeCLI},
+		{ToolCallID: "c2", Name: "probe__run", Args: json.RawMessage(`{}`), ExecutionMode: toolExecutionModeCLI},
+	})
+	require.NoError(t, err, "a cancel-induced exec_tool_call failure must not be session-fatal")
+	assert.False(t, ran, "no handler may run once the batch context is cancelled")
+
+	streamer.mu.Lock()
+	defer streamer.mu.Unlock()
+	require.Len(t, streamer.posted, 2, "one failed exec_tool_call, then the tool_result")
+	_, ok := streamer.posted[0].(apitype.AgentUserEventExecToolCall)
+	require.True(t, ok)
+	result, ok := streamer.posted[1].(apitype.AgentUserEventToolResult)
+	require.True(t, ok)
+	require.Len(t, result.ToolResults, 2)
+	for _, item := range result.ToolResults {
+		assert.True(t, item.IsError, "%s must be reported as an error", item.ToolCallID)
+		assert.Equal(t, cancelledContent(), item.Content)
+	}
 }

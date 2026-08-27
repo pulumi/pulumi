@@ -117,6 +117,10 @@ func NewFilesystem(root string, extraRoots ...string) (*Filesystem, error) {
 
 // Invoke dispatches a single filesystem method call.
 func (f *Filesystem) Invoke(ctx context.Context, method string, args json.RawMessage) (any, error) {
+	// Operations are short, so a cancel is only observed between calls.
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 	switch method {
 	case "read":
 		var p struct {

@@ -15,6 +15,7 @@
 package tools
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -57,6 +58,30 @@ func TestShell_ExecuteHonorsTimeout(t *testing.T) {
 	assert.Contains(t, err.Error(), "timed out")
 	require.NotNil(t, res, "partial result must still be returned alongside the timeout error")
 	assert.True(t, res.(ShellResult).TimedOut)
+}
+
+func TestShell_ExecuteReportsCancellation(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("uses /bin/sh semantics")
+	}
+	t.Parallel()
+
+	sh, err := NewShell(t.TempDir())
+	require.NoError(t, err)
+	ctx, cancel := context.WithCancel(t.Context())
+	go func() {
+		time.Sleep(100 * time.Millisecond)
+		cancel()
+	}()
+	start := time.Now()
+	res, err := sh.Invoke(ctx, "shell_execute", json.RawMessage(`{"command":"echo started; sleep 30"}`))
+	require.ErrorIs(t, err, ErrCancelled)
+	assert.Less(t, time.Since(start), 5*time.Second, "cancel must kill the command promptly")
+	require.NotNil(t, res)
+	r := res.(ShellResult)
+	assert.True(t, r.Cancelled)
+	assert.False(t, r.TimedOut)
+	assert.Equal(t, "started\n", r.Stdout, "partial output must be preserved")
 }
 
 func TestShell_ExecuteHonorsAgentTimeout(t *testing.T) {
