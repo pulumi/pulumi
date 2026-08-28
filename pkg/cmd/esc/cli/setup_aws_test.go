@@ -275,3 +275,12 @@ func TestResolvePolicy_AWSResolvesToPolicyARNs(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, custom, got)
 }
+
+// The browser sign-in cannot be completed without someone to approve the device code.
+func TestResolveAWSCredentialSource_BrowserNeedsATerminal(t *testing.T) {
+	t.Parallel()
+
+	_, _, err := resolveAWSCredentialSource(
+		t.Context(), &escCommand{}, "", "", true /*forceBrowser*/, true /*yes*/, false /*interactive*/)
+	assert.ErrorContains(t, err, "requires an interactive terminal")
+}

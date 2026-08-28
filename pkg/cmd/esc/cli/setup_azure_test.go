@@ -41,3 +41,12 @@ func TestResolvePolicy_AzureResolvesToRoleDefinitionIDs(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, custom, got)
 }
+
+// The browser sign-in cannot be completed without someone to approve the device code.
+func TestResolveAzureCredential_BrowserNeedsATerminal(t *testing.T) {
+	t.Parallel()
+
+	_, err := resolveAzureCredential(
+		t.Context(), &escCommand{}, true /*forceBrowser*/, "", true /*yes*/, false /*interactive*/)
+	assert.ErrorContains(t, err, "--browser requires an interactive terminal")
+}

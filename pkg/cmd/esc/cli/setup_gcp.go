@@ -26,6 +26,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cloudsetup/gcpsetup"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 )
 
 var gcpPolicyChoices = []policyChoice{
@@ -167,6 +168,8 @@ func newSetupGCPCmd(setup *setupCommand) *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			esc := setup.esc()
+
+			yes = yes || !cmdutil.Interactive()
 
 			if err := esc.getCachedClient(ctx); err != nil {
 				return err

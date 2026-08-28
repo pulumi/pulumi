@@ -39,6 +39,7 @@ import (
 	cloudsetup "github.com/pulumi/pulumi/pkg/v3/cloudsetup/common"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 )
 
 var awsPolicyChoices = []policyChoice{
@@ -397,18 +398,21 @@ func existingCredentialSource(ctx context.Context, ambient *ambientCredentialSou
 //
 // The second return value reports whether multi-account setup is supported.
 func resolveAWSCredentialSource(
-	ctx context.Context, esc *escCommand, ssoStartURL, ssoRegion string, forceBrowser, yes bool,
+	ctx context.Context, esc *escCommand, ssoStartURL, ssoRegion string, forceBrowser, yes, interactive bool,
 ) (awsCredentialSource, bool, error) {
 	// --sso, or an explicit start URL, forces the browser sign-in. The device source infers a
 	// missing start URL and region from the shared AWS config.
 	if forceBrowser || ssoStartURL != "" {
+		if !interactive {
+			return nil, false, errors.New("the AWS SSO browser sign-in requires an interactive terminal")
+		}
 		source, err := newDeviceCredentialSource(ctx, esc, ssoStartURL, ssoRegion)
 		return source, true, err
 	}
 
 	ambient, ambientErr := newAmbientCredentialSource(ctx)
 	if ambientErr != nil {
-		if !errors.Is(ambientErr, errNoAWSCredentials) {
+		if !interactive || !errors.Is(ambientErr, errNoAWSCredentials) {
 			return nil, false, ambientErr
 		}
 		fmt.Fprintf(esc.stdout, "No existing AWS credentials found; signing in with AWS SSO.\n")
@@ -699,6 +703,9 @@ func newSetupAWSCmd(setup *setupCommand) *cobra.Command {
 			ctx := cmd.Context()
 			esc := setup.esc()
 
+			interactive := cmdutil.Interactive()
+			yes = yes || !interactive
+
 			if err := esc.getCachedClient(ctx); err != nil {
 				return err
 			}
@@ -726,7 +733,7 @@ func newSetupAWSCmd(setup *setupCommand) *cobra.Command {
 				return fmt.Errorf("--policy must be %s, or a policy ARN: %w", strings.Join(policyNameChoices, ", "), err)
 			}
 
-			source, multiAccount, err := resolveAWSCredentialSource(ctx, esc, ssoStartURL, ssoRegion, sso, yes)
+			source, multiAccount, err := resolveAWSCredentialSource(ctx, esc, ssoStartURL, ssoRegion, sso, yes, interactive)
 			if err != nil {
 				return err
 			}

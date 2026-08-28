@@ -32,6 +32,7 @@ import (
 	cloudsetup "github.com/pulumi/pulumi/pkg/v3/cloudsetup/common"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 )
 
 // azureLoginPath is the property path under `values` where the login block is written,
@@ -163,14 +164,20 @@ func promptAzureTenantID(esc *escCommand) (string, error) {
 // resolveAzureCredential decides how to authenticate, either using existing credentials
 // or a browser sign-in.
 func resolveAzureCredential(
-	ctx context.Context, esc *escCommand, forceBrowser bool, tenantID string, yes bool,
+	ctx context.Context, esc *escCommand, forceBrowser bool, tenantID string, yes, interactive bool,
 ) (azcore.TokenCredential, error) {
 	if forceBrowser {
+		if !interactive {
+			return nil, errors.New("--browser requires an interactive terminal")
+		}
 		return newAzureDeviceCodeCredential(esc, tenantID)
 	}
 
 	existing, existingErr := tryExistingAzureCredential(ctx, tenantID)
 	if existingErr != nil {
+		if !interactive {
+			return nil, fmt.Errorf("no usable Azure credentials (%w); run `az login`", existingErr)
+		}
 		fmt.Fprintf(esc.stdout, "No existing Azure credentials found; signing in with your browser.\n")
 		return newAzureDeviceCodeCredential(esc, tenantID)
 	}
@@ -328,6 +335,9 @@ func newSetupAzureCmd(setup *setupCommand) *cobra.Command {
 			ctx := cmd.Context()
 			esc := setup.esc()
 
+			interactive := cmdutil.Interactive()
+			yes = yes || !interactive
+
 			if err := esc.getCachedClient(ctx); err != nil {
 				return err
 			}
@@ -356,7 +366,7 @@ func newSetupAzureCmd(setup *setupCommand) *cobra.Command {
 				roleName = azurePolicyChoices[i].name
 			}
 
-			cred, err := resolveAzureCredential(ctx, esc, browserAuth, tenant, yes)
+			cred, err := resolveAzureCredential(ctx, esc, browserAuth, tenant, yes, interactive)
 			if err != nil {
 				return err
 			}
