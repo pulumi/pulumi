@@ -299,6 +299,14 @@ func TestMarkAgentClaimUnavailable(t *testing.T) {
 	assert.True(t, claim.ValidUntil.Equal(validUntil))
 	require.NotNil(t, claim.ClaimUnavailableAt)
 	assert.True(t, claim.ClaimUnavailableAt.Equal(unavailableAt))
+
+	require.NoError(t, ClearAgentClaimUnavailable())
+	claim, err = GetAgentClaim()
+	require.NoError(t, err)
+	assert.Nil(t, claim.ClaimUnavailableAt)
+	assert.Equal(t, "abc123", claim.ClaimToken, "clearing the marker keeps the rest of the claim")
+
+	require.NoError(t, ClearAgentClaimUnavailable(), "clearing an unset marker is a no-op")
 }
 
 //nolint:paralleltest // mutates package global

@@ -32,6 +32,28 @@ var validateAgentClaim = func(ctx context.Context, cloudURL, claimToken string) 
 	return client.NewClient(cloudURL, "", false, nil).ValidateAgentClaim(ctx, claimToken)
 }
 
+// revalidatedClaim brings a persisted claim-unavailable marker up to date:
+// when one is present, the claim is re-checked with the service, and the
+// marker is cleared if the claim is usable again. The marker is kept while
+// the service still refuses the claim or cannot be reached.
+func revalidatedClaim(ctx context.Context, claim workspace.AgentClaim) workspace.AgentClaim {
+	if claim.ClaimUnavailableAt == nil || claim.ClaimToken == "" {
+		return claim
+	}
+	claimable, err := validateAgentClaim(ctx, claim.CloudURL, claim.ClaimToken)
+	if err != nil || !claimable {
+		if err != nil {
+			slog.InfoContext(ctx, "Could not re-validate agent claim token", "cloud-url", claim.CloudURL, "err", err)
+		}
+		return claim
+	}
+	if err := workspace.ClearAgentClaimUnavailable(); err != nil {
+		slog.InfoContext(ctx, "Could not clear agent claim unavailable marker", "cloud-url", claim.CloudURL, "err", err)
+	}
+	claim.ClaimUnavailableAt = nil
+	return claim
+}
+
 // MaybePrintClaimWarning reminds detected coding agents to tell the user about
 // a claim URL for shared agent credentials used by this CLI process.
 func MaybePrintClaimWarning(ctx context.Context, stderr io.Writer) {
@@ -70,6 +92,11 @@ func MaybePrintClaimWarning(ctx context.Context, stderr io.Writer) {
 		return
 	}
 
+	claim = revalidatedClaim(ctx, claim)
+	if claim.ClaimUnavailableAt != nil {
+		return
+	}
+
 	warning := workspace.FormatAgentClaimInstruction(claim.ClaimURL, accessTokenExpiresAt, claim.ValidUntil, now)
 	_, err = io.WriteString(stderr, warning)
 	contract.IgnoreError(err)
@@ -93,6 +120,7 @@ func AuthRequiredMessage(now time.Time) string {
 		return ""
 	}
 	expiresAt, valid := workspace.AgentAccessTokenExpiresAt(account, now)
+	claim = revalidatedClaim(context.Background(), claim)
 	if claim.ClaimUnavailableAt != nil {
 		return workspace.FormatAgentLoginRequiredInstruction(
 			workspace.AgentLoginClaimUnavailable, expiresAt, now)

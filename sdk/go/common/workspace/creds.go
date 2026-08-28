@@ -1052,6 +1052,20 @@ func MarkAgentClaimUnavailable(unavailableAt time.Time) error {
 	return StoreAgentClaim(claim)
 }
 
+// ClearAgentClaimUnavailable removes a persisted claim-unavailable marker,
+// e.g. after the service reports the claim usable again.
+func ClearAgentClaimUnavailable() error {
+	claim, err := GetAgentClaim()
+	if err != nil {
+		return err
+	}
+	if claim.ClaimURL == "" || claim.ClaimUnavailableAt == nil {
+		return nil
+	}
+	claim.ClaimUnavailableAt = nil
+	return StoreAgentClaim(claim)
+}
+
 // DeleteExpiredAgentCredentials removes shared temporary agent credentials when
 // both the claim URL and access token have expired. It returns true when
 // credentials were removed.
