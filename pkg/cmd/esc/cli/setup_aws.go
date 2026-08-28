@@ -33,6 +33,7 @@ import (
 	"github.com/pkg/browser"
 	"github.com/spf13/cobra"
 
+	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
 	"github.com/pulumi/pulumi/pkg/v3/cloudsetup/awssetup"
 	awssetuptypes "github.com/pulumi/pulumi/pkg/v3/cloudsetup/awssetup/types"
 	cloudsetup "github.com/pulumi/pulumi/pkg/v3/cloudsetup/common"
@@ -709,7 +710,9 @@ func newSetupAWSCmd(setup *setupCommand) *cobra.Command {
 			esc := setup.esc()
 
 			interactive := cmdutil.Interactive()
-			yes = yes || !interactive
+			if !interactive && !yes {
+				return backenderr.ErrNonInteractiveRequiresYes
+			}
 
 			projectName, err := validateESCProject(projectName)
 			if err != nil {

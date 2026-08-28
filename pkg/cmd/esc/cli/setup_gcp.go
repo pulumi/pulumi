@@ -22,6 +22,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
 	cloudsetup "github.com/pulumi/pulumi/pkg/v3/cloudsetup/common"
 	"github.com/pulumi/pulumi/pkg/v3/cloudsetup/gcpsetup"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
@@ -177,7 +178,10 @@ func newSetupGCPCmd(setup *setupCommand) *cobra.Command {
 			ctx := cmd.Context()
 			esc := setup.esc()
 
-			yes = yes || !cmdutil.Interactive()
+			interactive := cmdutil.Interactive()
+			if !interactive && !yes {
+				return backenderr.ErrNonInteractiveRequiresYes
+			}
 
 			projectName, err := validateESCProject(projectName)
 			if err != nil {
