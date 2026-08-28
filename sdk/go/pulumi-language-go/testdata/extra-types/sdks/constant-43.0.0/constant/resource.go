@@ -15,7 +15,10 @@ import (
 type Resource struct {
 	pulumi.CustomResourceState
 
-	Kind pulumi.StringPtrOutput `pulumi:"kind"`
+	Count pulumi.IntPtrOutput     `pulumi:"count"`
+	Flag  pulumi.BoolPtrOutput    `pulumi:"flag"`
+	Kind  pulumi.StringPtrOutput  `pulumi:"kind"`
+	Ratio pulumi.Float64PtrOutput `pulumi:"ratio"`
 }
 
 // NewResource registers a new resource with the given unique name, arguments, and options.
@@ -25,10 +28,22 @@ func NewResource(ctx *pulumi.Context,
 		return nil, errors.New("missing one or more required arguments")
 	}
 
+	if args.Count == nil {
+		return nil, errors.New("invalid value for required argument 'Count'")
+	}
+	if args.Flag == nil {
+		return nil, errors.New("invalid value for required argument 'Flag'")
+	}
 	if args.Kind == nil {
 		return nil, errors.New("invalid value for required argument 'Kind'")
 	}
+	if args.Ratio == nil {
+		return nil, errors.New("invalid value for required argument 'Ratio'")
+	}
+	args.Count = pulumi.Int(3)
+	args.Flag = pulumi.Bool(true)
 	args.Kind = pulumi.String("Constant")
+	args.Ratio = pulumi.Float64(1.5)
 	opts = internal.PkgResourceDefaultOpts(opts)
 	var resource Resource
 	err := ctx.RegisterResource("constant:index:Resource", name, args, &resource, opts...)
@@ -62,12 +77,18 @@ func (ResourceState) ElementType() reflect.Type {
 }
 
 type resourceArgs struct {
-	Kind string `pulumi:"kind"`
+	Count int     `pulumi:"count"`
+	Flag  bool    `pulumi:"flag"`
+	Kind  string  `pulumi:"kind"`
+	Ratio float64 `pulumi:"ratio"`
 }
 
 // The set of arguments for constructing a Resource resource.
 type ResourceArgs struct {
-	Kind pulumi.StringInput
+	Count pulumi.IntInput
+	Flag  pulumi.BoolInput
+	Kind  pulumi.StringInput
+	Ratio pulumi.Float64Input
 }
 
 func (ResourceArgs) ElementType() reflect.Type {
@@ -157,8 +178,20 @@ func (o ResourceOutput) ToResourceOutputWithContext(ctx context.Context) Resourc
 	return o
 }
 
+func (o ResourceOutput) Count() pulumi.IntPtrOutput {
+	return o.ApplyT(func(v *Resource) pulumi.IntPtrOutput { return v.Count }).(pulumi.IntPtrOutput)
+}
+
+func (o ResourceOutput) Flag() pulumi.BoolPtrOutput {
+	return o.ApplyT(func(v *Resource) pulumi.BoolPtrOutput { return v.Flag }).(pulumi.BoolPtrOutput)
+}
+
 func (o ResourceOutput) Kind() pulumi.StringPtrOutput {
 	return o.ApplyT(func(v *Resource) pulumi.StringPtrOutput { return v.Kind }).(pulumi.StringPtrOutput)
+}
+
+func (o ResourceOutput) Ratio() pulumi.Float64PtrOutput {
+	return o.ApplyT(func(v *Resource) pulumi.Float64PtrOutput { return v.Ratio }).(pulumi.Float64PtrOutput)
 }
 
 type ResourceArrayOutput struct{ *pulumi.OutputState }
