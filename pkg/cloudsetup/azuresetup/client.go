@@ -43,7 +43,23 @@ const (
 	// the app registration (its resource ID is the client ID). Batched setup callers read it to
 	// thread ExistingAppIdentity into follow-up calls.
 	ResourcePropertyObjectID = "objectId"
+
+	// federatedCredentialNamePrefix names every federated identity credential this setup flow
+	// creates on the shared app registration; the FIC-limit guidance below tells users which
+	// entries are safe to prune, so keep the two in sync.
+	//nolint:gosec // G101: constant name contains "Credential", not a hardcoded credential value
+	federatedCredentialNamePrefix = "pulumi-esc-oidc-credential"
+
+	// federatedCredentialLimitMessage is the distinctive fragment of the Graph API error returned
+	// when an app registration already holds Azure's maximum of 20 federated identity credentials.
+	// Graph reports it under a generic bad-request code, so the message text is the only signal.
+	//nolint:gosec // G101: constant name contains "Credential", not a hardcoded credential value
+	federatedCredentialLimitMessage = "size of the object has exceeded its limit"
 )
+
+func isFederatedCredentialLimitError(err error) bool {
+	return strings.Contains(strings.ToLower(err.Error()), federatedCredentialLimitMessage)
+}
 
 type RoleAssignmentsClient interface {
 	Create(
@@ -379,11 +395,23 @@ func (c *client) findOrCreateFederatedIdentityCredential(
 	}
 
 	// Create new federated identity credential
-	name := "pulumi-esc-oidc-credential-" + uuid.NewString()
+	name := federatedCredentialNamePrefix + "-" + uuid.NewString()
 	description := "Pulumi ESC federated credential"
 	credentialID, err := c.graphClient.CreateFederatedCredential(
 		ctx, appObjectID, name, oidcIssuer, subject, audience, description)
 	if err != nil {
+		if isFederatedCredentialLimitError(err) {
+			return cloudsetup.CloudSetupResource{}, fmt.Errorf(
+				"the %q app registration in your Azure tenant has reached Azure's limit of 20 federated "+
+					"identity credentials, "+
+					"usually from credentials for Pulumi organizations or ESC environments that no longer exist. "+
+					"In the Azure portal (Microsoft Entra ID → App registrations → %s → "+
+					"Certificates & secrets → Federated credentials), "+
+					"remove %q entries whose Subject references a Pulumi organization or environment you no longer use — "+
+					"entries with an in-use Subject still provide that environment's Azure access — then retry. "+
+					"Azure error: %w",
+				c.appDisplayName, c.appDisplayName, federatedCredentialNamePrefix+"-*", err)
+		}
 		return cloudsetup.CloudSetupResource{}, err
 	}
 
