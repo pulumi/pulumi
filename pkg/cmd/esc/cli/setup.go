@@ -186,6 +186,21 @@ func sanitizeEnvName(accountName, accountID string) string {
 	return strings.ToLower(envNameUnsafe.ReplaceAllString(base, "-")) + "-env"
 }
 
+// checkDuplicateEnvNames fails when two accounts derive the same environment name.
+func checkDuplicateEnvNames(projectName string, accounts []cloudsetup.CloudAccount) error {
+	seen := map[string]cloudsetup.CloudAccount{}
+	for _, a := range accounts {
+		name := escEnvName(projectName, a)
+		if prev, ok := seen[name]; ok {
+			return fmt.Errorf(
+				"%q (%s) and %q (%s) have the same name. This would result in the same ESC environment name '%s'",
+				prev.Name, prev.ID, a.Name, a.ID, name)
+		}
+		seen[name] = a
+	}
+	return nil
+}
+
 // escEnvName is the `<project>/<name>` of the environment created for a cloud account.
 func escEnvName(projectName string, account cloudsetup.CloudAccount) string {
 	return projectName + "/" + sanitizeEnvName(account.Name, account.ID)

@@ -158,3 +158,31 @@ func TestValidateESCProject(t *testing.T) {
 	assert.Error(t, validateESCProject(""))
 	assert.Error(t, validateESCProject("has space"))
 }
+
+// Two accounts that derive the same environment name have to be caught before setup runs:
+// both would get cloud resources, but only the last login block written would survive.
+func TestCheckDuplicateEnvNames(t *testing.T) {
+	t.Parallel()
+
+	require.NoError(t, checkDuplicateEnvNames("aws-login", []cloudsetup.CloudAccount{
+		{ID: "111111111111", Name: "Sandbox"},
+		{ID: "222222222222", Name: "Production"},
+	}))
+
+	// Display names are not unique on any of the three providers, and the account ID is only
+	// a fallback for an empty name, so it does not disambiguate these.
+	err := checkDuplicateEnvNames("aws-login", []cloudsetup.CloudAccount{
+		{ID: "111111111111", Name: "Sandbox"},
+		{ID: "222222222222", Name: "Sandbox"},
+	})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "111111111111")
+	assert.Contains(t, err.Error(), "222222222222")
+	assert.Contains(t, err.Error(), "aws-login/sandbox-env")
+
+	// Sanitizing collapses different names onto the same environment too.
+	require.Error(t, checkDuplicateEnvNames("aws-login", []cloudsetup.CloudAccount{
+		{ID: "111111111111", Name: "My Team"},
+		{ID: "222222222222", Name: "My/Team"},
+	}))
+}

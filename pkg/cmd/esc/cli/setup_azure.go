@@ -383,6 +383,9 @@ func newSetupAzureCmd(setup *setupCommand) *cobra.Command {
 			if err != nil {
 				return err
 			}
+			if err := checkDuplicateEnvNames(projectName, selected); err != nil {
+				return err
+			}
 
 			orgID, err := setup.orgID(ctx, org)
 			if err != nil {

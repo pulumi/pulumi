@@ -751,6 +751,14 @@ func newSetupAWSCmd(setup *setupCommand) *cobra.Command {
 				selected = []selectedAWSAccount{{account: account}}
 			}
 
+			selectedAccounts := make([]cloudsetup.CloudAccount, len(selected))
+			for i, sel := range selected {
+				selectedAccounts[i] = sel.account
+			}
+			if err := checkDuplicateEnvNames(projectName, selectedAccounts); err != nil {
+				return err
+			}
+
 			orgID, err := setup.orgID(ctx, org)
 			if err != nil {
 				return err
