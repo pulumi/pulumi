@@ -677,7 +677,7 @@ func newSetupAWSCmd(setup *setupCommand) *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "aws",
-		Short: "Set up AWS OIDC integration for Pulumi ESC",
+		Short: "[EXPERIMENTAL] Set up AWS OIDC integration for Pulumi ESC",
 		Long: "[EXPERIMENTAL] Set up AWS OIDC integration for Pulumi ESC\n" +
 			"\n" +
 			"Creates, in each selected AWS account:\n" +

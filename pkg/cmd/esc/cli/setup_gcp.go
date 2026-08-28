@@ -157,7 +157,7 @@ func newSetupGCPCmd(setup *setupCommand) *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "gcp",
-		Short: "Set up GCP OIDC integration for Pulumi ESC",
+		Short: "[EXPERIMENTAL] Set up GCP OIDC integration for Pulumi ESC",
 		Long: "[EXPERIMENTAL] Set up GCP OIDC integration for Pulumi ESC\n" +
 			"\n" +
 			"Creates, in each selected GCP project:\n" +

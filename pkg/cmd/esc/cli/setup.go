@@ -43,7 +43,7 @@ type setupCommand struct {
 func newEnvSetupCmd(env *envCommand) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "setup",
-		Short: "Set up cloud provider OIDC integrations",
+		Short: "[EXPERIMENTAL] Set up cloud provider OIDC integrations",
 		Long: "[EXPERIMENTAL] Set up cloud provider OIDC integrations\n" +
 			"\n" +
 			"Creates the identity resources a cloud provider needs in order to trust Pulumi\n" +

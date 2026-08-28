@@ -310,7 +310,7 @@ func newSetupAzureCmd(setup *setupCommand) *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "azure",
-		Short: "Set up Azure OIDC integration for Pulumi ESC",
+		Short: "[EXPERIMENTAL] Set up Azure OIDC integration for Pulumi ESC",
 		Long: "[EXPERIMENTAL] Set up Azure OIDC integration for Pulumi ESC\n" +
 			"\n" +
 			"Creates, in your Azure tenant:\n" +
