@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"io"
 	"strings"
 	"testing"
 	"time"
@@ -26,7 +27,9 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/property"
@@ -36,7 +39,13 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-var awsProvider, azureProvider, gcpProvider = cloudProviders[0], cloudProviders[1], cloudProviders[2]
+const awsDocURL = "https://www.pulumi.com/registry/packages/aws/installation-configuration/"
+
+var (
+	awsProvider   = cloudProvider{pkg: "aws", displayName: "AWS", docURL: awsDocURL}
+	azureProvider = cloudProvider{pkg: "azure-native", displayName: "Azure"}
+	gcpProvider   = cloudProvider{pkg: "gcp", displayName: "Google Cloud"}
+)
 
 func resourcePackage(name, version string) workspace.PackageDescriptor {
 	v := semver.MustParse(version)
@@ -45,6 +54,15 @@ func resourcePackage(name, version string) workspace.PackageDescriptor {
 		Name:    name,
 		Version: &v,
 	}}
+}
+
+// schemaProvider returns a mock whose GetSchema serves the given schema document.
+func schemaProvider(schemaJSON string) *plugin.MockProvider {
+	return &plugin.MockProvider{
+		GetSchemaF: func(context.Context, plugin.GetSchemaRequest) (plugin.GetSchemaResponse, error) {
+			return plugin.GetSchemaResponse{Schema: []byte(schemaJSON)}, nil
+		},
+	}
 }
 
 func runCheck(
@@ -85,48 +103,143 @@ func TestCredentialsCheckEnabled(t *testing.T) {
 	}
 }
 
-func TestFindCloudProvider(t *testing.T) {
+func TestCloudProviderFromSchema(t *testing.T) {
 	t.Parallel()
-
-	parameterized := resourcePackage("aws", "7.0.0")
-	parameterized.Parameterization = &workspace.Parameterization{Name: "other", Version: semver.MustParse("1.0.0")}
 
 	tests := []struct {
 		name     string
-		packages []workspace.PackageDescriptor
-		expected string // provider package, or "" when none should match
+		schema   string
+		err      error
+		expected cloudProvider
+		ok       bool
 	}{
-		{name: "aws", packages: []workspace.PackageDescriptor{resourcePackage("aws", "7.0.0")}, expected: "aws"},
 		{
-			name:     "azure-native",
-			packages: []workspace.PackageDescriptor{resourcePackage("azure-native", "3.0.0")},
-			expected: "azure-native",
+			name: "opted in",
+			schema: `{"name":"aws","displayName":"AWS","validateCredentialsOnNew":true,` +
+				`"configurationDocsUrl":"` + awsDocURL + `"}`,
+			expected: awsProvider,
+			ok:       true,
 		},
-		{name: "gcp", packages: []workspace.PackageDescriptor{resourcePackage("gcp", "8.0.0")}, expected: "gcp"},
-		{name: "no packages"},
-		{name: "classic azure does not match", packages: []workspace.PackageDescriptor{resourcePackage("azure", "6.0.0")}},
-		{name: "random", packages: []workspace.PackageDescriptor{resourcePackage("random", "4.0.0")}},
 		{
-			name:     "multiple packages",
-			packages: []workspace.PackageDescriptor{resourcePackage("random", "4.0.0"), resourcePackage("aws", "7.0.0")},
-			expected: "aws",
+			name:     "opted in without display name or docs",
+			schema:   `{"name":"aws","validateCredentialsOnNew":true}`,
+			expected: cloudProvider{pkg: "aws", displayName: "aws"},
+			ok:       true,
 		},
-		{name: "parameterized on an aws base plugin does not match", packages: []workspace.PackageDescriptor{parameterized}},
+		{name: "not opted in", schema: `{"name":"aws","displayName":"AWS","configurationDocsUrl":"` + awsDocURL + `"}`},
+		{name: "explicitly opted out", schema: `{"name":"random","validateCredentialsOnNew":false}`},
+		{name: "invalid schema", schema: `not json`},
+		{name: "schema error", err: errors.New("boom")},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			cp, desc := findCloudProvider(tt.packages)
-			if tt.expected == "" {
-				assert.Nil(t, cp)
-				return
+			prov := schemaProvider(tt.schema)
+			if tt.err != nil {
+				prov.GetSchemaF = func(context.Context, plugin.GetSchemaRequest) (plugin.GetSchemaResponse, error) {
+					return plugin.GetSchemaResponse{}, tt.err
+				}
 			}
-			require.NotNil(t, cp)
-			assert.Equal(t, tt.expected, cp.pkg)
-			// The exact package the program depends on is what gets loaded.
-			assert.Equal(t, tt.expected, desc.Name)
-			assert.Equal(t, apitype.ResourcePlugin, desc.Kind)
-			require.NotNil(t, desc.Version)
+			cp, ok := cloudProviderFromSchema(t.Context(), prov, "aws")
+			assert.Equal(t, tt.ok, ok)
+			assert.Equal(t, tt.expected, cp)
+		})
+	}
+}
+
+func TestPreflightCloudCredentialsPackages(t *testing.T) {
+	t.Parallel()
+
+	optedIn := func(name, displayName string) string {
+		return `{"name":"` + name + `","displayName":"` + displayName + `","validateCredentialsOnNew":true}`
+	}
+	schemas := map[string]string{
+		"aws":    optedIn("aws", "AWS"),
+		"gcp":    optedIn("gcp", "Google Cloud"),
+		"random": `{"name":"random"}`,
+	}
+
+	parameterized := resourcePackage("aws", "7.0.0")
+	parameterized.Parameterization = &workspace.Parameterization{Name: "other", Version: semver.MustParse("1.0.0")}
+	language := resourcePackage("nodejs", "3.0.0")
+	language.Kind = apitype.LanguagePlugin
+
+	tests := []struct {
+		name     string
+		packages []workspace.PackageDescriptor
+		loaded   []string // providers expected to be launched, in order
+		checked  []string // providers expected to have CheckConfig called
+		warnings []string // display names expected in the output
+	}{
+		{name: "no packages"},
+		{
+			name:     "single opted-in package",
+			packages: []workspace.PackageDescriptor{resourcePackage("aws", "7.0.0")},
+			loaded:   []string{"aws"},
+			checked:  []string{"aws"},
+			warnings: []string{"AWS"},
+		},
+		{
+			name:     "package that did not opt in is loaded but not checked",
+			packages: []workspace.PackageDescriptor{resourcePackage("random", "4.0.0")},
+			loaded:   []string{"random"},
+		},
+		{
+			name: "every opted-in package is checked",
+			packages: []workspace.PackageDescriptor{
+				resourcePackage("random", "4.0.0"), resourcePackage("aws", "7.0.0"), resourcePackage("gcp", "8.0.0"),
+			},
+			loaded:   []string{"random", "aws", "gcp"},
+			checked:  []string{"aws", "gcp"},
+			warnings: []string{"AWS", "Google Cloud"},
+		},
+		{
+			name:     "parameterized and language packages are skipped",
+			packages: []workspace.PackageDescriptor{parameterized, language},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			var loaded, checked []string
+			host := &plugin.MockHost{
+				ProviderF: func(_ *plugin.Context, desc workspace.PluginDescriptor, _ env.Env) (plugin.Provider, error) {
+					loaded = append(loaded, desc.Name)
+					prov := schemaProvider(schemas[desc.Name])
+					prov.CheckConfigF = func(_ context.Context, req plugin.CheckConfigRequest) (plugin.CheckConfigResponse, error) {
+						checked = append(checked, desc.Name)
+						assert.Equal(t, "pulumi:providers:"+desc.Name, string(req.URN.Type()))
+						return plugin.CheckConfigResponse{}, status.Error(codes.Unknown, "no credentials")
+					}
+					return prov, nil
+				},
+			}
+
+			sink := diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{Color: colors.Never})
+			pctx, err := plugin.NewContextWithHost(t.Context(), sink, sink, host, "", "", nil)
+			require.NoError(t, err)
+			defer pctx.Close()
+
+			var buf bytes.Buffer
+			warned := false
+			for _, pkg := range tt.packages {
+				if pkg.Kind != apitype.ResourcePlugin || pkg.Parameterization != nil {
+					continue
+				}
+				if preflightPackage(t.Context(), host, pctx, pkg.PluginDescriptor, config.Map{}, &buf,
+					display.Options{Color: colors.Never}) {
+					warned = true
+				}
+			}
+
+			assert.Equal(t, tt.loaded, loaded)
+			assert.Equal(t, tt.checked, checked)
+			assert.Equal(t, len(tt.warnings) > 0, warned)
+			for _, name := range tt.warnings {
+				assert.Contains(t, buf.String(), "Could not validate your "+name+" credentials")
+			}
+			assert.Equal(t, len(tt.warnings), strings.Count(buf.String(), "warning:"))
 		})
 	}
 }
@@ -176,7 +289,7 @@ func TestCheckCloudCredentialsRPCError(t *testing.T) {
 	assert.Contains(t, out, "unable to validate AWS credentials.")
 	assert.Contains(t, out, "    Details: no valid credential sources found")
 	assert.NotContains(t, out, "rpc error")
-	assert.Contains(t, out, awsProvider.docURL)
+	assert.Contains(t, out, "For help configuring the AWS provider, see "+awsDocURL)
 }
 
 func TestCheckCloudCredentialsFailures(t *testing.T) {
@@ -200,7 +313,7 @@ func TestCheckCloudCredentialsFailures(t *testing.T) {
 	assert.Contains(t, out, "The AWS provider reported problems with this stack's configuration")
 	assert.Contains(t, out, "    region: expected a valid region")
 	assert.Contains(t, out, "    unable to validate AWS credentials.\n    Details: no valid credential sources found")
-	assert.Contains(t, out, awsProvider.docURL)
+	assert.Contains(t, out, awsDocURL)
 }
 
 func TestCheckCloudCredentialsSuccess(t *testing.T) {
@@ -263,7 +376,12 @@ func TestCheckCloudCredentialsConfigureError(t *testing.T) {
 				assert.Contains(t, out, "    "+line)
 			}
 			assert.NotContains(t, out, "rpc error")
-			assert.Contains(t, out, "For help configuring the "+tt.provider.displayName+" provider, see "+tt.provider.docURL)
+			if tt.provider.docURL != "" {
+				assert.Contains(t, out, "For help configuring the "+tt.provider.displayName+" provider, see "+tt.provider.docURL)
+			} else {
+				// Providers that publish no docs link get no help line rather than a dangling one.
+				assert.NotContains(t, out, "For help configuring")
+			}
 		})
 	}
 }

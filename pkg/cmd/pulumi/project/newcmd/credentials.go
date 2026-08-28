@@ -16,6 +16,7 @@ package newcmd
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"log/slog"
@@ -25,7 +26,9 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -38,61 +41,26 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
-// The credentials preflight may probe STS, IMDS or Azure CLI/IMDS; timeouts on hosts
-// without instance metadata are the slow path, so give the check a generous but bounded budget.
-// The budget covers plugin launch as well as CheckConfig and Configure.
+// The credentials preflight may probe cloud metadata services or STS-like endpoints; timeouts on
+// hosts without instance metadata are the slow path, so give the check a generous but bounded budget.
+// The budget covers plugin launch, GetSchema, CheckConfig and Configure for every opted-in package.
 const defaultCredentialsPreflightTimeout = 15 * time.Second
 
-// cloudProvider describes a provider package whose Configure validates cloud credentials,
-// making it a candidate for the `pulumi new` credentials preflight.
+// cloudProvider describes a provider package that opted into the `pulumi new` credentials
+// preflight through its schema.
 type cloudProvider struct {
 	// pkg is the provider package name, which is also the stack config namespace.
 	pkg string
-	// displayName is how the cloud is referred to in warnings.
+	// displayName is how the provider is referred to in warnings.
 	displayName string
-	// docURL points at the provider's installation & configuration docs.
+	// docURL points at the provider's installation & configuration docs; may be empty.
 	docURL string
-}
-
-var cloudProviders = []cloudProvider{
-	{
-		pkg:         "aws",
-		displayName: "AWS",
-		docURL:      "https://www.pulumi.com/registry/packages/aws/installation-configuration/",
-	},
-	{
-		pkg:         "azure-native",
-		displayName: "Azure",
-		docURL:      "https://www.pulumi.com/registry/packages/azure-native/installation-configuration/",
-	},
-	{
-		pkg:         "gcp",
-		displayName: "Google Cloud",
-		docURL:      "https://www.pulumi.com/registry/packages/gcp/installation-configuration/",
-	},
 }
 
 // credentialsCheckEnabled reports whether this run should preflight cloud credentials: only
 // interactive runs that actually set up a project, and only when the user hasn't opted out.
 func credentialsCheckEnabled(args newArgs) bool {
 	return args.interactive && !args.generateOnly && !args.offline && !env.SkipNewCredentialsCheck.Value()
-}
-
-// findCloudProvider returns the first known cloud provider the program depends on, paired
-// with the exact package descriptor so that the version the program uses is loaded.
-// It returns nil when the program depends on no known cloud provider.
-func findCloudProvider(packages []workspace.PackageDescriptor) (*cloudProvider, workspace.PluginDescriptor) {
-	for i := range cloudProviders {
-		cp := &cloudProviders[i]
-		for _, pkg := range packages {
-			// A parameterized package's plugin name is the base plugin (e.g. terraform-provider),
-			// not the cloud provider itself.
-			if pkg.Name == cp.pkg && pkg.Parameterization == nil {
-				return cp, pkg.PluginDescriptor
-			}
-		}
-	}
-	return nil, workspace.PluginDescriptor{}
 }
 
 // providerConfigProperties extracts the plaintext values in the provider's config
@@ -114,44 +82,91 @@ func providerConfigProperties(cp cloudProvider, cfg config.Map) property.Map {
 }
 
 // preflightCloudCredentials runs the best-effort cloud credentials check for a freshly
-// created project, if one applies to this run. It reports whether a warning was printed.
+// created project against every required provider that opted in through its schema. It
+// reports whether a warning was printed.
 func preflightCloudCredentials(
 	ctx context.Context, args newArgs, host plugin.Host, proj *workspace.Project, root string,
 	s backend.Stack, packages []workspace.PackageDescriptor, opts display.Options,
 ) bool {
-	if !credentialsCheckEnabled(args) || s == nil {
-		return false
-	}
-	cp, desc := findCloudProvider(packages)
-	if cp == nil {
+	if !credentialsCheckEnabled(args) || s == nil || len(packages) == 0 {
 		return false
 	}
 	ps, err := cmdStack.LoadProjectStack(ctx, cmdutil.Diag(), proj, s, "")
 	if err != nil {
-		slog.DebugContext(ctx, "skipping credentials check", "provider", cp.pkg, "err", err)
+		slog.DebugContext(ctx, "skipping credentials check", "err", err)
 		return false
 	}
 
 	// Providers send their RPCs on the plugin context's base context rather than the
 	// context passed to each call, so bound the whole preflight by giving it a context of
-	// its own: plugin launch, CheckConfig and Configure all share one deadline.
+	// its own: plugin launch, GetSchema, CheckConfig and Configure all share one deadline.
 	tctx, cancel := context.WithTimeout(ctx, defaultCredentialsPreflightTimeout)
 	defer cancel()
 	pctx, err := plugin.NewContextWithHost(tctx, cmdutil.Diag(), cmdutil.Diag(), host, root, root, nil)
 	if err != nil {
-		slog.DebugContext(ctx, "skipping credentials check", "provider", cp.pkg, "err", err)
+		slog.DebugContext(ctx, "skipping credentials check", "err", err)
 		return false
 	}
 	defer contract.IgnoreClose(pctx)
 
+	warned := false
+	for _, pkg := range packages {
+		// A parameterized package's plugin name is the base plugin (e.g. terraform-provider),
+		// not the provider itself, so it cannot be loaded from the descriptor alone.
+		if pkg.Kind != apitype.ResourcePlugin || pkg.Parameterization != nil {
+			continue
+		}
+		if tctx.Err() != nil {
+			break
+		}
+		if preflightPackage(tctx, host, pctx, pkg.PluginDescriptor, ps.Config, args.stdout, opts) {
+			warned = true
+		}
+	}
+	return warned
+}
+
+// preflightPackage loads a single provider, asks its schema whether it wants the credentials
+// check and, if so, runs it. It reports whether a warning was printed.
+func preflightPackage(
+	ctx context.Context, host plugin.Host, pctx *plugin.Context, desc workspace.PluginDescriptor,
+	cfg config.Map, stdout io.Writer, opts display.Options,
+) bool {
 	prov, err := host.Provider(pctx, desc, env.Global())
 	if err != nil {
-		slog.DebugContext(ctx, "skipping credentials check", "provider", cp.pkg, "err", err)
+		slog.DebugContext(ctx, "skipping credentials check", "provider", desc.Name, "err", err)
 		return false
 	}
 	defer contract.IgnoreClose(prov)
 
-	return checkCloudCredentials(tctx, *cp, prov, providerConfigProperties(*cp, ps.Config), args.stdout, opts)
+	cp, ok := cloudProviderFromSchema(ctx, prov, desc.Name)
+	if !ok {
+		return false
+	}
+	return checkCloudCredentials(ctx, cp, prov, providerConfigProperties(cp, cfg), stdout, opts)
+}
+
+// cloudProviderFromSchema fetches the provider's schema and returns the preflight metadata it
+// declares. ok is false when the provider did not opt into the check or its schema is unavailable.
+func cloudProviderFromSchema(ctx context.Context, prov plugin.Provider, pkg string) (cp cloudProvider, ok bool) {
+	resp, err := prov.GetSchema(ctx, plugin.GetSchemaRequest{})
+	if err != nil {
+		slog.DebugContext(ctx, "skipping credentials check", "provider", pkg, "err", err)
+		return cloudProvider{}, false
+	}
+	var info schema.PackageInfoSpec
+	if err := json.Unmarshal(resp.Schema, &info); err != nil {
+		slog.DebugContext(ctx, "skipping credentials check", "provider", pkg, "err", err)
+		return cloudProvider{}, false
+	}
+	if !info.ValidateCredentialsOnNew {
+		return cloudProvider{}, false
+	}
+	cp = cloudProvider{pkg: pkg, displayName: info.DisplayName, docURL: info.ConfigurationDocsURL}
+	if cp.displayName == "" {
+		cp.displayName = pkg
+	}
+	return cp, true
 }
 
 // checkCloudCredentials calls the cloud provider's CheckConfig and then Configure, which is
@@ -198,7 +213,10 @@ func checkCloudCredentials(
 		fmt.Fprintf(stdout, "    %s\n", line)
 	}
 	fmt.Fprintln(stdout, "Your project was created successfully, but `pulumi up` may fail until this is resolved.")
-	fmt.Fprintf(stdout, "For help configuring the %s provider, see %s\n\n", cp.displayName, cp.docURL)
+	if cp.docURL != "" {
+		fmt.Fprintf(stdout, "For help configuring the %s provider, see %s\n", cp.displayName, cp.docURL)
+	}
+	fmt.Fprintln(stdout)
 	return true
 }
 
