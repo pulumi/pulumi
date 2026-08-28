@@ -274,6 +274,13 @@ func runNew(ctx context.Context, args newArgs) error {
 			return err
 		}
 		if existingStack != nil {
+			if args.escConfig {
+				// --esc-config gives a *new* stack its environments. Adopting an existing stack would
+				// point it at an environment while its `config:` block quietly stops being effective.
+				return fmt.Errorf("--esc-config cannot be used with the existing stack %s: "+
+					"it configures a stack as it is created. Move that stack's configuration into an "+
+					"environment with 'pulumi config env init --main' instead", args.stack)
+			}
 			s = existingStack
 			if args.description == "" {
 				args.description = existingDesc
