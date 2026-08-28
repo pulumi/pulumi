@@ -211,9 +211,10 @@ func newSetupGCPCmd(setup *setupCommand) *cobra.Command {
 
 			fmt.Fprintf(esc.stdout, "\nAbout to configure OIDC for organization %s:\n", org)
 			for _, p := range selected {
+				ref := setup.env.parseRef(org + "/" + escEnvName(projectName, p))
 				printSetupTarget(esc, fmt.Sprintf("project %s (%s):", p.Name, p.ID))
 				fmt.Fprintf(esc.stdout, "    grant %s\n", role)
-				fmt.Fprintf(esc.stdout, "    create ESC environment %s/%s\n", org, escEnvName(projectName, p))
+				fmt.Fprintf(esc.stdout, "    %s\n", setup.planEnvLine(ctx, ref, gcpLoginPath))
 			}
 			fmt.Fprintln(esc.stdout)
 

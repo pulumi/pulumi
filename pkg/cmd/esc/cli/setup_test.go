@@ -116,3 +116,28 @@ func TestESCEnvName(t *testing.T) {
 	assert.Equal(t, "aws-login/123456789012-env",
 		escEnvName("aws-login", cloudsetup.CloudAccount{ID: "123456789012"}))
 }
+
+// The plan the user confirms has to distinguish a create from a replacement, because
+// setup writes the login block either way.
+func TestPlanEnvLine(t *testing.T) {
+	t.Parallel()
+
+	setup := &setupCommand{env: &envCommand{esc: &escCommand{
+		client: &testPulumiClient{
+			environments: map[string]*testEnvironment{
+				"org/aws-login/existing-env": {},
+			},
+		},
+	}}}
+	ref := func(name string) environmentRef {
+		return environmentRef{orgName: "org", projectName: "aws-login", envName: name}
+	}
+
+	assert.Equal(t,
+		"create ESC environment org/aws-login/new-env",
+		setup.planEnvLine(t.Context(), ref("new-env"), awsLoginPath))
+
+	assert.Equal(t,
+		"update ESC environment org/aws-login/existing-env (exists; its `aws.login` block will be replaced)",
+		setup.planEnvLine(t.Context(), ref("existing-env"), awsLoginPath))
+}

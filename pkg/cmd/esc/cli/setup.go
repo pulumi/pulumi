@@ -28,6 +28,7 @@ import (
 	"github.com/spf13/cobra"
 
 	cloudsetup "github.com/pulumi/pulumi/pkg/v3/cloudsetup/common"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/esc/cli/client"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 )
@@ -140,6 +141,21 @@ func accountLabels(accounts []cloudsetup.CloudAccount) []string {
 // printSetupTarget writes the header line for one cloud account in the confirmation summary.
 func printSetupTarget(esc *escCommand, heading string) {
 	fmt.Fprintf(esc.stdout, "  %s\n", esc.colors.Colorize(colors.SpecSubHeadline+heading+colors.Reset))
+}
+
+// planEnvLine describes what setup will do to the ESC environment, either create or update.
+func (s *setupCommand) planEnvLine(ctx context.Context, ref environmentRef, loginPath string) string {
+	exists, err := s.env.esc.client.EnvironmentExists(ctx, ref.orgName, ref.projectName, ref.envName)
+	switch {
+	case err != nil && !client.IsNotFound(err):
+		// The check is best-effort, so do not fail setup over it; just do not promise a create.
+		return "create or update ESC environment " + ref.String()
+	case exists:
+		return fmt.Sprintf("update ESC environment %s (exists; its `%s` block will be replaced)",
+			ref.String(), loginPath)
+	default:
+		return "create ESC environment " + ref.String()
+	}
 }
 
 // escEnvName is the `<project>/<name>` of the environment created for a cloud account.

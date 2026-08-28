@@ -771,10 +771,11 @@ func newSetupAWSCmd(setup *setupCommand) *cobra.Command {
 			fmt.Fprintf(esc.stdout, "\nAbout to configure OIDC for organization %s:\n", org)
 			for _, sel := range selected {
 				escEnvName := escEnvName(projectName, sel.account)
+				ref := setup.env.parseRef(org + "/" + escEnvName)
 				printSetupTarget(esc, fmt.Sprintf("account %s:", sel.account.ID))
 				fmt.Fprintf(esc.stdout, "    create role %s\n", awsOIDCRoleName(orgID, escEnvName))
 				fmt.Fprintf(esc.stdout, "    attach %s\n", policyArn)
-				fmt.Fprintf(esc.stdout, "    create ESC environment %s/%s\n", org, escEnvName)
+				fmt.Fprintf(esc.stdout, "    %s\n", setup.planEnvLine(ctx, ref, awsLoginPath))
 			}
 			fmt.Fprintln(esc.stdout)
 

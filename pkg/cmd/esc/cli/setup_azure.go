@@ -390,10 +390,11 @@ func newSetupAzureCmd(setup *setupCommand) *cobra.Command {
 			fmt.Fprintf(esc.stdout, "\nAbout to configure OIDC for organization %s (tenant %s):\n", org, tenant)
 			for _, sub := range selected {
 				envName := escEnvName(projectName, sub)
+				ref := setup.env.parseRef(org + "/" + envName)
 				printSetupTarget(esc, fmt.Sprintf("subscription %s (%s):", sub.Name, sub.ID))
 				fmt.Fprintf(esc.stdout, "    assign %s\n", roleName)
 				fmt.Fprintf(esc.stdout, "    create app %s\n", azureOIDCAppDisplayName(orgID, envName))
-				fmt.Fprintf(esc.stdout, "    create ESC environment %s/%s\n", org, envName)
+				fmt.Fprintf(esc.stdout, "    %s\n", setup.planEnvLine(ctx, ref, azureLoginPath))
 			}
 			fmt.Fprintln(esc.stdout)
 
