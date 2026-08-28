@@ -1550,3 +1550,51 @@ func TestNewCmdYesDoesNotOverwriteExistingPulumiYAML(t *testing.T) {
 	require.NoError(t, readErr)
 	assert.Equal(t, "name: existing\n", string(contents))
 }
+
+// A backend that cannot host environments is refused before the project files are written.
+//
+//nolint:paralleltest // changes directory for process, mocks login manager
+func TestNewESCConfigRefusesBackendWithoutEnvironments(t *testing.T) {
+	tempdir := tempProjectDir(t)
+	t.Chdir(tempdir)
+
+	mockCurrentBackend(t, &backend.MockBackend{
+		NameF: func() string { return "file://~" },
+	})
+
+	args := newArgs{
+		interactive:       false,
+		yes:               true,
+		escConfig:         true,
+		name:              projectName,
+		prompt:            ui.PromptForValue,
+		secretsProvider:   "default",
+		templateNameOrURL: localTemplate(t),
+		languageTemplate:  languageTemplateMock,
+	}
+
+	err := runNew(t.Context(), args)
+	assert.ErrorContains(t, err, "backend file://~ does not support environments")
+	assert.NoFileExists(t, filepath.Join(tempdir, "Pulumi.yaml"))
+}
+
+//nolint:paralleltest // changes directory for process, mocks login manager
+func TestNewESCConfigRefusesGenerateOnly(t *testing.T) {
+	tempdir := tempProjectDir(t)
+	t.Chdir(tempdir)
+
+	args := newArgs{
+		generateOnly:      true,
+		interactive:       false,
+		yes:               true,
+		escConfig:         true,
+		name:              projectName,
+		prompt:            ui.PromptForValue,
+		secretsProvider:   "default",
+		templateNameOrURL: localTemplate(t),
+		languageTemplate:  languageTemplateMock,
+	}
+
+	err := runNew(t.Context(), args)
+	assert.ErrorContains(t, err, "--esc-config cannot be combined with --generate-only")
+}

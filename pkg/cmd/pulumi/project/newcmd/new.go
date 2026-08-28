@@ -95,6 +95,7 @@ type newArgs struct {
 	templateMode         bool
 	runtimeOptions       []string
 	remoteStackConfig    bool
+	escConfig            bool
 	stdout               io.Writer
 	stderr               io.Writer
 }
@@ -176,6 +177,14 @@ func runNew(ctx context.Context, args newArgs) error {
 		// Check project name and stack reference project name are the same, we skip this check if
 		// --generate-only is set because we're not going to actually use the --stack argument given.
 		if err := compareStackProjectName(b, args.stack, args.name); err != nil {
+			return err
+		}
+	}
+
+	// Everything --esc-config needs must be checked before a template is downloaded, a stack is
+	// created, or a file is written, so that a refusal leaves nothing behind.
+	if args.escConfig {
+		if err := validateESCConfig(b, args); err != nil {
 			return err
 		}
 	}
@@ -659,7 +668,27 @@ func NewNewCmd() *cobra.Command {
 	)
 	_ = cmd.PersistentFlags().MarkHidden("remote-stack-config")
 
+	cmd.PersistentFlags().BoolVar(
+		&args.escConfig, "esc-config", false,
+		"[EXPERIMENTAL] Store this stack's configuration in a new ESC environment "+
+			"'<project>/<stack>' that imports '<project>/base', recorded as the stack's 'mainEnvironment'. "+
+			"--secrets-provider still applies to any stack-local secrets",
+	)
+
 	return cmd
+}
+
+// validateESCConfig rejects the flag combinations --esc-config cannot honour. Each of these would
+// otherwise produce a stack whose 'mainEnvironment' is wrong or inert.
+func validateESCConfig(b backend.Backend, args newArgs) error {
+	if args.generateOnly {
+		return errors.New("--esc-config cannot be combined with --generate-only: no stack is created")
+	}
+	if args.remoteStackConfig {
+		return errors.New("--esc-config cannot be combined with --remote-stack-config: " +
+			"a stack whose configuration is stored remotely does not read its 'mainEnvironment'")
+	}
+	return cmdStack.CheckEnvironmentSupport(b)
 }
 
 func validateProjectName(ctx context.Context, b backend.Backend,
