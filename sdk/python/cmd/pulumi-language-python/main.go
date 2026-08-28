@@ -1527,7 +1527,7 @@ func (host *pythonLanguageHost) GetProgramDependencies(
 //     entrypoint.
 func (host *pythonLanguageHost) RunPlugin(
 	req *pulumirpc.RunPluginRequest, server pulumirpc.LanguageRuntime_RunPluginServer,
-) error {
+) (err error) {
 	logging.V(5).Infof("Attempting to run python plugin in %s with args %v", req.Info.ProgramDirectory, req.Args)
 	ctx := server.Context()
 
@@ -1650,6 +1650,11 @@ func (host *pythonLanguageHost) RunPlugin(
 		if err != nil {
 			return fmt.Errorf("could not start policy pack proxy: %w", err)
 		}
+		defer func() {
+			if err != nil {
+				policyPackServer.Abort(err)
+			}
+		}()
 
 		config, err := policyPackServer.AwaitConfiguration(ctx)
 		if err != nil {

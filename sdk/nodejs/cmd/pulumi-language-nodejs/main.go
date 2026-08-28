@@ -1606,7 +1606,7 @@ func startDebugging(
 
 func (host *nodeLanguageHost) RunPlugin(
 	req *pulumirpc.RunPluginRequest, server pulumirpc.LanguageRuntime_RunPluginServer,
-) error {
+) (err error) {
 	logging.V(5).Infof("Attempting to run nodejs plugin in %s", req.Info.ProgramDirectory)
 	ctx := server.Context()
 
@@ -1713,6 +1713,11 @@ func (host *nodeLanguageHost) RunPlugin(
 		if err != nil {
 			return fmt.Errorf("could not start policy pack proxy: %w", err)
 		}
+		defer func() {
+			if err != nil {
+				policyPackServer.Abort(err)
+			}
+		}()
 
 		config, err := policyPackServer.AwaitConfiguration(ctx)
 		if err != nil {
