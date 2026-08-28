@@ -50,13 +50,21 @@ func (b *cloudBackend) CreateEnvironment(
 	envName string,
 	yaml []byte,
 ) (apitype.EnvironmentDiagnostics, error) {
-	// Classify the errors so that callers creating an environment that already exists see
+	// Classify the create error so that callers creating an environment that already exists see
 	// backend.ErrEnvironmentConflict and can reuse it rather than failing.
 	if err := b.escClient.CreateEnvironment(ctx, org, projectName, envName); err != nil {
 		return nil, classifyEnvironmentError(err)
 	}
+	// The environment now exists; writing its definition is a separate call. Its error is deliberately
+	// *not* classified: a conflict here means the write failed, not that the environment was already
+	// there, and a caller that treats ErrEnvironmentConflict as "reuse" would otherwise adopt the empty
+	// environment this call just made.
 	diags, _, err := b.escClient.UpdateEnvironment(ctx, org, projectName, envName, yaml, "")
-	return convertESCDiags(diags), classifyEnvironmentError(err)
+	if err != nil {
+		return convertESCDiags(diags), fmt.Errorf("%w: %s/%s: %w",
+			backend.ErrEnvironmentCreatedInvalid, projectName, envName, err)
+	}
+	return convertESCDiags(diags), nil
 }
 
 func (b *cloudBackend) CheckYAMLEnvironment(

@@ -324,6 +324,11 @@ var ErrEnvironmentConflict = errors.New("the environment was modified since it w
 // environment does not exist.
 var ErrEnvironmentNotFound = errors.New("environment not found")
 
+// ErrEnvironmentCreatedInvalid is returned by EnvironmentsBackend.CreateEnvironment when the environment
+// itself was created but the definition it was created with could not be stored. The environment exists
+// and is unusable, so a caller must not report it as "not created" or silently reuse it.
+var ErrEnvironmentCreatedInvalid = errors.New("the environment was created, but its definition was not stored")
+
 // EnvironmentDefinitionsBackend is an interface defining an additional capability of a Backend, specifically the
 // ability to read and update the definition of a *named* environment with optimistic concurrency. This isn't a
 // requirement for all backends and should be checked for dynamically.

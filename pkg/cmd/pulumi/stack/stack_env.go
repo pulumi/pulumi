@@ -74,7 +74,11 @@ type EnvironmentBirthError struct {
 	Created []string
 	// Failed is the fully qualified reference of the environment that could not be created.
 	Failed string
-	Err    error
+	// FailedExists reports that Failed does exist on the service, but with a definition that could
+	// not be written or is not valid. Re-running would reuse that unusable environment, so the user
+	// has to fix or delete it rather than simply try again.
+	FailedExists bool
+	Err          error
 }
 
 func (e *EnvironmentBirthError) Error() string {
@@ -82,7 +86,13 @@ func (e *EnvironmentBirthError) Error() string {
 	if len(e.Created) > 0 {
 		fmt.Fprintf(&b, "created environment(s) %s, but ", strings.Join(e.Created, ", "))
 	}
-	fmt.Fprintf(&b, "could not create environment %s: %v\n", e.Failed, e.Err)
+	if e.FailedExists {
+		fmt.Fprintf(&b, "environment %s was created with an unusable definition: %v\n", e.Failed, e.Err)
+		b.WriteString("that environment exists and would be reused as-is, so fix or delete it before " +
+			"re-running. ")
+	} else {
+		fmt.Fprintf(&b, "could not create environment %s: %v\n", e.Failed, e.Err)
+	}
 	b.WriteString("the stack was created without 'mainEnvironment', so it works as an ordinary stack; " +
 		"re-run with --esc-config once the problem is fixed, " +
 		"or migrate later with 'pulumi config env init --main'")
@@ -90,6 +100,17 @@ func (e *EnvironmentBirthError) Error() string {
 }
 
 func (e *EnvironmentBirthError) Unwrap() error { return e.Err }
+
+// StackEnvironmentResult reports what CreateStackEnvironments did, so that a caller which passed
+// Values can tell whether they were actually written.
+type StackEnvironmentResult struct {
+	// MainEnvironment is the environment to record as the stack's `mainEnvironment`.
+	MainEnvironment *workspace.MainEnvironment
+	// StackEnvironmentReused reports that `<EnvProject>/<EnvName>` already existed and was left
+	// exactly as it was found. Because reuse is never a write, any Values the caller passed were
+	// *not* stored, and the caller has to say so rather than report success.
+	StackEnvironmentReused bool
+}
 
 // CreateStackEnvironments gives a newly created stack the environments its configuration lives in:
 // `<EnvProject>/base`, shared by every stack in the project, and `<EnvProject>/<EnvName>`, which
@@ -100,7 +121,7 @@ func (e *EnvironmentBirthError) Unwrap() error { return e.Err }
 // configuration that is already there.
 func CreateStackEnvironments(
 	ctx context.Context, s backend.Stack, opts StackEnvironmentOptions,
-) (*workspace.MainEnvironment, error) {
+) (StackEnvironmentResult, error) {
 	out := opts.Stdout
 	if out == nil {
 		out = io.Discard
@@ -108,28 +129,30 @@ func CreateStackEnvironments(
 
 	b := s.Backend()
 	if err := CheckEnvironmentSupport(b); err != nil {
-		return nil, err
+		return StackEnvironmentResult{}, err
 	}
 	creator := b.(backend.EnvironmentsBackend)
 	definitions := b.(backend.EnvironmentDefinitionsBackend)
 
 	orgNamer, ok := s.(interface{ OrgName() string })
 	if !ok {
-		return nil, fmt.Errorf("cannot determine organization for stack %v", s.Ref())
+		return StackEnvironmentResult{}, fmt.Errorf("cannot determine organization for stack %v", s.Ref())
 	}
 	org := orgNamer.OrgName()
 
 	var created []string
-	ensure := func(envName string, definition []byte, creating string) error {
+	// ensure creates envName with the given definition, or reports that it already exists. It returns
+	// whether the environment was reused, i.e. whether the definition was *not* written.
+	ensure := func(envName string, definition []byte, creating string) (bool, error) {
 		fullName := fmt.Sprintf("%s/%s/%s", org, opts.EnvProject, envName)
 
 		_, _, _, err := definitions.GetEnvironmentDefinition(ctx, org, opts.EnvProject, envName, "")
 		switch {
 		case err == nil:
 			fmt.Fprintf(out, "Environment '%s' already exists — reusing.\n", fullName)
-			return nil
+			return true, nil
 		case !errors.Is(err, backend.ErrEnvironmentNotFound):
-			return &EnvironmentBirthError{Created: created, Failed: fullName, Err: err}
+			return false, &EnvironmentBirthError{Created: created, Failed: fullName, Err: err}
 		}
 
 		fmt.Fprintf(out, "Creating environment '%s'...%s\n", fullName, creating)
@@ -138,41 +161,59 @@ func CreateStackEnvironments(
 			// Someone created it in the window between the probe and the create. Reuse it, exactly as
 			// the probe would have.
 			fmt.Fprintf(out, "Environment '%s' already exists — reusing.\n", fullName)
-			return nil
+			return true, nil
 		}
 		if err != nil {
-			return &EnvironmentBirthError{Created: created, Failed: fullName, Err: err}
+			// The backend creates the environment before storing its definition, so a failure to store
+			// leaves the environment behind: say so rather than "could not create".
+			exists := errors.Is(err, backend.ErrEnvironmentCreatedInvalid)
+			return false, &EnvironmentBirthError{
+				Created: created, Failed: fullName, FailedExists: exists, Err: err,
+			}
 		}
 		if len(diags) != 0 {
-			return &EnvironmentBirthError{Created: created, Failed: fullName, Err: diags}
+			// The environment itself was created — the backend writes its definition as a second step —
+			// so it exists with a definition the service rejected. Say that, rather than claiming it
+			// was not created: a rerun would silently reuse this broken environment.
+			return false, &EnvironmentBirthError{
+				Created: created, Failed: fullName, FailedExists: true, Err: diags,
+			}
 		}
 		created = append(created, fullName)
-		return nil
+		return false, nil
 	}
 
 	base, err := renderStackEnvironment(nil /*imports*/, nil /*values*/)
 	if err != nil {
-		return nil, err
+		return StackEnvironmentResult{}, err
 	}
-	if err := ensure(BaseEnvironmentName, base, ""); err != nil {
-		return nil, err
+	baseReused, err := ensure(BaseEnvironmentName, base, "")
+	if err != nil {
+		return StackEnvironmentResult{}, err
 	}
 
 	// A stack literally named `base` is its own base environment; importing itself would be a cycle.
 	if opts.EnvName == BaseEnvironmentName {
-		return &workspace.MainEnvironment{Project: opts.EnvProject, Name: BaseEnvironmentName}, nil
+		return StackEnvironmentResult{
+			MainEnvironment:        &workspace.MainEnvironment{Project: opts.EnvProject, Name: BaseEnvironmentName},
+			StackEnvironmentReused: baseReused,
+		}, nil
 	}
 
 	baseRef := opts.EnvProject + "/" + BaseEnvironmentName
 	definition, err := renderStackEnvironment([]string{baseRef}, opts.Values)
 	if err != nil {
-		return nil, err
+		return StackEnvironmentResult{}, err
 	}
-	if err := ensure(opts.EnvName, definition, fmt.Sprintf(" (imports %s)", baseRef)); err != nil {
-		return nil, err
+	reused, err := ensure(opts.EnvName, definition, fmt.Sprintf(" (imports %s)", baseRef))
+	if err != nil {
+		return StackEnvironmentResult{}, err
 	}
 
-	return &workspace.MainEnvironment{Project: opts.EnvProject, Name: opts.EnvName}, nil
+	return StackEnvironmentResult{
+		MainEnvironment:        &workspace.MainEnvironment{Project: opts.EnvProject, Name: opts.EnvName},
+		StackEnvironmentReused: reused,
+	}, nil
 }
 
 // renderStackEnvironment renders the definition a stack environment is created with.
