@@ -102,6 +102,11 @@ func newStackNewCmd() *cobra.Command {
 		&sicmd.remoteConfig, "remote-config", false, "Store stack configuration remotely",
 	)
 	_ = cmd.PersistentFlags().MarkHidden("remote-config")
+	cmd.PersistentFlags().BoolVar(
+		&sicmd.escConfig, "esc-config", false,
+		"[EXPERIMENTAL] Store this stack's configuration in a new ESC environment "+
+			"'<project>/<stack>' that imports '<project>/base', recorded as the stack's 'mainEnvironment'. "+
+			"--secrets-provider still applies to any stack-local secrets")
 	cmd.PersistentFlags().BoolVarP(
 		&sicmd.yes, "yes", "y", false,
 		"Skip interactive prompts; fail if required information is missing")
@@ -116,6 +121,7 @@ type stackNewCmd struct {
 	noSelect        bool
 	teams           []string
 	remoteConfig    bool
+	escConfig       bool
 	yes             bool
 	stdout          io.Writer
 
@@ -203,6 +209,14 @@ func (cmd *stackNewCmd) Run(ctx context.Context, args []string) error {
 		return projectErr
 	}
 
+	// Everything --esc-config needs must be checked before the stack exists, so that a refusal leaves
+	// nothing created and no file written.
+	if cmd.escConfig {
+		if err := cmd.validateESCConfig(b, projectErr); err != nil {
+			return err
+		}
+	}
+
 	newStack, err := CreateStack(ctx, cmdutil.Diag(), ws, b, stackRef, root, CreateStackOptions{
 		Teams:           sanitizeTeams(cmd.teams),
 		SetCurrent:      !cmd.noSelect,
@@ -215,6 +229,26 @@ func (cmd *stackNewCmd) Run(ctx context.Context, args []string) error {
 				"%s does not support --teams", cmd.stackName, b.Name(), b.Name())
 		}
 		return err
+	}
+
+	if cmd.escConfig {
+		mainEnv, err := CreateStackEnvironments(ctx, newStack, StackEnvironmentOptions{
+			EnvProject: proj.Name.String(),
+			EnvName:    stackRef.Name().String(),
+			Stdout:     cmd.stdout,
+		})
+		if err != nil {
+			return err
+		}
+
+		ps, err := LoadProjectStack(ctx, cmdutil.Diag(), proj, newStack, "")
+		if err != nil {
+			return err
+		}
+		ps.MainEnvironment = mainEnv
+		if err := SaveProjectStack(ctx, newStack, ps, ""); err != nil {
+			return err
+		}
 	}
 
 	if cmd.stackToCopy != "" {
@@ -271,6 +305,24 @@ func (cmd *stackNewCmd) Run(ctx context.Context, args []string) error {
 	}
 
 	return nil
+}
+
+// validateESCConfig rejects the flag combinations --esc-config cannot honour, before anything is
+// created. Each of these would otherwise produce a stack whose 'mainEnvironment' is wrong or inert.
+func (cmd *stackNewCmd) validateESCConfig(b backend.Backend, projectErr error) error {
+	if cmd.stackToCopy != "" {
+		return errors.New("--esc-config cannot be combined with --copy-config-from: " +
+			"the new stack's configuration would come from its environment, not from the copied stack")
+	}
+	if cmd.remoteConfig {
+		return errors.New("--esc-config cannot be combined with --remote-config: " +
+			"a stack whose configuration is stored remotely does not read its 'mainEnvironment'")
+	}
+	if err := CheckEnvironmentSupport(b); err != nil {
+		return err
+	}
+	// The ESC project the environments live in is the Pulumi project's name.
+	return projectErr
 }
 
 // newCreateStackOptions constructs a backend.CreateStackOptions object
