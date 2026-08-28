@@ -471,8 +471,6 @@ func (c *client) assignPrincipalRole(
 		// Role assignment already exists, return as existing resource
 		return cloudsetup.CloudSetupResource{
 			Type:   ResourceTypeAzureRoleAssignment,
-			ID:     roleDefID,
-			Name:   roleAssignmentName,
 			Status: cloudsetup.ResourceStatusExisting,
 			Properties: map[string]string{
 				"subscriptionID": subscriptionID,
