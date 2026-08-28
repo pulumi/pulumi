@@ -60,7 +60,9 @@ func newConfigEnvCmd(ws pkgWorkspace.Context, stackRef *string, configFile *stri
 		Use:   "env",
 		Short: "Manage ESC environments for a stack",
 		Long: "Manages the ESC environment associated with a specific stack. To create a new environment\n" +
-			"from a stack's configuration, use `pulumi config env init`.",
+			"from a stack's configuration, use `pulumi config env init`.\n\n" +
+			"[EXPERIMENTAL] A stack that sets `mainEnvironment` has exactly one environment, which supersedes\n" +
+			"the `environment:` list: `pulumi config env ls` reports it, and `add`/`rm` are not supported.",
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
 			impl.stdout = cmd.OutOrStdout()
 		},
@@ -165,17 +167,23 @@ func (cmd *configEnvCmd) loadEnvPreamble(ctx context.Context,
 }
 
 func (cmd *configEnvCmd) listStackEnvironments(ctx context.Context, render stackEnvironmentsRenderFunc) error {
-	projectStack, _, _, err := cmd.loadEnvPreamble(ctx)
+	projectStack, _, stack, err := cmd.loadEnvPreamble(ctx)
 	if err != nil {
 		return err
 	}
 	imports := projectStack.Environment.Imports()
+	// A main environment is the stack's only environment, and it deliberately supersedes `environment:`,
+	// so listing the `environment:` imports here would report environments the stack does not resolve.
+	if mainEnv := activeMainEnvironment(cmd.stdout, *stack, projectStack); mainEnv != nil {
+		imports = []string{mainEnv.String()}
+	}
 
 	return render(cmd.stdout, imports)
 }
 
 func (cmd *configEnvCmd) editStackEnvironment(
 	ctx context.Context,
+	name string,
 	showSecrets bool,
 	yes bool,
 	edit func(stack *workspace.ProjectStack) error,
@@ -187,6 +195,12 @@ func (cmd *configEnvCmd) editStackEnvironment(
 	projectStack, project, stack, err := cmd.loadEnvPreamble(ctx)
 	if err != nil {
 		return err
+	}
+
+	// Editing `environment:` on a stack with a main environment would silently have no effect, since the
+	// main environment supersedes that list.
+	if mainEnv := activeMainEnvironment(cmd.stdout, *stack, projectStack); mainEnv != nil {
+		return errMainEnvUnsupported("env "+name, mainEnv)
 	}
 
 	if err := edit(projectStack); err != nil {
