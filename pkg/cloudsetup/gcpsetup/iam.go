@@ -31,6 +31,15 @@ type iamClient interface {
 	CreateWorkloadIdentityProvider(
 		ctx context.Context, projectID, poolID, providerID string, provider *iam.WorkloadIdentityPoolProvider,
 	) error
+	GetWorkloadIdentityProvider(
+		ctx context.Context, projectID, poolID, providerID string,
+	) (*iam.WorkloadIdentityPoolProvider, error)
+	UpdateWorkloadIdentityProvider(
+		ctx context.Context,
+		projectID, poolID, providerID string,
+		provider *iam.WorkloadIdentityPoolProvider,
+		updateMask string,
+	) error
 	CreateServiceAccount(
 		ctx context.Context, projectID string, req *iam.CreateServiceAccountRequest,
 	) (*iam.ServiceAccount, error)
@@ -64,6 +73,34 @@ func (c *realIAMClient) CreateWorkloadIdentityProvider(
 	op, err := c.iam.Projects.Locations.WorkloadIdentityPools.Providers.
 		Create(parent, provider).
 		WorkloadIdentityPoolProviderId(providerID).
+		Context(ctx).Do()
+	if err != nil {
+		return err
+	}
+	return c.await(ctx, iam.NewProjectsLocationsWorkloadIdentityPoolsOperationsService(c.iam).Get(op.Name).Context(ctx))
+}
+
+func (c *realIAMClient) GetWorkloadIdentityProvider(
+	ctx context.Context, projectID, poolID, providerID string,
+) (*iam.WorkloadIdentityPoolProvider, error) {
+	name := fmt.Sprintf("projects/%s/locations/global/workloadIdentityPools/%s/providers/%s",
+		projectID, poolID, providerID)
+	return c.iam.Projects.Locations.WorkloadIdentityPools.Providers.
+		Get(name).
+		Context(ctx).Do()
+}
+
+func (c *realIAMClient) UpdateWorkloadIdentityProvider(
+	ctx context.Context,
+	projectID, poolID, providerID string,
+	provider *iam.WorkloadIdentityPoolProvider,
+	updateMask string,
+) error {
+	name := fmt.Sprintf("projects/%s/locations/global/workloadIdentityPools/%s/providers/%s",
+		projectID, poolID, providerID)
+	op, err := c.iam.Projects.Locations.WorkloadIdentityPools.Providers.
+		Patch(name, provider).
+		UpdateMask(updateMask).
 		Context(ctx).Do()
 	if err != nil {
 		return err

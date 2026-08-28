@@ -92,6 +92,7 @@ type AzureEnvironmentInfo struct {
 const (
 	ResourceStatusCreated  = "created"
 	ResourceStatusExisting = "existing"
+	ResourceStatusUpdated  = "updated"
 	ResourceStatusFailed   = "failed"
 )
 

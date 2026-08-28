@@ -188,8 +188,12 @@ func (c *client) SetupOIDCInfrastructure(
 		},
 	}
 
+	providerStatus := cloudsetup.ResourceStatusCreated
 	err = c.iamClient.CreateWorkloadIdentityProvider(ctx, project.ProjectId, poolID, providerID, provider)
-	if err != nil && !isAlreadyExistsError(err) {
+	if isAlreadyExistsError(err) {
+		providerStatus, err = c.reconcileWorkloadIdentityProvider(ctx, project.ProjectId, poolID, providerID, provider)
+	}
+	if err != nil {
 		return cloudsetup.WrapSetupError(result, ResourceTypeGCPWorkloadIdentityProvider, err)
 	}
 
@@ -197,7 +201,7 @@ func (c *client) SetupOIDCInfrastructure(
 		Type:   ResourceTypeGCPWorkloadIdentityProvider,
 		ID:     providerID,
 		Name:   "PulumiOIDCProvider",
-		Status: status(isAlreadyExistsError(err)),
+		Status: providerStatus,
 	})
 
 	// Create Service Account
@@ -388,6 +392,86 @@ func projectBindingExists(bindings []*cloudresourcemanager.Binding, role, member
 		}
 	}
 	return false
+}
+
+// reconcileWorkloadIdentityProvider handles a create conflict for the workload identity
+// provider. A pre-existing provider is not necessarily usable: the pool and provider IDs
+// don't encode which Pulumi backend created them, so an onboarding run against a different
+// backend (e.g. staging vs. production, or self-hosted vs. SaaS) leaves a provider that
+// trusts a different OIDC issuer, and tokens issued by this backend can never authenticate.
+// The existing provider's OIDC configuration is read back and, if it doesn't match the
+// desired one, patched in place. Returns the resource status to report.
+func (c *client) reconcileWorkloadIdentityProvider(
+	ctx context.Context, projectID, poolID, providerID string, desired *iam.WorkloadIdentityPoolProvider,
+) (string, error) {
+	existing, err := c.iamClient.GetWorkloadIdentityProvider(ctx, projectID, poolID, providerID)
+	if err != nil {
+		return "", fmt.Errorf("workload identity provider %q already exists, but reading its configuration back failed: %w",
+			providerID, err)
+	}
+
+	// GCP soft-deletes providers for 30 days and rejects creates with the same ID during
+	// that window, so a create conflict can also mean the provider is pending deletion. It
+	// can't be patched in that state; it has to be restored first.
+	if existing.State == "DELETED" {
+		return "", fmt.Errorf("workload identity provider %q is scheduled for deletion in GCP; restore it "+
+			"(gcloud iam workload-identity-pools providers undelete %s --workload-identity-pool=%s "+
+			"--location=global --project=%s) and retry", providerID, providerID, poolID, projectID)
+	}
+
+	if oidcConfigMatches(existing.Oidc, desired.Oidc) {
+		return cloudsetup.ResourceStatusExisting, nil
+	}
+
+	// Patch only the OIDC block so the provider trusts tokens issued by this backend;
+	// everything else about the provider is left untouched. Audiences already allowed on
+	// the provider are preserved: distinct org names can sanitize to the same provider ID,
+	// so replacing the list outright could revoke another org's working access.
+	patch := &iam.WorkloadIdentityPoolProvider{
+		Oidc: &iam.Oidc{
+			IssuerUri:        desired.Oidc.IssuerUri,
+			AllowedAudiences: mergedAllowedAudiences(existing.Oidc, desired.Oidc),
+		},
+	}
+	if err := c.iamClient.UpdateWorkloadIdentityProvider(ctx, projectID, poolID, providerID, patch, "oidc"); err != nil {
+		var existingIssuer string
+		if existing.Oidc != nil {
+			existingIssuer = existing.Oidc.IssuerUri
+		}
+		return "", fmt.Errorf("workload identity provider %q already exists with a different OIDC configuration "+
+			"(existing issuer %q), and updating it failed: %w", providerID, existingIssuer, err)
+	}
+	return cloudsetup.ResourceStatusUpdated, nil
+}
+
+// mergedAllowedAudiences returns the existing provider's allowed audiences plus any
+// desired ones not already present.
+func mergedAllowedAudiences(existing, desired *iam.Oidc) []string {
+	var merged []string
+	if existing != nil {
+		merged = slices.Clone(existing.AllowedAudiences)
+	}
+	for _, aud := range desired.AllowedAudiences {
+		if !slices.Contains(merged, aud) {
+			merged = append(merged, aud)
+		}
+	}
+	return merged
+}
+
+// oidcConfigMatches reports whether an existing provider's OIDC configuration already
+// trusts tokens issued by this backend: the issuer must match exactly and every desired
+// audience must be allowed. Extra allowed audiences on the existing provider are fine.
+func oidcConfigMatches(existing, desired *iam.Oidc) bool {
+	if existing == nil || existing.IssuerUri != desired.IssuerUri {
+		return false
+	}
+	for _, aud := range desired.AllowedAudiences {
+		if !slices.Contains(existing.AllowedAudiences, aud) {
+			return false
+		}
+	}
+	return true
 }
 
 // GCP caps a workload identity provider ID at 32 characters, so the organization is named
