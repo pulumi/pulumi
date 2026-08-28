@@ -70,7 +70,10 @@ func NewConfigCmd(ws pkgWorkspace.Context) *cobra.Command {
 		Short: "Manage configuration",
 		Long: "Lists all configuration values for a specific stack. To add a new configuration value, run\n" +
 			"`pulumi config set`. To remove an existing value run `pulumi config rm`. To get the value of\n" +
-			"for a specific configuration key, use `pulumi config get <key-name>`.",
+			"for a specific configuration key, use `pulumi config get <key-name>`.\n\n" +
+			"[EXPERIMENTAL] If the stack sets `mainEnvironment: <project>/<env>` then its configuration is\n" +
+			"read from that ESC environment, and a SOURCE column attributes each value to the environment\n" +
+			"revision that defined it.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			opts := display.Options{
@@ -248,6 +251,10 @@ func newConfigCopyCmd(ws pkgWorkspace.Context, stack *string, configFile *string
 				return err
 			}
 
+			if mainEnv := activeMainEnvironment(destinationStack, destinationProjectStack); mainEnv != nil {
+				return errMainEnvUnsupported("copy", mainEnv)
+			}
+
 			ssml := cmdStack.NewStackSecretsManagerLoaderFromEnv()
 
 			// Do we need to copy a single value or the entire map
@@ -314,11 +321,14 @@ func newConfigGetCmd(ws pkgWorkspace.Context, stack *string, configFile *string)
 	var jsonOut bool
 	var open bool
 	var path bool
+	var showSource bool
 
 	getCmd := &cobra.Command{
 		Use:   "get",
 		Short: "Get a single configuration value",
 		Long: "Get a single configuration value.\n\n" +
+			"[EXPERIMENTAL] On a stack that sets `mainEnvironment`, `--show-source` additionally prints the\n" +
+			"environment revision that defined the value and any definitions it overrode.\n\n" +
 			"The `--path` flag can be used to get a value inside a map or list:\n\n" +
 			"  - `pulumi config get --path outer.inner` will get the value of the `inner` key, " +
 			"if the value of `outer` is a map `inner: value`.\n" +
@@ -350,7 +360,8 @@ func newConfigGetCmd(ws pkgWorkspace.Context, stack *string, configFile *string)
 			}
 
 			ssml := cmdStack.NewStackSecretsManagerLoaderFromEnv()
-			return getConfig(ctx, cmd.OutOrStdout(), cmdutil.Diag(), ssml, ws, s, key, path, jsonOut, open, *configFile)
+			return getConfig(
+				ctx, cmd.OutOrStdout(), cmdutil.Diag(), ssml, ws, s, key, path, jsonOut, open, showSource, *configFile)
 		},
 	}
 	constrictor.AttachArguments(getCmd, &constrictor.Arguments{
@@ -372,6 +383,11 @@ func newConfigGetCmd(ws pkgWorkspace.Context, stack *string, configFile *string)
 		&path, "path", false,
 		"The key contains a path to a property in a map or list to get",
 	)
+	getCmd.Flags().BoolVar(
+		&showSource, "show-source", false,
+		"Show the environment revision that defined the value, and any definitions it overrode. "+
+			"Requires the stack to set `mainEnvironment`",
+	)
 
 	return getCmd
 }
@@ -384,6 +400,8 @@ func newConfigRemoveCmd(ws pkgWorkspace.Context, stack *string, configFile *stri
 		Aliases: []string{"rm", "delete"},
 		Short:   "Remove configuration value",
 		Long: "Remove configuration value.\n\n" +
+			"[EXPERIMENTAL] On a stack that sets `mainEnvironment`, the value is removed from that ESC\n" +
+			"environment and the new environment revision is printed, instead of editing the stack file.\n\n" +
 			"The `--path` flag can be used to remove a value inside a map or list:\n\n" +
 			"  - `pulumi config rm --path outer.inner` will remove the `inner` key, " +
 			"if the value of `outer` is a map `inner: value`.\n" +
@@ -436,6 +454,10 @@ func newConfigRemoveCmd(ws pkgWorkspace.Context, stack *string, configFile *stri
 						err, *configLocation.EscEnv, key.String())
 				}
 				return err
+			}
+
+			if mainEnv := activeMainEnvironment(stack, ps); mainEnv != nil {
+				return removeFromMainEnvironment(ctx, cmd.OutOrStdout(), stack, mainEnv, key, path)
 			}
 
 			err = ps.Config.Remove(key, path)
@@ -516,6 +538,10 @@ func newConfigRemoveAllCmd(ws pkgWorkspace.Context, stack *string, configFile *s
 						err, *configLocation.EscEnv)
 				}
 				return err
+			}
+
+			if mainEnv := activeMainEnvironment(stack, ps); mainEnv != nil {
+				return errMainEnvUnsupported("rm-all", mainEnv)
 			}
 
 			for _, arg := range args {
@@ -612,6 +638,10 @@ func newConfigRefreshCmd(
 				return err
 			}
 
+			if mainEnv := activeMainEnvironment(s, ps); mainEnv != nil {
+				return errMainEnvUnsupported("refresh", mainEnv)
+			}
+
 			ps.Config = latest.Config
 
 			// If the backend is returning envs, then we want to use them.
@@ -695,6 +725,7 @@ func newConfigRefreshCmd(
 
 type configSetCmd struct {
 	Stdin            *os.File
+	Stdout           io.Writer
 	LoadProjectStack func(
 		context.Context, diag.Sink, *workspace.Project, backend.Stack, string,
 	) (*workspace.ProjectStack, error)
@@ -716,6 +747,10 @@ func newConfigSetCmd(ws pkgWorkspace.Context, stack *string, configFile *string)
 			"If a value is not present on the command line, pulumi will prompt for the value. Multi-line values\n" +
 			"may be set by piping a file to standard in. Note that in that case, trailing newlines are stripped,\n" +
 			"unless `--raw` is passed.\n\n" +
+			"[EXPERIMENTAL] On a stack that sets `mainEnvironment`, the value is written to that ESC\n" +
+			"environment and the new environment revision is printed, instead of editing the stack file.\n" +
+			"Values set with `--secret` are encrypted by ESC as `fn::secret` values; the stack's own secrets\n" +
+			"provider is not involved.\n\n" +
 			"The `--path` flag can be used to set a value inside a map or list:\n\n" +
 			"  - `pulumi config set --path 'names[0]' a` " +
 			"will set the value to a list with the first item `a`.\n" +
@@ -757,6 +792,7 @@ func newConfigSetCmd(ws pkgWorkspace.Context, stack *string, configFile *string)
 				return err
 			}
 
+			configSetCmd.Stdout = cmd.OutOrStdout()
 			return configSetCmd.Run(ctx, ws, args, project, s, *configFile)
 		},
 	}
@@ -842,6 +878,13 @@ func (c *configSetCmd) Run(
 		return err
 	}
 
+	// A stack with a main environment writes straight to that environment. This happens before the stack's
+	// secrets manager is ever consulted: secrets on this path are encrypted by ESC, not by the stack's
+	// passphrase or KMS key, and the stack file is not touched at all.
+	if mainEnv := activeMainEnvironment(s, ps); mainEnv != nil {
+		return c.setInMainEnvironment(ctx, key, value, s, mainEnv)
+	}
+
 	ssml := cmdStack.NewStackSecretsManagerLoaderFromEnv()
 
 	// Encrypt the config value if needed.
@@ -903,6 +946,77 @@ func (c *configSetCmd) Run(
 	}
 
 	return cmdStack.SaveProjectStack(ctx, s, ps, configFile)
+}
+
+// removeFromMainEnvironment removes a single value from the stack's main environment and reports the
+// revision the removal produced. The local stack file is never modified on this path.
+func removeFromMainEnvironment(
+	ctx context.Context,
+	out io.Writer,
+	s backend.Stack,
+	mainEnv *workspace.MainEnvironment,
+	key config.Key,
+	path bool,
+) error {
+	if path {
+		return errMainEnvUnsupported("rm --path", mainEnv)
+	}
+
+	w, err := newMainEnvWriter(s, mainEnv)
+	if err != nil {
+		return err
+	}
+	revision, removed, err := w.removeKey(ctx, out, key)
+	if err != nil {
+		return err
+	}
+	if !removed {
+		fmt.Fprintf(out, "Configuration key '%s' is not set in %v\n", PrettyKey(key), mainEnv.Ref())
+		return nil
+	}
+	fmt.Fprintf(out, "Updated %v@%d\n", mainEnv.Ref(), revision)
+	return nil
+}
+
+// setInMainEnvironment writes a single value into the stack's main environment and reports the revision the
+// write produced. The local stack file is never modified on this path.
+func (c *configSetCmd) setInMainEnvironment(
+	ctx context.Context,
+	key config.Key,
+	value string,
+	s backend.Stack,
+	mainEnv *workspace.MainEnvironment,
+) error {
+	out := c.Stdout
+	if out == nil {
+		out = os.Stdout //nolint:forbidigo // this is a command's default output stream
+	}
+
+	if c.Path {
+		return errMainEnvUnsupported("set --path", mainEnv)
+	}
+	if !c.Secret && !c.Plaintext && looksLikeSecret(key, value) {
+		return fmt.Errorf("config value for '%s' looks like a secret; "+
+			"rerun with --secret to encrypt it, or --plaintext if you meant to store in plaintext",
+			key)
+	}
+
+	node, err := configValueNode(value, c.Type, c.Secret)
+	if err != nil {
+		return err
+	}
+
+	w, err := newMainEnvWriter(s, mainEnv)
+	if err != nil {
+		return err
+	}
+	revision, err := w.setKey(ctx, out, key, node)
+	if err != nil {
+		return err
+	}
+
+	fmt.Fprintf(out, "Updated %s@%d\n", mainEnv.Ref(), revision)
+	return nil
 }
 
 func newConfigSetAllCmd(
@@ -971,6 +1085,10 @@ func newConfigSetAllCmd(
 			ps, err := cmdStack.LoadProjectStack(ctx, cmdutil.Diag(), project, stack, *configFile)
 			if err != nil {
 				return err
+			}
+
+			if mainEnv := activeMainEnvironment(stack, ps); mainEnv != nil {
+				return errMainEnvUnsupported("set-all", mainEnv)
 			}
 
 			for _, ptArg := range plaintextArgs {
@@ -1114,6 +1232,9 @@ type configValueJSON struct {
 	Value       *string `json:"value,omitempty"`
 	ObjectValue any     `json:"objectValue,omitempty"`
 	Secret      bool    `json:"secret"`
+	// Source attributes the value to the environment revision that defined it. It is only ever populated
+	// for stacks that set `mainEnvironment`, so the output shape of every other stack is unchanged.
+	Source string `json:"source,omitempty"`
 }
 
 func listConfig(
@@ -1128,6 +1249,11 @@ func listConfig(
 	openEnvironment bool,
 	configFile string,
 ) error {
+	_, mainEnv, warnings := effectiveStackEnv(stack, ps)
+	if !jsonOut {
+		printConfigWarnings(stdout, warnings)
+	}
+
 	var env *esc.Environment
 	var diags []apitype.EnvironmentDiagnostic
 	var err error
@@ -1163,6 +1289,13 @@ func listConfig(
 	}
 
 	stackName := stack.Ref().Name().String()
+
+	// Attribute each value back to the environment revision that defined it. Only stacks with a main
+	// environment get this; every other stack's output is untouched.
+	var sources *sourceIndex
+	if mainEnv != nil {
+		sources = buildSourceIndex(ctx, stack, mainEnv, project.Name, stackName, pulumiEnv, ps.Config)
+	}
 
 	cfg, err := ps.Config.Copy(config.NopDecrypter, config.NopEncrypter)
 	if err != nil {
@@ -1212,6 +1345,7 @@ func listConfig(
 		for _, key := range keys {
 			entry := configValueJSON{
 				Secret: cfg[key].Secure(),
+				Source: sources.get(key),
 			}
 
 			decrypted := decryptedCfg[key]
@@ -1240,16 +1374,31 @@ func listConfig(
 			return err
 		}
 	} else {
+		headers := []string{"KEY", "VALUE"}
+		if sources != nil {
+			headers = append(headers, "SOURCE")
+		}
 		rows := []cmdutil.TableRow{}
 		for _, key := range keys {
 			decrypted := decryptedCfg[key]
-			rows = append(rows, cmdutil.TableRow{Columns: []string{PrettyKey(key), decrypted}})
+			columns := []string{PrettyKey(key), decrypted}
+			if sources != nil {
+				columns = append(columns, sources.get(key))
+			}
+			rows = append(rows, cmdutil.TableRow{Columns: columns})
 		}
 
 		ui.FprintTable(stdout, cmdutil.Table{
-			Headers: []string{"KEY", "VALUE"},
+			Headers: headers,
 			Rows:    rows,
 		}, nil)
+
+		if sources != nil && len(sources.unmigrated) != 0 {
+			fmt.Fprintf(stdout,
+				"\nwarning: %d configuration value(s) still set in Pulumi.%s.yaml override %v; "+
+					"run 'pulumi config env init --main' to migrate them\n",
+				len(sources.unmigrated), stackName, mainEnv.Ref())
+		}
 
 		if env != nil {
 			_, environ, _, _, err := cli.PrepareEnvironment(env, &cli.PrepareOptions{
@@ -1301,6 +1450,7 @@ func getConfig(
 	key config.Key,
 	path, jsonOut,
 	openEnvironment bool,
+	showSourceFlag bool,
 	configFile string,
 ) error {
 	cwd, err := os.Getwd()
@@ -1315,6 +1465,14 @@ func getConfig(
 	ps, err := cmdStack.LoadProjectStack(ctx, sink, project, stack, configFile)
 	if err != nil {
 		return err
+	}
+
+	_, mainEnv, warnings := effectiveStackEnv(stack, ps)
+	if showSourceFlag && mainEnv == nil {
+		return errors.New("--show-source requires the stack to set 'mainEnvironment'")
+	}
+	if !jsonOut {
+		printConfigWarnings(out, warnings)
 	}
 
 	var env *esc.Environment
@@ -1413,6 +1571,12 @@ func getConfig(
 			fmt.Fprintf(out, "%v\n", raw)
 		}
 
+		if showSourceFlag {
+			sources := buildSourceIndex(
+				ctx, stack, mainEnv, project.Name, stack.Ref().Name().String(), pulumiEnv, ps.Config)
+			showSource(out, sources, mainEnv, key, pulumiEnv)
+		}
+
 		if len(diags) != 0 {
 			fmt.Fprintln(out)
 			fmt.Fprintln(out, "Environment diagnostics:")
@@ -1464,7 +1628,8 @@ func checkStackEnv(
 	stack backend.Stack,
 	workspaceStack *workspace.ProjectStack,
 ) (*esc.Environment, []apitype.EnvironmentDiagnostic, error) {
-	yaml := workspaceStack.EnvironmentBytes()
+	envDef, _, _ := effectiveStackEnv(stack, workspaceStack)
+	yaml := envDef.Definition()
 	if len(yaml) == 0 {
 		return nil, nil, nil
 	}
