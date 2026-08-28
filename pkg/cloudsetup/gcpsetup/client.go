@@ -22,11 +22,12 @@ import (
 	"net/http"
 	"regexp"
 	"slices"
+	"strconv"
+	"strings"
 	"time"
 
-	fxs "github.com/pgavlin/fx/v2/slices"
 	"golang.org/x/oauth2"
-	"google.golang.org/api/cloudresourcemanager/v1"
+	cloudresourcemanager "google.golang.org/api/cloudresourcemanager/v3"
 	"google.golang.org/api/googleapi"
 	"google.golang.org/api/iam/v1"
 	"google.golang.org/api/option"
@@ -52,7 +53,12 @@ type Client interface {
 		ctx context.Context, orgName string, orgID string, projectID string, oidcServiceAccountName string, role string,
 		escEnvironmentName string,
 	) (*cloudsetup.CloudSetupResult, error)
-	ListAccounts(ctx context.Context) ([]cloudsetup.CloudAccount, error)
+	// ListAccounts returns GCP projects for onboarding discovery. A non-empty
+	// gcpOrganizationID scopes results to that organization — both projects directly
+	// under it and projects nested under its descendant folders; callers must validate
+	// non-empty IDs before invoking this method. An empty gcpOrganizationID returns
+	// every project the OAuth principal can access.
+	ListAccounts(ctx context.Context, gcpOrganizationID string) ([]cloudsetup.CloudAccount, error)
 }
 
 type client struct {
@@ -117,6 +123,23 @@ func newClient(ctx context.Context, oidcIssuer string, authOpts ...option.Client
 	}, nil
 }
 
+// projectNumberFromName extracts the numeric project number from a CRM v3 Project's
+// resource name, which has the form "projects/<number>". Returning an error rather than a
+// zero value prevents silent misconfiguration: the project number flows into IAM principal
+// strings (`principalSet://.../projects/<num>/...`) and into `CloudAccount.Number`, so
+// failing loudly is the correct behavior if the API ever returns an unexpected shape.
+func projectNumberFromName(name string) (int64, error) {
+	digits, ok := strings.CutPrefix(name, "projects/")
+	if !ok {
+		return 0, fmt.Errorf("unexpected project resource name %q: want \"projects/<number>\"", name)
+	}
+	num, err := strconv.ParseInt(digits, 10, 64)
+	if err != nil || num <= 0 {
+		return 0, fmt.Errorf("unexpected project resource name %q: want \"projects/<number>\"", name)
+	}
+	return num, nil
+}
+
 func (c *client) SetupOIDCInfrastructure(
 	ctx context.Context, orgName string, orgID string, projectID string, oidcServiceAccountName string, role string,
 	escEnvironmentName string,
@@ -141,6 +164,10 @@ func (c *client) SetupOIDCInfrastructure(
 	project, err := c.crmClient.GetProject(ctx, projectID)
 	if err != nil {
 		return nil, cloudsetup.NewSetupError(cloudsetup.ErrorCodeInvalidCredentials, "failed to lookup project", err)
+	}
+	projectNumber, err := projectNumberFromName(project.Name)
+	if err != nil {
+		return nil, cloudsetup.NewSetupError(cloudsetup.ErrorCodeInvalidCredentials, "failed to parse project number", err)
 	}
 
 	// Enable IAM Service Account Credentials API
@@ -244,7 +271,7 @@ func (c *client) SetupOIDCInfrastructure(
 
 	workloadIdentityUser := &iam.Binding{
 		Role:    "roles/iam.workloadIdentityUser",
-		Members: []string{workloadIdentityMember(project.ProjectNumber, poolID, orgName, subjectEnvName)},
+		Members: []string{workloadIdentityMember(projectNumber, poolID, orgName, subjectEnvName)},
 	}
 
 	wiStatus := cloudsetup.ResourceStatusExisting
@@ -511,17 +538,29 @@ func status(existing bool) string {
 	return cloudsetup.ResourceStatusCreated
 }
 
-func (c *client) ListAccounts(ctx context.Context) ([]cloudsetup.CloudAccount, error) {
-	projects, err := c.crmClient.ListProjects(ctx)
+func (c *client) ListAccounts(ctx context.Context, gcpOrganizationID string) ([]cloudsetup.CloudAccount, error) {
+	projects, err := c.crmClient.ListProjects(ctx, gcpOrganizationID)
 	if err != nil {
 		return nil, err
 	}
 
-	return slices.Collect(fxs.Map(projects, func(project *cloudresourcemanager.Project) cloudsetup.CloudAccount {
-		return cloudsetup.CloudAccount{
-			ID:     project.ProjectId,
-			Name:   project.Name,
-			Number: project.ProjectNumber,
+	accounts := make([]cloudsetup.CloudAccount, 0, len(projects))
+	for _, project := range projects {
+		number, err := projectNumberFromName(project.Name)
+		if err != nil {
+			return nil, fmt.Errorf("listing GCP projects: %w", err)
 		}
-	})), nil
+		// CRM v3 allows an empty DisplayName (v1's Name was always set); fall back
+		// to the project ID so the picker never shows a blank row.
+		displayName := project.DisplayName
+		if displayName == "" {
+			displayName = project.ProjectId
+		}
+		accounts = append(accounts, cloudsetup.CloudAccount{
+			ID:     project.ProjectId,
+			Name:   displayName,
+			Number: number,
+		})
+	}
+	return accounts, nil
 }

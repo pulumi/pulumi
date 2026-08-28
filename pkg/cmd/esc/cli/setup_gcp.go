@@ -207,7 +207,9 @@ func newSetupGCPCmd(setup *setupCommand) *cobra.Command {
 					"no usable GCP credentials (%w); run `gcloud auth application-default login`", err)
 			}
 
-			projects, err := client.ListAccounts(ctx)
+			// Discovery is not scoped to a GCP organization: nothing on the CLI path knows
+			// which one to scope by, so every project the credentials can reach is offered.
+			projects, err := client.ListAccounts(ctx, "")
 			if err != nil {
 				return fmt.Errorf("listing GCP projects: %w", err)
 			}
