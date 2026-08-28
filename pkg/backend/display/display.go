@@ -46,7 +46,7 @@ import (
 // or with opts.PermalinkLabel when set.
 // This message is printed in non-interactive scenarios.
 // In order to maintain backwards compatibility with older versions of the Automation API,
-// the default label is not changed for non-interactive scenarios.
+// the message is not changed for non-interactive scenarios.
 func printPermalinkNonInteractive(out io.Writer, opts Options, permalink, prefix string) {
 	label := "View Live"
 	if opts.PermalinkLabel != "" {
