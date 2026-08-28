@@ -42,10 +42,11 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 )
 
-// printPermalinkNonInteractive prints an update's permalink prefaced with `View Live: `.
+// printPermalinkNonInteractive prints an update's permalink prefaced with `View Live: `,
+// or with opts.PermalinkLabel when set.
 // This message is printed in non-interactive scenarios.
 // In order to maintain backwards compatibility with older versions of the Automation API,
-// the message is not changed for non-interactive scenarios.
+// the default label is not changed for non-interactive scenarios.
 func printPermalinkNonInteractive(out io.Writer, opts Options, permalink, prefix string) {
 	label := "View Live"
 	if opts.PermalinkLabel != "" {
@@ -54,7 +55,8 @@ func printPermalinkNonInteractive(out io.Writer, opts Options, permalink, prefix
 	printPermalink(out, opts, label, permalink, prefix)
 }
 
-// printPermalinkInteractive prints an update's permalink prefaced with `View in Browser (Ctrl+O): `.
+// printPermalinkInteractive prints an update's permalink prefaced with `View in Browser (Ctrl+O): `,
+// or with opts.PermalinkLabel plus the Ctrl+O hint when set.
 // This is printed in interactive scenarios that use the tree renderer.
 func printPermalinkInteractive(term terminal.Terminal, opts Options, permalink, prefix string) {
 	label := "View in Browser"

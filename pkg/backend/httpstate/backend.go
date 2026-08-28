@@ -1955,6 +1955,23 @@ func (b *cloudBackend) getPermalink(update client.UpdateIdentifier, version int,
 	return b.CloudConsoleURL(base, "previews", update.UpdateID)
 }
 
+// agentClaimPermalinkLabel replaces the default permalink label when the
+// permalink is swapped for the agent account's claim URL.
+const agentClaimPermalinkLabel = "Claim this account to view in Pulumi Cloud"
+
+// permalinkForDisplay returns the permalink to display for an update together
+// with an optional label override.
+func permalinkForDisplay(ctx context.Context, cloudURL, permalink string) (string, string) {
+	if !AgentCredentialsUsed(ctx, cloudURL) {
+		return permalink, ""
+	}
+	if claim, err := workspace.GetAgentClaim(); err == nil &&
+		claim.CloudURL == cloudURL && claim.Active(time.Now()) {
+		return claim.ClaimURL, agentClaimPermalinkLabel
+	}
+	return "", ""
+}
+
 func (b *cloudBackend) runEngineAction(
 	ctx context.Context, kind apitype.UpdateKind, stackRef backend.StackReference,
 	op backend.UpdateOperation, update client.UpdateIdentifier, token, permalink string,
