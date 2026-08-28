@@ -693,6 +693,14 @@ type AgentClaim struct {
 	ClaimUnavailableAt *time.Time `json:"claimUnavailableAt,omitempty"`
 }
 
+// Active reports whether the claim can still be surfaced to the user: it has a
+// claim URL, has not been marked unavailable, and has not expired.
+func (c AgentClaim) Active(now time.Time) bool {
+	return c.ClaimURL != "" &&
+		c.ClaimUnavailableAt == nil &&
+		(c.ValidUntil.IsZero() || c.ValidUntil.After(now))
+}
+
 // FormatAgentClaimInstruction returns the structured instruction shown to
 // coding agents when the CLI has an automatically created agent account claim
 // URL to surface. It prefers the access token expiration while the token is

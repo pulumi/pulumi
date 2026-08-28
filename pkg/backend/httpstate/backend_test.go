@@ -3256,3 +3256,108 @@ func TestRunDeploymentResult(t *testing.T) {
 		})
 	}
 }
+
+const (
+	testPermalinkCloudURL = "https://api.pulumi.com"
+	testClaimURL          = "https://app.pulumi.com/claim/claim-token"
+	testViewLiveLink      = "https://app.pulumi.com/org/proj/stack/updates/1"
+)
+
+func TestPermalinkForDisplayWithoutAgentCredentials(t *testing.T) {
+	t.Setenv("PULUMI_TEST_AGENT_PULUMI_DIR", t.TempDir())
+
+	// A leftover claim in the shared agent store must not affect commands
+	// that ran on user credentials.
+	require.NoError(t, workspace.StoreAgentClaim(workspace.AgentClaim{
+		ClaimURL:   testClaimURL,
+		CloudURL:   testPermalinkCloudURL,
+		ValidUntil: time.Now().Add(24 * time.Hour),
+	}))
+
+	ctx := ContextWithAgentCredentialUse(t.Context())
+	permalink, label := permalinkForDisplay(ctx, testPermalinkCloudURL, testViewLiveLink)
+	assert.Equal(t, testViewLiveLink, permalink)
+	assert.Empty(t, label)
+}
+
+func TestPermalinkForDisplayWithAgentCredentials(t *testing.T) {
+	past := time.Now().Add(-time.Hour)
+	future := time.Now().Add(24 * time.Hour)
+
+	tests := []struct {
+		name  string
+		claim *workspace.AgentClaim
+		want  string
+	}{
+		{
+			name: "active claim",
+			claim: &workspace.AgentClaim{
+				ClaimURL:   testClaimURL,
+				CloudURL:   testPermalinkCloudURL,
+				ValidUntil: future,
+			},
+			want: testClaimURL,
+		},
+		{
+			name: "no expiry recorded",
+			claim: &workspace.AgentClaim{
+				ClaimURL: testClaimURL,
+				CloudURL: testPermalinkCloudURL,
+			},
+			want: testClaimURL,
+		},
+		{
+			name:  "no claim stored",
+			claim: nil,
+			want:  "",
+		},
+		{
+			name: "different backend",
+			claim: &workspace.AgentClaim{
+				ClaimURL:   testClaimURL,
+				CloudURL:   "https://api.other.example.com",
+				ValidUntil: future,
+			},
+			want: "",
+		},
+		{
+			name: "expired claim",
+			claim: &workspace.AgentClaim{
+				ClaimURL:   testClaimURL,
+				CloudURL:   testPermalinkCloudURL,
+				ValidUntil: past,
+			},
+			want: "",
+		},
+		{
+			name: "claim marked unavailable",
+			claim: &workspace.AgentClaim{
+				ClaimURL:           testClaimURL,
+				CloudURL:           testPermalinkCloudURL,
+				ValidUntil:         future,
+				ClaimUnavailableAt: &past,
+			},
+			want: "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Setenv("PULUMI_TEST_AGENT_PULUMI_DIR", t.TempDir())
+			if tt.claim != nil {
+				require.NoError(t, workspace.StoreAgentClaim(*tt.claim))
+			}
+
+			ctx := ContextWithAgentCredentialUse(t.Context())
+			MarkAgentCredentialsUsed(ctx, testPermalinkCloudURL)
+
+			permalink, label := permalinkForDisplay(ctx, testPermalinkCloudURL, testViewLiveLink)
+			assert.Equal(t, tt.want, permalink)
+			if tt.want != "" {
+				assert.Equal(t, agentClaimPermalinkLabel, label)
+			} else {
+				assert.Empty(t, label)
+			}
+		})
+	}
+}
