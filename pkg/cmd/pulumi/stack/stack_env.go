@@ -183,7 +183,15 @@ func CreateStackEnvironments(
 		return false, nil
 	}
 
-	base, err := renderStackEnvironment(nil /*imports*/, nil /*values*/)
+	// A stack literally named `base` is its own base environment; importing itself would be a cycle, so
+	// it gets a single environment which carries the stack's values directly.
+	stackIsBase := opts.EnvName == BaseEnvironmentName
+
+	var baseValues map[string]yaml.Node
+	if stackIsBase {
+		baseValues = opts.Values
+	}
+	base, err := renderStackEnvironment(nil /*imports*/, baseValues)
 	if err != nil {
 		return StackEnvironmentResult{}, err
 	}
@@ -192,8 +200,7 @@ func CreateStackEnvironments(
 		return StackEnvironmentResult{}, err
 	}
 
-	// A stack literally named `base` is its own base environment; importing itself would be a cycle.
-	if opts.EnvName == BaseEnvironmentName {
+	if stackIsBase {
 		return StackEnvironmentResult{
 			MainEnvironment:        &workspace.MainEnvironment{Project: opts.EnvProject, Name: BaseEnvironmentName},
 			StackEnvironmentReused: baseReused,
