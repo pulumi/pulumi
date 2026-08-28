@@ -449,19 +449,14 @@ func runNew(ctx context.Context, args newArgs) error {
 		}
 	}
 
-	// Advisory only; never fails the command.
-	credentialsWarned := preflightCloudCredentials(ctx, args, pluginHost, proj, root, s, packages, opts)
+	fmt.Fprintln(args.stdout,
+		opts.Color.Colorize(
+			colors.BrightGreen+colors.Bold+"Your new project is ready to go!"+colors.Reset,
+		)+
+			" "+cmdutil.EmojiOr("✨", ""))
+	fmt.Fprintln(args.stdout)
 
-	// The credentials check prints its own "project was created successfully" line
-	// alongside the warning, so don't repeat it here.
-	if !credentialsWarned {
-		fmt.Fprintln(args.stdout,
-			opts.Color.Colorize(
-				colors.BrightGreen+colors.Bold+"Your new project is ready to go!"+colors.Reset,
-			)+
-				" "+cmdutil.EmojiOr("✨", ""))
-		fmt.Fprintln(args.stdout)
-	}
+	preflightCloudCredentials(ctx, args, pluginHost, proj, root, s, packages, opts)
 
 	if confirmed != nil {
 		// Any other stack announced itself as it was created, or already existed.

@@ -77,7 +77,7 @@ var DisableAutomaticPluginAcquisition = env.Bool("DISABLE_AUTOMATIC_PLUGIN_ACQUI
 
 var SkipNewCredentialsCheck = env.Bool("SKIP_NEW_CREDENTIALS_CHECK",
 	"Skips the best-effort cloud credentials check that `pulumi new` runs after "+
-		"creating a project from a cloud template.")
+		"creating a project for providers that opt in through their schema.")
 
 var SkipConfirmations = env.Bool("SKIP_CONFIRMATIONS",
 	`Whether or not confirmation prompts should be skipped. This should be used by pass any requirement
