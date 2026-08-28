@@ -59,6 +59,14 @@ Additional properties: [Property Definition](#property-definition)
 
 ---
 
+### `configurationDocsUrl`
+
+The URL of the provider's installation and configuration documentation, if any.
+
+`string`
+
+---
+
 ### `dependencies`
 
 A list of package descriptors that describes the set of dependencies for this package.
@@ -91,7 +99,7 @@ A map from token to functionSpec that describes the set of functions defined by 
 
 `object`
 
-Property names: [Function Token](#function-token)
+Property names: [Token](#token)
 
 Additional properties: [Function Definition](#function-definition)
 
@@ -253,6 +261,14 @@ A map from type token to complexTypeSpec that describes the set of complex types
 Property names: [Token](#token)
 
 Additional properties: [Type Definition](#type-definition)
+
+---
+
+### `validateCredentialsOnNew`
+
+Indicates that `pulumi new` may configure the provider after creating a project in order to validate the user's credentials.
+
+`boolean`
 
 ---
 
@@ -469,12 +485,6 @@ Specifies the return type of the function definition.
 Any of:
 
 ---
-
-## Function Token
-
-`string`
-
-Pattern: `^[a-zA-Z][-a-zA-Z0-9_]*:([^0-9][a-zA-Z0-9._/-]*)?:[^0-9][a-zA-Z0-9._/-]*$`
 
 ## Map Type
 
@@ -816,6 +826,14 @@ Indicates that the implementation of the resource should not be generated from t
 
 ---
 
+#### `listInputs`
+
+An optional objectTypeSpec that describes inputs that may be supplied when listing existing resources of this type. If this is unset, the resource does not declare list support in the schema.
+
+[Object Type Details](#object-type-details)
+
+---
+
 #### `methods`
 
 A map from method name to function token that describes the resource's method set.
@@ -848,7 +866,7 @@ An optional objectTypeSpec that describes additional inputs that may be necessar
 
 `string`
 
-Pattern: `^[a-zA-Z][-a-zA-Z0-9_]*:([^0-9][a-zA-Z0-9._/-]*)?:[^0-9][a-zA-Z0-9._/]*$`
+Pattern: `^[a-zA-Z][-a-zA-Z0-9_]*:([^0-9][a-zA-Z0-9._/-]*)?:[^0-9][a-zA-Z0-9._/-]*$`
 
 ## Type Definition
 
