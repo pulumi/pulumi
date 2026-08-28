@@ -19,7 +19,7 @@
 // the Pulumi schema language — primitives, arrays, maps, named complex
 // objects, enums, unions (with and without discriminators), refs to the
 // built-in Archive/Asset/Json/Any types, optional and required properties,
-// plain, secret.
+// plain, secret, constant values.
 package rapidschema
 
 import (
@@ -226,6 +226,13 @@ func drawModule(t *rapid.T, ctx *pkgCtx, label string) string {
 }
 
 var primitiveTypeNames = []string{"boolean", "integer", "number", "string"}
+
+// isPlainPrimitive reports whether spec is exactly one of the primitive types,
+// with no ref, union, array, or map shape mixed in.
+func isPlainPrimitive(spec schema.TypeSpec) bool {
+	return spec.Ref == "" && len(spec.OneOf) == 0 && spec.Items == nil &&
+		spec.AdditionalProperties == nil && slices.Contains(primitiveTypeNames, spec.Type)
+}
 
 // drawPackageName produces a lowercase package name. The first character
 // must be a letter; subsequent characters may also include digits and
@@ -455,6 +462,10 @@ func isDirectObjectRef(spec schema.TypeSpec, ctx *pkgCtx) bool {
 func drawPropertySpec(t *rapid.T, ctx *pkgCtx, label string, depth int) schema.PropertySpec {
 	typ := drawTypeSpec(t, ctx, label, depth)
 	spec := schema.PropertySpec{TypeSpec: typ}
+	// Constant values are only legal on plain boolean/integer/number/string-typed properties.
+	if isPlainPrimitive(typ) && rapid.Bool().Draw(t, label+":haveConst") {
+		spec.Const = primitiveValueGen(typ.Type).Draw(t, label+":const")
+	}
 	if rapid.Bool().Draw(t, label+":secret") {
 		spec.Secret = true
 	}
