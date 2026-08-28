@@ -1,4 +1,0 @@
-component: sdk/go
-kind: improvement
-body: Allow transforms to be mocked
-time: 2026-08-21T12:22:13.420381646+02:00

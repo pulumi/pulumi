@@ -1,5 +1,0 @@
-kind: improvement
-body: Treat adjacent character swaps as a single typo when suggesting commands
-component: cli
-custom:
-    PR: "23899"

@@ -1,4 +1,0 @@
-component: backend/diy
-kind: fix
-body: Keep DIY backend stacks readable when checkpoint compression transitions fail
-time: 2026-08-19T13:14:02+02:00

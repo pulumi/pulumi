@@ -1,4 +1,0 @@
-component: programgen/go
-kind: fix
-body: Generate valid struct field names for properties whose names contain hyphens
-time: 2026-08-12T00:00:00Z

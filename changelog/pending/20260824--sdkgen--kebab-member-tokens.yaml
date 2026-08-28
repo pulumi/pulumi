@@ -1,5 +1,0 @@
-component: sdkgen
-kind: improvement
-body: Allow hyphens in the member segment of tokens, so resource, object type and
-    function names can be kebab-case
-time: 2026-08-24T00:00:00Z

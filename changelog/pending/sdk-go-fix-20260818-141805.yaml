@@ -1,4 +1,0 @@
-component: sdk/go
-kind: fix
-body: Use resolved environment names when evaluating ESC imports
-time: 2026-08-18T14:18:05.778019-05:00
