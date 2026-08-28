@@ -497,7 +497,10 @@ func (be *MockBackend) GetReadOnlyCloudRegistry() registry.Registry {
 	panic("not implemented")
 }
 
-var _ = EnvironmentsBackend((*MockEnvironmentsBackend)(nil))
+var (
+	_ = EnvironmentsBackend((*MockEnvironmentsBackend)(nil))
+	_ = EnvironmentDefinitionsBackend((*MockEnvironmentsBackend)(nil))
+)
 
 type MockEnvironmentsBackend struct {
 	MockBackend
@@ -523,6 +526,31 @@ type MockEnvironmentsBackend struct {
 		duration time.Duration,
 		environmentOverrides map[string]string,
 	) (*esc.Environment, apitype.EnvironmentDiagnostics, error)
+
+	GetEnvironmentDefinitionF func(
+		ctx context.Context,
+		org string,
+		envProject string,
+		envName string,
+		version string,
+	) ([]byte, string, int, error)
+
+	UpdateEnvironmentDefinitionF func(
+		ctx context.Context,
+		org string,
+		envProject string,
+		envName string,
+		yaml []byte,
+		etag string,
+	) (apitype.EnvironmentDiagnostics, int, error)
+
+	GetEnvironmentRevisionF func(
+		ctx context.Context,
+		org string,
+		envProject string,
+		envName string,
+		version string,
+	) (int, error)
 }
 
 func (be *MockEnvironmentsBackend) CreateEnvironment(
@@ -558,6 +586,46 @@ func (be *MockEnvironmentsBackend) OpenYAMLEnvironment(
 ) (*esc.Environment, apitype.EnvironmentDiagnostics, error) {
 	if be.OpenYAMLEnvironmentF != nil {
 		return be.OpenYAMLEnvironmentF(ctx, org, yaml, duration, environmentOverrides)
+	}
+	panic("not implemented")
+}
+
+func (be *MockEnvironmentsBackend) GetEnvironmentDefinition(
+	ctx context.Context,
+	org string,
+	envProject string,
+	envName string,
+	version string,
+) ([]byte, string, int, error) {
+	if be.GetEnvironmentDefinitionF != nil {
+		return be.GetEnvironmentDefinitionF(ctx, org, envProject, envName, version)
+	}
+	panic("not implemented")
+}
+
+func (be *MockEnvironmentsBackend) UpdateEnvironmentDefinition(
+	ctx context.Context,
+	org string,
+	envProject string,
+	envName string,
+	yaml []byte,
+	etag string,
+) (apitype.EnvironmentDiagnostics, int, error) {
+	if be.UpdateEnvironmentDefinitionF != nil {
+		return be.UpdateEnvironmentDefinitionF(ctx, org, envProject, envName, yaml, etag)
+	}
+	panic("not implemented")
+}
+
+func (be *MockEnvironmentsBackend) GetEnvironmentRevision(
+	ctx context.Context,
+	org string,
+	envProject string,
+	envName string,
+	version string,
+) (int, error) {
+	if be.GetEnvironmentRevisionF != nil {
+		return be.GetEnvironmentRevisionF(ctx, org, envProject, envName, version)
 	}
 	panic("not implemented")
 }

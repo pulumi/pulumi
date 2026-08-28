@@ -316,6 +316,54 @@ type EnvironmentsBackend interface {
 	) (*esc.Environment, apitype.EnvironmentDiagnostics, error)
 }
 
+// ErrEnvironmentConflict is returned by EnvironmentDefinitionsBackend.UpdateEnvironmentDefinition when the
+// environment was modified between the read that produced the etag and the write that carried it.
+var ErrEnvironmentConflict = errors.New("the environment was modified since it was read")
+
+// ErrEnvironmentNotFound is returned by EnvironmentDefinitionsBackend.GetEnvironmentDefinition when the named
+// environment does not exist.
+var ErrEnvironmentNotFound = errors.New("environment not found")
+
+// EnvironmentDefinitionsBackend is an interface defining an additional capability of a Backend, specifically the
+// ability to read and update the definition of a *named* environment with optimistic concurrency. This isn't a
+// requirement for all backends and should be checked for dynamically.
+//
+// EnvironmentsBackend covers anonymous environments (check/open a literal YAML document); this interface covers
+// the named environments that back a stack's `mainEnvironment`.
+type EnvironmentDefinitionsBackend interface {
+	// GetEnvironmentDefinition returns the YAML definition of an environment along with the etag that must be
+	// passed to a subsequent UpdateEnvironmentDefinition, and the revision the definition was read at. An empty
+	// version means "latest". Secrets are returned in their encrypted form.
+	GetEnvironmentDefinition(
+		ctx context.Context,
+		org string,
+		envProject string,
+		envName string,
+		version string,
+	) (yaml []byte, etag string, revision int, err error)
+
+	// UpdateEnvironmentDefinition writes a new definition for an environment, returning the revision it created.
+	// The etag must be the one returned by the immediately preceding GetEnvironmentDefinition; if the environment
+	// changed in the meantime the update fails with ErrEnvironmentConflict rather than overwriting it.
+	UpdateEnvironmentDefinition(
+		ctx context.Context,
+		org string,
+		envProject string,
+		envName string,
+		yaml []byte,
+		etag string,
+	) (apitype.EnvironmentDiagnostics, int, error)
+
+	// GetEnvironmentRevision resolves a version (a revision number, a tag, or "" for latest) to a revision number.
+	GetEnvironmentRevision(
+		ctx context.Context,
+		org string,
+		envProject string,
+		envName string,
+		version string,
+	) (int, error)
+}
+
 // SpecificDeploymentExporter is an interface defining an additional capability of a Backend, specifically the
 // ability to export a specific versions of a stack's deployment. This isn't a requirement for all backends and
 // should be checked for dynamically.
