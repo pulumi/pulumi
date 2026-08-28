@@ -17,6 +17,7 @@ package sdk
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"net"
 	"os"
@@ -198,6 +199,39 @@ func TestPolicyProxy_Attach_NewPolicyPackWithConfigureStack(t *testing.T) {
 
 	cmd.Process.Kill() //nolint:errcheck
 	<-attachDone
+}
+
+// TestPolicyProxy_Abort_UnblocksAwaitClient verifies that when the policy pack process fails to
+// start after the proxy handshake with the engine has completed (so Attach is never called), Abort
+// rejects the client promise and pending analyzer calls return an error instead of blocking forever.
+func TestPolicyProxy_Abort_UnblocksAwaitClient(t *testing.T) {
+	t.Parallel()
+
+	ctx := t.Context()
+	proxy, _, err := NewPolicyProxy(ctx, &bytes.Buffer{})
+	require.NoError(t, err)
+
+	infoDone := make(chan error, 1)
+	go func() {
+		_, err := proxy.GetAnalyzerInfo(ctx, &emptypb.Empty{})
+		infoDone <- err
+	}()
+
+	proxy.Abort(errors.New("fork/exec .venv/bin/python: no such file or directory"))
+
+	select {
+	case infoErr := <-infoDone:
+		require.ErrorContains(t, infoErr, "policy pack failed to start")
+		require.ErrorContains(t, infoErr, "no such file or directory")
+	case <-time.After(5 * time.Second):
+		t.Fatal("GetAnalyzerInfo did not return after Abort")
+	}
+
+	// A second Abort is a no-op and later calls still see the original error.
+	proxy.Abort(errors.New("second abort"))
+	_, pluginErr := proxy.GetPluginInfo(ctx, &emptypb.Empty{})
+	require.ErrorContains(t, pluginErr, "no such file or directory")
+	require.NotContains(t, pluginErr.Error(), "second abort")
 }
 
 // TestPolicyProxy_Attach_ConfigureStackError verifies that when ConfigureStack fails with a
