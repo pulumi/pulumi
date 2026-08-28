@@ -1,0 +1,4 @@
+component: pkg/testing
+kind: fix
+body: Fix ProgramTest for providers whose Go module or NuGet package has a double-digit major version
+time: 2026-08-28T14:14:58.697087893Z
