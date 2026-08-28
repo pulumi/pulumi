@@ -227,16 +227,49 @@ func TestCreateStackEnvironmentsStackNamedBase(t *testing.T) {
 	t.Parallel()
 
 	u := newFakeEnvUniverse(t)
+	secret := yaml.Node{}
+	require.NoError(t, secret.Encode(map[string]string{"fn::secret": "hunter2"}))
 
 	env, err := CreateStackEnvironments(t.Context(), u.stack(), StackEnvironmentOptions{
 		EnvProject: "payments",
 		EnvName:    "base",
+		Values: map[string]yaml.Node{
+			"aws:region":          mustScalar(t, "us-west-2"),
+			"payments:dbPassword": secret,
+		},
 	})
 	require.NoError(t, err)
 	assert.Equal(t, "payments/base", env.MainEnvironment.String())
-	// Exactly one environment, with no self-import.
+	assert.False(t, env.StackEnvironmentReused)
+	// Exactly one environment, with no self-import, carrying the stack's own values.
 	assert.Equal(t, []string{"payments/base"}, u.created)
-	assert.Equal(t, "values: {}\n", u.definitions["payments/base"])
+	assert.Equal(t, "values:\n  pulumiConfig:\n    aws:region: us-west-2\n"+
+		"    payments:dbPassword:\n      fn::secret: hunter2\n",
+		u.definitions["payments/base"])
+}
+
+// A stack named `base` in a project that already has a base environment reuses it untouched, and has to
+// report that so the caller does not claim the wizard's config was saved.
+func TestCreateStackEnvironmentsStackNamedBaseReusesExisting(t *testing.T) {
+	t.Parallel()
+
+	u := newFakeEnvUniverse(t, "payments/base")
+	u.definitions["payments/base"] = "values:\n  pulumiConfig:\n    aws:region: eu-west-1\n"
+	var out bytes.Buffer
+
+	env, err := CreateStackEnvironments(t.Context(), u.stack(), StackEnvironmentOptions{
+		EnvProject: "payments",
+		EnvName:    "base",
+		Values:     map[string]yaml.Node{"aws:region": mustScalar(t, "us-west-2")},
+		Stdout:     &out,
+	})
+	require.NoError(t, err)
+	assert.Equal(t, "payments/base", env.MainEnvironment.String())
+	assert.True(t, env.StackEnvironmentReused)
+
+	assert.Empty(t, u.created)
+	assert.Equal(t, "values:\n  pulumiConfig:\n    aws:region: eu-west-1\n", u.definitions["payments/base"])
+	assert.Contains(t, out.String(), "Environment 'acme/payments/base' already exists — reusing.\n")
 }
 
 func TestCreateStackEnvironmentsFailureNamesWhatWasCreated(t *testing.T) {
