@@ -1866,3 +1866,152 @@ func TestAddPackage(t *testing.T) {
 		requireTextualRepresentationIsSpec(t, proj.Packages["string-package"])
 	})
 }
+
+func TestParseMainEnvironment(t *testing.T) {
+	t.Parallel()
+
+	t.Run("valid", func(t *testing.T) {
+		t.Parallel()
+
+		cases := []struct {
+			text     string
+			expected MainEnvironment
+		}{
+			{"payments/dev", MainEnvironment{Project: "payments", Name: "dev"}},
+			{"payments/dev@4", MainEnvironment{Project: "payments", Name: "dev", Version: "4"}},
+			{"payments/dev@stable", MainEnvironment{Project: "payments", Name: "dev", Version: "stable"}},
+		}
+		for _, c := range cases {
+			actual, err := ParseMainEnvironment(c.text)
+			require.NoError(t, err)
+			assert.Equal(t, c.expected, *actual)
+			// The reference must round-trip through String.
+			assert.Equal(t, c.text, actual.String())
+		}
+	})
+
+	t.Run("malformed", func(t *testing.T) {
+		t.Parallel()
+
+		cases := []string{
+			"",
+			"dev",
+			"payments/",
+			"/dev",
+			"payments/dev/extra",
+			"payments/dev@",
+			"payments/dev@1@2",
+		}
+		for _, c := range cases {
+			_, err := ParseMainEnvironment(c)
+			assert.ErrorContains(t, err, "expected <project>/<env>[@<version-or-tag>]", "input %q", c)
+		}
+	})
+}
+
+func TestProjectStackMainEnvironment(t *testing.T) {
+	t.Parallel()
+
+	projectYaml := `name: test
+runtime: yaml`
+
+	loadStack := func(t *testing.T, text string) (*ProjectStack, error) {
+		project, err := loadProjectFromText(t, projectYaml)
+		require.NoError(t, err)
+		var stdout, stderr bytes.Buffer
+		sink := diagtest.MockSink(&stdout, &stderr)
+		return loadProjectStackFromText(t, sink, project, text)
+	}
+
+	t.Run("unpinned", func(t *testing.T) {
+		t.Parallel()
+
+		stack, err := loadStack(t, "mainEnvironment: payments/dev\n")
+		require.NoError(t, err)
+		require.NotNil(t, stack.MainEnvironment)
+		assert.Equal(t, MainEnvironment{Project: "payments", Name: "dev"}, *stack.MainEnvironment)
+	})
+
+	t.Run("pinned", func(t *testing.T) {
+		t.Parallel()
+
+		stack, err := loadStack(t, "mainEnvironment: payments/dev@4\n")
+		require.NoError(t, err)
+		require.NotNil(t, stack.MainEnvironment)
+		assert.Equal(t, MainEnvironment{Project: "payments", Name: "dev", Version: "4"}, *stack.MainEnvironment)
+	})
+
+	t.Run("absent", func(t *testing.T) {
+		t.Parallel()
+
+		stack, err := loadStack(t, "config:\n  test:foo: bar\n")
+		require.NoError(t, err)
+		assert.Nil(t, stack.MainEnvironment)
+	})
+
+	t.Run("rejects lists", func(t *testing.T) {
+		t.Parallel()
+
+		_, err := loadStack(t, "mainEnvironment:\n  - payments/dev\n")
+		assert.ErrorContains(t, err, "mainEnvironment must be a single environment reference")
+	})
+
+	t.Run("rejects inline definitions", func(t *testing.T) {
+		t.Parallel()
+
+		_, err := loadStack(t, "mainEnvironment:\n  values:\n    pulumiConfig:\n      aws:region: us-west-2\n")
+		assert.ErrorContains(t, err, "mainEnvironment must be a single environment reference")
+	})
+
+	t.Run("rejects malformed references", func(t *testing.T) {
+		t.Parallel()
+
+		_, err := loadStack(t, "mainEnvironment: dev\n")
+		assert.ErrorContains(t, err, "expected <project>/<env>[@<version-or-tag>]")
+	})
+
+	t.Run("round-trips losslessly", func(t *testing.T) {
+		t.Parallel()
+
+		text := `# a comment about this stack
+mainEnvironment: payments/dev@4
+config:
+  test:foo: bar
+`
+		stack, err := loadStack(t, text)
+		require.NoError(t, err)
+
+		marshaled, err := encoding.YAML.Marshal(stack)
+		require.NoError(t, err)
+		assert.Equal(t, text, string(marshaled))
+	})
+
+	t.Run("round-trips through JSON", func(t *testing.T) {
+		t.Parallel()
+
+		project, err := loadProjectFromText(t, projectYaml)
+		require.NoError(t, err)
+		var stdout, stderr bytes.Buffer
+		sink := diagtest.MockSink(&stdout, &stderr)
+		stack, err := loadProjectStackFromJSONText(t, sink, project, `{"mainEnvironment": "payments/dev@4"}`)
+		require.NoError(t, err)
+		require.NotNil(t, stack.MainEnvironment)
+
+		marshaled, err := encoding.JSON.Marshal(stack)
+		require.NoError(t, err)
+		assert.JSONEq(t, `{"mainEnvironment": "payments/dev@4"}`, string(marshaled))
+	})
+
+	t.Run("adding the field preserves trivia", func(t *testing.T) {
+		t.Parallel()
+
+		stack, err := loadStack(t, "# a comment\nconfig:\n  test:foo: bar\n")
+		require.NoError(t, err)
+
+		stack.MainEnvironment = &MainEnvironment{Project: "payments", Name: "dev"}
+		marshaled, err := encoding.YAML.Marshal(stack)
+		require.NoError(t, err)
+		assert.Contains(t, string(marshaled), "# a comment")
+		assert.Contains(t, string(marshaled), "mainEnvironment: payments/dev")
+	})
+}
