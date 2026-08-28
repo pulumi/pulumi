@@ -1578,6 +1578,53 @@ func TestNewESCConfigRefusesBackendWithoutEnvironments(t *testing.T) {
 	assert.NoFileExists(t, filepath.Join(tempdir, "Pulumi.yaml"))
 }
 
+// --esc-config gives a *new* stack its environments. Adopting a stack that already exists would point
+// it at an environment and quietly stop its existing `config:` block from being effective.
+//
+//nolint:paralleltest // changes directory for process, mocks login manager
+func TestNewESCConfigRefusesExistingStack(t *testing.T) {
+	tempdir := tempProjectDir(t)
+	t.Chdir(tempdir)
+
+	existing := &backend.MockStack{
+		RefF:  func() backend.StackReference { return &backend.MockStackReference{} },
+		TagsF: func() map[apitype.StackTagName]string { return nil },
+	}
+	mockCurrentBackend(t, &backend.MockEnvironmentsBackend{
+		MockBackend: backend.MockBackend{
+			NameF: func() string { return "test" },
+			ParseStackReferenceF: func(s string) (backend.StackReference, error) {
+				parts := strings.Split(s, "/")
+				return &backend.MockStackReference{
+					ProjectV: tokens.Name(parts[1]),
+					NameV:    tokens.MustParseStackName(parts[2]),
+				}, nil
+			},
+			GetStackF: func(context.Context, backend.StackReference) (backend.Stack, error) {
+				return existing, nil
+			},
+			DoesProjectExistF: func(context.Context, string, string) (bool, error) { return false, nil },
+		},
+	})
+
+	args := newArgs{
+		interactive:       false,
+		yes:               true,
+		escConfig:         true,
+		stack:             "acme/" + projectName + "/dev",
+		name:              projectName,
+		prompt:            ui.PromptForValue,
+		secretsProvider:   "default",
+		templateNameOrURL: localTemplate(t),
+		languageTemplate:  languageTemplateMock,
+	}
+
+	err := runNew(t.Context(), args)
+	assert.ErrorContains(t, err, "--esc-config cannot be used with the existing stack acme/"+projectName+"/dev")
+	assert.ErrorContains(t, err, "pulumi config env init --main")
+	assert.NoFileExists(t, filepath.Join(tempdir, "Pulumi.yaml"))
+}
+
 //nolint:paralleltest // changes directory for process, mocks login manager
 func TestNewESCConfigRefusesGenerateOnly(t *testing.T) {
 	tempdir := tempProjectDir(t)
