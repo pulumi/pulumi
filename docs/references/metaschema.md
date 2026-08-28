@@ -99,7 +99,7 @@ A map from token to functionSpec that describes the set of functions defined by 
 
 `object`
 
-Property names: [Token](#token)
+Property names: [Function Token](#function-token)
 
 Additional properties: [Function Definition](#function-definition)
 
@@ -486,6 +486,12 @@ Any of:
 
 ---
 
+## Function Token
+
+`string`
+
+Pattern: `^[a-zA-Z][-a-zA-Z0-9_]*:([^0-9][a-zA-Z0-9._/-]*)?:[^0-9][a-zA-Z0-9._/-]*$`
+
 ## Map Type
 
 A reference to a map type. The "type" property must be set to "object" and the "additionalProperties" property may be present. No other properties may be present.
@@ -826,14 +832,6 @@ Indicates that the implementation of the resource should not be generated from t
 
 ---
 
-#### `listInputs`
-
-An optional objectTypeSpec that describes inputs that may be supplied when listing existing resources of this type. If this is unset, the resource does not declare list support in the schema.
-
-[Object Type Details](#object-type-details)
-
----
-
 #### `methods`
 
 A map from method name to function token that describes the resource's method set.
@@ -866,7 +864,7 @@ An optional objectTypeSpec that describes additional inputs that may be necessar
 
 `string`
 
-Pattern: `^[a-zA-Z][-a-zA-Z0-9_]*:([^0-9][a-zA-Z0-9._/-]*)?:[^0-9][a-zA-Z0-9._/-]*$`
+Pattern: `^[a-zA-Z][-a-zA-Z0-9_]*:([^0-9][a-zA-Z0-9._/-]*)?:[^0-9][a-zA-Z0-9._/]*$`
 
 ## Type Definition
 
