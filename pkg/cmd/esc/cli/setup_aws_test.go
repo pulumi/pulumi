@@ -15,6 +15,7 @@
 package cli
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"testing"
@@ -25,6 +26,10 @@ import (
 	"github.com/aws/smithy-go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	cloudsetup "github.com/pulumi/pulumi/pkg/v3/cloudsetup/common"
+
+	"github.com/pulumi/pulumi/pkg/v3/cloudsetup/awssetup"
 )
 
 func TestSSOInstanceFromConfig(t *testing.T) {
@@ -283,4 +288,32 @@ func TestResolveAWSCredentialSource_BrowserNeedsATerminal(t *testing.T) {
 	_, _, err := resolveAWSCredentialSource(
 		t.Context(), &escCommand{}, "", "", true /*forceBrowser*/, true /*yes*/, false /*interactive*/)
 	assert.ErrorContains(t, err, "requires an interactive terminal")
+}
+
+// AttachRolePolicy only adds, so re-running against an existing role cannot narrow its access.
+func TestWarnReusedRoles(t *testing.T) {
+	t.Parallel()
+
+	role := func(status string) []accountSetupResult {
+		return []accountSetupResult{{
+			result: &cloudsetup.CloudSetupResult{Resources: []cloudsetup.CloudSetupResource{{
+				Type:   awssetup.ResourceTypeAWSRole,
+				Name:   "pulumi-esc-oidc-abcd1234-9f3e2a1b-role",
+				Status: status,
+			}}},
+		}}
+	}
+
+	var out bytes.Buffer
+	warnReusedRoles(&escCommand{stderr: &out}, role(cloudsetup.ResourceStatusExisting),
+		"arn:aws:iam::aws:policy/ReadOnlyAccess")
+	assert.Contains(t, out.String(), "already existed")
+	assert.Contains(t, out.String(),
+		"aws iam list-attached-role-policies --role-name pulumi-esc-oidc-abcd1234-9f3e2a1b-role")
+
+	// A freshly created role carries only the policy this run attached.
+	out.Reset()
+	warnReusedRoles(&escCommand{stderr: &out}, role(cloudsetup.ResourceStatusCreated),
+		"arn:aws:iam::aws:policy/ReadOnlyAccess")
+	assert.Empty(t, out.String())
 }

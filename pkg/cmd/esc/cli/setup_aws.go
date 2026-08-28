@@ -579,6 +579,27 @@ func awsRoleARN(result *cloudsetup.CloudSetupResult) (string, bool) {
 	return "", false
 }
 
+// warnReusedRoles reports roles that already existed. AttachRolePolicy only adds, so a role
+// left over from an earlier run keeps whatever policy that run attached, and effective access
+// is the union of the two.
+func warnReusedRoles(esc *escCommand, results []accountSetupResult, policyArn string) {
+	for _, r := range results {
+		if r.result == nil {
+			continue
+		}
+		for _, res := range r.result.Resources {
+			if res.Type != awssetup.ResourceTypeAWSRole || res.Status != cloudsetup.ResourceStatusExisting {
+				continue
+			}
+			fmt.Fprintf(esc.stderr,
+				"\nWarning: role %s already existed. %s was attached to it, but any policy attached by "+
+					"an earlier setup is still in effect. Review with:\n"+
+					"  aws iam list-attached-role-policies --role-name %s\n",
+				res.Name, policyArn, res.Name)
+		}
+	}
+}
+
 // awsEnvOptions configures the ESC environments written after setup succeeds.
 type awsEnvOptions struct {
 	// projectName is the ESC project that per-account environments are created in.
@@ -784,6 +805,7 @@ func newSetupAWSCmd(setup *setupCommand) *cobra.Command {
 			setup.printHeading("Setting up Infrastructure")
 			results := setupAWSAccounts(ctx, esc, source, selected, oidcIssuer, org, orgID, policyArn, projectName)
 			renderSetupResults(esc.stdout, results, awsResourceNames)
+			warnReusedRoles(esc, results, policyArn)
 
 			if !slices.ContainsFunc(results, accountSetupResult.succeeded) {
 				return errors.New("failed to configure OIDC in any account")
