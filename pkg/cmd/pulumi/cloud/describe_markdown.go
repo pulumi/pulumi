@@ -29,6 +29,7 @@ import (
 // markdown suitable for `describe --output=markdown`; callers piping to a
 // terminal may further pass it through glow or similar for ANSI rendering.
 func RenderDescribeMarkdown(op *Operation) string {
+	op.ensureSchemas()
 	var b strings.Builder
 
 	fmt.Fprintf(&b, "# `%s` %s\n\n", op.Method, op.Path)

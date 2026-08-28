@@ -95,6 +95,7 @@ func MatchByOperationID(idx *Index, id string) (*MatchResult, error) {
 	op := matches[0]
 	mr, err := MatchPath(idx, op.Method, op.Path)
 	if err != nil {
+		op.ensureSchemas()
 		return &MatchResult{Op: op, Bindings: map[string]Binding{}}, nil
 	}
 	return mr, nil
@@ -142,6 +143,7 @@ func MatchPath(idx *Index, method, userPath string) (*MatchResult, error) {
 		if idx.router.Match(req, &rm) {
 			op := idx.ByKey[rm.Route.GetName()]
 			if op != nil {
+				op.ensureSchemas()
 				return &MatchResult{Op: op, Bindings: varsToBindings(rm.Vars)}, nil
 			}
 		}
