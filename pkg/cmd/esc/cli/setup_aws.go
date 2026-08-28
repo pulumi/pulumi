@@ -18,7 +18,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"regexp"
 	"slices"
 	"strings"
 	"time"
@@ -590,19 +589,6 @@ type awsEnvOptions struct {
 	duration    string
 }
 
-// envNameUnsafe matches characters not allowed in a sanitized ESC environment name.
-var envNameUnsafe = regexp.MustCompile(`[^a-zA-Z0-9._-]`)
-
-// sanitizeEnvName derives a default environment name from an AWS account name,
-// matching the naming the Pulumi Cloud console uses.
-func sanitizeEnvName(accountName, accountID string) string {
-	base := accountName
-	if base == "" {
-		base = accountID
-	}
-	return strings.ToLower(envNameUnsafe.ReplaceAllString(base, "-")) + "-env"
-}
-
 // createAWSEnvironments adds the aws-login provider into one environment per account.
 func createAWSEnvironments(
 	ctx context.Context, setup *setupCommand, org string, results []accountSetupResult, opts awsEnvOptions,
@@ -705,6 +691,10 @@ func newSetupAWSCmd(setup *setupCommand) *cobra.Command {
 
 			interactive := cmdutil.Interactive()
 			yes = yes || !interactive
+
+			if err := validateESCProject(projectName); err != nil {
+				return err
+			}
 
 			if err := esc.getCachedClient(ctx); err != nil {
 				return err

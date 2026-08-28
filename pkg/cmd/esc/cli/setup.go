@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"io"
 	"net/url"
+	"regexp"
 	"slices"
 	"strings"
 
@@ -156,6 +157,33 @@ func (s *setupCommand) planEnvLine(ctx context.Context, ref environmentRef, logi
 	default:
 		return "create ESC environment " + ref.String()
 	}
+}
+
+// escNameChars is the character set for ESC project and environment names.
+const escNameChars = `a-zA-Z0-9._-`
+
+var (
+	escProjectNameRE = regexp.MustCompile(`^[` + escNameChars + `]+$`)
+	envNameUnsafe    = regexp.MustCompile(`[^` + escNameChars + `]`)
+)
+
+// validateESCProject checks if an ESC Project name is valid.
+func validateESCProject(projectName string) error {
+	if !escProjectNameRE.MatchString(projectName) {
+		return fmt.Errorf("--project %q must contain only letters, digits, and the characters . _ -",
+			projectName)
+	}
+	return nil
+}
+
+// sanitizeEnvName derives a default environment name from a cloud account name,
+// matching the naming the Pulumi Cloud console uses.
+func sanitizeEnvName(accountName, accountID string) string {
+	base := accountName
+	if base == "" {
+		base = accountID
+	}
+	return strings.ToLower(envNameUnsafe.ReplaceAllString(base, "-")) + "-env"
 }
 
 // escEnvName is the `<project>/<name>` of the environment created for a cloud account.

@@ -141,3 +141,20 @@ func TestPlanEnvLine(t *testing.T) {
 		"update ESC environment org/aws-login/existing-env (exists; its `aws.login` block will be replaced)",
 		setup.planEnvLine(t.Context(), ref("existing-env"), awsLoginPath))
 }
+
+// --project feeds the cloud trust policy's subject and the environment ref, and neither
+// rejects anything itself, so these have to fail before any cloud resource is created.
+func TestValidateESCProject(t *testing.T) {
+	t.Parallel()
+
+	require.NoError(t, validateESCProject("gcp-login"))
+	require.NoError(t, validateESCProject("My_Project.1-x"))
+
+	// A slash is silently mangled by parseRef: `acme/a/b/sandbox-env` becomes environment
+	// `bsandbox-env` in project `a`, after the trust policy was written with `a/b/...`.
+	assert.Error(t, validateESCProject("a/b"))
+	// An apostrophe reaches Azure's Graph $filter unescaped.
+	assert.Error(t, validateESCProject("o'brien"))
+	assert.Error(t, validateESCProject(""))
+	assert.Error(t, validateESCProject("has space"))
+}

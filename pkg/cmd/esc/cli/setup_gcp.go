@@ -171,6 +171,10 @@ func newSetupGCPCmd(setup *setupCommand) *cobra.Command {
 
 			yes = yes || !cmdutil.Interactive()
 
+			if err := validateESCProject(projectName); err != nil {
+				return err
+			}
+
 			if err := esc.getCachedClient(ctx); err != nil {
 				return err
 			}
