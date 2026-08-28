@@ -1,4 +1,0 @@
-component: engine
-kind: fix
-body: Avoid replacing imported resources when an input changes from plain to a secret or output-wrapped value with the same inner value
-time: 2026-08-19T08:43:00Z

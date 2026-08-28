@@ -1,4 +1,0 @@
-component: sdk/python
-kind: fix
-body: Propagate runtime context across thread boundaries
-time: 2026-08-20T14:34:16.194983+02:00

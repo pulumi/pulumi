@@ -1,4 +1,0 @@
-component: sdkgen/nodejs
-kind: fix
-body: Register resolvers for output-only properties in generated Resource.get so they resolve as unknown during preview when the id is unknown
-time: 2026-08-19T00:00:00Z
