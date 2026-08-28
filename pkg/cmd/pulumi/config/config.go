@@ -1047,7 +1047,7 @@ func (c *configSetCmd) setInMainEnvironment(
 			key)
 	}
 
-	node, err := configValueNode(value, c.Type, c.Secret)
+	node, err := ConfigValueNode(value, c.Type, c.Secret)
 	if err != nil {
 		return err
 	}
