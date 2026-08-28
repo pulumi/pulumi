@@ -50,11 +50,13 @@ func (b *cloudBackend) CreateEnvironment(
 	envName string,
 	yaml []byte,
 ) (apitype.EnvironmentDiagnostics, error) {
+	// Classify the errors so that callers creating an environment that already exists see
+	// backend.ErrEnvironmentConflict and can reuse it rather than failing.
 	if err := b.escClient.CreateEnvironment(ctx, org, projectName, envName); err != nil {
-		return nil, err
+		return nil, classifyEnvironmentError(err)
 	}
 	diags, _, err := b.escClient.UpdateEnvironment(ctx, org, projectName, envName, yaml, "")
-	return convertESCDiags(diags), err
+	return convertESCDiags(diags), classifyEnvironmentError(err)
 }
 
 func (b *cloudBackend) CheckYAMLEnvironment(

@@ -238,12 +238,12 @@ func (w *mainEnvWriter) removeKey(ctx context.Context, out io.Writer, key config
 	return revision, true, err
 }
 
-// configValueNode renders a `pulumi config set` value as the YAML node to store in the environment.
+// ConfigValueNode renders a `pulumi config set` value as the YAML node to store in the environment.
 //
 // Plain values follow `pulumi config set`'s own typing rules, so an untyped "6" stays the string "6".
 // Secrets are wrapped in `fn::secret` and encrypted by ESC: the stack's secrets manager is never involved
 // on this path, and the plaintext exists only in this in-memory node.
-func configValueNode(value string, typ string, secret bool) (yaml.Node, error) {
+func ConfigValueNode(value string, typ string, secret bool) (yaml.Node, error) {
 	var node yaml.Node
 	if secret {
 		node.SetString(value)

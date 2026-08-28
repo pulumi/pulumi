@@ -39,9 +39,11 @@ import (
 
 // errBackendNoEnvironments indicates that the given backend does not support ESC environments and
 // points the user at the Pulumi Cloud backend, which does.
+//
+// The message lives in the `stack` package so that `pulumi stack init` can refuse a backend without
+// environment support before it creates anything; `config` cannot be imported from there.
 func errBackendNoEnvironments(b backend.Backend) error {
-	return fmt.Errorf("backend %v does not support environments; Pulumi ESC environments require the "+
-		"Pulumi Cloud backend, use `pulumi login` without arguments to log into the Pulumi Cloud backend", b.Name())
+	return cmdStack.ErrBackendNoEnvironments(b)
 }
 
 func newConfigEnvCmd(ws pkgWorkspace.Context, stackRef *string, configFile *string) *cobra.Command {
