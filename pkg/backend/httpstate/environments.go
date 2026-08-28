@@ -16,6 +16,8 @@ package httpstate
 
 import (
 	"context"
+	"fmt"
+	"net/http"
 	"time"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
@@ -78,4 +80,73 @@ func (b *cloudBackend) OpenYAMLEnvironment(
 	}
 	env, err := b.escClient.GetAnonymousOpenEnvironment(ctx, org, id)
 	return env, nil, err
+}
+
+var _ = backend.EnvironmentDefinitionsBackend((*cloudBackend)(nil))
+
+// classifyEnvironmentError maps the HTTP status codes the ESC API uses for optimistic-concurrency and
+// missing-environment failures onto the sentinel errors the command layer matches on.
+func classifyEnvironmentError(err error) error {
+	if err == nil {
+		return nil
+	}
+	var code int
+	switch e := err.(type) { //nolint:errorlint // the client returns these error values directly
+	case *apitype.ErrorResponse:
+		code = e.Code
+	case *client.EnvironmentErrorResponse:
+		code = e.Code
+	}
+	switch code {
+	case http.StatusPreconditionFailed, http.StatusConflict:
+		return fmt.Errorf("%w: %w", backend.ErrEnvironmentConflict, err)
+	case http.StatusNotFound:
+		return fmt.Errorf("%w: %w", backend.ErrEnvironmentNotFound, err)
+	}
+	return err
+}
+
+func (b *cloudBackend) GetEnvironmentDefinition(
+	ctx context.Context,
+	org string,
+	envProject string,
+	envName string,
+	version string,
+) ([]byte, string, int, error) {
+	// decrypt is false: existing secrets round-trip through read-modify-write as opaque ciphertext, so
+	// no other value's plaintext ever enters this process's memory.
+	yaml, etag, revision, err := b.escClient.GetEnvironment(ctx, org, envProject, envName, version, false)
+	if err != nil {
+		return nil, "", 0, classifyEnvironmentError(err)
+	}
+	return yaml, etag, revision, nil
+}
+
+func (b *cloudBackend) UpdateEnvironmentDefinition(
+	ctx context.Context,
+	org string,
+	envProject string,
+	envName string,
+	yaml []byte,
+	etag string,
+) (apitype.EnvironmentDiagnostics, int, error) {
+	diags, revision, err := b.escClient.UpdateEnvironment(ctx, org, envProject, envName, yaml, etag)
+	if err != nil {
+		return nil, 0, classifyEnvironmentError(err)
+	}
+	return convertESCDiags(diags), revision, nil
+}
+
+func (b *cloudBackend) GetEnvironmentRevision(
+	ctx context.Context,
+	org string,
+	envProject string,
+	envName string,
+	version string,
+) (int, error) {
+	revision, err := b.escClient.GetRevisionNumber(ctx, org, envProject, envName, version)
+	if err != nil {
+		return 0, classifyEnvironmentError(err)
+	}
+	return revision, nil
 }
