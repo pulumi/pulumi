@@ -17,20 +17,22 @@ package httputil
 import (
 	"net/url"
 	"strings"
+
+	mapset "github.com/deckarep/golang-set/v2"
 )
 
-var sensitiveQueryKeys = map[string]bool{
-	"sig":                  true, // Azure SAS signature
-	"signature":            true,
-	"x-amz-signature":      true,
-	"x-amz-credential":     true,
-	"x-amz-security-token": true,
-	"x-goog-signature":     true,
-	"x-goog-credential":    true,
-	"awsaccesskeyid":       true,
-	"token":                true,
-	"access_token":         true,
-}
+var sensitiveQueryKeys = mapset.NewSet(
+	"sig", // Azure SAS signature
+	"signature",
+	"x-amz-signature",
+	"x-amz-credential",
+	"x-amz-security-token",
+	"x-goog-signature",
+	"x-goog-credential",
+	"awsaccesskeyid",
+	"token",
+	"access_token",
+)
 
 func URLSecrets(raw string) []string {
 	u, err := url.Parse(raw)
@@ -44,7 +46,7 @@ func URLSecrets(raw string) []string {
 		}
 	}
 	for k, vs := range u.Query() {
-		if !sensitiveQueryKeys[strings.ToLower(k)] {
+		if !sensitiveQueryKeys.Contains(strings.ToLower(k)) {
 			continue
 		}
 		for _, v := range vs {
@@ -65,7 +67,7 @@ func RedactURL(raw string) string {
 		q := u.Query()
 		changed := false
 		for k := range q {
-			if sensitiveQueryKeys[strings.ToLower(k)] {
+			if sensitiveQueryKeys.Contains(strings.ToLower(k)) {
 				q[k] = []string{"redacted"}
 				changed = true
 			}
