@@ -41,6 +41,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/httputil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
@@ -150,6 +151,8 @@ func IsGitOriginURLGitHub(remoteURL string) bool {
 // and the type (kind) of VCS from it.
 func TryGetVCSInfo(remoteURL string) (_ *VCSInfo, err error) {
 	var project, vcsKind string
+
+	logging.AddGlobalSecretFilter(httputil.URLSecrets(remoteURL), "[credential]")
 
 	defer func() {
 		if err != nil {
