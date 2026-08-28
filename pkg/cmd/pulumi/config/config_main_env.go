@@ -70,9 +70,11 @@ func effectiveStackEnv(
 	return workspace.NewEnvironment([]string{ps.MainEnvironment.String()}), ps.MainEnvironment, warnings
 }
 
-// activeMainEnvironment returns the stack's main environment, or nil if it does not have one in effect.
-func activeMainEnvironment(s backend.Stack, ps *workspace.ProjectStack) *workspace.MainEnvironment {
-	_, mainEnv, _ := effectiveStackEnv(s, ps)
+// activeMainEnvironment returns the stack's main environment, or nil if it does not have one in effect,
+// printing any warning that explains why a configured 'mainEnvironment' is not in effect.
+func activeMainEnvironment(out io.Writer, s backend.Stack, ps *workspace.ProjectStack) *workspace.MainEnvironment {
+	_, mainEnv, warnings := effectiveStackEnv(s, ps)
+	printConfigWarnings(out, warnings)
 	return mainEnv
 }
 
@@ -343,17 +345,17 @@ func (r *revisionResolver) describe(ref string, version string) string {
 }
 
 // traceEnvironment returns the reference of the environment that defined a value, normalized against the
-// main environment. ESC reports the defining environment's name, which may or may not be qualified with
-// its project.
-func traceEnvironment(v esc.Value, mainEnv *workspace.MainEnvironment) string {
-	name, _, _ := strings.Cut(v.Trace.Def.Environment, "@")
+// main environment, along with the version it was pinned to (empty when unpinned). ESC reports the defining
+// environment's name, which may or may not be qualified with its project or pinned to a version.
+func traceEnvironment(v esc.Value, mainEnv *workspace.MainEnvironment) (string, string) {
+	name, version, _ := strings.Cut(v.Trace.Def.Environment, "@")
 	switch name {
 	case "", "yaml", mainEnv.Name, mainEnv.Ref():
 		// An empty or synthesized environment name means the value came from the stack's own main
 		// environment rather than one of its imports.
-		return mainEnv.Ref()
+		return mainEnv.Ref(), mainEnv.Version
 	}
-	return name
+	return name, version
 }
 
 // buildSourceIndex attributes every configuration value visible to the stack to the environment revision
@@ -383,8 +385,10 @@ func buildSourceIndex(
 			if err != nil {
 				continue
 			}
-			if ref := traceEnvironment(value, mainEnv); ref != mainEnv.Ref() {
-				index.sources[key] = resolver.describe(ref, "") + " (imported)"
+			// An import pinned to a version defined the value at that version, not at the
+			// environment's latest revision, so the pin has to survive into the lookup.
+			if ref, version := traceEnvironment(value, mainEnv); ref != mainEnv.Ref() {
+				index.sources[key] = resolver.describe(ref, version) + " (imported)"
 			} else {
 				index.sources[key] = mainSource
 			}
@@ -427,14 +431,16 @@ func showSource(
 	}
 
 	// A value still in the stack file wins over the environment's definition of the same key.
+	envRef, _ := traceEnvironment(*value, mainEnv)
 	if strings.HasSuffix(source, "(unmigrated)") {
-		fmt.Fprintf(out, "  overrides %s\n", traceEnvironment(*value, mainEnv))
+		fmt.Fprintf(out, "  overrides %s\n", envRef)
 	}
 	if def := value.Trace.Def; def.Begin.Line != 0 {
-		fmt.Fprintf(out, "  defined at %s:%d:%d\n", traceEnvironment(*value, mainEnv), def.Begin.Line, def.Begin.Column)
+		fmt.Fprintf(out, "  defined at %s:%d:%d\n", envRef, def.Begin.Line, def.Begin.Column)
 	}
 	for base := value.Trace.Base; base != nil; base = base.Trace.Base {
-		fmt.Fprintf(out, "  overrides %s\n", traceEnvironment(*base, mainEnv))
+		baseRef, _ := traceEnvironment(*base, mainEnv)
+		fmt.Fprintf(out, "  overrides %s\n", baseRef)
 	}
 }
 

@@ -167,13 +167,15 @@ func NewConfigCmd(ws pkgWorkspace.Context) *cobra.Command {
 	ssml := cmdStack.NewStackSecretsManagerLoaderFromEnv()
 	cmd.AddCommand(newConfigSetAllCmd(ws, &stack, cmdBackend.DefaultLoginManager, &ssml, &configFile))
 	cmd.AddCommand(newConfigRefreshCmd(ws, &stack, cmdBackend.DefaultLoginManager, &configFile))
-	cmd.AddCommand(newConfigCopyCmd(ws, &stack, &configFile))
+	cmd.AddCommand(newConfigCopyCmd(ws, &stack, cmdBackend.DefaultLoginManager, &configFile))
 	cmd.AddCommand(newConfigEnvCmd(ws, &stack, &configFile))
 
 	return cmd
 }
 
-func newConfigCopyCmd(ws pkgWorkspace.Context, stack *string, configFile *string) *cobra.Command {
+func newConfigCopyCmd(
+	ws pkgWorkspace.Context, stack *string, lm cmdBackend.LoginManager, configFile *string,
+) *cobra.Command {
 	var path bool
 	var destinationStackName string
 
@@ -204,7 +206,7 @@ func newConfigCopyCmd(ws pkgWorkspace.Context, stack *string, configFile *string
 				ctx,
 				cmdutil.Diag(),
 				ws,
-				cmdBackend.DefaultLoginManager,
+				lm,
 				*stack,
 				cmdStack.SetCurrent,
 				opts,
@@ -221,12 +223,19 @@ func newConfigCopyCmd(ws pkgWorkspace.Context, stack *string, configFile *string
 				return err
 			}
 
+			// Refuse before reading anything: a main environment's values do not live in the source
+			// stack's `config:` block, so copying it would silently produce an empty (or stale)
+			// destination rather than the configuration the source actually resolves.
+			if mainEnv := activeMainEnvironment(cmd.ErrOrStderr(), currentStack, currentProjectStack); mainEnv != nil {
+				return errMainEnvUnsupported("copy", mainEnv)
+			}
+
 			// Get the destination stack
 			destinationStack, err := cmdStack.RequireStack(
 				ctx,
 				cmdutil.Diag(),
 				ws,
-				cmdBackend.DefaultLoginManager,
+				lm,
 				destinationStackName,
 				cmdStack.LoadOnly,
 				opts,
@@ -242,6 +251,8 @@ func newConfigCopyCmd(ws pkgWorkspace.Context, stack *string, configFile *string
 				return err
 			}
 
+			mainEnv := activeMainEnvironment(cmd.ErrOrStderr(), destinationStack, destinationProjectStack)
+
 			if configLocation := destinationStack.ConfigLocation(); configLocation.IsRemote {
 				err := errors.New("config copy destination not supported for remote stack config")
 				if configLocation.EscEnv != nil {
@@ -251,7 +262,7 @@ func newConfigCopyCmd(ws pkgWorkspace.Context, stack *string, configFile *string
 				return err
 			}
 
-			if mainEnv := activeMainEnvironment(destinationStack, destinationProjectStack); mainEnv != nil {
+			if mainEnv != nil {
 				return errMainEnvUnsupported("copy", mainEnv)
 			}
 
@@ -447,6 +458,8 @@ func newConfigRemoveCmd(ws pkgWorkspace.Context, stack *string, configFile *stri
 				return err
 			}
 
+			mainEnv := activeMainEnvironment(cmd.ErrOrStderr(), stack, ps)
+
 			if configLocation := stack.ConfigLocation(); configLocation.IsRemote {
 				err := errors.New("config rm not supported for remote stack config")
 				if configLocation.EscEnv != nil {
@@ -456,8 +469,8 @@ func newConfigRemoveCmd(ws pkgWorkspace.Context, stack *string, configFile *stri
 				return err
 			}
 
-			if mainEnv := activeMainEnvironment(stack, ps); mainEnv != nil {
-				return removeFromMainEnvironment(ctx, cmd.OutOrStdout(), stack, mainEnv, key, path)
+			if mainEnv != nil {
+				return removeFromMainEnvironment(ctx, cmd.OutOrStdout(), stack, ps, mainEnv, key, path)
 			}
 
 			err = ps.Config.Remove(key, path)
@@ -531,6 +544,8 @@ func newConfigRemoveAllCmd(ws pkgWorkspace.Context, stack *string, configFile *s
 				return err
 			}
 
+			mainEnv := activeMainEnvironment(cmd.ErrOrStderr(), stack, ps)
+
 			if configLocation := stack.ConfigLocation(); configLocation.IsRemote {
 				err := errors.New("config rm-all not supported for remote stack config")
 				if configLocation.EscEnv != nil {
@@ -540,7 +555,7 @@ func newConfigRemoveAllCmd(ws pkgWorkspace.Context, stack *string, configFile *s
 				return err
 			}
 
-			if mainEnv := activeMainEnvironment(stack, ps); mainEnv != nil {
+			if mainEnv != nil {
 				return errMainEnvUnsupported("rm-all", mainEnv)
 			}
 
@@ -638,7 +653,7 @@ func newConfigRefreshCmd(
 				return err
 			}
 
-			if mainEnv := activeMainEnvironment(s, ps); mainEnv != nil {
+			if mainEnv := activeMainEnvironment(cmd.ErrOrStderr(), s, ps); mainEnv != nil {
 				return errMainEnvUnsupported("refresh", mainEnv)
 			}
 
@@ -726,6 +741,7 @@ func newConfigRefreshCmd(
 type configSetCmd struct {
 	Stdin            *os.File
 	Stdout           io.Writer
+	Stderr           io.Writer
 	LoadProjectStack func(
 		context.Context, diag.Sink, *workspace.Project, backend.Stack, string,
 	) (*workspace.ProjectStack, error)
@@ -735,6 +751,20 @@ type configSetCmd struct {
 	Path      bool
 	Raw       bool
 	Type      string
+}
+
+func (c *configSetCmd) stdout() io.Writer {
+	if c.Stdout == nil {
+		return os.Stdout //nolint:forbidigo // this is a command's default output stream
+	}
+	return c.Stdout
+}
+
+func (c *configSetCmd) stderr() io.Writer {
+	if c.Stderr == nil {
+		return os.Stderr //nolint:forbidigo // this is a command's default error stream
+	}
+	return c.Stderr
 }
 
 func newConfigSetCmd(ws pkgWorkspace.Context, stack *string, configFile *string) *cobra.Command {
@@ -793,6 +823,7 @@ func newConfigSetCmd(ws pkgWorkspace.Context, stack *string, configFile *string)
 			}
 
 			configSetCmd.Stdout = cmd.OutOrStdout()
+			configSetCmd.Stderr = cmd.ErrOrStderr()
 			return configSetCmd.Run(ctx, ws, args, project, s, *configFile)
 		},
 	}
@@ -881,8 +912,8 @@ func (c *configSetCmd) Run(
 	// A stack with a main environment writes straight to that environment. This happens before the stack's
 	// secrets manager is ever consulted: secrets on this path are encrypted by ESC, not by the stack's
 	// passphrase or KMS key, and the stack file is not touched at all.
-	if mainEnv := activeMainEnvironment(s, ps); mainEnv != nil {
-		return c.setInMainEnvironment(ctx, key, value, s, mainEnv)
+	if mainEnv := activeMainEnvironment(c.stderr(), s, ps); mainEnv != nil {
+		return c.setInMainEnvironment(ctx, key, value, s, ps, mainEnv)
 	}
 
 	ssml := cmdStack.NewStackSecretsManagerLoaderFromEnv()
@@ -954,6 +985,7 @@ func removeFromMainEnvironment(
 	ctx context.Context,
 	out io.Writer,
 	s backend.Stack,
+	ps *workspace.ProjectStack,
 	mainEnv *workspace.MainEnvironment,
 	key config.Key,
 	path bool,
@@ -972,10 +1004,26 @@ func removeFromMainEnvironment(
 	}
 	if !removed {
 		fmt.Fprintf(out, "Configuration key '%s' is not set in %v\n", PrettyKey(key), mainEnv.Ref())
-		return nil
+	} else {
+		fmt.Fprintf(out, "Updated %v@%d\n", mainEnv.Ref(), revision)
 	}
-	fmt.Fprintf(out, "Updated %v@%d\n", mainEnv.Ref(), revision)
+	// An unmigrated value in the stack file wins over the environment, so removing the environment's copy
+	// alone would leave `pulumi config` still reporting the key.
+	if hasLocalConfigValue(ps, key) {
+		fmt.Fprintf(out, "warning: '%s' is still set in Pulumi.%s.yaml, which takes precedence over %v; "+
+			"migrate it with 'pulumi config env init --main'\n",
+			PrettyKey(key), s.Ref().Name(), mainEnv.Ref())
+	}
 	return nil
+}
+
+// hasLocalConfigValue reports whether a key is still set in the stack file's `config:` block.
+func hasLocalConfigValue(ps *workspace.ProjectStack, key config.Key) bool {
+	if ps == nil {
+		return false
+	}
+	_, ok, err := ps.Config.Get(key, false /*path*/)
+	return err == nil && ok
 }
 
 // setInMainEnvironment writes a single value into the stack's main environment and reports the revision the
@@ -985,12 +1033,10 @@ func (c *configSetCmd) setInMainEnvironment(
 	key config.Key,
 	value string,
 	s backend.Stack,
+	ps *workspace.ProjectStack,
 	mainEnv *workspace.MainEnvironment,
 ) error {
-	out := c.Stdout
-	if out == nil {
-		out = os.Stdout //nolint:forbidigo // this is a command's default output stream
-	}
+	out := c.stdout()
 
 	if c.Path {
 		return errMainEnvUnsupported("set --path", mainEnv)
@@ -1016,6 +1062,13 @@ func (c *configSetCmd) setInMainEnvironment(
 	}
 
 	fmt.Fprintf(out, "Updated %s@%d\n", mainEnv.Ref(), revision)
+	// An unmigrated value in the stack file wins over the environment, so the value just written would not
+	// be the one `pulumi config get` reports.
+	if hasLocalConfigValue(ps, key) {
+		fmt.Fprintf(out, "warning: '%s' is also set in Pulumi.%s.yaml, which shadows the value just "+
+			"written; migrate it with 'pulumi config env init --main'\n",
+			PrettyKey(key), s.Ref().Name())
+	}
 	return nil
 }
 
@@ -1087,7 +1140,7 @@ func newConfigSetAllCmd(
 				return err
 			}
 
-			if mainEnv := activeMainEnvironment(stack, ps); mainEnv != nil {
+			if mainEnv := activeMainEnvironment(cmd.ErrOrStderr(), stack, ps); mainEnv != nil {
 				return errMainEnvUnsupported("set-all", mainEnv)
 			}
 
@@ -1548,10 +1601,19 @@ func getConfig(
 			return fmt.Errorf("could not decrypt configuration value: %w", err)
 		}
 
+		var sources *sourceIndex
+		if showSourceFlag {
+			sources = buildSourceIndex(
+				ctx, stack, mainEnv, project.Name, stack.Ref().Name().String(), pulumiEnv, ps.Config)
+		}
+
 		if jsonOut {
 			value := configValueJSON{
 				Value:  &raw,
 				Secret: v.Secure(),
+				// Attribution goes in the JSON object rather than alongside it, so that
+				// `--json --show-source` stays parseable.
+				Source: sources.get(key),
 			}
 
 			if v.Object() {
@@ -1569,12 +1631,9 @@ func getConfig(
 			fmt.Fprintln(out, string(marshaled))
 		} else {
 			fmt.Fprintf(out, "%v\n", raw)
-		}
-
-		if showSourceFlag {
-			sources := buildSourceIndex(
-				ctx, stack, mainEnv, project.Name, stack.Ref().Name().String(), pulumiEnv, ps.Config)
-			showSource(out, sources, mainEnv, key, pulumiEnv)
+			if showSourceFlag {
+				showSource(out, sources, mainEnv, key, pulumiEnv)
+			}
 		}
 
 		if len(diags) != 0 {

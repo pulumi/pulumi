@@ -17,8 +17,10 @@ package config
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -133,6 +135,22 @@ func mainEnvStack(be backend.Backend) *backend.MockStack {
 		ConfigLocationF: func() backend.StackConfigLocation { return backend.StackConfigLocation{} },
 		OrgNameF:        func() string { return "test-org" },
 		BackendF:        func() backend.Backend { return be },
+	}
+}
+
+func mainEnvLoginManager(be backend.Backend) cmdBackend.LoginManager {
+	return &cmdBackend.MockLoginManager{
+		CurrentF: func(
+			context.Context, pkgWorkspace.Context, diag.Sink, string, *workspace.Project, bool,
+		) (backend.Backend, error) {
+			return be, nil
+		},
+		LoginF: func(
+			context.Context, pkgWorkspace.Context, diag.Sink, string, *workspace.Project, bool, bool,
+			colors.Colorization,
+		) (backend.Backend, error) {
+			return be, nil
+		},
 	}
 }
 
@@ -478,7 +496,7 @@ func TestMainEnvironmentConfigRemove(t *testing.T) {
 	project := &workspace.Project{Name: "testProject"}
 	ps := loadStackFile(t, project, "mainEnvironment: payments/dev\n")
 
-	mainEnv := activeMainEnvironment(s, ps)
+	mainEnv := activeMainEnvironment(io.Discard, s, ps)
 	require.NotNil(t, mainEnv)
 	w, err := newMainEnvWriter(s, mainEnv)
 	require.NoError(t, err)
@@ -507,25 +525,25 @@ func TestMainEnvironmentConfigRemoveCommandPath(t *testing.T) {
 	s := mainEnvStack(store.backend())
 	project := &workspace.Project{Name: "testProject"}
 	ps := loadStackFile(t, project, "mainEnvironment: payments/dev\n")
-	mainEnv := activeMainEnvironment(s, ps)
+	mainEnv := activeMainEnvironment(io.Discard, s, ps)
 	require.NotNil(t, mainEnv)
 
 	var out bytes.Buffer
 	require.NoError(t, removeFromMainEnvironment(
-		t.Context(), &out, s, mainEnv, config.MustMakeKey("testProject", "a"), false))
+		t.Context(), &out, s, ps, mainEnv, config.MustMakeKey("testProject", "a"), false))
 	assert.Equal(t, "Updated payments/dev@2\n", out.String())
 	assert.NotContains(t, store.yaml, "testProject:a")
 
 	// Removing a key that is not set reports so and creates no revision.
 	out.Reset()
 	require.NoError(t, removeFromMainEnvironment(
-		t.Context(), &out, s, mainEnv, config.MustMakeKey("testProject", "missing"), false))
+		t.Context(), &out, s, ps, mainEnv, config.MustMakeKey("testProject", "missing"), false))
 	assert.Equal(t, "Configuration key 'testProject:missing' is not set in payments/dev\n", out.String())
 	assert.Equal(t, 2, store.revision)
 
 	// `--path` removals are not supported yet.
 	err := removeFromMainEnvironment(
-		t.Context(), &out, s, mainEnv, config.MustMakeKey("testProject", "b.c"), true)
+		t.Context(), &out, s, ps, mainEnv, config.MustMakeKey("testProject", "b.c"), true)
 	require.ErrorContains(t, err, "'pulumi config rm --path' is not supported yet")
 	assert.Equal(t, 2, store.revision)
 }
@@ -813,21 +831,6 @@ func TestMainEnvironmentUnsupportedSubcommands(t *testing.T) {
 
 	const stackFile = "mainEnvironment: payments/dev\n"
 
-	newLoginManager := func(be backend.Backend) cmdBackend.LoginManager {
-		return &cmdBackend.MockLoginManager{
-			CurrentF: func(
-				context.Context, pkgWorkspace.Context, diag.Sink, string, *workspace.Project, bool,
-			) (backend.Backend, error) {
-				return be, nil
-			},
-			LoginF: func(
-				context.Context, pkgWorkspace.Context, diag.Sink, string, *workspace.Project, bool, bool,
-				colors.Colorization,
-			) (backend.Backend, error) {
-				return be, nil
-			},
-		}
-	}
 	ws := &pkgWorkspace.MockContext{
 		ReadProjectF: func(string) (*workspace.Project, string, error) {
 			return &workspace.Project{Name: "testProject"}, "", nil
@@ -848,7 +851,7 @@ func TestMainEnvironmentUnsupportedSubcommands(t *testing.T) {
 
 		configPath := writeStackFile(t, stackFile)
 		stackName := "testStack"
-		cmd := newConfigSetAllCmd(ws, &stackName, newLoginManager(be), &mockEncrypterFactory{}, &configPath)
+		cmd := newConfigSetAllCmd(ws, &stackName, mainEnvLoginManager(be), &mockEncrypterFactory{}, &configPath)
 		cmd.SetContext(t.Context())
 		require.NoError(t, cmd.PersistentFlags().Set("plaintext", "testProject:key=value"))
 
@@ -887,7 +890,7 @@ func TestMainEnvironmentUnsupportedSubcommands(t *testing.T) {
 
 		configPath := writeStackFile(t, stackFile)
 		stackName := "testStack"
-		cmd := newConfigRefreshCmd(ws, &stackName, newLoginManager(be), &configPath)
+		cmd := newConfigRefreshCmd(ws, &stackName, mainEnvLoginManager(be), &configPath)
 		cmd.SetContext(t.Context())
 		require.NoError(t, cmd.PersistentFlags().Set("force", "true"))
 
@@ -898,5 +901,254 @@ func TestMainEnvironmentUnsupportedSubcommands(t *testing.T) {
 		data, readErr := os.ReadFile(configPath)
 		require.NoError(t, readErr)
 		assert.Equal(t, stackFile, string(data))
+	})
+}
+
+// TestMainEnvironmentCopySourceRefused covers the half of DoD 12 that `config copy` reaches through its
+// *source* stack: a migrated stack's values live in ESC, not in its `config:` block, so copying from one
+// would quietly write an empty (or stale) destination.
+func TestMainEnvironmentCopySourceRefused(t *testing.T) { //nolint:paralleltest // t.Chdir forbids t.Parallel
+	dir := t.TempDir()
+	t.Chdir(dir)
+	require.NoError(t, os.WriteFile(
+		filepath.Join(dir, "Pulumi.yaml"), []byte("name: testProject\nruntime: nodejs\n"), 0o600))
+	require.NoError(t, os.WriteFile(
+		filepath.Join(dir, "Pulumi.source.yaml"), []byte("mainEnvironment: payments/dev\n"), 0o600))
+	const destFile = "config:\n  testProject:existing: keep\n"
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "Pulumi.dest.yaml"), []byte(destFile), 0o600))
+
+	store := newFakeEnvStore(t, "values:\n  pulumiConfig:\n    testProject:a: one\n")
+	source := mainEnvStack(store.backend())
+	source.RefF = func() backend.StackReference {
+		return &backend.MockStackReference{
+			NameV:               tokens.MustParseStackName("source"),
+			FullyQualifiedNameV: "test-org/testProject/source",
+		}
+	}
+	dest := mainEnvStack(store.backend())
+	dest.RefF = func() backend.StackReference {
+		return &backend.MockStackReference{
+			NameV:               tokens.MustParseStackName("dest"),
+			FullyQualifiedNameV: "test-org/testProject/dest",
+		}
+	}
+
+	be := &backend.MockBackend{
+		GetStackF: func(_ context.Context, ref backend.StackReference) (backend.Stack, error) {
+			if ref.Name().String() == "dest" {
+				return dest, nil
+			}
+			return source, nil
+		},
+		ParseStackReferenceF: func(name string) (backend.StackReference, error) {
+			return &backend.MockStackReference{
+				NameV:               tokens.MustParseStackName(name),
+				FullyQualifiedNameV: tokens.QName("test-org/testProject/" + name),
+			}, nil
+		},
+	}
+	ws := &pkgWorkspace.MockContext{
+		ReadProjectF: func(string) (*workspace.Project, string, error) {
+			return &workspace.Project{Name: "testProject"}, filepath.Join(dir, "Pulumi.yaml"), nil
+		},
+		GetStoredCredentialsF: func() (workspace.Credentials, error) {
+			return workspace.Credentials{Current: "https://api.pulumi.com"}, nil
+		},
+	}
+
+	stackName, configFile := "source", ""
+	cmd := newConfigCopyCmd(ws, &stackName, mainEnvLoginManager(be), &configFile)
+	cmd.SetContext(t.Context())
+	cmd.SetOut(io.Discard)
+	cmd.SetErr(io.Discard)
+	require.NoError(t, cmd.PersistentFlags().Set("dest", "dest"))
+
+	err := cmd.RunE(cmd, []string{})
+	require.ErrorContains(t, err, "'pulumi config copy' is not supported yet")
+
+	// The destination stack file was not touched.
+	data, readErr := os.ReadFile(filepath.Join(dir, "Pulumi.dest.yaml"))
+	require.NoError(t, readErr)
+	assert.Equal(t, destFile, string(data))
+}
+
+// TestGetConfigShowSourceJSON asserts `--json --show-source` stays parseable: attribution goes inside the
+// JSON object rather than being printed alongside it.
+func TestGetConfigShowSourceJSON(t *testing.T) {
+	t.Parallel()
+
+	store := newFakeEnvStore(t, "")
+	store.revision = 8
+	s, project, _, ssml := prepareMainEnvListConfig(
+		t, "mainEnvironment: payments/dev\n", mainEnvAttributionEnvironment(), store)
+	ws := &pkgWorkspace.MockContext{
+		ReadProjectF: func(string) (*workspace.Project, string, error) { return project, "", nil },
+	}
+
+	var out bytes.Buffer
+	require.NoError(t, getConfig(
+		t.Context(), &out, cmdutil.Diag(), ssml, ws, s,
+		config.MustMakeKey("testProject", "instanceCount"), false, true, true, true,
+		writeStackFile(t, "mainEnvironment: payments/dev\n")))
+
+	var value configValueJSON
+	require.NoError(t, json.Unmarshal(out.Bytes(), &value))
+	require.NotNil(t, value.Value)
+	assert.Equal(t, "6", *value.Value)
+	assert.Equal(t, "payments/dev@8", value.Source)
+}
+
+// TestMainEnvironmentAttributionPinnedImport asserts a value inherited from a pinned import is attributed to
+// the pinned version rather than to the import's latest revision.
+func TestMainEnvironmentAttributionPinnedImport(t *testing.T) {
+	t.Parallel()
+
+	store := newFakeEnvStore(t, "")
+	store.revision = 8
+	env := &esc.Environment{Properties: map[string]esc.Value{
+		"pulumiConfig": esc.NewValue(map[string]esc.Value{
+			"testProject:logLevel": {
+				Value: "info",
+				Trace: esc.Trace{Def: esc.Range{Environment: "payments/base@4"}},
+			},
+		}),
+	}}
+	s, project, ps, ssml := prepareMainEnvListConfig(t, "mainEnvironment: payments/dev\n", env, store)
+
+	var requestedVersion string
+	be := s.Backend().(*backend.MockEnvironmentsBackend)
+	inner := be.GetEnvironmentRevisionF
+	be.GetEnvironmentRevisionF = func(
+		ctx context.Context, org, envProject, envName, version string,
+	) (int, error) {
+		if envProject+"/"+envName == "payments/base" {
+			requestedVersion = version
+			return 4, nil
+		}
+		return inner(ctx, org, envProject, envName, version)
+	}
+
+	var stdout bytes.Buffer
+	require.NoError(t, listConfig(
+		t.Context(), ssml, &stdout, project, s, ps, false, false, true, ""))
+
+	assert.Equal(t, "4", requestedVersion)
+	assert.Contains(t, stdout.String(), "payments/base@4 (imported)")
+}
+
+// TestMainEnvironmentWriteWarnsAboutShadowingLocalValue covers the transitional state where a key is set
+// both in the stack file and in the environment: the stack file wins on reads, so a write that did not say
+// so would report a value the very next read would not return.
+func TestMainEnvironmentWriteWarnsAboutShadowingLocalValue(t *testing.T) {
+	t.Parallel()
+
+	const stackFile = "mainEnvironment: payments/dev\nconfig:\n  testProject:a: local\n"
+	project := &workspace.Project{Name: "testProject"}
+
+	t.Run("set", func(t *testing.T) {
+		t.Parallel()
+
+		store := newFakeEnvStore(t, "values:\n  pulumiConfig: {}\n")
+		s := mainEnvStack(store.backend())
+		ps := loadStackFile(t, project, stackFile)
+
+		var stdout bytes.Buffer
+		c := newMainEnvSetCmd(ps, &stdout)
+		require.NoError(t, c.Run(
+			t.Context(), nil, []string{"testProject:a", "env"}, project, s, writeStackFile(t, stackFile)))
+
+		assert.Contains(t, stdout.String(), "Updated payments/dev@2")
+		assert.Contains(t, stdout.String(),
+			"warning: 'testProject:a' is also set in Pulumi.testStack.yaml, which shadows the value just written")
+	})
+
+	t.Run("rm", func(t *testing.T) {
+		t.Parallel()
+
+		store := newFakeEnvStore(t, "values:\n  pulumiConfig:\n    testProject:a: env\n")
+		s := mainEnvStack(store.backend())
+		ps := loadStackFile(t, project, stackFile)
+		mainEnv := activeMainEnvironment(io.Discard, s, ps)
+		require.NotNil(t, mainEnv)
+
+		var out bytes.Buffer
+		require.NoError(t, removeFromMainEnvironment(
+			t.Context(), &out, s, ps, mainEnv, config.MustMakeKey("testProject", "a"), false))
+		assert.Contains(t, out.String(), "Updated payments/dev@2")
+		assert.Contains(t, out.String(),
+			"warning: 'testProject:a' is still set in Pulumi.testStack.yaml, which takes precedence over payments/dev")
+	})
+}
+
+// TestMainEnvironmentRemoteConfigWarnsOnWritePath asserts that a stack configured both ways is told its
+// `mainEnvironment` is ignored, instead of hitting the pre-existing remote-config refusal with no
+// explanation.
+func TestMainEnvironmentRemoteConfigWarnsOnWritePath(t *testing.T) {
+	t.Parallel()
+
+	store := newFakeEnvStore(t, "values:\n  pulumiConfig: {}\n")
+	s := mainEnvStack(store.backend())
+	escEnv := "payments/remote"
+	s.ConfigLocationF = func() backend.StackConfigLocation {
+		return backend.StackConfigLocation{IsRemote: true, EscEnv: &escEnv}
+	}
+	project := &workspace.Project{Name: "testProject"}
+	ps := loadStackFile(t, project, "mainEnvironment: payments/dev\n")
+
+	var stdout, stderr bytes.Buffer
+	c := newMainEnvSetCmd(ps, &stdout)
+	c.Stderr = &stderr
+	err := c.Run(t.Context(), nil, []string{"testProject:a", "b"}, project, s, "")
+
+	require.ErrorContains(t, err, "config set not supported for remote stack config")
+	assert.Contains(t, stderr.String(),
+		"'mainEnvironment' is ignored because this stack's configuration is stored remotely")
+	assert.Equal(t, 0, store.updates)
+}
+
+// TestMainEnvironmentConfigEnvSubcommands asserts `pulumi config env ls/add/rm` do not silently operate on
+// the `environment:` list that a main environment supersedes.
+func TestMainEnvironmentConfigEnvSubcommands(t *testing.T) {
+	t.Parallel()
+
+	const stackYAML = "mainEnvironment: payments/dev\nenvironment:\n  - payments/legacy\n"
+	env := &esc.Environment{Properties: map[string]esc.Value{
+		"pulumiConfig": esc.NewValue(map[string]esc.Value{}),
+	}}
+
+	newCmd := func(stdout io.Writer) *configEnvCmd {
+		return newConfigEnvCmdForTest(
+			strings.NewReader(""), stdout, "name: test\nruntime: yaml", stackYAML, env, nil, nil)
+	}
+
+	t.Run("ls", func(t *testing.T) {
+		t.Parallel()
+
+		var stdout bytes.Buffer
+		var listed []string
+		require.NoError(t, newCmd(&stdout).listStackEnvironments(
+			t.Context(), func(_ io.Writer, imports []string) error {
+				listed = imports
+				return nil
+			}))
+		assert.Equal(t, []string{"payments/dev"}, listed)
+	})
+
+	t.Run("add", func(t *testing.T) {
+		t.Parallel()
+
+		var stdout bytes.Buffer
+		err := newCmd(&stdout).editStackEnvironment(
+			t.Context(), "add", false, true, func(*workspace.ProjectStack) error { return nil })
+		require.ErrorContains(t, err, "'pulumi config env add' is not supported yet")
+	})
+
+	t.Run("rm", func(t *testing.T) {
+		t.Parallel()
+
+		var stdout bytes.Buffer
+		err := newCmd(&stdout).editStackEnvironment(
+			t.Context(), "rm", false, true, func(*workspace.ProjectStack) error { return nil })
+		require.ErrorContains(t, err, "'pulumi config env rm' is not supported yet")
 	})
 }
