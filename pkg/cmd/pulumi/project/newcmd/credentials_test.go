@@ -72,8 +72,11 @@ func runCheck(
 	ctx, cancel := context.WithTimeout(t.Context(), timeout)
 	defer cancel()
 	var buf bytes.Buffer
-	warned := checkCloudCredentials(ctx, cp, prov, news, &buf, display.Options{Color: colors.Never})
-	return warned, buf.String()
+	problem := probeCredentials(ctx, cp, prov, news)
+	if problem != nil {
+		credentialsPreflight{stdout: &buf, opts: display.Options{Color: colors.Never}}.printWarning(cp, problem)
+	}
+	return problem != nil, buf.String()
 }
 
 func echoCheckConfig(_ context.Context, req plugin.CheckConfigRequest) (plugin.CheckConfigResponse, error) {
@@ -222,20 +225,18 @@ func TestPreflightCloudCredentialsPackages(t *testing.T) {
 			defer pctx.Close()
 
 			var buf bytes.Buffer
-			warned := false
+			pf := credentialsPreflight{
+				host: host, pctx: pctx, cfg: config.Map{}, stdout: &buf, opts: display.Options{Color: colors.Never},
+			}
 			for _, pkg := range tt.packages {
 				if pkg.Kind != apitype.ResourcePlugin || pkg.Parameterization != nil {
 					continue
 				}
-				if preflightPackage(t.Context(), host, pctx, pkg.PluginDescriptor, config.Map{}, &buf,
-					display.Options{Color: colors.Never}) {
-					warned = true
-				}
+				pf.checkPackage(t.Context(), pkg.PluginDescriptor)
 			}
 
 			assert.Equal(t, tt.loaded, loaded)
 			assert.Equal(t, tt.checked, checked)
-			assert.Equal(t, len(tt.warnings) > 0, warned)
 			for _, name := range tt.warnings {
 				assert.Contains(t, buf.String(), "Could not validate your "+name+" credentials")
 			}
@@ -254,15 +255,15 @@ func TestProviderConfigProperties(t *testing.T) {
 		config.MustMakeKey("gcp", "project"):           config.NewValue("my-project"),
 		config.MustMakeKey("proj", "etcetc"):           config.NewValue("unrelated"),
 	}
-	props := providerConfigProperties(awsProvider, cfg)
+	props := providerConfigProperties(awsProvider.pkg, cfg)
 	require.Equal(t, 1, props.Len())
 	assert.Equal(t, "us-east-1", props.Get("region").AsString())
 
-	props = providerConfigProperties(azureProvider, cfg)
+	props = providerConfigProperties(azureProvider.pkg, cfg)
 	require.Equal(t, 1, props.Len())
 	assert.Equal(t, "WestUS2", props.Get("location").AsString())
 
-	props = providerConfigProperties(gcpProvider, cfg)
+	props = providerConfigProperties(gcpProvider.pkg, cfg)
 	require.Equal(t, 1, props.Len())
 	assert.Equal(t, "my-project", props.Get("project").AsString())
 }

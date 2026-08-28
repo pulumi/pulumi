@@ -66,10 +66,10 @@ func credentialsCheckEnabled(args newArgs) bool {
 // providerConfigProperties extracts the plaintext values in the provider's config
 // namespace from the saved stack config for use as CheckConfig inputs. Secure values
 // are skipped.
-func providerConfigProperties(cp cloudProvider, cfg config.Map) property.Map {
+func providerConfigProperties(pkg string, cfg config.Map) property.Map {
 	m := map[string]property.Value{}
 	for k, v := range cfg {
-		if k.Namespace() != cp.pkg || v.Secure() {
+		if k.Namespace() != pkg || v.Secure() {
 			continue
 		}
 		plain, err := v.Value(config.NopDecrypter)
@@ -81,35 +81,53 @@ func providerConfigProperties(cp cloudProvider, cfg config.Map) property.Map {
 	return property.NewMap(m)
 }
 
+// credentialsPreflight holds what the per-package credentials check needs beyond the
+// package itself.
+type credentialsPreflight struct {
+	host   plugin.Host
+	pctx   *plugin.Context
+	cfg    config.Map
+	stdout io.Writer
+	opts   display.Options
+}
+
+// credentialsProblem is what the preflight reports to the user when a provider rejects
+// the stack's configuration or cannot validate the user's credentials.
+type credentialsProblem struct {
+	headline string
+	details  []string
+}
+
 // preflightCloudCredentials runs the best-effort cloud credentials check for a freshly
-// created project against every required provider that opted in through its schema. It
-// reports whether a warning was printed.
+// created project against every required provider that opted in through its schema.
+// It only ever prints advisory warnings and never fails the command.
 func preflightCloudCredentials(
 	ctx context.Context, args newArgs, host plugin.Host, proj *workspace.Project, root string,
 	s backend.Stack, packages []workspace.PackageDescriptor, opts display.Options,
-) bool {
+) {
 	if !credentialsCheckEnabled(args) || s == nil || len(packages) == 0 {
-		return false
+		return
 	}
 	ps, err := cmdStack.LoadProjectStack(ctx, cmdutil.Diag(), proj, s, "")
 	if err != nil {
 		slog.DebugContext(ctx, "skipping credentials check", "err", err)
-		return false
+		return
 	}
 
 	// Providers send their RPCs on the plugin context's base context rather than the
-	// context passed to each call, so bound the whole preflight by giving it a context of
-	// its own: plugin launch, GetSchema, CheckConfig and Configure all share one deadline.
+	// context passed to each call, so the plugin context runNew already has cannot carry a
+	// deadline for this check. Create a second context on the same host instead, so that
+	// plugin launch, GetSchema, CheckConfig and Configure all share one deadline.
 	tctx, cancel := context.WithTimeout(ctx, defaultCredentialsPreflightTimeout)
 	defer cancel()
 	pctx, err := plugin.NewContextWithHost(tctx, cmdutil.Diag(), cmdutil.Diag(), host, root, root, nil)
 	if err != nil {
 		slog.DebugContext(ctx, "skipping credentials check", "err", err)
-		return false
+		return
 	}
 	defer contract.IgnoreClose(pctx)
 
-	warned := false
+	pf := credentialsPreflight{host: host, pctx: pctx, cfg: ps.Config, stdout: args.stdout, opts: opts}
 	for _, pkg := range packages {
 		// A parameterized package's plugin name is the base plugin (e.g. terraform-provider),
 		// not the provider itself, so it cannot be loaded from the descriptor alone.
@@ -117,33 +135,29 @@ func preflightCloudCredentials(
 			continue
 		}
 		if tctx.Err() != nil {
-			break
+			return
 		}
-		if preflightPackage(tctx, host, pctx, pkg.PluginDescriptor, ps.Config, args.stdout, opts) {
-			warned = true
-		}
+		pf.checkPackage(tctx, pkg.PluginDescriptor)
 	}
-	return warned
 }
 
-// preflightPackage loads a single provider, asks its schema whether it wants the credentials
-// check and, if so, runs it. It reports whether a warning was printed.
-func preflightPackage(
-	ctx context.Context, host plugin.Host, pctx *plugin.Context, desc workspace.PluginDescriptor,
-	cfg config.Map, stdout io.Writer, opts display.Options,
-) bool {
-	prov, err := host.Provider(pctx, desc, env.Global())
+// checkPackage loads a single provider, asks its schema whether it wants the credentials
+// check and, if so, runs it and prints any problem it finds.
+func (pf credentialsPreflight) checkPackage(ctx context.Context, desc workspace.PluginDescriptor) {
+	prov, err := pf.host.Provider(pf.pctx, desc, env.Global())
 	if err != nil {
 		slog.DebugContext(ctx, "skipping credentials check", "provider", desc.Name, "err", err)
-		return false
+		return
 	}
 	defer contract.IgnoreClose(prov)
 
 	cp, ok := cloudProviderFromSchema(ctx, prov, desc.Name)
 	if !ok {
-		return false
+		return
 	}
-	return checkCloudCredentials(ctx, cp, prov, providerConfigProperties(cp, cfg), stdout, opts)
+	if problem := probeCredentials(ctx, cp, prov, providerConfigProperties(cp.pkg, pf.cfg)); problem != nil {
+		pf.printWarning(cp, problem)
+	}
 }
 
 // cloudProviderFromSchema fetches the provider's schema and returns the preflight metadata it
@@ -169,67 +183,64 @@ func cloudProviderFromSchema(ctx context.Context, prov plugin.Provider, pkg stri
 	return cp, true
 }
 
-// checkCloudCredentials calls the cloud provider's CheckConfig and then Configure, which is
-// where providers validate credentials and initialise their clients, and prints an advisory
-// warning on failure. ctx bounds the check: if it expires the check stays silent. It reports
-// whether a warning was printed.
-func checkCloudCredentials(
+// probeCredentials calls the cloud provider's CheckConfig and then Configure, which is
+// where providers validate credentials and initialise their clients. It returns nil when
+// both succeed, and also when ctx expires, in which case the check stays silent.
+func probeCredentials(
 	ctx context.Context, cp cloudProvider, prov plugin.Provider, news property.Map,
-	stdout io.Writer, opts display.Options,
-) bool {
+) *credentialsProblem {
 	urn := resource.NewURN("dev", "default", "", tokens.Type("pulumi:providers:"+cp.pkg), "default")
 
 	resp, err := prov.CheckConfig(ctx, plugin.CheckConfigRequest{URN: urn, News: news})
 	if err == nil && len(resp.Failures) == 0 {
-		err = configureProvider(ctx, prov, urn, resp.Properties, news)
+		err = configureProvider(ctx, prov, urn, resp.Properties)
 	}
 	if ctx.Err() != nil {
 		slog.DebugContext(ctx, "credentials check timed out or was cancelled", "provider", cp.pkg)
-		return false
+		return nil
 	}
-
-	var headline string
-	var details []string
-	switch {
-	case err != nil:
-		headline = fmt.Sprintf("Could not validate your %s credentials:", cp.displayName)
-		details = strings.Split(strings.TrimSpace(errorMessage(err)), "\n")
-	case len(resp.Failures) > 0:
-		headline = fmt.Sprintf("The %s provider reported problems with this stack's configuration:", cp.displayName)
-		for _, f := range resp.Failures {
-			reason := strings.ReplaceAll(strings.TrimSpace(f.Reason), "\n", "\n    ")
-			if f.Property != "" {
-				reason = string(f.Property) + ": " + reason
-			}
-			details = append(details, reason)
+	if err != nil {
+		return &credentialsProblem{
+			headline: fmt.Sprintf("Could not validate your %s credentials:", cp.displayName),
+			details:  strings.Split(strings.TrimSpace(errorMessage(err)), "\n"),
 		}
-	default:
-		return false
 	}
+	if len(resp.Failures) == 0 {
+		return nil
+	}
+	problem := &credentialsProblem{
+		headline: fmt.Sprintf("The %s provider reported problems with this stack's configuration:", cp.displayName),
+	}
+	for _, f := range resp.Failures {
+		reason := strings.ReplaceAll(strings.TrimSpace(f.Reason), "\n", "\n    ")
+		if f.Property != "" {
+			reason = string(f.Property) + ": " + reason
+		}
+		problem.details = append(problem.details, reason)
+	}
+	return problem
+}
 
-	warning := opts.Color.Colorize(colors.SpecWarning + "warning:" + colors.Reset)
-	fmt.Fprintf(stdout, "%s %s\n", warning, headline)
-	for _, line := range details {
-		fmt.Fprintf(stdout, "    %s\n", line)
+// printWarning renders a credentials problem as an advisory warning.
+func (pf credentialsPreflight) printWarning(cp cloudProvider, problem *credentialsProblem) {
+	warning := pf.opts.Color.Colorize(colors.SpecWarning + "warning:" + colors.Reset)
+	fmt.Fprintf(pf.stdout, "%s %s\n", warning, problem.headline)
+	for _, line := range problem.details {
+		fmt.Fprintf(pf.stdout, "    %s\n", line)
 	}
-	fmt.Fprintln(stdout, "Your project was created successfully, but `pulumi up` may fail until this is resolved.")
+	fmt.Fprintln(pf.stdout, "`pulumi up` may fail until this is resolved.")
 	if cp.docURL != "" {
-		fmt.Fprintf(stdout, "For help configuring the %s provider, see %s\n", cp.displayName, cp.docURL)
+		fmt.Fprintf(pf.stdout, "For help configuring the %s provider, see %s\n", cp.displayName, cp.docURL)
 	}
-	fmt.Fprintln(stdout)
-	return true
+	fmt.Fprintln(pf.stdout)
 }
 
 // configureProvider calls Configure with the checked config and waits for it to
 // complete, returning any error it produced. Plugin-backed providers run Configure
 // asynchronously, so the result is awaited through plugin.ConfigureAwaiter.
 func configureProvider(
-	ctx context.Context, prov plugin.Provider, urn resource.URN, checked, news property.Map,
+	ctx context.Context, prov plugin.Provider, urn resource.URN, inputs property.Map,
 ) error {
-	inputs := checked
-	if inputs.Len() == 0 {
-		inputs = news
-	}
 	name := urn.Name()
 	typ := urn.Type()
 	id := resource.ID("preflight")
