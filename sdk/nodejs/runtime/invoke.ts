@@ -261,7 +261,7 @@ async function invokeAsync(
         }
 
         log.debug(
-            `Invoke RPC prepared: tok=${tok}` + excessiveDebugOutput ? `, obj=${JSON.stringify(serialized)}` : ``,
+            `Invoke RPC prepared: tok=${tok}` + (excessiveDebugOutput ? `, obj=${JSON.stringify(serialized)}` : ``),
         );
 
         // Fetch the monitor and make an RPC request.
@@ -469,7 +469,8 @@ function callAsync<T>(
                     throw err;
                 }
                 log.debug(
-                    `Call RPC prepared: tok=${tok}` + excessiveDebugOutput ? `, obj=${JSON.stringify(serialized)}` : ``,
+                    `Call RPC prepared: tok=${tok}` +
+                        (excessiveDebugOutput ? `, obj=${JSON.stringify(serialized)}` : ``),
                 );
 
                 const req = await createCallRequest(
