@@ -1645,7 +1645,7 @@ func buildHTTPRequest(ctx context.Context, pluginEndpoint string, authorization 
 }
 
 func getHTTPResponse(req *http.Request) (io.ReadCloser, int64, error) {
-	logging.V(9).Infof("full plugin download url: %s", req.URL)
+	logging.V(9).Infof("full plugin download url: %s", httputil.RedactURL(req.URL.String()))
 	// This logs at level 11 because it could include authentication headers, we reserve log level 11 for
 	// detailed api logs that may include credentials.
 	logging.V(11).Infof("plugin install request headers: %v", req.Header)
@@ -1668,7 +1668,7 @@ func getHTTPResponse(req *http.Request) (io.ReadCloser, int64, error) {
 }
 
 func getHTTPResponseWithRetry(req *http.Request) (io.ReadCloser, int64, error) {
-	logging.V(9).Infof("full plugin download url: %s", req.URL)
+	logging.V(9).Infof("full plugin download url: %s", httputil.RedactURL(req.URL.String()))
 	// This logs at level 11 because it could include authentication headers, we reserve log level 11 for
 	// detailed api logs that may include credentials.
 	logging.V(11).Infof("plugin install request headers: %v", req.Header)

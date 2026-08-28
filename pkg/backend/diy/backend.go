@@ -66,6 +66,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/httputil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 
@@ -238,6 +239,8 @@ func newDIYBackend(
 	if opts.Env == nil {
 		opts.Env = env.Global()
 	}
+
+	logging.AddGlobalSecretFilter(httputil.URLSecrets(originalURL), "[credential]")
 
 	if !IsDIYBackendURL(originalURL) {
 		return nil, fmt.Errorf("diy URL %s has an illegal prefix; expected one of: %s",
