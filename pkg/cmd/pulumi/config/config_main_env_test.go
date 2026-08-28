@@ -21,6 +21,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"maps"
 	"os"
 	"path/filepath"
 	"strings"
@@ -29,6 +30,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"gopkg.in/yaml.v3"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
@@ -1151,4 +1153,147 @@ func TestMainEnvironmentConfigEnvSubcommands(t *testing.T) {
 			t.Context(), "rm", false, true, func(*workspace.ProjectStack) error { return nil })
 		require.ErrorContains(t, err, "'pulumi config env rm' is not supported yet")
 	})
+}
+
+//
+// Stack birth, end to end on the mock backend (DoD 10).
+//
+
+// birthEnvUniverse is an in-memory organization's worth of named environments: it can create them,
+// read them back, update them with an etag, and resolve one into the values ESC would return.
+type birthEnvUniverse struct {
+	t         *testing.T
+	defs      map[string]string
+	etags     map[string]string
+	revisions map[string]int
+}
+
+func newBirthEnvUniverse(t *testing.T) *birthEnvUniverse {
+	return &birthEnvUniverse{
+		t:         t,
+		defs:      map[string]string{},
+		etags:     map[string]string{},
+		revisions: map[string]int{},
+	}
+}
+
+// resolve flattens an environment and the environments it imports into the values ESC would hand back,
+// attributing each value to the environment that defines it.
+func (u *birthEnvUniverse) resolve(ref string) map[string]esc.Value {
+	var doc struct {
+		Imports []string `yaml:"imports"`
+		Values  struct {
+			PulumiConfig map[string]string `yaml:"pulumiConfig"`
+		} `yaml:"values"`
+	}
+	require.NoError(u.t, yaml.Unmarshal([]byte(u.defs[ref]), &doc))
+
+	values := map[string]esc.Value{}
+	for _, imported := range doc.Imports {
+		maps.Copy(values, u.resolve(imported))
+	}
+	for k, v := range doc.Values.PulumiConfig {
+		values[k] = esc.Value{Value: v, Trace: esc.Trace{Def: esc.Range{Environment: ref}}}
+	}
+	return values
+}
+
+func (u *birthEnvUniverse) backend() *backend.MockEnvironmentsBackend {
+	return &backend.MockEnvironmentsBackend{
+		MockBackend: backend.MockBackend{NameF: func() string { return "test" }},
+		CreateEnvironmentF: func(
+			_ context.Context, _, envProject, envName string, yaml []byte,
+		) (apitype.EnvironmentDiagnostics, error) {
+			ref := envProject + "/" + envName
+			u.defs[ref], u.etags[ref], u.revisions[ref] = string(yaml), "etag-1", 1
+			return nil, nil
+		},
+		GetEnvironmentDefinitionF: func(
+			_ context.Context, _, envProject, envName, _ string,
+		) ([]byte, string, int, error) {
+			ref := envProject + "/" + envName
+			def, ok := u.defs[ref]
+			if !ok {
+				return nil, "", 0, fmt.Errorf("%w: %v", backend.ErrEnvironmentNotFound, ref)
+			}
+			return []byte(def), u.etags[ref], u.revisions[ref], nil
+		},
+		UpdateEnvironmentDefinitionF: func(
+			_ context.Context, _, envProject, envName string, yaml []byte, etag string,
+		) (apitype.EnvironmentDiagnostics, int, error) {
+			ref := envProject + "/" + envName
+			if etag != u.etags[ref] {
+				return nil, 0, fmt.Errorf("%w: %v", backend.ErrEnvironmentConflict, ref)
+			}
+			u.revisions[ref]++
+			u.defs[ref] = string(yaml)
+			u.etags[ref] = fmt.Sprintf("etag-%d", u.revisions[ref])
+			return nil, u.revisions[ref], nil
+		},
+		GetEnvironmentRevisionF: func(_ context.Context, _, envProject, envName, _ string) (int, error) {
+			return u.revisions[envProject+"/"+envName], nil
+		},
+		OpenYAMLEnvironmentF: func(
+			context.Context, string, []byte, time.Duration, map[string]string,
+		) (*esc.Environment, apitype.EnvironmentDiagnostics, error) {
+			return &esc.Environment{Properties: map[string]esc.Value{
+				"pulumiConfig": esc.NewValue(u.resolve("testProject/testStack")),
+			}}, nil, nil
+		},
+	}
+}
+
+// TestStackBirthEndToEnd walks the whole loop the PoC demos: the environments a stack is born with feed
+// `pulumi config`'s SOURCE column, and `pulumi config set` produces the next revision, with no manual
+// environment setup in between.
+func TestStackBirthEndToEnd(t *testing.T) {
+	t.Parallel()
+
+	u := newBirthEnvUniverse(t)
+	be := u.backend()
+	s := mainEnvStack(be)
+
+	regionNode, err := ConfigValueNode("us-west-2", "", false)
+	require.NoError(t, err)
+
+	// 1. Birth: `pulumi stack init --esc-config` creates both environments and records the main one.
+	var birthOut bytes.Buffer
+	mainEnv, err := cmdStack.CreateStackEnvironments(t.Context(), s, cmdStack.StackEnvironmentOptions{
+		EnvProject: "testProject",
+		EnvName:    "testStack",
+		Values:     map[string]yaml.Node{"aws:region": regionNode},
+		Stdout:     &birthOut,
+	})
+	require.NoError(t, err)
+	assert.Equal(t, "testProject/testStack", mainEnv.String())
+	assert.Contains(t, birthOut.String(), "Creating environment 'test-org/testProject/base'...")
+	assert.Contains(t, birthOut.String(),
+		"Creating environment 'test-org/testProject/testStack'... (imports testProject/base)")
+
+	project := &workspace.Project{Name: "testProject"}
+	ps := loadStackFile(t, project, "mainEnvironment: "+mainEnv.String()+"\n")
+
+	secretsManager, _, _, _, _ := getCountingBase64SecretsManager(t.Context(), t, false)
+	s.SnapshotF = func(context.Context, secrets.Provider) (*deploy.Snapshot, error) {
+		return &deploy.Snapshot{SecretsManager: stack.NewBatchingCachingSecretsManager(secretsManager)}, nil
+	}
+	ssml := cmdStack.SecretsManagerLoader{FallbackToState: true}
+
+	// 2. `pulumi config` attributes the value to the freshly created environment at revision 1.
+	var listOut bytes.Buffer
+	require.NoError(t, listConfig(t.Context(), ssml, &listOut, project, s, ps, false, false, true, ""))
+	assert.Contains(t, listOut.String(), "aws:region  us-west-2  testProject/testStack@1")
+
+	// 3. `pulumi config set` on the newborn stack produces the next revision, with no manual setup.
+	var setOut bytes.Buffer
+	setCmd := newMainEnvSetCmd(ps, &setOut)
+	require.NoError(t, setCmd.Run(
+		t.Context(), &pkgWorkspace.MockContext{}, []string{"testProject:instanceCount", "6"},
+		project, s, filepath.Join(t.TempDir(), "Pulumi.testStack.yaml")))
+	assert.Equal(t, "Updated testProject/testStack@2\n", setOut.String())
+
+	listOut.Reset()
+	require.NoError(t, listConfig(t.Context(), ssml, &listOut, project, s, ps, false, false, true, ""))
+	assert.Contains(t, listOut.String(), "aws:region                 us-west-2  testProject/testStack@2")
+	assert.Contains(t, listOut.String(), "testProject:instanceCount  6          testProject/testStack@2")
 }
