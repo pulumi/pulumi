@@ -179,7 +179,8 @@ func newSetupGCPCmd(setup *setupCommand) *cobra.Command {
 
 			yes = yes || !cmdutil.Interactive()
 
-			if err := validateESCProject(projectName); err != nil {
+			projectName, err := validateESCProject(projectName)
+			if err != nil {
 				return err
 			}
 

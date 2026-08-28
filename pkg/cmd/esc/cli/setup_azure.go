@@ -336,7 +336,8 @@ func newSetupAzureCmd(setup *setupCommand) *cobra.Command {
 			interactive := cmdutil.Interactive()
 			yes = yes || !interactive
 
-			if err := validateESCProject(projectName); err != nil {
+			projectName, err := validateESCProject(projectName)
+			if err != nil {
 				return err
 			}
 

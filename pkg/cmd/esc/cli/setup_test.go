@@ -147,16 +147,27 @@ func TestPlanEnvLine(t *testing.T) {
 func TestValidateESCProject(t *testing.T) {
 	t.Parallel()
 
-	require.NoError(t, validateESCProject("gcp-login"))
-	require.NoError(t, validateESCProject("My_Project.1-x"))
+	got, err := validateESCProject("gcp-login")
+	require.NoError(t, err)
+	assert.Equal(t, "gcp-login", got)
+
+	// The service matches project names case-insensitively, so the name that reaches the OIDC
+	// subject has to be lowercased here or the two disagree.
+	got, err = validateESCProject("My_Project.1-X")
+	require.NoError(t, err)
+	assert.Equal(t, "my_project.1-x", got)
 
 	// A slash is silently mangled by parseRef: `acme/a/b/sandbox-env` becomes environment
 	// `bsandbox-env` in project `a`, after the trust policy was written with `a/b/...`.
-	assert.Error(t, validateESCProject("a/b"))
+	_, err = validateESCProject("a/b")
+	assert.Error(t, err)
 	// An apostrophe reaches Azure's Graph $filter unescaped.
-	assert.Error(t, validateESCProject("o'brien"))
-	assert.Error(t, validateESCProject(""))
-	assert.Error(t, validateESCProject("has space"))
+	_, err = validateESCProject("o'brien")
+	assert.Error(t, err)
+	_, err = validateESCProject("")
+	assert.Error(t, err)
+	_, err = validateESCProject("has space")
+	assert.Error(t, err)
 }
 
 // Two accounts that derive the same environment name have to be caught before setup runs:

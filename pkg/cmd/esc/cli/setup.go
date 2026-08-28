@@ -167,13 +167,13 @@ var (
 	envNameUnsafe    = regexp.MustCompile(`[^` + escNameChars + `]`)
 )
 
-// validateESCProject checks if an ESC Project name is valid.
-func validateESCProject(projectName string) error {
+// validateESCProject checks that an ESC project name is valid and returns it lowercased.
+func validateESCProject(projectName string) (string, error) {
 	if !escProjectNameRE.MatchString(projectName) {
-		return fmt.Errorf("--project %q must contain only letters, digits, and the characters . _ -",
+		return "", fmt.Errorf("--project %q must contain only letters, digits, and the characters . _ -",
 			projectName)
 	}
-	return nil
+	return strings.ToLower(projectName), nil
 }
 
 // sanitizeEnvName derives a default environment name from a cloud account name,
