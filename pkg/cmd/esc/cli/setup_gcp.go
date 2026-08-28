@@ -30,8 +30,16 @@ import (
 )
 
 var gcpPolicyChoices = []policyChoice{
-	{name: "roles/editor", id: "roles/editor", alias: policyAliasAdmin, desc: policyAdminAccess},
-	{name: "roles/viewer", id: "roles/viewer", alias: policyAliasReadonly, desc: policyReadonlyAccess},
+	{
+		name: "roles/editor",
+		id:   "roles/editor",
+		desc: "write access (required for Deployments)",
+	},
+	{
+		name: "roles/viewer",
+		id:   "roles/viewer",
+		desc: "read-only access (required for Insights)",
+	},
 }
 
 var gcpResourceNames = map[string]string{

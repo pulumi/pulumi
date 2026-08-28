@@ -195,28 +195,14 @@ func escEnvName(projectName string, account cloudsetup.CloudAccount) string {
 // the per-environment subject that the setup call scopes its cloud trust to.
 var oidcSubjectAttributes = []string{"currentEnvironment.name"}
 
-// The provider-independent aliases for the two access levels every provider offers today, so that
-// `--policy admin` works without knowing what the cloud calls it.
-const (
-	policyAliasAdmin    = "admin"
-	policyAliasReadonly = "readonly"
-)
-
-// Access-level descriptions appended after the official policy name in the prompt labels.
-const (
-	policyAdminAccess    = "full access (required for Deployments)"
-	policyReadonlyAccess = "read-only access (required for Insights)"
-)
-
 // policyChoice is one of the presets offered for --policy.
 type policyChoice struct {
 	// name is the official cloud name, e.g. AWS "AdministratorAccess".
 	name string
 	// policy id from the provider, e.g. AWS policy ARN, Azure role definition ID, GCP role name.
 	id string
-	// alias is a provider-independent name for the same access level, e.g. "admin".
-	alias string
-	// desc describes the access level, shown after name in the prompt.
+	// desc describes what the policy grants on this provider, shown after name in the prompt.
+	// The presets differ between clouds, so each provider spells its own out.
 	desc string
 }
 
@@ -228,7 +214,7 @@ func (c policyChoice) label() string {
 // resolvePolicy resolves --policy to a provider-native id, prompting when it was omitted.
 func (s *setupCommand) resolvePolicy(policy string, choices []policyChoice, yes bool) (string, error) {
 	for _, c := range choices {
-		if strings.EqualFold(policy, c.name) || (c.alias != "" && strings.EqualFold(policy, c.alias)) {
+		if strings.EqualFold(policy, c.name) {
 			return c.id, nil
 		}
 	}

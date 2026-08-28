@@ -32,7 +32,7 @@ func TestResolvePolicy_AzureResolvesToRoleDefinitionIDs(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "b24988ac-6180-42a0-ab88-20f7382dd24c", got)
 
-	got, err = s.resolvePolicy("readonly", azurePolicyChoices, false)
+	got, err = s.resolvePolicy("Reader", azurePolicyChoices, false)
 	require.NoError(t, err)
 	assert.Equal(t, "acdd72a7-3385-48ef-bd42-f606fba81ae7", got)
 

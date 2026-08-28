@@ -42,17 +42,15 @@ const azureLoginPath = "azure.login"
 var azurePolicyChoices = []policyChoice{
 	{
 		// Contributor - https://learn.microsoft.com/azure/role-based-access-control/built-in-roles/privileged#contributor
-		name:  "Contributor",
-		id:    "b24988ac-6180-42a0-ab88-20f7382dd24c",
-		alias: policyAliasAdmin,
-		desc:  policyAdminAccess,
+		name: "Contributor",
+		id:   "b24988ac-6180-42a0-ab88-20f7382dd24c",
+		desc: "write access (required for Deployments)",
 	},
 	{
 		// Reader - https://learn.microsoft.com/azure/role-based-access-control/built-in-roles/general#reader
-		name:  "Reader",
-		id:    "acdd72a7-3385-48ef-bd42-f606fba81ae7",
-		alias: policyAliasReadonly,
-		desc:  policyReadonlyAccess,
+		name: "Reader",
+		id:   "acdd72a7-3385-48ef-bd42-f606fba81ae7",
+		desc: "read-only access (required for Insights)",
 	},
 }
 

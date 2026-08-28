@@ -43,16 +43,14 @@ import (
 
 var awsPolicyChoices = []policyChoice{
 	{
-		name:  "AdministratorAccess",
-		id:    "arn:aws:iam::aws:policy/AdministratorAccess",
-		alias: policyAliasAdmin,
-		desc:  policyAdminAccess,
+		name: "AdministratorAccess",
+		id:   "arn:aws:iam::aws:policy/AdministratorAccess",
+		desc: "full access (required for Deployments)",
 	},
 	{
-		name:  "ReadOnlyAccess",
-		id:    "arn:aws:iam::aws:policy/ReadOnlyAccess",
-		alias: policyAliasReadonly,
-		desc:  policyReadonlyAccess,
+		name: "ReadOnlyAccess",
+		id:   "arn:aws:iam::aws:policy/ReadOnlyAccess",
+		desc: "read-only access (required for Insights)",
 	},
 }
 

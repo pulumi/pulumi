@@ -28,7 +28,7 @@ func TestResolvePolicy_GCPPresetsMapToThemselves(t *testing.T) {
 
 	s := &setupCommand{}
 
-	got, err := s.resolvePolicy("admin", gcpPolicyChoices, false)
+	got, err := s.resolvePolicy("roles/editor", gcpPolicyChoices, false)
 	require.NoError(t, err)
 	assert.Equal(t, "roles/editor", got)
 

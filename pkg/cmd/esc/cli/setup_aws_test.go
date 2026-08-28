@@ -260,7 +260,7 @@ func TestResolvePolicy_AWSResolvesToPolicyARNs(t *testing.T) {
 
 	s := &setupCommand{}
 
-	got, err := s.resolvePolicy("admin", awsPolicyChoices, false)
+	got, err := s.resolvePolicy("AdministratorAccess", awsPolicyChoices, false)
 	require.NoError(t, err)
 	assert.Equal(t, "arn:aws:iam::aws:policy/AdministratorAccess", got)
 

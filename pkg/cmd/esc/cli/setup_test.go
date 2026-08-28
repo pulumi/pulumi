@@ -26,8 +26,8 @@ import (
 // The presets are synthetic so that these cases test the resolver itself rather than any one
 // provider's names; each provider's own test covers what its presets resolve to.
 var testPolicyChoices = []policyChoice{
-	{name: "AdminPolicy", id: "admin-id", alias: policyAliasAdmin, desc: policyAdminAccess},
-	{name: "ReadonlyPolicy", id: "readonly-id", alias: policyAliasReadonly, desc: policyReadonlyAccess},
+	{name: "AdminPolicy", id: "admin-id", desc: "full access"},
+	{name: "ReadonlyPolicy", id: "readonly-id", desc: "read-only access"},
 }
 
 // resolvePolicy only reaches for the command's colors when it prompts, so a zero-value
@@ -40,12 +40,12 @@ func TestResolvePolicy(t *testing.T) {
 		policy string
 		want   string
 	}{
-		{"generic admin alias", "admin", "admin-id"},
-		{"generic readonly alias", "readonly", "readonly-id"},
 		{"official admin name", "AdminPolicy", "admin-id"},
 		{"official readonly name", "ReadonlyPolicy", "readonly-id"},
-		{"aliases are case-insensitive", "AdMiN", "admin-id"},
 		{"official names are case-insensitive", "adminpolicy", "admin-id"},
+		// The presets mean different things on each cloud, so there are no generic aliases;
+		// "admin" is just another custom value now.
+		{"a former alias is a custom value", "admin", "admin"},
 		// The point of accepting custom policies: anything that is not a preset is a native
 		// identifier and is handed to the provider untouched, casing included.
 		{"custom value", "SomeCustomPolicy", "SomeCustomPolicy"},
