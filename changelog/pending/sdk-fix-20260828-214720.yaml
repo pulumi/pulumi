@@ -1,0 +1,4 @@
+component: sdk
+kind: fix
+body: Fix serialization of secret unknowns in NodeJS, Python and PCL.
+time: 2026-08-28T21:47:20.573293+01:00

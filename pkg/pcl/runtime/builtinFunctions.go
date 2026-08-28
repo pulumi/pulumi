@@ -163,9 +163,12 @@ func (ectx *EvalContext) builtinFunctions() map[string]function.Function {
 	secretFn := function.New(&function.Spec{
 		Params: []function.Parameter{
 			{
-				Name:        "value",
-				Type:        cty.DynamicPseudoType,
-				AllowMarked: true,
+				Name:             "value",
+				Type:             cty.DynamicPseudoType,
+				AllowMarked:      true,
+				AllowUnknown:     true,
+				AllowNull:        true,
+				AllowDynamicType: true,
 			},
 		},
 		Type: func(args []cty.Value) (cty.Type, error) {

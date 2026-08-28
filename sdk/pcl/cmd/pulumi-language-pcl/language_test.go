@@ -95,7 +95,6 @@ func runTestingHost(t *testing.T) (string, testingrpc.LanguageTestClient) {
 // Add test names here that are expected to fail and the reason why they are failing
 var expectedFailures = map[string]string{
 	"l3-deferred-outputs": "incorrectly detects cycle",
-	"l2-secret-unknown":   "the PCL runtime drops the secret marker when converting an unknown cty value back to a property value", //nolint:lll
 }
 
 func TestLanguage(t *testing.T) {
