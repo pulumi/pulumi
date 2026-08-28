@@ -18,6 +18,8 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"sort"
+	"strings"
 
 	"gopkg.in/yaml.v3"
 
@@ -50,7 +52,7 @@ func saveTemplateConfigToEnvironment(
 		return err
 	}
 
-	mainEnv, err := cmdStack.CreateStackEnvironments(ctx, s, cmdStack.StackEnvironmentOptions{
+	env, err := cmdStack.CreateStackEnvironments(ctx, s, cmdStack.StackEnvironmentOptions{
 		EnvProject: project.Name.String(),
 		EnvName:    s.Ref().Name().String(),
 		Values:     envValues,
@@ -64,16 +66,46 @@ func saveTemplateConfigToEnvironment(
 	if err != nil {
 		return err
 	}
-	ps.MainEnvironment = mainEnv
+	ps.MainEnvironment = env.MainEnvironment
 	if err := cmdStack.SaveProjectStack(ctx, s, ps, configFile); err != nil {
 		return err
 	}
 
-	if len(envValues) > 0 {
-		fmt.Fprintf(out, "Saved config to %s\n", mainEnv.Ref())
-		fmt.Fprintln(out)
+	if len(envValues) == 0 {
+		return nil
 	}
+	if env.StackEnvironmentReused {
+		// The environment already existed, and an existing environment is never overwritten, so
+		// nothing the wizard gathered was stored. One of those values may have been typed at a
+		// `--secret` prompt, so this must not be reported as a save. Name the keys — never the
+		// values — and say where to put them.
+		warnConfigNotSaved(sink, out, env.MainEnvironment.Ref(), envValues)
+		return nil
+	}
+
+	fmt.Fprintf(out, "Saved config to %s\n", env.MainEnvironment.Ref())
+	fmt.Fprintln(out)
 	return nil
+}
+
+// warnConfigNotSaved reports the config keys that were gathered but not written, because the stack's
+// environment already existed. Only the keys are named: a value may be a secret.
+func warnConfigNotSaved(sink diag.Sink, out io.Writer, envRef string, values map[string]yaml.Node) {
+	keys := make([]string, 0, len(values))
+	for k := range values {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+
+	msg := fmt.Sprintf("environment %s already exists and is never overwritten, so the configuration "+
+		"gathered here was not saved: %s\n"+
+		"    Set the values you need with 'pulumi config set [--secret] <key> <value>' after checking "+
+		"what the environment already provides.", envRef, strings.Join(keys, ", "))
+	if sink != nil {
+		sink.Warningf(diag.Message("", "%s"), msg)
+		return
+	}
+	fmt.Fprintf(out, "warning: %s\n", msg)
 }
 
 // templateConfigNodes renders the gathered config as the `values.pulumiConfig` entries of an environment

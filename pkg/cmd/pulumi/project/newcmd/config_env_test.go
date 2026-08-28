@@ -183,9 +183,25 @@ func TestSaveTemplateConfigToEnvironmentReusesExistingEnvironment(t *testing.T) 
 	require.NoError(t, saveTemplateConfigToEnvironment(
 		t.Context(), diag.DefaultSink(&out, &out, diag.FormatOptions{Color: colors.Never}), &out,
 		f.project, f.stack,
-		[]templateConfigValue{{key: config.MustMakeKey("aws", "region"), value: "us-west-2"}},
+		[]templateConfigValue{
+			{key: config.MustMakeKey("aws", "region"), value: "us-west-2"},
+			{key: config.MustMakeKey("payments", "dbPassword"), value: "hunter2", secret: true},
+		},
 		nil, ""))
 
 	assert.Empty(t, f.created)
 	assert.Contains(t, out.String(), "Environment 'acme/payments/dev' already exists — reusing.")
+
+	// The values were not written anywhere, so this must not be reported as a save. The user is told
+	// which keys were dropped, by name only — one of them was typed at a secret prompt.
+	assert.NotContains(t, out.String(), "Saved config to")
+	assert.Contains(t, out.String(), "environment payments/dev already exists and is never overwritten")
+	assert.Contains(t, out.String(), "aws:region, payments:dbPassword")
+	assert.Contains(t, out.String(), "pulumi config set")
+	assert.NotContains(t, out.String(), "hunter2")
+
+	stackFile, err := os.ReadFile(filepath.Join(f.dir, "Pulumi.dev.yaml"))
+	require.NoError(t, err)
+	assert.NotContains(t, string(stackFile), "hunter2")
+	assert.NotContains(t, string(stackFile), "us-west-2")
 }

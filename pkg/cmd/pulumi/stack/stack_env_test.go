@@ -41,6 +41,9 @@ type fakeEnvUniverse struct {
 	created []string
 	// createErrs fails the creation of the named environments.
 	createErrs map[string]error
+	// createDiags makes creation of the named environments succeed on the service but report
+	// diagnostics, i.e. the environment exists with a definition the service rejected.
+	createDiags map[string]apitype.EnvironmentDiagnostics
 }
 
 func newFakeEnvUniverse(t *testing.T, existing ...string) *fakeEnvUniverse {
@@ -48,6 +51,7 @@ func newFakeEnvUniverse(t *testing.T, existing ...string) *fakeEnvUniverse {
 		t:           t,
 		definitions: map[string]string{},
 		createErrs:  map[string]error{},
+		createDiags: map[string]apitype.EnvironmentDiagnostics{},
 	}
 	for _, e := range existing {
 		u.definitions[e] = "values: {}\n"
@@ -81,6 +85,11 @@ func (u *fakeEnvUniverse) backend() *backend.MockEnvironmentsBackend {
 			if err, ok := u.createErrs[ref]; ok {
 				return nil, err
 			}
+			if diags, ok := u.createDiags[ref]; ok {
+				// The service created the environment, then rejected its definition.
+				u.definitions[ref] = string(yaml)
+				return diags, nil
+			}
 			u.definitions[ref] = string(yaml)
 			u.created = append(u.created, ref)
 			return nil, nil
@@ -108,14 +117,15 @@ func TestCreateStackEnvironmentsCreatesBaseAndStackEnvironment(t *testing.T) {
 	u := newFakeEnvUniverse(t)
 	var out bytes.Buffer
 
-	mainEnv, err := CreateStackEnvironments(t.Context(), u.stack(), StackEnvironmentOptions{
+	env, err := CreateStackEnvironments(t.Context(), u.stack(), StackEnvironmentOptions{
 		EnvProject: "payments",
 		EnvName:    "dev",
 		Stdout:     &out,
 	})
 	require.NoError(t, err)
-	require.NotNil(t, mainEnv)
-	assert.Equal(t, "payments/dev", mainEnv.String())
+	require.NotNil(t, env.MainEnvironment)
+	assert.Equal(t, "payments/dev", env.MainEnvironment.String())
+	assert.False(t, env.StackEnvironmentReused)
 
 	assert.Equal(t, []string{"payments/base", "payments/dev"}, u.created)
 	assert.Equal(t, "values: {}\n", u.definitions["payments/base"])
@@ -132,18 +142,20 @@ func TestCreateStackEnvironmentsReusesExistingBase(t *testing.T) {
 	u.definitions["payments/base"] = "values:\n  pulumiConfig:\n    payments:logLevel: info\n"
 	var out bytes.Buffer
 
-	mainEnv, err := CreateStackEnvironments(t.Context(), u.stack(), StackEnvironmentOptions{
+	env, err := CreateStackEnvironments(t.Context(), u.stack(), StackEnvironmentOptions{
 		EnvProject: "payments",
 		EnvName:    "dev",
 		Stdout:     &out,
 	})
 	require.NoError(t, err)
-	assert.Equal(t, "payments/dev", mainEnv.String())
+	assert.Equal(t, "payments/dev", env.MainEnvironment.String())
 
 	// The pre-existing base is neither recreated nor edited.
 	assert.Equal(t, []string{"payments/dev"}, u.created)
 	assert.Equal(t, "values:\n  pulumiConfig:\n    payments:logLevel: info\n", u.definitions["payments/base"])
 	assert.Contains(t, out.String(), "Environment 'acme/payments/base' already exists — reusing.\n")
+	// Only the base was reused; the stack's own environment was created, so its values were written.
+	assert.False(t, env.StackEnvironmentReused)
 }
 
 func TestCreateStackEnvironmentsReusesExistingStackEnvironment(t *testing.T) {
@@ -153,18 +165,20 @@ func TestCreateStackEnvironmentsReusesExistingStackEnvironment(t *testing.T) {
 	u.definitions["payments/dev"] = "values:\n  pulumiConfig:\n    aws:region: eu-west-1\n"
 	var out bytes.Buffer
 
-	mainEnv, err := CreateStackEnvironments(t.Context(), u.stack(), StackEnvironmentOptions{
+	env, err := CreateStackEnvironments(t.Context(), u.stack(), StackEnvironmentOptions{
 		EnvProject: "payments",
 		EnvName:    "dev",
 		Values:     map[string]yaml.Node{"aws:region": mustScalar(t, "us-west-2")},
 		Stdout:     &out,
 	})
 	require.NoError(t, err)
-	assert.Equal(t, "payments/dev", mainEnv.String())
+	assert.Equal(t, "payments/dev", env.MainEnvironment.String())
 
 	assert.Empty(t, u.created)
 	assert.Equal(t, "values:\n  pulumiConfig:\n    aws:region: eu-west-1\n", u.definitions["payments/dev"])
 	assert.Contains(t, out.String(), "Environment 'acme/payments/dev' already exists — reusing.\n")
+	// The caller has to know the values it passed were not written.
+	assert.True(t, env.StackEnvironmentReused)
 }
 
 func TestCreateStackEnvironmentsWritesValues(t *testing.T) {
@@ -198,13 +212,13 @@ func TestCreateStackEnvironmentsConflictOnCreateIsReuse(t *testing.T) {
 	u.createErrs["payments/base"] = fmt.Errorf("%w: payments/base", backend.ErrEnvironmentConflict)
 	var out bytes.Buffer
 
-	mainEnv, err := CreateStackEnvironments(t.Context(), u.stack(), StackEnvironmentOptions{
+	env, err := CreateStackEnvironments(t.Context(), u.stack(), StackEnvironmentOptions{
 		EnvProject: "payments",
 		EnvName:    "dev",
 		Stdout:     &out,
 	})
 	require.NoError(t, err)
-	assert.Equal(t, "payments/dev", mainEnv.String())
+	assert.Equal(t, "payments/dev", env.MainEnvironment.String())
 	assert.Equal(t, []string{"payments/dev"}, u.created)
 	assert.Contains(t, out.String(), "Environment 'acme/payments/base' already exists — reusing.\n")
 }
@@ -214,12 +228,12 @@ func TestCreateStackEnvironmentsStackNamedBase(t *testing.T) {
 
 	u := newFakeEnvUniverse(t)
 
-	mainEnv, err := CreateStackEnvironments(t.Context(), u.stack(), StackEnvironmentOptions{
+	env, err := CreateStackEnvironments(t.Context(), u.stack(), StackEnvironmentOptions{
 		EnvProject: "payments",
 		EnvName:    "base",
 	})
 	require.NoError(t, err)
-	assert.Equal(t, "payments/base", mainEnv.String())
+	assert.Equal(t, "payments/base", env.MainEnvironment.String())
 	// Exactly one environment, with no self-import.
 	assert.Equal(t, []string{"payments/base"}, u.created)
 	assert.Equal(t, "values: {}\n", u.definitions["payments/base"])
@@ -231,12 +245,12 @@ func TestCreateStackEnvironmentsFailureNamesWhatWasCreated(t *testing.T) {
 	u := newFakeEnvUniverse(t)
 	u.createErrs["payments/dev"] = errors.New("boom")
 
-	mainEnv, err := CreateStackEnvironments(t.Context(), u.stack(), StackEnvironmentOptions{
+	env, err := CreateStackEnvironments(t.Context(), u.stack(), StackEnvironmentOptions{
 		EnvProject: "payments",
 		EnvName:    "dev",
 	})
 	// No main environment is returned, so the caller never records one and the stack stays ordinary.
-	assert.Nil(t, mainEnv)
+	assert.Nil(t, env.MainEnvironment)
 
 	var birthErr *EnvironmentBirthError
 	require.ErrorAs(t, err, &birthErr)
@@ -245,6 +259,30 @@ func TestCreateStackEnvironmentsFailureNamesWhatWasCreated(t *testing.T) {
 	assert.Contains(t, err.Error(), "created environment(s) acme/payments/base")
 	assert.Contains(t, err.Error(), "could not create environment acme/payments/dev: boom")
 	assert.Contains(t, err.Error(), "the stack was created without 'mainEnvironment'")
+}
+
+// The service creates an environment before writing its definition, so a rejected definition leaves an
+// environment behind. The error has to say that, or a rerun silently reuses the broken environment.
+func TestCreateStackEnvironmentsInvalidDefinitionReportsEnvironmentExists(t *testing.T) {
+	t.Parallel()
+
+	u := newFakeEnvUniverse(t)
+	u.createDiags["payments/dev"] = apitype.EnvironmentDiagnostics{{Summary: "bad value"}}
+
+	env, err := CreateStackEnvironments(t.Context(), u.stack(), StackEnvironmentOptions{
+		EnvProject: "payments",
+		EnvName:    "dev",
+	})
+	assert.Nil(t, env.MainEnvironment)
+
+	var birthErr *EnvironmentBirthError
+	require.ErrorAs(t, err, &birthErr)
+	assert.Equal(t, []string{"acme/payments/base"}, birthErr.Created)
+	assert.Equal(t, "acme/payments/dev", birthErr.Failed)
+	assert.True(t, birthErr.FailedExists)
+	assert.Contains(t, err.Error(), "environment acme/payments/dev was created with an unusable definition")
+	assert.Contains(t, err.Error(), "fix or delete it before re-running")
+	assert.NotContains(t, err.Error(), "could not create environment acme/payments/dev")
 }
 
 func TestCreateStackEnvironmentsRefusesBackendWithoutEnvironments(t *testing.T) {

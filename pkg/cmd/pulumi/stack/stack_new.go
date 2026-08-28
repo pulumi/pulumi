@@ -232,7 +232,7 @@ func (cmd *stackNewCmd) Run(ctx context.Context, args []string) error {
 	}
 
 	if cmd.escConfig {
-		mainEnv, err := CreateStackEnvironments(ctx, newStack, StackEnvironmentOptions{
+		env, err := CreateStackEnvironments(ctx, newStack, StackEnvironmentOptions{
 			EnvProject: proj.Name.String(),
 			EnvName:    stackRef.Name().String(),
 			Stdout:     cmd.stdout,
@@ -245,7 +245,7 @@ func (cmd *stackNewCmd) Run(ctx context.Context, args []string) error {
 		if err != nil {
 			return err
 		}
-		ps.MainEnvironment = mainEnv
+		ps.MainEnvironment = env.MainEnvironment
 		if err := SaveProjectStack(ctx, newStack, ps, ""); err != nil {
 			return err
 		}

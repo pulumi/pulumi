@@ -1258,13 +1258,15 @@ func TestStackBirthEndToEnd(t *testing.T) {
 
 	// 1. Birth: `pulumi stack init --esc-config` creates both environments and records the main one.
 	var birthOut bytes.Buffer
-	mainEnv, err := cmdStack.CreateStackEnvironments(t.Context(), s, cmdStack.StackEnvironmentOptions{
+	env, err := cmdStack.CreateStackEnvironments(t.Context(), s, cmdStack.StackEnvironmentOptions{
 		EnvProject: "testProject",
 		EnvName:    "testStack",
 		Values:     map[string]yaml.Node{"aws:region": regionNode},
 		Stdout:     &birthOut,
 	})
 	require.NoError(t, err)
+	require.False(t, env.StackEnvironmentReused)
+	mainEnv := env.MainEnvironment
 	assert.Equal(t, "testProject/testStack", mainEnv.String())
 	assert.Contains(t, birthOut.String(), "Creating environment 'test-org/testProject/base'...")
 	assert.Contains(t, birthOut.String(),
