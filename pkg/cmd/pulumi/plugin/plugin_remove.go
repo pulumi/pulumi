@@ -17,6 +17,8 @@ package plugin
 import (
 	"errors"
 	"fmt"
+	"slices"
+	"time"
 
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -25,7 +27,7 @@ import (
 
 	"github.com/blang/semver"
 	"github.com/hashicorp/go-multierror"
-
+	fxs "github.com/pgavlin/fx/v2/slices"
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
@@ -39,6 +41,7 @@ import (
 func newPluginRemoveCmd(pluginContext pluginstorage.Context) *cobra.Command {
 	var all bool
 	var yes bool
+	var lastUsedBefore time.Time
 	cmd := &cobra.Command{
 		Use:     "remove",
 		Aliases: []string{"rm", "delete"},
@@ -83,18 +86,16 @@ func newPluginRemoveCmd(pluginContext pluginstorage.Context) *cobra.Command {
 			}
 
 			// Now build a list of plugins that match.
-			var deletes []workspace.PluginInfo
 			plugins, err := pluginContext.GetPlugins(cmd.Context())
 			if err != nil {
 				return fmt.Errorf("loading plugins: %w", err)
 			}
-			for _, plugin := range plugins {
-				if (kind == "" || plugin.Kind == kind) &&
-					(name == "" || plugin.Name == name) &&
-					(version == nil || (plugin.Version != nil && (*version)(*plugin.Version))) {
-					deletes = append(deletes, plugin)
-				}
-			}
+			deletes := slices.Collect(fxs.Filter(plugins, func(p workspace.PluginInfo) bool {
+				return (kind == "" || p.Kind == kind) &&
+					(name == "" || p.Name == name) &&
+					(version == nil || (p.Version != nil && (*version)(*p.Version))) &&
+					(lastUsedBefore.IsZero() || lastUsedBefore.After(p.LastUsedTime()))
+			}))
 
 			if len(deletes) == 0 {
 				cmdutil.Diag().Infof(
@@ -151,6 +152,9 @@ func newPluginRemoveCmd(pluginContext pluginstorage.Context) *cobra.Command {
 	cmd.PersistentFlags().BoolVarP(
 		&yes, "yes", "y", false,
 		"Skip confirmation prompts, and proceed with removal anyway")
+	cmd.PersistentFlags().TimeVar(
+		&lastUsedBefore, "last-used-before", time.Time{}, []string{time.RFC1123, time.RFC3339},
+		"Only remove plugins last used before this time")
 
 	return cmd
 }
