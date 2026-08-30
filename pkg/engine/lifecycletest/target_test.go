@@ -5005,7 +5005,6 @@ func TestTargetedOperationSkipsUnrelatedProviderConfiguration(t *testing.T) {
 // run the targeted preview many times to try to catch it. Registrations are performed
 // concurrently from goroutines so they can actually race.
 func TestTargetedPreviewNoDuplicateURN_Issue24303(t *testing.T) {
-	t.Skip("Currently failing")
 	t.Parallel()
 
 	loaders := []*deploytest.ProviderLoader{
@@ -5127,7 +5126,6 @@ func TestTargetedPreviewNoDuplicateURN_Issue24303(t *testing.T) {
 // The bare-minimum "just short-circuit" fix would leave the old inputs in place and
 // fail this assertion.
 func TestTargetedUpdateAppliesNewInputs_Issue24303(t *testing.T) {
-	t.Skip("Currently failing")
 	t.Parallel()
 
 	loaders := []*deploytest.ProviderLoader{
@@ -5271,4 +5269,64 @@ func TestTargetedUpdateAppliesNewInputs_Issue24303(t *testing.T) {
 		}
 	}
 	require.Equal(t, rollbackCount, found, "expected all rollback resources in snapshot")
+}
+
+// A targeted resource that depends on an untargeted one whose same step has been held back must
+// still be written after it. See https://github.com/pulumi/pulumi/issues/24303.
+func TestTargetedStepAfterDeferredUntargetedSame(t *testing.T) {
+	t.Parallel()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+	}
+
+	oldDependencyURN := resource.URN("urn:pulumi:test::test::pkgA:m:typA::old-dependency")
+	deferredURN := resource.URN("urn:pulumi:test::test::pkgA:m:typA::deferred")
+	targetedURN := resource.URN("urn:pulumi:test::test::pkgA:m:typA::targeted")
+
+	// When set, the program no longer declares the dependency, so old-dependency is free to
+	// register after the resources that used to precede it. deferred's old state still carries
+	// the edge, so deferred may only be written after old-dependency.
+	var dropEdge bool
+
+	program := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		deferredOpts := deploytest.ResourceOptions{}
+		if !dropEdge {
+			_, err := monitor.RegisterResource("pkgA:m:typA", "old-dependency", true)
+			require.NoError(t, err)
+			deferredOpts.Dependencies = []resource.URN{oldDependencyURN}
+		}
+
+		_, err := monitor.RegisterResource("pkgA:m:typA", "deferred", true, deferredOpts)
+		require.NoError(t, err)
+
+		_, err = monitor.RegisterResource("pkgA:m:typA", "targeted", true, deploytest.ResourceOptions{
+			Dependencies: []resource.URN{deferredURN},
+		})
+		require.NoError(t, err)
+
+		if dropEdge {
+			_, err = monitor.RegisterResource("pkgA:m:typA", "old-dependency", true)
+			require.NoError(t, err)
+		}
+		return nil
+	})
+
+	hostF := deploytest.NewPluginHostF(nil, nil, program, nil, nil, loaders...)
+	p := &lt.TestPlan{}
+	project := p.GetProject()
+	opts := lt.TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true}
+
+	snap, err := lt.TestOp(Update).Run(project, p.GetTarget(t, nil), opts, false, p.BackendClient, nil)
+	require.NoError(t, err)
+
+	dropEdge = true
+	targetedOpts := opts
+	targetedOpts.Targets = deploy.NewUrnTargetsFromUrns([]resource.URN{targetedURN})
+
+	snap, err = lt.TestOp(Update).Run(project, p.GetTarget(t, snap), targetedOpts, false, p.BackendClient, nil)
+	require.NoError(t, err)
+	require.NoError(t, snap.VerifyIntegrity())
 }
