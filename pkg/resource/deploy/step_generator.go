@@ -279,6 +279,9 @@ func (sg *stepGenerator) generateURN(
 ) (resource.URN, error) {
 	// Generate a URN for this new resource, confirm we haven't seen it before in this deployment.
 	urn := sg.deployment.generateURN(parent, ty, name)
+	if err := sg.deployment.rejectStateMigrationPredecessorURN(urn); err != nil {
+		return "", err
+	}
 	if sg.urns[urn] {
 		// TODO[pulumi/pulumi-framework#19]: improve this error message!
 		return "", sg.bailDiag(diag.GetDuplicateResourceURNError(urn), urn)
@@ -652,12 +655,25 @@ func (sg *stepGenerator) generateAliases(
 	return result
 }
 
+// generateRewrittenAliases resolves registration aliases through state migration rewrites committed earlier in the
+// update. A program may continue to name a predecessor URN even though a migration has already replaced that state
+// with its successor in the deployment's old-resource map.
+func (sg *stepGenerator) generateRewrittenAliases(
+	name string, typ tokens.Type, parent resource.URN, resAliases []resource.Alias,
+) []resource.URN {
+	aliases := sg.generateAliases(name, typ, parent, resAliases)
+	for i, alias := range aliases {
+		aliases[i] = sg.deployment.rewriteStateMigrationURN(alias)
+	}
+	return aliases
+}
+
 func (sg *stepGenerator) getOldResource(
 	urn resource.URN, name string, typ tokens.Type, parent resource.URN, resAliases []resource.Alias,
 ) (*pkgresource.State, bool, resource.URN) {
 	invalid := false
 	// Generate the aliases for this resource.
-	aliases := sg.generateAliases(name, typ, parent, resAliases)
+	aliases := sg.generateRewrittenAliases(name, typ, parent, resAliases)
 	// Log the aliases we're going to use to help with debugging aliasing issues.
 	logging.V(7).Infof("Generated aliases for %s: %v", urn, aliases)
 
@@ -715,8 +731,10 @@ func (sg *stepGenerator) getOldResource(
 func (sg *stepGenerator) generateSteps(ctx context.Context, event RegisterResourceEvent) ([]Step, bool, error) {
 	goal := event.Goal()
 
+	parent := sg.deployment.rewriteStateMigrationURN(goal.Parent)
+
 	// Some goal settings are based on the parent settings so make sure our parent is correct.
-	parent, err := sg.checkParent(goal.Parent, goal.Type)
+	parent, err := sg.checkParent(parent, goal.Type)
 	if err != nil {
 		return nil, false, err
 	}
@@ -768,6 +786,9 @@ func (sg *stepGenerator) generateResourceSteps(
 	ctx context.Context, event RegisterResourceEvent, urn resource.URN,
 ) ([]Step, bool, error) {
 	goal := event.Goal()
+	if err := sg.deployment.normalizeStateMigrationGoal(goal); err != nil {
+		return nil, false, fmt.Errorf("normalizing resource goal for %s after state migration: %w", urn, err)
+	}
 	old, invalid, alias := sg.getOldResource(urn, goal.Name, goal.Type, goal.Parent, goal.Aliases)
 
 	var aliasUrns []resource.URN
