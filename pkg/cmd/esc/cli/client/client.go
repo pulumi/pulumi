@@ -76,6 +76,9 @@ type Client interface {
 	// if not configured locally by the user.
 	GetDefaultOrg(ctx context.Context) (string, error)
 
+	// GetOrganizationID returns the unique identifier of an organization.
+	GetOrganizationID(ctx context.Context, orgName string) (string, error)
+
 	// ListEnvironments lists all environments that are accessible to the calling user.
 	//
 	// Each call to ListEnvironments returns a page of results and a continuation token. If there are no
@@ -609,6 +612,20 @@ func (pc *client) GetPulumiAccountDetails(ctx context.Context) (string, []string
 	}
 
 	return pc.apiUser, pc.apiOrgs, pc.tokenInfo, nil
+}
+
+// GetOrganizationID returns the unique identifier of an organization.
+func (pc *client) GetOrganizationID(ctx context.Context, orgName string) (string, error) {
+	var resp struct {
+		ID string `json:"id"`
+	}
+	if err := pc.restCall(ctx, "GET", "/api/orgs/"+orgName+"/metadata", nil, nil, &resp); err != nil {
+		return "", err
+	}
+	if resp.ID == "" {
+		return "", fmt.Errorf("organization %s has no ID", orgName)
+	}
+	return resp.ID, nil
 }
 
 // resolveEnvironmentPath resolves an environment and revision or tag to its API path.
