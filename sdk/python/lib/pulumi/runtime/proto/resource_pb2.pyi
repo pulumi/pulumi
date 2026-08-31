@@ -1809,6 +1809,63 @@ class ErrorHookResponse(google.protobuf.message.Message):
 global___ErrorHookResponse = ErrorHookResponse
 
 @typing.final
+class StashReduceRequest(google.protobuf.message.Message):
+    """StashReduceRequest is the request object for the reducer callback registered on a pulumi:index:Stash resource.
+    The callback is invoked by the builtin provider during Check on updates and combines the previously persisted
+    input and output values with the current program input to produce a new reduced output value.
+    """
+
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    OLD_INPUT_FIELD_NUMBER: builtins.int
+    OLD_OUTPUT_FIELD_NUMBER: builtins.int
+    NEW_INPUT_FIELD_NUMBER: builtins.int
+    @property
+    def old_input(self) -> google.protobuf.struct_pb2.Value:
+        """the previously persisted input value of the stash."""
+
+    @property
+    def old_output(self) -> google.protobuf.struct_pb2.Value:
+        """the previously persisted output value of the stash."""
+
+    @property
+    def new_input(self) -> google.protobuf.struct_pb2.Value:
+        """the current program input to the stash."""
+
+    def __init__(
+        self,
+        *,
+        old_input: google.protobuf.struct_pb2.Value | None = ...,
+        old_output: google.protobuf.struct_pb2.Value | None = ...,
+        new_input: google.protobuf.struct_pb2.Value | None = ...,
+    ) -> None: ...
+    def HasField(self, field_name: typing.Literal["new_input", b"new_input", "old_input", b"old_input", "old_output", b"old_output"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing.Literal["new_input", b"new_input", "old_input", b"old_input", "old_output", b"old_output"]) -> None: ...
+
+global___StashReduceRequest = StashReduceRequest
+
+@typing.final
+class StashReduceResponse(google.protobuf.message.Message):
+    """StashReduceResponse is the response object for a stash reducer callback."""
+
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    REDUCED_FIELD_NUMBER: builtins.int
+    @property
+    def reduced(self) -> google.protobuf.struct_pb2.Value:
+        """the new reduced output value."""
+
+    def __init__(
+        self,
+        *,
+        reduced: google.protobuf.struct_pb2.Value | None = ...,
+    ) -> None: ...
+    def HasField(self, field_name: typing.Literal["reduced", b"reduced"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing.Literal["reduced", b"reduced"]) -> None: ...
+
+global___StashReduceResponse = StashReduceResponse
+
+@typing.final
 class RegisterPackageRequest(google.protobuf.message.Message):
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 

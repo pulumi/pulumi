@@ -519,6 +519,20 @@ message ErrorHookResponse {
     bool retry = 2; // whether we should retry the operation.
 }
 
+// StashReduceRequest is the request object for the reducer callback registered on a pulumi:index:Stash resource.
+// The callback is invoked by the builtin provider during Check on updates and combines the previously persisted
+// input and output values with the current program input to produce a new reduced output value.
+message StashReduceRequest {
+    google.protobuf.Value old_input = 1; // the previously persisted input value of the stash.
+    google.protobuf.Value old_output = 2; // the previously persisted output value of the stash.
+    google.protobuf.Value new_input = 3; // the current program input to the stash.
+}
+
+// StashReduceResponse is the response object for a stash reducer callback.
+message StashReduceResponse {
+    google.protobuf.Value reduced = 1; // the new reduced output value.
+}
+
 message RegisterPackageRequest {
     string name = 1; // the plugin name.
     string version = 2; // the plugin version.

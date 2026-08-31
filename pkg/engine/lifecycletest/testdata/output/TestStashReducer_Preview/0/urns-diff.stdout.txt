@@ -1,0 +1,4 @@
+<{%fg 2%}>+ urn:pulumi:test::test::pulumi:index:Stash::stash: (create)
+<{%fg 2%}>    input    : <{%reset%}><{%fg 2%}>[unknown]<{%reset%}><{%fg 2%}>
+<{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    <{%fg 2%}>+ 1 to create<{%reset%}>
