@@ -270,6 +270,26 @@ func (mod *modContext) objectType(t *schema.ObjectType, input bool, forDict bool
 	return fmt.Sprintf("'%s%s%s'", modName, prefix, name)
 }
 
+// admittedOutputType returns the output class that resource and function signatures also accept
+// for the object type `t` in the classes-and-dicts flavor, or nil when there is none. Without the
+// `Mapping[str, Any]` member of `pulumi.InputType`, an output type is neither its Args class nor
+// its TypedDict, so listing the output class is what lets one resource's output flow into
+// another's input. TypedDict items are left alone: the component analyzer inlines them and
+// rejects unions.
+func (mod *modContext) admittedOutputType(t *schema.ObjectType) *schema.ObjectType {
+	if !typedDictEnabled(mod.inputTypes) || !codegen.PkgEquals(t.PackageReference, mod.pkg) {
+		return nil
+	}
+	plain := t
+	if t.IsInputShape() {
+		plain = t.PlainShape
+	}
+	if !mod.details(plain).outputType {
+		return nil
+	}
+	return plain
+}
+
 func (mod *modContext) enumType(enum *schema.EnumType) string {
 	tok := enum.Token
 	pkgName, modName, name := enum.PackageReference.Name(), mod.tokenToModule(tok), tokenToName(tok)
@@ -2369,6 +2389,11 @@ func (mod *modContext) collectImportsForResource(properties []*schema.Property, 
 		switch t := t.(type) {
 		case *schema.ObjectType:
 			imports.addType(mod, t, input)
+			if input {
+				if out := mod.admittedOutputType(t); out != nil {
+					imports.addType(mod, out, false /*input*/)
+				}
+			}
 		case *schema.EnumType:
 			imports.addEnum(mod, t)
 		case *schema.ResourceType:
@@ -2835,7 +2860,11 @@ func (mod *modContext) typeString(t schema.Type, opts typeStringOpts) string {
 		// dictType covers the Mapping case in `InputType = Union[T, Mapping[str, Any]]`.
 		typedDicts := typedDictEnabled(inputTypes) && samePackage
 		if typedDicts && opts.input {
-			return fmt.Sprintf("Union[%s, %s]", typ, mod.objectType(t, opts.input, true /*dictType*/))
+			members := []string{typ, mod.objectType(t, opts.input, true /*dictType*/)}
+			if out := mod.admittedOutputType(t); out != nil {
+				members = append(members, mod.objectType(out, false /*input*/, false /*dictType*/))
+			}
+			return fmt.Sprintf("Union[%s]", strings.Join(members, ", "))
 		}
 		return fmt.Sprintf("pulumi.InputType[%s]", typ)
 	case *schema.ResourceType:

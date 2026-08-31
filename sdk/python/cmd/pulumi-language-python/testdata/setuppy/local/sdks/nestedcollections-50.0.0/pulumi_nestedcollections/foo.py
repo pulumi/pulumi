@@ -56,7 +56,7 @@ class Foo(pulumi.CustomResource):
     def __init__(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 condition_sets: pulumi.Input[Optional[Sequence[pulumi.Input[Sequence[pulumi.Input[Sequence[pulumi.Input[Union['BarArgs', 'BarArgsDict']]]]]]]]] = None,
+                 condition_sets: pulumi.Input[Optional[Sequence[pulumi.Input[Sequence[pulumi.Input[Sequence[pulumi.Input[Union['BarArgs', 'BarArgsDict', 'outputs.Bar']]]]]]]]] = None,
                  private_endpoint: pulumi.Input[Optional[Mapping[str, pulumi.Input[Mapping[str, pulumi.Input[Mapping[str, pulumi.Input[_builtins.str]]]]]]]] = None,
                  __props__=None):
         """
@@ -89,7 +89,7 @@ class Foo(pulumi.CustomResource):
     def _internal_init(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 condition_sets: pulumi.Input[Optional[Sequence[pulumi.Input[Sequence[pulumi.Input[Sequence[pulumi.Input[Union['BarArgs', 'BarArgsDict']]]]]]]]] = None,
+                 condition_sets: pulumi.Input[Optional[Sequence[pulumi.Input[Sequence[pulumi.Input[Sequence[pulumi.Input[Union['BarArgs', 'BarArgsDict', 'outputs.Bar']]]]]]]]] = None,
                  private_endpoint: pulumi.Input[Optional[Mapping[str, pulumi.Input[Mapping[str, pulumi.Input[Mapping[str, pulumi.Input[_builtins.str]]]]]]]] = None,
                  __props__=None):
         opts = pulumi.ResourceOptions.merge(_utilities.get_resource_opts_defaults(), opts)

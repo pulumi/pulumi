@@ -108,7 +108,7 @@ class AwaitableGetAmiIdsResult(GetAmiIdsResult):
 
 
 def get_ami_ids(executable_users: Optional[Sequence[_builtins.str]] = None,
-                filters: Optional[Sequence[Union['GetAmiIdsFilterArgs', 'GetAmiIdsFilterArgsDict']]] = None,
+                filters: Optional[Sequence[Union['GetAmiIdsFilterArgs', 'GetAmiIdsFilterArgsDict', 'outputs.GetAmiIdsFilterResult']]] = None,
                 name_regex: Optional[_builtins.str] = None,
                 owners: Optional[Sequence[_builtins.str]] = None,
                 sort_ascending: Optional[_builtins.bool] = None,
@@ -118,7 +118,7 @@ def get_ami_ids(executable_users: Optional[Sequence[_builtins.str]] = None,
 
     :param Sequence[_builtins.str] executable_users: Limit search to users with *explicit* launch
            permission on  the image. Valid items are the numeric account ID or `self`.
-    :param Sequence[Union['GetAmiIdsFilterArgs', 'GetAmiIdsFilterArgsDict']] filters: One or more name/value pairs to filter off of. There
+    :param Sequence[Union['GetAmiIdsFilterArgs', 'GetAmiIdsFilterArgsDict', 'outputs.GetAmiIdsFilterResult']] filters: One or more name/value pairs to filter off of. There
            are several valid keys, for a full reference, check out
            [describe-images in the AWS CLI reference][1].
     :param _builtins.str name_regex: A regex string to apply to the AMI list returned
@@ -148,7 +148,7 @@ def get_ami_ids(executable_users: Optional[Sequence[_builtins.str]] = None,
         owners=pulumi.get(__ret__, 'owners'),
         sort_ascending=pulumi.get(__ret__, 'sort_ascending'))
 def get_ami_ids_output(executable_users: pulumi.Input[Optional[Optional[Sequence[_builtins.str]]]] = None,
-                       filters: pulumi.Input[Optional[Optional[Sequence[Union['GetAmiIdsFilterArgs', 'GetAmiIdsFilterArgsDict']]]]] = None,
+                       filters: pulumi.Input[Optional[Optional[Sequence[Union['GetAmiIdsFilterArgs', 'GetAmiIdsFilterArgsDict', 'outputs.GetAmiIdsFilterResult']]]]] = None,
                        name_regex: pulumi.Input[Optional[Optional[_builtins.str]]] = None,
                        owners: pulumi.Input[Optional[Sequence[_builtins.str]]] = None,
                        sort_ascending: pulumi.Input[Optional[Optional[_builtins.bool]]] = None,
@@ -158,7 +158,7 @@ def get_ami_ids_output(executable_users: pulumi.Input[Optional[Optional[Sequence
 
     :param Sequence[_builtins.str] executable_users: Limit search to users with *explicit* launch
            permission on  the image. Valid items are the numeric account ID or `self`.
-    :param Sequence[Union['GetAmiIdsFilterArgs', 'GetAmiIdsFilterArgsDict']] filters: One or more name/value pairs to filter off of. There
+    :param Sequence[Union['GetAmiIdsFilterArgs', 'GetAmiIdsFilterArgsDict', 'outputs.GetAmiIdsFilterResult']] filters: One or more name/value pairs to filter off of. There
            are several valid keys, for a full reference, check out
            [describe-images in the AWS CLI reference][1].
     :param _builtins.str name_regex: A regex string to apply to the AMI list returned

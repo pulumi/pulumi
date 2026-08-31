@@ -43,7 +43,7 @@ class Example(pulumi.CustomResource):
     def __init__(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 union_in: pulumi.Input[Optional[Union[Union['VariantOneArgs', 'VariantOneArgsDict'], Union['VariantTwoArgs', 'VariantTwoArgsDict']]]] = None,
+                 union_in: pulumi.Input[Optional[Union[Union['VariantOneArgs', 'VariantOneArgsDict', 'outputs.VariantOne'], Union['VariantTwoArgs', 'VariantTwoArgsDict', 'outputs.VariantTwo']]]] = None,
                  __props__=None):
         """
         Create a Example resource with the given unique name, props, and options.
@@ -75,7 +75,7 @@ class Example(pulumi.CustomResource):
     def _internal_init(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 union_in: pulumi.Input[Optional[Union[Union['VariantOneArgs', 'VariantOneArgsDict'], Union['VariantTwoArgs', 'VariantTwoArgsDict']]]] = None,
+                 union_in: pulumi.Input[Optional[Union[Union['VariantOneArgs', 'VariantOneArgsDict', 'outputs.VariantOne'], Union['VariantTwoArgs', 'VariantTwoArgsDict', 'outputs.VariantTwo']]]] = None,
                  __props__=None):
         opts = pulumi.ResourceOptions.merge(_utilities.get_resource_opts_defaults(), opts)
         if not isinstance(opts, pulumi.ResourceOptions):

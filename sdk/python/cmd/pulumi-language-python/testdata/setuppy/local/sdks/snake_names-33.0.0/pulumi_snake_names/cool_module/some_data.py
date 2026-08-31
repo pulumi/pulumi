@@ -45,7 +45,7 @@ class AwaitableSome_dataResult(Some_dataResult):
             nested_output=self.nested_output)
 
 
-def some_data(nested: Optional[Sequence[Union['Entry', 'EntryDict']]] = None,
+def some_data(nested: Optional[Sequence[Union['Entry', 'EntryDict', 'outputs.Entry']]] = None,
               the_input: Optional[_builtins.str] = None,
               opts: Optional[pulumi.InvokeOptions] = None) -> AwaitableSome_dataResult:
     """
@@ -59,7 +59,7 @@ def some_data(nested: Optional[Sequence[Union['Entry', 'EntryDict']]] = None,
 
     return AwaitableSome_dataResult(
         nested_output=pulumi.get(__ret__, 'nested_output'))
-def some_data_output(nested: pulumi.Input[Optional[Sequence[Union['Entry', 'EntryDict']]]] = None,
+def some_data_output(nested: pulumi.Input[Optional[Sequence[Union['Entry', 'EntryDict', 'outputs.Entry']]]] = None,
                      the_input: pulumi.Input[Optional[_builtins.str]] = None,
                      opts: Optional[Union[pulumi.InvokeOptions, pulumi.InvokeOutputOptions]] = None) -> pulumi.Output[Some_dataResult]:
     """

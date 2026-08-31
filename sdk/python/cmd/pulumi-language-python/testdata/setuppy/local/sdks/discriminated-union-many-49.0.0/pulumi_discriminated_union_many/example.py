@@ -44,7 +44,7 @@ class Example(pulumi.CustomResource):
     def __init__(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 union_of: pulumi.Input[Optional[Union[Union['Variant1Args', 'Variant1ArgsDict'], Union['Variant2Args', 'Variant2ArgsDict'], Union['Variant3Args', 'Variant3ArgsDict'], Union['Variant4Args', 'Variant4ArgsDict'], Union['Variant5Args', 'Variant5ArgsDict'], Union['Variant6Args', 'Variant6ArgsDict'], Union['Variant7Args', 'Variant7ArgsDict'], Union['Variant8Args', 'Variant8ArgsDict'], Union['Variant9Args', 'Variant9ArgsDict'], Union['Variant10Args', 'Variant10ArgsDict']]]] = None,
+                 union_of: pulumi.Input[Optional[Union[Union['Variant1Args', 'Variant1ArgsDict', 'outputs.Variant1'], Union['Variant2Args', 'Variant2ArgsDict', 'outputs.Variant2'], Union['Variant3Args', 'Variant3ArgsDict', 'outputs.Variant3'], Union['Variant4Args', 'Variant4ArgsDict', 'outputs.Variant4'], Union['Variant5Args', 'Variant5ArgsDict', 'outputs.Variant5'], Union['Variant6Args', 'Variant6ArgsDict', 'outputs.Variant6'], Union['Variant7Args', 'Variant7ArgsDict', 'outputs.Variant7'], Union['Variant8Args', 'Variant8ArgsDict', 'outputs.Variant8'], Union['Variant9Args', 'Variant9ArgsDict', 'outputs.Variant9'], Union['Variant10Args', 'Variant10ArgsDict', 'outputs.Variant10']]]] = None,
                  __props__=None):
         """
         Create a Example resource with the given unique name, props, and options.
@@ -76,7 +76,7 @@ class Example(pulumi.CustomResource):
     def _internal_init(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 union_of: pulumi.Input[Optional[Union[Union['Variant1Args', 'Variant1ArgsDict'], Union['Variant2Args', 'Variant2ArgsDict'], Union['Variant3Args', 'Variant3ArgsDict'], Union['Variant4Args', 'Variant4ArgsDict'], Union['Variant5Args', 'Variant5ArgsDict'], Union['Variant6Args', 'Variant6ArgsDict'], Union['Variant7Args', 'Variant7ArgsDict'], Union['Variant8Args', 'Variant8ArgsDict'], Union['Variant9Args', 'Variant9ArgsDict'], Union['Variant10Args', 'Variant10ArgsDict']]]] = None,
+                 union_of: pulumi.Input[Optional[Union[Union['Variant1Args', 'Variant1ArgsDict', 'outputs.Variant1'], Union['Variant2Args', 'Variant2ArgsDict', 'outputs.Variant2'], Union['Variant3Args', 'Variant3ArgsDict', 'outputs.Variant3'], Union['Variant4Args', 'Variant4ArgsDict', 'outputs.Variant4'], Union['Variant5Args', 'Variant5ArgsDict', 'outputs.Variant5'], Union['Variant6Args', 'Variant6ArgsDict', 'outputs.Variant6'], Union['Variant7Args', 'Variant7ArgsDict', 'outputs.Variant7'], Union['Variant8Args', 'Variant8ArgsDict', 'outputs.Variant8'], Union['Variant9Args', 'Variant9ArgsDict', 'outputs.Variant9'], Union['Variant10Args', 'Variant10ArgsDict', 'outputs.Variant10']]]] = None,
                  __props__=None):
         opts = pulumi.ResourceOptions.merge(_utilities.get_resource_opts_defaults(), opts)
         if not isinstance(opts, pulumi.ResourceOptions):

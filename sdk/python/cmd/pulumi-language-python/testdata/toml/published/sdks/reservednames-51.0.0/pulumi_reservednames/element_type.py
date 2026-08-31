@@ -43,7 +43,7 @@ class ElementType(pulumi.CustomResource):
     def __init__(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 element_type: pulumi.Input[Optional[Union['ElementTypeArgs', 'ElementTypeArgsDict']]] = None,
+                 element_type: pulumi.Input[Optional[Union['ElementTypeArgs', 'ElementTypeArgsDict', 'outputs.ElementType']]] = None,
                  __props__=None):
         """
         Create a ElementType resource with the given unique name, props, and options.
@@ -75,7 +75,7 @@ class ElementType(pulumi.CustomResource):
     def _internal_init(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 element_type: pulumi.Input[Optional[Union['ElementTypeArgs', 'ElementTypeArgsDict']]] = None,
+                 element_type: pulumi.Input[Optional[Union['ElementTypeArgs', 'ElementTypeArgsDict', 'outputs.ElementType']]] = None,
                  __props__=None):
         opts = pulumi.ResourceOptions.merge(_utilities.get_resource_opts_defaults(), opts)
         if not isinstance(opts, pulumi.ResourceOptions):
