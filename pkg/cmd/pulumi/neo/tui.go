@@ -31,6 +31,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
 	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 )
 
 // ctrlCArmTimeout is how long the "press Ctrl+C again to exit" gate stays
@@ -1111,7 +1112,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// CreateNeoTask sends UISessionURL immediately after taskID is set,
 		// so this is the natural moment to lift the post-Enter toggle freeze.
 		m.taskCreated = true
-		cmds = append(cmds, m.printlnBlock("  "+inputHintStyle.Render("⟡ "+osc8Hyperlink(msg.URL, msg.URL))))
+		cmds = append(cmds, m.printlnBlock("  "+inputHintStyle.Render("⟡ "+colors.Always.Hyperlink(msg.URL, msg.URL))))
 		cmds = append(cmds, waitForEvent(m.eventCh))
 
 	case UIUserMessage:
