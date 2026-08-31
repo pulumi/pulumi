@@ -2121,3 +2121,37 @@ func TestImportIDPreservedAcrossUpdate(t *testing.T) {
 		}, "1")
 	require.NoError(t, err)
 }
+
+// Regression https://github.com/pulumi/pulumi/issues/20820, importing an ID that doesn't exist reports the resource as
+// missing even when the provider signals that by returning an empty (but non-nil) property map.
+func TestImportMissingIDWithEmptyOutputs(t *testing.T) {
+	t.Parallel()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				ReadF: func(_ context.Context, _ plugin.ReadRequest) (plugin.ReadResponse, error) {
+					return plugin.ReadResponse{
+						ReadResult: plugin.ReadResult{Outputs: resource.PropertyMap{}},
+						Status:     resource.StatusOK,
+					}, nil
+				},
+			}, nil
+		}),
+	}
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+			ImportID: "does-not-exist",
+		})
+		require.ErrorContains(t, err, "resource 'does-not-exist' does not exist")
+		return err
+	})
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
+
+	p := &lt.TestPlan{Options: lt.TestUpdateOptions{T: t, HostF: hostF}}
+
+	project := p.GetProject()
+	_, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
+	assert.Error(t, err)
+}

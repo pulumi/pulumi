@@ -2055,7 +2055,10 @@ func (s *ImportStep) Apply() (_ resource.Status, _ StepCompleteFunc, err error) 
 				return rst, nil, err
 			}
 		}
-		if read.Outputs == nil {
+		// A provider signals that a resource does not exist by returning no state for it. Some providers do this by
+		// returning an empty (but non-nil) property map alongside an empty ID rather than a nil one, so treat that as
+		// a missing resource too.
+		if read.Outputs == nil || (read.ID == "" && len(read.Outputs) == 0) {
 			resourceID := s.new.ID
 			if resourceID == "" {
 				resourceID = s.new.ImportID
