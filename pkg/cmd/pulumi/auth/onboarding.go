@@ -28,8 +28,10 @@ import (
 
 	pkgBackend "github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/project/newcmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/updatecheck"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 )
 
@@ -116,6 +118,15 @@ func runNew(ctx context.Context, cwd string, opts display.Options) error {
 		target = abs
 	}
 
+	// Run the version check a standalone `pulumi new` would run, carrying its command metadata.
+	// The root command's own check surfaces any upgrade warning, so the result is only cached.
+	flags := ""
+	if len(args) > 0 {
+		flags = "--dir"
+	}
+	check := updatecheck.Start(ctx, client.PulumiCloudURL,
+		updatecheck.CommandMetadata("pulumi new", flags, "pulumi login"))
+
 	newCmd := newcmd.NewNewCmd()
 	newCmd.SetArgs(args)
 	// `pulumi new`'s usage text and error reporting belong to `pulumi login`'s caller here.
@@ -126,6 +137,9 @@ func runNew(ctx context.Context, cwd string, opts display.Options) error {
 	// either way. We don't have to tell those apart: target was empty before this ran, so anything
 	// in it now is a half-written project the user should know about.
 	err := newCmd.ExecuteContext(ctx)
+
+	updatecheck.Finish(check)
+
 	if err != nil && newcmd.ErrorIfNotEmptyDirectory(target) != nil {
 		return fmt.Errorf("%w\nYour new project in %s is incomplete", err, target)
 	}

@@ -16,6 +16,7 @@ package updatecheck
 
 import (
 	"io"
+	"os"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -72,6 +73,19 @@ func GetCLIMetadata(cmd *cobra.Command, environ []string, args []string) map[str
 	}
 
 	return metadata
+}
+
+// CommandMetadata returns the version-check metadata for an invocation of command with the
+// given flags, matching what GetCLIMetadata reports for a standalone invocation, plus a Via
+// entry naming the command that ran it. It is for commands run in-process on behalf of
+// another command, whose metadata the root command's own version check does not carry.
+func CommandMetadata(command, flags, via string) map[string]string {
+	return map[string]string{
+		"Command":     command,
+		"Flags":       flags,
+		"Environment": pulumiEnvNames(os.Environ()),
+		"Via":         via,
+	}
 }
 
 // pulumiEnvNames returns the names, not the values, of the PULUMI_-prefixed variables in environ.

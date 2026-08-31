@@ -15,6 +15,8 @@
 package updatecheck
 
 import (
+	"net/http"
+	"net/http/httptest"
 	"testing"
 
 	"github.com/spf13/cobra"
@@ -23,6 +25,7 @@ import (
 
 	cmdDo "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/do"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 func TestGetCLIMetadata(t *testing.T) {
@@ -265,6 +268,71 @@ func newDoTestCmd() *cobra.Command {
 	doCmd := cmdDo.NewDoCmd(nil, nil, nil, nil, nil, nil)
 	root.AddCommand(doCmd)
 	return doCmd
+}
+
+func storeCredentials(t *testing.T, url string) {
+	t.Setenv("PULUMI_HOME", t.TempDir())
+	require.NoError(t, workspace.StoreCredentials(workspace.Credentials{
+		Current: url,
+		Accounts: map[string]workspace.Account{
+			url: {AccessToken: "access-token"},
+		},
+		AccessTokens: map[string]string{
+			url: "access-token",
+		},
+	}))
+}
+
+func TestCommandMetadata(t *testing.T) {
+	t.Setenv("PULUMI_COMMAND_METADATA_TEST", "true")
+
+	metadata := CommandMetadata("pulumi new", "--dir", "pulumi login")
+
+	assert.Equal(t, "pulumi new", metadata["Command"])
+	assert.Equal(t, "--dir", metadata["Flags"])
+	assert.Equal(t, "pulumi login", metadata["Via"])
+	assert.Contains(t, metadata["Environment"], "PULUMI_COMMAND_METADATA_TEST")
+}
+
+func TestStartSendsCommandMetadata(t *testing.T) {
+	for _, flags := range []string{"", "--dir"} {
+		t.Run("flags="+flags, func(t *testing.T) {
+			t.Setenv("PULUMI_SKIP_UPDATE_CHECK", "false")
+
+			called := false
+			var authHeader, commandHeader, flagsHeader, environmentHeader, viaHeader string
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				require.Equal(t, "/api/cli/version", r.URL.Path)
+				called = true
+
+				authHeader = r.Header.Get("Authorization")
+				commandHeader = r.Header.Get("X-Pulumi-Command")
+				flagsHeader = r.Header.Get("X-Pulumi-Flags")
+				environmentHeader = r.Header.Get("X-Pulumi-Environment")
+				viaHeader = r.Header.Get("X-Pulumi-Via")
+
+				w.WriteHeader(http.StatusOK)
+				_, err := w.Write([]byte(`{
+					"latestVersion": "v1.2.3",
+					"oldestWithoutWarning": "v1.2.0"
+				}`))
+				require.NoError(t, err)
+			}))
+			t.Cleanup(srv.Close)
+			storeCredentials(t, srv.URL)
+
+			ch := Start(t.Context(), srv.URL, CommandMetadata("pulumi new", flags, "pulumi login"))
+			require.NotNil(t, ch)
+			<-ch
+
+			require.True(t, called, "should have called API")
+			assert.Equal(t, "token access-token", authHeader)
+			assert.Equal(t, "pulumi new", commandHeader)
+			assert.Equal(t, flags, flagsHeader)
+			assert.Contains(t, environmentHeader, "PULUMI_SKIP_UPDATE_CHECK")
+			assert.Equal(t, "pulumi login", viaHeader)
+		})
+	}
 }
 
 func TestPulumiEnvNames(t *testing.T) {
