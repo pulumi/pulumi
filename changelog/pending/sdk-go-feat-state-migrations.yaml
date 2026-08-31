@@ -1,0 +1,4 @@
+component: sdk/go
+kind: feat
+body: Add component state migration callbacks to resource options
+time: 2026-08-31T08:42:59+02:00
