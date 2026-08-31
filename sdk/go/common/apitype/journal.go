@@ -124,11 +124,11 @@ type JournalEntry struct {
 	// time for replay to gate rebuilt deployments on the byteString feature.
 	RequiresByteString bool `json:"requiresByteString,omitempty"`
 
-	// RemoveOlds holds the indices (in increasing order) of the resources in the base snapshot that a state
-	// migration removes. Only set for JournalEntryKindStateMigration entries.
+	// RemoveOlds holds the indices of the resources in the base snapshot that a state migration removes.
+	// Only set for JournalEntryKindStateMigration entries.
 	RemoveOlds []int64 `json:"removeOlds,omitempty"`
 	// States holds the resources a state migration splices into the base snapshot, in order. They take the
-	// position of the last removed resource. Only set for JournalEntryKindStateMigration entries.
+	// position of the resource with the greatest removed index. Only set for JournalEntryKindStateMigration entries.
 	States []ResourceV3 `json:"states,omitempty"`
 	// BaseStatePatches contains complete replacements for retained base resources whose references were rewritten.
 	// Indices refer to the base snapshot before RemoveOlds is applied. Only set for JournalEntryKindStateMigration

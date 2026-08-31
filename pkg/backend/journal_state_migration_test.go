@@ -65,7 +65,7 @@ func validComponentStateMigrationEntry() apitype.JournalEntry {
 }
 
 // TestJournalReplayerStateMigration tests that a state migration journal entry removes the given base indices
-// and inserts the migrated states at the position of the last removed resource.
+// and inserts the migrated states at the greatest removed base index.
 func TestJournalReplayerStateMigration(t *testing.T) {
 	t.Parallel()
 
@@ -76,7 +76,7 @@ func TestJournalReplayerStateMigration(t *testing.T) {
 	require.NoError(t, replayer.Add(apitype.JournalEntry{
 		Version:    2,
 		Kind:       apitype.JournalEntryKindStateMigration,
-		RemoveOlds: []int64{0, 2},
+		RemoveOlds: []int64{2, 0},
 		States:     []apitype.ResourceV3{migrated},
 	}))
 
@@ -87,7 +87,7 @@ func TestJournalReplayerStateMigration(t *testing.T) {
 	for i, res := range deployment.Deployment.Resources {
 		urns[i] = res.URN
 	}
-	// "a" and "c" are removed; "d" takes the position of "c", the last removed resource.
+	// "a" and "c" are removed; "d" takes the position of "c", which has the greatest removed index.
 	assert.Equal(t, []resource.URN{
 		"urn:pulumi:test::test::pkgA:m:typA::b",
 		"urn:pulumi:test::test::pkgA:m:typA::d",
@@ -362,6 +362,15 @@ func TestJournalReplayerRejectsMalformedStateMigration(t *testing.T) {
 		entry.Version = 1
 		err := NewJournalReplayer(base).Add(entry)
 		require.ErrorContains(t, err, "must use version 2")
+	})
+
+	t.Run("duplicate remove index", func(t *testing.T) {
+		t.Parallel()
+		base := stateMigrationComponentBase()
+		entry := validComponentStateMigrationEntry()
+		entry.RemoveOlds = []int64{0, 0}
+		err := NewJournalReplayer(base).Add(entry)
+		require.ErrorContains(t, err, "duplicate remove index 0")
 	})
 
 	t.Run("inserted pending-delete state", func(t *testing.T) {

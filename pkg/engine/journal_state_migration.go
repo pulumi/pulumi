@@ -22,6 +22,7 @@ import (
 
 	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 func (sm *JournalSnapshotManager) SupportsStateMigrations() bool {
@@ -40,9 +41,7 @@ func (sm *JournalSnapshotManager) StateMigration(transaction *deploy.StateMigrat
 	if sm == nil {
 		return nil
 	}
-	if transaction == nil {
-		return errors.New("state migration transaction must not be nil")
-	}
+	contract.Assertf(transaction != nil, "state migration transaction must not be nil")
 	if sm.journalVersion < 2 {
 		return errors.New("the backend does not support state migrations yet; " +
 			"the state migration cannot be applied")

@@ -47,17 +47,19 @@ func (r *JournalReplayer) applyStateMigration(entry apitype.JournalEntry) error 
 	}
 
 	removed := make(map[int64]struct{}, len(entry.RemoveOlds))
-	var previous int64 = -1
+	var greatestRemovedIndex int64 = -1
 	for _, index := range entry.RemoveOlds {
 		if index < 0 || index >= int64(len(r.base.Resources)) {
 			return fmt.Errorf("state migration remove index %d is outside base snapshot with %d resources",
 				index, len(r.base.Resources))
 		}
-		if index <= previous {
-			return fmt.Errorf("state migration remove indices must be strictly increasing: %v", entry.RemoveOlds)
+		if _, duplicate := removed[index]; duplicate {
+			return fmt.Errorf("state migration contains duplicate remove index %d", index)
 		}
-		previous = index
 		removed[index] = struct{}{}
+		if index > greatestRemovedIndex {
+			greatestRemovedIndex = index
+		}
 	}
 
 	// Apply changes to a copy so an error leaves the replayer unchanged.
@@ -141,12 +143,11 @@ func (r *JournalReplayer) applyStateMigration(entry apitype.JournalEntry) error 
 	}
 
 	// Replace the old subtree and track the new index of each remaining resource.
-	last := entry.RemoveOlds[len(entry.RemoveOlds)-1]
 	newIndices := make(map[int64]int64, len(baseResources))
 	resources := make([]apitype.ResourceV3, 0, len(baseResources)-len(entry.RemoveOlds)+len(entry.States))
 	for i, res := range baseResources {
 		if _, ok := removed[int64(i)]; ok {
-			if int64(i) == last {
+			if int64(i) == greatestRemovedIndex {
 				resources = append(resources, entry.States...)
 			}
 			continue

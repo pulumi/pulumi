@@ -243,9 +243,7 @@ func (*SnapshotManager) SupportsStateMigrations() bool {
 // StateMigration saves the migrated state as a full checkpoint. It changes in-memory resources only after the save
 // succeeds.
 func (sm *SnapshotManager) StateMigration(transaction *deploy.StateMigrationTransaction) error {
-	if transaction == nil {
-		return errors.New("state migration transaction must not be nil")
-	}
+	contract.Assertf(transaction != nil, "state migration transaction must not be nil")
 
 	var migrationErr error
 	err := sm.mutate(func() bool {
