@@ -84,6 +84,10 @@ type ProviderHandshakeRequest struct {
 	// objects carrying the byte string signature and a base64 encoding of the string's bytes. If true, the
 	// provider may return such values to the engine.
 	AcceptsByteString bool
+
+	// True if the engine populates OldOutputs on CheckRequest for update-path Check calls. Older engines never
+	// set this, so providers should treat an absent value as false and fall back to legacy behavior.
+	SendsOldOutputsToCheck bool
 }
 
 // The type of responses sent as part of a Handshake call.
@@ -255,7 +259,12 @@ type CheckRequest struct {
 	Name string
 	Type tokens.Type
 	// TODO Change to (State, Input)
-	Olds, News    resource.PropertyMap
+	Olds, News resource.PropertyMap
+	// OldOutputs is the previously persisted outputs of the resource, if any. This is not populated for every
+	// call site (yet) and providers must not assume it is present. It is currently plumbed through only where
+	// callers need to give the provider access to prior output state during Check (e.g. the builtin Stash
+	// resource's reducer callback).
+	OldOutputs    resource.PropertyMap
 	AllowUnknowns bool
 	RandomSeed    []byte
 	Autonaming    *AutonamingOptions

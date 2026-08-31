@@ -1,0 +1,4 @@
+component: engine
+kind: improvement
+body: Send previously persisted outputs to a provider's Check on update, gated by a new sends_old_outputs_to_check handshake capability
+time: 2026-08-31T00:00:00Z

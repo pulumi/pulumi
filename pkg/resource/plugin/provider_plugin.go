@@ -214,6 +214,7 @@ func NewProvider(host Host, ctx *Context, spec workspace.PluginDescriptor,
 				LoaderTarget:                loaderAddr,
 				ResolverTarget:              resolverAddr,
 				AcceptsByteString:           true,
+				SendsOldOutputsToCheck:      true,
 			}
 			return handshake(ctx, bin, prefix, conn, req)
 		}
@@ -281,6 +282,7 @@ func NewProvider(host Host, ctx *Context, spec workspace.PluginDescriptor,
 				LoaderTarget:                loaderAddr,
 				ResolverTarget:              resolverAddr,
 				AcceptsByteString:           true,
+				SendsOldOutputsToCheck:      true,
 			}
 			return handshake(ctx, bin, prefix, conn, req)
 		}
@@ -383,6 +385,7 @@ func handshake(
 		LoaderTarget:                req.LoaderTarget,
 		ResolverTarget:              req.ResolverTarget,
 		AcceptsByteString:           req.AcceptsByteString,
+		SendsOldOutputsToCheck:      req.SendsOldOutputsToCheck,
 	})
 	if err != nil {
 		status, ok := status.FromError(err)
@@ -449,6 +452,7 @@ func NewProviderFromPath(host Host, ctx *Context, path string) (Provider, error)
 			LoaderTarget:                loaderAddr,
 			ResolverTarget:              resolverAddr,
 			AcceptsByteString:           true,
+			SendsOldOutputsToCheck:      true,
 		}
 		return handshake(ctx, bin, prefix, conn, req)
 	}
@@ -581,6 +585,7 @@ func (p *provider) Handshake(ctx context.Context, req ProviderHandshakeRequest) 
 		LoaderTarget:                req.LoaderTarget,
 		ResolverTarget:              req.ResolverTarget,
 		AcceptsByteString:           req.AcceptsByteString,
+		SendsOldOutputsToCheck:      req.SendsOldOutputsToCheck,
 	})
 	if err != nil {
 		return nil, err
@@ -1232,12 +1237,28 @@ func (p *provider) Check(ctx context.Context, req CheckRequest) (CheckResponse, 
 		}
 	}
 
+	var moldOutputs *structpb.Struct
+	if req.OldOutputs != nil {
+		moldOutputs, err = MarshalProperties(req.OldOutputs, MarshalOptions{
+			Label:          label + ".oldOutputs",
+			KeepUnknowns:   req.AllowUnknowns,
+			KeepSecrets:    protocol.acceptSecrets,
+			KeepResources:  protocol.acceptResources,
+			KeepByteString: protocol.acceptsByteString,
+			PropagateNil:   true,
+		})
+		if err != nil {
+			return CheckResponse{}, err
+		}
+	}
+
 	resp, err := client.Check(p.requestContext(), &pulumirpc.CheckRequest{
 		Urn:        string(req.URN),
 		Name:       req.URN.Name(),
 		Type:       req.URN.Type().String(),
 		Olds:       molds,
 		News:       mnews,
+		OldOutputs: moldOutputs,
 		RandomSeed: req.RandomSeed,
 		Autonaming: autonaming,
 	})

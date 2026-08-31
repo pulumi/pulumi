@@ -291,6 +291,11 @@ message ProviderHandshakeRequest {
     // carrying the byte string signature and a base64 encoding of the string's bytes. If true, the provider may
     // return such values to the engine.
     bool accepts_byte_string = 11;
+
+    // If true the engine populates `old_outputs` on `CheckRequest` for update-path Check calls. Older engines never
+    // set this field, so providers should treat an absent value as false and fall back to legacy behavior that does
+    // not rely on previously persisted outputs during Check.
+    bool sends_old_outputs_to_check = 12;
 }
 
 // `ProviderHandshakeResponse` is the type of responses sent by a [](pulumirpc.ResourceProvider.Handshake) call.
@@ -645,6 +650,11 @@ message CheckRequest {
         Mode mode = 2;
     }
     AutonamingOptions autonaming = 8;
+
+    // The previously persisted output properties of the resource, if any. Only populated by engines that advertise
+    // `sends_old_outputs_to_check` on the provider handshake, and only for Check calls that follow an existing
+    // resource state (i.e. not create or replace). Providers must not assume this is populated.
+    google.protobuf.Struct old_outputs = 9;
 }
 
 // `CheckResponse` is the type of responses sent by a [](pulumirpc.ResourceProvider.CheckConfig) or

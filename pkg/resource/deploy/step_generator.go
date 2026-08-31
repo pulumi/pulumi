@@ -1356,6 +1356,7 @@ func (sg *stepGenerator) continueStepsFromImport(
 				URN:           urn,
 				Olds:          oldInputs,
 				News:          inputs,
+				OldOutputs:    oldOutputs,
 				AllowUnknowns: allowUnknowns,
 				RandomSeed:    randomSeed,
 				Autonaming:    autonaming,
