@@ -56,7 +56,6 @@ func resourcePackage(name, version string) workspace.PackageDescriptor {
 	}}
 }
 
-// schemaProvider returns a mock whose GetSchema serves the given schema document.
 func schemaProvider(schemaJSON string) *plugin.MockProvider {
 	return &plugin.MockProvider{
 		GetSchemaF: func(context.Context, plugin.GetSchemaRequest) (plugin.GetSchemaResponse, error) {
