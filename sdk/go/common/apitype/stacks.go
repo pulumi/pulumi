@@ -139,3 +139,20 @@ type ImportStackRequest UntypedDeployment
 type ImportStackResponse struct {
 	UpdateID string `json:"updateId"`
 }
+
+// StackReference identifies a stack that is related to another stack by a stack reference.
+type StackReference struct {
+	// Organization is the organization that owns the stack.
+	Organization string `json:"organization"`
+	// RoutingProject is the project name used to route to the stack.
+	RoutingProject string `json:"routingProject"`
+	// Name is the name of the stack.
+	Name string `json:"name"`
+	// Version is the version of the referenced stack at the time it was referenced.
+	Version int `json:"version"`
+}
+
+// ListDownstreamStackReferencesResponse lists the stacks whose programs reference a given stack.
+type ListDownstreamStackReferencesResponse struct {
+	ReferencedStacks []StackReference `json:"referencedStacks"`
+}

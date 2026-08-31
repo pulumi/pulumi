@@ -1,0 +1,4 @@
+component: cli
+kind: improvement
+body: Show downstream stacks in the output of `pulumi stack`
+time: 2026-08-31T00:00:00Z

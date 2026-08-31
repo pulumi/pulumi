@@ -1,0 +1,4 @@
+component: cli
+kind: improvement
+body: List the stacks that reference the updated stack at the end of updates on Pulumi Cloud stacks
+time: 2026-08-31T00:00:00Z

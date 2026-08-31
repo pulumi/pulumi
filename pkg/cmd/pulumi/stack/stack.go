@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"log/slog"
 	"sort"
 	"strings"
 	"time"
@@ -225,11 +226,14 @@ func runStackText(ctx context.Context, s backend.Stack, out io.Writer, args stac
 			}
 		}
 
-		ui.FprintTable(out, cmdutil.Table{
+		err := cmdutil.FprintTable(out, cmdutil.Table{
 			Headers: []string{"TYPE", "NAME"},
 			Rows:    rows,
 			Prefix:  "    ",
-		}, nil)
+		})
+		if err != nil {
+			return err
+		}
 
 		outputs, err := getStackOutputs(snap, args.showSecrets)
 		if err == nil {
@@ -243,6 +247,9 @@ func runStackText(ctx context.Context, s backend.Stack, out io.Writer, args stac
 	}
 
 	if isCloud {
+		if cs, ok := s.(httpstate.Stack); ok {
+			fprintDownstreamStacks(ctx, out, cloudBe, cs)
+		}
 		if consoleURL, err := cloudBe.StackConsoleURL(s.Ref()); err == nil {
 			fmt.Fprintf(out, "\n")
 			fmt.Fprintf(out, "More information at: %s\n", consoleURL)
@@ -254,6 +261,25 @@ func runStackText(ctx context.Context, s backend.Stack, out io.Writer, args stac
 	fmt.Fprintf(out, "Use `pulumi stack select` to change stack; `pulumi stack ls` lists known ones\n")
 
 	return nil
+}
+
+// fprintDownstreamStacks prints the stacks that hold a stack reference to the given stack, if any.
+// This section is advisory: failures to fetch the list are logged and otherwise ignored.
+func fprintDownstreamStacks(ctx context.Context, out io.Writer, be httpstate.Backend, s httpstate.Stack) {
+	resp, err := be.Client().ListDownstreamStackReferences(ctx, s.StackIdentifier())
+	if err != nil {
+		slog.DebugContext(ctx, "listing downstream stack references failed", "stack", s.StackIdentifier(), "err", err)
+		return
+	}
+	if len(resp.ReferencedStacks) == 0 {
+		return
+	}
+	consoleURL := func(paths ...string) string { return client.CloudConsoleURL(be.CloudURL(), paths...) }
+	color := cmdutil.GetGlobalColorization()
+	fmt.Fprintf(out, "\nDownstream stacks (%d):\n", len(resp.ReferencedStacks))
+	for line := range display.DownstreamStackLines(resp.ReferencedStacks, consoleURL, color, cmdutil.Interactive()) {
+		fmt.Fprintln(out, color.Colorize(line))
+	}
 }
 
 func fprintStackOutputs(w io.Writer, outputs map[string]any) error {

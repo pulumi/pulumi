@@ -1,0 +1,4 @@
+component: cli
+kind: fix
+body: Remove header styling from the resource table printed by `pulumi stack`
+time: 2026-08-31T00:00:00Z

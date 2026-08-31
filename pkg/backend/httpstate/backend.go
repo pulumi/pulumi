@@ -2162,7 +2162,54 @@ func (b *cloudBackend) runEngineAction(
 		updateErr = result.MergeBails(updateErr, fmt.Errorf("failed to complete update: %w", completeErr))
 	}
 
+	if updateErr == nil && !op.Opts.Display.JSONDisplay && !op.Opts.Display.SummaryJSON {
+		b.printDownstreamStacks(ctx, update.StackIdentifier, op.Opts.Display)
+	}
+
 	return plan, changes, updateErr
+}
+
+// printDownstreamStacks lists the stacks that hold a stack reference to the updated stack, so the
+// user knows which stacks may need updating next. This output is advisory: failures to fetch the
+// list are logged and otherwise ignored.
+func (b *cloudBackend) printDownstreamStacks(
+	ctx context.Context, stackID client.StackIdentifier, opts display.Options,
+) {
+	resp, err := b.client.ListDownstreamStackReferences(ctx, stackID)
+	if err != nil {
+		logging.V(3).Infof("listing downstream stack references for %v: %v", stackID, err)
+		return
+	}
+	out := opts.Stdout
+	if out == nil {
+		out = os.Stdout
+	}
+	fmt.Fprint(out, opts.Color.Colorize(formatDownstreamStacks(resp.ReferencedStacks, b.CloudConsoleURL, opts)))
+}
+
+// formatDownstreamStacks renders the downstream stacks as a summary section in the style of the
+// update display. It returns the empty string when there are no stacks.
+func formatDownstreamStacks(
+	refs []apitype.StackReference, consoleURL func(...string) string, opts display.Options,
+) string {
+	if len(refs) == 0 {
+		return ""
+	}
+	noun := "Downstream Stacks"
+	if len(refs) == 1 {
+		noun = "Downstream Stack"
+	}
+	var sb strings.Builder
+	// The progress display ends its summary with a blank line; the diff display does not.
+	if opts.Type == display.DisplayDiff {
+		sb.WriteString("\n")
+	}
+	fmt.Fprintf(&sb, "%s%s: (%d)%s\n", colors.SpecHeadline, noun, len(refs), colors.Reset)
+	for line := range display.DownstreamStackLines(refs, consoleURL, opts.Color, opts.IsInteractive) {
+		sb.WriteString(line + "\n")
+	}
+	sb.WriteString("\n")
+	return sb.String()
 }
 
 func (b *cloudBackend) CancelCurrentUpdate(ctx context.Context, stackRef backend.StackReference) error {

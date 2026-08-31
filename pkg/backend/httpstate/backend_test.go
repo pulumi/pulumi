@@ -27,6 +27,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -3360,4 +3361,32 @@ func TestPermalinkForDisplayWithAgentCredentials(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestFormatDownstreamStacks(t *testing.T) {
+	t.Parallel()
+
+	consoleURL := func(paths ...string) string { return "https://console/" + strings.Join(paths, "/") }
+	refs := func(names ...string) []apitype.StackReference {
+		out := make([]apitype.StackReference, 0, len(names))
+		for _, name := range names {
+			out = append(out, apitype.StackReference{Organization: "org", RoutingProject: "net", Name: name})
+		}
+		return out
+	}
+	urlLine := func(s string) string {
+		return "    " + colors.Underline + colors.BrightBlue + "https://console/org/net/" + s + colors.Reset + "\n"
+	}
+
+	assert.Equal(t, "", formatDownstreamStacks(nil, consoleURL, display.Options{}))
+	assert.Equal(t,
+		colors.SpecHeadline+"Downstream Stack: (1)"+colors.Reset+"\n"+urlLine("dev")+"\n",
+		formatDownstreamStacks(refs("dev"), consoleURL, display.Options{}))
+	assert.Equal(t,
+		colors.SpecHeadline+"Downstream Stacks: (2)"+colors.Reset+"\n"+urlLine("dev")+urlLine("prod")+"\n",
+		formatDownstreamStacks(refs("dev", "prod"), consoleURL, display.Options{}))
+	// The diff display does not end with a blank line, so one is added before the header.
+	assert.Equal(t,
+		"\n"+colors.SpecHeadline+"Downstream Stack: (1)"+colors.Reset+"\n"+urlLine("dev")+"\n",
+		formatDownstreamStacks(refs("dev"), consoleURL, display.Options{Type: display.DisplayDiff}))
 }
