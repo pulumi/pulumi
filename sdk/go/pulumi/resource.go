@@ -519,6 +519,10 @@ type ResourceOptions struct {
 	// the resource's properties during construction.
 	Transforms []ResourceTransform
 
+	// StateMigrations is a list of functions that migrate the resource's prior
+	// state before the engine compares it with the current resource graph.
+	StateMigrations []StateMigration
+
 	// URN is the URN of a previously-registered resource of this type.
 	URN string
 
@@ -583,6 +587,7 @@ type resourceOptions struct {
 	ReplacementTrigger      Input
 	Transformations         []ResourceTransformation
 	Transforms              []ResourceTransform
+	StateMigrations         []StateMigration
 	URN                     string
 	Version                 string
 	PluginDownloadURL       string
@@ -652,6 +657,7 @@ func resourceOptionsSnapshot(ro *resourceOptions) *ResourceOptions {
 		ReplacementTrigger:      ro.ReplacementTrigger,
 		Transformations:         ro.Transformations,
 		Transforms:              ro.Transforms,
+		StateMigrations:         ro.StateMigrations,
 		URN:                     ro.URN,
 		Version:                 ro.Version,
 		PluginDownloadURL:       ro.PluginDownloadURL,
@@ -1106,6 +1112,13 @@ func Transformations(o []ResourceTransformation) ResourceOption {
 func Transforms(o []ResourceTransform) ResourceOption {
 	return resourceOption(func(ro *resourceOptions) {
 		ro.Transforms = append(ro.Transforms, o...)
+	})
+}
+
+// StateMigrations applies an ordered list of state migrations to the prior state of this resource and its descendants.
+func StateMigrations(o []StateMigration) ResourceOption {
+	return resourceOption(func(ro *resourceOptions) {
+		ro.StateMigrations = append(ro.StateMigrations, o...)
 	})
 }
 
