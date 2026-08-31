@@ -1,0 +1,4 @@
+component: backend
+kind: fix
+body: Say which stack and which project disagree when the selected stack does not belong to the project in Pulumi.yaml
+time: 2026-08-28T11:36:31.055158+02:00
