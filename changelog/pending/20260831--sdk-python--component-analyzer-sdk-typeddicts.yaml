@@ -1,0 +1,5 @@
+component: sdk/python
+kind: improvement
+body: Let a component input use a provider SDK's TypedDict whose properties name their
+    types as strings or accept the Args, TypedDict and output forms of an object type
+time: 2026-08-31T00:00:00+00:00
