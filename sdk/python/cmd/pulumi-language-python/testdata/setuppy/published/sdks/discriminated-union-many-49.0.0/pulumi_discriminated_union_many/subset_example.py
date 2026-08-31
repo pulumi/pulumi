@@ -44,7 +44,7 @@ class SubsetExample(pulumi.CustomResource):
     def __init__(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 union_of: pulumi.Input[Optional[Union[Union['Variant1Args', 'Variant1ArgsDict'], Union['Variant2Args', 'Variant2ArgsDict'], Union['Variant3Args', 'Variant3ArgsDict']]]] = None,
+                 union_of: pulumi.Input[Optional[Union[Union['Variant1Args', 'Variant1ArgsDict', 'outputs.Variant1'], Union['Variant2Args', 'Variant2ArgsDict', 'outputs.Variant2'], Union['Variant3Args', 'Variant3ArgsDict', 'outputs.Variant3']]]] = None,
                  __props__=None):
         """
         Create a SubsetExample resource with the given unique name, props, and options.
@@ -76,7 +76,7 @@ class SubsetExample(pulumi.CustomResource):
     def _internal_init(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 union_of: pulumi.Input[Optional[Union[Union['Variant1Args', 'Variant1ArgsDict'], Union['Variant2Args', 'Variant2ArgsDict'], Union['Variant3Args', 'Variant3ArgsDict']]]] = None,
+                 union_of: pulumi.Input[Optional[Union[Union['Variant1Args', 'Variant1ArgsDict', 'outputs.Variant1'], Union['Variant2Args', 'Variant2ArgsDict', 'outputs.Variant2'], Union['Variant3Args', 'Variant3ArgsDict', 'outputs.Variant3']]]] = None,
                  __props__=None):
         opts = pulumi.ResourceOptions.merge(_utilities.get_resource_opts_defaults(), opts)
         if not isinstance(opts, pulumi.ResourceOptions):

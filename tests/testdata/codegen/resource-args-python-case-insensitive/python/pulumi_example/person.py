@@ -57,7 +57,7 @@ class Person(pulumi.CustomResource):
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
                  name: pulumi.Input[Optional[_builtins.str]] = None,
-                 pets: pulumi.Input[Optional[Sequence[pulumi.Input[Union['PetArgs', 'PetArgsDict']]]]] = None,
+                 pets: pulumi.Input[Optional[Sequence[pulumi.Input[Union['PetArgs', 'PetArgsDict', 'outputs.Pet']]]]] = None,
                  __props__=None):
         """
         Create a Person resource with the given unique name, props, and options.
@@ -90,7 +90,7 @@ class Person(pulumi.CustomResource):
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
                  name: pulumi.Input[Optional[_builtins.str]] = None,
-                 pets: pulumi.Input[Optional[Sequence[pulumi.Input[Union['PetArgs', 'PetArgsDict']]]]] = None,
+                 pets: pulumi.Input[Optional[Sequence[pulumi.Input[Union['PetArgs', 'PetArgsDict', 'outputs.Pet']]]]] = None,
                  __props__=None):
         opts = pulumi.ResourceOptions.merge(_utilities.get_resource_opts_defaults(), opts)
         if not isinstance(opts, pulumi.ResourceOptions):

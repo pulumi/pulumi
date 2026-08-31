@@ -56,7 +56,7 @@ class Component(pulumi.ComponentResource):
     def __init__(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 eni_config: pulumi.Input[Optional[Mapping[str, pulumi.Input[Union['_crd_k8s_amazonaws_com.v1alpha1.ENIConfigSpecArgs', '_crd_k8s_amazonaws_com.v1alpha1.ENIConfigSpecArgsDict']]]]] = None,
+                 eni_config: pulumi.Input[Optional[Mapping[str, pulumi.Input[Union['_crd_k8s_amazonaws_com.v1alpha1.ENIConfigSpecArgs', '_crd_k8s_amazonaws_com.v1alpha1.ENIConfigSpecArgsDict', '_crd_k8s_amazonaws_com.v1alpha1.outputs.ENIConfigSpec']]]]] = None,
                  pod: pulumi.Input[Optional[pulumi.InputType['pulumi_tls.CertRequestSubjectArgs']]] = None,
                  __props__=None):
         """
@@ -89,7 +89,7 @@ class Component(pulumi.ComponentResource):
     def _internal_init(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 eni_config: pulumi.Input[Optional[Mapping[str, pulumi.Input[Union['_crd_k8s_amazonaws_com.v1alpha1.ENIConfigSpecArgs', '_crd_k8s_amazonaws_com.v1alpha1.ENIConfigSpecArgsDict']]]]] = None,
+                 eni_config: pulumi.Input[Optional[Mapping[str, pulumi.Input[Union['_crd_k8s_amazonaws_com.v1alpha1.ENIConfigSpecArgs', '_crd_k8s_amazonaws_com.v1alpha1.ENIConfigSpecArgsDict', '_crd_k8s_amazonaws_com.v1alpha1.outputs.ENIConfigSpec']]]]] = None,
                  pod: pulumi.Input[Optional[pulumi.InputType['pulumi_tls.CertRequestSubjectArgs']]] = None,
                  __props__=None):
         opts = pulumi.ResourceOptions.merge(_utilities.get_resource_opts_defaults(), opts)
