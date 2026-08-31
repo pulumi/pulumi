@@ -1668,6 +1668,63 @@ func TestParseStackReferenceExplicitOrgBeatsEnvVar(t *testing.T) {
 	assert.Equal(t, "env-org", ref.(cloudBackendReference).owner)
 }
 
+// Creating a stack under a project name the service would sanitize is refused, but an
+// existing project with such a name stays readable: the service stores it under the
+// cleaned name and we do not require Pulumi.yaml to be updated. See validateProjectName.
+func TestDirtyProjectNameCreateRefusedReadAllowed(t *testing.T) {
+	ctx := t.Context()
+
+	t.Setenv("PULUMI_HOME", t.TempDir())
+	t.Setenv("PULUMI_DEFAULT_ORGANIZATION", "env-org")
+
+	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		switch req.URL.Path {
+		case "/api/capabilities":
+			err := json.NewEncoder(rw).Encode(apitype.CapabilitiesResponse{})
+			require.NoError(t, err)
+		case "/api/user":
+			err := json.NewEncoder(rw).Encode(map[string]any{
+				"githubLogin":   "test-user",
+				"organizations": []map[string]string{},
+			})
+			require.NoError(t, err)
+		case "/api/stacks/env-org/my-project/dev":
+			err := json.NewEncoder(rw).Encode(apitype.Stack{
+				OrgName:     "env-org",
+				ProjectName: "my-project",
+				StackName:   "dev",
+			})
+			require.NoError(t, err)
+		default:
+			panic(fmt.Sprintf("Path not supported: %v", req.URL.Path))
+		}
+	}))
+	t.Cleanup(server.Close)
+
+	err := workspace.StoreAccount(server.URL, workspace.Account{
+		AccessToken: testJWT,
+	}, true)
+	require.NoError(t, err)
+
+	b, err := New(ctx, diagtest.LogSink(t), server.URL, &workspace.Project{Name: "my project"}, false)
+	require.NoError(t, err)
+
+	cb := b.(*cloudBackend)
+	_, _ = cb.capabilities.Result(ctx)
+	_, _ = cb.userInfo.Result(ctx)
+
+	ref, err := b.ParseStackReference("dev")
+	require.NoError(t, err)
+
+	_, err = b.CreateStack(ctx, ref, "", nil, nil)
+	assert.EqualError(t, err,
+		"project names may only contain alphanumerics, hyphens, underscores, and periods")
+
+	s, err := b.GetStack(ctx, ref)
+	require.NoError(t, err)
+	require.NotNil(t, s)
+}
+
 //nolint:paralleltest // mutates global state
 func TestDisableIntegrityChecking(t *testing.T) {
 	if os.Getenv("PULUMI_ACCESS_TOKEN") == "" {

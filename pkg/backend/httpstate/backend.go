@@ -1191,16 +1191,10 @@ func validateOwnerName(s string) error {
 
 // validateProjectName checks if a project name is valid, returning a user-suitable error if needed.
 //
-// NOTE: Be careful when requiring a project name be valid. The Pulumi.yaml file may contain
-// an invalid project name like "r@bid^W0MBAT!!", but we try to err on the side of flexibility by
-// implicitly "cleaning" the project name before we send it to the Pulumi Service. So when we go
-// to make HTTP requests, we use a more palitable name like "r_bid_W0MBAT__".
-//
-// The projects canonical name will be the sanitized "r_bid_W0MBAT__" form, but we do not require the
-// Pulumi.yaml file be updated.
-//
-// So we should only call validateProject name when creating _new_ stacks or creating _new_ projects.
-// We should not require that project names be valid when reading what is in the current workspace.
+// Only call this when creating new stacks or new projects. Projects created before we started
+// validating may hold an invalid name like "r@bid^W0MBAT!!" in Pulumi.yaml; the service knows
+// them by the form cleanProjectName produces ("r-bid-W0MBAT--"), and we do not require those
+// files be updated. Requiring a valid name to read the current workspace would break them.
 func validateProjectName(s string) error {
 	return tokens.ValidateProjectName(s)
 }
@@ -1307,6 +1301,12 @@ func (b *cloudBackend) CreateStack(
 	err := backend.CurrentProjectContradictsWorkspace(b.currentProject, stackRef)
 	if err != nil {
 		return nil, err
+	}
+
+	if project, has := stackRef.Project(); has {
+		if err := validateProjectName(project.String()); err != nil {
+			return nil, err
+		}
 	}
 
 	stackID, err := b.getCloudStackIdentifier(stackRef)
