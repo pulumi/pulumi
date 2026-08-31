@@ -185,8 +185,8 @@ func (c *realCRMClient) collectOrgAndDescendantFolders(
 // isPermissionOrNotFoundError reports whether err is a Google API 401/403/404, used to
 // gracefully skip folder subtrees the principal cannot enumerate during discovery.
 func isPermissionOrNotFoundError(err error) bool {
-	var apiErr *googleapi.Error
-	if !errors.As(err, &apiErr) {
+	apiErr, ok := errors.AsType[*googleapi.Error](err)
+	if !ok {
 		return false
 	}
 	switch apiErr.Code {

@@ -205,8 +205,8 @@ func (c *ssoClient) Initiate(ctx context.Context, startURL string) (*awssetup_ty
 		StartUrl:     aws.String(startURL),
 	})
 	if err != nil {
-		var invalidRequestErr *ssooidc_types.InvalidRequestException
-		if errors.As(err, &invalidRequestErr) && invalidRequestErr.Error_description != nil {
+		invalidRequestErr, ok := errors.AsType[*ssooidc_types.InvalidRequestException](err)
+		if ok && invalidRequestErr.Error_description != nil {
 			// Provide a clearer error message when for example the start URL is invalid
 			return nil, errors.New(*invalidRequestErr.Error_description)
 		}
@@ -471,8 +471,8 @@ func assumeRolePolicy(oidcArn, issuerHost, audience, orgName, escEnvironmentName
 
 // Helper to check if error is "EntityAlreadyExists"
 func isEntityExists(err error) bool {
-	var e *types.EntityAlreadyExistsException
-	return errors.As(err, &e)
+	_, ok := errors.AsType[*types.EntityAlreadyExistsException](err)
+	return ok
 }
 
 // parsePartitionFromARN extracts the AWS partition from an ARN.
