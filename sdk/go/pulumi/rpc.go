@@ -120,6 +120,20 @@ func marshalInputs(props Input) (resource.PropertyMap, map[string][]URN, []URN, 
 	return marshalInputsOptions(props, nil)
 }
 
+func isNilInput(v any) bool {
+	if v == nil {
+		return true
+	}
+	rv := reflect.ValueOf(v)
+	//nolint:exhaustive // Only nil-able kinds can represent a typed nil input.
+	switch rv.Kind() {
+	case reflect.Chan, reflect.Func, reflect.Interface, reflect.Map, reflect.Ptr, reflect.Slice:
+		return rv.IsNil()
+	default:
+		return false
+	}
+}
+
 // marshalInputs turns resource property inputs into a map suitable for marshaling.
 func marshalInputsOptions(props Input, opts *marshalOptions) (resource.PropertyMap, map[string][]URN, []URN, error) {
 	deps := map[URN]struct{}{}
@@ -129,7 +143,7 @@ func marshalInputsOptions(props Input, opts *marshalOptions) (resource.PropertyM
 		return pmap, pdeps, nil, nil
 	}
 
-	marshalProperty := func(pname string, pv any, pt reflect.Type) error {
+	marshalProperty := func(pname string, pv any, pt reflect.Type, keepNull bool) error {
 		// Get the underlying value, possibly waiting for an output to arrive.
 		v, resourceDeps, err := marshalInputOptions(pv, pt, opts)
 		if err != nil {
@@ -145,7 +159,7 @@ func marshalInputsOptions(props Input, opts *marshalOptions) (resource.PropertyM
 			deps[k] = struct{}{}
 		}
 
-		if !v.IsNull() || len(allDeps) > 0 {
+		if keepNull || !v.IsNull() || len(allDeps) > 0 {
 			urns := slice.Prealloc[URN](len(allDeps))
 			for v := range allDeps {
 				urns = append(urns, v)
@@ -189,7 +203,7 @@ func marshalInputsOptions(props Input, opts *marshalOptions) (resource.PropertyM
 			if tag == "" {
 				continue
 			}
-			err := marshalProperty(tag, pv.Field(i).Interface(), destField.Type)
+			err := marshalProperty(tag, pv.Field(i).Interface(), destField.Type, false /*keepNull*/)
 			if err != nil {
 				return nil, nil, nil, err
 			}
@@ -201,7 +215,7 @@ func marshalInputsOptions(props Input, opts *marshalOptions) (resource.PropertyM
 		for _, key := range pv.MapKeys() {
 			keyname := key.Interface().(string)
 			val := pv.MapIndex(key).Interface()
-			err := marshalProperty(keyname, val, rt.Elem())
+			err := marshalProperty(keyname, val, rt.Elem(), isNilInput(val))
 			if err != nil {
 				return nil, nil, nil, err
 			}
@@ -474,11 +488,12 @@ func marshalInputOptionsImpl(v any,
 			obj := resource.PropertyMap{}
 			for _, key := range rv.MapKeys() {
 				value := rv.MapIndex(key)
+				keepNull := isNilInput(value.Interface())
 				mv, d, err := marshalInputOptions(value.Interface(), destElem, opts)
 				if err != nil {
 					return resource.PropertyValue{}, nil, err
 				}
-				if !mv.IsNull() {
+				if keepNull || !mv.IsNull() {
 					obj[resource.PropertyKey(key.String())] = mv
 				}
 				deps = append(deps, d...)
