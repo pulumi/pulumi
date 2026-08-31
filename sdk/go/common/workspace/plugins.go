@@ -756,7 +756,7 @@ func (source *httpSource) Download(
 ) (io.ReadCloser, int64, error) {
 	serverURL := interpolateURL(source.url, source.name, version, opSy, arch)
 	serverURL = strings.TrimSuffix(serverURL, "/")
-	logging.V(1).Infof("%s downloading from %s", source.name, serverURL)
+	logging.V(1).Infof("%s downloading from %s", source.name, httputil.RedactURL(serverURL))
 
 	endpoint := fmt.Sprintf("%s/%s",
 		serverURL,
@@ -832,7 +832,8 @@ func (source *fallbackSource) Download(
 	// which returns the GitHub URL, not the get.pulumi.com URL. When we actually fall back to
 	// get.pulumi.com here, we need to check if there's an override for that specific URL.
 	if overrideURL, ok := pluginDownloadURLOverridesParsed.get(pulumi.url()); ok {
-		logging.V(1).Infof("Applying URL override for %s: %s -> %s", source.name, pulumi.url(), overrideURL)
+		logging.V(1).Infof("Applying URL override for %s: %s -> %s",
+			source.name, pulumi.url(), httputil.RedactURL(overrideURL))
 		overrideSource, err := newPluginSource(source.name, source.kind, overrideURL)
 		if err != nil {
 			return nil, 0, fmt.Errorf("unable to construct override for %q: %w", source.name, err)
@@ -1720,7 +1721,7 @@ func newDownloadError(statusCode int, url *url.URL, header http.Header) error {
 	}
 	return &downloadError{
 		code:   statusCode,
-		msg:    fmt.Sprintf("%d HTTP error fetching plugin from %s", statusCode, url),
+		msg:    fmt.Sprintf("%d HTTP error fetching plugin from %s", statusCode, httputil.RedactURL(url.String())),
 		header: header,
 	}
 }
@@ -2194,7 +2195,7 @@ func getPluginInfoAndPath(
 		if path, err := exec.LookPath(filename); err == nil {
 			ambientPath = path
 			logging.V(6).Infof("GetPluginPath(%s, %s, %v, %s): found on $PATH %s",
-				spec.Kind, spec.Name, spec.Version, spec.PluginDownloadURL, path)
+				spec.Kind, spec.Name, spec.Version, httputil.RedactURL(spec.PluginDownloadURL), path)
 		}
 	}
 
@@ -2218,7 +2219,7 @@ func getPluginInfoAndPath(
 					if stat, err := os.Stat(candidate); err == nil &&
 						(stat.Mode()&0o100 != 0 || runtime.GOOS == windowsGOOS) {
 						logging.V(6).Infof("GetPluginPath(%s, %s, %v, %s): found next to current executable %s",
-							spec.Kind, spec.Name, spec.Version, spec.PluginDownloadURL, candidate)
+							spec.Kind, spec.Name, spec.Version, httputil.RedactURL(spec.PluginDownloadURL), candidate)
 						bundledPath = candidate
 						break
 					}
@@ -2271,15 +2272,15 @@ func getPluginInfoAndPath(
 		isPreReleaseVersion(*spec.Version) {
 		// We're looking for a plugin matching an exact hash, so we can't use the semver range logic.
 		logging.V(6).Infof("GetPluginPath(%s, %s, %v, %s): enabling prerelease plugin behaviour",
-			spec.Kind, spec.Name, spec.Version, spec.PluginDownloadURL)
+			spec.Kind, spec.Name, spec.Version, httputil.RedactURL(spec.PluginDownloadURL))
 		match = SelectPrereleasePlugin(plugins, spec)
 	} else if !enableLegacyPluginBehavior && spec.Version != nil {
 		logging.V(6).Infof("GetPluginPath(%s, %s, %v, %s): enabling new plugin behavior",
-			spec.Kind, spec.Name, spec.Version, spec.PluginDownloadURL)
+			spec.Kind, spec.Name, spec.Version, httputil.RedactURL(spec.PluginDownloadURL))
 		match = SelectCompatiblePlugin(plugins, spec)
 	} else {
 		logging.V(6).Infof("GetPluginPath(%s, %s, %v, %s): using legacy plugin behavior",
-			spec.Kind, spec.Name, spec.Version, spec.PluginDownloadURL)
+			spec.Kind, spec.Name, spec.Version, httputil.RedactURL(spec.PluginDownloadURL))
 		match = LegacySelectCompatiblePlugin(plugins, spec)
 	}
 
@@ -2296,7 +2297,7 @@ func getPluginInfoAndPath(
 		}
 		matchPath := getPluginPath(match)
 		logging.V(6).Infof("GetPluginPath(%s, %s, %v, %s): found in cache at %s",
-			spec.Kind, spec.Name, spec.Version, spec.PluginDownloadURL, matchPath)
+			spec.Kind, spec.Name, spec.Version, httputil.RedactURL(spec.PluginDownloadURL), matchPath)
 		return match, matchPath, nil
 	}
 
