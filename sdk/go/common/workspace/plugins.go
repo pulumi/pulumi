@@ -25,6 +25,7 @@ import (
 	"fmt"
 	"hash"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"os"
@@ -985,6 +986,12 @@ type UnresolvedPackageDescriptor struct {
 
 	// The parameterization args to be applied against the plugin descriptor.
 	ParameterizationArgs []string
+}
+
+func (u UnresolvedPackageDescriptor) LogValue() slog.Value {
+	u.PluginDownloadURL = httputil.RedactURL(u.PluginDownloadURL)
+	type plain UnresolvedPackageDescriptor
+	return slog.AnyValue(plain(u))
 }
 
 func NewPackageDescriptor(spec PluginDescriptor, parameterization *Parameterization) PackageDescriptor {
