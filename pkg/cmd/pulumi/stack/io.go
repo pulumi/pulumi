@@ -472,6 +472,18 @@ func CopyEntireConfigMap(
 	destinationStack backend.Stack,
 	destinationProjectStack *workspace.ProjectStack,
 ) (bool, error) {
+	// A source stack whose configuration lives in an ESC environment has nothing in its `config:` block
+	// to copy, so copying would silently produce a stack with no configuration at all. Carrying the
+	// pointer across instead would alias two stacks onto one environment, which the one-stack-one-main-
+	// environment model does not allow; refuse and name the two ways forward.
+	if currentProjectStack.MainEnvironment != nil {
+		return false, fmt.Errorf(
+			"copying configuration from stack %s is not supported yet: it sets 'mainEnvironment: %s'.\n"+
+				"Create the new stack with 'pulumi stack init <name> --esc-config', or add\n"+
+				"'mainEnvironment: %s' to the new stack's file to point it at the same environment",
+			currentStack.Ref(), currentProjectStack.MainEnvironment, currentProjectStack.MainEnvironment)
+	}
+
 	var decrypter config.Decrypter
 	currentConfig := currentProjectStack.Config
 	currentEnvironments := currentProjectStack.Environment
