@@ -53,6 +53,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/agentdetect"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -381,6 +382,7 @@ func (pc *Client) ValidateAgentClaim(ctx context.Context, claimToken string) (bo
 	if strings.TrimSpace(claimToken) == "" {
 		return false, nil
 	}
+	logging.AddGlobalSecretFilter([]string{claimToken, url.PathEscape(claimToken)}, "[credential]")
 	err := pc.restCall(ctx, http.MethodGet, "/api/agents/signup/validate/"+url.PathEscape(claimToken), nil, nil, nil)
 	if err == nil {
 		return true, nil

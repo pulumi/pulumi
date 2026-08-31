@@ -756,7 +756,8 @@ func (source *httpSource) Download(
 ) (io.ReadCloser, int64, error) {
 	serverURL := interpolateURL(source.url, source.name, version, opSy, arch)
 	serverURL = strings.TrimSuffix(serverURL, "/")
-	logging.V(1).Infof("%s downloading from %s", source.name, httputil.RedactURL(serverURL))
+	logging.AddGlobalSecretFilter(httputil.URLSecrets(serverURL), "[credential]")
+	logging.V(1).Infof("%s downloading from %s", source.name, serverURL)
 
 	endpoint := fmt.Sprintf("%s/%s",
 		serverURL,
@@ -832,8 +833,8 @@ func (source *fallbackSource) Download(
 	// which returns the GitHub URL, not the get.pulumi.com URL. When we actually fall back to
 	// get.pulumi.com here, we need to check if there's an override for that specific URL.
 	if overrideURL, ok := pluginDownloadURLOverridesParsed.get(pulumi.url()); ok {
-		logging.V(1).Infof("Applying URL override for %s: %s -> %s",
-			source.name, pulumi.url(), httputil.RedactURL(overrideURL))
+		logging.AddGlobalSecretFilter(httputil.URLSecrets(overrideURL), "[credential]")
+		logging.V(1).Infof("Applying URL override for %s: %s -> %s", source.name, pulumi.url(), overrideURL)
 		overrideSource, err := newPluginSource(source.name, source.kind, overrideURL)
 		if err != nil {
 			return nil, 0, fmt.Errorf("unable to construct override for %q: %w", source.name, err)
@@ -2141,6 +2142,7 @@ func getPluginInfoAndPath(
 	projectPlugins []ProjectPlugin,
 	markUsed bool,
 ) (*PluginInfo, string, error) {
+	logging.AddGlobalSecretFilter(httputil.URLSecrets(spec.PluginDownloadURL), "[credential]")
 	filename := spec.File()
 
 	for i, p1 := range projectPlugins {

@@ -38,6 +38,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/util"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/gitutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/httputil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -146,6 +147,12 @@ type (
 		ParameterizationArgs []string
 	}
 )
+
+func redactPackageSpec(spec workspace.PackageSpec) workspace.PackageSpec {
+	spec.Source = httputil.RedactURL(spec.Source)
+	spec.PluginDownloadURL = httputil.RedactURL(spec.PluginDownloadURL)
+	return spec
+}
 
 // parameterizeArgs returns the arguments used to parameterize a package on install.
 func parameterizeArgs(spec workspace.PackageSpec) []string {
@@ -296,7 +303,7 @@ func Resolve(
 	spec workspace.PackageSpec,
 	options Options,
 ) (Resolution, error) {
-	slog.InfoContext(ctx, "Resolving package", "spec", spec)
+	slog.InfoContext(ctx, "Resolving package", "spec", redactPackageSpec(spec))
 	if plugin.IsLocalPluginPath(ctx, spec.Source) {
 		return PathResolution{
 			Path:                 spec.Source,
@@ -326,7 +333,7 @@ func Resolve(
 
 	remoteResolution := func() (Resolution, error) {
 		slog.InfoContext(ctx, "Resolved package to an external source",
-			"spec", spec, "descriptor", naivePackageDescriptor)
+			"spec", redactPackageSpec(spec), "descriptor", naivePackageDescriptor)
 		installed, atVersion, err := IsPluginInstalled(ctx, naivePackageDescriptor.PluginDescriptor, ws, options)
 		if err != nil {
 			return nil, err
@@ -428,11 +435,11 @@ func Resolve(
 	}
 
 	if registryQueryErr != nil {
-		slog.InfoContext(ctx, "Failed to resolve package", "spec", spec)
+		slog.InfoContext(ctx, "Failed to resolve package", "spec", redactPackageSpec(spec))
 		return nil, registryQueryErr
 	}
 
-	slog.InfoContext(ctx, "Failed to resolve package", "spec", spec)
+	slog.InfoContext(ctx, "Failed to resolve package", "spec", redactPackageSpec(spec))
 	return nil, &PackageNotFoundError{
 		Package:     spec.Source,
 		Version:     spec.Version,
