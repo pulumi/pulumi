@@ -219,6 +219,8 @@ func GenGitAttributesFile() []byte {
 //     finite, so co-matchability is a least fixpoint: recursion through cyclic object graphs reports false on
 //     revisits, which makes required-recursive object pairs — types with no finite values at all — vacuously
 //     disjoint.
+//
+// Must match sdk/python/lib/pulumi/_types.py's _wire_matches.
 func IsWireDiscriminatableUnionType(u *schema.UnionType) bool {
 	members, nullable, ok := flattenWireMembers(u)
 	if !ok || nullable > 1 {
