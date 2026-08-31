@@ -56,6 +56,13 @@ func ResourceState(r *schema.Resource) *rapid.Generator[*property.Map] {
 	return rapid.Map(inner, func(m property.Map) *property.Map { return &m })
 }
 
+// Value returns a generator for a property.Value conforming to typ.
+func Value(typ schema.Type) *rapid.Generator[property.Value] {
+	return rapid.Custom(func(t *rapid.T) property.Value {
+		return drawValue(t, typ, "value", maxValueDepth)
+	})
+}
+
 // maxValueDepth caps recursion through arrays, maps, and JSON-shaped values.
 // The schema generator forbids required-recursive object cycles, so the only
 // remaining unbounded recursion is through containers — which can still
@@ -313,23 +320,19 @@ func drawEnumValue(t *rapid.T, e *schema.EnumType, label string) property.Value 
 // liftGoValue lifts a bound schema constant (bool, int32, float64, or string)
 // into a property.Value, widening integers to float64.
 func liftGoValue(v any) property.Value {
-	pv, err := property.Any(toPropertyGoValue(v))
+	switch i := v.(type) {
+	case int:
+		v = float64(i)
+	case int32:
+		v = float64(i)
+	case int64:
+		v = float64(i)
+	}
+	pv, err := property.Any(v)
 	if err != nil {
 		panic(fmt.Sprintf("rapidresource: value %v (%[1]T): %v", v, err))
 	}
 	return pv
-}
-
-func toPropertyGoValue(v any) any {
-	switch v := v.(type) {
-	case int:
-		return float64(v)
-	case int32:
-		return float64(v)
-	case int64:
-		return float64(v)
-	}
-	return v
 }
 
 // drawResourceReferenceValue emits a reference to a resource of typ's type.
