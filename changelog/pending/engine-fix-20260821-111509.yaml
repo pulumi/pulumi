@@ -1,4 +1,4 @@
 component: engine
 kind: fix
-body: Report a missing resource rather than a missing import capability when importing an ID that does not exist
+body: Give accurate errors when importing an ID the provider cannot read, instead of always blaming the provider for not supporting imports
 time: 2026-08-21T11:15:09.689221+02:00

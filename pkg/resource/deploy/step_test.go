@@ -1071,7 +1071,7 @@ func TestImportStep(t *testing.T) {
 				assert.ErrorContains(t, err, "resource 'some-id' does not exist")
 				assert.Equal(t, resource.StatusOK, status)
 			})
-			t.Run("provider does not support importing resources", func(t *testing.T) {
+			t.Run("provider returns no inputs", func(t *testing.T) {
 				t.Parallel()
 				s := &ImportStep{
 					deployment: &Deployment{
@@ -1099,7 +1099,9 @@ func TestImportStep(t *testing.T) {
 					},
 				}
 				status, _, err := s.Apply()
-				assert.ErrorContains(t, err, "provider does not support importing resources")
+				assert.ErrorContains(t, err,
+					"the 'foo' provider returned no inputs for resource 'some-id'; it may not support importing "+
+						"this resource type")
 				assert.Equal(t, resource.StatusOK, status)
 			})
 		})

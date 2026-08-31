@@ -2055,20 +2055,24 @@ func (s *ImportStep) Apply() (_ resource.Status, _ StepCompleteFunc, err error) 
 				return rst, nil, err
 			}
 		}
+		resourceID := s.new.ID
+		if resourceID == "" {
+			resourceID = s.new.ImportID
+		}
 		// A provider signals that a resource does not exist by returning no state for it. Some providers do this by
 		// returning an empty (but non-nil) property map alongside an empty ID rather than a nil one, so treat that as
 		// a missing resource too.
 		if read.Outputs == nil || (read.ID == "" && len(read.Outputs) == 0) {
-			resourceID := s.new.ID
-			if resourceID == "" {
-				resourceID = s.new.ImportID
-			}
 			return rst, nil, fmt.Errorf("resource '%v' does not exist", resourceID)
 		}
+		// Providers are expected to return inputs from Read so that the imported resource can be diffed against the
+		// program. We can't tell whether a provider that doesn't is too old to support importing at all or simply
+		// doesn't support importing this resource type, so say what we saw rather than guessing.
 		if read.Inputs == nil {
-			return resource.StatusOK, nil,
-				fmt.Errorf("provider does not support importing resources; please try updating the '%v' plugin",
-					s.new.URN.Type().Package())
+			return resource.StatusOK, nil, fmt.Errorf(
+				"the '%v' provider returned no inputs for resource '%v'; it may not support importing this resource "+
+					"type, in which case updating the plugin may help",
+				s.new.URN.Type().Package(), resourceID)
 		}
 		if read.ID != "" {
 			s.new.ID = read.ID
