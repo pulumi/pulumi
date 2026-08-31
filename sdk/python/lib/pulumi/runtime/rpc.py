@@ -685,14 +685,17 @@ async def serialize_property(
 
             return output_value
 
-        if not is_known:
-            return UNKNOWN
         if is_secret and settings.monitor_supports_feature(
             resource_pb2.RESOURCE_MONITOR_FEATURE_SECRETS
         ):
             # Serializing an output with a secret value requires the use of a magical signature key,
             # which the engine detects.
-            return {_special_sig_key: _special_secret_sig, "value": value}
+            return {
+                _special_sig_key: _special_secret_sig,
+                "value": value if is_known else UNKNOWN,
+            }
+        if not is_known:
+            return UNKNOWN
         return value
 
     # If value is an input type, convert it to a dict.
