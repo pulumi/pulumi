@@ -13,6 +13,7 @@ if sys.version_info >= (3, 11):
 else:
     from typing_extensions import NotRequired, TypedDict, TypeAlias
 from . import _utilities
+from . import outputs
 
 __all__ = [
     'DataArgs',
@@ -25,12 +26,12 @@ class DataArgsDict(TypedDict):
     bool_array: pulumi.Input[Sequence[pulumi.Input[_builtins.bool]]]
     boolean: pulumi.Input[_builtins.bool]
     float: pulumi.Input[_builtins.float]
-    inner_data: pulumi.Input['InnerDataArgsDict']
+    inner_data: pulumi.Input[Union['InnerDataArgs', 'InnerDataArgsDict', 'outputs.InnerData']]
     integer: pulumi.Input[_builtins.int]
     string: pulumi.Input[_builtins.str]
     string_map: pulumi.Input[Mapping[str, pulumi.Input[_builtins.str]]]
-    inner_data_list: NotRequired[pulumi.Input[Optional[Sequence[pulumi.Input['InnerDataArgsDict']]]]]
-    optional_inner: NotRequired[pulumi.Input[Optional['InnerDataArgsDict']]]
+    inner_data_list: NotRequired[pulumi.Input[Optional[Sequence[pulumi.Input[Union['InnerDataArgs', 'InnerDataArgsDict', 'outputs.InnerData']]]]]]
+    optional_inner: NotRequired[pulumi.Input[Optional[Union['InnerDataArgs', 'InnerDataArgsDict', 'outputs.InnerData']]]]
 
 @pulumi.input_type
 class DataArgs:

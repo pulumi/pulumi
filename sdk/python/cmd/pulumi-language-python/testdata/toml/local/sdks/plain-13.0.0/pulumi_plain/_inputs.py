@@ -13,6 +13,7 @@ if sys.version_info >= (3, 11):
 else:
     from typing_extensions import NotRequired, TypedDict, TypeAlias
 from . import _utilities
+from . import outputs
 
 __all__ = [
     'DataArgs',
@@ -25,7 +26,7 @@ class DataArgsDict(TypedDict):
     bool_array: Sequence[_builtins.bool]
     boolean: _builtins.bool
     float: _builtins.float
-    inner_data: 'InnerDataArgsDict'
+    inner_data: Union['InnerDataArgs', 'InnerDataArgsDict', 'outputs.InnerData']
     integer: _builtins.int
     string: _builtins.str
     string_map: Mapping[str, _builtins.str]
