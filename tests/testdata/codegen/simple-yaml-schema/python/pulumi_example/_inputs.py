@@ -13,6 +13,7 @@ if sys.version_info >= (3, 11):
 else:
     from typing_extensions import NotRequired, TypedDict, TypeAlias
 from . import _utilities
+from . import outputs
 from ._enums import *
 from .resource import Resource
 
@@ -49,13 +50,13 @@ class ConfigMapArgs:
 
 class ObjectArgsDict(TypedDict):
     bar: NotRequired[pulumi.Input[Optional[_builtins.str]]]
-    configs: NotRequired[pulumi.Input[Optional[Sequence[pulumi.Input['ConfigMapArgsDict']]]]]
+    configs: NotRequired[pulumi.Input[Optional[Sequence[pulumi.Input[Union['ConfigMapArgs', 'ConfigMapArgsDict', 'outputs.ConfigMap']]]]]]
     foo: NotRequired[pulumi.Input[Optional['Resource']]]
-    others: NotRequired[pulumi.Input[Optional[Sequence[pulumi.Input[Sequence[pulumi.Input['SomeOtherObjectArgsDict']]]]]]]
+    others: NotRequired[pulumi.Input[Optional[Sequence[pulumi.Input[Sequence[pulumi.Input[Union['SomeOtherObjectArgs', 'SomeOtherObjectArgsDict', 'outputs.SomeOtherObject']]]]]]]]
     """
     List of lists of other objects
     """
-    still_others: NotRequired[pulumi.Input[Optional[Mapping[str, pulumi.Input[Sequence[pulumi.Input['SomeOtherObjectArgsDict']]]]]]]
+    still_others: NotRequired[pulumi.Input[Optional[Mapping[str, pulumi.Input[Sequence[pulumi.Input[Union['SomeOtherObjectArgs', 'SomeOtherObjectArgsDict', 'outputs.SomeOtherObject']]]]]]]]
     """
     Mapping from string to list of some other object
     """

@@ -1,0 +1,5 @@
+component: sdkgen/python
+kind: improvement
+body: Let a property of a generated TypedDict accept the Args class and the output type
+    of its object type as well as the TypedDict
+time: 2026-08-31T00:00:00+00:00
