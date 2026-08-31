@@ -140,3 +140,20 @@ func TestTrimColorizedString(t *testing.T) {
 	assert.Equal(t, uniseg.StringWidth("hello, world!!"), measureText(str))
 	assert.Equal(t, uniseg.StringWidth(Never.Colorize(str)), measureText(str))
 }
+
+func TestHyperlink(t *testing.T) {
+	t.Parallel()
+
+	// Pin the exact OSC 8 bytes so that dropping one of the escape terminators is caught here rather than
+	// as visible garbage in a terminal.
+	assert.Equal(t,
+		"\x1b]8;;https://example.com\x1b\\"+Always.Colorize(Underline+BrightBlue+"click me"+Reset)+"\x1b]8;;\x1b\\",
+		Always.Hyperlink("https://example.com", "click me"))
+	assert.Equal(t,
+		"\x1b]8;;https://example.com\x1b\\"+Underline+BrightBlue+"click me"+Reset+"\x1b]8;;\x1b\\",
+		Raw.Hyperlink("https://example.com", "click me"))
+	assert.Equal(t, "click me", Never.Hyperlink("https://example.com", "click me"))
+	// With no URL there is nothing to link to; an empty-target escape renders as a broken link in
+	// some terminals.
+	assert.Equal(t, "plain", Always.Hyperlink("", "plain"))
+}
