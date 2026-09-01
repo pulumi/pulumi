@@ -201,7 +201,7 @@ func TestStateMigrationPatchesRewriteBeforeEncryptionAndReplayVerbatim(t *testin
 	secretsManager := b64.NewBase64SecretsManager()
 	entry, err := SerializeJournalEntry(t.Context(), engine.JournalEntry{
 		Kind:         engine.JournalEntryStateMigration,
-		RemoveOlds:   []int64{0},
+		Layout:       []apitype.JournalLayoutItem{layoutState(0), layoutBase(1)},
 		ResultStates: []*pkgresource.State{successor},
 		BaseStatePatches: []engine.JournalBaseStatePatch{{
 			Index: 1,

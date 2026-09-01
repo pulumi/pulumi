@@ -282,6 +282,15 @@ func snapURNs(snap *deploy.Snapshot) []resource.URN {
 	return urns
 }
 
+// snapIndices returns the index of each resource in the snapshot by URN.
+func snapIndices(snap *deploy.Snapshot) map[resource.URN]int {
+	indices := make(map[resource.URN]int, len(snap.Resources))
+	for i, res := range snap.Resources {
+		indices[res.URN] = i
+	}
+	return indices
+}
+
 // renameMigration returns a migration callback that renames the child resource and maps its old URN to the new one.
 func renameMigration(t *testing.T, callbacks *deploytest.CallbackServer, oldName, newName string) *pulumirpc.Callback {
 	callback, err := callbacks.Allocate(
@@ -379,6 +388,95 @@ func TestStateMigrationRenameChild(t *testing.T) {
 		validateOps(t, map[display.StepOp]int{deploy.OpSame: 3}))
 	require.NoError(t, err)
 	assert.Contains(t, snapURNs(snap), childBURN)
+}
+
+// TestStateMigrationOrdersInterleavedExternalDependent tests migrating states where the component is non-contiguous,
+// with a resource depending on part of the component tree interleaved:
+//
+//   - Component `comp` with the children `childA` and `tail`
+//
+//   - A resource `consumer`, that isn't part of the component, that depends on `childA`
+//
+//   - Migration replaces `childA` with `childB`
+//
+//   - prior snapshot:  comp, childA, consumer, tail
+//
+// After the migration we should have `comp, childB, consumer, tail`. Inserting `[comp, childB, tail]` as one block
+// where `tail` was would put consumer before childB, so the migrated subtree must be split around consumer.
+func TestStateMigrationOrdersInterleavedExternalDependent(t *testing.T) {
+	t.Parallel()
+
+	const (
+		consumerURN = resource.URN("urn:pulumi:test::test::pkgA:m:consumer::consumer")
+		tailURN     = resource.URN("urn:pulumi:test::test::my:module:Comp$my:module:Tail::tail")
+	)
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+	}
+
+	var migrate bool
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		callbacks, err := deploytest.NewCallbacksServer()
+		require.NoError(t, err)
+		defer func() { require.NoError(t, callbacks.Close()) }()
+
+		options := deploytest.ResourceOptions{}
+		if migrate {
+			options.StateMigrations = []*pulumirpc.Callback{
+				renameMigration(t, callbacks, "childA", "childB"),
+			}
+		}
+		comp, err := monitor.RegisterResource("my:module:Comp", "comp", false, options)
+		if err != nil {
+			return err
+		}
+
+		childName := "childA"
+		if migrate {
+			childName = "childB"
+		}
+		child, err := monitor.RegisterResource("pkgA:m:typA", childName, true, deploytest.ResourceOptions{
+			Parent: comp.URN,
+		})
+		if err != nil {
+			return err
+		}
+		_, err = monitor.RegisterResource("pkgA:m:consumer", "consumer", true, deploytest.ResourceOptions{
+			Dependencies: []resource.URN{child.URN},
+		})
+		if err != nil {
+			return err
+		}
+		_, err = monitor.RegisterResource("my:module:Tail", "tail", false, deploytest.ResourceOptions{
+			Parent: comp.URN,
+		})
+		return err
+	})
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
+	p := &lt.TestPlan{Options: stateMigrationTestOptions(t, hostF)}
+
+	snap, err := runUpdate(t, p, nil, nil)
+	require.NoError(t, err)
+	require.NoError(t, snap.VerifyIntegrity())
+	indices := snapIndices(snap)
+	require.Less(t, indices[childAURN], indices[consumerURN])
+	require.Less(t, indices[consumerURN], indices[tailURN])
+
+	migrate = true
+	snap, err = runUpdate(t, p, snap,
+		validateOps(t, map[display.StepOp]int{deploy.OpSame: 5}))
+	require.NoError(t, err)
+	require.NoError(t, snap.VerifyIntegrity())
+
+	indices = snapIndices(snap)
+	assert.NotContains(t, indices, childAURN)
+	require.Contains(t, indices, childBURN)
+	require.Contains(t, indices, tailURN)
+	require.Contains(t, indices, consumerURN)
+	assert.Equal(t, []resource.URN{childBURN}, snap.Resources[indices[consumerURN]].Dependencies)
+	assert.Less(t, indices[childBURN], indices[consumerURN])
 }
 
 // TestStateMigrationNormalizesProgramReferences verifies that references retained by the program are rewritten after

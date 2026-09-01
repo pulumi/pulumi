@@ -198,14 +198,15 @@ type JournalEntry struct {
 	// Snippets is the complete snippet list to persist when Kind is JournalEntrySnippets.
 	Snippets []resource.Snippet
 
-	// RemoveOlds holds the indices of the resources in the base snapshot that a state migration removes.
-	// Only set for JournalEntryStateMigration entries.
-	RemoveOlds []int64
-	// ResultStates holds the result subtree a state migration splices into the base snapshot, in order. It takes
-	// the position of the resource with the greatest removed index. Only set for JournalEntryStateMigration entries.
+	// Layout lists the complete base snapshot produced by a state migration, in order: retained resources by their
+	// index in the current base snapshot and inserted resources by their index in ResultStates. Base resources absent
+	// from Layout are removed. Only set for JournalEntryStateMigration entries.
+	Layout []apitype.JournalLayoutItem
+	// ResultStates holds the resources a state migration inserts into the base snapshot, in Layout order. Only set for
+	// JournalEntryStateMigration entries.
 	ResultStates []*pkgresource.State
 	// BaseStatePatches contains complete replacements for retained base resources whose references were rewritten.
-	// Indices refer to the base snapshot before RemoveOlds is applied.
+	// Indices refer to the base snapshot before the migration.
 	BaseStatePatches []JournalBaseStatePatch
 	// NewStatePatches contains complete replacements for resources produced by operations earlier in this update.
 	NewStatePatches []JournalNewStatePatch
