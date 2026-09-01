@@ -163,6 +163,7 @@ func (p *providerServer) Handshake(
 		LoaderTarget:                req.LoaderTarget,
 		ResolverTarget:              req.ResolverTarget,
 		AcceptsByteString:           req.AcceptsByteString,
+		SendsOldOutputsToCheck:      req.SendsOldOutputsToCheck,
 	})
 	if err != nil {
 		return nil, err
@@ -462,6 +463,14 @@ func (p *providerServer) Check(ctx context.Context, req *pulumirpc.CheckRequest)
 		return nil, err
 	}
 
+	var oldOutputs resource.PropertyMap
+	if req.OldOutputs != nil {
+		oldOutputs, err = UnmarshalProperties(req.OldOutputs, p.unmarshalOptions("oldOutputs", false /* keepOutputValues */))
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	var autonaming *AutonamingOptions
 	if req.Autonaming != nil {
 		autonaming = &AutonamingOptions{
@@ -476,6 +485,7 @@ func (p *providerServer) Check(ctx context.Context, req *pulumirpc.CheckRequest)
 		Type:          tokens.Type(req.Type),
 		Olds:          state,
 		News:          inputs,
+		OldOutputs:    oldOutputs,
 		AllowUnknowns: true,
 		RandomSeed:    req.RandomSeed,
 		Autonaming:    autonaming,
