@@ -685,14 +685,17 @@ async def serialize_property(
 
             return output_value
 
-        if not is_known:
-            return UNKNOWN
         if is_secret and settings.monitor_supports_feature(
             resource_pb2.RESOURCE_MONITOR_FEATURE_SECRETS
         ):
             # Serializing an output with a secret value requires the use of a magical signature key,
             # which the engine detects.
-            return {_special_sig_key: _special_secret_sig, "value": value}
+            return {
+                _special_sig_key: _special_secret_sig,
+                "value": value if is_known else UNKNOWN,
+            }
+        if not is_known:
+            return UNKNOWN
         return value
 
     # If value is an input type, convert it to a dict.
@@ -1481,6 +1484,7 @@ def resolve_outputs(
     transform_using_type_metadata: bool = False,
     keep_unknowns: bool = False,
     resolve_missing_as_unknown: bool = False,
+    additional_secret_outputs: Optional[list[str]] = None,
 ):
     # Produce a combined set of property states, starting with inputs and then applying
     # outputs.  If the same property exists in the inputs and outputs states, the output wins.
@@ -1525,6 +1529,8 @@ def resolve_outputs(
     for key, property_deps in deps.items():
         translated_deps[translate(key)] = property_deps
 
+    secret_keys = {translate(key) for key in additional_secret_outputs or []}
+
     if not settings.is_dry_run() or settings.is_legacy_apply_enabled():
         for key, value in list(serialized_props.items()):
             translated_key = translate(key)
@@ -1545,7 +1551,12 @@ def resolve_outputs(
                 )
 
     resolve_properties(
-        resolvers, all_properties, translated_deps, custom, resolve_missing_as_unknown
+        resolvers,
+        all_properties,
+        translated_deps,
+        custom,
+        resolve_missing_as_unknown,
+        secret_keys,
     )
 
 
@@ -1555,6 +1566,7 @@ def resolve_properties(
     deps: Mapping[str, set["Resource"]],
     custom: bool,
     resolve_missing_as_unknown: bool = False,
+    secret_keys: Optional[set[str]] = None,
 ):
     for key, value in all_properties.items():
         # Skip "id" and "urn", since we handle those specially.
@@ -1608,11 +1620,13 @@ def resolve_properties(
 
     # `allProps` may not have contained a value for every resolver: for example, optional outputs may not be present.
     # We will resolve all of these values as `None`, and will mark the value as known if we are not running a
-    # preview and the resource wasn't a skipped create.
+    # preview and the resource wasn't a skipped create. The engine can only mark properties it received as
+    # secret, so an output the provider omitted (e.g. an unknown elided during preview) keeps its secretness
+    # from `additional_secret_outputs` here.
     for key, resolve in resolvers.items():
         if key not in all_properties:
             known = not settings.is_dry_run() and not resolve_missing_as_unknown
-            resolve(None, known, False, deps.get(key), None)
+            resolve(None, known, key in (secret_keys or ()), deps.get(key), None)
 
 
 def resolve_outputs_due_to_exception(resolvers: dict[str, Resolver], exn: Exception):

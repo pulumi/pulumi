@@ -1253,6 +1253,7 @@ def register_resource(
                     transform_using_type_metadata,
                     keep_unknowns,
                     resolve_missing_as_unknown=unknown,
+                    additional_secret_outputs=additional_secret_outputs,
                 )
             resolve_outputs_called = True
 
