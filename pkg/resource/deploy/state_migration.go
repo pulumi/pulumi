@@ -216,8 +216,6 @@ func (sg *stepGenerator) applyStateMigrations(
 func logStateMigrationResource(
 	ctx context.Context, message string, rootURN resource.URN, state *pkgresource.State,
 ) {
-	// PropertyMap's logging integration redacts secret values from plaintext logs while retaining structured values
-	// for encrypted logs and OTLP export.
 	slog.DebugContext(ctx, message,
 		"rootURN", rootURN,
 		"resourceURN", state.URN,
