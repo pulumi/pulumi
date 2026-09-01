@@ -260,10 +260,7 @@ type CheckRequest struct {
 	Type tokens.Type
 	// TODO Change to (State, Input)
 	Olds, News resource.PropertyMap
-	// OldOutputs is the previously persisted outputs of the resource, if any. This is not populated for every
-	// call site (yet) and providers must not assume it is present. It is currently plumbed through only where
-	// callers need to give the provider access to prior output state during Check (e.g. the builtin Stash
-	// resource's reducer callback).
+	// OldOutputs is the previously persisted outputs of the resource, if any.
 	OldOutputs    resource.PropertyMap
 	AllowUnknowns bool
 	RandomSeed    []byte
