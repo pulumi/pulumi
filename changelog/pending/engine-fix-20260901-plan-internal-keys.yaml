@@ -1,0 +1,4 @@
+component: engine
+kind: fix
+body: Ignore internal property keys (those starting with an underscore) when generating and checking update plans
+time: 2026-09-01T00:00:00Z
