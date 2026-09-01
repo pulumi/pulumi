@@ -78,7 +78,7 @@ func GetCLIMetadata(cmd *cobra.Command, environ []string, args []string) map[str
 func pulumiEnvNames(environ []string) string {
 	names := []string{}
 	for _, e := range environ {
-		parts := strings.SplitN(e, "=", 2)
+		parts := strings.Split(e, "=")
 		if len(parts) == 2 && strings.HasPrefix(parts[0], "PULUMI_") {
 			names = append(names, parts[0])
 		}

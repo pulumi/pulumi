@@ -272,13 +272,14 @@ func TestPulumiEnvNames(t *testing.T) {
 
 	assert.Equal(t, "", pulumiEnvNames(nil))
 	assert.Equal(t,
-		"PULUMI_HOME PULUMI_SKIP_UPDATE_CHECK PULUMI_CONFIG",
+		"PULUMI_HOME PULUMI_SKIP_UPDATE_CHECK",
 		pulumiEnvNames([]string{
 			"PATH=/usr/bin",
 			"PULUMI_HOME=/home/user/.pulumi",
 			"PULUMIX=nope",
 			"PULUMI_SKIP_UPDATE_CHECK=true",
 			"PULUMI_NO_EQUALS_SIGN",
+			// Variables whose values contain '=' are excluded.
 			`PULUMI_CONFIG={"key":"a=b"}`,
 		}),
 	)
