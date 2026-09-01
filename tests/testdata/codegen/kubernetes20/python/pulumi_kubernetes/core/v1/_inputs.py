@@ -44,7 +44,7 @@ class ConfigMapArgsDict(TypedDict):
     """
     Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
     """
-    metadata: NotRequired[pulumi.Input[Optional['_meta.v1.ObjectMetaArgsDict']]]
+    metadata: NotRequired[pulumi.Input[Optional[Union['_meta.v1.ObjectMetaArgs', '_meta.v1.ObjectMetaArgsDict', '_meta.v1.outputs.ObjectMeta']]]]
     """
     Standard object's metadata. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata
     """
