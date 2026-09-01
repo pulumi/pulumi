@@ -2047,8 +2047,9 @@ func (p *provider) Construct(ctx context.Context, req ConstructRequest) (Constru
 		KeepByteString: protocol.acceptsByteString,
 		// To initially scope the use of this new feature, we only keep output values for
 		// Construct and Call (when the client accepts them).
-		KeepOutputValues: protocol.acceptOutputs,
-		PropagateNil:     true,
+		KeepOutputValues:      protocol.acceptOutputs,
+		UpgradeToOutputValues: protocol.acceptOutputs,
+		PropagateNil:          true,
 	})
 	if err != nil {
 		return ConstructResult{}, err

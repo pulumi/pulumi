@@ -841,7 +841,9 @@ func (p *providerServer) Construct(ctx context.Context,
 ) (*pulumirpc.ConstructResponse, error) {
 	typ, name, parent := tokens.Type(req.GetType()), req.GetName(), resource.URN(req.GetParent())
 
-	inputs, err := UnmarshalProperties(req.GetInputs(), p.unmarshalOptions("inputs", true /* keepOutputValues */))
+	opts := p.unmarshalOptions("inputs", true /* keepOutputValues */)
+	opts.UpgradeToOutputValues = true
+	inputs, err := UnmarshalProperties(req.GetInputs(), opts)
 	if err != nil {
 		return nil, err
 	}
@@ -967,7 +969,7 @@ func (p *providerServer) Construct(ctx context.Context,
 		return nil, rpcerror.WrapDetailedError(err)
 	}
 
-	opts := p.marshalOptions("outputs")
+	opts = p.marshalOptions("outputs")
 	opts.KeepOutputValues = req.AcceptsOutputValues
 	outputs, err := MarshalProperties(resource.ToResourcePropertyMap(resp.Outputs), opts)
 	if err != nil {
