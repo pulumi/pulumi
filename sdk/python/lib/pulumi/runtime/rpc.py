@@ -686,6 +686,12 @@ async def serialize_property(
             return output_value
 
         if not is_known:
+            # Preserve the secret marker even when the value is unknown: downstream consumers
+            # (stack outputs, schema-secret outputs) rely on the marker surviving an unknown.
+            if is_secret and settings.monitor_supports_feature(
+                resource_pb2.RESOURCE_MONITOR_FEATURE_SECRETS
+            ):
+                return {_special_sig_key: _special_secret_sig, "value": UNKNOWN}
             return UNKNOWN
         if is_secret and settings.monitor_supports_feature(
             resource_pb2.RESOURCE_MONITOR_FEATURE_SECRETS
