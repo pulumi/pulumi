@@ -1,0 +1,4 @@
+component: sdk/nodejs
+kind: feat
+body: Add component state migration callbacks to resource options
+time: 2026-09-01T14:18:37+02:00
