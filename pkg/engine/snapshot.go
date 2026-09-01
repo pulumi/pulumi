@@ -21,8 +21,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 )
 
-// SnapshotManagerCapabilities describes persistence features that may be needed before a SnapshotManager exists.
-// Backends provide these capabilities for previews, which do not construct a manager of their own.
+// SnapshotManagerCapabilities describes the features supported by the backend's persistence mode.
 type SnapshotManagerCapabilities struct {
 	// StateMigrations reports whether the selected persistence mode can store state migrations.
 	StateMigrations bool

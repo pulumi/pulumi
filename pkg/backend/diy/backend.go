@@ -1368,6 +1368,9 @@ func (b *diyBackend) apply(
 		Cancel:        scope.Context(),
 		Events:        engineEvents,
 		BackendClient: backend.NewBackendClient(b, op.SecretsProvider),
+		SnapshotManagerCapabilities: engine.SnapshotManagerCapabilities{
+			StateMigrations: true,
+		},
 	}
 	// Create the management machinery.
 	// We only need a snapshot manager if we're doing an update.
