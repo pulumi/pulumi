@@ -15,9 +15,11 @@
 package deploy
 
 import (
+	"cmp"
 	"errors"
 	"fmt"
 	"maps"
+	"slices"
 	"strings"
 
 	"github.com/go-test/deep"
@@ -304,8 +306,14 @@ func (snap *Snapshot) Toposort() error {
 		}
 	}
 
+	// Visit dependencies in snapshot order so that sorting is deterministic
+	indices := make(map[*pkgresource.State]int, len(snap.Resources))
+	for i, state := range snap.Resources {
+		indices[state] = i
+	}
+
 	for _, state := range snap.Resources {
-		err := topoVisit(state, &sorted, oldsByURN, newsByURN, visiting, visited)
+		err := topoVisit(state, &sorted, oldsByURN, newsByURN, indices, visiting, visited)
 		if err != nil {
 			return err
 		}
@@ -469,6 +477,7 @@ func topoVisit(
 	sorted *[]*pkgresource.State,
 	oldsByURN map[resource.URN]*pkgresource.State,
 	newsByURN map[resource.URN]*pkgresource.State,
+	indices map[*pkgresource.State]int,
 	visiting map[*pkgresource.State]bool,
 	visited map[*pkgresource.State]bool,
 ) error {
@@ -526,8 +535,11 @@ func topoVisit(
 			}
 		}
 
-		for next := range nexts {
-			if err := topoVisit(next, sorted, oldsByURN, newsByURN, visiting, visited); err != nil {
+		ordered := slices.SortedFunc(maps.Keys(nexts), func(a, b *pkgresource.State) int {
+			return cmp.Compare(indices[a], indices[b])
+		})
+		for _, next := range ordered {
+			if err := topoVisit(next, sorted, oldsByURN, newsByURN, indices, visiting, visited); err != nil {
 				return err
 			}
 		}
