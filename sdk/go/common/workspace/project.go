@@ -1260,8 +1260,10 @@ func (e *Environment) Remove(env string) *Environment {
 // trivia-preserving edit in yamlutil is driven by a fresh marshal of this value.
 func (e Environment) entries() []any {
 	entries := make([]any, len(e.envs))
+	emitted := map[string]bool{}
 	for i, env := range e.envs {
-		if ops, scoped := e.opsByEnv[env]; scoped {
+		if ops, scoped := e.opsByEnv[env]; scoped && !emitted[env] {
+			emitted[env] = true
 			entries[i] = map[string]any{env: map[string]any{"operations": ops}}
 			continue
 		}
@@ -1336,7 +1338,7 @@ func (e *Environment) UnmarshalYAML(n *yaml.Node) error {
 func parseEnvironmentEntries(entries []any) ([]string, map[string][]string, error) {
 	envs := make([]string, 0, len(entries))
 	ops := map[string][]string{}
-	occurrences := map[string]int{}
+	scoped := map[string]int{}
 	for _, entry := range entries {
 		var env string
 		switch entry := entry.(type) {
@@ -1354,19 +1356,17 @@ func parseEnvironmentEntries(entries []any) ([]string, map[string][]string, erro
 				}
 				env = name
 				ops[name] = operations
+				scoped[name]++
 			}
 		default:
 			return nil, nil, fmt.Errorf("expected an environment name or mapping, found %T", entry)
 		}
 		envs = append(envs, env)
-		occurrences[env]++
 	}
-	// Operations are keyed by environment name, so a name that appears twice cannot carry two
-	// different sets of them.
-	for env := range ops {
-		if occurrences[env] > 1 {
+	for env, n := range scoped {
+		if n > 1 {
 			return nil, nil, fmt.Errorf(
-				"environment %q: listed more than once, so the operations it applies to are ambiguous", env)
+				"environment %q: given operations more than once, so which ones apply is ambiguous", env)
 		}
 	}
 	return envs, ops, nil

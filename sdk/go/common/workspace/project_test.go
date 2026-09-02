@@ -1502,6 +1502,28 @@ runtime: yaml`
 `, string(marshaled))
 	})
 
+	// `pulumi config env add` appends a name that may already be listed. The operations belong to
+	// the name, so re-emitting them on the second occurrence would write a file that the load-time
+	// ambiguity check then rejects, leaving the stack unusable until hand-edited.
+	t.Run("appending an already-scoped environment round-trips", func(t *testing.T) {
+		t.Parallel()
+
+		stack, err := load(t, stackYaml)
+		require.NoError(t, err)
+
+		stack.Environment = stack.Environment.Append("aws/prod-write")
+		marshaled, err := encoding.YAML.Marshal(stack)
+		require.NoError(t, err)
+
+		reloaded, err := load(t, string(marshaled))
+		require.NoError(t, err)
+		assert.Equal(t,
+			[]string{"aws/prod-write", "shared/config", "aws/prod-write"},
+			imports(t, reloaded.Environment, OperationUp))
+		assert.Equal(t, []string{"aws/prod-read", "shared/config"},
+			imports(t, reloaded.Environment, OperationPreview))
+	})
+
 	t.Run("a mixed list is not partially decoded", func(t *testing.T) {
 		t.Parallel()
 
@@ -1525,19 +1547,22 @@ runtime: yaml`
 		t.Parallel()
 
 		for content, message := range map[string]string{
-			"environment:\n  - aws/prod: {operations: [apply]}\n":            `unknown operation "apply"`,
-			"environment:\n  - aws/prod: {operations: [watch]}\n":            `unknown operation "watch"`,
-			"environment:\n  - aws/prod: {operations: up}\n":                 `"operations" must be a list`,
-			"environment:\n  - aws/prod: {opperations: [up]}\n":              `unexpected option "opperations"`,
-			"environment:\n  - aws/prod: {}\n":                               `"operations" must be a list`,
-			"environment:\n  - {a: {operations: [up]}, b: {}}\n":             "found 2 keys",
-			"environment:\n  - aws/prod: {operations: [[up]]}\n":             "expected an operation name",
-			"environment:\n  - 3\n  - aws/prod: {operations: [up]}\n":        "found int",
-			"environment:\n  - aws/prod: {operations: [up]}\n  - aws/prod\n": "listed more than once",
+			"environment:\n  - aws/prod: {operations: [apply]}\n":     `unknown operation "apply"`,
+			"environment:\n  - aws/prod: {operations: [watch]}\n":     `unknown operation "watch"`,
+			"environment:\n  - aws/prod: {operations: up}\n":          `"operations" must be a list`,
+			"environment:\n  - aws/prod: {opperations: [up]}\n":       `unexpected option "opperations"`,
+			"environment:\n  - aws/prod: {}\n":                        `"operations" must be a list`,
+			"environment:\n  - {a: {operations: [up]}, b: {}}\n":      "found 2 keys",
+			"environment:\n  - aws/prod: {operations: [[up]]}\n":      "expected an operation name",
+			"environment:\n  - 3\n  - aws/prod: {operations: [up]}\n": "found int",
 		} {
 			_, err := load(t, content)
 			assert.ErrorContains(t, err, message, content)
 		}
+
+		// Listing a name twice is fine; giving it two sets of operations is not representable.
+		_, err := load(t, "environment:\n  - a/b: {operations: [up]}\n  - a/b: {operations: [refresh]}\n")
+		assert.ErrorContains(t, err, "given operations more than once")
 	})
 }
 
