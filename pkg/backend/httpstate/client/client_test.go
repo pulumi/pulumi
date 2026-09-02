@@ -2200,3 +2200,26 @@ func TestDownloadTemplateForeignURLInheritsInsecure(t *testing.T) {
 	require.True(t, captured, "a foreign template URL should build a fresh client")
 	assert.False(t, capturedInsecure, "the fresh client must inherit the caller's TLS verification setting")
 }
+
+func TestGetStackOutputs(t *testing.T) {
+	t.Parallel()
+
+	var gotPath string
+	server := newMockServerRequestProcessor(200, func(req *http.Request) string {
+		gotPath = req.URL.Path
+		return `{"outputs":{"foo":"bar"},"secretsProviders":{"type":"b64"}}`
+	})
+	defer server.Close()
+
+	resp, err := newMockClient(server).GetStackOutputs(t.Context(), StackIdentifier{
+		Owner:   "owner",
+		Project: "project",
+		Stack:   tokens.MustParseStackName("stack"),
+	})
+	require.NoError(t, err)
+	assert.Equal(t, "/api/stacks/owner/project/stack/outputs", gotPath)
+	assert.Equal(t, apitype.StackOutputsResponse{
+		Outputs:          map[string]any{"foo": "bar"},
+		SecretsProviders: &apitype.SecretsProvidersV1{Type: "b64"},
+	}, resp)
+}
