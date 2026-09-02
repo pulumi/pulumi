@@ -1,0 +1,4 @@
+component: engine
+kind: fix
+body: Clear the secret marker on a resource output when the program stops marking the matching input as secret
+time: 2026-09-02T11:31:22.197672+02:00
