@@ -18,6 +18,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"slices"
 	"strings"
@@ -30,9 +31,11 @@ import (
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/esc"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -249,6 +252,7 @@ func openStackEnv(
 ) (*esc.Environment, []apitype.EnvironmentDiagnostic, error) {
 	yaml := workspaceStack.Environment.DefinitionForOperation(op)
 	if len(yaml) == 0 {
+		warnOnFilteredEnvironments(os.Stderr, workspaceStack.Environment, op) //nolint:forbidigo
 		return nil, nil, nil
 	}
 
@@ -268,6 +272,17 @@ func openStackEnv(
 	orgName := orgNamer.OrgName()
 
 	return envs.OpenYAMLEnvironment(ctx, orgName, yaml, 2*time.Hour, overrides)
+}
+
+func warnOnFilteredEnvironments(out io.Writer, env *workspace.Environment, op string) {
+	if op == "" || len(env.Definition()) == 0 || len(env.DefinitionForOperation(op)) != 0 {
+		return
+	}
+	color := cmdutil.GetGlobalColorization()
+	fmt.Fprintln(out, color.Colorize(colors.SpecWarning+fmt.Sprintf(
+		"No environment applies to `%s`, so it runs without one. Scoped to other operations: %s.",
+		op, strings.Join(env.Imports(), ", "))+colors.Reset))
+	fmt.Fprintln(out)
 }
 
 // parseEnvironmentOverrides converts <env>=<replacement> pairs into a map sent to ESC,

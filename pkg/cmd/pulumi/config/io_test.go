@@ -15,6 +15,7 @@
 package config
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"testing"
@@ -456,6 +457,36 @@ func TestOpenStackEnvNoEnvironmentForOperation(t *testing.T) {
 	require.NoError(t, err)
 	assert.Nil(t, env)
 	assert.Nil(t, diags)
+}
+
+// Running with no environment is indistinguishable from a stack that configures none, and the
+// credentials it falls back on are the caller's own, so the case has to say so.
+func TestWarnOnFilteredEnvironments(t *testing.T) {
+	t.Parallel()
+
+	var projectStack workspace.ProjectStack
+	require.NoError(t, yaml.Unmarshal(
+		[]byte("environment:\n  - aws/prod-write: {operations: [up]}\n"), &projectStack))
+
+	var out bytes.Buffer
+	warnOnFilteredEnvironments(&out, projectStack.Environment, workspace.OperationPreview)
+	assert.Contains(t, out.String(), "No environment applies to `preview`")
+	assert.Contains(t, out.String(), "aws/prod-write")
+
+	// An operation that does have an environment, a command that names none, and a stack with no
+	// environment at all all say nothing.
+	for _, quiet := range []struct {
+		env *workspace.Environment
+		op  string
+	}{
+		{projectStack.Environment, workspace.OperationUp},
+		{projectStack.Environment, ""},
+		{nil, workspace.OperationPreview},
+	} {
+		out.Reset()
+		warnOnFilteredEnvironments(&out, quiet.env, quiet.op)
+		assert.Empty(t, out.String(), quiet.op)
+	}
 }
 
 func TestParseEnvironmentOverrides(t *testing.T) {
