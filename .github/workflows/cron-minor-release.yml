@@ -34,7 +34,7 @@ jobs:
           set -euo pipefail
 
           if [ -f .release-pending ]; then
-            echo "A release is already in progress ($(cat .release-pending)); skipping."
+            echo "A release is already in progress; skipping."
             exit 0
           fi
 
