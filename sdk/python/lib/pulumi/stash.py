@@ -11,7 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from typing import Any, Awaitable, Callable, Optional, Union, overload
+from typing import Any, Optional, Union, overload
+from collections.abc import Awaitable, Callable
 
 from . import _types, log
 from .output import Input, Output
