@@ -1255,19 +1255,23 @@ func (e *Environment) Remove(env string) *Environment {
 	}
 }
 
-// entries re-emits the list form of the environment, restoring the mapping that carries
-// `operations` for each scoped environment. Without this a save would delete the key: the
-// trivia-preserving edit in yamlutil is driven by a fresh marshal of this value.
+// entries re-emits the list form, restoring the `operations` mapping that a save would otherwise
+// drop: yamlutil's trivia-preserving edit is driven by a fresh marshal of this value.
+//
+// Every entry is emitted as a mapping once any of them is scoped, unscoped ones as an empty
+// mapping. A CLI predating `operations` decodes a leading string as `[]string` and sends the
+// elements it got as the whole import list, silently; leading with a mapping denies it that
+// partial decode and it fails closed on ESC's `environment must be an object` instead.
 func (e Environment) entries() []any {
 	entries := make([]any, len(e.envs))
 	emitted := map[string]bool{}
 	for i, env := range e.envs {
+		options := map[string]any{}
 		if ops, scoped := e.opsByEnv[env]; scoped && !emitted[env] {
 			emitted[env] = true
-			entries[i] = map[string]any{env: map[string]any{"operations": ops}}
-			continue
+			options["operations"] = ops
 		}
-		entries[i] = env
+		entries[i] = map[string]any{env: options}
 	}
 	return entries
 }
@@ -1355,8 +1359,10 @@ func parseEnvironmentEntries(entries []any) ([]string, map[string][]string, erro
 					return nil, nil, err
 				}
 				env = name
-				ops[name] = operations
-				scoped[name]++
+				if operations != nil {
+					ops[name] = operations
+					scoped[name]++
+				}
 			}
 		default:
 			return nil, nil, fmt.Errorf("expected an environment name or mapping, found %T", entry)
@@ -1372,8 +1378,10 @@ func parseEnvironmentEntries(entries []any) ([]string, map[string][]string, erro
 	return envs, ops, nil
 }
 
-// parseEnvironmentOperations reads the options attached to one environment in the list form.
 func parseEnvironmentOperations(env string, options any) ([]string, error) {
+	if options == nil {
+		return nil, nil
+	}
 	m, ok := options.(map[string]any)
 	if !ok {
 		return nil, fmt.Errorf("environment %q: expected a mapping of options, found %T", env, options)
@@ -1382,6 +1390,9 @@ func parseEnvironmentOperations(env string, options any) ([]string, error) {
 		if key != "operations" {
 			return nil, fmt.Errorf("environment %q: unexpected option %q, expected \"operations\"", env, key)
 		}
+	}
+	if len(m) == 0 {
+		return nil, nil
 	}
 	list, ok := m["operations"].([]any)
 	if !ok {

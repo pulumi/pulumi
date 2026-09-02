@@ -1380,7 +1380,7 @@ runtime: yaml`
       operations:
         - preview
         - refresh
-  - shared/config
+  - shared/config: {}
 `
 
 	load := func(t *testing.T, content string) (*ProjectStack, error) {
@@ -1458,7 +1458,9 @@ runtime: yaml`
                 ]
             }
         },
-        "shared/config"
+        {
+            "shared/config": {}
+        }
     ]
 }
 `
@@ -1498,7 +1500,7 @@ runtime: yaml`
       operations:
         - preview
         - refresh
-  - shared/config
+  - shared/config: {}
 `, string(marshaled))
 	})
 
@@ -1522,6 +1524,28 @@ runtime: yaml`
 			imports(t, reloaded.Environment, OperationUp))
 		assert.Equal(t, []string{"aws/prod-read", "shared/config"},
 			imports(t, reloaded.Environment, OperationPreview))
+	})
+
+	// A CLI released before `operations` existed decodes this list as `[]string` and keeps whatever
+	// leading elements decoded, silently sending those as the whole import list. Leading with a
+	// mapping denies it that partial decode, so it fails outright instead.
+	t.Run("save normalizes every entry to a mapping", func(t *testing.T) {
+		t.Parallel()
+
+		stack, err := load(t, "environment:\n  - shared/config\n  - aws/prod-write: {operations: [up]}\n")
+		require.NoError(t, err)
+
+		marshaled, err := encoding.YAML.Marshal(stack)
+		require.NoError(t, err)
+		assert.Equal(t, "environment:\n  - shared/config: {}\n  - aws/prod-write: {operations: [up]}\n",
+			string(marshaled))
+
+		// A stack with no scoped entry keeps the plain list: nothing to protect an old CLI from.
+		plain, err := load(t, "environment:\n  - shared/config\n")
+		require.NoError(t, err)
+		marshaled, err = encoding.YAML.Marshal(plain)
+		require.NoError(t, err)
+		assert.Equal(t, "environment:\n  - shared/config\n", string(marshaled))
 	})
 
 	t.Run("a mixed list is not partially decoded", func(t *testing.T) {
@@ -1551,7 +1575,6 @@ runtime: yaml`
 			"environment:\n  - aws/prod: {operations: [watch]}\n":     `unknown operation "watch"`,
 			"environment:\n  - aws/prod: {operations: up}\n":          `"operations" must be a list`,
 			"environment:\n  - aws/prod: {opperations: [up]}\n":       `unexpected option "opperations"`,
-			"environment:\n  - aws/prod: {}\n":                        `"operations" must be a list`,
 			"environment:\n  - {a: {operations: [up]}, b: {}}\n":      "found 2 keys",
 			"environment:\n  - aws/prod: {operations: [[up]]}\n":      "expected an operation name",
 			"environment:\n  - 3\n  - aws/prod: {operations: [up]}\n": "found int",
