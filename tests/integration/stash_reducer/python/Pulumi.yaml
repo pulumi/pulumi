@@ -1,0 +1,6 @@
+name: stash-reducer
+description: Exercise the pulumi.Stash reducer callback.
+runtime:
+  name: python
+  options:
+    toolchain: uv

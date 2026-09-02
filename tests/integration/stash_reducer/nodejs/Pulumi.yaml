@@ -1,0 +1,3 @@
+name: stash-reducer
+description: Exercise the pulumi:index:Stash reducer callback.
+runtime: nodejs

@@ -1820,3 +1820,37 @@ func TestErrorNoMainPackage(t *testing.T) {
 		},
 	})
 }
+
+// TestStashReducerGo exercises the pulumi.NewStash reducer callback end-to-end through the
+// Go SDK.
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
+func TestStashReducerGo(t *testing.T) {
+	d := filepath.Join("stash_reducer", "go")
+
+	validate := func(wantInput, wantOutput bool) func(*testing.T, integration.RuntimeValidationStackInfo) {
+		return func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+			assert.Equal(t, wantInput, stackInfo.Outputs["input"], "input")
+			assert.Equal(t, wantOutput, stackInfo.Outputs["output"], "output")
+		}
+	}
+
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:                    d,
+		Dependencies:           []string{"github.com/pulumi/pulumi/sdk/v3"},
+		Quick:                  true,
+		ExtraRuntimeValidation: validate(true, true),
+		EditDirs: []integration.EditDir{
+			{
+				Dir:                    filepath.Join(d, "step2"),
+				Additive:               true,
+				ExtraRuntimeValidation: validate(false, false),
+			},
+			{
+				Dir:                    filepath.Join(d, "step3"),
+				Additive:               true,
+				ExtraRuntimeValidation: validate(true, false),
+			},
+		},
+	})
+}

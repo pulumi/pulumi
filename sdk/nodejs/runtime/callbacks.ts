@@ -57,6 +57,13 @@ import { Http2Server, Http2Session } from "http2";
 
 type CallbackFunction = (args: Uint8Array) => Promise<jspb.Message>;
 
+/**
+ * A reducer callback registered on a Stash resource. Invoked by the engine during Check on
+ * update to combine the previously persisted stash input and output with the current program
+ * input to produce a new output. Not invoked on create.
+ */
+export type StashReducer = (oldInput: any, oldOutput: any, newInput: any) => any | Promise<any>;
+
 export interface ICallbackServer {
     registerTransform(callback: ResourceTransform): Promise<callproto.Callback>;
     registerStackTransform(callback: ResourceTransform): void;
@@ -64,6 +71,7 @@ export interface ICallbackServer {
     registerStackInvokeTransformAsync(callback: InvokeTransform): Promise<callproto.Callback>;
     registerResourceHook(hook: ResourceHook): Promise<void>;
     registerErrorHook(hook: ErrorHook): Promise<void>;
+    registerStashReducer(reducer: StashReducer): Promise<callproto.Callback>;
     shutdown(): void;
     // Wait for any pendind registerStackTransform calls to complete.
     awaitStackRegistrations(): Promise<void>;
@@ -709,6 +717,26 @@ export class CallbackServer implements ICallbackServer {
             }),
             `errorHook:${hook.name}`,
         );
+    }
+
+    async registerStashReducer(reducer: StashReducer): Promise<callproto.Callback> {
+        const cb = async (bytes: Uint8Array): Promise<jspb.Message> => {
+            const request = resproto.StashReduceRequest.deserializeBinary(bytes);
+            const oldInput = request.getOldInput()?.toJavaScript();
+            const oldOutput = request.getOldOutput()?.toJavaScript();
+            const newInput = request.getNewInput()?.toJavaScript();
+            const reduced = await reducer(oldInput, oldOutput, newInput);
+            const response = new resproto.StashReduceResponse();
+            response.setReduced(gstruct.Value.fromJavaScript(reduced ?? null));
+            return response;
+        };
+
+        const uuid = randomUUID();
+        this._callbacks.set(uuid, cb);
+        const callback = new Callback();
+        callback.setToken(uuid);
+        callback.setTarget(await this._target);
+        return callback;
     }
 }
 

@@ -2514,3 +2514,39 @@ func TestGetLanguageRuntimeMetadata(t *testing.T) {
 	require.Equal(t, meta["runtime.metadata.typechecker"], "None")
 	require.Contains(t, meta, "runtime.metadata.toolchainVersion")
 }
+
+// TestStashReducerPython exercises the pulumi.Stash reducer callback end-to-end through the
+// Python SDK.
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
+func TestStashReducerPython(t *testing.T) {
+	d := filepath.Join("stash_reducer", "python")
+
+	validate := func(wantInput, wantOutput bool) func(*testing.T, integration.RuntimeValidationStackInfo) {
+		return func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+			assert.Equal(t, wantInput, stackInfo.Outputs["input"], "input")
+			assert.Equal(t, wantOutput, stackInfo.Outputs["output"], "output")
+		}
+	}
+
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir: d,
+		Dependencies: []string{
+			filepath.Join("..", "..", "sdk", "python"),
+		},
+		Quick:                  true,
+		ExtraRuntimeValidation: validate(true, true),
+		EditDirs: []integration.EditDir{
+			{
+				Dir:                    filepath.Join(d, "step2"),
+				Additive:               true,
+				ExtraRuntimeValidation: validate(false, false),
+			},
+			{
+				Dir:                    filepath.Join(d, "step3"),
+				Additive:               true,
+				ExtraRuntimeValidation: validate(true, false),
+			},
+		},
+	})
+}
