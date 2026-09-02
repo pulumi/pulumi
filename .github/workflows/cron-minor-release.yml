@@ -59,7 +59,7 @@ jobs:
           git config user.email github-actions@github.com
           git switch --create "$branch"
           git add -A
-          git commit -m "chore: prepare for v${version}"
+          git commit -m "chore: freeze v${current}"
           git push --force origin HEAD
 
           # If a PR is already open for this branch, the force-push above refreshed it; reuse its URL.
