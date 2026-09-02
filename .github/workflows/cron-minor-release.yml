@@ -1,0 +1,95 @@
+name: Weekly minor release
+
+permissions:
+  contents: read
+
+on:
+  schedule:
+    # Mondays at 09:00 UTC.
+    - cron: "0 9 * * 1"
+  workflow_dispatch: {}
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: true
+
+jobs:
+  freeze:
+    name: Open the version bump PR
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+        with:
+          token: ${{ secrets.PULUMI_BOT_TOKEN }}
+      - uses: ./.github/actions/retry
+        with:
+          action: jdx/mise-action@v2
+          with: |
+            experimental: true
+      - name: Create PR
+        id: pr
+        env:
+          GITHUB_TOKEN: ${{ secrets.PULUMI_BOT_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          if [ -f .release-pending ]; then
+            echo "A release is already in progress ($(cat .release-pending)); skipping."
+            exit 0
+          fi
+
+          # `changie batch auto --dry-run` exits non-zero when there are no fragments;
+          # `|| true` keeps the step alive so we can inspect the message.
+          changelog=$(changie batch auto --dry-run 2>&1 || true)
+          if [[ "$changelog" == *"no unreleased changes"* ]]; then
+            echo "No unreleased changes; skipping."
+            echo "skipped=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          current=$(cat sdk/.version)
+          version=$(awk -F. '{print $1 "." $2 + 1 ".0"}' sdk/.version)
+          branch="automation/bump-v${version}"
+          echo "current=${current}" >> "$GITHUB_OUTPUT"
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
+
+          python3 scripts/set-version.py "${version}"
+
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git switch --create "$branch"
+          git add -A
+          git commit -m "chore: prepare for v${version}"
+          git push --force origin HEAD
+
+          # If a PR is already open for this branch, the force-push above refreshed it; reuse its URL.
+          existing=$(gh pr list --head "$branch" --state open --json url --jq '.[0].url')
+          if [ -n "$existing" ]; then
+            echo "PR already open: ${existing}; refreshed the branch."
+            echo "url=${existing}" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          pr_url=$(gh pr create \
+            --label impact/no-changelog-required \
+            --title "Prepare for v${version}" \
+            --body "$(printf 'Bump the version to v%s, freezing the v%s draft release. See [CONTRIBUTING.md](./CONTRIBUTING.md#releasing) for the rest of the release process.\n\nThe changelog v%s is expected to publish:\n\n%s\n' "${version}" "${current}" "${current}" "${changelog}")")
+          echo "url=${pr_url}" >> "$GITHUB_OUTPUT"
+      - name: Notify Slack (release ready)
+        if: steps.pr.outputs.url != ''
+        uses: slackapi/slack-github-action@v2
+        with:
+          method: chat.postMessage
+          token: ${{ secrets.RELEASE_BOT_TOKEN }}
+          payload: |
+            channel: "#team-iac-core"
+            text: "`pulumi` v${{ steps.pr.outputs.current }} is ready to go! Merge the version bump to freeze it: ${{ steps.pr.outputs.url }}"
+      - name: Notify Slack (no changes)
+        if: steps.pr.outputs.skipped == 'true'
+        uses: slackapi/slack-github-action@v2
+        with:
+          method: chat.postMessage
+          token: ${{ secrets.RELEASE_BOT_TOKEN }}
+          payload: |
+            channel: "#team-iac-core"
+            text: "No `pulumi` release this week — no unreleased changes."
