@@ -5,8 +5,8 @@ permissions:
 
 on:
   schedule:
-    # Mondays at 09:00 UTC.
-    - cron: "0 9 * * 1"
+    # Wednesdays at 09:00 UTC.
+    - cron: "0 9 * * 3"
   workflow_dispatch: {}
 
 concurrency:
