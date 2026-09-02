@@ -2167,9 +2167,8 @@ func TestClientInsecure(t *testing.T) {
 	assert.False(t, NewClient("https://api.example.com", "tok", false, nil).Insecure())
 }
 
+//nolint:paralleltest // overrides the package-level newClient hook
 func TestDownloadTemplateForeignURLInheritsInsecure(t *testing.T) {
-	t.Parallel()
-
 	// A template download URL that isn't the configured api endpoint makes DownloadTemplate
 	// build a fresh client for that host. That client has to carry the caller's TLS setting,
 	// otherwise `pulumi new <template>` accepts any certificate for the foreign host even when
@@ -2192,7 +2191,7 @@ func TestDownloadTemplateForeignURLInheritsInsecure(t *testing.T) {
 		return origNewClient(apiURL, apiToken, insecure, d)
 	}
 
-	body, err := pc.DownloadTemplate(context.Background(), server.URL+"/template.tar")
+	body, err := pc.DownloadTemplate(t.Context(), server.URL+"/template.tar")
 	require.NoError(t, err)
 	if body != nil {
 		require.NoError(t, body.Close())
