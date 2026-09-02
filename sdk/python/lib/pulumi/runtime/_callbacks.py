@@ -498,6 +498,75 @@ class _CallbackServicer(callback_pb2_grpc.CallbacksServicer):
             self._callbacks.pop(req.callback.token)
             raise
 
+    def register_stash_reducer(
+        self,
+        reducer: Callable[[Any, Any, Any], Any],
+    ) -> callback_pb2.Callback:
+        """Register a stash reducer callback and return the Callback proto that identifies
+        it. The engine invokes the callback during Check on update to combine the previously
+        persisted stash input and output with the current program input."""
+        from google.protobuf import struct_pb2
+
+        async def cb(s: bytes) -> Message:
+            request = resource_pb2.StashReduceRequest.FromString(s)
+
+            # Unpack protobuf Values into plain Python values for the reducer.
+            def unpack(v: struct_pb2.Value) -> Any:
+                kind = v.WhichOneof("kind")
+                if kind is None or kind == "null_value":
+                    return None
+                if kind == "bool_value":
+                    return v.bool_value
+                if kind == "number_value":
+                    return v.number_value
+                if kind == "string_value":
+                    return v.string_value
+                if kind == "struct_value":
+                    return {k: unpack(val) for k, val in v.struct_value.fields.items()}
+                if kind == "list_value":
+                    return [unpack(val) for val in v.list_value.values]
+                return None
+
+            old_input = unpack(request.old_input)
+            old_output = unpack(request.old_output)
+            new_input = unpack(request.new_input)
+
+            maybe = reducer(old_input, old_output, new_input)
+            if isinstance(maybe, Awaitable):
+                result = await maybe
+            else:
+                result = maybe
+
+            def pack(value: Any) -> struct_pb2.Value:
+                v = struct_pb2.Value()
+                if value is None:
+                    v.null_value = struct_pb2.NULL_VALUE
+                elif isinstance(value, bool):
+                    v.bool_value = value
+                elif isinstance(value, (int, float)):
+                    v.number_value = float(value)
+                elif isinstance(value, str):
+                    v.string_value = value
+                elif isinstance(value, Mapping):
+                    for k, val in value.items():
+                        v.struct_value.fields[k].CopyFrom(pack(val))
+                elif isinstance(value, (list, tuple)):
+                    for elem in value:
+                        v.list_value.values.append(pack(elem))
+                else:
+                    # Fall back to string representation for unsupported types.
+                    v.string_value = str(value)
+                return v
+
+            return resource_pb2.StashReduceResponse(reduced=pack(result))
+
+        token = str(uuid.uuid4())
+        self._callbacks[token] = cb
+        return callback_pb2.Callback(
+            token=token,
+            target=self._target,
+        )
+
     def _resource_options(
         self, request: resource_pb2.TransformRequest
     ) -> ResourceOptions:

@@ -15,6 +15,7 @@
 package pulumi
 
 import (
+	"fmt"
 	"reflect"
 )
 
@@ -33,13 +34,23 @@ type Stash struct {
 	ctx *Context
 }
 
+type stashReducerRef struct {
+	Target string `pulumi:"target"`
+	Token  string `pulumi:"token"`
+}
+
 type stashArgs struct {
-	Input any `pulumi:"input"`
+	Input   any              `pulumi:"input"`
+	Reducer *stashReducerRef `pulumi:"reducer"`
 }
 
 type StashArgs struct {
 	// The value to store in the stash resource.
 	Input Input
+	// An optional reducer combining the previously stashed input and output with the current
+	// program input to produce a new output. On create the reducer is skipped and the initial
+	// output is just the input.
+	Reduce StashReducerFunction
 }
 
 func (StashArgs) ElementType() reflect.Type {
@@ -53,9 +64,38 @@ func NewStash(ctx *Context, name string, args *StashArgs,
 	if args == nil {
 		args = &StashArgs{}
 	}
+
+	// If a reducer callback was supplied, register it with the callback server and translate
+	// the args into a form the engine understands. The builtin provider invokes the callback
+	// during Check on update; the reducer object itself is never persisted in state.
+	var internalArgs Input = args
+	if args.Reduce != nil {
+		cb, err := ctx.registerStashReducer(args.Reduce)
+		if err != nil {
+			return nil, fmt.Errorf("registering stash reducer: %w", err)
+		}
+		internalArgs = &stashInternalArgs{
+			Input: args.Input,
+			Reducer: &stashReducerRef{
+				Target: cb.Target,
+				Token:  cb.Token,
+			},
+		}
+	}
+
 	stash := Stash{ctx: ctx}
-	if err := ctx.RegisterResource("pulumi:index:Stash", name, args, &stash, opts...); err != nil {
+	if err := ctx.RegisterResource("pulumi:index:Stash", name, internalArgs, &stash, opts...); err != nil {
 		return nil, err
 	}
 	return &stash, nil
+}
+
+// stashInternalArgs is the shape sent to the engine when a reducer callback is present.
+type stashInternalArgs struct {
+	Input   Input
+	Reducer *stashReducerRef
+}
+
+func (stashInternalArgs) ElementType() reflect.Type {
+	return reflect.TypeFor[stashArgs]()
 }

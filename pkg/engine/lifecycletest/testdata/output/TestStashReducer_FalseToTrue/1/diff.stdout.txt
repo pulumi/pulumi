@@ -1,0 +1,10 @@
+<{%reset%}>  pulumi:index:Stash: (same)
+<{%reset%}>    [id=3]
+<{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pulumi:index:Stash::stash]
+<{%reset%}><{%reset%}><{%reset%}>    --outputs:--<{%reset%}>
+<{%reset%}>    input : <{%reset%}><{%reset%}>false<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>    output: <{%reset%}><{%reset%}>false<{%reset%}><{%reset%}>
+<{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    1 unchanged
+
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s

@@ -150,6 +150,7 @@ func NewImportDeployment(
 		nil, /*news*/
 		nil, /*reads*/
 		ctx.Diag,
+		ctx.CallbacksClientCache,
 	)
 
 	// Create a new provider registry.

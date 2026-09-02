@@ -1,0 +1,4 @@
+component: engine
+kind: feat
+body: Support a reducer callback on the pulumi:index:Stash builtin resource that combines the previously stashed output with the current input to produce the new output
+time: 2026-08-31T00:00:00Z

@@ -1725,6 +1725,54 @@ func (ctx *Context) registerErrorHook(f ErrorHookFunction) (*pulumirpc.Callback,
 	return cb, nil
 }
 
+// StashReducerFunction combines the previously stashed input and output with the current
+// program input to produce a new output. It is invoked by the engine on update; on create the
+// initial output is just the current input.
+type StashReducerFunction = func(oldInput, oldOutput, newInput any) (any, error)
+
+// registerStashReducer starts up a callback server if not already running and registers the
+// given reducer function. The returned Callback is smuggled through the resource's inputs as a
+// { target, token } object; the builtin provider invokes it during Check on update.
+func (ctx *Context) registerStashReducer(f StashReducerFunction) (*pulumirpc.Callback, error) {
+	callback := func(_ context.Context, request []byte) (proto.Message, error) {
+		var req pulumirpc.StashReduceRequest
+		if err := proto.Unmarshal(request, &req); err != nil {
+			return nil, fmt.Errorf("unmarshaling StashReduceRequest: %w", err)
+		}
+		reduced, err := f(req.OldInput.AsInterface(), req.OldOutput.AsInterface(), req.NewInput.AsInterface())
+		if err != nil {
+			return nil, err
+		}
+		val, err := structpb.NewValue(reduced)
+		if err != nil {
+			return nil, fmt.Errorf("marshaling stash reducer result: %w", err)
+		}
+		return &pulumirpc.StashReduceResponse{Reduced: val}, nil
+	}
+
+	err := func() error {
+		ctx.state.callbacksLock.Lock()
+		defer ctx.state.callbacksLock.Unlock()
+		if ctx.state.callbacks == nil {
+			c, err := newCallbackServer()
+			if err != nil {
+				return fmt.Errorf("creating callback server: %w", err)
+			}
+			ctx.state.callbacks = c
+		}
+		return nil
+	}()
+	if err != nil {
+		return nil, err
+	}
+
+	cb, err := ctx.state.callbacks.RegisterCallback(callback)
+	if err != nil {
+		return nil, fmt.Errorf("registering callback: %w", err)
+	}
+	return cb, nil
+}
+
 func (ctx *Context) registerResource(
 	t, name string, props Input, resource Resource, remote bool, packageRef string, opts ...ResourceOption,
 ) error {

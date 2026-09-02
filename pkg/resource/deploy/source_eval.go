@@ -42,7 +42,6 @@ import (
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/protobuf/proto"
 
@@ -411,23 +410,6 @@ type StateMigrationFunction func(
 	ctx context.Context, urn resource.URN, oldState []byte,
 ) (newState []byte, successors map[resource.URN]resource.URN, err error)
 
-type CallbacksClient struct {
-	pulumirpc.CallbacksClient
-
-	conn *grpc.ClientConn
-}
-
-func (c *CallbacksClient) Close() error {
-	return c.conn.Close()
-}
-
-func NewCallbacksClient(conn *grpc.ClientConn) *CallbacksClient {
-	return &CallbacksClient{
-		CallbacksClient: pulumirpc.NewCallbacksClient(conn),
-		conn:            conn,
-	}
-}
-
 // DialOptions returns dial options to be used for the gRPC client.
 type DialOptions func(metadata any) []grpc.DialOption
 
@@ -487,9 +469,10 @@ type resmon struct {
 	resourceTransformsLock    sync.Mutex
 	resourceTransforms        map[resource.URN][]TransformFunction // option transformation functions per resource
 	resourceHooks             *ResourceHooks
-	callbacksLock             sync.Mutex
-	callbacks                 map[string]*CallbacksClient // callbacks clients per target address
-	grpcDialOptions           DialOptions
+	// callbacks caches gRPC clients for language-side callback servers. Shared with other engine
+	// subsystems (e.g. the builtin Stash reducer) via plugin.Context so that only one connection
+	// is opened per callback server target for the lifetime of the context.
+	callbacks *plugin.CallbacksClientCache
 
 	packageRefLock sync.RWMutex
 	// A map of UUIDs to the description of a provider package they correspond to
@@ -570,13 +553,12 @@ func newResourceMonitor(
 		programComplete:         programComplete,
 		waitForShutdownChan:     make(chan struct{}, 1),
 		opts:                    src.opts,
-		callbacks:               map[string]*CallbacksClient{},
+		callbacks:               src.plugctx.CallbacksClientCache,
 		resourceHooks:           src.resourceHooks,
 		resourceTransforms:      map[resource.URN][]TransformFunction{},
 		packageRefMap:           map[string]providers.ProviderRequest{},
 		extensionRefMap:         map[string]extensionRef{},
 		parameterizedExtensions: map[string]bool{},
-		grpcDialOptions:         src.plugctx.DialOptions,
 		observer:                src.observer,
 		componentAliases:        map[resource.URN][]resource.URN{},
 	}
@@ -623,36 +605,11 @@ func (rm *resmon) AbortChan() <-chan bool {
 	return rm.abortChan
 }
 
-// Get or allocate a new grpc client for the given callback address.
-func (rm *resmon) GetCallbacksClient(target string) (*CallbacksClient, error) {
-	rm.callbacksLock.Lock()
-	defer rm.callbacksLock.Unlock()
-
-	if client, has := rm.callbacks[target]; has {
-		return client, nil
-	}
-
-	dialOpts := append(
-		rpcutil.TracingInterceptorDialOptions(),
-		grpc.WithTransportCredentials(insecure.NewCredentials()),
-		rpcutil.GrpcChannelOptions(),
-	)
-	if rm.grpcDialOptions != nil {
-		opts := rm.grpcDialOptions(map[string]any{
-			"mode": "client",
-			"kind": "callbacks",
-		})
-		dialOpts = append(dialOpts, opts...)
-	}
-
-	conn, err := grpc.NewClient(target, dialOpts...)
-	if err != nil {
-		return nil, err
-	}
-
-	client := NewCallbacksClient(conn)
-	rm.callbacks[target] = client
-	return client, nil
+// getCallbacksClient returns (allocating on first use) a gRPC client for the given callback
+// server target. Connections are cached in the shared plugin.Context cache so that subsystems
+// like the builtin Stash reducer see the same connection for the same target.
+func (rm *resmon) getCallbacksClient(target string) (*plugin.CallbacksClient, error) {
+	return rm.callbacks.Get(target)
 }
 
 // Address returns the address at which the monitor's RPC server may be reached.
@@ -673,11 +630,10 @@ func (rm *resmon) Cancel(ctx context.Context) error {
 	close(rm.cancel)
 	close(rm.waitForShutdownChan)                   // Signal to the program that we are ready to shutdown ...
 	_, programErr := rm.programComplete.Result(ctx) // ... and wait for the program to complete.
-	errs := slice.Prealloc[error](2 + len(rm.callbacks))
+	// Cached callback client connections are owned by plugin.Context and closed when the
+	// context is closed; nothing to close here.
+	errs := slice.Prealloc[error](2)
 	errs = append(errs, <-rm.done, programErr)
-	for _, client := range rm.callbacks {
-		errs = append(errs, client.Close())
-	}
 	return errors.Join(errs...)
 }
 
@@ -1578,7 +1534,7 @@ func (rm *resmon) ReadResource(ctx context.Context,
 // Wrap the transform callback so the engine can call the callback server, which will then execute the function.  The
 // wrapper takes care of all the necessary marshalling and unmarshalling.
 func (rm *resmon) wrapTransformCallback(cb *pulumirpc.Callback) (TransformFunction, error) {
-	client, err := rm.GetCallbacksClient(cb.Target)
+	client, err := rm.getCallbacksClient(cb.Target)
 	if err != nil {
 		return nil, err
 	}
@@ -1656,7 +1612,7 @@ func (rm *resmon) wrapTransformCallback(cb *pulumirpc.Callback) (TransformFuncti
 // Wrap the state migration callback so the engine can call the callback server, which will then execute the
 // function.  The wrapper takes care of all the necessary marshalling and unmarshalling.
 func (rm *resmon) wrapStateMigrationCallback(cb *pulumirpc.Callback) (StateMigrationFunction, error) {
-	client, err := rm.GetCallbacksClient(cb.Target)
+	client, err := rm.getCallbacksClient(cb.Target)
 	if err != nil {
 		return nil, err
 	}
@@ -1698,7 +1654,7 @@ func (rm *resmon) wrapStateMigrationCallback(cb *pulumirpc.Callback) (StateMigra
 // Wrap the transform callback so the engine can call the callback server, which will then execute the function.  The
 // wrapper takes care of all the necessary marshalling and unmarshalling.
 func (rm *resmon) wrapInvokeTransformCallback(cb *pulumirpc.Callback) (TransformInvokeFunction, error) {
-	client, err := rm.GetCallbacksClient(cb.Target)
+	client, err := rm.getCallbacksClient(cb.Target)
 	if err != nil {
 		return nil, err
 	}
@@ -1826,7 +1782,7 @@ func (rm *resmon) SignalAndWaitForShutdown(ctx context.Context, req *emptypb.Emp
 // the language runtime, which will then execute the hook. The wrapper takes
 // care of all the necessary marshalling and unmarshalling.
 func (rm *resmon) wrapResourceHookCallback(name string, cb *pulumirpc.Callback) (ResourceHookFunction, error) {
-	client, err := rm.GetCallbacksClient(cb.Target)
+	client, err := rm.getCallbacksClient(cb.Target)
 	if err != nil {
 		return nil, err
 	}
@@ -1927,7 +1883,7 @@ func (rm *resmon) RegisterResourceHook(ctx context.Context, req *pulumirpc.Regis
 func (rm *resmon) wrapErrorHookCallback(
 	name string, cb *pulumirpc.Callback,
 ) (ErrorHookFunction, error) {
-	client, err := rm.GetCallbacksClient(cb.Target)
+	client, err := rm.getCallbacksClient(cb.Target)
 	if err != nil {
 		return nil, err
 	}

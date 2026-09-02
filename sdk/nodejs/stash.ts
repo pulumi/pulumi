@@ -12,8 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+import * as log from "./log";
 import { Input, Output } from "./output";
 import { CustomResource, CustomResourceOptions } from "./resource";
+import { getCallbacks } from "./runtime/settings";
+
+/**
+ * A reducer combines the previously stashed input and output with the current program input
+ * to produce a new output value. It is invoked by the engine on update; on create the initial
+ * output is just the current input.
+ *
+ * `oldInput` and `oldOutput` are `undefined` on create.
+ */
+export type StashReducer = (oldInput: any, oldOutput: any, newInput: any) => any | Promise<any>;
 
 /**
  * Stash stores an arbitrary value in the state.
@@ -36,12 +47,32 @@ export class Stash extends CustomResource {
      * @param opts A bag of options that control this resource's behavior.
      */
     constructor(name: string, args: StashArgs, opts?: CustomResourceOptions) {
+        // If a reducer callback was supplied, register it with the callback server and pass a
+        // `{ target, token }` `reducer` input through to the engine. The builtin provider will
+        // invoke this callback during Check on update to combine the previously persisted
+        // output with the current input; the reducer object itself is stripped from state.
+        let reducer: Promise<{ target: string; token: string }> | undefined;
+        if (args.reduce !== undefined) {
+            const callbacks = getCallbacks();
+            if (callbacks === undefined) {
+                // Should only happen if running outside a Pulumi program.
+                log.warn("Stash reducer requires an active Pulumi resource monitor; ignoring reducer");
+            } else {
+                const reduce = args.reduce;
+                reducer = callbacks.registerStashReducer(reduce).then((cb) => ({
+                    target: cb.getTarget(),
+                    token: cb.getToken(),
+                }));
+            }
+        }
+
         super(
             "pulumi:index:Stash",
             name,
             {
                 input: args.input,
                 output: undefined,
+                reducer: reducer,
             },
             opts,
         );
@@ -56,4 +87,11 @@ export interface StashArgs {
      * The value to store in the stash resource.
      */
     readonly input: Input<any>;
+
+    /**
+     * An optional reducer function. When supplied, the engine invokes it during Check on
+     * update with `(oldInput, oldOutput, newInput)` and persists the return value as the new
+     * `output`. On create the reducer is skipped and `output` is just the current `input`.
+     */
+    readonly reduce?: StashReducer;
 }

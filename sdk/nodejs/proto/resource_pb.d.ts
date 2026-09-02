@@ -1423,6 +1423,64 @@ export namespace ErrorHookResponse {
     }
 }
 
+export class StashReduceRequest extends jspb.Message { 
+
+    hasOldInput(): boolean;
+    clearOldInput(): void;
+    getOldInput(): google_protobuf_struct_pb.Value | undefined;
+    setOldInput(value?: google_protobuf_struct_pb.Value): StashReduceRequest;
+
+    hasOldOutput(): boolean;
+    clearOldOutput(): void;
+    getOldOutput(): google_protobuf_struct_pb.Value | undefined;
+    setOldOutput(value?: google_protobuf_struct_pb.Value): StashReduceRequest;
+
+    hasNewInput(): boolean;
+    clearNewInput(): void;
+    getNewInput(): google_protobuf_struct_pb.Value | undefined;
+    setNewInput(value?: google_protobuf_struct_pb.Value): StashReduceRequest;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): StashReduceRequest.AsObject;
+    static toObject(includeInstance: boolean, msg: StashReduceRequest): StashReduceRequest.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: StashReduceRequest, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): StashReduceRequest;
+    static deserializeBinaryFromReader(message: StashReduceRequest, reader: jspb.BinaryReader): StashReduceRequest;
+}
+
+export namespace StashReduceRequest {
+    export type AsObject = {
+        oldInput?: google_protobuf_struct_pb.Value.AsObject,
+        oldOutput?: google_protobuf_struct_pb.Value.AsObject,
+        newInput?: google_protobuf_struct_pb.Value.AsObject,
+    }
+}
+
+export class StashReduceResponse extends jspb.Message { 
+
+    hasReduced(): boolean;
+    clearReduced(): void;
+    getReduced(): google_protobuf_struct_pb.Value | undefined;
+    setReduced(value?: google_protobuf_struct_pb.Value): StashReduceResponse;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): StashReduceResponse.AsObject;
+    static toObject(includeInstance: boolean, msg: StashReduceResponse): StashReduceResponse.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: StashReduceResponse, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): StashReduceResponse;
+    static deserializeBinaryFromReader(message: StashReduceResponse, reader: jspb.BinaryReader): StashReduceResponse;
+}
+
+export namespace StashReduceResponse {
+    export type AsObject = {
+        reduced?: google_protobuf_struct_pb.Value.AsObject,
+    }
+}
+
 export class RegisterPackageRequest extends jspb.Message { 
     getName(): string;
     setName(value: string): RegisterPackageRequest;

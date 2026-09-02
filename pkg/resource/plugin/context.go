@@ -16,6 +16,7 @@ package plugin
 
 import (
 	"context"
+	"errors"
 	"io"
 	"sync"
 
@@ -66,6 +67,12 @@ type Context struct {
 	config                   map[config.Key]string
 	projectName              tokens.PackageName
 	projectPlugins           []workspace.ProjectPlugin
+
+	// callbacksClientCache is a per-context cache of gRPC clients for callback servers hosted by
+	// language runtimes. Shared by any engine subsystem that needs to invoke a language-side
+	// callback (resource transforms, resource hooks, the builtin Stash reducer, ...). Closed by
+	// Context.Close. Access via CallbacksClientCache().
+	CallbacksClientCache *CallbacksClientCache
 
 	// loaderServer serves the schema loader bound to this context's workspace view, if any.
 	// The loader is a workspace service, not a host service: it boots plugins to load
@@ -279,6 +286,7 @@ func NewContextWithRoot(ctx context.Context, d, statusD diag.Sink, host Host,
 		}
 	}
 
+	pctx.CallbacksClientCache = NewCallbacksClientCache(pctx.DialOptions)
 	return pctx, nil
 }
 
@@ -316,6 +324,7 @@ func NewContextWithHost(
 		cancel:          cancel,
 		baseContext:     ctx,
 	}
+	pctx.CallbacksClientCache = NewCallbacksClientCache(pctx.DialOptions)
 
 	if err := pctx.startServices(host); err != nil {
 		contract.IgnoreClose(pctx)
@@ -348,6 +357,13 @@ func (ctx *Context) Close() error {
 	// shut down and any diagnostics they emitted have been delivered through this context's sinks
 	// -- before the caller that owns those sinks tears them down.
 	err := ctx.Host.ReleaseContext(ctx)
+
+	// Close any callback server connections that were opened for this context.
+	if ctx.CallbacksClientCache != nil {
+		if cerr := ctx.CallbacksClientCache.Close(); cerr != nil {
+			err = errors.Join(err, cerr)
+		}
+	}
 
 	if ctx.tracingSpan != nil {
 		ctx.tracingSpan.Finish()

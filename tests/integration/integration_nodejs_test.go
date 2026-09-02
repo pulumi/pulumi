@@ -3576,3 +3576,40 @@ outer:
 		t.Fatal("timed out waiting for program to complete")
 	}
 }
+
+// TestStashReducerNodeJS exercises the pulumi.Stash reducer callback end-to-end through the
+// Node.js SDK. The stash uses an AND reducer, so once its output flips to false it cannot come
+// back to true even if the program's input is true again.
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
+func TestStashReducerNodeJS(t *testing.T) {
+	d := filepath.Join("stash_reducer", "nodejs")
+
+	validate := func(wantInput, wantOutput bool) func(*testing.T, integration.RuntimeValidationStackInfo) {
+		return func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+			assert.Equal(t, wantInput, stackInfo.Outputs["input"], "input")
+			assert.Equal(t, wantOutput, stackInfo.Outputs["output"], "output")
+		}
+	}
+
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:                    d,
+		Dependencies:           []string{"@pulumi/pulumi"},
+		Quick:                  true,
+		ExtraRuntimeValidation: validate(true, true),
+		EditDirs: []integration.EditDir{
+			{
+				// input flips true -> false, reducer produces true && false == false.
+				Dir:                    filepath.Join(d, "step2"),
+				Additive:               true,
+				ExtraRuntimeValidation: validate(false, false),
+			},
+			{
+				// input flips back to true, but reducer(false, true) == false; output stays false.
+				Dir:                    filepath.Join(d, "step3"),
+				Additive:               true,
+				ExtraRuntimeValidation: validate(true, false),
+			},
+		},
+	})
+}

@@ -1,0 +1,9 @@
+<{%fg 3%}>~ pulumi:index:Stash: (update)
+<{%reset%}>    [id=3]
+<{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pulumi:index:Stash::stash]
+<{%reset%}><{%reset%}><{%fg 3%}>    --outputs:--<{%reset%}>
+<{%fg 3%}>  ~ output: <{%reset%}><{%fg 3%}>"<{%reset%}><{%reset%}>seed:first<{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 3%}> => <{%reset%}><{%fg 3%}>"<{%reset%}><{%reset%}>seed:first<{%reset%}><{%fg 2%}>+second<{%reset%}><{%fg 3%}>"
+<{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    <{%fg 3%}>~ 1 updated<{%reset%}>
+
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s

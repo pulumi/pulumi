@@ -24,6 +24,7 @@ import (
 
 	uuid "github.com/gofrs/uuid"
 	"go.opentelemetry.io/otel"
+	"google.golang.org/protobuf/proto"
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
@@ -32,6 +33,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi-internal/gsync"
+	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
 // The built-in provider provides resources and functions in the `pulumi` package, such as stack references and the
@@ -49,6 +51,10 @@ type builtinProvider struct {
 	news *gsync.Map[resource.URN, *pkgresource.State]
 	// reads is a map of URNs to resource states that have been read during the current deployment.
 	reads *gsync.Map[resource.URN, *pkgresource.State]
+
+	// callbacks is the shared cache of gRPC clients for language-side callback servers, used to
+	// invoke callbacks such as the pulumi:index:Stash reducer.
+	callbacks *plugin.CallbacksClientCache
 }
 
 func newBuiltinProvider(
@@ -56,6 +62,7 @@ func newBuiltinProvider(
 	news *gsync.Map[resource.URN, *pkgresource.State],
 	reads *gsync.Map[resource.URN, *pkgresource.State],
 	d diag.Sink,
+	callbacks *plugin.CallbacksClientCache,
 ) *builtinProvider {
 	ctx, cancel := context.WithCancel(context.Background())
 	return &builtinProvider{
@@ -65,6 +72,7 @@ func newBuiltinProvider(
 		news:          news,
 		reads:         reads,
 		diag:          d,
+		callbacks:     callbacks,
 	}
 }
 
@@ -117,7 +125,201 @@ const (
 	stashType          = "pulumi:index:Stash"
 )
 
-func (p *builtinProvider) Check(_ context.Context, req plugin.CheckRequest) (plugin.CheckResponse, error) {
+// Names of the input properties used to configure a stash reducer callback. The "reducer"
+// input, when present, is an object shaped like a Callback ({ target, token }) that identifies
+// a language-side callback the builtin provider will invoke during Check. It is consumed by
+// builtinProvider.Check and is never persisted in the resource's state.
+const (
+	stashReducerKey resource.PropertyKey = "reducer"
+	// stashReducedKey is the private, checked input property produced by builtinProvider.Check
+	// that carries the result of the reducer. It is only visible in the checked-inputs flow
+	// (Diff/Create/Update receive it via News/NewInputs); it does not surface as a public output.
+	stashReducedKey resource.PropertyKey = "__reduced"
+)
+
+// invokeStashReducer invokes the user-supplied reducer callback with (oldInput, oldOutput,
+// newInput) and returns the reduced value. Callers must have already checked for
+// computed/unknown values.
+func (p *builtinProvider) invokeStashReducer(
+	ctx context.Context, target, token string, oldInput, oldOutput, newInput resource.PropertyValue,
+) (resource.PropertyValue, error) {
+	if p.callbacks == nil {
+		return resource.PropertyValue{}, errors.New("no callbacks client cache configured for builtin provider")
+	}
+	client, err := p.callbacks.Get(target)
+	if err != nil {
+		return resource.PropertyValue{}, err
+	}
+
+	marshalOpts := plugin.MarshalOptions{
+		Label:        "stash-reducer",
+		KeepUnknowns: true,
+		KeepSecrets:  true,
+	}
+	oldInputPB, err := plugin.MarshalPropertyValue("old_input", oldInput, marshalOpts)
+	if err != nil {
+		return resource.PropertyValue{}, fmt.Errorf("marshaling stash reducer old_input: %w", err)
+	}
+	oldOutputPB, err := plugin.MarshalPropertyValue("old_output", oldOutput, marshalOpts)
+	if err != nil {
+		return resource.PropertyValue{}, fmt.Errorf("marshaling stash reducer old_output: %w", err)
+	}
+	newInputPB, err := plugin.MarshalPropertyValue("new_input", newInput, marshalOpts)
+	if err != nil {
+		return resource.PropertyValue{}, fmt.Errorf("marshaling stash reducer new_input: %w", err)
+	}
+	reqBytes, err := proto.Marshal(&pulumirpc.StashReduceRequest{
+		OldInput:  oldInputPB,
+		OldOutput: oldOutputPB,
+		NewInput:  newInputPB,
+	})
+	if err != nil {
+		return resource.PropertyValue{}, fmt.Errorf("marshaling StashReduceRequest: %w", err)
+	}
+
+	resp, err := client.Invoke(ctx, &pulumirpc.CallbackInvokeRequest{
+		Token:   token,
+		Request: reqBytes,
+	})
+	if err != nil {
+		return resource.PropertyValue{}, fmt.Errorf("invoking stash reducer: %w", err)
+	}
+	var respMsg pulumirpc.StashReduceResponse
+	if err := proto.Unmarshal(resp.Response, &respMsg); err != nil {
+		return resource.PropertyValue{}, fmt.Errorf("unmarshaling StashReduceResponse: %w", err)
+	}
+	if respMsg.Reduced == nil {
+		return resource.PropertyValue{}, errors.New("stash reducer returned nil reduced value")
+	}
+	reduced, err := plugin.UnmarshalPropertyValue("reduced", respMsg.Reduced, marshalOpts)
+	if err != nil {
+		return resource.PropertyValue{}, fmt.Errorf("unmarshaling reducer response: %w", err)
+	}
+	if reduced == nil {
+		return resource.PropertyValue{}, errors.New("stash reducer returned nil reduced value")
+	}
+	return *reduced, nil
+}
+
+// checkStash validates a pulumi:index:Stash resource's inputs. If a reducer callback has been
+// supplied via the "reducer" input (an object of the shape { target, token }), it is invoked
+// here to produce a __reduced private checked input consumed by Diff/Create/Update. The reducer
+// object is stripped from the returned properties so it never leaks into persisted state.
+func (p *builtinProvider) checkStash(ctx context.Context, req plugin.CheckRequest) (plugin.CheckResponse, error) {
+	inputVal, ok := req.News["input"]
+	if !ok {
+		return plugin.CheckResponse{
+			Failures: []plugin.CheckFailure{{Property: "input", Reason: `missing required property "input"`}},
+		}, nil
+	}
+
+	// Any input keys other than "input" and "reducer" are unknown.
+	for k := range req.News {
+		if k != "input" && k != stashReducerKey {
+			return plugin.CheckResponse{
+				Failures: []plugin.CheckFailure{{Property: k, Reason: fmt.Sprintf("unknown property \"%v\"", k)}},
+			}, nil
+		}
+	}
+
+	out := resource.PropertyMap{
+		"input": inputVal,
+	}
+
+	// Determine the reduced value.
+	if reducerVal, hasReducer := req.News[stashReducerKey]; hasReducer {
+		if !reducerVal.IsObject() {
+			return plugin.CheckResponse{
+				Failures: []plugin.CheckFailure{{
+					Property: stashReducerKey,
+					Reason:   `"reducer" must be an object with "target" and "token" string properties`,
+				}},
+			}, nil
+		}
+		reducerMap := reducerVal.ObjectValue()
+		targetVal, hasTarget := reducerMap["target"]
+		tokenVal, hasToken := reducerMap["token"]
+		if !hasTarget || !hasToken || !targetVal.IsString() || !tokenVal.IsString() {
+			return plugin.CheckResponse{
+				Failures: []plugin.CheckFailure{{
+					Property: stashReducerKey,
+					Reason:   `"reducer" must have string "target" and "token" properties`,
+				}},
+			}, nil
+		}
+		target, token := targetVal.StringValue(), tokenVal.StringValue()
+
+		// The reducer is always invoked, including on create, so a reducer that maps input to
+		// a different output type can produce that type from the very first run. On create
+		// there is no prior state, so old_input and old_output are passed as null.
+		oldInput, hasOldInput := req.Olds["input"]
+		oldOutput, hasOldOutput := req.OldOutputs["output"]
+		if !hasOldInput {
+			oldInput = resource.NewNullProperty()
+		}
+		if !hasOldOutput {
+			oldOutput = resource.NewNullProperty()
+		}
+
+		if inputVal.ContainsUnknowns() || oldOutput.ContainsUnknowns() || oldInput.ContainsUnknowns() {
+			// Can't run a user function against an unknown; propagate unknown.
+			out[stashReducedKey] = resource.MakeComputed(resource.NewProperty(""))
+		} else {
+			// Unwrap secrets for the callback; re-wrap the result if any side was secret.
+			oldInputPlain, oldInputSecret := unwrapSecret(oldInput)
+			oldOutputPlain, oldOutputSecret := unwrapSecret(oldOutput)
+			newInputPlain, newInputSecret := unwrapSecret(inputVal)
+			reduced, err := p.invokeStashReducer(
+				ctx, target, token, oldInputPlain, oldOutputPlain, newInputPlain)
+			if err != nil {
+				return plugin.CheckResponse{}, err
+			}
+			if oldInputSecret || oldOutputSecret || newInputSecret {
+				reduced = resource.MakeSecret(reduced)
+			}
+			out[stashReducedKey] = reduced
+		}
+	}
+	// No reducer: don't set __reduced. Diff, Create, and Update fall back to legacy behavior
+	// (diff on input change, output = input on create, output preserved on update).
+
+	return plugin.CheckResponse{Properties: out}, nil
+}
+
+// unwrapSecret strips secret wrappers from v at every nesting level, returning the plaintext
+// value along with a boolean indicating whether any secret was found. Objects and arrays are
+// walked recursively so a secret buried inside a nested field is unwrapped too.
+func unwrapSecret(v resource.PropertyValue) (resource.PropertyValue, bool) {
+	if v.IsSecret() {
+		inner, _ := unwrapSecret(v.SecretValue().Element)
+		return inner, true
+	}
+	if v.IsObject() {
+		obj := v.ObjectValue()
+		out := make(resource.PropertyMap, len(obj))
+		anySecret := false
+		for k, elem := range obj {
+			plain, hadSecret := unwrapSecret(elem)
+			out[k] = plain
+			anySecret = anySecret || hadSecret
+		}
+		return resource.NewProperty(out), anySecret
+	}
+	if v.IsArray() {
+		arr := v.ArrayValue()
+		out := make([]resource.PropertyValue, len(arr))
+		anySecret := false
+		for i, elem := range arr {
+			plain, hadSecret := unwrapSecret(elem)
+			out[i] = plain
+			anySecret = anySecret || hadSecret
+		}
+		return resource.NewProperty(out), anySecret
+	}
+	return v, false
+}
+
+func (p *builtinProvider) Check(ctx context.Context, req plugin.CheckRequest) (plugin.CheckResponse, error) {
 	typ := req.URN.Type()
 	switch typ { //nolint:exhaustive
 	case stackReferenceType:
@@ -148,22 +350,7 @@ func (p *builtinProvider) Check(_ context.Context, req plugin.CheckRequest) (plu
 		}
 		return plugin.CheckResponse{Properties: req.News}, nil
 	case stashType:
-		for k := range req.News {
-			if k != "input" {
-				return plugin.CheckResponse{
-					Failures: []plugin.CheckFailure{{Property: k, Reason: fmt.Sprintf("unknown property \"%v\"", k)}},
-				}, nil
-			}
-		}
-
-		_, ok := req.News["input"]
-		if !ok {
-			return plugin.CheckResponse{
-				Failures: []plugin.CheckFailure{{Property: "input", Reason: `missing required property "input"`}},
-			}, nil
-		}
-
-		return plugin.CheckResponse{Properties: req.News}, nil
+		return p.checkStash(ctx, req)
 	default:
 		return plugin.CheckResponse{}, fmt.Errorf("unrecognized resource type '%v'", typ)
 	}
@@ -182,15 +369,20 @@ func (p *builtinProvider) Diff(_ context.Context, req plugin.DiffRequest) (plugi
 
 		return plugin.DiffResult{Changes: plugin.DiffNone}, nil
 	case stashType:
-		// If the input has changed we need to update, although that update might just be to copy the new input
-		// value to the output side property called "input".
-		if !req.NewInputs["input"].DeepEquals(req.OldInputs["input"]) {
-			return plugin.DiffResult{
-				Changes:     plugin.DiffSome,
-				ChangedKeys: []resource.PropertyKey{"input"},
-			}, nil
+		// Diff against the reduced value produced by Check (which for the no-reducer case
+		// preserves the old output, so behavior matches the pre-reducer semantics of updating
+		// on input change).
+		reduced, hasReduced := req.NewInputs[stashReducedKey]
+		if !hasReduced {
+			// Should not happen; Check always produces __reduced. Fall back to the old input diff.
+			if !req.NewInputs["input"].DeepEquals(req.OldInputs["input"]) {
+				return plugin.DiffResult{Changes: plugin.DiffSome, ChangedKeys: []resource.PropertyKey{"input"}}, nil
+			}
+			return plugin.DiffResult{Changes: plugin.DiffNone}, nil
 		}
-
+		if !reduced.DeepEquals(req.OldOutputs["output"]) {
+			return plugin.DiffResult{Changes: plugin.DiffSome, ChangedKeys: []resource.PropertyKey{"output"}}, nil
+		}
 		return plugin.DiffResult{Changes: plugin.DiffNone}, nil
 	default:
 		return plugin.DiffResult{}, fmt.Errorf("unrecognized resource type '%v'", typ)
@@ -233,11 +425,15 @@ func (p *builtinProvider) Create(ctx context.Context, req plugin.CreateRequest) 
 			id = resource.ID(uuid.String())
 		}
 
+		output := req.Properties["input"]
+		if r, ok := req.Properties[stashReducedKey]; ok {
+			output = r
+		}
 		return plugin.CreateResponse{
 			ID: id,
 			Properties: resource.PropertyMap{
 				"input":  req.Properties["input"],
-				"output": req.Properties["input"],
+				"output": output,
 			},
 			Status: resource.StatusOK,
 		}, nil
@@ -250,14 +446,16 @@ func (p *builtinProvider) Update(_ context.Context, req plugin.UpdateRequest) (p
 	typ := req.URN.Type()
 	switch typ { //nolint:exhaustive
 	case stashType:
-		properties := resource.PropertyMap{
-			"input":  req.NewInputs["input"],
-			"output": req.OldOutputs["output"],
+		output := req.OldOutputs["output"]
+		if r, ok := req.NewInputs[stashReducedKey]; ok {
+			output = r
 		}
-
 		return plugin.UpdateResponse{
-			Properties: properties,
-			Status:     resource.StatusOK,
+			Properties: resource.PropertyMap{
+				"input":  req.NewInputs["input"],
+				"output": output,
+			},
+			Status: resource.StatusOK,
 		}, nil
 	default:
 		return plugin.UpdateResponse{}, fmt.Errorf("unrecognized resource type '%v'", typ)
