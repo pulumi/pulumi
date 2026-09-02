@@ -72,7 +72,7 @@ jobs:
 
           pr_url=$(gh pr create \
             --label impact/no-changelog-required \
-            --title "Prepare for v${version}" \
+            --title "Freeze v${current}" \
             --body "$(printf 'Bump the version to v%s, freezing the v%s draft release. See [CONTRIBUTING.md](./CONTRIBUTING.md#releasing) for the rest of the release process.\n\nThe changelog v%s is expected to publish:\n\n%s\n' "${version}" "${current}" "${current}" "${changelog}")")
           echo "url=${pr_url}" >> "$GITHUB_OUTPUT"
       - name: Notify Slack (release ready)
