@@ -1478,10 +1478,17 @@ runtime: yaml`
 		stack, err := load(t, stackYaml)
 		require.NoError(t, err)
 
-		// Imports is what the update metadata records, so it is not narrowed by operation.
 		assert.Equal(t,
 			[]string{"aws/prod-write", "aws/prod-read", "shared/config"},
 			stack.Environment.Imports())
+
+		// What an update records as the environments it used has to match what it opened.
+		assert.Equal(t,
+			[]string{"aws/prod-write", "shared/config"},
+			stack.Environment.ImportsForOperation(OperationUp))
+		assert.Equal(t,
+			[]string{"aws/prod-read", "shared/config"},
+			stack.Environment.ImportsForOperation(OperationPreview))
 
 		stack.Environment = stack.Environment.Remove("aws/prod-write")
 		marshaled, err := encoding.YAML.Marshal(stack)

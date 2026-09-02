@@ -1087,7 +1087,11 @@ func (e *Environment) importsForOperation(op string) []string {
 }
 
 func (e *Environment) Imports() []string {
-	def, diags, err := eval.LoadYAMLBytes("yaml", e.Definition())
+	return e.ImportsForOperation("")
+}
+
+func (e *Environment) ImportsForOperation(op string) []string {
+	def, diags, err := eval.LoadYAMLBytes("yaml", e.DefinitionForOperation(op))
 	if err != nil || len(diags) != 0 || def == nil {
 		return nil
 	}
