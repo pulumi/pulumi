@@ -560,7 +560,7 @@ func TestResourceHookComponentAfterDelete(t *testing.T) {
 					}
 					opts := deploytest.ResourceOptions{
 						ResourceHookBindings: binding,
-						Inputs:               req.Inputs,
+						Inputs:               resource.ToResourcePropertyMap(req.Inputs),
 					}
 					res, err := monitor.RegisterResource("pkgA:m:typB", req.Name, false, opts)
 					require.NoError(t, err)

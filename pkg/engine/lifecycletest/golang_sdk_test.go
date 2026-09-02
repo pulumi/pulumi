@@ -726,7 +726,7 @@ func TestRemoteComponentGolang(t *testing.T) {
 					req plugin.ConstructRequest,
 					monitor *deploytest.ResourceMonitor,
 				) (plugin.ConstructResult, error) {
-					_, ok := req.Inputs["bar"]
+					_, ok := req.Inputs.GetOk("bar")
 					assert.False(t, ok)
 
 					resp, err := monitor.RegisterResource("pkgB:index:component", "componentA", false)

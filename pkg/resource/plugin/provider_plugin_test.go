@@ -709,7 +709,7 @@ func TestProvider_ConstructOptions(t *testing.T) {
 					Type:    "type",
 					Name:    "name",
 					Parent:  tt.parent,
-					Inputs:  resource.PropertyMap{},
+					Inputs:  property.Map{},
 					Options: tt.give,
 				},
 			)

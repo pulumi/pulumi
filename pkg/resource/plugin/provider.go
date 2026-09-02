@@ -461,7 +461,7 @@ type ConstructRequest struct {
 	Type    tokens.Type
 	Name    string
 	Parent  resource.URN
-	Inputs  resource.PropertyMap
+	Inputs  property.Map
 	Options ConstructOptions
 }
 
