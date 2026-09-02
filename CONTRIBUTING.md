@@ -126,7 +126,7 @@ If you're using an AI coding assistant to contribute:
 
 Whenever a new PR is merged in this repository, the latest draft release on the [GitHub Releases page](https://github.com/pulumi/pulumi/releases) is updated with the latest binaries.  To release one of those draft releases a few steps are necessary:
 
-The [Weekly minor release](https://github.com/pulumi/pulumi/actions/workflows/cron-minor-release.yml) workflow runs every Wednesday, and can also be triggered by hand.  It bumps `sdk/.version` to the next minor version and opens a PR containing the changelog the release is expected to publish.  Merging that PR "freezes" the draft release for the previous version, which is the one we are about to publish.
+The [weekly minor release](https://github.com/pulumi/pulumi/actions/workflows/cron-minor-release.yml) workflow runs every Wednesday, and can also be triggered by hand.  It bumps `sdk/.version` to the next minor version and opens a PR containing the changelog the release is expected to publish.  Merging that PR "freezes" the draft release for the previous version, which is the one we are about to publish.
 
 To cut a patch release instead, bump `sdk/.version` to the next patch version by hand using `scripts/set-version.py <next-patch-version>`, and merge that.
 
