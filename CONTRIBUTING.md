@@ -126,11 +126,9 @@ If you're using an AI coding assistant to contribute:
 
 Whenever a new PR is merged in this repository, the latest draft release on the [GitHub Releases page](https://github.com/pulumi/pulumi/releases) is updated with the latest binaries.  To release one of those draft releases a few steps are necessary:
 
-If `sdk/.version` is the version we want to release, we need to "freeze" that draft release.  To do that update the version in `pulumi/pulumi` using `scripts/set-version.py <next-patch-version>`.  This stops the draft release for the current version from being updated, and thus it is ready to be released.
+The [Weekly minor release](https://github.com/pulumi/pulumi/actions/workflows/cron-minor-release.yml) workflow runs every Wednesday, and can also be triggered by hand.  It bumps `sdk/.version` to the next minor version and opens a PR containing the changelog the release is expected to publish.  Merging that PR "freezes" the draft release for the previous version, which is the one we are about to publish.
 
-If `sdk/.version` is not the version we want to release yet, usually in the case of a minor release, bump the version to the right version first, and merge that first (always using `scripts/set-version.py`).  Once that's merged the current release can be frozen as above.
-
-For these version bump PRs it's useful for reviewers if the expected changelog is included.  This can be generated using `changie batch auto --dry-run` at the root of the repository.
+To cut a patch release instead, bump `sdk/.version` to the next patch version by hand using `scripts/set-version.py <next-patch-version>`, and merge that.
 
 The next step, to gain some additional confidence in the release is to run the [Test examples](https://github.com/pulumi/examples/actions/workflows/test-examples.yml), and [Test templates](https://github.com/pulumi/templates/actions/workflows/test-templates.yml) test suites.  These run the tests in the `pulumi/examples` and `pulumi/templates` repositories using the latest `pulumi/pulumi` dev version, thus including all the latest changes.
 
