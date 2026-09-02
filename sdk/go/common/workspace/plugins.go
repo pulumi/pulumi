@@ -20,6 +20,7 @@ import (
 	"compress/gzip"
 	"context"
 	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -1293,6 +1294,25 @@ func (spec PluginDescriptor) IsGitPlugin() bool {
 	return strings.HasPrefix(spec.PluginDownloadURL, "git://")
 }
 
+// maxLocalNameLen bounds the length of a git plugin's local name. A git plugin's name embeds
+// the repository URL and the plugin's path within that repository, and that path is repeated
+// again as a subdirectory of the plugin's cache directory. Left unbounded this easily pushes
+// the plugin's own files past Windows' 260 character MAX_PATH limit, which breaks tools that
+// don't opt in to long paths (for example Python's DLL loader).
+// See https://github.com/pulumi/pulumi/issues/21154.
+const maxLocalNameLen = 48
+
+// shortenLocalName truncates name to maxLocalNameLen, appending a hash of the full name so that
+// plugins that share a prefix still get distinct cache directories.
+func shortenLocalName(name string) string {
+	if len(name) <= maxLocalNameLen {
+		return name
+	}
+	sum := sha256.Sum256([]byte(name))
+	suffix := "-h" + hex.EncodeToString(sum[:4])
+	return name[:maxLocalNameLen-len(suffix)] + suffix
+}
+
 // LocalName returns the local name of the plugin, which is used in the directory name, and a path
 // within that directory if the plugin is located in a subdirectory.
 func (spec PluginDescriptor) LocalName() (string, string) {
@@ -1300,13 +1320,13 @@ func (spec PluginDescriptor) LocalName() (string, string) {
 		trimmed := strings.TrimPrefix(spec.PluginDownloadURL, "git://")
 		url, path, err := gitutil.ParseGitRepoURL("https://" + strings.TrimPrefix(trimmed, "git://"))
 		if err != nil {
-			return strings.ReplaceAll(trimmed, "/", "_"), ""
+			return shortenLocalName(strings.ReplaceAll(trimmed, "/", "_")), ""
 		}
 		pathWithPrefix := path
 		if path != "" {
 			pathWithPrefix = "_" + path
 		}
-		return strings.ReplaceAll(strings.TrimPrefix(url, "https://")+pathWithPrefix, "/", "_"), path
+		return shortenLocalName(strings.ReplaceAll(strings.TrimPrefix(url, "https://")+pathWithPrefix, "/", "_")), path
 	}
 	return spec.Name, ""
 }
