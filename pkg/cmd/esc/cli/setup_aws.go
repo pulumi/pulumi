@@ -547,7 +547,8 @@ func setupAWSAccounts(
 	esc *escCommand,
 	source awsCredentialSource,
 	selected []selectedAWSAccount,
-	oidcIssuer, orgName, orgID, policyArn, projectName string,
+	oidcIssuer, orgName, orgID, policyArn string,
+	naming envNaming,
 ) []accountSetupResult {
 	results := make([]accountSetupResult, 0, len(selected))
 	for _, sel := range selected {
@@ -559,9 +560,9 @@ func setupAWSAccounts(
 			continue
 		}
 
-		escEnvName := escEnvName(projectName, sel.account)
+		envName := naming.escEnvName(sel.account)
 		result, err := client.SetupOIDCInfrastructure(
-			ctx, orgName, awsOIDCRoleName(orgID, escEnvName), policyArn, escEnvName)
+			ctx, orgName, awsOIDCRoleName(orgID, envName), policyArn, envName)
 		results = append(results, accountSetupResult{account: sel.account, result: result, err: err})
 	}
 	return results
@@ -603,8 +604,7 @@ func warnReusedRoles(esc *escCommand, results []accountSetupResult, policyArn st
 
 // awsEnvOptions configures the ESC environments written after setup succeeds.
 type awsEnvOptions struct {
-	// projectName is the ESC project that per-account environments are created in.
-	projectName string
+	naming      envNaming
 	sessionName string
 	duration    string
 }
@@ -632,7 +632,7 @@ func createAWSEnvironments(
 			continue
 		}
 
-		ref := setup.env.parseRef(org + "/" + escEnvName(opts.projectName, r.account))
+		ref := setup.env.parseRef(org + "/" + opts.naming.escEnvName(r.account))
 
 		fmt.Fprintf(setup.esc().stdout, "\nConfiguring environment %s for account %s:\n", ref.String(), r.account.ID)
 
@@ -672,6 +672,7 @@ func newSetupAWSCmd(setup *setupCommand) *cobra.Command {
 		yes         bool
 
 		projectName string
+		envName     string
 		sessionName string
 		duration    string
 	)
@@ -696,6 +697,11 @@ func newSetupAWSCmd(setup *setupCommand) *cobra.Command {
 			"  # Use existing credentials without prompting.\n" +
 			"  pulumi env setup aws --policy ReadOnlyAccess --yes\n" +
 			"\n" +
+			"  # Name the environment, so one account can be onboarded twice at different\n" +
+			"  # levels of access.\n" +
+			"  pulumi env setup aws --project aws --env-name prod-write --policy AdministratorAccess\n" +
+			"  pulumi env setup aws --project aws --env-name prod-read --policy ReadOnlyAccess\n" +
+			"\n" +
 			"  # Force the browser sign-in, inferring the SSO instance from your AWS config.\n" +
 			"  pulumi env setup aws --sso --policy AdministratorAccess\n" +
 			"\n" +
@@ -718,6 +724,11 @@ func newSetupAWSCmd(setup *setupCommand) *cobra.Command {
 			if err != nil {
 				return err
 			}
+			envName, err := validateESCEnvName(envName)
+			if err != nil {
+				return err
+			}
+			naming := envNaming{project: projectName, envName: envName}
 
 			if err := esc.getCachedClient(ctx); err != nil {
 				return err
@@ -780,7 +791,7 @@ func newSetupAWSCmd(setup *setupCommand) *cobra.Command {
 			for i, sel := range selected {
 				selectedAccounts[i] = sel.account
 			}
-			if err := checkDuplicateEnvNames(projectName, selectedAccounts); err != nil {
+			if err := checkDuplicateEnvNames(naming, selectedAccounts); err != nil {
 				return err
 			}
 
@@ -791,10 +802,10 @@ func newSetupAWSCmd(setup *setupCommand) *cobra.Command {
 
 			fmt.Fprintf(esc.stdout, "\nAbout to configure OIDC for organization %s:\n", org)
 			for _, sel := range selected {
-				escEnvName := escEnvName(projectName, sel.account)
-				ref := setup.env.parseRef(org + "/" + escEnvName)
+				envName := naming.escEnvName(sel.account)
+				ref := setup.env.parseRef(org + "/" + envName)
 				printSetupTarget(esc, fmt.Sprintf("account %s:", sel.account.ID))
-				fmt.Fprintf(esc.stdout, "    create role %s\n", awsOIDCRoleName(orgID, escEnvName))
+				fmt.Fprintf(esc.stdout, "    create role %s\n", awsOIDCRoleName(orgID, envName))
 				fmt.Fprintf(esc.stdout, "    attach %s\n", policyArn)
 				fmt.Fprintf(esc.stdout, "    %s\n", setup.planEnvLine(ctx, ref, awsLoginPath))
 			}
@@ -807,7 +818,7 @@ func newSetupAWSCmd(setup *setupCommand) *cobra.Command {
 			}
 
 			setup.printHeading("Setting up Infrastructure")
-			results := setupAWSAccounts(ctx, esc, source, selected, oidcIssuer, org, orgID, policyArn, projectName)
+			results := setupAWSAccounts(ctx, esc, source, selected, oidcIssuer, org, orgID, policyArn, naming)
 			renderSetupResults(esc.stdout, results, awsResourceNames)
 			warnReusedRoles(esc, results, policyArn)
 
@@ -817,7 +828,7 @@ func newSetupAWSCmd(setup *setupCommand) *cobra.Command {
 
 			setup.printHeading("Setting up Environment(s)")
 			return createAWSEnvironments(ctx, setup, org, results, awsEnvOptions{
-				projectName: projectName,
+				naming:      naming,
 				sessionName: sessionName,
 				duration:    duration,
 			})
@@ -842,6 +853,9 @@ func newSetupAWSCmd(setup *setupCommand) *cobra.Command {
 	cmd.Flags().BoolVar(&yes, "yes", false, "skip all confirmation prompts")
 	cmd.Flags().StringVar(&projectName, "project", "aws-login",
 		"the ESC project that per-account environments are created in")
+	cmd.Flags().StringVar(&envName, "env-name", "",
+		"the `name` of the ESC environment to create, which requires a single account "+
+			"(derived from the account name when omitted)")
 	cmd.Flags().StringVar(&sessionName, "session-name", "pulumi-environments-session",
 		"the AWS session name recorded for the assumed role")
 	cmd.Flags().StringVar(&duration, "duration", "1h", "the session duration for the assumed role")

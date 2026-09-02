@@ -1,0 +1,4 @@
+component: cli/env
+kind: feat
+body: Add `--env-name` to `pulumi env setup {aws,azure,gcp}` to name the environment it creates
+time: 2026-09-02T00:00:00Z

@@ -110,11 +110,17 @@ func TestResolvePolicy_OmittedWithYes(t *testing.T) {
 func TestESCEnvName(t *testing.T) {
 	t.Parallel()
 
+	naming := envNaming{project: "aws-login"}
 	assert.Equal(t, "aws-login/my-account-env",
-		escEnvName("aws-login", cloudsetup.CloudAccount{Name: "My Account", ID: "123456789012"}))
+		naming.escEnvName(cloudsetup.CloudAccount{Name: "My Account", ID: "123456789012"}))
 	// Accounts without a name fall back to the ID.
 	assert.Equal(t, "aws-login/123456789012-env",
-		escEnvName("aws-login", cloudsetup.CloudAccount{ID: "123456789012"}))
+		naming.escEnvName(cloudsetup.CloudAccount{ID: "123456789012"}))
+
+	// An explicit name replaces the derived one, without the `-env` suffix the derivation adds.
+	named := envNaming{project: "aws", envName: "prod-write"}
+	assert.Equal(t, "aws/prod-write",
+		named.escEnvName(cloudsetup.CloudAccount{Name: "My Account", ID: "123456789012"}))
 }
 
 // The plan the user confirms has to distinguish a create from a replacement, because
@@ -175,14 +181,16 @@ func TestValidateESCProject(t *testing.T) {
 func TestCheckDuplicateEnvNames(t *testing.T) {
 	t.Parallel()
 
-	require.NoError(t, checkDuplicateEnvNames("aws-login", []cloudsetup.CloudAccount{
+	naming := envNaming{project: "aws-login"}
+
+	require.NoError(t, checkDuplicateEnvNames(naming, []cloudsetup.CloudAccount{
 		{ID: "111111111111", Name: "Sandbox"},
 		{ID: "222222222222", Name: "Production"},
 	}))
 
 	// Display names are not unique on any of the three providers, and the account ID is only
 	// a fallback for an empty name, so it does not disambiguate these.
-	err := checkDuplicateEnvNames("aws-login", []cloudsetup.CloudAccount{
+	err := checkDuplicateEnvNames(naming, []cloudsetup.CloudAccount{
 		{ID: "111111111111", Name: "Sandbox"},
 		{ID: "222222222222", Name: "Sandbox"},
 	})
@@ -192,8 +200,37 @@ func TestCheckDuplicateEnvNames(t *testing.T) {
 	assert.Contains(t, err.Error(), "aws-login/sandbox-env")
 
 	// Sanitizing collapses different names onto the same environment too.
-	require.Error(t, checkDuplicateEnvNames("aws-login", []cloudsetup.CloudAccount{
+	require.Error(t, checkDuplicateEnvNames(naming, []cloudsetup.CloudAccount{
 		{ID: "111111111111", Name: "My Team"},
 		{ID: "222222222222", Name: "My/Team"},
 	}))
+
+	// An explicit --env-name would put every selected account in one environment, so it is
+	// rejected before any cloud resource is created rather than reported as a name collision.
+	named := envNaming{project: "aws", envName: "prod-write"}
+	require.NoError(t, checkDuplicateEnvNames(named, []cloudsetup.CloudAccount{{ID: "111111111111"}}))
+	err = checkDuplicateEnvNames(named, []cloudsetup.CloudAccount{
+		{ID: "111111111111"},
+		{ID: "222222222222"},
+	})
+	assert.ErrorContains(t, err, "--env-name names a single environment")
+}
+
+// --env-name lands in the OIDC subject and in the environment ref, so it has to be rejected
+// and lowercased on the same terms as --project.
+func TestValidateESCEnvName(t *testing.T) {
+	t.Parallel()
+
+	got, err := validateESCEnvName("")
+	require.NoError(t, err)
+	assert.Empty(t, got)
+
+	got, err = validateESCEnvName("Prod-Write.1_x")
+	require.NoError(t, err)
+	assert.Equal(t, "prod-write.1_x", got)
+
+	for _, bad := range []string{"a/b", "has space", "o'brien"} {
+		_, err := validateESCEnvName(bad)
+		assert.ErrorContains(t, err, "--env-name")
+	}
 }

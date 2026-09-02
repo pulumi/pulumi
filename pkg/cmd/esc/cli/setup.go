@@ -163,17 +163,28 @@ func (s *setupCommand) planEnvLine(ctx context.Context, ref environmentRef, logi
 const escNameChars = `a-zA-Z0-9._-`
 
 var (
-	escProjectNameRE = regexp.MustCompile(`^[` + escNameChars + `]+$`)
-	envNameUnsafe    = regexp.MustCompile(`[^` + escNameChars + `]`)
+	escNameRE     = regexp.MustCompile(`^[` + escNameChars + `]+$`)
+	envNameUnsafe = regexp.MustCompile(`[^` + escNameChars + `]`)
 )
 
 // validateESCProject checks that an ESC project name is valid and returns it lowercased.
 func validateESCProject(projectName string) (string, error) {
-	if !escProjectNameRE.MatchString(projectName) {
+	if !escNameRE.MatchString(projectName) {
 		return "", fmt.Errorf("--project %q must contain only letters, digits, and the characters . _ -",
 			projectName)
 	}
 	return strings.ToLower(projectName), nil
+}
+
+func validateESCEnvName(envName string) (string, error) {
+	if envName == "" {
+		return "", nil
+	}
+	if !escNameRE.MatchString(envName) {
+		return "", fmt.Errorf("--env-name %q must contain only letters, digits, and the characters . _ -",
+			envName)
+	}
+	return strings.ToLower(envName), nil
 }
 
 // sanitizeEnvName derives a default environment name from a cloud account name,
@@ -186,11 +197,28 @@ func sanitizeEnvName(accountName, accountID string) string {
 	return strings.ToLower(envNameUnsafe.ReplaceAllString(base, "-")) + "-env"
 }
 
-// checkDuplicateEnvNames fails when two accounts derive the same environment name.
-func checkDuplicateEnvNames(projectName string, accounts []cloudsetup.CloudAccount) error {
+type envNaming struct {
+	project string
+	envName string
+}
+
+func (n envNaming) escEnvName(account cloudsetup.CloudAccount) string {
+	name := n.envName
+	if name == "" {
+		name = sanitizeEnvName(account.Name, account.ID)
+	}
+	return n.project + "/" + name
+}
+
+func checkDuplicateEnvNames(naming envNaming, accounts []cloudsetup.CloudAccount) error {
+	if naming.envName != "" && len(accounts) > 1 {
+		return fmt.Errorf(
+			"--env-name names a single environment, but %d accounts were selected; "+
+				"omit it to derive a name from each account", len(accounts))
+	}
 	seen := map[string]cloudsetup.CloudAccount{}
 	for _, a := range accounts {
-		name := escEnvName(projectName, a)
+		name := naming.escEnvName(a)
 		if prev, ok := seen[name]; ok {
 			return fmt.Errorf(
 				"%q (%s) and %q (%s) have the same name. This would result in the same ESC environment name '%s'",
@@ -199,11 +227,6 @@ func checkDuplicateEnvNames(projectName string, accounts []cloudsetup.CloudAccou
 		seen[name] = a
 	}
 	return nil
-}
-
-// escEnvName is the `<project>/<name>` of the environment created for a cloud account.
-func escEnvName(projectName string, account cloudsetup.CloudAccount) string {
-	return projectName + "/" + sanitizeEnvName(account.Name, account.ID)
 }
 
 // oidcSubjectAttributes is written into every generated login block so the environment presents
