@@ -1,4 +1,0 @@
-component: cli/policy
-kind: fix
-body: Avoid hanging when policy pack fails to start up
-time: 2026-08-28T14:26:38.200306694+02:00

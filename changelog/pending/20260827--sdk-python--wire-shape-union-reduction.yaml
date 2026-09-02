@@ -1,6 +1,0 @@
-component: sdk/python
-kind: improvement
-body: Resolve a union value to its member by matching the value's wire shape, so
-    unions whose members carry no constant properties serialize and translate with
-    the right member's property names
-time: 2026-08-27T00:00:00+00:00
