@@ -16,6 +16,7 @@ SCRIPT = "scripts/get-language-providers.sh"
 
 SCOPE_FOR = {
     "dotnet": "sdk/dotnet",
+    "hcl": "hcl",
     "java": "java",
     "yaml": "yaml",
 }
