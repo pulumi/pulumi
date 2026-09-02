@@ -262,7 +262,11 @@ func (p *Pulumi) run(ctx context.Context, a pulumiArgs, isPreview bool) (pulumiR
 	}
 
 	ssml := cmdStack.NewStackSecretsManagerLoaderFromEnv()
-	cfg, sm, err := cmdConfig.GetStackConfiguration(ctx, cmdutil.Diag(), ssml, s, proj, "", nil, "")
+	envOp := workspace.OperationUp
+	if isPreview {
+		envOp = workspace.OperationPreview
+	}
+	cfg, sm, err := cmdConfig.GetStackConfiguration(ctx, cmdutil.Diag(), ssml, s, proj, "", nil, envOp)
 	if err != nil {
 		return failedResult(a, "", fmt.Errorf("getting stack configuration: %w", err))
 	}

@@ -805,7 +805,8 @@ func DefaultRunStatefulUpdate(
 	// (with req.Proj/req.Root supplied by the global fallback under $PULUMI_HOME).
 	configFile := workspace.ProjectStackPath(
 		filepath.Join(req.Root, workspace.ProjectFile+".yaml"), req.Proj, req.Stack.Ref().Name().Q())
-	cfg, sm, err := cmdConfig.GetStackConfiguration(ctx, req.Sink, ssml, req.Stack, req.Proj, configFile, nil, "")
+	cfg, sm, err := cmdConfig.GetStackConfiguration(
+		ctx, req.Sink, ssml, req.Stack, req.Proj, configFile, nil, workspace.OperationUp)
 	if err != nil {
 		return nil, fmt.Errorf("get stack configuration: %w", err)
 	}

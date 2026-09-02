@@ -1120,7 +1120,8 @@ func NewImportCmd() *cobra.Command {
 				return err
 			}
 
-			cfg, sm, err := config.GetStackConfiguration(ctx, sink, ssml, s, proj, configFile, nil, "")
+			cfg, sm, err := config.GetStackConfiguration(
+				ctx, sink, ssml, s, proj, configFile, nil, workspace.OperationUp)
 			if err != nil {
 				return fmt.Errorf("getting stack configuration: %w", err)
 			}
