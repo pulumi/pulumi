@@ -1004,10 +1004,29 @@ func (proj *PluginProject) Validate() error {
 	return nil
 }
 
+// Operations that a stack's `environment` list can scope an entry to with `operations:`.
+const (
+	OperationUp      = "up"
+	OperationPreview = "preview"
+	OperationRefresh = "refresh"
+	OperationDestroy = "destroy"
+)
+
+var validOperations = []string{OperationUp, OperationPreview, OperationRefresh, OperationDestroy}
+
+func normalizeOperation(op string) string {
+	op = strings.ToLower(op)
+	if op == string(apitype.UpdateUpdate) {
+		return OperationUp
+	}
+	return op
+}
+
 type Environment struct {
-	envs    []string
-	message json.RawMessage
-	node    *yaml.Node
+	envs     []string
+	opsByEnv map[string][]string
+	message  json.RawMessage
+	node     *yaml.Node
 }
 
 func NewEnvironment(envs []string) *Environment {
@@ -1015,13 +1034,24 @@ func NewEnvironment(envs []string) *Environment {
 }
 
 func (e *Environment) Definition() []byte {
+	return e.DefinitionForOperation("")
+}
+
+// DefinitionForOperation is Definition with every environment whose `operations` list does not
+// name op dropped, returning nil when that leaves none. An empty op keeps all of them. ESC knows
+// nothing about `operations`, so the filtering happens here and the key never reaches the wire.
+func (e *Environment) DefinitionForOperation(op string) []byte {
 	switch {
 	case e == nil:
 		// If there's no environment, return nil.
 		return nil
 	case len(e.envs) != 0:
 		// If the environment was a list of environments, create an anonymous environment and return it.
-		bytes, err := json.Marshal(map[string]any{"imports": e.envs})
+		imports := e.importsForOperation(op)
+		if len(imports) == 0 {
+			return nil
+		}
+		bytes, err := json.Marshal(map[string]any{"imports": imports})
 		if err != nil {
 			return nil
 		}
@@ -1039,6 +1069,21 @@ func (e *Environment) Definition() []byte {
 	default:
 		return nil
 	}
+}
+
+func (e *Environment) importsForOperation(op string) []string {
+	if op == "" || len(e.opsByEnv) == 0 {
+		return e.envs
+	}
+	op = normalizeOperation(op)
+	imports := make([]string, 0, len(e.envs))
+	for _, env := range e.envs {
+		ops, scoped := e.opsByEnv[env]
+		if !scoped || slices.ContainsFunc(ops, func(o string) bool { return normalizeOperation(o) == op }) {
+			imports = append(imports, env)
+		}
+	}
+	return imports
 }
 
 func (e *Environment) Imports() []string {
@@ -1195,6 +1240,7 @@ func (e *Environment) Remove(env string) *Environment {
 			n := e.envs[i]
 			if n == env {
 				e.envs = append(e.envs[:i], e.envs[i+1:]...)
+				delete(e.opsByEnv, env)
 				if len(e.envs) == 0 {
 					return nil
 				}
@@ -1205,33 +1251,151 @@ func (e *Environment) Remove(env string) *Environment {
 	}
 }
 
+// entries re-emits the list form of the environment, restoring the mapping that carries
+// `operations` for each scoped environment. Without this a save would delete the key: the
+// trivia-preserving edit in yamlutil is driven by a fresh marshal of this value.
+func (e Environment) entries() []any {
+	entries := make([]any, len(e.envs))
+	for i, env := range e.envs {
+		if ops, scoped := e.opsByEnv[env]; scoped {
+			entries[i] = map[string]any{env: map[string]any{"operations": ops}}
+			continue
+		}
+		entries[i] = env
+	}
+	return entries
+}
+
 func (e Environment) MarshalJSON() ([]byte, error) {
-	if e.message == nil {
+	switch {
+	case e.message != nil:
+		return json.Marshal(e.message)
+	case len(e.opsByEnv) != 0:
+		return json.Marshal(e.entries())
+	default:
 		return json.Marshal(e.envs)
 	}
-	return json.Marshal(e.message)
 }
 
 func (e *Environment) UnmarshalJSON(b []byte) error {
-	if err := json.Unmarshal(b, &e.envs); err == nil {
+	*e = Environment{}
+	var envs []string
+	if err := json.Unmarshal(b, &envs); err == nil {
+		e.envs = envs
 		return nil
 	}
-	return json.Unmarshal(b, &e.message)
+
+	var entries []any
+	if err := json.Unmarshal(b, &entries); err != nil {
+		return json.Unmarshal(b, &e.message)
+	}
+	envs, ops, err := parseEnvironmentEntries(entries)
+	if err != nil {
+		return err
+	}
+	e.envs, e.opsByEnv = envs, ops
+	return nil
 }
 
 func (e Environment) MarshalYAML() (any, error) {
-	if e.node == nil {
+	switch {
+	case e.node != nil:
+		return e.node, nil
+	case len(e.opsByEnv) != 0:
+		return e.entries(), nil
+	default:
 		return e.envs, nil
 	}
-	return e.node, nil
 }
 
 func (e *Environment) UnmarshalYAML(n *yaml.Node) error {
-	if err := n.Decode(&e.envs); err == nil {
+	*e = Environment{}
+	var envs []string
+	if err := n.Decode(&envs); err == nil {
+		e.envs = envs
 		return nil
 	}
-	e.node = n
+
+	var entries []any
+	if err := n.Decode(&entries); err != nil {
+		e.node = n
+		return nil
+	}
+	envs, ops, err := parseEnvironmentEntries(entries)
+	if err != nil {
+		return err
+	}
+	e.envs, e.opsByEnv = envs, ops
 	return nil
+}
+
+func parseEnvironmentEntries(entries []any) ([]string, map[string][]string, error) {
+	envs := make([]string, 0, len(entries))
+	ops := map[string][]string{}
+	occurrences := map[string]int{}
+	for _, entry := range entries {
+		var env string
+		switch entry := entry.(type) {
+		case string:
+			env = entry
+		case map[string]any:
+			if len(entry) != 1 {
+				return nil, nil, fmt.Errorf(
+					"expected an environment name with its options, found %v keys", len(entry))
+			}
+			for name, options := range entry {
+				operations, err := parseEnvironmentOperations(name, options)
+				if err != nil {
+					return nil, nil, err
+				}
+				env = name
+				ops[name] = operations
+			}
+		default:
+			return nil, nil, fmt.Errorf("expected an environment name or mapping, found %T", entry)
+		}
+		envs = append(envs, env)
+		occurrences[env]++
+	}
+	// Operations are keyed by environment name, so a name that appears twice cannot carry two
+	// different sets of them.
+	for env := range ops {
+		if occurrences[env] > 1 {
+			return nil, nil, fmt.Errorf(
+				"environment %q: listed more than once, so the operations it applies to are ambiguous", env)
+		}
+	}
+	return envs, ops, nil
+}
+
+// parseEnvironmentOperations reads the options attached to one environment in the list form.
+func parseEnvironmentOperations(env string, options any) ([]string, error) {
+	m, ok := options.(map[string]any)
+	if !ok {
+		return nil, fmt.Errorf("environment %q: expected a mapping of options, found %T", env, options)
+	}
+	for key := range m {
+		if key != "operations" {
+			return nil, fmt.Errorf("environment %q: unexpected option %q, expected \"operations\"", env, key)
+		}
+	}
+	list, ok := m["operations"].([]any)
+	if !ok {
+		return nil, fmt.Errorf("environment %q: \"operations\" must be a list of operation names", env)
+	}
+	operations := make([]string, 0, len(list))
+	for _, item := range list {
+		op, ok := item.(string)
+		if !ok {
+			return nil, fmt.Errorf("environment %q: expected an operation name, found %T", env, item)
+		}
+		if !slices.Contains(validOperations, normalizeOperation(op)) {
+			return nil, fmt.Errorf("environment %q: unknown operation %q, expected one of %s",
+				env, op, strings.Join(validOperations, ", "))
+		}
+		operations = append(operations, op)
+	}
+	return operations, nil
 }
 
 // ProjectStack holds stack specific information about a project.

@@ -180,7 +180,8 @@ func NewUpCmd() *cobra.Command {
 			return err
 		}
 
-		cfg, sm, err := cmdConfig.GetStackConfiguration(ctx, cmdutil.Diag(), ssml, s, proj, configFile, envOverrides)
+		cfg, sm, err := cmdConfig.GetStackConfiguration(
+			ctx, cmdutil.Diag(), ssml, s, proj, configFile, envOverrides, workspace.OperationUp)
 		if err != nil {
 			return fmt.Errorf("getting stack configuration: %w", err)
 		}
@@ -483,7 +484,8 @@ func NewUpCmd() *cobra.Command {
 			}
 		}
 
-		cfg, sm, err := cmdConfig.GetStackConfiguration(ctx, pctx.Diag, ssml, s, proj, configFile, envOverrides)
+		cfg, sm, err := cmdConfig.GetStackConfiguration(
+			ctx, pctx.Diag, ssml, s, proj, configFile, envOverrides, workspace.OperationUp)
 		if err != nil {
 			return fmt.Errorf("getting stack configuration: %w", err)
 		}

@@ -1,0 +1,5 @@
+component: cli/config
+kind: feat
+body: Allow a stack's environments to be scoped to specific operations with `operations`, so that
+    an `up` and a `preview` can open different environments
+time: 2026-09-02T00:00:00Z

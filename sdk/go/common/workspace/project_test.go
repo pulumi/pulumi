@@ -1365,6 +1365,175 @@ runtime: yaml`
 	})
 }
 
+func TestEnvironmentOperations(t *testing.T) {
+	t.Parallel()
+
+	projectYaml := `name: test
+runtime: yaml`
+
+	stackYaml := `environment:
+  - aws/prod-write:
+      operations:
+        - up
+        - destroy
+  - aws/prod-read:
+      operations:
+        - preview
+        - refresh
+  - shared/config
+`
+
+	load := func(t *testing.T, content string) (*ProjectStack, error) {
+		project, err := loadProjectFromText(t, projectYaml)
+		require.NoError(t, err)
+		var stdout, stderr bytes.Buffer
+		return loadProjectStackFromText(t, diagtest.MockSink(&stdout, &stderr), project, content)
+	}
+
+	imports := func(t *testing.T, e *Environment, op string) []string {
+		def := e.DefinitionForOperation(op)
+		if def == nil {
+			return nil
+		}
+		var parsed struct {
+			Imports []string `json:"imports"`
+		}
+		require.NoError(t, json.Unmarshal(def, &parsed))
+		return parsed.Imports
+	}
+
+	t.Run("filters imports per operation", func(t *testing.T) {
+		t.Parallel()
+
+		stack, err := load(t, stackYaml)
+		require.NoError(t, err)
+
+		assert.Equal(t, []string{"aws/prod-write", "shared/config"}, imports(t, stack.Environment, OperationUp))
+		assert.Equal(t, []string{"aws/prod-write", "shared/config"}, imports(t, stack.Environment, OperationDestroy))
+		assert.Equal(t, []string{"aws/prod-read", "shared/config"}, imports(t, stack.Environment, OperationPreview))
+		assert.Equal(t, []string{"aws/prod-read", "shared/config"}, imports(t, stack.Environment, OperationRefresh))
+
+		// `update` is how apitype and the engine spell an up.
+		assert.Equal(t, []string{"aws/prod-write", "shared/config"}, imports(t, stack.Environment, "update"))
+
+		// A command that names no operation opens every environment, as it did before the key existed.
+		assert.Equal(t,
+			[]string{"aws/prod-write", "aws/prod-read", "shared/config"},
+			imports(t, stack.Environment, ""))
+	})
+
+	t.Run("no environment is left to open", func(t *testing.T) {
+		t.Parallel()
+
+		stack, err := load(t, "environment:\n  - aws/prod-write: {operations: [up]}\n")
+		require.NoError(t, err)
+		assert.Nil(t, stack.Environment.DefinitionForOperation(OperationPreview))
+	})
+
+	t.Run("marshal restores the operations key", func(t *testing.T) {
+		t.Parallel()
+
+		stack, err := load(t, stackYaml)
+		require.NoError(t, err)
+
+		marshaled, err := encoding.YAML.Marshal(stack)
+		require.NoError(t, err)
+		assert.Equal(t, stackYaml, string(marshaled))
+	})
+
+	t.Run("JSON round-trip", func(t *testing.T) {
+		t.Parallel()
+
+		project, err := loadProjectFromText(t, projectYaml)
+		require.NoError(t, err)
+		var stdout, stderr bytes.Buffer
+		sink := diagtest.MockSink(&stdout, &stderr)
+
+		stackJSON := `{
+    "environment": [
+        {
+            "aws/prod-write": {
+                "operations": [
+                    "up"
+                ]
+            }
+        },
+        "shared/config"
+    ]
+}
+`
+		stack, err := loadProjectStackFromJSONText(t, sink, project, stackJSON)
+		require.NoError(t, err)
+		assert.Equal(t, []string{"aws/prod-write", "shared/config"}, imports(t, stack.Environment, OperationUp))
+		assert.Equal(t, []string{"shared/config"}, imports(t, stack.Environment, OperationPreview))
+
+		marshaled, err := encoding.JSON.Marshal(stack)
+		require.NoError(t, err)
+		assert.Equal(t, stackJSON, string(marshaled))
+	})
+
+	t.Run("Imports and Remove cover the scoped entries", func(t *testing.T) {
+		t.Parallel()
+
+		stack, err := load(t, stackYaml)
+		require.NoError(t, err)
+
+		// Imports is what the update metadata records, so it is not narrowed by operation.
+		assert.Equal(t,
+			[]string{"aws/prod-write", "aws/prod-read", "shared/config"},
+			stack.Environment.Imports())
+
+		stack.Environment = stack.Environment.Remove("aws/prod-write")
+		marshaled, err := encoding.YAML.Marshal(stack)
+		require.NoError(t, err)
+		assert.Equal(t, `environment:
+  - aws/prod-read:
+      operations:
+        - preview
+        - refresh
+  - shared/config
+`, string(marshaled))
+	})
+
+	t.Run("a mixed list is not partially decoded", func(t *testing.T) {
+		t.Parallel()
+
+		// yaml.v3 keeps the elements it decoded before failing. If that list survived, the
+		// scoped entries would be dropped from the import list with no error anywhere.
+		stack, err := load(t, "environment:\n  - shared/config\n  - aws/prod-write: {operations: [up]}\n")
+		require.NoError(t, err)
+		assert.Equal(t, []string{"shared/config", "aws/prod-write"}, imports(t, stack.Environment, OperationUp))
+	})
+
+	t.Run("an inline definition is still an inline definition", func(t *testing.T) {
+		t.Parallel()
+
+		stack, err := load(t, "environment:\n  imports:\n    - shared/config\n")
+		require.NoError(t, err)
+		assert.Equal(t, "imports:\n    - shared/config\n",
+			string(stack.Environment.DefinitionForOperation(OperationUp)))
+	})
+
+	t.Run("rejects entries it cannot honor", func(t *testing.T) {
+		t.Parallel()
+
+		for content, message := range map[string]string{
+			"environment:\n  - aws/prod: {operations: [apply]}\n":            `unknown operation "apply"`,
+			"environment:\n  - aws/prod: {operations: [watch]}\n":            `unknown operation "watch"`,
+			"environment:\n  - aws/prod: {operations: up}\n":                 `"operations" must be a list`,
+			"environment:\n  - aws/prod: {opperations: [up]}\n":              `unexpected option "opperations"`,
+			"environment:\n  - aws/prod: {}\n":                               `"operations" must be a list`,
+			"environment:\n  - {a: {operations: [up]}, b: {}}\n":             "found 2 keys",
+			"environment:\n  - aws/prod: {operations: [[up]]}\n":             "expected an operation name",
+			"environment:\n  - 3\n  - aws/prod: {operations: [up]}\n":        "found int",
+			"environment:\n  - aws/prod: {operations: [up]}\n  - aws/prod\n": "listed more than once",
+		} {
+			_, err := load(t, content)
+			assert.ErrorContains(t, err, message, content)
+		}
+	})
+}
+
 // Regression test for https://github.com/pulumi/pulumi/issues/18581, check that we handle uint64's in yaml
 
 func TestPackageValueSerialization(t *testing.T) {
