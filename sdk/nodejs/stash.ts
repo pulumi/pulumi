@@ -56,9 +56,7 @@ export class Stash extends CustomResource {
             const callbacks = getCallbacks();
             if (callbacks === undefined) {
                 // Should only happen if running outside a Pulumi program.
-                log.warn(
-                    "Stash reducer requires an active Pulumi resource monitor; ignoring reducer",
-                );
+                log.warn("Stash reducer requires an active Pulumi resource monitor; ignoring reducer");
             } else {
                 const reduce = args.reduce;
                 reducer = callbacks.registerStashReducer(reduce).then((cb) => ({

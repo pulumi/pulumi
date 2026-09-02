@@ -509,6 +509,7 @@ class _CallbackServicer(callback_pb2_grpc.CallbacksServicer):
 
         async def cb(s: bytes) -> Message:
             request = resource_pb2.StashReduceRequest.FromString(s)
+
             # Unpack protobuf Values into plain Python values for the reducer.
             def unpack(v: struct_pb2.Value) -> Any:
                 kind = v.WhichOneof("kind")
