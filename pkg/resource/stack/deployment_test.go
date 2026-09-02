@@ -18,6 +18,7 @@ package stack
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 	"testing"
@@ -1212,6 +1213,66 @@ func TestDeserializeStackOutputs_SecretsInSnapshotButNotInStackOutputs_NoDecrypt
 		"foo":   resource.NewProperty(42.0),
 		"hello": resource.NewProperty("world"),
 	}, outputs)
+}
+
+// Tests that stack outputs can still be read when the stack's secrets manager cannot be constructed (for example
+// because the caller lacks decrypt permission on the stack's key), as long as none of the outputs are secret.
+func TestDeserializeStackOutputs_SecretsManagerFails_NoSecretOutputs(t *testing.T) {
+	t.Parallel()
+
+	deployment := apitype.DeploymentV3{
+		Resources: []apitype.ResourceV3{
+			{
+				URN:  resource.DefaultRootStackURN("test_stack", "test_project"),
+				Type: resource.RootStackType,
+				Outputs: map[string]any{
+					"foo":   42.0,
+					"hello": "world",
+				},
+			},
+		},
+		SecretsProviders: &apitype.SecretsProvidersV1{Type: "mock"},
+	}
+
+	provider := (&secrets.MockProvider{}).Add("mock", func(_ json.RawMessage) (secrets.Manager, error) {
+		return nil, errors.New("403 Forbidden: caller is not authorized to decrypt")
+	})
+
+	outputs, err := DeserializeStackOutputs(t.Context(), deployment, provider)
+	require.NoError(t, err)
+	assert.Equal(t, resource.PropertyMap{
+		"foo":   resource.NewProperty(42.0),
+		"hello": resource.NewProperty("world"),
+	}, outputs)
+}
+
+// Tests that a failure to construct the stack's secrets manager is still reported, with its original message, when
+// the stack outputs actually contain a secret.
+func TestDeserializeStackOutputs_SecretsManagerFails_SecretOutput(t *testing.T) {
+	t.Parallel()
+
+	deployment := apitype.DeploymentV3{
+		Resources: []apitype.ResourceV3{
+			{
+				URN:  resource.DefaultRootStackURN("test_stack", "test_project"),
+				Type: resource.RootStackType,
+				Outputs: map[string]any{
+					"secret": map[string]any{
+						resource.SigKey: resource.SecretSig,
+						"ciphertext":    "v1:xRi3+sQJSJHR8sha:RM8BfzSAJI84QMl+zLGjzPvwSqV6zOSdd/I/V34h",
+					},
+				},
+			},
+		},
+		SecretsProviders: &apitype.SecretsProvidersV1{Type: "mock"},
+	}
+
+	provider := (&secrets.MockProvider{}).Add("mock", func(_ json.RawMessage) (secrets.Manager, error) {
+		return nil, errors.New("403 Forbidden: caller is not authorized to decrypt")
+	})
+
+	_, err := DeserializeStackOutputs(t.Context(), deployment, provider)
+	assert.ErrorContains(t, err, "403 Forbidden: caller is not authorized to decrypt")
 }
 
 // Test that DeserializeStackOutputs correctly decrypts secrets found in the stack outputs.

@@ -538,9 +538,12 @@ func DeserializeStackOutputs(
 		return nil, nil
 	}
 
+	// Constructing the secrets manager can fail for reasons unrelated to the outputs we are about to read -- for
+	// example, the caller may not have decrypt permission on the stack's key. Defer the failure until we actually
+	// need to decrypt something, so that stacks without secret outputs can still be read.
 	secretsManager, err := initializeSecretsManager(ctx, deployment, secretsProv)
 	if err != nil {
-		return nil, err
+		secretsManager = deferredErrorSecretsManager{err}
 	}
 
 	return BatchDecrypt(

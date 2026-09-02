@@ -582,3 +582,21 @@ func BatchDecrypt[T any](
 	err = errors.Join(err, fnerr)
 	return result, err
 }
+
+// deferredErrorSecretsManager is a secrets.Manager whose crypters always fail with the error that prevented a real
+// secrets manager from being constructed. It allows callers to defer that failure until they know whether anything
+// actually needs decrypting.
+type deferredErrorSecretsManager struct{ err error }
+
+var _ secrets.Manager = deferredErrorSecretsManager{}
+
+func (m deferredErrorSecretsManager) Type() string           { return "error" }
+func (m deferredErrorSecretsManager) State() json.RawMessage { return nil }
+
+func (m deferredErrorSecretsManager) Encrypter() config.Encrypter {
+	return config.NewErrorCrypter(m.err.Error())
+}
+
+func (m deferredErrorSecretsManager) Decrypter() config.Decrypter {
+	return config.NewErrorCrypter(m.err.Error())
+}
