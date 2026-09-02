@@ -94,6 +94,10 @@ func TestStash(t *testing.T) {
 // andReducer registers a boolean "oldOutput && newInput" reducer on the given callback server
 // and returns the callback to smuggle into a Stash resource's inputs. invocations is incremented
 // each time the reducer callback is actually invoked.
+//
+// On create the reducer is also invoked, but with old_input/old_output as null; this reducer
+// treats a null old_output as the identity for && (i.e. the initial output is just new_input),
+// preserving the intent that the very first observed input seeds the accumulator.
 func andReducer(t *testing.T, callbacks *deploytest.CallbackServer, invocations *int32) *pulumirpc.Callback {
 	cb, err := callbacks.Allocate(func(reqBytes []byte) (proto.Message, error) {
 		var req pulumirpc.StashReduceRequest
@@ -101,9 +105,14 @@ func andReducer(t *testing.T, callbacks *deploytest.CallbackServer, invocations 
 			return nil, err
 		}
 		atomic.AddInt32(invocations, 1)
-		// old_input is available too but this reducer doesn't need it.
-		old := req.OldOutput.GetBoolValue()
 		cur := req.NewInput.GetBoolValue()
+		// On create old_output is null. Treat that as the identity for &&.
+		if req.OldOutput.AsInterface() == nil {
+			return &pulumirpc.StashReduceResponse{
+				Reduced: structpb.NewBoolValue(cur),
+			}, nil
+		}
+		old := req.OldOutput.GetBoolValue()
 		return &pulumirpc.StashReduceResponse{
 			Reduced: structpb.NewBoolValue(old && cur),
 		}, nil
@@ -186,14 +195,13 @@ func assertStashState(t *testing.T, r *pkgresource.State, wantInput, wantOutput 
 	require.False(t, hasReducedOut, "__reduced must not surface as an output")
 }
 
-func TestStashReducer_CreateSkipsReducer(t *testing.T) {
+func TestStashReducer_Create(t *testing.T) {
 	t.Parallel()
 
 	trueV := resource.NewProperty(true)
 	firstSnap, _, calls := runStashReducerScenario(t, true, true)
-	// On the very first run the reducer is not invoked, and on the true/true update the reducer
-	// runs once producing true && true == true (no change).
-	require.Equal(t, int32(1), calls)
+	// The reducer runs once on create (with null old state) and once on the true/true update.
+	require.Equal(t, int32(2), calls)
 	assertStashState(t, stashResourceState(t, firstSnap), trueV, trueV)
 }
 
@@ -201,7 +209,8 @@ func TestStashReducer_TrueToFalse(t *testing.T) {
 	t.Parallel()
 
 	_, secondSnap, calls := runStashReducerScenario(t, true, false)
-	require.Equal(t, int32(1), calls, "reducer invoked once on update")
+	// Once on create (null, true) -> true, once on update (true, false) -> false.
+	require.Equal(t, int32(2), calls)
 	assertStashState(t, stashResourceState(t, secondSnap),
 		resource.NewProperty(false), resource.NewProperty(false))
 }
@@ -211,7 +220,8 @@ func TestStashReducer_FalseToTrue(t *testing.T) {
 
 	// Motivating case: once output is false, a subsequent true input must not flip it back.
 	_, secondSnap, calls := runStashReducerScenario(t, false, true)
-	require.Equal(t, int32(1), calls)
+	// Once on create (null, false) -> false, once on update (false, true) -> false.
+	require.Equal(t, int32(2), calls)
 	assertStashState(t, stashResourceState(t, secondSnap),
 		resource.NewProperty(true), resource.NewProperty(false))
 }
@@ -220,9 +230,8 @@ func TestStashReducer_TrueToTrue(t *testing.T) {
 	t.Parallel()
 
 	firstSnap, secondSnap, calls := runStashReducerScenario(t, true, true)
-	// The reducer runs once on the second update (create doesn't invoke it), true && true == true,
-	// so the snapshot output remains true and there is no meaningful state change.
-	require.Equal(t, int32(1), calls)
+	// Reducer runs on both create and update. true && true == true, so nothing changes.
+	require.Equal(t, int32(2), calls)
 	trueV := resource.NewProperty(true)
 	assertStashState(t, stashResourceState(t, firstSnap), trueV, trueV)
 	assertStashState(t, stashResourceState(t, secondSnap), trueV, trueV)
@@ -232,7 +241,7 @@ func TestStashReducer_FalseToFalse(t *testing.T) {
 	t.Parallel()
 
 	firstSnap, secondSnap, calls := runStashReducerScenario(t, false, false)
-	require.Equal(t, int32(1), calls)
+	require.Equal(t, int32(2), calls)
 	falseV := resource.NewProperty(false)
 	assertStashState(t, stashResourceState(t, firstSnap), falseV, falseV)
 	assertStashState(t, stashResourceState(t, secondSnap), falseV, falseV)
@@ -270,16 +279,21 @@ func TestStashReducer_Preview(t *testing.T) {
 }
 
 // TestStashReducer_ReducerArgs verifies that the reducer callback receives old_input, old_output
-// and new_input as distinct values, so a reducer can distinguish "input just changed" from
-// "output changed via reduction".
+// and new_input as distinct values, and that it is invoked on create as well as update (with
+// null old_input and old_output on create). This lets a reducer produce an output of a
+// different type from input from the very first run.
 func TestStashReducer_ReducerArgs(t *testing.T) {
 	t.Parallel()
 
-	// Track the arguments the reducer sees across invocations.
-	type args struct{ oldInput, oldOutput, newInput string }
+	// Track the arguments the reducer sees across invocations. We use pointers so a nil-valued
+	// google.protobuf.Value (i.e. NULL_VALUE) is distinguishable from an empty string.
+	type args struct{ oldInput, oldOutput, newInput any }
 	var seen []args
 	var seenLock sync.Mutex
 
+	// Reducer: on create emit "seed:<newInput>"; on update emit "<oldOutput>+<newInput>". This
+	// deliberately maps a plain string input to a differently-shaped string output to prove
+	// the create-time reducer runs.
 	inputVal := resource.NewProperty("first")
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		callbacks, err := deploytest.NewCallbacksServer()
@@ -293,14 +307,20 @@ func TestStashReducer_ReducerArgs(t *testing.T) {
 			}
 			seenLock.Lock()
 			seen = append(seen, args{
-				oldInput:  req.OldInput.GetStringValue(),
-				oldOutput: req.OldOutput.GetStringValue(),
-				newInput:  req.NewInput.GetStringValue(),
+				oldInput:  req.OldInput.AsInterface(),
+				oldOutput: req.OldOutput.AsInterface(),
+				newInput:  req.NewInput.AsInterface(),
 			})
 			seenLock.Unlock()
-			// Reducer concatenates old_output and new_input to prove it can use both.
+			cur := req.NewInput.GetStringValue()
+			// If old_output is null this is the create call; seed the accumulator.
+			if req.OldOutput.AsInterface() == nil {
+				return &pulumirpc.StashReduceResponse{
+					Reduced: structpb.NewStringValue("seed:" + cur),
+				}, nil
+			}
 			return &pulumirpc.StashReduceResponse{
-				Reduced: structpb.NewStringValue(req.OldOutput.GetStringValue() + "+" + req.NewInput.GetStringValue()),
+				Reduced: structpb.NewStringValue(req.OldOutput.GetStringValue() + "+" + cur),
 			}, nil
 		})
 		require.NoError(t, err)
@@ -318,13 +338,16 @@ func TestStashReducer_ReducerArgs(t *testing.T) {
 		p.GetProject(), p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
 	require.NoError(t, err)
 
-	// After the first run: no reducer invocation (create), output == input == "first".
-	require.Empty(t, seen, "reducer must not be invoked on create")
+	// After create: reducer invoked once with null old state, output is "seed:first".
+	seenLock.Lock()
+	require.Len(t, seen, 1)
+	require.Equal(t, args{oldInput: nil, oldOutput: nil, newInput: "first"}, seen[0])
+	seenLock.Unlock()
 	assertStashState(t, stashResourceState(t, snap),
-		resource.NewProperty("first"), resource.NewProperty("first"))
+		resource.NewProperty("first"), resource.NewProperty("seed:first"))
 
-	// Second run: input becomes "second". Reducer should see old_input="first",
-	// old_output="first", new_input="second", and produce "first+second".
+	// Second run: input becomes "second". Reducer sees old_input="first",
+	// old_output="seed:first", new_input="second", and produces "seed:first+second".
 	inputVal = resource.NewProperty("second")
 	snap, err = lt.TestOp(Update).RunStep(
 		p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
@@ -332,8 +355,8 @@ func TestStashReducer_ReducerArgs(t *testing.T) {
 
 	seenLock.Lock()
 	defer seenLock.Unlock()
-	require.Len(t, seen, 1)
-	require.Equal(t, args{oldInput: "first", oldOutput: "first", newInput: "second"}, seen[0])
+	require.Len(t, seen, 2)
+	require.Equal(t, args{oldInput: "first", oldOutput: "seed:first", newInput: "second"}, seen[1])
 	assertStashState(t, stashResourceState(t, snap),
-		resource.NewProperty("second"), resource.NewProperty("first+second"))
+		resource.NewProperty("second"), resource.NewProperty("seed:first+second"))
 }

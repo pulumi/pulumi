@@ -249,13 +249,19 @@ func (p *builtinProvider) checkStash(ctx context.Context, req plugin.CheckReques
 		}
 		target, token := targetVal.StringValue(), tokenVal.StringValue()
 
-		// On create (no prior outputs) the reducer is not invoked; the initial reduced value
-		// is just the current input.
-		oldOutput, hasOld := req.OldOutputs["output"]
-		oldInput := req.Olds["input"]
-		if !hasOld {
-			out[stashReducedKey] = inputVal
-		} else if inputVal.ContainsUnknowns() || oldOutput.ContainsUnknowns() || oldInput.ContainsUnknowns() {
+		// The reducer is always invoked, including on create, so a reducer that maps input to
+		// a different output type can produce that type from the very first run. On create
+		// there is no prior state, so old_input and old_output are passed as null.
+		oldInput, hasOldInput := req.Olds["input"]
+		oldOutput, hasOldOutput := req.OldOutputs["output"]
+		if !hasOldInput {
+			oldInput = resource.NewNullProperty()
+		}
+		if !hasOldOutput {
+			oldOutput = resource.NewNullProperty()
+		}
+
+		if inputVal.ContainsUnknowns() || oldOutput.ContainsUnknowns() || oldInput.ContainsUnknowns() {
 			// Can't run a user function against an unknown; propagate unknown.
 			out[stashReducedKey] = resource.MakeComputed(resource.NewProperty(""))
 		} else {
