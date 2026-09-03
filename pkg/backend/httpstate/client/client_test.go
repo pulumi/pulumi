@@ -34,6 +34,7 @@ import (
 
 	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/agentdetect"
@@ -2164,4 +2165,38 @@ func TestClientInsecure(t *testing.T) {
 	// later rebuild a client from it, so the flag must survive construction.
 	assert.True(t, NewClient("https://api.example.com", "tok", true, nil).Insecure())
 	assert.False(t, NewClient("https://api.example.com", "tok", false, nil).Insecure())
+}
+
+//nolint:paralleltest // overrides the package-level newClient hook
+func TestDownloadTemplateForeignURLInheritsInsecure(t *testing.T) {
+	// A template download URL that isn't the configured api endpoint makes DownloadTemplate
+	// build a fresh client for that host. That client has to carry the caller's TLS setting,
+	// otherwise `pulumi new <template>` accepts any certificate for the foreign host even when
+	// the user never opted into insecure transport.
+	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, _ *http.Request) {
+		rw.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	// A secure caller (insecure == false).
+	pc := NewClient("https://api.example.com", "tok", false, nil)
+
+	// Capture the insecure flag the fresh client is constructed with. Installed after pc is built
+	// so it only observes the client made inside DownloadTemplate.
+	origNewClient := newClient
+	defer func() { newClient = origNewClient }()
+	var captured, capturedInsecure bool
+	newClient = func(apiURL, apiToken string, insecure bool, d diag.Sink) *Client {
+		captured, capturedInsecure = true, insecure
+		return origNewClient(apiURL, apiToken, insecure, d)
+	}
+
+	body, err := pc.DownloadTemplate(t.Context(), server.URL+"/template.tar")
+	require.NoError(t, err)
+	if body != nil {
+		require.NoError(t, body.Close())
+	}
+
+	require.True(t, captured, "a foreign template URL should build a fresh client")
+	assert.False(t, capturedInsecure, "the fresh client must inherit the caller's TLS verification setting")
 }

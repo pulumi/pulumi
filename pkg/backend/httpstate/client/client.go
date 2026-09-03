@@ -3307,7 +3307,7 @@ func (pc *Client) DownloadTemplate(ctx context.Context, downloadURL string) (io.
 	} else {
 		// Set pc to the new client. This only sets the local variable. It is very
 		// different from *pc = *NewClient().
-		pc = NewClient(downloadURL, "", true, pc.diag)
+		pc = NewClient(downloadURL, "", pc.insecure, pc.diag)
 		downloadURL = ""
 	}
 
