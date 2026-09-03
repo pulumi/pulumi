@@ -115,20 +115,21 @@ func newEnvOpenRequestCmd(envcmd *envCommand) *cobra.Command {
 
 func addRequestApprovalFlags(cmd *cobra.Command, opts *openApprovalOptions) {
 	cmd.Flags().BoolVar(
-		&opts.requestApproval, "request-approval", false,
-		"if the environment requires approval to open, submit an open request")
+		&opts.requestApproval, "request-approval-if-needed", false,
+		"If the environment requires approval to open, submit an open request")
 	cmd.Flags().BoolVar(
 		&opts.waitForApproval, "wait-for-approval", false,
-		"wait for the submitted open request to be approved, then continue; implies --request-approval")
+		"Wait for the submitted open request to be approved, then continue; "+
+			"implies --request-approval-if-needed")
 	cmd.Flags().DurationVar(
-		&opts.waitTimeout, "wait-timeout", defaultWaitTimeout,
-		"how long --wait-for-approval waits before giving up (e.g. 30s, 5m)")
+		&opts.waitTimeout, "wait-for-approval-timeout", defaultWaitTimeout,
+		"How long --wait-for-approval waits before giving up (e.g. 30s, 5m)")
 	cmd.Flags().DurationVar(
-		&opts.accessDuration, "access-duration", defaultAccessDuration,
-		"how long access to the environment lasts once the request is approved (e.g. 5m, 2h)")
+		&opts.accessDuration, "approval-access-duration", defaultAccessDuration,
+		"How long access to the environment lasts once the request is approved (e.g. 5m, 2h)")
 	cmd.Flags().StringVar(
-		&opts.reason, "reason", "",
-		"an optional reason explaining why the environment is being opened, shown to approvers")
+		&opts.reason, "approval-reason", "",
+		"Reason explaining why the environment is being opened, shown to approvers")
 }
 
 // submitOpenRequest submits a change request for the target environment and for each gated import.
