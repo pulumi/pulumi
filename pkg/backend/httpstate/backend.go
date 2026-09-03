@@ -2162,7 +2162,37 @@ func (b *cloudBackend) runEngineAction(
 		updateErr = result.MergeBails(updateErr, fmt.Errorf("failed to complete update: %w", completeErr))
 	}
 
+	if updateErr == nil && !op.Opts.Display.JSONDisplay && !op.Opts.Display.SummaryJSON {
+		opts := op.Opts.Display
+		if opts.Stdout == nil {
+			opts.Stdout = os.Stdout
+		}
+		b.printDownstreamStacks(ctx, update.StackIdentifier, opts)
+	}
+
 	return plan, changes, updateErr
+}
+
+// printDownstreamStacks lists the stacks that hold a stack reference to the updated stack, so the
+// user knows which stacks may need updating next. This output is advisory: failures to fetch the
+// list are logged and otherwise ignored.
+func (b *cloudBackend) printDownstreamStacks(
+	ctx context.Context, stackID client.StackIdentifier, opts display.Options,
+) {
+	resp, err := b.client.ListDownstreamStackReferences(ctx, stackID)
+	if err != nil {
+		logging.V(3).Infof("listing downstream stack references for %v: %v", stackID, err)
+		return
+	}
+	if len(resp.ReferencedStacks) == 0 {
+		return
+	}
+	// The progress display ends its summary with a blank line; the diff display does not.
+	if opts.Type == display.DisplayDiff {
+		fmt.Fprint(opts.Stdout, "\n")
+	}
+	display.FormatDownstreamStacks(opts.Stdout, resp.ReferencedStacks, b.CloudConsoleURL, opts)
+	fmt.Fprint(opts.Stdout, "\n")
 }
 
 func (b *cloudBackend) CancelCurrentUpdate(ctx context.Context, stackRef backend.StackReference) error {

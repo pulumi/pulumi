@@ -2165,3 +2165,27 @@ func TestClientInsecure(t *testing.T) {
 	assert.True(t, NewClient("https://api.example.com", "tok", true, nil).Insecure())
 	assert.False(t, NewClient("https://api.example.com", "tok", false, nil).Insecure())
 }
+
+func TestListDownstreamStackReferences(t *testing.T) {
+	t.Parallel()
+
+	var gotPath string
+	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		gotPath = req.URL.Path
+		_, err := rw.Write([]byte(`{"referencedStacks":[` +
+			`{"organization":"org","routingProject":"consumer","name":"prod","version":7}]}`))
+		require.NoError(t, err)
+	}))
+	defer server.Close()
+
+	resp, err := NewClient(server.URL, "", true, nil).ListDownstreamStackReferences(t.Context(), StackIdentifier{
+		Owner: "org", Project: "proj", Stack: tokens.MustParseStackName("dev"),
+	})
+	require.NoError(t, err)
+	assert.Equal(t, "/api/stacks/org/proj/dev/downstreamreferences", gotPath)
+	assert.Equal(t, apitype.ListDownstreamStackReferencesResponse{
+		ReferencedStacks: []apitype.StackReference{
+			{Organization: "org", RoutingProject: "consumer", Name: "prod", Version: 7},
+		},
+	}, resp)
+}

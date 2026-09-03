@@ -960,6 +960,17 @@ func (pc *Client) GetStack(ctx context.Context, stackID StackIdentifier) (apityp
 	return stack, nil
 }
 
+// ListDownstreamStackReferences returns the stacks whose programs hold a stack reference to the given stack.
+func (pc *Client) ListDownstreamStackReferences(
+	ctx context.Context, stackID StackIdentifier,
+) (apitype.ListDownstreamStackReferencesResponse, error) {
+	var resp apitype.ListDownstreamStackReferencesResponse
+	if err := pc.restCall(ctx, "GET", getStackPath(stackID, "downstreamreferences"), nil, nil, &resp); err != nil {
+		return apitype.ListDownstreamStackReferencesResponse{}, err
+	}
+	return resp, nil
+}
+
 // ListDriftRuns returns a paginated list of drift detection runs for the given stack.
 func (pc *Client) ListDriftRuns(
 	ctx context.Context, stackID StackIdentifier, page, pageSize int,
