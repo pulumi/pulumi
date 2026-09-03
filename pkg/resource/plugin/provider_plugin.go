@@ -1112,59 +1112,55 @@ func (p *provider) Configure(ctx context.Context, req ConfigureRequest) (Configu
 		return ConfigureResponse{}, err
 	}
 
-	// Spawn the configure to happen in parallel.  This ensures that we remain responsive elsewhere that might
-	// want to make forward progress, even as the configure call is happening.
-	go func() {
-		var urn, typ, id *string
-		if req.URN != nil {
-			urnVal := string(*req.URN)
-			urn = &urnVal
-		}
-		if req.ID != nil {
-			idVal := string(*req.ID)
-			id = &idVal
-		}
-		if req.Type != nil {
-			typVal := string(*req.Type)
-			typ = &typVal
-		}
+	var urn, typ, id *string
+	if req.URN != nil {
+		urnVal := string(*req.URN)
+		urn = &urnVal
+	}
+	if req.ID != nil {
+		idVal := string(*req.ID)
+		id = &idVal
+	}
+	if req.Type != nil {
+		typVal := string(*req.Type)
+		typ = &typVal
+	}
 
-		resp, err := p.clientRaw.Configure(p.requestContext(), &pulumirpc.ConfigureRequest{
-			Urn:                    urn,
-			Name:                   req.Name,
-			Type:                   typ,
-			Id:                     id,
-			AcceptSecrets:          true,
-			AcceptResources:        true,
-			SendsOldInputs:         true,
-			SendsOldInputsToDelete: true,
-			Variables:              variables, //nolint:staticcheck
-			Args:                   minputs,
-		})
-		if err != nil {
-			rpcError := rpcerror.Convert(err)
-			logging.V(7).Infof("%s failed: err=%v", label, rpcError.Message())
-			err = createConfigureError(rpcError)
-			p.configSource.MustReject(err)
-			return
-		}
+	resp, err := p.clientRaw.Configure(p.requestContext(), &pulumirpc.ConfigureRequest{
+		Urn:                    urn,
+		Name:                   req.Name,
+		Type:                   typ,
+		Id:                     id,
+		AcceptSecrets:          true,
+		AcceptResources:        true,
+		SendsOldInputs:         true,
+		SendsOldInputsToDelete: true,
+		Variables:              variables, //nolint:staticcheck
+		Args:                   minputs,
+	})
+	if err != nil {
+		rpcError := rpcerror.Convert(err)
+		logging.V(7).Infof("%s failed: err=%v", label, rpcError.Message())
+		err = createConfigureError(rpcError)
+		p.configSource.MustReject(err)
+		return ConfigureResponse{}, err
+	}
 
-		if p.protocol == nil {
-			// Byte string support is negotiated only at handshake time; providers that did not
-			// handshake never receive such values.
-			p.protocol = &pluginProtocol{
-				acceptSecrets:                   resp.GetAcceptSecrets(),
-				acceptResources:                 resp.GetAcceptResources(),
-				supportsPreview:                 resp.GetSupportsPreview(),
-				acceptOutputs:                   resp.GetAcceptOutputs(),
-				supportsAutonamingConfiguration: resp.GetSupportsAutonamingConfiguration(),
-			}
+	if p.protocol == nil {
+		// Byte string support is negotiated only at handshake time; providers that did not
+		// handshake never receive such values.
+		p.protocol = &pluginProtocol{
+			acceptSecrets:                   resp.GetAcceptSecrets(),
+			acceptResources:                 resp.GetAcceptResources(),
+			supportsPreview:                 resp.GetSupportsPreview(),
+			acceptOutputs:                   resp.GetAcceptOutputs(),
+			supportsAutonamingConfiguration: resp.GetSupportsAutonamingConfiguration(),
 		}
+	}
 
-		p.configSource.MustFulfill(pluginConfig{
-			known: true,
-		})
-	}()
+	p.configSource.MustFulfill(pluginConfig{
+		known: true,
+	})
 
 	return ConfigureResponse{}, nil
 }
