@@ -543,6 +543,110 @@ func TestUpdateEnvironment(t *testing.T) {
 	})
 }
 
+func TestCreateEnvironmentRevision(t *testing.T) {
+	t.Parallel()
+
+	const path = "/api/esc/environments/test-org/test-project/test-env/versions"
+
+	t.Run("OK", func(t *testing.T) {
+		t.Parallel()
+		yaml := []byte("values:\n  pulumiConfig:\n    a: b\n")
+
+		client := newTestClient(t, http.MethodPost, path, func(w http.ResponseWriter, r *http.Request) {
+			// The parent travels as a query parameter, not as a header and not in the body.
+			assert.Equal(t, "5", r.URL.Query().Get("parent"))
+
+			body, err := io.ReadAll(r.Body)
+			require.NoError(t, err)
+			assert.JSONEq(t, `{"definition":"values:\n  pulumiConfig:\n    a: b\n"}`, string(body))
+			// The route accepts no If-Match, so the client must not invent one.
+			assert.Empty(t, r.Header.Get("ETag"))
+
+			w.WriteHeader(http.StatusOK)
+			err = json.NewEncoder(w).Encode(CreateEnvironmentRevisionResponse{
+				Number:     8,
+				Parent:     5,
+				ObjectName: "c4f01a9",
+			})
+			require.NoError(t, err)
+		})
+
+		resp, diags, err := client.CreateEnvironmentRevision(
+			t.Context(), "test-org", "test-project", "test-env", yaml, "5")
+		require.NoError(t, err)
+		require.Empty(t, diags)
+		require.NotNil(t, resp)
+		assert.Equal(t, 8, resp.Number)
+		assert.Equal(t, 5, resp.Parent)
+		assert.Equal(t, "c4f01a9", resp.ObjectName)
+	})
+
+	t.Run("No parent", func(t *testing.T) {
+		t.Parallel()
+
+		client := newTestClient(t, http.MethodPost, path, func(w http.ResponseWriter, r *http.Request) {
+			// An empty parent means "latest": the parameter is omitted rather than sent empty, so the
+			// service applies its own default.
+			assert.NotContains(t, r.URL.RawQuery, "parent")
+
+			w.WriteHeader(http.StatusOK)
+			err := json.NewEncoder(w).Encode(CreateEnvironmentRevisionResponse{Number: 2, Parent: 1})
+			require.NoError(t, err)
+		})
+
+		resp, _, err := client.CreateEnvironmentRevision(
+			t.Context(), "test-org", "test-project", "test-env", nil, "")
+		require.NoError(t, err)
+		require.NotNil(t, resp)
+		assert.Equal(t, 2, resp.Number)
+	})
+
+	t.Run("Diags", func(t *testing.T) {
+		t.Parallel()
+		expected := []EnvironmentDiagnostic{{
+			Range: &esc.Range{
+				Environment: "test-env",
+				Begin:       esc.Pos{Line: 42, Column: 1},
+				End:         esc.Pos{Line: 42, Column: 42},
+			},
+			Summary: "diag 1",
+		}}
+
+		client := newTestClient(t, http.MethodPost, path, func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusBadRequest)
+			// The handler answers a rejected definition with the response type, not an error envelope,
+			// so the body carries `diagnostics` with no `code` or `message`.
+			err := json.NewEncoder(w).Encode(CreateEnvironmentRevisionResponse{
+				Parent:      5,
+				Diagnostics: expected,
+			})
+			require.NoError(t, err)
+		})
+
+		resp, diags, err := client.CreateEnvironmentRevision(
+			t.Context(), "test-org", "test-project", "test-env", nil, "5")
+		require.NoError(t, err)
+		assert.Nil(t, resp)
+		assert.Equal(t, expected, diags)
+	})
+
+	t.Run("Not found", func(t *testing.T) {
+		t.Parallel()
+
+		client := newTestClient(t, http.MethodPost, path, func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusNotFound)
+			err := json.NewEncoder(w).Encode(apitype.ErrorResponse{Code: 404, Message: "not found"})
+			require.NoError(t, err)
+		})
+
+		resp, diags, err := client.CreateEnvironmentRevision(
+			t.Context(), "test-org", "test-project", "test-env", nil, "")
+		assert.Nil(t, resp)
+		assert.Empty(t, diags)
+		assert.ErrorContains(t, err, "not found")
+	})
+}
+
 func TestCreateEnvironmentDraft(t *testing.T) {
 	t.Parallel()
 	t.Run("OK", func(t *testing.T) {
