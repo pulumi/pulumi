@@ -255,9 +255,15 @@ func (w *mainEnvWriter) write(
 		Name:    w.mainEnv.Name,
 		Version: strconv.Itoa(revision),
 	}
+	// The pin has to be in place before the save, because the save is what serializes it. But `w.mainEnv`
+	// is the very value the caller holds as `ps.MainEnvironment`, so a failed save must put it back: an
+	// in-memory pointer at a revision the file does not name is exactly the state that would mislead any
+	// caller that retried, re-saved, or kept reading the stack after the error.
+	prevEnv, prevPS := *w.mainEnv, w.ps.MainEnvironment
 	*w.mainEnv = next
 	w.ps.MainEnvironment = w.mainEnv
 	if err := w.save(ctx, w.stack, w.ps, w.configFile); err != nil {
+		*w.mainEnv, w.ps.MainEnvironment = prevEnv, prevPS
 		return writeResult{}, fmt.Errorf(
 			"created environment revision %v@%d, but saving %s failed: %w; "+
 				"set 'mainEnvironment: %v@%d' in %s by hand to use it",

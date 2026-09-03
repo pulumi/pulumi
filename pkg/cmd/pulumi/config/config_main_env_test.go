@@ -782,6 +782,12 @@ func TestMainEnvironmentWriteSaveFails(t *testing.T) {
 	require.ErrorContains(t, err, "read-only file system")
 	require.ErrorContains(t, err, "set 'mainEnvironment: payments/dev@2' in Pulumi.testStack.yaml by hand")
 	assert.Equal(t, 1, store.creates)
+	// The pin only advances once the file that carries it has been written. The stack on disk still names
+	// the old revision, so the in-memory value the caller holds must too -- otherwise a caller that
+	// retried or re-saved after the error would branch from a pin the file never had.
+	require.NotNil(t, ps.MainEnvironment)
+	assert.Empty(t, ps.MainEnvironment.Version)
+	assert.Empty(t, mainEnv.Version)
 }
 
 func TestMainEnvironmentConfigRemove(t *testing.T) {

@@ -551,6 +551,34 @@ func TestCreateEnvironmentRevision(t *testing.T) {
 	t.Run("OK", func(t *testing.T) {
 		t.Parallel()
 		yaml := []byte("values:\n  pulumiConfig:\n    a: b\n")
+		// A 200 can carry diagnostics of its own: the service checks the definition it just committed and
+		// reports non-error findings alongside the revision it created. The response body below is written
+		// out literally, with the field names the service's own apitype declares, rather than marshalled
+		// from CreateEnvironmentRevisionResponse -- encoding through the type under test would agree with
+		// any struct tag, including a wrong one, and silently drop every warning on the success path.
+		const responseBody = `{
+			"number": 8,
+			"parent": 5,
+			"objectName": "c4f01a9",
+			"diagnostics": [{
+				"summary": "value cannot be overridden",
+				"severity": "warning",
+				"range": {
+					"environment": "test-env",
+					"begin": {"line": 3, "column": 5, "byte": 24},
+					"end": {"line": 3, "column": 6, "byte": 25}
+				}
+			}]
+		}`
+		expected := []EnvironmentDiagnostic{{
+			Range: &esc.Range{
+				Environment: "test-env",
+				Begin:       esc.Pos{Line: 3, Column: 5, Byte: 24},
+				End:         esc.Pos{Line: 3, Column: 6, Byte: 25},
+			},
+			Summary:  "value cannot be overridden",
+			Severity: DiagWarning,
+		}}
 
 		client := newTestClient(t, http.MethodPost, path, func(w http.ResponseWriter, r *http.Request) {
 			// The parent travels as a query parameter, not as a header and not in the body.
@@ -563,22 +591,21 @@ func TestCreateEnvironmentRevision(t *testing.T) {
 			assert.Empty(t, r.Header.Get("ETag"))
 
 			w.WriteHeader(http.StatusOK)
-			err = json.NewEncoder(w).Encode(CreateEnvironmentRevisionResponse{
-				Number:     8,
-				Parent:     5,
-				ObjectName: "c4f01a9",
-			})
+			_, err = w.Write([]byte(responseBody))
 			require.NoError(t, err)
 		})
 
 		resp, diags, err := client.CreateEnvironmentRevision(
 			t.Context(), "test-org", "test-project", "test-env", yaml, "5")
 		require.NoError(t, err)
-		require.Empty(t, diags)
 		require.NotNil(t, resp)
 		assert.Equal(t, 8, resp.Number)
 		assert.Equal(t, 5, resp.Parent)
 		assert.Equal(t, "c4f01a9", resp.ObjectName)
+		// Advisory diagnostics reach the caller with the revision, which is what lets the config commands
+		// print them without failing the write.
+		assert.Equal(t, expected, resp.Diagnostics)
+		assert.Equal(t, expected, diags)
 	})
 
 	t.Run("No parent", func(t *testing.T) {
@@ -594,11 +621,14 @@ func TestCreateEnvironmentRevision(t *testing.T) {
 			require.NoError(t, err)
 		})
 
-		resp, _, err := client.CreateEnvironmentRevision(
+		resp, diags, err := client.CreateEnvironmentRevision(
 			t.Context(), "test-org", "test-project", "test-env", nil, "")
 		require.NoError(t, err)
 		require.NotNil(t, resp)
 		assert.Equal(t, 2, resp.Number)
+		// A clean definition reports nothing, and the omitted field decodes as no diagnostics rather than
+		// an empty non-nil slice the caller would have to special-case.
+		assert.Empty(t, diags)
 	})
 
 	t.Run("Diags", func(t *testing.T) {
