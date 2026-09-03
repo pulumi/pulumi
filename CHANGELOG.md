@@ -1,5 +1,35 @@
 # Changelog
 
+## 3.261.0 (2026-09-02)
+
+### Features
+
+- [engine] Support state migration callbacks on resource registrations [#24328](https://github.com/pulumi/pulumi/pull/24328)
+- [cli/env] Add `pulumi env setup {aws,azure,gcp}` to configure cloud OIDC trust and create the ESC environments that use it [#23911](https://github.com/pulumi/pulumi/pull/23911)
+
+### Bug Fixes
+
+- [engine] Report a clear error instead of panicking when the stack's state contains a custom resource with no ID [#24438](https://github.com/pulumi/pulumi/pull/24438)
+- [cli] Show the agent account's claim URL instead of an inaccessible View Live link when running on ephemeral agent credentials [#24476](https://github.com/pulumi/pulumi/pull/24476)
+- [pcl] Fix a crash when binding a schema property with an integer constant value [#24480](https://github.com/pulumi/pulumi/pull/24480)
+- [cli/policy] Avoid hanging when policy pack fails to start up [#24492](https://github.com/pulumi/pulumi/pull/24492)
+- [pkg/testing] Fix ProgramTest for providers whose Go module or NuGet package has a double-digit major version [#24499](https://github.com/pulumi/pulumi/pull/24499)
+- [sdk] Fix serialization of secret unknowns in NodeJS, Python and PCL [#24500](https://github.com/pulumi/pulumi/pull/24500)
+- [engine] Ignore internal property keys (those starting with an underscore) when generating and checking update plans [#24532](https://github.com/pulumi/pulumi/pull/24532)
+
+### Improvements
+
+- [sdkgen] Generate precise Python output types for discriminated unions. An array of a union was typed `Sequence[Any]` and a scalar union `Any`, while the matching getters on the generated Args classes were already typed [#24485](https://github.com/pulumi/pulumi/pull/24485)
+- [sdk/python] Resolve a union value to its member by matching the value's wire shape, so unions whose members carry no constant properties serialize and translate with the right member's property names [#24484](https://github.com/pulumi/pulumi/pull/24484)
+- [sdkgen/python] Accept a generated output type wherever the classes-and-dicts input types accept its Args class or TypedDict, so a resource's output can be passed to another resource's input without a type error [#24507](https://github.com/pulumi/pulumi/pull/24507)
+- [engine] Send previously persisted outputs to a provider's Check on update, gated by a new sends_old_outputs_to_check handshake capability [#24524](https://github.com/pulumi/pulumi/pull/24524)
+- [sdk/python] Add helper methods to transform ResourceOptions to InvokeOptions [#24533](https://github.com/pulumi/pulumi/pull/24533)
+
+### Miscellaneous
+
+- [java] Upgrade java to v1.36.3 [#24509](https://github.com/pulumi/pulumi/pull/24509)
+- [yaml] Upgrade yaml to v1.38.5 [#24509](https://github.com/pulumi/pulumi/pull/24509)
+- [sdk/dotnet] Upgrade dotnet to v3.113.1 [#24512](https://github.com/pulumi/pulumi/pull/24512)
 ## 3.260.0 (2026-08-28)
 
 ### Features

@@ -1,4 +1,0 @@
-component: sdk/python
-kind: improvement
-body: Add helper methods to transform ResourceOptions to InvokeOptions
-time: 2026-09-01T15:57:23.640715602+02:00

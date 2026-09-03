@@ -1,6 +1,0 @@
-component: sdkgen/python
-kind: improvement
-body: Accept a generated output type wherever the classes-and-dicts input types accept
-    its Args class or TypedDict, so a resource's output can be passed to another
-    resource's input without a type error
-time: 2026-08-31T00:00:00+00:00
