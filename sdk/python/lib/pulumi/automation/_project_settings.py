@@ -181,16 +181,6 @@ class ProjectSettings:
         template: Optional[ProjectTemplate] = None,
         backend: Optional[ProjectBackend] = None,
     ):
-        if isinstance(runtime, str) and runtime not in [
-            "nodejs",
-            "python",
-            "go",
-            "dotnet",
-        ]:
-            raise ValueError(
-                f"Invalid value {runtime!r} for runtime. "
-                f"Must be one of: 'nodejs', 'python', 'go', 'dotnet'."
-            )
         self.name = name
         self.runtime = runtime
         self.main = main
