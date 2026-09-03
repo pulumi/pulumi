@@ -4183,6 +4183,42 @@ func ExtractModulePath(extPkg schema.PackageReference) string {
 	return fmt.Sprintf("%s/sdk%s", root, vPath)
 }
 
+// SDKModulePath returns the Go module path of the SDK generated for pkg, honouring any explicit
+// module or import base path set in the schema's `language.go` block.
+func SDKModulePath(pkg schema.PackageReference) string {
+	def, err := pkg.Definition()
+	contract.AssertNoErrorf(err, "Could not load definition for %q", pkg.Name())
+	if def.ExtensionParameterization != nil {
+		return pkg.Name()
+	}
+
+	info := goPackageInfo(pkg)
+	switch {
+	case info.ModulePath != "":
+		return info.ModulePath
+	case info.ImportBasePath != "":
+		return path.Dir(info.ImportBasePath)
+	}
+	return ExtractModulePath(pkg)
+}
+
+// SDKImportPath returns the import path of the SDK generated for pkg. Unlike ExtractImportBasePath
+// it honours the schema's `language.go` block, so it matches the layout GeneratePackage writes.
+func SDKImportPath(pkg schema.PackageReference) string {
+	info := goPackageInfo(pkg)
+	if info.ImportBasePath != "" {
+		return info.ImportBasePath
+	}
+	// Legacy (non support-pack) SDKs put the package under <module>/go rather than directly under
+	// the module root.
+	if !pkg.SupportPack() {
+		return ExtractImportBasePath(pkg)
+	}
+	root, err := packageRoot(pkg)
+	contract.AssertNoErrorf(err, "Could not load definition for %q", pkg.Name())
+	return path.Join(SDKModulePath(pkg), root)
+}
+
 // ExtractImportBasePath returns the import path to be used in Go code for a package reference. For example we might
 // have the module path "github.com/pulumi/pulumi-aws/sdk/v7" as returned by `ExtractModulePath` and the matching import
 // path "github.com/pulumi/pulumi-aws/sdk/v7/go/aws" returned by `ExtractImportBasePath`.
@@ -5490,20 +5526,7 @@ func GeneratePackage(tool string,
 
 	// create a go.mod file with references to local dependencies
 	if pkg.SupportPack {
-		modulePath := ExtractModulePath(pkg.Reference())
-		if langInfo, found := pkg.Language["go"]; found {
-			goInfo, ok := langInfo.(GoPackageInfo)
-			if ok && goInfo.ModulePath != "" {
-				modulePath = goInfo.ModulePath
-			} else if ok && goInfo.ImportBasePath != "" {
-				// if support pack is enabled we can infer the module path from the
-				// import base path, which is one up from the import base (ie without the package name).
-				modulePath = path.Dir(goInfo.ImportBasePath)
-			}
-		}
-		if pkg.ExtensionParameterization != nil {
-			modulePath = pkg.Name
-		}
+		modulePath := SDKModulePath(pkg.Reference())
 
 		var gomod modfile.File
 		err = gomod.AddModuleStmt(modulePath)

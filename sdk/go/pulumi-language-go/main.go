@@ -26,7 +26,6 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
-	"path"
 	"path/filepath"
 	"runtime"
 	"strconv"
@@ -1665,20 +1664,7 @@ func (host *goLanguageHost) Link(
 		if err := pkg.ImportLanguages(map[string]schema.Language{"go": codegen.Importer}); err != nil {
 			return nil, err
 		}
-		var modulePath string
-		if info, ok := pkg.Language["go"]; ok {
-			if info, ok := info.(codegen.GoPackageInfo); ok {
-				modulePath = info.ModulePath
-				if modulePath == "" {
-					if info.ImportBasePath != "" {
-						modulePath = path.Dir(info.ImportBasePath)
-					}
-				}
-			}
-		}
-		if modulePath == "" {
-			modulePath = codegen.ExtractModulePath(pkg.Reference())
-		}
+		modulePath := codegen.SDKModulePath(pkg.Reference())
 
 		modules[modulePath] = dep.Path
 		// The relative path used in the replace directive must start with `./` or `.\`.
@@ -1690,7 +1676,7 @@ func (host *goLanguageHost) Link(
 		if !strings.HasPrefix(dep.Path, start) {
 			modules[modulePath] = start + dep.Path
 		}
-		fmt.Fprintf(&imports, "    \"%s\"\n", codegen.ExtractImportBasePath(pkg.Reference()))
+		fmt.Fprintf(&imports, "    \"%s\"\n", codegen.SDKImportPath(pkg.Reference()))
 	}
 	instructions += imports.String()
 	instructions += "  )\n"

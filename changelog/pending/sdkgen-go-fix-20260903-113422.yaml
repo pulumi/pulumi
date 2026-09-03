@@ -1,0 +1,4 @@
+component: sdkgen/go
+kind: fix
+body: Print the Go import path that matches the generated SDK when a schema sets a custom module or import base path
+time: 2026-09-03T11:34:22.837331+02:00
