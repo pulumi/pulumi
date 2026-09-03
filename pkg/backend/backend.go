@@ -350,6 +350,11 @@ type EnvironmentDefinitionsBackend interface {
 	// UpdateEnvironmentDefinition writes a new definition for an environment, returning the revision it created.
 	// The etag must be the one returned by the immediately preceding GetEnvironmentDefinition; if the environment
 	// changed in the meantime the update fails with ErrEnvironmentConflict rather than overwriting it.
+	//
+	// This moves the environment's `latest` tag, so every reader of the environment sees the new definition.
+	// A caller that wants to write a definition only the stack that wrote it will read wants
+	// CreateEnvironmentRevisionFromParent instead. Keep this method: it remains the way an environment is
+	// given a definition at creation time.
 	UpdateEnvironmentDefinition(
 		ctx context.Context,
 		org string,
@@ -357,6 +362,26 @@ type EnvironmentDefinitionsBackend interface {
 		envName string,
 		yaml []byte,
 		etag string,
+	) (apitype.EnvironmentDiagnostics, int, error)
+
+	// CreateEnvironmentRevisionFromParent writes a new definition for an environment as a revision created from
+	// parent, returning the revision number it created. The environment's `latest` tag is not moved: only a
+	// caller that names the returned revision will read the new definition.
+	//
+	// A parent of 0 means the environment's latest revision. Unlike UpdateEnvironmentDefinition this carries no
+	// etag; the named parent is what makes the write's assumption explicit, and it is a stronger one, since a
+	// concurrent move of `latest` cannot clobber a revision created from a named parent.
+	//
+	// If the environment changed in a way that makes the parent unusable the call fails with
+	// ErrEnvironmentConflict. If the environment does not exist, or the backend cannot create revisions from a
+	// parent, it fails with ErrEnvironmentNotFound.
+	CreateEnvironmentRevisionFromParent(
+		ctx context.Context,
+		org string,
+		envProject string,
+		envName string,
+		yaml []byte,
+		parent int,
 	) (apitype.EnvironmentDiagnostics, int, error)
 
 	// GetEnvironmentRevision resolves a version (a revision number, a tag, or "" for latest) to a revision number.

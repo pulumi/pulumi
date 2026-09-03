@@ -544,6 +544,15 @@ type MockEnvironmentsBackend struct {
 		etag string,
 	) (apitype.EnvironmentDiagnostics, int, error)
 
+	CreateEnvironmentRevisionFromParentF func(
+		ctx context.Context,
+		org string,
+		envProject string,
+		envName string,
+		yaml []byte,
+		parent int,
+	) (apitype.EnvironmentDiagnostics, int, error)
+
 	GetEnvironmentRevisionF func(
 		ctx context.Context,
 		org string,
@@ -613,6 +622,20 @@ func (be *MockEnvironmentsBackend) UpdateEnvironmentDefinition(
 ) (apitype.EnvironmentDiagnostics, int, error) {
 	if be.UpdateEnvironmentDefinitionF != nil {
 		return be.UpdateEnvironmentDefinitionF(ctx, org, envProject, envName, yaml, etag)
+	}
+	panic("not implemented")
+}
+
+func (be *MockEnvironmentsBackend) CreateEnvironmentRevisionFromParent(
+	ctx context.Context,
+	org string,
+	envProject string,
+	envName string,
+	yaml []byte,
+	parent int,
+) (apitype.EnvironmentDiagnostics, int, error) {
+	if be.CreateEnvironmentRevisionFromParentF != nil {
+		return be.CreateEnvironmentRevisionFromParentF(ctx, org, envProject, envName, yaml, parent)
 	}
 	panic("not implemented")
 }

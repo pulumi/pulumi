@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
@@ -145,6 +146,30 @@ func (b *cloudBackend) UpdateEnvironmentDefinition(
 		return nil, 0, classifyEnvironmentError(err)
 	}
 	return convertESCDiags(diags), revision, nil
+}
+
+func (b *cloudBackend) CreateEnvironmentRevisionFromParent(
+	ctx context.Context,
+	org string,
+	envProject string,
+	envName string,
+	yaml []byte,
+	parent int,
+) (apitype.EnvironmentDiagnostics, int, error) {
+	// The wire form of "the latest revision" is an absent parent, which is what a zero parent means here.
+	version := ""
+	if parent > 0 {
+		version = strconv.Itoa(parent)
+	}
+	resp, diags, err := b.escClient.CreateEnvironmentRevision(ctx, org, envProject, envName, yaml, version)
+	if err != nil {
+		return nil, 0, classifyEnvironmentError(err)
+	}
+	if resp == nil {
+		// The definition was rejected: there are diagnostics and no revision.
+		return convertESCDiags(diags), 0, nil
+	}
+	return convertESCDiags(diags), resp.Number, nil
 }
 
 func (b *cloudBackend) GetEnvironmentRevision(
