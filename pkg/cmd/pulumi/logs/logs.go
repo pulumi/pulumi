@@ -35,6 +35,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 func NewLogsCmd(ws pkgWorkspace.Context) *cobra.Command {
@@ -80,7 +81,8 @@ func NewLogsCmd(ws pkgWorkspace.Context) *cobra.Command {
 				return err
 			}
 
-			cfg, sm, err := config.GetStackConfiguration(ctx, cmdutil.Diag(), ssml, s, proj, configFile, nil, "")
+			cfg, sm, err := config.GetStackConfiguration(
+				ctx, cmdutil.Diag(), ssml, s, proj, configFile, nil, workspace.OperationLogs)
 			if err != nil {
 				return fmt.Errorf("getting stack configuration: %w", err)
 			}

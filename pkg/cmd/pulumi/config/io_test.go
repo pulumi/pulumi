@@ -376,10 +376,10 @@ func TestOpenStackEnvPerOperation(t *testing.T) {
 	t.Parallel()
 
 	stackYAML := "environment:\n" +
-		"  - aws/prod-write: {operations: [up, destroy]}\n" +
-		"  - aws/prod-read: {operations: [preview, refresh]}\n"
+		"  - aws/prod-write: {operations: write}\n" +
+		"  - aws/prod-read: {operations: read}\n"
 
-	openFor := func(t *testing.T, op string) (string, bool) {
+	openFor := func(t *testing.T, op workspace.Operation) (string, bool) {
 		var body string
 		opened := false
 		be := &backend.MockEnvironmentsBackend{
@@ -411,16 +411,20 @@ func TestOpenStackEnvPerOperation(t *testing.T) {
 		return body, opened
 	}
 
-	for op, want := range map[string]string{
+	for op, want := range map[workspace.Operation]string{
 		workspace.OperationUp:      `{"imports":["aws/prod-write"]}`,
 		workspace.OperationDestroy: `{"imports":["aws/prod-write"]}`,
+		workspace.OperationWatch:   `{"imports":["aws/prod-write"]}`,
+		workspace.OperationDo:      `{"imports":["aws/prod-write"]}`,
 		workspace.OperationPreview: `{"imports":["aws/prod-read"]}`,
 		workspace.OperationRefresh: `{"imports":["aws/prod-read"]}`,
-		"":                         `{"imports":["aws/prod-write","aws/prod-read"]}`,
+		workspace.OperationImport:  `{"imports":["aws/prod-read"]}`,
+		workspace.OperationLogs:    `{"imports":["aws/prod-read"]}`,
+		workspace.OperationAny:     `{"imports":["aws/prod-write","aws/prod-read"]}`,
 	} {
 		body, opened := openFor(t, op)
-		assert.True(t, opened, op)
-		assert.Equal(t, want, body, op)
+		assert.True(t, opened, string(op))
+		assert.Equal(t, want, body, string(op))
 	}
 }
 
@@ -451,7 +455,7 @@ func TestOpenStackEnvNoEnvironmentForOperation(t *testing.T) {
 
 	var projectStack workspace.ProjectStack
 	require.NoError(t, yaml.Unmarshal(
-		[]byte("environment:\n  - aws/prod-write: {operations: [up]}\n"), &projectStack))
+		[]byte("environment:\n  - aws/prod-write: {operations: write}\n"), &projectStack))
 
 	env, diags, err := openStackEnv(t.Context(), stack, &projectStack, nil, workspace.OperationPreview)
 	require.NoError(t, err)
@@ -466,7 +470,7 @@ func TestWarnOnFilteredEnvironments(t *testing.T) {
 
 	var projectStack workspace.ProjectStack
 	require.NoError(t, yaml.Unmarshal(
-		[]byte("environment:\n  - aws/prod-write: {operations: [up]}\n"), &projectStack))
+		[]byte("environment:\n  - aws/prod-write: {operations: write}\n"), &projectStack))
 
 	var out bytes.Buffer
 	warnOnFilteredEnvironments(&out, projectStack.Environment, workspace.OperationPreview)
@@ -477,15 +481,15 @@ func TestWarnOnFilteredEnvironments(t *testing.T) {
 	// environment at all all say nothing.
 	for _, quiet := range []struct {
 		env *workspace.Environment
-		op  string
+		op  workspace.Operation
 	}{
 		{projectStack.Environment, workspace.OperationUp},
-		{projectStack.Environment, ""},
+		{projectStack.Environment, workspace.OperationAny},
 		{nil, workspace.OperationPreview},
 	} {
 		out.Reset()
 		warnOnFilteredEnvironments(&out, quiet.env, quiet.op)
-		assert.Empty(t, out.String(), quiet.op)
+		assert.Empty(t, out.String(), string(quiet.op))
 	}
 }
 

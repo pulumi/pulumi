@@ -806,7 +806,7 @@ func DefaultRunStatefulUpdate(
 	configFile := workspace.ProjectStackPath(
 		filepath.Join(req.Root, workspace.ProjectFile+".yaml"), req.Proj, req.Stack.Ref().Name().Q())
 	cfg, sm, err := cmdConfig.GetStackConfiguration(
-		ctx, req.Sink, ssml, req.Stack, req.Proj, configFile, nil, workspace.OperationUp)
+		ctx, req.Sink, ssml, req.Stack, req.Proj, configFile, nil, workspace.OperationDo)
 	if err != nil {
 		return nil, fmt.Errorf("get stack configuration: %w", err)
 	}

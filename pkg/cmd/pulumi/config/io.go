@@ -50,7 +50,8 @@ func OverrideEnvFlag(cmd *cobra.Command, overrides *[]string) {
 }
 
 // Attempts to load configuration for the given stack.
-// op selects the stack's environments that scope themselves to it; an empty op opens all of them.
+// op selects the stack's environments scoped to the class it belongs to; workspace.OperationAny
+// opens all of them.
 func GetStackConfiguration(
 	ctx context.Context,
 	sink diag.Sink,
@@ -59,7 +60,7 @@ func GetStackConfiguration(
 	project *workspace.Project,
 	configFile string,
 	envOverrides []string,
-	op string,
+	op workspace.Operation,
 ) (backend.StackConfiguration, secrets.Manager, error) {
 	return getStackConfigurationWithFallback(ctx, sink, ssml, stack, project, nil, configFile, envOverrides, op)
 }
@@ -78,7 +79,7 @@ func GetStackConfigurationOrLatest(
 	project *workspace.Project,
 	configFile string,
 	envOverrides []string,
-	op string,
+	op workspace.Operation,
 ) (backend.StackConfiguration, secrets.Manager, error) {
 	return getStackConfigurationWithFallback(
 		ctx, sink, ssml, stack, project,
@@ -103,7 +104,7 @@ func getStackConfigurationWithFallback(
 	fallbackGetConfig func(err error) (config.Map, error), // optional
 	configFile string,
 	envOverrides []string,
-	op string,
+	op workspace.Operation,
 ) (backend.StackConfiguration, secrets.Manager, error) {
 	workspaceStack, err := cmdStack.LoadProjectStack(ctx, sink, project, s, configFile)
 	if err != nil || workspaceStack == nil {
@@ -141,7 +142,7 @@ func getStackConfigurationFromProjectStack(
 	sm secrets.Manager,
 	workspaceStack *workspace.ProjectStack,
 	envOverrides []string,
-	op string,
+	op workspace.Operation,
 ) (backend.StackConfiguration, error) {
 	env, diags, err := openStackEnv(ctx, stack, workspaceStack, envOverrides, op)
 	if err != nil {
@@ -248,7 +249,7 @@ func openStackEnv(
 	stack backend.Stack,
 	workspaceStack *workspace.ProjectStack,
 	envOverrides []string,
-	op string,
+	op workspace.Operation,
 ) (*esc.Environment, []apitype.EnvironmentDiagnostic, error) {
 	yaml := workspaceStack.Environment.DefinitionForOperation(op)
 	if len(yaml) == 0 {
@@ -274,8 +275,8 @@ func openStackEnv(
 	return envs.OpenYAMLEnvironment(ctx, orgName, yaml, 2*time.Hour, overrides)
 }
 
-func warnOnFilteredEnvironments(out io.Writer, env *workspace.Environment, op string) {
-	if op == "" || len(env.Definition()) == 0 || len(env.DefinitionForOperation(op)) != 0 {
+func warnOnFilteredEnvironments(out io.Writer, env *workspace.Environment, op workspace.Operation) {
+	if op == workspace.OperationAny || len(env.Definition()) == 0 || len(env.DefinitionForOperation(op)) != 0 {
 		return
 	}
 	color := cmdutil.GetGlobalColorization()

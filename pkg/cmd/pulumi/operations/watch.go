@@ -124,7 +124,7 @@ func NewWatchCmd() *cobra.Command {
 			}
 
 			cfg, sm, err := config.GetStackConfiguration(
-				ctx, cmdutil.Diag(), ssml, s, proj, configFile, nil, workspace.OperationUp)
+				ctx, cmdutil.Diag(), ssml, s, proj, configFile, nil, workspace.OperationWatch)
 			if err != nil {
 				return fmt.Errorf("getting stack configuration: %w", err)
 			}

@@ -1004,22 +1004,46 @@ func (proj *PluginProject) Validate() error {
 	return nil
 }
 
-// Operations that a stack's `environment` list can scope an entry to with `operations:`.
+// Operation is what a command tells the stack's `environment` list it is about to do. A command
+// that uses no provider credentials passes OperationAny and opens every environment listed.
+type Operation string
+
 const (
-	OperationUp      = "up"
-	OperationPreview = "preview"
-	OperationRefresh = "refresh"
-	OperationDestroy = "destroy"
+	OperationAny     Operation = ""
+	OperationPreview Operation = "preview"
+	OperationRefresh Operation = "refresh"
+	OperationImport  Operation = "import"
+	OperationLogs    Operation = "logs"
+	OperationUp      Operation = "up"
+	OperationDestroy Operation = "destroy"
+	OperationWatch   Operation = "watch"
+	OperationDo      Operation = "do"
 )
 
-var validOperations = []string{OperationUp, OperationPreview, OperationRefresh, OperationDestroy}
+// What `operations:` accepts. A class rather than named operations is what keeps a stack from
+// silently missing a command: a new command joins a class below, instead of having to be added to
+// every stack file that scopes an environment.
+const (
+	ReadOperations  = "read"
+	WriteOperations = "write"
+)
 
-func normalizeOperation(op string) string {
-	op = strings.ToLower(op)
-	if op == string(apitype.UpdateUpdate) {
-		return OperationUp
-	}
-	return op
+var operationClasses = []string{ReadOperations, WriteOperations}
+
+const operationsExpected = `"read" or "write"`
+
+// An operation is a read when it cannot change a cloud resource. What it does to Pulumi state does
+// not enter into it - a refresh and an import both write state and both only read the cloud, and
+// who may write state is decided by stack permissions rather than by which environment opens.
+var operationClass = map[Operation]string{
+	OperationPreview: ReadOperations,
+	OperationRefresh: ReadOperations,
+	OperationImport:  ReadOperations,
+	OperationLogs:    ReadOperations,
+	OperationUp:      WriteOperations,
+	OperationDestroy: WriteOperations,
+	OperationWatch:   WriteOperations,
+	OperationDo:      WriteOperations,
 }
 
 type Environment struct {
@@ -1034,13 +1058,13 @@ func NewEnvironment(envs []string) *Environment {
 }
 
 func (e *Environment) Definition() []byte {
-	return e.DefinitionForOperation("")
+	return e.DefinitionForOperation(OperationAny)
 }
 
-// DefinitionForOperation is Definition with every environment whose `operations` list does not
-// name op dropped, returning nil when that leaves none. An empty op keeps all of them. ESC knows
+// DefinitionForOperation is Definition with every environment whose `operations` does not cover
+// op dropped, returning nil when that leaves none. OperationAny keeps all of them. ESC knows
 // nothing about `operations`, so the filtering happens here and the key never reaches the wire.
-func (e *Environment) DefinitionForOperation(op string) []byte {
+func (e *Environment) DefinitionForOperation(op Operation) []byte {
 	switch {
 	case e == nil:
 		// If there's no environment, return nil.
@@ -1071,15 +1095,14 @@ func (e *Environment) DefinitionForOperation(op string) []byte {
 	}
 }
 
-func (e *Environment) importsForOperation(op string) []string {
-	if op == "" || len(e.opsByEnv) == 0 {
+func (e *Environment) importsForOperation(op Operation) []string {
+	if op == OperationAny || len(e.opsByEnv) == 0 {
 		return e.envs
 	}
-	op = normalizeOperation(op)
 	imports := make([]string, 0, len(e.envs))
 	for _, env := range e.envs {
 		ops, scoped := e.opsByEnv[env]
-		if !scoped || slices.ContainsFunc(ops, func(o string) bool { return normalizeOperation(o) == op }) {
+		if !scoped || slices.Contains(ops, operationClass[op]) {
 			imports = append(imports, env)
 		}
 	}
@@ -1087,10 +1110,10 @@ func (e *Environment) importsForOperation(op string) []string {
 }
 
 func (e *Environment) Imports() []string {
-	return e.ImportsForOperation("")
+	return e.ImportsForOperation(OperationAny)
 }
 
-func (e *Environment) ImportsForOperation(op string) []string {
+func (e *Environment) ImportsForOperation(op Operation) []string {
 	def, diags, err := eval.LoadYAMLBytes("yaml", e.DefinitionForOperation(op))
 	if err != nil || len(diags) != 0 || def == nil {
 		return nil
@@ -1269,11 +1292,20 @@ func (e Environment) entries() []any {
 		options := map[string]any{}
 		if ops, scoped := e.opsByEnv[env]; scoped && !emitted[env] {
 			emitted[env] = true
-			options["operations"] = ops
+			options["operations"] = operationsValue(ops)
 		}
 		entries[i] = map[string]any{env: options}
 	}
 	return entries
+}
+
+// operationsValue re-emits what was written: the one form the documentation gives is the scalar,
+// and a save that rewrote it as a list would churn every stack file that uses the feature.
+func operationsValue(ops []string) any {
+	if len(ops) == 1 {
+		return ops[0]
+	}
+	return ops
 }
 
 func (e Environment) MarshalJSON() ([]byte, error) {
@@ -1394,19 +1426,33 @@ func parseEnvironmentOperations(env string, options any) ([]string, error) {
 	if len(m) == 0 {
 		return nil, nil
 	}
-	list, ok := m["operations"].([]any)
-	if !ok {
-		return nil, fmt.Errorf("environment %q: \"operations\" must be a list of operation names", env)
+
+	// The list form is accepted although nothing documents it, so that naming individual
+	// operations later is a widening of this vocabulary rather than a change of shape.
+	var values []any
+	switch operations := m["operations"].(type) {
+	case string:
+		values = []any{operations}
+	case []any:
+		values = operations
+	default:
+		return nil, fmt.Errorf("environment %q: \"operations\" must be %s, found %T",
+			env, operationsExpected, m["operations"])
 	}
-	operations := make([]string, 0, len(list))
-	for _, item := range list {
-		op, ok := item.(string)
+	if len(values) == 0 {
+		return nil, fmt.Errorf("environment %q: \"operations\" is empty, so no operation would open it", env)
+	}
+
+	operations := make([]string, 0, len(values))
+	for _, value := range values {
+		op, ok := value.(string)
 		if !ok {
-			return nil, fmt.Errorf("environment %q: expected an operation name, found %T", env, item)
+			return nil, fmt.Errorf("environment %q: expected %s, found %T", env, operationsExpected, value)
 		}
-		if !slices.Contains(validOperations, normalizeOperation(op)) {
-			return nil, fmt.Errorf("environment %q: unknown operation %q, expected one of %s",
-				env, op, strings.Join(validOperations, ", "))
+		op = strings.ToLower(op)
+		if !slices.Contains(operationClasses, op) {
+			return nil, fmt.Errorf("environment %q: unknown operations value %q, expected %s",
+				env, value, operationsExpected)
 		}
 		operations = append(operations, op)
 	}

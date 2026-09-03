@@ -1373,13 +1373,9 @@ runtime: yaml`
 
 	stackYaml := `environment:
   - aws/prod-write:
-      operations:
-        - up
-        - destroy
+      operations: write
   - aws/prod-read:
-      operations:
-        - preview
-        - refresh
+      operations: read
   - shared/config: {}
 `
 
@@ -1390,7 +1386,7 @@ runtime: yaml`
 		return loadProjectStackFromText(t, diagtest.MockSink(&stdout, &stderr), project, content)
 	}
 
-	imports := func(t *testing.T, e *Environment, op string) []string {
+	imports := func(t *testing.T, e *Environment, op Operation) []string {
 		def := e.DefinitionForOperation(op)
 		if def == nil {
 			return nil
@@ -1408,24 +1404,53 @@ runtime: yaml`
 		stack, err := load(t, stackYaml)
 		require.NoError(t, err)
 
-		assert.Equal(t, []string{"aws/prod-write", "shared/config"}, imports(t, stack.Environment, OperationUp))
-		assert.Equal(t, []string{"aws/prod-write", "shared/config"}, imports(t, stack.Environment, OperationDestroy))
-		assert.Equal(t, []string{"aws/prod-read", "shared/config"}, imports(t, stack.Environment, OperationPreview))
-		assert.Equal(t, []string{"aws/prod-read", "shared/config"}, imports(t, stack.Environment, OperationRefresh))
+		write := []string{"aws/prod-write", "shared/config"}
+		read := []string{"aws/prod-read", "shared/config"}
+		for op, want := range map[Operation][]string{
+			OperationUp:      write,
+			OperationDestroy: write,
+			OperationWatch:   write,
+			OperationDo:      write,
+			OperationPreview: read,
+			OperationRefresh: read,
+			OperationImport:  read,
+			OperationLogs:    read,
+			// A command that uses no provider credentials opens every environment, as every
+			// command did before the key existed.
+			OperationAny: {"aws/prod-write", "aws/prod-read", "shared/config"},
+		} {
+			assert.Equal(t, want, imports(t, stack.Environment, op), string(op))
+		}
+	})
 
-		// `update` is how apitype and the engine spell an up.
-		assert.Equal(t, []string{"aws/prod-write", "shared/config"}, imports(t, stack.Environment, "update"))
+	// An operation with no class matches no `operations` value, so it would quietly lose every
+	// scoped environment. Adding a command means adding it to both lists.
+	t.Run("every operation has a class", func(t *testing.T) {
+		t.Parallel()
 
-		// A command that names no operation opens every environment, as it did before the key existed.
-		assert.Equal(t,
-			[]string{"aws/prod-write", "aws/prod-read", "shared/config"},
-			imports(t, stack.Environment, ""))
+		for _, op := range []Operation{
+			OperationPreview, OperationRefresh, OperationImport, OperationLogs,
+			OperationUp, OperationDestroy, OperationWatch, OperationDo,
+		} {
+			assert.Contains(t, operationClasses, operationClass[op], string(op))
+		}
+	})
+
+	// Nothing documents the list form. It parses so that naming individual operations later widens
+	// this vocabulary rather than changing the shape of the key.
+	t.Run("the list form is accepted", func(t *testing.T) {
+		t.Parallel()
+
+		stack, err := load(t, "environment:\n  - aws/prod: {operations: [read, write]}\n  - shared/config\n")
+		require.NoError(t, err)
+		assert.Equal(t, []string{"aws/prod", "shared/config"}, imports(t, stack.Environment, OperationUp))
+		assert.Equal(t, []string{"aws/prod", "shared/config"}, imports(t, stack.Environment, OperationPreview))
 	})
 
 	t.Run("no environment is left to open", func(t *testing.T) {
 		t.Parallel()
 
-		stack, err := load(t, "environment:\n  - aws/prod-write: {operations: [up]}\n")
+		stack, err := load(t, "environment:\n  - aws/prod-write: {operations: write}\n")
 		require.NoError(t, err)
 		assert.Nil(t, stack.Environment.DefinitionForOperation(OperationPreview))
 	})
@@ -1453,9 +1478,7 @@ runtime: yaml`
     "environment": [
         {
             "aws/prod-write": {
-                "operations": [
-                    "up"
-                ]
+                "operations": "write"
             }
         },
         {
@@ -1497,9 +1520,7 @@ runtime: yaml`
 		require.NoError(t, err)
 		assert.Equal(t, `environment:
   - aws/prod-read:
-      operations:
-        - preview
-        - refresh
+      operations: read
   - shared/config: {}
 `, string(marshaled))
 	})
@@ -1532,12 +1553,12 @@ runtime: yaml`
 	t.Run("save normalizes every entry to a mapping", func(t *testing.T) {
 		t.Parallel()
 
-		stack, err := load(t, "environment:\n  - shared/config\n  - aws/prod-write: {operations: [up]}\n")
+		stack, err := load(t, "environment:\n  - shared/config\n  - aws/prod-write: {operations: write}\n")
 		require.NoError(t, err)
 
 		marshaled, err := encoding.YAML.Marshal(stack)
 		require.NoError(t, err)
-		assert.Equal(t, "environment:\n  - shared/config: {}\n  - aws/prod-write: {operations: [up]}\n",
+		assert.Equal(t, "environment:\n  - shared/config: {}\n  - aws/prod-write: {operations: write}\n",
 			string(marshaled))
 
 		// A stack with no scoped entry keeps the plain list: nothing to protect an old CLI from.
@@ -1553,7 +1574,7 @@ runtime: yaml`
 
 		// yaml.v3 keeps the elements it decoded before failing. If that list survived, the
 		// scoped entries would be dropped from the import list with no error anywhere.
-		stack, err := load(t, "environment:\n  - shared/config\n  - aws/prod-write: {operations: [up]}\n")
+		stack, err := load(t, "environment:\n  - shared/config\n  - aws/prod-write: {operations: write}\n")
 		require.NoError(t, err)
 		assert.Equal(t, []string{"shared/config", "aws/prod-write"}, imports(t, stack.Environment, OperationUp))
 	})
@@ -1571,20 +1592,24 @@ runtime: yaml`
 		t.Parallel()
 
 		for content, message := range map[string]string{
-			"environment:\n  - aws/prod: {operations: [apply]}\n":     `unknown operation "apply"`,
-			"environment:\n  - aws/prod: {operations: [watch]}\n":     `unknown operation "watch"`,
-			"environment:\n  - aws/prod: {operations: up}\n":          `"operations" must be a list`,
-			"environment:\n  - aws/prod: {opperations: [up]}\n":       `unexpected option "opperations"`,
-			"environment:\n  - {a: {operations: [up]}, b: {}}\n":      "found 2 keys",
-			"environment:\n  - aws/prod: {operations: [[up]]}\n":      "expected an operation name",
-			"environment:\n  - 3\n  - aws/prod: {operations: [up]}\n": "found int",
+			"environment:\n  - aws/prod: {operations: apply}\n":         `unknown operations value "apply"`,
+			"environment:\n  - aws/prod: {operations: [read, apply]}\n": `unknown operations value "apply"`,
+			// The operation names the key took before it took classes, and the ones it may take
+			// again alongside them, are not accepted in between.
+			"environment:\n  - aws/prod: {operations: [up]}\n":        `unknown operations value "up"`,
+			"environment:\n  - aws/prod: {operations: []}\n":          `"operations" is empty`,
+			"environment:\n  - aws/prod: {operations: {read: yes}}\n": `"operations" must be "read" or "write"`,
+			"environment:\n  - aws/prod: {opperations: write}\n":      `unexpected option "opperations"`,
+			"environment:\n  - {a: {operations: read}, b: {}}\n":      "found 2 keys",
+			"environment:\n  - aws/prod: {operations: [[read]]}\n":    `expected "read" or "write"`,
+			"environment:\n  - 3\n  - aws/prod: {operations: read}\n": "found int",
 		} {
 			_, err := load(t, content)
 			assert.ErrorContains(t, err, message, content)
 		}
 
 		// Listing a name twice is fine; giving it two sets of operations is not representable.
-		_, err := load(t, "environment:\n  - a/b: {operations: [up]}\n  - a/b: {operations: [refresh]}\n")
+		_, err := load(t, "environment:\n  - a/b: {operations: write}\n  - a/b: {operations: read}\n")
 		assert.ErrorContains(t, err, "given operations more than once")
 	})
 }
