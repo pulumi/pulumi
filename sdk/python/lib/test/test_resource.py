@@ -66,6 +66,26 @@ def test_convert_providers_merges_provider_with_provider_sequence():
     assert result["component"] is component_provider
 
 
+@pytest.mark.parametrize("exception_type", [ValueError, AssertionError])
+def test_register_resource_adds_resource_context(exception_type):
+    @pulumi.runtime.test
+    async def run_test():
+        with mock.patch(
+            "pulumi.runtime.resource.prepare_resource",
+            new=mock.AsyncMock(side_effect=exception_type("preparation failed")),
+        ):
+            resource = pulumi.ComponentResource("python:test:Component", "bad-resource")
+            await resource.urn.future()
+
+    with pytest.raises(exception_type) as raised:
+        run_test()
+
+    message = str(raised.value)
+    assert "While processing resource: 'bad-resource'" in message
+    assert "'python:test:Component'" in message
+    assert f"{exception_type.__name__} has risen: preparation failed" in message
+
+
 @pytest.fixture(autouse=True)
 def clean_up_env_vars():
     with mock.patch.dict(os.environ):
