@@ -55,8 +55,8 @@ import (
 // rather than as a single head: creating a revision from a parent appends to history without moving
 // `latest`, exactly as the service does.
 //
-// UpdateEnvironmentDefinitionF is deliberately left nil. MockEnvironmentsBackend panics on an unset
-// function field, so any test that reaches the latest-moving update route fails loudly.
+// The mock's latest-moving update function field is deliberately left nil. MockEnvironmentsBackend panics
+// on an unset function field, so any test that reaches that route fails loudly.
 type fakeEnvStore struct {
 	t *testing.T
 
@@ -705,8 +705,8 @@ func TestMainEnvironmentConfigSetRouteUnavailable(t *testing.T) {
 	require.ErrorContains(t, err, "creating a revision of environment payments/dev")
 	require.ErrorContains(t, err, "revision branching is not available for organization \"test-org\"")
 	require.ErrorContains(t, err, "or the environment does not exist")
-	// The stack file is untouched, and nothing fell back to a latest-moving write: the store's
-	// UpdateEnvironmentDefinitionF is nil, so any such call would have panicked.
+	// The stack file is untouched, and nothing fell back to a latest-moving write: the store leaves that
+	// function field nil, so any such call would have panicked.
 	saved, readErr := os.ReadFile(configFile)
 	require.NoError(t, readErr)
 	assert.Equal(t, stackYAML, string(saved))
