@@ -20,6 +20,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
@@ -27,6 +28,7 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
+	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/esc"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/esc/syntax/encoding"
@@ -97,23 +99,42 @@ func errMainEnvUnsupported(command string, mainEnv *workspace.MainEnvironment) e
 
 // mainEnvWriter performs read-modify-write updates of a stack's main environment.
 //
-// Every write carries the etag returned by the read that immediately preceded it, so a violation of the
-// single-writer assumption surfaces as a hard error instead of clobbering someone else's change.
+// A write does not move the environment: it creates a revision from the revision the stack file currently
+// names, and then rewrites the stack file to name the revision it created. Nobody else's read of the
+// environment changes because a stack ran `pulumi config set`.
 type mainEnvWriter struct {
-	envs    backend.EnvironmentDefinitionsBackend
-	org     string
-	mainEnv *workspace.MainEnvironment
+	envs       backend.EnvironmentDefinitionsBackend
+	org        string
+	mainEnv    *workspace.MainEnvironment
+	stack      backend.Stack
+	ps         *workspace.ProjectStack
+	configFile string
+
+	// save writes the stack file. It is a field so that a test can make the write fail after the
+	// revision it names has already been created, which is the one ordering in this path where the two
+	// writes can disagree.
+	save func(context.Context, backend.Stack, *workspace.ProjectStack, string) error
 }
 
-func newMainEnvWriter(s backend.Stack, mainEnv *workspace.MainEnvironment) (*mainEnvWriter, error) {
-	// Writing to a pinned stack would create a revision the stack itself would never read, so the very
-	// next `pulumi config` would not show the value that was just set. Refuse instead.
-	if mainEnv.Version != "" {
+// isRevisionNumber reports whether a `mainEnvironment` version pin names a revision number rather than a
+// revision tag, using the same grammar the version-addressed ESC routes accept.
+func isRevisionNumber(version string) bool {
+	n, err := strconv.Atoi(version)
+	return err == nil && n > 0
+}
+
+func newMainEnvWriter(
+	s backend.Stack, ps *workspace.ProjectStack, mainEnv *workspace.MainEnvironment, configFile string,
+) (*mainEnvWriter, error) {
+	// A numeric pin is the ordinary state of a stack that has been written to before: it names the
+	// revision the next write branches from. A tag pin is different -- rewriting `@stable` to `@8` would
+	// silently un-tag the stack -- so refuse that one and say how to proceed.
+	if mainEnv.Version != "" && !isRevisionNumber(mainEnv.Version) {
 		return nil, fmt.Errorf(
-			"cannot modify environment %v: this stack pins it to version %q; "+
-				"remove the '@%s' pin from 'mainEnvironment' to write to it, "+
+			"cannot modify environment %v: this stack pins it to the tag %q; "+
+				"pin a revision number instead (for example 'mainEnvironment: %s@8'), "+
 				"or edit the environment directly with 'pulumi env set'",
-			mainEnv.Ref(), mainEnv.Version, mainEnv.Version)
+			mainEnv.Ref(), mainEnv.Version, mainEnv.Ref())
 	}
 
 	envs, ok := s.Backend().(backend.EnvironmentDefinitionsBackend)
@@ -124,55 +145,137 @@ func newMainEnvWriter(s backend.Stack, mainEnv *workspace.MainEnvironment) (*mai
 	if !ok {
 		return nil, fmt.Errorf("cannot determine organization for stack %v", s.Ref())
 	}
-	return &mainEnvWriter{envs: envs, org: orgNamer.OrgName(), mainEnv: mainEnv}, nil
+	return &mainEnvWriter{
+		envs:       envs,
+		org:        orgNamer.OrgName(),
+		mainEnv:    mainEnv,
+		stack:      s,
+		ps:         ps,
+		configFile: configFile,
+		save:       cmdStack.SaveProjectStack,
+	}, nil
 }
 
-// read fetches the environment's definition along with the etag a subsequent write must carry.
-func (w *mainEnvWriter) read(ctx context.Context) (*yaml.Node, string, error) {
-	def, etag, _, err := w.envs.GetEnvironmentDefinition(ctx, w.org, w.mainEnv.Project, w.mainEnv.Name, "")
+// read fetches the environment's definition at the revision this stack is pinned to, along with the
+// revision number that read resolved to.
+//
+// The new revision is created from that number, so the parent is always the definition the caller just
+// edited -- never a separately resolved `latest` that could have moved in between.
+func (w *mainEnvWriter) read(ctx context.Context) (*yaml.Node, int, error) {
+	def, _, revision, err := w.envs.GetEnvironmentDefinition(
+		ctx, w.org, w.mainEnv.Project, w.mainEnv.Name, w.mainEnv.Version)
 	if err != nil {
 		if errors.Is(err, backend.ErrEnvironmentNotFound) {
-			return nil, "", fmt.Errorf(
+			return nil, 0, fmt.Errorf(
 				"environment %v does not exist; create it with 'pulumi env init %v', "+
 					"or migrate this stack's configuration with 'pulumi config env init --main'",
 				w.mainEnv.Ref(), w.mainEnv.Ref())
 		}
-		return nil, "", fmt.Errorf("getting environment definition: %w", err)
+		return nil, 0, fmt.Errorf("getting environment definition: %w", err)
 	}
 
 	docNode := &yaml.Node{}
 	if err := yaml.Unmarshal(def, docNode); err != nil {
-		return nil, "", fmt.Errorf("unmarshaling environment definition: %w", err)
+		return nil, 0, fmt.Errorf("unmarshaling environment definition: %w", err)
 	}
 	if docNode.Kind != yaml.DocumentNode {
 		docNode = &yaml.Node{Kind: yaml.DocumentNode, Content: []*yaml.Node{{}}}
 	}
-	return docNode, etag, nil
+	return docNode, revision, nil
 }
 
-// write sends the edited definition back with the etag from the preceding read and returns the revision
-// the update created.
-func (w *mainEnvWriter) write(ctx context.Context, out io.Writer, docNode *yaml.Node, etag string) (int, error) {
+// writeResult reports the revision a write created, the revision it was created from, and where the
+// environment's `latest` tag points. Latest is zero when the lookup that reports it failed, which is not
+// an error: by then the revision has been created and the stack file rewritten, so the write succeeded.
+type writeResult struct {
+	Revision int
+	Parent   int
+	Latest   int
+}
+
+// write creates a revision of the environment from parent and repoints the stack file at it.
+//
+// The two writes happen in that order deliberately. Saving first would leave the stack file naming a
+// revision that may not exist, which breaks every subsequent read of the stack and cannot be diagnosed
+// from the file. Creating first leaves, at worst, a real revision the file does not name -- which the
+// error below tells the user how to adopt in one line.
+func (w *mainEnvWriter) write(
+	ctx context.Context, out io.Writer, docNode *yaml.Node, parent int,
+) (writeResult, error) {
 	newYAML, err := yaml.Marshal(docNode.Content[0])
 	if err != nil {
-		return 0, fmt.Errorf("marshaling environment definition: %w", err)
+		return writeResult{}, fmt.Errorf("marshaling environment definition: %w", err)
 	}
 
-	diags, revision, err := w.envs.UpdateEnvironmentDefinition(
-		ctx, w.org, w.mainEnv.Project, w.mainEnv.Name, newYAML, etag)
+	diags, revision, err := w.envs.CreateEnvironmentRevisionFromParent(
+		ctx, w.org, w.mainEnv.Project, w.mainEnv.Name, newYAML, parent)
 	if err != nil {
-		if errors.Is(err, backend.ErrEnvironmentConflict) {
-			return 0, fmt.Errorf(
-				"environment %v changed since it was read, so the update was rejected rather than "+
+		switch {
+		case errors.Is(err, backend.ErrEnvironmentConflict):
+			return writeResult{}, fmt.Errorf(
+				"environment %v changed since it was read, so the new revision was rejected rather than "+
 					"overwriting it; re-run the command", w.mainEnv.Ref())
+		case errors.Is(err, backend.ErrEnvironmentNotFound):
+			// The service answers a closed rollout gate exactly as it answers a missing environment, so
+			// name both possibilities rather than asserting one. There is deliberately no probe and no
+			// fallback to the ordinary environment-update route: that would move `latest` invisibly, on
+			// the very path where the user believed they were branching from their own pin.
+			return writeResult{}, fmt.Errorf(
+				"creating a revision of environment %v: revision branching is not available for "+
+					"organization %q, or the environment does not exist; 'pulumi config set' cannot "+
+					"write to a 'mainEnvironment' stack without it", w.mainEnv.Ref(), w.org)
 		}
-		return 0, fmt.Errorf("updating environment: %w", err)
+		return writeResult{}, fmt.Errorf("creating a revision of environment %v: %w", w.mainEnv.Ref(), err)
 	}
 	if len(diags) != 0 {
 		printESCDiagnostics(out, diags)
-		return 0, fmt.Errorf("updating environment %v: too many errors", w.mainEnv.Ref())
+		return writeResult{}, fmt.Errorf("creating a revision of environment %v: too many errors", w.mainEnv.Ref())
 	}
-	return revision, nil
+
+	// The revision exists; point the stack at it. Nothing above this line touches the stack file, so
+	// every failure path so far leaves it exactly as it was.
+	next := workspace.MainEnvironment{
+		Project: w.mainEnv.Project,
+		Name:    w.mainEnv.Name,
+		Version: strconv.Itoa(revision),
+	}
+	*w.mainEnv = next
+	w.ps.MainEnvironment = w.mainEnv
+	if err := w.save(ctx, w.stack, w.ps, w.configFile); err != nil {
+		return writeResult{}, fmt.Errorf(
+			"created environment revision %v@%d, but saving %s failed: %w; "+
+				"set 'mainEnvironment: %v@%d' in %s by hand to use it",
+			w.mainEnv.Ref(), revision, w.stackFileName(), err,
+			w.mainEnv.Ref(), revision, w.stackFileName())
+	}
+
+	res := writeResult{Revision: revision, Parent: parent}
+	// Cosmetic and last: reporting where `latest` still points is worth one GET, but the write has
+	// already succeeded, so a failure here must not turn it into an error.
+	if latest, err := w.envs.GetEnvironmentRevision(
+		ctx, w.org, w.mainEnv.Project, w.mainEnv.Name, ""); err == nil {
+		res.Latest = latest
+	}
+	return res, nil
+}
+
+// stackFileName names the stack file in messages, matching how the config commands already name it.
+func (w *mainEnvWriter) stackFileName() string {
+	if w.configFile != "" {
+		return filepath.Base(w.configFile)
+	}
+	return fmt.Sprintf("Pulumi.%s.yaml", w.stack.Ref().Name())
+}
+
+// printWriteResult reports what a write created and what it left alone. Both `config set` and `config rm`
+// print through this so the two cannot drift.
+func printWriteResult(out io.Writer, mainEnv *workspace.MainEnvironment, stackFile string, res writeResult) {
+	fmt.Fprintf(out, "Created %s@%d (parent @%d).\n", mainEnv.Ref(), res.Revision, res.Parent)
+	if res.Latest != 0 {
+		fmt.Fprintf(out, "%s now points at @%d; latest is still @%d.\n", stackFile, res.Revision, res.Latest)
+		return
+	}
+	fmt.Fprintf(out, "%s now points at @%d.\n", stackFile, res.Revision)
 }
 
 // configValuePath is the location of a stack configuration key within an environment definition. The key
@@ -182,14 +285,14 @@ func configValuePath(key config.Key) resource.PropertyPath {
 	return resource.PropertyPath{"pulumiConfig", key.String()}
 }
 
-// setKey writes a single configuration value into the environment's `values.pulumiConfig` and returns the
+// setKey writes a single configuration value into the environment's `values.pulumiConfig` and reports the
 // revision the write created.
 func (w *mainEnvWriter) setKey(
 	ctx context.Context, out io.Writer, key config.Key, value yaml.Node,
-) (int, error) {
-	docNode, etag, err := w.read(ctx)
+) (writeResult, error) {
+	docNode, parent, err := w.read(ctx)
 	if err != nil {
-		return 0, err
+		return writeResult{}, err
 	}
 
 	valuesNode, ok := encoding.YAMLSyntax{Node: docNode}.Get(resource.PropertyPath{"values"})
@@ -197,45 +300,48 @@ func (w *mainEnvWriter) setKey(
 		valuesNode, err = encoding.YAMLSyntax{Node: docNode}.Set(
 			nil, resource.PropertyPath{"values"}, yaml.Node{Kind: yaml.MappingNode})
 		if err != nil {
-			return 0, fmt.Errorf("internal error: %w", err)
+			return writeResult{}, fmt.Errorf("internal error: %w", err)
 		}
 	}
 	if _, err = (encoding.YAMLSyntax{Node: valuesNode}).Set(nil, configValuePath(key), value); err != nil {
-		return 0, err
+		return writeResult{}, err
 	}
 
-	return w.write(ctx, out, docNode, etag)
+	return w.write(ctx, out, docNode, parent)
 }
 
 // removeKey deletes a single configuration value from the environment's `values.pulumiConfig`. It reports
-// false if the key was not present, in which case no revision was created.
-func (w *mainEnvWriter) removeKey(ctx context.Context, out io.Writer, key config.Key) (int, bool, error) {
-	docNode, etag, err := w.read(ctx)
+// false if the key was not present, in which case no revision was created and the stack file was not
+// touched.
+func (w *mainEnvWriter) removeKey(
+	ctx context.Context, out io.Writer, key config.Key,
+) (writeResult, bool, error) {
+	docNode, parent, err := w.read(ctx)
 	if err != nil {
-		return 0, false, err
+		return writeResult{}, false, err
 	}
 
 	valuesNode, ok := encoding.YAMLSyntax{Node: docNode}.Get(resource.PropertyPath{"values"})
 	if !ok {
-		return 0, false, nil
+		return writeResult{}, false, nil
 	}
 	before, err := yaml.Marshal(docNode.Content[0])
 	if err != nil {
-		return 0, false, fmt.Errorf("marshaling environment definition: %w", err)
+		return writeResult{}, false, fmt.Errorf("marshaling environment definition: %w", err)
 	}
 	if err = (encoding.YAMLSyntax{Node: valuesNode}).Delete(nil, configValuePath(key)); err != nil {
-		return 0, false, err
+		return writeResult{}, false, err
 	}
 	after, err := yaml.Marshal(docNode.Content[0])
 	if err != nil {
-		return 0, false, fmt.Errorf("marshaling environment definition: %w", err)
+		return writeResult{}, false, fmt.Errorf("marshaling environment definition: %w", err)
 	}
 	if bytes.Equal(before, after) {
-		return 0, false, nil
+		return writeResult{}, false, nil
 	}
 
-	revision, err := w.write(ctx, out, docNode, etag)
-	return revision, true, err
+	res, err := w.write(ctx, out, docNode, parent)
+	return res, true, err
 }
 
 // ConfigValueNode renders a `pulumi config set` value as the YAML node to store in the environment.

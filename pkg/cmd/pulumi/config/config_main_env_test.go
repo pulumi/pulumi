@@ -24,6 +24,7 @@ import (
 	"maps"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -50,34 +51,59 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
-// fakeEnvStore is an in-memory stand-in for a single named ESC environment. It bumps the revision and
-// rotates the etag on every accepted update, and rejects an update that does not carry the etag from the
-// most recent read, exactly as the service does.
+// fakeEnvStore is an in-memory stand-in for a single named ESC environment, modelled as a revision graph
+// rather than as a single head: creating a revision from a parent appends to history without moving
+// `latest`, exactly as the service does.
+//
+// UpdateEnvironmentDefinitionF is deliberately left nil. MockEnvironmentsBackend panics on an unset
+// function field, so any test that reaches the latest-moving update route fails loudly.
 type fakeEnvStore struct {
 	t *testing.T
 
-	yaml     string
-	etag     string
+	// definitions maps a revision number to the definition stored at it, and parents maps it to the
+	// revision it was created from.
+	definitions map[int]string
+	parents     map[int]int
+
+	// revision is the revision `latest` points at. Creating a revision never moves it.
 	revision int
 
 	// exists reports whether the environment has been created.
 	exists bool
 
-	gets          int
-	updates       int
-	lastEtagSent  string
-	revisionCalls map[string]int
+	gets            int
+	creates         int
+	lastParent      int
+	lastVersionRead string
+	revisionCalls   map[string]int
 }
 
 func newFakeEnvStore(t *testing.T, yaml string) *fakeEnvStore {
 	return &fakeEnvStore{
 		t:             t,
-		yaml:          yaml,
-		etag:          "etag-1",
+		definitions:   map[int]string{1: yaml},
+		parents:       map[int]int{1: 0},
 		revision:      1,
 		exists:        true,
 		revisionCalls: map[string]int{},
 	}
+}
+
+// nextRevision is the number the next created revision will get.
+func (s *fakeEnvStore) nextRevision() int {
+	n := s.revision
+	for k := range s.definitions {
+		if k > n {
+			n = k
+		}
+	}
+	return n + 1
+}
+
+// head is the definition at the most recently created revision, which is what a stack whose pointer was
+// just rewritten reads.
+func (s *fakeEnvStore) head() string {
+	return s.definitions[s.nextRevision()-1]
 }
 
 func (s *fakeEnvStore) backend() *backend.MockEnvironmentsBackend {
@@ -95,20 +121,37 @@ func (s *fakeEnvStore) backend() *backend.MockEnvironmentsBackend {
 				return nil, "", 0, fmt.Errorf("%w: payments/dev", backend.ErrEnvironmentNotFound)
 			}
 			s.gets++
-			return []byte(s.yaml), s.etag, s.revision, nil
-		},
-		UpdateEnvironmentDefinitionF: func(
-			_ context.Context, org, envProject, envName string, yaml []byte, etag string,
-		) (apitype.EnvironmentDiagnostics, int, error) {
-			s.updates++
-			s.lastEtagSent = etag
-			if etag != s.etag {
-				return nil, 0, fmt.Errorf("%w: payments/dev", backend.ErrEnvironmentConflict)
+			s.lastVersionRead = version
+
+			revision := s.revision
+			if version != "" {
+				n, err := strconv.Atoi(version)
+				if err != nil {
+					return nil, "", 0, fmt.Errorf(
+						"%w: payments/dev@%s", backend.ErrEnvironmentNotFound, version)
+				}
+				revision = n
 			}
-			s.yaml = string(yaml)
-			s.revision++
-			s.etag = fmt.Sprintf("etag-%d", s.revision)
-			return nil, s.revision, nil
+			def, ok := s.definitions[revision]
+			if !ok {
+				return nil, "", 0, fmt.Errorf(
+					"%w: payments/dev@%d", backend.ErrEnvironmentNotFound, revision)
+			}
+			return []byte(def), fmt.Sprintf("etag-%d", revision), revision, nil
+		},
+		CreateEnvironmentRevisionFromParentF: func(
+			_ context.Context, org, envProject, envName string, yaml []byte, parent int,
+		) (apitype.EnvironmentDiagnostics, int, error) {
+			s.creates++
+			s.lastParent = parent
+			if _, ok := s.definitions[parent]; !ok {
+				return nil, 0, fmt.Errorf("%w: payments/dev@%d", backend.ErrEnvironmentNotFound, parent)
+			}
+			revision := s.nextRevision()
+			s.definitions[revision] = string(yaml)
+			s.parents[revision] = parent
+			// `latest` deliberately does not move.
+			return nil, revision, nil
 		},
 		GetEnvironmentRevisionF: func(
 			_ context.Context, org, envProject, envName, version string,
@@ -117,7 +160,13 @@ func (s *fakeEnvStore) backend() *backend.MockEnvironmentsBackend {
 			s.revisionCalls[ref]++
 			switch ref {
 			case "payments/dev":
-				return s.revision, nil
+				if version == "" {
+					return s.revision, nil
+				}
+				if n, err := strconv.Atoi(version); err == nil {
+					return n, nil
+				}
+				return 0, fmt.Errorf("no such version %v", version)
 			case "payments/base":
 				return 2, nil
 			}
@@ -345,10 +394,9 @@ func TestMainEnvironmentConfigSet(t *testing.T) {
 	store := newFakeEnvStore(t, "values:\n  pulumiConfig:\n    testProject:existing: keep\n")
 	s := mainEnvStack(store.backend())
 	project := &workspace.Project{Name: "testProject"}
-	ps := loadStackFile(t, project, "mainEnvironment: payments/dev\n")
-
-	tmpdir := t.TempDir()
-	configFile := filepath.Join(tmpdir, "Pulumi.testStack.yaml")
+	const stackYAML = "mainEnvironment: payments/dev\n"
+	ps := loadStackFile(t, project, stackYAML)
+	configFile := writeStackFile(t, stackYAML)
 
 	var stdout bytes.Buffer
 	cmd := newMainEnvSetCmd(ps, &stdout)
@@ -357,19 +405,104 @@ func TestMainEnvironmentConfigSet(t *testing.T) {
 	require.NoError(t, cmd.Run(t.Context(), ws, []string{"testProject:instanceCount", "6"}, project, s, configFile))
 	require.NoError(t, cmd.Run(t.Context(), ws, []string{"testProject:region", "us-west-2"}, project, s, configFile))
 
-	// DoD 4: successive writes produce successive revisions.
-	assert.Equal(t, "Updated payments/dev@2\nUpdated payments/dev@3\n", stdout.String())
-	assert.Equal(t, 3, store.revision)
+	// Successive writes chain: the second branches from the revision the first created, not from latest.
+	assert.Equal(t,
+		"Created payments/dev@2 (parent @1).\n"+
+			"Pulumi.testStack.yaml now points at @2; latest is still @1.\n"+
+			"Created payments/dev@3 (parent @2).\n"+
+			"Pulumi.testStack.yaml now points at @3; latest is still @1.\n",
+		stdout.String())
+	assert.Equal(t, 2, store.creates)
+	// `latest` never moved.
+	assert.Equal(t, 1, store.revision)
 
 	// Untyped values keep `pulumi config set` semantics: "6" stays a string.
-	assert.Contains(t, store.yaml, `testProject:instanceCount: "6"`)
-	assert.Contains(t, store.yaml, "testProject:region: us-west-2")
+	assert.Contains(t, store.head(), `testProject:instanceCount: "6"`)
+	assert.Contains(t, store.head(), "testProject:region: us-west-2")
 	// Existing values are preserved by the read-modify-write.
-	assert.Contains(t, store.yaml, "testProject:existing: keep")
+	assert.Contains(t, store.head(), "testProject:existing: keep")
 
-	// The local stack file is never written on this path.
-	_, err := os.Stat(configFile)
-	assert.True(t, os.IsNotExist(err))
+	// The stack file now names the revision that was created.
+	saved, err := os.ReadFile(configFile)
+	require.NoError(t, err)
+	assert.Equal(t, "mainEnvironment: payments/dev@3\n", string(saved))
+}
+
+// TestMainEnvironmentConfigSetBranchesFromPinnedParent asserts a write branches from the revision the stack
+// file names, not from a separately resolved `latest`, and that the pinned stack is no longer refused.
+func TestMainEnvironmentConfigSetBranchesFromPinnedParent(t *testing.T) {
+	t.Parallel()
+
+	store := newFakeEnvStore(t, "values:\n  pulumiConfig: {}\n")
+	// The environment's history has moved on without this stack: `latest` is 7, the stack is pinned to 5.
+	store.definitions[5] = "values:\n  pulumiConfig:\n    testProject:existing: pinned\n"
+	store.definitions[7] = "values:\n  pulumiConfig:\n    testProject:existing: newer\n"
+	store.revision = 7
+
+	s := mainEnvStack(store.backend())
+	project := &workspace.Project{Name: "testProject"}
+	const stackYAML = "mainEnvironment: payments/dev@5\n"
+	ps := loadStackFile(t, project, stackYAML)
+	configFile := writeStackFile(t, stackYAML)
+
+	var stdout bytes.Buffer
+	cmd := newMainEnvSetCmd(ps, &stdout)
+	require.NoError(t, cmd.Run(
+		t.Context(), &pkgWorkspace.MockContext{}, []string{"testProject:a", "b"}, project, s, configFile))
+
+	// The read happened at the pin, and the create branched from exactly the revision that read reported.
+	assert.Equal(t, "5", store.lastVersionRead)
+	assert.Equal(t, 5, store.lastParent)
+	assert.Equal(t, 1, store.gets)
+	assert.Equal(t, 1, store.creates)
+
+	// The new revision descends from @5's content, not from @7's.
+	assert.Contains(t, store.head(), "testProject:existing: pinned")
+	assert.Contains(t, store.head(), "testProject:a: b")
+
+	assert.Equal(t,
+		"Created payments/dev@8 (parent @5).\n"+
+			"Pulumi.testStack.yaml now points at @8; latest is still @7.\n",
+		stdout.String())
+
+	saved, err := os.ReadFile(configFile)
+	require.NoError(t, err)
+	assert.Equal(t, "mainEnvironment: payments/dev@8\n", string(saved))
+}
+
+// TestMainEnvironmentConfigSetRewritesPointer asserts the pointer is the only thing a write changes in the
+// stack file: every other key, and the file's trivia, survive byte for byte.
+func TestMainEnvironmentConfigSetRewritesPointer(t *testing.T) {
+	t.Parallel()
+
+	const stackYAML = `# how this stack gets its configuration
+mainEnvironment: payments/dev
+secretsprovider: passphrase
+encryptionsalt: v1:saltysalt:v1:abc:def
+config:
+  # left alone by a write to the environment
+  testProject:legacy: "9"
+`
+
+	store := newFakeEnvStore(t, "values:\n  pulumiConfig: {}\n")
+	s := mainEnvStack(store.backend())
+	project := &workspace.Project{Name: "testProject"}
+	configFile := writeStackFile(t, stackYAML)
+
+	// Loading from bytes populates the raw representation the trivia-preserving save edits.
+	ps := loadStackFile(t, project, stackYAML)
+
+	var stdout, stderr bytes.Buffer
+	cmd := newMainEnvSetCmd(ps, &stdout)
+	cmd.Stderr = &stderr
+	require.NoError(t, cmd.Run(
+		t.Context(), &pkgWorkspace.MockContext{}, []string{"testProject:a", "b"}, project, s, configFile))
+
+	saved, err := os.ReadFile(configFile)
+	require.NoError(t, err)
+	assert.Equal(t,
+		strings.Replace(stackYAML, "mainEnvironment: payments/dev\n", "mainEnvironment: payments/dev@2\n", 1),
+		string(saved))
 }
 
 func TestMainEnvironmentConfigSetTypes(t *testing.T) {
@@ -393,16 +526,17 @@ func TestMainEnvironmentConfigSetTypes(t *testing.T) {
 			store := newFakeEnvStore(t, "values:\n  pulumiConfig: {}\n")
 			s := mainEnvStack(store.backend())
 			project := &workspace.Project{Name: "testProject"}
-			ps := loadStackFile(t, project, "mainEnvironment: payments/dev\n")
+			const stackYAML = "mainEnvironment: payments/dev\n"
+			ps := loadStackFile(t, project, stackYAML)
 
 			var stdout bytes.Buffer
 			cmd := newMainEnvSetCmd(ps, &stdout)
 			cmd.Type = c.typ
 			require.NoError(t, cmd.Run(
 				t.Context(), &pkgWorkspace.MockContext{}, []string{"testProject:test", c.value},
-				project, s, filepath.Join(t.TempDir(), "Pulumi.testStack.yaml")))
+				project, s, writeStackFile(t, stackYAML)))
 
-			assert.Contains(t, store.yaml, c.expected)
+			assert.Contains(t, store.head(), c.expected)
 		})
 	}
 }
@@ -413,80 +547,199 @@ func TestMainEnvironmentConfigSetSecret(t *testing.T) {
 	store := newFakeEnvStore(t, "values:\n  pulumiConfig: {}\n")
 	s := mainEnvStack(store.backend())
 	project := &workspace.Project{Name: "testProject"}
-	ps := loadStackFile(t, project, "mainEnvironment: payments/dev\n")
+	const stackYAML = "mainEnvironment: payments/dev\n"
+	ps := loadStackFile(t, project, stackYAML)
+	configFile := writeStackFile(t, stackYAML)
 
-	tmpdir := t.TempDir()
-	configFile := filepath.Join(tmpdir, "Pulumi.testStack.yaml")
-
-	var stdout bytes.Buffer
+	var stdout, stderr bytes.Buffer
 	cmd := newMainEnvSetCmd(ps, &stdout)
+	cmd.Stderr = &stderr
 	cmd.Secret = true
+	// A stack secrets manager is never loaded on this path; reaching for a snapshot would prove it was.
+	s.SnapshotF = func(context.Context, secrets.Provider) (*deploy.Snapshot, error) {
+		require.FailNow(t, "the stack's secrets manager must not be consulted")
+		return nil, nil
+	}
 	require.NoError(t, cmd.Run(
 		t.Context(), &pkgWorkspace.MockContext{}, []string{"testProject:token", "hunter2"},
 		project, s, configFile))
 
-	// DoD 5: the value is an ESC secret, not a stack-secrets-manager ciphertext.
-	assert.Contains(t, store.yaml, "fn::secret")
-	assert.Contains(t, store.yaml, "hunter2")
-	// No secrets provider was ever configured for the stack, and nothing was written to disk...
+	// The value is an ESC secret, not a stack-secrets-manager ciphertext.
+	assert.Contains(t, store.head(), "fn::secret")
+	assert.Contains(t, store.head(), "hunter2")
+	// No secrets provider was ever configured for the stack...
 	assert.Empty(t, ps.SecretsProvider)
 	assert.Empty(t, ps.EncryptionSalt)
 	assert.Empty(t, ps.EncryptedKey)
-	_, err := os.Stat(configFile)
-	assert.True(t, os.IsNotExist(err))
-	// ...and the plaintext never reaches the command's output.
+	// ...the only local change is the pointer, so the plaintext never reaches the stack file...
+	saved, err := os.ReadFile(configFile)
+	require.NoError(t, err)
+	assert.Equal(t, "mainEnvironment: payments/dev@2\n", string(saved))
+	assert.NotContains(t, string(saved), "hunter2")
+	// ...and it never reaches the command's output either.
 	assert.NotContains(t, stdout.String(), "hunter2")
-	assert.Equal(t, "Updated payments/dev@2\n", stdout.String())
+	assert.NotContains(t, stderr.String(), "hunter2")
+	assert.Equal(t,
+		"Created payments/dev@2 (parent @1).\n"+
+			"Pulumi.testStack.yaml now points at @2; latest is still @1.\n",
+		stdout.String())
 }
 
-func TestMainEnvironmentConfigSetSendsEtagFromRead(t *testing.T) {
+// TestMainEnvironmentConfigSetOmitsUnknownLatest asserts a failed `latest` lookup costs the command only
+// the clause that reports it: the revision was created and the pointer written, so this is not an error.
+func TestMainEnvironmentConfigSetOmitsUnknownLatest(t *testing.T) {
+	t.Parallel()
+
+	store := newFakeEnvStore(t, "values:\n  pulumiConfig: {}\n")
+	be := store.backend()
+	be.GetEnvironmentRevisionF = func(
+		context.Context, string, string, string, string,
+	) (int, error) {
+		return 0, errors.New("service unavailable")
+	}
+	s := mainEnvStack(be)
+	project := &workspace.Project{Name: "testProject"}
+	const stackYAML = "mainEnvironment: payments/dev\n"
+	ps := loadStackFile(t, project, stackYAML)
+	configFile := writeStackFile(t, stackYAML)
+
+	var stdout bytes.Buffer
+	cmd := newMainEnvSetCmd(ps, &stdout)
+	require.NoError(t, cmd.Run(
+		t.Context(), &pkgWorkspace.MockContext{}, []string{"testProject:a", "b"}, project, s, configFile))
+
+	assert.Equal(t,
+		"Created payments/dev@2 (parent @1).\nPulumi.testStack.yaml now points at @2.\n",
+		stdout.String())
+	saved, err := os.ReadFile(configFile)
+	require.NoError(t, err)
+	assert.Equal(t, "mainEnvironment: payments/dev@2\n", string(saved))
+}
+
+// TestMainEnvironmentConfigSetDiagnostics asserts a rejected definition is reported and leaves the stack
+// file exactly as it was: there is no revision to point at.
+func TestMainEnvironmentConfigSetDiagnostics(t *testing.T) {
+	t.Parallel()
+
+	store := newFakeEnvStore(t, "values:\n  pulumiConfig: {}\n")
+	be := store.backend()
+	be.CreateEnvironmentRevisionFromParentF = func(
+		context.Context, string, string, string, []byte, int,
+	) (apitype.EnvironmentDiagnostics, int, error) {
+		return apitype.EnvironmentDiagnostics{{Summary: "boom"}}, 0, nil
+	}
+	s := mainEnvStack(be)
+	project := &workspace.Project{Name: "testProject"}
+	const stackYAML = "mainEnvironment: payments/dev\n"
+	ps := loadStackFile(t, project, stackYAML)
+	configFile := writeStackFile(t, stackYAML)
+
+	var stdout bytes.Buffer
+	cmd := newMainEnvSetCmd(ps, &stdout)
+	err := cmd.Run(
+		t.Context(), &pkgWorkspace.MockContext{}, []string{"testProject:a", "b"}, project, s, configFile)
+
+	require.ErrorContains(t, err, "creating a revision of environment payments/dev: too many errors")
+	assert.Contains(t, stdout.String(), "boom")
+	assert.Empty(t, ps.MainEnvironment.Version)
+	saved, readErr := os.ReadFile(configFile)
+	require.NoError(t, readErr)
+	assert.Equal(t, stackYAML, string(saved))
+}
+
+// TestMainEnvironmentConfigSetConflict asserts a rejected parent fails with the existing re-run guidance and
+// leaves the pointer alone.
+func TestMainEnvironmentConfigSetConflict(t *testing.T) {
+	t.Parallel()
+
+	store := newFakeEnvStore(t, "values:\n  pulumiConfig: {}\n")
+	be := store.backend()
+	be.CreateEnvironmentRevisionFromParentF = func(
+		context.Context, string, string, string, []byte, int,
+	) (apitype.EnvironmentDiagnostics, int, error) {
+		return nil, 0, fmt.Errorf("%w: payments/dev", backend.ErrEnvironmentConflict)
+	}
+	s := mainEnvStack(be)
+	project := &workspace.Project{Name: "testProject"}
+	const stackYAML = "mainEnvironment: payments/dev\n"
+	ps := loadStackFile(t, project, stackYAML)
+	configFile := writeStackFile(t, stackYAML)
+
+	var stdout bytes.Buffer
+	cmd := newMainEnvSetCmd(ps, &stdout)
+	err := cmd.Run(
+		t.Context(), &pkgWorkspace.MockContext{}, []string{"testProject:a", "b"}, project, s, configFile)
+
+	require.ErrorContains(t, err, "environment payments/dev changed since it was read")
+	require.ErrorContains(t, err, "re-run the command")
+	assert.Empty(t, ps.MainEnvironment.Version)
+	saved, readErr := os.ReadFile(configFile)
+	require.NoError(t, readErr)
+	assert.Equal(t, stackYAML, string(saved))
+}
+
+// TestMainEnvironmentConfigSetRouteUnavailable asserts a 404 from the create route -- a closed rollout gate,
+// an organization that is not enabled, or a service that predates the route -- fails with a distinct,
+// actionable message rather than falling back to a write that would move `latest`.
+func TestMainEnvironmentConfigSetRouteUnavailable(t *testing.T) {
+	t.Parallel()
+
+	store := newFakeEnvStore(t, "values:\n  pulumiConfig: {}\n")
+	be := store.backend()
+	be.CreateEnvironmentRevisionFromParentF = func(
+		context.Context, string, string, string, []byte, int,
+	) (apitype.EnvironmentDiagnostics, int, error) {
+		return nil, 0, fmt.Errorf("%w: payments/dev", backend.ErrEnvironmentNotFound)
+	}
+	s := mainEnvStack(be)
+	project := &workspace.Project{Name: "testProject"}
+	const stackYAML = "mainEnvironment: payments/dev\n"
+	ps := loadStackFile(t, project, stackYAML)
+	configFile := writeStackFile(t, stackYAML)
+
+	var stdout bytes.Buffer
+	cmd := newMainEnvSetCmd(ps, &stdout)
+	err := cmd.Run(
+		t.Context(), &pkgWorkspace.MockContext{}, []string{"testProject:a", "b"}, project, s, configFile)
+
+	require.ErrorContains(t, err, "creating a revision of environment payments/dev")
+	require.ErrorContains(t, err, "revision branching is not available for organization \"test-org\"")
+	require.ErrorContains(t, err, "or the environment does not exist")
+	// The stack file is untouched, and nothing fell back to a latest-moving write: the store's
+	// UpdateEnvironmentDefinitionF is nil, so any such call would have panicked.
+	saved, readErr := os.ReadFile(configFile)
+	require.NoError(t, readErr)
+	assert.Equal(t, stackYAML, string(saved))
+}
+
+// TestMainEnvironmentWriteSaveFails asserts that when the revision is created but the stack file cannot be
+// saved, the error names the revision and the exact line that adopts it by hand. The revision is real and
+// cannot be rolled back, so it must not be silently orphaned.
+func TestMainEnvironmentWriteSaveFails(t *testing.T) {
 	t.Parallel()
 
 	store := newFakeEnvStore(t, "values:\n  pulumiConfig: {}\n")
 	s := mainEnvStack(store.backend())
 	project := &workspace.Project{Name: "testProject"}
 	ps := loadStackFile(t, project, "mainEnvironment: payments/dev\n")
+	mainEnv := activeMainEnvironment(io.Discard, s, ps)
+	require.NotNil(t, mainEnv)
 
-	var stdout bytes.Buffer
-	cmd := newMainEnvSetCmd(ps, &stdout)
-	require.NoError(t, cmd.Run(
-		t.Context(), &pkgWorkspace.MockContext{}, []string{"testProject:a", "b"},
-		project, s, filepath.Join(t.TempDir(), "Pulumi.testStack.yaml")))
-
-	// DoD 6: the write carried exactly the etag the read returned.
-	assert.Equal(t, "etag-1", store.lastEtagSent)
-	assert.Equal(t, 1, store.gets)
-	assert.Equal(t, 1, store.updates)
-}
-
-func TestMainEnvironmentConfigSetStaleEtag(t *testing.T) {
-	t.Parallel()
-
-	store := newFakeEnvStore(t, "values:\n  pulumiConfig: {}\n")
-	be := store.backend()
-	// Simulate a concurrent writer: the environment moves on between the read and the write.
-	get := be.GetEnvironmentDefinitionF
-	be.GetEnvironmentDefinitionF = func(
-		ctx context.Context, org, envProject, envName, version string,
-	) ([]byte, string, int, error) {
-		yaml, _, revision, err := get(ctx, org, envProject, envName, version)
-		return yaml, "stale-etag", revision, err
+	w, err := newMainEnvWriter(s, ps, mainEnv, "Pulumi.testStack.yaml")
+	require.NoError(t, err)
+	w.save = func(context.Context, backend.Stack, *workspace.ProjectStack, string) error {
+		return errors.New("read-only file system")
 	}
 
-	s := mainEnvStack(be)
-	project := &workspace.Project{Name: "testProject"}
-	ps := loadStackFile(t, project, "mainEnvironment: payments/dev\n")
-
-	before := store.yaml
 	var stdout bytes.Buffer
-	cmd := newMainEnvSetCmd(ps, &stdout)
-	err := cmd.Run(
-		t.Context(), &pkgWorkspace.MockContext{}, []string{"testProject:a", "b"},
-		project, s, filepath.Join(t.TempDir(), "Pulumi.testStack.yaml"))
+	node, err := ConfigValueNode("b", "", false)
+	require.NoError(t, err)
+	_, err = w.setKey(t.Context(), &stdout, config.MustMakeKey("testProject", "a"), node)
 
-	require.ErrorContains(t, err, "environment payments/dev changed since it was read")
-	assert.Equal(t, before, store.yaml, "the environment must not be overwritten")
-	assert.Equal(t, 1, store.revision)
+	require.ErrorContains(t, err, "created environment revision payments/dev@2")
+	require.ErrorContains(t, err, "read-only file system")
+	require.ErrorContains(t, err, "set 'mainEnvironment: payments/dev@2' in Pulumi.testStack.yaml by hand")
+	assert.Equal(t, 1, store.creates)
 }
 
 func TestMainEnvironmentConfigRemove(t *testing.T) {
@@ -500,23 +753,23 @@ func TestMainEnvironmentConfigRemove(t *testing.T) {
 
 	mainEnv := activeMainEnvironment(io.Discard, s, ps)
 	require.NotNil(t, mainEnv)
-	w, err := newMainEnvWriter(s, mainEnv)
+	w, err := newMainEnvWriter(s, ps, mainEnv, writeStackFile(t, "mainEnvironment: payments/dev\n"))
 	require.NoError(t, err)
 
 	var stdout bytes.Buffer
-	revision, removed, err := w.removeKey(t.Context(), &stdout, config.MustMakeKey("testProject", "a"))
+	res, removed, err := w.removeKey(t.Context(), &stdout, config.MustMakeKey("testProject", "a"))
 	require.NoError(t, err)
 	assert.True(t, removed)
-	assert.Equal(t, 2, revision)
-	assert.NotContains(t, store.yaml, "testProject:a")
-	assert.Contains(t, store.yaml, "testProject:b: two")
+	assert.Equal(t, writeResult{Revision: 2, Parent: 1, Latest: 1}, res)
+	assert.NotContains(t, store.head(), "testProject:a")
+	assert.Contains(t, store.head(), "testProject:b: two")
 
 	// Removing a key that isn't there creates no revision.
-	revision, removed, err = w.removeKey(t.Context(), &stdout, config.MustMakeKey("testProject", "missing"))
+	res, removed, err = w.removeKey(t.Context(), &stdout, config.MustMakeKey("testProject", "missing"))
 	require.NoError(t, err)
 	assert.False(t, removed)
-	assert.Zero(t, revision)
-	assert.Equal(t, 2, store.revision)
+	assert.Zero(t, res.Revision)
+	assert.Equal(t, 1, store.creates)
 }
 
 func TestMainEnvironmentConfigRemoveCommandPath(t *testing.T) {
@@ -526,28 +779,84 @@ func TestMainEnvironmentConfigRemoveCommandPath(t *testing.T) {
 		"values:\n  pulumiConfig:\n    testProject:a: one\n    testProject:b: two\n")
 	s := mainEnvStack(store.backend())
 	project := &workspace.Project{Name: "testProject"}
-	ps := loadStackFile(t, project, "mainEnvironment: payments/dev\n")
+	const stackYAML = "mainEnvironment: payments/dev\n"
+	ps := loadStackFile(t, project, stackYAML)
+	configFile := writeStackFile(t, stackYAML)
 	mainEnv := activeMainEnvironment(io.Discard, s, ps)
 	require.NotNil(t, mainEnv)
 
 	var out bytes.Buffer
 	require.NoError(t, removeFromMainEnvironment(
-		t.Context(), &out, s, ps, mainEnv, config.MustMakeKey("testProject", "a"), false))
-	assert.Equal(t, "Updated payments/dev@2\n", out.String())
-	assert.NotContains(t, store.yaml, "testProject:a")
+		t.Context(), &out, s, ps, mainEnv, config.MustMakeKey("testProject", "a"), false, configFile))
+	assert.Equal(t,
+		"Created payments/dev@2 (parent @1).\n"+
+			"Pulumi.testStack.yaml now points at @2; latest is still @1.\n",
+		out.String())
+	assert.NotContains(t, store.head(), "testProject:a")
 
-	// Removing a key that is not set reports so and creates no revision.
+	saved, err := os.ReadFile(configFile)
+	require.NoError(t, err)
+	assert.Equal(t, "mainEnvironment: payments/dev@2\n", string(saved))
+
+	// Removing a key that is not set reports so, creates no revision, and leaves the pointer alone.
 	out.Reset()
 	require.NoError(t, removeFromMainEnvironment(
-		t.Context(), &out, s, ps, mainEnv, config.MustMakeKey("testProject", "missing"), false))
+		t.Context(), &out, s, ps, mainEnv, config.MustMakeKey("testProject", "missing"), false, configFile))
 	assert.Equal(t, "Configuration key 'testProject:missing' is not set in payments/dev\n", out.String())
-	assert.Equal(t, 2, store.revision)
+	assert.Equal(t, 1, store.creates)
+	saved, err = os.ReadFile(configFile)
+	require.NoError(t, err)
+	assert.Equal(t, "mainEnvironment: payments/dev@2\n", string(saved))
 
 	// `--path` removals are not supported yet.
-	err := removeFromMainEnvironment(
-		t.Context(), &out, s, ps, mainEnv, config.MustMakeKey("testProject", "b.c"), true)
+	err = removeFromMainEnvironment(
+		t.Context(), &out, s, ps, mainEnv, config.MustMakeKey("testProject", "b.c"), true, configFile)
 	require.ErrorContains(t, err, "'pulumi config rm --path' is not supported yet")
-	assert.Equal(t, 2, store.revision)
+	assert.Equal(t, 1, store.creates)
+}
+
+// TestNonMainEnvironmentConfigSetUnaffected asserts a stack with no `mainEnvironment` is untouched by any of
+// this: it writes its own config file, and no environment method is ever reached.
+func TestNonMainEnvironmentConfigSetUnaffected(t *testing.T) {
+	t.Parallel()
+
+	// Every environment function field is nil, so reaching any of them panics.
+	be := &backend.MockEnvironmentsBackend{
+		MockBackend: backend.MockBackend{NameF: func() string { return "test" }},
+	}
+	s := mainEnvStack(be)
+	project := &workspace.Project{Name: "testProject"}
+	const stackYAML = "config:\n  testProject:existing: keep\n"
+	ps := loadStackFile(t, project, stackYAML)
+	configFile := writeStackFile(t, stackYAML)
+
+	var stdout bytes.Buffer
+	cmd := newMainEnvSetCmd(ps, &stdout)
+	require.NoError(t, cmd.Run(
+		t.Context(), &pkgWorkspace.MockContext{}, []string{"testProject:a", "b"}, project, s, configFile))
+
+	saved, err := os.ReadFile(configFile)
+	require.NoError(t, err)
+	assert.Contains(t, string(saved), "testProject:a: b")
+	assert.Contains(t, string(saved), "testProject:existing: keep")
+	assert.NotContains(t, string(saved), "mainEnvironment")
+	assert.Empty(t, stdout.String())
+}
+
+// TestMainEnvironmentWriteRequiresEnvironmentsBackend asserts a backend that cannot host named environments
+// still fails with the pre-existing refusal.
+func TestMainEnvironmentWriteRequiresEnvironmentsBackend(t *testing.T) {
+	t.Parallel()
+
+	s := mainEnvStack(&backend.MockBackend{NameF: func() string { return "diy" }})
+	project := &workspace.Project{Name: "testProject"}
+	ps := loadStackFile(t, project, "mainEnvironment: payments/dev\n")
+	mainEnv := activeMainEnvironment(io.Discard, s, ps)
+	require.NotNil(t, mainEnv)
+
+	_, err := newMainEnvWriter(s, ps, mainEnv, "")
+	require.Error(t, err)
+	assert.Equal(t, errBackendNoEnvironments(s.Backend()).Error(), err.Error())
 }
 
 func TestMainEnvironmentWriteRefusals(t *testing.T) {
@@ -555,20 +864,25 @@ func TestMainEnvironmentWriteRefusals(t *testing.T) {
 
 	project := &workspace.Project{Name: "testProject"}
 
-	t.Run("pinned version", func(t *testing.T) {
+	// A tag pin is refused: rewriting `@stable` to `@8` would silently un-tag the stack, which is a
+	// product decision about moving tags rather than something a write should settle. A numeric pin is
+	// not refused -- it is the parent to branch from, covered by
+	// TestMainEnvironmentConfigSetBranchesFromPinnedParent.
+	t.Run("tag pin", func(t *testing.T) {
 		t.Parallel()
 
 		store := newFakeEnvStore(t, "values:\n  pulumiConfig: {}\n")
 		s := mainEnvStack(store.backend())
-		ps := loadStackFile(t, project, "mainEnvironment: payments/dev@4\n")
+		ps := loadStackFile(t, project, "mainEnvironment: payments/dev@stable\n")
 
 		var stdout bytes.Buffer
 		cmd := newMainEnvSetCmd(ps, &stdout)
 		err := cmd.Run(
 			t.Context(), &pkgWorkspace.MockContext{}, []string{"testProject:a", "b"},
 			project, s, filepath.Join(t.TempDir(), "Pulumi.testStack.yaml"))
-		require.ErrorContains(t, err, "pins it to version \"4\"")
-		assert.Equal(t, 0, store.updates)
+		require.ErrorContains(t, err, "pins it to the tag \"stable\"")
+		require.ErrorContains(t, err, "pin a revision number instead")
+		assert.Equal(t, 0, store.creates)
 	})
 
 	t.Run("missing environment", func(t *testing.T) {
@@ -585,7 +899,7 @@ func TestMainEnvironmentWriteRefusals(t *testing.T) {
 			t.Context(), &pkgWorkspace.MockContext{}, []string{"testProject:a", "b"},
 			project, s, filepath.Join(t.TempDir(), "Pulumi.testStack.yaml"))
 		require.ErrorContains(t, err, "environment payments/dev does not exist")
-		assert.Equal(t, 0, store.updates)
+		assert.Equal(t, 0, store.creates)
 	})
 
 	t.Run("--path", func(t *testing.T) {
@@ -602,7 +916,7 @@ func TestMainEnvironmentWriteRefusals(t *testing.T) {
 			t.Context(), &pkgWorkspace.MockContext{}, []string{"testProject:a.b", "c"},
 			project, s, filepath.Join(t.TempDir(), "Pulumi.testStack.yaml"))
 		require.ErrorContains(t, err, "'pulumi config set --path' is not supported yet")
-		assert.Equal(t, 0, store.updates)
+		assert.Equal(t, 0, store.creates)
 	})
 
 	t.Run("unsupported subcommands", func(t *testing.T) {
@@ -861,7 +1175,7 @@ func TestMainEnvironmentUnsupportedSubcommands(t *testing.T) {
 		require.ErrorContains(t, err, "'pulumi config set-all' is not supported yet")
 
 		// Neither the environment nor the stack file was written.
-		assert.Equal(t, 0, store.updates)
+		assert.Equal(t, 0, store.creates)
 		data, readErr := os.ReadFile(configPath)
 		require.NoError(t, readErr)
 		assert.Equal(t, stackFile, string(data))
@@ -899,7 +1213,7 @@ func TestMainEnvironmentUnsupportedSubcommands(t *testing.T) {
 		err := cmd.RunE(cmd, []string{})
 		require.ErrorContains(t, err, "'pulumi config refresh' is not supported yet")
 
-		assert.Equal(t, 0, store.updates)
+		assert.Equal(t, 0, store.creates)
 		data, readErr := os.ReadFile(configPath)
 		require.NoError(t, readErr)
 		assert.Equal(t, stackFile, string(data))
@@ -1059,7 +1373,7 @@ func TestMainEnvironmentWriteWarnsAboutShadowingLocalValue(t *testing.T) {
 		require.NoError(t, c.Run(
 			t.Context(), nil, []string{"testProject:a", "env"}, project, s, writeStackFile(t, stackFile)))
 
-		assert.Contains(t, stdout.String(), "Updated payments/dev@2")
+		assert.Contains(t, stdout.String(), "Created payments/dev@2 (parent @1).")
 		assert.Contains(t, stdout.String(),
 			"warning: 'testProject:a' is also set in Pulumi.testStack.yaml, which shadows the value just written")
 	})
@@ -1075,8 +1389,9 @@ func TestMainEnvironmentWriteWarnsAboutShadowingLocalValue(t *testing.T) {
 
 		var out bytes.Buffer
 		require.NoError(t, removeFromMainEnvironment(
-			t.Context(), &out, s, ps, mainEnv, config.MustMakeKey("testProject", "a"), false))
-		assert.Contains(t, out.String(), "Updated payments/dev@2")
+			t.Context(), &out, s, ps, mainEnv, config.MustMakeKey("testProject", "a"), false,
+			writeStackFile(t, stackFile)))
+		assert.Contains(t, out.String(), "Created payments/dev@2 (parent @1).")
 		assert.Contains(t, out.String(),
 			"warning: 'testProject:a' is still set in Pulumi.testStack.yaml, which takes precedence over payments/dev")
 	})
@@ -1105,7 +1420,7 @@ func TestMainEnvironmentRemoteConfigWarnsOnWritePath(t *testing.T) {
 	require.ErrorContains(t, err, "config set not supported for remote stack config")
 	assert.Contains(t, stderr.String(),
 		"'mainEnvironment' is ignored because this stack's configuration is stored remotely")
-	assert.Equal(t, 0, store.updates)
+	assert.Equal(t, 0, store.creates)
 }
 
 // TestMainEnvironmentConfigEnvSubcommands asserts `pulumi config env ls/add/rm` do not silently operate on
@@ -1159,41 +1474,66 @@ func TestMainEnvironmentConfigEnvSubcommands(t *testing.T) {
 // Stack birth, end to end on the mock backend (DoD 10).
 //
 
-// birthEnvUniverse is an in-memory organization's worth of named environments: it can create them,
-// read them back, update them with an etag, and resolve one into the values ESC would return.
+// birthEnvUniverse is an in-memory organization's worth of named environments: it can create them, read
+// them back at a version, branch a revision off a named parent, and resolve one into the values ESC would
+// return.
 type birthEnvUniverse struct {
-	t         *testing.T
-	defs      map[string]string
-	etags     map[string]string
-	revisions map[string]int
+	t *testing.T
+	// definitions maps `<project>/<env>` to that environment's revisions, keyed by revision number.
+	definitions map[string]map[int]string
+	etags       map[string]string
+	// latest maps an environment to the revision its `latest` tag points at, which branching never moves.
+	latest map[string]int
+	// head maps an environment to its most recently created revision.
+	head map[string]int
 }
 
 func newBirthEnvUniverse(t *testing.T) *birthEnvUniverse {
 	return &birthEnvUniverse{
-		t:         t,
-		defs:      map[string]string{},
-		etags:     map[string]string{},
-		revisions: map[string]int{},
+		t:           t,
+		definitions: map[string]map[int]string{},
+		etags:       map[string]string{},
+		latest:      map[string]int{},
+		head:        map[string]int{},
 	}
 }
 
+// definitionAt returns an environment's definition at a version -- a revision number, or "" for latest.
+func (u *birthEnvUniverse) definitionAt(ref, version string) (string, int, bool) {
+	revision := u.latest[ref]
+	if version != "" {
+		n, err := strconv.Atoi(version)
+		if err != nil {
+			return "", 0, false
+		}
+		revision = n
+	}
+	def, ok := u.definitions[ref][revision]
+	return def, revision, ok
+}
+
 // resolve flattens an environment and the environments it imports into the values ESC would hand back,
-// attributing each value to the environment that defines it.
-func (u *birthEnvUniverse) resolve(ref string) map[string]esc.Value {
+// attributing each value to the environment that defines it. A reference may carry an `@version` pin, in
+// which case that revision is what is read.
+func (u *birthEnvUniverse) resolve(reference string) map[string]esc.Value {
+	ref, version, _ := strings.Cut(reference, "@")
+	def, _, ok := u.definitionAt(ref, version)
+	require.True(u.t, ok, "no such environment %v", reference)
+
 	var doc struct {
 		Imports []string `yaml:"imports"`
 		Values  struct {
 			PulumiConfig map[string]string `yaml:"pulumiConfig"`
 		} `yaml:"values"`
 	}
-	require.NoError(u.t, yaml.Unmarshal([]byte(u.defs[ref]), &doc))
+	require.NoError(u.t, yaml.Unmarshal([]byte(def), &doc))
 
 	values := map[string]esc.Value{}
 	for _, imported := range doc.Imports {
 		maps.Copy(values, u.resolve(imported))
 	}
 	for k, v := range doc.Values.PulumiConfig {
-		values[k] = esc.Value{Value: v, Trace: esc.Trace{Def: esc.Range{Environment: ref}}}
+		values[k] = esc.Value{Value: v, Trace: esc.Trace{Def: esc.Range{Environment: reference}}}
 	}
 	return values
 }
@@ -1205,42 +1545,68 @@ func (u *birthEnvUniverse) backend() *backend.MockEnvironmentsBackend {
 			_ context.Context, _, envProject, envName string, yaml []byte,
 		) (apitype.EnvironmentDiagnostics, error) {
 			ref := envProject + "/" + envName
-			u.defs[ref], u.etags[ref], u.revisions[ref] = string(yaml), "etag-1", 1
+			u.definitions[ref] = map[int]string{1: string(yaml)}
+			u.etags[ref], u.latest[ref], u.head[ref] = "etag-1", 1, 1
 			return nil, nil
 		},
 		GetEnvironmentDefinitionF: func(
-			_ context.Context, _, envProject, envName, _ string,
+			_ context.Context, _, envProject, envName, version string,
 		) ([]byte, string, int, error) {
 			ref := envProject + "/" + envName
-			def, ok := u.defs[ref]
+			def, revision, ok := u.definitionAt(ref, version)
 			if !ok {
 				return nil, "", 0, fmt.Errorf("%w: %v", backend.ErrEnvironmentNotFound, ref)
 			}
-			return []byte(def), u.etags[ref], u.revisions[ref], nil
+			return []byte(def), u.etags[ref], revision, nil
 		},
-		UpdateEnvironmentDefinitionF: func(
-			_ context.Context, _, envProject, envName string, yaml []byte, etag string,
+		CreateEnvironmentRevisionFromParentF: func(
+			_ context.Context, _, envProject, envName string, yaml []byte, parent int,
 		) (apitype.EnvironmentDiagnostics, int, error) {
 			ref := envProject + "/" + envName
-			if etag != u.etags[ref] {
-				return nil, 0, fmt.Errorf("%w: %v", backend.ErrEnvironmentConflict, ref)
+			if _, ok := u.definitions[ref][parent]; !ok {
+				return nil, 0, fmt.Errorf("%w: %v@%d", backend.ErrEnvironmentNotFound, ref, parent)
 			}
-			u.revisions[ref]++
-			u.defs[ref] = string(yaml)
-			u.etags[ref] = fmt.Sprintf("etag-%d", u.revisions[ref])
-			return nil, u.revisions[ref], nil
+			revision := u.head[ref] + 1
+			u.definitions[ref][revision] = string(yaml)
+			u.head[ref] = revision
+			// `latest` deliberately does not move.
+			return nil, revision, nil
 		},
-		GetEnvironmentRevisionF: func(_ context.Context, _, envProject, envName, _ string) (int, error) {
-			return u.revisions[envProject+"/"+envName], nil
+		GetEnvironmentRevisionF: func(_ context.Context, _, envProject, envName, version string) (int, error) {
+			ref := envProject + "/" + envName
+			if version == "" {
+				return u.latest[ref], nil
+			}
+			n, err := strconv.Atoi(version)
+			if err != nil {
+				return 0, fmt.Errorf("no such version %v", version)
+			}
+			return n, nil
 		},
 		OpenYAMLEnvironmentF: func(
-			context.Context, string, []byte, time.Duration, map[string]string,
+			_ context.Context, _ string, yaml []byte, _ time.Duration, _ map[string]string,
 		) (*esc.Environment, apitype.EnvironmentDiagnostics, error) {
+			// The stack resolves a synthesized environment that imports exactly the reference its
+			// `mainEnvironment` names, pin included, so read the imports rather than assuming one.
 			return &esc.Environment{Properties: map[string]esc.Value{
-				"pulumiConfig": esc.NewValue(u.resolve("testProject/testStack")),
+				"pulumiConfig": esc.NewValue(u.resolveSynthesized(yaml)),
 			}}, nil, nil
 		},
 	}
+}
+
+// resolveSynthesized flattens the synthesized environment a `mainEnvironment` stack resolves through.
+func (u *birthEnvUniverse) resolveSynthesized(definition []byte) map[string]esc.Value {
+	var doc struct {
+		Imports []string `yaml:"imports"`
+	}
+	require.NoError(u.t, yaml.Unmarshal(definition, &doc))
+
+	values := map[string]esc.Value{}
+	for _, imported := range doc.Imports {
+		maps.Copy(values, u.resolve(imported))
+	}
+	return values
 }
 
 // TestStackBirthEndToEnd walks the whole loop the PoC demos: the environments a stack is born with feed
@@ -1286,13 +1652,22 @@ func TestStackBirthEndToEnd(t *testing.T) {
 	require.NoError(t, listConfig(t.Context(), ssml, &listOut, project, s, ps, false, false, true, ""))
 	assert.Contains(t, listOut.String(), "aws:region  us-west-2  testProject/testStack@1")
 
-	// 3. `pulumi config set` on the newborn stack produces the next revision, with no manual setup.
+	// 3. `pulumi config set` on the newborn stack branches the next revision off the one it read, leaves
+	// `latest` where it was, and repoints the stack file, with no manual setup.
+	configFile := writeStackFile(t, "mainEnvironment: "+mainEnv.String()+"\n")
 	var setOut bytes.Buffer
 	setCmd := newMainEnvSetCmd(ps, &setOut)
 	require.NoError(t, setCmd.Run(
 		t.Context(), &pkgWorkspace.MockContext{}, []string{"testProject:instanceCount", "6"},
-		project, s, filepath.Join(t.TempDir(), "Pulumi.testStack.yaml")))
-	assert.Equal(t, "Updated testProject/testStack@2\n", setOut.String())
+		project, s, configFile))
+	assert.Equal(t,
+		"Created testProject/testStack@2 (parent @1).\n"+
+			"Pulumi.testStack.yaml now points at @2; latest is still @1.\n",
+		setOut.String())
+
+	saved, err := os.ReadFile(configFile)
+	require.NoError(t, err)
+	assert.Equal(t, "mainEnvironment: testProject/testStack@2\n", string(saved))
 
 	listOut.Reset()
 	require.NoError(t, listConfig(t.Context(), ssml, &listOut, project, s, ps, false, false, true, ""))

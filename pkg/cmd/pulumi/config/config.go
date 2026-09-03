@@ -470,7 +470,8 @@ func newConfigRemoveCmd(ws pkgWorkspace.Context, stack *string, configFile *stri
 			}
 
 			if mainEnv != nil {
-				return removeFromMainEnvironment(ctx, cmd.OutOrStdout(), stack, ps, mainEnv, key, path)
+				return removeFromMainEnvironment(
+					ctx, cmd.OutOrStdout(), stack, ps, mainEnv, key, path, *configFile)
 			}
 
 			err = ps.Config.Remove(key, path)
@@ -911,9 +912,9 @@ func (c *configSetCmd) Run(
 
 	// A stack with a main environment writes straight to that environment. This happens before the stack's
 	// secrets manager is ever consulted: secrets on this path are encrypted by ESC, not by the stack's
-	// passphrase or KMS key, and the stack file is not touched at all.
+	// passphrase or KMS key, and the only thing written to the stack file is its `mainEnvironment` pointer.
 	if mainEnv := activeMainEnvironment(c.stderr(), s, ps); mainEnv != nil {
-		return c.setInMainEnvironment(ctx, key, value, s, ps, mainEnv)
+		return c.setInMainEnvironment(ctx, key, value, s, ps, mainEnv, configFile)
 	}
 
 	ssml := cmdStack.NewStackSecretsManagerLoaderFromEnv()
@@ -979,8 +980,11 @@ func (c *configSetCmd) Run(
 	return cmdStack.SaveProjectStack(ctx, s, ps, configFile)
 }
 
-// removeFromMainEnvironment removes a single value from the stack's main environment and reports the
-// revision the removal produced. The local stack file is never modified on this path.
+// removeFromMainEnvironment removes a single value from the stack's main environment.
+//
+// A removal that changes anything creates a revision of the environment from the revision the stack file
+// names, without moving `latest`, and rewrites the stack file to name the revision it created. A removal
+// of a key that is not set changes nothing: no revision, no request, and the stack file untouched.
 func removeFromMainEnvironment(
 	ctx context.Context,
 	out io.Writer,
@@ -989,23 +993,24 @@ func removeFromMainEnvironment(
 	mainEnv *workspace.MainEnvironment,
 	key config.Key,
 	path bool,
+	configFile string,
 ) error {
 	if path {
 		return errMainEnvUnsupported("rm --path", mainEnv)
 	}
 
-	w, err := newMainEnvWriter(s, mainEnv)
+	w, err := newMainEnvWriter(s, ps, mainEnv, configFile)
 	if err != nil {
 		return err
 	}
-	revision, removed, err := w.removeKey(ctx, out, key)
+	res, removed, err := w.removeKey(ctx, out, key)
 	if err != nil {
 		return err
 	}
 	if !removed {
 		fmt.Fprintf(out, "Configuration key '%s' is not set in %v\n", PrettyKey(key), mainEnv.Ref())
 	} else {
-		fmt.Fprintf(out, "Updated %v@%d\n", mainEnv.Ref(), revision)
+		printWriteResult(out, mainEnv, w.stackFileName(), res)
 	}
 	// An unmigrated value in the stack file wins over the environment, so removing the environment's copy
 	// alone would leave `pulumi config` still reporting the key.
@@ -1026,8 +1031,11 @@ func hasLocalConfigValue(ps *workspace.ProjectStack, key config.Key) bool {
 	return err == nil && ok
 }
 
-// setInMainEnvironment writes a single value into the stack's main environment and reports the revision the
-// write produced. The local stack file is never modified on this path.
+// setInMainEnvironment writes a single value into the stack's main environment.
+//
+// The write creates a revision of the environment from the revision the stack file names, without moving
+// `latest`, and then rewrites `mainEnvironment` in the stack file to name the revision it created. That
+// pointer is the only thing this path ever writes locally: no config value and no ciphertext.
 func (c *configSetCmd) setInMainEnvironment(
 	ctx context.Context,
 	key config.Key,
@@ -1035,6 +1043,7 @@ func (c *configSetCmd) setInMainEnvironment(
 	s backend.Stack,
 	ps *workspace.ProjectStack,
 	mainEnv *workspace.MainEnvironment,
+	configFile string,
 ) error {
 	out := c.stdout()
 
@@ -1052,16 +1061,16 @@ func (c *configSetCmd) setInMainEnvironment(
 		return err
 	}
 
-	w, err := newMainEnvWriter(s, mainEnv)
+	w, err := newMainEnvWriter(s, ps, mainEnv, configFile)
 	if err != nil {
 		return err
 	}
-	revision, err := w.setKey(ctx, out, key, node)
+	res, err := w.setKey(ctx, out, key, node)
 	if err != nil {
 		return err
 	}
 
-	fmt.Fprintf(out, "Updated %s@%d\n", mainEnv.Ref(), revision)
+	printWriteResult(out, mainEnv, w.stackFileName(), res)
 	// An unmigrated value in the stack file wins over the environment, so the value just written would not
 	// be the one `pulumi config get` reports.
 	if hasLocalConfigValue(ps, key) {

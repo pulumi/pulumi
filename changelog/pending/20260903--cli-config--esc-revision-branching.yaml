@@ -1,0 +1,7 @@
+component: cli/config
+kind: feat
+body: '`pulumi config set` and `pulumi config rm` on a `mainEnvironment` stack now
+    create a new ESC revision from the revision the stack is pinned to, without moving
+    the environment''s `latest` tag, and rewrite `mainEnvironment` in the stack file
+    to name the revision they created'
+time: 2026-09-03T00:00:00Z
