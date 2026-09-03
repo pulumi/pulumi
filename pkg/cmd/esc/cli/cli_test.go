@@ -619,11 +619,16 @@ func (c *testPulumiClient) CloneEnvironment(
 	if _, ok := c.environments[destEnvName]; ok {
 		return errors.New("already exists")
 	}
+	// A clone starts from the source's latest revision, which is not necessarily the tail of its history
+	// once a revision has been created without moving `latest`.
 	testDestEnv := &testEnvironment{
-		revisions: []*testEnvironmentRevision{srcEnv.revisions[len(srcEnv.revisions)-1]},
+		revisions: []*testEnvironmentRevision{srcEnv.latest()},
 	}
 	if destEnv.PreserveHistory {
 		testDestEnv.revisions = srcEnv.revisions
+		// Carry the head across too, so that the clone's `latest` resolves to the same revision the
+		// source's does rather than to whatever revision happens to be last in the slice.
+		testDestEnv.head = srcEnv.head
 	}
 	if destEnv.PreserveEnvironmentTags {
 		testDestEnv.tags = srcEnv.tags

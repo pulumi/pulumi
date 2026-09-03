@@ -647,6 +647,48 @@ func TestMainEnvironmentConfigSetDiagnostics(t *testing.T) {
 	assert.Equal(t, stackYAML, string(saved))
 }
 
+// TestMainEnvironmentConfigSetWarningDiagnostics asserts that diagnostics which accompany a revision that
+// was actually created are advisory: they are printed, and the write still repoints the stack file. The
+// service returns the definition's check diagnostics on the success path too, and ESC warns about
+// conditions that are not errors, so failing on any diagnostic would create a revision on the server and
+// then abandon it on every write to an environment that merely warns.
+func TestMainEnvironmentConfigSetWarningDiagnostics(t *testing.T) {
+	t.Parallel()
+
+	store := newFakeEnvStore(t, "values:\n  pulumiConfig: {}\n")
+	be := store.backend()
+	create := be.CreateEnvironmentRevisionFromParentF
+	be.CreateEnvironmentRevisionFromParentF = func(
+		ctx context.Context, org, envProject, envName string, yaml []byte, parent int,
+	) (apitype.EnvironmentDiagnostics, int, error) {
+		_, revision, err := create(ctx, org, envProject, envName, yaml, parent)
+		return apitype.EnvironmentDiagnostics{{Summary: "cannot override a final value"}}, revision, err
+	}
+	s := mainEnvStack(be)
+	project := &workspace.Project{Name: "testProject"}
+	const stackYAML = "mainEnvironment: payments/dev\n"
+	ps := loadStackFile(t, project, stackYAML)
+	configFile := writeStackFile(t, stackYAML)
+
+	var stdout bytes.Buffer
+	cmd := newMainEnvSetCmd(ps, &stdout)
+	require.NoError(t, cmd.Run(
+		t.Context(), &pkgWorkspace.MockContext{}, []string{"testProject:a", "b"}, project, s, configFile))
+
+	assert.Equal(t,
+		"cannot override a final value\n"+
+			"Created payments/dev@2 (parent @1).\n"+
+			"Pulumi.testStack.yaml now points at @2; latest is still @1.\n",
+		stdout.String())
+	assert.Equal(t, 1, store.creates)
+
+	// The pointer was rewritten, so the revision the warning came with is not orphaned.
+	assert.Equal(t, "2", ps.MainEnvironment.Version)
+	saved, err := os.ReadFile(configFile)
+	require.NoError(t, err)
+	assert.Equal(t, "mainEnvironment: payments/dev@2\n", string(saved))
+}
+
 // TestMainEnvironmentConfigSetConflict asserts a rejected parent fails with the existing re-run guidance and
 // leaves the pointer alone.
 func TestMainEnvironmentConfigSetConflict(t *testing.T) {
@@ -899,6 +941,26 @@ func TestMainEnvironmentWriteRefusals(t *testing.T) {
 			t.Context(), &pkgWorkspace.MockContext{}, []string{"testProject:a", "b"},
 			project, s, filepath.Join(t.TempDir(), "Pulumi.testStack.yaml"))
 		require.ErrorContains(t, err, "environment payments/dev does not exist")
+		assert.Equal(t, 0, store.creates)
+	})
+
+	// A pin the environment does not have is a different failure from a missing environment, and sending
+	// the user to 'pulumi env init' would be wrong: the environment is there.
+	t.Run("missing pinned revision", func(t *testing.T) {
+		t.Parallel()
+
+		store := newFakeEnvStore(t, "values:\n  pulumiConfig: {}\n")
+		s := mainEnvStack(store.backend())
+		ps := loadStackFile(t, project, "mainEnvironment: payments/dev@999\n")
+
+		var stdout bytes.Buffer
+		cmd := newMainEnvSetCmd(ps, &stdout)
+		err := cmd.Run(
+			t.Context(), &pkgWorkspace.MockContext{}, []string{"testProject:a", "b"},
+			project, s, filepath.Join(t.TempDir(), "Pulumi.testStack.yaml"))
+		require.ErrorContains(t, err, `cannot read environment payments/dev at version "999"`)
+		require.ErrorContains(t, err, "correct or remove the '@999' suffix")
+		assert.NotContains(t, err.Error(), "pulumi env init")
 		assert.Equal(t, 0, store.creates)
 	})
 

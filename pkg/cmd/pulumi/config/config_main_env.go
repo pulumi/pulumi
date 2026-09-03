@@ -166,6 +166,15 @@ func (w *mainEnvWriter) read(ctx context.Context) (*yaml.Node, int, error) {
 		ctx, w.org, w.mainEnv.Project, w.mainEnv.Name, w.mainEnv.Version)
 	if err != nil {
 		if errors.Is(err, backend.ErrEnvironmentNotFound) {
+			// A pinned read fails this way when the environment is there but the revision the stack
+			// names is not -- a hand-edited or stale pin. Reporting the environment as missing would
+			// send the user to 'pulumi env init', which would then fail because it does exist.
+			if w.mainEnv.Version != "" {
+				return nil, 0, fmt.Errorf(
+					"cannot read environment %v at version %q: no such version, or the environment "+
+						"does not exist; correct or remove the '@%s' suffix on 'mainEnvironment' in %s",
+					w.mainEnv.Ref(), w.mainEnv.Version, w.mainEnv.Version, w.stackFileName())
+			}
 			return nil, 0, fmt.Errorf(
 				"environment %v does not exist; create it with 'pulumi env init %v', "+
 					"or migrate this stack's configuration with 'pulumi config env init --main'",
@@ -227,8 +236,15 @@ func (w *mainEnvWriter) write(
 		}
 		return writeResult{}, fmt.Errorf("creating a revision of environment %v: %w", w.mainEnv.Ref(), err)
 	}
+	// Diagnostics accompany a successful create as well as a rejected one: the service returns the
+	// definition's check diagnostics alongside the revision it created, and ESC warns about conditions
+	// that are not errors -- a value that cannot be overridden, a duplicate top-level key, an unknown
+	// field. So the revision, not the presence of diagnostics, decides whether the write failed: a
+	// rejected definition is the one case that comes back without a revision.
 	if len(diags) != 0 {
 		printESCDiagnostics(out, diags)
+	}
+	if revision == 0 {
 		return writeResult{}, fmt.Errorf("creating a revision of environment %v: too many errors", w.mainEnv.Ref())
 	}
 
