@@ -67,6 +67,7 @@ func TestUnmarshalThroughGRPC(t *testing.T) {
 		KeepResources:         true,
 		KeepOutputValues:      true,
 		UpgradeToOutputValues: true,
+		KeepByteString:        true,
 	}
 
 	m := pTest.Map(10)
