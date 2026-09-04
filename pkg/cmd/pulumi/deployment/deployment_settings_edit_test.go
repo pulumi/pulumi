@@ -881,8 +881,8 @@ func TestDeploymentSettingsEdit_VCSNeedsARepository(t *testing.T) {
 func TestDeploymentSettingsEdit_ClearPathFilters(t *testing.T) {
 	t.Parallel()
 	got := captureEditPatch(t, deploymentSettingsEditArgs{
-		clearPathFilters: true,
-		flagsChanged:     flagsSet(flagClearPathFilters),
+		pathFilters:  []string{""},
+		flagsChanged: flagsSet(flagPathFilter),
 	}, &mockDeploymentSettingsEditClient{
 		getResp: storedVCSSettings(apitype.DeploymentSettingsVCS{
 			Provider:   apitype.VCSProviderGitLab,
@@ -946,12 +946,20 @@ func TestDeploymentSettingsEdit_PreRunCommandEmptyStringClears(t *testing.T) {
 	assert.JSONEq(t, `{"operationContext":{"preRunCommands":null}}`, string(captured.patch))
 }
 
-func TestDeploymentSettingsEdit_PreRunCommandEmptyStringRejectsCompanions(t *testing.T) {
+func TestDeploymentSettingsEdit_ListFlagEmptyStringRejectsCompanions(t *testing.T) {
 	t.Parallel()
-	_, err := runEditCmd(t, &mockDeploymentSettingsEditClient{},
-		"--pre-run-command", "echo hi", "--pre-run-command", "")
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "cannot be combined with other commands")
+	for _, tc := range []struct{ flag, value string }{
+		{flagPreRunCommand, "echo hi"},
+		{flagPathFilter, "stacks/prod/**"},
+	} {
+		t.Run(tc.flag, func(t *testing.T) {
+			t.Parallel()
+			_, err := runEditCmd(t, &mockDeploymentSettingsEditClient{},
+				"--"+tc.flag, tc.value, "--"+tc.flag, "")
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), "cannot be combined with other values")
+		})
+	}
 }
 
 // The superseded spellings shipped in v3.242.0, so they have to keep producing the same patch and
