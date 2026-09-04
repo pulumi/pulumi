@@ -32,8 +32,8 @@ import (
 	"time"
 
 	dap "github.com/google/go-dap"
-	pulumitime "github.com/pulumiverse/pulumi-time/sdk/go/time"
 	"github.com/pulumi/appdash"
+	pulumitime "github.com/pulumiverse/pulumi-time/sdk/go/time"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/mod/modfile"
