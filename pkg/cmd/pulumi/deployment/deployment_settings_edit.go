@@ -136,12 +136,12 @@ const (
 	flagOIDCAWSSessionName = "oidc-aws-session-name"
 	flagOIDCAWSDuration    = "oidc-aws-duration"
 	flagOIDCAWSPolicyARN   = "oidc-aws-policy-arn"
-	flagOIDCAWSClear       = "oidc-aws-clear"
+	flagRemoveOIDCAWS      = "remove-oidc-aws"
 
 	flagOIDCAzureClientID       = "oidc-azure-client-id"
 	flagOIDCAzureTenantID       = "oidc-azure-tenant-id"
 	flagOIDCAzureSubscriptionID = "oidc-azure-subscription-id"
-	flagOIDCAzureClear          = "oidc-azure-clear"
+	flagRemoveOIDCAzure         = "remove-oidc-azure"
 
 	flagOIDCGCPProjectNumber  = "oidc-gcp-project-number"
 	flagOIDCGCPWorkloadPoolID = "oidc-gcp-workload-pool-id" //nolint:gosec // flag name, not a credential
@@ -149,8 +149,17 @@ const (
 	flagOIDCGCPServiceAccount = "oidc-gcp-service-account"
 	flagOIDCGCPRegion         = "oidc-gcp-region"
 	flagOIDCGCPTokenLifetime  = "oidc-gcp-token-lifetime" //nolint:gosec // flag name, not a credential
-	flagOIDCGCPClear          = "oidc-gcp-clear"
+	flagRemoveOIDCGCP         = "remove-oidc-gcp"
 )
+
+// deprecatedEditFlags maps a flag to the superseded spelling that still works. Both spellings write
+// the same variable and flagsChanged resolves one to the other, so the rest of the command only ever
+// names the current flag.
+var deprecatedEditFlags = map[string]string{
+	flagRemoveOIDCAWS:   "oidc-aws-clear",
+	flagRemoveOIDCAzure: "oidc-azure-clear",
+	flagRemoveOIDCGCP:   "oidc-gcp-clear",
+}
 
 func newDeploymentSettingsEditCmd() *cobra.Command {
 	return newDeploymentSettingsEditCmdWith(defaultDeploymentSettingsEditClientFactory)
@@ -181,13 +190,19 @@ func newDeploymentSettingsEditCmdWith(factory deploymentSettingsEditClientFactor
 			"    --oidc-aws-role-arn arn:aws:iam::123:role/pulumi-deploy \\\n" +
 			"    --oidc-aws-session-name pulumi-deploy --oidc-aws-duration 30m\n\n" +
 			"  # Remove the AWS OIDC configuration entirely.\n" +
-			"  pulumi deployment settings edit --oidc-aws-clear\n\n" +
+			"  pulumi deployment settings edit --remove-oidc-aws\n\n" +
 			"  # Clear the agent pool back to the Pulumi-hosted default.\n" +
 			"  pulumi deployment settings edit --runner-pool \"\"\n\n" +
 			"  # Clear the pre-run command list.\n" +
 			"  pulumi deployment settings edit --pre-run-command \"\"",
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			args.flagsChanged = cmd.Flags().Changed
+			args.flagsChanged = func(name string) bool {
+				if cmd.Flags().Changed(name) {
+					return true
+				}
+				deprecated, ok := deprecatedEditFlags[name]
+				return ok && cmd.Flags().Changed(deprecated)
+			}
 			return runDeploymentSettingsEdit(cmd.Context(), cmd.OutOrStdout(), factory, args)
 		},
 	}
@@ -249,8 +264,8 @@ func newDeploymentSettingsEditCmdWith(factory deploymentSettingsEditClientFactor
 		"AWS OIDC: assume-role session duration (e.g. 30m, 1h)")
 	f.StringSliceVar(&args.oidcAWSPolicyARNs, flagOIDCAWSPolicyARN, nil,
 		"AWS OIDC: replace the session policy ARN list (repeatable or comma-separated)")
-	f.BoolVar(&args.oidcAWSClear, flagOIDCAWSClear, false,
-		"Remove the entire AWS OIDC configuration")
+	f.BoolVar(&args.oidcAWSClear, flagRemoveOIDCAWS, false,
+		"AWS OIDC: remove the entire configuration")
 
 	// OIDC — Azure
 	f.StringVar(&args.oidcAzureClientID, flagOIDCAzureClientID, "",
@@ -259,8 +274,8 @@ func newDeploymentSettingsEditCmdWith(factory deploymentSettingsEditClientFactor
 		"Azure OIDC: federated workload identity tenant ID")
 	f.StringVar(&args.oidcAzureSubscriptionID, flagOIDCAzureSubscriptionID, "",
 		"Azure OIDC: federated workload identity subscription ID")
-	f.BoolVar(&args.oidcAzureClear, flagOIDCAzureClear, false,
-		"Remove the entire Azure OIDC configuration")
+	f.BoolVar(&args.oidcAzureClear, flagRemoveOIDCAzure, false,
+		"Azure OIDC: remove the entire configuration")
 
 	// OIDC — GCP
 	f.StringVar(&args.oidcGCPProjectNumber, flagOIDCGCPProjectNumber, "",
@@ -275,8 +290,15 @@ func newDeploymentSettingsEditCmdWith(factory deploymentSettingsEditClientFactor
 		"GCP OIDC: region")
 	f.StringVar(&args.oidcGCPTokenLifetime, flagOIDCGCPTokenLifetime, "",
 		"GCP OIDC: lifetime of the temporary credentials (e.g. 30m, 1h)")
-	f.BoolVar(&args.oidcGCPClear, flagOIDCGCPClear, false,
-		"Remove the entire GCP OIDC configuration")
+	f.BoolVar(&args.oidcGCPClear, flagRemoveOIDCGCP, false,
+		"GCP OIDC: remove the entire configuration")
+
+	f.BoolVar(&args.oidcAWSClear, deprecatedEditFlags[flagRemoveOIDCAWS], false, "")
+	f.BoolVar(&args.oidcAzureClear, deprecatedEditFlags[flagRemoveOIDCAzure], false, "")
+	f.BoolVar(&args.oidcGCPClear, deprecatedEditFlags[flagRemoveOIDCGCP], false, "")
+	for current, deprecated := range deprecatedEditFlags {
+		_ = f.MarkDeprecated(deprecated, "use --"+current)
+	}
 
 	cmd.MarkFlagsMutuallyExclusive(flagGitHubRepo, flagGitURL)
 	cmd.MarkFlagsMutuallyExclusive(flagBranch, flagCommit)

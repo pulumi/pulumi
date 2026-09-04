@@ -439,17 +439,17 @@ func TestDeploymentSettingsEdit_OIDCClearFlags(t *testing.T) {
 	}{
 		{
 			"aws",
-			deploymentSettingsEditArgs{oidcAWSClear: true, flagsChanged: flagsSet(flagOIDCAWSClear)},
+			deploymentSettingsEditArgs{oidcAWSClear: true, flagsChanged: flagsSet(flagRemoveOIDCAWS)},
 			`{"operationContext":{"oidc":{"aws":null}}}`,
 		},
 		{
 			"azure",
-			deploymentSettingsEditArgs{oidcAzureClear: true, flagsChanged: flagsSet(flagOIDCAzureClear)},
+			deploymentSettingsEditArgs{oidcAzureClear: true, flagsChanged: flagsSet(flagRemoveOIDCAzure)},
 			`{"operationContext":{"oidc":{"azure":null}}}`,
 		},
 		{
 			"gcp",
-			deploymentSettingsEditArgs{oidcGCPClear: true, flagsChanged: flagsSet(flagOIDCGCPClear)},
+			deploymentSettingsEditArgs{oidcGCPClear: true, flagsChanged: flagsSet(flagRemoveOIDCGCP)},
 			`{"operationContext":{"oidc":{"gcp":null}}}`,
 		},
 	} {
@@ -472,7 +472,7 @@ func TestDeploymentSettingsEdit_OIDCClearConflictsWithSetters(t *testing.T) {
 			deploymentSettingsEditArgs{
 				oidcAWSClear:   true,
 				oidcAWSRoleARN: "arn:aws:iam::123:role/x",
-				flagsChanged:   flagsSet(flagOIDCAWSClear, flagOIDCAWSRoleARN),
+				flagsChanged:   flagsSet(flagRemoveOIDCAWS, flagOIDCAWSRoleARN),
 			},
 		},
 		{
@@ -480,7 +480,7 @@ func TestDeploymentSettingsEdit_OIDCClearConflictsWithSetters(t *testing.T) {
 			deploymentSettingsEditArgs{
 				oidcAzureClear:    true,
 				oidcAzureClientID: "cid",
-				flagsChanged:      flagsSet(flagOIDCAzureClear, flagOIDCAzureClientID),
+				flagsChanged:      flagsSet(flagRemoveOIDCAzure, flagOIDCAzureClientID),
 			},
 		},
 		{
@@ -488,7 +488,7 @@ func TestDeploymentSettingsEdit_OIDCClearConflictsWithSetters(t *testing.T) {
 			deploymentSettingsEditArgs{
 				oidcGCPClear:         true,
 				oidcGCPProjectNumber: "123",
-				flagsChanged:         flagsSet(flagOIDCGCPClear, flagOIDCGCPProjectNumber),
+				flagsChanged:         flagsSet(flagRemoveOIDCGCP, flagOIDCGCPProjectNumber),
 			},
 		},
 	} {
@@ -638,7 +638,7 @@ func TestDeploymentSettingsEdit_ClearListAndMapFlags(t *testing.T) {
 
 func TestDeploymentSettingsEdit_ClearFlagsRejectFalse(t *testing.T) {
 	t.Parallel()
-	for _, flag := range clearEditFlags {
+	for _, flag := range presenceOnlyEditFlags {
 		t.Run(flag, func(t *testing.T) {
 			t.Parallel()
 			err := runEditArgs(t, deploymentSettingsEditArgs{flagsChanged: flagsSet(flag)},
@@ -664,6 +664,35 @@ func TestDeploymentSettingsEdit_PreRunCommandEmptyStringRejectsCompanions(t *tes
 		"--pre-run-command", "echo hi", "--pre-run-command", "")
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "cannot be combined with other commands")
+}
+
+// The superseded spellings shipped in v3.242.0, so they have to keep producing the same patch and
+// keep telling the user what replaced them.
+func TestDeploymentSettingsEdit_DeprecatedOIDCFlags(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct {
+		deprecated string
+		want       string
+	}{
+		{"oidc-aws-clear", `{"operationContext":{"oidc":{"aws":null}}}`},
+		{"oidc-azure-clear", `{"operationContext":{"oidc":{"azure":null}}}`},
+		{"oidc-gcp-clear", `{"operationContext":{"oidc":{"gcp":null}}}`},
+	} {
+		t.Run(tc.deprecated, func(t *testing.T) {
+			t.Parallel()
+			captured, err := runEditCmd(t, &mockDeploymentSettingsEditClient{}, "--"+tc.deprecated)
+			require.NoError(t, err)
+			assert.JSONEq(t, tc.want, string(captured.patch))
+		})
+	}
+	for current, deprecated := range deprecatedEditFlags {
+		t.Run(deprecated+" is marked deprecated", func(t *testing.T) {
+			t.Parallel()
+			cmd := newDeploymentSettingsEditCmdWith(
+				stubSettingsEditFactory(&mockDeploymentSettingsEditClient{}))
+			assert.Contains(t, cmd.Flags().Lookup(deprecated).Deprecated, current)
+		})
+	}
 }
 
 func TestDeploymentSettingsEdit_DurationFlagsClearWithNull(t *testing.T) {
@@ -714,12 +743,12 @@ func TestDeploymentSettingsEdit_MutuallyExclusiveFlags(t *testing.T) {
 }
 
 // Driven through cobra so an explicit --flag=false really is parsed, which the args-level test
-// cannot express. Passing the flag as true must be accepted: clearFlagValue reads each clear flag
+// cannot express. Passing the flag as true must be accepted: presenceOnlyFlagValue reads each clear flag
 // out of the args struct by name, and a missing case there returns false, which would otherwise
 // turn a valid clear into this same error.
 func TestDeploymentSettingsEdit_ClearFlagsArePresenceOnly(t *testing.T) {
 	t.Parallel()
-	for _, flag := range clearEditFlags {
+	for _, flag := range presenceOnlyEditFlags {
 		t.Run(flag+" rejects false", func(t *testing.T) {
 			t.Parallel()
 			_, err := runEditCmd(t, &mockDeploymentSettingsEditClient{}, "--"+flag+"=false")
@@ -743,8 +772,13 @@ func TestDeploymentSettingsEdit_ClearFlagsArePresenceOnly(t *testing.T) {
 func TestDeploymentSettingsEdit_EditFlagNamesCoversEveryFlag(t *testing.T) {
 	t.Parallel()
 
-	// --stack and --output are wiring, not settings.
-	excluded := []string{"stack", "output"}
+	// --stack and --output are wiring, not settings. A deprecated spelling is resolved to its
+	// replacement by flagsChanged, so only the replacement belongs in the table.
+	excluded := make([]string, 0, 2+len(deprecatedEditFlags))
+	excluded = append(excluded, "stack", "output")
+	for _, deprecated := range deprecatedEditFlags {
+		excluded = append(excluded, deprecated)
+	}
 
 	cmd := newDeploymentSettingsEditCmdWith(stubSettingsEditFactory(&mockDeploymentSettingsEditClient{}))
 	cmd.Flags().VisitAll(func(f *pflag.Flag) {

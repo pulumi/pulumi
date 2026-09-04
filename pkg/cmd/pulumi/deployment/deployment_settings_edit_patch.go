@@ -30,29 +30,28 @@ var editFlagNames = []string{
 	flagRunnerPool, flagExecutorImage, flagExecutorRootPath,
 	flagPreRunCommand, flagEnv, flagSecretEnv, flagRemoveEnv, flagRemoveAllEnv,
 	flagSkipInstallDeps, flagSkipIntermediate, flagShell, flagDeleteAfterDestroy,
-	flagOIDCAWSRoleARN, flagOIDCAWSSessionName, flagOIDCAWSDuration, flagOIDCAWSPolicyARN, flagOIDCAWSClear,
-	flagOIDCAzureClientID, flagOIDCAzureTenantID, flagOIDCAzureSubscriptionID, flagOIDCAzureClear,
+	flagOIDCAWSRoleARN, flagOIDCAWSSessionName, flagOIDCAWSDuration, flagOIDCAWSPolicyARN, flagRemoveOIDCAWS,
+	flagOIDCAzureClientID, flagOIDCAzureTenantID, flagOIDCAzureSubscriptionID, flagRemoveOIDCAzure,
 	flagOIDCGCPProjectNumber, flagOIDCGCPWorkloadPoolID, flagOIDCGCPProviderID,
-	flagOIDCGCPServiceAccount, flagOIDCGCPRegion, flagOIDCGCPTokenLifetime, flagOIDCGCPClear,
+	flagOIDCGCPServiceAccount, flagOIDCGCPRegion, flagOIDCGCPTokenLifetime, flagRemoveOIDCGCP,
 }
 
-// clearEditFlags are presence-only: passing one with an explicit false value is rejected rather
-// than silently ignored.
-var clearEditFlags = []string{
+// presenceOnlyEditFlags reject an explicit false value rather than silently ignoring it.
+var presenceOnlyEditFlags = []string{
 	flagRemoveAllEnv,
-	flagOIDCAWSClear, flagOIDCAzureClear, flagOIDCGCPClear,
+	flagRemoveOIDCAWS, flagRemoveOIDCAzure, flagRemoveOIDCGCP,
 }
 
 // oidcProviderFlags lists the field-setter flags for each OIDC provider so
 // validateEditArgs can refuse combining --oidc-<provider>-clear with any of them.
 var oidcProviderFlags = map[string][]string{
-	flagOIDCAWSClear: {
+	flagRemoveOIDCAWS: {
 		flagOIDCAWSRoleARN, flagOIDCAWSSessionName, flagOIDCAWSDuration, flagOIDCAWSPolicyARN,
 	},
-	flagOIDCAzureClear: {
+	flagRemoveOIDCAzure: {
 		flagOIDCAzureClientID, flagOIDCAzureTenantID, flagOIDCAzureSubscriptionID,
 	},
-	flagOIDCGCPClear: {
+	flagRemoveOIDCGCP: {
 		flagOIDCGCPProjectNumber, flagOIDCGCPWorkloadPoolID, flagOIDCGCPProviderID,
 		flagOIDCGCPServiceAccount, flagOIDCGCPRegion, flagOIDCGCPTokenLifetime,
 	},
@@ -65,15 +64,15 @@ func anyEditFlagSet(args deploymentSettingsEditArgs) bool {
 	return slices.ContainsFunc(editFlagNames, args.flagsChanged)
 }
 
-func clearFlagValue(args deploymentSettingsEditArgs, flag string) bool {
+func presenceOnlyFlagValue(args deploymentSettingsEditArgs, flag string) bool {
 	switch flag {
 	case flagRemoveAllEnv:
 		return args.removeAllEnv
-	case flagOIDCAWSClear:
+	case flagRemoveOIDCAWS:
 		return args.oidcAWSClear
-	case flagOIDCAzureClear:
+	case flagRemoveOIDCAzure:
 		return args.oidcAzureClear
-	case flagOIDCGCPClear:
+	case flagRemoveOIDCGCP:
 		return args.oidcGCPClear
 	}
 	return false
@@ -132,8 +131,8 @@ func validateEditArgs(args deploymentSettingsEditArgs) error {
 			}
 		}
 	}
-	for _, clearFlag := range clearEditFlags {
-		if args.flagsChanged(clearFlag) && !clearFlagValue(args, clearFlag) {
+	for _, clearFlag := range presenceOnlyEditFlags {
+		if args.flagsChanged(clearFlag) && !presenceOnlyFlagValue(args, clearFlag) {
 			return fmt.Errorf("--%s does not accept a false value; omit it to leave the setting alone", clearFlag)
 		}
 	}
@@ -276,7 +275,7 @@ func buildEditFlagPatch(
 	}
 
 	// OIDC — AWS
-	if changed(flagOIDCAWSClear) {
+	if changed(flagRemoveOIDCAWS) {
 		setNested(patch, []string{"operationContext", "oidc", "aws"}, nil)
 	}
 	if changed(flagOIDCAWSRoleARN) {
@@ -297,7 +296,7 @@ func buildEditFlagPatch(
 	}
 
 	// OIDC — Azure
-	if changed(flagOIDCAzureClear) {
+	if changed(flagRemoveOIDCAzure) {
 		setNested(patch, []string{"operationContext", "oidc", "azure"}, nil)
 	}
 	if changed(flagOIDCAzureClientID) {
@@ -311,7 +310,7 @@ func buildEditFlagPatch(
 	}
 
 	// OIDC — GCP
-	if changed(flagOIDCGCPClear) {
+	if changed(flagRemoveOIDCGCP) {
 		setNested(patch, []string{"operationContext", "oidc", "gcp"}, nil)
 	}
 	if changed(flagOIDCGCPProjectNumber) {
