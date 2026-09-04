@@ -73,12 +73,11 @@ type deploymentSettingsEditArgs struct {
 	executorRootPath string
 
 	// Operation
-	preRunCommands      []string
-	clearPreRunCommands bool
-	envVars             []string // each "KEY=VALUE"; plaintext.
-	secretEnvVars       []string // each "KEY=VALUE"; encrypted before send.
-	removeEnv           []string // each "KEY"; sent as null to delete.
-	clearEnv            bool
+	preRunCommands []string
+	envVars        []string // each "KEY=VALUE"; plaintext.
+	secretEnvVars  []string // each "KEY=VALUE"; encrypted before send.
+	removeEnv      []string // each "KEY"; sent as null to delete.
+	removeAllEnv   bool
 
 	skipInstallDeps    bool
 	skipIntermediate   bool
@@ -111,28 +110,27 @@ type deploymentSettingsEditArgs struct {
 }
 
 const (
-	flagGitHubRepo          = "github-repo"
-	flagGitURL              = "git-url"
-	flagBranch              = "branch"
-	flagCommit              = "commit"
-	flagFolder              = "folder"
-	flagPreviewPRs          = "preview-prs"
-	flagPushToDeploy        = "push-to-deploy"
-	flagPRTemplate          = "pr-template"
-	flagPathFilter          = "path-filter"
-	flagRunnerPool          = "runner-pool"
-	flagExecutorImage       = "executor-image"
-	flagExecutorRootPath    = "executor-root-path"
-	flagPreRunCommand       = "pre-run-command"
-	flagClearPreRunCommands = "clear-pre-run-commands"
-	flagEnv                 = "env"
-	flagSecretEnv           = "secret-env"
-	flagRemoveEnv           = "remove-env"
-	flagClearEnv            = "clear-env"
-	flagSkipInstallDeps     = "skip-install-deps"
-	flagSkipIntermediate    = "skip-intermediate-deployments"
-	flagShell               = "shell"
-	flagDeleteAfterDestroy  = "delete-after-destroy"
+	flagGitHubRepo         = "github-repo"
+	flagGitURL             = "git-url"
+	flagBranch             = "branch"
+	flagCommit             = "commit"
+	flagFolder             = "folder"
+	flagPreviewPRs         = "preview-prs"
+	flagPushToDeploy       = "push-to-deploy"
+	flagPRTemplate         = "pr-template"
+	flagPathFilter         = "path-filter"
+	flagRunnerPool         = "runner-pool"
+	flagExecutorImage      = "executor-image"
+	flagExecutorRootPath   = "executor-root-path"
+	flagPreRunCommand      = "pre-run-command"
+	flagEnv                = "env"
+	flagSecretEnv          = "secret-env"
+	flagRemoveEnv          = "remove-env"
+	flagRemoveAllEnv       = "remove-all-env"
+	flagSkipInstallDeps    = "skip-install-deps"
+	flagSkipIntermediate   = "skip-intermediate-deployments"
+	flagShell              = "shell"
+	flagDeleteAfterDestroy = "delete-after-destroy"
 
 	flagOIDCAWSRoleARN     = "oidc-aws-role-arn"
 	flagOIDCAWSSessionName = "oidc-aws-session-name"
@@ -185,7 +183,9 @@ func newDeploymentSettingsEditCmdWith(factory deploymentSettingsEditClientFactor
 			"  # Remove the AWS OIDC configuration entirely.\n" +
 			"  pulumi deployment settings edit --oidc-aws-clear\n\n" +
 			"  # Clear the agent pool back to the Pulumi-hosted default.\n" +
-			"  pulumi deployment settings edit --runner-pool \"\"",
+			"  pulumi deployment settings edit --runner-pool \"\"\n\n" +
+			"  # Clear the pre-run command list.\n" +
+			"  pulumi deployment settings edit --pre-run-command \"\"",
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			args.flagsChanged = cmd.Flags().Changed
 			return runDeploymentSettingsEdit(cmd.Context(), cmd.OutOrStdout(), factory, args)
@@ -223,15 +223,14 @@ func newDeploymentSettingsEditCmdWith(factory deploymentSettingsEditClientFactor
 
 	// Operation
 	f.StringArrayVar(&args.preRunCommands, flagPreRunCommand, nil,
-		"Replace the pre-run command list (repeatable; pass once per command)")
-	f.BoolVar(&args.clearPreRunCommands, flagClearPreRunCommands, false, "Remove every pre-run command")
+		"Replace the pre-run command list (repeatable; pass once per command); empty string clears it")
 	f.StringArrayVar(&args.envVars, flagEnv, nil,
 		"Set a plaintext environment variable (repeatable, KEY=VALUE)")
 	f.StringArrayVar(&args.secretEnvVars, flagSecretEnv, nil,
 		"Set an encrypted environment variable (repeatable, KEY=VALUE)")
 	f.StringSliceVar(&args.removeEnv, flagRemoveEnv, nil,
 		"Delete an environment variable by key (repeatable or comma-separated)")
-	f.BoolVar(&args.clearEnv, flagClearEnv, false, "Remove every environment variable")
+	f.BoolVar(&args.removeAllEnv, flagRemoveAllEnv, false, "Remove every environment variable")
 
 	f.BoolVar(&args.skipInstallDeps, flagSkipInstallDeps, false,
 		"Skip automatic dependency installation")
@@ -281,10 +280,9 @@ func newDeploymentSettingsEditCmdWith(factory deploymentSettingsEditClientFactor
 
 	cmd.MarkFlagsMutuallyExclusive(flagGitHubRepo, flagGitURL)
 	cmd.MarkFlagsMutuallyExclusive(flagBranch, flagCommit)
-	cmd.MarkFlagsMutuallyExclusive(flagPreRunCommand, flagClearPreRunCommands)
-	cmd.MarkFlagsMutuallyExclusive(flagEnv, flagClearEnv)
-	cmd.MarkFlagsMutuallyExclusive(flagSecretEnv, flagClearEnv)
-	cmd.MarkFlagsMutuallyExclusive(flagRemoveEnv, flagClearEnv)
+	cmd.MarkFlagsMutuallyExclusive(flagEnv, flagRemoveAllEnv)
+	cmd.MarkFlagsMutuallyExclusive(flagSecretEnv, flagRemoveAllEnv)
+	cmd.MarkFlagsMutuallyExclusive(flagRemoveEnv, flagRemoveAllEnv)
 
 	return cmd
 }

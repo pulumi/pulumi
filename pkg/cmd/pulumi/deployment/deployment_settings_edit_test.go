@@ -616,14 +616,14 @@ func TestDeploymentSettingsEdit_ClearListAndMapFlags(t *testing.T) {
 	}{
 		{
 			"env",
-			deploymentSettingsEditArgs{clearEnv: true, flagsChanged: flagsSet(flagClearEnv)},
+			deploymentSettingsEditArgs{removeAllEnv: true, flagsChanged: flagsSet(flagRemoveAllEnv)},
 			`{"operationContext":{"environmentVariables":null}}`,
 		},
 		{
 			"pre-run commands",
 			deploymentSettingsEditArgs{
-				clearPreRunCommands: true,
-				flagsChanged:        flagsSet(flagClearPreRunCommands),
+				preRunCommands: []string{""},
+				flagsChanged:   flagsSet(flagPreRunCommand),
 			},
 			`{"operationContext":{"preRunCommands":null}}`,
 		},
@@ -647,6 +647,23 @@ func TestDeploymentSettingsEdit_ClearFlagsRejectFalse(t *testing.T) {
 			assert.Contains(t, err.Error(), flag)
 		})
 	}
+}
+
+// The clear has to survive the real flag parser: --pre-run-command "" must reach the patch builder
+// as a one-element list rather than as an unset flag.
+func TestDeploymentSettingsEdit_PreRunCommandEmptyStringClears(t *testing.T) {
+	t.Parallel()
+	captured, err := runEditCmd(t, &mockDeploymentSettingsEditClient{}, "--pre-run-command", "")
+	require.NoError(t, err)
+	assert.JSONEq(t, `{"operationContext":{"preRunCommands":null}}`, string(captured.patch))
+}
+
+func TestDeploymentSettingsEdit_PreRunCommandEmptyStringRejectsCompanions(t *testing.T) {
+	t.Parallel()
+	_, err := runEditCmd(t, &mockDeploymentSettingsEditClient{},
+		"--pre-run-command", "echo hi", "--pre-run-command", "")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "cannot be combined with other commands")
 }
 
 func TestDeploymentSettingsEdit_DurationFlagsClearWithNull(t *testing.T) {
@@ -683,14 +700,9 @@ func TestDeploymentSettingsEdit_MutuallyExclusiveFlags(t *testing.T) {
 		want string
 	}{
 		{"branch and commit", []string{"--branch", "main", "--commit", "abc123"}, "[branch commit]"},
-		{
-			"pre-run command and its clear",
-			[]string{"--pre-run-command", "echo hi", "--clear-pre-run-commands"},
-			"[pre-run-command clear-pre-run-commands]",
-		},
-		{"env and its clear", []string{"--env", "A=1", "--clear-env"}, "[env clear-env]"},
-		{"secret env and clear env", []string{"--secret-env", "A=1", "--clear-env"}, "[secret-env clear-env]"},
-		{"remove env and clear env", []string{"--remove-env", "A", "--clear-env"}, "[remove-env clear-env]"},
+		{"env and remove-all-env", []string{"--env", "A=1", "--remove-all-env"}, "[env remove-all-env]"},
+		{"secret env and remove-all-env", []string{"--secret-env", "A=1", "--remove-all-env"}, "[secret-env remove-all-env]"},
+		{"remove env and remove-all-env", []string{"--remove-env", "A", "--remove-all-env"}, "[remove-env remove-all-env]"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()

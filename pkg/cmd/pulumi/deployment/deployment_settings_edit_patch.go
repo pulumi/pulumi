@@ -28,7 +28,7 @@ var editFlagNames = []string{
 	flagGitHubRepo, flagGitURL, flagBranch, flagCommit, flagFolder,
 	flagPreviewPRs, flagPushToDeploy, flagPRTemplate, flagPathFilter,
 	flagRunnerPool, flagExecutorImage, flagExecutorRootPath,
-	flagPreRunCommand, flagClearPreRunCommands, flagEnv, flagSecretEnv, flagRemoveEnv, flagClearEnv,
+	flagPreRunCommand, flagEnv, flagSecretEnv, flagRemoveEnv, flagRemoveAllEnv,
 	flagSkipInstallDeps, flagSkipIntermediate, flagShell, flagDeleteAfterDestroy,
 	flagOIDCAWSRoleARN, flagOIDCAWSSessionName, flagOIDCAWSDuration, flagOIDCAWSPolicyARN, flagOIDCAWSClear,
 	flagOIDCAzureClientID, flagOIDCAzureTenantID, flagOIDCAzureSubscriptionID, flagOIDCAzureClear,
@@ -39,7 +39,7 @@ var editFlagNames = []string{
 // clearEditFlags are presence-only: passing one with an explicit false value is rejected rather
 // than silently ignored.
 var clearEditFlags = []string{
-	flagClearPreRunCommands, flagClearEnv,
+	flagRemoveAllEnv,
 	flagOIDCAWSClear, flagOIDCAzureClear, flagOIDCGCPClear,
 }
 
@@ -67,10 +67,8 @@ func anyEditFlagSet(args deploymentSettingsEditArgs) bool {
 
 func clearFlagValue(args deploymentSettingsEditArgs, flag string) bool {
 	switch flag {
-	case flagClearPreRunCommands:
-		return args.clearPreRunCommands
-	case flagClearEnv:
-		return args.clearEnv
+	case flagRemoveAllEnv:
+		return args.removeAllEnv
 	case flagOIDCAWSClear:
 		return args.oidcAWSClear
 	case flagOIDCAzureClear:
@@ -117,6 +115,9 @@ func validateEditArgs(args deploymentSettingsEditArgs) error {
 			return fmt.Errorf("--env / --secret-env / --remove-env set %q multiple times (previously via --%s)", k, prev)
 		}
 		envKeys[k] = flagRemoveEnv
+	}
+	if slices.Contains(args.preRunCommands, "") && len(args.preRunCommands) > 1 {
+		return fmt.Errorf("--%s \"\" clears the list and cannot be combined with other commands", flagPreRunCommand)
 	}
 	if args.flagsChanged == nil {
 		return nil
@@ -231,11 +232,14 @@ func buildEditFlagPatch(
 		setNested(patch, []string{"executorContext", "executorRootPath"}, v)
 	}
 
-	switch {
-	case changed(flagClearPreRunCommands):
-		setNested(patch, []string{"operationContext", "preRunCommands"}, nil)
-	case changed(flagPreRunCommand):
-		setNested(patch, []string{"operationContext", "preRunCommands"}, args.preRunCommands)
+	if changed(flagPreRunCommand) {
+		// A lone empty string clears the list: an empty list would be a no-op, since the server
+		// copies through every key the patch does not mention.
+		var v any = args.preRunCommands
+		if len(args.preRunCommands) == 1 && args.preRunCommands[0] == "" {
+			v = nil
+		}
+		setNested(patch, []string{"operationContext", "preRunCommands"}, v)
 	}
 
 	envEntries := map[string]any{}
@@ -250,7 +254,7 @@ func buildEditFlagPatch(
 		envEntries[key] = nil
 	}
 	switch {
-	case changed(flagClearEnv):
+	case changed(flagRemoveAllEnv):
 		// An empty map would be a no-op: the server copies through every stored key the patch does
 		// not mention.
 		setNested(patch, []string{"operationContext", "environmentVariables"}, nil)
