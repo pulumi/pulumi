@@ -28,7 +28,7 @@ import (
 
 var editFlagNames = []string{
 	flagGitHubRepo, flagRepo, flagVCSProvider, flagGitURL, flagBranch, flagCommit, flagFolder,
-	flagPreviewPRs, flagPushToDeploy, flagPRTemplate, flagPathFilter, flagClearPathFilters,
+	flagPreviewPRs, flagPushToDeploy, flagPRTemplate, flagPathFilter,
 	flagRunnerPool, flagExecutorImage, flagExecutorRootPath,
 	flagPreRunCommand, flagEnv, flagSecretEnv, flagRemoveEnv, flagRemoveAllEnv,
 	flagSkipInstallDeps, flagSkipIntermediate, flagShell, flagDeleteAfterDestroy,
@@ -44,12 +44,11 @@ var editFlagNames = []string{
 var vcsEditFlags = []string{
 	flagGitHubRepo, flagRepo, flagVCSProvider,
 	flagPreviewPRs, flagPushToDeploy, flagPRTemplate,
-	flagPathFilter, flagClearPathFilters,
+	flagPathFilter,
 }
 
 // presenceOnlyEditFlags reject an explicit false value rather than silently ignoring it.
 var presenceOnlyEditFlags = []string{
-	flagClearPathFilters,
 	flagRemoveAllEnv,
 	flagRemoveOIDCAWS, flagRemoveOIDCAzure, flagRemoveOIDCGCP,
 }
@@ -69,6 +68,23 @@ var oidcProviderFlags = map[string][]string{
 	},
 }
 
+// clearedByEmptyString applies the empty-string clear convention to a repeatable list flag. The
+// service copies through every key a patch does not mention, so an empty list is a no-op where null
+// is a clear.
+func clearedByEmptyString(values []string) []string {
+	if len(values) == 1 && values[0] == "" {
+		return nil
+	}
+	return values
+}
+
+func validateListFlag(values []string, flag string) error {
+	if len(values) > 1 && slices.Contains(values, "") {
+		return fmt.Errorf("--%s \"\" clears the list and cannot be combined with other values", flag)
+	}
+	return nil
+}
+
 func anyEditFlagSet(args deploymentSettingsEditArgs) bool {
 	if args.flagsChanged == nil {
 		return false
@@ -85,8 +101,6 @@ func anyVCSEditFlagSet(args deploymentSettingsEditArgs) bool {
 
 func presenceOnlyFlagValue(args deploymentSettingsEditArgs, flag string) bool {
 	switch flag {
-	case flagClearPathFilters:
-		return args.clearPathFilters
 	case flagRemoveAllEnv:
 		return args.removeAllEnv
 	case flagRemoveOIDCAWS:
@@ -187,10 +201,7 @@ func resolveEditVCS(
 		vcs.PullRequestTemplate = args.prTemplate
 	}
 	if changed(flagPathFilter) {
-		vcs.Paths = args.pathFilters
-	}
-	if changed(flagClearPathFilters) {
-		vcs.Paths = nil
+		vcs.Paths = clearedByEmptyString(args.pathFilters)
 	}
 
 	// The vcs object replaces the stored one wholesale, so an empty repository here would erase the
@@ -247,8 +258,13 @@ func validateEditArgs(args deploymentSettingsEditArgs) error {
 		}
 		envKeys[k] = flagRemoveEnv
 	}
-	if slices.Contains(args.preRunCommands, "") && len(args.preRunCommands) > 1 {
-		return fmt.Errorf("--%s \"\" clears the list and cannot be combined with other commands", flagPreRunCommand)
+	for flag, values := range map[string][]string{
+		flagPreRunCommand: args.preRunCommands,
+		flagPathFilter:    args.pathFilters,
+	} {
+		if err := validateListFlag(values, flag); err != nil {
+			return err
+		}
 	}
 	if args.flagsChanged == nil {
 		return nil
@@ -360,13 +376,8 @@ func buildEditFlagPatch(
 	}
 
 	if changed(flagPreRunCommand) {
-		// A lone empty string clears the list: an empty list would be a no-op, since the server
-		// copies through every key the patch does not mention.
-		var v any = args.preRunCommands
-		if len(args.preRunCommands) == 1 && args.preRunCommands[0] == "" {
-			v = nil
-		}
-		setNested(patch, []string{"operationContext", "preRunCommands"}, v)
+		setNested(patch, []string{"operationContext", "preRunCommands"},
+			clearedByEmptyString(args.preRunCommands))
 	}
 
 	envEntries := map[string]any{}
