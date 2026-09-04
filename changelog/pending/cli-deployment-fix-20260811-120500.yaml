@@ -1,0 +1,4 @@
+component: cli/deployment
+kind: fix
+body: "Allow `pulumi deployment settings edit` to move a stack configured against a repository URL onto a version control integration"
+time: 2026-08-11T12:05:00+00:00
