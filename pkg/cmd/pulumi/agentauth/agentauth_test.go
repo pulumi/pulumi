@@ -46,7 +46,7 @@ func TestMaybePrintClaimWarningSkipsOutsideAgentMode(t *testing.T) {
 func TestAuthRequiredMessageSkipsOutsideAgentMode(t *testing.T) {
 	clearAgentEnv(t)
 
-	assert.Empty(t, AuthRequiredMessage(time.Now()))
+	assert.Empty(t, AuthRequiredMessage(t.Context(), time.Now()))
 }
 
 func TestMaybePrintClaimWarningSkipsMissingClaim(t *testing.T) {
@@ -62,7 +62,7 @@ func TestAuthRequiredMessageSkipsMissingClaim(t *testing.T) {
 	t.Setenv("CODEX_SANDBOX", "1")
 	t.Setenv("PULUMI_TEST_AGENT_PULUMI_DIR", t.TempDir())
 
-	assert.Empty(t, AuthRequiredMessage(time.Now()))
+	assert.Empty(t, AuthRequiredMessage(t.Context(), time.Now()))
 }
 
 func TestMaybePrintClaimWarningSkipsDeletedExpiredAgentCredentials(t *testing.T) {
@@ -225,7 +225,7 @@ func TestAuthRequiredMessagePrintsClaimInstructionWhenTokenExpiredButClaimValid(
 		return true, nil
 	})
 
-	message := AuthRequiredMessage(now)
+	message := AuthRequiredMessage(t.Context(), now)
 	assert.Contains(t, message, "PULUMI_EPHEMERAL_AGENT_ACCOUNT")
 	assert.Contains(t, message, "CLAIM_URL=https://app.pulumi.com/claim/expired-token-valid-claim")
 	assert.Contains(t, message, "CLAIM_URL_VALID_FOR=1h")
@@ -269,7 +269,7 @@ func TestAuthRequiredMessageChecksClaimWhenTokenLocallyValidButRejected(t *testi
 		return true, nil
 	})
 
-	message := AuthRequiredMessage(now)
+	message := AuthRequiredMessage(t.Context(), now)
 	assert.Contains(t, message, "PULUMI_EPHEMERAL_AGENT_ACCOUNT")
 	assert.Contains(t, message, "CLAIM_URL=https://app.pulumi.com/claim/locally-valid-token")
 	assert.Contains(t, message, "EPHEMERAL_ACCOUNT_ACCESS_EXPIRES_IN=1h")
@@ -303,7 +303,7 @@ func TestAuthRequiredMessageUsesDefaultClaimValidator(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	message := AuthRequiredMessage(now)
+	message := AuthRequiredMessage(t.Context(), now)
 	assert.Contains(t, message, "ACTION_REQUIRED=Tell the user to run pulumi login.")
 	assert.NotContains(t, message, "CLAIM_URL=")
 }
@@ -328,7 +328,7 @@ func TestAuthRequiredMessageWithoutClaimTokenUsesLocalTokenState(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	message := AuthRequiredMessage(now)
+	message := AuthRequiredMessage(t.Context(), now)
 	assert.Contains(t, message, "ACTION_REQUIRED=Tell the user to run pulumi login.")
 	assert.NotContains(t, message, "CLAIM_URL=")
 }
@@ -370,7 +370,7 @@ func TestAuthRequiredMessageOmitsClaimURLWhenClaimIsNotClaimable(t *testing.T) {
 		return false, nil
 	})
 
-	message := AuthRequiredMessage(now)
+	message := AuthRequiredMessage(t.Context(), now)
 	assert.Contains(t, message, "PULUMI_EPHEMERAL_AGENT_ACCOUNT")
 	assert.Contains(t, message, "ACTION_REQUIRED=Tell the user to run pulumi login.")
 	assert.NotContains(t, message, "CLAIM_URL=")
@@ -420,7 +420,7 @@ func TestAuthRequiredMessageKeepsUnavailableWhenStillNotClaimable(t *testing.T) 
 		return false, nil
 	})
 
-	message := AuthRequiredMessage(now)
+	message := AuthRequiredMessage(t.Context(), now)
 	assert.Contains(t, message, "PULUMI_EPHEMERAL_AGENT_ACCOUNT")
 	assert.NotContains(t, message, "CLAIM_URL=")
 	assert.Contains(t, message, "claim URL is no longer claimable")
@@ -458,7 +458,7 @@ func TestAuthRequiredMessageClearsUnavailableWhenClaimableAgain(t *testing.T) {
 		return true, nil
 	})
 
-	message := AuthRequiredMessage(now)
+	message := AuthRequiredMessage(t.Context(), now)
 	assert.Contains(t, message, "CLAIM_URL=https://app.pulumi.com/claim/recovered-claim")
 	assert.NotContains(t, message, "no longer claimable")
 	claim, err := workspace.GetAgentClaim()
@@ -493,7 +493,7 @@ func TestAuthRequiredMessageKeepsUnavailableWhenRevalidationFails(t *testing.T) 
 		return false, errors.New("temporary validation failure")
 	})
 
-	message := AuthRequiredMessage(now)
+	message := AuthRequiredMessage(t.Context(), now)
 	assert.Contains(t, message, "claim URL is no longer claimable")
 	assert.NotContains(t, message, "CLAIM_URL=")
 	claim, err := workspace.GetAgentClaim()
@@ -609,7 +609,7 @@ func TestAuthRequiredMessageFallsBackToLocalClaimWhenValidationFails(t *testing.
 		return false, errors.New("temporary validation failure")
 	})
 
-	message := AuthRequiredMessage(now)
+	message := AuthRequiredMessage(t.Context(), now)
 	assert.Contains(t, message, "PULUMI_EPHEMERAL_AGENT_ACCOUNT")
 	assert.Contains(t, message, "CLAIM_URL=https://app.pulumi.com/claim/validation-error")
 	assert.Contains(t, message, "CLAIM_URL_VALID_FOR=1h")

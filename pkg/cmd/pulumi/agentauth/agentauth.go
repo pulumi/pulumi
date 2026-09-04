@@ -106,7 +106,7 @@ func MaybePrintClaimWarning(ctx context.Context, stderr io.Writer) {
 // agents when an ephemeral agent account can no longer authenticate. If the
 // local token has already expired but the claim URL is still valid, it returns
 // the claim instruction instead of the auth-required instruction.
-func AuthRequiredMessage(now time.Time) string {
+func AuthRequiredMessage(ctx context.Context, now time.Time) string {
 	if agentdetect.Detect(os.Getenv) == "" {
 		return ""
 	}
@@ -120,13 +120,13 @@ func AuthRequiredMessage(now time.Time) string {
 		return ""
 	}
 	expiresAt, valid := workspace.AgentAccessTokenExpiresAt(account, now)
-	claim = revalidatedClaim(context.Background(), claim)
+	claim = revalidatedClaim(ctx, claim)
 	if claim.ClaimUnavailableAt != nil {
 		return workspace.FormatAgentLoginRequiredInstruction(
 			workspace.AgentLoginClaimUnavailable, expiresAt, now)
 	}
 	if claim.ClaimToken != "" {
-		claimable, err := validateAgentClaim(context.Background(), claim.CloudURL, claim.ClaimToken)
+		claimable, err := validateAgentClaim(ctx, claim.CloudURL, claim.ClaimToken)
 		if err != nil {
 			slog.Info("Could not validate agent claim token", "cloud-url", claim.CloudURL, "err", err)
 		} else if !claimable {
