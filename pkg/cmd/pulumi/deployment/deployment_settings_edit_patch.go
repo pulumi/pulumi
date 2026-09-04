@@ -31,7 +31,7 @@ import (
 var editFlagNames = []string{
 	flagGitHubRepo, flagRepo, flagVCSProvider, flagGitURL, flagBranch, flagCommit, flagFolder,
 	flagGitAuthToken, flagGitAuthSSHKey, flagGitAuthSSHKeyPath, flagGitAuthSSHKeyPassword,
-	flagGitAuthUsername, flagGitAuthPassword, flagClearGitAuth, flagTemplateSourceURL,
+	flagGitAuthUsername, flagGitAuthPassword, flagRemoveGitAuth, flagTemplateSourceURL,
 	flagPreviewPRs, flagPushToDeploy, flagPRTemplate, flagPathFilter,
 	flagDeployTags, flagTagFilter, flagReviewStackLabel,
 	flagInstallationID, flagDeployPullRequest,
@@ -58,7 +58,7 @@ var vcsEditFlags = []string{
 
 // presenceOnlyEditFlags reject an explicit false value rather than silently ignoring it.
 var presenceOnlyEditFlags = []string{
-	flagRemoveAllEnv, flagClearGitAuth,
+	flagRemoveAllEnv, flagRemoveGitAuth,
 	flagRemoveOIDCAWS, flagRemoveOIDCAzure, flagRemoveOIDCGCP,
 }
 
@@ -112,8 +112,8 @@ func presenceOnlyFlagValue(args deploymentSettingsEditArgs, flag string) bool {
 	switch flag {
 	case flagRemoveAllEnv:
 		return args.removeAllEnv
-	case flagClearGitAuth:
-		return args.clearGitAuth
+	case flagRemoveGitAuth:
+		return args.removeGitAuth
 	case flagRemoveOIDCAWS:
 		return args.oidcAWSClear
 	case flagRemoveOIDCAzure:
@@ -384,7 +384,7 @@ func validateEditArgs(args deploymentSettingsEditArgs) error {
 	} {
 		if args.flagsChanged(f.name) && f.value == "" {
 			return fmt.Errorf("--%s must not be empty; pass --%s to remove the stored credentials",
-				f.name, flagClearGitAuth)
+				f.name, flagRemoveGitAuth)
 		}
 	}
 	if args.flagsChanged(flagGitAuthUsername) && !args.flagsChanged(flagGitAuthPassword) {
@@ -418,7 +418,7 @@ func resolveEditGitAuthSSHKey(args *deploymentSettingsEditArgs) error {
 	}
 	if strings.TrimSpace(string(key)) == "" {
 		return fmt.Errorf("SSH private key %q holds no key material; pass --%s to remove the "+
-			"stored git credentials", args.gitAuthSSHPrivateKeyPath, flagClearGitAuth)
+			"stored git credentials", args.gitAuthSSHPrivateKeyPath, flagRemoveGitAuth)
 	}
 	args.gitAuthSSHPrivateKey = string(key)
 	return nil
@@ -664,7 +664,7 @@ func buildEditFlagPatch(
 // the user just set.
 func buildGitAuthPatch(args deploymentSettingsEditArgs, changed func(string) bool) (any, bool) {
 	switch {
-	case changed(flagClearGitAuth):
+	case changed(flagRemoveGitAuth):
 		return nil, true
 
 	case changed(flagGitAuthToken):
