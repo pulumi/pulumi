@@ -71,7 +71,7 @@ type deploymentSettingsEditArgs struct {
 	gitAuthSSHPrivateKeyPassword string
 	gitAuthUsername              string
 	gitAuthPassword              string
-	clearGitAuth                 bool
+	removeGitAuth                bool
 
 	templateSourceURL string
 
@@ -146,7 +146,7 @@ const (
 	flagGitAuthSSHKeyPassword = "git-auth-ssh-private-key-password" //nolint:gosec // flag name, not a credential
 	flagGitAuthUsername       = "git-auth-username"
 	flagGitAuthPassword       = "git-auth-password" //nolint:gosec // flag name, not a credential
-	flagClearGitAuth          = "clear-git-auth"
+	flagRemoveGitAuth         = "remove-git-auth"
 	flagTemplateSourceURL     = "template-source-url"
 	flagPreviewPRs            = "preview-prs"
 	flagPushToDeploy          = "push-to-deploy"
@@ -307,7 +307,7 @@ func newDeploymentSettingsEditCmdWith(factory deploymentSettingsEditClientFactor
 	// Git authentication
 	f.StringVar(&args.gitAuthToken, flagGitAuthToken, "",
 		fmt.Sprintf("Git source: personal access token (pass --%s to remove stored credentials)",
-			flagClearGitAuth))
+			flagRemoveGitAuth))
 	f.StringVar(&args.gitAuthSSHPrivateKey, flagGitAuthSSHKey, "",
 		"Git source: PEM-encoded SSH private key, key material and not a path")
 	f.StringVar(&args.gitAuthSSHPrivateKeyPath, flagGitAuthSSHKeyPath, "",
@@ -319,7 +319,7 @@ func newDeploymentSettingsEditCmdWith(factory deploymentSettingsEditClientFactor
 		"Git source: basic auth username")
 	f.StringVar(&args.gitAuthPassword, flagGitAuthPassword, "",
 		"Git source: basic auth password")
-	f.BoolVar(&args.clearGitAuth, flagClearGitAuth, false,
+	f.BoolVar(&args.removeGitAuth, flagRemoveGitAuth, false,
 		"Remove the stored git credentials, whichever authentication mode they use")
 	f.StringVar(&args.templateSourceURL, flagTemplateSourceURL, "",
 		"Template source URL, e.g. registry://templates/source/acme/vpc; empty string clears it")
@@ -409,12 +409,12 @@ func newDeploymentSettingsEditCmdWith(factory deploymentSettingsEditClientFactor
 	cmd.MarkFlagsMutuallyExclusive(flagEnv, flagRemoveAllEnv)
 	cmd.MarkFlagsMutuallyExclusive(flagSecretEnv, flagRemoveAllEnv)
 	cmd.MarkFlagsMutuallyExclusive(flagRemoveEnv, flagRemoveAllEnv)
-	cmd.MarkFlagsMutuallyExclusive(flagClearGitAuth, flagGitAuthToken)
-	cmd.MarkFlagsMutuallyExclusive(flagClearGitAuth, flagGitAuthSSHKey)
-	cmd.MarkFlagsMutuallyExclusive(flagClearGitAuth, flagGitAuthSSHKeyPath)
-	cmd.MarkFlagsMutuallyExclusive(flagClearGitAuth, flagGitAuthSSHKeyPassword)
-	cmd.MarkFlagsMutuallyExclusive(flagClearGitAuth, flagGitAuthUsername)
-	cmd.MarkFlagsMutuallyExclusive(flagClearGitAuth, flagGitAuthPassword)
+	cmd.MarkFlagsMutuallyExclusive(flagRemoveGitAuth, flagGitAuthToken)
+	cmd.MarkFlagsMutuallyExclusive(flagRemoveGitAuth, flagGitAuthSSHKey)
+	cmd.MarkFlagsMutuallyExclusive(flagRemoveGitAuth, flagGitAuthSSHKeyPath)
+	cmd.MarkFlagsMutuallyExclusive(flagRemoveGitAuth, flagGitAuthSSHKeyPassword)
+	cmd.MarkFlagsMutuallyExclusive(flagRemoveGitAuth, flagGitAuthUsername)
+	cmd.MarkFlagsMutuallyExclusive(flagRemoveGitAuth, flagGitAuthPassword)
 	cmd.MarkFlagsMutuallyExclusive(flagGitAuthToken, flagGitAuthSSHKey)
 	cmd.MarkFlagsMutuallyExclusive(flagGitAuthToken, flagGitAuthSSHKeyPath)
 	cmd.MarkFlagsMutuallyExclusive(flagGitAuthToken, flagGitAuthUsername)
