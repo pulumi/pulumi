@@ -1212,7 +1212,7 @@ func TestDoCmdResourceProviderFlagMergesStackInputs(t *testing.T) {
 			spec: spec,
 			MockProvider: plugin.MockProvider{
 				ConfigureF: func(_ context.Context, req plugin.ConfigureRequest) (plugin.ConfigureResponse, error) {
-					gotInputs = req.Inputs
+					gotInputs = resource.ToResourcePropertyMap(req.Inputs)
 					return plugin.ConfigureResponse{}, nil
 				},
 				ReadF: func(_ context.Context, _ plugin.ReadRequest) (plugin.ReadResponse, error) {

@@ -779,7 +779,7 @@ func TestProvider_ConfigureDeleteRace(t *testing.T) {
 	<-deleting
 	_, err := p.Configure(t.Context(), ConfigureRequest{
 		Type:   new(tokens.Type("pulumi:providers:test")),
-		Inputs: props,
+		Inputs: resource.FromResourcePropertyMap(props),
 	})
 	require.NoError(t, err)
 	<-done

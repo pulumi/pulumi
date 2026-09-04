@@ -938,37 +938,33 @@ func annotateSecrets(outs, ins resource.PropertyMap) {
 	}
 }
 
-func removeSecrets(v resource.PropertyValue) any {
+func removeSecrets(v property.Value) any {
 	switch {
 	case v.IsNull():
 		return nil
 	case v.IsBool():
-		return v.BoolValue()
+		return v.AsBool()
 	case v.IsNumber():
-		return v.NumberValue()
+		return v.AsNumber()
 	case v.IsString():
-		return v.StringValue()
+		return v.AsString()
 	case v.IsArray():
 		arr := []any{}
-		for _, v := range v.ArrayValue() {
+		for _, v := range v.AsArray().All {
 			arr = append(arr, removeSecrets(v))
 		}
 		return arr
 	case v.IsAsset():
-		return v.AssetValue()
+		return v.AsAsset()
 	case v.IsArchive():
-		return v.ArchiveValue()
+		return v.AsArchive()
 	case v.IsComputed():
-		return v.Input()
-	case v.IsOutput():
-		return v.OutputValue()
-	case v.IsSecret():
-		return removeSecrets(v.SecretValue().Element)
+		return ""
 	default:
-		contract.Assertf(v.IsObject(), "v is not Object '%v' instead", v.TypeString())
+		contract.Assertf(v.IsMap(), "v is not Object '%v' instead", v)
 		obj := map[string]any{}
-		for k, v := range v.ObjectValue() {
-			obj[string(k)] = removeSecrets(v)
+		for k, v := range v.AsMap().All {
+			obj[k] = removeSecrets(v)
 		}
 		return obj
 	}
@@ -1058,7 +1054,7 @@ func restoreElidedAssetContents(original resource.PropertyMap, transformed resou
 // Configure configures the resource provider with "globals" that control its behavior.
 func (p *provider) Configure(ctx context.Context, req ConfigureRequest) (ConfigureResponse, error) {
 	label := p.label() + ".Configure()"
-	logging.V(7).Infof("%s executing (#vars=%d)", label, len(req.Inputs))
+	logging.V(7).Infof("%s executing (#vars=%d)", label, req.Inputs.Len())
 
 	// The deprecated `variables` field is keyed by `<pkg>:config:<key>` for providers that still read config
 	// under the old name. The plugin no longer knows its own package, so we take it from the provider type the
@@ -1069,12 +1065,12 @@ func (p *provider) Configure(ctx context.Context, req ConfigureRequest) (Configu
 	// Convert the inputs to a variables map. If any are unknown, do not configure the underlying plugin: instead, leave
 	// the cfgknown bit unset and carry on.
 	variables := make(map[string]string)
-	for k, v := range req.Inputs {
+	for k, v := range req.Inputs.All {
 		if k == "version" {
 			continue
 		}
 
-		if v.ContainsUnknowns() {
+		if v.HasComputed() {
 			if p.protocol == nil {
 				p.protocol = &pluginProtocol{}
 			}
@@ -1096,10 +1092,10 @@ func (p *provider) Configure(ctx context.Context, req ConfigureRequest) (Configu
 			mapped = string(marshalled)
 		}
 
-		variables[string(pkg)+":config:"+string(k)] = mapped.(string)
+		variables[string(pkg)+":config:"+k] = mapped.(string)
 	}
 
-	minputs, err := MarshalProperties(req.Inputs, MarshalOptions{
+	minputs, err := MarshalProperties(resource.ToResourcePropertyMap(req.Inputs), MarshalOptions{
 		Label:         label + ".inputs",
 		KeepUnknowns:  true,
 		KeepSecrets:   true,

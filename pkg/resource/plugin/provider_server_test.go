@@ -25,6 +25,7 @@ import (
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -35,15 +36,15 @@ func TestProviderServer_Configure_variables(t *testing.T) {
 	t.Parallel()
 
 	provider := stubProvider{
-		ConfigureFunc: func(pm resource.PropertyMap) error {
-			assert.Equal(t, map[string]any{
-				"foo": "bar",
-				"baz": 42.0,
-				"qux": map[string]any{
-					"a": "str",
-					"b": true,
-				},
-			}, pm.Mappable())
+		ConfigureFunc: func(pm property.Map) error {
+			assert.Equal(t, property.NewMap(map[string]property.Value{
+				"foo": property.New("bar"),
+				"baz": property.New(42.0),
+				"qux": property.New(map[string]property.Value{
+					"a": property.New("str"),
+					"b": property.New(true),
+				}),
+			}), pm)
 			return nil
 		},
 	}
@@ -70,7 +71,7 @@ type stubProvider struct {
 		inputs, state resource.PropertyMap,
 	) (ReadResult, resource.Status, error)
 
-	ConfigureFunc func(resource.PropertyMap) error
+	ConfigureFunc func(property.Map) error
 
 	ListFunc func(ListRequest) (*ListStream, error)
 }

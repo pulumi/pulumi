@@ -224,7 +224,7 @@ type ConfigureRequest struct {
 	// Handshake.
 	ID *resource.ID
 	// A map of input properties for the provider.
-	Inputs resource.PropertyMap
+	Inputs property.Map
 }
 
 type ConfigureResponse struct{}
