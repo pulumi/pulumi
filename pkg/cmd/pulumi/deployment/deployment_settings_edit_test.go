@@ -1117,14 +1117,14 @@ func TestDeploymentSettingsEdit_ClearVCSListFlags(t *testing.T) {
 	}{
 		{
 			"tag filters",
-			deploymentSettingsEditArgs{clearTagFilters: true, flagsChanged: flagsSet(flagClearTagFilters)},
+			deploymentSettingsEditArgs{tagFilters: []string{""}, flagsChanged: flagsSet(flagTagFilter)},
 			`{"vcs":{"provider":"github","repository":"acme/infra","reviewStackLabels":["deploy"]}}`,
 		},
 		{
 			"review stack labels",
 			deploymentSettingsEditArgs{
-				clearReviewStackLabels: true,
-				flagsChanged:           flagsSet(flagClearReviewStackLabel),
+				reviewStackLabels: []string{""},
+				flagsChanged:      flagsSet(flagReviewStackLabel),
 			},
 			`{"vcs":{"provider":"github","repository":"acme/infra","tagFilters":["v*"]}}`,
 		},
@@ -1147,13 +1147,13 @@ func TestDeploymentSettingsEdit_ClearVCSListFlags(t *testing.T) {
 func TestDeploymentSettingsEdit_ClearReviewStackLabelsIsGitHubOnly(t *testing.T) {
 	t.Parallel()
 	err := runEditArgs(t, deploymentSettingsEditArgs{
-		clearReviewStackLabels: true,
-		flagsChanged:           flagsSet(flagClearReviewStackLabel),
+		reviewStackLabels: []string{""},
+		flagsChanged:      flagsSet(flagReviewStackLabel),
 	}, &mockDeploymentSettingsEditClient{
 		getResp: storedVCSSettings(apitype.DeploymentSettingsVCS{Provider: apitype.VCSProviderGitLab}),
 	})
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), flagClearReviewStackLabel)
+	assert.Contains(t, err.Error(), flagReviewStackLabel)
 }
 
 // Both list and map clears send null: an empty map is a no-op, because the server copies through
