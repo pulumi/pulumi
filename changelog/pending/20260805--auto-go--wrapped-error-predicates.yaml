@@ -1,0 +1,7 @@
+component: auto/go
+kind: fix
+body: Match wrapped errors in the Automation API error predicates, and unwrap the underlying
+  cause
+time: 2026-08-05T10:38:51+02:00
+custom:
+  PR: "24197"
