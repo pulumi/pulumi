@@ -1,0 +1,4 @@
+component: engine
+kind: fix
+body: Restore elided asset contents from prior state when a provider echoes assets back from refresh or update
+time: 2026-09-04T11:25:25.794554+02:00

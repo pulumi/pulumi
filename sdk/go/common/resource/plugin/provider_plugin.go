@@ -1654,9 +1654,12 @@ func (p *provider) Read(ctx context.Context, req ReadRequest) (ReadResponse, err
 		annotateSecrets(newState, req.State)
 	}
 
-	// make sure any echoed properties restore their original asset contents if they have not changed
-	restoreElidedAssetContents(req.Inputs, newInputs)
-	restoreElidedAssetContents(req.Inputs, newState)
+	// make sure any echoed properties restore their original asset contents if they have not changed. Assets
+	// may appear in either the old inputs or the old state, so both are candidate sources.
+	for _, original := range []resource.PropertyMap{req.Inputs, req.State} {
+		restoreElidedAssetContents(original, newInputs)
+		restoreElidedAssetContents(original, newState)
+	}
 
 	logging.V(7).Infof("%s success; id=%q, #outs=%d, #inputs=%d", label, readID, len(newState), len(newInputs))
 	return ReadResponse{ReadResult{
@@ -1813,6 +1816,12 @@ func (p *provider) Update(ctx context.Context, req UpdateRequest) (UpdateRespons
 	if !protocol.acceptSecrets {
 		annotateSecrets(outs, req.NewInputs)
 	}
+
+	// make sure any echoed properties restore their original asset contents if they have not changed
+	for _, original := range []resource.PropertyMap{req.OldInputs, req.OldOutputs} {
+		restoreElidedAssetContents(original, outs)
+	}
+
 	logging.V(7).Infof("%s success; #outs=%d", label, len(outs))
 
 	return UpdateResponse{

@@ -1488,3 +1488,45 @@ func TestProvider_PartialFailure(t *testing.T) {
 		RefreshBeforeUpdate: true,
 	}, updateResp)
 }
+
+// Tests that assets echoed back by a provider's Read are restored from the old state, not just the old
+// inputs. Assets frequently live only in a resource's outputs, and eliding their contents on the way to the
+// provider must not persist a contentless asset into the snapshot.
+func TestProvider_ReadRestoresElidedAssetsFromState(t *testing.T) {
+	t.Parallel()
+
+	client := &stubClient{
+		ConfigureF: func(req *pulumirpc.ConfigureRequest) (*pulumirpc.ConfigureResponse, error) {
+			return &pulumirpc.ConfigureResponse{AcceptSecrets: true}, nil
+		},
+		ReadF: func(req *pulumirpc.ReadRequest) (*pulumirpc.ReadResponse, error) {
+			// Echo the state back, as a provider with no remote state to consult would.
+			return &pulumirpc.ReadResponse{
+				Id:         req.GetId(),
+				Properties: req.GetProperties(),
+				Inputs:     req.GetInputs(),
+			}, nil
+		},
+	}
+
+	p := NewProviderWithClient(newTestContext(t), client, false /* disablePreview */)
+	_, err := p.Configure(t.Context(), ConfigureRequest{Type: new(tokens.Type("pulumi:providers:test"))})
+	require.NoError(t, err, "Configure failed")
+
+	textAsset, err := asset.FromText("Hello world")
+	require.NoError(t, err)
+
+	resp, err := p.Read(t.Context(), ReadRequest{
+		URN: resource.NewURN("org/proj/dev", "foo", "", "test:index:Resource", "qux"),
+		ID:  "some-id",
+		// The asset only appears in the outputs, never in the inputs.
+		Inputs: resource.PropertyMap{"assetPaths": resource.NewProperty("build/**")},
+		State:  resource.PropertyMap{"assets": resource.NewProperty(textAsset)},
+	})
+	require.NoError(t, err)
+
+	got := resp.Outputs["assets"].AssetValue()
+	assert.Equal(t, textAsset.Hash, got.Hash)
+	assert.True(t, got.HasContents(), "asset lost its contents")
+	assert.Equal(t, "Hello world", got.Text)
+}
