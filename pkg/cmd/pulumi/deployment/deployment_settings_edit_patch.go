@@ -29,7 +29,7 @@ import (
 var editFlagNames = []string{
 	flagGitHubRepo, flagRepo, flagVCSProvider, flagGitURL, flagBranch, flagCommit, flagFolder,
 	flagPreviewPRs, flagPushToDeploy, flagPRTemplate, flagPathFilter,
-	flagDeployTags, flagTagFilter, flagClearTagFilters, flagReviewStackLabel, flagClearReviewStackLabel,
+	flagDeployTags, flagTagFilter, flagReviewStackLabel,
 	flagInstallationID, flagDeployPullRequest,
 	flagRunnerPool, flagExecutorImage, flagExecutorRootPath,
 	flagPreRunCommand, flagEnv, flagSecretEnv, flagRemoveEnv, flagRemoveAllEnv,
@@ -47,14 +47,12 @@ var vcsEditFlags = []string{
 	flagGitHubRepo, flagRepo, flagVCSProvider,
 	flagPreviewPRs, flagPushToDeploy, flagPRTemplate,
 	flagPathFilter,
-	flagDeployTags, flagTagFilter, flagClearTagFilters,
-	flagReviewStackLabel, flagClearReviewStackLabel,
+	flagDeployTags, flagTagFilter, flagReviewStackLabel,
 	flagInstallationID, flagDeployPullRequest,
 }
 
 // presenceOnlyEditFlags reject an explicit false value rather than silently ignoring it.
 var presenceOnlyEditFlags = []string{
-	flagClearTagFilters, flagClearReviewStackLabel,
 	flagRemoveAllEnv,
 	flagRemoveOIDCAWS, flagRemoveOIDCAzure, flagRemoveOIDCGCP,
 }
@@ -107,10 +105,6 @@ func anyVCSEditFlagSet(args deploymentSettingsEditArgs) bool {
 
 func presenceOnlyFlagValue(args deploymentSettingsEditArgs, flag string) bool {
 	switch flag {
-	case flagClearTagFilters:
-		return args.clearTagFilters
-	case flagClearReviewStackLabel:
-		return args.clearReviewStackLabels
 	case flagRemoveAllEnv:
 		return args.removeAllEnv
 	case flagRemoveOIDCAWS:
@@ -195,11 +189,9 @@ func resolveEditVCS(
 			vcs.Provider, requestedProviderOrigin(args, requested))
 	}
 
-	for _, f := range []string{flagReviewStackLabel, flagClearReviewStackLabel} {
-		if changed(f) && vcs.Provider != apitype.VCSProviderGitHub {
-			return nil, fmt.Errorf("--%s is only supported on github sources, and this stack's source is %s",
-				f, vcs.Provider)
-		}
+	if changed(flagReviewStackLabel) && vcs.Provider != apitype.VCSProviderGitHub {
+		return nil, fmt.Errorf("--%s is only supported on github sources, and this stack's source is %s",
+			flagReviewStackLabel, vcs.Provider)
 	}
 
 	if changed(flagRepo) {
@@ -224,16 +216,10 @@ func resolveEditVCS(
 		vcs.DeployTags = args.deployTags
 	}
 	if changed(flagTagFilter) {
-		vcs.TagFilters = args.tagFilters
-	}
-	if changed(flagClearTagFilters) {
-		vcs.TagFilters = nil
+		vcs.TagFilters = clearedByEmptyString(args.tagFilters)
 	}
 	if changed(flagReviewStackLabel) {
-		vcs.ReviewStackLabels = args.reviewStackLabels
-	}
-	if changed(flagClearReviewStackLabel) {
-		vcs.ReviewStackLabels = nil
+		vcs.ReviewStackLabels = clearedByEmptyString(args.reviewStackLabels)
 	}
 	if changed(flagInstallationID) {
 		vcs.InstallationID = args.installationID
@@ -335,8 +321,10 @@ func validateEditArgs(args deploymentSettingsEditArgs) error {
 		envKeys[k] = flagRemoveEnv
 	}
 	for flag, values := range map[string][]string{
-		flagPreRunCommand: args.preRunCommands,
-		flagPathFilter:    args.pathFilters,
+		flagPreRunCommand:    args.preRunCommands,
+		flagPathFilter:       args.pathFilters,
+		flagTagFilter:        args.tagFilters,
+		flagReviewStackLabel: args.reviewStackLabels,
 	} {
 		if err := validateListFlag(values, flag); err != nil {
 			return err
