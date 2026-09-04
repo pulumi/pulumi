@@ -2159,7 +2159,7 @@ func TestInternalFiltered(t *testing.T) {
 						t.Fatalf("unexpected URN %v", req.URN)
 					}
 					assert.NotEmpty(t, req.ID)
-					assert.NotContains(t, req.Inputs, internalKey)
+					assert.NotContains(t, req.Inputs.AsMap(), string(internalKey))
 					return plugin.ConfigureResponse{}, nil
 				},
 			}, nil
@@ -2184,7 +2184,7 @@ func TestInternalFiltered(t *testing.T) {
 						t.Fatalf("unexpected URN %v", req.URN)
 					}
 					assert.NotEmpty(t, req.ID)
-					assert.NotContains(t, req.Inputs, internalKey)
+					assert.NotContains(t, req.Inputs.AsMap(), string(internalKey))
 					return plugin.ConfigureResponse{}, nil
 				},
 			}, nil
