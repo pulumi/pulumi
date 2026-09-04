@@ -65,6 +65,19 @@ func TestPlan(t *testing.T) {
 			errStr := p.MakeError(resource.PropertyKey("foo"), "", &val)
 			assert.True(t, strings.HasPrefix(errStr, "-"))
 		})
+		t.Run("redacts secrets", func(t *testing.T) {
+			t.Parallel()
+			p := &PlanDiff{
+				Updates: resource.PropertyMap{
+					"foo": resource.MakeSecret(resource.NewProperty("expected")),
+				},
+			}
+			val := resource.NewProperty(resource.PropertyMap{
+				"nested": resource.MakeSecret(resource.NewProperty("actual")),
+			})
+			errStr := p.MakeError(resource.PropertyKey("foo"), "~", &val)
+			assert.Equal(t, "~~foo[{[secret]}!={map[nested:{[secret]}]}]", errStr)
+		})
 	})
 }
 

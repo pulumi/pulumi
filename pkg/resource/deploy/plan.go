@@ -116,13 +116,14 @@ func (planDiff *PlanDiff) MakeError(
 	} else {
 		expectedOperation = "="
 	}
+	// This message is persisted in the stack's update history, so secrets stay redacted even under --show-secrets.
 	diff := ""
 	if actualValue != nil && expectedValue != nil {
-		diff = "[" + expectedValue.String() + "!=" + actualValue.String() + "]"
+		diff = "[" + expectedValue.RedactSecrets() + "!=" + actualValue.RedactSecrets() + "]"
 	} else if actualValue != nil {
-		diff = "[" + actualValue.String() + "]"
+		diff = "[" + actualValue.RedactSecrets() + "]"
 	} else if expectedValue != nil {
-		diff = "[" + expectedValue.String() + "]"
+		diff = "[" + expectedValue.RedactSecrets() + "]"
 	}
 	return expectedOperation + actualOperation + string(key) + diff
 }
