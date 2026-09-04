@@ -62,7 +62,7 @@ func TestPlan(t *testing.T) {
 				},
 			}
 			val := resource.NewProperty("val")
-			errStr := p.MakeError(resource.PropertyKey("foo"), "", &val)
+			errStr := p.MakeError(resource.PropertyKey("foo"), "", &val, false)
 			assert.True(t, strings.HasPrefix(errStr, "-"))
 		})
 		t.Run("redacts secrets", func(t *testing.T) {
@@ -75,8 +75,20 @@ func TestPlan(t *testing.T) {
 			val := resource.NewProperty(resource.PropertyMap{
 				"nested": resource.MakeSecret(resource.NewProperty("actual")),
 			})
-			errStr := p.MakeError(resource.PropertyKey("foo"), "~", &val)
+			errStr := p.MakeError(resource.PropertyKey("foo"), "~", &val, false)
 			assert.Equal(t, "~~foo[{[secret]}!={map[nested:{[secret]}]}]", errStr)
+		})
+		t.Run("shows secrets", func(t *testing.T) {
+			t.Parallel()
+			p := &PlanDiff{
+				Updates: resource.PropertyMap{
+					"foo": resource.MakeSecret(resource.NewProperty("expected")),
+				},
+			}
+			val := resource.MakeSecret(resource.NewProperty("actual"))
+			errStr := p.MakeError(resource.PropertyKey("foo"), "~", &val, true)
+			assert.Contains(t, errStr, "expected")
+			assert.Contains(t, errStr, "actual")
 		})
 	})
 }
@@ -254,7 +266,7 @@ func TestResourcePlan(t *testing.T) {
 			err := rp.checkGoal(
 				resource.PropertyMap{},
 				resource.PropertyMap{},
-				&pkgresource.Goal{})
+				&pkgresource.Goal{}, false)
 			require.NoError(t, err)
 		})
 		t.Run("violations", func(t *testing.T) {
@@ -270,7 +282,7 @@ func TestResourcePlan(t *testing.T) {
 					resource.PropertyMap{},
 					&pkgresource.Goal{
 						Custom: false,
-					})
+					}, false)
 				assert.ErrorContains(t, err, "resource kind changed (expected custom)")
 			})
 			t.Run("invalid provider reference", func(t *testing.T) {
@@ -287,7 +299,7 @@ func TestResourcePlan(t *testing.T) {
 						resource.PropertyMap{},
 						&pkgresource.Goal{
 							Provider: "urn:pulumi:dev::random::pulumi:providers:random::default_4_13_2::provider-foo",
-						})
+						}, false)
 					assert.ErrorContains(t, err, "failed to parse provider reference")
 				})
 				t.Run("goal", func(t *testing.T) {
@@ -302,7 +314,7 @@ func TestResourcePlan(t *testing.T) {
 						resource.PropertyMap{},
 						&pkgresource.Goal{
 							Provider: "bad-provider",
-						})
+						}, false)
 					assert.ErrorContains(t, err, "failed to parse provider reference")
 				})
 			})
@@ -318,7 +330,7 @@ func TestResourcePlan(t *testing.T) {
 					resource.PropertyMap{},
 					&pkgresource.Goal{
 						Provider: "urn:pulumi:dev::random::pulumi:providers:random::default_4_13_2::provider-foo",
-					})
+					}, false)
 				assert.ErrorContains(t, err, "provider changed")
 			})
 			t.Run("parent mismatch", func(t *testing.T) {
@@ -333,7 +345,7 @@ func TestResourcePlan(t *testing.T) {
 					resource.PropertyMap{},
 					&pkgresource.Goal{
 						Parent: "bar",
-					})
+					}, false)
 				assert.ErrorContains(t, err, "parent changed")
 			})
 			t.Run("protect mismatch", func(t *testing.T) {
@@ -348,7 +360,7 @@ func TestResourcePlan(t *testing.T) {
 					resource.PropertyMap{},
 					&pkgresource.Goal{
 						Protect: nil,
-					})
+					}, false)
 				assert.ErrorContains(t, err, "protect changed")
 			})
 			t.Run("deleteBeforeReplace mismatch", func(t *testing.T) {
@@ -367,7 +379,7 @@ func TestResourcePlan(t *testing.T) {
 						resource.PropertyMap{},
 						&pkgresource.Goal{
 							DeleteBeforeReplace: &goalRef,
-						})
+						}, false)
 					assert.ErrorContains(t, err, "deleteBeforeReplace changed")
 				})
 				t.Run("plan non-nil", func(t *testing.T) {
@@ -381,7 +393,7 @@ func TestResourcePlan(t *testing.T) {
 					err := rp.checkGoal(
 						resource.PropertyMap{},
 						resource.PropertyMap{},
-						&pkgresource.Goal{})
+						&pkgresource.Goal{}, false)
 					assert.ErrorContains(t, err, "deleteBeforeReplace changed (expected false)")
 				})
 				t.Run("goal non-nil", func(t *testing.T) {
@@ -395,7 +407,7 @@ func TestResourcePlan(t *testing.T) {
 						resource.PropertyMap{},
 						&pkgresource.Goal{
 							DeleteBeforeReplace: &goalRef,
-						})
+						}, false)
 					assert.ErrorContains(t, err, "deleteBeforeReplace changed (expected no value)")
 				})
 			})
@@ -411,7 +423,7 @@ func TestResourcePlan(t *testing.T) {
 					resource.PropertyMap{},
 					&pkgresource.Goal{
 						ID: "bar",
-					})
+					}, false)
 				assert.ErrorContains(t, err, "importID changed")
 			})
 			t.Run("customTimeouts mismatch", func(t *testing.T) {
@@ -431,7 +443,7 @@ func TestResourcePlan(t *testing.T) {
 							CustomTimeouts: resource.CustomTimeouts{
 								Create: 5,
 							},
-						})
+						}, false)
 					assert.ErrorContains(t, err, "create timeout changed")
 				})
 				t.Run("update", func(t *testing.T) {
@@ -450,7 +462,7 @@ func TestResourcePlan(t *testing.T) {
 							CustomTimeouts: resource.CustomTimeouts{
 								Update: 5,
 							},
-						})
+						}, false)
 					assert.ErrorContains(t, err, "update timeout changed")
 				})
 				t.Run("delete", func(t *testing.T) {
@@ -469,7 +481,7 @@ func TestResourcePlan(t *testing.T) {
 							CustomTimeouts: resource.CustomTimeouts{
 								Delete: 5,
 							},
-						})
+						}, false)
 					assert.ErrorContains(t, err, "delete timeout changed")
 				})
 			})
@@ -489,7 +501,7 @@ func TestResourcePlan(t *testing.T) {
 						IgnoreChanges: []string{
 							"bar",
 						},
-					})
+					}, false)
 				assert.ErrorContains(t, err, "ignoreChanges changed")
 			})
 			t.Run("additionalSecretOutputs mismatch", func(t *testing.T) {
@@ -508,7 +520,7 @@ func TestResourcePlan(t *testing.T) {
 						AdditionalSecretOutputs: []resource.PropertyKey{
 							"bar",
 						},
-					})
+					}, false)
 				assert.ErrorContains(t, err, "additionalSecretOutputs changed")
 			})
 			t.Run("dependencies mismatch", func(t *testing.T) {
@@ -527,7 +539,7 @@ func TestResourcePlan(t *testing.T) {
 						Dependencies: []resource.URN{
 							"bar",
 						},
-					})
+					}, false)
 				assert.ErrorContains(t, err, "dependencies changed")
 			})
 			t.Run("aliases mismatch", func(t *testing.T) {
@@ -546,7 +558,7 @@ func TestResourcePlan(t *testing.T) {
 						Aliases: []resource.Alias{
 							{Name: "bar"},
 						},
-					})
+					}, false)
 				assert.ErrorContains(t, err, "aliases changed")
 			})
 		})
@@ -566,7 +578,7 @@ func TestCheckDiff(t *testing.T) {
 					Deletes: []resource.PropertyKey{
 						"should-be-here",
 					},
-				})
+				}, false)
 			require.NoError(t, err)
 		})
 		t.Run("diff violation", func(t *testing.T) {
@@ -582,7 +594,7 @@ func TestCheckDiff(t *testing.T) {
 						Deletes: []resource.PropertyKey{
 							"should-delete",
 						},
-					})
+					}, false)
 				assert.Error(t, err)
 			})
 			t.Run("update", func(t *testing.T) {
@@ -598,7 +610,7 @@ func TestCheckDiff(t *testing.T) {
 						Deletes: []resource.PropertyKey{
 							"should-delete",
 						},
-					})
+					}, false)
 				assert.Error(t, err)
 			})
 			t.Run("same", func(t *testing.T) {
@@ -620,7 +632,7 @@ func TestCheckDiff(t *testing.T) {
 					Adds: resource.PropertyMap{
 						resource.PropertyKey("should-update"): resource.NewProperty("new-test"),
 					},
-				})
+				}, false)
 			require.NoError(t, err)
 		})
 		t.Run("diff violation", func(t *testing.T) {
@@ -643,7 +655,7 @@ func TestCheckDiff(t *testing.T) {
 					Updates: resource.PropertyMap{
 						resource.PropertyKey("should-update"): resource.NewProperty("new-test"),
 					},
-				})
+				}, false)
 			require.NoError(t, err)
 		})
 		t.Run("ok same", func(t *testing.T) {
@@ -659,7 +671,7 @@ func TestCheckDiff(t *testing.T) {
 					Updates: resource.PropertyMap{
 						resource.PropertyKey("should-update"): resource.NewProperty("new-test"),
 					},
-				})
+				}, false)
 			require.NoError(t, err)
 		})
 		t.Run("diff violation", func(t *testing.T) {
@@ -675,7 +687,7 @@ func TestCheckDiff(t *testing.T) {
 						Updates: resource.PropertyMap{
 							resource.PropertyKey("should-update"): resource.NewProperty("new-test"),
 						},
-					})
+					}, false)
 				assert.ErrorContains(t, err,
 					"properties changed: ~+should-update[{new-test}!={new-test}], ~+should-update[{new-test}!={new-test}]")
 			})
@@ -692,7 +704,7 @@ func TestCheckDiff(t *testing.T) {
 						Updates: resource.PropertyMap{
 							resource.PropertyKey("should-update"): resource.NewProperty("new-new-test"),
 						},
-					})
+					}, false)
 				assert.ErrorContains(t, err, "properties changed: ~=should-update[{new-new-test}!={new-test}]")
 			})
 			t.Run("missing", func(t *testing.T) {
@@ -708,7 +720,7 @@ func TestCheckDiff(t *testing.T) {
 							Updates: resource.PropertyMap{
 								resource.PropertyKey("should-update"): resource.NewProperty("new-new-test"),
 							},
-						})
+						}, false)
 					assert.ErrorContains(t, err,
 						"properties changed: ~-should-update[{new-new-test}], ~-should-update[{new-new-test}]")
 				})
@@ -723,7 +735,7 @@ func TestCheckDiff(t *testing.T) {
 							Updates: resource.PropertyMap{
 								resource.PropertyKey("should-update"): resource.MakeComputed(resource.NewProperty("new-new-test")),
 							},
-						})
+						}, false)
 					require.NoError(t, err)
 				})
 			})

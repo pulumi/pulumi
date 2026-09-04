@@ -152,6 +152,82 @@ func TestPlannedUpdate(t *testing.T) {
 	assert.Equal(t, expected, snap.Resources[1].Outputs)
 }
 
+func TestPlanViolationSecrets(t *testing.T) {
+	t.Parallel()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					return plugin.CreateResponse{
+						ID:         "created-id",
+						Properties: req.Properties,
+						Status:     resource.StatusOK,
+					}, nil
+				},
+			}, nil
+		}),
+	}
+
+	violate := func(t *testing.T, showSecrets bool, expected string) {
+		ins := resource.PropertyMap{
+			"password": resource.MakeSecret(resource.NewProperty("planned-secret")),
+		}
+		expectError := false
+		programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+			_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+				Inputs: ins,
+			})
+			if expectError {
+				require.Fail(t, "RegisterResource should not return")
+			} else {
+				require.NoError(t, err)
+			}
+			return nil
+		})
+		hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
+
+		p := &lt.TestPlan{
+			Options: lt.TestUpdateOptions{
+				T:     t,
+				HostF: hostF,
+				UpdateOptions: UpdateOptions{
+					GeneratePlan: true,
+					Experimental: true,
+					ShowSecrets:  showSecrets,
+				},
+				SkipDisplayTests: true,
+			},
+		}
+		project := p.GetProject()
+
+		plan, err := lt.TestOp(Update).Plan(project, p.GetTarget(t, nil), p.Options, p.BackendClient, nil)
+		require.NoError(t, err)
+
+		expectError = true
+		ins = resource.PropertyMap{
+			"password": resource.MakeSecret(resource.NewProperty("actual-secret")),
+		}
+		p.Options.Plan = plan.Clone()
+		validate := ExpectDiagMessage(t, regexp.QuoteMeta(expected))
+		_, err = lt.TestOp(Update).RunStep(
+			project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, validate, "0")
+		require.NoError(t, err)
+	}
+
+	t.Run("redacted by default", func(t *testing.T) {
+		t.Parallel()
+		violate(t, false, "<{%reset%}>resource urn:pulumi:test::test::pkgA:m:typA::resA violates plan: "+
+			"properties changed: ++password[{[secret]}!={[secret]}]<{%reset%}>\n")
+	})
+
+	t.Run("shown with --show-secrets", func(t *testing.T) {
+		t.Parallel()
+		violate(t, true, "<{%reset%}>resource urn:pulumi:test::test::pkgA:m:typA::resA violates plan: "+
+			"properties changed: ++password[{&{{planned-secret}}}!={&{{actual-secret}}}]<{%reset%}>\n")
+	})
+}
+
 func TestUnplannedCreate(t *testing.T) {
 	t.Parallel()
 

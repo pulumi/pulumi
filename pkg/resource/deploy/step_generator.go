@@ -1420,11 +1420,11 @@ func (sg *stepGenerator) continueStepsFromImport(
 		if !ok {
 			if old == nil {
 				// We could error here, but we'll trigger an error later on anyway that Create isn't valid here
-			} else if err := checkMissingPlan(old, inputs, goal); err != nil {
+			} else if err := checkMissingPlan(old, inputs, goal, sg.deployment.opts.ShowSecrets); err != nil {
 				return nil, false, fmt.Errorf("resource %s violates plan: %w", urn, err)
 			}
 		} else {
-			if err := resourcePlan.checkGoal(oldInputs, inputs, goal); err != nil {
+			if err := resourcePlan.checkGoal(oldInputs, inputs, goal, sg.deployment.opts.ShowSecrets); err != nil {
 				return nil, false, fmt.Errorf("resource %s violates plan: %w", urn, err)
 			}
 		}
