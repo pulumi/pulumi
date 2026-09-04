@@ -1300,7 +1300,7 @@ func TestDeploymentSettingsEdit_GitAuthModes(t *testing.T) {
 		},
 		{
 			"clear removes every mode",
-			deploymentSettingsEditArgs{clearGitAuth: true, flagsChanged: flagsSet(flagClearGitAuth)},
+			deploymentSettingsEditArgs{removeGitAuth: true, flagsChanged: flagsSet(flagRemoveGitAuth)},
 			`{"sourceContext":{"git":{"gitAuth":null}}}`,
 		},
 	} {
@@ -1424,12 +1424,12 @@ func TestDeploymentSettingsEdit_EmptyCredentialIsRefused(t *testing.T) {
 			_, err := runEditCmd(t, &mockDeploymentSettingsEditClient{}, argv...)
 			require.Error(t, err)
 			assert.Contains(t, err.Error(), "must not be empty")
-			assert.Contains(t, err.Error(), flagClearGitAuth)
+			assert.Contains(t, err.Error(), flagRemoveGitAuth)
 		})
 	}
 }
 
-// The passphrase is refused separately from the other credentials because --clear-git-auth is the
+// The passphrase is refused separately from the other credentials because --remove-git-auth is the
 // wrong remedy for it: it drops the key too.
 func TestDeploymentSettingsEdit_EmptySSHKeyPasswordIsRefused(t *testing.T) {
 	t.Parallel()
