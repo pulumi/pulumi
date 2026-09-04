@@ -1252,6 +1252,44 @@ func TestDeserializeStackOutputs_SecretsInStackOutputs_Decrypted(t *testing.T) {
 	}, outputs)
 }
 
+// Test that DecryptStackOutputs resolves a plaintext-form secret without a decrypt call.
+func TestDecryptStackOutputs_PlaintextSecret_Resolved(t *testing.T) {
+	t.Parallel()
+
+	outputs := map[string]any{
+		"hello": "world",
+		"secret": map[string]any{
+			"4dabf18193072939515e22adb298388d": "1b47061264138c4ac30d75fd1eb44270",
+			"plaintext":                        "\"super secret\"",
+		},
+	}
+
+	provider := (&secrets.MockProvider{}).Add(
+		"mock", func(_ json.RawMessage) (secrets.Manager, error) {
+			return &secrets.MockSecretsManager{
+				TypeF: func() string { return "mock" },
+				DecrypterF: func() config.Decrypter {
+					return &secrets.MockDecrypter{
+						DecryptValueF: func(_ string) string {
+							panic("should not be called")
+						},
+						BatchDecryptF: func(_ []string) []string {
+							panic("should not be called")
+						},
+					}
+				},
+			}, nil
+		},
+	)
+
+	got, err := DecryptStackOutputs(t.Context(), outputs, &apitype.SecretsProvidersV1{Type: "mock"}, provider)
+	require.NoError(t, err)
+	assert.Equal(t, resource.PropertyMap{
+		"hello":  resource.NewProperty("world"),
+		"secret": resource.MakeSecret(resource.NewProperty("super secret")),
+	}, got)
+}
+
 func TestSerializeByteString(t *testing.T) {
 	t.Parallel()
 	ctx := t.Context()

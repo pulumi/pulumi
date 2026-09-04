@@ -465,7 +465,7 @@ func (p *ComponentProvider) constructComponentCustomRefOutput(
 		Provider: req.Options.Providers["component"],
 		Object: &structpb.Struct{
 			Fields: map[string]*structpb.Value{
-				"value": structpb.NewStringValue(req.Inputs["value"].StringValue()),
+				"value": structpb.NewStringValue(req.Inputs.Get("value").AsString()),
 			},
 		},
 	})
@@ -525,21 +525,14 @@ func (p *ComponentProvider) constructComponentCustomRefInputOutput(
 	}
 
 	// Hydrate the input resource reference, whether it's a plain value or an output (that should be known and resolved).
-	var inputRef resource.ResourceReference
-	if req.Inputs["inputRef"].IsNull() {
+	inputRefValue := req.Inputs.Get("inputRef")
+	if inputRefValue.IsNull() {
 		return plugin.ConstructResponse{}, errors.New("inputRef is null")
 	}
-
-	if req.Inputs["inputRef"].IsOutput() {
-		element := req.Inputs["inputRef"].OutputValue().Element
-		if element.IsNull() {
-			return plugin.ConstructResponse{}, errors.New("inputRef output is null")
-		}
-
-		inputRef = element.ResourceReferenceValue()
-	} else {
-		inputRef = req.Inputs["inputRef"].ResourceReferenceValue()
+	if inputRefValue.IsComputed() {
+		return plugin.ConstructResponse{}, errors.New("inputRef is unknown")
 	}
+	inputRef := inputRefValue.AsResourceReference()
 
 	getRes, err := monitor.Invoke(ctx, &pulumirpc.ResourceInvokeRequest{
 		Tok: "pulumi:pulumi:getResource",
@@ -573,7 +566,7 @@ func (p *ComponentProvider) constructComponentCustomRefInputOutput(
 	}
 
 	// Create resource references for the inputRef and outputRef component outputs.
-	inputRefPropVal := resource.NewProperty(inputRef)
+	inputRefPropVal := resource.ToResourcePropertyValue(property.New(inputRef))
 	inputRefStruct, err := plugin.MarshalPropertyValue("inputRef", inputRefPropVal, plugin.MarshalOptions{
 		KeepResources: true,
 		KeepSecrets:   true,
@@ -639,7 +632,7 @@ func (p *ComponentProvider) constructComponentCallable(
 		Provider: req.Options.Providers["component"],
 		Object: &structpb.Struct{
 			Fields: map[string]*structpb.Value{
-				"value": structpb.NewStringValue(req.Inputs["value"].StringValue()),
+				"value": structpb.NewStringValue(req.Inputs.Get("value").AsString()),
 			},
 		},
 	})
@@ -695,7 +688,7 @@ func (p *ComponentProvider) constructComponentForeignChild(
 		Provider: req.Options.Providers["simple"],
 		Object: &structpb.Struct{
 			Fields: map[string]*structpb.Value{
-				"value": structpb.NewBoolValue(req.Inputs["value"].BoolValue()),
+				"value": structpb.NewBoolValue(req.Inputs.Get("value").AsBool()),
 			},
 		},
 	})

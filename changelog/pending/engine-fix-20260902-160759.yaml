@@ -1,0 +1,4 @@
+component: engine
+kind: fix
+body: Run state migrations for aliased remote components
+time: 2026-09-02T16:07:59.471844+02:00

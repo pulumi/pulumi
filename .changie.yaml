@@ -48,6 +48,7 @@ components:
   - components/yaml
   - docs
   - engine
+  - hcl
   - java
   - pcl
   - pkg

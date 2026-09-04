@@ -318,15 +318,13 @@ func TestConstructCallSecretsUnknowns(t *testing.T) {
 					monitor *deploytest.ResourceMonitor,
 				) (plugin.ConstructResponse, error) {
 					// Assert that "foo" is secret and "bar" is unknown
-					foo := req.Inputs["foo"]
-					assert.True(t, foo.IsOutput())
-					assert.True(t, foo.OutputValue().Known)
-					assert.True(t, foo.OutputValue().Secret)
+					foo := req.Inputs.Get("foo")
+					assert.False(t, foo.IsComputed())
+					assert.True(t, foo.Secret())
 
-					bar := req.Inputs["bar"]
-					assert.True(t, bar.IsOutput())
-					assert.False(t, bar.OutputValue().Known)
-					assert.False(t, bar.OutputValue().Secret)
+					bar := req.Inputs.Get("bar")
+					assert.True(t, bar.IsComputed())
+					assert.False(t, bar.Secret())
 
 					resp, err := monitor.RegisterResource(req.Type, req.Name, false, deploytest.ResourceOptions{})
 					require.NoError(t, err)
@@ -1355,7 +1353,7 @@ func TestComponentRegisteredResourceOutputCanBeHydratedByComponent(t *testing.T)
 						})
 						require.NoError(t, err)
 
-						customResRef := req.Inputs["custom"].ResourceReferenceValue()
+						customResRef := req.Inputs.Get("custom").AsResourceReference()
 
 						state, _, err := rm.Invoke(
 							"pulumi:pulumi:getResource",
@@ -1379,7 +1377,7 @@ func TestComponentRegisteredResourceOutputCanBeHydratedByComponent(t *testing.T)
 							t,
 							resource.PropertyMap{
 								"urn": resource.NewProperty(string(customResRef.URN)),
-								"id":  resource.NewProperty(customResRef.ID.StringValue()),
+								"id":  resource.NewProperty(customResRef.ID.AsString()),
 								"state": resource.NewProperty(resource.PropertyMap{
 									"foo": resource.NewProperty("bar"),
 								}),
@@ -1624,7 +1622,7 @@ func TestComponentReadResourceOutputCanBeHydratedByComponent(t *testing.T) {
 						})
 						require.NoError(t, err)
 
-						customResRef := req.Inputs["custom"].ResourceReferenceValue()
+						customResRef := req.Inputs.Get("custom").AsResourceReference()
 
 						state, _, err := rm.Invoke(
 							"pulumi:pulumi:getResource",
@@ -1648,7 +1646,7 @@ func TestComponentReadResourceOutputCanBeHydratedByComponent(t *testing.T) {
 							t,
 							resource.PropertyMap{
 								"urn": resource.NewProperty(string(customResRef.URN)),
-								"id":  resource.NewProperty(customResRef.ID.StringValue()),
+								"id":  resource.NewProperty(customResRef.ID.AsString()),
 								"state": resource.NewProperty(resource.PropertyMap{
 									"foo": resource.NewProperty("bar"),
 								}),

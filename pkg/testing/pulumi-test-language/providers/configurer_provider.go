@@ -320,7 +320,7 @@ func (p *ConfigurerProvider) Construct(
 		return plugin.ConstructResponse{}, fmt.Errorf("register component: %w", err)
 	}
 
-	providerConfig := req.Inputs["providerConfig"].StringValue()
+	providerConfig := req.Inputs.Get("providerConfig").AsString()
 
 	innerProv, err := monitor.RegisterResource(ctx, &pulumirpc.RegisterResourceRequest{
 		Type:    "pulumi:providers:configurer",

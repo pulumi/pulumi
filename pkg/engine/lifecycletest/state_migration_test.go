@@ -1017,14 +1017,19 @@ func TestStateMigrationS3BucketFold(t *testing.T) {
 
 // TestStateMigrationConstruct exercises this migration inside a remote component:
 //
-//	remote component
-//	└─ resA (managed) -> resB (managed, retaining resA's ID)
+//	pkgA:m:typC "comp"                 pkgA:m:typD "comp"
+//	└─ typA "resA" (managed)    ->     └─ typA "resB" (same ID)
 //
-// The callback attached to the program's remote registration must run before the component provider constructs it.
+// The callback and alias from the program's registration must reach the component provider's registration.
 func TestStateMigrationConstruct(t *testing.T) {
 	t.Parallel()
 
-	childName := "resA"
+	const (
+		oldComponentType = "pkgA:m:typC"
+		newComponentType = "pkgA:m:typD"
+	)
+
+	upgrade := false
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
@@ -1036,6 +1041,10 @@ func TestStateMigrationConstruct(t *testing.T) {
 					resp, err := monitor.RegisterResource(req.Type, req.Name, false, deploytest.ResourceOptions{})
 					require.NoError(t, err)
 
+					childName := "resA"
+					if upgrade {
+						childName = "resB"
+					}
 					_, err = monitor.RegisterResource("pkgA:m:typA", childName, true, deploytest.ResourceOptions{
 						Parent: resp.URN,
 						Inputs: resource.PropertyMap{"foo": resource.NewProperty(1.0)},
@@ -1053,9 +1062,18 @@ func TestStateMigrationConstruct(t *testing.T) {
 		require.NoError(t, err)
 		defer func() { require.NoError(t, callbacks.Close()) }()
 
-		_, err = monitor.RegisterResource("pkgA:m:typC", "comp", false, deploytest.ResourceOptions{
+		componentType := oldComponentType
+		var aliases []*pulumirpc.Alias
+		if upgrade {
+			componentType = newComponentType
+			aliases = []*pulumirpc.Alias{{
+				Alias: &pulumirpc.Alias_Spec_{Spec: &pulumirpc.Alias_Spec{Type: oldComponentType}},
+			}}
+		}
+		_, err = monitor.RegisterResource(tokens.Type(componentType), "comp", false, deploytest.ResourceOptions{
 			Remote:          true,
 			StateMigrations: []*pulumirpc.Callback{renameMigration(t, callbacks, "resA", "resB")},
+			Aliases:         aliases,
 		})
 		return err
 	})
@@ -1064,14 +1082,15 @@ func TestStateMigrationConstruct(t *testing.T) {
 
 	snap, err := runUpdate(t, p, nil, nil)
 	require.NoError(t, err)
-	require.Contains(t, snapURNs(snap), resource.URN("urn:pulumi:test::test::pkgA:m:typC$pkgA:m:typA::resA"))
+	require.Contains(t, snapURNs(snap),
+		resource.URN("urn:pulumi:test::test::pkgA:m:typC$pkgA:m:typA::resA"))
 
-	childName = "resB"
+	upgrade = true
 	snap, err = runUpdate(t, p, snap,
 		validateOps(t, map[display.StepOp]int{deploy.OpSame: 3}))
 	require.NoError(t, err)
 	urns := snapURNs(snap)
-	assert.Contains(t, urns, resource.URN("urn:pulumi:test::test::pkgA:m:typC$pkgA:m:typA::resB"))
+	assert.Contains(t, urns, resource.URN("urn:pulumi:test::test::pkgA:m:typD$pkgA:m:typA::resB"))
 	assert.NotContains(t, urns, resource.URN("urn:pulumi:test::test::pkgA:m:typC$pkgA:m:typA::resA"))
 }
 
