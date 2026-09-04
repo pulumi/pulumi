@@ -65,17 +65,15 @@ type deploymentSettingsEditArgs struct {
 	folder      string
 
 	// VCS toggles
-	previewPRs             bool
-	pushToDeploy           bool
-	prTemplate             bool
-	pathFilters            []string
-	deployTags             bool
-	tagFilters             []string
-	clearTagFilters        bool
-	reviewStackLabels      []string
-	clearReviewStackLabels bool
-	installationID         string
-	deployPullRequest      int64
+	previewPRs        bool
+	pushToDeploy      bool
+	prTemplate        bool
+	pathFilters       []string
+	deployTags        bool
+	tagFilters        []string
+	reviewStackLabels []string
+	installationID    string
+	deployPullRequest int64
 
 	// Runner
 	runnerPool       string
@@ -120,36 +118,34 @@ type deploymentSettingsEditArgs struct {
 }
 
 const (
-	flagGitHubRepo            = "github-repo"
-	flagRepo                  = "repo"
-	flagVCSProvider           = "vcs-provider"
-	flagGitURL                = "git-url"
-	flagBranch                = "branch"
-	flagCommit                = "commit"
-	flagFolder                = "folder"
-	flagPreviewPRs            = "preview-prs"
-	flagPushToDeploy          = "push-to-deploy"
-	flagPRTemplate            = "pr-template"
-	flagPathFilter            = "path-filter"
-	flagDeployTags            = "deploy-tags"
-	flagTagFilter             = "tag-filter"
-	flagClearTagFilters       = "clear-tag-filters"
-	flagReviewStackLabel      = "review-stack-label"
-	flagClearReviewStackLabel = "clear-review-stack-labels"
-	flagInstallationID        = "installation-id"
-	flagDeployPullRequest     = "deploy-pull-request"
-	flagRunnerPool            = "runner-pool"
-	flagExecutorImage         = "executor-image"
-	flagExecutorRootPath      = "executor-root-path"
-	flagPreRunCommand         = "pre-run-command"
-	flagEnv                   = "env"
-	flagSecretEnv             = "secret-env"
-	flagRemoveEnv             = "remove-env"
-	flagRemoveAllEnv          = "remove-all-env"
-	flagSkipInstallDeps       = "skip-install-deps"
-	flagSkipIntermediate      = "skip-intermediate-deployments"
-	flagShell                 = "shell"
-	flagDeleteAfterDestroy    = "delete-after-destroy"
+	flagGitHubRepo         = "github-repo"
+	flagRepo               = "repo"
+	flagVCSProvider        = "vcs-provider"
+	flagGitURL             = "git-url"
+	flagBranch             = "branch"
+	flagCommit             = "commit"
+	flagFolder             = "folder"
+	flagPreviewPRs         = "preview-prs"
+	flagPushToDeploy       = "push-to-deploy"
+	flagPRTemplate         = "pr-template"
+	flagPathFilter         = "path-filter"
+	flagDeployTags         = "deploy-tags"
+	flagTagFilter          = "tag-filter"
+	flagReviewStackLabel   = "review-stack-label"
+	flagInstallationID     = "installation-id"
+	flagDeployPullRequest  = "deploy-pull-request"
+	flagRunnerPool         = "runner-pool"
+	flagExecutorImage      = "executor-image"
+	flagExecutorRootPath   = "executor-root-path"
+	flagPreRunCommand      = "pre-run-command"
+	flagEnv                = "env"
+	flagSecretEnv          = "secret-env"
+	flagRemoveEnv          = "remove-env"
+	flagRemoveAllEnv       = "remove-all-env"
+	flagSkipInstallDeps    = "skip-install-deps"
+	flagSkipIntermediate   = "skip-intermediate-deployments"
+	flagShell              = "shell"
+	flagDeleteAfterDestroy = "delete-after-destroy"
 
 	flagOIDCAWSRoleARN     = "oidc-aws-role-arn"
 	flagOIDCAWSSessionName = "oidc-aws-session-name"
@@ -260,12 +256,10 @@ func newDeploymentSettingsEditCmdWith(factory deploymentSettingsEditClientFactor
 	f.BoolVar(&args.deployTags, flagDeployTags, false,
 		fmt.Sprintf("Run updates for pushed tags (cannot be enabled together with --%s)", flagPushToDeploy))
 	f.StringArrayVar(&args.tagFilters, flagTagFilter, nil,
-		"Replace the tag filter list (repeatable; pass once per filter)")
-	f.BoolVar(&args.clearTagFilters, flagClearTagFilters, false, "Remove every tag filter")
+		"Replace the tag filter list (repeatable; pass once per filter); empty string clears it")
 	f.StringArrayVar(&args.reviewStackLabels, flagReviewStackLabel, nil,
-		"GitHub only: replace the labels that trigger a PR review stack (repeatable)")
-	f.BoolVar(&args.clearReviewStackLabels, flagClearReviewStackLabel, false,
-		"GitHub only: remove every PR review stack label")
+		"GitHub only: replace the labels that trigger a PR review stack (repeatable); "+
+			"empty string clears them")
 	// No backquotes in a flag usage string: pflag reads the first backquoted span as the value
 	// placeholder and strips it, so a quoted command name replaces the flag's type in the help.
 	f.StringVar(&args.installationID, flagInstallationID, "",
@@ -351,8 +345,6 @@ func newDeploymentSettingsEditCmdWith(factory deploymentSettingsEditClientFactor
 	cmd.MarkFlagsMutuallyExclusive(flagRepo, flagGitURL)
 	cmd.MarkFlagsMutuallyExclusive(flagGitHubRepo, flagRepo)
 	cmd.MarkFlagsMutuallyExclusive(flagBranch, flagCommit)
-	cmd.MarkFlagsMutuallyExclusive(flagTagFilter, flagClearTagFilters)
-	cmd.MarkFlagsMutuallyExclusive(flagReviewStackLabel, flagClearReviewStackLabel)
 	cmd.MarkFlagsMutuallyExclusive(flagEnv, flagRemoveAllEnv)
 	cmd.MarkFlagsMutuallyExclusive(flagSecretEnv, flagRemoveAllEnv)
 	cmd.MarkFlagsMutuallyExclusive(flagRemoveEnv, flagRemoveAllEnv)
