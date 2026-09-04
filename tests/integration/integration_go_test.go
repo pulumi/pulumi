@@ -32,7 +32,7 @@ import (
 	"time"
 
 	dap "github.com/google/go-dap"
-	"github.com/grapl-security/pulumi-hcp/sdk/go/hcp"
+	pulumitime "github.com/pulumiverse/pulumi-time/sdk/go/time"
 	"github.com/pulumi/appdash"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -1067,7 +1067,7 @@ func TestAutomation_externalPluginDownload_issue13301(t *testing.T) {
 	require.NoError(t, err)
 
 	ws.SetProgram(func(ctx *pulumi.Context) error {
-		provider, err := hcp.NewProvider(ctx, "hcp", &hcp.ProviderArgs{})
+		provider, err := pulumitime.NewProvider(ctx, "time", &pulumitime.ProviderArgs{})
 		if err != nil {
 			return err
 		}

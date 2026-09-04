@@ -17,13 +17,13 @@ require (
 	github.com/blang/semver v3.5.1+incompatible
 	github.com/creack/pty v1.1.24
 	github.com/google/go-dap v0.12.0
-	github.com/grapl-security/pulumi-hcp/sdk v0.1.14
 	github.com/hexops/autogold v1.3.0
 	github.com/jackc/pgx/v5 v5.9.2
 	github.com/lib/pq v1.12.3
 	github.com/pulumi/appdash v0.0.0-20231130102222-75f619a67231
 	github.com/pulumi/pulumi/pkg/v3 v3.243.0
 	github.com/pulumi/pulumi/sdk/v3 v3.260.0
+	github.com/pulumiverse/pulumi-time/sdk v0.1.0
 	github.com/stretchr/testify v1.12.1
 	github.com/testcontainers/testcontainers-go v0.42.0
 	github.com/testcontainers/testcontainers-go/modules/postgres v0.42.0
