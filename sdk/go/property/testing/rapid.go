@@ -59,7 +59,16 @@ func Primitive() *rapid.Generator[property.Value] {
 }
 
 func String() *rapid.Generator[property.Value] {
-	return rapid.Map(rapid.String(), property.New[string])
+	return rapid.Map(rawString(), property.New[string])
+}
+
+// rawString generates a string. A Go string holds arbitrary bytes, so the generator draws bytes
+// as well as valid UTF-8.
+func rawString() *rapid.Generator[string] {
+	return rapid.OneOf(
+		rapid.String(),
+		rapid.Map(rapid.SliceOf(rapid.Byte()), func(b []byte) string { return string(b) }),
+	)
 }
 
 func Bool() *rapid.Generator[property.Value] { return rapid.Map(rapid.Bool(), property.New[bool]) }

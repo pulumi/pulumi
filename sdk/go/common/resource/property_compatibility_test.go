@@ -55,6 +55,7 @@ func testRoundTripThroughGRPC(t require.TestingT, v property.Value) {
 		KeepUnknowns:     true,
 		KeepSecrets:      true,
 		KeepOutputValues: true,
+		KeepByteString:   true,
 	}
 
 	mm, err := plugin.MarshalPropertyValue("", rm, marshalOpts)
