@@ -58,6 +58,10 @@ const (
 
 	// Indicates that the service supports the combined begin-update endpoint.
 	BeginUpdate APICapability = "begin-update"
+
+	// Indicates that the service supports reading a stack's outputs directly, without
+	// exporting the whole deployment.
+	StackOutputs APICapability = "stack-outputs"
 )
 
 type DeltaCheckpointUploadsConfigV2 struct {
@@ -157,6 +161,9 @@ type Capabilities struct {
 
 	// Indicates whether the service supports the combined begin-update endpoint.
 	BeginUpdate bool
+
+	// Indicates whether the service supports reading a stack's outputs directly.
+	StackOutputs bool
 }
 
 // Parse decodes the CapabilitiesResponse into a Capabilities struct for ease of use.
@@ -222,6 +229,10 @@ func (r CapabilitiesResponse) Parse() (Capabilities, error) {
 		case BeginUpdate:
 			if entry.Version == 1 {
 				parsed.BeginUpdate = true
+			}
+		case StackOutputs:
+			if entry.Version == 1 {
+				parsed.StackOutputs = true
 			}
 		default:
 			continue

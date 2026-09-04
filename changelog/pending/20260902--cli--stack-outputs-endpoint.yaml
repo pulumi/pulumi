@@ -1,0 +1,5 @@
+component: cli
+kind: improvement
+body: Read stack outputs for stack references through the Pulumi Cloud stack outputs
+    endpoint when the service advertises it, instead of exporting the whole deployment
+time: 2026-09-02T00:00:00Z

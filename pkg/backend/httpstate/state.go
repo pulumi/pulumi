@@ -235,6 +235,22 @@ func (b *cloudBackend) getSnapshotStackOutputs(ctx context.Context,
 	ctx, span := cmdutil.StartSpan(ctx, tracer, "cloudBackend.getSnapshotStackOutputs")
 	defer span.End()
 
+	if b.Capabilities(ctx).StackOutputs {
+		stackID, err := b.getCloudStackIdentifier(stackRef)
+		if err != nil {
+			return property.Map{}, err
+		}
+		resp, err := b.client.GetStackOutputs(ctx, stackID)
+		if err != nil {
+			return property.Map{}, err
+		}
+		outputs, err := stack.DecryptStackOutputs(ctx, resp.Outputs, resp.SecretsProviders, secretsProvider)
+		if err != nil {
+			return property.Map{}, err
+		}
+		return resource.FromResourcePropertyMap(outputs), nil
+	}
+
 	untypedDeployment, err := b.exportDeployment(ctx, stackRef, nil /* get latest */)
 	if err != nil {
 		return property.Map{}, err
