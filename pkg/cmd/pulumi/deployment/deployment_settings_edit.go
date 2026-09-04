@@ -65,11 +65,10 @@ type deploymentSettingsEditArgs struct {
 	folder      string
 
 	// VCS toggles
-	previewPRs       bool
-	pushToDeploy     bool
-	prTemplate       bool
-	pathFilters      []string
-	clearPathFilters bool
+	previewPRs   bool
+	pushToDeploy bool
+	prTemplate   bool
+	pathFilters  []string
 
 	// Runner
 	runnerPool       string
@@ -125,7 +124,6 @@ const (
 	flagPushToDeploy       = "push-to-deploy"
 	flagPRTemplate         = "pr-template"
 	flagPathFilter         = "path-filter"
-	flagClearPathFilters   = "clear-path-filters"
 	flagRunnerPool         = "runner-pool"
 	flagExecutorImage      = "executor-image"
 	flagExecutorRootPath   = "executor-root-path"
@@ -243,8 +241,7 @@ func newDeploymentSettingsEditCmdWith(factory deploymentSettingsEditClientFactor
 	f.BoolVar(&args.pushToDeploy, flagPushToDeploy, false, "Run updates for pushed commits")
 	f.BoolVar(&args.prTemplate, flagPRTemplate, false, "Use this stack as a template for PR review stacks")
 	f.StringArrayVar(&args.pathFilters, flagPathFilter, nil,
-		"Replace the path filter list (repeatable; pass once per filter)")
-	f.BoolVar(&args.clearPathFilters, flagClearPathFilters, false, "Remove every path filter")
+		"Replace the path filter list (repeatable; pass once per filter); empty string clears it")
 
 	// Runner
 	f.StringVar(&args.runnerPool, flagRunnerPool, "",
@@ -322,7 +319,6 @@ func newDeploymentSettingsEditCmdWith(factory deploymentSettingsEditClientFactor
 	cmd.MarkFlagsMutuallyExclusive(flagRepo, flagGitURL)
 	cmd.MarkFlagsMutuallyExclusive(flagGitHubRepo, flagRepo)
 	cmd.MarkFlagsMutuallyExclusive(flagBranch, flagCommit)
-	cmd.MarkFlagsMutuallyExclusive(flagPathFilter, flagClearPathFilters)
 	cmd.MarkFlagsMutuallyExclusive(flagEnv, flagRemoveAllEnv)
 	cmd.MarkFlagsMutuallyExclusive(flagSecretEnv, flagRemoveAllEnv)
 	cmd.MarkFlagsMutuallyExclusive(flagRemoveEnv, flagRemoveAllEnv)
