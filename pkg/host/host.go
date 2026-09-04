@@ -282,14 +282,34 @@ func (host *defaultHost) AttachDebugger(spec plugin.DebugSpec) bool {
 func (host *defaultHost) loadPlugin(
 	loadRequestChannel chan pluginLoadRequest, load func() (any, error),
 ) (any, error) {
-	var plugin any
+	release, err := host.beginLoad()
+	if err != nil {
+		return nil, err
+	}
+	defer release()
+	return host.runOnLoader(loadRequestChannel, load)
+}
 
-	locked := host.pluginLock.TryRLock()
-	if !locked {
+// beginLoad takes the read lock that holds off shutdown until the load completes, and returns the
+// function that releases it. Do not call it while the caller already holds the read lock: a waiting
+// writer blocks new readers, so a second read lock can deadlock against Close.
+func (host *defaultHost) beginLoad() (func(), error) {
+	if !host.pluginLock.TryRLock() {
 		// If we couldn't get a read lock that must be because we're shutting down, so just return an error.
 		return nil, errors.New("plugin host is shutting down")
 	}
-	defer host.pluginLock.RUnlock()
+	return host.pluginLock.RUnlock, nil
+}
+
+// runOnLoader runs load on the goroutine that drains loadRequestChannel, which serializes access to
+// the host's plugin maps. The caller must hold the read lock that beginLoad takes.
+//
+// Only work that touches the plugin maps belongs here. A plugin that talks back to the engine while
+// it boots deadlocks if its boot occupies the loader goroutine.
+func (host *defaultHost) runOnLoader(
+	loadRequestChannel chan pluginLoadRequest, load func() (any, error),
+) (any, error) {
+	var plugin any
 
 	result := make(chan error)
 	loadRequestChannel <- pluginLoadRequest{
@@ -346,76 +366,85 @@ func (host *defaultHost) PolicyAnalyzer(
 	return hostedPlugin.(plugin.Analyzer), nil
 }
 
+// Provider boots a resource provider for ctx. Resource providers are not memoized, so only the
+// bookkeeping runs on the loader goroutine; the boot itself runs here. A provider may ask the
+// engine to load another provider while it boots -- a component provider resolves the providers it
+// wraps before it reports its port -- and that nested load needs the loader goroutine to be free.
 func (host *defaultHost) Provider(
 	ctx *plugin.Context, descriptor workspace.PluginDescriptor, e env.Env,
 ) (plugin.Provider, error) {
-	hostedPlugin, err := host.loadPlugin(host.loadRequests, func() (any, error) {
-		pkg := descriptor.Name
-		version := descriptor.Version
+	release, err := host.beginLoad()
+	if err != nil {
+		return nil, err
+	}
+	defer release()
 
-		// Try to load and bind to a plugin.
+	pkg := descriptor.Name
+	version := descriptor.Version
 
-		result := make(map[string]string)
-		for k, v := range ctx.Config() {
-			if k.Namespace() != pkg {
-				continue
-			}
-			result[k.Name()] = v
+	// Try to load and bind to a plugin.
+
+	result := make(map[string]string)
+	for k, v := range ctx.Config() {
+		if k.Namespace() != pkg {
+			continue
 		}
-		jsonConfig, err := json.Marshal(result)
-		if err != nil {
-			return nil, fmt.Errorf("Could not marshal config to JSON: %w", err)
-		}
-		plug, err := plugin.NewProvider(
-			host, ctx, descriptor,
-			ctx.RuntimeOptions(), ctx.DisableProviderPreview(), string(jsonConfig), ctx.ProjectName(), e,
-		)
-		if err == nil && plug != nil {
-			info, infoerr := plug.GetPluginInfo(ctx.Request())
-			if infoerr != nil {
-				contract.IgnoreClose(plug)
-				return nil, infoerr
-			}
+		result[k.Name()] = v
+	}
+	jsonConfig, err := json.Marshal(result)
+	if err != nil {
+		return nil, fmt.Errorf("Could not marshal config to JSON: %w", err)
+	}
+	plug, err := plugin.NewProvider(
+		host, ctx, descriptor,
+		ctx.RuntimeOptions(), ctx.DisableProviderPreview(), string(jsonConfig), ctx.ProjectName(), e,
+	)
+	if err != nil || plug == nil {
+		return nil, err
+	}
+	info, infoerr := plug.GetPluginInfo(ctx.Request())
+	if infoerr != nil {
+		contract.IgnoreClose(plug)
+		return nil, infoerr
+	}
 
-			// Warn if the plugin version was not what we expected
-			if version != nil && !env.Dev.Value() {
-				if info.Version == nil || !info.Version.GTE(*version) {
-					var v string
-					if info.Version != nil {
-						v = info.Version.String()
-					}
-					ctx.Diag.Warningf(
-						diag.Message("", /*urn*/
-							"resource plugin %s is expected to have version >=%s, but has %s; "+
-								"the wrong version may be on your path, or this may be a bug in the plugin"),
-						pkg, version.String(), v,
-					)
+	_, err = host.runOnLoader(host.loadRequests, func() (any, error) {
+		// Warn if the plugin version was not what we expected
+		if version != nil && !env.Dev.Value() {
+			if info.Version == nil || !info.Version.GTE(*version) {
+				var v string
+				if info.Version != nil {
+					v = info.Version.String()
 				}
-			}
-
-			// Record the result and add the plugin's info to our list of loaded plugins if it's the first copy of its
-			// kind.
-			key := pkg
-			if info.Version != nil {
-				key += info.Version.String()
-			}
-			_, alreadyReported := host.reportedResourcePlugins[key]
-			if !alreadyReported {
-				host.reportedResourcePlugins[key] = struct{}{}
-			}
-			host.resourcePlugins[plug] = &resourcePlugin{
-				Plugin: plug, Info: info, Name: pkg, ctx: ctx.LifetimeContext(),
+				ctx.Diag.Warningf(
+					diag.Message("", /*urn*/
+						"resource plugin %s is expected to have version >=%s, but has %s; "+
+							"the wrong version may be on your path, or this may be a bug in the plugin"),
+					pkg, version.String(), v,
+				)
 			}
 		}
 
-		return plug, err
+		// Record the result and add the plugin's info to our list of loaded plugins if it's the first copy of its
+		// kind.
+		key := pkg
+		if info.Version != nil {
+			key += info.Version.String()
+		}
+		_, alreadyReported := host.reportedResourcePlugins[key]
+		if !alreadyReported {
+			host.reportedResourcePlugins[key] = struct{}{}
+		}
+		host.resourcePlugins[plug] = &resourcePlugin{
+			Plugin: plug, Info: info, Name: pkg, ctx: ctx.LifetimeContext(),
+		}
+		return nil, nil
 	})
-	if hostedPlugin == nil || err != nil {
+	if err != nil {
 		return nil, err
 	}
 
-	provider := hostedPlugin.(plugin.Provider)
-	return hostManagedProvider{provider, host}, nil
+	return hostManagedProvider{plug, host}, nil
 }
 
 // hostManagedProvider wraps a Provider such that it can be closed by the host that created it.
