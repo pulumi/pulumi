@@ -27,6 +27,8 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"github.com/zclconf/go-cty/cty"
 )
 
 type exprTestCase struct {
@@ -250,6 +252,26 @@ func TestArgumentTypeName(t *testing.T) {
 	assert.Equal(t,
 		g.argumentTypeName(model.NewOutputType(model.StringType), false /*isInput*/),
 		g.argumentTypeName(model.StringType, true /*isInput*/))
+}
+
+func TestArgumentTypeNameMixedNullObjectIsDeterministic(t *testing.T) {
+	t.Parallel()
+
+	g := newTestGenerator(t, filepath.Join("transpiled_examples", "random-pp", "random.pp"))
+
+	// PCL represents a null literal as a ConstType whose underlying type is
+	// NoneType. An object with null and non-null values is not uniform. Go can
+	// select a different starting position each time it iterates over this map,
+	// but the generated type must not depend on that position.
+	nullType := model.NewConstType(model.NoneType, cty.NullVal(cty.DynamicPseudoType))
+	mixedObjectType := model.NewObjectType(map[string]model.Type{
+		"null":  nullType,
+		"value": model.StringType,
+	})
+	for i := 0; i < 1000; i++ {
+		require.Equal(t, "map[string]interface{}", g.argumentTypeName(mixedObjectType, false /*isInput*/),
+			"map type changed on iteration %d", i)
+	}
 }
 
 func TestNotYetImplementedEmittedWhenGeneratingFunctions(t *testing.T) {
