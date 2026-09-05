@@ -19,6 +19,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"maps"
 	"strings"
 
@@ -28,6 +29,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/schemainfo"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
 	hclsyntax "github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
@@ -36,6 +38,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -270,8 +273,10 @@ func (pc *packageCommand) newResourceReadCommand(res *schema.Resource) *cobra.Co
 				if err != nil {
 					return nil, err
 				}
-				if readNotFound(response) {
-					return nil, fmt.Errorf("resource %q was not found", args[0])
+				verdict := classifyRead(response)
+				logReadVerdict(ctx, "read", res.Token, resource.ID(args[0]), verdict)
+				if verdict.missing() {
+					return nil, errResourceNotFound(args[0])
 				}
 				if response.ID != "" {
 					id = response.ID
@@ -345,8 +350,10 @@ func (pc *packageCommand) newStatelessResourcePatchCommand(res *schema.Resource)
 			if err != nil {
 				return err
 			}
-			if readNotFound(read) {
-				return fmt.Errorf("resource %q was not found", args[0])
+			verdict := classifyRead(read)
+			logReadVerdict(ctx, "patch", res.Token, id, verdict)
+			if verdict.missing() {
+				return errResourceNotFound(args[0])
 			}
 			// AllowMissingProperties because a patch typically only specifies the fields being changed; the binder
 			// would otherwise reject any partial patch that omits a required input.
@@ -360,7 +367,7 @@ func (pc *packageCommand) newStatelessResourcePatchCommand(res *schema.Resource)
 
 			newInputs := read.Inputs.Copy()
 			maps.Copy(newInputs, patch)
-			return pc.runStatelessUpdate(cmd, res, id, read, newInputs, "patch", yes)
+			return pc.runStatelessUpdate(cmd, res, id, read, newInputs, "patch", reportMissing, yes)
 		},
 	}
 	cmd.Flags().StringVar(&inputFormat, "input", "yaml", "Format of the configuration files")
@@ -371,9 +378,25 @@ func (pc *packageCommand) newStatelessResourcePatchCommand(res *schema.Resource)
 	return cmd
 }
 
+// missingPolicy says what an operation should report when its provider call fails and the resource
+// turns out to have been deleted underneath it.
+type missingPolicy bool
+
+const (
+	// reportMissing suits operations that have nothing left to do once the resource is gone, so a
+	// resource that vanished mid-flight is reported exactly as the pre-flight Read would have
+	// reported it: not found.
+	reportMissing missingPolicy = true
+	// keepFailure suits operations for which "not found" is not a meaningful outcome — upsert would
+	// have created the resource had it known, so answering not-found would tell a caller to stop
+	// when the correct response is to run again and create it.
+	keepFailure missingPolicy = false
+)
+
 func (pc *packageCommand) runStatelessUpdate(
 	cmd *cobra.Command, res *schema.Resource, id resource.ID,
-	read plugin.ReadResponse, newInputs resource.PropertyMap, operation string, yes bool,
+	read plugin.ReadResponse, newInputs resource.PropertyMap, operation string,
+	missing missingPolicy, yes bool,
 ) error {
 	ctx := cmd.Context()
 	urn := resourceURN(res)
@@ -419,6 +442,11 @@ func (pc *packageCommand) runStatelessUpdate(
 			Preview:    pc.dryrun,
 		})
 		if err != nil {
+			// Same race as the delete path: the resource can be removed between our pre-flight Read
+			// and this call, leaving a provider error a caller cannot classify.
+			if missing == reportMissing && pc.resourceGoneAfterFailure(ctx, operation, urn, id) {
+				return nil, errResourceNotFound(string(id))
+			}
 			return nil, err
 		}
 		return resultState(urn, id, checked, response.Properties, res), nil
@@ -462,8 +490,10 @@ func (pc *packageCommand) newResourceDeleteCommand(res *schema.Resource) *cobra.
 			if err != nil {
 				return err
 			}
-			if readNotFound(response) {
-				return fmt.Errorf("resource %q was not found", args[0])
+			verdict := classifyRead(response)
+			logReadVerdict(ctx, "delete", res.Token, resource.ID(args[0]), verdict)
+			if verdict.missing() {
+				return errResourceNotFound(args[0])
 			}
 			id := response.ID
 			if id == "" {
@@ -490,6 +520,9 @@ func (pc *packageCommand) newResourceDeleteCommand(res *schema.Resource) *cobra.
 					Inputs:  response.Inputs,
 					Outputs: response.Outputs,
 				})
+				if err != nil && pc.resourceGoneAfterFailure(ctx, "delete", urn, id) {
+					return nil, errResourceNotFound(args[0])
+				}
 				return nil, err
 			})
 		},
@@ -624,8 +657,223 @@ func (pc *packageCommand) checkResourceInputs(
 	return checked.Properties, nil
 }
 
+// readNotFound reports whether a Read response describes a resource that is no longer there.
+//
+// Providers signal absence in more than one shape. The obvious ones are a nil state bag or a blank
+// ID. Bridged providers add a third: when the refresh behind Read 404s they warn ("Automatically
+// removing from Terraform State"), drop the state, and still echo the requested import ID back,
+// leaving a non-blank ID paired with an empty property bag. Reading that as "found" is what makes a
+// repeated delete of an already-deleted resource issue a real Delete against emptied state, which
+// the provider rejects with its own error (`MissingParameter: groupName or groupId`) instead of the
+// not-found a caller can branch on.
+//
+// So an ID on its own does not count as found. Delete and Update both need the resource's real
+// inputs/outputs — as the Read-before-Delete comment above notes, the terraform-pf bridge fails
+// outright when handed an ID and no state — so a response carrying no state is one we could not act
+// on even if the resource did exist.
+//
+// Explicitly NOT covered: the converse half of #23916, where `aws:cloudwatch/eventTarget` reports a
+// resource that is still there as missing. Its create hands back an ID joined with a dash
+// (`<rule>-<target>`) while its Read expects the slash form, so Read is handed an ID it cannot
+// resolve, legitimately finds nothing, and we correctly conclude "not found" from what we were
+// given. That is an ID-format bug on the provider side and is invisible from here.
+//
+// Mind the direction before extending this function to chase it: that failure is a resource we
+// skipped deleting, so anything that widens not-found detection makes it *worse*, not better —
+// more live resources silently orphaned, which is the more damaging of the two failure modes. The
+// two halves of that issue pull in opposite directions and only one of them lives in this file.
 func readNotFound(read plugin.ReadResponse) bool {
-	return read.Outputs == nil || read.ID == ""
+	return classifyRead(read).missing()
+}
+
+// Stable identifiers for the structured records this package emits. Consumers key off these rather
+// than off message text, which is not a compatibility surface.
+const (
+	// eventReadVerdict is emitted once per pre-flight Read, whatever the outcome, so a log pipeline
+	// can see the normal paths as well as the missing ones.
+	eventReadVerdict = "pulumi.do.read.verdict"
+	// eventRecheck is emitted only when a Delete or Update failed and resourceGoneAfterFailure ran,
+	// which makes its presence the signal that the re-read path fired.
+	eventRecheck = "pulumi.do.mutation.recheck"
+)
+
+// readVerdict records which rule decided whether a Read described a live resource. Keeping the
+// reason rather than a bare bool is what lets the logs distinguish an ordinary absence (the
+// provider blanked the ID) from the #23916 shape (an echoed ID over an empty bag), which are the
+// same outcome but very different provider behaviour.
+type readVerdict string
+
+const (
+	readPresent readVerdict = "present"
+	// readBlankID is the shape a well-behaved provider returns for a missing resource.
+	readBlankID readVerdict = "blank-id"
+	// readNilState is a provider that returned no property bag at all.
+	readNilState readVerdict = "nil-state"
+	// readEmptyState is the #23916 shape: a non-blank ID over a bag with nothing in it. A spike
+	// here is the signal that a provider is echoing IDs for resources that are gone.
+	readEmptyState readVerdict = "empty-state"
+)
+
+func (v readVerdict) missing() bool { return v != readPresent }
+
+// classifyRead is the decision behind readNotFound, split out so the reason survives for logging
+// and so the rules can be tested exhaustively without going through a command.
+//
+// The three rules do not rest on equally firm ground, which is worth knowing before changing them:
+//
+//   - readNilState is the documented contract. plugin.ReadResult.Outputs says "if this field is
+//     nil, the resource does not exist", and Provider.Read repeats it. Any provider, any version.
+//   - readBlankID is undocumented — ReadResult.ID claims it "will always be populated" — but it is
+//     what the engine's refresh has always done (see RefreshStep.Apply, "if the ID is blank treat
+//     this as a delete"). A provider that violated it would have visibly broken `pulumi refresh`
+//     long ago, so it is safe in practice even though the doc comment disagrees.
+//   - readEmptyState is neither documented nor used by the engine. It is inferred from observed
+//     bridge behaviour and is the one assumption here that could misfire: it reads a live resource
+//     that genuinely has no properties as missing. Note that it can only trigger where a provider
+//     has already broken the documented contract by returning non-nil Outputs for a resource that
+//     is gone — for a conforming provider this branch is unreachable on the missing path.
+//
+// None of this keys on a provider name or version; the rules are about response shape only.
+func classifyRead(read plugin.ReadResponse) readVerdict {
+	switch {
+	case read.ID == "":
+		return readBlankID
+	case read.Outputs == nil:
+		return readNilState
+	case !hasResourceState(read.Inputs) && !hasResourceState(read.Outputs):
+		return readEmptyState
+	default:
+		return readPresent
+	}
+}
+
+// logReadVerdict records how a pre-flight Read was classified. Emitted on every operation that
+// reads before acting, present or missing, so the absence of a record is never ambiguous.
+func logReadVerdict(ctx context.Context, operation, resourceType string, id resource.ID, v readVerdict) {
+	slog.InfoContext(ctx, "do: classified resource read",
+		"event", eventReadVerdict,
+		"operation", operation,
+		"resourceType", resourceType,
+		"resourceId", string(id),
+		"verdict", string(v),
+		"missing", v.missing(),
+	)
+}
+
+// resourceNotFoundError reports that the resource an operation targeted is not there.
+//
+// It carries cmdCmd.ExitResourceNotFound so a caller can classify the outcome from the process exit
+// code rather than by matching error text, which is not a stable interface across releases — the
+// distinction between "already gone, stop retrying" and "this failed, retry" is exactly what a
+// reconcile loop needs and exactly what a shared exit code of 1 destroys.
+//
+// The message is byte-for-byte what the plain fmt.Errorf produced before, so callers already
+// matching on the text keep working; the exit code is additive.
+type resourceNotFoundError struct {
+	id string
+}
+
+func (e resourceNotFoundError) Error() string {
+	return fmt.Sprintf("resource %q was not found", e.id)
+}
+
+// CustomExitCode implements cmdCmd.CustomExitCodeError.
+func (e resourceNotFoundError) CustomExitCode() int {
+	return cmdCmd.ExitResourceNotFound
+}
+
+// errResourceNotFound builds the not-found error every operation in this package reports, so the
+// message and the exit code stay in step across all of them.
+func errResourceNotFound(id string) error {
+	return resourceNotFoundError{id: id}
+}
+
+// resourceGoneAfterFailure re-reads a resource whose Delete or Update has just failed, to tell "the
+// operation failed" apart from "something else deleted it in between". Callers that retry on their
+// own timers can have two invocations in flight at once: both clear the pre-flight Read, one
+// deletes, and the other gets whatever the provider says about operating on an object that is
+// already gone — a message with no not-found marker to branch on, which is the same classification
+// problem readNotFound solves for the emptied-read case.
+//
+// The bound here is structural rather than a retry budget: this issues exactly one Read and never
+// re-attempts the failed operation, so an invocation makes at most three provider calls (Read,
+// Delete or Update, Read) no matter what any of them return. There is no edge back to the mutation,
+// so there is no loop to bound.
+//
+// The failed operation's error is the default answer; this only overrides it on positive evidence of
+// absence. If the re-read errors, or comes back carrying any state at all — including the partial
+// state an eventually-consistent backend may serve while it settles — the original error is
+// reported unchanged. A caller retrying on a timer then gets the clean not-found from a later
+// invocation's pre-flight Read once the backend has converged, which is the right place for that
+// wait: the caller already has a retry policy, and a second one nested inside a single invocation
+// would only fight it.
+func (pc *packageCommand) resourceGoneAfterFailure(
+	ctx context.Context, operation string, urn resource.URN, id resource.ID,
+) bool {
+	// One record per re-read, covering every outcome. Emitting on the failure paths too is what
+	// makes this usable as a rate: a rising share of "read-failed" means the re-read is not
+	// answering the question, not that the race stopped happening.
+	log := func(outcome string, v readVerdict, detail error) {
+		attrs := []any{
+			"event", eventRecheck,
+			"operation", operation,
+			"resourceType", string(urn.Type()),
+			"resourceId", string(id),
+			"outcome", outcome,
+			"reclassified", outcome == "gone",
+		}
+		if v != "" {
+			attrs = append(attrs, "verdict", string(v))
+		}
+		if detail != nil {
+			attrs = append(attrs, "err", detail.Error())
+		}
+		slog.InfoContext(ctx, "do: re-read resource after failed mutation", attrs...)
+	}
+
+	// An incident lever, not a circuit breaker — a breaker cannot work here, because each
+	// invocation is one process performing one mutation and so issues at most one re-read; there is
+	// no sequence of failures for in-process state to observe. What this does buy is the ability to
+	// shed the extra call fleet-wide, without redeploying, while a provider is rate limiting and
+	// the re-read is likely to be throttled too (adding load and returning no classification).
+	// Still logged, so a dashboard shows the switch being thrown rather than going quiet in a way
+	// that looks like the race stopped happening.
+	if env.Global().GetBool(env.DoSkipRecheck) {
+		log("skipped", "", nil)
+		return false
+	}
+
+	response, err := pc.provider.Read(ctx, plugin.ReadRequest{
+		URN:    urn,
+		Name:   urn.Name(),
+		Type:   urn.Type(),
+		ID:     id,
+		Inputs: resource.PropertyMap{},
+		State:  resource.PropertyMap{},
+	})
+	if err != nil {
+		log("read-failed", "", err)
+		return false
+	}
+	verdict := classifyRead(response)
+	if verdict.missing() {
+		log("gone", verdict, nil)
+		return true
+	}
+	log("present", verdict, nil)
+	return false
+}
+
+// hasResourceState reports whether a property bag carries anything beyond the resource's own ID.
+// A lone "id" is ignored: it just duplicates ReadResponse.ID and says nothing about whether the
+// remote object is still there.
+func hasResourceState(props resource.PropertyMap) bool {
+	for key := range props {
+		if key != "id" {
+			return true
+		}
+	}
+	return false
 }
 
 func resultOutputs(id resource.ID, outputs resource.PropertyMap, res *schema.Resource) resource.PropertyMap {

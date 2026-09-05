@@ -16,6 +16,7 @@ package cmd
 
 import (
 	"errors"
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -39,6 +40,18 @@ func TestExitCodeFor_KnownErrors(t *testing.T) {
 			name: "bail error",
 			err:  result.BailError(errors.New("bail")),
 			want: ExitCodeError,
+		},
+		{
+			name: "custom exit code",
+			err:  customExitCodeErr{code: ExitResourceNotFound},
+			want: ExitResourceNotFound,
+		},
+		{
+			// Errors pick up context on the way out, so the code has to survive wrapping. A bare
+			// type assertion would miss this and collapse it to the generic error code.
+			name: "wrapped custom exit code",
+			err:  fmt.Errorf("delete failed: %w", customExitCodeErr{code: ExitResourceNotFound}),
+			want: ExitResourceNotFound,
 		},
 		{
 			name: "login required",
@@ -129,3 +142,10 @@ func TestExitCodeFor_KnownErrors(t *testing.T) {
 func wrap(outer error, inner error) error {
 	return errors.Join(outer, inner)
 }
+
+// customExitCodeErr is a stand-in for any error carrying its own exit code, e.g. the not-found
+// error `pulumi do` reports.
+type customExitCodeErr struct{ code int }
+
+func (e customExitCodeErr) Error() string       { return "custom" }
+func (e customExitCodeErr) CustomExitCode() int { return e.code }
