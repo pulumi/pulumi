@@ -130,7 +130,10 @@ var NeoSummaryMaxLen = env.Int("NEO_SUMMARY_MAXLEN",
 var CopilotSummaryMaxLen = NeoSummaryMaxLen
 
 var FallbackToStateSecretsManager = env.Bool("FALLBACK_TO_STATE_SECRETS_MANAGER",
-	"Use the snapshot secrets manager as a fallback when the stack configuration is missing or incomplete.")
+	"Use the snapshot secrets manager as a fallback when the stack configuration is missing or incomplete. "+
+		"Set this if you see secret decryption errors when running from a workspace that doesn't carry local "+
+		"stack configuration between invocations, such as the Automation API or a saved update plan applied "+
+		"from a different directory (see https://github.com/pulumi/pulumi/issues/16412).")
 
 var Parallel = env.Int("PARALLEL",
 	"Allow P resource operations to run in parallel at once (1 for no parallelism)")
