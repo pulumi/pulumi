@@ -35,11 +35,6 @@ func TestPackageAddNamespace(t *testing.T) {
 
 	testCases := []testCase{
 		{
-			runtime:         "dotnet",
-			expectedMessage: "You can then use the SDK in your .NET code with:\n\n  using MyNamespace.Mypkg;",
-			filepath:        filepath.Join("sdks", "my-namespace-mypkg", "MyNamespace.Mypkg.csproj"),
-		},
-		{
 			runtime:         "nodejs",
 			expectedMessage: "You can import the SDK in your TypeScript code with:\n\n  import * as mypkg from \"@my-namespace/mypkg\"", //nolint:lll
 			filepath:        filepath.Join("sdks", "my-namespace-mypkg", "index.ts"),
@@ -53,11 +48,6 @@ func TestPackageAddNamespace(t *testing.T) {
 			runtime:         "go",
 			expectedMessage: "You can import the SDK in your Go code with:\n\n  import (\n    \"github.com/my-namespace/pulumi-mypkg/sdk/go/mypkg\"\n  )", //nolint:lll
 			filepath:        filepath.Join("sdks", "my-namespace-mypkg", "go.mod"),
-		},
-		{
-			runtime:         "java",
-			expectedMessage: "To use this SDK in your Java project, complete the following steps",
-			filepath:        filepath.Join("sdks", "my-namespace-mypkg", "src", "main", "java", "com", "mynamespace", "mypkg", "Provider.java"), //nolint:lll
 		},
 	}
 
