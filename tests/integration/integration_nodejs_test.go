@@ -1358,6 +1358,37 @@ func TestESMTSX(t *testing.T) {
 	e.RunCommand("pulumi", "destroy", "--skip-preview")
 }
 
+func TestExternalLoaderNub(t *testing.T) {
+	t.Parallel()
+	dir := filepath.Join("nodejs", "external-loader-nub")
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+	e.ImportDirectory(dir)
+	stackName := ptesting.RandomStackName()
+	e.InstallDependencies()
+	e.RunCommand("npm", "run", "check")
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+	e.RunCommand("pulumi", "stack", "init", stackName)
+	e.RunCommand("pulumi", "stack", "select", stackName)
+	e.RunCommand("pulumi", "up", "--yes")
+	stdout, _ := e.RunCommand("pulumi", "stack", "export")
+	var stackExport map[string]any
+	require.NoError(t, json.Unmarshal([]byte(stdout), &stackExport))
+	resources := stackExport["deployment"].(map[string]any)["resources"].([]any)
+	var outputs map[string]any
+	for _, resource := range resources {
+		resourceMap := resource.(map[string]any)
+		if resourceMap["type"] == "pulumi:pulumi:Stack" {
+			outputs = resourceMap["outputs"].(map[string]any)
+			break
+		}
+	}
+	require.NotNil(t, outputs)
+	require.Equal(t, "dynamic-value", outputs["dynamicId"])
+	require.Greater(t, outputs["serializedLength"].(float64), 0.0)
+	e.RunCommand("pulumi", "destroy", "--skip-preview")
+}
+
 func TestESMTSAuto(t *testing.T) {
 	t.Parallel()
 	dir := filepath.Join("nodejs", "esm-ts-auto")

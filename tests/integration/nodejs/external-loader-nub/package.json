@@ -1,0 +1,16 @@
+{
+    "name": "external-loader-nub",
+    "license": "Apache-2.0",
+    "type": "module",
+    "scripts": {
+        "check": "tsc --noEmit"
+    },
+    "dependencies": {
+        "@nubjs/loader": "0.8.3",
+        "@pulumi/pulumi": "latest",
+        "typescript": "5.9.3"
+    },
+    "devDependencies": {
+        "@types/node": "20.19.26"
+    }
+}

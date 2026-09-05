@@ -1,0 +1,4 @@
+component: sdk/nodejs
+kind: improvement
+body: Add external TypeScript loader integration coverage
+time: 2026-09-05T19:39:00-07:00

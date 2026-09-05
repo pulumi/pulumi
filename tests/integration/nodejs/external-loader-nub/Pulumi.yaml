@@ -1,0 +1,8 @@
+name: external-loader-nub
+main: index.ts
+runtime:
+  name: nodejs
+  options:
+    typescript: false
+    nodeargs: "--require @nubjs/loader"
+description: Run an ESM TypeScript program through an external Node loader.
