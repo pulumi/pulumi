@@ -1165,6 +1165,14 @@ func (p *provider) Configure(ctx context.Context, req ConfigureRequest) (Configu
 	return ConfigureResponse{}, nil
 }
 
+// AwaitConfigure blocks until the asynchronous Configure call issued earlier has completed and
+// returns its error, if any. Configure returns before the RPC finishes so that the engine can make
+// progress elsewhere; callers that need the outcome up front (e.g. preflight checks) use this.
+func (p *provider) AwaitConfigure(ctx context.Context) error {
+	_, _, err := p.getPluginConfig(ctx)
+	return err
+}
+
 // Check validates that the given property bag is valid for a resource of the given type.
 func (p *provider) Check(ctx context.Context, req CheckRequest) (CheckResponse, error) {
 	// We either leave Name&Type empty and fill them in from the URN, or they must match the URN.

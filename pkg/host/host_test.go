@@ -395,3 +395,23 @@ func TestDefaultHostLanguageRuntimeInstallsOnDemand(t *testing.T) {
 	assert.Equal(t, 1, installCalls)
 	assert.Equal(t, "test-lang", gotRuntime)
 }
+
+type awaitingMockProvider struct {
+	*plugin.MockProvider
+	err error
+}
+
+func (p *awaitingMockProvider) AwaitConfigure(context.Context) error { return p.err }
+
+func TestHostManagedProviderAwaitConfigure(t *testing.T) {
+	t.Parallel()
+
+	var _ plugin.ConfigureAwaiter = hostManagedProvider{}
+
+	want := errors.New("configure failed")
+	pc := hostManagedProvider{Provider: &awaitingMockProvider{MockProvider: &plugin.MockProvider{}, err: want}}
+	require.ErrorIs(t, pc.AwaitConfigure(t.Context()), want)
+
+	pc = hostManagedProvider{Provider: &plugin.MockProvider{}}
+	require.NoError(t, pc.AwaitConfigure(t.Context()))
+}

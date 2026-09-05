@@ -425,6 +425,16 @@ type hostManagedProvider struct {
 	host *defaultHost
 }
 
+// AwaitConfigure forwards to the wrapped provider when it supports plugin.ConfigureAwaiter; embedding the
+// Provider interface would otherwise hide the optional method. Providers that configure synchronously have
+// nothing to wait for.
+func (pc hostManagedProvider) AwaitConfigure(ctx context.Context) error {
+	if awaiter, ok := pc.Provider.(plugin.ConfigureAwaiter); ok {
+		return awaiter.AwaitConfigure(ctx)
+	}
+	return nil
+}
+
 // Overrides the wrapped provider's implementation of Provider.Close to ask the managing plugin host to close the
 // provider.
 func (pc hostManagedProvider) Close() error {
