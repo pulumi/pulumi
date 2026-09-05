@@ -543,6 +543,140 @@ func TestUpdateEnvironment(t *testing.T) {
 	})
 }
 
+func TestCreateEnvironmentRevision(t *testing.T) {
+	t.Parallel()
+
+	const path = "/api/esc/environments/test-org/test-project/test-env/versions"
+
+	t.Run("OK", func(t *testing.T) {
+		t.Parallel()
+		yaml := []byte("values:\n  pulumiConfig:\n    a: b\n")
+		// A 200 can carry diagnostics of its own: the service checks the definition it just committed and
+		// reports non-error findings alongside the revision it created. The response body below is written
+		// out literally, with the field names the service's own apitype declares, rather than marshalled
+		// from CreateEnvironmentRevisionResponse -- encoding through the type under test would agree with
+		// any struct tag, including a wrong one, and silently drop every warning on the success path.
+		const responseBody = `{
+			"number": 8,
+			"parent": 5,
+			"objectName": "c4f01a9",
+			"diagnostics": [{
+				"summary": "value cannot be overridden",
+				"severity": "warning",
+				"range": {
+					"environment": "test-env",
+					"begin": {"line": 3, "column": 5, "byte": 24},
+					"end": {"line": 3, "column": 6, "byte": 25}
+				}
+			}]
+		}`
+		expected := []EnvironmentDiagnostic{{
+			Range: &esc.Range{
+				Environment: "test-env",
+				Begin:       esc.Pos{Line: 3, Column: 5, Byte: 24},
+				End:         esc.Pos{Line: 3, Column: 6, Byte: 25},
+			},
+			Summary:  "value cannot be overridden",
+			Severity: DiagWarning,
+		}}
+
+		client := newTestClient(t, http.MethodPost, path, func(w http.ResponseWriter, r *http.Request) {
+			// The parent travels as a query parameter, not as a header and not in the body.
+			assert.Equal(t, "5", r.URL.Query().Get("parent"))
+
+			body, err := io.ReadAll(r.Body)
+			require.NoError(t, err)
+			assert.JSONEq(t, `{"definition":"values:\n  pulumiConfig:\n    a: b\n"}`, string(body))
+			// The route accepts no If-Match, so the client must not invent one.
+			assert.Empty(t, r.Header.Get("ETag"))
+
+			w.WriteHeader(http.StatusOK)
+			_, err = w.Write([]byte(responseBody))
+			require.NoError(t, err)
+		})
+
+		resp, diags, err := client.CreateEnvironmentRevision(
+			t.Context(), "test-org", "test-project", "test-env", yaml, "5")
+		require.NoError(t, err)
+		require.NotNil(t, resp)
+		assert.Equal(t, 8, resp.Number)
+		assert.Equal(t, 5, resp.Parent)
+		assert.Equal(t, "c4f01a9", resp.ObjectName)
+		// Advisory diagnostics reach the caller with the revision, which is what lets the config commands
+		// print them without failing the write.
+		assert.Equal(t, expected, resp.Diagnostics)
+		assert.Equal(t, expected, diags)
+	})
+
+	t.Run("No parent", func(t *testing.T) {
+		t.Parallel()
+
+		client := newTestClient(t, http.MethodPost, path, func(w http.ResponseWriter, r *http.Request) {
+			// An empty parent means "latest": the parameter is omitted rather than sent empty, so the
+			// service applies its own default.
+			assert.NotContains(t, r.URL.RawQuery, "parent")
+
+			w.WriteHeader(http.StatusOK)
+			err := json.NewEncoder(w).Encode(CreateEnvironmentRevisionResponse{Number: 2, Parent: 1})
+			require.NoError(t, err)
+		})
+
+		resp, diags, err := client.CreateEnvironmentRevision(
+			t.Context(), "test-org", "test-project", "test-env", nil, "")
+		require.NoError(t, err)
+		require.NotNil(t, resp)
+		assert.Equal(t, 2, resp.Number)
+		// A clean definition reports nothing, and the omitted field decodes as no diagnostics rather than
+		// an empty non-nil slice the caller would have to special-case.
+		assert.Empty(t, diags)
+	})
+
+	t.Run("Diags", func(t *testing.T) {
+		t.Parallel()
+		expected := []EnvironmentDiagnostic{{
+			Range: &esc.Range{
+				Environment: "test-env",
+				Begin:       esc.Pos{Line: 42, Column: 1},
+				End:         esc.Pos{Line: 42, Column: 42},
+			},
+			Summary: "diag 1",
+		}}
+
+		client := newTestClient(t, http.MethodPost, path, func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusBadRequest)
+			// The handler answers a rejected definition with the response type, not an error envelope,
+			// so the body carries `diagnostics` with no `code` or `message`.
+			err := json.NewEncoder(w).Encode(CreateEnvironmentRevisionResponse{
+				Parent:      5,
+				Diagnostics: expected,
+			})
+			require.NoError(t, err)
+		})
+
+		resp, diags, err := client.CreateEnvironmentRevision(
+			t.Context(), "test-org", "test-project", "test-env", nil, "5")
+		require.NoError(t, err)
+		assert.Nil(t, resp)
+		assert.Equal(t, expected, diags)
+	})
+
+	t.Run("Not found", func(t *testing.T) {
+		t.Parallel()
+
+		client := newTestClient(t, http.MethodPost, path, func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusNotFound)
+			err := json.NewEncoder(w).Encode(apitype.ErrorResponse{Code: 404, Message: "not found"})
+			require.NoError(t, err)
+		})
+
+		resp, diags, err := client.CreateEnvironmentRevision(
+			t.Context(), "test-org", "test-project", "test-env", nil, "")
+		assert.Nil(t, resp)
+		assert.Empty(t, diags)
+		assert.ErrorContains(t, err, "not found")
+	})
+}
+
 func TestCreateEnvironmentDraft(t *testing.T) {
 	t.Parallel()
 	t.Run("OK", func(t *testing.T) {
