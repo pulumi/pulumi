@@ -15,15 +15,22 @@
 package httpstate
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
+	"io"
 	"os"
+	"path/filepath"
+	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/esc"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/archive"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -684,4 +691,207 @@ func TestLocalPolicyEnvironmentResolver(t *testing.T) {
 		assert.Nil(t, result.Config)
 		assert.Equal(t, map[string]string{"KEY": "val"}, result.EnvironmentVariables)
 	})
+}
+
+type failingDependencyLanguageRuntime struct {
+	plugin.LanguageRuntime
+	installCalls int
+}
+
+func (r *failingDependencyLanguageRuntime) InstallDependencies(
+	context.Context, plugin.InstallDependenciesRequest,
+) (io.Reader, io.Reader, <-chan error, error) {
+	r.installCalls++
+	done := make(chan error, 1)
+	done <- errors.New("dependency install failed")
+	close(done)
+	return strings.NewReader(""), strings.NewReader(""), done, nil
+}
+
+// Regression test for https://github.com/pulumi/pulumi/issues/24306.
+func TestInstallRequiredPolicyCleansUpDependencyFailure(t *testing.T) {
+	t.Parallel()
+
+	sourceDir := t.TempDir()
+	require.NoError(t, os.WriteFile(
+		filepath.Join(sourceDir, "PulumiPolicy.yaml"), []byte("runtime: test\n"), 0o600))
+	tgz, err := archive.TGZ(sourceDir, packageDir, false)
+	require.NoError(t, err)
+
+	runtime := &failingDependencyLanguageRuntime{}
+	host := &plugin.MockHost{
+		LanguageRuntimeF: func(_ *plugin.Context, name string) (plugin.LanguageRuntime, error) {
+			assert.Equal(t, "test", name)
+			return runtime, nil
+		},
+	}
+	ctx, err := plugin.NewContextWithHost(t.Context(), nil, nil, host, sourceDir, sourceDir, nil)
+	require.NoError(t, err)
+	t.Cleanup(func() { require.NoError(t, ctx.Close()) })
+
+	finalDir := filepath.Join(t.TempDir(), "policy")
+	for range 2 {
+		err = installRequiredPolicy(ctx, finalDir, io.NopCloser(bytes.NewReader(tgz)), io.Discard, io.Discard)
+		require.ErrorContains(t, err, "installing dependencies: dependency install failed")
+		_, statErr := os.Stat(finalDir)
+		assert.True(t, os.IsNotExist(statErr), "a failed install must not poison the policy cache")
+	}
+	assert.Equal(t, 2, runtime.installCalls, "a second install should retry dependency installation")
+}
+
+func TestInstallRequiredPolicyReplacesDanglingPartialMarkerSymlink(t *testing.T) {
+	t.Parallel()
+
+	sourceDir := t.TempDir()
+	require.NoError(t, os.WriteFile(
+		filepath.Join(sourceDir, "PulumiPolicy.yaml"), []byte("runtime: test\n"), 0o600))
+	tgz, err := archive.TGZ(sourceDir, packageDir, false)
+	require.NoError(t, err)
+
+	runtime := &failingDependencyLanguageRuntime{}
+	host := &plugin.MockHost{
+		LanguageRuntimeF: func(_ *plugin.Context, name string) (plugin.LanguageRuntime, error) {
+			assert.Equal(t, "test", name)
+			return runtime, nil
+		},
+	}
+	ctx, err := plugin.NewContextWithHost(t.Context(), nil, nil, host, sourceDir, sourceDir, nil)
+	require.NoError(t, err)
+	t.Cleanup(func() { require.NoError(t, ctx.Close()) })
+
+	finalDir := filepath.Join(t.TempDir(), "policy")
+	markerTarget := filepath.Join(t.TempDir(), "marker-target")
+	if err := os.Symlink(markerTarget, finalDir+".partial"); err != nil {
+		t.Skipf("creating symlink: %v", err)
+	}
+
+	err = installRequiredPolicy(ctx, finalDir, io.NopCloser(bytes.NewReader(tgz)), io.Discard, io.Discard)
+	require.ErrorContains(t, err, "installing dependencies: dependency install failed")
+	_, statErr := os.Stat(markerTarget)
+	assert.True(t, os.IsNotExist(statErr), "install must not follow a stale marker symlink")
+}
+
+func TestInstallRequiredPolicyUsesCompletedConcurrentInstall(t *testing.T) {
+	t.Parallel()
+
+	sourceDir := t.TempDir()
+	require.NoError(t, os.WriteFile(
+		filepath.Join(sourceDir, "PulumiPolicy.yaml"), []byte("runtime: test\n"), 0o600))
+	tgz, err := archive.TGZ(sourceDir, packageDir, false)
+	require.NoError(t, err)
+
+	runtime := &failingDependencyLanguageRuntime{}
+	host := &plugin.MockHost{
+		LanguageRuntimeF: func(_ *plugin.Context, name string) (plugin.LanguageRuntime, error) {
+			assert.Equal(t, "test", name)
+			return runtime, nil
+		},
+	}
+	ctx, err := plugin.NewContextWithHost(t.Context(), nil, nil, host, sourceDir, sourceDir, nil)
+	require.NoError(t, err)
+	t.Cleanup(func() { require.NoError(t, ctx.Close()) })
+
+	finalDir := filepath.Join(t.TempDir(), "policy")
+	require.NoError(t, os.Mkdir(finalDir, 0o700))
+	require.NoError(t, os.WriteFile(
+		filepath.Join(finalDir, "PulumiPolicy.yaml"), []byte("runtime: test\n"), 0o600))
+	require.NoError(t, os.WriteFile(filepath.Join(finalDir, "concurrent-install"), nil, 0o600))
+
+	err = installRequiredPolicy(ctx, finalDir, io.NopCloser(bytes.NewReader(tgz)), io.Discard, io.Discard)
+	require.NoError(t, err)
+	assert.Zero(t, runtime.installCalls)
+	assert.FileExists(t, filepath.Join(finalDir, "concurrent-install"),
+		"an install must not replace a completed concurrent installation")
+}
+
+type coordinatedDependencyLanguageRuntime struct {
+	plugin.LanguageRuntime
+	calls         atomic.Int32
+	firstStarted  chan struct{}
+	secondStarted chan struct{}
+	releaseFirst  chan struct{}
+	releaseSecond chan struct{}
+}
+
+func (r *coordinatedDependencyLanguageRuntime) InstallDependencies(
+	context.Context, plugin.InstallDependenciesRequest,
+) (io.Reader, io.Reader, <-chan error, error) {
+	done := make(chan error, 1)
+	switch r.calls.Add(1) {
+	case 1:
+		close(r.firstStarted)
+		go func() {
+			<-r.releaseFirst
+			done <- errors.New("dependency install failed")
+			close(done)
+		}()
+	case 2:
+		close(r.secondStarted)
+		go func() {
+			<-r.releaseSecond
+			close(done)
+		}()
+	default:
+		panic("unexpected dependency installation")
+	}
+	return strings.NewReader(""), strings.NewReader(""), done, nil
+}
+
+// Regression test for two overlapping installs where the first publisher fails after the second succeeds.
+func TestInstallRequiredPolicyConcurrentWinnerFailurePreservesSuccessfulInstall(t *testing.T) {
+	t.Parallel()
+
+	sourceDir := t.TempDir()
+	require.NoError(t, os.WriteFile(
+		filepath.Join(sourceDir, "PulumiPolicy.yaml"), []byte("runtime: test\n"), 0o600))
+	tgz, err := archive.TGZ(sourceDir, packageDir, false)
+	require.NoError(t, err)
+
+	runtime := &coordinatedDependencyLanguageRuntime{
+		firstStarted:  make(chan struct{}),
+		secondStarted: make(chan struct{}),
+		releaseFirst:  make(chan struct{}),
+		releaseSecond: make(chan struct{}),
+	}
+	host := &plugin.MockHost{
+		LanguageRuntimeF: func(_ *plugin.Context, name string) (plugin.LanguageRuntime, error) {
+			assert.Equal(t, "test", name)
+			return runtime, nil
+		},
+	}
+	ctx, err := plugin.NewContextWithHost(t.Context(), nil, nil, host, sourceDir, sourceDir, nil)
+	require.NoError(t, err)
+	t.Cleanup(func() { require.NoError(t, ctx.Close()) })
+
+	finalDir := filepath.Join(t.TempDir(), "policy")
+	firstBeforeLock := make(chan struct{})
+	secondBeforeLock := make(chan struct{})
+	releaseFirstLock := make(chan struct{})
+	releaseSecondLock := make(chan struct{})
+	install := func(beforeLock, releaseLock chan struct{}) error {
+		return installRequiredPolicyWithHook(
+			ctx, finalDir, io.NopCloser(bytes.NewReader(tgz)), io.Discard, io.Discard,
+			func() {
+				close(beforeLock)
+				<-releaseLock
+			})
+	}
+	firstDone := make(chan error, 1)
+	go func() { firstDone <- install(firstBeforeLock, releaseFirstLock) }()
+	<-firstBeforeLock
+	secondDone := make(chan error, 1)
+	go func() { secondDone <- install(secondBeforeLock, releaseSecondLock) }()
+	<-secondBeforeLock
+
+	close(releaseFirstLock)
+	<-runtime.firstStarted
+	close(releaseSecondLock)
+
+	close(runtime.releaseFirst)
+	require.ErrorContains(t, <-firstDone, "installing dependencies: dependency install failed")
+	<-runtime.secondStarted
+	close(runtime.releaseSecond)
+	require.NoError(t, <-secondDone)
+	assert.FileExists(t, filepath.Join(finalDir, "PulumiPolicy.yaml"))
+	assert.NoFileExists(t, finalDir+".partial")
 }
