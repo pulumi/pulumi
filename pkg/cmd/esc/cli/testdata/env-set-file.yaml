@@ -95,7 +95,7 @@ file
 > esc env set default/test -f=test.file
 Error: expected a path
 > esc env set -f=test.file
-Error: accepts between 1 and 3 arg(s), received 0
+Error: no environment name specified
 > esc env set default/test -f=binary foo
 Error: file content must be valid UTF-8
 > esc env set -f=- default/test foo
