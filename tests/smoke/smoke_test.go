@@ -1176,6 +1176,8 @@ func TestPulumiPackageAddForTerraformProvider(t *testing.T) {
 	e := ptesting.NewEnvironment(t)
 	defer e.DeleteIfNotFailed()
 
+	os.Unsetenv("GITHUB_TOKEN")
+
 	projectDir := filepath.Join(e.RootPath, "project")
 	err := os.Mkdir(projectDir, 0o700)
 	require.NoError(t, err)
@@ -1192,11 +1194,11 @@ func TestPulumiPackageAddForTerraformProvider(t *testing.T) {
 	// Create a new python project based of the local random template
 	e.RunCommand("pulumi", "new", "python", "--yes")
 	e.RunCommand("pulumi", "install")
-	e.RunCommand("pulumi", "package", "add", "opentofu/hashicorp/random@3.9.0")
+	e.RunCommand("pulumi", "package", "add", "opentofu/hashicorp/local@2.9.0")
 
-	e.WriteTestFile("__main__.py", `import pulumi_random as random
+	e.WriteTestFile("__main__.py", `import pulumi_local as local
 
-example = random.Provider("provider")`)
+example = local.Provider("provider")`)
 
 	e.RunCommand("pulumi", "up", "--yes")
 
