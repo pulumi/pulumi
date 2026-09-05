@@ -1,0 +1,4 @@
+component: backend/service
+kind: improvement
+body: Improve startup performance
+time: 2026-08-21T14:39:38.78655298+02:00
