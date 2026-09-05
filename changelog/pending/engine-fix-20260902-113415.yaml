@@ -1,0 +1,4 @@
+component: engine
+kind: fix
+body: Propagate --target-dependents and --exclude-dependents through resources read with .get()
+time: 2026-09-02T11:34:15.915936+02:00

@@ -5272,3 +5272,69 @@ func TestTargetedUpdateAppliesNewInputs_Issue24303(t *testing.T) {
 	}
 	require.Equal(t, rollbackCount, found, "expected all rollback resources in snapshot")
 }
+
+// Regression test for https://github.com/pulumi/pulumi/issues/12368. A resource that is read via
+// `.get()` should propagate `--target-dependents` to the resources that depend on it.
+func TestTargetDependentsThroughReadResource(t *testing.T) {
+	t.Parallel()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+					return plugin.ReadResponse{
+						ReadResult: plugin.ReadResult{ID: req.ID, Outputs: resource.PropertyMap{}},
+						Status:     resource.StatusOK,
+					}, nil
+				},
+			}, nil
+		}),
+	}
+
+	cValue := "old"
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		resA, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
+		require.NoError(t, err)
+
+		readB, _, err := monitor.ReadResource(
+			"pkgA:m:typA", "readB", "some-id", resA.URN, resource.PropertyMap{}, "", "", "", nil, "", "")
+		require.NoError(t, err)
+
+		_, err = monitor.RegisterResource("pkgA:m:typA", "resC", true, deploytest.ResourceOptions{
+			Inputs:       resource.PropertyMap{"foo": resource.NewProperty(cValue)},
+			Dependencies: []resource.URN{readB},
+		})
+		require.NoError(t, err)
+
+		return nil
+	})
+
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
+	p := &lt.TestPlan{}
+	project := p.GetProject()
+
+	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), lt.TestUpdateOptions{
+		T: t, HostF: hostF,
+	}, false, p.BackendClient, nil, "0")
+	require.NoError(t, err)
+
+	// Now change resC's inputs and only target resA, with --target-dependents. resC depends on the
+	// read resource readB, which in turn depends on resA, so resC should be updated.
+	cValue = "new"
+	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), lt.TestUpdateOptions{
+		T: t, HostF: hostF,
+		UpdateOptions: UpdateOptions{
+			Targets:          deploy.NewUrnTargets([]string{"urn:pulumi:test::test::pkgA:m:typA::resA"}),
+			TargetDependents: true,
+		},
+	}, false, p.BackendClient, nil, "1")
+	require.NoError(t, err)
+
+	for _, r := range snap.Resources {
+		if r.URN.Name() == "resC" {
+			assert.Equal(t, resource.NewProperty("new"), r.Inputs["foo"])
+			return
+		}
+	}
+	t.Fatal("resC not found in snapshot")
+}
