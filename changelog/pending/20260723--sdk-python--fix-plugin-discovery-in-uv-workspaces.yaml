@@ -1,0 +1,6 @@
+component: sdk/python
+kind: fix
+body: Only discover plugins for the current project's dependencies in a uv workspace
+time: 2026-07-23T00:00:00Z
+custom:
+  PR: "24137"
