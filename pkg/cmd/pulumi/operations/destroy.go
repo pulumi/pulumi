@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"strings"
 
 	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
 
@@ -381,7 +382,7 @@ func NewDestroyCmd() *cobra.Command {
 				if !jsonDisplay && output != "json" && !remove && !previewOnly {
 					fmt.Fprintf(out, "The resources in the stack have been deleted, but the history and configuration "+
 						"associated with the stack are still maintained. \nIf you want to remove the stack "+
-						"completely, run `pulumi stack rm %s`.\n", s.Ref())
+						"completely, run `%s`.\n", stackRemoveHint(s.Ref().String(), rootCwdFlag(cmd)))
 				} else if remove {
 					_, err = backend.RemoveStack(ctx, s, false /*force*/, false /*removeBackups*/)
 					if err != nil {
@@ -604,4 +605,26 @@ func getProtectedExcludes(resources []*pkgresource.State) ([]string, error) {
 	}
 
 	return urns, nil
+}
+
+func rootCwdFlag(cmd *cobra.Command) string {
+	flag := cmd.Root().PersistentFlags().Lookup("cwd")
+	if flag == nil {
+		return ""
+	}
+	return flag.Value.String()
+}
+
+func stackRemoveHint(stackRef, cwd string) string {
+	if cwd == "" {
+		return "pulumi stack rm " + stackRef
+	}
+	return fmt.Sprintf("pulumi -C %s stack rm %s", shellArg(cwd), stackRef)
+}
+
+func shellArg(s string) string {
+	if s != "" && !strings.ContainsAny(s, " \t\n\"'\\$`&|;<>()*?[]#~=%") {
+		return s
+	}
+	return "'" + strings.ReplaceAll(s, "'", `'\''`) + "'"
 }
