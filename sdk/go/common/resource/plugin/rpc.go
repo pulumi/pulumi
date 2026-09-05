@@ -27,6 +27,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/archive"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/asset"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/sig"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
@@ -61,28 +62,16 @@ type MarshalOptions struct {
 	skipLogging bool
 }
 
+// Sentinels indicating that a property's value is not known, because it depends on a computation
+// with values whose values themselves are not yet known (e.g., dependent upon an output property).
 const (
-	// UnknownBoolValue is a sentinel indicating that a bool property's value is not known, because it depends on
-	// a computation with values whose values themselves are not yet known (e.g., dependent upon an output property).
-	UnknownBoolValue = "1c4a061d-8072-4f0a-a4cb-0ff528b18fe7"
-	// UnknownNumberValue is a sentinel indicating that a number property's value is not known, because it depends on
-	// a computation with values whose values themselves are not yet known (e.g., dependent upon an output property).
-	UnknownNumberValue = "3eeb2bf0-c639-47a8-9e75-3b44932eb421"
-	// UnknownStringValue is a sentinel indicating that a string property's value is not known, because it depends on
-	// a computation with values whose values themselves are not yet known (e.g., dependent upon an output property).
-	UnknownStringValue = "04da6b54-80e4-46f7-96ec-b56ff0331ba9"
-	// UnknownArrayValue is a sentinel indicating that an array property's value is not known, because it depends on
-	// a computation with values whose values themselves are not yet known (e.g., dependent upon an output property).
-	UnknownArrayValue = "6a19a0b0-7e62-4c92-b797-7f8e31da9cc2"
-	// UnknownAssetValue is a sentinel indicating that an asset property's value is not known, because it depends on
-	// a computation with values whose values themselves are not yet known (e.g., dependent upon an output property).
-	UnknownAssetValue = "030794c1-ac77-496b-92df-f27374a8bd58"
-	// UnknownArchiveValue is a sentinel indicating that an archive property's value is not known, because it depends
-	// on a computation with values whose values themselves are not yet known (e.g., dependent upon an output property).
-	UnknownArchiveValue = "e48ece36-62e2-4504-bad9-02848725956a"
-	// UnknownObjectValue is a sentinel indicating that an archive property's value is not known, because it depends
-	// on a computation with values whose values themselves are not yet known (e.g., dependent upon an output property).
-	UnknownObjectValue = "dd056dcd-154b-4c76-9bd3-c8f88648b5ff"
+	UnknownBoolValue    = sig.UnknownBoolValue
+	UnknownNumberValue  = sig.UnknownNumberValue
+	UnknownStringValue  = sig.UnknownStringValue
+	UnknownArrayValue   = sig.UnknownArrayValue
+	UnknownAssetValue   = sig.UnknownAssetValue
+	UnknownArchiveValue = sig.UnknownArchiveValue
+	UnknownObjectValue  = sig.UnknownObjectValue
 )
 
 // MarshalProperties marshals a resource's property map as a "JSON-like" protobuf structure.
