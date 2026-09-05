@@ -1394,6 +1394,55 @@ def test_analyze_component_self_recursive_complex_type():
     )
 
 
+def test_analyze_sdk_typeddict_forms():
+    """
+    A generated SDK's TypedDict names its sibling types as strings that only resolve in the
+    SDK's module, and lets an object property take the Args class, the TypedDict or the output
+    class. The analyzer reads the TypedDict through all of that.
+    """
+    analyzer = Analyzer("sdk-forms")
+
+    result = analyzer.analyze(
+        components=load_components(Path("testdata", "sdk-forms")),
+    )
+    inner_ref = "#/types/sdk-forms:index:InnerArgsDict"
+    sdk = sys.modules["fakesdk._inputs"]
+    assert result["type_definitions"] == {
+        "OuterArgsDict": TypeDefinition(
+            name="OuterArgsDict",
+            module="fakesdk._inputs",
+            type=PropertyType.OBJECT,
+            properties={
+                "inner": PropertyDefinition(optional=True, ref=inner_ref),
+                "inners": PropertyDefinition(
+                    optional=True,
+                    type=PropertyType.ARRAY,
+                    items=PropertyDefinition(ref=inner_ref),
+                ),
+                "maybe": PropertyDefinition(optional=True, ref=inner_ref),
+                "byName": PropertyDefinition(optional=True, ref=inner_ref),
+            },
+            properties_mapping={
+                "inner": "inner",
+                "inners": "inners",
+                "maybe": "maybe",
+                "byName": "by_name",
+            },
+            python_type=sdk.OuterArgsDict,
+        ),
+        "InnerArgsDict": TypeDefinition(
+            name="InnerArgsDict",
+            module="fakesdk._inputs",
+            type=PropertyType.OBJECT,
+            properties={
+                "n": PropertyDefinition(type=PropertyType.INTEGER, optional=False),
+            },
+            properties_mapping={"n": "n"},
+            python_type=sdk.InnerArgsDict,
+        ),
+    }
+
+
 def test_analyze_component_mutually_recursive_complex_types_file():
     analyzer = Analyzer("mutually-recursive")
 
