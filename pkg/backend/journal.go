@@ -158,7 +158,7 @@ func SerializeJournalEntry(
 		Extension:             je.Extension,
 		Snippets:              snippets,
 		RequiresByteString:    requiresByteString,
-		RemoveOlds:            je.RemoveOlds,
+		Layout:                je.Layout,
 		States:                resultStates,
 		BaseStatePatches:      baseStatePatches,
 		NewStatePatches:       newStatePatches,
