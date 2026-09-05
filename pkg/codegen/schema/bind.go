@@ -108,6 +108,13 @@ func validatePrintableName(path, kind, name string) *hcl.Diagnostic {
 	return nil
 }
 
+func validateName(path, kind, name string) *hcl.Diagnostic {
+	if strings.HasPrefix(name, "_") {
+		return errorf(path, "%s must not start with an underscore", kind)
+	}
+	return nil
+}
+
 func validateSpec(spec PackageSpec) (hcl.Diagnostics, error) {
 	bytes, err := json.Marshal(spec)
 	if err != nil {
@@ -1392,6 +1399,11 @@ func (t *types) bindProperties(path string, properties map[string]PropertySpec, 
 		if diag := validatePrintableName(propertyPath, "property name", name); diag != nil {
 			diags = diags.Append(diag)
 		}
+		if name != "__self__" {
+			if diag := validateName(propertyPath, "property name", name); diag != nil {
+				diags = diags.Append(diag)
+			}
+		}
 		if isReservedKeyword(name) {
 			diags = diags.Append(errorf(propertyPath, "%s", name+" is a reserved property name"))
 		}
@@ -2167,6 +2179,9 @@ func (t *types) bindResourceDef(
 		parts := strings.Split(token, ":")
 		if len(parts) == 3 {
 			name := parts[2]
+			if diag := validateName(path, "resource name", name); diag != nil {
+				diags = diags.Append(diag)
+			}
 			if isReservedKeyword(name) {
 				diags = diags.Append(errorf(path, "%s", name+" is a reserved name, cannot name resource"))
 			}
@@ -2402,6 +2417,9 @@ func (t *types) bindFunctionDef(token string, options ValidationOptions) (*Funct
 	parts := strings.Split(token, ":")
 	if len(parts) == 3 {
 		name := parts[2]
+		if diag := validateName(path, "function name", name); diag != nil {
+			diags = diags.Append(diag)
+		}
 		if isReservedKeyword(name) {
 			diags = diags.Append(errorf(path, "%s", name+" is a reserved name, cannot name function"))
 			return nil, diags, errors.New(name + " is a reserved name, cannot name function")

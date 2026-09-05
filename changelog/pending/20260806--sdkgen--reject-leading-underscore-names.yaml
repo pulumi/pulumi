@@ -1,0 +1,3 @@
+component: sdkgen
+kind: fix
+body: Reject schema resource, function, and property names that start with underscores
