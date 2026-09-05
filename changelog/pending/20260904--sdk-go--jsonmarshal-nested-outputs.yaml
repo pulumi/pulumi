@@ -1,0 +1,4 @@
+component: sdk/go
+kind: fix
+body: Support Outputs nested inside structs, slices, arrays, maps, and pointers passed to JSONMarshal, instead of only Outputs at the top level
+time: 2026-09-04T00:00:00+00:00
