@@ -7,7 +7,7 @@ import (
 
 func main() {
 	pulumi.Run(func(ctx *pulumi.Context) error {
-		prov, err := output.NewProvider(ctx, "prov", &output.ProviderArgs{
+		provElided, err := output.NewProvider(ctx, "provElided", &output.ProviderArgs{
 			ElideUnknowns: pulumi.Bool(true),
 		})
 		if err != nil {
@@ -17,9 +17,9 @@ func main() {
 		if err != nil {
 			return err
 		}
-		topLevel, err := output.NewResource(ctx, "topLevel", &output.ResourceArgs{
+		topLevelElided, err := output.NewResource(ctx, "topLevelElided", &output.ResourceArgs{
 			Value: pulumi.Float64(1),
-		}, pulumi.Provider(prov))
+		}, pulumi.Provider(provElided))
 		if err != nil {
 			return err
 		}
@@ -29,7 +29,7 @@ func main() {
 		if err != nil {
 			return err
 		}
-		ctx.Export("topLevel", topLevel.SecretOutput)
+		ctx.Export("topLevelElided", topLevelElided.SecretOutput)
 		ctx.Export("topLevelNotElided", topLevelNotElided.SecretOutput)
 		return nil
 	})

@@ -3391,6 +3391,85 @@ func TestAdditionalSecretOutputs(t *testing.T) {
 	assert.True(t, resA.Outputs["c"].IsSecret())
 }
 
+// TestAdditionalSecretOutputsMissingInPreview verifies that during a preview, if a provider elides
+// (does not return) an output that the caller listed in additionalSecretOutputs, the engine
+// synthesizes a secret unknown for that key so downstream consumers see the promised secret marker.
+func TestAdditionalSecretOutputsMissingInPreview(t *testing.T) {
+	t.Parallel()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					// Elide the "secret" output entirely, only return "value".
+					id := "id123"
+					if req.Preview {
+						id = ""
+					}
+					return plugin.CreateResponse{
+						ID: resource.ID(id),
+						Properties: resource.PropertyMap{
+							"value": resource.NewProperty(1.0),
+						},
+						Status: resource.StatusOK,
+					}, nil
+				},
+			}, nil
+		}),
+	}
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+			Inputs: resource.PropertyMap{
+				"value": resource.NewProperty(1.0),
+			},
+			AdditionalSecretOutputs: []resource.PropertyKey{"secret"},
+		})
+		require.NoError(t, err)
+		return nil
+	})
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
+
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{
+			T:                t,
+			HostF:            hostF,
+			UpdateOptions:    engine.UpdateOptions{ShowSecrets: true},
+			SkipDisplayTests: true,
+		},
+	}
+	project := p.GetProject()
+
+	// Preview only: verify the engine synthesizes a secret unknown for the elided output.
+	validate := func(
+		_ workspace.Project, _ deploy.Target, _ JournalEntries,
+		events []Event, err error,
+	) error {
+		if err != nil {
+			return err
+		}
+		found := false
+		for _, e := range events {
+			if e.Type != ResourceOutputsEvent {
+				continue
+			}
+			meta := e.Payload().(ResourceOutputsEventPayload).Metadata
+			if meta.URN.Name() != "resA" {
+				continue
+			}
+			secret, ok := meta.New.Outputs["secret"]
+			require.True(t, ok, "expected engine to synthesize the elided 'secret' output")
+			assert.True(t, secret.IsSecret(), "expected synthesized 'secret' output to be a secret")
+			assert.True(t, secret.ContainsUnknowns(), "expected synthesized 'secret' output to be unknown")
+			found = true
+		}
+		assert.True(t, found, "expected a ResourceOutputsEvent for resA")
+		return nil
+	}
+	_, err := lt.TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, true, p.BackendClient, validate)
+	require.NoError(t, err)
+}
+
 func TestDefaultParents(t *testing.T) {
 	t.Parallel()
 	t.Skipf("Default parents disabled due to https://github.com/pulumi/pulumi/issues/10950")
