@@ -1,0 +1,5 @@
+component: engine
+kind: fix
+body: Avoid a deadlock when a resource provider asks the engine to load another plugin
+    while it boots
+time: 2026-09-04T00:00:00Z
