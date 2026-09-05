@@ -1994,10 +1994,10 @@ func TestProviderDiffMissingOldOutputs(t *testing.T) {
 					req plugin.DiffConfigRequest,
 				) (plugin.DiffResult, error) {
 					// Always require replacement if any diff exists.
-					if !req.OldOutputs.DeepEquals(req.NewInputs) {
-						keys := slice.Prealloc[resource.PropertyKey](len(req.NewInputs))
-						for k := range req.NewInputs {
-							keys = append(keys, k)
+					if !req.OldOutputs.Equals(req.NewInputs) {
+						keys := slice.Prealloc[resource.PropertyKey](req.NewInputs.Len())
+						for k := range req.NewInputs.All {
+							keys = append(keys, resource.PropertyKey(k))
 						}
 						return plugin.DiffResult{Changes: plugin.DiffSome, ReplaceKeys: keys}, nil
 					}

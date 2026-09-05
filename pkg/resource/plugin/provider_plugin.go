@@ -803,9 +803,9 @@ func (p *provider) DiffConfig(ctx context.Context, req DiffConfigRequest) (DiffC
 
 	label := fmt.Sprintf("%s.DiffConfig(%s)", p.label(), req.URN)
 	logging.V(7).Infof("%s: executing (#oldInputs=%d#oldOutputs=%d,#newInputs=%d)",
-		label, len(req.OldInputs), len(req.OldOutputs), len(req.NewInputs))
+		label, req.OldInputs.Len(), req.OldOutputs.Len(), req.NewInputs.Len())
 
-	mOldInputs, err := MarshalProperties(req.OldInputs, MarshalOptions{
+	mOldInputs, err := MarshalProperties(resource.ToResourcePropertyMap(req.OldInputs), MarshalOptions{
 		Label:        label + ".oldInputs",
 		KeepUnknowns: true,
 		PropagateNil: true,
@@ -814,7 +814,7 @@ func (p *provider) DiffConfig(ctx context.Context, req DiffConfigRequest) (DiffC
 		return DiffResult{}, err
 	}
 
-	mOldOutputs, err := MarshalProperties(req.OldOutputs, MarshalOptions{
+	mOldOutputs, err := MarshalProperties(resource.ToResourcePropertyMap(req.OldOutputs), MarshalOptions{
 		Label:        label + ".oldOutputs",
 		KeepUnknowns: true,
 		PropagateNil: true,
@@ -823,7 +823,7 @@ func (p *provider) DiffConfig(ctx context.Context, req DiffConfigRequest) (DiffC
 		return DiffResult{}, err
 	}
 
-	mNewInputs, err := MarshalProperties(req.NewInputs, MarshalOptions{
+	mNewInputs, err := MarshalProperties(resource.ToResourcePropertyMap(req.NewInputs), MarshalOptions{
 		Label:        label + ".newInputs",
 		KeepUnknowns: true,
 		PropagateNil: true,

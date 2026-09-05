@@ -174,7 +174,7 @@ func TestDeleteBeforeReplace(t *testing.T) {
 					_ context.Context,
 					req plugin.DiffConfigRequest,
 				) (plugin.DiffResult, error) {
-					if !req.OldOutputs["A"].DeepEquals(req.NewInputs["A"]) {
+					if !req.OldOutputs.Get("A").Equals(req.NewInputs.Get("A")) {
 						return plugin.DiffResult{
 							ReplaceKeys:         []resource.PropertyKey{"A"},
 							DeleteBeforeReplace: true,
@@ -959,7 +959,7 @@ func TestDBRProviderUpgrade(t *testing.T) {
 	newPkgAProvider := func() *deploytest.Provider {
 		return &deploytest.Provider{
 			DiffConfigF: func(_ context.Context, req plugin.DiffConfigRequest) (plugin.DiffConfigResponse, error) {
-				if !req.OldInputs["version"].DeepEquals(req.NewInputs["version"]) {
+				if !req.OldInputs.Get("version").Equals(req.NewInputs.Get("version")) {
 					return plugin.DiffResult{
 						Changes:     plugin.DiffSome,
 						ChangedKeys: []resource.PropertyKey{"version"},

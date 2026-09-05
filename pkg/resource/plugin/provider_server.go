@@ -357,9 +357,9 @@ func (p *providerServer) DiffConfig(ctx context.Context, req *pulumirpc.DiffRequ
 		URN:           urn,
 		Name:          req.Name,
 		Type:          tokens.Type(req.Type),
-		OldInputs:     oldInputs,
-		OldOutputs:    oldOutputs,
-		NewInputs:     newInputs,
+		OldInputs:     resource.FromResourcePropertyMap(oldInputs),
+		OldOutputs:    resource.FromResourcePropertyMap(oldOutputs),
+		NewInputs:     resource.FromResourcePropertyMap(newInputs),
 		AllowUnknowns: true,
 		IgnoreChanges: req.GetIgnoreChanges(),
 	})
