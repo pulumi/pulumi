@@ -17,19 +17,28 @@ package main
 import (
 	"bytes"
 	"context"
+	"encoding/json"
+	"errors"
 	"flag"
+	"fmt"
 	"os"
 	"os/exec"
+	"path"
 	"path/filepath"
 	"testing"
 	"time"
 
+	"github.com/blang/semver"
+	gocodegen "github.com/pulumi/pulumi/pkg/v3/codegen/go"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/iotest"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/mod/modfile"
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/types/known/emptypb"
 )
@@ -548,4 +557,216 @@ func main() {
 		require.ErrorContains(t, err, "unable to run `go build`: exit status 1")
 		require.Contains(t, stderr.String(), "main.go:3:1: syntax error")
 	})
+}
+
+// testSchemaLoader serves a single bound package over the loader RPC. It has no other packages,
+// so external references cannot be resolved against it.
+type testSchemaLoader struct {
+	pkg *schema.Package
+}
+
+func (l *testSchemaLoader) load() (*schema.Package, error) {
+	if l.pkg == nil {
+		return nil, errors.New("no packages available")
+	}
+	return l.pkg, nil
+}
+
+func (l *testSchemaLoader) LoadPackage(string, *semver.Version) (*schema.Package, error) {
+	return l.load()
+}
+
+func (l *testSchemaLoader) LoadPackageV2(
+	context.Context, *schema.PackageDescriptor,
+) (*schema.Package, error) {
+	return l.load()
+}
+
+func (l *testSchemaLoader) LoadPackageReference(string, *semver.Version) (schema.PackageReference, error) {
+	pkg, err := l.load()
+	if err != nil {
+		return nil, err
+	}
+	return pkg.Reference(), nil
+}
+
+func (l *testSchemaLoader) LoadPackageReferenceV2(
+	context.Context, *schema.PackageDescriptor,
+) (schema.PackageReference, error) {
+	pkg, err := l.load()
+	if err != nil {
+		return nil, err
+	}
+	return pkg.Reference(), nil
+}
+
+func TestLinkImportInstructions(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name string
+		// namespace is the schema's namespace, which the default module path is built from.
+		namespace string
+		// goInfo is the "go" entry of the schema's language map.
+		goInfo map[string]any
+		// expectedImport is the import path Link is expected to print.
+		expectedImport string
+		// expectedModule is the module path Link is expected to add a replace directive for.
+		expectedModule string
+	}{
+		{
+			name:           "no go language info",
+			namespace:      "example",
+			expectedImport: "github.com/example/pulumi-file/sdk/go/file",
+			expectedModule: "github.com/example/pulumi-file/sdk/go",
+		},
+		{
+			name:           "no go language info and no namespace",
+			expectedImport: "example.com/pulumi-file/sdk/go/file",
+			expectedModule: "example.com/pulumi-file/sdk/go",
+		},
+		{
+			name:           "import base path only",
+			namespace:      "example",
+			goInfo:         map[string]any{"importBasePath": "github.com/example/File/sdk/go/File"},
+			expectedImport: "github.com/example/File/sdk/go/File",
+			expectedModule: "github.com/example/File/sdk/go",
+		},
+		{
+			// The import base path replaces the default that the namespace builds, so the
+			// absent namespace makes no difference.
+			name:           "import base path only and no namespace",
+			goInfo:         map[string]any{"importBasePath": "github.com/example/File/sdk/go/File"},
+			expectedImport: "github.com/example/File/sdk/go/File",
+			expectedModule: "github.com/example/File/sdk/go",
+		},
+		{
+			name:           "module path only",
+			namespace:      "example",
+			goInfo:         map[string]any{"modulePath": "github.com/example/File/sdk/go"},
+			expectedImport: "github.com/example/File/sdk/go/file",
+			expectedModule: "github.com/example/File/sdk/go",
+		},
+		{
+			// The module path replaces the default that the namespace builds, and the package
+			// name still gives the directory of the root package.
+			name:           "module path only and no namespace",
+			goInfo:         map[string]any{"modulePath": "github.com/example/File/sdk/go"},
+			expectedImport: "github.com/example/File/sdk/go/file",
+			expectedModule: "github.com/example/File/sdk/go",
+		},
+		{
+			name:      "module path and import base path",
+			namespace: "example",
+			goInfo: map[string]any{
+				"modulePath":     "github.com/example/File/sdk/go",
+				"importBasePath": "github.com/example/File/sdk/go/File",
+			},
+			expectedImport: "github.com/example/File/sdk/go/File",
+			expectedModule: "github.com/example/File/sdk/go",
+		},
+		{
+			// The module path wins over the import base path, so the generated SDK holds its
+			// root package one directory below the module root. The printed import path must
+			// address that directory, not the import base path.
+			name:      "module path that disagrees with the import base path",
+			namespace: "example",
+			goInfo: map[string]any{
+				"modulePath":     "github.com/example/File/sdk",
+				"importBasePath": "github.com/example/File/sdk/go/File",
+			},
+			expectedImport: "github.com/example/File/sdk/File",
+			expectedModule: "github.com/example/File/sdk",
+		},
+	}
+
+	bind := func(t *testing.T, namespace string, goInfo map[string]any) *schema.Package {
+		t.Helper()
+		spec := schema.PackageSpec{
+			Name:      "file",
+			Namespace: namespace,
+			Version:   "0.1.0",
+			Meta:      &schema.MetadataSpec{SupportPack: true},
+		}
+		if goInfo != nil {
+			raw, err := json.Marshal(goInfo)
+			require.NoError(t, err)
+			spec.Language = map[string]schema.RawMessage{"go": raw}
+		}
+		pkg, diags, err := schema.BindSpec(spec, &testSchemaLoader{}, schema.ValidationOptions{})
+		require.NoError(t, err)
+		require.False(t, diags.HasErrors(), "%v", diags)
+		return pkg
+	}
+
+	// The replace directive uses a relative path, which must start with the separator of the
+	// host platform. Build the same prefix that Link builds.
+	relativeStart := "." + string(filepath.Separator)
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			cancel := make(chan bool)
+			t.Cleanup(func() { close(cancel) })
+			handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
+				Init: func(srv *grpc.Server) error {
+					loader := &testSchemaLoader{pkg: bind(t, tt.namespace, tt.goInfo)}
+					schema.LoaderRegistration(schema.NewLoaderServer(loader))(srv)
+					return nil
+				},
+				Cancel: cancel,
+			})
+			require.NoError(t, err)
+
+			programDir := t.TempDir()
+			require.NoError(t, os.WriteFile(filepath.Join(programDir, "go.mod"),
+				[]byte("module example.com/program\n\ngo 1.25\n"), 0o600))
+
+			host := &goLanguageHost{}
+			resp, err := host.Link(t.Context(), &pulumirpc.LinkRequest{
+				Info: &pulumirpc.ProgramInfo{
+					RootDirectory:    programDir,
+					ProgramDirectory: programDir,
+				},
+				LoaderTarget: fmt.Sprintf("127.0.0.1:%d", handle.Port),
+				Packages: []*pulumirpc.LinkRequest_LinkDependency{{
+					Package: &pulumirpc.PackageDependency{Name: "file", Version: "0.1.0"},
+					Path:    "sdks/example-file",
+				}},
+			})
+			require.NoError(t, err)
+			require.Contains(t, resp.ImportInstructions, "\""+tt.expectedImport+"\"")
+
+			gomodContent, err := os.ReadFile(filepath.Join(programDir, "go.mod"))
+			require.NoError(t, err)
+			gomod, err := modfile.Parse("go.mod", gomodContent, nil)
+			require.NoError(t, err)
+			replaced := map[string]string{}
+			for _, replace := range gomod.Replace {
+				replaced[replace.Old.Path] = replace.New.Path
+			}
+			require.Equal(t, relativeStart+"sdks/example-file", replaced[tt.expectedModule])
+
+			// The printed import path must address the root package of the SDK that the
+			// generator writes, so that a program which follows the instructions compiles
+			// against the linked SDK.
+			files, err := gocodegen.GeneratePackage("pulumi-language-go", bind(t, tt.namespace, tt.goInfo), nil)
+			require.NoError(t, err)
+			generated, err := modfile.Parse("go.mod", files["go.mod"], nil)
+			require.NoError(t, err)
+			require.Equal(t, tt.expectedModule, generated.Module.Mod.Path)
+
+			// The generator writes exactly one pulumi-plugin.json, in the directory of the
+			// root package. Read that directory from it.
+			var rootDirs []string
+			for file := range files {
+				if path.Base(file) == "pulumi-plugin.json" {
+					rootDirs = append(rootDirs, path.Dir(file))
+				}
+			}
+			require.Len(t, rootDirs, 1)
+			require.Equal(t, tt.expectedImport, path.Join(generated.Module.Mod.Path, rootDirs[0]))
+		})
+	}
 }
