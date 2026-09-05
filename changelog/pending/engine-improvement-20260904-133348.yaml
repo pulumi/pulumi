@@ -1,0 +1,4 @@
+component: engine
+kind: improvement
+body: Run provider configuration as part of provider create steps so errors are returned associated with the provider resource, not the first resource that uses it
+time: 2026-09-04T13:33:48.787611+01:00
