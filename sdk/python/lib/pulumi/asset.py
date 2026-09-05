@@ -123,3 +123,13 @@ class RemoteArchive(Archive):
         if not isinstance(uri, str):
             raise TypeError("RemoteArchive URI must be a string")
         self.uri = uri
+
+
+def string_asset_output(text: "Input[str]") -> "Output[StringAsset]":
+    """
+    Creates a StringAsset from an Output[str] or any Input[str] value.
+    This allows using a string value that is not known until deployment time.
+    """
+    from .output import Output  # local import to avoid circular dependency
+
+    return Output.from_input(text).apply(StringAsset)
