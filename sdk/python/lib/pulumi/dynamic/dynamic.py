@@ -20,9 +20,12 @@ from typing import (
     Any,
     ClassVar,
     Optional,
+    TypeVar,
+    Union,
     cast,
     no_type_check,
 )
+from collections.abc import Awaitable
 
 import dill
 
@@ -36,6 +39,11 @@ if TYPE_CHECKING:
     from ..output import Inputs
 
 PROVIDER_KEY = "__provider"
+
+_T = TypeVar("_T")
+
+# Provider methods may be implemented either synchronously or as coroutines.
+_MaybeAwaitable = Union[_T, Awaitable[_T]]
 
 
 class ConfigureRequest:
@@ -213,7 +221,9 @@ class ResourceProvider:
     if any secret Outputs were captured during serialization of the provider.
     """
 
-    def check(self, _olds: dict[str, Any], news: dict[str, Any]) -> CheckResult:
+    def check(
+        self, _olds: dict[str, Any], news: dict[str, Any]
+    ) -> _MaybeAwaitable[CheckResult]:
         """
         Check validates that the given property bag is valid for a resource of the given type.
         """
@@ -224,13 +234,13 @@ class ResourceProvider:
         _id: str,
         _olds: dict[str, Any],
         _news: dict[str, Any],
-    ) -> DiffResult:
+    ) -> _MaybeAwaitable[DiffResult]:
         """
         Diff checks what impacts a hypothetical update will have on the resource's properties.
         """
         return DiffResult()
 
-    def create(self, props: dict[str, Any]) -> CreateResult:
+    def create(self, props: dict[str, Any]) -> _MaybeAwaitable[CreateResult]:
         """
         Create allocates a new instance of the provided resource and returns its unique ID
         afterwards. If this call fails, the resource must not have been created (i.e., it is
@@ -238,7 +248,7 @@ class ResourceProvider:
         """
         raise Exception("Subclass of ResourceProvider must implement 'create'")
 
-    def read(self, id_: str, props: dict[str, Any]) -> ReadResult:
+    def read(self, id_: str, props: dict[str, Any]) -> _MaybeAwaitable[ReadResult]:
         """
         Reads the current live state associated with a resource.  Enough state must be included in
         the inputs to uniquely identify the resource; this is typically just the resource ID, but it
@@ -251,19 +261,19 @@ class ResourceProvider:
         _id: str,
         _olds: dict[str, Any],
         _news: dict[str, Any],
-    ) -> UpdateResult:
+    ) -> _MaybeAwaitable[UpdateResult]:
         """
         Update updates an existing resource with new values.
         """
         return UpdateResult()
 
-    def delete(self, _id: str, _props: dict[str, Any]) -> None:
+    def delete(self, _id: str, _props: dict[str, Any]) -> _MaybeAwaitable[None]:
         """
         Delete tears down an existing resource with the given ID.  If it fails, the resource is
         assumed to still exist.
         """
 
-    def configure(self, req: ConfigureRequest) -> None:
+    def configure(self, req: ConfigureRequest) -> _MaybeAwaitable[None]:
         """
         Configure sets up the resource provider. Use this to initialize the
         provider and store configuration.
