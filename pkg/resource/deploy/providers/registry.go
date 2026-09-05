@@ -751,9 +751,9 @@ func (r *Registry) Diff(ctx context.Context, req plugin.DiffRequest) (plugin.Dif
 	filteredNewInputs := FilterProviderConfig(req.NewInputs)
 	diff, err := provider.DiffConfig(context.Background(), plugin.DiffConfigRequest{
 		URN:           req.URN,
-		OldInputs:     FilterProviderConfig(req.OldInputs),
-		OldOutputs:    req.OldOutputs, // OldOutputs is already filtered
-		NewInputs:     filteredNewInputs,
+		OldInputs:     resource.FromResourcePropertyMap(FilterProviderConfig(req.OldInputs)),
+		OldOutputs:    resource.FromResourcePropertyMap(req.OldOutputs), // OldOutputs is already filtered
+		NewInputs:     resource.FromResourcePropertyMap(filteredNewInputs),
 		AllowUnknowns: req.AllowUnknowns,
 		IgnoreChanges: req.IgnoreChanges,
 	})

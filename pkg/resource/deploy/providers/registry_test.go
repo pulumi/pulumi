@@ -77,7 +77,13 @@ func (prov *testProvider) CheckConfig(
 func (prov *testProvider) DiffConfig(
 	_ context.Context, req plugin.DiffConfigRequest,
 ) (plugin.DiffConfigResponse, error) {
-	return prov.diffConfig(req.URN, req.OldOutputs, req.NewInputs, req.AllowUnknowns, req.IgnoreChanges)
+	return prov.diffConfig(
+		req.URN,
+		resource.ToResourcePropertyMap(req.OldOutputs),
+		resource.ToResourcePropertyMap(req.NewInputs),
+		req.AllowUnknowns,
+		req.IgnoreChanges,
+	)
 }
 
 func (prov *testProvider) Configure(

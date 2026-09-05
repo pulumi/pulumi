@@ -223,9 +223,9 @@ func TestSingleResourceDefaultProviderReplace(t *testing.T) {
 					req plugin.DiffConfigRequest,
 				) (plugin.DiffResult, error) {
 					// Always require replacement.
-					keys := slice.Prealloc[resource.PropertyKey](len(req.NewInputs))
-					for k := range req.NewInputs {
-						keys = append(keys, k)
+					keys := slice.Prealloc[resource.PropertyKey](req.NewInputs.Len())
+					for k := range req.NewInputs.All {
+						keys = append(keys, resource.PropertyKey(k))
 					}
 					return plugin.DiffResult{ReplaceKeys: keys}, nil
 				},
@@ -305,9 +305,9 @@ func TestSingleResourceExplicitProviderReplace(t *testing.T) {
 					req plugin.DiffConfigRequest,
 				) (plugin.DiffResult, error) {
 					// Always require replacement.
-					keys := slice.Prealloc[resource.PropertyKey](len(req.NewInputs))
-					for k := range req.NewInputs {
-						keys = append(keys, k)
+					keys := slice.Prealloc[resource.PropertyKey](req.NewInputs.Len())
+					for k := range req.NewInputs.All {
+						keys = append(keys, resource.PropertyKey(k))
 					}
 					return plugin.DiffResult{ReplaceKeys: keys}, nil
 				},
@@ -531,9 +531,9 @@ func TestSingleResourceExplicitProviderAliasReplace(t *testing.T) {
 					_ context.Context,
 					req plugin.DiffConfigRequest,
 				) (plugin.DiffResult, error) {
-					keys := slice.Prealloc[resource.PropertyKey](len(req.NewInputs))
-					for k := range req.NewInputs {
-						keys = append(keys, k)
+					keys := slice.Prealloc[resource.PropertyKey](req.NewInputs.Len())
+					for k := range req.NewInputs.All {
+						keys = append(keys, resource.PropertyKey(k))
 					}
 					return plugin.DiffResult{ReplaceKeys: keys}, nil
 				},
@@ -678,9 +678,9 @@ func TestSingleResourceExplicitProviderDeleteBeforeReplace(t *testing.T) {
 					req plugin.DiffConfigRequest,
 				) (plugin.DiffResult, error) {
 					// Always require replacement.
-					keys := slice.Prealloc[resource.PropertyKey](len(req.NewInputs))
-					for k := range req.NewInputs {
-						keys = append(keys, k)
+					keys := slice.Prealloc[resource.PropertyKey](req.NewInputs.Len())
+					for k := range req.NewInputs.All {
+						keys = append(keys, resource.PropertyKey(k))
 					}
 					return plugin.DiffResult{ReplaceKeys: keys, DeleteBeforeReplace: true}, nil
 				},
@@ -913,9 +913,9 @@ func TestDefaultProviderDiffReplacement(t *testing.T) {
 					_ context.Context,
 					req plugin.DiffConfigRequest,
 				) (plugin.DiffResult, error) {
-					keys := slice.Prealloc[resource.PropertyKey](len(req.NewInputs))
-					for k := range req.NewInputs {
-						keys = append(keys, k)
+					keys := slice.Prealloc[resource.PropertyKey](req.NewInputs.Len())
+					for k := range req.NewInputs.All {
+						keys = append(keys, resource.PropertyKey(k))
 					}
 					return plugin.DiffResult{
 						Changes:     plugin.DiffSome,
@@ -1022,9 +1022,9 @@ func TestExplicitProviderDiffReplacement(t *testing.T) {
 					_ context.Context,
 					req plugin.DiffConfigRequest,
 				) (plugin.DiffResult, error) {
-					keys := slice.Prealloc[resource.PropertyKey](len(req.NewInputs))
-					for k := range req.NewInputs {
-						keys = append(keys, k)
+					keys := slice.Prealloc[resource.PropertyKey](req.NewInputs.Len())
+					for k := range req.NewInputs.All {
+						keys = append(keys, resource.PropertyKey(k))
 					}
 					return plugin.DiffResult{
 						Changes:     plugin.DiffSome,
@@ -2136,20 +2136,20 @@ func TestRefreshLegacyState(t *testing.T) {
 func TestInternalFiltered(t *testing.T) {
 	t.Parallel()
 
-	internalKey := resource.PropertyKey("__internal")
+	internalKey := "__internal"
 
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				DiffConfigF: func(_ context.Context, req plugin.DiffConfigRequest) (plugin.DiffConfigResponse, error) {
-					assert.NotContains(t, req.NewInputs, internalKey)
-					assert.NotContains(t, req.OldInputs, internalKey)
-					assert.NotContains(t, req.OldOutputs, internalKey)
+					assert.NotContains(t, req.NewInputs.AsMap(), internalKey)
+					assert.NotContains(t, req.OldInputs.AsMap(), internalKey)
+					assert.NotContains(t, req.OldOutputs.AsMap(), internalKey)
 					return plugin.DiffResult{}, nil
 				},
 				CheckConfigF: func(_ context.Context, req plugin.CheckConfigRequest) (plugin.CheckConfigResponse, error) {
-					assert.NotContains(t, req.News.AsMap(), string(internalKey))
-					assert.NotContains(t, req.Olds.AsMap(), string(internalKey))
+					assert.NotContains(t, req.News.AsMap(), internalKey)
+					assert.NotContains(t, req.Olds.AsMap(), internalKey)
 					return plugin.CheckConfigResponse{}, nil
 				},
 				ConfigureF: func(_ context.Context, req plugin.ConfigureRequest) (plugin.ConfigureResponse, error) {
@@ -2159,7 +2159,7 @@ func TestInternalFiltered(t *testing.T) {
 						t.Fatalf("unexpected URN %v", req.URN)
 					}
 					assert.NotEmpty(t, req.ID)
-					assert.NotContains(t, req.Inputs.AsMap(), string(internalKey))
+					assert.NotContains(t, req.Inputs.AsMap(), internalKey)
 					return plugin.ConfigureResponse{}, nil
 				},
 			}, nil
@@ -2167,14 +2167,14 @@ func TestInternalFiltered(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.1.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				DiffConfigF: func(_ context.Context, req plugin.DiffConfigRequest) (plugin.DiffConfigResponse, error) {
-					assert.NotContains(t, req.NewInputs, internalKey)
-					assert.NotContains(t, req.OldInputs, internalKey)
-					assert.NotContains(t, req.OldOutputs, internalKey)
+					assert.NotContains(t, req.NewInputs.AsMap(), internalKey)
+					assert.NotContains(t, req.OldInputs.AsMap(), internalKey)
+					assert.NotContains(t, req.OldOutputs.AsMap(), internalKey)
 					return plugin.DiffResult{}, nil
 				},
 				CheckConfigF: func(_ context.Context, req plugin.CheckConfigRequest) (plugin.CheckConfigResponse, error) {
-					assert.NotContains(t, req.News.AsMap(), string(internalKey))
-					assert.NotContains(t, req.Olds.AsMap(), string(internalKey))
+					assert.NotContains(t, req.News.AsMap(), internalKey)
+					assert.NotContains(t, req.Olds.AsMap(), internalKey)
 					return plugin.CheckConfigResponse{}, nil
 				},
 				ConfigureF: func(_ context.Context, req plugin.ConfigureRequest) (plugin.ConfigureResponse, error) {
@@ -2184,7 +2184,7 @@ func TestInternalFiltered(t *testing.T) {
 						t.Fatalf("unexpected URN %v", req.URN)
 					}
 					assert.NotEmpty(t, req.ID)
-					assert.NotContains(t, req.Inputs.AsMap(), string(internalKey))
+					assert.NotContains(t, req.Inputs.AsMap(), internalKey)
 					return plugin.ConfigureResponse{}, nil
 				},
 			}, nil
@@ -2243,8 +2243,8 @@ func TestProviderSameStep(t *testing.T) {
 		deploytest.NewProviderLoader("pkg", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				DiffConfigF: func(_ context.Context, req plugin.DiffConfigRequest) (plugin.DiffConfigResponse, error) {
-					assert.Equal(t, "100", req.OldInputs["value"].StringValue())
-					assert.Equal(t, "200", req.NewInputs["value"].StringValue())
+					assert.Equal(t, "100", req.OldInputs.Get("value").AsString())
+					assert.Equal(t, "200", req.NewInputs.Get("value").AsString())
 					return plugin.DiffConfigResponse{Changes: plugin.DiffNone}, nil
 				},
 				ConfigureF: func(_ context.Context, req plugin.ConfigureRequest) (plugin.ConfigureResponse, error) {
