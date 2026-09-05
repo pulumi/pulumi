@@ -78,7 +78,8 @@ func CurrentProjectContradictsWorkspace(proj *workspace.Project, stack StackRefe
 	}
 
 	if string(proj.Name) != string(project) {
-		return fmt.Errorf("provided project name %q doesn't match Pulumi.yaml", project)
+		return fmt.Errorf("stack %s belongs to project %q, but Pulumi.yaml declares project %q",
+			stack, project, proj.Name)
 	}
 
 	return nil
