@@ -663,6 +663,8 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 	case "unsecret":
 		outputTypeName := g.secretOutputTypeName(expr)
 		g.Fgenf(w, "pulumi.Unsecret(%v).(%sOutput)", expr.Args[0], outputTypeName)
+	case "resourceExists":
+		g.Fgenf(w, "ctx.ExistsResource(%v, %v, nil)", expr.Args[0], expr.Args[1])
 	case "toBase64":
 		g.Fgenf(w, "base64.StdEncoding.EncodeToString([]byte(%v))", expr.Args[0])
 	case fromBase64Fn:

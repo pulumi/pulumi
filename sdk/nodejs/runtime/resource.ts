@@ -464,6 +464,111 @@ export function readResource(
     );
 }
 
+/**
+ * Checks whether a resource exists in the provider without actually reading or importing it.
+ */
+export function existsResource(
+    type: string,
+    id: Input<ID>,
+    props?: Inputs,
+    opts?: CustomResourceOptions,
+    packageRef?: Promise<string | undefined>,
+): Output<boolean> {
+    opts = opts || {};
+
+    const label = `existsResource[${type}]`;
+    log.debug(`Checking resource existence: t=${type}`);
+
+    const idPromise = output(id).promise(true);
+
+    const resultPromise = debuggablePromise(
+        (async (): Promise<{ exists: boolean; known: boolean }> => {
+            const monitor = getMonitor();
+
+            const resolvedID = await serializeProperty(label, await idPromise, new Set(), {
+                keepOutputValues: false,
+            });
+
+            // During previews, if the ID is unknown, we can't check existence, so the result is unknown.
+            if (resolvedID === undefined) {
+                return { exists: false, known: false };
+            }
+
+            // Serialize properties if provided.
+            const serializedProps = props
+                ? await serializeProperties(label, props, { keepOutputValues: false })
+                : {};
+
+            // Resolve provider reference.
+            let providerRef: string | undefined;
+            if (opts!.provider) {
+                const providerURN = await opts!.provider.urn.promise();
+                const providerID = (await opts!.provider.id.promise()) || "";
+                providerRef = `${providerURN}::${providerID}`;
+            }
+
+            // Resolve parent URN.
+            let parentURN = "";
+            if (opts!.parent) {
+                const parentOutput = getParentURN(opts!.parent);
+                parentURN = (await parentOutput.promise()) || "";
+            }
+
+            // Resolve package ref if available.
+            let packageRefStr: string | undefined;
+            if (packageRef !== undefined) {
+                packageRefStr = await packageRef;
+                if (packageRefStr !== undefined) {
+                    // If we have a package reference we don't need to pass the version or plugin download URL.
+                    opts!.version = "";
+                    opts!.pluginDownloadURL = "";
+                }
+            }
+
+            const req = new resproto.ExistsResourceRequest();
+            req.setType(type);
+            req.setId(resolvedID);
+            req.setParent(parentURN);
+            req.setProperties(gstruct.Struct.fromJavaScript(serializedProps));
+            req.setProvider(providerRef || "");
+            req.setVersion(opts!.version || "");
+            req.setPlugindownloadurl(opts!.pluginDownloadURL || "");
+            req.setPackageref(packageRefStr || "");
+
+            if (!monitor) {
+                // In test mode without a monitor, report a known existing resource.
+                return { exists: true, known: true };
+            }
+
+            const resp = await new Promise<resproto.ExistsResourceResponse>((resolve, reject) => {
+                monitor.existsResource(
+                    req,
+                    (rpcError: grpc.ServiceError | null, innerResponse: resproto.ExistsResourceResponse) => {
+                        if (rpcError) {
+                            reject(
+                                new Error(`failed to check existence of resource [${type}]: ${rpcError.message}`),
+                            );
+                        } else {
+                            resolve(innerResponse);
+                        }
+                    },
+                );
+            });
+
+            return { exists: resp.getExists(), known: resp.getKnown() };
+        })(),
+        label,
+    );
+
+    return new Output<boolean>(
+        [],
+        resultPromise.then((r) => r.exists),
+        /*isKnown*/ resultPromise.then((r) => r.known),
+        /*isSecret*/ Promise.resolve(false),
+        /*allResources*/ Promise.resolve(new Set<Resource>()),
+    );
+}
+
 function getParentURN(parent?: Resource | Input<string>) {
     if (Resource.isInstance(parent)) {
         return parent.urn;

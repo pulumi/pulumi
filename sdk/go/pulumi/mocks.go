@@ -350,6 +350,15 @@ func (m *mockMonitor) ReadResource(ctx context.Context, in *pulumirpc.ReadResour
 	}, nil
 }
 
+func (m *mockMonitor) ExistsResource(ctx context.Context, in *pulumirpc.ExistsResourceRequest,
+	opts ...grpc.CallOption,
+) (*pulumirpc.ExistsResourceResponse, error) {
+	return &pulumirpc.ExistsResourceResponse{
+		Exists: false,
+		Known:  true,
+	}, nil
+}
+
 func (m *mockMonitor) RegisterResource(ctx context.Context, in *pulumirpc.RegisterResourceRequest,
 	opts ...grpc.CallOption,
 ) (*pulumirpc.RegisterResourceResponse, error) {
