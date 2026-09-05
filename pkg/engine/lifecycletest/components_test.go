@@ -1703,8 +1703,8 @@ func TestCallSelfProvider(t *testing.T) {
 			var state string
 			return &deploytest.Provider{
 				ConfigureF: func(ctx context.Context, cr plugin.ConfigureRequest) (plugin.ConfigureResponse, error) {
-					if in, ok := cr.Inputs["state"]; ok {
-						state = in.StringValue()
+					if in, ok := cr.Inputs.GetOk("state"); ok {
+						state = in.AsString()
 					}
 					return plugin.ConfigureResponse{}, nil
 				},

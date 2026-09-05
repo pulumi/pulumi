@@ -1365,7 +1365,7 @@ func TestDoCmdFunctionInvokeWithConfiguration(t *testing.T) {
 			MockProvider: plugin.MockProvider{
 				ConfigureF: func(ctx context.Context, req plugin.ConfigureRequest) (plugin.ConfigureResponse, error) {
 					configureCalled = true
-					assert.Equal(t, "val1", req.Inputs["opt1"].StringValue())
+					assert.Equal(t, "val1", req.Inputs.Get("opt1").AsString())
 					return plugin.ConfigureResponse{}, nil
 				},
 				InvokeF: func(ctx context.Context, req plugin.InvokeRequest) (plugin.InvokeResponse, error) {
@@ -2171,7 +2171,7 @@ func TestDoCmdFunctionInvokeWithYAMLProviderFile(t *testing.T) {
 				ConfigureF: func(ctx context.Context, req plugin.ConfigureRequest) (plugin.ConfigureResponse, error) {
 					configureCalled = true
 					// The converted PCL ("opt1 = \"val1\"") should be bound, evaluated, and reach Configure intact.
-					assert.Equal(t, "val1", req.Inputs["opt1"].StringValue())
+					assert.Equal(t, "val1", req.Inputs.Get("opt1").AsString())
 					return plugin.ConfigureResponse{}, nil
 				},
 				InvokeF: func(ctx context.Context, req plugin.InvokeRequest) (plugin.InvokeResponse, error) {
@@ -2487,8 +2487,8 @@ func TestDoCmdFunctionInvokeWithFlags(t *testing.T) {
 				ConfigureF: func(ctx context.Context, req plugin.ConfigureRequest) (plugin.ConfigureResponse, error) {
 					configureCalled = true
 					// The converted PCL ("opt1 = \"val1\"") + optTwo=val2 should be bound, evaluated, and reach Configure intact.
-					assert.Equal(t, "val1", req.Inputs["opt1"].StringValue())
-					assert.Equal(t, "val2", req.Inputs["optTwo"].StringValue())
+					assert.Equal(t, "val1", req.Inputs.Get("opt1").AsString())
+					assert.Equal(t, "val2", req.Inputs.Get("optTwo").AsString())
 					return plugin.ConfigureResponse{}, nil
 				},
 				InvokeF: func(ctx context.Context, req plugin.InvokeRequest) (plugin.InvokeResponse, error) {
@@ -2615,8 +2615,8 @@ func TestDoCmdFunctionInvokeWithYAMLFlags(t *testing.T) {
 				ConfigureF: func(ctx context.Context, req plugin.ConfigureRequest) (plugin.ConfigureResponse, error) {
 					configureCalled = true
 					// The converted PCL ("opt1 = \"val1\"") + optTwo=val2 should be bound, evaluated, and reach Configure intact.
-					assert.Equal(t, "val1", req.Inputs["opt1"].StringValue())
-					assert.Equal(t, "val2", req.Inputs["optTwo"].StringValue())
+					assert.Equal(t, "val1", req.Inputs.Get("opt1").AsString())
+					assert.Equal(t, "val2", req.Inputs.Get("optTwo").AsString())
 					return plugin.ConfigureResponse{}, nil
 				},
 				InvokeF: func(ctx context.Context, req plugin.InvokeRequest) (plugin.InvokeResponse, error) {

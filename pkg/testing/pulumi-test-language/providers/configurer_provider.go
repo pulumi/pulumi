@@ -236,8 +236,8 @@ func (p *ConfigurerProvider) DiffConfig(
 func (p *ConfigurerProvider) Configure(
 	_ context.Context, req plugin.ConfigureRequest,
 ) (plugin.ConfigureResponse, error) {
-	if cfg, ok := req.Inputs["config"]; ok && cfg.IsString() {
-		p.config = cfg.StringValue()
+	if cfg, ok := req.Inputs.GetOk("config"); ok && cfg.IsString() {
+		p.config = cfg.AsString()
 	}
 	return plugin.ConfigureResponse{}, nil
 }

@@ -35,7 +35,7 @@ type Provider struct {
 	Package tokens.Package
 	Version semver.Version
 
-	Config     resource.PropertyMap
+	Config     property.Map
 	configured bool
 
 	DialMonitorF func(ctx context.Context, endpoint string) (*ResourceMonitor, error)

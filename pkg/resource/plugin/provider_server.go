@@ -418,7 +418,7 @@ func (p *providerServer) Configure(ctx context.Context,
 		Name:   req.Name,
 		Type:   typ,
 		ID:     id,
-		Inputs: inputs,
+		Inputs: resource.FromResourcePropertyMap(inputs),
 	})
 	if err != nil {
 		return nil, err

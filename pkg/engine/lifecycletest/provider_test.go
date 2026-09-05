@@ -396,7 +396,7 @@ func (p *configurableProvider) configure(
 	_ context.Context,
 	req plugin.ConfigureRequest,
 ) (plugin.ConfigureResponse, error) {
-	p.id = req.Inputs["id"].StringValue()
+	p.id = req.Inputs.Get("id").AsString()
 	return plugin.ConfigureResponse{}, nil
 }
 
@@ -2159,7 +2159,7 @@ func TestInternalFiltered(t *testing.T) {
 						t.Fatalf("unexpected URN %v", req.URN)
 					}
 					assert.NotEmpty(t, req.ID)
-					assert.NotContains(t, req.Inputs, internalKey)
+					assert.NotContains(t, req.Inputs.AsMap(), string(internalKey))
 					return plugin.ConfigureResponse{}, nil
 				},
 			}, nil
@@ -2184,7 +2184,7 @@ func TestInternalFiltered(t *testing.T) {
 						t.Fatalf("unexpected URN %v", req.URN)
 					}
 					assert.NotEmpty(t, req.ID)
-					assert.NotContains(t, req.Inputs, internalKey)
+					assert.NotContains(t, req.Inputs.AsMap(), string(internalKey))
 					return plugin.ConfigureResponse{}, nil
 				},
 			}, nil
@@ -2250,7 +2250,7 @@ func TestProviderSameStep(t *testing.T) {
 				ConfigureF: func(_ context.Context, req plugin.ConfigureRequest) (plugin.ConfigureResponse, error) {
 					expected := resource.URN("urn:pulumi:test::test::pulumi:providers:pkg::provA")
 					assert.Equal(t, &expected, req.URN)
-					assert.Equal(t, "100", req.Inputs["value"].StringValue())
+					assert.Equal(t, "100", req.Inputs.Get("value").AsString())
 					return plugin.ConfigureResponse{}, nil
 				},
 			}, nil
