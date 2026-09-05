@@ -13,6 +13,7 @@
 # limitations under the License.
 import asyncio
 import unittest
+from unittest import mock
 from enum import Enum
 from typing import Any, Dict, List, Mapping, Optional, Sequence, Set, cast
 
@@ -1618,6 +1619,29 @@ class DeserializationOutput(dict):
     @property
     @pulumi.getter(name="someBar")
     def some_bar(self) -> Mapping[str, SomeFooOutput]: ...  # type: ignore
+
+
+class SerializationErrorContextTests(unittest.IsolatedAsyncioTestCase):
+    async def test_serialize_properties_adds_input_context(self):
+        for exception_type in [ValueError, AssertionError]:
+            with self.subTest(exception_type=exception_type):
+                with mock.patch.object(
+                    rpc,
+                    "serialize_property",
+                    new=mock.AsyncMock(
+                        side_effect=exception_type("serialization failed")
+                    ),
+                ):
+                    with self.assertRaises(exception_type) as raised:
+                        await rpc.serialize_properties({"property_name": "value"}, {})
+
+                message = str(raised.exception)
+                self.assertIn("While processing input: 'property_name'", message)
+                self.assertIn("value 'value'", message)
+                self.assertIn(
+                    f"{exception_type.__name__} has risen: serialization failed",
+                    message,
+                )
 
 
 class TypeMetaDataSerializationTests(unittest.IsolatedAsyncioTestCase):
