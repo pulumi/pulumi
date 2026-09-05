@@ -1385,6 +1385,7 @@ func TestExternalLoaderNub(t *testing.T) {
 	}
 	require.NotNil(t, outputs)
 	require.Equal(t, "dynamic-value", outputs["dynamicId"])
+	require.Equal(t, "value-from-ts", outputs["dynamicValue"])
 	require.Greater(t, outputs["serializedLength"].(float64), 0.0)
 	e.RunCommand("pulumi", "destroy", "--skip-preview")
 }

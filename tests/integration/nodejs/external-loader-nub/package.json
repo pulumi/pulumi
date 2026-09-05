@@ -5,6 +5,9 @@
     "scripts": {
         "check": "tsc --noEmit"
     },
+    "engines": {
+        "node": ">=22.15.0"
+    },
     "dependencies": {
         "@nubjs/loader": "0.8.3",
         "@pulumi/pulumi": "latest",
