@@ -1,0 +1,5 @@
+component: cli
+kind: fix
+body: Re-validate an agent account claim marked unavailable instead of trusting the
+    stale marker forever
+time: 2026-08-28T00:00:00Z
