@@ -375,6 +375,13 @@ func ExampleLocalWorkspace_InstallPluginFromServer() {
 	w.InstallPluginFromServer(ctx, "scaleway", "v1.2.0", "github://api.github.com/lbrlabs")
 }
 
+func ExampleLocalWorkspace_InstallPluginFromFile() {
+	ctx := context.Background()
+	// create a workspace from a local project
+	w, _ := NewLocalWorkspace(ctx, WorkDir(filepath.Join(".", "program")))
+	w.InstallPluginFromFile(ctx, "kubernetes", "4.18.0", "/usr/bin/pulumi-resource-kubernetes")
+}
+
 func ExampleNewLocalWorkspace() {
 	ctx := context.Background()
 	// WorkDir sets the working directory for the LocalWorkspace. The workspace will look for a default
