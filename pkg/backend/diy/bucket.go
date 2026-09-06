@@ -153,6 +153,14 @@ func listBucket(ctx context.Context, bucket Bucket, dir string) ([]*blob.ListObj
 		if err != nil {
 			return nil, fmt.Errorf("could not list bucket: %w", err)
 		}
+		// Some S3-compatible stores (e.g. Hitachi HCP) auto-create 0-byte
+		// "directory marker" objects whose key equals the listed prefix and
+		// ends in "/". They are not real state files; skip them so callers
+		// don't read/parse them as JSON (which fails with
+		// "unexpected end of JSON input").
+		if !file.IsDir && strings.HasSuffix(file.Key, "/") {
+			continue
+		}
 		files = append(files, file)
 	}
 
