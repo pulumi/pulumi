@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: sdk/python
+  description: make python plugin venv portable
