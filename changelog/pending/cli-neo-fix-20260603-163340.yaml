@@ -1,0 +1,6 @@
+component: cli/neo
+kind: fix
+body: Fix Neo CLI progress UI corruption caused by child-process stderr leaking onto the terminal
+time: 2026-06-03T16:33:40+03:00
+custom:
+    PR: ""

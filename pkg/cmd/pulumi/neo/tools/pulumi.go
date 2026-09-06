@@ -348,16 +348,15 @@ func (p *Pulumi) run(ctx context.Context, a pulumiArgs, isPreview bool) (pulumiR
 		Scopes:             ctxOnlyCancellationSource{},
 	}
 
-	// The engine and backend print a handful of headers/messages directly to
-	// os.Stdout/os.Stderr (e.g. the "Previewing update (stack)" banner in
-	// pkg/backend/httpstate/backend.go) that bypass Display.Stdout. Under the
-	// Neo TUI this corrupts bubbletea's alt-screen, so redirect both streams to
-	// /dev/null for the duration of the backend call. bubbletea holds a
-	// captured reference to the original stdout from tea.NewProgram, so this
-	// swap doesn't disturb rendering. Deferred so a panic in the engine
-	// can't leave the CLI permanently muted.
-	restoreStd := silenceStd()
-	defer restoreStd()
+	// The engine and backend print headers/messages directly to os.Stdout/os.Stderr
+	// (e.g. the "Previewing update (stack)" banner in pkg/backend/httpstate/backend.go),
+	// and the child processes the engine spawns (plugins, language hosts) inherit the
+	// real stderr file descriptor. Both would corrupt the Neo TUI, so silence the Go
+	// stdout/stderr variables and redirect the real fd 2 into a capture buffer for the
+	// duration of the backend call. fd 1 is left alone so bubbletea keeps rendering.
+	// Deferred so a panic in the engine can't leave the CLI permanently muted.
+	silencer := silenceStd()
+	defer silencer.Restore()
 
 	var runErr error
 	var changes display.ResourceChanges
@@ -370,6 +369,11 @@ func (p *Pulumi) run(ctx context.Context, a pulumiArgs, isPreview bool) (pulumiR
 	// the channel for us; once the backend call returns, no more events will arrive.
 	close(eventsCh)
 	<-drainDone
+
+	// Restore stdio and recover any child-process stderr the engine's subprocesses
+	// emitted (surfaced below only when the operation failed). The deferred Restore
+	// is idempotent, so this explicit call is safe.
+	capturedStderr := silencer.Restore()
 
 	res := newPulumiResult(proj, s.Ref(), eventsPath)
 
@@ -403,6 +407,9 @@ func (p *Pulumi) run(ctx context.Context, a pulumiArgs, isPreview bool) (pulumiR
 		// returned without emitting any DiagEvents (host crash, plugin
 		// discovery, marshalling).
 		res.Logs = fmt.Sprintf("error: pulumi %s: %s\n", label, runErr) + res.Logs
+		if stderr := strings.TrimSpace(capturedStderr); stderr != "" {
+			res.Logs += "\nchild process output:\n" + stderr + "\n"
+		}
 		return res, errToolFailed
 	}
 	return res, nil
@@ -621,27 +628,6 @@ type ctxOnlyCancellationScope struct {
 
 func (c *ctxOnlyCancellationScope) Context() *cancel.Context { return c.ctx }
 func (c *ctxOnlyCancellationScope) Close()                   { c.src.Cancel() }
-
-// silenceStd redirects os.Stdout and os.Stderr to /dev/null and returns a
-// restore func. Calls to fmt.Printf / fmt.Println / fmt.Print during the
-// redirection go nowhere. Safe even if opening /dev/null fails — in that case
-// the originals remain in place. bubbletea's tea.NewProgram captures a stable
-// reference to the terminal at construction, so this swap does not affect the
-// TUI's rendering; it only catches writes that look up os.Stdout dynamically.
-//
-//nolint:forbidigo
-func silenceStd() func() {
-	null, err := os.OpenFile(os.DevNull, os.O_WRONLY, 0)
-	if err != nil {
-		return func() {}
-	}
-	origStdout, origStderr := os.Stdout, os.Stderr
-	os.Stdout, os.Stderr = null, null
-	return func() {
-		os.Stdout, os.Stderr = origStdout, origStderr
-		_ = null.Close()
-	}
-}
 
 // newPulumiResult returns a pulumiResult populated with the canonical project
 // name and bare stack name from the parsed StackReference. ParseStackReference
