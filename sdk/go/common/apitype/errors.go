@@ -36,6 +36,18 @@ const (
 	// CustomErrorType is used to describe any ErrorType not found in this file, and must be paired with
 	// a custom error message.
 	CustomErrorType ErrorType = "custom"
+
+	// NeoOrgCapExhaustedErrorType accompanies the 402 the Pulumi Service returns when an
+	// organization has reached its admin-configured monthly Neo usage cap. New-enough Pulumi
+	// CLIs decode this into the "ask your org admin to raise the limit" pointer in
+	// pkg/backend/backenderr; older clients fall through to displaying the top-level
+	// ErrorResponse.Message field, so the wire shape is additive.
+	NeoOrgCapExhaustedErrorType ErrorType = "neo_org_cap_exhausted"
+	// NeoMemberCapExhaustedErrorType accompanies the 402 the Pulumi Service returns when an
+	// individual member has reached their admin-configured per-member Neo usage cap. Decoded
+	// like NeoOrgCapExhaustedErrorType, but into a member-scoped pointer; older clients fall
+	// through to the top-level ErrorResponse.Message field, so the wire shape is additive.
+	NeoMemberCapExhaustedErrorType ErrorType = "neo_member_cap_exhausted"
 )
 
 // RequestError describes a request error in more detail, such the specific validation
