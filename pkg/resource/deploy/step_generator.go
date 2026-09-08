@@ -2188,6 +2188,18 @@ func (sg *stepGenerator) continueStepsFromDiff(diffEvent ContinueResourceDiffEve
 				), nil
 			}
 
+			// If the resource is already pending replacement its delete has already been performed, so
+			// all that's left is to create the replacement. The "old" currently pending replace resource
+			// will get removed from the state when the CreateReplacementStep is successful.
+			if old.PendingReplacement {
+				return []Step{
+					NewReplaceStep(sg.deployment, old, new, diff.ReplaceKeys, diff.ChangedKeys, diff.DetailedDiff, false),
+					NewCreateReplacementStep(
+						sg.deployment, event, old, new, diff.ReplaceKeys, diff.ChangedKeys, diff.DetailedDiff, false,
+					),
+				}, nil
+			}
+
 			return []Step{
 				NewCreateReplacementStep(
 					sg.deployment, event, old, new, diff.ReplaceKeys, diff.ChangedKeys, diff.DetailedDiff, true,
