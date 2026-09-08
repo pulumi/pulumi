@@ -68,6 +68,9 @@ jobs:
       acceptance-test-platforms: 'windows-latest'
       # We'll only upload coverage artifacts with the periodic-coverage cron workflow.
       enable-coverage: false
+      # Nothing in this run packages release artifacts, and with coverage
+      # off there is nothing to rebuild.
+      rebuild-release-binaries: false
     secrets:
       # Scope secrets to the minimum required:
       PULUMI_PROD_ACCESS_TOKEN: ${{ secrets.PULUMI_PROD_ACCESS_TOKEN }}
