@@ -62,6 +62,8 @@ func validateStateMigrationContext(
 // lifecycle (External), and its PendingReplacement and Taint flags must therefore follow its successor. Protect and
 // RetainOnDelete are engine-owned safety metadata and must be inherited conservatively by any custom or component
 // successor: when multiple resources are folded together, the successor must carry either flag if any predecessor did.
+// Additional custom resources must match prior managed state by physical ID, provider, and extension identity. They
+// preserve ownership and lifecycle flags for the matched prior resources, and inherit Protect and RetainOnDelete.
 // The provider identity restrictions do not apply to components because they have no provider-managed physical
 // identity.
 func validateStateMigrationManagedIdentity(
@@ -149,11 +151,38 @@ func validateStateMigrationManagedIdentity(
 		inheritedByURN[targetURN] = inherited
 	}
 
-	// The checks above validate retained custom resources and their successors. Now reject custom states without a
-	// managed predecessor, and reject safety or lifecycle flags that were not inherited from their predecessors. This
-	// includes states newly introduced by the migration.
+	// New resources without a predecessor must match the ID, provider, and extension against prior managed state, and
+	// inherit Protect and RetainOnDelete.
 	for _, state := range final {
-		inherited := inheritedByURN[state.URN]
+		inherited, hasPredecessor := inheritedByURN[state.URN]
+		if state.Custom && !hasPredecessor && state.ID != "" {
+			for _, old := range original {
+				if !old.Custom || old.ID != state.ID || old.Provider != state.Provider ||
+					old.ExtensionRef != state.ExtensionRef {
+					continue
+				}
+				if old.External != state.External {
+					return fmt.Errorf("state migration for %s changes ownership of custom resource %s "+
+						"from external=%t to external=%t on inferred successor %s; migrations must preserve managed resource ownership",
+						urn, old.URN, old.External, state.External, state.URN)
+				}
+				if old.PendingReplacement != state.PendingReplacement {
+					return fmt.Errorf("state migration for %s changes PendingReplacement for custom resource %s "+
+						"from %t to %t on inferred successor %s; migrations must preserve provider lifecycle state",
+						urn, old.URN, old.PendingReplacement, state.PendingReplacement, state.URN)
+				}
+				if old.Taint != state.Taint {
+					return fmt.Errorf("state migration for %s changes Taint for custom resource %s "+
+						"from %t to %t on inferred successor %s; migrations must preserve provider lifecycle state",
+						urn, old.URN, old.Taint, state.Taint, state.URN)
+				}
+				inherited.hasCustomPredecessor = true
+				inherited.protect = inherited.protect || old.Protect
+				inherited.retainOnDelete = inherited.retainOnDelete || old.RetainOnDelete
+				inherited.pendingReplacement = old.PendingReplacement
+				inherited.taint = old.Taint
+			}
+		}
 		if state.PendingReplacement && (!state.Custom || !inherited.pendingReplacement) {
 			return fmt.Errorf("state migration for %s returns resource %s with PendingReplacement set "+
 				"without a pending-replacement custom predecessor", urn, state.URN)
