@@ -1,0 +1,4 @@
+component: sdk/go
+kind: fix
+body: Allow outputs and prompt values to be marshalled into fields typed as input interfaces, such as pulumi.StringInput
+time: 2026-09-08T10:58:32.672333+02:00

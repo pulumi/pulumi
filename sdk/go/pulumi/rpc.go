@@ -267,6 +267,10 @@ func marshalInputOptionsImpl(v any,
 				if newOutput, ok := internal.CallToOutputMethod(context.TODO(), reflect.ValueOf(input), destType); ok {
 					// We were able to convert the input. Use the result as the new input value.
 					input, valueType = newOutput, destType
+				} else if destType.Kind() == reflect.Interface && reflect.TypeOf(input).Implements(destType) {
+					// The destination is an input interface (e.g. pulumi.StringInput) that the value already
+					// satisfies. Marshal it as its own element type.
+					destType = valueType
 				} else if !valueType.AssignableTo(destType) {
 					err := fmt.Errorf(
 						"cannot marshal an input of type %T with element type %v as a value of type %v",

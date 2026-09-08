@@ -891,7 +891,7 @@ func TestInvokePlainWithOutputArgument(t *testing.T) {
 		res := result{}
 		return ctx.Invoke("test:invoke:success", args, &res)
 	}, WithMocks("project", "stack", mocks))
-	require.ErrorContains(t, err, "cannot marshal an input of type")
+	require.ErrorContains(t, err, "cannot marshal Output value of type pulumi.StringOutput")
 }
 
 // This test ensures that ctx.RegisterResourceOutputs is a no-op on subsequent
