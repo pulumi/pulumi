@@ -386,52 +386,20 @@ func TestCheckCloudCredentialsConfigureError(t *testing.T) {
 	}
 }
 
-// awaitingProvider mimics plugin-backed providers, whose Configure completes
-// asynchronously and reports its result through AwaitConfigure.
-type awaitingProvider struct {
-	*plugin.MockProvider
-	await func(context.Context) error
-}
-
-func (p *awaitingProvider) AwaitConfigure(ctx context.Context) error { return p.await(ctx) }
-
-func TestCheckCloudCredentialsAwaitConfigure(t *testing.T) {
+func TestCheckCloudCredentialsConfigureTimeout(t *testing.T) {
 	t.Parallel()
 
-	newMock := func() *plugin.MockProvider {
-		return &plugin.MockProvider{
-			CheckConfigF: echoCheckConfig,
-			ConfigureF: func(context.Context, plugin.ConfigureRequest) (plugin.ConfigureResponse, error) {
-				return plugin.ConfigureResponse{}, nil
-			},
-		}
+	mock := &plugin.MockProvider{
+		CheckConfigF: echoCheckConfig,
+		ConfigureF: func(ctx context.Context, _ plugin.ConfigureRequest) (plugin.ConfigureResponse, error) {
+			<-ctx.Done()
+			return plugin.ConfigureResponse{}, ctx.Err()
+		},
 	}
 
-	t.Run("error is surfaced", func(t *testing.T) {
-		t.Parallel()
-
-		prov := &awaitingProvider{MockProvider: newMock(), await: func(context.Context) error {
-			return errors.New("missing required configuration key \"aws:region\": where AWS operations will take place")
-		}}
-
-		warned, out := runCheck(t, awsProvider, prov, property.Map{}, time.Second)
-		assert.True(t, warned)
-		assert.Contains(t, out, "Could not validate your AWS credentials")
-		assert.Contains(t, out, "    missing required configuration key \"aws:region\"")
-	})
-
-	t.Run("timeout is silent", func(t *testing.T) {
-		t.Parallel()
-
-		prov := &awaitingProvider{MockProvider: newMock(), await: func(ctx context.Context) error {
-			<-ctx.Done()
-			return ctx.Err()
-		}}
-
-		warned, out := runCheck(t, awsProvider, prov, property.Map{}, 10*time.Millisecond)
-		assert.False(t, warned)
-		assert.Empty(t, out)
-	})
+	warned, out := runCheck(t, awsProvider, mock, property.Map{}, 10*time.Millisecond)
+	assert.False(t, warned)
+	assert.Empty(t, out)
 }
 
 func TestCheckCloudCredentialsTimeout(t *testing.T) {

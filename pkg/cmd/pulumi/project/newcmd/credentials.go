@@ -235,28 +235,21 @@ func (pf credentialsPreflight) printWarning(cp cloudProvider, problem *credentia
 	fmt.Fprintln(pf.stdout)
 }
 
-// configureProvider calls Configure with the checked config and waits for it to
-// complete, returning any error it produced. Plugin-backed providers run Configure
-// asynchronously, so the result is awaited through plugin.ConfigureAwaiter.
+// configureProvider calls Configure with the checked config and returns any error it produced.
 func configureProvider(
 	ctx context.Context, prov plugin.Provider, urn resource.URN, inputs property.Map,
 ) error {
 	name := urn.Name()
 	typ := urn.Type()
 	id := resource.ID("preflight")
-	if _, err := prov.Configure(ctx, plugin.ConfigureRequest{
+	_, err := prov.Configure(ctx, plugin.ConfigureRequest{
 		URN:    &urn,
 		Name:   &name,
 		Type:   &typ,
 		ID:     &id,
 		Inputs: resource.ToResourcePropertyMap(inputs),
-	}); err != nil {
-		return err
-	}
-	if awaiter, ok := prov.(plugin.ConfigureAwaiter); ok {
-		return awaiter.AwaitConfigure(ctx)
-	}
-	return nil
+	})
+	return err
 }
 
 // errorMessage unwraps gRPC status errors to their message so the provider's own
