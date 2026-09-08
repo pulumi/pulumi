@@ -49,6 +49,8 @@ jobs:
         with:
           action: jdx/mise-action@v2
           with: |
+            # Pin mise: the latest advertised version, 2026.9.3, has no release assets.
+            version: 2026.9.2
             experimental: true
       - name: Create PR
         env:
