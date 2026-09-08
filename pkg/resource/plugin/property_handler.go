@@ -21,17 +21,9 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/property"
+	"github.com/pulumi/pulumi/sdk/v3/go/propertyrpc"
 	"google.golang.org/protobuf/types/known/structpb"
 )
-
-var propertyLogMarshalOpts = MarshalOptions{
-	KeepSecrets:      true,
-	KeepUnknowns:     true,
-	KeepOutputValues: true,
-	// Suppress verbose marshal logging: this marshal runs *inside* the logging path (to build a log
-	// attribute), and logging here would re-enter and recurse.
-	skipLogging: true,
-}
 
 // PropertyExportHandler wraps the OTLP export handler, converting
 // property-typed attributes into logging.PropertyValue for OTLP transport.
@@ -87,22 +79,14 @@ func MarshalPropertyLogAttr(a slog.Attr) *structpb.Value {
 	case *structpb.Struct:
 		return structpb.NewStructValue(val)
 	case resource.PropertyMap:
-		return marshalResourceLogProperty(resource.NewProperty(val))
+		return structpb.NewStructValue(propertyrpc.Marshal(resource.FromResourcePropertyMap(val)))
 	case resource.PropertyValue:
-		return marshalResourceLogProperty(val)
+		return propertyrpc.MarshalValue(resource.FromResourcePropertyValue(val))
 	case property.Map:
-		return marshalResourceLogProperty(resource.NewProperty(resource.ToResourcePropertyMap(val)))
+		return structpb.NewStructValue(propertyrpc.Marshal(val))
 	case property.Value:
-		return marshalResourceLogProperty(resource.ToResourcePropertyValue(val))
+		return propertyrpc.MarshalValue(val)
 	default:
 		return nil
 	}
-}
-
-func marshalResourceLogProperty(pv resource.PropertyValue) *structpb.Value {
-	sv, err := MarshalPropertyValue("", pv, propertyLogMarshalOpts)
-	if err != nil || sv == nil {
-		return nil
-	}
-	return sv
 }

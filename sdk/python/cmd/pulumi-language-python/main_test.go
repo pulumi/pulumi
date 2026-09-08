@@ -16,9 +16,11 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sync"
 	"testing"
 
 	"github.com/pulumi/pulumi/sdk/v3/python/toolchain"
@@ -317,20 +319,34 @@ build-backend = "poetry.core.masonry.api"
 	}
 }
 
-// pulumiWheel searches for the built pulumi wheel in the sdk/python/dist directory
-// and returns its path.
-func pulumiWheel(t *testing.T) string {
-	dir, err := filepath.Abs(filepath.Join("..", "..", "build"))
-	require.NoError(t, err)
-	files, err := os.ReadDir(dir)
-	require.NoError(t, err)
-	for _, file := range files {
-		if filepath.Ext(file.Name()) == ".whl" {
-			return filepath.Join(dir, file.Name())
-		}
+var buildPulumiWheel = sync.OnceValues(func() (string, error) {
+	coreSDK, err := filepath.Abs(filepath.Join("..", ".."))
+	if err != nil {
+		return "", err
 	}
-	t.Fatalf("could not find wheel in %s", dir)
-	return ""
+	dest, err := os.MkdirTemp("", "pulumi-core-sdk-")
+	if err != nil {
+		return "", err
+	}
+	cmd := exec.Command("uv", "build", coreSDK, "--wheel", "-o", dest)
+	if out, err := cmd.CombinedOutput(); err != nil {
+		return "", fmt.Errorf("uv build %s: %w\n%s", coreSDK, err, out)
+	}
+	wheels, err := filepath.Glob(filepath.Join(dest, "*.whl"))
+	if err != nil {
+		return "", err
+	}
+	if len(wheels) != 1 {
+		return "", fmt.Errorf("expected exactly one wheel in %s, found %v", dest, wheels)
+	}
+	return wheels[0], nil
+})
+
+func pulumiWheel(t *testing.T) string {
+	t.Helper()
+	wheel, err := buildPulumiWheel()
+	require.NoError(t, err)
+	return wheel
 }
 
 func TestListPulumiPackageInfos(t *testing.T) {

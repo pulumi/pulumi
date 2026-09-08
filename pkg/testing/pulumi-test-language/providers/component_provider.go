@@ -28,6 +28,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/property"
+	"github.com/pulumi/pulumi/sdk/v3/go/propertyrpc"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -566,31 +567,17 @@ func (p *ComponentProvider) constructComponentCustomRefInputOutput(
 	}
 
 	// Create resource references for the inputRef and outputRef component outputs.
-	inputRefPropVal := resource.ToResourcePropertyValue(property.New(inputRef))
-	inputRefStruct, err := plugin.MarshalPropertyValue("inputRef", inputRefPropVal, plugin.MarshalOptions{
-		KeepResources: true,
-		KeepSecrets:   true,
-	})
-	if err != nil {
-		return plugin.ConstructResponse{}, fmt.Errorf("marshal input ref: %w", err)
-	}
-
-	outputRefPropVal := resource.MakeCustomResourceReference(resource.URN(child.Urn), resource.ID(child.Id), "")
-	outputRefStruct, err := plugin.MarshalPropertyValue("outputRef", outputRefPropVal, plugin.MarshalOptions{
-		KeepResources: true,
-		KeepSecrets:   true,
-	})
-	if err != nil {
-		return plugin.ConstructResponse{}, fmt.Errorf("marshal output ref: %w", err)
-	}
+	inputRefVal := property.New(inputRef)
+	outputRefVal := resource.FromResourcePropertyValue(
+		resource.MakeCustomResourceReference(resource.URN(child.Urn), resource.ID(child.Id), ""))
 
 	// Register the component's outputs and finish up.
 	_, err = monitor.RegisterResourceOutputs(ctx, &pulumirpc.RegisterResourceOutputsRequest{
 		Urn: parent.Urn,
 		Outputs: &structpb.Struct{
 			Fields: map[string]*structpb.Value{
-				"inputRef":  inputRefStruct,
-				"outputRef": outputRefStruct,
+				"inputRef":  propertyrpc.MarshalValue(inputRefVal),
+				"outputRef": propertyrpc.MarshalValue(outputRefVal),
 			},
 		},
 	})
@@ -601,8 +588,8 @@ func (p *ComponentProvider) constructComponentCustomRefInputOutput(
 	return plugin.ConstructResponse{
 		URN: resource.URN(parent.Urn),
 		Outputs: property.NewMap(map[string]property.Value{
-			"inputRef":  resource.FromResourcePropertyValue(inputRefPropVal),
-			"outputRef": resource.FromResourcePropertyValue(outputRefPropVal),
+			"inputRef":  inputRefVal,
+			"outputRef": outputRefVal,
 		}),
 	}, nil
 }
