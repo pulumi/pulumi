@@ -689,7 +689,9 @@ func massageBlobPath(path string) (string, error) {
 // before the upgrade keep working:
 //
 //   - disableSSL becomes disable_https; gocloud.dev v0.46 rejects the v1 name as an unknown
-//     query parameter.
+//     query parameter. When the endpoint carries an explicit scheme, disableSSL is dropped
+//     instead: the v1 SDK only used it to pick a scheme for scheme-less endpoints, while
+//     disable_https unconditionally downgrades requests to HTTP.
 //   - a scheme-less endpoint (e.g. endpoint=minio:9000) gets an explicit http:// or https://
 //     scheme depending on disableSSL; the v1 SDK implied the scheme, while the v2 SDK
 //     requires one.
@@ -716,7 +718,9 @@ func translateLegacyS3Params(urlstr string) (string, error) {
 			return "", fmt.Errorf("invalid value for query parameter %q: %w", "disableSSL", err)
 		}
 		query.Del("disableSSL")
-		query.Set("disable_https", strconv.FormatBool(disableSSL))
+		if !strings.Contains(query.Get("endpoint"), "://") {
+			query.Set("disable_https", strconv.FormatBool(disableSSL))
+		}
 		changed = true
 	}
 
