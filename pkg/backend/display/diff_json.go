@@ -31,8 +31,8 @@ import (
 // structure the `--diff` view renders as text, emitted when `--diff` and
 // `--output json` are combined.
 type ObjectDiffJSON struct {
-	// Adds holds the properties present only in the new value.
-	Adds map[string]any `json:"adds,omitempty"`
+	// Creates holds the properties present only in the new value.
+	Creates map[string]any `json:"creates,omitempty"`
 	// Deletes holds the properties present only in the old value.
 	Deletes map[string]any `json:"deletes,omitempty"`
 	// Sames holds the properties that did not change.
@@ -60,8 +60,8 @@ type ValueDiffJSON struct {
 // ArrayDiffJSON is the JSON projection of a resource.ArrayDiff. Its maps are
 // keyed by array index.
 type ArrayDiffJSON struct {
-	// Adds holds the elements present only in the new array.
-	Adds map[int]any `json:"adds,omitempty"`
+	// Creates holds the elements present only in the new array.
+	Creates map[int]any `json:"creates,omitempty"`
 	// Deletes holds the elements present only in the old array.
 	Deletes map[int]any `json:"deletes,omitempty"`
 	// Sames holds the elements that did not change.
@@ -115,7 +115,7 @@ func (e diffJSONEncoder) objectDiff(diff *resource.ObjectDiff) *ObjectDiffJSON {
 		return nil
 	}
 	out := &ObjectDiffJSON{
-		Adds:    e.values(diff.Adds),
+		Creates: e.values(diff.Adds),
 		Deletes: e.values(diff.Deletes),
 		Sames:   e.values(diff.Sames),
 	}
@@ -141,7 +141,7 @@ func (e diffJSONEncoder) valueDiff(diff resource.ValueDiff) ValueDiffJSON {
 
 func (e diffJSONEncoder) arrayDiff(diff *resource.ArrayDiff) *ArrayDiffJSON {
 	out := &ArrayDiffJSON{
-		Adds:    e.elements(diff.Adds),
+		Creates: e.elements(diff.Adds),
 		Deletes: e.elements(diff.Deletes),
 		Sames:   e.elements(diff.Sames),
 	}

@@ -38,7 +38,7 @@ func TestStepDiffJSON_SameHasNoDiff(t *testing.T) {
 	assert.Nil(t, stepDiffJSON(step, false))
 }
 
-func TestStepDiffJSON_CreateIsAllAdds(t *testing.T) {
+func TestStepDiffJSON_CreateIsAllCreates(t *testing.T) {
 	t.Parallel()
 
 	step := engine.StepEventMetadata{
@@ -50,7 +50,7 @@ func TestStepDiffJSON_CreateIsAllAdds(t *testing.T) {
 
 	got := stepDiffJSON(step, false)
 	require.NotNil(t, got)
-	assert.Equal(t, map[string]any{"bucket": "mybucket"}, got.Adds)
+	assert.Equal(t, map[string]any{"bucket": "mybucket"}, got.Creates)
 	assert.Empty(t, got.Deletes)
 	assert.Empty(t, got.Updates)
 }
@@ -68,7 +68,7 @@ func TestStepDiffJSON_DeleteIsAllDeletes(t *testing.T) {
 	got := stepDiffJSON(step, false)
 	require.NotNil(t, got)
 	assert.Equal(t, map[string]any{"bucket": "mybucket"}, got.Deletes)
-	assert.Empty(t, got.Adds)
+	assert.Empty(t, got.Creates)
 }
 
 func TestStepDiffJSON_UpdateUsesDetailedDiff(t *testing.T) {
@@ -98,12 +98,12 @@ func TestStepDiffJSON_UpdateUsesDetailedDiff(t *testing.T) {
 	got := stepDiffJSON(step, false)
 	require.NotNil(t, got)
 
-	assert.Equal(t, map[string]any{"versioning": true}, got.Adds)
+	assert.Equal(t, map[string]any{"versioning": true}, got.Creates)
 
 	tags, ok := got.Updates["tags"]
 	require.True(t, ok, "expected a nested diff for tags")
 	require.NotNil(t, tags.Object)
-	assert.Equal(t, map[string]any{"env": "prod"}, tags.Object.Adds)
+	assert.Equal(t, map[string]any{"env": "prod"}, tags.Object.Creates)
 
 	owner, ok := tags.Object.Updates["owner"]
 	require.True(t, ok)
