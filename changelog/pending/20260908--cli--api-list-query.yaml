@@ -1,0 +1,4 @@
+component: cli
+kind: improvement
+body: Add `--query` to `pulumi api list` to filter endpoints by keyword
+time: 2026-09-08T00:00:00Z

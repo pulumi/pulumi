@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
 	"unicode/utf8"
 
 	"github.com/jedib0t/go-pretty/v6/table"
@@ -35,6 +36,7 @@ import (
 // parent command's persistent flags (--refresh-spec).
 func newListCmd(api *apiCommand) *cobra.Command {
 	var output string
+	var query string
 	includePreview := true
 	includeDeprecated := false
 
@@ -51,9 +53,14 @@ func newListCmd(api *apiCommand) *cobra.Command {
 			"--output=table to keep the table when redirecting.\n" +
 			"\n" +
 			"Preview endpoints are listed by default; deprecated endpoints are hidden. Use\n" +
-			"--include-preview=false or --include-deprecated to change that.",
+			"--include-preview=false or --include-deprecated to change that.\n" +
+			"\n" +
+			"--query/-q keeps only operations whose ID, path, tag, summary, or description\n" +
+			"contain the given text (case-insensitive).",
 		Example: "  # Print the table of stable endpoints.\n" +
 			"  pulumi api list\n\n" +
+			"  # Find endpoints by keyword (matches ID, path, tag, summary, description).\n" +
+			"  pulumi api list -q graph\n\n" +
 			"  # Grab every operation as JSON (the default when piped).\n" +
 			"  pulumi api list --output=json\n\n" +
 			"  # Count endpoints per tag with jq.\n" +
@@ -80,9 +87,11 @@ func newListCmd(api *apiCommand) *cobra.Command {
 		"Include endpoints marked as preview")
 	cmd.Flags().BoolVar(&includeDeprecated, "include-deprecated", false,
 		"Include endpoints marked as deprecated")
+	cmd.Flags().StringVarP(&query, "query", "q", "",
+		"Show only operations whose ID, path, tag, summary, or description contains this text (case-insensitive)")
 
 	cmd.RunE = runWithEnvelope(func(cmd *cobra.Command, args []string) error {
-		return runLs(cmd.Context(), cmd.OutOrStdout(), cmd.ErrOrStderr(), output,
+		return runLs(cmd.Context(), cmd.OutOrStdout(), cmd.ErrOrStderr(), output, query,
 			includePreview, includeDeprecated, api.refreshSpec)
 	})
 	return cmd
@@ -91,7 +100,7 @@ func newListCmd(api *apiCommand) *cobra.Command {
 func runLs(
 	ctx context.Context,
 	w, warnW io.Writer,
-	output string,
+	output, query string,
 	includePreview, includeDeprecated, refresh bool,
 ) error {
 	mode, err := resolveOutput(output)
@@ -123,6 +132,7 @@ func runLs(
 	}
 
 	view := filterListedOps(idx, includePreview, includeDeprecated)
+	view = filterByQuery(view, query)
 
 	if mode == outputJSON {
 		return emitLsJSON(w, view)
@@ -149,6 +159,33 @@ func filterListedOps(idx *Index, includePreview, includeDeprecated bool) *Index 
 		ByKey:       idx.ByKey,
 		SpecVersion: idx.SpecVersion,
 	}
+}
+
+func filterByQuery(idx *Index, query string) *Index {
+	query = strings.ToLower(strings.TrimSpace(query))
+	if query == "" {
+		return idx
+	}
+	filtered := make([]*Operation, 0, len(idx.Operations))
+	for _, op := range idx.Operations {
+		if matchesQuery(op, query) {
+			filtered = append(filtered, op)
+		}
+	}
+	return &Index{
+		Operations:  filtered,
+		ByKey:       idx.ByKey,
+		SpecVersion: idx.SpecVersion,
+	}
+}
+
+func matchesQuery(op *Operation, query string) bool {
+	for _, field := range []string{op.OperationID, op.Path, op.Tag, op.Summary, op.Description} {
+		if strings.Contains(strings.ToLower(field), query) {
+			return true
+		}
+	}
+	return false
 }
 
 func emitLsJSON(w io.Writer, idx *Index) error {
