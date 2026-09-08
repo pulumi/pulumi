@@ -93,7 +93,7 @@ class AwaitableGetConfigResult(GetConfigResult):
 def get_config(base64_encode: Optional[_builtins.bool] = None,
                boundary: Optional[_builtins.str] = None,
                gzip: Optional[_builtins.bool] = None,
-               parts: Optional[Sequence[Union['GetConfigPartArgs', 'GetConfigPartArgsDict']]] = None,
+               parts: Optional[Sequence[Union['GetConfigPartArgs', 'GetConfigPartArgsDict', 'outputs.GetConfigPartResult']]] = None,
                opts: Optional[pulumi.InvokeOptions] = None) -> AwaitableGetConfigResult:
     """
     Use this data source to access information about an existing resource.
@@ -116,7 +116,7 @@ def get_config(base64_encode: Optional[_builtins.bool] = None,
 def get_config_output(base64_encode: pulumi.Input[Optional[Optional[_builtins.bool]]] = None,
                       boundary: pulumi.Input[Optional[Optional[_builtins.str]]] = None,
                       gzip: pulumi.Input[Optional[Optional[_builtins.bool]]] = None,
-                      parts: pulumi.Input[Optional[Optional[Sequence[Union['GetConfigPartArgs', 'GetConfigPartArgsDict']]]]] = None,
+                      parts: pulumi.Input[Optional[Optional[Sequence[Union['GetConfigPartArgs', 'GetConfigPartArgsDict', 'outputs.GetConfigPartResult']]]]] = None,
                       opts: Optional[Union[pulumi.InvokeOptions, pulumi.InvokeOutputOptions]] = None) -> pulumi.Output[GetConfigResult]:
     """
     Use this data source to access information about an existing resource.

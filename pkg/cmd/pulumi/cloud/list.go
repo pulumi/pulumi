@@ -111,7 +111,13 @@ func runLs(
 		mode = outputJSON
 	}
 
-	idx, err := LoadIndex(ctx, warnW, refresh)
+	resolved, err := ResolveContext(ctx)
+	if err != nil {
+		return NewAPIError(cmdutil.ExitInternalError, ErrToolError,
+			fmt.Sprintf("resolving cloud context: %v", err))
+	}
+
+	idx, err := LoadIndex(ctx, resolved, warnW, refresh)
 	if err != nil {
 		return err
 	}

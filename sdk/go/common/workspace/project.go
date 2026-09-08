@@ -20,6 +20,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"maps"
 	"math"
 	"os"
@@ -41,6 +42,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/httputil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/santhosh-tekuri/jsonschema/v5"
 	"gopkg.in/yaml.v3"
@@ -135,6 +137,13 @@ type PackageSpec struct {
 
 	// CLI args passed to the extension's Parameterize call. This must be implemented in the provider.
 	Extensions []string
+}
+
+func (p PackageSpec) LogValue() slog.Value {
+	p.Source = httputil.RedactURL(p.Source)
+	p.PluginDownloadURL = httputil.RedactURL(p.PluginDownloadURL)
+	type plain PackageSpec
+	return slog.AnyValue(plain(p))
 }
 
 func (p PackageSpec) String() string {

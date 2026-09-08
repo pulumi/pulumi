@@ -1,5 +1,0 @@
-component: programgen/python
-kind: fix
-body: Name plain function input object types without the Args suffix, matching the
-    name the generated SDK exports
-time: 2026-08-24T00:00:00Z

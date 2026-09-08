@@ -527,6 +527,11 @@ export async function serializeProperty(
         }
 
         if (!isKnown) {
+            // Preserve the secret marker even when the value is unknown: downstream consumers
+            // (stack outputs, schema-secret outputs) rely on the marker surviving an unknown.
+            if (isSecret && getStore().supportsSecrets) {
+                return serializeSecretValue(unknownValue);
+            }
             return unknownValue;
         }
         if (isSecret && getStore().supportsSecrets) {

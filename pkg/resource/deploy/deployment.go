@@ -124,6 +124,10 @@ type Options struct {
 	ShowSecrets bool
 	// Analyzers is the list of policy analyzers to run during this deployment.
 	Analyzers []plugin.Analyzer
+	// StateMigrationSerializer converts resource states to and from the checkpoint representation used by state
+	// migration callbacks. The engine injects it because the serialization logic lives in pkg/resource/stack, which
+	// already imports this package and therefore cannot be imported here.
+	StateMigrationSerializer StateMigrationResourceSerializer
 }
 
 // DegreeOfParallelism returns the degree of parallelism that should be used during the
@@ -254,6 +258,11 @@ type StepExecutorEvents interface {
 	OnResourceOutputs(step Step) error
 }
 
+// StateMigrationEvents is implemented by event handlers that can persist state migrations.
+type StateMigrationEvents interface {
+	OnStateMigration(transaction *StateMigrationTransaction) error
+}
+
 // PolicyEvents is an interface that can be used to hook policy events.
 type PolicyEvents interface {
 	OnPolicyViolation(resource.URN, plugin.AnalyzeDiagnostic)
@@ -267,6 +276,7 @@ type PolicyEvents interface {
 type Events interface {
 	StepExecutorEvents
 	PolicyEvents
+	StateMigrationEvents
 }
 
 type resourcePlans struct {
@@ -366,6 +376,11 @@ type Deployment struct {
 	resourceStatus *resourceStatusServer
 	// the resource hook registry for this deployment
 	resourceHooks *ResourceHooks
+
+	// stateMigrationRewrites contains reference rewrites from migrations committed during this deployment. They are
+	// used to normalize references retained by the program across a migration.
+	stateMigrationRewritesM sync.RWMutex
+	stateMigrationRewrites  []*stateMigrationRewrite
 
 	// postStepErrors collects errors reported by phases that run after a step's primary cloud operation has succeeded
 	// (e.g. an after-hook callback). The step itself is still treated as successful and its state is committed to the
@@ -571,6 +586,11 @@ func buildResourceMaps(prev *Snapshot) (
 		hasRefreshBeforeUpdateResources = hasRefreshBeforeUpdateResources || oldres.RefreshBeforeUpdate
 
 		urn := oldres.URN
+		if oldres.Custom && oldres.ID == "" {
+			return nil, false, nil, nil, nil, fmt.Errorf(
+				"resource '%s' is marked as custom but has no ID; "+
+					"remove it with `pulumi state delete --disable-integrity-checking '%s'` before retrying", urn, urn)
+		}
 		if olds[urn] != nil {
 			if oldres.Delete {
 				continue

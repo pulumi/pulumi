@@ -48,6 +48,8 @@ export class ProviderHandshakeRequest extends jspb.Message {
     setResolverTarget(value: string): ProviderHandshakeRequest;
     getAcceptsByteString(): boolean;
     setAcceptsByteString(value: boolean): ProviderHandshakeRequest;
+    getSendsOldOutputsToCheck(): boolean;
+    setSendsOldOutputsToCheck(value: boolean): ProviderHandshakeRequest;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): ProviderHandshakeRequest.AsObject;
@@ -72,6 +74,7 @@ export namespace ProviderHandshakeRequest {
         loaderTarget?: string,
         resolverTarget?: string,
         acceptsByteString: boolean,
+        sendsOldOutputsToCheck: boolean,
     }
 }
 
@@ -639,6 +642,11 @@ export class CheckRequest extends jspb.Message {
     getAutonaming(): CheckRequest.AutonamingOptions | undefined;
     setAutonaming(value?: CheckRequest.AutonamingOptions): CheckRequest;
 
+    hasOldOutputs(): boolean;
+    clearOldOutputs(): void;
+    getOldOutputs(): google_protobuf_struct_pb.Struct | undefined;
+    setOldOutputs(value?: google_protobuf_struct_pb.Struct): CheckRequest;
+
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): CheckRequest.AsObject;
     static toObject(includeInstance: boolean, msg: CheckRequest): CheckRequest.AsObject;
@@ -658,6 +666,7 @@ export namespace CheckRequest {
         name: string,
         type: string,
         autonaming?: CheckRequest.AutonamingOptions.AsObject,
+        oldOutputs?: google_protobuf_struct_pb.Struct.AsObject,
     }
 
 

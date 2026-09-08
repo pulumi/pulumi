@@ -19,34 +19,15 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 )
-
-func TestOSC8Hyperlink_WrapsURL(t *testing.T) {
-	t.Parallel()
-
-	got := osc8Hyperlink("https://example.com", "click me")
-	// The OSC 8 wire format is `ESC ] 8 ; ; <url> ESC \ <text> ESC ] 8 ; ; ESC \`.
-	// Pinning the exact bytes here so a refactor that drops one of the escape
-	// terminators (a common mistake) gets caught immediately rather than
-	// silently producing visible garbage in scrollback.
-	assert.Equal(t, "\x1b]8;;https://example.com\x1b\\click me\x1b]8;;\x1b\\", got)
-}
-
-func TestOSC8Hyperlink_EmptyURLPassesText(t *testing.T) {
-	t.Parallel()
-
-	// With no URL we have nothing to hyperlink to — return the display text
-	// unchanged rather than emitting an empty-target escape, which some
-	// terminals render as a broken link.
-	assert.Equal(t, "plain", osc8Hyperlink("", "plain"))
-}
 
 func TestLinkifyURLs_WrapsBareURL(t *testing.T) {
 	t.Parallel()
 
 	got := linkifyURLs("see https://example.com for details")
-	assert.Contains(t, got, "\x1b]8;;https://example.com\x1b\\")
-	assert.Contains(t, got, "https://example.com\x1b]8;;\x1b\\")
+	assert.Contains(t, got, colors.Always.Hyperlink("https://example.com", "https://example.com"))
 	assert.Contains(t, got, "for details")
 }
 
@@ -57,7 +38,7 @@ func TestLinkifyURLs_StripsTrailingPunctuation(t *testing.T) {
 	// "see https://example.com." should hyperlink "https://example.com" and
 	// leave the period outside, otherwise clicking opens the wrong URL.
 	got := linkifyURLs("see https://example.com.")
-	assert.Contains(t, got, "\x1b]8;;https://example.com\x1b\\https://example.com\x1b]8;;\x1b\\.")
+	assert.Contains(t, got, colors.Always.Hyperlink("https://example.com", "https://example.com")+".")
 	assert.NotContains(t, got, "https://example.com.\x1b\\", "period must not be inside the hyperlink target")
 }
 
@@ -68,7 +49,7 @@ func TestLinkifyURLs_HandlesParenthesizedURL(t *testing.T) {
 	// The trailing ")" belongs to the surrounding prose, not the URL, so it
 	// must land outside the hyperlink — otherwise terminals try to open
 	// "example.com)" which 404s.
-	assert.Contains(t, got, "\x1b]8;;https://example.com\x1b\\https://example.com\x1b]8;;\x1b\\)")
+	assert.Contains(t, got, colors.Always.Hyperlink("https://example.com", "https://example.com")+")")
 }
 
 func TestLinkifyURLs_WrapsMultipleURLs(t *testing.T) {
@@ -87,10 +68,10 @@ func TestLinkifyURLs_LeavesExistingOSC8Alone(t *testing.T) {
 	t.Parallel()
 
 	// If the text is already a hyperlink (e.g. the welcome banner already ran
-	// it through osc8Hyperlink) we must not add a second pair of escapes —
+	// it through colors.Hyperlink) we must not add a second pair of escapes —
 	// nested OSC 8 sequences confuse some terminals into rendering nothing
 	// clickable at all.
-	already := osc8Hyperlink("https://example.com", "https://example.com")
+	already := colors.Always.Hyperlink("https://example.com", "https://example.com")
 	got := linkifyURLs(already)
 	assert.Equal(t, already, got)
 }
@@ -101,14 +82,14 @@ func TestLinkifyURLs_MixesPlainAndExisting(t *testing.T) {
 	// A line containing a pre-wrapped URL plus a bare URL should end up with
 	// the pre-wrapped one untouched and the bare one freshly wrapped — two
 	// hyperlinks total, not three (no double-wrapping).
-	already := osc8Hyperlink("https://a.example", "a")
+	already := colors.Always.Hyperlink("https://a.example", "a")
 	input := already + " then https://b.example"
 	got := linkifyURLs(input)
 	// Two complete hyperlinks = 4 `\x1b]8;;` occurrences (each has an opener
 	// and a closer). If linkify re-wrapped the existing one we'd see 6.
 	assert.Equal(t, 4, strings.Count(got, "\x1b]8;;"))
 	assert.Contains(t, got, already)
-	assert.Contains(t, got, "\x1b]8;;https://b.example\x1b\\https://b.example\x1b]8;;\x1b\\")
+	assert.Contains(t, got, colors.Always.Hyperlink("https://b.example", "https://b.example"))
 }
 
 func TestLinkifyURLs_NoURLs(t *testing.T) {
@@ -129,11 +110,10 @@ func TestLinkifyURLs_EmptyString(t *testing.T) {
 
 // hyperlink is a test helper that builds the exact OSC 8 envelope we expect
 // linkifyURLs to emit for a given target URL and display text. Pinning the
-// full byte sequence in each assertion catches regressions where one of the
-// escape terminators gets dropped — a common refactor mistake that produces
-// visible garbage rather than a silent wrong-link bug.
+// full sequence in each assertion catches regressions where linkify wraps the
+// wrong span or drops part of the envelope.
 func hyperlink(target, display string) string {
-	return "\x1b]8;;" + target + "\x1b\\" + display + "\x1b]8;;\x1b\\"
+	return colors.Always.Hyperlink(target, display)
 }
 
 func TestLinkifyURLs_PreservesBalancedTrailingParens(t *testing.T) {

@@ -23,6 +23,7 @@ import (
 
 	"github.com/go-git/go-git/v6/plumbing"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/httputil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
 
@@ -32,6 +33,7 @@ func RetrieveGitFolder(ctx context.Context, rawurl string, path string) (string,
 	if err != nil {
 		return "", err
 	}
+	logging.AddGlobalSecretFilter(httputil.URLSecrets(url), "[credential]")
 
 	ref, commit, subDirectory, err := GetGitReferenceNameOrHashAndSubDirectory(url, urlPath)
 	if err != nil {

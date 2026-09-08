@@ -1,5 +1,0 @@
-component: cli/neo
-kind: fix
-body: Cancelling a local tool call no longer leaves the TUI stuck on "Thinking..."
-    with input blocked
-time: 2026-08-13T00:00:00+03:00

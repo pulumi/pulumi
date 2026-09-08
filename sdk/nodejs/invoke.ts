@@ -13,7 +13,7 @@
 // limitations under the License.
 
 import { Inputs, Input } from "./output";
-import { ProviderResource, Resource } from "./resource";
+import { ProviderResource, Resource, ResourceOptions } from "./resource";
 
 /**
  * {@link InvokeOptions} is a bag of options that control the behavior of a call
@@ -64,6 +64,35 @@ export interface InvokeOutputOptions extends InvokeOptions {
      * An optional set of additional explicit dependencies on other resources.
      */
     dependsOn?: Input<Input<Resource>[]> | Input<Resource>;
+}
+
+/**
+ * Creates an {@link InvokeOptions} from the given {@link ResourceOptions},
+ * copying the `parent`, `provider`, `version` and `pluginDownloadURL` options.
+ * All other resource options, including `dependsOn`, have no equivalent for
+ * plain invokes and are dropped; use
+ * {@link invokeOutputOptionsFromResourceOptions} to preserve `dependsOn`.
+ */
+export function invokeOptionsFromResourceOptions(opts: ResourceOptions): InvokeOptions {
+    return {
+        parent: opts.parent,
+        provider: opts.provider,
+        version: opts.version,
+        pluginDownloadURL: opts.pluginDownloadURL,
+    };
+}
+
+/**
+ * Creates an {@link InvokeOutputOptions} from the given {@link ResourceOptions},
+ * copying the `parent`, `provider`, `version`, `pluginDownloadURL` and
+ * `dependsOn` options. All other resource options have no invoke equivalent and
+ * are dropped.
+ */
+export function invokeOutputOptionsFromResourceOptions(opts: ResourceOptions): InvokeOutputOptions {
+    return {
+        ...invokeOptionsFromResourceOptions(opts),
+        dependsOn: opts.dependsOn,
+    };
 }
 
 /**

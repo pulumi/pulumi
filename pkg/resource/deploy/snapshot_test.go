@@ -1319,3 +1319,37 @@ func TestSnapshotVerifyIntegrity_SnippetUUID(t *testing.T) {
 			`duplicate snippet uuid "e970a91d-4f4c-5793-8d27-dd27a0d96cf7" at indexes 0 and 1`)
 	})
 }
+
+func TestSnapshotToposort_IsDeterministic(t *testing.T) {
+	t.Parallel()
+
+	for range 20 {
+		snap := &Snapshot{Resources: []*pkgresource.State{
+			{
+				URN:  "urn:pulumi:stack::project::t::dependent",
+				Type: "pulumi:pulumi:Stack",
+				Dependencies: []resource.URN{
+					"urn:pulumi:stack::project::t::c",
+					"urn:pulumi:stack::project::t::b",
+					"urn:pulumi:stack::project::t::a",
+				},
+			},
+			{URN: "urn:pulumi:stack::project::t::a", Type: "pulumi:pulumi:Stack"},
+			{URN: "urn:pulumi:stack::project::t::b", Type: "pulumi:pulumi:Stack"},
+			{URN: "urn:pulumi:stack::project::t::c", Type: "pulumi:pulumi:Stack"},
+		}}
+
+		require.NoError(t, snap.Toposort())
+
+		urns := make([]resource.URN, len(snap.Resources))
+		for i, res := range snap.Resources {
+			urns[i] = res.URN
+		}
+		require.Equal(t, []resource.URN{
+			"urn:pulumi:stack::project::t::a",
+			"urn:pulumi:stack::project::t::b",
+			"urn:pulumi:stack::project::t::c",
+			"urn:pulumi:stack::project::t::dependent",
+		}, urns)
+	}
+}

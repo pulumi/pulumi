@@ -83,7 +83,7 @@ class Config(pulumi.CustomResource):
                  base64_encode: pulumi.Input[Optional[_builtins.bool]] = None,
                  boundary: pulumi.Input[Optional[_builtins.str]] = None,
                  gzip: pulumi.Input[Optional[_builtins.bool]] = None,
-                 parts: pulumi.Input[Optional[Sequence[pulumi.Input[Union['ConfigPartArgs', 'ConfigPartArgsDict']]]]] = None,
+                 parts: pulumi.Input[Optional[Sequence[pulumi.Input[Union['ConfigPartArgs', 'ConfigPartArgsDict', 'outputs.ConfigPart']]]]] = None,
                  __props__=None):
         """
         Create a Config resource with the given unique name, props, and options.
@@ -118,7 +118,7 @@ class Config(pulumi.CustomResource):
                  base64_encode: pulumi.Input[Optional[_builtins.bool]] = None,
                  boundary: pulumi.Input[Optional[_builtins.str]] = None,
                  gzip: pulumi.Input[Optional[_builtins.bool]] = None,
-                 parts: pulumi.Input[Optional[Sequence[pulumi.Input[Union['ConfigPartArgs', 'ConfigPartArgsDict']]]]] = None,
+                 parts: pulumi.Input[Optional[Sequence[pulumi.Input[Union['ConfigPartArgs', 'ConfigPartArgsDict', 'outputs.ConfigPart']]]]] = None,
                  __props__=None):
         opts = pulumi.ResourceOptions.merge(_utilities.get_resource_opts_defaults(), opts)
         if not isinstance(opts, pulumi.ResourceOptions):

@@ -15,16 +15,27 @@
 package host
 
 import (
+	"context"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
 	"testing"
+	"time"
+
+	"github.com/stretchr/testify/require"
+	"google.golang.org/grpc"
+	"google.golang.org/protobuf/types/known/emptypb"
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/diagtest"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
-	"github.com/stretchr/testify/require"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
 func TestStartupFailure(t *testing.T) {
@@ -191,4 +202,85 @@ func TestPulumiVersionRangeYaml(t *testing.T) {
 	_, err = plugin.NewProviderFromPath(ctx.Host, ctx, filepath.Join("testdata", "test-plugin-cli-version"))
 	require.ErrorContains(t, err,
 		"test-plugin-cli-version: Pulumi CLI version 3.1.2 does not satisfy the version range \">=100.0.0\"")
+}
+
+// fakeProvider answers the RPCs that the PULUMI_DEBUG_PROVIDERS attach path calls. Handshake is
+// left unimplemented, which the attach path accepts as a legacy provider.
+type fakeProvider struct {
+	pulumirpc.UnimplementedResourceProviderServer
+
+	// onGetPluginInfo, if set, runs before GetPluginInfo answers. The engine calls GetPluginInfo
+	// while it boots the provider, so this is the hook that a provider uses to talk back to the
+	// engine during its own boot.
+	onGetPluginInfo func() error
+}
+
+func (f *fakeProvider) Attach(context.Context, *pulumirpc.PluginAttach) (*emptypb.Empty, error) {
+	return &emptypb.Empty{}, nil
+}
+
+func (f *fakeProvider) GetPluginInfo(context.Context, *emptypb.Empty) (*pulumirpc.PluginInfo, error) {
+	if f.onGetPluginInfo != nil {
+		if err := f.onGetPluginInfo(); err != nil {
+			return nil, err
+		}
+	}
+	return &pulumirpc.PluginInfo{Version: "1.0.0"}, nil
+}
+
+// serveFakeProvider serves prov on an ephemeral port and returns that port.
+func serveFakeProvider(t *testing.T, prov *fakeProvider) int {
+	cancel := make(chan bool)
+	handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
+		Cancel: cancel,
+		Init: func(srv *grpc.Server) error {
+			pulumirpc.RegisterResourceProviderServer(srv, prov)
+			return nil
+		},
+	})
+	require.NoError(t, err)
+	// Do not wait for the shutdown to complete. If the test fails because a provider RPC is
+	// stuck, a graceful stop never returns and the wait would hang the whole package.
+	t.Cleanup(func() { close(cancel) })
+	return handle.Port
+}
+
+// TestProviderLoadDuringProviderBoot ensures that a provider can request another provider on boot without deadlocking.
+func TestProviderLoadDuringProviderBoot(t *testing.T) {
+	d := diagtest.LogSink(t)
+	h, err := New(t.Context(), d, d, nil, nil, nil, nil, nil)
+	require.NoError(t, err)
+	host, ok := h.(*defaultHost)
+	require.True(t, ok)
+	ctx, err := plugin.NewContextWithHost(t.Context(), d, d, h, "", "", nil)
+	require.NoError(t, err)
+
+	inner := workspace.PluginDescriptor{Name: "inner", Kind: apitype.ResourcePlugin}
+	outer := workspace.PluginDescriptor{Name: "outer", Kind: apitype.ResourcePlugin}
+
+	innerPort := serveFakeProvider(t, &fakeProvider{})
+	var innerErr error
+	outerPort := serveFakeProvider(t, &fakeProvider{
+		onGetPluginInfo: func() error {
+			_, innerErr = h.Provider(ctx, inner, env.Global())
+			return innerErr
+		},
+	})
+	t.Setenv("PULUMI_DEBUG_PROVIDERS", fmt.Sprintf("outer:%d,inner:%d", outerPort, innerPort))
+
+	done := make(chan error, 1)
+	go func() {
+		_, err := h.Provider(ctx, outer, env.Global())
+		done <- err
+	}()
+
+	select {
+	case err := <-done:
+		require.NoError(t, err)
+	case <-time.After(15 * time.Second):
+		t.Fatal("loading the outer provider deadlocked: its boot blocked the nested load of the inner provider")
+	}
+	require.NoError(t, innerErr)
+	require.Len(t, host.resourcePlugins, 2)
+	require.NoError(t, h.Close())
 }

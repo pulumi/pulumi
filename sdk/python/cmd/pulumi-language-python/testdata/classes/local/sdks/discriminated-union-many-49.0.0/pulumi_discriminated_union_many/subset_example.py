@@ -109,6 +109,6 @@ class SubsetExample(pulumi.CustomResource):
 
     @_builtins.property
     @pulumi.getter(name="unionOf")
-    def union_of(self) -> pulumi.Output[Optional[Any]]:
+    def union_of(self) -> pulumi.Output[Optional[Union['outputs.Variant1', 'outputs.Variant2', 'outputs.Variant3']]]:
         return pulumi.get(self, "union_of")
 

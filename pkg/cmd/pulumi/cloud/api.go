@@ -225,7 +225,16 @@ func runAPI(cmd *cobra.Command, args []string, api *apiCommand) error {
 	}
 	userArg := strings.TrimSpace(args[0])
 
-	idx, err := LoadIndex(cmd.Context(), cmd.ErrOrStderr(), api.refreshSpec)
+	// Resolve cloud context up front so the backend-aware default org is
+	// available to template-var resolution. ResolveContext is non-interactive
+	// and returns a usable (anonymous) context when the user isn't logged in.
+	resolvedCtx, err := ResolveContext(cmd.Context())
+	if err != nil {
+		return NewAPIError(cmdutil.ExitInternalError, ErrToolError,
+			fmt.Sprintf("resolving cloud context: %v", err))
+	}
+
+	idx, err := LoadIndex(cmd.Context(), resolvedCtx, cmd.ErrOrStderr(), api.refreshSpec)
 	if err != nil {
 		return err
 	}
@@ -239,15 +248,6 @@ func runAPI(cmd *cobra.Command, args []string, api *apiCommand) error {
 	fields, err := parseFields(api.fields, api.rawFields, os.Stdin)
 	if err != nil {
 		return err
-	}
-
-	// Resolve cloud context up front so the backend-aware default org is
-	// available to template-var resolution. ResolveContext is non-interactive
-	// and returns a usable (anonymous) context when the user isn't logged in.
-	resolvedCtx, err := ResolveContext(cmd.Context())
-	if err != nil {
-		return NewAPIError(cmdutil.ExitInternalError, ErrToolError,
-			fmt.Sprintf("resolving cloud context: %v", err))
 	}
 
 	bindings, fields, err := resolveBindings(mr, fields, resolvedCtx)

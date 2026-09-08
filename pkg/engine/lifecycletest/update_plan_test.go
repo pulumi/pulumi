@@ -1869,3 +1869,70 @@ func TestStackOutputsWithTargetedPlan(t *testing.T) {
 	}, false, p.BackendClient, nil, "1")
 	require.NoError(t, err)
 }
+
+// TestPlannedUpdateWithInternalKeys ensures that internal property keys (those starting with "__", such as "__defaults"
+// that providers inject during Check) are not treated as plan constraints. Differences in these internal keys between
+// preview and update must not raise plan violations.
+func TestPlannedUpdateWithInternalKeys(t *testing.T) {
+	t.Parallel()
+
+	var defaultsValue resource.PropertyValue
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				CheckF: func(_ context.Context, req plugin.CheckRequest) (plugin.CheckResponse, error) {
+					news := req.News.Copy()
+					news["__defaults"] = defaultsValue
+					return plugin.CheckResponse{Properties: news}, nil
+				},
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					return plugin.CreateResponse{
+						ID:         "created-id",
+						Properties: req.Properties,
+						Status:     resource.StatusOK,
+					}, nil
+				},
+			}, nil
+		}),
+	}
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+			Inputs: resource.NewPropertyMapFromMap(map[string]any{"foo": "bar"}),
+		})
+		require.NoError(t, err)
+		return nil
+	})
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
+
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{
+			T:             t,
+			HostF:         hostF,
+			UpdateOptions: UpdateOptions{GeneratePlan: true, Experimental: true},
+		},
+	}
+	project := p.GetProject()
+
+	// Generate a plan with one shape of __defaults.
+	defaultsValue = resource.NewProperty([]resource.PropertyValue{resource.NewProperty("a")})
+	plan, err := lt.TestOp(Update).Plan(project, p.GetTarget(t, nil), p.Options, p.BackendClient, nil)
+	require.NoError(t, err)
+
+	// The __defaults key must not appear anywhere in the resource plan's InputDiff.
+	resURN := resource.URN("urn:pulumi:test::test::pkgA:m:typA::resA")
+	resPlan, ok := plan.ResourcePlans[resURN]
+	require.True(t, ok, "expected a plan entry for %s", resURN)
+	require.NotContains(t, resPlan.Goal.InputDiff.Adds, resource.PropertyKey("__defaults"))
+	require.NotContains(t, resPlan.Goal.InputDiff.Updates, resource.PropertyKey("__defaults"))
+	require.NotContains(t, resPlan.Goal.InputDiff.Deletes, resource.PropertyKey("__defaults"))
+
+	// Run the update with a different __defaults value. This must not be considered a plan
+	// violation because internal ("__"-prefixed) keys should be ignored by plan checks.
+	defaultsValue = resource.NewProperty([]resource.PropertyValue{resource.NewProperty("b")})
+	p.Options.Plan = plan.Clone()
+	snap, err := lt.TestOp(Update).RunStep(
+		project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
+	require.NoError(t, err)
+	require.Len(t, snap.Resources, 2)
+}

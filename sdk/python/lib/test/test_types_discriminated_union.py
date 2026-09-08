@@ -14,7 +14,9 @@
 
 import asyncio
 import unittest
-from typing import Literal, Optional, Union
+from collections.abc import Mapping
+from enum import Enum
+from typing import Any, Literal, Optional, Union
 
 import pulumi
 from pulumi import _types
@@ -138,6 +140,106 @@ class Untagged(dict):
     name: str = pulumi.property("name")
 
 
+# Members with no constants at all, told apart by their required properties.
+@pulumi.output_type
+class Circle(dict):
+    radius: float = pulumi.property("radius")
+
+
+@pulumi.output_type
+class Square(dict):
+    side_length: float = pulumi.property("sideLength")
+
+
+@pulumi.input_type
+class CircleArgs:
+    radius: pulumi.Input[float] = pulumi.property("radius")
+
+
+@pulumi.input_type
+class SquareArgs:
+    side_length: pulumi.Input[float] = pulumi.property("sideLength")
+
+
+# The deciding property is required on one side and optional, with another type, on the other.
+@pulumi.output_type
+class RequiredFizz(dict):
+    fizz: int = pulumi.property("fizz")
+
+
+@pulumi.output_type
+class OptionalFizz(dict):
+    fizz: Optional[bool] = pulumi.property("fizz")
+
+
+# Members whose shapes only differ one level down.
+@pulumi.output_type
+class IntInner(dict):
+    fizz: int = pulumi.property("fizz")
+
+
+@pulumi.output_type
+class BoolInner(dict):
+    fizz: bool = pulumi.property("fizz")
+
+
+@pulumi.output_type
+class IntHolder(dict):
+    foo: "IntInner" = pulumi.property("foo")
+
+
+@pulumi.output_type
+class BoolHolder(dict):
+    foo: "BoolInner" = pulumi.property("foo")
+
+
+# Members told apart only by a union one level down: Wide.inner admits both Left and Right,
+# Narrow.inner admits Right alone.
+@pulumi.output_type
+class Left(dict):
+    a: int = pulumi.property("a")
+
+
+@pulumi.output_type
+class Right(dict):
+    b: str = pulumi.property("b")
+
+
+@pulumi.output_type
+class Wide(dict):
+    inner: Union["Left", "Right"] = pulumi.property("inner")
+
+
+@pulumi.output_type
+class Narrow(dict):
+    inner: "Right" = pulumi.property("inner")
+
+
+class Color(str, Enum):
+    RED = "red"
+    GREEN = "green"
+
+
+class Shade(str, Enum):
+    LIGHT = "light"
+    DARK = "dark"
+
+
+@pulumi.output_type
+class HasColor(dict):
+    tag: "Color" = pulumi.property("tag")
+
+
+@pulumi.output_type
+class HasShade(dict):
+    tag: "Shade" = pulumi.property("tag")
+
+
+class _NeverResolves:
+    def __await__(self):
+        yield
+
+
 InputUnion = pulumi.Input[Optional[Union[CatArgs, DogArgs]]]
 OutputUnion = Optional[Union[Cat, Dog]]
 
@@ -237,8 +339,13 @@ class ReduceTests(unittest.TestCase):
             reduce_pulumi(Union[SameConstantA, SameConstantB], {"kind": "same"})
         )
 
-    def test_member_without_constants_is_not_a_union(self):
-        self.assertIsNone(reduce_pulumi(Union[Cat, Untagged], {"kind": "cat"}))
+    def test_shape_reaches_members_without_constants(self):
+        union = Union[Cat, Untagged]
+        # `kind` alone satisfies neither member: Cat requires `livesLeft` and Untagged does not
+        # declare `kind` at all.
+        self.assertIsNone(reduce_pulumi(union, {"kind": "cat"}))
+        self.assertIs(reduce_pulumi(union, {"kind": "cat", "livesLeft": 9}), Cat)
+        self.assertIs(reduce_pulumi(union, {"name": "n"}), Untagged)
 
     def test_non_union_and_single_member(self):
         self.assertIsNone(reduce_pulumi(Cat, {"kind": "cat"}))
@@ -265,15 +372,70 @@ class DirectionTests(unittest.TestCase):
 
 
 class IsDiscriminatedUnionTests(unittest.TestCase):
-    def test_recognises_constrained_unions(self):
+    def test_recognises_reducible_unions(self):
         self.assertTrue(_types.is_discriminated_union(InputUnion))
         self.assertTrue(_types.is_discriminated_union(OutputUnion))
         self.assertTrue(_types.is_discriminated_union(Union[ConfigMap, Secret]))
+        self.assertTrue(_types.is_discriminated_union(Union[Cat, Untagged]))
+        self.assertTrue(_types.is_discriminated_union(Union[str, int]))
 
     def test_rejects_everything_else(self):
-        self.assertFalse(_types.is_discriminated_union(Union[Cat, Untagged]))
         self.assertFalse(_types.is_discriminated_union(Cat))
         self.assertFalse(_types.is_discriminated_union(Optional[Cat]))
+        # A value might always belong to an `Any` member, so nothing can be attributed.
+        self.assertFalse(_types.is_discriminated_union(Union[Cat, Any]))
+
+
+class ShapeReduceTests(unittest.TestCase):
+    def test_required_properties_tell_members_apart(self):
+        union = Union[Circle, Square]
+        self.assertIs(reduce_pulumi(union, {"radius": 1.0}), Circle)
+        self.assertIs(reduce_pulumi(union, {"sideLength": 1.0}), Square)
+        self.assertIs(reduce_python(union, {"side_length": 1.0}), Square)
+
+    def test_property_required_on_one_side(self):
+        union = Union[RequiredFizz, OptionalFizz]
+        self.assertIs(reduce_pulumi(union, {"fizz": 3}), RequiredFizz)
+        self.assertIs(reduce_pulumi(union, {"fizz": True}), OptionalFizz)
+        self.assertIs(reduce_pulumi(union, {}), OptionalFizz)
+
+    def test_nested_required_objects(self):
+        union = Union[IntHolder, BoolHolder]
+        self.assertIs(reduce_pulumi(union, {"foo": {"fizz": 1}}), IntHolder)
+        self.assertIs(reduce_pulumi(union, {"foo": {"fizz": True}}), BoolHolder)
+
+    def test_nested_union_property(self):
+        union = Union[Wide, Narrow]
+        self.assertIs(reduce_pulumi(union, {"inner": {"a": 1}}), Wide)
+        self.assertIsNone(reduce_pulumi(union, {"inner": {"b": "s"}}))
+        self.assertIsNone(reduce_pulumi(union, {"inner": {"c": 1}}))
+
+    def test_enum_typed_property_decides(self):
+        union = Union[HasColor, HasShade]
+        self.assertIs(reduce_pulumi(union, {"tag": "red"}), HasColor)
+        self.assertIs(reduce_pulumi(union, {"tag": "dark"}), HasShade)
+        self.assertIsNone(reduce_pulumi(union, {"tag": "mauve"}))
+
+    def test_object_against_map_member(self):
+        union = Union[Cat, Mapping[str, str]]
+        self.assertIs(reduce_pulumi(union, {"kind": "cat", "livesLeft": 9}), Cat)
+        self.assertEqual(reduce_pulumi(union, {"a": "b"}), Mapping[str, str])
+
+    def test_unknown_value_never_rules_a_member_out(self):
+        # An unknown at the deciding position leaves identical shapes ambiguous...
+        self.assertIsNone(
+            reduce_pulumi(Union[Metric, Imperial], {"kind": rpc.UNKNOWN, "amount": 1.0})
+        )
+        # ...but does not stop the rest of the shape from deciding.
+        self.assertIs(
+            reduce_pulumi(OutputUnion, {"kind": rpc.UNKNOWN, "livesLeft": 9}), Cat
+        )
+
+    def test_awaitable_value_never_rules_a_member_out(self):
+        self.assertIs(
+            reduce_pulumi(InputUnion, {"kind": "cat", "livesLeft": _NeverResolves()}),
+            CatArgs,
+        )
 
 
 class SerializeInputTests(unittest.TestCase):
@@ -305,6 +467,15 @@ class SerializeInputTests(unittest.TestCase):
     def test_unknown_constant_is_left_alone(self):
         value = {"kind": "fish", "lives_left": 1}
         self.assertEqual(serialize(value, InputUnion), value)
+
+    def test_shape_selected_member_translates_names(self):
+        # The member is selected by its required property alone; no constants anywhere.
+        self.assertEqual(
+            serialize(
+                {"side_length": 2.0}, pulumi.Input[Union[CircleArgs, SquareArgs]]
+            ),
+            {"sideLength": 2.0},
+        )
 
 
 class TranslateOutputTests(unittest.TestCase):
@@ -340,6 +511,20 @@ class TranslateOutputTests(unittest.TestCase):
     def test_unknown_constant_leaves_the_value_untyped(self):
         result = translate({"kind": "fish", "fins": 2}, OutputUnion)
         self.assertEqual(result, {"kind": "fish", "fins": 2})
+
+    def test_shape_selected_member_is_instantiated(self):
+        result = translate({"sideLength": 2.0}, Optional[Union[Circle, Square]])
+        self.assertIsInstance(result, Square)
+        self.assertEqual(result.side_length, 2.0)
+
+    def test_nested_union_member_is_instantiated(self):
+        for output, inner in (
+            ({"inner": {"a": 1}}, Left),
+            ({"inner": {"b": "s"}}, Right),
+        ):
+            result = translate(output, Optional[Union[Wide, Untagged]])
+            self.assertIsInstance(result, Wide)
+            self.assertIsInstance(result.inner, inner)
 
 
 if __name__ == "__main__":

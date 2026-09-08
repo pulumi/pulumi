@@ -164,23 +164,36 @@ type GoalPlan struct {
 	CustomTimeouts resource.CustomTimeouts
 }
 
-func NewPlanDiff(inputDiff *resource.ObjectDiff) PlanDiff {
-	var adds resource.PropertyMap
-	var deletes []resource.PropertyKey
-	var updates resource.PropertyMap
+// isInternalPlanKey reports whether a property key is internal and should be excluded from plan constraints. Providers
+// may inject bookkeeping properties like "__defaults" during Check whose values are not stable across runs, so treating
+// them as plan constraints would produce spurious plan violations.
+func isInternalPlanKey(key resource.PropertyKey) bool {
+	return strings.HasPrefix(string(key), "_")
+}
 
+func NewPlanDiff(inputDiff *resource.ObjectDiff) PlanDiff {
 	var diff PlanDiff
 	if inputDiff != nil {
-		adds = inputDiff.Adds
-		updates = make(resource.PropertyMap)
+		adds := make(resource.PropertyMap)
+		for k, v := range inputDiff.Adds {
+			if isInternalPlanKey(k) {
+				continue
+			}
+			adds[k] = v
+		}
+		updates := make(resource.PropertyMap)
 		for k := range inputDiff.Updates {
+			if isInternalPlanKey(k) {
+				continue
+			}
 			updates[k] = inputDiff.Updates[k].New
 		}
-		deletes = make([]resource.PropertyKey, len(inputDiff.Deletes))
-		i := 0
+		deletes := make([]resource.PropertyKey, 0, len(inputDiff.Deletes))
 		for k := range inputDiff.Deletes {
-			deletes[i] = k
-			i = i + 1
+			if isInternalPlanKey(k) {
+				continue
+			}
+			deletes = append(deletes, k)
 		}
 
 		diff = PlanDiff{Adds: adds, Deletes: deletes, Updates: updates}
@@ -376,6 +389,9 @@ func checkDiff(olds, news resource.PropertyMap, planDiff PlanDiff) error {
 	if diff = olds.DiffIncludeUnknowns(news); diff != nil {
 		// Check that any adds are in the goal for adds
 		for k := range diff.Adds {
+			if isInternalPlanKey(k) {
+				continue
+			}
 			actual := diff.Adds[k]
 			if expected, has := planDiff.Adds[k]; has {
 				if !expected.DeepEqualsIncludeUnknowns(actual) {
@@ -390,6 +406,9 @@ func checkDiff(olds, news resource.PropertyMap, planDiff PlanDiff) error {
 
 		// Check that any removes are in the goal for removes
 		for k := range diff.Deletes {
+			if isInternalPlanKey(k) {
+				continue
+			}
 			if !planDiff.ContainsDelete(k) {
 				// diff wants to delete this, but not listed as a delete in the constraints
 
@@ -415,6 +434,9 @@ func checkDiff(olds, news resource.PropertyMap, planDiff PlanDiff) error {
 		// This is similar to how if we have a Create resource constraint we don't consider it
 		// a violation to just update it instead of creating it.
 		for k := range diff.Updates {
+			if isInternalPlanKey(k) {
+				continue
+			}
 			actual := diff.Updates[k].New
 			if expected, has := planDiff.Updates[k]; has {
 				if !expected.DeepEqualsIncludeUnknowns(actual) {

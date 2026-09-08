@@ -1,4 +1,0 @@
-component: sdk/python
-kind: improvement
-body: Improve stack traces for providers
-time: 2026-08-26T15:54:47.461724848+02:00

@@ -45,18 +45,18 @@ func (p *OutputProvider) Close() error {
 func (p *OutputProvider) Configure(
 	_ context.Context, req plugin.ConfigureRequest,
 ) (plugin.ConfigureResponse, error) {
-	elide, has := req.Inputs["elideUnknowns"]
+	elide, has := req.Inputs.GetOk("elideUnknowns")
 	if has {
 		if elide.IsBool() {
-			p.elideUnknowns = elide.BoolValue()
+			p.elideUnknowns = elide.AsBool()
 		} else if elide.IsString() {
-			parsed, err := strconv.ParseBool(elide.StringValue())
+			parsed, err := strconv.ParseBool(elide.AsString())
 			if err != nil {
-				return plugin.ConfigureResponse{}, fmt.Errorf("invalid value for elideUnknowns: %v", elide.StringValue())
+				return plugin.ConfigureResponse{}, fmt.Errorf("invalid value for elideUnknowns: %v", elide.AsString())
 			}
 			p.elideUnknowns = parsed
 		} else {
-			return plugin.ConfigureResponse{}, fmt.Errorf("invalid type for elideUnknowns: %v", elide.TypeString())
+			return plugin.ConfigureResponse{}, fmt.Errorf("invalid type for elideUnknowns: %v", elide)
 		}
 	}
 

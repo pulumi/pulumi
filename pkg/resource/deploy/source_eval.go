@@ -438,6 +438,11 @@ type extensionRef struct {
 	extension apitype.Extension
 }
 
+type pendingStateMigration struct {
+	functions []StateMigrationFunction
+	aliases   []*pulumirpc.Alias
+}
+
 // resmon implements the pulumirpc.ResourceMonitor interface and acts as the gateway between a language runtime's
 // evaluation of a program and the internal resource planning and deployment logic.
 type resmon struct {
@@ -446,8 +451,8 @@ type resmon struct {
 	pendingTransforms     map[string][]TransformFunction // pending transformation functions for a constructed resource
 	pendingTransformsLock sync.Mutex
 
-	// pending state migration functions for a constructed resource
-	pendingStateMigrations     map[string][]StateMigrationFunction
+	// pending state migrations for a constructed resource
+	pendingStateMigrations     map[string]pendingStateMigration
 	pendingStateMigrationsLock sync.Mutex
 
 	parents     map[resource.URN]resource.URN // map of child URNs to their parent URNs
@@ -557,7 +562,7 @@ func newResourceMonitor(
 		workingDirectory:        src.runinfo.Pwd,
 		sourcePositions:         newSourcePositions(src.runinfo.ProjectRoot),
 		pendingTransforms:       map[string][]TransformFunction{},
-		pendingStateMigrations:  map[string][]StateMigrationFunction{},
+		pendingStateMigrations:  map[string]pendingStateMigration{},
 		parents:                 map[resource.URN]resource.URN{},
 		resGoals:                map[resource.URN]pkgresource.Goal{},
 		componentProviders:      map[resource.URN]map[string]string{},
@@ -1208,6 +1213,22 @@ func (rm *resmon) trackSettledResource(state *pkgresource.State, parent resource
 	rm.registrations.Track(urn, parent, custom, id != "")
 }
 
+func configLogValue(cfg map[config.Key]string, secretKeys []config.Key) resource.PropertyMap {
+	secret := make(map[config.Key]struct{}, len(secretKeys))
+	for _, k := range secretKeys {
+		secret[k] = struct{}{}
+	}
+	m := make(resource.PropertyMap, len(cfg))
+	for k, v := range cfg {
+		pv := resource.NewProperty(v)
+		if _, ok := secret[k]; ok {
+			pv = resource.MakeSecret(pv)
+		}
+		m[resource.PropertyKey(k.String())] = pv
+	}
+	return m
+}
+
 // Call dynamically executes a method in the provider associated with a component resource.
 func (rm *resmon) Call(ctx context.Context, req *pulumirpc.ResourceCallRequest) (*pulumirpc.CallResponse, error) {
 	// Fetch the token and load up the resource provider if necessary.
@@ -1368,8 +1389,11 @@ func (rm *resmon) Call(ctx context.Context, req *pulumirpc.ResourceCallRequest) 
 	}
 
 	// Do the all and then return the arguments.
+	loggedInfo := info
+	loggedInfo.Config = nil
 	logging.V(5).Infof(
-		"ResourceMonitor.Call received: tok=%v #args=%v #info=%v #options=%v", tok, len(args), info, options,
+		"ResourceMonitor.Call received: tok=%v #args=%v #info=%v config=%v #options=%v",
+		tok, len(args), loggedInfo, configLogValue(info.Config, rm.constructInfo.ConfigSecretKeys), options,
 	)
 	ret, err := prov.Call(ctx, plugin.CallRequest{
 		Tok:     tok,
@@ -2521,7 +2545,10 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 
 		if pending, ok := rm.pendingStateMigrations[pendingKey]; ok {
 			delete(rm.pendingStateMigrations, pendingKey)
-			stateMigrations = pending
+			stateMigrations = pending.functions
+			// The constructed registration may omit aliases from the original remote registration. Keep them so the
+			// migration can find the prior state.
+			opts.Aliases = append(slices.Clone(pending.aliases), opts.Aliases...)
 		} else {
 			stateMigrations, err = slice.MapError(req.StateMigrations, rm.wrapStateMigrationCallback)
 			if err != nil {
@@ -2529,7 +2556,10 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 			}
 			// We only need to save this for remote calls
 			if remote && len(stateMigrations) > 0 {
-				rm.pendingStateMigrations[pendingKey] = stateMigrations
+				rm.pendingStateMigrations[pendingKey] = pendingStateMigration{
+					functions: stateMigrations,
+					aliases:   slices.Clone(opts.Aliases),
+				}
 			}
 		}
 		return nil
@@ -2884,7 +2914,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 				Type:    t,
 				Name:    name,
 				Parent:  parent,
-				Inputs:  props,
+				Inputs:  resource.FromResourcePropertyMap(props),
 				Options: options,
 			})
 			if err != nil {

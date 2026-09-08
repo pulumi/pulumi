@@ -25,6 +25,7 @@ import (
 	"fmt"
 	"hash"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"os"
@@ -756,6 +757,7 @@ func (source *httpSource) Download(
 ) (io.ReadCloser, int64, error) {
 	serverURL := interpolateURL(source.url, source.name, version, opSy, arch)
 	serverURL = strings.TrimSuffix(serverURL, "/")
+	logging.AddGlobalSecretFilter(httputil.URLSecrets(serverURL), "[credential]")
 	logging.V(1).Infof("%s downloading from %s", source.name, serverURL)
 
 	endpoint := fmt.Sprintf("%s/%s",
@@ -832,6 +834,7 @@ func (source *fallbackSource) Download(
 	// which returns the GitHub URL, not the get.pulumi.com URL. When we actually fall back to
 	// get.pulumi.com here, we need to check if there's an override for that specific URL.
 	if overrideURL, ok := pluginDownloadURLOverridesParsed.get(pulumi.url()); ok {
+		logging.AddGlobalSecretFilter(httputil.URLSecrets(overrideURL), "[credential]")
 		logging.V(1).Infof("Applying URL override for %s: %s -> %s", source.name, pulumi.url(), overrideURL)
 		overrideSource, err := newPluginSource(source.name, source.kind, overrideURL)
 		if err != nil {
@@ -983,6 +986,12 @@ type UnresolvedPackageDescriptor struct {
 
 	// The parameterization args to be applied against the plugin descriptor.
 	ParameterizationArgs []string
+}
+
+func (u UnresolvedPackageDescriptor) LogValue() slog.Value {
+	u.PluginDownloadURL = httputil.RedactURL(u.PluginDownloadURL)
+	type plain UnresolvedPackageDescriptor
+	return slog.AnyValue(plain(u))
 }
 
 func NewPackageDescriptor(spec PluginDescriptor, parameterization *Parameterization) PackageDescriptor {
@@ -1645,7 +1654,7 @@ func buildHTTPRequest(ctx context.Context, pluginEndpoint string, authorization 
 }
 
 func getHTTPResponse(req *http.Request) (io.ReadCloser, int64, error) {
-	logging.V(9).Infof("full plugin download url: %s", req.URL)
+	logging.V(9).Infof("full plugin download url: %s", httputil.RedactURL(req.URL.String()))
 	// This logs at level 11 because it could include authentication headers, we reserve log level 11 for
 	// detailed api logs that may include credentials.
 	logging.V(11).Infof("plugin install request headers: %v", req.Header)
@@ -1668,7 +1677,7 @@ func getHTTPResponse(req *http.Request) (io.ReadCloser, int64, error) {
 }
 
 func getHTTPResponseWithRetry(req *http.Request) (io.ReadCloser, int64, error) {
-	logging.V(9).Infof("full plugin download url: %s", req.URL)
+	logging.V(9).Infof("full plugin download url: %s", httputil.RedactURL(req.URL.String()))
 	// This logs at level 11 because it could include authentication headers, we reserve log level 11 for
 	// detailed api logs that may include credentials.
 	logging.V(11).Infof("plugin install request headers: %v", req.Header)
@@ -1720,7 +1729,7 @@ func newDownloadError(statusCode int, url *url.URL, header http.Header) error {
 	}
 	return &downloadError{
 		code:   statusCode,
-		msg:    fmt.Sprintf("%d HTTP error fetching plugin from %s", statusCode, url),
+		msg:    fmt.Sprintf("%d HTTP error fetching plugin from %s", statusCode, httputil.RedactURL(url.String())),
 		header: header,
 	}
 }
@@ -2140,6 +2149,7 @@ func getPluginInfoAndPath(
 	projectPlugins []ProjectPlugin,
 	markUsed bool,
 ) (*PluginInfo, string, error) {
+	logging.AddGlobalSecretFilter(httputil.URLSecrets(spec.PluginDownloadURL), "[credential]")
 	filename := spec.File()
 
 	for i, p1 := range projectPlugins {
@@ -2194,7 +2204,7 @@ func getPluginInfoAndPath(
 		if path, err := exec.LookPath(filename); err == nil {
 			ambientPath = path
 			logging.V(6).Infof("GetPluginPath(%s, %s, %v, %s): found on $PATH %s",
-				spec.Kind, spec.Name, spec.Version, spec.PluginDownloadURL, path)
+				spec.Kind, spec.Name, spec.Version, httputil.RedactURL(spec.PluginDownloadURL), path)
 		}
 	}
 
@@ -2218,7 +2228,7 @@ func getPluginInfoAndPath(
 					if stat, err := os.Stat(candidate); err == nil &&
 						(stat.Mode()&0o100 != 0 || runtime.GOOS == windowsGOOS) {
 						logging.V(6).Infof("GetPluginPath(%s, %s, %v, %s): found next to current executable %s",
-							spec.Kind, spec.Name, spec.Version, spec.PluginDownloadURL, candidate)
+							spec.Kind, spec.Name, spec.Version, httputil.RedactURL(spec.PluginDownloadURL), candidate)
 						bundledPath = candidate
 						break
 					}
@@ -2271,15 +2281,15 @@ func getPluginInfoAndPath(
 		isPreReleaseVersion(*spec.Version) {
 		// We're looking for a plugin matching an exact hash, so we can't use the semver range logic.
 		logging.V(6).Infof("GetPluginPath(%s, %s, %v, %s): enabling prerelease plugin behaviour",
-			spec.Kind, spec.Name, spec.Version, spec.PluginDownloadURL)
+			spec.Kind, spec.Name, spec.Version, httputil.RedactURL(spec.PluginDownloadURL))
 		match = SelectPrereleasePlugin(plugins, spec)
 	} else if !enableLegacyPluginBehavior && spec.Version != nil {
 		logging.V(6).Infof("GetPluginPath(%s, %s, %v, %s): enabling new plugin behavior",
-			spec.Kind, spec.Name, spec.Version, spec.PluginDownloadURL)
+			spec.Kind, spec.Name, spec.Version, httputil.RedactURL(spec.PluginDownloadURL))
 		match = SelectCompatiblePlugin(plugins, spec)
 	} else {
 		logging.V(6).Infof("GetPluginPath(%s, %s, %v, %s): using legacy plugin behavior",
-			spec.Kind, spec.Name, spec.Version, spec.PluginDownloadURL)
+			spec.Kind, spec.Name, spec.Version, httputil.RedactURL(spec.PluginDownloadURL))
 		match = LegacySelectCompatiblePlugin(plugins, spec)
 	}
 
@@ -2296,7 +2306,7 @@ func getPluginInfoAndPath(
 		}
 		matchPath := getPluginPath(match)
 		logging.V(6).Infof("GetPluginPath(%s, %s, %v, %s): found in cache at %s",
-			spec.Kind, spec.Name, spec.Version, spec.PluginDownloadURL, matchPath)
+			spec.Kind, spec.Name, spec.Version, httputil.RedactURL(spec.PluginDownloadURL), matchPath)
 		return match, matchPath, nil
 	}
 

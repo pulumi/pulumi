@@ -69,8 +69,19 @@ func TestSanitizedPkg(t *testing.T) {
 	v3 := getSanitizedModulePath("github.com/pulumi/pulumi-aws/sdk/v3")
 	assert.Equal(t, "github.com/pulumi/pulumi-aws/sdk", v3)
 
+	v10 := getSanitizedModulePath("github.com/pulumi/pulumi-gcp/sdk/v10")
+	assert.Equal(t, "github.com/pulumi/pulumi-gcp/sdk", v10)
+
+	v123 := getSanitizedModulePath("github.com/pulumi/pulumi-gcp/sdk/v123")
+	assert.Equal(t, "github.com/pulumi/pulumi-gcp/sdk", v123)
+
 	nonVersion := getSanitizedModulePath("github.com/pulumi/pulumi-auth/sdk")
 	assert.Equal(t, "github.com/pulumi/pulumi-auth/sdk", nonVersion)
+
+	// Only a trailing major version element is stripped, never a lookalike
+	// element in the middle of the path.
+	embedded := getSanitizedModulePath("github.com/pulumi/v2fly/sdk")
+	assert.Equal(t, "github.com/pulumi/v2fly/sdk", embedded)
 }
 
 func TestDepRootCalc(t *testing.T) {
@@ -95,6 +106,12 @@ func TestDepRootCalc(t *testing.T) {
 
 	dep = getRewritePath("github.com/pulumi/pulumi-auth0/sdk", "gopath", "/my-go-src")
 	assert.Equal(t, "/my-go-src/pulumi-auth0/sdk", filepath.ToSlash(dep))
+
+	dep = getRewritePath("github.com/pulumi/pulumi-gcp/sdk/v10", "/gopath", "/my-go-src")
+	assert.Equal(t, "/my-go-src/pulumi-gcp/sdk", filepath.ToSlash(dep))
+
+	dep = getRewritePath("github.com/pulumi/pulumi-gcp/sdk/v10", "/gopath", "")
+	assert.Equal(t, "/gopath/src/github.com/pulumi/pulumi-gcp/sdk", filepath.ToSlash(dep))
 }
 
 func TestGoModEdits(t *testing.T) {

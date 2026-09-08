@@ -453,6 +453,7 @@ func (host *pluginHost) plugin(kind apitype.PluginKind, name string, version *se
 				SupportsRefreshBeforeUpdate: true,
 				InvokeWithPreview:           true,
 				AcceptsByteString:           true,
+				SendsOldOutputsToCheck:      true,
 			})
 			if err != nil {
 				return nil, errors.Join(err, provider.Close())

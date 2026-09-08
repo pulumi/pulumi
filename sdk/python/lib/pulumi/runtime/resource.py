@@ -1283,9 +1283,10 @@ def register_resource_outputs(
         # serialize_properties expects a collection (empty is fine) but not None, but this is called pretty
         # much directly by users who could pass None in (although the type hints say they shouldn't).
         serialized_props = await rpc.serialize_properties(outputs or {}, {})
-        log.debug(
-            f"register resource outputs prepared: urn={urn}, props={serialized_props}"
-        )
+        msg = f"register resource outputs prepared: urn={urn}"
+        if settings.excessive_debug_output:
+            msg += f", props={serialized_props}"
+        log.debug(msg)
         monitor = settings.get_monitor()
         req = resource_pb2.RegisterResourceOutputsRequest(
             urn=urn, outputs=serialized_props
@@ -1304,9 +1305,10 @@ def register_resource_outputs(
         await asyncio.get_running_loop().run_in_executor(
             None, wrap_with_context(do_rpc_call)
         )
-        log.debug(
-            f"resource registration successful: urn={urn}, props={serialized_props}"
-        )
+        msg = f"resource registration successful: urn={urn}"
+        if settings.excessive_debug_output:
+            msg += f", props={serialized_props}"
+        log.debug(msg)
 
     asyncio.ensure_future(
         _get_rpc_manager().do_rpc(

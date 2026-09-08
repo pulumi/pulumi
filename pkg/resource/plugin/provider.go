@@ -84,6 +84,10 @@ type ProviderHandshakeRequest struct {
 	// objects carrying the byte string signature and a base64 encoding of the string's bytes. If true, the
 	// provider may return such values to the engine.
 	AcceptsByteString bool
+
+	// True if the engine populates OldOutputs on CheckRequest for update-path Check calls. Older engines never
+	// set this, so providers should treat an absent value as false and fall back to legacy behavior.
+	SendsOldOutputsToCheck bool
 }
 
 // The type of responses sent as part of a Handshake call.
@@ -220,7 +224,7 @@ type ConfigureRequest struct {
 	// Handshake.
 	ID *resource.ID
 	// A map of input properties for the provider.
-	Inputs resource.PropertyMap
+	Inputs property.Map
 }
 
 type ConfigureResponse struct{}
@@ -255,7 +259,9 @@ type CheckRequest struct {
 	Name string
 	Type tokens.Type
 	// TODO Change to (State, Input)
-	Olds, News    resource.PropertyMap
+	Olds, News resource.PropertyMap
+	// OldOutputs is the previously persisted outputs of the resource, if any.
+	OldOutputs    resource.PropertyMap
 	AllowUnknowns bool
 	RandomSeed    []byte
 	Autonaming    *AutonamingOptions
@@ -455,7 +461,7 @@ type ConstructRequest struct {
 	Type    tokens.Type
 	Name    string
 	Parent  resource.URN
-	Inputs  resource.PropertyMap
+	Inputs  property.Map
 	Options ConstructOptions
 }
 

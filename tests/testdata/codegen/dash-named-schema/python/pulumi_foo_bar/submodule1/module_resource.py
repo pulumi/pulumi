@@ -44,7 +44,7 @@ class ModuleResource(pulumi.CustomResource):
     def __init__(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 thing: pulumi.Input[Optional[Union['_root_inputs.TopLevelArgs', '_root_inputs.TopLevelArgsDict']]] = None,
+                 thing: pulumi.Input[Optional[Union['_root_inputs.TopLevelArgs', '_root_inputs.TopLevelArgsDict', '_root_outputs.TopLevel']]] = None,
                  __props__=None):
         """
         Create a ModuleResource resource with the given unique name, props, and options.
@@ -76,7 +76,7 @@ class ModuleResource(pulumi.CustomResource):
     def _internal_init(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 thing: pulumi.Input[Optional[Union['_root_inputs.TopLevelArgs', '_root_inputs.TopLevelArgsDict']]] = None,
+                 thing: pulumi.Input[Optional[Union['_root_inputs.TopLevelArgs', '_root_inputs.TopLevelArgsDict', '_root_outputs.TopLevel']]] = None,
                  __props__=None):
         opts = pulumi.ResourceOptions.merge(_utilities.get_resource_opts_defaults(), opts)
         if not isinstance(opts, pulumi.ResourceOptions):

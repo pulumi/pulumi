@@ -308,8 +308,21 @@ func (p *builtinProvider) Read(ctx context.Context, req plugin.ReadRequest) (plu
 		}, nil
 
 	case stashType:
+		// An import supplies no prior state. A stash has no backing system to read,
+		// so it adopts the id and holds a null value; the program's configured input
+		// then applies as an update.
 		if len(req.Inputs) == 0 {
-			return plugin.ReadResponse{Status: resource.StatusUnknown}, errors.New("stash can not be imported")
+			return plugin.ReadResponse{
+				ReadResult: plugin.ReadResult{
+					ID:     req.ID,
+					Inputs: resource.PropertyMap{"input": resource.NewNullProperty()},
+					Outputs: resource.PropertyMap{
+						"input":  resource.NewNullProperty(),
+						"output": resource.NewNullProperty(),
+					},
+				},
+				Status: resource.StatusOK,
+			}, nil
 		}
 
 		return plugin.ReadResponse{

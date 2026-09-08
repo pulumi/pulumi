@@ -17,6 +17,7 @@ package workspace
 import (
 	"bytes"
 	"encoding/json"
+	"log/slog"
 	"os"
 	"testing"
 
@@ -1865,4 +1866,22 @@ func TestAddPackage(t *testing.T) {
 		// Verify the internal representation was converted to PackageSpec
 		requireTextualRepresentationIsSpec(t, proj.Packages["string-package"])
 	})
+}
+
+func TestPackageSpecLogValueRedactsCredentials(t *testing.T) {
+	t.Parallel()
+
+	spec := PackageSpec{
+		Source:            "git://user:sourcesecret@github.com/org/repo",
+		Version:           "1.2.3",
+		PluginDownloadURL: "https://user:downloadsecret@example.com/plugin",
+	}
+
+	var buf bytes.Buffer
+	slog.New(slog.NewTextHandler(&buf, nil)).Info("resolving", "spec", spec)
+	out := buf.String()
+
+	require.NotContains(t, out, "sourcesecret")
+	require.NotContains(t, out, "downloadsecret")
+	require.Contains(t, out, "1.2.3", "non-secret fields should still be logged")
 }

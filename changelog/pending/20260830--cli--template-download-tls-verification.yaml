@@ -1,0 +1,4 @@
+component: cli
+kind: fix
+body: Verify TLS certificates when downloading a template from a URL outside the configured service
+time: 2026-08-30T00:00:00Z

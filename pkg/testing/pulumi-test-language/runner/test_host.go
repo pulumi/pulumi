@@ -372,7 +372,8 @@ func wrapProviderWithGrpc(provider plugin.Provider) (plugin.Provider, io.Closer,
 	// handshake-negotiated capabilities like byte string are recorded. Providers that don't
 	// implement Handshake fall back to the capabilities they report from Configure.
 	_, err = wrapped.Handshake(context.Background(), plugin.ProviderHandshakeRequest{
-		AcceptsByteString: true,
+		AcceptsByteString:      true,
+		SendsOldOutputsToCheck: true,
 	})
 	if err != nil && status.Code(err) != codes.Unimplemented {
 		contract.IgnoreClose(wrapper)

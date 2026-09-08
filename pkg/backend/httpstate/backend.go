@@ -1939,7 +1939,8 @@ func (b *cloudBackend) apply(
 	// Display messages from the backend if present.
 	displayBackendMessages(updateMeta.messages)
 
-	permalink := b.getPermalink(update, updateMeta.version, opts.DryRun)
+	permalink, permalinkLabel := permalinkForDisplay(ctx, b.url, b.getPermalink(update, updateMeta.version, opts.DryRun))
+	op.Opts.Display.PermalinkLabel = permalinkLabel
 	return b.runEngineAction(
 		ctx, kind, stack.Ref(), op, update, updateMeta.leaseToken,
 		permalink, events, opts.DryRun, updateMeta.journalVersion)
@@ -1952,6 +1953,23 @@ func (b *cloudBackend) getPermalink(update client.UpdateIdentifier, version int,
 		return b.CloudConsoleURL(base, "updates", strconv.Itoa(version))
 	}
 	return b.CloudConsoleURL(base, "previews", update.UpdateID)
+}
+
+// agentClaimPermalinkLabel replaces the default permalink label when the
+// permalink is swapped for the agent account's claim URL.
+const agentClaimPermalinkLabel = "Claim this account to view in Pulumi Cloud"
+
+// permalinkForDisplay returns the permalink to display for an update together
+// with an optional label override.
+func permalinkForDisplay(ctx context.Context, cloudURL, permalink string) (string, string) {
+	if !AgentCredentialsUsed(ctx, cloudURL) {
+		return permalink, ""
+	}
+	if claim, err := workspace.GetAgentClaim(); err == nil &&
+		claim.CloudURL == cloudURL && claim.Active(time.Now()) {
+		return claim.ClaimURL, agentClaimPermalinkLabel
+	}
+	return "", ""
 }
 
 func (b *cloudBackend) runEngineAction(

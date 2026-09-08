@@ -77,6 +77,11 @@ func (j *cloudJournaler) AddJournalEntry(entry engine.JournalEntry) error {
 	if entry.PendingReplacementNew != nil && *entry.PendingReplacementNew > 0 {
 		dependsOn = append(dependsOn, *entry.PendingReplacementNew)
 	}
+	for _, patch := range entry.NewStatePatches {
+		if patch.OperationID > 0 {
+			dependsOn = append(dependsOn, patch.OperationID)
+		}
+	}
 
 	for _, depID := range dependsOn {
 		j.m.Lock()

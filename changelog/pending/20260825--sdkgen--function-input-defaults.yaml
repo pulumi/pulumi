@@ -1,4 +1,0 @@
-component: sdkgen
-kind: fix
-body: Apply schema defaults to generated Python and Node.js function inputs
-time: 2026-08-25T10:52:08+02:00

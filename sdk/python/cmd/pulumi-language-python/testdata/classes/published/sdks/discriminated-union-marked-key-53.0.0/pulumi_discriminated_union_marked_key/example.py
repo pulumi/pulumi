@@ -112,11 +112,11 @@ class Example(pulumi.CustomResource):
 
     @_builtins.property
     @pulumi.getter(name="unionIn")
-    def union_in(self) -> pulumi.Output[Any]:
+    def union_in(self) -> pulumi.Output[Union['outputs.VariantOne', 'outputs.VariantTwo']]:
         return pulumi.get(self, "union_in")
 
     @_builtins.property
     @pulumi.getter(name="unionOut")
-    def union_out(self) -> pulumi.Output[Any]:
+    def union_out(self) -> pulumi.Output[Union['outputs.VariantOne', 'outputs.VariantTwo']]:
         return pulumi.get(self, "union_out")
 

@@ -384,7 +384,7 @@ func TestResourceReferences_NameAndTypeFilledByEngine(t *testing.T) {
 					req plugin.ConstructRequest,
 					monitor *deploytest.ResourceMonitor,
 				) (plugin.ConstructResponse, error) {
-					ref := req.Inputs["ref"].ResourceReferenceValue()
+					ref := req.Inputs.Get("ref").AsResourceReference()
 					assert.Equal(t, sourceURN, ref.URN)
 					assert.Equal(t, sourceURN.Name(), ref.Name)
 					assert.Equal(t, string(sourceURN.Type()), ref.Type)
@@ -399,7 +399,7 @@ func TestResourceReferences_NameAndTypeFilledByEngine(t *testing.T) {
 					outputs := resource.PropertyMap{
 						"echo": resource.NewProperty(resource.ResourceReference{
 							URN: ref.URN,
-							ID:  ref.ID,
+							ID:  resource.ToResourcePropertyValue(ref.ID),
 						}),
 					}
 					err = monitor.RegisterResourceOutputs(component.URN, outputs)

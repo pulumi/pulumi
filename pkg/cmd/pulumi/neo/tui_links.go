@@ -17,20 +17,9 @@ package neo
 import (
 	"regexp"
 	"strings"
-)
 
-// osc8Hyperlink wraps displayText as a clickable hyperlink to url using the
-// OSC 8 escape sequence. Terminals that support OSC 8 render displayText as
-// a click target; terminals that don't strip the escapes and show displayText
-// as plain text.
-//
-// The wire format is `ESC ] 8 ; ; <url> ESC \ <text> ESC ] 8 ; ; ESC \`.
-func osc8Hyperlink(url, displayText string) string {
-	if url == "" {
-		return displayText
-	}
-	return "\x1b]8;;" + url + "\x1b\\" + displayText + "\x1b]8;;\x1b\\"
-}
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
+)
 
 // urlPattern matches bare http/https URLs in text. It excludes whitespace,
 // ANSI escape (so we never split a URL across an escape boundary), and
@@ -38,10 +27,10 @@ func osc8Hyperlink(url, displayText string) string {
 var urlPattern = regexp.MustCompile(`https?://[^\s\x1b<>"']+`)
 
 // osc8Pattern matches a complete OSC 8 hyperlink sequence — the opener with
-// its URL, the visible text, and the closer. linkifyURLs uses it to skip
+// its URL, the visible text (which may carry SGR styling), and the closer. linkifyURLs uses it to skip
 // past existing hyperlinks rather than re-wrapping URLs that are already
 // clickable.
-var osc8Pattern = regexp.MustCompile(`\x1b\]8;;[^\x1b]*\x1b\\[^\x1b]*\x1b\]8;;\x1b\\`)
+var osc8Pattern = regexp.MustCompile(`\x1b\]8;;[^\x1b]*\x1b\\(?:[^\x1b]|\x1b\[[0-9;]*m)*\x1b\]8;;\x1b\\`)
 
 // urlAlwaysStripPunct lists characters we unconditionally strip from the tail
 // of a matched URL — they're sentence punctuation that practically never
@@ -91,7 +80,7 @@ func linkifyPlain(s string) string {
 		if match == "" {
 			return trail
 		}
-		return osc8Hyperlink(match, match) + trail
+		return colors.Always.Hyperlink(match, match) + trail
 	})
 }
 

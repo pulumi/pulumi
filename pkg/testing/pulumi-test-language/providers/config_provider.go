@@ -48,8 +48,8 @@ func (p *ConfigProvider) Close() error {
 func (p *ConfigProvider) Configure(
 	_ context.Context, req plugin.ConfigureRequest,
 ) (plugin.ConfigureResponse, error) {
-	if name, ok := req.Inputs["name"]; ok && name.IsString() {
-		p.name = name.StringValue()
+	if name, ok := req.Inputs.GetOk("name"); ok && name.IsString() {
+		p.name = name.AsString()
 	}
 	return plugin.ConfigureResponse{}, nil
 }

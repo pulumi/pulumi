@@ -41,6 +41,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/httputil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
@@ -150,6 +151,8 @@ func IsGitOriginURLGitHub(remoteURL string) bool {
 // and the type (kind) of VCS from it.
 func TryGetVCSInfo(remoteURL string) (_ *VCSInfo, err error) {
 	var project, vcsKind string
+
+	logging.AddGlobalSecretFilter(httputil.URLSecrets(remoteURL), "[credential]")
 
 	defer func() {
 		if err != nil {
@@ -536,6 +539,7 @@ func resolveSymlinks(path string) string {
 
 // GitCloneAndCheckoutCommit clones the Git repository and checkouts the specified commit.
 func GitCloneAndCheckoutCommit(ctx context.Context, url string, commit plumbing.Hash, path string) error {
+	logging.AddGlobalSecretFilter(httputil.URLSecrets(url), "[credential]")
 	logging.V(10).Infof("Attempting to clone from %s at commit %v and path %s", url, commit, path)
 
 	u, auth, err := getAuthForURL(url)
@@ -563,6 +567,7 @@ func GitCloneAndCheckoutCommit(ctx context.Context, url string, commit plumbing.
 
 // GitCloneAndCheckoutRevision clones a Git repository, resolves the revision and checks it out.
 func GitCloneAndCheckoutRevision(ctx context.Context, url string, revision plumbing.Revision, path string) error {
+	logging.AddGlobalSecretFilter(httputil.URLSecrets(url), "[credential]")
 	logging.V(10).Infof("Attempting to clone from %s at commit %v and path %s", url, revision, path)
 
 	u, auth, err := getAuthForURL(url)
@@ -599,10 +604,11 @@ func GitCloneAndCheckoutRevision(ctx context.Context, url string, revision plumb
 func GitCloneOrPull(
 	ctx context.Context, rawurl string, referenceName plumbing.ReferenceName, path string, shallow bool,
 ) error {
+	logging.AddGlobalSecretFilter(httputil.URLSecrets(rawurl), "[credential]")
 	tracer := otel.Tracer("pulumi-cli")
 	ctx, span := cmdutil.StartSpan(ctx, tracer, "git-clone-or-pull",
 		trace.WithAttributes(
-			attribute.String("url", rawurl),
+			attribute.String("url", httputil.RedactURL(rawurl)),
 			attribute.String("ref", referenceName.String()),
 		))
 	defer span.End()

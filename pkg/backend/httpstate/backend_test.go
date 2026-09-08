@@ -19,6 +19,7 @@ import (
 	"compress/gzip"
 	"context"
 	"crypto/rand"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -52,12 +53,14 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/sig"
 	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/diagtest"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/securestore"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 // testJWT is a test JWT token used in tests.
@@ -3255,4 +3258,189 @@ func TestRunDeploymentResult(t *testing.T) {
 			}
 		})
 	}
+}
+
+const (
+	testPermalinkCloudURL = "https://api.pulumi.com"
+	testClaimURL          = "https://app.pulumi.com/claim/claim-token"
+	testViewLiveLink      = "https://app.pulumi.com/org/proj/stack/updates/1"
+)
+
+func TestPermalinkForDisplayWithoutAgentCredentials(t *testing.T) {
+	t.Setenv("PULUMI_TEST_AGENT_PULUMI_DIR", t.TempDir())
+
+	// A leftover claim in the shared agent store must not affect commands
+	// that ran on user credentials.
+	require.NoError(t, workspace.StoreAgentClaim(workspace.AgentClaim{
+		ClaimURL:   testClaimURL,
+		CloudURL:   testPermalinkCloudURL,
+		ValidUntil: time.Now().Add(24 * time.Hour),
+	}))
+
+	ctx := ContextWithAgentCredentialUse(t.Context())
+	permalink, label := permalinkForDisplay(ctx, testPermalinkCloudURL, testViewLiveLink)
+	assert.Equal(t, testViewLiveLink, permalink)
+	assert.Empty(t, label)
+}
+
+func TestPermalinkForDisplayWithAgentCredentials(t *testing.T) {
+	past := time.Now().Add(-time.Hour)
+	future := time.Now().Add(24 * time.Hour)
+
+	tests := []struct {
+		name  string
+		claim *workspace.AgentClaim
+		want  string
+	}{
+		{
+			name: "active claim",
+			claim: &workspace.AgentClaim{
+				ClaimURL:   testClaimURL,
+				CloudURL:   testPermalinkCloudURL,
+				ValidUntil: future,
+			},
+			want: testClaimURL,
+		},
+		{
+			name: "no expiry recorded",
+			claim: &workspace.AgentClaim{
+				ClaimURL: testClaimURL,
+				CloudURL: testPermalinkCloudURL,
+			},
+			want: testClaimURL,
+		},
+		{
+			name:  "no claim stored",
+			claim: nil,
+			want:  "",
+		},
+		{
+			name: "different backend",
+			claim: &workspace.AgentClaim{
+				ClaimURL:   testClaimURL,
+				CloudURL:   "https://api.other.example.com",
+				ValidUntil: future,
+			},
+			want: "",
+		},
+		{
+			name: "expired claim",
+			claim: &workspace.AgentClaim{
+				ClaimURL:   testClaimURL,
+				CloudURL:   testPermalinkCloudURL,
+				ValidUntil: past,
+			},
+			want: "",
+		},
+		{
+			name: "claim marked unavailable",
+			claim: &workspace.AgentClaim{
+				ClaimURL:           testClaimURL,
+				CloudURL:           testPermalinkCloudURL,
+				ValidUntil:         future,
+				ClaimUnavailableAt: &past,
+			},
+			want: "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Setenv("PULUMI_TEST_AGENT_PULUMI_DIR", t.TempDir())
+			if tt.claim != nil {
+				require.NoError(t, workspace.StoreAgentClaim(*tt.claim))
+			}
+
+			ctx := ContextWithAgentCredentialUse(t.Context())
+			MarkAgentCredentialsUsed(ctx, testPermalinkCloudURL)
+
+			permalink, label := permalinkForDisplay(ctx, testPermalinkCloudURL, testViewLiveLink)
+			assert.Equal(t, tt.want, permalink)
+			if tt.want != "" {
+				assert.Equal(t, agentClaimPermalinkLabel, label)
+			} else {
+				assert.Empty(t, label)
+			}
+		})
+	}
+}
+
+func TestGetSnapshotStackOutputs(t *testing.T) {
+	t.Parallel()
+
+	secretsProvider := (&secrets.MockProvider{}).Add(b64.Type, func(json.RawMessage) (secrets.Manager, error) {
+		return b64.NewBase64SecretsManager(), nil
+	})
+	serializedOutputs := map[string]any{
+		"plain": "value",
+		"secret": map[string]any{
+			sig.Key:      sig.Secret,
+			"ciphertext": base64.StdEncoding.EncodeToString([]byte(`"hunter2"`)),
+		},
+	}
+	wantOutputs := property.NewMap(map[string]property.Value{
+		"plain":  property.New("value"),
+		"secret": property.New("hunter2").WithSecret(true),
+	})
+
+	newBackend := func(
+		t *testing.T, caps apitype.Capabilities, handler http.HandlerFunc,
+	) (*cloudBackend, backend.StackReference) {
+		server := httptest.NewServer(handler)
+		t.Cleanup(server.Close)
+		sink := diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{Color: colors.Never})
+		b := &cloudBackend{
+			d:      sink,
+			url:    server.URL,
+			client: client.NewClient(server.URL, "token", false, sink).WithHTTPClient(server.Client()),
+			capabilities: promise.Run(func() (apitype.Capabilities, error) {
+				return caps, nil
+			}),
+		}
+		return b, cloudBackendReference{
+			name:    tokens.MustParseStackName("stack"),
+			project: "project",
+			owner:   "owner",
+			b:       b,
+		}
+	}
+
+	t.Run("capability present", func(t *testing.T) {
+		t.Parallel()
+		b, ref := newBackend(t, apitype.Capabilities{StackOutputs: true}, func(w http.ResponseWriter, r *http.Request) {
+			require.Equal(t, "/api/stacks/owner/project/stack/outputs", r.URL.Path)
+			require.NoError(t, json.NewEncoder(w).Encode(apitype.StackOutputsResponse{
+				Outputs:          serializedOutputs,
+				SecretsProviders: &apitype.SecretsProvidersV1{Type: b64.Type},
+			}))
+		})
+
+		outputs, err := b.getSnapshotStackOutputs(t.Context(), secretsProvider, ref)
+		require.NoError(t, err)
+		assert.Equal(t, wantOutputs, outputs)
+	})
+
+	t.Run("capability absent falls back to export", func(t *testing.T) {
+		t.Parallel()
+		deployment, err := json.Marshal(apitype.DeploymentV3{
+			SecretsProviders: &apitype.SecretsProvidersV1{Type: b64.Type},
+			Resources: []apitype.ResourceV3{{
+				URN:     "urn:pulumi:stack::project::pulumi:pulumi:Stack::project-stack",
+				Type:    resource.RootStackType,
+				Outputs: serializedOutputs,
+			}},
+		})
+		require.NoError(t, err)
+		b, ref := newBackend(t, apitype.Capabilities{}, func(w http.ResponseWriter, r *http.Request) {
+			require.Equal(t, "/api/stacks/owner/project/stack/export", r.URL.Path)
+			require.NoError(t, json.NewEncoder(w).Encode(apitype.ExportStackResponse{
+				Version:    3,
+				Deployment: deployment,
+			}))
+		})
+
+		outputs, err := b.getSnapshotStackOutputs(t.Context(), secretsProvider, ref)
+		require.NoError(t, err)
+		assert.Equal(t, wantOutputs, outputs)
+	})
 }

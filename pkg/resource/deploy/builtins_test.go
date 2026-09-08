@@ -147,7 +147,7 @@ func TestBuiltinProvider(t *testing.T) {
 	t.Run("Construct (always fails)", func(t *testing.T) {
 		t.Parallel()
 		p := &builtinProvider{}
-		_, err := p.Construct(t.Context(), plugin.ConstructRequest{Inputs: resource.PropertyMap{}})
+		_, err := p.Construct(t.Context(), plugin.ConstructRequest{Inputs: property.Map{}})
 		assert.ErrorContains(t, err, "builtin resources may not be constructed")
 	})
 	t.Run("Invoke", func(t *testing.T) {

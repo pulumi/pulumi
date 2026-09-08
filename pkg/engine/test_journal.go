@@ -16,6 +16,7 @@ package engine
 
 import (
 	"errors"
+	"fmt"
 
 	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
@@ -32,17 +33,19 @@ var _ = SnapshotManager((*TestJournal)(nil))
 type TestJournalEntryKind int
 
 const (
-	TestJournalEntryBegin    TestJournalEntryKind = 0
-	TestJournalEntrySuccess  TestJournalEntryKind = 1
-	TestJournalEntryFailure  TestJournalEntryKind = 2
-	TestJournalEntryOutputs  TestJournalEntryKind = 4
-	TestJournalEntrySnippets TestJournalEntryKind = 9
+	TestJournalEntryBegin          TestJournalEntryKind = 0
+	TestJournalEntrySuccess        TestJournalEntryKind = 1
+	TestJournalEntryFailure        TestJournalEntryKind = 2
+	TestJournalEntryOutputs        TestJournalEntryKind = 4
+	TestJournalEntrySnippets       TestJournalEntryKind = 9
+	TestJournalEntryStateMigration TestJournalEntryKind = 10
 )
 
 type TestJournalEntry struct {
-	Kind     TestJournalEntryKind
-	Step     deploy.Step
-	Snippets []resource.Snippet
+	Kind      TestJournalEntryKind
+	Step      deploy.Step
+	Snippets  []resource.Snippet
+	Migration *deploy.StateMigrationTransaction
 }
 
 type JournalEntries []TestJournalEntry
@@ -59,6 +62,17 @@ func (entries JournalEntries) Snap(base *deploy.Snapshot) (*deploy.Snapshot, err
 			logging.V(7).Infof("snippets (%v)", len(e.Snippets))
 			continue
 		}
+		if e.Kind == TestJournalEntryStateMigration {
+			contract.Assertf(e.Migration != nil, "state migration journal entry is missing its transaction")
+			logging.V(7).Infof("state migration %v", e.Migration.RootURN)
+
+			if err := e.Migration.RewriteResourcesInPlace(resources); err != nil {
+				return nil, fmt.Errorf("replaying state migration for %s: %w", e.Migration.RootURN, err)
+			}
+
+			continue
+		}
+
 		logging.V(7).Infof("%v %v (%v)", e.Step.Op(), e.Step.URN(), e.Kind)
 
 		if e.Kind == TestJournalEntrySuccess && e.Step.Op() == deploy.OpExtendParameterize {
@@ -72,6 +86,8 @@ func (entries JournalEntries) Snap(base *deploy.Snapshot) (*deploy.Snapshot, err
 		switch e.Kind {
 		case TestJournalEntrySnippets:
 			contract.Failf("snippet entries should be handled before step replay")
+		case TestJournalEntryStateMigration:
+			contract.Failf("state migration entries should be handled before step replay")
 		case TestJournalEntryBegin:
 			switch e.Step.Op() {
 			case deploy.OpCreate, deploy.OpCreateReplacement:
@@ -284,6 +300,19 @@ func (j *TestJournal) Write(base *deploy.Snapshot) error {
 
 func (j *TestJournal) RebuiltBaseState() error {
 	return nil
+}
+
+func (*TestJournal) SupportsStateMigrations() bool {
+	return true
+}
+
+func (j *TestJournal) StateMigration(transaction *deploy.StateMigrationTransaction) error {
+	select {
+	case j.events <- TestJournalEntry{Kind: TestJournalEntryStateMigration, Migration: transaction}:
+		return nil
+	case <-j.cancel:
+		return errors.New("journal closed")
+	}
 }
 
 func (j *TestJournal) SetSnippets(snippets []resource.Snippet) error {

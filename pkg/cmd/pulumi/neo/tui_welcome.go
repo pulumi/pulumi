@@ -24,6 +24,8 @@ import (
 	"time"
 
 	"charm.land/lipgloss/v2"
+
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 )
 
 //go:embed neo.ans
@@ -146,7 +148,7 @@ func (w welcomeModel) View() string {
 		if len([]rune(linkText)) > maxLink && maxLink > 3 {
 			linkText = string([]rune(linkText)[:maxLink-3]) + "..."
 		}
-		parts = append(parts, dim.Render("⟡ "+osc8Hyperlink(w.consoleURL, linkText)))
+		parts = append(parts, dim.Render("⟡ "+colors.Always.Hyperlink(w.consoleURL, linkText)))
 	}
 
 	return renderLeftBracket(bracketStyle, strings.Join(parts, "\n"))

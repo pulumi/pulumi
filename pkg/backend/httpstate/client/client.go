@@ -53,6 +53,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/agentdetect"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -381,6 +382,7 @@ func (pc *Client) ValidateAgentClaim(ctx context.Context, claimToken string) (bo
 	if strings.TrimSpace(claimToken) == "" {
 		return false, nil
 	}
+	logging.AddGlobalSecretFilter([]string{claimToken, url.PathEscape(claimToken)}, "[credential]")
 	err := pc.restCall(ctx, http.MethodGet, "/api/agents/signup/validate/"+url.PathEscape(claimToken), nil, nil, nil)
 	if err == nil {
 		return true, nil
@@ -1468,6 +1470,21 @@ func (pc *Client) ExportStackDeployment(
 	}
 
 	return apitype.UntypedDeployment(resp), nil
+}
+
+// GetStackOutputs reads the outputs of the latest deployment of the indicated stack.
+func (pc *Client) GetStackOutputs(
+	ctx context.Context, stack StackIdentifier,
+) (apitype.StackOutputsResponse, error) {
+	tracer := otel.Tracer("pulumi-cli")
+	ctx, span := cmdutil.StartSpan(ctx, tracer, "GetStackOutputs")
+	defer span.End()
+
+	var resp apitype.StackOutputsResponse
+	if err := pc.restCall(ctx, "GET", getStackPath(stack, "outputs"), nil, nil, &resp); err != nil {
+		return apitype.StackOutputsResponse{}, err
+	}
+	return resp, nil
 }
 
 // ImportStackDeployment imports a new deployment into the indicated stack.
@@ -3305,7 +3322,7 @@ func (pc *Client) DownloadTemplate(ctx context.Context, downloadURL string) (io.
 	} else {
 		// Set pc to the new client. This only sets the local variable. It is very
 		// different from *pc = *NewClient().
-		pc = NewClient(downloadURL, "", true, pc.diag)
+		pc = NewClient(downloadURL, "", pc.insecure, pc.diag)
 		downloadURL = ""
 	}
 

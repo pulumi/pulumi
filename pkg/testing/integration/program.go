@@ -2886,15 +2886,14 @@ func getVirtualenvBinPath(cwd, bin string, pt *ProgramTester) (string, error) {
 	return virtualenvBinPath, nil
 }
 
-// getSanitizedPkg strips the version string from a go dep
+// moduleMajorVersionSuffix matches the trailing major version element of a Go
+// module path, for example the "/v10" of "github.com/pulumi/pulumi-gcp/sdk/v10".
+var moduleMajorVersionSuffix = regexp.MustCompile(`/v[0-9]+$`)
+
+// getSanitizedModulePath strips the major version element from a go dep
 // Note: most of the pulumi modules don't use major version subdirectories for modules
 func getSanitizedModulePath(pkg string) string {
-	re := regexp.MustCompile(`v\d`)
-	v := re.FindString(pkg)
-	if v != "" {
-		return strings.TrimSuffix(strings.ReplaceAll(pkg, v, ""), "/")
-	}
-	return pkg
+	return moduleMajorVersionSuffix.ReplaceAllString(pkg, "")
 }
 
 func getRewritePath(pkg string, gopath string, depRoot string) string {
@@ -3106,7 +3105,7 @@ func (pt *ProgramTester) prepareDotNetProject(projinfo *engine.Projinfo) error {
 
 	for _, dep := range pt.opts.Dependencies {
 		// dotnet add package requires a specific version in case of a pre-release, so we have to look it up.
-		globPattern := filepath.Join(localNuget, dep+".?.*.nupkg")
+		globPattern := filepath.Join(localNuget, dep+".[0-9]*.nupkg")
 		matches, err := filepath.Glob(globPattern)
 		if err != nil {
 			return fmt.Errorf("failed to find a local Pulumi NuGet package: %w", err)

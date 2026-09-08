@@ -214,6 +214,7 @@ func NewProvider(host Host, ctx *Context, spec workspace.PluginDescriptor,
 				LoaderTarget:                loaderAddr,
 				ResolverTarget:              resolverAddr,
 				AcceptsByteString:           true,
+				SendsOldOutputsToCheck:      true,
 			}
 			return handshake(ctx, bin, prefix, conn, req)
 		}
@@ -281,6 +282,7 @@ func NewProvider(host Host, ctx *Context, spec workspace.PluginDescriptor,
 				LoaderTarget:                loaderAddr,
 				ResolverTarget:              resolverAddr,
 				AcceptsByteString:           true,
+				SendsOldOutputsToCheck:      true,
 			}
 			return handshake(ctx, bin, prefix, conn, req)
 		}
@@ -383,6 +385,7 @@ func handshake(
 		LoaderTarget:                req.LoaderTarget,
 		ResolverTarget:              req.ResolverTarget,
 		AcceptsByteString:           req.AcceptsByteString,
+		SendsOldOutputsToCheck:      req.SendsOldOutputsToCheck,
 	})
 	if err != nil {
 		status, ok := status.FromError(err)
@@ -449,6 +452,7 @@ func NewProviderFromPath(host Host, ctx *Context, path string) (Provider, error)
 			LoaderTarget:                loaderAddr,
 			ResolverTarget:              resolverAddr,
 			AcceptsByteString:           true,
+			SendsOldOutputsToCheck:      true,
 		}
 		return handshake(ctx, bin, prefix, conn, req)
 	}
@@ -581,6 +585,7 @@ func (p *provider) Handshake(ctx context.Context, req ProviderHandshakeRequest) 
 		LoaderTarget:                req.LoaderTarget,
 		ResolverTarget:              req.ResolverTarget,
 		AcceptsByteString:           req.AcceptsByteString,
+		SendsOldOutputsToCheck:      req.SendsOldOutputsToCheck,
 	})
 	if err != nil {
 		return nil, err
@@ -933,37 +938,33 @@ func annotateSecrets(outs, ins resource.PropertyMap) {
 	}
 }
 
-func removeSecrets(v resource.PropertyValue) any {
+func removeSecrets(v property.Value) any {
 	switch {
 	case v.IsNull():
 		return nil
 	case v.IsBool():
-		return v.BoolValue()
+		return v.AsBool()
 	case v.IsNumber():
-		return v.NumberValue()
+		return v.AsNumber()
 	case v.IsString():
-		return v.StringValue()
+		return v.AsString()
 	case v.IsArray():
 		arr := []any{}
-		for _, v := range v.ArrayValue() {
+		for _, v := range v.AsArray().All {
 			arr = append(arr, removeSecrets(v))
 		}
 		return arr
 	case v.IsAsset():
-		return v.AssetValue()
+		return v.AsAsset()
 	case v.IsArchive():
-		return v.ArchiveValue()
+		return v.AsArchive()
 	case v.IsComputed():
-		return v.Input()
-	case v.IsOutput():
-		return v.OutputValue()
-	case v.IsSecret():
-		return removeSecrets(v.SecretValue().Element)
+		return ""
 	default:
-		contract.Assertf(v.IsObject(), "v is not Object '%v' instead", v.TypeString())
+		contract.Assertf(v.IsMap(), "v is not Object '%v' instead", v)
 		obj := map[string]any{}
-		for k, v := range v.ObjectValue() {
-			obj[string(k)] = removeSecrets(v)
+		for k, v := range v.AsMap().All {
+			obj[k] = removeSecrets(v)
 		}
 		return obj
 	}
@@ -1053,7 +1054,7 @@ func restoreElidedAssetContents(original resource.PropertyMap, transformed resou
 // Configure configures the resource provider with "globals" that control its behavior.
 func (p *provider) Configure(ctx context.Context, req ConfigureRequest) (ConfigureResponse, error) {
 	label := p.label() + ".Configure()"
-	logging.V(7).Infof("%s executing (#vars=%d)", label, len(req.Inputs))
+	logging.V(7).Infof("%s executing (#vars=%d)", label, req.Inputs.Len())
 
 	// The deprecated `variables` field is keyed by `<pkg>:config:<key>` for providers that still read config
 	// under the old name. The plugin no longer knows its own package, so we take it from the provider type the
@@ -1064,12 +1065,12 @@ func (p *provider) Configure(ctx context.Context, req ConfigureRequest) (Configu
 	// Convert the inputs to a variables map. If any are unknown, do not configure the underlying plugin: instead, leave
 	// the cfgknown bit unset and carry on.
 	variables := make(map[string]string)
-	for k, v := range req.Inputs {
+	for k, v := range req.Inputs.All {
 		if k == "version" {
 			continue
 		}
 
-		if v.ContainsUnknowns() {
+		if v.HasComputed() {
 			if p.protocol == nil {
 				p.protocol = &pluginProtocol{}
 			}
@@ -1091,10 +1092,10 @@ func (p *provider) Configure(ctx context.Context, req ConfigureRequest) (Configu
 			mapped = string(marshalled)
 		}
 
-		variables[string(pkg)+":config:"+string(k)] = mapped.(string)
+		variables[string(pkg)+":config:"+k] = mapped.(string)
 	}
 
-	minputs, err := MarshalProperties(req.Inputs, MarshalOptions{
+	minputs, err := MarshalProperties(resource.ToResourcePropertyMap(req.Inputs), MarshalOptions{
 		Label:         label + ".inputs",
 		KeepUnknowns:  true,
 		KeepSecrets:   true,
@@ -1232,12 +1233,28 @@ func (p *provider) Check(ctx context.Context, req CheckRequest) (CheckResponse, 
 		}
 	}
 
+	var moldOutputs *structpb.Struct
+	if req.OldOutputs != nil {
+		moldOutputs, err = MarshalProperties(req.OldOutputs, MarshalOptions{
+			Label:          label + ".oldOutputs",
+			KeepUnknowns:   req.AllowUnknowns,
+			KeepSecrets:    protocol.acceptSecrets,
+			KeepResources:  protocol.acceptResources,
+			KeepByteString: protocol.acceptsByteString,
+			PropagateNil:   true,
+		})
+		if err != nil {
+			return CheckResponse{}, err
+		}
+	}
+
 	resp, err := client.Check(p.requestContext(), &pulumirpc.CheckRequest{
 		Urn:        string(req.URN),
 		Name:       req.URN.Name(),
 		Type:       req.URN.Type().String(),
 		Olds:       molds,
 		News:       mnews,
+		OldOutputs: moldOutputs,
 		RandomSeed: req.RandomSeed,
 		Autonaming: autonaming,
 	})
@@ -1996,10 +2013,9 @@ func (p *provider) List(ctx context.Context, req ListRequest) (*ListStream, erro
 func (p *provider) Construct(ctx context.Context, req ConstructRequest) (ConstructResponse, error) {
 	contract.Assertf(req.Type != "", "Construct requires a type")
 	contract.Assertf(req.Name != "", "Construct requires a name")
-	contract.Assertf(req.Inputs != nil, "Construct requires input properties")
 
 	label := fmt.Sprintf("%s.Construct(%s, %s, %s)", p.label(), req.Type, req.Name, req.Parent)
-	logging.V(7).Infof("%s executing (#inputs=%v)", label, len(req.Inputs))
+	logging.V(7).Infof("%s executing (#inputs=%v)", label, req.Inputs.Len())
 
 	// Ensure that the plugin is configured.
 	client := p.clientRaw
@@ -2040,7 +2056,7 @@ func (p *provider) Construct(ctx context.Context, req ConstructRequest) (Constru
 	}
 
 	// Marshal the input properties.
-	minputs, err := MarshalProperties(req.Inputs, MarshalOptions{
+	minputs, err := MarshalProperties(resource.ToResourcePropertyMap(req.Inputs), MarshalOptions{
 		Label:          label + ".inputs",
 		KeepUnknowns:   true,
 		KeepSecrets:    protocol.acceptSecrets,
@@ -2048,8 +2064,9 @@ func (p *provider) Construct(ctx context.Context, req ConstructRequest) (Constru
 		KeepByteString: protocol.acceptsByteString,
 		// To initially scope the use of this new feature, we only keep output values for
 		// Construct and Call (when the client accepts them).
-		KeepOutputValues: protocol.acceptOutputs,
-		PropagateNil:     true,
+		KeepOutputValues:      protocol.acceptOutputs,
+		UpgradeToOutputValues: protocol.acceptOutputs,
+		PropagateNil:          true,
 	})
 	if err != nil {
 		return ConstructResult{}, err

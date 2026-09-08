@@ -59,6 +59,18 @@ func (p *ConstProvider) GetSchema(
 			Const:    "Constant",
 			TypeSpec: schema.TypeSpec{Type: "string"},
 		},
+		"flag": {
+			Const:    true,
+			TypeSpec: schema.TypeSpec{Type: "boolean"},
+		},
+		"count": {
+			Const:    3,
+			TypeSpec: schema.TypeSpec{Type: "integer"},
+		},
+		"ratio": {
+			Const:    1.5,
+			TypeSpec: schema.TypeSpec{Type: "number"},
+		},
 	}
 
 	pkg := schema.PackageSpec{
@@ -71,7 +83,7 @@ func (p *ConstProvider) GetSchema(
 					Properties: properties,
 				},
 				InputProperties: properties,
-				RequiredInputs:  []string{"kind"},
+				RequiredInputs:  []string{"count", "flag", "kind", "ratio"},
 			},
 		},
 	}
@@ -95,16 +107,27 @@ func (p *ConstProvider) Check(
 		}, nil
 	}
 
-	kind, ok := req.News["kind"]
-	if !ok {
-		return plugin.CheckResponse{
-			Failures: makeCheckFailure("kind", "missing value"),
-		}, nil
+	constants := []struct {
+		name resource.PropertyKey
+		want resource.PropertyValue
+	}{
+		{"kind", resource.NewProperty("Constant")},
+		{"flag", resource.NewProperty(true)},
+		{"count", resource.NewProperty(3.0)},
+		{"ratio", resource.NewProperty(1.5)},
 	}
-	if !kind.IsString() || kind.StringValue() != "Constant" {
-		return plugin.CheckResponse{
-			Failures: makeCheckFailure("kind", fmt.Sprintf("value is not the constant \"Constant\": %v", kind)),
-		}, nil
+	for _, c := range constants {
+		v, ok := req.News[c.name]
+		if !ok {
+			return plugin.CheckResponse{
+				Failures: makeCheckFailure(c.name, "missing value"),
+			}, nil
+		}
+		if !v.DeepEquals(c.want) {
+			return plugin.CheckResponse{
+				Failures: makeCheckFailure(c.name, fmt.Sprintf("value is not the constant %v: %v", c.want, v)),
+			}, nil
+		}
 	}
 
 	return plugin.CheckResponse{Properties: req.News}, nil

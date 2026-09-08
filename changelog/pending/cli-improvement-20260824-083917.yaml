@@ -1,4 +1,0 @@
-component: cli
-kind: improvement
-body: Print secret provider information with other stack information
-time: 2026-08-24T08:39:17.539846+01:00

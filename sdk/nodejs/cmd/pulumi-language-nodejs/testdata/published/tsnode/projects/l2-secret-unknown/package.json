@@ -1,0 +1,11 @@
+{
+	"name": "l2-secret-unknown",
+	"devDependencies": {
+		"@types/node": "^20"
+	},
+	"dependencies": {
+		"typescript": "^4.7.0",
+		"@pulumi/pulumi": "ROOT/artifacts/pulumi-pulumi-CORE.VERSION.tgz",
+		"@pulumi/output": "ROOT/artifacts/pulumi-output-23.0.0.tgz"
+	}
+}

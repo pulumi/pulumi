@@ -84,6 +84,13 @@ func clearAgentEnv(t *testing.T) {
 	}
 }
 
+func resolveTestContext(t *testing.T) *ResolvedContext {
+	t.Helper()
+	resolved, err := ResolveContext(t.Context())
+	require.NoError(t, err)
+	return resolved
+}
+
 // seedSpecCache writes data to the cache path that ensureSpec would use for
 // cloudURL, sets its mtime to now-age, and returns the resolved path. Assumes
 // PULUMI_HOME is already pointing at an isolated tempdir.
@@ -125,7 +132,7 @@ func TestEnsureSpec_CacheHitUnderTTL(t *testing.T) {
 
 	_ = seedSpecCache(t, srv.URL, cached, time.Hour)
 
-	data, err := ensureSpec(t.Context(), io.Discard, false)
+	data, err := ensureSpec(t.Context(), resolveTestContext(t), io.Discard, false)
 	require.NoError(t, err)
 	assert.JSONEq(t, `{"cached":true}`, string(data))
 	assert.Zero(t, hits.Load(), "cache hit under TTL must not touch the network")
@@ -147,7 +154,7 @@ func TestEnsureSpec_TTLExpiryTriggersFetch(t *testing.T) {
 
 	path := seedSpecCache(t, srv.URL, []byte(`{"stale":true}`), 2*time.Hour)
 
-	data, err := ensureSpec(t.Context(), io.Discard, false)
+	data, err := ensureSpec(t.Context(), resolveTestContext(t), io.Discard, false)
 	require.NoError(t, err)
 	assert.JSONEq(t, `{"fresh":true}`, string(data))
 	assert.Equal(t, int64(1), hits.Load())
@@ -168,7 +175,7 @@ func TestEnsureSpec_RefreshForcesFetch(t *testing.T) {
 
 	_ = seedSpecCache(t, srv.URL, []byte(`{"cached":true}`), time.Minute)
 
-	data, err := ensureSpec(t.Context(), io.Discard, true)
+	data, err := ensureSpec(t.Context(), resolveTestContext(t), io.Discard, true)
 	require.NoError(t, err)
 	assert.JSONEq(t, `{"fresh":true}`, string(data))
 	assert.Equal(t, int64(1), hits.Load())
@@ -193,7 +200,7 @@ func TestEnsureSpec_StaleFallbackOnFetchFailure(t *testing.T) {
 	_ = seedSpecCache(t, srv.URL, []byte(`{"stale":true}`), 2*time.Hour)
 
 	var warnings bytes.Buffer
-	data, err := ensureSpec(t.Context(), &warnings, false)
+	data, err := ensureSpec(t.Context(), resolveTestContext(t), &warnings, false)
 	require.NoError(t, err)
 	assert.JSONEq(t, `{"stale":true}`, string(data))
 	assert.Contains(t, warnings.String(), "using cached spec")
@@ -216,7 +223,7 @@ func TestEnsureSpec_RefreshFlagFailsHardOnFetchError(t *testing.T) {
 	_ = seedSpecCache(t, srv.URL, []byte(`{"stale":true}`), time.Minute)
 
 	var warnings bytes.Buffer
-	_, err := ensureSpec(t.Context(), &warnings, true)
+	_, err := ensureSpec(t.Context(), resolveTestContext(t), &warnings, true)
 	require.Error(t, err, "refresh=true must fail hard rather than serve stale")
 	assert.Empty(t, warnings.String(), "no fallback warning when refresh=true")
 }

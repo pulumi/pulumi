@@ -340,6 +340,7 @@ func testConstructOutputValues(t *testing.T, lang string, dependencies ...string
 		t.Run(test.componentDir, func(t *testing.T) {
 			localProviders := []integration.LocalDependency{
 				{Package: "testcomponent", Path: filepath.Join(testDir, test.componentDir)},
+				{Package: "testprovider", Path: testutil.TestProviderDir(t)},
 			}
 			integration.ProgramTest(t, &integration.ProgramTestOptions{
 				Dir:            filepath.Join(testDir, lang),

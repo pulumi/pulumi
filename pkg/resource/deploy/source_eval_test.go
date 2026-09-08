@@ -4224,3 +4224,23 @@ func TestDowngradeOutputValues(t *testing.T) {
 		})
 	}
 }
+
+func TestConfigLogValue(t *testing.T) {
+	t.Parallel()
+
+	secretKey := config.MustMakeKey("proj", "dbPass")
+	plainKey := config.MustMakeKey("proj", "region")
+	cfg := map[config.Key]string{
+		secretKey: "hunter2",
+		plainKey:  "us-west-2",
+	}
+
+	m := configLogValue(cfg, []config.Key{secretKey})
+
+	require.True(t, m[resource.PropertyKey(secretKey.String())].IsSecret())
+	require.Equal(t, "us-west-2", m[resource.PropertyKey(plainKey.String())].StringValue())
+
+	redacted := m.RedactedLogValue().Any().(resource.PropertyMap)
+	require.Equal(t, "[secret]", redacted[resource.PropertyKey(secretKey.String())].StringValue())
+	require.Equal(t, "us-west-2", redacted[resource.PropertyKey(plainKey.String())].StringValue())
+}

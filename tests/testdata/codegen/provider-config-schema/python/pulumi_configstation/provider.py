@@ -68,7 +68,7 @@ class Provider(pulumi.ProviderResource):
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
                  favorite_color: pulumi.Input[Optional[Union[_builtins.str, 'Color']]] = None,
-                 secret_sandwiches: pulumi.Input[Optional[Sequence[pulumi.Input[Union['_config.SandwichArgs', '_config.SandwichArgsDict']]]]] = None,
+                 secret_sandwiches: pulumi.Input[Optional[Sequence[pulumi.Input[Union['_config.SandwichArgs', '_config.SandwichArgsDict', '_config.outputs.Sandwich']]]]] = None,
                  __props__=None):
         """
         Create a Configstation resource with the given unique name, props, and options.
@@ -76,7 +76,7 @@ class Provider(pulumi.ProviderResource):
         :param str resource_name: The name of the resource.
         :param pulumi.ResourceOptions opts: Options for the resource.
         :param pulumi.Input[Union[_builtins.str, 'Color']] favorite_color: this is a relaxed string enum which can also be set via env var
-        :param pulumi.Input[Sequence[pulumi.Input[Union['_config.SandwichArgs', '_config.SandwichArgsDict']]]] secret_sandwiches: Super duper secret sandwiches.
+        :param pulumi.Input[Sequence[pulumi.Input[Union['_config.SandwichArgs', '_config.SandwichArgsDict', '_config.outputs.Sandwich']]]] secret_sandwiches: Super duper secret sandwiches.
         """
         ...
     @overload
@@ -103,7 +103,7 @@ class Provider(pulumi.ProviderResource):
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
                  favorite_color: pulumi.Input[Optional[Union[_builtins.str, 'Color']]] = None,
-                 secret_sandwiches: pulumi.Input[Optional[Sequence[pulumi.Input[Union['_config.SandwichArgs', '_config.SandwichArgsDict']]]]] = None,
+                 secret_sandwiches: pulumi.Input[Optional[Sequence[pulumi.Input[Union['_config.SandwichArgs', '_config.SandwichArgsDict', '_config.outputs.Sandwich']]]]] = None,
                  __props__=None):
         opts = pulumi.ResourceOptions.merge(_utilities.get_resource_opts_defaults(), opts)
         if not isinstance(opts, pulumi.ResourceOptions):

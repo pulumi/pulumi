@@ -2121,3 +2121,45 @@ func TestImportIDPreservedAcrossUpdate(t *testing.T) {
 		}, "1")
 	require.NoError(t, err)
 }
+
+// TestImportWithIDLessCustomResourceInState verifies that a snapshot containing a custom resource
+// without an ID produces a clear error rather than panicking inside NewSameStep.
+func TestImportWithIDLessCustomResourceInState(t *testing.T) {
+	t.Parallel()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+	}
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, _ *deploytest.ResourceMonitor) error {
+		return nil
+	})
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
+	p := &lt.TestPlan{Options: lt.TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true}}
+
+	snap := &deploy.Snapshot{
+		Resources: []*pkgresource.State{
+			{
+				Type:   "pulumi:providers:pkgA",
+				URN:    "urn:pulumi:test::test::pulumi:providers:pkgA::default",
+				Custom: true,
+				ID:     "prov-id",
+			},
+			{
+				Type:     "pkgA:m:typA",
+				URN:      "urn:pulumi:test::test::pkgA:m:typA::resA",
+				Custom:   true,
+				Provider: "urn:pulumi:test::test::pulumi:providers:pkgA::default::prov-id",
+			},
+		},
+	}
+
+	_, err := lt.ImportOp([]deploy.Import{{
+		Type: "pkgA:m:typA",
+		Name: "resB",
+		ID:   "imported-id",
+	}}).RunStep(p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "0")
+	assert.ErrorContains(t, err,
+		"resource 'urn:pulumi:test::test::pkgA:m:typA::resA' is marked as custom but has no ID")
+}

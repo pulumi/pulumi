@@ -122,12 +122,12 @@ class Resource(pulumi.CustomResource):
                  opts: Optional[pulumi.ResourceOptions] = None,
                  private: pulumi.Input[Optional[_builtins.str]] = None,
                  private_array: pulumi.Input[Optional[Sequence[pulumi.Input[_builtins.str]]]] = None,
-                 private_data: pulumi.Input[Optional[Union['DataArgs', 'DataArgsDict']]] = None,
-                 private_data_array: pulumi.Input[Optional[Sequence[pulumi.Input[Union['DataArgs', 'DataArgsDict']]]]] = None,
-                 private_data_map: pulumi.Input[Optional[Mapping[str, pulumi.Input[Union['DataArgs', 'DataArgsDict']]]]] = None,
+                 private_data: pulumi.Input[Optional[Union['DataArgs', 'DataArgsDict', 'outputs.Data']]] = None,
+                 private_data_array: pulumi.Input[Optional[Sequence[pulumi.Input[Union['DataArgs', 'DataArgsDict', 'outputs.Data']]]]] = None,
+                 private_data_map: pulumi.Input[Optional[Mapping[str, pulumi.Input[Union['DataArgs', 'DataArgsDict', 'outputs.Data']]]]] = None,
                  private_map: pulumi.Input[Optional[Mapping[str, pulumi.Input[_builtins.str]]]] = None,
                  public: pulumi.Input[Optional[_builtins.str]] = None,
-                 public_data: pulumi.Input[Optional[Union['DataArgs', 'DataArgsDict']]] = None,
+                 public_data: pulumi.Input[Optional[Union['DataArgs', 'DataArgsDict', 'outputs.Data']]] = None,
                  __props__=None):
         """
         Create a Resource resource with the given unique name, props, and options.
@@ -161,12 +161,12 @@ class Resource(pulumi.CustomResource):
                  opts: Optional[pulumi.ResourceOptions] = None,
                  private: pulumi.Input[Optional[_builtins.str]] = None,
                  private_array: pulumi.Input[Optional[Sequence[pulumi.Input[_builtins.str]]]] = None,
-                 private_data: pulumi.Input[Optional[Union['DataArgs', 'DataArgsDict']]] = None,
-                 private_data_array: pulumi.Input[Optional[Sequence[pulumi.Input[Union['DataArgs', 'DataArgsDict']]]]] = None,
-                 private_data_map: pulumi.Input[Optional[Mapping[str, pulumi.Input[Union['DataArgs', 'DataArgsDict']]]]] = None,
+                 private_data: pulumi.Input[Optional[Union['DataArgs', 'DataArgsDict', 'outputs.Data']]] = None,
+                 private_data_array: pulumi.Input[Optional[Sequence[pulumi.Input[Union['DataArgs', 'DataArgsDict', 'outputs.Data']]]]] = None,
+                 private_data_map: pulumi.Input[Optional[Mapping[str, pulumi.Input[Union['DataArgs', 'DataArgsDict', 'outputs.Data']]]]] = None,
                  private_map: pulumi.Input[Optional[Mapping[str, pulumi.Input[_builtins.str]]]] = None,
                  public: pulumi.Input[Optional[_builtins.str]] = None,
-                 public_data: pulumi.Input[Optional[Union['DataArgs', 'DataArgsDict']]] = None,
+                 public_data: pulumi.Input[Optional[Union['DataArgs', 'DataArgsDict', 'outputs.Data']]] = None,
                  __props__=None):
         opts = pulumi.ResourceOptions.merge(_utilities.get_resource_opts_defaults(), opts)
         if not isinstance(opts, pulumi.ResourceOptions):

@@ -27,6 +27,8 @@ import (
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/httputil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -57,6 +59,7 @@ func NonInteractiveCurrentBackend(
 	if err != nil {
 		return nil, fmt.Errorf("could not get cloud url: %w", err)
 	}
+	logging.AddGlobalSecretFilter(httputil.URLSecrets(url), "[credential]")
 	slog.InfoContext(ctx, "Current cloud URL", "url", url)
 
 	// Only set current if we don't currently have a cloud URL set.
@@ -71,6 +74,7 @@ func CurrentBackend(
 	if err != nil {
 		return nil, fmt.Errorf("could not get cloud url: %w", err)
 	}
+	logging.AddGlobalSecretFilter(httputil.URLSecrets(url), "[credential]")
 	slog.InfoContext(ctx, "Current cloud URL", "url", url)
 	insecure := pkgWorkspace.GetCloudInsecure(ws, url)
 

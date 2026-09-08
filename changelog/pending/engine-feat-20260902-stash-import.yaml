@@ -1,0 +1,6 @@
+component: engine
+kind: feat
+body: Support importing a `pulumi:index:Stash` resource. The stash adopts the given
+    id and holds a null value, and the program's configured input then applies as an
+    update
+time: 2026-09-02T00:00:00+00:00

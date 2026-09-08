@@ -24,19 +24,21 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 )
 
-func TestStashImportError(t *testing.T) {
+func TestStashImport(t *testing.T) {
 	t.Parallel()
 
+	input := resource.NewProperty("from-program")
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		_, _ = monitor.RegisterResource("pulumi:index:Stash", "stash", true, deploytest.ResourceOptions{
+		resp, err := monitor.RegisterResource("pulumi:index:Stash", "stash", true, deploytest.ResourceOptions{
+			Inputs:   resource.PropertyMap{"input": input},
 			ImportID: "someid",
 		})
-		// The resource registration fails, and the engine knows this and
-		// cancels the deployment. RegisterResource will not return.
-		t.Fatalf("We should not return from RegisterResource")
+		require.NoError(t, err)
+		require.Equal(t, resource.ID("someid"), resp.ID)
+		require.Equal(t, input, resp.Outputs["input"])
+
 		return nil
 	})
 
@@ -45,10 +47,15 @@ func TestStashImportError(t *testing.T) {
 		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
 	}
 
-	_, err := lt.TestOp(Update).RunStep(
+	snap, err := lt.TestOp(Update).RunStep(
 		p.GetProject(), p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
-	require.True(t, result.IsBail(err))
-	require.ErrorContains(t, err, "stash can not be imported")
+	require.NoError(t, err)
+
+	// The import adopted the id, and the program's input landed on it, so a
+	// second update has nothing to do.
+	_, err = lt.TestOp(Update).RunStep(
+		p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
+	require.NoError(t, err)
 }
 
 func TestStash(t *testing.T) {

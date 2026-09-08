@@ -15,7 +15,16 @@
 /* eslint-disable */
 
 import * as assert from "assert";
-import { ComponentResourceOptions, ErrorHookFunction, ProviderResource, merge, mergeOptions } from "../resource";
+import { invokeOptionsFromResourceOptions, invokeOutputOptionsFromResourceOptions } from "../invoke";
+import {
+    ComponentResourceOptions,
+    ErrorHookFunction,
+    ProviderResource,
+    Resource,
+    ResourceOptions,
+    merge,
+    mergeOptions,
+} from "../resource";
 
 describe("options", () => {
     describe("merge", () => {
@@ -279,6 +288,42 @@ describe("options", () => {
                     { envVarMappings: { VAR_B: "TARGET_B" } },
                 );
                 assert.deepStrictEqual(result.envVarMappings, { VAR_B: "TARGET_B" });
+            });
+        });
+    });
+
+    describe("fromResourceOptions", () => {
+        const provider = <ProviderResource>{ getPackage: () => "aws" };
+        const parent = <Resource>(<unknown>{ getProvider: () => provider });
+        const dep = <Resource>(<unknown>{});
+        const resOpts: ResourceOptions = {
+            parent,
+            provider,
+            version: "1.2.3",
+            pluginDownloadURL: "https://example.com/plugin",
+            dependsOn: [dep],
+            protect: true,
+            ignoreChanges: ["prop"],
+        };
+
+        it("copies the invoke-relevant options and drops the rest", () => {
+            const result = invokeOptionsFromResourceOptions(resOpts);
+            assert.deepStrictEqual(result, {
+                parent,
+                provider,
+                version: "1.2.3",
+                pluginDownloadURL: "https://example.com/plugin",
+            });
+        });
+
+        it("preserves dependsOn for output invokes", () => {
+            const result = invokeOutputOptionsFromResourceOptions(resOpts);
+            assert.deepStrictEqual(result, {
+                parent,
+                provider,
+                version: "1.2.3",
+                pluginDownloadURL: "https://example.com/plugin",
+                dependsOn: [dep],
             });
         });
     });

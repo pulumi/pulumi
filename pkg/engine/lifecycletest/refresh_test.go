@@ -1469,7 +1469,7 @@ func TestRefreshWithProgramUpdateExplicitProvider(t *testing.T) {
 			var currentAuth resource.PropertyValue
 			return &deploytest.Provider{
 				ConfigureF: func(_ context.Context, req plugin.ConfigureRequest) (plugin.ConfigureResponse, error) {
-					currentAuth = req.Inputs["auth"]
+					currentAuth = resource.ToResourcePropertyValue(req.Inputs.Get("auth"))
 
 					return plugin.ConfigureResponse{}, nil
 				},
@@ -1607,7 +1607,7 @@ func TestRefreshWithProgramUpdateDefaultProvider(t *testing.T) {
 			var currentAuth resource.PropertyValue
 			return &deploytest.Provider{
 				ConfigureF: func(_ context.Context, req plugin.ConfigureRequest) (plugin.ConfigureResponse, error) {
-					currentAuth = req.Inputs["auth"]
+					currentAuth = resource.ToResourcePropertyValue(req.Inputs.Get("auth"))
 
 					return plugin.ConfigureResponse{}, nil
 				},
@@ -1742,7 +1742,7 @@ func TestRefreshWithProgramUpdateDefaultProviderWithoutRegistration(t *testing.T
 			var currentAuth resource.PropertyValue
 			return &deploytest.Provider{
 				ConfigureF: func(_ context.Context, req plugin.ConfigureRequest) (plugin.ConfigureResponse, error) {
-					currentAuth = req.Inputs["auth"]
+					currentAuth = resource.ToResourcePropertyValue(req.Inputs.Get("auth"))
 
 					return plugin.ConfigureResponse{}, nil
 				},

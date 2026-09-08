@@ -1,5 +1,0 @@
-component: sdkgen/nodejs
-kind: fix
-body: Quote property names that are not legal identifiers (e.g. kebab-case) in generated
-    declarations and use bracket access for them
-time: 2026-08-12T00:00:00Z

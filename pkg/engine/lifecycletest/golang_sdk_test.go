@@ -442,7 +442,7 @@ func TestProviderInheritanceGolangLifecycle(t *testing.T) {
 				},
 			}
 			v.InvokeF = func(_ context.Context, req plugin.InvokeRequest) (plugin.InvokeResponse, error) {
-				assert.True(t, v.Config.DeepEquals(resource.ToResourcePropertyMap(req.Args)))
+				assert.True(t, v.Config.Equals(req.Args))
 				return plugin.InvokeResponse{}, nil
 			}
 			return v, nil
@@ -467,7 +467,7 @@ func TestProviderInheritanceGolangLifecycle(t *testing.T) {
 				},
 			}
 			v.InvokeF = func(_ context.Context, req plugin.InvokeRequest) (plugin.InvokeResponse, error) {
-				assert.True(t, v.Config.DeepEquals(resource.ToResourcePropertyMap(req.Args)))
+				assert.True(t, v.Config.Equals(req.Args))
 				return plugin.InvokeResponse{}, nil
 			}
 			return v, nil
@@ -726,7 +726,7 @@ func TestRemoteComponentGolang(t *testing.T) {
 					req plugin.ConstructRequest,
 					monitor *deploytest.ResourceMonitor,
 				) (plugin.ConstructResult, error) {
-					_, ok := req.Inputs["bar"]
+					_, ok := req.Inputs.GetOk("bar")
 					assert.False(t, ok)
 
 					resp, err := monitor.RegisterResource("pkgB:index:component", "componentA", false)

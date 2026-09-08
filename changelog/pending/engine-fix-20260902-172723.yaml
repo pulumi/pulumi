@@ -1,0 +1,4 @@
+component: engine
+kind: fix
+body: Sort resources deterministically when repairing a snapshot
+time: 2026-09-02T17:27:23.995995+02:00

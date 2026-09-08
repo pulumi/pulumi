@@ -18,12 +18,14 @@ import (
 	"context"
 	"os"
 	"testing"
+	"time"
 
 	kms "cloud.google.com/go/kms/apiv1"
 	"cloud.google.com/go/kms/apiv1/kmspb"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/types/known/durationpb"
 )
 
 func createGCPKey(ctx context.Context, t *testing.T) string {
@@ -42,6 +44,8 @@ func createGCPKey(ctx context.Context, t *testing.T) string {
 			VersionTemplate: &kmspb.CryptoKeyVersionTemplate{
 				Algorithm: kmspb.CryptoKeyVersion_GOOGLE_SYMMETRIC_ENCRYPTION,
 			},
+			// Minimum allowed by KMS; keeps abandoned test keys from lingering 30 days.
+			DestroyScheduledDuration: durationpb.New(24 * time.Hour),
 		},
 	}
 

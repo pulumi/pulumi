@@ -125,11 +125,11 @@ class Example(pulumi.CustomResource):
 
     @_builtins.property
     @pulumi.getter(name="arrayOfUnionOf")
-    def array_of_union_of(self) -> pulumi.Output[Optional[Sequence[Any]]]:
+    def array_of_union_of(self) -> pulumi.Output[Optional[Sequence[Union['outputs.VariantOne', 'outputs.VariantTwo']]]]:
         return pulumi.get(self, "array_of_union_of")
 
     @_builtins.property
     @pulumi.getter(name="unionOf")
-    def union_of(self) -> pulumi.Output[Optional[Any]]:
+    def union_of(self) -> pulumi.Output[Optional[Union['outputs.VariantOne', 'outputs.VariantTwo']]]:
         return pulumi.get(self, "union_of")
 

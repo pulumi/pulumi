@@ -87,7 +87,7 @@ class BillingMeterDetailsResponse(dict):
     """
     def __init__(__self__, *,
                  frequency: _builtins.str,
-                 meter_details: Any,
+                 meter_details: Union['outputs.Pav2MeterDetailsResponse', 'outputs.PurchaseMeterDetailsResponse'],
                  metering_type: _builtins.str,
                  name: _builtins.str):
         """
@@ -113,7 +113,7 @@ class BillingMeterDetailsResponse(dict):
 
     @_builtins.property
     @pulumi.getter(name="meterDetails")
-    def meter_details(self) -> Any:
+    def meter_details(self) -> Union['outputs.Pav2MeterDetailsResponse', 'outputs.PurchaseMeterDetailsResponse']:
         """
         Represents MeterDetails
         """
