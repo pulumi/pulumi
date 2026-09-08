@@ -128,27 +128,119 @@ func TestStepDiffJSON_SecretsAreBlinded(t *testing.T) {
 	assert.NotContains(t, string(encoded), "hunter2")
 }
 
-func TestStepDiffJSON_HiddenPathsAreReportedNotLeaked(t *testing.T) {
+// HideDiffs is a resource option set by the program (e.g. Go's
+// pulumi.HideDiffs([]string{"password"})). It travels to the display as
+// StepEventStateMetadata.HideDiffs, and the text view prints `password (hidden)`
+// in place of the before/after values. These tests cover the JSON equivalent.
+
+func TestStepDiffJSON_HiddenPathIsReportedNotLeaked(t *testing.T) {
 	t.Parallel()
 
+	// A structural diff (no provider detailed diff) over two changed properties,
+	// one of which the program asked to hide.
 	step := engine.StepEventMetadata{
 		Op: deploy.OpUpdate,
 		Old: &engine.StepEventStateMetadata{Inputs: resource.PropertyMap{
-			"secretish": resource.NewProperty("before"),
-			"plain":     resource.NewProperty("a"),
+			"password": resource.NewProperty("before"),
+			"plain":    resource.NewProperty("a"),
 		}},
 		New: &engine.StepEventStateMetadata{
 			Inputs: resource.PropertyMap{
-				"secretish": resource.NewProperty("after"),
-				"plain":     resource.NewProperty("b"),
+				"password": resource.NewProperty("after"),
+				"plain":    resource.NewProperty("b"),
 			},
-			HideDiffs: []resource.PropertyPath{{"secretish"}},
+			HideDiffs: []resource.PropertyPath{{"password"}},
 		},
 	}
 
 	got := stepDiffJSON(step, false)
 	require.NotNil(t, got)
-	assert.Equal(t, []string{"secretish"}, got.Hidden)
-	assert.NotContains(t, got.Updates, "secretish")
+	assert.Equal(t, []string{"password"}, got.Hidden)
 	assert.Contains(t, got.Updates, "plain")
+	assert.NotContains(t, got.Updates, "password")
+
+	encoded, err := json.Marshal(got)
+	require.NoError(t, err)
+	assert.NotContains(t, string(encoded), "before")
+	assert.NotContains(t, string(encoded), "after")
+}
+
+func TestStepDiffJSON_HiddenPathIsReportedFromDetailedDiff(t *testing.T) {
+	t.Parallel()
+
+	// The same option, but on the path where the provider supplied a detailed
+	// diff: TranslateDetailedDiff drops the hidden path and reports it instead.
+	step := engine.StepEventMetadata{
+		Op: deploy.OpUpdate,
+		Old: &engine.StepEventStateMetadata{Inputs: resource.PropertyMap{
+			"password": resource.NewProperty("before"),
+			"plain":    resource.NewProperty("a"),
+		}},
+		New: &engine.StepEventStateMetadata{
+			Inputs: resource.PropertyMap{
+				"password": resource.NewProperty("after"),
+				"plain":    resource.NewProperty("b"),
+			},
+			HideDiffs: []resource.PropertyPath{{"password"}},
+		},
+		DetailedDiff: map[string]plugin.PropertyDiff{
+			"password": {Kind: plugin.DiffUpdate, InputDiff: true},
+			"plain":    {Kind: plugin.DiffUpdate, InputDiff: true},
+		},
+	}
+
+	got := stepDiffJSON(step, false)
+	require.NotNil(t, got)
+	assert.Equal(t, []string{"password"}, got.Hidden)
+	assert.Contains(t, got.Updates, "plain")
+	assert.NotContains(t, got.Updates, "password")
+}
+
+func TestStepDiffJSON_HiddenPathIsReportedWhenItIsTheOnlyChange(t *testing.T) {
+	t.Parallel()
+
+	// Hiding the only changed property leaves no diff to report, but the step
+	// still changed. The entry says a diff was withheld rather than vanishing,
+	// which would otherwise read as "nothing changed".
+	step := engine.StepEventMetadata{
+		Op: deploy.OpUpdate,
+		Old: &engine.StepEventStateMetadata{Inputs: resource.PropertyMap{
+			"password": resource.NewProperty("before"),
+		}},
+		New: &engine.StepEventStateMetadata{
+			Inputs: resource.PropertyMap{
+				"password": resource.NewProperty("after"),
+			},
+			HideDiffs: []resource.PropertyPath{{"password"}},
+		},
+	}
+
+	got := stepDiffJSON(step, false)
+	require.NotNil(t, got, "a withheld diff must still be reported")
+	assert.Equal(t, []string{"password"}, got.Hidden)
+	assert.Empty(t, got.Creates)
+	assert.Empty(t, got.Deletes)
+	assert.Empty(t, got.Updates)
+
+	encoded, err := json.Marshal(got)
+	require.NoError(t, err)
+	assert.JSONEq(t, `{"hidden": ["password"]}`, string(encoded))
+}
+
+func TestStepDiffJSON_NoHiddenPathsMeansNoHiddenField(t *testing.T) {
+	t.Parallel()
+
+	step := engine.StepEventMetadata{
+		Op:  deploy.OpUpdate,
+		Old: &engine.StepEventStateMetadata{Inputs: resource.PropertyMap{"plain": resource.NewProperty("a")}},
+		New: &engine.StepEventStateMetadata{Inputs: resource.PropertyMap{"plain": resource.NewProperty("b")}},
+	}
+
+	got := stepDiffJSON(step, false)
+	require.NotNil(t, got)
+	assert.Nil(t, got.Hidden)
+
+	encoded, err := json.Marshal(got)
+	require.NoError(t, err)
+	assert.NotContains(t, string(encoded), "hidden")
 }
