@@ -3853,8 +3853,8 @@ func calculateDeps(parameterized bool, requires map[string]string) ([][2]string,
 	// or else we'd be writing nil to the file, but since we append
 	// them here, I'd expect them to show up twice in the output file.
 	deps := []string{
+		"packaging>=24.0",
 		"semver>=2.8.1",
-		"parver>=0.2.1",
 	}
 	for dep := range requires {
 		deps = append(deps, dep)
