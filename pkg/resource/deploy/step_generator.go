@@ -2887,9 +2887,9 @@ func (sg *stepGenerator) providerChanged(urn resource.URN, old, new *pkgresource
 
 	diff, err := newProv.DiffConfig(context.TODO(), plugin.DiffConfigRequest{
 		URN:           newRef.URN(),
-		OldInputs:     providers.FilterProviderConfig(oldRes.Inputs),
-		OldOutputs:    oldRes.Outputs,
-		NewInputs:     providers.FilterProviderConfig(newRes.Inputs),
+		OldInputs:     resource.FromResourcePropertyMap(providers.FilterProviderConfig(oldRes.Inputs)),
+		OldOutputs:    resource.FromResourcePropertyMap(oldRes.Outputs),
+		NewInputs:     resource.FromResourcePropertyMap(providers.FilterProviderConfig(newRes.Inputs)),
 		AllowUnknowns: true,
 	})
 	if err != nil {

@@ -201,7 +201,7 @@ type DiffConfigRequest struct {
 	URN                              resource.URN
 	Name                             string
 	Type                             tokens.Type
-	OldInputs, OldOutputs, NewInputs resource.PropertyMap
+	OldInputs, OldOutputs, NewInputs property.Map
 	AllowUnknowns                    bool
 	IgnoreChanges                    []string
 }
