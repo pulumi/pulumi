@@ -97,7 +97,7 @@ type Schema struct {
 
 	// Validation vocabulary
 
-	Type              string              `json:"type"`
+	Type              string              `json:"type,omitempty"`
 	Const             any                 `json:"const,omitempty"`
 	Enum              []any               `json:"enum,omitempty"`
 	MultipleOf        json.Number         `json:"multipleOf,omitempty"`
@@ -157,18 +157,39 @@ func (s *Schema) UnmarshalJSON(data []byte) error {
 		return nil
 	}
 
+	var keys map[string]json.RawMessage
+	if err := json.Unmarshal(data, &keys); err == nil {
+		if len(keys) == 0 {
+			s.Always = true
+			return nil
+		}
+		if not, ok := keys["not"]; ok && len(keys) == 1 && isAlwaysEncoding(not) {
+			s.Never = true
+			return nil
+		}
+	}
+
 	type rawSchema Schema
 	dec := json.NewDecoder(bytes.NewReader(data))
 	dec.UseNumber()
 	return dec.Decode((*rawSchema)(s))
 }
 
+func isAlwaysEncoding(data []byte) bool {
+	var b bool
+	if err := json.Unmarshal(data, &b); err == nil {
+		return b
+	}
+	var keys map[string]json.RawMessage
+	return json.Unmarshal(data, &keys) == nil && len(keys) == 0
+}
+
 func (s *Schema) MarshalJSON() ([]byte, error) {
 	switch {
 	case s.Never:
-		return []byte("false"), nil
+		return []byte(`{"not":{}}`), nil
 	case s.Always:
-		return []byte("true"), nil
+		return []byte(`{}`), nil
 	default:
 		type rawSchema Schema
 		return json.Marshal((*rawSchema)(s))
