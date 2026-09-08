@@ -18,6 +18,7 @@ import (
 	"context"
 	"errors"
 	"iter"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -2180,4 +2181,82 @@ func TestInstallContinuationAcrossInstallsDoesNotCycle(t *testing.T) {
 	_, err = packageinstallation.InstallPluginSet(t.Context(),
 		descriptors, specs, proj, "/project", options(continuation), nil, ws)
 	require.NoError(t, err)
+}
+
+// TestInstallLocalPluginDependenciesFirst tests that a local plugin directory
+// is run to generate the project's SDK only after the packages its runtime
+// reports as required are installed. The plugin resolves those packages when
+// it starts. The plugin itself is installed first, because its runtime reads
+// the required packages from what the install produced.
+func TestInstallLocalPluginDependenciesFirst(t *testing.T) {
+	t.Parallel()
+
+	pluginB := workspace.PluginDescriptor{
+		Name:              "plugin-b",
+		Version:           &semver.Version{Major: 2},
+		Kind:              apitype.ResourcePlugin,
+		PluginDownloadURL: "https://example.com/plugin-b.tar.gz",
+	}
+	ws := &invariantWorkspace{
+		t:  t,
+		rw: new(sync.RWMutex),
+		plugins: map[string]*invariantPlugin{
+			"/work/plugin-a": {
+				d: workspace.PluginDescriptor{
+					Name: "plugin-a",
+					Kind: apitype.ResourcePlugin,
+				},
+				project: &workspace.PluginProject{
+					Runtime: workspace.NewProjectRuntimeInfo("go", nil),
+				},
+				requiredPackages: []workspace.PackageDescriptor{{PluginDescriptor: pluginB}},
+				downloaded:       true,
+				pathVisible:      true,
+				projectDetected:  true,
+			},
+			"$HOME/.pulumi/plugins/resource-plugin-b-v2.0.0": {
+				d: pluginB,
+				project: &workspace.PluginProject{
+					Runtime: workspace.NewProjectRuntimeInfo("go", nil),
+				},
+			},
+		},
+		binaryPaths: map[string]string{},
+		downloadedWorkspace: map[string]*invariantWorkDir{
+			"/work/project": {},
+		},
+	}
+
+	rws := &recordingWorkspace{ws, nil}
+	defer rws.save(t)
+
+	_, err := packageinstallation.InstallProjectPlugins(t.Context(), &workspace.Project{
+		Name:    "test-project",
+		Runtime: workspace.NewProjectRuntimeInfo("go", nil),
+		Packages: map[string]workspace.PackageSpec{
+			"a": {Source: "../plugin-a"},
+		},
+	}, "/work/project", packageinstallation.Options{
+		Options: packageresolution.Options{
+			ResolveVersionWithLocalWorkspace:           true,
+			AllowNonInvertableLocalWorkspaceResolution: true,
+		},
+		Concurrency: 1,
+	}, nil, rws)
+	require.NoError(t, err)
+
+	stepIndex := func(prefix string) int {
+		for i, s := range rws.steps {
+			if strings.HasPrefix(normalizeStep(s), prefix) {
+				return i
+			}
+		}
+		t.Fatalf("no step starts with %q", prefix)
+		return -1
+	}
+	installA := stepIndex(`InstallPluginAt{ctx, "/work/plugin-a"`)
+	installB := stepIndex(`InstallPluginAt{ctx, "$HOME/.pulumi/plugins/resource-plugin-b-v2.0.0"`)
+	runA := stepIndex(`RunPackage{ctx, "/work/project", "/work/plugin-a"`)
+	assert.Less(t, installA, installB, "plugin-a must be installed before its dependencies are gathered")
+	assert.Less(t, installB, runA, "plugin-b must be installed before plugin-a runs")
 }
