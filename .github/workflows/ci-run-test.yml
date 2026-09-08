@@ -390,10 +390,6 @@ jobs:
         run: |
           cd sdk/python
           make ensure
-      - name: Install Python SDK
-        run: |
-          cd sdk/python
-          make build_package
       - name: Set PULUMI_ACCEPT if version-set is not current
         if: ${{ fromJson(inputs.version-set).name != 'current' }}
         run: echo "PULUMI_ACCEPT=TRUE" >> "${GITHUB_ENV}"
