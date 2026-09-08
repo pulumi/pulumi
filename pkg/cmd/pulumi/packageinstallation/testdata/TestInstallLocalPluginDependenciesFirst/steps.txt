@@ -1,0 +1,13 @@
+IsExecutable{ctx, "/work/plugin-a"} -> {false, nil}
+LoadPluginProjectAt{ctx, "/work/plugin-a"} -> {PluginProject{Runtime:ProjectRuntimeInfo{name:"go"}}, "/work/plugin-a/PulumiPlugin.yaml", nil}
+InstallPluginAt{ctx, "/work/plugin-a", PluginProject{Runtime:ProjectRuntimeInfo{name:"go"}}} -> {nil}
+GetRequiredPackages{ctx, "/work/plugin-a", PluginProject{Runtime:ProjectRuntimeInfo{name:"go"}}} -> {[1]{PackageDescriptor{PluginDescriptor:PluginDescriptor{Name:"plugin-b", Kind:"resource", Version:Version{Major:2}, PluginDownloadURL:"https://example.com/plugin-b.tar.gz"}}}, nil, nil}
+HasPlugin{PluginDescriptor{Name:"plugin-b", Kind:"resource", Version:Version{Major:2}, PluginDownloadURL:"https://example.com/plugin-b.tar.gz"}} -> {false}
+DownloadPlugin{ctx, PluginDescriptor{Name:"plugin-b", Kind:"resource", Version:Version{Major:2}, PluginDownloadURL:"https://example.com/plugin-b.tar.gz"}} -> {"$HOME/.pulumi/plugins/resource-plugin-b-v2.0.0", <func(bool)>, nil}
+LoadPluginProjectAt{ctx, "$HOME/.pulumi/plugins/resource-plugin-b-v2.0.0"} -> {PluginProject{Runtime:ProjectRuntimeInfo{name:"go"}}, "$HOME/.pulumi/plugins/resource-plugin-b-v2.0.0/PulumiPlugin.yaml", nil}
+InstallPluginAt{ctx, "$HOME/.pulumi/plugins/resource-plugin-b-v2.0.0", PluginProject{Runtime:ProjectRuntimeInfo{name:"go"}}} -> {nil}
+DownloadPlugin.MarkInstallationDone{PluginDescriptor{Name:"plugin-b", Kind:"resource", Version:Version{Major:2}, PluginDownloadURL:"https://example.com/plugin-b.tar.gz"}, true} -> {}
+GetRequiredPackages{ctx, "$HOME/.pulumi/plugins/resource-plugin-b-v2.0.0", PluginProject{Runtime:ProjectRuntimeInfo{name:"go"}}} -> {nil, nil, nil}
+RunPackage{ctx, "/work/project", "/work/plugin-a", nil} -> {invariantProvider{path:"/work/plugin-a"}, nil}
+GenerateLocalSDK{ctx, ProjectRuntimeInfo{name:"go"}, "/work/project", invariantProvider{path:"/work/plugin-a"}} -> {LinkablePackageDescriptor{Path:"/work/plugin-a/sdk-<nil>"}, nil}
+LinkIntoProject{ctx, ProjectRuntimeInfo{name:"go"}, "/work/project", [1]{LinkablePackageDescriptor{Path:"/work/plugin-a/sdk-<nil>"}}} -> {nil}

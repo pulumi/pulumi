@@ -1,0 +1,5 @@
+component: cli
+kind: fix
+body: Install the packages a local plugin directory requires before the plugin is
+    installed and run
+time: 2026-09-04T00:00:00Z

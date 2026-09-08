@@ -359,10 +359,18 @@ func (w invariantWorkspace) LinkIntoProject(
 func (w invariantWorkspace) GetRequiredPackages(
 	ctx context.Context, dirPath string, project *workspace.PluginProject,
 ) ([]workspace.PackageDescriptor, []workspace.PackageSpec, error) {
+	w.rw.RLock()
+	defer w.rw.RUnlock()
 	dirPath = filepath.ToSlash(dirPath)
 	pl, ok := w.plugins[dirPath]
 	if !ok || !pl.pathVisible {
 		assert.Failf(w.t, "", "GetRequiredPackages(%q) called on non-visible plugin", dirPath)
+		return nil, nil, assert.AnError
+	}
+	// A runtime reads a plugin's dependencies from what its install produced,
+	// so the plugin must be installed before it is asked for them.
+	if !pl.installed {
+		assert.Failf(w.t, "", "GetRequiredPackages(%q) called on a plugin that is not installed", dirPath)
 		return nil, nil, assert.AnError
 	}
 	if pl.requiredPackages == nil && pl.requiredSpecs == nil {

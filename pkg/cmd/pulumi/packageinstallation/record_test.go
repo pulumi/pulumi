@@ -54,14 +54,9 @@ func (w *recordingWorkspace) save(t *testing.T) {
 
 	var b bytes.Buffer
 	for _, s := range w.steps {
-		// Replace \\ with / to account for [filepath]'s windows specific features.
-		// Note: formatValue uses %q which escapes backslashes, so Windows paths have \\ that need to become /
-		s = strings.ReplaceAll(s, "\\\\", "/")
-		// Strip .exe extensions to keep golden files platform-neutral
-		s = strings.ReplaceAll(s, ".exe", "")
 		// We do not write line numbers here to ensure that adding or removing a
 		// line causes a minimal diff for reviewers.
-		b.WriteString(s)
+		b.WriteString(normalizeStep(s))
 		b.WriteRune('\n')
 	}
 	f := filepath.Join("testdata", t.Name(), "steps.txt")
@@ -367,4 +362,12 @@ func formatStruct(rv reflect.Value, typeName string) string {
 	}
 
 	return fmt.Sprintf("%s{%s}", typeName, strings.Join(parts, ", "))
+}
+
+// normalizeStep makes a recorded step platform-neutral: formatValue uses %q,
+// so Windows paths carry doubled backslashes, which become forward slashes,
+// and .exe extensions are stripped.
+func normalizeStep(s string) string {
+	s = strings.ReplaceAll(s, "\\\\", "/")
+	return strings.ReplaceAll(s, ".exe", "")
 }
