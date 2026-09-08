@@ -18,4 +18,4 @@ def create_routes(range_body):
     for routes_range in [{"value": i} for i in range(0, range_body)]:
         routes.append(nestedobject.Target(f"routes-{routes_range['value']}", name=values.apply(lambda values, _routes_range=routes_range: values.results[_routes_range["value"]])))
 
-(pulumi.Output.from_input(values.results).apply(lambda value: len(value))).apply(create_routes)
+(values.results.apply(lambda value: len(value))).apply(create_routes)
