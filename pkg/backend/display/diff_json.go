@@ -27,16 +27,15 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
-// ObjectDiffJSON is the JSON projection of a resource.ObjectDiff: the same
-// structure the `--diff` view renders as text, emitted when `--diff` and
-// `--output json` are combined.
+// ObjectDiffJSON is the JSON projection of a resource.ObjectDiff, emitted when
+// `--diff` and `--output json` are combined. It keeps the nesting the `--diff`
+// view renders as text, but reports only what changed: unchanged properties,
+// which that view prints as context, are omitted.
 type ObjectDiffJSON struct {
 	// Creates holds the properties present only in the new value.
 	Creates map[string]any `json:"creates,omitempty"`
 	// Deletes holds the properties present only in the old value.
 	Deletes map[string]any `json:"deletes,omitempty"`
-	// Sames holds the properties that did not change.
-	Sames map[string]any `json:"sames,omitempty"`
 	// Updates holds the properties that changed, keyed by property name.
 	Updates map[string]ValueDiffJSON `json:"updates,omitempty"`
 	// Hidden lists property paths whose diffs were withheld from this object.
@@ -64,8 +63,6 @@ type ArrayDiffJSON struct {
 	Creates map[int]any `json:"creates,omitempty"`
 	// Deletes holds the elements present only in the old array.
 	Deletes map[int]any `json:"deletes,omitempty"`
-	// Sames holds the elements that did not change.
-	Sames map[int]any `json:"sames,omitempty"`
 	// Updates holds the elements that changed.
 	Updates map[int]ValueDiffJSON `json:"updates,omitempty"`
 }
@@ -117,7 +114,6 @@ func (e diffJSONEncoder) objectDiff(diff *resource.ObjectDiff) *ObjectDiffJSON {
 	out := &ObjectDiffJSON{
 		Creates: e.values(diff.Adds),
 		Deletes: e.values(diff.Deletes),
-		Sames:   e.values(diff.Sames),
 	}
 	if len(diff.Updates) > 0 {
 		out.Updates = make(map[string]ValueDiffJSON, len(diff.Updates))
@@ -143,7 +139,6 @@ func (e diffJSONEncoder) arrayDiff(diff *resource.ArrayDiff) *ArrayDiffJSON {
 	out := &ArrayDiffJSON{
 		Creates: e.elements(diff.Adds),
 		Deletes: e.elements(diff.Deletes),
-		Sames:   e.elements(diff.Sames),
 	}
 	if len(diff.Updates) > 0 {
 		out.Updates = make(map[int]ValueDiffJSON, len(diff.Updates))
