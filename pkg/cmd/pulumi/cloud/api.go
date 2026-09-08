@@ -158,7 +158,7 @@ func NewAPICmd() *cobra.Command {
 			"  # Query the organization's resource graph (Context API): what exists, what\n" +
 			"  # depends on what, what a change would affect. Read the guide first, then\n" +
 			"  # post a JSON selector.\n" +
-			"  pulumi api GetGraphQuerySchema --output=markdown\n" +
+			"  pulumi api GetGraphQuerySchema\n" +
 			"  pulumi api GraphQuery --input selector.json\n\n" +
 			"  # Inspect the currently authenticated user.\n" +
 			"  pulumi api /api/user\n\n" +
