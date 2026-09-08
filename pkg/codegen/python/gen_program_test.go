@@ -29,25 +29,45 @@ import (
 func TestLengthOfOutput(t *testing.T) {
 	t.Parallel()
 
-	values := model.VariableReference(&model.Variable{
-		Name:         "values",
-		VariableType: model.NewOutputType(model.NewListType(model.StringType)),
-	})
-	expr := &model.FunctionCallExpression{
-		Name: "length",
-		Signature: model.StaticFunctionSignature{
-			Parameters: []model.Parameter{{Name: "value", Type: values.Type()}},
-			ReturnType: model.NewOutputType(model.IntType),
+	for _, tt := range []struct {
+		name     string
+		argType  model.Type
+		expected string
+	}{
+		{
+			name:     "output",
+			argType:  model.NewOutputType(model.NewListType(model.StringType)),
+			expected: "values.apply(lambda value: len(value))",
 		},
-		Args: []model.Expression{values},
+		{
+			name:     "list of outputs",
+			argType:  model.NewListType(model.NewOutputType(model.StringType)),
+			expected: "pulumi.Output.from_input(values).apply(lambda value: len(value))",
+		},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			values := model.VariableReference(&model.Variable{
+				Name:         "values",
+				VariableType: tt.argType,
+			})
+			expr := &model.FunctionCallExpression{
+				Name: "length",
+				Signature: model.StaticFunctionSignature{
+					Parameters: []model.Parameter{{Name: "value", Type: values.Type()}},
+					ReturnType: model.NewOutputType(model.IntType),
+				},
+				Args: []model.Expression{values},
+			}
+
+			g := &generator{}
+			g.Formatter = format.NewFormatter(g)
+			var result bytes.Buffer
+			g.GenFunctionCallExpression(&result, expr)
+
+			assert.Equal(t, tt.expected, result.String())
+		})
 	}
-
-	g := &generator{}
-	g.Formatter = format.NewFormatter(g)
-	var result bytes.Buffer
-	g.GenFunctionCallExpression(&result, expr)
-
-	assert.Equal(t, "pulumi.Output.from_input(values).apply(lambda value: len(value))", result.String())
 }
 
 func TestApplyLambdaCapturesRangeValue(t *testing.T) {

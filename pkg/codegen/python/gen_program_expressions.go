@@ -681,7 +681,9 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		if model.StringType.AssignableFrom(argType) {
 			functionName = "grapheme_length"
 		}
-		if model.ContainsOutputs(expr.Args[0].Type()) {
+		if _, isOutput := expr.Args[0].Type().(*model.OutputType); isOutput {
+			g.Fgenf(w, "%.16v.apply(lambda value: %s(value))", expr.Args[0], functionName)
+		} else if model.ContainsOutputs(expr.Args[0].Type()) {
 			g.Fgenf(w, "pulumi.Output.from_input(%.v).apply(lambda value: %s(value))", expr.Args[0], functionName)
 		} else {
 			g.Fgenf(w, "%s(%.v)", functionName, expr.Args[0])
