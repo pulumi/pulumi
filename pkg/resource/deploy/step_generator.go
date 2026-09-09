@@ -2119,6 +2119,14 @@ func (sg *stepGenerator) continueStepsFromDiff(diffEvent ContinueResourceDiffEve
 						continue
 					}
 
+					// If the resource is already pending replacement its delete has already been performed by
+					// an earlier interrupted operation, so there is nothing left to delete. The resource will
+					// be recreated when it is registered, or removed from the state by GenerateDeletes if it
+					// no longer is.
+					if dependentResource.PendingReplacement {
+						continue
+					}
+
 					// If we're generating plans create a plan for this delete
 					if sg.deployment.opts.GeneratePlan {
 						if _, ok := sg.deployment.newPlans.get(dependentResource.URN); !ok {
@@ -2463,8 +2471,15 @@ func (sg *stepGenerator) GenerateDeletes(targetsOpt UrnTargets, excludesOpt UrnT
 
 					logging.V(7).Infof("Planner decided to delete '%v' due to replacement", res.URN)
 					sg.deletes[res.URN] = true
-					oldViews := sg.deployment.GetOldViews(res.URN)
-					deleteSteps = append(deleteSteps, NewDeleteReplacementStep(sg.deployment, sg.deletes, res, false, oldViews))
+					if res.PendingReplacement {
+						// A state written by an older CLI can contain a pending-delete resource that is also
+						// pending replacement; its delete has already been performed, so just remove it.
+						deleteSteps = append(deleteSteps, NewRemovePendingReplaceStep(sg.deployment, res))
+					} else {
+						oldViews := sg.deployment.GetOldViews(res.URN)
+						deleteSteps = append(deleteSteps,
+							NewDeleteReplacementStep(sg.deployment, sg.deletes, res, false, oldViews))
+					}
 				} else if !sg.isOperatedOn(res.URN) {
 					logging.V(7).Infof("Planner decided to delete '%v'", res.URN)
 					sg.deletes[res.URN] = true

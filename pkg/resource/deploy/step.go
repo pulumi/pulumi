@@ -624,6 +624,11 @@ func (d deleteProtectedError) Error() string {
 }
 
 func (s *DeleteStep) Apply() (resource.Status, StepCompleteFunc, error) {
+	// A pending-replacement resource was already deleted by an interrupted delete-before-replace
+	// operation, so the step generator must never issue another delete for it.
+	contract.Assertf(!s.old.PendingReplacement,
+		"attempting to delete resource %q which is pending replacement", s.old.URN)
+
 	if err := s.Deployment().RunHooks(
 		s.old.ResourceHooks[resource.BeforeDelete],
 		resource.BeforeDelete,
@@ -656,9 +661,6 @@ func (s *DeleteStep) Apply() (resource.Status, StepCompleteFunc, error) {
 		if err := s.publishSynthesizedViewSteps(); err != nil {
 			return resource.StatusOK, nil, err
 		}
-	} else if s.old.PendingReplacement {
-		// A pending-replacement resource was already deleted by an interrupted delete-before-replace
-		// operation, so there is nothing left to delete.
 	} else if s.old.External {
 		// Deleting an External resource is a no-op, since Pulumi does not own the lifecycle.
 	} else if s.old.RetainOnDelete {
