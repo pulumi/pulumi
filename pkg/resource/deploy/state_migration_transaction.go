@@ -40,21 +40,11 @@ func (sg *stepGenerator) prepareStateMigrationTransaction(
 	}
 	lastPriorResource := priorSubtree[len(priorSubtree)-1]
 
-	// Put ResultSubtree at the last prior resource's position so it remains after anything it may reference.
-	preparedPriorResources := make(
-		[]*pkgresource.State, 0, len(d.prev.Resources)-len(priorSubtree)+len(resultSubtree))
 	retainedResources := make([]*pkgresource.State, 0, len(d.prev.Resources)-len(priorSubtree))
-	preparedPriorIndices := make(map[*pkgresource.State]int, len(d.prev.Resources)-len(priorSubtree))
 	for _, state := range d.prev.Resources {
-		if priorSubtreeSet[state] {
-			if state == lastPriorResource {
-				preparedPriorResources = append(preparedPriorResources, resultSubtree...)
-			}
-			continue // The state is part of the prior subtree; skip it.
+		if !priorSubtreeSet[state] {
+			retainedResources = append(retainedResources, state)
 		}
-		preparedPriorIndices[state] = len(preparedPriorResources)
-		retainedResources = append(retainedResources, state)
-		preparedPriorResources = append(preparedPriorResources, state)
 	}
 
 	// Resources outside PriorSubtree remain in the snapshot, but their references to removed subtree resources must
@@ -70,19 +60,46 @@ func (sg *stepGenerator) prepareStateMigrationTransaction(
 		return nil, err
 	}
 
-	// Put each changed prepared copy into the candidate prior-resource list. Also remember the live resource's index so
-	// the migration commit can copy the prepared fields back into that object without changing its pointer identity.
-	retainedRewriteIndices := make(map[*pkgresource.State]int, len(retainedRewrites))
-	for old, rewritten := range retainedRewrites {
-		index := preparedPriorIndices[old]
-		preparedPriorResources[index] = rewritten
-		retainedRewriteIndices[old] = index
+	preparedRetained := make(map[*pkgresource.State]*pkgresource.State, len(retainedResources))
+	for i, state := range retainedResources {
+		preparedRetained[state] = rewrittenRetainedResources[i]
+	}
+
+	// Start with the replacement at the last prior resource, which is after everything the prior subtree depended on.
+	// We toposort below to move successors ahead of interleaved resources that now depend on them.
+	preparedPriorResources := make(
+		[]*pkgresource.State, 0, len(d.prev.Resources)-len(priorSubtree)+len(resultSubtree))
+	for _, state := range d.prev.Resources {
+		if priorSubtreeSet[state] {
+			if state == lastPriorResource {
+				preparedPriorResources = append(preparedPriorResources, resultSubtree...)
+			}
+			continue
+		}
+		preparedPriorResources = append(preparedPriorResources, preparedRetained[state])
 	}
 
 	verifySnap := &Snapshot{Manifest: d.prev.Manifest, Resources: preparedPriorResources}
+	if err := verifySnap.Toposort(); err != nil {
+		return nil, fmt.Errorf(
+			"state migration for %s produced an invalid state; no changes were made: %w", registrationURN, err)
+	}
 	if err := verifySnap.VerifyIntegrity(); err != nil {
 		return nil, fmt.Errorf(
 			"state migration for %s produced an invalid state; no changes were made: %w", registrationURN, err)
+	}
+	preparedPriorResources = verifySnap.Resources
+
+	// Remember where each rewritten retained resource landed so commit can restore its live pointer.
+	preparedIndices := make(map[*pkgresource.State]int, len(preparedPriorResources))
+	for i, state := range preparedPriorResources {
+		preparedIndices[state] = i
+	}
+	retainedRewriteIndices := make(map[*pkgresource.State]int, len(retainedRewrites))
+	for original, prepared := range retainedRewrites {
+		index, ok := preparedIndices[prepared]
+		contract.Assertf(ok, "state migration for %s lost a rewritten retained resource", registrationURN)
+		retainedRewriteIndices[original] = index
 	}
 
 	transaction := &StateMigrationTransaction{
