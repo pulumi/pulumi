@@ -18,8 +18,8 @@ import pulumi
 import pulumi.runtime
 from pulumi.runtime.sync_await import _sync_await
 
+from packaging.version import Version as PEP440Version
 from semver import VersionInfo as SemverVersion
-from parver import Version as PEP440Version
 
 C = typing.TypeVar("C", bound=typing.Callable)
 
@@ -74,15 +74,17 @@ def _get_semver_version():
     # responsibility as the library to convert our own PEP440 version into a valid semver string.
 
     pep440_version_string = importlib.metadata.version(root_package)
-    pep440_version = PEP440Version.parse(pep440_version_string)
+    pep440_version = PEP440Version(pep440_version_string)
     (major, minor, patch) = pep440_version.release
     prerelease = None
-    if pep440_version.pre_tag == 'a':
-        prerelease = f"alpha.{pep440_version.pre}"
-    elif pep440_version.pre_tag == 'b':
-        prerelease = f"beta.{pep440_version.pre}"
-    elif pep440_version.pre_tag == 'rc':
-        prerelease = f"rc.{pep440_version.pre}"
+    if pep440_version.pre is not None:
+        pre_tag, pre_number = pep440_version.pre
+        if pre_tag == 'a':
+            prerelease = f"alpha.{pre_number}"
+        elif pre_tag == 'b':
+            prerelease = f"beta.{pre_number}"
+        elif pre_tag == 'rc':
+            prerelease = f"rc.{pre_number}"
     elif pep440_version.dev is not None:
         # PEP440 has explicit support for dev builds, while semver encodes them as "prerelease" versions. To bridge
         # between the two, we convert our dev build version into a prerelease tag. This matches what all of our other
