@@ -345,8 +345,8 @@ func runNew(ctx context.Context, args newArgs) error {
 
 	// Create the stack, if needed.
 	var createdStackName string
+	sink := diag.DefaultSink(args.stderr, args.stderr, diag.FormatOptions{Color: opts.Color})
 	if !args.generateOnly && s == nil {
-		sink := diag.DefaultSink(args.stderr, args.stderr, diag.FormatOptions{Color: opts.Color})
 		if s, createdStackName, err = confirmed.createStack(ctx, sink, ws, b, root, args, opts); err != nil {
 			return err
 		}
@@ -456,7 +456,7 @@ func runNew(ctx context.Context, args newArgs) error {
 			" "+cmdutil.EmojiOr("✨", ""))
 	fmt.Fprintln(args.stdout)
 
-	preflightCloudCredentials(ctx, args, pluginHost, proj, root, s, packages, opts)
+	preflightCloudCredentials(ctx, args, sink, pluginHost, proj, root, s, packages, opts)
 
 	if confirmed != nil {
 		// Any other stack announced itself as it was created, or already existed.
