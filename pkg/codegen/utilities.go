@@ -316,10 +316,10 @@ func wireShapeOf(t schema.Type) (wireShape, bool) {
 	return 0, false
 }
 
-// typePair keys the cycle guard for object-pair recursion.
+// typePair keys the cycle guard for object-object and map-object recursion.
 type typePair [2]schema.Type
 
-// comatchable reports whether some finite, fully-known wire value belongs to both a and b. seen holds the object
+// comatchable reports whether some finite, fully-known wire value belongs to both a and b. seen holds the dict
 // pairs on the current recursion stack: a common value is finite, so co-matchability that depends on itself has no
 // witness and revisits report false, computing a least fixpoint.
 func comatchable(a, b schema.Type, seen map[typePair]bool) bool {
@@ -394,6 +394,13 @@ func dictsComatchable(a, b schema.Type, seen map[typePair]bool) bool {
 // mapComatchable reports whether some dict of m's element values also matches o: every required property of o must
 // admit a value of the element type. Optional properties are omitted from the witness.
 func mapComatchable(m *schema.MapType, o *schema.ObjectType, seen map[typePair]bool) bool {
+	pair := typePair{m, o}
+	if seen[pair] {
+		return false
+	}
+	seen[pair] = true
+	defer delete(seen, pair)
+
 	for _, p := range o.Properties {
 		if !p.IsRequired() {
 			continue
