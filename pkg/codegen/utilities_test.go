@@ -89,6 +89,10 @@ func TestIsWireDiscriminatableUnionType(t *testing.T) {
 	recursiveA.Properties = []*schema.Property{{Name: "foo", Type: recursiveB}}
 	recursiveB.Properties = []*schema.Property{{Name: "foo", Type: recursiveA}}
 
+	recursiveViaMap := &schema.ObjectType{}
+	mapOfRecursive := &schema.MapType{ElementType: recursiveViaMap}
+	recursiveViaMap.Properties = []*schema.Property{{Name: "foo", Type: mapOfRecursive}}
+
 	cases := []struct {
 		name     string
 		union    *schema.UnionType
@@ -219,6 +223,12 @@ func TestIsWireDiscriminatableUnionType(t *testing.T) {
 			// Required-recursive objects admit no finite value at all, so no value is ambiguous between them.
 			name:     "required-recursive objects are uninhabited and vacuously disjoint",
 			union:    &schema.UnionType{ElementTypes: []schema.Type{recursiveA, recursiveB}},
+			expected: true,
+		},
+		{
+			// A common value would need an infinite regress of "foo" entries, so none exists.
+			name:     "map and object recursive through the map are disjoint",
+			union:    &schema.UnionType{ElementTypes: []schema.Type{mapOfRecursive, recursiveViaMap}},
 			expected: true,
 		},
 		{
