@@ -676,6 +676,90 @@ func TestStateMigrationChained(t *testing.T) {
 	assert.NotContains(t, urns, childBURN)
 }
 
+// TestStateMigrationChainedReferences exercises a root rename across two migrations:
+//
+//	old -> intermediate -> final
+//
+// Each callback renames only the root and relies on successor rewriting for its child's references. Running both
+// callbacks together must expose the same references as applying the upgrades separately.
+func TestStateMigrationChainedReferences(t *testing.T) {
+	t.Parallel()
+	for _, sequential := range []bool{false, true} {
+		t.Run(fmt.Sprintf("sequential=%t", sequential), func(t *testing.T) {
+			t.Parallel()
+			rootURN := func(name string) resource.URN {
+				return resource.URN("urn:pulumi:test::test::pkg:m:Component::" + name)
+			}
+			stage := 0
+			names := []string{"old", "intermediate", "final"}
+			program := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+				callbacks, err := deploytest.NewCallbacksServer()
+				require.NoError(t, err)
+				defer func() { require.NoError(t, callbacks.Close()) }()
+				opts := deploytest.ResourceOptions{}
+				for migration := 0; migration < stage; migration++ {
+					from, to := rootURN(names[migration]), rootURN(names[migration+1])
+					callback, err := callbacks.Allocate(stateMigrationFunction(func(
+						_ resource.URN, states []apitype.ResourceV3,
+					) ([]apitype.ResourceV3, map[resource.URN]resource.URN, error) {
+						if states[0].URN != from {
+							return nil, nil, nil
+						}
+						if len(states) != 2 {
+							return nil, nil, fmt.Errorf("expected two resources, got %d", len(states))
+						}
+						child := states[1]
+						assert.Equal(t, from, child.Parent)
+						assert.Equal(t, []resource.URN{from}, child.Dependencies)
+						assert.Equal(t, []resource.URN{from}, child.PropertyDependencies["ref"])
+						ref := child.Inputs["ref"].(map[string]any)
+						assert.Equal(t, string(from), ref["urn"])
+						assert.Equal(t, string(rootURN("old")), child.Inputs["plain"])
+						states[0].URN = to
+						return states, map[resource.URN]resource.URN{from: to}, nil
+					}))
+					require.NoError(t, err)
+					opts.StateMigrations = append(opts.StateMigrations, callback)
+					opts.Aliases = append(opts.Aliases, &pulumirpc.Alias{
+						Alias: &pulumirpc.Alias_Urn{Urn: string(from)},
+					})
+				}
+				root, err := monitor.RegisterResource("pkg:m:Component", names[stage], false, opts)
+				if err != nil {
+					return err
+				}
+				_, err = monitor.RegisterResource("pkg:m:Child", "child", false, deploytest.ResourceOptions{
+					Parent:       root.URN,
+					Dependencies: []resource.URN{root.URN},
+					PropertyDeps: map[resource.PropertyKey][]resource.URN{"ref": {root.URN}},
+					Inputs: resource.PropertyMap{
+						"ref":   resource.MakeComponentResourceReference(root.URN, ""),
+						"plain": resource.NewProperty(string(rootURN("old"))),
+					},
+				})
+				return err
+			})
+			host := deploytest.NewPluginHostF(nil, nil, program, nil, nil)
+			plan := &lt.TestPlan{Options: stateMigrationTestOptions(t, host)}
+			snap, err := runUpdate(t, plan, nil, nil)
+			require.NoError(t, err)
+			if sequential {
+				stage = 1
+				snap, err = runUpdate(t, plan, snap, validateOps(t, map[display.StepOp]int{deploy.OpSame: 2}))
+				require.NoError(t, err)
+			}
+			stage = 2
+			for range 2 {
+				snap, err = runUpdate(t, plan, snap, validateOps(t, map[display.StepOp]int{deploy.OpSame: 2}))
+				require.NoError(t, err)
+				require.NoError(t, snap.VerifyIntegrity())
+				require.Equal(t, rootURN("final"), snap.Resources[0].URN)
+				require.Equal(t, rootURN("final"), snap.Resources[1].Parent)
+			}
+		})
+	}
+}
+
 // TestStateMigrationErrors tests that any callback error or validation failure fails the update and leaves the prior
 // state untouched.
 func TestStateMigrationErrors(t *testing.T) {
