@@ -69,6 +69,60 @@ func TestFilterListedOps(t *testing.T) {
 	})
 }
 
+func TestFilterByText(t *testing.T) {
+	t.Parallel()
+	idx := loadTestIndex(t)
+
+	t.Run("matches operationId case-insensitively", func(t *testing.T) {
+		t.Parallel()
+		view := filterByText(idx, "aitemplate")
+		assert.ElementsMatch(t, []string{"AITemplate"}, opIDs(view.Operations))
+	})
+
+	t.Run("matches path substring", func(t *testing.T) {
+		t.Parallel()
+		view := filterByText(idx, "agent-pools")
+		assert.ElementsMatch(t, []string{"ListOrgAgentPool"}, opIDs(view.Operations))
+	})
+
+	t.Run("matches description text", func(t *testing.T) {
+		t.Parallel()
+		view := filterByText(idx, "immediately invalidated")
+		assert.ElementsMatch(t, []string{"DeletePersonalToken"}, opIDs(view.Operations))
+	})
+
+	t.Run("no match yields zero operations", func(t *testing.T) {
+		t.Parallel()
+		view := filterByText(idx, "no-such-keyword-zzz")
+		assert.Empty(t, view.Operations)
+
+		var buf bytes.Buffer
+		require.NoError(t, emitLsJSON(&buf, view))
+		var env struct {
+			Count int `json:"count"`
+		}
+		require.NoError(t, json.Unmarshal([]byte(strings.TrimSpace(buf.String())), &env))
+		assert.Equal(t, 0, env.Count)
+	})
+
+	t.Run("empty or whitespace-only filter is a no-op", func(t *testing.T) {
+		t.Parallel()
+		for _, q := range []string{"", "   ", "\t\n"} {
+			view := filterByText(idx, q)
+			assert.ElementsMatch(t, opIDs(idx.Operations), opIDs(view.Operations))
+		}
+	})
+
+	t.Run("composes with preview/deprecated filters", func(t *testing.T) {
+		t.Parallel()
+		defaultView := filterByText(filterListedOps(idx, true, false), "deprecated")
+		assert.Empty(t, defaultView.Operations)
+
+		withDeprecated := filterByText(filterListedOps(idx, true, true), "deprecated")
+		assert.ElementsMatch(t, []string{"ListPolicyViolationsV2"}, opIDs(withDeprecated.Operations))
+	})
+}
+
 func opIDs(ops []*Operation) []string {
 	out := make([]string, 0, len(ops))
 	for _, op := range ops {
@@ -94,7 +148,7 @@ func TestRunLs_RejectsRawAndMarkdown(t *testing.T) {
 	for _, out := range []string{"raw", "markdown", "md"} {
 		t.Run(out, func(t *testing.T) {
 			t.Parallel()
-			err := runLs(t.Context(), io.Discard, io.Discard, out, true, false, false)
+			err := runLs(t.Context(), io.Discard, io.Discard, out, "", true, false, false)
 			require.Error(t, err)
 			apiErr, ok := errors.AsType[*APIError](err)
 			require.True(t, ok)
