@@ -50,9 +50,11 @@ func (sm *JournalSnapshotManager) StateMigration(transaction *deploy.StateMigrat
 	}
 
 	entry := sm.newJournalEntry(JournalEntryStateMigration, 0)
-	if err := layOutStateMigration(&entry, sm.baseSnapshot.Resources, transaction); err != nil {
+	layout, states, patches, err := layOutStateMigration(sm.baseSnapshot.Resources, transaction)
+	if err != nil {
 		return err
 	}
+	entry.Layout, entry.ResultStates, entry.BaseStatePatches = layout, states, patches
 
 	// Rewrite surviving resources produced earlier in this update. JournalReplayer stores these separately from the
 	// base snapshot and looks them up by operation ID, so each changed state is recorded as a NewStatePatch for that
@@ -86,8 +88,8 @@ func (sm *JournalSnapshotManager) StateMigration(transaction *deploy.StateMigrat
 }
 
 func layOutStateMigration(
-	entry *JournalEntry, base []*pkgresource.State, transaction *deploy.StateMigrationTransaction,
-) error {
+	base []*pkgresource.State, transaction *deploy.StateMigrationTransaction,
+) ([]apitype.JournalLayoutItem, []*pkgresource.State, []JournalBaseStatePatch, error) {
 	baseIndices := make(map[*pkgresource.State]int64, len(base))
 	for i, state := range base {
 		baseIndices[state] = int64(i)
@@ -115,12 +117,13 @@ func layOutStateMigration(
 	for _, state := range transaction.PreparedPriorResources {
 		if inserted[state] {
 			if placedStates[state] {
-				return fmt.Errorf("state migration: prepared snapshot contains result resource %s more than once",
+				return nil, nil, nil, fmt.Errorf("state migration: prepared snapshot contains result resource %s more than once",
 					state.URN)
 			}
 			placedStates[state] = true
 			states = append(states, state.Copy())
-			layout = append(layout, layoutStateItem(int64(len(states)-1)))
+			index := int64(len(states) - 1)
+			layout = append(layout, apitype.JournalLayoutItem{StateIndex: &index})
 			continue
 		}
 
@@ -130,20 +133,22 @@ func layOutStateMigration(
 		}
 		index, inBase := baseIndices[original]
 		if !inBase || removed[original] {
-			return fmt.Errorf("state migration: prepared snapshot retains %s, which is not a retained base resource",
+			return nil, nil, nil, fmt.Errorf(
+				"state migration: prepared snapshot retains %s, which is not a retained base resource",
 				state.URN)
 		}
 		if placedBase[index] {
-			return fmt.Errorf("state migration: prepared snapshot contains base resource %s more than once", state.URN)
+			return nil, nil, nil, fmt.Errorf(
+				"state migration: prepared snapshot contains base resource %s more than once", state.URN)
 		}
 		placedBase[index] = true
 		if rewritten {
 			patches = append(patches, JournalBaseStatePatch{Index: index, State: state.Copy()})
 		}
-		layout = append(layout, layoutBaseItem(index))
+		layout = append(layout, apitype.JournalLayoutItem{BaseIndex: &index})
 	}
 	if len(states) != len(transaction.ResultSubtree) {
-		return fmt.Errorf("state migration: only found %d of %d result resources in the prepared snapshot",
+		return nil, nil, nil, fmt.Errorf("state migration: only found %d of %d result resources in the prepared snapshot",
 			len(states), len(transaction.ResultSubtree))
 	}
 	retainedCount := 0
@@ -153,18 +158,10 @@ func layOutStateMigration(
 		}
 	}
 	if len(placedBase) != retainedCount {
-		return fmt.Errorf("state migration: only found %d of %d retained base resources in the prepared snapshot",
+		return nil, nil, nil, fmt.Errorf(
+			"state migration: only found %d of %d retained base resources in the prepared snapshot",
 			len(placedBase), retainedCount)
 	}
 
-	entry.Layout, entry.ResultStates, entry.BaseStatePatches = layout, states, patches
-	return nil
-}
-
-func layoutBaseItem(index int64) apitype.JournalLayoutItem {
-	return apitype.JournalLayoutItem{BaseIndex: &index}
-}
-
-func layoutStateItem(index int64) apitype.JournalLayoutItem {
-	return apitype.JournalLayoutItem{StateIndex: &index}
+	return layout, states, patches, nil
 }

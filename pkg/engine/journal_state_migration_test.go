@@ -82,7 +82,9 @@ func TestJournalStateMigrationVersionGate(t *testing.T) {
 		}))
 
 		entry := stateMigrationEntry(t, journal)
-		assert.Equal(t, []apitype.JournalLayoutItem{layoutBaseItem(1), layoutStateItem(0)}, entry.Layout)
+		assert.Equal(t, []apitype.JournalLayoutItem{
+			{BaseIndex: new(int64(1))}, {StateIndex: new(int64(0))},
+		}, entry.Layout)
 		require.Len(t, entry.ResultStates, 1)
 		assert.Equal(t, d.URN, entry.ResultStates[0].URN)
 	})
@@ -134,7 +136,8 @@ func TestJournalStateMigrationLayout(t *testing.T) {
 
 		entry := stateMigrationEntry(t, journal)
 		assert.Equal(t, []apitype.JournalLayoutItem{
-			layoutStateItem(0), layoutStateItem(1), layoutBaseItem(2), layoutStateItem(2),
+			{StateIndex: new(int64(0))}, {StateIndex: new(int64(1))},
+			{BaseIndex: new(int64(2))}, {StateIndex: new(int64(2))},
 		}, entry.Layout)
 		assertCopiedStates(t, []*pkgresource.State{newRoot, newChild, newLastChild}, entry.ResultStates)
 		require.Len(t, entry.BaseStatePatches, 1)
@@ -152,7 +155,8 @@ func TestJournalStateMigrationLayout(t *testing.T) {
 
 		entry := stateMigrationEntry(t, journal)
 		assert.Equal(t, []apitype.JournalLayoutItem{
-			layoutStateItem(0), layoutStateItem(1), layoutStateItem(2), layoutBaseItem(2),
+			{StateIndex: new(int64(0))}, {StateIndex: new(int64(1))},
+			{StateIndex: new(int64(2))}, {BaseIndex: new(int64(2))},
 		}, entry.Layout)
 		assertCopiedStates(t, []*pkgresource.State{newRoot, newLastChild, newChild}, entry.ResultStates)
 	})

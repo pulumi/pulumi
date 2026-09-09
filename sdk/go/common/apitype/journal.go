@@ -187,16 +187,39 @@ func (e JournalEntry) String() string {
 		fmt.Fprintf(&sb, ", snippets(%v)", len(e.Snippets))
 	}
 	if e.Layout != nil {
-		fmt.Fprintf(&sb, ", layout(%v)", len(e.Layout))
+		items := make([]string, len(e.Layout))
+		for i, item := range e.Layout {
+			var indices []string
+			if item.BaseIndex != nil {
+				indices = append(indices, fmt.Sprintf("base:%d", *item.BaseIndex))
+			}
+			if item.StateIndex != nil {
+				indices = append(indices, fmt.Sprintf("state:%d", *item.StateIndex))
+			}
+			items[i] = "{" + strings.Join(indices, " ") + "}"
+		}
+		fmt.Fprintf(&sb, ", layout(%v)", items)
 	}
 	if e.States != nil {
-		fmt.Fprintf(&sb, ", states(%v)", len(e.States))
+		urns := make([]string, len(e.States))
+		for i, state := range e.States {
+			urns[i] = string(state.URN)
+		}
+		fmt.Fprintf(&sb, ", states(%v)", urns)
 	}
 	if e.BaseStatePatches != nil {
-		fmt.Fprintf(&sb, ", baseStatePatches(%v)", len(e.BaseStatePatches))
+		patches := make([]string, len(e.BaseStatePatches))
+		for i, patch := range e.BaseStatePatches {
+			patches[i] = fmt.Sprintf("%d:%s", patch.Index, patch.State.URN)
+		}
+		fmt.Fprintf(&sb, ", baseStatePatches(%v)", patches)
 	}
 	if e.NewStatePatches != nil {
-		fmt.Fprintf(&sb, ", newStatePatches(%v)", len(e.NewStatePatches))
+		patches := make([]string, len(e.NewStatePatches))
+		for i, patch := range e.NewStatePatches {
+			patches[i] = fmt.Sprintf("%d:%s", patch.OperationID, patch.State.URN)
+		}
+		fmt.Fprintf(&sb, ", newStatePatches(%v)", patches)
 	}
 
 	return sb.String()
