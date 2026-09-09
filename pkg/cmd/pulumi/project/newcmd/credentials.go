@@ -129,7 +129,7 @@ func preflightCloudCredentials(
 
 	pf := credentialsPreflight{host: host, pctx: pctx, cfg: ps.Config, stdout: args.stdout, opts: opts}
 	for _, pkg := range packages {
-		// TODO(https://github.com/pulumi/pulumi/issues/24612): support parameterized packages.
+		// TODO[pulumi/pulumi#24612]: support parameterized packages.
 		if pkg.Kind != apitype.ResourcePlugin || pkg.Parameterization != nil {
 			continue
 		}
