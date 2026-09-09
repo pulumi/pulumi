@@ -1,0 +1,5 @@
+name: l2-special-chars
+runtime:
+  name: nodejs
+  options:
+    typescript: false
