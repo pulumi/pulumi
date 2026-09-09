@@ -1535,6 +1535,67 @@ func TestDefaultOrganizationPriority(t *testing.T) {
 	}
 }
 
+func TestDoesProjectExistForbiddenDefaultOrg(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		rw.WriteHeader(http.StatusForbidden)
+	}))
+	t.Cleanup(server.Close)
+
+	defaultOrg := &promise.CompletionSource[string]{}
+	defaultOrg.MustFulfill("some-org")
+	b := &cloudBackend{
+		client:     client.NewClient(server.URL, "test-token", false, diagtest.LogSink(t)),
+		d:          diagtest.LogSink(t),
+		defaultOrg: defaultOrg.Promise(),
+	}
+
+	_, err := b.DoesProjectExist(t.Context(), "", "proj")
+	require.ErrorContains(t, err, `the organization "some-org" set as the default organization`)
+	require.ErrorContains(t, err, "`pulumi org set-default`")
+	require.ErrorIs(t, err, backenderr.ErrForbidden)
+
+	_, err = b.DoesProjectExist(t.Context(), "explicit-org", "proj")
+	require.ErrorIs(t, err, backenderr.ErrForbidden)
+	require.NotContains(t, err.Error(), "set-default")
+}
+
+func TestCreateStackInaccessibleDefaultOrg(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		rw.WriteHeader(http.StatusNotFound)
+		_, err := rw.Write([]byte(`{"code": 404, "message": "Not Found: Organization 'some-org' not found"}`))
+		require.NoError(t, err)
+	}))
+	t.Cleanup(server.Close)
+
+	defaultOrg := &promise.CompletionSource[string]{}
+	defaultOrg.MustFulfill("some-org")
+	b := &cloudBackend{
+		client:     client.NewClient(server.URL, "test-token", false, diagtest.LogSink(t)),
+		d:          diagtest.LogSink(t),
+		defaultOrg: defaultOrg.Promise(),
+	}
+
+	_, err := b.CreateStack(t.Context(), cloudBackendReference{
+		owner:   "some-org",
+		project: "proj",
+		name:    tokens.MustParseStackName("dev"),
+	}, t.TempDir(), nil, nil)
+	require.ErrorContains(t, err, `the organization "some-org" set as the default organization`)
+	require.ErrorContains(t, err, "`pulumi org set-default`")
+
+	_, err = b.CreateStack(t.Context(), cloudBackendReference{
+		owner:   "other-org",
+		project: "proj",
+		name:    tokens.MustParseStackName("dev"),
+	}, t.TempDir(), nil, nil)
+	require.Error(t, err)
+	require.NotContains(t, err.Error(), "set-default")
+}
+
 func TestNewDefaultOrgResolution(t *testing.T) {
 	ctx := t.Context()
 

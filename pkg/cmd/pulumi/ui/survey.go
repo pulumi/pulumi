@@ -133,7 +133,8 @@ func PromptForValue(
 				continue
 			} else if validationError != nil {
 				// Authentication errors should not be treated as validation failures.
-				if errors.Is(validationError, backenderr.LoginRequiredError{}) {
+				if errors.Is(validationError, backenderr.LoginRequiredError{}) ||
+					errors.Is(validationError, backenderr.ErrForbidden) {
 					return "", validationError
 				}
 				// If validation failed, let the user know. If interactive, we will print the error and

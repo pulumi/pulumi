@@ -1270,7 +1270,26 @@ func (b *cloudBackend) DoesProjectExist(ctx context.Context, orgName string, pro
 		return false, err
 	}
 
-	return b.client.DoesProjectExist(ctx, orgName, projectName)
+	exists, err := b.client.DoesProjectExist(ctx, orgName, projectName)
+	if err != nil {
+		return false, b.enrichDefaultOrgError(ctx, orgName, err)
+	}
+	return exists, nil
+}
+
+// enrichDefaultOrgError wraps forbidden and not-found errors for operations on the
+// organization that the default organization setting resolved to, so that users whose
+// default organization is misspelled or inaccessible learn how to correct it.
+func (b *cloudBackend) enrichDefaultOrgError(ctx context.Context, orgName string, err error) error {
+	errResp, isErrResp := errors.AsType[*apitype.ErrorResponse](err)
+	notFound := isErrResp && errResp.Code == http.StatusNotFound
+	if !notFound && !errors.Is(err, backenderr.ErrForbidden) {
+		return err
+	}
+	if defaultOrg, defaultOrgErr := b.defaultOrg.Result(ctx); defaultOrgErr != nil || defaultOrg != orgName {
+		return err
+	}
+	return backenderr.DefaultOrgError{Org: orgName, Err: err}
 }
 
 func (b *cloudBackend) GetStack(ctx context.Context, stackRef backend.StackReference) (backend.Stack, error) {
@@ -1335,7 +1354,7 @@ func (b *cloudBackend) CreateStack(
 				return nil, &backenderr.OverStackLimitError{Message: errResp.Message}
 			}
 		}
-		return nil, err
+		return nil, b.enrichDefaultOrgError(ctx, stackID.Owner, err)
 	}
 
 	// Display messages from the backend if present.
