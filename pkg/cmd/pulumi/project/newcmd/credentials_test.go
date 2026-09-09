@@ -330,7 +330,7 @@ func TestCheckCloudCredentialsSuccess(t *testing.T) {
 			require.NotNil(t, req.ID)
 			assert.Equal(t, "pulumi:providers:aws", string(*req.Type))
 			assert.Equal(t, "default", *req.Name)
-			assert.Equal(t, "us-east-1", req.Inputs["region"].StringValue())
+			assert.Equal(t, "us-east-1", req.Inputs.Get("region").AsString())
 			return plugin.ConfigureResponse{}, nil
 		},
 	}

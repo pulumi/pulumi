@@ -247,7 +247,7 @@ func configureProvider(
 		Name:   &name,
 		Type:   &typ,
 		ID:     &id,
-		Inputs: resource.ToResourcePropertyMap(inputs),
+		Inputs: inputs,
 	})
 	return err
 }
