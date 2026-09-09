@@ -216,6 +216,18 @@ func (sg *stepGenerator) isExcludedFromUpdate(res *pkgresource.State) bool {
 	return false
 }
 
+// recordActualTargeting adds `res` to the set of resources that are actually targeted or excluded,
+// so that `--target-dependents`/`--exclude-dependents` can propagate through it. Resources are
+// visited in topological order, so a dependency is always recorded before its dependents are
+// considered.
+func (sg *stepGenerator) recordActualTargeting(isTargeted bool, res *pkgresource.State) {
+	if sg.deployment.opts.Excludes.IsConstrained() && !isTargeted && sg.isExcludedFromUpdate(res) {
+		sg.excludesActual.addLiteral(res.URN)
+	} else if isTargeted && sg.isTargetedForUpdate(res) {
+		sg.targetsActual.addLiteral(res.URN)
+	}
+}
+
 func (sg *stepGenerator) isTargetedReplace(urn resource.URN, old *pkgresource.State) bool {
 	// If this was specified by a replace target explicitly by URN, it will be replaced.
 	if sg.deployment.opts.ReplaceTargets.IsConstrained() && sg.deployment.opts.ReplaceTargets.Contains(urn) {
@@ -355,6 +367,8 @@ func (sg *stepGenerator) GenerateReadSteps(event ReadResourceEvent) ([]Step, err
 	if newState.ID == "" {
 		return nil, fmt.Errorf("Expected an ID for %v", urn)
 	}
+
+	sg.recordActualTargeting(sg.isIncludedInOperation(newState), newState)
 
 	// If the snapshot has an old resource for this URN and it's not external, we're going
 	// to have to delete the old resource and conceptually replace it with the resource we
@@ -1559,11 +1573,7 @@ func (sg *stepGenerator) continueStepsFromImport(
 	// `excludesActual`. Because we go through our resources in topological
 	// order, this means that, if a parent `P` of a dependency `D` is targeted or
 	// excluded, `P` will be added to the relevant list before we consider `D`.
-	if sg.deployment.opts.Excludes.IsConstrained() && !isTargeted && sg.isExcludedFromUpdate(new) {
-		sg.excludesActual.addLiteral(urn)
-	} else if isTargeted && sg.isTargetedForUpdate(new) {
-		sg.targetsActual.addLiteral(urn)
-	}
+	sg.recordActualTargeting(isTargeted, new)
 
 	// Case 3: hasOld
 	//  In this case, the resource we are operating upon now exists in the old snapshot.
