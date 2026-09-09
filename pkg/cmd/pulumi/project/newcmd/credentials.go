@@ -129,7 +129,7 @@ func preflightCloudCredentials(
 
 	pf := credentialsPreflight{host: host, pctx: pctx, cfg: ps.Config, stdout: args.stdout, opts: opts}
 	for _, pkg := range packages {
-		// Parameterized packages are skipped: their schemas don't carry the opt-in fields.
+		// Parameterized packages are skipped for now.
 		if pkg.Kind != apitype.ResourcePlugin || pkg.Parameterization != nil {
 			continue
 		}
