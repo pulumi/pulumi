@@ -129,8 +129,7 @@ func preflightCloudCredentials(
 
 	pf := credentialsPreflight{host: host, pctx: pctx, cfg: ps.Config, stdout: args.stdout, opts: opts}
 	for _, pkg := range packages {
-		// A parameterized package's plugin name is the base plugin (e.g. terraform-provider),
-		// not the provider itself, so it cannot be loaded from the descriptor alone.
+		// Parameterized packages are skipped: their schemas don't carry the opt-in fields.
 		if pkg.Kind != apitype.ResourcePlugin || pkg.Parameterization != nil {
 			continue
 		}
