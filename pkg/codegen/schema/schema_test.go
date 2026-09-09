@@ -4082,3 +4082,31 @@ func TestMissingPropertyRefErrors(t *testing.T) {
 	assert.Contains(t, summaries,
 		"#/types/test:index:SomeType/description: property 'nonExistent' not found on type 'test:index:SomeType'")
 }
+
+func TestRoundtripCredentialsPreflightMetadata(t *testing.T) {
+	t.Parallel()
+
+	const docsURL = "https://www.pulumi.com/registry/packages/aws/installation-configuration/"
+	spec := PackageSpec{
+		Name:                     "aws",
+		Version:                  "7.0.0",
+		ConfigurationDocsURL:     docsURL,
+		ValidateCredentialsOnNew: true,
+	}
+
+	loader := NewPluginLoader(utils.NewContext(filepath.Join("..", "testing", "test", "testdata")))
+	pkg, diags, err := BindSpec(spec, loader, ValidationOptions{})
+	require.NoError(t, err)
+	assert.Empty(t, diags)
+	assert.Equal(t, docsURL, pkg.ConfigurationDocsURL)
+	assert.True(t, pkg.ValidateCredentialsOnNew)
+
+	newSpec, err := pkg.MarshalSpec()
+	require.NoError(t, err)
+	assert.Equal(t, docsURL, newSpec.ConfigurationDocsURL)
+	assert.True(t, newSpec.ValidateCredentialsOnNew)
+
+	info := newSpec.Info()
+	assert.Equal(t, docsURL, info.ConfigurationDocsURL)
+	assert.True(t, info.ValidateCredentialsOnNew)
+}
