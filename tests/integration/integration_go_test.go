@@ -22,6 +22,7 @@ import (
 	"io"
 	"net"
 	"os"
+	"path"
 	"path/filepath"
 	"regexp"
 	"runtime"
@@ -1284,6 +1285,80 @@ func TestPackageAddGo(t *testing.T) {
 	// Currently package add does not work correctly for non parameterized
 	// packages, once they add the go.mod as expected we can parse it and check
 	// if it contains a rename as the parameterized version of this test does.
+}
+
+// TestSourcePositionGo checks the source position that the Go SDK reports for a resource created
+// through a generated SDK. The position must be the line of user code that calls the generated
+// constructor or getter, not the line inside the generated function that calls the SDK.
+//
+//nolint:paralleltest // mutates environment
+func TestSourcePositionGo(t *testing.T) {
+	// `go build -trimpath` records a program's files relative to its module. That path has no
+	// volume, so the engine rejects it as not absolute and records no position on windows.
+	if runtime.GOOS == "windows" {
+		t.Skip("the engine records no source position for a Go program on windows")
+	}
+
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+	e.ImportDirectory(filepath.Join("go", "source-position"))
+
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+	e.RunCommand("pulumi", "package", "add", testutil.TestProvider(t), "pkg")
+
+	// `package add` rewrites Pulumi.yaml, so point the engine at the prebuilt provider afterwards.
+	require.NoError(t, appendLines(filepath.Join(e.CWD, "Pulumi.yaml"), []string{
+		"plugins:",
+		"  providers:",
+		"    - name: testprovider",
+		"      path: " + testutil.TestProviderDir(t),
+	}))
+
+	localSDK, err := filepath.Abs(filepath.Join("..", "..", "sdk"))
+	require.NoError(t, err)
+	e.RunCommand("go", "mod", "edit", "-replace", "github.com/pulumi/pulumi/sdk/v3="+localSDK)
+	e.RunCommand("go", "mod", "tidy")
+
+	e.RunCommand("pulumi", "stack", "init", "test")
+	e.RunCommand("pulumi", "up", "--yes", "--skip-preview")
+
+	stdout, _ := e.RunCommand("pulumi", "stack", "export")
+	var untyped apitype.UntypedDeployment
+	require.NoError(t, json.Unmarshal([]byte(stdout), &untyped))
+	var deployment apitype.DeploymentV3
+	require.NoError(t, json.Unmarshal(untyped.Deployment, &deployment))
+
+	// A position is recorded as "project:///<path>#<line>". `go build -trimpath` makes the path
+	// relative to the program's module and the engine then makes it relative to the project
+	// directory, so only the file name and the line are stable across machines.
+	type position struct {
+		File string
+		Line string
+	}
+	parse := func(recorded string) position {
+		file, line, ok := strings.Cut(recorded, "#")
+		require.True(t, ok, "malformed source position %q", recorded)
+		return position{File: path.Base(file), Line: line}
+	}
+
+	positions, traceHeads := map[string]position{}, map[string]position{}
+	for _, r := range deployment.Resources {
+		name := r.URN.Name()
+		if name != "reg" && name != "read" {
+			continue
+		}
+		positions[name] = parse(r.SourcePosition)
+		require.NotEmpty(t, r.StackTrace, "no stack trace recorded for %q", name)
+		traceHeads[name] = parse(r.StackTrace[0].SourcePosition)
+	}
+
+	// These are the lines of the pkg.NewRandom and pkg.GetRandom calls in main.go.
+	expected := map[string]position{
+		"reg":  {File: "main.go", Line: "14"},
+		"read": {File: "main.go", Line: "19"},
+	}
+	assert.Equal(t, expected, positions)
+	assert.Equal(t, expected, traceHeads)
 }
 
 // getPluginVersion finds the highest version of a plugin by name

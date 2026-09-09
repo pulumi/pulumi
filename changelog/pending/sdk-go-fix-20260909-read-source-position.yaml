@@ -1,0 +1,5 @@
+component: sdk/go
+kind: fix
+body: Report the source position of the user code that calls a generated resource
+    getter instead of the getter body
+time: 2026-09-09T00:00:00Z

@@ -1448,10 +1448,10 @@ func (ctx *Context) readPackageResource(
 	res := ctx.makeResourceState(t, name, resource, providers, provider, protect,
 		options.Version, options.PluginDownloadURL, aliasURNs, transformations)
 
-	// Get the stack trace and source position for the resource registration. Note that this assumes that there is an
-	// intermediate frame between the this function and user code.
-	stackTrace := ctx.getStackTrace(3)
-	sourcePosition := ctx.getSourcePosition(3)
+	// Get the stack trace and source position for the resource read. Note that this assumes that there are two
+	// intermediate frames between this function and user code: the public entry point and the generated getter.
+	stackTrace := ctx.getStackTrace(4)
+	sourcePosition := ctx.getSourcePosition(4)
 
 	// Kick off the resource read operation.  This will happen asynchronously and resolve the above properties.
 	go func() {
