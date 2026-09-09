@@ -1,0 +1,4 @@
+component: backend/service
+kind: feat
+body: Enable component state migrations for Pulumi Cloud updates using journal v2
+time: 2026-08-25T16:40:01.60475+02:00
