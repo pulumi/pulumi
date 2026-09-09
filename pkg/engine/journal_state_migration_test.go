@@ -136,8 +136,10 @@ func TestJournalStateMigrationLayout(t *testing.T) {
 
 		entry := stateMigrationEntry(t, journal)
 		assert.Equal(t, []apitype.JournalLayoutItem{
-			{StateIndex: new(int64(0))}, {StateIndex: new(int64(1))},
-			{BaseIndex: new(int64(2))}, {StateIndex: new(int64(2))},
+			{StateIndex: new(int64(0))},
+			{StateIndex: new(int64(1))},
+			{BaseIndex: new(int64(2))},
+			{StateIndex: new(int64(2))},
 		}, entry.Layout)
 		assertCopiedStates(t, []*pkgresource.State{newRoot, newChild, newLastChild}, entry.ResultStates)
 		require.Len(t, entry.BaseStatePatches, 1)
@@ -155,8 +157,10 @@ func TestJournalStateMigrationLayout(t *testing.T) {
 
 		entry := stateMigrationEntry(t, journal)
 		assert.Equal(t, []apitype.JournalLayoutItem{
-			{StateIndex: new(int64(0))}, {StateIndex: new(int64(1))},
-			{StateIndex: new(int64(2))}, {BaseIndex: new(int64(2))},
+			{StateIndex: new(int64(0))},
+			{StateIndex: new(int64(1))},
+			{StateIndex: new(int64(2))},
+			{BaseIndex: new(int64(2))},
 		}, entry.Layout)
 		assertCopiedStates(t, []*pkgresource.State{newRoot, newLastChild, newChild}, entry.ResultStates)
 	})
