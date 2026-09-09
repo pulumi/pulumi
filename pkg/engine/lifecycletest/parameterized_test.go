@@ -414,7 +414,7 @@ func TestReplacementParameterizedProviderConfig(t *testing.T) {
 						})
 					}
 
-					if !req.Inputs.DeepEquals(expected) {
+					if !resource.ToResourcePropertyMap(req.Inputs).DeepEquals(expected) {
 						return plugin.ConfigureResponse{},
 							fmt.Errorf("expected provider configuration to be %v, got %v", expected, req.Inputs)
 					}

@@ -87,8 +87,8 @@ func TestInvokeParentResolvesComponentProviders(t *testing.T) {
 			instance := "default"
 			return &deploytest.Provider{
 				ConfigureF: func(ctx context.Context, req plugin.ConfigureRequest) (plugin.ConfigureResponse, error) {
-					if v, ok := req.Inputs["instance"]; ok && v.IsString() {
-						instance = v.StringValue()
+					if v, ok := req.Inputs.GetOk("instance"); ok && v.IsString() {
+						instance = v.AsString()
 					}
 					return plugin.ConfigureResponse{}, nil
 				},

@@ -58,7 +58,7 @@ type testProvider struct {
 	checkConfig func(resource.URN, property.Map,
 		property.Map, bool) (property.Map, []plugin.CheckFailure, error)
 	diffConfig func(resource.URN, resource.PropertyMap, resource.PropertyMap, bool, []string) (plugin.DiffResult, error)
-	config     func(resource.PropertyMap) error
+	config     func(property.Map) error
 }
 
 func (prov *testProvider) GetSchema(
@@ -77,7 +77,13 @@ func (prov *testProvider) CheckConfig(
 func (prov *testProvider) DiffConfig(
 	_ context.Context, req plugin.DiffConfigRequest,
 ) (plugin.DiffConfigResponse, error) {
-	return prov.diffConfig(req.URN, req.OldOutputs, req.NewInputs, req.AllowUnknowns, req.IgnoreChanges)
+	return prov.diffConfig(
+		req.URN,
+		resource.ToResourcePropertyMap(req.OldOutputs),
+		resource.ToResourcePropertyMap(req.NewInputs),
+		req.AllowUnknowns,
+		req.IgnoreChanges,
+	)
 }
 
 func (prov *testProvider) Configure(
@@ -163,9 +169,9 @@ func newLoader(t *testing.T, pkg, version string,
 	}
 }
 
-func newSimpleLoader(t *testing.T, pkg, version string, config func(resource.PropertyMap) error) *providerLoader {
+func newSimpleLoader(t *testing.T, pkg, version string, config func(property.Map) error) *providerLoader {
 	if config == nil {
-		config = func(resource.PropertyMap) error {
+		config = func(property.Map) error {
 			return nil
 		}
 	}
@@ -467,7 +473,7 @@ func TestCRUDPreview(t *testing.T) {
 					// Always reuquire replacement.
 					return plugin.DiffResult{ReplaceKeys: []resource.PropertyKey{"id"}}, nil
 				},
-				config: func(inputs resource.PropertyMap) error {
+				config: func(inputs property.Map) error {
 					return nil
 				},
 			}, nil
@@ -1140,7 +1146,7 @@ func TestEnvMappingsPassedToHost(t *testing.T) {
 				diffConfig: func(urn resource.URN, olds, news resource.PropertyMap, allowUnknowns bool, ignoreChanges []string) (plugin.DiffResult, error) {
 					return plugin.DiffResult{}, nil
 				},
-				config: func(inputs resource.PropertyMap) error {
+				config: func(inputs property.Map) error {
 					return nil
 				},
 			}, nil
@@ -1223,7 +1229,7 @@ func TestSameUpdateRace_UpdateFirst(t *testing.T) {
 					) (plugin.DiffResult, error) {
 						return plugin.DiffResult{Changes: plugin.DiffSome}, nil
 					},
-					config: func(resource.PropertyMap) error { return nil },
+					config: func(property.Map) error { return nil },
 				},
 			}
 			providersMu.Lock()
@@ -1311,7 +1317,7 @@ func TestSameUpdateRace_SameFirst(t *testing.T) {
 					) (plugin.DiffResult, error) {
 						return plugin.DiffResult{Changes: plugin.DiffSome}, nil
 					},
-					config: func(resource.PropertyMap) error { return nil },
+					config: func(property.Map) error { return nil },
 				},
 			}
 			providersMu.Lock()
@@ -1410,7 +1416,7 @@ func TestSameUpdateRace_Concurrent(t *testing.T) {
 							) (plugin.DiffResult, error) {
 								return plugin.DiffResult{Changes: plugin.DiffSome}, nil
 							},
-							config: func(resource.PropertyMap) error { return nil },
+							config: func(property.Map) error { return nil },
 						},
 					}
 					providersMu.Lock()

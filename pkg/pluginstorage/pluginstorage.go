@@ -24,6 +24,9 @@ import (
 
 	"github.com/blang/semver"
 
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -38,7 +41,14 @@ type Context interface {
 
 type defaultContext struct{}
 
+// HasPlugin reports whether the plugin is installed. A resource provider attached
+// through PULUMI_DEBUG_PROVIDERS is already running, so it counts as installed.
 func (defaultContext) HasPlugin(_ context.Context, spec workspace.PluginDescriptor) bool {
+	if spec.Kind == apitype.ResourcePlugin {
+		if port, err := plugin.GetProviderAttachPort(tokens.Package(spec.Name)); err == nil && port != nil {
+			return true
+		}
+	}
 	return workspace.HasPlugin(spec)
 }
 

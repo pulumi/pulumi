@@ -1472,6 +1472,21 @@ func (pc *Client) ExportStackDeployment(
 	return apitype.UntypedDeployment(resp), nil
 }
 
+// GetStackOutputs reads the outputs of the latest deployment of the indicated stack.
+func (pc *Client) GetStackOutputs(
+	ctx context.Context, stack StackIdentifier,
+) (apitype.StackOutputsResponse, error) {
+	tracer := otel.Tracer("pulumi-cli")
+	ctx, span := cmdutil.StartSpan(ctx, tracer, "GetStackOutputs")
+	defer span.End()
+
+	var resp apitype.StackOutputsResponse
+	if err := pc.restCall(ctx, "GET", getStackPath(stack, "outputs"), nil, nil, &resp); err != nil {
+		return apitype.StackOutputsResponse{}, err
+	}
+	return resp, nil
+}
+
 // ImportStackDeployment imports a new deployment into the indicated stack.
 func (pc *Client) ImportStackDeployment(ctx context.Context, stack StackIdentifier,
 	deployment *apitype.UntypedDeployment,

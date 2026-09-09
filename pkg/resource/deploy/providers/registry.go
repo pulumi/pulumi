@@ -751,9 +751,9 @@ func (r *Registry) Diff(ctx context.Context, req plugin.DiffRequest) (plugin.Dif
 	filteredNewInputs := FilterProviderConfig(req.NewInputs)
 	diff, err := provider.DiffConfig(context.Background(), plugin.DiffConfigRequest{
 		URN:           req.URN,
-		OldInputs:     FilterProviderConfig(req.OldInputs),
-		OldOutputs:    req.OldOutputs, // OldOutputs is already filtered
-		NewInputs:     filteredNewInputs,
+		OldInputs:     resource.FromResourcePropertyMap(FilterProviderConfig(req.OldInputs)),
+		OldOutputs:    resource.FromResourcePropertyMap(req.OldOutputs), // OldOutputs is already filtered
+		NewInputs:     resource.FromResourcePropertyMap(filteredNewInputs),
 		AllowUnknowns: req.AllowUnknowns,
 		IgnoreChanges: req.IgnoreChanges,
 	})
@@ -858,12 +858,13 @@ func (r *Registry) Same(ctx context.Context, res *pkgresource.State, fromCheck b
 	name := urn.Name()
 	typ := urn.Type()
 
+	filteredInputs := FilterProviderConfig(res.Inputs)
 	if _, err := provider.Configure(context.Background(), plugin.ConfigureRequest{
 		URN:    &urn,
 		Name:   &name,
 		Type:   &typ,
 		ID:     &res.ID,
-		Inputs: FilterProviderConfig(res.Inputs),
+		Inputs: resource.FromResourcePropertyMap(filteredInputs),
 	}); err != nil {
 		contract.IgnoreClose(provider)
 		return fmt.Errorf("configure provider '%v': %w", urn, err)
@@ -964,7 +965,7 @@ func (r *Registry) Create(ctx context.Context, req plugin.CreateRequest) (plugin
 		Name:   &name,
 		Type:   &typ,
 		ID:     &id,
-		Inputs: filteredProperties,
+		Inputs: resource.FromResourcePropertyMap(filteredProperties),
 	}); err != nil {
 		return plugin.CreateResponse{Status: resource.StatusOK}, err
 	}
@@ -1000,7 +1001,7 @@ func (r *Registry) Update(ctx context.Context, req plugin.UpdateRequest) (plugin
 		Name:   &name,
 		Type:   &typ,
 		ID:     &req.ID,
-		Inputs: filteredProperties,
+		Inputs: resource.FromResourcePropertyMap(filteredProperties),
 	})
 	if err != nil {
 		return plugin.UpdateResponse{Status: resource.StatusUnknown}, err

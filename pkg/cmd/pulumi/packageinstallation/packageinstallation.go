@@ -579,8 +579,10 @@ func enqueueDownloadedPluginDirHasDependenciesAndIsInstalled(
 
 	installDependencies, installDependenciesReady := state.dag.NewNode(gatherPackageDependenciesStep{
 		project: proj,
+		parent:  parent,
 	})
 	contract.AssertNoErrorf(state.dag.NewEdge(install, installDependencies), "new nodes cannot be cyclic")
+	contract.AssertNoErrorf(state.dag.NewEdge(installDependencies, parent), "new nodes cannot be cyclic")
 	installDependenciesReady()
 
 	enqueueProjectDependencies(ctx, state, install, project[workspace.BaseProject]{
@@ -998,8 +1000,13 @@ func (step installStep) run(ctx context.Context, p state) error {
 	return err
 }
 
+// gatherPackageDependenciesStep asks the installed plugin's runtime for the
+// packages it requires and enqueues them. parent is the node that marks the
+// plugin ready to run; it waits for every package enqueued here, because the
+// plugin resolves them when it starts.
 type gatherPackageDependenciesStep struct {
 	project project[*workspace.PluginProject]
+	parent  pdag.Node
 }
 
 func (step gatherPackageDependenciesStep) run(ctx context.Context, p state) error {
@@ -1014,6 +1021,7 @@ func (step gatherPackageDependenciesStep) run(ctx context.Context, p state) erro
 	declaredPackages := step.project.proj.GetPackageSpecs()
 
 	gatheredDependenciesDone, ready := p.dag.NewNode(noOpStep{})
+	contract.AssertNoErrorf(p.dag.NewEdge(gatheredDependenciesDone, step.parent), "new nodes cannot be cyclic")
 	defer ready()
 
 	for _, pkg := range pkgs {

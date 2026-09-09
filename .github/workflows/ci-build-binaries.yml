@@ -100,6 +100,7 @@ jobs:
         with:
           install-only: true
           distribution: goreleaser-pro
+          version: v2.18.0
       - name: Prepare bin dir for goreleaser
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

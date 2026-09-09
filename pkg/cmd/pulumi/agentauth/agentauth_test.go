@@ -46,7 +46,7 @@ func TestMaybePrintClaimWarningSkipsOutsideAgentMode(t *testing.T) {
 func TestAuthRequiredMessageSkipsOutsideAgentMode(t *testing.T) {
 	clearAgentEnv(t)
 
-	assert.Empty(t, AuthRequiredMessage(time.Now()))
+	assert.Empty(t, AuthRequiredMessage(t.Context(), time.Now()))
 }
 
 func TestMaybePrintClaimWarningSkipsMissingClaim(t *testing.T) {
@@ -62,7 +62,7 @@ func TestAuthRequiredMessageSkipsMissingClaim(t *testing.T) {
 	t.Setenv("CODEX_SANDBOX", "1")
 	t.Setenv("PULUMI_TEST_AGENT_PULUMI_DIR", t.TempDir())
 
-	assert.Empty(t, AuthRequiredMessage(time.Now()))
+	assert.Empty(t, AuthRequiredMessage(t.Context(), time.Now()))
 }
 
 func TestMaybePrintClaimWarningSkipsDeletedExpiredAgentCredentials(t *testing.T) {
@@ -225,7 +225,7 @@ func TestAuthRequiredMessagePrintsClaimInstructionWhenTokenExpiredButClaimValid(
 		return true, nil
 	})
 
-	message := AuthRequiredMessage(now)
+	message := AuthRequiredMessage(t.Context(), now)
 	assert.Contains(t, message, "PULUMI_EPHEMERAL_AGENT_ACCOUNT")
 	assert.Contains(t, message, "CLAIM_URL=https://app.pulumi.com/claim/expired-token-valid-claim")
 	assert.Contains(t, message, "CLAIM_URL_VALID_FOR=1h")
@@ -269,7 +269,7 @@ func TestAuthRequiredMessageChecksClaimWhenTokenLocallyValidButRejected(t *testi
 		return true, nil
 	})
 
-	message := AuthRequiredMessage(now)
+	message := AuthRequiredMessage(t.Context(), now)
 	assert.Contains(t, message, "PULUMI_EPHEMERAL_AGENT_ACCOUNT")
 	assert.Contains(t, message, "CLAIM_URL=https://app.pulumi.com/claim/locally-valid-token")
 	assert.Contains(t, message, "EPHEMERAL_ACCOUNT_ACCESS_EXPIRES_IN=1h")
@@ -303,7 +303,7 @@ func TestAuthRequiredMessageUsesDefaultClaimValidator(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	message := AuthRequiredMessage(now)
+	message := AuthRequiredMessage(t.Context(), now)
 	assert.Contains(t, message, "ACTION_REQUIRED=Tell the user to run pulumi login.")
 	assert.NotContains(t, message, "CLAIM_URL=")
 }
@@ -328,7 +328,7 @@ func TestAuthRequiredMessageWithoutClaimTokenUsesLocalTokenState(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	message := AuthRequiredMessage(now)
+	message := AuthRequiredMessage(t.Context(), now)
 	assert.Contains(t, message, "ACTION_REQUIRED=Tell the user to run pulumi login.")
 	assert.NotContains(t, message, "CLAIM_URL=")
 }
@@ -370,7 +370,7 @@ func TestAuthRequiredMessageOmitsClaimURLWhenClaimIsNotClaimable(t *testing.T) {
 		return false, nil
 	})
 
-	message := AuthRequiredMessage(now)
+	message := AuthRequiredMessage(t.Context(), now)
 	assert.Contains(t, message, "PULUMI_EPHEMERAL_AGENT_ACCOUNT")
 	assert.Contains(t, message, "ACTION_REQUIRED=Tell the user to run pulumi login.")
 	assert.NotContains(t, message, "CLAIM_URL=")
@@ -381,7 +381,7 @@ func TestAuthRequiredMessageOmitsClaimURLWhenClaimIsNotClaimable(t *testing.T) {
 	assert.True(t, claim.ClaimUnavailableAt.Equal(now))
 }
 
-func TestAuthRequiredMessageSkipsValidationWhenClaimMarkedUnavailable(t *testing.T) {
+func TestAuthRequiredMessageKeepsUnavailableWhenStillNotClaimable(t *testing.T) {
 	oldAgentCreds, err := workspace.GetAgentStoredCredentials()
 	require.NoError(t, err)
 	oldAgentClaim, err := workspace.GetAgentClaim()
@@ -415,14 +415,161 @@ func TestAuthRequiredMessageSkipsValidationWhenClaimMarkedUnavailable(t *testing
 	})
 	require.NoError(t, err)
 	setValidateAgentClaim(t, func(ctx context.Context, gotCloudURL, claimToken string) (bool, error) {
-		t.Fatal("validateAgentClaim should not be called for a cached unavailable claim")
+		assert.Equal(t, cloudURL, gotCloudURL)
+		assert.Equal(t, "cached-unavailable-claim", claimToken)
 		return false, nil
 	})
 
-	message := AuthRequiredMessage(now)
+	message := AuthRequiredMessage(t.Context(), now)
 	assert.Contains(t, message, "PULUMI_EPHEMERAL_AGENT_ACCOUNT")
 	assert.NotContains(t, message, "CLAIM_URL=")
 	assert.Contains(t, message, "claim URL is no longer claimable")
+	claim, err := workspace.GetAgentClaim()
+	require.NoError(t, err)
+	require.NotNil(t, claim.ClaimUnavailableAt, "a still-unclaimable claim keeps its marker")
+}
+
+func TestAuthRequiredMessageClearsUnavailableWhenClaimableAgain(t *testing.T) {
+	t.Setenv("PULUMI_TEST_AGENT_PULUMI_DIR", t.TempDir())
+	t.Setenv("CODEX_SANDBOX", "1")
+
+	now := time.Date(2026, 5, 21, 12, 0, 0, 0, time.UTC)
+	unavailableAt := now.Add(-time.Minute)
+	expiresAt := now.Add(time.Hour)
+	cloudURL := "https://api.recovered-claim.example.com"
+	err := workspace.StoreAgentAccount(cloudURL, workspace.Account{
+		AccessToken: "agent-token",
+		TokenInformation: &workspace.TokenInformation{
+			ExpiresAt: &expiresAt,
+		},
+	}, true)
+	require.NoError(t, err)
+	err = workspace.StoreAgentClaim(workspace.AgentClaim{
+		ClaimURL:           "https://app.pulumi.com/claim/recovered-claim",
+		ClaimToken:         "recovered-claim",
+		CloudURL:           cloudURL,
+		ValidUntil:         now.Add(time.Hour),
+		ClaimUnavailableAt: &unavailableAt,
+	})
+	require.NoError(t, err)
+	setValidateAgentClaim(t, func(ctx context.Context, gotCloudURL, claimToken string) (bool, error) {
+		assert.Equal(t, cloudURL, gotCloudURL)
+		assert.Equal(t, "recovered-claim", claimToken)
+		return true, nil
+	})
+
+	message := AuthRequiredMessage(t.Context(), now)
+	assert.Contains(t, message, "CLAIM_URL=https://app.pulumi.com/claim/recovered-claim")
+	assert.NotContains(t, message, "no longer claimable")
+	claim, err := workspace.GetAgentClaim()
+	require.NoError(t, err)
+	assert.Nil(t, claim.ClaimUnavailableAt, "a claimable claim clears its stale marker")
+}
+
+func TestAuthRequiredMessageKeepsUnavailableWhenRevalidationFails(t *testing.T) {
+	t.Setenv("PULUMI_TEST_AGENT_PULUMI_DIR", t.TempDir())
+	t.Setenv("CODEX_SANDBOX", "1")
+
+	now := time.Date(2026, 5, 21, 12, 0, 0, 0, time.UTC)
+	unavailableAt := now.Add(-time.Minute)
+	expiresAt := now.Add(time.Hour)
+	cloudURL := "https://api.revalidation-error.example.com"
+	err := workspace.StoreAgentAccount(cloudURL, workspace.Account{
+		AccessToken: "agent-token",
+		TokenInformation: &workspace.TokenInformation{
+			ExpiresAt: &expiresAt,
+		},
+	}, true)
+	require.NoError(t, err)
+	err = workspace.StoreAgentClaim(workspace.AgentClaim{
+		ClaimURL:           "https://app.pulumi.com/claim/revalidation-error",
+		ClaimToken:         "revalidation-error",
+		CloudURL:           cloudURL,
+		ValidUntil:         now.Add(time.Hour),
+		ClaimUnavailableAt: &unavailableAt,
+	})
+	require.NoError(t, err)
+	setValidateAgentClaim(t, func(ctx context.Context, gotCloudURL, claimToken string) (bool, error) {
+		return false, errors.New("temporary validation failure")
+	})
+
+	message := AuthRequiredMessage(t.Context(), now)
+	assert.Contains(t, message, "claim URL is no longer claimable")
+	assert.NotContains(t, message, "CLAIM_URL=")
+	claim, err := workspace.GetAgentClaim()
+	require.NoError(t, err)
+	require.NotNil(t, claim.ClaimUnavailableAt, "an unreachable service keeps the last-known marker")
+}
+
+func TestMaybePrintClaimWarningSkipsStillUnclaimableClaim(t *testing.T) {
+	t.Setenv("PULUMI_TEST_AGENT_PULUMI_DIR", t.TempDir())
+	t.Setenv("CODEX_SANDBOX", "1")
+
+	unavailableAt := time.Now().Add(-time.Minute)
+	expiresAt := time.Now().Add(time.Hour)
+	cloudURL := "https://api.unclaimable-warning.example.com"
+	err := workspace.StoreAgentAccount(cloudURL, workspace.Account{
+		AccessToken: "agent-token",
+		TokenInformation: &workspace.TokenInformation{
+			ExpiresAt: &expiresAt,
+		},
+	}, true)
+	require.NoError(t, err)
+	err = workspace.StoreAgentClaim(workspace.AgentClaim{
+		ClaimURL:           "https://app.pulumi.com/claim/unclaimable-warning",
+		ClaimToken:         "unclaimable-warning",
+		CloudURL:           cloudURL,
+		ValidUntil:         time.Now().Add(time.Hour),
+		ClaimUnavailableAt: &unavailableAt,
+	})
+	require.NoError(t, err)
+	setValidateAgentClaim(t, func(ctx context.Context, gotCloudURL, claimToken string) (bool, error) {
+		return false, nil
+	})
+
+	ctx := httpstate.ContextWithAgentCredentialUse(t.Context())
+	httpstate.MarkAgentCredentialsUsed(ctx, cloudURL)
+
+	var output bytes.Buffer
+	MaybePrintClaimWarning(ctx, &output)
+	assert.Empty(t, output.String(), "no claim block for a claim the service refuses")
+}
+
+func TestMaybePrintClaimWarningClearsRecoveredClaim(t *testing.T) {
+	t.Setenv("PULUMI_TEST_AGENT_PULUMI_DIR", t.TempDir())
+	t.Setenv("CODEX_SANDBOX", "1")
+
+	unavailableAt := time.Now().Add(-time.Minute)
+	expiresAt := time.Now().Add(time.Hour)
+	cloudURL := "https://api.recovered-warning.example.com"
+	err := workspace.StoreAgentAccount(cloudURL, workspace.Account{
+		AccessToken: "agent-token",
+		TokenInformation: &workspace.TokenInformation{
+			ExpiresAt: &expiresAt,
+		},
+	}, true)
+	require.NoError(t, err)
+	err = workspace.StoreAgentClaim(workspace.AgentClaim{
+		ClaimURL:           "https://app.pulumi.com/claim/recovered-warning",
+		ClaimToken:         "recovered-warning",
+		CloudURL:           cloudURL,
+		ValidUntil:         time.Now().Add(time.Hour),
+		ClaimUnavailableAt: &unavailableAt,
+	})
+	require.NoError(t, err)
+	setValidateAgentClaim(t, func(ctx context.Context, gotCloudURL, claimToken string) (bool, error) {
+		return true, nil
+	})
+
+	ctx := httpstate.ContextWithAgentCredentialUse(t.Context())
+	httpstate.MarkAgentCredentialsUsed(ctx, cloudURL)
+
+	var output bytes.Buffer
+	MaybePrintClaimWarning(ctx, &output)
+	assert.Contains(t, output.String(), "CLAIM_URL=https://app.pulumi.com/claim/recovered-warning")
+	claim, err := workspace.GetAgentClaim()
+	require.NoError(t, err)
+	assert.Nil(t, claim.ClaimUnavailableAt, "a claimable claim clears its stale marker")
 }
 
 func TestAuthRequiredMessageFallsBackToLocalClaimWhenValidationFails(t *testing.T) {
@@ -462,7 +609,7 @@ func TestAuthRequiredMessageFallsBackToLocalClaimWhenValidationFails(t *testing.
 		return false, errors.New("temporary validation failure")
 	})
 
-	message := AuthRequiredMessage(now)
+	message := AuthRequiredMessage(t.Context(), now)
 	assert.Contains(t, message, "PULUMI_EPHEMERAL_AGENT_ACCOUNT")
 	assert.Contains(t, message, "CLAIM_URL=https://app.pulumi.com/claim/validation-error")
 	assert.Contains(t, message, "CLAIM_URL_VALID_FOR=1h")

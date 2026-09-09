@@ -15,6 +15,8 @@
 package auto
 
 import (
+	"errors"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -542,4 +544,110 @@ func TestRuntimeErrorDotnet(t *testing.T) {
 		t.Errorf("destroy failed, err: %v", err)
 		t.FailNow()
 	}
+}
+
+// errPredicate pairs one of the exported error predicates with an autoError it is expected to match.
+type errPredicate struct {
+	name    string
+	matches func(error) bool
+	err     autoError
+}
+
+func errPredicates() []errPredicate {
+	cause := errors.New("exit status 255")
+	return []errPredicate{
+		{
+			name:    "IsConcurrentUpdateError",
+			matches: IsConcurrentUpdateError,
+			err: newAutoError(cause, "",
+				"error: [409] Conflict: Another update is currently in progress.", 255),
+		},
+		{
+			name:    "IsSelectStack404Error",
+			matches: IsSelectStack404Error,
+			err:     newAutoError(cause, "", "error: no stack named 'dev' found", 255),
+		},
+		{
+			name:    "IsCreateStack409Error",
+			matches: IsCreateStack409Error,
+			err:     newAutoError(cause, "", "error: stack 'dev' already exists", 255),
+		},
+		{
+			name:    "IsCompilationError",
+			matches: IsCompilationError,
+			err:     newAutoError(cause, "Build FAILED.", "", 255),
+		},
+		{
+			name:    "IsRuntimeError",
+			matches: IsRuntimeError,
+			err:     newAutoError(cause, "pulumi:pulumi:Stack failed with an unhandled exception:", "", 255),
+		},
+		{
+			name:    "IsUnexpectedEngineError",
+			matches: IsUnexpectedEngineError,
+			err: newAutoError(cause,
+				"The Pulumi CLI encountered a fatal error. This is a bug!", "", 255),
+		},
+	}
+}
+
+func TestErrorPredicatesMatchUnwrapped(t *testing.T) {
+	t.Parallel()
+
+	for _, p := range errPredicates() {
+		t.Run(p.name, func(t *testing.T) {
+			t.Parallel()
+			assert.True(t, p.matches(p.err), "%s did not match its own autoError", p.name)
+		})
+	}
+}
+
+// Wrapping an error with fmt.Errorf("...: %w", err) is the standard Go idiom, and autoError is
+// unexported so callers cannot reach it with errors.As themselves. The predicates must therefore
+// look through wrapping.
+func TestErrorPredicatesMatchWrapped(t *testing.T) {
+	t.Parallel()
+
+	for _, p := range errPredicates() {
+		t.Run(p.name, func(t *testing.T) {
+			t.Parallel()
+
+			wrapped := fmt.Errorf("stack operation failed: %w", p.err)
+			assert.True(t, p.matches(wrapped), "%s did not match a singly wrapped autoError", p.name)
+
+			doubleWrapped := fmt.Errorf("deploy: %w", wrapped)
+			assert.True(t, p.matches(doubleWrapped), "%s did not match a doubly wrapped autoError", p.name)
+		})
+	}
+}
+
+// autoError must unwrap to the error it was created from so that errors.Is and errors.As can reach
+// the underlying cause.
+func TestAutoErrorUnwrapsCause(t *testing.T) {
+	t.Parallel()
+
+	sentinel := errors.New("boom")
+	var ae error = newAutoError(sentinel, "", "", 255)
+
+	assert.ErrorIs(t, ae, sentinel)
+	assert.ErrorIs(t, fmt.Errorf("stack operation failed: %w", ae), sentinel)
+}
+
+type causeError struct{ msg string }
+
+func (e *causeError) Error() string { return e.msg }
+
+func TestAutoErrorAsCause(t *testing.T) {
+	t.Parallel()
+
+	cause := &causeError{msg: "boom"}
+	var ae error = newAutoError(cause, "", "", 255)
+
+	var target *causeError
+	require.ErrorAs(t, ae, &target)
+	assert.Equal(t, cause, target)
+
+	target = nil
+	require.ErrorAs(t, fmt.Errorf("stack operation failed: %w", ae), &target)
+	assert.Equal(t, cause, target)
 }

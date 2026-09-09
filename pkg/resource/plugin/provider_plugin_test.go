@@ -779,7 +779,7 @@ func TestProvider_ConfigureDeleteRace(t *testing.T) {
 	<-deleting
 	_, err := p.Configure(t.Context(), ConfigureRequest{
 		Type:   new(tokens.Type("pulumi:providers:test")),
-		Inputs: props,
+		Inputs: resource.FromResourcePropertyMap(props),
 	})
 	require.NoError(t, err)
 	<-done
@@ -1276,9 +1276,9 @@ func TestKubernetesDiffError(t *testing.T) {
 		resource.NewURN("org/proj/dev", "foo", "", "pulumi:providers:azure", "qux"),
 		"",
 		"",
-		resource.PropertyMap{},
-		resource.PropertyMap{},
-		resource.PropertyMap{},
+		property.Map{},
+		property.Map{},
+		property.Map{},
 		false,
 		nil,
 	})
@@ -1290,9 +1290,9 @@ func TestKubernetesDiffError(t *testing.T) {
 		resource.NewURN("org/proj/dev", "foo", "", "pulumi:providers:kubernetes", "qux"),
 		"",
 		"",
-		resource.PropertyMap{},
-		resource.PropertyMap{},
-		resource.PropertyMap{},
+		property.Map{},
+		property.Map{},
+		property.Map{},
 		false,
 		nil,
 	})
@@ -1305,9 +1305,9 @@ func TestKubernetesDiffError(t *testing.T) {
 		resource.NewURN("org/proj/dev", "foo", "", "pulumi:providers:kubernetes", "qux"),
 		"",
 		"",
-		resource.PropertyMap{},
-		resource.PropertyMap{},
-		resource.PropertyMap{},
+		property.Map{},
+		property.Map{},
+		property.Map{},
 		false,
 		nil,
 	})

@@ -941,7 +941,7 @@ func (pc *packageCommand) configureProvider(cmd *cobra.Command, ctx context.Cont
 		Name:   &name,
 		Type:   &typ,
 		ID:     &id,
-		Inputs: config,
+		Inputs: resource.FromResourcePropertyMap(config),
 	})
 	if err != nil {
 		return fmt.Errorf("configure provider: %w", err)

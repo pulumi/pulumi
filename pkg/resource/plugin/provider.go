@@ -201,7 +201,7 @@ type DiffConfigRequest struct {
 	URN                              resource.URN
 	Name                             string
 	Type                             tokens.Type
-	OldInputs, OldOutputs, NewInputs resource.PropertyMap
+	OldInputs, OldOutputs, NewInputs property.Map
 	AllowUnknowns                    bool
 	IgnoreChanges                    []string
 }
@@ -224,7 +224,7 @@ type ConfigureRequest struct {
 	// Handshake.
 	ID *resource.ID
 	// A map of input properties for the provider.
-	Inputs resource.PropertyMap
+	Inputs property.Map
 }
 
 type ConfigureResponse struct{}

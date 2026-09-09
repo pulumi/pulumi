@@ -538,7 +538,18 @@ func DeserializeStackOutputs(
 		return nil, nil
 	}
 
-	secretsManager, err := initializeSecretsManager(ctx, deployment, secretsProv)
+	return DecryptStackOutputs(ctx, stackResource.Outputs, deployment.SecretsProviders, secretsProv)
+}
+
+// DecryptStackOutputs deserializes the serialized outputs of a root stack resource. It resolves
+// secret values with the secrets manager that secretsProviders describes.
+func DecryptStackOutputs(
+	ctx context.Context,
+	outputs map[string]any,
+	secretsProviders *apitype.SecretsProvidersV1,
+	secretsProv secrets.Provider,
+) (resource.PropertyMap, error) {
+	secretsManager, err := initializeSecretsManager(ctx, secretsProviders, secretsProv)
 	if err != nil {
 		return nil, err
 	}
@@ -547,7 +558,7 @@ func DeserializeStackOutputs(
 		ctx,
 		secretsManager,
 		func(ctx context.Context, dec config.Decrypter) (resource.PropertyMap, error) {
-			return DeserializeProperties(stackResource.Outputs, dec)
+			return DeserializeProperties(outputs, dec)
 		},
 	)
 }
@@ -568,7 +579,7 @@ func DeserializeDeploymentV3(
 		return nil, err
 	}
 
-	secretsManager, err := initializeSecretsManager(ctx, deployment, secretsProv)
+	secretsManager, err := initializeSecretsManager(ctx, deployment.SecretsProviders, secretsProv)
 	if err != nil {
 		return nil, err
 	}
@@ -632,16 +643,16 @@ func DeserializeDeploymentV3(
 // initializeSecretsManager initializes the secrets manager for a deployment.
 func initializeSecretsManager(
 	ctx context.Context,
-	deployment apitype.DeploymentV3,
+	secretsProviders *apitype.SecretsProvidersV1,
 	secretsProv secrets.Provider,
 ) (secrets.Manager, error) {
 	var secretsManager secrets.Manager
-	if deployment.SecretsProviders != nil && deployment.SecretsProviders.Type != "" {
+	if secretsProviders != nil && secretsProviders.Type != "" {
 		if secretsProv == nil {
 			return nil, errors.New("deployment uses a SecretsProvider but no SecretsProvider was provided")
 		}
 
-		sm, err := secretsProv.OfType(ctx, deployment.SecretsProviders.Type, deployment.SecretsProviders.State)
+		sm, err := secretsProv.OfType(ctx, secretsProviders.Type, secretsProviders.State)
 		if err != nil {
 			return nil, err
 		}

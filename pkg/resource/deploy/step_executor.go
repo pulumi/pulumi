@@ -274,7 +274,7 @@ func (se *stepExecutor) executeRegisterResourceOutputs(
 			return fmt.Errorf("no plan for resource %v", urn)
 		}
 
-		if err := resourcePlan.checkOutputs(oldOuts, outs); err != nil {
+		if err := resourcePlan.checkOutputs(oldOuts, outs, se.deployment.opts.ShowSecrets); err != nil {
 			return fmt.Errorf("resource violates plan: %w", err)
 		}
 	}

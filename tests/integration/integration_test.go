@@ -20,7 +20,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -33,7 +32,6 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/test"
-	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
@@ -1564,68 +1562,36 @@ func TestGetSchemaUsesCorrectVersion(t *testing.T) {
 
 // Regression test for https://github.com/pulumi/pulumi/issues/19905
 func TestComponentProviderErrorInResourceRegistration(t *testing.T) {
-	// We want to install the command provider
-	t.Setenv("PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION", "false")
+	t.Parallel()
+
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+	// The component provider creates a command:local:Command resource, so the
+	// command plugin must be installable.
+	e.SetEnvVars("PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION=false")
+
+	programPath := filepath.Join(e.RootPath, "program")
+	providerPath := filepath.Join(e.RootPath, "provider")
+
+	e.ImportDirectory("component-error-resource")
+	ptesting.InstallDependencies(t, providerPath)
+	e.CWD = programPath
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+	e.RunCommand("pulumi", "stack", "init", "dev")
+	e.RunCommand("pulumi", "plugin", "install", "resource", "command", "1.0.4")
+	e.RunCommand("pulumi", "package", "add", providerPath)
 
 	// The regression caused a hang where a remote component construct would
-	// never return.
-	timeout := time.After(3 * time.Minute)
-	done := make(chan bool)
-	go func() {
-		pulumiHome := t.TempDir()
-		integration.ProgramTest(t, &integration.ProgramTestOptions{
-			NoParallel:      true, // We're modifying the env above
-			PulumiHomeDir:   pulumiHome,
-			Dir:             "component-error-resource",
-			RelativeWorkDir: "program",
-			PrepareProject: func(info *engine.Projinfo) error {
-				providerPath := filepath.Join(info.Root, "..", "provider")
+	// never return. Only the update is under the timeout, so slow dependency
+	// installs above cannot trip it.
+	ctx, cancel := context.WithTimeout(t.Context(), 3*time.Minute)
+	defer cancel()
 
-				// Install command provider
-				t.Setenv("PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION", "false")
-				cmd := exec.Command("pulumi", "plugin", "install", "resource", "command", "1.0.4")
-				cmd.Env = append(cmd.Environ(), "PULUMI_HOME="+pulumiHome)
-				out, err := cmd.CombinedOutput()
-				require.NoError(t, err, "%s failed with: %s", cmd.String(), string(out))
-
-				// Install the provider's dependencies
-				ptesting.InstallDependencies(t, providerPath)
-
-				// Add the provider to our project
-				cmd = exec.Command("pulumi", "package", "add", providerPath)
-				cmd.Dir = info.Root
-				cmd.Env = append(cmd.Environ(), "PULUMI_HOME="+pulumiHome)
-				out, err = cmd.CombinedOutput()
-				require.NoError(t, err, "%s failed with: %s", cmd.String(), string(out))
-
-				return nil
-			},
-			Quick:         true,
-			ExpectFailure: true,
-			ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
-				foundError := false
-				for _, event := range stack.Events {
-					if event.DiagnosticEvent != nil && event.DiagnosticEvent.Severity == "error" {
-						t.Logf("DiagnosticEvent.Message: %s", event.DiagnosticEvent.Message)
-						if strings.Contains(event.DiagnosticEvent.Message, "exiting with error") {
-							foundError = true
-						}
-					}
-				}
-				events, err := json.Marshal(stack.Events)
-				require.NoError(t, err, "failed to marshal stack events")
-				require.True(t, foundError, "expected to find an error in the stack events, got %s", events)
-			},
-		})
-
-		done <- true
-	}()
-
-	select {
-	case <-timeout:
-		t.Fatal("Test didn't finish in time")
-	case <-done:
-	}
+	cmd := e.SetupCommandIn(ctx, programPath, "pulumi", "up", "--skip-preview", "--yes", "--non-interactive")
+	out, err := cmd.CombinedOutput()
+	require.NoError(t, ctx.Err(), "pulumi up did not finish in time:\n%s", out)
+	require.ErrorContains(t, err, "exit status 1", "%s", out)
+	require.Contains(t, string(out), "exiting with error")
 }
 
 // Test that we correctly detect an error in from a resource during an
