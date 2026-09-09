@@ -1681,9 +1681,8 @@ func (p *provider) Read(ctx context.Context, req ReadRequest) (ReadResponse, err
 	}
 
 	// make sure any echoed properties restore their original asset contents if they have not changed. Assets
-	// may appear in either the old inputs or the old state, so both are candidate sources.
+	// often live only in a resource's outputs, so the old state is a candidate source as well as the old inputs.
 	restoreElidedAssetContents(req.Inputs, newInputs)
-	restoreElidedAssetContents(req.State, newInputs)
 	restoreElidedAssetContents(req.Inputs, newState)
 	restoreElidedAssetContents(req.State, newState)
 
@@ -1844,7 +1843,6 @@ func (p *provider) Update(ctx context.Context, req UpdateRequest) (UpdateRespons
 	}
 
 	// make sure any echoed properties restore their original asset contents if they have not changed
-	restoreElidedAssetContents(req.OldInputs, outs)
 	restoreElidedAssetContents(req.OldOutputs, outs)
 
 	logging.V(7).Infof("%s success; #outs=%d", label, len(outs))
