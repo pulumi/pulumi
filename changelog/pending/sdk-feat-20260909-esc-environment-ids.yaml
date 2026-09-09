@@ -1,0 +1,6 @@
+component: sdk/go
+kind: feat
+body: Expose ESC environment IDs as context.currentEnvironment.id and context.rootEnvironment.id,
+    supplied through eval.EvalOptions.RootEnvironmentID and the optional eval.EnvironmentLoaderWithID
+    loader extension
+time: 2026-09-09T09:00:00-07:00

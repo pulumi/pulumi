@@ -39,32 +39,66 @@ type EnvExecContext interface {
 	GetCurrentEnvironmentName() string
 }
 
+// EnvExecContextWithIDs is an optional extension of EnvExecContext implemented by execution contexts that know the
+// unique IDs of the environments being evaluated. Consumers should type-assert, and treat an empty ID as unknown:
+// IDs are only available when the caller (and, for imports, the environment loader) supplies them.
+type EnvExecContextWithIDs interface {
+	EnvExecContext
+
+	// Returns the unique ID of the root evaluated environment, or "" if unknown.
+	// For anonymous environments, it resolves to the "rootest" non anonymous environment.
+	GetRootEnvironmentID() string
+
+	// Returns the unique ID of the current environment being evaluated, or "" if unknown.
+	GetCurrentEnvironmentID() string
+}
+
 type ExecContext struct {
-	rootEnvironment    string
-	currentEnvironment string
-	values             map[string]Value
+	rootEnvironment      string
+	rootEnvironmentID    string
+	currentEnvironment   string
+	currentEnvironmentID string
+	values               map[string]Value
 }
 
 func (ec *ExecContext) CopyForEnv(envName string) *ExecContext {
-	values := copyContext(ec.values)
-	values["currentEnvironment"] = NewValue(map[string]Value{
-		"name": NewValue(envName),
-	})
+	return ec.CopyForEnvWithID(envName, "")
+}
 
-	root := ec.rootEnvironment
+// CopyForEnvWithID is like CopyForEnv, but also records the unique ID (e.g. the UUID assigned by the environment's
+// backend) of the environment being evaluated. When envID is non-empty it is exposed beside the name as
+// `context.currentEnvironment.id` (and as `context.rootEnvironment.id` when the environment is the root); an empty
+// envID produces a context identical to CopyForEnv's.
+func (ec *ExecContext) CopyForEnvWithID(envName, envID string) *ExecContext {
+	values := copyContext(ec.values)
+	values["currentEnvironment"] = NewValue(environmentContextValue(envName, envID))
+
+	root, rootID := ec.rootEnvironment, ec.rootEnvironmentID
 	if ec.rootEnvironment == AnonymousEnvironmentName || ec.rootEnvironment == "" {
-		root = envName
+		root, rootID = envName, envID
 	}
 
-	values["rootEnvironment"] = NewValue(map[string]Value{
-		"name": NewValue(root),
-	})
+	values["rootEnvironment"] = NewValue(environmentContextValue(root, rootID))
 
 	return &ExecContext{
-		values:             values,
-		rootEnvironment:    root,
-		currentEnvironment: envName,
+		values:               values,
+		rootEnvironment:      root,
+		rootEnvironmentID:    rootID,
+		currentEnvironment:   envName,
+		currentEnvironmentID: envID,
 	}
+}
+
+// environmentContextValue builds the value for `context.currentEnvironment` or `context.rootEnvironment`. The `id`
+// property is omitted when unknown so that contexts built by ID-unaware callers are unchanged.
+func environmentContextValue(name, id string) map[string]Value {
+	v := map[string]Value{
+		"name": NewValue(name),
+	}
+	if id != "" {
+		v["id"] = NewValue(id)
+	}
+	return v
 }
 
 func (ec *ExecContext) Values() map[string]Value {
@@ -75,8 +109,16 @@ func (ec *ExecContext) GetRootEnvironmentName() string {
 	return ec.rootEnvironment
 }
 
+func (ec *ExecContext) GetRootEnvironmentID() string {
+	return ec.rootEnvironmentID
+}
+
 func (ec *ExecContext) GetCurrentEnvironmentName() string {
 	return ec.currentEnvironment
+}
+
+func (ec *ExecContext) GetCurrentEnvironmentID() string {
+	return ec.currentEnvironmentID
 }
 
 type copier struct {

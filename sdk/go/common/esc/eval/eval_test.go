@@ -157,6 +157,28 @@ func (testProvider) Open(
 	return esc.NewValue(inputs), nil
 }
 
+// contextProvider echoes the name and ID of the environment it is opened in.
+type contextProvider struct{}
+
+func (contextProvider) Schema() (*schema.Schema, *schema.Schema) {
+	return schema.Always(), schema.Always()
+}
+
+func (contextProvider) Open(
+	ctx context.Context,
+	inputs map[string]esc.Value,
+	context esc.EnvExecContext,
+) (esc.Value, error) {
+	id := ""
+	if withIDs, ok := context.(esc.EnvExecContextWithIDs); ok {
+		id = withIDs.GetCurrentEnvironmentID()
+	}
+	return esc.NewValue(map[string]esc.Value{
+		"name": esc.NewValue(context.GetCurrentEnvironmentName()),
+		"id":   esc.NewValue(id),
+	}), nil
+}
+
 type secretWrapperProvider struct{}
 
 func (secretWrapperProvider) Schema() (*schema.Schema, *schema.Schema) {
@@ -265,6 +287,8 @@ func (tp testProviders) LoadProvider(ctx context.Context, name string) (esc.Prov
 		return testSchemaProvider{}, nil
 	case "test":
 		return testProvider{}, nil
+	case "context":
+		return contextProvider{}, nil
 	case "secret-wrapper":
 		return secretWrapperProvider{}, nil
 	case "bench":
@@ -442,6 +466,136 @@ values:
 	require.NotNil(t, result)
 	assert.Equal(t, "prod", result.Properties["importedEnvironmentName"].Value)
 	assert.Contains(t, environments.authorizations, importAuthorization{importer: "prod", imported: "child"})
+}
+
+// idEnvironments is an EnvironmentLoaderWithID whose environments each carry a unique ID.
+type idEnvironments struct {
+	defs map[string]idEnvironmentDef
+}
+
+type idEnvironmentDef struct {
+	yaml string
+	id   string
+}
+
+func (e *idEnvironments) LoadEnvironment(ctx context.Context, name string) ([]byte, string, Decrypter, error) {
+	loaded, err := e.LoadEnvironmentWithID(ctx, name)
+	return loaded.YAML, loaded.ResolvedName, loaded.Decrypter, err
+}
+
+func (e *idEnvironments) LoadEnvironmentWithID(_ context.Context, name string) (LoadedEnvironment, error) {
+	def, ok := e.defs[name]
+	if !ok {
+		return LoadedEnvironment{}, os.ErrNotExist
+	}
+	return LoadedEnvironment{YAML: []byte(def.yaml), ResolvedName: name, ID: def.id, Decrypter: rot128{}}, nil
+}
+
+func (e *idEnvironments) AuthorizeImport(_ context.Context, _ string, _ string, _ bool) error {
+	return nil
+}
+
+func TestEvalEnvironment(t *testing.T) {
+	t.Parallel()
+
+	openContext := func(t *testing.T, v esc.Value) map[string]esc.Value {
+		props, ok := v.Value.(map[string]esc.Value)
+		require.True(t, ok)
+		return props
+	}
+
+	t.Run("exposes the current environment's ID beside its name", func(t *testing.T) {
+		t.Parallel()
+
+		env, diags, err := LoadYAMLBytes("root", []byte(`values:
+  currentName: ${context.currentEnvironment.name}
+  currentID: ${context.currentEnvironment.id}
+  rootID: ${context.rootEnvironment.id}
+`))
+		require.NoError(t, err)
+		require.False(t, diags.HasErrors(), "%v", diags)
+
+		execContext, err := esc.NewExecContext(nil)
+		require.NoError(t, err)
+		result, diags := EvalEnvironment(
+			t.Context(), "root", env, rot128{}, testProviders{}, &idEnvironments{}, execContext,
+			EvalOptions{RootEnvironmentID: "root-uuid"},
+		)
+		require.False(t, diags.HasErrors(), "%v", diags)
+		require.NotNil(t, result)
+		assert.Equal(t, "root", result.Properties["currentName"].Value)
+		assert.Equal(t, "root-uuid", result.Properties["currentID"].Value)
+		assert.Equal(t, "root-uuid", result.Properties["rootID"].Value)
+
+		current := openContext(t, result.ExecutionContext.Properties["currentEnvironment"])
+		assert.Equal(t, "root-uuid", current["id"].Value)
+	})
+
+	t.Run("threads each import's ID through the import chain", func(t *testing.T) {
+		t.Parallel()
+
+		env, diags, err := LoadYAMLBytes("root", []byte(`imports:
+  - a
+values:
+  rootContext: {fn::open::context: {}}
+`))
+		require.NoError(t, err)
+		require.False(t, diags.HasErrors(), "%v", diags)
+
+		execContext, err := esc.NewExecContext(nil)
+		require.NoError(t, err)
+		environments := &idEnvironments{
+			defs: map[string]idEnvironmentDef{
+				"a": {yaml: "imports:\n  - b\nvalues:\n  aContext: {fn::open::context: {}}\n", id: "a-uuid"},
+				"b": {yaml: "values:\n  bContext: {fn::open::context: {}}\n", id: "b-uuid"},
+			},
+		}
+		result, diags := EvalEnvironment(
+			t.Context(), "root", env, rot128{}, testProviders{}, environments, execContext,
+			EvalOptions{RootEnvironmentID: "root-uuid"},
+		)
+		require.False(t, diags.HasErrors(), "%v", diags)
+		require.NotNil(t, result)
+
+		// Each provider sees the environment that holds it, not the root.
+		assert.Equal(t, "root-uuid", openContext(t, result.Properties["rootContext"])["id"].Value)
+		assert.Equal(t, "a-uuid", openContext(t, result.Properties["aContext"])["id"].Value)
+		assert.Equal(t, "a", openContext(t, result.Properties["aContext"])["name"].Value)
+		assert.Equal(t, "b-uuid", openContext(t, result.Properties["bContext"])["id"].Value)
+	})
+
+	t.Run("tolerates loaders that do not provide IDs", func(t *testing.T) {
+		t.Parallel()
+
+		env, diags, err := LoadYAMLBytes("root", []byte(`imports:
+  - a
+values:
+  currentName: ${context.currentEnvironment.name}
+`))
+		require.NoError(t, err)
+		require.False(t, diags.HasErrors(), "%v", diags)
+
+		execContext, err := esc.NewExecContext(nil)
+		require.NoError(t, err)
+		environments := &overrideEnvironments{
+			defs: map[string]string{
+				"a": "values:\n  aContext: {fn::open::context: {}}\n",
+			},
+		}
+		result, diags := EvalEnvironment(
+			t.Context(), "root", env, rot128{}, testProviders{}, environments, execContext, EvalOptions{},
+		)
+		require.False(t, diags.HasErrors(), "%v", diags)
+		require.NotNil(t, result)
+		assert.Equal(t, "root", result.Properties["currentName"].Value)
+		assert.Equal(t, "a", openContext(t, result.Properties["aContext"])["name"].Value)
+		assert.Equal(t, "", openContext(t, result.Properties["aContext"])["id"].Value)
+
+		// Without an ID, the execution context exposes no `id` property at all.
+		current := openContext(t, result.ExecutionContext.Properties["currentEnvironment"])
+		assert.Equal(t, "root", current["name"].Value)
+		assert.NotContains(t, current, "id")
+	})
 }
 
 func TestEval(t *testing.T) {

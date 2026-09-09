@@ -55,6 +55,33 @@ type EnvironmentLoader interface {
 	AuthorizeImport(ctx context.Context, importer string, imported string, importerIsRoot bool) error
 }
 
+// A LoadedEnvironment is the result of EnvironmentLoaderWithID.LoadEnvironmentWithID: the loaded environment's
+// definition together with the metadata the evaluator needs to evaluate it.
+type LoadedEnvironment struct {
+	// YAML is the environment's definition.
+	YAML []byte
+	// ResolvedName is the name the loader resolved the requested name to (e.g. after following an override).
+	ResolvedName string
+	// ID is the unique ID (e.g. the UUID assigned by the environment's backend) of the environment, or "" when
+	// unknown.
+	ID string
+	// Decrypter decrypts the definition's static secrets.
+	Decrypter Decrypter
+}
+
+// An EnvironmentLoaderWithID is an optional extension of EnvironmentLoader implemented by loaders that know the
+// unique ID (e.g. the UUID assigned by the environment's backend) of each environment they load. When the evaluator's
+// loader implements this interface, LoadEnvironmentWithID is called in place of LoadEnvironment and the returned ID is
+// threaded through the imported environment's execution context (see esc.EnvExecContextWithIDs).
+type EnvironmentLoaderWithID interface {
+	EnvironmentLoader
+
+	// LoadEnvironmentWithID is like EnvironmentLoader.LoadEnvironment, but returns the loaded environment as a
+	// LoadedEnvironment that also carries its unique ID. An empty LoadedEnvironment.ID indicates that the ID is
+	// unknown.
+	LoadEnvironmentWithID(ctx context.Context, name string) (LoadedEnvironment, error)
+}
+
 // LoadYAML decodes a YAML template from an io.Reader.
 func LoadYAML(filename string, r io.Reader) (*ast.EnvironmentDecl, syntax.Diagnostics, error) {
 	bytes, err := io.ReadAll(r)
@@ -194,6 +221,7 @@ func evalEnvironment(
 		validating,
 		rotating,
 		name,
+		opts.RootEnvironmentID,
 		env,
 		true,
 		decrypter,
@@ -276,6 +304,7 @@ func newEvalContext(
 	validating bool,
 	rotating bool,
 	name string,
+	id string,
 	env *ast.EnvironmentDecl,
 	isRootEnv bool,
 	decrypter Decrypter,
@@ -299,7 +328,7 @@ func newEvalContext(
 		providers:      providers,
 		environments:   environments,
 		imports:        imports,
-		execContext:    execContext.CopyForEnv(name),
+		execContext:    execContext.CopyForEnvWithID(name, id),
 		rotateDocPaths: rotateDocPaths,
 	}
 }
@@ -598,6 +627,16 @@ func (e *evalContext) evaluateImports() {
 	e.myImports = val
 }
 
+// loadEnvironment loads the named environment via the environment loader, preferring LoadEnvironmentWithID when the
+// loader supports it so that the environment's ID is available to the execution context.
+func (e *evalContext) loadEnvironment(name string) (LoadedEnvironment, error) {
+	if loader, ok := e.environments.(EnvironmentLoaderWithID); ok {
+		return loader.LoadEnvironmentWithID(e.ctx, name)
+	}
+	def, resolvedName, dec, err := e.environments.LoadEnvironment(e.ctx, name)
+	return LoadedEnvironment{YAML: def, ResolvedName: resolvedName, Decrypter: dec}, err
+}
+
 // evaluateImport evaluates an imported environment.
 //
 // Each environment in the import closure is only evaluated once.
@@ -622,13 +661,13 @@ func (e *evalContext) evaluateImport(expr ast.Expr, name string) (*value, bool) 
 		}
 		val = imported.value
 	} else {
-		bytes, resolvedName, dec, err := e.environments.LoadEnvironment(e.ctx, name)
+		loaded, err := e.loadEnvironment(name)
 		if err != nil {
 			e.errorf(expr, "%s", err.Error())
 			return nil, false
 		}
 
-		env, diags, err := LoadYAMLBytes(resolvedName, bytes)
+		env, diags, err := LoadYAMLBytes(loaded.ResolvedName, loaded.YAML)
 		e.diags.Extend(diags...)
 		if err != nil {
 			e.errorf(expr, "%s", err.Error())
@@ -639,7 +678,10 @@ func (e *evalContext) evaluateImport(expr ast.Expr, name string) (*value, bool) 
 		}
 
 		// we only want to rotate the root environment, so set rotating flag to false when evaluating imports
-		imp := newEvalContext(e.ctx, e.validating, false, resolvedName, env, false, dec, e.providers, e.environments, e.imports, e.execContext, e.showSecrets, nil) //nolint:lll
+		imp := newEvalContext(
+			e.ctx, e.validating, false, loaded.ResolvedName, loaded.ID, env, false, loaded.Decrypter,
+			e.providers, e.environments, e.imports, e.execContext, e.showSecrets, nil,
+		)
 		imp.declaredName = name
 		imp.traceMode = e.traceMode
 		v, diags := imp.evaluate()
