@@ -154,7 +154,7 @@ func NewAPICmd() *cobra.Command {
 		Example: "  # Verify an op's parameters and schemas with `describe` before calling it.\n" +
 			"  pulumi api describe AddStackTag\n\n" +
 			"  # Find endpoints by keyword.\n" +
-			"  pulumi api list -q graph\n\n" +
+			"  pulumi api list --filter graph\n\n" +
 			"  # Query the organization's resource graph (Context API): what exists, what\n" +
 			"  # depends on what, what a change would affect. Read the guide first, then\n" +
 			"  # post a JSON selector.\n" +

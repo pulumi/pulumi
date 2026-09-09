@@ -69,31 +69,31 @@ func TestFilterListedOps(t *testing.T) {
 	})
 }
 
-func TestFilterByQuery(t *testing.T) {
+func TestFilterByText(t *testing.T) {
 	t.Parallel()
 	idx := loadTestIndex(t)
 
 	t.Run("matches operationId case-insensitively", func(t *testing.T) {
 		t.Parallel()
-		view := filterByQuery(idx, "aitemplate")
+		view := filterByText(idx, "aitemplate")
 		assert.ElementsMatch(t, []string{"AITemplate"}, opIDs(view.Operations))
 	})
 
 	t.Run("matches path substring", func(t *testing.T) {
 		t.Parallel()
-		view := filterByQuery(idx, "agent-pools")
+		view := filterByText(idx, "agent-pools")
 		assert.ElementsMatch(t, []string{"ListOrgAgentPool"}, opIDs(view.Operations))
 	})
 
 	t.Run("matches description text", func(t *testing.T) {
 		t.Parallel()
-		view := filterByQuery(idx, "immediately invalidated")
+		view := filterByText(idx, "immediately invalidated")
 		assert.ElementsMatch(t, []string{"DeletePersonalToken"}, opIDs(view.Operations))
 	})
 
 	t.Run("no match yields zero operations", func(t *testing.T) {
 		t.Parallel()
-		view := filterByQuery(idx, "no-such-keyword-zzz")
+		view := filterByText(idx, "no-such-keyword-zzz")
 		assert.Empty(t, view.Operations)
 
 		var buf bytes.Buffer
@@ -105,20 +105,20 @@ func TestFilterByQuery(t *testing.T) {
 		assert.Equal(t, 0, env.Count)
 	})
 
-	t.Run("empty or whitespace-only query is a no-op", func(t *testing.T) {
+	t.Run("empty or whitespace-only filter is a no-op", func(t *testing.T) {
 		t.Parallel()
 		for _, q := range []string{"", "   ", "\t\n"} {
-			view := filterByQuery(idx, q)
+			view := filterByText(idx, q)
 			assert.ElementsMatch(t, opIDs(idx.Operations), opIDs(view.Operations))
 		}
 	})
 
 	t.Run("composes with preview/deprecated filters", func(t *testing.T) {
 		t.Parallel()
-		defaultView := filterByQuery(filterListedOps(idx, true, false), "deprecated")
+		defaultView := filterByText(filterListedOps(idx, true, false), "deprecated")
 		assert.Empty(t, defaultView.Operations)
 
-		withDeprecated := filterByQuery(filterListedOps(idx, true, true), "deprecated")
+		withDeprecated := filterByText(filterListedOps(idx, true, true), "deprecated")
 		assert.ElementsMatch(t, []string{"ListPolicyViolationsV2"}, opIDs(withDeprecated.Operations))
 	})
 }
