@@ -778,40 +778,162 @@ func TestStateMigrationSecrets(t *testing.T) {
 	assert.Equal(t, "shh", child.Inputs["secret"].SecretValue().Element.StringValue())
 }
 
-// TestStateMigrationRejectsSplit verifies that a one-to-many migration cannot fabricate managed state. A final custom
-// resource must have a custom predecessor whose provider-managed identity the engine can verify.
-func TestStateMigrationRejectsSplit(t *testing.T) {
+// TestStateMigrationSplit exercises this one-to-many migration:
+//
+//	resource (managed, inline settings) -> resource (managed, settings removed)
+//	                                   + settings (managed, same physical ID and provider)
+//
+// The original resource retains its URN, and the new settings resource depends on it. The migration adopts the
+// settings resource without a provider create, and a subsequent update leaves both resources unchanged.
+func TestStateMigrationSplit(t *testing.T) {
 	t.Parallel()
-
-	env := newStateMigrationEnv(t)
-	snap, err := runUpdate(t, env.plan, nil, nil)
-	require.NoError(t, err)
-
-	env.migrations = func(t *testing.T, callbacks *deploytest.CallbackServer) []*pulumirpc.Callback {
-		callback, err := callbacks.Allocate(
-			stateMigrationFunction(func(
-				urn resource.URN, resources []apitype.ResourceV3,
+	const (
+		componentType = "pkgA:m:Component"
+		resourceType  = "pkgA:m:Resource"
+		settingsType  = "pkgA:m:Settings"
+		resourceURN   = resource.URN("urn:pulumi:test::test::pkgA:m:Component$pkgA:m:Resource::resource")
+		settingsURN   = resource.URN("urn:pulumi:test::test::pkgA:m:Component$pkgA:m:Settings::settings")
+	)
+	upgrade := false
+	creates := 0
+	settings := map[string]any{"enabled": true}
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					creates++
+					return plugin.CreateResponse{ID: "resource-id", Properties: req.Properties, Status: resource.StatusOK}, nil
+				},
+			}, nil
+		}),
+	}
+	program := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		callbacks, err := deploytest.NewCallbacksServer()
+		require.NoError(t, err)
+		defer func() { require.NoError(t, callbacks.Close()) }()
+		var migrations []*pulumirpc.Callback
+		if upgrade {
+			callback, err := callbacks.Allocate(stateMigrationFunction(func(
+				_ resource.URN, states []apitype.ResourceV3,
 			) ([]apitype.ResourceV3, map[resource.URN]resource.URN, error) {
-				var child apitype.ResourceV3
-				for _, res := range resources {
-					if res.URN == childAURN {
-						child = res
+				for _, state := range states {
+					if state.URN == settingsURN {
+						return nil, nil, nil
 					}
 				}
-				split := child
-				split.URN = childBURN
-				split.Inputs = map[string]any{"foo": "bar"}
-				split.Outputs = map[string]any{"foo": "bar"}
-				return append(resources, split), nil, nil
+				for i := range states {
+					if states[i].URN != resourceURN {
+						continue
+					}
+					sidecar := states[i]
+					sidecar.URN, sidecar.Type = settingsURN, settingsType
+					sidecar.Inputs = map[string]any{"resourceId": "resource-id", "settings": settings}
+					sidecar.Outputs = sidecar.Inputs
+					sidecar.Dependencies = []resource.URN{resourceURN}
+					sidecar.PropertyDependencies = map[resource.PropertyKey][]resource.URN{"resourceId": {resourceURN}}
+					delete(states[i].Inputs, "settings")
+					delete(states[i].Outputs, "settings")
+					return append(states, sidecar), nil, nil
+				}
+				return nil, nil, errors.New("missing resource")
 			}))
+			require.NoError(t, err)
+			migrations = []*pulumirpc.Callback{callback}
+		}
+		component, err := monitor.RegisterResource(componentType, "component", false, deploytest.ResourceOptions{
+			StateMigrations: migrations,
+		})
+		if err != nil {
+			return err
+		}
+		inputs := map[string]any{"name": "resource"}
+		if !upgrade {
+			inputs["settings"] = settings
+		}
+		_, err = monitor.RegisterResource(resourceType, "resource", true, deploytest.ResourceOptions{
+			Parent: component.URN, Inputs: resource.NewPropertyMapFromMap(inputs),
+		})
+		if err != nil || !upgrade {
+			return err
+		}
+		_, err = monitor.RegisterResource(settingsType, "settings", true, deploytest.ResourceOptions{
+			Parent: component.URN,
+			Inputs: resource.NewPropertyMapFromMap(map[string]any{
+				"resourceId": "resource-id", "settings": settings,
+			}),
+			Dependencies: []resource.URN{resourceURN},
+			PropertyDeps: map[resource.PropertyKey][]resource.URN{"resourceId": {resourceURN}},
+		})
+		return err
+	})
+	host := deploytest.NewPluginHostF(nil, nil, program, nil, nil, loaders...)
+	plan := &lt.TestPlan{Options: stateMigrationTestOptions(t, host)}
+	snap, err := runUpdate(t, plan, nil, nil)
+	require.NoError(t, err)
+	upgrade = true
+	for range 2 {
+		snap, err = runUpdate(t, plan, snap, validateOps(t, map[display.StepOp]int{deploy.OpSame: 4}))
 		require.NoError(t, err)
-		return []*pulumirpc.Callback{callback}
+		require.NoError(t, snap.VerifyIntegrity())
+		assert.Contains(t, snapURNs(snap), resourceURN)
+		assert.Contains(t, snapURNs(snap), settingsURN)
 	}
+	assert.Equal(t, 1, creates, "the sidecar must be adopted from migrated state, not created")
+}
 
-	_, err = runUpdate(t, env.plan, snap, nil)
-	require.ErrorContains(t, err, "without a managed custom predecessor")
-	assert.Contains(t, snapURNs(snap), childAURN)
-	assert.NotContains(t, snapURNs(snap), childBURN)
+// TestStateMigrationRejectsInvalidSplit verifies that splitting preserves managed identity, ownership,
+// and lifecycle flags.
+func TestStateMigrationRejectsInvalidSplit(t *testing.T) {
+	t.Parallel()
+
+	for _, tt := range []struct {
+		name    string
+		change  func(*apitype.ResourceV3)
+		message string
+	}{
+		{"identity", func(s *apitype.ResourceV3) { s.ID = "unrelated-object" }, "without a managed custom predecessor"},
+		{"ownership", func(s *apitype.ResourceV3) { s.External = !s.External }, "changes ownership"},
+		{
+			"pending replacement",
+			func(s *apitype.ResourceV3) { s.PendingReplacement = !s.PendingReplacement },
+			"changes PendingReplacement",
+		},
+		{"taint", func(s *apitype.ResourceV3) { s.Taint = !s.Taint }, "changes Taint"},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			env := newStateMigrationEnv(t)
+			snap, err := runUpdate(t, env.plan, nil, nil)
+			require.NoError(t, err)
+
+			env.migrations = func(t *testing.T, callbacks *deploytest.CallbackServer) []*pulumirpc.Callback {
+				callback, err := callbacks.Allocate(
+					stateMigrationFunction(func(
+						urn resource.URN, resources []apitype.ResourceV3,
+					) ([]apitype.ResourceV3, map[resource.URN]resource.URN, error) {
+						var child apitype.ResourceV3
+						for _, res := range resources {
+							if res.URN == childAURN {
+								child = res
+							}
+						}
+						split := child
+						split.URN = childBURN
+						tt.change(&split)
+						split.Inputs = map[string]any{"foo": "bar"}
+						split.Outputs = map[string]any{"foo": "bar"}
+						return append(resources, split), nil, nil
+					}))
+				require.NoError(t, err)
+				return []*pulumirpc.Callback{callback}
+			}
+
+			_, err = runUpdate(t, env.plan, snap, nil)
+			require.ErrorContains(t, err, tt.message)
+			assert.Contains(t, snapURNs(snap), childAURN)
+			assert.NotContains(t, snapURNs(snap), childBURN)
+		})
+	}
 }
 
 // TestStateMigrationFold exercises this many-to-one migration:
