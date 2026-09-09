@@ -57,6 +57,7 @@ require (
 	github.com/pgavlin/fx/v2 v2.0.12
 	github.com/pkg/term v1.1.0
 	github.com/pulumi/appdash v0.0.0-20231130102222-75f619a67231
+	github.com/pulumi/pulumi-cloud-sdk/go v1.20260909.1-0.20260912200813-fed347dde5cf
 	github.com/santhosh-tekuri/jsonschema/v5 v5.0.0
 	github.com/zalando/go-keyring v0.2.8
 	go.opentelemetry.io/collector/pdata v1.53.0
@@ -97,6 +98,7 @@ require (
 	github.com/git-pkgs/vers v0.2.4 // indirect
 	github.com/go-git/gcfg/v2 v2.0.2 // indirect
 	github.com/go-git/go-billy/v6 v6.0.0-alpha.1 // indirect
+	github.com/go-jose/go-jose/v4 v4.1.4 // indirect
 	github.com/go-logr/logr v1.4.3 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.28.0 // indirect

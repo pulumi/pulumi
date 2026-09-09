@@ -62,6 +62,7 @@ require (
 	github.com/pb33f/ordered-map/v2 v2.3.1 // indirect
 	github.com/pgavlin/diff v0.0.0-20230503175810-113847418e2e // indirect
 	github.com/pgavlin/text v0.0.0-20240821195002-b51d0990e284 // indirect
+	github.com/pulumi/pulumi-cloud-sdk/go v1.20260909.1-0.20260912200813-fed347dde5cf // indirect
 	github.com/vbauerster/cupwriter v0.0.4 // indirect
 	github.com/vbauerster/mpb/v8 v8.15.2 // indirect
 	github.com/zalando/go-keyring v0.2.8 // indirect
