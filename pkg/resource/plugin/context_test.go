@@ -15,6 +15,8 @@
 package plugin
 
 import (
+	"os"
+	"path/filepath"
 	"sync"
 	"testing"
 
@@ -79,4 +81,34 @@ func TestWithoutProviderDebugging(t *testing.T) {
 	require.Equal(t, ctx.Host, view.Host)
 
 	require.Same(t, view, view.WithoutProviderDebugging())
+}
+
+// A project's package paths are relative to the project directory. A plugin
+// that starts in a subdirectory of the project must resolve them from there,
+// not from its own working directory.
+func TestNewContextRootsAtDetectedProject(t *testing.T) { //nolint:paralleltest // t.Chdir forbids t.Parallel
+	projectDir, err := filepath.EvalSymlinks(t.TempDir())
+	require.NoError(t, err)
+	componentDir := filepath.Join(projectDir, "component")
+	require.NoError(t, os.Mkdir(componentDir, 0o700))
+	require.NoError(t, os.WriteFile(filepath.Join(projectDir, "Pulumi.yaml"),
+		[]byte("name: project\nruntime: yaml\npackages:\n  component: ./component\n"), 0o600))
+	require.NoError(t, os.WriteFile(filepath.Join(componentDir, "PulumiPlugin.yaml"),
+		[]byte("name: component\nruntime: yaml\n"), 0o600))
+	t.Chdir(componentDir)
+
+	ctx, err := NewContext(
+		t.Context(),
+		diagtest.LogSink(t),
+		diagtest.LogSink(t),
+		&MockHost{},
+		nil,
+		componentDir,
+		nil,
+		false,
+		mocktracer.New().StartSpan("root"),
+	)
+	require.NoError(t, err)
+	require.Equal(t, projectDir, ctx.Root)
+	require.Equal(t, componentDir, ctx.Pwd)
 }
