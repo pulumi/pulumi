@@ -23,20 +23,20 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
-// An attached resource provider counts as installed; the attachment applies to
+// An attached resource provider reports as attached; the attachment applies to
 // resource plugins only, and to nothing else in the empty plugin cache.
 func TestHasPluginAttachedProvider(t *testing.T) {
 	t.Setenv("PULUMI_HOME", t.TempDir())
 	t.Setenv("PULUMI_DEBUG_PROVIDERS", "attached:12345")
 
-	has := func(name string, kind apitype.PluginKind) bool {
+	has := func(name string, kind apitype.PluginKind) InstallState {
 		return Instance.HasPlugin(t.Context(), workspace.PluginDescriptor{Name: name, Kind: kind})
 	}
-	assert.Equal(t, map[string]bool{
-		"attached resource": true,
-		"attached language": false,
-		"other resource":    false,
-	}, map[string]bool{
+	assert.Equal(t, map[string]InstallState{
+		"attached resource": PluginAttached,
+		"attached language": PluginNotInstalled,
+		"other resource":    PluginNotInstalled,
+	}, map[string]InstallState{
 		"attached resource": has("attached", apitype.ResourcePlugin),
 		"attached language": has("attached", apitype.LanguagePlugin),
 		"other resource":    has("other", apitype.ResourcePlugin),

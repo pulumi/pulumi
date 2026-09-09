@@ -196,16 +196,16 @@ func InstallPluginSet(
 				continue
 			}
 
-			installed, version, err := packageresolution.IsPluginInstalled(ctx,
+			installState, version, err := packageresolution.GetInstallState(ctx,
 				resolved.PluginDescriptor, ws, options.Options)
 			if err != nil {
 				return err
 			}
-			if installed && version != nil {
+			if installState.Available() && version != nil {
 				resolved.Version = version
 			}
 			err = enqueueResolvedProjectDescriptor(ctx, state,
-				resolved.PluginDescriptor, new(runBundle), root, installed)
+				resolved.PluginDescriptor, new(runBundle), root, installState)
 			if err != nil {
 				return err
 			}
@@ -637,7 +637,8 @@ func ensureProjectDir(
 
 func enqueueResolvedProjectDescriptor(
 	ctx context.Context, p state,
-	descriptor workspace.PluginDescriptor, runBundleOut *runBundle, parent pdag.Node, installed bool,
+	descriptor workspace.PluginDescriptor, runBundleOut *runBundle, parent pdag.Node,
+	installState pluginstorage.InstallState,
 ) error {
 	specFinished, specReady, isDuplicate, err := newSpecNode(
 		hashPluginSpec(descriptor), descriptor, runBundleOut, p, parent)
@@ -648,7 +649,14 @@ func enqueueResolvedProjectDescriptor(
 		return nil
 	}
 
-	if installed {
+	// An attached plugin already runs, so it has nothing to download and no directory in
+	// the plugin cache to install from.
+	if installState == pluginstorage.PluginAttached {
+		specReady()
+		return nil
+	}
+
+	if installState == pluginstorage.PluginInstalled {
 		defer specReady()
 		pluginDir, err := p.ws.GetPluginPath(ctx, descriptor)
 		if err != nil {
@@ -926,7 +934,7 @@ func (step resolveStep) run(ctx context.Context, p state) error {
 		}
 
 		return enqueueResolvedProjectDescriptor(ctx, p, result.Pkg.PluginDescriptor,
-			step.runBundleOut, step.parent, result.InstalledInWorkspace)
+			step.runBundleOut, step.parent, result.InstallState)
 
 	case packageresolution.PluginResolution:
 		*step.resolvedSpec = result.Spec
@@ -939,7 +947,7 @@ func (step resolveStep) run(ctx context.Context, p state) error {
 		}
 
 		return enqueueResolvedProjectDescriptor(ctx, p, result.Pkg.PluginDescriptor,
-			step.runBundleOut, step.parent, result.InstalledInWorkspace)
+			step.runBundleOut, step.parent, result.InstallState)
 	default:
 		panic(fmt.Sprintf("unexpected package resolution result of type %T: %[1]s", result))
 	}
@@ -1040,7 +1048,7 @@ func (step gatherPackageDependenciesStep) run(ctx context.Context, p state) erro
 		}
 		defer ready()
 
-		if p.ws.HasPlugin(ctx, pkg.PluginDescriptor) {
+		if p.ws.HasPlugin(ctx, pkg.PluginDescriptor).Available() {
 			continue
 		}
 
