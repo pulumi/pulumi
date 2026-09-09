@@ -65,6 +65,9 @@ jobs:
           || 'windows-latest'
         }}
       enable-coverage: true
+      # PR runs package no release artifacts, so the post-coverage
+      # uninstrumented rebuild of all six CLI targets is skipped.
+      rebuild-release-binaries: false
     secrets: inherit
 
   performance-gate:
