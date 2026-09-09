@@ -1825,10 +1825,10 @@ func (ctx *Context) registerResource(
 	resState := ctx.makeResourceState(t, name, resource, providers, provider, protect,
 		options.Version, options.PluginDownloadURL, aliasURNs, transformations)
 
-	// Get the stack trace and source position for the resource registration. Note that this assumes that there are two
-	// intermediate frames between this function and user code.
-	stackTrace := ctx.getStackTrace(4)
-	sourcePosition := ctx.getSourcePosition(4)
+	// Get the stack trace and source position for the resource registration. Note that this assumes that there is an
+	// intermediate frame between this function and user code.
+	stackTrace := ctx.getStackTrace(3)
+	sourcePosition := ctx.getSourcePosition(3)
 
 	// Kick off the resource registration.  If we are actually performing a deployment, the resulting properties
 	// will be resolved asynchronously as the RPC operation completes.  If we're just planning, values won't resolve.

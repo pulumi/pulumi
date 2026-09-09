@@ -618,7 +618,7 @@ func TestSourcePosition(t *testing.T) {
 
 			require.NotNil(t, sourcePosition)
 			assert.True(t, strings.HasPrefix(sourcePosition.Uri, "file:///"))
-			assert.True(t, strings.HasSuffix(sourcePosition.Uri, "context_test.go"))
+			assert.True(t, strings.HasSuffix(sourcePosition.Uri, "context_source_position_test.go"))
 
 			require.NotNil(t, stackTrace)
 			require.True(t, len(stackTrace.Frames) > 1)
@@ -633,20 +633,10 @@ func TestSourcePosition(t *testing.T) {
 	}
 
 	err := RunErr(func(ctx *Context) error {
-		reg := func() error {
-			var res testResource2
-			return ctx.RegisterResource("test:resource:type", "reg", &testResource2Inputs{}, &res)
-		}
-
-		read := func() error {
-			var res testResource2
-			return ctx.ReadResource("test:resource:type", "read", ID("myid"), &testResource2Inputs{}, &res)
-		}
-
-		err := reg()
+		err := registerSourcePositionResource(ctx)
 		require.NoError(t, err)
 
-		err = read()
+		err = readSourcePositionResource(ctx)
 		require.NoError(t, err)
 
 		return nil

@@ -1,0 +1,4 @@
+component: sdk/go
+kind: fix
+body: Record the correct source position for Go SDK resource registrations
+time: 2026-09-09T10:19:28Z
