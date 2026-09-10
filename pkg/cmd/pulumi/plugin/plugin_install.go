@@ -55,11 +55,26 @@ func newPluginInstallCmd() *cobra.Command {
 		Short: "Install one or more plugins",
 		Long: "Install one or more plugins.\n" +
 			"\n" +
-			"This command is used to manually install plugins required by your program. It\n" +
-			"may be run with a specific KIND, NAME, and optionally, VERSION, or by omitting\n" +
-			"these arguments and letting Pulumi compute the set of plugins required by the\n" +
-			"current project. When Pulumi computes the download set automatically, it may\n" +
-			"download more plugins than are strictly necessary.\n" +
+			"Pulumi installs the plugins your program requires automatically, so most users\n" +
+			"never need to run this command. Use it to install plugins ahead of time, for\n" +
+			"example to warm a CI cache or to prepare a machine that will run without\n" +
+			"network access.\n" +
+			"\n" +
+			"It may be run with a specific KIND, NAME, and optionally, VERSION, or by\n" +
+			"omitting these arguments and letting Pulumi compute the set of plugins required\n" +
+			"by the current project. When Pulumi computes the download set automatically, it\n" +
+			"may download more plugins than are strictly necessary.\n" +
+			"\n" +
+			"KIND must be one of:\n" +
+			"\n" +
+			"  - `analyzer`: a resource analyzer, which enforces policies against resources.\n" +
+			"  - `language`: a language host, which runs Pulumi programs written in a given\n" +
+			"    language. The languages Pulumi supports ship with the CLI, so you only need\n" +
+			"    to install a language plugin to use a third-party one.\n" +
+			"  - `resource`: a resource provider, which performs CRUD operations on the\n" +
+			"    resources of a cloud or service.\n" +
+			"  - `converter`: a converter, which converts from another ecosystem to Pulumi.\n" +
+			"  - `tool`: an arbitrary plugin that can be run as a tool.\n" +
 			"\n" +
 			"If VERSION is specified, it cannot be a range; it must be a specific number.\n" +
 			"If VERSION is unspecified, Pulumi will attempt to look up the latest version of\n" +
@@ -155,7 +170,9 @@ func (cmd *pluginInstallCmd) Run(ctx context.Context, args []string) error {
 	if len(args) > 0 {
 		var kind apitype.PluginKind
 		if !apitype.IsPluginKind(args[0]) {
-			return fmt.Errorf("unrecognized plugin kind: %s", args[0])
+			return fmt.Errorf(
+				"unrecognized plugin kind: %s (must be one of: analyzer, language, resource, converter, tool)",
+				args[0])
 		} else if len(args) < 2 {
 			return errors.New("missing plugin name argument")
 		}
