@@ -1,0 +1,4 @@
+component: cli/deployment
+kind: fix
+body: "Stop `pulumi deployment settings get` padding its output for labels it does not print"
+time: 2026-08-24T10:15:00+00:00

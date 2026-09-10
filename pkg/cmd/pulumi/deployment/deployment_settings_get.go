@@ -518,25 +518,64 @@ func buildAdvancedView(o *apitype.OperationContextOptions) *advancedView {
 	}
 }
 
+type settingsText struct {
+	lines []settingsTextLine
+}
+
+type settingsTextLine struct {
+	label string
+	value string
+}
+
+func (t *settingsText) line(text string) {
+	t.lines = append(t.lines, settingsTextLine{value: text})
+}
+
+func (t *settingsText) kv(indent int, label, value string) {
+	t.lines = append(t.lines, settingsTextLine{
+		label: strings.Repeat(" ", indent) + label + ":",
+		value: value,
+	})
+}
+
+func (t *settingsText) section(title string) {
+	if len(t.lines) > 0 {
+		t.line("")
+	}
+	t.line(title)
+}
+
+func (t *settingsText) empty() bool {
+	return len(t.lines) == 0
+}
+
+// maxLabelWidth caps the column so one long environment variable name cannot indent every other
+// value. It is the width output was padded to before, so nothing renders wider than it used to.
+const maxLabelWidth = 32
+
+func (t *settingsText) flush(w io.Writer) {
+	width := 0
+	for _, l := range t.lines {
+		width = max(width, cmdutil.MeasureText(l.label))
+	}
+	width = min(width, maxLabelWidth)
+
+	for _, l := range t.lines {
+		if l.label == "" {
+			fmt.Fprintln(w, l.value)
+			continue
+		}
+		padding := strings.Repeat(" ", max(0, width-cmdutil.MeasureText(l.label)))
+		fmt.Fprintf(w, "%s%s %s\n", l.label, padding, l.value)
+	}
+}
+
 // renderDeploymentSettingsGetText prints a sectioned summary.
 // Empty sections are skipped entirely.
 func renderDeploymentSettingsGetText(w io.Writer, s apitype.DeploymentSettings) error {
 	v := toDeploymentSettingsView(s)
 
-	// Value column is the same across all sections, and is set by the longest label.
-	const valueColumn = 34
-	kv := func(indent int, label, value string) {
-		prefix := strings.Repeat(" ", indent) + label + ":"
-		fmt.Fprintf(w, "%-*s %s\n", valueColumn-2, prefix, value)
-	}
-	printedAny := false
-	section := func(title string) {
-		if printedAny {
-			fmt.Fprintln(w)
-		}
-		printedAny = true
-		fmt.Fprintln(w, title)
-	}
+	var out settingsText
 	yesno := func(b bool) string {
 		if b {
 			return "yes"
@@ -563,181 +602,180 @@ func renderDeploymentSettingsGetText(w io.Writer, s apitype.DeploymentSettings) 
 		{"Dependency cache", cache},
 	} {
 		if entry.value != "" {
-			kv(0, entry.label, entry.value)
-			printedAny = true
+			out.kv(0, entry.label, entry.value)
 		}
 	}
 
 	if v.Source != nil {
-		section(sourceSectionTitle(v.Source.Kind))
+		out.section(sourceSectionTitle(v.Source.Kind))
 		if v.Source.Repository != "" {
-			kv(2, "Repository", v.Source.Repository)
+			out.kv(2, "Repository", v.Source.Repository)
 		}
 		if v.Source.InstallationID != "" {
-			kv(2, "Installation ID", v.Source.InstallationID)
+			out.kv(2, "Installation ID", v.Source.InstallationID)
 		}
 		if v.Source.Branch != "" {
-			kv(2, "Branch", v.Source.Branch)
+			out.kv(2, "Branch", v.Source.Branch)
 		}
 		if v.Source.Commit != "" {
-			kv(2, "Commit", v.Source.Commit)
+			out.kv(2, "Commit", v.Source.Commit)
 		}
 		if v.Source.Revision != "" {
-			kv(2, "Revision", v.Source.Revision)
+			out.kv(2, "Revision", v.Source.Revision)
 		}
 		if v.Source.GitTag != "" {
-			kv(2, "Git tag", v.Source.GitTag)
+			out.kv(2, "Git tag", v.Source.GitTag)
 		}
 		if v.Source.Folder != "" {
-			kv(2, "Pulumi.yaml folder", v.Source.Folder)
+			out.kv(2, "Pulumi.yaml folder", v.Source.Folder)
 		}
 		if v.Source.TemplateSourceURL != "" {
-			kv(2, "Template source", v.Source.TemplateSourceURL)
+			out.kv(2, "Template source", v.Source.TemplateSourceURL)
 		}
 		if v.Source.ProjectTemplateSourceURL != "" {
-			kv(2, "Project template source", v.Source.ProjectTemplateSourceURL)
+			out.kv(2, "Project template source", v.Source.ProjectTemplateSourceURL)
 		}
 		if v.Source.Auth != "" {
-			kv(2, "Authentication", v.Source.Auth)
+			out.kv(2, "Authentication", v.Source.Auth)
 		}
 		if v.Source.PreviewPullRequests != nil {
-			kv(2, "Run previews for PRs", yesno(*v.Source.PreviewPullRequests))
+			out.kv(2, "Run previews for PRs", yesno(*v.Source.PreviewPullRequests))
 		}
 		if v.Source.RunUpdatesOnPush != nil {
-			kv(2, "Run updates on push", yesno(*v.Source.RunUpdatesOnPush))
+			out.kv(2, "Run updates on push", yesno(*v.Source.RunUpdatesOnPush))
 		}
 		if v.Source.PullRequestTemplate != nil {
-			kv(2, "PR stack template", yesno(*v.Source.PullRequestTemplate))
+			out.kv(2, "PR stack template", yesno(*v.Source.PullRequestTemplate))
 		}
 		if v.Source.DeployPullRequest != nil {
-			kv(2, "Deploy PR", strconv.FormatInt(*v.Source.DeployPullRequest, 10))
+			out.kv(2, "Deploy PR", strconv.FormatInt(*v.Source.DeployPullRequest, 10))
 		}
 		if v.Source.DeployTags {
-			kv(2, "Deploy on tag", "yes")
+			out.kv(2, "Deploy on tag", "yes")
 		}
 		if len(v.Source.TagFilters) > 0 {
-			kv(2, "Tag filters", strings.Join(v.Source.TagFilters, ", "))
+			out.kv(2, "Tag filters", strings.Join(v.Source.TagFilters, ", "))
 		}
 		if len(v.Source.PathFilters) > 0 {
-			kv(2, "Path filters", strings.Join(v.Source.PathFilters, ", "))
+			out.kv(2, "Path filters", strings.Join(v.Source.PathFilters, ", "))
 		}
 		if len(v.Source.ReviewStackLabels) > 0 {
-			kv(2, "Review stack labels", strings.Join(v.Source.ReviewStackLabels, ", "))
+			out.kv(2, "Review stack labels", strings.Join(v.Source.ReviewStackLabels, ", "))
 		}
 	}
 
 	if v.Runner != nil {
-		section("Deployment runner")
+		out.section("Deployment runner")
 		if v.Runner.Pool != "" {
-			kv(2, "Runner pool", v.Runner.Pool)
+			out.kv(2, "Runner pool", v.Runner.Pool)
 		}
 		if v.Runner.ExecutorImage != "" {
-			kv(2, "Executor image", v.Runner.ExecutorImage)
+			out.kv(2, "Executor image", v.Runner.ExecutorImage)
 		}
 		if v.Runner.DefaultImage {
-			kv(2, "Default image", "yes")
+			out.kv(2, "Default image", "yes")
 		}
 		if v.Runner.ImageCredentials {
-			kv(2, "Image credentials", "configured")
+			out.kv(2, "Image credentials", "configured")
 		}
 		if v.Runner.ExecutorRootPath != "" {
-			kv(2, "Executor root path", v.Runner.ExecutorRootPath)
+			out.kv(2, "Executor root path", v.Runner.ExecutorRootPath)
 		}
 	}
 
 	if len(v.PreRunCommands) > 0 {
-		section("Pre-run commands")
+		out.section("Pre-run commands")
 		for _, c := range v.PreRunCommands {
-			fmt.Fprintf(w, "  %s\n", c)
+			out.line("  " + c)
 		}
 	}
 
 	if len(v.EnvironmentVariables) > 0 {
-		section("Environment variables")
+		out.section("Environment variables")
 		for _, e := range v.EnvironmentVariables {
 			value := e.Value
 			if e.Secret {
 				value = "[secret]"
 			}
-			kv(2, e.Name, value)
+			out.kv(2, e.Name, value)
 		}
 	}
 
 	if v.OIDC != nil {
-		section("OIDC")
+		out.section("OIDC")
 		if v.OIDC.AWS != nil {
-			fmt.Fprintln(w, "  AWS")
+			out.line("  AWS")
 			if v.OIDC.AWS.RoleARN != "" {
-				kv(4, "Role ARN", v.OIDC.AWS.RoleARN)
+				out.kv(4, "Role ARN", v.OIDC.AWS.RoleARN)
 			}
 			if v.OIDC.AWS.SessionName != "" {
-				kv(4, "Session name", v.OIDC.AWS.SessionName)
+				out.kv(4, "Session name", v.OIDC.AWS.SessionName)
 			}
 			if v.OIDC.AWS.SessionDuration != "" {
-				kv(4, "Session duration", v.OIDC.AWS.SessionDuration)
+				out.kv(4, "Session duration", v.OIDC.AWS.SessionDuration)
 			}
 			if len(v.OIDC.AWS.PolicyARNs) > 0 {
-				kv(4, "Policy ARNs", strings.Join(v.OIDC.AWS.PolicyARNs, ", "))
+				out.kv(4, "Policy ARNs", strings.Join(v.OIDC.AWS.PolicyARNs, ", "))
 			}
 		}
 		if v.OIDC.Azure != nil {
-			fmt.Fprintln(w, "  Azure")
+			out.line("  Azure")
 			if v.OIDC.Azure.ClientID != "" {
-				kv(4, "Client ID", v.OIDC.Azure.ClientID)
+				out.kv(4, "Client ID", v.OIDC.Azure.ClientID)
 			}
 			if v.OIDC.Azure.TenantID != "" {
-				kv(4, "Tenant ID", v.OIDC.Azure.TenantID)
+				out.kv(4, "Tenant ID", v.OIDC.Azure.TenantID)
 			}
 			if v.OIDC.Azure.SubscriptionID != "" {
-				kv(4, "Subscription ID", v.OIDC.Azure.SubscriptionID)
+				out.kv(4, "Subscription ID", v.OIDC.Azure.SubscriptionID)
 			}
 		}
 		if v.OIDC.GCP != nil {
-			fmt.Fprintln(w, "  GCP")
+			out.line("  GCP")
 			if v.OIDC.GCP.ProjectNumber != "" {
-				kv(4, "Project number", v.OIDC.GCP.ProjectNumber)
+				out.kv(4, "Project number", v.OIDC.GCP.ProjectNumber)
 			}
 			if v.OIDC.GCP.WorkloadPool != "" {
-				kv(4, "Workload pool", v.OIDC.GCP.WorkloadPool)
+				out.kv(4, "Workload pool", v.OIDC.GCP.WorkloadPool)
 			}
 			if v.OIDC.GCP.Provider != "" {
-				kv(4, "Provider", v.OIDC.GCP.Provider)
+				out.kv(4, "Provider", v.OIDC.GCP.Provider)
 			}
 			if v.OIDC.GCP.ServiceAccount != "" {
-				kv(4, "Service account", v.OIDC.GCP.ServiceAccount)
+				out.kv(4, "Service account", v.OIDC.GCP.ServiceAccount)
 			}
 			if v.OIDC.GCP.Region != "" {
-				kv(4, "Region", v.OIDC.GCP.Region)
+				out.kv(4, "Region", v.OIDC.GCP.Region)
 			}
 			if v.OIDC.GCP.TokenLifetime != "" {
-				kv(4, "Token lifetime", v.OIDC.GCP.TokenLifetime)
+				out.kv(4, "Token lifetime", v.OIDC.GCP.TokenLifetime)
 			}
 		}
 	}
 
 	if v.Advanced != nil {
-		section("Advanced")
+		out.section("Advanced")
 		if v.Advanced.SkipInstallDependencies {
-			kv(2, "Skip install dependencies", "yes")
+			out.kv(2, "Skip install dependencies", "yes")
 		}
 		if v.Advanced.SkipIntermediateDeployments {
-			kv(2, "Skip intermediate deployments", "yes")
+			out.kv(2, "Skip intermediate deployments", "yes")
 		}
 		if v.Advanced.Shell != "" {
-			kv(2, "Shell", v.Advanced.Shell)
+			out.kv(2, "Shell", v.Advanced.Shell)
 		}
 		if v.Advanced.DeleteAfterDestroy {
-			kv(2, "Delete after destroy", "yes")
+			out.kv(2, "Delete after destroy", "yes")
 		}
 		if v.Advanced.RemediateIfDriftDetected {
-			kv(2, "Remediate on drift", "yes")
+			out.kv(2, "Remediate on drift", "yes")
 		}
 	}
-
-	if !printedAny {
-		fmt.Fprintln(w, "No deployment settings are configured for this stack.")
+	if out.empty() {
+		out.line("No deployment settings are configured for this stack.")
 	}
 
+	out.flush(w)
 	return nil
 }
 
