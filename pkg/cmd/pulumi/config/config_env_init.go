@@ -241,37 +241,6 @@ func (cmd *configEnvInitCmd) getStackConfig(
 	return ps, m, nil
 }
 
-func (cmd *configEnvInitCmd) render(v property.Value) any {
-	switch {
-	case v.Secret():
-		return map[string]any{
-			"fn::secret": cmd.render(v.WithSecret(false)),
-		}
-	case v.IsBool():
-		return v.AsBool()
-	case v.IsNumber():
-		return v.AsNumber()
-	case v.IsString():
-		return v.AsString()
-	case v.IsArray():
-		arrV := v.AsArray()
-		rendered := make([]any, arrV.Len())
-		for i, v := range arrV.All {
-			rendered[i] = cmd.render(v)
-		}
-		return rendered
-	case v.IsMap():
-		objV := v.AsMap()
-		rendered := make(map[string]any, objV.Len())
-		for k, v := range objV.All {
-			rendered[k] = cmd.render(v)
-		}
-		return rendered
-	default:
-		return nil
-	}
-}
-
 func (cmd *configEnvInitCmd) renderEnvironmentDefinition(
 	ctx context.Context,
 	envName string,
@@ -284,7 +253,7 @@ func (cmd *configEnvInitCmd) renderEnvironmentDefinition(
 	enc.SetIndent(2)
 	err := enc.Encode(map[string]any{
 		"values": map[string]any{
-			"pulumiConfig": cmd.render(property.New(config)),
+			"pulumiConfig": renderConfigValueForESC(property.New(config)),
 		},
 	})
 	if err != nil {

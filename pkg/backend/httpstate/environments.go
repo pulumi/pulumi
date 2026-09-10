@@ -16,6 +16,9 @@ package httpstate
 
 import (
 	"context"
+	"errors"
+	"fmt"
+	"net/http"
 	"time"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
@@ -33,9 +36,10 @@ func convertESCDiags(diags []client.EnvironmentDiagnostic) apitype.EnvironmentDi
 	apiDiags := make(apitype.EnvironmentDiagnostics, len(diags))
 	for i, d := range diags {
 		apiDiags[i] = apitype.EnvironmentDiagnostic{
-			Range:   d.Range,
-			Summary: d.Summary,
-			Detail:  d.Detail,
+			Range:    d.Range,
+			Summary:  d.Summary,
+			Detail:   d.Detail,
+			Severity: apitype.EnvironmentDiagnosticSeverity(d.Severity),
 		}
 	}
 	return apiDiags
@@ -78,4 +82,53 @@ func (b *cloudBackend) OpenYAMLEnvironment(
 	}
 	env, err := b.escClient.GetAnonymousOpenEnvironment(ctx, org, id)
 	return env, nil, err
+}
+
+func (b *cloudBackend) GetEnvironment(
+	ctx context.Context,
+	org string,
+	projectName string,
+	envName string,
+	version string,
+	decrypt bool,
+) (yaml []byte, etag string, revision int, err error) {
+	return b.escClient.GetEnvironment(ctx, org, projectName, envName, version, decrypt)
+}
+
+func (b *cloudBackend) UpdateEnvironmentWithProject(
+	ctx context.Context,
+	org string,
+	projectName string,
+	envName string,
+	yaml []byte,
+	etag string,
+) (apitype.EnvironmentDiagnostics, error) {
+	diags, err := b.escClient.UpdateEnvironmentWithProject(ctx, org, projectName, envName, yaml, etag)
+	return convertESCDiags(diags), translateConfigConflict(err)
+}
+
+// translateConfigConflict maps the esc client's 409 environment-update rejection to
+// backend.ErrConfigConflict so callers needn't import the esc client or match on HTTP status.
+func translateConfigConflict(err error) error {
+	if isConfigConflict(err) {
+		return fmt.Errorf("%w: %w", backend.ErrConfigConflict, err)
+	}
+	return err
+}
+
+// isConfigConflict reports whether err is a 409 from an esc environment update. The esc client
+// surfaces the status two ways depending on the response body: a structured body decodes into
+// *EnvironmentErrorResponse whose Code carries the echoed `code`, while an empty or non-JSON body
+// falls back to *apitype.ErrorResponse whose Code is set from the HTTP status. Matching only the
+// former would miss a 409 whose body omits `code`.
+func isConfigConflict(err error) bool {
+	var escErr *client.EnvironmentErrorResponse
+	if errors.As(err, &escErr) && escErr.Code == http.StatusConflict {
+		return true
+	}
+	var apiErr *apitype.ErrorResponse
+	if errors.As(err, &apiErr) && apiErr.Code == http.StatusConflict {
+		return true
+	}
+	return false
 }
