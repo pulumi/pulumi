@@ -20,7 +20,6 @@ import (
 	"slices"
 
 	"github.com/pulumi/pulumi/pkg/v3/engine"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
@@ -149,64 +148,6 @@ func (e diffJSONEncoder) arrayDiff(diff *resource.ArrayDiff) *ArrayDiffJSON {
 	return out
 }
 
-// stepObjectDiff computes the property diff a step displays, mirroring the
-// selection renderDiff makes: the provider's detailed diff when it supplied
-// one, and a structural diff of the step's old and new state otherwise. It also
-// returns the top-level keys the diff should be restricted to, if any, and the
-// property paths whose diffs are hidden.
-func stepObjectDiff(
-	step engine.StepEventMetadata,
-) (*resource.ObjectDiff, []resource.PropertyKey, []resource.PropertyPath) {
-	// An OpSame may carry a metadata change (e.g. protect) but never a property diff.
-	if step.Op == deploy.OpSame {
-		return nil, nil, nil
-	}
-
-	if step.DetailedDiff != nil && step.Old != nil && step.New != nil {
-		diff, hidden := engine.TranslateDetailedDiff(&step, false /* refresh */)
-		return diff, nil, hidden
-	}
-
-	var hidePaths []resource.PropertyPath
-	if step.New != nil {
-		hidePaths = step.New.HideDiffs
-	} else if step.Old != nil {
-		hidePaths = step.Old.HideDiffs
-	}
-
-	var hidden []resource.PropertyPath
-	opts := []resource.DiffOption{
-		resource.IgnoreKeyFunc(resource.IsInternalPropertyKey),
-		resource.IgnorePathFunc(func(path resource.PropertyPath) bool {
-			for _, v := range hidePaths {
-				if v.Contains(path) {
-					hidden = append(hidden, v)
-					return true
-				}
-			}
-			return false
-		}),
-	}
-
-	old, new := step.Old, step.New
-	switch {
-	case old == nil && new == nil:
-		return nil, nil, nil
-	case old == nil:
-		news := new.Inputs
-		if len(new.Outputs) > 0 {
-			news = new.Outputs
-		}
-		return resource.PropertyMap{}.DiffWithOptions(news, opts...), nil, hidden
-	case new == nil:
-		return old.Inputs.DiffWithOptions(nil, opts...), nil, hidden
-	case len(new.Outputs) > 0 && step.Op != deploy.OpImport && step.Op != deploy.OpImportReplacement:
-		return old.Outputs.DiffWithOptions(new.Outputs, opts...), nil, hidden
-	default:
-		return old.Inputs.DiffWithOptions(new.Inputs, opts...), step.Diffs, hidden
-	}
-}
-
 // filterObjectDiff restricts a diff to the given top-level keys, matching the
 // filtering printObjectDiff applies when a step reports its changed keys.
 func filterObjectDiff(diff *resource.ObjectDiff, include []resource.PropertyKey) *resource.ObjectDiff {
@@ -246,7 +187,8 @@ func filterObjectDiff(diff *resource.ObjectDiff, include []resource.PropertyKey)
 // stepDiffJSON renders a step's property diff as JSON, or nil when the step has
 // no diff to show.
 func stepDiffJSON(step engine.StepEventMetadata, showSecrets bool) *ObjectDiffJSON {
-	diff, include, hidden := stepObjectDiff(step)
+	olds, news, include := stepDiffOperands(step)
+	diff, hidden := stepObjectDiff(step, olds, news, false /* refresh */, stepHidePaths(step))
 	diff = filterObjectDiff(diff, include)
 	if diff == nil && len(hidden) == 0 {
 		return nil
@@ -256,7 +198,7 @@ func stepDiffJSON(step engine.StepEventMetadata, showSecrets bool) *ObjectDiffJS
 	if out == nil {
 		out = &ObjectDiffJSON{}
 	}
-	for _, p := range sortedUniquePaths(hidden) {
+	for _, p := range hidden {
 		out.Hidden = append(out.Hidden, p.String())
 	}
 	return out
