@@ -2358,6 +2358,20 @@ func (sg *stepGenerator) FlushDeferredSames() ([]Step, error) {
 	return sg.validateSteps(steps)
 }
 
+// ReleaseDeferredSamesFor emits the held-back same steps if urn is one of the resources whose step
+// is being held back. RegisterResourceOutputs needs the resource's step to have executed, so an
+// outputs event forces the release in the same way a dependent's step does.
+func (sg *stepGenerator) ReleaseDeferredSamesFor(urn resource.URN) ([]Step, error) {
+	if !sg.deferredSameURNs[urn] {
+		return nil, nil
+	}
+	steps, err := sg.emitDeferredSames()
+	if err != nil {
+		return nil, err
+	}
+	return sg.validateSteps(steps)
+}
+
 // dependsOnDeferredSame reports whether any of the given steps is for a resource that depends on
 // one whose same step is currently held back. Such a step may not be emitted first, or it would
 // precede its own dependency in the snapshot.

@@ -24,6 +24,7 @@ import (
 	"sync"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
 
@@ -5329,6 +5330,77 @@ func TestTargetedStepAfterDeferredUntargetedSame(t *testing.T) {
 	targetedOpts.Targets = deploy.NewUrnTargetsFromUrns([]resource.URN{targetedURN})
 
 	snap, err = lt.TestOp(Update).Run(project, p.GetTarget(t, snap), targetedOpts, false, p.BackendClient, nil)
+	require.NoError(t, err)
+	require.NoError(t, snap.VerifyIntegrity())
+}
+
+// Holding a same step back must not hold the resource's registration open: the program is free to
+// register the very dependency the step is waiting on, and does so here only after the RPC for the
+// held-back resource has returned. Registering outputs also needs the held-back step to have run.
+// See https://github.com/pulumi/pulumi/issues/24303.
+func TestDeferredUntargetedSameCompletesRegistration(t *testing.T) {
+	t.Parallel()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+	}
+
+	oldDependencyURN := resource.URN("urn:pulumi:test::test::pkgA:m:typComponent::old-dependency")
+	targetedURN := resource.URN("urn:pulumi:test::test::pkgA:m:typA::targeted")
+
+	var dropEdge bool
+
+	program := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		deferredOpts := deploytest.ResourceOptions{}
+		if !dropEdge {
+			_, err := monitor.RegisterResource("pkgA:m:typComponent", "old-dependency", false)
+			require.NoError(t, err)
+			deferredOpts.Dependencies = []resource.URN{oldDependencyURN}
+		}
+
+		// Every call below is sequential on this goroutine, so anything the engine waits for
+		// before answering one of them can never arrive.
+		deferred, err := monitor.RegisterResource("pkgA:m:typComponent", "deferred", false, deferredOpts)
+		require.NoError(t, err)
+		require.NoError(t, monitor.RegisterResourceOutputs(deferred.URN, resource.PropertyMap{}))
+
+		_, err = monitor.RegisterResource("pkgA:m:typA", "targeted", true)
+		require.NoError(t, err)
+
+		if dropEdge {
+			_, err = monitor.RegisterResource("pkgA:m:typComponent", "old-dependency", false)
+			require.NoError(t, err)
+		}
+		return nil
+	})
+
+	hostF := deploytest.NewPluginHostF(nil, nil, program, nil, nil, loaders...)
+	p := &lt.TestPlan{}
+	project := p.GetProject()
+	opts := lt.TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true}
+
+	snap, err := lt.TestOp(Update).Run(project, p.GetTarget(t, nil), opts, false, p.BackendClient, nil)
+	require.NoError(t, err)
+
+	dropEdge = true
+	targetedOpts := opts
+	targetedOpts.Targets = deploy.NewUrnTargetsFromUrns([]resource.URN{targetedURN})
+
+	// A deadlock here would otherwise surface as the whole package timing out, naming whichever
+	// test happened to be running.
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		snap, err = lt.TestOp(Update).Run(project, p.GetTarget(t, snap), targetedOpts, false, p.BackendClient, nil)
+	}()
+	select {
+	case <-done:
+	case <-time.After(60 * time.Second):
+		t.Fatal("deployment did not terminate")
+	}
+
 	require.NoError(t, err)
 	require.NoError(t, snap.VerifyIntegrity())
 }

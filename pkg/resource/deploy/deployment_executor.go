@@ -638,6 +638,15 @@ func (ex *deploymentExecutor) handleSingleEvent(ctx context.Context, event Sourc
 		steps, err = ex.stepGen.GenerateReadSteps(e)
 	case RegisterResourceOutputsEvent:
 		logging.V(4).Infof("deploymentExecutor.handleSingleEvent(...): received register resource outputs")
+		// Registering outputs needs the resource's own step to have executed, so release it if it
+		// is being held back.
+		released, releaseErr := ex.stepGen.ReleaseDeferredSamesFor(e.URN())
+		if releaseErr != nil {
+			return releaseErr
+		}
+		if len(released) > 0 {
+			ex.stepExec.ExecuteSerial(released).Wait(ctx)
+		}
 		return ex.stepExec.ExecuteRegisterResourceOutputs(e)
 	}
 
