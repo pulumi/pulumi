@@ -202,6 +202,7 @@ func (p *SecretProvider) CheckConfig(
 func (p *SecretProvider) Check(
 	_ context.Context, req plugin.CheckRequest,
 ) (plugin.CheckResponse, error) {
+	news := resource.ToResourcePropertyMap(req.NewInputs)
 	if req.URN.Type() != "secret:index:Resource" {
 		return plugin.CheckResponse{
 			Failures: makeCheckFailure("", fmt.Sprintf("invalid URN type: %s", req.URN.Type())),
@@ -268,25 +269,25 @@ func (p *SecretProvider) Check(
 			unsecret(data["public"]).IsString()
 	}
 
-	check := assertField(req.News, "privateData", "secret object", isSecretObject)
+	check := assertField(news, "privateData", "secret object", isSecretObject)
 	if check != nil {
 		return *check, nil
 	}
-	check = assertField(req.News, "publicData", "object", resource.PropertyValue.IsObject)
+	check = assertField(news, "publicData", "object", resource.PropertyValue.IsObject)
 	if check != nil {
 		return *check, nil
 	}
-	check = assertField(req.News, "private", "secret string", isSecretString)
+	check = assertField(news, "private", "secret string", isSecretString)
 	if check != nil {
 		return *check, nil
 	}
-	check = assertField(req.News, "public", "string", func(v resource.PropertyValue) bool {
+	check = assertField(news, "public", "string", func(v resource.PropertyValue) bool {
 		return unsecret(v).IsString()
 	})
 	if check != nil {
 		return *check, nil
 	}
-	check = assertField(req.News, "privateArray", "secret array of strings", func(v resource.PropertyValue) bool {
+	check = assertField(news, "privateArray", "secret array of strings", func(v resource.PropertyValue) bool {
 		if !isSecretArray(v) {
 			return false
 		}
@@ -300,7 +301,7 @@ func (p *SecretProvider) Check(
 	if check != nil {
 		return *check, nil
 	}
-	check = assertField(req.News, "privateMap", "secret map of strings", func(v resource.PropertyValue) bool {
+	check = assertField(news, "privateMap", "secret map of strings", func(v resource.PropertyValue) bool {
 		if !isSecretObject(v) {
 			return false
 		}
@@ -314,7 +315,7 @@ func (p *SecretProvider) Check(
 	if check != nil {
 		return *check, nil
 	}
-	check = assertField(req.News, "privateDataArray", "secret array of Data", func(v resource.PropertyValue) bool {
+	check = assertField(news, "privateDataArray", "secret array of Data", func(v resource.PropertyValue) bool {
 		if !isSecretArray(v) {
 			return false
 		}
@@ -328,7 +329,7 @@ func (p *SecretProvider) Check(
 	if check != nil {
 		return *check, nil
 	}
-	check = assertField(req.News, "privateDataMap", "secret map of Data", func(v resource.PropertyValue) bool {
+	check = assertField(news, "privateDataMap", "secret map of Data", func(v resource.PropertyValue) bool {
 		if !isSecretObject(v) {
 			return false
 		}
@@ -343,13 +344,13 @@ func (p *SecretProvider) Check(
 		return *check, nil
 	}
 
-	if len(req.News) != 8 {
+	if len(news) != 8 {
 		return plugin.CheckResponse{
-			Failures: makeCheckFailure("", fmt.Sprintf("too many properties: %v", req.News)),
+			Failures: makeCheckFailure("", fmt.Sprintf("too many properties: %v", news)),
 		}, nil
 	}
 
-	publicData := req.News["publicData"].ObjectValue()
+	publicData := news["publicData"].ObjectValue()
 	check = assertField(publicData, "private", "string", func(v resource.PropertyValue) bool {
 		return unsecret(v).IsString()
 	})
@@ -368,7 +369,7 @@ func (p *SecretProvider) Check(
 		}, nil
 	}
 
-	privateData := unsecret(req.News["privateData"]).ObjectValue()
+	privateData := unsecret(news["privateData"]).ObjectValue()
 	check = assertField(privateData, "private", "string", func(v resource.PropertyValue) bool {
 		return unsecret(v).IsString()
 	})
@@ -387,7 +388,7 @@ func (p *SecretProvider) Check(
 		}, nil
 	}
 
-	return plugin.CheckResponse{Properties: req.News}, nil
+	return plugin.CheckResponse{Properties: resource.FromResourcePropertyMap(news)}, nil
 }
 
 func (p *SecretProvider) Create(

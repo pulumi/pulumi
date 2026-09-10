@@ -623,36 +623,40 @@ func (r *Registry) Check(ctx context.Context, req plugin.CheckRequest) (plugin.C
 	contract.Requiref(providers.IsProviderType(req.URN.Type()), "urn", "must be a provider type, got %v", req.URN.Type())
 
 	label := fmt.Sprintf("%s.Check(%s)", r.label(), req.URN)
-	logging.V(7).Infof("%s executing (#olds=%d,#news=%d)", label, len(req.Olds), len(req.News))
+	logging.V(7).Infof("%s executing (#oldInputs=%d,#newInputs=%d)",
+		label, req.OldInputs.Len(), req.NewInputs.Len())
+
+	oldInputs := resource.ToResourcePropertyMap(req.OldInputs)
+	newInputs := resource.ToResourcePropertyMap(req.NewInputs)
 
 	// Parse the version from the provider properties and load the provider.
 	providerPkg := providers.GetProviderPackage(req.URN.Type())
-	name, err := GetProviderName(providerPkg, req.News)
+	name, err := GetProviderName(providerPkg, newInputs)
 	if err != nil {
 		return plugin.CheckResponse{Failures: []plugin.CheckFailure{{
 			Property: "name", Reason: err.Error(),
 		}}}, nil
 	}
-	version, err := GetProviderVersion(req.News)
+	version, err := GetProviderVersion(newInputs)
 	if err != nil {
 		return plugin.CheckResponse{Failures: []plugin.CheckFailure{{
 			Property: "version", Reason: err.Error(),
 		}}}, nil
 	}
-	downloadURL, err := GetProviderDownloadURL(req.News)
+	downloadURL, err := GetProviderDownloadURL(newInputs)
 	if err != nil {
 		return plugin.CheckResponse{Failures: []plugin.CheckFailure{{
 			Property: "pluginDownloadURL", Reason: err.Error(),
 		}}}, nil
 	}
-	parameter, err := GetProviderParameterization(providerPkg, req.News)
+	parameter, err := GetProviderParameterization(providerPkg, newInputs)
 	if err != nil {
 		return plugin.CheckResponse{Failures: []plugin.CheckFailure{{
 			Property: "parameter", Reason: err.Error(),
 		}}}, nil
 	}
 
-	envVarMappings, err := GetEnvironmentVariableMappings(req.News)
+	envVarMappings, err := GetEnvironmentVariableMappings(newInputs)
 	if err != nil {
 		return plugin.CheckResponse{Failures: []plugin.CheckFailure{{
 			Property: "envVarMappings", Reason: err.Error(),
@@ -672,8 +676,8 @@ func (r *Registry) Check(ctx context.Context, req plugin.CheckRequest) (plugin.C
 	// Check the provider's config. If the check fails, unload the provider.
 	resp, err := provider.CheckConfig(ctx, plugin.CheckConfigRequest{
 		URN:           req.URN,
-		Olds:          resource.FromResourcePropertyMap(FilterProviderConfig(req.Olds)),
-		News:          resource.FromResourcePropertyMap(FilterProviderConfig(req.News)),
+		Olds:          resource.FromResourcePropertyMap(FilterProviderConfig(oldInputs)),
+		News:          resource.FromResourcePropertyMap(FilterProviderConfig(newInputs)),
 		AllowUnknowns: true,
 	})
 	if len(resp.Failures) != 0 || err != nil {
@@ -689,13 +693,13 @@ func (r *Registry) Check(ctx context.Context, req plugin.CheckRequest) (plugin.C
 	// If the provider tries to drop the versions field reset it back to the original value.
 	if _, ok := properties[versionKey]; !ok {
 		// Only set it if we had it originally
-		if _, ok := req.News[versionKey]; ok {
-			properties[versionKey] = req.News[versionKey]
+		if _, ok := newInputs[versionKey]; ok {
+			properties[versionKey] = newInputs[versionKey]
 		}
 	}
 	// If the provider tries to change the version field return an error
 	if newV, ok := properties[versionKey]; ok {
-		if oldV, ok := req.News[versionKey]; ok {
+		if oldV, ok := newInputs[versionKey]; ok {
 			if !oldV.DeepEquals(newV) {
 				return plugin.CheckResponse{}, fmt.Errorf("provider %q attempted to change version from %q to %q",
 					req.URN, oldV.StringValue(), newV.StringValue())
@@ -705,15 +709,15 @@ func (r *Registry) Check(ctx context.Context, req plugin.CheckRequest) (plugin.C
 
 	// We stripped __internal off of "News" when we passed it to CheckConfig, we need to readd it the checked
 	// properties returned from the plugin. Only add __internal back if it was originally in the inputs.
-	if _, has := req.News[internalKey]; has {
+	if _, has := newInputs[internalKey]; has {
 		// Before we reset it warn the user that the providers data is being discarded
 		if _, has := properties[internalKey]; has {
 			r.pctx.Host.Log(diag.Warning, req.URN, "provider attempted to use __internal key that is reserved by the engine", 0)
 		}
-		properties[internalKey] = req.News[internalKey]
+		properties[internalKey] = newInputs[internalKey]
 	}
 
-	return plugin.CheckResponse{Properties: properties}, nil
+	return plugin.CheckResponse{Properties: resource.FromResourcePropertyMap(properties)}, nil
 }
 
 // RegisterAliases informs the registry that the new provider object with the given URN is aliased to the given list

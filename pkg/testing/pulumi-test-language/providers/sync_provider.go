@@ -78,6 +78,7 @@ func (p *SyncProvider) CheckConfig(
 func (p *SyncProvider) Check(
 	_ context.Context, req plugin.CheckRequest,
 ) (plugin.CheckResponse, error) {
+	news := resource.ToResourcePropertyMap(req.NewInputs)
 	// URN should be of the form "sync:index:Resource"
 	if req.URN.Type() != "sync:index:Block" {
 		return plugin.CheckResponse{
@@ -85,7 +86,7 @@ func (p *SyncProvider) Check(
 		}, nil
 	}
 
-	return plugin.CheckResponse{Properties: req.News}, nil
+	return plugin.CheckResponse{Properties: resource.FromResourcePropertyMap(news)}, nil
 }
 
 func (p *SyncProvider) Create(

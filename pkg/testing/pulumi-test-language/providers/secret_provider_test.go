@@ -239,8 +239,8 @@ func TestSecretProvider_Check(t *testing.T) {
 			tt.mutate(props)
 			p := &SecretProvider{}
 			resp, err := p.Check(t.Context(), plugin.CheckRequest{
-				URN:  resource.NewURN("test-stack", "test-project", "", "secret:index:Resource", "res"),
-				News: props,
+				URN:       resource.NewURN("test-stack", "test-project", "", "secret:index:Resource", "res"),
+				NewInputs: resource.FromResourcePropertyMap(props),
 			})
 			require.NoError(t, err)
 			if tt.wantFail {

@@ -175,6 +175,7 @@ func (p *ExtensionParameterizedProvider) CheckConfig(
 func (p *ExtensionParameterizedProvider) Check(
 	_ context.Context, req plugin.CheckRequest,
 ) (plugin.CheckResponse, error) {
+	news := resource.ToResourcePropertyMap(req.NewInputs)
 	extName, _, _ := p.snapshot()
 	greeting := extName + ":index:Greeting"
 	base := extensionBaseName + ":index:Base"
@@ -184,7 +185,7 @@ func (p *ExtensionParameterizedProvider) Check(
 				fmt.Sprintf("invalid URN type %s, expected %s or %s", t, greeting, base)),
 		}, nil
 	}
-	return plugin.CheckResponse{Properties: req.News}, nil
+	return plugin.CheckResponse{Properties: resource.FromResourcePropertyMap(news)}, nil
 }
 
 func (p *ExtensionParameterizedProvider) Create(

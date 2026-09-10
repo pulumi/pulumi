@@ -1966,8 +1966,9 @@ func TestEnsureUntargetedSame(t *testing.T) {
 					req plugin.CheckRequest,
 				) (plugin.CheckResponse, error) {
 					// Pulumi GCP provider alters inputs during Check.
-					req.News["__defaults"] = resource.NewProperty("exists")
-					return plugin.CheckResponse{Properties: req.News}, nil
+					newInputs := resource.ToResourcePropertyMap(req.NewInputs)
+					newInputs["__defaults"] = resource.NewProperty("exists")
+					return plugin.CheckResponse{Properties: resource.FromResourcePropertyMap(newInputs)}, nil
 				},
 			}, nil
 		}),

@@ -125,12 +125,13 @@ func (p *AssetArchiveProvider) CheckConfig(
 func (p *AssetArchiveProvider) Check(
 	_ context.Context, req plugin.CheckRequest,
 ) (plugin.CheckResponse, error) {
+	news := resource.ToResourcePropertyMap(req.NewInputs)
 	isAsset, err := p.checkType(req.URN)
 	if err != nil {
 		return plugin.CheckResponse{Failures: makeCheckFailure("", err.Error())}, nil
 	}
 
-	value, ok := req.News["value"]
+	value, ok := news["value"]
 	if !ok {
 		return plugin.CheckResponse{Failures: makeCheckFailure("value", "missing value")}, nil
 	}
@@ -144,11 +145,11 @@ func (p *AssetArchiveProvider) Check(
 		}
 	}
 
-	if len(req.News) != 1 {
-		return plugin.CheckResponse{Failures: makeCheckFailure("", fmt.Sprintf("too many properties: %v", req.News))}, nil
+	if len(news) != 1 {
+		return plugin.CheckResponse{Failures: makeCheckFailure("", fmt.Sprintf("too many properties: %v", news))}, nil
 	}
 
-	return plugin.CheckResponse{Properties: req.News}, nil
+	return plugin.CheckResponse{Properties: resource.FromResourcePropertyMap(news)}, nil
 }
 
 func (p *AssetArchiveProvider) Create(

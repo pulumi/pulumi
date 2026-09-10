@@ -66,8 +66,8 @@ func TestBuiltinProvider(t *testing.T) {
 			p := &builtinProvider{}
 			_, err := p.Check(t.Context(), plugin.CheckRequest{
 				URN:           resource.CreateURN("foo", "not-stack-reference-type", "", "proj", "stack"),
-				Olds:          resource.PropertyMap{},
-				News:          resource.PropertyMap{},
+				OldInputs:     property.Map{},
+				NewInputs:     property.Map{},
 				AllowUnknowns: true,
 			})
 			assert.ErrorContains(t, err, "unrecognized resource type")
@@ -79,8 +79,8 @@ func TestBuiltinProvider(t *testing.T) {
 			}
 			resp, err := p.Check(t.Context(), plugin.CheckRequest{
 				URN:           resource.CreateURN("foo", stackReferenceType, "", "proj", "stack"),
-				Olds:          resource.PropertyMap{},
-				News:          resource.PropertyMap{},
+				OldInputs:     property.Map{},
+				NewInputs:     property.Map{},
 				AllowUnknowns: true,
 			})
 			assert.Equal(t, []plugin.CheckFailure{
@@ -97,11 +97,11 @@ func TestBuiltinProvider(t *testing.T) {
 				diag: &deploytest.NoopSink{},
 			}
 			resp, err := p.Check(t.Context(), plugin.CheckRequest{
-				URN:  resource.CreateURN("foo", stackReferenceType, "", "proj", "stack"),
-				Olds: resource.PropertyMap{},
-				News: resource.PropertyMap{
-					"name": resource.NewProperty(10.0),
-				},
+				URN:       resource.CreateURN("foo", stackReferenceType, "", "proj", "stack"),
+				OldInputs: property.Map{},
+				NewInputs: property.NewMap(map[string]property.Value{
+					"name": property.New(10.0),
+				}),
 				AllowUnknowns: true,
 			})
 			assert.Equal(t, []plugin.CheckFailure{
@@ -119,16 +119,16 @@ func TestBuiltinProvider(t *testing.T) {
 			}
 			resp, err := p.Check(t.Context(), plugin.CheckRequest{
 				URN: resource.CreateURN("foo", stackReferenceType, "", "proj", "stack"),
-				News: resource.PropertyMap{
-					"name": resource.NewProperty("res-name"),
-				},
+				NewInputs: property.NewMap(map[string]property.Value{
+					"name": property.New("res-name"),
+				}),
 				AllowUnknowns: true,
 			})
 			assert.Nil(t, resp.Failures)
 			require.NoError(t, err)
-			assert.Equal(t, resource.PropertyMap{
-				"name": resource.NewProperty("res-name"),
-			}, resp.Properties)
+			assert.Equal(t, property.NewMap(map[string]property.Value{
+				"name": property.New("res-name"),
+			}), resp.Properties)
 		})
 	})
 	t.Run("Update (always fails)", func(t *testing.T) {

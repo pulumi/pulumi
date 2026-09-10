@@ -205,38 +205,39 @@ func (p *KebabNamesProvider) CheckConfig(
 func (p *KebabNamesProvider) Check(
 	_ context.Context, req plugin.CheckRequest,
 ) (plugin.CheckResponse, error) {
+	news := resource.ToResourcePropertyMap(req.NewInputs)
 	switch typ := req.URN.Type(); typ {
 	case "kebab-names:kebab-module:some-resource":
-		if _, ok := req.News["the-input"]; !ok {
+		if _, ok := news["the-input"]; !ok {
 			return plugin.CheckResponse{
 				Failures: makeCheckFailure("the-input", "missing the-input"),
 			}, nil
 		}
-		if _, ok := req.News["nested"]; !ok {
+		if _, ok := news["nested"]; !ok {
 			return plugin.CheckResponse{
 				Failures: makeCheckFailure("nested", "missing nested"),
 			}, nil
 		}
-		if len(req.News) != 2 {
+		if len(news) != 2 {
 			return plugin.CheckResponse{
-				Failures: makeCheckFailure("", fmt.Sprintf("unexpected properties: %v", req.News)),
+				Failures: makeCheckFailure("", fmt.Sprintf("unexpected properties: %v", news)),
 			}, nil
 		}
-		return plugin.CheckResponse{Properties: req.News}, nil
+		return plugin.CheckResponse{Properties: resource.FromResourcePropertyMap(news)}, nil
 	case "kebab-names:kebab-module:another-resource":
-		if _, ok := req.News["the-input"]; !ok {
+		if _, ok := news["the-input"]; !ok {
 			return plugin.CheckResponse{
 				Failures: makeCheckFailure("the-input", "missing the-input"),
 			}, nil
 		}
-		if len(req.News) != 1 {
+		if len(news) != 1 {
 			return plugin.CheckResponse{
-				Failures: makeCheckFailure("", fmt.Sprintf("unexpected properties: %v", req.News)),
+				Failures: makeCheckFailure("", fmt.Sprintf("unexpected properties: %v", news)),
 			}, nil
 		}
-		return plugin.CheckResponse{Properties: req.News}, nil
+		return plugin.CheckResponse{Properties: resource.FromResourcePropertyMap(news)}, nil
 	case tokens.RootStackType:
-		return plugin.CheckResponse{Properties: req.News}, nil
+		return plugin.CheckResponse{Properties: resource.FromResourcePropertyMap(news)}, nil
 	default:
 		return plugin.CheckResponse{
 			Failures: makeCheckFailure("", fmt.Sprintf("invalid URN type: %s", typ)),
