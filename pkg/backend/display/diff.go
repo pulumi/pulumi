@@ -80,7 +80,10 @@ func ShowDiffEvents(op string, events <-chan engine.Event, done chan<- bool, opt
 
 			out := stdout
 			if event.Type == engine.DiagEvent {
-				out = stderr
+				payload := event.Payload().(engine.DiagEventPayload)
+				if payload.Severity == diag.Error || payload.Severity == diag.Warning {
+					out = stderr
+				}
 			}
 			if event.Type == engine.ResourceOperationFailed {
 				resourcesErrored++

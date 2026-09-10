@@ -1,0 +1,4 @@
+component: cli/display
+kind: fix
+body: Send info-level diagnostics to stdout in the diff display, so only warnings and errors go to stderr
+time: 2026-09-02T11:34:16.711983+02:00
