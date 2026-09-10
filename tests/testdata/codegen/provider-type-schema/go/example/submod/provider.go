@@ -56,6 +56,12 @@ func (ProviderState) ElementType() reflect.Type {
 	return reflect.TypeOf((*providerState)(nil)).Elem()
 }
 
+// ProviderExists checks whether an existing Provider resource with the given ID exists.
+func ProviderExists(ctx *pulumi.Context,
+	id pulumi.IDInput, state *ProviderState, opts ...pulumi.ResourceOption) pulumi.BoolOutput {
+	return ctx.ExistsResource("providerType:submod:provider", id, state, opts...)
+}
+
 type providerArgs struct {
 	A *bool `pulumi:"a"`
 }

@@ -1,0 +1,5 @@
+name: l2-resource-exists
+runtime:
+  name: nodejs
+  options:
+    typescript: false

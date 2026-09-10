@@ -43,6 +43,11 @@ class ResourceMonitorStub(object):
                 request_serializer=pulumi_dot_resource__pb2.ReadResourceRequest.SerializeToString,
                 response_deserializer=pulumi_dot_resource__pb2.ReadResourceResponse.FromString,
                 )
+        self.ExistsResource = channel.unary_unary(
+                '/pulumirpc.ResourceMonitor/ExistsResource',
+                request_serializer=pulumi_dot_resource__pb2.ExistsResourceRequest.SerializeToString,
+                response_deserializer=pulumi_dot_resource__pb2.ExistsResourceResponse.FromString,
+                )
         self.RegisterResource = channel.unary_unary(
                 '/pulumirpc.ResourceMonitor/RegisterResource',
                 request_serializer=pulumi_dot_resource__pb2.RegisterResourceRequest.SerializeToString,
@@ -123,6 +128,12 @@ class ResourceMonitorServicer(object):
         raise NotImplementedError('Method not implemented!')
 
     def ReadResource(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def ExistsResource(self, request, context):
         """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
@@ -218,6 +229,11 @@ def add_ResourceMonitorServicer_to_server(servicer, server):
                     servicer.ReadResource,
                     request_deserializer=pulumi_dot_resource__pb2.ReadResourceRequest.FromString,
                     response_serializer=pulumi_dot_resource__pb2.ReadResourceResponse.SerializeToString,
+            ),
+            'ExistsResource': grpc.unary_unary_rpc_method_handler(
+                    servicer.ExistsResource,
+                    request_deserializer=pulumi_dot_resource__pb2.ExistsResourceRequest.FromString,
+                    response_serializer=pulumi_dot_resource__pb2.ExistsResourceResponse.SerializeToString,
             ),
             'RegisterResource': grpc.unary_unary_rpc_method_handler(
                     servicer.RegisterResource,
@@ -352,6 +368,23 @@ class ResourceMonitor(object):
         return grpc.experimental.unary_unary(request, target, '/pulumirpc.ResourceMonitor/ReadResource',
             pulumi_dot_resource__pb2.ReadResourceRequest.SerializeToString,
             pulumi_dot_resource__pb2.ReadResourceResponse.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def ExistsResource(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/pulumirpc.ResourceMonitor/ExistsResource',
+            pulumi_dot_resource__pb2.ExistsResourceRequest.SerializeToString,
+            pulumi_dot_resource__pb2.ExistsResourceResponse.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 

@@ -17,6 +17,16 @@ export class Another_resource extends pulumi.CustomResource {
         return new Another_resource(name, undefined as any, { ...opts, id: id });
     }
 
+    /**
+     * Check whether an existing Another_resource resource with the given ID exists.
+     *
+     * @param id The _unique_ provider ID of the resource to check.
+     * @param opts Optional settings to control the behavior of the CustomResource.
+     */
+    public static exists(id: pulumi.Input<pulumi.ID>, opts?: pulumi.CustomResourceOptions): pulumi.Output<boolean> {
+        return pulumi.runtime.existsResource("snake_names:cool_module:another_resource", id, {}, { ...opts }, undefined);
+    }
+
     /** @internal */
     public static readonly __pulumiType = 'snake_names:cool_module:another_resource';
 

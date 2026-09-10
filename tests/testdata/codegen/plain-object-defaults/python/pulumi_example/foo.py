@@ -175,6 +175,15 @@ class Foo(pulumi.CustomResource):
         __props__.__dict__["default_kube_client_settings"] = None
         return Foo(resource_name, opts=opts, __props__=__props__)
 
+    @staticmethod
+    def exists(id: pulumi.Input[str],
+            opts: Optional[pulumi.ResourceOptions] = None) -> pulumi.Output[bool]:
+        __props__ = FooArgs.__new__(FooArgs)
+
+        __props__.__dict__["default_kube_client_settings"] = None
+        __inst__ = Foo.__new__(Foo)
+        return pulumi.runtime.exists_resource(__inst__, 'example:index:Foo', id, __props__, opts or pulumi.ResourceOptions())
+
     @_builtins.property
     @pulumi.getter(name="defaultKubeClientSettings")
     def default_kube_client_settings(self) -> pulumi.Output[Optional['outputs.KubeClientSettings']]:
