@@ -1,4 +1,0 @@
-component: engine
-kind: fix
-body: Allow component state migrations to split managed state using compatible existing resource identities
-time: 2026-09-05T15:00:00+02:00
