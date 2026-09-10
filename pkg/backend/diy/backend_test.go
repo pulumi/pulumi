@@ -191,6 +191,12 @@ func TestMassageBlobPath(t *testing.T) {
 		testMassagePath(t, FilePathPrefix+"/1/2/3/../4/..", FilePathPrefix+expected+noTmpDirSuffix)
 	})
 
+	t.Run("DriveLetterURI", func(t *testing.T) {
+		t.Parallel()
+
+		testMassagePath(t, FilePathPrefix+"/C:/Users/steve", FilePathPrefix+"/C:/Users/steve"+noTmpDirSuffix)
+	})
+
 	t.Run("AlreadySuffixedWithNoTmpDir", func(t *testing.T) {
 		t.Parallel()
 
