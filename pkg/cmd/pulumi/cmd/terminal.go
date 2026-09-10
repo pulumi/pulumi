@@ -52,7 +52,7 @@ func OptimalPageSize(opts OptimalPageSizeOpts) int {
 	} else if _, height, err := term.GetSize(0); err == nil {
 		pageSize = height
 	}
-	// Subtract the buffer from the terminal height, not from the option count.
+	// Reserve rows for the prompt and help lines so the list does not push them off screen.
 	const buffer = 5
 	if pageSize > buffer {
 		pageSize = pageSize - buffer
