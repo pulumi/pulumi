@@ -45,6 +45,24 @@ func newPluginListCmd(pluginContext pluginstorage.Context) *cobra.Command {
 		Use:     "list",
 		Aliases: []string{"ls"},
 		Short:   "List plugins",
+		Long: "List plugins.\n" +
+			"\n" +
+			"This command lists the plugins in the local plugin cache: the plugins\n" +
+			"directory under your Pulumi home directory, ~/.pulumi by default.  It\n" +
+			"shows the size, install time, and last use of each.\n" +
+			"\n" +
+			"Plugins bundled with the Pulumi CLI are installed next to the pulumi\n" +
+			"binary rather than in the cache, so they are not listed.  This includes\n" +
+			"the language hosts for Node.js, Python, Go, .NET, Java, and YAML.  A\n" +
+			"language plugin that is not bundled, such as one you installed\n" +
+			"yourself, is cached like any other plugin and does appear.\n" +
+			"\n" +
+			"Use --project (-p) to list the plugins the current project requires\n" +
+			"instead.  Those are resolved the way the CLI would load them, so\n" +
+			"bundled language hosts do appear; plugins that are not installed are\n" +
+			"omitted.\n" +
+			"\n" +
+			"Use --output json to emit the list as JSON.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// Produce a list of plugins, sorted by name and version.
 			var plugins []workspace.PluginInfo
