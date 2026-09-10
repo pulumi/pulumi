@@ -788,6 +788,150 @@ func TestDeploymentSettingsEdit_GuardRejectsProviderChange(t *testing.T) {
 	}
 }
 
+// storedGitURLSettings models a stack configured against a repository url rather than through a
+// version control integration.
+func storedGitURLSettings(auth *apitype.GitAuthConfig) *apitype.DeploymentSettings {
+	return &apitype.DeploymentSettings{
+		SourceContext: &apitype.SourceContext{
+			Git: &apitype.SourceContextGit{
+				RepoURL: "https://git.acme.example/infra.git",
+				Branch:  "main",
+				GitAuth: auth,
+			},
+		},
+	}
+}
+
+func TestDeploymentSettingsEdit_AdoptingAProviderDropsTheRepoURL(t *testing.T) {
+	t.Parallel()
+	got := captureEditPatch(t, deploymentSettingsEditArgs{
+		repo:         "acme/infra",
+		vcsProvider:  "gitlab",
+		flagsChanged: flagsSet(flagRepo, flagVCSProvider),
+	}, &mockDeploymentSettingsEditClient{getResp: storedGitURLSettings(nil)})
+
+	assert.JSONEq(t, `{
+		"vcs": {"provider": "gitlab", "repository": "acme/infra"},
+		"sourceContext": {"git": {"repoUrl": null}}
+	}`, string(got))
+}
+
+func TestDeploymentSettingsEdit_VCSEditLeavesAnAbsentRepoURLAlone(t *testing.T) {
+	t.Parallel()
+	got := captureEditPatch(t, deploymentSettingsEditArgs{
+		previewPRs:   true,
+		flagsChanged: flagsSet(flagPreviewPRs),
+	}, &mockDeploymentSettingsEditClient{
+		getResp: storedVCSSettings(apitype.DeploymentSettingsVCS{
+			Provider:   apitype.VCSProviderGitLab,
+			Repository: "acme/infra",
+		}),
+	})
+
+	assert.NotContains(t, string(got), "repoUrl")
+}
+
+// Credentials stored for a repository url keep working after an integration is adopted, and the
+// service prefers them over the integration's own token, so the command refuses to carry them
+// silently onto a different repository.
+func TestDeploymentSettingsEdit_AdoptingAProviderRefusesStoredGitCredentials(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct {
+		name string
+		auth *apitype.GitAuthConfig
+	}{
+		{"access token", &apitype.GitAuthConfig{
+			PersonalAccessToken: &apitype.SecretValue{Value: "tok", Secret: true},
+		}},
+		{"ssh key", &apitype.GitAuthConfig{
+			SSHAuth: &apitype.SSHAuth{SSHPrivateKey: apitype.SecretValue{Value: "key", Secret: true}},
+		}},
+		{"basic auth", &apitype.GitAuthConfig{
+			BasicAuth: &apitype.BasicAuth{
+				UserName: apitype.SecretValue{Value: "u", Secret: true},
+				Password: apitype.SecretValue{Value: "p", Secret: true},
+			},
+		}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			c := &mockDeploymentSettingsEditClient{getResp: storedGitURLSettings(tc.auth)}
+			err := runEditArgs(t, deploymentSettingsEditArgs{
+				repo:         "acme/infra",
+				vcsProvider:  "gitlab",
+				flagsChanged: flagsSet(flagRepo, flagVCSProvider),
+			}, c)
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), "https://git.acme.example/infra.git")
+			assert.Contains(t, err.Error(), flagRemoveGitAuth)
+			assert.Nil(t, c.captured.patch)
+		})
+	}
+}
+
+// A stack storing an integration alongside a repository url predates the service validation that
+// rejects the pair. Resolving it here would quietly move the checkout onto the integration's
+// repository, so the url is left for the service to reject as it does today.
+func TestDeploymentSettingsEdit_StoredIntegrationKeepsItsRepoURL(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct {
+		name      string
+		integrate func(*apitype.DeploymentSettings)
+	}{
+		{"legacy github block", func(s *apitype.DeploymentSettings) {
+			s.GitHub = &apitype.DeploymentSettingsGitHub{Repository: "acme/infra"}
+		}},
+		{"vcs block", func(s *apitype.DeploymentSettings) {
+			s.VCS = &apitype.DeploymentSettingsVCS{
+				Provider:   apitype.VCSProviderGitLab,
+				Repository: "acme/infra",
+			}
+		}},
+	} {
+		for _, auth := range []struct {
+			name string
+			conf *apitype.GitAuthConfig
+		}{
+			{"without credentials", nil},
+			{"with credentials", &apitype.GitAuthConfig{
+				PersonalAccessToken: &apitype.SecretValue{Value: "tok", Secret: true},
+			}},
+		} {
+			t.Run(tc.name+" "+auth.name, func(t *testing.T) {
+				t.Parallel()
+				stored := storedGitURLSettings(auth.conf)
+				tc.integrate(stored)
+
+				got := captureEditPatch(t, deploymentSettingsEditArgs{
+					previewPRs:   true,
+					flagsChanged: flagsSet(flagPreviewPRs),
+				}, &mockDeploymentSettingsEditClient{getResp: stored})
+
+				assert.NotContains(t, string(got), "repoUrl")
+			})
+		}
+	}
+}
+
+func TestDeploymentSettingsEdit_AdoptingAProviderAcceptsAGitAuthFlag(t *testing.T) {
+	t.Parallel()
+	stored := storedGitURLSettings(&apitype.GitAuthConfig{
+		PersonalAccessToken: &apitype.SecretValue{Value: "old", Secret: true},
+	})
+
+	got := captureEditPatch(t, deploymentSettingsEditArgs{
+		repo:          "acme/infra",
+		vcsProvider:   "gitlab",
+		removeGitAuth: true,
+		flagsChanged:  flagsSet(flagRepo, flagVCSProvider, flagRemoveGitAuth),
+	}, &mockDeploymentSettingsEditClient{getResp: stored})
+
+	assert.JSONEq(t, `{
+		"vcs": {"provider": "gitlab", "repository": "acme/infra"},
+		"sourceContext": {"git": {"repoUrl": null, "gitAuth": null}}
+	}`, string(got))
+}
+
 func TestDeploymentSettingsEdit_ReviewStackLabelsAreGitHubOnly(t *testing.T) {
 	t.Parallel()
 
