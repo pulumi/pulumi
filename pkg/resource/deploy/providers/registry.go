@@ -738,7 +738,7 @@ func (r *Registry) Diff(ctx context.Context, req plugin.DiffRequest) (plugin.Dif
 
 	label := fmt.Sprintf("%s.Diff(%s,%s)", r.label(), req.URN, req.ID)
 	logging.V(7).Infof("%s: executing (#oldInputs=%d#oldOutputs=%d,#newInputs=%d)",
-		label, len(req.OldInputs), len(req.OldOutputs), len(req.NewInputs))
+		label, req.OldInputs.Len(), req.OldOutputs.Len(), req.NewInputs.Len())
 
 	// Create a reference using the URN and the unconfigured ID and fetch the provider.
 	provider, ok := r.GetProvider(mustNewReference(req.URN, UnconfiguredID))
@@ -752,11 +752,14 @@ func (r *Registry) Diff(ctx context.Context, req plugin.DiffRequest) (plugin.Dif
 	}
 
 	// Diff the properties.
-	filteredNewInputs := FilterProviderConfig(req.NewInputs)
+	oldInputs := resource.ToResourcePropertyMap(req.OldInputs)
+	oldOutputs := resource.ToResourcePropertyMap(req.OldOutputs)
+	newInputs := resource.ToResourcePropertyMap(req.NewInputs)
+	filteredNewInputs := FilterProviderConfig(newInputs)
 	diff, err := provider.DiffConfig(context.Background(), plugin.DiffConfigRequest{
 		URN:           req.URN,
-		OldInputs:     resource.FromResourcePropertyMap(FilterProviderConfig(req.OldInputs)),
-		OldOutputs:    resource.FromResourcePropertyMap(req.OldOutputs), // OldOutputs is already filtered
+		OldInputs:     resource.FromResourcePropertyMap(FilterProviderConfig(oldInputs)),
+		OldOutputs:    resource.FromResourcePropertyMap(oldOutputs), // OldOutputs is already filtered
 		NewInputs:     resource.FromResourcePropertyMap(filteredNewInputs),
 		AllowUnknowns: req.AllowUnknowns,
 		IgnoreChanges: req.IgnoreChanges,
@@ -765,7 +768,7 @@ func (r *Registry) Diff(ctx context.Context, req plugin.DiffRequest) (plugin.Dif
 		return plugin.DiffResult{Changes: plugin.DiffUnknown}, err
 	}
 	if diff.Changes == plugin.DiffUnknown {
-		if req.OldOutputs.DeepEquals(filteredNewInputs) {
+		if oldOutputs.DeepEquals(filteredNewInputs) {
 			diff.Changes = plugin.DiffNone
 		} else {
 			diff.Changes = plugin.DiffSome

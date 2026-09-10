@@ -59,7 +59,7 @@ func TestRefreshBeforeUpdate(t *testing.T) {
 					}, nil
 				},
 				DiffF: func(_ context.Context, req plugin.DiffRequest) (plugin.DiffResponse, error) {
-					if req.NewInputs.DeepEquals(req.OldInputs) {
+					if req.NewInputs.Equals(req.OldInputs) {
 						return plugin.DiffResponse{Changes: plugin.DiffNone}, nil
 					}
 					return plugin.DiffResponse{Changes: plugin.DiffSome}, nil

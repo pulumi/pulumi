@@ -75,7 +75,7 @@ func TestViewsBasic(t *testing.T) {
 					}, nil
 				},
 				DiffF: func(_ context.Context, req plugin.DiffRequest) (plugin.DiffResult, error) {
-					if !req.OldInputs["foo"].DeepEquals(req.NewInputs["foo"]) {
+					if !req.OldInputs.Get("foo").Equals(req.NewInputs.Get("foo")) {
 						return plugin.DiffResult{
 							Changes: plugin.DiffSome,
 						}, nil
@@ -319,7 +319,7 @@ func TestViewsUpdateError(t *testing.T) {
 					}, nil
 				},
 				DiffF: func(_ context.Context, req plugin.DiffRequest) (plugin.DiffResult, error) {
-					if !req.OldInputs["foo"].DeepEquals(req.NewInputs["foo"]) {
+					if !req.OldInputs.Get("foo").Equals(req.NewInputs.Get("foo")) {
 						return plugin.DiffResult{
 							Changes: plugin.DiffSome,
 						}, nil
@@ -481,7 +481,7 @@ func TestViewsUpdateDelete(t *testing.T) {
 					}, nil
 				},
 				DiffF: func(_ context.Context, req plugin.DiffRequest) (plugin.DiffResult, error) {
-					if !req.OldInputs["foo"].DeepEquals(req.NewInputs["foo"]) {
+					if !req.OldInputs.Get("foo").Equals(req.NewInputs.Get("foo")) {
 						return plugin.DiffResult{
 							Changes: plugin.DiffSome,
 						}, nil
@@ -1519,7 +1519,7 @@ func TestViewsDeleteBeforeReplace(t *testing.T) {
 					}, nil
 				},
 				DiffF: func(_ context.Context, req plugin.DiffRequest) (plugin.DiffResult, error) {
-					if !req.OldInputs["foo"].DeepEquals(req.NewInputs["foo"]) {
+					if !req.OldInputs.Get("foo").Equals(req.NewInputs.Get("foo")) {
 						return plugin.DiffResult{
 							Changes: plugin.DiffSome,
 						}, nil
@@ -1721,7 +1721,7 @@ func TestViewsCreateBeforeReplace(t *testing.T) {
 					}, nil
 				},
 				DiffF: func(_ context.Context, req plugin.DiffRequest) (plugin.DiffResult, error) {
-					if !req.OldInputs["foo"].DeepEquals(req.NewInputs["foo"]) {
+					if !req.OldInputs.Get("foo").Equals(req.NewInputs.Get("foo")) {
 						return plugin.DiffResult{
 							Changes: plugin.DiffSome,
 						}, nil

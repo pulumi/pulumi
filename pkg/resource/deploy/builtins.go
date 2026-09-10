@@ -177,7 +177,7 @@ func (p *builtinProvider) Diff(_ context.Context, req plugin.DiffRequest) (plugi
 	typ := req.URN.Type()
 	switch typ { //nolint:exhaustive
 	case stackReferenceType:
-		if !req.NewInputs["name"].DeepEquals(req.OldInputs["name"]) {
+		if !req.NewInputs.Get("name").Equals(req.OldInputs.Get("name")) {
 			return plugin.DiffResult{
 				Changes:     plugin.DiffSome,
 				ReplaceKeys: []resource.PropertyKey{"name"},
@@ -188,7 +188,7 @@ func (p *builtinProvider) Diff(_ context.Context, req plugin.DiffRequest) (plugi
 	case stashType:
 		// If the input has changed we need to update, although that update might just be to copy the new input
 		// value to the output side property called "input".
-		if !req.NewInputs["input"].DeepEquals(req.OldInputs["input"]) {
+		if !req.NewInputs.Get("input").Equals(req.OldInputs.Get("input")) {
 			return plugin.DiffResult{
 				Changes:     plugin.DiffSome,
 				ChangedKeys: []resource.PropertyKey{"input"},
