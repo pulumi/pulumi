@@ -21,8 +21,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var _ EnvExecContextWithIDs = (*ExecContext)(nil)
-
 func TestCopyForEnvWithID(t *testing.T) {
 	t.Parallel()
 

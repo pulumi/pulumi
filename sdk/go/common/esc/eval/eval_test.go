@@ -498,7 +498,7 @@ func (e *idEnvironments) AuthorizeImport(_ context.Context, _ string, _ string, 
 func TestEvalEnvironment(t *testing.T) {
 	t.Parallel()
 
-	openContext := func(t *testing.T, v esc.Value) map[string]esc.Value {
+	objectProperties := func(t *testing.T, v esc.Value) map[string]esc.Value {
 		props, ok := v.Value.(map[string]esc.Value)
 		require.True(t, ok)
 		return props
@@ -527,7 +527,7 @@ func TestEvalEnvironment(t *testing.T) {
 		assert.Equal(t, "root-uuid", result.Properties["currentID"].Value)
 		assert.Equal(t, "root-uuid", result.Properties["rootID"].Value)
 
-		current := openContext(t, result.ExecutionContext.Properties["currentEnvironment"])
+		current := objectProperties(t, result.ExecutionContext.Properties["currentEnvironment"])
 		assert.Equal(t, "root-uuid", current["id"].Value)
 	})
 
@@ -558,10 +558,10 @@ values:
 		require.NotNil(t, result)
 
 		// Each provider sees the environment that holds it, not the root.
-		assert.Equal(t, "root-uuid", openContext(t, result.Properties["rootContext"])["id"].Value)
-		assert.Equal(t, "a-uuid", openContext(t, result.Properties["aContext"])["id"].Value)
-		assert.Equal(t, "a", openContext(t, result.Properties["aContext"])["name"].Value)
-		assert.Equal(t, "b-uuid", openContext(t, result.Properties["bContext"])["id"].Value)
+		assert.Equal(t, "root-uuid", objectProperties(t, result.Properties["rootContext"])["id"].Value)
+		assert.Equal(t, "a-uuid", objectProperties(t, result.Properties["aContext"])["id"].Value)
+		assert.Equal(t, "a", objectProperties(t, result.Properties["aContext"])["name"].Value)
+		assert.Equal(t, "b-uuid", objectProperties(t, result.Properties["bContext"])["id"].Value)
 	})
 
 	t.Run("tolerates loaders that do not provide IDs", func(t *testing.T) {
@@ -588,13 +588,86 @@ values:
 		require.False(t, diags.HasErrors(), "%v", diags)
 		require.NotNil(t, result)
 		assert.Equal(t, "root", result.Properties["currentName"].Value)
-		assert.Equal(t, "a", openContext(t, result.Properties["aContext"])["name"].Value)
-		assert.Equal(t, "", openContext(t, result.Properties["aContext"])["id"].Value)
+		assert.Equal(t, "a", objectProperties(t, result.Properties["aContext"])["name"].Value)
+		assert.Equal(t, "", objectProperties(t, result.Properties["aContext"])["id"].Value)
 
 		// Without an ID, the execution context exposes no `id` property at all.
-		current := openContext(t, result.ExecutionContext.Properties["currentEnvironment"])
+		current := objectProperties(t, result.ExecutionContext.Properties["currentEnvironment"])
 		assert.Equal(t, "root", current["name"].Value)
 		assert.NotContains(t, current, "id")
+	})
+
+	t.Run("keeps the root ID across an import whose loader has none", func(t *testing.T) {
+		t.Parallel()
+
+		// The root is evaluated with an ID, but "a" comes from an ID-unaware loader.
+		evalImport := func(t *testing.T, aYAML string) (*esc.Environment, syntax.Diagnostics) {
+			env, diags, err := LoadYAMLBytes("root", []byte("imports:\n  - a\n"))
+			require.NoError(t, err)
+			require.False(t, diags.HasErrors(), "%v", diags)
+
+			execContext, err := esc.NewExecContext(nil)
+			require.NoError(t, err)
+			environments := &overrideEnvironments{defs: map[string]string{"a": aYAML}}
+			return EvalEnvironment(
+				t.Context(), "root", env, rot128{}, testProviders{}, environments, execContext,
+				EvalOptions{RootEnvironmentID: "root-uuid"},
+			)
+		}
+
+		t.Run("rootEnvironment.id resolves inside the import", func(t *testing.T) {
+			t.Parallel()
+
+			result, diags := evalImport(t, "values:\n  rootID: ${context.rootEnvironment.id}\n")
+			require.False(t, diags.HasErrors(), "%v", diags)
+			require.NotNil(t, result)
+			assert.Equal(t, "root-uuid", result.Properties["rootID"].Value)
+		})
+
+		t.Run("currentEnvironment.id inside the import explains the missing ID", func(t *testing.T) {
+			t.Parallel()
+
+			_, diags := evalImport(t, "values:\n  currentID: ${context.currentEnvironment.id}\n")
+			require.True(t, diags.HasErrors())
+
+			summaries := make([]string, len(diags))
+			for i, d := range diags {
+				summaries[i] = d.Summary
+			}
+			assert.Equal(t, []string{
+				"context.currentEnvironment.id is not available: no ID was supplied for this environment " +
+					"(unsaved and anonymous environments have none)",
+			}, summaries)
+		})
+	})
+
+	t.Run("explains a missing environment ID when it is interpolated", func(t *testing.T) {
+		t.Parallel()
+
+		env, diags, err := LoadYAMLBytes("root", []byte(`values:
+  currentID: ${context.currentEnvironment.id}
+  rootID: ${context.rootEnvironment.id}
+`))
+		require.NoError(t, err)
+		require.False(t, diags.HasErrors(), "%v", diags)
+
+		execContext, err := esc.NewExecContext(nil)
+		require.NoError(t, err)
+		_, diags = EvalEnvironment(
+			t.Context(), "root", env, rot128{}, testProviders{}, &overrideEnvironments{}, execContext, EvalOptions{},
+		)
+		require.True(t, diags.HasErrors())
+
+		summaries := make([]string, len(diags))
+		for i, d := range diags {
+			summaries[i] = d.Summary
+		}
+		assert.ElementsMatch(t, []string{
+			"context.currentEnvironment.id is not available: no ID was supplied for this environment " +
+				"(unsaved and anonymous environments have none)",
+			"context.rootEnvironment.id is not available: no ID was supplied for this environment " +
+				"(unsaved and anonymous environments have none)",
+		}, summaries)
 	})
 }
 

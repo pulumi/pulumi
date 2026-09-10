@@ -923,7 +923,7 @@ func (e *evalContext) evaluateExprAccess(x *expr, accessors []*propertyAccessor,
 	// Check for context interpolation.
 	if ok && k == "context" {
 		accessors[0].value = e.myContext
-		return e.evaluateValueAccess(x.repr.syntax(), e.myContext, accessors[1:])
+		return e.evaluateContextAccess(x.repr.syntax(), accessors[1:])
 	}
 
 	// Check for inline reference
@@ -982,6 +982,25 @@ func (e *evalContext) evaluateExprAccess(x *expr, accessors []*propertyAccessor,
 	}
 
 	return e.evaluateExpr(receiver, schema.Always())
+}
+
+// evaluateContextAccess is evaluateValueAccess over the `context` object, with a diagnostic that explains why
+// `context.{current,root}Environment.id` is absent when no ID was supplied. The exec context's ID getters are the
+// source of truth: the `id` key is omitted from the context exactly when they are empty.
+func (e *evalContext) evaluateContextAccess(syntax ast.Expr, accessors []*propertyAccessor) *value {
+	if len(accessors) >= 2 {
+		env, _ := e.objectKey(syntax, accessors[0].accessor, false)
+		prop, _ := e.objectKey(syntax, accessors[1].accessor, false)
+		missing := prop == "id" &&
+			((env == "currentEnvironment" && e.execContext.GetCurrentEnvironmentID() == "") ||
+				(env == "rootEnvironment" && e.execContext.GetRootEnvironmentID() == ""))
+		if missing {
+			e.accessorErrorf(syntax, accessors[1].accessor, "context.%s.id is not available: no ID was supplied for "+
+				"this environment (unsaved and anonymous environments have none)", env)
+			return e.invalidPropertyAccess(syntax, accessors)
+		}
+	}
+	return e.evaluateValueAccess(syntax, e.myContext, accessors)
 }
 
 // evaluateEnvironmentReferenceAccess performs an inline import of an environment.

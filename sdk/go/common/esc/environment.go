@@ -61,6 +61,8 @@ type ExecContext struct {
 	values               map[string]Value
 }
 
+var _ EnvExecContextWithIDs = (*ExecContext)(nil)
+
 func (ec *ExecContext) CopyForEnv(envName string) *ExecContext {
 	return ec.CopyForEnvWithID(envName, "")
 }
