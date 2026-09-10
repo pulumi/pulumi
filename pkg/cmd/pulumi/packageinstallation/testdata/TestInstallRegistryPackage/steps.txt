@@ -1,4 +1,4 @@
-HasPlugin{PluginDescriptor{Name:"registry-package", Kind:"resource"}} -> {false}
+HasPlugin{PluginDescriptor{Name:"registry-package", Kind:"resource"}} -> {pluginstorage.PluginNotInstalled}
 HasPluginGTE{PluginDescriptor{Name:"registry-package", Kind:"resource"}} -> {false, nil, nil}
 HasPluginGTE{PluginDescriptor{Name:"registry-package", Kind:"resource", Version:Version{Major:1}, PluginDownloadURL:"https://registry.example.com/registry-package-1.0.0.tar.gz"}} -> {false, nil, nil}
 DownloadPlugin{ctx, PluginDescriptor{Name:"registry-package", Kind:"resource", Version:Version{Major:1}, PluginDownloadURL:"https://registry.example.com/registry-package-1.0.0.tar.gz"}} -> {"$HOME/.pulumi/plugins/resource-registry-package-v1.0.0", <func(bool)>, nil}

@@ -1,0 +1,5 @@
+component: cli
+kind: fix
+body: Fix `pulumi install` for a project that requires a resource provider attached
+    through PULUMI_DEBUG_PROVIDERS
+time: 2026-09-09T00:00:00Z

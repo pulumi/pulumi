@@ -30,6 +30,13 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func installStateOf(has bool) pluginstorage.InstallState {
+	if has {
+		return pluginstorage.PluginInstalled
+	}
+	return pluginstorage.PluginNotInstalled
+}
+
 func TestResolvePackage(t *testing.T) {
 	t.Parallel()
 
@@ -86,6 +93,7 @@ func TestResolvePackage(t *testing.T) {
 					PluginDownloadURL: "https://example.com/download",
 					Kind:              apitype.ResourcePlugin,
 				}},
+				InstallState: pluginstorage.PluginNotInstalled,
 			},
 		},
 		{
@@ -109,6 +117,7 @@ func TestResolvePackage(t *testing.T) {
 					Kind:    apitype.ResourcePlugin,
 					Version: &semver.Version{Major: 7, Minor: 14},
 				}},
+				InstallState: pluginstorage.PluginNotInstalled,
 			},
 		},
 		{
@@ -141,7 +150,7 @@ func TestResolvePackage(t *testing.T) {
 					Version:           &semver.Version{Pre: []semver.PRVersion{{VersionStr: "x123456"}}},
 					PluginDownloadURL: "git://github.com/example/plugin",
 				}},
-				InstalledInWorkspace: false,
+				InstallState: pluginstorage.PluginNotInstalled,
 			},
 		},
 		{
@@ -162,6 +171,7 @@ func TestResolvePackage(t *testing.T) {
 					}},
 					PluginDownloadURL: "git://github.com/pulumi/component-test-providers/test-provider",
 				}},
+				InstallState: pluginstorage.PluginNotInstalled,
 			},
 		},
 		{
@@ -205,6 +215,7 @@ func TestResolvePackage(t *testing.T) {
 					Source:  "aws",
 					Version: "7.14.0",
 				},
+				InstallState: pluginstorage.PluginNotInstalled,
 			},
 		},
 		{
@@ -236,10 +247,10 @@ func TestResolvePackage(t *testing.T) {
 				Source: "installed-pkg", Version: "1.2.3",
 			},
 			workspace: pluginstorage.MockContext{
-				HasPluginF: func(_ context.Context, spec workspace.PluginDescriptor) bool {
-					return spec.Name == "installed-pkg" &&
+				HasPluginF: func(_ context.Context, spec workspace.PluginDescriptor) pluginstorage.InstallState {
+					return installStateOf(spec.Name == "installed-pkg" &&
 						spec.Version != nil &&
-						spec.Version.EQ(semver.Version{Major: 1, Minor: 2, Patch: 3})
+						spec.Version.EQ(semver.Version{Major: 1, Minor: 2, Patch: 3}))
 				},
 			},
 			expected: PackageResolution{
@@ -252,7 +263,7 @@ func TestResolvePackage(t *testing.T) {
 					Kind:    apitype.ResourcePlugin,
 					Version: &semver.Version{Major: 1, Minor: 2, Patch: 3},
 				}},
-				InstalledInWorkspace: true,
+				InstallState: pluginstorage.PluginInstalled,
 			},
 		},
 		{
@@ -267,9 +278,9 @@ func TestResolvePackage(t *testing.T) {
 				HasPluginGTEF: func(_ context.Context, spec workspace.PluginDescriptor) (bool, *semver.Version, error) {
 					return spec.Name == "installed-pkg", &semver.Version{Major: 3}, nil
 				},
-				HasPluginF: func(_ context.Context, spec workspace.PluginDescriptor) bool {
-					return spec.Name == "installed-pkg" &&
-						spec.Version != nil && spec.Version.EQ(semver.Version{Major: 3})
+				HasPluginF: func(_ context.Context, spec workspace.PluginDescriptor) pluginstorage.InstallState {
+					return installStateOf(spec.Name == "installed-pkg" &&
+						spec.Version != nil && spec.Version.EQ(semver.Version{Major: 3}))
 				},
 			},
 			expected: PackageResolution{
@@ -282,7 +293,7 @@ func TestResolvePackage(t *testing.T) {
 					Kind:    apitype.ResourcePlugin,
 					Version: &semver.Version{Major: 3},
 				}},
-				InstalledInWorkspace: true,
+				InstallState: pluginstorage.PluginInstalled,
 			},
 		},
 		{
@@ -326,6 +337,7 @@ func TestResolvePackage(t *testing.T) {
 					Version:           &semver.Version{Major: 1, Minor: 0, Patch: 0},
 					PluginDownloadURL: "https://example.com/download",
 				}},
+				InstallState: pluginstorage.PluginNotInstalled,
 			},
 		},
 		{
@@ -369,6 +381,7 @@ func TestResolvePackage(t *testing.T) {
 					Version:           &semver.Version{Major: 2, Minor: 0, Patch: 0},
 					PluginDownloadURL: "https://example.com/download",
 				}},
+				InstallState: pluginstorage.PluginNotInstalled,
 			},
 		},
 		{
@@ -417,6 +430,7 @@ func TestResolvePackage(t *testing.T) {
 					},
 					ParameterizationArgs: []string{"arg1"},
 				},
+				InstallState: pluginstorage.PluginNotInstalled,
 			},
 		},
 		{
@@ -465,6 +479,7 @@ func TestResolvePackage(t *testing.T) {
 					},
 					ParameterizationArgs: []string{"ext-arg1", "ext-arg2"},
 				},
+				InstallState: pluginstorage.PluginNotInstalled,
 			},
 		},
 		{
@@ -567,6 +582,7 @@ func TestResolvePackage(t *testing.T) {
 						Value:   []byte(`{"region":"eu-west-1","tier":"premium"}`),
 					},
 				},
+				InstallState: pluginstorage.PluginNotInstalled,
 			},
 		},
 		{
@@ -580,10 +596,10 @@ func TestResolvePackage(t *testing.T) {
 					}
 					return false, nil, nil
 				},
-				HasPluginF: func(_ context.Context, spec workspace.PluginDescriptor) bool {
-					return spec.Name == "major-match-pkg" &&
+				HasPluginF: func(_ context.Context, spec workspace.PluginDescriptor) pluginstorage.InstallState {
+					return installStateOf(spec.Name == "major-match-pkg" &&
 						spec.Version != nil &&
-						spec.Version.EQ(semver.Version{Major: 2, Minor: 1, Patch: 0})
+						spec.Version.EQ(semver.Version{Major: 2, Minor: 1, Patch: 0}))
 				},
 			},
 			registryResponse: func() (registry.Registry, error) {
@@ -626,7 +642,7 @@ func TestResolvePackage(t *testing.T) {
 					Version:           &semver.Version{Major: 2, Minor: 1, Patch: 0},
 					PluginDownloadURL: "https://example.com/major-match-pkg",
 				}},
-				InstalledInWorkspace: true,
+				InstallState: pluginstorage.PluginInstalled,
 			},
 		},
 		{
@@ -684,7 +700,7 @@ func TestResolvePackage(t *testing.T) {
 					Version:           &semver.Version{Major: 2, Minor: 2, Patch: 0},
 					PluginDownloadURL: "https://example.com/major-match-not-in-registry",
 				}},
-				InstalledInWorkspace: false,
+				InstallState: pluginstorage.PluginNotInstalled,
 			},
 		},
 		{
@@ -745,7 +761,7 @@ func TestResolvePackage(t *testing.T) {
 						"windows-amd64": []byte("ghi789"),
 					},
 				}},
-				InstalledInWorkspace: false,
+				InstallState: pluginstorage.PluginNotInstalled,
 			},
 		},
 		{
@@ -768,6 +784,7 @@ func TestResolvePackage(t *testing.T) {
 					Kind:              apitype.ResourcePlugin,
 					PluginDownloadURL: "https://www.example.com/some-pkg.tar.gz",
 				}},
+				InstallState: pluginstorage.PluginNotInstalled,
 			},
 		},
 		{
@@ -799,6 +816,7 @@ func TestResolvePackage(t *testing.T) {
 					Kind:              apitype.ResourcePlugin,
 					PluginDownloadURL: "https://www.example.com/custom-found-pkg.tar.gz",
 				}},
+				InstallState: pluginstorage.PluginNotInstalled,
 			},
 		},
 		{
@@ -816,6 +834,7 @@ func TestResolvePackage(t *testing.T) {
 					Kind:              apitype.ResourcePlugin,
 					PluginDownloadURL: "github://api.github.com/pulumiverse",
 				}},
+				InstallState: pluginstorage.PluginNotInstalled,
 			},
 		},
 	}

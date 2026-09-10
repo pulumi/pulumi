@@ -1,6 +1,6 @@
-HasPlugin{PluginDescriptor{Name:"external-package", Kind:"resource", PluginDownloadURL:"https://example.com/external-package.tar.gz"}} -> {false}
+HasPlugin{PluginDescriptor{Name:"external-package", Kind:"resource", PluginDownloadURL:"https://example.com/external-package.tar.gz"}} -> {pluginstorage.PluginNotInstalled}
 HasPluginGTE{PluginDescriptor{Name:"external-package", Kind:"resource", PluginDownloadURL:"https://example.com/external-package.tar.gz"}} -> {false, nil, nil}
-HasPlugin{PluginDescriptor{Name:"external-package", Kind:"resource", PluginDownloadURL:"https://example.com/external-package.tar.gz"}} -> {false}
+HasPlugin{PluginDescriptor{Name:"external-package", Kind:"resource", PluginDownloadURL:"https://example.com/external-package.tar.gz"}} -> {pluginstorage.PluginNotInstalled}
 HasPluginGTE{PluginDescriptor{Name:"external-package", Kind:"resource", PluginDownloadURL:"https://example.com/external-package.tar.gz"}} -> {false, nil, nil}
 GetLatestVersion{ctx, PluginDescriptor{Name:"external-package", Kind:"resource", PluginDownloadURL:"https://example.com/external-package.tar.gz"}} -> {Version{Major:6}, nil}
 DownloadPlugin{ctx, PluginDescriptor{Name:"external-package", Kind:"resource", Version:Version{Major:6}, PluginDownloadURL:"https://example.com/external-package.tar.gz"}} -> {"$HOME/.pulumi/plugins/resource-external-package-v6.0.0", <func(bool)>, nil}
