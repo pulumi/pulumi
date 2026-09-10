@@ -1,0 +1,31 @@
+run: |
+  esc env ls
+  esc env ls --output json
+process:
+  fs:
+    .esc.yaml: |
+      environment:
+        imports:
+          - default/env
+environments:
+  test-org/default/env: true
+  test-user/default/env: true
+  test-user/default/env-2: true
+
+---
+> esc env ls
+default/env
+default/env-2
+test-org/default/env
+> esc env ls --output json
+{
+  "environments": [
+    "default/env",
+    "default/env-2",
+    "test-org/default/env"
+  ]
+}
+
+---
+> esc env ls
+> esc env ls --output json

@@ -1,0 +1,34 @@
+run: |
+  esc env set foo baz
+  esc env get --value json
+  esc env set default/other foo qux
+  esc env get default/other --value json
+process:
+  fs:
+    .esc.yaml: |
+      environment: test-user/default/test
+environments:
+  test-user/default/other:
+    values:
+      foo: other-bar
+  test-user/default/test:
+    values:
+      foo: bar
+
+---
+> esc env set foo baz
+> esc env get --value json
+{
+  "foo": "baz"
+}
+> esc env set default/other foo qux
+> esc env get default/other --value json
+{
+  "foo": "qux"
+}
+
+---
+> esc env set foo baz
+> esc env get --value json
+> esc env set default/other foo qux
+> esc env get default/other --value json

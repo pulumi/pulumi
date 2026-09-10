@@ -1,0 +1,51 @@
+run: |
+  esc env get
+  esc env get foo
+  esc env get --value json
+process:
+  fs:
+    .esc.yaml: |
+      environment: test-user/default/test
+environments:
+  test-user/default/test:
+    values:
+      foo: bar
+
+---
+> esc env get
+# Value
+```json
+{
+  "foo": "bar"
+}
+```
+# Definition
+```yaml
+values:
+  foo: bar
+
+```
+
+> esc env get foo
+# Value
+```json
+"bar"
+```
+# Definition
+```yaml
+bar
+
+```
+
+# Defined at
+- test:2:10
+
+> esc env get --value json
+{
+  "foo": "bar"
+}
+
+---
+> esc env get
+> esc env get foo
+> esc env get --value json

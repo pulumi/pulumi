@@ -52,14 +52,24 @@ func newEnvGetCmd(env *envCommand) *cobra.Command {
 	get := &envGetCommand{env: env}
 
 	cmd := &cobra.Command{
-		Use:   "get [<org-name>/][<project-name>/]<environment-name>[@<version>] <path>",
-		Args:  cobra.RangeArgs(1, 2),
+		Use:   "get [[<org-name>/][<project-name>/]<environment-name>[@<version>]] [path]",
+		Args:  cobra.MaximumNArgs(2),
 		Short: "Get a value within an environment.",
 		Long: "Get a value within an environment\n" +
 			"\n" +
 			"This command fetches the current definition for the named environment and gets a\n" +
 			"value within it. The path to the value to set is a Pulumi property path. The value\n" +
-			"is printed to stdout as YAML.\n",
+			"is printed to stdout as YAML.\n" +
+			"\n" +
+			"If no environment is given, the default environment for the working directory is\n" +
+			"used. The default environment is taken from the nearest .esc.yaml file in the\n" +
+			"working directory or one of its parents, or, failing that, from the environments\n" +
+			"imported by the currently-selected Pulumi stack. Run `env default` to see the\n" +
+			"default environment in effect.\n" +
+			"\n" +
+			"When a default environment is configured, a single argument that does not contain a\n" +
+			"'/' is treated as a property path rather than an environment name. An argument that\n" +
+			"contains a '/' is always treated as an environment reference.\n",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 
@@ -67,7 +77,7 @@ func newEnvGetCmd(env *envCommand) *cobra.Command {
 				return err
 			}
 
-			ref, args, err := env.getExistingEnvRef(ctx, args)
+			target, args, err := env.getEnvTargetForOpenGet(ctx, args)
 			if err != nil {
 				return err
 			}
@@ -88,22 +98,22 @@ func newEnvGetCmd(env *envCommand) *cobra.Command {
 			case "":
 				// OK
 			case "detailed", "json", "string":
-				return get.showValue(ctx, ref, path, value, showSecrets)
+				return get.showValue(ctx, target, path, value, showSecrets)
 			case "dotenv":
 				if len(path) != 0 {
 					return fmt.Errorf("output format '%s' may not be used with a property path", value)
 				}
-				return get.showValue(ctx, ref, path, value, showSecrets)
+				return get.showValue(ctx, target, path, value, showSecrets)
 			case "shell":
 				if len(path) != 0 {
 					return fmt.Errorf("output format '%s' may not be used with a property path", value)
 				}
-				return get.showValue(ctx, ref, path, value, showSecrets)
+				return get.showValue(ctx, target, path, value, showSecrets)
 			default:
 				return fmt.Errorf("unknown output format %q", value)
 			}
 
-			data, err := get.getEnvironment(ctx, ref, path, showSecrets)
+			data, err := get.getEnvironment(ctx, target, path, showSecrets)
 			if err != nil {
 				return err
 			}
@@ -162,14 +172,18 @@ func marshalYAML(v any) (string, error) {
 	return b.String(), nil
 }
 
-func (get *envGetCommand) writeValue(
+// definition returns the definition of the target environment. For a named environment this is the
+// stored definition; for an anonymous default it is the synthesized `{imports: [...]}` document.
+func (get *envGetCommand) definition(
 	ctx context.Context,
-	out io.Writer,
-	ref environmentRef,
-	path resource.PropertyPath,
-	format string,
+	target envTarget,
 	showSecrets bool,
-) error {
+) ([]byte, error) {
+	if target.isAnonymous() {
+		return target.anon.definition(), nil
+	}
+
+	ref := target.ref
 	def, _, _, err := get.env.esc.client.GetEnvironment(
 		ctx,
 		ref.orgName,
@@ -179,11 +193,26 @@ func (get *envGetCommand) writeValue(
 		showSecrets,
 	)
 	if err != nil {
-		return fmt.Errorf("getting environment definition: %w", err)
+		return nil, fmt.Errorf("getting environment definition: %w", err)
+	}
+	return def, nil
+}
+
+func (get *envGetCommand) writeValue(
+	ctx context.Context,
+	out io.Writer,
+	target envTarget,
+	path resource.PropertyPath,
+	format string,
+	showSecrets bool,
+) error {
+	def, err := get.definition(ctx, target, showSecrets)
+	if err != nil {
+		return err
 	}
 	env, _, err := get.env.esc.client.CheckYAMLEnvironment(
 		ctx,
-		ref.orgName,
+		target.orgName(),
 		def,
 		client.CheckYAMLOption{ShowSecrets: showSecrets},
 	)
@@ -195,12 +224,12 @@ func (get *envGetCommand) writeValue(
 
 func (get *envGetCommand) showValue(
 	ctx context.Context,
-	ref environmentRef,
+	target envTarget,
 	path resource.PropertyPath,
 	format string,
 	showSecrets bool,
 ) error {
-	return get.writeValue(ctx, get.env.esc.stdout, ref, path, format, showSecrets)
+	return get.writeValue(ctx, get.env.esc.stdout, target, path, format, showSecrets)
 }
 
 func diff(oldName, old, newName, new string) string {
@@ -228,11 +257,11 @@ func (get *envGetCommand) diffValue(
 	showSecrets bool,
 ) error {
 	var base strings.Builder
-	if err := get.writeValue(ctx, &base, baseRef, path, format, showSecrets); err != nil {
+	if err := get.writeValue(ctx, &base, envTarget{ref: baseRef}, path, format, showSecrets); err != nil {
 		return err
 	}
 	var compare strings.Builder
-	if err := get.writeValue(ctx, &compare, compareRef, path, format, showSecrets); err != nil {
+	if err := get.writeValue(ctx, &compare, envTarget{ref: compareRef}, path, format, showSecrets); err != nil {
 		return err
 	}
 
@@ -250,25 +279,18 @@ func (get *envGetCommand) diffValue(
 
 func (get *envGetCommand) getEnvironment(
 	ctx context.Context,
-	ref environmentRef,
+	target envTarget,
 	path resource.PropertyPath,
 	showSecrets bool,
 ) (*envGetTemplateData, error) {
-	def, _, _, err := get.env.esc.client.GetEnvironment(
-		ctx,
-		ref.orgName,
-		ref.projectName,
-		ref.envName,
-		ref.version,
-		showSecrets,
-	)
+	def, err := get.definition(ctx, target, showSecrets)
 	if err != nil {
-		return nil, fmt.Errorf("getting environment definition: %w", err)
+		return nil, err
 	}
 	if len(path) == 0 {
-		return get.getEntireEnvironment(ctx, ref.orgName, def, showSecrets)
+		return get.getEntireEnvironment(ctx, target.orgName(), def, showSecrets)
 	}
-	return get.getEnvironmentMember(ctx, ref.orgName, ref.envName, def, path, showSecrets)
+	return get.getEnvironmentMember(ctx, target.orgName(), target.name(), def, path, showSecrets)
 }
 
 func (get *envGetCommand) getEntireEnvironment(

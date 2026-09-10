@@ -70,7 +70,7 @@ func (noCredsLoginManager) LoginWithOIDCToken(
 
 func TestNoCreds(t *testing.T) { //nolint:paralleltest // non-thread-safe shared state
 	esc := &escCommand{
-		ws:    mockWorkspace(pulumi_workspace.Credentials{}),
+		ws:    mockWorkspace(pulumi_workspace.Credentials{}, ""),
 		login: noCredsLoginManager(0),
 	}
 	err := esc.getCachedClient(t.Context())
@@ -128,7 +128,7 @@ func TestCurrentAccountButInvalidToken(t *testing.T) { //nolint:paralleltest // 
 					Username:    "bobm",
 				},
 			},
-		}),
+		}, ""),
 		login: invalidatedCredsLoginManager(0),
 	}
 	err := esc.getCachedClient(t.Context())
@@ -251,7 +251,7 @@ func TestInvalidSelfHostedBackend(t *testing.T) { //nolint:paralleltest // non-t
 		Accounts: map[string]pulumi_workspace.Account{
 			"http://pulumi.com": {},
 		},
-	})}
+	}, "")}
 	err := esc.getCachedClient(t.Context())
 	assert.ErrorContains(t, err, "not a valid self-hosted backend")
 
@@ -266,7 +266,7 @@ func TestFilestateBackend(t *testing.T) { //nolint:paralleltest // non-thread-sa
 		Accounts: map[string]pulumi_workspace.Account{
 			"gs://foo": {},
 		},
-	})}
+	}, "")}
 	err := esc.getCachedClient(t.Context())
 	assert.ErrorContains(t, err, "does not support Pulumi ESC")
 	assert.ErrorContains(t, err, "log into the Pulumi Cloud backend")
@@ -297,7 +297,7 @@ func TestEnvVarOverridesAccounts(t *testing.T) {
 	esc := &escCommand{
 		command: "esc",
 		login:   &testLoginManager{creds: creds},
-		ws:      mockWorkspace(creds),
+		ws:      mockWorkspace(creds, ""),
 		newClient: func(userAgent, backendURL, accessToken string, insecure bool) client.Client {
 			return client.New(userAgent, backendURL, accessToken, insecure)
 		},
@@ -371,7 +371,7 @@ func TestDefaultOrgConfiguration(t *testing.T) {
 		esc := &escCommand{
 			command: "esc",
 			login:   &testLoginManager{creds: creds},
-			ws:      mockWorkspace(creds),
+			ws:      mockWorkspace(creds, ""),
 			newClient: func(userAgent, backendURL, accessToken string, insecure bool) client.Client {
 				return &testClient
 			},
@@ -400,7 +400,7 @@ func TestDefaultOrgConfiguration(t *testing.T) {
 		esc := &escCommand{
 			command: "esc",
 			login:   &testLoginManager{creds: creds},
-			ws:      mockWorkspace(creds),
+			ws:      mockWorkspace(creds, ""),
 			newClient: func(userAgent, backendURL, accessToken string, insecure bool) client.Client {
 				return &testClient
 			},
@@ -426,7 +426,7 @@ func TestDefaultOrgConfiguration(t *testing.T) {
 		esc := &escCommand{
 			command: "esc",
 			login:   &testLoginManager{creds: creds},
-			ws:      mockWorkspace(creds),
+			ws:      mockWorkspace(creds, ""),
 			newClient: func(userAgent, backendURL, accessToken string, insecure bool) client.Client {
 				return &testClient
 			},
