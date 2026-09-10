@@ -2322,3 +2322,44 @@ func TestIsExternalURL(t *testing.T) {
 	isnot(".hidden")
 	isnot("local.exe")
 }
+
+func TestLocalNameIsBoundedForWindowsPaths(t *testing.T) {
+	t.Parallel()
+
+	// The path within the repo is repeated inside the plugin's cache directory, so a deeply
+	// nested component must not also make the directory name grow without bound.
+	// See https://github.com/pulumi/pulumi/issues/21154.
+	longSpec := PluginDescriptor{
+		Name: "pulumi-example",
+		PluginDownloadURL: "git://github.com/MitchellGerdisch/multiple-components-single-repo/" +
+			"components/components-random",
+	}
+	name, path := longSpec.LocalName()
+	require.LessOrEqual(t, len(name), maxLocalNameLen)
+	require.Equal(t, "components/components-random", path)
+
+	// Sibling components in the same repo still get distinct cache directories.
+	siblingSpec := PluginDescriptor{
+		Name: "pulumi-example",
+		PluginDownloadURL: "git://github.com/MitchellGerdisch/multiple-components-single-repo/" +
+			"components/components-static-page",
+	}
+	siblingName, _ := siblingSpec.LocalName()
+	require.LessOrEqual(t, len(siblingName), maxLocalNameLen)
+	require.NotEqual(t, name, siblingName)
+
+	// Shortened names must still round-trip through the plugin directory scanner, otherwise
+	// installed plugins would never be found in the cache.
+	dir := t.TempDir()
+	installed := PluginDescriptor{
+		Kind:              apitype.ResourcePlugin,
+		Name:              longSpec.Name,
+		Version:           &semver.Version{Major: 1, Minor: 2, Patch: 3},
+		PluginDownloadURL: longSpec.PluginDownloadURL,
+	}
+	require.NoError(t, os.MkdirAll(filepath.Join(dir, installed.Dir()), 0o700))
+	plugins, err := GetPluginsFromDir(dir)
+	require.NoError(t, err)
+	require.Len(t, plugins, 1)
+	require.Equal(t, name, plugins[0].Name)
+}
