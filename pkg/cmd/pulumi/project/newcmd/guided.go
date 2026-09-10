@@ -143,7 +143,7 @@ func chooseGuidedFromSource(
 	if len(all) > 1 {
 		fmt.Fprintln(opts.Stdout, "Falling back to the full template list.")
 	}
-	return pickFromSet(all, false /*yes*/, opts, selector)
+	return pickFromSet(all, "" /*requested*/, false /*yes*/, opts, selector)
 }
 
 func (g *guided) choose() (cmdTemplates.Template, error) {

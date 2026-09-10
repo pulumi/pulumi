@@ -1,0 +1,4 @@
+component: cli/new
+kind: fix
+body: Error out on ambiguous template names instead of failing silently
+time: 2026-09-09T17:14:31.245335662+02:00
