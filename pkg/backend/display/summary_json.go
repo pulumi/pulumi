@@ -16,17 +16,22 @@ package display
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
+	"maps"
 	"os"
 	"time"
 
 	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
 
 // SummaryJSON is a one-line JSON summary of a stack operation, intended for
@@ -49,8 +54,8 @@ type SummaryJSON struct {
 }
 
 // ResourceJSON is the per-resource entry that appears in SummaryJSON.Resources.
-// It is intentionally compact: callers that need full diffs / property values
-// should use `--json` (the streaming event format) instead.
+// It is intentionally compact: property-level detail only appears when the
+// caller opts in with `--diff`.
 type ResourceJSON struct {
 	// URN is the canonical, globally-unique identifier of the resource.
 	URN string `json:"urn"`
@@ -62,6 +67,16 @@ type ResourceJSON struct {
 	Op apitype.OpType `json:"op"`
 	// Parent is the URN of this resource's parent, if any.
 	Parent string `json:"parent,omitempty"`
+	// Diff maps property paths to their changes; only populated when `--diff` is set.
+	Diff map[string]PropertyDiffJSON `json:"diff,omitempty"`
+}
+
+// PropertyDiffJSON is the change to a single property path in ResourceJSON.Diff.
+// Old is absent for adds, New for deletes.
+type PropertyDiffJSON struct {
+	Kind string `json:"kind"`
+	Old  any    `json:"old,omitzero"`
+	New  any    `json:"new,omitzero"`
 }
 
 // summaryJSONFromEvent extracts the summary JSON shape from a SummaryEventPayload.
@@ -99,6 +114,89 @@ func resourceJSONFromEvent(p engine.ResourcePreEventPayload, showSames bool) *Re
 
 	r := NewResourceJSON(p.Metadata.URN, apitype.OpType(p.Metadata.Op), parent)
 	return &r
+}
+
+// diffJSONFromStep renders the diff computed by stepDiff — the same one the
+// human-readable display prints — as a flat path → change map.
+func diffJSONFromStep(m *engine.StepEventMetadata, refresh, showSecrets bool) map[string]PropertyDiffJSON {
+	diff, include, _ := stepDiff(m, refresh)
+	if diff == nil {
+		return nil
+	}
+	if include != nil {
+		keep := make(map[resource.PropertyKey]bool, len(include))
+		for _, k := range include {
+			keep[k] = true
+		}
+		maps.DeleteFunc(diff.Adds, func(k resource.PropertyKey, _ resource.PropertyValue) bool { return !keep[k] })
+		maps.DeleteFunc(diff.Deletes, func(k resource.PropertyKey, _ resource.PropertyValue) bool { return !keep[k] })
+		maps.DeleteFunc(diff.Updates, func(k resource.PropertyKey, _ resource.ValueDiff) bool { return !keep[k] })
+	}
+
+	out := map[string]PropertyDiffJSON{}
+	add := func(path resource.PropertyPath, kind string, old, new *resource.PropertyValue) {
+		entry := PropertyDiffJSON{Kind: kind}
+		if old != nil {
+			entry.Old = propertyValueJSON(*old, showSecrets)
+		}
+		if new != nil {
+			entry.New = propertyValueJSON(*new, showSecrets)
+		}
+		out[path.String()] = entry
+	}
+	flattenObjectDiff(nil, diff, add)
+
+	if len(out) == 0 {
+		return nil
+	}
+	return out
+}
+
+func propertyValueJSON(v resource.PropertyValue, showSecrets bool) any {
+	serialized, err := stack.SerializePropertyValue(
+		context.TODO(), massagePropertyValue(v, showSecrets), config.NewPanicCrypter(), showSecrets)
+	if err != nil {
+		logging.V(7).Infof("not adding property value as there was an error serializing: %s", err)
+		return nil
+	}
+	return serialized
+}
+
+type addDiffEntry func(path resource.PropertyPath, kind string, old, new *resource.PropertyValue)
+
+func flattenObjectDiff(prefix resource.PropertyPath, d *resource.ObjectDiff, add addDiffEntry) {
+	for k, vd := range d.Updates {
+		flattenValueDiff(append(prefix, string(k)), vd, add)
+	}
+	for k, v := range d.Adds {
+		add(append(prefix, string(k)), "add", nil, &v)
+	}
+	for k, v := range d.Deletes {
+		add(append(prefix, string(k)), "delete", &v, nil)
+	}
+}
+
+func flattenValueDiff(path resource.PropertyPath, vd resource.ValueDiff, add addDiffEntry) {
+	switch {
+	case vd.Object != nil:
+		flattenObjectDiff(path, vd.Object, add)
+	case vd.Array != nil:
+		for i, ed := range vd.Array.Updates {
+			flattenValueDiff(append(path, i), ed, add)
+		}
+		for i, v := range vd.Array.Adds {
+			add(append(path, i), "add", nil, &v)
+		}
+		for i, v := range vd.Array.Deletes {
+			add(append(path, i), "delete", &v, nil)
+		}
+	case vd.Old.V == nil && vd.New.V != nil:
+		add(path, "add", nil, &vd.New)
+	case vd.Old.V != nil && vd.New.V == nil:
+		add(path, "delete", &vd.Old, nil)
+	default:
+		add(path, "update", &vd.Old, &vd.New)
+	}
 }
 
 // NewResourceJSON builds the per-resource summary entry from the fields
@@ -146,12 +244,29 @@ func tapSummaryJSON(in <-chan engine.Event, opts Options) <-chan engine.Event {
 	go func() {
 		defer close(out)
 		var resources []ResourceJSON
+		seen := map[resource.URN]engine.StepEventMetadata{}
 		for e := range in {
-			switch e.Type { //nolint:exhaustive // we only care about two event types here
+			switch e.Type { //nolint:exhaustive
 			case engine.ResourcePreEvent:
 				if payload, ok := e.Payload().(engine.ResourcePreEventPayload); ok {
+					diffNow := diffAtPreEvent(payload.Metadata, seen)
 					if r := resourceJSONFromEvent(payload, opts.ShowSameResources); r != nil {
+						if diffNow && opts.Type == DisplayDiff {
+							r.Diff = diffJSONFromStep(&payload.Metadata, false /* refresh */, opts.ShowSecrets)
+						}
 						resources = append(resources, *r)
+					}
+				}
+			case engine.ResourceOutputsEvent:
+				if payload, ok := e.Payload().(engine.ResourceOutputsEventPayload); ok && opts.Type == DisplayDiff {
+					m := payload.Metadata
+					if refresh, ready := diffAtOutputsEvent(m, seen); ready {
+						diff := diffJSONFromStep(&m, refresh, opts.ShowSecrets)
+						for i := range resources {
+							if resources[i].URN == string(m.URN) {
+								resources[i].Diff = diff
+							}
+						}
 					}
 				}
 			case engine.SummaryEvent:
