@@ -388,9 +388,9 @@ func (pc *packageCommand) runStatelessUpdate(
 		Name:       urn.Name(),
 		Type:       urn.Type(),
 		ID:         id,
-		OldInputs:  oldInputs,
-		OldOutputs: read.Outputs,
-		NewInputs:  checked,
+		OldInputs:  resource.FromResourcePropertyMap(oldInputs),
+		OldOutputs: resource.FromResourcePropertyMap(read.Outputs),
+		NewInputs:  resource.FromResourcePropertyMap(checked),
 	})
 	if err != nil {
 		return fmt.Errorf("diff: %w", err)

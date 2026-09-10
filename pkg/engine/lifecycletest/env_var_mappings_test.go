@@ -207,7 +207,7 @@ func TestEnvVarMappingsRemovedFromStateOnUpdate(t *testing.T) {
 				},
 				DiffF: func(_ context.Context, req plugin.DiffRequest) (plugin.DiffResponse, error) {
 					// Report a diff if inputs changed
-					if !req.OldInputs.DeepEquals(req.NewInputs) {
+					if !req.OldInputs.Equals(req.NewInputs) {
 						return plugin.DiffResponse{
 							Changes: plugin.DiffSome,
 						}, nil

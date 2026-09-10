@@ -333,7 +333,7 @@ func (p *OutputProvider) Diff(
 
 	changes := plugin.DiffNone
 	var changedKeys []resource.PropertyKey
-	if !req.OldInputs["value"].DeepEquals(req.NewInputs["value"]) {
+	if !req.OldInputs.Get("value").Equals(req.NewInputs.Get("value")) {
 		changes = plugin.DiffSome
 		changedKeys = append(changedKeys, "value")
 	}

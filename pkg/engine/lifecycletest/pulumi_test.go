@@ -1787,17 +1787,18 @@ func TestReplaceOnChanges(t *testing.T) {
 			// To establish a observable difference between the provider and engine diff function,
 			// we treat 42 as an OpSame. We use this to check that the right diff function is being
 			// used.
-			for k, v := range req.NewInputs {
-				if v == resource.NewProperty(42.0) {
-					req.NewInputs[k] = req.OldOutputs[k]
+			for k, v := range req.NewInputs.All {
+				if v.Equals(property.New(42.0)) {
+					req.NewInputs = req.NewInputs.Set(k, req.OldOutputs.Get(k))
 				}
 			}
 			diff := req.OldOutputs.Diff(req.NewInputs)
 			if diff == nil {
 				return plugin.DiffResult{Changes: plugin.DiffNone}, nil
 			}
-			detailedDiff := plugin.NewDetailedDiffFromObjectDiff(diff, false)
-			changedKeys := diff.ChangedKeys()
+			resourceDiff := resource.ToResourceObjectDiff(diff)
+			detailedDiff := plugin.NewDetailedDiffFromObjectDiff(resourceDiff, false)
+			changedKeys := resourceDiff.ChangedKeys()
 
 			return plugin.DiffResult{
 				Changes:      plugin.DiffSome,
@@ -2727,7 +2728,7 @@ func TestProtect(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				DiffF: func(_ context.Context, req plugin.DiffRequest) (plugin.DiffResult, error) {
-					if !req.OldOutputs["foo"].DeepEquals(req.NewInputs["foo"]) {
+					if !req.OldOutputs.Get("foo").Equals(req.NewInputs.Get("foo")) {
 						// If foo changes do a replace, we use this to check we don't delete on replace
 						return plugin.DiffResult{
 							Changes:     plugin.DiffSome,
@@ -2905,7 +2906,7 @@ func TestImportDiff(t *testing.T) {
 					}, nil
 				},
 				DiffF: func(_ context.Context, req plugin.DiffRequest) (plugin.DiffResult, error) {
-					if !req.OldOutputs["foo"].DeepEquals(req.NewInputs["foo"]) {
+					if !req.OldOutputs.Get("foo").Equals(req.NewInputs.Get("foo")) {
 						// If foo changes do a replace, we use this to check we don't delete on replace
 						return plugin.DiffResult{
 							Changes:     plugin.DiffSome,
@@ -2992,7 +2993,7 @@ func TestDeletedWith(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				DiffF: func(_ context.Context, req plugin.DiffRequest) (plugin.DiffResult, error) {
-					if !req.OldOutputs["foo"].DeepEquals(req.NewInputs["foo"]) {
+					if !req.OldOutputs.Get("foo").Equals(req.NewInputs.Get("foo")) {
 						// If foo changes do a replace, we use this to check we don't delete on replace
 						return plugin.DiffResult{
 							Changes:     plugin.DiffSome,
@@ -3099,13 +3100,13 @@ func TestReplaceWithAndPropertyChange(t *testing.T) {
 			return &deploytest.Provider{
 				DiffF: func(_ context.Context, req plugin.DiffRequest) (plugin.DiffResult, error) {
 					// Both "foo" and "bar" properties require replacement when changed
-					if !req.OldOutputs["foo"].DeepEquals(req.NewInputs["foo"]) {
+					if !req.OldOutputs.Get("foo").Equals(req.NewInputs.Get("foo")) {
 						return plugin.DiffResult{
 							Changes:     plugin.DiffSome,
 							ReplaceKeys: []resource.PropertyKey{"foo"},
 						}, nil
 					}
-					if !req.OldOutputs["bar"].DeepEquals(req.NewInputs["bar"]) {
+					if !req.OldOutputs.Get("bar").Equals(req.NewInputs.Get("bar")) {
 						return plugin.DiffResult{
 							Changes:     plugin.DiffSome,
 							ReplaceKeys: []resource.PropertyKey{"bar"},
@@ -3228,8 +3229,9 @@ func TestEventSecrets(t *testing.T) {
 					if diff == nil {
 						return plugin.DiffResult{Changes: plugin.DiffNone}, nil
 					}
-					detailedDiff := plugin.NewDetailedDiffFromObjectDiff(diff, false)
-					changedKeys := diff.ChangedKeys()
+					resourceDiff := resource.ToResourceObjectDiff(diff)
+					detailedDiff := plugin.NewDetailedDiffFromObjectDiff(resourceDiff, false)
+					changedKeys := resourceDiff.ChangedKeys()
 
 					return plugin.DiffResult{
 						Changes:      plugin.DiffSome,
@@ -3510,7 +3512,7 @@ func TestPendingDeleteOrder(t *testing.T) {
 				},
 				DiffF: func(_ context.Context, req plugin.DiffRequest) (plugin.DiffResult, error) {
 					if strings.Contains(string(req.URN), "typA") {
-						if !req.OldOutputs["foo"].DeepEquals(req.NewInputs["foo"]) {
+						if !req.OldOutputs.Get("foo").Equals(req.NewInputs.Get("foo")) {
 							return plugin.DiffResult{
 								Changes:     plugin.DiffSome,
 								ReplaceKeys: []resource.PropertyKey{"foo"},
@@ -3525,7 +3527,7 @@ func TestPendingDeleteOrder(t *testing.T) {
 						}
 					}
 					if strings.Contains(string(req.URN), "typB") {
-						if !req.OldOutputs["parent"].DeepEquals(req.NewInputs["parent"]) {
+						if !req.OldOutputs.Get("parent").Equals(req.NewInputs.Get("parent")) {
 							return plugin.DiffResult{
 								Changes:     plugin.DiffSome,
 								ReplaceKeys: []resource.PropertyKey{"parent"},
@@ -3657,7 +3659,7 @@ func TestPendingDeleteReplacement(t *testing.T) {
 				},
 				DiffF: func(_ context.Context, req plugin.DiffRequest) (plugin.DiffResult, error) {
 					if strings.Contains(string(req.URN), "typA") {
-						if !req.OldOutputs["foo"].DeepEquals(req.NewInputs["foo"]) {
+						if !req.OldOutputs.Get("foo").Equals(req.NewInputs.Get("foo")) {
 							return plugin.DiffResult{
 								Changes:     plugin.DiffSome,
 								ReplaceKeys: []resource.PropertyKey{"foo"},
@@ -3672,7 +3674,7 @@ func TestPendingDeleteReplacement(t *testing.T) {
 						}
 					}
 					if strings.Contains(string(req.URN), "typB") {
-						if !req.OldOutputs["parent"].DeepEquals(req.NewInputs["parent"]) {
+						if !req.OldOutputs.Get("parent").Equals(req.NewInputs.Get("parent")) {
 							return plugin.DiffResult{
 								Changes:     plugin.DiffSome,
 								ReplaceKeys: []resource.PropertyKey{"parent"},
@@ -3685,7 +3687,7 @@ func TestPendingDeleteReplacement(t *testing.T) {
 								DeleteBeforeReplace: false,
 							}, nil
 						}
-						if !req.OldOutputs["frob"].DeepEquals(req.NewInputs["frob"]) {
+						if !req.OldOutputs.Get("frob").Equals(req.NewInputs.Get("frob")) {
 							return plugin.DiffResult{
 								Changes:     plugin.DiffSome,
 								ReplaceKeys: []resource.PropertyKey{"frob"},
@@ -3930,25 +3932,25 @@ func TestOldCheckedInputsAreSent(t *testing.T) {
 				DiffF: func(_ context.Context, req plugin.DiffRequest) (plugin.DiffResult, error) {
 					// Check that the old inputs and outputs are passed to DiffF
 					if firstUpdate {
-						assert.Nil(t, req.OldInputs)
-						assert.Nil(t, req.OldOutputs)
-						assert.Equal(t, resource.NewPropertyMapFromMap(map[string]any{
+						assert.Equal(t, property.Map{}, req.OldInputs)
+						assert.Equal(t, property.Map{}, req.OldOutputs)
+						assert.Equal(t, resource.FromResourcePropertyMap(resource.NewPropertyMapFromMap(map[string]any{
 							"foo": "bar",
-						}), req.NewInputs)
+						})), req.NewInputs)
 					} else {
-						assert.Equal(t, resource.NewPropertyMapFromMap(map[string]any{
+						assert.Equal(t, resource.FromResourcePropertyMap(resource.NewPropertyMapFromMap(map[string]any{
 							"foo":     "bar",
 							"default": "default",
-						}), req.OldInputs)
-						assert.Equal(t, resource.NewPropertyMapFromMap(map[string]any{
+						})), req.OldInputs)
+						assert.Equal(t, resource.FromResourcePropertyMap(resource.NewPropertyMapFromMap(map[string]any{
 							"foo":      "bar",
 							"default":  "default",
 							"computed": "computed",
-						}), req.OldOutputs)
-						assert.Equal(t, resource.NewPropertyMapFromMap(map[string]any{
+						})), req.OldOutputs)
+						assert.Equal(t, resource.FromResourcePropertyMap(resource.NewPropertyMapFromMap(map[string]any{
 							"foo":     "baz",
 							"default": "default",
-						}), req.NewInputs)
+						})), req.NewInputs)
 					}
 
 					// Let the engine do the diff, we just want to assert the conditions above

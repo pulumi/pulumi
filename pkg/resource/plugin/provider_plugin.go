@@ -1301,13 +1301,10 @@ func (p *provider) Diff(ctx context.Context, req DiffRequest) (DiffResponse, err
 
 	contract.Assertf(req.URN != "", "Diff requires a URN")
 	contract.Assertf(req.ID != "", "Diff requires an ID")
-	contract.Assertf(req.OldInputs != nil, "Diff requires old input properties")
-	contract.Assertf(req.NewInputs != nil, "Diff requires new input properties")
-	contract.Assertf(req.OldOutputs != nil, "Diff requires old output properties")
 
 	label := fmt.Sprintf("%s.Diff(%s,%s)", p.label(), req.URN, req.ID)
 	logging.V(7).Infof("%s: executing (#oldInputs=%d#oldOutputs=%d,#newInputs=%d)",
-		label, len(req.OldInputs), len(req.OldOutputs), len(req.NewInputs))
+		label, req.OldInputs.Len(), req.OldOutputs.Len(), req.NewInputs.Len())
 
 	// Ensure that the plugin is configured.
 	client := p.clientRaw
@@ -1326,7 +1323,7 @@ func (p *provider) Diff(ctx context.Context, req DiffRequest) (DiffResponse, err
 		return DiffResult{}, DiffUnavailable(message)
 	}
 
-	mOldInputs, err := MarshalProperties(req.OldInputs, MarshalOptions{
+	mOldInputs, err := MarshalProperties(resource.ToResourcePropertyMap(req.OldInputs), MarshalOptions{
 		Label:              label + ".oldInputs",
 		ElideAssetContents: true,
 		KeepUnknowns:       req.AllowUnknowns,
@@ -1339,7 +1336,7 @@ func (p *provider) Diff(ctx context.Context, req DiffRequest) (DiffResponse, err
 		return DiffResult{}, err
 	}
 
-	mOldOutputs, err := MarshalProperties(req.OldOutputs, MarshalOptions{
+	mOldOutputs, err := MarshalProperties(resource.ToResourcePropertyMap(req.OldOutputs), MarshalOptions{
 		Label:              label + ".oldOutputs",
 		ElideAssetContents: true,
 		KeepUnknowns:       req.AllowUnknowns,
@@ -1352,7 +1349,7 @@ func (p *provider) Diff(ctx context.Context, req DiffRequest) (DiffResponse, err
 		return DiffResult{}, err
 	}
 
-	mNewInputs, err := MarshalProperties(req.NewInputs, MarshalOptions{
+	mNewInputs, err := MarshalProperties(resource.ToResourcePropertyMap(req.NewInputs), MarshalOptions{
 		Label:              label + ".newInputs",
 		ElideAssetContents: true,
 		KeepUnknowns:       req.AllowUnknowns,
