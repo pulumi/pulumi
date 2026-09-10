@@ -176,7 +176,7 @@ func (s *SameStep) Apply() (resource.Status, StepCompleteFunc, error) {
 
 	// Retain the ID and outputs
 	s.new.ID = s.old.ID
-	s.new.Outputs = s.old.Outputs
+	s.new.Outputs = unmirrorSecretOutputs(s.old.Outputs, s.new.Inputs, s.new.AdditionalSecretOutputs)
 
 	// If the resource is a provider, ensure that it is present in the registry under the appropriate URNs.
 	// We can only do this if the provider is actually a same, not a skipped create or an untargeted same;
@@ -211,6 +211,35 @@ func (s *SameStep) Apply() (resource.Status, StepCompleteFunc, error) {
 		}
 	}
 	return resource.StatusOK, complete, nil
+}
+
+// unmirrorSecretOutputs undoes the input -> output secret mirroring that the step executor applies, for
+// outputs whose plaintext is already stored in the resource's (no longer secret) inputs. A same step
+// carries the old outputs forward verbatim, so without this a property stays secret in the state forever
+// once the program stops wrapping it in pulumi.secret.
+func unmirrorSecretOutputs(
+	outputs, inputs resource.PropertyMap, additionalSecretOutputs []resource.PropertyKey,
+) resource.PropertyMap {
+	var result resource.PropertyMap
+	for k, out := range outputs {
+		in, has := inputs[k]
+		if !out.IsSecret() || !has || in.IsSecret() || slices.Contains(additionalSecretOutputs, k) {
+			continue
+		}
+		// Only drop the secret bit when the output is the input value verbatim: the same plaintext is then
+		// already being written to the state as an input, so nothing new is revealed.
+		if !out.SecretValue().Element.DeepEquals(in) {
+			continue
+		}
+		if result == nil {
+			result = outputs.Copy()
+		}
+		result[k] = in
+	}
+	if result == nil {
+		return outputs
+	}
+	return result
 }
 
 func (s *SameStep) IsSkippedCreate() bool {
