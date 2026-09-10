@@ -2535,25 +2535,24 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		opts = newOpts
 	}
 
-	// Collect the state migrations registered for this resource. A registration for a constructed resource
-	// reuses the migrations saved by the remote registration that requested construction, mirroring the pending
-	// transform handoff above.
+	// Collect the state migrations registered for this resource. For constructed resources, we run the provider's
+	// migrations before the caller's so caller migrations see the provider's upgraded state.
 	var stateMigrations []StateMigrationFunction
 	err = func() error {
 		rm.pendingStateMigrationsLock.Lock()
 		defer rm.pendingStateMigrationsLock.Unlock()
 
+		stateMigrations, err = slice.MapError(req.StateMigrations, rm.wrapStateMigrationCallback)
+		if err != nil {
+			return err
+		}
 		if pending, ok := rm.pendingStateMigrations[pendingKey]; ok {
 			delete(rm.pendingStateMigrations, pendingKey)
-			stateMigrations = pending.functions
+			stateMigrations = append(stateMigrations, pending.functions...)
 			// The constructed registration may omit aliases from the original remote registration. Keep them so the
 			// migration can find the prior state.
 			opts.Aliases = append(slices.Clone(pending.aliases), opts.Aliases...)
 		} else {
-			stateMigrations, err = slice.MapError(req.StateMigrations, rm.wrapStateMigrationCallback)
-			if err != nil {
-				return err
-			}
 			// We only need to save this for remote calls
 			if remote && len(stateMigrations) > 0 {
 				rm.pendingStateMigrations[pendingKey] = pendingStateMigration{
