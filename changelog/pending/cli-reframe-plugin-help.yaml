@@ -1,0 +1,4 @@
+component: cli
+kind: improvement
+body: Reframe `pulumi plugin` help around automatic plugin installation and link the plugin-authoring docs
+time: 2026-09-10T18:44:39Z
