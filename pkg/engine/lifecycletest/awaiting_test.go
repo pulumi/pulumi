@@ -12,8 +12,8 @@ import (
 	lt "github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest/framework"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -84,7 +84,7 @@ func TestAwaitingSuspendAndResume(t *testing.T) {
 				require.NoError(t, err)
 				return nil
 			})
-			hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+			hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 			p := &lt.TestPlan{
 				Options: lt.TestUpdateOptions{T: t, SkipDisplayTests: true, HostF: hostF},
@@ -101,6 +101,9 @@ func TestAwaitingSuspendAndResume(t *testing.T) {
 			require.True(t, errors.As(err, &awaitErr), "expected an AwaitingError, got %v", err)
 			require.Len(t, awaitErr.Steps, 1)
 			require.NotNil(t, snap)
+			require.Len(t, snap.DeferredResources, 2)
+			deferredURNs := []resource.URN{snap.DeferredResources[0].URN, snap.DeferredResources[1].URN}
+			assert.ElementsMatch(t, []resource.URN{gateURN, downstreamURN}, deferredURNs)
 
 			urns := snapshotURNs(snap)
 			assert.Contains(t, urns, upstreamURN, "upstream should be persisted")
@@ -112,6 +115,7 @@ func TestAwaitingSuspendAndResume(t *testing.T) {
 			snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
 			require.NoError(t, err)
 			require.NotNil(t, snap)
+			assert.Empty(t, snap.DeferredResources)
 
 			urns = snapshotURNs(snap)
 			assert.Contains(t, urns, upstreamURN)
@@ -175,7 +179,7 @@ func TestAwaitingSkippedComponentOutputs(t *testing.T) {
 		require.NoError(t, err)
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{T: t, SkipDisplayTests: true, HostF: hostF},

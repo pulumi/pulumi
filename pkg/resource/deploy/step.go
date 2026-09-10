@@ -377,6 +377,8 @@ func (s *CreateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 					Properties:            s.new.Inputs,
 					Timeout:               s.new.CustomTimeouts.Create,
 					Preview:               s.deployment.opts.DryRun,
+					Dependencies:          s.new.Dependencies,
+					PropertyDependencies:  s.new.PropertyDependencies,
 					ResourceStatusAddress: resourceStatusAddress,
 					ResourceStatusToken:   resourceStatusToken,
 				})
@@ -1039,6 +1041,8 @@ func (s *UpdateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 					Timeout:               s.new.CustomTimeouts.Update,
 					IgnoreChanges:         s.ignoreChanges,
 					Preview:               s.deployment.opts.DryRun,
+					Dependencies:          s.new.Dependencies,
+					PropertyDependencies:  s.new.PropertyDependencies,
 					ResourceStatusAddress: resourceStatusAddress,
 					ResourceStatusToken:   resourceStatusToken,
 					OldViews:              s.oldViews,

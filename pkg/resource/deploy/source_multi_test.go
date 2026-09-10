@@ -19,7 +19,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -34,12 +34,12 @@ func (e *mockEvent) event() {}
 
 // mockRegisterResourceEvent implements RegisterResourceEvent for testing.
 type mockRegisterResourceEvent struct {
-	goal *resource.Goal
+	goal *pkgresource.Goal
 	done chan *RegisterResult
 }
 
 func (e *mockRegisterResourceEvent) event()                      {}
-func (e *mockRegisterResourceEvent) Goal() *resource.Goal        { return e.goal }
+func (e *mockRegisterResourceEvent) Goal() *pkgresource.Goal     { return e.goal }
 func (e *mockRegisterResourceEvent) Done(result *RegisterResult) { e.done <- result }
 
 // mockSource is a Source backed by a fixed list of events.
@@ -243,7 +243,7 @@ func TestMultiSourceGoalPreservation(t *testing.T) {
 
 	// Verify that RegisterResourceEvents pass through the MultiSource correctly
 	// with their Goal intact (Stack/Project fields are set by the resmon, not the MultiSource).
-	goal := &resource.Goal{
+	goal := &pkgresource.Goal{
 		Type:    "test:index:Resource",
 		Name:    "myres",
 		Stack:   "stack-a",

@@ -149,7 +149,7 @@ type stepExecutor struct {
 	completedMu       sync.Mutex
 	completedURNs     map[resource.URN]bool
 	eagerDeletedURNs  map[resource.URN]bool // URNs whose delete steps have completed
-	stepCompletedChan chan struct{}          // buffered(1), signaled after each step completes
+	stepCompletedChan chan struct{}         // buffered(1), signaled after each step completes
 }
 
 //
@@ -613,6 +613,11 @@ func (se *stepExecutor) continueExecuteStep(payload any, workerID int, step Step
 	// `awaiting`. We deliberately do not reject sawError -- this is not a failure.
 	if aw, ok := step.(awaitableStep); ok {
 		if reason, awaiting := aw.Awaiting(); awaiting {
+			if events, ok := se.deployment.events.(DeferredResourceEvents); ok {
+				if err := events.OnDeferredResource(step.New()); err != nil {
+					return err
+				}
+			}
 			// Record the step as awaiting BEFORE resolving its registration. step.Skip()
 			// unblocks any dependents waiting on this step, and the scheduler only skips a
 			// dependent if this URN is already in the awaiting set when the dependent is
@@ -767,6 +772,12 @@ func (se *stepExecutor) continueExecuteStep(payload any, workerID int, step Step
 
 	// Track completion for eager replacement delete scheduling.
 	se.completedMu.Lock()
+	if se.completedURNs == nil {
+		se.completedURNs = make(map[resource.URN]bool)
+	}
+	if se.eagerDeletedURNs == nil {
+		se.eagerDeletedURNs = make(map[resource.URN]bool)
+	}
 	se.completedURNs[step.URN()] = true
 	if step.Op() == OpDeleteReplaced || step.Op() == OpDelete {
 		se.eagerDeletedURNs[step.URN()] = true

@@ -406,6 +406,11 @@ type UpdateOptions struct {
 	// HostFactory builds the plugin host for this operation.
 	HostFactory HostFactory
 
+	// OutputWaiters enables co-deployed stack output resolution.
+	OutputWaiters *deploy.OutputWaiterStore
+	// OutputWaitersStackName identifies this stack to the output waiter store.
+	OutputWaitersStackName string
+
 	// The plan to use for the update, if any.
 	Plan *deploy.Plan
 
@@ -1291,6 +1296,15 @@ func (acts *updateActions) OnSnapshotWrite(step *deploy.Snapshot) error {
 
 func (acts *updateActions) OnRebuiltBaseState() error {
 	return acts.Context.SnapshotManager.RebuiltBaseState()
+}
+
+func (acts *updateActions) OnDeferredResource(state *pkgresource.State) error {
+	if manager, ok := acts.Context.SnapshotManager.(interface {
+		AddDeferredResource(*pkgresource.State) error
+	}); ok {
+		return manager.AddDeferredResource(state)
+	}
+	return nil
 }
 
 func (acts *updateActions) OnStateMigration(transaction *deploy.StateMigrationTransaction) error {

@@ -103,7 +103,9 @@ type SnapshotManager struct {
 	// resourceOverride is set only while StateMigration synchronously persists its prospective snapshot. It lets the
 	// normal serialization and integrity-checking path operate on prepared resources without mutating the engine's
 	// shared base snapshot before persistence succeeds.
-	resourceOverride []*pkgresource.State
+	resourceOverride    []*pkgresource.State
+	skipIntegrityChecks bool
+	deferredResources   map[resource.URN]*pkgresource.State
 }
 
 var _ engine.SnapshotManager = (*SnapshotManager)(nil)
@@ -301,6 +303,16 @@ func (sm *SnapshotManager) SetSnippets(snippets []resource.Snippet) error {
 	return sm.mutate(func() bool {
 		sm.snippets = slices.Clone(snippets)
 		sm.hasSnippets = true
+		return true
+	})
+}
+
+func (sm *SnapshotManager) AddDeferredResource(state *pkgresource.State) error {
+	return sm.mutate(func() bool {
+		if sm.deferredResources == nil {
+			sm.deferredResources = make(map[resource.URN]*pkgresource.State)
+		}
+		sm.deferredResources[state.URN] = state
 		return true
 	})
 }
@@ -871,7 +883,11 @@ func (sm *SnapshotManager) Snap() *deploy.Snapshot {
 	snapExtensions, missing := deploy.MapExtensions(resources, sm.extensions, sm.baseSnapshot)
 	contract.Assertf(len(missing) == 0, "snapshot references unknown extensions: %v", missing)
 
-	return deploy.NewSnapshot(manifest, secretsManager, resources, operations, metadata, snippets, snapExtensions)
+	snap := deploy.NewSnapshot(manifest, secretsManager, resources, operations, metadata, snippets, snapExtensions)
+	for _, deferred := range sm.deferredResources {
+		snap.DeferredResources = append(snap.DeferredResources, deferred)
+	}
+	return snap
 }
 
 func (sm *SnapshotManager) Deployment() (apitype.TypedDeployment, error) {
@@ -957,7 +973,7 @@ func (sm *SnapshotManager) saveSnapshot() error {
 	if err := sm.persister.Save(deployment); err != nil {
 		return fmt.Errorf("failed to save snapshot: %w", err)
 	}
-	if !DisableIntegrityChecking && integrityError != nil {
+	if !DisableIntegrityChecking && !sm.skipIntegrityChecks && integrityError != nil {
 		if autoRepairErr != nil {
 			if sie, ok := errors.AsType[*snapshot.SnapshotIntegrityError](integrityError); ok {
 				sie.AutoRepairErr = autoRepairErr
@@ -966,6 +982,16 @@ func (sm *SnapshotManager) saveSnapshot() error {
 		return fmt.Errorf("failed to verify snapshot: %w", integrityError)
 	}
 	return nil
+}
+
+func NewMultistackSnapshotManager(
+	persister SnapshotPersister,
+	secretsManager secrets.Manager,
+	baseSnap *deploy.Snapshot,
+) *SnapshotManager {
+	manager := NewSnapshotManager(persister, secretsManager, baseSnap, nil)
+	manager.skipIntegrityChecks = true
+	return manager
 }
 
 // repairAndSerialize attempts to repair the current snapshot by sorting resources
@@ -1067,16 +1093,17 @@ func NewSnapshotManager(
 	mutationRequests, cancel, done := make(chan mutationRequest), make(chan bool), make(chan error)
 
 	manager := &SnapshotManager{
-		persister:        persister,
-		secretsManager:   secretsManager,
-		baseSnapshot:     baseSnap,
-		dones:            make(map[*pkgresource.State]bool),
-		completeOps:      make(map[*pkgresource.State]bool),
-		mutationRequests: mutationRequests,
-		cancel:           cancel,
-		done:             done,
-		extensions:       make(map[apitype.ExtensionRef]apitype.Extension),
-		events:           events,
+		persister:         persister,
+		secretsManager:    secretsManager,
+		baseSnapshot:      baseSnap,
+		dones:             make(map[*pkgresource.State]bool),
+		completeOps:       make(map[*pkgresource.State]bool),
+		mutationRequests:  mutationRequests,
+		cancel:            cancel,
+		done:              done,
+		extensions:        make(map[apitype.ExtensionRef]apitype.Extension),
+		events:            events,
+		deferredResources: make(map[resource.URN]*pkgresource.State),
 	}
 
 	serviceLoop := manager.defaultServiceLoop

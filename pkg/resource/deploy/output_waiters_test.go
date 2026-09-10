@@ -21,7 +21,6 @@ import (
 	"time"
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -158,13 +157,13 @@ func TestOutputWaiterStoreBackendFallback(t *testing.T) {
 	p.WithOutputWaiters(store, "org/proj/stack-a")
 
 	// Request a stack that is NOT co-deployed -- should use the backend.
-	result, err := p.readStackReference(resource.PropertyMap{
-		"name": resource.NewProperty("org/proj/stack-other"),
-	}, "org/proj/stack-a")
+	result, err := p.readStackReference(context.Background(), property.NewMap(map[string]property.Value{
+		"name": property.New("org/proj/stack-other"),
+	}), "org/proj/stack-a")
 	require.NoError(t, err)
 	assert.True(t, backendCalled, "expected backend client to be called for non-co-deployed stack")
 	assert.Equal(t, "backend-value",
-		result["outputs"].ObjectValue()["backend-key"].StringValue())
+		result.Get("outputs").AsMap().Get("backend-key").AsString())
 }
 
 func TestOutputWaiterStoreCoDeployedReadStackReference(t *testing.T) {
@@ -193,20 +192,20 @@ func TestOutputWaiterStoreCoDeployedReadStackReference(t *testing.T) {
 	)
 	p.WithOutputWaiters(store, "org/proj/stack-a")
 
-	result, err := p.readStackReference(resource.PropertyMap{
-		"name": resource.NewProperty("org/proj/stack-b"),
-	}, "org/proj/stack-a")
+	result, err := p.readStackReference(context.Background(), property.NewMap(map[string]property.Value{
+		"name": property.New("org/proj/stack-b"),
+	}), "org/proj/stack-a")
 	require.NoError(t, err)
 	assert.False(t, backendCalled, "backend client should NOT be called for co-deployed stack")
 
 	// Verify outputs are correctly translated.
-	outputs := result["outputs"].ObjectValue()
-	assert.Equal(t, "https://example.com", outputs["url"].StringValue())
+	outputs := result.Get("outputs").AsMap()
+	assert.Equal(t, "https://example.com", outputs.Get("url").AsString())
 
 	// Verify secret output names are populated.
-	secretNames := result["secretOutputNames"].ArrayValue()
-	require.Len(t, secretNames, 1)
-	assert.Equal(t, "secret", secretNames[0].StringValue())
+	secretNames := result.Get("secretOutputNames").AsArray()
+	require.Equal(t, 1, secretNames.Len())
+	assert.Equal(t, "secret", secretNames.Get(0).AsString())
 }
 
 func TestOutputWaiterStoreMultipleWaiters(t *testing.T) {

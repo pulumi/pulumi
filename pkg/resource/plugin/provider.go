@@ -286,12 +286,14 @@ type DiffRequest struct {
 type DiffResponse = DiffResult
 
 type CreateRequest struct {
-	URN        resource.URN
-	Name       string
-	Type       tokens.Type
-	Properties resource.PropertyMap
-	Timeout    float64
-	Preview    bool
+	URN                  resource.URN
+	Name                 string
+	Type                 tokens.Type
+	Properties           resource.PropertyMap
+	Timeout              float64
+	Preview              bool
+	Dependencies         []resource.URN
+	PropertyDependencies map[resource.PropertyKey][]resource.URN
 	// The gRPC address of the ResourceStatus service which can be used to create view resources.
 	ResourceStatusAddress string
 	// The ResourceStatus service token to pass when calling methods on the service.
@@ -304,6 +306,9 @@ type CreateResponse struct {
 	Status     resource.Status
 	// Indicates that this resource should always be refreshed prior to updates.
 	RefreshBeforeUpdate bool
+	// Awaiting indicates that the resource is not ready yet and should be retried by a later update.
+	Awaiting       bool
+	AwaitingReason string
 }
 
 type ReadRequest struct {
@@ -337,6 +342,8 @@ type UpdateRequest struct {
 	Timeout                          float64
 	IgnoreChanges                    []string
 	Preview                          bool
+	Dependencies                     []resource.URN
+	PropertyDependencies             map[resource.PropertyKey][]resource.URN
 	// The gRPC address of the ResourceStatus service which can be used to update view resources.
 	ResourceStatusAddress string
 	// The ResourceStatus service token to pass when calling methods on the service.
@@ -350,6 +357,9 @@ type UpdateResponse struct {
 	Status     resource.Status
 	// Indicates that this resource should always be refreshed prior to updates.
 	RefreshBeforeUpdate bool
+	// Awaiting indicates that the resource is not ready yet and should be retried by a later update.
+	Awaiting       bool
+	AwaitingReason string
 }
 
 type DeleteRequest struct {

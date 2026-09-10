@@ -59,6 +59,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/config"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/console"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/convert"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/delivery"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/deployment"
 	cmdDo "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/do"
 	cmdEnv "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/env"
@@ -515,6 +516,7 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 				org.NewOrgCmd(),
 				project.NewProjectCmd(),
 				deployment.NewDeploymentCmd(pkgWorkspace.Instance),
+				delivery.NewDeliveryCmd(),
 				cloud.NewAPICmd(),
 				insights.NewInsightsCmd(),
 				cmdDo.NewDoCmd(cmdBackend.DefaultLoginManager, pkgWorkspace.Instance,

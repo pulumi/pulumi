@@ -160,6 +160,8 @@ type DeploymentV3 struct {
 	SecretsProviders *SecretsProvidersV1 `json:"secrets_providers,omitempty" yaml:"secrets_providers,omitempty"`
 	// Resources contains all resources that are currently part of this stack after this deployment has finished.
 	Resources []ResourceV3 `json:"resources,omitempty" yaml:"resources,omitempty"`
+	// DeferredResources contains goals whose provider operation is awaiting, or whose execution was skipped behind one.
+	DeferredResources []ResourceV3 `json:"deferredResources,omitempty" yaml:"deferredResources,omitempty"`
 	// PendingOperations are all operations that were known by the engine to be currently executing.
 	PendingOperations []OperationV2 `json:"pending_operations,omitempty" yaml:"pending_operations,omitempty"`
 	// Metadata associated with the snapshot.

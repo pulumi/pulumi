@@ -103,6 +103,30 @@ type provider struct {
 	configSource *promise.CompletionSource[pluginConfig] // the source for the provider's configuration.
 }
 
+func urnsToStrings(urns []resource.URN) []string {
+	result := make([]string, len(urns))
+	for i, urn := range urns {
+		result[i] = string(urn)
+	}
+	return result
+}
+
+func createPropertyDependencies(deps map[resource.PropertyKey][]resource.URN) map[string]*pulumirpc.CreateRequest_PropertyDependencies {
+	result := make(map[string]*pulumirpc.CreateRequest_PropertyDependencies, len(deps))
+	for key, urns := range deps {
+		result[string(key)] = &pulumirpc.CreateRequest_PropertyDependencies{Urns: urnsToStrings(urns)}
+	}
+	return result
+}
+
+func updatePropertyDependencies(deps map[resource.PropertyKey][]resource.URN) map[string]*pulumirpc.UpdateRequest_PropertyDependencies {
+	result := make(map[string]*pulumirpc.UpdateRequest_PropertyDependencies, len(deps))
+	for key, urns := range deps {
+		result[string(key)] = &pulumirpc.UpdateRequest_PropertyDependencies{Urns: urnsToStrings(urns)}
+	}
+	return result
+}
+
 type pluginProtocol struct {
 	// True if the provider accepts strongly-typed secrets.
 	acceptSecrets bool
@@ -245,6 +269,10 @@ func NewProvider(host Host, ctx *Context, spec workspace.PluginDescriptor,
 		// dynamic providers to do things like lookup the virtual environment to use.
 
 		optionsStore := env.MapStore{}
+		optionsStore["PULUMI_UPDATE_ID"] = ctx.UpdateID
+		optionsStore["PULUMI_ORGANIZATION"] = ctx.Organization
+		optionsStore["PULUMI_PROJECT"] = ctx.Project
+		optionsStore["PULUMI_STACK"] = ctx.Stack
 
 		for k, v := range options {
 			optionsStore["PULUMI_RUNTIME_"+strings.ToUpper(k)] = fmt.Sprintf("%v", v)
@@ -1486,6 +1514,8 @@ func (p *provider) Create(ctx context.Context, req CreateRequest) (CreateRespons
 		Preview:               req.Preview,
 		ResourceStatusAddress: req.ResourceStatusAddress,
 		ResourceStatusToken:   req.ResourceStatusToken,
+		Dependencies:          urnsToStrings(req.Dependencies),
+		PropertyDependencies:  createPropertyDependencies(req.PropertyDependencies),
 	})
 	if err != nil {
 		resourceStatus, id, liveObject, _, refreshBeforeUpdate, resourceError = parseError(err)
@@ -1499,6 +1529,13 @@ func (p *provider) Create(ctx context.Context, req CreateRequest) (CreateRespons
 		id = resource.ID(resp.GetId())
 		liveObject = resp.GetProperties()
 		refreshBeforeUpdate = resp.GetRefreshBeforeUpdate()
+	}
+	if resp.GetAwaiting() {
+		return CreateResponse{
+			Status:         resourceStatus,
+			Awaiting:       true,
+			AwaitingReason: resp.GetAwaitingReason(),
+		}, nil
 	}
 
 	if id == "" && !req.Preview {
@@ -1799,6 +1836,8 @@ func (p *provider) Update(ctx context.Context, req UpdateRequest) (UpdateRespons
 		ResourceStatusAddress: req.ResourceStatusAddress,
 		ResourceStatusToken:   req.ResourceStatusToken,
 		OldViews:              oldViews,
+		Dependencies:          urnsToStrings(req.Dependencies),
+		PropertyDependencies:  updatePropertyDependencies(req.PropertyDependencies),
 	})
 	if err != nil {
 		resourceStatus, _, liveObject, _, refreshBeforeUpdate, resourceError = parseError(err)
@@ -1811,6 +1850,13 @@ func (p *provider) Update(ctx context.Context, req UpdateRequest) (UpdateRespons
 	} else {
 		liveObject = resp.GetProperties()
 		refreshBeforeUpdate = resp.GetRefreshBeforeUpdate()
+	}
+	if resp.GetAwaiting() {
+		return UpdateResponse{
+			Status:         resourceStatus,
+			Awaiting:       true,
+			AwaitingReason: resp.GetAwaitingReason(),
+		}, nil
 	}
 
 	outs, err := UnmarshalProperties(liveObject, MarshalOptions{

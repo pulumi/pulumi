@@ -36,6 +36,7 @@ import (
 // associated OS resources can be cached, shared, and reclaimed as
 // appropriate. It also carries shared plugin configuration.
 type Context struct {
+	UpdateID   string    // The enclosing backend operation; empty when no update ID is available.
 	Diag       diag.Sink // the diagnostics sink to use for messages.
 	StatusDiag diag.Sink // the diagnostics sink to use for status messages.
 	Host       Host      // the host that can be used to fetch providers.

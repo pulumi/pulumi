@@ -15,8 +15,10 @@
 package engine
 
 import (
+	"errors"
 	"fmt"
 
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -109,7 +111,7 @@ func (r *RoutingSnapshotManager) Write(base *deploy.Snapshot) error {
 	}
 
 	// Partition resources by stack and build per-stack URN sets.
-	partitioned := make(map[string][]*resource.State)
+	partitioned := make(map[string][]*pkgresource.State)
 	partitionedURNs := make(map[string]map[resource.URN]bool)
 	for _, res := range base.Resources {
 		fqn, err := r.resolve(res.URN)
@@ -125,7 +127,7 @@ func (r *RoutingSnapshotManager) Write(base *deploy.Snapshot) error {
 	}
 
 	// Partition pending operations by stack.
-	partitionedOps := make(map[string][]resource.Operation)
+	partitionedOps := make(map[string][]pkgresource.Operation)
 	for _, op := range base.PendingOperations {
 		fqn, err := r.resolve(op.Resource.URN)
 		if err != nil {
@@ -142,7 +144,7 @@ func (r *RoutingSnapshotManager) Write(base *deploy.Snapshot) error {
 
 		// Strip cross-stack dependencies from resource states so per-stack snapshots
 		// are self-consistent and pass integrity checks when loaded independently.
-		cleaned := make([]*resource.State, len(resources))
+		cleaned := make([]*pkgresource.State, len(resources))
 		for i, res := range resources {
 			cleaned[i] = stripCrossStackDeps(res, urnSet)
 		}
@@ -157,7 +159,7 @@ func (r *RoutingSnapshotManager) Write(base *deploy.Snapshot) error {
 			manifest = orig.Manifest
 		}
 
-		snap := deploy.NewSnapshot(manifest, sm, cleaned, ops, deploy.SnapshotMetadata{}, nil)
+		snap := deploy.NewSnapshot(manifest, sm, cleaned, ops, deploy.SnapshotMetadata{}, nil, nil)
 		if err := mgr.Write(snap); err != nil {
 			return fmt.Errorf("writing snapshot for stack %q: %w", fqn, err)
 		}
@@ -168,7 +170,7 @@ func (r *RoutingSnapshotManager) Write(base *deploy.Snapshot) error {
 // stripCrossStackDeps returns a shallow copy of the resource state with any dependencies
 // or property dependencies that reference URNs outside the given set removed. This ensures
 // per-stack snapshots are self-consistent when persisted independently.
-func stripCrossStackDeps(res *resource.State, urnSet map[resource.URN]bool) *resource.State {
+func stripCrossStackDeps(res *pkgresource.State, urnSet map[resource.URN]bool) *pkgresource.State {
 	// Check if any deps reference outside URNs.
 	needsClean := false
 	for _, dep := range res.Dependencies {
@@ -224,6 +226,34 @@ func (r *RoutingSnapshotManager) RebuiltBaseState() error {
 		if err := mgr.RebuiltBaseState(); err != nil {
 			return fmt.Errorf("rebuilding base state for stack %q: %w", fqn, err)
 		}
+	}
+	return nil
+}
+
+func (r *RoutingSnapshotManager) SupportsStateMigrations() bool { return false }
+
+func (r *RoutingSnapshotManager) StateMigration(*deploy.StateMigrationTransaction) error {
+	return errors.New("state migrations are not supported by multistack deployments")
+}
+
+func (r *RoutingSnapshotManager) SetSnippets(snippets []resource.Snippet) error {
+	for fqn, mgr := range r.managers {
+		if err := mgr.SetSnippets(snippets); err != nil {
+			return fmt.Errorf("setting snippets for stack %q: %w", fqn, err)
+		}
+	}
+	return nil
+}
+
+func (r *RoutingSnapshotManager) AddDeferredResource(state *pkgresource.State) error {
+	manager, err := r.managerFor(state.URN)
+	if err != nil {
+		return err
+	}
+	if deferred, ok := manager.(interface {
+		AddDeferredResource(*pkgresource.State) error
+	}); ok {
+		return deferred.AddDeferredResource(state)
 	}
 	return nil
 }

@@ -260,6 +260,10 @@ func newDeployment(
 	if err != nil {
 		return nil, err
 	}
+	plugctx.UpdateID = info.Update.UpdateID
+	plugctx.Organization = target.Organization.String()
+	plugctx.Project = proj.Name.String()
+	plugctx.Stack = target.Name.String()
 
 	// Keep the plugin context open until the context is terminated, to allow for graceful provider cancellation.
 	go func() {
@@ -323,6 +327,8 @@ func newDeployment(
 		ShowSecrets:               opts.ShowSecrets,
 		Analyzers:                 opts.LoadedAnalyzers,
 		StateMigrationSerializer:  stateMigrationResourceSerializer{},
+		OutputWaiters:             opts.OutputWaiters,
+		OutputWaitersStackName:    opts.OutputWaitersStackName,
 	}
 
 	var depl *deploy.Deployment

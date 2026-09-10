@@ -839,6 +839,30 @@ func TestDeserializeMissingSecretsManager(t *testing.T) {
 	})
 }
 
+func TestDeferredResourcesRoundTrip(t *testing.T) {
+	t.Parallel()
+	deferred := &pkgresource.State{
+		Type: "delivery:index:Stage", URN: "urn:pulumi:org/project/dev::project::delivery:index:Stage::prod",
+		Inputs:       resource.PropertyMap{"release": resource.NewStringProperty("r42")},
+		Dependencies: []resource.URN{"urn:pulumi:org/project/dev::project::delivery:index:Release::app"},
+		PropertyDependencies: map[resource.PropertyKey][]resource.URN{
+			"release": {"urn:pulumi:org/project/dev::project::delivery:index:Release::app"},
+		},
+	}
+	snapshot := deploy.NewSnapshot(deploy.Manifest{}, nil, nil, nil, deploy.SnapshotMetadata{}, nil, nil)
+	snapshot.DeferredResources = []*pkgresource.State{deferred}
+	serialized, _, _, err := SerializeDeploymentWithMetadata(t.Context(), snapshot, true)
+	require.NoError(t, err)
+	require.Len(t, serialized.DeferredResources, 1)
+	restored, err := DeserializeDeploymentV3(t.Context(), *serialized, b64.Base64SecretsProvider)
+	require.NoError(t, err)
+	require.Len(t, restored.DeferredResources, 1)
+	assert.Equal(t, deferred.URN, restored.DeferredResources[0].URN)
+	assert.Equal(t, deferred.Inputs, restored.DeferredResources[0].Inputs)
+	assert.Equal(t, deferred.Dependencies, restored.DeferredResources[0].Dependencies)
+	assert.Equal(t, deferred.PropertyDependencies, restored.DeferredResources[0].PropertyDependencies)
+}
+
 func TestSerializePropertyValue(t *testing.T) {
 	t.Parallel()
 

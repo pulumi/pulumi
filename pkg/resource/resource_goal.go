@@ -23,6 +23,9 @@ import (
 // Goal is a desired state for a resource object. Normally it represents a subset of the resource's state expressed by
 // a program, however if Output is true, it represents a more complete, post-deployment view of the state.
 type Goal struct {
+	// Stack and Project override the deployment target when generating this resource's URN.
+	Stack   tokens.QName
+	Project tokens.PackageName
 	// the type of resource.
 	Type tokens.Type
 	// the name for the resource's URN.
@@ -81,6 +84,8 @@ type Goal struct {
 // NewGoal is used to construct Goal values. The dataflow for Goal is rather sensitive, so all fields are required.
 // Call [NewGoal.Make] to create the *Goal value.
 type NewGoal struct {
+	Stack   tokens.QName       // required
+	Project tokens.PackageName // required
 	// the type of resource.
 	Type tokens.Type // required
 
@@ -169,6 +174,8 @@ func (g NewGoal) Make() *Goal {
 		customTimeouts = *g.CustomTimeouts
 	}
 	return &Goal{
+		Stack:                   g.Stack,
+		Project:                 g.Project,
 		Type:                    g.Type,
 		Name:                    g.Name,
 		Custom:                  g.Custom,

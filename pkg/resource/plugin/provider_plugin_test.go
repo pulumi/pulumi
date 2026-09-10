@@ -1488,3 +1488,41 @@ func TestProvider_PartialFailure(t *testing.T) {
 		RefreshBeforeUpdate: true,
 	}, updateResp)
 }
+
+func TestProviderDependencyMetadata(t *testing.T) {
+	t.Parallel()
+	urn := resource.NewURN("org/proj/dev", "foo", "", "bar:baz", "qux")
+	dependency := resource.URN("urn:pulumi:org/proj/dev::foo::bar:baz::dependency")
+	var createRequest *pulumirpc.CreateRequest
+	var updateRequest *pulumirpc.UpdateRequest
+	client := &stubClient{
+		ConfigureF: func(*pulumirpc.ConfigureRequest) (*pulumirpc.ConfigureResponse, error) {
+			return &pulumirpc.ConfigureResponse{}, nil
+		},
+		CreateF: func(req *pulumirpc.CreateRequest) (*pulumirpc.CreateResponse, error) {
+			createRequest = req
+			return &pulumirpc.CreateResponse{Id: "id", Properties: req.Properties}, nil
+		},
+		UpdateF: func(req *pulumirpc.UpdateRequest) (*pulumirpc.UpdateResponse, error) {
+			updateRequest = req
+			return &pulumirpc.UpdateResponse{Properties: req.News}, nil
+		},
+	}
+	p := NewProviderWithClient(newTestContext(t), client, false)
+	_, err := p.Configure(t.Context(), ConfigureRequest{Type: new(tokens.Type("pulumi:providers:test"))})
+	require.NoError(t, err)
+	deps := []resource.URN{dependency}
+	propertyDeps := map[resource.PropertyKey][]resource.URN{"value": deps}
+	_, err = p.Create(t.Context(), CreateRequest{URN: urn, Properties: resource.PropertyMap{}, Dependencies: deps,
+		PropertyDependencies: propertyDeps})
+	require.NoError(t, err)
+	_, err = p.Update(t.Context(), UpdateRequest{URN: urn, ID: "id", OldInputs: resource.PropertyMap{},
+		OldOutputs: resource.PropertyMap{}, NewInputs: resource.PropertyMap{}, Dependencies: deps,
+		PropertyDependencies: propertyDeps})
+	require.NoError(t, err)
+
+	assert.Equal(t, []string{string(dependency)}, createRequest.GetDependencies())
+	assert.Equal(t, []string{string(dependency)}, createRequest.GetPropertyDependencies()["value"].GetUrns())
+	assert.Equal(t, []string{string(dependency)}, updateRequest.GetDependencies())
+	assert.Equal(t, []string{string(dependency)}, updateRequest.GetPropertyDependencies()["value"].GetUrns())
+}

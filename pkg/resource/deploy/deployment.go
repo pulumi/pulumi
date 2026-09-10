@@ -128,6 +128,12 @@ type Options struct {
 	// migration callbacks. The engine injects it because the serialization logic lives in pkg/resource/stack, which
 	// already imports this package and therefore cannot be imported here.
 	StateMigrationSerializer StateMigrationResourceSerializer
+	// OutputWaiters enables co-deployed stack output resolution.
+	OutputWaiters *OutputWaiterStore
+	// OutputWaitersStackName is this stack's fully qualified name in single-stack mode.
+	OutputWaitersStackName string
+	// OutputWaitersStackFQNs maps project names to stack FQNs in multistack mode.
+	OutputWaitersStackFQNs map[tokens.PackageName]string
 }
 
 // DegreeOfParallelism returns the degree of parallelism that should be used during the
@@ -261,6 +267,10 @@ type StepExecutorEvents interface {
 // StateMigrationEvents is implemented by event handlers that can persist state migrations.
 type StateMigrationEvents interface {
 	OnStateMigration(transaction *StateMigrationTransaction) error
+}
+
+type DeferredResourceEvents interface {
+	OnDeferredResource(state *pkgresource.State) error
 }
 
 // PolicyEvents is an interface that can be used to hook policy events.

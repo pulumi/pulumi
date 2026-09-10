@@ -18,6 +18,7 @@ import (
 	"errors"
 	"sync"
 
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 )
@@ -113,6 +114,18 @@ func (c *CombinedManager) SetSnippets(snippets []resource.Snippet) error {
 			} else {
 				errs = append(errs, err)
 			}
+		}
+	}
+	return errors.Join(errs...)
+}
+
+func (c *CombinedManager) AddDeferredResource(state *pkgresource.State) error {
+	var errs []error
+	for _, manager := range c.Managers {
+		if deferred, ok := manager.(interface {
+			AddDeferredResource(*pkgresource.State) error
+		}); ok {
+			errs = append(errs, deferred.AddDeferredResource(state))
 		}
 	}
 	return errors.Join(errs...)

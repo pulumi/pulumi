@@ -243,6 +243,8 @@ func NewProvider(host Host, ctx *Context, spec workspace.PluginDescriptor,
 		// dynamic providers to do things like lookup the virtual environment to use.
 
 		optionsStore := env.MapStore{}
+		// Always override inherited IDs: a nested update must not declare resources in its parent's pass.
+		optionsStore["PULUMI_UPDATE_ID"] = ctx.UpdateID
 
 		for k, v := range options {
 			optionsStore["PULUMI_RUNTIME_"+strings.ToUpper(k)] = fmt.Sprintf("%v", v)

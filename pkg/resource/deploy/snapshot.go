@@ -41,6 +41,7 @@ type Snapshot struct {
 	Manifest          Manifest                // a deployment manifest of versions, checksums, and so on.
 	SecretsManager    secrets.Manager         // the manager to use use when serializing this snapshot.
 	Resources         []*pkgresource.State    // fetches all resources and their associated states.
+	DeferredResources []*pkgresource.State    // goals deferred by awaiting resources.
 	PendingOperations []pkgresource.Operation // all currently pending resource operations.
 	Metadata          SnapshotMetadata        // metadata associated with the snapshot.
 	Snippets          []resource.Snippet      // any PCL snippets associated with the snapshot.
@@ -572,8 +573,8 @@ func MergeSnapshots(snapshots []*Snapshot, coDeployedProjects map[string]bool) *
 	}
 
 	// Concatenate all resources and pending operations.
-	var allResources []*resource.State
-	var allPendingOps []resource.Operation
+	var allResources []*pkgresource.State
+	var allPendingOps []pkgresource.Operation
 	for _, snap := range snapshots {
 		if snap == nil {
 			continue

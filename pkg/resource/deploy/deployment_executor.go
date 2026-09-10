@@ -395,7 +395,7 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context) (_ *Plan, err e
 	stepExecutorError := ex.stepExec.Errored()
 
 	// Finalize the stack outputs.
-	if e := ex.stepExec.stackOutputsEvent; e != nil {
+	for _, e := range ex.stepExec.stackOutputsEvents {
 		errored := err != nil || stepExecutorError != nil || ex.stepGen.Errored() ||
 			ex.deployment.PostStepError() != nil
 		finalizingStackOutputs := true
@@ -479,6 +479,9 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context) (_ *Plan, err e
 	} else if canceled {
 		ex.reportExecResult("canceled")
 		return nil, result.BailErrorf("canceled")
+	} else if awaiting := ex.stepExec.GetAwaitingSteps(); len(awaiting) > 0 {
+		ex.reportExecResult("awaiting")
+		return ex.deployment.newPlans.plan(), &AwaitingError{Steps: awaiting}
 	}
 
 	return ex.deployment.newPlans.plan(), err
@@ -681,10 +684,19 @@ func (ex *deploymentExecutor) handleSingleEvent(ctx context.Context, event Sourc
 	for _, errored := range ex.stepExec.GetErroredSteps() {
 		ex.skipped.Add(errored.Res().URN)
 	}
+	for _, awaiting := range ex.stepExec.GetAwaitingSteps() {
+		ex.skipped.Add(awaiting.Res().URN)
+	}
 	for _, step := range steps {
 		if doesStepDependOn(step, ex.skipped) {
+			if events, ok := ex.deployment.events.(DeferredResourceEvents); ok {
+				if err := events.OnDeferredResource(step.New()); err != nil {
+					return err
+				}
+			}
 			step.Skip()
 			ex.skipped.Add(step.Res().URN)
+			ex.stepExec.MarkSkipResolved(step.Res().URN)
 			continue
 		}
 		newSteps = append(newSteps, step)

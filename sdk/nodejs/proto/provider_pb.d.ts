@@ -911,6 +911,13 @@ export class CreateRequest extends jspb.Message {
     setResourceStatusAddress(value: string): CreateRequest;
     getResourceStatusToken(): string;
     setResourceStatusToken(value: string): CreateRequest;
+    clearDependenciesList(): void;
+    getDependenciesList(): Array<string>;
+    setDependenciesList(value: Array<string>): CreateRequest;
+    addDependencies(value: string, index?: number): string;
+
+    getPropertyDependenciesMap(): jspb.Map<string, CreateRequest.PropertyDependencies>;
+    clearPropertyDependenciesMap(): void;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): CreateRequest.AsObject;
@@ -932,7 +939,34 @@ export namespace CreateRequest {
         type: string,
         resourceStatusAddress: string,
         resourceStatusToken: string,
+        dependenciesList: Array<string>,
+
+        propertyDependenciesMap: Array<[string, CreateRequest.PropertyDependencies.AsObject]>,
     }
+
+
+    export class PropertyDependencies extends jspb.Message { 
+        clearUrnsList(): void;
+        getUrnsList(): Array<string>;
+        setUrnsList(value: Array<string>): PropertyDependencies;
+        addUrns(value: string, index?: number): string;
+
+        serializeBinary(): Uint8Array;
+        toObject(includeInstance?: boolean): PropertyDependencies.AsObject;
+        static toObject(includeInstance: boolean, msg: PropertyDependencies): PropertyDependencies.AsObject;
+        static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+        static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+        static serializeBinaryToWriter(message: PropertyDependencies, writer: jspb.BinaryWriter): void;
+        static deserializeBinary(bytes: Uint8Array): PropertyDependencies;
+        static deserializeBinaryFromReader(message: PropertyDependencies, reader: jspb.BinaryReader): PropertyDependencies;
+    }
+
+    export namespace PropertyDependencies {
+        export type AsObject = {
+            urnsList: Array<string>,
+        }
+    }
+
 }
 
 export class CreateResponse extends jspb.Message { 
@@ -1242,6 +1276,13 @@ export class UpdateRequest extends jspb.Message {
     getOldViewsList(): Array<View>;
     setOldViewsList(value: Array<View>): UpdateRequest;
     addOldViews(value?: View, index?: number): View;
+    clearDependenciesList(): void;
+    getDependenciesList(): Array<string>;
+    setDependenciesList(value: Array<string>): UpdateRequest;
+    addDependencies(value: string, index?: number): string;
+
+    getPropertyDependenciesMap(): jspb.Map<string, UpdateRequest.PropertyDependencies>;
+    clearPropertyDependenciesMap(): void;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): UpdateRequest.AsObject;
@@ -1268,7 +1309,34 @@ export namespace UpdateRequest {
         resourceStatusAddress: string,
         resourceStatusToken: string,
         oldViewsList: Array<View.AsObject>,
+        dependenciesList: Array<string>,
+
+        propertyDependenciesMap: Array<[string, UpdateRequest.PropertyDependencies.AsObject]>,
     }
+
+
+    export class PropertyDependencies extends jspb.Message { 
+        clearUrnsList(): void;
+        getUrnsList(): Array<string>;
+        setUrnsList(value: Array<string>): PropertyDependencies;
+        addUrns(value: string, index?: number): string;
+
+        serializeBinary(): Uint8Array;
+        toObject(includeInstance?: boolean): PropertyDependencies.AsObject;
+        static toObject(includeInstance: boolean, msg: PropertyDependencies): PropertyDependencies.AsObject;
+        static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+        static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+        static serializeBinaryToWriter(message: PropertyDependencies, writer: jspb.BinaryWriter): void;
+        static deserializeBinary(bytes: Uint8Array): PropertyDependencies;
+        static deserializeBinaryFromReader(message: PropertyDependencies, reader: jspb.BinaryReader): PropertyDependencies;
+    }
+
+    export namespace PropertyDependencies {
+        export type AsObject = {
+            urnsList: Array<string>,
+        }
+    }
+
 }
 
 export class UpdateResponse extends jspb.Message { 

@@ -47,6 +47,14 @@ type providerServer struct {
 	sendByteString bool
 }
 
+func stringsToURNs(values []string) []resource.URN {
+	result := make([]resource.URN, len(values))
+	for i, value := range values {
+		result[i] = resource.URN(value)
+	}
+	return result
+}
+
 func NewProviderServer(provider Provider) pulumirpc.ResourceProviderServer {
 	return &providerServer{
 		provider: provider,
@@ -580,6 +588,13 @@ func (p *providerServer) Create(ctx context.Context, req *pulumirpc.CreateReques
 	if err != nil {
 		return nil, err
 	}
+	propertyDependencies := make(map[resource.PropertyKey][]resource.URN, len(req.GetPropertyDependencies()))
+	for key, deps := range req.GetPropertyDependencies() {
+		for _, dependency := range deps.GetUrns() {
+			propertyDependencies[resource.PropertyKey(key)] = append(
+				propertyDependencies[resource.PropertyKey(key)], resource.URN(dependency))
+		}
+	}
 
 	resp, err := p.provider.Create(ctx, CreateRequest{
 		URN:                   urn,
@@ -588,6 +603,8 @@ func (p *providerServer) Create(ctx context.Context, req *pulumirpc.CreateReques
 		Properties:            inputs,
 		Timeout:               req.GetTimeout(),
 		Preview:               req.GetPreview(),
+		Dependencies:          stringsToURNs(req.GetDependencies()),
+		PropertyDependencies:  propertyDependencies,
 		ResourceStatusAddress: req.GetResourceStatusAddress(),
 		ResourceStatusToken:   req.GetResourceStatusToken(),
 	})
@@ -604,6 +621,8 @@ func (p *providerServer) Create(ctx context.Context, req *pulumirpc.CreateReques
 		Id:                  string(resp.ID),
 		Properties:          rpcState,
 		RefreshBeforeUpdate: resp.RefreshBeforeUpdate,
+		Awaiting:            resp.Awaiting,
+		AwaitingReason:      resp.AwaitingReason,
 	}, nil
 }
 
@@ -765,6 +784,13 @@ func (p *providerServer) Update(ctx context.Context, req *pulumirpc.UpdateReques
 	if err != nil {
 		return nil, err
 	}
+	propertyDependencies := make(map[resource.PropertyKey][]resource.URN, len(req.GetPropertyDependencies()))
+	for key, deps := range req.GetPropertyDependencies() {
+		for _, dependency := range deps.GetUrns() {
+			propertyDependencies[resource.PropertyKey(key)] = append(
+				propertyDependencies[resource.PropertyKey(key)], resource.URN(dependency))
+		}
+	}
 
 	resp, err := p.provider.Update(ctx, UpdateRequest{
 		URN:                   urn,
@@ -777,6 +803,8 @@ func (p *providerServer) Update(ctx context.Context, req *pulumirpc.UpdateReques
 		Timeout:               req.GetTimeout(),
 		IgnoreChanges:         req.GetIgnoreChanges(),
 		Preview:               req.GetPreview(),
+		Dependencies:          stringsToURNs(req.GetDependencies()),
+		PropertyDependencies:  propertyDependencies,
 		ResourceStatusAddress: req.GetResourceStatusAddress(),
 		ResourceStatusToken:   req.GetResourceStatusToken(),
 		OldViews:              oldViews,
@@ -793,6 +821,8 @@ func (p *providerServer) Update(ctx context.Context, req *pulumirpc.UpdateReques
 	return &pulumirpc.UpdateResponse{
 		Properties:          rpcState,
 		RefreshBeforeUpdate: resp.RefreshBeforeUpdate,
+		Awaiting:            resp.Awaiting,
+		AwaitingReason:      resp.AwaitingReason,
 	}, nil
 }
 

@@ -39,6 +39,7 @@ const (
 	TestJournalEntryOutputs        TestJournalEntryKind = 4
 	TestJournalEntrySnippets       TestJournalEntryKind = 9
 	TestJournalEntryStateMigration TestJournalEntryKind = 10
+	TestJournalEntryDeferred       TestJournalEntryKind = 11
 )
 
 type TestJournalEntry struct {
@@ -46,6 +47,7 @@ type TestJournalEntry struct {
 	Step      deploy.Step
 	Snippets  []resource.Snippet
 	Migration *deploy.StateMigrationTransaction
+	State     *pkgresource.State
 }
 
 type JournalEntries []TestJournalEntry
@@ -57,7 +59,12 @@ func (entries JournalEntries) Snap(base *deploy.Snapshot) (*deploy.Snapshot, err
 	ops, doneOps := []pkgresource.Operation{}, make(map[*pkgresource.State]bool)
 	// Collect extension blobs from ExtensionParameterizeStep entries seen during this plan.
 	liveExtensions := map[apitype.ExtensionRef]apitype.Extension{}
+	deferredResources := map[resource.URN]*pkgresource.State{}
 	for _, e := range entries {
+		if e.Kind == TestJournalEntryDeferred {
+			deferredResources[e.State.URN] = e.State
+			continue
+		}
 		if e.Kind == TestJournalEntrySnippets {
 			logging.V(7).Infof("snippets (%v)", len(e.Snippets))
 			continue
@@ -228,6 +235,9 @@ func (entries JournalEntries) Snap(base *deploy.Snapshot) (*deploy.Snapshot, err
 	contract.Assertf(len(missing) == 0, "journal snapshot is missing extension blobs: %v", missing)
 
 	snap := deploy.NewSnapshot(manifest, secretsManager, filteredResources, operations, metadata, snippets, snapExtensions)
+	for _, deferred := range deferredResources {
+		snap.DeferredResources = append(snap.DeferredResources, deferred)
+	}
 	normSnap, err := snap.NormalizeURNReferences()
 	if err != nil {
 		return snap, err
@@ -318,6 +328,15 @@ func (j *TestJournal) StateMigration(transaction *deploy.StateMigrationTransacti
 func (j *TestJournal) SetSnippets(snippets []resource.Snippet) error {
 	select {
 	case j.events <- TestJournalEntry{Kind: TestJournalEntrySnippets, Snippets: snippets}:
+		return nil
+	case <-j.cancel:
+		return errors.New("journal closed")
+	}
+}
+
+func (j *TestJournal) AddDeferredResource(state *pkgresource.State) error {
+	select {
+	case j.events <- TestJournalEntry{Kind: TestJournalEntryDeferred, State: state.Copy()}:
 		return nil
 	case <-j.cancel:
 		return errors.New("journal closed")

@@ -186,9 +186,10 @@ func (b *cloudBackend) newUpdate(ctx context.Context, stackRef backend.StackRefe
 	}
 
 	info := engine.UpdateInfo{
-		Root:    op.Root,
-		Project: op.Proj,
-		Target:  target,
+		UpdateID: update.UpdateID,
+		Root:     op.Root,
+		Project:  op.Proj,
+		Target:   target,
 	}
 
 	return info, tokenSource, nil

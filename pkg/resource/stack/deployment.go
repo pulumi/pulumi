@@ -275,6 +275,15 @@ func SerializeDeploymentWithMetadata(
 		ApplyFeatures(sres, encodedByteString, featureMap)
 		resources = append(resources, sres)
 	}
+	deferredResources := slice.Prealloc[apitype.ResourceV3](len(snap.DeferredResources))
+	for _, res := range snap.DeferredResources {
+		sres, encodedByteString, err := SerializeResource(ctx, res, enc, showSecrets)
+		if err != nil {
+			return nil, 0, nil, fmt.Errorf("serializing deferred resources: %w", err)
+		}
+		ApplyFeatures(sres, encodedByteString, featureMap)
+		deferredResources = append(deferredResources, sres)
+	}
 
 	operations := slice.Prealloc[apitype.OperationV2](len(snap.PendingOperations))
 	for _, op := range snap.PendingOperations {
@@ -333,6 +342,7 @@ func SerializeDeploymentWithMetadata(
 	return &apitype.DeploymentV3{
 		Manifest:          manifest,
 		Resources:         resources,
+		DeferredResources: deferredResources,
 		SecretsProviders:  secretsProvider,
 		PendingOperations: operations,
 		Metadata:          metadata,
@@ -585,8 +595,9 @@ func DeserializeDeploymentV3(
 	}
 
 	type deserializedData struct {
-		resources []*pkgresource.State
-		ops       []pkgresource.Operation
+		resources         []*pkgresource.State
+		deferredResources []*pkgresource.State
+		ops               []pkgresource.Operation
 	}
 
 	data, err := BatchDecrypt(
@@ -602,6 +613,14 @@ func DeserializeDeploymentV3(
 				}
 				resources = append(resources, desres)
 			}
+			deferredResources := slice.Prealloc[*pkgresource.State](len(deployment.DeferredResources))
+			for _, res := range deployment.DeferredResources {
+				desres, err := DeserializeResource(res, dec)
+				if err != nil {
+					return deserializedData{}, err
+				}
+				deferredResources = append(deferredResources, desres)
+			}
 
 			ops := slice.Prealloc[pkgresource.Operation](len(deployment.PendingOperations))
 			for _, op := range deployment.PendingOperations {
@@ -612,7 +631,7 @@ func DeserializeDeploymentV3(
 				ops = append(ops, desop)
 			}
 
-			return deserializedData{resources: resources, ops: ops}, nil
+			return deserializedData{resources: resources, deferredResources: deferredResources, ops: ops}, nil
 		},
 	)
 	if err != nil {
@@ -635,9 +654,11 @@ func DeserializeDeploymentV3(
 			snippets[i] = DeserializeSnippet(s)
 		}
 	}
-	return deploy.NewSnapshot(
+	snapshot := deploy.NewSnapshot(
 		*manifest, secretsManager, data.resources, data.ops, metadata, snippets, deployment.Extensions,
-	), nil
+	)
+	snapshot.DeferredResources = data.deferredResources
+	return snapshot, nil
 }
 
 // initializeSecretsManager initializes the secrets manager for a deployment.

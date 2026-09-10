@@ -24,6 +24,8 @@ import (
 
 // UpdateInfo handles information common to resource operations (update, preview, destroy, import, refresh).
 type UpdateInfo struct {
+	// UpdateID identifies the backend operation, or is empty for backends without update IDs.
+	UpdateID string
 	// Root is the root directory for this update. This defines the scope for any filesystem resources accessed by this
 	// update.
 	Root string

@@ -1265,6 +1265,38 @@ class CreateRequest(google.protobuf.message.Message):
 
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
+    @typing.final
+    class PropertyDependencies(google.protobuf.message.Message):
+        DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+        URNS_FIELD_NUMBER: builtins.int
+        @property
+        def urns(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]: ...
+        def __init__(
+            self,
+            *,
+            urns: collections.abc.Iterable[builtins.str] | None = ...,
+        ) -> None: ...
+        def ClearField(self, field_name: typing.Literal["urns", b"urns"]) -> None: ...
+
+    @typing.final
+    class PropertyDependenciesEntry(google.protobuf.message.Message):
+        DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+        KEY_FIELD_NUMBER: builtins.int
+        VALUE_FIELD_NUMBER: builtins.int
+        key: builtins.str
+        @property
+        def value(self) -> global___CreateRequest.PropertyDependencies: ...
+        def __init__(
+            self,
+            *,
+            key: builtins.str = ...,
+            value: global___CreateRequest.PropertyDependencies | None = ...,
+        ) -> None: ...
+        def HasField(self, field_name: typing.Literal["value", b"value"]) -> builtins.bool: ...
+        def ClearField(self, field_name: typing.Literal["key", b"key", "value", b"value"]) -> None: ...
+
     URN_FIELD_NUMBER: builtins.int
     PROPERTIES_FIELD_NUMBER: builtins.int
     TIMEOUT_FIELD_NUMBER: builtins.int
@@ -1273,6 +1305,8 @@ class CreateRequest(google.protobuf.message.Message):
     TYPE_FIELD_NUMBER: builtins.int
     RESOURCE_STATUS_ADDRESS_FIELD_NUMBER: builtins.int
     RESOURCE_STATUS_TOKEN_FIELD_NUMBER: builtins.int
+    DEPENDENCIES_FIELD_NUMBER: builtins.int
+    PROPERTY_DEPENDENCIES_FIELD_NUMBER: builtins.int
     urn: builtins.str
     """The URN of the resource being created."""
     timeout: builtins.float
@@ -1299,6 +1333,14 @@ class CreateRequest(google.protobuf.message.Message):
         [](pulumirpc.ResourceProvider.Check).
         """
 
+    @property
+    def dependencies(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]:
+        """Resource dependencies declared for this resource."""
+
+    @property
+    def property_dependencies(self) -> google.protobuf.internal.containers.MessageMap[builtins.str, global___CreateRequest.PropertyDependencies]:
+        """Dependencies associated with each input property."""
+
     def __init__(
         self,
         *,
@@ -1310,9 +1352,11 @@ class CreateRequest(google.protobuf.message.Message):
         type: builtins.str = ...,
         resource_status_address: builtins.str = ...,
         resource_status_token: builtins.str = ...,
+        dependencies: collections.abc.Iterable[builtins.str] | None = ...,
+        property_dependencies: collections.abc.Mapping[builtins.str, global___CreateRequest.PropertyDependencies] | None = ...,
     ) -> None: ...
     def HasField(self, field_name: typing.Literal["properties", b"properties"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing.Literal["name", b"name", "preview", b"preview", "properties", b"properties", "resource_status_address", b"resource_status_address", "resource_status_token", b"resource_status_token", "timeout", b"timeout", "type", b"type", "urn", b"urn"]) -> None: ...
+    def ClearField(self, field_name: typing.Literal["dependencies", b"dependencies", "name", b"name", "preview", b"preview", "properties", b"properties", "property_dependencies", b"property_dependencies", "resource_status_address", b"resource_status_address", "resource_status_token", b"resource_status_token", "timeout", b"timeout", "type", b"type", "urn", b"urn"]) -> None: ...
 
 global___CreateRequest = CreateRequest
 
@@ -1601,6 +1645,38 @@ class UpdateRequest(google.protobuf.message.Message):
 
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
+    @typing.final
+    class PropertyDependencies(google.protobuf.message.Message):
+        DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+        URNS_FIELD_NUMBER: builtins.int
+        @property
+        def urns(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]: ...
+        def __init__(
+            self,
+            *,
+            urns: collections.abc.Iterable[builtins.str] | None = ...,
+        ) -> None: ...
+        def ClearField(self, field_name: typing.Literal["urns", b"urns"]) -> None: ...
+
+    @typing.final
+    class PropertyDependenciesEntry(google.protobuf.message.Message):
+        DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+        KEY_FIELD_NUMBER: builtins.int
+        VALUE_FIELD_NUMBER: builtins.int
+        key: builtins.str
+        @property
+        def value(self) -> global___UpdateRequest.PropertyDependencies: ...
+        def __init__(
+            self,
+            *,
+            key: builtins.str = ...,
+            value: global___UpdateRequest.PropertyDependencies | None = ...,
+        ) -> None: ...
+        def HasField(self, field_name: typing.Literal["value", b"value"]) -> builtins.bool: ...
+        def ClearField(self, field_name: typing.Literal["key", b"key", "value", b"value"]) -> None: ...
+
     ID_FIELD_NUMBER: builtins.int
     URN_FIELD_NUMBER: builtins.int
     OLDS_FIELD_NUMBER: builtins.int
@@ -1614,6 +1690,8 @@ class UpdateRequest(google.protobuf.message.Message):
     RESOURCE_STATUS_ADDRESS_FIELD_NUMBER: builtins.int
     RESOURCE_STATUS_TOKEN_FIELD_NUMBER: builtins.int
     OLD_VIEWS_FIELD_NUMBER: builtins.int
+    DEPENDENCIES_FIELD_NUMBER: builtins.int
+    PROPERTY_DEPENDENCIES_FIELD_NUMBER: builtins.int
     id: builtins.str
     """The ID of the resource being updated."""
     urn: builtins.str
@@ -1658,6 +1736,14 @@ class UpdateRequest(google.protobuf.message.Message):
     def old_views(self) -> google.protobuf.internal.containers.RepeatedCompositeFieldContainer[global___View]:
         """The old views for the resource being updated."""
 
+    @property
+    def dependencies(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]:
+        """Resource dependencies declared for this resource."""
+
+    @property
+    def property_dependencies(self) -> google.protobuf.internal.containers.MessageMap[builtins.str, global___UpdateRequest.PropertyDependencies]:
+        """Dependencies associated with each input property."""
+
     def __init__(
         self,
         *,
@@ -1674,9 +1760,11 @@ class UpdateRequest(google.protobuf.message.Message):
         resource_status_address: builtins.str = ...,
         resource_status_token: builtins.str = ...,
         old_views: collections.abc.Iterable[global___View] | None = ...,
+        dependencies: collections.abc.Iterable[builtins.str] | None = ...,
+        property_dependencies: collections.abc.Mapping[builtins.str, global___UpdateRequest.PropertyDependencies] | None = ...,
     ) -> None: ...
     def HasField(self, field_name: typing.Literal["news", b"news", "old_inputs", b"old_inputs", "olds", b"olds"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing.Literal["id", b"id", "ignoreChanges", b"ignoreChanges", "name", b"name", "news", b"news", "old_inputs", b"old_inputs", "old_views", b"old_views", "olds", b"olds", "preview", b"preview", "resource_status_address", b"resource_status_address", "resource_status_token", b"resource_status_token", "timeout", b"timeout", "type", b"type", "urn", b"urn"]) -> None: ...
+    def ClearField(self, field_name: typing.Literal["dependencies", b"dependencies", "id", b"id", "ignoreChanges", b"ignoreChanges", "name", b"name", "news", b"news", "old_inputs", b"old_inputs", "old_views", b"old_views", "olds", b"olds", "preview", b"preview", "property_dependencies", b"property_dependencies", "resource_status_address", b"resource_status_address", "resource_status_token", b"resource_status_token", "timeout", b"timeout", "type", b"type", "urn", b"urn"]) -> None: ...
 
 global___UpdateRequest = UpdateRequest
 

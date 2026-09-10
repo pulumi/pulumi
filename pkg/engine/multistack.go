@@ -22,15 +22,17 @@ import (
 	"github.com/opentracing/opentracing-go"
 
 	"github.com/pulumi/pulumi/pkg/v3/display"
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 // MultistackEntry represents a single stack participating in a multistack engine operation.
@@ -107,6 +109,10 @@ func MultistackUpdate(
 		SourceFunc:    newUpdateSource,
 		pluginManager: mctx.PluginManager,
 	}
+	if err := ensureHost(context.Background(), deployOpts, tracingSpan); err != nil {
+		return nil, err
+	}
+	defer contract.IgnoreClose(deployOpts.host)
 
 	// Create N sources.
 	// For destroy operations, use NullSources (no programs to run — deletes come from old snapshot).
@@ -123,10 +129,9 @@ func MultistackUpdate(
 		// Create a plugin context for the deployment (needed for provider operations during destroy).
 		projinfo := &Projinfo{Proj: entries[0].Project, Root: entries[0].Root}
 		_, _, plugctx, err := ProjectInfoContext(
-			context.Background(), projinfo, opts.Host,
+			context.Background(), projinfo, deployOpts.host,
 			deployOpts.Diag, deployOpts.StatusDiag,
-			nil,                                           /* debugContext */
-			opts.DisableProviderPreview, tracingSpan, nil, /* config */
+			opts.DisableProviderPreview, tracingSpan, nil,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("creating plugin context for destroy: %w", err)
@@ -146,9 +151,8 @@ func MultistackUpdate(
 			}
 
 			pwd, main, plugctx, err := ProjectInfoContext(
-				context.Background(), projinfo, opts.Host,
+				context.Background(), projinfo, deployOpts.host,
 				deployOpts.Diag, deployOpts.StatusDiag,
-				nil, /* debugContext */
 				opts.DisableProviderPreview, tracingSpan, decConfig,
 			)
 			if err != nil {
@@ -378,13 +382,17 @@ func (a *multistackPreviewActions) OnPolicyViolation(urn resource.URN, d plugin.
 	a.opts.Events.policyViolationEvent(urn, d)
 }
 func (a *multistackPreviewActions) OnPolicyRemediation(
-	urn resource.URN, r plugin.Remediation, before, after resource.PropertyMap,
+	urn resource.URN, r plugin.Remediation, before, after property.Map,
 ) {
 	a.opts.Events.policyRemediationEvent(urn, r, before, after)
 }
 func (a *multistackPreviewActions) OnPolicyAnalyzeSummary(summary plugin.PolicySummary)      {}
 func (a *multistackPreviewActions) OnPolicyRemediateSummary(summary plugin.PolicySummary)    {}
 func (a *multistackPreviewActions) OnPolicyAnalyzeStackSummary(summary plugin.PolicySummary) {}
+
+func (a *multistackPreviewActions) OnStateMigration(*deploy.StateMigrationTransaction) error {
+	return nil
+}
 
 func (a *multistackPreviewActions) Changes() display.ResourceChanges {
 	return a.ops
@@ -426,6 +434,15 @@ func (a *multistackUpdateActions) OnSnapshotWrite(snap *deploy.Snapshot) error {
 func (a *multistackUpdateActions) OnRebuiltBaseState() error {
 	if a.snapshotMgr != nil {
 		return a.snapshotMgr.RebuiltBaseState()
+	}
+	return nil
+}
+
+func (a *multistackUpdateActions) OnDeferredResource(state *pkgresource.State) error {
+	if manager, ok := a.snapshotMgr.(interface {
+		AddDeferredResource(*pkgresource.State) error
+	}); ok {
+		return manager.AddDeferredResource(state)
 	}
 	return nil
 }
@@ -475,13 +492,17 @@ func (a *multistackUpdateActions) OnPolicyViolation(urn resource.URN, d plugin.A
 	a.opts.Events.policyViolationEvent(urn, d)
 }
 func (a *multistackUpdateActions) OnPolicyRemediation(
-	urn resource.URN, r plugin.Remediation, before, after resource.PropertyMap,
+	urn resource.URN, r plugin.Remediation, before, after property.Map,
 ) {
 	a.opts.Events.policyRemediationEvent(urn, r, before, after)
 }
 func (a *multistackUpdateActions) OnPolicyAnalyzeSummary(summary plugin.PolicySummary)      {}
 func (a *multistackUpdateActions) OnPolicyRemediateSummary(summary plugin.PolicySummary)    {}
 func (a *multistackUpdateActions) OnPolicyAnalyzeStackSummary(summary plugin.PolicySummary) {}
+
+func (a *multistackUpdateActions) OnStateMigration(*deploy.StateMigrationTransaction) error {
+	return deploy.ErrStateMigrationsUnsupported
+}
 
 func (a *multistackUpdateActions) Changes() display.ResourceChanges {
 	return a.ops

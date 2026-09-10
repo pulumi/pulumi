@@ -828,6 +828,9 @@ message DiffResponse {
 
 // `CreateRequest` is the type of requests sent as part of a [](pulumirpc.ResourceProvider.Create) call.
 message CreateRequest {
+    message PropertyDependencies {
+        repeated string urns = 1;
+    }
     // The URN of the resource being created.
     string urn = 1;
 
@@ -855,6 +858,12 @@ message CreateRequest {
 
     // The [](pulumirpc.ResourceStatus) service context token to pass when calling methods on the service.
     string resource_status_token = 8;
+
+    // Resource dependencies declared for this resource.
+    repeated string dependencies = 9;
+
+    // Dependencies associated with each input property.
+    map<string, PropertyDependencies> property_dependencies = 10;
 }
 
 // `CreateResponse` is the type of responses sent by a [](pulumirpc.ResourceProvider.Create) call. A `CreateResponse`
@@ -991,6 +1000,9 @@ message ListResponse {
 
 // `UpdateRequest` is the type of requests sent as part of a [](pulumirpc.ResourceProvider.Update) call.
 message UpdateRequest {
+    message PropertyDependencies {
+        repeated string urns = 1;
+    }
     // The ID of the resource being updated.
     string id = 1;
 
@@ -1033,6 +1045,12 @@ message UpdateRequest {
 
     // The old views for the resource being updated.
     repeated View old_views = 13;
+
+    // Resource dependencies declared for this resource.
+    repeated string dependencies = 14;
+
+    // Dependencies associated with each input property.
+    map<string, PropertyDependencies> property_dependencies = 15;
 }
 
 // `UpdateResponse` is the type of responses sent by a [](pulumirpc.ResourceProvider.Update) call.
