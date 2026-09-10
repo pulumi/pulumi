@@ -1,3 +1,0 @@
-component: cli
-kind: improvement
-body: Add `--filter` to `pulumi api list` to filter endpoints by keyword

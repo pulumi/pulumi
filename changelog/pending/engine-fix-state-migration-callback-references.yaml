@@ -1,4 +1,0 @@
-component: engine
-kind: fix
-body: Normalize successor references between chained component state migration callbacks
-time: 2026-09-09T08:35:06Z
