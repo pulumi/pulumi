@@ -1,0 +1,3 @@
+component: cli/plugin
+kind: improvement
+body: Correct `pulumi plugin rm` help text to note that the CLI re-downloads removed plugins automatically
