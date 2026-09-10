@@ -208,10 +208,7 @@ func (r *messageRenderer) renderRow(id string, colorizedColumns []string, maxCol
 		// msgWithColors having the color code information embedded with it.  So we need to get
 		// the right substring of it, assuming that embedded colors are just markup and do not
 		// actually contribute to the length
-		maxRowLength := r.terminalWidth - 1
-		if maxRowLength < 0 {
-			maxRowLength = 0
-		}
+		maxRowLength := max(r.terminalWidth-1, 0)
 		row = colors.TrimColorizedString(row, maxRowLength)
 	}
 

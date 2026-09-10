@@ -17,7 +17,10 @@ package pcl
 import (
 	"context"
 	"fmt"
+	"maps"
 	"slices"
+
+	mapset "github.com/deckarep/golang-set/v2"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 
@@ -29,7 +32,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/maputil"
 	"github.com/zclconf/go-cty/cty"
 )
 
@@ -84,7 +86,7 @@ func (b *binder) resolveSchemaResourceForBind(
 	// simply fail. We can't give a populated version field since we have not processed
 	// the body, and thus the version yet.
 	if packageDescriptor, ok := b.packageDescriptors[pkg]; ok {
-		pkgSchema, err = b.options.packageCache.loadPackageSchemaFromDescriptor(b.options.loader, packageDescriptor)
+		pkgSchema, err = b.options.packageCache.loadPackageSchemaFromDescriptor(ctx, b.options.loader, packageDescriptor)
 	} else {
 		pkgSchema, err = b.options.packageCache.loadPackageSchema(ctx, b.options.loader, pkg, "", "")
 	}
@@ -158,7 +160,7 @@ func (b *binder) computeBaseResourceInputOutputTypes(
 	inputType := b.schemaTypeToType(inputObjectType)
 
 	outputProperties := map[string]model.Type{
-		"id":  model.NewOutputType(model.StringType),
+		"id":  model.NewOutputType(model.IDType),
 		"urn": model.NewOutputType(model.StringType),
 	}
 	for _, prop := range properties {
@@ -578,7 +580,7 @@ func (b *binder) typecheckBaseResourceAttributes(
 		}
 		diagnostics = append(diagnostics, d)
 	}
-	attrNames := codegen.StringSet{}
+	attrNames := mapset.NewSet[string]()
 	for _, attr := range inputs {
 		attrNames.Add(attr.Name)
 
@@ -602,9 +604,9 @@ func (b *binder) typecheckBaseResourceAttributes(
 		}
 	}
 
-	for _, k := range maputil.SortedKeys(objectType.Properties) {
+	for _, k := range slices.Sorted(maps.Keys(objectType.Properties)) {
 		typ := objectType.Properties[k]
-		if model.IsOptionalType(typ) || attrNames.Has(k) {
+		if model.IsOptionalType(typ) || attrNames.Contains(k) {
 			// The type is present or optional. No error.
 			continue
 		}
@@ -811,6 +813,7 @@ func bindResourceOptions(options *model.Block) (*ResourceOptions, hcl.Diagnostic
 					"beforeCreate", "afterCreate",
 					"beforeUpdate", "afterUpdate",
 					"beforeDelete", "afterDelete",
+					"onError",
 				}
 				obj, isObj := item.Value.(*model.ObjectConsExpression)
 				if !isObj {
@@ -834,12 +837,38 @@ func bindResourceOptions(options *model.Block) (*ResourceOptions, hcl.Diagnostic
 							Subject:  kv.Key.SyntaxNode().Range().Ptr(),
 						})
 					}
-					if _, isList := kv.Value.(*model.TupleConsExpression); !isList {
+					list, isList := kv.Value.(*model.TupleConsExpression)
+					if !isList {
 						diagnostics = append(diagnostics, &hcl.Diagnostic{
 							Severity: hcl.DiagError,
 							Summary:  invalidHooksMsg,
 							Subject:  kv.Value.SyntaxNode().Range().Ptr(),
 						})
+						continue
+					}
+					// The kind of each referenced hook must match the binding: `onError` takes
+					// error hooks, the lifecycle bindings take resource hooks.
+					for _, expr := range list.Expressions {
+						trav, isTrav := expr.(*model.ScopeTraversalExpression)
+						if !isTrav || len(trav.Parts) == 0 {
+							continue
+						}
+						hook, isHook := trav.Parts[0].(*Hook)
+						if !isHook {
+							continue
+						}
+						wantKind := HookKindResource
+						if hookType == "onError" {
+							wantKind = HookKindError
+						}
+						if hook.Kind != wantKind {
+							diagnostics = append(diagnostics, &hcl.Diagnostic{
+								Severity: hcl.DiagError,
+								Summary: fmt.Sprintf("cannot bind %s hook '%s' to '%s'",
+									hook.Kind, hook.Name(), hookType),
+								Subject: expr.SyntaxNode().Range().Ptr(),
+							})
+						}
 					}
 				}
 				continue // skip generic type check; structural validation is done above

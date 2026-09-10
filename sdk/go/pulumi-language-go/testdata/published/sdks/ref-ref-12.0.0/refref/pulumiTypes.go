@@ -18,6 +18,7 @@ type Data struct {
 	Boolean       bool              `pulumi:"boolean"`
 	Float         float64           `pulumi:"float"`
 	InnerData     InnerData         `pulumi:"innerData"`
+	InnerDataList []InnerData       `pulumi:"innerDataList"`
 	Integer       int               `pulumi:"integer"`
 	OptionalInner *InnerData        `pulumi:"optionalInner"`
 	String        string            `pulumi:"string"`
@@ -40,6 +41,7 @@ type DataArgs struct {
 	Boolean       pulumi.BoolInput      `pulumi:"boolean"`
 	Float         pulumi.Float64Input   `pulumi:"float"`
 	InnerData     InnerDataInput        `pulumi:"innerData"`
+	InnerDataList InnerDataArrayInput   `pulumi:"innerDataList"`
 	Integer       pulumi.IntInput       `pulumi:"integer"`
 	OptionalInner InnerDataPtrInput     `pulumi:"optionalInner"`
 	String        pulumi.StringInput    `pulumi:"string"`
@@ -86,6 +88,10 @@ func (o DataOutput) Float() pulumi.Float64Output {
 
 func (o DataOutput) InnerData() InnerDataOutput {
 	return o.ApplyT(func(v Data) InnerData { return v.InnerData }).(InnerDataOutput)
+}
+
+func (o DataOutput) InnerDataList() InnerDataArrayOutput {
+	return o.ApplyT(func(v Data) []InnerData { return v.InnerDataList }).(InnerDataArrayOutput)
 }
 
 func (o DataOutput) Integer() pulumi.IntOutput {
@@ -184,6 +190,31 @@ func (i *innerDataPtrType) ToInnerDataPtrOutput() InnerDataPtrOutput {
 
 func (i *innerDataPtrType) ToInnerDataPtrOutputWithContext(ctx context.Context) InnerDataPtrOutput {
 	return pulumi.ToOutputWithContext(ctx, i).(InnerDataPtrOutput)
+}
+
+// InnerDataArrayInput is an input type that accepts InnerDataArray and InnerDataArrayOutput values.
+// You can construct a concrete instance of `InnerDataArrayInput` via:
+//
+//	InnerDataArray{ InnerDataArgs{...} }
+type InnerDataArrayInput interface {
+	pulumi.Input
+
+	ToInnerDataArrayOutput() InnerDataArrayOutput
+	ToInnerDataArrayOutputWithContext(context.Context) InnerDataArrayOutput
+}
+
+type InnerDataArray []InnerDataInput
+
+func (InnerDataArray) ElementType() reflect.Type {
+	return reflect.TypeOf((*[]InnerData)(nil)).Elem()
+}
+
+func (i InnerDataArray) ToInnerDataArrayOutput() InnerDataArrayOutput {
+	return i.ToInnerDataArrayOutputWithContext(context.Background())
+}
+
+func (i InnerDataArray) ToInnerDataArrayOutputWithContext(ctx context.Context) InnerDataArrayOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(InnerDataArrayOutput)
 }
 
 type InnerDataOutput struct{ *pulumi.OutputState }
@@ -312,11 +343,33 @@ func (o InnerDataPtrOutput) StringMap() pulumi.StringMapOutput {
 	}).(pulumi.StringMapOutput)
 }
 
+type InnerDataArrayOutput struct{ *pulumi.OutputState }
+
+func (InnerDataArrayOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*[]InnerData)(nil)).Elem()
+}
+
+func (o InnerDataArrayOutput) ToInnerDataArrayOutput() InnerDataArrayOutput {
+	return o
+}
+
+func (o InnerDataArrayOutput) ToInnerDataArrayOutputWithContext(ctx context.Context) InnerDataArrayOutput {
+	return o
+}
+
+func (o InnerDataArrayOutput) Index(i pulumi.IntInput) InnerDataOutput {
+	return pulumi.All(o, i).ApplyT(func(vs []interface{}) InnerData {
+		return vs[0].([]InnerData)[vs[1].(int)]
+	}).(InnerDataOutput)
+}
+
 func init() {
 	pulumi.RegisterInputType(reflect.TypeOf((*DataInput)(nil)).Elem(), DataArgs{})
 	pulumi.RegisterInputType(reflect.TypeOf((*InnerDataInput)(nil)).Elem(), InnerDataArgs{})
 	pulumi.RegisterInputType(reflect.TypeOf((*InnerDataPtrInput)(nil)).Elem(), InnerDataArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*InnerDataArrayInput)(nil)).Elem(), InnerDataArray{})
 	pulumi.RegisterOutputType(DataOutput{})
 	pulumi.RegisterOutputType(InnerDataOutput{})
 	pulumi.RegisterOutputType(InnerDataPtrOutput{})
+	pulumi.RegisterOutputType(InnerDataArrayOutput{})
 }

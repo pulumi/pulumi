@@ -26,8 +26,8 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
+	"github.com/pulumi/pulumi/pkg/v3/registry"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/registry"
 )
 
 type cloudRegistry struct {
@@ -56,7 +56,7 @@ func (r *cloudRegistry) GetPackage(
 	ctx ctx.Context, source, publisher, name string, version *semver.Version,
 ) (apitype.PackageMetadata, error) {
 	meta, err := r.cl.GetPackage(ctx, source, publisher, name, version)
-	if apiErr := (&apitype.ErrorResponse{}); errors.As(err, &apiErr) && apiErr.Code == 404 {
+	if apiErr, ok := errors.AsType[*apitype.ErrorResponse](err); ok && apiErr.Code == 404 {
 		return meta, backenderr.NotFoundError{Err: err}
 	}
 	return meta, err
@@ -64,7 +64,7 @@ func (r *cloudRegistry) GetPackage(
 
 func (r *cloudRegistry) ListTemplates(
 	ctx ctx.Context, opts registry.ListTemplatesOptions,
-) iter.Seq2[apitype.TemplateMetadata, error] {
+) iter.Seq2[apitype.ListTemplatesResponse, error] {
 	return r.cl.ListTemplates(ctx, opts)
 }
 
@@ -72,7 +72,7 @@ func (r *cloudRegistry) GetTemplate(
 	ctx ctx.Context, source, publisher, name string, version *semver.Version,
 ) (apitype.TemplateMetadata, error) {
 	meta, err := r.cl.GetTemplate(ctx, source, publisher, name, version)
-	if apiErr := (&apitype.ErrorResponse{}); errors.As(err, &apiErr) && apiErr.Code == http.StatusNotFound {
+	if apiErr, ok := errors.AsType[*apitype.ErrorResponse](err); ok && apiErr.Code == http.StatusNotFound {
 		return meta, backenderr.NotFoundError{Err: err}
 	}
 	return meta, err
@@ -90,7 +90,7 @@ func (r *cloudRegistry) DeletePackageVersion(
 	ctx ctx.Context, source, publisher, name string, version semver.Version,
 ) error {
 	err := r.cl.DeletePackageVersion(ctx, source, publisher, name, version)
-	if apiErr := (&apitype.ErrorResponse{}); errors.As(err, &apiErr) && apiErr.Code == http.StatusNotFound {
+	if apiErr, ok := errors.AsType[*apitype.ErrorResponse](err); ok && apiErr.Code == http.StatusNotFound {
 		return backenderr.NotFoundError{Err: err}
 	}
 	return err

@@ -11,9 +11,7 @@ func main() {
 		res1, err := indexmine.NewResource(ctx, "res1", &indexmine.ResourceArgs{
 			Text: indexmine.ConcatWorldOutput(ctx, indexmine.ConcatWorldOutputArgs{
 				Value: pulumi.String("hello"),
-			}, nil).ApplyT(func(invoke indexmine.ConcatWorldResult) (string, error) {
-				return invoke.Result, nil
-			}).(pulumi.StringOutput),
+			}, nil).Result(),
 		})
 		if err != nil {
 			return err
@@ -30,9 +28,7 @@ func main() {
 		res2, err := nested.NewResource(ctx, "res2", &nested.ResourceArgs{
 			Text: nested.ConcatWorldOutput(ctx, nested.ConcatWorldOutputArgs{
 				Value: pulumi.String("goodbye"),
-			}, nil).ApplyT(func(invoke nested.ConcatWorldResult) (string, error) {
-				return invoke.Result, nil
-			}).(pulumi.StringOutput),
+			}, nil).Result(),
 		})
 		if err != nil {
 			return err

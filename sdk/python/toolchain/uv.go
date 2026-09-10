@@ -64,10 +64,11 @@ func newUv(root, virtualenv string) (*uv, error) {
 	if virtualenv == "" {
 		// If virtualenv is not set, look for the nearest uv.lock or pyproject.toml to
 		// determine where to place the virtualenv.
+		projectDir := root
 		uvLockDir, err := searchup(root, "uv.lock")
 		if err != nil {
 			if !errors.Is(err, os.ErrNotExist) {
-				return nil, fmt.Errorf("error while looking for pyproject.toml in %s: %w", root, err)
+				return nil, fmt.Errorf("error while looking for uv.lock in %s: %w", root, err)
 			}
 			// No uv.lock, do we have a pyproject.toml?
 			pyprojectTomlDir, err := searchup(root, "pyproject.toml")
@@ -76,14 +77,21 @@ func newUv(root, virtualenv string) (*uv, error) {
 					return nil, fmt.Errorf("error while looking for pyproject.toml in %s: %w", root, err)
 				}
 				// We have no uv.lock and no pyproject.toml, place the virtualenv in the project root.
-				virtualenv = filepath.Join(root, defaultVirtualEnv)
 			} else {
 				// We have a pyproject.toml, place the virtualenv next to it.
-				virtualenv = filepath.Join(pyprojectTomlDir, defaultVirtualEnv)
+				projectDir = pyprojectTomlDir
 			}
 		} else {
 			// We have a uv.lock, place the virtualenv next to it.
-			virtualenv = filepath.Join(uvLockDir, defaultVirtualEnv)
+			projectDir = uvLockDir
+		}
+		if env := os.Getenv("UV_PROJECT_ENVIRONMENT"); env != "" {
+			virtualenv = env
+			if !filepath.IsAbs(virtualenv) {
+				virtualenv = filepath.Join(projectDir, virtualenv)
+			}
+		} else {
+			virtualenv = filepath.Join(projectDir, defaultVirtualEnv)
 		}
 	}
 	if !filepath.IsAbs(virtualenv) {

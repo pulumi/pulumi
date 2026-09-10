@@ -182,7 +182,7 @@ func marshalInputsOptions(props Input, opts *marshalOptions) (resource.PropertyM
 		getMappedField := internal.MapStructTypes(pt, rt)
 		// Now, marshal each field in the input.
 		numFields := pt.NumField()
-		for i := 0; i < numFields; i++ {
+		for i := range numFields {
 			destField, _ := getMappedField(reflect.Value{}, i)
 			tag := destField.Tag.Get("pulumi")
 			tag = strings.Split(tag, ",")[0] // tagName,flag => tagName
@@ -267,6 +267,10 @@ func marshalInputOptionsImpl(v any,
 				if newOutput, ok := internal.CallToOutputMethod(context.TODO(), reflect.ValueOf(input), destType); ok {
 					// We were able to convert the input. Use the result as the new input value.
 					input, valueType = newOutput, destType
+				} else if destType.Kind() == reflect.Interface && reflect.TypeOf(input).Implements(destType) {
+					// The destination is an input interface (e.g. pulumi.StringInput) that the value already
+					// satisfies. Marshal it as its own element type.
+					destType = valueType
 				} else if !valueType.AssignableTo(destType) {
 					err := fmt.Errorf(
 						"cannot marshal an input of type %T with element type %v as a value of type %v",
@@ -712,12 +716,12 @@ func unmarshalPropertyMap(ctx *Context, v resource.PropertyMap) (Map, error) {
 			resRef := v.ResourceReferenceValue()
 			res := ctx.newDependencyResource(URN(resRef.URN))
 
-			output := ctx.newOutput(reflect.TypeOf((*ResourceOutput)(nil)).Elem())
+			output := ctx.newOutput(reflect.TypeFor[ResourceOutput]())
 			internal.ResolveOutput(output, res, true, false, nil /* deps */)
 			return output, nil
 
 		case v.IsComputed():
-			typ := reflect.TypeOf((*any)(nil)).Elem()
+			typ := reflect.TypeFor[any]()
 			typ = getOutputType(typ)
 			output := ctx.newOutput(typ)
 			internal.ResolveOutput(output, nil, false, false, nil /* deps */)

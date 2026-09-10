@@ -121,6 +121,8 @@ from .stack_reference import (
     StackReferenceOutputDetails,
 )
 
+from .runtime.stack import run
+
 from .stash import (
     Stash,
 )
@@ -216,6 +218,8 @@ __all__ = [
     # stack_reference
     "StackReference",
     "StackReferenceOutputDetails",
+    # async program entrypoint
+    "run",
     # stash
     "Stash",
     # type_token

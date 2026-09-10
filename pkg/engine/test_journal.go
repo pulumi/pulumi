@@ -16,10 +16,14 @@ package engine
 
 import (
 	"errors"
+	"fmt"
 
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
@@ -29,46 +33,76 @@ var _ = SnapshotManager((*TestJournal)(nil))
 type TestJournalEntryKind int
 
 const (
-	TestJournalEntryBegin   TestJournalEntryKind = 0
-	TestJournalEntrySuccess TestJournalEntryKind = 1
-	TestJournalEntryFailure TestJournalEntryKind = 2
-	TestJournalEntryOutputs TestJournalEntryKind = 4
+	TestJournalEntryBegin          TestJournalEntryKind = 0
+	TestJournalEntrySuccess        TestJournalEntryKind = 1
+	TestJournalEntryFailure        TestJournalEntryKind = 2
+	TestJournalEntryOutputs        TestJournalEntryKind = 4
+	TestJournalEntrySnippets       TestJournalEntryKind = 9
+	TestJournalEntryStateMigration TestJournalEntryKind = 10
 )
 
 type TestJournalEntry struct {
-	Kind TestJournalEntryKind
-	Step deploy.Step
+	Kind      TestJournalEntryKind
+	Step      deploy.Step
+	Snippets  []resource.Snippet
+	Migration *deploy.StateMigrationTransaction
 }
 
 type JournalEntries []TestJournalEntry
 
 func (entries JournalEntries) Snap(base *deploy.Snapshot) (*deploy.Snapshot, error) {
 	// Build up a list of current resources by replaying the journal.
-	resources, dones := []*resource.State{}, make(map[*resource.State]bool)
+	resources, dones := []*pkgresource.State{}, make(map[*pkgresource.State]bool)
 	isRefresh := false
-	ops, doneOps := []resource.Operation{}, make(map[*resource.State]bool)
+	ops, doneOps := []pkgresource.Operation{}, make(map[*pkgresource.State]bool)
+	// Collect extension blobs from ExtensionParameterizeStep entries seen during this plan.
+	liveExtensions := map[apitype.ExtensionRef]apitype.Extension{}
 	for _, e := range entries {
+		if e.Kind == TestJournalEntrySnippets {
+			logging.V(7).Infof("snippets (%v)", len(e.Snippets))
+			continue
+		}
+		if e.Kind == TestJournalEntryStateMigration {
+			contract.Assertf(e.Migration != nil, "state migration journal entry is missing its transaction")
+			logging.V(7).Infof("state migration %v", e.Migration.RootURN)
+
+			if err := e.Migration.RewriteResourcesInPlace(resources); err != nil {
+				return nil, fmt.Errorf("replaying state migration for %s: %w", e.Migration.RootURN, err)
+			}
+
+			continue
+		}
+
 		logging.V(7).Infof("%v %v (%v)", e.Step.Op(), e.Step.URN(), e.Kind)
+
+		if e.Kind == TestJournalEntrySuccess && e.Step.Op() == deploy.OpExtendParameterize {
+			if ps, ok := e.Step.(*deploy.ExtensionParameterizeStep); ok {
+				liveExtensions[ps.Ref()] = ps.Extension()
+			}
+		}
 
 		// Begin journal entries add pending operations to the snapshot. As we see success or failure
 		// entries, we'll record them in doneOps.
 		switch e.Kind {
+		case TestJournalEntrySnippets:
+			contract.Failf("snippet entries should be handled before step replay")
+		case TestJournalEntryStateMigration:
+			contract.Failf("state migration entries should be handled before step replay")
 		case TestJournalEntryBegin:
 			switch e.Step.Op() {
 			case deploy.OpCreate, deploy.OpCreateReplacement:
-				ops = append(ops, resource.NewOperation(e.Step.New(), resource.OperationTypeCreating))
+				ops = append(ops, pkgresource.NewOperation(e.Step.New(), pkgresource.OperationTypeCreating))
 			case deploy.OpDelete, deploy.OpDeleteReplaced, deploy.OpReadDiscard, deploy.OpDiscardReplaced:
-				ops = append(ops, resource.NewOperation(e.Step.Old(), resource.OperationTypeDeleting))
+				ops = append(ops, pkgresource.NewOperation(e.Step.Old(), pkgresource.OperationTypeDeleting))
 			case deploy.OpRead, deploy.OpReadReplacement:
-				ops = append(ops, resource.NewOperation(e.Step.New(), resource.OperationTypeReading))
+				ops = append(ops, pkgresource.NewOperation(e.Step.New(), pkgresource.OperationTypeReading))
 			case deploy.OpUpdate:
-				ops = append(ops, resource.NewOperation(e.Step.New(), resource.OperationTypeUpdating))
+				ops = append(ops, pkgresource.NewOperation(e.Step.New(), pkgresource.OperationTypeUpdating))
 			case deploy.OpImport, deploy.OpImportReplacement:
-				ops = append(ops, resource.NewOperation(e.Step.New(), resource.OperationTypeImporting))
+				ops = append(ops, pkgresource.NewOperation(e.Step.New(), pkgresource.OperationTypeImporting))
 			}
 		case TestJournalEntryFailure, TestJournalEntrySuccess:
 			switch e.Step.Op() {
-			//nolint:lll
 			case deploy.OpCreate, deploy.OpCreateReplacement, deploy.OpRead, deploy.OpReadReplacement, deploy.OpUpdate,
 				deploy.OpImport, deploy.OpImportReplacement:
 				doneOps[e.Step.New()] = true
@@ -130,7 +164,7 @@ func (entries JournalEntries) Snap(base *deploy.Snapshot) (*deploy.Snapshot, err
 	// Same/Update/Create a resource and so add it to the `resources` list, but then later see a delete
 	// operation for that same resource. In that case, we want to filter out the resource from the list of
 	// resources before writing the actual snapshot.
-	filteredResources := []*resource.State{}
+	filteredResources := []*pkgresource.State{}
 	for _, res := range resources {
 		if !dones[res] {
 			filteredResources = append(filteredResources, res)
@@ -152,7 +186,7 @@ func (entries JournalEntries) Snap(base *deploy.Snapshot) (*deploy.Snapshot, err
 	}
 
 	// Append any pending operations.
-	var operations []resource.Operation
+	var operations []pkgresource.Operation
 	for _, op := range ops {
 		if !doneOps[op.Resource] {
 			operations = append(operations, op)
@@ -164,7 +198,7 @@ func (entries JournalEntries) Snap(base *deploy.Snapshot) (*deploy.Snapshot, err
 		// and propagate them to the new snapshot: we don't want to clear pending CREATE operations
 		// because these must require user intervention to be cleared or resolved.
 		for _, pendingOperation := range base.PendingOperations {
-			if pendingOperation.Type == resource.OperationTypeCreating {
+			if pendingOperation.Type == pkgresource.OperationTypeCreating {
 				operations = append(operations, pendingOperation)
 			}
 		}
@@ -179,11 +213,21 @@ func (entries JournalEntries) Snap(base *deploy.Snapshot) (*deploy.Snapshot, err
 		metadata = base.Metadata
 		snippets = base.Snippets
 	}
+	for _, e := range entries {
+		if e.Kind == TestJournalEntrySnippets {
+			snippets = e.Snippets
+		}
+	}
 
 	manifest := deploy.Manifest{}
 	manifest.Magic = manifest.NewMagic()
 
-	snap := deploy.NewSnapshot(manifest, secretsManager, filteredResources, operations, metadata, snippets)
+	// Extension resources only enter the journal alongside their
+	// ExtensionParameterizeStep, so every referenced blob is present.
+	snapExtensions, missing := deploy.MapExtensions(filteredResources, liveExtensions, base)
+	contract.Assertf(len(missing) == 0, "journal snapshot is missing extension blobs: %v", missing)
+
+	snap := deploy.NewSnapshot(manifest, secretsManager, filteredResources, operations, metadata, snippets, snapExtensions)
 	normSnap, err := snap.NormalizeURNReferences()
 	if err != nil {
 		return snap, err
@@ -258,6 +302,28 @@ func (j *TestJournal) RebuiltBaseState() error {
 	return nil
 }
 
+func (*TestJournal) SupportsStateMigrations() bool {
+	return true
+}
+
+func (j *TestJournal) StateMigration(transaction *deploy.StateMigrationTransaction) error {
+	select {
+	case j.events <- TestJournalEntry{Kind: TestJournalEntryStateMigration, Migration: transaction}:
+		return nil
+	case <-j.cancel:
+		return errors.New("journal closed")
+	}
+}
+
+func (j *TestJournal) SetSnippets(snippets []resource.Snippet) error {
+	select {
+	case j.events <- TestJournalEntry{Kind: TestJournalEntrySnippets, Snippets: snippets}:
+		return nil
+	case <-j.cancel:
+		return errors.New("journal closed")
+	}
+}
+
 // NewTestJournal creates a new TestJournal that is used in tests to record journal entries for
 // deployment steps. These journal entries are used to reconstruct the snapshot at the end of
 // the test. This is used in lifecycletests to check that the snapshot manager and the testjournal
@@ -288,7 +354,7 @@ func NewTestJournal() *TestJournal {
 // this function does not mutate the state objects in place instead returning a new state object with the
 // appropriate fields filtered out, note that the slice containing the states is mutated.
 func FilterRefreshDeletes(
-	resources []*resource.State,
+	resources []*pkgresource.State,
 ) {
 	availableParents := map[resource.URN]resource.URN{}
 	referenceable := make(map[resource.URN]bool)
@@ -303,7 +369,7 @@ func FilterRefreshDeletes(
 		_, allDeps := res.GetAllDependencies()
 		for _, dep := range allDeps {
 			switch dep.Type {
-			case resource.ResourceParent:
+			case pkgresource.ResourceParent:
 				if referenceable[dep.URN] {
 					availableParents[res.URN] = dep.URN
 					newParent = dep.URN
@@ -316,25 +382,25 @@ func FilterRefreshDeletes(
 					availableParents[res.URN] = newParent
 					filtered = true
 				}
-			case resource.ResourceDependency:
+			case pkgresource.ResourceDependency:
 				if referenceable[dep.URN] {
 					newDeps = append(newDeps, dep.URN)
 				} else {
 					filtered = true
 				}
-			case resource.ResourcePropertyDependency:
+			case pkgresource.ResourcePropertyDependency:
 				if referenceable[dep.URN] {
 					newPropDeps[dep.Key] = append(newPropDeps[dep.Key], dep.URN)
 				} else {
 					filtered = true
 				}
-			case resource.ResourceDeletedWith:
+			case pkgresource.ResourceDeletedWith:
 				if referenceable[dep.URN] {
 					newDeletedWith = dep.URN
 				} else {
 					filtered = true
 				}
-			case resource.ResourceReplaceWith:
+			case pkgresource.ResourceReplaceWith:
 				if referenceable[dep.URN] {
 					newReplaceWith = append(newReplaceWith, dep.URN)
 				} else {

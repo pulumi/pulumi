@@ -13,6 +13,7 @@ if sys.version_info >= (3, 11):
 else:
     from typing_extensions import NotRequired, TypedDict, TypeAlias
 from . import _utilities
+from . import outputs
 from ._enums import *
 from ._inputs import *
 
@@ -94,7 +95,7 @@ class Provider(pulumi.ProviderResource):
                  opts: Optional[pulumi.ResourceOptions] = None,
                  hash: pulumi.Input[Optional['HashKind']] = None,
                  password: pulumi.Input[Optional[_builtins.str]] = None,
-                 shared: pulumi.Input[Optional[Union['SharedArgs', 'SharedArgsDict']]] = None,
+                 shared: pulumi.Input[Optional[Union['SharedArgs', 'SharedArgsDict', 'outputs.Shared']]] = None,
                  user: pulumi.Input[Optional[_builtins.str]] = None,
                  __props__=None):
         """
@@ -132,7 +133,7 @@ class Provider(pulumi.ProviderResource):
                  opts: Optional[pulumi.ResourceOptions] = None,
                  hash: pulumi.Input[Optional['HashKind']] = None,
                  password: pulumi.Input[Optional[_builtins.str]] = None,
-                 shared: pulumi.Input[Optional[Union['SharedArgs', 'SharedArgsDict']]] = None,
+                 shared: pulumi.Input[Optional[Union['SharedArgs', 'SharedArgsDict', 'outputs.Shared']]] = None,
                  user: pulumi.Input[Optional[_builtins.str]] = None,
                  __props__=None):
         opts = pulumi.ResourceOptions.merge(_utilities.get_resource_opts_defaults(), opts)

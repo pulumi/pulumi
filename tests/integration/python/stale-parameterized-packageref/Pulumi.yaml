@@ -1,0 +1,5 @@
+name: stale-parameterized-packageref
+runtime:
+  name: python
+  options:
+    toolchain: uv

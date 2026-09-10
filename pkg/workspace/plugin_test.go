@@ -155,7 +155,7 @@ func TestEnsureLanguageInstalledUsesPathPlugin(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
 
-	err = EnsureLanguageInstalled(ctx, "hcl", nil)
+	err = EnsureLanguageInstalled(ctx, "hcl")
 
 	require.NoError(t, err, "EnsureLanguageInstalled should reuse the runtime on $PATH, not download it")
 }

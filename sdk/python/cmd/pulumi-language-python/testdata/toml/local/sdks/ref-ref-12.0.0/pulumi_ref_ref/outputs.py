@@ -31,6 +31,8 @@ class Data(dict):
             suggest = "inner_data"
         elif key == "stringMap":
             suggest = "string_map"
+        elif key == "innerDataList":
+            suggest = "inner_data_list"
         elif key == "optionalInner":
             suggest = "optional_inner"
 
@@ -53,6 +55,7 @@ class Data(dict):
                  integer: _builtins.int,
                  string: _builtins.str,
                  string_map: Mapping[str, _builtins.str],
+                 inner_data_list: Optional[Sequence['outputs.InnerData']] = None,
                  optional_inner: Optional['outputs.InnerData'] = None):
         pulumi.set(__self__, "bool_array", bool_array)
         pulumi.set(__self__, "boolean", boolean)
@@ -61,6 +64,8 @@ class Data(dict):
         pulumi.set(__self__, "integer", integer)
         pulumi.set(__self__, "string", string)
         pulumi.set(__self__, "string_map", string_map)
+        if inner_data_list is not None:
+            pulumi.set(__self__, "inner_data_list", inner_data_list)
         if optional_inner is not None:
             pulumi.set(__self__, "optional_inner", optional_inner)
 
@@ -98,6 +103,11 @@ class Data(dict):
     @pulumi.getter(name="stringMap")
     def string_map(self) -> Mapping[str, _builtins.str]:
         return pulumi.get(self, "string_map")
+
+    @_builtins.property
+    @pulumi.getter(name="innerDataList")
+    def inner_data_list(self) -> Optional[Sequence['outputs.InnerData']]:
+        return pulumi.get(self, "inner_data_list")
 
     @_builtins.property
     @pulumi.getter(name="optionalInner")

@@ -22,8 +22,8 @@ import (
 
 	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 )
 
 type ReadProvider struct {
@@ -151,7 +151,7 @@ func (p *ReadProvider) Read(_ context.Context, req plugin.ReadRequest) (plugin.R
 
 func (p *ReadProvider) GetPluginInfo(context.Context) (plugin.PluginInfo, error) {
 	return plugin.PluginInfo{
-		Version: ptr(semver.MustParse("39.0.0")),
+		Version: new(semver.MustParse("39.0.0")),
 	}, nil
 }
 

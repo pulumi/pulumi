@@ -5,7 +5,8 @@ VERSION          := $(if ${PULUMI_VERSION},${PULUMI_VERSION},$(shell ../../scrip
 LANGHOST_NODE_PKG := github.com/pulumi/pulumi/sdk/nodejs/cmd/pulumi-language-nodejs/v3
 LANGHOST_BUN_PKG  := github.com/pulumi/pulumi/sdk/nodejs/cmd/pulumi-language-bun/v3
 
-TEST_FAST_TIMEOUT := 2m
+SDK_GO_PKGS = $(shell go list ./... | grep -v /node_modules/)
+LANGHOST_PKGS = $(shell cd cmd/pulumi-language-nodejs && go list ./... | grep -v /vendor/ | grep -v templates)
 
 ifeq ($(DEBUG),"true")
 $(info    VERSION         = $(VERSION))
@@ -17,26 +18,26 @@ TEST_ALL_DEPS ?= build
 
 include ../../build/common.mk
 
-export PATH:=$(shell yarn bin 2>/dev/null):$(PATH)
+export PATH:=$(CURDIR)/node_modules/.bin:$(PATH)
 
-ensure:: .make/ensure/yarn .make/ensure/node .make/ensure/phony
+ensure:: .make/ensure/npm .make/ensure/node .make/ensure/phony
 .make/ensure/phony: package.json
-	../../scripts/retry yarn install --frozen-lockfile
+	../../scripts/retry npm ci
 	@mkdir -p .make/ensure && touch .make/ensure/phony
 
 format:: ensure
-	yarn biome format --write .
+	npx --no-install biome format --write .
 
 lint:: ensure
-	yarn run eslint -c .eslintrc.js --ext .ts .
-	yarn biome ci .
+	npx --no-install eslint -c .eslintrc.js --ext .ts .
+	npx --no-install biome ci .
 
 lint_fix:: ensure
-	yarn run eslint -c .eslintrc.js --ext .ts --fix .
-	yarn biome format --write .
+	npx --no-install eslint -c .eslintrc.js --ext .ts --fix .
+	npx --no-install biome format --write .
 
 build_package:: ensure
-	yarn run tsc
+	npx --no-install tsc
 	mkdir -p bin/tests/automation/data/
 	cp -R tests/automation/data/. bin/tests/automation/data/
 	cp -R tests/provider/experimental/testdata/ bin/tests/provider/experimental/testdata
@@ -83,24 +84,33 @@ install_plugin:: build
 
 install:: install_package install_plugin
 
-tools_tests::
+test_automation_codegen::
 	go run -C ../../pkg ./cmd/pulumi generate-cli-spec \
 		--overrides ../tools/automation/automation-overrides.json \
 		> ../../tools/automation/specification.json
-	cd tools/automation && yarn install && \
+	cd tools/automation && npm ci && \
 		npm start ../../../../tools/automation/specification.json boilerplate/testing.ts && \
-		yarn build && \
-		yarn test
+		npm run build && \
+		npm test
 
-unit_tests:: $(TEST_ALL_DEPS) tools_tests
-	yarn run nyc --no-clean -s mocha --timeout 120000 \
+test_unit:: $(TEST_ALL_DEPS) test_automation_codegen
+	npx --no-install nyc --no-clean -s mocha --timeout 120000 \
 		--exclude 'bin/tests/automation/**/*.spec.js' \
 		--exclude 'bin/tests/runtime/closure-integration-tests.js' \
 		'bin/tests/**/*.spec.js'
-	yarn run nyc --no-clean -s mocha 'bin/tests_with_mocks/**/*.spec.js'
+	npx --no-install nyc --no-clean -s mocha 'bin/tests_with_mocks/**/*.spec.js'
+
+test_unit_fast:: build_package
+	@# The runtime language-host matrix belongs to the full suite.
+	npx --no-install mocha --timeout 120000 \
+		--exclude 'bin/tests/automation/**/*.spec.js' \
+		--exclude 'bin/tests/runtime/closure-integration-tests.js' \
+		--exclude 'bin/tests/runtime/langhost/run.spec.js' \
+		'bin/tests/**/*.spec.js'
+	npx --no-install mocha 'bin/tests_with_mocks/**/*.spec.js'
 
 test_auto:: $(TEST_ALL_DEPS)
-	yarn run nyc --no-clean -s mocha --timeout 450000 --parallel 'bin/tests/automation/**/*.spec.js'
+	npx --no-install nyc --no-clean -s mocha --timeout 450000 --parallel 'bin/tests/automation/**/*.spec.js'
 
 test_integration:: $(TEST_ALL_DEPS)
 	node 'bin/tests/runtime/closure-integration-tests.js'
@@ -108,14 +118,14 @@ test_integration:: $(TEST_ALL_DEPS)
 
 TSC_SUPPORTED_VERSIONS = ~3.8.3 ^3 ^4 ^6
 
-version=$(subst sxs_test_,,$(word 1,$(subst !, ,$@)))
-sxs_test_%:
+version=$(subst test_sxs_,,$(word 1,$(subst !, ,$@)))
+test_sxs_%:
 	@cd tests/sxs_ts_test && ( \
 		cp -f package$(version).json package.json && \
 		if [ -f tsconfig$(version).json ]; then project=tsconfig$(version).json; else project=tsconfig.json; fi && \
-		yarn install && \
-		yarn run tsc --version && \
-		yarn run tsc --project $$project && \
+		npm install && \
+		npx --no-install tsc --version && \
+		npx --no-install tsc --project $$project && \
 		rm package.json && \
 		echo "✅ TypeScript $(version) passed" \
 	) || ( \
@@ -123,22 +133,20 @@ sxs_test_%:
 		exit 1; \
 	)
 
-sxs_tests:: $(TSC_SUPPORTED_VERSIONS:%=sxs_test_%)
+test_sxs:: $(TSC_SUPPORTED_VERSIONS:%=test_sxs_%)
 
-test_fast:: sxs_tests unit_tests
-ifneq ($(PULUMI_TEST_COVERAGE_PATH),)
-	if [ -e .nyc_output ]; then yarn run nyc report -r cobertura --report-dir $(PULUMI_TEST_COVERAGE_PATH); fi
-endif
-	@cd cmd/pulumi-language-nodejs && $(GO_TEST_FAST) $(shell go list ./... | grep -v /vendor/ | grep -v templates)
-	$(GO_TEST_FAST) $(shell go list ./...)
+test_fast:: test_unit_fast
+	@cd cmd/pulumi-language-nodejs && \
+		$(GO_TEST_FAST) $(LANGHOST_PKGS)
+	$(GO_TEST_FAST) $(SDK_GO_PKGS)
 
 test_go:: $(TEST_ALL_DEPS)
-	@cd cmd/pulumi-language-nodejs && $(GO_TEST) $(shell go list ./... | grep -v /vendor/ | grep -v templates)
-	$(GO_TEST) $(shell go list ./...)
+	@cd cmd/pulumi-language-nodejs && $(GO_TEST) $(LANGHOST_PKGS)
+	$(GO_TEST) $(SDK_GO_PKGS)
 
-test_all:: sxs_tests unit_tests test_auto test_go test_integration
+test_all:: test_sxs test_unit test_auto test_go test_integration
 ifneq ($(PULUMI_TEST_COVERAGE_PATH),)
-	if [ -e .nyc_output ]; then yarn run nyc report -r cobertura --report-dir $(PULUMI_TEST_COVERAGE_PATH); fi
+	if [ -e .nyc_output ]; then npx --no-install nyc report -r cobertura --report-dir $(PULUMI_TEST_COVERAGE_PATH); fi
 endif
 
 PULUMI_TEST_ORG ?= $(shell pulumi whoami --json | jq ".organizations[0]")
@@ -150,7 +158,7 @@ TEST_GREP ?= .*
 #
 # $ make test_watch TEST_GREP="lists tag values"
 test_watch::
-	PULUMI_TEST_ORG=$(PULUMI_TEST_ORG) yarn mocha "**/*.spec.ts" --timeout 450000 --bail -j 1 --watch --watch-files "**/*.ts" --grep "$(TEST_GREP)"
+	PULUMI_TEST_ORG=$(PULUMI_TEST_ORG) npx --no-install mocha "**/*.spec.ts" --timeout 450000 --bail -j 1 --watch --watch-files "**/*.ts" --grep "$(TEST_GREP)"
 
 dist:: GOBIN=$(or $(shell go env GOBIN),$(shell go env GOPATH)/bin)
 dist::

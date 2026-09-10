@@ -22,9 +22,9 @@
 import { randomInt } from "crypto";
 import execa from "execa";
 import * as fs from "fs/promises";
+import * as os from "os";
 import * as path from "path";
 import * as process from "process";
-import * as tmp from "tmp";
 import { pack } from "./pack";
 
 // Write a package.json that installs the local pulumi package and optional dependencies.
@@ -95,11 +95,11 @@ async function exec(command: string, args: string[], options: execa.Options): Pr
 async function main() {
     const sdkRoot = path.join(__dirname, "..", "..", "..");
     const sdkRootBin = path.join(sdkRoot, "bin");
-    const tmpPackageDir = tmp.dirSync({ prefix: "pulumi-package-", unsafeCleanup: true });
+    const tmpPackageDir = await fs.mkdtemp(path.join(os.tmpdir(), "pulumi-package-"));
     try {
         // Add a random suffix to the package name to avoid any issues with yarn caching the tgz.
         const packageName = `pulumi-${randomInt(10000, 99999)}.tgz`;
-        const pulumiPackagePath = path.join(tmpPackageDir.name, packageName);
+        const pulumiPackagePath = path.join(tmpPackageDir, packageName);
         await pack(sdkRootBin, pulumiPackagePath);
 
         const packageManagers = [
@@ -124,8 +124,11 @@ async function main() {
             // },
             {
                 name: "pnpm",
-                // Pin to pnpm 10 to avoid ERR_PNPM_IGNORED_BUILDS in pnpm 11+.
                 version: "^10.0.0",
+            },
+            {
+                name: "pnpm",
+                version: "^11.0.0",
             },
             // Bun is not yet supported by corepack
             // {
@@ -161,30 +164,37 @@ async function main() {
 
         for (const pm of packageManagers) {
             for (const deps of dependencies) {
-                const tmpDir = tmp.dirSync({ prefix: "install-test-", unsafeCleanup: true });
+                const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "install-test-"));
                 try {
                     await runTest(tmpDir, pulumiPackagePath, pm.name, pm.version, deps);
                 } finally {
-                    tmpDir.removeCallback();
+                    await fs.rm(tmpDir, { recursive: true, force: true });
                 }
             }
         }
     } finally {
-        tmpPackageDir.removeCallback();
+        await fs.rm(tmpPackageDir, { recursive: true, force: true });
     }
 }
 
 async function runTest(
-    tmpDir: tmp.DirResult,
+    tmpDir: string,
     pulumiPackagePath: string,
     packageManager: string,
     packageManagerVersion: string,
     peerDeps: Record<string, string | undefined>,
 ) {
-    await writePackageJSON(tmpDir.name, pulumiPackagePath, peerDeps);
-    await writeTSConfig(tmpDir.name);
+    await writePackageJSON(tmpDir, pulumiPackagePath, peerDeps);
+    await writeTSConfig(tmpDir);
     const projectName = `install-test-${packageManager}-${packageManagerVersion}`.replace(/[^a-zA-Z0-9]/g, "-");
-    await writeProgram(tmpDir.name, projectName);
+    await writeProgram(tmpDir, projectName);
+
+    if (packageManager === "pnpm") {
+        // protobufjs (a transitive dependency of @pulumi/pulumi) has an install script. pnpm 11 turns unapproved
+        // install scripts into a hard error (ERR_PNPM_IGNORED_BUILDS), so opt out of running its (optional) build.
+        // pnpm 10 ignores this key.
+        await fs.writeFile(path.join(tmpDir, "pnpm-workspace.yaml"), "allowBuilds:\n  protobufjs: false\n");
+    }
 
     const dependencies = Object.entries(peerDeps)
         .filter(([_, v]) => v !== undefined)
@@ -194,47 +204,46 @@ async function runTest(
 
     let logs = "";
 
-    // Get the corepack executable from the yarn bin directory, which allows us
-    // to use the version of corepack that's installed as part of our dev
-    // dependencies. This avoids having to install corepack globally or in CI.
-    const { stdout: bin } = await execa("yarn", ["bin"], {});
-    const corepack = path.join(bin.trim(), "corepack");
-
-    // Install the package manager to test.
-    logs += await exec(corepack, ["enable"], { cwd: tmpDir.name });
-    logs += await exec(corepack, ["use", `${packageManager}@${packageManagerVersion}`], { cwd: tmpDir.name });
+    // Corepack does not install npm shims by default because npm ships with Node.js, so `corepack enable` on its own
+    // would leave `npm` unshimmed and `corepack use npm@X` would silently no-op. Name the shims explicitly. See
+    // https://github.com/nodejs/corepack#corepack-enable--name
+    logs += await exec("corepack", ["enable", "npm", "pnpm", "yarn"], { cwd: tmpDir });
+    logs += await exec("corepack", ["use", `${packageManager}@${packageManagerVersion}`], { cwd: tmpDir });
 
     const env = {
         PULUMI_CONFIG_PASSPHRASE: "test",
-        PULUMI_HOME: tmpDir.name,
+        PULUMI_HOME: tmpDir,
     };
 
     // Up and down a test stack to ensure we're able to load & run typescript code.
     const stackName = `install-test-${randomInt(10000, 99999)}`;
     try {
         logs += await exec("pulumi", ["stack", "init", stackName], {
-            cwd: tmpDir.name,
+            cwd: tmpDir,
             env,
         });
         logs += await exec("pulumi", ["up", "--stack", stackName, "--skip-preview"], {
-            cwd: tmpDir.name,
+            cwd: tmpDir,
             env,
         });
 
-        console.log(`✅ ${packageManager}@${packageManagerVersion}${dependenciesString}`);
+        const actualVersion = await execa(packageManager, ["--version"], { cwd: tmpDir });
+        console.log(
+            `✅ ${packageManager}@${packageManagerVersion}${dependenciesString} (actual version: ${actualVersion.stdout})`,
+        );
     } catch (err) {
         console.log(
-            `❌ Failed to run test with ${packageManager}@${packageManagerVersion}${dependenciesString} in ${tmpDir.name}: ${err}`,
+            `❌ Failed to run test with ${packageManager}@${packageManagerVersion}${dependenciesString} in ${tmpDir}: ${err}`,
         );
         console.log(`Captured stdout: ${logs}`);
         throw err;
     } finally {
         await exec("pulumi", ["destroy", "--stack", stackName, "--yes"], {
-            cwd: tmpDir.name,
+            cwd: tmpDir,
             env,
         });
         await exec("pulumi", ["stack", "rm", stackName, "--yes"], {
-            cwd: tmpDir.name,
+            cwd: tmpDir,
             env,
         });
     }

@@ -278,6 +278,24 @@ message ProviderHandshakeRequest {
     // The target of a [](codegen.Mapper) service the provider can use to retrieve mappings from other ecosystems to
     // Pulumi. May be empty on older engines.
     optional string mapper_target = 8;
+
+    // The target of a [](codegen.Loader) service the provider can use to load the schemas of other Pulumi packages.
+    // May be empty on older engines.
+    optional string loader_target = 9;
+
+    // The target of a [](pulumirpc.PackageResolver) service the provider can use to resolve package specifications to
+    // concrete package dependencies. May be empty on older engines.
+    optional string resolver_target = 10;
+
+    // True if and only if the engine supports strings containing bytes that are not valid UTF-8, marshaled as objects
+    // carrying the byte string signature and a base64 encoding of the string's bytes. If true, the provider may
+    // return such values to the engine.
+    bool accepts_byte_string = 11;
+
+    // If true the engine populates `old_outputs` on `CheckRequest` for update-path Check calls. Older engines never
+    // set this field, so providers should treat an absent value as false and fall back to legacy behavior that does
+    // not rely on previously persisted outputs during Check.
+    bool sends_old_outputs_to_check = 12;
 }
 
 // `ProviderHandshakeResponse` is the type of responses sent by a [](pulumirpc.ResourceProvider.Handshake) call.
@@ -304,6 +322,11 @@ message ProviderHandshakeResponse {
     // confusion.
     reserved 5;
     reserved "pulumi_version_range";
+
+    // True if and only if the provider supports strings containing bytes that are not valid UTF-8, marshaled as
+    // objects carrying the byte string signature and a base64 encoding of the string's bytes. If true, the
+    // caller may pass such values to the provider.
+    bool accepts_byte_string = 6;
 }
 
 // `ParameterizeRequest` is the type of requests sent as part of a [](pulumirpc.ResourceProvider.Parameterize) call. A
@@ -627,6 +650,11 @@ message CheckRequest {
         Mode mode = 2;
     }
     AutonamingOptions autonaming = 8;
+
+    // The previously persisted output properties of the resource, if any. Only populated by engines that advertise
+    // `sends_old_outputs_to_check` on the provider handshake, and only for Check calls that follow an existing
+    // resource state (i.e. not create or replace). Providers must not assume this is populated.
+    google.protobuf.Struct old_outputs = 9;
 }
 
 // `CheckResponse` is the type of responses sent by a [](pulumirpc.ResourceProvider.CheckConfig) or

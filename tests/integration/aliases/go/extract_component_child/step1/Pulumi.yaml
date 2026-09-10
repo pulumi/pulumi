@@ -1,3 +1,0 @@
-name: extract_component_child
-description: A program that extracts a component child with an alias.
-runtime: go

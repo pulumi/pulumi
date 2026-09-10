@@ -17,6 +17,8 @@ package rapidimporter
 import (
 	"testing"
 
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
+
 	"github.com/stretchr/testify/require"
 	"pgregory.net/rapid"
 
@@ -69,7 +71,7 @@ func findResourceByToken(pkg *schema.Package, typ tokens.Type) *schema.Resource 
 	return nil
 }
 
-func snapshotContainsProvider(snapshot []*resource.State, providerRef string) bool {
+func snapshotContainsProvider(snapshot []*pkgresource.State, providerRef string) bool {
 	ref, err := providers.ParseReference(providerRef)
 	if err != nil {
 		return false

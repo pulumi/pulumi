@@ -33,9 +33,9 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cloud"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
+	"github.com/pulumi/pulumi/pkg/v3/resource/stack/snapshot"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/snapshot"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/env"
@@ -75,14 +75,13 @@ func processCmdErrors(ctx context.Context, err error, stderr io.Writer) error {
 	// `pulumi api` errors have already had their structured envelope
 	// written to stderr by runWithEnvelope, so suppress the generic
 	// message print. ExitCodeFor still recovers the semantic exit code via
-	// errors.As.
-	var apiErr *cloud.APIError
-	if errors.As(err, &apiErr) && apiErr.Silent {
+	// errors.AsType.
+	if apiErr, ok := errors.AsType[*cloud.APIError](err); ok && apiErr.Silent {
 		return result.BailError(err)
 	}
 
 	if isAuthRequiredError(err) {
-		if message := agentauth.AuthRequiredMessage(time.Now()); message != "" {
+		if message := agentauth.AuthRequiredMessage(ctx, time.Now()); message != "" {
 			_, printErr := fmt.Fprint(stderr, message)
 			contract.IgnoreError(printErr)
 			return result.BailError(err)
@@ -109,10 +108,10 @@ func processCmdErrors(ctx context.Context, err error, stderr io.Writer) error {
 }
 
 func isAuthRequiredError(err error) bool {
-	var apiErr *apitype.ErrorResponse
+	apiErr, ok := errors.AsType[*apitype.ErrorResponse](err)
 	return errors.Is(err, backenderr.LoginRequiredError{}) ||
 		errors.Is(err, httpstate.ErrUnauthorized) ||
-		errors.As(err, &apiErr) && apiErr.Code == http.StatusUnauthorized
+		ok && apiErr.Code == http.StatusUnauthorized
 }
 
 // A type-specific handler for engine.DecryptErrors that prints out help text
@@ -167,7 +166,7 @@ We would appreciate a report: https://github.com/pulumi/pulumi/issues/
 
 	if sie.Op == snapshot.SnapshotIntegrityRead && sie.Metadata == nil {
 		message.WriteString(`
-NOTE: This error occurred while reading a snaphot. This error was introduced by
+NOTE: This error occurred while reading a snapshot. This error was introduced by
 a previous operation when it wrote the snapshot. If you have details about that
 operation, please include them in your report as well.
 `)

@@ -266,13 +266,19 @@ func functionName(tokenArg model.Expression) (string, string, string, hcl.Diagno
 	tokenRange := tokenArg.SyntaxNode().Range()
 
 	// Compute the resource type from the Pulumi type token.
-	pkg, module, member, diagnostics := pcl.DecomposeToken(token, tokenRange)
+	pkg, module, _, diagnostics := pcl.DecomposeToken(token, tokenRange)
 	// the index module is not put into a submodule
 	if module == "index" {
 		module = ""
 	}
-	module = strings.ToLower(strings.ReplaceAll(module, "/", "."))
-	return pkg, module, member, diagnostics
+	// Each segment becomes a property access on the package, so segments that aren't legal
+	// identifiers (e.g. containing hyphens) use the sanitized name the SDK exports them under.
+	segments := strings.Split(strings.ToLower(module), "/")
+	for i, segment := range segments {
+		segments[i] = makeValidModuleSegment(segment)
+	}
+	module = strings.Join(segments, ".")
+	return pkg, module, tokenToFunctionName(token), diagnostics
 }
 
 func (g *generator) genRange(w io.Writer, call *model.FunctionCallExpression, entries bool) {
@@ -481,7 +487,14 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 				genMaybeOutputConversion(func(v string) {
 					g.Fgenf(w, `%s === "true"`, v)
 				})
-			case model.StringType.AssignableFrom(to) && !model.StringType.AssignableFrom(fromType):
+			// ids and strings are treated interchangeably in JavaScript, so if we are casting to id but
+			// already have string _or_ id that's fine. Same for casting to string.
+			case model.StringType.AssignableFrom(to) &&
+				!model.StringType.AssignableFrom(fromType) &&
+				!model.IDType.AssignableFrom(fromType),
+				model.IDType.AssignableFrom(to) &&
+					!model.StringType.AssignableFrom(fromType) &&
+					!model.IDType.AssignableFrom(fromType):
 				genMaybeOutputConversion(func(v string) {
 					g.Fgenf(w, "String(%s)", v)
 				})
@@ -502,6 +515,9 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		}
 	case pcl.IntrinsicApply:
 		g.genApply(w, expr)
+	case "recover":
+		g.Fgenf(w, "pulumi.recover(%.20v, err => ((error) => %.v)(err instanceof Error ? err.message : String(err)))",
+			expr.Args[0], expr.Args[1])
 	case intrinsicAwait:
 		g.Fgenf(w, "await %.17v", expr.Args[0])
 	case intrinsicInterpolate:
@@ -585,6 +601,11 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		if isOut {
 			name = name + "Output"
 		}
+		invokeOptions, hasOptions := pcl.InvokeOptions(expr)
+		parentThis := g.isComponent && !pcl.InvokeOptionSet(expr, "parent")
+		// The options bag is positional, so it can only be emitted once the arguments before it are.
+		emitOptions := len(expr.Args) >= 2 && (hasOptions || parentThis)
+
 		g.Fprintf(w, "%s(", name)
 		if len(expr.Args) >= 2 {
 			if expr.Signature.MultiArgumentInputs {
@@ -597,15 +618,19 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 					invokeArgs = expr.Args[1].(*model.ObjectConsExpression)
 				}
 
-				pcl.GenerateMultiArguments(g.Formatter, w, "undefined", invokeArgs, pcl.SortedFunctionParameters(expr))
+				pcl.GenerateMultiArguments(
+					g.Formatter, w, "undefined", invokeArgs, pcl.SortedFunctionParameters(expr), emitOptions)
 			} else {
 				g.Fgenf(w, "%.v", expr.Args[1])
 			}
 		}
-		if len(expr.Args) == 3 {
-			if invokeOptions, ok := expr.Args[2].(*model.ObjectConsExpression); ok {
-				g.Fgen(w, ", {")
-				g.Indented(func() {
+		if emitOptions {
+			g.Fgen(w, ", {")
+			g.Indented(func() {
+				if parentThis {
+					g.Fgenf(w, "\n%sparent: this,", g.Indent)
+				}
+				if hasOptions {
 					for _, item := range invokeOptions.Items {
 						key := pcl.LiteralValueString(item.Key)
 						g.Fgenf(w, "\n%s", g.Indent)
@@ -618,9 +643,9 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 							g.Fgenf(w, "%s: %v,", key, item.Value)
 						}
 					}
-				})
-				g.Fgenf(w, "\n%s}", g.Indent)
-			}
+				}
+			})
+			g.Fgenf(w, "\n%s}", g.Indent)
 		}
 		g.Fprint(w, ")")
 	case "join":
@@ -631,6 +656,9 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 			if i > 0 {
 				g.Fgen(w, ", ")
 			}
+			if expr.ExpandFinal && i == len(expr.Args)-1 {
+				g.Fgen(w, "...")
+			}
 			g.Fgenf(w, "%v", arg)
 		}
 		g.Fgen(w, ")")
@@ -639,6 +667,9 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		for i, arg := range expr.Args {
 			if i > 0 {
 				g.Fgen(w, ", ")
+			}
+			if expr.ExpandFinal && i == len(expr.Args)-1 {
+				g.Fgen(w, "...")
 			}
 			g.Fgenf(w, "%v", arg)
 		}
@@ -930,7 +961,14 @@ func (g *generator) genRelativeTraversal(w io.Writer, traversal hcl.Traversal, p
 		}
 
 		var indexPrefix string
-		if model.IsOptionalType(model.GetTraversableType(parts[i])) {
+		if pcl.IsOptionalResource(parts[i]) {
+			// A conditionally-created (boolean `range`) resource is `undefined`
+			// when the condition is false. Dereferencing its property to feed a
+			// required input asserts the resource exists, so emit a non-null
+			// assertion rather than optional chaining (which would widen the value
+			// to `| undefined` and fail to type-check against the required input).
+			g.Fgen(w, "!")
+		} else if model.IsOptionalType(model.GetTraversableType(parts[i])) {
 			g.Fgen(w, "?")
 			// `expr?[expr]` is not valid typescript, since it looks like a ternary
 			// operator.
@@ -990,6 +1028,17 @@ func (g *generator) GenScopeTraversalExpression(w io.Writer, expr *model.ScopeTr
 
 	if _, ok := expr.Parts[0].(*model.SplatVariable); ok {
 		rootName = "__item"
+	}
+
+	// Inside a numeric `range` loop, `range` is a plain number, so `range.value`
+	// and `range.key` both render as `range`.
+	if g.rangeValueIsScalar && expr.RootName == "range" {
+		if rel := expr.Traversal.SimpleSplit().Rel; len(rel) == 1 {
+			if attr, ok := rel[0].(hcl.TraverseAttr); ok && (attr.Name == "value" || attr.Name == "key") {
+				g.Fgen(w, "range")
+				return
+			}
+		}
 	}
 
 	g.Fgen(w, rootName)

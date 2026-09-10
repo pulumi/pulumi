@@ -37,6 +37,20 @@ export class ProviderHandshakeRequest extends jspb.Message {
     getMapperTarget(): string | undefined;
     setMapperTarget(value: string): ProviderHandshakeRequest;
 
+    hasLoaderTarget(): boolean;
+    clearLoaderTarget(): void;
+    getLoaderTarget(): string | undefined;
+    setLoaderTarget(value: string): ProviderHandshakeRequest;
+
+    hasResolverTarget(): boolean;
+    clearResolverTarget(): void;
+    getResolverTarget(): string | undefined;
+    setResolverTarget(value: string): ProviderHandshakeRequest;
+    getAcceptsByteString(): boolean;
+    setAcceptsByteString(value: boolean): ProviderHandshakeRequest;
+    getSendsOldOutputsToCheck(): boolean;
+    setSendsOldOutputsToCheck(value: boolean): ProviderHandshakeRequest;
+
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): ProviderHandshakeRequest.AsObject;
     static toObject(includeInstance: boolean, msg: ProviderHandshakeRequest): ProviderHandshakeRequest.AsObject;
@@ -57,6 +71,10 @@ export namespace ProviderHandshakeRequest {
         supportsRefreshBeforeUpdate: boolean,
         invokeWithPreview: boolean,
         mapperTarget?: string,
+        loaderTarget?: string,
+        resolverTarget?: string,
+        acceptsByteString: boolean,
+        sendsOldOutputsToCheck: boolean,
     }
 }
 
@@ -69,6 +87,8 @@ export class ProviderHandshakeResponse extends jspb.Message {
     setAcceptOutputs(value: boolean): ProviderHandshakeResponse;
     getSupportsAutonamingConfiguration(): boolean;
     setSupportsAutonamingConfiguration(value: boolean): ProviderHandshakeResponse;
+    getAcceptsByteString(): boolean;
+    setAcceptsByteString(value: boolean): ProviderHandshakeResponse;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): ProviderHandshakeResponse.AsObject;
@@ -86,6 +106,7 @@ export namespace ProviderHandshakeResponse {
         acceptResources: boolean,
         acceptOutputs: boolean,
         supportsAutonamingConfiguration: boolean,
+        acceptsByteString: boolean,
     }
 }
 
@@ -621,6 +642,11 @@ export class CheckRequest extends jspb.Message {
     getAutonaming(): CheckRequest.AutonamingOptions | undefined;
     setAutonaming(value?: CheckRequest.AutonamingOptions): CheckRequest;
 
+    hasOldOutputs(): boolean;
+    clearOldOutputs(): void;
+    getOldOutputs(): google_protobuf_struct_pb.Struct | undefined;
+    setOldOutputs(value?: google_protobuf_struct_pb.Struct): CheckRequest;
+
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): CheckRequest.AsObject;
     static toObject(includeInstance: boolean, msg: CheckRequest): CheckRequest.AsObject;
@@ -640,6 +666,7 @@ export namespace CheckRequest {
         name: string,
         type: string,
         autonaming?: CheckRequest.AutonamingOptions.AsObject,
+        oldOutputs?: google_protobuf_struct_pb.Struct.AsObject,
     }
 
 

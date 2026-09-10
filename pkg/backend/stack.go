@@ -17,6 +17,7 @@ package backend
 import (
 	"context"
 	"fmt"
+	"maps"
 	"path/filepath"
 
 	"github.com/pulumi/pulumi/pkg/v3/display"
@@ -168,9 +169,7 @@ func GetMergedStackTags(ctx context.Context, s Stack,
 
 	// Add each new environment tag to the existing tags, overwriting existing tags with the
 	// latest values.
-	for k, v := range envTags {
-		tags[k] = v
-	}
+	maps.Copy(tags, envTags)
 
 	return tags, nil
 }
@@ -235,7 +234,7 @@ func addGitMetadataToStackTags(tags map[apitype.StackTagName]string, projPath st
 	}
 
 	if wt, err := repo.Worktree(); err == nil {
-		repoRelPath, err := filepath.Rel(wt.Filesystem.Root(), projPath)
+		repoRelPath, err := filepath.Rel(wt.Filesystem().Root(), projPath)
 		if err == nil && filepath.IsLocal(repoRelPath) {
 			tags[apitype.VCSRepositoryRootTag] = filepath.ToSlash(repoRelPath)
 		}

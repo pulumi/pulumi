@@ -19,6 +19,7 @@ import { Stack } from "./stack";
 
 import * as engrpc from "../proto/engine_grpc_pb";
 import * as resrpc from "../proto/resource_grpc_pb";
+import type { Resource } from "../resource";
 import type { ResourceModule, ResourcePackage } from "./rpc";
 
 const nodeEnvKeys = {
@@ -200,6 +201,12 @@ export interface Store {
     supportsErrorHooks: boolean;
 
     /**
+     * Tells us if the resource monitor we are connected to gates invokes on
+     * the created-ness of their declared dependencies.
+     */
+    supportsInvokeDependsOn: boolean;
+
+    /**
      * The callback service running for this deployment. This registers
      * callbacks and forwards them to the engine.
      */
@@ -222,6 +229,65 @@ export interface Store {
      * refs.
      */
     packageRefs: Map<string, Promise<string>>;
+
+    pendingResourceRegistrations: Map<Resource, PendingResourceRegistration>;
+
+    deferredOutputSources: WeakMap<object, object>;
+}
+
+/**
+ * @internal
+ */
+export type PendingRegistrationPhase = "dependencies" | "inputs" | "parent" | "provider" | "dependency-urns";
+
+/**
+ * @internal
+ */
+export interface PendingResourceRegistration {
+    res: Resource;
+    parent: Resource | undefined;
+    label: string;
+    type?: string;
+    name?: string;
+    phase: PendingRegistrationPhase;
+    inputProperty?: string;
+    awaitingOutput?: unknown;
+    fail?: (err: Error) => void;
+}
+
+/**
+ * @internal
+ */
+export function getDeferredOutputSources(): WeakMap<object, object> {
+    const store = getStore();
+    if (store.deferredOutputSources === undefined) {
+        // deferredOutputSources may be undefined if the Store was created by an older
+        // copy of the SDK runtime that didn't define this field.
+        store.deferredOutputSources = new WeakMap();
+    }
+    return store.deferredOutputSources;
+}
+
+/**
+ * @internal
+ */
+export function failPendingRegistration(res: Resource, err: Error): void {
+    const pending = getPendingResourceRegistrations();
+    pending.get(res)?.fail?.(err);
+    pending.delete(res);
+}
+
+/**
+ * @internal
+ */
+export function getPendingResourceRegistrations(): Map<Resource, PendingResourceRegistration> {
+    const store = getStore();
+    if (store.pendingResourceRegistrations === undefined) {
+        // pendingResourceRegistrations may be undefined if the Store was created by an older
+        // copy of the SDK runtime that didn't define this field.
+        store.pendingResourceRegistrations = new Map();
+    }
+    return store.pendingResourceRegistrations;
 }
 
 /**
@@ -272,9 +338,12 @@ export class LocalStore implements Store {
     supportsParameterization = false;
     supportsResourceHooks = false;
     supportsErrorHooks = false;
+    supportsInvokeDependsOn = false;
     resourcePackages = new Map<string, ResourcePackage[]>();
     resourceModules = new Map<string, ResourceModule[]>();
     packageRefs = new Map<string, Promise<string>>();
+    pendingResourceRegistrations = new Map<Resource, PendingResourceRegistration>();
+    deferredOutputSources = new WeakMap<object, object>();
 }
 
 /**

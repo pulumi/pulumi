@@ -28,12 +28,14 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	cmdDiag "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/diag"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packages"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageworkspace"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/convert"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	pkghost "github.com/pulumi/pulumi/pkg/v3/host"
+	"github.com/pulumi/pulumi/pkg/v3/registry"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/registry"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/agentdetect"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -44,6 +46,9 @@ import (
 // Constructs the `pulumi package add` command.
 func newPackageAddCmd() *cobra.Command {
 	var language string
+	var parameterArgs []string
+	var asExtension bool
+	var serverURL string
 	cmd := &cobra.Command{
 		Use:   "add",
 		Short: "Add a package to your Pulumi project, plugin, or current directory.",
@@ -91,6 +96,12 @@ that begin with dashes, you may need to use '--' to separate the provider name
 from the parameters, as in:
 
   pulumi package add <provider> -- --provider-parameter-flag value
+
+Use '--extension' to add the package as an extension of its base provider
+instead of a replacement. The extension's parameters are the flag's value,
+quoted as a single shell-style string:
+
+  pulumi package add <provider> --extension "key=value ..."
 `,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			agent := agentdetect.Detect(os.Getenv)
@@ -127,9 +138,16 @@ from the parameters, as in:
 			}
 
 			sink := cmdutil.Diag()
+			pluginHost, err := pkghost.New(context.WithoutCancel(cmd.Context()), sink, sink, nil,
+				pkgWorkspace.EnsureLanguageInstalled, schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext,
+				packageworkspace.NewResolverServer(target.reg))
+			if err != nil {
+				return err
+			}
+			// host is owned here, closed after the context
+			defer contract.IgnoreClose(pluginHost)
 			pctx, err := plugin.NewContext(cmd.Context(),
-				sink, sink, nil, nil, target.installRoot, nil, false, nil, schema.NewLoaderServerFromHost,
-				convert.NewMapperServerFromHost, pkgWorkspace.EnsureLanguageInstalled)
+				sink, sink, pluginHost, nil, target.installRoot, nil, false, nil)
 			if err != nil {
 				return err
 			}
@@ -140,7 +158,8 @@ from the parameters, as in:
 			}
 
 			pluginSource := args[0]
-			parameters := &plugin.ParameterizeArgs{Args: args[1:]}
+
+			parameters := &plugin.ParameterizeArgs{Args: parameterArgs}
 
 			pkg, packageSpec, diags, err := packages.InstallPackage(
 				cmd.OutOrStdout(),
@@ -153,7 +172,9 @@ from the parameters, as in:
 				parameters,
 				target.reg,
 				env.Global(),
-				0, /* unbounded concurrency */
+				0,           /* unbounded concurrency */
+				asExtension, /* asExtension */
+				serverURL,   /* pluginDownloadURL */
 			)
 			cmdDiag.PrintDiagnostics(pctx.Diag, diags)
 			if err != nil {
@@ -161,6 +182,23 @@ from the parameters, as in:
 					return fmt.Errorf("%w\nSearch: pulumi api '/api/registry/packages?search=<term>'", err)
 				}
 				return err
+			}
+
+			if asExtension {
+				if target.projectFilePath != nil {
+					target.proj.AddPackage(pkg.Name, workspace.PackageSpec{
+						Source:     pkg.ExtensionParameterization.BaseProvider.Name,
+						Version:    pkg.ExtensionParameterization.BaseProvider.Version.String(),
+						Extensions: parameterArgs,
+					})
+					fileName := filepath.Base(*target.projectFilePath)
+					if err := target.proj.Save(*target.projectFilePath); err != nil {
+						return fmt.Errorf("failed to update %s: %w", fileName, err)
+					}
+				}
+
+				fmt.Fprintf(cmd.ErrOrStderr(), "Extended package %s\n", schemaDisplayName(pkg))
+				return nil
 			}
 
 			// Build and add the package spec to the project
@@ -190,8 +228,8 @@ from the parameters, as in:
 							packageSpec.Version = pkg.Version.String()
 						}
 					} else {
-						packageSpec.Source = pkg.Parameterization.BaseProvider.Name
-						packageSpec.Version = pkg.Parameterization.BaseProvider.Version.String()
+						packageSpec.Source = pkg.Parameterization.BasePlugin.Name
+						packageSpec.Version = pkg.Parameterization.BasePlugin.Version.String()
 					}
 				}
 			}
@@ -230,6 +268,10 @@ from the parameters, as in:
 
 	cmd.Flags().StringVar(&language, "language", "",
 		"Run outside a Pulumi project or plugin: [nodejs|python|go|dotnet|java]")
+	cmd.Flags().StringVar(&serverURL, "server", "",
+		"A URL to download the plugin from. When set, the provider argument is used as the plugin name "+
+			"directly and no package resolution is performed.")
+	packages.AddExtensionFlag(cmd, &parameterArgs, &asExtension)
 
 	return cmd
 }

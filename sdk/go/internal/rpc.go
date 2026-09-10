@@ -44,7 +44,7 @@ func MapStructTypes(from, to reflect.Type) func(reflect.Value, int) (reflect.Str
 
 	nameToIndex := map[string]int{}
 	numFields := to.NumField()
-	for i := 0; i < numFields; i++ {
+	for i := range numFields {
 		nameToIndex[to.Field(i).Name] = i
 	}
 

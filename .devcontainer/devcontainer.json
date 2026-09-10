@@ -10,7 +10,11 @@
     },
 
     "features": {
-        "ghcr.io/devcontainers/features/docker-in-docker:2": {},
+        // The base image (pulumi/pulumi) is on Debian "trixie", which doesn't ship the
+        // Moby packages this feature installs by default. Use Docker CE instead.
+        "ghcr.io/devcontainers/features/docker-in-docker:2": {
+            "moby": false
+        },
         "ghcr.io/devcontainers/features/common-utils:2": {
             "installZsh": false,
             "installOhMyZsh": false,

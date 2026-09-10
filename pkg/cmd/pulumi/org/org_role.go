@@ -73,7 +73,7 @@ func defaultOrgRoleClientFactory(ctx context.Context, orgFlag string) (orgRoleCl
 	displayOpts := display.Options{Color: cmdutil.GetGlobalColorization()}
 	ws := pkgWorkspace.Instance
 
-	project, _, err := ws.ReadProject()
+	project, _, err := ws.ReadProject("")
 	if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
 		return nil, "", err
 	}

@@ -17,12 +17,14 @@ package providers
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 
 	"github.com/blang/semver"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 type NestedObjectProvider struct {
@@ -167,10 +169,63 @@ func (p *NestedObjectProvider) GetSchema(
 				RequiredInputs: []string{"details"},
 			},
 		},
+		Functions: map[string]schema.FunctionSpec{
+			// getValues echoes its input list back. It exists so that a program can
+			// obtain a computed list from an invoke and range over it.
+			"nestedobject:index:getValues": {
+				Inputs: &schema.ObjectTypeSpec{
+					Type: "object",
+					Properties: map[string]schema.PropertySpec{
+						"names": {
+							TypeSpec: schema.TypeSpec{
+								Type:  "array",
+								Items: &schema.TypeSpec{Type: "string"},
+							},
+						},
+					},
+					Required: []string{"names"},
+				},
+				ReturnType: &schema.ReturnTypeSpec{
+					ObjectTypeSpec: &schema.ObjectTypeSpec{
+						Type: "object",
+						Properties: map[string]schema.PropertySpec{
+							"results": {
+								TypeSpec: schema.TypeSpec{
+									Type:  "array",
+									Items: &schema.TypeSpec{Type: "string"},
+								},
+							},
+						},
+						Required: []string{"results"},
+					},
+				},
+			},
+		},
 	}
 
 	jsonBytes, err := json.Marshal(pkg)
 	return plugin.GetSchemaResponse{Schema: jsonBytes}, err
+}
+
+func (p *NestedObjectProvider) Invoke(
+	_ context.Context, req plugin.InvokeRequest,
+) (plugin.InvokeResponse, error) {
+	if req.Tok != "nestedobject:index:getValues" {
+		return plugin.InvokeResponse{}, fmt.Errorf("unknown function %v", req.Tok)
+	}
+
+	names, ok := req.Args.GetOk("names")
+	if !ok || !names.IsArray() {
+		return plugin.InvokeResponse{
+			Failures: makeCheckFailure("names", "missing names list"),
+		}, nil
+	}
+
+	return plugin.InvokeResponse{
+		Properties: property.NewMap(map[string]property.Value{
+			"results": names,
+		}),
+	}, nil
 }
 
 func (p *NestedObjectProvider) CheckConfig(
@@ -228,7 +283,7 @@ func (p *NestedObjectProvider) Update(
 
 func (p *NestedObjectProvider) GetPluginInfo(context.Context) (plugin.PluginInfo, error) {
 	return plugin.PluginInfo{
-		Version: ptr(p.version()),
+		Version: new(p.version()),
 	}, nil
 }
 

@@ -27,6 +27,8 @@ func init() {
 				Config: config.Map{
 					config.MustMakeKey("l1-builtin-object", "aMap"): config.NewObjectValue(
 						`{"keyPresent":"value","alpha":"a","delta":"d","omega":"o","tango":"t","zebra":"z"}`),
+					config.MustMakeKey("l1-builtin-object", "alternativeNames"): config.NewObjectValue(
+						`{"a":"first","b":"second"}`),
 				},
 				Assert: func(l *L, res AssertArgs) {
 					RequireStackResource(l, res.Err, res.Changes)
@@ -62,6 +64,10 @@ func init() {
 						}),
 						"lookupOutput":        resource.NewProperty("value"),
 						"lookupOutputDefault": resource.NewProperty("default"),
+						"names": resource.NewProperty([]resource.PropertyValue{
+							resource.NewProperty("first"),
+							resource.NewProperty("second"),
+						}),
 					}, stack.Outputs)
 				},
 			},

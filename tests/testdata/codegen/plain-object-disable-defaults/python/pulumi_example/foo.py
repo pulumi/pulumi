@@ -93,18 +93,17 @@ class Foo(pulumi.CustomResource):
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
                  argument: Optional[_builtins.str] = None,
-                 backup_kube_client_settings: pulumi.Input[Optional[Union['KubeClientSettingsArgs', 'KubeClientSettingsArgsDict']]] = None,
-                 kube_client_settings: pulumi.Input[Optional[Union['KubeClientSettingsArgs', 'KubeClientSettingsArgsDict']]] = None,
+                 backup_kube_client_settings: pulumi.Input[Optional[Union['KubeClientSettingsArgs', 'KubeClientSettingsArgsDict', 'outputs.KubeClientSettings']]] = None,
+                 kube_client_settings: pulumi.Input[Optional[Union['KubeClientSettingsArgs', 'KubeClientSettingsArgsDict', 'outputs.KubeClientSettings']]] = None,
                  settings: pulumi.Input[Optional[Union['LayeredTypeArgs', 'LayeredTypeArgsDict']]] = None,
                  __props__=None):
         """
         test new feature with resoruces
 
-
         :param str resource_name: The name of the resource.
         :param pulumi.ResourceOptions opts: Options for the resource.
-        :param pulumi.Input[Union['KubeClientSettingsArgs', 'KubeClientSettingsArgsDict']] backup_kube_client_settings: Options for tuning the Kubernetes client used by a Provider.
-        :param pulumi.Input[Union['KubeClientSettingsArgs', 'KubeClientSettingsArgsDict']] kube_client_settings: Options for tuning the Kubernetes client used by a Provider.
+        :param pulumi.Input[Union['KubeClientSettingsArgs', 'KubeClientSettingsArgsDict', 'outputs.KubeClientSettings']] backup_kube_client_settings: Options for tuning the Kubernetes client used by a Provider.
+        :param pulumi.Input[Union['KubeClientSettingsArgs', 'KubeClientSettingsArgsDict', 'outputs.KubeClientSettings']] kube_client_settings: Options for tuning the Kubernetes client used by a Provider.
         :param pulumi.Input[Union['LayeredTypeArgs', 'LayeredTypeArgsDict']] settings: describing things
         """
         ...
@@ -115,7 +114,6 @@ class Foo(pulumi.CustomResource):
                  opts: Optional[pulumi.ResourceOptions] = None):
         """
         test new feature with resoruces
-
 
         :param str resource_name: The name of the resource.
         :param FooArgs args: The arguments to use to populate this resource's properties.
@@ -133,8 +131,8 @@ class Foo(pulumi.CustomResource):
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
                  argument: Optional[_builtins.str] = None,
-                 backup_kube_client_settings: pulumi.Input[Optional[Union['KubeClientSettingsArgs', 'KubeClientSettingsArgsDict']]] = None,
-                 kube_client_settings: pulumi.Input[Optional[Union['KubeClientSettingsArgs', 'KubeClientSettingsArgsDict']]] = None,
+                 backup_kube_client_settings: pulumi.Input[Optional[Union['KubeClientSettingsArgs', 'KubeClientSettingsArgsDict', 'outputs.KubeClientSettings']]] = None,
+                 kube_client_settings: pulumi.Input[Optional[Union['KubeClientSettingsArgs', 'KubeClientSettingsArgsDict', 'outputs.KubeClientSettings']]] = None,
                  settings: pulumi.Input[Optional[Union['LayeredTypeArgs', 'LayeredTypeArgsDict']]] = None,
                  __props__=None):
         opts = pulumi.ResourceOptions.merge(_utilities.get_resource_opts_defaults(), opts)

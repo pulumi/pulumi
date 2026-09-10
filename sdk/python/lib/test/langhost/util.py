@@ -76,7 +76,7 @@ class LanghostMockResourceMonitor(proto.ResourceMonitorServicer):
         ret_proto = loop.run_until_complete(rpc.serialize_properties(ret, {}))
         loop.close()
         fields = {"failures": failures_rpc, "return": ret_proto}
-        return proto.InvokeResponse(**fields)
+        return proto.ResourceInvokeResponse(**fields)
 
     def ReadResource(self, request, context):
         type_ = request.type

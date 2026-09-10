@@ -153,6 +153,13 @@ func NewAPICmd() *cobra.Command {
 			"255 internal.",
 		Example: "  # Verify an op's parameters and schemas with `describe` before calling it.\n" +
 			"  pulumi api describe AddStackTag\n\n" +
+			"  # Find endpoints by keyword.\n" +
+			"  pulumi api list --filter graph\n\n" +
+			"  # Query the organization's resource graph (Context API): what exists, what\n" +
+			"  # depends on what, what a change would affect. Read the guide first, then\n" +
+			"  # post a JSON selector.\n" +
+			"  pulumi api GetGraphQuerySchema\n" +
+			"  pulumi api GraphQuery --input selector.json\n\n" +
 			"  # Inspect the currently authenticated user.\n" +
 			"  pulumi api /api/user\n\n" +
 			"  # Call by raw path with template variables filled from -F.\n" +
@@ -201,7 +208,7 @@ func NewAPICmd() *cobra.Command {
 		return runAPI(cmd, args, api)
 	})
 
-	cmd.AddCommand(newLsCmd(api))
+	cmd.AddCommand(newListCmd(api))
 	cmd.AddCommand(newDescribeCmd(api))
 
 	return cmd
@@ -225,7 +232,16 @@ func runAPI(cmd *cobra.Command, args []string, api *apiCommand) error {
 	}
 	userArg := strings.TrimSpace(args[0])
 
-	idx, err := LoadIndex(cmd.Context(), cmd.ErrOrStderr(), api.refreshSpec)
+	// Resolve cloud context up front so the backend-aware default org is
+	// available to template-var resolution. ResolveContext is non-interactive
+	// and returns a usable (anonymous) context when the user isn't logged in.
+	resolvedCtx, err := ResolveContext(cmd.Context())
+	if err != nil {
+		return NewAPIError(cmdutil.ExitInternalError, ErrToolError,
+			fmt.Sprintf("resolving cloud context: %v", err))
+	}
+
+	idx, err := LoadIndex(cmd.Context(), resolvedCtx, cmd.ErrOrStderr(), api.refreshSpec)
 	if err != nil {
 		return err
 	}
@@ -239,15 +255,6 @@ func runAPI(cmd *cobra.Command, args []string, api *apiCommand) error {
 	fields, err := parseFields(api.fields, api.rawFields, os.Stdin)
 	if err != nil {
 		return err
-	}
-
-	// Resolve cloud context up front so the backend-aware default org is
-	// available to template-var resolution. ResolveContext is non-interactive
-	// and returns a usable (anonymous) context when the user isn't logged in.
-	resolvedCtx, err := ResolveContext(cmd.Context())
-	if err != nil {
-		return NewAPIError(cmdutil.ExitInternalError, ErrToolError,
-			fmt.Sprintf("resolving cloud context: %v", err))
 	}
 
 	bindings, fields, err := resolveBindings(mr, fields, resolvedCtx)

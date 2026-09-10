@@ -162,7 +162,7 @@ func NewSegment[T interface{ string | int }](v T) PathSegment {
 		return KeySegment{v}
 	case int:
 		contract.Assertf(v >= 0, "index must be non-negative, got %d", v)
-		return IndexSegment{uint64(v)} //nolint:gosec // checked above
+		return IndexSegment{uint64(v)}
 	default:
 		panic("impossible")
 	}
@@ -204,11 +204,11 @@ type IndexSegment struct {
 	i uint64
 }
 
-func (k IndexSegment) Index() int { return int(k.i) } //nolint:gosec // will always fit
+func (k IndexSegment) Index() int { return int(k.i) }
 
 func (k IndexSegment) apply(v Value) (Value, PathApplyFailure) {
 	if v.IsArray() {
-		i := int(k.i) //nolint:gosec // will always fit
+		i := int(k.i)
 		a := v.AsArray()
 		if i >= a.Len() {
 			return Value{}, pathApplyIndexOutOfBoundsError{found: a, idx: i}

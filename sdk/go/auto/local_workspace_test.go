@@ -31,7 +31,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optimport"
 
 	"github.com/blang/semver"
-	"github.com/go-git/go-git/v5"
+	"github.com/go-git/go-git/v6"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -1041,7 +1041,7 @@ func TestStackLifecycleInlineProgramDestroyWithRemove(t *testing.T) {
 func TestUpsertStackInlineSourceParallel(t *testing.T) {
 	t.Parallel()
 
-	for i := 0; i < 4; i++ {
+	for i := range 4 {
 		// Verify that shared context doesn't affect result
 		ctx := t.Context()
 		t.Run(strconv.Itoa(i), func(t *testing.T) {
@@ -2254,13 +2254,11 @@ func TestNestedConfig(t *testing.T) {
 	projYAML, err := os.ReadFile(filepath.Join(srcDir, "Pulumi.yaml"))
 	require.NoError(t, err)
 
-	//nolint:gosec // writing test fixture to temp dir
 	require.NoError(t, os.WriteFile(filepath.Join(pDir, "Pulumi.yaml"), projYAML, 0o600))
 	stackYAML, err := os.ReadFile(filepath.Join(srcDir, "Pulumi.dev.yaml"))
 	require.NoError(t, err)
 
 	stackCfgName := "Pulumi." + sName + ".yaml"
-	//nolint:gosec // writing test fixture to temp dir
 	require.NoError(t, os.WriteFile(filepath.Join(pDir, stackCfgName), stackYAML, 0o600))
 
 	s, err := UpsertStackLocalSource(ctx, stackName, pDir)
@@ -2592,6 +2590,43 @@ func TestStackImportResources(t *testing.T) {
 	}
 
 	assert.Equal(t, normalize(string(expectedGeneratedCode)), normalize(importResult.GeneratedCode))
+	_, err = stack.Destroy(ctx)
+	require.NoError(t, err, "failed to destroy stack")
+}
+
+func TestStackImportResourcesWithoutGenerateCode(t *testing.T) {
+	t.Parallel()
+
+	ctx := t.Context()
+	sName := ptesting.RandomStackName()
+	stackName := FullyQualifiedStackName(pulumiOrg, "import", sName)
+	pDir := filepath.Join(".", "test", "import")
+	stack, err := UpsertStackLocalSource(ctx, stackName, pDir)
+	require.NoError(t, err, "failed to initialize stack")
+	defer func() {
+		err = stack.Workspace().RemoveStack(ctx, stack.Name(), optremove.Force())
+		require.NoError(t, err, "failed to remove stack.")
+	}()
+
+	randomPluginVersion := "4.16.3"
+	err = stack.Workspace().InstallPlugin(ctx, "random", randomPluginVersion)
+	require.NoError(t, err, "failed to install plugin")
+	resourcesToImport := []*optimport.ImportResource{
+		{
+			Type: "random:index/randomPassword:RandomPassword",
+			ID:   "supersecret",
+			Name: "randomPassword",
+		},
+	}
+
+	importResult, err := stack.ImportResources(ctx,
+		optimport.Resources(resourcesToImport),
+		optimport.Protect(false),
+		optimport.GenerateCode(false))
+
+	require.NoError(t, err, "failed to import resources")
+	require.Equal(t, "succeeded", importResult.Summary.Result)
+	require.Empty(t, importResult.GeneratedCode)
 	_, err = stack.Destroy(ctx)
 	require.NoError(t, err, "failed to destroy stack")
 }
@@ -3854,13 +3889,11 @@ func containsSummary(log []events.EngineEvent) bool {
 
 func collectEvents(eventChannel <-chan events.EngineEvent, events *[]events.EngineEvent) *sync.WaitGroup {
 	var wg sync.WaitGroup
-	wg.Add(1)
-	go (func() {
+	wg.Go(func() {
 		for event := range eventChannel {
 			*events = append(*events, event)
 		}
-		wg.Done()
-	})()
+	})
 	return &wg
 }
 

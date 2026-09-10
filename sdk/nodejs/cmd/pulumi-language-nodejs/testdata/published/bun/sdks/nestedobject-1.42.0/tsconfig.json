@@ -20,6 +20,7 @@
     },
     "files": [
         "container.ts",
+        "getValues.ts",
         "index.ts",
         "mapContainer.ts",
         "provider.ts",

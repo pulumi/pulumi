@@ -77,15 +77,17 @@ func installCacheKey(projectDir string) string {
 // node_modules tree with other projects that have an identical dependency
 // manifest when the host's install cache is enabled.
 func (host *nodeLanguageHost) installShared(
-	ctx context.Context, packagemanager npm.PackageManagerType, workspaceRoot string, isPlugin bool,
+	ctx context.Context, packagemanager npm.PackageManagerType, workspaceRoot string, isPlugin bool, production bool,
 	stdout, stderr io.Writer,
 ) error {
 	cacheKey := ""
-	if host.installCacheDir != "" && !isPlugin {
+	// Production installs don't participate in the cache: a production
+	// node_modules tree differs from a full one for the same manifest.
+	if host.installCacheDir != "" && !isPlugin && !production {
 		cacheKey = installCacheKey(workspaceRoot)
 	}
 	if cacheKey == "" {
-		_, err := npm.Install(ctx, packagemanager, workspaceRoot, false /*production*/, stdout, stderr)
+		_, err := npm.Install(ctx, packagemanager, workspaceRoot, production, stdout, stderr)
 		return err
 	}
 

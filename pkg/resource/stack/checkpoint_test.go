@@ -21,6 +21,8 @@ import (
 	"os"
 	"testing"
 
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
+
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
@@ -122,13 +124,13 @@ func TestSerializeCheckpoint(t *testing.T) {
 
 	tests := []struct {
 		name             string
-		resources        []*resource.State
+		resources        []*pkgresource.State
 		expectedVersion  int
 		expectedFeatures []string
 	}{
 		{
 			name: "v3 deployment with no features",
-			resources: []*resource.State{
+			resources: []*pkgresource.State{
 				{
 					URN: "urn1",
 				},
@@ -138,7 +140,7 @@ func TestSerializeCheckpoint(t *testing.T) {
 		},
 		{
 			name: "v4 deployment with refreshBeforeUpdate",
-			resources: []*resource.State{
+			resources: []*pkgresource.State{
 				{
 					URN:                 "urn1",
 					RefreshBeforeUpdate: true,
@@ -149,7 +151,7 @@ func TestSerializeCheckpoint(t *testing.T) {
 		},
 		{
 			name: "v4 deployment with views",
-			resources: []*resource.State{
+			resources: []*pkgresource.State{
 				{
 					URN: "urn1",
 				},
@@ -164,7 +166,7 @@ func TestSerializeCheckpoint(t *testing.T) {
 		},
 		{
 			name: "v4 deployment with hooks",
-			resources: []*resource.State{
+			resources: []*pkgresource.State{
 				{
 					URN: "urn1",
 					ResourceHooks: map[resource.HookType][]string{
@@ -177,7 +179,7 @@ func TestSerializeCheckpoint(t *testing.T) {
 		},
 		{
 			name: "v4 deployment with taint",
-			resources: []*resource.State{
+			resources: []*pkgresource.State{
 				{
 					URN:   "urn1",
 					Taint: true,
@@ -239,7 +241,7 @@ func TestRoundtripCheckpoint(t *testing.T) {
 	t.Parallel()
 
 	originalSnap := &deploy.Snapshot{
-		Resources: []*resource.State{
+		Resources: []*pkgresource.State{
 			{
 				URN:     "pulumi:stack::project::pulumi:root::project-stack",
 				Type:    resource.RootStackType,
@@ -285,7 +287,7 @@ func TestRoundtripNanCheckpoint(t *testing.T) {
 	t.Parallel()
 
 	originalSnap := &deploy.Snapshot{
-		Resources: []*resource.State{
+		Resources: []*pkgresource.State{
 			{
 				URN:  "pulumi:stack::project::pulumi:root::project-stack",
 				Type: resource.RootStackType,

@@ -32,8 +32,8 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageinstallation"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -286,11 +286,11 @@ func (w invariantWorkspace) DownloadPlugin(
 	return p, func(success bool) {}, nil
 }
 
-func (w invariantWorkspace) New() (pkgWorkspace.W, error) {
+func (w invariantWorkspace) New(string) (pkgWorkspace.W, error) {
 	return nil, assert.AnError
 }
 
-func (w invariantWorkspace) ReadProject() (*workspace.Project, string, error) {
+func (w invariantWorkspace) ReadProject(string) (*workspace.Project, string, error) {
 	return nil, "", assert.AnError
 }
 
@@ -359,10 +359,18 @@ func (w invariantWorkspace) LinkIntoProject(
 func (w invariantWorkspace) GetRequiredPackages(
 	ctx context.Context, dirPath string, project *workspace.PluginProject,
 ) ([]workspace.PackageDescriptor, []workspace.PackageSpec, error) {
+	w.rw.RLock()
+	defer w.rw.RUnlock()
 	dirPath = filepath.ToSlash(dirPath)
 	pl, ok := w.plugins[dirPath]
 	if !ok || !pl.pathVisible {
 		assert.Failf(w.t, "", "GetRequiredPackages(%q) called on non-visible plugin", dirPath)
+		return nil, nil, assert.AnError
+	}
+	// A runtime reads a plugin's dependencies from what its install produced,
+	// so the plugin must be installed before it is asked for them.
+	if !pl.installed {
+		assert.Failf(w.t, "", "GetRequiredPackages(%q) called on a plugin that is not installed", dirPath)
 		return nil, nil, assert.AnError
 	}
 	if pl.requiredPackages == nil && pl.requiredSpecs == nil {

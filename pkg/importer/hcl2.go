@@ -21,6 +21,8 @@ import (
 	"log/slog"
 	"math"
 
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
+
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
@@ -56,7 +58,7 @@ type ImportState struct {
 
 	// A snapshot of the resources in the Pulumi program that new resources are being imported to. This is used to resolve
 	// references to packages providers.
-	Snapshot []*resource.State
+	Snapshot []*pkgresource.State
 }
 
 // filterReferences filters out self-references from the import state so that if a resource has a property
@@ -79,15 +81,69 @@ func filterReferences(resourceName string, importState ImportState) ImportState 
 	}
 }
 
+// isLocalComponent reports whether a resource state is a component resource declared by a Pulumi program rather than
+// by a package. Remote components are served by a provider and do have a schema, so they are not included.
+func isLocalComponent(state *pkgresource.State) bool {
+	return !state.Custom && state.Provider == ""
+}
+
 // GenerateHCL2Definition generates a Pulumi HCL2 definition for a given resource.
 //
 // GenerateHCL2Definition will drop map entries who's type doesn't conform to the schema type.
 func GenerateHCL2Definition(
 	loader schema.Loader,
-	state *resource.State,
+	state *pkgresource.State,
 	importState ImportState,
 ) (*model.Block, *schema.PackageDescriptor, error) {
-	// First up, we'll need to load the appropriate package for this resource. We'll do this by grabbing the resource's
+	var items []model.BodyItem
+	name := state.URN.Name()
+	// Check if _this_ urn is in the name table, if so we need to set logicalName and use the mapped name for
+	// the resource block.
+	if mappedName, ok := importState.Names[state.URN]; ok {
+		if mappedName != name {
+			items = append(items, &model.Attribute{
+				Name: "__logicalName",
+				Value: &model.TemplateExpression{
+					Parts: []model.Expression{
+						&model.LiteralValueExpression{
+							Value: cty.StringVal(state.URN.Name()),
+						},
+					},
+				},
+			})
+		}
+		name = mappedName
+	}
+
+	contract.Assertf(sanitizeName(name) == name, "names should be sanitized by this point")
+
+	// Local component resources are declared by a Pulumi program rather than by a package schema, so there is no
+	// provider to look up and no schema to shape their inputs. Emit a source-less component block naming the
+	// component by its type token, which code generation turns into a base ComponentResource construction.
+	if isLocalComponent(state) {
+		typ := cty.StringVal(string(state.URN.Type()))
+		items = append(items, &model.Attribute{
+			Name:  "token",
+			Value: &model.TemplateExpression{Parts: []model.Expression{&model.LiteralValueExpression{Value: typ}}},
+		})
+
+		options, err := makeResourceOptions(state, importState.Names, map[string]bool{})
+		if err != nil {
+			return nil, nil, err
+		}
+		if options != nil {
+			items = append(items, options)
+		}
+
+		return &model.Block{
+			Tokens: syntax.NewBlockTokens("component", name),
+			Type:   "component",
+			Labels: []string{name},
+			Body:   &model.Body{Items: items},
+		}, nil, nil
+	}
+
+	// Otherwise we'll need to load the appropriate package for this resource. We'll do this by grabbing the resource's
 	// provider reference and looking up that provider resource in the current program snapshot. From there, we can build
 	// a package descriptor and load the package and its schema.
 	providerRef, err := sdkproviders.ParseReference(state.Provider)
@@ -95,7 +151,7 @@ func GenerateHCL2Definition(
 		return nil, nil, fmt.Errorf("parse resource provider reference: %w", err)
 	}
 
-	var provider *resource.State
+	var provider *pkgresource.State
 	for _, s := range importState.Snapshot {
 		if s.URN == providerRef.URN() && s.ID == providerRef.ID() {
 			provider = s
@@ -154,8 +210,7 @@ func GenerateHCL2Definition(
 		//
 		// https://github.com/pulumi/pulumi/issues/18271 tracks the issue of whether we can do a bit better here (e.g.
 		// allowing semver-compatible version differences but not any others).
-		var versionMismatchErr *schema.PackageReferenceVersionMismatchError
-		if !errors.As(err, &versionMismatchErr) {
+		if _, ok := errors.AsType[*schema.PackageReferenceVersionMismatchError](err); !ok {
 			return nil, nil, fmt.Errorf("loading package '%v': %w", pkgDesc, err)
 		}
 	}
@@ -176,28 +231,6 @@ func GenerateHCL2Definition(
 	if !ok {
 		return nil, nil, fmt.Errorf("unknown resource type '%v'", r)
 	}
-
-	var items []model.BodyItem
-	name := state.URN.Name()
-	// Check if _this_ urn is in the name table, if so we need to set logicalName and use the mapped name for
-	// the resource block.
-	if mappedName, ok := importState.Names[state.URN]; ok {
-		if mappedName != name {
-			items = append(items, &model.Attribute{
-				Name: "__logicalName",
-				Value: &model.TemplateExpression{
-					Parts: []model.Expression{
-						&model.LiteralValueExpression{
-							Value: cty.StringVal(state.URN.Name()),
-						},
-					},
-				},
-			})
-		}
-		name = mappedName
-	}
-
-	contract.Assertf(sanitizeName(name) == name, "names should be sanitized by this point")
 
 	// keep track of a set of added references to avoid adding the same reference to the dependsOn list
 	// when the resource is already implicitly referenced via its properties
@@ -269,7 +302,7 @@ func appendResourceOption(block *model.Block, name string, value model.Expressio
 //
 // The corresponding binding pcl function to read these is bindResourceOptions
 // which reads out these options.
-func makeResourceOptions(state *resource.State, names NameTable, addedRefs map[string]bool) (*model.Block, error) {
+func makeResourceOptions(state *pkgresource.State, names NameTable, addedRefs map[string]bool) (*model.Block, error) {
 	var resourceOptions *model.Block
 	if state.Parent != "" && state.Parent.QualifiedType() != resource.RootStackType {
 		name, ok := names[state.Parent]

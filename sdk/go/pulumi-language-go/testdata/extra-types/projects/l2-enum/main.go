@@ -30,6 +30,26 @@ func main() {
 		if err != nil {
 			return err
 		}
+		_, err = enum.NewDeluxe(ctx, "sink4", &enum.DeluxeArgs{
+			NumberEnum: enum.NumberEnumZeroPointOne,
+			WordyEnum:  enum.WordyEnum_It_s_got_apostrophes,
+			ArrayOfEnum: enum.StringEnumArray{
+				enum.StringEnumStringOne,
+				enum.StringEnumStringTwo,
+			},
+			MapOfEnum: enum.IntEnumMap{
+				"small": enum.IntEnumIntOne,
+				"large": enum.IntEnumIntTwo,
+			},
+			Holder: &enum.HolderArgs{
+				Size:  enum.IntEnumIntTwo,
+				Color: enum.StringEnumStringOne,
+			},
+			UnionEnum: pulumi.String(enum.WordyEnum_A_Value_With_Spaces_),
+		})
+		if err != nil {
+			return err
+		}
 		return nil
 	})
 }

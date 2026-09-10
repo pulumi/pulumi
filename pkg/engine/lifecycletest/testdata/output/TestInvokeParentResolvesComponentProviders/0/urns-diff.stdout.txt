@@ -1,0 +1,12 @@
+<{%fg 2%}>+ urn:pulumi:test::test::pulumi:providers:pkgA::explicit: (create)
+<{%fg 2%}>    instance: <{%reset%}><{%fg 2%}>"explicit"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%reset%}><{%fg 2%}>+ urn:pulumi:test::test::pulumi:providers:pkgA::other: (create)
+<{%fg 2%}>    instance: <{%reset%}><{%fg 2%}>"other"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%reset%}><{%fg 2%}>+ urn:pulumi:test::test::my:component:First::comp: (create)
+<{%reset%}>    <{%fg 2%}>+ urn:pulumi:test::test::my:component:First$my:component:Second::child: (create)
+<{%reset%}>    <{%fg 2%}>+ urn:pulumi:test::test::my:component:First$pkgA:m:typA::custom: (create)
+<{%fg 2%}>        [provider=urn:pulumi:test::test::pulumi:providers:pkgA::explicit::2]
+<{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    <{%fg 2%}>+ 5 created<{%reset%}>
+
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s

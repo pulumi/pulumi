@@ -15,18 +15,28 @@
 package deploy
 
 import (
+	"context"
+	"errors"
 	"runtime"
 	"testing"
+	"time"
 
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
-	sdkproviders "github.com/pulumi/pulumi/sdk/v3/go/common/providers"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/blang/semver"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
+	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
+	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
+	sdkproviders "github.com/pulumi/pulumi/sdk/v3/go/common/providers"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 func TestIgnoreChanges(t *testing.T) {
@@ -426,7 +436,8 @@ func TestEngineDiff(t *testing.T) {
 
 			d := &diag.MockSink{}
 			diff, err := diffResource(
-				d, urn, id, c.oldInputs, oldOutputs, c.newInputs, &provider, allowUnknowns, c.ignoreChanges)
+				d, urn, id, c.oldInputs, oldOutputs, c.newInputs, &provider, allowUnknowns, c.ignoreChanges,
+			)
 			t.Logf("diff.ChangedKeys = %v", diff.ChangedKeys)
 			t.Logf("diff.StableKeys = %v", diff.StableKeys)
 			t.Logf("diff.ReplaceKeys = %v", diff.ReplaceKeys)
@@ -531,7 +542,7 @@ func TestGenerateAliases(t *testing.T) {
 			t.Parallel()
 
 			parentURN := resource.CreateURN("myres", "test:resource:type", "", project, stack.String())
-			goal := &resource.Goal{
+			goal := &pkgresource.Goal{
 				Parent:  parentURN,
 				Name:    "myres-child",
 				Type:    "test:resource:child",
@@ -613,8 +624,8 @@ func TestStepGenerator(t *testing.T) {
 			t.Parallel()
 
 			// Arrange.
-			a := &resource.State{URN: "a"}
-			b := &resource.State{URN: "b"}
+			a := &pkgresource.State{URN: "a"}
+			b := &pkgresource.State{URN: "b"}
 
 			// Act.
 			aIsTargeted := sg.isTargetedForUpdate(a)
@@ -629,8 +640,8 @@ func TestStepGenerator(t *testing.T) {
 			t.Parallel()
 
 			// Arrange.
-			hasAAsProvider := &resource.State{Provider: apRef.String()}
-			hasBAsProvider := &resource.State{Provider: bpRef.String()}
+			hasAAsProvider := &pkgresource.State{Provider: apRef.String()}
+			hasBAsProvider := &pkgresource.State{Provider: bpRef.String()}
 
 			// Act.
 			hasAAsProviderIsTargeted := sg.isTargetedForUpdate(hasAAsProvider)
@@ -645,8 +656,8 @@ func TestStepGenerator(t *testing.T) {
 			t.Parallel()
 
 			// Arrange.
-			hasAAsParent := &resource.State{Parent: "a"}
-			hasBAsParent := &resource.State{Parent: "b"}
+			hasAAsParent := &pkgresource.State{Parent: "a"}
+			hasBAsParent := &pkgresource.State{Parent: "b"}
 
 			// Act.
 			hasAAsParentIsTargeted := sg.isTargetedForUpdate(hasAAsParent)
@@ -661,8 +672,8 @@ func TestStepGenerator(t *testing.T) {
 			t.Parallel()
 
 			// Arrange.
-			dependsOnA := &resource.State{Dependencies: []resource.URN{"a"}}
-			dependsOnB := &resource.State{Dependencies: []resource.URN{"a", "b"}}
+			dependsOnA := &pkgresource.State{Dependencies: []resource.URN{"a"}}
+			dependsOnB := &pkgresource.State{Dependencies: []resource.URN{"a", "b"}}
 
 			// Act.
 			dependsOnAIsTargeted := sg.isTargetedForUpdate(dependsOnA)
@@ -677,8 +688,8 @@ func TestStepGenerator(t *testing.T) {
 			t.Parallel()
 
 			// Arrange.
-			dependsOnA := &resource.State{PropertyDependencies: map[resource.PropertyKey][]resource.URN{"p": {"a"}}}
-			dependsOnB := &resource.State{PropertyDependencies: map[resource.PropertyKey][]resource.URN{"p": {"a", "b"}}}
+			dependsOnA := &pkgresource.State{PropertyDependencies: map[resource.PropertyKey][]resource.URN{"p": {"a"}}}
+			dependsOnB := &pkgresource.State{PropertyDependencies: map[resource.PropertyKey][]resource.URN{"p": {"a", "b"}}}
 
 			// Act.
 			dependsOnAIsTargeted := sg.isTargetedForUpdate(dependsOnA)
@@ -693,8 +704,8 @@ func TestStepGenerator(t *testing.T) {
 			t.Parallel()
 
 			// Arrange.
-			isDeletedWithA := &resource.State{DeletedWith: "a"}
-			isDeletedWithB := &resource.State{DeletedWith: "b"}
+			isDeletedWithA := &pkgresource.State{DeletedWith: "a"}
+			isDeletedWithB := &pkgresource.State{DeletedWith: "b"}
 
 			// Act.
 			isDeletedWithAIsTargeted := sg.isTargetedForUpdate(isDeletedWithA)
@@ -736,8 +747,8 @@ func TestStepGenerator(t *testing.T) {
 			t.Parallel()
 
 			// Arrange.
-			a := &resource.State{URN: "a"}
-			c := &resource.State{URN: "c"}
+			a := &pkgresource.State{URN: "a"}
+			c := &pkgresource.State{URN: "c"}
 
 			// Act.
 			aIsTargeted := sg.isTargetedForUpdate(a)
@@ -752,8 +763,8 @@ func TestStepGenerator(t *testing.T) {
 			t.Parallel()
 
 			// Arrange.
-			hasAAsProvider := &resource.State{Provider: apRef.String()}
-			hasBAsProvider := &resource.State{Provider: bpRef.String()}
+			hasAAsProvider := &pkgresource.State{Provider: apRef.String()}
+			hasBAsProvider := &pkgresource.State{Provider: bpRef.String()}
 
 			// Act.
 			hasAAsProviderIsTargeted := sg.isTargetedForUpdate(hasAAsProvider)
@@ -768,8 +779,8 @@ func TestStepGenerator(t *testing.T) {
 			t.Parallel()
 
 			// Arrange.
-			hasAAsParent := &resource.State{Parent: "a"}
-			hasBAsParent := &resource.State{Parent: "b"}
+			hasAAsParent := &pkgresource.State{Parent: "a"}
+			hasBAsParent := &pkgresource.State{Parent: "b"}
 
 			// Act.
 			hasAAsParentIsTargeted := sg.isTargetedForUpdate(hasAAsParent)
@@ -784,8 +795,8 @@ func TestStepGenerator(t *testing.T) {
 			t.Parallel()
 
 			// Arrange.
-			dependsOnA := &resource.State{Dependencies: []resource.URN{"a"}}
-			dependsOnB := &resource.State{Dependencies: []resource.URN{"a", "b"}}
+			dependsOnA := &pkgresource.State{Dependencies: []resource.URN{"a"}}
+			dependsOnB := &pkgresource.State{Dependencies: []resource.URN{"a", "b"}}
 
 			// Act.
 			dependsOnAIsTargeted := sg.isTargetedForUpdate(dependsOnA)
@@ -800,8 +811,8 @@ func TestStepGenerator(t *testing.T) {
 			t.Parallel()
 
 			// Arrange.
-			dependsOnA := &resource.State{PropertyDependencies: map[resource.PropertyKey][]resource.URN{"p": {"a"}}}
-			dependsOnB := &resource.State{PropertyDependencies: map[resource.PropertyKey][]resource.URN{"p": {"a", "b"}}}
+			dependsOnA := &pkgresource.State{PropertyDependencies: map[resource.PropertyKey][]resource.URN{"p": {"a"}}}
+			dependsOnB := &pkgresource.State{PropertyDependencies: map[resource.PropertyKey][]resource.URN{"p": {"a", "b"}}}
 
 			// Act.
 			dependsOnAIsTargeted := sg.isTargetedForUpdate(dependsOnA)
@@ -816,8 +827,8 @@ func TestStepGenerator(t *testing.T) {
 			t.Parallel()
 
 			// Arrange.
-			isDeletedWithA := &resource.State{DeletedWith: "a"}
-			isDeletedWithB := &resource.State{DeletedWith: "b"}
+			isDeletedWithA := &pkgresource.State{DeletedWith: "a"}
+			isDeletedWithB := &pkgresource.State{DeletedWith: "b"}
 
 			// Act.
 			isDeletedWithAIsTargeted := sg.isTargetedForUpdate(isDeletedWithA)
@@ -846,7 +857,8 @@ func TestStepGenerator(t *testing.T) {
 		t.Run("could not find parent resource", func(t *testing.T) {
 			t.Parallel()
 			sg := &stepGenerator{
-				urns: map[resource.URN]bool{},
+				deployment: &Deployment{},
+				urns:       map[resource.URN]bool{},
 			}
 			_, err := sg.GenerateReadSteps(&readResourceEvent{
 				parent: "does-not-exist",
@@ -890,7 +902,7 @@ func TestStepGenerator(t *testing.T) {
 				},
 			}
 			_, _, err := sg.generateSteps(t.Context(), &registerResourceEvent{
-				goal: &resource.Goal{
+				goal: &pkgresource.Goal{
 					Parent: "does-not-exist",
 				},
 			})
@@ -906,13 +918,13 @@ func TestStepGenerator(t *testing.T) {
 				urns: map[resource.URN]bool{},
 				deployment: &Deployment{
 					prev: &Snapshot{
-						Resources: []*resource.State{
+						Resources: []*pkgresource.State{
 							{
 								URN: "a",
 							},
 						},
 					},
-					olds: map[resource.URN]*resource.State{},
+					olds: map[resource.URN]*pkgresource.State{},
 				},
 			}
 			targets, err := sg.determineAllowedResourcesToDeleteFromTargets(
@@ -931,14 +943,15 @@ func TestStepGenerator(t *testing.T) {
 				urns: map[resource.URN]bool{},
 				deployment: &Deployment{
 					prev: &Snapshot{},
-					olds: map[resource.URN]*resource.State{},
+					olds: map[resource.URN]*pkgresource.State{},
 				},
 			}
-			_, err := sg.providerChanged("",
-				&resource.State{
+			_, err := sg.providerChanged(
+				"",
+				&pkgresource.State{
 					Provider: "invalid-old-provider",
 				},
-				&resource.State{
+				&pkgresource.State{
 					Provider: "urn:pulumi:stack::project::pulumi:providers:provider::name::uuid",
 				},
 			)
@@ -951,14 +964,15 @@ func TestStepGenerator(t *testing.T) {
 				urns: map[resource.URN]bool{},
 				deployment: &Deployment{
 					prev: &Snapshot{},
-					olds: map[resource.URN]*resource.State{},
+					olds: map[resource.URN]*pkgresource.State{},
 				},
 			}
-			_, err := sg.providerChanged("",
-				&resource.State{
+			_, err := sg.providerChanged(
+				"",
+				&pkgresource.State{
 					Provider: "urn:pulumi:stack::project::pulumi:providers:provider::name::uuid",
 				},
-				&resource.State{
+				&pkgresource.State{
 					Provider: "invalid-new-provider",
 				},
 			)
@@ -971,19 +985,188 @@ func TestStepGenerator(t *testing.T) {
 				urns: map[resource.URN]bool{},
 				deployment: &Deployment{
 					prev:      &Snapshot{},
-					olds:      map[resource.URN]*resource.State{},
+					olds:      map[resource.URN]*pkgresource.State{},
 					providers: &providers.Registry{},
 				},
 			}
-			_, err := sg.providerChanged("",
-				&resource.State{
+			_, err := sg.providerChanged(
+				"",
+				&pkgresource.State{
 					Provider: "urn:pulumi:stack::project::pulumi:providers:provider::default_name::uuid",
 				},
-				&resource.State{
+				&pkgresource.State{
 					Provider: "urn:pulumi:stack::project::pulumi:providers:provider::default_new::uuid",
 				},
 			)
 			assert.ErrorContains(t, err, "failed to resolve provider reference")
 		})
 	})
+
+	t.Run("generateSteps emits ExtensionParameterizeStep for an extension event", func(t *testing.T) {
+		t.Parallel()
+
+		// Pre-load a fake provider into the registry: Registry.Same() loads it via
+		// host.Provider() and caches it, so a host that returns our fake leaves the
+		// registry holding the fake.
+		fakeProvider := &deploytest.Provider{}
+		host := &plugin.MockHost{
+			ProviderF: func(_ *plugin.Context, _ workspace.PluginDescriptor, _ env.Env) (plugin.Provider, error) {
+				return fakeProvider, nil
+			},
+		}
+		registry := providers.NewRegistry(newMockRegistryContext(host), false, nil)
+
+		providerURN := resource.URN("urn:pulumi:stack::project::pulumi:providers:k8s::default")
+		err := registry.Same(t.Context(), &pkgresource.State{
+			URN:    providerURN,
+			Custom: true,
+			Type:   tokens.Type("pulumi:providers:k8s"),
+			ID:     "id-1",
+			Inputs: resource.PropertyMap{"version": resource.NewProperty("1.0.0")},
+		}, false)
+		require.NoError(t, err)
+
+		providerRef, err := sdkproviders.NewReference(providerURN, "id-1")
+		require.NoError(t, err)
+
+		eventsChan := make(chan SourceEvent, 1)
+		sg := &stepGenerator{
+			deployment: &Deployment{
+				opts:       &Options{},
+				target:     &Target{Name: tokens.MustParseStackName("stack")},
+				source:     NewNullSource("project"),
+				extensions: map[sdkproviders.Reference][]inFlightExtension{},
+				providers:  registry,
+				panicErrs:  make(chan error, 1),
+			},
+			urns:   map[resource.URN]bool{},
+			events: eventsChan,
+		}
+
+		event := &testRegEvent{
+			goal: &pkgresource.Goal{
+				Type:     "k8s:apiextensions.k8s.io/v1:CustomResource",
+				Name:     "my-cr",
+				Provider: providerRef.String(),
+			},
+			extension:    &apitype.Extension{Name: "gateway-api", Version: "1.0.0", Value: []byte("blob")},
+			extensionRef: apitype.ExtensionRef("extension-a"),
+		}
+
+		steps, async, err := sg.generateSteps(t.Context(), event)
+		require.NoError(t, err)
+		assert.True(t, async)
+		require.Len(t, steps, 1)
+		ps, ok := steps[0].(*ExtensionParameterizeStep)
+		require.True(t, ok, "got %T", steps[0])
+
+		// Simulate ExtensionParameterizeStep.Apply succeeding so the spawned
+		// goroutine produces its continue-event.
+		ps.cts.MustFulfill(struct{}{})
+
+		select {
+		case ev := <-eventsChan:
+			cev, ok := ev.(*continueExtensionEvent)
+			require.True(t, ok, "got %T", ev)
+			expectedURN := resource.NewURN(
+				"stack", "project", "",
+				"k8s:apiextensions.k8s.io/v1:CustomResource", "my-cr",
+			)
+			assert.Equal(t, expectedURN, cev.URN())
+			require.NoError(t, cev.Error())
+		case <-time.After(2 * time.Second):
+			t.Fatal("timed out waiting for continueExtensionEvent")
+		}
+	})
+}
+
+func TestExtensionParameterizeStepApply_Success(t *testing.T) {
+	t.Parallel()
+
+	extension := apitype.Extension{
+		Name:    "gateway-api",
+		Version: "1.2.3",
+		Value:   []byte(`{"crd":"Gateway"}`),
+	}
+
+	var capturedRequest plugin.ParameterizeRequest
+	prov := &deploytest.Provider{
+		ParameterizeF: func(_ context.Context, req plugin.ParameterizeRequest) (plugin.ParameterizeResponse, error) {
+			capturedRequest = req
+			return plugin.ParameterizeResponse{Name: extension.Name}, nil
+		},
+	}
+
+	completionSource := &promise.CompletionSource[struct{}]{}
+	step := NewExtensionParameterizeStep(
+		&Deployment{}, prov, apitype.ExtensionRef("ref-success"), extension, completionSource)
+
+	status, _, err := step.Apply()
+	require.NoError(t, err)
+	assert.Equal(t, resource.StatusOK, status)
+
+	// Provider was called with the blob's contents, parsed into semver.
+	val, ok := capturedRequest.Parameters.(*plugin.ParameterizeValue)
+	require.True(t, ok, "expected ParameterizeValue (not ParameterizeArgs)")
+	assert.Equal(t, extension.Name, val.Name)
+	assert.Equal(t, semver.MustParse("1.2.3"), val.Version)
+	assert.Equal(t, extension.Value, val.Value)
+
+	// Waiters on this CompletionSource should now see a fulfilled promise.
+	_, err = completionSource.Promise().Result(t.Context())
+	require.NoError(t, err, "successful parameterize should fulfill the CompletionSource")
+}
+
+func TestExtensionParameterizeStepApply_ProviderError(t *testing.T) {
+	t.Parallel()
+
+	want := errors.New("provider blew up")
+	prov := &deploytest.Provider{
+		ParameterizeF: func(context.Context, plugin.ParameterizeRequest) (plugin.ParameterizeResponse, error) {
+			return plugin.ParameterizeResponse{}, want
+		},
+	}
+
+	completionSource := &promise.CompletionSource[struct{}]{}
+	step := NewExtensionParameterizeStep(
+		&Deployment{},
+		prov,
+		apitype.ExtensionRef("ref-err"),
+		apitype.Extension{Name: "x", Version: "1.0.0", Value: []byte{}},
+		completionSource,
+	)
+
+	_, _, err := step.Apply()
+	assert.ErrorIs(t, err, want, "Apply must surface the provider error")
+
+	_, err = completionSource.Promise().Result(t.Context())
+	assert.ErrorIs(t, err, want, "failed parameterize must reject the CompletionSource")
+}
+
+func TestExtensionParameterizeStepApply_MalformedVersion(t *testing.T) {
+	t.Parallel()
+
+	var called bool
+	prov := &deploytest.Provider{
+		ParameterizeF: func(context.Context, plugin.ParameterizeRequest) (plugin.ParameterizeResponse, error) {
+			called = true
+			return plugin.ParameterizeResponse{}, nil
+		},
+	}
+
+	completionSource := &promise.CompletionSource[struct{}]{}
+	step := NewExtensionParameterizeStep(
+		&Deployment{},
+		prov,
+		apitype.ExtensionRef("ref-badver"),
+		apitype.Extension{Name: "x", Version: "not-a-version", Value: nil},
+		completionSource,
+	)
+
+	_, _, err := step.Apply()
+	require.Error(t, err, "malformed version must fail Apply")
+	assert.False(t, called, "Apply must reject the blob without calling the provider")
+
+	_, err = completionSource.Promise().Result(t.Context())
+	assert.Error(t, err, "malformed version must reject the CompletionSource")
 }

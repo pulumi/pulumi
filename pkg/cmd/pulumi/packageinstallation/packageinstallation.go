@@ -30,10 +30,10 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageresolution"
 	"github.com/pulumi/pulumi/pkg/v3/pluginstorage"
+	"github.com/pulumi/pulumi/pkg/v3/registry"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/v3/util/pdag"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/registry"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
@@ -118,7 +118,7 @@ type Options struct {
 	packageresolution.Options
 	// The maximum number of concurrent operations.
 	//
-	// If Concurrency is less then 1, the number of concurrent operations is unbounded.
+	// If Concurrency is less than 1, the number of concurrent operations is unbounded.
 	Concurrency int
 
 	// A [PriorState] representing existing work done that won't be repeated.
@@ -143,11 +143,10 @@ type RunPlugin = func(ctx context.Context, wd string) (plugin.Provider, error)
 // if it's unset.
 //
 // If a cyclic dependency is found, then an instance of [ErrorCyclicDependencies] will be
-// returned. It can be accessed with [errors.As]:
+// returned. It can be accessed with [errors.AsType]:
 //
 //	_, err := packageinstallation.InstallPlugin(...)
-//	var cycle packageinstallation.ErrorCyclicDependencies
-//	if errors.As(err, &cycle) {
+//	if cycle, ok := errors.AsType[packageinstallation.ErrorCyclicDependencies](err); ok {
 //		fmt.Println(cycle.Cycle)
 //	}
 func InstallPlugin(
@@ -313,8 +312,8 @@ func (ErrorCyclicDependencies) Error() string { return "cyclic dependency" }
 func (err ErrorCyclicDependencies) Unwrap() error { return err.underlying }
 
 func wrapCycleError(err error) error {
-	var cycle pdag.ErrorCycle[step]
-	if !errors.As(err, &cycle) {
+	cycle, ok := errors.AsType[pdag.ErrorCycle[step]](err)
+	if !ok {
 		return err
 	}
 	steps := cycle.Cycle
@@ -580,8 +579,10 @@ func enqueueDownloadedPluginDirHasDependenciesAndIsInstalled(
 
 	installDependencies, installDependenciesReady := state.dag.NewNode(gatherPackageDependenciesStep{
 		project: proj,
+		parent:  parent,
 	})
 	contract.AssertNoErrorf(state.dag.NewEdge(install, installDependencies), "new nodes cannot be cyclic")
+	contract.AssertNoErrorf(state.dag.NewEdge(installDependencies, parent), "new nodes cannot be cyclic")
 	installDependenciesReady()
 
 	enqueueProjectDependencies(ctx, state, install, project[workspace.BaseProject]{
@@ -999,8 +1000,13 @@ func (step installStep) run(ctx context.Context, p state) error {
 	return err
 }
 
+// gatherPackageDependenciesStep asks the installed plugin's runtime for the
+// packages it requires and enqueues them. parent is the node that marks the
+// plugin ready to run; it waits for every package enqueued here, because the
+// plugin resolves them when it starts.
 type gatherPackageDependenciesStep struct {
 	project project[*workspace.PluginProject]
+	parent  pdag.Node
 }
 
 func (step gatherPackageDependenciesStep) run(ctx context.Context, p state) error {
@@ -1015,6 +1021,7 @@ func (step gatherPackageDependenciesStep) run(ctx context.Context, p state) erro
 	declaredPackages := step.project.proj.GetPackageSpecs()
 
 	gatheredDependenciesDone, ready := p.dag.NewNode(noOpStep{})
+	contract.AssertNoErrorf(p.dag.NewEdge(gatheredDependenciesDone, step.parent), "new nodes cannot be cyclic")
 	defer ready()
 
 	for _, pkg := range pkgs {

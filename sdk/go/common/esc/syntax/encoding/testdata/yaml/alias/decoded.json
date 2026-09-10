@@ -1,0 +1,110 @@
+{
+    "syntax": {
+        "object": [
+            {
+                "key": {
+                    "literal": "foo",
+                    "range": {
+                        "Filename": "alias",
+                        "Start": {
+                            "Line": 1,
+                            "Column": 1,
+                            "Byte": 0
+                        },
+                        "End": {
+                            "Line": 1,
+                            "Column": 4,
+                            "Byte": 3
+                        }
+                    }
+                },
+                "value": {
+                    "literal": "bar",
+                    "range": {
+                        "Filename": "alias",
+                        "Start": {
+                            "Line": 1,
+                            "Column": 6,
+                            "Byte": 5
+                        },
+                        "End": {
+                            "Line": 1,
+                            "Column": 9,
+                            "Byte": 8
+                        }
+                    }
+                }
+            },
+            {
+                "key": {
+                    "literal": "bar",
+                    "range": {
+                        "Filename": "alias",
+                        "Start": {
+                            "Line": 2,
+                            "Column": 1,
+                            "Byte": 16
+                        },
+                        "End": {
+                            "Line": 2,
+                            "Column": 4,
+                            "Byte": 19
+                        }
+                    }
+                },
+                "value": {}
+            }
+        ],
+        "range": {
+            "Filename": "alias",
+            "Start": {
+                "Line": 1,
+                "Column": 1,
+                "Byte": 0
+            },
+            "End": {
+                "Line": 2,
+                "Column": 11,
+                "Byte": 26
+            }
+        }
+    },
+    "diags": [
+        {
+            "Severity": 1,
+            "Summary": "alias nodes are not supported",
+            "Detail": "",
+            "Subject": {
+                "Filename": "alias",
+                "Start": {
+                    "Line": 2,
+                    "Column": 6,
+                    "Byte": 21
+                },
+                "End": {
+                    "Line": 2,
+                    "Column": 11,
+                    "Byte": 26
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Path": "bar"
+        }
+    ],
+    "encodeDiags": [
+        {
+            "Severity": 1,
+            "Summary": "nil nodes are not supported",
+            "Detail": "",
+            "Subject": null,
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Path": ""
+        }
+    ]
+}

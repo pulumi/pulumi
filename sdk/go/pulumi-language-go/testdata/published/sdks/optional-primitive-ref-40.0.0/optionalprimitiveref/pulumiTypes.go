@@ -54,6 +54,47 @@ func (i DataArgs) ToDataOutputWithContext(ctx context.Context) DataOutput {
 	return pulumi.ToOutputWithContext(ctx, i).(DataOutput)
 }
 
+func (i DataArgs) ToDataPtrOutput() DataPtrOutput {
+	return i.ToDataPtrOutputWithContext(context.Background())
+}
+
+func (i DataArgs) ToDataPtrOutputWithContext(ctx context.Context) DataPtrOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(DataOutput).ToDataPtrOutputWithContext(ctx)
+}
+
+// DataPtrInput is an input type that accepts DataArgs, DataPtr and DataPtrOutput values.
+// You can construct a concrete instance of `DataPtrInput` via:
+//
+//	        DataArgs{...}
+//
+//	or:
+//
+//	        nil
+type DataPtrInput interface {
+	pulumi.Input
+
+	ToDataPtrOutput() DataPtrOutput
+	ToDataPtrOutputWithContext(context.Context) DataPtrOutput
+}
+
+type dataPtrType DataArgs
+
+func DataPtr(v *DataArgs) DataPtrInput {
+	return (*dataPtrType)(v)
+}
+
+func (*dataPtrType) ElementType() reflect.Type {
+	return reflect.TypeOf((**Data)(nil)).Elem()
+}
+
+func (i *dataPtrType) ToDataPtrOutput() DataPtrOutput {
+	return i.ToDataPtrOutputWithContext(context.Background())
+}
+
+func (i *dataPtrType) ToDataPtrOutputWithContext(ctx context.Context) DataPtrOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(DataPtrOutput)
+}
+
 type DataOutput struct{ *pulumi.OutputState }
 
 func (DataOutput) ElementType() reflect.Type {
@@ -66,6 +107,16 @@ func (o DataOutput) ToDataOutput() DataOutput {
 
 func (o DataOutput) ToDataOutputWithContext(ctx context.Context) DataOutput {
 	return o
+}
+
+func (o DataOutput) ToDataPtrOutput() DataPtrOutput {
+	return o.ToDataPtrOutputWithContext(context.Background())
+}
+
+func (o DataOutput) ToDataPtrOutputWithContext(ctx context.Context) DataPtrOutput {
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v Data) *Data {
+		return &v
+	}).(DataPtrOutput)
 }
 
 func (o DataOutput) Boolean() pulumi.BoolPtrOutput {
@@ -92,7 +143,87 @@ func (o DataOutput) String() pulumi.StringPtrOutput {
 	return o.ApplyT(func(v Data) *string { return v.String }).(pulumi.StringPtrOutput)
 }
 
+type DataPtrOutput struct{ *pulumi.OutputState }
+
+func (DataPtrOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((**Data)(nil)).Elem()
+}
+
+func (o DataPtrOutput) ToDataPtrOutput() DataPtrOutput {
+	return o
+}
+
+func (o DataPtrOutput) ToDataPtrOutputWithContext(ctx context.Context) DataPtrOutput {
+	return o
+}
+
+func (o DataPtrOutput) Elem() DataOutput {
+	return o.ApplyT(func(v *Data) Data {
+		if v != nil {
+			return *v
+		}
+		var ret Data
+		return ret
+	}).(DataOutput)
+}
+
+func (o DataPtrOutput) Boolean() pulumi.BoolPtrOutput {
+	return o.ApplyT(func(v *Data) *bool {
+		if v == nil {
+			return nil
+		}
+		return v.Boolean
+	}).(pulumi.BoolPtrOutput)
+}
+
+func (o DataPtrOutput) BooleanMap() pulumi.BoolMapOutput {
+	return o.ApplyT(func(v *Data) map[string]bool {
+		if v == nil {
+			return nil
+		}
+		return v.BooleanMap
+	}).(pulumi.BoolMapOutput)
+}
+
+func (o DataPtrOutput) Float() pulumi.Float64PtrOutput {
+	return o.ApplyT(func(v *Data) *float64 {
+		if v == nil {
+			return nil
+		}
+		return v.Float
+	}).(pulumi.Float64PtrOutput)
+}
+
+func (o DataPtrOutput) Integer() pulumi.IntPtrOutput {
+	return o.ApplyT(func(v *Data) *int {
+		if v == nil {
+			return nil
+		}
+		return v.Integer
+	}).(pulumi.IntPtrOutput)
+}
+
+func (o DataPtrOutput) NumberArray() pulumi.Float64ArrayOutput {
+	return o.ApplyT(func(v *Data) []float64 {
+		if v == nil {
+			return nil
+		}
+		return v.NumberArray
+	}).(pulumi.Float64ArrayOutput)
+}
+
+func (o DataPtrOutput) String() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v *Data) *string {
+		if v == nil {
+			return nil
+		}
+		return v.String
+	}).(pulumi.StringPtrOutput)
+}
+
 func init() {
 	pulumi.RegisterInputType(reflect.TypeOf((*DataInput)(nil)).Elem(), DataArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*DataPtrInput)(nil)).Elem(), DataArgs{})
 	pulumi.RegisterOutputType(DataOutput{})
+	pulumi.RegisterOutputType(DataPtrOutput{})
 }

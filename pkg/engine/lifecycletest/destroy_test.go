@@ -21,19 +21,21 @@ import (
 	"sync/atomic"
 	"testing"
 
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
+
 	"github.com/blang/semver"
 	"github.com/gofrs/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/pkg/v3/engine"
-	. "github.com/pulumi/pulumi/pkg/v3/engine" //nolint:revive
+	. "github.com/pulumi/pulumi/pkg/v3/engine"
 	lt "github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest/framework"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
@@ -112,7 +114,7 @@ func TestDestroyWithProgram(t *testing.T) {
 
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
@@ -220,7 +222,7 @@ func TestTargetedDestroyWithProgram(t *testing.T) {
 
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
@@ -351,7 +353,7 @@ func TestProviderUpdateDestroyWithProgram(t *testing.T) {
 
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
@@ -477,7 +479,7 @@ func TestExplicitProviderUpdateDestroyWithProgram(t *testing.T) {
 
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
@@ -580,7 +582,7 @@ func TestDestroyWithProgramWithComponents(t *testing.T) {
 
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
@@ -695,7 +697,7 @@ func TestDestroyWithProgramWithSkippedComponents(t *testing.T) {
 		}
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
@@ -814,7 +816,7 @@ func TestDestroyWithProgramWithSkippedAlias(t *testing.T) {
 		}
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
@@ -942,7 +944,7 @@ func TestDestroyWithProgramResourceRead(t *testing.T) {
 
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
@@ -991,7 +993,7 @@ func TestTargetedAliasDestroyV2(t *testing.T) {
 	setupSnap := func() *deploy.Snapshot {
 		s := &deploy.Snapshot{}
 
-		prov := &resource.State{
+		prov := &pkgresource.State{
 			Type:   "pulumi:providers:pkgA",
 			URN:    "urn:pulumi:test-stack::test-project::pulumi:providers:pkgA::provA",
 			Custom: true,
@@ -1002,7 +1004,7 @@ func TestTargetedAliasDestroyV2(t *testing.T) {
 		provRef, err := providers.NewReference(prov.URN, prov.ID)
 		require.NoError(t, err)
 
-		comp := &resource.State{
+		comp := &pkgresource.State{
 			Type:     "pkgA:m:typA",
 			URN:      "urn:pulumi:test-stack::test-project::pkgA:m:typA::compA",
 			Custom:   false,
@@ -1011,7 +1013,7 @@ func TestTargetedAliasDestroyV2(t *testing.T) {
 		}
 		s.Resources = append(s.Resources, comp)
 
-		res := &resource.State{
+		res := &pkgresource.State{
 			Type:     "pkgA:m:typB",
 			URN:      "urn:pulumi:test-stack::test-project::pkgA:m:typA$pkgA:m:typB::resA",
 			Custom:   true,
@@ -1049,7 +1051,7 @@ func TestTargetedAliasDestroyV2(t *testing.T) {
 		return nil
 	})
 
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 	opts := lt.TestUpdateOptions{
 		T:     t,
 		HostF: hostF,
@@ -1070,7 +1072,7 @@ func TestDestroyV2ProtectedWithProviderDependencies(t *testing.T) {
 	t.Parallel()
 
 	initialSnap := &deploy.Snapshot{
-		Resources: []*resource.State{
+		Resources: []*pkgresource.State{
 			{
 				Type:   "pulumi:providers:pkgA",
 				URN:    "urn:pulumi:test::test::pulumi:providers:pkgA::prov",
@@ -1107,7 +1109,7 @@ func TestDestroyV2ProtectedWithProviderDependencies(t *testing.T) {
 		return nil
 	})
 
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 	opts := lt.TestUpdateOptions{
 		T:     t,
 		HostF: hostF,
@@ -1132,7 +1134,7 @@ func TestDestroyWithProgramProtectedResourceWithProvider(t *testing.T) {
 	t.Skip("Skipping test, see pulumi/pulumi#21277")
 
 	initialSnap := &deploy.Snapshot{
-		Resources: []*resource.State{
+		Resources: []*pkgresource.State{
 			{
 				Type:   "pulumi:providers:pkgA",
 				URN:    "urn:pulumi:test::test::pulumi:providers:pkgA::prov",
@@ -1164,7 +1166,7 @@ func TestDestroyWithProgramProtectedResourceWithProvider(t *testing.T) {
 		return nil
 	})
 
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
 			T:     t,
@@ -1184,7 +1186,7 @@ func TestDestroyV2TargetChildWithNewParent(t *testing.T) {
 	t.Skip("Skipping test, see pulumi/pulumi#21347")
 
 	initialSnap := &deploy.Snapshot{
-		Resources: []*resource.State{
+		Resources: []*pkgresource.State{
 			{
 				Type:   "pulumi:providers:pkgA",
 				URN:    "urn:pulumi:test::test::pulumi:providers:pkgA::prov",
@@ -1222,7 +1224,7 @@ func TestDestroyV2TargetChildWithNewParent(t *testing.T) {
 		require.NoError(t, err)
 
 		res1, err := monitor.RegisterResource("pkgA:m:typA", "future-parent", false, deploytest.ResourceOptions{
-			RetainOnDelete: ptr(true),
+			RetainOnDelete: new(true),
 			Provider:       prov0Ref.String(),
 		})
 		require.NoError(t, err)
@@ -1235,7 +1237,7 @@ func TestDestroyV2TargetChildWithNewParent(t *testing.T) {
 		return nil
 	})
 
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 	opts := lt.TestUpdateOptions{
 		T:     t,
 		HostF: hostF,
@@ -1264,7 +1266,7 @@ func TestDestroyV2TargetProviderWithAliasedParent(t *testing.T) {
 	t.Skip("Skipping test, snapshot integrity error with aliased parent")
 
 	initialSnap := &deploy.Snapshot{
-		Resources: []*resource.State{
+		Resources: []*pkgresource.State{
 			{
 				Type:   "pulumi:providers:pkgA",
 				URN:    "urn:pulumi:test::test::pulumi:providers:pkgA::prov",
@@ -1328,7 +1330,7 @@ func TestDestroyV2TargetProviderWithAliasedParent(t *testing.T) {
 		return nil
 	})
 
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
 			T:     t,
@@ -1361,7 +1363,7 @@ func TestDestroyV2ResourceWithDependencyOnDeleted(t *testing.T) {
 	setupSnap := func() *deploy.Snapshot {
 		s := &deploy.Snapshot{}
 
-		prov := &resource.State{
+		prov := &pkgresource.State{
 			Type:   "pulumi:providers:pkgA",
 			URN:    "urn:pulumi:test-stack::test-project::pulumi:providers:pkgA::prov",
 			Custom: true,
@@ -1372,7 +1374,7 @@ func TestDestroyV2ResourceWithDependencyOnDeleted(t *testing.T) {
 		provRef, err := providers.NewReference(prov.URN, prov.ID)
 		require.NoError(t, err)
 
-		resA1 := &resource.State{
+		resA1 := &pkgresource.State{
 			Type:     "pkgA:m:typA",
 			URN:      "urn:pulumi:test-stack::test-project::pkgA:m:typA::resA",
 			Custom:   false,
@@ -1380,7 +1382,7 @@ func TestDestroyV2ResourceWithDependencyOnDeleted(t *testing.T) {
 		}
 		s.Resources = append(s.Resources, resA1)
 
-		resA2 := &resource.State{
+		resA2 := &pkgresource.State{
 			Type:     "pkgA:m:typA",
 			URN:      "urn:pulumi:test-stack::test-project::pkgA:m:typA::resA",
 			Custom:   false,
@@ -1389,7 +1391,7 @@ func TestDestroyV2ResourceWithDependencyOnDeleted(t *testing.T) {
 		}
 		s.Resources = append(s.Resources, resA2)
 
-		resB := &resource.State{
+		resB := &pkgresource.State{
 			Type:               "pkgA:m:typB",
 			URN:                "urn:pulumi:test-stack::test-project::pkgA:m:typB::resB",
 			Custom:             true,
@@ -1418,7 +1420,7 @@ func TestDestroyV2ResourceWithDependencyOnDeleted(t *testing.T) {
 		return nil
 	})
 
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 	p.Options = lt.TestUpdateOptions{
 		T:     t,
 		HostF: hostF,
@@ -1439,7 +1441,7 @@ func TestDestroyV2ResourceReferencesAliasedProvider(t *testing.T) {
 	t.Skip("Skipping test, repro for snapshot integrity issue")
 
 	initialSnap := &deploy.Snapshot{
-		Resources: []*resource.State{
+		Resources: []*pkgresource.State{
 			{
 				Type:   "pulumi:providers:pkgA",
 				URN:    "urn:pulumi:test::test::pulumi:providers:pkgA::provA",
@@ -1493,7 +1495,7 @@ func TestDestroyV2ResourceReferencesAliasedProvider(t *testing.T) {
 		return nil
 	})
 
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 	opts := lt.TestUpdateOptions{
 		T:     t,
 		HostF: hostF,
@@ -1521,7 +1523,7 @@ func TestDestroyV2RefreshWithTargetedProviderParentChange(t *testing.T) {
 	project := p.GetProject()
 
 	initialSnap := &deploy.Snapshot{
-		Resources: []*resource.State{
+		Resources: []*pkgresource.State{
 			{
 				Type:   "pulumi:providers:pkgB",
 				URN:    "urn:pulumi:test::test::pulumi:providers:pkgB::provB",
@@ -1583,7 +1585,7 @@ func TestDestroyV2RefreshWithTargetedProviderParentChange(t *testing.T) {
 		return nil
 	})
 
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 	opts := lt.TestUpdateOptions{
 		T:     t,
 		HostF: hostF,

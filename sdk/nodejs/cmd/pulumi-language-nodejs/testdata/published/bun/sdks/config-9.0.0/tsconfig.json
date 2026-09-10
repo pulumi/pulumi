@@ -21,6 +21,7 @@
     "files": [
         "config/index.ts",
         "config/vars.ts",
+        "getConfig.ts",
         "index.ts",
         "provider.ts",
         "resource.ts",

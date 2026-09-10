@@ -67,19 +67,19 @@ func TestAssetsAndArchives(t *testing.T) {
 	md := mapper.New(nil)
 
 	t.Run("asset", func(t *testing.T) { //nolint:parallelTest
-		err := md.DecodeValue(tree, reflect.TypeOf(complexBag{}), "asset", &bag.asset, false)
+		err := md.DecodeValue(tree, reflect.TypeFor[complexBag](), "asset", &bag.asset, false)
 		require.NoError(t, err)
 	})
 	t.Run("optionalAsset", func(t *testing.T) { //nolint:parallelTest
-		err := md.DecodeValue(tree, reflect.TypeOf(complexBag{}), "optionalAsset", &bag.optionalAsset, false)
+		err := md.DecodeValue(tree, reflect.TypeFor[complexBag](), "optionalAsset", &bag.optionalAsset, false)
 		require.NoError(t, err)
 	})
 	t.Run("archive", func(t *testing.T) { //nolint:parallelTest
-		err := md.DecodeValue(tree, reflect.TypeOf(complexBag{}), "archive", &bag.archive, false)
+		err := md.DecodeValue(tree, reflect.TypeFor[complexBag](), "archive", &bag.archive, false)
 		require.NoError(t, err)
 	})
 	t.Run("optionalArchive", func(t *testing.T) { //nolint:parallelTest
-		err := md.DecodeValue(tree, reflect.TypeOf(complexBag{}), "optionalArchive", &bag.optionalArchive, false)
+		err := md.DecodeValue(tree, reflect.TypeFor[complexBag](), "optionalArchive", &bag.optionalArchive, false)
 		require.NoError(t, err)
 	})
 }

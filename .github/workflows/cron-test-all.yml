@@ -27,6 +27,8 @@ jobs:
     permissions:
       contents: read
       id-token: write
+      # Requested by the changelog lint job; unused on scheduled runs.
+      pull-requests: write
     with:
       ref: ${{ github.ref }}
       version: ${{ needs.info.outputs.version }}
@@ -40,6 +42,9 @@ jobs:
       # data on every merge to main, so getting it in the daily cro
       # job is not important.
       enable-coverage: false
+      # Nothing in this run packages release artifacts, and with coverage
+      # off there is nothing to rebuild.
+      rebuild-release-binaries: false
     secrets: inherit
 
   performance-gate:

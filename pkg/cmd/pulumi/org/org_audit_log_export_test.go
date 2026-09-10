@@ -14,8 +14,6 @@
 
 package org
 
-// AI Generated - needs human review
-
 import (
 	"bytes"
 	"context"

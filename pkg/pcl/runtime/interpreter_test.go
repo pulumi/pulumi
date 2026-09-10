@@ -60,7 +60,7 @@ func (*mockLoader) LoadPackage(pkg string, version *semver.Version) (*schema.Pac
 			},
 		},
 	}
-	p, diags, err := schema.BindSpec(spec, nil, schema.ValidationOptions{})
+	p, diags, err := schema.BindSpec(spec, schema.NewNullLoader(), schema.ValidationOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -103,7 +103,7 @@ resource "dependent_on_output" "test:index:Resource" {
 	require.NoError(t, err)
 	require.False(t, parser.Diagnostics.HasErrors(), parser.Diagnostics.Error())
 
-	bound, diags, err := pcl.BindProgram(parser.Files, pcl.Loader(&mockLoader{}))
+	bound, diags, err := pcl.BindProgram(parser.Files, &mockLoader{})
 	require.NoError(t, err)
 	require.False(t, diags.HasErrors(), diags.Error())
 

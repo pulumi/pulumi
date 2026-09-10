@@ -24,10 +24,11 @@ import (
 	lt "github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest/framework"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -62,7 +63,7 @@ func TestSingleComponentDefaultProviderLifecycle(t *testing.T) {
 
 				return plugin.ConstructResponse{
 					URN:     resp.URN,
-					Outputs: outs,
+					Outputs: resource.FromResourcePropertyMap(outs),
 				}, nil
 			}
 
@@ -82,7 +83,7 @@ func TestSingleComponentDefaultProviderLifecycle(t *testing.T) {
 		}, resp.Outputs)
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		// Skip display tests because different ordering makes the colouring different.
@@ -125,7 +126,7 @@ func TestRemoteComponentConstructInfoIncludesOrganization(t *testing.T) {
 		require.NoError(t, err)
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Project: "project-name",
@@ -240,7 +241,7 @@ func TestComponentDeleteDependencies(t *testing.T) {
 		return nil
 	})
 
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 	p := &lt.TestPlan{Options: lt.TestUpdateOptions{T: t, HostF: hostF}}
 
 	p.Steps = []lt.TestStep{
@@ -317,15 +318,13 @@ func TestConstructCallSecretsUnknowns(t *testing.T) {
 					monitor *deploytest.ResourceMonitor,
 				) (plugin.ConstructResponse, error) {
 					// Assert that "foo" is secret and "bar" is unknown
-					foo := req.Inputs["foo"]
-					assert.True(t, foo.IsOutput())
-					assert.True(t, foo.OutputValue().Known)
-					assert.True(t, foo.OutputValue().Secret)
+					foo := req.Inputs.Get("foo")
+					assert.False(t, foo.IsComputed())
+					assert.True(t, foo.Secret())
 
-					bar := req.Inputs["bar"]
-					assert.True(t, bar.IsOutput())
-					assert.False(t, bar.OutputValue().Known)
-					assert.False(t, bar.OutputValue().Secret)
+					bar := req.Inputs.Get("bar")
+					assert.True(t, bar.IsComputed())
+					assert.False(t, bar.Secret())
 
 					resp, err := monitor.RegisterResource(req.Type, req.Name, false, deploytest.ResourceOptions{})
 					require.NoError(t, err)
@@ -340,15 +339,13 @@ func TestConstructCallSecretsUnknowns(t *testing.T) {
 					_ *deploytest.ResourceMonitor,
 				) (plugin.CallResponse, error) {
 					// Assert that "foo" is secret and "bar" is unknown
-					foo := req.Args["foo"]
-					assert.True(t, foo.IsOutput())
-					assert.True(t, foo.OutputValue().Known)
-					assert.True(t, foo.OutputValue().Secret)
+					foo := req.Args.Get("foo")
+					assert.False(t, foo.IsComputed())
+					assert.True(t, foo.Secret())
 
-					bar := req.Args["bar"]
-					assert.True(t, bar.IsOutput())
-					assert.False(t, bar.OutputValue().Known)
-					assert.False(t, bar.OutputValue().Secret)
+					bar := req.Args.Get("bar")
+					assert.True(t, bar.IsComputed())
+					assert.False(t, bar.Secret())
 
 					return plugin.CallResponse{}, nil
 				},
@@ -373,7 +370,7 @@ func TestConstructCallSecretsUnknowns(t *testing.T) {
 
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
@@ -426,10 +423,10 @@ func TestConstructCallReturnDependencies(t *testing.T) {
 						deps := []resource.URN{respA.URN}
 						return plugin.ConstructResponse{
 							URN: resp.URN,
-							Outputs: resource.PropertyMap{
-								"foo": resource.MakeSecret(resource.NewProperty("foo")),
-								"bar": resource.MakeComputed(resource.NewProperty("")),
-							},
+							Outputs: property.NewMap(map[string]property.Value{
+								"foo": property.New("foo").WithSecret(true),
+								"bar": property.New(property.Computed),
+							}),
 							OutputDependencies: map[resource.PropertyKey][]resource.URN{
 								"foo": deps,
 								"bar": deps,
@@ -447,14 +444,14 @@ func TestConstructCallReturnDependencies(t *testing.T) {
 							req.Options.ArgDependencies["arg"])
 
 						// Assume a single output arg that this call depends on
-						arg := req.Args["arg"]
-						deps := arg.OutputValue().Dependencies
+						arg := req.Args.Get("arg")
+						deps := arg.Dependencies()
 
 						return plugin.CallResponse{
-							Return: resource.PropertyMap{
-								"foo": resource.MakeSecret(resource.NewProperty("foo")),
-								"bar": resource.MakeComputed(resource.NewProperty("")),
-							},
+							Return: property.NewMap(map[string]property.Value{
+								"foo": property.New("foo").WithSecret(true),
+								"bar": property.New(property.Computed),
+							}),
 							ReturnDependencies: map[resource.PropertyKey][]resource.URN{
 								"foo": deps,
 								"bar": deps,
@@ -509,7 +506,7 @@ func TestConstructCallReturnDependencies(t *testing.T) {
 
 			return nil
 		})
-		hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+		hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 		p := &lt.TestPlan{
 			Options: lt.TestUpdateOptions{T: t, HostF: hostF},
@@ -572,17 +569,10 @@ func TestConstructCallReturnOutputs(t *testing.T) {
 						deps := []resource.URN{respA.URN}
 						return plugin.ConstructResponse{
 							URN: resp.URN,
-							Outputs: resource.PropertyMap{
-								"foo": resource.NewProperty(resource.Output{
-									Element:      resource.NewProperty("foo"),
-									Known:        true,
-									Secret:       true,
-									Dependencies: deps,
-								}),
-								"bar": resource.NewProperty(resource.Output{
-									Dependencies: deps,
-								}),
-							},
+							Outputs: property.NewMap(map[string]property.Value{
+								"foo": property.New("foo").WithSecret(true).WithDependencies(deps),
+								"bar": property.New(property.Computed).WithDependencies(deps),
+							}),
 							OutputDependencies: nil, // Left blank on purpose because AcceptsOutputs is true
 						}, nil
 					},
@@ -597,21 +587,14 @@ func TestConstructCallReturnOutputs(t *testing.T) {
 							req.Options.ArgDependencies["arg"])
 
 						// Assume a single output arg that this call depends on
-						arg := req.Args["arg"]
-						deps := arg.OutputValue().Dependencies
+						arg := req.Args.Get("arg")
+						deps := arg.Dependencies()
 
 						return plugin.CallResponse{
-							Return: resource.PropertyMap{
-								"foo": resource.NewProperty(resource.Output{
-									Element:      resource.NewProperty("foo"),
-									Known:        true,
-									Secret:       true,
-									Dependencies: deps,
-								}),
-								"bar": resource.NewProperty(resource.Output{
-									Dependencies: deps,
-								}),
-							},
+							Return: property.NewMap(map[string]property.Value{
+								"foo": property.New("foo").WithSecret(true).WithDependencies(deps),
+								"bar": property.New(property.Computed).WithDependencies(deps),
+							}),
 							ReturnDependencies: nil, // Left blank on purpose because AcceptsOutputs is true
 						}, nil
 					},
@@ -663,7 +646,7 @@ func TestConstructCallReturnOutputs(t *testing.T) {
 
 			return nil
 		})
-		hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+		hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 		p := &lt.TestPlan{
 			Options: lt.TestUpdateOptions{T: t, HostF: hostF},
@@ -730,10 +713,10 @@ func TestConstructCallSendDependencies(t *testing.T) {
 						deps := []resource.URN{respA.URN}
 						return plugin.ConstructResponse{
 							URN: resp.URN,
-							Outputs: resource.PropertyMap{
-								"foo": resource.MakeSecret(resource.NewProperty("foo")),
-								"bar": resource.MakeComputed(resource.NewProperty("")),
-							},
+							Outputs: property.NewMap(map[string]property.Value{
+								"foo": property.New("foo").WithSecret(true),
+								"bar": property.New(property.Computed),
+							}),
 							OutputDependencies: map[resource.PropertyKey][]resource.URN{
 								"foo": deps,
 								"bar": deps,
@@ -751,14 +734,14 @@ func TestConstructCallSendDependencies(t *testing.T) {
 							req.Options.ArgDependencies["arg"])
 
 						// Assume a single output arg that this call depends on
-						arg := req.Args["arg"]
-						deps := arg.OutputValue().Dependencies
+						arg := req.Args.Get("arg")
+						deps := arg.Dependencies()
 
 						return plugin.CallResponse{
-							Return: resource.PropertyMap{
-								"foo": resource.MakeSecret(resource.NewProperty("foo")),
-								"bar": resource.MakeComputed(resource.NewProperty("")),
-							},
+							Return: property.NewMap(map[string]property.Value{
+								"foo": property.New("foo").WithSecret(true),
+								"bar": property.New(property.Computed),
+							}),
 							ReturnDependencies: map[resource.PropertyKey][]resource.URN{
 								"foo": deps,
 								"bar": deps,
@@ -827,7 +810,7 @@ func TestConstructCallSendDependencies(t *testing.T) {
 
 			return nil
 		})
-		hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+		hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 		p := &lt.TestPlan{
 			Options: lt.TestUpdateOptions{T: t, HostF: hostF},
@@ -895,10 +878,10 @@ func TestConstructCallDependencyDedeuplication(t *testing.T) {
 						deps := []resource.URN{respA.URN}
 						return plugin.ConstructResponse{
 							URN: resp.URN,
-							Outputs: resource.PropertyMap{
-								"foo": resource.MakeSecret(resource.NewProperty("foo")),
-								"bar": resource.MakeComputed(resource.NewProperty("")),
-							},
+							Outputs: property.NewMap(map[string]property.Value{
+								"foo": property.New("foo").WithSecret(true),
+								"bar": property.New(property.Computed),
+							}),
 							OutputDependencies: map[resource.PropertyKey][]resource.URN{
 								"foo": deps,
 								"bar": deps,
@@ -916,14 +899,14 @@ func TestConstructCallDependencyDedeuplication(t *testing.T) {
 							req.Options.ArgDependencies["arg"])
 
 						// Assume a single output arg that this call depends on
-						arg := req.Args["arg"]
-						deps := arg.OutputValue().Dependencies
+						arg := req.Args.Get("arg")
+						deps := arg.Dependencies()
 
 						return plugin.CallResponse{
-							Return: resource.PropertyMap{
-								"foo": resource.MakeSecret(resource.NewProperty("foo")),
-								"bar": resource.MakeComputed(resource.NewProperty("")),
-							},
+							Return: property.NewMap(map[string]property.Value{
+								"foo": property.New("foo").WithSecret(true),
+								"bar": property.New(property.Computed),
+							}),
 							ReturnDependencies: map[resource.PropertyKey][]resource.URN{
 								"foo": deps,
 								"bar": deps,
@@ -997,7 +980,7 @@ func TestConstructCallDependencyDedeuplication(t *testing.T) {
 
 			return nil
 		})
-		hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+		hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 		p := &lt.TestPlan{
 			Options: lt.TestUpdateOptions{T: t, HostF: hostF},
@@ -1050,7 +1033,7 @@ func TestSingleComponentMethodResourceDefaultProviderLifecycle(t *testing.T) {
 
 				return plugin.ConstructResponse{
 					URN:     resp.URN,
-					Outputs: outs,
+					Outputs: resource.FromResourcePropertyMap(outs),
 				}, nil
 			}
 
@@ -1087,7 +1070,7 @@ func TestSingleComponentMethodResourceDefaultProviderLifecycle(t *testing.T) {
 		require.NoError(t, err)
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		// Skip display tests because different ordering makes the colouring different.
@@ -1131,7 +1114,7 @@ func TestSingleComponentMethodDefaultProviderLifecycle(t *testing.T) {
 
 				return plugin.ConstructResponse{
 					URN:     urn,
-					Outputs: outs,
+					Outputs: resource.FromResourcePropertyMap(outs),
 				}, nil
 			}
 
@@ -1140,10 +1123,10 @@ func TestSingleComponentMethodDefaultProviderLifecycle(t *testing.T) {
 				req plugin.CallRequest,
 				monitor *deploytest.ResourceMonitor,
 			) (plugin.CallResponse, error) {
-				assert.Equal(t, resource.PropertyMap{
-					"name": resource.NewProperty("Alice"),
-				}, req.Args)
-				name := req.Args["name"].StringValue()
+				assert.Equal(t, property.NewMap(map[string]property.Value{
+					"name": property.New("Alice"),
+				}), req.Args)
+				name := req.Args.Get("name").AsString()
 
 				result, _, err := monitor.Invoke("pulumi:pulumi:getResource", resource.PropertyMap{
 					"urn": resource.NewProperty(string(urn)),
@@ -1154,9 +1137,9 @@ func TestSingleComponentMethodDefaultProviderLifecycle(t *testing.T) {
 
 				message := fmt.Sprintf("%s, %s!", name, foo)
 				return plugin.CallResponse{
-					Return: resource.PropertyMap{
-						"message": resource.NewProperty(message),
-					},
+					Return: property.NewMap(map[string]property.Value{
+						"message": property.New(message),
+					}),
 				}, nil
 			}
 
@@ -1186,7 +1169,7 @@ func TestSingleComponentMethodDefaultProviderLifecycle(t *testing.T) {
 
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		// Skip display tests because different ordering makes the colouring different.
@@ -1245,9 +1228,9 @@ func TestComponentRegisteredResourceOutputCanBeHydratedByProgram(t *testing.T) {
 
 						return plugin.ConstructResponse{
 							URN: component.URN,
-							Outputs: resource.PropertyMap{
+							Outputs: resource.FromResourcePropertyMap(resource.PropertyMap{
 								"custom": resource.MakeCustomResourceReference(custom.URN, custom.ID, ""),
-							},
+							}),
 						}, nil
 					}
 
@@ -1298,7 +1281,7 @@ func TestComponentRegisteredResourceOutputCanBeHydratedByProgram(t *testing.T) {
 		return nil
 	})
 
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p.Options = lt.TestUpdateOptions{
 		T:     t,
@@ -1358,9 +1341,9 @@ func TestComponentRegisteredResourceOutputCanBeHydratedByComponent(t *testing.T)
 
 						return plugin.ConstructResponse{
 							URN: component.URN,
-							Outputs: resource.PropertyMap{
+							Outputs: resource.FromResourcePropertyMap(resource.PropertyMap{
 								"custom": resource.MakeCustomResourceReference(custom.URN, custom.ID, ""),
-							},
+							}),
 						}, nil
 					}
 
@@ -1370,7 +1353,7 @@ func TestComponentRegisteredResourceOutputCanBeHydratedByComponent(t *testing.T)
 						})
 						require.NoError(t, err)
 
-						customResRef := req.Inputs["custom"].ResourceReferenceValue()
+						customResRef := req.Inputs.Get("custom").AsResourceReference()
 
 						state, _, err := rm.Invoke(
 							"pulumi:pulumi:getResource",
@@ -1394,7 +1377,7 @@ func TestComponentRegisteredResourceOutputCanBeHydratedByComponent(t *testing.T)
 							t,
 							resource.PropertyMap{
 								"urn": resource.NewProperty(string(customResRef.URN)),
-								"id":  resource.NewProperty(customResRef.ID.StringValue()),
+								"id":  resource.NewProperty(customResRef.ID.AsString()),
 								"state": resource.NewProperty(resource.PropertyMap{
 									"foo": resource.NewProperty("bar"),
 								}),
@@ -1404,7 +1387,7 @@ func TestComponentRegisteredResourceOutputCanBeHydratedByComponent(t *testing.T)
 
 						return plugin.ConstructResponse{
 							URN:     component.URN,
-							Outputs: resource.PropertyMap{},
+							Outputs: property.Map{},
 						}, nil
 					}
 
@@ -1431,7 +1414,7 @@ func TestComponentRegisteredResourceOutputCanBeHydratedByComponent(t *testing.T)
 		return nil
 	})
 
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p.Options = lt.TestUpdateOptions{
 		T:     t,
@@ -1502,9 +1485,9 @@ func TestComponentReadResourceOutputCanBeHydratedByProgram(t *testing.T) {
 
 						return plugin.ConstructResponse{
 							URN: component.URN,
-							Outputs: resource.PropertyMap{
+							Outputs: resource.FromResourcePropertyMap(resource.PropertyMap{
 								"custom": resource.MakeCustomResourceReference(customURN, customID, ""),
-							},
+							}),
 						}, nil
 					}
 
@@ -1555,7 +1538,7 @@ func TestComponentReadResourceOutputCanBeHydratedByProgram(t *testing.T) {
 		return nil
 	})
 
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p.Options = lt.TestUpdateOptions{
 		T:     t,
@@ -1627,9 +1610,9 @@ func TestComponentReadResourceOutputCanBeHydratedByComponent(t *testing.T) {
 
 						return plugin.ConstructResponse{
 							URN: component.URN,
-							Outputs: resource.PropertyMap{
+							Outputs: resource.FromResourcePropertyMap(resource.PropertyMap{
 								"custom": resource.MakeCustomResourceReference(customURN, customID, ""),
-							},
+							}),
 						}, nil
 					}
 
@@ -1639,7 +1622,7 @@ func TestComponentReadResourceOutputCanBeHydratedByComponent(t *testing.T) {
 						})
 						require.NoError(t, err)
 
-						customResRef := req.Inputs["custom"].ResourceReferenceValue()
+						customResRef := req.Inputs.Get("custom").AsResourceReference()
 
 						state, _, err := rm.Invoke(
 							"pulumi:pulumi:getResource",
@@ -1663,7 +1646,7 @@ func TestComponentReadResourceOutputCanBeHydratedByComponent(t *testing.T) {
 							t,
 							resource.PropertyMap{
 								"urn": resource.NewProperty(string(customResRef.URN)),
-								"id":  resource.NewProperty(customResRef.ID.StringValue()),
+								"id":  resource.NewProperty(customResRef.ID.AsString()),
 								"state": resource.NewProperty(resource.PropertyMap{
 									"foo": resource.NewProperty("bar"),
 								}),
@@ -1673,7 +1656,7 @@ func TestComponentReadResourceOutputCanBeHydratedByComponent(t *testing.T) {
 
 						return plugin.ConstructResponse{
 							URN:     component.URN,
-							Outputs: resource.PropertyMap{},
+							Outputs: property.Map{},
 						}, nil
 					}
 
@@ -1700,7 +1683,7 @@ func TestComponentReadResourceOutputCanBeHydratedByComponent(t *testing.T) {
 		return nil
 	})
 
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p.Options = lt.TestUpdateOptions{
 		T:     t,
@@ -1720,8 +1703,8 @@ func TestCallSelfProvider(t *testing.T) {
 			var state string
 			return &deploytest.Provider{
 				ConfigureF: func(ctx context.Context, cr plugin.ConfigureRequest) (plugin.ConfigureResponse, error) {
-					if in, ok := cr.Inputs["state"]; ok {
-						state = in.StringValue()
+					if in, ok := cr.Inputs.GetOk("state"); ok {
+						state = in.AsString()
 					}
 					return plugin.ConfigureResponse{}, nil
 				},
@@ -1731,9 +1714,9 @@ func TestCallSelfProvider(t *testing.T) {
 					_ *deploytest.ResourceMonitor,
 				) (plugin.CallResponse, error) {
 					return plugin.CallResponse{
-						Return: resource.PropertyMap{
-							"state": resource.NewProperty(state),
-						},
+						Return: property.NewMap(map[string]property.Value{
+							"state": property.New(state),
+						}),
 					}, nil
 				},
 			}, nil
@@ -1778,7 +1761,7 @@ func TestCallSelfProvider(t *testing.T) {
 
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{T: t, HostF: hostF},

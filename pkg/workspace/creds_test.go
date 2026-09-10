@@ -35,6 +35,7 @@ func TestGetCurrentCloudURL(t *testing.T) {
 		e              env.Env
 		project        *workspace.Project
 		expectedString string
+		expectedSource CloudURLSource
 		expectedError  error
 	}{
 		{
@@ -42,6 +43,7 @@ func TestGetCurrentCloudURL(t *testing.T) {
 			ws:             &MockContext{},
 			e:              env.NewEnv(env.MapStore{}),
 			expectedString: "",
+			expectedSource: CloudURLSourceNone,
 		},
 		{
 			name: "stored credentials",
@@ -50,6 +52,7 @@ func TestGetCurrentCloudURL(t *testing.T) {
 			},
 			e:              env.NewEnv(env.MapStore{}),
 			expectedString: "https://credentials.com",
+			expectedSource: CloudURLSourceCredentials,
 		},
 		{
 			name: "project setting takes precedence",
@@ -59,6 +62,17 @@ func TestGetCurrentCloudURL(t *testing.T) {
 			e:              env.NewEnv(env.MapStore{}),
 			project:        &workspace.Project{Backend: &workspace.ProjectBackend{URL: "https://project.com"}},
 			expectedString: "https://project.com",
+			expectedSource: CloudURLSourceProject,
+		},
+		{
+			name: "empty project setting falls back to stored credentials",
+			ws: &MockContext{
+				GetStoredCredentialsF: credsF,
+			},
+			e:              env.NewEnv(env.MapStore{}),
+			project:        &workspace.Project{Backend: &workspace.ProjectBackend{URL: ""}},
+			expectedString: "https://credentials.com",
+			expectedSource: CloudURLSourceCredentials,
 		},
 		{
 			name: "envvar takes precedence",
@@ -70,6 +84,7 @@ func TestGetCurrentCloudURL(t *testing.T) {
 			}),
 			project:        &workspace.Project{Backend: &workspace.ProjectBackend{URL: "https://project.com"}},
 			expectedString: "https://env.com",
+			expectedSource: CloudURLSourceEnv,
 		},
 		{
 			name: "report error from stored credentials",
@@ -87,7 +102,13 @@ func TestGetCurrentCloudURL(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			str, err := GetCurrentCloudURL(tt.ws, tt.e, tt.project)
+			str, source, err := GetCurrentCloudURLWithSource(tt.ws, tt.e, tt.project)
+			assert.Equal(t, tt.expectedError, err)
+			assert.Equal(t, tt.expectedString, str)
+			assert.Equal(t, tt.expectedSource, source)
+
+			// GetCurrentCloudURL must stay in lockstep with the variant above.
+			str, err = GetCurrentCloudURL(tt.ws, tt.e, tt.project)
 			assert.Equal(t, tt.expectedError, err)
 			assert.Equal(t, tt.expectedString, str)
 		})

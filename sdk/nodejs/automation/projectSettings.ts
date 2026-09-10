@@ -40,7 +40,18 @@ export interface ProjectRuntimeInfo {
 /**
  * Supported Pulumi program language runtimes.
  */
-export type ProjectRuntime = "nodejs" | "go" | "python" | "dotnet";
+export type ProjectRuntime =
+    | "nodejs"
+    | "go"
+    | "python"
+    | "dotnet"
+    | "yaml"
+    | "java"
+    | "hcl"
+    // Intersecting string with Record<never, never> prevents it from absorbing the literals,
+    // preserving editor suggestions while allowing third-party runtimes.
+    // https://github.com/microsoft/TypeScript/issues/29729#issuecomment-832522611
+    | (string & Record<never, never>);
 
 /**
  * A template used to seed new stacks created from this project.

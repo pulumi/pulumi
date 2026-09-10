@@ -26,12 +26,13 @@ import (
 	"strings"
 	"time"
 
+	"github.com/pulumi/pulumi/pkg/v3/resource/stack/snapshot"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/snapshot"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/retry"
 	"github.com/pulumi/pulumi/sdk/v3/go/property"
 
+	"go.opentelemetry.io/otel"
 	"gocloud.dev/blob"
 	"gocloud.dev/gcerrors"
 
@@ -43,6 +44,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
@@ -131,6 +133,10 @@ func (b *diyBackend) stackExists(
 func (b *diyBackend) getSnapshot(ctx context.Context,
 	secretsProvider secrets.Provider, ref *diyBackendReference,
 ) (*deploy.Snapshot, error) {
+	tracer := otel.Tracer("pulumi-cli")
+	ctx, span := cmdutil.StartSpan(ctx, tracer, "diyBackend.getSnapshot")
+	defer span.End()
+
 	contract.Requiref(ref != nil, "ref", "must not be nil")
 
 	checkpoint, _, _, err := b.getCheckpoint(ctx, ref)
@@ -169,6 +175,10 @@ func (b *diyBackend) getSnapshot(ctx context.Context,
 func (b *diyBackend) getSnapshotStackOutputs(ctx context.Context,
 	secretsProvider secrets.Provider, ref *diyBackendReference,
 ) (property.Map, error) {
+	tracer := otel.Tracer("pulumi-cli")
+	ctx, span := cmdutil.StartSpan(ctx, tracer, "diyBackend.getSnapshotStackOutputs")
+	defer span.End()
+
 	contract.Requiref(ref != nil, "ref", "must not be nil")
 
 	checkpoint, _, _, err := b.getCheckpoint(ctx, ref)
@@ -286,19 +296,22 @@ func (b *diyBackend) saveCheckpoint(
 	// .json file to know the stack currently exists (see https://github.com/pulumi/pulumi/issues/9033 for
 	// context).
 	//
-	// We only back up the file we're about to write and, if the compression format changed, clean up the
-	// old format.
+	// We only back up the file we're about to write and, if the compression format changed, back up the
+	// old format. Keep the old format active until the replacement has been written successfully.
 	backupFile = backupTarget(ctx, b.bucket, file, true)
+	oldFile := ""
 	if existingCompression != b.compression {
-		// The compression format changed — clean up the old file.
 		filePlain := stripCompressionExt(file)
 		switch existingCompression {
 		case encoding.CompressionNone:
-			backupTarget(ctx, b.bucket, filePlain, false)
+			oldFile = filePlain
 		case encoding.CompressionGzip:
-			backupTarget(ctx, b.bucket, filePlain+encoding.GZIPExt, false)
+			oldFile = filePlain + encoding.GZIPExt
 		case encoding.CompressionZstd:
-			backupTarget(ctx, b.bucket, filePlain+encoding.ZSTDExt, false)
+			oldFile = filePlain + encoding.ZSTDExt
+		}
+		if backupFile = backupTarget(ctx, b.bucket, oldFile, true); backupFile == "" {
+			oldFile = ""
 		}
 	}
 
@@ -313,7 +326,7 @@ func (b *diyBackend) saveCheckpoint(
 		backoff := 1.2
 
 		// Retry the write 10 times in case of upstream bucket errors
-		_, _, err = retry.Until(ctx, retry.Acceptor{
+		accepted, _, err := retry.Until(ctx, retry.Acceptor{
 			Delay:    &delay,
 			MaxDelay: &maxDelay,
 			Backoff:  &backoff,
@@ -332,6 +345,15 @@ func (b *diyBackend) saveCheckpoint(
 		})
 		if err != nil {
 			return backupFile, "", err
+		}
+		if !accepted {
+			return backupFile, "", ctx.Err()
+		}
+	}
+
+	if oldFile != "" {
+		if err := b.bucket.Delete(ctx, oldFile); err != nil {
+			logging.V(5).Infof("error deleting source object after rename: %v (%v) skipping", oldFile, err)
 		}
 	}
 
@@ -595,10 +617,7 @@ func (b *diyBackend) getHistory(
 			page = 1
 		}
 		start = (page - 1) * pageSize
-		end = start + pageSize - 1
-		if end > len(historyEntries)-1 {
-			end = len(historyEntries) - 1
-		}
+		end = min(start+pageSize-1, len(historyEntries)-1)
 	}
 
 	var updates []backend.UpdateInfo

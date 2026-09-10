@@ -1,0 +1,5 @@
+values:
+  open:
+    fn::open::test:
+      baz: qux
+

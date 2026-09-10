@@ -8,10 +8,11 @@ const first = new snake_names.cool_module.Some_resource("first", {
         nested_value: "nested",
     },
 });
+export const theOutput = first.the_output;
 // Datasource outputs are correctly translated
 const third = new snake_names.cool_module.Another_resource("third", {the_input: snake_names.cool_module.some_dataOutput({
     the_input: first.the_output.someKey[0].nested_output,
     nested: [{
         value: "fuzz",
     }],
-}).apply(invoke => invoke.nested_output[0].key.value)});
+}).nested_output[0].key.value});

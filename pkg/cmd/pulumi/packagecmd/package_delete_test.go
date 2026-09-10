@@ -21,15 +21,37 @@ import (
 
 	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
+	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+	"github.com/pulumi/pulumi/pkg/v3/registry"
 	"github.com/pulumi/pulumi/pkg/v3/util/testutil"
+	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/registry"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-//nolint:paralleltest // This test uses the global backendInstance variable
+func mockCurrentBackend(t *testing.T, mockBackend backend.Backend) {
+	t.Helper()
+
+	testutil.MockLoginManager(t, &cmdBackend.MockLoginManager{
+		CurrentF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink,
+			url string, project *workspace.Project, setCurrent bool,
+		) (backend.Backend, error) {
+			return mockBackend, nil
+		},
+		LoginF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink,
+			url string, project *workspace.Project, setCurrent bool, insecure bool, color colors.Colorization,
+		) (backend.Backend, error) {
+			return mockBackend, nil
+		},
+	})
+}
+
+//nolint:paralleltest // This test uses the global login manager
 func TestPackageDeleteCmd_Run(t *testing.T) {
 	tests := []struct {
 		name              string
@@ -117,7 +139,7 @@ func TestPackageDeleteCmd_Run(t *testing.T) {
 				},
 			}
 
-			testutil.MockBackendInstance(t, &backend.MockBackend{
+			mockCurrentBackend(t, &backend.MockBackend{
 				GetCloudRegistryF: func() (backend.CloudRegistry, error) {
 					if tt.registryErr != nil {
 						return nil, tt.registryErr
@@ -145,7 +167,7 @@ func TestPackageDeleteCmd_Run(t *testing.T) {
 	}
 }
 
-//nolint:paralleltest // This test uses the global backendInstance variable
+//nolint:paralleltest // This test uses the global login manager
 func TestPackageDeleteCmd_NonInteractiveRequiresYes(t *testing.T) {
 	mockCloudRegistry := &backend.MockCloudRegistry{
 		Mock: registry.Mock{
@@ -168,7 +190,7 @@ func TestPackageDeleteCmd_NonInteractiveRequiresYes(t *testing.T) {
 		},
 	}
 
-	testutil.MockBackendInstance(t, &backend.MockBackend{
+	mockCurrentBackend(t, &backend.MockBackend{
 		GetCloudRegistryF: func() (backend.CloudRegistry, error) {
 			return mockCloudRegistry, nil
 		},

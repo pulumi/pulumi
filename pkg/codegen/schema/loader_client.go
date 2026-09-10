@@ -112,7 +112,7 @@ func (l *LoaderClient) LoadPackageReferenceV2(
 		return nil, err
 	}
 
-	p, err := ImportPartialSpec(spec, nil, l)
+	p, err := ImportPartialSpecWithContext(ctx, spec, nil, l)
 	if err != nil {
 		return nil, err
 	}

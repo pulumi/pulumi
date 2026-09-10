@@ -144,7 +144,12 @@ func (cmd *stackOutputCmd) Run(ctx context.Context, args []string) error {
 	if err != nil {
 		return err
 	}
-	snapshotStackOutputs, err := s.SnapshotStackOutputs(ctx, secrets.DefaultProvider)
+	// When we're not showing secrets, use a blinding provider to prevent secrets from being disclosed.
+	secretsProvider := secrets.DefaultProvider
+	if !cmd.showSecrets {
+		secretsProvider = secrets.BlindingProvider
+	}
+	snapshotStackOutputs, err := s.SnapshotStackOutputs(ctx, secretsProvider)
 	if err != nil {
 		return err
 	}

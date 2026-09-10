@@ -26,8 +26,7 @@ func ErrorWithStderr(err error, message string) error {
 	if err == nil {
 		return nil
 	}
-	var exitErr *exec.ExitError
-	if errors.As(err, &exitErr) {
+	if exitErr, ok := errors.AsType[*exec.ExitError](err); ok {
 		stderr := strings.TrimSpace(string(exitErr.Stderr))
 		if len(stderr) > 0 {
 			return fmt.Errorf("%s: %w: %s", message, exitErr, exitErr.Stderr)

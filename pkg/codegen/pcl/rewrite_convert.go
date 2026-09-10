@@ -17,6 +17,8 @@ package pcl
 import (
 	"strings"
 
+	mapset "github.com/deckarep/golang-set/v2"
+
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
@@ -44,12 +46,12 @@ func sameSchemaTypes(xt, yt model.Type) bool {
 		return false
 	}
 
-	types := codegen.Set{}
+	types := mapset.NewSet[schema.Type]()
 	for _, t := range xu.ElementTypes {
 		types.Add(t)
 	}
 	for _, t := range yu.ElementTypes {
-		if !types.Has(t) {
+		if !types.Contains(t) {
 			return false
 		}
 	}
@@ -100,6 +102,11 @@ func rewriteConversions(x model.Expression, to model.Type, diags *hcl.Diagnostic
 		x.Value, typecheck = rewriteConversions(x.Value, valueType.(model.Type), diags)
 	case *model.FunctionCallExpression:
 		args := x.Args
+		var expandedFinal model.Expression
+		if x.ExpandFinal && len(args) > 0 {
+			expandedFinal = args[len(args)-1]
+			args = args[:len(args)-1]
+		}
 		for _, param := range x.Signature.Parameters {
 			if len(args) == 0 {
 				break
@@ -111,6 +118,9 @@ func rewriteConversions(x model.Expression, to model.Type, diags *hcl.Diagnostic
 			for i := range args {
 				args[i], _ = rewriteConversions(args[i], model.InputType(x.Signature.VarargsParameter.Type), diags)
 			}
+		}
+		if expandedFinal != nil {
+			x.Args[len(x.Args)-1], _ = rewriteConversions(expandedFinal, expandedFinal.Type(), diags)
 		}
 	case *model.IndexExpression:
 		x.Key, _ = rewriteConversions(x.Key, x.KeyType(), diags)

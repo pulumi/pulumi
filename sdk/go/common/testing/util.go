@@ -15,10 +15,13 @@
 package testing
 
 import (
+	"context"
 	"crypto/rand"
 	"encoding/hex"
+	"errors"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
@@ -36,4 +39,31 @@ func LogIfVerbose(t *testing.T, name, message string) {
 		return
 	}
 	t.Logf("%s: %s", name, message)
+}
+
+var errTestHasFailed = errors.New("test has failed")
+
+func cancelOnFail(t interface {
+	Failed() bool
+}, cancel context.CancelCauseFunc,
+) context.CancelFunc {
+	done := make(chan struct{})
+
+	go func() {
+		ticker := time.Tick(time.Second / 10)
+
+		for {
+			select {
+			case <-ticker:
+				if t.Failed() {
+					cancel(errTestHasFailed)
+					return
+				}
+			case <-done:
+				cancel(nil)
+			}
+		}
+	}()
+
+	return func() { close(done) }
 }

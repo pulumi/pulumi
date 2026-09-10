@@ -24,7 +24,7 @@ func AsObject(v any, ty reflect.Type, key string) (map[string]any, FieldError) {
 		return vmap, nil
 	}
 	return nil, NewWrongTypeError(
-		ty, key, reflect.TypeOf(make(map[string]any)), reflect.TypeOf(v))
+		ty, key, reflect.TypeFor[map[string]any](), reflect.TypeOf(v))
 }
 
 // AsString attempts to coerce an existing value to a string, returning a non-nil error if it cannot be done.
@@ -32,7 +32,7 @@ func AsString(v any, ty reflect.Type, key string) (*string, FieldError) {
 	if s, ok := v.(string); ok {
 		return &s, nil
 	}
-	return nil, NewWrongTypeError(ty, key, reflect.TypeOf(""), reflect.TypeOf(v))
+	return nil, NewWrongTypeError(ty, key, reflect.TypeFor[string](), reflect.TypeOf(v))
 }
 
 // FieldObject looks up a field by name within an object map, coerces it to an object itself, and returns it.  If the

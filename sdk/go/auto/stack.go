@@ -101,10 +101,12 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"maps"
 	"os"
 	"path/filepath"
 	"regexp"
 	"runtime"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -612,9 +614,12 @@ func (s *Stack) ImportResources(ctx context.Context, opts ...optimport.Option) (
 		return res, fmt.Errorf("failed to import resources: %w", err)
 	}
 
-	generatedCode, err := os.ReadFile(generatedCodePath)
-	if err != nil {
-		return res, fmt.Errorf("failed to read generated code: %w", err)
+	var generatedCode []byte
+	if importOpts.GenerateCode == nil || *importOpts.GenerateCode {
+		generatedCode, err = os.ReadFile(generatedCodePath)
+		if err != nil {
+			return res, fmt.Errorf("failed to read generated code: %w", err)
+		}
 	}
 
 	var summary UpdateSummary
@@ -794,6 +799,11 @@ func refreshOptsToCmd(o *optrefresh.Options, s *Stack, isPreview bool) ([]string
 	}
 	if o.ClearPendingCreates {
 		args = append(args, "--clear-pending-creates")
+	}
+	// Each --import-pending-creates invocation accepts exactly one value, and the URN must be
+	// immediately followed by its provider ID, so we emit two flags per pending create.
+	for _, pc := range o.ImportPendingCreates {
+		args = append(args, "--import-pending-creates="+pc.URN, "--import-pending-creates="+pc.ID)
 	}
 	for _, tURN := range o.Target {
 		args = append(args, "--target="+tURN)
@@ -1373,9 +1383,7 @@ func (s *Stack) cliBaseOptions() base.BaseOptions {
 	if home := s.Workspace().PulumiHome(); home != "" {
 		env[pulumiHomeEnv] = home
 	}
-	for k, v := range s.Workspace().GetEnvVars() {
-		env[k] = v
-	}
+	maps.Copy(env, s.Workspace().GetEnvVars())
 	return base.BaseOptions{
 		Cwd:           s.Workspace().WorkDir(),
 		AdditionalEnv: env,
@@ -1573,8 +1581,15 @@ func (s *Stack) runPulumiCmdSync(
 	if err != nil {
 		return "", "", -1, fmt.Errorf("failed to exec command, error getting additional args: %w", err)
 	}
+	// Everything after a "--" separator is positional and must stay last; insert our flags before it.
+	var positional []string
+	if i := slices.Index(args, "--"); i >= 0 {
+		positional = args[i:]
+		args = args[:i:i]
+	}
 	args = append(args, additionalArgs...)
 	args = append(args, "--stack", s.Name())
+	args = append(args, positional...)
 
 	stdout, stderr, errCode, err := s.workspace.PulumiCommand().Run(
 		ctx,

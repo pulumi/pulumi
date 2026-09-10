@@ -23,7 +23,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-//nolint:paralleltest
 func TestResolveGoogleCredentials_ValidCredentials(t *testing.T) {
 	t.Setenv("GOOGLE_CREDENTIALS", `{
 		"type": "service_account",
@@ -53,7 +52,6 @@ func TestResolveGoogleCredentials_ValidCredentials(t *testing.T) {
 	assert.Equal(t, creds["client_id"], "your-client-id")
 }
 
-//nolint:paralleltest
 func TestResolveGoogleCredentials_InvalidCredentials(t *testing.T) {
 	t.Setenv("GOOGLE_CREDENTIALS", `{}`)
 
@@ -66,7 +64,6 @@ func TestResolveGoogleCredentials_InvalidCredentials(t *testing.T) {
 	assert.Nil(t, credentials, "Expected nil credentials")
 }
 
-//nolint:paralleltest
 func TestResolveGoogleCredentials_OAuthAccessToken(t *testing.T) {
 	expectedAccessToken := "your-access-token"
 	t.Setenv("GOOGLE_OAUTH_ACCESS_TOKEN", expectedAccessToken)

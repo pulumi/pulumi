@@ -19,6 +19,7 @@ from threading import Event, Lock
 from typing import Any, Optional
 import os
 import sys
+import traceback
 import dill
 import grpc
 from google.protobuf import empty_pb2
@@ -77,6 +78,16 @@ def get_provider(props: dict[str, Any], config: dict[str, Any]) -> ResourceProvi
     return provider
 
 
+def _abort_with_traceback(fn):
+    def wrapper(self, request, context):
+        try:
+            return fn(self, request, context)
+        except Exception:  # noqa
+            context.abort(grpc.StatusCode.UNKNOWN, traceback.format_exc())
+
+    return wrapper
+
+
 class DynamicResourceProviderServicer(ResourceProviderServicer):
     _config: dict[str, Any] = {}
 
@@ -99,6 +110,7 @@ class DynamicResourceProviderServicer(ResourceProviderServicer):
         context.set_details("Invoke is not implemented by the dynamic provider")
         raise NotImplementedError(f"unknown function {request.token}")
 
+    @_abort_with_traceback
     def Diff(self, request, context):
         olds = rpc.deserialize_properties(request.olds, True)
         news = rpc.deserialize_properties(request.news, True)
@@ -121,6 +133,7 @@ class DynamicResourceProviderServicer(ResourceProviderServicer):
             fields["deleteBeforeReplace"] = result.delete_before_replace
         return proto.DiffResponse(**fields)
 
+    @_abort_with_traceback
     def Update(self, request, context):
         olds = rpc.deserialize_properties(request.olds)
         news = rpc.deserialize_properties(request.news)
@@ -139,6 +152,7 @@ class DynamicResourceProviderServicer(ResourceProviderServicer):
         fields = {"properties": outs_proto}
         return proto.UpdateResponse(**fields)
 
+    @_abort_with_traceback
     def Delete(self, request, context):
         id_ = request.id
         props = rpc.deserialize_properties(request.properties)
@@ -149,6 +163,7 @@ class DynamicResourceProviderServicer(ResourceProviderServicer):
     def Cancel(self, request, context):
         return empty_pb2.Empty()
 
+    @_abort_with_traceback
     def Create(self, request, context):
         props = rpc.deserialize_properties(request.properties)
         provider = get_provider(props, self._config)
@@ -163,6 +178,7 @@ class DynamicResourceProviderServicer(ResourceProviderServicer):
         fields = {"id": result.id, "properties": outs_proto}
         return proto.CreateResponse(**fields)
 
+    @_abort_with_traceback
     def Check(self, request, context):
         olds = rpc.deserialize_properties(request.olds, True)
         news = rpc.deserialize_properties(request.news, True)
@@ -209,6 +225,7 @@ class DynamicResourceProviderServicer(ResourceProviderServicer):
             "GetSchema is not implemented by the dynamic provider"
         )
 
+    @_abort_with_traceback
     def Read(self, request, context):
         id_ = request.id
         props = rpc.deserialize_properties(request.properties)

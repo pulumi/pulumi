@@ -17,13 +17,13 @@ package pluginstorage
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"regexp"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -78,7 +78,7 @@ func UnpackContents(
 	if err := cleanupTempDirs(finalDir); err != nil {
 		// We don't want to fail the installation if there was an error cleaning up these old temp dirs.
 		// Instead, log the error and continue on.
-		logging.V(5).Infof("Install: Error cleaning up temp dirs: %s", err)
+		slog.InfoContext(ctx, "Install: Error cleaning up temp dirs", "err", err)
 	}
 
 	// Get the partial file path (e.g. <pluginsdir>/<kind>-<name>-<version>.partial).
@@ -104,8 +104,12 @@ func UnpackContents(
 		}
 
 		// Either the partial file exists--meaning a previous attempt at installing the plugin failed--or we're
-		// deliberately reinstalling the plugin. Delete finalDir so we can try installing again. There's no need to
-		// delete the partial file since we'd just be recreating it again below anyway.
+		// deliberately reinstalling the plugin. Delete finalDir so we can try installing again. Create the partial
+		// file before deleting so concurrent processes never observe the directory mid-deletion as a completed
+		// install.
+		if err := os.WriteFile(partialFilePath, nil, 0o600); err != nil {
+			return nil, err
+		}
 		if err := os.RemoveAll(finalDir); err != nil {
 			return nil, err
 		}

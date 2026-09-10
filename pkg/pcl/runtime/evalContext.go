@@ -39,12 +39,13 @@ type EvalContext struct {
 	lookupResource func(context.Context, string) (*schema.Resource, error)
 	lookupFunction func(context.Context, string) (*schema.Function, error)
 
-	invoke      func(context.Context, *pulumirpc.ResourceInvokeRequest) (*pulumirpc.InvokeResponse, error)
+	invoke      func(context.Context, *pulumirpc.ResourceInvokeRequest) (*pulumirpc.ResourceInvokeResponse, error)
 	call        func(context.Context, *pulumirpc.ResourceCallRequest) (*pulumirpc.CallResponse, error)
 	getResource func(context.Context, resource.ResourceReference) (resource.PropertyMap, error)
 
-	// we write variables to the hcl.EvalContext in parallel during execution, so we need to synchronize access to it
-	evalLock    sync.Mutex
+	// We read and write variables to the hcl.EvalContext + children in parallel during
+	// execution, so we synchronize access to it.
+	evalLock    *sync.Mutex
 	evalContext *hcl.EvalContext
 }
 
@@ -53,7 +54,7 @@ func NewEvalContext(
 	lookupResource func(context.Context, string) (*schema.Resource, error),
 	lookupFunction func(context.Context, string) (*schema.Function, error),
 	getResource func(context.Context, resource.ResourceReference) (resource.PropertyMap, error),
-	invoke func(context.Context, *pulumirpc.ResourceInvokeRequest) (*pulumirpc.InvokeResponse, error),
+	invoke func(context.Context, *pulumirpc.ResourceInvokeRequest) (*pulumirpc.ResourceInvokeResponse, error),
 	call func(context.Context, *pulumirpc.ResourceCallRequest) (*pulumirpc.CallResponse, error),
 ) *EvalContext {
 	ctx := &EvalContext{
@@ -67,6 +68,7 @@ func NewEvalContext(
 		getResource:      getResource,
 		invoke:           invoke,
 		call:             call,
+		evalLock:         new(sync.Mutex),
 	}
 
 	ctx.evalContext = &hcl.EvalContext{
@@ -91,6 +93,7 @@ func (ectx *EvalContext) NewChild() *EvalContext {
 		getResource:      ectx.getResource,
 		invoke:           ectx.invoke,
 		call:             ectx.call,
+		evalLock:         ectx.evalLock,
 		evalContext:      child,
 	}
 }
@@ -125,8 +128,7 @@ func (ectx *EvalContext) Evaluate(expr model.Expression) (resource.PropertyValue
 	}
 	pv, err := ctyToPropertyValue(value)
 	if err != nil {
-		var poison *poisonError
-		if errors.As(err, &poison) {
+		if poison, ok := errors.AsType[*poisonError](err); ok {
 			return resource.PropertyValue{}, &poison.name, nil
 		}
 		diags = append(diags, &hcl.Diagnostic{

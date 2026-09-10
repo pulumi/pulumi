@@ -14,6 +14,7 @@
 
 import asyncio
 import builtins
+import inspect
 import tempfile
 import time
 import unittest
@@ -115,6 +116,21 @@ class TestStack(unittest.IsolatedAsyncioTestCase):
                 self.assertFalse(True, "should have thrown")
             except Exception as e:
                 self.assertIn("unsupported color option", str(e))
+
+
+@pytest.mark.parametrize(
+    "operation",
+    [
+        Stack.up,
+        Stack.preview,
+        Stack.refresh,
+        Stack.preview_refresh,
+        Stack.destroy,
+        Stack.preview_destroy,
+    ],
+)
+def test_stack_operations_accept_diff(operation):
+    assert inspect.signature(operation).parameters["diff"].default is None
 
 
 class TestStackArgOrdering(unittest.TestCase):

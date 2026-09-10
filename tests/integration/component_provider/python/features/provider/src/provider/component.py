@@ -15,6 +15,7 @@
 from typing import TypedDict
 
 import pulumi
+from pulumi.runtime.proto import resource_pb2
 
 
 class Args(TypedDict):
@@ -28,12 +29,15 @@ class MyComponent(pulumi.ComponentResource):
 
     def __init__(self, name: str, args: Args, opts: pulumi.ResourceOptions):
         super().__init__("provider:index:MyComponent", name, {}, opts)
-        self.parameterization = pulumi.runtime.settings.SETTINGS.feature_support.get(
-            "parameterization"
+        self.parameterization = (
+            resource_pb2.RESOURCE_MONITOR_FEATURE_PARAMETERIZATION
+            in pulumi.runtime.settings.SETTINGS.monitor_features
         )
-        self.transforms = pulumi.runtime.settings.SETTINGS.feature_support.get(
-            "transforms"
+        self.transforms = (
+            resource_pb2.RESOURCE_MONITOR_FEATURE_TRANSFORMS
+            in pulumi.runtime.settings.SETTINGS.monitor_features
         )
-        self.resourceHooks = pulumi.runtime.settings.SETTINGS.feature_support.get(
-            "resourceHooks"
+        self.resourceHooks = (
+            resource_pb2.RESOURCE_MONITOR_FEATURE_RESOURCE_HOOKS
+            in pulumi.runtime.settings.SETTINGS.monitor_features
         )

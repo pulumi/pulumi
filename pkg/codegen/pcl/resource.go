@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"fmt"
 
+	"github.com/blang/semver"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2"
@@ -380,7 +381,13 @@ func NeedsVersionResourceOption(version model.Expression, schema *schema.Resourc
 		return true
 	}
 
-	return v.String() != optV.Value.AsString()
+	optVStr := optV.Value.AsString()
+	optVersion, err := semver.Parse(optVStr)
+	if err != nil {
+		// If the literal isn't valid semver (including "v"-prefixed versions), treat it as a mismatch.
+		return true
+	}
+	return !v.Equals(optVersion)
 }
 
 func NeedsPluginDownloadURLResourceOption(pluginDownloadURL model.Expression, schema *schema.Resource) bool {

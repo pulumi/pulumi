@@ -80,7 +80,7 @@ func newPoetry(directory string) (*poetry, error) {
 
 func poetryVersionOutput(poetryPath string) (string, error) {
 	// Passing `--no-plugins` makes this a fair bit faster
-	cmd := exec.Command(poetryPath, "--version", "--no-ansi", "--no-plugins") //nolint:gosec
+	cmd := exec.Command(poetryPath, "--version", "--no-ansi", "--no-plugins")
 	out, err := cmd.Output()
 	if err != nil {
 		return "", errutil.ErrorWithStderr(err, "failed to run poetry --version: %w")
@@ -148,7 +148,7 @@ func (p *poetry) InstallDependencies(ctx context.Context,
 		}
 	}
 
-	poetryCmd := exec.CommandContext(ctx, p.poetryExecutable, "install", "--no-ansi") //nolint:gosec
+	poetryCmd := exec.CommandContext(ctx, p.poetryExecutable, "install", "--no-ansi")
 	if useLanguageVersionTools {
 		// For poetry to work nicely with pyenv, we need to make poetry use the active python,
 		// otherwise poetry will use the python version used to run poetry itself.
@@ -336,7 +336,7 @@ func (p *poetry) EnsureVenv(ctx context.Context, cwd string, useLanguageVersionT
 }
 
 func (p *poetry) VirtualEnvPath(ctx context.Context) (string, error) {
-	pathCmd := exec.CommandContext(ctx, p.poetryExecutable, "env", "info", "--path") //nolint:gosec
+	pathCmd := exec.CommandContext(ctx, p.poetryExecutable, "env", "info", "--path")
 	pathCmd.Dir = p.directory
 	out, err := pathCmd.Output()
 	if err != nil {

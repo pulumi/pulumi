@@ -42,7 +42,7 @@ type Options struct {
 	Logtostderr bool
 	// Enable more precise (and expensive) memory allocation profiles by setting runtime.MemProfileRate
 	Memprofilerate int
-	// Export OpenTelemetry traces to the specified endpoint. Use file:// for local JSON files, grpc:// for remote collectors
+	// Export OpenTelemetry traces to the specified endpoint. Use file:// for local JSON files, grpc:// or https:// for remote collectors
 	OtelTraces string
 	// Emit CPU and memory profiles and an execution trace to '[filename].[pid].{cpu,mem,trace}', respectively
 	Profiling string

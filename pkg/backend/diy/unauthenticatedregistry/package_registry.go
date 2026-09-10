@@ -24,10 +24,10 @@ import (
 	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
+	"github.com/pulumi/pulumi/pkg/v3/registry"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/registry"
 )
 
 type registryClient struct{ c *client.Client }
@@ -50,7 +50,7 @@ func (r registryClient) GetPackage(
 	ctx context.Context, source, publisher, name string, version *semver.Version,
 ) (apitype.PackageMetadata, error) {
 	meta, err := r.c.GetPackage(ctx, source, publisher, name, version)
-	if apiErr := (&apitype.ErrorResponse{}); errors.As(err, &apiErr) && apiErr.Code == 404 {
+	if apiErr, ok := errors.AsType[*apitype.ErrorResponse](err); ok && apiErr.Code == 404 {
 		return meta, backenderr.NotFoundError{Err: err}
 	}
 	return meta, err
@@ -58,7 +58,7 @@ func (r registryClient) GetPackage(
 
 func (r registryClient) ListTemplates(
 	ctx context.Context, opts registry.ListTemplatesOptions,
-) iter.Seq2[apitype.TemplateMetadata, error] {
+) iter.Seq2[apitype.ListTemplatesResponse, error] {
 	return r.c.ListTemplates(ctx, opts)
 }
 
@@ -66,7 +66,7 @@ func (r registryClient) GetTemplate(
 	ctx context.Context, source, publisher, name string, version *semver.Version,
 ) (apitype.TemplateMetadata, error) {
 	meta, err := r.c.GetTemplate(ctx, source, publisher, name, version)
-	if apiErr := (&apitype.ErrorResponse{}); errors.As(err, &apiErr) && apiErr.Code == http.StatusNotFound {
+	if apiErr, ok := errors.AsType[*apitype.ErrorResponse](err); ok && apiErr.Code == http.StatusNotFound {
 		return meta, backenderr.NotFoundError{Err: err}
 	}
 	return meta, err
@@ -74,7 +74,7 @@ func (r registryClient) GetTemplate(
 
 func (r registryClient) DownloadTemplate(ctx context.Context, downloadURL string) (io.ReadCloser, error) {
 	bytes, err := r.c.DownloadTemplate(ctx, downloadURL)
-	if apiErr := (&apitype.ErrorResponse{}); errors.As(err, &apiErr) && apiErr.Code == http.StatusNotFound {
+	if apiErr, ok := errors.AsType[*apitype.ErrorResponse](err); ok && apiErr.Code == http.StatusNotFound {
 		return bytes, backenderr.NotFoundError{Err: err}
 	}
 	return bytes, err

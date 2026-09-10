@@ -182,7 +182,7 @@ func GeneratedPlanSpec(ss *SnapshotSpec, pso PlanSpecOptions) *rapid.Generator[*
 			seen := map[resource.URN]bool{}
 
 			targetCount := pso.TargetCount.Draw(t, "PlanSpec.TargetCount")
-			for i := 0; i < targetCount; i++ {
+			for i := range targetCount {
 				candidate := rapid.SampledFrom(ss.Resources).Draw(t, fmt.Sprintf("PlanSpec.TargetResource[%d]", i))
 				if seen[candidate.URN()] {
 					continue

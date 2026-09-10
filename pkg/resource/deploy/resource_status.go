@@ -20,11 +20,13 @@ import (
 	"io"
 	"sync"
 
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
+
 	"github.com/gofrs/uuid"
 	"github.com/pulumi/pulumi/pkg/v3/display"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -414,10 +416,10 @@ func (rs *resourceStatusServer) unmarshalDetailedDiff(step *pulumirpc.ViewStep) 
 	return detailedDiff
 }
 
-// unmarshalViewStepState unmarshals a ViewStepState into a resource.State.
+// unmarshalViewStepState unmarshals a ViewStepState into a pkgresource.State.
 func (rs *resourceStatusServer) unmarshalViewStepState(
 	viewOf resource.URN, state *pulumirpc.ViewStepState,
-) (*resource.State, error) {
+) (*pkgresource.State, error) {
 	if state == nil {
 		return nil, nil
 	}
@@ -445,7 +447,7 @@ func (rs *resourceStatusServer) unmarshalViewStepState(
 		return nil, fmt.Errorf("unmarshaling outputs: %w", err)
 	}
 
-	return &resource.State{
+	return &pkgresource.State{
 		Custom:  false,
 		ViewOf:  viewOf,
 		Parent:  viewOf,

@@ -6,49 +6,49 @@ import * as module_format from "@pulumi/module-format";
 // First use the fully specified token to invoke and create a resource.
 const res1 = new module_format.mod.Resource("res1", {text: module_format.mod.concatWorldOutput({
     value: "hello",
-}).apply(invoke => invoke.result)});
+}).result});
 export const out1 = res1.call(({
     input: "x",
-})).apply(call => call.output);
+})).output;
 // Next use just the module name as defined by the module format
 const res2 = new module_format.mod.Resource("res2", {text: module_format.mod.concatWorldOutput({
     value: "goodbye",
-}).apply(invoke => invoke.result)});
+}).result});
 export const out2 = res2.call(({
     input: "xx",
-})).apply(call => call.output);
+})).output;
 // First use the fully specified token to invoke and create a resource.
 const res3 = new module_format.mod.nested.Resource("res3", {text: module_format.mod.nested.concatWorldOutput({
     value: "hello",
-}).apply(invoke => invoke.result)});
+}).result});
 export const out3 = res3.call(({
     input: "x",
-})).apply(call => call.output);
+})).output;
 // Next use just the module name as defined by the module format
 const res4 = new module_format.mod.nested.Resource("res4", {text: module_format.mod.nested.concatWorldOutput({
     value: "goodbye",
-}).apply(invoke => invoke.result)});
+}).result});
 export const out4 = res4.call(({
     input: "xx",
-})).apply(call => call.output);
+})).output;
 // First use the fully specified token to invoke and create a resource in the index module.
 const res5 = new module_format.Resource("res5", {text: module_format.concatWorldOutput({
     value: "bonjour",
-}).apply(invoke => invoke.result)});
+}).result});
 export const out5 = res5.call(({
     input: "x",
-})).apply(call => call.output);
+})).output;
 // Next use just the module name as defined by the module format
 const res6 = new module_format.Resource("res6", {text: module_format.concatWorldOutput({
     value: "youkoso",
-}).apply(invoke => invoke.result)});
+}).result});
 export const out6 = res6.call(({
     input: "xx",
-})).apply(call => call.output);
+})).output;
 // Next use the short, 2 component, form because this is the index module
 const res7 = new module_format.Resource("res7", {text: module_format.concatWorldOutput({
     value: "guten tag",
-}).apply(invoke => invoke.result)});
+}).result});
 export const out7 = res7.call(({
     input: "xxx",
-})).apply(call => call.output);
+})).output;

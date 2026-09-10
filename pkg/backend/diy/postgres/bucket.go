@@ -393,7 +393,12 @@ func (d *postgresBucketDriver) NewTypedWriter(
 }
 
 // Delete implements driver.Bucket.Delete.
-func (d *postgresBucketDriver) Delete(ctx context.Context, key string) error {
+func (d *postgresBucketDriver) Delete(ctx context.Context, key string, opts *driver.DeleteOptions) error {
+	if opts != nil && opts.BeforeDelete != nil {
+		if err := opts.BeforeDelete(func(any) bool { return false }); err != nil {
+			return err
+		}
+	}
 	// SECURITY: tableName is from connection string config, not user input - safe from SQL injection
 	query := fmt.Sprintf("DELETE FROM %s WHERE key = $1", d.bucket.tableName) //nolint:gosec
 	result, err := d.bucket.db.ExecContext(ctx, query, key)

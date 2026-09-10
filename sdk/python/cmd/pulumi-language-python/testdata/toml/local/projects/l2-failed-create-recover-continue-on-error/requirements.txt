@@ -1,0 +1,4 @@
+ROOT/artifacts/pulumi-CORE.VERSION-py3-none-any.whl
+ROOT/artifacts/pulumi_fail_on_create-4.0.0-py3-none-any.whl
+ROOT/artifacts/pulumi_simple-2.0.0-py3-none-any.whl
+pyright

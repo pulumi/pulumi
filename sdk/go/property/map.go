@@ -15,6 +15,7 @@
 package property
 
 import (
+	"maps"
 	"slices"
 )
 
@@ -129,8 +130,6 @@ func copyMapMaybeNil(m map[string]Value) map[string]Value {
 
 func copyMapNonNil(m map[string]Value) map[string]Value {
 	cp := make(map[string]Value, len(m))
-	for k, v := range m {
-		cp[k] = v
-	}
+	maps.Copy(cp, m)
 	return cp
 }

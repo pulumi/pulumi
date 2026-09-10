@@ -1,0 +1,54 @@
+run: |
+  esc env get default/test --value=dotenv
+  esc env get default/test --value=dotenv --show-secrets
+environments:
+  test-user/default/a: {}
+  test-user/default/b: {}
+  test-user/default/test:
+    imports:
+      - a
+      - b
+    values:
+      # comment
+      "null": null
+      boolean: true
+      number: 42
+      string: esc
+      array: [hello, world]
+      object: {hello: world}
+      open:
+        fn::open::test: echo
+      secret:
+        fn::secret:
+          ciphertext: ZXNjeAAAAAHz5ePy5fTB4+Pl8/PL5fnJxPD7
+      environmentVariables:
+        NULLV: null
+        BOOLEAN: true
+        NUMBER: 3.14
+        STRING: ${string}
+        OBJECT: {'fn::toJSON': "${object}"}
+        SECRET: ${secret}
+      files:
+        FILE: ${string}
+
+---
+> esc env get default/test --value=dotenv
+BOOLEAN="true"
+NULLV=""
+NUMBER="3.14"
+OBJECT="{\"hello\":\"world\"}"
+SECRET="[secret]"
+STRING="esc"
+FILE="[unknown]"
+> esc env get default/test --value=dotenv --show-secrets
+BOOLEAN="true"
+NULLV=""
+NUMBER="3.14"
+OBJECT="{\"hello\":\"world\"}"
+SECRET="secretAccessKey"
+STRING="esc"
+FILE="[unknown]"
+
+---
+> esc env get default/test --value=dotenv
+> esc env get default/test --value=dotenv --show-secrets

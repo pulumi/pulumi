@@ -23,16 +23,17 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/pkg/v3/engine"
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
+	"github.com/pulumi/pulumi/pkg/v3/resource/stack/snapshot"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/b64"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/snapshot"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
 )
@@ -41,16 +42,22 @@ type MockRegisterResourceEvent struct {
 	deploy.SourceEvent
 }
 
-func (m MockRegisterResourceEvent) Goal() *resource.Goal               { return nil }
+func (m MockRegisterResourceEvent) Goal() *pkgresource.Goal            { return nil }
 func (m MockRegisterResourceEvent) Done(result *deploy.RegisterResult) {}
+func (m MockRegisterResourceEvent) Extension() *apitype.Extension      { return nil }
+func (m MockRegisterResourceEvent) ExtensionRef() apitype.ExtensionRef { return "" }
+func (m MockRegisterResourceEvent) StateMigrations() []deploy.StateMigrationFunction {
+	return nil
+}
 
 type MockStackPersister struct {
 	SavedSnapshots []*apitype.DeploymentV3
+	SaveError      error
 }
 
 func (m *MockStackPersister) Save(deployment apitype.TypedDeployment) error {
 	m.SavedSnapshots = append(m.SavedSnapshots, deployment.Deployment)
-	return nil
+	return m.SaveError
 }
 
 func (m *MockStackPersister) LastSnap() *apitype.DeploymentV3 {
@@ -65,8 +72,8 @@ func MockSetup(t *testing.T, baseSnap *deploy.Snapshot) (*SnapshotManager, *Mock
 	return NewSnapshotManager(sp, baseSnap.SecretsManager, baseSnap, nil), sp
 }
 
-func NewResourceWithDeps(urn resource.URN, deps []resource.URN) *resource.State {
-	return &resource.State{
+func NewResourceWithDeps(urn resource.URN, deps []resource.URN) *pkgresource.State {
+	return &pkgresource.State{
 		Type:         tokens.Type("test"),
 		URN:          urn,
 		Inputs:       make(resource.PropertyMap),
@@ -75,8 +82,8 @@ func NewResourceWithDeps(urn resource.URN, deps []resource.URN) *resource.State 
 	}
 }
 
-func NewResourceWithInputs(urn resource.URN, inputs resource.PropertyMap) *resource.State {
-	return &resource.State{
+func NewResourceWithInputs(urn resource.URN, inputs resource.PropertyMap) *pkgresource.State {
+	return &pkgresource.State{
 		Type:         tokens.Type("test"),
 		URN:          urn,
 		Inputs:       inputs,
@@ -85,16 +92,16 @@ func NewResourceWithInputs(urn resource.URN, inputs resource.PropertyMap) *resou
 	}
 }
 
-func NewResource(urn resource.URN, deps ...resource.URN) *resource.State {
+func NewResource(urn resource.URN, deps ...resource.URN) *pkgresource.State {
 	return NewResourceWithDeps(urn, deps)
 }
 
-func NewSnapshot(resources []*resource.State) *deploy.Snapshot {
+func NewSnapshot(resources []*pkgresource.State) *deploy.Snapshot {
 	return deploy.NewSnapshot(deploy.Manifest{
 		Time:    time.Now(),
 		Version: version.Version,
 		Plugins: nil,
-	}, b64.NewBase64SecretsManager(), resources, nil, deploy.SnapshotMetadata{}, nil)
+	}, b64.NewBase64SecretsManager(), resources, nil, deploy.SnapshotMetadata{}, nil, nil)
 }
 
 var (
@@ -108,7 +115,7 @@ func TestIdenticalSames(t *testing.T) {
 	t.Parallel()
 
 	sameState := NewResource(aUniqueUrn)
-	snap := NewSnapshot([]*resource.State{
+	snap := NewSnapshot([]*pkgresource.State{
 		sameState,
 	})
 
@@ -145,7 +152,7 @@ func TestSamesWithEmptyDependencies(t *testing.T) {
 	t.Parallel()
 
 	res := NewResourceWithDeps(aUniqueUrnResourceA, nil)
-	snap := NewSnapshot([]*resource.State{
+	snap := NewSnapshot([]*pkgresource.State{
 		res,
 	})
 	manager, sp := MockSetup(t, snap)
@@ -167,7 +174,7 @@ func TestSamesWithEmptyArraysInInputs(t *testing.T) {
 	require.NoError(t, err)
 
 	res := NewResourceWithInputs(aUniqueUrnResourceA, inputs)
-	snap := NewSnapshot([]*resource.State{
+	snap := NewSnapshot([]*pkgresource.State{
 		res,
 	})
 	manager, sp := MockSetup(t, snap)
@@ -202,7 +209,7 @@ func TestSamesWithDependencyChanges(t *testing.T) {
 	// The setup: the snapshot contains two resources, A and B, where
 	// B depends on A. We're going to begin a mutation in which B no longer
 	// depends on A and appears first in program order.
-	snap := NewSnapshot([]*resource.State{
+	snap := NewSnapshot([]*pkgresource.State{
 		resourceA,
 		resourceB,
 	})
@@ -257,6 +264,57 @@ func TestSamesWithDependencyChanges(t *testing.T) {
 	assert.Equal(t, resourceB.URN, secondSnap.Resources[1].Dependencies[0])
 }
 
+func TestStateMigrationPersistenceFailureLeavesLiveStateUntouched(t *testing.T) {
+	t.Parallel()
+
+	predecessorURN := resource.NewURN("test-stack", "test-project", "", "pkg:typ", "predecessor")
+	successorURN := resource.NewURN("test-stack", "test-project", "", "pkg:typ", "successor")
+	consumerURN := resource.NewURN("test-stack", "test-project", "", "pkg:typ", "consumer")
+
+	predecessor := NewResource(predecessorURN)
+	predecessor.Custom = true
+	predecessor.ID = "resource-id"
+	consumer := NewResource(consumerURN)
+	consumer.Outputs = resource.PropertyMap{
+		"reference": resource.MakeCustomResourceReference(predecessorURN, predecessor.ID, ""),
+	}
+	snap := NewSnapshot([]*pkgresource.State{predecessor, consumer})
+	manager, persister := MockSetup(t, snap)
+
+	currentConsumer := consumer.Copy()
+	same := deploy.NewSameStep(nil, nil, consumer, currentConsumer)
+	mutation, err := manager.BeginMutation(same)
+	require.NoError(t, err)
+	require.NoError(t, mutation.End(same, true))
+
+	successor := predecessor.Copy()
+	successor.URN = successorURN
+	preparedConsumer := consumer.Copy()
+	preparedConsumer.Outputs = resource.PropertyMap{
+		"reference": resource.MakeCustomResourceReference(successorURN, successor.ID, ""),
+	}
+	transaction := &deploy.StateMigrationTransaction{
+		RootURN:                  predecessorURN,
+		PriorSubtree:             []*pkgresource.State{predecessor},
+		ResultSubtree:            []*pkgresource.State{successor},
+		SuccessorURNs:            map[resource.URN]resource.URN{predecessorURN: successorURN},
+		PreparedPriorResources:   []*pkgresource.State{successor, preparedConsumer},
+		RetainedResourceRewrites: map[*pkgresource.State]*pkgresource.State{consumer: preparedConsumer},
+	}
+
+	persister.SaveError = errors.New("save failed")
+	err = manager.StateMigration(transaction)
+	require.ErrorContains(t, err, "save failed")
+	require.Len(t, persister.SavedSnapshots, 1)
+	assert.Equal(t, predecessorURN,
+		currentConsumer.Outputs["reference"].ResourceReferenceValue().URN)
+	assert.Same(t, predecessor, snap.Resources[0])
+	assert.Same(t, consumer, snap.Resources[1])
+
+	persister.SaveError = nil
+	require.NoError(t, manager.Close())
+}
+
 // This test checks that we only write the Checkpoint once whether or
 // not there are important changes when asked to via
 // env.SkipCheckpoints.
@@ -269,7 +327,7 @@ func TestWriteCheckpointOnceUnsafe(t *testing.T) {
 	resourceP := NewResource("a-unique-urn-resource-p")
 	resourceA := NewResource("a-unique-urn-resource-a")
 
-	snap := NewSnapshot([]*resource.State{
+	snap := NewSnapshot([]*pkgresource.State{
 		provider,
 		resourceP,
 		resourceA,
@@ -327,7 +385,7 @@ func TestSamesWithOtherMeaningfulChanges(t *testing.T) {
 	resourceP := NewResource(aUniqueUrnResourceP)
 	resourceA := NewResource(aUniqueUrnResourceA)
 
-	changes := slice.Prealloc[*resource.State](4)
+	changes := slice.Prealloc[*pkgresource.State](4)
 
 	// Change the "custom" bit.
 	changes = append(changes, NewResource(resourceA.URN))
@@ -349,7 +407,7 @@ func TestSamesWithOtherMeaningfulChanges(t *testing.T) {
 	changes = append(changes, NewResource(resourceA.URN))
 	changes[3].Outputs = resource.PropertyMap{"foo": resource.NewProperty("bar")}
 
-	snap := NewSnapshot([]*resource.State{
+	snap := NewSnapshot([]*pkgresource.State{
 		provider,
 		resourceP,
 		resourceA,
@@ -392,7 +450,7 @@ func TestSamesWithOtherMeaningfulChanges(t *testing.T) {
 		inSnapshot := sp.SavedSnapshots[0].Resources[2]
 		// The snapshot might edit the URN so don't check against that
 		c.URN = inSnapshot.URN
-		sres, err := stack.SerializeResource(
+		sres, _, err := stack.SerializeResource(
 			t.Context(), c, b64.NewBase64SecretsManager().Encrypter(), false)
 		require.NoError(t, err)
 		assert.Equal(t, sres, inSnapshot)
@@ -405,7 +463,7 @@ func TestSamesWithOtherMeaningfulChanges(t *testing.T) {
 	manager, sp := MockSetup(t, snap)
 	sourceUpdated := NewResource(resourceA.URN)
 	sourceUpdated.SourcePosition = "project:///foo.ts#1,2"
-	sourceUpdated.StackTrace = []resource.StackFrame{{SourcePosition: provider.SourcePosition}}
+	sourceUpdated.StackTrace = []pkgresource.StackFrame{{SourcePosition: provider.SourcePosition}}
 	sourceUpdatedSame := deploy.NewSameStep(nil, nil, resourceA, sourceUpdated)
 	mutation, err := manager.BeginMutation(sourceUpdatedSame)
 	require.NoError(t, err)
@@ -422,7 +480,7 @@ func TestSamesWithOtherMeaningfulChanges(t *testing.T) {
 	assert.NotEmpty(t, sp.SavedSnapshots)
 	assert.NotEmpty(t, sp.SavedSnapshots[0].Resources)
 	inSnapshot := sp.SavedSnapshots[0].Resources[0]
-	sres, err := stack.SerializeResource(
+	sres, _, err := stack.SerializeResource(
 		t.Context(), sourceUpdated, b64.NewBase64SecretsManager().Encrypter(), false)
 	require.NoError(t, err)
 	assert.Equal(t, sres, inSnapshot)
@@ -435,13 +493,13 @@ func TestSamesWithOtherMeaningfulChanges(t *testing.T) {
 	resourceA.ID = "id"
 	resourceA.Provider = "urn:pulumi:foo::bar::pulumi:providers:pkgA::provider::id"
 
-	snap = NewSnapshot([]*resource.State{
+	snap = NewSnapshot([]*pkgresource.State{
 		provider,
 		provider2,
 		resourceA,
 	})
 
-	changes = []*resource.State{NewResource(resourceA.URN)}
+	changes = []*pkgresource.State{NewResource(resourceA.URN)}
 	changes[0].Custom, changes[0].Provider = true, "urn:pulumi:foo::bar::pulumi:providers:pkgA::provider2::id2"
 
 	for _, c := range changes {
@@ -484,7 +542,7 @@ func TestSamesWithOtherMeaningfulChanges(t *testing.T) {
 		assert.NotEmpty(t, sp.SavedSnapshots[0].Resources)
 
 		inSnapshot := sp.SavedSnapshots[0].Resources[2]
-		sres, err := stack.SerializeResource(
+		sres, _, err := stack.SerializeResource(
 			t.Context(), c, b64.NewBase64SecretsManager().Encrypter(), false)
 		require.NoError(t, err)
 		assert.Equal(t, sres, inSnapshot)
@@ -525,7 +583,7 @@ func TestVexingDeployment(t *testing.T) {
 	c := NewResource("c", a.URN, b.URN)
 	d := NewResource("d", c.URN)
 	e := NewResource("e", c.URN)
-	snap := NewSnapshot([]*resource.State{
+	snap := NewSnapshot([]*pkgresource.State{
 		a,
 		b,
 		c,
@@ -637,7 +695,7 @@ func TestDeletion(t *testing.T) {
 	t.Parallel()
 
 	resourceA := NewResource("a")
-	snap := NewSnapshot([]*resource.State{
+	snap := NewSnapshot([]*pkgresource.State{
 		resourceA,
 	})
 
@@ -659,7 +717,7 @@ func TestFailedDelete(t *testing.T) {
 	t.Parallel()
 
 	resourceA := NewResource("a")
-	snap := NewSnapshot([]*resource.State{
+	snap := NewSnapshot([]*pkgresource.State{
 		resourceA,
 	})
 
@@ -742,7 +800,7 @@ func TestRecordingUpdateSuccess(t *testing.T) {
 	resourceA.Inputs["key"] = resource.NewProperty("old")
 	resourceANew := NewResource("a")
 	resourceANew.Inputs["key"] = resource.NewProperty("new")
-	snap := NewSnapshot([]*resource.State{
+	snap := NewSnapshot([]*pkgresource.State{
 		resourceA,
 	})
 
@@ -779,7 +837,7 @@ func TestRecordingUpdateFailure(t *testing.T) {
 	resourceA.Inputs["key"] = resource.NewProperty("old")
 	resourceANew := NewResource("a")
 	resourceANew.Inputs["key"] = resource.NewProperty("new")
-	snap := NewSnapshot([]*resource.State{
+	snap := NewSnapshot([]*pkgresource.State{
 		resourceA,
 	})
 
@@ -813,7 +871,7 @@ func TestRecordingDeleteSuccess(t *testing.T) {
 	t.Parallel()
 
 	resourceA := NewResource("a")
-	snap := NewSnapshot([]*resource.State{
+	snap := NewSnapshot([]*pkgresource.State{
 		resourceA,
 	})
 	manager, sp := MockSetup(t, snap)
@@ -841,7 +899,7 @@ func TestRecordingDeleteFailure(t *testing.T) {
 	t.Parallel()
 
 	resourceA := NewResource("a")
-	snap := NewSnapshot([]*resource.State{
+	snap := NewSnapshot([]*pkgresource.State{
 		resourceA,
 	})
 	manager, sp := MockSetup(t, snap)
@@ -909,7 +967,7 @@ func TestRecordingReadSuccessPreviousResource(t *testing.T) {
 	resourceANew.Custom = true
 	resourceANew.Inputs["key"] = resource.NewProperty("new")
 
-	snap := NewSnapshot([]*resource.State{
+	snap := NewSnapshot([]*pkgresource.State{
 		resourceA,
 	})
 	manager, sp := MockSetup(t, snap)
@@ -980,7 +1038,7 @@ func TestRecordingReadFailurePreviousResource(t *testing.T) {
 	resourceANew.Custom = true
 	resourceANew.Inputs["key"] = resource.NewProperty("new")
 
-	snap := NewSnapshot([]*resource.State{
+	snap := NewSnapshot([]*pkgresource.State{
 		resourceA,
 	})
 	manager, sp := MockSetup(t, snap)
@@ -1014,7 +1072,7 @@ func TestRegisterOutputs(t *testing.T) {
 	t.Parallel()
 
 	resourceA := NewResource("a")
-	snap := NewSnapshot([]*resource.State{
+	snap := NewSnapshot([]*pkgresource.State{
 		resourceA,
 	})
 	manager, sp := MockSetup(t, snap)
@@ -1050,7 +1108,7 @@ func TestRecordingSameFailure(t *testing.T) {
 	t.Parallel()
 
 	resourceA := NewResource("a")
-	snap := NewSnapshot([]*resource.State{
+	snap := NewSnapshot([]*pkgresource.State{
 		resourceA,
 	})
 	manager, sp := MockSetup(t, snap)
@@ -1078,7 +1136,7 @@ func TestSnapshotAutoRepairSucceedsForInvalidSnapshots(t *testing.T) {
 	// (as done by the cloud backend), the dangling dependency should be pruned and the
 	// snapshot saved successfully.
 	r := NewResource("a", "b")
-	snap := NewSnapshot([]*resource.State{r})
+	snap := NewSnapshot([]*pkgresource.State{r})
 	sp := &MockStackPersister{}
 	events := make(chan engine.Event, 1)
 	sm := NewSnapshotManager(sp, snap.SecretsManager, snap, events)
@@ -1103,7 +1161,7 @@ func TestSnapshotAutoRepairErrorIsSurfacedWhenRepairFails(t *testing.T) {
 	// running `pulumi repair` manually will not help.
 	rA := NewResource("a", "b")
 	rB := NewResource("b", "a")
-	snap := NewSnapshot([]*resource.State{rA, rB})
+	snap := NewSnapshot([]*pkgresource.State{rA, rB})
 	sp := &MockStackPersister{}
 	events := make(chan engine.Event, 1)
 	sm := NewSnapshotManager(sp, snap.SecretsManager, snap, events)
@@ -1111,8 +1169,8 @@ func TestSnapshotAutoRepairErrorIsSurfacedWhenRepairFails(t *testing.T) {
 	err := sm.saveSnapshot()
 
 	require.ErrorContains(t, err, "failed to verify snapshot")
-	var sie *snapshot.SnapshotIntegrityError
-	require.True(t, errors.As(err, &sie))
+	sie, ok := errors.AsType[*snapshot.SnapshotIntegrityError](err)
+	require.True(t, ok)
 	require.NotNil(t, sie.AutoRepairErr)
 	event := <-events
 	assert.Equal(t, engine.ErrorEvent, event.Type)
@@ -1126,7 +1184,7 @@ func TestSnapshotIntegrityErrorMetadataIsWrittenForInvalidSnapshots(t *testing.T
 	// The dependency "b" does not exist in the snapshot, so we'll get a missing
 	// dependency error when we try to save the snapshot.
 	r := NewResource("a", "b")
-	snap := NewSnapshot([]*resource.State{r})
+	snap := NewSnapshot([]*pkgresource.State{r})
 	sp := &MockStackPersister{}
 	sm := NewSnapshotManager(sp, snap.SecretsManager, snap, nil)
 
@@ -1144,7 +1202,7 @@ func TestSnapshotIntegrityErrorMetadataIsClearedForValidSnapshots(t *testing.T) 
 	// Arrange.
 	r := NewResource("a")
 
-	snap := NewSnapshot([]*resource.State{r})
+	snap := NewSnapshot([]*pkgresource.State{r})
 	snap.Metadata.IntegrityErrorMetadata = &deploy.SnapshotIntegrityErrorMetadata{}
 
 	sp := &MockStackPersister{}
@@ -1169,7 +1227,7 @@ func TestSnapshotIntegrityErrorMetadataIsWrittenForInvalidSnapshotsChecksDisable
 	// The dependency "b" does not exist in the snapshot, so we'll get a missing
 	// dependency error when we try to save the snapshot.
 	r := NewResource("a", "b")
-	snap := NewSnapshot([]*resource.State{r})
+	snap := NewSnapshot([]*pkgresource.State{r})
 	sp := &MockStackPersister{}
 	sm := NewSnapshotManager(sp, snap.SecretsManager, snap, nil)
 
@@ -1192,7 +1250,7 @@ func TestSnapshotIntegrityErrorMetadataIsClearedForValidSnapshotsChecksDisabled(
 	// The dependency "b" does not exist in the snapshot, so we'll get a missing
 	// dependency error when we try to save the snapshot.
 	r := NewResource("a")
-	snap := NewSnapshot([]*resource.State{r})
+	snap := NewSnapshot([]*pkgresource.State{r})
 	sp := &MockStackPersister{}
 	sm := NewSnapshotManager(sp, snap.SecretsManager, snap, nil)
 

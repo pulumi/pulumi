@@ -14,7 +14,7 @@ export function funcWithAllOptionalInputs(args?: FuncWithAllOptionalInputsArgs, 
     opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts || {});
     return pulumi.runtime.invoke("mypkg::funcWithAllOptionalInputs", {
         "a": args.a ? inputs.helmReleaseSettingsProvideDefaults(args.a) : undefined,
-        "b": args.b,
+        "b": (args.b) ?? "defValue",
     }, opts);
 }
 
@@ -40,7 +40,7 @@ export function funcWithAllOptionalInputsOutput(args?: FuncWithAllOptionalInputs
     opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts || {});
     return pulumi.runtime.invokeOutput("mypkg::funcWithAllOptionalInputs", {
         "a": pulumi.output(args.a).apply(v => v === undefined ? undefined : inputs.helmReleaseSettingsProvideDefaults(v)),
-        "b": args.b,
+        "b": (args.b) ?? "defValue",
     }, opts);
 }
 

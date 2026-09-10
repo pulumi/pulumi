@@ -55,6 +55,10 @@ export class RubberTree extends pulumi.CustomResource {
         if (opts.id) {
             const state = argsOrState as RubberTreeState | undefined;
             resourceInputs["farm"] = state?.farm;
+            resourceInputs["container"] = undefined /*out*/;
+            resourceInputs["diameter"] = undefined /*out*/;
+            resourceInputs["size"] = undefined /*out*/;
+            resourceInputs["type"] = undefined /*out*/;
         } else {
             const args = argsOrState as RubberTreeArgs | undefined;
             if (args?.diameter === undefined && !opts.urn) {

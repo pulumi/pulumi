@@ -83,6 +83,26 @@ type UIWarning struct {
 
 func (UIWarning) uiEvent() {}
 
+// UIReconnecting signals that a user message is queued locally while the
+// backend is temporarily unavailable.
+type UIReconnecting struct{}
+
+func (UIReconnecting) uiEvent() {}
+
+// UIReconnected signals that a queued user message has reached the backend.
+type UIReconnected struct{}
+
+func (UIReconnected) uiEvent() {}
+
+// UICancelFailed signals that the user's cancel request could not be
+// delivered to the backend and the dispatcher has given up retrying. The TUI
+// clears its cancelling state so the user can press Esc to try again.
+type UICancelFailed struct {
+	Message string
+}
+
+func (UICancelFailed) uiEvent() {}
+
 // UICancelled signals the session was cancelled.
 type UICancelled struct{}
 

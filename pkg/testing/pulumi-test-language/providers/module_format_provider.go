@@ -25,9 +25,10 @@ import (
 	"google.golang.org/protobuf/types/known/structpb"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
@@ -305,7 +306,7 @@ func (p *ModuleFormatProvider) CheckConfig(
 	_ context.Context, req plugin.CheckConfigRequest,
 ) (plugin.CheckConfigResponse, error) {
 	// Expect just the version
-	version, ok := req.News["version"]
+	version, ok := req.News.GetOk("version")
 	if !ok {
 		return plugin.CheckConfigResponse{
 			Failures: makeCheckFailure("version", "missing version"),
@@ -316,13 +317,13 @@ func (p *ModuleFormatProvider) CheckConfig(
 			Failures: makeCheckFailure("version", "version is not a string"),
 		}, nil
 	}
-	if version.StringValue() != p.version() {
+	if version.AsString() != p.version() {
 		return plugin.CheckConfigResponse{
 			Failures: makeCheckFailure("version", "version is not "+p.version()),
 		}, nil
 	}
 
-	if len(req.News) != 1 {
+	if req.News.Len() != 1 {
 		return plugin.CheckConfigResponse{
 			Failures: makeCheckFailure("", fmt.Sprintf("too many properties: %v", req.News)),
 		}, nil
@@ -336,7 +337,7 @@ func (p *ModuleFormatProvider) Invoke(
 ) (plugin.InvokeResponse, error) {
 	switch req.Tok {
 	case "module-format:index_concatWorld:concatWorld", "module-format:mod_concatWorld:concatWorld", "module-format:mod/nested_concatWorld:concatWorld": //nolint:lll
-		value, ok := req.Args["value"]
+		value, ok := req.Args.GetOk("value")
 		if !ok {
 			return plugin.InvokeResponse{
 				Failures: makeCheckFailure("value", "missing value"),
@@ -359,9 +360,9 @@ func (p *ModuleFormatProvider) Invoke(
 		}
 
 		return plugin.InvokeResponse{
-			Properties: resource.PropertyMap{
-				"result": resource.NewProperty(value.StringValue() + " world"),
-			},
+			Properties: property.NewMap(map[string]property.Value{
+				"result": property.New(value.AsString() + " world"),
+			}),
 		}, nil
 	}
 	return plugin.InvokeResponse{}, fmt.Errorf("unknown function %v", req.Tok)
@@ -384,7 +385,7 @@ func (p *ModuleFormatProvider) Call(
 	monitor := pulumirpc.NewResourceMonitorClient(conn)
 	switch req.Tok {
 	case "module-format:index_Resource:Resource/call", "module-format:mod_Resource:Resource/call", "module-format:mod/nested_Resource:Resource/call": //nolint:lll
-		value, ok := req.Args["input"]
+		value, ok := req.Args.GetOk("input")
 		if !ok {
 			return plugin.CallResponse{
 				Failures: makeCheckFailure("input", "missing input"),
@@ -406,7 +407,7 @@ func (p *ModuleFormatProvider) Call(
 			}, nil
 		}
 
-		selfRef := req.Args["__self__"].ResourceReferenceValue()
+		selfRef := req.Args.Get("__self__").AsResourceReference()
 
 		selfRes, err := monitor.Invoke(ctx, &pulumirpc.ResourceInvokeRequest{
 			Tok: "pulumi:pulumi:getResource",
@@ -424,9 +425,9 @@ func (p *ModuleFormatProvider) Call(
 		text := selfRes.Return.Fields["state"].GetStructValue().Fields["text"]
 
 		return plugin.CallResponse{
-			Return: resource.PropertyMap{
-				"output": resource.NewProperty(float64(len(value.StringValue()) + len(text.GetStringValue()))),
-			},
+			Return: property.NewMap(map[string]property.Value{
+				"output": property.New(float64(len(value.AsString()) + len(text.GetStringValue()))),
+			}),
 		}, nil
 	}
 

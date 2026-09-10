@@ -1,6 +1,0 @@
-name: error_hooks_python
-description: A program with error hooks
-runtime:
-  name: python
-  options:
-    toolchain: uv

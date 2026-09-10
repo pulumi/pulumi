@@ -123,8 +123,9 @@ func newOrgWebhookNewCmdWith(
 	}
 
 	cmd := &cobra.Command{
-		Use:   "new",
-		Short: "[EXPERIMENTAL] Create a new organization webhook",
+		Use:     "new",
+		Aliases: []string{"create", "setup"},
+		Short:   "[EXPERIMENTAL] Create a new organization webhook",
 		Long: "[EXPERIMENTAL] Create a new organization webhook.\n" +
 			"\n" +
 			"Creates a webhook that delivers events for the specified organization\n" +
@@ -178,7 +179,7 @@ func (c *orgWebhookNewCmd) run(ctx context.Context) error {
 	}
 
 	ws := pkgWorkspace.Instance
-	project, _, err := ws.ReadProject()
+	project, _, err := ws.ReadProject("")
 	if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
 		return err
 	}

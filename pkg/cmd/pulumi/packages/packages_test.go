@@ -16,6 +16,7 @@ package packages
 
 import (
 	"context"
+	"encoding/json"
 	"path/filepath"
 	"runtime"
 	"testing"
@@ -23,9 +24,10 @@ import (
 	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageinstallation"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	pkghost "github.com/pulumi/pulumi/pkg/v3/host"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -69,12 +71,12 @@ func (mockInstallContext) GetPlugins(context.Context) ([]workspace.PluginInfo, e
 	return nil, nil
 }
 
-func (m mockInstallContext) New() (pkgWorkspace.W, error) {
+func (m mockInstallContext) New(string) (pkgWorkspace.W, error) {
 	m.t.Error("New should not be called")
 	return nil, assert.AnError
 }
 
-func (m mockInstallContext) ReadProject() (*workspace.Project, string, error) {
+func (m mockInstallContext) ReadProject(string) (*workspace.Project, string, error) {
 	m.t.Error("ReadProject should not be called")
 	return nil, "", assert.AnError
 }
@@ -167,19 +169,25 @@ func TestProviderFromSource(t *testing.T) {
 	}
 
 	run := func(
-		t *testing.T, installCtx mockInstallContext, inputSource string,
+		t *testing.T, installCtx mockInstallContext, inputSource, pluginDownloadURL string,
 	) (plugin.Provider, workspace.PackageSpec) {
 		t.Helper()
 		installCtx.t = t
 
+		pluginHost, err := pkghost.New(context.WithoutCancel(t.Context()), nil, nil, nil, nil,
+			schema.NewLoaderServerFromContext, nil, nil)
+		require.NoError(t, err)
+		defer func() { require.NoError(t, pluginHost.Close()) }()
 		pctx, err := plugin.NewContext(
-			t.Context(), nil, nil, nil, nil, t.TempDir(), nil, false, nil, schema.NewLoaderServerFromHost, nil, nil)
+			t.Context(), nil, nil, pluginHost, nil, t.TempDir(), nil, false, nil,
+		)
 		require.NoError(t, err)
 		defer func() { require.NoError(t, pctx.Close()) }()
 
 		provider, spec, err := providerFromSource(
 			pctx, inputSource, nil,
-			env.NewEnv(env.MapStore{"PULUMI_EXPERIMENTAL": "true"}), 0, installCtx)
+			env.NewEnv(env.MapStore{"PULUMI_EXPERIMENTAL": "true"}), 0, pluginDownloadURL, installCtx,
+		)
 		require.NoError(t, err)
 		return provider, spec
 	}
@@ -187,7 +195,7 @@ func TestProviderFromSource(t *testing.T) {
 	t.Run("no Pulumi.yaml", func(t *testing.T) {
 		t.Parallel()
 
-		provider, spec := run(t, mockInstallContext{}, "test-provider@1.0.0")
+		provider, spec := run(t, mockInstallContext{}, "test-provider@1.0.0", "")
 
 		assert.Equal(t, resolvedSpec, spec)
 		assert.Equal(t, wantProvider, provider)
@@ -207,10 +215,38 @@ func TestProviderFromSource(t *testing.T) {
 			},
 		}
 
-		provider, spec := run(t, installCtx, "local-name")
+		provider, spec := run(t, installCtx, "local-name", "")
 
 		assert.Equal(t, resolvedSpec, spec)
 		assert.Equal(t, wantProvider, provider)
+	})
+
+	t.Run("with pluginDownloadURL adds to remap", func(t *testing.T) {
+		t.Parallel()
+
+		// The project remaps the source "local-name" to the real "test-provider@1.0.0" package.
+		installCtx := mockInstallContext{
+			baseProject: &workspace.Project{
+				Name:    "test-project",
+				Runtime: workspace.NewProjectRuntimeInfo("yaml", nil),
+				Packages: map[string]workspace.PackageSpec{
+					"local-name": {Source: "test-provider", Version: "1.0.0"},
+				},
+			},
+		}
+
+		// And we pass pluginDownloadURL, which should be added to the PackageSpec from the project.
+		provider, spec := run(t, installCtx, "local-name", "https://example.com/plugins")
+
+		expected := resolvedSpec
+		expected.PluginDownloadURL = "https://example.com/plugins"
+
+		assert.Equal(t, expected, spec)
+
+		want := wantProvider
+		want.originalSpec.PluginDownloadURL = "https://example.com/plugins"
+
+		assert.Equal(t, want, provider)
 	})
 }
 
@@ -259,4 +295,29 @@ func TestSetSpecNamespace(t *testing.T) {
 			assert.Equal(t, tt.wantNamespace, schemaSpec.Namespace)
 		})
 	}
+}
+
+// TestBindSpecReportsAllDiagnostics checks that an invalid schema surfaces every validation
+// diagnostic, rather than the first one plus "and N other diagnostic(s)".
+// Regression test for https://github.com/pulumi/pulumi/issues/21609.
+func TestBindSpecReportsAllDiagnostics(t *testing.T) {
+	t.Parallel()
+
+	const invalid = `{
+	  "name": "bad",
+	  "version": "1.0.0",
+	  "resources": {
+	    "bad:index:One": { "type": "object", "properties": { "a": { "type": "bogus" } } },
+	    "bad:index:Two": { "type": "object", "properties": { "b": { "type": "alsoBogus" } } }
+	  }
+	}`
+
+	var spec schema.PackageSpec
+	require.NoError(t, json.Unmarshal([]byte(invalid), &spec))
+
+	_, err := BindSpec(spec, schema.NewNullLoader())
+	require.Error(t, err)
+	assert.NotContains(t, err.Error(), "other diagnostic(s)")
+	assert.Contains(t, err.Error(), "#/resources/bad:index:One/properties/a/type: unknown type kind bogus")
+	assert.Contains(t, err.Error(), "#/resources/bad:index:Two/properties/b/type: unknown type kind alsoBogus")
 }

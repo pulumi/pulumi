@@ -21,10 +21,19 @@ import (
 	"path/filepath"
 
 	"github.com/opentracing/opentracing-go"
+	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageworkspace"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/convert"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
+	pkghost "github.com/pulumi/pulumi/pkg/v3/host"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	pkgCmdUtil "github.com/pulumi/pulumi/pkg/v3/util/cmdutil"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -59,13 +68,22 @@ func InstallPluginDependencies(
 		Main:    ".",
 		Runtime: projRuntime,
 	}, Root: root}
+	reg := cmdCmd.NewDefaultRegistry(
+		ctx, cmdBackend.DefaultLoginManager, pkgWorkspace.Instance, nil, cmdutil.Diag(), env.Global())
+	pluginHost, err := pkghost.New(
+		context.WithoutCancel(ctx), cmdutil.Diag(), cmdutil.Diag(), nil, pkgWorkspace.EnsureLanguageInstalled,
+		schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext,
+		packageworkspace.NewResolverServer(reg))
+	if err != nil {
+		return err
+	}
+	defer contract.IgnoreClose(pluginHost) // host is owned here, closed after the context
 	_, main, pluginCtx, err := engine.ProjectInfoContext(
 		ctx,
 		projinfo,
-		nil,
+		pluginHost,
 		cmdutil.Diag(),
 		cmdutil.Diag(),
-		nil,
 		false,
 		span,
 		nil,
@@ -75,7 +93,7 @@ func InstallPluginDependencies(
 	}
 	defer pluginCtx.Close()
 
-	lang, err := pluginCtx.Host.LanguageRuntime(projRuntime.Name())
+	lang, err := pluginCtx.Host.LanguageRuntime(pluginCtx, projRuntime.Name())
 	if err != nil {
 		return fmt.Errorf("failed to load language plugin %s: %w", projRuntime.Name(), err)
 	}

@@ -232,7 +232,7 @@ func (g Glob) Get(v Value) (map[Path]Value, error) {
 				case e.val.IsArray():
 					for j, v := range e.val.AsArray().AsSlice() {
 						expansion = append(expansion, entry{
-							path: e.path.appendIndex(uint64(j)), //nolint:gosec // j will always be >= 0
+							path: e.path.appendIndex(uint64(j)),
 							val:  v,
 						})
 					}

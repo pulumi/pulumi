@@ -26,18 +26,18 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net/url"
 	"path"
 	"strings"
 
 	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/pkg/v3/pluginstorage"
+	"github.com/pulumi/pulumi/pkg/v3/registry"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/v3/util"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/registry"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/gitutil"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -147,6 +147,14 @@ type (
 	}
 )
 
+// parameterizeArgs returns the arguments used to parameterize a package on install.
+func parameterizeArgs(spec workspace.PackageSpec) []string {
+	if len(spec.Parameters) > 0 {
+		return spec.Parameters
+	}
+	return spec.Extensions
+}
+
 func naivePackageDescriptor(
 	ctx context.Context, spec workspace.PackageSpec,
 ) (workspace.UnresolvedPackageDescriptor, error) {
@@ -163,7 +171,7 @@ func naivePackageDescriptor(
 		version, spec.PluginDownloadURL, spec.Checksums)
 	return workspace.UnresolvedPackageDescriptor{
 		PluginDescriptor:     pluginDesc,
-		ParameterizationArgs: spec.Parameters,
+		ParameterizationArgs: parameterizeArgs(spec),
 	}, err
 }
 
@@ -179,8 +187,9 @@ func naiveResolution(
 		}
 	}
 
-	// If there is no parameters in the spec, then we have fully resolved here.
-	if len(spec.Parameters) == 0 {
+	// With no parameterization args, there is nothing to parameterize, so the
+	// package resolves to its plugin descriptor alone.
+	if len(parameterizeArgs(spec)) == 0 {
 		return PackageResolution{
 			Spec: spec,
 			Pkg: workspace.PackageDescriptor{
@@ -205,10 +214,11 @@ func registryResolution(
 		Source:     path.Join(metadata.Source, metadata.Publisher, metadata.Name),
 		Version:    metadata.Version.String(),
 		Parameters: spec.Parameters,
+		Extensions: spec.Extensions,
 		Checksums:  spec.Checksums,
 	}
 
-	if len(spec.Parameters) > 0 && metadata.Parameterization != nil {
+	if len(parameterizeArgs(spec)) > 0 && metadata.Parameterization != nil {
 		return nil, fmt.Errorf(
 			"unable to resolve package: resolved plugin to %s, which is already parameterized",
 			spec.Source,
@@ -223,17 +233,17 @@ func registryResolution(
 		Checksums:         spec.Checksums,
 	}
 
-	if len(spec.Parameters) > 0 {
+	if len(parameterizeArgs(spec)) > 0 {
 		plugin := PluginResolution{
 			Spec: spec,
 			Pkg: workspace.UnresolvedPackageDescriptor{
 				PluginDescriptor:     pluginDescriptor,
-				ParameterizationArgs: spec.Parameters,
+				ParameterizationArgs: parameterizeArgs(spec),
 			},
 			InstalledInWorkspace: installed,
 		}
-		logging.V(3).Infof("Resolved package %q via the registry to plugin %#v (installedInWorkspace=%t)\n",
-			spec.Source, plugin, installed)
+		slog.Info("Resolved package via the registry to plugin",
+			"package", spec.Source, "plugin", plugin, "installed-in-workspace", installed)
 
 		return plugin, nil
 	}
@@ -257,8 +267,8 @@ func registryResolution(
 		Pkg:                  pkgDescriptor,
 		InstalledInWorkspace: installed,
 	}
-	logging.V(3).Infof("Resolved package %q via the registry to package %#v (installedInWorkspace=%t)\n",
-		spec.Source, pkg, installed)
+	slog.Info("Resolved package via the registry to package",
+		"package", spec.Source, "resolution", pkg, "installed-in-workspace", installed)
 	return pkg, nil
 }
 
@@ -286,11 +296,11 @@ func Resolve(
 	spec workspace.PackageSpec,
 	options Options,
 ) (Resolution, error) {
-	logging.V(3).Infof("Resolving package from %#v\n", spec)
+	slog.InfoContext(ctx, "Resolving package", "spec", spec)
 	if plugin.IsLocalPluginPath(ctx, spec.Source) {
 		return PathResolution{
 			Path:                 spec.Source,
-			ParameterizationArgs: spec.Parameters,
+			ParameterizationArgs: parameterizeArgs(spec),
 			Spec:                 spec,
 		}, nil
 	}
@@ -315,8 +325,8 @@ func Resolve(
 	}
 
 	remoteResolution := func() (Resolution, error) {
-		logging.V(3).Infof("Resolved package %#v to an external source %#v\n",
-			spec, naivePackageDescriptor)
+		slog.InfoContext(ctx, "Resolved package to an external source",
+			"spec", spec, "descriptor", naivePackageDescriptor)
 		installed, atVersion, err := IsPluginInstalled(ctx, naivePackageDescriptor.PluginDescriptor, ws, options)
 		if err != nil {
 			return nil, err
@@ -347,6 +357,13 @@ func Resolve(
 	}
 
 	if workspace.IsExternalURL(spec.Source) || naivePackageDescriptor.IsGitPlugin() {
+		return remoteResolution()
+	}
+
+	// If this used to work (like "aws") or if the user has specified a
+	// pluginDownloadURL themselves, then pass it through.
+	if registry.IsPreRegistryPackage(spec.Source) || spec.PluginDownloadURL != "" ||
+		util.SetKnownPluginDownloadURL(&naivePackageDescriptor.PluginDescriptor) {
 		return remoteResolution()
 	}
 
@@ -410,19 +427,12 @@ func Resolve(
 		}
 	}
 
-	// If this used to work (like "aws") or if the user has specified a
-	// pluginDownloadURL themselves, then pass it through.
-	if registry.IsPreRegistryPackage(spec.Source) || spec.PluginDownloadURL != "" ||
-		util.SetKnownPluginDownloadURL(&naivePackageDescriptor.PluginDescriptor) {
-		return remoteResolution()
-	}
-
 	if registryQueryErr != nil {
-		logging.V(3).Infof("Failed to resolve package %#v\n", spec)
+		slog.InfoContext(ctx, "Failed to resolve package", "spec", spec)
 		return nil, registryQueryErr
 	}
 
-	logging.V(3).Infof("Failed to resolve package %#v\n", spec)
+	slog.InfoContext(ctx, "Failed to resolve package", "spec", spec)
 	return nil, &PackageNotFoundError{
 		Package:     spec.Source,
 		Version:     spec.Version,

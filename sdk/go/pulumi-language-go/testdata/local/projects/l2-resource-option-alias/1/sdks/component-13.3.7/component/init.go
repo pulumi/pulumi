@@ -27,6 +27,8 @@ func (m *module) Construct(ctx *pulumi.Context, name, typ, urn string) (r pulumi
 		r = &ComponentCustomRefInputOutput{}
 	case "component:index:ComponentCustomRefOutput":
 		r = &ComponentCustomRefOutput{}
+	case "component:index:ComponentForeignChild":
+		r = &ComponentForeignChild{}
 	case "component:index:Custom":
 		r = &Custom{}
 	default:

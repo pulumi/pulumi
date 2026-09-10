@@ -1,0 +1,8 @@
+edits:
+  - 'object["foo"]': baz
+  - 'object["bar"]': qux
+  - 'array[0]': 1
+  - 'array[1].nested': 2
+  - '["dotted.property"]': [list, of, strings]
+  - 'environmentVariables': {HELLO: world}
+  - '["deeply.nested"].path.with.an["\"array[]\""][0]': neat

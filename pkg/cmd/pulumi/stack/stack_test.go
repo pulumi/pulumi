@@ -21,7 +21,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func TestShowStackName(t *testing.T) {
@@ -40,7 +39,6 @@ func TestShowStackName(t *testing.T) {
 		t.Run(tt.desc, func(t *testing.T) {
 			t.Parallel()
 
-			args := stackArgs{showStackName: true, fullyQualifyStackNames: tt.full}
 			var output bytes.Buffer
 			s := backend.MockStack{
 				RefF: func() backend.StackReference {
@@ -51,8 +49,7 @@ func TestShowStackName(t *testing.T) {
 				},
 			}
 
-			err := runStack(t.Context(), &s, &output, args)
-			require.NoError(t, err)
+			writeStackName(&output, &s, tt.full)
 			assert.Equal(t, tt.expected+"\n", output.String())
 		})
 	}

@@ -82,17 +82,20 @@ func (b *diyBackend) loadStackTags(
 }
 
 // saveStackTags saves tags for a stack to the storage backend.
-// If tags is empty, this is a no-op to avoid unnecessary file writes.
+// If tags is empty, any existing tags file is removed so that clearing the
+// last tag is persisted rather than leaving stale tags on disk.
 func (b *diyBackend) saveStackTags(
 	ctx context.Context, ref *diyBackendReference, tags map[apitype.StackTagName]string,
 ) error {
 	contract.Requiref(ref != nil, "ref", "ref cannot be nil")
 	contract.Requiref(tags != nil, "tags", "tags cannot be nil")
 
-	// Don't write a tags file if there are no tags
+	// If there are no tags left, remove the tags file instead of leaving a
+	// stale one on disk. Otherwise removing the last tag would be a silent
+	// no-op, since the empty map would never be written back.
 	if len(tags) == 0 {
-		logging.V(9).Infof("No tags to save for stack %s, skipping write", ref.String())
-		return nil
+		logging.V(9).Infof("No tags left for stack %s, deleting tags file", ref.String())
+		return b.deleteStackTags(ctx, ref)
 	}
 
 	tagsPath := b.stackTagsPath(ref)

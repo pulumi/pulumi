@@ -46,7 +46,7 @@ type Options struct {
 	Memprofilerate int
 	// Name of the organization to search. Defaults to the current user's default organization.
 	Org string
-	// Export OpenTelemetry traces to the specified endpoint. Use file:// for local JSON files, grpc:// for remote collectors
+	// Export OpenTelemetry traces to the specified endpoint. Use file:// for local JSON files, grpc:// or https:// for remote collectors
 	OtelTraces string
 	// Output format. Supported values are: default, json, yaml and csv
 	Output string

@@ -1,0 +1,5 @@
+imports:
+  - b
+values:
+  some_object:
+    baz: qux

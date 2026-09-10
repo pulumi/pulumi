@@ -21,10 +21,11 @@ import (
 	"github.com/blang/semver"
 	uuid "github.com/gofrs/uuid"
 
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 type Provider struct {
@@ -34,7 +35,7 @@ type Provider struct {
 	Package tokens.Package
 	Version semver.Version
 
-	Config     resource.PropertyMap
+	Config     property.Map
 	configured bool
 
 	DialMonitorF func(ctx context.Context, endpoint string) (*ResourceMonitor, error)
@@ -142,6 +143,10 @@ func (prov *Provider) Check(ctx context.Context, req plugin.CheckRequest) (plugi
 
 func (prov *Provider) Create(ctx context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 	if prov.CreateF == nil {
+		// A real provider cannot know the id of a resource it has not created yet.
+		if req.Preview {
+			return plugin.CreateResponse{Properties: resource.PropertyMap{}}, nil
+		}
 		// generate a new uuid
 		uuid, err := uuid.NewV4()
 		if err != nil {
@@ -227,7 +232,7 @@ func (prov *Provider) Construct(ctx context.Context, req plugin.ConstructRequest
 func (prov *Provider) Invoke(ctx context.Context, req plugin.InvokeRequest) (plugin.InvokeResponse, error) {
 	if prov.InvokeF == nil {
 		return plugin.InvokeResponse{
-			Properties: resource.PropertyMap{},
+			Properties: property.Map{},
 		}, nil
 	}
 	return prov.InvokeF(ctx, req)

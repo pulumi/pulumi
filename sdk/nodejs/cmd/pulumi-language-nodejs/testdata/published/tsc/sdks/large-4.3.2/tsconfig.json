@@ -20,6 +20,7 @@
     },
     "files": [
         "index.ts",
+        "map.ts",
         "provider.ts",
         "string.ts",
         "utilities.ts"

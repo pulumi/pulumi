@@ -1,0 +1,12 @@
+values:
+  final_scalar:
+    fn::final: frozen_value
+  final_object:
+    fn::final:
+      retries: 3
+      timeout: 30
+  final_nested:
+    key:
+      fn::final: nested_frozen
+    other_key: can_override
+  not_final: plain_value

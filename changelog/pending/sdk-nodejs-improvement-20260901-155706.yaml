@@ -1,0 +1,4 @@
+component: sdk/nodejs
+kind: improvement
+body: Add helper methods to transform ResourceOptions to InvokeOptions
+time: 2026-09-01T15:57:06.581803925+02:00

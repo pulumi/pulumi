@@ -337,7 +337,8 @@ func applySchemaInputs(
 }
 
 // fillSchemaOutputs ensures that every schema-declared property is present in outputs,
-// recursively. Missing properties are filled with computed (during preview) or null. Nested
+// recursively. Missing properties are filled with computed (when fillUnknown is set, i.e.
+// during previews and for skipped creates) or null. Nested
 // object-typed properties are also walked so that programs traversing into an optional
 // inner field (e.g. `res.data.kubeconfig` where `data` is a required output object whose
 // inner fields are optional) see a typed attribute rather than a missing-key error from
@@ -346,7 +347,7 @@ func applySchemaInputs(
 // Only the structural set of attributes is materialised; values returned by the provider
 // are not transformed. Properties whose key does not match any schema property pass
 // through unchanged.
-func fillSchemaOutputs(outputs resource.PropertyMap, properties []*schema.Property, dryRun bool) {
+func fillSchemaOutputs(outputs resource.PropertyMap, properties []*schema.Property, fillUnknown bool) {
 	if outputs == nil {
 		return
 	}
@@ -354,7 +355,7 @@ func fillSchemaOutputs(outputs resource.PropertyMap, properties []*schema.Proper
 		key := resource.PropertyKey(prop.Name)
 		v, ok := outputs[key]
 		if !ok {
-			if dryRun {
+			if fillUnknown {
 				outputs[key] = resource.NewProperty(resource.Computed{Element: resource.NewProperty("")})
 			} else {
 				outputs[key] = resource.NewNullProperty()
@@ -364,37 +365,37 @@ func fillSchemaOutputs(outputs resource.PropertyMap, properties []*schema.Proper
 			}
 			continue
 		}
-		fillSchemaOutputValue(v, prop.Type, dryRun)
+		fillSchemaOutputValue(v, prop.Type, fillUnknown)
 	}
 }
 
-func fillSchemaOutputValue(value resource.PropertyValue, targetType schema.Type, dryRun bool) {
+func fillSchemaOutputValue(value resource.PropertyValue, targetType schema.Type, fillUnknown bool) {
 	if value.IsSecret() {
-		fillSchemaOutputValue(value.SecretValue().Element, targetType, dryRun)
+		fillSchemaOutputValue(value.SecretValue().Element, targetType, fillUnknown)
 		return
 	}
 	if value.IsOutput() {
 		out := value.OutputValue()
 		if out.Known {
-			fillSchemaOutputValue(out.Element, targetType, dryRun)
+			fillSchemaOutputValue(out.Element, targetType, fillUnknown)
 		}
 		return
 	}
 	switch t := codegen.UnwrapType(targetType).(type) {
 	case *schema.ObjectType:
 		if value.IsObject() {
-			fillSchemaOutputs(value.ObjectValue(), t.Properties, dryRun)
+			fillSchemaOutputs(value.ObjectValue(), t.Properties, fillUnknown)
 		}
 	case *schema.ArrayType:
 		if value.IsArray() {
 			for _, elem := range value.ArrayValue() {
-				fillSchemaOutputValue(elem, t.ElementType, dryRun)
+				fillSchemaOutputValue(elem, t.ElementType, fillUnknown)
 			}
 		}
 	case *schema.MapType:
 		if value.IsObject() {
 			for _, elem := range value.ObjectValue() {
-				fillSchemaOutputValue(elem, t.ElementType, dryRun)
+				fillSchemaOutputValue(elem, t.ElementType, fillUnknown)
 			}
 		}
 	}

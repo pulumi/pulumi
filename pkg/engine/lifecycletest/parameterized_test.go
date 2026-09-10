@@ -24,15 +24,16 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	. "github.com/pulumi/pulumi/pkg/v3/engine" //nolint:revive
+	. "github.com/pulumi/pulumi/pkg/v3/engine"
 	lt "github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest/framework"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
@@ -67,18 +68,18 @@ func TestPackageRef(t *testing.T) {
 	}
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		pkg1Ref, err := monitor.RegisterPackage("pkgA", "1.0.0", "", nil, nil)
+		pkg1Ref, err := monitor.RegisterPackage("pkgA", "1.0.0", "", nil, nil, nil)
 		require.NoError(t, err)
-		pkg2Ref, err := monitor.RegisterPackage("pkgA", "2.0.0", "", nil, nil)
+		pkg2Ref, err := monitor.RegisterPackage("pkgA", "2.0.0", "", nil, nil, nil)
 		require.NoError(t, err)
 
 		// If we register the "same" provider in parallel, we should get the same ref.
-		promises := []*promise.Promise[string]{}
-		for i := 0; i < 100; i++ {
+		promises := make([]*promise.Promise[string], 0, 100)
+		for range 100 {
 			var pcs promise.CompletionSource[string]
 			promises = append(promises, pcs.Promise())
 			go func() {
-				ref, err := monitor.RegisterPackage("pkgB", "1.0.0", "downloadUrl", nil, nil)
+				ref, err := monitor.RegisterPackage("pkgB", "1.0.0", "downloadUrl", nil, nil, nil)
 				require.NoError(t, err)
 				pcs.MustFulfill(ref)
 			}()
@@ -108,7 +109,7 @@ func TestPackageRef(t *testing.T) {
 		return err
 	})
 
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
 	}
@@ -161,12 +162,12 @@ func TestReplacementParameterizedProvider(t *testing.T) {
 				},
 				InvokeF: func(_ context.Context, req plugin.InvokeRequest) (plugin.InvokeResponse, error) {
 					assert.Equal(t, "pkgExt:index:func", req.Tok.String())
-					assert.Equal(t, resource.NewProperty("in"), req.Args["input"])
+					assert.Equal(t, resource.NewProperty("in"), resource.ToResourcePropertyValue(req.Args.Get("input")))
 
 					return plugin.InvokeResponse{
-						Properties: resource.PropertyMap{
-							"output": resource.NewProperty("in " + param),
-						},
+						Properties: property.NewMap(map[string]property.Value{
+							"output": property.New("in " + param),
+						}),
 					}, nil
 				},
 				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
@@ -187,15 +188,15 @@ func TestReplacementParameterizedProvider(t *testing.T) {
 				},
 				CallF: func(_ context.Context, req plugin.CallRequest, _ *deploytest.ResourceMonitor) (plugin.CallResponse, error) {
 					assert.Equal(t, "pkgExt:index:call", req.Tok.String())
-					assert.Equal(t, resource.NewProperty("in"), req.Args["input"])
+					assert.Equal(t, property.New("in"), req.Args.Get("input"))
 					assert.Equal(t, map[resource.PropertyKey][]resource.URN{
 						"input": {"urn:pulumi:stack::m::typA::resB"},
 					}, req.Options.ArgDependencies)
 
 					return plugin.CallResponse{
-						Return: resource.PropertyMap{
-							"output": resource.NewProperty("output"),
-						},
+						Return: property.NewMap(map[string]property.Value{
+							"output": property.New("output"),
+						}),
 						ReturnDependencies: map[resource.PropertyKey][]resource.URN{
 							"output": {"urn:pulumi:stack::m::typA::resB"},
 						},
@@ -217,9 +218,9 @@ func TestReplacementParameterizedProvider(t *testing.T) {
 
 					return plugin.ConstructResponse{
 						URN: resource.NewURN("", "", "", req.Type, req.Name),
-						Outputs: resource.PropertyMap{
-							"output": resource.NewProperty("output"),
-						},
+						Outputs: property.NewMap(map[string]property.Value{
+							"output": property.New("output"),
+						}),
 						OutputDependencies: map[resource.PropertyKey][]resource.URN{
 							"output": {"urn:pulumi:stack::m::typA::resB"},
 						},
@@ -230,7 +231,7 @@ func TestReplacementParameterizedProvider(t *testing.T) {
 	}
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		pkgRef, err := monitor.RegisterPackage("pkgA", "1.0.0", "", nil, nil)
+		pkgRef, err := monitor.RegisterPackage("pkgA", "1.0.0", "", nil, nil, nil)
 		require.NoError(t, err)
 
 		// Register a resource using that base provider
@@ -258,7 +259,7 @@ func TestReplacementParameterizedProvider(t *testing.T) {
 			Name:    "pkgExt",
 			Version: "0.5.0",
 			Value:   []byte("replacement"),
-		})
+		}, nil)
 		require.NoError(t, err)
 
 		// Test registering a resource with the replacement provider
@@ -348,7 +349,7 @@ func TestReplacementParameterizedProvider(t *testing.T) {
 		return err
 	})
 
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
 	}
@@ -413,7 +414,7 @@ func TestReplacementParameterizedProviderConfig(t *testing.T) {
 						})
 					}
 
-					if !req.Inputs.DeepEquals(expected) {
+					if !resource.ToResourcePropertyMap(req.Inputs).DeepEquals(expected) {
 						return plugin.ConfigureResponse{},
 							fmt.Errorf("expected provider configuration to be %v, got %v", expected, req.Inputs)
 					}
@@ -447,7 +448,7 @@ func TestReplacementParameterizedProviderConfig(t *testing.T) {
 	}
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		pkgRef, err := monitor.RegisterPackage("pkgA", "1.0.0", "http://example.com", nil, nil)
+		pkgRef, err := monitor.RegisterPackage("pkgA", "1.0.0", "http://example.com", nil, nil, nil)
 		require.NoError(t, err)
 
 		// Register a resource using that base provider
@@ -461,7 +462,7 @@ func TestReplacementParameterizedProviderConfig(t *testing.T) {
 			Name:    "pkgExt",
 			Version: "0.5.0",
 			Value:   []byte("replacement"),
-		})
+		}, nil)
 		require.NoError(t, err)
 
 		_, err = monitor.RegisterResource("pkgExt:m:typA", "resB", true, deploytest.ResourceOptions{
@@ -472,7 +473,7 @@ func TestReplacementParameterizedProviderConfig(t *testing.T) {
 		return err
 	})
 
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
 		Config: config.Map{
@@ -565,7 +566,7 @@ func TestReplacementParameterizedProviderImport(t *testing.T) {
 	}
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		pkgRef, err := monitor.RegisterPackage("pkgA", "1.0.0", "", nil, nil)
+		pkgRef, err := monitor.RegisterPackage("pkgA", "1.0.0", "", nil, nil, nil)
 		require.NoError(t, err)
 
 		// Import a resource using that base provider
@@ -583,7 +584,7 @@ func TestReplacementParameterizedProviderImport(t *testing.T) {
 			Name:    "pkgExt",
 			Version: "0.5.0",
 			Value:   []byte("replacement"),
-		})
+		}, nil)
 		require.NoError(t, err)
 
 		// Test importing a resource with the replacement provider
@@ -617,7 +618,7 @@ func TestReplacementParameterizedProviderImport(t *testing.T) {
 		return err
 	})
 
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
 	}

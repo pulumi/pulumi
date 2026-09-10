@@ -26,8 +26,8 @@ import (
 	"testing"
 
 	"github.com/blang/semver"
+	"github.com/pulumi/pulumi/pkg/v3/registry"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/registry"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -113,7 +113,7 @@ func TestStartTemplatePublish(t *testing.T) {
 
 			client := &Client{
 				apiURL:   server.URL,
-				apiToken: "fake-token",
+				apiToken: apiAccessToken("fake-token"),
 				restClient: &defaultRESTClient{
 					client: &defaultHTTPClient{
 						client: newHTTPClient(),
@@ -197,7 +197,7 @@ func TestCompleteTemplatePublish(t *testing.T) {
 
 			client := &Client{
 				apiURL:   server.URL,
-				apiToken: "fake-token",
+				apiToken: apiAccessToken("fake-token"),
 				restClient: &defaultRESTClient{
 					client: &defaultHTTPClient{
 						client: newHTTPClient(),
@@ -403,7 +403,7 @@ func TestPublishTemplate_Integration(t *testing.T) {
 			// Create a mock cloud registry that uses the HTTP client methods
 			client := &Client{
 				apiURL:   server.URL,
-				apiToken: "fake-token",
+				apiToken: apiAccessToken("fake-token"),
 				restClient: &defaultRESTClient{
 					client: &defaultHTTPClient{
 						client: httpClient,
@@ -689,11 +689,10 @@ func TestListTemplates(t *testing.T) {
 		mockClient := newMockClient(mockServer)
 
 		// Call ListTemplates and collect results
-		//nolint:prealloc // capacity unknown ahead of time
 		searchResults := []apitype.TemplateMetadata{}
-		for tmpl, err := range mockClient.ListTemplates(
+		for tmpl, err := range registry.Templates(mockClient.ListTemplates(
 			t.Context(), registry.ListTemplatesOptions{Name: "my-template"},
-		) {
+		)) {
 			require.NoError(t, err)
 			searchResults = append(searchResults, tmpl)
 		}
@@ -757,7 +756,7 @@ func TestListTemplates(t *testing.T) {
 
 				responseData, err = json.Marshal(apitype.ListTemplatesResponse{
 					Templates:         firstPageTemplates,
-					ContinuationToken: ptr("next-page-token-1"),
+					ContinuationToken: new("next-page-token-1"),
 				})
 				require.NoError(t, err)
 			case 1:
@@ -767,7 +766,7 @@ func TestListTemplates(t *testing.T) {
 
 				responseData, err = json.Marshal(apitype.ListTemplatesResponse{
 					Templates:         secondPageTemplates,
-					ContinuationToken: ptr("next-page-token-2"),
+					ContinuationToken: new("next-page-token-2"),
 				})
 				require.NoError(t, err)
 			case 2:
@@ -788,11 +787,10 @@ func TestListTemplates(t *testing.T) {
 
 		mockClient := newMockClient(mockServer)
 
-		//nolint:prealloc // capacity unknown ahead of time
 		searchResults := []apitype.TemplateMetadata{}
-		for tmpl, err := range mockClient.ListTemplates(
+		for tmpl, err := range registry.Templates(mockClient.ListTemplates(
 			t.Context(), registry.ListTemplatesOptions{Name: "my-template"},
-		) {
+		)) {
 			require.NoError(t, err)
 			searchResults = append(searchResults, tmpl)
 		}

@@ -1,0 +1,6 @@
+extends: existence
+message: "Keep changelog entries short - at most two sentences"
+link: https://github.com/pulumi/pulumi/blob/master/CONTRIBUTING.md#changelog-messages
+level: warning
+raw:
+  - '(?s)(?<!\be\.g)(?<!\bi\.e)(?<!\betc)(?<!\bvs)[.!?]\s.*?(?<!\be\.g)(?<!\bi\.e)(?<!\betc)(?<!\bvs)[.!?]\s'

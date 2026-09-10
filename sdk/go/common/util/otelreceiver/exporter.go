@@ -51,11 +51,17 @@ type SpanExporter interface {
 //   - file:// - writes OTLP JSON to a local file
 //   - grpc:// - sends OTLP via insecure gRPC (local collectors)
 //   - grpcs:// - sends OTLP via TLS-secured gRPC with optional header auth
+//   - http:// - sends OTLP via plain HTTP (local collectors)
+//   - https:// - sends OTLP via TLS-secured HTTP with optional header auth
 //
-// grpc:// and grpcs:// support passing arbitrary gRPC metadata headers as
-// URL query parameters:
+// The remote schemes support passing arbitrary metadata headers as URL query
+// parameters:
 //
 //	grpcs://api.honeycomb.io:443?x-honeycomb-team=YOUR_API_KEY
+//	https://api.honeycomb.io?x-honeycomb-team=YOUR_API_KEY
+//
+// For http:// and https:// endpoints the OTLP default path /v1/traces is
+// appended when no path is given.
 func NewExporter(endpoint string) (SpanExporter, error) {
 	if endpoint == "" {
 		return nil, errors.New("endpoint is required")
@@ -94,6 +100,19 @@ func NewExporter(endpoint string) (SpanExporter, error) {
 			tls:     true,
 			headers: headersFromQuery(u.Query()),
 		})
+
+	case "http", "https":
+		if u.Host == "" {
+			return nil, fmt.Errorf("host is required for %s:// endpoint", u.Scheme)
+		}
+		target := url.URL{Scheme: u.Scheme, Host: u.Host, Path: u.Path}
+		if target.Path == "" || target.Path == "/" {
+			target.Path = "/v1/traces"
+		}
+		return newHTTPExporterWithOptions(httpExporterOptions{
+			url:     target.String(),
+			headers: headersFromQuery(u.Query()),
+		}), nil
 
 	default:
 		return nil, fmt.Errorf("unsupported endpoint scheme: %s", u.Scheme)

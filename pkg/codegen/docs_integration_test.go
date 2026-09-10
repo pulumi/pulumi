@@ -20,7 +20,8 @@ package codegen_test
 
 import (
 	"encoding/json"
-	"os"
+	"io"
+	"net/http"
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
@@ -238,7 +239,7 @@ func TestGetTypeName(t *testing.T) {
 			name:   "object",
 			schema: schema1,
 			typ:    mustToken(t, schema1.Types().Get, "pkg:index:simpleType"),
-			input:  ptr(true),
+			input:  new(true),
 
 			expected: map[language]string{
 				golang: "SimpleType",
@@ -250,7 +251,7 @@ func TestGetTypeName(t *testing.T) {
 			name:   "object",
 			schema: schema1,
 			typ:    mustToken(t, schema1.Types().Get, "pkg:index:simpleType"),
-			input:  ptr(false),
+			input:  new(false),
 
 			expected: map[language]string{
 				golang: "SimpleType",
@@ -262,7 +263,7 @@ func TestGetTypeName(t *testing.T) {
 			name:   "map-of-object",
 			schema: schema1,
 			typ:    &schema.MapType{ElementType: mustToken(t, schema1.Types().Get, "pkg:index:simpleType")},
-			input:  ptr(false),
+			input:  new(false),
 
 			expected: map[language]string{
 				golang: "map[string]SimpleType",
@@ -274,7 +275,7 @@ func TestGetTypeName(t *testing.T) {
 			name:   "module-object",
 			schema: schema1,
 			typ:    mustToken(t, schema1.Types().Get, "pkg:module:anotherType"),
-			input:  ptr(true),
+			input:  new(true),
 
 			expected: map[language]string{
 				golang: "module.AnotherType",
@@ -286,7 +287,7 @@ func TestGetTypeName(t *testing.T) {
 			name:   "module-object-from-module",
 			schema: schema1,
 			typ:    mustToken(t, schema1.Types().Get, "pkg:module:anotherType"),
-			input:  ptr(true),
+			input:  new(true),
 			module: "module",
 
 			expected: map[language]string{
@@ -311,7 +312,7 @@ func TestGetTypeName(t *testing.T) {
 			schema: schemaWithOverrides,
 			typ:    mustToken(t, schemaWithOverrides.Types().Get, "pkg:shouldoverride:simpleType"),
 			module: schemaWithOverrides.TokenToModule("pkg:shouldoverride:simpleType"),
-			input:  ptr(true),
+			input:  new(true),
 			expected: map[language]string{
 				golang: "SimpleType",
 				nodejs: "overridden.SimpleType",
@@ -322,7 +323,7 @@ func TestGetTypeName(t *testing.T) {
 			name:   "overridden-names",
 			schema: schemaWithOverrides,
 			typ:    mustToken(t, schemaWithOverrides.Types().Get, "pkg:shouldoverride:simpleType"),
-			input:  ptr(false),
+			input:  new(false),
 			expected: map[language]string{
 				golang: "overridden.SimpleType",
 				nodejs: "overridden.SimpleType",
@@ -576,7 +577,7 @@ func TestGetMethodResultName_NoImporter(t *testing.T) {
 		},
 	}
 
-	pkg, err := schema.ImportSpec(schemaSpec, nil, schema.ValidationOptions{
+	pkg, err := schema.ImportSpec(schemaSpec, nil, schema.NewNullLoader(), schema.ValidationOptions{
 		AllowDanglingReferences: true,
 	})
 	require.NoError(t, err)
@@ -754,18 +755,29 @@ func testDocsGenHelper(
 	})
 }
 
-func BenchmarkGetPropertyNames(b *testing.B) {
-	// Benchmark against a large real-provider schema so the timings are meaningful. This is one of
-	// the heavy schemas slated for removal; repoint it when aws-5.4.0.json is removed.
-	schemaBytes, err := os.ReadFile("../../tests/testdata/codegen/aws-5.4.0.json")
+// benchmarkSchemaBytes fetches a large real-provider schema so the bind timings below stay
+// meaningful. The schema is too large to store in-repo, so it is downloaded during setup.
+func benchmarkSchemaBytes(b *testing.B) []byte {
+	const url = "https://raw.githubusercontent.com/pulumi/pulumi-aws/v5.4.0/" +
+		"provider/cmd/pulumi-resource-aws/schema.json"
+	resp, err := http.Get(url)
 	require.NoError(b, err)
+	defer resp.Body.Close()
+	require.Equal(b, http.StatusOK, resp.StatusCode)
+	bytes, err := io.ReadAll(resp.Body)
+	require.NoError(b, err)
+	return bytes
+}
+
+func BenchmarkGetPropertyNames(b *testing.B) {
+	schemaBytes := benchmarkSchemaBytes(b)
 	b.Run("full-bind", func(b *testing.B) {
 		for range b.N {
 			var spec schema.PackageSpec
 			require.NoError(b, json.Unmarshal(schemaBytes, &spec))
 			partial, err := schema.ImportSpec(spec, map[string]schema.Language{
 				"nodejs": nodejs_codegen.Importer,
-			}, schema.ValidationOptions{AllowDanglingReferences: true})
+			}, schema.NewNullLoader(), schema.ValidationOptions{AllowDanglingReferences: true})
 			require.NoError(b, err)
 
 			res, ok := partial.GetResource("aws:ec2/instance:Instance")
@@ -784,7 +796,7 @@ func BenchmarkGetPropertyNames(b *testing.B) {
 			require.NoError(b, json.Unmarshal(schemaBytes, &spec))
 			partial, err := schema.ImportPartialSpec(spec, map[string]schema.Language{
 				"nodejs": nodejs_codegen.Importer,
-			}, nil)
+			}, schema.NewNullLoader())
 			require.NoError(b, err)
 
 			res, ok, err := partial.Resources().Get("aws:ec2/instance:Instance")
@@ -804,7 +816,7 @@ func bind(t *testing.T, spec schema.PackageSpec) schema.PackageReference {
 		"go":     golang_codegen.Importer,
 		"nodejs": nodejs_codegen.Importer,
 		"python": python_codegen.Importer,
-	}, schema.ValidationOptions{
+	}, schema.NewNullLoader(), schema.ValidationOptions{
 		AllowDanglingReferences: true,
 	})
 	require.NoError(t, err)
@@ -818,8 +830,6 @@ func mustToken[T any](t *testing.T, get func(string) (T, bool, error), token str
 	require.True(t, ok)
 	return v
 }
-
-func ptr[T any](v T) *T { return &v }
 
 func marshalIntoRaw(t *testing.T, v any) schema.RawMessage {
 	b, err := json.Marshal(v)

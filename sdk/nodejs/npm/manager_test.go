@@ -38,6 +38,36 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestGetLinkPackageProperty(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name        string
+		packageName string
+		path        string
+		want        string
+	}{
+		{
+			name:        "scoped package",
+			packageName: "@pulumi/aap",
+			path:        "sdks/aap",
+			want:        `dependencies[@pulumi/aap]=file:sdks/aap`,
+		},
+		{
+			name:        "unscoped package",
+			packageName: "pulumi-aap",
+			path:        "sdks/aap",
+			want:        `dependencies[pulumi-aap]=file:sdks/aap`,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			got := getLinkPackageProperty(tt.packageName, tt.path)
+			assert.Equal(t, tt.want, got)
+		})
+	}
+}
+
 //nolint:paralleltest // changes working directory
 func TestNPMInstall(t *testing.T) {
 	t.Run("development", func(t *testing.T) {
@@ -269,7 +299,7 @@ func TestPack(t *testing.T) {
 
 			require.NoError(t, err)
 			// check that the artifact contains a package.json
-			b, err := gzip.NewReader(bytes.NewReader((artifact)))
+			b, err := gzip.NewReader(bytes.NewReader(artifact))
 			require.NoError(t, err)
 			tr := tar.NewReader(b)
 			for {
@@ -425,6 +455,13 @@ func testInstall(t *testing.T, packageManager string, production bool) {
 	}`)
 	require.NoError(t, os.WriteFile(packageJSONFilename, packageJSON, 0o600))
 
+	if packageManager == "pnpm" {
+		// @pulumi/pulumi pulls in protobufjs, whose (obsolete) install script pnpm 11 blocks by default
+		// (ERR_PNPM_IGNORED_BUILDS). Opt out of running it so the install succeeds.
+		require.NoError(t, os.WriteFile(filepath.Join(pkgdir, "pnpm-workspace.yaml"),
+			[]byte("allowBuilds:\n  protobufjs: false\n"), 0o600))
+	}
+
 	writeLockFile(t, pkgdir, packageManager)
 
 	// Install dependencies, passing nil for stdout and stderr, which connects
@@ -475,6 +512,9 @@ func fakeNPMRegistry(t testing.TB) string {
 			fmt.Fprintf(w, `{
 				"name": "@pulumi/pulumi",
 				"dist-tags": {"latest": "3.0.0"},
+				"time": {
+					"3.0.0": "2020-01-01T00:00:00.000Z"
+				},
 				"versions": {
 					"3.0.0": {
 						"name": "@pulumi/pulumi",

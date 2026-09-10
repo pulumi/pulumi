@@ -1,6 +1,0 @@
-component: cli
-kind: fix
-body: Ensure `pulumi logout` clears the current tokenless backend in coding agent environments
-time: 2026-06-11T00:00:00.000000+01:00
-custom:
-    PR: "23540"

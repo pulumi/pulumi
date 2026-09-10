@@ -26,10 +26,13 @@ import (
 	"sort"
 	"strings"
 
+	mapset "github.com/deckarep/golang-set/v2"
+
 	"github.com/zclconf/go-cty/cty"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/cgstrings"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model/format"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
@@ -38,7 +41,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/maputil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -60,6 +62,21 @@ type generator struct {
 	quotes                  map[model.Expression]string
 	isComponent             bool
 	deferredOutputVariables []*pcl.DeferredOutputVariable
+
+	// rangeVariable is the Python loop variable bound for the resource currently
+	// being range-generated, replacing the PCL `range` scope name. It is unique
+	// per range statement so that distinct ranges in one program never share a
+	// loop variable — which would otherwise type-lock its element type across
+	// loops and reject, for example, a map range's string key after a numeric
+	// range. Empty outside a ranged resource, where references keep the `range`
+	// name.
+	rangeVariable string
+
+	// resourceInputObjectTokens memoizes, per package name, the tokens of object
+	// types reachable from resource input properties. sdk-gen exports an "<Name>Args"
+	// input class for exactly these; object types used only by function inputs are
+	// exported under their plain name.
+	resourceInputObjectTokens map[string]codegen.StringSet
 
 	// insideApplyLambda is set while generating the body of an __apply callback.
 	insideApplyLambda bool
@@ -83,7 +100,7 @@ func GenerateProgram(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, 
 	nodes := pcl.Linearize(program)
 
 	// Creating a list to store and later print helper methods if they turn out to be needed
-	preambleHelperMethods := codegen.NewStringSet()
+	preambleHelperMethods := mapset.NewSet[string]()
 
 	var main bytes.Buffer
 	g.genPreamble(&main, program, preambleHelperMethods)
@@ -99,6 +116,7 @@ func GenerateProgram(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, 
 	for componentDir, component := range program.CollectComponents() {
 		componentFilename := strings.ReplaceAll(filepath.Base(componentDir), "-", "_")
 		componentName := component.DeclarationName()
+		pcl.MapProvidersAsResources(component.Program)
 		componentGenerator, err := newGenerator(component.Program)
 		if err != nil {
 			return files, componentGenerator.diagnostics, err
@@ -107,7 +125,7 @@ func GenerateProgram(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, 
 		// mark the generator to target components
 		componentGenerator.isComponent = true
 
-		componentPreambleMethods := codegen.NewStringSet()
+		componentPreambleMethods := mapset.NewSet[string]()
 		var componentBuffer bytes.Buffer
 		// generate imports for the component
 		componentGenerator.genPreamble(&componentBuffer, component.Program, componentPreambleMethods)
@@ -118,16 +136,18 @@ func GenerateProgram(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, 
 	return files, g.diagnostics, nil
 }
 
+// For Python 3.13 and earlier, Pyright treats TypedDict keys as class-scoped variables, so a key named "float" shadows
+// the builtin in later annotations. Qualify with `builtins` to avoid the ambiguity.
 func componentInputElementType(pclType model.Type) string {
 	switch pclType {
 	case model.BoolType:
-		return "bool"
+		return "_builtins.bool"
 	case model.IntType:
-		return "int"
+		return "_builtins.int"
 	case model.NumberType:
-		return "float"
+		return "_builtins.float"
 	case model.StringType:
-		return "str"
+		return "_builtins.str"
 	default:
 		switch pclType := pclType.(type) {
 		case *model.ListType:
@@ -135,9 +155,8 @@ func componentInputElementType(pclType model.Type) string {
 			return fmt.Sprintf("list[%s]", elementType)
 		case *model.MapType:
 			elementType := componentInputElementType(pclType.ElementType)
-			return fmt.Sprintf("Dict[str, %s]", elementType)
-		// reduce option(T) to just T
-		// the TypedDict has total=False which means all properties are optional by default
+			return fmt.Sprintf("Dict[_builtins.str, %s]", elementType)
+		// Reduce option(T) to just T. TypedDict key optionality is emitted separately.
 		case *model.UnionType:
 			if len(pclType.ElementTypes) == 2 && pclType.ElementTypes[0] == model.NoneType {
 				return componentInputElementType(pclType.ElementTypes[1])
@@ -149,6 +168,33 @@ func componentInputElementType(pclType model.Type) string {
 			return "Any"
 		}
 	}
+}
+
+type componentTypedDictProperty struct {
+	name     string
+	typ      string
+	optional bool
+}
+
+func (g *generator) genComponentTypedDict(
+	w io.Writer,
+	name string,
+	properties []componentTypedDictProperty,
+) {
+	g.Fgenf(w, "class %s(TypedDict):\n", name)
+	g.Indented(func() {
+		if len(properties) == 0 {
+			g.Fgenf(w, "%spass\n", g.Indent)
+			return
+		}
+		for _, property := range properties {
+			propertyType := property.typ
+			if property.optional {
+				propertyType = fmt.Sprintf("NotRequired[%s]", propertyType)
+			}
+			g.Fgenf(w, "%s%s: %s\n", g.Indent, property.name, propertyType)
+		}
+	})
 }
 
 // collectObjectTypedConfigVariables returns the object types in config variables need to be emitted
@@ -175,63 +221,89 @@ func collectObjectTypedConfigVariables(component *pcl.Component) map[string]*mod
 	return objectTypes
 }
 
+func componentProgramNeedsNotRequired(program *pcl.Program) bool {
+	for _, configVar := range program.ConfigVariables() {
+		if configVar.DefaultValue != nil || configVar.Nullable {
+			return true
+		}
+
+		var objectType *model.ObjectType
+		switch configType := configVar.Type().(type) {
+		case *model.ObjectType:
+			objectType = configType
+		case *model.ListType:
+			objectType, _ = configType.ElementType.(*model.ObjectType)
+		case *model.MapType:
+			objectType, _ = configType.ElementType.(*model.ObjectType)
+		}
+		if objectType != nil {
+			for _, propertyType := range objectType.Properties {
+				if model.IsOptionalType(propertyType) {
+					return true
+				}
+			}
+		}
+	}
+
+	return false
+}
+
 func (g *generator) genComponentDefinition(w io.Writer, component *pcl.Component, componentName string) {
 	configVars := component.Program.ConfigVariables()
 	hasAnyInputVariables := len(configVars) > 0
 	if hasAnyInputVariables {
 		objectTypedConfigs := collectObjectTypedConfigVariables(component)
-		variableNames := maputil.SortedKeys(objectTypedConfigs)
+		variableNames := slices.Sorted(maps.Keys(objectTypedConfigs))
 		// generate resource args for this component
 		for _, variableName := range variableNames {
 			objectType := objectTypedConfigs[variableName]
-			objectTypeName := title(variableName)
-			g.Fprintf(w, "class %s(TypedDict, total=False):\n", objectTypeName)
-			g.Indented(func() {
-				propertyNames := maputil.SortedKeys(objectType.Properties)
-				for _, propertyName := range propertyNames {
-					propertyType := objectType.Properties[propertyName]
-					inputType := componentInputElementType(propertyType)
-					g.Fprintf(w, "%s%s: Input[%s]\n",
-						g.Indent,
-						propertyName,
-						inputType)
-				}
-			})
+			objectTypeName := cgstrings.UppercaseFirst(variableName)
+			propertyNames := slices.Sorted(maps.Keys(objectType.Properties))
+			properties := slice.Prealloc[componentTypedDictProperty](len(propertyNames))
+			for _, propertyName := range propertyNames {
+				propertyType := objectType.Properties[propertyName]
+				properties = append(properties, componentTypedDictProperty{
+					name:     propertyName,
+					typ:      fmt.Sprintf("Input[%s]", componentInputElementType(propertyType)),
+					optional: model.IsOptionalType(propertyType),
+				})
+			}
+			g.genComponentTypedDict(w, objectTypeName, properties)
 			g.Fgen(w, "\n")
 		}
 
 		// emit args class
-		g.Fgenf(w, "class %sArgs(TypedDict, total=False):\n", componentName)
-		g.Indented(func() {
-			// define constructor args
-			for _, configVar := range configVars {
-				argName := configVar.Name()
-				argType := componentInputElementType(configVar.Type())
-				switch configType := configVar.Type().(type) {
+		properties := slice.Prealloc[componentTypedDictProperty](len(configVars))
+		for _, configVar := range configVars {
+			argName := configVar.Name()
+			argType := componentInputElementType(configVar.Type())
+			switch configType := configVar.Type().(type) {
+			case *model.ObjectType:
+				// for objects of type T, generate T as is
+				argType = cgstrings.UppercaseFirst(configVar.Name())
+			case *model.ListType:
+				// for list(T) where T is an object type, generate List[T]
+				switch configType.ElementType.(type) {
 				case *model.ObjectType:
-					// for objects of type T, generate T as is
-					argType = title(configVar.Name())
-				case *model.ListType:
-					// for list(T) where T is an object type, generate List[T]
-					switch configType.ElementType.(type) {
-					case *model.ObjectType:
-						objectTypeName := title(configVar.Name())
-						argType = fmt.Sprintf("list(%s)", objectTypeName)
-					}
-				case *model.MapType:
-					// for map(T) where T is an object type, generate Dict[str, T]
-					switch configType.ElementType.(type) {
-					case *model.ObjectType:
-						objectTypeName := title(configVar.Name())
-						argType = fmt.Sprintf("Dict[str, %s]", objectTypeName)
-					}
+					objectTypeName := cgstrings.UppercaseFirst(configVar.Name())
+					argType = fmt.Sprintf("list(%s)", objectTypeName)
 				}
-
-				argType = fmt.Sprintf("Input[%s]", argType)
-				g.Fgenf(w, "%s%s: %s", g.Indent, argName, argType)
-				g.Fgen(w, "\n")
+			case *model.MapType:
+				// for map(T) where T is an object type, generate Dict[str, T]
+				switch configType.ElementType.(type) {
+				case *model.ObjectType:
+					objectTypeName := cgstrings.UppercaseFirst(configVar.Name())
+					argType = fmt.Sprintf("Dict[str, %s]", objectTypeName)
+				}
 			}
-		})
+
+			properties = append(properties, componentTypedDictProperty{
+				name:     argName,
+				typ:      fmt.Sprintf("Input[%s]", argType),
+				optional: configVar.DefaultValue != nil || configVar.Nullable,
+			})
+		}
+		g.genComponentTypedDict(w, componentName+"Args", properties)
 
 		g.Fgen(w, "\n")
 	}
@@ -310,7 +382,7 @@ func (g *generator) genComponentDefinition(w io.Writer, component *pcl.Component
 
 			outputVars := component.Program.OutputVariables()
 			for _, output := range outputVars {
-				g.Fgenf(w, "%sself.%s = %v\n", g.Indent, output.Name(), output.Value)
+				g.Fgenf(w, "%sself.%s = %v\n", g.Indent, PyName(output.Name()), output.Value)
 			}
 
 			if len(outputVars) == 0 {
@@ -476,23 +548,23 @@ func newGenerator(program *pcl.Program) (*generator, error) {
 	return g, nil
 }
 
-func makeUniqueName(base string, used codegen.StringSet) string {
+func makeUniqueName(base string, used mapset.Set[string]) string {
 	name := EnsureKeywordSafe(PyName(base))
-	if !used.Has(name) {
+	if !used.Contains(name) {
 		used.Add(name)
 		return name
 	}
 
 	for i := 1; ; i++ {
 		candidate := fmt.Sprintf("%s_%d", name, i)
-		if !used.Has(candidate) {
+		if !used.Contains(candidate) {
 			used.Add(candidate)
 			return candidate
 		}
 	}
 }
 
-func (g *generator) ensurePackageImportAlias(pkg string, used codegen.StringSet) string {
+func (g *generator) ensurePackageImportAlias(pkg string, used mapset.Set[string]) string {
 	pkgKey := makeValidIdentifier(pkg)
 	if alias, ok := g.packageImportAliases[pkgKey]; ok {
 		return alias
@@ -511,12 +583,9 @@ func (g *generator) packageAlias(pkg string) string {
 	return EnsureKeywordSafe(PyName(pkgKey))
 }
 
-func (g *generator) assignRootNodeIdentifiers(program *pcl.Program, reserved codegen.StringSet) {
+func (g *generator) assignRootNodeIdentifiers(program *pcl.Program, reserved mapset.Set[string]) {
 	g.nodeIdentifiers = map[string]string{}
-	used := codegen.NewStringSet()
-	for name := range reserved {
-		used.Add(name)
-	}
+	used := reserved.Clone()
 	for _, node := range program.Nodes {
 		var name string
 		switch n := node.(type) {
@@ -537,8 +606,8 @@ func (g *generator) assignRootNodeIdentifiers(program *pcl.Program, reserved cod
 	}
 }
 
-func (g *generator) importAliasIdentifiers() codegen.StringSet {
-	used := codegen.NewStringSet("pulumi")
+func (g *generator) importAliasIdentifiers() mapset.Set[string] {
+	used := mapset.NewSet("pulumi")
 	for _, alias := range g.packageImportAliases {
 		used.Add(alias)
 	}
@@ -617,11 +686,11 @@ func rewriteApplyLambdaBody(applyLambda *model.AnonymousFunctionExpression, args
 	return rewrittenBody
 }
 
-func (g *generator) genPreamble(w io.Writer, program *pcl.Program, preambleHelperMethods codegen.StringSet) {
+func (g *generator) genPreamble(w io.Writer, program *pcl.Program, preambleHelperMethods mapset.Set[string]) {
 	// Print the pulumi import at the top.
 	g.Fprintln(w, "import pulumi")
 	g.packageImportAliases = map[string]string{}
-	usedImportAliases := codegen.NewStringSet("pulumi")
+	usedImportAliases := mapset.NewSet("pulumi")
 
 	// Accumulate other imports for the various providers. Don't emit them yet, as we need to sort them later on.
 	type Import struct {
@@ -637,6 +706,10 @@ func (g *generator) genPreamble(w io.Writer, program *pcl.Program, preambleHelpe
 		switch r := n.(type) {
 		case *pcl.Hook:
 			importSet["subprocess"] = Import{ImportAs: false}
+		case *pcl.ConfigVariable:
+			if configVariableNeedsInputAnnotation(r) && configVariableInputElementType(r.Type()) == "Any" {
+				needsTypingAny = true
+			}
 		case *pcl.Resource:
 			if r.Options != nil && r.Options.Range != nil {
 				needsTypingAny = true
@@ -723,11 +796,11 @@ func (g *generator) genPreamble(w io.Writer, program *pcl.Program, preambleHelpe
 	}
 
 	var imports []string
-	importSetNames := codegen.NewStringSet()
+	importSetNames := mapset.NewSet[string]()
 	for k := range importSet {
 		importSetNames.Add(k)
 	}
-	for _, pkg := range importSetNames.SortedValues() {
+	for _, pkg := range mapset.Sorted(importSetNames) {
 		if pkg == "pulumi" {
 			continue
 		}
@@ -741,7 +814,13 @@ func (g *generator) genPreamble(w io.Writer, program *pcl.Program, preambleHelpe
 
 	if g.isComponent {
 		// add typing information
+		if len(program.ConfigVariables()) > 0 {
+			imports = append(imports, "import builtins as _builtins")
+		}
 		imports = append(imports, "from typing import Optional, Dict, TypedDict, Any")
+		if componentProgramNeedsNotRequired(program) {
+			imports = append(imports, "from typing_extensions import NotRequired")
+		}
 		imports = append(imports, "from pulumi import Input")
 	} else if needsTypingAny {
 		imports = append(imports, "from typing import Any")
@@ -750,6 +829,10 @@ func (g *generator) genPreamble(w io.Writer, program *pcl.Program, preambleHelpe
 	seenComponentImports := map[string]bool{}
 	for _, node := range program.Nodes {
 		if component, ok := node.(*pcl.Component); ok {
+			// A component declared without a source has no module to import from.
+			if component.Program == nil {
+				continue
+			}
 			componentPath := strings.ReplaceAll(filepath.Base(component.DirPath()), "-", "_")
 			componentName := component.DeclarationName()
 			pathAndName := componentPath + "-" + componentName
@@ -768,7 +851,7 @@ func (g *generator) genPreamble(w io.Writer, program *pcl.Program, preambleHelpe
 	g.Fprint(w, "\n")
 
 	// If we collected any helper methods that should be added, write them just before the main func
-	for _, preambleHelperMethodBody := range preambleHelperMethods.SortedValues() {
+	for _, preambleHelperMethodBody := range mapset.Sorted(preambleHelperMethods) {
 		g.Fprintf(w, "%s\n\n", preambleHelperMethodBody)
 	}
 }
@@ -807,7 +890,7 @@ func tokenToQualifiedName(pkgAlias, module, member string) string {
 		module = "." + module
 	}
 
-	return fmt.Sprintf("%s%s.%s", pkgAlias, module, title(member))
+	return fmt.Sprintf("%s%s.%s", pkgAlias, module, cgstrings.UppercaseFirst(cgstrings.Unhyphenate(member)))
 }
 
 // resourceTypeName computes the qualified name of a python resource.
@@ -926,14 +1009,57 @@ func (g *generator) argumentTypeName(expr model.Expression, destType model.Type)
 	// Normalize module.
 	pkg, err := objType.PackageReference.Definition()
 	contract.AssertNoErrorf(err, "error loading definition for package %q", objType.PackageReference.Name())
+	compatibility := ""
 	if lang, ok := pkg.Language["python"]; ok {
 		if pkgInfo, ok := lang.(PackageInfo); ok {
 			if m, ok := pkgInfo.ModuleNameOverrides[module]; ok {
 				modName = m
 			}
+			compatibility = pkgInfo.Compatibility
 		}
 	}
-	return tokenToQualifiedName(g.packageAlias(pkgName), modName, member) + "Args"
+	name := tokenToQualifiedName(g.packageAlias(pkgName), modName, member)
+	// Match sdk-gen's naming: input-shape object types (and everything under the tfbridge20 and
+	// kubernetes20 compatibility modes) get an "Args" suffix. A plain-shape object type is named
+	// "<Name>Args" only when the SDK also exports that input class, which it does for types
+	// reachable from resource inputs; types used only by function inputs keep their plain name.
+	if objType.IsInputShape() || compatibility == tfbridge20 || compatibility == kubernetes20 ||
+		g.usedByResourceInputs(objType, pkg) {
+		name += "Args"
+	}
+	return name
+}
+
+// usedByResourceInputs reports whether obj is reachable from the input properties of any
+// resource in pkg, which is when python sdk-gen generates an "<Name>Args" input class for it.
+func (g *generator) usedByResourceInputs(obj *schema.ObjectType, pkg *schema.Package) bool {
+	if g.resourceInputObjectTokens == nil {
+		g.resourceInputObjectTokens = map[string]codegen.StringSet{}
+	}
+	tokens, ok := g.resourceInputObjectTokens[pkg.Name]
+	if !ok {
+		tokens = codegen.StringSet{}
+		scan := func(r *schema.Resource) {
+			if r == nil {
+				return
+			}
+			properties := r.InputProperties
+			if r.StateInputs != nil {
+				properties = append(slices.Clip(properties), r.StateInputs.Properties...)
+			}
+			visitObjectTypes(properties, func(t schema.Type) {
+				if T, ok := t.(*schema.ObjectType); ok {
+					tokens.Add(T.Token)
+				}
+			})
+		}
+		scan(pkg.Provider)
+		for _, r := range pkg.Resources {
+			scan(r)
+		}
+		g.resourceInputObjectTokens[pkg.Name] = tokens
+	}
+	return tokens.Has(obj.Token)
 }
 
 // makeResourceName returns the expression that should be emitted for a resource's "name" parameter given its base name
@@ -1183,12 +1309,38 @@ func (g *generator) genHookNode(w io.Writer, h *pcl.Hook) {
 	hookName := h.LogicalName()
 
 	var cmdExprs []model.Expression
+	var cmdTemps []*quoteTemp
 	if tuple, ok := h.Command.(*model.TupleConsExpression); ok {
-		cmdExprs = tuple.Expressions
+		for _, expr := range tuple.Expressions {
+			expr, temps := g.lowerHookCommandExpression(expr)
+			cmdExprs = append(cmdExprs, expr)
+			cmdTemps = append(cmdTemps, temps...)
+		}
+	}
+
+	if h.Kind == pcl.HookKindError {
+		// Error hooks return whether the failed operation should be retried: retry if and
+		// only if the command exits successfully.
+		g.Fgenf(w, "%sdef %s(args):\n", g.Indent, fnName)
+		g.Indented(func() {
+			g.genTemps(w, cmdTemps)
+			g.Fgenf(w, "%sresult = subprocess.run([", g.Indent)
+			for i, arg := range cmdExprs {
+				if i > 0 {
+					g.Fgenf(w, ", ")
+				}
+				g.genPyStringArg(w, arg)
+			}
+			g.Fgenf(w, "], check=False)\n")
+			g.Fgenf(w, "%sreturn result.returncode == 0\n", g.Indent)
+		})
+		g.Fgenf(w, "%s%s = pulumi.ErrorHook(%q, %s)\n", g.Indent, pyName, hookName, fnName)
+		return
 	}
 
 	g.Fgenf(w, "%sdef %s(args):\n", g.Indent, fnName)
 	g.Indented(func() {
+		g.genTemps(w, cmdTemps)
 		g.Fgenf(w, "%ssubprocess.run([", g.Indent)
 		for i, arg := range cmdExprs {
 			if i > 0 {
@@ -1242,6 +1394,32 @@ func (g *generator) genHookDeclarations(r *pcl.Resource) map[string][]string {
 		}
 	}
 	return hookVars
+}
+
+// genMapRangedCollection emits a dict-typed collection, keyed by the map key and
+// strongly typed by valueType, for a resource or component that ranges over a
+// map. Indexing such a collection by key (e.g. `r["k"]`) is then well-typed,
+// unlike the list used for numeric and list ranges. preInstantiate, when
+// non-nil, runs inside the loop before each resource is instantiated.
+func (g *generator) genMapRangedCollection(
+	w io.Writer, nameVar, valueType, name string, rangeExpr model.Expression,
+	needsDefinition bool, preInstantiate func(), instantiate func(string),
+) {
+	if needsDefinition {
+		g.Fgenf(w, "%s%s: dict[str, %s] = {}\n", g.Indent, nameVar, valueType)
+	}
+	g.Fgenf(w,
+		"%sfor %s in [{\"key\": k, \"value\": v} for [k, v] in sorted((%.v).items())]:\n",
+		g.Indent, g.rangeVariable, rangeExpr)
+	resName := g.makeResourceName(name, g.rangeVariable+"['key']")
+	g.Indented(func() {
+		if preInstantiate != nil {
+			preInstantiate()
+		}
+		g.Fgenf(w, "%s%s[%s['key']] = ", g.Indent, nameVar, g.rangeVariable)
+		instantiate(resName)
+		g.Fprint(w, "\n")
+	})
 }
 
 // genResourceDeclaration handles the generation of instantiations resources.
@@ -1315,14 +1493,19 @@ func (g *generator) genResourceDeclaration(w io.Writer, r *pcl.Resource, needsDe
 
 	if r.Options != nil && r.Options.Range != nil {
 		rangeExpr := r.Options.Range
+		prevRangeVariable := g.rangeVariable
+		g.rangeVariable = nameVar + "_range"
+		defer func() { g.rangeVariable = prevRangeVariable }()
 		rangeType := r.Options.Range.Type()
 
 		if model.ContainsOutputs(rangeType) {
 			loweredRangeExpr, rangeExprTemps := g.lowerExpression(rangeExpr, rangeType)
 			if model.InputType(model.BoolType).ConversionFrom(r.Options.Range.Type()) == model.SafeConversion {
 				g.Fgenf(w, "%s%s = None\n", g.Indent, nameVar)
+			} else if _, isMap := pcl.UnwrapOption(model.ResolveOutputs(rangeType)).(*model.MapType); isMap {
+				g.Fgenf(w, "%s%s: dict[str, %s] = {}\n", g.Indent, nameVar, qualifiedMemberName)
 			} else {
-				g.Fgenf(w, "%s%s: list[Any] = []\n", g.Indent, nameVar)
+				g.Fgenf(w, "%s%s: list[%s] = []\n", g.Indent, nameVar, qualifiedMemberName)
 			}
 			localFuncName := "create_" + PyName(r.LogicalName())
 
@@ -1423,24 +1606,23 @@ func (g *generator) genResourceDeclaration(w io.Writer, r *pcl.Resource, needsDe
 				instantiate(g.makeResourceName(name, ""))
 				g.Fprint(w, "\n")
 			})
+		} else if _, isMap := pcl.UnwrapOption(rangeExpr.Type()).(*model.MapType); isMap {
+			g.genMapRangedCollection(w, nameVar, qualifiedMemberName, name, rangeExpr, needsDefinition, nil, instantiate)
 		} else {
 			if needsDefinition {
-				g.Fgenf(w, "%s%s: list[Any] = []\n", g.Indent, nameVar)
+				g.Fgenf(w, "%s%s: list[%s] = []\n", g.Indent, nameVar, qualifiedMemberName)
 			}
 
 			resKey := "key"
 			if model.InputType(model.NumberType).ConversionFrom(rangeExpr.Type()) != model.NoConversion {
-				g.Fgenf(w, "%sfor range in [{\"value\": i} for i in range(0, %.v)]:\n", g.Indent, rangeExpr)
+				g.Fgenf(w, "%sfor %s in [{\"value\": i} for i in range(0, %.v)]:\n", g.Indent, g.rangeVariable, rangeExpr)
 				resKey = "value"
-			} else if _, isMap := pcl.UnwrapOption(rangeExpr.Type()).(*model.MapType); isMap {
-				g.Fgenf(w,
-					"%sfor range in [{\"key\": k, \"value\": v} for [k, v] in sorted((%.v).items())]:\n",
-					g.Indent, rangeExpr)
 			} else {
-				g.Fgenf(w, "%sfor range in [{\"key\": k, \"value\": v} for [k, v] in enumerate(%.v)]:\n", g.Indent, rangeExpr)
+				g.Fgenf(w, "%sfor %s in [{\"key\": k, \"value\": v} for [k, v] in enumerate(%.v)]:\n",
+					g.Indent, g.rangeVariable, rangeExpr)
 			}
 
-			resName := g.makeResourceName(name, fmt.Sprintf("range['%s']", resKey))
+			resName := g.makeResourceName(name, fmt.Sprintf("%s['%s']", g.rangeVariable, resKey))
 			g.Indented(func() {
 				g.Fgenf(w, "%s%s.append(", g.Indent, nameVar)
 				instantiate(resName)
@@ -1536,13 +1718,16 @@ func (g *generator) genReadResourceDeclaration(w io.Writer, r *pcl.ReadResource,
 
 	if r.Options != nil && r.Options.Range != nil {
 		rangeExpr := r.Options.Range
+		prevRangeVariable := g.rangeVariable
+		g.rangeVariable = nameVar + "_range"
+		defer func() { g.rangeVariable = prevRangeVariable }()
 		rangeType := r.Options.Range.Type()
 		if model.ContainsOutputs(rangeType) {
 			loweredRangeExpr, rangeExprTemps := g.lowerExpression(rangeExpr, rangeType)
 			if model.InputType(model.BoolType).ConversionFrom(r.Options.Range.Type()) == model.SafeConversion {
 				g.Fgenf(w, "%s%s = None\n", g.Indent, nameVar)
 			} else {
-				g.Fgenf(w, "%s%s: list[Any] = []\n", g.Indent, nameVar)
+				g.Fgenf(w, "%s%s: list[%s] = []\n", g.Indent, nameVar, qualifiedMemberName)
 			}
 			localFuncName := "read_" + PyName(r.LogicalName())
 			g.Fgenf(w, "def %s(range_body):\n", localFuncName)
@@ -1615,23 +1800,22 @@ func (g *generator) genReadResourceDeclaration(w io.Writer, r *pcl.ReadResource,
 				instantiate(g.makeResourceName(name, ""))
 				g.Fprint(w, "\n")
 			})
+		} else if _, isMap := pcl.UnwrapOption(rangeExpr.Type()).(*model.MapType); isMap {
+			g.genMapRangedCollection(w, nameVar, qualifiedMemberName, name, rangeExpr, needsDefinition, nil, instantiate)
 		} else {
 			if needsDefinition {
-				g.Fgenf(w, "%s%s: list[Any] = []\n", g.Indent, nameVar)
+				g.Fgenf(w, "%s%s: list[%s] = []\n", g.Indent, nameVar, qualifiedMemberName)
 			}
 			resKey := "key"
 			if model.InputType(model.NumberType).ConversionFrom(rangeExpr.Type()) != model.NoConversion {
-				g.Fgenf(w, "%sfor range in [{\"value\": i} for i in range(0, %.v)]:\n", g.Indent, rangeExpr)
+				g.Fgenf(w, "%sfor %s in [{\"value\": i} for i in range(0, %.v)]:\n", g.Indent, g.rangeVariable, rangeExpr)
 				resKey = "value"
-			} else if _, isMap := pcl.UnwrapOption(rangeExpr.Type()).(*model.MapType); isMap {
-				g.Fgenf(w,
-					"%sfor range in [{\"key\": k, \"value\": v} for [k, v] in sorted((%.v).items())]:\n",
-					g.Indent, rangeExpr)
 			} else {
-				g.Fgenf(w, "%sfor range in [{\"key\": k, \"value\": v} for [k, v] in enumerate(%.v)]:\n", g.Indent, rangeExpr)
+				g.Fgenf(w, "%sfor %s in [{\"key\": k, \"value\": v} for [k, v] in enumerate(%.v)]:\n",
+					g.Indent, g.rangeVariable, rangeExpr)
 			}
 
-			resName := g.makeResourceName(name, fmt.Sprintf("range['%s']", resKey))
+			resName := g.makeResourceName(name, fmt.Sprintf("%s['%s']", g.rangeVariable, resKey))
 			g.Indented(func() {
 				g.Fgenf(w, "%s%s.append(", g.Indent, nameVar)
 				instantiate(resName)
@@ -1653,6 +1837,37 @@ func (g *generator) genReadResource(w io.Writer, r *pcl.ReadResource) {
 
 // genComponent handles the generation of instantiations of non-builtin resources.
 func (g *generator) genComponent(w io.Writer, r *pcl.Component) {
+	// A component declared without a source has no class to instantiate; construct the SDK's base
+	// ComponentResource with the type token that names it.
+	if r.Program == nil {
+		optionsBag, temps := g.lowerResourceOptions(r.Options, nil)
+		// Lowering an input can introduce temporaries, which are statements in their own right; collect them all
+		// so that they are emitted before the assignment that uses them rather than inside it.
+		inputs := make([]*model.Attribute, len(r.Inputs))
+		for i, attr := range r.Inputs {
+			value, valueTemps := g.lowerExpression(attr.Value, attr.Value.Type())
+			temps = append(temps, valueTemps...)
+			inputs[i] = &model.Attribute{Name: attr.Name, Value: value}
+		}
+		g.genTemps(w, temps)
+
+		g.Fgenf(w, "%s%s = pulumi.ComponentResource(%q, %s", g.Indent, g.nodeName(r.Name()), r.Token,
+			g.makeResourceName(r.LogicalName(), ""))
+		if len(inputs) > 0 {
+			g.Fgen(w, ", {")
+			for i, attr := range inputs {
+				if i > 0 {
+					g.Fgen(w, ", ")
+				}
+				g.Fgenf(w, "%q: %.v", attr.Name, attr.Value)
+			}
+			g.Fgen(w, "}")
+		}
+		g.genResourceOptions(w, optionsBag, len(inputs) != 0, nil)
+		g.Fgen(w, ")\n")
+		return
+	}
+
 	componentName := r.DeclarationName()
 	optionsBag, temps := g.lowerResourceOptions(r.Options, nil)
 	name := r.LogicalName()
@@ -1721,18 +1936,20 @@ func (g *generator) genComponent(w io.Writer, r *pcl.Component) {
 					}
 				}
 			}
+			if hasInputVariables {
+				g.Fgen(w, "}")
+			}
 			g.genResourceOptions(w, optionsBag, len(r.Inputs) != 0, nil)
 		})
 
-		if hasInputVariables {
-			g.Fgenf(w, "%s})", g.Indent)
-		} else {
-			g.Fgen(w, ")")
-		}
+		g.Fgen(w, ")")
 	}
 
 	if r.Options != nil && r.Options.Range != nil {
 		rangeExpr := r.Options.Range
+		prevRangeVariable := g.rangeVariable
+		g.rangeVariable = nameVar + "_range"
+		defer func() { g.rangeVariable = prevRangeVariable }()
 		if model.InputType(model.BoolType).ConversionFrom(r.Options.Range.Type()) == model.SafeConversion {
 			g.Fgenf(w, "%s%s = None\n", g.Indent, nameVar)
 			g.Fgenf(w, "%sif %.v:\n", g.Indent, rangeExpr)
@@ -1742,22 +1959,22 @@ func (g *generator) genComponent(w io.Writer, r *pcl.Component) {
 				instantiate(g.makeResourceName(name, ""))
 				g.Fprint(w, "\n")
 			})
+		} else if _, isMap := pcl.UnwrapOption(rangeExpr.Type()).(*model.MapType); isMap {
+			g.genMapRangedCollection(w, nameVar, componentName, name, rangeExpr, true,
+				declareDeferredOutputVariables, instantiate)
 		} else {
-			g.Fgenf(w, "%s%s: list[Any] = []\n", g.Indent, nameVar)
+			g.Fgenf(w, "%s%s: list[%s] = []\n", g.Indent, nameVar, componentName)
 
 			resKey := "key"
 			if model.InputType(model.NumberType).ConversionFrom(rangeExpr.Type()) != model.NoConversion {
-				g.Fgenf(w, "%sfor range in [{\"value\": i} for i in range(0, %.v)]:\n", g.Indent, rangeExpr)
+				g.Fgenf(w, "%sfor %s in [{\"value\": i} for i in range(0, %.v)]:\n", g.Indent, g.rangeVariable, rangeExpr)
 				resKey = "value"
-			} else if _, isMap := pcl.UnwrapOption(rangeExpr.Type()).(*model.MapType); isMap {
-				g.Fgenf(w,
-					"%sfor range in [{\"key\": k, \"value\": v} for [k, v] in sorted((%.v).items())]:\n",
-					g.Indent, rangeExpr)
 			} else {
-				g.Fgenf(w, "%sfor range in [{\"key\": k, \"value\": v} for [k, v] in enumerate(%.v)]:\n", g.Indent, rangeExpr)
+				g.Fgenf(w, "%sfor %s in [{\"key\": k, \"value\": v} for [k, v] in enumerate(%.v)]:\n",
+					g.Indent, g.rangeVariable, rangeExpr)
 			}
 
-			resName := g.makeResourceName(name, fmt.Sprintf("range['%s']", resKey))
+			resName := g.makeResourceName(name, fmt.Sprintf("%s['%s']", g.rangeVariable, resKey))
 			g.Indented(func() {
 				declareDeferredOutputVariables()
 				g.Fgenf(w, "%s%s.append(", g.Indent, nameVar)
@@ -1793,6 +2010,30 @@ func (g *generator) genTemps(w io.Writer, temps []*quoteTemp) {
 	for _, t := range temps {
 		// TODO(pdg): trivia
 		g.Fgenf(w, "%s%s = %.v\n", g.Indent, t.Name, t.Value)
+	}
+}
+
+func configVariableNeedsInputAnnotation(v *pcl.ConfigVariable) bool {
+	if v.DefaultValue == nil {
+		return false
+	}
+
+	return model.ContainsOutputs(v.Type()) || model.ContainsPromises(v.Type()) ||
+		model.ContainsOutputs(v.DefaultValue.Type()) || model.ContainsPromises(v.DefaultValue.Type())
+}
+
+func configVariableInputElementType(t model.Type) string {
+	switch pcl.UnwrapOption(model.ResolveOutputs(t)) {
+	case model.BoolType:
+		return "bool"
+	case model.IntType:
+		return "int"
+	case model.NumberType:
+		return "float"
+	case model.StringType:
+		return "str"
+	default:
+		return "Any"
 	}
 }
 
@@ -1834,12 +2075,17 @@ func (g *generator) genConfigVariable(w io.Writer, v *pcl.ConfigVariable) {
 	g.genTemps(w, temps)
 
 	if v.Description != "" {
-		for _, line := range strings.Split(v.Description, "\n") {
+		for line := range strings.SplitSeq(v.Description, "\n") {
 			g.Fgenf(w, "%s# %s\n", g.Indent, line)
 		}
 	}
 	name := g.nodeName(v.Name())
-	g.Fgenf(w, "%s%s = config.%s%s(\"%s\")\n", g.Indent, name, getOrRequire, getType, v.LogicalName())
+	typeAnnotation := ""
+	if configVariableNeedsInputAnnotation(v) {
+		typeAnnotation = fmt.Sprintf(": pulumi.Input[%s] | None", configVariableInputElementType(v.Type()))
+	}
+	g.Fgenf(w, "%s%s%s = config.%s%s(\"%s\")\n",
+		g.Indent, name, typeAnnotation, getOrRequire, getType, v.LogicalName())
 	if defaultValue != nil {
 		g.Fgenf(w, "%sif %s is None:\n", g.Indent, name)
 		g.Indented(func() {

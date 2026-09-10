@@ -82,6 +82,20 @@ type DocLanguageHelper interface {
 	GetMethodName(m *schema.Method) string
 	GetMethodResultName(pkg schema.PackageReference, modName string, r *schema.Resource, m *schema.Method) string
 
+	// ResolveDocRef renders a single `{{% ref %}}` shortcode target as a name in the target
+	// language (e.g. PascalCase types in Go, snake_case properties in Python). Callers typically
+	// use this as the resolver callback passed to schema.PackageReference.InterpretPulumiRefs.
+	//
+	// selfRef identifies the entity whose documentation is being rendered. Property refs that
+	// belong to that entity are emitted unqualified (e.g. `prop` rather than `Self.prop`). Pass
+	// the zero `schema.DocRef{}` if there is no enclosing entity.
+	//
+	// The boolean return mirrors `schema.PulumiRefResolver`: false means the ref could not be
+	// resolved and the caller should fall back to a default rendering. The error return is for
+	// setup failures (e.g. Go's package-context map cannot be built); successful resolution to
+	// "ref not found" returns `("", false, nil)`.
+	ResolveDocRef(pkg schema.PackageReference, selfRef, ref schema.DocRef) (string, bool, error)
+
 	// Doc links
 	GetDocLinkForResourceType(pkg *schema.Package, moduleName, typeName string) string
 	GetDocLinkForPulumiType(pkg *schema.Package, typeName string) string

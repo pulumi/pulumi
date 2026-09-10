@@ -10,13 +10,14 @@ const path = require("path");
 const { installCLI, fetchLatestVersion } = require("../lib/download");
 
 describe("fetchLatestVersion()", () => {
-    it("parses tag_name from GitHub releases API response", async () => {
-        const fakeFetch = async () => JSON.stringify({ tag_name: "v3.99.0", name: "v3.99.0" });
+    it("parses latestVersion from the Pulumi API response", async () => {
+        const fakeFetch = async () =>
+            JSON.stringify({ latestVersion: "3.99.0", oldestWithoutWarning: "3.99.0" });
         assert.equal(await fetchLatestVersion(fakeFetch), "3.99.0");
     });
 
-    it("strips leading v from tag_name", async () => {
-        const fakeFetch = async () => JSON.stringify({ tag_name: "v3.1.0" });
+    it("strips a leading v from the version", async () => {
+        const fakeFetch = async () => JSON.stringify({ latestVersion: "v3.1.0" });
         assert.equal(await fetchLatestVersion(fakeFetch), "3.1.0");
     });
 });

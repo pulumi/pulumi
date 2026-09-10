@@ -18,11 +18,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 	"os"
 	"strings"
 
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/xeipuuv/gojsonschema"
 )
@@ -361,9 +362,7 @@ func applyConfig(result map[string]plugin.AnalyzerPolicyConfig,
 		if len(givenConfig.Properties) > 0 && properties == nil {
 			properties = make(map[string]any)
 		}
-		for k, v := range givenConfig.Properties {
-			properties[k] = v
-		}
+		maps.Copy(properties, givenConfig.Properties)
 		result[policy] = plugin.AnalyzerPolicyConfig{
 			EnforcementLevel: enforcementLevel,
 			Properties:       properties,

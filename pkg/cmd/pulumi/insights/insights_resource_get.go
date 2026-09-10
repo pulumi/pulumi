@@ -27,6 +27,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cloud"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
+	"github.com/pulumi/pulumi/pkg/v3/util/outputflag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 )
 
@@ -47,10 +48,12 @@ type clientFactory func(
 	ctx context.Context, orgOverride string,
 ) (insightsResourceClient, string, error)
 
+type insightsResourceGetRenderFunc func(w io.Writer, r apitype.InsightsResourceWithVersion) error
+
 type insightsResourceGetArgs struct {
-	org     string
-	account string
-	output  string
+	org          string
+	account      string
+	renderOutput insightsResourceGetRenderFunc
 }
 
 type insightsResourceGetCmd struct {
@@ -67,6 +70,10 @@ func newInsightsResourceGetCmd(factory clientFactory) *cobra.Command {
 
 	get := &insightsResourceGetCmd{clientFactory: factory}
 	var args insightsResourceGetArgs
+	output := outputflag.OutputFlag[insightsResourceGetRenderFunc]{
+		RenderForTerminal: renderResourceText,
+		RenderJSON:        renderResourceJSON,
+	}
 
 	cmd := &cobra.Command{
 		Use:   "get",
@@ -89,6 +96,7 @@ func newInsightsResourceGetCmd(factory clientFactory) *cobra.Command {
 			"  pulumi insights resource get --account prod-aws \\\n" +
 			"      'aws:s3/bucket:Bucket::my-bucket' --output json",
 		RunE: func(cmd *cobra.Command, posArgs []string) error {
+			args.renderOutput = output.Get()
 			return get.Run(cmd.Context(), cmd.OutOrStdout(), posArgs[0], args)
 		},
 	}
@@ -102,8 +110,7 @@ func newInsightsResourceGetCmd(factory clientFactory) *cobra.Command {
 		"Organization that owns the Insights account (defaults to the current default org)")
 	cmd.Flags().StringVar(&args.account, "account", "",
 		"Insights account containing the resource")
-	cmd.Flags().StringVar(&args.output, "output", "default",
-		"Output format. One of: default, json")
+	outputflag.VarP(cmd.Flags(), &output)
 	// MarkFlagRequired only errors when the flag isn't defined, which is a
 	// programming bug — the immediate StringVar above guarantees it exists.
 	_ = cmd.MarkFlagRequired("account")
@@ -122,13 +129,6 @@ func (c *insightsResourceGetCmd) Run(
 		return errors.New("--account is required")
 	}
 
-	// Validate --output before talking to the network so a typo doesn't burn an
-	// API call.
-	render, err := renderer(args.output)
-	if err != nil {
-		return err
-	}
-
 	client, org, err := c.clientFactory(ctx, args.org)
 	if err != nil {
 		return err
@@ -139,20 +139,7 @@ func (c *insightsResourceGetCmd) Run(
 		return fmt.Errorf("reading insights resource: %w", err)
 	}
 
-	return render(out, resource)
-}
-
-// renderer maps --output to the corresponding render function. Returns a
-// caller-actionable error for unknown values.
-func renderer(format string) (func(io.Writer, apitype.InsightsResourceWithVersion) error, error) {
-	switch format {
-	case "", "default":
-		return renderResourceText, nil
-	case "json":
-		return renderResourceJSON, nil
-	default:
-		return nil, fmt.Errorf("invalid --output value %q (must be 'default' or 'json')", format)
-	}
+	return args.renderOutput(out, resource)
 }
 
 // renderResourceText writes a human-readable key/value view of the resource to w.

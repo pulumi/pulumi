@@ -17,17 +17,19 @@ package lifecycletest
 import (
 	"testing"
 
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
+
 	"github.com/blang/semver"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/pkg/v3/engine"
-	. "github.com/pulumi/pulumi/pkg/v3/engine" //nolint:revive
+	. "github.com/pulumi/pulumi/pkg/v3/engine"
 	lt "github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest/framework"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -42,7 +44,7 @@ func TestDestroyWithPendingDelete(t *testing.T) {
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, _ *deploytest.ResourceMonitor) error {
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		// Skip display tests because different ordering makes the colouring different.
@@ -54,7 +56,7 @@ func TestDestroyWithPendingDelete(t *testing.T) {
 	// Create an old snapshot with two copies of a resource that share a URN: one that is pending deletion and one
 	// that is not.
 	old := &deploy.Snapshot{
-		Resources: []*resource.State{
+		Resources: []*pkgresource.State{
 			{
 				Type:    resURN.Type(),
 				URN:     resURN,
@@ -119,7 +121,7 @@ func TestUpdateWithPendingDelete(t *testing.T) {
 		}),
 	}
 
-	hostF := deploytest.NewPluginHostF(nil, nil, nil, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, nil, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		// Skip display tests because different ordering makes the colouring different.
@@ -131,7 +133,7 @@ func TestUpdateWithPendingDelete(t *testing.T) {
 	// Create an old snapshot with two copies of a resource that share a URN: one that is pending deletion and one
 	// that is not.
 	old := &deploy.Snapshot{
-		Resources: []*resource.State{
+		Resources: []*pkgresource.State{
 			{
 				Type:    resURN.Type(),
 				URN:     resURN,
@@ -196,7 +198,7 @@ func TestDestroyWithUntargetedPendingDelete(t *testing.T) {
 		}),
 	}
 
-	hostF := deploytest.NewPluginHostF(nil, nil, nil, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, nil, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
@@ -215,7 +217,7 @@ func TestDestroyWithUntargetedPendingDelete(t *testing.T) {
 	resBURN := p.NewURN("pkgA:m:typA", "resB", "")
 
 	old := &deploy.Snapshot{
-		Resources: []*resource.State{
+		Resources: []*pkgresource.State{
 			{
 				Type:    resAURN.Type(),
 				URN:     resAURN,

@@ -31,13 +31,15 @@ import (
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packages"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageworkspace"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/convert"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	pkghost "github.com/pulumi/pulumi/pkg/v3/host"
+	"github.com/pulumi/pulumi/pkg/v3/registry"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/registry"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -58,6 +60,7 @@ type publishPackageArgs struct {
 	publisher       string
 	readmePath      string
 	installDocsPath string
+	serverURL       string
 }
 
 type packagePublishCmd struct {
@@ -65,7 +68,7 @@ type packagePublishCmd struct {
 
 	extractSchema func(
 		ws pkgWorkspace.Context, pctx *plugin.Context, packageSource string, parameters plugin.ParameterizeParameters,
-		registry registry.Registry, e env.Env, concurrency int,
+		registry registry.Registry, e env.Env, concurrency int, asExtension bool, pluginDownloadURL string,
 	) (*schema.PackageSpec, *workspace.PackageSpec, error)
 }
 
@@ -136,6 +139,9 @@ func newPackagePublishCmd() *cobra.Command {
 	cmd.Flags().StringVar(
 		&args.installDocsPath, "installation-configuration", "",
 		"Path to the installation configuration markdown file")
+	cmd.Flags().StringVar(&args.serverURL, "server", "",
+		"A URL to download the plugin from. When set, the provider argument is used as the plugin name "+
+			"directly and no package resolution is performed.")
 
 	return cmd
 }
@@ -149,7 +155,7 @@ func (cmd *packagePublishCmd) Run(
 	if cmd.stdout == nil {
 		cmd.stdout = io.Discard
 	}
-	project, _, err := pkgWorkspace.Instance.ReadProject()
+	project, _, err := pkgWorkspace.Instance.ReadProject("")
 	if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
 		return fmt.Errorf("failed to determine current project: %w", err)
 	}
@@ -164,15 +170,22 @@ func (cmd *packagePublishCmd) Run(
 		return err
 	}
 	sink := cmdutil.Diag()
-	pctx, err := plugin.NewContext(ctx, sink, sink, nil, nil, wd, nil, false, nil,
-		schema.NewLoaderServerFromHost, convert.NewMapperServerFromHost, pkgWorkspace.EnsureLanguageInstalled)
+	pluginHost, err := pkghost.New(context.WithoutCancel(ctx), sink, sink, nil, pkgWorkspace.EnsureLanguageInstalled,
+		schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext,
+		packageworkspace.NewResolverServer(b.GetReadOnlyCloudRegistry()))
+	if err != nil {
+		return err
+	}
+	// host is owned here, closed after the context
+	defer contract.IgnoreClose(pluginHost)
+	pctx, err := plugin.NewContext(ctx, sink, sink, pluginHost, nil, wd, nil, false, nil)
 	if err != nil {
 		return err
 	}
 	defer contract.IgnoreClose(pctx)
 
 	pkg, _, err := cmd.extractSchema(pkgWorkspace.Instance, pctx, packageSrc, packageParams, b.GetReadOnlyCloudRegistry(),
-		env.Global(), 0 /* unbounded concurrency */)
+		env.Global(), 0 /* unbounded concurrency */, false /* asExtension */, args.serverURL)
 	if err != nil {
 		return fmt.Errorf("failed to get schema: %w", err)
 	}

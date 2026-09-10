@@ -18,7 +18,10 @@ import (
 	"context"
 	"encoding/json"
 	"io"
+	"maps"
 	"time"
+
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
@@ -26,7 +29,7 @@ import (
 	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 // stackJSONEnvelope is the stable, machine-readable shape emitted by
@@ -37,18 +40,19 @@ import (
 // precision, UTC) to match the convention already established by
 // `pulumi stack history --json` and `pulumi stack ls --json`.
 type stackJSONEnvelope struct {
-	Organization     string              `json:"organization,omitempty"`
-	Project          string              `json:"project,omitempty"`
-	Stack            string              `json:"stack"`
-	Backend          string              `json:"backend"`
-	Version          *int                `json:"version,omitempty"`
-	ActiveUpdate     string              `json:"activeUpdate,omitempty"`
-	CurrentOperation *stackOperationJSON `json:"currentOperation,omitempty"`
-	Tags             map[string]string   `json:"tags"`
-	Manifest         *stackManifestJSON  `json:"manifest,omitempty"`
-	Resources        []stackResourceJSON `json:"resources"`
-	Outputs          map[string]any      `json:"outputs"`
-	ConsoleURL       string              `json:"consoleUrl,omitempty"`
+	Organization     string                    `json:"organization,omitempty"`
+	Project          string                    `json:"project,omitempty"`
+	Stack            string                    `json:"stack"`
+	Backend          string                    `json:"backend"`
+	Version          *int                      `json:"version,omitempty"`
+	ActiveUpdate     string                    `json:"activeUpdate,omitempty"`
+	CurrentOperation *stackOperationJSON       `json:"currentOperation,omitempty"`
+	Tags             map[string]string         `json:"tags"`
+	Manifest         *stackManifestJSON        `json:"manifest,omitempty"`
+	SecretsProvider  *stackSecretsProviderJSON `json:"secretsProvider,omitempty"`
+	Resources        []stackResourceJSON       `json:"resources"`
+	Outputs          map[string]any            `json:"outputs"`
+	ConsoleURL       string                    `json:"consoleUrl,omitempty"`
 }
 
 type stackOperationJSON struct {
@@ -67,6 +71,11 @@ type stackPluginJSON struct {
 	Name    string `json:"name"`
 	Kind    string `json:"kind"`
 	Version string `json:"version,omitempty"`
+}
+
+type stackSecretsProviderJSON struct {
+	Type  string          `json:"type"`
+	State json.RawMessage `json:"state,omitempty"`
 }
 
 type stackResourceJSON struct {
@@ -123,9 +132,7 @@ func buildStackJSON(in stackJSONInputs) *stackJSONEnvelope {
 		v := cs.Version
 		env.Version = &v
 		env.ActiveUpdate = cs.ActiveUpdate
-		for k, v := range cs.Tags {
-			env.Tags[k] = v
-		}
+		maps.Copy(env.Tags, cs.Tags)
 		if op := cs.CurrentOperation; op != nil {
 			env.CurrentOperation = &stackOperationJSON{
 				Kind:    string(op.Kind),
@@ -156,6 +163,7 @@ func buildStackJSON(in stackJSONInputs) *stackJSONEnvelope {
 				Version: version,
 			})
 		}
+		env.SecretsProvider = snapshotSecretsProviderJSON(snap)
 
 		env.Resources = make([]stackResourceJSON, 0, len(snap.Resources))
 		for _, r := range snap.Resources {
@@ -170,7 +178,19 @@ func buildStackJSON(in stackJSONInputs) *stackJSONEnvelope {
 	return env
 }
 
-func snapshotResourceJSON(r *resource.State) stackResourceJSON {
+func snapshotSecretsProviderJSON(snap *deploy.Snapshot) *stackSecretsProviderJSON {
+	contract.Requiref(snap != nil, "snap", "snapshot must be non-nil")
+	if snap.SecretsManager == nil {
+		return nil
+	}
+
+	return &stackSecretsProviderJSON{
+		Type:  snap.SecretsManager.Type(),
+		State: snap.SecretsManager.State(),
+	}
+}
+
+func snapshotResourceJSON(r *pkgresource.State) stackResourceJSON {
 	return stackResourceJSON{
 		URN:    string(r.URN),
 		Type:   string(r.Type),

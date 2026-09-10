@@ -29,6 +29,7 @@ import (
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
+	"github.com/pulumi/pulumi/pkg/v3/util/outputflag"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -50,14 +51,16 @@ func newStackWebhookListCmd() *cobra.Command {
 }
 
 func newStackWebhookListCmdWith(factory stackWebhookListClientFactory) *cobra.Command {
-	var (
-		stack  string
-		output string
-	)
+	var stack string
+	output := outputflag.OutputFlag[webhookListRenderFunc]{
+		RenderForTerminal: renderWebhookListTable,
+		RenderJSON:        renderWebhookListJSON,
+	}
 
 	cmd := &cobra.Command{
-		Use:   "list",
-		Short: "[EXPERIMENTAL] List all webhooks configured for a stack",
+		Use:     "list",
+		Aliases: []string{"ls"},
+		Short:   "[EXPERIMENTAL] List all webhooks configured for a stack",
 		Long: "[EXPERIMENTAL] List all webhooks configured for a stack.\n" +
 			"\n" +
 			"Displays the ID, name, payload URL, format, event groups, events, and active\n" +
@@ -67,7 +70,7 @@ func newStackWebhookListCmdWith(factory stackWebhookListClientFactory) *cobra.Co
 			if factory == nil {
 				factory = defaultStackWebhookListClientFactory
 			}
-			return runStackWebhookList(cmd.Context(), cmd.OutOrStdout(), factory, stack, output)
+			return runStackWebhookList(cmd.Context(), cmd.OutOrStdout(), factory, stack, output.Get())
 		},
 	}
 
@@ -75,8 +78,7 @@ func newStackWebhookListCmdWith(factory stackWebhookListClientFactory) *cobra.Co
 
 	cmd.Flags().StringVarP(&stack, "stack", "s", "",
 		"The name of the stack to operate on. Defaults to the current stack")
-	cmd.Flags().StringVar(&output, "output", "default",
-		"The output format: default (human-readable table) or json")
+	outputflag.VarP(cmd.Flags(), &output)
 
 	return cmd
 }
@@ -94,13 +96,8 @@ func runStackWebhookList(
 	w io.Writer,
 	factory stackWebhookListClientFactory,
 	stackFlag string,
-	output string,
+	render webhookListRenderFunc,
 ) error {
-	renderer, err := webhookListRenderer(output)
-	if err != nil {
-		return err
-	}
-
 	c, stackID, err := factory(ctx, stackFlag)
 	if err != nil {
 		return err
@@ -111,21 +108,10 @@ func runStackWebhookList(
 		return fmt.Errorf("listing stack webhooks: %w", err)
 	}
 
-	return renderer(w, webhooks)
+	return render(w, webhooks)
 }
 
 type webhookListRenderFunc func(w io.Writer, webhooks []apitype.Webhook) error
-
-func webhookListRenderer(output string) (webhookListRenderFunc, error) {
-	switch output {
-	case "", "default", "table":
-		return renderWebhookListTable, nil
-	case "json":
-		return renderWebhookListJSON, nil
-	default:
-		return nil, fmt.Errorf("invalid --output value %q: expected \"default\", \"table\", or \"json\"", output)
-	}
-}
 
 // webhookListEnvelope is the JSON shape emitted by `pulumi stack webhook list --output=json`.
 type webhookListEnvelope struct {
@@ -310,10 +296,7 @@ func renderWebhookListTable(w io.Writer, webhooks []apitype.Webhook) error {
 	if hasEvents {
 		flexCols++
 	}
-	remaining := cols - fixedWidth
-	if remaining < 20*flexCols {
-		remaining = 20 * flexCols
-	}
+	remaining := max(cols-fixedWidth, 20*flexCols)
 	flexWidth := remaining / flexCols
 	colConfigs := []table.ColumnConfig{
 		{Name: "URL", WidthMax: flexWidth, WidthMaxEnforcer: text.WrapText},

@@ -79,8 +79,9 @@ func newPolicyComplianceListCmdWith(factory complianceListClientFactory) *cobra.
 	}
 
 	cmd := &cobra.Command{
-		Use:   "list",
-		Short: "[EXPERIMENTAL] List compliance results grouped by entity",
+		Use:     "list",
+		Aliases: []string{"ls"},
+		Short:   "[EXPERIMENTAL] List compliance results grouped by entity",
 		Long: "[EXPERIMENTAL] List compliance results grouped by entity.\n" +
 			"\n" +
 			"Returns compliance results for policy issues grouped by stack,\n" +
@@ -247,10 +248,7 @@ func (c *complianceListCmd) renderTable(
 	scoreCols := len(columns)
 	borders := 3*(scoreCols+1) + 1
 	scoreWidth := 6 * scoreCols
-	entityWidth := cols - borders - scoreWidth
-	if entityWidth < 15 {
-		entityWidth = 15
-	}
+	entityWidth := max(cols-borders-scoreWidth, 15)
 	t.SetColumnConfigs([]table.ColumnConfig{
 		{Name: "ENTITY", WidthMax: entityWidth, WidthMaxEnforcer: text.WrapText},
 	})

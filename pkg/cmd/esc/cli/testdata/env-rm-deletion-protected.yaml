@@ -1,0 +1,17 @@
+run: |
+  esc env settings set default/test deletion-protected true
+  esc env rm default/test --yes
+error: exit status 1
+environments:
+  test-user/default/test:
+    values: {}
+
+---
+> esc env settings set default/test deletion-protected true
+true
+> esc env rm default/test --yes
+
+---
+> esc env settings set default/test deletion-protected true
+> esc env rm default/test --yes
+Error: cannot delete environment: deletion protection is enabled. Disable deletion protection with 'esc env settings set test-user/default/test deletion-protected false' before deleting

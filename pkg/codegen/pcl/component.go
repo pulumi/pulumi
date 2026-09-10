@@ -20,6 +20,9 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
+	"github.com/zclconf/go-cty/cty"
+
+	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
 )
 
@@ -37,8 +40,13 @@ type Component struct {
 	// the name of block declaration
 	name string
 
-	// The location of the source for the component.
+	// The location of the source for the component. Empty when the component is declared without one, in which
+	// case it names an existing component resource rather than defining one, and Token is set instead.
 	source string
+
+	// Token is the type token of an existing component resource, set only when the component has no source. Code
+	// generation constructs the SDK's base ComponentResource with it instead of declaring a class.
+	Token string
 
 	// the full (absolute) path of the component directory
 	dirPath string
@@ -104,6 +112,15 @@ func (c *Component) DeclarationName() string {
 
 func (c *Component) Type() model.Type {
 	return c.VariableType
+}
+
+// Value looks up the component's value in the HCL evaluation context, allowing
+// expressions like `myComponent.someOutput` to be evaluated at runtime.
+func (c *Component) Value(context *hcl.EvalContext) (cty.Value, hcl.Diagnostics) {
+	if value, hasValue := hcl2.LookupVariable(context, c.Name()); hasValue {
+		return value, nil
+	}
+	return cty.DynamicVal, nil
 }
 
 func (c *Component) Traverse(traverser hcl.Traverser) (model.Traversable, hcl.Diagnostics) {

@@ -43,7 +43,7 @@ type StashArgs struct {
 }
 
 func (StashArgs) ElementType() reflect.Type {
-	return reflect.TypeOf((*stashArgs)(nil)).Elem()
+	return reflect.TypeFor[stashArgs]()
 }
 
 // NewStash creates a stash resource that stores a value

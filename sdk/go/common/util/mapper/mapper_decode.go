@@ -135,10 +135,7 @@ func (md *mapper) DecodeValue(obj map[string]any, ty reflect.Type, key string,
 	return nil
 }
 
-var (
-	emptyObject         = map[string]any{}
-	textUnmarshalerType = reflect.TypeOf(new(encoding.TextUnmarshaler)).Elem()
-)
+var textUnmarshalerType = reflect.TypeFor[encoding.TextUnmarshaler]()
 
 // adjustValueForAssignment converts if possible to produce the target type.
 func (md *mapper) adjustValueForAssignment(val reflect.Value,
@@ -214,7 +211,7 @@ func (md *mapper) adjustValueForAssignment(val reflect.Value,
 				m.SetMapIndex(k, entry)
 			}
 			val = m
-		} else if val.Type() == reflect.TypeOf(emptyObject) {
+		} else if val.Type() == reflect.TypeFor[map[string]any]() {
 			// The value is an object and needs to be decoded into a value.
 			obj := val.Interface().(map[string]any)
 			if decode, has := md.opts.CustomDecoders[to]; has {

@@ -184,7 +184,7 @@ func TestProjectReferenceStore_ParseReference_errors(t *testing.T) {
 		{
 			desc:    "no current project",
 			give:    "organization/foo",
-			wantErr: "pass the fully qualified name",
+			wantErr: "no Pulumi.yaml project file found",
 		},
 		{
 			desc:    "invalid project name",

@@ -28,12 +28,13 @@ import (
 
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -48,7 +49,7 @@ func panicLoader(context.Context, *plugin.Context, string, string) (plugin.Provi
 	panic("not implemented")
 }
 
-func testHost() (plugin.Host, error) {
+func testHost(_ context.Context, d, statusD diag.Sink) (plugin.Host, error) {
 	return &plugin.MockHost{}, nil
 }
 
@@ -68,10 +69,10 @@ func TestDoCmdNoArgsPrintsHelp(t *testing.T) {
 			t.Parallel()
 
 			mlm := &cmdBackend.MockLoginManager{}
-			mws := &pkgWorkspace.MockContext{}
+			mws := newTestWorkspace(t)
 
 			var stdout bytes.Buffer
-			cmd := NewDoCmd(mlm, mws, panicLoader, testHost, panicLoadConverterPlugin)
+			cmd := NewDoCmd(mlm, mws, panicLoader, testHost, panicLoadConverterPlugin, nil)
 			cmd.SetOut(&stdout)
 			cmd.SetErr(&stdout)
 			cmd.SetArgs(tc.args)
@@ -121,7 +122,7 @@ func TestDoCmdWithPkgFlagPrintsHelp(t *testing.T) {
 	t.Parallel()
 
 	mlm := &cmdBackend.MockLoginManager{}
-	mws := &pkgWorkspace.MockContext{}
+	mws := newTestWorkspace(t)
 	loader := func(ctx context.Context, pctx *plugin.Context, wd, source string) (plugin.Provider, error) {
 		assert.Equal(t, "aws@4.1", source)
 		spec := schema.PackageSpec{
@@ -135,7 +136,7 @@ func TestDoCmdWithPkgFlagPrintsHelp(t *testing.T) {
 				"aws:index:myResource":         {},
 				"aws:myModule:myOtherResource": {},
 			},
-			Provider: schema.ResourceSpec{
+			Provider: &schema.ResourceSpec{
 				InputProperties: map[string]schema.PropertySpec{
 					"region": {
 						TypeSpec: schema.TypeSpec{
@@ -149,7 +150,7 @@ func TestDoCmdWithPkgFlagPrintsHelp(t *testing.T) {
 	}
 
 	var stdout bytes.Buffer
-	cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin)
+	cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin, nil)
 	cmd.SetOut(&stdout)
 	cmd.SetErr(&stdout)
 
@@ -187,7 +188,7 @@ func TestDoCmdWithPkgArgPrintsHelp(t *testing.T) {
 	t.Parallel()
 
 	mlm := &cmdBackend.MockLoginManager{}
-	mws := &pkgWorkspace.MockContext{}
+	mws := newTestWorkspace(t)
 	loader := func(ctx context.Context, pctx *plugin.Context, wd, source string) (plugin.Provider, error) {
 		assert.Equal(t, "aws", source)
 		spec := schema.PackageSpec{
@@ -201,7 +202,7 @@ func TestDoCmdWithPkgArgPrintsHelp(t *testing.T) {
 				"aws:index:myResource":         {},
 				"aws:myModule:myOtherResource": {},
 			},
-			Provider: schema.ResourceSpec{
+			Provider: &schema.ResourceSpec{
 				InputProperties: map[string]schema.PropertySpec{
 					"region": {
 						TypeSpec: schema.TypeSpec{
@@ -215,7 +216,7 @@ func TestDoCmdWithPkgArgPrintsHelp(t *testing.T) {
 	}
 
 	var stdout bytes.Buffer
-	cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin)
+	cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin, nil)
 	cmd.SetOut(&stdout)
 	cmd.SetErr(&stdout)
 
@@ -250,7 +251,7 @@ func TestDoCmdWithPkgArgPrintsHelpWithModuleFormat(t *testing.T) {
 	t.Parallel()
 
 	mlm := &cmdBackend.MockLoginManager{}
-	mws := &pkgWorkspace.MockContext{}
+	mws := newTestWorkspace(t)
 	loader := func(ctx context.Context, pctx *plugin.Context, wd, source string) (plugin.Provider, error) {
 		assert.Equal(t, "aws", source)
 		spec := schema.PackageSpec{
@@ -273,7 +274,7 @@ func TestDoCmdWithPkgArgPrintsHelpWithModuleFormat(t *testing.T) {
 	}
 
 	var stdout bytes.Buffer
-	cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin)
+	cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin, nil)
 	cmd.SetOut(&stdout)
 	cmd.SetErr(&stdout)
 
@@ -332,7 +333,7 @@ func TestDoCmdWithPkgArgPrintsHelpSkipsMethods(t *testing.T) {
 	t.Parallel()
 
 	mlm := &cmdBackend.MockLoginManager{}
-	mws := &pkgWorkspace.MockContext{}
+	mws := newTestWorkspace(t)
 	loader := func(ctx context.Context, pctx *plugin.Context, wd, source string) (plugin.Provider, error) {
 		assert.Equal(t, "aws", source)
 		// Two functions: one is a regular invoke, the other is the implementation of a method on myResource.
@@ -372,7 +373,7 @@ func TestDoCmdWithPkgArgPrintsHelpSkipsMethods(t *testing.T) {
 	}
 
 	var stdout bytes.Buffer
-	cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin)
+	cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin, nil)
 	cmd.SetOut(&stdout)
 	cmd.SetErr(&stdout)
 
@@ -406,7 +407,7 @@ func TestDoCmdWithPkgArgPrintsHelpUnderRoot(t *testing.T) {
 	t.Parallel()
 
 	mlm := &cmdBackend.MockLoginManager{}
-	mws := &pkgWorkspace.MockContext{}
+	mws := newTestWorkspace(t)
 	loader := func(ctx context.Context, pctx *plugin.Context, wd, source string) (plugin.Provider, error) {
 		assert.Equal(t, "aws@4.1", source)
 		spec := schema.PackageSpec{
@@ -420,7 +421,7 @@ func TestDoCmdWithPkgArgPrintsHelpUnderRoot(t *testing.T) {
 				"aws:index:myResource":         {},
 				"aws:myModule:myOtherResource": {},
 			},
-			Provider: schema.ResourceSpec{
+			Provider: &schema.ResourceSpec{
 				InputProperties: map[string]schema.PropertySpec{
 					"region": {
 						TypeSpec: schema.TypeSpec{
@@ -443,7 +444,7 @@ func TestDoCmdWithPkgArgPrintsHelpUnderRoot(t *testing.T) {
 			postRunCount++
 		},
 	}
-	rootCmd.AddCommand(NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin))
+	rootCmd.AddCommand(NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin, nil))
 
 	var stdout bytes.Buffer
 	rootCmd.SetOut(&stdout)
@@ -478,7 +479,7 @@ func TestDoCmdWithModuleArgPrintsHelp(t *testing.T) {
 	t.Parallel()
 
 	mlm := &cmdBackend.MockLoginManager{}
-	mws := &pkgWorkspace.MockContext{}
+	mws := newTestWorkspace(t)
 	loader := func(ctx context.Context, pctx *plugin.Context, wd, source string) (plugin.Provider, error) {
 		assert.Equal(t, "aws@4.1", source)
 		spec := schema.PackageSpec{
@@ -496,7 +497,7 @@ func TestDoCmdWithModuleArgPrintsHelp(t *testing.T) {
 	}
 
 	var stdout bytes.Buffer
-	cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin)
+	cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin, nil)
 	cmd.SetOut(&stdout)
 	cmd.SetErr(&stdout)
 
@@ -529,7 +530,7 @@ func TestDoCmdWithNestedModulesPrintsHelp(t *testing.T) {
 	t.Parallel()
 
 	mlm := &cmdBackend.MockLoginManager{}
-	mws := &pkgWorkspace.MockContext{}
+	mws := newTestWorkspace(t)
 	loader := func(ctx context.Context, pctx *plugin.Context, wd, source string) (plugin.Provider, error) {
 		assert.Equal(t, "pkg", source)
 		spec := schema.PackageSpec{
@@ -542,7 +543,7 @@ func TestDoCmdWithNestedModulesPrintsHelp(t *testing.T) {
 	}
 
 	var stdout bytes.Buffer
-	cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin)
+	cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin, nil)
 	cmd.SetOut(&stdout)
 	cmd.SetErr(&stdout)
 
@@ -709,10 +710,10 @@ func TestDoCmdUnknownTokenErrors(t *testing.T) {
 				t.Parallel()
 
 				mlm := &cmdBackend.MockLoginManager{}
-				mws := &pkgWorkspace.MockContext{}
+				mws := newTestWorkspace(t)
 
 				var stdout bytes.Buffer
-				cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin)
+				cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin, nil)
 				cmd.SetOut(&stdout)
 				cmd.SetErr(&stdout)
 				cmd.SetArgs([]string{"aws:s3"})
@@ -730,10 +731,10 @@ func TestDoCmdUnknownTokenErrors(t *testing.T) {
 					t.Parallel()
 
 					mlm := &cmdBackend.MockLoginManager{}
-					mws := &pkgWorkspace.MockContext{}
+					mws := newTestWorkspace(t)
 
 					var stdout bytes.Buffer
-					cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin)
+					cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin, nil)
 					cmd.SetOut(&stdout)
 					cmd.SetErr(&stdout)
 					cmd.SetArgs(tc.args)
@@ -811,10 +812,10 @@ func TestDoCmdUnknownTokenErrors(t *testing.T) {
 				t.Parallel()
 
 				mlm := &cmdBackend.MockLoginManager{}
-				mws := &pkgWorkspace.MockContext{}
+				mws := newTestWorkspace(t)
 
 				var stdout bytes.Buffer
-				cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin)
+				cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin, nil)
 				cmd.SetOut(&stdout)
 				cmd.SetErr(&stdout)
 				cmd.SetArgs(tc.args)
@@ -836,7 +837,7 @@ func TestDoCmdParameterizedModuleResolves(t *testing.T) {
 	t.Parallel()
 
 	mlm := &cmdBackend.MockLoginManager{}
-	mws := &pkgWorkspace.MockContext{}
+	mws := newTestWorkspace(t)
 	loader := func(ctx context.Context, pctx *plugin.Context, wd, source string) (plugin.Provider, error) {
 		assert.Equal(t, "terraform-provider", source)
 		spec := schema.PackageSpec{
@@ -861,7 +862,7 @@ func TestDoCmdParameterizedModuleResolves(t *testing.T) {
 	}
 
 	var stdout bytes.Buffer
-	cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin)
+	cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin, nil)
 	cmd.SetOut(&stdout)
 	cmd.SetErr(&stdout)
 	cmd.SetArgs([]string{"terraform-provider hashicorp/aws:s3"})
@@ -878,13 +879,15 @@ func TestCurrentStackIdentity(t *testing.T) {
 
 	mockWS := func(stack string, newErr error) *pkgWorkspace.MockContext {
 		return &pkgWorkspace.MockContext{
-			NewF: func() (pkgWorkspace.W, error) {
+			NewF: func(_ string) (pkgWorkspace.W, error) {
 				if newErr != nil {
 					return nil, newErr
 				}
 				return &pkgWorkspace.MockW{
 					SettingsF: func() *pkgWorkspace.Settings {
-						return &pkgWorkspace.Settings{Stack: stack}
+						return &pkgWorkspace.Settings{
+							Stack: stack, //nolint:staticcheck
+						}
 					},
 				}, nil
 			},
@@ -909,7 +912,7 @@ func TestCurrentStackIdentity(t *testing.T) {
 	for _, tc := range table {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			org, stk := currentStackIdentity(tc.ws)
+			org, stk := currentStackIdentity(tc.ws, false, "")
 			assert.Equal(t, tc.wantOrg, org)
 			assert.Equal(t, tc.wantStk, stk)
 		})
@@ -926,16 +929,18 @@ func TestDoCmdFunctionInvokeWithStackContext(t *testing.T) {
 
 	mlm := &cmdBackend.MockLoginManager{}
 	mws := &pkgWorkspace.MockContext{
-		ReadProjectF: func() (*workspace.Project, string, error) {
+		ReadProjectF: func(_ string) (*workspace.Project, string, error) {
 			return &workspace.Project{
 				Name:    tokens.PackageName("my-project"),
 				Runtime: workspace.NewProjectRuntimeInfo("yaml", nil),
 			}, root, nil
 		},
-		NewF: func() (pkgWorkspace.W, error) {
+		NewF: func(_ string) (pkgWorkspace.W, error) {
 			return &pkgWorkspace.MockW{
 				SettingsF: func() *pkgWorkspace.Settings {
-					return &pkgWorkspace.Settings{Stack: "acme/my-project/dev"}
+					return &pkgWorkspace.Settings{
+						Stack: "acme/my-project/dev", //nolint:staticcheck
+					}
 				},
 			}, nil
 		},
@@ -964,13 +969,13 @@ func TestDoCmdFunctionInvokeWithStackContext(t *testing.T) {
 			spec: spec,
 			MockProvider: plugin.MockProvider{
 				InvokeF: func(ctx context.Context, req plugin.InvokeRequest) (plugin.InvokeResponse, error) {
-					assert.Equal(t, "acme", req.Args["organization"].StringValue())
-					assert.Equal(t, "my-project", req.Args["project"].StringValue())
-					assert.Equal(t, "dev", req.Args["stack"].StringValue())
+					assert.Equal(t, "acme", req.Args.Get("organization").AsString())
+					assert.Equal(t, "my-project", req.Args.Get("project").AsString())
+					assert.Equal(t, "dev", req.Args.Get("stack").AsString())
 					return plugin.InvokeResponse{
-						Properties: resource.PropertyMap{
-							"ok": resource.NewProperty(true),
-						},
+						Properties: property.NewMap(map[string]property.Value{
+							"ok": property.New(true),
+						}),
 					}, nil
 				},
 			},
@@ -984,10 +989,10 @@ stack = stack()
 `)
 
 	var stdout bytes.Buffer
-	cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin)
+	cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin, nil)
 	cmd.SetOut(&stdout)
 	cmd.SetErr(&stdout)
-	cmd.SetArgs([]string{"azure:index:myFunction", "--input-file", inputFile})
+	cmd.SetArgs([]string{"azure:index:myFunction", "--input", "pcl", "--input-file", inputFile})
 	require.NoError(t, cmd.Execute())
 }
 
@@ -1002,7 +1007,7 @@ func TestDoCmdFunctionInvokeWithoutStackContext(t *testing.T) {
 
 	mlm := &cmdBackend.MockLoginManager{}
 	mws := &pkgWorkspace.MockContext{
-		ReadProjectF: func() (*workspace.Project, string, error) {
+		ReadProjectF: func(_ string) (*workspace.Project, string, error) {
 			return &workspace.Project{
 				Name:    tokens.PackageName("my-project"),
 				Runtime: workspace.NewProjectRuntimeInfo("yaml", nil),
@@ -1042,9 +1047,9 @@ func TestDoCmdFunctionInvokeWithoutStackContext(t *testing.T) {
 				spec: makeSpec(),
 				MockProvider: plugin.MockProvider{
 					InvokeF: func(ctx context.Context, req plugin.InvokeRequest) (plugin.InvokeResponse, error) {
-						assert.Equal(t, "my-project", req.Args["project"].StringValue())
+						assert.Equal(t, "my-project", req.Args.Get("project").AsString())
 						return plugin.InvokeResponse{
-							Properties: resource.PropertyMap{"ok": resource.NewProperty(true)},
+							Properties: property.NewMap(map[string]property.Value{"ok": property.New(true)}),
 						}, nil
 					},
 				},
@@ -1054,10 +1059,10 @@ func TestDoCmdFunctionInvokeWithoutStackContext(t *testing.T) {
 		inputFile := writeHCLFile(t, "inputs.pcl", `project = project()`)
 
 		var stdout bytes.Buffer
-		cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin)
+		cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin, nil)
 		cmd.SetOut(&stdout)
 		cmd.SetErr(&stdout)
-		cmd.SetArgs([]string{"azure:index:myFunction", "--input-file", inputFile})
+		cmd.SetArgs([]string{"azure:index:myFunction", "--input", "pcl", "--input-file", inputFile})
 		require.NoError(t, cmd.Execute())
 	})
 
@@ -1072,11 +1077,345 @@ func TestDoCmdFunctionInvokeWithoutStackContext(t *testing.T) {
 		inputFile := writeHCLFile(t, "inputs.pcl", `organization = organization()`)
 
 		var stdout bytes.Buffer
-		cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin)
+		cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin, nil)
 		cmd.SetOut(&stdout)
 		cmd.SetErr(&stdout)
-		cmd.SetArgs([]string{"azure:index:myFunction", "--input-file", inputFile})
+		cmd.SetArgs([]string{"azure:index:myFunction", "--input", "pcl", "--input-file", inputFile})
 		err := cmd.Execute()
 		require.ErrorContains(t, err, "organization is not supported")
 	})
+}
+
+func TestFlagUsage(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{
+			name: "spans are resolved to canonical text and backticks stripped",
+			input: "Conflicts with <span pulumi-lang-nodejs=\"`imageUri`\">`imageUri`</span> " +
+				"and <span pulumi-lang-go=\"`s3Bucket`\">`s3Bucket`</span>.",
+			expected: "Conflicts with imageUri and s3Bucket.",
+		},
+		{
+			name: "span for a literal value keeps the inner text",
+			input: "Defaults to <span pulumi-lang-nodejs=\"`false`\" " +
+				"pulumi-lang-dotnet=\"`False`\">`false`</span>.",
+			expected: "Defaults to false.",
+		},
+		{
+			name: "a paired env var collapses to the uppercase name",
+			input: "Can also be set using the `HTTP_PROXY` or " +
+				"<span pulumi-lang-nodejs=\"`httpProxy`\" " +
+				"pulumi-lang-python=\"`http_proxy`\">`httpProxy`</span> environment variables.",
+			expected: "Can also be set using the HTTP_PROXY environment variable.",
+		},
+		{
+			name:     "inline-code backticks are stripped so pflag does not hijack the placeholder",
+			input:    "...using the `AWS_CA_BUNDLE` environment variable.",
+			expected: "...using the AWS_CA_BUNDLE environment variable.",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			got := flagUsage(tt.input)
+			assert.Equal(t, tt.expected, got)
+			assert.NotContains(t, got, "`", "usage strings must not contain backticks")
+		})
+	}
+}
+
+func TestInputFlagLiterals(t *testing.T) {
+	t.Parallel()
+
+	literals, err := inputFlagLiterals(map[string]inputFlagValue{
+		"name":    {value: "convert: ${not.a.template}\nline two", typ: schema.StringType},
+		"size":    {value: "42", typ: schema.IntType},
+		"ratio":   {value: "1.5", typ: schema.NumberType},
+		"enabled": {value: "true", typ: schema.BoolType},
+	})
+	require.NoError(t, err)
+	assert.Equal(t, map[string]string{
+		"name":    `"convert: $${not.a.template}\nline two"`,
+		"size":    "42",
+		"ratio":   "1.5",
+		"enabled": "true",
+	}, literals)
+
+	_, err = inputFlagLiterals(map[string]inputFlagValue{
+		"intValue": {value: "0o45", typ: schema.IntType},
+	})
+	assert.ErrorContains(t, err, `--int-value: invalid integer value "0o45"`)
+
+	_, err = inputFlagLiterals(map[string]inputFlagValue{
+		"enabled": {value: "no", typ: schema.BoolType},
+	})
+	assert.ErrorContains(t, err, `--enabled: invalid boolean value "no"`)
+
+	_, err = inputFlagLiterals(map[string]inputFlagValue{
+		"ratio": {value: "1.5.3", typ: schema.NumberType},
+	})
+	assert.ErrorContains(t, err, `--ratio: invalid number value "1.5.3"`)
+}
+
+func TestMergeAttributeLiteralsIntoPCL(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name   string
+		source string
+		attrs  map[string]string
+		want   string
+	}{
+		{
+			name:   "empty file adds attribute",
+			source: "",
+			attrs: map[string]string{
+				"name": `"example"`,
+			},
+			want: `name = "example"
+`,
+		},
+		{
+			name:   "single line without trailing newline adds attribute",
+			source: `name = "example"`,
+			attrs: map[string]string{
+				"size": "3",
+			},
+			want: `name = "example"
+size = 3
+`,
+		},
+		{
+			name:   "overwrites existing attribute",
+			source: `name = "old"` + "\n",
+			attrs: map[string]string{
+				"name": `"new"`,
+			},
+			want: `name = "new"
+`,
+		},
+		{
+			name: "adds new attribute alongside existing attributes",
+			source: `name = "example"
+enabled = true
+`,
+			attrs: map[string]string{
+				"size": "3",
+			},
+			want: `name    = "example"
+enabled = true
+size    = 3
+`,
+		},
+		{
+			name: "overwrites one attribute and adds another",
+			source: `name = "old"
+size = 1
+`,
+			attrs: map[string]string{
+				"name":    `"new"`,
+				"enabled": "false",
+			},
+			want: `name    = "new"
+size    = 1
+enabled = false
+`,
+		},
+		{
+			name: "preserves blocks and comments",
+			source: `# keep this
+name = "old"
+options {
+    protect = true
+}
+`,
+			attrs: map[string]string{
+				"name": `"new"`,
+			},
+			want: `# keep this
+name = "new"
+options {
+  protect = true
+}
+`,
+		},
+		{
+			name:   "nil attrs leaves source unchanged",
+			source: `name = "example"` + "\n",
+			attrs:  nil,
+			want:   `name = "example"` + "\n",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			got, err := mergeAttributeLiteralsIntoPCL([]byte(tt.source), "inputs.pcl", "input", tt.attrs)
+			require.NoError(t, err)
+			assert.Equal(t, tt.want, string(got))
+		})
+	}
+}
+
+func TestMergeAbsentAttributeLiteralsIntoPCL(t *testing.T) {
+	t.Parallel()
+
+	// Absent attributes are added.
+	got, err := mergeAbsentAttributeLiteralsIntoPCL(
+		[]byte(`name = "example"`+"\n"), "provider.pcl", "provider",
+		map[string]string{"region": `"us-east-1"`},
+	)
+	require.NoError(t, err)
+	assert.Contains(t, string(got), `"us-east-1"`)
+	assert.Contains(t, string(got), `region`)
+	assert.Contains(t, string(got), `name`)
+
+	// Present attributes are preserved.
+	got, err = mergeAbsentAttributeLiteralsIntoPCL(
+		[]byte(`region = "eu-west-1"`+"\n"), "provider.pcl", "provider",
+		map[string]string{"region": `"us-east-1"`},
+	)
+	require.NoError(t, err)
+	assert.Equal(t, `region = "eu-west-1"`+"\n", string(got))
+
+	// Empty attrs is a no-op.
+	got, err = mergeAbsentAttributeLiteralsIntoPCL(
+		[]byte(`name = "example"`+"\n"), "provider.pcl", "provider", nil,
+	)
+	require.NoError(t, err)
+	assert.Equal(t, `name = "example"`+"\n", string(got))
+}
+
+func TestInjectProviderOptionInPCL(t *testing.T) {
+	t.Parallel()
+
+	// No existing options block: a fresh one is appended.
+	got, err := injectProviderOptionInPCL([]byte(`name = "example"`+"\n"), "res.pcl", "provider")
+	require.NoError(t, err)
+	assert.Contains(t, string(got), `name = "example"`)
+	assert.Contains(t, string(got), "options {")
+	assert.Contains(t, string(got), "provider = provider")
+
+	// Existing options block without provider: provider is added inside it.
+	got, err = injectProviderOptionInPCL([]byte(`name = "example"
+options {
+  protect = true
+}
+`), "res.pcl", "provider")
+	require.NoError(t, err)
+	assert.Contains(t, string(got), "protect  = true")
+	assert.Contains(t, string(got), "provider = provider")
+
+	// Existing options block with provider already set: idempotent.
+	src := `name = "example"
+options {
+  provider = other
+}
+`
+	got, err = injectProviderOptionInPCL([]byte(src), "res.pcl", "provider")
+	require.NoError(t, err)
+	assert.Contains(t, string(got), "provider = other")
+	assert.NotContains(t, string(got), "provider = provider")
+}
+
+func TestPropertyValueToPCLLiteral(t *testing.T) {
+	t.Parallel()
+
+	got, err := propertyValueToPCLLiteral("x", resource.NewNullProperty())
+	require.NoError(t, err)
+	assert.Equal(t, "null", got)
+
+	got, err = propertyValueToPCLLiteral("x", resource.NewProperty(true))
+	require.NoError(t, err)
+	assert.Equal(t, "true", got)
+
+	got, err = propertyValueToPCLLiteral("x", resource.NewProperty(3.5))
+	require.NoError(t, err)
+	assert.Equal(t, "3.5", got)
+
+	got, err = propertyValueToPCLLiteral("x", resource.NewProperty("hello"))
+	require.NoError(t, err)
+	assert.Equal(t, `"hello"`, got)
+
+	// Nested array/object with deterministic key order.
+	inner := resource.PropertyMap{
+		"b": resource.NewProperty("two"),
+		"a": resource.NewProperty(1.0),
+	}
+	arr := resource.NewProperty([]resource.PropertyValue{
+		resource.NewProperty("first"),
+		resource.NewProperty(inner),
+	})
+	got, err = propertyValueToPCLLiteral("x", arr)
+	require.NoError(t, err)
+	assert.Equal(t, "[\"first\", {\n  a = 1\n  b = \"two\"\n}]", got)
+
+	// Secrets are preserved.
+	got, err = propertyValueToPCLLiteral("x", resource.MakeSecret(resource.NewProperty("s")))
+	require.NoError(t, err)
+	assert.Equal(t, `secret("s")`, got)
+
+	got, err = propertyValueToPCLLiteral("x", resource.NewProperty(resource.PropertyMap{
+		"plain":  resource.NewProperty("p"),
+		"secret": resource.MakeSecret(resource.NewProperty("s")),
+	}))
+	require.NoError(t, err)
+	assert.Equal(t, "{\n  plain = \"p\"\n  secret = secret(\"s\")\n}", got)
+
+	got, err = propertyValueToPCLLiteral("x", resource.NewProperty(resource.PropertyMap{
+		"123":         resource.NewProperty("number prefix"),
+		"cost center": resource.NewProperty("platform"),
+		"quote\"key":  resource.NewProperty("quoted"),
+		"team:name":   resource.NewProperty("infra"),
+		"valid":       resource.NewProperty("identifier"),
+	}))
+	require.NoError(t, err)
+	assert.Equal(t, "{\n"+
+		"  \"123\" = \"number prefix\"\n"+
+		"  \"cost center\" = \"platform\"\n"+
+		"  \"quote\\\"key\" = \"quoted\"\n"+
+		"  \"team:name\" = \"infra\"\n"+
+		"  valid = \"identifier\"\n"+
+		"}", got)
+
+	got, err = propertyValueToPCLLiteral("x", resource.NewProperty(resource.PropertyMap{
+		"outer key": resource.NewProperty(resource.PropertyMap{
+			"inner:key": resource.MakeSecret(resource.NewProperty("s")),
+		}),
+	}))
+	require.NoError(t, err)
+	assert.Equal(t, "{\n  \"outer key\" = {\n    \"inner:key\" = secret(\"s\")\n  }\n}", got)
+
+	merged, err := mergeAbsentAttributeLiteralsIntoPCL(
+		[]byte{}, "provider.pcl", "provider", map[string]string{"tags": got},
+	)
+	require.NoError(t, err)
+	assert.Contains(t, string(merged), `"outer key"`)
+	assert.Contains(t, string(merged), `"inner:key"`)
+
+	// Asset errors.
+	asset, err := resource.NewTextAsset("hello")
+	require.NoError(t, err)
+	_, err = propertyValueToPCLLiteral("cfg", resource.NewProperty(asset))
+	require.ErrorContains(t, err, `"cfg"`)
+	require.ErrorContains(t, err, "asset")
+
+	// Resource reference errors.
+	rref := resource.ResourceReference{URN: resource.URN("urn:pulumi:x::y::z::n")}
+	_, err = propertyValueToPCLLiteral("cfg", resource.NewProperty(rref))
+	require.ErrorContains(t, err, `"cfg"`)
+	require.ErrorContains(t, err, "resource reference")
+
+	// Computed value errors.
+	_, err = propertyValueToPCLLiteral(
+		"cfg", resource.MakeComputed(resource.NewProperty("")))
+	require.ErrorContains(t, err, `"cfg"`)
+	require.ErrorContains(t, err, "computed/output")
 }

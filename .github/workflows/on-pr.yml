@@ -43,6 +43,8 @@ jobs:
       contents: read
       # To sign artifacts.
       id-token: write
+      # To comment changelog style findings on PRs.
+      pull-requests: write
     with:
       ref: ${{ github.head_ref }}
       version: ${{ needs.info.outputs.version }}
@@ -63,6 +65,9 @@ jobs:
           || 'windows-latest'
         }}
       enable-coverage: true
+      # PR runs package no release artifacts, so the post-coverage
+      # uninstrumented rebuild of all six CLI targets is skipped.
+      rebuild-release-binaries: false
     secrets: inherit
 
   performance-gate:

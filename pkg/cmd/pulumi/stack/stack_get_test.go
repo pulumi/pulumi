@@ -21,6 +21,8 @@ import (
 	"testing"
 	"time"
 
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
+
 	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
@@ -201,8 +203,14 @@ func TestBuildStackJSON_WithSnapshot(t *testing.T) {
 				{Name: "aws", Kind: "resource", Version: &v123},
 			},
 		},
-		Resources: []*resource.State{
+		Resources: []*pkgresource.State{
 			{URN: urn, Type: "aws:s3/bucket:Bucket", ID: "bucket-id-1"},
+		},
+		SecretsManager: &secrets.MockSecretsManager{
+			TypeF: func() string { return "cloud" },
+			StateF: func() json.RawMessage {
+				return json.RawMessage(`{"opaque":"provider-state","nested":{"value":42}}`)
+			},
 		},
 	}
 
@@ -224,6 +232,44 @@ func TestBuildStackJSON_WithSnapshot(t *testing.T) {
 	assert.Equal(t, "aws:s3/bucket:Bucket", env.Resources[0].Type)
 	assert.Equal(t, "my-bucket", env.Resources[0].Name)
 	assert.Equal(t, "bucket-id-1", env.Resources[0].ID)
+
+	require.NotNil(t, env.SecretsProvider)
+	assert.Equal(t, "cloud", env.SecretsProvider.Type)
+	assert.JSONEq(t, `{"opaque":"provider-state","nested":{"value":42}}`,
+		string(env.SecretsProvider.State))
+
+	var buf bytes.Buffer
+	require.NoError(t, renderStackJSON(&buf, env))
+	var got map[string]any
+	require.NoError(t, json.Unmarshal(buf.Bytes(), &got))
+	sp, ok := got["secretsProvider"].(map[string]any)
+	require.True(t, ok)
+	assert.Equal(t, "cloud", sp["type"])
+	state, ok := sp["state"].(map[string]any)
+	require.True(t, ok)
+	assert.Equal(t, "provider-state", state["opaque"])
+}
+
+func TestRunStackText_PrintsSecretsProvider(t *testing.T) {
+	t.Parallel()
+
+	snap := &deploy.Snapshot{
+		SecretsManager: &secrets.MockSecretsManager{
+			TypeF: func() string { return "cloud" },
+			StateF: func() json.RawMessage {
+				return json.RawMessage(`{"opaque":"provider-state"}`)
+			},
+		},
+	}
+
+	var buf bytes.Buffer
+	err := runStackText(t.Context(), newMockStack(snap, nil), &buf, stackArgs{})
+	require.NoError(t, err)
+
+	out := buf.String()
+	assert.Contains(t, out, "Secrets provider: cloud")
+	assert.NotContains(t, out, "provider-state")
+	assert.NotContains(t, out, "opaque")
 }
 
 func TestCapitalizeFirst(t *testing.T) {
@@ -377,7 +423,7 @@ func TestRunStackJSON_NonCloud_NilSnapshot(t *testing.T) {
 	t.Parallel()
 
 	var buf bytes.Buffer
-	err := runStackJSON(t.Context(), newMockStack(nil, nil), &buf, stackArgs{output: "json"})
+	err := runStackJSON(t.Context(), newMockStack(nil, nil), &buf, stackArgs{})
 	require.NoError(t, err)
 
 	assert.JSONEq(t, `{

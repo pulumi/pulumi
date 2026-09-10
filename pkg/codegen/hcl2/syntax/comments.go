@@ -16,12 +16,14 @@ package syntax
 
 import (
 	"bytes"
+	"maps"
 	"regexp"
 	"strings"
 
+	mapset "github.com/deckarep/golang-set/v2"
+
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
-	"github.com/pulumi/pulumi/pkg/v3/codegen"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
@@ -98,9 +100,7 @@ func (tokenMap) isTokenMap() {}
 func NewTokenMapForFiles(files []*File) TokenMap {
 	tokens := tokenMap{}
 	for _, f := range files {
-		for node, ts := range f.Tokens.(tokenMap) {
-			tokens[node] = ts
-		}
+		maps.Copy(tokens, f.Tokens.(tokenMap))
 	}
 	return tokens
 }
@@ -109,7 +109,7 @@ type tokenMapper struct {
 	tokenMap             tokenMap
 	tokens               tokenList
 	stack                []hclsyntax.Node
-	templateControlExprs codegen.Set
+	templateControlExprs mapset.Set[hclsyntax.Node]
 }
 
 func (m *tokenMapper) getParent() (hclsyntax.Node, bool) {
@@ -133,7 +133,7 @@ func (m *tokenMapper) inTemplateControl() bool {
 		return false
 	}
 	parent := m.stack[len(m.stack)-2]
-	return m.templateControlExprs.Has(parent)
+	return m.templateControlExprs.Contains(parent)
 }
 
 func (m *tokenMapper) collectLabelTokens(r hcl.Range) Token {
@@ -366,7 +366,7 @@ func (m *tokenMapper) Exit(n hclsyntax.Node) hcl.Diagnostics {
 		trueRange := m.nodeRange(n.TrueResult)
 		falseRange := m.nodeRange(n.FalseResult)
 
-		if m.templateControlExprs.Has(n) {
+		if m.templateControlExprs.Contains(n) {
 			condition := m.tokens.atPos(condRange.Start)
 
 			ift := m.tokens.atOffset(condition.Range().Start.Byte - 1)
@@ -445,7 +445,7 @@ func (m *tokenMapper) Exit(n hclsyntax.Node) hcl.Diagnostics {
 			ifToken = &ift
 		}
 
-		if m.templateControlExprs.Has(n) {
+		if m.templateControlExprs.Contains(n) {
 			closeFor := m.tokens.atPos(m.nodeRange(n.CollExpr).End)
 
 			openEndfor := m.tokens.atPos(valRange.End)
@@ -715,7 +715,7 @@ func mapTokens(rawTokens hclsyntax.Tokens, filename string, root hclsyntax.Node,
 	diags := hclsyntax.Walk(root, &tokenMapper{
 		tokenMap:             tokenMap,
 		tokens:               tokens,
-		templateControlExprs: codegen.Set{},
+		templateControlExprs: mapset.NewSet[hclsyntax.Node](),
 	})
 	contract.Assertf(diags == nil, "error building token map: %v", diags)
 

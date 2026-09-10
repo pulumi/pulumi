@@ -1,0 +1,6 @@
+[project]
+name = "stale-parameterized-packageref"
+version = "0.0.0"
+dependencies = [
+    "pulumi",
+]

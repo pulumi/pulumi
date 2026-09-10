@@ -1,0 +1,8 @@
+extends: existence
+message: "'%s' describes behavior instead of using the active imperative form (pretend the message starts with 'This change will ...')"
+link: https://github.com/pulumi/pulumi/blob/master/CONTRIBUTING.md#changelog-messages
+level: warning
+ignorecase: false
+scope: raw
+raw:
+  - '^(?:`[^`]+`|[A-Za-z]*[A-Z][A-Za-z]*[A-Z][A-Za-z]*|[A-Z]{2,})\s+(?:\w+\s+)?(?:is|are|was|were|now|no longer|will|can|cannot|has|have|does|doesn)\b'

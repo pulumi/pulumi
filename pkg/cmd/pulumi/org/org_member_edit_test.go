@@ -14,8 +14,6 @@
 
 package org
 
-// AI Generated - needs human review
-
 import (
 	"bytes"
 	"context"
@@ -115,7 +113,7 @@ func TestOrgMemberEdit_DefaultOutput_RoleOnly(t *testing.T) {
 		{
 			org:       "acme",
 			userLogin: "alice",
-			req:       apitype.UpdateOrganizationMemberRequest{Role: ptr("admin")},
+			req:       apitype.UpdateOrganizationMemberRequest{Role: new("admin")},
 		},
 	}, c.updateCalls)
 
@@ -156,8 +154,8 @@ func TestOrgMemberEdit_JSONOutput_BothFlags(t *testing.T) {
 			org:       "acme",
 			userLogin: "alice",
 			req: apitype.UpdateOrganizationMemberRequest{
-				Role:      ptr("admin"),
-				FgaRoleId: ptr("role-abc"),
+				Role:      new("admin"),
+				FgaRoleId: new("role-abc"),
 			},
 		},
 	}, c.updateCalls)

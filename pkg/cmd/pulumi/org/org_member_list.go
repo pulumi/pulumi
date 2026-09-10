@@ -78,8 +78,9 @@ func newOrgMemberListCmdWith(factory orgMemberListClientFactory) *cobra.Command 
 	}
 
 	cmd := &cobra.Command{
-		Use:   "list",
-		Short: "[EXPERIMENTAL] List members of an organization",
+		Use:     "list",
+		Aliases: []string{"ls"},
+		Short:   "[EXPERIMENTAL] List members of an organization",
 		Long: "[EXPERIMENTAL] List members of an organization.\n" +
 			"\n" +
 			"Returns the members of the organization, showing each member's user name,\n" +
@@ -133,7 +134,7 @@ func defaultOrgMemberListClientFactory(
 	ws := pkgWorkspace.Instance
 	opts := display.Options{Color: cmdutil.GetGlobalColorization()}
 
-	project, _, err := ws.ReadProject()
+	project, _, err := ws.ReadProject("")
 	if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
 		return nil, "", err
 	}

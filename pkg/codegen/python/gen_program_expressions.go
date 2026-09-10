@@ -27,6 +27,7 @@ import (
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/zclconf/go-cty/cty"
 
+	"github.com/pulumi/pulumi/pkg/v3/codegen/cgstrings"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
@@ -47,6 +48,10 @@ func (g *generator) lowerExpression(expr model.Expression, typ model.Type) (mode
 	expr, diags := pcl.RewriteAppliesWithSkipToJSON(expr, nameInfo(0), false, skipToJSONWhenRewritingApplies)
 	expr, lowerProxyDiags := g.lowerProxyApplies(expr)
 	expr, convertDiags := pcl.RewriteConversions(expr, typ)
+	// Guard dereferences of conditionally-created resources after applies and
+	// conversions are rewritten, so the guard wraps the (converted) apply rather
+	// than being hoisted inside it, and the `null` fallback is left untouched.
+	expr = pcl.RewriteOptionalResourceGuards(expr)
 	expr, quotes, quoteDiags := g.rewriteQuotes(expr)
 
 	diags = diags.Extend(lowerProxyDiags)
@@ -54,6 +59,16 @@ func (g *generator) lowerExpression(expr model.Expression, typ model.Type) (mode
 	diags = diags.Extend(quoteDiags)
 
 	g.diagnostics = g.diagnostics.Extend(diags)
+
+	return expr, quotes
+}
+
+func (g *generator) lowerHookCommandExpression(expr model.Expression) (model.Expression, []*quoteTemp) {
+	expr, convertDiags := pcl.RewriteConversions(expr, model.StringType)
+	expr, quotes, quoteDiags := g.rewriteQuotes(expr)
+
+	g.diagnostics = g.diagnostics.Extend(convertDiags)
+	g.diagnostics = g.diagnostics.Extend(quoteDiags)
 
 	return expr, quotes
 }
@@ -108,6 +123,23 @@ func (g *generator) GenAnonymousFunctionExpression(w io.Writer, expr *model.Anon
 	g.Fgenf(w, ": %.v", expr.Body)
 }
 
+// isNoneLiteral reports whether expr is the `null`/`None` literal, so equality
+// comparisons against it can be rendered with Python's identity operators
+// (`is`/`is not`), which read idiomatically and let type checkers narrow.
+func isNoneLiteral(expr model.Expression) bool {
+	switch expr := expr.(type) {
+	case *model.LiteralValueExpression:
+		return expr.Value.IsNull()
+	case *model.ScopeTraversalExpression:
+		if len(expr.Parts) == 1 {
+			if c, ok := expr.Parts[0].(*model.Constant); ok {
+				return c.ConstantValue.IsNull()
+			}
+		}
+	}
+	return false
+}
+
 func (g *generator) GenBinaryOpExpression(w io.Writer, expr *model.BinaryOpExpression) {
 	var opstr string
 	precedence := g.GetPrecedence(expr)
@@ -118,6 +150,9 @@ func (g *generator) GenBinaryOpExpression(w io.Writer, expr *model.BinaryOpExpre
 		opstr = "/"
 	case hclsyntax.OpEqual:
 		opstr = "=="
+		if isNoneLiteral(expr.RightOperand) || isNoneLiteral(expr.LeftOperand) {
+			opstr = "is"
+		}
 	case hclsyntax.OpGreaterThan:
 		opstr = ">"
 	case hclsyntax.OpGreaterThanOrEqual:
@@ -136,6 +171,9 @@ func (g *generator) GenBinaryOpExpression(w io.Writer, expr *model.BinaryOpExpre
 		opstr = "*"
 	case hclsyntax.OpNotEqual:
 		opstr = "!="
+		if isNoneLiteral(expr.RightOperand) || isNoneLiteral(expr.LeftOperand) {
+			opstr = "is not"
+		}
 	case hclsyntax.OpSubtract:
 		opstr = "-"
 	default:
@@ -245,7 +283,7 @@ func functionName(tokenArg model.Expression) (string, string, string, hcl.Diagno
 		module = ""
 	}
 	module = moduleToPythonModule(module, nil)
-	return makeValidIdentifier(pkg), strings.ReplaceAll(module, "/", "."), title(member), diagnostics
+	return makeValidIdentifier(pkg), strings.ReplaceAll(module, "/", "."), cgstrings.UppercaseFirst(member), diagnostics
 }
 
 var functionImports = map[string][]string{
@@ -369,7 +407,14 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 				genMaybeOutputConversion(func(v string) {
 					g.Fgenf(w, `%s == "true"`, v)
 				})
-			case model.StringType.AssignableFrom(to) && !model.StringType.AssignableFrom(fromType):
+			// ids and strings are treated interchangeably in Python, so if we are casting to id but
+			// already have string _or_ id that's fine. Same for casting to string.
+			case model.StringType.AssignableFrom(to) &&
+				!model.StringType.AssignableFrom(fromType) &&
+				!model.IDType.AssignableFrom(fromType),
+				model.IDType.AssignableFrom(to) &&
+					!model.StringType.AssignableFrom(fromType) &&
+					!model.IDType.AssignableFrom(fromType):
 				genMaybeOutputConversion(func(v string) {
 					if model.BoolType.AssignableFrom(fromType) {
 						g.Fgenf(w, `"true" if %s else "false"`, v)
@@ -396,6 +441,8 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		}
 	case pcl.IntrinsicApply:
 		g.genApply(w, expr)
+	case "recover":
+		g.Fgenf(w, "%.16v.recover(lambda __error: (lambda error: %.v)(str(__error)))", expr.Args[0], expr.Args[1])
 	case "element":
 		g.Fgenf(w, "%.16v[%.v]", expr.Args[0], expr.Args[1])
 	case "entries":
@@ -463,12 +510,6 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 
 		g.Fprint(w, ")")
 	case pcl.Invoke:
-		if expr.Signature.MultiArgumentInputs {
-			err := fmt.Errorf("python program-gen does not implement MultiArgumentInputs for function '%v'",
-				expr.Args[0])
-			panic(err)
-		}
-
 		pkg, module, fn, diags := functionName(expr.Args[0])
 		contract.Assertf(len(diags) == 0, "unexpected diagnostics: %v", diags)
 		if module != "" {
@@ -487,24 +528,29 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		}
 
 		optionsBag := ""
-		if len(expr.Args) == 3 {
+		invokeOptions, hasOptions := pcl.InvokeOptions(expr)
+		parentSelf := g.isComponent && !pcl.InvokeOptionSet(expr, "parent")
+		if hasOptions || parentSelf {
 			var buf bytes.Buffer
-			if invokeOptions, ok := expr.Args[2].(*model.ObjectConsExpression); ok {
-				if isOut {
-					g.Fgen(&buf, ", opts=pulumi.InvokeOutputOptions(")
-				} else {
-					g.Fgen(&buf, ", opts=pulumi.InvokeOptions(")
-				}
-				for i, item := range invokeOptions.Items {
-					last := i == len(invokeOptions.Items)-1
-					key := PyName(pcl.LiteralValueString(item.Key))
-					g.Fgenf(&buf, "%s=%v", key, item.Value)
-					if !last {
-						g.Fgen(&buf, ", ")
-					}
-				}
-				g.Fgen(&buf, ")")
+			if isOut {
+				g.Fgen(&buf, ", opts=pulumi.InvokeOutputOptions(")
+			} else {
+				g.Fgen(&buf, ", opts=pulumi.InvokeOptions(")
 			}
+			args := []string{}
+			if parentSelf {
+				args = append(args, "parent=self")
+			}
+			if hasOptions {
+				for _, item := range invokeOptions.Items {
+					var argBuf bytes.Buffer
+					key := PyName(pcl.LiteralValueString(item.Key))
+					g.Fgenf(&argBuf, "%s=%v", key, item.Value)
+					args = append(args, argBuf.String())
+				}
+			}
+			g.Fgen(&buf, strings.Join(args, ", "))
+			g.Fgen(&buf, ")")
 
 			optionsBag = buf.String()
 		}
@@ -533,14 +579,26 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 			})
 		}
 
-		switch arg := expr.Args[1].(type) {
-		case *model.FunctionCallExpression:
-			if argsObject, ok := arg.Args[0].(*model.ObjectConsExpression); ok {
-				genFuncArgs(argsObject)
+		if expr.Signature.MultiArgumentInputs {
+			// A multi-argument invoke spreads its inputs into positional arguments, ordered by the
+			// schema's multiArgumentInputs list, with None standing in for omitted optional inputs.
+			var invokeArgs *model.ObjectConsExpression
+			if converted, objectArgs, _ := pcl.RecognizeTypedObjectCons(expr.Args[1]); converted {
+				invokeArgs = objectArgs
+			} else {
+				invokeArgs = expr.Args[1].(*model.ObjectConsExpression)
 			}
+			pcl.GenerateMultiArguments(g.Formatter, w, "None", invokeArgs, pcl.SortedFunctionParameters(expr), false)
+		} else {
+			switch arg := expr.Args[1].(type) {
+			case *model.FunctionCallExpression:
+				if argsObject, ok := arg.Args[0].(*model.ObjectConsExpression); ok {
+					genFuncArgs(argsObject)
+				}
 
-		case *model.ObjectConsExpression:
-			genFuncArgs(arg)
+			case *model.ObjectConsExpression:
+				genFuncArgs(arg)
+			}
 		}
 
 		g.Fgenf(w, "%v)", optionsBag)
@@ -552,6 +610,9 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 			if i > 0 {
 				g.Fgen(w, ", ")
 			}
+			if expr.ExpandFinal && i == len(expr.Args)-1 {
+				g.Fgen(w, "*")
+			}
 			g.Fgenf(w, "%v", arg)
 		}
 		g.Fgen(w, ")")
@@ -560,6 +621,9 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		for i, arg := range expr.Args {
 			if i > 0 {
 				g.Fgen(w, ", ")
+			}
+			if expr.ExpandFinal && i == len(expr.Args)-1 {
+				g.Fgen(w, "*")
 			}
 			g.Fgenf(w, "%v", arg)
 		}
@@ -916,6 +980,9 @@ func (g *generator) GenScopeTraversalExpression(w io.Writer, expr *model.ScopeTr
 	}
 
 	rootName := g.nodeName(expr.RootName)
+	if expr.RootName == "range" && g.rangeVariable != "" {
+		rootName = g.rangeVariable
+	}
 	if g.isComponent {
 		configVars := map[string]*pcl.ConfigVariable{}
 		for _, configVar := range g.program.ConfigVariables() {

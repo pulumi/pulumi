@@ -19,6 +19,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 	"net/url"
 	"os"
 	"os/user"
@@ -34,10 +35,10 @@ import (
 	"github.com/gofrs/uuid"
 
 	"gocloud.dev/blob"
-	_ "gocloud.dev/blob/azureblob" // driver for azblob://
-	_ "gocloud.dev/blob/fileblob"  // driver for file://
-	"gocloud.dev/blob/gcsblob"     // driver for gs://
-	_ "gocloud.dev/blob/s3blob"    // driver for s3://
+	"gocloud.dev/blob/azureblob"  // driver for azblob://
+	_ "gocloud.dev/blob/fileblob" // driver for file://
+	"gocloud.dev/blob/gcsblob"    // driver for gs://
+	_ "gocloud.dev/blob/s3blob"   // driver for s3://
 	"gocloud.dev/gcerrors"
 
 	"github.com/pulumi/pulumi/pkg/v3/authhelpers"
@@ -49,6 +50,7 @@ import (
 	sdkDisplay "github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/operations"
+	"github.com/pulumi/pulumi/pkg/v3/registry"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/edit"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
@@ -60,11 +62,11 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/registry"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/httputil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 
@@ -238,6 +240,8 @@ func newDIYBackend(
 		opts.Env = env.Global()
 	}
 
+	logging.AddGlobalSecretFilter(httputil.URLSecrets(originalURL), "[credential]")
+
 	if !IsDIYBackendURL(originalURL) {
 		return nil, fmt.Errorf("diy URL %s has an illegal prefix; expected one of: %s",
 			originalURL, strings.Join(blob.DefaultURLMux().BucketSchemes(), ", "))
@@ -264,9 +268,23 @@ func newDIYBackend(
 		}
 	}
 
+	// go-cloud's default azblob opener refuses to open buckets when
+	// AZURE_STORAGE_SAS_TOKEN is set and the URL overrides the service
+	// endpoint, e.g. via the storage_account query parameter. The backend URL
+	// is provided by the user at login rather than an untrusted source, so use
+	// a custom opener without that restriction to keep such URLs working.
+	if p.Scheme == azureblob.Scheme {
+		blobmux = &blob.URLMux{}
+		blobmux.RegisterBucket(azureblob.Scheme, &azureblob.URLOpener{
+			MakeClient:        azureblob.NewDefaultClient,
+			ServiceURLOptions: *azureblob.NewDefaultServiceURLOptions(),
+		})
+	}
+
 	bucket, err := blobmux.OpenBucket(ctx, u)
 	if err != nil {
-		return nil, fmt.Errorf("unable to open bucket %s: %w", u, err)
+		return nil, fmt.Errorf("unable to open %s %s: %w",
+			stateStoreNoun(originalURL), describeBackendURL(originalURL, u, err), err)
 	}
 
 	if !strings.HasPrefix(u, FilePathPrefix) {
@@ -344,8 +362,8 @@ func newDIYBackend(
 
 	// If we're not in project mode and the user hasn't disabled the warning, warn that legacy mode is deprecated and
 	// due to be removed.
-	if !projectMode && !opts.Env.GetBool(env.DIYBackendIgnoreDeprecationWarning) {
-		d.Warningf(diag.Message("", `
+	if !projectMode && !opts.Env.GetBool(env.DIYBackendIgnoreDeprecationError) {
+		return nil, errors.New(`
 ================================================================================
 Legacy DIY state is deprecated, please upgrade your state to project mode using:
 'pulumi state upgrade'
@@ -353,8 +371,8 @@ Legacy DIY state is deprecated, please upgrade your state to project mode using:
 It is due to be removed in a future release before the end of this year (2026).
 If you have any feedback or concerns, please let us know by commenting on the
 issue at https://github.com/pulumi/pulumi/issues/19566.
-Set PULUMI_DIY_BACKEND_IGNORE_DEPRECATION_WARNING=1 to disable this warning.
-================================================================================`))
+Set PULUMI_DIY_BACKEND_IGNORE_DEPRECATION_ERROR=1 to disable this error.
+================================================================================`)
 	}
 
 	// If we're not in project mode, or we've disabled the warning, we're done.
@@ -555,6 +573,47 @@ func (b *diyBackend) upgradeStack(
 	return nil
 }
 
+// stateStoreNoun names what a backend URL points at, so that errors do not call a local
+// directory or a database a "bucket" — go-cloud's vocabulary rather than the user's.
+func stateStoreNoun(originalURL string) string {
+	switch {
+	case strings.HasPrefix(originalURL, FilePathPrefix):
+		return "state directory"
+	case strings.HasPrefix(originalURL, "postgres://"):
+		return "state database"
+	default:
+		return "bucket"
+	}
+}
+
+// describeBackendURL names the backend for an error message: the URL as configured, plus
+// the normalized form when normalization changed something the user did not write.
+func describeBackendURL(originalURL, normalized string, cause error) string {
+	resolved := withoutInjectedNoTmpDir(originalURL, normalized)
+	if resolved == originalURL || strings.Contains(cause.Error(), resolved) {
+		return fmt.Sprintf("%q", originalURL)
+	}
+	return fmt.Sprintf("%q (resolved to %q)", originalURL, resolved)
+}
+
+// withoutInjectedNoTmpDir strips the no_tmp_dir parameter that massageBlobPath adds
+func withoutInjectedNoTmpDir(originalURL, normalized string) string {
+	if !strings.HasPrefix(originalURL, FilePathPrefix) || strings.Contains(originalURL, "no_tmp_dir") {
+		return normalized
+	}
+	u, err := url.Parse(normalized)
+	if err != nil {
+		return normalized
+	}
+	query := u.Query()
+	if query.Get("no_tmp_dir") == "" {
+		return normalized
+	}
+	query.Del("no_tmp_dir")
+	u.RawQuery = query.Encode()
+	return u.String()
+}
+
 // massageBlobPath takes the path the user provided and converts it to an appropriate form go-cloud
 // can support.  For s3:// paths this translates AWS SDK v1-era query parameters to their v2
 // equivalents; azblob/gs paths are not touched. file:// paths have a few oddities around them that
@@ -630,10 +689,17 @@ func massageBlobPath(path string) (string, error) {
 // before the upgrade keep working:
 //
 //   - disableSSL becomes disable_https; gocloud.dev v0.46 rejects the v1 name as an unknown
-//     query parameter.
+//     query parameter. When the endpoint carries an explicit scheme, disableSSL is dropped
+//     instead: the v1 SDK only used it to pick a scheme for scheme-less endpoints, while
+//     disable_https unconditionally downgrades requests to HTTP.
 //   - a scheme-less endpoint (e.g. endpoint=minio:9000) gets an explicit http:// or https://
 //     scheme depending on disableSSL; the v1 SDK implied the scheme, while the v2 SDK
 //     requires one.
+//   - when an endpoint is set (i.e. a third-party S3-compatible store rather than AWS),
+//     request_checksum_calculation defaults to when_required, unless it is configured
+//     explicitly via the URL or the AWS_REQUEST_CHECKSUM_CALCULATION environment variable.
+//     The v2 SDK's default of computing CRC32 checksums with aws-chunked streaming uploads
+//     is rejected by some third-party stores; the v1 SDK never sent them.
 //
 // The other v1-era parameters (s3ForcePathStyle, awssdk) are still understood by gocloud.dev
 // and need no translation.
@@ -652,17 +718,26 @@ func translateLegacyS3Params(urlstr string) (string, error) {
 			return "", fmt.Errorf("invalid value for query parameter %q: %w", "disableSSL", err)
 		}
 		query.Del("disableSSL")
-		query.Set("disable_https", strconv.FormatBool(disableSSL))
+		if !strings.Contains(query.Get("endpoint"), "://") {
+			query.Set("disable_https", strconv.FormatBool(disableSSL))
+		}
 		changed = true
 	}
 
-	if endpoint := query.Get("endpoint"); endpoint != "" && !strings.Contains(endpoint, "://") {
-		scheme := "https"
-		if disableSSL {
-			scheme = "http"
+	if endpoint := query.Get("endpoint"); endpoint != "" {
+		if !strings.Contains(endpoint, "://") {
+			scheme := "https"
+			if disableSSL {
+				scheme = "http"
+			}
+			query.Set("endpoint", scheme+"://"+endpoint)
+			changed = true
 		}
-		query.Set("endpoint", scheme+"://"+endpoint)
-		changed = true
+		if query.Get("request_checksum_calculation") == "" &&
+			os.Getenv("AWS_REQUEST_CHECKSUM_CALCULATION") == "" {
+			query.Set("request_checksum_calculation", "when_required")
+			changed = true
+		}
 	}
 
 	if !changed {
@@ -835,10 +910,7 @@ func (b *diyBackend) CreateStack(
 		}
 	}
 
-	stack := newStack(diyStackRef, b)
-	b.d.Infof(diag.Message("", "Created stack '%s'"), stack.Ref())
-
-	return stack, nil
+	return newStack(diyStackRef, b), nil
 }
 
 func (b *diyBackend) GetStack(ctx context.Context, stackRef backend.StackReference) (backend.Stack, error) {
@@ -1072,7 +1144,16 @@ func (b *diyBackend) renameStack(ctx context.Context, oldRef *diyBackendReferenc
 	if chk != nil && chk.Latest != nil {
 		project, has := newRef.Project()
 		contract.Assertf(has || project == "", "project should be blank for legacy stacks")
-		if err = edit.RenameStack(chk.Latest, newRef.name, tokens.PackageName(project)); err != nil {
+		oldProject, oldHas := oldRef.Project()
+		if !oldHas && len(chk.Latest.Resources) > 0 {
+			// Legacy refs carry no project, but their URNs still do; scope the rewrite to it.
+			oldProject = tokens.Name(chk.Latest.Resources[0].URN.Project())
+		}
+		if err = edit.RenameStack(chk.Latest, newRef.name, tokens.PackageName(project),
+			edit.RenameStackOptions{
+				OldName:    oldRef.name,
+				OldProject: tokens.PackageName(oldProject),
+			}); err != nil {
 			return err
 		}
 	}
@@ -1123,12 +1204,7 @@ func (b *diyBackend) PackPolicies(
 func (b *diyBackend) Preview(ctx context.Context, stack backend.Stack,
 	op backend.UpdateOperation, events chan<- engine.Event,
 ) (*deploy.Plan, sdkDisplay.ResourceChanges, error) {
-	// We can skip PreviewThenPromptThenExecute and just go straight to Execute.
-	opts := backend.ApplierOptions{
-		DryRun:   true,
-		ShowLink: true,
-	}
-	return b.apply(ctx, apitype.PreviewUpdate, stack, op, opts, events)
+	return backend.Preview(ctx, stack, op, b.apply, events)
 }
 
 func (b *diyBackend) Update(ctx context.Context, stack backend.Stack,
@@ -1310,6 +1386,9 @@ func (b *diyBackend) apply(
 		Cancel:        scope.Context(),
 		Events:        engineEvents,
 		BackendClient: backend.NewBackendClient(b, op.SecretsProvider),
+		SnapshotManagerCapabilities: engine.SnapshotManagerCapabilities{
+			StateMigrations: true,
+		},
 	}
 	// Create the management machinery.
 	// We only need a snapshot manager if we're doing an update.
@@ -1318,6 +1397,10 @@ func (b *diyBackend) apply(
 		persister := b.newSnapshotPersister(ctx, diyStackRef)
 		manager = backend.NewSnapshotManager(persister, op.SecretsManager, update.Target.Snapshot, nil)
 		engineCtx.SnapshotManager = manager
+	}
+
+	if op.Opts.Engine.HostFactory == nil {
+		op.Opts.Engine.HostFactory = backend.DefaultHostFactory(b.GetReadOnlyCloudRegistry())
 	}
 
 	// Perform the update
@@ -1594,27 +1677,11 @@ func (b *diyBackend) UpdateStackTags(ctx context.Context,
 
 	if diyStack, ok := stack.(*diyStack); ok {
 		tagsCopy := make(map[apitype.StackTagName]string, len(tags))
-		for k, v := range tags {
-			tagsCopy[k] = v
-		}
+		maps.Copy(tagsCopy, tags)
 		diyStack.tags.Store(&tagsCopy)
 	}
 
 	return nil
-}
-
-func (b *diyBackend) EncryptStackDeploymentSettingsSecret(ctx context.Context,
-	stack backend.Stack, secret string,
-) (*apitype.SecretValue, error) {
-	// The local backend does not support managing deployments.
-	return nil, errors.New("stack deployments not supported with diy backends")
-}
-
-func (b *diyBackend) UpdateStackDeploymentSettings(ctx context.Context, stack backend.Stack,
-	deployment apitype.DeploymentSettings,
-) error {
-	// The local backend does not support managing deployments.
-	return errors.New("stack deployments not supported with diy backends")
 }
 
 func (b *diyBackend) DestroyStackDeploymentSettings(ctx context.Context, stack backend.Stack) error {

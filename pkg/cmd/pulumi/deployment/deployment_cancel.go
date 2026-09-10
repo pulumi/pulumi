@@ -23,7 +23,6 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
@@ -33,6 +32,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/pkg/v3/util/outputflag"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 )
 
@@ -86,6 +86,7 @@ func newDeploymentCancelCmdWith(factory deploymentCancelClientFactory) *cobra.Co
 			"  # Emit JSON for scripting.\n" +
 			"  pulumi deployment cancel dep-abc123 --yes --output json",
 		RunE: func(cmd *cobra.Command, posArgs []string) error {
+			args.yes = args.yes || env.SkipConfirmations.Value()
 			return runDeploymentCancel(cmd.Context(), cmd.OutOrStdout(), factory, posArgs[0], args)
 		},
 	}
@@ -120,17 +121,12 @@ func runDeploymentCancel(
 		return err
 	}
 
-	if !args.yes {
-		if !cmdutil.Interactive() {
-			return backenderr.ErrNonInteractiveRequiresYes
-		}
-		opts := display.Options{Color: cmdutil.GetGlobalColorization()}
-		prompt := fmt.Sprintf(
-			"This will cancel deployment '%s' for stack '%s'!",
-			deploymentID, stackName)
-		if !ui.ConfirmPrompt(prompt, "cancel", opts) {
-			return errors.New("confirmation declined")
-		}
+	opts := display.Options{Color: cmdutil.GetGlobalColorization()}
+	prompt := fmt.Sprintf(
+		"This will cancel deployment '%s' for stack '%s'!",
+		deploymentID, stackName)
+	if err := ui.ConfirmDeletion(args.yes, cmdutil.Interactive(), prompt, "cancel", w, opts); err != nil {
+		return err
 	}
 
 	if err := c.CancelStackDeployment(ctx, stackID, deploymentID); err != nil {

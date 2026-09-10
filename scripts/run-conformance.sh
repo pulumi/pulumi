@@ -15,7 +15,9 @@ export PULUMI_LANGUAGE_TEST_SHOW_FULL_OUTPUT=true
 if [ -z "${1+x}" ]; then
     cd "$ROOT/sdk/pcl/cmd/pulumi-language-pcl" && go test . -v -count=1 -run "TestLanguage"
 
-    cd "$ROOT/sdk/go/pulumi-language-go" && go test . -v -count=1 -run "TestLanguage"
+    cd "$ROOT/sdk/go/pulumi-language-go" && go test . -v -count=1 -run "TestLanguagePublished"
+    cd "$ROOT/sdk/go/pulumi-language-go" && go test . -v -count=1 -run "TestLanguageLocal"
+    cd "$ROOT/sdk/go/pulumi-language-go" && go test . -v -count=1 -run "TestLanguageExtraTypes"
 
     cd "$ROOT/sdk/nodejs/cmd/pulumi-language-nodejs" && go test . -v -count=1 -run "TestLanguageTSC"
     cd "$ROOT/sdk/nodejs/cmd/pulumi-language-nodejs" && go test . -v -count=1 -run "TestLanguageTSNode"

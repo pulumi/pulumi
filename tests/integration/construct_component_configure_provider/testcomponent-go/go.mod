@@ -1,6 +1,6 @@
 module github.com/pulumi/pulumi/tests/integration/construct_component_configure_provider/testcomponent-go
 
-go 1.25.8
+go 1.25.11
 
 replace (
 	github.com/atotto/clipboard => github.com/tgummerer/clipboard v0.0.0-20241001131231-d02d263e614e

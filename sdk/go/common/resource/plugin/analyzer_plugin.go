@@ -19,6 +19,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 	"path/filepath"
 	"sort"
 	"strconv"
@@ -75,7 +76,7 @@ func NewAnalyzer(host Host, ctx *Context, name tokens.QName) (Analyzer, error) {
 			Name: strings.ReplaceAll(string(name), tokens.QNameDelimiter, "_"),
 			Kind: apitype.AnalyzerPlugin,
 		},
-		host.GetProjectPlugins())
+		ctx.ProjectPlugins())
 	if err != nil {
 		return nil, rpcerror.Convert(err)
 	}
@@ -152,7 +153,7 @@ func NewPolicyAnalyzer(
 				ctx.baseContext,
 				ctx.Diag,
 				spec,
-				host.GetProjectPlugins())
+				ctx.ProjectPlugins())
 			return err == nil && path != ""
 		}
 	}
@@ -168,7 +169,7 @@ func NewPolicyAnalyzer(
 		var pluginPath string
 		pluginPath, err = workspace.GetPluginPath(
 			ctx.baseContext, ctx.Diag,
-			workspace.PluginDescriptor{Name: policyAnalyzerName, Kind: apitype.AnalyzerPlugin}, host.GetProjectPlugins())
+			workspace.PluginDescriptor{Name: policyAnalyzerName, Kind: apitype.AnalyzerPlugin}, ctx.ProjectPlugins())
 		if err != nil {
 			return nil, err
 		}
@@ -203,9 +204,7 @@ func NewPolicyAnalyzer(
 		analyzerEnv := env.Global()
 		if opts != nil && len(opts.AdditionalEnv) > 0 {
 			additionalStore := envutil.MapStore{}
-			for k, v := range opts.AdditionalEnv {
-				additionalStore[k] = v
-			}
+			maps.Copy(additionalStore, opts.AdditionalEnv)
 			analyzerEnv = envutil.NewEnv(envutil.JoinStore(additionalStore, env.Global().GetStore()))
 		}
 
@@ -994,9 +993,7 @@ func constructEnv(opts *PolicyAnalyzerOptions, runtime string) (env.Env, error) 
 		maybeAppendEnv("PULUMI_DRY_RUN", strconv.FormatBool(opts.DryRun))
 
 		// Inject per-pack environment variables (e.g., from ESC environments).
-		for k, v := range opts.AdditionalEnv {
-			store[k] = v
-		}
+		maps.Copy(store, opts.AdditionalEnv)
 	}
 
 	return envutil.NewEnv(envutil.JoinStore(store, env.Global().GetStore())), nil

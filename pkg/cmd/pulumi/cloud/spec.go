@@ -106,6 +106,26 @@ type Operation struct {
 	// SupersededBy is the operationId of the replacement route when
 	// x-pulumi-route-property.SupersededBy is set on a deprecated op.
 	SupersededBy string
+
+	// hydrate fills the rendered schema fields (Body/Response SchemaText,
+	// SchemaMarkdown, SchemaJSON and the per-response copies in
+	// InlineResponses) on first ensureSchemas call. Rendering is deferred
+	// because it dominates spec-parse time and only `describe` reads these
+	// fields, for a single operation. nil once run, or when the Operation
+	// was built without a parsed spec (tests).
+	hydrate func(*Operation)
+}
+
+// ensureSchemas renders the schema-bearing fields of the operation.
+// Idempotent; must be called before reading BodySchemaText/Markdown/JSON,
+// ResponseSchemaText/JSON, or the schema fields of InlineResponses.
+func (o *Operation) ensureSchemas() {
+	if o.hydrate == nil {
+		return
+	}
+	h := o.hydrate
+	o.hydrate = nil
+	h(o)
 }
 
 // Index is the parsed OpenAPI spec with lookup aids.
@@ -125,11 +145,12 @@ var methodPrecedence = map[string]int{
 }
 
 // LoadIndex returns the parsed OpenAPI spec, fetching it from Pulumi Cloud on
-// cache miss and writing the result to the per-user cache. Pass refresh=true
-// to force a re-fetch even when the cache has a copy. Warnings (stale-cache
-// fallback, cache-write failure) are written to warnW.
-func LoadIndex(ctx context.Context, warnW io.Writer, refresh bool) (*Index, error) {
-	data, err := ensureSpec(ctx, warnW, refresh)
+// cache miss and writing the result to the per-user cache. resolved supplies
+// the cloud URL and client used for the fetch. Pass refresh=true to force a
+// re-fetch even when the cache has a copy. Warnings (stale-cache fallback,
+// cache-write failure) are written to warnW.
+func LoadIndex(ctx context.Context, resolved *ResolvedContext, warnW io.Writer, refresh bool) (*Index, error) {
+	data, err := ensureSpec(ctx, resolved, warnW, refresh)
 	if err != nil {
 		return nil, err
 	}
@@ -257,20 +278,39 @@ func parseOperation(path, method string, op *v3high.Operation, renderer *schemaR
 		}
 		out.Params = append(out.Params, pp)
 	}
+	var bodySchema *base.Schema
 	if op.RequestBody != nil && op.RequestBody.Content != nil {
 		out.HasBody = true
 		out.BodyContentType = preferContentType(op.RequestBody.Content)
 		if out.BodyContentType != "" {
 			if ct, ok := op.RequestBody.Content.Get(out.BodyContentType); ok && ct != nil && ct.Schema != nil {
-				if resolved := ct.Schema.Schema(); resolved != nil {
-					out.BodySchemaText = renderer.renderBodySchema(resolved)
-					out.BodySchemaMarkdown = renderer.renderSchemaMarkdown(resolved)
-					out.BodySchemaJSON = schemaToJSON(resolved)
-				}
+				bodySchema = ct.Schema.Schema()
 			}
 		}
 	}
-	populateResponses(out, op, renderer)
+	respSchemas, primary := populateResponses(out, op)
+	out.hydrate = func(o *Operation) {
+		if bodySchema != nil {
+			o.BodySchemaText = renderer.renderBodySchema(bodySchema)
+			o.BodySchemaMarkdown = renderer.renderSchemaMarkdown(bodySchema)
+			o.BodySchemaJSON = schemaToJSON(bodySchema)
+		}
+		for i, schema := range respSchemas {
+			if schema == nil {
+				continue
+			}
+			r := &o.InlineResponses[i]
+			r.SchemaText = renderer.renderResponseSchema(schema)
+			r.SchemaMarkdown = renderer.renderSchemaMarkdown(schema)
+			r.SchemaJSON = schemaToJSON(schema)
+		}
+		// Mirror the primary response into the flat fields so the text
+		// and `--output=json` outputs both still see the "primary" body.
+		if primary >= 0 {
+			o.ResponseSchemaText = o.InlineResponses[primary].SchemaText
+			o.ResponseSchemaJSON = o.InlineResponses[primary].SchemaJSON
+		}
+	}
 	return out
 }
 
@@ -279,9 +319,15 @@ func parseOperation(path, method string, op *v3high.Operation, renderer *schemaR
 // 2xx success response is also duplicated into the flat
 // ResponseContentType/ResponseSchemaText/ResponseSchemaJSON fields so the
 // `describe` text and `--output=json` outputs both have a primary body.
-func populateResponses(out *Operation, op *v3high.Operation, renderer *schemaRenderer) {
+//
+// Schema rendering is deferred to Operation.ensureSchemas: the returned
+// slice carries the resolved schema for each InlineResponses entry (nil for
+// schemaless entries), and the int is the index of the primary response in
+// InlineResponses (-1 when none).
+func populateResponses(out *Operation, op *v3high.Operation) ([]*base.Schema, int) {
+	primary := -1
 	if op.Responses == nil {
-		return
+		return nil, primary
 	}
 
 	type codeEntry struct {
@@ -299,6 +345,7 @@ func populateResponses(out *Operation, op *v3high.Operation, renderer *schemaRen
 		entries = append(entries, codeEntry{status: "default", resp: op.Responses.Default})
 	}
 
+	var schemas []*base.Schema
 	for _, e := range entries {
 		if e.resp == nil {
 			continue
@@ -321,6 +368,7 @@ func populateResponses(out *Operation, op *v3high.Operation, renderer *schemaRen
 					Status:      e.status,
 					Description: e.resp.Description,
 				})
+				schemas = append(schemas, nil)
 			} else {
 				out.StockErrors = append(out.StockErrors, ErrorRef{
 					Status:      e.status,
@@ -330,41 +378,36 @@ func populateResponses(out *Operation, op *v3high.Operation, renderer *schemaRen
 			continue
 		}
 
-		spec := ResponseSpec{
-			Status:         e.status,
-			Description:    e.resp.Description,
-			ContentType:    ct,
-			SchemaText:     renderer.renderResponseSchema(resolved),
-			SchemaMarkdown: renderer.renderSchemaMarkdown(resolved),
-			SchemaJSON:     schemaToJSON(resolved),
-		}
-		out.InlineResponses = append(out.InlineResponses, spec)
+		out.InlineResponses = append(out.InlineResponses, ResponseSpec{
+			Status:      e.status,
+			Description: e.resp.Description,
+			ContentType: ct,
+		})
+		schemas = append(schemas, resolved)
 
-		// Mirror the first success response into the flat fields so the text
-		// and `--output=json` outputs both still see the "primary" body.
+		// Pick the first success response with a schema as the primary one.
 		// Also snapshot the full list of content types the spec declares for
 		// that response — the dispatcher uses it to drive --output-based
 		// content negotiation.
-		if out.ResponseSchemaText == "" && isSuccessStatus(e.status) {
-			out.ResponseContentType = spec.ContentType
-			out.ResponseSchemaText = spec.SchemaText
-			out.ResponseSchemaJSON = spec.SchemaJSON
+		if primary < 0 && isSuccessStatus(e.status) {
+			primary = len(out.InlineResponses) - 1
+			out.ResponseContentType = ct
 			out.SuccessContentTypes = contentTypes(e.resp.Content)
 		}
 	}
 
 	// Fallback: if no success response had a schema, prefer the `default` block
 	// so the text and JSON outputs still surface something — matches prior behavior.
-	if out.ResponseSchemaText == "" {
-		for _, spec := range out.InlineResponses {
+	if primary < 0 {
+		for i, spec := range out.InlineResponses {
 			if spec.Status == "default" {
+				primary = i
 				out.ResponseContentType = spec.ContentType
-				out.ResponseSchemaText = spec.SchemaText
-				out.ResponseSchemaJSON = spec.SchemaJSON
 				break
 			}
 		}
 	}
+	return schemas, primary
 }
 
 func isSuccessStatus(s string) bool {

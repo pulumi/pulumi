@@ -175,6 +175,216 @@ func (in *intEnumPtr) ToIntEnumPtrOutputWithContext(ctx context.Context) IntEnum
 	return pulumi.ToOutputWithContext(ctx, in).(IntEnumPtrOutput)
 }
 
+// IntEnumMapInput is an input type that accepts IntEnumMap and IntEnumMapOutput values.
+// You can construct a concrete instance of `IntEnumMapInput` via:
+//
+//	IntEnumMap{ "key": IntEnumArgs{...} }
+type IntEnumMapInput interface {
+	pulumi.Input
+
+	ToIntEnumMapOutput() IntEnumMapOutput
+	ToIntEnumMapOutputWithContext(context.Context) IntEnumMapOutput
+}
+
+type IntEnumMap map[string]IntEnum
+
+func (IntEnumMap) ElementType() reflect.Type {
+	return reflect.TypeOf((*map[string]IntEnum)(nil)).Elem()
+}
+
+func (i IntEnumMap) ToIntEnumMapOutput() IntEnumMapOutput {
+	return i.ToIntEnumMapOutputWithContext(context.Background())
+}
+
+func (i IntEnumMap) ToIntEnumMapOutputWithContext(ctx context.Context) IntEnumMapOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(IntEnumMapOutput)
+}
+
+type IntEnumMapOutput struct{ *pulumi.OutputState }
+
+func (IntEnumMapOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*map[string]IntEnum)(nil)).Elem()
+}
+
+func (o IntEnumMapOutput) ToIntEnumMapOutput() IntEnumMapOutput {
+	return o
+}
+
+func (o IntEnumMapOutput) ToIntEnumMapOutputWithContext(ctx context.Context) IntEnumMapOutput {
+	return o
+}
+
+func (o IntEnumMapOutput) MapIndex(k pulumi.StringInput) IntEnumOutput {
+	return pulumi.All(o, k).ApplyT(func(vs []interface{}) IntEnum {
+		return vs[0].(map[string]IntEnum)[vs[1].(string)]
+	}).(IntEnumOutput)
+}
+
+type NumberEnum float64
+
+const (
+	NumberEnumZeroPointOne = NumberEnum(0.1)
+	NumberEnumOne          = NumberEnum(1)
+)
+
+func (NumberEnum) ElementType() reflect.Type {
+	return reflect.TypeOf((*NumberEnum)(nil)).Elem()
+}
+
+func (e NumberEnum) ToNumberEnumOutput() NumberEnumOutput {
+	return pulumi.ToOutput(e).(NumberEnumOutput)
+}
+
+func (e NumberEnum) ToNumberEnumOutputWithContext(ctx context.Context) NumberEnumOutput {
+	return pulumi.ToOutputWithContext(ctx, e).(NumberEnumOutput)
+}
+
+func (e NumberEnum) ToNumberEnumPtrOutput() NumberEnumPtrOutput {
+	return e.ToNumberEnumPtrOutputWithContext(context.Background())
+}
+
+func (e NumberEnum) ToNumberEnumPtrOutputWithContext(ctx context.Context) NumberEnumPtrOutput {
+	return NumberEnum(e).ToNumberEnumOutputWithContext(ctx).ToNumberEnumPtrOutputWithContext(ctx)
+}
+
+func (e NumberEnum) ToFloat64Output() pulumi.Float64Output {
+	return pulumi.ToOutput(pulumi.Float64(e)).(pulumi.Float64Output)
+}
+
+func (e NumberEnum) ToFloat64OutputWithContext(ctx context.Context) pulumi.Float64Output {
+	return pulumi.ToOutputWithContext(ctx, pulumi.Float64(e)).(pulumi.Float64Output)
+}
+
+func (e NumberEnum) ToFloat64PtrOutput() pulumi.Float64PtrOutput {
+	return pulumi.Float64(e).ToFloat64PtrOutputWithContext(context.Background())
+}
+
+func (e NumberEnum) ToFloat64PtrOutputWithContext(ctx context.Context) pulumi.Float64PtrOutput {
+	return pulumi.Float64(e).ToFloat64OutputWithContext(ctx).ToFloat64PtrOutputWithContext(ctx)
+}
+
+type NumberEnumOutput struct{ *pulumi.OutputState }
+
+func (NumberEnumOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*NumberEnum)(nil)).Elem()
+}
+
+func (o NumberEnumOutput) ToNumberEnumOutput() NumberEnumOutput {
+	return o
+}
+
+func (o NumberEnumOutput) ToNumberEnumOutputWithContext(ctx context.Context) NumberEnumOutput {
+	return o
+}
+
+func (o NumberEnumOutput) ToNumberEnumPtrOutput() NumberEnumPtrOutput {
+	return o.ToNumberEnumPtrOutputWithContext(context.Background())
+}
+
+func (o NumberEnumOutput) ToNumberEnumPtrOutputWithContext(ctx context.Context) NumberEnumPtrOutput {
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v NumberEnum) *NumberEnum {
+		return &v
+	}).(NumberEnumPtrOutput)
+}
+
+func (o NumberEnumOutput) ToFloat64Output() pulumi.Float64Output {
+	return o.ToFloat64OutputWithContext(context.Background())
+}
+
+func (o NumberEnumOutput) ToFloat64OutputWithContext(ctx context.Context) pulumi.Float64Output {
+	return o.ApplyTWithContext(ctx, func(_ context.Context, e NumberEnum) float64 {
+		return float64(e)
+	}).(pulumi.Float64Output)
+}
+
+func (o NumberEnumOutput) ToFloat64PtrOutput() pulumi.Float64PtrOutput {
+	return o.ToFloat64PtrOutputWithContext(context.Background())
+}
+
+func (o NumberEnumOutput) ToFloat64PtrOutputWithContext(ctx context.Context) pulumi.Float64PtrOutput {
+	return o.ApplyTWithContext(ctx, func(_ context.Context, e NumberEnum) *float64 {
+		v := float64(e)
+		return &v
+	}).(pulumi.Float64PtrOutput)
+}
+
+type NumberEnumPtrOutput struct{ *pulumi.OutputState }
+
+func (NumberEnumPtrOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((**NumberEnum)(nil)).Elem()
+}
+
+func (o NumberEnumPtrOutput) ToNumberEnumPtrOutput() NumberEnumPtrOutput {
+	return o
+}
+
+func (o NumberEnumPtrOutput) ToNumberEnumPtrOutputWithContext(ctx context.Context) NumberEnumPtrOutput {
+	return o
+}
+
+func (o NumberEnumPtrOutput) Elem() NumberEnumOutput {
+	return o.ApplyT(func(v *NumberEnum) NumberEnum {
+		if v != nil {
+			return *v
+		}
+		var ret NumberEnum
+		return ret
+	}).(NumberEnumOutput)
+}
+
+func (o NumberEnumPtrOutput) ToFloat64PtrOutput() pulumi.Float64PtrOutput {
+	return o.ToFloat64PtrOutputWithContext(context.Background())
+}
+
+func (o NumberEnumPtrOutput) ToFloat64PtrOutputWithContext(ctx context.Context) pulumi.Float64PtrOutput {
+	return o.ApplyTWithContext(ctx, func(_ context.Context, e *NumberEnum) *float64 {
+		if e == nil {
+			return nil
+		}
+		v := float64(*e)
+		return &v
+	}).(pulumi.Float64PtrOutput)
+}
+
+// NumberEnumInput is an input type that accepts values of the NumberEnum enum
+// A concrete instance of `NumberEnumInput` can be one of the following:
+//
+//	NumberEnumZeroPointOne
+//	NumberEnumOne
+type NumberEnumInput interface {
+	pulumi.Input
+
+	ToNumberEnumOutput() NumberEnumOutput
+	ToNumberEnumOutputWithContext(context.Context) NumberEnumOutput
+}
+
+var numberEnumPtrType = reflect.TypeOf((**NumberEnum)(nil)).Elem()
+
+type NumberEnumPtrInput interface {
+	pulumi.Input
+
+	ToNumberEnumPtrOutput() NumberEnumPtrOutput
+	ToNumberEnumPtrOutputWithContext(context.Context) NumberEnumPtrOutput
+}
+
+type numberEnumPtr float64
+
+func NumberEnumPtr(v float64) NumberEnumPtrInput {
+	return (*numberEnumPtr)(&v)
+}
+
+func (*numberEnumPtr) ElementType() reflect.Type {
+	return numberEnumPtrType
+}
+
+func (in *numberEnumPtr) ToNumberEnumPtrOutput() NumberEnumPtrOutput {
+	return pulumi.ToOutput(in).(NumberEnumPtrOutput)
+}
+
+func (in *numberEnumPtr) ToNumberEnumPtrOutputWithContext(ctx context.Context) NumberEnumPtrOutput {
+	return pulumi.ToOutputWithContext(ctx, in).(NumberEnumPtrOutput)
+}
+
 type StringEnum string
 
 const (
@@ -340,13 +550,239 @@ func (in *stringEnumPtr) ToStringEnumPtrOutputWithContext(ctx context.Context) S
 	return pulumi.ToOutputWithContext(ctx, in).(StringEnumPtrOutput)
 }
 
+// StringEnumArrayInput is an input type that accepts StringEnumArray and StringEnumArrayOutput values.
+// You can construct a concrete instance of `StringEnumArrayInput` via:
+//
+//	StringEnumArray{ StringEnumArgs{...} }
+type StringEnumArrayInput interface {
+	pulumi.Input
+
+	ToStringEnumArrayOutput() StringEnumArrayOutput
+	ToStringEnumArrayOutputWithContext(context.Context) StringEnumArrayOutput
+}
+
+type StringEnumArray []StringEnum
+
+func (StringEnumArray) ElementType() reflect.Type {
+	return reflect.TypeOf((*[]StringEnum)(nil)).Elem()
+}
+
+func (i StringEnumArray) ToStringEnumArrayOutput() StringEnumArrayOutput {
+	return i.ToStringEnumArrayOutputWithContext(context.Background())
+}
+
+func (i StringEnumArray) ToStringEnumArrayOutputWithContext(ctx context.Context) StringEnumArrayOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(StringEnumArrayOutput)
+}
+
+type StringEnumArrayOutput struct{ *pulumi.OutputState }
+
+func (StringEnumArrayOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*[]StringEnum)(nil)).Elem()
+}
+
+func (o StringEnumArrayOutput) ToStringEnumArrayOutput() StringEnumArrayOutput {
+	return o
+}
+
+func (o StringEnumArrayOutput) ToStringEnumArrayOutputWithContext(ctx context.Context) StringEnumArrayOutput {
+	return o
+}
+
+func (o StringEnumArrayOutput) Index(i pulumi.IntInput) StringEnumOutput {
+	return pulumi.All(o, i).ApplyT(func(vs []interface{}) StringEnum {
+		return vs[0].([]StringEnum)[vs[1].(int)]
+	}).(StringEnumOutput)
+}
+
+type WordyEnum string
+
+const (
+	WordyEnum_A_Value_With_Spaces_ = WordyEnum("A Value With Spaces.")
+	WordyEnum_It_s_got_apostrophes = WordyEnum("It's got apostrophes")
+	WordyEnum_UNDERSCORE_PREFIX    = WordyEnum("_UNDERSCORE_PREFIX")
+	WordyEnumNamed                 = WordyEnum("plain")
+)
+
+func (WordyEnum) ElementType() reflect.Type {
+	return reflect.TypeOf((*WordyEnum)(nil)).Elem()
+}
+
+func (e WordyEnum) ToWordyEnumOutput() WordyEnumOutput {
+	return pulumi.ToOutput(e).(WordyEnumOutput)
+}
+
+func (e WordyEnum) ToWordyEnumOutputWithContext(ctx context.Context) WordyEnumOutput {
+	return pulumi.ToOutputWithContext(ctx, e).(WordyEnumOutput)
+}
+
+func (e WordyEnum) ToWordyEnumPtrOutput() WordyEnumPtrOutput {
+	return e.ToWordyEnumPtrOutputWithContext(context.Background())
+}
+
+func (e WordyEnum) ToWordyEnumPtrOutputWithContext(ctx context.Context) WordyEnumPtrOutput {
+	return WordyEnum(e).ToWordyEnumOutputWithContext(ctx).ToWordyEnumPtrOutputWithContext(ctx)
+}
+
+func (e WordyEnum) ToStringOutput() pulumi.StringOutput {
+	return pulumi.ToOutput(pulumi.String(e)).(pulumi.StringOutput)
+}
+
+func (e WordyEnum) ToStringOutputWithContext(ctx context.Context) pulumi.StringOutput {
+	return pulumi.ToOutputWithContext(ctx, pulumi.String(e)).(pulumi.StringOutput)
+}
+
+func (e WordyEnum) ToStringPtrOutput() pulumi.StringPtrOutput {
+	return pulumi.String(e).ToStringPtrOutputWithContext(context.Background())
+}
+
+func (e WordyEnum) ToStringPtrOutputWithContext(ctx context.Context) pulumi.StringPtrOutput {
+	return pulumi.String(e).ToStringOutputWithContext(ctx).ToStringPtrOutputWithContext(ctx)
+}
+
+type WordyEnumOutput struct{ *pulumi.OutputState }
+
+func (WordyEnumOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*WordyEnum)(nil)).Elem()
+}
+
+func (o WordyEnumOutput) ToWordyEnumOutput() WordyEnumOutput {
+	return o
+}
+
+func (o WordyEnumOutput) ToWordyEnumOutputWithContext(ctx context.Context) WordyEnumOutput {
+	return o
+}
+
+func (o WordyEnumOutput) ToWordyEnumPtrOutput() WordyEnumPtrOutput {
+	return o.ToWordyEnumPtrOutputWithContext(context.Background())
+}
+
+func (o WordyEnumOutput) ToWordyEnumPtrOutputWithContext(ctx context.Context) WordyEnumPtrOutput {
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v WordyEnum) *WordyEnum {
+		return &v
+	}).(WordyEnumPtrOutput)
+}
+
+func (o WordyEnumOutput) ToStringOutput() pulumi.StringOutput {
+	return o.ToStringOutputWithContext(context.Background())
+}
+
+func (o WordyEnumOutput) ToStringOutputWithContext(ctx context.Context) pulumi.StringOutput {
+	return o.ApplyTWithContext(ctx, func(_ context.Context, e WordyEnum) string {
+		return string(e)
+	}).(pulumi.StringOutput)
+}
+
+func (o WordyEnumOutput) ToStringPtrOutput() pulumi.StringPtrOutput {
+	return o.ToStringPtrOutputWithContext(context.Background())
+}
+
+func (o WordyEnumOutput) ToStringPtrOutputWithContext(ctx context.Context) pulumi.StringPtrOutput {
+	return o.ApplyTWithContext(ctx, func(_ context.Context, e WordyEnum) *string {
+		v := string(e)
+		return &v
+	}).(pulumi.StringPtrOutput)
+}
+
+type WordyEnumPtrOutput struct{ *pulumi.OutputState }
+
+func (WordyEnumPtrOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((**WordyEnum)(nil)).Elem()
+}
+
+func (o WordyEnumPtrOutput) ToWordyEnumPtrOutput() WordyEnumPtrOutput {
+	return o
+}
+
+func (o WordyEnumPtrOutput) ToWordyEnumPtrOutputWithContext(ctx context.Context) WordyEnumPtrOutput {
+	return o
+}
+
+func (o WordyEnumPtrOutput) Elem() WordyEnumOutput {
+	return o.ApplyT(func(v *WordyEnum) WordyEnum {
+		if v != nil {
+			return *v
+		}
+		var ret WordyEnum
+		return ret
+	}).(WordyEnumOutput)
+}
+
+func (o WordyEnumPtrOutput) ToStringPtrOutput() pulumi.StringPtrOutput {
+	return o.ToStringPtrOutputWithContext(context.Background())
+}
+
+func (o WordyEnumPtrOutput) ToStringPtrOutputWithContext(ctx context.Context) pulumi.StringPtrOutput {
+	return o.ApplyTWithContext(ctx, func(_ context.Context, e *WordyEnum) *string {
+		if e == nil {
+			return nil
+		}
+		v := string(*e)
+		return &v
+	}).(pulumi.StringPtrOutput)
+}
+
+// WordyEnumInput is an input type that accepts values of the WordyEnum enum
+// A concrete instance of `WordyEnumInput` can be one of the following:
+//
+//	WordyEnum_A_Value_With_Spaces_
+//	WordyEnum_It_s_got_apostrophes
+//	WordyEnum_UNDERSCORE_PREFIX
+//	WordyEnumNamed
+type WordyEnumInput interface {
+	pulumi.Input
+
+	ToWordyEnumOutput() WordyEnumOutput
+	ToWordyEnumOutputWithContext(context.Context) WordyEnumOutput
+}
+
+var wordyEnumPtrType = reflect.TypeOf((**WordyEnum)(nil)).Elem()
+
+type WordyEnumPtrInput interface {
+	pulumi.Input
+
+	ToWordyEnumPtrOutput() WordyEnumPtrOutput
+	ToWordyEnumPtrOutputWithContext(context.Context) WordyEnumPtrOutput
+}
+
+type wordyEnumPtr string
+
+func WordyEnumPtr(v string) WordyEnumPtrInput {
+	return (*wordyEnumPtr)(&v)
+}
+
+func (*wordyEnumPtr) ElementType() reflect.Type {
+	return wordyEnumPtrType
+}
+
+func (in *wordyEnumPtr) ToWordyEnumPtrOutput() WordyEnumPtrOutput {
+	return pulumi.ToOutput(in).(WordyEnumPtrOutput)
+}
+
+func (in *wordyEnumPtr) ToWordyEnumPtrOutputWithContext(ctx context.Context) WordyEnumPtrOutput {
+	return pulumi.ToOutputWithContext(ctx, in).(WordyEnumPtrOutput)
+}
+
 func init() {
 	pulumi.RegisterInputType(reflect.TypeOf((*IntEnumInput)(nil)).Elem(), IntEnum(1))
 	pulumi.RegisterInputType(reflect.TypeOf((*IntEnumPtrInput)(nil)).Elem(), IntEnum(1))
+	pulumi.RegisterInputType(reflect.TypeOf((*IntEnumMapInput)(nil)).Elem(), IntEnumMap{})
+	pulumi.RegisterInputType(reflect.TypeOf((*NumberEnumInput)(nil)).Elem(), NumberEnum(0.1))
+	pulumi.RegisterInputType(reflect.TypeOf((*NumberEnumPtrInput)(nil)).Elem(), NumberEnum(0.1))
 	pulumi.RegisterInputType(reflect.TypeOf((*StringEnumInput)(nil)).Elem(), StringEnum("one"))
 	pulumi.RegisterInputType(reflect.TypeOf((*StringEnumPtrInput)(nil)).Elem(), StringEnum("one"))
+	pulumi.RegisterInputType(reflect.TypeOf((*StringEnumArrayInput)(nil)).Elem(), StringEnumArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*WordyEnumInput)(nil)).Elem(), WordyEnum("A Value With Spaces."))
+	pulumi.RegisterInputType(reflect.TypeOf((*WordyEnumPtrInput)(nil)).Elem(), WordyEnum("A Value With Spaces."))
 	pulumi.RegisterOutputType(IntEnumOutput{})
 	pulumi.RegisterOutputType(IntEnumPtrOutput{})
+	pulumi.RegisterOutputType(IntEnumMapOutput{})
+	pulumi.RegisterOutputType(NumberEnumOutput{})
+	pulumi.RegisterOutputType(NumberEnumPtrOutput{})
 	pulumi.RegisterOutputType(StringEnumOutput{})
 	pulumi.RegisterOutputType(StringEnumPtrOutput{})
+	pulumi.RegisterOutputType(StringEnumArrayOutput{})
+	pulumi.RegisterOutputType(WordyEnumOutput{})
+	pulumi.RegisterOutputType(WordyEnumPtrOutput{})
 }

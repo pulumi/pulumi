@@ -236,7 +236,11 @@ describe("mocks: remote component with PULUMI_NODEJS_SKIP_COMPONENT_INPUTS", fun
     });
 
     after(() => {
-        process.env.PULUMI_NODEJS_SKIP_COMPONENT_INPUTS = oldSkipComponentInputsEnv;
+        if (oldSkipComponentInputsEnv === undefined) {
+            Reflect.deleteProperty(process.env, "PULUMI_NODEJS_SKIP_COMPONENT_INPUTS");
+        } else {
+            process.env.PULUMI_NODEJS_SKIP_COMPONENT_INPUTS = oldSkipComponentInputsEnv;
+        }
     });
 
     it("sends inputs to RegisterResource", (done) => {

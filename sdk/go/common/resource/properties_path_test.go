@@ -273,7 +273,6 @@ func TestPropertyPath(t *testing.T) {
 		"foo",
 	}
 
-	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
 	for _, c := range negativeCases {
 		t.Run(c, func(t *testing.T) {
 			t.Parallel()
@@ -294,7 +293,6 @@ func TestPropertyPath(t *testing.T) {
 		`root.array.[1]`,
 		`root.["key with a ."]`,
 	}
-	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
 	for _, c := range negativeCasesStrict {
 		t.Run(c, func(t *testing.T) {
 			t.Parallel()

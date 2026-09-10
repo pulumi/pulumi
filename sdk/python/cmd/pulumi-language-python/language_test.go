@@ -101,15 +101,13 @@ func runTestingHost(t *testing.T) (string, testingrpc.LanguageTestClient) {
 
 // Add test names here that are expected to fail and the reason why they are failing
 var expectedFailures = map[string]string{
-	"l2-config-default-from-invoke":      "config default from an invoke is Output[Any], not str | None; fails mypy",
 	"l1-builtin-try":                     "Temporarily disabled until pr #18915 is submitted",
-	"l1-expand-final":                    "Python program generation does not support `...` argument expansion",
 	"l1-builtin-can":                     "Temporarily disabled until pr #18916 is submitted",
 	"l3-deferred-outputs":                "does not type-check",
-	"l3-range-ref":                       `Item "None" of "Target | None" has no attribute "name"  [union-attr]`,
 	"l3-component-primitive-conversions": "primitive conversions accepted by PCL bind, but not lowered correctly by SDK generators", //nolint:lll
-	"l3-component-nested":                "syntax error",
 	"l2-resource-schema-secret":          "does not preserve schema-secret unknown outputs",
+	"l3-range-invoke-output-traversal":   "len()/apply on an Output: generated program fails mypy",
+	"l2-raw-string-bytes":                "the Python SDK does not set accepts_byte_string: strings containing non-UTF8 bytes cannot be received from the engine", //nolint:lll
 }
 
 type languageTestConfig struct {
@@ -122,6 +120,10 @@ type languageTestConfig struct {
 }
 
 func testLanguageWithConfig(t *testing.T, config languageTestConfig) {
+	if testing.Short() {
+		t.Skip("skipping language conformance tests in short mode")
+	}
+
 	// Set PATH to include the local dist directory so policy can run.
 	dist, err := filepath.Abs(filepath.Join("..", "..", "dist"))
 	require.NoError(t, err)
@@ -212,22 +214,6 @@ func testLanguageWithConfig(t *testing.T, config languageTestConfig) {
 					// Only bother testing the provider plugin tests once.
 					if strings.HasPrefix(tt, "provider-") && config.name != "default" {
 						t.Skip("Skipping non-default provider tests")
-					}
-
-					if (config.name == "default" || config.name == "toml") && tt == "l2-discriminated-union" {
-						t.Skip("pulumi#21830: Expected to fail")
-					}
-
-					if config.typechecker == "pyright" &&
-						(tt == "l3-component-simple" ||
-							tt == "l3-rewrite-conversions" ||
-							tt == "l3-component-config-primitives" ||
-							tt == "l3-component-config-objects") {
-						t.Skipf("Skipping %s test with pyright due to issues with optional properties", tt)
-					}
-
-					if config.name == "classes" && tt == "l2-snake-names" {
-						t.Skip(`"EntryArgs" is not a known attribute of module "pulumi_snake_names.cool_module"`)
 					}
 
 					if expected, ok := expectedFailures[tt]; ok {

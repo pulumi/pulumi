@@ -53,6 +53,11 @@ class MockComponentResource(pulumi.ComponentResource):
         super().__init__("python:test:MockComponentResource", name, {}, opts)
 
 
+class MockProvider(pulumi.ProviderResource):
+    def __init__(self, name: str, opts: Optional[pulumi.ResourceOptions] = None):
+        super().__init__("test", name, {}, opts)
+
+
 @pytest.mark.parametrize(
     "tok,version,empty,expected",
     [
@@ -377,3 +382,36 @@ def test_invoke_merge(
         assert InvokeOutputOptions.merge(a, b).version == expected
     else:
         assert InvokeOptions.merge(a, b).version == expected
+
+
+@pulumi.runtime.test
+def test_invoke_options_from_resource_options() -> None:
+    pulumi.runtime.mocks.set_mocks(MyMocks())
+
+    parent = MockComponentResource(name="parent")
+    provider = MockProvider(name="prov")
+    dep = MockResource(name="dep")
+    res_opts = pulumi.ResourceOptions(
+        parent=parent,
+        provider=provider,
+        version="1.2.3",
+        plugin_download_url="https://example.com/plugin",
+        depends_on=[dep],
+        protect=True,
+        ignore_changes=["prop"],
+    )
+
+    opts = InvokeOptions.from_resource_options(res_opts)
+    assert type(opts) is InvokeOptions
+    assert opts.parent is parent
+    assert opts.provider is provider
+    assert opts.version == "1.2.3"
+    assert opts.plugin_download_url == "https://example.com/plugin"
+
+    output_opts = InvokeOutputOptions.from_resource_options(res_opts)
+    assert type(output_opts) is InvokeOutputOptions
+    assert output_opts.parent is parent
+    assert output_opts.provider is provider
+    assert output_opts.version == "1.2.3"
+    assert output_opts.plugin_download_url == "https://example.com/plugin"
+    assert output_opts.depends_on == [dep]

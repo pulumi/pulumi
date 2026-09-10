@@ -251,3 +251,63 @@ func NewResourceRemediationPolicy(
 		configSchema:      args.ConfigSchema,
 	}
 }
+
+// StackValidationPolicyArgs contains the arguments for creating a stack validation policy.
+type StackValidationPolicyArgs struct {
+	// Description is the description of the policy.
+	Description string
+	// EnforcementLevel is the enforcement level of the policy.
+	EnforcementLevel EnforcementLevel
+	// ConfigSchema is the configuration schema for the policy, if any.
+	ConfigSchema *ConfigSchema
+	// ValidateStack is the validation function for the policy.
+	ValidateStack func(ctx context.Context, args StackValidationArgs) error
+}
+
+// stackValidationPolicy is an implementation of StackValidationPolicy.
+type stackValidationPolicy struct {
+	name             string
+	description      string
+	enforcementLevel EnforcementLevel
+	configSchema     *ConfigSchema
+	validateStack    func(ctx context.Context, args StackValidationArgs) error
+}
+
+func (p *stackValidationPolicy) isPolicy() {}
+
+func (p *stackValidationPolicy) Name() string {
+	return p.name
+}
+
+func (p *stackValidationPolicy) Description() string {
+	return p.description
+}
+
+func (p *stackValidationPolicy) EnforcementLevel() EnforcementLevel {
+	return p.enforcementLevel
+}
+
+func (p *stackValidationPolicy) ConfigSchema() *ConfigSchema {
+	return p.configSchema
+}
+
+func (p *stackValidationPolicy) Validate(ctx context.Context, args StackValidationArgs) error {
+	if p.validateStack == nil {
+		return nil
+	}
+	return p.validateStack(ctx, args)
+}
+
+// NewStackValidationPolicy creates a new StackValidationPolicy with the given name and arguments.
+func NewStackValidationPolicy(
+	name string,
+	args StackValidationPolicyArgs,
+) StackValidationPolicy {
+	return &stackValidationPolicy{
+		name:             name,
+		description:      args.Description,
+		enforcementLevel: args.EnforcementLevel,
+		validateStack:    args.ValidateStack,
+		configSchema:     args.ConfigSchema,
+	}
+}

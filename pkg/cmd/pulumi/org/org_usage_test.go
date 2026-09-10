@@ -59,22 +59,20 @@ func stubUsageFactory(c orgUsageGetClient, resolvedOrg string) orgUsageGetClient
 	}
 }
 
-func ptr[T any](v T) *T { return &v }
-
 func sampleDailyUsage() apitype.OrgUsageSummaryResponse {
 	return apitype.OrgUsageSummaryResponse{
 		Summary: []apitype.OrgResourceCountSummary{
 			{
 				Year:          2026,
-				Month:         ptr(5),
-				Day:           ptr(1),
+				Month:         new(5),
+				Day:           new(1),
 				Resources:     1200,
 				ResourceHours: 28800,
 			},
 			{
 				Year:          2026,
-				Month:         ptr(5),
-				Day:           ptr(2),
+				Month:         new(5),
+				Day:           new(2),
 				Resources:     1300,
 				ResourceHours: 31200,
 			},
@@ -166,9 +164,9 @@ func TestOrgUsageGet_HourlyColumns(t *testing.T) {
 	c := &mockUsageGetClient{resp: apitype.OrgUsageSummaryResponse{
 		Summary: []apitype.OrgResourceCountSummary{{
 			Year:          2026,
-			Month:         ptr(5),
-			Day:           ptr(14),
-			Hour:          ptr(13),
+			Month:         new(5),
+			Day:           new(14),
+			Hour:          new(13),
 			Resources:     50,
 			ResourceHours: 50,
 		}},

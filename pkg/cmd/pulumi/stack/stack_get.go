@@ -20,44 +20,45 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
+	"github.com/pulumi/pulumi/pkg/v3/util/outputflag"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 )
 
-// newStackGetCmd registers `pulumi stack get`, a thin convenience alias
-// for `pulumi stack`. It behaves identically to `pulumi stack` on both
-// the Pulumi Cloud and DIY backends, including the default value of
-// `--output` (human-readable text). Pass `--output=json` for the
-// stable, machine-readable envelope built by stack_json.go.
+// `pulumi stack get` shows the same information as `pulumi stack` (same flags and output), but only reads an existing
+// stack, it does not offer to create one. This command exists for verb-noun consistency with the other `get` commands.
 func newStackGetCmd() *cobra.Command {
-	var (
-		stackName   string
-		output      string
-		showSecrets bool
-	)
+	var stackName string
+	args := stackArgs{}
+
+	output := outputflag.OutputFlag[stackRenderFunc]{
+		RenderForTerminal: runStackText,
+		RenderJSON:        runStackJSON,
+	}
 
 	cmd := &cobra.Command{
 		Use:   "get",
 		Short: "[EXPERIMENTAL] Retrieve detailed information about a stack",
 		Long: "[EXPERIMENTAL] Retrieve detailed information about a stack.\n" +
 			"\n" +
-			"`pulumi stack get` is a convenience alias for `pulumi stack --output=json`.\n" +
-			"On the Pulumi Cloud backend it surfaces the organization, project, and\n" +
-			"stack name, the current version, all associated tags, any active update\n" +
-			"operation (with its kind, author, and start time), the active update\n" +
-			"UUID, and (when available) the local resource snapshot. On DIY backends\n" +
-			"the cloud-only fields are omitted; everything else is rendered.",
-		RunE: func(cmd *cobra.Command, args []string) error {
+			"Shows the current stack's state: the owning organization, the resources in\n" +
+			"the stack, stack outputs, the last update, and (on the Pulumi Cloud backend)\n" +
+			"any in-progress operation. This is the same information shown by `pulumi\n" +
+			"stack`",
+		RunE: func(cmd *cobra.Command, _ []string) error {
 			ctx := cmd.Context()
 			s, err := RequireStack(ctx, cmdutil.Diag(), pkgWorkspace.Instance, cmdBackend.DefaultLoginManager,
 				stackName, LoadOnly, display.Options{Color: cmdutil.GetGlobalColorization()}, "")
 			if err != nil {
 				return err
 			}
-			return runStack(ctx, s, cmd.OutOrStdout(), stackArgs{
-				output:      output,
-				showSecrets: showSecrets,
-			})
+
+			args.fullyQualifyStackNames = cmdutil.FullyQualifyStackNames
+			if args.showStackName {
+				writeStackName(cmd.OutOrStdout(), s, args.fullyQualifyStackNames)
+				return nil
+			}
+			return output.Get()(ctx, s, cmd.OutOrStdout(), args)
 		},
 	}
 
@@ -65,10 +66,15 @@ func newStackGetCmd() *cobra.Command {
 
 	cmd.Flags().StringVarP(&stackName, "stack", "s", "",
 		"The name of the stack to operate on. Defaults to the current stack")
-	cmd.Flags().StringVar(&output, "output", "default",
-		"The output format: default (human-readable) or json")
-	cmd.Flags().BoolVar(&showSecrets, "show-secrets", false,
+	cmd.Flags().BoolVarP(&args.showIDs, "show-ids", "i", false,
+		"Display each resource's provider-assigned unique ID")
+	cmd.Flags().BoolVarP(&args.showURNs, "show-urns", "u", false,
+		"Display each resource's Pulumi-assigned globally unique URN")
+	cmd.Flags().BoolVar(&args.showSecrets, "show-secrets", false,
 		"Display stack outputs which are marked as secret in plaintext")
+	cmd.Flags().BoolVar(&args.showStackName, "show-name", false,
+		"Display only the stack name")
+	outputflag.VarP(cmd.Flags(), &output)
 
 	return cmd
 }

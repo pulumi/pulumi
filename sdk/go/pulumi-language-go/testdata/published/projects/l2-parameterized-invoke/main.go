@@ -9,9 +9,7 @@ func main() {
 	pulumi.Run(func(ctx *pulumi.Context) error {
 		ctx.Export("parameterValue", subpackage.DoHelloWorldOutput(ctx, subpackage.DoHelloWorldOutputArgs{
 			Input: pulumi.String("goodbye"),
-		}, nil).ApplyT(func(invoke subpackage.DoHelloWorldResult) (string, error) {
-			return invoke.Output, nil
-		}).(pulumi.StringOutput))
+		}, nil).Output())
 		return nil
 	})
 }

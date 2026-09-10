@@ -332,8 +332,8 @@ func TestRunPaginate_TruncationEmitsPartialPaginationError(t *testing.T) {
 	var buf bytes.Buffer
 	err := runPaginate(t.Context(), &buf, apiClient, req, &apiCommand{})
 	require.Error(t, err)
-	var apiErr *APIError
-	require.True(t, errors.As(err, &apiErr))
+	apiErr, ok := errors.AsType[*APIError](err)
+	require.True(t, ok)
 	assert.Equal(t, cmdutil.ExitCodeError, apiErr.ExitCode)
 	assert.Equal(t, ErrPartialPagination, apiErr.Envelope.Error.Code)
 	assert.True(t, apiErr.Silent, "truncation error must be Silent so stderr is not double-written")
@@ -353,8 +353,8 @@ func TestRunPaginate_FirstPageShapeErrorEmitsEnvelope(t *testing.T) {
 	var buf bytes.Buffer
 	err := runPaginate(t.Context(), &buf, apiClient, req, &apiCommand{})
 	require.Error(t, err)
-	var apiErr *APIError
-	require.True(t, errors.As(err, &apiErr))
+	apiErr, ok := errors.AsType[*APIError](err)
+	require.True(t, ok)
 	assert.Equal(t, cmdutil.ExitCodeError, apiErr.ExitCode)
 	assert.Equal(t, ErrInvalidFlags, apiErr.Envelope.Error.Code)
 	assert.False(t, apiErr.Silent, "first-page failure must not be Silent; user needs the diagnostic on stderr")
@@ -374,8 +374,8 @@ func TestRunPaginate_FirstPageHTTPErrorEmitsEnvelope(t *testing.T) {
 	var buf bytes.Buffer
 	err := runPaginate(t.Context(), &buf, apiClient, req, &apiCommand{})
 	require.Error(t, err)
-	var apiErr *APIError
-	require.True(t, errors.As(err, &apiErr))
+	apiErr, ok := errors.AsType[*APIError](err)
+	require.True(t, ok)
 	assert.False(t, apiErr.Silent, "first-page HTTP failure must not be Silent")
 	assert.Empty(t, strings.TrimSpace(buf.String()), "first-page HTTP failure must not write to stdout")
 }
@@ -398,8 +398,8 @@ func TestRunPaginate_LaterPageErrorStaysSilent(t *testing.T) {
 	var buf bytes.Buffer
 	err := runPaginate(t.Context(), &buf, apiClient, req, &apiCommand{})
 	require.Error(t, err)
-	var apiErr *APIError
-	require.True(t, errors.As(err, &apiErr))
+	apiErr, ok := errors.AsType[*APIError](err)
+	require.True(t, ok)
 	assert.True(t, apiErr.Silent, "partial failure with accumulated pages must stay Silent")
 	assert.Contains(t, buf.String(), `"items"`, "partial failure must flush accumulated pages to stdout")
 	assert.Contains(t, buf.String(), `"id":"a"`)

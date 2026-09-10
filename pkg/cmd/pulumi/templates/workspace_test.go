@@ -25,7 +25,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
-//nolint:paralleltest // mutates env vars and shared temporary agent credentials
 func TestRetrievePrivatePulumiCloudTemplateFallsBackToAgentCredentials(t *testing.T) {
 	oldAgentCreds, err := workspace.GetAgentStoredCredentials()
 	require.NoError(t, err)

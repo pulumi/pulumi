@@ -17,6 +17,7 @@ package clispec
 import (
 	"encoding/json"
 	"fmt"
+	"maps"
 	"os"
 	"strings"
 
@@ -24,6 +25,7 @@ import (
 	"github.com/spf13/pflag"
 
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/rattler"
 )
 
 // A single CLI flag.
@@ -286,12 +288,8 @@ func buildStructure(
 
 	// Accumulated flags for children = inherited + this node's local flags (unmodified).
 	childInherited := make(map[string]Flag, len(inherited)+len(localFlags))
-	for k, v := range inherited {
-		childInherited[k] = v
-	}
-	for k, v := range merged {
-		childInherited[k] = v
-	}
+	maps.Copy(childInherited, inherited)
+	maps.Copy(childInherited, merged)
 
 	subcommands := cmd.Commands()
 	if len(subcommands) > 0 {
@@ -375,6 +373,12 @@ func isFlagRequired(flag *pflag.Flag) bool {
 
 func isExecutable(cmd *cobra.Command) bool {
 	if cmd == nil {
+		return false
+	}
+
+	// A synthetic run function installed by rattler only prints help and
+	// fails, so it does not make the command executable.
+	if rattler.HasSyntheticRun(cmd) {
 		return false
 	}
 

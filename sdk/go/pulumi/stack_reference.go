@@ -188,7 +188,7 @@ type StackReferenceArgs struct {
 }
 
 func (StackReferenceArgs) ElementType() reflect.Type {
-	return reflect.TypeOf((*stackReferenceArgs)(nil)).Elem()
+	return reflect.TypeFor[stackReferenceArgs]()
 }
 
 // NewStackReference creates a stack reference that makes available outputs from the specified stack

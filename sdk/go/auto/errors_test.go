@@ -15,37 +15,39 @@
 package auto
 
 import (
+	"errors"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"testing"
-	"time"
 
 	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 	"github.com/pulumi/pulumi/sdk/v3/python/toolchain"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestConcurrentUpdateError(t *testing.T) {
 	t.Parallel()
 
-	// TODO[pulumi/pulumi#8122] - investigate underlying sporadic 404 error
-	t.Skip("disabled as flaky and resource-intensive")
-
-	n := 50
 	ctx := t.Context()
 	pName := "conflict_error"
 	sName := ptesting.RandomStackName()
 	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
 
+	// The program blocks until this file is removed, letting us hold one update inside the program while a
+	// second update races to produce a concurrent update error.
+	block := filepath.Join(t.TempDir(), "block")
+	require.NoError(t, os.WriteFile(block, nil, 0o600))
+
 	// initialize
 	pDir := filepath.Join(".", "test", "errors", "conflict_error")
 	s, err := NewStackLocalSource(ctx, stackName, pDir)
-	if err != nil {
-		t.Errorf("failed to initialize stack, err: %v", err)
-		t.FailNow()
-	}
+	require.NoErrorf(t, err, "failed to initialize stack")
+
+	s.Workspace().SetEnvVar("PULUMI_TEST_BLOCK_FILE", block)
 
 	defer func() {
 		// -- pulumi stack rm --
@@ -56,45 +58,22 @@ func TestConcurrentUpdateError(t *testing.T) {
 	c := make(chan error)
 
 	// parallel updates to cause conflict
-	for i := 0; i < n; i++ {
-		go func() {
-			_, err := s.Up(ctx)
-			c <- err
-		}()
+	for range 2 {
+		go func() { _, err := s.Up(ctx); c <- err }()
 	}
 
-	conflicts := 0
-	var otherErrors []error
+	// One stack successfully entered the program and is waiting on the block file to be removed. The only way
+	// for a stack to return is to error before the program, so we assert that's the concurrent update.
+	err = <-c
+	assert.Truef(t, IsConcurrentUpdateError(err), "found %s", err)
 
-	for i := 0; i < n; i++ {
-		err := <-c
-		if err != nil {
-			if IsConcurrentUpdateError(err) {
-				conflicts++
-			} else {
-				otherErrors = append(otherErrors, err)
-			}
-		}
-	}
+	// Release the remaining stack to complete, then block until it does.
+	require.NoError(t, os.Remove(block))
+	assert.Nil(t, <-c)
 
 	// -- pulumi destroy --
-
 	_, err = s.Destroy(ctx)
-	if err != nil {
-		t.Errorf("destroy failed, err: %v", err)
-		t.FailNow()
-	}
-
-	if len(otherErrors) > 0 {
-		t.Logf("Concurrent updates incurred %d non-conflict errors, including:", len(otherErrors))
-		for _, err := range otherErrors {
-			t.Error(err)
-		}
-	}
-
-	if conflicts == 0 {
-		t.Errorf("Expected at least one conflict error from the %d concurrent updates, but got none", n)
-	}
+	require.NoError(t, err, "destroy failed")
 }
 
 func TestInlineConcurrentUpdateError(t *testing.T) {
@@ -105,16 +84,15 @@ func TestInlineConcurrentUpdateError(t *testing.T) {
 	sName := ptesting.RandomStackName()
 	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
 
+	block := make(chan struct{})
+
 	// initialize
 	s, err := NewStackInlineSource(ctx, stackName, pName, func(ctx *pulumi.Context) error {
-		time.Sleep(5 * time.Second)
+		<-block
 		ctx.Export("exp_static", pulumi.String("foo"))
 		return nil
 	})
-	if err != nil {
-		t.Errorf("failed to initialize stack, err: %v", err)
-		t.FailNow()
-	}
+	require.NoErrorf(t, err, "failed to initialize stack")
 
 	defer func() {
 		// -- pulumi stack rm --
@@ -125,32 +103,22 @@ func TestInlineConcurrentUpdateError(t *testing.T) {
 	c := make(chan error)
 
 	// parallel updates to cause conflict
-	for i := 0; i < 50; i++ {
-		go func() {
-			_, err := s.Up(ctx)
-			c <- err
-		}()
+	for range 2 {
+		go func() { _, err := s.Up(ctx); c <- err }()
 	}
 
-	conflicts := 0
+	// One stack successfully entered the program and is waiting on block to close. The only way for a stack
+	// to return is to error before the program, so we assert that's the concurrent update.
+	err = <-c
+	assert.Truef(t, IsConcurrentUpdateError(err), "found %s", err)
 
-	for i := 0; i < 50; i++ {
-		err := <-c
-		if IsConcurrentUpdateError(err) {
-			conflicts++
-		}
-	}
+	// Release the remaining stack to complete, then block until it does.
+	close(block)
+	assert.Nil(t, <-c)
 
 	// -- pulumi destroy --
-
 	_, err = s.Destroy(ctx)
-	if err != nil {
-		t.Errorf("destroy failed, err: %v", err)
-		t.FailNow()
-	}
-
-	// should have at least one conflict
-	assert.Greater(t, conflicts, 0)
+	require.NoError(t, err, "destroy failed")
 }
 
 const compilationErrProj = "compilation_error"
@@ -286,7 +254,7 @@ func TestCompilationErrorTypescript(t *testing.T) {
 	// initialize
 	pDir := filepath.Join(".", "test", "errors", "compilation_error", "typescript")
 
-	cmd := exec.Command("yarn", "install")
+	cmd := exec.Command("npm", "install")
 	cmd.Dir = pDir
 	err := cmd.Run()
 	if err != nil {
@@ -471,7 +439,7 @@ func TestRuntimeErrorJavascript(t *testing.T) {
 	// initialize
 	pDir := filepath.Join(".", "test", "errors", "runtime_error", "javascript")
 
-	cmd := exec.Command("yarn", "install")
+	cmd := exec.Command("npm", "install")
 	cmd.Dir = pDir
 	err := cmd.Run()
 	if err != nil {
@@ -513,7 +481,7 @@ func TestRuntimeErrorTypescript(t *testing.T) {
 	// initialize
 	pDir := filepath.Join(".", "test", "errors", "runtime_error", "typescript")
 
-	cmd := exec.Command("yarn", "install")
+	cmd := exec.Command("npm", "install")
 	cmd.Dir = pDir
 	err := cmd.Run()
 	if err != nil {
@@ -576,4 +544,110 @@ func TestRuntimeErrorDotnet(t *testing.T) {
 		t.Errorf("destroy failed, err: %v", err)
 		t.FailNow()
 	}
+}
+
+// errPredicate pairs one of the exported error predicates with an autoError it is expected to match.
+type errPredicate struct {
+	name    string
+	matches func(error) bool
+	err     autoError
+}
+
+func errPredicates() []errPredicate {
+	cause := errors.New("exit status 255")
+	return []errPredicate{
+		{
+			name:    "IsConcurrentUpdateError",
+			matches: IsConcurrentUpdateError,
+			err: newAutoError(cause, "",
+				"error: [409] Conflict: Another update is currently in progress.", 255),
+		},
+		{
+			name:    "IsSelectStack404Error",
+			matches: IsSelectStack404Error,
+			err:     newAutoError(cause, "", "error: no stack named 'dev' found", 255),
+		},
+		{
+			name:    "IsCreateStack409Error",
+			matches: IsCreateStack409Error,
+			err:     newAutoError(cause, "", "error: stack 'dev' already exists", 255),
+		},
+		{
+			name:    "IsCompilationError",
+			matches: IsCompilationError,
+			err:     newAutoError(cause, "Build FAILED.", "", 255),
+		},
+		{
+			name:    "IsRuntimeError",
+			matches: IsRuntimeError,
+			err:     newAutoError(cause, "pulumi:pulumi:Stack failed with an unhandled exception:", "", 255),
+		},
+		{
+			name:    "IsUnexpectedEngineError",
+			matches: IsUnexpectedEngineError,
+			err: newAutoError(cause,
+				"The Pulumi CLI encountered a fatal error. This is a bug!", "", 255),
+		},
+	}
+}
+
+func TestErrorPredicatesMatchUnwrapped(t *testing.T) {
+	t.Parallel()
+
+	for _, p := range errPredicates() {
+		t.Run(p.name, func(t *testing.T) {
+			t.Parallel()
+			assert.True(t, p.matches(p.err), "%s did not match its own autoError", p.name)
+		})
+	}
+}
+
+// Wrapping an error with fmt.Errorf("...: %w", err) is the standard Go idiom, and autoError is
+// unexported so callers cannot reach it with errors.As themselves. The predicates must therefore
+// look through wrapping.
+func TestErrorPredicatesMatchWrapped(t *testing.T) {
+	t.Parallel()
+
+	for _, p := range errPredicates() {
+		t.Run(p.name, func(t *testing.T) {
+			t.Parallel()
+
+			wrapped := fmt.Errorf("stack operation failed: %w", p.err)
+			assert.True(t, p.matches(wrapped), "%s did not match a singly wrapped autoError", p.name)
+
+			doubleWrapped := fmt.Errorf("deploy: %w", wrapped)
+			assert.True(t, p.matches(doubleWrapped), "%s did not match a doubly wrapped autoError", p.name)
+		})
+	}
+}
+
+// autoError must unwrap to the error it was created from so that errors.Is and errors.As can reach
+// the underlying cause.
+func TestAutoErrorUnwrapsCause(t *testing.T) {
+	t.Parallel()
+
+	sentinel := errors.New("boom")
+	var ae error = newAutoError(sentinel, "", "", 255)
+
+	assert.ErrorIs(t, ae, sentinel)
+	assert.ErrorIs(t, fmt.Errorf("stack operation failed: %w", ae), sentinel)
+}
+
+type causeError struct{ msg string }
+
+func (e *causeError) Error() string { return e.msg }
+
+func TestAutoErrorAsCause(t *testing.T) {
+	t.Parallel()
+
+	cause := &causeError{msg: "boom"}
+	var ae error = newAutoError(cause, "", "", 255)
+
+	var target *causeError
+	require.ErrorAs(t, ae, &target)
+	assert.Equal(t, cause, target)
+
+	target = nil
+	require.ErrorAs(t, fmt.Errorf("stack operation failed: %w", ae), &target)
+	assert.Equal(t, cause, target)
 }

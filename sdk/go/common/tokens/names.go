@@ -70,7 +70,7 @@ func IsQName(s string) bool {
 // necessary. The conversion is deterministic, but also lossy.
 func IntoQName(s string) QName {
 	output := []string{}
-	for _, s := range strings.Split(s, QNameDelimiter) {
+	for s := range strings.SplitSeq(s, QNameDelimiter) {
 		if s == "" {
 			continue
 		}

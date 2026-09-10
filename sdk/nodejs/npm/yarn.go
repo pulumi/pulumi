@@ -61,7 +61,7 @@ func (yarn *yarnClassic) Name() string {
 }
 
 func (yarn *yarnClassic) Version() (semver.Version, error) {
-	cmd := exec.Command(yarn.executable, "--version") //nolint:gosec
+	cmd := exec.Command(yarn.executable, "--version")
 	output, err := cmd.Output()
 	if err != nil {
 		return semver.Version{}, errutil.ErrorWithStderr(err, cmd.String())
@@ -91,7 +91,7 @@ func (yarn *yarnClassic) Install(ctx context.Context, dir string, production boo
 
 		// Don't sleep after the last attempt
 		if attempt < maxRetries-1 {
-			delay := time.Second * time.Duration(2^(attempt)) // Exponential backoff: 1s, 2s, 4s
+			delay := time.Second * time.Duration(1<<attempt) // Exponential backoff: 1s, 2s, 4s
 			logging.V(5).Infof("yarn install failed (attempt %d/%d), retrying in %v: %v",
 				attempt+1, maxRetries, delay, err)
 
@@ -114,7 +114,6 @@ func (yarn *yarnClassic) installCmd(ctx context.Context, production bool) *exec.
 		args = append(args, "--production")
 	}
 
-	//nolint:gosec // False positive on tained command execution. We aren't accepting input from the user here.
 	return exec.CommandContext(ctx, yarn.executable, args...)
 }
 
@@ -176,7 +175,6 @@ func (yarn *yarnClassic) Pack(ctx context.Context, dir string, stderr io.Writer)
 		contract.IgnoreError(os.Remove(packfile))
 	}()
 
-	//nolint:gosec // False positive on tained command execution. We aren't accepting input from the user here.
 	command := exec.CommandContext(ctx, yarn.executable, "pack", "--filename", packfile)
 	command.Dir = dir
 

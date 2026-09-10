@@ -40,7 +40,12 @@ import {
 import { debuggablePromise, debugPromiseLeaks } from "./debuggable";
 import { gatherExplicitDependencies, getAllTransitivelyReferencedResourceURNs } from "./dependsOn";
 import { invoke } from "./invoke";
-import { getStore } from "./state";
+import {
+    failPendingRegistration,
+    getPendingResourceRegistrations,
+    getStore,
+    PendingResourceRegistration,
+} from "./state";
 
 import { isGrpcError } from "../errors";
 import {
@@ -242,7 +247,7 @@ export function getResource(
                                         req,
                                         (
                                             rpcError: grpc.ServiceError | null,
-                                            innerResponse: provproto.InvokeResponse | undefined,
+                                            innerResponse: resproto.ResourceInvokeResponse | undefined,
                                         ) => {
                                             log.debug(
                                                 `getResource Invoke RPC finished: err: ${rpcError}, resp: ${innerResponse}`,
@@ -313,6 +318,7 @@ export function getResource(
                 });
             })
             .catch((err) => {
+                failPendingRegistration(res, err);
                 done();
                 throw err;
             }),
@@ -450,6 +456,7 @@ export function readResource(
                 });
             })
             .catch((err) => {
+                failPendingRegistration(res, err);
                 done();
                 throw err;
             }),
@@ -764,6 +771,7 @@ export function registerResource(
                                 getObject: () => req.getObject(),
                                 getPropertydependenciesMap: () => undefined,
                                 getResult: () => 0,
+                                getUnknown: () => false,
                             };
                         }
                     } catch (e) {
@@ -774,16 +782,26 @@ export function registerResource(
                             getObject: () => req.getObject(),
                             getPropertydependenciesMap: () => undefined,
                             getResult: () => 0,
+                            getUnknown: () => false,
                         };
                     }
 
-                    resop.resolveURN(resp.getUrn(), err);
+                    // If the engine reported that the resource failed or was skipped, synthesize
+                    // an error so downstream outputs reject. This allows `pulumi.recover` to
+                    // intercept the failure.
+                    const resultFailed = resp.getResult() !== resproto.Result.SUCCESS;
+                    let effectiveErr = err;
+                    if (!effectiveErr && resultFailed) {
+                        effectiveErr = new Error(`resource ${name} [${t}] failed to register`);
+                    }
+
+                    resop.resolveURN(resp.getUrn(), effectiveErr);
 
                     // Note: 'id || undefined' is intentional.  We intentionally collapse falsy values to
                     // undefined so that later parts of our system don't have to deal with values like 'null'.
                     if (resop.resolveID) {
                         const id = resp.getId() || undefined;
-                        resop.resolveID(id, id !== undefined, err);
+                        resop.resolveID(id, id !== undefined, effectiveErr);
                     }
 
                     const deps: Record<string, Resource[]> = {};
@@ -795,8 +813,9 @@ export function registerResource(
                         }
                     }
 
+                    const unknown = custom && !resultFailed && !isDryRun() && resp.getUnknown();
+
                     // Now resolve the output properties.
-                    const keepUnknowns = resp.getResult() !== resproto.Result.SUCCESS;
                     await resolveOutputs(
                         res,
                         t,
@@ -805,15 +824,17 @@ export function registerResource(
                         resp.getObject(),
                         deps,
                         resop.resolvers,
-                        err,
-                        keepUnknowns,
+                        effectiveErr,
+                        resultFailed || unknown,
                     );
                     done();
                 });
             })
             .catch((err) => {
                 log.debug(`RegisterResource RPC failed: t=${t}, name=${name}, err=${err}`);
-                // If we fail to prepare the resource, we need to ensure that we still call done to prevent a hang.
+                // If we fail to prepare the resource, we need to ensure that we still call done to prevent a hang,
+                // and fail the resource's outputs so that dependents (e.g. children awaiting our URN) unblock.
+                failPendingRegistration(res, err);
                 done();
                 throw err;
             }),
@@ -941,6 +962,19 @@ export async function prepareResource(
 
     /** IMPORTANT!  We should never await prior to this line, otherwise the Resource will be partly uninitialized. */
 
+    const pendingRegistrations = getPendingResourceRegistrations();
+    const pending: PendingResourceRegistration = { res, parent, label, type, name, phase: "dependencies" };
+    pending.fail = (err) => {
+        resolveURN("", err);
+        if (resolveID !== undefined) {
+            resolveID(undefined, false, err);
+        }
+        for (const key of Object.keys(resolvers)) {
+            resolvers[key](undefined, true, false, [], err);
+        }
+    };
+    pendingRegistrations.set(res, pending);
+
     // Before we can proceed, all our dependencies must be finished.
     const replaceWithDependencies = await gatherExplicitDependencies(opts.replaceWith);
     const explicitDirectDependencies = new Set(await gatherExplicitDependencies(opts.dependsOn));
@@ -950,6 +984,7 @@ export async function prepareResource(
 
     // Serialize out all our props to their final values.  In doing so, we'll also collect all
     // the Resources pointed to by any Dependency objects we encounter, adding them to 'propertyDependencies'.
+    pending.phase = "inputs";
     const [serializedProps, propertyToDirectDependencies] = await serializeResourceProperties(label, props, {
         // To initially scope the use of this new feature, we only keep output values when
         // remote is true (for multi-lang components, i.e. MLCs).
@@ -959,11 +994,15 @@ export async function prepareResource(
         // on 'propertyDependencies' won't create outputs for properties that only
         // contain resource references.
         excludeResourceReferencesFromDependencies: remote,
+        pendingRegistration: pending,
     });
+    pending.inputProperty = undefined;
 
     // Wait for the parent to complete.
     // If no parent was provided, parent to the root resource.
+    pending.phase = "parent";
     const parentURN = parent ? await parent.urn.promise() : undefined;
+    pending.phase = "provider";
 
     let importID: ID | undefined;
     if (custom) {
@@ -1020,6 +1059,7 @@ export async function prepareResource(
 
     // Collect the URNs for explicit/implicit dependencies for the engine so that it can understand
     // the dependency graph and optimize operations accordingly.
+    pending.phase = "dependency-urns";
 
     // The list of all dependencies (implicit or explicit).
     const allDirectDependencies = new Set<Resource>(explicitDirectDependencies);
@@ -1059,6 +1099,8 @@ export async function prepareResource(
     const deletedWithURN = opts?.deletedWith ? await opts.deletedWith.urn.promise() : undefined;
     const replaceWithResources =
         replaceWithDependencies.length > 0 ? Array.from(new Set(replaceWithDependencies)) : undefined;
+
+    pendingRegistrations.delete(res);
 
     return {
         resolveURN: resolveURN,

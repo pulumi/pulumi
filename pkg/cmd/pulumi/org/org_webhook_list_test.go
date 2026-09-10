@@ -46,7 +46,7 @@ func sampleOrgWebhooks() []apitype.Webhook {
 			DisplayName:      "Deploy Hook",
 			PayloadURL:       "https://example.com/webhook",
 			Active:           true,
-			Format:           ptr("raw"),
+			Format:           new("raw"),
 			Groups:           []string{"stacks", "deployments"},
 			Filters:          []string{"stack_created"},
 		},
@@ -56,7 +56,7 @@ func sampleOrgWebhooks() []apitype.Webhook {
 			DisplayName:      "Slack Alerts",
 			PayloadURL:       "https://hooks.slack.com/T00",
 			Active:           false,
-			Format:           ptr("slack"),
+			Format:           new("slack"),
 		},
 	}
 }

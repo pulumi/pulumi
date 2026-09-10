@@ -1,0 +1,10 @@
+values:
+  valid:
+    fn::rotate::echo:
+      inputs:
+        # while this rotateOnly reference is inaccessible to the user, we do not evaluate it during check for imported environments
+        # to allow the user to import rotated credentials that use managing creds they don't have access to.
+        # so this should not result in a failure in checkDiags
+        next: ${environments.fake.inaccessible2.some_value}
+      state:
+        current: "this value should be merged into the root environment"

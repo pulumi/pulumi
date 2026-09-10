@@ -7,7 +7,7 @@ import warnings
 import sys
 import pulumi
 import pulumi.runtime
-from typing import Any, Mapping, Optional, Sequence, Union, overload
+from typing import Any, Mapping, Optional, Sequence, Union, overload, Literal
 if sys.version_info >= (3, 11):
     from typing import NotRequired, TypedDict, TypeAlias
 else:
@@ -92,7 +92,7 @@ class SsisEnvironmentResponse(dict):
     Ssis environment.
     """
     def __init__(__self__, *,
-                 type: _builtins.str,
+                 type: Literal['Environment'],
                  description: Optional[_builtins.str] = None,
                  folder_id: Optional[_builtins.float] = None,
                  id: Optional[_builtins.float] = None,
@@ -101,7 +101,7 @@ class SsisEnvironmentResponse(dict):
         """
         Ssis environment.
 
-        :param _builtins.str type: The type of SSIS object metadata.
+        :param Literal['Environment'] type: The type of SSIS object metadata.
                Expected value is 'Environment'.
         :param _builtins.str description: Metadata description.
         :param _builtins.float folder_id: Folder id which contains environment.
@@ -123,7 +123,7 @@ class SsisEnvironmentResponse(dict):
 
     @_builtins.property
     @pulumi.getter
-    def type(self) -> _builtins.str:
+    def type(self) -> Literal['Environment']:
         """
         The type of SSIS object metadata.
         Expected value is 'Environment'.
@@ -177,14 +177,14 @@ class SsisFolderResponse(dict):
     Ssis folder.
     """
     def __init__(__self__, *,
-                 type: _builtins.str,
+                 type: Literal['Folder'],
                  description: Optional[_builtins.str] = None,
                  id: Optional[_builtins.float] = None,
                  name: Optional[_builtins.str] = None):
         """
         Ssis folder.
 
-        :param _builtins.str type: The type of SSIS object metadata.
+        :param Literal['Folder'] type: The type of SSIS object metadata.
                Expected value is 'Folder'.
         :param _builtins.str description: Metadata description.
         :param _builtins.float id: Metadata id.
@@ -200,7 +200,7 @@ class SsisFolderResponse(dict):
 
     @_builtins.property
     @pulumi.getter
-    def type(self) -> _builtins.str:
+    def type(self) -> Literal['Folder']:
         """
         The type of SSIS object metadata.
         Expected value is 'Folder'.
@@ -238,7 +238,7 @@ class SsisPackageResponse(dict):
     Ssis Package.
     """
     def __init__(__self__, *,
-                 type: _builtins.str,
+                 type: Literal['Package'],
                  description: Optional[_builtins.str] = None,
                  folder_id: Optional[_builtins.float] = None,
                  id: Optional[_builtins.float] = None,
@@ -249,7 +249,7 @@ class SsisPackageResponse(dict):
         """
         Ssis Package.
 
-        :param _builtins.str type: The type of SSIS object metadata.
+        :param Literal['Package'] type: The type of SSIS object metadata.
                Expected value is 'Package'.
         :param _builtins.str description: Metadata description.
         :param _builtins.float folder_id: Folder id which contains package.
@@ -277,7 +277,7 @@ class SsisPackageResponse(dict):
 
     @_builtins.property
     @pulumi.getter
-    def type(self) -> _builtins.str:
+    def type(self) -> Literal['Package']:
         """
         The type of SSIS object metadata.
         Expected value is 'Package'.
@@ -503,7 +503,7 @@ class SsisProjectResponse(dict):
     Ssis project.
     """
     def __init__(__self__, *,
-                 type: _builtins.str,
+                 type: Literal['Project'],
                  description: Optional[_builtins.str] = None,
                  environment_refs: Optional[Sequence['outputs.SsisEnvironmentReferenceResponse']] = None,
                  folder_id: Optional[_builtins.float] = None,
@@ -514,7 +514,7 @@ class SsisProjectResponse(dict):
         """
         Ssis project.
 
-        :param _builtins.str type: The type of SSIS object metadata.
+        :param Literal['Project'] type: The type of SSIS object metadata.
                Expected value is 'Project'.
         :param _builtins.str description: Metadata description.
         :param Sequence['SsisEnvironmentReferenceResponse'] environment_refs: Environment reference in project
@@ -542,7 +542,7 @@ class SsisProjectResponse(dict):
 
     @_builtins.property
     @pulumi.getter
-    def type(self) -> _builtins.str:
+    def type(self) -> Literal['Project']:
         """
         The type of SSIS object metadata.
         Expected value is 'Project'.

@@ -17,8 +17,10 @@ package outputflag
 import (
 	"fmt"
 	"reflect"
+	"strconv"
 	"strings"
 
+	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 )
 
@@ -31,6 +33,45 @@ func Var[R any](flags *pflag.FlagSet, output *OutputFlag[R]) {
 // -o shorthand.
 func VarP[R any](flags *pflag.FlagSet, output *OutputFlag[R]) {
 	flags.VarP(output, "output", "", usage(*output))
+}
+
+// VarWithJSONAlias registers the OutputFlag on flags as --output and a hidden
+// bool --json/-j alias equivalent to --output=json, and marks the two mutually
+// exclusive.
+// This is used to add the standard `--output $format` flag while preserving
+// the `--json` alias for backwards compatibility.
+func VarWithJSONAlias[R any](cmd *cobra.Command, flags *pflag.FlagSet, output *OutputFlag[R]) {
+	Var(flags, output)
+	f := flags.VarPF(jsonAlias[R]{output: output}, "json", "j",
+		"Emit output as JSON (alias for --output=json)")
+	f.NoOptDefVal = "true" // allow a bare `--json`
+	f.Hidden = true
+	cmd.MarkFlagsMutuallyExclusive("output", "json")
+}
+
+// jsonAlias is a bool-style flag that flips an OutputFlag to "json" when set,
+// backing the --json alias registered by VarWithJSONAlias.
+type jsonAlias[R any] struct{ output *OutputFlag[R] }
+
+func (jsonAlias[R]) Type() string     { return "bool" }
+func (jsonAlias[R]) IsBoolFlag() bool { return true }
+
+func (j jsonAlias[R]) String() string {
+	if j.output != nil && j.output.value == "json" {
+		return "true"
+	}
+	return "false"
+}
+
+func (j jsonAlias[R]) Set(s string) error {
+	on, err := strconv.ParseBool(s)
+	if err != nil {
+		return err
+	}
+	if !on {
+		return nil
+	}
+	return j.output.Set("json")
 }
 
 func usage[R any](output OutputFlag[R]) string {

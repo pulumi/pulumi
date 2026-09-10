@@ -19,9 +19,9 @@ import (
 	"strings"
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/stretchr/testify/require"
 	"pgregory.net/rapid"
 )
@@ -409,7 +409,7 @@ func GeneratedProgramSpec(
 			newSS.AddProvider(initialProvider)
 		}
 
-		for i := 0; i < prependCount; i++ {
+		for i := range prependCount {
 			r := generatedNewResourceSpec(
 				newSS,
 				sso,
@@ -505,7 +505,7 @@ func GeneratedProgramSpec(
 			newSS.AddProvider(initialProvider)
 		}
 
-		for i := 0; i < appendCount; i++ {
+		for i := range appendCount {
 			r := generatedNewResourceSpec(
 				newSS,
 				sso,

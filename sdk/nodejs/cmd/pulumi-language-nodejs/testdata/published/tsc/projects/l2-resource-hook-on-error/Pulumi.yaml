@@ -1,0 +1,5 @@
+name: l2-resource-hook-on-error
+runtime:
+  name: nodejs
+  options:
+    typescript: false

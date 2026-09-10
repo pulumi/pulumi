@@ -1,1 +1,0 @@
-Standard library functions

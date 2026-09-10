@@ -20,7 +20,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -33,7 +32,6 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/test"
-	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
@@ -233,8 +231,7 @@ func testDestroyStackRef(e *ptesting.Environment, organization string) {
 		e.RunCommand("pulumi", "stack", "init", stackName)
 	}
 
-	e.RunCommandWithRetry("yarn", "link", "@pulumi/pulumi")
-	e.RunCommandWithRetry("yarn", "install")
+	e.InstallDependencies()
 
 	e.RunCommand("pulumi", "up", "--skip-preview", "--yes")
 	e.CWD = os.TempDir()
@@ -263,7 +260,10 @@ func TestDestroyStackRef_LocalNonProject_NewEnv(t *testing.T) {
 	e := ptesting.NewEnvironment(t)
 	defer e.DeleteIfNotFailed()
 
-	e.Env = []string{"PULUMI_DIY_BACKEND_LEGACY_LAYOUT=true"}
+	e.Env = []string{
+		"PULUMI_DIY_BACKEND_LEGACY_LAYOUT=true",
+		"PULUMI_DIY_BACKEND_IGNORE_DEPRECATION_ERROR=true",
+	}
 	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 	testDestroyStackRef(e, "")
 }
@@ -274,7 +274,10 @@ func TestDestroyStackRef_LocalNonProject_OldEnv(t *testing.T) {
 	e := ptesting.NewEnvironment(t)
 	defer e.DeleteIfNotFailed()
 
-	e.Env = []string{"PULUMI_SELF_MANAGED_STATE_LEGACY_LAYOUT=true"}
+	e.Env = []string{
+		"PULUMI_SELF_MANAGED_STATE_LEGACY_LAYOUT=true",
+		"PULUMI_DIY_BACKEND_IGNORE_DEPRECATION_ERROR=true",
+	}
 	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 	testDestroyStackRef(e, "")
 }
@@ -395,8 +398,7 @@ func TestExcludeProtected(t *testing.T) {
 
 	e.RunCommand("pulumi", "stack", "init", "dev")
 
-	e.RunCommandWithRetry("yarn", "link", "@pulumi/pulumi")
-	e.RunCommandWithRetry("yarn", "install")
+	e.InstallDependencies()
 
 	e.RunCommand("pulumi", "up", "--skip-preview", "--yes")
 
@@ -851,7 +853,6 @@ func testConstructProviderPropagation(t *testing.T, lang string, deps []string) 
 		testDir      = "construct_component_provider_propagation"
 		componentDir = "testcomponent-go"
 	)
-	runComponentSetup(t, testDir)
 
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:          filepath.Join(testDir, lang),
@@ -893,7 +894,6 @@ func testConstructResourceOptions(t *testing.T, dir string, deps []string) {
 		testDir      = "construct_component_resource_options"
 		componentDir = "testcomponent-go"
 	)
-	runComponentSetup(t, testDir)
 
 	validate := func(t *testing.T, resources []apitype.ResourceV3) {
 		urns := make(map[string]resource.URN) // name => URN
@@ -964,8 +964,7 @@ func testProjectRename(e *ptesting.Environment, organization string) {
 		e.RunCommand("pulumi", "stack", "init", stackName)
 	}
 
-	e.RunCommandWithRetry("yarn", "link", "@pulumi/pulumi")
-	e.RunCommandWithRetry("yarn", "install")
+	e.InstallDependencies()
 
 	e.RunCommand("pulumi", "up", "--skip-preview", "--yes")
 	newProjectName := "new_emptyjs"
@@ -1136,11 +1135,11 @@ func TestAdvisoryPolicyPack(t *testing.T) {
 	_, _, err = e.GetCommandResultsIn(filepath.Join(e.CWD, "advisory_policy_pack"), "npm", "install")
 	require.NoError(t, err)
 
-	e.RunCommandWithRetry("yarn", "link", "@pulumi/pulumi")
-	e.RunCommandWithRetry("yarn", "install")
+	e.InstallDependencies()
 
 	stdout, _, err := e.GetCommandResults(
-		"pulumi", "up", "--skip-preview", "--yes", "--policy-pack", "advisory_policy_pack")
+		"pulumi", "up", "--skip-preview", "--yes", "--policy-pack", "advisory_policy_pack",
+	)
 	require.NoError(t, err)
 	assert.Contains(t, stdout, "Failing advisory policy pack for testing\n          foobar")
 }
@@ -1163,11 +1162,11 @@ func TestMandatoryPolicyPack(t *testing.T) {
 	_, _, err = e.GetCommandResultsIn(filepath.Join(e.CWD, "mandatory_policy_pack"), "npm", "install")
 	require.NoError(t, err)
 
-	e.RunCommandWithRetry("yarn", "link", "@pulumi/pulumi")
-	e.RunCommandWithRetry("yarn", "install")
+	e.InstallDependencies()
 
 	stdout, _, err := e.GetCommandResults(
-		"pulumi", "up", "--skip-preview", "--yes", "--policy-pack", "mandatory_policy_pack")
+		"pulumi", "up", "--skip-preview", "--yes", "--policy-pack", "mandatory_policy_pack",
+	)
 	assert.Error(t, err)
 	assert.Contains(t, stdout, "error: update failed")
 	assert.Contains(t, stdout, "❌ typescript@v0.0.1 (local: mandatory_policy_pack)")
@@ -1191,11 +1190,11 @@ func TestBunMandatoryPolicyPack(t *testing.T) {
 	_, _, err = e.GetCommandResultsIn(filepath.Join(e.CWD, "bun_mandatory_policy_pack"), "bun", "install")
 	require.NoError(t, err)
 
-	e.RunCommandWithRetry("yarn", "link", "@pulumi/pulumi")
-	e.RunCommandWithRetry("yarn", "install")
+	e.InstallDependencies()
 
 	stdout, _, err := e.GetCommandResults(
-		"pulumi", "up", "--skip-preview", "--yes", "--policy-pack", "bun_mandatory_policy_pack")
+		"pulumi", "up", "--skip-preview", "--yes", "--policy-pack", "bun_mandatory_policy_pack",
+	)
 	assert.Error(t, err)
 	assert.Contains(t, stdout, "error: update failed")
 	assert.Contains(t, stdout, "❌ bun@v0.0.1 (local: bun_mandatory_policy_pack)")
@@ -1221,8 +1220,7 @@ func TestMultiplePolicyPacks(t *testing.T) {
 	_, _, err = e.GetCommandResultsIn(filepath.Join(e.CWD, "mandatory_policy_pack"), "npm", "install")
 	require.NoError(t, err)
 
-	e.RunCommandWithRetry("yarn", "link", "@pulumi/pulumi")
-	e.RunCommandWithRetry("yarn", "install")
+	e.InstallDependencies()
 
 	stdout, _, err := e.GetCommandResults("pulumi", "up", "--skip-preview", "--yes",
 		"--policy-pack", "advisory_policy_pack",
@@ -1246,8 +1244,7 @@ func TestPolicyPluginExtraArguments(t *testing.T) {
 	stackName, err := resource.NewUniqueHex("policy-plugin-extra-args", 8, -1)
 	contract.AssertNoErrorf(err, "resource.NewUniqueHex should not fail with no maximum length is set")
 	e.RunCommand("pulumi", "stack", "init", stackName)
-	e.RunCommandWithRetry("yarn", "link", "@pulumi/pulumi")
-	e.RunCommandWithRetry("yarn", "install")
+	e.InstallDependencies()
 	require.NoError(t, err)
 	// Create a venv for the policy package and install the current python SDK into it
 	tc, err := toolchain.ResolveToolchain(toolchain.PythonOptions{
@@ -1294,9 +1291,9 @@ func TestPolicyPackNew(t *testing.T) {
 	e := ptesting.NewEnvironment(t)
 	defer e.DeleteIfNotFailed()
 	require.False(t, e.PathExists("venv"))
-	stdout, _ := e.RunCommand("pulumi", "policy", "new", "aws-python", "--force")
+	stdout, _ := e.RunCommand(
+		"pulumi", "policy", "new", "aws-python", "--force", "--runtime-options", "toolchain=uv")
 	require.NotContains(t, stdout, "To install dependencies for the Policy Pack, run `pulumi install`")
-	require.Contains(t, stdout, "Finished creating virtual environment")
 	require.Contains(t, stdout, "Finished installing dependencies")
 	require.True(t, e.PathExists("venv"))
 }
@@ -1466,8 +1463,6 @@ func TestPulumiInstallInstallsPackagesWithExperimentalRegistry(t *testing.T) {
 description: A minimal TypeScript Pulumi program
 runtime:
   name: nodejs
-  options:
-    packagemanager: yarn
 packages:
   test-provider: github.com/pulumi/component-test-providers/test-provider@52a8a71555d964542b308da197755c64dbe63352
 `
@@ -1567,68 +1562,36 @@ func TestGetSchemaUsesCorrectVersion(t *testing.T) {
 
 // Regression test for https://github.com/pulumi/pulumi/issues/19905
 func TestComponentProviderErrorInResourceRegistration(t *testing.T) {
-	// We want to install the command provider
-	t.Setenv("PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION", "false")
+	t.Parallel()
+
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+	// The component provider creates a command:local:Command resource, so the
+	// command plugin must be installable.
+	e.SetEnvVars("PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION=false")
+
+	programPath := filepath.Join(e.RootPath, "program")
+	providerPath := filepath.Join(e.RootPath, "provider")
+
+	e.ImportDirectory("component-error-resource")
+	ptesting.InstallDependencies(t, providerPath)
+	e.CWD = programPath
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+	e.RunCommand("pulumi", "stack", "init", "dev")
+	e.RunCommand("pulumi", "plugin", "install", "resource", "command", "1.0.4")
+	e.RunCommand("pulumi", "package", "add", providerPath)
 
 	// The regression caused a hang where a remote component construct would
-	// never return.
-	timeout := time.After(3 * time.Minute)
-	done := make(chan bool)
-	go func() {
-		pulumiHome := t.TempDir()
-		integration.ProgramTest(t, &integration.ProgramTestOptions{
-			NoParallel:      true, // We're modifying the env above
-			PulumiHomeDir:   pulumiHome,
-			Dir:             "component-error-resource",
-			RelativeWorkDir: "program",
-			PrepareProject: func(info *engine.Projinfo) error {
-				providerPath := filepath.Join(info.Root, "..", "provider")
+	// never return. Only the update is under the timeout, so slow dependency
+	// installs above cannot trip it.
+	ctx, cancel := context.WithTimeout(t.Context(), 3*time.Minute)
+	defer cancel()
 
-				// Install command provider
-				t.Setenv("PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION", "false")
-				cmd := exec.Command("pulumi", "plugin", "install", "resource", "command", "1.0.4")
-				cmd.Env = append(cmd.Environ(), "PULUMI_HOME="+pulumiHome)
-				out, err := cmd.CombinedOutput()
-				require.NoError(t, err, "%s failed with: %s", cmd.String(), string(out))
-
-				// Install the provider's dependencies
-				installNodejsProviderDependencies(t, providerPath)
-
-				// Add the provider to our project
-				cmd = exec.Command("pulumi", "package", "add", providerPath)
-				cmd.Dir = info.Root
-				cmd.Env = append(cmd.Environ(), "PULUMI_HOME="+pulumiHome)
-				out, err = cmd.CombinedOutput()
-				require.NoError(t, err, "%s failed with: %s", cmd.String(), string(out))
-
-				return nil
-			},
-			Quick:         true,
-			ExpectFailure: true,
-			ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
-				foundError := false
-				for _, event := range stack.Events {
-					if event.DiagnosticEvent != nil && event.DiagnosticEvent.Severity == "error" {
-						t.Logf("DiagnosticEvent.Message: %s", event.DiagnosticEvent.Message)
-						if strings.Contains(event.DiagnosticEvent.Message, "exiting with error") {
-							foundError = true
-						}
-					}
-				}
-				events, err := json.Marshal(stack.Events)
-				require.NoError(t, err, "failed to marshal stack events")
-				require.True(t, foundError, "expected to find an error in the stack events, got %s", events)
-			},
-		})
-
-		done <- true
-	}()
-
-	select {
-	case <-timeout:
-		t.Fatal("Test didn't finish in time")
-	case <-done:
-	}
+	cmd := e.SetupCommandIn(ctx, programPath, "pulumi", "up", "--skip-preview", "--yes", "--non-interactive")
+	out, err := cmd.CombinedOutput()
+	require.NoError(t, ctx.Err(), "pulumi up did not finish in time:\n%s", out)
+	require.ErrorContains(t, err, "exit status 1", "%s", out)
+	require.Contains(t, string(out), "exiting with error")
 }
 
 // Test that we correctly detect an error in from a resource during an
@@ -1644,7 +1607,9 @@ func TestAutomationAPIErrorInResource(t *testing.T) {
 	e.ImportDirectory(filepath.Join("automation", "error"))
 	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 
-	e.RunCommandWithRetry("yarn", "install")
+	// This is an Automation-API host program (package.json, no Pulumi.yaml), so it can't use
+	// e.InstallDependencies (which runs `pulumi install`). Install + link the SDK directly.
+	ptesting.InstallDependencies(t, e.CWD)
 
 	// The bug was causing a hang, ensure the test times out
 	ctx, cancel := context.WithTimeout(t.Context(), 3*time.Minute)
@@ -1674,13 +1639,12 @@ func TestRunningViaCLIWrapper(t *testing.T) {
 
 	e.ImportDirectory("interrupt")
 	// Install the provider's dependencies
-	installPythonProviderDependencies(t, providerPath)
+	ptesting.InstallDependencies(t, providerPath)
 	e.CWD = programPath
 	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 	e.RunCommand("pulumi", "stack", "init", "dev")
 	e.RunCommand("pulumi", "stack", "select", "-s", "dev")
-	e.RunCommand("pulumi", "install")
-	e.RunCommandWithRetry("yarn", "link", "@pulumi/pulumi")
+	e.InstallDependencies()
 	e.RunCommand("pulumi", "package", "add", providerPath)
 	e.CWD = e.RootPath
 
@@ -1748,7 +1712,7 @@ func TestRunningViaCLIWrapper(t *testing.T) {
 		// This is the bug - process hung trying to control terminal
 		if cmd.Process != nil {
 			_ = cmd.Process.Kill()
-			_ = cmd.Wait()
+			<-processFinished
 		}
 
 		require.Failf(t, "up hung", "pulumi up hung after %s - likely trying to set raw mode without foreground control."+
@@ -1785,7 +1749,8 @@ func TestConfigFlag(t *testing.T) {
 
 	e.RunCommand("pulumi", "stack", "init", "config-flag-test")
 	stdout, _ := e.RunCommand(
-		"pulumi", "up", "--skip-preview", "--yes", "--config", "config-flag:example=an-example")
+		"pulumi", "up", "--skip-preview", "--yes", "--config", "config-flag:example=an-example",
+	)
 	require.Contains(t, stdout, "an-example")
 
 	configPath := filepath.Join(e.CWD, "Pulumi.config-flag-test.yaml")
@@ -1812,6 +1777,71 @@ func TestConfigFlag(t *testing.T) {
 	configContent, err = os.ReadFile(configPath)
 	require.NoError(t, err)
 	require.Contains(t, string(configContent), "config-flag:example: an-example")
+}
+
+// TestRefreshDestroySkipConfigValidationByDefault verifies that refresh and destroy no longer
+// validate stack config against the project config schema unless the program is being run.
+// This allows stacks with missing or invalid config to be refreshed and destroyed, e.g. in
+// ephemeral PR environments where config may diverge between branches.
+func TestRefreshDestroySkipConfigValidationByDefault(t *testing.T) {
+	t.Parallel()
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+	e.ImportDirectory("config_flag")
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+	e.RunCommand("pulumi", "install")
+
+	e.RunCommand("pulumi", "stack", "init", "config-flag-test")
+	e.RunCommand("pulumi", "up", "--skip-preview", "--yes", "--config", "config-flag:example=an-example")
+
+	// Remove the stack config so the required `config-flag:example` key is missing.
+	e.RunCommand("rm", "Pulumi.config-flag-test.yaml")
+
+	// Without --run-program, refresh and destroy must not validate config and should succeed.
+	e.RunCommand("pulumi", "refresh", "--yes")
+	e.RunCommand("pulumi", "destroy", "--yes")
+
+	// With --run-program, config validation runs again and the missing key is reported.
+	e.RunCommandExpectError("pulumi", "refresh", "--run-program", "--yes")
+}
+
+// TestSkipConfigValidation verifies the --skip-config-validation flag (and its
+// PULUMI_SKIP_CONFIG_VALIDATION env var equivalent) on preview, up, refresh, and destroy.
+// It uses a project whose config schema declares a required key that the program never reads,
+// so config validation fails when the key is unset, but the program itself runs successfully
+// once validation is skipped.
+func TestSkipConfigValidation(t *testing.T) {
+	t.Parallel()
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+	e.ImportDirectory("config_skip_validation")
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+	e.RunCommand("pulumi", "install")
+
+	e.RunCommand("pulumi", "stack", "init", "skip-validation-test")
+
+	// The required `config-skip-validation:example` key is unset, so the default behavior
+	// is to fail config validation for preview and up.
+	_, stderr := e.RunCommandExpectError("pulumi", "preview")
+	require.Contains(t, stderr, "validating stack config")
+	_, stderr = e.RunCommandExpectError("pulumi", "up", "--skip-preview", "--yes")
+	require.Contains(t, stderr, "validating stack config")
+
+	// --skip-config-validation lets both proceed; the program does not read the key.
+	e.RunCommand("pulumi", "preview", "--skip-config-validation")
+	e.RunCommand("pulumi", "up", "--skip-preview", "--yes", "--skip-config-validation")
+
+	// --skip-config-validation also overrides --run-program, where validation would otherwise
+	// run for refresh and destroy. The program runs but does not read the missing key.
+	e.RunCommand("pulumi", "refresh", "--run-program", "--skip-config-validation", "--yes")
+
+	// The flag is also exposed automatically as an env var (PULUMI_OPTION_<FLAG>).
+	e.Env = append(e.Env, "PULUMI_OPTION_SKIP_CONFIG_VALIDATION=true")
+	e.RunCommand("pulumi", "up", "--skip-preview", "--yes")
+	e.Env = e.Env[:len(e.Env)-1]
+
+	// Tear the stack down, skipping validation so the missing key does not block destroy.
+	e.RunCommand("pulumi", "destroy", "--run-program", "--yes", "--skip-config-validation")
 }
 
 func TestValidatePulumiVersionRange(t *testing.T) {

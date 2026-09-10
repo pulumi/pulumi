@@ -312,10 +312,7 @@ func (r *treeRenderer) frame(locked, done bool) {
 		mergeLastLine := systemMessagesHeight == 0 && statusMessageHeight != 0
 
 		treeTableHeight = termHeight - systemMessagesHeight - statusMessageHeight - 1
-		r.maxTreeTableOffset = len(treeTableRows) - treeTableHeight + 1
-		if r.maxTreeTableOffset < 0 {
-			r.maxTreeTableOffset = 0
-		}
+		r.maxTreeTableOffset = max(len(treeTableRows)-treeTableHeight+1, 0)
 		scrollable := r.maxTreeTableOffset != 0
 
 		if r.treeTableOffset > r.maxTreeTableOffset {
@@ -425,10 +422,7 @@ func (r *treeRenderer) frame(locked, done bool) {
 
 	// Render the status message, if any.
 	if statusMessageHeight != 0 {
-		padding := termWidth - colors.MeasureColorizedString(statusMessage)
-		if padding < 0 {
-			padding = 0
-		}
+		padding := max(termWidth-colors.MeasureColorizedString(statusMessage), 0)
 
 		r.overln("")
 		r.over(statusMessage + strings.Repeat(" ", padding))
@@ -444,7 +438,7 @@ func (r *treeRenderer) frame(locked, done bool) {
 	// the unwriten lines with empty space.
 	if r.rewind > lineCount {
 		delta := r.rewind - lineCount
-		for i := 0; i < delta; i++ {
+		for range delta {
 			r.overln("")
 		}
 		r.term.CursorUp(delta)
@@ -463,10 +457,7 @@ func (r *treeRenderer) clampLine(line string, maxWidth int) string {
 	// msgWithColors having the color code information embedded with it.  So we need to get
 	// the right substring of it, assuming that embedded colors are just markup and do not
 	// actually contribute to the length
-	maxRowLength := maxWidth - 1
-	if maxRowLength < 0 {
-		maxRowLength = 0
-	}
+	maxRowLength := max(maxWidth-1, 0)
 	return colors.TrimColorizedString(line, maxRowLength)
 }
 

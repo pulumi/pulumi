@@ -20,10 +20,12 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	pkghost "github.com/pulumi/pulumi/pkg/v3/host"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
@@ -42,12 +44,12 @@ func testProvider(ctx context.Context, host plugin.Host, pCtx *plugin.Context, n
 	constructResult, err := prov.Construct(ctx, plugin.ConstructRequest{
 		Type:   "test:index:MyResource",
 		Name:   "testResource",
-		Inputs: resource.NewPropertyMapFromMap(map[string]any{}),
+		Inputs: property.Map{},
 	})
 	if err != nil {
 		return err
 	}
-	if constructResult.Outputs["ITS_ALIVE"].StringValue() != "IT'S ALIVE!" {
+	if constructResult.Outputs.Get("ITS_ALIVE").AsString() != "IT'S ALIVE!" {
 		return errors.New("did not get expected response from provider")
 	}
 	return nil
@@ -61,14 +63,17 @@ func main() {
 		}
 
 		sink := cmdutil.Diag()
-		pCtx, err := plugin.NewContext(ctx.Context(), sink, sink, nil, nil, wd, nil, false, nil, nil, nil, nil)
+		pluginHost, err := pkghost.New(context.WithoutCancel(ctx.Context()), sink, sink, nil, nil, nil, nil, nil)
 		if err != nil {
 			return err
 		}
-		host, err := plugin.NewDefaultHost(pCtx, nil, false, nil, nil, nil, nil, tokens.PackageName("test"), nil, nil, nil)
+		defer contract.IgnoreClose(pluginHost)
+		pCtx, err := plugin.NewContext(ctx.Context(), sink, sink, pluginHost, nil, wd, nil, false, nil)
 		if err != nil {
 			return err
 		}
+		defer contract.IgnoreClose(pCtx)
+		host := pCtx.Host
 
 		err = testProvider(ctx.Context(), host, pCtx, "provider-nodejs")
 		if err != nil {

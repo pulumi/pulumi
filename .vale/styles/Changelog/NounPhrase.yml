@@ -1,0 +1,8 @@
+extends: existence
+message: "'%s' reads like a noun phrase - use the active imperative form (e.g. 'Support X' instead of 'Support for X')"
+link: https://github.com/pulumi/pulumi/blob/master/CONTRIBUTING.md#changelog-messages
+level: warning
+ignorecase: false
+scope: raw
+raw:
+  - '^(?:(?:Support|Fix|Update|Upgrade|Ability|Option)\s+(?:for|to|of)\b|(?:New|Initial|Better|Improved|Various|Minor|Misc|Miscellaneous|Small|General)\b)'

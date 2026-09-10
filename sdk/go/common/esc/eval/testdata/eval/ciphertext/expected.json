@@ -1,0 +1,603 @@
+{
+    "check": {
+        "exprs": {
+            "password": {
+                "range": {
+                    "environment": "ciphertext",
+                    "begin": {
+                        "line": 3,
+                        "column": 5,
+                        "byte": 24
+                    },
+                    "end": {
+                        "line": 4,
+                        "column": 47,
+                        "byte": 82
+                    }
+                },
+                "schema": {
+                    "type": "string"
+                },
+                "builtin": {
+                    "name": "fn::secret",
+                    "nameRange": {
+                        "environment": "ciphertext",
+                        "begin": {
+                            "line": 3,
+                            "column": 5,
+                            "byte": 24
+                        },
+                        "end": {
+                            "line": 3,
+                            "column": 15,
+                            "byte": 34
+                        }
+                    },
+                    "argSchema": true,
+                    "arg": {
+                        "range": {
+                            "environment": "ciphertext",
+                            "begin": {
+                                "line": 4,
+                                "column": 7,
+                                "byte": 42
+                            },
+                            "end": {
+                                "line": 4,
+                                "column": 47,
+                                "byte": 82
+                            }
+                        },
+                        "object": {
+                            "ciphertext": {
+                                "range": {
+                                    "environment": "ciphertext",
+                                    "begin": {
+                                        "line": 4,
+                                        "column": 19,
+                                        "byte": 54
+                                    },
+                                    "end": {
+                                        "line": 4,
+                                        "column": 47,
+                                        "byte": 82
+                                    }
+                                },
+                                "schema": {
+                                    "type": "string",
+                                    "const": "ZXNjeAAAAAHo9e705fKyKo30VQ=="
+                                },
+                                "literal": "ZXNjeAAAAAHo9e705fKyKo30VQ=="
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "properties": {
+            "password": {
+                "secret": true,
+                "unknown": true,
+                "trace": {
+                    "def": {
+                        "environment": "ciphertext",
+                        "begin": {
+                            "line": 3,
+                            "column": 5,
+                            "byte": 24
+                        },
+                        "end": {
+                            "line": 4,
+                            "column": 47,
+                            "byte": 82
+                        }
+                    }
+                }
+            }
+        },
+        "schema": {
+            "properties": {
+                "password": {
+                    "type": "string"
+                }
+            },
+            "type": "object",
+            "required": [
+                "password"
+            ]
+        },
+        "executionContext": {
+            "properties": {
+                "currentEnvironment": {
+                    "value": {
+                        "name": {
+                            "value": "ciphertext",
+                            "trace": {
+                                "def": {
+                                    "environment": "ciphertext",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "ciphertext",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                },
+                "pulumi": {
+                    "value": {
+                        "user": {
+                            "value": {
+                                "id": {
+                                    "value": "USER_123",
+                                    "trace": {
+                                        "def": {
+                                            "environment": "ciphertext",
+                                            "begin": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            },
+                                            "end": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            }
+                                        }
+                                    }
+                                }
+                            },
+                            "trace": {
+                                "def": {
+                                    "environment": "ciphertext",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "ciphertext",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                },
+                "rootEnvironment": {
+                    "value": {
+                        "name": {
+                            "value": "ciphertext",
+                            "trace": {
+                                "def": {
+                                    "environment": "ciphertext",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "ciphertext",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                }
+            },
+            "schema": {
+                "properties": {
+                    "currentEnvironment": {
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "const": "ciphertext"
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "name"
+                        ]
+                    },
+                    "pulumi": {
+                        "properties": {
+                            "user": {
+                                "properties": {
+                                    "id": {
+                                        "type": "string",
+                                        "const": "USER_123"
+                                    }
+                                },
+                                "type": "object",
+                                "required": [
+                                    "id"
+                                ]
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "user"
+                        ]
+                    },
+                    "rootEnvironment": {
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "const": "ciphertext"
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "name"
+                        ]
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "currentEnvironment",
+                    "pulumi",
+                    "rootEnvironment"
+                ]
+            }
+        }
+    },
+    "checkJson": {
+        "password": "[secret]"
+    },
+    "eval": {
+        "exprs": {
+            "password": {
+                "range": {
+                    "environment": "ciphertext",
+                    "begin": {
+                        "line": 3,
+                        "column": 5,
+                        "byte": 24
+                    },
+                    "end": {
+                        "line": 4,
+                        "column": 47,
+                        "byte": 82
+                    }
+                },
+                "schema": {
+                    "type": "string"
+                },
+                "builtin": {
+                    "name": "fn::secret",
+                    "nameRange": {
+                        "environment": "ciphertext",
+                        "begin": {
+                            "line": 3,
+                            "column": 5,
+                            "byte": 24
+                        },
+                        "end": {
+                            "line": 3,
+                            "column": 15,
+                            "byte": 34
+                        }
+                    },
+                    "argSchema": true,
+                    "arg": {
+                        "range": {
+                            "environment": "ciphertext",
+                            "begin": {
+                                "line": 4,
+                                "column": 7,
+                                "byte": 42
+                            },
+                            "end": {
+                                "line": 4,
+                                "column": 47,
+                                "byte": 82
+                            }
+                        },
+                        "object": {
+                            "ciphertext": {
+                                "range": {
+                                    "environment": "ciphertext",
+                                    "begin": {
+                                        "line": 4,
+                                        "column": 19,
+                                        "byte": 54
+                                    },
+                                    "end": {
+                                        "line": 4,
+                                        "column": 47,
+                                        "byte": 82
+                                    }
+                                },
+                                "schema": {
+                                    "type": "string",
+                                    "const": "ZXNjeAAAAAHo9e705fKyKo30VQ=="
+                                },
+                                "literal": "ZXNjeAAAAAHo9e705fKyKo30VQ=="
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "properties": {
+            "password": {
+                "value": "hunter2",
+                "secret": true,
+                "trace": {
+                    "def": {
+                        "environment": "ciphertext",
+                        "begin": {
+                            "line": 3,
+                            "column": 5,
+                            "byte": 24
+                        },
+                        "end": {
+                            "line": 4,
+                            "column": 47,
+                            "byte": 82
+                        }
+                    }
+                }
+            }
+        },
+        "schema": {
+            "properties": {
+                "password": {
+                    "type": "string"
+                }
+            },
+            "type": "object",
+            "required": [
+                "password"
+            ]
+        },
+        "executionContext": {
+            "properties": {
+                "currentEnvironment": {
+                    "value": {
+                        "name": {
+                            "value": "ciphertext",
+                            "trace": {
+                                "def": {
+                                    "environment": "ciphertext",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "ciphertext",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                },
+                "pulumi": {
+                    "value": {
+                        "user": {
+                            "value": {
+                                "id": {
+                                    "value": "USER_123",
+                                    "trace": {
+                                        "def": {
+                                            "environment": "ciphertext",
+                                            "begin": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            },
+                                            "end": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            }
+                                        }
+                                    }
+                                }
+                            },
+                            "trace": {
+                                "def": {
+                                    "environment": "ciphertext",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "ciphertext",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                },
+                "rootEnvironment": {
+                    "value": {
+                        "name": {
+                            "value": "ciphertext",
+                            "trace": {
+                                "def": {
+                                    "environment": "ciphertext",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "ciphertext",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                }
+            },
+            "schema": {
+                "properties": {
+                    "currentEnvironment": {
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "const": "ciphertext"
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "name"
+                        ]
+                    },
+                    "pulumi": {
+                        "properties": {
+                            "user": {
+                                "properties": {
+                                    "id": {
+                                        "type": "string",
+                                        "const": "USER_123"
+                                    }
+                                },
+                                "type": "object",
+                                "required": [
+                                    "id"
+                                ]
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "user"
+                        ]
+                    },
+                    "rootEnvironment": {
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "const": "ciphertext"
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "name"
+                        ]
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "currentEnvironment",
+                    "pulumi",
+                    "rootEnvironment"
+                ]
+            }
+        }
+    },
+    "evalJsonRedacted": {
+        "password": "[secret]"
+    },
+    "evalJSONRevealed": {
+        "password": "hunter2"
+    }
+}

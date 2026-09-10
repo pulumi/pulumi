@@ -117,7 +117,7 @@ type testResource2Inputs struct {
 }
 
 func (*testResource2Inputs) ElementType() reflect.Type {
-	return reflect.TypeOf((*testResource2Args)(nil))
+	return reflect.TypeFor[*testResource2Args]()
 }
 
 type testResource3 struct {
@@ -457,7 +457,7 @@ type testInstanceResourceArgs struct{}
 type testInstanceResourceInputs struct{}
 
 func (*testInstanceResourceInputs) ElementType() reflect.Type {
-	return reflect.TypeOf((*testInstanceResourceArgs)(nil)).Elem()
+	return reflect.TypeFor[testInstanceResourceArgs]()
 }
 
 type testInstanceResourceInput interface {
@@ -468,7 +468,7 @@ type testInstanceResourceInput interface {
 }
 
 func (*testInstanceResource) ElementType() reflect.Type {
-	return reflect.TypeOf((*testInstanceResource)(nil)).Elem()
+	return reflect.TypeFor[testInstanceResource]()
 }
 
 func (i *testInstanceResource) ToTestInstanceResourceOutput() testInstanceResourceOutput {
@@ -484,7 +484,7 @@ type testInstanceResourceOutput struct {
 }
 
 func (testInstanceResourceOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*testInstanceResource)(nil)).Elem()
+	return reflect.TypeFor[testInstanceResource]()
 }
 
 func (o testInstanceResourceOutput) ToTestInstanceResourceOutput() testInstanceResourceOutput {
@@ -512,7 +512,7 @@ type testMyCustomResourceInputs struct {
 }
 
 func (testMyCustomResourceInputs) ElementType() reflect.Type {
-	return reflect.TypeOf((*testMyCustomResourceArgs)(nil)).Elem()
+	return reflect.TypeFor[testMyCustomResourceArgs]()
 }
 
 type module int
@@ -580,7 +580,7 @@ type testMyRemoteComponentInputs struct {
 }
 
 func (testMyRemoteComponentInputs) ElementType() reflect.Type {
-	return reflect.TypeOf((*testMyRemoteComponentArgs)(nil)).Elem()
+	return reflect.TypeFor[testMyRemoteComponentArgs]()
 }
 
 type testMyRemoteComponent struct {
@@ -1069,7 +1069,7 @@ type testResource2Input interface {
 }
 
 func (*testResource2) ElementType() reflect.Type {
-	return reflect.TypeOf((**testResource2)(nil)).Elem()
+	return reflect.TypeFor[*testResource2]()
 }
 
 func (r *testResource2) ToTestResource2Output() testResource2Output {
@@ -1083,7 +1083,7 @@ func (r *testResource2) ToTestResource2OutputWithContext(ctx context.Context) te
 type testResource2Output struct{ *OutputState }
 
 func (testResource2Output) ElementType() reflect.Type {
-	return reflect.TypeOf((**testResource2)(nil)).Elem()
+	return reflect.TypeFor[*testResource2]()
 }
 
 func (o testResource2Output) ToTestResource2Output() testResource2Output {
@@ -1103,7 +1103,7 @@ type testResource4Inputs struct {
 }
 
 func (testResource4Inputs) ElementType() reflect.Type {
-	return reflect.TypeOf((*testResource4Args)(nil)).Elem()
+	return reflect.TypeFor[testResource4Args]()
 }
 
 type testResource4 struct {

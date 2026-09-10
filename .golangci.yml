@@ -14,6 +14,7 @@ linters:
     - importas
     - lll
     - misspell
+    - modernize
     - nakedret
     - nolintlint
     - paralleltest
@@ -29,6 +30,12 @@ linters:
     - requiredfield
     - noosexit
   settings:
+    modernize:
+      disable:
+        # This modernizer is not enabled by Go 1.26's go fix.
+        - unsafefuncs
+        # Some code reads omitempty tags at runtime, making this rewrite unsafe.
+        - omitzero
     custom:
       requiredfield:
         type: module
@@ -87,6 +94,12 @@ linters:
           deny:
             - pkg: github.com/golang/protobuf
               desc: Use google.golang.org/protobuf instead
+        pkg-no-sdk-plugin:
+          files:
+            - '**/pkg/**/*.go'
+          deny:
+            - pkg: github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin
+              desc: The pkg module must not import sdk/go/common/resource/plugin
     goheader:
       values:
         regexp:
@@ -139,7 +152,7 @@ linters:
     nakedret:
       max-func-lines: 60
     nolintlint:
-      allow-unused: true
+      allow-unused: false
     forbidigo:
       forbid:
         - pattern: ^assert.NoError$
@@ -161,6 +174,10 @@ linters:
           msg: "use cmd.ErrOrStderr() instead of os.Stderr in pkg/cmd"
         - pattern: ^fmt\.Print(f|ln)?$
           msg: "use fmt.Fprint*(cmd.OutOrStdout(), ...) instead of fmt.Print* in pkg/cmd"
+        - pattern: ^logging\.V$
+          msg: "use log/slog directly instead of the logging wrapper (slog migration)"
+        - pattern: ^logging\.(Infof|Warningf|Errorf)$
+          msg: "use log/slog directly instead of the logging wrapper (slog migration)"
     revive:
       rules:
         - name: use-any
@@ -191,6 +208,10 @@ linters:
         text: 'deprecated: Please use types in:? cloud.google.com/go/logging/apiv2/loggingpb'
       - linters:
           - staticcheck
+        path: ^sdk/go/auto/
+        text: SA1019
+      - linters:
+          - staticcheck
         text: 'error strings should not end with punctuation or newlines'
       - linters:
           - staticcheck
@@ -217,14 +238,24 @@ linters:
         text: 'use (cmd\.OutOrStdout|cmd\.ErrOrStderr|fmt\.Fprint\*)'
       - linters:
           - forbidigo
+        path-except: ^(pkg/util/nosleep|pkg/host|pkg/pluginstorage|pkg/cmd/pulumi)/
+        text: 'logging wrapper \(slog migration\)'
+      - linters:
+          - forbidigo
         path: _test\.go$
         text: 'use (cmd\.OutOrStdout|cmd\.ErrOrStderr|fmt\.Fprint\*)'
+      # These modernizers are not enabled by Go 1.26's go fix. golangci-lint
+      # runs them but does not accept their names in modernize.disable.
+      - linters:
+          - modernize
+        text: '^(atomictypes|slicesbackward):'
     paths:
       - Godeps$
       - builtin$
       - node_modules
       - testdata$
       - third_party$
+      - third_party/
       - vendor$
 formatters:
   enable:
@@ -238,4 +269,5 @@ formatters:
       - node_modules
       - testdata$
       - third_party$
+      - third_party/
       - vendor$

@@ -51,6 +51,41 @@ func (ComponentCallableArgs) ElementType() reflect.Type {
 	return reflect.TypeOf((*componentCallableArgs)(nil)).Elem()
 }
 
+func (r *ComponentCallable) EchoMap(ctx *pulumi.Context, args *ComponentCallableEchoMapArgs) (ComponentCallableEchoMapResultOutput, error) {
+	out, err := ctx.Call("component:index:ComponentCallable/echoMap", args, ComponentCallableEchoMapResultOutput{}, r)
+	if err != nil {
+		return ComponentCallableEchoMapResultOutput{}, err
+	}
+	return out.(ComponentCallableEchoMapResultOutput), nil
+}
+
+type componentCallableEchoMapArgs struct {
+	StringMap map[string]string `pulumi:"stringMap"`
+}
+
+// The set of arguments for the EchoMap method of the ComponentCallable resource.
+type ComponentCallableEchoMapArgs struct {
+	StringMap pulumi.StringMapInput
+}
+
+func (ComponentCallableEchoMapArgs) ElementType() reflect.Type {
+	return reflect.TypeOf((*componentCallableEchoMapArgs)(nil)).Elem()
+}
+
+type ComponentCallableEchoMapResult struct {
+	StringMap map[string]string `pulumi:"stringMap"`
+}
+
+type ComponentCallableEchoMapResultOutput struct{ *pulumi.OutputState }
+
+func (ComponentCallableEchoMapResultOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*ComponentCallableEchoMapResult)(nil)).Elem()
+}
+
+func (o ComponentCallableEchoMapResultOutput) StringMap() pulumi.StringMapOutput {
+	return o.ApplyT(func(v ComponentCallableEchoMapResult) map[string]string { return v.StringMap }).(pulumi.StringMapOutput)
+}
+
 // The `identity` method of the `ComponentCallable` component resource. Returns the component's `value` unaltered.
 func (r *ComponentCallable) Identity(ctx *pulumi.Context) (ComponentCallableIdentityResultOutput, error) {
 	out, err := ctx.Call("component:index:ComponentCallable/identity", nil, ComponentCallableIdentityResultOutput{}, r)
@@ -242,6 +277,7 @@ func init() {
 	pulumi.RegisterInputType(reflect.TypeOf((*ComponentCallableArrayInput)(nil)).Elem(), ComponentCallableArray{})
 	pulumi.RegisterInputType(reflect.TypeOf((*ComponentCallableMapInput)(nil)).Elem(), ComponentCallableMap{})
 	pulumi.RegisterOutputType(ComponentCallableOutput{})
+	pulumi.RegisterOutputType(ComponentCallableEchoMapResultOutput{})
 	pulumi.RegisterOutputType(ComponentCallableIdentityResultOutput{})
 	pulumi.RegisterOutputType(ComponentCallablePrefixedResultOutput{})
 	pulumi.RegisterOutputType(ComponentCallableArrayOutput{})

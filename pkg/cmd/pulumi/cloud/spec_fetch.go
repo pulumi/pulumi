@@ -45,13 +45,7 @@ var specCacheTTL = 24 * time.Hour
 // When refresh is false and the network fetch fails, ensureSpec falls back
 // to the cached copy (if any) and writes a warning to warnW. When refresh
 // is true the fetch error is returned.
-func ensureSpec(ctx context.Context, warnW io.Writer, refresh bool) ([]byte, error) {
-	resolved, err := ResolveContext(ctx)
-	if err != nil {
-		return nil, NewAPIError(cmdutil.ExitInternalError, ErrToolError,
-			fmt.Sprintf("resolving cloud context: %v", err))
-	}
-
+func ensureSpec(ctx context.Context, resolved *ResolvedContext, warnW io.Writer, refresh bool) ([]byte, error) {
 	cachePath, err := specCachePath(resolved.CloudURL)
 	if err != nil {
 		return nil, NewAPIError(cmdutil.ExitInternalError, ErrToolError,

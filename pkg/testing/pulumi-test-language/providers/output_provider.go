@@ -24,8 +24,8 @@ import (
 	"github.com/blang/semver"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 )
 
@@ -45,18 +45,18 @@ func (p *OutputProvider) Close() error {
 func (p *OutputProvider) Configure(
 	_ context.Context, req plugin.ConfigureRequest,
 ) (plugin.ConfigureResponse, error) {
-	elide, has := req.Inputs["elideUnknowns"]
+	elide, has := req.Inputs.GetOk("elideUnknowns")
 	if has {
 		if elide.IsBool() {
-			p.elideUnknowns = elide.BoolValue()
+			p.elideUnknowns = elide.AsBool()
 		} else if elide.IsString() {
-			parsed, err := strconv.ParseBool(elide.StringValue())
+			parsed, err := strconv.ParseBool(elide.AsString())
 			if err != nil {
-				return plugin.ConfigureResponse{}, fmt.Errorf("invalid value for elideUnknowns: %v", elide.StringValue())
+				return plugin.ConfigureResponse{}, fmt.Errorf("invalid value for elideUnknowns: %v", elide.AsString())
 			}
 			p.elideUnknowns = parsed
 		} else {
-			return plugin.ConfigureResponse{}, fmt.Errorf("invalid type for elideUnknowns: %v", elide.TypeString())
+			return plugin.ConfigureResponse{}, fmt.Errorf("invalid type for elideUnknowns: %v", elide)
 		}
 	}
 
@@ -76,7 +76,7 @@ func (p *OutputProvider) GetSchema(
 	pkg := schema.PackageSpec{
 		Name:    "output",
 		Version: "23.0.0",
-		Provider: schema.ResourceSpec{
+		Provider: &schema.ResourceSpec{
 			InputProperties: map[string]schema.PropertySpec{
 				"elideUnknowns": {
 					TypeSpec: schema.TypeSpec{
@@ -187,7 +187,7 @@ func (p *OutputProvider) CheckConfig(
 	_ context.Context, req plugin.CheckConfigRequest,
 ) (plugin.CheckConfigResponse, error) {
 	// Expect just the version
-	version, ok := req.News["version"]
+	version, ok := req.News.GetOk("version")
 	if !ok {
 		return plugin.CheckConfigResponse{
 			Failures: makeCheckFailure("version", "missing version"),
@@ -198,31 +198,31 @@ func (p *OutputProvider) CheckConfig(
 			Failures: makeCheckFailure("version", "version is not a string"),
 		}, nil
 	}
-	if version.StringValue() != "23.0.0" {
+	if version.AsString() != "23.0.0" {
 		return plugin.CheckConfigResponse{
 			Failures: makeCheckFailure("version", "version is not 23.0.0"),
 		}, nil
 	}
 
-	elide, hasElide := req.News["elideUnknowns"]
+	elide, hasElide := req.News.GetOk("elideUnknowns")
 	if hasElide {
 		if elide.IsString() {
-			_, err := strconv.ParseBool(elide.StringValue())
+			_, err := strconv.ParseBool(elide.AsString())
 			if err != nil {
 				return plugin.CheckConfigResponse{
 					Failures: makeCheckFailure("elideUnknowns",
-						fmt.Sprintf("elideUnknowns is not a boolean: '%v'", elide.StringValue())),
+						fmt.Sprintf("elideUnknowns is not a boolean: '%v'", elide.AsString())),
 				}, nil
 			}
 		} else if !elide.IsBool() {
 			return plugin.CheckConfigResponse{
 				Failures: makeCheckFailure("elideUnknowns",
-					fmt.Sprintf("elideUnknowns is not a boolean: %v", elide.TypeString())),
+					"elideUnknowns is not a boolean"),
 			}, nil
 		}
 	}
 
-	if (!hasElide && len(req.News) != 1) || (hasElide && len(req.News) != 2) {
+	if (!hasElide && req.News.Len() != 1) || (hasElide && req.News.Len() != 2) {
 		return plugin.CheckConfigResponse{
 			Failures: makeCheckFailure("", fmt.Sprintf("too many properties: %v", req.News)),
 		}, nil

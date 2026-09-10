@@ -100,6 +100,6 @@ func NewExampleComponent(
 	if err != nil {
 		return nil, err
 	}
-	componentResource.Result = password.Result
+	componentResource.Result = pulumi.Any(password.Result)
 	return &componentResource, nil
 }

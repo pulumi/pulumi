@@ -25,6 +25,7 @@ import (
 	"fmt"
 	"hash"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"os"
@@ -40,15 +41,12 @@ import (
 	"time"
 
 	"github.com/blang/semver"
-	"github.com/cheggaaa/pb"
 	"github.com/djherbis/times"
-	"github.com/go-git/go-git/v5/plumbing"
+	"github.com/go-git/go-git/v6/plumbing"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/gitutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/httputil"
@@ -506,11 +504,11 @@ func newGithubSource(url *url.URL, name string, kind apitype.PluginKind) (*githu
 		// github.com/pulumi/pulumi-converter-aws rather than github.com/pulumi/pulumi-aws which would clash
 		// with the providers of the same name.
 		repository = "pulumi-converter-" + name
-		if name == "yaml" {
-			// We special case the yaml converter plugin to be in the pulumi-yaml repo. It's not ideal but its
-			// to have this hardcoded here than having to deal with two repos for YAML, and long term this
-			// should go away and be replaced with a registry lookup.
-			repository = "pulumi-yaml"
+		switch name {
+		case "yaml", "hcl":
+			// We special case the yaml & hcl converter plugin to be in their language repos repo. Long term
+			// this should go away and be replaced with a registry lookup.
+			repository = "pulumi-" + name
 		}
 	}
 
@@ -577,8 +575,8 @@ func (source *githubSource) getHTTPResponse(
 	//   and trying again.  This can be useful for example if the user has a fine grained token, which when set doesn't
 	//   allow access to public repositories.
 	// All other errors are returned as is.
-	var downErr *downloadError
-	if !errors.As(err, &downErr) || !isRateLimitError(downErr) {
+	downErr, ok := errors.AsType[*downloadError](err)
+	if !ok || !isRateLimitError(downErr) {
 		// If we see a 401 or 403 error and we're using a token we'll disable that token and try again
 		if downErr != nil && (downErr.code == 401 || downErr.code == 403) && source.token != "" {
 			source.token = ""
@@ -759,6 +757,7 @@ func (source *httpSource) Download(
 ) (io.ReadCloser, int64, error) {
 	serverURL := interpolateURL(source.url, source.name, version, opSy, arch)
 	serverURL = strings.TrimSuffix(serverURL, "/")
+	logging.AddGlobalSecretFilter(httputil.URLSecrets(serverURL), "[credential]")
 	logging.V(1).Infof("%s downloading from %s", source.name, serverURL)
 
 	endpoint := fmt.Sprintf("%s/%s",
@@ -835,6 +834,7 @@ func (source *fallbackSource) Download(
 	// which returns the GitHub URL, not the get.pulumi.com URL. When we actually fall back to
 	// get.pulumi.com here, we need to check if there's an override for that specific URL.
 	if overrideURL, ok := pluginDownloadURLOverridesParsed.get(pulumi.url()); ok {
+		logging.AddGlobalSecretFilter(httputil.URLSecrets(overrideURL), "[credential]")
 		logging.V(1).Infof("Applying URL override for %s: %s -> %s", source.name, pulumi.url(), overrideURL)
 		overrideSource, err := newPluginSource(source.name, source.kind, overrideURL)
 		if err != nil {
@@ -967,9 +967,14 @@ type PackageDescriptor struct {
 	// A specification for the plugin that provides the package.
 	PluginDescriptor
 
-	// An optional parameterization to apply to the providing plugin to produce
-	// the package.
+	// An optional replacement parameterization to apply to the providing plugin
+	// to produce the package.
 	Parameterization *Parameterization
+
+	// An optional extension parameterization to apply to the providing plugin to
+	// produce the package. Extension parameterizations share the base plugin's
+	// source and are not separate providers.
+	ExtensionParameterization *Parameterization
 }
 
 // A resolved plugin with parameterization arguments.
@@ -983,6 +988,12 @@ type UnresolvedPackageDescriptor struct {
 	ParameterizationArgs []string
 }
 
+func (u UnresolvedPackageDescriptor) LogValue() slog.Value {
+	u.PluginDownloadURL = httputil.RedactURL(u.PluginDownloadURL)
+	type plain UnresolvedPackageDescriptor
+	return slog.AnyValue(plain(u))
+}
+
 func NewPackageDescriptor(spec PluginDescriptor, parameterization *Parameterization) PackageDescriptor {
 	return PackageDescriptor{
 		PluginDescriptor: spec,
@@ -992,6 +1003,10 @@ func NewPackageDescriptor(spec PluginDescriptor, parameterization *Parameterizat
 
 // PackageName returns the name of the package.
 func (pd PackageDescriptor) PackageName() string {
+	// Extension parameterization takes precedence over replacement parameterization.
+	if pd.ExtensionParameterization != nil {
+		return pd.ExtensionParameterization.Name
+	}
 	if pd.Parameterization != nil {
 		return pd.Parameterization.Name
 	}
@@ -1000,6 +1015,10 @@ func (pd PackageDescriptor) PackageName() string {
 
 // PackageVersion returns the version of the package.
 func (pd PackageDescriptor) PackageVersion() *semver.Version {
+	// Extension parameterization takes precedence over replacement parameterization.
+	if pd.ExtensionParameterization != nil {
+		return &pd.ExtensionParameterization.Version
+	}
 	if pd.Parameterization != nil {
 		return &pd.Parameterization.Version
 	}
@@ -1009,9 +1028,11 @@ func (pd PackageDescriptor) PackageVersion() *semver.Version {
 func (pd PackageDescriptor) String() string {
 	name := pd.Name
 	version := pd.Version
-	if pd.Parameterization != nil {
-		name = pd.Parameterization.Name
-		version = &pd.Parameterization.Version
+	// Extension parameterization takes precedence over replacement parameterization.
+	if pd.ExtensionParameterization != nil {
+		name, version = pd.ExtensionParameterization.Name, &pd.ExtensionParameterization.Version
+	} else if pd.Parameterization != nil {
+		name, version = pd.Parameterization.Name, &pd.Parameterization.Version
 	}
 
 	var v string
@@ -1359,6 +1380,40 @@ func (spec PluginDescriptor) String() string {
 	return spec.Name + version
 }
 
+// pluginLastUsedSuffix is the suffix of the sidecar file, next to a cached plugin's
+// directory, whose mtime records the last time the plugin was resolved for execution.
+// The directory's access time can't serve this purpose: executing a file doesn't update
+// its parent directory's atime, and atime updates are disabled by default on Windows and
+// throttled on Linux (relatime). See https://github.com/pulumi/pulumi/issues/4404.
+const pluginLastUsedSuffix = ".lastused"
+
+// markPluginUsed records, best-effort, that the cached plugin at dir is about to be run.
+func markPluginUsed(dir string) {
+	contract.Requiref(strings.LastIndexByte(dir, filepath.Separator) != (len(dir)-1),
+		"dir", "%q must not end in / or be empty", dir)
+	if err := os.WriteFile(dir+pluginLastUsedSuffix, nil, 0o600); err != nil {
+		logging.V(6).Infof("failed to record last-use time for %s: %v", dir, err)
+	}
+}
+
+// PluginFS captures the filesystem operations used by PluginInfo (see Delete and
+// setFileMetadata). It exists so that plugin removal and metadata lookups can be exercised
+// without touching the real filesystem. A PluginInfo with a nil FS uses the real filesystem.
+type PluginFS interface {
+	Stat(name string) (os.FileInfo, error)
+	Remove(name string) error
+	RemoveAll(path string) error
+	GetTimes(fi os.FileInfo) times.Timespec
+}
+
+// osPluginFS is the default PluginFS, backed by the os package.
+type osPluginFS struct{}
+
+func (osPluginFS) Stat(name string) (os.FileInfo, error)  { return os.Stat(name) }
+func (osPluginFS) Remove(name string) error               { return os.Remove(name) }
+func (osPluginFS) RemoveAll(path string) error            { return os.RemoveAll(path) }
+func (osPluginFS) GetTimes(fi os.FileInfo) times.Timespec { return times.Get(fi) }
+
 // PluginInfo provides basic information about a plugin.  Each plugin gets installed into a system-wide
 // location, by default `~/.pulumi/plugins/<kind>-<name>-<version>/`.  A plugin may contain multiple files,
 // however the primary loadable executable must be named `pulumi-<kind>-<name>`.
@@ -1368,10 +1423,21 @@ type PluginInfo struct {
 	Kind    apitype.PluginKind // the kind of the plugin (language, resource, etc).
 	Version *semver.Version    // the plugin's semantic version, if present.
 
+	// FS is the filesystem backing the plugin's on-disk state. A nil FS uses the real filesystem.
+	FS PluginFS
+
 	installTime  time.Time // cached time the plugin was installed.
 	lastUsedTime time.Time // cached last time the plugin was used.
 
 	size uint64 // cached plugin size in bytes
+}
+
+// filesystem returns the plugin's PluginFS, defaulting to the real filesystem when unset.
+func (info *PluginInfo) filesystem() PluginFS {
+	if info.FS != nil {
+		return info.FS
+	}
+	return osPluginFS{}
 }
 
 // InstallTime returns the time the plugin was installed.
@@ -1434,14 +1500,16 @@ func (info PluginInfo) String() string {
 // Delete removes the plugin from the cache.  It also deletes any supporting files in the cache, which includes
 // any files that contain the same prefix as the plugin itself.
 func (info *PluginInfo) Delete() error {
+	fs := info.filesystem()
 	dir := info.Path
-	if err := os.RemoveAll(dir); err != nil {
+	if err := fs.RemoveAll(dir); err != nil {
 		return err
 	}
-	// Attempt to delete any leftover .partial or .lock files.
+	// Attempt to delete any leftover .partial, .lock, or .lastused files.
 	// Don't fail the operation if we can't delete these.
-	contract.IgnoreError(os.Remove(dir + ".partial"))
-	contract.IgnoreError(os.Remove(dir + ".lock"))
+	contract.IgnoreError(fs.Remove(dir + ".partial"))
+	contract.IgnoreError(fs.Remove(dir + ".lock"))
+	contract.IgnoreError(fs.Remove(dir + pluginLastUsedSuffix))
 	return nil
 }
 
@@ -1452,13 +1520,13 @@ func (info *PluginInfo) setFileMetadata() error {
 	}
 
 	// Get the file info.
-	file, err := os.Stat(info.Path)
+	file, err := info.filesystem().Stat(info.Path)
 	if err != nil {
 		return err
 	}
 
 	// Next get the access times from the plugin folder.
-	tinfo := times.Get(file)
+	tinfo := info.filesystem().GetTimes(file)
 
 	if tinfo.HasChangeTime() {
 		info.installTime = tinfo.ChangeTime()
@@ -1466,7 +1534,13 @@ func (info *PluginInfo) setFileMetadata() error {
 		info.installTime = tinfo.ModTime()
 	}
 
-	info.lastUsedTime = tinfo.AccessTime()
+	// Prefer the last-used marker written by markPluginUsed; the directory's access time
+	// is only a fallback, since atime is unreliable on most platforms.
+	if marker, err := info.filesystem().Stat(info.Path + pluginLastUsedSuffix); err == nil {
+		info.lastUsedTime = marker.ModTime()
+	} else {
+		info.lastUsedTime = tinfo.AccessTime()
+	}
 
 	return nil
 }
@@ -1580,7 +1654,7 @@ func buildHTTPRequest(ctx context.Context, pluginEndpoint string, authorization 
 }
 
 func getHTTPResponse(req *http.Request) (io.ReadCloser, int64, error) {
-	logging.V(9).Infof("full plugin download url: %s", req.URL)
+	logging.V(9).Infof("full plugin download url: %s", httputil.RedactURL(req.URL.String()))
 	// This logs at level 11 because it could include authentication headers, we reserve log level 11 for
 	// detailed api logs that may include credentials.
 	logging.V(11).Infof("plugin install request headers: %v", req.Header)
@@ -1603,7 +1677,7 @@ func getHTTPResponse(req *http.Request) (io.ReadCloser, int64, error) {
 }
 
 func getHTTPResponseWithRetry(req *http.Request) (io.ReadCloser, int64, error) {
-	logging.V(9).Infof("full plugin download url: %s", req.URL)
+	logging.V(9).Infof("full plugin download url: %s", httputil.RedactURL(req.URL.String()))
 	// This logs at level 11 because it could include authentication headers, we reserve log level 11 for
 	// detailed api logs that may include credentials.
 	logging.V(11).Infof("plugin install request headers: %v", req.Header)
@@ -1655,7 +1729,7 @@ func newDownloadError(statusCode int, url *url.URL, header http.Header) error {
 	}
 	return &downloadError{
 		code:   statusCode,
-		msg:    fmt.Sprintf("%d HTTP error fetching plugin from %s", statusCode, url),
+		msg:    fmt.Sprintf("%d HTTP error fetching plugin from %s", statusCode, httputil.RedactURL(url.String())),
 		header: header,
 	}
 }
@@ -1799,14 +1873,13 @@ func (d *pluginDownloader) downloadToFileWithRetry(ctx context.Context, pkgPlugi
 			}
 
 			// If the readErr is a checksum error don't retry.
-			var checksumErr *checksumError
-			if errors.As(readErr, &checksumErr) {
+			if _, ok := errors.AsType[*checksumError](readErr); ok {
 				return false, "", readErr
 			}
 
 			// Don't retry, since the request was processed and rejected.
-			var downloadErr *downloadError
-			if errors.As(readErr, &downloadErr) && (downloadErr.code == 404 || downloadErr.code == 403) {
+			if downloadErr, ok := errors.AsType[*downloadError](readErr); ok &&
+				(downloadErr.code == 404 || downloadErr.code == 403) {
 				return false, "", readErr
 			}
 
@@ -2023,7 +2096,7 @@ func IsPluginBundled(kind apitype.PluginKind, name string) bool {
 // possible to opt out of this behavior by setting PULUMI_IGNORE_AMBIENT_PLUGINS to any non-empty value.
 func GetPluginPath(ctx context.Context, d diag.Sink, spec PluginDescriptor, projectPlugins []ProjectPlugin,
 ) (string, error) {
-	info, path, err := getPluginInfoAndPath(ctx, d, spec, projectPlugins)
+	info, path, err := getPluginInfoAndPath(ctx, d, spec, projectPlugins, true /*markUsed*/)
 	if err != nil {
 		return "", err
 	}
@@ -2035,7 +2108,7 @@ func GetPluginPath(ctx context.Context, d diag.Sink, spec PluginDescriptor, proj
 
 func GetPluginInfo(ctx context.Context, d diag.Sink, spec PluginDescriptor, projectPlugins []ProjectPlugin,
 ) (*PluginInfo, error) {
-	info, path, err := getPluginInfoAndPath(ctx, d, spec, projectPlugins)
+	info, path, err := getPluginInfoAndPath(ctx, d, spec, projectPlugins, false /*markUsed*/)
 	if err != nil {
 		return nil, err
 	}
@@ -2066,12 +2139,17 @@ func getPluginPath(info *PluginInfo) string {
 //   - if found as an ambient plugin, nil and the path to the executable
 //   - if found in the pulumi dir's installed plugins, a PluginInfo and path to the executable
 //   - an error in all other cases.
+//
+// If markUsed is true and the plugin is resolved from the plugin cache, the plugin's
+// last-used time is recorded.
 func getPluginInfoAndPath(
 	ctx context.Context,
 	d diag.Sink,
 	spec PluginDescriptor,
 	projectPlugins []ProjectPlugin,
+	markUsed bool,
 ) (*PluginInfo, string, error) {
+	logging.AddGlobalSecretFilter(httputil.URLSecrets(spec.PluginDownloadURL), "[credential]")
 	filename := spec.File()
 
 	for i, p1 := range projectPlugins {
@@ -2120,13 +2198,13 @@ func getPluginInfoAndPath(
 
 	// If we have a version of the plugin on its $PATH, use it, unless we have opted out of this behavior explicitly.
 	// This supports development scenarios.
-	includeAmbient := !(env.IgnoreAmbientPlugins.Value())
+	includeAmbient := !env.IgnoreAmbientPlugins.Value()
 	var ambientPath string
 	if includeAmbient {
 		if path, err := exec.LookPath(filename); err == nil {
 			ambientPath = path
 			logging.V(6).Infof("GetPluginPath(%s, %s, %v, %s): found on $PATH %s",
-				spec.Kind, spec.Name, spec.Version, spec.PluginDownloadURL, path)
+				spec.Kind, spec.Name, spec.Version, httputil.RedactURL(spec.PluginDownloadURL), path)
 		}
 	}
 
@@ -2150,7 +2228,7 @@ func getPluginInfoAndPath(
 					if stat, err := os.Stat(candidate); err == nil &&
 						(stat.Mode()&0o100 != 0 || runtime.GOOS == windowsGOOS) {
 						logging.V(6).Infof("GetPluginPath(%s, %s, %v, %s): found next to current executable %s",
-							spec.Kind, spec.Name, spec.Version, spec.PluginDownloadURL, candidate)
+							spec.Kind, spec.Name, spec.Version, httputil.RedactURL(spec.PluginDownloadURL), candidate)
 						bundledPath = candidate
 						break
 					}
@@ -2203,28 +2281,32 @@ func getPluginInfoAndPath(
 		isPreReleaseVersion(*spec.Version) {
 		// We're looking for a plugin matching an exact hash, so we can't use the semver range logic.
 		logging.V(6).Infof("GetPluginPath(%s, %s, %v, %s): enabling prerelease plugin behaviour",
-			spec.Kind, spec.Name, spec.Version, spec.PluginDownloadURL)
+			spec.Kind, spec.Name, spec.Version, httputil.RedactURL(spec.PluginDownloadURL))
 		match = SelectPrereleasePlugin(plugins, spec)
 	} else if !enableLegacyPluginBehavior && spec.Version != nil {
 		logging.V(6).Infof("GetPluginPath(%s, %s, %v, %s): enabling new plugin behavior",
-			spec.Kind, spec.Name, spec.Version, spec.PluginDownloadURL)
+			spec.Kind, spec.Name, spec.Version, httputil.RedactURL(spec.PluginDownloadURL))
 		match = SelectCompatiblePlugin(plugins, spec)
 	} else {
 		logging.V(6).Infof("GetPluginPath(%s, %s, %v, %s): using legacy plugin behavior",
-			spec.Kind, spec.Name, spec.Version, spec.PluginDownloadURL)
+			spec.Kind, spec.Name, spec.Version, httputil.RedactURL(spec.PluginDownloadURL))
 		match = LegacySelectCompatiblePlugin(plugins, spec)
 	}
 
 	_, subdir := spec.LocalName()
-	// If the plugin is located in a subdir, we need to fix up the path to include the subdir.
-	if subdir != "" && match != nil {
-		match.Path = filepath.Join(match.Path, subdir)
-	}
-
 	if match != nil {
+		if markUsed {
+			// Record last use against the plugin's root directory in the cache, before any
+			// subdir fixup, to match the paths reported by GetPlugins.
+			markPluginUsed(match.Path)
+		}
+		// If the plugin is located in a subdir, we need to fix up the path to include the subdir.
+		if subdir != "" {
+			match.Path = filepath.Join(match.Path, subdir)
+		}
 		matchPath := getPluginPath(match)
 		logging.V(6).Infof("GetPluginPath(%s, %s, %v, %s): found in cache at %s",
-			spec.Kind, spec.Name, spec.Version, spec.PluginDownloadURL, matchPath)
+			spec.Kind, spec.Name, spec.Version, httputil.RedactURL(spec.PluginDownloadURL), matchPath)
 		return match, matchPath, nil
 	}
 
@@ -2387,32 +2469,6 @@ func SelectCompatiblePlugin(
 	return &bestMatch
 }
 
-// ReadCloserProgressBar displays a progress bar for the given closer and returns a wrapper closer to manipulate it.
-func ReadCloserProgressBar(
-	closer io.ReadCloser, w io.Writer, size int64, message string, colorization colors.Colorization,
-) io.ReadCloser {
-	if size == -1 || !cmdutil.Interactive() {
-		// We can't render a progress bar (unknown size, or non-interactive output), but still tell the
-		// user what's happening.
-		fmt.Fprintln(w, colorization.Colorize(colors.SpecUnimportant+message+colors.Reset))
-		return closer
-	}
-
-	// If we know the length of the download, show a progress bar.
-	bar := pb.New(int(size))
-	bar.Output = w
-	bar.Prefix(colorization.Colorize(colors.SpecUnimportant + message + ":"))
-	bar.Postfix(colorization.Colorize(colors.Reset))
-	bar.SetMaxWidth(80)
-	bar.SetUnits(pb.U_BYTES)
-	bar.Start()
-
-	return &barCloser{
-		bar:        bar,
-		readCloser: bar.NewProxyReader(closer),
-	}
-}
-
 // getCandidateExtensions returns a set of file extensions (including the dot seprator) which should be used when
 // probing for an executable file.
 func getCandidateExtensions() []string {
@@ -2524,22 +2580,7 @@ func getPluginSize(path string) (uint64, error) {
 		if fs < 0 {
 			return 0, fmt.Errorf("file size is negative: %d", fs)
 		}
-		//nolint:gosec // Guarded by the check above.
 		size += uint64(fs)
 	}
 	return size, nil
-}
-
-type barCloser struct {
-	bar        *pb.ProgressBar
-	readCloser io.ReadCloser
-}
-
-func (bc *barCloser) Read(dest []byte) (int, error) {
-	return bc.readCloser.Read(dest)
-}
-
-func (bc *barCloser) Close() error {
-	bc.bar.Finish()
-	return bc.readCloser.Close()
 }

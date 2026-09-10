@@ -21,6 +21,8 @@ func (m *module) Version() semver.Version {
 
 func (m *module) Construct(ctx *pulumi.Context, name, typ, urn string) (r pulumi.Resource, err error) {
 	switch typ {
+	case "large:index:Map":
+		r = &Map{}
 	case "large:index:String":
 		r = &String{}
 	default:

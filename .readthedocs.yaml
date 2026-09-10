@@ -24,6 +24,3 @@ build:
 
 sphinx:
   configuration: docs/sphinx/conf.py
-
-formats:
-  - pdf

@@ -55,6 +55,13 @@ const (
 
 	// NeoCLIMode advertises minimum CLI requirements for `pulumi neo`; see NeoCLIModeConfig.
 	NeoCLIMode APICapability = "neo-cli-mode"
+
+	// Indicates that the service supports the combined begin-update endpoint.
+	BeginUpdate APICapability = "begin-update"
+
+	// Indicates that the service supports reading a stack's outputs directly, without
+	// exporting the whole deployment.
+	StackOutputs APICapability = "stack-outputs"
 )
 
 type DeltaCheckpointUploadsConfigV2 struct {
@@ -151,6 +158,12 @@ type Capabilities struct {
 	// If non-nil, indicates that the service has advertised minimum CLI requirements
 	// for `pulumi neo`.
 	NeoCLIMode *NeoCLIModeConfig
+
+	// Indicates whether the service supports the combined begin-update endpoint.
+	BeginUpdate bool
+
+	// Indicates whether the service supports reading a stack's outputs directly.
+	StackOutputs bool
 }
 
 // Parse decodes the CapabilitiesResponse into a Capabilities struct for ease of use.
@@ -212,6 +225,14 @@ func (r CapabilitiesResponse) Parse() (Capabilities, error) {
 					return Capabilities{}, fmt.Errorf("decoding NeoCLIModeConfig returned %w", err)
 				}
 				parsed.NeoCLIMode = &cfg
+			}
+		case BeginUpdate:
+			if entry.Version == 1 {
+				parsed.BeginUpdate = true
+			}
+		case StackOutputs:
+			if entry.Version == 1 {
+				parsed.StackOutputs = true
 			}
 		default:
 			continue

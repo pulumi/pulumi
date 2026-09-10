@@ -44,11 +44,13 @@ type Writer struct {
 	closed    bool
 }
 
-// PreparedKey holds a freshly generated session key together with its
-// encrypted form.
+// PreparedKey holds a session key together with the bytes to write
+// verbatim into the PLOG header. For automatically-encrypted logs the
+// header bytes are the session key encrypted with the stack's secrets
+// provider; for shared logs they are an opaque session ID.
 type PreparedKey struct {
-	sessionKey   [keySize]byte
-	encryptedKey []byte
+	sessionKey [keySize]byte
+	headerData []byte
 }
 
 // PrepareKey generates a random session key and encrypts it with enc. This is
@@ -69,17 +71,32 @@ func PrepareKey(ctx context.Context, enc config.Encrypter) (*PreparedKey, error)
 		return nil, fmt.Errorf("encryptedlog: encrypted key too large (%d bytes)", len(encryptedKeyBytes))
 	}
 
-	return &PreparedKey{sessionKey: sessionKey, encryptedKey: encryptedKeyBytes}, nil
+	return &PreparedKey{sessionKey: sessionKey, headerData: encryptedKeyBytes}, nil
 }
 
+func NewPreparedKey(sessionKey []byte, headerData []byte) (*PreparedKey, error) {
+	if len(sessionKey) != keySize {
+		return nil, fmt.Errorf("encryptedlog: invalid session key size %d, expected %d", len(sessionKey), keySize)
+	}
+	if len(headerData) > 65535 {
+		return nil, fmt.Errorf("encryptedlog: header data too large (%d bytes)", len(headerData))
+	}
+	var key PreparedKey
+	copy(key.sessionKey[:], sessionKey)
+	key.headerData = headerData
+	return &key, nil
+}
+
+// NewWriterFromKey creates a Writer that encrypts log data to w using a
+// previously prepared key. The key's header bytes are written verbatim
+// into the PLOG header.
 func NewWriterFromKey(w io.Writer, key *PreparedKey) (*Writer, error) {
-	// Write the PLOG header: magic + version + key length + key.
-	header := make([]byte, 0, len(Magic)+1+2+len(key.encryptedKey))
+	// Write the PLOG header: magic + version + header length + header data.
+	header := make([]byte, 0, len(Magic)+1+2+len(key.headerData))
 	header = append(header, Magic...)
 	header = append(header, Version)
-	//nolint:gosec // bounded by 65535 check in PrepareKey
-	header = binary.BigEndian.AppendUint16(header, uint16(len(key.encryptedKey)))
-	header = append(header, key.encryptedKey...)
+	header = binary.BigEndian.AppendUint16(header, uint16(len(key.headerData)))
+	header = append(header, key.headerData...)
 	if _, err := w.Write(header); err != nil {
 		return nil, fmt.Errorf("encryptedlog: writing header: %w", err)
 	}
@@ -180,7 +197,7 @@ func (elw *Writer) writeChunk(plaintext []byte) error {
 	ciphertext := elw.aesgcm.Seal(nil, nonce[:], compressed.Bytes(), nil)
 
 	// Chunk frame: 4-byte payload length, then nonce, then ciphertext+tag.
-	payloadLen := uint32(nonceSize + len(ciphertext)) //nolint:gosec // bounded by chunk size
+	payloadLen := uint32(nonceSize + len(ciphertext))
 	var lenBuf [4]byte
 	binary.BigEndian.PutUint32(lenBuf[:], payloadLen)
 

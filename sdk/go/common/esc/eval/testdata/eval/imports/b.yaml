@@ -1,0 +1,9 @@
+imports:
+  - a
+values:
+  some_list:
+    - a
+  some_object:
+    foo: bar
+    baz: qux
+    alpha: beta

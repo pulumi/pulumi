@@ -18,6 +18,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 
 	pkgBackend "github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
@@ -64,9 +65,13 @@ type ResolvedContext struct {
 // LoggedIn=false rather than prompting or failing. Callers that require
 // authentication should check LoggedIn and surface their own error.
 func ResolveContext(ctx context.Context) (*ResolvedContext, error) {
-	ws := pkgWorkspace.Instance
+	cwd, err := os.Getwd()
+	if err != nil {
+		return nil, fmt.Errorf("getting current working directory: %w", err)
+	}
 
-	project, _, err := ws.ReadProject()
+	ws := pkgWorkspace.Instance
+	project, _, err := ws.ReadProject(cwd)
 	if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
 		return nil, fmt.Errorf("reading project: %w", err)
 	}

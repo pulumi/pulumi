@@ -30,6 +30,8 @@ import (
 	"testing"
 	"time"
 
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gocloud.dev/blob"
@@ -239,7 +241,7 @@ func makeUntypedDeploymentTimestamp(
 		return nil, err
 	}
 
-	resources := []*resource.State{
+	resources := []*pkgresource.State{
 		{
 			URN:  resource.NewURN("a", "proj", "d:e:f", "a:b:c", name),
 			Type: "a:b:c",
@@ -251,7 +253,7 @@ func makeUntypedDeploymentTimestamp(
 		},
 	}
 
-	snap := deploy.NewSnapshot(deploy.Manifest{}, sm, resources, nil, deploy.SnapshotMetadata{}, nil)
+	snap := deploy.NewSnapshot(deploy.Manifest{}, sm, resources, nil, deploy.SnapshotMetadata{}, nil, nil)
 
 	udep, err := stack.SerializeUntypedDeployment(t.Context(), snap, nil /*opts*/)
 	if err != nil {
@@ -611,7 +613,7 @@ func TestRenamePreservesIntegrity(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, stk)
 
-	rBase := &resource.State{
+	rBase := &pkgresource.State{
 		URN:  resource.NewURN("a", "proj", "d:e:f", "a:b:c", "base"),
 		Type: "a:b:c",
 		Inputs: resource.PropertyMap{
@@ -619,7 +621,7 @@ func TestRenamePreservesIntegrity(t *testing.T) {
 		},
 	}
 
-	rDependency := &resource.State{
+	rDependency := &pkgresource.State{
 		URN:  resource.NewURN("a", "proj", "d:e:f", "a:b:c", "dependency"),
 		Type: "a:b:c",
 		Inputs: resource.PropertyMap{
@@ -628,7 +630,7 @@ func TestRenamePreservesIntegrity(t *testing.T) {
 		Dependencies: []resource.URN{rBase.URN},
 	}
 
-	rPropertyDependency := &resource.State{
+	rPropertyDependency := &pkgresource.State{
 		URN:  resource.NewURN("a", "proj", "d:e:f", "a:b:c", "property-dependency"),
 		Type: "a:b:c",
 		Inputs: resource.PropertyMap{
@@ -639,7 +641,7 @@ func TestRenamePreservesIntegrity(t *testing.T) {
 		},
 	}
 
-	rDeletedWith := &resource.State{
+	rDeletedWith := &pkgresource.State{
 		URN:  resource.NewURN("a", "proj", "d:e:f", "a:b:c", "deleted-with"),
 		Type: "a:b:c",
 		Inputs: resource.PropertyMap{
@@ -648,7 +650,7 @@ func TestRenamePreservesIntegrity(t *testing.T) {
 		DeletedWith: rBase.URN,
 	}
 
-	rParent := &resource.State{
+	rParent := &pkgresource.State{
 		URN:  resource.NewURN("a", "proj", "d:e:f", "a:b:c", "parent"),
 		Type: "a:b:c",
 		Inputs: resource.PropertyMap{
@@ -657,7 +659,7 @@ func TestRenamePreservesIntegrity(t *testing.T) {
 		Parent: rBase.URN,
 	}
 
-	resources := []*resource.State{
+	resources := []*pkgresource.State{
 		rBase,
 		rDependency,
 		rPropertyDependency,
@@ -665,7 +667,7 @@ func TestRenamePreservesIntegrity(t *testing.T) {
 		rParent,
 	}
 
-	snap := deploy.NewSnapshot(deploy.Manifest{}, nil, resources, nil, deploy.SnapshotMetadata{}, nil)
+	snap := deploy.NewSnapshot(deploy.Manifest{}, nil, resources, nil, deploy.SnapshotMetadata{}, nil, nil)
 	ctx = t.Context()
 
 	udep, err := stack.SerializeUntypedDeployment(ctx, snap, nil /*opts*/)
@@ -776,7 +778,7 @@ func TestHtmlEscaping(t *testing.T) {
 	t.Parallel()
 
 	sm := b64.NewBase64SecretsManager()
-	resources := []*resource.State{
+	resources := []*pkgresource.State{
 		{
 			URN:  resource.NewURN("a", "proj", "d:e:f", "a:b:c", "name"),
 			Type: "a:b:c",
@@ -786,7 +788,7 @@ func TestHtmlEscaping(t *testing.T) {
 		},
 	}
 
-	snap := deploy.NewSnapshot(deploy.Manifest{}, sm, resources, nil, deploy.SnapshotMetadata{}, nil)
+	snap := deploy.NewSnapshot(deploy.Manifest{}, sm, resources, nil, deploy.SnapshotMetadata{}, nil, nil)
 	ctx := t.Context()
 
 	udep, err := stack.SerializeUntypedDeployment(ctx, snap, &stack.SerializeOptions{
@@ -848,7 +850,7 @@ func TestDIYBackendRejectsStackInitOptions(t *testing.T) {
 }
 
 func TestLegacyFolderStructure(t *testing.T) {
-	t.Parallel()
+	t.Setenv("PULUMI_DIY_BACKEND_IGNORE_DEPRECATION_ERROR", "true")
 
 	// Make a dummy stack file in the legacy location
 	tmpDir := t.TempDir()
@@ -922,6 +924,7 @@ func TestOptIntoLegacyFolderStructure(t *testing.T) {
 	ctx := t.Context()
 	s := make(env.MapStore)
 	s[env.DIYBackendLegacyLayout.Var().Name()] = "true"
+	s[env.DIYBackendIgnoreDeprecationError.Var().Name()] = "true"
 	b, err := newDIYBackend(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), nil,
 		&diyBackendOptions{Env: env.NewEnv(s)},
 	)
@@ -980,7 +983,7 @@ func TestStackReferenceString_currentProjectChange_race(t *testing.T) {
 
 	projects := make([]*workspace.Project, N)
 	refs := make([]backend.StackReference, N)
-	for i := 0; i < N; i++ {
+	for i := range N {
 		name := fmt.Sprintf("proj%d", i)
 		projects[i] = &workspace.Project{Name: tokens.PackageName(name)}
 		refs[i], err = b.ParseStackReference(fmt.Sprintf("organization/%v/foo", name))
@@ -996,23 +999,19 @@ func TestStackReferenceString_currentProjectChange_race(t *testing.T) {
 	var wg sync.WaitGroup
 	ready := make(chan struct{}) // both goroutines wait on this
 
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
+	wg.Go(func() {
 		<-ready
-		for i := 0; i < N; i++ {
+		for i := range N {
 			_ = refs[i].String()
 		}
-	}()
+	})
 
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
+	wg.Go(func() {
 		<-ready
-		for i := 0; i < N; i++ {
+		for i := range N {
 			b.SetCurrentProject(projects[i])
 		}
-	}()
+	})
 
 	close(ready) // start racing
 	wg.Wait()
@@ -1191,7 +1190,7 @@ func TestNew_legacyFileWarning(t *testing.T) {
 }
 
 func TestLegacyUpgrade(t *testing.T) {
-	t.Parallel()
+	t.Setenv("PULUMI_DIY_BACKEND_IGNORE_DEPRECATION_ERROR", "true")
 
 	// Make a dummy stack file in the legacy location
 	tmpDir := t.TempDir()
@@ -1260,7 +1259,7 @@ func TestLegacyUpgrade(t *testing.T) {
 }
 
 func TestLegacyUpgrade_partial(t *testing.T) {
-	t.Parallel()
+	t.Setenv("PULUMI_DIY_BACKEND_IGNORE_DEPRECATION_ERROR", "true")
 
 	// Verifies that we can upgrade a subset of stacks.
 
@@ -1305,7 +1304,7 @@ func TestLegacyUpgrade_partial(t *testing.T) {
 // When a stack project could not be determined,
 // we should fill it in with ProjectsForDetachedStacks.
 func TestLegacyUpgrade_ProjectsForDetachedStacks(t *testing.T) {
-	t.Parallel()
+	t.Setenv("PULUMI_DIY_BACKEND_IGNORE_DEPRECATION_ERROR", "true")
 
 	stateDir := t.TempDir()
 	bucket, err := fileblob.OpenBucket(stateDir, nil)
@@ -1374,7 +1373,7 @@ func TestLegacyUpgrade_ProjectsForDetachedStacks(t *testing.T) {
 // and ProjectsForDetachedStacks returns an error,
 // the upgrade should fail.
 func TestLegacyUpgrade_ProjectsForDetachedStacks_error(t *testing.T) {
-	t.Parallel()
+	t.Setenv("PULUMI_DIY_BACKEND_IGNORE_DEPRECATION_ERROR", "true")
 
 	stateDir := t.TempDir()
 	bucket, err := fileblob.OpenBucket(stateDir, nil)
@@ -1430,7 +1429,7 @@ func TestLegacyUpgrade_ProjectsForDetachedStacks_error(t *testing.T) {
 // If an upgrade failed because we couldn't write the meta.yaml,
 // the stacks should be left in legacy mode.
 func TestLegacyUpgrade_writeMetaError(t *testing.T) {
-	t.Parallel()
+	t.Setenv("PULUMI_DIY_BACKEND_IGNORE_DEPRECATION_ERROR", "true")
 
 	stateDir := t.TempDir()
 	bucket, err := fileblob.OpenBucket(stateDir, nil)
@@ -1507,7 +1506,7 @@ func TestSerializeTimestampRFC3339(t *testing.T) {
 }
 
 func TestUpgrade_manyFailures(t *testing.T) {
-	t.Parallel()
+	t.Setenv("PULUMI_DIY_BACKEND_IGNORE_DEPRECATION_ERROR", "true")
 
 	const (
 		numStacks    = 100
@@ -1519,7 +1518,7 @@ func TestUpgrade_manyFailures(t *testing.T) {
 	bucket, err := fileblob.OpenBucket(tmpDir, nil)
 	require.NoError(t, err)
 	ctx := t.Context()
-	for i := 0; i < numStacks; i++ {
+	for i := range numStacks {
 		stackPath := path.Join(".pulumi", "stacks", fmt.Sprintf("stack-%d.json", i))
 		require.NoError(t, bucket.WriteAll(ctx, stackPath, []byte(badStackBody), nil))
 	}
@@ -1533,7 +1532,7 @@ func TestUpgrade_manyFailures(t *testing.T) {
 
 	require.NoError(t, b.Upgrade(ctx, nil /* opts */))
 	out := output.String()
-	for i := 0; i < numStacks; i++ {
+	for i := range numStacks {
 		assert.Contains(t, out, fmt.Sprintf(`Skipping stack "stack-%d"`, i))
 	}
 }
@@ -1934,7 +1933,7 @@ func TestParallelStackFetch(t *testing.T) {
 	// Create multiple stacks to test parallel fetching
 	numStacks := 10
 	stackRefs := make([]backend.StackReference, numStacks)
-	for i := 0; i < numStacks; i++ {
+	for i := range numStacks {
 		stackName := fmt.Sprintf("stack%d", i)
 		stackRef, err := b.ParseStackReference(stackName)
 		require.NoError(t, err)
@@ -1958,7 +1957,7 @@ func TestParallelStackFetch(t *testing.T) {
 		stackNames[stack.Name().String()] = true
 	}
 
-	for i := 0; i < numStacks; i++ {
+	for i := range numStacks {
 		stackName := fmt.Sprintf("stack%d", i)
 		assert.True(t, stackNames[stackName], "Stack %s should be in the results", stackName)
 	}
@@ -1983,7 +1982,7 @@ func TestParallelStackFetchDefaultValue(t *testing.T) {
 	// Create multiple stacks to test parallel fetching with default value
 	numStacks := 5
 	stackRefs := make([]backend.StackReference, numStacks)
-	for i := 0; i < numStacks; i++ {
+	for i := range numStacks {
 		stackName := fmt.Sprintf("stack%d", i)
 		stackRef, err := b.ParseStackReference(stackName)
 		require.NoError(t, err)
@@ -2007,7 +2006,7 @@ func TestParallelStackFetchDefaultValue(t *testing.T) {
 		stackNames[stack.Name().String()] = true
 	}
 
-	for i := 0; i < numStacks; i++ {
+	for i := range numStacks {
 		stackName := fmt.Sprintf("stack%d", i)
 		assert.True(t, stackNames[stackName], "Stack %s should be in the results", stackName)
 	}
@@ -2031,7 +2030,7 @@ func TestListStackNames(t *testing.T) {
 	// Create test stacks
 	numStacks := 3
 	expectedStackNames := make([]string, numStacks)
-	for i := 0; i < numStacks; i++ {
+	for i := range numStacks {
 		stackName := fmt.Sprintf("stack%d", i)
 		expectedStackNames[i] = stackName
 		stackRef, err := b.ParseStackReference(stackName)
@@ -2142,4 +2141,103 @@ func TestJSONCheckpointIsCompact(t *testing.T) {
 	var compact bytes.Buffer
 	require.NoError(t, json.Compact(&compact, data))
 	assert.Equal(t, compact.String(), string(data))
+}
+
+// TestDescribeBackendURL checks that a failed bucket open names the URL the user configured,
+// and adds the normalized form only when normalization changed something they did not write.
+func TestDescribeBackendURL(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name       string
+		original   string
+		normalized string
+		cause      error
+		expected   string
+	}{
+		{
+			name:       "injected no_tmp_dir is not worth reporting",
+			original:   "file:///tmp/state",
+			normalized: "file:///tmp/state?no_tmp_dir=true",
+			expected:   `"file:///tmp/state"`,
+		},
+		{
+			name:       "a resolved tilde path is new information",
+			original:   "file://~/state",
+			normalized: "file:///home/someone/state?no_tmp_dir=true",
+			expected:   `"file://~/state" (resolved to "file:///home/someone/state")`,
+		},
+		{
+			name:       "no_tmp_dir set by the user is theirs to see",
+			original:   "file:///tmp/state?no_tmp_dir=yes",
+			normalized: "file:///tmp/state?no_tmp_dir=yes",
+			expected:   `"file:///tmp/state?no_tmp_dir=yes"`,
+		},
+		{
+			name:       "no_tmp_dir on another scheme is not ours to strip",
+			original:   "s3://bucket?endpoint=127.0.0.1:9000",
+			normalized: "s3://bucket?endpoint=http%3A%2F%2F127.0.0.1%3A9000&no_tmp_dir=true",
+			expected: `"s3://bucket?endpoint=127.0.0.1:9000"` +
+				` (resolved to "s3://bucket?endpoint=http%3A%2F%2F127.0.0.1%3A9000&no_tmp_dir=true")`,
+		},
+		{
+			name:       "translated S3 parameters are new information",
+			original:   "s3://bucket?endpoint=127.0.0.1:9000&disableSSL=true",
+			normalized: "s3://bucket?disable_https=true&endpoint=http%3A%2F%2F127.0.0.1%3A9000",
+			expected: `"s3://bucket?endpoint=127.0.0.1:9000&disableSSL=true"` +
+				` (resolved to "s3://bucket?disable_https=true&endpoint=http%3A%2F%2F127.0.0.1%3A9000")`,
+		},
+		{
+			name:       "a cause that already names the resolved URL is not repeated",
+			original:   "s3://bucket?endpoint=127.0.0.1:9000&disableSSL=true",
+			normalized: "s3://bucket?disable_https=true&endpoint=http%3A%2F%2F127.0.0.1%3A9000",
+			cause: errors.New(
+				"open bucket s3://bucket?disable_https=true&endpoint=http%3A%2F%2F127.0.0.1%3A9000: no credentials"),
+			expected: `"s3://bucket?endpoint=127.0.0.1:9000&disableSSL=true"`,
+		},
+		{
+			name:       "an untouched cloud URL is reported once",
+			original:   "azblob://container",
+			normalized: "azblob://container",
+			expected:   `"azblob://container"`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			cause := tt.cause
+			if cause == nil {
+				cause = errors.New("some failure")
+			}
+			assert.Equal(t, tt.expected, describeBackendURL(tt.original, tt.normalized, cause))
+		})
+	}
+}
+
+// TestStateStoreNoun checks that errors do not call a local directory or a database a
+// "bucket", which is go-cloud's vocabulary rather than the user's.
+func TestStateStoreNoun(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		url      string
+		expected string
+	}{
+		{"file:///tmp/state", "state directory"},
+		{"file://~", "state directory"},
+		{"postgres://user:pw@localhost:5432/pulumi", "state database"},
+		{"s3://my-state", "bucket"},
+		{"gs://my-state", "bucket"},
+		{"azblob://my-state", "bucket"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.url, func(t *testing.T) {
+			t.Parallel()
+
+			assert.Equal(t, tt.expected, stateStoreNoun(tt.url))
+		})
+	}
 }

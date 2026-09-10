@@ -22,6 +22,8 @@ import (
 	"strings"
 	"time"
 
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
+
 	humanize "github.com/dustin/go-humanize"
 	"github.com/spf13/cobra"
 
@@ -34,6 +36,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/v3/util/outputflag"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -48,12 +51,16 @@ type stackArgs struct {
 	startTime              string
 	showStackName          bool
 	fullyQualifyStackNames bool
-	output                 string
 }
 
 func NewStackCmd() *cobra.Command {
 	var stackName string
 	args := stackArgs{}
+
+	output := outputflag.OutputFlag[stackRenderFunc]{
+		RenderForTerminal: runStackText,
+		RenderJSON:        runStackJSON,
+	}
 
 	cmd := &cobra.Command{
 		Use:   "stack",
@@ -86,7 +93,11 @@ func NewStackCmd() *cobra.Command {
 			}
 
 			args.fullyQualifyStackNames = cmdutil.FullyQualifyStackNames
-			return runStack(ctx, s, cmd.OutOrStdout(), args)
+			if args.showStackName {
+				writeStackName(cmd.OutOrStdout(), s, args.fullyQualifyStackNames)
+				return nil
+			}
+			return output.Get()(ctx, s, cmd.OutOrStdout(), args)
 		},
 	}
 
@@ -103,17 +114,15 @@ func NewStackCmd() *cobra.Command {
 		&args.showSecrets, "show-secrets", false, "Display stack outputs which are marked as secret in plaintext")
 	cmd.Flags().BoolVar(
 		&args.showStackName, "show-name", false, "Display only the stack name")
-	cmd.Flags().StringVar(
-		&args.output, "output", "default",
-		"The output format: default (human-readable) or json")
+	outputflag.VarP(cmd.Flags(), &output)
 
 	cmd.AddCommand(newStackExportCmd())
 	cmd.AddCommand(newStackGraphCmd())
 	cmd.AddCommand(newStackImportCmd(pkgWorkspace.Instance, cmdBackend.DefaultLoginManager, secrets.DefaultProvider))
 	cmd.AddCommand(newStackNewCmd())
-	cmd.AddCommand(newStackLsCmd())
+	cmd.AddCommand(newStackListCmd())
 	cmd.AddCommand(newStackOutputCmd())
-	cmd.AddCommand(newStackRmCmd())
+	cmd.AddCommand(newStackRemoveCmd())
 	cmd.AddCommand(newStackSelectCmd())
 	cmd.AddCommand(newStackTagCmd())
 	cmd.AddCommand(newStackRenameCmd())
@@ -124,29 +133,22 @@ func NewStackCmd() *cobra.Command {
 	cmd.AddCommand(newStackDriftCmd())
 	cmd.AddCommand(newStackScheduleCmd())
 	cmd.AddCommand(newStackWebhookCmd())
+	cmd.AddCommand(newStackMigrateCmd(pkgWorkspace.Instance, cmdBackend.DefaultLoginManager))
 
 	return cmd
 }
 
-func runStack(ctx context.Context, s backend.Stack, out io.Writer, args stackArgs) error {
-	if args.showStackName {
-		if args.fullyQualifyStackNames {
-			fmt.Fprintln(out, s.Ref().String())
-		} else {
-			fmt.Fprintln(out, s.Ref().Name())
-		}
-		return nil
+func writeStackName(out io.Writer, s backend.Stack, fullyQualify bool) {
+	if fullyQualify {
+		fmt.Fprintln(out, s.Ref().String())
+	} else {
+		fmt.Fprintln(out, s.Ref().Name())
 	}
+}
 
-	switch args.output {
-	case "", "default":
-		// Fall through to the human-readable rendering below.
-	case "json":
-		return runStackJSON(ctx, s, out, args)
-	default:
-		return fmt.Errorf("invalid --output value %q: expected \"default\" or \"json\"", args.output)
-	}
+type stackRenderFunc func(ctx context.Context, s backend.Stack, out io.Writer, args stackArgs) error
 
+func runStackText(ctx context.Context, s backend.Stack, out io.Writer, args stackArgs) error {
 	snap, err := s.Snapshot(ctx, secrets.DefaultProvider)
 	if err != nil {
 		return err
@@ -187,6 +189,13 @@ func runStack(ctx context.Context, s backend.Stack, out io.Writer, args stackArg
 		}
 		if snap.Manifest.Version != "" {
 			fmt.Fprintf(out, "    Pulumi version used: %s\n", snap.Manifest.Version)
+		}
+		var typ string
+		if snap.SecretsManager != nil {
+			typ = snap.SecretsManager.Type()
+		}
+		if typ != "" {
+			fmt.Fprintf(out, "    Secrets provider: %s\n", typ)
 		}
 		for _, p := range snap.Manifest.Plugins {
 			var pluginVersion string
@@ -293,7 +302,7 @@ func stringifyOutput(v any) string {
 }
 
 type treeNode struct {
-	res      *resource.State
+	res      *pkgresource.State
 	children []*treeNode
 }
 
@@ -372,7 +381,7 @@ func renderTree(snap *deploy.Snapshot, showURNs, showIDs bool) ([]cmdutil.TableR
 	return rows, true
 }
 
-func renderResourceRow(res *resource.State, prefix, infoPrefix string, showURN, showID bool) cmdutil.TableRow {
+func renderResourceRow(res *pkgresource.State, prefix, infoPrefix string, showURN, showID bool) cmdutil.TableRow {
 	columns := []string{prefix + string(res.Type), res.URN.Name()}
 	additionalInfo := ""
 

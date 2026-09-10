@@ -1,0 +1,11 @@
+{
+	"name": "l2-invoke-depends-on-component",
+	"devDependencies": {
+		"@types/node": "^20"
+	},
+	"dependencies": {
+		"typescript": "^4.7.0",
+		"@pulumi/pulumi": "ROOT/artifacts/pulumi-pulumi-CORE.VERSION.tgz",
+		"@pulumi/component": "ROOT/artifacts/pulumi-component-13.3.7.tgz"
+	}
+}

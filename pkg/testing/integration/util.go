@@ -41,7 +41,7 @@ func DecodeMapString(val string) (map[string]string, error) {
 	newMap := make(map[string]string)
 
 	if val != "" {
-		for _, overrideClause := range strings.Split(val, ":") {
+		for overrideClause := range strings.SplitSeq(val, ":") {
 			data := strings.Split(overrideClause, "=")
 			if len(data) != 2 {
 				return nil, fmt.Errorf(

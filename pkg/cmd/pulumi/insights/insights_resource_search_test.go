@@ -98,14 +98,26 @@ func sampleSearchResponse() apitype.InsightsResourceSearchResponse {
 	}
 }
 
+func defaultSearchArgs() insightsResourceSearchArgs {
+	return insightsResourceSearchArgs{renderOutput: renderSearchTable}
+}
+
+func jsonSearchArgs() insightsResourceSearchArgs {
+	a := defaultSearchArgs()
+	a.renderOutput = renderSearchJSON
+	return a
+}
+
 func TestInsightsResourceSearchCmd_DefaultOutput(t *testing.T) {
 	t.Parallel()
 
 	client := &mockSearchClient{response: sampleSearchResponse()}
 	c := &insightsResourceSearchCmd{clientFactory: stubSearchFactory(client, "acme")}
 
+	args := defaultSearchArgs()
+	args.query = "type:aws:s3"
 	var out bytes.Buffer
-	err := c.Run(t.Context(), &out, insightsResourceSearchArgs{query: "type:aws:s3"})
+	err := c.Run(t.Context(), &out, args)
 	require.NoError(t, err)
 
 	output := out.String()
@@ -132,7 +144,7 @@ func TestInsightsResourceSearchCmd_DefaultOutput_Empty(t *testing.T) {
 	c := &insightsResourceSearchCmd{clientFactory: stubSearchFactory(client, "acme")}
 
 	var out bytes.Buffer
-	err := c.Run(t.Context(), &out, insightsResourceSearchArgs{})
+	err := c.Run(t.Context(), &out, defaultSearchArgs())
 	require.NoError(t, err)
 	assert.Equal(t, "No resources found.\n", out.String())
 }
@@ -151,7 +163,7 @@ func TestInsightsResourceSearchCmd_DefaultOutput_PageBasedHint(t *testing.T) {
 	c := &insightsResourceSearchCmd{clientFactory: stubSearchFactory(client, "acme")}
 
 	var out bytes.Buffer
-	err := c.Run(t.Context(), &out, insightsResourceSearchArgs{})
+	err := c.Run(t.Context(), &out, defaultSearchArgs())
 	require.NoError(t, err)
 
 	output := out.String()
@@ -169,7 +181,7 @@ func TestInsightsResourceSearchCmd_DefaultOutput_LastPage(t *testing.T) {
 	c := &insightsResourceSearchCmd{clientFactory: stubSearchFactory(client, "acme")}
 
 	var out bytes.Buffer
-	err := c.Run(t.Context(), &out, insightsResourceSearchArgs{})
+	err := c.Run(t.Context(), &out, defaultSearchArgs())
 	require.NoError(t, err)
 	assert.NotContains(t, out.String(), "More results available")
 }
@@ -181,7 +193,7 @@ func TestInsightsResourceSearchCmd_JSONOutput(t *testing.T) {
 	c := &insightsResourceSearchCmd{clientFactory: stubSearchFactory(client, "acme")}
 
 	var out bytes.Buffer
-	err := c.Run(t.Context(), &out, insightsResourceSearchArgs{output: "json"})
+	err := c.Run(t.Context(), &out, jsonSearchArgs())
 	require.NoError(t, err)
 
 	var got apitype.InsightsResourceSearchResponse
@@ -244,8 +256,10 @@ func TestInsightsResourceSearchCmd_OrgAndParamsPropagate(t *testing.T) {
 			}
 			c := &insightsResourceSearchCmd{clientFactory: stubSearchFactory(client, tt.defaultOrg)}
 
+			args := tt.args
+			args.renderOutput = renderSearchTable
 			var out bytes.Buffer
-			err := c.Run(t.Context(), &out, tt.args)
+			err := c.Run(t.Context(), &out, args)
 			require.NoError(t, err)
 			assert.Equal(t, tt.wantOrg, captured.org)
 			assert.Equal(t, tt.wantParams, captured.params)
@@ -259,37 +273,12 @@ func TestInsightsResourceSearchCmd_InvalidSort(t *testing.T) {
 	client := &mockSearchClient{response: sampleSearchResponse()}
 	c := &insightsResourceSearchCmd{clientFactory: stubSearchFactory(client, "acme")}
 
+	args := defaultSearchArgs()
+	args.sort = []string{"bogus"}
 	var out bytes.Buffer
-	err := c.Run(t.Context(), &out, insightsResourceSearchArgs{sort: []string{"bogus"}})
+	err := c.Run(t.Context(), &out, args)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), `invalid --sort value "bogus"`)
-}
-
-func TestInsightsResourceSearchCmd_InvalidOutput(t *testing.T) {
-	t.Parallel()
-
-	client := &mockSearchClient{response: sampleSearchResponse()}
-	c := &insightsResourceSearchCmd{clientFactory: stubSearchFactory(client, "acme")}
-
-	var out bytes.Buffer
-	err := c.Run(t.Context(), &out, insightsResourceSearchArgs{output: "yaml"})
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), `invalid --output value "yaml"`)
-}
-
-func TestInsightsResourceSearchCmd_TableAliasMatchesDefault(t *testing.T) {
-	t.Parallel()
-
-	// `--output table` and `--output default` must produce byte-identical
-	// output — they're aliases. Verifying once here keeps the rest of the
-	// table-shape assertions in one place (TestInsightsResourceSearchCmd_DefaultOutput).
-	client := &mockSearchClient{response: sampleSearchResponse()}
-	c := &insightsResourceSearchCmd{clientFactory: stubSearchFactory(client, "acme")}
-
-	var defaultBuf, tableBuf bytes.Buffer
-	require.NoError(t, c.Run(t.Context(), &defaultBuf, insightsResourceSearchArgs{}))
-	require.NoError(t, c.Run(t.Context(), &tableBuf, insightsResourceSearchArgs{output: "table"}))
-	assert.Equal(t, defaultBuf.String(), tableBuf.String())
 }
 
 func TestInsightsResourceSearchCmd_ClientError(t *testing.T) {
@@ -298,8 +287,10 @@ func TestInsightsResourceSearchCmd_ClientError(t *testing.T) {
 	client := &mockSearchClient{err: errors.New("402 payment required")}
 	c := &insightsResourceSearchCmd{clientFactory: stubSearchFactory(client, "acme")}
 
+	args := defaultSearchArgs()
+	args.properties = true
 	var out bytes.Buffer
-	err := c.Run(t.Context(), &out, insightsResourceSearchArgs{properties: true})
+	err := c.Run(t.Context(), &out, args)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "searching insights resources")
 	assert.Contains(t, err.Error(), "402 payment required")
@@ -311,7 +302,7 @@ func TestInsightsResourceSearchCmd_FactoryError(t *testing.T) {
 	c := &insightsResourceSearchCmd{clientFactory: failingSearchFactory(errors.New("not logged in"))}
 
 	var out bytes.Buffer
-	err := c.Run(t.Context(), &out, insightsResourceSearchArgs{})
+	err := c.Run(t.Context(), &out, defaultSearchArgs())
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "not logged in")
 }

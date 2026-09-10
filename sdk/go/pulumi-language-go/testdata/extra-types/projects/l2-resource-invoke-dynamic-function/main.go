@@ -14,9 +14,7 @@ func main() {
 				pulumi.String(localValue),
 				pulumi.Any(map[string]interface{}{}),
 			},
-		}, nil).ApplyT(func(invoke anytypefunction.DynListToDynResult) (interface{}, error) {
-			return invoke.Result, nil
-		}).(pulumi.AnyOutput))
+		}, nil).Result())
 		return nil
 	})
 }

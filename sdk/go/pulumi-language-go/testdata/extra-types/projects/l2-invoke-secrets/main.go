@@ -17,21 +17,15 @@ func main() {
 		ctx.Export("nonSecret", simpleinvoke.SecretInvokeOutput(ctx, simpleinvoke.SecretInvokeOutputArgs{
 			Value:          pulumi.String("hello"),
 			SecretResponse: pulumi.Bool(false),
-		}, nil).ApplyT(func(invoke simpleinvoke.SecretInvokeResult) (string, error) {
-			return invoke.Response, nil
-		}).(pulumi.StringOutput))
+		}, nil).Response())
 		ctx.Export("firstSecret", simpleinvoke.SecretInvokeOutput(ctx, simpleinvoke.SecretInvokeOutputArgs{
 			Value:          pulumi.String("hello"),
 			SecretResponse: res.Value,
-		}, nil).ApplyT(func(invoke simpleinvoke.SecretInvokeResult) (string, error) {
-			return invoke.Response, nil
-		}).(pulumi.StringOutput))
+		}, nil).Response())
 		ctx.Export("secondSecret", simpleinvoke.SecretInvokeOutput(ctx, simpleinvoke.SecretInvokeOutputArgs{
 			Value:          pulumi.ToSecret("goodbye").(pulumi.StringOutput),
 			SecretResponse: pulumi.Bool(false),
-		}, nil).ApplyT(func(invoke simpleinvoke.SecretInvokeResult) (string, error) {
-			return invoke.Response, nil
-		}).(pulumi.StringOutput))
+		}, nil).Response())
 		return nil
 	})
 }

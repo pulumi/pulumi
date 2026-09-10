@@ -85,7 +85,7 @@ func createRendererAndDisplay(term terminal.Terminal, initializeDisplay bool) (*
 }
 
 func addManySystemEvents(display *ProgressDisplay, count int, message string) {
-	for i := 0; i < count; i++ {
+	for range count {
 		display.handleSystemEvent(engine.StdoutEventPayload{
 			Message: message,
 			Color:   colors.Always,
@@ -94,7 +94,7 @@ func addManySystemEvents(display *ProgressDisplay, count int, message string) {
 }
 
 func addManyNormalEvents(display *ProgressDisplay, count int, message string) {
-	for i := 0; i < count; i++ {
+	for i := range count {
 		display.processNormalEvent(engine.NewEvent(
 			engine.DiagEventPayload{
 				URN:     resource.NewURN("stack", "project", "qualifier", "typ", fmt.Sprintf("row-%d", i)),
@@ -236,12 +236,12 @@ func TestTreeRenderRewindsCorrectly(t *testing.T) {
 	assert.Equal(t, 14, treeRenderer.rewind, "Expected 14 lines to have been written")
 
 	// Hackily clear out the system messages.
-	(func() {
+	func() {
 		treeRenderer.display.eventMutex.Lock()
 		defer treeRenderer.display.eventMutex.Unlock()
 
 		treeRenderer.display.systemEventPayloads = nil
-	})()
+	}()
 
 	// Render another frame.
 	treeRenderer.rowUpdated(&resourceRowData{})

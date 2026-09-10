@@ -15,8 +15,11 @@
 package outputflag
 
 import (
+	"io"
+	"strings"
 	"testing"
 
+	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -32,6 +35,73 @@ func allFormats() OutputFlag[string] {
 		RenderYAML:        "yaml",
 		RenderCSV:         "csv",
 	}
+}
+
+func newAliasCmd() (*cobra.Command, *OutputFlag[string]) {
+	f := allFormats()
+	cmd := &cobra.Command{
+		Use:           "test",
+		SilenceUsage:  true,
+		SilenceErrors: true,
+		RunE:          func(*cobra.Command, []string) error { return nil },
+	}
+	cmd.SetOut(io.Discard)
+	cmd.SetErr(io.Discard)
+	VarWithJSONAlias(cmd, cmd.Flags(), &f)
+	return cmd, &f
+}
+
+func TestVarWithJSONAlias(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name string
+		args []string
+		want string
+	}{
+		{"no flags", nil, "terminal"},
+		{"bare --json", []string{"--json"}, "json"},
+		{"-j shorthand", []string{"-j"}, "json"},
+		{"--json=false stays default", []string{"--json=false"}, "terminal"},
+		{"--output json", []string{"--output", "json"}, "json"},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			cmd, f := newAliasCmd()
+			cmd.SetArgs(tc.args)
+			require.NoError(t, cmd.Execute())
+			assert.Equal(t, tc.want, f.Get())
+		})
+	}
+
+	// --json and --output are mutually exclusive: passing both is an error,
+	// even when they agree (--json --output=json).
+	conflicts := [][]string{
+		{"--json", "--output", "default"},
+		{"--output", "default", "--json"},
+		{"--json", "--output", "json"},
+		{"--json=false", "--output", "json"},
+	}
+	for _, args := range conflicts {
+		t.Run("conflict "+strings.Join(args, " "), func(t *testing.T) {
+			t.Parallel()
+			cmd, _ := newAliasCmd()
+			cmd.SetArgs(args)
+			err := cmd.Execute()
+			require.Error(t, err)
+			assert.ErrorContains(t, err, "none of the others can be")
+		})
+	}
+
+	t.Run("--json flag is hidden", func(t *testing.T) {
+		t.Parallel()
+		cmd, _ := newAliasCmd()
+		require.NotNil(t, cmd.Flags().Lookup("json"))
+		assert.True(t, cmd.Flags().Lookup("json").Hidden)
+		require.NotNil(t, cmd.Flags().Lookup("output"))
+	})
 }
 
 func TestOutputFlag_DefaultUnset(t *testing.T) {

@@ -197,7 +197,10 @@ func copyAsset(a Asset) Asset {
 }
 
 func copyArchive(a Archive) Archive {
-	assets := make(map[string]any, len(a.Assets))
+	var assets map[string]any
+	if a.Assets != nil {
+		assets = make(map[string]any, len(a.Assets))
+	}
 	for k, v := range a.Assets {
 		switch v := v.(type) {
 		case Asset:
@@ -283,6 +286,12 @@ func (v Value) WithDependencies(dependencies []urn.URN) Value {
 	// resource more then once.
 	v.dependencies = slices.Compact(cp)
 	return v
+}
+
+// hasValue returns true if a value not a plain null. This is private to discourage external use, null _should_ normally
+// be semantically meaningful, but currently for diffs we have to treat missing and null the same.
+func (v Value) hasValue() bool {
+	return !v.IsNull() || v.isSecret || len(v.dependencies) != 0
 }
 
 // WithGoValue creates a new Value with the inner value newGoValue.

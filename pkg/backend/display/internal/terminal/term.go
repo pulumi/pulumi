@@ -69,7 +69,6 @@ func Open(in io.Reader, out io.Writer, raw bool) (Terminal, error) {
 	if outFile.Fd() > math.MaxInt32 {
 		return nil, fmt.Errorf("file descriptor too large: %v", outFile.Fd())
 	}
-	//nolint:gosec // uintptr -> int conversion checked above
 	outFd := int(outFile.Fd())
 
 	width, height, err := term.GetSize(outFd)

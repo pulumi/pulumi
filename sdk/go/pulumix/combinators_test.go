@@ -59,7 +59,7 @@ func TestFlatten_failedOutput(t *testing.T) {
 	t.Parallel()
 
 	in := pulumix.Output[pulumix.Output[string]]{
-		OutputState: internal.NewOutputState(nil, reflect.TypeOf(pulumix.Output[string]{})),
+		OutputState: internal.NewOutputState(nil, reflect.TypeFor[pulumix.Output[string]]()),
 	}
 
 	giveErr := errors.New("great sadness")

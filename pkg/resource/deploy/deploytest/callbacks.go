@@ -66,8 +66,9 @@ func (s *CallbackServer) Allocate(
 	token := uuid.NewString()
 	s.callbacks[token] = callback
 	return &pulumirpc.Callback{
-		Target: fmt.Sprintf("127.0.0.1:%d", s.handle.Port),
-		Token:  token,
+		Target:            fmt.Sprintf("127.0.0.1:%d", s.handle.Port),
+		Token:             token,
+		AcceptsByteString: true,
 	}, nil
 }
 

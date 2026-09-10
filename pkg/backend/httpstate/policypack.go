@@ -28,15 +28,15 @@ import (
 	"strings"
 	"time"
 
-	"github.com/pulumi/esc"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/esc"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	resourceanalyzer "github.com/pulumi/pulumi/pkg/v3/resource/analyzer"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	pkgCmdUtil "github.com/pulumi/pulumi/pkg/v3/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/archive"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -135,7 +135,7 @@ func (rp *cloudRequiredPolicy) ResolveEnvironments(ctx context.Context) (*engine
 	// This reuses the same path as stack ESC resolution.
 	yaml := workspace.NewEnvironment(rp.Environments).Definition()
 
-	env, diags, err := rp.envs.OpenYAMLEnvironment(ctx, rp.orgName, yaml, 2*time.Hour)
+	env, diags, err := rp.envs.OpenYAMLEnvironment(ctx, rp.orgName, yaml, 2*time.Hour, nil)
 	if err != nil {
 		return nil, fmt.Errorf("opening ESC environments for policy pack %q: %w", rp.RequiredPolicy.Name, err)
 	}
@@ -296,7 +296,7 @@ func (r *localPolicyEnvironmentResolver) ResolveEnvironments(
 
 	yaml := workspace.NewEnvironment(environments).Definition()
 
-	env, diags, err := r.envs.OpenYAMLEnvironment(ctx, r.orgName, yaml, 2*time.Hour)
+	env, diags, err := r.envs.OpenYAMLEnvironment(ctx, r.orgName, yaml, 2*time.Hour, nil)
 	if err != nil {
 		return nil, fmt.Errorf("opening ESC environments: %w", err)
 	}
@@ -408,7 +408,7 @@ func (pack *cloudPolicyPack) Publish(
 		return err
 	}
 
-	analyzer, err := op.PlugCtx.Host.PolicyAnalyzer(tokens.QName(abs), op.PlugCtx.Pwd, nil /*opts*/)
+	analyzer, err := op.PlugCtx.Host.PolicyAnalyzer(op.PlugCtx, tokens.QName(abs), op.PlugCtx.Pwd, nil /*opts*/)
 	if err != nil {
 		return err
 	}
@@ -558,7 +558,7 @@ func installRequiredPolicy(ctx *plugin.Context, finalDir string, tgz io.ReadClos
 		}
 	}
 
-	language, err := ctx.Host.LanguageRuntime(proj.Runtime.Name())
+	language, err := ctx.Host.LanguageRuntime(ctx, proj.Runtime.Name())
 	if err != nil {
 		return fmt.Errorf("failed to load language plugin %s: %w", proj.Runtime.Name(), err)
 	}

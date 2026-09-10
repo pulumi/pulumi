@@ -29,6 +29,10 @@ message Callback {
     string target = 1;
     // the service specific unique token for this callback.
     string token = 2;
+    // True if and only if the callback host supports strings containing bytes that are not valid UTF-8, marshaled
+    // as objects carrying the byte string signature and a base64 encoding of the string's bytes. If true, the
+    // caller may pass such values to the callback.
+    bool accepts_byte_string = 3;
 }
 
 message CallbackInvokeRequest {

@@ -1,0 +1,7 @@
+name: l2-extension-and-base-resource
+runtime:
+  name: python
+  options:
+    toolchain: uv
+    typechecker: pyright
+    virtualenv: venv

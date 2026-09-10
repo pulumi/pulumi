@@ -18,6 +18,24 @@ func main() {
 				Private: pulumi.String("closed"),
 				Public:  pulumi.String("open"),
 			},
+			PrivateArray: pulumi.StringArray{
+				pulumi.String("closed"),
+			},
+			PrivateMap: pulumi.StringMap{
+				"key": pulumi.String("closed"),
+			},
+			PrivateDataArray: secret.DataArray{
+				&secret.DataArgs{
+					Private: pulumi.String("closed"),
+					Public:  pulumi.String("open"),
+				},
+			},
+			PrivateDataMap: secret.DataMap{
+				"key": &secret.DataArgs{
+					Private: pulumi.String("closed"),
+					Public:  pulumi.String("open"),
+				},
+			},
 		})
 		if err != nil {
 			return err

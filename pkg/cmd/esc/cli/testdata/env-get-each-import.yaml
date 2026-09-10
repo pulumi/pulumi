@@ -1,0 +1,56 @@
+run: |
+  esc env get default/test imports
+  esc env get default/test 'imports[0]'
+  esc env get default/test 'imports[1]'
+environments:
+  test-user/default/a:
+    values:
+      object: {hello: esc, goodbye: world}
+  test-user/default/b:
+    values:
+      string: foo
+      object: {goodbye: all}
+  test-user/default/test:
+    imports:
+      - a
+      - b
+    values:
+      # comment
+      "null": null
+      boolean: true
+      number: 42
+      string: esc
+      array: [hello, world]
+      object: {hello: world}
+      open:
+        fn::open::test:
+          foo: bar
+
+---
+> esc env get default/test imports
+# Definition
+```yaml
+- a
+- b
+
+```
+
+> esc env get default/test imports[0]
+# Definition
+```yaml
+a
+
+```
+
+> esc env get default/test imports[1]
+# Definition
+```yaml
+b
+
+```
+
+
+---
+> esc env get default/test imports
+> esc env get default/test imports[0]
+> esc env get default/test imports[1]

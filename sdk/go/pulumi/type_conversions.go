@@ -17,23 +17,23 @@ package pulumi
 // StringRef returns a pointer to its argument, used in cases where a parameter requires an optional
 // string.
 func StringRef(v string) *string {
-	return &v
+	return new(v)
 }
 
 // BoolRef returns a pointer to its argument, used in cases where a parameter requires an optional
 // bool.
 func BoolRef(v bool) *bool {
-	return &v
+	return new(v)
 }
 
 // IntRef returns a pointer to its argument, used in cases where a parameter requires an optional
 // int.
 func IntRef(v int) *int {
-	return &v
+	return new(v)
 }
 
 // Float64Ref returns a pointer to its argument, used in cases where a parameter requires an optional
 // float64.
 func Float64Ref(v float64) *float64 {
-	return &v
+	return new(v)
 }

@@ -20,13 +20,15 @@ import (
 	"slices"
 	"testing"
 
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
+
 	"github.com/blang/semver"
-	. "github.com/pulumi/pulumi/pkg/v3/engine" //nolint:revive
+	. "github.com/pulumi/pulumi/pkg/v3/engine"
 	lt "github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest/framework"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/urn"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"github.com/stretchr/testify/assert"
@@ -73,7 +75,7 @@ func TestDestroyContinueOnError(t *testing.T) {
 
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
@@ -195,7 +197,7 @@ func TestUpContinueOnErrorCreate(t *testing.T) {
 
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
@@ -228,7 +230,7 @@ func TestUpContinueOnErrorCreate(t *testing.T) {
 
 	for _, urn := range expectedURNs {
 		// Ensure that the expected URN is present in the snapshot.
-		found := slices.ContainsFunc(snap.Resources, func(rs *resource.State) bool {
+		found := slices.ContainsFunc(snap.Resources, func(rs *pkgresource.State) bool {
 			return rs.URN == resource.URN(urn)
 		})
 		assert.True(t, found, "Expected URN %s not found in snapshot", urn)
@@ -327,7 +329,7 @@ func TestUpContinueOnErrorUpdate(t *testing.T) {
 		return nil
 	})
 
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
@@ -368,7 +370,7 @@ func TestUpContinueOnErrorUpdate(t *testing.T) {
 
 	for _, urn := range expectedURNs {
 		// Ensure that the expected URN is present in the snapshot.
-		idx := slices.IndexFunc(snap.Resources, func(rs *resource.State) bool {
+		idx := slices.IndexFunc(snap.Resources, func(rs *pkgresource.State) bool {
 			return rs.URN == resource.URN(urn)
 		})
 		assert.NotEqual(t, -1, idx, "Expected URN %s not found in snapshot", urn)
@@ -453,7 +455,7 @@ func TestUpContinueOnErrorUpdateWithRefresh(t *testing.T) {
 		return nil
 	})
 
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
@@ -538,7 +540,7 @@ func TestUpContinueOnErrorNoSDKSupport(t *testing.T) {
 
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
@@ -623,7 +625,7 @@ func TestUpContinueOnErrorUpdateNoSDKSupport(t *testing.T) {
 		return nil
 	})
 
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
@@ -692,7 +694,7 @@ func TestDestroyContinueOnErrorDeleteAfterFailedUp(t *testing.T) {
 
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
@@ -752,7 +754,7 @@ func TestContinueOnErrorImport(t *testing.T) {
 
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
@@ -837,7 +839,7 @@ func TestUpContinueOnErrorFailedDependencies(t *testing.T) {
 
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
@@ -866,7 +868,7 @@ func TestUpContinueOnErrorFailedDependencies(t *testing.T) {
 
 	for _, urn := range expectedURNs {
 		// Ensure that the expected URN is present in the snapshot.
-		found := slices.ContainsFunc(snap.Resources, func(rs *resource.State) bool {
+		found := slices.ContainsFunc(snap.Resources, func(rs *pkgresource.State) bool {
 			return rs.URN == resource.URN(urn)
 		})
 		assert.True(t, found, "Expected URN %s not found in snapshot", urn)
@@ -900,7 +902,7 @@ func TestContinueOnErrorWithChangingProviderOnCreate(t *testing.T) {
 		return nil
 	})
 
-	upHostF := deploytest.NewPluginHostF(nil, nil, programF, upLoaders...)
+	upHostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, upLoaders...)
 	upOptions := lt.TestUpdateOptions{
 		T: t, HostF: upHostF, UpdateOptions: UpdateOptions{
 			ContinueOnError: true,
@@ -947,7 +949,7 @@ func TestContinueOnErrorWithChangingProviderOnCreate(t *testing.T) {
 
 		return nil
 	})
-	replaceHostF := deploytest.NewPluginHostF(nil, nil, programF, replaceLoaders...)
+	replaceHostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, replaceLoaders...)
 	replaceOptions := lt.TestUpdateOptions{
 		T: t, HostF: replaceHostF,
 		UpdateOptions: UpdateOptions{

@@ -699,26 +699,28 @@ func (m *modInfo) getPackage(moduleRoot string) (*pulumirpc.PackageDependency, e
 		return nil, err
 	}
 
-	var server string
-	var parameterization *pulumirpc.PackageParameterization
-	server = pulumiPlugin.Server
-	if pulumiPlugin.Parameterization != nil {
-		parameterization = &pulumirpc.PackageParameterization{
-			Name:    pulumiPlugin.Parameterization.Name,
-			Version: pulumiPlugin.Parameterization.Version,
-			Value:   pulumiPlugin.Parameterization.Value,
+	server := pulumiPlugin.Server
+	toProtoParameterization := func(p *plugin.PulumiParameterizationJSON) *pulumirpc.PackageParameterization {
+		if p == nil {
+			return nil
+		}
+		return &pulumirpc.PackageParameterization{
+			Name:    p.Name,
+			Version: p.Version,
+			Value:   p.Value,
 		}
 	}
 
-	plugin := &pulumirpc.PackageDependency{
+	pkg := &pulumirpc.PackageDependency{
 		Name:             name,
 		Version:          version,
 		Kind:             "resource",
 		Server:           server,
-		Parameterization: parameterization,
+		Parameterization: toProtoParameterization(pulumiPlugin.Parameterization),
+		Extension:        toProtoParameterization(pulumiPlugin.ExtensionParameterization),
 	}
 
-	return plugin, nil
+	return pkg, nil
 }
 
 // Reads and parses the go.mod file for the program at the given path.
@@ -1380,7 +1382,6 @@ func (host *goLanguageHost) RunPlugin(
 		if exiterr, ok := err.(*exec.ExitError); ok {
 			if status, ok := exiterr.Sys().(syscall.WaitStatus); ok {
 				err = server.Send(&pulumirpc.RunPluginResponse{
-					//nolint:gosec // WaitStatus always uses the lower 8 bits for the exit code.
 					Output: &pulumirpc.RunPluginResponse_Exitcode{Exitcode: int32(status.ExitStatus())},
 				})
 			} else {
@@ -1407,7 +1408,9 @@ func (host *goLanguageHost) GenerateProject(
 	}
 	defer loader.Close()
 
-	extraOptions := []pcl.BindOption{pcl.PreferOutputVersionedInvokes}
+	extraOptions := []pcl.BindOption{
+		pcl.PreferOutputVersionedInvokes,
+	}
 	if !req.Strict {
 		extraOptions = append(extraOptions, pcl.NonStrictBindOptions()...)
 	}
@@ -1464,7 +1467,8 @@ func (host *goLanguageHost) GenerateProgram(
 		}
 	}
 
-	program, diags, err := pcl.BindProgram(parser.Files, pcl.Loader(schema.NewCachedLoader(loader)))
+	program, diags, err := pcl.BindProgram(parser.Files, schema.NewCachedLoader(loader),
+		pcl.PreferOutputVersionedInvokes)
 	if err != nil {
 		return nil, err
 	}

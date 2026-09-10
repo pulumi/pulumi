@@ -15,9 +15,7 @@ func main() {
 		res1, err := mod.NewResource(ctx, "res1", &mod.ResourceArgs{
 			Text: mod.ConcatWorldOutput(ctx, mod.ConcatWorldOutputArgs{
 				Value: pulumi.String("hello"),
-			}, nil).ApplyT(func(invoke mod.ConcatWorldResult) (string, error) {
-				return invoke.Result, nil
-			}).(pulumi.StringOutput),
+			}, nil).Result(),
 		})
 		if err != nil {
 			return err
@@ -35,9 +33,7 @@ func main() {
 		res2, err := mod.NewResource(ctx, "res2", &mod.ResourceArgs{
 			Text: mod.ConcatWorldOutput(ctx, mod.ConcatWorldOutputArgs{
 				Value: pulumi.String("goodbye"),
-			}, nil).ApplyT(func(invoke mod.ConcatWorldResult) (string, error) {
-				return invoke.Result, nil
-			}).(pulumi.StringOutput),
+			}, nil).Result(),
 		})
 		if err != nil {
 			return err
@@ -55,9 +51,7 @@ func main() {
 		res3, err := nested.NewResource(ctx, "res3", &nested.ResourceArgs{
 			Text: nested.ConcatWorldOutput(ctx, nested.ConcatWorldOutputArgs{
 				Value: pulumi.String("hello"),
-			}, nil).ApplyT(func(invoke nested.ConcatWorldResult) (string, error) {
-				return invoke.Result, nil
-			}).(pulumi.StringOutput),
+			}, nil).Result(),
 		})
 		if err != nil {
 			return err
@@ -75,9 +69,7 @@ func main() {
 		res4, err := nested.NewResource(ctx, "res4", &nested.ResourceArgs{
 			Text: nested.ConcatWorldOutput(ctx, nested.ConcatWorldOutputArgs{
 				Value: pulumi.String("goodbye"),
-			}, nil).ApplyT(func(invoke nested.ConcatWorldResult) (string, error) {
-				return invoke.Result, nil
-			}).(pulumi.StringOutput),
+			}, nil).Result(),
 		})
 		if err != nil {
 			return err
@@ -95,9 +87,7 @@ func main() {
 		res5, err := moduleformat.NewResource(ctx, "res5", &moduleformat.ResourceArgs{
 			Text: moduleformat.ConcatWorldOutput(ctx, moduleformat.ConcatWorldOutputArgs{
 				Value: pulumi.String("bonjour"),
-			}, nil).ApplyT(func(invoke moduleformat.ConcatWorldResult) (string, error) {
-				return invoke.Result, nil
-			}).(pulumi.StringOutput),
+			}, nil).Result(),
 		})
 		if err != nil {
 			return err
@@ -115,9 +105,7 @@ func main() {
 		res6, err := moduleformat.NewResource(ctx, "res6", &moduleformat.ResourceArgs{
 			Text: moduleformat.ConcatWorldOutput(ctx, moduleformat.ConcatWorldOutputArgs{
 				Value: pulumi.String("youkoso"),
-			}, nil).ApplyT(func(invoke moduleformat.ConcatWorldResult) (string, error) {
-				return invoke.Result, nil
-			}).(pulumi.StringOutput),
+			}, nil).Result(),
 		})
 		if err != nil {
 			return err
@@ -135,9 +123,7 @@ func main() {
 		res7, err := moduleformat.NewResource(ctx, "res7", &moduleformat.ResourceArgs{
 			Text: moduleformat.ConcatWorldOutput(ctx, moduleformat.ConcatWorldOutputArgs{
 				Value: pulumi.String("guten tag"),
-			}, nil).ApplyT(func(invoke moduleformat.ConcatWorldResult) (string, error) {
-				return invoke.Result, nil
-			}).(pulumi.StringOutput),
+			}, nil).Result(),
 		})
 		if err != nil {
 			return err

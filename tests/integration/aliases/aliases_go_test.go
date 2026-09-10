@@ -21,42 +21,27 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
 )
 
+// TestGoAliases tests cases where a resource's name, type, or parent changes but it provides
+// an `alias` pointing to the old URN to ensure the resource is preserved across the update. Each
+// scenario lives in its own scenario_*.go file within a single program so one update exercises
+// them all.
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestGoAliases(t *testing.T) {
-	t.Parallel()
-
-	dirs := []string{
-		"rename",
-		"adopt_into_component",
-		"rename_component_and_child",
-		"retype_component",
-		"rename_component",
-		"retype_parents",
-		"adopt_component_child",
-		"extract_component_child",
-		"rename_component_child",
-		"retype_component_child",
-	}
-
-	//nolint:paralleltest // ProgramTest calls t.Parallel()
-	for _, dir := range dirs {
-		d := filepath.Join("go", dir)
-		t.Run(d, func(t *testing.T) {
-			integration.ProgramTest(t, &integration.ProgramTestOptions{
-				Dir: filepath.Join(d, "step1"),
-				Dependencies: []string{
-					"github.com/pulumi/pulumi/sdk/v3=../../../sdk",
-				},
-				Quick: true,
-				EditDirs: []integration.EditDir{
-					{
-						Dir:             filepath.Join(d, "step2"),
-						ExpectNoChanges: true,
-						Additive:        true,
-					},
-				},
-			})
-		})
-	}
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir: filepath.Join("go", "step1"),
+		Dependencies: []string{
+			"github.com/pulumi/pulumi/sdk/v3=../../../sdk",
+		},
+		Quick: true,
+		EditDirs: []integration.EditDir{
+			{
+				Dir:             filepath.Join("go", "step2"),
+				ExpectNoChanges: true,
+				Additive:        true,
+			},
+		},
+	})
 }
 
 //nolint:paralleltest // ProgramTest calls t.Parallel()

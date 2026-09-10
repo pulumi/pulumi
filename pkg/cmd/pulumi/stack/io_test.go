@@ -15,9 +15,11 @@
 package stack
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -28,6 +30,8 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/secrets/passphrase"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
@@ -88,14 +92,14 @@ func TestCreateStack_InitialisesStateWithSecretsManager(t *testing.T) {
 		) (backend.Stack, error) {
 			err := json.Unmarshal(initialState.Deployment, &actualDeployment)
 			require.NoError(t, err)
-			return nil, nil
+			return &backend.MockStack{RefF: func() backend.StackReference { return ref }}, nil
 		},
 		DefaultSecretManagerF: func(context.Context, *workspace.ProjectStack) (secrets.Manager, error) {
 			return expectedSm, nil
 		},
 	}
 
-	stackRef := &backend.MockStackReference{}
+	stackRef := &backend.MockStackReference{StringV: "dev"}
 
 	// Act.
 	//nolint:errcheck
@@ -105,14 +109,62 @@ func TestCreateStack_InitialisesStateWithSecretsManager(t *testing.T) {
 		pkgWorkspace.Instance,
 		mockBackend,
 		stackRef,
-		"",    /*root*/
-		nil,   /*opts*/
-		false, /*setCurrent*/
-		"",    /*secretsProvider*/
-		false, /* useRemoteConfig */
-		"",    /*configFile*/
+		"", /*root*/
+		CreateStackOptions{},
 	)
 
 	// Assert.
 	assert.Equal(t, expectedSm.State(), actualDeployment.SecretsProviders.State)
+}
+
+// Tests that CreateStack announces the new stack unless Quiet is set.
+func TestCreateStackQuiet(t *testing.T) {
+	t.Parallel()
+
+	for _, quiet := range []bool{false, true} {
+		t.Run(fmt.Sprintf("quiet=%v", quiet), func(t *testing.T) {
+			t.Parallel()
+
+			// Arrange.
+			var buf bytes.Buffer
+			sink := diag.DefaultSink(&buf, io.Discard, diag.FormatOptions{Color: colors.Never})
+
+			mockBackend := &backend.MockBackend{
+				NameF: func() string {
+					return "mock"
+				},
+				CreateStackF: func(
+					ctx context.Context,
+					ref backend.StackReference,
+					projectRoot string,
+					initialState *apitype.UntypedDeployment,
+					opts *backend.CreateStackOptions,
+				) (backend.Stack, error) {
+					return &backend.MockStack{RefF: func() backend.StackReference { return ref }}, nil
+				},
+				DefaultSecretManagerF: func(context.Context, *workspace.ProjectStack) (secrets.Manager, error) {
+					return nil, nil
+				},
+			}
+
+			// Act.
+			_, err := CreateStack(
+				t.Context(),
+				sink,
+				pkgWorkspace.Instance,
+				mockBackend,
+				&backend.MockStackReference{StringV: "quietstack"},
+				"", /*root*/
+				CreateStackOptions{Quiet: quiet},
+			)
+
+			// Assert.
+			require.NoError(t, err)
+			if quiet {
+				assert.NotContains(t, buf.String(), "Created stack")
+			} else {
+				assert.Contains(t, buf.String(), "Created stack 'quietstack'")
+			}
+		})
+	}
 }

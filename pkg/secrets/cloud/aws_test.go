@@ -31,6 +31,10 @@ import (
 )
 
 func getAwsCaller(t *testing.T) (context.Context, aws.Config, *sts.GetCallerIdentityOutput) {
+	if testing.Short() {
+		t.Skip("skipping AWS integration test in short mode")
+	}
+
 	ctx := context.Background() //nolint:usetesting // ctx is used in t.Cleanup, which runs after t.Context is canceled
 	cfg, err := config.LoadDefaultConfig(ctx)
 	if err != nil {
@@ -167,7 +171,7 @@ func TestAWSCloudManager_AssumedRole(t *testing.T) {
 	// Now assume that role and try and use the secret manager
 	stsClient := sts.NewFromConfig(cfg)
 	var assume *sts.AssumeRoleOutput
-	for i := 0; i < MaxAttempts; i++ {
+	for range MaxAttempts {
 		sessionName := "test-session-" + randomName(t)
 		assume, err = stsClient.AssumeRole(ctx, &sts.AssumeRoleInput{
 			RoleArn:         role.Role.Arn,

@@ -147,7 +147,7 @@ func TestUnaryOpExrepssion(t *testing.T) {
 func TestArgumentTypeName(t *testing.T) {
 	t.Parallel()
 
-	g := newTestGenerator(t, filepath.Join("aws-s3-logging-pp", "aws-s3-logging.pp"))
+	g := newTestGenerator(t, filepath.Join("transpiled_examples", "random-pp", "random.pp"))
 	noneTypeName := g.argumentTypeName(model.NoneType, false /*isInput*/)
 	assert.Equal(t, "", noneTypeName)
 
@@ -192,7 +192,7 @@ func TestArgumentTypeName(t *testing.T) {
 	})
 
 	plainUniformObjectType := g.argumentTypeName(uniformObjectType, false /*isInput*/)
-	assert.Equal(t, "map[string]interface{}", plainUniformObjectType)
+	assert.Equal(t, "map[string]int", plainUniformObjectType)
 	inputUniformObjectType := g.argumentTypeName(uniformObjectType, true /*isInput*/)
 	assert.Equal(t, "pulumi.IntMap", inputUniformObjectType)
 
@@ -224,6 +224,27 @@ func TestArgumentTypeName(t *testing.T) {
 			true, /*isInput*/
 		))
 
+	// Regression test for https://github.com/pulumi/pulumi/issues/24256:
+	// an object with a null (NoneType) property alongside typed nested data
+	// used to produce order-dependent output because Properties has random
+	// iteration order. The nested map type could "win" if visited first,
+	// yielding map[string]map[string]interface{} instead of the correct
+	// map[string]interface{}. Run many iterations to shake out map ordering.
+	// Freshly construct the map each iteration so Go's per-map iteration
+	// seed varies. In the input-side path (which does not consult
+	// anyOptional), a null (NoneType) property visited before typed
+	// entries used to leave elmType empty, letting the following typed
+	// value "win" and produce e.g. pulumi.StringMapMap instead of
+	// pulumi.Map.
+	for range 200 {
+		mixedNullObject := model.NewObjectType(map[string]model.Type{
+			"nested": model.NewObjectType(map[string]model.Type{"a": model.StringType}),
+			"null":   model.NoneType,
+		})
+		assert.Equal(t, "pulumi.Map",
+			g.argumentTypeName(mixedNullObject, true /*isInput*/))
+	}
+
 	// assert that the Output[T] + input=false is the same as T + input=true
 	// in this case where T = string
 	assert.Equal(t,
@@ -234,7 +255,7 @@ func TestArgumentTypeName(t *testing.T) {
 func TestNotYetImplementedEmittedWhenGeneratingFunctions(t *testing.T) {
 	t.Parallel()
 
-	g := newTestGenerator(t, filepath.Join("aws-s3-logging-pp", "aws-s3-logging.pp"))
+	g := newTestGenerator(t, filepath.Join("transpiled_examples", "random-pp", "random.pp"))
 
 	notYetImplementedFunctions := []string{
 		"entries",
@@ -255,7 +276,7 @@ func TestNotYetImplementedEmittedWhenGeneratingFunctions(t *testing.T) {
 func TestGeneratingGoOptionalFunctions(t *testing.T) {
 	t.Parallel()
 
-	g := newTestGenerator(t, filepath.Join("aws-s3-logging-pp", "aws-s3-logging.pp"))
+	g := newTestGenerator(t, filepath.Join("transpiled_examples", "random-pp", "random.pp"))
 
 	testCases := []struct {
 		expr      *model.FunctionCallExpression
@@ -325,7 +346,7 @@ func TestConditionalExpression(t *testing.T) {
 		},
 		{
 			hcl2Expr: "{foo = true ? 2.5 : 0.5}",
-			goCode:   "var tmp0 float64\nif true {\ntmp0 = 2.5\n} else {\ntmp0 = 0.5\n}\nmap[string]interface{}{\n\"foo\": tmp0,\n}",
+			goCode:   "var tmp0 float64\nif true {\ntmp0 = 2.5\n} else {\ntmp0 = 0.5\n}\nmap[string]float64{\n\"foo\": tmp0,\n}",
 		},
 	}
 	genFunc := func(w io.Writer, g *generator, e model.Expression) {
@@ -347,17 +368,21 @@ func TestObjectConsExpression(t *testing.T) {
 	scope := env.scope()
 	cases := []exprTestCase{
 		{
+			hcl2Expr: "{foo = 1.5, bar = \"baz\"}",
+			goCode:   "map[string]interface{}{\n\"foo\": 1.5,\n\"bar\": \"baz\",\n}",
+		},
+		{
 			// TODO probably a bug in the binder. Single value objects should just be maps
 			hcl2Expr: "{foo = 1.5}",
-			goCode:   "map[string]interface{}{\n\"foo\": 1.5,\n}",
+			goCode:   "map[string]float64{\n\"foo\": 1.5,\n}",
 		},
 		{
 			hcl2Expr: "{\"foo\" = 1.5}",
-			goCode:   "map[string]interface{}{\n\"foo\": 1.5,\n}",
+			goCode:   "map[string]float64{\n\"foo\": 1.5,\n}",
 		},
 		{
 			hcl2Expr: "{1 = 1.5}",
-			goCode:   "map[string]interface{}{\n\"1\": 1.5,\n}",
+			goCode:   "map[string]float64{\n\"1\": 1.5,\n}",
 		},
 		{
 			hcl2Expr: "{(a) = 1.5}",
@@ -376,7 +401,7 @@ func TestObjectConsExpression(t *testing.T) {
 func TestIntrinsicConvertScopeTraversalToOutputScalar(t *testing.T) {
 	t.Parallel()
 
-	g := newTestGenerator(t, filepath.Join("aws-s3-logging-pp", "aws-s3-logging.pp"))
+	g := newTestGenerator(t, filepath.Join("transpiled_examples", "random-pp", "random.pp"))
 	var index bytes.Buffer
 
 	expr := pcl.NewConvertCall(
@@ -392,7 +417,7 @@ func TestIntrinsicConvertScopeTraversalToOutputScalar(t *testing.T) {
 func TestIntrinsicConvertScopeTraversalToInputScalarNoDoubleWrap(t *testing.T) {
 	t.Parallel()
 
-	g := newTestGenerator(t, filepath.Join("aws-s3-logging-pp", "aws-s3-logging.pp"))
+	g := newTestGenerator(t, filepath.Join("transpiled_examples", "random-pp", "random.pp"))
 	var index bytes.Buffer
 
 	// Resource argument Input<T> binds as union(T, Output<T>) annotated with
@@ -455,7 +480,7 @@ func testGenerateExpression(
 		t.Parallel()
 
 		// test program is only for schema info
-		g := newTestGenerator(t, filepath.Join("aws-s3-logging-pp", "aws-s3-logging.pp"))
+		g := newTestGenerator(t, filepath.Join("transpiled_examples", "random-pp", "random.pp"))
 		var index bytes.Buffer
 		expr, _ := model.BindExpressionText(hcl2Expr, scope, hcl.Pos{})
 		if gen != nil {

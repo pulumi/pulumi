@@ -110,35 +110,39 @@ var expectedFailures = map[string]string{
 	"l1-builtin-object":             "entries/lookup emit TODO stubs",
 	"l2-builtin-object":             "entries/lookup emit TODO stubs",
 	"l1-builtin-to-json":            "Go doesn't support output based toJSON",
-	"l2-resource-config-primitives": "cannot convert secretBool (variable of struct type pulumi.BoolOutput) to type pulumi.Bool, etc", //nolint:lll
 	"l2-resource-config-objects":    "cannot convert plainBooleanMap (variable of type string) to type pulumi.BoolMap",
-	"l2-discriminated-union":        "pulumi#21829: does not compile",
 	"l2-resource-schema-secret":     "does not preserve schema-secret unknown outputs",
 
 	"l2-plain": "map literals nested in plain list elements render without a type; generated code does not compile",
 
 	// pulumi/pulumi#18345
-	"l2-map-keys":                         "NonPlainData.InnerData renders as interface{}{} instead of &plain.InnerDataArgs{}",                                           //nolint:lll
 	"l2-component-program-resource-ref":   "pulumi#18140: cannot use ref.Value (variable of type pulumi.StringOutput) as string value in return statement",               //nolint:lll
 	"l2-component-component-resource-ref": "pulumi#18140: cannot use ref.Value (variable of type pulumi.StringOutput) as string value in return statement",               //nolint:lll
 	"l3-range":                            "list(string) and map(string) config values decoded as raw JSON strings by cfg.Require; cannot range over string as list/map", //nolint:lll
 	"l3-range-resource-output-traversal":  "pulumi#21678: cannot range over an ArrayOutput",
+	"l3-range-invoke-output-traversal":    "pulumi#21678: len() of an invoke's ArrayOutput does not compile",
 	"l3-for":                              "syntax errors",
 	"l3-for-resource":                     "syntax errors",
 	"l3-component-nested":                 "./main.go:10:11: cannot use true (constant of type bool) as pulumi.BoolInput",
+	"l3-resource-keyword-overlap":         "same component-input/output type bugs as l3-component-nested; does not compile", //nolint:lll
 	"l3-deferred-outputs":                 "does not compile && for expressions are not supported",
 
 	"l3-rewrite-conversions": "does not compile; missing necessary casts for pulumi inputs",
 
 	"l3-component-config-primitives":     "does not compile; missing necessary casts for pulumi inputs",
 	"l3-component-config-objects":        "does not compile; missing necessary casts for pulumi inputs",
-	"l2-resource-primitive-conversions":  "primitive conversions accepted by PCL bind, but not lowered correctly by SDK generators", //nolint:lll
-	"l3-component-primitive-conversions": "primitive conversions accepted by PCL bind, but not lowered correctly by SDK generators", //nolint:lll
-	"l3-range-ref":                       "fails with syntax errors",
+	"l3-map-keys":                        "does not compile; missing necessary casts for pulumi inputs",
+	"l3-component-provider":              "does not compile; missing necessary casts for pulumi inputs and untyped component outputs", //nolint:lll
+	"l2-resource-primitive-conversions":  "primitive conversions accepted by PCL bind, but not lowered correctly by SDK generators",   //nolint:lll
+	"l3-component-primitive-conversions": "primitive conversions accepted by PCL bind, but not lowered correctly by SDK generators",   //nolint:lll
 
-	"l2-id-type": "codegen isn't keeping track of ID right now",
+	"l3-range-list-ref": "fails with syntax errors: undefined: err",
+	"l3-range-map-ref":  "fails with syntax errors: mapResource.K1 undefined (type []*nestedobject.Target has no field or method K1)", //nolint:lll
+	"l3-range-bool-ref": "fails with syntax errors: index < createBool (mismatched types int and bool)",
 
 	"l1-builtin-string": "cannot convert strings.Split(aString, \"-\") (value of type []string) to type pulumi.StringArray", //nolint:lll
+
+	"l2-failed-create-recover-continue-on-error": "Go SDK output recovery is not implemented",
 }
 
 // Add program overrides here for programs that can't yet be generated correctly due to programgen bugs.
@@ -175,6 +179,13 @@ var programOverrides = map[string]*testingrpc.PrepareLanguageTestsRequest_Progra
 	"l2-resource-elide-unknowns": {
 		Paths: []string{
 			filepath.Join("testdata", "overrides", "l2-resource-elide-unknowns"),
+		},
+	},
+
+	// Programgen wraps the id expression in pulumi.ID(...) which doesn't compile when the id is an output.
+	"l2-resource-read-unknown": {
+		Paths: []string{
+			filepath.Join("testdata", "overrides", "l2-resource-read-unknown"),
 		},
 	},
 }
@@ -217,6 +228,10 @@ type languageTestConfig struct {
 }
 
 func testLanguage(t *testing.T, config languageTestConfig) {
+	if testing.Short() {
+		t.Skip("skipping language conformance tests in short mode")
+	}
+
 	engineAddress, engine := runTestingHost(t)
 
 	tests, err := engine.GetLanguageTests(t.Context(), &testingrpc.GetLanguageTestsRequest{})

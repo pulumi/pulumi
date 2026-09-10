@@ -1,6 +1,5 @@
 // Copyright 2016, Pulumi Corporation.  All rights reserved.
 //go:build !all
-// +build !all
 
 package main
 
@@ -9,7 +8,6 @@ import (
 
 	"github.com/blang/semver"
 
-	"github.com/pulumi/pulumi/pkg/v3/resource/provider"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 	pulumiprovider "github.com/pulumi/pulumi/sdk/v3/go/pulumi/provider"
@@ -73,18 +71,14 @@ func (p *pkg) ConstructProvider(ctx *pulumi.Context, name, typ, urn string) (pul
 func main() {
 	pulumi.RegisterResourcePackage(providerName, &pkg{semver.MustParse(version)})
 
-	if err := provider.ComponentMain(providerName, version, nil, func(ctx *pulumi.Context, typ, name string,
-		inputs pulumiprovider.ConstructInputs, options pulumi.ResourceOption,
-	) (*pulumiprovider.ConstructResult, error) {
+	if err := pulumiprovider.ComponentMain(providerName, version, nil, func(ctx *pulumi.Context, typ, name string, inputs pulumiprovider.ConstructInputs, options pulumi.ResourceOption) (*pulumiprovider.ConstructResult, error) {
 		if typ != "testcomponent:index:Component" {
 			return nil, fmt.Errorf("unknown resource type %s", typ)
 		}
-
 		component, err := NewComponent(ctx, name, options)
 		if err != nil {
 			return nil, fmt.Errorf("creating component: %w", err)
 		}
-
 		return pulumiprovider.NewConstructResult(component)
 	}); err != nil {
 		cmdutil.Exit(err)

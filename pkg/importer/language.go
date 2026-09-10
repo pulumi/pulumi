@@ -21,6 +21,8 @@ import (
 	"io"
 	"strings"
 
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
+
 	mapset "github.com/deckarep/golang-set/v2"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
 	"github.com/zclconf/go-cty/cty"
@@ -122,7 +124,7 @@ func sanitizeName(name string) string {
 	return strings.ReplaceAll(name, ".", "_")
 }
 
-func createImportState(states []*resource.State, snapshot []*resource.State, names NameTable) ImportState {
+func createImportState(states []*pkgresource.State, snapshot []*pkgresource.State, names NameTable) ImportState {
 	pathedLiteralValues := make([]PathedLiteralValue, 0)
 	for _, state := range states {
 		// Ensure all names are sanitized, at this point
@@ -176,8 +178,8 @@ func GenerateLanguageDefinitions(
 	w io.Writer,
 	loader schema.Loader,
 	gen LanguageGenerator,
-	states []*resource.State,
-	snapshot []*resource.State,
+	states []*pkgresource.State,
+	snapshot []*pkgresource.State,
 	names NameTable,
 ) error {
 	generateProgramText := func(importState ImportState) (*pcl.Program, hcl.Diagnostics, error) {
@@ -186,21 +188,25 @@ func GenerateLanguageDefinitions(
 		// Keep track of packages we've seen, we assume package names are unique.
 		seenPkgs := mapset.NewSet[string]()
 
-		for i, state := range states {
+		for _, state := range states {
 			hcl2Def, pkgDesc, err := GenerateHCL2Definition(loader, state, importState)
 			if err != nil {
 				return nil, nil, err
 			}
 			pre := ""
-			if i > 0 {
+			if hcl2Text.Len() > 0 {
 				pre = "\n"
 			}
 
-			pkgName := pkgDesc.Name
-			if pkgDesc.Parameterization != nil {
-				pkgName = pkgDesc.Parameterization.Name
+			// Local component resources have no package behind them, so there is no package block to emit.
+			pkgName := ""
+			if pkgDesc != nil {
+				pkgName = pkgDesc.Name
+				if pkgDesc.Parameterization != nil {
+					pkgName = pkgDesc.Parameterization.Name
+				}
 			}
-			if !seenPkgs.Contains(pkgName) {
+			if pkgDesc != nil && !seenPkgs.Contains(pkgName) {
 				seenPkgs.Add(pkgName)
 
 				items := make([]model.BodyItem, 0)
@@ -286,7 +292,7 @@ func GenerateLanguageDefinitions(
 			})
 		}
 
-		return pcl.BindProgram(parser.Files, pcl.Loader(loader), pcl.AllowMissingVariables)
+		return pcl.BindProgram(parser.Files, loader, pcl.AllowMissingVariables)
 	}
 
 	if names == nil {

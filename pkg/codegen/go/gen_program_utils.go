@@ -31,6 +31,7 @@ var primitives = map[string]string{
 	"Int":     "int",
 	"Int64":   "int64",
 	"Float64": "float64",
+	"ID":      "pulumi.ID",
 }
 
 func (p *promptToInputArrayHelper) getFnName() string {
@@ -77,7 +78,7 @@ func getHelperMethodIfNeeded(functionName string, indent string) (string, bool) 
 			}`, true
 	case "notImplemented":
 		return fmt.Sprintf(`
-%sfunc notImplemented(message string) pulumi.AnyOutput {
+%sfunc notImplemented(message string) any {
 %s  panic(message)
 %s}`, indent, indent, indent), true
 	case "singleOrNone":

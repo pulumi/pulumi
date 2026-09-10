@@ -188,11 +188,7 @@ func (c *insightsAccountScanLogCmd) fetchContinuationMode(
 			// Cap to the remaining count so the last page doesn't
 			// over-fetch.
 			remaining := want - len(acc.Lines)
-			if remaining < maxPageCount {
-				params.Count = remaining
-			} else {
-				params.Count = maxPageCount
-			}
+			params.Count = min(remaining, maxPageCount)
 		}
 
 		resp, err := client.GetInsightsScanLogs(ctx, org, account, scanID, params)

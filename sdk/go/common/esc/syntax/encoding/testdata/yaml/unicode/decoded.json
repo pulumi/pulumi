@@ -1,0 +1,258 @@
+{
+    "syntax": {
+        "object": [
+            {
+                "key": {
+                    "literal": "values",
+                    "range": {
+                        "Filename": "unicode",
+                        "Start": {
+                            "Line": 1,
+                            "Column": 1,
+                            "Byte": 0
+                        },
+                        "End": {
+                            "Line": 1,
+                            "Column": 7,
+                            "Byte": 6
+                        }
+                    }
+                },
+                "value": {
+                    "object": [
+                        {
+                            "key": {
+                                "literal": "hello",
+                                "range": {
+                                    "Filename": "unicode",
+                                    "Start": {
+                                        "Line": 2,
+                                        "Column": 3,
+                                        "Byte": 10
+                                    },
+                                    "End": {
+                                        "Line": 2,
+                                        "Column": 8,
+                                        "Byte": 15
+                                    }
+                                }
+                            },
+                            "value": {
+                                "literal": "世界",
+                                "range": {
+                                    "Filename": "unicode",
+                                    "Start": {
+                                        "Line": 2,
+                                        "Column": 10,
+                                        "Byte": 17
+                                    },
+                                    "End": {
+                                        "Line": 2,
+                                        "Column": 16,
+                                        "Byte": 23
+                                    }
+                                }
+                            }
+                        },
+                        {
+                            "key": {
+                                "literal": "世界",
+                                "range": {
+                                    "Filename": "unicode",
+                                    "Start": {
+                                        "Line": 3,
+                                        "Column": 3,
+                                        "Byte": 26
+                                    },
+                                    "End": {
+                                        "Line": 3,
+                                        "Column": 9,
+                                        "Byte": 34
+                                    }
+                                }
+                            },
+                            "value": {
+                                "literal": "hello",
+                                "range": {
+                                    "Filename": "unicode",
+                                    "Start": {
+                                        "Line": 3,
+                                        "Column": 7,
+                                        "Byte": 32
+                                    },
+                                    "End": {
+                                        "Line": 3,
+                                        "Column": 12,
+                                        "Byte": 37
+                                    }
+                                }
+                            }
+                        },
+                        {
+                            "key": {
+                                "literal": "linear-b",
+                                "range": {
+                                    "Filename": "unicode",
+                                    "Start": {
+                                        "Line": 4,
+                                        "Column": 3,
+                                        "Byte": 42
+                                    },
+                                    "End": {
+                                        "Line": 4,
+                                        "Column": 11,
+                                        "Byte": 50
+                                    }
+                                }
+                            },
+                            "value": {
+                                "array": [
+                                    {
+                                        "literal": "𐀀",
+                                        "range": {
+                                            "Filename": "unicode",
+                                            "Start": {
+                                                "Line": 5,
+                                                "Column": 7,
+                                                "Byte": 58
+                                            },
+                                            "End": {
+                                                "Line": 5,
+                                                "Column": 11,
+                                                "Byte": 62
+                                            }
+                                        }
+                                    },
+                                    {
+                                        "literal": "𐀁",
+                                        "range": {
+                                            "Filename": "unicode",
+                                            "Start": {
+                                                "Line": 6,
+                                                "Column": 7,
+                                                "Byte": 69
+                                            },
+                                            "End": {
+                                                "Line": 6,
+                                                "Column": 11,
+                                                "Byte": 73
+                                            }
+                                        }
+                                    }
+                                ],
+                                "range": {
+                                    "Filename": "unicode",
+                                    "Start": {
+                                        "Line": 5,
+                                        "Column": 5,
+                                        "Byte": 56
+                                    },
+                                    "End": {
+                                        "Line": 6,
+                                        "Column": 11,
+                                        "Byte": 73
+                                    }
+                                }
+                            }
+                        },
+                        {
+                            "key": {
+                                "literal": "danmark",
+                                "range": {
+                                    "Filename": "unicode",
+                                    "Start": {
+                                        "Line": 7,
+                                        "Column": 3,
+                                        "Byte": 76
+                                    },
+                                    "End": {
+                                        "Line": 7,
+                                        "Column": 10,
+                                        "Byte": 83
+                                    }
+                                }
+                            },
+                            "value": {
+                                "object": [
+                                    {
+                                        "key": {
+                                            "literal": "hovedstad",
+                                            "range": {
+                                                "Filename": "unicode",
+                                                "Start": {
+                                                    "Line": 8,
+                                                    "Column": 5,
+                                                    "Byte": 89
+                                                },
+                                                "End": {
+                                                    "Line": 8,
+                                                    "Column": 14,
+                                                    "Byte": 98
+                                                }
+                                            }
+                                        },
+                                        "value": {
+                                            "literal": "københavn",
+                                            "range": {
+                                                "Filename": "unicode",
+                                                "Start": {
+                                                    "Line": 8,
+                                                    "Column": 16,
+                                                    "Byte": 100
+                                                },
+                                                "End": {
+                                                    "Line": 8,
+                                                    "Column": 26,
+                                                    "Byte": 110
+                                                }
+                                            }
+                                        }
+                                    }
+                                ],
+                                "range": {
+                                    "Filename": "unicode",
+                                    "Start": {
+                                        "Line": 8,
+                                        "Column": 5,
+                                        "Byte": 89
+                                    },
+                                    "End": {
+                                        "Line": 8,
+                                        "Column": 26,
+                                        "Byte": 110
+                                    }
+                                }
+                            }
+                        }
+                    ],
+                    "range": {
+                        "Filename": "unicode",
+                        "Start": {
+                            "Line": 2,
+                            "Column": 3,
+                            "Byte": 10
+                        },
+                        "End": {
+                            "Line": 8,
+                            "Column": 26,
+                            "Byte": 110
+                        }
+                    }
+                }
+            }
+        ],
+        "range": {
+            "Filename": "unicode",
+            "Start": {
+                "Line": 1,
+                "Column": 1,
+                "Byte": 0
+            },
+            "End": {
+                "Line": 8,
+                "Column": 26,
+                "Byte": 110
+            }
+        }
+    }
+}

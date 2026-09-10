@@ -55,7 +55,6 @@ func TestBindProgram(t *testing.T) {
 		bindOptions[r.Directory+"-pp"] = r.BindOptions
 	}
 
-	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
 	for _, v := range testdata {
 		if !v.IsDir() {
 			continue
@@ -91,18 +90,17 @@ func TestBindProgram(t *testing.T) {
 
 				var bindError error
 				var diags hcl.Diagnostics
-				loader := pcl.Loader(schema.NewPluginLoader(utils.NewHost(testdataPath)))
+				loader := schema.NewPluginLoader(utils.NewContext(testdataPath))
 				absoluteFolderPath, err := filepath.Abs(folderPath)
 				if err != nil {
 					t.Fatalf("failed to bind program: unable to find the absolute path of %v", folderPath)
 				}
 				options := append(
 					bindOptions[v.Name()],
-					loader,
 					pcl.DirPath(absoluteFolderPath),
 					pcl.ComponentBinder(pcl.ComponentProgramBinderFromFileSystem()))
 				// PCL binder options are taken from program_driver.go
-				program, diags, bindError := pcl.BindProgram(parser.Files, options...)
+				program, diags, bindError := pcl.BindProgram(parser.Files, loader, options...)
 
 				require.NoError(t, bindError)
 				if diags.HasErrors() || program == nil {
@@ -146,7 +144,7 @@ func TestWritingProgramSource(t *testing.T) {
 	}
 
 	program, diags, bindError := pcl.BindProgram(parser.Files,
-		pcl.Loader(schema.NewPluginLoader(utils.NewHost(testdataPath))),
+		schema.NewPluginLoader(utils.NewContext(testdataPath)),
 		pcl.DirPath(absoluteProgramPath),
 		pcl.ComponentBinder(pcl.ComponentProgramBinderFromFileSystem()))
 
@@ -368,7 +366,7 @@ func TestUsingDynamicConfigAsRange(t *testing.T) {
 		description = "The ID of the VPC"
 	}
 
-	resource "endpoint" "aws:ec2/vpcEndpoint:VpcEndpoint" {
+	resource "endpoint" "infra:index:Endpoint" {
 	  options {
 		range = endpointsServiceNames
 	  }
@@ -507,7 +505,7 @@ output "knownId" {
 		}
 
 		if output.Name() == "knownId" {
-			assert.Equal(t, model.StringType, outputType)
+			assert.Equal(t, model.IDType, outputType)
 		}
 	}
 
@@ -815,7 +813,7 @@ lenPublicSubnets = invoke("std:index:max", {
   ]
 })
 
-resource "defaultVpc" "aws:ec2/vpc:Vpc" {
+resource "defaultVpc" "infra:index:Vpc" {
   options { range = createVpc ? lenPublicSubnets.result : 0 }
   cidrBlock = "10.0.0.1/16"
 }
@@ -854,7 +852,7 @@ resource "randomPet" "random:index/randomPet:RandomPet" {
 func TestBindingElementFunctionWithOutputSplatExpression(t *testing.T) {
 	t.Parallel()
 	source := `
-azs = invoke("aws:index:getAvailabilityZones", {})
+azs = invoke("infra:index:getZones", {})
 
 resource "randomPet" "random:index/randomPet:RandomPet" {
 	options { range = length(azs.filters) }
@@ -1134,7 +1132,7 @@ func TestBindingSelfReferencingComponentFailsWithCircularReferenceError(t *testi
 	}
 
 	program, diags, bindError := pcl.BindProgram(parser.Files,
-		pcl.Loader(schema.NewPluginLoader(utils.NewHost(testdataPath))),
+		schema.NewPluginLoader(utils.NewContext(testdataPath)),
 		pcl.DirPath(absoluteProgramPath),
 		pcl.ComponentBinder(pcl.ComponentProgramBinderFromFileSystem()))
 
@@ -1175,7 +1173,7 @@ func TestBindingMutuallyDependantComponentsSucceeds(t *testing.T) {
 	}
 
 	program, diags, bindError := pcl.BindProgram(parser.Files,
-		pcl.Loader(schema.NewPluginLoader(utils.NewHost(testdataPath))),
+		schema.NewPluginLoader(utils.NewContext(testdataPath)),
 		pcl.DirPath(absoluteProgramPath),
 		pcl.ComponentBinder(pcl.ComponentProgramBinderFromFileSystem()))
 
@@ -1240,14 +1238,14 @@ config "vpcId" "string" {
   description = "The ID of the VPC"
 }
 
-resource "ptfeService" "aws:ec2/vpcEndpoint:VpcEndpoint" {
+resource "ptfeService" "infra:index:Endpoint" {
   __logicalName     = "ptfe_service"
   vpcId             = vpcId
   vpcEndpointType   = "Interface"
   privateDnsEnabled = false
 }
 
-resource "ptfeServiceRecord" "aws:route53/record:Record" {
+resource "ptfeServiceRecord" "infra:index:Record" {
   __logicalName = "ptfe_service"
   zoneId        = "example_zone_id"
   name          = "example"
@@ -1306,7 +1304,7 @@ component myComp "./myComponent" {
 	require.NoError(t, err)
 
 	_, diags, _ := pcl.BindProgram(parser.Files,
-		pcl.Loader(schema.NewPluginLoader(utils.NewHost(testdataPath))),
+		schema.NewPluginLoader(utils.NewContext(testdataPath)),
 		pcl.DirPath(absDir),
 		pcl.ComponentBinder(pcl.ComponentProgramBinderFromFileSystem()))
 
@@ -1341,7 +1339,7 @@ component myComp "./myComponent" {
 	require.NoError(t, err)
 
 	program, diags, bindErr := pcl.BindProgram(parser.Files,
-		pcl.Loader(schema.NewPluginLoader(utils.NewHost(testdataPath))),
+		schema.NewPluginLoader(utils.NewContext(testdataPath)),
 		pcl.DirPath(absDir),
 		pcl.ComponentBinder(pcl.ComponentProgramBinderFromFileSystem()))
 	require.NoError(t, bindErr)

@@ -59,7 +59,7 @@ func generatePackageFilesFromSchema(
 		return nil, err
 	}
 
-	loader := schema.NewPluginLoader(utils.NewHost(loaderDir))
+	loader := schema.NewPluginLoader(utils.NewContext(loaderDir))
 	pkg, diags, err := schema.BindSpec(pkgSpec, loader, schema.ValidationOptions{
 		AllowDanglingReferences: true,
 	})
@@ -327,6 +327,5 @@ type SchemaVersion = string
 // Schemas are downloaded in the makefile, and the versions specified here
 // should be in sync with the makefile.
 const (
-	AwsSchema    SchemaVersion = "4.26.0"
 	RandomSchema SchemaVersion = "4.11.2"
 )

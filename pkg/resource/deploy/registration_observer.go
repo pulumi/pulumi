@@ -15,6 +15,7 @@
 package deploy
 
 import (
+	"errors"
 	"sync"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
@@ -23,8 +24,8 @@ import (
 
 // URNRegistration carries the information a consumer needs to reason about a resource that has been
 // registered: its provider-assigned ID and its output property map. The URN itself isn't stored
-// here because callers look the registration up by URN via [RegistrationObserver.Get]. ID may be
-// empty for resources that don't have provider IDs (e.g. components).
+// here because callers wait for the registration by URN. ID may be empty for resources that don't
+// have provider IDs (e.g. components).
 type URNRegistration struct {
 	ID      resource.ID
 	Outputs resource.PropertyMap
@@ -36,58 +37,98 @@ type URNRegistration struct {
 //
 // The intended pattern:
 //
-//   - Anyone that needs the outputs of a resource by URN calls Get(urn) to receive a promise, then
-//     blocks on it via Result(ctx).
+//   - Sources that need the outputs of a resource by URN call Wait(urn) to receive a promise, then
+//     block on it via Result(ctx).
 //   - The resource monitor calls Resolve(urn, id, outputs) after each successful registration. The
 //     first Resolve for a URN wins; subsequent calls are no-ops.
-//   - URNs that some still-running source intends to register are pre-declared via MarkExpected.
-//     When the engine knows no more registrations are coming from the program (and only Expected
-//     URNs might still arrive from snippets), it calls RejectUnresolved to surface "no source
-//     registered this URN" failures for any pending entry that wasn't pre-declared.
+//   - Each source registers itself with NewSource before execution and calls Done when it exits.
+//   - If every remaining source is waiting, no source can make progress and unresolved references
+//     are rejected. This detects missing references and dependency cycles.
 type RegistrationObserver struct {
-	mu       sync.Mutex
-	promises map[resource.URN]*promise.CompletionSource[URNRegistration]
-	expected map[resource.URN]struct{}
-	// closedErr, if non-nil, indicates RejectUnresolved has been called: any subsequent Get for a URN that
-	// wasn't marked Expected returns an already-rejected promise. Without this flag a slow source that calls
-	// Get *after* the sweep would create a fresh pending entry that no one will ever resolve.
-	closedErr error
+	mu           sync.Mutex
+	promises     map[resource.URN]*promise.CompletionSource[URNRegistration]
+	sources      map[*RegistrationObserverSource]resource.URN
+	sourcesReady bool
+	closedErr    error
 }
 
 // NewRegistrationObserver returns an observer with no pending or resolved entries.
 func NewRegistrationObserver() *RegistrationObserver {
 	return &RegistrationObserver{
 		promises: map[resource.URN]*promise.CompletionSource[URNRegistration]{},
-		expected: map[resource.URN]struct{}{},
+		sources:  map[*RegistrationObserverSource]resource.URN{},
 	}
 }
 
-// MarkExpected records that some still-running source intends to Resolve urn. Subsequent calls to
-// RejectUnresolved will leave Expected URNs alone (they're still in flight, not dead). Repeated calls
-// for the same URN are no-ops.
-func (o *RegistrationObserver) MarkExpected(urn resource.URN) {
-	o.mu.Lock()
-	defer o.mu.Unlock()
-	o.expected[urn] = struct{}{}
+// RegistrationObserverSource tracks whether one source can still register resources or is blocked
+// waiting for another source to register a referenced resource.
+type RegistrationObserverSource struct {
+	observer *RegistrationObserver
+	once     sync.Once
 }
 
-// RejectUnresolved rejects every currently-pending promise that has not been marked as Expected, and
-// causes any subsequent [RegistrationObserver.Get] for a non-Expected URN to return an
-// already-rejected promise. Used once the engine knows no further registrations are coming from
-// sources that didn't pre-declare their URNs (typically called after the main program's promise
-// resolves). Repeated calls are no-ops: the first err is the one observed by Get callers.
-func (o *RegistrationObserver) RejectUnresolved(err error) {
+// NewSource registers a source with the observer. All sources must be registered before SourcesReady
+// is called and execution begins.
+func (o *RegistrationObserver) NewSource() *RegistrationObserverSource {
 	o.mu.Lock()
 	defer o.mu.Unlock()
-	if o.closedErr != nil {
+	source := &RegistrationObserverSource{observer: o}
+	o.sources[source] = ""
+	return source
+}
+
+// SourcesReady enables quiescence detection after all sources have been registered.
+func (o *RegistrationObserver) SourcesReady() {
+	o.mu.Lock()
+	defer o.mu.Unlock()
+	o.sourcesReady = true
+	o.rejectIfQuiescent()
+}
+
+// Wait returns a promise for urn and marks this source as blocked until that URN is resolved or
+// rejected. Settling the URN makes the source runnable while holding the observer lock, before any
+// other source can finish and trigger quiescence detection.
+func (s *RegistrationObserverSource) Wait(urn resource.URN) *promise.Promise[URNRegistration] {
+	s.observer.mu.Lock()
+	defer s.observer.mu.Unlock()
+	cs := s.observer.entry(urn)
+	if s.observer.closedErr != nil {
+		cs.Reject(s.observer.closedErr)
+		return cs.Promise()
+	}
+	if _, _, settled := cs.Promise().TryResult(); !settled {
+		if _, ok := s.observer.sources[s]; ok {
+			s.observer.sources[s] = urn
+			s.observer.rejectIfQuiescent()
+		}
+	}
+	return cs.Promise()
+}
+
+// Done removes this source from the active source set.
+func (s *RegistrationObserverSource) Done() {
+	s.once.Do(func() {
+		s.observer.mu.Lock()
+		defer s.observer.mu.Unlock()
+		delete(s.observer.sources, s)
+		s.observer.rejectIfQuiescent()
+	})
+}
+
+// rejectIfQuiescent rejects unresolved references when no source can make progress.
+// Caller must hold o.mu.
+func (o *RegistrationObserver) rejectIfQuiescent() {
+	if !o.sourcesReady || o.closedErr != nil {
 		return
 	}
-	o.closedErr = err
-	for urn, cs := range o.promises {
-		if _, ok := o.expected[urn]; ok {
-			continue
+	for _, waitingFor := range o.sources {
+		if waitingFor == "" {
+			return
 		}
-		cs.Reject(err)
+	}
+	o.closedErr = errors.New("no source registered this URN")
+	for _, cs := range o.promises {
+		cs.Reject(o.closedErr)
 	}
 }
 
@@ -101,31 +142,13 @@ func (o *RegistrationObserver) entry(urn resource.URN) *promise.CompletionSource
 	return cs
 }
 
-// Get returns a promise that will be fulfilled with the registration (id + outputs) of the resource
-// registered at the given URN. Subsequent Gets for the same URN return the same promise. Safe to
-// call from any goroutine.
-//
-// If [RegistrationObserver.RejectUnresolved] has already been called, a Get for a URN that has not
-// been marked Expected returns a promise that is already rejected — this closes a race where a slow
-// source might otherwise call Get after the sweep and sit forever on a freshly-created pending entry.
-func (o *RegistrationObserver) Get(urn resource.URN) *promise.Promise[URNRegistration] {
-	o.mu.Lock()
-	defer o.mu.Unlock()
-	cs := o.entry(urn)
-	if o.closedErr != nil {
-		if _, ok := o.expected[urn]; !ok {
-			cs.Reject(o.closedErr)
-		}
-	}
-	return cs.Promise()
-}
-
 // Resolve fulfills the promise for the given URN with the supplied id and outputs. id may be empty
 // for resources that don't have provider IDs (e.g. components). Repeated Resolve calls for the
 // same URN are no-ops.
 func (o *RegistrationObserver) Resolve(urn resource.URN, id resource.ID, outputs resource.PropertyMap) {
 	o.mu.Lock()
 	defer o.mu.Unlock()
+	o.makeWaitersRunnable(urn)
 	o.entry(urn).Fulfill(URNRegistration{ID: id, Outputs: outputs})
 }
 
@@ -134,5 +157,16 @@ func (o *RegistrationObserver) Resolve(urn resource.URN, id resource.ID, outputs
 func (o *RegistrationObserver) Reject(urn resource.URN, err error) {
 	o.mu.Lock()
 	defer o.mu.Unlock()
+	o.makeWaitersRunnable(urn)
 	o.entry(urn).Reject(err)
+}
+
+// makeWaitersRunnable marks sources waiting for urn as able to register resources again.
+// Caller must hold o.mu.
+func (o *RegistrationObserver) makeWaitersRunnable(urn resource.URN) {
+	for source, waitingFor := range o.sources {
+		if waitingFor == urn {
+			o.sources[source] = ""
+		}
+	}
 }

@@ -27,6 +27,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/sergi/go-diff/diffmatchpatch"
 	"gopkg.in/yaml.v3"
@@ -74,11 +75,29 @@ func printStepHeader(b io.StringWriter, step engine.StepEventMetadata, showURNs 
 		// show a locked symbol, since we are either newly protecting this resource, or retaining protection.
 		extra = " 🔒"
 	}
+	op := addRetainStatusFlag(string(step.Op), step)
 	if showURNs {
-		writeString(b, fmt.Sprintf("%s: (%s)%s\n", string(step.URN), step.Op, extra))
+		writeString(b, fmt.Sprintf("%s: (%s)%s\n", string(step.URN), op, extra))
 	} else {
-		writeString(b, fmt.Sprintf("%s: (%s)%s\n", string(step.Type), step.Op, extra))
+		writeString(b, fmt.Sprintf("%s: (%s)%s\n", string(step.Type), op, extra))
 	}
+}
+
+// addRetainStatusFlag adds a "[retain]" suffix to the input string if the resource is marked as
+// RetainOnDelete and the step will discard the resource.
+func addRetainStatusFlag(status string, step engine.StepEventMetadata) string {
+	if step.Old == nil || !step.Old.RetainOnDelete {
+		return status
+	}
+
+	switch step.Op {
+	// Deletes and Replacements should indicate retain on delete behavior as they can leave
+	// untracked resources in the environment.
+	case deploy.OpDelete, deploy.OpReplace, deploy.OpCreateReplacement, deploy.OpDeleteReplaced:
+		status += "[retain]"
+	}
+
+	return status
 }
 
 func getIndentationString(indent int, op display.StepOp, prefix bool) string {
@@ -680,8 +699,8 @@ func (p *propertyPrinter) printPropertyValueRecurse(v resource.PropertyValue) {
 			massaged := a.Text
 
 			// pretty print the text, line by line, with proper breaks.
-			lines := strings.Split(massaged, "\n")
-			for _, line := range lines {
+			lines := strings.SplitSeq(massaged, "\n")
+			for line := range lines {
 				p.writeUnprefixedIndentedf("    %s\n", line)
 			}
 			p.writeUnprefixedIndentedf("}")
@@ -867,6 +886,20 @@ func (p *propertyPrinter) printPropertyValueDiff(titleFunc func(*propertyPrinter
 	p = p.withOp(deploy.OpUpdate).withPrefix(true)
 	contract.Assertf(p.indent > 0, "indentation must be > 0 to print property value diffs")
 
+	if p.showSecrets && (diff.Old.IsSecret() || diff.New.IsSecret()) {
+		old, new := diff.Old, diff.New
+		if old.IsSecret() {
+			old = old.SecretValue().Element
+		}
+		if new.IsSecret() {
+			new = new.SecretValue().Element
+		}
+		if elemDiff := old.Diff(new); elemDiff != nil {
+			p.printPropertyValueDiff(titleFunc, *elemDiff)
+			return
+		}
+	}
+
 	if diff.Array != nil {
 		titleFunc(p)
 		p.writeVerbatim("[\n")
@@ -910,7 +943,8 @@ func (p *propertyPrinter) printPropertyValueDiff(titleFunc func(*propertyPrinter
 			if isPrimitive(diff.Old) && isPrimitive(diff.New) {
 				titleFunc(p)
 
-				if diff.Old.IsString() && diff.New.IsString() {
+				if diff.Old.IsString() && diff.New.IsString() &&
+					utf8.ValidString(diff.Old.StringValue()) && utf8.ValidString(diff.New.StringValue()) {
 					p.printTextDiff(diff.Old.StringValue(), diff.New.StringValue())
 					return
 				}
@@ -959,6 +993,10 @@ func (p *propertyPrinter) printPrimitivePropertyValue(v resource.PropertyValue) 
 			p.writef("%g", number)
 		}
 	} else if v.IsString() {
+		if !utf8.ValidString(v.StringValue()) {
+			p.writeVerbatim(byteStringDisplay(v.StringValue()))
+			return
+		}
 		if vv, kind, ok := p.decodeValue(v.StringValue()); ok {
 			p.writef("(%s) ", kind)
 			p.printPropertyValue(vv)

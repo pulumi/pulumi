@@ -17,6 +17,8 @@ package engine
 import (
 	"testing"
 
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
+
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/stretchr/testify/require"
@@ -29,47 +31,47 @@ func TestMustWrite(t *testing.T) {
 
 	cases := []struct {
 		name      string
-		old       *resource.State
-		new       *resource.State
+		old       *pkgresource.State
+		new       *pkgresource.State
 		mustWrite bool
 	}{
 		{
 			name:      "changed URN",
-			old:       &resource.State{URN: defaultURN},
-			new:       &resource.State{URN: "urn:pulumi:test::stack::pulumi:providers:aws::default_4_42_1"},
+			old:       &pkgresource.State{URN: defaultURN},
+			new:       &pkgresource.State{URN: "urn:pulumi:test::stack::pulumi:providers:aws::default_4_42_1"},
 			mustWrite: true,
 		},
 		{
 			name:      "type changed",
-			old:       &resource.State{URN: defaultURN, Type: "pulumi:providers:aws"},
-			new:       &resource.State{URN: defaultURN, Type: "pulumi:providers:awsx"},
+			old:       &pkgresource.State{URN: defaultURN, Type: "pulumi:providers:aws"},
+			new:       &pkgresource.State{URN: defaultURN, Type: "pulumi:providers:awsx"},
 			mustWrite: true,
 		},
 		{
 			name:      "custom changed",
-			old:       &resource.State{URN: defaultURN, Type: "pulumi:providers:aws", ID: "a", Custom: true},
-			new:       &resource.State{URN: defaultURN, Type: "pulumi:providers:aws", ID: "", Custom: false},
+			old:       &pkgresource.State{URN: defaultURN, Type: "pulumi:providers:aws", ID: "a", Custom: true},
+			new:       &pkgresource.State{URN: defaultURN, Type: "pulumi:providers:aws", ID: "", Custom: false},
 			mustWrite: true,
 		},
 		{
 			name:      "custom timeout changed",
-			old:       &resource.State{URN: defaultURN, CustomTimeouts: resource.CustomTimeouts{Create: 600}},
-			new:       &resource.State{URN: defaultURN, CustomTimeouts: resource.CustomTimeouts{Create: 900}},
+			old:       &pkgresource.State{URN: defaultURN, CustomTimeouts: resource.CustomTimeouts{Create: 600}},
+			new:       &pkgresource.State{URN: defaultURN, CustomTimeouts: resource.CustomTimeouts{Create: 900}},
 			mustWrite: true,
 		},
 		{
 			name:      "RetainOnDelete changed",
-			old:       &resource.State{URN: defaultURN, RetainOnDelete: false},
-			new:       &resource.State{URN: defaultURN, RetainOnDelete: true},
+			old:       &pkgresource.State{URN: defaultURN, RetainOnDelete: false},
+			new:       &pkgresource.State{URN: defaultURN, RetainOnDelete: true},
 			mustWrite: true,
 		},
 		{
 			name: "Provider changed",
-			old: &resource.State{
+			old: &pkgresource.State{
 				URN:      defaultURN,
 				Provider: "urn:pulumi:test::stack::pulumi:providers:aws::default_4_42_0::provider-id-1",
 			},
-			new: &resource.State{
+			new: &pkgresource.State{
 				URN:      defaultURN,
 				Provider: "urn:pulumi:test::stack::pulumi:providers:aws::default_4_42_0::provider-id-2",
 			},
@@ -77,17 +79,17 @@ func TestMustWrite(t *testing.T) {
 		},
 		{
 			name:      "Parent changed",
-			old:       &resource.State{URN: defaultURN, Parent: "urn:pulumi:test::stack::pulumi:pulumi:Stack::parent1"},
-			new:       &resource.State{URN: defaultURN, Parent: "urn:pulumi:test::stack::pulumi:pulumi:Stack::parent2"},
+			old:       &pkgresource.State{URN: defaultURN, Parent: "urn:pulumi:test::stack::pulumi:pulumi:Stack::parent1"},
+			new:       &pkgresource.State{URN: defaultURN, Parent: "urn:pulumi:test::stack::pulumi:pulumi:Stack::parent2"},
 			mustWrite: true,
 		},
 		{
 			name: "DeletedWith changed",
-			old: &resource.State{
+			old: &pkgresource.State{
 				URN:         defaultURN,
 				DeletedWith: "urn:pulumi:test::stack::pulumi:pulumi:Stack::resource1",
 			},
-			new: &resource.State{
+			new: &pkgresource.State{
 				URN:         defaultURN,
 				DeletedWith: "urn:pulumi:test::stack::pulumi:pulumi:Stack::resource2",
 			},
@@ -95,36 +97,36 @@ func TestMustWrite(t *testing.T) {
 		},
 		{
 			name: "ReplaceWith changed - different length",
-			old: &resource.State{
+			old: &pkgresource.State{
 				URN:         defaultURN,
 				ReplaceWith: []resource.URN{"urn:pulumi:test::stack::pulumi:pulumi:Stack::resource1"},
 			},
-			new:       &resource.State{URN: defaultURN, ReplaceWith: []resource.URN{}},
+			new:       &pkgresource.State{URN: defaultURN, ReplaceWith: []resource.URN{}},
 			mustWrite: true,
 		},
 		{
 			name: "ReplaceWith changed - different content",
-			old: &resource.State{URN: defaultURN, ReplaceWith: []resource.URN{
+			old: &pkgresource.State{URN: defaultURN, ReplaceWith: []resource.URN{
 				"urn:pulumi:test::stack::pulumi:pulumi:Stack::resource1",
 			}},
-			new: &resource.State{URN: defaultURN, ReplaceWith: []resource.URN{
+			new: &pkgresource.State{URN: defaultURN, ReplaceWith: []resource.URN{
 				"urn:pulumi:test::stack::pulumi:pulumi:Stack::resource2",
 			}},
 			mustWrite: true,
 		},
 		{
 			name:      "Protect changed",
-			old:       &resource.State{URN: defaultURN, Protect: false},
-			new:       &resource.State{URN: defaultURN, Protect: true},
+			old:       &pkgresource.State{URN: defaultURN, Protect: false},
+			new:       &pkgresource.State{URN: defaultURN, Protect: true},
 			mustWrite: true,
 		},
 		{
 			name: "Inputs changed",
-			old: &resource.State{
+			old: &pkgresource.State{
 				URN:    defaultURN,
 				Inputs: resource.PropertyMap{"key": resource.NewProperty("value1")},
 			},
-			new: &resource.State{
+			new: &pkgresource.State{
 				URN:    defaultURN,
 				Inputs: resource.PropertyMap{"key": resource.NewProperty("value2")},
 			},
@@ -132,11 +134,11 @@ func TestMustWrite(t *testing.T) {
 		},
 		{
 			name: "Outputs changed",
-			old: &resource.State{
+			old: &pkgresource.State{
 				URN:     defaultURN,
 				Outputs: resource.PropertyMap{"key": resource.NewProperty("value1")},
 			},
-			new: &resource.State{
+			new: &pkgresource.State{
 				URN:     defaultURN,
 				Outputs: resource.PropertyMap{"key": resource.NewProperty("value2")},
 			},
@@ -144,27 +146,27 @@ func TestMustWrite(t *testing.T) {
 		},
 		{
 			name: "Dependencies changed - added dependency",
-			old:  &resource.State{URN: defaultURN, Dependencies: []resource.URN{}},
-			new: &resource.State{URN: defaultURN, Dependencies: []resource.URN{
+			old:  &pkgresource.State{URN: defaultURN, Dependencies: []resource.URN{}},
+			new: &pkgresource.State{URN: defaultURN, Dependencies: []resource.URN{
 				"urn:pulumi:test::stack::pulumi:pulumi:Stack::resource1",
 			}},
 			mustWrite: true,
 		},
 		{
 			name: "Dependencies changed - removed dependency",
-			old: &resource.State{URN: defaultURN, Dependencies: []resource.URN{
+			old: &pkgresource.State{URN: defaultURN, Dependencies: []resource.URN{
 				"urn:pulumi:test::stack::pulumi:pulumi:Stack::resource1",
 			}},
-			new:       &resource.State{URN: defaultURN, Dependencies: []resource.URN{}},
+			new:       &pkgresource.State{URN: defaultURN, Dependencies: []resource.URN{}},
 			mustWrite: true,
 		},
 		{
 			name: "Dependencies changed - different order (should not trigger write)",
-			old: &resource.State{URN: defaultURN, Dependencies: []resource.URN{
+			old: &pkgresource.State{URN: defaultURN, Dependencies: []resource.URN{
 				"urn:pulumi:test::stack::pulumi:pulumi:Stack::resource1",
 				"urn:pulumi:test::stack::pulumi:pulumi:Stack::resource2",
 			}},
-			new: &resource.State{URN: defaultURN, Dependencies: []resource.URN{
+			new: &pkgresource.State{URN: defaultURN, Dependencies: []resource.URN{
 				"urn:pulumi:test::stack::pulumi:pulumi:Stack::resource2",
 				"urn:pulumi:test::stack::pulumi:pulumi:Stack::resource1",
 			}},
@@ -172,11 +174,11 @@ func TestMustWrite(t *testing.T) {
 		},
 		{
 			name: "PropertyDependencies changed - added property",
-			old: &resource.State{
+			old: &pkgresource.State{
 				URN:                  defaultURN,
 				PropertyDependencies: map[resource.PropertyKey][]resource.URN{},
 			},
-			new: &resource.State{
+			new: &pkgresource.State{
 				URN: defaultURN,
 				PropertyDependencies: map[resource.PropertyKey][]resource.URN{
 					"prop1": {"urn:pulumi:test::stack::pulumi:pulumi:Stack::resource1"},
@@ -186,13 +188,13 @@ func TestMustWrite(t *testing.T) {
 		},
 		{
 			name: "PropertyDependencies changed - removed property",
-			old: &resource.State{
+			old: &pkgresource.State{
 				URN: defaultURN,
 				PropertyDependencies: map[resource.PropertyKey][]resource.URN{
 					"prop1": {"urn:pulumi:test::stack::pulumi:pulumi:Stack::resource1"},
 				},
 			},
-			new: &resource.State{
+			new: &pkgresource.State{
 				URN:                  defaultURN,
 				PropertyDependencies: map[resource.PropertyKey][]resource.URN{},
 			},
@@ -200,13 +202,13 @@ func TestMustWrite(t *testing.T) {
 		},
 		{
 			name: "PropertyDependencies changed - missing property",
-			old: &resource.State{
+			old: &pkgresource.State{
 				URN: defaultURN,
 				PropertyDependencies: map[resource.PropertyKey][]resource.URN{
 					"prop1": {"urn:pulumi:test::stack::pulumi:pulumi:Stack::resource1"},
 				},
 			},
-			new: &resource.State{
+			new: &pkgresource.State{
 				URN: defaultURN,
 				PropertyDependencies: map[resource.PropertyKey][]resource.URN{
 					"prop2": {"urn:pulumi:test::stack::pulumi:pulumi:Stack::resource1"},
@@ -216,14 +218,14 @@ func TestMustWrite(t *testing.T) {
 		},
 		{
 			name: "PropertyDependencies changed - different dependencies for same property",
-			old: &resource.State{
+			old: &pkgresource.State{
 				URN: defaultURN,
 				PropertyDependencies: map[resource.PropertyKey][]resource.URN{
 					"prop1": {"urn:pulumi:test::stack::pulumi:pulumi:Stack::resource1"},
 					"prop2": {"urn:pulumi:test::stack::pulumi:pulumi:Stack::resource1"},
 				},
 			},
-			new: &resource.State{
+			new: &pkgresource.State{
 				URN: defaultURN,
 				PropertyDependencies: map[resource.PropertyKey][]resource.URN{
 					"prop1": {"urn:pulumi:test::stack::pulumi:pulumi:Stack::resource2"},
@@ -234,23 +236,23 @@ func TestMustWrite(t *testing.T) {
 		},
 		{
 			name: "ResourceHooks changed",
-			old: &resource.State{URN: defaultURN, ResourceHooks: map[resource.HookType][]string{
+			old: &pkgresource.State{URN: defaultURN, ResourceHooks: map[resource.HookType][]string{
 				resource.BeforeCreate: {"hook1"},
 			}},
-			new: &resource.State{URN: defaultURN, ResourceHooks: map[resource.HookType][]string{
+			new: &pkgresource.State{URN: defaultURN, ResourceHooks: map[resource.HookType][]string{
 				resource.BeforeCreate: {"hook2"},
 			}},
 			mustWrite: true,
 		},
 		{
 			name:      "SourcePosition changed - should not write",
-			old:       &resource.State{URN: defaultURN, SourcePosition: "pos1"},
-			new:       &resource.State{URN: defaultURN, SourcePosition: "pos2"},
+			old:       &pkgresource.State{URN: defaultURN, SourcePosition: "pos1"},
+			new:       &pkgresource.State{URN: defaultURN, SourcePosition: "pos2"},
 			mustWrite: false,
 		},
 		{
 			name: "nothing changed",
-			old: &resource.State{
+			old: &pkgresource.State{
 				URN:          defaultURN,
 				Type:         "pulumi:providers:aws",
 				Inputs:       resource.PropertyMap{"key": resource.NewProperty("value")},
@@ -262,7 +264,7 @@ func TestMustWrite(t *testing.T) {
 				ResourceHooks:  map[resource.HookType][]string{resource.BeforeCreate: {"hook1"}},
 				SourcePosition: "pos1",
 			},
-			new: &resource.State{
+			new: &pkgresource.State{
 				URN:          defaultURN,
 				Type:         "pulumi:providers:aws",
 				Inputs:       resource.PropertyMap{"key": resource.NewProperty("value")},

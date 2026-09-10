@@ -169,6 +169,8 @@ type DeploymentV3 struct {
 	// "snippets" feature so older CLIs that cannot evaluate them refuse the snapshot rather than silently
 	// dropping the resources they would produce.
 	Snippets []SnippetV1 `json:"snippets,omitempty" yaml:"snippets,omitempty"`
+	// Extensions is a map of extension blobs
+	Extensions map[ExtensionRef]Extension `json:"extensions,omitempty" yaml:"extensions,omitempty"`
 }
 
 func (snap *DeploymentV3) ToUntypedDeployment(version int, features []string) (*UntypedDeployment, error) {
@@ -266,7 +268,7 @@ func (snap *DeploymentV3) NormalizeURNReferences() (*DeploymentV3, error) {
 
 	// Rewrite References on every snippet. Each value is a URN that may have been an alias for a resource that
 	// is now stored under its canonical URN; updating in place keeps future updates resolving cleanly through
-	// the broker.
+	// the registration observer.
 	for i := range snap.Snippets {
 		for k, v := range snap.Snippets[i].References {
 			snap.Snippets[i].References[k] = string(fixURN(resource.URN(v)))
@@ -290,6 +292,8 @@ type SnapshotMetadataV1 struct {
 // SnippetV1 is the serialized form of a PCL snippet stored alongside a snapshot. Snippets are evaluated by the
 // engine on every update to produce additional resource registrations.
 type SnippetV1 struct {
+	// UUID is the stable identity of this snippet within the snapshot.
+	UUID string `json:"uuid" yaml:"uuid"`
 	// Name is the logical name of the resource this snippet registers.
 	Name string `json:"name" yaml:"name"`
 	// Type is the type token of the resource this snippet registers.
@@ -554,6 +558,10 @@ type ResourceV3 struct {
 	ViewOf resource.URN `json:"viewOf,omitempty" yaml:"viewOf,omitempty"`
 	// ResourceHooks is a map of hook types to lists of hook names for the given type.
 	ResourceHooks map[resource.HookType][]string `json:"resourceHooks,omitempty" yaml:"resourceHooks,omitempty"`
+	// ExtensionRef is a pointer into the extensions map if any.
+	ExtensionRef ExtensionRef `json:"extensionRef,omitempty" yaml:"extensionRef,omitempty"`
+	// SnippetID is the UUID of the snippet that most recently registered this resource, if any.
+	SnippetID string `json:"snippetID,omitempty" yaml:"snippetID,omitempty"`
 }
 
 // StackFrameV1 captures information about a stack frame.
@@ -685,4 +693,12 @@ type OperationStatus struct {
 	Kind    UpdateKind `json:"kind"`
 	Author  string     `json:"author"`
 	Started int64      `json:"started"`
+}
+
+type ExtensionRef string
+
+type Extension struct {
+	Name    string `json:"name"`
+	Version string `json:"version"`
+	Value   []byte `json:"value"`
 }

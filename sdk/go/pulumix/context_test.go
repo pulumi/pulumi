@@ -39,7 +39,7 @@ type testResourceInputs struct {
 }
 
 func (*testResourceInputs) ElementType() reflect.Type {
-	return reflect.TypeOf((*testResourceArgs)(nil))
+	return reflect.TypeFor[*testResourceArgs]()
 }
 
 type testResourceArgs struct {

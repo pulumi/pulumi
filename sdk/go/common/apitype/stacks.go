@@ -132,6 +132,18 @@ type BatchDecryptResponse struct {
 // ExportStackResponse defines the response body for exporting a Stack.
 type ExportStackResponse UntypedDeployment
 
+// StackOutputsResponse defines the response body for reading a Stack's outputs.
+type StackOutputsResponse struct {
+	// Outputs holds the root stack resource's outputs exactly as the checkpoint stores them.
+	// Secret values use the same secret object representation as an exported deployment.
+	// Resolve them with the secrets provider in SecretsProviders and treat them as sensitive.
+	// Outputs is absent when the stack has no state.
+	Outputs map[string]any `json:"outputs,omitempty"`
+	// SecretsProviders is the secrets provider for the secret values in Outputs.
+	// It is absent when the stack has no state.
+	SecretsProviders *SecretsProvidersV1 `json:"secretsProviders,omitempty"`
+}
+
 // ImportStackRequest defines the request body for importing a Stack.
 type ImportStackRequest UntypedDeployment
 

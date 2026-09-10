@@ -1,6 +1,6 @@
 import * as pulumi from "@pulumi/pulumi";
 
-function notImplemented(message: string) {
+function notImplemented(message: string): any {
     throw new Error(message);
 }
 

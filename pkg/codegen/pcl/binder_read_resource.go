@@ -64,9 +64,16 @@ func (b *binder) bindReadResourceTypes(ctx context.Context, node *ReadResource) 
 	stateInputs = b.resolveBaseResourceInputUnionTypes(node, stateInputs)
 	inputProperties := append([]*schema.Property{{
 		Name: "id",
-		Type: schema.StringType,
+		Type: &schema.InputType{ElementType: schema.StringType},
 	}}, stateInputs...)
 	node.InputType, node.OutputType, _ = b.computeBaseResourceInputOutputTypes(node, inputProperties, res.Properties)
+
+	// The schema layer has no ID type, so the "id" input above is bound as Input<string>.
+	// Retype it to Input<ID> so that codegen lowers literal string values directly to ID
+	// (e.g. `pulumi.ID("...")` in Go) instead of the plain string form.
+	if objectType, ok := node.InputType.(*model.ObjectType); ok {
+		objectType.Properties["id"] = model.NewUnionType(model.IDType, model.NewOutputType(model.IDType))
+	}
 
 	return diagnostics
 }

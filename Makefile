@@ -13,8 +13,9 @@ _ := $(shell mkdir -p bin)
 _ := $(shell cd pkg && go build -o ../bin/helpmakego github.com/iwahbe/helpmakego)
 
 PKG_CODEGEN := github.com/pulumi/pulumi/pkg/v3/codegen
-# nodejs and python codegen tests are much slower than go:
 PROJECT_PKGS    = $(shell cd ./pkg && go list ./... | grep -v -E '^${PKG_CODEGEN}/(go|nodejs|python)')
+LANGUAGE_CONFORMANCE_PKG := github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language
+TEST_FAST_PKGS  = $(filter-out ${LANGUAGE_CONFORMANCE_PKG},${PROJECT_PKGS})
 INTEGRATION_PKG := github.com/pulumi/pulumi/tests/integration
 PERFORMANCE_PKG := github.com/pulumi/pulumi/tests/performance
 TESTS_PKGS      = $(shell cd ./tests && go list -tags all ./... | grep -v tests/templates | grep -v ^${INTEGRATION_PKG}$ | grep -v ^${PERFORMANCE_PKG}$)
@@ -80,15 +81,16 @@ generate-cli-spec::
 
 .PHONY: generate-nodejs-automation-api
 generate-nodejs-automation-api:: generate-cli-spec
-	cd sdk/nodejs/tools/automation && yarn install && npm start ../../../../tools/automation/specification.json boilerplate/standard.ts ../../automation/interface
+	cd sdk/nodejs/tools/automation && npm ci && npm start ../../../../tools/automation/specification.json boilerplate/standard.ts ../../automation/interface
 
 .PHONY: test-nodejs-automation-api
 test-nodejs-automation-api:: generate-cli-spec
-	cd sdk/nodejs/tools/automation && yarn install && npm start ../../../../tools/automation/specification.json boilerplate/testing.ts && npm test
+	cd sdk/nodejs/tools/automation && npm ci && npm start ../../../../tools/automation/specification.json boilerplate/testing.ts && npm run build && npm test
 
 .PHONY: generate-python-automation-api
 generate-python-automation-api:: generate-cli-spec
 	cd sdk/python/tools/automation && pip install -q -r requirements.txt && python main.py ../../../../tools/automation/specification.json boilerplate/standard.py ../../lib/pulumi/automation/interface
+	cd sdk/python && uv run --frozen -m ruff format lib/pulumi/automation/interface
 
 .PHONY: test-python-automation-api
 test-python-automation-api::
@@ -105,6 +107,9 @@ generate-go-automation-api:: generate-cli-spec
 .PHONY: test-go-automation-api
 test-go-automation-api::
 	cd sdk && go test ./go/tools/automation/...
+
+.PHONY: generate-automation-apis
+generate-automation-apis:: generate-nodejs-automation-api generate-python-automation-api generate-go-automation-api
 
 # For the `pulumi` CLI, building grpc with grpcnotrace has no effect since there other imports that end up disabling
 # dead code elimation due to the usage of certain reflection methods.
@@ -154,6 +159,9 @@ lint_changelog::
 		echo "No pending changelog entries; skipping changie batch."; \
 	fi
 
+lint_changelog_style::
+	vale changelog/pending
+
 lint_pulumi_json::
 	# NOTE: github.com/santhosh-tekuri/jsonschema uses Go's regexp engine, but
 	# JSON schema says regexps should conform to ECMA 262.
@@ -162,14 +170,14 @@ lint_pulumi_json::
         # on the `ensure` target here because that installs extra dependencies, that we don't
 	# need here, and don't necessarily have installed in CI.
 	cd sdk/nodejs && make ensure
-	cd sdk/nodejs && yarn biome format ../../pkg/codegen/schema/pulumi.json
+	cd sdk/nodejs && npx biome format ../../pkg/codegen/schema/pulumi.json
 
 lint_pulumi_json_fix::
 	# We only want to run `make ensure` in sdk/nodejs to install biome.  We can't depend
         # on the `ensure` target here because that installs extra dependencies, that we don't
 	# need here, and don't necessarily have installed in CI.
 	cd sdk/nodejs && make ensure
-	cd sdk/nodejs && yarn biome format --write ../../pkg/codegen/schema/pulumi.json
+	cd sdk/nodejs && npx biome format --write ../../pkg/codegen/schema/pulumi.json
 
 lint_fix:: lint_golang_fix lint_pulumi_json_fix
 
@@ -227,10 +235,10 @@ lint_actions:
 	  -format '{{range $$err := .}}### Error at line {{$$err.Line}}, col {{$$err.Column}} of `{{$$err.Filepath}}`\n\n{{$$err.Message}}\n\n```\n{{$$err.Snippet}}\n```\n\n{{end}}'
 
 format:: ensure
-	cd sdk/nodejs && yarn biome format --write ../../pkg/codegen/schema/pulumi.json
+	cd sdk/nodejs && npx biome format --write ../../pkg/codegen/schema/pulumi.json
 
-test_fast:: build get_schemas
-	@cd pkg && $(GO_TEST_FAST) ${PROJECT_PKGS} ${PKG_CODEGEN_NODE}
+test_fast:: get_schemas
+	@cd pkg && $(GO_TEST_FAST) ${TEST_FAST_PKGS}
 
 test_all:: test_pkg test_integration
 
@@ -301,11 +309,11 @@ version=$(word 2,$(subst !, ,$@))
 schema-%: .make/ensure/curl .make/ensure/jq
 	@echo "Ensuring schema ${name}, ${version}"
 	@# Download the package from github, then stamp in the correct version.
-	@[ -f pkg/codegen/testing/test/testdata/${name}-${version}.json ] || \
+	@[ -f pkg/codegen/testing/utils/schemas/${name}-${version}.json ] || \
 		curl "https://raw.githubusercontent.com/pulumi/pulumi-${name}/v${version}/provider/cmd/pulumi-resource-${name}/schema.json" \
-		| jq '.version = "${version}"' >  pkg/codegen/testing/test/testdata/${name}-${version}.json
+		| jq '.version = "${version}"' >  pkg/codegen/testing/utils/schemas/${name}-${version}.json
 	@# Confirm that the correct version is present. If not, error out.
-	@FOUND="$$(jq -r '.version' pkg/codegen/testing/test/testdata/${name}-${version}.json)" &&        \
+	@FOUND="$$(jq -r '.version' pkg/codegen/testing/utils/schemas/${name}-${version}.json)" &&        \
 		if ! [ "$$FOUND" = "${version}" ]; then									           \
 			echo "${name} required version ${version} but found existing version $$FOUND"; \
 			exit 1;																		   \
@@ -321,7 +329,6 @@ schema-%: .make/ensure/curl .make/ensure/jq
 # As a courtesy to reviewers, please make changes to this list and the committed schema files in a
 # separate commit from other changes, as online code review tools may balk at rendering these diffs.
 get_schemas: \
-			schema-aws!5.4.0            \
 			schema-random!4.11.2        \
 			schema-tls!4.10.0
 

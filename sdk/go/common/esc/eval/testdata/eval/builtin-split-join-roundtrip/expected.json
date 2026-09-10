@@ -1,0 +1,2595 @@
+{
+    "check": {
+        "exprs": {
+            "joined": {
+                "range": {
+                    "environment": "builtin-split-join-roundtrip",
+                    "begin": {
+                        "line": 24,
+                        "column": 5,
+                        "byte": 440
+                    },
+                    "end": {
+                        "line": 26,
+                        "column": 25,
+                        "byte": 486
+                    }
+                },
+                "schema": {
+                    "type": "string"
+                },
+                "builtin": {
+                    "name": "fn::join",
+                    "nameRange": {
+                        "environment": "builtin-split-join-roundtrip",
+                        "begin": {
+                            "line": 24,
+                            "column": 5,
+                            "byte": 440
+                        },
+                        "end": {
+                            "line": 24,
+                            "column": 13,
+                            "byte": 448
+                        }
+                    },
+                    "argSchema": {
+                        "prefixItems": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "items": {
+                                    "type": "string"
+                                },
+                                "type": "array"
+                            }
+                        ],
+                        "items": false,
+                        "type": "array"
+                    },
+                    "arg": {
+                        "range": {
+                            "environment": "builtin-split-join-roundtrip",
+                            "begin": {
+                                "line": 25,
+                                "column": 7,
+                                "byte": 456
+                            },
+                            "end": {
+                                "line": 26,
+                                "column": 25,
+                                "byte": 486
+                            }
+                        },
+                        "list": [
+                            {
+                                "range": {
+                                    "environment": "builtin-split-join-roundtrip",
+                                    "begin": {
+                                        "line": 25,
+                                        "column": 9,
+                                        "byte": 458
+                                    },
+                                    "end": {
+                                        "line": 25,
+                                        "column": 10,
+                                        "byte": 459
+                                    }
+                                },
+                                "schema": {
+                                    "type": "string",
+                                    "const": ":"
+                                },
+                                "literal": ":"
+                            },
+                            {
+                                "range": {
+                                    "environment": "builtin-split-join-roundtrip",
+                                    "begin": {
+                                        "line": 26,
+                                        "column": 9,
+                                        "byte": 470
+                                    },
+                                    "end": {
+                                        "line": 26,
+                                        "column": 25,
+                                        "byte": 486
+                                    }
+                                },
+                                "schema": {
+                                    "prefixItems": [
+                                        {
+                                            "type": "string",
+                                            "const": "foo"
+                                        },
+                                        {
+                                            "type": "string",
+                                            "const": "bar"
+                                        },
+                                        {
+                                            "type": "string",
+                                            "const": "baz"
+                                        }
+                                    ],
+                                    "items": false,
+                                    "type": "array"
+                                },
+                                "symbol": [
+                                    {
+                                        "key": "originalArray",
+                                        "range": {
+                                            "environment": "builtin-split-join-roundtrip",
+                                            "begin": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            },
+                                            "end": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            }
+                                        },
+                                        "value": {
+                                            "environment": "builtin-split-join-roundtrip",
+                                            "begin": {
+                                                "line": 21,
+                                                "column": 18,
+                                                "byte": 403
+                                            },
+                                            "end": {
+                                                "line": 21,
+                                                "column": 36,
+                                                "byte": 421
+                                            }
+                                        }
+                                    }
+                                ]
+                            }
+                        ]
+                    }
+                }
+            },
+            "joinedBack": {
+                "range": {
+                    "environment": "builtin-split-join-roundtrip",
+                    "begin": {
+                        "line": 13,
+                        "column": 5,
+                        "byte": 204
+                    },
+                    "end": {
+                        "line": 15,
+                        "column": 22,
+                        "byte": 248
+                    }
+                },
+                "schema": {
+                    "type": "string"
+                },
+                "builtin": {
+                    "name": "fn::join",
+                    "nameRange": {
+                        "environment": "builtin-split-join-roundtrip",
+                        "begin": {
+                            "line": 13,
+                            "column": 5,
+                            "byte": 204
+                        },
+                        "end": {
+                            "line": 13,
+                            "column": 13,
+                            "byte": 212
+                        }
+                    },
+                    "argSchema": {
+                        "prefixItems": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "items": {
+                                    "type": "string"
+                                },
+                                "type": "array"
+                            }
+                        ],
+                        "items": false,
+                        "type": "array"
+                    },
+                    "arg": {
+                        "range": {
+                            "environment": "builtin-split-join-roundtrip",
+                            "begin": {
+                                "line": 14,
+                                "column": 7,
+                                "byte": 220
+                            },
+                            "end": {
+                                "line": 15,
+                                "column": 22,
+                                "byte": 248
+                            }
+                        },
+                        "list": [
+                            {
+                                "range": {
+                                    "environment": "builtin-split-join-roundtrip",
+                                    "begin": {
+                                        "line": 14,
+                                        "column": 9,
+                                        "byte": 222
+                                    },
+                                    "end": {
+                                        "line": 14,
+                                        "column": 11,
+                                        "byte": 224
+                                    }
+                                },
+                                "schema": {
+                                    "type": "string",
+                                    "const": ", "
+                                },
+                                "literal": ", "
+                            },
+                            {
+                                "range": {
+                                    "environment": "builtin-split-join-roundtrip",
+                                    "begin": {
+                                        "line": 15,
+                                        "column": 9,
+                                        "byte": 235
+                                    },
+                                    "end": {
+                                        "line": 15,
+                                        "column": 22,
+                                        "byte": 248
+                                    }
+                                },
+                                "schema": {
+                                    "items": {
+                                        "type": "string"
+                                    },
+                                    "type": "array"
+                                },
+                                "symbol": [
+                                    {
+                                        "key": "splitArray",
+                                        "range": {
+                                            "environment": "builtin-split-join-roundtrip",
+                                            "begin": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            },
+                                            "end": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            }
+                                        },
+                                        "value": {
+                                            "environment": "builtin-split-join-roundtrip",
+                                            "begin": {
+                                                "line": 7,
+                                                "column": 5,
+                                                "byte": 110
+                                            },
+                                            "end": {
+                                                "line": 9,
+                                                "column": 20,
+                                                "byte": 153
+                                            }
+                                        }
+                                    }
+                                ]
+                            }
+                        ]
+                    }
+                }
+            },
+            "original": {
+                "range": {
+                    "environment": "builtin-split-join-roundtrip",
+                    "begin": {
+                        "line": 3,
+                        "column": 13,
+                        "byte": 40
+                    },
+                    "end": {
+                        "line": 3,
+                        "column": 34,
+                        "byte": 61
+                    }
+                },
+                "schema": {
+                    "type": "string",
+                    "const": "apple, orange, banana"
+                },
+                "literal": "apple, orange, banana"
+            },
+            "originalArray": {
+                "range": {
+                    "environment": "builtin-split-join-roundtrip",
+                    "begin": {
+                        "line": 21,
+                        "column": 18,
+                        "byte": 403
+                    },
+                    "end": {
+                        "line": 21,
+                        "column": 36,
+                        "byte": 421
+                    }
+                },
+                "schema": {
+                    "prefixItems": [
+                        {
+                            "type": "string",
+                            "const": "foo"
+                        },
+                        {
+                            "type": "string",
+                            "const": "bar"
+                        },
+                        {
+                            "type": "string",
+                            "const": "baz"
+                        }
+                    ],
+                    "items": false,
+                    "type": "array"
+                },
+                "list": [
+                    {
+                        "range": {
+                            "environment": "builtin-split-join-roundtrip",
+                            "begin": {
+                                "line": 21,
+                                "column": 19,
+                                "byte": 404
+                            },
+                            "end": {
+                                "line": 21,
+                                "column": 22,
+                                "byte": 407
+                            }
+                        },
+                        "schema": {
+                            "type": "string",
+                            "const": "foo"
+                        },
+                        "literal": "foo"
+                    },
+                    {
+                        "range": {
+                            "environment": "builtin-split-join-roundtrip",
+                            "begin": {
+                                "line": 21,
+                                "column": 26,
+                                "byte": 411
+                            },
+                            "end": {
+                                "line": 21,
+                                "column": 29,
+                                "byte": 414
+                            }
+                        },
+                        "schema": {
+                            "type": "string",
+                            "const": "bar"
+                        },
+                        "literal": "bar"
+                    },
+                    {
+                        "range": {
+                            "environment": "builtin-split-join-roundtrip",
+                            "begin": {
+                                "line": 21,
+                                "column": 33,
+                                "byte": 418
+                            },
+                            "end": {
+                                "line": 21,
+                                "column": 36,
+                                "byte": 421
+                            }
+                        },
+                        "schema": {
+                            "type": "string",
+                            "const": "baz"
+                        },
+                        "literal": "baz"
+                    }
+                ]
+            },
+            "roundtripMatch": {
+                "range": {
+                    "environment": "builtin-split-join-roundtrip",
+                    "begin": {
+                        "line": 18,
+                        "column": 19,
+                        "byte": 321
+                    },
+                    "end": {
+                        "line": 18,
+                        "column": 32,
+                        "byte": 334
+                    }
+                },
+                "schema": {
+                    "type": "string"
+                },
+                "symbol": [
+                    {
+                        "key": "joinedBack",
+                        "range": {
+                            "environment": "builtin-split-join-roundtrip",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        },
+                        "value": {
+                            "environment": "builtin-split-join-roundtrip",
+                            "begin": {
+                                "line": 13,
+                                "column": 5,
+                                "byte": 204
+                            },
+                            "end": {
+                                "line": 15,
+                                "column": 22,
+                                "byte": 248
+                            }
+                        }
+                    }
+                ]
+            },
+            "splitArray": {
+                "range": {
+                    "environment": "builtin-split-join-roundtrip",
+                    "begin": {
+                        "line": 7,
+                        "column": 5,
+                        "byte": 110
+                    },
+                    "end": {
+                        "line": 9,
+                        "column": 20,
+                        "byte": 153
+                    }
+                },
+                "schema": {
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": "array"
+                },
+                "builtin": {
+                    "name": "fn::split",
+                    "nameRange": {
+                        "environment": "builtin-split-join-roundtrip",
+                        "begin": {
+                            "line": 7,
+                            "column": 5,
+                            "byte": 110
+                        },
+                        "end": {
+                            "line": 7,
+                            "column": 14,
+                            "byte": 119
+                        }
+                    },
+                    "argSchema": {
+                        "prefixItems": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "string"
+                            }
+                        ],
+                        "items": false,
+                        "type": "array"
+                    },
+                    "arg": {
+                        "range": {
+                            "environment": "builtin-split-join-roundtrip",
+                            "begin": {
+                                "line": 8,
+                                "column": 7,
+                                "byte": 127
+                            },
+                            "end": {
+                                "line": 9,
+                                "column": 20,
+                                "byte": 153
+                            }
+                        },
+                        "list": [
+                            {
+                                "range": {
+                                    "environment": "builtin-split-join-roundtrip",
+                                    "begin": {
+                                        "line": 8,
+                                        "column": 9,
+                                        "byte": 129
+                                    },
+                                    "end": {
+                                        "line": 8,
+                                        "column": 11,
+                                        "byte": 131
+                                    }
+                                },
+                                "schema": {
+                                    "type": "string",
+                                    "const": ", "
+                                },
+                                "literal": ", "
+                            },
+                            {
+                                "range": {
+                                    "environment": "builtin-split-join-roundtrip",
+                                    "begin": {
+                                        "line": 9,
+                                        "column": 9,
+                                        "byte": 142
+                                    },
+                                    "end": {
+                                        "line": 9,
+                                        "column": 20,
+                                        "byte": 153
+                                    }
+                                },
+                                "schema": {
+                                    "type": "string",
+                                    "const": "apple, orange, banana"
+                                },
+                                "symbol": [
+                                    {
+                                        "key": "original",
+                                        "range": {
+                                            "environment": "builtin-split-join-roundtrip",
+                                            "begin": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            },
+                                            "end": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            }
+                                        },
+                                        "value": {
+                                            "environment": "builtin-split-join-roundtrip",
+                                            "begin": {
+                                                "line": 3,
+                                                "column": 13,
+                                                "byte": 40
+                                            },
+                                            "end": {
+                                                "line": 3,
+                                                "column": 34,
+                                                "byte": 61
+                                            }
+                                        }
+                                    }
+                                ]
+                            }
+                        ]
+                    }
+                }
+            },
+            "splitBack": {
+                "range": {
+                    "environment": "builtin-split-join-roundtrip",
+                    "begin": {
+                        "line": 29,
+                        "column": 5,
+                        "byte": 507
+                    },
+                    "end": {
+                        "line": 31,
+                        "column": 18,
+                        "byte": 547
+                    }
+                },
+                "schema": {
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": "array"
+                },
+                "builtin": {
+                    "name": "fn::split",
+                    "nameRange": {
+                        "environment": "builtin-split-join-roundtrip",
+                        "begin": {
+                            "line": 29,
+                            "column": 5,
+                            "byte": 507
+                        },
+                        "end": {
+                            "line": 29,
+                            "column": 14,
+                            "byte": 516
+                        }
+                    },
+                    "argSchema": {
+                        "prefixItems": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "string"
+                            }
+                        ],
+                        "items": false,
+                        "type": "array"
+                    },
+                    "arg": {
+                        "range": {
+                            "environment": "builtin-split-join-roundtrip",
+                            "begin": {
+                                "line": 30,
+                                "column": 7,
+                                "byte": 524
+                            },
+                            "end": {
+                                "line": 31,
+                                "column": 18,
+                                "byte": 547
+                            }
+                        },
+                        "list": [
+                            {
+                                "range": {
+                                    "environment": "builtin-split-join-roundtrip",
+                                    "begin": {
+                                        "line": 30,
+                                        "column": 9,
+                                        "byte": 526
+                                    },
+                                    "end": {
+                                        "line": 30,
+                                        "column": 10,
+                                        "byte": 527
+                                    }
+                                },
+                                "schema": {
+                                    "type": "string",
+                                    "const": ":"
+                                },
+                                "literal": ":"
+                            },
+                            {
+                                "range": {
+                                    "environment": "builtin-split-join-roundtrip",
+                                    "begin": {
+                                        "line": 31,
+                                        "column": 9,
+                                        "byte": 538
+                                    },
+                                    "end": {
+                                        "line": 31,
+                                        "column": 18,
+                                        "byte": 547
+                                    }
+                                },
+                                "schema": {
+                                    "type": "string"
+                                },
+                                "symbol": [
+                                    {
+                                        "key": "joined",
+                                        "range": {
+                                            "environment": "builtin-split-join-roundtrip",
+                                            "begin": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            },
+                                            "end": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            }
+                                        },
+                                        "value": {
+                                            "environment": "builtin-split-join-roundtrip",
+                                            "begin": {
+                                                "line": 24,
+                                                "column": 5,
+                                                "byte": 440
+                                            },
+                                            "end": {
+                                                "line": 26,
+                                                "column": 25,
+                                                "byte": 486
+                                            }
+                                        }
+                                    }
+                                ]
+                            }
+                        ]
+                    }
+                }
+            }
+        },
+        "properties": {
+            "joined": {
+                "value": "foo:bar:baz",
+                "trace": {
+                    "def": {
+                        "environment": "builtin-split-join-roundtrip",
+                        "begin": {
+                            "line": 24,
+                            "column": 5,
+                            "byte": 440
+                        },
+                        "end": {
+                            "line": 26,
+                            "column": 25,
+                            "byte": 486
+                        }
+                    }
+                }
+            },
+            "joinedBack": {
+                "value": "apple, orange, banana",
+                "trace": {
+                    "def": {
+                        "environment": "builtin-split-join-roundtrip",
+                        "begin": {
+                            "line": 13,
+                            "column": 5,
+                            "byte": 204
+                        },
+                        "end": {
+                            "line": 15,
+                            "column": 22,
+                            "byte": 248
+                        }
+                    }
+                }
+            },
+            "original": {
+                "value": "apple, orange, banana",
+                "trace": {
+                    "def": {
+                        "environment": "builtin-split-join-roundtrip",
+                        "begin": {
+                            "line": 3,
+                            "column": 13,
+                            "byte": 40
+                        },
+                        "end": {
+                            "line": 3,
+                            "column": 34,
+                            "byte": 61
+                        }
+                    }
+                }
+            },
+            "originalArray": {
+                "value": [
+                    {
+                        "value": "foo",
+                        "trace": {
+                            "def": {
+                                "environment": "builtin-split-join-roundtrip",
+                                "begin": {
+                                    "line": 21,
+                                    "column": 19,
+                                    "byte": 404
+                                },
+                                "end": {
+                                    "line": 21,
+                                    "column": 22,
+                                    "byte": 407
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "value": "bar",
+                        "trace": {
+                            "def": {
+                                "environment": "builtin-split-join-roundtrip",
+                                "begin": {
+                                    "line": 21,
+                                    "column": 26,
+                                    "byte": 411
+                                },
+                                "end": {
+                                    "line": 21,
+                                    "column": 29,
+                                    "byte": 414
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "value": "baz",
+                        "trace": {
+                            "def": {
+                                "environment": "builtin-split-join-roundtrip",
+                                "begin": {
+                                    "line": 21,
+                                    "column": 33,
+                                    "byte": 418
+                                },
+                                "end": {
+                                    "line": 21,
+                                    "column": 36,
+                                    "byte": 421
+                                }
+                            }
+                        }
+                    }
+                ],
+                "trace": {
+                    "def": {
+                        "environment": "builtin-split-join-roundtrip",
+                        "begin": {
+                            "line": 21,
+                            "column": 18,
+                            "byte": 403
+                        },
+                        "end": {
+                            "line": 21,
+                            "column": 36,
+                            "byte": 421
+                        }
+                    }
+                }
+            },
+            "roundtripMatch": {
+                "value": "apple, orange, banana",
+                "trace": {
+                    "def": {
+                        "environment": "builtin-split-join-roundtrip",
+                        "begin": {
+                            "line": 18,
+                            "column": 19,
+                            "byte": 321
+                        },
+                        "end": {
+                            "line": 18,
+                            "column": 32,
+                            "byte": 334
+                        }
+                    }
+                }
+            },
+            "splitArray": {
+                "value": [
+                    {
+                        "value": "apple",
+                        "trace": {
+                            "def": {
+                                "environment": "builtin-split-join-roundtrip",
+                                "begin": {
+                                    "line": 7,
+                                    "column": 5,
+                                    "byte": 110
+                                },
+                                "end": {
+                                    "line": 9,
+                                    "column": 20,
+                                    "byte": 153
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "value": "orange",
+                        "trace": {
+                            "def": {
+                                "environment": "builtin-split-join-roundtrip",
+                                "begin": {
+                                    "line": 7,
+                                    "column": 5,
+                                    "byte": 110
+                                },
+                                "end": {
+                                    "line": 9,
+                                    "column": 20,
+                                    "byte": 153
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "value": "banana",
+                        "trace": {
+                            "def": {
+                                "environment": "builtin-split-join-roundtrip",
+                                "begin": {
+                                    "line": 7,
+                                    "column": 5,
+                                    "byte": 110
+                                },
+                                "end": {
+                                    "line": 9,
+                                    "column": 20,
+                                    "byte": 153
+                                }
+                            }
+                        }
+                    }
+                ],
+                "trace": {
+                    "def": {
+                        "environment": "builtin-split-join-roundtrip",
+                        "begin": {
+                            "line": 7,
+                            "column": 5,
+                            "byte": 110
+                        },
+                        "end": {
+                            "line": 9,
+                            "column": 20,
+                            "byte": 153
+                        }
+                    }
+                }
+            },
+            "splitBack": {
+                "value": [
+                    {
+                        "value": "foo",
+                        "trace": {
+                            "def": {
+                                "environment": "builtin-split-join-roundtrip",
+                                "begin": {
+                                    "line": 29,
+                                    "column": 5,
+                                    "byte": 507
+                                },
+                                "end": {
+                                    "line": 31,
+                                    "column": 18,
+                                    "byte": 547
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "value": "bar",
+                        "trace": {
+                            "def": {
+                                "environment": "builtin-split-join-roundtrip",
+                                "begin": {
+                                    "line": 29,
+                                    "column": 5,
+                                    "byte": 507
+                                },
+                                "end": {
+                                    "line": 31,
+                                    "column": 18,
+                                    "byte": 547
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "value": "baz",
+                        "trace": {
+                            "def": {
+                                "environment": "builtin-split-join-roundtrip",
+                                "begin": {
+                                    "line": 29,
+                                    "column": 5,
+                                    "byte": 507
+                                },
+                                "end": {
+                                    "line": 31,
+                                    "column": 18,
+                                    "byte": 547
+                                }
+                            }
+                        }
+                    }
+                ],
+                "trace": {
+                    "def": {
+                        "environment": "builtin-split-join-roundtrip",
+                        "begin": {
+                            "line": 29,
+                            "column": 5,
+                            "byte": 507
+                        },
+                        "end": {
+                            "line": 31,
+                            "column": 18,
+                            "byte": 547
+                        }
+                    }
+                }
+            }
+        },
+        "schema": {
+            "properties": {
+                "joined": {
+                    "type": "string"
+                },
+                "joinedBack": {
+                    "type": "string"
+                },
+                "original": {
+                    "type": "string",
+                    "const": "apple, orange, banana"
+                },
+                "originalArray": {
+                    "prefixItems": [
+                        {
+                            "type": "string",
+                            "const": "foo"
+                        },
+                        {
+                            "type": "string",
+                            "const": "bar"
+                        },
+                        {
+                            "type": "string",
+                            "const": "baz"
+                        }
+                    ],
+                    "items": false,
+                    "type": "array"
+                },
+                "roundtripMatch": {
+                    "type": "string"
+                },
+                "splitArray": {
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": "array"
+                },
+                "splitBack": {
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": "array"
+                }
+            },
+            "type": "object",
+            "required": [
+                "joined",
+                "joinedBack",
+                "original",
+                "originalArray",
+                "roundtripMatch",
+                "splitArray",
+                "splitBack"
+            ]
+        },
+        "executionContext": {
+            "properties": {
+                "currentEnvironment": {
+                    "value": {
+                        "name": {
+                            "value": "builtin-split-join-roundtrip",
+                            "trace": {
+                                "def": {
+                                    "environment": "builtin-split-join-roundtrip",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "builtin-split-join-roundtrip",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                },
+                "pulumi": {
+                    "value": {
+                        "user": {
+                            "value": {
+                                "id": {
+                                    "value": "USER_123",
+                                    "trace": {
+                                        "def": {
+                                            "environment": "builtin-split-join-roundtrip",
+                                            "begin": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            },
+                                            "end": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            }
+                                        }
+                                    }
+                                }
+                            },
+                            "trace": {
+                                "def": {
+                                    "environment": "builtin-split-join-roundtrip",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "builtin-split-join-roundtrip",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                },
+                "rootEnvironment": {
+                    "value": {
+                        "name": {
+                            "value": "builtin-split-join-roundtrip",
+                            "trace": {
+                                "def": {
+                                    "environment": "builtin-split-join-roundtrip",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "builtin-split-join-roundtrip",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                }
+            },
+            "schema": {
+                "properties": {
+                    "currentEnvironment": {
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "const": "builtin-split-join-roundtrip"
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "name"
+                        ]
+                    },
+                    "pulumi": {
+                        "properties": {
+                            "user": {
+                                "properties": {
+                                    "id": {
+                                        "type": "string",
+                                        "const": "USER_123"
+                                    }
+                                },
+                                "type": "object",
+                                "required": [
+                                    "id"
+                                ]
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "user"
+                        ]
+                    },
+                    "rootEnvironment": {
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "const": "builtin-split-join-roundtrip"
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "name"
+                        ]
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "currentEnvironment",
+                    "pulumi",
+                    "rootEnvironment"
+                ]
+            }
+        }
+    },
+    "checkJson": {
+        "joined": "foo:bar:baz",
+        "joinedBack": "apple, orange, banana",
+        "original": "apple, orange, banana",
+        "originalArray": [
+            "foo",
+            "bar",
+            "baz"
+        ],
+        "roundtripMatch": "apple, orange, banana",
+        "splitArray": [
+            "apple",
+            "orange",
+            "banana"
+        ],
+        "splitBack": [
+            "foo",
+            "bar",
+            "baz"
+        ]
+    },
+    "eval": {
+        "exprs": {
+            "joined": {
+                "range": {
+                    "environment": "builtin-split-join-roundtrip",
+                    "begin": {
+                        "line": 24,
+                        "column": 5,
+                        "byte": 440
+                    },
+                    "end": {
+                        "line": 26,
+                        "column": 25,
+                        "byte": 486
+                    }
+                },
+                "schema": {
+                    "type": "string"
+                },
+                "builtin": {
+                    "name": "fn::join",
+                    "nameRange": {
+                        "environment": "builtin-split-join-roundtrip",
+                        "begin": {
+                            "line": 24,
+                            "column": 5,
+                            "byte": 440
+                        },
+                        "end": {
+                            "line": 24,
+                            "column": 13,
+                            "byte": 448
+                        }
+                    },
+                    "argSchema": {
+                        "prefixItems": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "items": {
+                                    "type": "string"
+                                },
+                                "type": "array"
+                            }
+                        ],
+                        "items": false,
+                        "type": "array"
+                    },
+                    "arg": {
+                        "range": {
+                            "environment": "builtin-split-join-roundtrip",
+                            "begin": {
+                                "line": 25,
+                                "column": 7,
+                                "byte": 456
+                            },
+                            "end": {
+                                "line": 26,
+                                "column": 25,
+                                "byte": 486
+                            }
+                        },
+                        "list": [
+                            {
+                                "range": {
+                                    "environment": "builtin-split-join-roundtrip",
+                                    "begin": {
+                                        "line": 25,
+                                        "column": 9,
+                                        "byte": 458
+                                    },
+                                    "end": {
+                                        "line": 25,
+                                        "column": 10,
+                                        "byte": 459
+                                    }
+                                },
+                                "schema": {
+                                    "type": "string",
+                                    "const": ":"
+                                },
+                                "literal": ":"
+                            },
+                            {
+                                "range": {
+                                    "environment": "builtin-split-join-roundtrip",
+                                    "begin": {
+                                        "line": 26,
+                                        "column": 9,
+                                        "byte": 470
+                                    },
+                                    "end": {
+                                        "line": 26,
+                                        "column": 25,
+                                        "byte": 486
+                                    }
+                                },
+                                "schema": {
+                                    "prefixItems": [
+                                        {
+                                            "type": "string",
+                                            "const": "foo"
+                                        },
+                                        {
+                                            "type": "string",
+                                            "const": "bar"
+                                        },
+                                        {
+                                            "type": "string",
+                                            "const": "baz"
+                                        }
+                                    ],
+                                    "items": false,
+                                    "type": "array"
+                                },
+                                "symbol": [
+                                    {
+                                        "key": "originalArray",
+                                        "range": {
+                                            "environment": "builtin-split-join-roundtrip",
+                                            "begin": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            },
+                                            "end": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            }
+                                        },
+                                        "value": {
+                                            "environment": "builtin-split-join-roundtrip",
+                                            "begin": {
+                                                "line": 21,
+                                                "column": 18,
+                                                "byte": 403
+                                            },
+                                            "end": {
+                                                "line": 21,
+                                                "column": 36,
+                                                "byte": 421
+                                            }
+                                        }
+                                    }
+                                ]
+                            }
+                        ]
+                    }
+                }
+            },
+            "joinedBack": {
+                "range": {
+                    "environment": "builtin-split-join-roundtrip",
+                    "begin": {
+                        "line": 13,
+                        "column": 5,
+                        "byte": 204
+                    },
+                    "end": {
+                        "line": 15,
+                        "column": 22,
+                        "byte": 248
+                    }
+                },
+                "schema": {
+                    "type": "string"
+                },
+                "builtin": {
+                    "name": "fn::join",
+                    "nameRange": {
+                        "environment": "builtin-split-join-roundtrip",
+                        "begin": {
+                            "line": 13,
+                            "column": 5,
+                            "byte": 204
+                        },
+                        "end": {
+                            "line": 13,
+                            "column": 13,
+                            "byte": 212
+                        }
+                    },
+                    "argSchema": {
+                        "prefixItems": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "items": {
+                                    "type": "string"
+                                },
+                                "type": "array"
+                            }
+                        ],
+                        "items": false,
+                        "type": "array"
+                    },
+                    "arg": {
+                        "range": {
+                            "environment": "builtin-split-join-roundtrip",
+                            "begin": {
+                                "line": 14,
+                                "column": 7,
+                                "byte": 220
+                            },
+                            "end": {
+                                "line": 15,
+                                "column": 22,
+                                "byte": 248
+                            }
+                        },
+                        "list": [
+                            {
+                                "range": {
+                                    "environment": "builtin-split-join-roundtrip",
+                                    "begin": {
+                                        "line": 14,
+                                        "column": 9,
+                                        "byte": 222
+                                    },
+                                    "end": {
+                                        "line": 14,
+                                        "column": 11,
+                                        "byte": 224
+                                    }
+                                },
+                                "schema": {
+                                    "type": "string",
+                                    "const": ", "
+                                },
+                                "literal": ", "
+                            },
+                            {
+                                "range": {
+                                    "environment": "builtin-split-join-roundtrip",
+                                    "begin": {
+                                        "line": 15,
+                                        "column": 9,
+                                        "byte": 235
+                                    },
+                                    "end": {
+                                        "line": 15,
+                                        "column": 22,
+                                        "byte": 248
+                                    }
+                                },
+                                "schema": {
+                                    "items": {
+                                        "type": "string"
+                                    },
+                                    "type": "array"
+                                },
+                                "symbol": [
+                                    {
+                                        "key": "splitArray",
+                                        "range": {
+                                            "environment": "builtin-split-join-roundtrip",
+                                            "begin": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            },
+                                            "end": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            }
+                                        },
+                                        "value": {
+                                            "environment": "builtin-split-join-roundtrip",
+                                            "begin": {
+                                                "line": 7,
+                                                "column": 5,
+                                                "byte": 110
+                                            },
+                                            "end": {
+                                                "line": 9,
+                                                "column": 20,
+                                                "byte": 153
+                                            }
+                                        }
+                                    }
+                                ]
+                            }
+                        ]
+                    }
+                }
+            },
+            "original": {
+                "range": {
+                    "environment": "builtin-split-join-roundtrip",
+                    "begin": {
+                        "line": 3,
+                        "column": 13,
+                        "byte": 40
+                    },
+                    "end": {
+                        "line": 3,
+                        "column": 34,
+                        "byte": 61
+                    }
+                },
+                "schema": {
+                    "type": "string",
+                    "const": "apple, orange, banana"
+                },
+                "literal": "apple, orange, banana"
+            },
+            "originalArray": {
+                "range": {
+                    "environment": "builtin-split-join-roundtrip",
+                    "begin": {
+                        "line": 21,
+                        "column": 18,
+                        "byte": 403
+                    },
+                    "end": {
+                        "line": 21,
+                        "column": 36,
+                        "byte": 421
+                    }
+                },
+                "schema": {
+                    "prefixItems": [
+                        {
+                            "type": "string",
+                            "const": "foo"
+                        },
+                        {
+                            "type": "string",
+                            "const": "bar"
+                        },
+                        {
+                            "type": "string",
+                            "const": "baz"
+                        }
+                    ],
+                    "items": false,
+                    "type": "array"
+                },
+                "list": [
+                    {
+                        "range": {
+                            "environment": "builtin-split-join-roundtrip",
+                            "begin": {
+                                "line": 21,
+                                "column": 19,
+                                "byte": 404
+                            },
+                            "end": {
+                                "line": 21,
+                                "column": 22,
+                                "byte": 407
+                            }
+                        },
+                        "schema": {
+                            "type": "string",
+                            "const": "foo"
+                        },
+                        "literal": "foo"
+                    },
+                    {
+                        "range": {
+                            "environment": "builtin-split-join-roundtrip",
+                            "begin": {
+                                "line": 21,
+                                "column": 26,
+                                "byte": 411
+                            },
+                            "end": {
+                                "line": 21,
+                                "column": 29,
+                                "byte": 414
+                            }
+                        },
+                        "schema": {
+                            "type": "string",
+                            "const": "bar"
+                        },
+                        "literal": "bar"
+                    },
+                    {
+                        "range": {
+                            "environment": "builtin-split-join-roundtrip",
+                            "begin": {
+                                "line": 21,
+                                "column": 33,
+                                "byte": 418
+                            },
+                            "end": {
+                                "line": 21,
+                                "column": 36,
+                                "byte": 421
+                            }
+                        },
+                        "schema": {
+                            "type": "string",
+                            "const": "baz"
+                        },
+                        "literal": "baz"
+                    }
+                ]
+            },
+            "roundtripMatch": {
+                "range": {
+                    "environment": "builtin-split-join-roundtrip",
+                    "begin": {
+                        "line": 18,
+                        "column": 19,
+                        "byte": 321
+                    },
+                    "end": {
+                        "line": 18,
+                        "column": 32,
+                        "byte": 334
+                    }
+                },
+                "schema": {
+                    "type": "string"
+                },
+                "symbol": [
+                    {
+                        "key": "joinedBack",
+                        "range": {
+                            "environment": "builtin-split-join-roundtrip",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        },
+                        "value": {
+                            "environment": "builtin-split-join-roundtrip",
+                            "begin": {
+                                "line": 13,
+                                "column": 5,
+                                "byte": 204
+                            },
+                            "end": {
+                                "line": 15,
+                                "column": 22,
+                                "byte": 248
+                            }
+                        }
+                    }
+                ]
+            },
+            "splitArray": {
+                "range": {
+                    "environment": "builtin-split-join-roundtrip",
+                    "begin": {
+                        "line": 7,
+                        "column": 5,
+                        "byte": 110
+                    },
+                    "end": {
+                        "line": 9,
+                        "column": 20,
+                        "byte": 153
+                    }
+                },
+                "schema": {
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": "array"
+                },
+                "builtin": {
+                    "name": "fn::split",
+                    "nameRange": {
+                        "environment": "builtin-split-join-roundtrip",
+                        "begin": {
+                            "line": 7,
+                            "column": 5,
+                            "byte": 110
+                        },
+                        "end": {
+                            "line": 7,
+                            "column": 14,
+                            "byte": 119
+                        }
+                    },
+                    "argSchema": {
+                        "prefixItems": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "string"
+                            }
+                        ],
+                        "items": false,
+                        "type": "array"
+                    },
+                    "arg": {
+                        "range": {
+                            "environment": "builtin-split-join-roundtrip",
+                            "begin": {
+                                "line": 8,
+                                "column": 7,
+                                "byte": 127
+                            },
+                            "end": {
+                                "line": 9,
+                                "column": 20,
+                                "byte": 153
+                            }
+                        },
+                        "list": [
+                            {
+                                "range": {
+                                    "environment": "builtin-split-join-roundtrip",
+                                    "begin": {
+                                        "line": 8,
+                                        "column": 9,
+                                        "byte": 129
+                                    },
+                                    "end": {
+                                        "line": 8,
+                                        "column": 11,
+                                        "byte": 131
+                                    }
+                                },
+                                "schema": {
+                                    "type": "string",
+                                    "const": ", "
+                                },
+                                "literal": ", "
+                            },
+                            {
+                                "range": {
+                                    "environment": "builtin-split-join-roundtrip",
+                                    "begin": {
+                                        "line": 9,
+                                        "column": 9,
+                                        "byte": 142
+                                    },
+                                    "end": {
+                                        "line": 9,
+                                        "column": 20,
+                                        "byte": 153
+                                    }
+                                },
+                                "schema": {
+                                    "type": "string",
+                                    "const": "apple, orange, banana"
+                                },
+                                "symbol": [
+                                    {
+                                        "key": "original",
+                                        "range": {
+                                            "environment": "builtin-split-join-roundtrip",
+                                            "begin": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            },
+                                            "end": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            }
+                                        },
+                                        "value": {
+                                            "environment": "builtin-split-join-roundtrip",
+                                            "begin": {
+                                                "line": 3,
+                                                "column": 13,
+                                                "byte": 40
+                                            },
+                                            "end": {
+                                                "line": 3,
+                                                "column": 34,
+                                                "byte": 61
+                                            }
+                                        }
+                                    }
+                                ]
+                            }
+                        ]
+                    }
+                }
+            },
+            "splitBack": {
+                "range": {
+                    "environment": "builtin-split-join-roundtrip",
+                    "begin": {
+                        "line": 29,
+                        "column": 5,
+                        "byte": 507
+                    },
+                    "end": {
+                        "line": 31,
+                        "column": 18,
+                        "byte": 547
+                    }
+                },
+                "schema": {
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": "array"
+                },
+                "builtin": {
+                    "name": "fn::split",
+                    "nameRange": {
+                        "environment": "builtin-split-join-roundtrip",
+                        "begin": {
+                            "line": 29,
+                            "column": 5,
+                            "byte": 507
+                        },
+                        "end": {
+                            "line": 29,
+                            "column": 14,
+                            "byte": 516
+                        }
+                    },
+                    "argSchema": {
+                        "prefixItems": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "string"
+                            }
+                        ],
+                        "items": false,
+                        "type": "array"
+                    },
+                    "arg": {
+                        "range": {
+                            "environment": "builtin-split-join-roundtrip",
+                            "begin": {
+                                "line": 30,
+                                "column": 7,
+                                "byte": 524
+                            },
+                            "end": {
+                                "line": 31,
+                                "column": 18,
+                                "byte": 547
+                            }
+                        },
+                        "list": [
+                            {
+                                "range": {
+                                    "environment": "builtin-split-join-roundtrip",
+                                    "begin": {
+                                        "line": 30,
+                                        "column": 9,
+                                        "byte": 526
+                                    },
+                                    "end": {
+                                        "line": 30,
+                                        "column": 10,
+                                        "byte": 527
+                                    }
+                                },
+                                "schema": {
+                                    "type": "string",
+                                    "const": ":"
+                                },
+                                "literal": ":"
+                            },
+                            {
+                                "range": {
+                                    "environment": "builtin-split-join-roundtrip",
+                                    "begin": {
+                                        "line": 31,
+                                        "column": 9,
+                                        "byte": 538
+                                    },
+                                    "end": {
+                                        "line": 31,
+                                        "column": 18,
+                                        "byte": 547
+                                    }
+                                },
+                                "schema": {
+                                    "type": "string"
+                                },
+                                "symbol": [
+                                    {
+                                        "key": "joined",
+                                        "range": {
+                                            "environment": "builtin-split-join-roundtrip",
+                                            "begin": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            },
+                                            "end": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            }
+                                        },
+                                        "value": {
+                                            "environment": "builtin-split-join-roundtrip",
+                                            "begin": {
+                                                "line": 24,
+                                                "column": 5,
+                                                "byte": 440
+                                            },
+                                            "end": {
+                                                "line": 26,
+                                                "column": 25,
+                                                "byte": 486
+                                            }
+                                        }
+                                    }
+                                ]
+                            }
+                        ]
+                    }
+                }
+            }
+        },
+        "properties": {
+            "joined": {
+                "value": "foo:bar:baz",
+                "trace": {
+                    "def": {
+                        "environment": "builtin-split-join-roundtrip",
+                        "begin": {
+                            "line": 24,
+                            "column": 5,
+                            "byte": 440
+                        },
+                        "end": {
+                            "line": 26,
+                            "column": 25,
+                            "byte": 486
+                        }
+                    }
+                }
+            },
+            "joinedBack": {
+                "value": "apple, orange, banana",
+                "trace": {
+                    "def": {
+                        "environment": "builtin-split-join-roundtrip",
+                        "begin": {
+                            "line": 13,
+                            "column": 5,
+                            "byte": 204
+                        },
+                        "end": {
+                            "line": 15,
+                            "column": 22,
+                            "byte": 248
+                        }
+                    }
+                }
+            },
+            "original": {
+                "value": "apple, orange, banana",
+                "trace": {
+                    "def": {
+                        "environment": "builtin-split-join-roundtrip",
+                        "begin": {
+                            "line": 3,
+                            "column": 13,
+                            "byte": 40
+                        },
+                        "end": {
+                            "line": 3,
+                            "column": 34,
+                            "byte": 61
+                        }
+                    }
+                }
+            },
+            "originalArray": {
+                "value": [
+                    {
+                        "value": "foo",
+                        "trace": {
+                            "def": {
+                                "environment": "builtin-split-join-roundtrip",
+                                "begin": {
+                                    "line": 21,
+                                    "column": 19,
+                                    "byte": 404
+                                },
+                                "end": {
+                                    "line": 21,
+                                    "column": 22,
+                                    "byte": 407
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "value": "bar",
+                        "trace": {
+                            "def": {
+                                "environment": "builtin-split-join-roundtrip",
+                                "begin": {
+                                    "line": 21,
+                                    "column": 26,
+                                    "byte": 411
+                                },
+                                "end": {
+                                    "line": 21,
+                                    "column": 29,
+                                    "byte": 414
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "value": "baz",
+                        "trace": {
+                            "def": {
+                                "environment": "builtin-split-join-roundtrip",
+                                "begin": {
+                                    "line": 21,
+                                    "column": 33,
+                                    "byte": 418
+                                },
+                                "end": {
+                                    "line": 21,
+                                    "column": 36,
+                                    "byte": 421
+                                }
+                            }
+                        }
+                    }
+                ],
+                "trace": {
+                    "def": {
+                        "environment": "builtin-split-join-roundtrip",
+                        "begin": {
+                            "line": 21,
+                            "column": 18,
+                            "byte": 403
+                        },
+                        "end": {
+                            "line": 21,
+                            "column": 36,
+                            "byte": 421
+                        }
+                    }
+                }
+            },
+            "roundtripMatch": {
+                "value": "apple, orange, banana",
+                "trace": {
+                    "def": {
+                        "environment": "builtin-split-join-roundtrip",
+                        "begin": {
+                            "line": 18,
+                            "column": 19,
+                            "byte": 321
+                        },
+                        "end": {
+                            "line": 18,
+                            "column": 32,
+                            "byte": 334
+                        }
+                    }
+                }
+            },
+            "splitArray": {
+                "value": [
+                    {
+                        "value": "apple",
+                        "trace": {
+                            "def": {
+                                "environment": "builtin-split-join-roundtrip",
+                                "begin": {
+                                    "line": 7,
+                                    "column": 5,
+                                    "byte": 110
+                                },
+                                "end": {
+                                    "line": 9,
+                                    "column": 20,
+                                    "byte": 153
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "value": "orange",
+                        "trace": {
+                            "def": {
+                                "environment": "builtin-split-join-roundtrip",
+                                "begin": {
+                                    "line": 7,
+                                    "column": 5,
+                                    "byte": 110
+                                },
+                                "end": {
+                                    "line": 9,
+                                    "column": 20,
+                                    "byte": 153
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "value": "banana",
+                        "trace": {
+                            "def": {
+                                "environment": "builtin-split-join-roundtrip",
+                                "begin": {
+                                    "line": 7,
+                                    "column": 5,
+                                    "byte": 110
+                                },
+                                "end": {
+                                    "line": 9,
+                                    "column": 20,
+                                    "byte": 153
+                                }
+                            }
+                        }
+                    }
+                ],
+                "trace": {
+                    "def": {
+                        "environment": "builtin-split-join-roundtrip",
+                        "begin": {
+                            "line": 7,
+                            "column": 5,
+                            "byte": 110
+                        },
+                        "end": {
+                            "line": 9,
+                            "column": 20,
+                            "byte": 153
+                        }
+                    }
+                }
+            },
+            "splitBack": {
+                "value": [
+                    {
+                        "value": "foo",
+                        "trace": {
+                            "def": {
+                                "environment": "builtin-split-join-roundtrip",
+                                "begin": {
+                                    "line": 29,
+                                    "column": 5,
+                                    "byte": 507
+                                },
+                                "end": {
+                                    "line": 31,
+                                    "column": 18,
+                                    "byte": 547
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "value": "bar",
+                        "trace": {
+                            "def": {
+                                "environment": "builtin-split-join-roundtrip",
+                                "begin": {
+                                    "line": 29,
+                                    "column": 5,
+                                    "byte": 507
+                                },
+                                "end": {
+                                    "line": 31,
+                                    "column": 18,
+                                    "byte": 547
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "value": "baz",
+                        "trace": {
+                            "def": {
+                                "environment": "builtin-split-join-roundtrip",
+                                "begin": {
+                                    "line": 29,
+                                    "column": 5,
+                                    "byte": 507
+                                },
+                                "end": {
+                                    "line": 31,
+                                    "column": 18,
+                                    "byte": 547
+                                }
+                            }
+                        }
+                    }
+                ],
+                "trace": {
+                    "def": {
+                        "environment": "builtin-split-join-roundtrip",
+                        "begin": {
+                            "line": 29,
+                            "column": 5,
+                            "byte": 507
+                        },
+                        "end": {
+                            "line": 31,
+                            "column": 18,
+                            "byte": 547
+                        }
+                    }
+                }
+            }
+        },
+        "schema": {
+            "properties": {
+                "joined": {
+                    "type": "string"
+                },
+                "joinedBack": {
+                    "type": "string"
+                },
+                "original": {
+                    "type": "string",
+                    "const": "apple, orange, banana"
+                },
+                "originalArray": {
+                    "prefixItems": [
+                        {
+                            "type": "string",
+                            "const": "foo"
+                        },
+                        {
+                            "type": "string",
+                            "const": "bar"
+                        },
+                        {
+                            "type": "string",
+                            "const": "baz"
+                        }
+                    ],
+                    "items": false,
+                    "type": "array"
+                },
+                "roundtripMatch": {
+                    "type": "string"
+                },
+                "splitArray": {
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": "array"
+                },
+                "splitBack": {
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": "array"
+                }
+            },
+            "type": "object",
+            "required": [
+                "joined",
+                "joinedBack",
+                "original",
+                "originalArray",
+                "roundtripMatch",
+                "splitArray",
+                "splitBack"
+            ]
+        },
+        "executionContext": {
+            "properties": {
+                "currentEnvironment": {
+                    "value": {
+                        "name": {
+                            "value": "builtin-split-join-roundtrip",
+                            "trace": {
+                                "def": {
+                                    "environment": "builtin-split-join-roundtrip",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "builtin-split-join-roundtrip",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                },
+                "pulumi": {
+                    "value": {
+                        "user": {
+                            "value": {
+                                "id": {
+                                    "value": "USER_123",
+                                    "trace": {
+                                        "def": {
+                                            "environment": "builtin-split-join-roundtrip",
+                                            "begin": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            },
+                                            "end": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            }
+                                        }
+                                    }
+                                }
+                            },
+                            "trace": {
+                                "def": {
+                                    "environment": "builtin-split-join-roundtrip",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "builtin-split-join-roundtrip",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                },
+                "rootEnvironment": {
+                    "value": {
+                        "name": {
+                            "value": "builtin-split-join-roundtrip",
+                            "trace": {
+                                "def": {
+                                    "environment": "builtin-split-join-roundtrip",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "builtin-split-join-roundtrip",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                }
+            },
+            "schema": {
+                "properties": {
+                    "currentEnvironment": {
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "const": "builtin-split-join-roundtrip"
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "name"
+                        ]
+                    },
+                    "pulumi": {
+                        "properties": {
+                            "user": {
+                                "properties": {
+                                    "id": {
+                                        "type": "string",
+                                        "const": "USER_123"
+                                    }
+                                },
+                                "type": "object",
+                                "required": [
+                                    "id"
+                                ]
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "user"
+                        ]
+                    },
+                    "rootEnvironment": {
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "const": "builtin-split-join-roundtrip"
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "name"
+                        ]
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "currentEnvironment",
+                    "pulumi",
+                    "rootEnvironment"
+                ]
+            }
+        }
+    },
+    "evalJsonRedacted": {
+        "joined": "foo:bar:baz",
+        "joinedBack": "apple, orange, banana",
+        "original": "apple, orange, banana",
+        "originalArray": [
+            "foo",
+            "bar",
+            "baz"
+        ],
+        "roundtripMatch": "apple, orange, banana",
+        "splitArray": [
+            "apple",
+            "orange",
+            "banana"
+        ],
+        "splitBack": [
+            "foo",
+            "bar",
+            "baz"
+        ]
+    },
+    "evalJSONRevealed": {
+        "joined": "foo:bar:baz",
+        "joinedBack": "apple, orange, banana",
+        "original": "apple, orange, banana",
+        "originalArray": [
+            "foo",
+            "bar",
+            "baz"
+        ],
+        "roundtripMatch": "apple, orange, banana",
+        "splitArray": [
+            "apple",
+            "orange",
+            "banana"
+        ],
+        "splitBack": [
+            "foo",
+            "bar",
+            "baz"
+        ]
+    }
+}

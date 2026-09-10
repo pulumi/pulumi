@@ -18,6 +18,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"os/exec"
 	"sort"
 	"strconv"
@@ -37,9 +38,9 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/v3/util/pdag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
@@ -87,6 +88,10 @@ type Interpreter struct {
 	callbacks     *pclCallbackServer
 	callbacksOnce sync.Once
 	callbacksErr  error
+
+	// snippetID is the UUID of the snippet driving this interpreter, if any. When set, it is
+	// propagated onto every RegisterResourceRequest emitted by the interpreter.
+	snippetID string
 }
 
 func NewInterpreter(program *pcl.Program, info RunInfo) *Interpreter {
@@ -141,6 +146,9 @@ func (s *pclCallbackServer) RegisterCallback(
 	return &pulumirpc.Callback{
 		Token:  uuidString,
 		Target: "127.0.0.1:" + strconv.Itoa(s.handle.Port),
+		// PCL decodes strings containing non-UTF8 bytes losslessly, so the engine may send them to callbacks
+		// hosted here.
+		AcceptsByteString: true,
 	}, nil
 }
 
@@ -217,6 +225,131 @@ func (i *Interpreter) registerHookNode(ctx context.Context, h *pcl.Hook) error {
 	}
 
 	workingDir := i.info.WorkingDir
+
+	unmarshal := func(ctx context.Context, s *structpb.Struct) (cty.Value, error) {
+		if s == nil {
+			return cty.EmptyObjectVal, nil
+		}
+		mopts := plugin.MarshalOptions{
+			KeepSecrets: true,
+		}
+		props, err := plugin.UnmarshalProperties(s, mopts)
+		if err != nil {
+			return cty.EmptyObjectVal, err
+		}
+		val, err := propertyValueToCty(ctx, i.getResource, resource.NewProperty(props))
+		if err != nil {
+			return cty.EmptyObjectVal, err
+		}
+		return val, nil
+	}
+
+	// hookArgs builds the `args` object for a hook invocation from the request's resource
+	// identity and property structs.
+	hookArgs := func(ctx context.Context, req interface {
+		GetUrn() string
+		GetId() string
+		GetName() string
+		GetType() string
+	}, props map[string]*structpb.Struct,
+	) (map[string]cty.Value, error) {
+		args := map[string]cty.Value{
+			"urn":  cty.StringVal(req.GetUrn()),
+			"id":   cty.StringVal(req.GetId()),
+			"name": cty.StringVal(req.GetName()),
+			"type": cty.StringVal(req.GetType()),
+		}
+		for key, val := range props {
+			val, err := unmarshal(ctx, val)
+			if err != nil {
+				return nil, fmt.Errorf("hook %s: failed to unmarshal %s: %w", hookName, key, err)
+			}
+			args[key] = val
+		}
+		return args, nil
+	}
+
+	// runCommand evaluates the hook's command with the given `args` and runs it. The first
+	// return value is the error from running the command, if any; the second is an error
+	// evaluating the command expression itself.
+	runCommand := func(ctx context.Context, args map[string]cty.Value) (error, error) {
+		evalCtx := i.evalContext.NewChild()
+		evalCtx.SetVariable("args", cty.ObjectVal(args))
+
+		cmdVal, _, evalDiags := evalCtx.Evaluate(cmdExpr)
+		if evalDiags.HasErrors() {
+			return nil, fmt.Errorf("hook %s: evaluating command: %v", hookName, evalDiags)
+		}
+		if !cmdVal.IsArray() {
+			return nil, fmt.Errorf("hook %s: command must be a list of strings", hookName)
+		}
+		var cmdArgs []string
+		for _, arg := range cmdVal.ArrayValue() {
+			arg, _ = unwrapOutputs(arg)
+			if !arg.IsString() {
+				return nil, fmt.Errorf("hook %s: command elements must be strings was %v", hookName, arg)
+			}
+			cmdArgs = append(cmdArgs, arg.StringValue())
+		}
+		if len(cmdArgs) == 0 {
+			return nil, fmt.Errorf("hook %s: command must not be empty", hookName)
+		}
+
+		cmd := exec.CommandContext(ctx, cmdArgs[0], cmdArgs[1:]...)
+		cmd.Dir = workingDir
+		if out, runErr := cmd.CombinedOutput(); runErr != nil {
+			return fmt.Errorf("hook command %v failed: %s\n%s", cmdArgs, runErr, out), nil
+		}
+		return nil, nil
+	}
+
+	if h.Kind == pcl.HookKindError {
+		// Error hooks return whether the failed operation should be retried: retry if and
+		// only if the command exits successfully.
+		cb, err := srv.RegisterCallback(func(ctx context.Context, reqBytes []byte) (proto.Message, error) {
+			var req pulumirpc.ErrorHookRequest
+			if len(reqBytes) > 0 {
+				if err := proto.Unmarshal(reqBytes, &req); err != nil {
+					return &pulumirpc.ErrorHookResponse{
+						Error: fmt.Sprintf("hook %s: failed to unmarshal request: %v", hookName, err),
+					}, nil
+				}
+			}
+
+			// Error hooks do not receive new outputs: they fire after an operation
+			// fails, so there are none.
+			args, err := hookArgs(ctx, &req, map[string]*structpb.Struct{
+				"newInputs":  req.GetNewInputs(),
+				"oldInputs":  req.GetOldInputs(),
+				"oldOutputs": req.GetOldOutputs(),
+			})
+			if err != nil {
+				return &pulumirpc.ErrorHookResponse{Error: err.Error()}, nil
+			}
+
+			runErr, evalErr := runCommand(ctx, args)
+			if evalErr != nil {
+				return &pulumirpc.ErrorHookResponse{Error: evalErr.Error()}, nil
+			}
+			return &pulumirpc.ErrorHookResponse{Retry: runErr == nil}, nil
+		})
+		if err != nil {
+			return fmt.Errorf("allocating error hook callback %s: %w", hookName, err)
+		}
+
+		_, err = i.monitor.RegisterErrorHook(ctx, &pulumirpc.RegisterErrorHookRequest{
+			Name:     hookName,
+			Callback: cb,
+		})
+		if err != nil {
+			return fmt.Errorf("registering error hook %s: %w", hookName, err)
+		}
+
+		// Store the hook's registered name as a string so it can be referenced in hooks options.
+		i.evalContext.SetVariable(h.Name(), cty.StringVal(hookName))
+		return nil
+	}
+
 	cb, err := srv.RegisterCallback(func(ctx context.Context, reqBytes []byte) (proto.Message, error) {
 		var req pulumirpc.ResourceHookRequest
 		if len(reqBytes) > 0 {
@@ -227,85 +360,22 @@ func (i *Interpreter) registerHookNode(ctx context.Context, h *pcl.Hook) error {
 			}
 		}
 
-		// Build a child eval context with `args` populated from the hook request.
-		evalCtx := i.evalContext.NewChild()
-
-		unmarshal := func(s *structpb.Struct) (cty.Value, error) {
-			if s == nil {
-				return cty.EmptyObjectVal, nil
-			}
-			mopts := plugin.MarshalOptions{
-				KeepSecrets: true,
-			}
-			props, err := plugin.UnmarshalProperties(s, mopts)
-			if err != nil {
-				return cty.EmptyObjectVal, err
-			}
-			val, err := propertyValueToCty(ctx, i.getResource, resource.NewProperty(props))
-			if err != nil {
-				return cty.EmptyObjectVal, err
-			}
-			return val, nil
-		}
-
-		args := map[string]cty.Value{
-			"urn":  cty.StringVal(req.GetUrn()),
-			"id":   cty.StringVal(req.GetId()),
-			"name": cty.StringVal(req.GetName()),
-			"type": cty.StringVal(req.GetType()),
-		}
-
-		for key, val := range map[string]*structpb.Struct{
+		args, err := hookArgs(ctx, &req, map[string]*structpb.Struct{
 			"newInputs":  req.GetNewInputs(),
 			"oldInputs":  req.GetOldInputs(),
 			"newOutputs": req.GetNewOutputs(),
 			"oldOutputs": req.GetOldOutputs(),
-		} {
-			args[key], err = unmarshal(val)
-			if err != nil {
-				return &pulumirpc.ResourceHookResponse{
-					Error: fmt.Sprintf("hook %s: failed to unmarshal %s: %v", hookName, key, err),
-				}, nil
-			}
+		})
+		if err != nil {
+			return &pulumirpc.ResourceHookResponse{Error: err.Error()}, nil
 		}
 
-		evalCtx.SetVariable("args", cty.ObjectVal(args))
-
-		// Evaluate the command expression with the args context.
-		cmdVal, _, evalDiags := evalCtx.Evaluate(cmdExpr)
-		if evalDiags.HasErrors() {
-			return &pulumirpc.ResourceHookResponse{
-				Error: fmt.Sprintf("hook %s: evaluating command: %v", hookName, evalDiags),
-			}, nil
+		runErr, evalErr := runCommand(ctx, args)
+		if evalErr != nil {
+			return &pulumirpc.ResourceHookResponse{Error: evalErr.Error()}, nil
 		}
-		if !cmdVal.IsArray() {
-			return &pulumirpc.ResourceHookResponse{
-				Error: fmt.Sprintf("hook %s: command must be a list of strings", hookName),
-			}, nil
-		}
-		var cmdArgs []string
-		for _, arg := range cmdVal.ArrayValue() {
-			arg, _ = unwrapOutputs(arg)
-			if !arg.IsString() {
-				return &pulumirpc.ResourceHookResponse{
-					Error: fmt.Sprintf("hook %s: command elements must be strings was %v", hookName, arg),
-				}, nil
-			}
-			cmdArgs = append(cmdArgs, arg.StringValue())
-		}
-		if len(cmdArgs) == 0 {
-			return &pulumirpc.ResourceHookResponse{
-				Error: fmt.Sprintf("hook %s: command must not be empty", hookName),
-			}, nil
-		}
-
-		//nolint:gosec // G204: command is provided by user PCL program
-		cmd := exec.CommandContext(ctx, cmdArgs[0], cmdArgs[1:]...)
-		cmd.Dir = workingDir
-		if out, runErr := cmd.CombinedOutput(); runErr != nil {
-			return &pulumirpc.ResourceHookResponse{
-				Error: fmt.Sprintf("hook command %v failed: %s\n%s", cmdArgs, runErr, out),
-			}, nil
+		if runErr != nil {
+			return &pulumirpc.ResourceHookResponse{Error: runErr.Error()}, nil
 		}
 		return &pulumirpc.ResourceHookResponse{}, nil
 	})
@@ -330,12 +400,9 @@ func (i *Interpreter) registerHookNode(ctx context.Context, h *pcl.Hook) error {
 
 func (i *Interpreter) invoke(
 	ctx context.Context, req *pulumirpc.ResourceInvokeRequest,
-) (*pulumirpc.InvokeResponse, error) {
-	ref, err := i.getPackageRefFromToken(req.Tok)
-	if err != nil {
-		return nil, err
-	}
-	req.PackageRef = ref
+) (*pulumirpc.ResourceInvokeResponse, error) {
+	req.PackageRef = i.getPackageRefFromToken(req.Tok)
+	req.Parent = i.stackURN
 	resp, err := i.monitor.Invoke(ctx, req)
 	return resp, err
 }
@@ -343,11 +410,7 @@ func (i *Interpreter) invoke(
 func (i *Interpreter) call(
 	ctx context.Context, req *pulumirpc.ResourceCallRequest,
 ) (*pulumirpc.CallResponse, error) {
-	ref, err := i.getPackageRefFromToken(req.Tok)
-	if err != nil {
-		return nil, err
-	}
-	req.PackageRef = ref
+	req.PackageRef = i.getPackageRefFromToken(req.Tok)
 	resp, err := i.monitor.Call(ctx, req)
 	return resp, err
 }
@@ -359,9 +422,10 @@ func (i *Interpreter) getResource(ctx context.Context, ref resource.ResourceRefe
 	contract.AssertNoErrorf(err, "failed to create structpb for resource reference")
 
 	resp, err := i.monitor.Invoke(ctx, &pulumirpc.ResourceInvokeRequest{
-		Tok:             "pulumi:pulumi:getResource",
-		Args:            args,
-		AcceptResources: true,
+		Tok:               "pulumi:pulumi:getResource",
+		Args:              args,
+		AcceptResources:   true,
+		AcceptsByteString: true,
 	})
 	if err != nil {
 		return resource.PropertyMap{}, fmt.Errorf("invoke getResource for %s: %w", ref.URN, err)
@@ -478,6 +542,61 @@ func (i *Interpreter) Run(ctx context.Context) error {
 	return nil
 }
 
+// RunEmbedded runs the interpreter against a pre-existing monitor and loader supplied by the
+// caller, skipping the steps that only make sense for a top-level program run (stack registration,
+// stack-output emission, and the SignalAndWaitForShutdown handshake). It is the entry point for
+// callers that drive the interpreter as a sub-source inside a larger update — for example, the
+// engine evaluating a PCL snippet alongside the main program.
+//
+// scopeVars, if non-nil, are converted and installed on the eval context as root-scope variables
+// after init so the program body can reference resources resolved elsewhere (e.g. snippet
+// References resolved via the engine's registration observer).
+func (i *Interpreter) RunEmbedded(
+	ctx context.Context,
+	monitor pulumirpc.ResourceMonitorClient,
+	loader schema.ReferenceLoader,
+	scopeVars map[string]resource.PropertyValue,
+	snippetID string,
+) error {
+	i.monitor = monitor
+	i.loader = loader
+	i.snippetID = snippetID
+
+	i.evalContext = NewEvalContext(
+		i.info.WorkingDir,
+		i.info.RootDirectory,
+		i.info.Organization,
+		i.info.Project,
+		i.info.Stack,
+		i.lookupResource,
+		i.lookupFunction,
+		i.getResource,
+		i.invoke,
+		i.call,
+	)
+	for name, val := range scopeVars {
+		ctyVal, err := propertyValueToCty(ctx, i.getResource, val)
+		if err != nil {
+			return fmt.Errorf("converting scope variable %q: %w", name, err)
+		}
+		i.evalContext.SetVariable(name, ctyVal)
+	}
+
+	if err := i.registerPackages(ctx); err != nil {
+		return err
+	}
+
+	if _, err := i.executeProgramNodes(ctx); err != nil {
+		return err
+	}
+
+	if i.callbacks != nil {
+		close(i.callbacks.stop)
+	}
+
+	return nil
+}
+
 func (i *Interpreter) executeProgramNodes(ctx context.Context) (resource.PropertyMap, error) {
 	dag := pdag.New[pcl.Node]()
 	nodes := map[pcl.Node]pdag.Node{}
@@ -554,6 +673,10 @@ func (i *Interpreter) executeProgramNodes(ctx context.Context) (resource.Propert
 		case *pcl.Resource:
 			if err := i.registerResource(ctx, node); err != nil {
 				return fmt.Errorf("failed to register resource %s: %w", node.Name(), err)
+			}
+		case *pcl.ReadResource:
+			if err := i.registerReadResource(ctx, node); err != nil {
+				return fmt.Errorf("failed to read resource %s: %w", node.Name(), err)
 			}
 		case *pcl.Component:
 			if err := i.registerComponent(ctx, node); err != nil {
@@ -654,12 +777,10 @@ func PackageNameFromToken(token string) (string, error) {
 	return pkg, nil
 }
 
-func (i *Interpreter) getPackageRefFromToken(token string) (string, error) {
+func (i *Interpreter) getPackageRefFromToken(token string) string {
 	pkgName, err := PackageNameFromToken(token)
-	if err != nil {
-		return "", err
-	}
-	return i.packageRefs[pkgName], nil
+	contract.AssertNoErrorf(err, "invalid token %q", token)
+	return i.packageRefs[pkgName]
 }
 
 func (i *Interpreter) registerPackages(ctx context.Context) error {
@@ -689,10 +810,24 @@ func (i *Interpreter) registerPackages(ctx context.Context) error {
 		if descriptor.Version != nil {
 			request.Version = descriptor.Version.String()
 		}
-		request.Parameterization = &pulumirpc.Parameterization{
+		param := &pulumirpc.Parameterization{
 			Name:    descriptor.Parameterization.Name,
 			Version: descriptor.Parameterization.Version.String(),
 			Value:   descriptor.Parameterization.Value,
+		}
+		// Route to the wire field matching the schema's parameterization flavor.
+		pkgref, err := i.loader.LoadPackageReferenceV2(ctx, descriptor)
+		if err != nil {
+			return fmt.Errorf("load package %q for register: %w", key, err)
+		}
+		def, err := pkgref.Definition()
+		if err != nil {
+			return fmt.Errorf("load definition for package %q: %w", key, err)
+		}
+		if def.ExtensionParameterization != nil {
+			request.Extension = param
+		} else {
+			request.Parameterization = param
 		}
 
 		resp, err := i.monitor.RegisterPackage(ctx, request)
@@ -909,6 +1044,51 @@ func unwrapOutputs(value resource.PropertyValue) (resource.PropertyValue, []reso
 	return value, nil
 }
 
+// providerReferences translates an evaluated `providers` option into the package name to provider
+// reference map the resource monitor expects. The option may be written either as an array of
+// provider resources, in which case each provider's package is taken from its URN, or as a map from
+// package name to provider resource.
+func providerReferences(providers resource.PropertyValue) (map[string]string, error) {
+	reference := func(v resource.PropertyValue) (string, string, error) {
+		urn, id, err := unwrapResource(v)
+		if err != nil {
+			return "", "", fmt.Errorf("providers: %w", err)
+		}
+		idstr := plugin.UnknownStringValue
+		if id.IsString() {
+			idstr = id.StringValue()
+		}
+		return urn, fmt.Sprintf("%s::%s", urn, idstr), nil
+	}
+
+	psopt := map[string]string{}
+	switch {
+	case providers.IsObject():
+		for k, v := range providers.ObjectValue() {
+			_, ref, err := reference(v)
+			if err != nil {
+				return nil, err
+			}
+			psopt[string(k)] = ref
+		}
+	case providers.IsArray():
+		for _, v := range providers.ArrayValue() {
+			urn, ref, err := reference(v)
+			if err != nil {
+				return nil, err
+			}
+			typ := resource.URN(urn).Type()
+			_, _, pkg, diags := pcl.DecomposeToken(string(typ), hcl.Range{})
+			contract.Assertf(!diags.HasErrors(), "invalid token format from URN %s: %s", urn, typ)
+			psopt[pkg] = ref
+		}
+	default:
+		return nil, errors.New(
+			"providers must be an array of provider objects or a map of provider name to provider objects")
+	}
+	return psopt, nil
+}
+
 func unwrapResource(value resource.PropertyValue) (string, resource.PropertyValue, error) {
 	value, _ = unwrapOutputs(value)
 	if !value.IsObject() {
@@ -1060,15 +1240,12 @@ func (i *Interpreter) registerResource(ctx context.Context, res *pcl.Resource) e
 	}
 
 	if rangeValue.IsNumber() {
-		count := int(rangeValue.NumberValue())
-		if count < 0 {
-			count = 0
-		}
+		count := max(int(rangeValue.NumberValue()), 0)
 		items := make([]struct {
 			suffix  string
 			evalCtx *EvalContext
 		}, 0, count)
-		for idx := 0; idx < count; idx++ {
+		for idx := range count {
 			idxVal := cty.NumberIntVal(int64(idx))
 			items = append(items, struct {
 				suffix  string
@@ -1160,9 +1337,10 @@ func (i *Interpreter) registerResourceWith(
 	}
 
 	marshalOpts := plugin.MarshalOptions{
-		KeepUnknowns:  true,
-		KeepSecrets:   true,
-		KeepResources: true,
+		KeepUnknowns:   true,
+		KeepSecrets:    true,
+		KeepResources:  true,
+		KeepByteString: true,
 	}
 	obj, err := plugin.MarshalProperties(inputs, marshalOpts)
 	if err != nil {
@@ -1198,13 +1376,11 @@ func (i *Interpreter) registerResourceWith(
 		Dependencies:            dependencies,
 		AcceptSecrets:           true,
 		AcceptResources:         true,
+		AcceptsByteString:       true,
 		SupportsResultReporting: true,
+		SnippetId:               i.snippetID,
 	}
-	packageRef, err := i.getPackageRefFromToken(token)
-	if err != nil {
-		return cty.NilVal, err
-	}
-	request.PackageRef = packageRef
+	request.PackageRef = i.getPackageRefFromToken(token)
 
 	if res.Options != nil {
 		if res.Options.AdditionalSecretOutputs != nil {
@@ -1643,44 +1819,9 @@ func (i *Interpreter) registerResourceWith(
 				return cty.NilVal, diags
 			}
 			if !providers.IsNull() && !providers.IsComputed() {
-				// Providers is either a list of provider objects or a map of provider name to provider objects. We need
-				// to support both forms and translate the list into the map form expected by the RPC.
-				psopt := map[string]string{}
-				if providers.IsObject() {
-					for k, v := range providers.ObjectValue() {
-						urn, id, err := unwrapResource(v)
-						if err != nil {
-							return cty.NilVal, fmt.Errorf("providers: %w", err)
-						}
-						var idstr string
-						if id.IsString() {
-							idstr = id.StringValue()
-						} else {
-							idstr = plugin.UnknownStringValue
-						}
-						psopt[string(k)] = fmt.Sprintf("%s::%s", urn, idstr)
-					}
-				} else if providers.IsArray() {
-					for _, v := range providers.ArrayValue() {
-						urn, id, err := unwrapResource(v)
-						if err != nil {
-							return cty.NilVal, fmt.Errorf("providers: %w", err)
-						}
-						typ := resource.URN(urn).Type()
-						_, _, pkg, diags := pcl.DecomposeToken(string(typ), hcl.Range{})
-						contract.Assertf(!diags.HasErrors(), "invalid token format from URN %s: %s", urn, typ)
-
-						var idstr string
-						if id.IsString() {
-							idstr = id.StringValue()
-						} else {
-							idstr = plugin.UnknownStringValue
-						}
-						psopt[pkg] = fmt.Sprintf("%s::%s", urn, idstr)
-					}
-				} else {
-					return cty.NilVal, errors.New(
-						"providers must be an array of provider objects or a map of provider name to provider objects")
+				psopt, err := providerReferences(providers)
+				if err != nil {
+					return cty.NilVal, err
 				}
 				request.Providers = psopt
 			}
@@ -1755,13 +1896,16 @@ func (i *Interpreter) registerResourceWith(
 						binding.BeforeDelete = append(binding.BeforeDelete, hookNames...)
 					case "afterDelete":
 						binding.AfterDelete = append(binding.AfterDelete, hookNames...)
+					case "onError":
+						binding.OnError = append(binding.OnError, hookNames...)
 					default:
 						return cty.NilVal, fmt.Errorf("invalid hook type: %s", hookType)
 					}
 				}
 				if len(binding.BeforeCreate)+len(binding.AfterCreate)+
 					len(binding.BeforeUpdate)+len(binding.AfterUpdate)+
-					len(binding.BeforeDelete)+len(binding.AfterDelete) > 0 {
+					len(binding.BeforeDelete)+len(binding.AfterDelete)+
+					len(binding.OnError) > 0 {
 					request.Hooks = binding
 				}
 			}
@@ -1805,7 +1949,16 @@ func (i *Interpreter) registerResourceWith(
 		return cty.NilVal, err
 	}
 
-	outputs["id"] = resource.NewProperty(resp.GetId())
+	unknown := custom && !i.info.DryRun && resp.GetUnknown()
+
+	// During previews a created resource has no ID yet, and a skipped create never gets
+	// one; represent it as unknown rather than a known empty string so it can't be
+	// observed as a real value.
+	if id := resp.GetId(); id == "" && (i.info.DryRun || unknown) {
+		outputs["id"] = resource.MakeComputed(resource.NewProperty(""))
+	} else {
+		outputs["id"] = resource.NewProperty(id)
+	}
 	outputs["urn"] = resource.NewProperty(resp.GetUrn())
 	outputs["__name"] = resource.NewProperty(request.Name)
 	outputs["__type"] = resource.NewProperty(request.Type)
@@ -1813,8 +1966,108 @@ func (i *Interpreter) registerResourceWith(
 	// Ensure every schema-declared output property is present, recursing into nested object
 	// types so that programs which traverse into an optional inner field see a typed null
 	// rather than triggering an HCL "unsupported attribute" error.
-	// - preview: unknown/computed
+	// - preview or skipped create: unknown/computed
 	// - update: explicit null
+	if schemaResource != nil {
+		fillSchemaOutputs(outputs, schemaResource.Properties, i.info.DryRun || unknown)
+	}
+
+	result := resource.NewProperty(resource.Output{
+		Element:      resource.NewProperty(outputs),
+		Dependencies: []resource.URN{resource.URN(resp.GetUrn())},
+		Known:        true,
+	})
+
+	return propertyValueToCty(ctx, i.getResource, result)
+}
+
+func (i *Interpreter) registerReadResource(ctx context.Context, res *pcl.ReadResource) error {
+	logicalName := i.effectiveName(res.LogicalName())
+	token, _ := res.GetToken()
+	schemaResource, err := i.lookupResource(ctx, token)
+	if err != nil {
+		return fmt.Errorf("lookup resource schema for token %s: %w", token, err)
+	}
+	if schemaResource != nil {
+		token = schemaResource.Token
+	}
+
+	// The bindable inputs are "id" plus the schema's state inputs.
+	properties := []*schema.Property{{Name: "id", Type: schema.StringType}}
+	if schemaResource != nil && schemaResource.StateInputs != nil {
+		properties = append(properties, schemaResource.StateInputs.Properties...)
+	}
+
+	inputs, poison, diags := i.evalContext.EvaluateObject(res.Inputs, res.InputType, properties)
+	if poison != nil {
+		i.evalContext.SetVariable(res.Name(), makePoisonValue(*poison))
+		return nil
+	}
+	if diags.HasErrors() {
+		return diags
+	}
+
+	idVal, hasID := inputs["id"]
+	if !hasID {
+		return fmt.Errorf("read resource %s is missing the id attribute", res.Name())
+	}
+	delete(inputs, "id")
+
+	marshalOpts := plugin.MarshalOptions{
+		KeepUnknowns:   true,
+		KeepSecrets:    true,
+		KeepResources:  true,
+		KeepByteString: true,
+	}
+	obj, err := plugin.MarshalProperties(inputs, marshalOpts)
+	if err != nil {
+		return err
+	}
+	// The rest of this method can send output values
+	marshalOpts.KeepOutputValues = true
+
+	dependencies := []string{}
+	for _, val := range inputs {
+		dependencies = append(dependencies, getAllDependencies(val)...)
+	}
+
+	unwrappedID, idDeps := unwrapOutputs(idVal)
+	for _, dep := range idDeps {
+		dependencies = append(dependencies, string(dep))
+	}
+	idStr := plugin.UnknownStringValue
+	if unwrappedID.IsString() {
+		idStr = unwrappedID.StringValue()
+	}
+
+	request := &pulumirpc.ReadResourceRequest{
+		Id:                idStr,
+		Type:              token,
+		Name:              logicalName,
+		Parent:            i.stackURN,
+		Properties:        obj,
+		Dependencies:      dependencies,
+		AcceptSecrets:     true,
+		AcceptResources:   true,
+		AcceptsByteString: true,
+	}
+	request.PackageRef = i.getPackageRefFromToken(token)
+
+	resp, err := i.monitor.ReadResource(ctx, request)
+	if err != nil {
+		return err
+	}
+
+	outputs, err := plugin.UnmarshalProperties(resp.GetProperties(), marshalOpts)
+	if err != nil {
+		return err
+	}
+
+	outputs["id"] = resource.NewProperty(request.Id)
+	outputs["urn"] = resource.NewProperty(resp.GetUrn())
+	outputs["__name"] = resource.NewProperty(logicalName)
+	outputs["__type"] = resource.NewProperty(token)
+
 	if schemaResource != nil {
 		fillSchemaOutputs(outputs, schemaResource.Properties, i.info.DryRun)
 	}
@@ -1825,7 +2078,12 @@ func (i *Interpreter) registerResourceWith(
 		Known:        true,
 	})
 
-	return propertyValueToCty(ctx, i.getResource, result)
+	ctyResult, err := propertyValueToCty(ctx, i.getResource, result)
+	if err != nil {
+		return err
+	}
+	i.evalContext.SetVariable(res.Name(), ctyResult)
+	return nil
 }
 
 func (i *Interpreter) registerComponent(ctx context.Context, component *pcl.Component) hcl.Diagnostics {
@@ -1839,9 +2097,10 @@ func (i *Interpreter) registerComponent(ctx context.Context, component *pcl.Comp
 	}
 
 	marshalOpts := plugin.MarshalOptions{
-		KeepUnknowns:  true,
-		KeepSecrets:   true,
-		KeepResources: true,
+		KeepUnknowns:   true,
+		KeepSecrets:    true,
+		KeepResources:  true,
+		KeepByteString: true,
 	}
 	obj, err := plugin.MarshalProperties(inputs, marshalOpts)
 	if err != nil {
@@ -1866,8 +2125,14 @@ func (i *Interpreter) registerComponent(ctx context.Context, component *pcl.Comp
 	}
 
 	componentName := i.effectiveName(component.LogicalName())
+	// A component declared without a source names an existing component resource by its type token; otherwise the
+	// token is synthesised from the declaration.
+	componentType := component.Token
+	if componentType == "" {
+		componentType = "components:index:" + component.DeclarationName()
+	}
 	request := &pulumirpc.RegisterResourceRequest{
-		Type:                 "components:index:" + component.DeclarationName(),
+		Type:                 componentType,
 		Name:                 componentName,
 		Custom:               false,
 		Object:               obj,
@@ -1875,7 +2140,9 @@ func (i *Interpreter) registerComponent(ctx context.Context, component *pcl.Comp
 		Dependencies:         dependencies,
 		AcceptSecrets:        true,
 		AcceptResources:      true,
+		AcceptsByteString:    true,
 		Parent:               i.stackURN,
+		SnippetId:            i.snippetID,
 	}
 	if component.Options != nil && component.Options.Parent != nil {
 		parent, poison, diags := i.evalContext.Evaluate(component.Options.Parent)
@@ -1899,6 +2166,30 @@ func (i *Interpreter) registerComponent(ctx context.Context, component *pcl.Comp
 		}
 	}
 
+	// Providers given to a component apply to everything the component registers; the engine applies
+	// them to child resources and to invokes parented to the component.
+	if component.Options != nil && component.Options.Providers != nil {
+		providers, poison, diags := i.evalContext.Evaluate(component.Options.Providers)
+		if poison != nil {
+			i.evalContext.SetVariable(component.Name(), makePoisonValue(*poison))
+			return nil
+		}
+		if diags.HasErrors() {
+			return diags
+		}
+		if !providers.IsNull() && !providers.IsComputed() {
+			psopt, err := providerReferences(providers)
+			if err != nil {
+				return hcl.Diagnostics{{
+					Severity: hcl.DiagError,
+					Summary:  "Failed to evaluate component providers",
+					Detail:   err.Error(),
+				}}
+			}
+			request.Providers = psopt
+		}
+	}
+
 	resp, err := i.monitor.RegisterResource(ctx, request)
 	if err != nil {
 		return hcl.Diagnostics{{
@@ -1915,7 +2206,25 @@ func (i *Interpreter) registerComponent(ctx context.Context, component *pcl.Comp
 		}}
 	}
 
-	componentEval := NewEvalContext(
+	// A component declared without a source has no inner program to interpret and no outputs, but its variable
+	// must still be published so that children can parent to it.
+	if component.Program == nil {
+		return i.setComponentVariable(ctx, component, resp, nil)
+	}
+
+	componentInterpreter := &Interpreter{
+		program:     component.Program,
+		info:        i.info,
+		monitor:     i.monitor,
+		engine:      i.engine,
+		loader:      i.loader,
+		stackURN:    resp.GetUrn(),
+		namePrefix:  componentName,
+		packageRefs: i.packageRefs,
+	}
+	// The eval context must call back into the component's own interpreter so that invokes written
+	// in the component are parented to the component.
+	componentInterpreter.evalContext = NewEvalContext(
 		i.info.WorkingDir,
 		i.info.RootDirectory,
 		i.info.Organization,
@@ -1924,20 +2233,9 @@ func (i *Interpreter) registerComponent(ctx context.Context, component *pcl.Comp
 		i.lookupResource,
 		i.lookupFunction,
 		i.getResource,
-		i.invoke,
-		i.call,
+		componentInterpreter.invoke,
+		componentInterpreter.call,
 	)
-	componentInterpreter := &Interpreter{
-		program:     component.Program,
-		info:        i.info,
-		monitor:     i.monitor,
-		engine:      i.engine,
-		loader:      i.loader,
-		evalContext: componentEval,
-		stackURN:    resp.GetUrn(),
-		namePrefix:  componentName,
-		packageRefs: i.packageRefs,
-	}
 
 	for k, v := range inputs {
 		if err := componentInterpreter.setVariable(ctx, string(k), v); err != nil {
@@ -1981,13 +2279,21 @@ func (i *Interpreter) registerComponent(ctx context.Context, component *pcl.Comp
 		}}
 	}
 
+	return i.setComponentVariable(ctx, component, resp, componentOutputs)
+}
+
+// setComponentVariable publishes a registered component as a variable so that later nodes can reference it.
+func (i *Interpreter) setComponentVariable(
+	ctx context.Context,
+	component *pcl.Component,
+	resp *pulumirpc.RegisterResourceResponse,
+	componentOutputs resource.PropertyMap,
+) hcl.Diagnostics {
 	componentObject := resource.PropertyMap{
 		"id":  resource.NewProperty(resp.GetId()),
 		"urn": resource.NewProperty(resp.GetUrn()),
 	}
-	for k, v := range componentOutputs {
-		componentObject[k] = v
-	}
+	maps.Copy(componentObject, componentOutputs)
 
 	result := resource.NewProperty(resource.Output{
 		Element:      resource.NewProperty(componentObject),
@@ -2012,9 +2318,10 @@ func (i *Interpreter) registerStackOutputs(ctx context.Context, outputs resource
 		outputs[key] = collapseResourceReferences(val)
 	}
 	marshalOpts := plugin.MarshalOptions{
-		KeepUnknowns:  true,
-		KeepSecrets:   true,
-		KeepResources: true,
+		KeepUnknowns:   true,
+		KeepSecrets:    true,
+		KeepResources:  true,
+		KeepByteString: true,
 	}
 	obj, err := plugin.MarshalProperties(outputs, marshalOpts)
 	if err != nil {

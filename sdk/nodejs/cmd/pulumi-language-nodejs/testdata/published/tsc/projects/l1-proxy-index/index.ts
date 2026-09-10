@@ -16,7 +16,7 @@ export = async () => {
     return {
         l: l[0],
         m: m.key,
-        c: c.apply(c => c.property),
+        c: c.property,
         o: o.property,
         a: a.apply(a => a.property),
     };

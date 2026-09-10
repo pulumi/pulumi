@@ -10,6 +10,7 @@ export interface DataArgs {
     boolean: pulumi.Input<boolean>;
     float: pulumi.Input<number>;
     innerData: pulumi.Input<inputs.InnerDataArgs>;
+    innerDataList?: pulumi.Input<pulumi.Input<inputs.InnerDataArgs>[] | undefined>;
     integer: pulumi.Input<number>;
     optionalInner?: pulumi.Input<inputs.InnerDataArgs | undefined>;
     string: pulumi.Input<string>;

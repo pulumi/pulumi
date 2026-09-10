@@ -14,7 +14,6 @@ install the following on your machine:
 - [.NET](https://dotnet.microsoft.com/download), for working with the .Net SDK.
 - [Golangci-lint](https://github.com/golangci/golangci-lint), for linting and
   formatting Go code.
-- [Yarn](https://yarnpkg.com/), for building and working with the NodeJS SDK.
 - [Pulumictl](https://github.com/pulumi/pulumictl)
 - [jq](https://stedolan.github.io/jq/)
 

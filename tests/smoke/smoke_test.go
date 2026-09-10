@@ -78,6 +78,34 @@ func TestLanguageNewSmoke(t *testing.T) {
 	}
 }
 
+// TestHCLLanguageDownloadSmoke checks that the engine can transparently download the unbundled
+// pulumi-language-hcl runtime and use it to run a program. HCL is the first language runtime that
+// is not shipped in the CLI tarball, so this exercises the on-demand language-plugin acquisition
+// path end to end: a clean PULUMI_HOME has no hcl runtime, so `pulumi up` must fetch it from the
+// pinned release and launch it to run the (resource-free) program.
+func TestHCLLanguageDownloadSmoke(t *testing.T) {
+	t.Parallel()
+
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+
+	// The engine only downloads the language runtime when automatic acquisition is enabled.
+	e.Env = append(e.Env, "PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION=false")
+
+	e.ImportDirectory("testdata/hcl_smoke")
+
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+	e.RunCommand("pulumi", "stack", "init", "test")
+	e.RunCommand("pulumi", "up", "--yes")
+
+	// The runtime should now be resolvable as an installed language plugin, proving it was fetched
+	// rather than already bundled.
+	plugins, _ := e.RunCommand("pulumi", "plugin", "ls")
+	assert.Regexp(t, `hcl\s+language`, plugins)
+
+	e.RunCommand("pulumi", "destroy", "--yes")
+}
+
 // Quick sanity test that `pulumi package new` can scaffold a package from a live template.
 func TestPackageNewSmoke(t *testing.T) {
 	t.Parallel()
@@ -289,7 +317,7 @@ func TestPackageGetSchema(t *testing.T) {
 		err := json.Unmarshal([]byte(schemaJson), &schemaSpec)
 		require.NoError(t, err, "Unmarshalling schema specs from %s should work", pkg)
 		require.NotNil(t, schemaSpec, "Specification should be non-nil")
-		schema, diags, err := schema.BindSpec(*schemaSpec, nil, schema.ValidationOptions{
+		schema, diags, err := schema.BindSpec(*schemaSpec, schema.NewNullLoader(), schema.ValidationOptions{
 			AllowDanglingReferences: true,
 		})
 		require.NoError(t, err, "Binding the schema spec should work")
@@ -343,7 +371,7 @@ func TestPackageGetSchema(t *testing.T) {
 	// Now try and get the parameterized schema from within a Pulumi project with a packages declaration.
 	err = os.WriteFile(
 		filepath.Join(e.CWD, "Pulumi.yaml"),
-		[]byte(fmt.Sprintf(`name: project
+		fmt.Appendf(nil, `name: project
 runtime: yaml
 packages:
   tp: %s
@@ -351,7 +379,7 @@ backend:
   url: '%s'`,
 			providerDir,
 			e.LocalURL(),
-		)), 0o600)
+		), 0o600)
 	require.NoError(t, err)
 
 	schemaJSON, _ = e.RunCommand("pulumi", "package", "get-schema", "tp", "parameter")
@@ -691,13 +719,13 @@ func TestSecretsProvidersInitializationSmoke(t *testing.T) {
 				require.NoError(t, err)
 
 				projectYAML := filepath.Join(projectDir, "Pulumi.yaml")
-				err = os.WriteFile(projectYAML, []byte(fmt.Sprintf(`name: project
+				err = os.WriteFile(projectYAML, fmt.Appendf(nil, `name: project
 runtime: %s
 backend:
   url: '%s'`,
 					runtime,
 					e.LocalURL(),
-				)), 0o600)
+				), 0o600)
 				require.NoError(t, err)
 
 				stackYAML := filepath.Join(projectDir, "Pulumi.dev.yaml")
@@ -1117,7 +1145,7 @@ func TestParallelCgroups(t *testing.T) {
 	path = filepath.Dir(path)
 
 	// Runs `pulumi up --help` inside a limited CPU context
-	cmd := exec.Command( //nolint:gosec
+	cmd := exec.Command(
 		"docker", "run", "--rm", "--cpus=1", "-v", path+":/mnt", "ubuntu",
 		"/mnt/pulumi", "up", "--help")
 	output, err := cmd.CombinedOutput()
@@ -1148,6 +1176,8 @@ func TestPulumiPackageAddForTerraformProvider(t *testing.T) {
 	e := ptesting.NewEnvironment(t)
 	defer e.DeleteIfNotFailed()
 
+	os.Unsetenv("GITHUB_TOKEN")
+
 	projectDir := filepath.Join(e.RootPath, "project")
 	err := os.Mkdir(projectDir, 0o700)
 	require.NoError(t, err)
@@ -1164,11 +1194,11 @@ func TestPulumiPackageAddForTerraformProvider(t *testing.T) {
 	// Create a new python project based of the local random template
 	e.RunCommand("pulumi", "new", "python", "--yes")
 	e.RunCommand("pulumi", "install")
-	e.RunCommand("pulumi", "package", "add", "opentofu/aptible/aptible@0.9.19")
+	e.RunCommand("pulumi", "package", "add", "opentofu/hashicorp/local@2.9.0")
 
-	e.WriteTestFile("__main__.py", `import pulumi_aptible as aptible
+	e.WriteTestFile("__main__.py", `import pulumi_local as local
 
-example = aptible.Provider("provider")`)
+example = local.Provider("provider")`)
 
 	e.RunCommand("pulumi", "up", "--yes")
 
@@ -1260,7 +1290,7 @@ func TestDoCommandLocalRun(t *testing.T) {
 	// is the JSON result. The provider still captures stdout/stderr as outputs.
 	e.WriteTestFile("inputs.pcl", `command = "echo hello"`+"\n"+`logging = "none"`+"\n")
 
-	stdout, stderr := e.RunCommand("pulumi", "do", "command:local:run", "--input-file", "inputs.pcl")
+	stdout, stderr := e.RunCommand("pulumi", "do", "command:local:run", "--input", "pcl", "--input-file", "inputs.pcl")
 
 	// Guard against the dynamic-subcommand re-execute racing with the root command's update-check goroutine and
 	// producing a "send on closed channel" panic. The panic is intermittent so it doesn't always reproduce, but
@@ -1315,7 +1345,7 @@ func TestDoCommandLocalCommand(t *testing.T) {
 
 	stdout, stderr := e.RunCommand(
 		"pulumi", "do", "--stateless", "command:local:Command", "create",
-		"--input-file", "inputs.pcl", "--yes")
+		"--input", "pcl", "--input-file", "inputs.pcl", "--yes")
 
 	// Guard against the dynamic-subcommand re-execute racing with the root command's update-check goroutine and
 	// producing a "send on closed channel" panic. The panic is intermittent so it doesn't always reproduce, but
@@ -1324,6 +1354,92 @@ func TestDoCommandLocalCommand(t *testing.T) {
 
 	assert.Truef(t, strings.HasPrefix(stdout, "hello\n"),
 		"stdout did not start with hello\nActual:\n%s", stdout)
+}
+
+// Smoke test for `pulumi state promote`: create two snippet-produced resources with `pulumi do create`
+// where the second references the first's output, then promote the first snippet and check that the
+// printed code contains the expected TypeScript for the resource.
+func TestStatePromoteSnippet(t *testing.T) {
+	t.Parallel()
+
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+
+	// Allow auto-acquiring the random provider and any missing plugins.
+	e.Env = append(e.Env, "PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION=false")
+
+	// `new` wants to work in an empty directory but our use of a local url means we have a
+	// ".pulumi" directory at root, so scaffold in a subdirectory.
+	projectDir := filepath.Join(e.RootPath, "project")
+	require.NoError(t, os.Mkdir(projectDir, 0o700))
+	e.CWD = projectDir
+
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+	// The random-typescript template gives us a TypeScript project with @pulumi/random already
+	// wired up, which is what the promote codegen needs to resolve the RandomPet schema.
+	e.RunCommand("pulumi", "new", "random-typescript", "--yes")
+
+	// First snippet: a RandomPet with a distinctive prefix so we can spot it in the promoted code.
+	e.WriteTestFile("parent.pcl", `prefix = "smoke"`+"\n")
+	e.RunCommand("pulumi", "do", "random:index/randomPet:RandomPet", "create", "parentPet",
+		"--input", "pcl", "--input-file", "parent.pcl", "--yes")
+
+	// Second snippet: another RandomPet whose prefix is the parent pet's id. The `parentPet`
+	// identifier resolves to the first snippet's URN via the auto-name table.
+	e.WriteTestFile("child.pcl", "prefix = parentPet.id\n")
+	e.RunCommand("pulumi", "do", "random:index/randomPet:RandomPet", "create", "childPet",
+		"--input", "pcl", "--input-file", "child.pcl", "--yes")
+
+	stdout, _ := e.RunCommand("pulumi", "state", "promote", "parentPet", "--yes")
+	assert.Equal(t, `Generated code for snippet "parentPet":
+
+index.ts
+========
+import * as pulumi from "@pulumi/pulumi";
+import * as random from "@pulumi/random";
+
+const parentPet = new random.RandomPet("parentPet", {prefix: "smoke"});
+
+Snippet "parentPet" promoted from state; 1 resource(s) retained
+`, stdout)
+
+	// The state should still contain the parent's underlying resource but the parentPet snippet
+	// should be gone — only the childPet snippet remains.
+	stackJSONStr, _ := e.RunCommand("pulumi", "stack", "export")
+	var untyped apitype.UntypedDeployment
+	require.NoError(t, json.Unmarshal([]byte(stackJSONStr), &untyped))
+	var deployment apitype.DeploymentV3
+	require.NoError(t, json.Unmarshal(untyped.Deployment, &deployment))
+
+	require.Len(t, deployment.Snippets, 1, "expected only the childPet snippet to remain")
+	assert.Equal(t, "childPet", deployment.Snippets[0].Name)
+
+	var parentFound bool
+	for _, r := range deployment.Resources {
+		if r.URN.Name() == "parentPet" && r.Type == "random:index/randomPet:RandomPet" {
+			parentFound = true
+			break
+		}
+	}
+	assert.True(t, parentFound, "parentPet resource should still be in state after promote")
+
+	// Now promote childPet, which references parentPet — parentPet is no longer a snippet, so the
+	// promote should emit a placeholder resource block for it so PCL binding can resolve the ref.
+	childStdout, _ := e.RunCommand("pulumi", "state", "promote", "childPet", "--yes")
+	assert.Equal(t, `Generated code for snippet "childPet":
+
+index.ts
+========
+import * as pulumi from "@pulumi/pulumi";
+import * as random from "@pulumi/random";
+
+// Placeholder for urn:pulumi:dev::project::random:index/randomPet:RandomPet::parentPet;`+
+		` replace with the real resource reference in your program.
+const parentPet = new random.RandomPet("parentPet", {});
+const childPet = new random.RandomPet("childPet", {prefix: parentPet.id});
+
+Snippet "childPet" promoted from state; 1 resource(s) retained
+`, childStdout)
 }
 
 // Sanity test that we can `pulumi new -y` and then do some basic operations like stack selection and config.
@@ -1337,4 +1453,18 @@ func TestPulumiNewEmptyOperations(t *testing.T) {
 	e.RunCommand("pulumi", "new", "-y")
 	e.RunCommand("pulumi", "stack", "init", "testing")
 	e.RunCommand("pulumi", "config", "set", "key", "value")
+}
+
+// Test that `pulumi --version` prints the same output as `pulumi version`.
+func TestVersionFlag(t *testing.T) {
+	t.Parallel()
+
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+
+	versionCmdStdout, _ := e.RunCommand("pulumi", "version")
+	versionFlagStdout, _ := e.RunCommand("pulumi", "--version")
+
+	assert.NotEmpty(t, strings.TrimSpace(versionCmdStdout))
+	assert.Equal(t, versionCmdStdout, versionFlagStdout)
 }

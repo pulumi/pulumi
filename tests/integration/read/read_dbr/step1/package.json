@@ -1,0 +1,7 @@
+{
+    "name": "read_dbr",
+    "license": "Apache-2.0",
+    "peerDependencies": {
+        "@pulumi/pulumi": "latest"
+    }
+}

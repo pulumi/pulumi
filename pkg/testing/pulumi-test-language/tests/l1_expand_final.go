@@ -28,7 +28,8 @@ func init() {
 					require.NoError(l, res.Err)
 					stack := RequireSingleResource(l, res.Snap.Resources, "pulumi:pulumi:Stack")
 					assert.Equal(l, resource.PropertyMap{
-						"expandedMax": resource.NewProperty(3.0),
+						"expandedMax":           resource.NewProperty(3.0),
+						"expandedMaxWithPrefix": resource.NewProperty(3.0),
 					}, stack.Outputs)
 				},
 			},

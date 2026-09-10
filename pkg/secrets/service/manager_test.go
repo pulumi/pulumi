@@ -24,7 +24,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
-//nolint:paralleltest // mutates env vars and shared temporary agent credentials
 func TestGetServiceSecretsAccountFallsBackToAgentCredentials(t *testing.T) {
 	isolateAgentCredentials(t)
 	oldAgentCreds, err := workspace.GetAgentStoredCredentials()
@@ -52,7 +51,6 @@ func TestGetServiceSecretsAccountFallsBackToAgentCredentials(t *testing.T) {
 	assert.Equal(t, "agent-token", account.AccessToken)
 }
 
-//nolint:paralleltest // mutates env vars and shared temporary agent credentials
 func TestGetServiceSecretsAccountDoesNotFallbackWithExplicitPath(t *testing.T) {
 	isolateAgentCredentials(t)
 	oldAgentCreds, err := workspace.GetAgentStoredCredentials()

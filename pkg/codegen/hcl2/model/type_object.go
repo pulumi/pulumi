@@ -16,6 +16,7 @@ package model
 
 import (
 	"fmt"
+	"maps"
 	"sort"
 	"strings"
 	"sync/atomic"
@@ -233,9 +234,7 @@ type objectTypeUnifier struct {
 func (u *objectTypeUnifier) unify(t *ObjectType) {
 	if !u.any {
 		u.properties = map[string]Type{}
-		for k, t := range t.Properties {
-			u.properties[k] = t
-		}
+		maps.Copy(u.properties, t.Properties)
 		u.any, u.conversionKind = true, SafeConversion
 	} else {
 		for key, pt := range u.properties {

@@ -49,8 +49,8 @@ type Output interface {
 }
 
 var (
-	outputType = reflect.TypeOf((*Output)(nil)).Elem()
-	inputType  = reflect.TypeOf((*Input)(nil)).Elem()
+	outputType = reflect.TypeFor[Output]()
+	inputType  = reflect.TypeFor[Input]()
 )
 
 var concreteTypeToOutputType sync.Map // map[reflect.Type]reflect.Type
@@ -136,7 +136,7 @@ func getOutputState(v reflect.Value) (*OutputState, bool) {
 	if !v.IsValid() || !v.CanInterface() {
 		return nil, false
 	}
-	out, ok := v.Interface().(Output)
+	out, ok := reflect.TypeAssert[Output](v)
 	if !ok {
 		return nil, false
 	}
@@ -342,7 +342,7 @@ func NewOutputState(join *WorkGroup, elementType reflect.Type, deps ...Resource)
 }
 
 var (
-	outputStateType = reflect.TypeOf((*OutputState)(nil))
+	outputStateType = reflect.TypeFor[*OutputState]()
 
 	// outputTypeToOutputState is a map from a type
 	// to the index of the field that embeds *OutputState.
@@ -387,8 +387,8 @@ func NewOutput(wg *WorkGroup, typ reflect.Type, deps ...Resource) Output {
 }
 
 var (
-	contextType = reflect.TypeOf((*context.Context)(nil)).Elem()
-	errorType   = reflect.TypeOf((*error)(nil)).Elem()
+	contextType = reflect.TypeFor[context.Context]()
+	errorType   = reflect.TypeFor[error]()
 )
 
 // applier is a normalized version of a function
@@ -513,7 +513,7 @@ func (ap *applier) Call(ctx context.Context, in reflect.Value) (reflect.Value, e
 		// Using the 'x, ok' form for cast here
 		// gracefully handles the case when results[1]
 		// is nil.
-		err, _ = results[1].Interface().(error)
+		err, _ = reflect.TypeAssert[error](results[1])
 	}
 
 	return out, err
@@ -626,7 +626,7 @@ func (o *OutputState) applyTWithApplier(ctx context.Context, ap *applier) Output
 		}
 		var fulfilledDeps []Resource
 		fulfilledDeps = append(fulfilledDeps, deps...)
-		if resultOutput, ok := out.Interface().(Output); ok {
+		if resultOutput, ok := reflect.TypeAssert[Output](out); ok {
 			fulfilledDeps = append(fulfilledDeps, resultOutput.getState().dependencies()...)
 		}
 		// Fulfill the result.
@@ -710,7 +710,7 @@ func gatherJoins(v any) workGroups {
 	return joins
 }
 
-var resourceType = reflect.TypeOf((*Resource)(nil)).Elem()
+var resourceType = reflect.TypeFor[Resource]()
 
 func gatherJoinSet(v reflect.Value, joins map[*WorkGroup]struct{}) {
 	for {
@@ -737,12 +737,12 @@ func gatherJoinSet(v reflect.Value, joins map[*WorkGroup]struct{}) {
 			continue
 		case reflect.Struct:
 			numFields := v.Type().NumField()
-			for i := 0; i < numFields; i++ {
+			for i := range numFields {
 				gatherJoinSet(v.Field(i), joins)
 			}
 		case reflect.Array, reflect.Slice:
 			l := v.Len()
-			for i := 0; i < l; i++ {
+			for i := range l {
 				gatherJoinSet(v.Index(i), joins)
 			}
 		case reflect.Map:
@@ -815,7 +815,7 @@ func awaitInputs(ctx context.Context, v, resolved reflect.Value) (bool, bool, []
 	// await it.
 	valueType, isInput := v.Type(), false
 	if v.CanInterface() && valueType.Implements(inputType) {
-		input, ok := v.Interface().(Input)
+		input, ok := reflect.TypeAssert[Input](v)
 		if !ok {
 			// A non-input type is already fully-resolved.
 			return true, false, nil, nil
@@ -933,7 +933,7 @@ func awaitInputs(ctx context.Context, v, resolved reflect.Value) (bool, bool, []
 		typ := v.Type()
 		getMappedField := MapStructTypes(typ, resolved.Type())
 		numFields := typ.NumField()
-		for i := 0; i < numFields; i++ {
+		for i := range numFields {
 			_, field := getMappedField(resolved, i)
 			fknown, fsecret, fdeps, ferr := awaitInputs(ctx, v.Field(i), field)
 			known = known && fknown
@@ -945,7 +945,7 @@ func awaitInputs(ctx context.Context, v, resolved reflect.Value) (bool, bool, []
 		}
 	case reflect.Array:
 		l := v.Len()
-		for i := 0; i < l; i++ {
+		for i := range l {
 			eknown, esecret, edeps, eerr := awaitInputs(ctx, v.Index(i), resolved.Index(i))
 			known = known && eknown
 			secret = secret || esecret
@@ -957,7 +957,7 @@ func awaitInputs(ctx context.Context, v, resolved reflect.Value) (bool, bool, []
 	case reflect.Slice:
 		l := v.Len()
 		resolved.Set(reflect.MakeSlice(resolved.Type(), l, l))
-		for i := 0; i < l; i++ {
+		for i := range l {
 			eknown, esecret, edeps, eerr := awaitInputs(ctx, v.Index(i), resolved.Index(i))
 			known = known && eknown
 			secret = secret || esecret
@@ -1116,7 +1116,7 @@ func OutputWithDependencies(ctx context.Context, o Output, deps ...Resource) Out
 
 		var fulfilledDeps []Resource
 		fulfilledDeps = append(fulfilledDeps, deps...)
-		if resultOutput, ok := val.Interface().(Output); ok {
+		if resultOutput, ok := reflect.TypeAssert[Output](val); ok {
 			fulfilledDeps = append(fulfilledDeps, resultOutput.getState().dependencies()...)
 		}
 		// Fulfill the result.
@@ -1133,4 +1133,4 @@ type Input interface {
 	ElementType() reflect.Type
 }
 
-var anyType = reflect.TypeOf((*any)(nil)).Elem()
+var anyType = reflect.TypeFor[any]()

@@ -20,9 +20,10 @@ import (
 	"path/filepath"
 	"testing"
 
+	mapset "github.com/deckarep/golang-set/v2"
+
 	"github.com/stretchr/testify/require"
 
-	"github.com/pulumi/pulumi/pkg/v3/codegen"
 	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/executable"
 )
@@ -41,7 +42,7 @@ func GenerateGoBatchTest(
 			Language:   "go",
 			Extension:  "go",
 			OutputFile: "main.go",
-			Check: func(t *testing.T, path string, dependencies codegen.StringSet) {
+			Check: func(t *testing.T, path string, dependencies mapset.Set[string]) {
 				checkGo(t, path, dependencies, sdkDir)
 			},
 			GenProgram: genProgram,
@@ -60,7 +61,7 @@ func GenerateGoYAMLBatchTest(t *testing.T, rootDir string, genProgram GenProgram
 			Language:   "go",
 			Extension:  "go",
 			OutputFile: "main.go",
-			Check: func(t *testing.T, path string, dependencies codegen.StringSet) {
+			Check: func(t *testing.T, path string, dependencies mapset.Set[string]) {
 				checkGo(t, path, dependencies, sdkDir)
 			},
 			GenProgram: genProgram,
@@ -68,7 +69,7 @@ func GenerateGoYAMLBatchTest(t *testing.T, rootDir string, genProgram GenProgram
 		})
 }
 
-func checkGo(t *testing.T, path string, deps codegen.StringSet, pulumiSDKPath string) {
+func checkGo(t *testing.T, path string, deps mapset.Set[string], pulumiSDKPath string) {
 	dir := filepath.Dir(path)
 	ex, err := executable.FindExecutable("go")
 	require.NoError(t, err)
@@ -100,7 +101,7 @@ func checkGo(t *testing.T, path string, deps codegen.StringSet, pulumiSDKPath st
 	typeCheckGo(t, path, deps, pulumiSDKPath)
 }
 
-func typeCheckGo(t *testing.T, path string, deps codegen.StringSet, pulumiSDKPath string) {
+func typeCheckGo(t *testing.T, path string, deps mapset.Set[string], pulumiSDKPath string) {
 	dir := filepath.Dir(path)
 	ex, err := executable.FindExecutable("go")
 	require.NoError(t, err)

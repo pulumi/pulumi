@@ -129,7 +129,7 @@ func TestRapidGenerateHCL2Definition(t *testing.T) {
 				parser.Diagnostics.Error(), text)
 		}
 
-		prog, diags, err := pcl.BindProgram(parser.Files, pcl.Loader(loader), pcl.AllowMissingVariables)
+		prog, diags, err := pcl.BindProgram(parser.Files, loader, pcl.AllowMissingVariables)
 		require.NoErrorf(t, err, "block:\n%s", text)
 		require.Falsef(t, diags.HasErrors(),
 			"bind diagnostics: %v\nblock:\n%s", diags.Error(), text)

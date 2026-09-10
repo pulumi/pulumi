@@ -47,7 +47,8 @@ func newStateEditCommand() *cobra.Command {
 		Colorizer: cmdutil.GetGlobalColorization(),
 	}
 	cmd := &cobra.Command{
-		Use: "edit",
+		Use:     "edit",
+		Aliases: []string{"update", "modify"},
 		// TODO(dixler) Add test for unicode round-tripping before unhiding.
 		// TODO(fraser) This needs tests _in general_ it is currently basically untested.
 		Hidden: !env.Experimental.Value(),
@@ -281,7 +282,7 @@ func openInEditorInternal(editor, filename string) error {
 	// Launching an editor subprocess; wire it to the actual terminal so the
 	// user can interact with it. Using the cobra writers (which may be
 	// buffered or piped) would break vim/emacs/etc.
-	cmd := exec.Command(args[0], args[1:]...) //nolint:gosec
+	cmd := exec.Command(args[0], args[1:]...)
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout //nolint:forbidigo
 	cmd.Stderr = os.Stderr //nolint:forbidigo

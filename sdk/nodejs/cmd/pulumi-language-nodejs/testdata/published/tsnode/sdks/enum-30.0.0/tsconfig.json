@@ -19,6 +19,7 @@
         "skipLibCheck": true
     },
     "files": [
+        "deluxe.ts",
         "index.ts",
         "mod/index.ts",
         "mod/nested/index.ts",

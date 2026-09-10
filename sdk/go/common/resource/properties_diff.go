@@ -15,7 +15,7 @@
 package resource
 
 import (
-	"sort"
+	"slices"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 )
@@ -78,7 +78,7 @@ func (diff *ObjectDiff) Keys() []PropertyKey {
 	for k := range diff.Updates {
 		ks = append(ks, k)
 	}
-	sort.Slice(ks, func(i, j int) bool { return ks[i] < ks[j] })
+	slices.Sort(ks)
 	return ks
 }
 
@@ -161,7 +161,8 @@ type IgnorePathFunc func(path PropertyPath) bool
 // The passed in property path will be mutated via append.
 type InitialPropertyPath PropertyPath
 
-func (opt IgnoreKeyFunc) apply(o *diffOptions)       { o.ignoreKeyFuncs = append(o.ignoreKeyFuncs, opt) }
+func (opt IgnoreKeyFunc) apply(o *diffOptions) { o.ignoreKeyFuncs = append(o.ignoreKeyFuncs, opt) }
+
 func (opt IgnorePathFunc) apply(o *diffOptions)      { o.ignorePathFunc = append(o.ignorePathFunc, opt) }
 func (opt InitialPropertyPath) apply(o *diffOptions) { o.initialPath = PropertyPath(opt) }
 
@@ -211,10 +212,8 @@ func (props PropertyMap) diff(other PropertyMap, opts diffOptions, path Property
 		}
 
 		if new, has := other[k]; has {
-			// If a new exists, use it; for output properties, however, ignore differences.
-			if new.IsOutput() {
-				sames[k] = old
-			} else if diff := old.diff(new, opts, append(path, string(k))); diff != nil {
+			// If a new exists, use it;
+			if diff := old.diff(new, opts, append(path, string(k))); diff != nil {
 				if !old.HasValue() {
 					adds[k] = new
 				} else if !new.HasValue() {
@@ -492,10 +491,8 @@ func (props PropertyMap) DiffIncludeUnknowns(other PropertyMap, ignoreKeys ...Ig
 		}
 
 		if new, has := other[k]; has {
-			// If a new exists, use it; for output properties, however, ignore differences.
-			if new.IsOutput() {
-				sames[k] = new
-			} else if diff := old.DiffIncludeUnknowns(new, ignoreKeys...); diff != nil {
+			// If a new exists, use it;
+			if diff := old.DiffIncludeUnknowns(new, ignoreKeys...); diff != nil {
 				if !old.HasValue() {
 					adds[k] = new
 				} else if !new.HasValue() {

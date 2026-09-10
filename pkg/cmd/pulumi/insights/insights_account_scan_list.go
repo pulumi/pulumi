@@ -181,7 +181,7 @@ func collectInsightsAccountScans(
 		scans  []apitype.InsightsAccountScanStatus
 		cursor string
 	)
-	for page := 0; page < scanListPageLimit; page++ {
+	for range scanListPageLimit {
 		resp, err := client.ListInsightsAccountScans(ctx, org, account, apitype.ListInsightsAccountScansParams{
 			ContinuationToken: cursor,
 		})

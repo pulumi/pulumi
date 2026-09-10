@@ -46,7 +46,6 @@ class Custom(pulumi.CustomResource):
         """
         A custom resource whose outputs echo its configured provider's `config` setting.
 
-
         :param str resource_name: The name of the resource.
         :param pulumi.ResourceOptions opts: Options for the resource.
         """
@@ -58,7 +57,6 @@ class Custom(pulumi.CustomResource):
                  opts: Optional[pulumi.ResourceOptions] = None):
         """
         A custom resource whose outputs echo its configured provider's `config` setting.
-
 
         :param str resource_name: The name of the resource.
         :param CustomArgs args: The arguments to use to populate this resource's properties.

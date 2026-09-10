@@ -28,14 +28,14 @@ type intOutput struct {
 	*OutputState
 }
 
-func (o intOutput) ElementType() reflect.Type { return reflect.TypeOf(0) }
+func (o intOutput) ElementType() reflect.Type { return reflect.TypeFor[int]() }
 
 func TestRejectOutput(t *testing.T) {
 	t.Parallel()
 
 	giveErr := errors.New("great sadness")
 
-	out := NewOutput(nil, reflect.TypeOf(intOutput{}))
+	out := NewOutput(nil, reflect.TypeFor[intOutput]())
 	assert.Equal(t, OutputPending, GetOutputStatus(out))
 	RejectOutput(out, giveErr)
 
@@ -47,7 +47,7 @@ func TestRejectOutput(t *testing.T) {
 func TestResolveOutput(t *testing.T) {
 	t.Parallel()
 
-	out := NewOutput(nil, reflect.TypeOf(intOutput{}))
+	out := NewOutput(nil, reflect.TypeFor[intOutput]())
 	assert.Equal(t, OutputPending, GetOutputStatus(out))
 	ResolveOutput(out, 42, true, false, nil)
 
@@ -63,7 +63,7 @@ func TestResolveOutput(t *testing.T) {
 func TestResolveOutput_alreadyResolved(t *testing.T) {
 	t.Parallel()
 
-	out := NewOutput(nil, reflect.TypeOf(intOutput{}))
+	out := NewOutput(nil, reflect.TypeFor[intOutput]())
 	ResolveOutput(out, 42, true, false, nil)
 	assert.Equal(t, OutputResolved, GetOutputStatus(out))
 
@@ -76,7 +76,7 @@ func TestResolveOutput_alreadyResolved(t *testing.T) {
 func TestFulfillOutput_success(t *testing.T) {
 	t.Parallel()
 
-	out := NewOutput(nil, reflect.TypeOf(intOutput{}))
+	out := NewOutput(nil, reflect.TypeFor[intOutput]())
 	FulfillOutput(out, 42, true, false, nil, nil)
 
 	got, known, secret, deps, err := AwaitOutput(t.Context(), out)
@@ -92,7 +92,7 @@ func TestFulfillOutput_error(t *testing.T) {
 
 	giveErr := errors.New("great sadness")
 
-	out := NewOutput(nil, reflect.TypeOf(intOutput{}))
+	out := NewOutput(nil, reflect.TypeFor[intOutput]())
 	FulfillOutput(out, 42, true, false, nil, giveErr)
 
 	_, _, _, _, err := AwaitOutput(t.Context(), out)
@@ -105,7 +105,7 @@ func TestOutputDependencies(t *testing.T) {
 	t.Run("empty", func(t *testing.T) {
 		t.Parallel()
 
-		out := NewOutput(nil, reflect.TypeOf(intOutput{}))
+		out := NewOutput(nil, reflect.TypeFor[intOutput]())
 		assert.Empty(t, OutputDependencies(out))
 	})
 
@@ -114,7 +114,7 @@ func TestOutputDependencies(t *testing.T) {
 
 		deps := []Resource{&ResourceState{}, &ResourceState{}}
 
-		out := NewOutput(nil, reflect.TypeOf(intOutput{}))
+		out := NewOutput(nil, reflect.TypeFor[intOutput]())
 		ResolveOutput(out, 42, true, false, deps)
 
 		gotDeps := OutputDependencies(out)
@@ -137,7 +137,7 @@ func TestGetOutputState(t *testing.T) {
 func TestGetOutputValue(t *testing.T) {
 	t.Parallel()
 
-	o := NewOutput(nil, reflect.TypeOf(intOutput{}))
+	o := NewOutput(nil, reflect.TypeFor[intOutput]())
 	assert.Nil(t, GetOutputValue(o))
 
 	ResolveOutput(o, 42, true, false, nil)
@@ -150,7 +150,7 @@ func TestAwaitOutput_contextExpired(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
 
-	out := NewOutput(nil, reflect.TypeOf(intOutput{}))
+	out := NewOutput(nil, reflect.TypeFor[intOutput]())
 	_, _, _, _, err := AwaitOutput(ctx, out)
 
 	assert.ErrorIs(t, err, context.Canceled)

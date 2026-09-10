@@ -24,10 +24,17 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestComponentInputElementTypeUsesQualifiedBuiltins(t *testing.T) {
+	t.Parallel()
+
+	assert.Equal(t, "_builtins.float", componentInputElementType(model.NumberType))
+	assert.Equal(t, "list[_builtins.float]", componentInputElementType(&model.ListType{ElementType: model.NumberType}))
+}
+
 func TestFunctionInvokeBindsArgumentObjectType(t *testing.T) {
 	t.Parallel()
 
-	const source = `zones = invoke("aws:index:getAvailabilityZones", {})`
+	const source = `zones = invoke("infra:index:getZones", {})`
 
 	program, diags := parseAndBindProgram(t, source, "bind_func_invoke_args.pp")
 	contract.Ignore(diags)

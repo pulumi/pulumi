@@ -1,0 +1,12 @@
+<{%fg 2%}>= urn:pulumi:test::test::pulumi:index:Stash::stash: (import)
+<{%reset%}>    [id=3]
+<{%reset%}><{%reset%}>    input: <{%reset%}><{%reset%}><null><{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}><{%fg 3%}>~ urn:pulumi:test::test::pulumi:index:Stash::stash: (update)
+<{%reset%}>    [id=3]
+<{%reset%}><{%fg 2%}>  + input: <{%reset%}><{%fg 2%}>"from-program"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    <{%fg 3%}>~ 1 updated<{%reset%}>
+    <{%fg 2%}>= 1 imported<{%reset%}>
+    <{%bold%}>2 changes<{%reset%}>
+
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s

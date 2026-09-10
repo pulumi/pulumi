@@ -16,12 +16,14 @@ from typing import Optional, TypeVar, Awaitable, List, Any
 import asyncio
 import os
 import unittest
+from unittest import mock
 import pytest
 import pytest_asyncio
 
 from pulumi.resource import DependencyProviderResource
 from pulumi.runtime import settings, mocks
 from pulumi.runtime.proto import resource_pb2
+from pulumi.runtime.resource import convert_providers
 from pulumi import ResourceOptions
 from pulumi.runtime.rpc import ERROR_ON_DEPENDENCY_CYCLES_VAR
 import pulumi
@@ -38,16 +40,40 @@ async def test_get_package():
     assert "aws" == res.package
 
 
+def test_convert_providers_merges_provider_with_provider_mapping():
+    aws_provider = mock.Mock(package="aws")
+    old_component_provider = mock.Mock(package="component")
+    component_provider = mock.Mock(package="component")
+    providers = {
+        "aws": aws_provider,
+        "component": old_component_provider,
+    }
+
+    result = convert_providers(component_provider, providers)
+
+    assert result["aws"] is aws_provider
+    assert result["component"] is component_provider
+    assert providers["component"] is old_component_provider
+
+
+def test_convert_providers_merges_provider_with_provider_sequence():
+    aws_provider = mock.Mock(package="aws")
+    component_provider = mock.Mock(package="component")
+
+    result = convert_providers(component_provider, [aws_provider])
+
+    assert result["aws"] is aws_provider
+    assert result["component"] is component_provider
+
+
 @pytest.fixture(autouse=True)
 def clean_up_env_vars():
-    try:
-        del os.environ[ERROR_ON_DEPENDENCY_CYCLES_VAR]
-    except KeyError:
-        pass
+    with mock.patch.dict(os.environ):
+        os.environ.pop(ERROR_ON_DEPENDENCY_CYCLES_VAR, None)
+        yield
 
 
 @pulumi.runtime.test
-@pytest.mark.asyncio
 def test_depends_on_accepts_outputs(dep_tracker):
     dep1 = MockResource(name="dep1")
     dep2 = MockResource(name="dep2")
@@ -68,7 +94,6 @@ def test_depends_on_accepts_outputs(dep_tracker):
 
 
 @pulumi.runtime.test
-@pytest.mark.asyncio
 def test_depends_on_outputs_works_in_presence_of_unknowns(dep_tracker_preview):
     dep1 = MockResource(name="dep1")
     dep2 = MockResource(name="dep2")
@@ -87,7 +112,6 @@ def test_depends_on_outputs_works_in_presence_of_unknowns(dep_tracker_preview):
 
 
 @pulumi.runtime.test
-@pytest.mark.asyncio
 def test_depends_on_respects_top_level_implicit_dependencies(dep_tracker):
     dep1 = MockResource(name="dep1")
     dep2 = MockResource(name="dep2")
@@ -128,7 +152,6 @@ def depends_on_variations(dep: pulumi.Resource) -> List[pulumi.ResourceOptions]:
 
 
 @pulumi.runtime.test
-@pytest.mark.asyncio
 def test_depends_on_typing_variations(dep_tracker) -> None:
     dep: pulumi.Resource = MockResource(name="dep1")
 

@@ -21,6 +21,8 @@ import (
 	"io"
 	"strings"
 
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
+
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
@@ -149,10 +151,12 @@ func protectResourcesInSnapshot(snap *deploy.Snapshot, urns []string) (int, []er
 	resourceCount := 0
 
 	// Build a map of URNs to resources, excluding those pending deletion.
-	urnToResource := make(map[resource.URN]*resource.State)
+	urnToResource := make(map[resource.URN]*pkgresource.State)
+	eligibleURNs := slice.Prealloc[resource.URN](len(snap.Resources))
 	for _, res := range snap.Resources {
 		if !res.Delete {
 			urnToResource[res.URN] = res
+			eligibleURNs = append(eligibleURNs, res.URN)
 		}
 	}
 
@@ -164,7 +168,7 @@ func protectResourcesInSnapshot(snap *deploy.Snapshot, urns []string) (int, []er
 			res.Protect = true
 			resourceCount++
 		} else {
-			errs = append(errs, fmt.Errorf("No such resource %q exists in the current state", urn))
+			errs = append(errs, resourceNotFoundError(eligibleURNs, urn))
 		}
 	}
 

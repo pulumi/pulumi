@@ -25,7 +25,7 @@ pulumi convert-trace up.trace > trace.pprof && go tool pprof -web trace.pprof
 ```
 
 ```
-OTEL_SERVICE_NAME=pulumi OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=<endpoint> pulumi convert-trace --otel
+OTEL_SERVICE_NAME=pulumi OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=<endpoint> pulumi convert-trace --otel up.trace
 ```
 
 ## Profiles

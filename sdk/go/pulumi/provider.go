@@ -21,7 +21,6 @@ import (
 	"maps"
 	"reflect"
 	"slices"
-	"sort"
 	"strings"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -242,7 +241,7 @@ func construct(ctx context.Context, req *pulumirpc.ConstructRequest, engineConn 
 	// Convert the property dependencies map for RPC and remove duplicates.
 	rpcPropertyDeps := make(map[string]*pulumirpc.ConstructResponse_PropertyDependencies)
 	for k, deps := range propertyDeps {
-		sort.Slice(deps, func(i, j int) bool { return deps[i] < deps[j] })
+		slices.Sort(deps)
 
 		urns := slice.Prealloc[string](len(deps))
 		for i, d := range deps {
@@ -735,7 +734,7 @@ func constructInputsCopyTo(ctx *Context, inputs map[string]any, args any) error 
 				elemType := field.Type.Elem()
 				length := len(ci.value.ArrayValue())
 				dest := reflect.MakeSlice(field.Type, length, length)
-				for i := 0; i < length; i++ {
+				for i := range length {
 					val, err := handleField(elemType, ci.value.ArrayValue()[i], ci.Dependencies(ctx))
 					if err != nil {
 						return err
@@ -907,7 +906,7 @@ func call(ctx context.Context, req *pulumirpc.CallRequest, engineConn *grpc.Clie
 	// Convert the property dependencies map for RPC and remove duplicates.
 	rpcPropertyDeps := make(map[string]*pulumirpc.CallResponse_ReturnDependencies)
 	for k, deps := range propertyDeps {
-		sort.Slice(deps, func(i, j int) bool { return deps[i] < deps[j] })
+		slices.Sort(deps)
 
 		urns := slice.Prealloc[string](len(deps))
 		for i, d := range deps {

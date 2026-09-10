@@ -55,7 +55,7 @@ func TestExportForwardsToExporter(t *testing.T) {
 
 	exporter := &mockLogExporter{}
 	svc := &service{exporter: exporter}
-	now := uint64(time.Now().UnixNano()) //nolint:gosec // test timestamps
+	now := uint64(time.Now().UnixNano())
 
 	req := &collogspb.ExportLogsServiceRequest{
 		ResourceLogs: []*logspb.ResourceLogs{{
@@ -104,7 +104,7 @@ func TestExportPassesThroughBytesAttributes(t *testing.T) {
 
 	exporter := &mockLogExporter{}
 	svc := &service{exporter: exporter}
-	now := uint64(time.Now().UnixNano()) //nolint:gosec // test timestamps
+	now := uint64(time.Now().UnixNano())
 
 	req := &collogspb.ExportLogsServiceRequest{
 		ResourceLogs: []*logspb.ResourceLogs{{
@@ -139,7 +139,7 @@ func TestExportNilExporterDoesNotPanic(t *testing.T) {
 	t.Parallel()
 
 	svc := &service{exporter: nil}
-	now := uint64(time.Now().UnixNano()) //nolint:gosec // test timestamps
+	now := uint64(time.Now().UnixNano())
 
 	req := &collogspb.ExportLogsServiceRequest{
 		ResourceLogs: []*logspb.ResourceLogs{{

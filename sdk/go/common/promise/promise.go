@@ -61,8 +61,6 @@ func (p *Promise[T]) Result(ctx context.Context) (T, error) {
 }
 
 // TryResult returns the result and true if the promise has been resolved, otherwise it returns false.
-//
-//nolint:revive // This error _isn't_ an error from the function, so ignore the "error should be last" rule.
 func (p *Promise[T]) TryResult() (T, error, bool) {
 	// We don't need to lock here because we're just reading the status and the result and err are immutable
 	// once set.

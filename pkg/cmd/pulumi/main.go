@@ -60,9 +60,7 @@ func panicHandler(finished *bool) {
 }
 
 func main() {
-	// Fix for https://github.com/pulumi/pulumi/issues/18814, set GOMAXPROCs to the number of CPUs available
-	// taking into account quotas and cgroup limits.
-	maxprocs.Set() //nolint:errcheck // we don't care if this fails
+	maxprocs.Set() //nolint:errcheck
 
 	// Reuse previously computed digests for unchanged files via a persistent
 	// stat-cache, so the cost of hashing an asset tree scales with what changed

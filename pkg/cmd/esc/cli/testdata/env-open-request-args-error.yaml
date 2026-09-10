@@ -1,0 +1,9 @@
+run: esc env open-request
+error: exit status 1
+
+---
+> esc env open-request
+
+---
+> esc env open-request
+Error: accepts 1 arg(s), received 0

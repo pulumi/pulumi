@@ -18,6 +18,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"os"
 
 	survey "github.com/AlecAivazis/survey/v2"
 	"github.com/AlecAivazis/survey/v2/terminal"
@@ -56,7 +57,12 @@ This only has an effect on DIY backends.
 				Stdout: stdout,
 			}
 
-			project, _, err := ws.ReadProject()
+			cwd, err := os.Getwd()
+			if err != nil {
+				return fmt.Errorf("getting current working directory: %w", err)
+			}
+
+			project, _, err := ws.ReadProject(cwd)
 			if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
 				return err
 			}

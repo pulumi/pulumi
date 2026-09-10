@@ -161,7 +161,7 @@ class Example(pulumi.CustomResource):
 
     @_builtins.property
     @pulumi.getter(name="mapMapUnionProperty")
-    def map_map_union_property(self) -> pulumi.Output[Optional[Mapping[str, Mapping[str, Any]]]]:
+    def map_map_union_property(self) -> pulumi.Output[Optional[Mapping[str, Mapping[str, Union[_builtins.str, Sequence[_builtins.str]]]]]]:
         return pulumi.get(self, "map_map_union_property")
 
     @_builtins.property
@@ -171,7 +171,7 @@ class Example(pulumi.CustomResource):
 
     @_builtins.property
     @pulumi.getter(name="stringOrIntegerProperty")
-    def string_or_integer_property(self) -> pulumi.Output[Optional[Any]]:
+    def string_or_integer_property(self) -> pulumi.Output[Optional[Union[_builtins.str, _builtins.int]]]:
         return pulumi.get(self, "string_or_integer_property")
 
     @_builtins.property

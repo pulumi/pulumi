@@ -20,14 +20,17 @@ import (
 	"fmt"
 	"sort"
 
-	uuid "github.com/gofrs/uuid"
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
 
+	uuid "github.com/gofrs/uuid"
+	"go.opentelemetry.io/otel"
+
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi-internal/gsync"
 )
 
@@ -43,25 +46,15 @@ type builtinProvider struct {
 	backendClient BackendClient
 
 	// news is a map of URNs to new resource states that have been produced by the current deployment.
-	news *gsync.Map[resource.URN, *resource.State]
+	news *gsync.Map[resource.URN, *pkgresource.State]
 	// reads is a map of URNs to resource states that have been read during the current deployment.
-	reads *gsync.Map[resource.URN, *resource.State]
-
-	// outputWaiters is non-nil for multistack deployments. It provides
-	// co-deployed stack output resolution.
-	outputWaiters *OutputWaiterStore
-	// waiterStack identifies which stack this builtin provider belongs to,
-	// used for cycle detection in output waiters. Used in single-stack mode.
-	waiterStack string
-	// stackFQNs maps project name → stack FQN for multistack mode. When set,
-	// the waiter stack is resolved from the resource URN's project name.
-	stackFQNs map[tokens.PackageName]string
+	reads *gsync.Map[resource.URN, *pkgresource.State]
 }
 
 func newBuiltinProvider(
 	backendClient BackendClient,
-	news *gsync.Map[resource.URN, *resource.State],
-	reads *gsync.Map[resource.URN, *resource.State],
+	news *gsync.Map[resource.URN, *pkgresource.State],
+	reads *gsync.Map[resource.URN, *pkgresource.State],
 	d diag.Sink,
 ) *builtinProvider {
 	ctx, cancel := context.WithCancel(context.Background())
@@ -73,31 +66,6 @@ func newBuiltinProvider(
 		reads:         reads,
 		diag:          d,
 	}
-}
-
-// WithOutputWaiters configures the builtin provider for multistack operation.
-func (p *builtinProvider) WithOutputWaiters(store *OutputWaiterStore, waiterStack string) {
-	p.outputWaiters = store
-	p.waiterStack = waiterStack
-}
-
-// WithOutputWaitersMultistack configures the builtin provider for multistack operation
-// with per-stack FQN resolution. The stackFQNs map resolves project names to stack FQNs,
-// allowing the provider to identify which stack a resource belongs to from its URN.
-func (p *builtinProvider) WithOutputWaitersMultistack(store *OutputWaiterStore, stackFQNs map[tokens.PackageName]string) {
-	p.outputWaiters = store
-	p.stackFQNs = stackFQNs
-}
-
-// resolveWaiterStack returns the FQN of the stack that a resource belongs to,
-// for use as the "waiter" identity in OutputWaiterStore cycle detection.
-func (p *builtinProvider) resolveWaiterStack(urn resource.URN) string {
-	if p.stackFQNs != nil && urn != "" {
-		if fqn, ok := p.stackFQNs[urn.Project()]; ok {
-			return fqn
-		}
-	}
-	return p.waiterStack
 }
 
 func (p *builtinProvider) Close() error {
@@ -229,12 +197,12 @@ func (p *builtinProvider) Diff(_ context.Context, req plugin.DiffRequest) (plugi
 	}
 }
 
-func (p *builtinProvider) Create(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+func (p *builtinProvider) Create(ctx context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 	typ := req.URN.Type()
 	switch typ { //nolint:exhaustive
 	case stackReferenceType:
 
-		state, err := p.readStackReference(req.Properties, p.resolveWaiterStack(req.URN))
+		state, err := p.readStackReference(ctx, resource.FromResourcePropertyMap(req.Properties))
 		if err != nil {
 			return plugin.CreateResponse{Status: resource.StatusUnknown}, err
 		}
@@ -251,7 +219,7 @@ func (p *builtinProvider) Create(_ context.Context, req plugin.CreateRequest) (p
 
 		return plugin.CreateResponse{
 			ID:         id,
-			Properties: state,
+			Properties: resource.ToResourcePropertyMap(state),
 			Status:     resource.StatusOK,
 		}, nil
 	case stashType:
@@ -307,7 +275,7 @@ func (p *builtinProvider) List(context.Context, plugin.ListRequest) (*plugin.Lis
 	return nil, errors.New("the builtin provider does not support List")
 }
 
-func (p *builtinProvider) Read(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+func (p *builtinProvider) Read(ctx context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
 	contract.Requiref(req.URN != "", "urn", "must not be empty")
 	contract.Requiref(req.ID != "", "id", "must not be empty")
 
@@ -325,7 +293,7 @@ func (p *builtinProvider) Read(_ context.Context, req plugin.ReadRequest) (plugi
 			return plugin.ReadResponse{Status: resource.StatusUnknown}, errors.New("stack reference can not be imported")
 		}
 
-		outputs, err := p.readStackReference(req.State, p.resolveWaiterStack(req.URN))
+		outputs, err := p.readStackReference(ctx, resource.FromResourcePropertyMap(req.State))
 		if err != nil {
 			return plugin.ReadResponse{Status: resource.StatusUnknown}, err
 		}
@@ -334,14 +302,27 @@ func (p *builtinProvider) Read(_ context.Context, req plugin.ReadRequest) (plugi
 			ReadResult: plugin.ReadResult{
 				ID:      req.ID,
 				Inputs:  req.Inputs,
-				Outputs: outputs,
+				Outputs: resource.ToResourcePropertyMap(outputs),
 			},
 			Status: resource.StatusOK,
 		}, nil
 
 	case stashType:
+		// An import supplies no prior state. A stash has no backing system to read,
+		// so it adopts the id and holds a null value; the program's configured input
+		// then applies as an update.
 		if len(req.Inputs) == 0 {
-			return plugin.ReadResponse{Status: resource.StatusUnknown}, errors.New("stash can not be imported")
+			return plugin.ReadResponse{
+				ReadResult: plugin.ReadResult{
+					ID:     req.ID,
+					Inputs: resource.PropertyMap{"input": resource.NewNullProperty()},
+					Outputs: resource.PropertyMap{
+						"input":  resource.NewNullProperty(),
+						"output": resource.NewNullProperty(),
+					},
+				},
+				Status: resource.StatusOK,
+			}, nil
 		}
 
 		return plugin.ReadResponse{
@@ -363,16 +344,16 @@ func (p *builtinProvider) Construct(context.Context, plugin.ConstructRequest) (p
 
 const (
 	readStackOutputs         = "pulumi:pulumi:readStackOutputs"
-	readStackResourceOutputs = "pulumi:pulumi:readStackResourceOutputs" //nolint:gosec // not a credential
+	readStackResourceOutputs = "pulumi:pulumi:readStackResourceOutputs"
 	getResource              = "pulumi:pulumi:getResource"
 )
 
-func (p *builtinProvider) Invoke(_ context.Context, req plugin.InvokeRequest) (plugin.InvokeResponse, error) {
-	var outs resource.PropertyMap
+func (p *builtinProvider) Invoke(ctx context.Context, req plugin.InvokeRequest) (plugin.InvokeResponse, error) {
+	var outs property.Map
 	var err error
 	switch req.Tok {
 	case readStackOutputs:
-		outs, err = p.readStackReference(req.Args, p.waiterStack)
+		outs, err = p.readStackReference(ctx, req.Args)
 	case readStackResourceOutputs:
 		outs, err = p.readStackResourceOutputs(req.Args)
 	case getResource:
@@ -400,117 +381,90 @@ func (p *builtinProvider) SignalCancellation(context.Context) error {
 	return nil
 }
 
-func (p *builtinProvider) readStackReference(inputs resource.PropertyMap, waiterStackFQN string) (resource.PropertyMap, error) {
-	name, ok := inputs["name"]
+func (p *builtinProvider) readStackReference(
+	ctx context.Context, inputs property.Map,
+) (property.Map, error) {
+	tracer := otel.Tracer("pulumi-cli")
+	ctx, span := cmdutil.StartSpan(ctx, tracer, "builtinProvider.readStackReference")
+	defer span.End()
+
+	name, ok := inputs.GetOk("name")
 	contract.Assertf(ok, "missing required property 'name'")
 	contract.Assertf(name.IsString(), "expected 'name' to be a string")
 
-	stackName := name.StringValue()
-
-	// For multistack deployments, check if the referenced stack is co-deployed.
-	logging.V(4).Infof("builtins.readStackReference: stackName=%q, outputWaiters=%p", stackName, p.outputWaiters)
-	if p.outputWaiters != nil {
-		logging.V(4).Infof("builtins.readStackReference: IsCoDeployed(%q) = %v", stackName, p.outputWaiters.IsCoDeployed(stackName))
-	}
-	if p.outputWaiters != nil && p.outputWaiters.IsCoDeployed(stackName) {
-		logging.V(4).Infof("builtins.readStackReference: waiting for outputs from co-deployed stack %q (waiter=%q)", stackName, waiterStackFQN)
-		outputs, err := p.outputWaiters.WaitForOutputs(p.context, waiterStackFQN, stackName)
-		if err != nil {
-			return nil, fmt.Errorf("failed to resolve co-deployed stack reference %q: %w", stackName, err)
-		}
-
-		// Convert property.Map outputs to the expected format.
-		secretOutputs := make([]resource.PropertyValue, 0)
-		for k, v := range outputs.All {
-			if v.HasSecrets() {
-				secretOutputs = append(secretOutputs, resource.NewProperty(k))
-			}
-		}
-		sort.Slice(secretOutputs, func(i, j int) bool {
-			return secretOutputs[i].String() < secretOutputs[j].String()
-		})
-
-		return resource.PropertyMap{
-			"name":              name,
-			"outputs":           resource.NewProperty(resource.ToResourcePropertyMap(outputs)),
-			"secretOutputNames": resource.NewProperty(secretOutputs),
-		}, nil
-	}
-
-	// Fall through to existing backend client behavior for non-co-deployed stacks.
 	if p.backendClient == nil {
-		return nil, errors.New("no backend client is available")
+		return property.Map{}, errors.New("no backend client is available")
 	}
 
 	// If we fail to decrypt secrets when fetching the stack's outputs, we'll catch the error and log diagnostics rather
 	// than failing outright.
 	var decryptionErr error
 	outputs, err := p.backendClient.GetStackOutputs(
-		p.context,
-		stackName,
+		ctx,
+		name.AsString(),
 		func(e error) error { decryptionErr = e; return nil },
 	)
 	if err != nil {
-		return nil, err
+		return property.Map{}, err
 	}
 
 	if decryptionErr != nil {
-		p.diag.Infof(diag.Message("", "eliding undecryptable secrets for stack reference '%s'"), stackName)
-		p.diag.Debugf(diag.Message("", "stack reference '%s' decryption error: %v"), stackName, decryptionErr)
+		p.diag.Infof(diag.Message("", "eliding undecryptable secrets for stack reference '%s'"), name.AsString())
+		p.diag.Debugf(diag.Message("", "stack reference '%s' decryption error: %v"), name.AsString(), decryptionErr)
 	}
 
-	secretOutputs := make([]resource.PropertyValue, 0)
+	secretOutputs := make([]property.Value, 0)
 	for k, v := range outputs.All {
 		if v.HasSecrets() {
-			secretOutputs = append(secretOutputs, resource.NewProperty(k))
+			secretOutputs = append(secretOutputs, property.New(k))
 		}
 	}
 
 	// Sort the secret outputs so the order is deterministic, to avoid spurious diffs during updates.
 	sort.Slice(secretOutputs, func(i, j int) bool {
-		return secretOutputs[i].String() < secretOutputs[j].String()
+		return secretOutputs[i].AsString() < secretOutputs[j].AsString()
 	})
 
-	return resource.PropertyMap{
+	return property.NewMap(map[string]property.Value{
 		"name":              name,
-		"outputs":           resource.NewProperty(resource.ToResourcePropertyMap(outputs)),
-		"secretOutputNames": resource.NewProperty(secretOutputs),
-	}, nil
+		"outputs":           property.New(outputs),
+		"secretOutputNames": property.New(secretOutputs),
+	}), nil
 }
 
-func (p *builtinProvider) readStackResourceOutputs(inputs resource.PropertyMap) (resource.PropertyMap, error) {
-	name, ok := inputs["stackName"]
+func (p *builtinProvider) readStackResourceOutputs(inputs property.Map) (property.Map, error) {
+	name, ok := inputs.GetOk("stackName")
 	contract.Assertf(ok, "missing required property 'stackName'")
 	contract.Assertf(name.IsString(), "expected 'stackName' to be a string")
 
 	if p.backendClient == nil {
-		return nil, errors.New("no backend client is available")
+		return property.Map{}, errors.New("no backend client is available")
 	}
 
-	outputs, err := p.backendClient.GetStackResourceOutputs(p.context, name.StringValue())
+	outputs, err := p.backendClient.GetStackResourceOutputs(p.context, name.AsString())
 	if err != nil {
-		return nil, err
+		return property.Map{}, err
 	}
 
-	return resource.PropertyMap{
+	return property.NewMap(map[string]property.Value{
 		"name":    name,
-		"outputs": resource.NewProperty(resource.ToResourcePropertyMap(outputs)),
-	}, nil
+		"outputs": property.New(outputs),
+	}), nil
 }
 
-func (p *builtinProvider) getResource(inputs resource.PropertyMap) (resource.PropertyMap, error) {
-	urnInput, ok := inputs["urn"]
+func (p *builtinProvider) getResource(inputs property.Map) (property.Map, error) {
+	urnInput, ok := inputs.GetOk("urn")
 	contract.Assertf(ok, "missing required property 'urn'")
 	contract.Assertf(urnInput.IsString(), "expected 'urn' to be a string")
 
 	// When looking up a resource to hydrate it, we'll first check for new states produced by resource registrations. If
 	// we fail to find a match there, we'll look for states that have been read.
-	urn := resource.URN(urnInput.StringValue())
+	urn := resource.URN(urnInput.AsString())
 	state, ok := p.news.Load(urn)
 	if !ok {
 		state, ok = p.reads.Load(urn)
 		if !ok {
-			return nil, fmt.Errorf("unknown resource %v", urnInput.StringValue())
+			return property.Map{}, fmt.Errorf("unknown resource %v", urnInput.AsString())
 		}
 	}
 
@@ -518,10 +472,10 @@ func (p *builtinProvider) getResource(inputs resource.PropertyMap) (resource.Pro
 	state.Lock.Lock()
 	defer state.Lock.Unlock()
 
-	return resource.PropertyMap{
+	return property.NewMap(map[string]property.Value{
 		"urn":      urnInput,
-		"id":       resource.NewProperty(string(state.ID)),
-		"provider": resource.NewProperty(state.Provider),
-		"state":    resource.NewProperty(state.Outputs),
-	}, nil
+		"id":       property.New(string(state.ID)),
+		"provider": property.New(state.Provider),
+		"state":    property.New(resource.FromResourcePropertyMap(state.Outputs)),
+	}), nil
 }

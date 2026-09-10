@@ -59,7 +59,7 @@ func TestClientInterceptorCatchesErrors(t *testing.T) {
 
 	err = uci(ctx, "/pulumirpc.ResourceProvider/Configure",
 		&pulumirpc.ConfigureRequest{
-			Variables: map[string]string{"x": "y"},
+			Variables: map[string]string{"x": "y"}, //nolint:staticcheck
 		},
 		&pulumirpc.ConfigureResponse{}, nil, inner)
 

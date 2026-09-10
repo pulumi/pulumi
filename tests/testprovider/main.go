@@ -48,7 +48,7 @@ var providerSchema = pschema.PackageSpec{
 
 	Config: pschema.ConfigSpec{},
 
-	Provider: pschema.ResourceSpec{
+	Provider: &pschema.ResourceSpec{
 		ObjectTypeSpec: pschema.ObjectTypeSpec{
 			Description: "The provider type for the testprovider package.",
 			Type:        "object",
@@ -85,7 +85,6 @@ var testProviders = func() map[string]testProvider {
 		"testprovider:index:doMultiEcho":       ep,
 		"testprovider:index:FailsOnDelete":     &failsOnDeleteProvider{},
 		"testprovider:index:FailsOnCreate":     &failsOnCreateProvider{},
-		"testprovider:index:FlakyCreate":       &flakyCreateProvider{},
 		"testprovider:index:Named":             &namedProvider{},
 	}
 	return testProviders

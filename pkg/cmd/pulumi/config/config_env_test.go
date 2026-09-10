@@ -20,10 +20,8 @@ import (
 	"io"
 	"strings"
 
-	"github.com/acarl005/stripansi"
-	"github.com/pulumi/esc"
-	"github.com/pulumi/esc/eval"
-	"github.com/pulumi/esc/syntax"
+	survey "github.com/AlecAivazis/survey/v2"
+	"github.com/charmbracelet/x/ansi"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
@@ -33,7 +31,11 @@ import (
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/esc"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/esc/eval"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/esc/syntax"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
@@ -90,8 +92,14 @@ func newConfigEnvCmdForTestWithCheckYAMLEnvironment(
 		stdout:      stdout,
 		interactive: true,
 
+		prompt: func(msg string, options []string, defaultOption string, colorization colors.Colorization,
+			surveyAskOpts ...survey.AskOpt,
+		) string {
+			return defaultOption
+		},
+
 		ws: &pkgWorkspace.MockContext{
-			ReadProjectF: func() (*workspace.Project, string, error) {
+			ReadProjectF: func(string) (*workspace.Project, string, error) {
 				p, err := workspace.LoadProjectBytes([]byte(projectYAML), "Pulumi.yaml", encoding.YAML)
 				if err != nil {
 					return nil, "", err
@@ -189,12 +197,16 @@ func mapEvalDiags(diags syntax.Diagnostics) apitype.EnvironmentDiagnostics {
 type envDefMap map[string]string
 
 // LoadEnvironment loads the definition for the environment with the given name.
-func (m envDefMap) LoadEnvironment(ctx context.Context, name string) ([]byte, eval.Decrypter, error) {
+func (m envDefMap) LoadEnvironment(ctx context.Context, name string) ([]byte, string, eval.Decrypter, error) {
 	def, ok := m[name]
 	if !ok {
-		return nil, nil, errors.New("not found")
+		return nil, "", nil, errors.New("not found")
 	}
-	return []byte(def), nil, nil
+	return []byte(def), name, nil, nil
+}
+
+func (m envDefMap) AuthorizeImport(_ context.Context, _ string, _ string, _ bool) error {
+	return nil
 }
 
 func newConfigEnvCmdForInitTest(
@@ -221,7 +233,9 @@ func newConfigEnvCmdForInitTest(
 			if err != nil {
 				return nil, err
 			}
-			_, checkDiags := eval.CheckEnvironment(ctx, name, decl, nil, nil, envs, &esc.ExecContext{}, false)
+			_, checkDiags := eval.CheckEnvironment(
+				ctx, name, decl, nil, nil, envs, &esc.ExecContext{}, false, eval.EvalOptions{},
+			)
 			diags.Extend(checkDiags...)
 			if len(diags) != 0 {
 				return mapEvalDiags(diags), nil
@@ -238,7 +252,9 @@ func newConfigEnvCmdForInitTest(
 			if err != nil {
 				return nil, nil, err
 			}
-			env, checkDiags := eval.CheckEnvironment(ctx, "<yaml>", decl, nil, nil, envs, &esc.ExecContext{}, false)
+			env, checkDiags := eval.CheckEnvironment(
+				ctx, "<yaml>", decl, nil, nil, envs, &esc.ExecContext{}, false, eval.EvalOptions{},
+			)
 			diags.Extend(checkDiags...)
 			return env, mapEvalDiags(diags), nil
 		},
@@ -246,11 +262,8 @@ func newConfigEnvCmdForInitTest(
 	)
 }
 
-// The library sending the confirmation prompt may be able to print the prompt
-// in full before recognizing the character we send to stdin for the test.
-// There's nothing really wrong with that other than it makes the tests flake.
-// This cleans the extra output from stdout in case it happens, as it either
-// happening or not happening is fine.
-func cleanStdoutIncludingPrompt(stdout string) string {
-	return strings.ReplaceAll(strings.ReplaceAll(stripansi.Strip(stdout), "\r", ""), "Save? ▸Yes  No", "")
+// cleanStdout strips ANSI escape codes and carriage returns from captured output so
+// assertions can compare plain text.
+func cleanStdout(stdout string) string {
+	return strings.ReplaceAll(ansi.Strip(stdout), "\r", "")
 }

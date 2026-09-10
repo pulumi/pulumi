@@ -1,0 +1,5 @@
+name: l2-nested-collections
+runtime:
+  name: nodejs
+  options:
+    typescript: false

@@ -645,6 +645,7 @@ class Stack:
         run_program: Optional[bool] = None,
         config_file: Optional[str] = None,
         program: Optional[PulumiFn] = None,
+        diff: Optional[bool] = None,
     ) -> RefreshResult:
         """
         Compares the current stack’s resource state with the state known to exist in the actual
@@ -674,6 +675,8 @@ class Stack:
         :param suppress_progress: Suppress display of periodic progress dots
         :param run_program: Run the program in the workspace to refresh the stack
         :param config_file: Path to a Pulumi config file to use for this update.
+        :param program: The inline program.
+        :param diff: Display operation as a rich diff showing the overall change.
         :returns: RefreshResult
         """
         program = program or self.workspace.program
@@ -772,6 +775,8 @@ class Stack:
         suppress_progress: Optional[bool] = None,
         run_program: Optional[bool] = None,
         config_file: Optional[str] = None,
+        program: Optional[PulumiFn] = None,
+        diff: Optional[bool] = None,
     ) -> PreviewResult:
         """
         Performs a dry-run refresh of the stack, returning pending changes.
@@ -799,8 +804,11 @@ class Stack:
         :param suppress_progress: Suppress display of periodic progress dots
         :param run_program: Run the program in the workspace to refresh the stack
         :param config_file: Path to a Pulumi config file to use for this update.
+        :param program: The inline program.
+        :param diff: Display operation as a rich diff showing the overall change.
         :returns: PreviewResult
         """
+        program = program or self.workspace.program
         extra_args = _parse_extra_args(**locals())
         args = ["refresh", "--preview-only"]
 
@@ -816,7 +824,7 @@ class Stack:
         kind = ExecKind.LOCAL.value
         on_exit = None
 
-        if self.workspace.program:
+        if program:
             self._check_inline_support()
 
             kind = ExecKind.INLINE.value
@@ -824,7 +832,7 @@ class Stack:
                 futures.ThreadPoolExecutor(max_workers=4),
                 options=_GRPC_CHANNEL_OPTIONS,
             )
-            language_server = LanguageServer(self.workspace.program)
+            language_server = LanguageServer(program)
             language_pb2_grpc.add_LanguageRuntimeServicer_to_server(
                 language_server, server
             )
@@ -964,6 +972,7 @@ class Stack:
         :param preview_only: Deprecated, use `preview_destroy` instead. Only show a preview of the destroy, but don't perform the destroy itself
         :param run_program: Run the program in the workspace to destroy the stack
         :param config_file: Path to a Pulumi config file to use for this update.
+        :param program: The inline program.
         :param diff: Display operation as a rich diff showing the overall change.
         :returns: DestroyResult
         """
@@ -1070,6 +1079,8 @@ class Stack:
         refresh: Optional[bool] = None,
         run_program: Optional[bool] = None,
         config_file: Optional[str] = None,
+        program: Optional[PulumiFn] = None,
+        diff: Optional[bool] = None,
     ) -> PreviewResult:
         """
         Performs a dry-run deletion of resources in a stack, leaving all history and configuration intact.
@@ -1097,8 +1108,11 @@ class Stack:
         :param refresh: Refresh the state of the stack's resources against the cloud provider before running destroy.
         :param run_program: Run the program in the workspace to destroy the stack
         :param config_file: Path to a Pulumi config file to use for this update.
+        :param program: The inline program.
+        :param diff: Display operation as a rich diff showing the overall change.
         :returns: DestroyResult
         """
+        program = program or self.workspace.program
         extra_args = _parse_extra_args(**locals())
         args = ["destroy", "--preview-only"]
 
@@ -1114,7 +1128,7 @@ class Stack:
         kind = ExecKind.LOCAL.value
         on_exit = None
 
-        if self.workspace.program:
+        if program:
             self._check_inline_support()
 
             kind = ExecKind.INLINE.value
@@ -1122,7 +1136,7 @@ class Stack:
                 futures.ThreadPoolExecutor(max_workers=4),
                 options=_GRPC_CHANNEL_OPTIONS,
             )
-            language_server = LanguageServer(self.workspace.program)
+            language_server = LanguageServer(program)
             language_pb2_grpc.add_LanguageRuntimeServicer_to_server(
                 language_server, server
             )

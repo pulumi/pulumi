@@ -42,7 +42,6 @@ class Configurer(pulumi.ComponentResource):
         """
         A component that internally constructs a Provider configured with `providerConfig` and exposes it via methods.
 
-
         :param str resource_name: The name of the resource.
         :param pulumi.ResourceOptions opts: Options for the resource.
         """
@@ -54,7 +53,6 @@ class Configurer(pulumi.ComponentResource):
                  opts: Optional[pulumi.ResourceOptions] = None):
         """
         A component that internally constructs a Provider configured with `providerConfig` and exposes it via methods.
-
 
         :param str resource_name: The name of the resource.
         :param ConfigurerArgs args: The arguments to use to populate this resource's properties.

@@ -176,6 +176,23 @@ func TestCapabilities(t *testing.T) {
 		}, actual)
 	})
 
+	t.Run("parse stack outputs", func(t *testing.T) {
+		t.Parallel()
+		response := CapabilitiesResponse{
+			Capabilities: []APICapabilityConfig{
+				{
+					Capability: StackOutputs,
+					Version:    1,
+				},
+			},
+		}
+		actual, err := response.Parse()
+		require.NoError(t, err)
+		assert.Equal(t, Capabilities{
+			StackOutputs: true,
+		}, actual)
+	})
+
 	t.Run("parse api version v1", func(t *testing.T) {
 		t.Parallel()
 		response := CapabilitiesResponse{

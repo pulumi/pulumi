@@ -139,6 +139,32 @@ func TestStackTagsDeletion(t *testing.T) {
 	require.NoError(t, err)
 }
 
+func TestStackTagsClearingLastTag(t *testing.T) {
+	t.Parallel()
+
+	b, ctx := setupTestBackend(t)
+	ref := createTestStackRef("myproject", "mystack")
+	ref.store = b.store
+
+	// Start with a single tag persisted to disk.
+	err := b.saveStackTags(ctx, ref, map[apitype.StackTagName]string{"env": "dev"})
+	require.NoError(t, err)
+
+	loadedTags, err := b.loadStackTags(ctx, ref)
+	require.NoError(t, err)
+	assert.Equal(t, map[apitype.StackTagName]string{"env": "dev"}, loadedTags)
+
+	// Removing the last tag (saving an empty map) must clear the tags on disk,
+	// not silently leave the previous tags in place. Regression test for the
+	// case where `pulumi stack tag rm` of the final tag had no effect.
+	err = b.saveStackTags(ctx, ref, map[apitype.StackTagName]string{})
+	require.NoError(t, err)
+
+	loadedTags, err = b.loadStackTags(ctx, ref)
+	require.NoError(t, err)
+	assert.Empty(t, loadedTags)
+}
+
 func TestStackTagsPath(t *testing.T) {
 	t.Parallel()
 

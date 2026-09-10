@@ -14,8 +14,6 @@
 
 package org
 
-// AI Generated - needs human review
-
 import (
 	"context"
 	"errors"
@@ -84,8 +82,9 @@ func newOrgMemberEditCmdWith(factory orgMemberEditClientFactory) *cobra.Command 
 	args.outputFormat = defaultOrgMemberGetOutputFormat()
 
 	cmd := &cobra.Command{
-		Use:   "edit <user-login>",
-		Short: "[EXPERIMENTAL] Modify a member's role within an organization",
+		Use:     "edit <user-login>",
+		Aliases: []string{"update", "modify"},
+		Short:   "[EXPERIMENTAL] Modify a member's role within an organization",
 		Long: "[EXPERIMENTAL] Modify a member's role within an organization.\n" +
 			"\n" +
 			"Updates the role assigned to an organization member. Pass --role to\n" +

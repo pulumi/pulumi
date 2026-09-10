@@ -19,6 +19,7 @@ import (
 	"sync"
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 )
 
 var _ = SnapshotManager((*CombinedManager)(nil))
@@ -56,6 +57,57 @@ func (c *CombinedManager) RebuiltBaseState() error {
 	var errs []error
 	for i, m := range c.Managers {
 		if err := m.RebuiltBaseState(); err != nil {
+			if len(c.CollectErrorsOnly) > i && c.CollectErrorsOnly[i] {
+				c.appendError(err)
+			} else {
+				errs = append(errs, err)
+			}
+		}
+	}
+	return errors.Join(errs...)
+}
+
+func (c *CombinedManager) SupportsStateMigrations() bool {
+	hasRequiredManager := false
+	for i, manager := range c.Managers {
+		if len(c.CollectErrorsOnly) > i && c.CollectErrorsOnly[i] {
+			continue
+		}
+
+		hasRequiredManager = true
+		if !manager.SupportsStateMigrations() {
+			return false
+		}
+	}
+	return hasRequiredManager
+}
+
+func (c *CombinedManager) StateMigration(transaction *deploy.StateMigrationTransaction) error {
+	if !c.SupportsStateMigrations() {
+		return deploy.ErrStateMigrationsUnsupported
+	}
+
+	var errs []error
+	for i, manager := range c.Managers {
+		bestEffort := len(c.CollectErrorsOnly) > i && c.CollectErrorsOnly[i]
+		if bestEffort && !manager.SupportsStateMigrations() {
+			continue
+		}
+		if err := manager.StateMigration(transaction); err != nil {
+			if bestEffort {
+				c.appendError(err)
+			} else {
+				errs = append(errs, err)
+			}
+		}
+	}
+	return errors.Join(errs...)
+}
+
+func (c *CombinedManager) SetSnippets(snippets []resource.Snippet) error {
+	var errs []error
+	for i, m := range c.Managers {
+		if err := m.SetSnippets(snippets); err != nil {
 			if len(c.CollectErrorsOnly) > i && c.CollectErrorsOnly[i] {
 				c.appendError(err)
 			} else {

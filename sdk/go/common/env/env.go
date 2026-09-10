@@ -75,6 +75,10 @@ var IgnoreAmbientPlugins = env.Bool("IGNORE_AMBIENT_PLUGINS",
 var DisableAutomaticPluginAcquisition = env.Bool("DISABLE_AUTOMATIC_PLUGIN_ACQUISITION",
 	"Disables the automatic installation of missing plugins.")
 
+var SkipNewCredentialsCheck = env.Bool("SKIP_NEW_CREDENTIALS_CHECK",
+	"Skips the best-effort cloud credentials check that `pulumi new` runs after "+
+		"creating a project for providers that opt in through their schema.")
+
 var SkipConfirmations = env.Bool("SKIP_CONFIRMATIONS",
 	`Whether or not confirmation prompts should be skipped. This should be used by pass any requirement
 that a --yes parameter has been set for non-interactive scenarios.
@@ -99,6 +103,10 @@ var ContinueOnError = env.Bool("CONTINUE_ON_ERROR",
 
 var BackendURL = env.String("BACKEND_URL",
 	"Set the backend that will be used instead of the currently logged in backend or the current project's backend.")
+
+var DefaultOrg = env.String("DEFAULT_ORGANIZATION",
+	"Set the default organization to use when the organization is not otherwise specified. Takes precedence over "+
+		"any default organization set with `pulumi org set-default`.")
 
 // Neo environment variables
 
@@ -135,6 +143,11 @@ var AccessToken = env.String("ACCESS_TOKEN",
 	"The access token used to authenticate with the Pulumi Service.",
 	env.Secret)
 
+var CredentialStore = env.String("CREDENTIAL_STORE",
+	`How to keep CLI credentials: "auto" encrypts them with a key protected by the operating `+
+		`system (macOS Keychain, Windows Credential Manager, Linux Secret Service, TPM) when such `+
+		`protection is usable, "os" requires it, and "plaintext" uses the plaintext credentials file.`)
+
 var DisableSecretCache = env.Bool("DISABLE_SECRET_CACHE",
 	"Disable caching encryption operations for unchanged stack secrets.")
 
@@ -168,8 +181,8 @@ var (
 		"Disables the warning about legacy stack files mixed with project-scoped stack files.",
 		env.Alternative("SELF_MANAGED_STATE_NO_LEGACY_WARNING"))
 
-	DIYBackendIgnoreDeprecationWarning = env.Bool("DIY_BACKEND_IGNORE_DEPRECATION_WARNING",
-		"Disables the warning about legacy stack mode being deprecated.")
+	DIYBackendIgnoreDeprecationError = env.Bool("DIY_BACKEND_IGNORE_DEPRECATION_ERROR",
+		"Disables the error about legacy stack mode being deprecated.")
 
 	DIYBackendLegacyLayout = env.Bool("DIY_BACKEND_LEGACY_LAYOUT",
 		"Uses the legacy layout for new buckets, which currently default to project-scoped stacks.",
@@ -193,11 +206,6 @@ var (
 
 	DIYBackendParallel = env.Int("DIY_BACKEND_PARALLEL",
 		"Number of parallel operations when fetching stacks and resources from the DIY backend.")
-)
-
-// Environment variables which affect Pulumi AI integrations
-var (
-	AIServiceEndpoint = env.String("AI_SERVICE_ENDPOINT", "Endpoint for Pulumi AI service")
 )
 
 var DisableValidation = env.Bool(
@@ -258,9 +266,6 @@ var (
 
 var DisableJournaling = env.Bool("DISABLE_JOURNALING",
 	"Disable journaling of engine operations to the backend")
-
-var EnableAutomaticLogging = env.Bool("ENABLE_AUTOMATIC_LOGGING",
-	"Enable automatic encrypted logging of engine operations to disk")
 
 var LogRotationMaxAgeDays = env.Int("LOG_ROTATION_MAX_AGE_DAYS",
 	"Maximum age in days for automatic log files before rotation deletes them (default 7)")

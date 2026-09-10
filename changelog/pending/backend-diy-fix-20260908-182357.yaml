@@ -1,0 +1,4 @@
+component: backend/diy
+kind: fix
+body: Make sure `disableSSL` doesn't override explicitly specified protocols
+time: 2026-09-08T18:23:57.785276311+02:00

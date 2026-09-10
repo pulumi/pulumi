@@ -38,12 +38,13 @@ type UpdateInfo struct {
 // Context provides cancellation, termination, and eventing options for an engine operation. It also provides
 // a way for the engine to persist snapshots, using the `SnapshotManager`.
 type Context struct {
-	Cancel          *cancel.Context
-	Events          chan<- Event
-	SnapshotManager SnapshotManager
-	BackendClient   deploy.BackendClient
-	ParentSpan      opentracing.SpanContext
-	PluginManager   PluginManager
+	Cancel                      *cancel.Context
+	Events                      chan<- Event
+	SnapshotManager             SnapshotManager
+	SnapshotManagerCapabilities SnapshotManagerCapabilities
+	BackendClient               deploy.BackendClient
+	ParentSpan                  opentracing.SpanContext
+	PluginManager               PluginManager
 	// FinalizeUpdateFunc is an optional function that is called at the end of an update. It can be used to
 	// perform any finalization steps, including sending engine events.
 	FinalizeUpdateFunc func()

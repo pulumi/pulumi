@@ -211,7 +211,7 @@ func TestMeta_WriteTo_zero(t *testing.T) {
 // Verify that we don't create a metadata file with version 0 in buckets
 // that have other files.
 func TestNew_noMetaOnInit(t *testing.T) {
-	t.Parallel()
+	t.Setenv("PULUMI_DIY_BACKEND_IGNORE_DEPRECATION_ERROR", "true")
 
 	tmpDir := t.TempDir()
 	bucket, err := fileblob.OpenBucket(tmpDir, nil)

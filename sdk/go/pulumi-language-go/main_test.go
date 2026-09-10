@@ -441,8 +441,8 @@ func testPluginsAndDependencies(t *testing.T, progDir string) {
 		defer cancel()
 
 		res, err := host.GetProgramDependencies(ctx, &pulumirpc.GetProgramDependenciesRequest{
-			Project:                "deprecated",
-			Pwd:                    progDir,
+			Project:                "deprecated", //nolint:staticcheck
+			Pwd:                    progDir,      //nolint:staticcheck
 			TransitiveDependencies: true,
 			Info: &pulumirpc.ProgramInfo{
 				RootDirectory:    progDir,

@@ -65,3 +65,16 @@ func TrimColorizedString(v string, maxWidth int) string {
 func MeasureColorizedString(v string) int {
 	return measureText(v)
 }
+
+// Hyperlink wraps displayText in an OSC 8 terminal hyperlink to url and styles it as a link, so
+// terminals that support it render displayText as a click target. Terminals without support show
+// the styled displayText. When colorization is disabled, or url is empty, displayText is returned
+// as-is.
+//
+// The wire format is `ESC ] 8 ; ; <url> ESC \ <text> ESC ] 8 ; ; ESC \`.
+func (c Colorization) Hyperlink(url, displayText string) string {
+	if disableColorization || c == Never || url == "" {
+		return displayText
+	}
+	return "\x1b]8;;" + url + "\x1b\\" + c.Colorize(Underline+BrightBlue+displayText+Reset) + "\x1b]8;;\x1b\\"
+}

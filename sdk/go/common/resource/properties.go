@@ -16,8 +16,9 @@ package resource
 
 import (
 	"fmt"
+	"maps"
 	"reflect"
-	"sort"
+	"slices"
 	"strings"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/archive"
@@ -110,8 +111,6 @@ type Secret struct {
 //     be null.
 //   - The ID may be unknown (in which case it will be the unknown property value)
 //   - Otherwise, the ID must be a string.
-//
-//nolint:revive
 type ResourceReference struct {
 	URN            URN
 	Name           string
@@ -210,9 +209,7 @@ func (props PropertyMap) MapRepl(replk func(string) (string, bool),
 // Copy makes a shallow copy of the map.
 func (props PropertyMap) Copy() PropertyMap {
 	new := make(PropertyMap)
-	for k, v := range props {
-		new[k] = v
-	}
+	maps.Copy(new, props)
 	return new
 }
 
@@ -222,7 +219,7 @@ func (props PropertyMap) StableKeys() []PropertyKey {
 	for k := range props {
 		sorted = append(sorted, k)
 	}
-	sort.Slice(sorted, func(i, j int) bool { return sorted[i] < sorted[j] })
+	slices.Sort(sorted)
 	return sorted
 }
 
@@ -413,9 +410,6 @@ func NewPropertyValueRepl(v any,
 
 // HasValue returns true if a value is semantically meaningful.
 func (v PropertyValue) HasValue() bool {
-	if v.IsOutput() {
-		return v.OutputValue().Known
-	}
 	return !v.IsNull()
 }
 
@@ -724,6 +718,9 @@ const ResourceReferenceSig = sig.ResourceReference
 
 // OutputValueSig is the unique output value signature.
 const OutputValueSig = sig.OutputValue
+
+// ByteStringSig is the unique signature for strings containing bytes that are not valid UTF-8.
+const ByteStringSig = sig.ByteString
 
 // IsInternalPropertyKey returns true if the given property key is an internal key that should not be displayed to
 // users.

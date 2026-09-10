@@ -6,6 +6,7 @@ import builtins as _builtins
 from . import _utilities
 import typing
 # Export this package's modules as members:
+from .map import *
 from .provider import *
 from .string import *
 _utilities.register(
@@ -16,6 +17,7 @@ _utilities.register(
   "mod": "index",
   "fqn": "pulumi_large",
   "classes": {
+   "large:index:Map": "Map",
    "large:index:String": "String"
   }
  }

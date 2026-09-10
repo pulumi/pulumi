@@ -19,11 +19,13 @@ from ..util import LanghostTest
 class ComponentDependenciesTest(LanghostTest):
     def test_component_dependencies(self):
         environ["PULUMI_ERROR_ON_DEPENDENCY_CYCLES"] = "false"
-        self.run_test(
-            program=path.join(self.base_path(), "component_dependencies"),
-            expected_resource_count=16,
-        )
-        del environ["PULUMI_ERROR_ON_DEPENDENCY_CYCLES"]
+        try:
+            self.run_test(
+                program=path.join(self.base_path(), "component_dependencies"),
+                expected_resource_count=16,
+            )
+        finally:
+            del environ["PULUMI_ERROR_ON_DEPENDENCY_CYCLES"]
 
     def register_resource(
         self,

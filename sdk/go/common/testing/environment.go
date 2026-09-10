@@ -151,6 +151,21 @@ var YarnInstallMutex sync.Mutex
 
 // RunCommand runs the command expecting a zero exit code, returning stdout and stderr.
 func (e *Environment) RunCommand(cmd string, args ...string) (string, string) {
+	e.Helper()
+	return e.runCommand(e.Context(), cmd, args...)
+}
+
+// RunTestCommand is like [*Environment.RunTestCommand], but it kills the command if the test fails.
+func (e *Environment) RunTestCommand(cmd string, args ...string) (string, string) {
+	e.Helper()
+	ctx, cancelWithCause := context.WithCancelCause(e.Context())
+	cancel := cancelOnFail(e, cancelWithCause)
+	defer cancel()
+	return e.runCommand(ctx, cmd, args...)
+}
+
+func (e *Environment) runCommand(ctx context.Context, cmd string, args ...string) (string, string) {
+	e.Helper()
 	// We don't want to time out on yarn installs.
 	if cmd == "yarn" {
 		YarnInstallMutex.Lock()
@@ -158,7 +173,7 @@ func (e *Environment) RunCommand(cmd string, args ...string) (string, string) {
 	}
 
 	e.Helper()
-	stdout, stderr, err := e.GetCommandResults(cmd, args...)
+	stdout, stderr, err := e.getCommandResults(ctx, cmd, args...)
 	if err != nil {
 		e.Logf("Run Error: %v", err)
 		e.Logf("STDOUT: %v", stdout)
@@ -225,15 +240,28 @@ func (e *Environment) LocalURL() string {
 // GetCommandResults runs the given command and args in the Environments CWD, returning
 // STDOUT, STDERR, and the result of os/exec.Command{}.Run.
 func (e *Environment) GetCommandResults(command string, args ...string) (string, string, error) {
-	return e.GetCommandResultsIn(e.CWD, command, args...)
+	e.Helper()
+	return e.getCommandResults(e.Context(), command, args...)
+}
+
+func (e *Environment) getCommandResults(ctx context.Context, command string, args ...string) (string, string, error) {
+	e.Helper()
+	return e.getCommandResultsIn(ctx, e.CWD, command, args...)
 }
 
 // GetCommandResultsIn runs the given command and args in the given directory, returning
 // STDOUT, STDERR, and the result of os/exec.Command{}.Run.
 func (e *Environment) GetCommandResultsIn(dir string, command string, args ...string) (string, string, error) {
 	e.Helper()
+	return e.getCommandResultsIn(e.Context(), dir, command, args...)
+}
 
-	cmd := e.SetupCommandIn(e.Context(), dir, command, args...)
+func (e *Environment) getCommandResultsIn(
+	ctx context.Context, dir string, command string, args ...string,
+) (string, string, error) {
+	e.Helper()
+
+	cmd := e.SetupCommandIn(ctx, dir, command, args...)
 	e.Logf("Running command %v %v", cmd.Path, strings.Join(args, " "))
 
 	// Buffer STDOUT and STDERR so we can return them later.

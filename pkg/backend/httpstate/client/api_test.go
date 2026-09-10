@@ -16,12 +16,14 @@ package client
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"io"
 	"net/http"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/opentracing/opentracing-go"
 	"github.com/stretchr/testify/assert"
@@ -299,6 +301,214 @@ func TestPulumiAPICall_401_LoginRequired(t *testing.T) {
 		)
 
 		assert.True(t, errors.Is(err, backenderr.LoginRequiredError{}))
+	})
+}
+
+func TestCall_RefreshOn401(t *testing.T) {
+	t.Parallel()
+
+	// errBody401 is the on-wire shape the service returns for an expired access token.
+	errBody401, err := json.Marshal(apitype.ErrorResponse{Code: 401, Message: "Unauthorized"})
+	require.NoError(t, err)
+
+	// newRESTClient builds a defaultRESTClient whose underlying HTTP transport is the given func.
+	newRESTClient := func(rt func(req *http.Request) (*http.Response, error)) *defaultRESTClient {
+		return &defaultRESTClient{
+			client: &defaultHTTPClient{
+				&http.Client{Transport: &errorTransport{roundTripFunc: rt}},
+			},
+		}
+	}
+
+	sink := diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{Color: colors.Never})
+
+	t.Run("refreshes once and retries the request when the access token is rejected", func(t *testing.T) {
+		t.Parallel()
+
+		var calls atomic.Int32
+		var auths []string
+		authsMu := make(chan struct{}, 1)
+		authsMu <- struct{}{}
+
+		rest := newRESTClient(func(req *http.Request) (*http.Response, error) {
+			<-authsMu
+			auths = append(auths, req.Header.Get("Authorization"))
+			authsMu <- struct{}{}
+			n := calls.Add(1)
+			if n == 1 {
+				return &http.Response{
+					StatusCode: 401, Status: "401 Unauthorized",
+					Header: http.Header{}, Body: io.NopCloser(bytes.NewReader(errBody401)),
+				}, nil
+			}
+			return &http.Response{
+				StatusCode: 200, Status: "200 OK",
+				Header: http.Header{}, Body: io.NopCloser(bytes.NewReader([]byte(`{}`))),
+			}, nil
+		})
+
+		var refreshCalls atomic.Int32
+		tok := &refreshableAPIAccessToken{
+			accessToken:  "stale",
+			refreshToken: "rt",
+			refresh: func(_ context.Context, rt string) (string, time.Time, string, error) {
+				refreshCalls.Add(1)
+				assert.Equal(t, "rt", rt, "the wrapper sends the current refresh token")
+				return "fresh", time.Time{}, "rt", nil
+			},
+			writeback: func(at string, _ time.Time, rt string) error { return nil },
+		}
+
+		err := rest.Call(t.Context(), sink,
+			"https://api.example.com", "GET", "/api/test", nil, nil, nil, tok, httpCallOptions{})
+		require.NoError(t, err)
+		assert.Equal(t, int32(2), calls.Load(), "the request should be tried twice")
+		assert.Equal(t, int32(1), refreshCalls.Load(), "refresh should fire exactly once")
+		require.Len(t, auths, 2)
+		assert.Equal(t, "token stale", auths[0], "first attempt uses the stale token")
+		assert.Equal(t, "token fresh", auths[1], "retry uses the refreshed token")
+	})
+
+	t.Run("surfaces LoginRequiredError when the refresh itself fails", func(t *testing.T) {
+		t.Parallel()
+
+		var calls atomic.Int32
+		rest := newRESTClient(func(req *http.Request) (*http.Response, error) {
+			calls.Add(1)
+			return &http.Response{
+				StatusCode: 401, Status: "401 Unauthorized",
+				Header: http.Header{}, Body: io.NopCloser(bytes.NewReader(errBody401)),
+			}, nil
+		})
+
+		tok := &refreshableAPIAccessToken{
+			accessToken:  "stale",
+			refreshToken: "rt-revoked",
+			refresh: func(_ context.Context, _ string) (string, time.Time, string, error) {
+				return "", time.Time{}, "", errors.New("invalid_grant")
+			},
+			writeback: func(at string, _ time.Time, rt string) error { return nil },
+		}
+
+		err := rest.Call(t.Context(), sink,
+			"https://api.example.com", "GET", "/api/test", nil, nil, nil, tok, httpCallOptions{})
+		require.Error(t, err)
+		var loginErr backenderr.LoginRequiredError
+		assert.ErrorAs(t, err, &loginErr)
+		assert.Equal(t, int32(1), calls.Load(), "no retry when the refresh attempt fails")
+	})
+
+	t.Run("plain (non-refreshable) tokens fall through to LoginRequiredError unchanged", func(t *testing.T) {
+		t.Parallel()
+
+		var calls atomic.Int32
+		rest := newRESTClient(func(req *http.Request) (*http.Response, error) {
+			calls.Add(1)
+			return &http.Response{
+				StatusCode: 401, Status: "401 Unauthorized",
+				Header: http.Header{}, Body: io.NopCloser(bytes.NewReader(errBody401)),
+			}, nil
+		})
+
+		err := rest.Call(t.Context(), sink,
+			"https://api.example.com", "GET", "/api/test", nil, nil, nil,
+			apiAccessToken("plain"), httpCallOptions{})
+		require.Error(t, err)
+		var loginErr backenderr.LoginRequiredError
+		assert.ErrorAs(t, err, &loginErr)
+		assert.Equal(t, int32(1), calls.Load())
+	})
+
+	t.Run("retries at most once even if the refreshed token is also rejected", func(t *testing.T) {
+		t.Parallel()
+
+		var calls atomic.Int32
+		rest := newRESTClient(func(req *http.Request) (*http.Response, error) {
+			calls.Add(1)
+			return &http.Response{
+				StatusCode: 401, Status: "401 Unauthorized",
+				Header: http.Header{}, Body: io.NopCloser(bytes.NewReader(errBody401)),
+			}, nil
+		})
+
+		var refreshCalls atomic.Int32
+		tok := &refreshableAPIAccessToken{
+			accessToken:  "stale",
+			refreshToken: "rt",
+			refresh: func(_ context.Context, _ string) (string, time.Time, string, error) {
+				refreshCalls.Add(1)
+				return "still-stale", time.Time{}, "rt", nil
+			},
+			writeback: func(at string, _ time.Time, rt string) error { return nil },
+		}
+
+		err := rest.Call(t.Context(), sink,
+			"https://api.example.com", "GET", "/api/test", nil, nil, nil, tok, httpCallOptions{})
+		require.Error(t, err)
+		var loginErr backenderr.LoginRequiredError
+		assert.ErrorAs(t, err, &loginErr)
+		assert.Equal(t, int32(2), calls.Load(), "retry once, then surface")
+		assert.Equal(t, int32(1), refreshCalls.Load(), "refresh fires only once even if retry still 401s")
+	})
+
+	t.Run("concurrent 401s dedupe to a single refresh-grant exchange", func(t *testing.T) {
+		t.Parallel()
+
+		// A Pulumi operation can fan out parallel API calls, so an expired access token may
+		// come back as N concurrent 401s. The wrapper must dedupe into a single refresh
+		// exchange rather than N.
+		const N = 5
+
+		rest := newRESTClient(func(req *http.Request) (*http.Response, error) {
+			if req.Header.Get("Authorization") == "token fresh" {
+				return &http.Response{
+					StatusCode: 200, Status: "200 OK",
+					Header: http.Header{}, Body: io.NopCloser(bytes.NewReader([]byte(`{}`))),
+				}, nil
+			}
+			return &http.Response{
+				StatusCode: 401, Status: "401 Unauthorized",
+				Header: http.Header{}, Body: io.NopCloser(bytes.NewReader(errBody401)),
+			}, nil
+		})
+
+		var refreshCalls atomic.Int32
+		firstRefresh := make(chan struct{})
+		releaseRefresh := make(chan struct{})
+
+		tok := &refreshableAPIAccessToken{
+			accessToken:  "stale",
+			refreshToken: "rt",
+			refresh: func(_ context.Context, _ string) (string, time.Time, string, error) {
+				if refreshCalls.Add(1) == 1 {
+					close(firstRefresh)
+					<-releaseRefresh
+				}
+				return "fresh", time.Time{}, "rt", nil
+			},
+			writeback: func(_ string, _ time.Time, _ string) error { return nil },
+		}
+
+		results := make(chan error, N)
+		for range N {
+			go func() {
+				results <- rest.Call(t.Context(), sink,
+					"https://api.example.com", "GET", "/api/test", nil, nil, nil, tok, httpCallOptions{})
+			}()
+		}
+
+		// Once the first goroutine is in refresh, give the rest a moment to queue on the wrapper's
+		// mutex — no Go primitive surfaces "goroutine blocked on Mutex."
+		<-firstRefresh
+		time.Sleep(100 * time.Millisecond)
+		close(releaseRefresh)
+
+		for range N {
+			require.NoError(t, <-results,
+				"all concurrent callers should authenticate after the deduped refresh")
+		}
+		assert.Equal(t, int32(1), refreshCalls.Load(),
+			"concurrent 401s must dedupe to a single /api/oauth/token call")
 	})
 }
 

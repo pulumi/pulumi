@@ -49,6 +49,8 @@ def func_with_default_value(a: Optional[_builtins.str] = None,
     """
     Check codegen of functions with default values.
     """
+    if b is None:
+        b = 'b-default'
     __args__ = dict()
     __args__['a'] = a
     __args__['b'] = b
@@ -63,6 +65,8 @@ def func_with_default_value_output(a: pulumi.Input[Optional[_builtins.str]] = No
     """
     Check codegen of functions with default values.
     """
+    if b is None:
+        b = 'b-default'
     __args__ = dict()
     __args__['a'] = a
     __args__['b'] = b

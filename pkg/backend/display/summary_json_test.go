@@ -107,7 +107,7 @@ func TestTapSummaryJSON_EmitsOnSummaryEvent(t *testing.T) {
 	out := tapSummaryJSON(in, Options{Stdout: &buf})
 
 	// Drain the output channel so the goroutine completes.
-	for range out { //nolint:revive // intentional drain
+	for range out {
 	}
 
 	var summary SummaryJSON
@@ -211,7 +211,7 @@ func TestTapSummaryJSON_AccumulatesResources(t *testing.T) {
 
 	var buf bytes.Buffer
 	out := tapSummaryJSON(in, Options{Stdout: &buf})
-	for range out { //nolint:revive // intentional drain
+	for range out {
 	}
 
 	var summary SummaryJSON
@@ -242,7 +242,7 @@ func TestTapSummaryJSON_OmitsResourcesFieldWhenEmpty(t *testing.T) {
 
 	var buf bytes.Buffer
 	out := tapSummaryJSON(in, Options{Stdout: &buf})
-	for range out { //nolint:revive // intentional drain
+	for range out {
 	}
 
 	assert.NotContains(t, buf.String(), `"resources"`)
@@ -261,7 +261,7 @@ func TestTapSummaryJSON_ReturnsOnCancelEvent(t *testing.T) {
 
 	done := make(chan struct{})
 	go func() {
-		for range out { //nolint:revive // intentional drain
+		for range out {
 		}
 		close(done)
 	}()

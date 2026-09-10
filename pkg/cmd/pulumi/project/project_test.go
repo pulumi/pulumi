@@ -28,10 +28,11 @@ func TestNewProjectCmd(t *testing.T) {
 	assert.Equal(t, "Manage Pulumi projects", cmd.Short)
 	require.Len(t, cmd.Commands(), 2)
 
-	// Check ls command
-	lsCmd := cmd.Commands()[0]
-	assert.Equal(t, "ls", lsCmd.Use)
-	assert.Equal(t, "List your Pulumi projects", lsCmd.Short)
+	// Check list command
+	listCmd := cmd.Commands()[0]
+	assert.Equal(t, "list", listCmd.Use)
+	assert.Equal(t, []string{"ls"}, listCmd.Aliases)
+	assert.Equal(t, "List your Pulumi projects", listCmd.Short)
 
 	// Check new command
 	newCmd := cmd.Commands()[1]

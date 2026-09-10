@@ -8,8 +8,8 @@ main = unknown.Main("main",
     second={
         foo: bar,
     })
-from_module: list[Any] = []
-for range in [{"value": i} for i in range(0, 10)]:
-    from_module.append(unknown.eks.Example(f"fromModule-{range['value']}", associated_main=main.id))
+from_module: list[unknown.eks.Example] = []
+for from_module_range in [{"value": i} for i in range(0, 10)]:
+    from_module.append(unknown.eks.Example(f"fromModule-{from_module_range['value']}", associated_main=main.id))
 pulumi.export("mainId", main["id"])
 pulumi.export("values", from_module["values"]["first"])

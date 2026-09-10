@@ -83,6 +83,50 @@ func TestUvVirtualenvPath(t *testing.T) {
 	})
 }
 
+func TestUvVirtualenvPathUvProjectEnvironment(t *testing.T) {
+	t.Run("absolute path", func(t *testing.T) {
+		root := t.TempDir()
+		venv := filepath.Join(t.TempDir(), "custom-env")
+		t.Setenv("UV_PROJECT_ENVIRONMENT", venv)
+
+		uv, err := newUv(root, "")
+		require.NoError(t, err)
+		require.Equal(t, venv, uv.virtualenvPath, "virtualenv is taken from UV_PROJECT_ENVIRONMENT")
+	})
+
+	t.Run("relative path resolves against the project directory", func(t *testing.T) {
+		root := t.TempDir()
+		pulumiRoot := filepath.Join(root, "subfolder")
+		require.NoError(t, os.Mkdir(pulumiRoot, 0o755))
+		require.NoError(t, os.WriteFile(filepath.Join(root, "uv.lock"), []byte{}, 0o600))
+		t.Setenv("UV_PROJECT_ENVIRONMENT", "custom-env")
+
+		uv, err := newUv(pulumiRoot, "")
+		require.NoError(t, err)
+		require.Equal(t, filepath.Join(root, "custom-env"), uv.virtualenvPath,
+			"relative UV_PROJECT_ENVIRONMENT is resolved next to uv.lock")
+	})
+
+	t.Run("virtualenv option takes precedence", func(t *testing.T) {
+		root := t.TempDir()
+		t.Setenv("UV_PROJECT_ENVIRONMENT", filepath.Join(t.TempDir(), "custom-env"))
+
+		uv, err := newUv(root, "banana")
+		require.NoError(t, err)
+		require.Equal(t, filepath.Join(root, "banana"), uv.virtualenvPath,
+			"the virtualenv runtime option wins over UV_PROJECT_ENVIRONMENT")
+	})
+
+	t.Run("empty value is ignored", func(t *testing.T) {
+		root := t.TempDir()
+		t.Setenv("UV_PROJECT_ENVIRONMENT", "")
+
+		uv, err := newUv(root, "")
+		require.NoError(t, err)
+		require.Equal(t, filepath.Join(root, ".venv"), uv.virtualenvPath, "virtualenv is in the project root")
+	})
+}
+
 func TestUvVersion(t *testing.T) {
 	t.Parallel()
 
@@ -153,6 +197,35 @@ func TestUvCommandSyncsEnvironmentCustomVenv(t *testing.T) {
 	require.DirExists(t, filepath.Join(root, "my_venv"))
 
 	// `wheel`, the project's dependency, should be installed
+	cmd, err = uv.ModuleCommand(t.Context(), "wheel", "version")
+	require.NoError(t, err)
+	out, err = cmd.CombinedOutput()
+	require.NoError(t, err)
+	require.True(t, strings.Contains(string(out), "wheel"), "unexpected output: %s", out)
+}
+
+func TestUvCommandSyncsEnvironmentUvProjectEnvironment(t *testing.T) {
+	root := t.TempDir()
+	pyproject, err := os.ReadFile(filepath.Join("testdata", "project", "pyproject.toml"))
+	require.NoError(t, err)
+	err = os.WriteFile(filepath.Join(root, "pyproject.toml"), pyproject, 0o600)
+	require.NoError(t, err)
+
+	venv := filepath.Join(t.TempDir(), "custom-env")
+	t.Setenv("UV_PROJECT_ENVIRONMENT", venv)
+
+	uv, err := newUv(root, "")
+	require.NoError(t, err)
+
+	cmd, err := uv.Command(t.Context(), "-c", "print('hello')")
+	require.NoError(t, err)
+	out, err := cmd.CombinedOutput()
+	require.NoError(t, err)
+	require.Equal(t, "hello", strings.TrimSpace(string(out)))
+
+	require.DirExists(t, venv)
+	require.NoDirExists(t, filepath.Join(root, ".venv"))
+
 	cmd, err = uv.ModuleCommand(t.Context(), "wheel", "version")
 	require.NoError(t, err)
 	out, err = cmd.CombinedOutput()

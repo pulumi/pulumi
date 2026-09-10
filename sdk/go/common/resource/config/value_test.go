@@ -129,7 +129,6 @@ func TestHasSecureValue(t *testing.T) {
 		},
 	}
 
-	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
 	for _, test := range tests {
 		t.Run(fmt.Sprintf("%v", test.Value), func(t *testing.T) {
 			t.Parallel()
@@ -189,7 +188,6 @@ func TestDecryptingValue(t *testing.T) {
 
 	decrypter := NewBlindingDecrypter()
 
-	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
 	for _, test := range tests {
 		t.Run(fmt.Sprintf("%v", test.Value), func(t *testing.T) {
 			t.Parallel()
@@ -259,7 +257,6 @@ func TestSecureValues(t *testing.T) {
 
 	decrypter := passThroughDecrypter{}
 
-	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
 	for _, test := range tests {
 		t.Run(fmt.Sprintf("%v", test.Value), func(t *testing.T) {
 			t.Parallel()
@@ -300,7 +297,6 @@ func TestCopyValue(t *testing.T) {
 		},
 	}
 
-	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
 	for _, test := range tests {
 		t.Run(fmt.Sprintf("%v", test), func(t *testing.T) {
 			t.Parallel()

@@ -148,6 +148,8 @@ export class ReadResourceRequest extends jspb.Message {
     setParentstacktracehandle(value: string): ReadResourceRequest;
     getPackageref(): string;
     setPackageref(value: string): ReadResourceRequest;
+    getAcceptsByteString(): boolean;
+    setAcceptsByteString(value: boolean): ReadResourceRequest;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): ReadResourceRequest.AsObject;
@@ -179,6 +181,7 @@ export namespace ReadResourceRequest {
         stacktrace?: pulumi_source_pb.StackTrace.AsObject,
         parentstacktracehandle: string,
         packageref: string,
+        acceptsByteString: boolean,
     }
 }
 
@@ -335,6 +338,14 @@ export class RegisterResourceRequest extends jspb.Message {
 
     getEnvvarmappingsMap(): jspb.Map<string, string>;
     clearEnvvarmappingsMap(): void;
+    getSnippetid(): string;
+    setSnippetid(value: string): RegisterResourceRequest;
+    getAcceptsByteString(): boolean;
+    setAcceptsByteString(value: boolean): RegisterResourceRequest;
+    clearStateMigrationsList(): void;
+    getStateMigrationsList(): Array<pulumi_callback_pb.Callback>;
+    setStateMigrationsList(value: Array<pulumi_callback_pb.Callback>): RegisterResourceRequest;
+    addStateMigrations(value?: pulumi_callback_pb.Callback, index?: number): pulumi_callback_pb.Callback;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): RegisterResourceRequest.AsObject;
@@ -392,6 +403,9 @@ export namespace RegisterResourceRequest {
         hidediffsList: Array<string>,
 
         envvarmappingsMap: Array<[string, string]>,
+        snippetid: string,
+        acceptsByteString: boolean,
+        stateMigrationsList: Array<pulumi_callback_pb.Callback.AsObject>,
     }
 
 
@@ -521,6 +535,8 @@ export class RegisterResourceResponse extends jspb.Message {
     clearPropertydependenciesMap(): void;
     getResult(): Result;
     setResult(value: Result): RegisterResourceResponse;
+    getUnknown(): boolean;
+    setUnknown(value: boolean): RegisterResourceResponse;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): RegisterResourceResponse.AsObject;
@@ -542,6 +558,7 @@ export namespace RegisterResourceResponse {
 
         propertydependenciesMap: Array<[string, RegisterResourceResponse.PropertyDependencies.AsObject]>,
         result: Result,
+        unknown: boolean,
     }
 
 
@@ -628,6 +645,14 @@ export class ResourceInvokeRequest extends jspb.Message {
     setParentstacktracehandle(value: string): ResourceInvokeRequest;
     getPackageref(): string;
     setPackageref(value: string): ResourceInvokeRequest;
+    getAcceptsByteString(): boolean;
+    setAcceptsByteString(value: boolean): ResourceInvokeRequest;
+    clearDependsonList(): void;
+    getDependsonList(): Array<string>;
+    setDependsonList(value: Array<string>): ResourceInvokeRequest;
+    addDependson(value: string, index?: number): string;
+    getParent(): string;
+    setParent(value: string): ResourceInvokeRequest;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): ResourceInvokeRequest.AsObject;
@@ -653,6 +678,40 @@ export namespace ResourceInvokeRequest {
         stacktrace?: pulumi_source_pb.StackTrace.AsObject,
         parentstacktracehandle: string,
         packageref: string,
+        acceptsByteString: boolean,
+        dependsonList: Array<string>,
+        parent: string,
+    }
+}
+
+export class ResourceInvokeResponse extends jspb.Message { 
+
+    hasReturn(): boolean;
+    clearReturn(): void;
+    getReturn(): google_protobuf_struct_pb.Struct | undefined;
+    setReturn(value?: google_protobuf_struct_pb.Struct): ResourceInvokeResponse;
+    clearFailuresList(): void;
+    getFailuresList(): Array<pulumi_provider_pb.CheckFailure>;
+    setFailuresList(value: Array<pulumi_provider_pb.CheckFailure>): ResourceInvokeResponse;
+    addFailures(value?: pulumi_provider_pb.CheckFailure, index?: number): pulumi_provider_pb.CheckFailure;
+    getUnknown(): boolean;
+    setUnknown(value: boolean): ResourceInvokeResponse;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): ResourceInvokeResponse.AsObject;
+    static toObject(includeInstance: boolean, msg: ResourceInvokeResponse): ResourceInvokeResponse.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: ResourceInvokeResponse, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): ResourceInvokeResponse;
+    static deserializeBinaryFromReader(message: ResourceInvokeResponse, reader: jspb.BinaryReader): ResourceInvokeResponse;
+}
+
+export namespace ResourceInvokeResponse {
+    export type AsObject = {
+        pb_return?: google_protobuf_struct_pb.Struct.AsObject,
+        failuresList: Array<pulumi_provider_pb.CheckFailure.AsObject>,
+        unknown: boolean,
     }
 }
 
@@ -690,6 +749,8 @@ export class ResourceCallRequest extends jspb.Message {
     setParentstacktracehandle(value: string): ResourceCallRequest;
     getPackageref(): string;
     setPackageref(value: string): ResourceCallRequest;
+    getAcceptsByteString(): boolean;
+    setAcceptsByteString(value: boolean): ResourceCallRequest;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): ResourceCallRequest.AsObject;
@@ -716,6 +777,7 @@ export namespace ResourceCallRequest {
         stacktrace?: pulumi_source_pb.StackTrace.AsObject,
         parentstacktracehandle: string,
         packageref: string,
+        acceptsByteString: boolean,
     }
 
 
@@ -1134,6 +1196,58 @@ export namespace TransformInvokeOptions {
     }
 }
 
+export class StateMigrationRequest extends jspb.Message { 
+    getUrn(): string;
+    setUrn(value: string): StateMigrationRequest;
+    getOldState(): Uint8Array | string;
+    getOldState_asU8(): Uint8Array;
+    getOldState_asB64(): string;
+    setOldState(value: Uint8Array | string): StateMigrationRequest;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): StateMigrationRequest.AsObject;
+    static toObject(includeInstance: boolean, msg: StateMigrationRequest): StateMigrationRequest.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: StateMigrationRequest, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): StateMigrationRequest;
+    static deserializeBinaryFromReader(message: StateMigrationRequest, reader: jspb.BinaryReader): StateMigrationRequest;
+}
+
+export namespace StateMigrationRequest {
+    export type AsObject = {
+        urn: string,
+        oldState: Uint8Array | string,
+    }
+}
+
+export class StateMigrationResponse extends jspb.Message { 
+    getNewState(): Uint8Array | string;
+    getNewState_asU8(): Uint8Array;
+    getNewState_asB64(): string;
+    setNewState(value: Uint8Array | string): StateMigrationResponse;
+
+    getSuccessorsMap(): jspb.Map<string, string>;
+    clearSuccessorsMap(): void;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): StateMigrationResponse.AsObject;
+    static toObject(includeInstance: boolean, msg: StateMigrationResponse): StateMigrationResponse.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: StateMigrationResponse, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): StateMigrationResponse;
+    static deserializeBinaryFromReader(message: StateMigrationResponse, reader: jspb.BinaryReader): StateMigrationResponse;
+}
+
+export namespace StateMigrationResponse {
+    export type AsObject = {
+        newState: Uint8Array | string,
+
+        successorsMap: Array<[string, string]>,
+    }
+}
+
 export class ResourceHookRequest extends jspb.Message { 
     getUrn(): string;
     setUrn(value: string): ResourceHookRequest;
@@ -1325,6 +1439,11 @@ export class RegisterPackageRequest extends jspb.Message {
     getParameterization(): Parameterization | undefined;
     setParameterization(value?: Parameterization): RegisterPackageRequest;
 
+    hasExtension$(): boolean;
+    clearExtension$(): void;
+    getExtension$(): Parameterization | undefined;
+    setExtension$(value?: Parameterization): RegisterPackageRequest;
+
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): RegisterPackageRequest.AsObject;
     static toObject(includeInstance: boolean, msg: RegisterPackageRequest): RegisterPackageRequest.AsObject;
@@ -1343,6 +1462,7 @@ export namespace RegisterPackageRequest {
 
         checksumsMap: Array<[string, Uint8Array | string]>,
         parameterization?: Parameterization.AsObject,
+        extension?: Parameterization.AsObject,
     }
 }
 
@@ -1466,6 +1586,10 @@ export enum ResourceMonitorFeature {
     RESOURCE_MONITOR_FEATURE_RESOURCE_HOOKS = 10,
     RESOURCE_MONITOR_FEATURE_ERROR_HOOKS = 11,
     RESOURCE_MONITOR_FEATURE_SENDS_OPTIONS_TO_HOOKS = 12,
+    RESOURCE_MONITOR_FEATURE_BYTE_STRING = 13,
+    RESOURCE_MONITOR_FEATURE_INVOKE_DEPENDS_ON = 14,
+    RESOURCE_MONITOR_FEATURE_INVOKE_PARENT = 15,
+    RESOURCE_MONITOR_FEATURE_STATE_MIGRATIONS = 16,
 }
 
 export enum Result {

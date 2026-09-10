@@ -1,0 +1,11 @@
+{
+	"name": "l2-discriminated-union-marked-key",
+	"devDependencies": {
+		"@types/node": "^20"
+	},
+	"dependencies": {
+		"typescript": "^4.7.0",
+		"@pulumi/pulumi": "ROOT/artifacts/pulumi-pulumi-CORE.VERSION.tgz",
+		"@pulumi/discriminated-union-marked-key": "ROOT/artifacts/pulumi-discriminated-union-marked-key-53.0.0.tgz"
+	}
+}

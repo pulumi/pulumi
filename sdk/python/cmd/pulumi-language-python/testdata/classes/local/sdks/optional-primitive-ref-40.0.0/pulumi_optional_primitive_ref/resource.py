@@ -16,11 +16,14 @@ __all__ = ['ResourceArgs', 'Resource']
 @pulumi.input_type
 class ResourceArgs:
     def __init__(__self__, *,
-                 data: pulumi.Input['DataArgs']):
+                 data: pulumi.Input['DataArgs'],
+                 optional_data: pulumi.Input[Optional['DataArgs']] = None):
         """
         The set of arguments for constructing a Resource resource.
         """
         pulumi.set(__self__, "data", data)
+        if optional_data is not None:
+            pulumi.set(__self__, "optional_data", optional_data)
 
     @_builtins.property
     @pulumi.getter
@@ -31,6 +34,15 @@ class ResourceArgs:
     def data(self, value: pulumi.Input['DataArgs']):
         pulumi.set(self, "data", value)
 
+    @_builtins.property
+    @pulumi.getter(name="optionalData")
+    def optional_data(self) -> pulumi.Input[Optional['DataArgs']]:
+        return pulumi.get(self, "optional_data")
+
+    @optional_data.setter
+    def optional_data(self, value: pulumi.Input[Optional['DataArgs']]):
+        pulumi.set(self, "optional_data", value)
+
 
 @pulumi.type_token("optional-primitive-ref:index:Resource")
 class Resource(pulumi.CustomResource):
@@ -39,6 +51,7 @@ class Resource(pulumi.CustomResource):
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
                  data: pulumi.Input[Optional[pulumi.InputType['DataArgs']]] = None,
+                 optional_data: pulumi.Input[Optional[pulumi.InputType['DataArgs']]] = None,
                  __props__=None):
         """
         Create a Resource resource with the given unique name, props, and options.
@@ -71,6 +84,7 @@ class Resource(pulumi.CustomResource):
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
                  data: pulumi.Input[Optional[pulumi.InputType['DataArgs']]] = None,
+                 optional_data: pulumi.Input[Optional[pulumi.InputType['DataArgs']]] = None,
                  __props__=None):
         opts = pulumi.ResourceOptions.merge(_utilities.get_resource_opts_defaults(), opts)
         if not isinstance(opts, pulumi.ResourceOptions):
@@ -83,6 +97,7 @@ class Resource(pulumi.CustomResource):
             if data is None and not opts.urn:
                 raise TypeError("Missing required property 'data'")
             __props__.__dict__["data"] = data
+            __props__.__dict__["optional_data"] = optional_data
         super(Resource, __self__).__init__(
             'optional-primitive-ref:index:Resource',
             resource_name,
@@ -106,10 +121,16 @@ class Resource(pulumi.CustomResource):
         __props__ = ResourceArgs.__new__(ResourceArgs)
 
         __props__.__dict__["data"] = None
+        __props__.__dict__["optional_data"] = None
         return Resource(resource_name, opts=opts, __props__=__props__)
 
     @_builtins.property
     @pulumi.getter
     def data(self) -> pulumi.Output['outputs.Data']:
         return pulumi.get(self, "data")
+
+    @_builtins.property
+    @pulumi.getter(name="optionalData")
+    def optional_data(self) -> pulumi.Output[Optional['outputs.Data']]:
+        return pulumi.get(self, "optional_data")
 

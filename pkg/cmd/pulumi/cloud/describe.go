@@ -83,7 +83,13 @@ func runDescribe(
 		return err
 	}
 
-	idx, err := LoadIndex(ctx, warnW, refresh)
+	resolved, err := ResolveContext(ctx)
+	if err != nil {
+		return NewAPIError(cmdutil.ExitInternalError, ErrToolError,
+			fmt.Sprintf("resolving cloud context: %v", err))
+	}
+
+	idx, err := LoadIndex(ctx, resolved, warnW, refresh)
 	if err != nil {
 		return err
 	}
@@ -139,6 +145,7 @@ func emitDescribeMarkdown(w io.Writer, op *Operation) error {
 }
 
 func emitDescribeJSON(w io.Writer, op *Operation) error {
+	op.ensureSchemas()
 	payload := describedOp{
 		OperationID:  op.OperationID,
 		Method:       op.Method,
@@ -187,6 +194,7 @@ func emitDescribeText(w io.Writer, op *Operation) error {
 // returns it as a string. Used by emitDescribeText for the CLI and by the
 // TUI's Browse tab to fill the details viewport.
 func RenderDescribeText(op *Operation) string {
+	op.ensureSchemas()
 	var b strings.Builder
 	fmt.Fprintf(&b, "%s %s\n", op.Method, op.Path)
 	if op.Tag != "" {

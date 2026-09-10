@@ -34,6 +34,7 @@ export class Resource extends pulumi.CustomResource {
     }
 
     declare public readonly data: pulumi.Output<outputs.Data>;
+    declare public readonly optionalData: pulumi.Output<outputs.Data | undefined>;
 
     /**
      * Create a Resource resource with the given unique name, arguments, and options.
@@ -50,8 +51,10 @@ export class Resource extends pulumi.CustomResource {
                 throw new Error("Missing required property 'data'");
             }
             resourceInputs["data"] = args?.data;
+            resourceInputs["optionalData"] = args?.optionalData;
         } else {
             resourceInputs["data"] = undefined /*out*/;
+            resourceInputs["optionalData"] = undefined /*out*/;
         }
         opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts);
         super(Resource.__pulumiType, name, resourceInputs, opts);
@@ -63,4 +66,5 @@ export class Resource extends pulumi.CustomResource {
  */
 export interface ResourceArgs {
     data: pulumi.Input<inputs.DataArgs>;
+    optionalData?: pulumi.Input<inputs.DataArgs | undefined>;
 }

@@ -18,9 +18,10 @@ import (
 	"context"
 	"slices"
 
+	mapset "github.com/deckarep/golang-set/v2"
+
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
-	"github.com/pulumi/pulumi/pkg/v3/codegen"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
@@ -131,7 +132,7 @@ func (b *binder) bindNode(ctx context.Context, node Node) hcl.Diagnostics {
 
 // getDependencies returns the dependencies for the given node.
 func (b *binder) getDependencies(node Node) []Node {
-	depSet := codegen.Set{}
+	depSet := mapset.NewSet[Node]()
 	var deps []Node
 	visit := func(node hclsyntax.Node) hcl.Diagnostics {
 		var depName string
@@ -147,7 +148,7 @@ func (b *binder) getDependencies(node Node) []Node {
 
 		// Missing reference errors will be issued during expression binding.
 		referent, _ := b.root.BindReference(depName)
-		if node, ok := referent.(Node); ok && !depSet.Has(node) {
+		if node, ok := referent.(Node); ok && !depSet.Contains(node) {
 			depSet.Add(node)
 			deps = append(deps, node)
 		}
@@ -307,6 +308,7 @@ func (b *binder) bindOutputVariable(node *OutputVariable) hcl.Diagnostics {
 
 type hookScope struct {
 	root *model.Scope
+	kind HookKind
 }
 
 func (s *hookScope) GetScopesForBlock(block *hclsyntax.Block) (model.Scopes, hcl.Diagnostics) {
@@ -319,13 +321,16 @@ func (s *hookScope) GetScopeForAttribute(attr *hclsyntax.Attribute) (*model.Scop
 
 		properties := map[string]model.Type{
 			"urn":        model.StringType,
-			"id":         model.StringType,
+			"id":         model.IDType,
 			"name":       model.StringType,
 			"type":       model.StringType,
 			"newInputs":  model.NewMapType(model.DynamicType),
 			"oldInputs":  model.NewMapType(model.DynamicType),
-			"newOutputs": model.NewMapType(model.DynamicType),
 			"oldOutputs": model.NewMapType(model.DynamicType),
+		}
+		// Error hooks fire after an operation fails, so there are no new outputs.
+		if s.kind != HookKindError {
+			properties["newOutputs"] = model.NewMapType(model.DynamicType)
 		}
 
 		scope.Define("args", &model.Variable{
@@ -339,7 +344,7 @@ func (s *hookScope) GetScopeForAttribute(attr *hclsyntax.Attribute) (*model.Scop
 
 func (b *binder) bindHook(node *Hook) hcl.Diagnostics {
 	// Create a child scope that exposes the resource data to the hook.
-	hookScope := &hookScope{root: b.root}
+	hookScope := &hookScope{root: b.root, kind: node.Kind}
 	block, diagnostics := model.BindBlock(node.syntax, hookScope, b.tokens, b.options.modelOptions()...)
 
 	if cmd, ok := block.Body.Attribute("command"); ok {
@@ -372,9 +377,13 @@ func (b *binder) bindHook(node *Hook) hcl.Diagnostics {
 		}
 	}
 
-	// Error on any other attribute
+	// Error on any other attribute. Error hooks always run on failures of actual operations,
+	// so onDryRun and ignoreErrors do not apply to them.
+	valid := []string{"onDryRun", "ignoreErrors", "command"}
+	if node.Kind == HookKindError {
+		valid = []string{"command"}
+	}
 	for _, i := range block.Body.Items {
-		valid := []string{"onDryRun", "ignoreErrors", "command"}
 		switch item := i.(type) {
 		case *model.Attribute:
 			if !slices.Contains(valid, item.Name) {

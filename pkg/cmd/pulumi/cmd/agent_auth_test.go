@@ -33,7 +33,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
-//nolint:paralleltest // mutates shared temporary agent credentials
 func TestProcessCmdErrorsPrintsAgentAuthRequiredInstruction(t *testing.T) {
 	oldAgentCreds, err := workspace.GetAgentStoredCredentials()
 	require.NoError(t, err)
@@ -74,7 +73,6 @@ func TestProcessCmdErrorsPrintsAgentAuthRequiredInstruction(t *testing.T) {
 	assert.Contains(t, output.String(), expectedInstruction)
 }
 
-//nolint:paralleltest // mutates shared temporary agent credentials
 func TestProcessCmdErrorsKeepsGenericLoginRequiredOutsideAgentMode(t *testing.T) {
 	t.Setenv("CODEX_SANDBOX", "")
 	t.Setenv("AI_AGENT", "")
@@ -89,7 +87,6 @@ func TestProcessCmdErrorsKeepsGenericLoginRequiredOutsideAgentMode(t *testing.T)
 	assert.Equal(t, err, processCmdErrors(t.Context(), err, io.Discard))
 }
 
-//nolint:paralleltest // mutates shared temporary agent credentials
 func TestProcessCmdErrorsPrintsAgentClaimWarningForNonLoginError(t *testing.T) {
 	oldAgentCreds, err := workspace.GetAgentStoredCredentials()
 	require.NoError(t, err)
@@ -131,7 +128,6 @@ func TestProcessCmdErrorsPrintsAgentClaimWarningForNonLoginError(t *testing.T) {
 	assert.Contains(t, output.String(), "CLAIM_URL=https://app.pulumi.com/claim/non-login-error")
 }
 
-//nolint:paralleltest // mutates shared temporary agent credentials
 func TestProcessCmdErrorsDoesNotPrintClaimURLForUnauthorizedClaimedAccount(t *testing.T) {
 	oldAgentCreds, err := workspace.GetAgentStoredCredentials()
 	require.NoError(t, err)
@@ -180,7 +176,6 @@ func TestProcessCmdErrorsDoesNotPrintClaimURLForUnauthorizedClaimedAccount(t *te
 	assert.Contains(t, output.String(), "claim URL is no longer claimable")
 }
 
-//nolint:paralleltest // mutates shared temporary agent credentials
 func TestProcessCmdErrorsPrintsAgentAuthRequiredInstructionForAPIUnauthorized(t *testing.T) {
 	oldAgentCreds, err := workspace.GetAgentStoredCredentials()
 	require.NoError(t, err)
@@ -222,7 +217,6 @@ func TestProcessCmdErrorsPrintsAgentAuthRequiredInstructionForAPIUnauthorized(t 
 	assert.Contains(t, output.String(), "ACTION_REQUIRED=Tell the user to run pulumi login.")
 }
 
-//nolint:paralleltest // mutates shared temporary agent credentials
 func TestProcessCmdErrorsDoesNotPrintAgentAuthRequiredInstructionForAPINonUnauthorized(t *testing.T) {
 	oldAgentCreds, err := workspace.GetAgentStoredCredentials()
 	require.NoError(t, err)

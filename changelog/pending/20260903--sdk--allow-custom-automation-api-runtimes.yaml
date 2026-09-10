@@ -1,0 +1,4 @@
+component: sdk
+kind: fix
+body: Allow Automation API project settings to use any language runtime
+time: 2026-09-03T14:30:49+02:00

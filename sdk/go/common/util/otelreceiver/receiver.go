@@ -129,8 +129,10 @@ func (s *traceService) Export(
 
 	logging.V(10).Infof("OTLP receiver: received %d resource spans", len(req.ResourceSpans))
 
-	if err := s.r.exporter.ExportSpans(ctx, req.ResourceSpans); err != nil {
-		logging.V(5).Infof("OTLP receiver: failed to export spans: %v", err)
+	if s.r.exporter != nil {
+		if err := s.r.exporter.ExportSpans(ctx, req.ResourceSpans); err != nil {
+			logging.V(5).Infof("OTLP receiver: failed to export spans: %v", err)
+		}
 	}
 	return &coltracepb.ExportTraceServiceResponse{}, nil
 }

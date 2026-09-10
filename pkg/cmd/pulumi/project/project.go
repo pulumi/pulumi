@@ -35,7 +35,7 @@ func NewProjectCmd() *cobra.Command {
 	constrictor.AttachArguments(cmd, constrictor.NoArgs)
 
 	// Add subcommands
-	cmd.AddCommand(newProjectLsCmd())
+	cmd.AddCommand(newProjectListCmd())
 	cmd.AddCommand(newcmd.NewNewCmd())
 
 	return cmd

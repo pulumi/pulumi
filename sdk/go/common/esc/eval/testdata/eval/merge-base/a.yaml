@@ -1,0 +1,8 @@
+values:
+  some_object:
+    foo: bar
+    baz: zab
+  other_object:
+    baz: qux
+    nested:
+      epsilon: delta

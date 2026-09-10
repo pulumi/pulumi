@@ -1,0 +1,767 @@
+{
+    "loadDiags": [
+        {
+            "Severity": 1,
+            "Summary": "the argument to fn::join must be a two-valued list",
+            "Detail": "",
+            "Subject": {
+                "Filename": "invalid-join",
+                "Start": {
+                    "Line": 3,
+                    "Column": 15,
+                    "Byte": 30
+                },
+                "End": {
+                    "Line": 3,
+                    "Column": 19,
+                    "Byte": 34
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Path": "values.join[\"fn::join\"]"
+        }
+    ],
+    "check": {
+        "exprs": {
+            "join": {
+                "range": {
+                    "environment": "invalid-join",
+                    "begin": {
+                        "line": 3,
+                        "column": 5,
+                        "byte": 20
+                    },
+                    "end": {
+                        "line": 3,
+                        "column": 19,
+                        "byte": 34
+                    }
+                },
+                "schema": {
+                    "type": "string"
+                },
+                "builtin": {
+                    "name": "fn::join",
+                    "nameRange": {
+                        "environment": "invalid-join",
+                        "begin": {
+                            "line": 3,
+                            "column": 5,
+                            "byte": 20
+                        },
+                        "end": {
+                            "line": 3,
+                            "column": 13,
+                            "byte": 28
+                        }
+                    },
+                    "argSchema": {
+                        "prefixItems": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "items": {
+                                    "type": "string"
+                                },
+                                "type": "array"
+                            }
+                        ],
+                        "items": false,
+                        "type": "array"
+                    },
+                    "arg": {
+                        "range": {
+                            "environment": "invalid-join",
+                            "begin": {
+                                "line": 3,
+                                "column": 15,
+                                "byte": 30
+                            },
+                            "end": {
+                                "line": 3,
+                                "column": 19,
+                                "byte": 34
+                            }
+                        },
+                        "list": [
+                            {
+                                "range": {
+                                    "environment": "invalid-join",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                },
+                                "schema": true
+                            },
+                            {
+                                "range": {
+                                    "environment": "invalid-join",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                },
+                                "schema": true
+                            }
+                        ]
+                    }
+                }
+            },
+            "other": {
+                "range": {
+                    "environment": "invalid-join",
+                    "begin": {
+                        "line": 4,
+                        "column": 10,
+                        "byte": 44
+                    },
+                    "end": {
+                        "line": 4,
+                        "column": 15,
+                        "byte": 49
+                    }
+                },
+                "schema": {
+                    "type": "string",
+                    "const": "value"
+                },
+                "literal": "value"
+            }
+        },
+        "properties": {
+            "join": {
+                "unknown": true,
+                "trace": {
+                    "def": {
+                        "environment": "invalid-join",
+                        "begin": {
+                            "line": 3,
+                            "column": 5,
+                            "byte": 20
+                        },
+                        "end": {
+                            "line": 3,
+                            "column": 19,
+                            "byte": 34
+                        }
+                    }
+                }
+            },
+            "other": {
+                "value": "value",
+                "trace": {
+                    "def": {
+                        "environment": "invalid-join",
+                        "begin": {
+                            "line": 4,
+                            "column": 10,
+                            "byte": 44
+                        },
+                        "end": {
+                            "line": 4,
+                            "column": 15,
+                            "byte": 49
+                        }
+                    }
+                }
+            }
+        },
+        "schema": {
+            "properties": {
+                "join": {
+                    "type": "string"
+                },
+                "other": {
+                    "type": "string",
+                    "const": "value"
+                }
+            },
+            "type": "object",
+            "required": [
+                "join",
+                "other"
+            ]
+        },
+        "executionContext": {
+            "properties": {
+                "currentEnvironment": {
+                    "value": {
+                        "name": {
+                            "value": "invalid-join",
+                            "trace": {
+                                "def": {
+                                    "environment": "invalid-join",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "invalid-join",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                },
+                "pulumi": {
+                    "value": {
+                        "user": {
+                            "value": {
+                                "id": {
+                                    "value": "USER_123",
+                                    "trace": {
+                                        "def": {
+                                            "environment": "invalid-join",
+                                            "begin": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            },
+                                            "end": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            }
+                                        }
+                                    }
+                                }
+                            },
+                            "trace": {
+                                "def": {
+                                    "environment": "invalid-join",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "invalid-join",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                },
+                "rootEnvironment": {
+                    "value": {
+                        "name": {
+                            "value": "invalid-join",
+                            "trace": {
+                                "def": {
+                                    "environment": "invalid-join",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "invalid-join",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                }
+            },
+            "schema": {
+                "properties": {
+                    "currentEnvironment": {
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "const": "invalid-join"
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "name"
+                        ]
+                    },
+                    "pulumi": {
+                        "properties": {
+                            "user": {
+                                "properties": {
+                                    "id": {
+                                        "type": "string",
+                                        "const": "USER_123"
+                                    }
+                                },
+                                "type": "object",
+                                "required": [
+                                    "id"
+                                ]
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "user"
+                        ]
+                    },
+                    "rootEnvironment": {
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "const": "invalid-join"
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "name"
+                        ]
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "currentEnvironment",
+                    "pulumi",
+                    "rootEnvironment"
+                ]
+            }
+        }
+    },
+    "checkJson": {
+        "join": "[unknown]",
+        "other": "value"
+    },
+    "eval": {
+        "exprs": {
+            "join": {
+                "range": {
+                    "environment": "invalid-join",
+                    "begin": {
+                        "line": 3,
+                        "column": 5,
+                        "byte": 20
+                    },
+                    "end": {
+                        "line": 3,
+                        "column": 19,
+                        "byte": 34
+                    }
+                },
+                "schema": {
+                    "type": "string"
+                },
+                "builtin": {
+                    "name": "fn::join",
+                    "nameRange": {
+                        "environment": "invalid-join",
+                        "begin": {
+                            "line": 3,
+                            "column": 5,
+                            "byte": 20
+                        },
+                        "end": {
+                            "line": 3,
+                            "column": 13,
+                            "byte": 28
+                        }
+                    },
+                    "argSchema": {
+                        "prefixItems": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "items": {
+                                    "type": "string"
+                                },
+                                "type": "array"
+                            }
+                        ],
+                        "items": false,
+                        "type": "array"
+                    },
+                    "arg": {
+                        "range": {
+                            "environment": "invalid-join",
+                            "begin": {
+                                "line": 3,
+                                "column": 15,
+                                "byte": 30
+                            },
+                            "end": {
+                                "line": 3,
+                                "column": 19,
+                                "byte": 34
+                            }
+                        },
+                        "list": [
+                            {
+                                "range": {
+                                    "environment": "invalid-join",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                },
+                                "schema": true
+                            },
+                            {
+                                "range": {
+                                    "environment": "invalid-join",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                },
+                                "schema": true
+                            }
+                        ]
+                    }
+                }
+            },
+            "other": {
+                "range": {
+                    "environment": "invalid-join",
+                    "begin": {
+                        "line": 4,
+                        "column": 10,
+                        "byte": 44
+                    },
+                    "end": {
+                        "line": 4,
+                        "column": 15,
+                        "byte": 49
+                    }
+                },
+                "schema": {
+                    "type": "string",
+                    "const": "value"
+                },
+                "literal": "value"
+            }
+        },
+        "properties": {
+            "join": {
+                "unknown": true,
+                "trace": {
+                    "def": {
+                        "environment": "invalid-join",
+                        "begin": {
+                            "line": 3,
+                            "column": 5,
+                            "byte": 20
+                        },
+                        "end": {
+                            "line": 3,
+                            "column": 19,
+                            "byte": 34
+                        }
+                    }
+                }
+            },
+            "other": {
+                "value": "value",
+                "trace": {
+                    "def": {
+                        "environment": "invalid-join",
+                        "begin": {
+                            "line": 4,
+                            "column": 10,
+                            "byte": 44
+                        },
+                        "end": {
+                            "line": 4,
+                            "column": 15,
+                            "byte": 49
+                        }
+                    }
+                }
+            }
+        },
+        "schema": {
+            "properties": {
+                "join": {
+                    "type": "string"
+                },
+                "other": {
+                    "type": "string",
+                    "const": "value"
+                }
+            },
+            "type": "object",
+            "required": [
+                "join",
+                "other"
+            ]
+        },
+        "executionContext": {
+            "properties": {
+                "currentEnvironment": {
+                    "value": {
+                        "name": {
+                            "value": "invalid-join",
+                            "trace": {
+                                "def": {
+                                    "environment": "invalid-join",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "invalid-join",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                },
+                "pulumi": {
+                    "value": {
+                        "user": {
+                            "value": {
+                                "id": {
+                                    "value": "USER_123",
+                                    "trace": {
+                                        "def": {
+                                            "environment": "invalid-join",
+                                            "begin": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            },
+                                            "end": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            }
+                                        }
+                                    }
+                                }
+                            },
+                            "trace": {
+                                "def": {
+                                    "environment": "invalid-join",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "invalid-join",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                },
+                "rootEnvironment": {
+                    "value": {
+                        "name": {
+                            "value": "invalid-join",
+                            "trace": {
+                                "def": {
+                                    "environment": "invalid-join",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "invalid-join",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                }
+            },
+            "schema": {
+                "properties": {
+                    "currentEnvironment": {
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "const": "invalid-join"
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "name"
+                        ]
+                    },
+                    "pulumi": {
+                        "properties": {
+                            "user": {
+                                "properties": {
+                                    "id": {
+                                        "type": "string",
+                                        "const": "USER_123"
+                                    }
+                                },
+                                "type": "object",
+                                "required": [
+                                    "id"
+                                ]
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "user"
+                        ]
+                    },
+                    "rootEnvironment": {
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "const": "invalid-join"
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "name"
+                        ]
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "currentEnvironment",
+                    "pulumi",
+                    "rootEnvironment"
+                ]
+            }
+        }
+    },
+    "evalJsonRedacted": {
+        "join": "[unknown]",
+        "other": "value"
+    },
+    "evalJSONRevealed": {
+        "join": "[unknown]",
+        "other": "value"
+    }
+}

@@ -1,0 +1,37 @@
+run: esc open default/test --format dotenv
+environments:
+  test-user/default/test:
+    imports:
+      - test-2
+    values:
+      foo: bar
+      yup: true
+      pi: 3.14
+      environmentVariables:
+        FOO: ${foo}
+        BOOL: ${yup}
+        NUM: ${pi}
+      files:
+        BOOL_FILE: ${yup}
+        NUM_FILE: ${pi}
+  test-user/default/test-2:
+    values:
+      foo: baz
+      hello: world
+      environmentVariables:
+        HELLO: ${hello}
+      files:
+        FILE: bar
+
+---
+> esc open default/test --format dotenv
+BOOL="true"
+FOO="bar"
+HELLO="world"
+NUM="3.14"
+BOOL_FILE="temp/esc-temp-0"
+FILE="temp/esc-temp-1"
+NUM_FILE="temp/esc-temp-2"
+
+---
+> esc open default/test --format dotenv

@@ -58,13 +58,13 @@ func TestEnvironmentDefaults(t *testing.T) {
 			// We use zero values instead.
 			// We can modify want because it's passed by value.
 			if want.Name == nil {
-				want.Name = ptr("")
+				want.Name = new("")
 			}
 			if want.Populated == nil {
-				want.Populated = ptr(false)
+				want.Populated = new(false)
 			}
 			if want.RadiusKm == nil {
-				want.RadiusKm = ptr(0.0)
+				want.RadiusKm = new(0.0)
 			}
 
 			assert.Equal(t, *want.Name, config.GetName(ctx), "name")
@@ -115,32 +115,32 @@ func TestEnvironmentDefaults(t *testing.T) {
 		{
 			desc: "string",
 			env:  map[string]string{"WORLD_NAME": "Earth"},
-			want: example.World{Name: ptr("Earth")},
+			want: example.World{Name: new("Earth")},
 		},
 		{
 			desc: "string/empty",
 			env:  map[string]string{"WORLD_NAME": ""},
-			want: example.World{Name: ptr("")},
+			want: example.World{Name: new("")},
 		},
 		{
 			desc: "bool",
 			env:  map[string]string{"WORLD_POPULATED": "true"},
-			want: example.World{Populated: ptr(true)},
+			want: example.World{Populated: new(true)},
 		},
 		{
 			desc: "bool/false",
 			env:  map[string]string{"WORLD_POPULATED": "false"},
-			want: example.World{Populated: ptr(false)},
+			want: example.World{Populated: new(false)},
 		},
 		{
 			desc: "number",
 			env:  map[string]string{"WORLD_RADIUS_KM": "6378"},
-			want: example.World{RadiusKm: ptr(6378.0)},
+			want: example.World{RadiusKm: new(6378.0)},
 		},
 		{
 			desc: "number/zero",
 			env:  map[string]string{"WORLD_RADIUS_KM": "0"},
-			want: example.World{RadiusKm: ptr(0.0)},
+			want: example.World{RadiusKm: new(0.0)},
 		},
 		{
 			desc: "all",
@@ -150,9 +150,9 @@ func TestEnvironmentDefaults(t *testing.T) {
 				"WORLD_RADIUS_KM": "6378",
 			},
 			want: example.World{
-				Name:      ptr("Earth"),
-				Populated: ptr(true),
-				RadiusKm:  ptr(6378.0),
+				Name:      new("Earth"),
+				Populated: new(true),
+				RadiusKm:  new(6378.0),
 			},
 		},
 	}
@@ -218,9 +218,6 @@ func (m *mockResourceMonitor) NewResource(args pulumi.MockResourceArgs) (string,
 	}
 	return args.Name + "_id", args.Inputs, nil
 }
-
-// Returns a pointer to the given value.
-func ptr[T any](v T) *T { return &v }
 
 // waitForOutut blocks until the given output has resolved.
 // The test fails if the output does not resolve after a while.

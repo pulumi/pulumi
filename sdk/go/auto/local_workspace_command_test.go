@@ -17,6 +17,7 @@ package auto
 import (
 	"context"
 	"io"
+	"slices"
 	"testing"
 
 	"github.com/blang/semver"
@@ -60,12 +61,7 @@ func (r *recordingPulumiCommand) Run(
 // envContains reports whether KEY=VALUE is present in env.
 func envContains(env []string, key, value string) bool {
 	want := key + "=" + value
-	for _, e := range env {
-		if e == want {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(env, want)
 }
 
 // TestStackCancelDelegatesToCLIAPI verifies that Stack.Cancel reaches

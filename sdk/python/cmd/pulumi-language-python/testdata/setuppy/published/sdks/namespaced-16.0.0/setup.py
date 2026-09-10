@@ -31,7 +31,7 @@ setup(name='a_namespace_namespaced',
           ]
       },
       install_requires=[
-          'parver>=0.2.1',
+          'packaging>=24.0',
           'pulumi>=3.231.0,<4.0.0',
           'pulumi_component>=13.3.7',
           'semver>=2.8.1',

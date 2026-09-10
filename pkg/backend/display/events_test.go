@@ -24,8 +24,8 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/stretchr/testify/assert"
@@ -97,7 +97,7 @@ func TestSummaryEventResultRoundTrip(t *testing.T) {
 func TestConvertJSONEventExhaustive(t *testing.T) {
 	t.Parallel()
 
-	rt := reflect.TypeOf(apitype.EngineEvent{})
+	rt := reflect.TypeFor[apitype.EngineEvent]()
 	for i := 0; i < rt.NumField(); i++ {
 		f := rt.Field(i)
 		// Only consider exported pointer-to-struct fields.

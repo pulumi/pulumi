@@ -17,9 +17,11 @@ package tests
 import (
 	"path/filepath"
 
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
+
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -46,7 +48,7 @@ func init() {
 					RequireSingleResource(l, snap.Resources, "pulumi:providers:asset-archive")
 
 					// We don't know what order the resources will be in so we map by name
-					resources := map[string]*resource.State{}
+					resources := map[string]*pkgresource.State{}
 					for _, r := range snap.Resources[2:] {
 						resources[r.URN.Name()] = r
 					}

@@ -28,6 +28,7 @@ import {
     secret,
     unknown,
     unsecret,
+    recover,
 } from "../output";
 import { Resource } from "../resource";
 import * as runtime from "../runtime";
@@ -266,6 +267,64 @@ describe("output", () => {
 
         const value = await output2.promise();
         assert.strictEqual(value, "inner");
+    });
+
+    describe("recover", () => {
+        function faulted<T>(err: Error): Output<T> {
+            return new Output<T>(
+                new Set(),
+                Promise.reject(err),
+                Promise.reject(err),
+                Promise.reject(err),
+                Promise.reject(err),
+            );
+        }
+
+        it("baseline: faulted output's promise rejects", async () => {
+            const o = faulted<string>(new Error("boom"));
+            await assert.rejects(() => o.promise(), /boom/);
+        });
+
+        it("returns recovered value on failure", async () => {
+            const recovered = recover(faulted<number>(new Error("boom")), (_e) => 42);
+            assert.strictEqual(await recovered.promise(), 42);
+        });
+
+        it("passes the error to the recovery function", async () => {
+            const err = new Error("boom");
+            let seen: any = undefined;
+            const recovered = recover(faulted<string>(err), (e) => {
+                seen = e;
+                return "fallback";
+            });
+            assert.strictEqual(await recovered.promise(), "fallback");
+            assert.strictEqual(seen, err);
+        });
+
+        it("passes through value on success without calling func", async () => {
+            let called = false;
+            const ok = output("hello");
+            const recovered = recover(ok, (_e) => {
+                called = true;
+                return "fallback";
+            });
+            assert.strictEqual(await recovered.promise(), "hello");
+            assert.strictEqual(called, false);
+        });
+
+        it("accepts an Output-returning recovery function", async () => {
+            const recovered = recover(faulted<string>(new Error("boom")), (_e) => output("recovered"));
+            assert.strictEqual(await recovered.promise(), "recovered");
+        });
+
+        it("does not leave the original rejections unhandled", async () => {
+            // If recover failed to swallow the rejections of the underlying
+            // promises, an unhandledRejection would surface on the next tick.
+            // We assert here that simply awaiting the recovered value works
+            // and yields the recovered result.
+            const recovered = recover(faulted<number>(new Error("boom")), (_e) => 1);
+            assert.strictEqual(await recovered.promise(), 1);
+        });
     });
 
     it("can not await if isKnown is a rejected promise.", async () => {

@@ -30,6 +30,7 @@ import (
 	"github.com/grpc-ecosystem/grpc-opentracing/go/otgrpc"
 	multierror "github.com/hashicorp/go-multierror"
 	"github.com/opentracing/opentracing-go"
+	"go.opentelemetry.io/otel"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
@@ -116,6 +117,9 @@ type pluginProtocol struct {
 
 	// True if this plugin supports custom autonaming configuration.
 	supportsAutonamingConfiguration bool
+
+	// True if this plugin accepts strings containing bytes that are not valid UTF-8.
+	acceptsByteString bool
 }
 
 // pluginConfig holds the configuration of the provider
@@ -146,7 +150,7 @@ func GetProviderAttachPort(pkg tokens.Package) (*int, error) {
 	var optAttach string
 
 	if providersEnvVar, has := os.LookupEnv("PULUMI_DEBUG_PROVIDERS"); has {
-		for _, provider := range strings.Split(providersEnvVar, ",") {
+		for provider := range strings.SplitSeq(providersEnvVar, ",") {
 			parts := strings.SplitN(provider, ":", 2)
 
 			if parts[0] == pkg.String() {
@@ -186,6 +190,9 @@ func NewProvider(host Host, ctx *Context, spec workspace.PluginDescriptor,
 	}
 
 	prefix := fmt.Sprintf("%v (resource)", pkg)
+	mapperAddr := mapperTarget(ctx)
+	loaderAddr := loaderTarget(ctx)
+	resolverAddr := resolverTarget(ctx)
 
 	if attachPort != nil {
 		port := *attachPort
@@ -202,7 +209,10 @@ func NewProvider(host Host, ctx *Context, spec workspace.PluginDescriptor,
 				SupportsViews:               true,
 				SupportsRefreshBeforeUpdate: supportsRefreshBeforeUpdate,
 				InvokeWithPreview:           true,
-				MapperTarget:                hostMapperTarget(host),
+				MapperTarget:                mapperAddr,
+				LoaderTarget:                loaderAddr,
+				ResolverTarget:              resolverAddr,
+				AcceptsByteString:           true,
 			}
 			return handshake(ctx, bin, prefix, conn, req)
 		}
@@ -222,7 +232,7 @@ func NewProvider(host Host, ctx *Context, spec workspace.PluginDescriptor,
 		}
 	} else {
 		// Load the plugin's path by using the standard workspace logic.
-		path, err := workspace.GetPluginPath(ctx.baseContext, ctx.Diag, spec, host.GetProjectPlugins())
+		path, err := workspace.GetPluginPath(ctx.baseContext, ctx.Diag, spec, ctx.ProjectPlugins())
 		if err != nil {
 			return nil, err
 		}
@@ -266,7 +276,10 @@ func NewProvider(host Host, ctx *Context, spec workspace.PluginDescriptor,
 				SupportsViews:               true,
 				SupportsRefreshBeforeUpdate: supportsRefreshBeforeUpdate,
 				InvokeWithPreview:           true,
-				MapperTarget:                hostMapperTarget(host),
+				MapperTarget:                mapperAddr,
+				LoaderTarget:                loaderAddr,
+				ResolverTarget:              resolverAddr,
+				AcceptsByteString:           true,
 			}
 			return handshake(ctx, bin, prefix, conn, req)
 		}
@@ -274,7 +287,8 @@ func NewProvider(host Host, ctx *Context, spec workspace.PluginDescriptor,
 		plug, handshakeRes, err = newPlugin(ctx, ctx.Pwd, path, prefix,
 			apitype.ResourcePlugin, []string{host.ServerAddr()}, e,
 			handshake, providerPluginDialOptions(ctx, pkg, ""),
-			host.AttachDebugger(DebugSpec{Type: DebugTypePlugin, Name: spec.Name}))
+			!ctx.DisableProviderDebugging() &&
+				host.AttachDebugger(DebugSpec{Type: DebugTypePlugin, Name: spec.Name}))
 		if err != nil {
 			return nil, err
 		}
@@ -306,6 +320,7 @@ func NewProvider(host Host, ctx *Context, spec workspace.PluginDescriptor,
 			supportsPreview:                 true,
 			acceptOutputs:                   handshakeRes.AcceptOutputs,
 			supportsAutonamingConfiguration: handshakeRes.SupportsAutonamingConfiguration,
+			acceptsByteString:               handshakeRes.AcceptsByteString,
 		}
 	}
 
@@ -320,10 +335,28 @@ func NewProvider(host Host, ctx *Context, spec workspace.PluginDescriptor,
 	return p, nil
 }
 
-// hostMapperTarget returns the host's mapper address as an optional handshake field, nil when the host has no mapper
-// service.
-func hostMapperTarget(host Host) *string {
-	if addr := host.MapperAddr(); addr != "" {
+// mapperTarget returns the context's mapper address as an optional handshake field, nil when the context has no
+// mapper service.
+func mapperTarget(ctx *Context) *string {
+	if addr := ctx.MapperAddr(); addr != "" {
+		return &addr
+	}
+	return nil
+}
+
+// loaderTarget returns the context's loader address as an optional handshake field, nil when the context has no
+// loader service.
+func loaderTarget(ctx *Context) *string {
+	if addr := ctx.LoaderAddr(); addr != "" {
+		return &addr
+	}
+	return nil
+}
+
+// resolverTarget returns the context's resolver address as an optional handshake field, nil when the context has no
+// resolver service.
+func resolverTarget(ctx *Context) *string {
+	if addr := ctx.ResolverAddr(); addr != "" {
 		return &addr
 	}
 	return nil
@@ -346,6 +379,9 @@ func handshake(
 		SupportsRefreshBeforeUpdate: req.SupportsRefreshBeforeUpdate,
 		InvokeWithPreview:           req.InvokeWithPreview,
 		MapperTarget:                req.MapperTarget,
+		LoaderTarget:                req.LoaderTarget,
+		ResolverTarget:              req.ResolverTarget,
+		AcceptsByteString:           req.AcceptsByteString,
 	})
 	if err != nil {
 		status, ok := status.FromError(err)
@@ -363,6 +399,7 @@ func handshake(
 		AcceptResources:                 res.GetAcceptResources(),
 		AcceptOutputs:                   res.GetAcceptOutputs(),
 		SupportsAutonamingConfiguration: res.GetSupportsAutonamingConfiguration(),
+		AcceptsByteString:               res.GetAcceptsByteString(),
 	}, nil
 }
 
@@ -392,6 +429,9 @@ func providerPluginDialOptions(ctx *Context, pkg tokens.Package, path string) []
 
 // NewProviderFromPath creates a new provider by loading the plugin binary located at `path`.
 func NewProviderFromPath(host Host, ctx *Context, path string) (Provider, error) {
+	mapperAddr := mapperTarget(ctx)
+	loaderAddr := loaderTarget(ctx)
+	resolverAddr := resolverTarget(ctx)
 	handshake := func(
 		ctx context.Context, bin string, prefix string, conn *grpc.ClientConn,
 	) (*ProviderHandshakeResponse, error) {
@@ -404,7 +444,10 @@ func NewProviderFromPath(host Host, ctx *Context, path string) (Provider, error)
 			SupportsViews:               true,
 			SupportsRefreshBeforeUpdate: supportsRefreshBeforeUpdate,
 			InvokeWithPreview:           true,
-			MapperTarget:                hostMapperTarget(host),
+			MapperTarget:                mapperAddr,
+			LoaderTarget:                loaderAddr,
+			ResolverTarget:              resolverAddr,
+			AcceptsByteString:           true,
 		}
 		return handshake(ctx, bin, prefix, conn, req)
 	}
@@ -412,7 +455,8 @@ func NewProviderFromPath(host Host, ctx *Context, path string) (Provider, error)
 	plug, handshakeRes, err := newPlugin(ctx, ctx.Pwd, path, "",
 		apitype.ResourcePlugin, []string{host.ServerAddr()}, env.Global(),
 		handshake, providerPluginDialOptions(ctx, "", path),
-		host.AttachDebugger(DebugSpec{Type: DebugTypePlugin, Name: path}))
+		!ctx.DisableProviderDebugging() &&
+			host.AttachDebugger(DebugSpec{Type: DebugTypePlugin, Name: path}))
 	if err != nil {
 		return nil, err
 	}
@@ -435,6 +479,7 @@ func NewProviderFromPath(host Host, ctx *Context, path string) (Provider, error)
 			supportsPreview:                 true,
 			acceptOutputs:                   handshakeRes.AcceptOutputs,
 			supportsAutonamingConfiguration: handshakeRes.SupportsAutonamingConfiguration,
+			acceptsByteString:               handshakeRes.AcceptsByteString,
 		}
 	}
 
@@ -445,21 +490,21 @@ func NewProviderFromPath(host Host, ctx *Context, path string) (Provider, error)
 			return nil, err
 		}
 	}
-	return &cancelOnCloseProvider{Provider: p}, nil
+	return &cancelOnCloseProvider{provider: p}, nil
 }
 
 // cancelOnCloseProvider wraps a Provider so that Close sends a Cancel RPC before shutting down the plugin process. This
 // is used for providers created via NewProviderFromPath, which are not managed by a Host and therefore don't get Cancel
 // via the host's close sequence.
 type cancelOnCloseProvider struct {
-	Provider
+	*provider
 }
 
 func (p *cancelOnCloseProvider) Close() error {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.WithoutCancel(p.requestContext()), 5*time.Second)
 	defer cancel()
 	contract.IgnoreError(p.SignalCancellation(ctx))
-	return p.Provider.Close()
+	return p.provider.Close()
 }
 
 func NewProviderWithClient(ctx *Context, client pulumirpc.ResourceProviderClient,
@@ -532,9 +577,23 @@ func (p *provider) Handshake(ctx context.Context, req ProviderHandshakeRequest) 
 		SupportsRefreshBeforeUpdate: req.SupportsRefreshBeforeUpdate,
 		InvokeWithPreview:           req.InvokeWithPreview,
 		MapperTarget:                req.MapperTarget,
+		LoaderTarget:                req.LoaderTarget,
+		ResolverTarget:              req.ResolverTarget,
+		AcceptsByteString:           req.AcceptsByteString,
 	})
 	if err != nil {
 		return nil, err
+	}
+
+	// Handshaking is how capabilities are negotiated, so record the provider's answers just as we do when
+	// handshaking at plugin spawn time.
+	p.protocol = &pluginProtocol{
+		acceptSecrets:                   res.GetAcceptSecrets(),
+		acceptResources:                 res.GetAcceptResources(),
+		supportsPreview:                 true,
+		acceptOutputs:                   res.GetAcceptOutputs(),
+		supportsAutonamingConfiguration: res.GetSupportsAutonamingConfiguration(),
+		acceptsByteString:               res.GetAcceptsByteString(),
 	}
 
 	return &ProviderHandshakeResponse{
@@ -542,6 +601,7 @@ func (p *provider) Handshake(ctx context.Context, req ProviderHandshakeRequest) 
 		AcceptResources:                 res.GetAcceptResources(),
 		AcceptOutputs:                   res.GetAcceptOutputs(),
 		SupportsAutonamingConfiguration: res.GetSupportsAutonamingConfiguration(),
+		AcceptsByteString:               res.GetAcceptsByteString(),
 	}, nil
 }
 
@@ -580,6 +640,9 @@ func (p *provider) Parameterize(ctx context.Context, request ParameterizeRequest
 
 // GetSchema fetches the schema for this resource provider, if any.
 func (p *provider) GetSchema(ctx context.Context, req GetSchemaRequest) (GetSchemaResponse, error) {
+	_, span := otel.Tracer("pulumi-cli").Start(ctx, "provider.GetSchema")
+	defer span.End()
+
 	var subpackageVersion string
 	if req.SubpackageVersion != nil {
 		subpackageVersion = req.SubpackageVersion.String()
@@ -1065,7 +1128,7 @@ func (p *provider) Configure(ctx context.Context, req ConfigureRequest) (Configu
 			AcceptResources:        true,
 			SendsOldInputs:         true,
 			SendsOldInputsToDelete: true,
-			Variables:              variables,
+			Variables:              variables, //nolint:staticcheck
 			Args:                   minputs,
 		})
 		if err != nil {
@@ -1077,6 +1140,8 @@ func (p *provider) Configure(ctx context.Context, req ConfigureRequest) (Configu
 		}
 
 		if p.protocol == nil {
+			// Byte string support is negotiated only at handshake time; providers that did not
+			// handshake never receive such values.
 			p.protocol = &pluginProtocol{
 				acceptSecrets:                   resp.GetAcceptSecrets(),
 				acceptResources:                 resp.GetAcceptResources(),
@@ -1120,10 +1185,11 @@ func (p *provider) Check(ctx context.Context, req CheckRequest) (CheckResponse, 
 	}
 
 	molds, err := MarshalProperties(req.Olds, MarshalOptions{
-		Label:         label + ".olds",
-		KeepUnknowns:  req.AllowUnknowns,
-		KeepSecrets:   protocol.acceptSecrets,
-		KeepResources: protocol.acceptResources,
+		Label:          label + ".olds",
+		KeepUnknowns:   req.AllowUnknowns,
+		KeepSecrets:    protocol.acceptSecrets,
+		KeepResources:  protocol.acceptResources,
+		KeepByteString: protocol.acceptsByteString,
 		// Technically, olds can be nil and we ought to be able to send it as nil so that provivders could distinguish
 		// between no old state (as in the case of create) vs the old state being empty (an unlikely but possible
 		// scenario for a resource with no set inputs). However, we have been unconditionally forcing this to empty
@@ -1135,11 +1201,12 @@ func (p *provider) Check(ctx context.Context, req CheckRequest) (CheckResponse, 
 		return CheckResponse{}, err
 	}
 	mnews, err := MarshalProperties(req.News, MarshalOptions{
-		Label:         label + ".news",
-		KeepUnknowns:  req.AllowUnknowns,
-		KeepSecrets:   protocol.acceptSecrets,
-		KeepResources: protocol.acceptResources,
-		PropagateNil:  true,
+		Label:          label + ".news",
+		KeepUnknowns:   req.AllowUnknowns,
+		KeepSecrets:    protocol.acceptSecrets,
+		KeepResources:  protocol.acceptResources,
+		KeepByteString: protocol.acceptsByteString,
+		PropagateNil:   true,
 	})
 	if err != nil {
 		return CheckResponse{}, err
@@ -1249,6 +1316,7 @@ func (p *provider) Diff(ctx context.Context, req DiffRequest) (DiffResponse, err
 		KeepUnknowns:       req.AllowUnknowns,
 		KeepSecrets:        protocol.acceptSecrets,
 		KeepResources:      protocol.acceptResources,
+		KeepByteString:     protocol.acceptsByteString,
 		PropagateNil:       true,
 	})
 	if err != nil {
@@ -1261,6 +1329,7 @@ func (p *provider) Diff(ctx context.Context, req DiffRequest) (DiffResponse, err
 		KeepUnknowns:       req.AllowUnknowns,
 		KeepSecrets:        protocol.acceptSecrets,
 		KeepResources:      protocol.acceptResources,
+		KeepByteString:     protocol.acceptsByteString,
 		PropagateNil:       true,
 	})
 	if err != nil {
@@ -1273,6 +1342,7 @@ func (p *provider) Diff(ctx context.Context, req DiffRequest) (DiffResponse, err
 		KeepUnknowns:       req.AllowUnknowns,
 		KeepSecrets:        protocol.acceptSecrets,
 		KeepResources:      protocol.acceptResources,
+		KeepByteString:     protocol.acceptsByteString,
 		PropagateNil:       true,
 	})
 	if err != nil {
@@ -1373,11 +1443,12 @@ func (p *provider) Create(ctx context.Context, req CreateRequest) (CreateRespons
 	contract.Assertf(pcfg.known, "Create cannot be called if the configuration is unknown")
 
 	mprops, err := MarshalProperties(req.Properties, MarshalOptions{
-		Label:         label + ".inputs",
-		KeepUnknowns:  req.Preview,
-		KeepSecrets:   protocol.acceptSecrets,
-		KeepResources: protocol.acceptResources,
-		PropagateNil:  true,
+		Label:          label + ".inputs",
+		KeepUnknowns:   req.Preview,
+		KeepSecrets:    protocol.acceptSecrets,
+		KeepResources:  protocol.acceptResources,
+		KeepByteString: protocol.acceptsByteString,
+		PropagateNil:   true,
 	})
 	if err != nil {
 		return CreateResponse{}, err
@@ -1495,6 +1566,7 @@ func (p *provider) Read(ctx context.Context, req ReadRequest) (ReadResponse, err
 			ElideAssetContents: true,
 			KeepSecrets:        protocol.acceptSecrets,
 			KeepResources:      protocol.acceptResources,
+			KeepByteString:     protocol.acceptsByteString,
 			PropagateNil:       true,
 		})
 		if err != nil {
@@ -1507,6 +1579,7 @@ func (p *provider) Read(ctx context.Context, req ReadRequest) (ReadResponse, err
 		ElideAssetContents: true,
 		KeepSecrets:        protocol.acceptSecrets,
 		KeepResources:      protocol.acceptResources,
+		KeepByteString:     protocol.acceptsByteString,
 		PropagateNil:       true,
 	})
 	if err != nil {
@@ -1514,10 +1587,11 @@ func (p *provider) Read(ctx context.Context, req ReadRequest) (ReadResponse, err
 	}
 
 	oldViews, err := marshalViews(req.OldViews, MarshalOptions{
-		Label:         label,
-		KeepSecrets:   protocol.acceptSecrets,
-		KeepResources: protocol.acceptResources,
-		PropagateNil:  true,
+		Label:          label,
+		KeepSecrets:    protocol.acceptSecrets,
+		KeepResources:  protocol.acceptResources,
+		KeepByteString: protocol.acceptsByteString,
+		PropagateNil:   true,
 	})
 	if err != nil {
 		return ReadResponse{Status: resource.StatusUnknown}, err
@@ -1660,6 +1734,7 @@ func (p *provider) Update(ctx context.Context, req UpdateRequest) (UpdateRespons
 		ElideAssetContents: true,
 		KeepSecrets:        protocol.acceptSecrets,
 		KeepResources:      protocol.acceptResources,
+		KeepByteString:     protocol.acceptsByteString,
 		PropagateNil:       true,
 	})
 	if err != nil {
@@ -1670,27 +1745,30 @@ func (p *provider) Update(ctx context.Context, req UpdateRequest) (UpdateRespons
 		ElideAssetContents: true,
 		KeepSecrets:        protocol.acceptSecrets,
 		KeepResources:      protocol.acceptResources,
+		KeepByteString:     protocol.acceptsByteString,
 		PropagateNil:       true,
 	})
 	if err != nil {
 		return UpdateResponse{Status: resource.StatusOK}, err
 	}
 	mNewInputs, err := MarshalProperties(req.NewInputs, MarshalOptions{
-		Label:         label + ".newInputs",
-		KeepUnknowns:  req.Preview,
-		KeepSecrets:   protocol.acceptSecrets,
-		KeepResources: protocol.acceptResources,
-		PropagateNil:  true,
+		Label:          label + ".newInputs",
+		KeepUnknowns:   req.Preview,
+		KeepSecrets:    protocol.acceptSecrets,
+		KeepResources:  protocol.acceptResources,
+		KeepByteString: protocol.acceptsByteString,
+		PropagateNil:   true,
 	})
 	if err != nil {
 		return UpdateResponse{Status: resource.StatusOK}, err
 	}
 
 	oldViews, err := marshalViews(req.OldViews, MarshalOptions{
-		Label:         label + ".oldViews",
-		KeepSecrets:   protocol.acceptSecrets,
-		KeepResources: protocol.acceptResources,
-		PropagateNil:  true,
+		Label:          label + ".oldViews",
+		KeepSecrets:    protocol.acceptSecrets,
+		KeepResources:  protocol.acceptResources,
+		KeepByteString: protocol.acceptsByteString,
+		PropagateNil:   true,
 	})
 	if err != nil {
 		return UpdateResponse{Status: resource.StatusOK}, err
@@ -1796,6 +1874,7 @@ func (p *provider) Delete(ctx context.Context, req DeleteRequest) (DeleteRespons
 		ElideAssetContents: true,
 		KeepSecrets:        protocol.acceptSecrets,
 		KeepResources:      protocol.acceptResources,
+		KeepByteString:     protocol.acceptsByteString,
 		PropagateNil:       true,
 	})
 	if err != nil {
@@ -1807,6 +1886,7 @@ func (p *provider) Delete(ctx context.Context, req DeleteRequest) (DeleteRespons
 		ElideAssetContents: true,
 		KeepSecrets:        protocol.acceptSecrets,
 		KeepResources:      protocol.acceptResources,
+		KeepByteString:     protocol.acceptsByteString,
 		PropagateNil:       true,
 	})
 	if err != nil {
@@ -1814,10 +1894,11 @@ func (p *provider) Delete(ctx context.Context, req DeleteRequest) (DeleteRespons
 	}
 
 	oldViews, err := marshalViews(req.OldViews, MarshalOptions{
-		Label:         label + ".oldViews",
-		KeepSecrets:   protocol.acceptSecrets,
-		KeepResources: protocol.acceptResources,
-		PropagateNil:  true,
+		Label:          label + ".oldViews",
+		KeepSecrets:    protocol.acceptSecrets,
+		KeepResources:  protocol.acceptResources,
+		KeepByteString: protocol.acceptsByteString,
+		PropagateNil:   true,
 	})
 	if err != nil {
 		return DeleteResponse{}, err
@@ -1861,10 +1942,11 @@ func (p *provider) List(ctx context.Context, req ListRequest) (*ListStream, erro
 	}
 
 	query, err := MarshalProperties(req.Query, MarshalOptions{
-		Label:         label + ".query",
-		KeepSecrets:   protocol.acceptSecrets,
-		KeepResources: protocol.acceptResources,
-		PropagateNil:  true,
+		Label:          label + ".query",
+		KeepSecrets:    protocol.acceptSecrets,
+		KeepResources:  protocol.acceptResources,
+		KeepByteString: protocol.acceptsByteString,
+		PropagateNil:   true,
 	})
 	if err != nil {
 		return nil, err
@@ -1974,10 +2056,11 @@ func (p *provider) Construct(ctx context.Context, req ConstructRequest) (Constru
 
 	// Marshal the input properties.
 	minputs, err := MarshalProperties(req.Inputs, MarshalOptions{
-		Label:         label + ".inputs",
-		KeepUnknowns:  true,
-		KeepSecrets:   protocol.acceptSecrets,
-		KeepResources: protocol.acceptResources,
+		Label:          label + ".inputs",
+		KeepUnknowns:   true,
+		KeepSecrets:    protocol.acceptSecrets,
+		KeepResources:  protocol.acceptResources,
+		KeepByteString: protocol.acceptsByteString,
 		// To initially scope the use of this new feature, we only keep output values for
 		// Construct and Call (when the client accepts them).
 		KeepOutputValues: protocol.acceptOutputs,
@@ -2028,7 +2111,8 @@ func (p *provider) Construct(ctx context.Context, req ConstructRequest) (Constru
 	// Marshal the replacement trigger.
 	var replacementTrigger *structpb.Value
 	if !req.Options.ReplacementTrigger.IsNull() {
-		trigger, err := MarshalPropertyValue("replacementTrigger", req.Options.ReplacementTrigger, MarshalOptions{
+		value := resource.ToResourcePropertyValue(req.Options.ReplacementTrigger)
+		trigger, err := MarshalPropertyValue("replacementTrigger", value, MarshalOptions{
 			Label:            label + ".replacementTrigger",
 			KeepUnknowns:     req.Info.DryRun,
 			KeepSecrets:      true,
@@ -2171,10 +2255,11 @@ func (p *provider) Invoke(ctx context.Context, req InvokeRequest) (InvokeRespons
 	}
 
 	margs, err := MarshalProperties(req.Args, MarshalOptions{
-		Label:         label + ".args",
-		KeepSecrets:   protocol.acceptSecrets,
-		KeepResources: protocol.acceptResources,
-		PropagateNil:  true,
+		Label:          label + ".args",
+		KeepSecrets:    protocol.acceptSecrets,
+		KeepResources:  protocol.acceptResources,
+		KeepByteString: protocol.acceptsByteString,
+		PropagateNil:   true,
 	})
 	if err != nil {
 		return InvokeResponse{}, err
@@ -2245,10 +2330,11 @@ func (p *provider) Call(_ context.Context, req CallRequest) (CallResponse, error
 	}
 
 	margs, err := MarshalProperties(req.Args, MarshalOptions{
-		Label:         label + ".args",
-		KeepUnknowns:  true,
-		KeepSecrets:   true,
-		KeepResources: true,
+		Label:          label + ".args",
+		KeepUnknowns:   true,
+		KeepSecrets:    true,
+		KeepResources:  true,
+		KeepByteString: protocol.acceptsByteString,
 		// To initially scope the use of this new feature, we only keep output values for
 		// Construct and Call (when the client accepts them).
 		KeepOutputValues: protocol.acceptOutputs,

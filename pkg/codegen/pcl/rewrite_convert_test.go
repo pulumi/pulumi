@@ -210,3 +210,29 @@ func TestRewriteConversionsAfterApply(t *testing.T) {
 		assert.Equal(t, c.output, fmt.Sprintf("%v", expr))
 	}
 }
+
+func TestRewriteConversionsExpandFinal(t *testing.T) {
+	t.Parallel()
+
+	scope := model.NewRootScope(syntax.None)
+	scope.DefineFunction("max", model.NewFunction(model.StaticFunctionSignature{
+		Parameters: []model.Parameter{{
+			Name: "first",
+			Type: model.IntType,
+		}},
+		VarargsParameter: &model.Parameter{
+			Name: "rest",
+			Type: model.IntType,
+		},
+		ReturnType: model.IntType,
+	}))
+
+	expr, diags := model.BindExpressionText(`max(0, [1, 2, 3]...)`, scope, hcl.Pos{})
+	require.Empty(t, diags)
+
+	expr, diags = RewriteConversions(expr, expr.Type())
+	require.Empty(t, diags)
+	call := expr.(*model.FunctionCallExpression)
+	assert.True(t, call.ExpandFinal)
+	require.IsType(t, &model.TupleConsExpression{}, call.Args[1])
+}

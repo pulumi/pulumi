@@ -19,6 +19,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 )
@@ -122,9 +123,7 @@ func (mp *MockProvider) Add(ty string, f func(json.RawMessage) (Manager, error))
 	new := &MockProvider{
 		managers: make(map[string]func(json.RawMessage) (Manager, error)),
 	}
-	for k, v := range mp.managers {
-		new.managers[k] = v
-	}
+	maps.Copy(new.managers, mp.managers)
 	new.managers[ty] = f
 	return new
 }

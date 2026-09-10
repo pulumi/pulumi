@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import os
+import shutil
 import tempfile
 import unittest
 
@@ -24,9 +25,12 @@ from .test_utils import stack_namer
 class TestConfigFile(unittest.IsolatedAsyncioTestCase):
     async def test_config_file_option(self):
         """Tests that the config_file option is correctly passed to the operations"""
-        config_file_path = os.path.join(
+        source_config_file = os.path.join(
             os.path.dirname(__file__), "data", "yaml", "Pulumi.local.yaml"
         )
+        config_dir = tempfile.mkdtemp()
+        config_file_path = os.path.join(config_dir, "Pulumi.local.yaml")
+        shutil.copyfile(source_config_file, config_file_path)
 
         def pulumi_program():
             from pulumi import Config, export

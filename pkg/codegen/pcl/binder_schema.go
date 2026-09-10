@@ -20,6 +20,8 @@ import (
 	"strings"
 	"sync"
 
+	mapset "github.com/deckarep/golang-set/v2"
+
 	"github.com/blang/semver"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
@@ -160,7 +162,14 @@ func (c *PackageCache) loadPackageSchema(
 	}
 
 	var versionSemver *semver.Version
-	if v, err := semver.Make(version); err == nil {
+	if version != "" {
+		v, err := semver.Parse(version)
+		if err != nil {
+			return nil, fmt.Errorf(
+				"package %q version %q is not valid semver: %w",
+				name, version, err,
+			)
+		}
 		versionSemver = &v
 	}
 
@@ -184,6 +193,7 @@ func (c *PackageCache) loadPackageSchema(
 }
 
 func (c *PackageCache) loadPackageSchemaFromDescriptor(
+	ctx context.Context,
 	loader schema.Loader,
 	descriptor *schema.PackageDescriptor,
 ) (*packageSchema, error) {
@@ -203,7 +213,7 @@ func (c *PackageCache) loadPackageSchemaFromDescriptor(
 		return s, nil
 	}
 
-	pkg, err := schema.LoadPackageReferenceV2(context.TODO(), loader, descriptor)
+	pkg, err := schema.LoadPackageReferenceV2(ctx, loader, descriptor)
 	if err != nil {
 		return nil, err
 	}
@@ -227,7 +237,7 @@ func canonicalizeToken(tok string, pkg schema.PackageReference) string {
 // getPkgOpts gets the package options from an unbound resource node.
 func (b *binder) getPkgOpts(node *Resource) packageOpts {
 	node.VariableType = model.NewObjectType(map[string]model.Type{
-		"id":  model.NewOutputType(model.StringType),
+		"id":  model.NewOutputType(model.IDType),
 		"urn": model.NewOutputType(model.StringType),
 	})
 	var rangeKey, rangeValue model.Type
@@ -326,7 +336,7 @@ func (b *binder) getReadPkgOpts(node *ReadResource) packageOpts {
 // loadReferencedPackageSchemas loads the schemas for any packages referenced by a given node.
 func (b *binder) loadReferencedPackageSchemas(ctx context.Context, n Node) error {
 	var pkgOpts packageOpts
-	packageNames := codegen.StringSet{}
+	packageNames := mapset.NewSet[string]()
 
 	switch r := n.(type) {
 	case *Resource:
@@ -368,7 +378,7 @@ func (b *binder) loadReferencedPackageSchemas(ctx context.Context, n Node) error
 	})
 	contract.Assertf(len(diags) == 0, "unexpected diagnostics: %v", diags)
 
-	for _, name := range packageNames.SortedValues() {
+	for _, name := range mapset.Sorted(packageNames) {
 		if _, ok := b.referencedPackages[name]; ok && pkgOpts.version == "" || name == "" {
 			continue
 		}
@@ -376,7 +386,7 @@ func (b *binder) loadReferencedPackageSchemas(ctx context.Context, n Node) error
 		var pkg *packageSchema
 		var err error
 		if packageDescriptor, ok := b.packageDescriptors[name]; ok {
-			pkg, err = b.options.packageCache.loadPackageSchemaFromDescriptor(b.options.loader, packageDescriptor)
+			pkg, err = b.options.packageCache.loadPackageSchemaFromDescriptor(ctx, b.options.loader, packageDescriptor)
 		} else {
 			pkg, err = b.options.packageCache.loadPackageSchema(
 				ctx, b.options.loader,
@@ -534,6 +544,8 @@ func (b *binder) schemaTypeToTypeOrConst(typ schema.Type, prop *schema.Property)
 		switch v := prop.ConstValue.(type) {
 		case bool:
 			value = cty.BoolVal(v)
+		case int32:
+			value = cty.NumberIntVal(int64(v))
 		case float64:
 			value = cty.NumberFloatVal(v)
 		case string:
@@ -621,6 +633,18 @@ func GetDiscriminatedUnionObjectMapping(t *model.UnionType) map[string]model.Typ
 	mapping := map[string]model.Type{}
 	for _, t := range t.ElementTypes {
 		k, v := getDiscriminatedUnionObjectItem(t)
+		if k == "" {
+			continue
+		}
+		// When the union comes from a lifted schema.InputType, each variant
+		// appears twice — once as the input-shape ObjectType and once wrapped
+		// in an OutputType containing the plain shape. Both share a token.
+		// Prefer the first (input-shape) match so downstream conversion picks
+		// the shape whose fields carry OutputType, which is what triggers
+		// literals to be wrapped as pulumi.String / pulumi.Bool inputs.
+		if _, exists := mapping[k]; exists {
+			continue
+		}
 		mapping[k] = v
 	}
 	return mapping
@@ -725,7 +749,7 @@ func GenEnum(
 			safeEnum(member)
 		} else {
 			unsafeEnum(from)
-			knownVal := strings.Split(strings.Split(known.GoString(), "(")[1], ")")[0]
+			knownVal, _, _ := strings.Cut(strings.Split(known.GoString(), "(")[1], ")")
 			diag := &hcl.Diagnostic{
 				Severity: hcl.DiagError,
 				Summary:  fmt.Sprintf("%v is not a valid value of the enum \"%v\"", knownVal, t.Token),

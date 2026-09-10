@@ -15,6 +15,7 @@
 package packagecmd
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -23,17 +24,22 @@ import (
 	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packages"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageworkspace"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/convert"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	pkghost "github.com/pulumi/pulumi/pkg/v3/host"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/spf13/cobra"
 )
 
 func newExtractSchemaCommand() *cobra.Command {
+	var parameterArgs []string
+	var asExtension bool
+	var serverURL string
 	cmd := &cobra.Command{
 		Use:   "get-schema",
 		Short: "Get the schema.json from a package",
@@ -50,19 +56,27 @@ If a folder either the plugin binary must match the folder name (e.g. 'aws' and 
 				return err
 			}
 			sink := cmdutil.Diag()
+			registry := cmdCmd.NewDefaultRegistry(
+				cmd.Context(), cmdBackend.DefaultLoginManager, pkgWorkspace.Instance, nil, sink, env.Global())
+			pluginHost, err := pkghost.New(context.WithoutCancel(cmd.Context()), sink, sink, nil,
+				pkgWorkspace.EnsureLanguageInstalled, schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext,
+				packageworkspace.NewResolverServer(registry))
+			if err != nil {
+				return err
+			}
+			// host is owned here, closed after the context
+			defer contract.IgnoreClose(pluginHost)
 			pctx, err := plugin.NewContext(
-				cmd.Context(), sink, sink, nil, nil, wd, nil, false,
-				nil, schema.NewLoaderServerFromHost, convert.NewMapperServerFromHost, pkgWorkspace.EnsureLanguageInstalled)
+				cmd.Context(), sink, sink, pluginHost, nil, wd, nil, false,
+				nil)
 			if err != nil {
 				return err
 			}
 			defer contract.IgnoreClose(pctx)
 
-			parameters := &plugin.ParameterizeArgs{Args: args[1:]}
-			registry := cmdCmd.NewDefaultRegistry(
-				cmd.Context(), cmdBackend.DefaultLoginManager, pkgWorkspace.Instance, nil, sink, env.Global())
+			parameters := &plugin.ParameterizeArgs{Args: parameterArgs}
 			spec, _, err := packages.SchemaFromSchemaSource(pkgWorkspace.Instance, pctx, source, parameters,
-				registry, env.Global(), 0 /* unbounded concurrency */)
+				registry, env.Global(), 0 /* unbounded concurrency */, asExtension, serverURL)
 			if err != nil {
 				return err
 			}
@@ -80,7 +94,7 @@ If a folder either the plugin binary must match the folder name (e.g. 'aws' and 
 			}
 
 			// Also try to bind the schema to warn about any diagnostics:
-			_, err = packages.BindSpec(*spec)
+			_, err = packages.BindSpec(*spec, schema.NewPluginLoader(pctx))
 			if err != nil {
 				return fmt.Errorf("failed to bind schema: %w", err)
 			}
@@ -101,6 +115,11 @@ If a folder either the plugin binary must match the folder name (e.g. 'aws' and 
 	// It's worth mentioning the `--`, as it means that Cobra will stop parsing flags.
 	// In other words, a provider parameter can be `--foo` as long as it's after `--`.
 	cmd.Use = "get-schema <schema-source> [flags] [--] [provider-parameter]..."
+
+	cmd.Flags().StringVar(&serverURL, "server", "",
+		"A URL to download the plugin from. When set, the provider argument is used as the plugin name "+
+			"directly and no package resolution is performed.")
+	packages.AddExtensionFlag(cmd, &parameterArgs, &asExtension)
 
 	return cmd
 }

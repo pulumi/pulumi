@@ -45,8 +45,9 @@ func newOrgRoleEditCmdWith(factory orgRoleClientFactory) *cobra.Command {
 	output := defaultRoleSingleOutput()
 
 	cmd := &cobra.Command{
-		Use:   "edit <role-id>",
-		Short: "[EXPERIMENTAL] Update a custom role's name, description, or permissions",
+		Use:     "edit <role-id>",
+		Aliases: []string{"update", "modify"},
+		Short:   "[EXPERIMENTAL] Update a custom role's name, description, or permissions",
 		Long: "[EXPERIMENTAL] Update a custom role's name, description, or permissions.\n" +
 			"\n" +
 			"Each field follows ternary semantics: a flag that is not passed leaves the\n" +

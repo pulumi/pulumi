@@ -18,19 +18,20 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"math"
 	"regexp"
 	"time"
 
 	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -118,9 +119,9 @@ func ConvertEngineEvent(e engine.Event, showSecrets bool) (apitype.EngineEvent, 
 		// Serialize properties, ignoring errors, as with other event types.
 		ctx := context.TODO()
 		encrypter := config.BlindingCrypter
-		before, err := stack.SerializeProperties(ctx, p.Before, encrypter, showSecrets)
+		before, err := stack.SerializeProperties(ctx, resource.ToResourcePropertyMap(p.Before), encrypter, showSecrets)
 		contract.IgnoreError(err)
-		after, err := stack.SerializeProperties(ctx, p.After, encrypter, showSecrets)
+		after, err := stack.SerializeProperties(ctx, resource.ToResourcePropertyMap(p.After), encrypter, showSecrets)
 		contract.IgnoreError(err)
 
 		apiEvent.PolicyRemediationEvent = &apitype.PolicyRemediationEvent{
@@ -182,9 +183,7 @@ func ConvertEngineEvent(e engine.Event, showSecrets bool) (apitype.EngineEvent, 
 		}
 		// Convert the config bag.
 		cfg := make(map[string]string)
-		for k, v := range p.Config {
-			cfg[k] = v
-		}
+		maps.Copy(cfg, p.Config)
 		apiEvent.PreludeEvent = &apitype.PreludeEvent{
 			Config: cfg,
 		}
@@ -427,8 +426,8 @@ func ConvertJSONEvent(apiEvent apitype.EngineEvent) (engine.Event, error) {
 			PolicyName:        p.PolicyName,
 			PolicyPackName:    p.PolicyPackName,
 			PolicyPackVersion: p.PolicyPackVersion,
-			Before:            before,
-			After:             after,
+			Before:            resource.FromResourcePropertyMap(before),
+			After:             resource.FromResourcePropertyMap(after),
 		})
 
 	case apiEvent.PolicyAnalyzeSummaryEvent != nil:
@@ -503,7 +502,7 @@ func ConvertJSONEvent(apiEvent apitype.EngineEvent) (engine.Event, error) {
 		event = engine.NewEvent(engine.ResourceOperationFailedPayload{
 			Metadata: convertJSONStepEventMetadata(p.Metadata),
 			Status:   resource.Status(p.Status),
-			Steps:    int32(p.Steps), //nolint:gosec // We only ever write int32 sized values to the API.
+			Steps:    int32(p.Steps),
 		})
 
 	case apiEvent.PolicyLoadEvent != nil:

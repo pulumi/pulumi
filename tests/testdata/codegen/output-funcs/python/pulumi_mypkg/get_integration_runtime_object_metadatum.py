@@ -45,7 +45,7 @@ class GetIntegrationRuntimeObjectMetadatumResult:
 
     @_builtins.property
     @pulumi.getter
-    def value(self) -> Optional[Sequence[Any]]:
+    def value(self) -> Optional[Sequence[Union['outputs.SsisEnvironmentResponse', 'outputs.SsisFolderResponse', 'outputs.SsisPackageResponse', 'outputs.SsisProjectResponse']]]:
         """
         List of SSIS object metadata.
         """
@@ -71,7 +71,6 @@ def get_integration_runtime_object_metadatum(factory_name: Optional[_builtins.st
     Another failing example. A list of SSIS object metadata.
     API Version: 2018-06-01.
 
-
     :param _builtins.str factory_name: The factory name.
     :param _builtins.str integration_runtime_name: The integration runtime name.
     :param _builtins.str metadata_path: Metadata path.
@@ -96,7 +95,6 @@ def get_integration_runtime_object_metadatum_output(factory_name: pulumi.Input[O
     """
     Another failing example. A list of SSIS object metadata.
     API Version: 2018-06-01.
-
 
     :param _builtins.str factory_name: The factory name.
     :param _builtins.str integration_runtime_name: The integration runtime name.

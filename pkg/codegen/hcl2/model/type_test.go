@@ -123,6 +123,28 @@ func TestDynamicType(t *testing.T) {
 	testTraverse(t, DynamicType, hcl.TraverseIndex{Key: encapsulateType(DynamicType)}, DynamicType, false)
 }
 
+func TestIDType(t *testing.T) {
+	t.Parallel()
+
+	assert.False(t, IDType.AssignableFrom(StringType))
+	assert.False(t, StringType.AssignableFrom(IDType))
+
+	assert.Equal(t, SafeConversion, IDType.ConversionFrom(StringType))
+	assert.Equal(t, SafeConversion, StringType.ConversionFrom(IDType))
+
+	assert.Equal(t, SafeConversion, IDType.ConversionFrom(BoolType))
+	assert.Equal(t, SafeConversion, IDType.ConversionFrom(IntType))
+	assert.Equal(t, SafeConversion, IDType.ConversionFrom(NumberType))
+
+	assert.Equal(t, UnsafeConversion, BoolType.ConversionFrom(IDType))
+	assert.Equal(t, UnsafeConversion, IntType.ConversionFrom(IDType))
+	assert.Equal(t, UnsafeConversion, NumberType.ConversionFrom(IDType))
+
+	safeType, unsafeType := UnifyTypes(IDType, StringType)
+	assert.True(t, safeType.Equals(StringType))
+	assert.True(t, unsafeType.Equals(StringType))
+}
+
 func TestOptionalType(t *testing.T) {
 	t.Parallel()
 

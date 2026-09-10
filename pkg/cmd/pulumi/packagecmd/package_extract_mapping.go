@@ -15,6 +15,7 @@
 package packagecmd
 
 import (
+	"context"
 	"fmt"
 	"os"
 
@@ -22,11 +23,13 @@ import (
 	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packages"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageworkspace"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/convert"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	pkghost "github.com/pulumi/pulumi/pkg/v3/host"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/spf13/cobra"
@@ -34,6 +37,7 @@ import (
 
 func newExtractMappingCommand() *cobra.Command {
 	var out string
+	var serverURL string
 
 	cmd := &cobra.Command{
 		Use:   "get-mapping",
@@ -58,18 +62,27 @@ empty string.`,
 				return err
 			}
 			sink := cmdutil.Diag()
+			registry := cmdCmd.NewDefaultRegistry(
+				cmd.Context(), cmdBackend.DefaultLoginManager, pkgWorkspace.Instance, nil, sink, env.Global())
+			pluginHost, err := pkghost.New(context.WithoutCancel(cmd.Context()), sink, sink, nil,
+				pkgWorkspace.EnsureLanguageInstalled, schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext,
+				packageworkspace.NewResolverServer(registry))
+			if err != nil {
+				return err
+			}
+			// host is owned here, closed after the context
+			defer contract.IgnoreClose(pluginHost)
 			pctx, err := plugin.NewContext(
-				cmd.Context(), sink, sink, nil, nil, wd, nil, false,
-				nil, schema.NewLoaderServerFromHost, convert.NewMapperServerFromHost, pkgWorkspace.EnsureLanguageInstalled)
+				cmd.Context(), sink, sink, pluginHost, nil, wd, nil, false,
+				nil)
 			if err != nil {
 				return err
 			}
 			defer contract.IgnoreClose(pctx)
 
-			registry := cmdCmd.NewDefaultRegistry(
-				cmd.Context(), cmdBackend.DefaultLoginManager, pkgWorkspace.Instance, nil, sink, env.Global())
 			p, _, err := packages.ProviderFromSource(
-				pkgWorkspace.Instance, pctx, source, registry, env.Global(), 0 /* unbounded concurrency */)
+				pkgWorkspace.Instance, pctx, source, registry, env.Global(),
+				0 /* unbounded concurrency */, serverURL)
 			if err != nil {
 				return fmt.Errorf("load provider: %w", err)
 			}
@@ -134,6 +147,9 @@ empty string.`,
 	cmd.Use = "get-mapping <key> <schema-source> [provider-key] [flags] [--] [provider-parameter]..."
 
 	cmd.Flags().StringVarP(&out, "out", "o", "", "The file to write the mapping data to")
+	cmd.Flags().StringVar(&serverURL, "server", "",
+		"A URL to download the plugin from. When set, the provider argument is used as the plugin name "+
+			"directly and no package resolution is performed.")
 
 	return cmd
 }

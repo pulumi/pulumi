@@ -17,6 +17,7 @@ package pulumi
 import (
 	"context"
 	"fmt"
+	"maps"
 	"reflect"
 	"sort"
 	"strings"
@@ -38,15 +39,13 @@ type (
 )
 
 var (
-	resourceStateType         = reflect.TypeOf(ResourceState{})
-	customResourceStateType   = reflect.TypeOf(CustomResourceState{})
-	providerResourceStateType = reflect.TypeOf(ProviderResourceState{})
+	resourceStateType         = reflect.TypeFor[ResourceState]()
+	customResourceStateType   = reflect.TypeFor[CustomResourceState]()
+	providerResourceStateType = reflect.TypeFor[ProviderResourceState]()
 )
 
 // This type alias is a hack to embed the internal.ResourceState type
 // into pulumi.ResourceState without exporting the field to the public API.
-//
-//nolint:unused
 type internalResourceState = internal.ResourceState
 
 // ResourceState is the base
@@ -277,7 +276,7 @@ type Resource interface {
 	keepDependency() bool
 }
 
-var _ internal.Resource = (Resource)(nil)
+var _ internal.Resource = Resource(nil)
 
 // CustomResource is a cloud resource whose create, read, update, and delete (CRUD) operations are managed by performing
 // external operations on some physical entity.  The engine understands how to diff and perform partial updates of them,
@@ -409,9 +408,10 @@ type ErrorHook struct {
 // resource hooks will be invoked during certain step of the lifecycle of the
 // resource.
 //
-// `before_${action}` hooks that raise an exception cause the action to fail.
-// `after_${action}` hooks that raise an exception will log a warning, but do
-// not cause the action or the deployment to fail.
+// By default, an error from a `before_${action}` hook causes the action to fail.
+// An error from an `after_${action}` hook fails the deployment. The resource
+// operation itself has already succeeded, so its result is recorded in state.
+// Set `IgnoreErrors` on the hook to log a warning instead.
 //
 // When running `pulumi destroy`, `before_delete` and `after_delete` resource
 // hooks require the operation to run with `--run-program`, to ensure that the
@@ -867,7 +867,7 @@ func DependsOn(o []Resource) ResourceOrInvokeOption {
 // resources.
 type resourceDependencySet []Resource
 
-var _ dependencySet = (resourceDependencySet)(nil)
+var _ dependencySet = resourceDependencySet(nil)
 
 func (rs resourceDependencySet) addDeps(ctx context.Context, deps map[URN]Resource, from Resource) error {
 	for _, r := range rs {
@@ -1058,9 +1058,7 @@ func ProviderMap(o map[string]ProviderResource) ResourceOption {
 			if ro.Providers == nil {
 				ro.Providers = make(map[string]ProviderResource)
 			}
-			for k, v := range o {
-				ro.Providers[k] = v
-			}
+			maps.Copy(ro.Providers, o)
 		}
 	})
 }
@@ -1112,8 +1110,6 @@ func Transforms(o []ResourceTransform) ResourceOption {
 }
 
 // URN_ is an optional URN of a previously-registered resource of this type to read from the engine.
-//
-//nolint:revive
 func URN_(o string) ResourceOption {
 	return resourceOption(func(ro *resourceOptions) {
 		ro.URN = o
@@ -1156,7 +1152,8 @@ func RetainOnDelete(b bool) ResourceOption {
 }
 
 // If set, the providers Delete method will not be called for this resource
-// if specified resource is being deleted as well.
+// if specified resource is being deleted as well. If the named resource is
+// being replaced, this resource will be replaced as well.
 func DeletedWith(r Resource) ResourceOption {
 	return resourceOption(func(ro *resourceOptions) {
 		ro.DeletedWith = r
@@ -1195,9 +1192,7 @@ func EnvVarMappings(mappings map[string]string) ResourceOption {
 			if ro.EnvVarMappings == nil {
 				ro.EnvVarMappings = make(map[string]string)
 			}
-			for k, v := range mappings {
-				ro.EnvVarMappings[k] = v
-			}
+			maps.Copy(ro.EnvVarMappings, mappings)
 		}
 	})
 }

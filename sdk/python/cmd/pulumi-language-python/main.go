@@ -660,6 +660,7 @@ func packageDependencyFromPluginJSON(
 ) (*pulumirpc.PackageDependency, error) {
 	var name, version, server string
 	var parameterization *pulumirpc.PackageParameterization
+	var extension *pulumirpc.PackageParameterization
 	if p != nil {
 		// If `resource` is set to false, the Pulumi package has indicated that there is no associated plugin.
 		// Ignore it.
@@ -673,6 +674,14 @@ func packageDependencyFromPluginJSON(
 				Name:    p.Parameterization.Name,
 				Version: p.Parameterization.Version,
 				Value:   p.Parameterization.Value,
+			}
+		}
+
+		if p.ExtensionParameterization != nil {
+			extension = &pulumirpc.PackageParameterization{
+				Name:    p.ExtensionParameterization.Name,
+				Version: p.ExtensionParameterization.Version,
+				Value:   p.ExtensionParameterization.Value,
 			}
 		}
 
@@ -710,6 +719,7 @@ func packageDependencyFromPluginJSON(
 		Kind:             "resource",
 		Server:           server,
 		Parameterization: parameterization,
+		Extension:        extension,
 	}
 
 	logging.V(5).Infof("GetRequiredPlugins: Determining plugin dependency: %#v", result)
@@ -840,8 +850,7 @@ func determinePluginVersion(packageVersion string) (string, error) {
 func debugCommand(ctx context.Context, opts toolchain.PythonOptions) ([]string, *debugger, error) {
 	err := checkForPackage(ctx, "debugpy", opts)
 	if err != nil {
-		var installError *NotInstalledError
-		if errors.As(err, &installError) {
+		if installError, ok := errors.AsType[*NotInstalledError](err); ok {
 			return nil, nil, fmt.Errorf("debugpy is not installed. %s", installError.InstallMessage)
 		}
 		return nil, nil, err
@@ -1118,8 +1127,7 @@ func (host *pythonLanguageHost) Run(ctx context.Context, req *pulumirpc.RunReque
 		typecheckerCmd.Dir = req.Info.ProgramDirectory
 		err = checkForPackage(ctx, typechecker, opts)
 		if err != nil {
-			var installError *NotInstalledError
-			if errors.As(err, &installError) {
+			if installError, ok := errors.AsType[*NotInstalledError](err); ok {
 				return nil, fmt.Errorf("The typechecker option is set to %s, but %s is not installed. %s",
 					typechecker, typechecker, installError.InstallMessage)
 			}
@@ -1517,7 +1525,7 @@ func (host *pythonLanguageHost) GetProgramDependencies(
 //     entrypoint.
 func (host *pythonLanguageHost) RunPlugin(
 	req *pulumirpc.RunPluginRequest, server pulumirpc.LanguageRuntime_RunPluginServer,
-) error {
+) (err error) {
 	logging.V(5).Infof("Attempting to run python plugin in %s with args %v", req.Info.ProgramDirectory, req.Args)
 	ctx := server.Context()
 
@@ -1640,6 +1648,11 @@ func (host *pythonLanguageHost) RunPlugin(
 		if err != nil {
 			return fmt.Errorf("could not start policy pack proxy: %w", err)
 		}
+		defer func() {
+			if err != nil {
+				policyPackServer.Abort(err)
+			}
+		}()
 
 		config, err := policyPackServer.AwaitConfiguration(ctx)
 		if err != nil {
@@ -1699,11 +1712,9 @@ func (host *pythonLanguageHost) RunPlugin(
 	}
 
 	if err = run(); err != nil {
-		var exiterr *exec.ExitError
-		if errors.As(err, &exiterr) {
+		if exiterr, ok := errors.AsType[*exec.ExitError](err); ok {
 			if status, ok := exiterr.Sys().(syscall.WaitStatus); ok {
 				return server.Send(&pulumirpc.RunPluginResponse{
-					//nolint:gosec // WaitStatus always uses the lower 8 bits for the exit code.
 					Output: &pulumirpc.RunPluginResponse_Exitcode{Exitcode: int32(status.ExitStatus())},
 				})
 			}
@@ -1788,7 +1799,6 @@ func (host *pythonLanguageHost) GenerateProgram(
 	}
 
 	bindOptions := []pcl.BindOption{
-		pcl.Loader(schema.NewCachedLoader(loader)),
 		// for python, prefer output-versioned invokes
 		pcl.PreferOutputVersionedInvokes,
 	}
@@ -1797,7 +1807,7 @@ func (host *pythonLanguageHost) GenerateProgram(
 		bindOptions = append(bindOptions, pcl.NonStrictBindOptions()...)
 	}
 
-	program, diags, err := pcl.BindProgram(parser.Files, bindOptions...)
+	program, diags, err := pcl.BindProgram(parser.Files, schema.NewCachedLoader(loader), bindOptions...)
 	if err != nil {
 		return nil, err
 	}

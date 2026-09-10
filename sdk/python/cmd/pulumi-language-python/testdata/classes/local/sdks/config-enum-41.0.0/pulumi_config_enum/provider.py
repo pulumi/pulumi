@@ -52,7 +52,7 @@ class Provider(pulumi.ProviderResource):
                  a_string: pulumi.Input[Optional[_builtins.str]] = None,
                  __props__=None):
         """
-        Create a Config-enum resource with the given unique name, props, and options.
+        Create a ConfigEnum resource with the given unique name, props, and options.
 
         :param str resource_name: The name of the resource.
         :param pulumi.ResourceOptions opts: Options for the resource.
@@ -64,7 +64,7 @@ class Provider(pulumi.ProviderResource):
                  args: ProviderArgs,
                  opts: Optional[pulumi.ResourceOptions] = None):
         """
-        Create a Config-enum resource with the given unique name, props, and options.
+        Create a ConfigEnum resource with the given unique name, props, and options.
 
         :param str resource_name: The name of the resource.
         :param ProviderArgs args: The arguments to use to populate this resource's properties.

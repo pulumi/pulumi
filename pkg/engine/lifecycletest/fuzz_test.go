@@ -76,7 +76,6 @@ func TestFuzzFromStateFile(t *testing.T) {
 	err = json.NewDecoder(reader).Decode(&deployment)
 	require.NoError(t, err)
 
-	//nolint:usetesting // outlives t.Context inside the engine
 	v3Deployment, err := stack.UnmarshalUntypedDeployment(t.Context(), &deployment)
 	require.NoError(t, err)
 

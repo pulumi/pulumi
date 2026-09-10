@@ -26,12 +26,12 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/pkg/v3/display"
-	. "github.com/pulumi/pulumi/pkg/v3/engine" //nolint:revive
+	. "github.com/pulumi/pulumi/pkg/v3/engine"
 	lt "github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest/framework"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -65,7 +65,7 @@ func TestPlannedUpdate(t *testing.T) {
 		}
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
@@ -152,6 +152,82 @@ func TestPlannedUpdate(t *testing.T) {
 	assert.Equal(t, expected, snap.Resources[1].Outputs)
 }
 
+func TestPlanViolationSecrets(t *testing.T) {
+	t.Parallel()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					return plugin.CreateResponse{
+						ID:         "created-id",
+						Properties: req.Properties,
+						Status:     resource.StatusOK,
+					}, nil
+				},
+			}, nil
+		}),
+	}
+
+	violate := func(t *testing.T, showSecrets bool, expected string) {
+		ins := resource.PropertyMap{
+			"password": resource.MakeSecret(resource.NewProperty("planned-secret")),
+		}
+		expectError := false
+		programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+			_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+				Inputs: ins,
+			})
+			if expectError {
+				require.Fail(t, "RegisterResource should not return")
+			} else {
+				require.NoError(t, err)
+			}
+			return nil
+		})
+		hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
+
+		p := &lt.TestPlan{
+			Options: lt.TestUpdateOptions{
+				T:     t,
+				HostF: hostF,
+				UpdateOptions: UpdateOptions{
+					GeneratePlan: true,
+					Experimental: true,
+					ShowSecrets:  showSecrets,
+				},
+				SkipDisplayTests: true,
+			},
+		}
+		project := p.GetProject()
+
+		plan, err := lt.TestOp(Update).Plan(project, p.GetTarget(t, nil), p.Options, p.BackendClient, nil)
+		require.NoError(t, err)
+
+		expectError = true
+		ins = resource.PropertyMap{
+			"password": resource.MakeSecret(resource.NewProperty("actual-secret")),
+		}
+		p.Options.Plan = plan.Clone()
+		validate := ExpectDiagMessage(t, regexp.QuoteMeta(expected))
+		_, err = lt.TestOp(Update).RunStep(
+			project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, validate, "0")
+		require.NoError(t, err)
+	}
+
+	t.Run("redacted by default", func(t *testing.T) {
+		t.Parallel()
+		violate(t, false, "<{%reset%}>resource urn:pulumi:test::test::pkgA:m:typA::resA violates plan: "+
+			"properties changed: ++password[{[secret]}!={[secret]}]<{%reset%}>\n")
+	})
+
+	t.Run("shown with --show-secrets", func(t *testing.T) {
+		t.Parallel()
+		violate(t, true, "<{%reset%}>resource urn:pulumi:test::test::pkgA:m:typA::resA violates plan: "+
+			"properties changed: ++password[{&{{planned-secret}}}!={&{{actual-secret}}}]<{%reset%}>\n")
+	})
+}
+
 func TestUnplannedCreate(t *testing.T) {
 	t.Parallel()
 
@@ -182,7 +258,7 @@ func TestUnplannedCreate(t *testing.T) {
 		}
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
@@ -250,7 +326,7 @@ func TestUnplannedDelete(t *testing.T) {
 
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
@@ -328,7 +404,7 @@ func TestExpectedDelete(t *testing.T) {
 
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
@@ -403,7 +479,7 @@ func TestExpectedCreate(t *testing.T) {
 
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
@@ -475,7 +551,7 @@ func TestPropertySetChange(t *testing.T) {
 
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
@@ -534,7 +610,7 @@ func TestExpectedUnneededCreate(t *testing.T) {
 
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
@@ -600,7 +676,7 @@ func TestExpectedUnneededDelete(t *testing.T) {
 
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
@@ -678,7 +754,7 @@ func TestResoucesWithSames(t *testing.T) {
 		}
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
@@ -773,7 +849,7 @@ func TestPlannedPreviews(t *testing.T) {
 		}
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
@@ -868,7 +944,7 @@ func TestPlannedUpdateChangedStack(t *testing.T) {
 		}
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
@@ -956,7 +1032,7 @@ func TestPlannedOutputChanges(t *testing.T) {
 
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
@@ -1038,7 +1114,7 @@ func TestPlannedInputOutputDifferences(t *testing.T) {
 
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
@@ -1131,7 +1207,7 @@ func TestAliasWithPlans(t *testing.T) {
 
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
@@ -1199,7 +1275,7 @@ func TestComputedCanBeDropped(t *testing.T) {
 
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
@@ -1355,7 +1431,7 @@ func TestPlannedUpdateWithNondeterministicCheck(t *testing.T) {
 
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
@@ -1441,7 +1517,7 @@ func TestPlannedUpdateWithCheckFailure(t *testing.T) {
 		}
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
@@ -1508,7 +1584,7 @@ func TestPluginsAreDownloaded(t *testing.T) {
 	},
 		workspace.PackageDescriptor{PluginDescriptor: workspace.PluginDescriptor{Name: "pkgA"}},
 		workspace.PackageDescriptor{PluginDescriptor: workspace.PluginDescriptor{Name: "pkgB", Version: &semver10}})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
@@ -1584,7 +1660,7 @@ func TestProviderDeterministicPreview(t *testing.T) {
 		require.NoError(t, err)
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
@@ -1672,7 +1748,7 @@ func TestPlannedUpdateWithDependentDelete(t *testing.T) {
 
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{T: t, HostF: hostF, UpdateOptions: UpdateOptions{GeneratePlan: true}},
@@ -1754,7 +1830,7 @@ func TestResourcesTargeted(t *testing.T) {
 		return nil
 	})
 
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{}
 
@@ -1836,7 +1912,7 @@ func TestStackOutputsWithTargetedPlan(t *testing.T) {
 		return nil
 	})
 
-	p.Options.HostF = deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	p.Options.HostF = deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	project := p.GetProject()
 
@@ -1868,4 +1944,71 @@ func TestStackOutputsWithTargetedPlan(t *testing.T) {
 		},
 	}, false, p.BackendClient, nil, "1")
 	require.NoError(t, err)
+}
+
+// TestPlannedUpdateWithInternalKeys ensures that internal property keys (those starting with "__", such as "__defaults"
+// that providers inject during Check) are not treated as plan constraints. Differences in these internal keys between
+// preview and update must not raise plan violations.
+func TestPlannedUpdateWithInternalKeys(t *testing.T) {
+	t.Parallel()
+
+	var defaultsValue resource.PropertyValue
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				CheckF: func(_ context.Context, req plugin.CheckRequest) (plugin.CheckResponse, error) {
+					news := req.News.Copy()
+					news["__defaults"] = defaultsValue
+					return plugin.CheckResponse{Properties: news}, nil
+				},
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					return plugin.CreateResponse{
+						ID:         "created-id",
+						Properties: req.Properties,
+						Status:     resource.StatusOK,
+					}, nil
+				},
+			}, nil
+		}),
+	}
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+			Inputs: resource.NewPropertyMapFromMap(map[string]any{"foo": "bar"}),
+		})
+		require.NoError(t, err)
+		return nil
+	})
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
+
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{
+			T:             t,
+			HostF:         hostF,
+			UpdateOptions: UpdateOptions{GeneratePlan: true, Experimental: true},
+		},
+	}
+	project := p.GetProject()
+
+	// Generate a plan with one shape of __defaults.
+	defaultsValue = resource.NewProperty([]resource.PropertyValue{resource.NewProperty("a")})
+	plan, err := lt.TestOp(Update).Plan(project, p.GetTarget(t, nil), p.Options, p.BackendClient, nil)
+	require.NoError(t, err)
+
+	// The __defaults key must not appear anywhere in the resource plan's InputDiff.
+	resURN := resource.URN("urn:pulumi:test::test::pkgA:m:typA::resA")
+	resPlan, ok := plan.ResourcePlans[resURN]
+	require.True(t, ok, "expected a plan entry for %s", resURN)
+	require.NotContains(t, resPlan.Goal.InputDiff.Adds, resource.PropertyKey("__defaults"))
+	require.NotContains(t, resPlan.Goal.InputDiff.Updates, resource.PropertyKey("__defaults"))
+	require.NotContains(t, resPlan.Goal.InputDiff.Deletes, resource.PropertyKey("__defaults"))
+
+	// Run the update with a different __defaults value. This must not be considered a plan
+	// violation because internal ("__"-prefixed) keys should be ignored by plan checks.
+	defaultsValue = resource.NewProperty([]resource.PropertyValue{resource.NewProperty("b")})
+	p.Options.Plan = plan.Clone()
+	snap, err := lt.TestOp(Update).RunStep(
+		project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
+	require.NoError(t, err)
+	require.Len(t, snap.Resources, 2)
 }

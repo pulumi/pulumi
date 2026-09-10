@@ -23,6 +23,16 @@ resource "res" "ref-ref:index:Resource" {
             "x" = "100"
             "y" = "200"
         }
+        innerDataList = [{
+            boolean = false
+            float = 3.14
+            integer = 42
+            string = "Partridge"
+            boolArray = [true]
+            stringMap = {
+                "one" = "in a pear tree"
+            }
+        }]
     }
 }
 
@@ -40,4 +50,8 @@ output "map" {
 
 output "nested" {
   value = res.data.innerData.stringMap["three"]
+}
+
+output "listIndex" {
+  value = res.data.innerDataList[0].string
 }

@@ -1,0 +1,7 @@
+name: l3-component-invoke
+runtime:
+  name: python
+  options:
+    toolchain: uv
+    typechecker: pyright
+    virtualenv: venv

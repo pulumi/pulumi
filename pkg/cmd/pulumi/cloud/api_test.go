@@ -153,8 +153,8 @@ func TestResolveBindings_MissingParamErrorSuggestsFlag(t *testing.T) {
 	}
 	_, _, err := resolveBindings(mr, nil, nil)
 	require.Error(t, err)
-	var apiErr *APIError
-	require.True(t, errors.As(err, &apiErr))
+	apiErr, ok := errors.AsType[*APIError](err)
+	require.True(t, ok)
 	assert.Equal(t, ErrMissingContext, apiErr.Envelope.Error.Code)
 	joined := strings.Join(apiErr.Envelope.Error.Suggestions, "|")
 	assert.Contains(t, joined, "-F poolId=")
@@ -175,8 +175,8 @@ func TestResolveBindings_NullFieldRejected(t *testing.T) {
 	}
 	_, _, err := resolveBindings(mr, fields, nil)
 	require.Error(t, err)
-	var apiErr *APIError
-	require.True(t, errors.As(err, &apiErr))
+	apiErr, ok := errors.AsType[*APIError](err)
+	require.True(t, ok)
 	assert.Equal(t, ErrInvalidFlags, apiErr.Envelope.Error.Code)
 }
 
@@ -260,8 +260,8 @@ func TestNegotiateAccept_MarkdownNotDeclared(t *testing.T) {
 	}
 	_, err := negotiateAccept(op, "markdown")
 	require.Error(t, err)
-	var apiErr *APIError
-	require.True(t, errors.As(err, &apiErr))
+	apiErr, ok := errors.AsType[*APIError](err)
+	require.True(t, ok)
 	assert.Equal(t, ErrInvalidFlags, apiErr.Envelope.Error.Code)
 	joined := strings.Join(apiErr.Envelope.Error.Suggestions, "|")
 	assert.Contains(t, joined, "application/json")
@@ -272,8 +272,8 @@ func TestNegotiateAccept_InvalidValue(t *testing.T) {
 	t.Parallel()
 	_, err := negotiateAccept(&Operation{}, "yaml")
 	require.Error(t, err)
-	var apiErr *APIError
-	require.True(t, errors.As(err, &apiErr))
+	apiErr, ok := errors.AsType[*APIError](err)
+	require.True(t, ok)
 	assert.Equal(t, ErrInvalidFlags, apiErr.Envelope.Error.Code)
 }
 
@@ -495,6 +495,45 @@ func TestRawCall_ForwardsUserHeaders(t *testing.T) {
 		"Authorization must stay pinned to the resolved token")
 }
 
+// TestRawCall_RepeatedHeadersAccumulate is a regression test for
+// https://github.com/pulumi/pulumi/issues/23126: `-H`/`--header` is
+// documented as repeatable, but buildAPIHeaders used http.Header.Set for
+// every occurrence, so each repeated value for the same header name
+// silently discarded the one before it and only the last survived on the
+// wire. Repeated occurrences of the same name must accumulate instead,
+// matching `curl -H ... -H ...` and `gh api -H ... -H ...`. The first
+// user-supplied occurrence of a name must still replace an encoder default
+// (Accept/Content-Type) rather than being appended alongside it.
+func TestRawCall_RepeatedHeadersAccumulate(t *testing.T) {
+	t.Parallel()
+	var received http.Header
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		received = r.Header.Clone()
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	t.Cleanup(srv.Close)
+
+	apiClient := client.NewClient(srv.URL, "my-token", false, nil)
+	hdrs := []ParsedHeader{
+		{Name: "X-Foo", Value: "a"},
+		{Name: "X-Foo", Value: "b"},
+		// Repeated user-supplied Content-Type: the first occurrence must
+		// replace the encoder default, the second must accumulate alongside
+		// it rather than either being dropped or the default lingering.
+		{Name: "Content-Type", Value: "text/plain"},
+		{Name: "Content-Type", Value: "application/x-yaml"},
+	}
+	resp, err := apiClient.RawCall(t.Context(), http.MethodGet, "/echo", nil, nil,
+		buildAPIHeaders("application/json", "application/json", hdrs), false)
+	require.NoError(t, err)
+	resp.Body.Close()
+
+	assert.Equal(t, []string{"a", "b"}, received.Values("X-Foo"),
+		"repeated -H values for the same header name must all reach the wire")
+	assert.Equal(t, []string{"text/plain", "application/x-yaml"}, received.Values("Content-Type"),
+		"repeated user Content-Type values must accumulate without the encoder default lingering")
+}
+
 // TestValidateFlagCombos_BodyAndInputMutuallyExclusive pins the user-visible
 // error when both --body and --input are set.
 func TestValidateFlagCombos_BodyAndInputMutuallyExclusive(t *testing.T) {
@@ -505,8 +544,8 @@ func TestValidateFlagCombos_BodyAndInputMutuallyExclusive(t *testing.T) {
 		input:           "payload.json",
 	})
 	require.Error(t, err)
-	var apiErr *APIError
-	require.True(t, errors.As(err, &apiErr))
+	apiErr, ok := errors.AsType[*APIError](err)
+	require.True(t, ok)
 	assert.Equal(t, ErrInvalidFlags, apiErr.Envelope.Error.Code)
 	assert.Equal(t, cmdutil.ExitConfigurationError, apiErr.ExitCode)
 }
@@ -523,8 +562,8 @@ func TestValidateFlagCombos_SilentAndVerboseMutuallyExclusive(t *testing.T) {
 		verbose:         true,
 	})
 	require.Error(t, err)
-	var apiErr *APIError
-	require.True(t, errors.As(err, &apiErr))
+	apiErr, ok := errors.AsType[*APIError](err)
+	require.True(t, ok)
 	assert.Equal(t, ErrInvalidFlags, apiErr.Envelope.Error.Code)
 	assert.Equal(t, cmdutil.ExitConfigurationError, apiErr.ExitCode)
 }
@@ -780,16 +819,16 @@ func TestHandleResponse(t *testing.T) {
 		err := handleResponse(&buf, io.Discard, newResp(500, "application/json", `{"code":500}`),
 			&apiCommand{silent: true})
 		require.Error(t, err)
-		var apiErr *APIError
-		require.True(t, errors.As(err, &apiErr))
+		apiErr, ok := errors.AsType[*APIError](err)
+		require.True(t, ok)
 		assert.Equal(t, cmdutil.ExitCodeError, apiErr.ExitCode)
 	})
 	t.Run("4xx_returns_apierror", func(t *testing.T) {
 		t.Parallel()
 		err := handleResponse(io.Discard, io.Discard, newResp(404, "application/json", `{"code":404}`), &apiCommand{})
 		require.Error(t, err)
-		var apiErr *APIError
-		require.True(t, errors.As(err, &apiErr))
+		apiErr, ok := errors.AsType[*APIError](err)
+		require.True(t, ok)
 		assert.Equal(t, cmdutil.ExitCodeError, apiErr.ExitCode)
 		assert.Equal(t, ErrHTTP4xx, apiErr.Envelope.Error.Code)
 	})
@@ -797,8 +836,8 @@ func TestHandleResponse(t *testing.T) {
 		t.Parallel()
 		err := handleResponse(io.Discard, io.Discard, newResp(401, "application/json", `{"code":401}`), &apiCommand{})
 		require.Error(t, err)
-		var apiErr *APIError
-		require.True(t, errors.As(err, &apiErr))
+		apiErr, ok := errors.AsType[*APIError](err)
+		require.True(t, ok)
 		assert.Equal(t, cmdutil.ExitAuthenticationError, apiErr.ExitCode)
 	})
 }

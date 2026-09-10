@@ -111,10 +111,8 @@ type ProgressDisplay struct {
 	// i.e. if we're previewing we say things like "Would update" instead of "Updating".
 	isPreview bool
 
-	// The urns of all stack roots. In multistack mode, there may be multiple.
-	stackUrns map[resource.URN]bool
-	// The first stack urn seen — used as fallback parent for events with no URN.
-	primaryStackUrn resource.URN
+	// The urn of the stack.
+	stackUrn resource.URN
 
 	// The set of observed unchanged (same) resources we've seen. In the event
 	// that we've not been explicitly asked to show unchanged resources
@@ -497,7 +495,7 @@ func (display *ProgressDisplay) getOrCreateTreeNode(
 	urnToTreeNode[urn] = node
 
 	// if it's the not the root item, attach it as a child node to an appropriate parent item.
-	if urn != "" && !display.stackUrns[urn] {
+	if urn != "" && urn != display.stackUrn {
 		var parentURN resource.URN
 
 		res := row.Step().Res
@@ -508,10 +506,10 @@ func (display *ProgressDisplay) getOrCreateTreeNode(
 		parentRow, hasParentRow := display.eventUrnToResourceRow[parentURN]
 
 		if !hasParentRow {
-			// If we haven't heard about this node's parent, then just parent it to its stack root.
-			// In multistack mode there may be multiple roots; find the right one by matching
-			// the project portion of the URN. Fall back to the primary stack URN.
-			parentURN = display.findStackRootForURN(urn)
+			// If we haven't heard about this node's parent, then  just parent it to the stack.
+			// Note: getting the parent row for the stack-urn will always succeed as we ensure that
+			// such a row is always there in ensureHeaderAndStackRows
+			parentURN = display.stackUrn
 			parentRow = display.eventUrnToResourceRow[parentURN]
 		}
 
@@ -636,8 +634,14 @@ func (display *ProgressDisplay) filterOutUnnecessaryNodesAndSetDisplayTimes(node
 	for _, node := range nodes {
 		node.childNodes = display.filterOutUnnecessaryNodesAndSetDisplayTimes(node.childNodes)
 
-		if node.row.HideRowIfUnnecessary() && len(node.childNodes) == 0 {
-			continue
+		if node.row.HideRowIfUnnecessary() {
+			if len(node.childNodes) == 0 {
+				continue
+			}
+			if rr, ok := node.row.(*resourceRowData); ok && rr.syntheticStackRow {
+				result = append(result, node.childNodes...)
+				continue
+			}
 		}
 
 		display.displayOrderCounter++
@@ -848,7 +852,8 @@ func (display *ProgressDisplay) printDiagnostics() {
 			colors.SpecCreateReplacement + "[Pulumi Neo]" + colors.Reset + " Would you like help with these diagnostics?")
 		display.println("    " +
 			colors.Underline + colors.Blue + ExplainFailureLink(display.permalink) + colors.Reset)
-		display.println("    " + "Or run `pulumi neo` for an interactive agent in your terminal.")
+		display.println("    " + "Or run `" + neoDebugCommand(display.isPreview) +
+			"` for an interactive agent in your terminal.")
 		display.println("")
 	}
 }
@@ -1027,63 +1032,47 @@ func (display *ProgressDisplay) printOutputs() {
 	if display.opts.SuppressOutputs {
 		return
 	}
-	// Cannot display outputs for the stack if we don't know its URN.
-	if display.primaryStackUrn == "" {
+	step, ok := display.outputsStep()
+	if !ok {
 		return
 	}
 
-	isMultistack := len(display.stackUrns) > 1
-
-	if isMultistack {
-		// In multistack mode, print outputs for each stack under a labeled section.
-		stackUrnList := sortedStackUrns(display.stackUrns, display.opts.StackLabels)
-
-		var allProps []string
-		for _, stackUrn := range stackUrnList {
-			row, ok := display.eventUrnToResourceRow[stackUrn]
-			if !ok {
-				continue
-			}
-			props := getResourceOutputsPropertiesString(
-				row.Step(),
-				2, /* indent (extra level for nesting under stack label) */
-				display.isPreview,
-				display.opts.Debug,
-				false, /* refresh */
-				display.opts.ShowSameResources,
-				display.opts.ShowSecrets,
-				display.opts.TruncateOutput)
-			if props != "" {
-				label := stackLabel(stackUrn, display.opts.StackLabels)
-				allProps = append(allProps,
-					fmt.Sprintf("    %s%s%s:\n%s",
-						colors.Bold, label, colors.Reset, strings.TrimRight(props, "\n")))
-			}
-		}
-		if len(allProps) > 0 {
-			display.println(colors.SpecHeadline + "Outputs:" + colors.Reset)
-			for _, p := range allProps {
-				display.println(p)
-			}
-		}
-	} else {
-		// Single-stack mode: original behavior.
-		stackStep := display.eventUrnToResourceRow[display.primaryStackUrn].Step()
-
-		props := getResourceOutputsPropertiesString(
-			stackStep,
-			1, /* indent */
-			display.isPreview,
-			display.opts.Debug,
-			false, /* refresh */
-			display.opts.ShowSameResources,
-			display.opts.ShowSecrets,
-			display.opts.TruncateOutput)
-		if props != "" {
-			display.println(colors.SpecHeadline + "Outputs:" + colors.Reset)
-			display.println(props)
-		}
+	props := getResourceOutputsPropertiesString(
+		step,
+		1, /* indent */
+		display.isPreview,
+		display.opts.Debug,
+		false, /* refresh */
+		display.opts.ShowSameResources,
+		display.opts.ShowSecrets,
+		display.opts.TruncateOutput)
+	if props != "" {
+		display.println(colors.SpecHeadline + "Outputs:" + colors.Reset)
+		display.println(props)
 	}
+}
+
+// outputsStep picks the step whose outputs the Outputs section prints: normally the root stack's;
+// with SuppressStackRow (no stack participates), the single operated resource's.
+func (display *ProgressDisplay) outputsStep() (engine.StepEventMetadata, bool) {
+	if display.stackUrn != "" {
+		return display.eventUrnToResourceRow[display.stackUrn].Step(), true
+	}
+	if !display.opts.SuppressStackRow {
+		return engine.StepEventMetadata{}, false
+	}
+	var step engine.StepEventMetadata
+	found := false
+	for urn, row := range display.eventUrnToResourceRow {
+		if urn == "" {
+			continue
+		}
+		if found {
+			return engine.StepEventMetadata{}, false
+		}
+		step, found = row.Step(), true
+	}
+	return step, found
 }
 
 // printSummary prints the Stack's SummaryEvent in a new section if applicable.
@@ -1092,17 +1081,11 @@ func (display *ProgressDisplay) printSummary() {
 	if display.summaryEventPayload == nil {
 		return
 	}
-
-	isMultistack := len(display.stackUrns) > 1
-
-	if isMultistack {
-		display.printMultistackSummary()
-		return
-	}
-
-	// Single-stack: original behavior.
+	// track resources errored
 	resourcesErrored := 0
+
 	rr := toResourceRows(display.eventUrnToResourceRow, display.opts.DeterministicOutput)
+
 	for _, r := range rr {
 		if r.DiagInfo().ErrorCount > 0 {
 			resourcesErrored++
@@ -1110,125 +1093,6 @@ func (display *ProgressDisplay) printSummary() {
 	}
 	msg := renderSummaryEvent(*display.summaryEventPayload, resourcesErrored, false, display.opts)
 	display.println(msg)
-}
-
-// printMultistackSummary prints a single "Resources:" section with per-stack breakdowns and a total.
-// Format:
-//
-//	Resources:
-//	    vpc:
-//	        + 8 to create
-//	    webserver:
-//	        + 3 to create
-//	    Total:
-//	        + 11 to create
-func (display *ProgressDisplay) printMultistackSummary() {
-	payload := *display.summaryEventPayload
-
-	// Collect stack URNs sorted by label.
-	stackUrnList := sortedStackUrns(display.stackUrns, display.opts.StackLabels)
-
-	// Bucket resources by stack.
-	perStack := make(map[resource.URN]*perStackSummary, len(stackUrnList))
-	for _, su := range stackUrnList {
-		perStack[su] = newPerStackSummary()
-	}
-
-	rr := toResourceRows(display.eventUrnToResourceRow, display.opts.DeterministicOutput)
-	for _, r := range rr {
-		step := r.Step()
-		stackRoot := display.findStackRootForURN(step.URN)
-		info := perStack[stackRoot]
-		if info == nil {
-			continue
-		}
-		if step.Op != "" {
-			info.changes[step.Op]++
-		}
-		if r.DiagInfo().ErrorCount > 0 {
-			info.errored++
-		}
-	}
-
-	// Print the "Resources:" header, then per-stack summaries indented underneath.
-	display.println(display.opts.Color.Colorize(
-		fmt.Sprintf("%sResources:%s", colors.SpecHeadline, colors.Reset)))
-
-	for _, stackUrn := range stackUrnList {
-		info := perStack[stackUrn]
-		label := stackLabel(stackUrn, display.opts.StackLabels)
-		display.println(display.opts.Color.Colorize(
-			fmt.Sprintf("    %s%s%s:", colors.Bold, label, colors.Reset)))
-		perStackPayload := engine.SummaryEventPayload{
-			IsPreview:       payload.IsPreview,
-			ResourceChanges: info.changes,
-		}
-		msg := renderIndentedSummaryChanges(perStackPayload, info.errored, display.opts)
-		if msg != "" {
-			display.println(strings.TrimRight(msg, "\n"))
-		}
-	}
-
-	// Print aggregate total.
-	resourcesErrored := 0
-	for _, r := range rr {
-		if r.DiagInfo().ErrorCount > 0 {
-			resourcesErrored++
-		}
-	}
-	display.println(display.opts.Color.Colorize(
-		fmt.Sprintf("    %sTotal%s:", colors.Bold, colors.Reset)))
-	msg := renderIndentedSummaryChanges(payload, resourcesErrored, display.opts)
-	if msg != "" {
-		display.println(strings.TrimRight(msg, "\n"))
-	}
-
-	// Print duration for actual deploys.
-	if !payload.IsPreview {
-		roundedSeconds := int64(payload.Duration.Seconds() + 0.5)
-		roundedDuration := fmt.Sprintf("%ds", roundedSeconds)
-		display.println(display.opts.Color.Colorize(
-			fmt.Sprintf("\n%sDuration:%s %s", colors.SpecHeadline, colors.Reset, roundedDuration)))
-	}
-	display.println("")
-}
-
-// perStackSummary holds per-stack resource change counts for multistack summary display.
-// Defined at package level to avoid shadowing the imported "display" package in method bodies.
-type perStackSummary struct {
-	changes display.ResourceChanges
-	errored int
-}
-
-func newPerStackSummary() *perStackSummary {
-	return &perStackSummary{changes: make(display.ResourceChanges)}
-}
-
-// sortedStackUrns returns stack URNs sorted by label for deterministic display.
-func sortedStackUrns(stackUrns map[resource.URN]bool, labels map[string]string) []resource.URN {
-	result := make([]resource.URN, 0, len(stackUrns))
-	for urn := range stackUrns {
-		result = append(result, urn)
-	}
-	sort.Slice(result, func(i, j int) bool {
-		return stackLabel(result[i], labels) < stackLabel(result[j], labels)
-	})
-	return result
-}
-
-// stackLabel returns the display label for a stack URN. If StackLabels is set (multistack mode),
-// uses the logical name (e.g., "vpc"); otherwise falls back to the project name from the URN.
-func stackLabel(urn resource.URN, labels map[string]string) string {
-	if urn == "" {
-		return ""
-	}
-	project := string(urn.Project())
-	if labels != nil {
-		if label, ok := labels[project]; ok {
-			return label
-		}
-	}
-	return project
 }
 
 func (display *ProgressDisplay) mergeStreamPayloadsToSinglePayload(
@@ -1302,13 +1166,7 @@ func (display *ProgressDisplay) getRowForURN(urn resource.URN, metadata *engine.
 	// If this is the first time we're seeing an event for the stack resource, check to see if we've already
 	// recorded root events that we want to reassociate with this URN.
 	if isRootURN(urn) {
-		if display.stackUrns == nil {
-			display.stackUrns = make(map[resource.URN]bool)
-		}
-		display.stackUrns[urn] = true
-		if display.primaryStackUrn == "" {
-			display.primaryStackUrn = urn
-		}
+		display.stackUrn = urn
 
 		if row, has = display.eventUrnToResourceRow[""]; has {
 			row.SetStep(step)
@@ -1346,7 +1204,7 @@ func (display *ProgressDisplay) ensureParentRow(metadata *engine.StepEventMetada
 		return
 	}
 	parentURN := metadata.Res.Parent
-	if parentURN == "" || display.stackUrns[parentURN] {
+	if parentURN == "" || parentURN == display.stackUrn {
 		return
 	}
 	if _, has := display.eventUrnToResourceRow[parentURN]; has {
@@ -1453,7 +1311,6 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 			// associated at the top level with the stack.  That way if things are taking a while,
 			// there's insight in the display as to what's going on.
 			display.processNormalEvent(engine.NewEvent(engine.DiagEventPayload{
-				URN:       display.findStackRootForURN(eventUrn),
 				Ephemeral: true,
 				Severity:  diag.Info,
 				Color:     cmdutil.GetGlobalColorization(),
@@ -1466,9 +1323,9 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 	if eventUrn == "" {
 		// If this event has no URN, associate it with the stack. Note that there may not yet be a stack resource, in
 		// which case this is a no-op.
-		eventUrn = display.primaryStackUrn
+		eventUrn = display.stackUrn
 	}
-	isRootEvent := display.stackUrns[eventUrn]
+	isRootEvent := eventUrn == display.stackUrn
 
 	row := display.getRowForURN(eventUrn, metadata)
 
@@ -1511,7 +1368,7 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 		display.stopwatchMutex.Unlock()
 
 		// Is this the stack outputs event? If so, we'll need to print it out at the end of the plan.
-		if display.stackUrns[step.URN] {
+		if step.URN == display.stackUrn {
 			display.seenStackOutputs = true
 		}
 
@@ -1602,39 +1459,10 @@ func (display *ProgressDisplay) ensureHeaderAndStackRows() {
 		display.headerRow = &headerRowData{display: display}
 	}
 
-	// In multistack mode, pre-populate rows for all expected stack roots so they appear
-	// immediately rather than waiting for each stack's first event.
-	if len(display.opts.ExpectedStackURNs) > 0 {
-		for _, urn := range display.opts.ExpectedStackURNs {
-			if _, has := display.eventUrnToResourceRow[urn]; has {
-				continue
-			}
-
-			if display.stackUrns == nil {
-				display.stackUrns = make(map[resource.URN]bool)
-			}
-			display.stackUrns[urn] = true
-			if display.primaryStackUrn == "" {
-				display.primaryStackUrn = urn
-			}
-
-			stackRow := &resourceRowData{
-				display:              display,
-				tick:                 display.currentTick,
-				diagInfo:             &DiagInfo{},
-				step:                 engine.StepEventMetadata{URN: urn, Op: deploy.OpSame},
-				hideRowIfUnnecessary: false,
-			}
-			display.eventUrnToResourceRow[urn] = stackRow
-			display.resourceRows = append(display.resourceRows, stackRow)
-		}
-		return
-	}
-
 	// we've added at least one row to the table.  make sure we have a row to designate the
 	// stack if we haven't already heard about it yet.  This also ensures that as we build
 	// the tree we can always guarantee there's a 'root' to parent anything to.
-	_, hasStackRow := display.eventUrnToResourceRow[display.primaryStackUrn]
+	_, hasStackRow := display.eventUrnToResourceRow[display.stackUrn]
 	if hasStackRow {
 		return
 	}
@@ -1644,27 +1472,12 @@ func (display *ProgressDisplay) ensureHeaderAndStackRows() {
 		tick:                 display.currentTick,
 		diagInfo:             &DiagInfo{},
 		step:                 engine.StepEventMetadata{Op: deploy.OpSame},
-		hideRowIfUnnecessary: false,
+		hideRowIfUnnecessary: display.opts.SuppressStackRow,
+		syntheticStackRow:    true,
 	}
 
-	display.eventUrnToResourceRow[display.primaryStackUrn] = stackRow
+	display.eventUrnToResourceRow[display.stackUrn] = stackRow
 	display.resourceRows = append(display.resourceRows, stackRow)
-}
-
-// findStackRootForURN finds the stack root URN that a resource belongs to by matching
-// the stack and project portions of the URN. Falls back to the primary stack URN.
-func (display *ProgressDisplay) findStackRootForURN(urn resource.URN) resource.URN {
-	// A row without a URN yet (a synthetic root, a summary placeholder) has no stack to match on;
-	// urn.Stack() would panic on an empty URN, so fall back to the primary stack root.
-	if urn != "" {
-		for stackUrn := range display.stackUrns {
-			// Match if the resource's stack and project match the root's stack and project.
-			if stackUrn != "" && urn.Stack() == stackUrn.Stack() && urn.Project() == stackUrn.Project() {
-				return stackUrn
-			}
-		}
-	}
-	return display.primaryStackUrn
 }
 
 func (display *ProgressDisplay) processEvents(ticker *time.Ticker, events <-chan engine.Event) {

@@ -19,7 +19,11 @@ import (
 	"testing"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/internal"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
+	propertytest "github.com/pulumi/pulumi/sdk/v3/go/property/testing"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"pgregory.net/rapid"
 )
 
 func TestDeepCopy(t *testing.T) {
@@ -75,7 +79,6 @@ func TestDeepCopy(t *testing.T) {
 			"bar": []int{42},
 		},
 	}
-	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
 	for i, c := range cases {
 		t.Run(fmt.Sprintf("case %d", i), func(t *testing.T) {
 			t.Parallel()
@@ -90,5 +93,41 @@ func TestDeepCopyDoesntCopyOutputState(t *testing.T) {
 	state := internal.OutputState{}
 	assert.PanicsWithValue(t, "fatal: A failure has occurred: Outputs cannot be deep copied", func() {
 		Copy(state)
+	})
+}
+
+func TestDeepCopyPropertyValue(t *testing.T) {
+	t.Parallel()
+
+	rapid.Check(t, func(t *rapid.T) {
+		source := propertytest.Value(10).Draw(t, "source")
+
+		copied, ok := Copy(source).(property.Value)
+		require.True(t, ok)
+		assert.True(t, source.Equals(copied), "%v != %v", source, copied)
+	})
+}
+
+func TestDeepCopyStructWithPropertyMap(t *testing.T) {
+	t.Parallel()
+
+	rapid.Check(t, func(t *rapid.T) {
+		type payload struct {
+			Before property.Map
+			After  property.Map
+		}
+		source := payload{
+			Before: propertytest.Map(10).Draw(t, "before"),
+			After:  propertytest.Map(10).Draw(t, "after"),
+		}
+
+		copied, ok := Copy(source).(payload)
+		require.True(t, ok)
+		assert.True(t,
+			source.Before.Equals(copied.Before),
+			"%v != %v", source.Before, copied.Before)
+		assert.True(t,
+			source.After.Equals(copied.After),
+			"%v != %v", source.After, copied.After)
 	})
 }

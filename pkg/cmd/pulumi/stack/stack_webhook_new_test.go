@@ -56,13 +56,13 @@ func failingNewFactory(err error) stackWebhookNewClientFactory {
 func createdWebhook() apitype.Webhook {
 	return apitype.Webhook{
 		OrganizationName: "my-org",
-		ProjectName:      ptr("my-project"),
-		StackName:        ptr("dev"),
+		ProjectName:      new("my-project"),
+		StackName:        new("dev"),
 		Name:             "my-hook",
 		DisplayName:      "My Hook",
 		PayloadURL:       "https://example.com/webhook",
 		Active:           true,
-		Format:           ptr("raw"),
+		Format:           new("raw"),
 		HasSecret:        true,
 	}
 }
@@ -80,7 +80,7 @@ func TestStackWebhookNew_TextOutput(t *testing.T) {
 	}
 
 	var buf bytes.Buffer
-	err := runStackWebhookNew(t.Context(), &buf, stubNewFactory(c), "", args, "default")
+	err := runStackWebhookNew(t.Context(), &buf, stubNewFactory(c), "", args, renderWebhookGetText)
 	require.NoError(t, err)
 
 	expected := "ID:                my-hook\n" +
@@ -107,7 +107,7 @@ func TestStackWebhookNew_JSONOutput(t *testing.T) {
 	}
 
 	var buf bytes.Buffer
-	err := runStackWebhookNew(t.Context(), &buf, stubNewFactory(c), "", args, "json")
+	err := runStackWebhookNew(t.Context(), &buf, stubNewFactory(c), "", args, renderWebhookGetJSON)
 	require.NoError(t, err)
 
 	assert.Contains(t, buf.String(), `"id": "my-hook"`)
@@ -129,7 +129,7 @@ func TestStackWebhookNew_RequestFields(t *testing.T) {
 	}
 
 	var buf bytes.Buffer
-	err := runStackWebhookNew(t.Context(), &buf, stubNewFactory(c), "", args, "default")
+	err := runStackWebhookNew(t.Context(), &buf, stubNewFactory(c), "", args, renderWebhookGetText)
 	require.NoError(t, err)
 
 	assert.Equal(t, "", c.gotReq.Name)
@@ -143,20 +143,6 @@ func TestStackWebhookNew_RequestFields(t *testing.T) {
 	assert.Equal(t, "s3cret", c.gotReq.Secret)
 }
 
-func TestStackWebhookNew_InvalidOutput(t *testing.T) {
-	t.Parallel()
-
-	c := &mockWebhookNewClient{created: createdWebhook()}
-	args := stackWebhookNewArgs{
-		Name: "hook", URL: "https://example.com", Format: "raw", Active: true,
-	}
-
-	var buf bytes.Buffer
-	err := runStackWebhookNew(t.Context(), &buf, stubNewFactory(c), "", args, "yaml")
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "invalid --output value")
-}
-
 func TestStackWebhookNew_ClientError(t *testing.T) {
 	t.Parallel()
 
@@ -166,7 +152,7 @@ func TestStackWebhookNew_ClientError(t *testing.T) {
 	}
 
 	var buf bytes.Buffer
-	err := runStackWebhookNew(t.Context(), &buf, stubNewFactory(c), "", args, "default")
+	err := runStackWebhookNew(t.Context(), &buf, stubNewFactory(c), "", args, renderWebhookGetText)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "creating stack webhook")
 	assert.Contains(t, err.Error(), "409 conflict")
@@ -182,7 +168,7 @@ func TestStackWebhookNew_FactoryError(t *testing.T) {
 	var buf bytes.Buffer
 	err := runStackWebhookNew(
 		t.Context(), &buf, failingNewFactory(errors.New("not logged in")),
-		"", args, "default")
+		"", args, renderWebhookGetText)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "not logged in")
 }
@@ -201,7 +187,7 @@ func TestStackWebhookNew_StackFlagPropagation(t *testing.T) {
 	}
 
 	var buf bytes.Buffer
-	err := runStackWebhookNew(t.Context(), &buf, factory, "org/proj/my-stack", args, "default")
+	err := runStackWebhookNew(t.Context(), &buf, factory, "org/proj/my-stack", args, renderWebhookGetText)
 	require.NoError(t, err)
 	assert.Equal(t, "org/proj/my-stack", capturedStack)
 }

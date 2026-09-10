@@ -7,16 +7,16 @@ const itemList = config.requireObject<Array<string>>("itemList");
 const itemMap = config.requireObject<Record<string, string>>("itemMap");
 const createBool = config.requireBoolean("createBool");
 const numResource: nestedobject.Target[] = [];
-for (const range = {value: 0}; range.value < numItems; range.value++) {
-    numResource.push(new nestedobject.Target(`numResource-${range.value}`, {name: `num-${range.value}`}));
+for (let range = 0; range < numItems; range++) {
+    numResource.push(new nestedobject.Target(`numResource-${range}`, {name: `num-${range}`}));
 }
 const listResource: nestedobject.Target[] = [];
 for (const range of itemList.map((v, k) => ({key: k, value: v}))) {
     listResource.push(new nestedobject.Target(`listResource-${range.key}`, {name: `${range.key}:${range.value}`}));
 }
-const mapResource: nestedobject.Target[] = [];
+const mapResource: {[key: string]: nestedobject.Target} = {};
 for (const range of Object.entries(itemMap).sort().map(([k, v]) => ({key: k, value: v}))) {
-    mapResource.push(new nestedobject.Target(`mapResource-${range.key}`, {name: `${range.key}=${range.value}`}));
+    mapResource[range.key] = new nestedobject.Target(`mapResource-${range.key}`, {name: `${range.key}=${range.value}`});
 }
 let boolResource: nestedobject.Target | undefined;
 if (createBool) {

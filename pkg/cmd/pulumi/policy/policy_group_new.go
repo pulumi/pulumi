@@ -77,8 +77,9 @@ func newPolicyGroupNewCmdWith(factory policyGroupNewClientFactory) *cobra.Comman
 	args.outputFormat = defaultPolicyGroupGetOutputFormat()
 
 	cmd := &cobra.Command{
-		Use:   "new <name>",
-		Short: "[EXPERIMENTAL] Create a new Policy Group",
+		Use:     "new <name>",
+		Aliases: []string{"create", "setup"},
+		Short:   "[EXPERIMENTAL] Create a new Policy Group",
 		Long: "[EXPERIMENTAL] Create a new Policy Group.\n" +
 			"\n" +
 			"Creates a new Policy Group in the given organization. Policy Groups\n" +

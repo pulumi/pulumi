@@ -15,6 +15,7 @@
 package neo
 
 import (
+	"encoding/json"
 	"sort"
 	"strings"
 	"time"
@@ -30,6 +31,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
 	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 )
 
 // ctrlCArmTimeout is how long the "press Ctrl+C again to exit" gate stays
@@ -37,6 +39,12 @@ import (
 // the second press still has to be deliberate but the gate doesn't silently
 // linger across long idle periods.
 const ctrlCArmTimeout = 1500 * time.Millisecond
+
+// minUsableTUIWidth is the floor below which a startup WindowSizeMsg is more
+// likely to be a transient terminal initialization artifact than a useful
+// interactive viewport. Rendering the input at those widths leaves only "Se"
+// from the placeholder in large terminals until the next resize.
+const minUsableTUIWidth = 40
 
 // ctrlCDisarmMsg is the deferred disarm signal scheduled when the user first
 // presses Ctrl+C. It carries the generation it was scheduled under; the
@@ -69,9 +77,13 @@ type permissionDebounceTickMsg struct {
 // tea.Println until after bubbletea v2's first renderer flush. Calling
 // Println inside the WindowSizeMsg handler runs while cellbuf is still
 // sized to the terminal, so insertAbove would scroll a screenful of blank
-// lines above the prompt.
+// lines above the prompt. rendered is the whole flush pre-joined into one
+// string so it can be emitted as a single, atomic Println — Update returns
+// its cmds via tea.Batch, which runs them concurrently, so per-block
+// Printlns would race each other (and any event-driven print) for
+// scrollback order.
 type firstFlushReadyMsg struct {
-	rendered []string
+	rendered string
 }
 
 // blockKind identifies the type of rendered block in the output log.
@@ -193,6 +205,13 @@ type ModelConfig struct {
 	// that want to exercise the post-task Ctrl+A / Ctrl+R path without driving
 	// a UISessionURL through the event channel.
 	TaskCreated bool
+	// History seeds the transcript for a resumed session. These events are
+	// applied before the first render so long histories do not flow through the
+	// bounded live EventCh.
+	History []UIEvent
+	// InitialWidth seeds the first render before Bubble Tea sends WindowSizeMsg.
+	// It is also used as a guard against bogus tiny startup resize events.
+	InitialWidth int
 	// HasDarkBackground selects light- or dark-friendly style variants for the
 	// whole TUI, including the textarea. runNeo detects it synchronously before
 	// the program starts and defaults it to dark for terminals it can't probe.
@@ -351,6 +370,11 @@ var (
 	todoListHeader     = lipgloss.NewStyle().Bold(true).Render("⏺ TODO")
 )
 
+func placeholderStyle(hasDarkBackground bool) lipgloss.Style {
+	return lipgloss.NewStyle().Foreground(
+		lipgloss.LightDark(hasDarkBackground)(lipgloss.Color("240"), lipgloss.Color("245")))
+}
+
 // renderLeftBracket decorates content with a left-only bracket border: a
 // "╭─" tick above the first content line, a "│ " prefix on every content
 // line, and a "╰─" tick below the last line. The right edge and full
@@ -408,6 +432,38 @@ func (m *Model) recallInput(s string) {
 	m.textInput.MoveToEnd()
 }
 
+func addKeyAliases(binding *key.Binding, aliases ...string) {
+	binding.SetKeys(append(binding.Keys(), aliases...)...)
+}
+
+func (m Model) draftEditingKey(msg tea.KeyPressMsg) bool {
+	if m.textInput.Value() == "" {
+		return false
+	}
+
+	km := m.textInput.KeyMap
+	return key.Matches(msg,
+		km.CharacterBackward,
+		km.CharacterForward,
+		km.DeleteAfterCursor,
+		km.DeleteBeforeCursor,
+		km.DeleteCharacterBackward,
+		km.DeleteCharacterForward,
+		km.DeleteWordBackward,
+		km.DeleteWordForward,
+		km.LineEnd,
+		km.LineStart,
+		km.InputBegin,
+		km.InputEnd,
+		km.WordBackward,
+		km.WordForward,
+		km.CapitalizeWordForward,
+		km.LowercaseWordForward,
+		km.UppercaseWordForward,
+		km.TransposeCharacterBackward,
+	)
+}
+
 // historyPrev steps to an older prompt. It returns true when it handled the
 // key (so the caller swallows it). The first step out of the live draft
 // stashes that draft in historyDraft so a later Down can restore it.
@@ -457,6 +513,12 @@ func renderIndented(style lipgloss.Style, termWidth int, content string) string 
 
 // NewModel creates a new TUI Model.
 func NewModel(cfg ModelConfig) Model {
+	initialWidth := cfg.InitialWidth
+	if initialWidth <= 0 {
+		initialWidth = 80
+	}
+	initialHeight := 24
+
 	ti := textarea.New()
 	ti.Placeholder = "Send a message..."
 	ti.CharLimit = 4096
@@ -486,6 +548,9 @@ func NewModel(cfg ModelConfig) Model {
 	styles := textarea.DefaultStyles(cfg.HasDarkBackground)
 	styles.Focused.Prompt = promptStyle
 	styles.Blurred.Prompt = promptStyle
+	placeholder := placeholderStyle(cfg.HasDarkBackground)
+	styles.Focused.Placeholder = placeholder
+	styles.Blurred.Placeholder = placeholder
 	ti.SetStyles(styles)
 	// Keep Enter as submit. Shift+Enter / Alt+Enter need kitty keyboard
 	// protocol; Ctrl+J (== LF) is the portable fallback. Trailing backslash
@@ -494,6 +559,9 @@ func NewModel(cfg ModelConfig) Model {
 		key.WithKeys("shift+enter", "alt+enter", "ctrl+j"),
 		key.WithHelp("shift+enter / alt+enter / ctrl+j", "newline"),
 	)
+	addKeyAliases(&ti.KeyMap.WordForward, "meta+f")
+	addKeyAliases(&ti.KeyMap.WordBackward, "meta+b")
+	addKeyAliases(&ti.KeyMap.DeleteWordBackward, "meta+backspace", "super+backspace")
 	ti.Focus()
 
 	sp := spinner.New(
@@ -507,7 +575,7 @@ func NewModel(cfg ModelConfig) Model {
 			workDir:   cfg.WorkDir,
 			username:  cfg.Username,
 			version:   cfg.Version,
-			termWidth: 80,
+			termWidth: initialWidth,
 			greeting:  pickGreeting(cfg.Username),
 		},
 		textInput:         ti,
@@ -515,21 +583,28 @@ func NewModel(cfg ModelConfig) Model {
 		outCh:             cfg.OutCh,
 		busy:              cfg.Busy,
 		spinner:           sp,
-		width:             80,
-		height:            24,
+		width:             initialWidth,
+		height:            initialHeight,
 		hasDarkBackground: cfg.HasDarkBackground,
 		messageSent:       cfg.MessageSent,
 		taskCreated:       cfg.TaskCreated,
 		approvalMode:      cfg.InitialApprovalMode,
 		permissionMode:    cfg.InitialPermissionMode,
-		overlay:           newOverlayModel(80, 24),
+		overlay:           newOverlayModel(initialWidth, initialHeight),
 	}
+	m.textInput.SetWidth(max(m.liveWidth(), 3))
 	if cfg.InitialPrompt != "" {
 		// Render the initial-prompt block now so tests can find it via
 		// findBlockKind. The actual scrollback emission happens on the first
-		// WindowSizeMsg, when we have the real terminal width.
-		m.appendUserMessageBlock(cfg.InitialPrompt)
+		// WindowSizeMsg, when we have the real terminal width. Seed the block
+		// directly rather than via commitBlock: its printlnBlock side effect
+		// would flip hasEmittedScrollback before anything is actually printed,
+		// giving the welcome banner a stray leading blank line.
+		m.stageBlock(block{kind: blockUserMessage, raw: cfg.InitialPrompt})
 		m.pendingUserEchoes = append(m.pendingUserEchoes, cfg.InitialPrompt)
+	}
+	for _, event := range cfg.History {
+		m.applyHistoryEvent(event)
 	}
 	if cfg.Busy {
 		m.blocks = append(m.blocks, block{
@@ -557,8 +632,16 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		firstSize := !m.sizeReceived
 		m.sizeReceived = true
-		m.width = msg.Width
-		m.height = msg.Height
+		width := msg.Width
+		if firstSize && width < minUsableTUIWidth && m.width >= minUsableTUIWidth {
+			width = m.width
+		}
+		height := msg.Height
+		if height <= 0 {
+			height = m.height
+		}
+		m.width = width
+		m.height = height
 		safeWidth := m.liveWidth()
 		m.welcome.termWidth = safeWidth
 		// SetWidth accounts for the prompt width registered via SetPromptFunc.
@@ -587,26 +670,18 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 	case firstFlushReadyMsg:
-		for _, r := range msg.rendered {
-			cmds = append(cmds, m.printlnBlock(r))
-		}
+		cmds = append(cmds, m.printlnBlock(msg.rendered))
 
 	case tea.ResumeMsg:
 		// Resuming from a Ctrl+Z suspend (via `fg`): bubbletea repaints only the
 		// live frame, but the committed transcript was emitted to scrollback via
 		// tea.Println and isn't redrawn. Clear the viewport and re-emit the
-		// committed blocks so the session reads continuously after `fg`. Reset
-		// hasEmittedScrollback so the first re-emitted block skips its leading
-		// blank line, matching the initial flush. Sequence keeps the clear ahead
-		// of the prints and the prints in transcript order.
+		// committed transcript so the session reads continuously after `fg`.
+		// Reset hasEmittedScrollback so the re-emit skips its leading blank
+		// line, matching the initial flush. Sequence keeps the clear ahead of
+		// the print.
 		m.hasEmittedScrollback = false
-		scrollback := m.committedScrollback()
-		seq := make([]tea.Cmd, 0, 1+len(scrollback))
-		seq = append(seq, tea.ClearScreen)
-		for _, r := range scrollback {
-			seq = append(seq, m.printlnBlock(r))
-		}
-		return m, tea.Sequence(seq...)
+		return m, tea.Sequence(tea.ClearScreen, m.printlnBlock(m.committedScrollback()))
 
 	case ctrlCDisarmMsg:
 		// Stale tick: the user already pressed another key (gen still
@@ -625,18 +700,26 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// scheduled this tick.
 		if msg.gen == m.approvalDebounceGen {
 			next := m.approvalMode
-			m.sendOut(outboundEvent{
+			if !m.sendOut(outboundEvent{
 				update: &client.UpdateNeoTaskOptions{ApprovalMode: &next},
-			})
+			}) {
+				// Outbound channel full — re-arm the debounce so the update
+				// retries rather than silently leaving the server on the old
+				// mode. The retried tick re-reads approvalMode, so latest
+				// value still wins.
+				return m, m.scheduleApprovalDebounce()
+			}
 		}
 		return m, nil
 
 	case permissionDebounceTickMsg:
 		if msg.gen == m.permissionDebounceGen {
 			next := m.permissionMode
-			m.sendOut(outboundEvent{
+			if !m.sendOut(outboundEvent{
 				update: &client.UpdateNeoTaskOptions{PermissionMode: &next},
-			})
+			}) {
+				return m, m.schedulePermissionDebounce()
+			}
 		}
 		return m, nil
 
@@ -659,9 +742,25 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, nil
 			}
 		}
-		// Ctrl+D mirrors Ctrl+C: same arm/quit gate, same cancel-when-busy
-		// semantics. Two bindings is friendlier than picking one and forcing
-		// users to discover it.
+		// Ctrl+C clears an in-progress draft first, matching the normal line
+		// editing behavior users expect from agent CLIs. With an empty draft,
+		// it falls through to the quit/cancel gate below.
+		if keyStr == "ctrl+c" && m.textInput.Value() != "" {
+			m.textInput.Reset()
+			return m, nil
+		}
+
+		// When the user is editing a draft, let textarea keep ownership of its
+		// line-editing keymap before app-level shortcuts see the same key.
+		if m.draftEditingKey(msg) {
+			var tiCmd tea.Cmd
+			m.textInput, tiCmd = m.textInput.Update(msg)
+			return m, tiCmd
+		}
+
+		// Ctrl+D mirrors Ctrl+C when the draft is empty: same arm/quit gate,
+		// same cancel-when-busy semantics. Two bindings is friendlier than
+		// picking one and forcing users to discover it.
 		if keyStr == "ctrl+c" || keyStr == "ctrl+d" {
 			if m.ctrlCArmed {
 				return m, tea.Quit
@@ -673,10 +772,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// users who reach for Ctrl+C don't need to learn ESC to abort.
 			// Same guards as the ESC handler below.
 			if m.busy && !m.pendingApproval && !m.cancelling {
-				m.sendOut(outboundEvent{event: apitype.AgentUserEventCancel{Type: userEventUserCancel}})
-				m.cancelling = true
-				cancelCmd := m.showBusy("Cancelling...", shimmerVerb)
-				return m, tea.Batch(cancelCmd, disarmCmd)
+				return m, tea.Batch(m.tryStartCancel(), disarmCmd)
 			}
 			return m, disarmCmd
 		}
@@ -762,17 +858,17 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// ESC clears a non-empty textarea; with an empty box it asks the
 		// agent to abort. The cancelling flag overrides the spinner label
 		// until the backend acknowledges via cancelled / error / a new
-		// final assistant_message. Skipped during a pending approval — the
-		// agent is already paused for us there.
+		// final assistant_message — or until UICancelFailed reports the
+		// dispatcher gave up delivering the cancel, which re-enables ESC.
+		// Skipped during a pending approval — the agent is already paused
+		// for us there.
 		if keyStr == "esc" {
 			if m.textInput.Value() != "" {
 				m.textInput.Reset()
 				return m, nil
 			}
 			if m.busy && !m.pendingApproval && !m.cancelling {
-				m.sendOut(outboundEvent{event: apitype.AgentUserEventCancel{Type: userEventUserCancel}})
-				m.cancelling = true
-				return m, m.showBusy("Cancelling...", shimmerVerb)
+				return m, m.tryStartCancel()
 			}
 			return m, nil
 		}
@@ -786,7 +882,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					if text == "" {
 						return m, nil
 					}
-					m.sendOut(outboundEvent{
+					// Drop-on-full send: bail before any state mutation so the
+					// prompt stays pending, the draft survives, and Enter
+					// retries — otherwise the TUI would show the answer as
+					// submitted while the agent waits forever for it.
+					if !m.sendOut(outboundEvent{
 						event: apitype.AgentUserEventUserConfirmation{
 							Type:       userEventUserConfirmation,
 							ApprovalID: m.pendingApprovalID,
@@ -794,7 +894,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 							Message:    text,
 						},
 						planMode: m.planMode,
-					})
+					}) {
+						return m, m.appendWarningBlock("Answer not sent — press Enter to try again.")
+					}
 					m.clearPendingPrompt()
 					answerCmd := m.commitBlock(block{kind: blockAnswerSubmitted, raw: text})
 					return m, tea.Batch(answerCmd, m.showBusy(thinkingLabel, shimmerVerb))
@@ -805,7 +907,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					denialMsg = text
 				}
 				wasPlanApproval := m.pendingApprovalType == approvalTypePlanExit
-				m.sendOut(outboundEvent{
+				// See the question path above — a dropped confirmation must
+				// keep the approval pending rather than pretend it was sent.
+				if !m.sendOut(outboundEvent{
 					event: apitype.AgentUserEventUserConfirmation{
 						Type:       userEventUserConfirmation,
 						ApprovalID: m.pendingApprovalID,
@@ -813,7 +917,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						Message:    denialMsg,
 					},
 					planMode: m.planMode,
-				})
+				}) {
+					return m, m.appendWarningBlock("Reply not sent — press Enter to try again.")
+				}
 				// Approving a plan exits plan mode server-side (the PlanModeTracker
 				// stops gating writes), so mirror that locally. Denial leaves the
 				// mode on — the agent will re-plan and gate-out again on the next
@@ -952,14 +1058,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.overlayActive {
 			m.overlay.Refresh(m.toolHistory)
 		}
-		marker := toolOKMarker
-		if msg.IsError {
-			marker = toolErrMarker
-		}
-		cmds = append(cmds, m.commitBlock(block{
-			kind:     blockToolComplete,
-			rendered: "  " + marker + " " + styledToolLabel(msg.Name, msg.Args),
-		}))
+		cmds = append(cmds, m.commitBlock(toolCompletedBlock(msg.Name, msg.Args, msg.IsError)))
 		// Keep the busy block alive across the inter-tool gap so the spinner
 		// stays visible while the agent decides its next move.
 		cmds = append(cmds, m.applyBusyForEvent(msg))
@@ -973,6 +1072,27 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case UIWarning:
 		cmds = append(cmds, m.applyBusyForEvent(msg))
 		cmds = append(cmds, m.appendWarningBlock(msg.Message))
+		cmds = append(cmds, waitForEvent(m.eventCh))
+
+	case UICancelFailed:
+		// The dispatcher gave up delivering the cancel. Clear the cancelling
+		// substate so ESC works again, and restore a live spinner label — the
+		// turn is still running. Deliberately not routed through
+		// labelForUIEvent: a failure arriving after the turn already ended
+		// must not resurrect the spinner.
+		m.cancelling = false
+		if m.busy {
+			cmds = append(cmds, m.showBusy(thinkingLabel, shimmerVerb))
+		}
+		cmds = append(cmds, m.appendWarningBlock("Cancel failed: "+msg.Message+" — press Esc to retry."))
+		cmds = append(cmds, waitForEvent(m.eventCh))
+
+	case UIReconnecting:
+		cmds = append(cmds, m.applyBusyForEvent(msg))
+		cmds = append(cmds, waitForEvent(m.eventCh))
+
+	case UIReconnected:
+		cmds = append(cmds, m.applyBusyForEvent(msg))
 		cmds = append(cmds, waitForEvent(m.eventCh))
 
 	case UICancelled:
@@ -992,7 +1112,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// CreateNeoTask sends UISessionURL immediately after taskID is set,
 		// so this is the natural moment to lift the post-Enter toggle freeze.
 		m.taskCreated = true
-		cmds = append(cmds, m.printlnBlock("  "+inputHintStyle.Render("⟡ "+osc8Hyperlink(msg.URL, msg.URL))))
+		cmds = append(cmds, m.printlnBlock("  "+inputHintStyle.Render("⟡ "+colors.Always.Hyperlink(msg.URL, msg.URL))))
 		cmds = append(cmds, waitForEvent(m.eventCh))
 
 	case UIUserMessage:
@@ -1201,8 +1321,22 @@ func (m Model) viewString() string {
 	if m.approvalPromptText != "" {
 		parts = append(parts, "  "+m.approvalPromptText)
 	}
-	parts = append(parts, m.textInput.View(), hint)
+	parts = append(parts, m.inputView(), hint)
 	return strings.Join(parts, "\n")
+}
+
+func (m Model) inputView() string {
+	ti := m.textInput
+	ti.SetWidth(max(m.liveWidth(), 3))
+	return ti.View()
+}
+
+func (m Model) prepareInitialScrollback(width, height int) (Model, string) {
+	updated, _ := m.Update(tea.WindowSizeMsg{Width: width, Height: height})
+	prepared := updated.(Model)
+	rendered := prepared.committedScrollback()
+	prepared.hasEmittedScrollback = true
+	return prepared, rendered
 }
 
 // modeChips renders the status-bar chips for the three independent mode axes
@@ -1312,6 +1446,147 @@ func isLiveKind(b block) bool {
 
 func isCommittedKind(b block) bool { return !isLiveKind(b) }
 
+func (m *Model) stageBlock(b block) {
+	m.renderBlock(&b)
+	m.appendBlock(b)
+}
+
+func (m *Model) applyHistoryEvent(ev UIEvent) {
+	switch msg := ev.(type) {
+	case UIAssistantMessage:
+		if msg.Content != "" {
+			m.stageBlock(block{kind: blockAssistantFinal, raw: msg.Content})
+		}
+		_ = m.applyBusyForEvent(msg)
+		m.clearStaleHistoryApproval(msg)
+	case UIToolStarted:
+		m.toolHistory = appendToolStart(m.toolHistory, msg.Name, msg.Args)
+		_ = m.applyBusyForEvent(msg)
+	case UIToolProgress:
+		_ = m.applyBusyForEvent(msg)
+	case UIToolCompleted:
+		completeToolCall(m.toolHistory, msg.Name, msg.Result, msg.IsError)
+		m.stageBlock(toolCompletedBlock(msg.Name, msg.Args, msg.IsError))
+		_ = m.applyBusyForEvent(msg)
+	case UIError:
+		_ = m.applyBusyForEvent(msg)
+		m.stageBlock(block{kind: blockError, raw: msg.Message})
+		m.clearStaleHistoryApproval(msg)
+	case UIWarning:
+		_ = m.applyBusyForEvent(msg)
+		m.stageBlock(block{kind: blockWarning, raw: msg.Message})
+	case UIReconnecting, UIReconnected, UIAwaitingApprovals, UIContextCompression:
+		_ = m.applyBusyForEvent(msg)
+	case UICancelled:
+		_ = m.applyBusyForEvent(msg)
+		m.stageBlock(block{kind: blockCancelled, raw: "Session cancelled."})
+		m.clearStaleHistoryApproval(msg)
+	case UITaskIdle:
+		_ = m.applyBusyForEvent(msg)
+		m.clearStaleHistoryApproval(msg)
+	case UISessionURL:
+		m.welcome.consoleURL = msg.URL
+		m.taskCreated = true
+	case UIUserMessage:
+		m.stageBlock(block{kind: blockUserMessage, raw: msg.Content})
+		_ = m.applyBusyForEvent(msg)
+	case UIApprovalRequest:
+		_ = m.applyBusyForEvent(msg)
+		m.pendingApproval = true
+		m.pendingApprovalID = msg.ApprovalID
+		m.pendingApprovalType = msg.ApprovalType
+		m.pendingIsQuestion = false
+		m.textInput.Placeholder = ""
+		m.textInput.Reset()
+		switch {
+		case m.pendingApprovalType == approvalTypePlanExit:
+			m.stageBlock(block{kind: blockApprovalPlan, raw: msg.PlanDescription, todos: m.pendingTodos})
+			m.pendingTodos = nil
+			m.approvalPromptText = warningStyle.Render("Approve plan? [y to approve / reason to deny]:")
+		case isAskUserToolName(msg.ToolName):
+			m.pendingIsQuestion = true
+			m.stageBlock(block{kind: blockQuestion, raw: msg.Message})
+			m.approvalPromptText = promptStyle.Render("Your answer:")
+		default:
+			m.stageBlock(block{kind: blockApprovalGeneral, raw: msg.Message})
+			m.approvalPromptText = warningStyle.Render("Approve? [y to approve / reason to deny]:")
+		}
+	case UIApprovalResolved:
+		if m.pendingApproval && msg.ApprovalID == m.pendingApprovalID {
+			m.stageBlock(block{
+				kind:           blockApprovalAuto,
+				approved:       msg.Approved,
+				autoIsQuestion: m.pendingIsQuestion,
+			})
+			m.clearPendingPrompt()
+		}
+	case UIPulumiStart:
+		if idx := m.findOpenPulumiBlock(msg.ToolName); idx < 0 {
+			m.stageBlock(block{kind: blockPulumiOp, pulumi: &pulumiBlockState{
+				toolName:      msg.ToolName,
+				stackName:     msg.StackName,
+				isPreview:     msg.IsPreview,
+				resourceByURN: map[string]int{},
+			}})
+		}
+		_ = m.applyBusyForEvent(msg)
+	case UIPulumiResource:
+		if idx := m.findOpenPulumiBlock(msg.ToolName); idx >= 0 {
+			m.blocks[idx].pulumi.addResource(msg.Op, msg.URN, msg.Type, msg.Status)
+			m.renderBlock(&m.blocks[idx])
+		}
+		_ = m.applyBusyForEvent(msg)
+	case UIPulumiDiag:
+		if idx := m.findOpenPulumiBlock(msg.ToolName); idx >= 0 {
+			st := m.blocks[idx].pulumi
+			st.diags = append(st.diags, pulumiDiagRow{
+				severity: msg.Severity,
+				message:  msg.Message,
+				urn:      msg.URN,
+			})
+			m.renderBlock(&m.blocks[idx])
+		}
+		_ = m.applyBusyForEvent(msg)
+	case UIPulumiEnd:
+		if idx := m.findOpenPulumiBlock(msg.ToolName); idx >= 0 {
+			st := m.blocks[idx].pulumi
+			st.counts = msg.Counts
+			st.elapsed = msg.Elapsed
+			st.err = msg.Err
+			st.done = true
+			m.renderBlock(&m.blocks[idx])
+		}
+		_ = m.applyBusyForEvent(msg)
+	case UITodoList:
+		if len(msg.Items) > 0 {
+			if m.planMode {
+				m.pendingTodos = msg.Items
+			} else {
+				m.stageBlock(block{kind: blockTodoList, todos: msg.Items})
+			}
+		}
+		_ = m.applyBusyForEvent(msg)
+	}
+}
+
+func toolCompletedBlock(name string, args json.RawMessage, isError bool) block {
+	marker := toolOKMarker
+	if isError {
+		marker = toolErrMarker
+	}
+	return block{
+		kind:     blockToolComplete,
+		rendered: "  " + marker + " " + styledToolLabel(name, args),
+	}
+}
+
+func (m *Model) clearStaleHistoryApproval(ev UIEvent) {
+	if !m.pendingApproval || !isFinalUIEvent(ev) {
+		return
+	}
+	m.clearPendingPrompt()
+}
+
 // commitBlock renders b, appends it to m.blocks, and returns a tea.Cmd that
 // prints the rendered string as new terminal scrollback. Returns nil when the
 // block renders empty (e.g. an empty assistant final from a hand-off).
@@ -1325,17 +1600,19 @@ func (m *Model) commitBlock(b block) tea.Cmd {
 }
 
 // committedScrollback returns the welcome banner followed by every committed
-// block's rendered text, in transcript order — i.e. everything that belongs in
-// terminal scrollback. Used for the initial flush and to re-emit the transcript
-// after a suspend/resume.
-func (m Model) committedScrollback() []string {
+// block's rendered text, in transcript order, joined with the same blank-line
+// separator printlnBlock puts between incremental prints — i.e. everything
+// that belongs in terminal scrollback, as one string ready for a single
+// atomic tea.Println. Used for the initial flush and to re-emit the
+// transcript after a suspend/resume.
+func (m Model) committedScrollback() string {
 	out := []string{m.welcome.View()}
 	for _, b := range m.blocks {
 		if isCommittedKind(b) && b.rendered != "" {
 			out = append(out, b.rendered)
 		}
 	}
-	return out
+	return strings.Join(out, "\n\n")
 }
 
 // printlnBlock emits rendered to scrollback, prepending a blank line so each
@@ -1360,6 +1637,13 @@ func (m *Model) printlnBlock(rendered string) tea.Cmd {
 // the user's cancel request is in flight).
 func (m *Model) applyBusyForEvent(ev UIEvent) tea.Cmd {
 	if isFinalUIEvent(ev) {
+		if m.cancelling {
+			// The turn the pending cancel targeted is over — tell the
+			// dispatcher to drop its retry so it can't fire into a later turn.
+			// A dropped send is backstopped dispatcher-side: any later
+			// non-cancel user event also disarms the stale cancel.
+			m.sendOut(outboundEvent{abandonCancel: true})
+		}
 		m.cancelling = false
 		m.endBusy()
 		return nil
@@ -1372,6 +1656,16 @@ func (m *Model) applyBusyForEvent(ev UIEvent) tea.Cmd {
 		// Non-opinionated event (warning, foreign user message, session URL,
 		// non-final tick): leave the busy state exactly as it is.
 		return nil
+	}
+	// Tool lifecycle events relabel an existing busy indicator but never
+	// start one from idle: a killed tool's late UIToolCompleted arrives
+	// after the cancelled event already ended the turn, and resurrecting
+	// the spinner then would block input forever.
+	switch ev.(type) {
+	case UIToolStarted, UIToolProgress, UIToolCompleted:
+		if !m.busy {
+			return nil
+		}
 	}
 	return m.showBusy(label, shim)
 }
@@ -1408,6 +1702,10 @@ func (m *Model) labelForUIEvent(ev UIEvent) (string, shimmerKind, bool) {
 		return "Awaiting approvals...", shimmerVerb, true
 	case UIContextCompression:
 		return "Compressing context...", shimmerVerb, true
+	case UIReconnecting:
+		return "Reconnecting...", shimmerVerb, true
+	case UIReconnected:
+		return thinkingLabel, shimmerVerb, true
 	}
 	return "", 0, false
 }
@@ -1489,6 +1787,19 @@ func (m *Model) schedulePermissionDebounce() tea.Cmd {
 	return tea.Tick(modeToggleDebounce, func(time.Time) tea.Msg {
 		return permissionDebounceTickMsg{gen: gen}
 	})
+}
+
+// tryStartCancel enqueues a user_cancel and enters the cancelling substate,
+// returning the "Cancelling..." spinner command. When the outbound channel is
+// full nothing was enqueued, so the model stays out of the cancelling substate
+// and warns instead — the next press retries. Shared by the ESC and Ctrl+C
+// handlers, which apply the same busy/approval/cancelling guards first.
+func (m *Model) tryStartCancel() tea.Cmd {
+	if !m.sendOut(outboundEvent{event: apitype.AgentUserEventCancel{Type: userEventUserCancel}}) {
+		return m.appendWarningBlock("Cancel not sent — press Esc or Ctrl+C to try again.")
+	}
+	m.cancelling = true
+	return m.showBusy("Cancelling...", shimmerVerb)
 }
 
 // sendOut is a non-blocking send on the outbound channel. Returns true on

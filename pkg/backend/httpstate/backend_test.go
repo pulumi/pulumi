@@ -18,6 +18,8 @@ import (
 	"bytes"
 	"compress/gzip"
 	"context"
+	"crypto/rand"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -25,8 +27,14 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"path/filepath"
 	"testing"
 	"time"
+
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
@@ -45,19 +53,32 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/sig"
 	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/diagtest"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/securestore"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 // testJWT is a test JWT token used in tests.
 //
 //nolint:lll // JWT token is long
 const testJWT = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c"
+
+func TestCommandNameContext(t *testing.T) {
+	t.Parallel()
+
+	_, ok := commandNameFromContext(t.Context())
+	assert.False(t, ok)
+
+	ctx := ContextWithCommandName(t.Context(), "pulumi new")
+	name, ok := commandNameFromContext(ctx)
+	assert.True(t, ok)
+	assert.Equal(t, "pulumi new", name)
+}
 
 //nolint:paralleltest // mutates global configuration
 func TestEnabledFullyQualifiedStackNames(t *testing.T) {
@@ -98,7 +119,6 @@ func TestEnabledFullyQualifiedStackNames(t *testing.T) {
 	assert.Equal(t, expected, actual)
 }
 
-//nolint:paralleltest // mutates env vars and global state
 func TestMissingPulumiAccessToken(t *testing.T) {
 	t.Setenv("PULUMI_ACCESS_TOKEN", "")
 	t.Setenv("AI_AGENT", "")
@@ -127,7 +147,6 @@ func TestMissingPulumiAccessToken(t *testing.T) {
 	}
 }
 
-//nolint:paralleltest // mutates env vars and shared temporary agent credentials
 func TestGetBackendAccountDoesNotFallbackToAgentCredentialsWithExplicitPath(t *testing.T) {
 	oldAgentCreds, err := workspace.GetAgentStoredCredentials()
 	require.NoError(t, err)
@@ -155,7 +174,6 @@ func TestGetBackendAccountDoesNotFallbackToAgentCredentialsWithExplicitPath(t *t
 	assert.Empty(t, account.AccessToken)
 }
 
-//nolint:paralleltest // mutates env vars and shared temporary agent credentials
 func TestCurrentEnvTokenFailsWithInaccessibleExplicitPath(t *testing.T) {
 	oldAgentCreds, err := workspace.GetAgentStoredCredentials()
 	require.NoError(t, err)
@@ -195,7 +213,6 @@ func TestCurrentEnvTokenFailsWithInaccessibleExplicitPath(t *testing.T) {
 	assert.Empty(t, agentAccount.AccessToken)
 }
 
-//nolint:paralleltest // mutates env vars and shared temporary agent credentials
 func TestCurrentEnvTokenStoresInDefaultPathWhenWritable(t *testing.T) {
 	oldAgentCreds, err := workspace.GetAgentStoredCredentials()
 	require.NoError(t, err)
@@ -237,6 +254,465 @@ func TestCurrentEnvTokenStoresInDefaultPathWhenWritable(t *testing.T) {
 	assert.Empty(t, agentAccount.AccessToken)
 }
 
+func TestCurrentRefreshesAccessTokenOn401WhenRefreshTokenStored(t *testing.T) {
+	pulumiHome := t.TempDir()
+	t.Setenv("PULUMI_HOME", pulumiHome)
+	t.Setenv("PULUMI_ACCESS_TOKEN", "")
+
+	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		switch req.URL.Path {
+		case "/api/oauth/token":
+			require.Equal(t, http.MethodPost, req.Method)
+			body, err := io.ReadAll(req.Body)
+			require.NoError(t, err)
+			assert.Contains(t, string(body), "grant_type=refresh_token")
+			assert.Contains(t, string(body), "refresh_token=stored-refresh-token")
+			err = json.NewEncoder(rw).Encode(apitype.TokenExchangeGrantResponse{
+				AccessToken:  "fresh-access-token",
+				TokenType:    "Bearer",
+				ExpiresIn:    3600,
+				RefreshToken: "stored-refresh-token",
+			})
+			require.NoError(t, err)
+		case "/api/user":
+			switch req.Header.Get("Authorization") {
+			case "token stale-access-token":
+				rw.WriteHeader(http.StatusUnauthorized)
+				err := json.NewEncoder(rw).Encode(apitype.ErrorResponse{Code: 401, Message: "Unauthorized"})
+				require.NoError(t, err)
+			case "token fresh-access-token":
+				err := json.NewEncoder(rw).Encode(map[string]any{
+					"githubLogin":   "alice",
+					"organizations": []map[string]string{},
+				})
+				require.NoError(t, err)
+			default:
+				t.Errorf("unexpected Authorization header: %q", req.Header.Get("Authorization"))
+				rw.WriteHeader(http.StatusUnauthorized)
+			}
+		default:
+			rw.WriteHeader(http.StatusNotFound)
+		}
+	}))
+	t.Cleanup(server.Close)
+
+	require.NoError(t, workspace.StoreAccount(server.URL, workspace.Account{
+		AccessToken:  "stale-access-token",
+		RefreshToken: "stored-refresh-token",
+	}, true))
+
+	account, err := NewLoginManager().Current(t.Context(), server.URL, false, true)
+	require.NoError(t, err)
+	require.NotNil(t, account)
+	assert.Equal(t, "fresh-access-token", account.AccessToken,
+		"the stored access token should be refreshed before reporting the account as valid")
+	assert.Equal(t, "stored-refresh-token", account.RefreshToken,
+		"the refresh token is preserved (Phase 1: server doesn't rotate)")
+	assert.Equal(t, "alice", account.Username)
+
+	saved, err := workspace.GetAccount(server.URL)
+	require.NoError(t, err)
+	assert.Equal(t, "fresh-access-token", saved.AccessToken,
+		"credentials.json should reflect the refreshed access token")
+	assert.Equal(t, "stored-refresh-token", saved.RefreshToken)
+	assert.WithinDuration(t, time.Now(), saved.LastValidatedAt, time.Minute,
+		"validateStoredAccount must stamp LastValidatedAt when it actually validates")
+}
+
+func TestCurrentRefreshesFromRefreshOnlyStoredAccount(t *testing.T) {
+	// HasCredential opens the gate for accounts with a refresh token but no access token. The
+	// wrapper mints the first access token on the initial 401 from an empty bearer.
+	pulumiHome := t.TempDir()
+	t.Setenv("PULUMI_HOME", pulumiHome)
+	t.Setenv("PULUMI_ACCESS_TOKEN", "")
+
+	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		switch req.URL.Path {
+		case "/api/oauth/token":
+			body, err := io.ReadAll(req.Body)
+			require.NoError(t, err)
+			assert.Contains(t, string(body), "refresh_token=only-refresh-token")
+			err = json.NewEncoder(rw).Encode(apitype.TokenExchangeGrantResponse{
+				AccessToken:  "minted-access-token",
+				TokenType:    "Bearer",
+				ExpiresIn:    3600,
+				RefreshToken: "only-refresh-token",
+			})
+			require.NoError(t, err)
+		case "/api/user":
+			if req.Header.Get("Authorization") == "token minted-access-token" {
+				err := json.NewEncoder(rw).Encode(map[string]any{
+					"githubLogin":   "bob",
+					"organizations": []map[string]string{},
+				})
+				require.NoError(t, err)
+			} else {
+				rw.WriteHeader(http.StatusUnauthorized)
+				err := json.NewEncoder(rw).Encode(apitype.ErrorResponse{Code: 401, Message: "Unauthorized"})
+				require.NoError(t, err)
+			}
+		default:
+			rw.WriteHeader(http.StatusNotFound)
+		}
+	}))
+	t.Cleanup(server.Close)
+
+	require.NoError(t, workspace.StoreAccount(server.URL, workspace.Account{
+		RefreshToken: "only-refresh-token",
+	}, true))
+
+	account, err := NewLoginManager().Current(t.Context(), server.URL, false, true)
+	require.NoError(t, err)
+	require.NotNil(t, account)
+	assert.Equal(t, "minted-access-token", account.AccessToken)
+	assert.Equal(t, "bob", account.Username)
+}
+
+func TestCurrentPersistsRotatedRefreshToken(t *testing.T) {
+	// True rotation: the refresh-token grant returns a refresh token DIFFERENT from the one we
+	// sent. The wrapper updates the in-memory account and the writeback persists the rotated
+	// value to credentials.json. Server-side rotation is a Phase 2 behavior — this test pins the
+	// CLI side so we don't need a change when it lands.
+	pulumiHome := t.TempDir()
+	t.Setenv("PULUMI_HOME", pulumiHome)
+	t.Setenv("PULUMI_ACCESS_TOKEN", "")
+
+	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		switch req.URL.Path {
+		case "/api/oauth/token":
+			body, err := io.ReadAll(req.Body)
+			require.NoError(t, err)
+			assert.Contains(t, string(body), "refresh_token=stored-refresh-token")
+			err = json.NewEncoder(rw).Encode(apitype.TokenExchangeGrantResponse{
+				AccessToken:  "fresh-access-token",
+				TokenType:    "Bearer",
+				ExpiresIn:    3600,
+				RefreshToken: "rotated-refresh-token",
+			})
+			require.NoError(t, err)
+		case "/api/user":
+			if req.Header.Get("Authorization") == "token fresh-access-token" {
+				err := json.NewEncoder(rw).Encode(map[string]any{
+					"githubLogin":   "alice",
+					"organizations": []map[string]string{},
+				})
+				require.NoError(t, err)
+				return
+			}
+			rw.WriteHeader(http.StatusUnauthorized)
+			err := json.NewEncoder(rw).Encode(apitype.ErrorResponse{Code: 401, Message: "Unauthorized"})
+			require.NoError(t, err)
+		default:
+			rw.WriteHeader(http.StatusNotFound)
+		}
+	}))
+	t.Cleanup(server.Close)
+
+	require.NoError(t, workspace.StoreAccount(server.URL, workspace.Account{
+		AccessToken:  "stale-access-token",
+		RefreshToken: "stored-refresh-token",
+	}, true))
+
+	account, err := NewLoginManager().Current(t.Context(), server.URL, false, true)
+	require.NoError(t, err)
+	require.NotNil(t, account)
+	assert.Equal(t, "fresh-access-token", account.AccessToken)
+	assert.Equal(t, "rotated-refresh-token", account.RefreshToken)
+
+	saved, err := workspace.GetAccount(server.URL)
+	require.NoError(t, err)
+	assert.Equal(t, "fresh-access-token", saved.AccessToken)
+	assert.Equal(t, "rotated-refresh-token", saved.RefreshToken,
+		"credentials.json must reflect the rotated refresh token")
+}
+
+func TestCurrentPreservesRefreshTokenWhenGrantResponseOmitsIt(t *testing.T) {
+	// RFC 6749 §6: omitted (or empty) refresh_token in the grant response means "keep using
+	// yours" — the server is not signalling termination. credentials.json must hold onto the
+	// existing refresh token so the next 401 can refresh again.
+	pulumiHome := t.TempDir()
+	t.Setenv("PULUMI_HOME", pulumiHome)
+	t.Setenv("PULUMI_ACCESS_TOKEN", "")
+
+	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		switch req.URL.Path {
+		case "/api/oauth/token":
+			body, err := io.ReadAll(req.Body)
+			require.NoError(t, err)
+			assert.Contains(t, string(body), "refresh_token=stored-refresh-token")
+			err = json.NewEncoder(rw).Encode(apitype.TokenExchangeGrantResponse{
+				AccessToken: "fresh-access-token",
+				TokenType:   "Bearer",
+				ExpiresIn:   3600,
+				// RefreshToken omitted — JSON encoder drops it.
+			})
+			require.NoError(t, err)
+		case "/api/user":
+			if req.Header.Get("Authorization") == "token fresh-access-token" {
+				err := json.NewEncoder(rw).Encode(map[string]any{
+					"githubLogin":   "alice",
+					"organizations": []map[string]string{},
+				})
+				require.NoError(t, err)
+				return
+			}
+			rw.WriteHeader(http.StatusUnauthorized)
+			err := json.NewEncoder(rw).Encode(apitype.ErrorResponse{Code: 401, Message: "Unauthorized"})
+			require.NoError(t, err)
+		default:
+			rw.WriteHeader(http.StatusNotFound)
+		}
+	}))
+	t.Cleanup(server.Close)
+
+	require.NoError(t, workspace.StoreAccount(server.URL, workspace.Account{
+		AccessToken:  "stale-access-token",
+		RefreshToken: "stored-refresh-token",
+	}, true))
+
+	account, err := NewLoginManager().Current(t.Context(), server.URL, false, true)
+	require.NoError(t, err)
+	require.NotNil(t, account)
+	assert.Equal(t, "fresh-access-token", account.AccessToken)
+	assert.Equal(t, "stored-refresh-token", account.RefreshToken,
+		"omitted refresh_token in the response must not destroy the existing one")
+
+	saved, err := workspace.GetAccount(server.URL)
+	require.NoError(t, err)
+	assert.Equal(t, "fresh-access-token", saved.AccessToken)
+	assert.Equal(t, "stored-refresh-token", saved.RefreshToken,
+		"credentials.json must hold onto the existing refresh token")
+}
+
+func TestValidateStoredAccountSkipsNetworkWhenNoCredential(t *testing.T) {
+	t.Parallel()
+	// An account with neither an access nor a refresh token can't authenticate and must short-
+	// circuit before any network attempt — the cloudURL here intentionally points nowhere.
+	account, valid, err := validateStoredAccount(t.Context(), "http://127.0.0.1:0", false, workspace.Account{})
+	require.NoError(t, err)
+	assert.False(t, valid)
+	assert.Empty(t, account.AccessToken)
+}
+
+func TestCurrentRefreshesLocallyExpiredAccessTokenWhenRefreshTokenStored(t *testing.T) {
+	// Cold-start with a locally-expired access token: validateStoredAccount must take the refresh
+	// path instead of hard-failing, so the next call silently mints a fresh access token and
+	// credentials.json is updated in place.
+	pulumiHome := t.TempDir()
+	t.Setenv("PULUMI_HOME", pulumiHome)
+	t.Setenv("PULUMI_ACCESS_TOKEN", "")
+
+	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		switch req.URL.Path {
+		case "/api/oauth/token":
+			require.Equal(t, http.MethodPost, req.Method)
+			body, err := io.ReadAll(req.Body)
+			require.NoError(t, err)
+			assert.Contains(t, string(body), "grant_type=refresh_token")
+			assert.Contains(t, string(body), "refresh_token=stored-refresh-token")
+			err = json.NewEncoder(rw).Encode(apitype.TokenExchangeGrantResponse{
+				AccessToken:  "fresh-access-token",
+				TokenType:    "Bearer",
+				ExpiresIn:    3600,
+				RefreshToken: "stored-refresh-token",
+			})
+			require.NoError(t, err)
+		case "/api/user":
+			switch req.Header.Get("Authorization") {
+			case "token stale-access-token":
+				rw.WriteHeader(http.StatusUnauthorized)
+				err := json.NewEncoder(rw).Encode(apitype.ErrorResponse{Code: 401, Message: "Unauthorized"})
+				require.NoError(t, err)
+			case "token fresh-access-token":
+				err := json.NewEncoder(rw).Encode(map[string]any{
+					"githubLogin":   "alice",
+					"organizations": []map[string]string{},
+				})
+				require.NoError(t, err)
+			default:
+				t.Errorf("unexpected Authorization header: %q", req.Header.Get("Authorization"))
+				rw.WriteHeader(http.StatusUnauthorized)
+			}
+		default:
+			rw.WriteHeader(http.StatusNotFound)
+		}
+	}))
+	t.Cleanup(server.Close)
+
+	expiredAt := time.Now().Add(-time.Hour)
+	require.NoError(t, workspace.StoreAccount(server.URL, workspace.Account{
+		AccessToken:  "stale-access-token",
+		RefreshToken: "stored-refresh-token",
+		TokenInformation: &workspace.TokenInformation{
+			ExpiresAt: &expiredAt,
+		},
+	}, true))
+
+	account, err := NewLoginManager().Current(t.Context(), server.URL, false, true)
+	require.NoError(t, err)
+	require.NotNil(t, account)
+	assert.Equal(t, "fresh-access-token", account.AccessToken,
+		"a locally-expired access token must trigger a refresh instead of failing the validate step")
+	assert.Equal(t, "stored-refresh-token", account.RefreshToken)
+	assert.Equal(t, "alice", account.Username)
+
+	saved, err := workspace.GetAccount(server.URL)
+	require.NoError(t, err)
+	assert.Equal(t, "fresh-access-token", saved.AccessToken,
+		"credentials.json should reflect the refreshed access token")
+	assert.Equal(t, "stored-refresh-token", saved.RefreshToken)
+	require.NotNil(t, saved.TokenInformation, "refresh must update TokenInformation with the new expiry")
+	require.NotNil(t, saved.TokenInformation.ExpiresAt,
+		"the grant's ExpiresIn must land as the new TokenInformation.ExpiresAt; "+
+			"without this the next cold-start can't take the local-expiry refresh path")
+	assert.True(t, saved.TokenInformation.ExpiresAt.After(time.Now()),
+		"the new ExpiresAt must be in the future (roughly now + ExpiresIn)")
+}
+
+func TestCurrentPreservesExpiresAtWhenServerAcceptsLocallyExpiredAccessToken(t *testing.T) {
+	// Cold-start with a locally-expired access token whose server-side TTL is actually still
+	// valid: validateStoredAccount enters the refresh-or-fetch branch and /api/user succeeds
+	// without firing a refresh. /api/user never returns ExpiresAt, so the merge must keep the
+	// existing (now-past) ExpiresAt instead of nullifying TokenInformation entirely — otherwise
+	// every subsequent run forfeits the cold-start refresh path and the agent-auth banner
+	// mis-reports the account as unable to authenticate.
+	pulumiHome := t.TempDir()
+	t.Setenv("PULUMI_HOME", pulumiHome)
+	t.Setenv("PULUMI_ACCESS_TOKEN", "")
+
+	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		switch req.URL.Path {
+		case "/api/user":
+			assert.Equal(t, "token live-access-token", req.Header.Get("Authorization"),
+				"the existing access token must reach /api/user — refresh should not fire on 200")
+			err := json.NewEncoder(rw).Encode(map[string]any{
+				"githubLogin":   "alice",
+				"organizations": []map[string]string{},
+			})
+			require.NoError(t, err)
+		case "/api/oauth/token":
+			t.Errorf("refresh-token grant must not fire when /api/user returns 200")
+			rw.WriteHeader(http.StatusInternalServerError)
+		default:
+			rw.WriteHeader(http.StatusNotFound)
+		}
+	}))
+	t.Cleanup(server.Close)
+
+	expiredAt := time.Now().Add(-time.Hour)
+	require.NoError(t, workspace.StoreAccount(server.URL, workspace.Account{
+		AccessToken:  "live-access-token",
+		RefreshToken: "stored-refresh-token",
+		TokenInformation: &workspace.TokenInformation{
+			ExpiresAt: &expiredAt,
+		},
+	}, true))
+
+	account, err := NewLoginManager().Current(t.Context(), server.URL, false, true)
+	require.NoError(t, err)
+	require.NotNil(t, account)
+	assert.Equal(t, "live-access-token", account.AccessToken, "no refresh, no rotation")
+	assert.Equal(t, "alice", account.Username)
+	require.NotNil(t, account.TokenInformation,
+		"TokenInformation must survive a fetch that returns no token info of its own")
+	require.NotNil(t, account.TokenInformation.ExpiresAt,
+		"ExpiresAt must survive the merge so the banner and cold-start path keep working")
+}
+
+func TestCurrentReturnsNoAccountWhenAccessTokenLocallyExpiredAndNoRefreshToken(t *testing.T) {
+	// Cold-start with a locally-expired access token but no refresh token must short-circuit
+	// before hitting the network — preserves the pre-refresh-token behavior for accounts that
+	// were stored without one.
+	pulumiHome := t.TempDir()
+	t.Setenv("PULUMI_HOME", pulumiHome)
+	t.Setenv("PULUMI_ACCESS_TOKEN", "")
+	// Ensure agent-mode fallback doesn't trigger — we're verifying the no-login path.
+	t.Setenv("AI_AGENT", "")
+	t.Setenv("CODEX_SANDBOX", "")
+	t.Setenv("CODEX_CI", "")
+	t.Setenv("CODEX_THREAD_ID", "")
+	t.Setenv("CURSOR_TRACE_ID", "")
+	t.Setenv("CURSOR_AGENT", "")
+	t.Setenv("CLAUDECODE", "")
+	t.Setenv("CLAUDE_CODE", "")
+
+	var hits int
+	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		hits++
+		t.Errorf("no network call should be made when the access token is locally expired "+
+			"and no refresh token is stored: %s", req.URL.Path)
+		rw.WriteHeader(http.StatusInternalServerError)
+	}))
+	t.Cleanup(server.Close)
+
+	expiredAt := time.Now().Add(-time.Hour)
+	require.NoError(t, workspace.StoreAccount(server.URL, workspace.Account{
+		AccessToken: "stale-access-token",
+		TokenInformation: &workspace.TokenInformation{
+			ExpiresAt: &expiredAt,
+		},
+	}, true))
+
+	account, err := NewLoginManager().Current(t.Context(), server.URL, false, true)
+	require.NoError(t, err)
+	assert.Nil(t, account, "no refresh token + locally-expired access token must not produce a logged-in account")
+	assert.Equal(t, 0, hits, "validateStoredAccount must short-circuit without any network call")
+}
+
+//nolint:paralleltest // makes real HTTP calls to a test server
+func TestGetAccountDetailsInstallsRefreshWrapperWhenRefreshTokenSupplied(t *testing.T) {
+	var refreshCalls, userCalls int
+	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		switch req.URL.Path {
+		case "/api/oauth/token":
+			refreshCalls++
+			err := json.NewEncoder(rw).Encode(apitype.TokenExchangeGrantResponse{
+				AccessToken:  "wrapper-minted-token",
+				TokenType:    "Bearer",
+				ExpiresIn:    3600,
+				RefreshToken: "the-refresh",
+			})
+			require.NoError(t, err)
+		case "/api/user":
+			userCalls++
+			if req.Header.Get("Authorization") == "token wrapper-minted-token" {
+				err := json.NewEncoder(rw).Encode(map[string]any{
+					"githubLogin":   "carol",
+					"organizations": []map[string]string{},
+				})
+				require.NoError(t, err)
+			} else {
+				rw.WriteHeader(http.StatusUnauthorized)
+				err := json.NewEncoder(rw).Encode(apitype.ErrorResponse{Code: 401, Message: "Unauthorized"})
+				require.NoError(t, err)
+			}
+		default:
+			rw.WriteHeader(http.StatusNotFound)
+		}
+	}))
+	t.Cleanup(server.Close)
+
+	var gotAT, gotRT string
+	var gotExpiresAt time.Time
+	username, _, _, err := getAccountDetails(t.Context(), server.URL, false,
+		"stale-access", "the-refresh",
+		func(at string, expiresAt time.Time, rt string) error {
+			gotAT, gotRT, gotExpiresAt = at, rt, expiresAt
+			return nil
+		},
+	)
+	require.NoError(t, err)
+	assert.Equal(t, "carol", username)
+	assert.Equal(t, 1, refreshCalls, "refresh should fire exactly once after the initial 401")
+	assert.Equal(t, 2, userCalls, "the /api/user call should retry after refresh")
+	assert.Equal(t, "wrapper-minted-token", gotAT, "onRefresh receives the new access token")
+	assert.Equal(t, "the-refresh", gotRT, "onRefresh receives the (preserved) refresh token")
+	assert.False(t, gotExpiresAt.IsZero(),
+		"onRefresh receives the new access token's ExpiresAt derived from the grant's ExpiresIn")
+	assert.True(t, gotExpiresAt.After(time.Now().Add(50*time.Minute)),
+		"ExpiresAt is roughly now+ExpiresIn (3600s in this fixture)")
+}
+
 //nolint:paralleltest // mutates shared temporary agent credentials
 func TestCurrentInvalidAgentCredentialsWithActiveClaimDoesNotSignup(t *testing.T) {
 	oldAgentCreds, err := workspace.GetAgentStoredCredentials()
@@ -275,7 +751,7 @@ func TestCurrentInvalidAgentCredentialsWithActiveClaimDoesNotSignup(t *testing.T
 	})
 	require.NoError(t, err)
 
-	account, err := defaultLoginManager{}.currentOrSignupAgentAccount(t.Context(), server.URL, false, true, "codex")
+	account, err := defaultLoginManager{}.currentOrSignupAgentAccount(t.Context(), server.URL, false, true, "codex", nil)
 	require.ErrorIs(t, err, ErrUnauthorized)
 	assert.Nil(t, account)
 	assert.Equal(t, 0, signupCalls)
@@ -324,7 +800,7 @@ func TestCurrentRejectedAgentCredentialsWithUnexpiredTokenDoesNotSignup(t *testi
 	})
 	require.NoError(t, err)
 
-	account, err := defaultLoginManager{}.currentOrSignupAgentAccount(t.Context(), server.URL, false, true, "codex")
+	account, err := defaultLoginManager{}.currentOrSignupAgentAccount(t.Context(), server.URL, false, true, "codex", nil)
 	require.ErrorIs(t, err, ErrUnauthorized)
 	require.ErrorIs(t, err, backenderr.LoginRequiredError{})
 	assert.ErrorContains(t, err, "ask the user to run `pulumi login`")
@@ -374,15 +850,23 @@ func TestCurrentValidAgentCredentialsWithExpiredClaimDoesNotSignup(t *testing.T)
 	require.NoError(t, err)
 
 	ctx := ContextWithAgentCredentialUse(t.Context())
-	account, err := defaultLoginManager{}.currentOrSignupAgentAccount(ctx, server.URL, false, true, "codex")
+	account, err := defaultLoginManager{}.currentOrSignupAgentAccount(ctx, server.URL, false, true, "codex", nil)
 	require.NoError(t, err)
 	require.NotNil(t, account)
 	assert.Equal(t, "valid-agent-token", account.AccessToken)
 	assert.True(t, AgentCredentialsUsed(ctx, server.URL))
 	assert.Equal(t, 0, signupCalls)
+
+	// Post-validate persistence goes through agentAccount.Save, which writes to the agent file
+	// (the account's source) rather than leaking into default credentials.
+	fromAgent, err := workspace.GetAgentAccount(server.URL)
+	require.NoError(t, err)
+	assert.Equal(t, "valid-agent-token", fromAgent.AccessToken)
+	fromDefault, err := workspace.GetAccount(server.URL)
+	require.NoError(t, err)
+	assert.Empty(t, fromDefault.AccessToken, "agent-sourced account must not be copied into default credentials")
 }
 
-//nolint:paralleltest // mutates shared temporary agent credentials and console env
 func TestCurrentSignupAgentAccountStoresClaimTokenURL(t *testing.T) {
 	oldAgentCreds, err := workspace.GetAgentStoredCredentials()
 	require.NoError(t, err)
@@ -447,7 +931,7 @@ func TestCurrentSignupAgentAccountStoresClaimTokenURL(t *testing.T) {
 	t.Cleanup(server.Close)
 
 	ctx := ContextWithAgentCredentialUse(t.Context())
-	account, err := defaultLoginManager{}.currentOrSignupAgentAccount(ctx, server.URL, false, true, "codex")
+	account, err := defaultLoginManager{}.currentOrSignupAgentAccount(ctx, server.URL, false, true, "codex", nil)
 	require.NoError(t, err)
 	require.NotNil(t, account)
 	assert.Equal(t, "agent-token", account.AccessToken)
@@ -465,7 +949,290 @@ func TestCurrentSignupAgentAccountStoresClaimTokenURL(t *testing.T) {
 	assert.Equal(t, server.URL, claim.CloudURL)
 }
 
-//nolint:paralleltest // mutates shared temporary agent credentials
+func TestCurrentSignupAgentAccountStoresRefreshToken(t *testing.T) {
+	// The refresh token returned by agent signup must land in the stored Account so the
+	// auto-refresh wrapper can use it once the access token expires.
+	oldAgentCreds, err := workspace.GetAgentStoredCredentials()
+	require.NoError(t, err)
+	oldAgentClaim, err := workspace.GetAgentClaim()
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		require.NoError(t, workspace.DeleteAgentCredentials())
+		require.NoError(t, workspace.StoreAgentCredentials(oldAgentCreds))
+		if oldAgentClaim.ClaimURL != "" {
+			require.NoError(t, workspace.StoreAgentClaim(oldAgentClaim))
+		}
+	})
+	t.Setenv(client.ConsoleDomainEnvVar, "app.example.com")
+
+	accessTokenValidUntil := time.Now().UTC().Add(time.Hour).Truncate(time.Second)
+	claimTokenValidUntil := accessTokenValidUntil.Add(24 * time.Hour)
+	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		switch req.URL.Path {
+		case "/api/agents/signup":
+			switch req.Method {
+			case http.MethodGet:
+				err := json.NewEncoder(rw).Encode(client.AgentSignupChallenge{
+					ChallengeID:   "challenge-1",
+					ChallengeData: "v1:abcdef:8",
+				})
+				require.NoError(t, err)
+			case http.MethodPost:
+				err := json.NewEncoder(rw).Encode(client.AgentSignupResponse{
+					AccessToken:           "agent-access-token",
+					AccessTokenValidUntil: accessTokenValidUntil,
+					RefreshToken:          "agent-refresh-token",
+					ClaimToken:            "claim-token",
+					ClaimTokenValidUntil:  claimTokenValidUntil,
+				})
+				require.NoError(t, err)
+			default:
+				rw.WriteHeader(http.StatusMethodNotAllowed)
+			}
+		case "/api/user":
+			err := json.NewEncoder(rw).Encode(map[string]any{
+				"githubLogin":   "agent-user",
+				"organizations": []map[string]string{},
+			})
+			require.NoError(t, err)
+		default:
+			rw.WriteHeader(http.StatusNotFound)
+		}
+	}))
+	t.Cleanup(server.Close)
+
+	ctx := ContextWithAgentCredentialUse(t.Context())
+	account, err := defaultLoginManager{}.currentOrSignupAgentAccount(ctx, server.URL, false, true, "codex", nil)
+	require.NoError(t, err)
+	require.NotNil(t, account)
+	assert.Equal(t, "agent-access-token", account.AccessToken)
+	assert.Equal(t, "agent-refresh-token", account.RefreshToken,
+		"signup-returned refresh token must be plumbed into the returned Account")
+
+	stored, err := workspace.GetAgentAccount(server.URL)
+	require.NoError(t, err)
+	assert.Equal(t, "agent-refresh-token", stored.RefreshToken,
+		"signup-returned refresh token must be persisted to the agent credentials file")
+}
+
+func TestCurrentSignupAgentAccountWithoutRefreshTokenLeavesAccountEmpty(t *testing.T) {
+	// Back-compat with a server that doesn't (yet) issue refresh tokens at signup: the response
+	// omits refreshToken and the CLI must not error or invent a value.
+	oldAgentCreds, err := workspace.GetAgentStoredCredentials()
+	require.NoError(t, err)
+	oldAgentClaim, err := workspace.GetAgentClaim()
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		require.NoError(t, workspace.DeleteAgentCredentials())
+		require.NoError(t, workspace.StoreAgentCredentials(oldAgentCreds))
+		if oldAgentClaim.ClaimURL != "" {
+			require.NoError(t, workspace.StoreAgentClaim(oldAgentClaim))
+		}
+	})
+	t.Setenv(client.ConsoleDomainEnvVar, "app.example.com")
+
+	accessTokenValidUntil := time.Now().UTC().Add(time.Hour).Truncate(time.Second)
+	claimTokenValidUntil := accessTokenValidUntil.Add(24 * time.Hour)
+	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		switch req.URL.Path {
+		case "/api/agents/signup":
+			switch req.Method {
+			case http.MethodGet:
+				err := json.NewEncoder(rw).Encode(client.AgentSignupChallenge{
+					ChallengeID:   "challenge-1",
+					ChallengeData: "v1:abcdef:8",
+				})
+				require.NoError(t, err)
+			case http.MethodPost:
+				err := json.NewEncoder(rw).Encode(client.AgentSignupResponse{
+					AccessToken:           "agent-access-token",
+					AccessTokenValidUntil: accessTokenValidUntil,
+					ClaimToken:            "claim-token",
+					ClaimTokenValidUntil:  claimTokenValidUntil,
+				})
+				require.NoError(t, err)
+			default:
+				rw.WriteHeader(http.StatusMethodNotAllowed)
+			}
+		case "/api/user":
+			err := json.NewEncoder(rw).Encode(map[string]any{
+				"githubLogin":   "agent-user",
+				"organizations": []map[string]string{},
+			})
+			require.NoError(t, err)
+		default:
+			rw.WriteHeader(http.StatusNotFound)
+		}
+	}))
+	t.Cleanup(server.Close)
+
+	ctx := ContextWithAgentCredentialUse(t.Context())
+	account, err := defaultLoginManager{}.currentOrSignupAgentAccount(ctx, server.URL, false, true, "codex", nil)
+	require.NoError(t, err)
+	require.NotNil(t, account)
+	assert.Equal(t, "agent-access-token", account.AccessToken)
+	assert.Empty(t, account.RefreshToken, "no refreshToken in response → none on the Account")
+
+	stored, err := workspace.GetAgentAccount(server.URL)
+	require.NoError(t, err)
+	assert.Empty(t, stored.RefreshToken, "no refreshToken in response → none persisted")
+}
+
+func TestCurrentSignupAgentAccountReplacesExistingRefreshTokenOnResignup(t *testing.T) {
+	// When existing agent creds are no longer valid AND the stored refresh token is rejected by
+	// the server, the CLI falls through to re-signup. The refresh token returned by the new
+	// signup replaces the stale one — the prior value must not survive into the rebuilt Account.
+	t.Setenv("PULUMI_TEST_AGENT_PULUMI_DIR", t.TempDir())
+	t.Setenv(client.ConsoleDomainEnvVar, "app.example.com")
+
+	accessTokenValidUntil := time.Now().UTC().Add(time.Hour).Truncate(time.Second)
+	claimTokenValidUntil := accessTokenValidUntil.Add(24 * time.Hour)
+	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		switch req.URL.Path {
+		case "/api/agents/signup":
+			switch req.Method {
+			case http.MethodGet:
+				err := json.NewEncoder(rw).Encode(client.AgentSignupChallenge{
+					ChallengeID:   "challenge-1",
+					ChallengeData: "v1:abcdef:8",
+				})
+				require.NoError(t, err)
+			case http.MethodPost:
+				err := json.NewEncoder(rw).Encode(client.AgentSignupResponse{
+					AccessToken:           "new-access-token",
+					AccessTokenValidUntil: accessTokenValidUntil,
+					RefreshToken:          "new-refresh-token",
+					ClaimToken:            "new-claim-token",
+					ClaimTokenValidUntil:  claimTokenValidUntil,
+				})
+				require.NoError(t, err)
+			default:
+				rw.WriteHeader(http.StatusMethodNotAllowed)
+			}
+		case "/api/oauth/token":
+			// Reject the stale refresh token so validateStoredAccount can't revive the account.
+			rw.WriteHeader(http.StatusBadRequest)
+			err := json.NewEncoder(rw).Encode(apitype.ErrorResponse{Code: 400, Message: "invalid_grant"})
+			require.NoError(t, err)
+		case "/api/user":
+			if req.Header.Get("Authorization") == "token new-access-token" {
+				err := json.NewEncoder(rw).Encode(map[string]any{
+					"githubLogin":   "agent-user",
+					"organizations": []map[string]string{},
+				})
+				require.NoError(t, err)
+				return
+			}
+			rw.WriteHeader(http.StatusUnauthorized)
+			err := json.NewEncoder(rw).Encode(apitype.ErrorResponse{Code: 401, Message: "Unauthorized"})
+			require.NoError(t, err)
+		default:
+			rw.WriteHeader(http.StatusNotFound)
+		}
+	}))
+	t.Cleanup(server.Close)
+
+	// Stale agent creds: locally-expired access token and a stale refresh token that the server
+	// will reject. No claim is stored, so currentOrSignupAgentAccount falls through to re-signup
+	// once the refresh attempt fails.
+	expiredAt := time.Now().Add(-time.Hour)
+	require.NoError(t, workspace.StoreAgentAccount(server.URL, workspace.Account{
+		AccessToken:  "old-access-token",
+		RefreshToken: "old-refresh-token",
+		TokenInformation: &workspace.TokenInformation{
+			ExpiresAt: &expiredAt,
+		},
+	}, true))
+
+	ctx := ContextWithAgentCredentialUse(t.Context())
+	account, err := defaultLoginManager{}.currentOrSignupAgentAccount(ctx, server.URL, false, true, "codex", nil)
+	require.NoError(t, err)
+	require.NotNil(t, account)
+	assert.Equal(t, "new-access-token", account.AccessToken)
+	assert.Equal(t, "new-refresh-token", account.RefreshToken)
+
+	stored, err := workspace.GetAgentAccount(server.URL)
+	require.NoError(t, err)
+	assert.Equal(t, "new-refresh-token", stored.RefreshToken,
+		"re-signup must replace the stale refresh token, not preserve it")
+}
+
+func TestCurrentAgentAccountRefreshesLocallyExpiredAccessTokenInsteadOfResigning(t *testing.T) {
+	// Cold-start in agent mode with a locally-expired access token but a valid refresh token:
+	// validateStoredAccount must refresh through /api/oauth/token instead of falling through to
+	// re-signup. Re-signup would burn a fresh agent identity and lose the claim association.
+	t.Setenv("PULUMI_TEST_AGENT_PULUMI_DIR", t.TempDir())
+	t.Setenv(client.ConsoleDomainEnvVar, "app.example.com")
+
+	signupCalls := 0
+	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		switch req.URL.Path {
+		case "/api/agents/signup":
+			signupCalls++
+			t.Errorf("re-signup must NOT happen when the stored refresh token succeeds: %s %s", req.Method, req.URL.Path)
+			rw.WriteHeader(http.StatusInternalServerError)
+		case "/api/oauth/token":
+			require.Equal(t, http.MethodPost, req.Method)
+			body, err := io.ReadAll(req.Body)
+			require.NoError(t, err)
+			assert.Contains(t, string(body), "grant_type=refresh_token")
+			assert.Contains(t, string(body), "refresh_token=stored-refresh-token")
+			err = json.NewEncoder(rw).Encode(apitype.TokenExchangeGrantResponse{
+				AccessToken:  "fresh-access-token",
+				TokenType:    "Bearer",
+				ExpiresIn:    3600,
+				RefreshToken: "stored-refresh-token",
+			})
+			require.NoError(t, err)
+		case "/api/user":
+			switch req.Header.Get("Authorization") {
+			case "token old-access-token":
+				rw.WriteHeader(http.StatusUnauthorized)
+				err := json.NewEncoder(rw).Encode(apitype.ErrorResponse{Code: 401, Message: "Unauthorized"})
+				require.NoError(t, err)
+			case "token fresh-access-token":
+				err := json.NewEncoder(rw).Encode(map[string]any{
+					"githubLogin":   "agent-user",
+					"organizations": []map[string]string{},
+				})
+				require.NoError(t, err)
+			default:
+				t.Errorf("unexpected Authorization header: %q", req.Header.Get("Authorization"))
+				rw.WriteHeader(http.StatusUnauthorized)
+			}
+		default:
+			rw.WriteHeader(http.StatusNotFound)
+		}
+	}))
+	t.Cleanup(server.Close)
+
+	expiredAt := time.Now().Add(-time.Hour)
+	require.NoError(t, workspace.StoreAgentAccount(server.URL, workspace.Account{
+		AccessToken:  "old-access-token",
+		RefreshToken: "stored-refresh-token",
+		Username:     "agent-user",
+		TokenInformation: &workspace.TokenInformation{
+			ExpiresAt: &expiredAt,
+		},
+	}, true))
+
+	ctx := ContextWithAgentCredentialUse(t.Context())
+	account, err := defaultLoginManager{}.currentOrSignupAgentAccount(ctx, server.URL, false, true, "codex", nil)
+	require.NoError(t, err)
+	require.NotNil(t, account)
+	assert.Equal(t, "fresh-access-token", account.AccessToken,
+		"locally-expired agent access token must be refreshed in place, not resigned")
+	assert.Equal(t, "stored-refresh-token", account.RefreshToken)
+	assert.Equal(t, "agent-user", account.Username, "username should survive the refresh path")
+	assert.Equal(t, 0, signupCalls, "signup must not be called when refresh succeeds")
+
+	stored, err := workspace.GetAgentAccount(server.URL)
+	require.NoError(t, err)
+	assert.Equal(t, "fresh-access-token", stored.AccessToken,
+		"agent credentials file should reflect the refreshed access token")
+	assert.Equal(t, "stored-refresh-token", stored.RefreshToken)
+}
+
 func TestCurrentSignupAgentAccountRequiresResponseFields(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -530,14 +1297,13 @@ func TestCurrentSignupAgentAccountRequiresResponseFields(t *testing.T) {
 			}))
 			t.Cleanup(server.Close)
 
-			account, err := defaultLoginManager{}.currentOrSignupAgentAccount(t.Context(), server.URL, false, true, "codex")
+			account, err := defaultLoginManager{}.currentOrSignupAgentAccount(t.Context(), server.URL, false, true, "codex", nil)
 			require.ErrorContains(t, err, tt.wantErr)
 			assert.Nil(t, account)
 		})
 	}
 }
 
-//nolint:paralleltest // mutates env vars, global interactive mode, shared temporary agent credentials, and console env
 func TestLoginUsesAgentSignupInNonInteractiveAgentMode(t *testing.T) {
 	oldAgentCreds, err := workspace.GetAgentStoredCredentials()
 	require.NoError(t, err)
@@ -769,17 +1535,86 @@ func TestDefaultOrganizationPriority(t *testing.T) {
 	}
 }
 
-//nolint:paralleltest // mutates PULUMI_HOME-backed credentials/config
+func TestDoesProjectExistForbiddenDefaultOrg(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		rw.WriteHeader(http.StatusForbidden)
+	}))
+	t.Cleanup(server.Close)
+
+	defaultOrg := &promise.CompletionSource[string]{}
+	defaultOrg.MustFulfill("some-org")
+	b := &cloudBackend{
+		client:     client.NewClient(server.URL, "test-token", false, diagtest.LogSink(t)),
+		d:          diagtest.LogSink(t),
+		defaultOrg: defaultOrg.Promise(),
+	}
+
+	_, err := b.DoesProjectExist(t.Context(), "", "proj")
+	require.ErrorContains(t, err, `the organization "some-org" set as the default organization`)
+	require.ErrorContains(t, err, "`pulumi org set-default`")
+	require.ErrorIs(t, err, backenderr.ErrForbidden)
+
+	_, err = b.DoesProjectExist(t.Context(), "explicit-org", "proj")
+	require.ErrorIs(t, err, backenderr.ErrForbidden)
+	require.NotContains(t, err.Error(), "set-default")
+}
+
+func TestCreateStackInaccessibleDefaultOrg(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		rw.WriteHeader(http.StatusNotFound)
+		_, err := rw.Write([]byte(`{"code": 404, "message": "Not Found: Organization 'some-org' not found"}`))
+		require.NoError(t, err)
+	}))
+	t.Cleanup(server.Close)
+
+	defaultOrg := &promise.CompletionSource[string]{}
+	defaultOrg.MustFulfill("some-org")
+	b := &cloudBackend{
+		client:     client.NewClient(server.URL, "test-token", false, diagtest.LogSink(t)),
+		d:          diagtest.LogSink(t),
+		defaultOrg: defaultOrg.Promise(),
+	}
+
+	_, err := b.CreateStack(t.Context(), cloudBackendReference{
+		owner:   "some-org",
+		project: "proj",
+		name:    tokens.MustParseStackName("dev"),
+	}, t.TempDir(), nil, nil)
+	require.ErrorContains(t, err, `the organization "some-org" set as the default organization`)
+	require.ErrorContains(t, err, "`pulumi org set-default`")
+
+	_, err = b.CreateStack(t.Context(), cloudBackendReference{
+		owner:   "other-org",
+		project: "proj",
+		name:    tokens.MustParseStackName("dev"),
+	}, t.TempDir(), nil, nil)
+	require.Error(t, err)
+	require.NotContains(t, err.Error(), "set-default")
+}
+
 func TestNewDefaultOrgResolution(t *testing.T) {
 	ctx := t.Context()
 
 	tests := []struct {
 		name                 string
+		envOrg               string
 		configuredOrg        string
 		serviceOrg           string
 		expectedOrg          string
 		expectedDefaultCalls int
 	}{
+		{
+			name:                 "prefers env var default org",
+			envOrg:               "env-org",
+			configuredOrg:        "configured-org",
+			serviceOrg:           "service-org",
+			expectedOrg:          "env-org",
+			expectedDefaultCalls: 0,
+		},
 		{
 			name:                 "prefers configured default org",
 			configuredOrg:        "configured-org",
@@ -798,6 +1633,7 @@ func TestNewDefaultOrgResolution(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Setenv("PULUMI_HOME", t.TempDir())
+			t.Setenv("PULUMI_DEFAULT_ORGANIZATION", tt.envOrg)
 
 			defaultOrgCalls := 0
 			server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
@@ -836,12 +1672,64 @@ func TestNewDefaultOrgResolution(t *testing.T) {
 			b, err := New(ctx, diagtest.LogSink(t), server.URL, nil, false)
 			require.NoError(t, err)
 
+			// New spawns goroutines that may log to the test's diag sink;
+			// wait for them before the test finishes.
+			cb := b.(*cloudBackend)
+			_, _ = cb.capabilities.Result(ctx)
+			_, _ = cb.userInfo.Result(ctx)
+
 			org, err := b.GetDefaultOrg(ctx)
 			require.NoError(t, err)
 			assert.Equal(t, tt.expectedOrg, org)
 			assert.Equal(t, tt.expectedDefaultCalls, defaultOrgCalls)
 		})
 	}
+}
+
+func TestParseStackReferenceExplicitOrgBeatsEnvVar(t *testing.T) {
+	ctx := t.Context()
+
+	t.Setenv("PULUMI_HOME", t.TempDir())
+	t.Setenv("PULUMI_DEFAULT_ORGANIZATION", "env-org")
+
+	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		switch req.URL.Path {
+		case "/api/capabilities":
+			err := json.NewEncoder(rw).Encode(apitype.CapabilitiesResponse{})
+			require.NoError(t, err)
+		case "/api/user":
+			err := json.NewEncoder(rw).Encode(map[string]any{
+				"githubLogin":   "test-user",
+				"organizations": []map[string]string{},
+			})
+			require.NoError(t, err)
+		default:
+			panic(fmt.Sprintf("Path not supported: %v", req.URL.Path))
+		}
+	}))
+	t.Cleanup(server.Close)
+
+	err := workspace.StoreAccount(server.URL, workspace.Account{
+		AccessToken: testJWT,
+	}, true)
+	require.NoError(t, err)
+
+	b, err := New(ctx, diagtest.LogSink(t), server.URL, &workspace.Project{Name: "proj"}, false)
+	require.NoError(t, err)
+
+	// New spawns goroutines that may log to the test's diag sink;
+	// wait for them before the test finishes.
+	cb := b.(*cloudBackend)
+	_, _ = cb.capabilities.Result(ctx)
+	_, _ = cb.userInfo.Result(ctx)
+
+	ref, err := b.ParseStackReference("explicit-org/proj/stack")
+	require.NoError(t, err)
+	assert.Equal(t, "explicit-org", ref.(cloudBackendReference).owner)
+
+	ref, err = b.ParseStackReference("stack")
+	require.NoError(t, err)
+	assert.Equal(t, "env-org", ref.(cloudBackendReference).owner)
 }
 
 //nolint:paralleltest // mutates global state
@@ -1018,7 +1906,7 @@ func TestListStackNames(t *testing.T) {
 	stackNames := make([]string, numStacks)
 	stacks := make([]backend.Stack, numStacks)
 
-	for i := 0; i < numStacks; i++ {
+	for i := range numStacks {
 		stackName := ptesting.RandomStackName()
 		stackNames[i] = stackName
 		ref, err := b.ParseStackReference(stackName)
@@ -1051,7 +1939,7 @@ func TestListStackNames(t *testing.T) {
 
 	// Fetch limited pages to test pagination functionality
 	foundAllTestStacks := false
-	for page := 0; page < maxPages; page++ {
+	for range maxPages {
 		stackRefs, nextToken, err := b.ListStackNames(ctx, filter, token)
 		require.NoError(t, err)
 
@@ -1155,7 +2043,7 @@ func TestListStackNamesVsListStacks(t *testing.T) {
 	var token1 backend.ContinuationToken
 	foundTestStackInSummaries := false
 
-	for page := 0; page < maxPages; page++ {
+	for range maxPages {
 		summaries, nextToken, err := b.ListStacks(ctx, filter, token1)
 		require.NoError(t, err)
 
@@ -1188,7 +2076,7 @@ func TestListStackNamesVsListStacks(t *testing.T) {
 		Organization: filter.Organization,
 	}
 
-	for page := 0; page < maxPages; page++ {
+	for range maxPages {
 		stackRefs, nextToken, err := b.ListStackNames(ctx, namesFilter, token2)
 		require.NoError(t, err)
 
@@ -1898,7 +2786,7 @@ func TestGetAccountDetails(t *testing.T) {
 			}
 
 			username, orgs, tokenInfo, err := getAccountDetails(
-				t.Context(), cloudURL, false, tt.accessToken,
+				t.Context(), cloudURL, false, tt.accessToken, "", nil,
 			)
 
 			if tt.wantErr {
@@ -2035,7 +2923,7 @@ func TestRunEngineActionPropagatesSnapshotJournalerError(t *testing.T) {
 	require.NoError(t, err)
 	mgr := failingSecretsManager{err: errors.New("encrypt boom")}
 	snap := &deploy.Snapshot{
-		Resources: []*resource.State{{
+		Resources: []*pkgresource.State{{
 			Type: tokens.Type("test:index:Resource"),
 			URN: resource.NewURN(
 				stackName.Q(), tokens.PackageName("project"), "",
@@ -2180,7 +3068,12 @@ func newRunEngineActionFixture(
 			Name:    tokens.PackageName("project"),
 			Runtime: workspace.NewProjectRuntimeInfo("go", nil),
 		},
-		Opts:            backend.UpdateOptions{Display: display.Options{Color: colors.Never}},
+		Opts: backend.UpdateOptions{Display: display.Options{
+			Color:            colors.Never,
+			Stdout:           io.Discard,
+			Stderr:           io.Discard,
+			SuppressProgress: true,
+		}},
 		SecretsManager:  opSecretsManager,
 		SecretsProvider: secretsProvider,
 		StackConfiguration: backend.StackConfiguration{
@@ -2237,4 +3130,378 @@ func (nopBatchDecrypter) BatchDecrypt(context.Context, []string) ([]string, erro
 
 func (nopBatchDecrypter) Enqueue(context.Context, string, *resource.Secret) error {
 	return nil
+}
+
+// Regression test: an undecryptable credentials file must surface its
+// actionable error from Current instead of degrading into "not logged in".
+// Mirrors the report: PULUMI_BACKEND_URL set (so no earlier read fails),
+// explicit credentials path, no env token, no agent environment.
+func TestCurrentSurfacesUndecryptableCredentials(t *testing.T) {
+	t.Setenv("PULUMI_CREDENTIALS_PATH", t.TempDir())
+	t.Setenv("PULUMI_ACCESS_TOKEN", "")
+
+	// An envelope recording a backend that exists on no platform is
+	// undecryptable everywhere, which is what a lost key looks like.
+	unreachable := securestore.Backend("not-a-real-backend")
+	key := make([]byte, 32)
+	_, err := rand.Read(key)
+	require.NoError(t, err)
+	cloudURL := "https://api.undecryptable-current.example.com"
+	payload, err := json.Marshal(workspace.Credentials{
+		Current:      cloudURL,
+		AccessTokens: map[string]string{cloudURL: "pul-lost"},
+	})
+	require.NoError(t, err)
+	envelope, err := securestore.Seal(key, unreachable, payload)
+	require.NoError(t, err)
+	credsFile := filepath.Join(os.Getenv("PULUMI_CREDENTIALS_PATH"), "credentials.json")
+	require.NoError(t, os.WriteFile(credsFile, envelope, 0o600))
+
+	_, err = defaultLoginManager{}.Current(t.Context(), cloudURL, false, false)
+	require.Error(t, err, "Current must not treat an undecryptable file as logged-out")
+	assert.True(t, workspace.IsUndecryptableCredentials(err))
+	assert.Contains(t, err.Error(), "pulumi login")
+}
+
+func TestCurrentEnvTokenDoesNotBypassUndecryptableCredentials(t *testing.T) {
+	// While PULUMI_ACCESS_TOKEN is persisted into the credentials file,
+	// proceeding despite an undecryptable file would end in a write over an
+	// envelope that may only be temporarily unreadable. Surface the
+	// actionable error instead; revisit once the env token is no longer
+	// written to disk.
+	credsDir := t.TempDir()
+	t.Setenv(workspace.PulumiCredentialsPathEnvVar, credsDir)
+	t.Setenv("PULUMI_ACCESS_TOKEN", "env-token")
+
+	key := make([]byte, 32)
+	envelope, err := securestore.Seal(key, securestore.Backend("test-unsupported"), []byte(`{}`))
+	require.NoError(t, err)
+	require.NoError(t, os.WriteFile(filepath.Join(credsDir, "credentials.json"), envelope, 0o600))
+
+	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		err := json.NewEncoder(rw).Encode(map[string]any{
+			"githubLogin":   "env-user",
+			"organizations": []map[string]string{},
+		})
+		require.NoError(t, err)
+	}))
+	t.Cleanup(server.Close)
+
+	account, err := NewLoginManager().Current(t.Context(), server.URL, false, true)
+	require.Error(t, err)
+	assert.Nil(t, account)
+	assert.True(t, workspace.IsUndecryptableCredentials(err),
+		"the typed error must surface so callers can point at recovery, got: %v", err)
+
+	raw, err := os.ReadFile(filepath.Join(credsDir, "credentials.json"))
+	require.NoError(t, err)
+	assert.Equal(t, envelope, raw, "the unreadable file must be left untouched")
+}
+
+func TestShowDeploymentEventsResult(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name          string
+		summaryResult apitype.OperationResult
+		wantErr       string
+		wantCancelled bool
+	}{
+		{name: "succeeded", summaryResult: apitype.OperationResultSucceeded},
+		{name: "no result", summaryResult: ""},
+		{name: "failed", summaryResult: apitype.OperationResultFailed, wantErr: "deployment failed"},
+		{name: "canceled", summaryResult: apitype.OperationResultCanceled, wantCancelled: true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+				var err error
+				switch req.URL.Path {
+				case "/api/stacks/org/proj/stack/deployments/deployment-id/updates":
+					err = json.NewEncoder(rw).Encode([]apitype.GetDeploymentUpdatesUpdateInfo{
+						{UpdateID: "update-id", Version: 1},
+					})
+				case "/api/stacks/org/proj/stack/update/update-id/events":
+					err = json.NewEncoder(rw).Encode(apitype.GetUpdateEventsResponse{
+						Events: []apitype.EngineEvent{
+							{Sequence: 1, SummaryEvent: &apitype.SummaryEvent{Result: tt.summaryResult}},
+						},
+					})
+				default:
+					require.Failf(t, "unexpected request", "path %v", req.URL.Path)
+				}
+				require.NoError(t, err)
+			}))
+			t.Cleanup(server.Close)
+
+			b := &cloudBackend{client: client.NewClient(server.URL, "fake-token", true, nil)}
+			stackID := client.StackIdentifier{
+				Owner:   "org",
+				Project: "proj",
+				Stack:   tokens.MustParseStackName("stack"),
+			}
+			opts := display.Options{Color: colors.Never, Stdout: io.Discard, Stderr: io.Discard}
+
+			err := b.showDeploymentEvents(t.Context(), stackID, apitype.UpdateUpdate, "deployment-id", opts)
+			switch {
+			case tt.wantCancelled:
+				require.ErrorAs(t, err, &backenderr.CancelledError{})
+			case tt.wantErr != "":
+				require.ErrorContains(t, err, tt.wantErr)
+			default:
+				require.NoError(t, err)
+			}
+		})
+	}
+}
+
+func TestRunDeploymentResult(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name    string
+		status  string
+		wantErr string
+	}{
+		{name: "succeeded", status: "succeeded"},
+		{name: "skipped", status: "skipped"},
+		{name: "running", status: "running"},
+		{name: "failed", status: "failed", wantErr: "deployment failed"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+				var err error
+				switch {
+				case req.Method == http.MethodPost && req.URL.Path == "/api/stacks/org/proj/stack/deployments":
+					err = json.NewEncoder(rw).Encode(apitype.CreateDeploymentResponse{ID: "deployment-id"})
+				case req.URL.Path == "/api/stacks/org/proj/stack/deployments/deployment-id/logs":
+					err = json.NewEncoder(rw).Encode(apitype.DeploymentLogs{
+						Lines: []apitype.DeploymentLogLine{
+							{Header: "Get source"},
+							{Line: "fetching source\n"},
+						},
+					})
+				case req.URL.Path == "/api/stacks/org/proj/stack/deployments/deployment-id":
+					err = json.NewEncoder(rw).Encode(apitype.GetDeploymentResponse{
+						ID:     "deployment-id",
+						Status: tt.status,
+					})
+				default:
+					require.Failf(t, "unexpected request", "%v %v", req.Method, req.URL.Path)
+				}
+				require.NoError(t, err)
+			}))
+			t.Cleanup(server.Close)
+
+			b := &cloudBackend{client: client.NewClient(server.URL, "fake-token", true, nil)}
+			stackRef := cloudBackendReference{
+				owner:   "org",
+				project: "proj",
+				name:    tokens.MustParseStackName("stack"),
+				b:       b,
+			}
+			opts := display.Options{Color: colors.Never, Stdout: io.Discard, Stderr: io.Discard}
+
+			err := b.RunDeployment(t.Context(), stackRef, apitype.CreateDeploymentRequest{
+				Op: apitype.Update,
+			}, opts, "", false)
+			if tt.wantErr == "" {
+				require.NoError(t, err)
+			} else {
+				require.ErrorContains(t, err, tt.wantErr)
+			}
+		})
+	}
+}
+
+const (
+	testPermalinkCloudURL = "https://api.pulumi.com"
+	testClaimURL          = "https://app.pulumi.com/claim/claim-token"
+	testViewLiveLink      = "https://app.pulumi.com/org/proj/stack/updates/1"
+)
+
+func TestPermalinkForDisplayWithoutAgentCredentials(t *testing.T) {
+	t.Setenv("PULUMI_TEST_AGENT_PULUMI_DIR", t.TempDir())
+
+	// A leftover claim in the shared agent store must not affect commands
+	// that ran on user credentials.
+	require.NoError(t, workspace.StoreAgentClaim(workspace.AgentClaim{
+		ClaimURL:   testClaimURL,
+		CloudURL:   testPermalinkCloudURL,
+		ValidUntil: time.Now().Add(24 * time.Hour),
+	}))
+
+	ctx := ContextWithAgentCredentialUse(t.Context())
+	permalink, label := permalinkForDisplay(ctx, testPermalinkCloudURL, testViewLiveLink)
+	assert.Equal(t, testViewLiveLink, permalink)
+	assert.Empty(t, label)
+}
+
+func TestPermalinkForDisplayWithAgentCredentials(t *testing.T) {
+	past := time.Now().Add(-time.Hour)
+	future := time.Now().Add(24 * time.Hour)
+
+	tests := []struct {
+		name  string
+		claim *workspace.AgentClaim
+		want  string
+	}{
+		{
+			name: "active claim",
+			claim: &workspace.AgentClaim{
+				ClaimURL:   testClaimURL,
+				CloudURL:   testPermalinkCloudURL,
+				ValidUntil: future,
+			},
+			want: testClaimURL,
+		},
+		{
+			name: "no expiry recorded",
+			claim: &workspace.AgentClaim{
+				ClaimURL: testClaimURL,
+				CloudURL: testPermalinkCloudURL,
+			},
+			want: testClaimURL,
+		},
+		{
+			name:  "no claim stored",
+			claim: nil,
+			want:  "",
+		},
+		{
+			name: "different backend",
+			claim: &workspace.AgentClaim{
+				ClaimURL:   testClaimURL,
+				CloudURL:   "https://api.other.example.com",
+				ValidUntil: future,
+			},
+			want: "",
+		},
+		{
+			name: "expired claim",
+			claim: &workspace.AgentClaim{
+				ClaimURL:   testClaimURL,
+				CloudURL:   testPermalinkCloudURL,
+				ValidUntil: past,
+			},
+			want: "",
+		},
+		{
+			name: "claim marked unavailable",
+			claim: &workspace.AgentClaim{
+				ClaimURL:           testClaimURL,
+				CloudURL:           testPermalinkCloudURL,
+				ValidUntil:         future,
+				ClaimUnavailableAt: &past,
+			},
+			want: "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Setenv("PULUMI_TEST_AGENT_PULUMI_DIR", t.TempDir())
+			if tt.claim != nil {
+				require.NoError(t, workspace.StoreAgentClaim(*tt.claim))
+			}
+
+			ctx := ContextWithAgentCredentialUse(t.Context())
+			MarkAgentCredentialsUsed(ctx, testPermalinkCloudURL)
+
+			permalink, label := permalinkForDisplay(ctx, testPermalinkCloudURL, testViewLiveLink)
+			assert.Equal(t, tt.want, permalink)
+			if tt.want != "" {
+				assert.Equal(t, agentClaimPermalinkLabel, label)
+			} else {
+				assert.Empty(t, label)
+			}
+		})
+	}
+}
+
+func TestGetSnapshotStackOutputs(t *testing.T) {
+	t.Parallel()
+
+	secretsProvider := (&secrets.MockProvider{}).Add(b64.Type, func(json.RawMessage) (secrets.Manager, error) {
+		return b64.NewBase64SecretsManager(), nil
+	})
+	serializedOutputs := map[string]any{
+		"plain": "value",
+		"secret": map[string]any{
+			sig.Key:      sig.Secret,
+			"ciphertext": base64.StdEncoding.EncodeToString([]byte(`"hunter2"`)),
+		},
+	}
+	wantOutputs := property.NewMap(map[string]property.Value{
+		"plain":  property.New("value"),
+		"secret": property.New("hunter2").WithSecret(true),
+	})
+
+	newBackend := func(
+		t *testing.T, caps apitype.Capabilities, handler http.HandlerFunc,
+	) (*cloudBackend, backend.StackReference) {
+		server := httptest.NewServer(handler)
+		t.Cleanup(server.Close)
+		sink := diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{Color: colors.Never})
+		b := &cloudBackend{
+			d:      sink,
+			url:    server.URL,
+			client: client.NewClient(server.URL, "token", false, sink).WithHTTPClient(server.Client()),
+			capabilities: promise.Run(func() (apitype.Capabilities, error) {
+				return caps, nil
+			}),
+		}
+		return b, cloudBackendReference{
+			name:    tokens.MustParseStackName("stack"),
+			project: "project",
+			owner:   "owner",
+			b:       b,
+		}
+	}
+
+	t.Run("capability present", func(t *testing.T) {
+		t.Parallel()
+		b, ref := newBackend(t, apitype.Capabilities{StackOutputs: true}, func(w http.ResponseWriter, r *http.Request) {
+			require.Equal(t, "/api/stacks/owner/project/stack/outputs", r.URL.Path)
+			require.NoError(t, json.NewEncoder(w).Encode(apitype.StackOutputsResponse{
+				Outputs:          serializedOutputs,
+				SecretsProviders: &apitype.SecretsProvidersV1{Type: b64.Type},
+			}))
+		})
+
+		outputs, err := b.getSnapshotStackOutputs(t.Context(), secretsProvider, ref)
+		require.NoError(t, err)
+		assert.Equal(t, wantOutputs, outputs)
+	})
+
+	t.Run("capability absent falls back to export", func(t *testing.T) {
+		t.Parallel()
+		deployment, err := json.Marshal(apitype.DeploymentV3{
+			SecretsProviders: &apitype.SecretsProvidersV1{Type: b64.Type},
+			Resources: []apitype.ResourceV3{{
+				URN:     "urn:pulumi:stack::project::pulumi:pulumi:Stack::project-stack",
+				Type:    resource.RootStackType,
+				Outputs: serializedOutputs,
+			}},
+		})
+		require.NoError(t, err)
+		b, ref := newBackend(t, apitype.Capabilities{}, func(w http.ResponseWriter, r *http.Request) {
+			require.Equal(t, "/api/stacks/owner/project/stack/export", r.URL.Path)
+			require.NoError(t, json.NewEncoder(w).Encode(apitype.ExportStackResponse{
+				Version:    3,
+				Deployment: deployment,
+			}))
+		})
+
+		outputs, err := b.getSnapshotStackOutputs(t.Context(), secretsProvider, ref)
+		require.NoError(t, err)
+		assert.Equal(t, wantOutputs, outputs)
+	})
 }

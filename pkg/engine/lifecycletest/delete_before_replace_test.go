@@ -23,19 +23,21 @@ import (
 	"testing"
 	"time"
 
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
+
 	"github.com/blang/semver"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/pkg/v3/engine"
-	. "github.com/pulumi/pulumi/pkg/v3/engine" //nolint:revive
+	. "github.com/pulumi/pulumi/pkg/v3/engine"
 	lt "github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest/framework"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
@@ -71,12 +73,12 @@ func generateComplexTestDependencyGraph(
 
 	newResource := func(urn resource.URN, id resource.ID, provider string, dependencies []resource.URN,
 		propertyDeps propertyDependencies, outputs resource.PropertyMap,
-	) *resource.State {
+	) *pkgresource.State {
 		return newResource(urn, "", id, provider, dependencies, propertyDeps, outputs, true)
 	}
 
 	old := &deploy.Snapshot{
-		Resources: []*resource.State{
+		Resources: []*pkgresource.State{
 			newResource(urnA, "0", "", nil, nil, resource.PropertyMap{"A": resource.NewProperty("foo")}),
 			newResource(urnB, "1", string(urnA)+"::0", nil, nil, nil),
 			newResource(urnC, "2", "",
@@ -172,7 +174,7 @@ func TestDeleteBeforeReplace(t *testing.T) {
 					_ context.Context,
 					req plugin.DiffConfigRequest,
 				) (plugin.DiffResult, error) {
-					if !req.OldOutputs["A"].DeepEquals(req.NewInputs["A"]) {
+					if !req.OldOutputs.Get("A").Equals(req.NewInputs.Get("A")) {
 						return plugin.DiffResult{
 							ReplaceKeys:         []resource.PropertyKey{"A"},
 							DeleteBeforeReplace: true,
@@ -190,7 +192,7 @@ func TestDeleteBeforeReplace(t *testing.T) {
 		}),
 	}
 
-	p.Options.HostF = deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	p.Options.HostF = deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 	p.Options.T = t
 	p.Steps = []lt.TestStep{{
 		Op:            Update,
@@ -270,7 +272,7 @@ func TestPropertyDependenciesAdapter(t *testing.T) {
 		return nil
 	})
 
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
 		Steps:   []lt.TestStep{{Op: Update}},
@@ -354,7 +356,7 @@ func TestExplicitDeleteBeforeReplace(t *testing.T) {
 		return nil
 	})
 
-	p.Options.HostF = deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	p.Options.HostF = deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 	p.Options.T = t
 	p.Steps = []lt.TestStep{{Op: Update}}
 	snap := p.Run(t, nil)
@@ -564,7 +566,7 @@ func TestDependencyChangeDBR(t *testing.T) {
 		return nil
 	})
 
-	p.Options.HostF = deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	p.Options.HostF = deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 	p.Options.T = t
 	p.Steps = []lt.TestStep{{Op: Update}}
 	snap := p.Run(t, nil)
@@ -586,7 +588,7 @@ func TestDependencyChangeDBR(t *testing.T) {
 		return nil
 	})
 
-	p.Options.HostF = deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	p.Options.HostF = deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 	p.Steps = []lt.TestStep{
 		{
 			Op: Update,
@@ -677,7 +679,7 @@ func TestDBRProtect(t *testing.T) {
 		return nil
 	})
 
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 	options := lt.TestUpdateOptions{T: t, HostF: hostF}
 	p := &lt.TestPlan{}
 
@@ -754,7 +756,7 @@ func TestDBRReplaceOnChanges(t *testing.T) {
 		return nil
 	})
 
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 	options := lt.TestUpdateOptions{T: t, HostF: hostF}
 	p := &lt.TestPlan{}
 
@@ -876,7 +878,7 @@ func TestDBRParallel(t *testing.T) {
 				return program(monitor)
 			})
 
-			hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+			hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 			options := lt.TestUpdateOptions{
 				UpdateOptions: UpdateOptions{
 					ParallelDiff: true,
@@ -957,7 +959,7 @@ func TestDBRProviderUpgrade(t *testing.T) {
 	newPkgAProvider := func() *deploytest.Provider {
 		return &deploytest.Provider{
 			DiffConfigF: func(_ context.Context, req plugin.DiffConfigRequest) (plugin.DiffConfigResponse, error) {
-				if !req.OldInputs["version"].DeepEquals(req.NewInputs["version"]) {
+				if !req.OldInputs.Get("version").Equals(req.NewInputs.Get("version")) {
 					return plugin.DiffResult{
 						Changes:     plugin.DiffSome,
 						ChangedKeys: []resource.PropertyKey{"version"},
@@ -1062,7 +1064,7 @@ func TestDBRProviderUpgrade(t *testing.T) {
 		_, err := resAPromise.Result(t.Context())
 		return err
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{

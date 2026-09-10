@@ -1,0 +1,5 @@
+component: cli
+kind: fix
+body: Treat a resource provider attached through PULUMI_DEBUG_PROVIDERS as installed, so
+    package installation does not try to download it
+time: 2026-09-04T00:00:00Z

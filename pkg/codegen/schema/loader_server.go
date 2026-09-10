@@ -21,14 +21,17 @@ import (
 	"google.golang.org/grpc"
 
 	"github.com/blang/semver"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	codegenrpc "github.com/pulumi/pulumi/sdk/v3/proto/go/codegen"
 	"github.com/segmentio/encoding/json"
 )
 
-func NewLoaderServerFromHost(host plugin.Host) codegenrpc.LoaderServer {
-	return NewLoaderServer(NewPluginLoader(host))
+// NewLoaderServerFromContext constructs the loader service bound to a plugin context. It
+// matches [plugin.NewLoaderFunc]: the loader resolves and boots plugins through the given
+// context's workspace view.
+func NewLoaderServerFromContext(pctx *plugin.Context) codegenrpc.LoaderServer {
+	return NewLoaderServer(NewPluginLoader(pctx))
 }
 
 type loaderServer struct {

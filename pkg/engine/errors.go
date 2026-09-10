@@ -45,7 +45,5 @@ func (d DecryptError) Error() string {
 // will be the first DecryptError in the tree. In the event that there is no such
 // DecryptError, the first element will be nil.
 func AsDecryptError(err error) (*DecryptError, bool) {
-	var de *DecryptError
-	ok := errors.As(err, &de)
-	return de, ok
+	return errors.AsType[*DecryptError](err)
 }

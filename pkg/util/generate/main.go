@@ -55,8 +55,8 @@ func main() {
 	names := []string{}
 	for _, repo := range allRepos {
 		n := repo.GetName()
-		if strings.HasPrefix(n, "pulumi-") {
-			names = append(names, strings.TrimPrefix(n, "pulumi-"))
+		if after, ok := strings.CutPrefix(n, "pulumi-"); ok {
+			names = append(names, after)
 		}
 	}
 	slices.Sort(names)

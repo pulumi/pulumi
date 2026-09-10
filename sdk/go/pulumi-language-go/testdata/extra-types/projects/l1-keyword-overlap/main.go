@@ -11,7 +11,7 @@ func main() {
 		export := "export_output_string"
 		_import := "import_output_string"
 		mod := "mod_output_string"
-		object := map[string]interface{}{
+		object := map[string]string{
 			"object": "object_output_string",
 		}
 		self := "self_output_string"
@@ -21,7 +21,7 @@ func main() {
 		ctx.Export("export", pulumi.String(export))
 		ctx.Export("import", pulumi.String(_import))
 		ctx.Export("mod", pulumi.String(mod))
-		ctx.Export("object", pulumi.ToMap(object))
+		ctx.Export("object", pulumi.ToStringMap(object))
 		ctx.Export("self", pulumi.String(self))
 		ctx.Export("this", pulumi.String(this))
 		ctx.Export("if", pulumi.String(_if))

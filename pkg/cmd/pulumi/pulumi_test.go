@@ -15,6 +15,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"net/http"
 	"net/http/httptest"
@@ -22,11 +23,14 @@ import (
 	"time"
 
 	"github.com/blang/semver"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	cmdDo "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/do"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -75,7 +79,6 @@ func TestHaveNewerDevVersion(t *testing.T) {
 	assert.False(t, haveNewerDevVersion(devVer, newerPatchCurVer))
 }
 
-//nolint:paralleltest // changes environment variables and globals
 func TestGetCLIVersionInfo_Simple(t *testing.T) {
 	// Arrange.
 	pulumiHome := t.TempDir()
@@ -114,7 +117,6 @@ func TestGetCLIVersionInfo_Simple(t *testing.T) {
 	require.Equal(t, "0.0.0", devVer.String())
 }
 
-//nolint:paralleltest // changes environment variables and globals
 func TestGetCLIVersionInfo_TimesOut(t *testing.T) {
 	// Arrange.
 	pulumiHome := t.TempDir()
@@ -150,7 +152,6 @@ func TestGetCLIVersionInfo_TimesOut(t *testing.T) {
 	require.ErrorContains(t, err, "context deadline exceeded")
 }
 
-//nolint:paralleltest // changes environment variables and globals
 func TestGetCLIVersionInfo_SendsMetadataToPulumiCloud(t *testing.T) {
 	// Arrange.
 	pulumiHome := t.TempDir()
@@ -218,7 +219,6 @@ func TestGetCLIVersionInfo_SendsMetadataToPulumiCloud(t *testing.T) {
 	require.Equal(t, metadata["Flags"], flagsHeader)
 }
 
-//nolint:paralleltest // changes environment variables and globals
 func TestGetCLIVersionInfo_DoesNotSendMetadataToOtherBackends(t *testing.T) {
 	// Arrange.
 	pulumiHome := t.TempDir()
@@ -306,12 +306,12 @@ func TestGetCLIMetadata(t *testing.T) {
 		},
 		{
 			name: "no set flags",
-			cmd: (func() *cobra.Command {
+			cmd: func() *cobra.Command {
 				cmd := &cobra.Command{Use: "no-set"}
 				cmd.Flags().Bool("bool", false, "bool flag")
 				cmd.Flags().String("string", "", "string flag")
 				return cmd
-			})(),
+			}(),
 			environ: []string{},
 			metadata: map[string]string{
 				"Command":     "no-set",
@@ -321,7 +321,7 @@ func TestGetCLIMetadata(t *testing.T) {
 		},
 		{
 			name: "one set bool flag",
-			cmd: (func() *cobra.Command {
+			cmd: func() *cobra.Command {
 				cmd := &cobra.Command{Use: "one-set"}
 				cmd.Flags().Bool("bool", false, "bool flag")
 				cmd.Flags().String("string", "", "string flag")
@@ -332,7 +332,7 @@ func TestGetCLIMetadata(t *testing.T) {
 				require.NoError(t, err)
 
 				return cmd
-			})(),
+			}(),
 			metadata: map[string]string{
 				"Command":     "one-set",
 				"Flags":       "--bool",
@@ -341,7 +341,7 @@ func TestGetCLIMetadata(t *testing.T) {
 		},
 		{
 			name: "one set string flag",
-			cmd: (func() *cobra.Command {
+			cmd: func() *cobra.Command {
 				cmd := &cobra.Command{Use: "one-set"}
 				cmd.Flags().Bool("bool", false, "bool flag")
 				cmd.Flags().String("string", "", "string flag")
@@ -352,7 +352,7 @@ func TestGetCLIMetadata(t *testing.T) {
 				require.NoError(t, err)
 
 				return cmd
-			})(),
+			}(),
 			metadata: map[string]string{
 				"Command":     "one-set",
 				"Flags":       "--string",
@@ -361,7 +361,7 @@ func TestGetCLIMetadata(t *testing.T) {
 		},
 		{
 			name: "multiple set flags",
-			cmd: (func() *cobra.Command {
+			cmd: func() *cobra.Command {
 				cmd := &cobra.Command{Use: "multiple-set"}
 				cmd.Flags().Bool("bool", false, "bool flag")
 				cmd.Flags().String("string", "", "string flag")
@@ -372,7 +372,7 @@ func TestGetCLIMetadata(t *testing.T) {
 				require.NoError(t, err)
 
 				return cmd
-			})(),
+			}(),
 			metadata: map[string]string{
 				"Command":     "multiple-set",
 				"Flags":       "--bool --string",
@@ -381,7 +381,7 @@ func TestGetCLIMetadata(t *testing.T) {
 		},
 		{
 			name: "longer command path",
-			cmd: (func() *cobra.Command {
+			cmd: func() *cobra.Command {
 				parent := &cobra.Command{Use: "parent"}
 				err := parent.Execute()
 				require.NoError(t, err)
@@ -390,7 +390,7 @@ func TestGetCLIMetadata(t *testing.T) {
 				parent.AddCommand(cmd)
 
 				return cmd
-			})(),
+			}(),
 			metadata: map[string]string{
 				"Command":     "parent multiple-set",
 				"Flags":       "",
@@ -399,12 +399,12 @@ func TestGetCLIMetadata(t *testing.T) {
 		},
 		{
 			name: "no valid PULUMI_ env variables",
-			cmd: (func() *cobra.Command {
+			cmd: func() *cobra.Command {
 				cmd := &cobra.Command{Use: "version"}
 				err := cmd.Execute()
 				require.NoError(t, err)
 				return cmd
-			})(),
+			}(),
 			environ: []string{"PULUMICOPILOT=true", "OTHER_FLAG=true", "PULUMI_NO_EQUALS_SIGN"},
 			metadata: map[string]string{
 				"Command":     "version",
@@ -414,12 +414,12 @@ func TestGetCLIMetadata(t *testing.T) {
 		},
 		{
 			name: "has valid PULUMI_ env variables",
-			cmd: (func() *cobra.Command {
+			cmd: func() *cobra.Command {
 				cmd := &cobra.Command{Use: "version"}
 				err := cmd.Execute()
 				require.NoError(t, err)
 				return cmd
-			})(),
+			}(),
 			environ: []string{"PULUMI_EXPERIMENTAL=true", "PULUMI_COPILOT=true"},
 			metadata: map[string]string{
 				"Command":     "version",
@@ -489,7 +489,7 @@ func TestGetCLIMetadata(t *testing.T) {
 		},
 		{
 			name: "plugin run with argument",
-			cmd: (func() *cobra.Command {
+			cmd: func() *cobra.Command {
 				cmd := &cobra.Command{Use: "pulumi"}
 				pluginCmd := &cobra.Command{Use: "plugin"}
 				cmd.AddCommand(pluginCmd)
@@ -498,7 +498,7 @@ func TestGetCLIMetadata(t *testing.T) {
 				err := pluginRunCmd.Execute()
 				require.NoError(t, err)
 				return pluginRunCmd
-			})(),
+			}(),
 			environ: []string{"PULUMI_EXPERIMENTAL=true", "PULUMI_COPILOT=true"},
 			args:    []string{"my-plugin"},
 			metadata: map[string]string{
@@ -524,12 +524,11 @@ func TestGetCLIMetadata(t *testing.T) {
 
 func newDoTestCmd() *cobra.Command {
 	root := &cobra.Command{Use: "pulumi"}
-	doCmd := cmdDo.NewDoCmd(nil, nil, nil, nil, nil)
+	doCmd := cmdDo.NewDoCmd(nil, nil, nil, nil, nil, nil)
 	root.AddCommand(doCmd)
 	return doCmd
 }
 
-//nolint:paralleltest // changes environment variables and globals
 func TestCheckForUpdate_AlwaysChecksVersion(t *testing.T) {
 	// Arrange.
 	pulumiHome := t.TempDir()
@@ -566,7 +565,6 @@ func TestCheckForUpdate_AlwaysChecksVersion(t *testing.T) {
 	require.Equal(t, 3, callCount, "should call API every time")
 }
 
-//nolint:paralleltest // changes environment variables and globals
 func TestCheckForUpdate_CachesPrompts(t *testing.T) {
 	realVersion := version.Version
 	t.Cleanup(func() {
@@ -658,7 +656,6 @@ func TestCheckForUpdate_HandlesAPIFailures(t *testing.T) {
 	require.Nil(t, second)
 }
 
-//nolint:paralleltest // changes environment variables and globals
 func TestCheckForUpdate_WorksCorrectlyWithDevVersions(t *testing.T) {
 	realVersion := version.Version
 	t.Cleanup(func() {
@@ -721,7 +718,6 @@ func TestCheckForUpdate_WorksCorrectlyWithDevVersions(t *testing.T) {
 	require.Contains(t, expired.diag.Message, "upgrade from version '1.0.0-11-g4ff08363' to '1.0.0-12-gdeadbeef'")
 }
 
-//nolint:paralleltest // changes environment variables and globals
 func TestCheckForUpdate_WorksCorrectlyWithLocalVersions(t *testing.T) {
 	// Arrange.
 	realVersion := version.Version
@@ -768,7 +764,6 @@ func TestCheckForUpdate_WorksCorrectlyWithLocalVersions(t *testing.T) {
 	require.Nil(t, alwaysNilDiag)
 }
 
-//nolint:paralleltest // changes environment variables and globals
 func TestCheckForUpdate_WorksCorrectlyWithDifferentMajorVersions(t *testing.T) {
 	realVersion := version.Version
 	t.Cleanup(func() {
@@ -831,7 +826,6 @@ func TestCheckForUpdate_WorksCorrectlyWithDifferentMajorVersions(t *testing.T) {
 	require.Contains(t, expired.diag.Message, "upgrade from version '1.0.0' to '2.0.3'")
 }
 
-//nolint:paralleltest // changes environment variables and globals
 func TestCheckForUpdate_WorksCorrectlyWithVeryOldMinorVersions(t *testing.T) {
 	realVersion := version.Version
 	t.Cleanup(func() {
@@ -972,4 +966,98 @@ func TestDiffVersions(t *testing.T) {
 			require.Equal(t, c.minorDiff, minorDiff)
 		})
 	}
+}
+
+// TestParseRootPersistentFlags guards against a --help / -h token causing pflag to drop the root
+// flags that follow it (e.g. --otel-traces), which left tracing silently disabled for `pulumi do`.
+func TestParseRootPersistentFlags(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name      string
+		args      []string
+		wantOtel  string
+		wantColor string
+	}{
+		{
+			name:     "otel flag, no help",
+			args:     []string{"random:index:RandomString", "create", "--otel-traces", "grpc://localhost:4317"},
+			wantOtel: "grpc://localhost:4317",
+		},
+		{
+			name:     "help before otel flag",
+			args:     []string{"random:index:RandomString", "create", "--help", "--otel-traces", "grpc://localhost:4317"},
+			wantOtel: "grpc://localhost:4317",
+		},
+		{
+			name:     "short help before otel flag",
+			args:     []string{"random:index:RandomString", "create", "-h", "--otel-traces", "grpc://localhost:4317"},
+			wantOtel: "grpc://localhost:4317",
+		},
+		{
+			name: "help between two root flags, with unknown provider flags",
+			args: []string{
+				"random:index:RandomString", "create", "--length", "8",
+				"--help", "--otel-traces", "file:///tmp/t.json", "--color", "never",
+			},
+			wantOtel:  "file:///tmp/t.json",
+			wantColor: "never",
+		},
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+
+			var otelTraces, color string
+			root := pflag.NewFlagSet("pulumi", pflag.ContinueOnError)
+			root.StringVar(&otelTraces, "otel-traces", "", "")
+			root.StringVar(&color, "color", "", "")
+
+			parseRootPersistentFlags(root, c.args)
+
+			assert.Equal(t, c.wantOtel, otelTraces)
+			assert.Equal(t, c.wantColor, color)
+		})
+	}
+}
+
+// A bare group command such as `pulumi env` should still print help, but exit
+// non-zero since it did not do anything.
+func TestGroupCommandsBareInvocationExitsNonZero(t *testing.T) {
+	// A bare group invocation is runnable and so executes the root
+	// PersistentPreRunE, which would otherwise fire a background network
+	// update check. t.Setenv also rules out t.Parallel here.
+	t.Setenv("PULUMI_SKIP_UPDATE_CHECK", "true")
+
+	pulumiCmd, cleanup := NewPulumiCmd()
+	defer cleanup()
+
+	var stdout, stderr bytes.Buffer
+	pulumiCmd.SetOut(&stdout)
+	pulumiCmd.SetErr(&stderr)
+	pulumiCmd.SetArgs([]string{"env"})
+
+	err := pulumiCmd.Execute()
+	require.Error(t, err)
+	assert.True(t, result.IsBail(err), "expected a bail error so no message is printed after the help text")
+	assert.Equal(t, cmd.ExitCodeError, cmd.ExitCodeFor(err))
+	assert.Contains(t, stdout.String(), "Usage:", "help text should still be printed")
+}
+
+// Requesting help explicitly must keep exiting 0.
+//
+//nolint:paralleltest // NewPulumiCmd registers env vars in a process-wide registry
+func TestGroupCommandsHelpFlagSucceeds(t *testing.T) {
+	pulumiCmd, cleanup := NewPulumiCmd()
+	defer cleanup()
+
+	var stdout, stderr bytes.Buffer
+	pulumiCmd.SetOut(&stdout)
+	pulumiCmd.SetErr(&stderr)
+	pulumiCmd.SetArgs([]string{"env", "--help"})
+
+	err := pulumiCmd.Execute()
+	require.NoError(t, err)
+	assert.Contains(t, stdout.String(), "Usage:")
 }

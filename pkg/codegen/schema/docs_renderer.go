@@ -34,6 +34,12 @@ type Renderer struct {
 	md *markdown.Renderer
 }
 
+func NewRenderer() *Renderer {
+	return &Renderer{
+		md: &markdown.Renderer{},
+	}
+}
+
 // MarkdownRenderer returns the underlying Markdown renderer used by the Renderer.
 func (r *Renderer) MarkdownRenderer() *markdown.Renderer {
 	return r.md
@@ -45,6 +51,9 @@ func (r *Renderer) RegisterFuncs(reg renderer.NodeRendererFuncRegisterer) {
 
 	// inlines
 	reg.Register(ast.KindLink, r.renderLink)
+
+	// refs
+	reg.Register(KindRef, r.renderRef)
 }
 
 func (r *Renderer) renderShortcode(w util.BufWriter, source []byte, node ast.Node, enter bool) (ast.WalkStatus, error) {
@@ -71,6 +80,16 @@ func (r *Renderer) renderLink(w util.BufWriter, source []byte, node ast.Node, en
 	return r.md.RenderLink(w, source, node, enter)
 }
 
+func (r *Renderer) renderRef(w util.BufWriter, source []byte, node ast.Node, enter bool) (ast.WalkStatus, error) {
+	if enter {
+		_, err := fmt.Fprintf(r.md.Writer(w), "{{%% ref %s %%}}", node.(*Ref).Destination)
+		if err != nil {
+			return ast.WalkStop, err
+		}
+	}
+	return ast.WalkContinue, nil
+}
+
 // RenderDocs renders parsed documentation to the given Writer. The source that was used to parse the documentation
 // must be provided.
 func RenderDocs(w io.Writer, source []byte, node ast.Node, options ...RendererOption) error {
@@ -85,7 +104,19 @@ func RenderDocs(w io.Writer, source []byte, node ast.Node, options ...RendererOp
 		util.Prioritized(md, 200),
 	}
 	r := renderer.NewRenderer(renderer.WithNodeRenderers(nodeRenderers...))
-	return r.Render(w, source, node)
+
+	var buf bytes.Buffer
+	if err := r.Render(&buf, source, node); err != nil {
+		return err
+	}
+
+	rendered := buf.Bytes()
+	if !bytes.HasSuffix(source, []byte("\n")) {
+		rendered = bytes.TrimSuffix(rendered, []byte("\n"))
+	}
+
+	_, err := w.Write(rendered)
+	return err
 }
 
 // RenderDocsToString is like RenderDocs, but renders to a string instead of a Writer.

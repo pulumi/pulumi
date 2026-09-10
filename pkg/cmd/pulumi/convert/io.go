@@ -19,10 +19,10 @@ import (
 	"fmt"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
@@ -43,13 +43,13 @@ func LoadConverterPlugin(
 	if err != nil {
 		// If NewConverter returns a MissingError, we can try and install the plugin if it was missing and try again,
 		// unless auto plugin installs are turned off.
-		var me *workspace.MissingError
-		if !errors.As(err, &me) || env.DisableAutomaticPluginAcquisition.Value() {
+		_, ok := errors.AsType[*workspace.MissingError](err)
+		if !ok || env.DisableAutomaticPluginAcquisition.Value() {
 			// Not a MissingError, return the original error.
 			return nil, fmt.Errorf("load %q: %w", name, err)
 		}
 
-		_, err = pkgWorkspace.InstallPlugin(ctx.Base(), pluginSpec, log, schema.NewLoaderServerFromHost)
+		_, err = pkgWorkspace.InstallPlugin(ctx.Base(), pluginSpec, log, schema.NewLoaderServerFromContext)
 		if err != nil {
 			return nil, fmt.Errorf("install %q: %w", name, err)
 		}

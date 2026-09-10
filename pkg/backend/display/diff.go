@@ -176,6 +176,16 @@ func resourceText(urn resource.URN, opts Options) string {
 	return urn.Name()
 }
 
+// policyResourceClause renders the "  (type: name)" suffix for a policy event's target
+// resource, or "" for an invalid URN — URN.Type/URN.Name panic on the empty URN a
+// stack-level violation may carry.
+func policyResourceClause(urn resource.URN, opts Options) string {
+	if !urn.IsValid() {
+		return ""
+	}
+	return fmt.Sprintf("  (%s: %s)", urn.Type().DisplayName(), resourceText(urn, opts))
+}
+
 func renderDiffPolicyRemediationEvent(payload engine.PolicyRemediationEventPayload,
 	prefix string, detailed bool, opts Options,
 ) string {
@@ -185,10 +195,10 @@ func renderDiffPolicyRemediationEvent(payload engine.PolicyRemediationEventPaylo
 		return ""
 	}
 
-	// Print the individual remediation's name and target resource type/name.
-	resText := resourceText(payload.ResourceURN, opts)
-	remediationLine := fmt.Sprintf("%s[remediate]  %s%s  (%s: %s)",
-		colors.SpecInfo, payload.PolicyName, colors.Reset, payload.ResourceURN.Type(), resText)
+	// Print the individual remediation's name and its target resource type and name.
+	remediationLine := fmt.Sprintf("%s[remediate]  %s%s%s",
+		colors.SpecInfo, payload.PolicyName, colors.Reset,
+		policyResourceClause(payload.ResourceURN, opts))
 
 	// If there is already a prefix string requested, use it, otherwise fall back to a default.
 	if prefix == "" {
@@ -202,12 +212,12 @@ func renderDiffPolicyRemediationEvent(payload engine.PolicyRemediationEventPaylo
 	// a short diff summary similar to what is show for an update row is emitted.
 	if detailed {
 		var b bytes.Buffer
-		PrintObjectDiff(&b, *diff, nil,
+		PrintObjectDiff(&b, *resource.ToResourceObjectDiff(diff), nil,
 			false /*planning*/, 2, true /*summary*/, true /*truncateOutput*/, false /*debug*/, opts.ShowSecrets, nil)
 		remediationLine = fmt.Sprintf("%s\n%s", remediationLine, b.String())
 	} else {
 		var b bytes.Buffer
-		writeShortDiff(&b, diff, nil)
+		writeShortDiff(&b, resource.ToResourceObjectDiff(diff), nil)
 		remediationLine = fmt.Sprintf("%s [%s]", remediationLine, b.String())
 	}
 
@@ -228,10 +238,11 @@ func renderDiffPolicyViolationEvent(payload engine.PolicyViolationEventPayload,
 		severity = fmt.Sprintf(" [severity: %s]", payload.Severity)
 	}
 
-	// Print the individual policy's name and target resource type/name.
-	policyLine := fmt.Sprintf("%s[%s]%s  %s%s  (%s: %s)",
+	// Print the individual policy's name and, for resource-scoped violations, the
+	// target resource type and name. Stack-level violations carry no resource URN.
+	policyLine := fmt.Sprintf("%s[%s]%s  %s%s%s",
 		c, payload.EnforcementLevel, severity, payload.PolicyName, colors.Reset,
-		payload.ResourceURN.Type(), resourceText(payload.ResourceURN, opts))
+		policyResourceClause(payload.ResourceURN, opts))
 
 	// If there is already a prefix string requested, use it, otherwise fall back to a default.
 	if prefix == "" {

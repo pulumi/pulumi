@@ -42,18 +42,28 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 )
 
-// printPermalinkNonInteractive prints an update's permalink prefaced with `View Live: `.
+// printPermalinkNonInteractive prints an update's permalink prefaced with `View Live: `,
+// or with opts.PermalinkLabel when set.
 // This message is printed in non-interactive scenarios.
 // In order to maintain backwards compatibility with older versions of the Automation API,
 // the message is not changed for non-interactive scenarios.
 func printPermalinkNonInteractive(out io.Writer, opts Options, permalink, prefix string) {
-	printPermalink(out, opts, "View Live", permalink, prefix)
+	label := "View Live"
+	if opts.PermalinkLabel != "" {
+		label = opts.PermalinkLabel
+	}
+	printPermalink(out, opts, label, permalink, prefix)
 }
 
-// printPermalinkInteractive prints an update's permalink prefaced with `View in Browser (Ctrl+O): `.
+// printPermalinkInteractive prints an update's permalink prefaced with `View in Browser (Ctrl+O): `,
+// or with opts.PermalinkLabel plus the Ctrl+O hint when set.
 // This is printed in interactive scenarios that use the tree renderer.
 func printPermalinkInteractive(term terminal.Terminal, opts Options, permalink, prefix string) {
-	printPermalink(term, opts, "View in Browser (Ctrl+O)", permalink, prefix)
+	label := "View in Browser"
+	if opts.PermalinkLabel != "" {
+		label = opts.PermalinkLabel
+	}
+	printPermalink(term, opts, label+" (Ctrl+O)", permalink, prefix)
 }
 
 func printPermalink(out io.Writer, opts Options, message, permalink, prefix string) {
@@ -197,8 +207,8 @@ func logJSONEvent(encoder *json.Encoder, event engine.StampedEvent, opts Options
 func startEventLogger(
 	events <-chan engine.StampedEvent, done chan<- bool, opts Options,
 ) (<-chan engine.StampedEvent, chan<- bool) {
-	if strings.HasPrefix(opts.EventLogPath, "tcp://") {
-		addr := strings.TrimPrefix(opts.EventLogPath, "tcp://")
+	if after, ok := strings.CutPrefix(opts.EventLogPath, "tcp://"); ok {
+		addr := after
 		conn, err := grpc.NewClient(addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 		if err != nil {
 			logging.V(7).Infof("could not connect to event log server: %v", err)

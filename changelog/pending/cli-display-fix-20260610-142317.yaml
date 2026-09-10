@@ -1,6 +1,0 @@
-component: cli/display
-kind: fix
-body: Show interrupted steps as interrupted instead of as finished
-time: 2026-06-10T14:23:17.24330106+02:00
-custom:
-    PR: "23510"

@@ -63,34 +63,25 @@ func upsertIntoCache(key string, w W) {
 	cache[key] = w
 }
 
-// newW creates a new workspace using the current working directory. Requires a Pulumi.yaml file be present in the
-// folder hierarchy between the current working directory and the .pulumi folder.
-func newW() (W, error) {
-	cwd, err := os.Getwd()
-	if err != nil {
-		return nil, err
-	}
-	return newWFromDir(cwd)
-}
-
-// newWFromDir creates a new workspace rooted at the given directory. Requires a Pulumi.yaml file be present in the
+// newW creates a new workspace rooted at dir. Requires a Pulumi.yaml file be present in the
 // folder hierarchy between dir and the .pulumi folder.
-func newWFromDir(dir string) (W, error) {
+func newW(dir string) (W, error) {
 	absDir, err := filepath.Abs(dir)
 	if err != nil {
 		return nil, err
 	}
+	dir = absDir
 
-	if w, ok := loadFromCache(absDir); ok {
+	if w, ok := loadFromCache(dir); ok {
 		return w, nil
 	}
 
-	path, err := workspace.DetectProjectPathFrom(absDir)
+	path, err := workspace.DetectProjectPathFrom(dir)
 	if err != nil {
 		return nil, err
 	} else if path == "" {
 		return nil, fmt.Errorf("no Pulumi.yaml project file found (searching upwards from %s). If you have not "+
-			"created a project yet, use `pulumi new` to do so", absDir)
+			"created a project yet, use `pulumi new` to do so", dir)
 	}
 
 	proj, err := workspace.LoadProject(path)
@@ -108,7 +99,7 @@ func newWFromDir(dir string) (W, error) {
 		return nil, fmt.Errorf("unable to read workspace settings: %w", err)
 	}
 
-	upsertIntoCache(absDir, w)
+	upsertIntoCache(dir, w)
 	return w, nil
 }
 
@@ -189,8 +180,8 @@ func (pw *projectWorkspace) readSettings() error {
 }
 
 func (pw *projectWorkspace) settingsPath() string {
-	uniqueFileName := string(pw.name) + "-" + sha1HexString(pw.project) + "-" + workspace.WorkspaceFile
-	path, err := workspace.GetPulumiPath(workspace.WorkspaceDir, uniqueFileName)
+	uniqueFileName := string(pw.name) + "-" + sha1HexString(pw.project) + "-" + WorkspaceFile
+	path, err := workspace.GetPulumiPath(WorkspaceDir, uniqueFileName)
 	contract.AssertNoErrorf(err, "could not get workspace path")
 	return path
 }
