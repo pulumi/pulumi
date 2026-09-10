@@ -55,7 +55,27 @@ func HandleConfig(
 	path bool,
 	opts display.Options,
 	configFile string,
+	escConfig bool,
 ) error {
+	if escConfig {
+		// A stack being born has no previous deployment, so there is nothing for the
+		// isPreconfiguredEmptyStack shortcut below to reuse — and reading it would need the stack
+		// decrypter this path deliberately never touches.
+		commandLineConfig, err := ParseConfigForProject(project.Name, configArray, path)
+		if err != nil {
+			return err
+		}
+		values, err := resolveTemplateConfig(project.Name, template.Config, commandLineConfig, nil, nil)
+		if err != nil {
+			return err
+		}
+		if err := askTemplateConfig(values, prompt, yes, askAll, opts); err != nil {
+			return err
+		}
+		return saveTemplateConfigToEnvironment(
+			ctx, sink, opts.Stdout, project, s, values, commandLineConfig, configFile)
+	}
+
 	// Get the existing config. stackConfig will be nil if there wasn't a previous deployment.
 	latest, err := backend.GetLatestConfiguration(ctx, s)
 	if err != nil && err != backenderr.ErrNoPreviousDeployment {

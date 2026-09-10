@@ -153,6 +153,25 @@ type Client interface {
 		etag string,
 	) ([]EnvironmentDiagnostic, int, error)
 
+	// CreateEnvironmentRevision creates a revision of the environment projectName/envName in org orgName
+	// from the revision named by parent, without moving the environment's `latest` tag. Only a caller
+	// that names the returned revision will read the new definition.
+	//
+	// parent is a revision number or a revision tag; the empty string means the environment's latest
+	// revision. Unlike UpdateEnvironment this call carries no etag: the named parent, not an entity tag,
+	// is what makes the write's assumption explicit.
+	//
+	// If the new environment definition contains errors, the call fails with diagnostics and no revision
+	// is created.
+	CreateEnvironmentRevision(
+		ctx context.Context,
+		orgName string,
+		projectName string,
+		envName string,
+		yaml []byte,
+		parent string,
+	) (*CreateEnvironmentRevisionResponse, []EnvironmentDiagnostic, error)
+
 	// CreateEnvironmentDraft creates a draft update of the YAML for the environment envName in org orgName.
 	// The resulting ChangeRequestID is returned.
 	//
@@ -804,6 +823,38 @@ func (pc *client) UpdateEnvironment(
 	}
 
 	return updateResp.Diagnostics, revision, nil
+}
+
+func (pc *client) CreateEnvironmentRevision(
+	ctx context.Context,
+	orgName string,
+	projectName string,
+	envName string,
+	yaml []byte,
+	parent string,
+) (*CreateEnvironmentRevisionResponse, []EnvironmentDiagnostic, error) {
+	// The route names the parent in the query string and takes the definition as a JSON string, rather
+	// than taking the etag header and raw YAML body UpdateEnvironment uses.
+	queryObj := struct {
+		Parent string `url:"parent,omitempty"`
+	}{Parent: parent}
+	reqObj := CreateEnvironmentRevisionRequest{Definition: string(yaml)}
+
+	var errResp EnvironmentErrorResponse
+	path := fmt.Sprintf("/api/esc/environments/%v/%v/%v/versions", orgName, projectName, envName)
+	var resp CreateEnvironmentRevisionResponse
+	// The default retry policy retries GETs only, which is what this call needs: a retried create would
+	// silently produce a second revision rather than repeating a read.
+	err := pc.restCallWithOptions(ctx, http.MethodPost, path, queryObj, reqObj, &resp, httpCallOptions{
+		ErrorResponse: &errResp,
+	})
+	if err != nil {
+		if diags, ok := errors.AsType[*EnvironmentErrorResponse](err); ok && len(diags.Diagnostics) != 0 {
+			return nil, diags.Diagnostics, nil
+		}
+		return nil, nil, err
+	}
+	return &resp, resp.Diagnostics, nil
 }
 
 func (pc *client) CreateEnvironmentDraft(

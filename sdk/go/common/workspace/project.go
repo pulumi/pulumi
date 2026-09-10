@@ -1234,6 +1234,95 @@ func (e *Environment) UnmarshalYAML(n *yaml.Node) error {
 	return nil
 }
 
+// MainEnvironment references the single ESC environment that is both the source of a stack's
+// configuration and the target of `pulumi config set` and `pulumi config rm`.
+//
+// It is serialized as a scalar string of the form `<project>/<env>`, with an optional
+// `@<version-or-tag>` suffix that pins reads to a specific revision, e.g. `payments/dev@8`.
+// Unlike `environment:`, it never holds a list or an inline environment definition: exactly one
+// named environment is bound to the stack.
+type MainEnvironment struct {
+	// Project is the ESC project that contains the environment.
+	Project string
+	// Name is the name of the environment within the project.
+	Name string
+	// Version is an optional revision number or tag. An empty version means "latest".
+	Version string
+}
+
+// mainEnvironmentSyntax describes the accepted syntax; it is reused by the errors below so that the
+// hint a user sees is the same regardless of how the value was malformed.
+const mainEnvironmentSyntax = "<project>/<env>[@<version-or-tag>]"
+
+// ParseMainEnvironment parses a `mainEnvironment` reference.
+func ParseMainEnvironment(s string) (*MainEnvironment, error) {
+	ref, version, hasVersion := strings.Cut(s, "@")
+	if hasVersion && version == "" {
+		return nil, fmt.Errorf("invalid mainEnvironment %q: expected %s", s, mainEnvironmentSyntax)
+	}
+	if strings.Contains(version, "@") || strings.Contains(version, "/") {
+		return nil, fmt.Errorf("invalid mainEnvironment %q: expected %s", s, mainEnvironmentSyntax)
+	}
+
+	project, name, hasSlash := strings.Cut(ref, "/")
+	if !hasSlash || project == "" || name == "" || strings.Contains(name, "/") {
+		return nil, fmt.Errorf("invalid mainEnvironment %q: expected %s", s, mainEnvironmentSyntax)
+	}
+
+	return &MainEnvironment{Project: project, Name: name, Version: version}, nil
+}
+
+// Ref returns the `<project>/<env>` reference, without any version pin.
+func (m MainEnvironment) Ref() string {
+	return m.Project + "/" + m.Name
+}
+
+// String returns the reference as it appears in the stack file, including any version pin.
+func (m MainEnvironment) String() string {
+	if m.Version == "" {
+		return m.Ref()
+	}
+	return m.Ref() + "@" + m.Version
+}
+
+func (m MainEnvironment) MarshalYAML() (any, error) {
+	return m.String(), nil
+}
+
+func (m *MainEnvironment) UnmarshalYAML(n *yaml.Node) error {
+	var s string
+	if err := n.Decode(&s); err != nil {
+		return fmt.Errorf(
+			"mainEnvironment must be a single environment reference of the form %s; "+
+				"use 'environment:' for lists or inline environment definitions", mainEnvironmentSyntax)
+	}
+	parsed, err := ParseMainEnvironment(s)
+	if err != nil {
+		return err
+	}
+	*m = *parsed
+	return nil
+}
+
+func (m MainEnvironment) MarshalJSON() ([]byte, error) {
+	return json.Marshal(m.String())
+}
+
+func (m *MainEnvironment) UnmarshalJSON(b []byte) error {
+	var s string
+	if err := json.Unmarshal(b, &s); err != nil {
+		return fmt.Errorf(
+			"mainEnvironment must be a single environment reference of the form %s; "+
+				"use 'environment:' for lists or inline environment definitions", mainEnvironmentSyntax)
+	}
+	parsed, err := ParseMainEnvironment(s)
+	if err != nil {
+		return err
+	}
+	*m = *parsed
+	return nil
+}
+
 // ProjectStack holds stack specific information about a project.
 type ProjectStack struct {
 	// SecretsProvider is this stack's secrets provider.
@@ -1248,6 +1337,9 @@ type ProjectStack struct {
 	Config config.Map `json:"config,omitempty" yaml:"config,omitempty"`
 	// Environment is an optional environment definition or list of environments.
 	Environment *Environment `json:"environment,omitempty" yaml:"environment,omitempty"`
+	// MainEnvironment optionally names the single ESC environment that provides this stack's
+	// configuration and that receives `pulumi config set` and `pulumi config rm` writes.
+	MainEnvironment *MainEnvironment `json:"mainEnvironment,omitempty" yaml:"mainEnvironment,omitempty"`
 
 	// The original byte representation of the file, used to attempt trivia-preserving edits
 	raw []byte

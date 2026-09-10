@@ -168,3 +168,29 @@ func TestCreateStackQuiet(t *testing.T) {
 		})
 	}
 }
+
+// A source stack whose configuration lives in an ESC environment has nothing in its `config:` block, so
+// copying it must refuse rather than silently produce a stack with no configuration source at all.
+func TestCopyEntireConfigMapRefusesMainEnvironmentSource(t *testing.T) {
+	t.Parallel()
+
+	sourceStack := &backend.MockStack{
+		RefF: func() backend.StackReference {
+			return &backend.MockStackReference{StringV: "acme/payments/dev"}
+		},
+	}
+	sourceProjectStack := &workspace.ProjectStack{
+		MainEnvironment: &workspace.MainEnvironment{Project: "payments", Name: "dev"},
+	}
+
+	// A nil loader proves nothing beyond the guard runs: any decrypter or encrypter lookup would panic.
+	requiresSaving, err := CopyEntireConfigMap(
+		t.Context(), SecretsManagerLoader{}, sourceStack, sourceProjectStack,
+		&backend.MockStack{}, &workspace.ProjectStack{},
+	)
+	assert.False(t, requiresSaving)
+	assert.ErrorContains(t, err,
+		"copying configuration from stack acme/payments/dev is not supported yet: "+
+			"it sets 'mainEnvironment: payments/dev'")
+	assert.ErrorContains(t, err, "--esc-config")
+}

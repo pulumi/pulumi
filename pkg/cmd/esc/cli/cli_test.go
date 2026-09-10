@@ -237,6 +237,10 @@ type testEnvironmentRevision struct {
 }
 
 type testEnvironment struct {
+	// head is the revision `latest` points at. Zero means the last revision in the slice, which is what
+	// every path that only ever appends relies on. CreateEnvironmentRevision sets it explicitly, because
+	// it appends a revision without moving `latest`.
+	head              int
 	revisions         []*testEnvironmentRevision
 	revisionTags      map[string]int
 	tags              map[string]string
@@ -247,8 +251,16 @@ type testEnvironment struct {
 	referrers         map[string][]client.EnvironmentReferrer
 }
 
+// latestNumber is the revision number `latest` resolves to.
+func (env *testEnvironment) latestNumber() int {
+	if env.head != 0 {
+		return env.head
+	}
+	return len(env.revisions)
+}
+
 func (env *testEnvironment) latest() *testEnvironmentRevision {
-	return env.revisions[len(env.revisions)-1]
+	return env.revisions[env.latestNumber()-1]
 }
 
 type testPulumiClient struct {
@@ -391,7 +403,7 @@ func (c *testPulumiClient) getEnvironment(
 
 	var revision int
 	if version == "" || version == "latest" {
-		revision = len(env.revisions)
+		revision = env.latestNumber()
 	} else if version[0] >= '0' && version[0] <= '9' {
 		rev, err := strconv.ParseInt(version, 10, 0)
 		if err != nil || rev < 1 || rev > int64(len(env.revisions)) {
@@ -607,11 +619,16 @@ func (c *testPulumiClient) CloneEnvironment(
 	if _, ok := c.environments[destEnvName]; ok {
 		return errors.New("already exists")
 	}
+	// A clone starts from the source's latest revision, which is not necessarily the tail of its history
+	// once a revision has been created without moving `latest`.
 	testDestEnv := &testEnvironment{
-		revisions: []*testEnvironmentRevision{srcEnv.revisions[len(srcEnv.revisions)-1]},
+		revisions: []*testEnvironmentRevision{srcEnv.latest()},
 	}
 	if destEnv.PreserveHistory {
 		testDestEnv.revisions = srcEnv.revisions
+		// Carry the head across too, so that the clone's `latest` resolves to the same revision the
+		// source's does rather than to whatever revision happens to be last in the slice.
+		testDestEnv.head = srcEnv.head
 	}
 	if destEnv.PreserveEnvironmentTags {
 		testDestEnv.tags = srcEnv.tags
@@ -688,6 +705,7 @@ func (c *testPulumiClient) UpdateEnvironment(
 			delete(env.revisions[n-1].tags, "latest")
 		}
 		env.revisionTags["latest"] = revisionNumber
+		env.head = revisionNumber
 	}
 
 	return diags, env.revisionTags["latest"], err
@@ -742,6 +760,53 @@ func (c *testPulumiClient) GetEnvironmentDraft(
 	}
 
 	return env.yaml, env.etag, nil
+}
+
+func (c *testPulumiClient) CreateEnvironmentRevision(
+	ctx context.Context,
+	orgName string,
+	projectName string,
+	envName string,
+	yaml []byte,
+	parent string,
+) (*client.CreateEnvironmentRevisionResponse, []client.EnvironmentDiagnostic, error) {
+	env, parentRevision, err := c.getEnvironment(orgName, projectName, envName, parent)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	envId := projectName + "/" + envName
+	_, diags, err := c.checkEnvironment(ctx, orgName, envId, yaml, nil)
+	if err != nil {
+		return nil, nil, err
+	}
+	if client.DiagnosticsHaveErrors(diags) {
+		return nil, diags, nil
+	}
+
+	encrypted, err := eval.EncryptSecrets(ctx, envId, yaml, rot128{})
+	if err != nil {
+		return nil, nil, err
+	}
+
+	h := fnv.New32()
+	h.Write(yaml)
+
+	// `latest` does not move, so pin it where it is before appending: from here on the tail of the
+	// slice and the latest revision are different revisions.
+	env.head = env.latestNumber()
+	revisionNumber := len(env.revisions) + 1
+	env.revisions = append(env.revisions, &testEnvironmentRevision{
+		number: revisionNumber,
+		yaml:   encrypted,
+		etag:   base64.StdEncoding.EncodeToString(h.Sum(nil)),
+	})
+
+	return &client.CreateEnvironmentRevisionResponse{
+		Number:      revisionNumber,
+		Parent:      parentRevision.number,
+		Diagnostics: diags,
+	}, diags, nil
 }
 
 func (c *testPulumiClient) UpdateEnvironmentDraft(
