@@ -353,6 +353,7 @@ func (p *IndexModProvider) Call(
 func (p *IndexModProvider) Check(
 	_ context.Context, req plugin.CheckRequest,
 ) (plugin.CheckResponse, error) {
+	news := resource.ToResourcePropertyMap(req.NewInputs)
 	switch req.URN.Type().String() {
 	case "index-mod:indexMine:Resource", "index-mod:indexMine/nested:Resource":
 	default:
@@ -361,13 +362,13 @@ func (p *IndexModProvider) Check(
 		}, nil
 	}
 
-	if len(req.News) != 1 {
+	if len(news) != 1 {
 		return plugin.CheckResponse{
-			Failures: makeCheckFailure("", fmt.Sprintf("expected exactly one property: %v", req.News)),
+			Failures: makeCheckFailure("", fmt.Sprintf("expected exactly one property: %v", news)),
 		}, nil
 	}
 
-	text, ok := req.News["text"]
+	text, ok := news["text"]
 	if !ok {
 		return plugin.CheckResponse{
 			Failures: makeCheckFailure("text", "missing required property 'text'"),
@@ -380,7 +381,7 @@ func (p *IndexModProvider) Check(
 		}, nil
 	}
 
-	return plugin.CheckResponse{Properties: req.News}, nil
+	return plugin.CheckResponse{Properties: resource.FromResourcePropertyMap(news)}, nil
 }
 
 func (p *IndexModProvider) Create(

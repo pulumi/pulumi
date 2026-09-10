@@ -198,12 +198,13 @@ func (p *EnumProvider) DiffConfig(
 func (p *EnumProvider) Check(
 	_ context.Context, req plugin.CheckRequest,
 ) (plugin.CheckResponse, error) {
+	news := resource.ToResourcePropertyMap(req.NewInputs)
 	switch req.URN.Type().String() {
 	case fmt.Sprintf("%s:index:Res", p.pkg()),
 		fmt.Sprintf("%s:mod:Res", p.pkg()),
 		fmt.Sprintf("%s:mod/nested:Res", p.pkg()),
 		fmt.Sprintf("%s:index:Deluxe", p.pkg()):
-		return plugin.CheckResponse{Properties: req.News}, nil
+		return plugin.CheckResponse{Properties: resource.FromResourcePropertyMap(news)}, nil
 	default:
 		return plugin.CheckResponse{
 			Failures: makeCheckFailure("", fmt.Sprintf("invalid URN type: %s", req.URN.Type())),

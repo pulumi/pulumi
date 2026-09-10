@@ -242,7 +242,8 @@ func (p *ConfigGrpcProvider) GetPluginInfo(context.Context) (plugin.PluginInfo, 
 func (p *ConfigGrpcProvider) Check(
 	_ context.Context, req plugin.CheckRequest,
 ) (plugin.CheckResponse, error) {
-	return plugin.CheckResponse{Properties: req.News}, nil
+	news := resource.ToResourcePropertyMap(req.NewInputs)
+	return plugin.CheckResponse{Properties: resource.FromResourcePropertyMap(news)}, nil
 }
 
 func (p *ConfigGrpcProvider) CheckConfig(

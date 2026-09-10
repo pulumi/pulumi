@@ -183,6 +183,7 @@ func (p *RefRefProvider) CheckConfig(
 func (p *RefRefProvider) Check(
 	_ context.Context, req plugin.CheckRequest,
 ) (plugin.CheckResponse, error) {
+	news := resource.ToResourcePropertyMap(req.NewInputs)
 	if req.URN.Type() != "ref-ref:index:Resource" {
 		return plugin.CheckResponse{
 			Failures: makeCheckFailure("", fmt.Sprintf("invalid URN type: %s", req.URN.Type())),
@@ -207,18 +208,18 @@ func (p *RefRefProvider) Check(
 		return nil
 	}
 
-	check := assertField(req.News, "data", "object", resource.PropertyValue.IsObject)
+	check := assertField(news, "data", "object", resource.PropertyValue.IsObject)
 	if check != nil {
 		return *check, nil
 	}
 
-	if len(req.News) != 1 {
+	if len(news) != 1 {
 		return plugin.CheckResponse{
-			Failures: makeCheckFailure("", fmt.Sprintf("too many properties: %v", req.News)),
+			Failures: makeCheckFailure("", fmt.Sprintf("too many properties: %v", news)),
 		}, nil
 	}
 
-	data := req.News["data"].ObjectValue()
+	data := news["data"].ObjectValue()
 
 	checkData := func(data resource.PropertyMap) *plugin.CheckResponse {
 		// Expect all required properties
@@ -318,7 +319,7 @@ func (p *RefRefProvider) Check(
 		}, nil
 	}
 
-	return plugin.CheckResponse{Properties: req.News}, nil
+	return plugin.CheckResponse{Properties: resource.FromResourcePropertyMap(news)}, nil
 }
 
 func (p *RefRefProvider) Create(

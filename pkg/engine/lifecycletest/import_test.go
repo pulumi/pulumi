@@ -1354,15 +1354,15 @@ func TestImportPlanSpecificProperties(t *testing.T) {
 				) (plugin.CheckResponse, error) {
 					// Error unless "foo" and "frob" are in news
 
-					if _, has := req.News["foo"]; !has {
+					if _, has := req.NewInputs.GetOk("foo"); !has {
 						return plugin.CheckResponse{}, errors.New("Need foo")
 					}
 
-					if _, has := req.News["frob"]; !has {
+					if _, has := req.NewInputs.GetOk("frob"); !has {
 						return plugin.CheckResponse{}, errors.New("Need frob")
 					}
 
-					return plugin.CheckResponse{Properties: req.News}, nil
+					return plugin.CheckResponse{Properties: req.NewInputs}, nil
 				},
 			}, nil
 		}),

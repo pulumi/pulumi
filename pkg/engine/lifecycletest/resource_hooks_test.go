@@ -125,10 +125,10 @@ func TestResourceHooksAfterCreate(t *testing.T) {
 			return &deploytest.Provider{
 				CheckF: func(context.Context, plugin.CheckRequest) (plugin.CheckResponse, error) {
 					return plugin.CheckResponse{
-						Properties: resource.NewPropertyMapFromMap(map[string]any{
+						Properties: resource.FromResourcePropertyMap(resource.NewPropertyMapFromMap(map[string]any{
 							"a": "A",
 							"c": "C",
-						}),
+						})),
 					}, nil
 				},
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {

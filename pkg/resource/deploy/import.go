@@ -439,8 +439,8 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 			providers.SetProviderParameterization(inputs, parameterization)
 		}
 		resp, err := i.deployment.providers.Check(ctx, plugin.CheckRequest{
-			URN:  urn,
-			News: inputs,
+			URN:       urn,
+			NewInputs: resource.FromResourcePropertyMap(inputs),
 		})
 		if err != nil {
 			return nil, fmt.Errorf("failed to validate provider config: %w", err)
@@ -538,8 +538,8 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 		}
 
 		resp, err := i.deployment.providers.Check(ctx, plugin.CheckRequest{
-			URN:  providerURN,
-			News: inputs,
+			URN:       providerURN,
+			NewInputs: resource.FromResourcePropertyMap(inputs),
 		})
 		if err != nil {
 			return nil, fmt.Errorf("failed to validate explicit provider config for %s: %w", providerURN, err)

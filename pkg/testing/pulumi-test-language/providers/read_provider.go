@@ -78,10 +78,11 @@ func (p *ReadProvider) CheckConfig(context.Context, plugin.CheckConfigRequest) (
 }
 
 func (p *ReadProvider) Check(_ context.Context, req plugin.CheckRequest) (plugin.CheckResponse, error) {
+	news := resource.ToResourcePropertyMap(req.NewInputs)
 	if req.URN.Type() != "read:index:Resource" {
 		return plugin.CheckResponse{}, fmt.Errorf("invalid URN type: %s", req.URN.Type())
 	}
-	return plugin.CheckResponse{Properties: req.News}, nil
+	return plugin.CheckResponse{Properties: resource.FromResourcePropertyMap(news)}, nil
 }
 
 func (p *ReadProvider) Create(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {

@@ -1389,21 +1389,21 @@ func TestPlannedUpdateWithNondeterministicCheck(t *testing.T) {
 					req plugin.CheckRequest,
 				) (plugin.CheckResponse, error) {
 					// If we have name use it, else use olds name, else make one up
-					if _, has := req.News["name"]; has {
-						return plugin.CheckResponse{Properties: req.News}, nil
+					if _, has := req.NewInputs.GetOk("name"); has {
+						return plugin.CheckResponse{Properties: req.NewInputs}, nil
 					}
-					if _, has := req.Olds["name"]; has {
-						result := req.News.Copy()
-						result["name"] = req.Olds["name"]
-						return plugin.CheckResponse{Properties: result}, nil
+					if name, has := req.OldInputs.GetOk("name"); has {
+						result := resource.ToResourcePropertyMap(req.NewInputs)
+						result["name"] = resource.ToResourcePropertyValue(name)
+						return plugin.CheckResponse{Properties: resource.FromResourcePropertyMap(result)}, nil
 					}
 
 					name, err := resource.NewUniqueHex(req.URN.Name(), 8, 512)
 					require.NoError(t, err)
 
-					result := req.News.Copy()
+					result := resource.ToResourcePropertyMap(req.NewInputs)
 					result["name"] = resource.NewProperty(name)
-					return plugin.CheckResponse{Properties: result}, nil
+					return plugin.CheckResponse{Properties: resource.FromResourcePropertyMap(result)}, nil
 				},
 			}, nil
 		}),
@@ -1490,7 +1490,7 @@ func TestPlannedUpdateWithCheckFailure(t *testing.T) {
 					_ context.Context,
 					req plugin.CheckRequest,
 				) (plugin.CheckResponse, error) {
-					if req.News["foo"].StringValue() == "bad" {
+					if req.NewInputs.Get("foo").AsString() == "bad" {
 						return plugin.CheckResponse{
 							Failures: []plugin.CheckFailure{{
 								Property: resource.PropertyKey("foo"),
@@ -1498,7 +1498,7 @@ func TestPlannedUpdateWithCheckFailure(t *testing.T) {
 							}},
 						}, nil
 					}
-					return plugin.CheckResponse{Properties: req.News}, nil
+					return plugin.CheckResponse{Properties: req.NewInputs}, nil
 				},
 			}, nil
 		}),
@@ -1615,18 +1615,20 @@ func TestProviderDeterministicPreview(t *testing.T) {
 					req plugin.CheckRequest,
 				) (plugin.CheckResponse, error) {
 					// make a deterministic autoname
-					if _, has := req.News["name"]; !has {
-						if name, has := req.Olds["name"]; has {
-							req.News["name"] = name
+					if _, has := req.NewInputs.GetOk("name"); !has {
+						result := resource.ToResourcePropertyMap(req.NewInputs)
+						if name, has := req.OldInputs.GetOk("name"); has {
+							result["name"] = resource.ToResourcePropertyValue(name)
 						} else {
 							name, err := resource.NewUniqueName(req.RandomSeed, req.URN.Name(), -1, -1, nil)
 							require.NoError(t, err)
 							generatedName = resource.NewProperty(name)
-							req.News["name"] = generatedName
+							result["name"] = generatedName
 						}
+						return plugin.CheckResponse{Properties: resource.FromResourcePropertyMap(result)}, nil
 					}
 
-					return plugin.CheckResponse{Properties: req.News}, nil
+					return plugin.CheckResponse{Properties: req.NewInputs}, nil
 				},
 				DiffF: func(_ context.Context, req plugin.DiffRequest) (plugin.DiffResult, error) {
 					if !req.OldOutputs["foo"].DeepEquals(req.NewInputs["foo"]) {
@@ -1720,7 +1722,7 @@ func TestPlannedUpdateWithDependentDelete(t *testing.T) {
 					_ context.Context,
 					req plugin.CheckRequest,
 				) (plugin.CheckResponse, error) {
-					return plugin.CheckResponse{Properties: req.News}, nil
+					return plugin.CheckResponse{Properties: req.NewInputs}, nil
 				},
 				DiffF: func(_ context.Context, req plugin.DiffRequest) (plugin.DiffResult, error) {
 					if strings.Contains(string(req.URN), "resA") || strings.Contains(string(req.URN), "resB") {
@@ -1957,9 +1959,9 @@ func TestPlannedUpdateWithInternalKeys(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				CheckF: func(_ context.Context, req plugin.CheckRequest) (plugin.CheckResponse, error) {
-					news := req.News.Copy()
+					news := resource.ToResourcePropertyMap(req.NewInputs)
 					news["__defaults"] = defaultsValue
-					return plugin.CheckResponse{Properties: news}, nil
+					return plugin.CheckResponse{Properties: resource.FromResourcePropertyMap(news)}, nil
 				},
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 					return plugin.CreateResponse{

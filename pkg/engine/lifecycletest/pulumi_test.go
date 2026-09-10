@@ -3906,26 +3906,26 @@ func TestOldCheckedInputsAreSent(t *testing.T) {
 				) (plugin.CheckResponse, error) {
 					// Check that the old inputs are passed to CheckF
 					if firstUpdate {
-						assert.Nil(t, req.Olds)
-						assert.Equal(t, resource.NewPropertyMapFromMap(map[string]any{
+						assert.Equal(t, property.Map{}, req.OldInputs)
+						assert.Equal(t, resource.FromResourcePropertyMap(resource.NewPropertyMapFromMap(map[string]any{
 							"foo": "bar",
-						}), req.News)
+						})), req.NewInputs)
 					} else {
-						assert.Equal(t, resource.NewPropertyMapFromMap(map[string]any{
+						assert.Equal(t, resource.FromResourcePropertyMap(resource.NewPropertyMapFromMap(map[string]any{
 							"foo":     "bar",
 							"default": "default",
-						}), req.Olds)
-						assert.Equal(t, resource.NewPropertyMapFromMap(map[string]any{
+						})), req.OldInputs)
+						assert.Equal(t, resource.FromResourcePropertyMap(resource.NewPropertyMapFromMap(map[string]any{
 							"foo": "baz",
-						}), req.News)
+						})), req.NewInputs)
 					}
 
 					// Add a default property
 					results := resource.PropertyMap{}
-					maps.Copy(results, req.News)
+					maps.Copy(results, resource.ToResourcePropertyMap(req.NewInputs))
 					results["default"] = resource.NewProperty("default")
 
-					return plugin.CheckResponse{Properties: results}, nil
+					return plugin.CheckResponse{Properties: resource.FromResourcePropertyMap(results)}, nil
 				},
 				DiffF: func(_ context.Context, req plugin.DiffRequest) (plugin.DiffResult, error) {
 					// Check that the old inputs and outputs are passed to DiffF
