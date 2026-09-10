@@ -2462,9 +2462,9 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		Hooks:                   req.GetHooks(),
 	}
 
-	// This might be a resource registation for a resource that another process requested to be constructed.
-	// If so we'll have saved the pending transforms for this and we should use those rather than what is on
-	// the request. ourTransforms is the list of transforms declared on _this_ resource, we save it later to
+	// This might be a resource registration for a resource that another process requested to be constructed.
+	// If so, run the provider's transforms before the caller's pending transforms. ourTransforms is the list
+	// of transforms declared on _this_ resource, we save it later to
 	// the resourceTransforms map. transforms is a collected list of _all_ transforms that need to run on this
 	// resource, including those from parents and the stack.
 	var ourTransforms []TransformFunction
@@ -2474,14 +2474,14 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		rm.pendingTransformsLock.Lock()
 		defer rm.pendingTransformsLock.Unlock()
 
+		ourTransforms, err = slice.MapError(req.Transforms, rm.wrapTransformCallback)
+		if err != nil {
+			return err
+		}
 		if pending, ok := rm.pendingTransforms[pendingKey]; ok {
 			delete(rm.pendingTransforms, pendingKey) // Remove the pending transforms, we don't need them again.
-			ourTransforms = pending
+			ourTransforms = append(ourTransforms, pending...)
 		} else {
-			ourTransforms, err = slice.MapError(req.Transforms, rm.wrapTransformCallback)
-			if err != nil {
-				return err
-			}
 			// We only need to save this for remote calls
 			if remote && len(ourTransforms) > 0 {
 				// Make a copy of the slice here, otherwise later appends will modify what we save here.
@@ -3092,7 +3092,11 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		func() {
 			rm.resourceTransformsLock.Lock()
 			defer rm.resourceTransformsLock.Unlock()
-			rm.resourceTransforms[result.State.URN] = ourTransforms
+			// Construct's registration has already saved the combined provider and caller transforms.
+			// The outer remote registration must not overwrite them with only the caller's transforms.
+			if !remote {
+				rm.resourceTransforms[result.State.URN] = ourTransforms
+			}
 		}()
 		if !custom {
 			func() {
