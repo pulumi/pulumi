@@ -1,0 +1,6 @@
+component: cli
+kind: improvement
+body: '`pulumi env set --draft` now prints the CLI commands to update, submit, or discard an existing draft instead of raw API endpoints'
+time: 2026-08-20T00:00:00+00:00
+custom:
+  PR: "24444"
