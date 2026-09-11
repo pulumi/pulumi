@@ -605,10 +605,10 @@ func (pc *packageCommand) checkResourceInputs(
 	ctx context.Context, urn resource.URN, res *schema.Resource, olds, news resource.PropertyMap,
 ) (resource.PropertyMap, error) {
 	checked, err := pc.provider.Check(ctx, plugin.CheckRequest{
-		URN:  urn,
-		Type: tokens.Type(res.Token),
-		Olds: olds,
-		News: news,
+		URN:       urn,
+		Type:      tokens.Type(res.Token),
+		OldInputs: resource.FromResourcePropertyMap(olds),
+		NewInputs: resource.FromResourcePropertyMap(news),
 	})
 	if err != nil {
 		return nil, err
@@ -621,7 +621,7 @@ func (pc *packageCommand) checkResourceInputs(
 		}
 		return nil, fmt.Errorf("%s", b.String())
 	}
-	return checked.Properties, nil
+	return resource.ToResourcePropertyMap(checked.Properties), nil
 }
 
 func readNotFound(read plugin.ReadResponse) bool {

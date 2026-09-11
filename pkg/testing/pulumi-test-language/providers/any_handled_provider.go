@@ -82,15 +82,16 @@ func (p *AnyHandledProvider) CheckConfig(
 func (p *AnyHandledProvider) Check(
 	_ context.Context, req plugin.CheckRequest,
 ) (plugin.CheckResponse, error) {
+	news := resource.ToResourcePropertyMap(req.NewInputs)
 	if req.URN.Type() != "any-handled:index:Resource" {
 		return plugin.CheckResponse{
 			Failures: makeCheckFailure("", fmt.Sprintf("invalid URN type: %s", req.URN.Type())),
 		}, nil
 	}
-	if _, ok := req.News["value"]; !ok {
+	if _, ok := news["value"]; !ok {
 		return plugin.CheckResponse{Failures: makeCheckFailure("value", "missing value")}, nil
 	}
-	return plugin.CheckResponse{Properties: req.News}, nil
+	return plugin.CheckResponse{Properties: resource.FromResourcePropertyMap(news)}, nil
 }
 
 func (p *AnyHandledProvider) Create(

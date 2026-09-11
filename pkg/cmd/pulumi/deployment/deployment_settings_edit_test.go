@@ -19,7 +19,11 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"io"
+	"slices"
 	"testing"
+
+	"github.com/spf13/pflag"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -122,7 +126,7 @@ func TestDeploymentSettingsEdit_DefaultOutput(t *testing.T) {
 
 	assert.Equal(t, testStackID, captured.stack)
 	require.NotNil(t, captured.patch)
-	assert.JSONEq(t, `{"sourceContext":{"git":{"branch":"feature"}}}`, string(captured.patch))
+	assert.JSONEq(t, `{"sourceContext":{"git":{"branch":"feature","commit":null,"tag":null}}}`, string(captured.patch))
 
 	assert.Equal(t, `Source: GitHub
   Repository:                    acme/infra
@@ -240,7 +244,50 @@ func TestDeploymentSettingsEdit_BranchFlag(t *testing.T) {
 		branch:       "feature",
 		flagsChanged: flagsSet(flagBranch),
 	}, &mockDeploymentSettingsEditClient{})
-	assert.JSONEq(t, `{"sourceContext":{"git":{"branch":"feature"}}}`, string(got))
+	assert.JSONEq(t, `{"sourceContext":{"git":{"branch":"feature","commit":null,"tag":null}}}`, string(got))
+}
+
+// The service rejects a merged source that carries both a branch and a commit, so setting one has to
+// null the other. Clearing one must not null the other, or nothing is left to deploy from.
+func TestDeploymentSettingsEdit_BranchAndCommitReplaceEachOther(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct {
+		name string
+		args deploymentSettingsEditArgs
+		want string
+	}{
+		{
+			"branch replaces commit",
+			deploymentSettingsEditArgs{branch: "main", flagsChanged: flagsSet(flagBranch)},
+			`{"sourceContext":{"git":{"branch":"main","commit":null,"tag":null}}}`,
+		},
+		{
+			"commit replaces branch",
+			deploymentSettingsEditArgs{commit: "abc123", flagsChanged: flagsSet(flagCommit)},
+			`{"sourceContext":{"git":{"commit":"abc123","branch":null,"tag":null}}}`,
+		},
+		{
+			"branch replaces a service-set tag",
+			deploymentSettingsEditArgs{branch: "main", flagsChanged: flagsSet(flagBranch)},
+			`{"sourceContext":{"git":{"branch":"main","commit":null,"tag":null}}}`,
+		},
+		{
+			"empty branch clears only the branch",
+			deploymentSettingsEditArgs{flagsChanged: flagsSet(flagBranch)},
+			`{"sourceContext":{"git":{"branch":null}}}`,
+		},
+		{
+			"empty commit clears only the commit",
+			deploymentSettingsEditArgs{flagsChanged: flagsSet(flagCommit)},
+			`{"sourceContext":{"git":{"commit":null}}}`,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			got := captureEditPatch(t, tc.args, &mockDeploymentSettingsEditClient{})
+			assert.JSONEq(t, tc.want, string(got))
+		})
+	}
 }
 
 func TestDeploymentSettingsEdit_GitHubSourceFlags(t *testing.T) {
@@ -262,7 +309,7 @@ func TestDeploymentSettingsEdit_GitHubSourceFlags(t *testing.T) {
 			"deployCommits": true,
 			"paths": ["stacks/prod/**"]
 		},
-		"sourceContext": {"git": {"branch": "main", "repoDir": "stacks/prod"}}
+		"sourceContext": {"git": {"branch": "main", "commit": null, "tag": null, "repoDir": "stacks/prod"}}
 	}`, string(got))
 }
 
@@ -293,6 +340,19 @@ func TestDeploymentSettingsEdit_ExecutorImageEmptyClears(t *testing.T) {
 		flagsChanged:  flagsSet(flagExecutorImage),
 	}, &mockDeploymentSettingsEditClient{})
 	assert.JSONEq(t, `{"executorContext":{"executorImage":null}}`, string(got))
+}
+
+// A bare-string executorImage decodes server-side to an image whose credentials are explicitly
+// null, wiping the stored registry credentials, so the patch carries an object with no credentials
+// key at all.
+func TestDeploymentSettingsEdit_ExecutorImageSendsObjectWithoutCredentials(t *testing.T) {
+	t.Parallel()
+	got := captureEditPatch(t, deploymentSettingsEditArgs{
+		executorImage: "acme/executor:1",
+		flagsChanged:  flagsSet(flagExecutorImage),
+	}, &mockDeploymentSettingsEditClient{})
+	assert.JSONEq(t, `{"executorContext":{"executorImage":{"reference":"acme/executor:1"}}}`, string(got))
+	assert.NotContains(t, string(got), "credentials")
 }
 
 func TestDeploymentSettingsEdit_EnvVarsAndRemove(t *testing.T) {
@@ -379,17 +439,17 @@ func TestDeploymentSettingsEdit_OIDCClearFlags(t *testing.T) {
 	}{
 		{
 			"aws",
-			deploymentSettingsEditArgs{oidcAWSClear: true, flagsChanged: flagsSet(flagOIDCAWSClear)},
+			deploymentSettingsEditArgs{oidcAWSClear: true, flagsChanged: flagsSet(flagRemoveOIDCAWS)},
 			`{"operationContext":{"oidc":{"aws":null}}}`,
 		},
 		{
 			"azure",
-			deploymentSettingsEditArgs{oidcAzureClear: true, flagsChanged: flagsSet(flagOIDCAzureClear)},
+			deploymentSettingsEditArgs{oidcAzureClear: true, flagsChanged: flagsSet(flagRemoveOIDCAzure)},
 			`{"operationContext":{"oidc":{"azure":null}}}`,
 		},
 		{
 			"gcp",
-			deploymentSettingsEditArgs{oidcGCPClear: true, flagsChanged: flagsSet(flagOIDCGCPClear)},
+			deploymentSettingsEditArgs{oidcGCPClear: true, flagsChanged: flagsSet(flagRemoveOIDCGCP)},
 			`{"operationContext":{"oidc":{"gcp":null}}}`,
 		},
 	} {
@@ -412,7 +472,7 @@ func TestDeploymentSettingsEdit_OIDCClearConflictsWithSetters(t *testing.T) {
 			deploymentSettingsEditArgs{
 				oidcAWSClear:   true,
 				oidcAWSRoleARN: "arn:aws:iam::123:role/x",
-				flagsChanged:   flagsSet(flagOIDCAWSClear, flagOIDCAWSRoleARN),
+				flagsChanged:   flagsSet(flagRemoveOIDCAWS, flagOIDCAWSRoleARN),
 			},
 		},
 		{
@@ -420,7 +480,7 @@ func TestDeploymentSettingsEdit_OIDCClearConflictsWithSetters(t *testing.T) {
 			deploymentSettingsEditArgs{
 				oidcAzureClear:    true,
 				oidcAzureClientID: "cid",
-				flagsChanged:      flagsSet(flagOIDCAzureClear, flagOIDCAzureClientID),
+				flagsChanged:      flagsSet(flagRemoveOIDCAzure, flagOIDCAzureClientID),
 			},
 		},
 		{
@@ -428,7 +488,7 @@ func TestDeploymentSettingsEdit_OIDCClearConflictsWithSetters(t *testing.T) {
 			deploymentSettingsEditArgs{
 				oidcGCPClear:         true,
 				oidcGCPProjectNumber: "123",
-				flagsChanged:         flagsSet(flagOIDCGCPClear, flagOIDCGCPProjectNumber),
+				flagsChanged:         flagsSet(flagRemoveOIDCGCP, flagOIDCGCPProjectNumber),
 			},
 		},
 	} {
@@ -509,6 +569,224 @@ func TestDeploymentSettingsEdit_AdvancedToggles(t *testing.T) {
 			"options": {"skipInstallDependencies": true, "shell": "bash"}
 		}
 	}`, string(got))
+}
+
+// runEditArgs drives runDeploymentSettingsEdit for the cases that assert on the error rather than
+// on the emitted patch.
+func runEditArgs(t *testing.T, args deploymentSettingsEditArgs, c *mockDeploymentSettingsEditClient) error {
+	t.Helper()
+	if c.getResp == nil {
+		c.getResp = &apitype.DeploymentSettings{}
+	}
+	if c.captured == nil {
+		c.captured = &capturedEditPatch{}
+	}
+	args.outputFormat = defaultDeploymentSettingsGetOutputFormat()
+	var buf bytes.Buffer
+	return runDeploymentSettingsEdit(t.Context(), &buf, stubSettingsEditFactory(c), args)
+}
+
+// runEditCmd exercises the cobra command itself, so flag registration, flag kinds and the
+// mutual-exclusion rules are part of what is under test.
+func runEditCmd(
+	t *testing.T, c *mockDeploymentSettingsEditClient, argv ...string,
+) (*capturedEditPatch, error) {
+	t.Helper()
+	captured := &capturedEditPatch{}
+	c.captured = captured
+	if c.getResp == nil {
+		c.getResp = &apitype.DeploymentSettings{}
+	}
+	cmd := newDeploymentSettingsEditCmdWith(stubSettingsEditFactory(c))
+	cmd.SetArgs(argv)
+	cmd.SetOut(io.Discard)
+	cmd.SetErr(io.Discard)
+	cmd.SilenceUsage = true
+	return captured, cmd.ExecuteContext(t.Context())
+}
+
+// Both list and map clears send null: an empty map is a no-op, because the server copies through
+// every stored key the patch does not mention.
+func TestDeploymentSettingsEdit_ClearListAndMapFlags(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct {
+		name string
+		args deploymentSettingsEditArgs
+		want string
+	}{
+		{
+			"env",
+			deploymentSettingsEditArgs{removeAllEnv: true, flagsChanged: flagsSet(flagRemoveAllEnv)},
+			`{"operationContext":{"environmentVariables":null}}`,
+		},
+		{
+			"pre-run commands",
+			deploymentSettingsEditArgs{
+				preRunCommands: []string{""},
+				flagsChanged:   flagsSet(flagPreRunCommand),
+			},
+			`{"operationContext":{"preRunCommands":null}}`,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			got := captureEditPatch(t, tc.args, &mockDeploymentSettingsEditClient{})
+			assert.JSONEq(t, tc.want, string(got))
+		})
+	}
+}
+
+func TestDeploymentSettingsEdit_ClearFlagsRejectFalse(t *testing.T) {
+	t.Parallel()
+	for _, flag := range presenceOnlyEditFlags {
+		t.Run(flag, func(t *testing.T) {
+			t.Parallel()
+			err := runEditArgs(t, deploymentSettingsEditArgs{flagsChanged: flagsSet(flag)},
+				&mockDeploymentSettingsEditClient{})
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), flag)
+		})
+	}
+}
+
+// The clear has to survive the real flag parser: --pre-run-command "" must reach the patch builder
+// as a one-element list rather than as an unset flag.
+func TestDeploymentSettingsEdit_PreRunCommandEmptyStringClears(t *testing.T) {
+	t.Parallel()
+	captured, err := runEditCmd(t, &mockDeploymentSettingsEditClient{}, "--pre-run-command", "")
+	require.NoError(t, err)
+	assert.JSONEq(t, `{"operationContext":{"preRunCommands":null}}`, string(captured.patch))
+}
+
+func TestDeploymentSettingsEdit_PreRunCommandEmptyStringRejectsCompanions(t *testing.T) {
+	t.Parallel()
+	_, err := runEditCmd(t, &mockDeploymentSettingsEditClient{},
+		"--pre-run-command", "echo hi", "--pre-run-command", "")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "cannot be combined with other commands")
+}
+
+// The superseded spellings shipped in v3.242.0, so they have to keep producing the same patch and
+// keep telling the user what replaced them.
+func TestDeploymentSettingsEdit_DeprecatedOIDCFlags(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct {
+		deprecated string
+		want       string
+	}{
+		{"oidc-aws-clear", `{"operationContext":{"oidc":{"aws":null}}}`},
+		{"oidc-azure-clear", `{"operationContext":{"oidc":{"azure":null}}}`},
+		{"oidc-gcp-clear", `{"operationContext":{"oidc":{"gcp":null}}}`},
+	} {
+		t.Run(tc.deprecated, func(t *testing.T) {
+			t.Parallel()
+			captured, err := runEditCmd(t, &mockDeploymentSettingsEditClient{}, "--"+tc.deprecated)
+			require.NoError(t, err)
+			assert.JSONEq(t, tc.want, string(captured.patch))
+		})
+	}
+	for current, deprecated := range deprecatedEditFlags {
+		t.Run(deprecated+" is marked deprecated", func(t *testing.T) {
+			t.Parallel()
+			cmd := newDeploymentSettingsEditCmdWith(
+				stubSettingsEditFactory(&mockDeploymentSettingsEditClient{}))
+			assert.Contains(t, cmd.Flags().Lookup(deprecated).Deprecated, current)
+		})
+	}
+}
+
+func TestDeploymentSettingsEdit_DurationFlagsClearWithNull(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct {
+		name string
+		args deploymentSettingsEditArgs
+		want string
+	}{
+		{
+			"aws duration",
+			deploymentSettingsEditArgs{flagsChanged: flagsSet(flagOIDCAWSDuration)},
+			`{"operationContext":{"oidc":{"aws":{"duration":null}}}}`,
+		},
+		{
+			"gcp token lifetime",
+			deploymentSettingsEditArgs{flagsChanged: flagsSet(flagOIDCGCPTokenLifetime)},
+			`{"operationContext":{"oidc":{"gcp":{"tokenLifetime":null}}}}`,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			got := captureEditPatch(t, tc.args, &mockDeploymentSettingsEditClient{})
+			assert.JSONEq(t, tc.want, string(got))
+		})
+	}
+}
+
+func TestDeploymentSettingsEdit_MutuallyExclusiveFlags(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct {
+		name string
+		argv []string
+		want string
+	}{
+		{"branch and commit", []string{"--branch", "main", "--commit", "abc123"}, "[branch commit]"},
+		{"env and remove-all-env", []string{"--env", "A=1", "--remove-all-env"}, "[env remove-all-env]"},
+		{"secret env and remove-all-env", []string{"--secret-env", "A=1", "--remove-all-env"}, "[secret-env remove-all-env]"},
+		{"remove env and remove-all-env", []string{"--remove-env", "A", "--remove-all-env"}, "[remove-env remove-all-env]"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			_, err := runEditCmd(t, &mockDeploymentSettingsEditClient{}, tc.argv...)
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), tc.want)
+		})
+	}
+}
+
+// Driven through cobra so an explicit --flag=false really is parsed, which the args-level test
+// cannot express. Passing the flag as true must be accepted: presenceOnlyFlagValue reads each clear flag
+// out of the args struct by name, and a missing case there returns false, which would otherwise
+// turn a valid clear into this same error.
+func TestDeploymentSettingsEdit_ClearFlagsArePresenceOnly(t *testing.T) {
+	t.Parallel()
+	for _, flag := range presenceOnlyEditFlags {
+		t.Run(flag+" rejects false", func(t *testing.T) {
+			t.Parallel()
+			_, err := runEditCmd(t, &mockDeploymentSettingsEditClient{}, "--"+flag+"=false")
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), "does not accept a false value")
+		})
+		t.Run(flag+" accepts true", func(t *testing.T) {
+			t.Parallel()
+			// A stored provider so that clear flags writing into vcs have one to resolve against.
+			c := &mockDeploymentSettingsEditClient{getResp: &apitype.DeploymentSettings{
+				VCS: &apitype.DeploymentSettingsVCS{Provider: apitype.VCSProviderGitHub},
+			}}
+			_, err := runEditCmd(t, c, "--"+flag)
+			require.NoError(t, err)
+		})
+	}
+}
+
+// Every flag the command registers has to appear in editFlagNames, or anyEditFlagSet reports
+// "nothing to do" and the flag silently does nothing.
+func TestDeploymentSettingsEdit_EditFlagNamesCoversEveryFlag(t *testing.T) {
+	t.Parallel()
+
+	// --stack and --output are wiring, not settings. A deprecated spelling is resolved to its
+	// replacement by flagsChanged, so only the replacement belongs in the table.
+	excluded := make([]string, 0, 2+len(deprecatedEditFlags))
+	excluded = append(excluded, "stack", "output")
+	for _, deprecated := range deprecatedEditFlags {
+		excluded = append(excluded, deprecated)
+	}
+
+	cmd := newDeploymentSettingsEditCmdWith(stubSettingsEditFactory(&mockDeploymentSettingsEditClient{}))
+	cmd.Flags().VisitAll(func(f *pflag.Flag) {
+		if slices.Contains(excluded, f.Name) {
+			return
+		}
+		assert.Contains(t, editFlagNames, f.Name)
+	})
 }
 
 func TestDeploymentSettingsEdit_SecretEnvWireForm(t *testing.T) {

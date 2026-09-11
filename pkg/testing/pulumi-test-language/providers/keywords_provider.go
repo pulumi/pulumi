@@ -143,6 +143,7 @@ func (p *KeywordsProvider) isValidResourceType(t tokens.Type) bool {
 func (p *KeywordsProvider) Check(
 	_ context.Context, req plugin.CheckRequest,
 ) (plugin.CheckResponse, error) {
+	news := resource.ToResourcePropertyMap(req.NewInputs)
 	if !p.isValidResourceType(req.URN.Type()) {
 		return plugin.CheckResponse{
 			Failures: makeCheckFailure("", fmt.Sprintf("invalid URN type: %s", req.URN.Type())),
@@ -151,7 +152,7 @@ func (p *KeywordsProvider) Check(
 
 	for _, prop := range p.properties() {
 		propKey := resource.PropertyKey(prop)
-		value, ok := req.News[propKey]
+		value, ok := news[propKey]
 		if !ok {
 			return plugin.CheckResponse{
 				Failures: makeCheckFailure(propKey, fmt.Sprintf("missing %s", propKey)),
@@ -163,13 +164,13 @@ func (p *KeywordsProvider) Check(
 			}, nil
 		}
 	}
-	if len(req.News) != len(p.properties()) {
+	if len(news) != len(p.properties()) {
 		return plugin.CheckResponse{
-			Failures: makeCheckFailure("", fmt.Sprintf("too many properties: %v", req.News)),
+			Failures: makeCheckFailure("", fmt.Sprintf("too many properties: %v", news)),
 		}, nil
 	}
 
-	return plugin.CheckResponse{Properties: req.News}, nil
+	return plugin.CheckResponse{Properties: resource.FromResourcePropertyMap(news)}, nil
 }
 
 func (p *KeywordsProvider) Create(

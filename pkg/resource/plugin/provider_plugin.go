@@ -1168,10 +1168,10 @@ func (p *provider) Check(ctx context.Context, req CheckRequest) (CheckResponse, 
 		"req.Name (%s) != req.URN.Name() (%s)", req.Name, req.URN.Name())
 	contract.Assertf(req.Type == "" || req.Type == req.URN.Type(),
 		"req.Type (%s) != req.URN.Type() (%s)", req.Type, req.URN.Type())
-	contract.Assertf(req.News != nil, "Check requires new properties")
 
 	label := fmt.Sprintf("%s.Check(%s)", p.label(), req.URN)
-	logging.V(7).Infof("%s executing (#olds=%d,#news=%d)", label, len(req.Olds), len(req.News))
+	logging.V(7).Infof("%s executing (#oldInputs=%d,#newInputs=%d)",
+		label, req.OldInputs.Len(), req.NewInputs.Len())
 
 	// Ensure that the plugin is configured.
 	client := p.clientRaw
@@ -1183,11 +1183,11 @@ func (p *provider) Check(ctx context.Context, req CheckRequest) (CheckResponse, 
 	// If the configuration for this provider was not fully known--e.g. if we are doing a preview and some input
 	// property was sourced from another resource's output properties--don't call into the underlying provider.
 	if !pcfg.known {
-		return CheckResponse{Properties: req.News}, nil
+		return CheckResponse{Properties: req.NewInputs}, nil
 	}
 
-	molds, err := MarshalProperties(req.Olds, MarshalOptions{
-		Label:          label + ".olds",
+	moldInputs, err := MarshalProperties(resource.ToResourcePropertyMap(req.OldInputs), MarshalOptions{
+		Label:          label + ".oldInputs",
 		KeepUnknowns:   req.AllowUnknowns,
 		KeepSecrets:    protocol.acceptSecrets,
 		KeepResources:  protocol.acceptResources,
@@ -1202,8 +1202,8 @@ func (p *provider) Check(ctx context.Context, req CheckRequest) (CheckResponse, 
 	if err != nil {
 		return CheckResponse{}, err
 	}
-	mnews, err := MarshalProperties(req.News, MarshalOptions{
-		Label:          label + ".news",
+	mNewInputs, err := MarshalProperties(resource.ToResourcePropertyMap(req.NewInputs), MarshalOptions{
+		Label:          label + ".newInputs",
 		KeepUnknowns:   req.AllowUnknowns,
 		KeepSecrets:    protocol.acceptSecrets,
 		KeepResources:  protocol.acceptResources,
@@ -1230,26 +1230,24 @@ func (p *provider) Check(ctx context.Context, req CheckRequest) (CheckResponse, 
 	}
 
 	var moldOutputs *structpb.Struct
-	if req.OldOutputs != nil {
-		moldOutputs, err = MarshalProperties(req.OldOutputs, MarshalOptions{
-			Label:          label + ".oldOutputs",
-			KeepUnknowns:   req.AllowUnknowns,
-			KeepSecrets:    protocol.acceptSecrets,
-			KeepResources:  protocol.acceptResources,
-			KeepByteString: protocol.acceptsByteString,
-			PropagateNil:   true,
-		})
-		if err != nil {
-			return CheckResponse{}, err
-		}
+	moldOutputs, err = MarshalProperties(resource.ToResourcePropertyMap(req.OldOutputs), MarshalOptions{
+		Label:          label + ".oldOutputs",
+		KeepUnknowns:   req.AllowUnknowns,
+		KeepSecrets:    protocol.acceptSecrets,
+		KeepResources:  protocol.acceptResources,
+		KeepByteString: protocol.acceptsByteString,
+		PropagateNil:   true,
+	})
+	if err != nil {
+		return CheckResponse{}, err
 	}
 
 	resp, err := client.Check(p.requestContext(), &pulumirpc.CheckRequest{
 		Urn:        string(req.URN),
 		Name:       req.URN.Name(),
 		Type:       req.URN.Type().String(),
-		Olds:       molds,
-		News:       mnews,
+		Olds:       moldInputs,
+		News:       mNewInputs,
 		OldOutputs: moldOutputs,
 		RandomSeed: req.RandomSeed,
 		Autonaming: autonaming,
@@ -1280,7 +1278,7 @@ func (p *provider) Check(ctx context.Context, req CheckRequest) (CheckResponse, 
 	// allows us to retain metadata about secrets in many cases, even for providers that do not understand secrets
 	// natively.
 	if !protocol.acceptSecrets {
-		annotateSecrets(inputs, req.News)
+		annotateSecrets(inputs, resource.ToResourcePropertyMap(req.NewInputs))
 	}
 
 	// And now any properties that failed verification.
@@ -1290,7 +1288,7 @@ func (p *provider) Check(ctx context.Context, req CheckRequest) (CheckResponse, 
 	}
 
 	logging.V(7).Infof("%s success: inputs=#%d failures=#%d", label, len(inputs), len(failures))
-	return CheckResponse{Properties: inputs, Failures: failures}, nil
+	return CheckResponse{Properties: resource.FromResourcePropertyMap(inputs), Failures: failures}, nil
 }
 
 // Diff checks what impacts a hypothetical update will have on the resource's properties.
@@ -2133,6 +2131,7 @@ func (p *provider) Construct(ctx context.Context, req ConstructRequest) (Constru
 		resourceHook.AfterUpdate = req.Options.ResourceHooks[resource.AfterUpdate]
 		resourceHook.BeforeDelete = req.Options.ResourceHooks[resource.BeforeDelete]
 		resourceHook.AfterDelete = req.Options.ResourceHooks[resource.AfterDelete]
+		resourceHook.OnError = req.Options.ResourceHooks[resource.OnError]
 	}
 
 	aliases := make([]*pulumirpc.Alias, len(req.Options.Aliases))

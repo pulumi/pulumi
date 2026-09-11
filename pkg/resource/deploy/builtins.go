@@ -127,15 +127,17 @@ func (p *builtinProvider) Check(_ context.Context, req plugin.CheckRequest) (plu
 			"Update your SDK or if already up to date raise an issue at https://github.com/pulumi/pulumi/issues."
 		p.diag.Warningf(diag.Message(req.URN, msg))
 
-		for k := range req.News {
+		for k := range req.NewInputs.All {
 			if k != "name" {
 				return plugin.CheckResponse{
-					Failures: []plugin.CheckFailure{{Property: k, Reason: fmt.Sprintf("unknown property \"%v\"", k)}},
+					Failures: []plugin.CheckFailure{
+						{Property: resource.PropertyKey(k), Reason: fmt.Sprintf("unknown property \"%v\"", k)},
+					},
 				}, nil
 			}
 		}
 
-		name, ok := req.News["name"]
+		name, ok := req.NewInputs.GetOk("name")
 		if !ok {
 			return plugin.CheckResponse{
 				Failures: []plugin.CheckFailure{{Property: "name", Reason: `missing required property "name"`}},
@@ -146,24 +148,26 @@ func (p *builtinProvider) Check(_ context.Context, req plugin.CheckRequest) (plu
 				Failures: []plugin.CheckFailure{{Property: "name", Reason: `property "name" must be a string`}},
 			}, nil
 		}
-		return plugin.CheckResponse{Properties: req.News}, nil
+		return plugin.CheckResponse{Properties: req.NewInputs}, nil
 	case stashType:
-		for k := range req.News {
+		for k := range req.NewInputs.All {
 			if k != "input" {
 				return plugin.CheckResponse{
-					Failures: []plugin.CheckFailure{{Property: k, Reason: fmt.Sprintf("unknown property \"%v\"", k)}},
+					Failures: []plugin.CheckFailure{
+						{Property: resource.PropertyKey(k), Reason: fmt.Sprintf("unknown property \"%v\"", k)},
+					},
 				}, nil
 			}
 		}
 
-		_, ok := req.News["input"]
+		_, ok := req.NewInputs.GetOk("input")
 		if !ok {
 			return plugin.CheckResponse{
 				Failures: []plugin.CheckFailure{{Property: "input", Reason: `missing required property "input"`}},
 			}, nil
 		}
 
-		return plugin.CheckResponse{Properties: req.News}, nil
+		return plugin.CheckResponse{Properties: req.NewInputs}, nil
 	default:
 		return plugin.CheckResponse{}, fmt.Errorf("unrecognized resource type '%v'", typ)
 	}

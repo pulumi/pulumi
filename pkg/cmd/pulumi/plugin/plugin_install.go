@@ -305,7 +305,7 @@ func (cmd *pluginInstallCmd) Run(ctx context.Context, args []string) error {
 		// by default we accept plugins with >= constraints, unless --exact was passed which requires ==.
 		if !cmd.reinstall {
 			if cmd.exact {
-				if pluginstorage.Instance.HasPlugin(ctx, install) {
+				if pluginstorage.Instance.HasPlugin(ctx, install).Available() {
 					slog.InfoContext(ctx, "skipping install (existing == match)", "label", label)
 					continue
 				}

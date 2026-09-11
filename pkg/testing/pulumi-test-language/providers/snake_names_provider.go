@@ -213,38 +213,39 @@ func (p *SnakeNamesProvider) CheckConfig(
 func (p *SnakeNamesProvider) Check(
 	_ context.Context, req plugin.CheckRequest,
 ) (plugin.CheckResponse, error) {
+	news := resource.ToResourcePropertyMap(req.NewInputs)
 	switch typ := req.URN.Type(); typ {
 	case "snake_names:cool_module:some_resource":
-		if _, ok := req.News["the_input"]; !ok {
+		if _, ok := news["the_input"]; !ok {
 			return plugin.CheckResponse{
 				Failures: makeCheckFailure("the_input", "missing the_input"),
 			}, nil
 		}
-		if _, ok := req.News["nested"]; !ok {
+		if _, ok := news["nested"]; !ok {
 			return plugin.CheckResponse{
 				Failures: makeCheckFailure("nested", "missing nested"),
 			}, nil
 		}
-		if len(req.News) != 2 {
+		if len(news) != 2 {
 			return plugin.CheckResponse{
-				Failures: makeCheckFailure("", fmt.Sprintf("unexpected properties: %v", req.News)),
+				Failures: makeCheckFailure("", fmt.Sprintf("unexpected properties: %v", news)),
 			}, nil
 		}
-		return plugin.CheckResponse{Properties: req.News}, nil
+		return plugin.CheckResponse{Properties: resource.FromResourcePropertyMap(news)}, nil
 	case "snake_names:cool_module:another_resource":
-		if _, ok := req.News["the_input"]; !ok {
+		if _, ok := news["the_input"]; !ok {
 			return plugin.CheckResponse{
 				Failures: makeCheckFailure("the_input", "missing the_input"),
 			}, nil
 		}
-		if len(req.News) != 1 {
+		if len(news) != 1 {
 			return plugin.CheckResponse{
-				Failures: makeCheckFailure("", fmt.Sprintf("unexpected properties: %v", req.News)),
+				Failures: makeCheckFailure("", fmt.Sprintf("unexpected properties: %v", news)),
 			}, nil
 		}
-		return plugin.CheckResponse{Properties: req.News}, nil
+		return plugin.CheckResponse{Properties: resource.FromResourcePropertyMap(news)}, nil
 	case tokens.RootStackType:
-		return plugin.CheckResponse{Properties: req.News}, nil
+		return plugin.CheckResponse{Properties: resource.FromResourcePropertyMap(news)}, nil
 	default:
 		return plugin.CheckResponse{
 			Failures: makeCheckFailure("", fmt.Sprintf("invalid URN type: %s", typ)),

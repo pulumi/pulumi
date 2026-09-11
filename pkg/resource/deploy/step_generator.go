@@ -1359,7 +1359,7 @@ func (sg *stepGenerator) continueStepsFromImport(
 		if !isTargeted {
 			// If not targeted, stub out the provider check and use the old inputs directly.
 			checkInputs = func(context.Context, plugin.CheckRequest) (plugin.CheckResponse, error) {
-				return plugin.CheckResponse{Properties: oldInputs}, nil
+				return plugin.CheckResponse{Properties: resource.FromResourcePropertyMap(oldInputs)}, nil
 			}
 		}
 
@@ -1370,7 +1370,7 @@ func (sg *stepGenerator) continueStepsFromImport(
 		if recreating || wasExternal || sg.isTargetedReplace(urn, old) || old == nil {
 			resp, err = checkInputs(context.TODO(), plugin.CheckRequest{
 				URN:           urn,
-				News:          resource.ToResourcePropertyMap(goal.Properties),
+				NewInputs:     goal.Properties,
 				AllowUnknowns: allowUnknowns,
 				RandomSeed:    randomSeed,
 				Autonaming:    autonaming,
@@ -1378,15 +1378,15 @@ func (sg *stepGenerator) continueStepsFromImport(
 		} else {
 			resp, err = checkInputs(context.TODO(), plugin.CheckRequest{
 				URN:           urn,
-				Olds:          oldInputs,
-				News:          inputs,
-				OldOutputs:    oldOutputs,
+				OldInputs:     resource.FromResourcePropertyMap(oldInputs),
+				NewInputs:     resource.FromResourcePropertyMap(inputs),
+				OldOutputs:    resource.FromResourcePropertyMap(oldOutputs),
 				AllowUnknowns: allowUnknowns,
 				RandomSeed:    randomSeed,
 				Autonaming:    autonaming,
 			})
 		}
-		inputs = resp.Properties
+		inputs = resource.ToResourcePropertyMap(resp.Properties)
 
 		if err != nil {
 			return nil, false, err
@@ -2049,13 +2049,13 @@ func (sg *stepGenerator) continueStepsFromDiff(diffEvent ContinueResourceDiffEve
 			if prov != nil && !sg.isTargetedReplace(urn, old) {
 				resp, err := prov.Check(context.TODO(), plugin.CheckRequest{
 					URN:           urn,
-					News:          resource.ToResourcePropertyMap(goal.Properties),
+					NewInputs:     goal.Properties,
 					AllowUnknowns: allowUnknowns,
 					RandomSeed:    randomSeed,
 					Autonaming:    autonaming,
 				})
 				failures := resp.Failures
-				inputs := resp.Properties
+				inputs := resource.ToResourcePropertyMap(resp.Properties)
 				if err != nil {
 					return nil, err
 				} else if issueCheckErrors(sg.deployment, new, urn, failures) {

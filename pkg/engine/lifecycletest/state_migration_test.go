@@ -293,25 +293,28 @@ func snapIndices(snap *deploy.Snapshot) map[resource.URN]int {
 
 // renameMigration returns a migration callback that renames the child resource and maps its old URN to the new one.
 func renameMigration(t *testing.T, callbacks *deploytest.CallbackServer, oldName, newName string) *pulumirpc.Callback {
-	callback, err := callbacks.Allocate(
-		stateMigrationFunction(func(
-			urn resource.URN, resources []apitype.ResourceV3,
-		) ([]apitype.ResourceV3, map[resource.URN]resource.URN, error) {
-			successors := make(map[resource.URN]resource.URN)
-			for _, res := range resources {
-				if strings.HasSuffix(string(res.URN), "::"+oldName) {
-					renamed := renameByName([]apitype.ResourceV3{res}, oldName, newName)
-					successors[res.URN] = renamed[0].URN
-				}
-			}
-			if len(successors) == 0 {
-				// Already migrated: return the state unchanged.
-				return nil, nil, nil
-			}
-			return renameByName(resources, oldName, newName), successors, nil
-		}))
+	callback, err := callbacks.Allocate(renameMigrationFunction(oldName, newName))
 	require.NoError(t, err)
 	return callback
+}
+
+func renameMigrationFunction(oldName, newName string) func([]byte) (proto.Message, error) {
+	return stateMigrationFunction(func(
+		urn resource.URN, resources []apitype.ResourceV3,
+	) ([]apitype.ResourceV3, map[resource.URN]resource.URN, error) {
+		successors := make(map[resource.URN]resource.URN)
+		for _, res := range resources {
+			if strings.HasSuffix(string(res.URN), "::"+oldName) {
+				renamed := renameByName([]apitype.ResourceV3{res}, oldName, newName)
+				successors[res.URN] = renamed[0].URN
+			}
+		}
+		if len(successors) == 0 {
+			// Already migrated: return the state unchanged.
+			return nil, nil, nil
+		}
+		return renameByName(resources, oldName, newName), successors, nil
+	})
 }
 
 // setRenameMigration attaches the common rename migration used by lifecycle tests.
@@ -1396,6 +1399,176 @@ func TestStateMigrationConstruct(t *testing.T) {
 	urns := snapURNs(snap)
 	assert.Contains(t, urns, resource.URN("urn:pulumi:test::test::pkgA:m:typD$pkgA:m:typA::resB"))
 	assert.NotContains(t, urns, resource.URN("urn:pulumi:test::test::pkgA:m:typC$pkgA:m:typA::resA"))
+}
+
+// TestStateMigrationConstructCallbackOrder tests that we run migrations attached to the local (in the program) and
+// remote (in the provider) parts of a component, with the remote callbacks running before the local ones.
+//
+// Scenarios:
+//
+//	caller no-op:     provider 1 -> provider 2 -> caller 1 (no-op) -> caller 2 (no-op) -> commit
+//	caller migration: provider 1 -> provider 2 -> caller 1         -> caller 2 (no-op) -> commit
+//	provider failure: provider 1 -> provider 2 (error)                                 -> no commit
+//	caller failure:   provider 1 -> provider 2 -> caller 1         -> caller 2 (error) -> no commit
+func TestStateMigrationConstructCallbackOrder(t *testing.T) {
+	t.Parallel()
+
+	type migrationStep struct {
+		name     string
+		from, to string // Empty for a no-op or failure.
+		fail     bool
+	}
+	for _, tt := range []struct {
+		name               string
+		providerMigrations []migrationStep
+		callerMigrations   []migrationStep
+		finalName          string
+		wantError          string
+		wantCalls          []string
+	}{
+		{
+			name: "caller no-op",
+			providerMigrations: []migrationStep{
+				{name: "provider 1", from: "old", to: "intermediate"},
+				{name: "provider 2", from: "intermediate", to: "internal"},
+			},
+			callerMigrations: []migrationStep{{name: "caller 1"}, {name: "caller 2"}},
+			finalName:        "internal",
+			wantCalls:        []string{"provider 1", "provider 2", "caller 1", "caller 2"},
+		},
+		{
+			name: "caller migration",
+			providerMigrations: []migrationStep{
+				{name: "provider 1", from: "old", to: "intermediate"},
+				{name: "provider 2", from: "intermediate", to: "internal"},
+			},
+			callerMigrations: []migrationStep{
+				{name: "caller 1", from: "internal", to: "custom"},
+				{name: "caller 2"},
+			},
+			finalName: "custom",
+			wantCalls: []string{"provider 1", "provider 2", "caller 1", "caller 2"},
+		},
+		{
+			name: "provider failure",
+			providerMigrations: []migrationStep{
+				{name: "provider 1", from: "old", to: "intermediate"},
+				{name: "provider 2", fail: true},
+			},
+			callerMigrations: []migrationStep{
+				{name: "caller 1", from: "internal", to: "custom"},
+				{name: "caller 2"},
+			},
+			finalName: "custom",
+			wantError: "migration failed: provider 2",
+			wantCalls: []string{"provider 1", "provider 2"},
+		},
+		{
+			name: "caller failure",
+			providerMigrations: []migrationStep{
+				{name: "provider 1", from: "old", to: "intermediate"},
+				{name: "provider 2", from: "intermediate", to: "internal"},
+			},
+			callerMigrations: []migrationStep{
+				{name: "caller 1", from: "internal", to: "custom"},
+				{name: "caller 2", fail: true},
+			},
+			finalName: "custom",
+			wantError: "migration failed: caller 2",
+			wantCalls: []string{"provider 1", "provider 2", "caller 1", "caller 2"},
+		},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			callbacks, err := deploytest.NewCallbacksServer()
+			require.NoError(t, err)
+			t.Cleanup(func() { require.NoError(t, callbacks.Close()) })
+
+			var calls []string
+			registerMigrations := func(steps []migrationStep) []*pulumirpc.Callback {
+				result := make([]*pulumirpc.Callback, 0, len(steps))
+				for _, step := range steps {
+					callback, err := callbacks.Allocate(func(request []byte) (proto.Message, error) {
+						calls = append(calls, step.name)
+						if step.fail {
+							return nil, errors.New("migration failed: " + step.name)
+						}
+						if step.from == "" {
+							return &pulumirpc.StateMigrationResponse{}, nil
+						}
+						return renameMigrationFunction(step.from, step.to)(request)
+					})
+					require.NoError(t, err)
+					result = append(result, callback)
+				}
+				return result
+			}
+			providerMigrations := registerMigrations(tt.providerMigrations)
+			callerMigrations := registerMigrations(tt.callerMigrations)
+			upgrade := false
+			loaders := []*deploytest.ProviderLoader{
+				deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+					return &deploytest.Provider{
+						ConstructF: func(
+							_ context.Context, req plugin.ConstructRequest, monitor *deploytest.ResourceMonitor,
+						) (plugin.ConstructResponse, error) {
+							resp, err := monitor.RegisterResource(req.Type, req.Name, false, deploytest.ResourceOptions{
+								StateMigrations: providerMigrations,
+							})
+							if err != nil {
+								return plugin.ConstructResponse{}, err
+							}
+							childName := "old"
+							if upgrade {
+								childName = tt.finalName
+							}
+							_, err = monitor.RegisterResource("pkgA:m:typA", childName, true, deploytest.ResourceOptions{
+								Parent: resp.URN,
+							})
+							return plugin.ConstructResponse{URN: resp.URN}, err
+						},
+					}, nil
+				}),
+			}
+			program := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+				_, err := monitor.RegisterResource("pkgA:m:Component", "comp", false, deploytest.ResourceOptions{
+					Remote: true, StateMigrations: callerMigrations,
+				})
+				return err
+			})
+			host := deploytest.NewPluginHostF(nil, nil, program, nil, nil, loaders...)
+			plan := &lt.TestPlan{Options: stateMigrationTestOptions(t, host)}
+			snap, err := runUpdate(t, plan, nil, nil)
+			require.NoError(t, err)
+			require.Empty(t, calls)
+			before := snapURNs(snap)
+			var childID resource.ID
+			for _, res := range snap.Resources {
+				if res.URN.Name() == "old" {
+					childID = res.ID
+				}
+			}
+			require.NotEmpty(t, childID)
+
+			upgrade = true
+			if tt.wantError != "" {
+				snap, err = runUpdate(t, plan, snap, nil)
+				require.ErrorContains(t, err, tt.wantError)
+				assert.Equal(t, before, snapURNs(snap))
+			} else {
+				snap, err = runUpdate(t, plan, snap, validateOps(t, map[display.StepOp]int{deploy.OpSame: 3}))
+				require.NoError(t, err)
+				assert.Contains(t, snapURNs(snap),
+					resource.URN("urn:pulumi:test::test::pkgA:m:Component$pkgA:m:typA::"+tt.finalName))
+				for _, res := range snap.Resources {
+					if res.URN.Name() == tt.finalName {
+						assert.Equal(t, childID, res.ID)
+					}
+				}
+			}
+			assert.Equal(t, tt.wantCalls, calls)
+		})
+	}
 }
 
 // TestStateMigrationAliasedRootRename exercises this component type change:

@@ -1,4 +1,0 @@
-component: engine
-kind: fix
-body: Fix state migration ordering for components interleaved with other resources
-time: 2026-09-02T17:27:34.576637+02:00

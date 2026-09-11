@@ -2178,8 +2178,8 @@ func (s *ImportStep) Apply() (_ resource.Status, _ StepCompleteFunc, err error) 
 			URN:           s.new.URN,
 			Name:          s.URN().Name(),
 			Type:          s.URN().Type(),
-			Olds:          s.old.Inputs,
-			News:          s.new.Inputs,
+			OldInputs:     resource.FromResourcePropertyMap(s.old.Inputs),
+			NewInputs:     resource.FromResourcePropertyMap(s.new.Inputs),
 			AllowUnknowns: s.deployment.opts.DryRun,
 			RandomSeed:    s.randomSeed,
 		})

@@ -32,6 +32,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageinstallation"
+	"github.com/pulumi/pulumi/pkg/v3/pluginstorage"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -93,7 +94,9 @@ func (w *recordingWorkspace) finish(args ...any) {
 	w.steps[len(w.steps)-1] += formatArgs(args)
 }
 
-func (w *recordingWorkspace) HasPlugin(ctx context.Context, spec workspace.PluginDescriptor) bool {
+func (w *recordingWorkspace) HasPlugin(
+	ctx context.Context, spec workspace.PluginDescriptor,
+) pluginstorage.InstallState {
 	w.start("HasPlugin", spec)
 	result := w.w.HasPlugin(ctx, spec)
 	w.finish(result)
@@ -251,12 +254,17 @@ func formatArgs(args []any) string {
 }
 
 func formatValue(v reflect.Value) string {
-	// Special case: context.Context - just show "ctx"
 	if !v.IsValid() {
 		return "nil"
 	}
+	// Special case: context.Context - just show "ctx"
 	if v.Type().Implements(reflect.TypeFor[context.Context]()) {
 		return "ctx"
+	}
+	if v.CanInterface() {
+		if state, ok := reflect.TypeAssert[fmt.GoStringer](v); ok {
+			return fmt.Sprintf("%#v", state)
+		}
 	}
 
 	// Handle pointers
