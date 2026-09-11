@@ -391,8 +391,8 @@ func TestCRUD(t *testing.T) {
 		diff, err := r.Diff(t.Context(), plugin.DiffRequest{
 			URN:        urn,
 			ID:         id,
-			OldOutputs: olds,
-			NewInputs:  news,
+			OldOutputs: resource.FromResourcePropertyMap(olds),
+			NewInputs:  resource.FromResourcePropertyMap(news),
 		})
 		require.NoError(t, err)
 		assert.Equal(t, plugin.DiffResult{Changes: plugin.DiffNone}, diff)
@@ -555,8 +555,8 @@ func TestCRUDPreview(t *testing.T) {
 		diff, err := r.Diff(t.Context(), plugin.DiffRequest{
 			URN:        urn,
 			ID:         id,
-			OldOutputs: olds,
-			NewInputs:  news,
+			OldOutputs: resource.FromResourcePropertyMap(olds),
+			NewInputs:  resource.FromResourcePropertyMap(news),
 		})
 		require.NoError(t, err)
 		assert.Equal(t, plugin.DiffResult{Changes: plugin.DiffNone}, diff)
@@ -597,8 +597,8 @@ func TestCRUDPreview(t *testing.T) {
 		diff, err := r.Diff(t.Context(), plugin.DiffRequest{
 			URN:        urn,
 			ID:         id,
-			OldOutputs: olds,
-			NewInputs:  news,
+			OldOutputs: resource.FromResourcePropertyMap(olds),
+			NewInputs:  resource.FromResourcePropertyMap(news),
 		})
 		require.NoError(t, err)
 		assert.True(t, diff.Replace())
@@ -1258,8 +1258,8 @@ func TestSameUpdateRace_UpdateFirst(t *testing.T) {
 	_, err = r.Diff(t.Context(), plugin.DiffRequest{
 		URN:        urn,
 		ID:         id,
-		OldOutputs: oldInputs,
-		NewInputs:  newInputs,
+		OldOutputs: resource.FromResourcePropertyMap(oldInputs),
+		NewInputs:  resource.FromResourcePropertyMap(newInputs),
 	})
 	require.NoError(t, err)
 
@@ -1358,8 +1358,8 @@ func TestSameUpdateRace_SameFirst(t *testing.T) {
 	_, err = r.Diff(t.Context(), plugin.DiffRequest{
 		URN:        urn,
 		ID:         id,
-		OldOutputs: oldInputs,
-		NewInputs:  newInputs,
+		OldOutputs: resource.FromResourcePropertyMap(oldInputs),
+		NewInputs:  resource.FromResourcePropertyMap(newInputs),
 	})
 	require.NoError(t, err)
 
@@ -1445,8 +1445,8 @@ func TestSameUpdateRace_Concurrent(t *testing.T) {
 			_, err = r.Diff(t.Context(), plugin.DiffRequest{
 				URN:        urn,
 				ID:         id,
-				OldOutputs: oldInputs,
-				NewInputs:  newInputs,
+				OldOutputs: resource.FromResourcePropertyMap(oldInputs),
+				NewInputs:  resource.FromResourcePropertyMap(newInputs),
 			})
 			require.NoError(t, err)
 

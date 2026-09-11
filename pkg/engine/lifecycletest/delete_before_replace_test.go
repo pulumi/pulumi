@@ -183,7 +183,7 @@ func TestDeleteBeforeReplace(t *testing.T) {
 					return plugin.DiffResult{}, nil
 				},
 				DiffF: func(_ context.Context, req plugin.DiffRequest) (plugin.DiffResult, error) {
-					if !req.OldOutputs["A"].DeepEquals(req.NewInputs["A"]) {
+					if !req.OldOutputs.Get("A").Equals(req.NewInputs.Get("A")) {
 						return plugin.DiffResult{ReplaceKeys: []resource.PropertyKey{"A"}}, nil
 					}
 					return plugin.DiffResult{}, nil
@@ -307,7 +307,7 @@ func TestExplicitDeleteBeforeReplace(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				DiffF: func(_ context.Context, req plugin.DiffRequest) (plugin.DiffResult, error) {
-					if !req.OldOutputs["A"].DeepEquals(req.NewInputs["A"]) {
+					if !req.OldOutputs.Get("A").Equals(req.NewInputs.Get("A")) {
 						return plugin.DiffResult{
 							ReplaceKeys:         []resource.PropertyKey{"A"},
 							DeleteBeforeReplace: dbrDiff,
@@ -517,13 +517,13 @@ func TestDependencyChangeDBR(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				DiffF: func(_ context.Context, req plugin.DiffRequest) (plugin.DiffResult, error) {
-					if !req.OldOutputs["A"].DeepEquals(req.NewInputs["A"]) {
+					if !req.OldOutputs.Get("A").Equals(req.NewInputs.Get("A")) {
 						return plugin.DiffResult{
 							ReplaceKeys:         []resource.PropertyKey{"A"},
 							DeleteBeforeReplace: true,
 						}, nil
 					}
-					if !req.OldOutputs["B"].DeepEquals(req.NewInputs["B"]) {
+					if !req.OldOutputs.Get("B").Equals(req.NewInputs.Get("B")) {
 						return plugin.DiffResult{
 							Changes: plugin.DiffSome,
 						}, nil
@@ -628,13 +628,13 @@ func TestDBRProtect(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				DiffF: func(_ context.Context, req plugin.DiffRequest) (plugin.DiffResult, error) {
-					if !req.OldOutputs["A"].DeepEquals(req.NewInputs["A"]) {
+					if !req.OldOutputs.Get("A").Equals(req.NewInputs.Get("A")) {
 						return plugin.DiffResult{
 							ReplaceKeys:         []resource.PropertyKey{"A"},
 							DeleteBeforeReplace: true,
 						}, nil
 					}
-					if !req.OldOutputs["B"].DeepEquals(req.NewInputs["B"]) {
+					if !req.OldOutputs.Get("B").Equals(req.NewInputs.Get("B")) {
 						return plugin.DiffResult{
 							Changes: plugin.DiffSome,
 						}, nil
@@ -861,7 +861,7 @@ func TestDBRParallel(t *testing.T) {
 								}
 							}()
 
-							if !req.OldInputs["A"].DeepEquals(req.NewInputs["A"]) {
+							if !req.OldInputs.Get("A").Equals(req.NewInputs.Get("A")) {
 								return plugin.DiffResult{
 									ReplaceKeys:         []resource.PropertyKey{"A"},
 									DeleteBeforeReplace: true,
@@ -968,7 +968,7 @@ func TestDBRProviderUpgrade(t *testing.T) {
 				return plugin.DiffResult{}, nil
 			},
 			DiffF: func(_ context.Context, req plugin.DiffRequest) (plugin.DiffResult, error) {
-				if !req.OldInputs["foo"].DeepEquals(req.NewInputs["foo"]) {
+				if !req.OldInputs.Get("foo").Equals(req.NewInputs.Get("foo")) {
 					return plugin.DiffResult{
 						Changes:     plugin.DiffSome,
 						ChangedKeys: []resource.PropertyKey{"foo"},
@@ -995,7 +995,7 @@ func TestDBRProviderUpgrade(t *testing.T) {
 		deploytest.NewProviderLoader("pkgB", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				DiffF: func(_ context.Context, req plugin.DiffRequest) (plugin.DiffResult, error) {
-					if !req.OldInputs["length"].DeepEquals(req.NewInputs["length"]) {
+					if !req.OldInputs.Get("length").Equals(req.NewInputs.Get("length")) {
 						return plugin.DiffResult{
 							Changes:     plugin.DiffSome,
 							ChangedKeys: []resource.PropertyKey{"length"},

@@ -237,8 +237,8 @@ func TestAliases(t *testing.T) {
 				// The `forcesReplacement` key forces replacement and all other keys can update in place
 				DiffF: func(_ context.Context, req plugin.DiffRequest) (plugin.DiffResult, error) {
 					replaceKeys := []resource.PropertyKey{}
-					old, hasOld := req.OldOutputs["forcesReplacement"]
-					new, hasNew := req.NewInputs["forcesReplacement"]
+					old, hasOld := req.OldOutputs.GetOk("forcesReplacement")
+					new, hasNew := req.NewInputs.GetOk("forcesReplacement")
 					if hasOld && !hasNew || hasNew && !hasOld || hasOld && hasNew && old.Diff(new) != nil {
 						replaceKeys = append(replaceKeys, "forcesReplacement")
 					}
@@ -776,8 +776,8 @@ func TestAliasURNs(t *testing.T) {
 				// The `forcesReplacement` key forces replacement and all other keys can update in place
 				DiffF: func(_ context.Context, req plugin.DiffRequest) (plugin.DiffResult, error) {
 					replaceKeys := []resource.PropertyKey{}
-					old, hasOld := req.OldOutputs["forcesReplacement"]
-					new, hasNew := req.NewInputs["forcesReplacement"]
+					old, hasOld := req.OldOutputs.GetOk("forcesReplacement")
+					new, hasNew := req.NewInputs.GetOk("forcesReplacement")
 					if hasOld && !hasNew || hasNew && !hasOld || hasOld && hasNew && old.Diff(new) != nil {
 						replaceKeys = append(replaceKeys, "forcesReplacement")
 					}

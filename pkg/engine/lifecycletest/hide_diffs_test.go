@@ -47,7 +47,7 @@ func testHideDiffs(t *testing.T, detailedDiff bool) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				DiffF: func(_ context.Context, req plugin.DiffRequest) (plugin.DiffResult, error) {
-					if req.OldInputs.DeepEquals(req.NewInputs) {
+					if req.OldInputs.Equals(req.NewInputs) {
 						return plugin.DiffResult{
 							Changes: plugin.DiffNone,
 						}, nil
@@ -55,11 +55,12 @@ func testHideDiffs(t *testing.T, detailedDiff bool) {
 
 					p := plugin.DiffResult{Changes: plugin.DiffSome}
 					if detailedDiff {
-						p.DetailedDiff = plugin.NewDetailedDiffFromObjectDiff(req.OldInputs.Diff(req.NewInputs), true)
+						p.DetailedDiff = plugin.NewDetailedDiffFromObjectDiff(
+							resource.ToResourceObjectDiff(req.OldInputs.Diff(req.NewInputs)), true)
 					}
 
 					check := func(key resource.PropertyKey) {
-						if !req.OldInputs[key].DeepEquals(req.NewInputs[key]) {
+						if !req.OldInputs.Get(string(key)).Equals(req.NewInputs.Get(string(key))) {
 							p.ChangedKeys = append(p.ChangedKeys, key)
 						}
 					}
