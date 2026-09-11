@@ -1,6 +1,9 @@
 [tools]
 github-cli = "2.93.0"
-"go:github.com/go-delve/delve/cmd/dlv" = "1.26.3"
+# Delve's minor version must match the Go minor in CI (see get-job-matrix.py),
+# or debugger tests fail with "Version of Delve is too old".
+# renovate: datasource=github-releases depName=go-delve/delve extractVersion=^v(?<version>.*)$
+"go:github.com/go-delve/delve/cmd/dlv" = "1.27.2"
 "go:golang.org/x/tools/gopls" = "0.23.0"
 go = "1.27"
 changie = "1.24.2"

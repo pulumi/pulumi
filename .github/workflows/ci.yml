@@ -118,9 +118,11 @@ jobs:
           printf '%s' "${BUILD_TARGETS}" | ./.github/scripts/set-output build-targets
 
           # Prebaked toolchain images by version-set name. A missing tag
-          # maps to "" and those jobs install on the runner instead.
+          # maps to "" and those jobs install on the runner instead. Keep
+          # the set list in sync with the matrix in ci-toolchain-image.yml.
+          TOOLCHAIN_SETS=(current)
           TOOLCHAIN_IMAGES='{}'
-          for set in current; do
+          for set in "${TOOLCHAIN_SETS[@]}"; do
             ref=$(./.github/scripts/toolchain-image-tag "$set")
             if docker manifest inspect "$ref" >/dev/null 2>&1; then
               echo "Toolchain image for ${set}: ${ref}"
