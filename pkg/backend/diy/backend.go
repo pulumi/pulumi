@@ -668,6 +668,10 @@ func massageBlobPath(path string) (string, error) {
 		}
 	}
 
+	if os.PathSeparator != '/' && strings.HasPrefix(path, "/") && filepath.VolumeName(path[1:]) != "" {
+		path = path[1:]
+	}
+
 	// For file:// backend, ensure a relative path is resolved. fileblob only supports absolute paths.
 	path, err = filepath.Abs(path)
 	if err != nil {
