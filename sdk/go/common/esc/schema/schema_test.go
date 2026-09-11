@@ -34,20 +34,24 @@ func TestUnmarshal(t *testing.T) {
 
 func TestUnmarshalNever(t *testing.T) {
 	t.Parallel()
-	var s Schema
-	err := json.Unmarshal([]byte("false"), &s)
-	require.NoError(t, err)
-	assert.True(t, s.Never)
-	assert.False(t, s.Always)
+	for _, encoding := range []string{"false", `{"not":{}}`, `{"not":true}`} {
+		var s Schema
+		err := json.Unmarshal([]byte(encoding), &s)
+		require.NoError(t, err, encoding)
+		assert.True(t, s.Never, encoding)
+		assert.False(t, s.Always, encoding)
+	}
 }
 
 func TestUnmarshalAlways(t *testing.T) {
 	t.Parallel()
-	var s Schema
-	err := json.Unmarshal([]byte("true"), &s)
-	require.NoError(t, err)
-	assert.True(t, s.Always)
-	assert.False(t, s.Never)
+	for _, encoding := range []string{"true", "{}"} {
+		var s Schema
+		err := json.Unmarshal([]byte(encoding), &s)
+		require.NoError(t, err, encoding)
+		assert.True(t, s.Always, encoding)
+		assert.False(t, s.Never, encoding)
+	}
 }
 
 func TestMarshal(t *testing.T) {
@@ -61,14 +65,22 @@ func TestMarshalNever(t *testing.T) {
 	t.Parallel()
 	bytes, err := json.Marshal(Never())
 	require.NoError(t, err)
-	assert.Equal(t, []byte("false"), bytes)
+	assert.Equal(t, []byte(`{"not":{}}`), bytes)
+
+	var s Schema
+	require.NoError(t, json.Unmarshal(bytes, &s))
+	assert.True(t, s.Never)
 }
 
 func TestMarshalAlways(t *testing.T) {
 	t.Parallel()
 	bytes, err := json.Marshal(Always())
 	require.NoError(t, err)
-	assert.Equal(t, []byte("true"), bytes)
+	assert.Equal(t, []byte(`{}`), bytes)
+
+	var s Schema
+	require.NoError(t, json.Unmarshal(bytes, &s))
+	assert.True(t, s.Always)
 }
 
 func TestItem(t *testing.T) {
