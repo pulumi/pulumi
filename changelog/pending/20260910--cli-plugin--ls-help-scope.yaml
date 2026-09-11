@@ -1,0 +1,3 @@
+component: cli/plugin
+kind: improvement
+body: Describe what `pulumi plugin ls` does and does not list in its help text
