@@ -69,16 +69,12 @@ type LoadedEnvironment struct {
 	Decrypter Decrypter
 }
 
-// An EnvironmentLoaderWithID is an optional extension of EnvironmentLoader implemented by loaders that know the
-// unique ID (e.g. the UUID assigned by the environment's backend) of each environment they load. When the evaluator's
-// loader implements this interface, LoadEnvironmentWithID is called in place of LoadEnvironment and the returned ID is
-// threaded through the imported environment's execution context (see esc.EnvExecContextWithIDs).
+// An EnvironmentLoaderWithID is an EnvironmentLoader that also knows each environment's ID. The evaluator prefers it
+// when present, so imported environments get their IDs.
 type EnvironmentLoaderWithID interface {
 	EnvironmentLoader
 
-	// LoadEnvironmentWithID is like EnvironmentLoader.LoadEnvironment, but returns the loaded environment as a
-	// LoadedEnvironment that also carries its unique ID. An empty LoadedEnvironment.ID indicates that the ID is
-	// unknown.
+	// LoadEnvironmentWithID is LoadEnvironment plus the environment's ID; an empty ID means unknown.
 	LoadEnvironmentWithID(ctx context.Context, name string) (LoadedEnvironment, error)
 }
 

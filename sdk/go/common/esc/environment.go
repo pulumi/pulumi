@@ -39,9 +39,8 @@ type EnvExecContext interface {
 	GetCurrentEnvironmentName() string
 }
 
-// EnvExecContextWithIDs is an optional extension of EnvExecContext implemented by execution contexts that know the
-// unique IDs of the environments being evaluated. Consumers should type-assert, and treat an empty ID as unknown:
-// IDs are only available when the caller (and, for imports, the environment loader) supplies them.
+// EnvExecContextWithIDs is an EnvExecContext that also knows the environments' IDs. Type-assert for it; an empty ID
+// means unknown.
 type EnvExecContextWithIDs interface {
 	EnvExecContext
 
@@ -67,10 +66,8 @@ func (ec *ExecContext) CopyForEnv(envName string) *ExecContext {
 	return ec.CopyForEnvWithID(envName, "")
 }
 
-// CopyForEnvWithID is like CopyForEnv, but also records the unique ID (e.g. the UUID assigned by the environment's
-// backend) of the environment being evaluated. When envID is non-empty it is exposed beside the name as
-// `context.currentEnvironment.id` (and as `context.rootEnvironment.id` when the environment is the root); an empty
-// envID produces a context identical to CopyForEnv's.
+// CopyForEnvWithID is CopyForEnv plus the environment's ID. A non-empty ID is exposed to interpolation as
+// context.currentEnvironment.id; an empty ID gives the same context as CopyForEnv.
 func (ec *ExecContext) CopyForEnvWithID(envName, envID string) *ExecContext {
 	values := copyContext(ec.values)
 	values["currentEnvironment"] = NewValue(environmentContextValue(envName, envID))
