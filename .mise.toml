@@ -1,6 +1,9 @@
 [tools]
 github-cli = "2.93.0"
-"go:github.com/go-delve/delve/cmd/dlv" = "1.26.3"
+# Delve's minor version must match the Go minor in CI (see get-job-matrix.py),
+# or debugger tests fail with "Version of Delve is too old".
+# renovate: datasource=github-releases depName=go-delve/delve extractVersion=^v(?<version>.*)$
+"go:github.com/go-delve/delve/cmd/dlv" = "1.27.2"
 "go:golang.org/x/tools/gopls" = "0.23.0"
 go = "1.27"
 changie = "1.24.2"
@@ -29,7 +32,16 @@ protoc = "29.5"
 dotnet = "8"
 java = "temurin-11"
 gradle = "7.6"
+# renovate: datasource=github-releases depName=pulumi/goteststats extractVersion=^v(?<version>.*)$
 "github:pulumi/goteststats" = "0.0.7"
+# renovate: datasource=github-releases depName=gotestyourself/gotestsum extractVersion=^v(?<version>.*)$
+"go:gotest.tools/gotestsum" = "1.13.0"
+
+[vars]
+# The npm version that CI test jobs install. The dependency-cooldown action
+# needs 11.17.0 or newer. Read by .github/scripts/tool-pin, not by mise.
+# renovate: datasource=npm depName=npm versioning=npm
+npm = "^11.17.0"
 
 [env]
 PULUMI_TEST_USE_NPM = "true"

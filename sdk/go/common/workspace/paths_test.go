@@ -164,6 +164,9 @@ func TestProjectStackPath(t *testing.T) {
 //nolint:paralleltest // Theses test use and change the current working directory
 func TestDetectProjectUnreadableParent(t *testing.T) {
 	// Regression test for https://github.com/pulumi/pulumi/issues/12481
+	if os.Geteuid() == 0 {
+		t.Skip("root bypasses file permissions, so the unreadable parent cannot be simulated")
+	}
 
 	tmpDir := mkTempDir(t)
 

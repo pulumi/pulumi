@@ -116,9 +116,28 @@ jobs:
               { "os": "darwin",  "arch": "arm64", "build-platform": "ubuntu-latest" }
           ]'
           printf '%s' "${BUILD_TARGETS}" | ./.github/scripts/set-output build-targets
+
+          # Prebaked toolchain images by version-set name. A missing tag
+          # maps to "" and those jobs install on the runner instead. Keep
+          # the set list in sync with the matrix in ci-toolchain-image.yml.
+          TOOLCHAIN_SETS=(current)
+          TOOLCHAIN_IMAGES='{}'
+          for set in "${TOOLCHAIN_SETS[@]}"; do
+            ref=$(./.github/scripts/toolchain-image-tag "$set")
+            if docker manifest inspect "$ref" >/dev/null 2>&1; then
+              echo "Toolchain image for ${set}: ${ref}"
+            else
+              echo "Toolchain image ${ref} not published; ${set} jobs install on the runner."
+              ref=""
+            fi
+            TOOLCHAIN_IMAGES=$(echo "$TOOLCHAIN_IMAGES" \
+              | jq -c --arg k "$set" --arg v "$ref" '.[$k] = $v')
+          done
+          printf '%s' "$TOOLCHAIN_IMAGES" | ./.github/scripts/set-output toolchain-images
     outputs:
       version-set: "${{ fromJson(steps.setup.outputs.version-set) }}"
       build-targets: "${{ fromJson(steps.setup.outputs.build-targets) }}"
+      toolchain-images: "${{ fromJson(steps.setup.outputs.toolchain-images) }}"
 
   matrix:
     runs-on: ubuntu-latest
@@ -373,7 +392,7 @@ jobs:
     # To this:
     #   CI / Unit Test / sdk/dotnet dotnet_test on macos-11/current
     name: Unit Test${{ matrix.platform && '' }}
-    needs: [matrix]
+    needs: [setup, matrix]
     if: ${{ needs.matrix.outputs.unit-test-matrix != '{}' }}
     strategy:
       fail-fast: ${{ inputs.fail-fast }}
@@ -389,6 +408,7 @@ jobs:
       is-integration-test: false
       enable-coverage: ${{ inputs.enable-coverage }}
       test-retries: ${{ inputs.test-retries }}
+      toolchain-image: ${{ contains(matrix.platform, 'ubuntu') && fromJson(needs.setup.outputs.toolchain-images)[matrix.version-set.name] || '' }}
       # require-build: false # TODO, remove ${{ matrix.require-build || false }}
 
       version-set: ${{ toJson(matrix.version-set) }}
@@ -487,6 +507,8 @@ jobs:
       is-integration-test: false
       enable-coverage: false
       test-retries: ${{ inputs.test-retries }}
+      # Keyed by the generated version set so it matches version-set below.
+      toolchain-image: ${{ fromJson(needs.setup.outputs.toolchain-images)[fromJson(needs.setup.outputs.version-set).name] }}
       version-set: ${{ needs.setup.outputs.version-set }}
       continue-on-error: ${{ inputs.fuzz-test-optional }}
     secrets: inherit

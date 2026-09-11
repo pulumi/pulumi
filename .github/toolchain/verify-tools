@@ -1,0 +1,123 @@
+#!/usr/bin/env bash
+# Copyright 2026, Pulumi Corporation.
+#
+# Pre-push gate for ci-toolchain-image.yml: runs a built toolchain image
+# and asserts every tool is present at its expected version, and that tool
+# resolution ignores a mounted repo's .mise.toml. Also runnable locally.
+#
+# Usage: verify-tools <image-ref> <version-set-name>
+set -euo pipefail
+cd "$(dirname "$0")/../.."
+
+IMAGE="${1:?usage: $0 <image-ref> <version-set-name>}"
+SET="${2:?usage: $0 <image-ref> <version-set-name>}"
+
+# Pins resolve through the shared tool-pin script. Use plain assignments so a
+# failed lookup aborts under `set -e`.
+PIN=./.github/scripts/tool-pin
+DLV_PIN=$($PIN go:github.com/go-delve/delve/cmd/dlv)
+UV_PIN=$($PIN uv)
+BUN_PIN=$($PIN bun)
+YARN_PIN=$($PIN npm:yarn)
+PNPM_PIN=$($PIN npm:pnpm)
+GRADLE_PIN=$($PIN gradle)
+GOTESTSUM_PIN=$($PIN go:gotest.tools/gotestsum)
+JAVA_PIN=$($PIN java)
+JAVA_MAJOR=${JAVA_PIN#*-} # e.g. temurin-11 -> 11
+
+# npm's pin is a range like ^11.17.0, and installing from that range already
+# guarantees the cooldown floor. Assert on the major so a Renovate major
+# bump can't silently diverge from this check.
+NPM_RANGE=$($PIN npm)
+NPM_MAJOR=${NPM_RANGE//[!0-9.]/}
+NPM_MAJOR=${NPM_MAJOR%%.*}
+if [ -z "$NPM_MAJOR" ]; then
+  echo "FATAL: could not derive the npm major from '${NPM_RANGE}'" >&2
+  exit 1
+fi
+
+# The same language-version authority the image build used.
+VERSION_SET=$(./scripts/get-job-matrix.py generate-version-set --version-set "$SET")
+read -r GO_MINOR NODE_MAJOR PY_MINOR DOTNET_CHANNEL < <(printf '%s' "$VERSION_SET" | python3 -c '
+import json, sys
+d = json.load(sys.stdin)
+def s(v):
+    return v[:-2] if v.endswith(".x") else v
+print(s(d["go"]), s(d["nodejs"]), s(d["python"]), d["dotnet"])
+')
+
+echo "== Verifying tools in ${IMAGE} (${SET}) =="
+docker run --rm -i --platform linux/amd64 \
+  -e "GO_MINOR=$GO_MINOR" -e "NODE_MAJOR=$NODE_MAJOR" \
+  -e "PY_MINOR=$PY_MINOR" -e "DOTNET_CHANNEL=$DOTNET_CHANNEL" \
+  -e "DLV_PIN=$DLV_PIN" \
+  -e "UV_PIN=$UV_PIN" \
+  -e "BUN_PIN=$BUN_PIN" \
+  -e "YARN_PIN=$YARN_PIN" \
+  -e "PNPM_PIN=$PNPM_PIN" \
+  -e "GRADLE_PIN=$GRADLE_PIN" \
+  -e "GOTESTSUM_PIN=$GOTESTSUM_PIN" \
+  -e "NPM_MAJOR=$NPM_MAJOR" \
+  -e "JAVA_MAJOR=$JAVA_MAJOR" \
+  "$IMAGE" bash -s <<'EOF'
+set -uo pipefail
+fail=0
+expect() { # expect <label> <expected-substring> <actual>
+  if [[ "$3" == *"$2"* ]]; then
+    echo "ok:   $1: $3 (contains '$2')"
+  else
+    echo "FAIL: $1: '$3' does not contain '$2'"; fail=1
+  fi
+}
+present() { # tools with no version pin to assert
+  if command -v "$1" >/dev/null; then
+    echo "ok:   $1 present ($(command -v "$1"))"
+  else
+    echo "FAIL: $1 missing"; fail=1
+  fi
+}
+
+expect go     "go${GO_MINOR}."      "$(go version)"
+expect node   "v${NODE_MAJOR}."     "$(node --version)"
+expect python "Python ${PY_MINOR}." "$(python --version)"
+expect python3 "Python ${PY_MINOR}." "$(python3 --version)"
+expect dotnet "${DOTNET_CHANNEL}."  "$(dotnet --version)"
+expect java   "version \"${JAVA_MAJOR}" "$(java -version 2>&1 | head -1)"
+expect gradle "Gradle ${GRADLE_PIN}" "$(gradle --version | grep Gradle)"
+expect dlv    "${DLV_PIN}"          "$(dlv version | grep -i version)"
+expect uv     "${UV_PIN}"           "$(uv --version)"
+expect bun    "${BUN_PIN}"          "$(bun --version)"
+expect yarn   "${YARN_PIN}"         "$(yarn --version)"
+expect pnpm   "${PNPM_PIN}."        "$(pnpm --version)"
+expect npm    "${NPM_MAJOR}."       "$(npm --version)"
+expect gotestsum "${GOTESTSUM_PIN}" "$(gotestsum --version)"
+present goteststats
+expect pip    "pip"                 "$(python -m pip --version)"
+present pip
+expect poetry "Poetry"              "$(poetry --version)"
+for pkg in requests wheel urllib3 chardet build; do
+  python -c "import $pkg" 2>/dev/null && echo "ok:   python package $pkg importable" \
+    || { echo "FAIL: python package $pkg not importable"; fail=1; }
+done
+present git; present make; present gcc; present jq; present curl
+present tar; present unzip; present zip; present sudo
+expect "git safe.directory" "*" "$(git config --system --get-all safe.directory)"
+
+exit $fail
+EOF
+
+# A mounted repo's .mise.toml must not affect tool resolution:
+# /usr/local/bin holds real symlinks, not mise shims.
+docker run --rm --platform linux/amd64 -v "$PWD:/repo:ro" -w /repo \
+  -e "GO_MINOR=$GO_MINOR" -e "NODE_MAJOR=$NODE_MAJOR" -e "PY_MINOR=$PY_MINOR" \
+  "$IMAGE" bash -c '
+    set -euo pipefail
+    go version | grep -q "go${GO_MINOR}\." \
+      || { echo "FAIL: go swayed by repo config: $(go version)"; exit 1; }
+    node --version | grep -q "^v${NODE_MAJOR}\." \
+      || { echo "FAIL: node swayed by repo config: $(node --version)"; exit 1; }
+    python --version | grep -q "Python ${PY_MINOR}\." \
+      || { echo "FAIL: python swayed by repo config: $(python --version)"; exit 1; }
+    echo "ok:   tool resolution independent of the mounted repo .mise.toml"'
+
+echo "${IMAGE} tool verification PASSED"

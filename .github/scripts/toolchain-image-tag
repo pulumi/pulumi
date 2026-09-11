@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+# Copyright 2026, Pulumi Corporation.
+#
+# Prints the content-addressed toolchain image reference for a version set:
+# a hash of the image's inputs plus the ISO week. The week stamp rolls the
+# tag weekly so floating pins (Go patch, base image, apt) re-resolve.
+#
+# Usage: toolchain-image-tag <version-set-name>
+set -euo pipefail
+cd "$(dirname "$0")/../.."
+
+SET="${1:?usage: $0 <version-set-name>}"
+VERSION_SET=$(./scripts/get-job-matrix.py generate-version-set --version-set "$SET")
+WEEK=$(date -u +%G-W%V)
+HASH=$(
+  {
+    cat .github/toolchain/Dockerfile \
+        .mise.toml \
+        .github/workflows/ci-toolchain-image.yml \
+        .github/actions/dependency-cooldown/action.yml
+    printf '%s\n%s\n' "$VERSION_SET" "$WEEK"
+  } | shasum -a 256 | cut -c1-12
+)
+REPO=$(echo "${GITHUB_REPOSITORY:-pulumi/pulumi}" | tr '[:upper:]' '[:lower:]')
+echo "ghcr.io/${REPO}/ci-toolchain:${SET}-${HASH}"

@@ -1,0 +1,133 @@
+name: Toolchain Image
+
+# Builds and publishes the prebaked toolchain images for the ubuntu test
+# jobs, tagged by content hash (.github/scripts/toolchain-image-tag). ci.yml
+# falls back to host installs when a tag is missing, so publishing is the
+# rollout and deleting a tag is the rollback. The ghcr package must be made
+# public once after the first publish: jobs pull without credentials. PRs
+# touching the image inputs build and verify, but never push. A weekly cron
+# publishes right after the ISO-week tag roll, so Monday jobs do not fall
+# back to host installs while waiting for the week's first master push.
+
+permissions:
+  contents: read
+
+on:
+  workflow_call: {}
+  workflow_dispatch: {}
+  schedule:
+    # Shortly after the ISO-week tag roll at Monday 00:00 UTC.
+    - cron: "5 0 * * 1"
+  pull_request:
+    paths:
+      - ".github/toolchain/**"
+      - ".github/workflows/ci-toolchain-image.yml"
+      - ".github/scripts/tool-pin"
+      - ".github/scripts/toolchain-image-tag"
+      # The image build reads the cooldown default from the action.
+      - ".github/actions/dependency-cooldown/action.yml"
+      - ".mise.toml"
+      # The language-version authority: version bumps roll the tag.
+      - "scripts/get-job-matrix.py"
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  build:
+    name: ${{ matrix.version-set }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    concurrency:
+      group: toolchain-image-${{ matrix.version-set }}-${{ github.ref }}
+      cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        version-set: [current]
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+      # Login before the probe, so trusted builds see the still-private package.
+      - name: Log in to GitHub Container Registry
+        if: ${{ github.event_name != 'pull_request' }}
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Compute the content-addressed image reference
+        id: ref
+        run: |
+          set -euo pipefail
+          REF=$(./.github/scripts/toolchain-image-tag "${{ matrix.version-set }}")
+          echo "ref=${REF}" >> "$GITHUB_OUTPUT"
+          # PRs always build — that is the validation.
+          if [ "${{ github.event_name }}" != "pull_request" ] \
+              && docker manifest inspect "$REF" >/dev/null 2>&1; then
+            echo "${REF} already published; nothing to do."
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "Building ${REF}."
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Resolve language versions
+        if: ${{ steps.ref.outputs.exists == 'false' }}
+        id: versions
+        run: |
+          set -euo pipefail
+          # The same authority the test matrix uses.
+          VERSION_SET=$(./scripts/get-job-matrix.py \
+            generate-version-set \
+            --version-set "${{ matrix.version-set }}")
+          echo "$VERSION_SET" | jq .
+          # Plain assignment so a tool-pin failure aborts the step.
+          NPM_VERSION=$(./.github/scripts/tool-pin npm)
+          # Keep the parse in sync with .github/toolchain/validate-local.
+          COOLDOWN_DAYS=$(awk '/^  days:/{f=1} f && $1=="default:"{gsub(/"/,"",$2); print $2; exit}' \
+            .github/actions/dependency-cooldown/action.yml)
+          if [ -z "$COOLDOWN_DAYS" ]; then
+            echo "FATAL: no days default parsed from dependency-cooldown/action.yml (format change?)" >&2
+            exit 1
+          fi
+          {
+            echo "go=$(echo "$VERSION_SET" | jq -r .go)"
+            echo "nodejs=$(echo "$VERSION_SET" | jq -r .nodejs)"
+            echo "python=$(echo "$VERSION_SET" | jq -r .python)"
+            echo "dotnet=$(echo "$VERSION_SET" | jq -r .dotnet)"
+            echo "npm=${NPM_VERSION}"
+            echo "cooldown-days=${COOLDOWN_DAYS}"
+          } >> "$GITHUB_OUTPUT"
+      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
+        if: ${{ steps.ref.outputs.exists == 'false' }}
+      - name: Build the image
+        if: ${{ steps.ref.outputs.exists == 'false' }}
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
+        with:
+          context: .
+          file: .github/toolchain/Dockerfile
+          # Load locally; the push happens only after verify-tools passes.
+          load: true
+          tags: ${{ steps.ref.outputs.ref }}
+          # TOOLCHAIN_TAG busts the layer cache when the tag rolls.
+          build-args: |
+            GO_VERSION=${{ steps.versions.outputs.go }}
+            NODE_VERSION=${{ steps.versions.outputs.nodejs }}
+            PYTHON_VERSION=${{ steps.versions.outputs.python }}
+            DOTNET_VERSION=${{ steps.versions.outputs.dotnet }}
+            NPM_VERSION=${{ steps.versions.outputs.npm }}
+            COOLDOWN_DAYS=${{ steps.versions.outputs.cooldown-days }}
+            TOOLCHAIN_TAG=${{ steps.ref.outputs.ref }}
+          # Avoids unauthenticated GitHub API rate limits; never stored in a layer.
+          secrets: |
+            github-token=${{ secrets.GITHUB_TOKEN }}
+      # Pre-push gate: consumers only probe for tag existence, so a broken
+      # image must never get a tag.
+      - name: Verify the image's tools
+        if: ${{ steps.ref.outputs.exists == 'false' }}
+        run: ./.github/toolchain/verify-tools "${{ steps.ref.outputs.ref }}" "${{ matrix.version-set }}"
+      - name: Push (trusted triggers only)
+        if: ${{ steps.ref.outputs.exists == 'false' && github.event_name != 'pull_request' }}
+        run: docker push "${{ steps.ref.outputs.ref }}"
