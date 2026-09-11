@@ -26,6 +26,7 @@ import (
 	"github.com/spf13/cobra"
 
 	backenddisplay "github.com/pulumi/pulumi/pkg/v3/backend/display"
+	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
@@ -126,7 +127,7 @@ func (pc *packageCommand) runDisplayedStep(
 			Status:   resource.StatusOK,
 			Steps:    1,
 		})
-		err = result.BailError(err)
+		err = bailPreservingExitCode(err)
 	} else {
 		if state != nil {
 			metadata.New = engine.MakeStepEventStateMetadata(state, pc.showSecrets)
@@ -185,8 +186,44 @@ func tidyProviderError(err error, urn resource.URN, subject string) error {
 	if msg == err.Error() {
 		return err
 	}
-	return errors.New(msg)
+	// Keep the original in the chain. Rewriting the message is a presentation concern, and
+	// returning a bare errors.New would discard whatever the error was — including a custom exit
+	// code, which ExitCodeFor recovers with errors.As.
+	return retitledError{msg: msg, err: err}
 }
+
+// retitledError presents a rewritten message while leaving the underlying error reachable.
+type retitledError struct {
+	msg string
+	err error
+}
+
+func (e retitledError) Error() string { return e.msg }
+func (e retitledError) Unwrap() error { return e.err }
+
+// bailPreservingExitCode marks err as a bail, so its message is not printed a second time, without
+// losing a custom exit code it carries.
+//
+// result.BailError deliberately does not implement Unwrap, so anything underneath a bail is
+// invisible to errors.As — a CustomExitCodeError placed there would silently collapse to the
+// generic exit code. Carrying the code on the outside keeps both signals: ExitCodeFor matches this
+// wrapper directly, and result.IsBail still finds the bail underneath it.
+func bailPreservingExitCode(err error) error {
+	bail := result.BailError(err)
+	var custom cmdCmd.CustomExitCodeError
+	if !errors.As(err, &custom) {
+		return bail
+	}
+	return exitCodeBail{error: bail, code: custom.CustomExitCode()}
+}
+
+type exitCodeBail struct {
+	error
+	code int
+}
+
+func (e exitCodeBail) CustomExitCode() int { return e.code }
+func (e exitCodeBail) Unwrap() error       { return e.error }
 
 func (s displayedStep) metadata(showSecrets bool) engine.StepEventMetadata {
 	oldMeta := engine.MakeStepEventStateMetadata(s.Old, showSecrets)

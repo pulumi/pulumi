@@ -522,30 +522,52 @@ enabled = true
 func TestDoCmdResourceMissingResourceNotFound(t *testing.T) {
 	t.Parallel()
 
-	t.Run("delete empty outputs with id", func(t *testing.T) {
-		t.Parallel()
-		var deleted bool
-		cmd, _, _ := newDoResourceCommand(t, &testProvider{
-			spec: doResourceSpec(false),
-			MockProvider: plugin.MockProvider{
-				ReadF: func(ctx context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
-					return plugin.ReadResponse{ReadResult: plugin.ReadResult{
-						ID:      req.ID,
-						Inputs:  resource.PropertyMap{},
-						Outputs: resource.PropertyMap{},
-					}}, nil
-				},
-				DeleteF: func(ctx context.Context, req plugin.DeleteRequest) (plugin.DeleteResponse, error) {
-					assert.Equal(t, resource.ID("res-1"), req.ID)
-					deleted = true
-					return plugin.DeleteResponse{}, nil
-				},
+	// Any real state at all means the resource is there and we must still delete it — only a
+	// response with nothing to operate on counts as missing. Providers that return their state in
+	// just one of the two bags stay on the delete path.
+	foundResponses := map[string]plugin.ReadResponse{
+		"state in outputs only": {ReadResult: plugin.ReadResult{
+			ID:      "res-1",
+			Inputs:  resource.PropertyMap{},
+			Outputs: resource.PropertyMap{"name": resource.NewProperty("out")},
+		}},
+		"state in inputs only": {ReadResult: plugin.ReadResult{
+			ID:      "res-1",
+			Inputs:  resource.PropertyMap{"name": resource.NewProperty("in")},
+			Outputs: resource.PropertyMap{},
+		}},
+		"id property alongside real state": {ReadResult: plugin.ReadResult{
+			ID:     "res-1",
+			Inputs: resource.PropertyMap{},
+			Outputs: resource.PropertyMap{
+				"id":   resource.NewProperty("res-1"),
+				"name": resource.NewProperty("out"),
 			},
+		}},
+	}
+
+	for shape, response := range foundResponses {
+		t.Run("delete "+shape, func(t *testing.T) {
+			t.Parallel()
+			var deleted bool
+			cmd, _, _ := newDoResourceCommand(t, &testProvider{
+				spec: doResourceSpec(false),
+				MockProvider: plugin.MockProvider{
+					ReadF: func(ctx context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+						return response, nil
+					},
+					DeleteF: func(ctx context.Context, req plugin.DeleteRequest) (plugin.DeleteResponse, error) {
+						assert.Equal(t, resource.ID("res-1"), req.ID)
+						deleted = true
+						return plugin.DeleteResponse{}, nil
+					},
+				},
+			})
+			cmd.SetArgs([]string{"--stateless", "azure:index:myResource", "delete", "res-1", "--yes"})
+			require.NoError(t, cmd.Execute())
+			assert.True(t, deleted)
 		})
-		cmd.SetArgs([]string{"--stateless", "azure:index:myResource", "delete", "res-1", "--yes"})
-		require.NoError(t, cmd.Execute())
-		assert.True(t, deleted)
-	})
+	}
 
 	notFoundResponses := map[string]plugin.ReadResponse{
 		"nil outputs": {},
@@ -556,6 +578,25 @@ func TestDoCmdResourceMissingResourceNotFound(t *testing.T) {
 		"blank id": {ReadResult: plugin.ReadResult{
 			Inputs:  resource.PropertyMap{"name": resource.NewProperty("stale")},
 			Outputs: resource.PropertyMap{"name": resource.NewProperty("stale")},
+		}},
+		// The shape bridged providers hand back when the refresh behind Read 404s: the requested
+		// import ID is echoed, but the state that Delete/Update actually need has been dropped.
+		// Acting on this is what made a repeated delete fail with a provider error instead of a
+		// not-found. See https://github.com/pulumi/pulumi/issues/23916.
+		"emptied state with id": {ReadResult: plugin.ReadResult{
+			ID:      "res-gone",
+			Inputs:  resource.PropertyMap{},
+			Outputs: resource.PropertyMap{},
+		}},
+		"nil inputs and empty outputs with id": {ReadResult: plugin.ReadResult{
+			ID:      "res-gone",
+			Outputs: resource.PropertyMap{},
+		}},
+		// An echoed ID is no more informative when it also shows up as a property.
+		"id-only state with id": {ReadResult: plugin.ReadResult{
+			ID:      "res-gone",
+			Inputs:  resource.PropertyMap{"id": resource.NewProperty("res-gone")},
+			Outputs: resource.PropertyMap{"id": resource.NewProperty("res-gone")},
 		}},
 	}
 
