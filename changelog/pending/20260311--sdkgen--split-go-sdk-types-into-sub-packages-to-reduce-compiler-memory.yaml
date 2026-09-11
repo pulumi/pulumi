@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: sdkgen
+  description: Split Go SDK types into internal sub-packages when a module exceeds 500 types, reducing compiler peak memory by ~70% for large providers
