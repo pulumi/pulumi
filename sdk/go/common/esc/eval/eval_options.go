@@ -38,11 +38,7 @@ type EvalOptions struct {
 	// export, so TraceModeNone never allocates the dropped Trace.
 	TraceMode TraceMode
 
-	// RootEnvironmentID is the unique ID (e.g. the UUID assigned by the
-	// environment's backend) of the root environment being evaluated, if known.
-	// It is exposed through the execution context beside the environment's name
-	// (see esc.EnvExecContextWithIDs); imported environments get their IDs from
-	// the environment loader instead (see EnvironmentLoaderWithID). When empty,
-	// no ID is recorded for the root environment.
+	// RootEnvironmentID is the ID of the root environment, if known. Imported
+	// environments get their IDs from an EnvironmentLoaderWithID instead.
 	RootEnvironmentID string
 }
