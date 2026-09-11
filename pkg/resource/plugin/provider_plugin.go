@@ -2131,6 +2131,7 @@ func (p *provider) Construct(ctx context.Context, req ConstructRequest) (Constru
 		resourceHook.AfterUpdate = req.Options.ResourceHooks[resource.AfterUpdate]
 		resourceHook.BeforeDelete = req.Options.ResourceHooks[resource.BeforeDelete]
 		resourceHook.AfterDelete = req.Options.ResourceHooks[resource.AfterDelete]
+		resourceHook.OnError = req.Options.ResourceHooks[resource.OnError]
 	}
 
 	aliases := make([]*pulumirpc.Alias, len(req.Options.Aliases))
