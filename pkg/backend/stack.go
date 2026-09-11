@@ -25,6 +25,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/operations"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
+	"github.com/pulumi/pulumi/pkg/v3/util/validation"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -145,6 +146,9 @@ func ImportStackDeployment(ctx context.Context, s Stack, deployment *apitype.Unt
 
 // UpdateStackTags updates the stacks's tags, replacing all existing tags.
 func UpdateStackTags(ctx context.Context, s Stack, tags map[apitype.StackTagName]string) error {
+	if err := validation.ValidateStackTags(tags); err != nil {
+		return fmt.Errorf("validating stack tags: %w", err)
+	}
 	return s.Backend().UpdateStackTags(ctx, s, tags)
 }
 

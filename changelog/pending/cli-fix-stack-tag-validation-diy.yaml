@@ -1,0 +1,4 @@
+component: cli
+kind: fix
+body: Validate stack tags on the local (diy) backend, matching Pulumi Cloud behavior
+time: 2026-09-11T21:30:11Z
