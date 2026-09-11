@@ -184,6 +184,9 @@ func failNextLogRename(t *testing.T, path string) (restore func()) {
 	}
 	// Elsewhere, an open handle doesn't block renames, so make the directory
 	// read-only instead.
+	if os.Geteuid() == 0 {
+		t.Skip("root bypasses file permissions, so the rename failure cannot be injected")
+	}
 	dir := filepath.Dir(path)
 	require.NoError(t, os.Chmod(dir, 0o500))
 	return func() { require.NoError(t, os.Chmod(dir, 0o700)) }

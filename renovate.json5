@@ -47,6 +47,20 @@
         '// renovate: datasource=(?<datasource>\\S+) depName=(?<depName>\\S+)(?: extractVersion=(?<extractVersion>\\S+))?\\s+"[^"]+":\\s+semver\\.MustParse\\("(?<currentValue>[^"]+)"\\)',
       ],
     },
+    // Update the CI toolchain pins: each lives in one annotated place
+    // (.mise.toml, or the toolchain Dockerfile for mise itself), and all
+    // consumers parse it from there at run time.
+    {
+      customType: 'regex',
+      managerFilePatterns: [
+        '/^\\.github/toolchain/Dockerfile$/',
+        '/^\\.mise\\.toml$/',
+      ],
+      matchStrings: [
+        '# renovate: datasource=(?<datasource>\\S+) depName=(?<depName>\\S+)(?: extractVersion=(?<extractVersion>\\S+))?(?: versioning=(?<versioning>\\S+))?\\s+ARG \\S+=(?<currentValue>\\S+)',
+        '# renovate: datasource=(?<datasource>\\S+) depName=(?<depName>\\S+)(?: extractVersion=(?<extractVersion>\\S+))?(?: versioning=(?<versioning>\\S+))?\\s+"?[^"\\s=]+"? = "(?<currentValue>[^"]+)"',
+      ],
+    },
   ],
   // The preset's ignorePaths has `sdk/**` in it, we don't want that
   // https://github.com/pulumi/renovate-config/blob/main/default.json5#L70

@@ -1,0 +1,37 @@
+#!/usr/bin/env bash
+# Copyright 2026, Pulumi Corporation.
+#
+# Prints a tool pin from .mise.toml. The main parser that every CI consumer
+# shares. Reads only the [tools] and [vars] sections, and fails hard when a
+# pin does not parse or matches more than once, so format drift breaks
+# loudly instead of installing the wrong thing.
+#
+# Usage:
+#   tool-pin <mise-key>   # a [tools] or [vars] pin from .mise.toml, e.g.:
+#                         #   tool-pin gradle
+#                         #   tool-pin npm:yarn
+#                         #   tool-pin go:gotest.tools/gotestsum
+#                         #   tool-pin npm            (the [vars] npm range)
+set -euo pipefail
+cd "$(dirname "$0")/../.."
+
+KEY="${1:?usage: $0 <mise-key>}"
+# Restrict matching to [tools] and [vars]: other sections can reuse a key
+# name for something that is not a version pin (e.g. gradle in [plugins]).
+# Accepts both TOML quote styles. A `.` in keys matches any character,
+# which is harmless under the full-line anchors.
+v=$(awk '/^\[/ { insec = ($0 == "[tools]" || $0 == "[vars]"); next } insec' .mise.toml \
+  | sed -n \
+      -e "s|^\"\{0,1\}${KEY}\"\{0,1\} = \"\(.*\)\"\$|\1|p" \
+      -e "s|^\"\{0,1\}${KEY}\"\{0,1\} = '\(.*\)'\$|\1|p")
+case "$v" in
+  "")
+    echo "FATAL: no pin for '${KEY}' parsed from .mise.toml (format change?)" >&2
+    exit 1
+    ;;
+  *$'\n'*)
+    echo "FATAL: multiple pins for '${KEY}' in .mise.toml" >&2
+    exit 1
+    ;;
+esac
+printf '%s\n' "$v"
