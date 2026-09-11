@@ -2899,3 +2899,90 @@ func TestDoCmdFunctionInvokeWithYAMLExpression(t *testing.T) {
 	assert.True(t, converterCalled, "ConvertSnippet should be called for expression flags even without --input-file")
 	assert.JSONEq(t, `{"output1": "world"}`, stdout.String())
 }
+
+// Repro: if a converter emits an expression-flag value whose type does not match the schema (e.g. a string
+// literal or secret(string) assigned to a Number input), `do` must reject it during PCL bind rather than
+// forwarding a mistyped value to the provider.
+func TestDoCmdFunctionInvokeExpressionFlagTypeMismatch(t *testing.T) {
+	t.Parallel()
+
+	mlm := &cmdBackend.MockLoginManager{}
+	mws := &pkgWorkspace.MockContext{
+		ReadProjectF: func(_ string) (*workspace.Project, string, error) {
+			return &workspace.Project{
+				Name:    tokens.PackageName("my-project"),
+				Runtime: workspace.NewProjectRuntimeInfo("yaml", nil),
+			}, t.TempDir(), nil
+		},
+	}
+	yamlHost := func(_ context.Context, d, statusD diag.Sink) (plugin.Host, error) {
+		return &plugin.MockHost{
+			LoaderF: func(ctx *plugin.Context) (*plugin.GrpcServer, error) {
+				return plugin.NewServer(ctx, schema.LoaderRegistration(schema.NewLoaderServerFromContext(ctx)))
+			},
+		}, nil
+	}
+	loadConverter := func(
+		_ *plugin.Context, name string, _ func(sev diag.Severity, msg string),
+	) (plugin.Converter, error) {
+		return &plugin.MockConverter{
+			ConvertSnippetF: func(ctx context.Context, req *plugin.ConvertSnippetRequest) (
+				*plugin.ConvertSnippetResponse, error,
+			) {
+				// Simulate the YAML converter failing to evaluate "4 * 2" and passing it through as a
+				// string (wrapped as secret, matching the observed prod behaviour).
+				return &plugin.ConvertSnippetResponse{
+					Filename: "inputs.pp",
+					Attributes: map[string]string{
+						"number": `secret("4 * 2")`,
+					},
+				}, nil
+			},
+		}, nil
+	}
+	invokeCalled := false
+	loader := func(ctx context.Context, pctx *plugin.Context, wd, source string) (plugin.Provider, error) {
+		spec := schema.PackageSpec{
+			Name: "azure",
+			Functions: map[string]schema.FunctionSpec{
+				"azure:index:myFunction": {
+					Inputs: &schema.ObjectTypeSpec{
+						Properties: map[string]schema.PropertySpec{
+							"number": {TypeSpec: schema.TypeSpec{Type: "number"}},
+						},
+						Required: []string{"number"},
+					},
+					Outputs: &schema.ObjectTypeSpec{
+						Properties: map[string]schema.PropertySpec{
+							"output1": {TypeSpec: schema.TypeSpec{Type: "string"}},
+						},
+					},
+				},
+			},
+		}
+		return &testProvider{
+			spec: spec,
+			MockProvider: plugin.MockProvider{
+				InvokeF: func(ctx context.Context, req plugin.InvokeRequest) (plugin.InvokeResponse, error) {
+					invokeCalled = true
+					return plugin.InvokeResponse{
+						Properties: property.NewMap(map[string]property.Value{"output1": property.New("world")}),
+					}, nil
+				},
+			},
+		}, nil
+	}
+
+	var stdout bytes.Buffer
+	cmd := NewDoCmd(mlm, mws, loader, yamlHost, loadConverter, nil)
+	cmd.SetOut(&stdout)
+	cmd.SetErr(&stdout)
+	cmd.SetArgs([]string{
+		"azure:index:myFunction",
+		"--input", "yaml",
+		"--input:number+", "4 * 2",
+	})
+	err := cmd.Execute()
+	require.Error(t, err, "do should reject a string expression flag assigned to a number input")
+	assert.False(t, invokeCalled, "provider Invoke must not be called when the input type does not match the schema")
+}
