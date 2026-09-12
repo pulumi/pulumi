@@ -807,6 +807,51 @@ func TestRecursiveObjectTypeConvertsFromFiniteSource(t *testing.T) {
 	})
 }
 
+// TestRecursiveObjectTypeConversionCacheIsContextIndependent verifies that a
+// conversion result computed while another recursive conversion is in flight
+// does not escape into the shared conversion cache.
+func TestRecursiveObjectTypeConversionCacheIsContextIndependent(t *testing.T) {
+	t.Parallel()
+
+	newTypes := func() (destination, source, intermediate *ObjectType) {
+		destinationProperties := map[string]Type{}
+		destination = NewObjectType(destinationProperties)
+
+		sourceProperties := map[string]Type{}
+		source = NewObjectType(sourceProperties)
+
+		intermediateProperties := map[string]Type{}
+		intermediate = NewObjectType(intermediateProperties)
+
+		destinationProperties["child"] = destination
+		destinationProperties["value"] = BoolType
+
+		// The source cannot convert because value is an object, not a bool.
+		// Following child first checks the intermediate type while the
+		// (destination, source) pair is in the cycle set.
+		sourceProperties["child"] = intermediate
+		sourceProperties["extra"] = StringType
+		sourceProperties["value"] = NewObjectType(map[string]Type{})
+
+		// The intermediate type points back to source. It also cannot convert
+		// when checked independently because that path reaches source.value.
+		intermediateProperties["child"] = source
+		intermediateProperties["extra"] = StringType
+		intermediateProperties["value"] = BoolType
+		return destination, source, intermediate
+	}
+
+	for i := 0; i < 1000; i++ {
+		cleanDestination, _, cleanIntermediate := newTypes()
+		require.Equal(t, NoConversion, cleanDestination.ConversionFrom(cleanIntermediate))
+
+		destination, source, intermediate := newTypes()
+		require.Equal(t, NoConversion, destination.ConversionFrom(source))
+		require.Equal(t, NoConversion, destination.ConversionFrom(intermediate),
+			"in-flight conversion result escaped into the cache on iteration %d", i)
+	}
+}
+
 // TestRecursiveObjectTypeViaInputUnion mirrors the InputShape/PlainShape
 // pattern produced by codegen/pcl.schemaTypeToType: the schema property is
 // reachable as `Optional<Union<recursiveInputObj | Output<recursivePlainObj>>>`,
