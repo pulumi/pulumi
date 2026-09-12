@@ -1243,6 +1243,23 @@ func TestBindSpecPrintableNames(t *testing.T) {
 				"property name must contain only printable, non-whitespace characters",
 		},
 		{
+			name: "resource output property leading underscore",
+			spec: PackageSpec{
+				Name: "test",
+				Resources: map[string]ResourceSpec{
+					"test:index:TestResource": {
+						ObjectTypeSpec: ObjectTypeSpec{
+							Properties: map[string]PropertySpec{
+								"_badProperty": stringProperty,
+							},
+						},
+					},
+				},
+			},
+			wantSummary: "#/resources/test:index:TestResource/properties/_badProperty: " +
+				"property name must not start with an underscore",
+		},
+		{
 			name: "resource input property",
 			spec: PackageSpec{
 				Name: "test",
@@ -1285,6 +1302,16 @@ func TestBindSpecPrintableNames(t *testing.T) {
 			},
 			wantSummary: "#/resources/test:index:Bad%09Resource: " +
 				"resource name must contain only printable, non-whitespace characters",
+		},
+		{
+			name: "resource name leading underscore",
+			spec: PackageSpec{
+				Name: "test",
+				Resources: map[string]ResourceSpec{
+					"test:index:_BadResource": {},
+				},
+			},
+			wantSummary: "#/resources/test:index:_BadResource: resource name must not start with an underscore",
 		},
 		{
 			name: "resource name space",
@@ -1337,6 +1364,16 @@ func TestBindSpecPrintableNames(t *testing.T) {
 			},
 			wantSummary: "#/functions/test:index:bad%7Ffunction: " +
 				"function name must contain only printable, non-whitespace characters",
+		},
+		{
+			name: "function name leading underscore",
+			spec: PackageSpec{
+				Name: "test",
+				Functions: map[string]FunctionSpec{
+					"test:index:_badFunction": {},
+				},
+			},
+			wantSummary: "#/functions/test:index:_badFunction: function name must not start with an underscore",
 		},
 		{
 			name: "function name space",
