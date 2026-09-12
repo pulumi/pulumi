@@ -27,7 +27,7 @@
         "execa": "^5.1.0",
         "google-protobuf": "^3.21.4",
         "ini": "^2.0.0",
-        "js-yaml": "^4.0.0",
+        "js-yaml": "^4.3.2",
         "minimist": "^1.2.6",
         "normalize-package-data": "^6.0.0",
         "require-from-string": "^2.0.1",
@@ -74,8 +74,14 @@
         "node": ">=22"
     },
     "mocha": {
-        "require": ["source-map-support/register"],
-        "node-option": ["import=tsx"]
+        "require": [
+            "source-map-support/register"
+        ],
+        "node-option": [
+            "import=tsx"
+        ]
     },
-    "//": ["NOTE: @types/node is pinned due to grpc/grpc-node#2002"]
+    "//": [
+        "NOTE: @types/node is pinned due to grpc/grpc-node#2002"
+    ]
 }
