@@ -203,6 +203,7 @@ type EnvironmentDecl struct {
 	Description *StringExpr
 	Imports     ImportListDecl
 	Values      PropertyMapDecl
+	Schema      Expr
 }
 
 func (d *EnvironmentDecl) Syntax() syntax.Node {
