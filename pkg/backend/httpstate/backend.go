@@ -1328,6 +1328,16 @@ func (b *cloudBackend) CreateStack(
 		return nil, err
 	}
 
+	// ValidateStackName only checks the project when the caller gave a fully qualified name, so
+	// `--stack dev` reaches here unvalidated with whatever Pulumi.yaml holds. Creating the stack
+	// anyway would register the project under its cleanProjectName form, which then contradicts
+	// Pulumi.yaml on every later operation.
+	if project, has := stackRef.Project(); has {
+		if err := validateProjectName(project.String()); err != nil {
+			return nil, err
+		}
+	}
+
 	stackID, err := b.getCloudStackIdentifier(stackRef)
 	if err != nil {
 		return nil, err
