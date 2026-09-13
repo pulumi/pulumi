@@ -96,6 +96,23 @@ func isLegalIdentifierPart(c rune) bool {
 		unicode.In(c, unicode.Letter, unicode.Digit)
 }
 
+func removeIllegalIdentifierRunes(s string) string {
+	var b strings.Builder
+	upperNext := false
+	for _, c := range s {
+		if !isLegalIdentifierPart(c) {
+			upperNext = true
+			continue
+		}
+		if upperNext {
+			c = unicode.ToUpper(c)
+			upperNext = false
+		}
+		b.WriteRune(c)
+	}
+	return b.String()
+}
+
 // makeValidIdentifier replaces characters that are not allowed in Go identifiers with underscores. A reserved word is
 // prefixed with _. No attempt is made to ensure that the result is unique.
 func makeValidIdentifier(name string) string {
