@@ -166,6 +166,12 @@ func TestMassageBlobPath(t *testing.T) {
 				testMassagePath(t, FilePathPrefix+`C:\Users\steve\`, FilePathPrefix+"/C:/Users/steve"+noTmpDirSuffix)
 			})
 
+			t.Run("URIWithLeadingSlashAndDriveLetter", func(t *testing.T) {
+				t.Parallel()
+
+				testMassagePath(t, "file:///C:/Users/steve/state", FilePathPrefix+"/C:/Users/steve/state"+noTmpDirSuffix)
+			})
+
 			newHomeDir := "/" + filepath.ToSlash(homeDir)
 			t.Logf("Changed homeDir to expect from %q to %q", homeDir, newHomeDir)
 			homeDir = newHomeDir

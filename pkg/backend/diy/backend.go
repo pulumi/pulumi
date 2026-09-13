@@ -651,6 +651,16 @@ func massageBlobPath(path string) (string, error) {
 	// Strip off the query parameter, since we're computing that separately.
 	path = strings.Split(path, "?")[0]
 
+	// On Windows, a URI like "file:///C:/..." after stripping "file://" has a leading slash "/C:/...".
+	// filepath.Abs treats "/C:/..." as relative to the current drive root, resulting in "C:\C:\...".
+	// Strip the leading slash if it precedes a Windows drive letter.
+	if os.PathSeparator != '/' {
+		if len(path) >= 3 && path[0] == '/' && path[2] == ':' &&
+			((path[1] >= 'a' && path[1] <= 'z') || (path[1] >= 'A' && path[1] <= 'Z')) {
+			path = path[1:]
+		}
+	}
+
 	// We need to specially handle ~.  The shell doesn't take care of this for us, and later
 	// functions we run into can't handle this either.
 	//
