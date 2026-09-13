@@ -1,0 +1,4 @@
+component: cli
+kind: fix
+body: Retry interrupted policy pack installations and prevent concurrent installs from exposing incomplete policy packs
+time: 2026-08-19T10:07:01Z
