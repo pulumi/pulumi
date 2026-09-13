@@ -1,0 +1,4 @@
+component: cli
+kind: feat
+body: Add A2A commands to discover Pulumi Agents and delegate work with the active CLI login
+time: 2026-09-12T15:00:00Z
