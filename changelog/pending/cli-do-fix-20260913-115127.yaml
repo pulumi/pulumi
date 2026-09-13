@@ -1,0 +1,4 @@
+component: cli/do
+kind: fix
+body: Error sooner if string values can't be cast to numeric/boolean inputs
+time: 2026-09-13T11:51:27.624563+01:00

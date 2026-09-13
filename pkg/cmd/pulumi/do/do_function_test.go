@@ -2934,7 +2934,7 @@ func TestDoCmdFunctionInvokeExpressionFlagTypeMismatch(t *testing.T) {
 				return &plugin.ConvertSnippetResponse{
 					Filename: "inputs.pp",
 					Attributes: map[string]string{
-						"number": `secret("4 * 2")`,
+						"number": `"4 * 2"`,
 					},
 				}, nil
 			},
@@ -2983,6 +2983,8 @@ func TestDoCmdFunctionInvokeExpressionFlagTypeMismatch(t *testing.T) {
 		"--input:number+", "4 * 2",
 	})
 	err := cmd.Execute()
-	require.Error(t, err, "do should reject a string expression flag assigned to a number input")
+	require.EqualError(t, err,
+		`parse input file: :0,0-16: apply schema inputs: property "number": `+
+			`cannot convert string "4 * 2" to number: strconv.ParseFloat: parsing "4 * 2": invalid syntax; `)
 	assert.False(t, invokeCalled, "provider Invoke must not be called when the input type does not match the schema")
 }

@@ -559,7 +559,8 @@ func applySchemaInputConversion(
 		if value.IsString() {
 			converted, err := strconv.ParseBool(value.StringValue())
 			if err != nil {
-				return value, nil
+				return resource.PropertyValue{}, fmt.Errorf(
+					"cannot convert string %q to bool: %w", value.StringValue(), err)
 			}
 			return resource.NewProperty(converted), nil
 		}
@@ -570,7 +571,8 @@ func applySchemaInputConversion(
 		if value.IsString() {
 			converted, err := strconv.ParseFloat(value.StringValue(), 64)
 			if err != nil {
-				return value, nil
+				return resource.PropertyValue{}, fmt.Errorf(
+					"cannot convert string %q to number: %w", value.StringValue(), err)
 			}
 			return resource.NewProperty(converted), nil
 		}
