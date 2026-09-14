@@ -22,7 +22,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/pulumi/esc"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	backenddisplay "github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/diy"
@@ -39,6 +38,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/esc"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -60,6 +60,13 @@ type Options struct {
 	// Config is plaintext configuration to apply for the operation, keyed by full config
 	// key ("namespace:name", e.g. "aws:region"). v1 carries no secret config.
 	Config map[string]string
+	// SecretConfig is plaintext configuration encrypted with the selected stack's secrets
+	// manager before it enters the engine.
+	SecretConfig map[string]string
+	// Environments replaces the stack's ESC imports for this operation.
+	Environments []string
+	// EnvironmentVariables are exposed only to this stack's language and provider plugins.
+	EnvironmentVariables map[string]string
 	// SecretsManager overrides the secrets manager used for the stack's state. Defaults to
 	// a base64 manager -- adequate for hermetic stacks; a passphrase/cloud manager is a
 	// follow-on for real secrets.
@@ -93,6 +100,12 @@ type Stack struct {
 type Result struct {
 	Changes display.ResourceChanges
 	Outputs property.Map
+	// Plan is populated by Preview and PreviewMany with the engine's native deployment plan.
+	Plan *deploy.Plan
+	// Events contains the native, unified engine preview stream.
+	Events []engine.Event
+	// EnvironmentImports are the ESC references opened for this stack operation.
+	EnvironmentImports []string
 }
 
 // Select opens the backend, ensures the stack exists, and returns a handle to drive it.
@@ -228,7 +241,7 @@ func (s *Stack) Preview(ctx context.Context) (Result, *deploy.Plan, error) {
 	if err != nil {
 		return Result{}, nil, err
 	}
-	return Result{Changes: changes, Outputs: projectedStackOutputs(plan)}, plan, nil
+	return Result{Changes: changes, Outputs: projectedStackOutputs(plan), Plan: plan}, plan, nil
 }
 
 // projectedStackOutputs extracts the root stack's projected outputs from a preview plan: the
@@ -309,8 +322,12 @@ func runMany(ctx context.Context, specs []Options, preview bool) ([]Result, erro
 	if preview {
 		run = backend.MultistackPreview
 	}
+	engineOptions := specs[0].Engine
+	if engineOptions.HostFactory == nil {
+		engineOptions.HostFactory = backend.DefaultHostFactory(stacks[0].be.GetReadOnlyCloudRegistry())
+	}
 	results, err := run(ctx, entries, backend.MultistackOptions{
-		Engine:      specs[0].Engine,
+		Engine:      engineOptions,
 		DisplayOpts: backenddisplay.Options{Color: colors.Never, Stdout: io.Discard, Stderr: io.Discard},
 	})
 	if err != nil {
@@ -320,13 +337,16 @@ func runMany(ctx context.Context, specs []Options, preview bool) ([]Result, erro
 	out := make([]Result, len(stacks))
 	for i, s := range stacks {
 		res := Result{}
+		res.EnvironmentImports = entries[i].Op.StackConfiguration.EnvironmentImports
 		if r := results[string(s.stack.Ref().FullyQualifiedName())]; r != nil {
 			if r.Error != nil {
 				return nil, fmt.Errorf("stack %s: %w", s.stack.Ref().Name().String(), r.Error)
 			}
 			res.Changes = r.Changes
+			res.Events = r.Events
 			if preview {
 				res.Outputs = projectedStackOutputs(r.Plan)
+				res.Plan = r.Plan
 			}
 		}
 		if !preview {
@@ -376,13 +396,16 @@ func (s *Stack) operation(ctx context.Context, preview bool) (backend.UpdateOper
 	for k, v := range s.stackCfg {
 		cfg[k] = v
 	}
-	if err := workspace.ApplyProjectConfig(
-		ctx, s.stack.Ref().Name().String(), s.proj, esc.Value{}, cfg, s.sm.Encrypter(),
+	if err := pkgWorkspace.ApplyProjectConfig(
+		ctx, s.stack.Ref().Name().String(), s.proj, esc.Value{}, cfg, s.sm.Encrypter(), s.sm.Decrypter(),
 	); err != nil {
 		return backend.UpdateOperation{}, fmt.Errorf("applying project config defaults: %w", err)
 	}
 	for k, v := range overlay {
 		cfg[k] = v
+	}
+	if err := applySecretConfig(ctx, cfg, s.opts.SecretConfig, s.sm.Encrypter()); err != nil {
+		return backend.UpdateOperation{}, err
 	}
 	eng := s.opts.Engine
 	if preview {
@@ -401,10 +424,11 @@ func (s *Stack) operation(ctx context.Context, preview bool) (backend.UpdateOper
 			Display:     backenddisplay.Options{Color: colors.Never, Stdout: io.Discard, Stderr: io.Discard},
 			Engine:      eng,
 		},
-		StackConfiguration: backend.StackConfiguration{Config: cfg, Decrypter: s.sm.Decrypter()},
-		SecretsManager:     s.sm,
-		SecretsProvider:    b64secrets.Base64SecretsProvider,
-		Scopes:             contextScopes,
+		StackConfiguration: backend.StackConfiguration{Config: cfg, Decrypter: s.sm.Decrypter(),
+			EnvironmentVariables: s.opts.EnvironmentVariables},
+		SecretsManager:  s.sm,
+		SecretsProvider: b64secrets.Base64SecretsProvider,
+		Scopes:          contextScopes,
 	}, nil
 }
 
@@ -423,13 +447,13 @@ func (s *Stack) cloudOperation(
 	if p := filepath.Join(s.opts.WorkDir, "Pulumi."+s.stack.Ref().Name().String()+".yaml"); fileExists(p) {
 		configFile = p
 	}
-	cfg, sm, err := cmdConfig.GetStackConfiguration(ctx, s.sink, ssml, s.stack, s.proj, configFile)
+	cfg, sm, err := cmdConfig.GetStackConfiguration(ctx, s.sink, ssml, s.stack, s.proj, configFile, s.opts.Environments)
 	if err != nil {
 		return backend.UpdateOperation{}, fmt.Errorf("assembling stack configuration: %w", err)
 	}
 	// Fold the ESC environment's pulumiConfig and the project's config defaults into the
 	// stack config -- the same application the CLI performs before every operation.
-	if err := workspace.ValidateStackConfigAndApplyProjectConfig(
+	if err := pkgWorkspace.ValidateStackConfigAndApplyProjectConfig(
 		ctx, s.stack.Ref().Name().String(), s.proj, cfg.Environment, cfg.Config,
 		sm.Encrypter(), sm.Decrypter(),
 	); err != nil {
@@ -438,6 +462,10 @@ func (s *Stack) cloudOperation(
 	for k, v := range overlay {
 		cfg.Config[k] = v
 	}
+	if err := applySecretConfig(ctx, cfg.Config, s.opts.SecretConfig, sm.Encrypter()); err != nil {
+		return backend.UpdateOperation{}, err
+	}
+	cfg.EnvironmentVariables = s.opts.EnvironmentVariables
 	eng := s.opts.Engine
 	if preview {
 		eng.GeneratePlan = true
@@ -494,4 +522,19 @@ func parseConfig(in map[string]string) (config.Map, error) {
 		cfg[key] = config.NewValue(v)
 	}
 	return cfg, nil
+}
+
+func applySecretConfig(ctx context.Context, cfg config.Map, values map[string]string, enc config.Encrypter) error {
+	for rawKey, plaintext := range values {
+		key, err := config.ParseKey(rawKey)
+		if err != nil {
+			return fmt.Errorf("parsing secret config key %q: %w", rawKey, err)
+		}
+		ciphertext, err := enc.EncryptValue(ctx, plaintext)
+		if err != nil {
+			return fmt.Errorf("encrypting secret config value for %q: %w", rawKey, err)
+		}
+		cfg[key] = config.NewSecureValue(ciphertext)
+	}
+	return nil
 }

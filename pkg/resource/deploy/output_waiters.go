@@ -27,9 +27,9 @@ import (
 // stack's outputs, it can block until those outputs become available.
 type OutputWaiterStore struct {
 	mu      sync.Mutex
-	stacks  map[string]bool         // set of co-deployed stack names (fully qualified)
-	outputs map[string]property.Map // stack name -> outputs (set when stack completes its root resource outputs)
-	errors  map[string]error        // stack name -> error (set when stack fails)
+	stacks  map[string]bool          // set of co-deployed stack names (fully qualified)
+	outputs map[string]property.Map  // stack name -> outputs (set when stack completes its root resource outputs)
+	errors  map[string]error         // stack name -> error (set when stack fails)
 	ready   map[string]chan struct{} // stack name -> channel closed when outputs are ready
 
 	// For cycle detection: tracks which stacks are waiting on which.
@@ -68,7 +68,12 @@ func (s *OutputWaiterStore) SetOutputs(stackName string, outputs property.Map) {
 
 	s.outputs[stackName] = outputs
 	if ch, ok := s.ready[stackName]; ok {
-		close(ch) // Signal all waiters
+		select {
+		case <-ch:
+			// Stack output finalization may publish the root outputs a second time.
+		default:
+			close(ch)
+		}
 	}
 }
 

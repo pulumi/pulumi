@@ -81,6 +81,28 @@ type CompleteDeliveryTransitionRequest struct {
 	EnvironmentRevision string          `json:"environmentRevision,omitempty"`
 }
 
+type DeliveryCandidatePreviewRequest struct {
+	ShapeVersion    int                             `json:"shapeVersion"`
+	ReleaseID       string                          `json:"releaseId"`
+	ChangeRequestID string                          `json:"changeRequestId"`
+	RevisionNumber  int                             `json:"revisionNumber"`
+	WorkflowRunID   string                          `json:"workflowRunId"`
+	Status          string                          `json:"status"`
+	Stacks          []DeliveryCandidatePreviewStack `json:"stacks,omitempty"`
+	Plan            json.RawMessage                 `json:"plan,omitempty"`
+	Events          json.RawMessage                 `json:"events,omitempty"`
+	Error           string                          `json:"error,omitempty"`
+}
+
+type DeliveryCandidatePreviewStack struct {
+	URN                  string            `json:"urn"`
+	Name                 string            `json:"name"`
+	Stage                string            `json:"stage"`
+	TargetStack          string            `json:"targetStack"`
+	Changes              map[string]int    `json:"changes"`
+	EnvironmentRevisions map[string]string `json:"environmentRevisions,omitempty"`
+}
+
 func deliveryPath(stack StackIdentifier, suffix string) string {
 	return fmt.Sprintf("/api/preview/stacks/%s/%s/%s/delivery%s", url.PathEscape(stack.Owner),
 		url.PathEscape(stack.Project), url.PathEscape(stack.Stack.String()), suffix)
@@ -156,6 +178,24 @@ func (pc *Client) CompleteDeliveryTransition(ctx context.Context, stack StackIde
 		nil, request, nil)
 }
 
+type DeliverySourceProbeRequest struct {
+	ProbeID       string   `json:"probeId"`
+	ShapeID       string   `json:"shapeId"`
+	SourceURN     string   `json:"sourceUrn"`
+	SourceName    string   `json:"sourceName"`
+	WorkflowRunID string   `json:"workflowRunId"`
+	Commit        string   `json:"commit"`
+	Branch        string   `json:"branch,omitempty"`
+	Paths         []string `json:"paths,omitempty"`
+	PathsComplete bool     `json:"pathsComplete"`
+}
+
+func (pc *Client) CompleteDeliverySourceProbe(ctx context.Context, stack StackIdentifier,
+	request DeliverySourceProbeRequest,
+) error {
+	return pc.restCall(ctx, "POST", deliveryPath(stack, "/sources/probe/complete"), nil, request, nil)
+}
+
 func (pc *Client) ApproveChangeRequest(ctx context.Context, org, requestID string, revision int, comment string) error {
 	request := struct {
 		RevisionNumber int    `json:"revisionNumber"`
@@ -163,4 +203,11 @@ func (pc *Client) ApproveChangeRequest(ctx context.Context, org, requestID strin
 	}{revision, comment}
 	return pc.restCall(ctx, "POST", "/api/change-requests/"+url.PathEscape(org)+"/"+
 		url.PathEscape(requestID)+"/approve", nil, request, nil)
+}
+
+func (pc *Client) CompleteDeliveryCandidatePreview(ctx context.Context, org, candidateID string,
+	request DeliveryCandidatePreviewRequest,
+) error {
+	return pc.restCall(ctx, "POST", "/api/orgs/"+url.PathEscape(org)+"/delivery/candidates/"+
+		url.PathEscape(candidateID)+"/preview", nil, request, nil)
 }

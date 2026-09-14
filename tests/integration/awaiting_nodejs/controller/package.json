@@ -1,0 +1,6 @@
+{
+  "dependencies": {
+    "@pulumi/pulumi": "latest"
+  }
+}
+

@@ -31,6 +31,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/jonboulle/clockwork"
 	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
 
 	"github.com/stretchr/testify/assert"
@@ -78,6 +79,55 @@ func TestCommandNameContext(t *testing.T) {
 	name, ok := commandNameFromContext(ctx)
 	assert.True(t, ok)
 	assert.Equal(t, "pulumi new", name)
+}
+
+func TestCloudUpdateCompletionStatus(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name   string
+		err    error
+		status apitype.UpdateStatus
+	}{
+		{name: "success", status: apitype.UpdateStatusSucceeded},
+		{name: "failure", err: errors.New("failed"), status: apitype.UpdateStatusFailed},
+		{name: "awaiting", err: &deploy.AwaitingError{}, status: apitype.UpdateStatusSucceeded},
+		{name: "wrapped awaiting", err: fmt.Errorf("update: %w", &deploy.AwaitingError{}), status: apitype.UpdateStatusSucceeded},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, tt.status, cloudUpdateCompletionStatus(tt.err))
+		})
+	}
+}
+
+func TestAwaitingCompletesCloudUpdateWithSuccessfulCheckpoint(t *testing.T) {
+	t.Parallel()
+
+	var request apitype.CompleteUpdateRequest
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, http.MethodPost, r.Method)
+		require.Equal(t, "/api/stacks/acme/project/dev/update/update-id/complete", r.URL.Path)
+		require.NoError(t, json.NewDecoder(r.Body).Decode(&request))
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	t.Cleanup(server.Close)
+
+	b := &cloudBackend{client: client.NewClient(server.URL, "token", true, diagtest.LogSink(t))}
+	token, err := newTokenSource(t.Context(), clockwork.NewRealClock(), "lease", time.Now().Add(time.Hour),
+		time.Hour, func(context.Context, time.Duration, string) (string, time.Time, error) {
+			return "lease", time.Now().Add(time.Hour), nil
+		})
+	require.NoError(t, err)
+	update := client.UpdateIdentifier{
+		StackIdentifier: client.StackIdentifier{Owner: "acme", Project: "project", Stack: tokens.MustParseStackName("dev")},
+		UpdateKind:      apitype.UpdateUpdate,
+		UpdateID:        "update-id",
+	}
+	require.NoError(t, b.completeUpdate(t.Context(), token, update,
+		cloudUpdateCompletionStatus(&deploy.AwaitingError{})))
+	require.Equal(t, apitype.UpdateStatusSucceeded, request.Status)
 }
 
 //nolint:paralleltest // mutates global configuration

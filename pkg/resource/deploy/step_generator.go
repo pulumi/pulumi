@@ -100,6 +100,10 @@ type stepGenerator struct {
 	// specify them with --target, or because they were skipped as part of a destroy run where we
 	// can't create any new resources.
 	skippedCreates map[resource.URN]bool
+	// awaitingDependencies contains resources suspended by a provider and their transitively
+	// deferred dependents. It is separate from targeted skippedCreates because only awaiting
+	// dependencies bypass provider Check and resolve as unknown to the language host.
+	awaitingDependencies map[resource.URN]bool
 
 	// the set of resources that need to be destroyed in this deployment after running other steps on them.
 	toDelete []*pkgresource.State
@@ -886,6 +890,20 @@ func (sg *stepGenerator) generateResourceSteps(
 		ResourceHooks:           goal.ResourceHooks,
 		SnippetID:               goal.SnippetID,
 	}.Make()
+	// An awaiting dependency deliberately supplies unknown inputs. Do not call Check or Diff
+	// for this resource: many providers correctly reject unknown required properties outside a
+	// preview. Emit a no-op registration step so the executor can suspend it, preserve any old
+	// state, and retain the unchecked goal in DeferredResources for the next update.
+	if hasSkippedDeps, depErr := sg.hasAwaitingDependencies(new); depErr != nil {
+		return nil, false, depErr
+	} else if hasSkippedDeps {
+		sg.sames[urn] = true
+		sg.awaitingDependencies[urn] = true
+		if old == nil {
+			return []Step{NewSkippedCreateStep(sg.deployment, event, new)}, false, nil
+		}
+		return []Step{NewSameStep(sg.deployment, event, old, new)}, false, nil
+	}
 	if sdkproviders.IsProviderType(goal.Type) {
 		sg.providers[urn] = new
 		for _, aliasURN := range aliasUrns {
@@ -992,6 +1010,27 @@ func (sg *stepGenerator) ContinueStepsFromExtension(
 }
 
 func (sg *stepGenerator) hasSkippedDependencies(new *pkgresource.State) (bool, error) {
+	return sg.hasDependenciesIn(new, sg.skippedCreates)
+}
+
+func (sg *stepGenerator) hasAwaitingDependencies(new *pkgresource.State) (bool, error) {
+	return sg.hasDependenciesIn(new, sg.awaitingDependencies)
+}
+
+func (sg *stepGenerator) hasDependenciesIn(new *pkgresource.State, dependencies map[resource.URN]bool) (bool, error) {
+	allDepURNs, err := dependencyURNs(new)
+	if err != nil {
+		return false, err
+	}
+	for _, depURN := range allDepURNs {
+		if dependencies[depURN] {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+func dependencyURNs(new *pkgresource.State) ([]resource.URN, error) {
 	provider, allDeps := new.GetAllDependencies()
 	allDepURNs := make([]resource.URN, len(allDeps))
 	for i, dep := range allDeps {
@@ -1001,7 +1040,7 @@ func (sg *stepGenerator) hasSkippedDependencies(new *pkgresource.State) (bool, e
 	if provider != "" {
 		prov, err := sdkproviders.ParseReference(provider)
 		if err != nil {
-			return false, fmt.Errorf(
+			return nil, fmt.Errorf(
 				"could not parse provider reference %s for %s: %w",
 				provider, new.URN, err,
 			)
@@ -1009,12 +1048,7 @@ func (sg *stepGenerator) hasSkippedDependencies(new *pkgresource.State) (bool, e
 		allDepURNs = append(allDepURNs, prov.URN())
 	}
 
-	for _, depURN := range allDepURNs {
-		if sg.skippedCreates[depURN] {
-			return true, nil
-		}
-	}
-	return false, nil
+	return allDepURNs, nil
 }
 
 func (sg *stepGenerator) continueStepsFromExtension(
@@ -3702,6 +3736,7 @@ func newStepGenerator(
 		deletes:                   make(map[resource.URN]bool),
 		refreshes:                 make(map[resource.URN]bool),
 		skippedCreates:            make(map[resource.URN]bool),
+		awaitingDependencies:      make(map[resource.URN]bool),
 		pendingDeletes:            make(map[*pkgresource.State]bool),
 		pendingUntargetedSameURNs: make(map[resource.URN]bool),
 		providers:                 make(map[resource.URN]*pkgresource.State),

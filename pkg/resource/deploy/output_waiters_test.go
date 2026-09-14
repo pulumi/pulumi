@@ -36,6 +36,8 @@ func TestOutputWaiterStoreBasic(t *testing.T) {
 		"url": property.New("https://example.com"),
 	})
 	store.SetOutputs("org/proj/stack-a", outputs)
+	assert.NotPanics(t, func() { store.SetOutputs("org/proj/stack-a", outputs) },
+		"stack root finalization publishes outputs again")
 
 	got, err := store.WaitForOutputs(context.Background(), "org/proj/stack-b", "org/proj/stack-a")
 	require.NoError(t, err)

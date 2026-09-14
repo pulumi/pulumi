@@ -208,6 +208,7 @@ func (se *stepExecutor) GetAwaitingSteps() []Step {
 // Apply, the executor consults it to learn whether the provider asked to wait.
 type awaitableStep interface {
 	Awaiting() (reason string, awaiting bool)
+	Suspend()
 }
 
 // snapshotMutation is the slice of the snapshot mutation (returned by the step-pre event)
@@ -528,6 +529,13 @@ func (se *stepExecutor) executeChain(workerID int, chain chain) {
 			}
 			return
 		}
+		if awaiting, ok := step.(awaitableStep); ok {
+			if _, suspended := awaiting.Awaiting(); suspended {
+				// A replacement chain may contain Replace/Delete steps after its creating step.
+				// The provider did not create the replacement, so those steps must wait too.
+				return
+			}
+		}
 	}
 }
 
@@ -627,7 +635,7 @@ func (se *stepExecutor) continueExecuteStep(payload any, workerID int, step Step
 			se.awaitingSteps = append(se.awaitingSteps, step)
 			se.awaitingStepLock.Unlock()
 			se.skipResolved.Store(step.URN(), struct{}{})
-			step.Skip()
+			aw.Suspend()
 			if mut, ok := payload.(snapshotMutation); ok {
 				if endErr := mut.End(step, false /*successful*/); endErr != nil {
 					return endErr

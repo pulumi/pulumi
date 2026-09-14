@@ -2173,16 +2173,28 @@ func (b *cloudBackend) runEngineAction(
 	close(displayEvents)
 
 	// Mark the update as complete.
-	status := apitype.UpdateStatusSucceeded
-	if updateErr != nil {
-		status = apitype.UpdateStatusFailed
-	}
+	status := cloudUpdateCompletionStatus(updateErr)
 	completeErr := b.completeUpdate(ctx, tokenSource, update, status)
 	if completeErr != nil {
 		updateErr = result.MergeBails(updateErr, fmt.Errorf("failed to complete update: %w", completeErr))
 	}
 
 	return plan, changes, updateErr
+}
+
+func cloudUpdateCompletionStatus(updateErr error) apitype.UpdateStatus {
+	if updateErr == nil {
+		return apitype.UpdateStatusSucceeded
+	}
+	// Awaiting is a successful checkpoint boundary: the engine persisted the
+	// suspended goals and a later update will resume them. The command still
+	// returns AwaitingError (and exit code 10), but the Cloud must reconcile the
+	// checkpoint instead of treating it as a failed update.
+	var awaitingErr *deploy.AwaitingError
+	if errors.As(updateErr, &awaitingErr) {
+		return apitype.UpdateStatusSucceeded
+	}
+	return apitype.UpdateStatusFailed
 }
 
 // SetupPerStackSnapshots implements backend.PerStackSnapshotProvider for the Pulumi Cloud backend.

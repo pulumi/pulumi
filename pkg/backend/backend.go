@@ -360,8 +360,10 @@ type StackConfiguration struct {
 	EnvironmentImports []string
 
 	Environment esc.Value
-	Config      config.Map
-	Decrypter   config.Decrypter
+	// EnvironmentVariables are scoped to the language and provider plugins for this stack.
+	EnvironmentVariables map[string]string
+	Config               config.Map
+	Decrypter            config.Decrypter
 }
 
 // LatestConfiguration holds the configuration retrieved from the most recent deployment.

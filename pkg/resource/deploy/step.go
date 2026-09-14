@@ -229,6 +229,10 @@ func (s *SameStep) Skip() {
 	s.reg.Done(&RegisterResult{State: s.new, Result: ResultStateSkipped})
 }
 
+func (s *SameStep) Suspend() {
+	s.reg.Done(&RegisterResult{State: s.new, Unknown: true, Awaiting: true})
+}
+
 // CreateStep is a mutating step that creates an entirely new resource.
 type CreateStep struct {
 	deployment    *Deployment                    // the current deployment.
@@ -249,6 +253,13 @@ type CreateStep struct {
 // Awaiting reports whether this step's Apply found the resource not yet ready (the
 // provider returned an awaiting create/update). The engine suspends rather than failing.
 func (s *CreateStep) Awaiting() (string, bool) { return s.awaitingReason, s.awaiting }
+
+// Suspend resolves the language-host registration successfully with unknown outputs. This lets
+// the program continue registering goals while the scheduler skips resources that depend on this
+// one. The resource itself is kept only in DeferredResources and is retried by a later update.
+func (s *CreateStep) Suspend() {
+	s.reg.Done(&RegisterResult{State: s.new, Unknown: true, Awaiting: true})
+}
 
 var _ Step = (*CreateStep)(nil)
 
@@ -930,6 +941,12 @@ type UpdateStep struct {
 // Awaiting reports whether this step's Apply found the resource not yet ready (the
 // provider returned an awaiting update). The engine suspends rather than failing.
 func (s *UpdateStep) Awaiting() (string, bool) { return s.awaitingReason, s.awaiting }
+
+// Suspend has the same language-host semantics as CreateStep.Suspend. The old state remains in
+// the snapshot, while consumers of this registration receive unknown outputs for this update.
+func (s *UpdateStep) Suspend() {
+	s.reg.Done(&RegisterResult{State: s.new, Unknown: true, Awaiting: true})
+}
 
 var _ Step = (*UpdateStep)(nil)
 

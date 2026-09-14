@@ -86,11 +86,73 @@ func NewDeliveryCmd() *cobra.Command {
 	}))
 	root.AddCommand(c.logsCommand())
 	root.AddCommand(c.reportCommand())
+	root.AddCommand(c.reportSourceCommand())
+	root.AddCommand(c.previewCandidateCommand())
 	root.AddCommand(c.approveCommand())
 	for _, action := range []string{"pause", "resume", "retry", "redeploy", "promote", "rollback", "signal"} {
 		root.AddCommand(c.actionCommand(action))
 	}
 	return root
+}
+
+func (c *command) reportSourceCommand() *cobra.Command {
+	probeID := os.Getenv("PULUMI_DELIVERY_SOURCE_PROBE_ID")
+	shapeID := os.Getenv("PULUMI_DELIVERY_SOURCE_SHAPE_ID")
+	sourceURN := os.Getenv("PULUMI_DELIVERY_SOURCE_URN")
+	sourceName := os.Getenv("PULUMI_DELIVERY_SOURCE_NAME")
+	workflowRunID := os.Getenv("PULUMI_DELIVERY_WORKFLOW_RUN_ID")
+	if workflowRunID == "" {
+		workflowRunID = os.Getenv("PULUMI_WORKFLOW_RUN_ID")
+	}
+	commit, branch, pathsFile, pathsComplete := "", "", "", false
+	cmd := &cobra.Command{Use: "report-source", Args: cobra.NoArgs, Hidden: true,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			if probeID == "" || shapeID == "" || sourceURN == "" || sourceName == "" || workflowRunID == "" {
+				return errors.New("delivery source report requires probe, shape, source, and workflow run IDs")
+			}
+			if strings.TrimSpace(commit) == "" {
+				return errors.New("--commit is required")
+			}
+			api, stack, err := c.client(cmd.Context())
+			if err != nil {
+				return err
+			}
+			paths, err := readDeliverySourcePaths(pathsFile)
+			if err != nil {
+				return err
+			}
+			return api.CompleteDeliverySourceProbe(cmd.Context(), stack, client.DeliverySourceProbeRequest{
+				ProbeID: probeID, ShapeID: shapeID, SourceURN: sourceURN, SourceName: sourceName,
+				WorkflowRunID: workflowRunID, Commit: strings.TrimSpace(commit), Branch: branch,
+				Paths: paths, PathsComplete: pathsComplete,
+			})
+		}}
+	cmd.Flags().StringVar(&commit, "commit", "", "Resolved source commit")
+	cmd.Flags().StringVar(&branch, "branch", "", "Resolved source branch")
+	cmd.Flags().StringVar(&pathsFile, "paths", "", "File containing changed source paths")
+	cmd.Flags().BoolVar(&pathsComplete, "paths-complete", false, "Changed paths cover the full revision range")
+	return cmd
+}
+
+func readDeliverySourcePaths(path string) ([]string, error) {
+	if path == "" {
+		return nil, nil
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, fmt.Errorf("reading delivery source paths: %w", err)
+	}
+	separator := "\n"
+	if strings.ContainsRune(string(data), '\x00') {
+		separator = "\x00"
+	}
+	var paths []string
+	for _, path := range strings.Split(string(data), separator) {
+		if path = strings.TrimSpace(path); path != "" {
+			paths = append(paths, path)
+		}
+	}
+	return paths, nil
 }
 
 func (c *command) approveCommand() *cobra.Command {

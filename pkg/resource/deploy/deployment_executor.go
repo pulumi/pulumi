@@ -548,6 +548,14 @@ func (ex *deploymentExecutor) performPostSteps(
 
 		dg := ex.deployment.depGraph
 		deleteGraph := graph.NewDependencyGraph(ex.stepGen.toDelete)
+		awaitingDeps := mapset.NewSet[*pkgresource.State]()
+		for _, step := range ex.stepExec.GetAwaitingSteps() {
+			for _, r := range []*pkgresource.State{step.Res(), step.Old()} {
+				if r != nil && dg.Contains(r) {
+					awaitingDeps = awaitingDeps.Union(dg.TransitiveDependenciesOf(r))
+				}
+			}
+		}
 
 		// ScheduleDeletes gives us a list of lists of steps. Each list of steps can safely be executed
 		// in parallel, but each list must execute completes before the next list can safely begin
@@ -586,7 +594,7 @@ func (ex *deploymentExecutor) performPostSteps(
 			seenErrors.Append(erroredSteps...)
 			newChain := make([]Step, 0, len(antichain))
 			for _, step := range antichain {
-				if !erroredDeps.Contains(step.Res()) {
+				if !erroredDeps.Contains(step.Res()) && !awaitingDeps.Contains(step.Res()) {
 					newChain = append(newChain, step)
 				}
 			}
@@ -663,6 +671,9 @@ func (ex *deploymentExecutor) handleSingleEvent(ctx context.Context, event Sourc
 		steps, err = ex.stepGen.ContinueStepsFromDiff(e)
 	case RegisterResourceEvent:
 		logging.V(4).Infof("deploymentExecutor.handleSingleEvent(...): received RegisterResourceEvent")
+		for _, awaiting := range ex.stepExec.GetAwaitingSteps() {
+			ex.stepGen.awaitingDependencies[awaiting.Res().URN] = true
+		}
 		var async bool
 		steps, async, err = ex.stepGen.GenerateSteps(ctx, e)
 		if async {
@@ -684,17 +695,41 @@ func (ex *deploymentExecutor) handleSingleEvent(ctx context.Context, event Sourc
 	for _, errored := range ex.stepExec.GetErroredSteps() {
 		ex.skipped.Add(errored.Res().URN)
 	}
-	for _, awaiting := range ex.stepExec.GetAwaitingSteps() {
-		ex.skipped.Add(awaiting.Res().URN)
+	awaitingSkipped := mapset.NewSet[urn.URN]()
+	for awaitingURN := range ex.stepGen.awaitingDependencies {
+		ex.skipped.Add(awaitingURN)
+		awaitingSkipped.Add(awaitingURN)
 	}
+	nonAwaitingSkipped := ex.skipped.Difference(awaitingSkipped)
 	for _, step := range steps {
-		if doesStepDependOn(step, ex.skipped) {
+		dependsOnAwaiting := false
+		if step.New() != nil {
+			var err error
+			dependsOnAwaiting, err = ex.stepGen.hasAwaitingDependencies(step.New())
+			if err != nil {
+				return err
+			}
+		}
+		dependsOnAwaiting = dependsOnAwaiting || doesStepDependOn(step, awaitingSkipped)
+		dependsOnOtherSkip := doesStepDependOn(step, nonAwaitingSkipped)
+		if dependsOnOtherSkip || dependsOnAwaiting {
 			if events, ok := ex.deployment.events.(DeferredResourceEvents); ok {
 				if err := events.OnDeferredResource(step.New()); err != nil {
 					return err
 				}
 			}
-			step.Skip()
+			if !dependsOnOtherSkip && dependsOnAwaiting {
+				if suspender, ok := step.(interface{ Suspend() }); ok {
+					suspender.Suspend()
+				} else {
+					step.Skip()
+				}
+				awaitingSkipped.Add(step.Res().URN)
+				ex.stepGen.awaitingDependencies[step.Res().URN] = true
+			} else {
+				step.Skip()
+				nonAwaitingSkipped.Add(step.Res().URN)
+			}
 			ex.skipped.Add(step.Res().URN)
 			ex.stepExec.MarkSkipResolved(step.Res().URN)
 			continue

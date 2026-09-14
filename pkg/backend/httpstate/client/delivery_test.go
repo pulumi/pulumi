@@ -42,6 +42,28 @@ func TestCompleteDeliveryTransitionRequest(t *testing.T) {
 	assert.JSONEq(t, `{"digest":{"4dabf18193072939515e22adb298388d":"1b47061264138c4ac30d75fd1eb44270"}}`, string(body.Outputs))
 }
 
+func TestCompleteDeliveryCandidatePreview(t *testing.T) {
+	t.Parallel()
+	var body DeliveryCandidatePreviewRequest
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "/api/orgs/acme/delivery/candidates/candidate%2F1/preview", r.URL.EscapedPath())
+		assert.Equal(t, http.MethodPost, r.Method)
+		require.NoError(t, json.NewDecoder(r.Body).Decode(&body))
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer server.Close()
+	api := NewClient(server.URL, "token", true, diag.DefaultSink(io.Discard, io.Discard,
+		diag.FormatOptions{Color: colors.Never}))
+	err := api.CompleteDeliveryCandidatePreview(t.Context(), "acme", "candidate/1", DeliveryCandidatePreviewRequest{
+		ShapeVersion: 2, ReleaseID: "release", ChangeRequestID: "cr", RevisionNumber: 3,
+		WorkflowRunID: "run", Status: "succeeded", Stacks: []DeliveryCandidatePreviewStack{},
+		Plan: json.RawMessage(`{"resourcePlans":{}}`), Events: json.RawMessage(`[]`),
+	})
+	require.NoError(t, err)
+	assert.Equal(t, "run", body.WorkflowRunID)
+	assert.JSONEq(t, `{"resourcePlans":{}}`, string(body.Plan))
+}
+
 func TestListDeliveryReleasesContinuationToken(t *testing.T) {
 	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

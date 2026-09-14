@@ -11,6 +11,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	resourceconfig "github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 )
 
 // writeProject writes a minimal YAML Pulumi project into its own directory and returns the
@@ -22,6 +24,18 @@ func writeProject(t *testing.T, root, name, program string) string {
 	require.NoError(t, os.MkdirAll(dir, 0o755))
 	require.NoError(t, os.WriteFile(filepath.Join(dir, "Pulumi.yaml"), []byte(program), 0o600))
 	return dir
+}
+
+func TestApplySecretConfigMarksEncryptedValueSecure(t *testing.T) {
+	t.Parallel()
+	cfg := resourceconfig.Map{}
+	require.NoError(t, applySecretConfig(t.Context(), cfg, map[string]string{"project:token": "secret"},
+		resourceconfig.Base64Crypter))
+	value := cfg[resourceconfig.MustMakeKey("project", "token")]
+	assert.True(t, value.Secure())
+	plaintext, err := value.Value(resourceconfig.Base64Crypter)
+	require.NoError(t, err)
+	assert.Equal(t, "secret", plaintext)
 }
 
 func requireYAMLHost(t *testing.T) {
@@ -157,6 +171,44 @@ outputs:
 	msg, ok := res.Outputs.GetOk("message")
 	require.True(t, ok, "preview should project the static stack output")
 	assert.Equal(t, "hello, preview", msg.AsString(), "a known output is projected as known in preview")
+}
+
+func TestDriver_PreviewManyReturnsNativePlanAndEvents(t *testing.T) {
+	t.Parallel()
+	requireYAMLHost(t)
+
+	root := t.TempDir()
+	backendURL := "file://" + filepath.Join(root, "state")
+	producer := writeProject(t, root, "producer", `name: zzz-producer
+runtime: yaml
+outputs:
+  message: from-producer
+`)
+	consumer := writeProject(t, root, "consumer", `name: aaa-consumer
+runtime: yaml
+
+resources:
+  producer:
+    type: pulumi:pulumi:StackReference
+    properties:
+      name: organization/zzz-producer/dev
+outputs:
+  message: ${producer.outputs["message"]}
+`)
+	results, err := PreviewMany(context.Background(), []Options{
+		// Deliberately put the lexically earlier consumer first: the native graph must wait
+		// for the co-previewed producer rather than accidentally relying on slice order.
+		{BackendURL: backendURL, WorkDir: consumer, Stack: "dev"},
+		{BackendURL: backendURL, WorkDir: producer, Stack: "dev"},
+	})
+	require.NoError(t, err)
+	require.Len(t, results, 2)
+	for _, result := range results {
+		require.NotNil(t, result.Plan, "approval preview must retain the engine plan")
+		assert.NotEmpty(t, result.Events, "approval preview must retain native engine details")
+	}
+	// A missing co-preview dependency would fail while evaluating the consumer's output.
+	// Success with the consumer first proves the waiter used the producer's native preview.
 }
 
 // TestDriver_DefaultsToCurrentBackend proves Select resolves the ambient backend when no

@@ -3107,6 +3107,20 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 
 	// Filter out partially-known values if the requestor does not support them.
 	outputs := result.State.Outputs
+	if result.Awaiting {
+		// An awaiting or transitively suspended registration must not fall back to its
+		// input values in language SDKs. A resource may use the same property name for
+		// an input and a computed output with a different shape; returning no value would
+		// make the SDK reuse the known input and let dependent apply callbacks run.
+		outputs = resource.PropertyMap{}
+		unknown := resource.MakeComputed(resource.NewProperty(""))
+		for key := range result.State.Inputs {
+			outputs[key] = unknown
+		}
+		for key := range result.State.Outputs {
+			outputs[key] = unknown
+		}
+	}
 
 	// Local ComponentResources may contain unresolved resource refs, so ignore those outputs.
 	if !req.GetCustom() && !remote {
@@ -3128,7 +3142,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 	// case we stash the alias URNs here so they can be republished alongside the canonical URN at outputs time.
 	// Aliases let consumers blocked on a pre-rename URN find the resource via its new canonical URN; the
 	// snippet's References map is rewritten to the canonical URN at snapshot-write time by NormalizeURNReferences.
-	if rm.observer != nil && result.Result == ResultStateSuccess && result.State.URN != "" {
+	if rm.observer != nil && result.Result == ResultStateSuccess && !result.Awaiting && result.State.URN != "" {
 		if custom {
 			rm.observer.Resolve(result.State.URN, result.State.ID, outputs)
 			// Publish under each alias too. We use parsedAliases (the request's aliases) rather than
@@ -3157,7 +3171,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		}
 	}
 
-	if !req.GetSupportsPartialValues() {
+	if !req.GetSupportsPartialValues() && !result.Awaiting {
 		logging.V(5).Infof("stripping unknowns from RegisterResource response for urn %v", result.State.URN)
 		filtered := resource.PropertyMap{}
 		for k, v := range outputs {

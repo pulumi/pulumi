@@ -17,6 +17,7 @@ package engine
 import (
 	"context"
 	"fmt"
+	"maps"
 	"time"
 
 	"github.com/opentracing/opentracing-go"
@@ -37,10 +38,11 @@ import (
 
 // MultistackEntry represents a single stack participating in a multistack engine operation.
 type MultistackEntry struct {
-	Project *workspace.Project // per-stack project
-	Target  *deploy.Target     // per-stack target (has snapshot, config, decrypter)
-	Root    string             // project root directory
-	FQN     string             // fully qualified stack name (org/project/stack)
+	Project              *workspace.Project // per-stack project
+	Target               *deploy.Target     // per-stack target (has snapshot, config, decrypter)
+	Root                 string             // project root directory
+	FQN                  string             // fully qualified stack name (org/project/stack)
+	EnvironmentVariables map[string]string  // environment scoped to this stack's plugins
 }
 
 // MultistackContext provides the execution context for a multistack engine operation.
@@ -51,6 +53,7 @@ type MultistackContext struct {
 	BackendClient    deploy.BackendClient
 	ParentSpan       opentracing.SpanContext
 	PluginManager    PluginManager
+	GeneratedPlan    *deploy.Plan // populated for a successful dry run
 }
 
 // MultistackUpdate runs a single unified deployment across N stacks.
@@ -157,6 +160,12 @@ func MultistackUpdate(
 			)
 			if err != nil {
 				return nil, fmt.Errorf("creating plugin context for %s: %w", entry.FQN, err)
+			}
+			if len(entry.EnvironmentVariables) > 0 {
+				if plugctx.CloudCredentialEnv == nil {
+					plugctx.CloudCredentialEnv = map[string]string{}
+				}
+				maps.Copy(plugctx.CloudCredentialEnv, entry.EnvironmentVariables)
 			}
 			plugctxs[i] = plugctx
 
@@ -280,7 +289,10 @@ func MultistackUpdate(
 	emitter.preludeEvent(dryRun, syntheticTarget.Config)
 
 	start := time.Now()
-	_, walkErr := depl.Execute(context.Background())
+	plan, walkErr := depl.Execute(context.Background())
+	if dryRun && walkErr == nil {
+		mctx.GeneratedPlan = plan
+	}
 	duration := time.Since(start)
 
 	changes := actions.Changes()

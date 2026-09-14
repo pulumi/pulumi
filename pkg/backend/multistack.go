@@ -162,10 +162,11 @@ func runMultistackPreviewViaEngine(
 		}
 
 		engineEntries[i] = engine.MultistackEntry{
-			Project: entry.Op.Proj,
-			Target:  target,
-			Root:    entry.Op.Root,
-			FQN:     fqn,
+			Project:              entry.Op.Proj,
+			Target:               target,
+			Root:                 entry.Op.Root,
+			FQN:                  fqn,
+			EnvironmentVariables: entry.Op.StackConfiguration.EnvironmentVariables,
 		}
 	}
 
@@ -201,11 +202,7 @@ func runMultistackPreviewViaEngine(
 		defer forwardWg.Done()
 		for e := range engineEvents {
 			if !e.Internal() {
-				if e.Type == engine.ResourcePreEvent ||
-					e.Type == engine.ResourceOutputsEvent ||
-					e.Type == engine.PolicyRemediationEvent {
-					collectedEvents = append(collectedEvents, e)
-				}
+				collectedEvents = append(collectedEvents, e)
 			}
 			unifiedEvents <- e
 		}
@@ -224,7 +221,7 @@ func runMultistackPreviewViaEngine(
 	}
 
 	// Call the unified engine.
-	changes, err := engine.MultistackUpdate(engineEntries, mctx, engineOpts, true /* dryRun */)
+	_, err := engine.MultistackUpdate(engineEntries, mctx, engineOpts, true /* dryRun */)
 
 	close(engineEvents)
 	forwardWg.Wait()
@@ -241,8 +238,25 @@ func runMultistackPreviewViaEngine(
 	for _, entry := range entries {
 		fqn := string(entry.Stack.Ref().FullyQualifiedName())
 		results[fqn] = &MultistackResult{
-			Changes: changes,
+			Changes: sdkDisplay.ResourceChanges{},
+			Plan:    mctx.GeneratedPlan,
 			Events:  collectedEvents,
+		}
+	}
+	for _, event := range collectedEvents {
+		if event.Type != engine.ResourcePreEvent {
+			continue
+		}
+		payload, ok := event.Payload().(engine.ResourcePreEventPayload)
+		if !ok || !payload.Metadata.Logical || payload.Metadata.Op == deploy.OpSame {
+			continue
+		}
+		for _, entry := range entries {
+			if entry.Op.Proj.Name == payload.Metadata.URN.Project() {
+				result := results[string(entry.Stack.Ref().FullyQualifiedName())]
+				result.Changes[payload.Metadata.Op]++
+				break
+			}
 		}
 	}
 
@@ -299,10 +313,11 @@ func runMultistackUpdateViaEngine(
 			Snapshot:  perStackSnaps[fqn],
 		}
 		engineEntries[i] = engine.MultistackEntry{
-			Project: entry.Op.Proj,
-			Target:  target,
-			Root:    entry.Op.Root,
-			FQN:     fqn,
+			Project:              entry.Op.Proj,
+			Target:               target,
+			Root:                 entry.Op.Root,
+			FQN:                  fqn,
+			EnvironmentVariables: entry.Op.StackConfiguration.EnvironmentVariables,
 		}
 	}
 
