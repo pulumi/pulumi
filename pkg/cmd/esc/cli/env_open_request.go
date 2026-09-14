@@ -15,11 +15,22 @@
 package cli
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"time"
 
 	"github.com/spf13/cobra"
+
+	"github.com/pulumi/pulumi/pkg/v3/cmd/esc/cli/client"
+)
+
+const (
+	defaultGrantExpiration = 90000 * time.Second
+	defaultAccessDuration  = 259200 * time.Second
+
+	approvalPollInterval = 5 * time.Second
+	defaultWaitTimeout   = 5 * time.Minute
 )
 
 func newEnvOpenRequestCmd(envcmd *envCommand) *cobra.Command {
@@ -53,46 +64,19 @@ func newEnvOpenRequestCmd(envcmd *envCommand) *cobra.Command {
 				return err
 			}
 
-			resp, err := envcmd.esc.client.CreateEnvironmentOpenRequest(
-				ctx,
-				ref.orgName,
-				ref.projectName,
-				ref.envName,
-				int(grantExpiration.Seconds()),
-				int(accessDuration.Seconds()),
-			)
+			changeRequests, err := envcmd.submitOpenRequest(ctx, ref, grantExpiration, accessDuration, reason)
 			if err != nil {
 				return err
-			}
-			if len(resp.ChangeRequests) == 0 {
-				return errors.New("no open request was created for this environment; " +
-					"check that an open approval rule applies to it")
-			}
-
-			var changeRequestDescription *string
-			if reason != "" {
-				changeRequestDescription = &reason
-			}
-
-			// An open request can span multiple change requests: one for the target environment
-			// and one for each gated import. Submit them all up front so the output paths below
-			// only differ in how they present the result.
-			for i := range resp.ChangeRequests {
-				if err := envcmd.esc.client.SubmitChangeRequest(
-					ctx, ref.orgName, resp.ChangeRequests[i].ChangeRequestID, changeRequestDescription,
-				); err != nil {
-					return fmt.Errorf("submitting change request: %w", err)
-				}
 			}
 
 			if format == outputJSON {
 				return writeJSON(envcmd.esc.stdout, struct {
 					ChangeRequestID string `json:"changeRequestId"`
-				}{resp.ChangeRequests[0].ChangeRequestID})
+				}{changeRequests[0].ChangeRequestID})
 			}
 
-			for i := range resp.ChangeRequests {
-				cr := resp.ChangeRequests[i]
+			for i := range changeRequests {
+				cr := changeRequests[i]
 				crRef := environmentRef{
 					orgName:     ref.orgName,
 					projectName: cr.ProjectName,
@@ -116,10 +100,10 @@ func newEnvOpenRequestCmd(envcmd *envCommand) *cobra.Command {
 	}
 
 	cmd.Flags().DurationVar(
-		&grantExpiration, "grant-expiration-seconds", 90000*time.Second,
+		&grantExpiration, "grant-expiration-seconds", defaultGrantExpiration,
 		"expiration time for the grant in seconds")
 	cmd.Flags().DurationVar(
-		&accessDuration, "access-duration-seconds", 259200*time.Second,
+		&accessDuration, "access-duration-seconds", defaultAccessDuration,
 		"duration of access in seconds")
 	cmd.Flags().StringVar(
 		&reason, "reason", "",
@@ -127,4 +111,116 @@ func newEnvOpenRequestCmd(envcmd *envCommand) *cobra.Command {
 	addOutputFlag(cmd, &output)
 
 	return cmd
+}
+
+func addRequestApprovalFlags(cmd *cobra.Command, opts *openApprovalOptions) {
+	cmd.Flags().BoolVar(
+		&opts.requestApproval, "request-approval-if-needed", false,
+		"If the environment requires approval to open, submit an open request")
+	cmd.Flags().BoolVar(
+		&opts.waitForApproval, "wait-for-approval", false,
+		"Wait for the submitted open request to be approved, then continue; "+
+			"implies --request-approval-if-needed")
+	cmd.Flags().DurationVar(
+		&opts.waitTimeout, "wait-for-approval-timeout", defaultWaitTimeout,
+		"How long --wait-for-approval waits before giving up (e.g. 30s, 5m)")
+	cmd.Flags().DurationVar(
+		&opts.accessDuration, "approval-access-duration", defaultAccessDuration,
+		"How long access to the environment lasts once the request is approved (e.g. 5m, 2h)")
+	cmd.Flags().StringVar(
+		&opts.reason, "approval-reason", "",
+		"Reason explaining why the environment is being opened, shown to approvers")
+}
+
+// submitOpenRequest submits a change request for the target environment and for each gated import.
+func (env *envCommand) submitOpenRequest(
+	ctx context.Context,
+	ref environmentRef,
+	grantExpiration, accessDuration time.Duration,
+	reason string,
+) ([]client.EnvironmentOpenRequestChangeRequest, error) {
+	resp, err := env.esc.client.CreateEnvironmentOpenRequest(
+		ctx,
+		ref.orgName,
+		ref.projectName,
+		ref.envName,
+		int(grantExpiration.Seconds()),
+		int(accessDuration.Seconds()),
+	)
+	if err != nil {
+		return nil, err
+	}
+	if len(resp.ChangeRequests) == 0 {
+		return nil, errors.New("no open request was created for this environment; " +
+			"check that an open approval rule applies to it")
+	}
+
+	var description *string
+	if reason != "" {
+		description = &reason
+	}
+	for i := range resp.ChangeRequests {
+		if err := env.esc.client.SubmitChangeRequest(
+			ctx, ref.orgName, resp.ChangeRequests[i].ChangeRequestID, description,
+		); err != nil {
+			return nil, fmt.Errorf("submitting change request: %w", err)
+		}
+	}
+	return resp.ChangeRequests, nil
+}
+
+type openApprovalOptions struct {
+	requestApproval bool
+	waitForApproval bool
+	accessDuration  time.Duration
+	waitTimeout     time.Duration
+	reason          string
+}
+
+// withOpenApproval runs attempt and, if it fails and an open request was asked for, submits one.
+// If opts.waitForApproval is true, it then waits until request is approved.
+func (env *envCommand) withOpenApproval(
+	ctx context.Context,
+	ref environmentRef,
+	opts openApprovalOptions,
+	attempt func() error,
+) error {
+	err := attempt()
+	if err == nil || (!opts.requestApproval && !opts.waitForApproval) {
+		return err
+	}
+
+	accessDuration := valueOrDefault(opts.accessDuration, defaultAccessDuration)
+	interval := valueOrDefault(env.pollInterval, approvalPollInterval)
+	timeout := valueOrDefault(opts.waitTimeout, defaultWaitTimeout)
+
+	changeRequests, requestErr := env.submitOpenRequest(
+		ctx, ref, defaultGrantExpiration, accessDuration, opts.reason)
+	if requestErr != nil {
+		// attempt may have failed for a reason that has nothing to do with approvals.
+		return err
+	}
+
+	for i := range changeRequests {
+		cr := changeRequests[i]
+		crRef := environmentRef{orgName: ref.orgName, projectName: cr.ProjectName, envName: cr.EnvironmentName}
+		fmt.Fprintf(env.esc.stderr, "Submitted environment open request: %v\n",
+			env.esc.changeRequestURL(crRef, cr.ChangeRequestID))
+	}
+	if !opts.waitForApproval {
+		return err
+	}
+	fmt.Fprintf(env.esc.stderr, "Waiting up to %v for approval...\n", timeout)
+
+	for waited := time.Duration(0); waited < timeout; waited += interval {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-time.After(interval):
+		}
+		if err = attempt(); err == nil {
+			return nil
+		}
+	}
+	return fmt.Errorf("timed out waiting for the open request to be approved: %w", err)
 }
