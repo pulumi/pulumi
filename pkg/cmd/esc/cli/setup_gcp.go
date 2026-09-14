@@ -272,7 +272,11 @@ func newSetupGCPCmd(setup *setupCommand) *cobra.Command {
 					envErr = err
 				}
 			}
-			return envErr
+			if envErr != nil {
+				return envErr
+			}
+			setup.printSuccess("Google Cloud")
+			return nil
 		},
 	}
 

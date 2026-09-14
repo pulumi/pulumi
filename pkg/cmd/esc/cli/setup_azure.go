@@ -291,8 +291,8 @@ func createAzureEnvironments(
 		}
 	}
 
-	if attempted > 0 && failed == attempted {
-		return errors.New("failed to create any environment")
+	if failed > 0 {
+		return fmt.Errorf("failed to create %d of %d environments", failed, attempted)
 	}
 	return nil
 }
@@ -439,7 +439,11 @@ func newSetupAzureCmd(setup *setupCommand) *cobra.Command {
 			}
 
 			setup.printHeading("Setting up Environment(s)")
-			return createAzureEnvironments(ctx, setup, org, tenant, results)
+			if err := createAzureEnvironments(ctx, setup, org, tenant, results); err != nil {
+				return err
+			}
+			setup.printSuccess("Azure")
+			return nil
 		},
 	}
 

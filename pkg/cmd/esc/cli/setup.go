@@ -69,6 +69,14 @@ func (s *setupCommand) esc() *escCommand {
 	return s.env.esc
 }
 
+// printSuccess closes a setup run once every environment has been written.
+func (s *setupCommand) printSuccess(cloud string) {
+	esc := s.esc()
+	fmt.Fprintln(esc.stdout)
+	fmt.Fprintln(esc.stdout, esc.colors.Colorize(colors.SpecHeadline+
+		"Congratulations! Your environments can now authenticate to "+cloud+" using OIDC."+colors.Reset))
+}
+
 // printHeading writes a colorized section heading to stdout, preceded by a blank line.
 func (s *setupCommand) printHeading(title string) {
 	esc := s.esc()

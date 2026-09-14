@@ -640,8 +640,8 @@ func createAWSEnvironments(
 		}
 	}
 
-	if attempted > 0 && failed == attempted {
-		return errors.New("failed to create any environment")
+	if failed > 0 {
+		return fmt.Errorf("failed to create %d of %d environments", failed, attempted)
 	}
 	return nil
 }
@@ -806,10 +806,14 @@ func newSetupAWSCmd(setup *setupCommand) *cobra.Command {
 			}
 
 			setup.printHeading("Setting up Environment(s)")
-			return createAWSEnvironments(ctx, setup, org, results, awsEnvOptions{
+			if err := createAWSEnvironments(ctx, setup, org, results, awsEnvOptions{
 				sessionName: sessionName,
 				duration:    duration,
-			})
+			}); err != nil {
+				return err
+			}
+			setup.printSuccess("AWS")
+			return nil
 		},
 	}
 
