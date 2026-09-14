@@ -55,7 +55,7 @@ LANGUAGES=(
   # renovate: datasource=github-releases depName=pulumi/pulumi-dotnet
   "dotnet v3.113.2"
   # renovate: datasource=github-releases depName=pulumi/pulumi-java
-  "java v1.37.0"
+  "java v1.37.1"
   # renovate: datasource=github-releases depName=pulumi/pulumi-yaml
   "yaml v1.38.5"
 )
