@@ -1,0 +1,4 @@
+component: cli/env
+kind: improvement
+body: Prompt for the ESC project and environment names in `pulumi env setup`, ask how to authenticate before choosing an access level, and print a success message when setup completes
+time: 2026-09-14T12:00:00.000000000-07:00
