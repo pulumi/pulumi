@@ -362,16 +362,6 @@ func newSetupAzureCmd(setup *setupCommand) *cobra.Command {
 				return err
 			}
 
-			roleID, err := setup.resolvePolicy(policy, azurePolicyChoices, yes)
-			if err != nil {
-				return err
-			}
-			// Azure role IDs are GUIDs, so name the preset when the ID is one of ours.
-			roleName := roleID
-			if i := slices.IndexFunc(azurePolicyChoices, func(c policyChoice) bool { return c.id == roleID }); i >= 0 {
-				roleName = azurePolicyChoices[i].name
-			}
-
 			cred, err := resolveAzureCredential(ctx, esc, browserAuth, tenant, yes, interactive)
 			if err != nil {
 				return err
@@ -389,6 +379,16 @@ func newSetupAzureCmd(setup *setupCommand) *cobra.Command {
 			}
 			if err := checkDuplicateEnvNames(projectName, selected); err != nil {
 				return err
+			}
+
+			roleID, err := setup.resolvePolicy(policy, azurePolicyChoices, yes)
+			if err != nil {
+				return err
+			}
+			// Azure role IDs are GUIDs, so name the preset when the ID is one of ours.
+			roleName := roleID
+			if i := slices.IndexFunc(azurePolicyChoices, func(c policyChoice) bool { return c.id == roleID }); i >= 0 {
+				roleName = azurePolicyChoices[i].name
 			}
 
 			orgID, err := setup.orgID(ctx, org)

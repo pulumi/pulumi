@@ -408,46 +408,37 @@ func resolveAWSCredentialSource(
 		return source, true, err
 	}
 
-	ambient, ambientErr := newAmbientCredentialSource(ctx)
-	if ambientErr != nil {
-		if !interactive || !errors.Is(ambientErr, errNoAWSCredentials) {
-			return nil, false, ambientErr
-		}
-		fmt.Fprintf(esc.stdout, "No existing AWS credentials found; signing in with AWS SSO.\n")
-		source, err := newDeviceCredentialSource(ctx, esc, ssoStartURL, ssoRegion)
-		return source, true, err
-	}
-
-	existing, existingMulti := existingCredentialSource(ctx, ambient)
 	existingLabel := "Use existing AWS credentials"
 	deviceAuthLabel := "Sign in with AWS SSO in your browser"
-
-	announceExisting := func() {
-		if existingMulti {
-			fmt.Fprintf(esc.stdout, "Reusing your existing AWS SSO session.\n")
-		} else {
-			fmt.Fprintf(esc.stdout, "Using AWS account %s (via %s).\n", ambient.account.ID, ambient.origin)
-		}
+	choice := existingLabel
+	if interactive && !yes {
+		choice = ui.PromptUser(
+			"How would you like to authenticate to AWS?",
+			[]string{existingLabel, deviceAuthLabel}, existingLabel, esc.colors)
 	}
-
-	if yes {
-		announceExisting()
-		return existing, existingMulti, nil
-	}
-
-	choice := ui.PromptUser(
-		"How would you like to authenticate to AWS?",
-		[]string{existingLabel, deviceAuthLabel}, existingLabel, esc.colors)
-	switch choice {
-	case existingLabel:
-		announceExisting()
-		return existing, existingMulti, nil
-	case deviceAuthLabel:
+	if choice == deviceAuthLabel {
 		source, err := newDeviceCredentialSource(ctx, esc, ssoStartURL, ssoRegion)
 		return source, true, err
-	default:
-		return nil, false, errors.New("cancelled")
 	}
+
+	ambient, err := newAmbientCredentialSource(ctx)
+	if errors.Is(err, errNoAWSCredentials) {
+		return nil, false, fmt.Errorf("%w\n\nDo one of the following:\n"+
+			"  - run `aws configure` to set up static credentials\n"+
+			"  - run `aws sso login` to sign in to an existing SSO profile\n"+
+			"  - set AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY\n"+
+			"  - pass --sso to sign in with AWS SSO in your browser", err)
+	}
+	if err != nil {
+		return nil, false, err
+	}
+	existing, existingMulti := existingCredentialSource(ctx, ambient)
+	if existingMulti {
+		fmt.Fprintf(esc.stdout, "Reusing your existing AWS SSO session.\n")
+	} else {
+		fmt.Fprintf(esc.stdout, "Using AWS account %s (via %s).\n", ambient.account.ID, ambient.origin)
+	}
+	return existing, existingMulti, nil
 }
 
 // selectedAWSAccount is an account the user chose, along with the SSO role to assume in it.
@@ -732,20 +723,6 @@ func newSetupAWSCmd(setup *setupCommand) *cobra.Command {
 				return err
 			}
 
-			policyArn, err := setup.resolvePolicy(policy, awsPolicyChoices, yes)
-			if err != nil {
-				return err
-			}
-			if _, err := arn.Parse(policyArn); err != nil {
-				policyNameChoices := make([]string, len(awsPolicyChoices))
-				for i, choice := range awsPolicyChoices {
-					policyNameChoices[i] = choice.name
-				}
-
-				// Error if a policy is custom but not an ARN
-				return fmt.Errorf("--policy must be %s, or a policy ARN: %w", strings.Join(policyNameChoices, ", "), err)
-			}
-
 			source, multiAccount, err := resolveAWSCredentialSource(ctx, esc, ssoStartURL, ssoRegion, sso, yes, interactive)
 			if err != nil {
 				return err
@@ -782,6 +759,20 @@ func newSetupAWSCmd(setup *setupCommand) *cobra.Command {
 			}
 			if err := checkDuplicateEnvNames(projectName, selectedAccounts); err != nil {
 				return err
+			}
+
+			policyArn, err := setup.resolvePolicy(policy, awsPolicyChoices, yes)
+			if err != nil {
+				return err
+			}
+			if _, err := arn.Parse(policyArn); err != nil {
+				policyNameChoices := make([]string, len(awsPolicyChoices))
+				for i, choice := range awsPolicyChoices {
+					policyNameChoices[i] = choice.name
+				}
+
+				// Error if a policy is custom but not an ARN
+				return fmt.Errorf("--policy must be %s, or a policy ARN: %w", strings.Join(policyNameChoices, ", "), err)
 			}
 
 			orgID, err := setup.orgID(ctx, org)

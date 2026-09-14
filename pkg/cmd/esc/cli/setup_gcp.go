@@ -201,11 +201,6 @@ func newSetupGCPCmd(setup *setupCommand) *cobra.Command {
 				return err
 			}
 
-			role, err := setup.resolvePolicy(policy, gcpPolicyChoices, yes)
-			if err != nil {
-				return err
-			}
-
 			client, err := gcpsetup.NewClientFromADC(ctx, oidcIssuer)
 			if err != nil {
 				return fmt.Errorf(
@@ -223,6 +218,11 @@ func newSetupGCPCmd(setup *setupCommand) *cobra.Command {
 				return err
 			}
 			if err := checkDuplicateEnvNames(projectName, selected); err != nil {
+				return err
+			}
+
+			role, err := setup.resolvePolicy(policy, gcpPolicyChoices, yes)
+			if err != nil {
 				return err
 			}
 
