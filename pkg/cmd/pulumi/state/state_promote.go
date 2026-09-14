@@ -59,7 +59,10 @@ func newStatePromoteCommand(ws pkgWorkspace.Context, lm cmdBackend.LoginManager)
 
 This command generates Pulumi program code for a stateful snippet, prints the
 generated files, then removes the snippet from the stack while leaving the
-resources it registered in state. The argument is the snippet's logical name.
+resources it registered in state. The retained resources are marked as
+protected so that a subsequent update cannot delete them before you have
+copied the generated code into your program. The argument is the
+snippet's logical name.
 
 This command must be run from a real Pulumi project so the generated code has
 a backing project runtime.`,
@@ -167,6 +170,7 @@ func promoteSnippetFromSnapshot(snap *deploy.Snapshot, expected resource.Snippet
 	for _, res := range snap.Resources {
 		if res != nil && res.SnippetID == expected.UUID {
 			res.SnippetID = ""
+			res.Protect = true
 			cleared++
 		}
 	}
