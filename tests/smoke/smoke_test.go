@@ -156,6 +156,8 @@ func TestYamlConvertSmoke(t *testing.T) {
 
 	// Make sure random is installed
 	e.RunCommand("pulumi", "plugin", "install", "resource", "random", "4.13.0")
+	// renovate: datasource=github-releases depName=pulumi/pulumi-yaml
+	e.RunCommand("pulumi", "plugin", "install", "converter", "yaml", "v1.38.5")
 
 	e.RunCommand(
 		"pulumi", "convert", "--strict",
@@ -473,6 +475,7 @@ func TestLanguageImportSmoke(t *testing.T) {
 
 			e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 			e.RunCommand("pulumi", "new", Languages[runtime], "--yes")
+			e.RunCommand("pulumi", "plugin", "install", "resource", "random", "4.19.0")
 			e.RunCommand("pulumi", "import", "--yes", "random:index/randomId:RandomId", "identifier", "p-9hUg")
 		})
 	}
@@ -596,7 +599,7 @@ func TestPluginRun(t *testing.T) {
 
 	e.RunCommand("pulumi", "plugin", "rm", "resource", "random", "--all", "--yes")
 
-	_, stderr := e.RunCommandExpectError("pulumi", "plugin", "run", "--kind=resource", "random", "--", "--help")
+	_, stderr := e.RunCommandExpectError("pulumi", "plugin", "run", "--kind=resource", "random@4.19.0", "--", "--help")
 	assert.Contains(t, stderr, "flag: help requested")
 }
 
@@ -1286,6 +1289,8 @@ func TestDoCommandLocalRun(t *testing.T) {
 	// Allow auto-acquiring the command plugin.
 	e.Env = append(e.Env, "PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION=false")
 
+	e.RunCommand("pulumi", "plugin", "install", "resource", "command", "1.0.4")
+
 	// logging = "none" suppresses the command provider's own stdout/stderr echo so the only thing on our stdout
 	// is the JSON result. The provider still captures stdout/stderr as outputs.
 	e.WriteTestFile("inputs.pcl", `command = "echo hello"`+"\n"+`logging = "none"`+"\n")
@@ -1340,6 +1345,8 @@ func TestDoCommandLocalCommand(t *testing.T) {
 
 	// Allow auto-acquiring the command plugin.
 	e.Env = append(e.Env, "PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION=false")
+
+	e.RunCommand("pulumi", "plugin", "install", "resource", "command", "1.0.4")
 
 	e.WriteTestFile("inputs.pcl", "create = \"echo hello\"\n")
 
