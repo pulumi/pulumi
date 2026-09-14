@@ -129,28 +129,47 @@ func preflightCloudCredentials(
 
 	pf := credentialsPreflight{host: host, pctx: pctx, cfg: ps.Config, stdout: args.stdout, opts: opts}
 	for _, pkg := range packages {
-		// TODO[pulumi/pulumi#24612]: support parameterized packages.
-		if pkg.Kind != apitype.ResourcePlugin || pkg.Parameterization != nil {
+		if pkg.Kind != apitype.ResourcePlugin || pkg.ExtensionParameterization != nil {
 			continue
 		}
 		if tctx.Err() != nil {
 			return
 		}
-		pf.checkPackage(tctx, pkg.PluginDescriptor)
+		pf.checkPackage(tctx, pkg)
 	}
 }
 
 // checkPackage loads a single provider, asks its schema whether it wants the credentials
 // check and, if so, runs it and prints any problem it finds.
-func (pf credentialsPreflight) checkPackage(ctx context.Context, desc workspace.PluginDescriptor) {
-	prov, err := pf.host.Provider(pf.pctx, desc, env.Global())
+func (pf credentialsPreflight) checkPackage(ctx context.Context, desc workspace.PackageDescriptor) {
+	prov, err := pf.host.Provider(pf.pctx, desc.PluginDescriptor, env.Global())
 	if err != nil {
 		slog.DebugContext(ctx, "skipping credentials check", "provider", desc.Name, "err", err)
 		return
 	}
 	defer contract.IgnoreClose(prov)
 
-	cp, ok := cloudProviderFromSchema(ctx, prov, desc.Name)
+	pkg := desc.Name
+	request := plugin.GetSchemaRequest{}
+	if parameterization := desc.Parameterization; parameterization != nil {
+		resp, err := prov.Parameterize(ctx, plugin.ParameterizeRequest{Parameters: &plugin.ParameterizeValue{
+			Name: parameterization.Name, Version: parameterization.Version, Value: parameterization.Value,
+		}})
+		if err != nil {
+			slog.DebugContext(ctx, "skipping credentials check", "provider", desc.Name, "err", err)
+			return
+		}
+		if resp.Name != parameterization.Name || !resp.Version.EQ(parameterization.Version) {
+			slog.DebugContext(ctx, "skipping credentials check", "provider", desc.Name,
+				"err", fmt.Errorf("unexpected parameterization response: %s@%s", resp.Name, resp.Version))
+			return
+		}
+		pkg = parameterization.Name
+		request.SubpackageName = resp.Name
+		request.SubpackageVersion = &resp.Version
+	}
+
+	cp, ok := cloudProviderFromSchema(ctx, prov, pkg, request)
 	if !ok {
 		return
 	}
@@ -161,8 +180,10 @@ func (pf credentialsPreflight) checkPackage(ctx context.Context, desc workspace.
 
 // cloudProviderFromSchema fetches the provider's schema and returns the preflight metadata it
 // declares. ok is false when the provider did not opt into the check or its schema is unavailable.
-func cloudProviderFromSchema(ctx context.Context, prov plugin.Provider, pkg string) (cp cloudProvider, ok bool) {
-	resp, err := prov.GetSchema(ctx, plugin.GetSchemaRequest{})
+func cloudProviderFromSchema(
+	ctx context.Context, prov plugin.Provider, pkg string, request plugin.GetSchemaRequest,
+) (cp cloudProvider, ok bool) {
+	resp, err := prov.GetSchema(ctx, request)
 	if err != nil {
 		slog.DebugContext(ctx, "skipping credentials check", "provider", pkg, "err", err)
 		return cloudProvider{}, false
