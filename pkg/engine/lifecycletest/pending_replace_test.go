@@ -985,7 +985,7 @@ func TestPendingReplaceDependentDeleteNotRetried(t *testing.T) {
 		_ context.Context,
 		req plugin.DiffRequest,
 	) (plugin.DiffResult, error) {
-		if !req.OldOutputs["A"].DeepEquals(req.NewInputs["A"]) {
+		if !req.OldOutputs.Get("A").Equals(req.NewInputs.Get("A")) {
 			return plugin.DiffResult{
 				Changes:     plugin.DiffSome,
 				ReplaceKeys: []resource.PropertyKey{"A"},
@@ -1132,7 +1132,7 @@ func TestPendingReplaceDependentResumeAfterReplacement(t *testing.T) {
 		_ context.Context,
 		req plugin.DiffRequest,
 	) (plugin.DiffResult, error) {
-		if !req.OldOutputs["A"].DeepEquals(req.NewInputs["A"]) {
+		if !req.OldOutputs.Get("A").Equals(req.NewInputs.Get("A")) {
 			return plugin.DiffResult{
 				Changes:     plugin.DiffSome,
 				ReplaceKeys: []resource.PropertyKey{"A"},
