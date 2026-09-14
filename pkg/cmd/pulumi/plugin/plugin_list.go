@@ -48,14 +48,14 @@ func newPluginListCmd(pluginContext pluginstorage.Context) *cobra.Command {
 		Long: "List plugins.\n" +
 			"\n" +
 			"This command lists the plugins in the local plugin cache: the plugins\n" +
-			"directory under your Pulumi home directory, ~/.pulumi by default.  It\n" +
+			"directory under your $PULUMI_HOME directory, ~/.pulumi by default.  It\n" +
 			"shows the size, install time, and last use of each.\n" +
 			"\n" +
 			"Plugins bundled with the Pulumi CLI are installed next to the pulumi\n" +
 			"binary rather than in the cache, so they are not listed.  This includes\n" +
 			"the language hosts for Node.js, Python, Go, .NET, Java, and YAML.  A\n" +
-			"language plugin that is not bundled, such as one you installed\n" +
-			"yourself, is cached like any other plugin and does appear.\n" +
+			"language plugin that is not bundled, such as HCL, is cached\n" +
+			"like any other plugin and does appear.\n" +
 			"\n" +
 			"Use --project (-p) to list the plugins the current project requires\n" +
 			"instead.  Those are resolved the way the CLI would load them, so\n" +
