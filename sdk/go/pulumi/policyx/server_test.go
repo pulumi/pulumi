@@ -15,6 +15,7 @@
 package policyx
 
 import (
+	"context"
 	"testing"
 
 	"github.com/blang/semver"
@@ -86,4 +87,27 @@ func TestConfigureStackRecreatesPolicyPackWithStack(t *testing.T) {
 
 	assert.Equal(t, "test-pack", info.GetName())
 	assert.Equal(t, []string{"", "dev"}, stacks)
+}
+
+// The policy pack outlives the request that creates it, so cancelling the request must not cancel the pack's context.
+func TestGetAnalyzerInfoPolicyPackContextOutlivesRequest(t *testing.T) {
+	t.Parallel()
+
+	var packCtx *pulumi.Context
+	srv := &analyzerServer{
+		policyPackFactory: func(ctx *pulumi.Context) (PolicyPack, error) {
+			packCtx = ctx
+			return NewPolicyPack("test-pack", semver.MustParse("1.2.3"), EnforcementLevelAdvisory, nil)
+		},
+	}
+
+	type requestKey struct{}
+	requestCtx, cancel := context.WithCancel(context.WithValue(t.Context(), requestKey{}, "request value"))
+	_, err := srv.GetAnalyzerInfo(requestCtx, &emptypb.Empty{})
+	require.NoError(t, err)
+	cancel()
+
+	require.NotNil(t, packCtx)
+	require.NoError(t, packCtx.Context().Err())
+	assert.Equal(t, "request value", packCtx.Context().Value(requestKey{}))
 }

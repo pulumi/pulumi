@@ -230,8 +230,9 @@ func (srv *analyzerServer) Handshake(
 }
 
 // getPolicyPack returns the policy pack. If ConfigureStack has not run, as with `pulumi policy publish`, it creates the
-// policy pack with a context that has no stack information.
-func (srv *analyzerServer) getPolicyPack() (PolicyPack, error) {
+// policy pack with a context that has no stack information. The policy pack outlives the request, so its context keeps
+// the values of ctx but not its cancellation.
+func (srv *analyzerServer) getPolicyPack(ctx context.Context) (PolicyPack, error) {
 	srv.policyPackLock.Lock()
 	defer srv.policyPackLock.Unlock()
 
@@ -246,7 +247,7 @@ func (srv *analyzerServer) getPolicyPack() (PolicyPack, error) {
 			info.RootDirectory = *srv.handshake.RootDirectory
 		}
 	}
-	pctx, err := pulumi.NewContext(context.Background(), info)
+	pctx, err := pulumi.NewContext(context.WithoutCancel(ctx), info)
 	if err != nil {
 		return nil, fmt.Errorf("creating context: %w", err)
 	}
@@ -259,8 +260,8 @@ func (srv *analyzerServer) getPolicyPack() (PolicyPack, error) {
 	return policyPack, nil
 }
 
-func (srv *analyzerServer) GetPluginInfo(context.Context, *pbempty.Empty) (*pulumirpc.PluginInfo, error) {
-	policyPack, err := srv.getPolicyPack()
+func (srv *analyzerServer) GetPluginInfo(ctx context.Context, _ *pbempty.Empty) (*pulumirpc.PluginInfo, error) {
+	policyPack, err := srv.getPolicyPack(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -270,8 +271,8 @@ func (srv *analyzerServer) GetPluginInfo(context.Context, *pbempty.Empty) (*pulu
 	}, nil
 }
 
-func (srv *analyzerServer) GetAnalyzerInfo(context.Context, *pbempty.Empty) (*pulumirpc.AnalyzerInfo, error) {
-	policyPack, err := srv.getPolicyPack()
+func (srv *analyzerServer) GetAnalyzerInfo(ctx context.Context, _ *pbempty.Empty) (*pulumirpc.AnalyzerInfo, error) {
+	policyPack, err := srv.getPolicyPack(ctx)
 	if err != nil {
 		return nil, err
 	}
