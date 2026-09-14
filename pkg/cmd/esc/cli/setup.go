@@ -28,6 +28,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	cloudsetup "github.com/pulumi/pulumi/pkg/v3/cloudsetup/common"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/esc/cli/client"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
@@ -38,6 +39,8 @@ type setupCommand struct {
 	// env is held rather than escCommand so that setup can reuse the provider
 	// helpers (ensureProviderEnv, applyProviderUpdate) to write the login block.
 	env *envCommand
+	// envNames maps each cloud account ID to the `<project>/<name>` of its environment.
+	envNames map[string]string
 }
 
 func newEnvSetupCmd(env *envCommand) *cobra.Command {
@@ -186,24 +189,43 @@ func sanitizeEnvName(accountName, accountID string) string {
 	return strings.ToLower(envNameUnsafe.ReplaceAllString(base, "-")) + "-env"
 }
 
-// checkDuplicateEnvNames fails when two accounts derive the same environment name.
-func checkDuplicateEnvNames(projectName string, accounts []cloudsetup.CloudAccount) error {
+// resolveEnvNames picks the ESC project and one environment name per account, prompting with
+// derived defaults unless --yes.
+func (s *setupCommand) resolveEnvNames(projectName string, accounts []cloudsetup.CloudAccount, yes bool) error {
+	opts := display.Options{Color: s.esc().colors}
+	validate := func(v string) error { _, err := validateESCProject(v); return err }
+	projectName, err := ui.PromptForValue(yes, "ESC project name", projectName, false, validate, opts)
+	if err != nil {
+		return err
+	}
+	projectName = strings.ToLower(projectName)
+
+	s.envNames = map[string]string{}
 	seen := map[string]cloudsetup.CloudAccount{}
 	for _, a := range accounts {
-		name := escEnvName(projectName, a)
+		label := "Environment name for " + a.ID
+		if a.Name != "" {
+			label = fmt.Sprintf("Environment name for %s (%s)", a.Name, a.ID)
+		}
+		name, err := ui.PromptForValue(yes, label, sanitizeEnvName(a.Name, a.ID), false, validate, opts)
+		if err != nil {
+			return err
+		}
+		name = strings.ToLower(name)
 		if prev, ok := seen[name]; ok {
 			return fmt.Errorf(
-				"%q (%s) and %q (%s) have the same name. This would result in the same ESC environment name '%s'",
-				prev.Name, prev.ID, a.Name, a.ID, name)
+				"%q (%s) and %q (%s) would use the same ESC environment name '%s/%s'",
+				prev.Name, prev.ID, a.Name, a.ID, projectName, name)
 		}
 		seen[name] = a
+		s.envNames[a.ID] = projectName + "/" + name
 	}
 	return nil
 }
 
 // escEnvName is the `<project>/<name>` of the environment created for a cloud account.
-func escEnvName(projectName string, account cloudsetup.CloudAccount) string {
-	return projectName + "/" + sanitizeEnvName(account.Name, account.ID)
+func (s *setupCommand) escEnvName(account cloudsetup.CloudAccount) string {
+	return s.envNames[account.ID]
 }
 
 // oidcSubjectAttributes is written into every generated login block so the environment presents

@@ -535,11 +535,12 @@ func selectAWSAccountRole(
 // setupAWSAccounts configures OIDC in each selected account, collecting per-account outcomes.
 func setupAWSAccounts(
 	ctx context.Context,
-	esc *escCommand,
+	setup *setupCommand,
 	source awsCredentialSource,
 	selected []selectedAWSAccount,
-	oidcIssuer, orgName, orgID, policyArn, projectName string,
+	oidcIssuer, orgName, orgID, policyArn string,
 ) []accountSetupResult {
+	esc := setup.esc()
 	results := make([]accountSetupResult, 0, len(selected))
 	for _, sel := range selected {
 		fmt.Fprintf(esc.stdout, "\nSetting up account %s...\n", sel.account.ID)
@@ -550,7 +551,7 @@ func setupAWSAccounts(
 			continue
 		}
 
-		escEnvName := escEnvName(projectName, sel.account)
+		escEnvName := setup.escEnvName(sel.account)
 		result, err := client.SetupOIDCInfrastructure(
 			ctx, orgName, awsOIDCRoleName(orgID, escEnvName), policyArn, escEnvName)
 		results = append(results, accountSetupResult{account: sel.account, result: result, err: err})
@@ -594,8 +595,6 @@ func warnReusedRoles(esc *escCommand, results []accountSetupResult, policyArn st
 
 // awsEnvOptions configures the ESC environments written after setup succeeds.
 type awsEnvOptions struct {
-	// projectName is the ESC project that per-account environments are created in.
-	projectName string
 	sessionName string
 	duration    string
 }
@@ -623,7 +622,7 @@ func createAWSEnvironments(
 			continue
 		}
 
-		ref := setup.env.parseRef(org + "/" + escEnvName(opts.projectName, r.account))
+		ref := setup.env.parseRef(org + "/" + setup.escEnvName(r.account))
 
 		fmt.Fprintf(setup.esc().stdout, "\nConfiguring environment %s for account %s:\n", ref.String(), r.account.ID)
 
@@ -757,7 +756,7 @@ func newSetupAWSCmd(setup *setupCommand) *cobra.Command {
 			for i, sel := range selected {
 				selectedAccounts[i] = sel.account
 			}
-			if err := checkDuplicateEnvNames(projectName, selectedAccounts); err != nil {
+			if err := setup.resolveEnvNames(projectName, selectedAccounts, yes); err != nil {
 				return err
 			}
 
@@ -782,7 +781,7 @@ func newSetupAWSCmd(setup *setupCommand) *cobra.Command {
 
 			fmt.Fprintf(esc.stdout, "\nAbout to configure OIDC for organization %s:\n", org)
 			for _, sel := range selected {
-				escEnvName := escEnvName(projectName, sel.account)
+				escEnvName := setup.escEnvName(sel.account)
 				ref := setup.env.parseRef(org + "/" + escEnvName)
 				printSetupTarget(esc, fmt.Sprintf("account %s:", sel.account.ID))
 				fmt.Fprintf(esc.stdout, "    create role %s\n", awsOIDCRoleName(orgID, escEnvName))
@@ -798,7 +797,7 @@ func newSetupAWSCmd(setup *setupCommand) *cobra.Command {
 			}
 
 			setup.printHeading("Setting up Infrastructure")
-			results := setupAWSAccounts(ctx, esc, source, selected, oidcIssuer, org, orgID, policyArn, projectName)
+			results := setupAWSAccounts(ctx, setup, source, selected, oidcIssuer, org, orgID, policyArn)
 			renderSetupResults(esc.stdout, results, awsResourceNames)
 			warnReusedRoles(esc, results, policyArn)
 
@@ -808,7 +807,6 @@ func newSetupAWSCmd(setup *setupCommand) *cobra.Command {
 
 			setup.printHeading("Setting up Environment(s)")
 			return createAWSEnvironments(ctx, setup, org, results, awsEnvOptions{
-				projectName: projectName,
 				sessionName: sessionName,
 				duration:    duration,
 			})

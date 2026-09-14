@@ -252,7 +252,7 @@ func azureAppClientID(result *cloudsetup.CloudSetupResult) (string, bool) {
 // createAzureEnvironments adds the azure-login provider into each environment. Each subscription
 // has its own app registration, so the client ID comes from that subscription's setup result.
 func createAzureEnvironments(
-	ctx context.Context, setup *setupCommand, org, projectName, tenantID string, results []accountSetupResult,
+	ctx context.Context, setup *setupCommand, org, tenantID string, results []accountSetupResult,
 ) error {
 	path, err := resource.ParsePropertyPath(azureLoginPath)
 	if err != nil {
@@ -273,7 +273,7 @@ func createAzureEnvironments(
 			continue
 		}
 
-		ref := setup.env.parseRef(org + "/" + escEnvName(projectName, r.account))
+		ref := setup.env.parseRef(org + "/" + setup.escEnvName(r.account))
 		fmt.Fprintf(setup.esc().stdout, "\nConfiguring environment %s for subscription %s (tenant %s):\n",
 			ref.String(), r.account.ID, tenantID)
 
@@ -377,7 +377,7 @@ func newSetupAzureCmd(setup *setupCommand) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			if err := checkDuplicateEnvNames(projectName, selected); err != nil {
+			if err := setup.resolveEnvNames(projectName, selected, yes); err != nil {
 				return err
 			}
 
@@ -398,7 +398,7 @@ func newSetupAzureCmd(setup *setupCommand) *cobra.Command {
 
 			fmt.Fprintf(esc.stdout, "\nAbout to configure OIDC for organization %s (tenant %s):\n", org, tenant)
 			for _, sub := range selected {
-				envName := escEnvName(projectName, sub)
+				envName := setup.escEnvName(sub)
 				ref := setup.env.parseRef(org + "/" + envName)
 				printSetupTarget(esc, fmt.Sprintf("subscription %s (%s):", sub.Name, sub.ID))
 				fmt.Fprintf(esc.stdout, "    assign %s\n", roleName)
@@ -418,7 +418,7 @@ func newSetupAzureCmd(setup *setupCommand) *cobra.Command {
 			for _, sub := range selected {
 				fmt.Fprintf(esc.stdout, "\nSetting up subscription %s...\n", sub.ID)
 
-				envName := escEnvName(projectName, sub)
+				envName := setup.escEnvName(sub)
 				ref := setup.env.parseRef(org + "/" + envName)
 				envInfos := []cloudsetup.AzureEnvironmentInfo{{
 					SubscriptionID:  sub.ID,
@@ -439,7 +439,7 @@ func newSetupAzureCmd(setup *setupCommand) *cobra.Command {
 			}
 
 			setup.printHeading("Setting up Environment(s)")
-			return createAzureEnvironments(ctx, setup, org, projectName, tenant, results)
+			return createAzureEnvironments(ctx, setup, org, tenant, results)
 		},
 	}
 
