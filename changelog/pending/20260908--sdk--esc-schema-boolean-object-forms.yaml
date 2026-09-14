@@ -1,0 +1,7 @@
+component: sdk
+kind: fix
+body: Serialize ESC boolean schemas as their equivalent object forms (`{}` for
+  "always", `{"not": {}}` for "never") so schema-carrying payloads are valid
+  instances of the OpenAPI models that describe them. Both boolean encodings
+  are still accepted when reading.
+time: 2026-09-08T00:00:00+02:00
