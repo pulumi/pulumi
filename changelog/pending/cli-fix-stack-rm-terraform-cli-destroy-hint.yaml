@@ -1,0 +1,4 @@
+component: cli
+kind: fix
+body: Suggest terraform destroy instead of pulumi destroy when removing a terraform-cli stack that still has resources
+time: 2026-08-05T00:00:00Z
