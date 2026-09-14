@@ -39,7 +39,7 @@ var gcpPolicyChoices = []policyChoice{
 	{
 		name: "roles/viewer",
 		id:   "roles/viewer",
-		desc: "read-only access (required for Insights)",
+		desc: "read-only access (required for Discovery)",
 	},
 }
 
@@ -278,7 +278,7 @@ func newSetupGCPCmd(setup *setupCommand) *cobra.Command {
 
 	cmd.Flags().StringVar(&policy, "policy", "",
 		"the role granted to the service account: roles/editor (required for Deployments), "+
-			"roles/viewer (required for Insights), or any other role; prompted for when omitted")
+			"roles/viewer (required for Discovery), or any other role; prompted for when omitted")
 	cmd.Flags().StringArrayVar(&projectIDs, "project-id", nil,
 		"a GCP `project` to set up (repeatable; prompted for when omitted)")
 	cmd.Flags().StringVar(&orgName, "org", "", "the Pulumi organization to configure OIDC for")

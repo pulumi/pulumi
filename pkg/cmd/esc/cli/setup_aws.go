@@ -51,7 +51,7 @@ var awsPolicyChoices = []policyChoice{
 	{
 		name: "ReadOnlyAccess",
 		id:   "arn:aws:iam::aws:policy/ReadOnlyAccess",
-		desc: "read-only access (required for Insights)",
+		desc: "read-only access (required for Discovery)",
 	},
 }
 
@@ -837,7 +837,7 @@ func newSetupAWSCmd(setup *setupCommand) *cobra.Command {
 		"an AWS `account` to set up (repeatable; prompted for when omitted)")
 	cmd.Flags().StringVar(&policy, "policy", "",
 		"the policy attached to the OIDC role: AdministratorAccess (required for Deployments), "+
-			"ReadOnlyAccess (required for Insights), or any other policy ARN; prompted for when omitted")
+			"ReadOnlyAccess (required for Discovery), or any other policy ARN; prompted for when omitted")
 	cmd.Flags().StringVar(&orgName, "org", "", "the Pulumi organization to configure OIDC for")
 	cmd.Flags().BoolVar(&yes, "yes", false, "skip all confirmation prompts")
 	cmd.Flags().StringVar(&projectName, "project", "aws-login",

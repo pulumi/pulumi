@@ -51,7 +51,7 @@ var azurePolicyChoices = []policyChoice{
 		// Reader - https://learn.microsoft.com/azure/role-based-access-control/built-in-roles/general#reader
 		name: "Reader",
 		id:   "acdd72a7-3385-48ef-bd42-f606fba81ae7",
-		desc: "read-only access (required for Insights)",
+		desc: "read-only access (required for Discovery)",
 	},
 }
 
@@ -445,7 +445,7 @@ func newSetupAzureCmd(setup *setupCommand) *cobra.Command {
 
 	cmd.Flags().StringVar(&policy, "policy", "",
 		"the role assigned per subscription: Contributor (required for Deployments), Reader "+
-			"(required for Insights), or any other role definition ID; prompted for when omitted")
+			"(required for Discovery), or any other role definition ID; prompted for when omitted")
 	cmd.Flags().StringArrayVar(&subscriptionIDs, "subscription", nil,
 		"an Azure `subscription` to set up (repeatable; prompted for when omitted)")
 	cmd.Flags().StringVar(&tenantID, "tenant", "",
