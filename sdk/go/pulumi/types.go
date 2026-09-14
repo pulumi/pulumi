@@ -32,8 +32,9 @@ import (
 type Output = internal.Output
 
 var (
-	outputType = reflect.TypeFor[Output]()
-	inputType  = reflect.TypeFor[Input]()
+	outputType   = reflect.TypeFor[Output]()
+	inputType    = reflect.TypeFor[Input]()
+	resourceType = reflect.TypeFor[Resource]()
 )
 
 // RegisterOutputType registers an Output type with the Pulumi runtime. If a value of this type's concrete type is
@@ -149,47 +150,197 @@ func AllWithContext(ctx context.Context, inputs ...any) ArrayOutput {
 	return ToOutputWithContext(ctx, inputs).(ArrayOutput)
 }
 
-// JSONMarshal uses "encoding/json".Marshal to serialize the given Output value into a JSON string.
-//
-// JSONMarshal *does not* support marshaling values that contain nested unknowns. You will need to manually create
-// a top level unknown with [pulumi.Input.ApplyT] or [All]. This does not work:
+// JSONMarshal uses "encoding/json".Marshal to serialize the given Output value into a JSON string. It
+// supports marshaling values that contain Outputs nested arbitrarily deep within structs, slices,
+// arrays, maps, and pointers, for example:
 //
 //	pulumi.JSONMarshal(map[string]any{"key": myResource.Name})
 //
-// You need to move the output myResource.Name to a top level output:
+// If any of the nested Outputs are unknown (e.g. during a preview), the returned StringOutput will
+// itself be unknown, same as if you had called [pulumi.Input.ApplyT] directly.
 //
-//	pulumi.JSONMarshal(myResource.Name.Apply(func(name string) map[string]any{
-//		return map[string]any{"key": name}
-//	}))
-//
-// Supporting nested unknowns is tracked in https://github.com/pulumi/pulumi/issues/12460
+// One case remains unsupported: a struct field whose *static* type is itself a concrete
+// Output-implementing type (e.g. a field of type [StringOutput], rather than `any` or a plain Go
+// type) can't be resolved in place, since doing so would require changing the struct's type. Prefer
+// declaring such fields as `any` or their plain Go equivalent.
 func JSONMarshal(v any) StringOutput {
 	return JSONMarshalWithContext(context.Background(), v)
 }
 
-// JSONMarshalWithContext uses "encoding/json".Marshal to serialize the given Output value into a JSON string.
-//
-// JSONMarshalWithContext *does not* support marshaling values that contain nested unknowns. You will need to
-// manually create a top level unknown with [pulumi.Input.ApplyT] or [All]. This does not work:
-//
-//	pulumi.JSONMarshalWithContext(ctx.Context(), map[string]any{"key": myResource.Name})
-//
-// You need to move the output myResource.Name to a top level output:
-//
-//	pulumi.JSONMarshalWithContext(ctx.Context(), myResource.Name.Apply(func(name string) map[string]any{
-//		return map[string]any{"key": name}
-//	}))
-//
-// Supporting nested unknowns is tracked in https://github.com/pulumi/pulumi/issues/12460
+// JSONMarshalWithContext uses "encoding/json".Marshal to serialize the given Output value into a JSON
+// string. See [JSONMarshal] for details, including the one remaining unsupported case.
 func JSONMarshalWithContext(ctx context.Context, v any) StringOutput {
 	o := ToOutputWithContext(ctx, v)
-	return o.ApplyTWithContext(ctx, func(_ context.Context, v any) (string, error) {
-		json, err := json.Marshal(v)
+	return o.ApplyTWithContext(ctx, func(ctx context.Context, v any) (string, error) {
+		resolved, err := resolveNestedOutputsForJSON(ctx, v)
 		if err != nil {
 			return "", err
 		}
-		return string(json), nil
+		b, err := json.Marshal(resolved)
+		if err != nil {
+			return "", err
+		}
+		return string(b), nil
 	}).(StringOutput)
+}
+
+// resolveNestedOutputsForJSON returns the value that should actually be marshaled to JSON in place of
+// v: any Output found anywhere within v (in struct fields, slice/array elements, map values, or
+// through pointers and interfaces) is replaced with its already-resolved value. By the time this is
+// called from JSONMarshalWithContext, v has already been through ToOutputWithContext's own await, so
+// any Output found here is expected to resolve immediately.
+//
+// Values that don't contain any Output anywhere are returned completely untouched, so any custom
+// json.Marshaler implementation they may have is preserved.
+func resolveNestedOutputsForJSON(ctx context.Context, v any) (any, error) {
+	resolved, _, err := resolveNestedOutputForJSON(ctx, reflect.ValueOf(v))
+	return resolved, err
+}
+
+// resolveNestedOutputForJSON does the actual work for resolveNestedOutputsForJSON. It returns the
+// resolved value, whether it differs from v (so callers only rebuild containers that actually need
+// it), and any error encountered while awaiting a nested Output.
+func resolveNestedOutputForJSON(ctx context.Context, v reflect.Value) (result any, changed bool, err error) {
+	if !v.IsValid() {
+		return nil, false, nil
+	}
+
+	if v.Type().Implements(outputType) {
+		o, ok := v.Interface().(Output)
+		if !ok {
+			return v.Interface(), false, nil
+		}
+		e, known, _, _, err := internal.AwaitOutput(ctx, o)
+		if err != nil {
+			return nil, false, err
+		}
+		if !known {
+			return nil, false, errors.New("cannot marshal an unknown value to JSON")
+		}
+		// The awaited value may itself still contain further nested Outputs (e.g. if it was
+		// produced by directly resolving an Output to a value that embeds other Outputs), so
+		// resolve recursively.
+		resolved, _, err := resolveNestedOutputForJSON(ctx, reflect.ValueOf(e))
+		if err != nil {
+			return nil, false, err
+		}
+		return resolved, true, nil
+	}
+
+	// Resources are treated as opaque, mirroring how the general Input/Output await machinery
+	// handles them: we don't reflect into their fields.
+	if v.Type().Implements(resourceType) {
+		return v.Interface(), false, nil
+	}
+
+	//nolint:exhaustive // the remaining kinds have nothing to recurse into
+	switch v.Kind() {
+	case reflect.Pointer, reflect.Interface:
+		if v.IsNil() {
+			return v.Interface(), false, nil
+		}
+		inner, innerChanged, err := resolveNestedOutputForJSON(ctx, v.Elem())
+		if err != nil {
+			return nil, false, err
+		}
+		if !innerChanged {
+			return v.Interface(), false, nil
+		}
+		return inner, true, nil
+
+	case reflect.Struct:
+		var newStruct reflect.Value
+		anyChanged := false
+		for i := range v.NumField() {
+			f := v.Field(i)
+			if !f.CanInterface() {
+				continue // unexported; encoding/json ignores these too
+			}
+			fv, fChanged, err := resolveNestedOutputForJSON(ctx, f)
+			if err != nil {
+				return nil, false, err
+			}
+			if !fChanged {
+				continue
+			}
+			rv := reflect.ValueOf(fv)
+			if !rv.IsValid() {
+				rv = reflect.Zero(f.Type())
+			}
+			if !rv.Type().AssignableTo(f.Type()) {
+				// The resolved value doesn't fit this field's static type (e.g. the field is
+				// itself a concrete Output type). Leave the field as it was; json.Marshal will
+				// error on it if it's still a raw Output.
+				continue
+			}
+			if !newStruct.IsValid() {
+				newStruct = reflect.New(v.Type()).Elem()
+				newStruct.Set(v)
+			}
+			newStruct.Field(i).Set(rv)
+			anyChanged = true
+		}
+		if !anyChanged {
+			return v.Interface(), false, nil
+		}
+		return newStruct.Interface(), true, nil
+
+	case reflect.Array, reflect.Slice:
+		if v.Kind() == reflect.Slice && v.IsNil() {
+			return v.Interface(), false, nil
+		}
+		l := v.Len()
+		elems := make([]any, l)
+		anyChanged := false
+		for i := range l {
+			ev, eChanged, err := resolveNestedOutputForJSON(ctx, v.Index(i))
+			if err != nil {
+				return nil, false, err
+			}
+			elems[i] = ev
+			anyChanged = anyChanged || eChanged
+		}
+		if !anyChanged {
+			return v.Interface(), false, nil
+		}
+		return elems, true, nil
+
+	case reflect.Map:
+		if v.IsNil() {
+			return v.Interface(), false, nil
+		}
+		keys := make([]reflect.Value, 0, v.Len())
+		values := make([]any, 0, v.Len())
+		anyChanged := false
+		iter := v.MapRange()
+		for iter.Next() {
+			vv, vChanged, err := resolveNestedOutputForJSON(ctx, iter.Value())
+			if err != nil {
+				return nil, false, err
+			}
+			keys = append(keys, iter.Key())
+			values = append(values, vv)
+			anyChanged = anyChanged || vChanged
+		}
+		if !anyChanged {
+			return v.Interface(), false, nil
+		}
+		// Preserve the map's original key type (e.g. non-string keys, or key types with custom
+		// MarshalText), but widen the value type to `any` since it may now hold a resolved value of
+		// a different type than the map's original value type.
+		out := reflect.MakeMapWithSize(reflect.MapOf(v.Type().Key(), anyType), len(keys))
+		for i, k := range keys {
+			rv := reflect.ValueOf(values[i])
+			if !rv.IsValid() {
+				rv = reflect.Zero(anyType)
+			}
+			out.SetMapIndex(k, rv)
+		}
+		return out.Interface(), true, nil
+
+	default:
+		return v.Interface(), false, nil
+	}
 }
 
 // JSONUnmarshal uses "encoding/json".Unmarshal to deserialize the given Input JSON string into a value.
