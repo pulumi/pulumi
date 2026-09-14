@@ -65,7 +65,7 @@ func pclSnippetTestProvider(
 					return plugin.CreateResponse{ID: resource.ID(id), Properties: cr.Properties}, nil
 				},
 				DiffF: func(_ context.Context, req plugin.DiffRequest) (plugin.DiffResult, error) {
-					if !req.OldInputs.DeepEquals(req.NewInputs) {
+					if !req.OldInputs.Equals(req.NewInputs) {
 						return plugin.DiffResult{Changes: plugin.DiffSome}, nil
 					}
 					return plugin.DiffResult{}, nil
@@ -1250,7 +1250,7 @@ func TestPclSnippetReferenceFollowsAlias(t *testing.T) {
 					return plugin.CreateResponse{ID: resource.ID(id), Properties: cr.Properties}, nil
 				},
 				DiffF: func(_ context.Context, req plugin.DiffRequest) (plugin.DiffResult, error) {
-					if !req.OldInputs.DeepEquals(req.NewInputs) {
+					if !req.OldInputs.Equals(req.NewInputs) {
 						return plugin.DiffResult{Changes: plugin.DiffSome}, nil
 					}
 					return plugin.DiffResult{}, nil
@@ -2200,7 +2200,7 @@ func TestPclSnippetTargetExplicitProviderFromState(t *testing.T) {
 					return plugin.CreateResponse{ID: resource.ID(id.String()), Properties: cr.Properties}, nil
 				},
 				DiffF: func(_ context.Context, req plugin.DiffRequest) (plugin.DiffResult, error) {
-					if !req.OldInputs.DeepEquals(req.NewInputs) {
+					if !req.OldInputs.Equals(req.NewInputs) {
 						return plugin.DiffResult{Changes: plugin.DiffSome}, nil
 					}
 					return plugin.DiffResult{}, nil
@@ -2296,7 +2296,7 @@ func pclSnippetDeleteFailPlan(t *testing.T, failDelete func(plugin.DeleteRequest
 					return plugin.CreateResponse{ID: resource.ID(id.String()), Properties: cr.Properties}, nil
 				},
 				DiffF: func(_ context.Context, req plugin.DiffRequest) (plugin.DiffResult, error) {
-					if !req.OldInputs["propA"].DeepEquals(req.NewInputs["propA"]) {
+					if !req.OldInputs.Get("propA").Equals(req.NewInputs.Get("propA")) {
 						return plugin.DiffResult{Changes: plugin.DiffSome, ReplaceKeys: []resource.PropertyKey{"propA"}}, nil
 					}
 					return plugin.DiffResult{}, nil

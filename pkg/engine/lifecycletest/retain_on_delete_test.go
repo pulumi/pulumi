@@ -39,7 +39,7 @@ func TestRetainOnDelete(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				DiffF: func(_ context.Context, req plugin.DiffRequest) (plugin.DiffResult, error) {
-					if !req.OldOutputs["foo"].DeepEquals(req.NewInputs["foo"]) {
+					if !req.OldOutputs.Get("foo").Equals(req.NewInputs.Get("foo")) {
 						// If foo changes do a replace, we use this to check we don't delete on replace
 						return plugin.DiffResult{
 							Changes:     plugin.DiffSome,
