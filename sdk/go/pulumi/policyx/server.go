@@ -441,12 +441,12 @@ func (srv *analyzerServer) Remediate(
 		case ResourceRemediationPolicy:
 			config, hasConfig := srv.config[p.Name()]
 
-			disabled := false
+			enforcementLevel := p.EnforcementLevel()
 			if hasConfig {
-				disabled = config.EnforcementLevel == EnforcementLevelDisabled
+				enforcementLevel = config.EnforcementLevel
 			}
 
-			if !disabled {
+			if enforcementLevel == EnforcementLevelRemediate {
 				provider, err := convertProtoAnalyzerProvider(req.GetProvider(),
 					fmt.Sprintf("%s.%s.remediate.provider", srv.policyPack.Name(), p.Name()))
 				if err != nil {
