@@ -10,7 +10,7 @@ on:
       - 'master'
 
 jobs:
-  # Publishes any missing toolchain images; a no-op when the tags exist.
+  # Publishes any missing toolchain images, a no-op when the tags exist.
   toolchain-images:
     name: toolchain-images
     uses: ./.github/workflows/ci-toolchain-image.yml

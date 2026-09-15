@@ -176,8 +176,7 @@ jobs:
       - if: contains(inputs.platform, 'ubuntu') && inputs.toolchain-image == ''
         name: Free Disk Space (Ubuntu)
         run: ./.github/scripts/free-disk-space start
-      # Container jobs run without that cleanup. Log the headroom so disk
-      # exhaustion is easy to diagnose.
+      # Log the headroom so that disk exhaustion is easy to diagnose.
       - if: inputs.toolchain-image != ''
         name: Show disk space (container)
         run: df -h /

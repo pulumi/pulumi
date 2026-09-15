@@ -260,7 +260,7 @@ endif
 
 # As a convenience, we provide a format target that folks can build to run go fmt over all
 # the go code in their tree. We delegate to `golangci-lint fmt` so the formatter version
-# stays in lockstep with the linter version pinned in .mise.toml.
+# stays in lockstep with the linter version pinned in mise.dev.toml.
 .PHONY: format
 format:: .make/ensure/golangci-lint
 	$(call STEP_MESSAGE)
@@ -332,7 +332,7 @@ format:: .make/ensure/golangci-lint
 define __ensure_dependency #$(1): the executable to check for: "go", "node", ...
 	$(if                                                                                       \
 		$(shell if ! command -v "$(1)" > /dev/null; then echo "missing"; fi),              \
-		$(error Missing binary dependency "$(1)"),                                         \
+		$(error Missing binary dependency "$(1)". If you use mise: set MISE_ENV=dev (see mise.dev.toml) and run "mise install"),\
 		$(info $(shell                                                                     \
 			pad="$$(printf '%0.1s' "."{1..20})";                                       \
 			exec="$(1)";                                                               \

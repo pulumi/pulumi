@@ -1,13 +1,12 @@
 name: Toolchain Image
 
 # Builds and publishes the prebaked toolchain images for the ubuntu test
-# jobs, tagged by content hash (.github/scripts/toolchain-image-tag). ci.yml
-# falls back to host installs when a tag is missing, so publishing is the
-# rollout and deleting a tag is the rollback. The ghcr package must be made
-# public once after the first publish: jobs pull without credentials. PRs
-# touching the image inputs build and verify, but never push. A weekly cron
-# publishes right after the ISO-week tag roll, so Monday jobs do not fall
-# back to host installs while waiting for the week's first master push.
+# jobs, tagged by content hash (.github/scripts/toolchain-image-tag).
+# ci.yml falls back to host installs when a tag is missing, so publishing
+# is the rollout and deleting a tag is the rollback. The ghcr package
+# must be made public once after the first publish (jobs pull without
+# credentials). PRs touching the image inputs build and verify but never
+# push. The weekly cron publishes right after the ISO-week tag roll.
 
 permissions:
   contents: read
@@ -83,8 +82,6 @@ jobs:
             generate-version-set \
             --version-set "${{ matrix.version-set }}")
           echo "$VERSION_SET" | jq .
-          # Plain assignment so a tool-pin failure aborts the step.
-          NPM_VERSION=$(./.github/scripts/tool-pin npm)
           # Keep the parse in sync with .github/toolchain/validate-local.
           COOLDOWN_DAYS=$(awk '/^  days:/{f=1} f && $1=="default:"{gsub(/"/,"",$2); print $2; exit}' \
             .github/actions/dependency-cooldown/action.yml)
@@ -97,7 +94,6 @@ jobs:
             echo "nodejs=$(echo "$VERSION_SET" | jq -r .nodejs)"
             echo "python=$(echo "$VERSION_SET" | jq -r .python)"
             echo "dotnet=$(echo "$VERSION_SET" | jq -r .dotnet)"
-            echo "npm=${NPM_VERSION}"
             echo "cooldown-days=${COOLDOWN_DAYS}"
           } >> "$GITHUB_OUTPUT"
       - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
@@ -117,7 +113,6 @@ jobs:
             NODE_VERSION=${{ steps.versions.outputs.nodejs }}
             PYTHON_VERSION=${{ steps.versions.outputs.python }}
             DOTNET_VERSION=${{ steps.versions.outputs.dotnet }}
-            NPM_VERSION=${{ steps.versions.outputs.npm }}
             COOLDOWN_DAYS=${{ steps.versions.outputs.cooldown-days }}
             TOOLCHAIN_TAG=${{ steps.ref.outputs.ref }}
           # Avoids unauthenticated GitHub API rate limits; never stored in a layer.

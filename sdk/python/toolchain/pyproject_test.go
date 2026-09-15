@@ -35,8 +35,6 @@ func TestBuildablePackage(t *testing.T) {
 		setupFunc          func(dir string) error
 		isBuildablePackage bool
 		errContains        string
-		// Skip under root (e.g. CI job containers), which bypasses file permissions.
-		needsPermissionEnforcement bool
 	}{
 		{
 			name: "valid buildable package",
@@ -92,18 +90,14 @@ func TestBuildablePackage(t *testing.T) {
 				// Make the file unreadable
 				return os.Chmod(filepath.Join(dir, "pyproject.toml"), 0o000) // gosec
 			},
-			isBuildablePackage:         false,
-			errContains:                "permission denied",
-			needsPermissionEnforcement: true,
+			isBuildablePackage: false,
+			errContains:        "permission denied",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			if tt.needsPermissionEnforcement && os.Geteuid() == 0 {
-				t.Skip("root bypasses file permissions, so the permission failure cannot be simulated")
-			}
 			dir := t.TempDir()
 			pyprojectToml := filepath.Join(dir, "pyproject.toml")
 

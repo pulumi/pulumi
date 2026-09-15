@@ -14,21 +14,20 @@ outputs:
 runs:
   using: composite
   steps:
-    # Resolve every tool pin once via the shared tool-pin script. Later
-    # steps only consume the env vars. Use plain assignments, so a failed
-    # parse aborts under `set -e`.
+    # Later steps only consume the env vars. Plain assignments so a
+    # failed tool-pin parse aborts under `set -e`.
     - name: Resolve tool pins from their authorities
       shell: bash
       run: |
         set -euo pipefail
         pin=./.github/scripts/tool-pin
-        DLV_VERSION=$($pin go:github.com/go-delve/delve/cmd/dlv)
+        DLV_VERSION=$($pin dlv)
         JAVA_PIN=$($pin java) # e.g. temurin-11
         GRADLE_VERSION=$($pin gradle)
-        YARN_VERSION=$($pin npm:yarn)
-        PNPM_VERSION=$($pin npm:pnpm)
+        YARN_VERSION=$($pin yarn)
+        PNPM_VERSION=$($pin pnpm)
         NPM_VERSION=$($pin npm)
-        GOTESTSUM_VERSION=$($pin go:gotest.tools/gotestsum)
+        GOTESTSUM_VERSION=$($pin gotestsum)
         GOTESTSTATS_VERSION=$($pin github:pulumi/goteststats)
         {
           echo "DLV_VERSION=${DLV_VERSION}"
@@ -90,9 +89,11 @@ runs:
           gradle-version: "${{ env.GRADLE_VERSION }}"
     - name: Install npm, yarn and pnpm
       shell: bash
-      # npm >= 11.17.0 so the dependency-cooldown action's first-party
-      # exceptions (min-release-age-exclude) work.
-      run: npm install -g "yarn@${YARN_VERSION}" "pnpm@${PNPM_VERSION}" "npm@${NPM_VERSION}"
+      # npm first, so a cooldown-capable npm (>= 11.17.0) installs yarn
+      # and pnpm. Keep in sync with the Dockerfile's npm layer.
+      run: |
+        npm install -g "npm@${NPM_VERSION}"
+        npm install -g "yarn@${YARN_VERSION}" "pnpm@${PNPM_VERSION}"
     - name: Install bun
       uses: ./.github/actions/retry
       with:

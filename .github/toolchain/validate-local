@@ -1,12 +1,11 @@
 #!/usr/bin/env bash
 # Copyright 2026, Pulumi Corporation.
 #
-# Local end-to-end validation of the prebaked toolchain image. CI never
-# runs test jobs inside the image before the ghcr package is made public,
-# so container mode is validated here: build the image the way
-# ci-toolchain-image.yml does, run verify-tools, run the permission-
-# sensitive unit-test packages inside the container as root, and re-run
-# them on the host.
+# Local end-to-end validation of the toolchain image. CI cannot run test
+# jobs in the image before the ghcr package is public, so container mode
+# is validated here: build as ci-toolchain-image.yml does, run
+# verify-tools, and run the environment-sensitive unit tests in the
+# container as its non-root user.
 #
 # Requires docker with BuildKit; on Apple Silicon enable amd64 emulation.
 # Optionally set GITHUB_TOKEN to avoid GitHub API rate limits.
@@ -24,7 +23,7 @@ fi
 
 command -v docker >/dev/null || { echo "FATAL: docker is required" >&2; exit 1; }
 
-echo "== 1/5 Syntax-checking toolchain scripts =="
+echo "== 1/4 Syntax-checking toolchain scripts =="
 bash -n .github/scripts/toolchain-image-tag
 bash -n .github/toolchain/verify-tools
 bash -n .github/toolchain/validate-local
@@ -32,9 +31,8 @@ echo "ok"
 
 REF=$(./.github/scripts/toolchain-image-tag "$SET")
 VERSION_SET=$(./scripts/get-job-matrix.py generate-version-set --version-set "$SET")
-NPM_VERSION=$(./.github/scripts/tool-pin npm)
-# The cooldown default of the runtime action is the only authority.
-# Keep the parse in sync with ci-toolchain-image.yml.
+# The runtime action's cooldown default is the only authority. Keep the
+# parse in sync with ci-toolchain-image.yml.
 COOLDOWN_DAYS=$(awk '/^  days:/{f=1} f && $1=="default:"{gsub(/"/,"",$2); print $2; exit}' \
   .github/actions/dependency-cooldown/action.yml)
 if [ -z "$COOLDOWN_DAYS" ]; then
@@ -49,11 +47,11 @@ print(d["go"], d["nodejs"], d["python"], d["dotnet"])
 ')
 
 if $SKIP_BUILD; then
-  echo "== 2/5 Skipping build; reusing ${REF} =="
+  echo "== 2/4 Skipping build; reusing ${REF} =="
   docker image inspect "$REF" >/dev/null 2>&1 \
     || { echo "FATAL: ${REF} not found locally; run without --skip-build" >&2; exit 1; }
 else
-  echo "== 2/5 Building ${REF} =="
+  echo "== 2/4 Building ${REF} =="
   SECRET_ARGS=()
   if [ -n "${GITHUB_TOKEN:-}" ]; then
     SECRET_ARGS=(--secret id=github-token,env=GITHUB_TOKEN)
@@ -67,32 +65,31 @@ else
     --build-arg "NODE_VERSION=${NODE_VERSION}" \
     --build-arg "PYTHON_VERSION=${PYTHON_VERSION}" \
     --build-arg "DOTNET_VERSION=${DOTNET_VERSION}" \
-    --build-arg "NPM_VERSION=${NPM_VERSION}" \
     --build-arg "COOLDOWN_DAYS=${COOLDOWN_DAYS}" \
     --build-arg "TOOLCHAIN_TAG=${REF}" \
     ${SECRET_ARGS[@]+"${SECRET_ARGS[@]}"} \
     -t "$REF" .
 fi
 
-echo "== 3/5 Verifying the image's tools =="
+echo "== 3/4 Verifying the image's tools =="
 ./.github/toolchain/verify-tools "$REF" "$SET"
 
-echo "== 4/5 Running environment-sensitive unit tests in the container (as root) =="
+echo "== 4/4 Running environment-sensitive unit tests in the container =="
+# As the image's non-root user, as in CI, so permission tests actually
+# run instead of skipping under root.
 docker run --rm --platform linux/amd64 \
   -v "$PWD:/repo" \
-  -v pulumi-toolchain-validate-gopath:/root/go \
-  -v pulumi-toolchain-validate-gocache:/root/.cache/go-build \
+  -v pulumi-toolchain-validate-gopath:/home/runner/go \
+  -v pulumi-toolchain-validate-gocache:/home/runner/.cache/go-build \
   -w /repo \
   "$REF" bash -c '
     set -euo pipefail
     id
-    (cd sdk && go test -count=1 -v -run "TestBuildablePackage" ./python/toolchain/...)
+    # Volumes from older revisions of this script are root-owned.
+    sudo chown -R runner: /home/runner/go /home/runner/.cache/go-build
     (cd sdk && go test -count=1 ./python/toolchain/... ./go/common/workspace/...)
     (cd pkg && go test -count=1 -tags all ./logging/... ./workspace/...)
   '
-
-echo "== 5/5 Re-running the fixed package on the host (permission checks enforced) =="
-(cd sdk && go test -count=1 -run "TestBuildablePackage" ./python/toolchain/...)
 
 echo
 echo "Toolchain image validation PASSED for ${REF}"
