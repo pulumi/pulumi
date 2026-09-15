@@ -1726,9 +1726,12 @@ type ListAuditLogsOptions struct {
 	// User filters the audit log to events triggered by a single user, by
 	// GitHub login. Empty means no filter.
 	User string
-	// StartTime is the upper-bound timestamp of the time range to query, as
-	// understood by the V1 endpoint. Empty means the service default.
+	// StartTime is the lower-bound Unix timestamp of the time range to query.
+	// Empty means the service default.
 	StartTime string
+	// EndTime is the upper-bound Unix timestamp of the time range to query.
+	// Empty means the service default.
+	EndTime string
 	// ContinuationToken pages through results; pass the ContinuationToken
 	// returned by a previous response to fetch the next page.
 	ContinuationToken string
@@ -1736,24 +1739,26 @@ type ListAuditLogsOptions struct {
 
 // ListAuditLogs returns a single page of audit log events for the given
 // organization, wrapping the `ListAuditLogEvents` Pulumi Cloud REST endpoint
-// (GET /api/orgs/{orgName}/auditlogs).
+// (GET /api/orgs/{orgName}/auditlogs/v2).
 func (pc *Client) ListAuditLogs(
 	ctx context.Context, orgName string, opts ListAuditLogsOptions,
 ) (apitype.ListAuditLogEventsResponse, error) {
 	queryObj := struct {
-		EventType         string `url:"eventType,omitempty"`
-		User              string `url:"user,omitempty"`
+		EventType         string `url:"eventFilter,omitempty"`
+		User              string `url:"userFilter,omitempty"`
 		StartTime         string `url:"startTime,omitempty"`
+		EndTime           string `url:"endTime,omitempty"`
 		ContinuationToken string `url:"continuationToken,omitempty"`
 	}{
 		EventType:         opts.EventType,
 		User:              opts.User,
 		StartTime:         opts.StartTime,
+		EndTime:           opts.EndTime,
 		ContinuationToken: opts.ContinuationToken,
 	}
 
 	var resp apitype.ListAuditLogEventsResponse
-	path := fmt.Sprintf("/api/orgs/%s/auditlogs", url.PathEscape(orgName))
+	path := fmt.Sprintf("/api/orgs/%s/auditlogs/v2", url.PathEscape(orgName))
 	if err := pc.restCall(ctx, http.MethodGet, path, queryObj, nil, &resp); err != nil {
 		return resp, fmt.Errorf("listing audit logs: %w", err)
 	}
@@ -1772,9 +1777,12 @@ type ExportAuditLogsOptions struct {
 	// User filters the audit log to events triggered by a single user, by
 	// GitHub login. Empty means no filter.
 	User string
-	// StartTime is the upper-bound timestamp of the time range to query, as
-	// understood by the V1 endpoint. Empty means the service default.
+	// StartTime is the lower-bound Unix timestamp of the time range to query.
+	// Empty means the service default.
 	StartTime string
+	// EndTime is the upper-bound Unix timestamp of the time range to query.
+	// Empty means the service default.
+	EndTime string
 	// ContinuationToken pages through results; pass the ContinuationToken
 	// returned by a previous response to fetch the next page.
 	ContinuationToken string
@@ -1783,7 +1791,7 @@ type ExportAuditLogsOptions struct {
 // ExportAuditLogs streams an export of audit log events for the given
 // organization in the requested format (csv or cef), wrapping the
 // `ExportAuditLogEvents` Pulumi Cloud REST endpoint
-// (GET /api/orgs/{orgName}/auditlogs/export). Unlike ListAuditLogs, the
+// (GET /api/orgs/{orgName}/auditlogs/v2/export). Unlike ListAuditLogs, the
 // response is plain text (CSV or CEF lines), not JSON; the caller is
 // responsible for closing the returned ReadCloser.
 func (pc *Client) ExportAuditLogs(
@@ -1795,20 +1803,22 @@ func (pc *Client) ExportAuditLogs(
 	}
 	queryObj := struct {
 		Format            string `url:"format,omitempty"`
-		EventType         string `url:"eventType,omitempty"`
-		User              string `url:"user,omitempty"`
+		EventType         string `url:"eventFilter,omitempty"`
+		User              string `url:"userFilter,omitempty"`
 		StartTime         string `url:"startTime,omitempty"`
+		EndTime           string `url:"endTime,omitempty"`
 		ContinuationToken string `url:"continuationToken,omitempty"`
 	}{
 		Format:            format,
 		EventType:         opts.EventType,
 		User:              opts.User,
 		StartTime:         opts.StartTime,
+		EndTime:           opts.EndTime,
 		ContinuationToken: opts.ContinuationToken,
 	}
 
 	var body io.ReadCloser
-	path := fmt.Sprintf("/api/orgs/%s/auditlogs/export", url.PathEscape(orgName))
+	path := fmt.Sprintf("/api/orgs/%s/auditlogs/v2/export", url.PathEscape(orgName))
 	if err := pc.restCall(ctx, http.MethodGet, path, queryObj, nil, &body); err != nil {
 		return nil, fmt.Errorf("exporting audit logs: %w", err)
 	}
