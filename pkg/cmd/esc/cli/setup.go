@@ -174,15 +174,24 @@ func (s *setupCommand) planEnvLine(ctx context.Context, ref environmentRef, logi
 const escNameChars = `a-zA-Z0-9._-`
 
 var (
-	escProjectNameRE = regexp.MustCompile(`^[` + escNameChars + `]+$`)
-	envNameUnsafe    = regexp.MustCompile(`[^` + escNameChars + `]`)
+	escNameRE     = regexp.MustCompile(`^[` + escNameChars + `]+$`)
+	envNameUnsafe = regexp.MustCompile(`[^` + escNameChars + `]`)
 )
 
-// validateESCProject checks that an ESC project name is valid and returns it lowercased.
+var errInvalidESCName = errors.New("must contain only letters, digits, and the characters . _ -")
+
+// validateESCName checks that a project or environment name uses only the allowed characters.
+func validateESCName(name string) error {
+	if !escNameRE.MatchString(name) {
+		return errInvalidESCName
+	}
+	return nil
+}
+
+// validateESCProject checks the --project flag and returns it lowercased.
 func validateESCProject(projectName string) (string, error) {
-	if !escProjectNameRE.MatchString(projectName) {
-		return "", fmt.Errorf("--project %q must contain only letters, digits, and the characters . _ -",
-			projectName)
+	if err := validateESCName(projectName); err != nil {
+		return "", fmt.Errorf("--project %q %w", projectName, err)
 	}
 	return strings.ToLower(projectName), nil
 }
@@ -201,8 +210,8 @@ func sanitizeEnvName(accountName, accountID string) string {
 // derived defaults unless --yes.
 func (s *setupCommand) resolveEnvNames(projectName string, accounts []cloudsetup.CloudAccount, yes bool) error {
 	opts := display.Options{Color: s.esc().colors}
-	validate := func(v string) error { _, err := validateESCProject(v); return err }
-	projectName, err := ui.PromptForValue(yes, "ESC project name", projectName, false, validate, opts)
+	projectName, err := ui.PromptForValue(yes, "ESC project name", projectName, false,
+		validateESCName, opts)
 	if err != nil {
 		return err
 	}
@@ -215,7 +224,8 @@ func (s *setupCommand) resolveEnvNames(projectName string, accounts []cloudsetup
 		if a.Name != "" {
 			label = fmt.Sprintf("Environment name for %s (%s)", a.Name, a.ID)
 		}
-		name, err := ui.PromptForValue(yes, label, sanitizeEnvName(a.Name, a.ID), false, validate, opts)
+		name, err := ui.PromptForValue(yes, label, sanitizeEnvName(a.Name, a.ID), false,
+			validateESCName, opts)
 		if err != nil {
 			return err
 		}
