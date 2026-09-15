@@ -51,7 +51,7 @@ var azurePolicyChoices = []policyChoice{
 		// Reader - https://learn.microsoft.com/azure/role-based-access-control/built-in-roles/general#reader
 		name: "Reader",
 		id:   "acdd72a7-3385-48ef-bd42-f606fba81ae7",
-		desc: "read-only access (required for Insights)",
+		desc: "read-only access (required for Discovery)",
 	},
 }
 
@@ -128,8 +128,11 @@ func resolveAzureTenant(ctx context.Context, esc *escCommand, tenantID string, y
 	}
 
 	labels := append(accountLabels(tenants), azureTenantManualOption)
-	choice := ui.PromptUser("Which Azure tenant should be configured?", labels, labels[0], esc.colors)
-	if choice == "" || choice == azureTenantManualOption {
+	choice, err := ui.PromptUserErr("Which Azure tenant should be configured?", labels, labels[0], esc.colors)
+	if err != nil {
+		return "", err
+	}
+	if choice == azureTenantManualOption {
 		return promptAzureTenantID(esc)
 	}
 	return tenants[slices.Index(labels, choice)].ID, nil
@@ -252,7 +255,7 @@ func azureAppClientID(result *cloudsetup.CloudSetupResult) (string, bool) {
 // createAzureEnvironments adds the azure-login provider into each environment. Each subscription
 // has its own app registration, so the client ID comes from that subscription's setup result.
 func createAzureEnvironments(
-	ctx context.Context, setup *setupCommand, org, projectName, tenantID string, results []accountSetupResult,
+	ctx context.Context, setup *setupCommand, org, tenantID string, results []accountSetupResult,
 ) error {
 	path, err := resource.ParsePropertyPath(azureLoginPath)
 	if err != nil {
@@ -273,9 +276,9 @@ func createAzureEnvironments(
 			continue
 		}
 
-		ref := setup.env.parseRef(org + "/" + escEnvName(projectName, r.account))
+		ref := setup.env.parseRef(org + "/" + setup.escEnvName(r.account))
 		fmt.Fprintf(setup.esc().stdout, "\nConfiguring environment %s for subscription %s (tenant %s):\n",
-			ref.String(), r.account.ID, tenantID)
+			setup.envLink(ref), r.account.ID, tenantID)
 
 		node := buildAzureLoginOIDCNode(clientID, tenantID, r.account.ID, oidcSubjectAttributes)
 		envVars := azureLoginOIDCEnvVars(propertyPathRef(path), r.account.ID != "")
@@ -291,8 +294,8 @@ func createAzureEnvironments(
 		}
 	}
 
-	if attempted > 0 && failed == attempted {
-		return errors.New("failed to create any environment")
+	if failed > 0 {
+		return fmt.Errorf("failed to create %d of %d environments", failed, attempted)
 	}
 	return nil
 }
@@ -362,14 +365,11 @@ func newSetupAzureCmd(setup *setupCommand) *cobra.Command {
 				return err
 			}
 
-			roleID, err := setup.resolvePolicy(policy, azurePolicyChoices, yes)
-			if err != nil {
-				return err
-			}
-			// Azure role IDs are GUIDs, so name the preset when the ID is one of ours.
-			roleName := roleID
-			if i := slices.IndexFunc(azurePolicyChoices, func(c policyChoice) bool { return c.id == roleID }); i >= 0 {
-				roleName = azurePolicyChoices[i].name
+			// Validate --policy if provided
+			if policy != "" || yes {
+				if _, err = setup.resolvePolicy(policy, azurePolicyChoices, yes); err != nil {
+					return err
+				}
 			}
 
 			cred, err := resolveAzureCredential(ctx, esc, browserAuth, tenant, yes, interactive)
@@ -387,8 +387,18 @@ func newSetupAzureCmd(setup *setupCommand) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			if err := checkDuplicateEnvNames(projectName, selected); err != nil {
+			if err := setup.resolveEnvNames(projectName, selected, yes); err != nil {
 				return err
+			}
+
+			roleID, err := setup.resolvePolicy(policy, azurePolicyChoices, yes)
+			if err != nil {
+				return err
+			}
+			// Azure role IDs are GUIDs, so name the preset when the ID is one of ours.
+			roleName := roleID
+			if i := slices.IndexFunc(azurePolicyChoices, func(c policyChoice) bool { return c.id == roleID }); i >= 0 {
+				roleName = azurePolicyChoices[i].name
 			}
 
 			orgID, err := setup.orgID(ctx, org)
@@ -398,7 +408,7 @@ func newSetupAzureCmd(setup *setupCommand) *cobra.Command {
 
 			fmt.Fprintf(esc.stdout, "\nAbout to configure OIDC for organization %s (tenant %s):\n", org, tenant)
 			for _, sub := range selected {
-				envName := escEnvName(projectName, sub)
+				envName := setup.escEnvName(sub)
 				ref := setup.env.parseRef(org + "/" + envName)
 				printSetupTarget(esc, fmt.Sprintf("subscription %s (%s):", sub.Name, sub.ID))
 				fmt.Fprintf(esc.stdout, "    assign %s\n", roleName)
@@ -418,7 +428,7 @@ func newSetupAzureCmd(setup *setupCommand) *cobra.Command {
 			for _, sub := range selected {
 				fmt.Fprintf(esc.stdout, "\nSetting up subscription %s...\n", sub.ID)
 
-				envName := escEnvName(projectName, sub)
+				envName := setup.escEnvName(sub)
 				ref := setup.env.parseRef(org + "/" + envName)
 				envInfos := []cloudsetup.AzureEnvironmentInfo{{
 					SubscriptionID:  sub.ID,
@@ -439,13 +449,17 @@ func newSetupAzureCmd(setup *setupCommand) *cobra.Command {
 			}
 
 			setup.printHeading("Setting up Environment(s)")
-			return createAzureEnvironments(ctx, setup, org, projectName, tenant, results)
+			if err := createAzureEnvironments(ctx, setup, org, tenant, results); err != nil {
+				return err
+			}
+			setup.printSuccess("Azure")
+			return nil
 		},
 	}
 
 	cmd.Flags().StringVar(&policy, "policy", "",
 		"the role assigned per subscription: Contributor (required for Deployments), Reader "+
-			"(required for Insights), or any other role definition ID; prompted for when omitted")
+			"(required for Discovery), or any other role definition ID; prompted for when omitted")
 	cmd.Flags().StringArrayVar(&subscriptionIDs, "subscription", nil,
 		"an Azure `subscription` to set up (repeatable; prompted for when omitted)")
 	cmd.Flags().StringVar(&tenantID, "tenant", "",
