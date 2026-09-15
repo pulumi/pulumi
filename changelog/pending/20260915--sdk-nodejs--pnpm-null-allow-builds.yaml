@@ -1,0 +1,4 @@
+component: sdk/nodejs
+kind: fix
+body: Fix a panic in the pnpm package manager when `pnpm config get allowBuilds` prints `null`
+time: 2026-09-15T10:00:00.000000+02:00
