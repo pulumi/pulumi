@@ -1,0 +1,4 @@
+component: cli/neo
+kind: fix
+body: Attribute stack operations run through Neo's native Pulumi tools to Neo
+time: 2026-09-15T03:44:22Z

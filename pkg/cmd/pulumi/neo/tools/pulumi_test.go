@@ -34,11 +34,13 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
@@ -491,6 +493,93 @@ func TestPulumi_Run_PreviewAndUpResolveBackend(t *testing.T) {
 			assertFailedResult(t, value, "parsing stack reference")
 		})
 	}
+}
+
+// TestPulumi_Run_AttributesUpdateToNeo proves that a stack operation run through
+// Neo's native pulumi_preview / pulumi_up tools is attributed to Neo: the update
+// metadata records exec.agent == "neo" rather than falling through to agent
+// detection (or being credited to whatever agent harness launched `pulumi neo`).
+//
+//nolint:paralleltest // mutates the global cmdBackend.DefaultLoginManager and process env
+func TestPulumi_Run_AttributesUpdateToNeo(t *testing.T) {
+	dir := newProjectDir(t)
+
+	var capturedAgent string
+	var be *backend.MockBackend
+	be = &backend.MockBackend{
+		ParseStackReferenceF: func(string) (backend.StackReference, error) {
+			return &backend.MockStackReference{
+				StringV:             "org/proj/dev",
+				NameV:               tokens.MustParseStackName("dev"),
+				FullyQualifiedNameV: tokens.QName("org/proj/dev"),
+			}, nil
+		},
+		GetStackF: func(context.Context, backend.StackReference) (backend.Stack, error) {
+			return &backend.MockStack{
+				RefF: func() backend.StackReference {
+					return &backend.MockStackReference{
+						NameV:               tokens.MustParseStackName("dev"),
+						FullyQualifiedNameV: tokens.QName("org/proj/dev"),
+					}
+				},
+				ConfigLocationF: func() backend.StackConfigLocation {
+					return backend.StackConfigLocation{IsRemote: true}
+				},
+				LoadRemoteF: func(_ context.Context, _ *workspace.Project) (*workspace.ProjectStack, error) {
+					return &workspace.ProjectStack{Config: config.Map{}}, nil
+				},
+				DefaultSecretManagerF: func(_ context.Context, _ *workspace.ProjectStack) (secrets.Manager, error) {
+					return &secrets.MockSecretsManager{
+						TypeF:      func() string { return "mock" },
+						EncrypterF: func() config.Encrypter { return &secrets.MockEncrypter{} },
+						DecrypterF: func() config.Decrypter { return &secrets.MockDecrypter{} },
+					}, nil
+				},
+				BackendF: func() backend.Backend { return be },
+			}, nil
+		},
+		PreviewF: func(_ context.Context, _ backend.Stack, op backend.UpdateOperation,
+		) (*deploy.Plan, display.ResourceChanges, error) {
+			capturedAgent = op.M.Environment[backend.ExecutionAgent]
+			return nil, display.ResourceChanges{}, nil
+		},
+	}
+
+	prev := cmdBackend.DefaultLoginManager
+	cmdBackend.DefaultLoginManager = &cmdBackend.MockLoginManager{
+		CurrentF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink,
+			url string, project *workspace.Project, setCurrent bool,
+		) (backend.Backend, error) {
+			return be, nil
+		},
+		LoginF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink,
+			url string, project *workspace.Project, setCurrent bool,
+			insecure bool, color colors.Colorization,
+		) (backend.Backend, error) {
+			return be, nil
+		},
+	}
+	t.Cleanup(func() { cmdBackend.DefaultLoginManager = prev })
+
+	ws := &pkgWorkspace.MockContext{
+		ReadProjectF: func(_ string) (*workspace.Project, string, error) {
+			return &workspace.Project{Name: "p"}, dir, nil
+		},
+	}
+	p := &Pulumi{Cwd: dir, Workspace: ws}
+
+	args, err := json.Marshal(map[string]any{
+		"project_name":     "p",
+		"stack_name":       "dev",
+		"local_pulumi_dir": dir,
+	})
+	require.NoError(t, err)
+
+	res, err := p.Invoke(t.Context(), "pulumi_preview", args)
+	require.NoError(t, err)
+	require.IsType(t, pulumiResult{}, res)
+	assert.Equal(t, "succeeded", res.(pulumiResult).Status)
+	assert.Equal(t, "neo", capturedAgent, "exec.agent must attribute the update to Neo")
 }
 
 // recorder collects invocations into the PulumiSink so tests can assert which
