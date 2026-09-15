@@ -1,0 +1,4 @@
+component: sdk/go
+kind: fix
+body: Serialize ESC boolean schemas as their equivalent object forms (`{}` for "always", `{"not":{}}` for "never") instead of bare JSON booleans, so schema-carrying payloads are valid instances of the OpenAPI models that describe them
+time: 2026-09-09T00:00:00Z
