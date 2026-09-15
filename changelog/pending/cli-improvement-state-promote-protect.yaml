@@ -1,0 +1,4 @@
+component: cli
+kind: improvement
+body: Protect resources retained by `pulumi state promote` so a subsequent update cannot delete them before the generated code is added to the program
+time: 2026-09-11T00:00:00Z

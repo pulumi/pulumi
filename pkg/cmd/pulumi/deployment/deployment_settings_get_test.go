@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"net/http"
 	"testing"
 	"time"
 
@@ -141,6 +142,41 @@ func TestDeploymentSettingsGet_DefaultOutput_Empty(t *testing.T) {
 
 	// Nothing configured, hide all sections
 	assert.Equal(t, "No deployment settings are configured for this stack.\n", buf.String())
+}
+
+// The factory has already resolved the stack, so a 404 means the stack has no settings rather than
+// that the stack is missing.
+func TestDeploymentSettingsGet_NotFoundRendersEmpty(t *testing.T) {
+	t.Parallel()
+
+	c := &mockDeploymentSettingsGetClient{
+		err: &apitype.ErrorResponse{Code: http.StatusNotFound, Message: "not found"},
+	}
+
+	var buf bytes.Buffer
+	require.NoError(t, runDeploymentSettingsGet(t.Context(), &buf, stubSettingsGetFactory(c),
+		deploymentSettingsGetArgs{outputFormat: defaultDeploymentSettingsGetOutputFormat()}))
+	assert.Equal(t, "No deployment settings are configured for this stack.\n", buf.String())
+
+	var jsonOut bytes.Buffer
+	require.NoError(t, runDeploymentSettingsGet(t.Context(), &jsonOut, stubSettingsGetFactory(c),
+		deploymentSettingsGetJSONArgs(t)))
+	assert.JSONEq(t, `{}`, jsonOut.String())
+}
+
+// Every other status stays fatal.
+func TestDeploymentSettingsGet_OtherErrorsAreFatal(t *testing.T) {
+	t.Parallel()
+
+	c := &mockDeploymentSettingsGetClient{
+		err: &apitype.ErrorResponse{Code: http.StatusInternalServerError, Message: "boom"},
+	}
+
+	var buf bytes.Buffer
+	err := runDeploymentSettingsGet(t.Context(), &buf, stubSettingsGetFactory(c),
+		deploymentSettingsGetArgs{outputFormat: defaultDeploymentSettingsGetOutputFormat()})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "getting deployment settings")
 }
 
 func TestDeploymentSettingsGet_JSONOutput(t *testing.T) {

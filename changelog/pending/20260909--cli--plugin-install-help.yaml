@@ -1,0 +1,3 @@
+component: cli
+kind: improvement
+body: Document automatic plugin installation and list the valid KIND values in `pulumi plugin install --help`

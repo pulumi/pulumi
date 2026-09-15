@@ -43,15 +43,19 @@ func NewPluginCmd() *cobra.Command {
 		Long: "Manage language and resource provider plugins.\n" +
 			"\n" +
 			"Pulumi uses dynamically loaded plugins as an extensibility mechanism for\n" +
-			"supporting any number of languages and resource providers.  These plugins are\n" +
-			"distributed out of band and must be installed manually.  Attempting to use a\n" +
-			"package that provisions resources without the corresponding plugin will fail.\n" +
+			"supporting any number of languages and resource providers.  The CLI downloads and\n" +
+			"installs the plugins your project needs automatically, so in most cases you never\n" +
+			"have to manage them yourself.\n" +
+			"\n" +
+			"The plugin family of commands is for the cases where you do want explicit\n" +
+			"control: installing plugins ahead of time, for example to warm a cache or to\n" +
+			"prepare a machine that has no network access at deployment time, inspecting which\n" +
+			"plugins are installed, or removing ones you no longer need to reclaim disk space.\n" +
 			"\n" +
 			"You may write your own plugins, for example to implement custom languages or\n" +
-			"resources, although most people will never need to do this.  To understand how to\n" +
-			"write and distribute your own plugins, please consult the relevant documentation.\n" +
-			"\n" +
-			"The plugin family of commands provides a way of explicitly managing plugins.\n" +
+			"resources, although most people will never need to do this.  To learn how to\n" +
+			"write and distribute your own plugins, please see\n" +
+			"https://www.pulumi.com/docs/iac/guides/building-extending/.\n" +
 			"\n" +
 			"For a list of available resource plugins, please see https://www.pulumi.com/registry/.",
 	}

@@ -547,9 +547,9 @@ func (p *providerServer) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (
 		Name:          req.Name,
 		Type:          tokens.Type(req.Type),
 		ID:            id,
-		OldInputs:     oldInputs,
-		OldOutputs:    oldOutputs,
-		NewInputs:     newInputs,
+		OldInputs:     resource.FromResourcePropertyMap(oldInputs),
+		OldOutputs:    resource.FromResourcePropertyMap(oldOutputs),
+		NewInputs:     resource.FromResourcePropertyMap(newInputs),
 		AllowUnknowns: true,
 		IgnoreChanges: req.GetIgnoreChanges(),
 	})
