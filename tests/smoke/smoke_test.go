@@ -157,7 +157,7 @@ func TestYamlConvertSmoke(t *testing.T) {
 	// Make sure random is installed
 	e.RunCommand("pulumi", "plugin", "install", "resource", "random", "4.13.0")
 	// renovate: datasource=github-releases depName=pulumi/pulumi-yaml
-	e.RunCommand("pulumi", "plugin", "install", "converter", "yaml", "v1.38.5")
+	e.RunCommand("pulumi", "plugin", "install", "converter", "yaml", "v1.38.6")
 
 	e.RunCommand(
 		"pulumi", "convert", "--strict",
