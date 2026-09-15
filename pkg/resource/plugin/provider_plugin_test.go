@@ -1513,3 +1513,81 @@ func TestProvider_PartialFailure(t *testing.T) {
 		RefreshBeforeUpdate: true,
 	}, updateResp)
 }
+
+// Tests that assets echoed back by a provider are restored from the old state, not just the old inputs.
+// Assets frequently live only in a resource's outputs, and eliding their contents on the way to the provider
+// must not persist a contentless asset into the snapshot.
+func TestProvider_RestoresElidedAssetsFromState(t *testing.T) {
+	t.Parallel()
+
+	urn := resource.NewURN("org/proj/dev", "foo", "", "test:index:Resource", "qux")
+
+	textAsset, err := asset.FromText("Hello world")
+	require.NoError(t, err)
+
+	// The asset only ever appears in the outputs, never in the inputs.
+	inputs := resource.PropertyMap{"assetPaths": resource.NewProperty("build/**")}
+	outputs := resource.PropertyMap{"assets": resource.NewProperty(textAsset)}
+
+	assertRestored := func(t *testing.T, got resource.PropertyMap) {
+		a := got["assets"].AssetValue()
+		assert.Equal(t, textAsset.Hash, a.Hash)
+		assert.True(t, a.HasContents(), "asset lost its contents")
+		assert.Equal(t, "Hello world", a.Text)
+	}
+
+	newProvider := func(t *testing.T, client *stubClient) Provider {
+		client.ConfigureF = func(req *pulumirpc.ConfigureRequest) (*pulumirpc.ConfigureResponse, error) {
+			return &pulumirpc.ConfigureResponse{AcceptSecrets: true}, nil
+		}
+		p := NewProviderWithClient(newTestContext(t), client, false /* disablePreview */)
+		_, err := p.Configure(t.Context(), ConfigureRequest{Type: new(tokens.Type("pulumi:providers:test"))})
+		require.NoError(t, err, "Configure failed")
+		return p
+	}
+
+	t.Run("read", func(t *testing.T) {
+		t.Parallel()
+
+		p := newProvider(t, &stubClient{
+			ReadF: func(req *pulumirpc.ReadRequest) (*pulumirpc.ReadResponse, error) {
+				// Echo the state back, as a provider with no remote state to consult would.
+				return &pulumirpc.ReadResponse{
+					Id:         req.GetId(),
+					Properties: req.GetProperties(),
+					Inputs:     req.GetInputs(),
+				}, nil
+			},
+		})
+
+		resp, err := p.Read(t.Context(), ReadRequest{
+			URN:    urn,
+			ID:     "some-id",
+			Inputs: inputs,
+			State:  outputs,
+		})
+		require.NoError(t, err)
+		assertRestored(t, resp.Outputs)
+	})
+
+	t.Run("update", func(t *testing.T) {
+		t.Parallel()
+
+		p := newProvider(t, &stubClient{
+			UpdateF: func(req *pulumirpc.UpdateRequest) (*pulumirpc.UpdateResponse, error) {
+				// Echo the old outputs back, as a provider that did not touch the asset would.
+				return &pulumirpc.UpdateResponse{Properties: req.GetOlds()}, nil
+			},
+		})
+
+		resp, err := p.Update(t.Context(), UpdateRequest{
+			URN:        urn,
+			ID:         "some-id",
+			OldInputs:  inputs,
+			OldOutputs: outputs,
+			NewInputs:  inputs,
+		})
+		require.NoError(t, err)
+		assertRestored(t, resp.Properties)
+	})
+}
