@@ -284,7 +284,7 @@ func (p *Pulumi) run(ctx context.Context, a pulumiArgs, isPreview bool) (pulumiR
 	// Pass nil for flags: GetUpdateMetadata only uses them to record
 	// "pulumi.flag.<name>" entries, and Neo has no CLI flags to record.
 	m, err := metadata.GetUpdateMetadata("" /*message*/, root,
-		"neo" /*execKind*/, "" /*execAgent*/, false /*updatePlan*/, cfg, nil)
+		"neo" /*execKind*/, "neo" /*execAgent*/, false /*updatePlan*/, cfg, nil)
 	if err != nil {
 		return failedResult(a, "", fmt.Errorf("gathering metadata: %w", err))
 	}
