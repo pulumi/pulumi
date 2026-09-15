@@ -137,7 +137,8 @@ func createGCPEnvironment(
 	}
 
 	ref := setup.env.parseRef(org + "/" + setup.escEnvName(r.account))
-	fmt.Fprintf(setup.esc().stdout, "\nConfiguring environment %s for project %s:\n", ref.String(), r.account.ID)
+	fmt.Fprintf(setup.esc().stdout, "\nConfiguring environment %s for project %s:\n",
+		setup.envLink(ref), r.account.ID)
 
 	node := buildGCPLoginOIDCNode(
 		r.account.Number, poolID, providerID, serviceAccount, "", "", oidcSubjectAttributes)

@@ -29,6 +29,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	pulumiclient "github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
 	cloudsetup "github.com/pulumi/pulumi/pkg/v3/cloudsetup/common"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/esc/cli/client"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
@@ -153,6 +154,13 @@ func accountLabels(accounts []cloudsetup.CloudAccount) []string {
 // printSetupTarget writes the header line for one cloud account in the confirmation summary.
 func printSetupTarget(esc *escCommand, heading string) {
 	fmt.Fprintf(esc.stdout, "  %s\n", esc.colors.Colorize(colors.SpecSubHeadline+heading+colors.Reset))
+}
+
+// envLink renders an environment reference as a terminal hyperlink to its console page
+func (s *setupCommand) envLink(ref environmentRef) string {
+	esc := s.esc()
+	url := pulumiclient.CloudConsoleURL(esc.client.URL(), ref.orgName, "esc", ref.projectName, ref.envName)
+	return esc.colors.Hyperlink(url, ref.String())
 }
 
 // planEnvLine describes what setup will do to the ESC environment, either create or update.

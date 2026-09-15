@@ -278,7 +278,7 @@ func createAzureEnvironments(
 
 		ref := setup.env.parseRef(org + "/" + setup.escEnvName(r.account))
 		fmt.Fprintf(setup.esc().stdout, "\nConfiguring environment %s for subscription %s (tenant %s):\n",
-			ref.String(), r.account.ID, tenantID)
+			setup.envLink(ref), r.account.ID, tenantID)
 
 		node := buildAzureLoginOIDCNode(clientID, tenantID, r.account.ID, oidcSubjectAttributes)
 		envVars := azureLoginOIDCEnvVars(propertyPathRef(path), r.account.ID != "")

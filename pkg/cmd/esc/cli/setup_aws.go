@@ -628,7 +628,8 @@ func createAWSEnvironments(
 
 		ref := setup.env.parseRef(org + "/" + setup.escEnvName(r.account))
 
-		fmt.Fprintf(setup.esc().stdout, "\nConfiguring environment %s for account %s:\n", ref.String(), r.account.ID)
+		fmt.Fprintf(setup.esc().stdout, "\nConfiguring environment %s for account %s:\n",
+			setup.envLink(ref), r.account.ID)
 
 		node := buildAWSLoginOIDCNode(roleArn, opts.sessionName, opts.duration, nil, oidcSubjectAttributes)
 		if err := ensureProviderEnv(ctx, setup.env, ref, true); err != nil {
