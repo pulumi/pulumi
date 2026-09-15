@@ -650,6 +650,22 @@ func createAWSEnvironments(
 	return nil
 }
 
+// resolveAWSPolicy resolves --policy to a policy ARN, prompting when it was omitted.
+func resolveAWSPolicy(setup *setupCommand, policy string, yes bool) (string, error) {
+	policyArn, err := setup.resolvePolicy(policy, awsPolicyChoices, yes)
+	if err != nil {
+		return "", err
+	}
+	if _, err := arn.Parse(policyArn); err != nil {
+		names := make([]string, len(awsPolicyChoices))
+		for i, choice := range awsPolicyChoices {
+			names[i] = choice.name
+		}
+		return "", fmt.Errorf("--policy must be %s, or a policy ARN: %w", strings.Join(names, ", "), err)
+	}
+	return policyArn, nil
+}
+
 // awsLoginPath is the property path under `values` where the login block is written,
 // matching the default of `env provider aws-login`.
 const awsLoginPath = "aws.login"
@@ -726,6 +742,13 @@ func newSetupAWSCmd(setup *setupCommand) *cobra.Command {
 				return err
 			}
 
+			// Validate --policy if provided
+			if policy != "" || yes {
+				if _, err = resolveAWSPolicy(setup, policy, yes); err != nil {
+					return err
+				}
+			}
+
 			source, multiAccount, err := resolveAWSCredentialSource(ctx, esc, ssoStartURL, ssoRegion, sso, yes, interactive)
 			if err != nil {
 				return err
@@ -764,18 +787,9 @@ func newSetupAWSCmd(setup *setupCommand) *cobra.Command {
 				return err
 			}
 
-			policyArn, err := setup.resolvePolicy(policy, awsPolicyChoices, yes)
+			policyArn, err := resolveAWSPolicy(setup, policy, yes)
 			if err != nil {
 				return err
-			}
-			if _, err := arn.Parse(policyArn); err != nil {
-				policyNameChoices := make([]string, len(awsPolicyChoices))
-				for i, choice := range awsPolicyChoices {
-					policyNameChoices[i] = choice.name
-				}
-
-				// Error if a policy is custom but not an ARN
-				return fmt.Errorf("--policy must be %s, or a policy ARN: %w", strings.Join(policyNameChoices, ", "), err)
 			}
 
 			orgID, err := setup.orgID(ctx, org)

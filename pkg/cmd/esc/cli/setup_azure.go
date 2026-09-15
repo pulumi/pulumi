@@ -365,6 +365,13 @@ func newSetupAzureCmd(setup *setupCommand) *cobra.Command {
 				return err
 			}
 
+			// Validate --policy if provided
+			if policy != "" || yes {
+				if _, err = setup.resolvePolicy(policy, azurePolicyChoices, yes); err != nil {
+					return err
+				}
+			}
+
 			cred, err := resolveAzureCredential(ctx, esc, browserAuth, tenant, yes, interactive)
 			if err != nil {
 				return err

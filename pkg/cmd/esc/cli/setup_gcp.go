@@ -201,6 +201,13 @@ func newSetupGCPCmd(setup *setupCommand) *cobra.Command {
 				return err
 			}
 
+			// Validate --policy if provided
+			if policy != "" || yes {
+				if _, err = setup.resolvePolicy(policy, gcpPolicyChoices, yes); err != nil {
+					return err
+				}
+			}
+
 			client, err := gcpsetup.NewClientFromADC(ctx, oidcIssuer)
 			if err != nil {
 				return fmt.Errorf(
