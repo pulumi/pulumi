@@ -30,13 +30,18 @@ which you can do as follows:
    typically accomplished by adding an appropriate invocation of `mise activate`
    to your shell's configuration file (e.g. `.bashrc`, `.zshrc`, etc.).
 3. Restart your shell session so that your configuration changes take effect.
-4. `cd` into the root of this repository. Run `mise trust` to allow the
-   repository to specify the required tools, all of which are listed in the
-   top-level `.mise.toml` file. After this, you should find that the tools you
-   need are now available in your `$PATH`.
-5. Run `mise settings experimental=true` or use the `MISE_EXPERIMENTAL` environment variable. 
+4. Set `MISE_ENV=dev` in your environment (add `export MISE_ENV=dev` to your
+   shell's configuration file, or use `.envrc.template` with direnv). This
+   makes mise load `mise.dev.toml`, the development tools, on top of the
+   top-level `.mise.toml` file (the test toolchain CI also uses). To verify,
+   run `mise config ls` from the repository root and check that it lists
+   both files.
+5. `cd` into the root of this repository. Run `mise trust` to allow the
+   repository to specify the required tools. After this, you should find that
+   the tools you need are now available in your `$PATH`.
+6. Run `mise settings experimental=true` or use the `MISE_EXPERIMENTAL` environment variable. 
    This is currently required to enable the [Go backend](https://mise.jdx.dev/dev-tools/backends/go.html#go-backend).
-6. Run `mise install` to ensure all tools are up to date. You may need to re-run
+7. Run `mise install` to ensure all tools are up to date. You may need to re-run
    this if the tool list changes.
 
 Use of Mise is currently experimental and optional.

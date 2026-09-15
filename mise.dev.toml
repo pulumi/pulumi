@@ -1,0 +1,42 @@
+# Extra tools for development, on top of the prerequisite test toolchain
+# in .mise.toml. Loaded only when MISE_ENV=dev is set (.envrc does this,
+# or export it in your shell profile). If mise seems to ignore this
+# file, MISE_ENV is not set.
+#
+# Not a CI authority: not baked into the toolchain image, and changes
+# here do not roll the image tag. The templated entries resolve from
+# .mise.toml [vars].
+
+[tools]
+github-cli = "2.93.0"
+"go:golang.org/x/tools/gopls" = "0.23.0"
+changie = "1.24.2"
+vale = "3.17.1"
+golangci-lint = "2.13.0"
+jq = "1.8.1"
+"npm:typescript" = "6.0.3"
+"npm:typescript-language-server" = "5.3.0"
+# This is a dev only dependency that fails to install on windows
+"go:github.com/mitranim/gow" = { version = "0.0.0-20260515002309-3b8e4d082711", os = ["linux", "macos"] }
+protoc = "29.5"
+"go:google.golang.org/protobuf/cmd/protoc-gen-go" = "v1.36.6"
+"go:google.golang.org/grpc/cmd/protoc-gen-go-grpc" = "v1.5.1"
+"npm:grpc-tools" = { version = "1.13.0", npm_args = "--ignore-scripts=false" }
+"npm:grpc_tools_node_protoc_ts" = "5.3.3"
+# This is a dev only dependency that fails to install on windows
+"npm:protoc-gen-js" = { version = "3.21.4", os = ["linux", "macos"], npm_args = "--ignore-scripts=false" }
+"go:go.abhg.dev/requiredfield/cmd/requiredfield" = "0.8.0"
+"github:WebAssembly/wabt" = "1.0.37"
+# Test toolchain prerequisites, pinned in .mise.toml [vars]. CI installs
+# them through npm and go install, and these entries let a plain
+# `mise install` cover them for developers too.
+"npm:yarn" = "{{ vars.yarn }}"
+"npm:pnpm" = "{{ vars.pnpm }}"
+"go:github.com/go-delve/delve/cmd/dlv" = "{{ vars.dlv }}"
+"go:gotest.tools/gotestsum" = "{{ vars.gotestsum }}"
+
+[tool_alias]
+protoc = "asdf:https://github.com/paxosglobal/asdf-protoc"
+
+[plugins]
+protoc = "https://github.com/paxosglobal/asdf-protoc"

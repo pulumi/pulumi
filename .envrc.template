@@ -1,2 +1,5 @@
 # This is required for integration tests
 export PULUMI_TEST_ORG=
+
+# Load the development tools from mise.dev.toml (see that file)
+export MISE_ENV=dev
