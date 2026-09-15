@@ -412,9 +412,13 @@ func resolveAWSCredentialSource(
 	deviceAuthLabel := "Sign in with AWS SSO in your browser"
 	choice := existingLabel
 	if interactive && !yes {
-		choice = ui.PromptUser(
+		var err error
+		choice, err = ui.PromptUserErr(
 			"How would you like to authenticate to AWS?",
 			[]string{existingLabel, deviceAuthLabel}, existingLabel, esc.colors)
+		if err != nil {
+			return nil, false, err
+		}
 	}
 	if choice == deviceAuthLabel {
 		source, err := newDeviceCredentialSource(ctx, esc, ssoStartURL, ssoRegion)

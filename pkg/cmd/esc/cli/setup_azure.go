@@ -128,8 +128,11 @@ func resolveAzureTenant(ctx context.Context, esc *escCommand, tenantID string, y
 	}
 
 	labels := append(accountLabels(tenants), azureTenantManualOption)
-	choice := ui.PromptUser("Which Azure tenant should be configured?", labels, labels[0], esc.colors)
-	if choice == "" || choice == azureTenantManualOption {
+	choice, err := ui.PromptUserErr("Which Azure tenant should be configured?", labels, labels[0], esc.colors)
+	if err != nil {
+		return "", err
+	}
+	if choice == azureTenantManualOption {
 		return promptAzureTenantID(esc)
 	}
 	return tenants[slices.Index(labels, choice)].ID, nil
