@@ -47,14 +47,14 @@ require (
 	github.com/containerd/errdefs/pkg v0.3.0 // indirect
 	github.com/danieljoos/wincred v1.2.3 // indirect
 	github.com/go-git/gcfg/v2 v2.0.2 // indirect
-	github.com/go-git/go-billy/v6 v6.0.0-alpha.1 // indirect
-	github.com/go-git/go-git/v6 v6.0.0-alpha.4 // indirect
+	github.com/go-git/go-billy/v6 v6.0.0-alpha.2 // indirect
+	github.com/go-git/go-git/v6 v6.0.0-alpha.5 // indirect
 	github.com/golang/glog v1.2.5 // indirect
 	github.com/google/go-tpm v0.9.8 // indirect
 	github.com/jedib0t/go-pretty/v6 v6.7.10 // indirect
 	github.com/jonboulle/clockwork v0.4.0 // indirect
 	github.com/klauspost/cpuid/v2 v2.3.0 // indirect
-	github.com/moby/go-archive v0.2.0 // indirect
+	github.com/moby/go-archive v0.3.0 // indirect
 	github.com/moby/moby/api v1.54.1 // indirect
 	github.com/moby/moby/client v0.4.0 // indirect
 	github.com/pb33f/jsonpath v0.8.2 // indirect
@@ -212,8 +212,8 @@ require (
 	github.com/mitchellh/reflectwalk v1.0.2 // indirect
 	github.com/moby/docker-image-spec v1.3.1 // indirect
 	github.com/moby/patternmatcher v0.6.1 // indirect
-	github.com/moby/sys/sequential v0.6.0 // indirect
-	github.com/moby/sys/user v0.4.0 // indirect
+	github.com/moby/sys/sequential v0.7.0 // indirect
+	github.com/moby/sys/user v0.4.1 // indirect
 	github.com/moby/sys/userns v0.1.0 // indirect
 	github.com/moby/term v0.5.2 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
@@ -272,7 +272,7 @@ require (
 	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.70.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.70.0 // indirect
 	go.opentelemetry.io/otel v1.46.0 // indirect
-	go.opentelemetry.io/otel/bridge/opentracing v1.33.0 // indirect
+	go.opentelemetry.io/otel/bridge/opentracing v1.45.0 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.46.0 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc v1.46.0 // indirect
 	go.opentelemetry.io/otel/metric v1.46.0 // indirect
