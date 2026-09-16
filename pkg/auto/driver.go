@@ -440,13 +440,12 @@ func (s *Stack) cloudOperation(
 	ctx context.Context, preview bool, overlay config.Map,
 ) (backend.UpdateOperation, error) {
 	ssml := cmdStack.NewStackSecretsManagerLoaderFromEnv()
-	// Name the settings file from the stack's own WorkDir: the fallback detection walks the
-	// PROCESS working directory, which for an embedded driver is the parent program's
-	// project, not this stack's.
-	configFile := ""
-	if p := filepath.Join(s.opts.WorkDir, "Pulumi."+s.stack.Ref().Name().String()+".yaml"); fileExists(p) {
-		configFile = p
-	}
+	// Always name the settings file from the stack's own WorkDir (honouring the project's
+	// stackConfigDir). An empty path makes the loader detect the project from the PROCESS
+	// working directory, which for an embedded driver is the parent program's project -- or,
+	// in the delivery executor, "/" -- not this stack's. A missing file loads as empty config.
+	configFile := workspace.ProjectStackPath(filepath.Join(s.opts.WorkDir, "Pulumi.yaml"), s.proj,
+		s.stack.Ref().Name().Q())
 	cfg, sm, err := cmdConfig.GetStackConfiguration(ctx, s.sink, ssml, s.stack, s.proj, configFile, s.opts.Environments)
 	if err != nil {
 		return backend.UpdateOperation{}, fmt.Errorf("assembling stack configuration: %w", err)
