@@ -406,7 +406,6 @@ func (s *CreateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 				if err == nil {
 					resourceError = nil
 					resourceStatus = resource.StatusOK
-					s.new.InitErrors = nil
 					return resp, nil
 				}
 
@@ -491,6 +490,9 @@ func (s *CreateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 	s.new.ID = id
 	s.new.Outputs = outs
 	s.new.RefreshBeforeUpdate = refreshBeforeUpdate
+	if resourceError == nil {
+		s.new.InitErrors = nil
+	}
 
 	// Create should set the Create and Modified timestamps as the resource state has been created.
 	now := time.Now().UTC()

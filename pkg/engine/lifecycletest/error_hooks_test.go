@@ -1174,7 +1174,7 @@ func TestErrorHooks_RetryLimitWarningAt100_Create(t *testing.T) {
 	t.Parallel()
 
 	createCalls := 0
-	updateCalls := 0
+	var updateReqs []plugin.UpdateRequest
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
@@ -1184,13 +1184,17 @@ func TestErrorHooks_RetryLimitWarningAt100_Create(t *testing.T) {
 					}
 					createCalls++
 					return plugin.CreateResponse{
-						ID:     resource.ID("partial-id-" + req.URN.Name()),
-						Status: resource.StatusPartialFailure,
+						ID:         resource.ID("partial-id-" + req.URN.Name()),
+						Properties: resource.PropertyMap{"attempt": resource.NewProperty(0.0)},
+						Status:     resource.StatusPartialFailure,
 					}, errors.New("create failed")
 				},
-				UpdateF: func(context.Context, plugin.UpdateRequest) (plugin.UpdateResponse, error) {
-					updateCalls++
-					return plugin.UpdateResponse{Status: resource.StatusPartialFailure}, errors.New("create failed")
+				UpdateF: func(_ context.Context, req plugin.UpdateRequest) (plugin.UpdateResponse, error) {
+					updateReqs = append(updateReqs, req)
+					return plugin.UpdateResponse{
+						Properties: resource.PropertyMap{"attempt": resource.NewProperty(float64(len(updateReqs)))},
+						Status:     resource.StatusPartialFailure,
+					}, errors.New("create failed")
 				},
 			}, nil
 		}),
@@ -1238,7 +1242,13 @@ func TestErrorHooks_RetryLimitWarningAt100_Create(t *testing.T) {
 		// The provider is invoked 100 times, but the hook is invoked 99 times because we stop once the max retry count
 		// is reached (without running hooks again on the final failure).
 		require.Equal(t, 1, createCalls)
-		require.Equal(t, 99, updateCalls)
+		require.Len(t, updateReqs, 99)
+		for i, req := range updateReqs {
+			require.Equal(t, resource.ID("partial-id-resA"), req.ID)
+			require.Equal(t, resource.NewPropertyMapFromMap(map[string]any{"v": "a"}), req.OldInputs)
+			require.Equal(t, resource.NewPropertyMapFromMap(map[string]any{"v": "a"}), req.NewInputs)
+			require.Equal(t, resource.PropertyMap{"attempt": resource.NewProperty(float64(i))}, req.OldOutputs)
+		}
 		require.Equal(t, 99, hookCalls)
 
 		sawWarning := false
