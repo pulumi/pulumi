@@ -2,8 +2,8 @@
 # Copyright 2026, Pulumi Corporation.
 #
 # Pre-push gate for ci-toolchain-image.yml: runs a built image and
-# asserts every tool is at its expected version and that resolution
-# ignores a mounted repo's .mise.toml. Also runnable locally.
+# asserts every tool is at its expected version and that mise did not
+# survive into the runtime image. Also runnable locally.
 #
 # Usage: verify-tools <image-ref> <version-set-name>
 set -euo pipefail
@@ -27,8 +27,7 @@ JAVA_MAJOR=${JAVA_PIN#*-} # e.g. temurin-11 -> 11
 # npm's pin is a range (^11.17.0) and installing from it guarantees the
 # cooldown floor. Assert the major so a bump can't silently diverge.
 NPM_RANGE=$($PIN npm)
-NPM_MAJOR=${NPM_RANGE//[!0-9.]/}
-NPM_MAJOR=${NPM_MAJOR%%.*}
+NPM_MAJOR=$(echo "$NPM_RANGE" | tr -dc '0-9.' | cut -d. -f1)
 if [ -z "$NPM_MAJOR" ]; then
   echo "FATAL: could not derive the npm major from '${NPM_RANGE}'" >&2
   exit 1
@@ -97,6 +96,7 @@ for pkg in requests wheel urllib3 chardet build; do
   python -c "import $pkg" 2>/dev/null && echo "ok:   python package $pkg importable" \
     || { echo "FAIL: python package $pkg not importable"; fail=1; }
 done
+present gofmt; present npx; present uvx
 present git; present make; present gcc; present jq; present curl
 present tar; present unzip; present zip; present sudo
 expect "git safe.directory" "*" "$(git config --system --get-all safe.directory)"
@@ -110,21 +110,20 @@ else
   echo "FAIL: passwordless sudo unavailable"; fail=1
 fi
 
+# mise must not remain after build. With plain binaries on PATH there
+# is no runtime resolution for a workspace config to sway.
+if command -v mise >/dev/null; then
+  echo "FAIL: mise binary present at runtime"; fail=1
+else
+  echo "ok:   mise binary absent"
+fi
+if [ -e /opt/mise/shims ]; then
+  echo "FAIL: mise shims present at runtime"; fail=1
+else
+  echo "ok:   mise shims absent"
+fi
+
 exit $fail
 EOF
-
-# A mounted repo's .mise.toml must not affect tool resolution: the PATH
-# holds pinned installs, not mise shims.
-docker run --rm --platform linux/amd64 -v "$PWD:/repo:ro" -w /repo \
-  -e "GO_MINOR=$GO_MINOR" -e "NODE_MAJOR=$NODE_MAJOR" -e "PY_MINOR=$PY_MINOR" \
-  "$IMAGE" bash -c '
-    set -euo pipefail
-    go version | grep -q "go${GO_MINOR}\." \
-      || { echo "FAIL: go swayed by repo config: $(go version)"; exit 1; }
-    node --version | grep -q "^v${NODE_MAJOR}\." \
-      || { echo "FAIL: node swayed by repo config: $(node --version)"; exit 1; }
-    python --version | grep -q "Python ${PY_MINOR}\." \
-      || { echo "FAIL: python swayed by repo config: $(python --version)"; exit 1; }
-    echo "ok:   tool resolution independent of the mounted repo .mise.toml"'
 
 echo "${IMAGE} tool verification PASSED"
