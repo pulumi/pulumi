@@ -44,7 +44,7 @@ func TestAwaitErrorCreate(t *testing.T) {
 			return &deploytest.Provider{
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 					if req.URN.Name() == "awaiting" {
-						return plugin.CreateResponse{Status: resource.StatusAwaiting}, &plugin.AwaitError{}
+						return plugin.CreateResponse{Status: resource.StatusOK}, &plugin.AwaitError{}
 					}
 					return plugin.CreateResponse{ID: "id-" + resource.ID(req.URN.Name()), Status: resource.StatusOK}, nil
 				},
@@ -101,7 +101,7 @@ func TestAwaitErrorUpdate(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				UpdateF: func(_ context.Context, _ plugin.UpdateRequest) (plugin.UpdateResponse, error) {
-					return plugin.UpdateResponse{Status: resource.StatusAwaiting}, &plugin.AwaitError{}
+					return plugin.UpdateResponse{Status: resource.StatusOK}, &plugin.AwaitError{}
 				},
 				DiffF: func(_ context.Context, _ plugin.DiffRequest) (plugin.DiffResponse, error) {
 					return plugin.DiffResponse{Changes: plugin.DiffSome}, nil

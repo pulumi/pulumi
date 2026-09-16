@@ -2554,7 +2554,6 @@ func parseError(err error) (
 			break
 		}
 		if _, ok := detail.(*pulumirpc.ErrorResourceAwaitFailed); ok {
-			resourceStatus = resource.StatusAwaiting
 			resourceErr = &AwaitError{}
 			break
 		}
