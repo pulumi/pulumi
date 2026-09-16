@@ -2553,10 +2553,6 @@ func parseError(err error) (
 			resourceErr = &InitError{Reasons: initErr.Reasons}
 			break
 		}
-		if _, ok := detail.(*pulumirpc.ErrorResourceAwaitFailed); ok {
-			resourceErr = &AwaitError{}
-			break
-		}
 	}
 
 	return resourceStatus, id, liveObject, liveInputs, refreshBeforeUpdate, resourceErr
@@ -2579,17 +2575,6 @@ func (ie *InitError) Error() string {
 		return "resource init failed"
 	}
 	return err.Error()
-}
-
-// AwaitError represents a provider's needs to await an operation completing. Unlike InitError,
-// no resource state was persisted (Create) or the prior state must be preserved unchanged (Update).
-// The engine reports outputs as unknown to the SDK and continues the deployment.
-type AwaitError struct{}
-
-var _ error = (*AwaitError)(nil)
-
-func (ae *AwaitError) Error() string {
-	return "resource is awaiting"
 }
 
 func decorateSpanWithType(span opentracing.Span, urn string) {
