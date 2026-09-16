@@ -118,7 +118,7 @@ func readCandidatePreviewManifest(path string) (candidatePreviewManifest, error)
 		manifest.WorkflowRunID = os.Getenv("PULUMI_WORKFLOW_RUN_ID")
 	}
 	if manifest.CandidateID == "" || manifest.ShapeVersion <= 0 || manifest.ReleaseID == "" ||
-		manifest.ChangeRequestID == "" || manifest.RevisionNumber <= 0 || manifest.WorkflowRunID == "" ||
+		manifest.ChangeRequestID == "" || manifest.RevisionNumber < 0 || manifest.WorkflowRunID == "" ||
 		manifest.Workspace == "" || len(manifest.Members) == 0 {
 		return manifest, errors.New("delivery candidate preview manifest is incomplete")
 	}
