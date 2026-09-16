@@ -4,12 +4,8 @@
 # Built by ci-toolchain-image.yml, tagged by content hash (see
 # .github/scripts/toolchain-image-tag).
 #
-# mise is used only while building. It installs the tools, every tool
-# binary is linked into /opt/toolchain/bin, and mise is then deleted.
-# At runtime the tools are plain binaries on PATH, so nothing installs
-# lazily and workspace configs cannot change tool resolution (the
-# flakiness that reverted #22181). verify-tools is the pre-push gate
-# that checks the versions and that mise is gone.
+# mise installs the tools at build time and is then deleted, leaving plain
+# binaries on PATH: no lazy installs, no runtime resolution to sway (#22181).
 #
 # Language versions come from the test matrix via build args. All other
 # pins come from .mise.toml.
@@ -58,20 +54,23 @@ RUN curl -fsSLo /tmp/mise.tgz \
     && rm /tmp/mise.tgz
 
 # .mise.toml is used as is, except the four language pins are overridden
-# below. mise.dev.toml is not copied in.
+# below.
 COPY .mise.toml /src/.mise.toml
 COPY .github/scripts/tool-pin /src/.github/scripts/tool-pin
 
 # The whole toolchain installs in one layer so mise never outlives it.
-# The npm, Go and Python steps mirror install-toolchain's host steps.
 # The optional secret token avoids GitHub API rate limits.
 RUN --mount=type=secret,id=github-token <<'EOF'
     set -euo pipefail
-    # mise settings for this layer only. No other layer runs mise.
+    # npm shell-out routes npm-backend installs through npm itself,
+    # which is what applies the dependency cooldown.
     export MISE_DATA_DIR=/opt/mise \
            MISE_GLOBAL_CONFIG_FILE=/src/.mise.toml \
            MISE_TRUSTED_CONFIG_PATHS=/src \
-           MISE_CACHE_DIR=/tmp/mise-cache
+           MISE_CACHE_DIR=/tmp/mise-cache \
+           MISE_NPM_SHELL_OUT=true
+    export npm_config_min_release_age="${COOLDOWN_DAYS}"
+    PIN=/src/.github/scripts/tool-pin
     if [ -f /run/secrets/github-token ]; then export GITHUB_TOKEN="$(cat /run/secrets/github-token)"; fi
     set -x
 
@@ -80,37 +79,31 @@ RUN --mount=type=secret,id=github-token <<'EOF'
     mise config set -t string -f "$MISE_GLOBAL_CONFIG_FILE" tools.node "${NODE_VERSION%.x}"
     mise config set -t string -f "$MISE_GLOBAL_CONFIG_FILE" tools.python "${PYTHON_VERSION%.x}"
     mise config set -t string -f "$MISE_GLOBAL_CONFIG_FILE" tools.dotnet "${DOTNET_VERSION}"
-    # Retry once, downloads can flake and mise install is idempotent.
-    mise install || { sleep 15; mise install; }
-    # Put the installed tools on PATH for the rest of this script.
+
+    # node first, so npm can be upgraded to a cooldown-capable version
+    # (>= 11.17.0) before anything else installs through it.
+    mise install node
     PATH="$(mise bin-paths | tr '\n' ':')${PATH}"
-    export PATH
-
-    PIN=/src/.github/scripts/tool-pin
-
-    # npm upgrades first because the dependency cooldown needs npm >=
-    # 11.17.0. yarn and pnpm then install with the cooldown enforced.
-    export npm_config_min_release_age="${COOLDOWN_DAYS}"
     npm install -g "npm@$($PIN npm)"
+
+    # yarn and pnpm install through npm, like the host jobs: only npm
+    # resolves pnpm's range pin within the cooldown window.
+    mise unuse -g "npm:yarn" "npm:pnpm"
     npm install -g "yarn@$($PIN yarn)" "pnpm@$($PIN pnpm)"
 
-    # Go test tools. Test jobs restore their own Go build caches.
-    GOBIN=/usr/local/bin go install "github.com/go-delve/delve/cmd/dlv@v$($PIN dlv)"
-    GOBIN=/usr/local/bin go install "gotest.tools/gotestsum@v$($PIN gotestsum)"
+    # Everything else in .mise.toml.
+    mise install
+    export PATH="$(mise bin-paths | tr '\n' ':')${PATH}"
 
     # Python deps and Poetry. pip upgrades first because the cooldown
-    # needs pip >= 26.1. mise's python has no PEP 668 marker, so pip
-    # can manage it directly.
+    # needs pip >= 26.1.
     export PIP_UPLOADED_PRIOR_TO="P${COOLDOWN_DAYS}D"
     python -m ensurepip --upgrade
     python -m pip install --no-cache-dir --upgrade pip
-    python -m pip install --no-cache-dir requests wheel urllib3 chardet build
-    python -m pip install --no-cache-dir poetry
+    python -m pip install --no-cache-dir requests wheel urllib3 chardet build poetry
 
-    # Link every tool binary, including the npm globals and pip scripts
-    # installed above, into the one directory on the runtime PATH. Only
-    # executable files: dotnet's bin path is its whole SDK tree. ln
-    # fails the build if two tools ship the same binary name.
+    # Link every executable into the one directory on the runtime PATH.
+    # ln fails the build if two tools ship the same binary name.
     mkdir -p /opt/toolchain/bin
     for dir in $(mise bin-paths); do
         for file in "$dir"/*; do
@@ -121,16 +114,12 @@ RUN --mount=type=secret,id=github-token <<'EOF'
             fi
         done
     done
-    # JAVA_HOME and DOTNET_ROOT need stable paths and the versioned
-    # install paths change every rebuild. Symlinks rather than moves
-    # keep mise's tree intact, and copies would double the image size.
-    # readlink because dotnet's install dir is itself a symlink.
+    # Stable paths for JAVA_HOME and DOTNET_ROOT. readlink because
+    # dotnet's install dir is itself a symlink.
     ln -s "$(readlink -f "$(mise where java)")" /opt/java
     ln -s "$(readlink -f "$(mise where dotnet)")" /opt/dotnet
 
-    # mise's work is done. Deleting it and its shims makes runtime
-    # resolution impossible to sway. verify-tools asserts it stays
-    # gone. Also drop the build caches.
+    # mise's work is done. verify-tools asserts it stays gone.
     rm -rf /usr/local/bin/mise /opt/mise/shims "$MISE_CACHE_DIR" \
         /root/go /root/.cache/go-build
 EOF
@@ -144,10 +133,8 @@ ENV PATH=/opt/toolchain/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/s
 # Let git operate on repo mounts owned by another uid (validate-local).
 RUN git config --system --add safe.directory '*'
 
-# Tests must not run as root or they would bypass the file modes some
-# tests rely on. uid 1001 matches the hosted runner user that owns the
-# mounted workspace, and passwordless sudo mirrors the hosts. The go
-# dirs make cache volumes mounted there start out user-owned.
+# Tests run as non-root so file permission checks hold. uid 1001 matches
+# the hosted runner user, and the go dirs keep cache mounts user-owned.
 RUN useradd --uid 1001 --create-home runner \
     && echo "runner ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers.d/runner \
     && mkdir -p /home/runner/go /home/runner/.cache/go-build \

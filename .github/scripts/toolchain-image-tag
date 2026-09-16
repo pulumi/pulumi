@@ -4,8 +4,6 @@
 # Prints the content-addressed toolchain image reference for a version
 # set: a hash of the image inputs plus the ISO week, which rolls the tag
 # weekly so floating pins (Go patch, base image, apt) re-resolve.
-# mise.dev.toml is deliberately not an input, its tools are not in the
-# image and must not roll the tag.
 #
 # Usage: toolchain-image-tag <version-set-name>
 set -euo pipefail

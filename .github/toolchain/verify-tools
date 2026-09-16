@@ -99,6 +99,11 @@ done
 present gofmt; present npx; present uvx
 present git; present make; present gcc; present jq; present curl
 present tar; present unzip; present zip; present sudo
+present gh; present gopls; present changie; present vale
+present golangci-lint; present tsc; present typescript-language-server
+present gow; present protoc; present protoc-gen-go; present protoc-gen-go-grpc
+present grpc_tools_node_protoc; present protoc-gen-ts; present protoc-gen-js
+present requiredfield; present wat2wasm
 expect "git safe.directory" "*" "$(git config --system --get-all safe.directory)"
 
 # Not root (tests rely on permission enforcement), and the uid must

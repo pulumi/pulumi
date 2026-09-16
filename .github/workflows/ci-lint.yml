@@ -91,9 +91,6 @@ jobs:
   protobuf-lint:
     name: Lint Protobufs
     runs-on: ubuntu-latest
-    env:
-      # The protoc toolchain lives in mise.dev.toml, and mise shims read this on every step.
-      MISE_ENV: dev
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
         with:
@@ -190,9 +187,6 @@ jobs:
   changelog:
     name: Lint changelog entries
     runs-on: ubuntu-latest
-    env:
-      # changie lives in mise.dev.toml, and mise shims read this on every step.
-      MISE_ENV: dev
     permissions:
       contents: read
       # To comment changelog style findings on PRs.

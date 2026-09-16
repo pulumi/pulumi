@@ -3,8 +3,7 @@
 #
 # Prints a [tools] or [vars] pin from .mise.toml, the parser every CI
 # consumer shares. Fails on a missing or duplicated key so format drift
-# breaks loudly. Deliberately never reads mise.dev.toml, which CI does
-# not consume.
+# breaks loudly.
 #
 # Usage:
 #   tool-pin gradle                    ([tools])

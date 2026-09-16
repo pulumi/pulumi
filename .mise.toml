@@ -1,9 +1,7 @@
-# The test toolchain, a prerequisite for both CI jobs and development.
-# CI treats it as an authority: the toolchain image installs [tools]
-# wholesale, [vars] holds the pins CI installs without mise, tool-pin
-# resolves both for the host steps, and any change rolls the image tag.
-# Extra dev tools live in mise.dev.toml, pulled in when MISE_ENV=dev is
-# set (see .envrc.template).
+# The toolchain for CI jobs and development. CI treats it as an
+# authority: the toolchain image installs [tools] wholesale, [vars]
+# holds the pins CI installs without mise, tool-pin resolves both for
+# the host steps, and any change rolls the image tag.
 
 [tools]
 go = "1.27"
@@ -15,12 +13,40 @@ gradle = "7.6"
 uv = "0.11.28"
 bun = "1.3.14"
 "github:pulumi/goteststats" = "0.0.7"
+github-cli = "2.93.0"
+"go:golang.org/x/tools/gopls" = "0.23.0"
+changie = "1.24.2"
+vale = "3.17.1"
+golangci-lint = "2.13.0"
+jq = "1.8.1"
+"npm:typescript" = "6.0.3"
+"npm:typescript-language-server" = "5.3.0"
+# This is a dev only dependency that fails to install on windows
+"go:github.com/mitranim/gow" = { version = "0.0.0-20260515002309-3b8e4d082711", os = ["linux", "macos"] }
+protoc = "29.5"
+"go:google.golang.org/protobuf/cmd/protoc-gen-go" = "v1.36.6"
+"go:google.golang.org/grpc/cmd/protoc-gen-go-grpc" = "v1.5.1"
+"npm:grpc-tools" = { version = "1.13.0", npm_args = "--ignore-scripts=false" }
+"npm:grpc_tools_node_protoc_ts" = "5.3.3"
+# This is a dev only dependency that fails to install on windows
+"npm:protoc-gen-js" = { version = "3.21.4", os = ["linux", "macos"], npm_args = "--ignore-scripts=false" }
+"go:go.abhg.dev/requiredfield/cmd/requiredfield" = "0.8.0"
+"github:WebAssembly/wabt" = "1.0.37"
+# Pinned in [vars] (see there) so the host jobs, which install these
+# four without mise, can resolve the same pins through tool-pin. The
+# toolchain image also installs yarn and pnpm through npm rather than
+# mise, matching the host jobs (see the Dockerfile).
+"npm:yarn" = "{{ vars.yarn }}"
+"npm:pnpm" = "{{ vars.pnpm }}"
+"go:github.com/go-delve/delve/cmd/dlv" = "{{ vars.dlv }}"
+"go:gotest.tools/gotestsum" = "{{ vars.gotestsum }}"
 
 [vars]
-# Pins the tools CI installs without mise to mirror the host steps:
-# yarn and pnpm through npm (so the dependency cooldown applies), dlv
-# and gotestsum through go install. `mise.dev.toml` references these
-# vars so developers can still get the tools from `mise install`.
+# Pins for the tools the host jobs install without mise: yarn and pnpm
+# through npm (so the dependency cooldown applies), dlv and gotestsum
+# through go install, and npm as an in-place upgrade of node's bundled
+# npm. The templated [tools] entries above resolve from these vars, so
+# a plain `mise install` still covers everything but npm.
 #
 # npm must be 11.17.0 or newer for the dependency-cooldown action.
 npm = "^11.17.0"
@@ -34,5 +60,9 @@ gotestsum = "1.13.0"
 [env]
 PULUMI_TEST_USE_NPM = "true"
 
+[tool_alias]
+protoc = "asdf:https://github.com/paxosglobal/asdf-protoc"
+
 [plugins]
 gradle = "https://github.com/rfrancis/asdf-gradle"
+protoc = "https://github.com/paxosglobal/asdf-protoc"
