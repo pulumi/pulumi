@@ -34,6 +34,9 @@ jobs:
   version-bump:
     name: version bump
     runs-on: ubuntu-latest
+    env:
+      # changie lives in mise.dev.toml, and mise shims read this on every step.
+      MISE_ENV: dev
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
         with:
@@ -46,9 +49,6 @@ jobs:
         with:
           go-version-file: sdk/go.mod
       - uses: ./.github/actions/retry
-        # changie lives in mise.dev.toml, which loads under MISE_ENV=dev.
-        env:
-          MISE_ENV: dev
         with:
           action: jdx/mise-action@v2
           with: |
