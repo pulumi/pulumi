@@ -205,9 +205,10 @@ func (pc *Client) ApproveChangeRequest(ctx context.Context, org, requestID strin
 		url.PathEscape(requestID)+"/approve", nil, request, nil)
 }
 
-func (pc *Client) CompleteDeliveryCandidatePreview(ctx context.Context, org, candidateID string,
+func (pc *Client) CompleteDeliveryCandidatePreview(ctx context.Context, stack StackIdentifier, candidateID string,
 	request DeliveryCandidatePreviewRequest,
 ) error {
-	return pc.restCall(ctx, "POST", "/api/orgs/"+url.PathEscape(org)+"/delivery/candidates/"+
+	return pc.restCall(ctx, "POST", "/api/preview/stacks/"+url.PathEscape(stack.Owner)+"/"+
+		url.PathEscape(stack.Project)+"/"+url.PathEscape(stack.Stack.String())+"/delivery/candidates/"+
 		url.PathEscape(candidateID)+"/preview", nil, request, nil)
 }

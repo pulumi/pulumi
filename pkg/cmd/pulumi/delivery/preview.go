@@ -88,7 +88,7 @@ func (c *command) previewCandidateCommand() *cobra.Command {
 			} else {
 				request.Status, request.Stacks, request.Plan, request.Events = "succeeded", stacks, plan, events
 			}
-			if callbackErr := api.CompleteDeliveryCandidatePreview(cmd.Context(), stack.Owner,
+			if callbackErr := api.CompleteDeliveryCandidatePreview(cmd.Context(), stack,
 				manifest.CandidateID, request); callbackErr != nil {
 				return fmt.Errorf("reporting delivery candidate preview: %w", callbackErr)
 			}

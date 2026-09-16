@@ -46,7 +46,7 @@ func TestCompleteDeliveryCandidatePreview(t *testing.T) {
 	t.Parallel()
 	var body DeliveryCandidatePreviewRequest
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		assert.Equal(t, "/api/orgs/acme/delivery/candidates/candidate%2F1/preview", r.URL.EscapedPath())
+		assert.Equal(t, "/api/preview/stacks/acme/shop/pipeline/delivery/candidates/candidate%2F1/preview", r.URL.EscapedPath())
 		assert.Equal(t, http.MethodPost, r.Method)
 		require.NoError(t, json.NewDecoder(r.Body).Decode(&body))
 		w.WriteHeader(http.StatusNoContent)
@@ -54,7 +54,8 @@ func TestCompleteDeliveryCandidatePreview(t *testing.T) {
 	defer server.Close()
 	api := NewClient(server.URL, "token", true, diag.DefaultSink(io.Discard, io.Discard,
 		diag.FormatOptions{Color: colors.Never}))
-	err := api.CompleteDeliveryCandidatePreview(t.Context(), "acme", "candidate/1", DeliveryCandidatePreviewRequest{
+	err := api.CompleteDeliveryCandidatePreview(t.Context(), StackIdentifier{Owner: "acme", Project: "shop",
+		Stack: tokens.MustParseStackName("pipeline")}, "candidate/1", DeliveryCandidatePreviewRequest{
 		ShapeVersion: 2, ReleaseID: "release", ChangeRequestID: "cr", RevisionNumber: 3,
 		WorkflowRunID: "run", Status: "succeeded", Stacks: []DeliveryCandidatePreviewStack{},
 		Plan: json.RawMessage(`{"resourcePlans":{}}`), Events: json.RawMessage(`[]`),
