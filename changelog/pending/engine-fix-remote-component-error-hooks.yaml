@@ -1,4 +1,0 @@
-component: engine
-kind: fix
-body: Forward caller error hooks to remote component providers
-time: 2026-09-10T09:25:00Z

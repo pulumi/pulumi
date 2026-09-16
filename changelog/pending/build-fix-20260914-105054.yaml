@@ -1,4 +1,0 @@
-component: build
-kind: fix
-body: Restore pr#<number> based downloads
-time: 2026-09-14T10:50:54.697516+02:00
