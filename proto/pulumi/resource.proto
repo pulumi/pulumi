@@ -270,10 +270,6 @@ message RegisterResourceRequest {
 
     // A list of state migrations to apply to the prior state of this resource and its descendants before diffing.
     repeated Callback state_migrations = 43;
-
-    // True if the SDK understands the AWAIT result status. When false, the engine will translate any
-    // provider await failures into a normal error rather than returning AWAIT to the SDK.
-    bool supports_await = 44;
 }
 
 enum Result {
@@ -285,12 +281,6 @@ enum Result {
 	// against the old enum.
 	reserved 2;
 	reserved "SKIP";
-	// AWAIT indicates the provider was had to await the operation. Unlike a partial failure, no
-	// resource state was written (Create) or the prior state is preserved unchanged (Update). The
-	// engine reports outputs as unknown to the SDK and continues the deployment, but the CLI exits
-	// with a dedicated non-zero code. Only sent to SDKs that set
-	// RegisterResourceRequest.supports_await = true.
-	AWAIT = 3;
 }
 
 // RegisterResourceResponse is returned by the engine after a resource has finished being initialized.  It includes the
