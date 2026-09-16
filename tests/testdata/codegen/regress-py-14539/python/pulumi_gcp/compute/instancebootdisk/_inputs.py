@@ -21,7 +21,7 @@ __all__ = [
 ]
 
 class InstanceBootDiskArgsDict(TypedDict):
-    initialize_params: pulumi.Input['_compute.instancebootdiskinitializeparams.InstanceBootDiskInitializeParamsArgsDict']
+    initialize_params: pulumi.Input[Union['_compute.instancebootdiskinitializeparams.InstanceBootDiskInitializeParamsArgs', '_compute.instancebootdiskinitializeparams.InstanceBootDiskInitializeParamsArgsDict', '_compute.instancebootdiskinitializeparams.outputs.InstanceBootDiskInitializeParams']]
     """
     Parameters for a new disk that will be created
     alongside the new instance. Either `initialize_params` or `source` must be set.

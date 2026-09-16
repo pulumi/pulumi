@@ -15,6 +15,7 @@ else:
 from . import _utilities
 from . import mod1 as _mod1
 from . import mod2 as _mod2
+from . import outputs
 
 __all__ = [
     'HelmReleaseSettings',
@@ -195,7 +196,7 @@ class KubeClientSettingsArgsDict(TypedDict):
     """
     Maximum queries per second (QPS) to the API server from this client. Default value is 5.
     """
-    rec_test: NotRequired[pulumi.Input[Optional['KubeClientSettingsArgsDict']]]
+    rec_test: NotRequired[pulumi.Input[Optional[Union['KubeClientSettingsArgs', 'KubeClientSettingsArgsDict', 'outputs.KubeClientSettings']]]]
 
 @pulumi.input_type
 class KubeClientSettingsArgs:

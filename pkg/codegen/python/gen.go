@@ -270,12 +270,11 @@ func (mod *modContext) objectType(t *schema.ObjectType, input bool, forDict bool
 	return fmt.Sprintf("'%s%s%s'", modName, prefix, name)
 }
 
-// admittedOutputType returns the output class that resource and function signatures also accept
-// for the object type `t` in the classes-and-dicts flavor, or nil when there is none. Without the
+// admittedOutputType returns the output class that input positions also accept for the object
+// type `t` in the classes-and-dicts flavor, or nil when there is none. Without the
 // `Mapping[str, Any]` member of `pulumi.InputType`, an output type is neither its Args class nor
 // its TypedDict, so listing the output class is what lets one resource's output flow into
-// another's input. TypedDict items are left alone: the component analyzer inlines them and
-// rejects unions.
+// another's input.
 func (mod *modContext) admittedOutputType(t *schema.ObjectType) *schema.ObjectType {
 	if !typedDictEnabled(mod.inputTypes) || !codegen.PkgEquals(t.PackageReference, mod.pkg) {
 		return nil
@@ -1224,6 +1223,9 @@ func (mod *modContext) genTypes(dir string, fs codegen.Fs) error {
 							// No need to import `._inputs` inside _inputs.py.
 							return imp != "from ._inputs import *"
 						})
+						if out := mod.admittedOutputType(t); out != nil {
+							imports.addType(mod, out, false /*input*/)
+						}
 					case *schema.EnumType:
 						imports.addEnum(mod, t)
 					case *schema.ResourceType:
@@ -2837,7 +2839,13 @@ func (mod *modContext) typeString(t schema.Type, opts typeStringOpts) string {
 		return fmt.Sprintf("Mapping[str, %s]", mod.typeString(t.ElementType, opts))
 	case *schema.ObjectType:
 		if opts.forDict {
-			return mod.objectType(t, opts.input, true /*dictType*/)
+			dict := mod.objectType(t, opts.input, true /*dictType*/)
+			out := mod.admittedOutputType(t)
+			if out == nil {
+				return dict
+			}
+			return fmt.Sprintf("Union[%s, %s, %s]",
+				mod.objectType(t, opts.input, false /*dictType*/), dict, mod.objectType(out, false /*input*/, false /*dictType*/))
 		}
 		typ := mod.objectType(t, opts.input, false /*dictType*/)
 		if !opts.acceptMapping {
