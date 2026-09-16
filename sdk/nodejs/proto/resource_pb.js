@@ -2445,7 +2445,8 @@ envvarmappingsMap: (f = msg.getEnvvarmappingsMap()) ? f.toObject(includeInstance
 snippetid: jspb.Message.getFieldWithDefault(msg, 40, ""),
 acceptsByteString: jspb.Message.getBooleanFieldWithDefault(msg, 42, false),
 stateMigrationsList: jspb.Message.toObjectList(msg.getStateMigrationsList(),
-    pulumi_callback_pb.Callback.toObject, includeInstance)
+    pulumi_callback_pb.Callback.toObject, includeInstance),
+supportsAwait: jspb.Message.getBooleanFieldWithDefault(msg, 44, false)
   };
 
   if (includeInstance) {
@@ -2670,6 +2671,10 @@ proto.pulumirpc.RegisterResourceRequest.deserializeBinaryFromReader = function(m
       var value = new pulumi_callback_pb.Callback;
       reader.readMessage(value,pulumi_callback_pb.Callback.deserializeBinaryFromReader);
       msg.addStateMigrations(value);
+      break;
+    case 44:
+      var value = /** @type {boolean} */ (reader.readBool());
+      msg.setSupportsAwait(value);
       break;
     default:
       reader.skipField();
@@ -2996,6 +3001,13 @@ proto.pulumirpc.RegisterResourceRequest.serializeBinaryToWriter = function(messa
       43,
       f,
       pulumi_callback_pb.Callback.serializeBinaryToWriter
+    );
+  }
+  f = message.getSupportsAwait();
+  if (f) {
+    writer.writeBool(
+      44,
+      f
     );
   }
 };
@@ -4961,6 +4973,24 @@ proto.pulumirpc.RegisterResourceRequest.prototype.addStateMigrations = function(
  */
 proto.pulumirpc.RegisterResourceRequest.prototype.clearStateMigrationsList = function() {
   return this.setStateMigrationsList([]);
+};
+
+
+/**
+ * optional bool supports_await = 44;
+ * @return {boolean}
+ */
+proto.pulumirpc.RegisterResourceRequest.prototype.getSupportsAwait = function() {
+  return /** @type {boolean} */ (jspb.Message.getBooleanFieldWithDefault(this, 44, false));
+};
+
+
+/**
+ * @param {boolean} value
+ * @return {!proto.pulumirpc.RegisterResourceRequest} returns this
+ */
+proto.pulumirpc.RegisterResourceRequest.prototype.setSupportsAwait = function(value) {
+  return jspb.Message.setProto3BooleanField(this, 44, value);
 };
 
 
@@ -13252,7 +13282,8 @@ proto.pulumirpc.ResourceMonitorFeature = {
  */
 proto.pulumirpc.Result = {
   SUCCESS: 0,
-  FAIL: 1
+  FAIL: 1,
+  AWAIT: 3
 };
 
 goog.object.extend(exports, proto.pulumirpc);

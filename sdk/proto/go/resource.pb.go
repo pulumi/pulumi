@@ -143,6 +143,10 @@ type Result int32
 const (
 	Result_SUCCESS Result = 0
 	Result_FAIL    Result = 1
+	// AWAIT indicates the provider was unable to await the operation. The engine did not change resource
+	// state (no create was recorded, or the update was not applied) and outputs should be treated as
+	// unknown. Only sent to SDKs that set RegisterResourceRequest.supports_await = true.
+	Result_AWAIT Result = 3
 )
 
 // Enum value maps for Result.
@@ -150,10 +154,12 @@ var (
 	Result_name = map[int32]string{
 		0: "SUCCESS",
 		1: "FAIL",
+		3: "AWAIT",
 	}
 	Result_value = map[string]int32{
 		"SUCCESS": 0,
 		"FAIL":    1,
+		"AWAIT":   3,
 	}
 )
 
@@ -677,8 +683,11 @@ type RegisterResourceRequest struct {
 	AcceptsByteString bool `protobuf:"varint,42,opt,name=accepts_byte_string,json=acceptsByteString,proto3" json:"accepts_byte_string,omitempty"`
 	// A list of state migrations to apply to the prior state of this resource and its descendants before diffing.
 	StateMigrations []*Callback `protobuf:"bytes,43,rep,name=state_migrations,json=stateMigrations,proto3" json:"state_migrations,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	// True if the SDK understands the AWAIT result status. When false, the engine will translate any
+	// provider await failures into a normal error rather than returning AWAIT to the SDK.
+	SupportsAwait bool `protobuf:"varint,44,opt,name=supports_await,json=supportsAwait,proto3" json:"supports_await,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *RegisterResourceRequest) Reset() {
@@ -1010,6 +1019,13 @@ func (x *RegisterResourceRequest) GetStateMigrations() []*Callback {
 		return x.StateMigrations
 	}
 	return nil
+}
+
+func (x *RegisterResourceRequest) GetSupportsAwait() bool {
+	if x != nil {
+		return x.SupportsAwait
+	}
+	return false
 }
 
 // RegisterResourceResponse is returned by the engine after a resource has finished being initialized.  It includes the
@@ -3365,7 +3381,7 @@ const file_pulumi_resource_proto_rawDesc = "" +
 	"\x03urn\x18\x01 \x01(\tR\x03urn\x127\n" +
 	"\n" +
 	"properties\x18\x02 \x01(\v2\x17.google.protobuf.StructR\n" +
-	"properties\"\xdf\x16\n" +
+	"properties\"\x86\x17\n" +
 	"\x17RegisterResourceRequest\x12\x12\n" +
 	"\x04type\x18\x01 \x01(\tR\x04type\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x16\n" +
@@ -3418,7 +3434,8 @@ const file_pulumi_resource_proto_rawDesc = "" +
 	"\x0eenvVarMappings\x18) \x03(\v26.pulumirpc.RegisterResourceRequest.EnvVarMappingsEntryR\x0eenvVarMappings\x12\x1c\n" +
 	"\tsnippetId\x18( \x01(\tR\tsnippetId\x12.\n" +
 	"\x13accepts_byte_string\x18* \x01(\bR\x11acceptsByteString\x12>\n" +
-	"\x10state_migrations\x18+ \x03(\v2\x13.pulumirpc.CallbackR\x0fstateMigrations\x1a*\n" +
+	"\x10state_migrations\x18+ \x03(\v2\x13.pulumirpc.CallbackR\x0fstateMigrations\x12%\n" +
+	"\x0esupports_await\x18, \x01(\bR\rsupportsAwait\x1a*\n" +
 	"\x14PropertyDependencies\x12\x12\n" +
 	"\x04urns\x18\x01 \x03(\tR\x04urns\x1al\n" +
 	"\x0eCustomTimeouts\x12\x16\n" +
@@ -3714,10 +3731,11 @@ const file_pulumi_resource_proto_rawDesc = "" +
 	"$RESOURCE_MONITOR_FEATURE_BYTE_STRING\x10\r\x12.\n" +
 	"*RESOURCE_MONITOR_FEATURE_INVOKE_DEPENDS_ON\x10\x0e\x12*\n" +
 	"&RESOURCE_MONITOR_FEATURE_INVOKE_PARENT\x10\x0f\x12-\n" +
-	")RESOURCE_MONITOR_FEATURE_STATE_MIGRATIONS\x10\x10*+\n" +
+	")RESOURCE_MONITOR_FEATURE_STATE_MIGRATIONS\x10\x10*6\n" +
 	"\x06Result\x12\v\n" +
 	"\aSUCCESS\x10\x00\x12\b\n" +
-	"\x04FAIL\x10\x01\"\x04\b\x02\x10\x02*\x04SKIP2\xcd\b\n" +
+	"\x04FAIL\x10\x01\x12\t\n" +
+	"\x05AWAIT\x10\x03\"\x04\b\x02\x10\x02*\x04SKIP2\xcd\b\n" +
 	"\x0fResourceMonitor\x12H\n" +
 	"\x11GetDeploymentInfo\x12\x16.google.protobuf.Empty\x1a\x19.pulumirpc.DeploymentInfo\"\x00\x12Z\n" +
 	"\x0fSupportsFeature\x12!.pulumirpc.SupportsFeatureRequest\x1a\".pulumirpc.SupportsFeatureResponse\"\x00\x12O\n" +
