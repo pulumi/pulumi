@@ -870,3 +870,73 @@ func TestTargetedUpdateRefreshWithDeletedParent(t *testing.T) {
 		p.GetProject(), p.GetTarget(t, snap), opts, false, p.BackendClient, nil, "1")
 	require.NoError(t, err)
 }
+
+// TestRefreshProgramUpdateReplacedComponentProvider covers an update with
+// Refresh and RefreshProgram set, run against a snapshot with a component
+// resource that refers to a provider. The program replaces the provider. The
+// refresh step for the component copies its old state, which still refers to
+// the old provider, and writes that copy after the replacement provider but
+// before the old provider. This violates the snapshot integrity invariant that
+// a provider precedes the resources that refer to it.
+func TestRefreshProgramUpdateReplacedComponentProvider(t *testing.T) {
+	t.Parallel()
+
+	// TODO[https://github.com/pulumi/pulumi/issues/24680]: Fix the underlying issue and re-enable this test.
+	t.Skip("Skipping: refresh-program update writes a component before its replaced provider")
+
+	p := &lt.TestPlan{
+		Project: "test-project",
+		Stack:   "test-stack",
+	}
+
+	prov := &pkgresource.State{
+		Type:   "pulumi:providers:pkgA",
+		URN:    "urn:pulumi:test-stack::test-project::pulumi:providers:pkgA::prov",
+		Custom: true,
+		ID:     "id-prov",
+	}
+	provRef, err := providers.NewReference(prov.URN, prov.ID)
+	require.NoError(t, err)
+	comp := &pkgresource.State{
+		Type:     "pkgA:m:TypeA",
+		URN:      "urn:pulumi:test-stack::test-project::pkgA:m:TypeA::comp",
+		Custom:   false,
+		Provider: provRef.String(),
+	}
+	snap := &deploy.Snapshot{Resources: []*pkgresource.State{prov, comp}}
+	require.NoError(t, snap.VerifyIntegrity())
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				DiffConfigF: func(_ context.Context, _ plugin.DiffConfigRequest) (plugin.DiffConfigResponse, error) {
+					return plugin.DiffResult{Changes: plugin.DiffSome, ReplaceKeys: []resource.PropertyKey{"foo"}}, nil
+				},
+			}, nil
+		}),
+	}
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		resp, err := monitor.RegisterResource("pulumi:providers:pkgA", "prov", true, deploytest.ResourceOptions{
+			Inputs: resource.PropertyMap{"foo": resource.NewProperty("bar")},
+		})
+		require.NoError(t, err)
+		ref, err := providers.NewReference(resp.URN, resp.ID)
+		require.NoError(t, err)
+		_, err = monitor.RegisterResource("pkgA:m:TypeA", "comp", false, deploytest.ResourceOptions{
+			Provider: ref.String(),
+		})
+		require.NoError(t, err)
+		return nil
+	})
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
+
+	_, err = lt.TestOp(engine.Update).RunStep(
+		p.GetProject(), p.GetTarget(t, snap), lt.TestUpdateOptions{
+			T:                t,
+			HostF:            hostF,
+			SkipDisplayTests: true,
+			UpdateOptions:    engine.UpdateOptions{Refresh: true, RefreshProgram: true},
+		},
+		false, p.BackendClient, nil, "0")
+	require.NoError(t, err)
+}
