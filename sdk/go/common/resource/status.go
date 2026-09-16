@@ -22,4 +22,8 @@ const (
 	StatusOK Status = iota
 	StatusPartialFailure
 	StatusUnknown
+	// StatusAwaiting indicates the provider was had to await the operation. Unlike StatusPartialFailure, no resource
+	// state was written (Create) or the prior state is preserved unchanged (Update). The engine reports outputs as
+	// unknown to the SDK and continues the deployment, but the CLI exits with a dedicated non-zero code.
+	StatusAwaiting
 )
