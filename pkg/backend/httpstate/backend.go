@@ -1977,6 +1977,11 @@ func (b *cloudBackend) apply(
 	if err != nil {
 		return nil, nil, err
 	}
+	// BeginUpdate cached the pre-update deployment/tags for the engine's initial reads; it is
+	// stale once this update mutates state, so drop it when apply returns. Otherwise a later
+	// version==nil ExportDeployment in the same process (e.g. `pulumi import --generate-code`
+	// reading post-import state) would get the empty pre-import snapshot back.
+	defer func() { b.cachedUpdateData = nil }()
 
 	if b.isNeoFeaturesEnabled(op.Opts.Display) {
 		if !b.Capabilities(ctx).CopilotSummarizeErrorV1 {
