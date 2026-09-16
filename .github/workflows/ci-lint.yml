@@ -98,6 +98,8 @@ jobs:
       - uses: ./.github/actions/retry
         env:
           MISE_NPM_SHELL_OUT: "true"
+          # The protoc toolchain lives in mise.dev.toml, which loads under MISE_ENV=dev.
+          MISE_ENV: dev
         with:
           action: jdx/mise-action@v2
           with: |
@@ -205,6 +207,9 @@ jobs:
           attempt_limit: 3
           attempt_delay: 5000
       - uses: ./.github/actions/retry
+        # changie lives in mise.dev.toml, which loads under MISE_ENV=dev.
+        env:
+          MISE_ENV: dev
         with:
           action: jdx/mise-action@v2
           with: |
