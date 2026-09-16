@@ -110,7 +110,7 @@ func newEnvRunCmd(envcmd *envCommand) *cobra.Command {
 	shell := valueOrDefault(filepath.Base(envcmd.esc.environ.Get("SHELL")), "sh")
 
 	cmd := &cobra.Command{
-		Use:   "run [<org-name>/][<project-name>/]<environment-name> [flags] [--] [command]",
+		Use:   "run [[<org-name>/][<project-name>/]<environment-name>] [flags] [--] [command]",
 		Args:  cobra.ArbitraryArgs,
 		Short: "Open the environment with the given name and run a command.",
 		Long: fmt.Sprintf("Open the environment with the given name and run a command\n"+
@@ -131,7 +131,18 @@ func newEnvRunCmd(envcmd *envCommand) *cobra.Command {
 			"It is not strictly required that you pass `--`. The `--` indicates that any\n"+
 			"arguments that follow it should be treated as positional arguments instead of flags.\n"+
 			"It is only required if the arguments to the command you would like to run include\n"+
-			"flags of the form `--flag` or `-f`.\n", shell),
+			"flags of the form `--flag` or `-f`.\n"+
+			"\n"+
+			"The environment name may be omitted, in which case the default environment for the\n"+
+			"working directory is used. Because the first argument is otherwise interpreted as an\n"+
+			"environment name, the command must be preceded by `--`:\n"+
+			"\n"+
+			"    run -- %[1]s -c '\"echo $MY_ENV_VAR\"'\n"+
+			"\n"+
+			"The default environment is taken from the nearest .esc.yaml file in the working\n"+
+			"directory or one of its parents, or, failing that, from the environments imported by\n"+
+			"the currently-selected Pulumi stack. Run `env default` to see the default environment\n"+
+			"in effect.\n", shell),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 
@@ -139,13 +150,27 @@ func newEnvRunCmd(envcmd *envCommand) *cobra.Command {
 				return err
 			}
 
-			// If -- was used but there's no arguments, it means no environment was specified before the command
+			// If -- was used but there's no arguments before it, no environment was specified
+			// before the command: fall back to the default environment for the working directory.
+			var target envTarget
 			if cmd.ArgsLenAtDash() == 0 {
-				return errors.New("no environment specified")
-			}
-			ref, args, err := envcmd.getExistingEnvRef(ctx, args)
-			if err != nil {
-				return err
+				if envcmd.envNameFlag != "" {
+					return errors.New("no environment specified")
+				}
+				def, err := envcmd.resolveDefaultEnvironment(ctx)
+				if err != nil {
+					return err
+				}
+				if def == nil {
+					return errors.New("no environment specified")
+				}
+				target = def.target()
+			} else {
+				ref, rest, err := envcmd.getExistingEnvRef(ctx, args)
+				if err != nil {
+					return err
+				}
+				target, args = envTarget{ref: ref}, rest
 			}
 
 			if len(args) == 0 {
@@ -157,7 +182,7 @@ func newEnvRunCmd(envcmd *envCommand) *cobra.Command {
 			}
 			args = args[1:]
 
-			env, diags, err := envcmd.openEnvironment(ctx, ref, duration, draft)
+			env, diags, err := envcmd.openTarget(ctx, target, duration, draft)
 			if err != nil {
 				return err
 			}

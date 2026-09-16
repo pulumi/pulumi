@@ -1,0 +1,37 @@
+run: |
+  esc env run -- dump-env
+  esc env run default/other -- dump-env
+  esc env run default/other dump-env
+  esc env run --env default/other -- dump-env || echo -n ""
+process:
+  fs:
+    .esc.yaml: |
+      environment: test-user/default/test
+  commands:
+    dump-env: |
+      echo "foo: $FOO"
+environments:
+  test-user/default/other:
+    values:
+      environmentVariables:
+        FOO: other-bar
+  test-user/default/test:
+    values:
+      environmentVariables:
+        FOO: bar
+
+---
+> esc env run -- dump-env
+foo: bar
+> esc env run default/other -- dump-env
+foo: other-bar
+> esc env run default/other dump-env
+foo: other-bar
+> esc env run --env default/other -- dump-env
+
+---
+> esc env run -- dump-env
+> esc env run default/other -- dump-env
+> esc env run default/other dump-env
+> esc env run --env default/other -- dump-env
+Error: no environment specified

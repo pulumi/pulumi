@@ -37,7 +37,12 @@ func newEnvLsCmd(env *envCommand) *cobra.Command {
 		Short:   "List environments.",
 		Long: "List environments\n" +
 			"\n" +
-			"This command lists environments. All environments you have access to will be listed.\n",
+			"This command lists environments. All environments you have access to will be listed.\n" +
+			"\n" +
+			"If the default environment for the working directory is a single named environment,\n" +
+			"it is annotated with a '(default)' suffix. In JSON output the default is reported in\n" +
+			"a top-level 'default' field instead. Run `env default` to see the default environment\n" +
+			"in effect.\n",
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			ctx := cmd.Context()
@@ -68,6 +73,21 @@ func newEnvLsCmd(env *envCommand) *cobra.Command {
 				return ei.Organization < ej.Organization
 			})
 
+			// If the working directory has a default environment that names a single
+			// environment, annotate it in the listing.
+			def, err := env.resolveDefaultEnvironment(ctx)
+			if err != nil {
+				return err
+			}
+			var defaultID string
+			if def != nil && def.ref != nil {
+				defaultID = envIdentifier(client.OrgEnvironment{
+					Organization: def.ref.orgName,
+					Project:      def.ref.projectName,
+					Name:         def.ref.envName,
+				})
+			}
+
 			if format == outputJSON {
 				ids := make([]string, 0, len(allEnvs))
 				for _, e := range allEnvs {
@@ -75,11 +95,18 @@ func newEnvLsCmd(env *envCommand) *cobra.Command {
 				}
 				return writeJSON(env.esc.stdout, struct {
 					Environments []string `json:"environments"`
-				}{ids})
+					Default      string   `json:"default,omitempty"`
+				}{ids, defaultID})
 			}
 
 			for _, e := range allEnvs {
-				fmt.Fprintln(env.esc.stdout, envIdentifier(e))
+				id := envIdentifier(e)
+				// listEnvironments blanks out the org for the caller's own environments, so
+				// compare against both the blanked and fully-qualified forms.
+				if defaultID != "" && (id == defaultID || fmt.Sprintf("%s/%s", env.esc.account.Username, id) == defaultID) {
+					id += " (default)"
+				}
+				fmt.Fprintln(env.esc.stdout, id)
 			}
 
 			return nil
