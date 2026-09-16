@@ -58,8 +58,7 @@ type AnalyzerResource struct {
 	PropertyDependencies map[string][]string
 }
 
-// ResourceValidationArgs contains the arguments passed to a resource validation policy. To check whether the current
-// operation is a preview, use DryRun on the *pulumi.Context passed to the policy pack factory.
+// ResourceValidationArgs contains the arguments passed to a resource validation policy.
 type ResourceValidationArgs struct {
 	// Manager is the policy manager.
 	Manager PolicyManager

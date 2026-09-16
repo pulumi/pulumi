@@ -1,4 +1,4 @@
 component: sdk/go
 kind: improvement
-body: Remove `ResourceValidationArgs.DryRun` from `policyx`, which was never set, and use `DryRun` on the `*pulumi.Context` passed to the policy pack factory instead
+body: Remove `policyx.ResourceValidationArgs.DryRun` as it was never correctly set
 time: 2026-09-15T10:15:00.000000000Z
