@@ -53,12 +53,12 @@ func TestAwaitErrorCreate(t *testing.T) {
 	}
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		awaitResp, err := monitor.RegisterResource("pkgA:m:typA", "awaiting", true, deploytest.ResourceOptions{})
+		awaitResp, err := monitor.RegisterResource("pkgA:m:typA", "awaiting", true, deploytest.ResourceOptions{SupportsResultReporting: true})
 		require.NoError(t, err)
 		assert.Equal(t, pulumirpc.Result_SKIP, awaitResp.Result)
 		assert.True(t, awaitResp.Unknown, "SDK should see outputs as unknown on await")
 
-		nextResp, err := monitor.RegisterResource("pkgA:m:typA", "after", true, deploytest.ResourceOptions{})
+		nextResp, err := monitor.RegisterResource("pkgA:m:typA", "after", true, deploytest.ResourceOptions{SupportsResultReporting: true})
 		require.NoError(t, err)
 		assert.Equal(t, pulumirpc.Result_SUCCESS, nextResp.Result)
 		return nil
@@ -126,7 +126,8 @@ func TestAwaitErrorUpdate(t *testing.T) {
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		resp, err := monitor.RegisterResource("pkgA:m:typA", "awaiting", true, deploytest.ResourceOptions{
-			Inputs: resource.PropertyMap{"in": resource.NewStringProperty("v2")},
+			SupportsResultReporting: true,
+			Inputs:                  resource.PropertyMap{"in": resource.NewStringProperty("v2")},
 		})
 		require.NoError(t, err)
 		assert.Equal(t, pulumirpc.Result_SKIP, resp.Result)

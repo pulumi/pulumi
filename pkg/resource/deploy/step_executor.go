@@ -22,6 +22,7 @@ import (
 	"sync"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -435,6 +436,23 @@ func (se *stepExecutor) cancelDueToError(err error, step Step) {
 	set := se.sawError.Reject(err)
 	if !set {
 		logging.V(10).Infof("StepExecutor already recorded an error then saw: %v", err)
+	}
+
+	// AwaitError from Create or Update always continues the deployment: no state was mutated, the
+	// SDK receives a skipped-with-unknown result, and the CLI surfaces a dedicated exit code via
+	// the recorded deployment error. Only CreateStep and UpdateStep support await semantics; any
+	// other step type receiving an AwaitError falls through and is treated as a normal error.
+	if _, isAwait := errors.AsType[*plugin.AwaitError](err); isAwait {
+		switch step.(type) {
+		case *CreateStep, *UpdateStep:
+			if !se.ignoreErrors {
+				step.Await()
+				se.erroredStepLock.Lock()
+				defer se.erroredStepLock.Unlock()
+				se.erroredSteps = append(se.erroredSteps, step)
+			}
+			return
+		}
 	}
 
 	continueOnError := se.deployment.opts.ContinueOnError
