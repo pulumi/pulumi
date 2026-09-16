@@ -1,0 +1,4 @@
+component: sdk/go
+kind: fix
+body: Run Go policy remediations only at the `remediate` enforcement level
+time: 2026-09-14T04:48:38.736875815Z
