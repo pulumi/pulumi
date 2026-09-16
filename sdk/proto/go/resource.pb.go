@@ -143,9 +143,11 @@ type Result int32
 const (
 	Result_SUCCESS Result = 0
 	Result_FAIL    Result = 1
-	// AWAIT indicates the provider was unable to await the operation. The engine did not change resource
-	// state (no create was recorded, or the update was not applied) and outputs should be treated as
-	// unknown. Only sent to SDKs that set RegisterResourceRequest.supports_await = true.
+	// AWAIT indicates the provider was had to await the operation. Unlike a partial failure, no
+	// resource state was written (Create) or the prior state is preserved unchanged (Update). The
+	// engine reports outputs as unknown to the SDK and continues the deployment, but the CLI exits
+	// with a dedicated non-zero code. Only sent to SDKs that set
+	// RegisterResourceRequest.supports_await = true.
 	Result_AWAIT Result = 3
 )
 

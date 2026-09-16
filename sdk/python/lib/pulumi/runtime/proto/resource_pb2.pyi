@@ -112,9 +112,11 @@ class _ResultEnumTypeWrapper(google.protobuf.internal.enum_type_wrapper._EnumTyp
     SUCCESS: _Result.ValueType  # 0
     FAIL: _Result.ValueType  # 1
     AWAIT: _Result.ValueType  # 3
-    """AWAIT indicates the provider was unable to await the operation. The engine did not change resource
-    state (no create was recorded, or the update was not applied) and outputs should be treated as
-    unknown. Only sent to SDKs that set RegisterResourceRequest.supports_await = true.
+    """AWAIT indicates the provider was had to await the operation. Unlike a partial failure, no
+    resource state was written (Create) or the prior state is preserved unchanged (Update). The
+    engine reports outputs as unknown to the SDK and continues the deployment, but the CLI exits
+    with a dedicated non-zero code. Only sent to SDKs that set
+    RegisterResourceRequest.supports_await = true.
     """
 
 class Result(_Result, metaclass=_ResultEnumTypeWrapper): ...
@@ -122,9 +124,11 @@ class Result(_Result, metaclass=_ResultEnumTypeWrapper): ...
 SUCCESS: Result.ValueType  # 0
 FAIL: Result.ValueType  # 1
 AWAIT: Result.ValueType  # 3
-"""AWAIT indicates the provider was unable to await the operation. The engine did not change resource
-state (no create was recorded, or the update was not applied) and outputs should be treated as
-unknown. Only sent to SDKs that set RegisterResourceRequest.supports_await = true.
+"""AWAIT indicates the provider was had to await the operation. Unlike a partial failure, no
+resource state was written (Create) or the prior state is preserved unchanged (Update). The
+engine reports outputs as unknown to the SDK and continues the deployment, but the CLI exits
+with a dedicated non-zero code. Only sent to SDKs that set
+RegisterResourceRequest.supports_await = true.
 """
 global___Result = Result
 
