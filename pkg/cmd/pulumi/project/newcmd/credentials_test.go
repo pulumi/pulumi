@@ -142,7 +142,7 @@ func TestCloudProviderFromSchema(t *testing.T) {
 					return plugin.GetSchemaResponse{}, tt.err
 				}
 			}
-			cp, ok := cloudProviderFromSchema(t.Context(), prov, "aws")
+			cp, ok := cloudProviderFromSchema(t.Context(), prov, "aws", plugin.GetSchemaRequest{})
 			assert.Equal(t, tt.ok, ok)
 			assert.Equal(t, tt.expected, cp)
 		})
@@ -162,7 +162,13 @@ func TestPreflightCloudCredentialsPackages(t *testing.T) {
 	}
 
 	parameterized := resourcePackage("aws", "7.0.0")
-	parameterized.Parameterization = &workspace.Parameterization{Name: "other", Version: semver.MustParse("1.0.0")}
+	parameterized.Parameterization = &workspace.Parameterization{
+		Name: "other", Version: semver.MustParse("1.0.0"), Value: []byte("parameterization"),
+	}
+	extension := resourcePackage("aws", "7.0.0")
+	extension.ExtensionParameterization = &workspace.Parameterization{
+		Name: "extension", Version: semver.MustParse("1.0.0"),
+	}
 	language := resourcePackage("nodejs", "3.0.0")
 	language.Kind = apitype.LanguagePlugin
 
@@ -196,8 +202,15 @@ func TestPreflightCloudCredentialsPackages(t *testing.T) {
 			warnings: []string{"AWS", "Google Cloud"},
 		},
 		{
-			name:     "parameterized and language packages are skipped",
-			packages: []workspace.PackageDescriptor{parameterized, language},
+			name:     "parameterized package uses base plugin and subpackage namespace",
+			packages: []workspace.PackageDescriptor{parameterized},
+			loaded:   []string{"aws"},
+			checked:  []string{"other"},
+			warnings: []string{"Other"},
+		},
+		{
+			name:     "extension parameterized and language packages are skipped",
+			packages: []workspace.PackageDescriptor{extension, language},
 		},
 	}
 	for _, tt := range tests {
@@ -209,9 +222,27 @@ func TestPreflightCloudCredentialsPackages(t *testing.T) {
 				ProviderF: func(_ *plugin.Context, desc workspace.PluginDescriptor, _ env.Env) (plugin.Provider, error) {
 					loaded = append(loaded, desc.Name)
 					prov := schemaProvider(schemas[desc.Name])
+					prov.ParameterizeF = func(_ context.Context, req plugin.ParameterizeRequest) (plugin.ParameterizeResponse, error) {
+						value, ok := req.Parameters.(*plugin.ParameterizeValue)
+						require.True(t, ok)
+						assert.Equal(t, "other", value.Name)
+						assert.Equal(t, semver.MustParse("1.0.0"), value.Version)
+						assert.Equal(t, []byte("parameterization"), value.Value)
+						return plugin.ParameterizeResponse{Name: value.Name, Version: value.Version}, nil
+					}
+					prov.GetSchemaF = func(_ context.Context, req plugin.GetSchemaRequest) (plugin.GetSchemaResponse, error) {
+						if req.SubpackageName == "" {
+							return plugin.GetSchemaResponse{Schema: []byte(schemas[desc.Name])}, nil
+						}
+						assert.Equal(t, "other", req.SubpackageName)
+						require.NotNil(t, req.SubpackageVersion)
+						assert.Equal(t, semver.MustParse("1.0.0"), *req.SubpackageVersion)
+						return plugin.GetSchemaResponse{Schema: []byte(optedIn("other", "Other"))}, nil
+					}
 					prov.CheckConfigF = func(_ context.Context, req plugin.CheckConfigRequest) (plugin.CheckConfigResponse, error) {
-						checked = append(checked, desc.Name)
-						assert.Equal(t, "pulumi:providers:"+desc.Name, string(req.URN.Type()))
+						name := strings.TrimPrefix(string(req.URN.Type()), "pulumi:providers:")
+						checked = append(checked, name)
+						assert.Equal(t, "pulumi:providers:"+name, string(req.URN.Type()))
 						return plugin.CheckConfigResponse{}, status.Error(codes.Unknown, "no credentials")
 					}
 					return prov, nil
@@ -228,10 +259,10 @@ func TestPreflightCloudCredentialsPackages(t *testing.T) {
 				host: host, pctx: pctx, cfg: config.Map{}, stdout: &buf, opts: display.Options{Color: colors.Never},
 			}
 			for _, pkg := range tt.packages {
-				if pkg.Kind != apitype.ResourcePlugin || pkg.Parameterization != nil {
+				if pkg.Kind != apitype.ResourcePlugin || pkg.ExtensionParameterization != nil {
 					continue
 				}
-				pf.checkPackage(t.Context(), pkg.PluginDescriptor)
+				pf.checkPackage(t.Context(), pkg)
 			}
 
 			assert.Equal(t, tt.loaded, loaded)
@@ -242,6 +273,35 @@ func TestPreflightCloudCredentialsPackages(t *testing.T) {
 			assert.Equal(t, len(tt.warnings), strings.Count(buf.String(), "warning:"))
 		})
 	}
+}
+
+func TestPreflightCloudCredentialsSkipsMismatchedParameterization(t *testing.T) {
+	t.Parallel()
+
+	desc := resourcePackage("aws", "7.0.0")
+	desc.Parameterization = &workspace.Parameterization{
+		Name: "other", Version: semver.MustParse("1.0.0"), Value: []byte("parameterization"),
+	}
+	prov := &plugin.MockProvider{
+		ParameterizeF: func(context.Context, plugin.ParameterizeRequest) (plugin.ParameterizeResponse, error) {
+			return plugin.ParameterizeResponse{Name: "unexpected", Version: semver.MustParse("2.0.0")}, nil
+		},
+		GetSchemaF: func(context.Context, plugin.GetSchemaRequest) (plugin.GetSchemaResponse, error) {
+			t.Fatal("GetSchema must not be called after a mismatched parameterization response")
+			return plugin.GetSchemaResponse{}, nil
+		},
+	}
+	host := &plugin.MockHost{
+		ProviderF: func(*plugin.Context, workspace.PluginDescriptor, env.Env) (plugin.Provider, error) {
+			return prov, nil
+		},
+	}
+	sink := diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{Color: colors.Never})
+	pctx, err := plugin.NewContextWithHost(t.Context(), sink, sink, host, "", "", nil)
+	require.NoError(t, err)
+	defer pctx.Close()
+
+	credentialsPreflight{host: host, pctx: pctx}.checkPackage(t.Context(), desc)
 }
 
 func TestProviderConfigProperties(t *testing.T) {
