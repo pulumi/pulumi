@@ -208,8 +208,10 @@ func filterOutput(
 			return resource.NewProperty(filtered)
 		}
 	case *schema.UnionType:
-		// Pick the first variant whose shape matches the runtime value. Discriminated unions would let us be more
-		// precise, but most cases here are simple kind-based dispatch.
+		if elt := discriminatedUnionVariant(prop, t); elt != nil {
+			return filterOutput(prop, elt)
+		}
+		// Pick the first variant whose shape matches the runtime value.
 		for _, elt := range t.ElementTypes {
 			if unionVariantMatches(prop, elt) {
 				return filterOutput(prop, elt)
@@ -220,10 +222,52 @@ func filterOutput(
 	return prop
 }
 
+// discriminatedUnionVariant uses a union's discriminator property, if any, to select the element type that matches
+// prop. It returns nil if the union has no discriminator, prop is not an object, the discriminator property is
+// missing, or no element type's token matches the discriminator value.
+func discriminatedUnionVariant(prop resource.PropertyValue, union *schema.UnionType) schema.Type {
+	if union.Discriminator == "" || !prop.IsObject() {
+		return nil
+	}
+
+	discValue, ok := prop.ObjectValue()[resource.PropertyKey(union.Discriminator)]
+	if !ok || !discValue.IsString() {
+		return nil
+	}
+
+	typeToken := discValue.StringValue()
+	if mapped, ok := union.Mapping[typeToken]; ok {
+		typeToken = mapped
+	}
+	wantName, err := tokens.ParseTypeToken(typeToken)
+	if err != nil {
+		return nil
+	}
+
+	for _, elt := range union.ElementTypes {
+		unwrapped := elt
+		if opt, ok := unwrapped.(*schema.OptionalType); ok {
+			unwrapped = opt.ElementType
+		}
+		obj, ok := unwrapped.(*schema.ObjectType)
+		if !ok {
+			continue
+		}
+		eltName, err := tokens.ParseTypeToken(obj.Token)
+		if err != nil {
+			continue
+		}
+		if eltName.Name() == wantName.Name() {
+			return elt
+		}
+	}
+	return nil
+}
+
 // unionVariantMatches reports whether the schema type is structurally compatible with the runtime kind of prop.
-// Used to pick a union variant for output filtering.
+// Used to pick a union variant for output filtering when the union has no discriminator, or the discriminator
+// doesn't resolve to one of its element types.
 func unionVariantMatches(prop resource.PropertyValue, typ schema.Type) bool {
-	// TODO https://github.com/pulumi/pulumi/issues/23234: This needs to be smarter and handle Discriminator
 	if opt, ok := typ.(*schema.OptionalType); ok {
 		typ = opt.ElementType
 	}
