@@ -719,7 +719,9 @@ func TestStateMigrationChainedReferences(t *testing.T) {
 						assert.Equal(t, string(from), ref["urn"])
 						assert.Equal(t, string(rootURN("old")), child.Inputs["plain"])
 						states[0].URN = to
-						return states, map[resource.URN]resource.URN{from: to}, nil
+						// Return the child first. The engine should re-order the result before calling the next
+						// callback in the chain and pass the new root as the first item.
+						return []apitype.ResourceV3{states[1], states[0]}, map[resource.URN]resource.URN{from: to}, nil
 					}))
 					require.NoError(t, err)
 					opts.StateMigrations = append(opts.StateMigrations, callback)
