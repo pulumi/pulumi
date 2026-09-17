@@ -1324,6 +1324,51 @@ func TestLegacyUpgrade_readsCheckpointOnce(t *testing.T) {
 		"checkpoint should only be read once during upgrade")
 }
 
+// BenchmarkGetCheckpoint measures the cost of a single checkpoint read and
+// parse for a large stack, i.e. the work that Upgrade now avoids doing twice
+// per stack.
+func BenchmarkGetCheckpoint(b *testing.B) {
+	b.Setenv("PULUMI_DIY_BACKEND_IGNORE_DEPRECATION_ERROR", "true")
+
+	tmpDir := b.TempDir()
+	ctx := context.Background()
+
+	fb, err := fileblob.OpenBucket(tmpDir, nil)
+	require.NoError(b, err)
+
+	const numResources = 20000
+	var buf bytes.Buffer
+	buf.WriteString(`{"latest":{"resources":[`)
+	for i := 0; i < numResources; i++ {
+		if i > 0 {
+			buf.WriteByte(',')
+		}
+		fmt.Fprintf(&buf,
+			`{"type":"package:module:resource","urn":"urn:pulumi:stack::project::package:module:resource::name%d",`+
+				`"custom":true,"id":"id%d","inputs":{"key":"value-%d-abcdefghijklmnopqrstuvwxyz0123456789"},`+
+				`"outputs":{"key":"value-%d-abcdefghijklmnopqrstuvwxyz0123456789"}}`,
+			i, i, i, i)
+	}
+	buf.WriteString(`]}}`)
+	require.NoError(b, fb.WriteAll(ctx, ".pulumi/stacks/a.json", buf.Bytes(), nil))
+	b.Logf("checkpoint size: %d bytes, %d resources", buf.Len(), numResources)
+
+	sink := diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{Color: colors.Never})
+	backend, err := New(ctx, sink, "file://"+filepath.ToSlash(tmpDir), nil)
+	require.NoError(b, err)
+	lb, ok := backend.(*diyBackend)
+	require.True(b, ok)
+
+	ref, err := lb.parseStackReference("a")
+	require.NoError(b, err)
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_, _, _, err := lb.getCheckpoint(ctx, ref)
+		require.NoError(b, err)
+	}
+}
+
 func TestLegacyUpgrade_partial(t *testing.T) {
 	t.Setenv("PULUMI_DIY_BACKEND_IGNORE_DEPRECATION_ERROR", "true")
 

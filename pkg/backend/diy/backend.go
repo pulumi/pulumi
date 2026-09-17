@@ -550,11 +550,7 @@ type loadedCheckpoint struct {
 
 // guessProject inspects the checkpoint for the given stack and attempts to
 // guess the project name for it.
-// Returns an empty string if the project name cannot be determined.
-//
-// It also returns the checkpoint it loaded, so that callers who go on to
-// upgrade the stack don't need to read the (possibly very large) checkpoint
-// file a second time.
+// Returns an empty string if the project name cannot be determined, and the loaded checkpoint.
 func (b *diyBackend) guessProject(ctx context.Context, old *diyBackendReference) (tokens.Name, *loadedCheckpoint, error) {
 	contract.Requiref(old.project == "", "old.project", "must be empty")
 
@@ -574,8 +570,6 @@ func (b *diyBackend) guessProject(ctx context.Context, old *diyBackendReference)
 }
 
 // upgradeStack upgrades a single stack to use the provided projectReferenceStore.
-// chk is the checkpoint previously loaded for old by guessProject, reused here to
-// avoid reading and re-parsing the checkpoint file again.
 func (b *diyBackend) upgradeStack(
 	ctx context.Context,
 	newStore *projectReferenceStore,
@@ -1138,9 +1132,7 @@ func (b *diyBackend) RenameStack(ctx context.Context, stack backend.Stack,
 }
 
 // renameStack renames oldRef to newRef. If preloaded is non-nil, it is used as
-// the checkpoint for oldRef instead of reading it from the bucket again; this
-// is used by Upgrade, which already reads the checkpoint once to guess the
-// stack's project name.
+// the checkpoint for oldRef instead of reading it from the bucket again
 func (b *diyBackend) renameStack(ctx context.Context, oldRef *diyBackendReference,
 	newRef *diyBackendReference, preloaded *loadedCheckpoint,
 ) error {
