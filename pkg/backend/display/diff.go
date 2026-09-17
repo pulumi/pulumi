@@ -42,8 +42,9 @@ import (
 func ShowDiffEvents(op string, events <-chan engine.Event, done chan<- bool, opts Options) {
 	prefix := fmt.Sprintf("%s%s...", cmdutil.EmojiOr("✨ ", "@ "), op)
 
-	// track resources errored
+	// track resources errored and awaiting
 	resourcesErrored := 0
+	resourcesAwaited := 0
 
 	stdout := opts.Stdout
 	if stdout == nil {
@@ -83,17 +84,21 @@ func ShowDiffEvents(op string, events <-chan engine.Event, done chan<- bool, opt
 				out = stderr
 			}
 			if event.Type == engine.ResourceOperationFailed {
-				resourcesErrored++
+				if event.Awaited() {
+					resourcesAwaited++
+				} else {
+					resourcesErrored++
+				}
 			}
 
 			var msg string
 
-			// When the event received is SummaryEvent we can safely use `resourcesErrored`
-			// as all resource events have finished at this point.
+			// When the event received is SummaryEvent we can safely use the counts as all resource
+			// events have finished at this point.
 			if event.Type != engine.SummaryEvent {
-				msg = RenderDiffEvent(event, 0, seen, opts)
+				msg = RenderDiffEvent(event, 0, 0, seen, opts)
 			} else {
-				msg = RenderDiffEvent(event, resourcesErrored, seen, opts)
+				msg = RenderDiffEvent(event, resourcesErrored, resourcesAwaited, seen, opts)
 			}
 
 			if msg != "" && out != nil {
@@ -107,7 +112,7 @@ func ShowDiffEvents(op string, events <-chan engine.Event, done chan<- bool, opt
 	}
 }
 
-func RenderDiffEvent(event engine.Event, resourcesErrored int,
+func RenderDiffEvent(event engine.Event, resourcesErrored, resourcesAwaited int,
 	seen map[resource.URN]engine.StepEventMetadata, opts Options,
 ) string {
 	switch event.Type {
@@ -133,7 +138,8 @@ func RenderDiffEvent(event engine.Event, resourcesErrored int,
 	case engine.PreludeEvent:
 		return renderPreludeEvent(event.Payload().(engine.PreludeEventPayload), opts)
 	case engine.SummaryEvent:
-		return renderSummaryEvent(event.Payload().(engine.SummaryEventPayload), resourcesErrored, true, opts)
+		return renderSummaryEvent(event.Payload().(engine.SummaryEventPayload),
+			resourcesErrored, resourcesAwaited, true, opts)
 	case engine.StdoutColorEvent:
 		return renderStdoutColorEvent(event.Payload().(engine.StdoutEventPayload), opts)
 
@@ -268,7 +274,7 @@ func renderStdoutColorEvent(payload engine.StdoutEventPayload, opts Options) str
 	return opts.Color.Colorize(payload.Message)
 }
 
-func renderSummaryEvent(event engine.SummaryEventPayload, resourcesErrored int,
+func renderSummaryEvent(event engine.SummaryEventPayload, resourcesErrored, resourcesAwaited int,
 	diffStyleSummary bool, opts Options,
 ) string {
 	changes := event.ResourceChanges
@@ -341,6 +347,12 @@ func renderSummaryEvent(event engine.SummaryEventPayload, resourcesErrored int,
 	if resourcesErrored > 0 {
 		errSummary := "    " + colors.Red + fmt.Sprintf("%d errored", resourcesErrored) + colors.Reset
 		out.WriteString(errSummary)
+		out.WriteString("\n")
+	}
+	// add awaiting summary
+	if resourcesAwaited > 0 {
+		awaitSummary := "    " + colors.Yellow + fmt.Sprintf("%d awaiting", resourcesAwaited) + colors.Reset
+		out.WriteString(awaitSummary)
 		out.WriteString("\n")
 	}
 
@@ -575,7 +587,7 @@ func CreateDiff(events []engine.Event, displayOpts Options) (string, error) {
 			continue
 		}
 
-		msg := RenderDiffEvent(e, 0, seen, displayOpts)
+		msg := RenderDiffEvent(e, 0, 0, seen, displayOpts)
 		if msg == "" {
 			continue
 		}

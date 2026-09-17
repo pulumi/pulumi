@@ -483,9 +483,15 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context) (_ *Plan, err e
 	}
 
 	// If any step ended in an await (no other real errors above), surface a dedicated error so the
-	// CLI can exit with the await-specific exit code.
+	// CLI can exit with the await-specific exit code. Emit a warning-level diagnostic rather than
+	// the standard "update failed" error, since nothing failed — the engine just couldn't await
+	// one or more operations.
 	if ex.stepExec.Awaited() {
-		ex.reportExecResult("failed")
+		kind := "update"
+		if ex.deployment.opts.DryRun {
+			kind = "preview"
+		}
+		ex.deployment.Diag().Warningf(diag.RawMessage("", kind+" has awaiting resources"))
 		return nil, result.BailError(&plugin.AwaitError{})
 	}
 

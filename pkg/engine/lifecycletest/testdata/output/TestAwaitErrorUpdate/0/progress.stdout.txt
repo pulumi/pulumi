@@ -2,19 +2,19 @@
 
 
  <{%bold%}><{%fg 3%}>~ <{%reset%}> pkgA:m:typA awaiting <{%bold%}><{%fg 3%}>updating<{%reset%}> [diff: <{%fg 3%}>~in<{%reset%}><{%reset%}>]
- <{%bold%}><{%fg 3%}>~ <{%reset%}> pkgA:m:typA awaiting <{%bold%}><{%fg 3%}>updating<{%reset%}> [diff: <{%fg 3%}>~in<{%reset%}><{%reset%}>]; <{%fg 1%}>error: <{%reset%}><{%reset%}>resource is awaiting<{%reset%}>
- <{%fg 3%}>~ <{%reset%}> pkgA:m:typA awaiting <{%fg 1%}>**updating failed**<{%reset%}> [diff: <{%fg 3%}>~in<{%reset%}><{%reset%}>]; <{%fg 1%}>error: <{%reset%}><{%reset%}>resource is awaiting<{%reset%}>
- <{%bold%}><{%reset%}>  <{%reset%}> pulumi:pulumi:Stack project-stack <{%bold%}><{%reset%}><{%reset%}> <{%fg 1%}>error: <{%reset%}><{%reset%}>update failed<{%reset%}>
- <{%reset%}>  <{%reset%}> pulumi:pulumi:Stack project-stack <{%fg 1%}>**failed**<{%reset%}> 1 <{%fg 1%}>error<{%reset%}>
+ <{%bold%}><{%fg 3%}>~ <{%reset%}> pkgA:m:typA awaiting <{%bold%}><{%fg 3%}>updating<{%reset%}> [diff: <{%fg 3%}>~in<{%reset%}><{%reset%}>]; <{%fg 3%}>warning: <{%reset%}><{%reset%}>resource is awaiting<{%reset%}>
+ <{%fg 3%}>~ <{%reset%}> pkgA:m:typA awaiting <{%fg 3%}>**update awaiting**<{%reset%}> [diff: <{%fg 3%}>~in<{%reset%}><{%reset%}>]; <{%fg 3%}>warning: <{%reset%}><{%reset%}>resource is awaiting<{%reset%}>
+ <{%bold%}><{%reset%}>  <{%reset%}> pulumi:pulumi:Stack project-stack <{%bold%}><{%reset%}><{%reset%}> <{%fg 3%}>warning: <{%reset%}><{%reset%}>update has awaiting resources<{%reset%}>
+ <{%reset%}>  <{%reset%}> pulumi:pulumi:Stack project-stack <{%reset%}><{%reset%}> 1 <{%fg 3%}>warning<{%reset%}>
 <{%fg 13%}><{%bold%}>Diagnostics:<{%reset%}>
   <{%fg 12%}>pkgA:m:typA (awaiting):<{%reset%}>
-    <{%fg 1%}>error: <{%reset%}><{%reset%}>resource is awaiting<{%reset%}>
+    <{%fg 3%}>warning: <{%reset%}><{%reset%}>resource is awaiting<{%reset%}>
 
   <{%fg 12%}>pulumi:pulumi:Stack (project-stack):<{%reset%}>
-    <{%fg 1%}>error: <{%reset%}><{%reset%}>update failed<{%reset%}>
+    <{%fg 3%}>warning: <{%reset%}><{%reset%}>update has awaiting resources<{%reset%}>
 
 <{%fg 13%}><{%bold%}>Resources:<{%reset%}>
-    <{%fg 1%}>2 errored<{%reset%}>
+    <{%fg 3%}>1 awaiting<{%reset%}>
 
 <{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s
 

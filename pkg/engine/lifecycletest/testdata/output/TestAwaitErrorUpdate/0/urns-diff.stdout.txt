@@ -2,6 +2,6 @@
 <{%reset%}>    [id=3]
 <{%reset%}><{%fg 3%}>  ~ in: <{%reset%}><{%fg 3%}>"<{%reset%}><{%reset%}>v<{%reset%}><{%fg 1%}>1<{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 3%}> => <{%reset%}><{%fg 3%}>"<{%reset%}><{%reset%}>v<{%reset%}><{%fg 2%}>2<{%reset%}><{%fg 3%}>"
 <{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
-    <{%fg 1%}>1 errored<{%reset%}>
+    <{%fg 3%}>1 awaiting<{%reset%}>
 
 <{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s
