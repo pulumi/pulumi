@@ -15,10 +15,15 @@
 package ints
 
 import (
+	"fmt"
+	"os"
 	"os/exec"
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/require"
+
+	"github.com/pulumi/pulumi/tests/testutil"
 
 	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
 )
@@ -46,4 +51,40 @@ runtime: nodejs
 	exitErr, ok := err.(*exec.ExitError)
 	require.True(t, ok)
 	require.Equal(t, 6, exitErr.ExitCode())
+}
+
+// TestExitCode_AwaitError verifies that a deployment whose only failure is a provider AwaitError
+// exits with the dedicated ExitAwaitError code (10) rather than the generic error code (1).
+//
+//nolint:paralleltest // NewEnvironment already installs a per-test tempdir; running in parallel with
+// other tests that mutate PULUMI_HOME could clash on the shared plugin cache.
+func TestExitCode_AwaitError(t *testing.T) {
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+
+	providerDir := testutil.TestProviderDir(t)
+	pulumiYaml := fmt.Sprintf(`name: exit-code-await
+runtime: yaml
+plugins:
+  providers:
+    - name: testprovider
+      path: %s
+resources:
+  awaiting:
+    type: testprovider:index:AwaitsOnCreate
+`, providerDir)
+	require.NoError(t, os.WriteFile(filepath.Join(e.CWD, "Pulumi.yaml"), []byte(pulumiYaml), 0o600))
+
+	e.Backend = e.LocalURL()
+	e.Env = append(e.Env, "PULUMI_CONFIG_PASSPHRASE=")
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+	e.RunCommand("pulumi", "stack", "init", "test", "--secrets-provider", "passphrase")
+
+	cmd := e.SetupCommandIn(t.Context(), e.CWD, "pulumi", "up", "--yes", "--skip-preview")
+	err := cmd.Run()
+
+	require.Error(t, err)
+	exitErr, ok := err.(*exec.ExitError)
+	require.True(t, ok, "expected pulumi up to return an *exec.ExitError, got %T: %v", err, err)
+	require.Equal(t, 10, exitErr.ExitCode(), "await failure should exit with ExitAwaitError (10)")
 }
