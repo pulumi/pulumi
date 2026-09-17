@@ -31,6 +31,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -227,6 +228,8 @@ type cloudBackend struct {
 
 	// Cached data from BeginUpdate to avoid extra HTTP calls.
 	cachedUpdateData *cachedUpdateData
+
+	readingUpdateID atomic.Pointer[string]
 }
 
 // Assert we implement the backend.Backend and backend.SpecificDeploymentExporter interfaces.
@@ -1817,6 +1820,12 @@ func (b *cloudBackend) createAndStartUpdate(
 		Message:     op.M.Message,
 		Environment: op.M.Environment,
 	}
+	if op.CoherenceWindow != "" {
+		if caps := b.Capabilities(ctx); !caps.CoherenceWindows || !caps.StackOutputs {
+			return client.UpdateIdentifier{}, updateMetadata{},
+				errors.New("the Pulumi Cloud backend does not support coherence windows")
+		}
+	}
 
 	tags, err := backend.GetMergedStackTags(ctx, stack, op.Root, op.Proj, op.StackConfiguration.Config)
 	if err != nil {
@@ -1835,7 +1844,7 @@ func (b *cloudBackend) createAndStartUpdate(
 		logging.V(7).Infof("Using combined begin-update endpoint for %s", stackRef)
 		resp, err := b.client.BeginUpdate(
 			ctx, action, stackID, op.Proj, op.StackConfiguration.Config,
-			metadata, op.Opts.Engine, tags, dryRun)
+			metadata, op.Opts.Engine, tags, dryRun, op.CoherenceWindow)
 		if err != nil {
 			if err, ok := err.(*apitype.ErrorResponse); ok && err.Code == 409 {
 				conflict := backenderr.ConflictingUpdateError{Err: err}
@@ -1866,7 +1875,8 @@ func (b *cloudBackend) createAndStartUpdate(
 		logging.V(7).Infof("Using legacy create+start update endpoints for %s", stackRef)
 		var updateDetails client.CreateUpdateDetails
 		update, updateDetails, err = b.client.CreateUpdate(
-			ctx, action, stackID, op.Proj, op.StackConfiguration.Config, metadata, op.Opts.Engine, dryRun)
+			ctx, action, stackID, op.Proj, op.StackConfiguration.Config, metadata, op.Opts.Engine, dryRun,
+			op.CoherenceWindow)
 		if err != nil {
 			return client.UpdateIdentifier{}, updateMetadata{}, err
 		}
@@ -2065,6 +2075,15 @@ func (b *cloudBackend) runEngineAction(
 		return nil, nil, err
 	}
 
+	var outputsRecorder *stackOutputsRecorder
+	if op.CoherenceWindow != "" {
+		b.readingUpdateID.Store(&update.UpdateID)
+		defer b.readingUpdateID.Store(nil)
+		if dryRun {
+			outputsRecorder = &stackOutputsRecorder{}
+		}
+	}
+
 	// displayEvents renders the event to the console and Pulumi service. The processor for the
 	// will signal all events have been proceed when a value is written to the displayDone channel.
 	displayEvents := make(chan engine.Event)
@@ -2085,6 +2104,7 @@ func (b *cloudBackend) runEngineAction(
 	eventsDone := make(chan bool)
 	go func() {
 		for e := range engineEvents {
+			outputsRecorder.record(e)
 			displayEvents <- e
 			if callerEventsOpt != nil {
 				callerEventsOpt <- e
@@ -2239,7 +2259,16 @@ func (b *cloudBackend) runEngineAction(
 	if updateErr != nil {
 		status = apitype.UpdateStatusFailed
 	}
-	completeErr := b.completeUpdate(ctx, tokenSource, update, status)
+	var outputs *apitype.StackOutputsResponse
+	if status == apitype.UpdateStatusSucceeded {
+		var err error
+		if outputs, err = outputsRecorder.response(ctx, op.SecretsManager); err != nil {
+			// Fail rather than let the coherence window read this preview as having no outputs.
+			status = apitype.UpdateStatusFailed
+			updateErr = result.MergeBails(updateErr, fmt.Errorf("recording stack outputs: %w", err))
+		}
+	}
+	completeErr := b.completeUpdate(ctx, tokenSource, update, status, outputs)
 	if completeErr != nil {
 		updateErr = result.MergeBails(updateErr, fmt.Errorf("failed to complete update: %w", completeErr))
 	}

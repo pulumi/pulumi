@@ -33,11 +33,14 @@ import (
 	"time"
 
 	"github.com/blang/semver"
+	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/agentdetect"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -2204,9 +2207,9 @@ func TestDownloadTemplateForeignURLInheritsInsecure(t *testing.T) {
 func TestGetStackOutputs(t *testing.T) {
 	t.Parallel()
 
-	var gotPath string
+	var gotPath, gotQuery string
 	server := newMockServerRequestProcessor(200, func(req *http.Request) string {
-		gotPath = req.URL.Path
+		gotPath, gotQuery = req.URL.Path, req.URL.RawQuery
 		return `{"outputs":{"foo":"bar"},"secretsProviders":{"type":"b64"}}`
 	})
 	defer server.Close()
@@ -2215,11 +2218,101 @@ func TestGetStackOutputs(t *testing.T) {
 		Owner:   "owner",
 		Project: "project",
 		Stack:   tokens.MustParseStackName("stack"),
-	})
+	}, "")
 	require.NoError(t, err)
 	assert.Equal(t, "/api/stacks/owner/project/stack/outputs", gotPath)
+	assert.Empty(t, gotQuery, "a read outside an update must not name a reading update")
 	assert.Equal(t, apitype.StackOutputsResponse{
 		Outputs:          map[string]any{"foo": "bar"},
 		SecretsProviders: &apitype.SecretsProvidersV1{Type: "b64"},
 	}, resp)
+}
+
+func TestCreateUpdateSendsCoherenceWindow(t *testing.T) {
+	t.Parallel()
+
+	var gotBody apitype.UpdateProgramRequest
+	server := newMockServerRequestProcessor(200, func(req *http.Request) string {
+		require.NoError(t, json.NewDecoder(req.Body).Decode(&gotBody))
+		return `{"updateID":"update-id"}`
+	})
+	defer server.Close()
+
+	stackID := StackIdentifier{Owner: "owner", Project: "project", Stack: tokens.MustParseStackName("stack")}
+	proj := &workspace.Project{Name: "project", Runtime: workspace.NewProjectRuntimeInfo("nodejs", nil)}
+
+	update, _, err := newMockClient(server).CreateUpdate(t.Context(), apitype.PreviewUpdate, stackID, proj,
+		config.Map{}, apitype.UpdateMetadata{}, engine.UpdateOptions{}, true, /* dryRun */
+		"d333a711-4aa0-402f-be6d-72af9665fc37")
+	require.NoError(t, err)
+	assert.Equal(t, "update-id", update.UpdateID)
+	assert.Equal(t, "d333a711-4aa0-402f-be6d-72af9665fc37", gotBody.CoherenceWindow)
+}
+
+func TestBeginUpdateSendsCoherenceWindow(t *testing.T) {
+	t.Parallel()
+
+	var gotBody apitype.BeginUpdateRequest
+	server := newMockServerRequestProcessor(200, func(req *http.Request) string {
+		require.NoError(t, json.NewDecoder(req.Body).Decode(&gotBody))
+		return `{"updateID":"update-id"}`
+	})
+	defer server.Close()
+
+	stackID := StackIdentifier{Owner: "owner", Project: "project", Stack: tokens.MustParseStackName("stack")}
+	proj := &workspace.Project{Name: "project", Runtime: workspace.NewProjectRuntimeInfo("nodejs", nil)}
+
+	resp, err := newMockClient(server).BeginUpdate(t.Context(), apitype.PreviewUpdate, stackID, proj,
+		config.Map{}, apitype.UpdateMetadata{}, engine.UpdateOptions{}, nil, true, /* dryRun */
+		"d333a711-4aa0-402f-be6d-72af9665fc37")
+	require.NoError(t, err)
+	assert.Equal(t, "update-id", resp.UpdateID)
+	assert.Equal(t, "d333a711-4aa0-402f-be6d-72af9665fc37", gotBody.Program.CoherenceWindow)
+}
+
+func TestCompleteUpdateSendsOutputs(t *testing.T) {
+	t.Parallel()
+
+	var gotBody apitype.CompleteUpdateRequest
+	server := newMockServerRequestProcessor(200, func(req *http.Request) string {
+		require.NoError(t, json.NewDecoder(req.Body).Decode(&gotBody))
+		return ""
+	})
+	defer server.Close()
+
+	update := UpdateIdentifier{
+		StackIdentifier: StackIdentifier{Owner: "owner", Project: "project", Stack: tokens.MustParseStackName("stack")},
+		UpdateKind:      apitype.PreviewUpdate,
+		UpdateID:        "update-id",
+	}
+	outputs := &apitype.StackOutputsResponse{
+		Outputs:          map[string]any{"foo": "bar"},
+		SecretsProviders: &apitype.SecretsProvidersV1{Type: "b64"},
+	}
+
+	err := newMockClient(server).CompleteUpdate(
+		t.Context(), update, apitype.UpdateStatusSucceeded, updateTokenStaticSource("update-token"), outputs)
+	require.NoError(t, err)
+	assert.Equal(t, apitype.UpdateStatusSucceeded, gotBody.Status)
+	assert.Equal(t, map[string]any{"foo": "bar"}, gotBody.Outputs)
+	assert.Equal(t, &apitype.SecretsProvidersV1{Type: "b64"}, gotBody.SecretsProviders)
+}
+
+func TestGetStackOutputsInCoherenceWindow(t *testing.T) {
+	t.Parallel()
+
+	var gotQuery string
+	server := newMockServerRequestProcessor(200, func(req *http.Request) string {
+		gotQuery = req.URL.RawQuery
+		return `{"outputs":{"foo":"bar"}}`
+	})
+	defer server.Close()
+
+	_, err := newMockClient(server).GetStackOutputs(t.Context(), StackIdentifier{
+		Owner:   "owner",
+		Project: "project",
+		Stack:   tokens.MustParseStackName("stack"),
+	}, "d333a711-4aa0-402f-be6d-72af9665fc37")
+	require.NoError(t, err)
+	assert.Equal(t, "readingUpdateID=d333a711-4aa0-402f-be6d-72af9665fc37", gotQuery)
 }

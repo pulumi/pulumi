@@ -2241,3 +2241,20 @@ func TestStateStoreNoun(t *testing.T) {
 		})
 	}
 }
+
+func TestDIYRejectsCoherenceWindows(t *testing.T) {
+	t.Parallel()
+
+	ctx := t.Context()
+	b, err := New(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(t.TempDir()), nil)
+	require.NoError(t, err)
+	ref, err := b.ParseStackReference("organization/project/stack")
+	require.NoError(t, err)
+	s, err := b.CreateStack(ctx, ref, "", nil, nil)
+	require.NoError(t, err)
+
+	_, _, err = b.Preview(ctx, s, backend.UpdateOperation{
+		CoherenceWindow: "d333a711-4aa0-402f-be6d-72af9665fc37",
+	}, nil)
+	require.EqualError(t, err, "coherence windows are only supported by the Pulumi Cloud backend")
+}
