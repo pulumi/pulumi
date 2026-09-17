@@ -884,19 +884,23 @@ func TestTracePropagationGo(t *testing.T) {
 		require.NotNil(t, tr)
 	})
 
-	t.Run("traced api/exportStack exactly once", func(t *testing.T) {
+	t.Run("traced initial deployment fetch exactly once", func(t *testing.T) {
 		t.Parallel()
 
-		exportStackCounter := 0
+		// The engine fetches the stack's deployment exactly once at the start of an update.
+		// With the begin-update capability that fetch is folded into the combined
+		// api/beginUpdate call; without it, it is a standalone api/exportStack call. Count
+		// either so the invariant holds regardless of which path the service advertised.
+		fetchCounter := 0
 		err := WalkTracesWithDescendants(store, func(tr *appdash.Trace) error {
-			name := tr.Name()
-			if name == "api/exportStack" {
-				exportStackCounter++
+			switch tr.Name() {
+			case "api/exportStack", "api/beginUpdate":
+				fetchCounter++
 			}
 			return nil
 		})
 		require.NoError(t, err)
-		assert.Equal(t, 1, exportStackCounter)
+		assert.Equal(t, 1, fetchCounter)
 	})
 }
 
