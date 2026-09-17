@@ -102,9 +102,7 @@ type deploymentSettingsEditArgs struct {
 	shell              string
 	deleteAfterDestroy bool
 	remediateIfDrift   bool
-
-	deploymentRoleID string
-	cache            bool
+	cache              bool
 
 	// OIDC — AWS
 	oidcAWSRoleARN     string
@@ -168,7 +166,6 @@ const (
 	flagShell                 = "shell"
 	flagDeleteAfterDestroy    = "delete-after-destroy"
 	flagRemediateIfDrift      = "remediate-if-drift-detected"
-	flagDeploymentRoleID      = "deployment-role-id"
 	flagCache                 = "cache"
 
 	flagOIDCAWSRoleARN     = "oidc-aws-role-arn"
@@ -230,8 +227,6 @@ func newDeploymentSettingsEditCmdWith(factory deploymentSettingsEditClientFactor
 			"  pulumi deployment settings edit \\\n" +
 			"    --git-url git@git.acme.example:acme/infra.git \\\n" +
 			"    --git-auth-ssh-private-key-path ~/.ssh/id_ed25519\n\n" +
-			"  # Run deployments under a Pulumi Cloud role, whose id `pulumi org role ls` lists.\n" +
-			"  pulumi deployment settings edit --deployment-role-id role-1a2b3c\n\n" +
 			"  # Set environment variables (plaintext and encrypted).\n" +
 			"  pulumi deployment settings edit --env LOG_LEVEL=info --secret-env API_KEY=s3cret\n\n" +
 			"  # Remove an environment variable.\n" +
@@ -347,9 +342,6 @@ func newDeploymentSettingsEditCmdWith(factory deploymentSettingsEditClientFactor
 		"Delete the stack after a successful destroy")
 	f.BoolVar(&args.remediateIfDrift, flagRemediateIfDrift, false,
 		"Remediate the stack when a drift detection run finds drift")
-	f.StringVar(&args.deploymentRoleID, flagDeploymentRoleID, "",
-		"ID of the Pulumi Cloud role to run deployments under, as listed by pulumi org role ls; "+
-			"empty string clears it back to stack-only access")
 	f.BoolVar(&args.cache, flagCache, false, "Cache dependencies between deployments")
 
 	// OIDC — AWS

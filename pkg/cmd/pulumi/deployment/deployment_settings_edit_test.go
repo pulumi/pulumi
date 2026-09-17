@@ -1469,20 +1469,6 @@ func TestDeploymentSettingsEdit_OperationCoverageFlags(t *testing.T) {
 			`{"operationContext":{"options":{"remediateIfDriftDetected":true}}}`,
 		},
 		{
-			"deployment role",
-			deploymentSettingsEditArgs{
-				deploymentRoleID: "role-1",
-				flagsChanged:     flagsSet(flagDeploymentRoleID),
-			},
-			`{"operationContext":{"role":{"id":"role-1"}}}`,
-		},
-		{
-			// A role object carrying an empty id is rejected by the service as an invalid role id.
-			"deployment role cleared",
-			deploymentSettingsEditArgs{flagsChanged: flagsSet(flagDeploymentRoleID)},
-			`{"operationContext":{"role":null}}`,
-		},
-		{
 			"cache enabled",
 			deploymentSettingsEditArgs{cache: true, flagsChanged: flagsSet(flagCache)},
 			`{"cacheOptions":{"enable":true}}`,

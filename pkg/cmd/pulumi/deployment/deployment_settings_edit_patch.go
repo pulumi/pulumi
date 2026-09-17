@@ -38,7 +38,7 @@ var editFlagNames = []string{
 	flagRunnerPool, flagExecutorImage, flagExecutorRootPath,
 	flagPreRunCommand, flagEnv, flagSecretEnv, flagRemoveEnv, flagRemoveAllEnv,
 	flagSkipInstallDeps, flagSkipIntermediate, flagShell, flagDeleteAfterDestroy, flagRemediateIfDrift,
-	flagDeploymentRoleID, flagCache,
+	flagCache,
 	flagOIDCAWSRoleARN, flagOIDCAWSSessionName, flagOIDCAWSDuration, flagOIDCAWSPolicyARN, flagRemoveOIDCAWS,
 	flagOIDCAzureClientID, flagOIDCAzureTenantID, flagOIDCAzureSubscriptionID, flagRemoveOIDCAzure,
 	flagOIDCGCPProjectNumber, flagOIDCGCPWorkloadPoolID, flagOIDCGCPProviderID,
@@ -559,15 +559,6 @@ func buildEditFlagPatch(
 	}
 	if changed(flagRemediateIfDrift) {
 		setNested(patch, []string{"operationContext", "options", "remediateIfDriftDetected"}, args.remediateIfDrift)
-	}
-	if changed(flagDeploymentRoleID) {
-		// Only a null role unsets the assignment: the service looks up a role object that carries an
-		// empty id and rejects it as invalid.
-		if args.deploymentRoleID == "" {
-			setNested(patch, []string{"operationContext", "role"}, nil)
-		} else {
-			setNested(patch, []string{"operationContext", "role", "id"}, args.deploymentRoleID)
-		}
 	}
 	if changed(flagCache) {
 		setNested(patch, []string{"cacheOptions", "enable"}, args.cache)
