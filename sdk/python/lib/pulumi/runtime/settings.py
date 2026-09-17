@@ -80,6 +80,9 @@ class Settings:
         # programs each register against their own engine and receive distinct
         # refs.
         self.package_refs = {}
+        # Maps an extension package name to the name of the base provider that
+        # serves it, for example "gateway-api" to "kubernetes".
+        self.extension_bases = {}
 
         if self.legacy_apply_enabled is None:
             self.legacy_apply_enabled = (
@@ -151,6 +154,9 @@ class Settings:
 
     @contextproperty
     def package_refs(self) -> Optional[dict]: ...
+
+    @contextproperty
+    def extension_bases(self) -> Optional[dict]: ...
 
     @contextproperty
     def callbacks(self) -> Optional[_CallbackServicer]: ...
@@ -412,6 +418,22 @@ async def register_package(
     ref = response.ref
     package_refs[key] = ref
     return ref
+
+
+def extension_base(
+    package_name: str, base_provider_name: Optional[str] = None
+) -> Optional[str]:
+    """
+    Records the base provider for an extension package, or returns it when
+    base_provider_name is omitted.
+    """
+    bases = SETTINGS.extension_bases
+    if bases is None:
+        return None
+    if base_provider_name is not None:
+        bases[package_name] = base_provider_name
+        return base_provider_name
+    return bases.get(package_name)
 
 
 def reset_options(

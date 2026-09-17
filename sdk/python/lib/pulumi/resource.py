@@ -43,7 +43,7 @@ from .runtime.resource import (
 from .runtime.resource import (
     create_urn as create_urn_internal,
 )
-from .runtime.settings import get_root_resource
+from .runtime.settings import extension_base, get_root_resource
 
 if TYPE_CHECKING:
     from .output import Input, Inputs
@@ -1112,7 +1112,11 @@ class Resource:
 
         self._protect = opts.protect
         self._provider = opts.provider if (custom or remote) else None
-        if self._provider and self._provider.package != pkg:
+        if (
+            self._provider
+            and self._provider.package != pkg
+            and self._provider.package != (extension_base(pkg) if pkg else None)
+        ):
             action = (
                 "get"
                 if opts.urn is not None
@@ -1192,11 +1196,18 @@ class Resource:
         )
 
         provider = ambient_provider or parent_provider
+
+        base_pkg = extension_base(pkg) if pkg else None
+        if provider is None and base_pkg and base_pkg in opts_providers:
+            provider = opts_providers[base_pkg]
+
         if opts.provider:
             # If an explicit provider was passed in,
             # its package may or may not match the package we're looking for.
             provider_pkg = opts.provider.package
-            if pkg == provider_pkg:
+            if pkg == provider_pkg or (
+                base_pkg is not None and base_pkg == provider_pkg
+            ):
                 # Explicit provider takes precedence over parent or ambient providers.
                 provider = opts.provider
 
@@ -1283,7 +1294,12 @@ class Resource:
         if pkg is None:
             return None
 
-        return self._providers.get(pkg)
+        provider = self._providers.get(pkg)
+        if provider is not None:
+            return provider
+
+        base_pkg = extension_base(pkg)
+        return self._providers.get(base_pkg) if base_pkg else None
 
 
 class CustomResource(Resource):
