@@ -33,8 +33,9 @@ import (
 
 // TestAwaitErrorCreate verifies that when a provider returns an AwaitError from Create:
 //   - no resource state is written to the snapshot,
-//   - the deployment does not halt (subsequent resources still register),
-//   - the SDK receives Result_SUCCESS with Unknown=true rather than an error,
+//   - the SDK receives Result_FAIL for the awaiting resource,
+//   - the deployment does not halt: independent resources registered after the awaited one still
+//     complete successfully,
 //   - the deployment reports an overall error so the CLI can surface the dedicated exit code.
 func TestAwaitErrorCreate(t *testing.T) {
 	t.Parallel()
@@ -56,8 +57,7 @@ func TestAwaitErrorCreate(t *testing.T) {
 		awaitResp, err := monitor.RegisterResource(
 			"pkgA:m:typA", "awaiting", true, deploytest.ResourceOptions{SupportsResultReporting: true})
 		require.NoError(t, err)
-		assert.Equal(t, pulumirpc.Result_SUCCESS, awaitResp.Result)
-		assert.True(t, awaitResp.Unknown, "SDK should see outputs as unknown on await")
+		assert.Equal(t, pulumirpc.Result_FAIL, awaitResp.Result)
 
 		nextResp, err := monitor.RegisterResource(
 			"pkgA:m:typA", "after", true, deploytest.ResourceOptions{SupportsResultReporting: true})
@@ -84,14 +84,13 @@ func TestAwaitErrorCreate(t *testing.T) {
 		}
 	}
 	assert.False(t, haveAwaiting, "no state should be written for a resource that awaited on Create")
-	assert.True(t, haveAfter, "resources after an await should still be registered")
+	assert.True(t, haveAfter, "independent resources registered after an await should still be created")
 }
 
 // TestAwaitErrorUpdate verifies that when a provider returns an AwaitError from Update:
 //   - the prior resource state is preserved unchanged in the snapshot,
-//   - the deployment does not halt,
-//   - the SDK receives Result_SUCCESS with Unknown=true,
-//   - the deployment reports an overall error.
+//   - the SDK receives Result_FAIL,
+//   - the deployment does not halt, but reports an overall error.
 func TestAwaitErrorUpdate(t *testing.T) {
 	t.Parallel()
 
@@ -132,8 +131,7 @@ func TestAwaitErrorUpdate(t *testing.T) {
 			Inputs:                  resource.PropertyMap{"in": resource.NewProperty("v2")},
 		})
 		require.NoError(t, err)
-		assert.Equal(t, pulumirpc.Result_SUCCESS, resp.Result)
-		assert.True(t, resp.Unknown, "SDK should see outputs as unknown on await")
+		assert.Equal(t, pulumirpc.Result_FAIL, resp.Result)
 		return nil
 	})
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)

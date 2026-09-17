@@ -84,9 +84,6 @@ type Step interface {
 	Fail()
 	// Calling Skip will mark the step as skipped.
 	Skip()
-	// Calling Await will complete the step as skipped with unknown outputs. Only CreateStep and
-	// UpdateStep are expected to receive Await; other step types delegate to Skip.
-	Await()
 }
 
 // SameStep is a mutating step that does nothing.
@@ -231,8 +228,6 @@ func (s *SameStep) Fail() {
 func (s *SameStep) Skip() {
 	s.reg.Done(&RegisterResult{State: s.new, Result: ResultStateSkipped})
 }
-
-func (s *SameStep) Await() { s.Skip() }
 
 // CreateStep is a mutating step that creates an entirely new resource.
 type CreateStep struct {
@@ -517,13 +512,6 @@ func (s *CreateStep) Fail() {
 
 func (s *CreateStep) Skip() {
 	s.reg.Done(&RegisterResult{State: s.new, Result: ResultStateSkipped})
-}
-
-// Await completes the create with unknown outputs, leaving no resource in state. Reported as
-// success with Unknown=true because language SDKs today treat any non-success Result as a
-// resource-registration error; SUCCESS+Unknown is the only shape they can consume without erroring.
-func (s *CreateStep) Await() {
-	s.reg.Done(&RegisterResult{State: s.new, Unknown: true})
 }
 
 // DeleteStep is a mutating step that deletes an existing resource. If `old` is marked "External",
@@ -862,7 +850,6 @@ func (s *DeleteStep) Skip() {
 	// Nothing to do here.
 }
 
-func (s *DeleteStep) Await() { s.Skip() }
 
 type RemovePendingReplaceStep struct {
 	deployment *Deployment        // the current deployment.
@@ -906,7 +893,6 @@ func (s *RemovePendingReplaceStep) Skip() {
 	// Nothing to do here.
 }
 
-func (s *RemovePendingReplaceStep) Await() { s.Skip() }
 
 // UpdateStep is a mutating step that updates an existing resource's state.
 type UpdateStep struct {
@@ -1162,13 +1148,6 @@ func (s *UpdateStep) Skip() {
 	s.reg.Done(&RegisterResult{State: s.new, Result: ResultStateSkipped})
 }
 
-// Await completes the update with unknown outputs, preserving the prior resource state. Reported
-// as success with Unknown=true because language SDKs today treat any non-success Result as a
-// resource-registration error; SUCCESS+Unknown is the only shape they can consume without erroring.
-func (s *UpdateStep) Await() {
-	s.reg.Done(&RegisterResult{State: s.old, Unknown: true})
-}
-
 // ReplaceStep is a logical step indicating a resource will be replaced.  This is comprised of three physical steps:
 // a creation of the new resource, any number of intervening updates of dependents to the new resource, and then
 // a deletion of the now-replaced old resource.  This logical step is primarily here for tools and visualization.
@@ -1240,7 +1219,6 @@ func (s *ReplaceStep) Skip() {
 	// Nothing to do here.
 }
 
-func (s *ReplaceStep) Await() { s.Skip() }
 
 // ReadStep is a step indicating that an existing resources will be "read" and projected into the Pulumi object
 // model. Resources that are read are marked with the "External" bit which indicates to the engine that it does
@@ -1436,7 +1414,6 @@ func (s *ReadStep) Skip() {
 	s.event.Done(&ReadResult{State: s.new, Result: ResultStateSkipped})
 }
 
-func (s *ReadStep) Await() { s.Skip() }
 
 // RefreshStep is a step used to track the progress of a refresh operation. A refresh operation updates the an existing
 // resource by reading its current state from its provider plugin. These steps are not issued by the step generator;
@@ -1764,7 +1741,6 @@ func (s *RefreshStep) Skip() {
 	// Nothing to do here.
 }
 
-func (s *RefreshStep) Await() { s.Skip() }
 
 // ExtensionParameterizeStep is an internal step that applies an extension
 // parameterization to a provider plugin. The step generator emits it when a
@@ -1851,7 +1827,6 @@ func (s *ExtensionParameterizeStep) IsUntargeted() bool      { return false }
 func (s *ExtensionParameterizeStep) Deployment() *Deployment { return s.deployment }
 func (s *ExtensionParameterizeStep) Fail()                   {}
 func (s *ExtensionParameterizeStep) Skip()                   {}
-func (s *ExtensionParameterizeStep) Await()                  {}
 
 type ImportStep struct {
 	deployment    *Deployment           // the current deployment.
@@ -2262,7 +2237,6 @@ func (s *ImportStep) Skip() {
 	s.reg.Done(&RegisterResult{State: s.new, Result: ResultStateSkipped})
 }
 
-func (s *ImportStep) Await() { s.Skip() }
 
 const (
 	OpSame                 display.StepOp = "same"                   // nothing to do.
@@ -2543,7 +2517,6 @@ func (s *DiffStep) Skip() {
 	s.pcs.Reject(errors.New("skipped diff resource"))
 }
 
-func (s *DiffStep) Await() { s.Skip() }
 
 // ViewStep isn't like a normal step. It's a virtual step for a view resource. The step itself
 // doesn't perform any operations against a provider, it's used to communicate the steps that
@@ -2663,4 +2636,3 @@ func (s *ViewStep) Skip() {
 	// Nothing to do here.
 }
 
-func (s *ViewStep) Await() { s.Skip() }
