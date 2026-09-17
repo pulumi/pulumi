@@ -388,6 +388,97 @@ func TestDoCmdFunctionInvokeFiltersNestedObjectsInCollections(t *testing.T) {
 	assert.Equal(t, expected, stdout.String())
 }
 
+// TestDoCmdFunctionInvokeFiltersDiscriminatedUnion asserts that filterOutput uses a union's discriminator property
+// to select the matching element type, rather than always picking the first object-shaped variant. Without the
+// discriminator, a "Dog" result would be incorrectly filtered against "Cat"'s properties, since both are ObjectType
+// and object-shaped variants can't otherwise be told apart.
+func TestDoCmdFunctionInvokeFiltersDiscriminatedUnion(t *testing.T) {
+	t.Parallel()
+
+	mlm := &cmdBackend.MockLoginManager{}
+	mws := newTestWorkspace(t)
+	loader := func(ctx context.Context, pctx *plugin.Context, wd, source string) (plugin.Provider, error) {
+		spec := schema.PackageSpec{
+			Name: "azure",
+			Types: map[string]schema.ComplexTypeSpec{
+				"azure:index:Cat": {
+					ObjectTypeSpec: schema.ObjectTypeSpec{
+						Type: "object",
+						Properties: map[string]schema.PropertySpec{
+							"kind": {TypeSpec: schema.TypeSpec{Type: "string"}},
+							"name": {TypeSpec: schema.TypeSpec{Type: "string"}},
+							"meow": {TypeSpec: schema.TypeSpec{Type: "string"}},
+						},
+					},
+				},
+				"azure:index:Dog": {
+					ObjectTypeSpec: schema.ObjectTypeSpec{
+						Type: "object",
+						Properties: map[string]schema.PropertySpec{
+							"kind": {TypeSpec: schema.TypeSpec{Type: "string"}},
+							"name": {TypeSpec: schema.TypeSpec{Type: "string"}},
+							"bark": {TypeSpec: schema.TypeSpec{Type: "string"}},
+						},
+					},
+				},
+			},
+			Functions: map[string]schema.FunctionSpec{
+				"azure:index:myFunction": {
+					ReturnType: &schema.ReturnTypeSpec{
+						TypeSpec: &schema.TypeSpec{
+							OneOf: []schema.TypeSpec{
+								{Ref: "#/types/azure:index:Cat"},
+								{Ref: "#/types/azure:index:Dog"},
+							},
+							Discriminator: &schema.DiscriminatorSpec{
+								PropertyName: "kind",
+								Mapping: map[string]string{
+									"dog": "azure:index:Dog",
+									"cat": "azure:index:Cat",
+								},
+							},
+						},
+					},
+				},
+			},
+		}
+		return &testProvider{
+			spec: spec,
+			MockProvider: plugin.MockProvider{
+				InvokeF: func(ctx context.Context, req plugin.InvokeRequest) (plugin.InvokeResponse, error) {
+					return plugin.InvokeResponse{
+						Properties: property.NewMap(map[string]property.Value{
+							"payload": property.New(map[string]property.Value{
+								"kind":  property.New("dog"),
+								"name":  property.New("Rex"),
+								"bark":  property.New("Woof"),
+								"extra": property.New("hidden"),
+							}),
+						}),
+					}, nil
+				},
+			},
+		}, nil
+	}
+
+	var stdout bytes.Buffer
+	cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin, nil)
+	cmd.SetOut(&stdout)
+	cmd.SetErr(&stdout)
+
+	cmd.SetArgs([]string{"azure:index:myFunction"})
+	err := cmd.Execute()
+	require.NoError(t, err)
+
+	expected := `{
+  "bark": "Woof",
+  "kind": "dog",
+  "name": "Rex"
+}
+`
+	assert.Equal(t, expected, stdout.String())
+}
+
 func TestDoCmdFunctionInvokeReturnType(t *testing.T) {
 	t.Parallel()
 
