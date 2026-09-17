@@ -242,8 +242,10 @@ func (t *types) lookupResourceForDocRef(iref internalDocRef) (*ResourceType, boo
 		return nil, false, err
 	}
 	if !external {
-		rt, ok := t.resources[string(iref.Token)]
-		return rt, ok, nil
+		unlock := t.lockBind()
+		rt, diags, err := t.bindResourceTypeDef(string(iref.Token), ValidationOptions{AllowDanglingReferences: true})
+		unlock()
+		return rt, rt != nil, bindErr(diags, err)
 	}
 	return pkg.Resources().GetType(string(iref.Token))
 }
@@ -256,8 +258,10 @@ func (t *types) lookupTypeForDocRef(iref internalDocRef) (Type, bool, error) {
 		return nil, false, err
 	}
 	if !external {
-		typ, ok := t.typeDefs[string(iref.Token)]
-		return typ, ok, nil
+		unlock := t.lockBind()
+		typ, diags, err := t.bindTypeDef(string(iref.Token), ValidationOptions{AllowDanglingReferences: true})
+		unlock()
+		return typ, typ != nil, bindErr(diags, err)
 	}
 	return pkg.Types().Get(string(iref.Token))
 }
@@ -270,10 +274,30 @@ func (t *types) lookupFunctionForDocRef(iref internalDocRef) (*Function, bool, e
 		return nil, false, err
 	}
 	if !external {
-		fun, ok := t.functionDefs[string(iref.Token)]
-		return fun, ok, nil
+		unlock := t.lockBind()
+		fun, diags, err := t.bindFunctionDef(string(iref.Token), ValidationOptions{AllowDanglingReferences: true})
+		unlock()
+		return fun, fun != nil, bindErr(diags, err)
 	}
 	return pkg.Functions().Get(string(iref.Token))
+}
+
+func (t *types) lockBind() (unlock func()) {
+	if t.bindLock == nil {
+		return func() {}
+	}
+	t.bindLock.Lock()
+	return t.bindLock.Unlock
+}
+
+func bindErr(diags hcl.Diagnostics, err error) error {
+	if err != nil {
+		return err
+	}
+	if diags.HasErrors() {
+		return diags
+	}
+	return nil
 }
 
 // DocRefKind identifies what kind of schema entity a doc ref points to (a resource, function, type, or a
