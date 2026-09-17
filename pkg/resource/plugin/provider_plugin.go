@@ -2599,10 +2599,9 @@ func (ie *InitError) Error() string {
 	return err.Error()
 }
 
-// AwaitError indicates the provider was had to await the operation. Unlike InitError, no resource
-// state was written (Create) or the prior state is preserved unchanged (Update). The engine reports
-// outputs as unknown to the SDK and continues the deployment, but the CLI exits with a dedicated
-// non-zero code.
+// AwaitError indicates the provider had to await the operation. Unlike InitError, no resource state was written
+// (Create) or the prior state is preserved unchanged (Update). The engine reports the resource failed to the SDK and
+// continues the deployment, but the CLI exits with a dedicated non-zero code.
 type AwaitError struct{}
 
 var _ error = (*AwaitError)(nil)

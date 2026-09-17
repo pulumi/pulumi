@@ -3287,11 +3287,10 @@ func (x *ErrorResourceInitFailed) GetRefreshBeforeUpdate() bool {
 	return false
 }
 
-// ErrorResourceAwaitFailed is sent as a Detail when `ResourceProvider.{Create, Update}` fail because the
-// provider was had to await the operation. Unlike [](pulumirpc.ErrorResourceInitFailed), no resource
-// state was written (Create) or the prior state is preserved unchanged (Update). The engine reports
-// outputs as unknown to the SDK and continues the deployment, but the CLI exits with a dedicated
-// non-zero code.
+// ErrorResourceAwaitFailed is sent as a Detail when `ResourceProvider.{Create, Update}` fail because the provider had
+// to await the operation. Unlike [](pulumirpc.ErrorResourceInitFailed), no resource state was written (Create) or the
+// prior state is preserved unchanged (Update). The engine reports the resource as failed to the SDK and continues the
+// deployment, but the CLI exits with a dedicated non-zero code.
 type ErrorResourceAwaitFailed struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	unknownFields protoimpl.UnknownFields

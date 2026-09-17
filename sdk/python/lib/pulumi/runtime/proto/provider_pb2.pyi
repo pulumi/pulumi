@@ -2242,11 +2242,10 @@ global___ErrorResourceInitFailed = ErrorResourceInitFailed
 
 @typing.final
 class ErrorResourceAwaitFailed(google.protobuf.message.Message):
-    """ErrorResourceAwaitFailed is sent as a Detail when `ResourceProvider.{Create, Update}` fail because the
-    provider was had to await the operation. Unlike [](pulumirpc.ErrorResourceInitFailed), no resource
-    state was written (Create) or the prior state is preserved unchanged (Update). The engine reports
-    outputs as unknown to the SDK and continues the deployment, but the CLI exits with a dedicated
-    non-zero code.
+    """ErrorResourceAwaitFailed is sent as a Detail when `ResourceProvider.{Create, Update}` fail because the provider had
+    to await the operation. Unlike [](pulumirpc.ErrorResourceInitFailed), no resource state was written (Create) or the
+    prior state is preserved unchanged (Update). The engine reports the resource as failed to the SDK and continues the
+    deployment, but the CLI exits with a dedicated non-zero code.
     """
 
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
