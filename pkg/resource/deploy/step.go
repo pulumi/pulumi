@@ -850,7 +850,6 @@ func (s *DeleteStep) Skip() {
 	// Nothing to do here.
 }
 
-
 type RemovePendingReplaceStep struct {
 	deployment *Deployment        // the current deployment.
 	old        *pkgresource.State // the state of the existing resource.
@@ -892,7 +891,6 @@ func (s *RemovePendingReplaceStep) Fail() {
 func (s *RemovePendingReplaceStep) Skip() {
 	// Nothing to do here.
 }
-
 
 // UpdateStep is a mutating step that updates an existing resource's state.
 type UpdateStep struct {
@@ -1219,7 +1217,6 @@ func (s *ReplaceStep) Skip() {
 	// Nothing to do here.
 }
 
-
 // ReadStep is a step indicating that an existing resources will be "read" and projected into the Pulumi object
 // model. Resources that are read are marked with the "External" bit which indicates to the engine that it does
 // not own this resource's lifeycle.
@@ -1413,7 +1410,6 @@ func (s *ReadStep) Fail() {
 func (s *ReadStep) Skip() {
 	s.event.Done(&ReadResult{State: s.new, Result: ResultStateSkipped})
 }
-
 
 // RefreshStep is a step used to track the progress of a refresh operation. A refresh operation updates the an existing
 // resource by reading its current state from its provider plugin. These steps are not issued by the step generator;
@@ -1740,7 +1736,6 @@ func (s *RefreshStep) Fail() {
 func (s *RefreshStep) Skip() {
 	// Nothing to do here.
 }
-
 
 // ExtensionParameterizeStep is an internal step that applies an extension
 // parameterization to a provider plugin. The step generator emits it when a
@@ -2237,7 +2232,6 @@ func (s *ImportStep) Skip() {
 	s.reg.Done(&RegisterResult{State: s.new, Result: ResultStateSkipped})
 }
 
-
 const (
 	OpSame                 display.StepOp = "same"                   // nothing to do.
 	OpCreate               display.StepOp = "create"                 // creating a new resource.
@@ -2517,7 +2511,6 @@ func (s *DiffStep) Skip() {
 	s.pcs.Reject(errors.New("skipped diff resource"))
 }
 
-
 // ViewStep isn't like a normal step. It's a virtual step for a view resource. The step itself
 // doesn't perform any operations against a provider, it's used to communicate the steps that
 // were taken for the view resource, primarily for display purposes and analysis.
@@ -2635,4 +2628,3 @@ func (s *ViewStep) Fail() {
 func (s *ViewStep) Skip() {
 	// Nothing to do here.
 }
-
