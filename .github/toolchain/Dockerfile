@@ -56,21 +56,20 @@ RUN curl -fsSLo /tmp/mise.tgz \
 # .mise.toml is used as is, except the four language pins are overridden
 # below.
 COPY .mise.toml /src/.mise.toml
-COPY .github/scripts/tool-pin /src/.github/scripts/tool-pin
 
 # The whole toolchain installs in one layer so mise never outlives it.
 # The optional secret token avoids GitHub API rate limits.
 RUN --mount=type=secret,id=github-token <<'EOF'
     set -euo pipefail
-    # npm shell-out routes npm-backend installs through npm itself,
-    # which is what applies the dependency cooldown.
     export MISE_DATA_DIR=/opt/mise \
            MISE_GLOBAL_CONFIG_FILE=/src/.mise.toml \
            MISE_TRUSTED_CONFIG_PATHS=/src \
-           MISE_CACHE_DIR=/tmp/mise-cache \
-           MISE_NPM_SHELL_OUT=true
-    export npm_config_min_release_age="${COOLDOWN_DAYS}"
-    PIN=/src/.github/scripts/tool-pin
+           MISE_CACHE_DIR=/tmp/mise-cache
+    # Shell npm installs out to npm itself and apply the dependency
+    # cooldown, as the dependency-cooldown action does for the host jobs.
+    export MISE_NPM_SHELL_OUT=true \
+           npm_config_min_release_age="${COOLDOWN_DAYS}" \
+           PIP_UPLOADED_PRIOR_TO="P${COOLDOWN_DAYS}D"
     if [ -f /run/secrets/github-token ]; then export GITHUB_TOKEN="$(cat /run/secrets/github-token)"; fi
     set -x
 
@@ -80,24 +79,14 @@ RUN --mount=type=secret,id=github-token <<'EOF'
     mise config set -t string -f "$MISE_GLOBAL_CONFIG_FILE" tools.python "${PYTHON_VERSION%.x}"
     mise config set -t string -f "$MISE_GLOBAL_CONFIG_FILE" tools.dotnet "${DOTNET_VERSION}"
 
-    # node first, so npm can be upgraded to a cooldown-capable version
-    # (>= 11.17.0) before anything else installs through it.
-    mise install node
-    PATH="$(mise bin-paths | tr '\n' ':')${PATH}"
-    npm install -g "npm@$($PIN npm)"
-
-    # yarn and pnpm install through npm, like the host jobs: only npm
-    # resolves pnpm's range pin within the cooldown window.
-    mise unuse -g "npm:yarn" "npm:pnpm"
-    npm install -g "yarn@$($PIN yarn)" "pnpm@$($PIN pnpm)"
-
-    # Everything else in .mise.toml.
+    # One command installs the whole toolchain. mise installs node before
+    # the npm-backed tools, which shell out to node's bundled npm: it must
+    # be cooldown-capable (>= 11.17.0), which verify-tools asserts.
     mise install
     export PATH="$(mise bin-paths | tr '\n' ':')${PATH}"
 
     # Python deps and Poetry. pip upgrades first because the cooldown
     # needs pip >= 26.1.
-    export PIP_UPLOADED_PRIOR_TO="P${COOLDOWN_DAYS}D"
     python -m ensurepip --upgrade
     python -m pip install --no-cache-dir --upgrade pip
     python -m pip install --no-cache-dir requests wheel urllib3 chardet build poetry
@@ -114,6 +103,12 @@ RUN --mount=type=secret,id=github-token <<'EOF'
             fi
         done
     done
+    # mise wraps node's npm launcher in a reshim hook that resolves its
+    # paths from the unresolved $0, so it breaks behind the symlink (and
+    # needs mise). Link npm's real entry point instead, like node's own
+    # npx symlink does.
+    ln -sf "$(mise where node)/lib/node_modules/npm/bin/npm-cli.js" /opt/toolchain/bin/npm
+
     # Stable paths for JAVA_HOME and DOTNET_ROOT. readlink because
     # dotnet's install dir is itself a symlink.
     ln -s "$(readlink -f "$(mise where java)")" /opt/java

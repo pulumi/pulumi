@@ -16,7 +16,6 @@ HASH=$(
   {
     cat .github/toolchain/Dockerfile \
         .mise.toml \
-        .github/scripts/tool-pin \
         .github/workflows/ci-toolchain-image.yml \
         .github/actions/dependency-cooldown/action.yml
     printf '%s\n%s\n' "$VERSION_SET" "$WEEK"

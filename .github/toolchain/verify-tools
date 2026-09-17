@@ -24,12 +24,13 @@ GOTESTSUM_PIN=$($PIN gotestsum)
 JAVA_PIN=$($PIN java)
 JAVA_MAJOR=${JAVA_PIN#*-} # e.g. temurin-11 -> 11
 
-# npm's pin is a range (^11.17.0) and installing from it guarantees the
-# cooldown floor. Assert the major so a bump can't silently diverge.
-NPM_RANGE=$($PIN npm)
-NPM_MAJOR=$(echo "$NPM_RANGE" | tr -dc '0-9.' | cut -d. -f1)
-if [ -z "$NPM_MAJOR" ]; then
-  echo "FATAL: could not derive the npm major from '${NPM_RANGE}'" >&2
+# The image keeps node's bundled npm, so assert it satisfies the
+# cooldown floor from the npm pin (e.g. ^11.17.0 -> 11.17.0). Below the
+# floor, npm silently ignores the cooldown settings.
+NPM_FLOOR=$($PIN npm)
+NPM_FLOOR=${NPM_FLOOR#^}
+if ! echo "$NPM_FLOOR" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$'; then
+  echo "FATAL: could not derive the npm floor from '$($PIN npm)'" >&2
   exit 1
 fi
 
@@ -54,7 +55,7 @@ docker run --rm -i --platform linux/amd64 \
   -e "PNPM_PIN=$PNPM_PIN" \
   -e "GRADLE_PIN=$GRADLE_PIN" \
   -e "GOTESTSUM_PIN=$GOTESTSUM_PIN" \
-  -e "NPM_MAJOR=$NPM_MAJOR" \
+  -e "NPM_FLOOR=$NPM_FLOOR" \
   -e "JAVA_MAJOR=$JAVA_MAJOR" \
   "$IMAGE" bash -s <<'EOF'
 set -uo pipefail
@@ -85,8 +86,13 @@ expect dlv    "${DLV_PIN}"          "$(dlv version | grep -i version)"
 expect uv     "${UV_PIN}"           "$(uv --version)"
 expect bun    "${BUN_PIN}"          "$(bun --version)"
 expect yarn   "${YARN_PIN}"         "$(yarn --version)"
-expect pnpm   "${PNPM_PIN}."        "$(pnpm --version)"
-expect npm    "${NPM_MAJOR}."       "$(npm --version)"
+expect pnpm   "${PNPM_PIN}"         "$(pnpm --version)"
+NPM_VERSION=$(npm --version)
+if [ "$(printf '%s\n%s\n' "$NPM_FLOOR" "$NPM_VERSION" | sort -V | head -1)" = "$NPM_FLOOR" ]; then
+  echo "ok:   npm: ${NPM_VERSION} (>= cooldown floor ${NPM_FLOOR})"
+else
+  echo "FAIL: npm: ${NPM_VERSION} is below the cooldown floor ${NPM_FLOOR}"; fail=1
+fi
 expect gotestsum "${GOTESTSUM_PIN}" "$(gotestsum --version)"
 present goteststats
 expect pip    "pip"                 "$(python -m pip --version)"

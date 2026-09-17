@@ -33,9 +33,7 @@ protoc = "29.5"
 "go:go.abhg.dev/requiredfield/cmd/requiredfield" = "0.8.0"
 "github:WebAssembly/wabt" = "1.0.37"
 # Pinned in [vars] (see there) so the host jobs, which install these
-# four without mise, can resolve the same pins through tool-pin. The
-# toolchain image also installs yarn and pnpm through npm rather than
-# mise, matching the host jobs (see the Dockerfile).
+# four without mise, can resolve the same pins through tool-pin.
 "npm:yarn" = "{{ vars.yarn }}"
 "npm:pnpm" = "{{ vars.pnpm }}"
 "go:github.com/go-delve/delve/cmd/dlv" = "{{ vars.dlv }}"
@@ -48,10 +46,12 @@ protoc = "29.5"
 # npm. The templated [tools] entries above resolve from these vars, so
 # a plain `mise install` still covers everything but npm.
 #
-# npm must be 11.17.0 or newer for the dependency-cooldown action.
+# npm must be 11.17.0 or newer for the dependency-cooldown action. The
+# toolchain image keeps node's bundled npm (node 24+ bundles >= 11.19)
+# and verify-tools asserts it satisfies this floor.
 npm = "^11.17.0"
 yarn = "1.22.22"
-pnpm = "11"
+pnpm = "11.27.0"
 # Delve's minor version must match the Go minor in CI (see get-job-matrix.py),
 # or debugger tests fail with "Version of Delve is too old".
 dlv = "1.27.2"

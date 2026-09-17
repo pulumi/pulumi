@@ -90,7 +90,7 @@ runs:
     - name: Install npm, yarn and pnpm
       shell: bash
       # npm first, so a cooldown-capable npm (>= 11.17.0) installs yarn
-      # and pnpm. Keep in sync with the Dockerfile's npm layer.
+      # and pnpm.
       run: |
         npm install -g "npm@${NPM_VERSION}"
         npm install -g "yarn@${YARN_VERSION}" "pnpm@${PNPM_VERSION}"
