@@ -1200,3 +1200,81 @@ func TestRemoteTransformByteString(t *testing.T) {
 		"bar": resource.NewProperty(rawBytes),
 	}, res.Inputs)
 }
+
+// Test that a transform declared on an ancestor component is still applied to a custom resource whose parent
+// chain passes through a read (`.get()`) resource.
+func TestTransformInheritedThroughReadParent(t *testing.T) {
+	t.Parallel()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+					return plugin.ReadResponse{
+						ReadResult: plugin.ReadResult{
+							ID:      req.ID,
+							Outputs: req.State,
+						},
+						Status: resource.StatusOK,
+					}, nil
+				},
+			}, nil
+		}),
+	}
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		callbacks, err := deploytest.NewCallbacksServer()
+		require.NoError(t, err)
+		defer func() { require.NoError(t, callbacks.Close()) }()
+
+		// A transform that bumps "foo" by 1 on every leaf custom resource it is applied to.
+		bumpFoo, err := callbacks.Allocate(
+			TransformFunction(func(name, typ string, custom bool, parent string,
+				props resource.PropertyMap, opts *pulumirpc.TransformResourceOptions,
+			) (resource.PropertyMap, *pulumirpc.TransformResourceOptions, error) {
+				if typ == "pkgA:m:typLeaf" {
+					props["foo"] = resource.NewProperty(props["foo"].NumberValue() + 1)
+				}
+				return props, opts, nil
+			}))
+		require.NoError(t, err)
+
+		// Component C carries the transform. Its descendants should inherit it.
+		component, err := monitor.RegisterResource("pkgA:m:typComponent", "compA", false, deploytest.ResourceOptions{
+			Transforms: []*pulumirpc.Callback{bumpFoo},
+		})
+		require.NoError(t, err)
+
+		// A read (`.get()`) resource parented to the component.
+		readURN, _, err := monitor.ReadResource(
+			"pkgA:m:typRead", "readR", "read-id", component.URN,
+			resource.PropertyMap{}, "", "", "", nil, "", "")
+		require.NoError(t, err)
+
+		// The leaf custom resource is parented to the read resource, not directly to the component.
+		_, err = monitor.RegisterResource("pkgA:m:typLeaf", "leafUnderRead", true, deploytest.ResourceOptions{
+			Parent: readURN,
+			Inputs: resource.PropertyMap{"foo": resource.NewProperty(10.0)},
+		})
+		require.NoError(t, err)
+		return nil
+	})
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
+
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true},
+	}
+
+	project := p.GetProject()
+	snap, err := lt.TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	require.NoError(t, err)
+
+	inputsByName := map[string]resource.PropertyMap{}
+	for _, r := range snap.Resources {
+		inputsByName[r.URN.Name()] = r.Inputs
+	}
+
+	// The transform declared on the ancestor component should still apply: 10 + 1 = 11.
+	assert.Equal(t, resource.NewProperty(11.0), inputsByName["leafUnderRead"]["foo"],
+		"leaf parented under a read resource should inherit the ancestor component's transform")
+}
