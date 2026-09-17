@@ -519,9 +519,11 @@ func (s *CreateStep) Skip() {
 	s.reg.Done(&RegisterResult{State: s.new, Result: ResultStateSkipped})
 }
 
-// Await completes the create as skipped with unknown outputs, leaving no resource in state.
+// Await completes the create with unknown outputs, leaving no resource in state. Reported as
+// success with Unknown=true because language SDKs today treat any non-success Result as a
+// resource-registration error; SUCCESS+Unknown is the only shape they can consume without erroring.
 func (s *CreateStep) Await() {
-	s.reg.Done(&RegisterResult{State: s.new, Result: ResultStateSkipped, Unknown: true})
+	s.reg.Done(&RegisterResult{State: s.new, Unknown: true})
 }
 
 // DeleteStep is a mutating step that deletes an existing resource. If `old` is marked "External",
@@ -1160,9 +1162,11 @@ func (s *UpdateStep) Skip() {
 	s.reg.Done(&RegisterResult{State: s.new, Result: ResultStateSkipped})
 }
 
-// Await completes the update as skipped with unknown outputs, preserving the prior resource state.
+// Await completes the update with unknown outputs, preserving the prior resource state. Reported
+// as success with Unknown=true because language SDKs today treat any non-success Result as a
+// resource-registration error; SUCCESS+Unknown is the only shape they can consume without erroring.
 func (s *UpdateStep) Await() {
-	s.reg.Done(&RegisterResult{State: s.old, Result: ResultStateSkipped, Unknown: true})
+	s.reg.Done(&RegisterResult{State: s.old, Unknown: true})
 }
 
 // ReplaceStep is a logical step indicating a resource will be replaced.  This is comprised of three physical steps:
