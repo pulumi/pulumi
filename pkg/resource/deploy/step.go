@@ -360,19 +360,48 @@ func (s *CreateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 
 		var resp plugin.CreateResponse
 
+		// If a create partially fails, the resource exists, so any retries must update it rather than create
+		// another one.
+		var partial *plugin.CreateResponse
+
 		resp, err = withRetries(
 			maxErrorHookRetries,
 			func() (plugin.CreateResponse, error) {
-				resp, err := prov.Create(context.TODO(), plugin.CreateRequest{
-					URN:                   s.URN(),
-					Name:                  s.new.URN.Name(),
-					Type:                  s.new.URN.Type(),
-					Properties:            s.new.Inputs,
-					Timeout:               s.new.CustomTimeouts.Create,
-					Preview:               s.deployment.opts.DryRun,
-					ResourceStatusAddress: resourceStatusAddress,
-					ResourceStatusToken:   resourceStatusToken,
-				})
+				var resp plugin.CreateResponse
+				var err error
+				if partial == nil {
+					resp, err = prov.Create(context.TODO(), plugin.CreateRequest{
+						URN:                   s.URN(),
+						Name:                  s.new.URN.Name(),
+						Type:                  s.new.URN.Type(),
+						Properties:            s.new.Inputs,
+						Timeout:               s.new.CustomTimeouts.Create,
+						Preview:               s.deployment.opts.DryRun,
+						ResourceStatusAddress: resourceStatusAddress,
+						ResourceStatusToken:   resourceStatusToken,
+					})
+				} else {
+					var upd plugin.UpdateResponse
+					upd, err = prov.Update(context.TODO(), plugin.UpdateRequest{
+						URN:                   s.URN(),
+						Name:                  s.new.URN.Name(),
+						Type:                  s.new.URN.Type(),
+						ID:                    partial.ID,
+						OldInputs:             s.new.Inputs,
+						OldOutputs:            partial.Properties,
+						NewInputs:             s.new.Inputs,
+						Timeout:               s.new.CustomTimeouts.Create,
+						Preview:               s.deployment.opts.DryRun,
+						ResourceStatusAddress: resourceStatusAddress,
+						ResourceStatusToken:   resourceStatusToken,
+					})
+					resp = plugin.CreateResponse{
+						ID:                  partial.ID,
+						Properties:          upd.Properties,
+						Status:              upd.Status,
+						RefreshBeforeUpdate: upd.RefreshBeforeUpdate,
+					}
+				}
 
 				if err == nil {
 					resourceError = nil
@@ -386,6 +415,9 @@ func (s *CreateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 
 				resourceError = err
 				resourceStatus = resp.Status
+				if resp.ID != "" {
+					partial = &resp
+				}
 
 				if initErr, isInitErr := err.(*plugin.InitError); isInitErr {
 					s.new.InitErrors = initErr.Reasons
@@ -458,6 +490,9 @@ func (s *CreateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 	s.new.ID = id
 	s.new.Outputs = outs
 	s.new.RefreshBeforeUpdate = refreshBeforeUpdate
+	if resourceError == nil {
+		s.new.InitErrors = nil
+	}
 
 	// Create should set the Create and Modified timestamps as the resource state has been created.
 	now := time.Now().UTC()
