@@ -1,4 +1,4 @@
 component: cli/do
 kind: fix
-body: Use a union's discriminator to select the correct output type when filtering `pulumi do` results
+body: Select the correct union member by discriminator or wire shape when filtering `pulumi do` results
 time: 2026-09-16T00:00:00.000000000Z
