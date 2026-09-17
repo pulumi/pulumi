@@ -193,6 +193,10 @@ export class ReadResourceResponse extends jspb.Message {
     clearProperties(): void;
     getProperties(): google_protobuf_struct_pb.Struct | undefined;
     setProperties(value?: google_protobuf_struct_pb.Struct): ReadResourceResponse;
+    getResult(): Result;
+    setResult(value: Result): ReadResourceResponse;
+    getUnknown(): boolean;
+    setUnknown(value: boolean): ReadResourceResponse;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): ReadResourceResponse.AsObject;
@@ -208,6 +212,8 @@ export namespace ReadResourceResponse {
     export type AsObject = {
         urn: string,
         properties?: google_protobuf_struct_pb.Struct.AsObject,
+        result: Result,
+        unknown: boolean,
     }
 }
 

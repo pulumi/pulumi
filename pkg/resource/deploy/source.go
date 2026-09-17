@@ -153,6 +153,7 @@ type ReadResourceEvent interface {
 }
 
 type ReadResult struct {
-	State  *pkgresource.State
-	Result ResultState
+	State   *pkgresource.State
+	Result  ResultState
+	Unknown bool // true if the read was elided; SDKs should resolve outputs as unknown.
 }

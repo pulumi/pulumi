@@ -546,7 +546,27 @@ func (s *CreateStep) Fail() {
 }
 
 func (s *CreateStep) Skip() {
-	s.reg.Done(&RegisterResult{State: s.new, Result: ResultStateSkipped})
+	// Ask the provider what a dry-run of this create would produce so dependents get precise
+	// unknowns for the outputs that would actually vary, rather than an everything-unknown answer.
+	// The snapshot is not affected: no create happened, so s.new is not persisted.
+	skipState := s.new.Copy()
+	skipState.Outputs = resource.PropertyMap{}
+	if s.new.Custom {
+		if prov, err := getProvider(s, s.provider); err == nil {
+			resp, previewErr := prov.Create(context.TODO(), plugin.CreateRequest{
+				URN:        s.URN(),
+				Name:       s.new.URN.Name(),
+				Type:       s.new.URN.Type(),
+				Properties: s.new.Inputs,
+				Timeout:    s.new.CustomTimeouts.Create,
+				Preview:    true,
+			})
+			if previewErr == nil {
+				skipState.Outputs = resp.Properties
+			}
+		}
+	}
+	s.reg.Done(&RegisterResult{State: skipState, Result: ResultStateSkipped, Unknown: true})
 }
 
 // DeleteStep is a mutating step that deletes an existing resource. If `old` is marked "External",
@@ -1178,7 +1198,31 @@ func (s *UpdateStep) Fail() {
 }
 
 func (s *UpdateStep) Skip() {
-	s.reg.Done(&RegisterResult{State: s.new, Result: ResultStateSkipped})
+	// Ask the provider what a dry-run of this update would produce so dependents get precise
+	// unknowns for the outputs that would actually vary, rather than an everything-unknown answer.
+	// The snapshot still writes s.new with its prior outputs; only the SDK response is affected.
+	skipState := s.new.Copy()
+	skipState.Outputs = resource.PropertyMap{}
+	if s.new.Custom {
+		if prov, err := getProvider(s, s.provider); err == nil {
+			resp, previewErr := prov.Update(context.TODO(), plugin.UpdateRequest{
+				URN:           s.URN(),
+				Name:          s.new.URN.Name(),
+				Type:          s.new.URN.Type(),
+				ID:            s.old.ID,
+				OldInputs:     s.old.Inputs,
+				OldOutputs:    s.old.Outputs,
+				NewInputs:     s.new.Inputs,
+				Timeout:       s.new.CustomTimeouts.Update,
+				IgnoreChanges: s.ignoreChanges,
+				Preview:       true,
+			})
+			if previewErr == nil {
+				skipState.Outputs = resp.Properties
+			}
+		}
+	}
+	s.reg.Done(&RegisterResult{State: skipState, Result: ResultStateSkipped, Unknown: true})
 }
 
 // ReplaceStep is a logical step indicating a resource will be replaced.  This is comprised of three physical steps:
@@ -1443,7 +1487,10 @@ func (s *ReadStep) Fail() {
 }
 
 func (s *ReadStep) Skip() {
-	s.event.Done(&ReadResult{State: s.new, Result: ResultStateSkipped})
+	// Read has no dry-run analogue, so a skipped read surfaces as fully unknown.
+	skipState := s.new.Copy()
+	skipState.Outputs = resource.PropertyMap{}
+	s.event.Done(&ReadResult{State: skipState, Result: ResultStateSkipped, Unknown: true})
 }
 
 // RefreshStep is a step used to track the progress of a refresh operation. A refresh operation updates the an existing
@@ -2264,7 +2311,10 @@ func (s *ImportStep) Fail() {
 }
 
 func (s *ImportStep) Skip() {
-	s.reg.Done(&RegisterResult{State: s.new, Result: ResultStateSkipped})
+	// Imports have no dry-run analogue, so a skipped import surfaces as fully unknown.
+	skipState := s.new.Copy()
+	skipState.Outputs = resource.PropertyMap{}
+	s.reg.Done(&RegisterResult{State: skipState, Result: ResultStateSkipped, Unknown: true})
 }
 
 const (

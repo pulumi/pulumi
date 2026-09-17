@@ -1574,9 +1574,15 @@ func (rm *resmon) ReadResource(ctx context.Context,
 		return nil, fmt.Errorf("failed to marshal %s return state: %w", result.State.URN, err)
 	}
 
+	reason := pulumirpc.Result_SUCCESS
+	if result.Result == ResultStateFailed {
+		reason = pulumirpc.Result_FAIL
+	}
 	return &pulumirpc.ReadResourceResponse{
 		Urn:        string(result.State.URN),
 		Properties: marshaled,
+		Result:     reason,
+		Unknown:    result.Unknown,
 	}, nil
 }
 
@@ -3072,7 +3078,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 			logging.V(5).Infof("ResourceMonitor.RegisterResource operation canceled, name=%s", name)
 			return nil, rpcerror.New(codes.Unavailable, "resource monitor shut down while waiting on step's done channel")
 		}
-		if result != nil && result.Result != ResultStateSuccess && !req.GetSupportsResultReporting() {
+		if result != nil && result.Result != ResultStateSuccess && !result.Unknown && !req.GetSupportsResultReporting() {
 			return nil, rpcerror.New(codes.Internal, "resource registration failed")
 		}
 		if result != nil && result.State != nil && result.State.URN != "" {
@@ -3234,12 +3240,11 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 	)
 
 	reason := pulumirpc.Result_SUCCESS
-	// Both directly-failed and dependency-skipped steps surface to the SDK as Result_FAIL. The
-	// language SDKs treat any non-success result identically (they synthesize a "failed to
-	// register" error), and the engine keeps the Skipped/Failed distinction internally for
-	// continue-on-error cascade tracking.
-	switch result.Result { //nolint:exhaustive // golangci-lint v2 upgrade
-	case ResultStateSkipped, ResultStateFailed:
+	// Only outright failures surface to the SDK as Result_FAIL. Skipped registrations return
+	// SUCCESS with Unknown=true so dependents propagate unknowns instead of aborting; the
+	// engine keeps the Skipped/Failed distinction internally for continue-on-error cascade
+	// tracking.
+	if result.Result == ResultStateFailed {
 		reason = pulumirpc.Result_FAIL
 	}
 	return &pulumirpc.RegisterResourceResponse{
