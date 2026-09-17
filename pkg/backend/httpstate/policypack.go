@@ -563,15 +563,16 @@ func installRequiredPolicyWithHook(
 		return fmt.Errorf("checking policy pack installation: %w", err)
 	}
 
-	if err := os.Remove(partialPath); err != nil && !os.IsNotExist(err) {
-		return fmt.Errorf("removing stale partial policy pack marker: %w", err)
-	}
-	marker, err := os.OpenFile(partialPath, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o600)
-	if err != nil {
-		return fmt.Errorf("marking policy pack installation partial: %w", err)
-	}
-	if err := marker.Close(); err != nil {
-		return fmt.Errorf("closing partial policy pack marker: %w", err)
+	if _, err := os.Lstat(partialPath); os.IsNotExist(err) {
+		marker, err := os.OpenFile(partialPath, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o600)
+		if err != nil {
+			return fmt.Errorf("marking policy pack installation partial: %w", err)
+		}
+		if err := marker.Close(); err != nil {
+			return fmt.Errorf("closing partial policy pack marker: %w", err)
+		}
+	} else if err != nil {
+		return fmt.Errorf("checking partial policy pack marker: %w", err)
 	}
 	if err := os.RemoveAll(finalDir); err != nil {
 		return fmt.Errorf("removing partial policy pack installation: %w", err)

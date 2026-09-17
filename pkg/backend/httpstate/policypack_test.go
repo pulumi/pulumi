@@ -739,7 +739,7 @@ func TestInstallRequiredPolicyCleansUpDependencyFailure(t *testing.T) {
 	assert.Equal(t, 2, runtime.installCalls, "a second install should retry dependency installation")
 }
 
-func TestInstallRequiredPolicyReplacesDanglingPartialMarkerSymlink(t *testing.T) {
+func TestInstallRequiredPolicyPreservesDanglingPartialMarkerSymlink(t *testing.T) {
 	t.Parallel()
 
 	sourceDir := t.TempDir()
@@ -769,6 +769,9 @@ func TestInstallRequiredPolicyReplacesDanglingPartialMarkerSymlink(t *testing.T)
 	require.ErrorContains(t, err, "installing dependencies: dependency install failed")
 	_, statErr := os.Stat(markerTarget)
 	assert.True(t, os.IsNotExist(statErr), "install must not follow a stale marker symlink")
+	marker, statErr := os.Lstat(finalDir + ".partial")
+	require.NoError(t, statErr)
+	assert.NotZero(t, marker.Mode()&os.ModeSymlink, "the stale marker must remain continuously present")
 }
 
 func TestInstallRequiredPolicyUsesCompletedConcurrentInstall(t *testing.T) {
