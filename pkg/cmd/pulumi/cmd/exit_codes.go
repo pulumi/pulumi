@@ -37,7 +37,7 @@ const (
 	ExitNoChanges           = 7
 	ExitCancelled           = 8
 	ExitTimeout             = 9
-	ExitAwaitError          = 10 // a provider awaited an operation without applying it
+	ExitAwaitError          = 10 // a provider needs to await an operation
 	ExitInternalError       = 255
 )
 

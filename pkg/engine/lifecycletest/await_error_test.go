@@ -53,12 +53,14 @@ func TestAwaitErrorCreate(t *testing.T) {
 	}
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		awaitResp, err := monitor.RegisterResource("pkgA:m:typA", "awaiting", true, deploytest.ResourceOptions{SupportsResultReporting: true})
+		awaitResp, err := monitor.RegisterResource(
+			"pkgA:m:typA", "awaiting", true, deploytest.ResourceOptions{SupportsResultReporting: true})
 		require.NoError(t, err)
 		assert.Equal(t, pulumirpc.Result_SKIP, awaitResp.Result)
 		assert.True(t, awaitResp.Unknown, "SDK should see outputs as unknown on await")
 
-		nextResp, err := monitor.RegisterResource("pkgA:m:typA", "after", true, deploytest.ResourceOptions{SupportsResultReporting: true})
+		nextResp, err := monitor.RegisterResource(
+			"pkgA:m:typA", "after", true, deploytest.ResourceOptions{SupportsResultReporting: true})
 		require.NoError(t, err)
 		assert.Equal(t, pulumirpc.Result_SUCCESS, nextResp.Result)
 		return nil
@@ -94,7 +96,7 @@ func TestAwaitErrorUpdate(t *testing.T) {
 	t.Parallel()
 
 	priorOutputs := resource.PropertyMap{
-		"kept": resource.NewStringProperty("prior-value"),
+		"kept": resource.NewProperty("prior-value"),
 	}
 
 	loaders := []*deploytest.ProviderLoader{
@@ -118,7 +120,7 @@ func TestAwaitErrorUpdate(t *testing.T) {
 				URN:     resURN,
 				Custom:  true,
 				ID:      "existing-id",
-				Inputs:  resource.PropertyMap{"in": resource.NewStringProperty("v1")},
+				Inputs:  resource.PropertyMap{"in": resource.NewProperty("v1")},
 				Outputs: priorOutputs,
 			},
 		},
@@ -127,7 +129,7 @@ func TestAwaitErrorUpdate(t *testing.T) {
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		resp, err := monitor.RegisterResource("pkgA:m:typA", "awaiting", true, deploytest.ResourceOptions{
 			SupportsResultReporting: true,
-			Inputs:                  resource.PropertyMap{"in": resource.NewStringProperty("v2")},
+			Inputs:                  resource.PropertyMap{"in": resource.NewProperty("v2")},
 		})
 		require.NoError(t, err)
 		assert.Equal(t, pulumirpc.Result_SKIP, resp.Result)
@@ -153,6 +155,6 @@ func TestAwaitErrorUpdate(t *testing.T) {
 	require.NotNil(t, found, "prior resource should still be present in state")
 	assert.Equal(t, resource.ID("existing-id"), found.ID)
 	assert.Equal(t, priorOutputs, found.Outputs, "outputs must be preserved unchanged on Update await")
-	assert.Equal(t, resource.PropertyMap{"in": resource.NewStringProperty("v1")}, found.Inputs,
+	assert.Equal(t, resource.PropertyMap{"in": resource.NewProperty("v1")}, found.Inputs,
 		"inputs must be preserved unchanged on Update await")
 }

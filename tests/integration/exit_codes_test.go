@@ -56,8 +56,9 @@ runtime: nodejs
 // TestExitCode_AwaitError verifies that a deployment whose only failure is a provider AwaitError
 // exits with the dedicated ExitAwaitError code (10) rather than the generic error code (1).
 //
-//nolint:paralleltest // NewEnvironment already installs a per-test tempdir; running in parallel with
 // other tests that mutate PULUMI_HOME could clash on the shared plugin cache.
+//
+//nolint:paralleltest // NewEnvironment already installs a per-test tempdir; running in parallel with
 func TestExitCode_AwaitError(t *testing.T) {
 	e := ptesting.NewEnvironment(t)
 	defer e.DeleteIfNotFailed()
