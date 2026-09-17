@@ -1,0 +1,3 @@
+component: cli/env
+kind: fix
+body: Reference `pulumi env` rather than the retired standalone `esc` CLI in `pulumi env` messages and help text
