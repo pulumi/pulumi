@@ -1811,13 +1811,15 @@ func (pc *client) httpCall(
 	}
 
 	// Provide a better error if using an authenticated call without having logged in first.
+	// The API client has no access to the CLI's configured command prefix, and this code only
+	// ships as part of the `pulumi` CLI, so name `pulumi login` directly.
 	if resp.StatusCode == 401 && pc.apiToken == "" {
-		return nil, errors.New("this command requires logging in; try running `esc login` first")
+		return nil, errors.New("this command requires logging in; try running `pulumi login` first")
 	}
 
 	// Provide a better error if rate-limit is exceeded(429: Too Many Requests)
 	if resp.StatusCode == 429 {
-		return nil, errors.New("esc: request rate-limit exceeded")
+		return nil, errors.New("request rate-limit exceeded")
 	}
 
 	// For 4xx and 5xx failures, attempt to provide better diagnostics about what may have gone wrong.
