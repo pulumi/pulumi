@@ -18,6 +18,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"slices"
 	"strings"
@@ -135,15 +136,36 @@ func getStackConfigurationFromProjectStack(
 	workspaceStack *workspace.ProjectStack,
 	envOverrides []string,
 ) (backend.StackConfiguration, error) {
+	// This is a non-command helper; we don't have a *cobra.Command writer to thread through here, so
+	// informational output goes to stderr to keep any command's stdout (including --json) untouched.
+	return getStackConfigurationFromProjectStackWithWriter(
+		ctx, os.Stderr, stack, project, sm, workspaceStack, envOverrides) //nolint:forbidigo
+}
+
+func getStackConfigurationFromProjectStackWithWriter(
+	ctx context.Context,
+	stderr io.Writer,
+	stack backend.Stack,
+	project *workspace.Project,
+	sm secrets.Manager,
+	workspaceStack *workspace.ProjectStack,
+	envOverrides []string,
+) (backend.StackConfiguration, error) {
+	envDef, mainEnv, warnings := effectiveStackEnv(stack, workspaceStack)
+	printConfigWarnings(stderr, warnings)
+
 	env, diags, err := openStackEnv(ctx, stack, workspaceStack, envOverrides)
 	if err != nil {
 		return backend.StackConfiguration{}, fmt.Errorf("opening environment: %w", err)
 	}
 	if len(diags) != 0 {
-		// This is a non-command helper; we don't have a *cobra.Command writer
-		// to thread through here. Writes go to the process streams directly.
-		printESCDiagnostics(os.Stderr, diags) //nolint:forbidigo
+		printESCDiagnostics(stderr, diags)
 		return backend.StackConfiguration{}, errors.New("opening environment: too many errors")
+	}
+
+	// Tell the user which revision of the main environment this run resolved its configuration against.
+	if mainEnv != nil {
+		printConfigSource(ctx, stderr, stack, mainEnv)
 	}
 
 	var pulumiEnv esc.Value
@@ -174,7 +196,7 @@ func getStackConfigurationFromProjectStack(
 	// the correct decrypter for the diy backend would involve prompting for a passphrase)
 	if !needsCrypter(workspaceStack.Config, pulumiEnv) {
 		return backend.StackConfiguration{
-			EnvironmentImports: workspaceStack.Environment.Imports(),
+			EnvironmentImports: envDef.Imports(),
 			Environment:        pulumiEnv,
 			Config:             workspaceStack.Config,
 			Decrypter:          config.NewPanicCrypter(),
@@ -184,7 +206,7 @@ func getStackConfigurationFromProjectStack(
 	crypter := sm.Decrypter()
 
 	return backend.StackConfiguration{
-		EnvironmentImports: workspaceStack.Environment.Imports(),
+		EnvironmentImports: envDef.Imports(),
 		Environment:        pulumiEnv,
 		Config:             workspaceStack.Config,
 		Decrypter:          crypter,
@@ -241,7 +263,8 @@ func openStackEnv(
 	workspaceStack *workspace.ProjectStack,
 	envOverrides []string,
 ) (*esc.Environment, []apitype.EnvironmentDiagnostic, error) {
-	yaml := workspaceStack.EnvironmentBytes()
+	envDef, _, _ := effectiveStackEnv(stack, workspaceStack)
+	yaml := envDef.Definition()
 	if len(yaml) == 0 {
 		return nil, nil, nil
 	}
