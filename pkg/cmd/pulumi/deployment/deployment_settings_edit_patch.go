@@ -30,7 +30,7 @@ var editFlagNames = []string{
 	flagGitHubRepo, flagRepo, flagVCSProvider, flagGitURL, flagBranch, flagCommit, flagFolder,
 	flagPreviewPRs, flagPushToDeploy, flagPRTemplate, flagPathFilter,
 	flagDeployTags, flagTagFilter, flagReviewStackLabel,
-	flagInstallationID, flagDeployPullRequest,
+	flagInstallationID,
 	flagRunnerPool, flagExecutorImage, flagExecutorRootPath,
 	flagPreRunCommand, flagEnv, flagSecretEnv, flagRemoveEnv, flagRemoveAllEnv,
 	flagSkipInstallDeps, flagSkipIntermediate, flagShell, flagDeleteAfterDestroy,
@@ -48,7 +48,7 @@ var vcsEditFlags = []string{
 	flagPreviewPRs, flagPushToDeploy, flagPRTemplate,
 	flagPathFilter,
 	flagDeployTags, flagTagFilter, flagReviewStackLabel,
-	flagInstallationID, flagDeployPullRequest,
+	flagInstallationID,
 }
 
 // presenceOnlyEditFlags reject an explicit false value rather than silently ignoring it.
@@ -224,15 +224,8 @@ func resolveEditVCS(
 	if changed(flagInstallationID) {
 		vcs.InstallationID = args.installationID
 	}
-	if changed(flagDeployPullRequest) {
-		vcs.DeployPullRequest = nil
-		if args.deployPullRequest > 0 {
-			pr := args.deployPullRequest
-			vcs.DeployPullRequest = &pr
-		}
-	}
 
-	// Both checks run against the merged object rather than the flags, so they also catch a flag that
+	// The check runs against the merged object rather than the flags, so it also catches a flag that
 	// conflicts with what the stack already stores. The messages name the stored setting in that case,
 	// since naming a flag the user never passed sends them looking for it.
 	if vcs.DeployCommits && vcs.DeployTags {
@@ -253,17 +246,6 @@ func resolveEditVCS(
 					"pass --%s=false or --%s=false to resolve it",
 				flagPushToDeploy, flagDeployTags)
 		}
-	}
-
-	// The service discards deployPullRequest when any of the three standard triggers is on, so asking
-	// for a number that would be discarded is refused. A stored number is left alone rather than
-	// deleted: the stack is already in that state, so sending it back cannot be newly invalid, and
-	// dropping it here would lose a setting the user never mentioned.
-	if changed(flagDeployPullRequest) && args.deployPullRequest > 0 &&
-		(vcs.DeployCommits || vcs.PreviewPullRequests || vcs.PullRequestTemplate) {
-		return nil, fmt.Errorf(
-			"--%s is only honored when --%s, --%s and --%s are all off; the service discards it otherwise",
-			flagDeployPullRequest, flagPushToDeploy, flagPreviewPRs, flagPRTemplate)
 	}
 
 	// The vcs object replaces the stored one wholesale, so an empty repository here would erase the
@@ -352,9 +334,6 @@ func validateEditArgs(args deploymentSettingsEditArgs) error {
 		if _, err := parseVCSProvider(args.vcsProvider); err != nil {
 			return err
 		}
-	}
-	if args.flagsChanged(flagDeployPullRequest) && args.deployPullRequest < 0 {
-		return fmt.Errorf("--%s must not be negative; pass 0 to clear it", flagDeployPullRequest)
 	}
 	return nil
 }

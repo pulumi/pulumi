@@ -73,7 +73,6 @@ type deploymentSettingsEditArgs struct {
 	tagFilters        []string
 	reviewStackLabels []string
 	installationID    string
-	deployPullRequest int64
 
 	// Runner
 	runnerPool       string
@@ -133,7 +132,6 @@ const (
 	flagTagFilter          = "tag-filter"
 	flagReviewStackLabel   = "review-stack-label"
 	flagInstallationID     = "installation-id"
-	flagDeployPullRequest  = "deploy-pull-request"
 	flagRunnerPool         = "runner-pool"
 	flagExecutorImage      = "executor-image"
 	flagExecutorRootPath   = "executor-root-path"
@@ -265,9 +263,6 @@ func newDeploymentSettingsEditCmdWith(factory deploymentSettingsEditClientFactor
 	f.StringVar(&args.installationID, flagInstallationID, "",
 		"Version control integration ID; only needed to choose between several integrations for "+
 			"the same provider. List them with: pulumi api ListAllVCSIntegrations -F orgName=<org>")
-	f.Int64Var(&args.deployPullRequest, flagDeployPullRequest, 0,
-		fmt.Sprintf("Pull request number this review stack deploys; 0 clears it "+
-			"(requires --%s, --%s and --%s to all be off)", flagPushToDeploy, flagPreviewPRs, flagPRTemplate))
 
 	// Runner
 	f.StringVar(&args.runnerPool, flagRunnerPool, "",
