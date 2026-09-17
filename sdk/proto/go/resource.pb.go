@@ -143,7 +143,6 @@ type Result int32
 const (
 	Result_SUCCESS Result = 0
 	Result_FAIL    Result = 1
-	Result_SKIP    Result = 2
 )
 
 // Enum value maps for Result.
@@ -151,12 +150,10 @@ var (
 	Result_name = map[int32]string{
 		0: "SUCCESS",
 		1: "FAIL",
-		2: "SKIP",
 	}
 	Result_value = map[string]int32{
 		"SUCCESS": 0,
 		"FAIL":    1,
-		"SKIP":    2,
 	}
 )
 
@@ -3717,11 +3714,10 @@ const file_pulumi_resource_proto_rawDesc = "" +
 	"$RESOURCE_MONITOR_FEATURE_BYTE_STRING\x10\r\x12.\n" +
 	"*RESOURCE_MONITOR_FEATURE_INVOKE_DEPENDS_ON\x10\x0e\x12*\n" +
 	"&RESOURCE_MONITOR_FEATURE_INVOKE_PARENT\x10\x0f\x12-\n" +
-	")RESOURCE_MONITOR_FEATURE_STATE_MIGRATIONS\x10\x10*)\n" +
+	")RESOURCE_MONITOR_FEATURE_STATE_MIGRATIONS\x10\x10*+\n" +
 	"\x06Result\x12\v\n" +
 	"\aSUCCESS\x10\x00\x12\b\n" +
-	"\x04FAIL\x10\x01\x12\b\n" +
-	"\x04SKIP\x10\x022\xcd\b\n" +
+	"\x04FAIL\x10\x01\"\x04\b\x02\x10\x02*\x04SKIP2\xcd\b\n" +
 	"\x0fResourceMonitor\x12H\n" +
 	"\x11GetDeploymentInfo\x12\x16.google.protobuf.Empty\x1a\x19.pulumirpc.DeploymentInfo\"\x00\x12Z\n" +
 	"\x0fSupportsFeature\x12!.pulumirpc.SupportsFeatureRequest\x1a\".pulumirpc.SupportsFeatureResponse\"\x00\x12O\n" +

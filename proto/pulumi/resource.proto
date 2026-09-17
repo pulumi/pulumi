@@ -275,7 +275,12 @@ message RegisterResourceRequest {
 enum Result {
 	SUCCESS = 0;
 	FAIL = 1;
-	SKIP = 2;
+	// 2 was formerly SKIP. All language SDKs treated SKIP and FAIL identically at the wire level,
+	// so the engine now emits FAIL for both directly-failed and dependency-skipped resources. The
+	// tag is reserved so no future value silently changes behaviour for older SDKs still generated
+	// against the old enum.
+	reserved 2;
+	reserved "SKIP";
 }
 
 // RegisterResourceResponse is returned by the engine after a resource has finished being initialized.  It includes the
