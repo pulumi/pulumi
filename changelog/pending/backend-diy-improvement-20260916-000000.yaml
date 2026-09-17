@@ -1,0 +1,4 @@
+component: backend/diy
+kind: improvement
+body: Avoid reading each stack's checkpoint twice during `pulumi state upgrade`
+time: 2026-09-16T00:00:00.000000000Z

@@ -16,6 +16,7 @@ package diy
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -1256,6 +1257,71 @@ func TestLegacyUpgrade(t *testing.T) {
 	stackFileExists, err = lb.bucket.Exists(ctx, lb.stackPath(ctx, bStackRef))
 	require.NoError(t, err)
 	assert.True(t, stackFileExists)
+}
+
+// countingReadBucket wraps a Bucket and counts how many times ReadAll is
+// called for each key, so tests can assert that a (potentially large)
+// checkpoint file is not read redundantly.
+type countingReadBucket struct {
+	Bucket
+
+	mu    sync.Mutex
+	reads map[string]int
+}
+
+func (b *countingReadBucket) ReadAll(ctx context.Context, key string) ([]byte, error) {
+	b.mu.Lock()
+	if b.reads == nil {
+		b.reads = make(map[string]int)
+	}
+	b.reads[key]++
+	b.mu.Unlock()
+	return b.Bucket.ReadAll(ctx, key)
+}
+
+func (b *countingReadBucket) readCount(key string) int {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.reads[key]
+}
+
+// Upgrading a stack guesses its project name from its checkpoint, and then
+// renames the stack, which also needs the checkpoint. Verify that we reuse
+// the checkpoint loaded while guessing the project name instead of reading
+// the (possibly very large) checkpoint file from the bucket a second time.
+func TestLegacyUpgrade_readsCheckpointOnce(t *testing.T) {
+	t.Setenv("PULUMI_DIY_BACKEND_IGNORE_DEPRECATION_ERROR", "true")
+
+	tmpDir := t.TempDir()
+	ctx := t.Context()
+
+	fb, err := fileblob.OpenBucket(tmpDir, nil)
+	require.NoError(t, err)
+	require.NoError(t,
+		fb.WriteAll(ctx, ".pulumi/stacks/a.json", []byte(`{
+		"latest": {
+			"resources": [
+				{
+					"type": "package:module:resource",
+					"urn": "urn:pulumi:stack::project::package:module:resource::name"
+				}
+			]
+		}
+	}`), nil))
+
+	sink := diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{Color: colors.Never})
+	b, err := New(ctx, sink, "file://"+filepath.ToSlash(tmpDir), nil)
+	require.NoError(t, err)
+	lb, ok := b.(*diyBackend)
+	require.True(t, ok)
+
+	counting := &countingReadBucket{Bucket: lb.bucket}
+	lb.bucket = counting
+
+	require.NoError(t, lb.Upgrade(ctx, nil /* opts */))
+
+	assert.Equal(t, 1, counting.readCount(".pulumi/stacks/a.json"),
+		"checkpoint should only be read once during upgrade")
 }
 
 func TestLegacyUpgrade_partial(t *testing.T) {

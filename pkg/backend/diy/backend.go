@@ -434,17 +434,22 @@ func (b *diyBackend) Upgrade(ctx context.Context, opts *UpgradeOptions) error {
 	// Projects for each stack in `olds` in the same order.
 	// projects[i] is the project name for olds[i].
 	projects := make([]tokens.Name, len(olds))
+	// checkpoints[i] is the checkpoint we already loaded from disk to guess the
+	// project name for olds[i]. We hang onto it so that the upgrade below doesn't
+	// need to read and re-parse the (possibly very large) checkpoint file again.
+	checkpoints := make([]*loadedCheckpoint, len(olds))
 	for idx, old := range olds {
 		pool.Enqueue(func() error {
-			project, err := b.guessProject(ctx, old)
+			project, chk, err := b.guessProject(ctx, old)
 			if err != nil {
 				return fmt.Errorf("guess stack %s project: %w", old.Name(), err)
 			}
 			logging.V(7).Infof("Guessed project %q for stack %s", project, old.Name())
 
 			// No lock necessary;
-			// projects is pre-allocated.
+			// projects and checkpoints are pre-allocated.
 			projects[idx] = project
+			checkpoints[idx] = chk
 			return nil
 		})
 	}
@@ -517,7 +522,7 @@ func (b *diyBackend) Upgrade(ctx context.Context, opts *UpgradeOptions) error {
 				return nil
 			}
 
-			if err := b.upgradeStack(ctx, newStore, project, old); err != nil {
+			if err := b.upgradeStack(ctx, newStore, project, old, checkpoints[idx]); err != nil {
 				b.d.Warningf(diag.Message("", "Skipping stack %q: %v"), old, err)
 			} else {
 				upgraded.Add(1)
@@ -535,38 +540,54 @@ func (b *diyBackend) Upgrade(ctx context.Context, opts *UpgradeOptions) error {
 	return nil
 }
 
+// loadedCheckpoint bundles a checkpoint together with the version and
+// features it was serialized with, as returned by getCheckpoint.
+type loadedCheckpoint struct {
+	checkpoint *apitype.CheckpointV3
+	version    int
+	features   []string
+}
+
 // guessProject inspects the checkpoint for the given stack and attempts to
 // guess the project name for it.
 // Returns an empty string if the project name cannot be determined.
-func (b *diyBackend) guessProject(ctx context.Context, old *diyBackendReference) (tokens.Name, error) {
+//
+// It also returns the checkpoint it loaded, so that callers who go on to
+// upgrade the stack don't need to read the (possibly very large) checkpoint
+// file a second time.
+func (b *diyBackend) guessProject(ctx context.Context, old *diyBackendReference) (tokens.Name, *loadedCheckpoint, error) {
 	contract.Requiref(old.project == "", "old.project", "must be empty")
 
-	chk, _, _, err := b.getCheckpoint(ctx, old)
+	chk, version, features, err := b.getCheckpoint(ctx, old)
 	if err != nil {
-		return "", fmt.Errorf("read checkpoint: %w", err)
+		return "", nil, fmt.Errorf("read checkpoint: %w", err)
 	}
+	lc := &loadedCheckpoint{checkpoint: chk, version: version, features: features}
 
 	// Try and find the project name from _any_ resource URN
 	if chk.Latest != nil {
 		for _, res := range chk.Latest.Resources {
-			return tokens.Name(res.URN.Project()), nil
+			return tokens.Name(res.URN.Project()), lc, nil
 		}
 	}
-	return "", nil
+	return "", lc, nil
 }
 
 // upgradeStack upgrades a single stack to use the provided projectReferenceStore.
+// chk is the checkpoint previously loaded for old by guessProject, reused here to
+// avoid reading and re-parsing the checkpoint file again.
 func (b *diyBackend) upgradeStack(
 	ctx context.Context,
 	newStore *projectReferenceStore,
 	project tokens.Name,
 	old *diyBackendReference,
+	chk *loadedCheckpoint,
 ) error {
 	contract.Requiref(old.project == "", "old.project", "must be empty")
 	contract.Requiref(project != "", "project", "must not be empty")
 
 	new := newStore.newReference(project, old.Name())
-	if err := b.renameStack(ctx, old, new); err != nil {
+	if err := b.renameStack(ctx, old, new, chk); err != nil {
 		return fmt.Errorf("rename to %v: %w", new, err)
 	}
 
@@ -1108,7 +1129,7 @@ func (b *diyBackend) RenameStack(ctx context.Context, stack backend.Stack,
 		return nil, err
 	}
 
-	err = b.renameStack(ctx, diyStackRef, newRef)
+	err = b.renameStack(ctx, diyStackRef, newRef, nil /* preloaded */)
 	if err != nil {
 		return nil, err
 	}
@@ -1116,8 +1137,12 @@ func (b *diyBackend) RenameStack(ctx context.Context, stack backend.Stack,
 	return newRef, nil
 }
 
+// renameStack renames oldRef to newRef. If preloaded is non-nil, it is used as
+// the checkpoint for oldRef instead of reading it from the bucket again; this
+// is used by Upgrade, which already reads the checkpoint once to guess the
+// stack's project name.
 func (b *diyBackend) renameStack(ctx context.Context, oldRef *diyBackendReference,
-	newRef *diyBackendReference,
+	newRef *diyBackendReference, preloaded *loadedCheckpoint,
 ) error {
 	err := b.Lock(ctx, oldRef)
 	if err != nil {
@@ -1135,9 +1160,16 @@ func (b *diyBackend) renameStack(ctx context.Context, oldRef *diyBackendReferenc
 	}
 
 	// Get the current state from the stack to be renamed.
-	chk, version, features, err := b.getCheckpoint(ctx, oldRef)
-	if err != nil {
-		return fmt.Errorf("failed to load checkpoint: %w", err)
+	var chk *apitype.CheckpointV3
+	var version int
+	var features []string
+	if preloaded != nil {
+		chk, version, features = preloaded.checkpoint, preloaded.version, preloaded.features
+	} else {
+		chk, version, features, err = b.getCheckpoint(ctx, oldRef)
+		if err != nil {
+			return fmt.Errorf("failed to load checkpoint: %w", err)
+		}
 	}
 
 	// If we have a checkpoint, we need to rename the URNs inside it to use the new stack name.
