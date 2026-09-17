@@ -28,6 +28,9 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"slices"
+	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -3011,11 +3014,109 @@ func TestRunEngineActionPropagatesJournalManagerError(t *testing.T) {
 	}
 }
 
+func TestRunEngineActionCoherenceWindow(t *testing.T) {
+	t.Parallel()
+
+	stackURN := resource.NewURN("stack", "project", "", resource.RootStackType, "project-stack")
+	provider := (&secrets.MockProvider{}).Add(b64.Type, func(json.RawMessage) (secrets.Manager, error) {
+		return b64.NewBase64SecretsManager(), nil
+	})
+
+	cases := []struct {
+		name            string
+		window          string
+		wantReadingID   string
+		wantSentOutputs bool
+	}{
+		{
+			name:            "in a window",
+			window:          "d333a711-4aa0-402f-be6d-72af9665fc37",
+			wantReadingID:   "update-id",
+			wantSentOutputs: true,
+		},
+		{
+			name: "outside a window",
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			snap := &deploy.Snapshot{
+				SecretsManager: b64.NewBase64SecretsManager(),
+				Resources: []*pkgresource.State{{
+					Type:    resource.RootStackType,
+					URN:     stackURN,
+					Outputs: resource.PropertyMap{"foo": resource.NewProperty("bar")},
+				}},
+			}
+			fx := newRunEngineActionFixture(t, snap, provider, b64.NewBase64SecretsManager())
+			fx.op.CoherenceWindow = tc.window
+			fx.op.Scopes = backend.CancellationScopes
+			fx.update.UpdateKind = apitype.DestroyUpdate
+
+			events := make(chan engine.Event)
+			readingIDs := make(chan string, 1)
+			go func() {
+				defer close(readingIDs)
+				var seen string
+				for e := range events {
+					if id := fx.backend.readingUpdateID.Load(); id != nil && e.Type == engine.ResourceOutputsEvent {
+						seen = *id
+					}
+				}
+				readingIDs <- seen
+			}()
+
+			_, _, err := fx.backend.runEngineAction(
+				t.Context(), apitype.DestroyUpdate, fx.stackRef, fx.op, fx.update,
+				"lease-token", "", events, true /* dryRun */, 0,
+			)
+			close(events)
+			require.NoError(t, err)
+			assert.Equal(t, tc.wantReadingID, <-readingIDs)
+			assert.Nil(t, fx.backend.readingUpdateID.Load())
+
+			completions := fx.completions()
+			require.Len(t, completions, 1)
+			assert.Equal(t, apitype.UpdateStatusSucceeded, completions[0].Status)
+			if tc.wantSentOutputs {
+				assert.Empty(t, completions[0].Outputs)
+				require.NotNil(t, completions[0].SecretsProviders)
+				assert.Equal(t, b64.Type, completions[0].SecretsProviders.Type)
+			} else {
+				assert.Nil(t, completions[0].Outputs)
+				assert.Nil(t, completions[0].SecretsProviders)
+			}
+		})
+	}
+}
+
+func TestCreateAndStartUpdateRequiresCoherenceWindowCapability(t *testing.T) {
+	t.Parallel()
+
+	for _, caps := range []apitype.Capabilities{
+		{},
+		{StackOutputs: true},
+		{CoherenceWindows: true},
+	} {
+		fx := newRunEngineActionFixture(t, &deploy.Snapshot{}, nil, b64.NewBase64SecretsManager())
+		fx.backend.capabilities = promise.Run(func() (apitype.Capabilities, error) { return caps, nil })
+		fx.op.CoherenceWindow = "d333a711-4aa0-402f-be6d-72af9665fc37"
+		fx.op.M = &backend.UpdateMetadata{}
+
+		stk := &cloudStack{ref: fx.stackRef, b: fx.backend}
+		_, _, err := fx.backend.createAndStartUpdate(t.Context(), apitype.PreviewUpdate, stk, &fx.op, true)
+		assert.ErrorContains(t, err, "does not support coherence windows")
+	}
+}
+
 type runEngineActionFixture struct {
-	backend  *cloudBackend
-	stackRef cloudBackendReference
-	op       backend.UpdateOperation
-	update   client.UpdateIdentifier
+	backend     *cloudBackend
+	stackRef    cloudBackendReference
+	op          backend.UpdateOperation
+	update      client.UpdateIdentifier
+	completions func() []apitype.CompleteUpdateRequest
 }
 
 func newRunEngineActionFixture(
@@ -3032,7 +3133,17 @@ func newRunEngineActionFixture(
 	deployment, err := stack.SerializeUntypedDeployment(t.Context(), snap, &stack.SerializeOptions{ShowSecrets: true})
 	require.NoError(t, err)
 
+	var completionsMu sync.Mutex
+	var completions []apitype.CompleteUpdateRequest
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.HasSuffix(r.URL.Path, "/update-id/complete") {
+			var req apitype.CompleteUpdateRequest
+			require.NoError(t, json.NewDecoder(r.Body).Decode(&req))
+			completionsMu.Lock()
+			defer completionsMu.Unlock()
+			completions = append(completions, req)
+			return
+		}
 		switch r.URL.Path {
 		case "/api/stacks/owner/project/stack/export":
 			require.NoError(t, json.NewEncoder(w).Encode(apitype.ExportStackResponse(*deployment)))
@@ -3086,7 +3197,17 @@ func newRunEngineActionFixture(
 		UpdateID:        "update-id",
 	}
 
-	return runEngineActionFixture{backend: b, stackRef: stackRef, op: op, update: update}
+	return runEngineActionFixture{
+		backend:  b,
+		stackRef: stackRef,
+		op:       op,
+		update:   update,
+		completions: func() []apitype.CompleteUpdateRequest {
+			completionsMu.Lock()
+			defer completionsMu.Unlock()
+			return slices.Clone(completions)
+		},
+	}
 }
 
 type failingBatchingSecretsManager struct{ err error }
@@ -3503,5 +3624,24 @@ func TestGetSnapshotStackOutputs(t *testing.T) {
 		outputs, err := b.getSnapshotStackOutputs(t.Context(), secretsProvider, ref)
 		require.NoError(t, err)
 		assert.Equal(t, wantOutputs, outputs)
+	})
+
+	t.Run("reads during an update name the reading update", func(t *testing.T) {
+		t.Parallel()
+		var gotQuery string
+		b, ref := newBackend(t, apitype.Capabilities{StackOutputs: true}, func(w http.ResponseWriter, r *http.Request) {
+			gotQuery = r.URL.RawQuery
+			require.NoError(t, json.NewEncoder(w).Encode(apitype.StackOutputsResponse{
+				Outputs:          serializedOutputs,
+				SecretsProviders: &apitype.SecretsProvidersV1{Type: b64.Type},
+			}))
+		})
+		updateID := "d333a711-4aa0-402f-be6d-72af9665fc37"
+		b.readingUpdateID.Store(&updateID)
+
+		outputs, err := b.getSnapshotStackOutputs(t.Context(), secretsProvider, ref)
+		require.NoError(t, err)
+		assert.Equal(t, wantOutputs, outputs)
+		assert.Equal(t, "readingUpdateID="+updateID, gotQuery)
 	})
 }

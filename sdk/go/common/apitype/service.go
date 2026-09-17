@@ -62,6 +62,9 @@ const (
 	// Indicates that the service supports reading a stack's outputs directly, without
 	// exporting the whole deployment.
 	StackOutputs APICapability = "stack-outputs"
+
+	// Indicates that the service supports stack update coherence windows.
+	CoherenceWindows APICapability = "coherence-windows"
 )
 
 type DeltaCheckpointUploadsConfigV2 struct {
@@ -164,6 +167,9 @@ type Capabilities struct {
 
 	// Indicates whether the service supports reading a stack's outputs directly.
 	StackOutputs bool
+
+	// Indicates whether the service supports stack update coherence windows.
+	CoherenceWindows bool
 }
 
 // Parse decodes the CapabilitiesResponse into a Capabilities struct for ease of use.
@@ -233,6 +239,10 @@ func (r CapabilitiesResponse) Parse() (Capabilities, error) {
 		case StackOutputs:
 			if entry.Version == 1 {
 				parsed.StackOutputs = true
+			}
+		case CoherenceWindows:
+			if entry.Version == 1 {
+				parsed.CoherenceWindows = true
 			}
 		default:
 			continue

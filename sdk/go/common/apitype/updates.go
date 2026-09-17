@@ -40,6 +40,8 @@ type UpdateProgramRequest struct {
 	Config map[string]ConfigValue `json:"config"`
 
 	Metadata UpdateMetadata `json:"metadata"`
+
+	CoherenceWindow string `json:"coherenceWindow,omitempty"`
 }
 
 // UpdateOptions is the set of operations for configuring the output of an update.
@@ -249,6 +251,9 @@ const (
 // CompleteUpdateRequest defines the body of a request to the update completion endpoint of the service API.
 type CompleteUpdateRequest struct {
 	Status UpdateStatus `json:"status"`
+
+	Outputs          map[string]any      `json:"outputs,omitempty"`
+	SecretsProviders *SecretsProvidersV1 `json:"secretsProviders,omitempty"`
 }
 
 // PatchUpdateCheckpointRequest defines the body of a request to the patch update checkpoint endpoint of the service

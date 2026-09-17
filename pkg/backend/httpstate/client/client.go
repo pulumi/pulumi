@@ -1474,14 +1474,18 @@ func (pc *Client) ExportStackDeployment(
 
 // GetStackOutputs reads the outputs of the latest deployment of the indicated stack.
 func (pc *Client) GetStackOutputs(
-	ctx context.Context, stack StackIdentifier,
+	ctx context.Context, stack StackIdentifier, readingUpdateID string,
 ) (apitype.StackOutputsResponse, error) {
 	tracer := otel.Tracer("pulumi-cli")
 	ctx, span := cmdutil.StartSpan(ctx, tracer, "GetStackOutputs")
 	defer span.End()
 
+	queryObj := struct {
+		ReadingUpdateID string `url:"readingUpdateID,omitempty"`
+	}{ReadingUpdateID: readingUpdateID}
+
 	var resp apitype.StackOutputsResponse
-	if err := pc.restCall(ctx, "GET", getStackPath(stack, "outputs"), nil, nil, &resp); err != nil {
+	if err := pc.restCall(ctx, "GET", getStackPath(stack, "outputs"), queryObj, nil, &resp); err != nil {
 		return apitype.StackOutputsResponse{}, err
 	}
 	return resp, nil
@@ -1516,7 +1520,7 @@ type CreateUpdateDetails struct {
 func (pc *Client) CreateUpdate(
 	ctx context.Context, kind apitype.UpdateKind, stack StackIdentifier, proj *workspace.Project,
 	cfg config.Map, m apitype.UpdateMetadata, opts engine.UpdateOptions,
-	dryRun bool,
+	dryRun bool, coherenceWindow string,
 ) (UpdateIdentifier, CreateUpdateDetails, error) {
 	// First create the update program request.
 	wireConfig := make(map[string]apitype.ConfigValue)
@@ -1551,7 +1555,8 @@ func (pc *Client) CreateUpdate(
 			ShowReplacementSteps: false, // This is a legacy option now, the engine will always emit this information
 			ShowSames:            false, // This is a legacy option now, the engine will always emit this information
 		},
-		Metadata: m,
+		Metadata:        m,
+		CoherenceWindow: coherenceWindow,
 	}
 
 	// Create the initial update object.
@@ -1629,7 +1634,7 @@ func (pc *Client) StartUpdate(ctx context.Context, update UpdateIdentifier,
 func (pc *Client) BeginUpdate(
 	ctx context.Context, kind apitype.UpdateKind, stack StackIdentifier, proj *workspace.Project,
 	cfg config.Map, m apitype.UpdateMetadata, opts engine.UpdateOptions,
-	tags map[apitype.StackTagName]string, dryRun bool,
+	tags map[apitype.StackTagName]string, dryRun bool, coherenceWindow string,
 ) (*apitype.BeginUpdateResponse, error) {
 	if err := validation.ValidateStackTags(tags); err != nil {
 		return nil, fmt.Errorf("validating stack properties: %w", err)
@@ -1664,7 +1669,8 @@ func (pc *Client) BeginUpdate(
 			DryRun:               dryRun,
 			Parallel:             opts.Parallel,
 		},
-		Metadata: m,
+		Metadata:        m,
+		CoherenceWindow: coherenceWindow,
 	}
 
 	req := apitype.BeginUpdateRequest{
@@ -2466,10 +2472,14 @@ func (pc *Client) CancelUpdate(ctx context.Context, update UpdateIdentifier) err
 
 // CompleteUpdate completes the indicated update with the given status.
 func (pc *Client) CompleteUpdate(ctx context.Context, update UpdateIdentifier, status apitype.UpdateStatus,
-	token UpdateTokenSource,
+	token UpdateTokenSource, outputs *apitype.StackOutputsResponse,
 ) error {
 	req := apitype.CompleteUpdateRequest{
 		Status: status,
+	}
+	if outputs != nil {
+		req.Outputs = outputs.Outputs
+		req.SecretsProviders = outputs.SecretsProviders
 	}
 
 	// It is safe to retry this PATCH operation, because it is logically idempotent.

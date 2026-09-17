@@ -58,6 +58,7 @@ func NewDestroyCmd() *cobra.Command {
 	var stackName string
 
 	var message string
+	var coherenceWindow string
 	var execKind string
 	var execAgent string
 	var configArray []string
@@ -183,7 +184,7 @@ func NewDestroyCmd() *cobra.Command {
 				err = deployment.ValidateUnsupportedRemoteFlags(false, nil, false, client, jsonDisplay, nil,
 					nil, refresh, showConfig, false, showReplacementSteps, showSames, false,
 					suppressOutputs, "default", targets, nil, nil, nil,
-					targetDependents, "", configFile, runProgram)
+					targetDependents, "", configFile, runProgram, coherenceWindow)
 				if err != nil {
 					return err
 				}
@@ -371,6 +372,7 @@ func NewDestroyCmd() *cobra.Command {
 				SecretsManager:     sm,
 				SecretsProvider:    secrets.DefaultProvider,
 				Scopes:             backend.CancellationScopes,
+				CoherenceWindow:    coherenceWindow,
 			})
 
 			out := cmd.OutOrStdout()
@@ -554,6 +556,9 @@ func NewDestroyCmd() *cobra.Command {
 	}
 
 	// internal flags
+	cmd.PersistentFlags().StringVar(&coherenceWindow, "coherence-window", "", "")
+	// ignore err, only happens if flag does not exist
+	_ = cmd.PersistentFlags().MarkHidden("coherence-window")
 	cmd.PersistentFlags().StringVar(&execKind, "exec-kind", "", "")
 	// ignore err, only happens if flag does not exist
 	_ = cmd.PersistentFlags().MarkHidden("exec-kind")
