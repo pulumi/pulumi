@@ -1,0 +1,4 @@
+component: sdk/python
+kind: fix
+body: Only consider the current project's dependencies when discovering plugins in a uv workspace
+time: 2026-09-17T22:15:00Z

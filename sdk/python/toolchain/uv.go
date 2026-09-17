@@ -30,7 +30,6 @@ import (
 
 	"golang.org/x/sync/errgroup"
 
-	"github.com/BurntSushi/toml"
 	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -308,39 +307,22 @@ func (u *uv) ListPackages(_ context.Context, transitive bool) ([]plugin.Dependen
 	if err != nil {
 		return nil, fmt.Errorf("could not read %s: %w", lockFilePath, err)
 	}
-	virtual, err := uvVirtualPackages(content)
+	lock, err := parseUvLock(content)
 	if err != nil {
-		return nil, fmt.Errorf("could not identify virtual packages in %s: %w", lockFilePath, err)
+		return nil, fmt.Errorf("could not parse %s: %w", lockFilePath, err)
 	}
-	return listPackagesFromLockFile(lockFilePath, transitive, virtual)
-}
 
-// uvLockFile is a minimal representation of uv.lock for identifying virtual packages.
-type uvLockFile struct {
-	Package []uvLockPackage `toml:"package"`
-}
-
-type uvLockPackage struct {
-	Name   string `toml:"name"`
-	Source struct {
-		Virtual string `toml:"virtual"`
-	} `toml:"source"`
-}
-
-// uvVirtualPackages returns the names of packages that are virtual (i.e. the project root or workspace members) in a
-// uv.lock file. Virtual packages have source = { virtual = "..." } and are not real installable packages.
-func uvVirtualPackages(content []byte) (map[string]bool, error) {
-	var lock uvLockFile
-	if _, err := toml.Decode(string(content), &lock); err != nil {
-		return nil, err
+	// In a uv workspace, uv.lock holds the union of every member's dependencies, but `uv sync`
+	// only installs the ones reachable from the current project. Walk the lock file's dependency
+	// graph from the current project so that we report the packages that are actually installed.
+	// See https://github.com/pulumi/pulumi/issues/24014.
+	if projectDir, project := lock.findMember(lockDir, u.root); project != nil {
+		return lock.dependenciesOf(project, uvDefaultSelection(projectDir), transitive), nil
 	}
-	virtual := make(map[string]bool)
-	for _, pkg := range lock.Package {
-		if pkg.Source.Virtual != "" {
-			virtual[normalizePythonPackageName(pkg.Name)] = true
-		}
-	}
-	return virtual, nil
+
+	// We could not find the current project in the lock file, fall back to reporting every
+	// package it contains.
+	return listPackagesFromLockFile(lockFilePath, transitive, lock.virtualPackages())
 }
 
 func (u *uv) Command(ctx context.Context, args ...string) (*exec.Cmd, error) {
