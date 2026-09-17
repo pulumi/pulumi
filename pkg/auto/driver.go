@@ -464,6 +464,12 @@ func (s *Stack) cloudOperation(
 	if err := applySecretConfig(ctx, cfg.Config, s.opts.SecretConfig, sm.Encrypter()); err != nil {
 		return backend.UpdateOperation{}, err
 	}
+	// GetStackConfiguration hands back a panicking decrypter when the on-disk config had no
+	// secure values; the secret config applied above changes that, so the engine needs the
+	// real one.
+	if len(s.opts.SecretConfig) > 0 {
+		cfg.Decrypter = sm.Decrypter()
+	}
 	cfg.EnvironmentVariables = s.opts.EnvironmentVariables
 	eng := s.opts.Engine
 	if preview {
