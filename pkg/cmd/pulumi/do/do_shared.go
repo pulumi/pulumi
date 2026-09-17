@@ -44,7 +44,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/schemainfo"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
-	"github.com/pulumi/pulumi/pkg/v3/codegen"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
 	hclsyntax "github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
@@ -209,9 +208,6 @@ func filterOutput(
 			return resource.NewProperty(filtered)
 		}
 	case *schema.UnionType:
-		if elt := discriminatedUnionVariant(prop, t); elt != nil {
-			return filterOutput(prop, elt)
-		}
 		if elt := wireDiscriminatedVariant(prop, t); elt != nil {
 			return filterOutput(prop, elt)
 		}
@@ -226,61 +222,15 @@ func filterOutput(
 	return prop
 }
 
-// discriminatedUnionVariant uses a union's discriminator property, if any, to select the element type that matches
-// prop. It returns nil if the union has no discriminator, prop is not an object, the discriminator property is
-// missing, or no element type's token matches the discriminator value.
-func discriminatedUnionVariant(prop resource.PropertyValue, union *schema.UnionType) schema.Type {
-	if union.Discriminator == "" || !prop.IsObject() {
-		return nil
-	}
-
-	discValue, ok := prop.ObjectValue()[resource.PropertyKey(union.Discriminator)]
-	if !ok || !discValue.IsString() {
-		return nil
-	}
-
-	typeToken := discValue.StringValue()
-	if mapped, ok := union.Mapping[typeToken]; ok {
-		typeToken = mapped
-	}
-	wantName, err := tokens.ParseTypeToken(typeToken)
-	if err != nil {
-		return nil
-	}
-
-	for _, elt := range union.ElementTypes {
-		unwrapped := elt
-		if opt, ok := unwrapped.(*schema.OptionalType); ok {
-			unwrapped = opt.ElementType
-		}
-		obj, ok := unwrapped.(*schema.ObjectType)
-		if !ok {
-			continue
-		}
-		eltName, err := tokens.ParseTypeToken(obj.Token)
-		if err != nil {
-			continue
-		}
-		if eltName.Name() == wantName.Name() {
-			return elt
-		}
-	}
-	return nil
-}
-
 // wireDiscriminatedVariant resolves prop to the single element type of union that its full wire shape matches,
-// recursing into required properties rather than just checking top-level object/array/map kind. It only trusts the
-// result when codegen.IsWireDiscriminatableUnionType reports the union's declared members can never share a wire
-// value; otherwise, as when zero or more than one member matches an off-schema value, it returns nil and leaves the
-// caller to fall back to unionVariantMatches's best-effort, non-recursive check.
+// recursing into required properties rather than just checking top-level object/array/map kind, and, when union
+// declares a discriminator, also requiring prop's discriminator value to agree with the candidate's token. It only
+// trusts the result when exactly one element type matches; zero or multiple matches leave the caller to fall back
+// to unionVariantMatches's best-effort, non-recursive check.
 func wireDiscriminatedVariant(prop resource.PropertyValue, union *schema.UnionType) schema.Type {
-	if !codegen.IsWireDiscriminatableUnionType(union) {
-		return nil
-	}
-
 	var match schema.Type
 	for _, elt := range union.ElementTypes {
-		if !wireMatches(prop, elt) {
+		if !wireMatches(prop, elt) || !discriminatorAgrees(prop, union, elt) {
 			continue
 		}
 		if match != nil {
@@ -289,6 +239,44 @@ func wireDiscriminatedVariant(prop resource.PropertyValue, union *schema.UnionTy
 		match = elt
 	}
 	return match
+}
+
+// discriminatorAgrees reports whether elt is consistent with union's discriminator property on prop. Only a
+// positive mismatch rules out an otherwise wire-matching candidate: a union with no discriminator, a prop that
+// isn't an object, a missing or non-string discriminator value, or an elt that isn't an ObjectType all count as
+// agreement, since none of them contradict elt being the right choice.
+func discriminatorAgrees(prop resource.PropertyValue, union *schema.UnionType, elt schema.Type) bool {
+	if union.Discriminator == "" || !prop.IsObject() {
+		return true
+	}
+
+	discValue, ok := prop.ObjectValue()[resource.PropertyKey(union.Discriminator)]
+	if !ok || !discValue.IsString() {
+		return true
+	}
+
+	typeToken := discValue.StringValue()
+	if mapped, ok := union.Mapping[typeToken]; ok {
+		typeToken = mapped
+	}
+	wantName, err := tokens.ParseTypeToken(typeToken)
+	if err != nil {
+		return true
+	}
+
+	unwrapped := elt
+	if opt, ok := unwrapped.(*schema.OptionalType); ok {
+		unwrapped = opt.ElementType
+	}
+	obj, ok := unwrapped.(*schema.ObjectType)
+	if !ok {
+		return true
+	}
+	eltName, err := tokens.ParseTypeToken(obj.Token)
+	if err != nil {
+		return true
+	}
+	return eltName.Name() == wantName.Name()
 }
 
 // wireMatches reports whether prop's wire shape can belong to typ under the closed-object reading: an object value
