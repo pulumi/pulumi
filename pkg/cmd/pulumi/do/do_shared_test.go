@@ -18,7 +18,7 @@ import (
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -31,12 +31,12 @@ func TestWireMatchesResourceType(t *testing.T) {
 
 	resourceType := &schema.ResourceType{Token: "azure:index:Widget"}
 
-	ref := resource.NewProperty(resource.ResourceReference{URN: "urn:pulumi:stack::project::azure:index:Widget::name"})
+	ref := property.New(property.ResourceReference{URN: "urn:pulumi:stack::project::azure:index:Widget::name"})
 	assert.True(t, wireMatches(ref, resourceType))
 
-	obj := resource.NewProperty(resource.PropertyMap{
-		"name": resource.NewProperty("not-a-resource-reference"),
-	})
+	obj := property.New(property.NewMap(map[string]property.Value{
+		"name": property.New("not-a-resource-reference"),
+	}))
 	assert.False(t, wireMatches(obj, resourceType))
 }
 
@@ -47,7 +47,7 @@ func TestWireMatchesResourceType(t *testing.T) {
 func TestConstValueMatchesIntegerConstant(t *testing.T) {
 	t.Parallel()
 
-	prop := resource.NewProperty(2.0)
+	prop := property.New(2.0)
 	assert.True(t, constValueMatches(prop, int32(2)))
 	assert.True(t, constValueMatches(prop, int64(2)))
 	assert.True(t, constValueMatches(prop, 2))
