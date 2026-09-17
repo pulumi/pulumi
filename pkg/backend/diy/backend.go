@@ -437,6 +437,13 @@ func (b *diyBackend) Upgrade(ctx context.Context, opts *UpgradeOptions) error {
 	// checkpoints[i] is the checkpoint we already loaded from disk to guess the
 	// project name for olds[i]. We hang onto it so that the upgrade below doesn't
 	// need to read and re-parse the (possibly very large) checkpoint file again.
+	//
+	// This means every legacy stack's checkpoint is held in memory for the
+	// duration of Upgrade, not just the one currently being processed. We're
+	// accepting that tradeoff on the assumption that machines running `pulumi
+	// state upgrade` have enough memory to hold all of a backend's legacy
+	// checkpoints at once; if that turns out not to hold for backends with many
+	// very large legacy stacks, this will need to be revisited.
 	checkpoints := make([]*loadedCheckpoint, len(olds))
 	for idx, old := range olds {
 		pool.Enqueue(func() error {
