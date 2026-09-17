@@ -19,9 +19,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -176,6 +178,51 @@ func convertAnalyzerResource(r plugin.AnalyzerResource) AnalyzerResource {
 		Options:    convertAnalyzerResourceOptions(r.Options),
 		Provider:   convertAnalyzerProvider(r.Provider),
 		Parent:     string(r.Options.Parent),
+	}
+}
+
+// callPolicy runs a policy function, recovering any panic it raises so that a
+// misbehaving policy cannot take down the policy pack process. A panic produced by
+// reading a computed property value is converted to an *UnknownValueError, which the
+// server reports as an advisory diagnostic instead of failing the analysis.
+func callPolicy(fn func() error) (err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			switch v := r.(type) {
+			case error:
+				err = unknownValueErrorFromPanic(v)
+			default:
+				err = fmt.Errorf("policy function panicked: %v", v)
+			}
+		}
+	}()
+	return fn()
+}
+
+// unknownValueErrorFromPanic converts a panic raised by reading a computed property
+// value into an *UnknownValueError, and passes other errors through unchanged.
+//
+// property.Value accessors convert the underlying value with a bare type assertion, so
+// reading a computed value panics with:
+//
+//	interface conversion: interface {} is property.computed, not string
+//
+// where the part after "not " is the type the policy expected to read.
+func unknownValueErrorFromPanic(err error) error {
+	msg := err.Error()
+	i := strings.Index(msg, "interface conversion: interface {} is property.computed")
+	if i < 0 {
+		return err
+	}
+
+	expectedType := ""
+	if j := strings.LastIndex(msg, "not "); j >= 0 {
+		expectedType = msg[j+len("not "):]
+	}
+
+	return &UnknownValueError{
+		Type:  expectedType,
+		Value: property.New(property.Computed),
 	}
 }
 
@@ -406,8 +453,27 @@ func (srv *analyzerServer) Analyze(
 					}),
 				}
 
-				err = p.Validate(ctx, args)
+				err = callPolicy(func() error {
+					return p.Validate(ctx, args)
+				})
 				if err != nil {
+					var unknownValueErr *UnknownValueError
+					if errors.As(err, &unknownValueErr) {
+						// Mirror the Node.js and Python SDKs: report an advisory diagnostic and
+						// let the preview continue.
+						ds = append(ds, &pulumirpc.AnalyzeDiagnostic{
+							PolicyName:        p.Name(),
+							PolicyPackName:    srv.policyPack.Name(),
+							PolicyPackVersion: srv.policyPack.Version().String(),
+							Description:       p.Description(),
+							Message: fmt.Sprintf(
+								"can't run policy '%s' from policy pack '%s@v%s' during preview: %v",
+								p.Name(), srv.policyPack.Name(), srv.policyPack.Version().String(), err),
+							EnforcementLevel: pulumirpc.EnforcementLevel(EnforcementLevelAdvisory),
+							Urn:              req.GetUrn(),
+						})
+						continue
+					}
 					return nil, fmt.Errorf("failed to validate resource %q with policy %q: %w", req.GetUrn(), p.Name(), err)
 				}
 			}
@@ -465,8 +531,28 @@ func (srv *analyzerServer) Remediate(
 					Config: config.Properties,
 				}
 
-				newProps, err := p.Remediate(ctx, args)
+				var newProps *property.Map
+				err = callPolicy(func() error {
+					var err error
+					newProps, err = p.Remediate(ctx, args)
+					return err
+				})
 				if err != nil {
+					var unknownValueErr *UnknownValueError
+					if errors.As(err, &unknownValueErr) {
+						// Mirror the Node.js and Python SDKs: report the failure as a
+						// diagnostic on the remediation instead of failing the whole call.
+						rs = append(rs, &pulumirpc.Remediation{
+							PolicyName:        p.Name(),
+							Description:       p.Description(),
+							PolicyPackName:    srv.policyPack.Name(),
+							PolicyPackVersion: srv.policyPack.Version().String(),
+							Diagnostic: fmt.Sprintf(
+								"can't run remediation '%s' from policy pack '%s@v%s' during preview: %v",
+								p.Name(), srv.policyPack.Name(), srv.policyPack.Version().String(), err),
+						})
+						continue
+					}
 					return nil, fmt.Errorf("failed to remediate resource %q with policy %q: %w", req.GetUrn(), p.Name(), err)
 				}
 
@@ -578,7 +664,26 @@ func (srv *analyzerServer) AnalyzeStack(ctx context.Context, req *pulumirpc.Anal
 			Resources: resources,
 		}
 
-		if err := p.Validate(ctx, args); err != nil {
+		if err := callPolicy(func() error {
+			return p.Validate(ctx, args)
+		}); err != nil {
+			var unknownValueErr *UnknownValueError
+			if errors.As(err, &unknownValueErr) {
+				// Mirror the Node.js and Python SDKs: report an advisory diagnostic and
+				// let the preview continue.
+				ds = append(ds, &pulumirpc.AnalyzeDiagnostic{
+					PolicyName:        p.Name(),
+					PolicyPackName:    srv.policyPack.Name(),
+					PolicyPackVersion: srv.policyPack.Version().String(),
+					Description:       p.Description(),
+					Message: fmt.Sprintf(
+						"can't run policy '%s' from policy pack '%s@v%s' during preview: %v",
+						p.Name(), srv.policyPack.Name(), srv.policyPack.Version().String(), err),
+					EnforcementLevel: pulumirpc.EnforcementLevel(EnforcementLevelAdvisory),
+					Urn:              "",
+				})
+				continue
+			}
 			return nil, fmt.Errorf("failed to validate stack with policy %q: %w", p.Name(), err)
 		}
 	}
