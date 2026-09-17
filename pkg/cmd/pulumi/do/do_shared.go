@@ -44,6 +44,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/schemainfo"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
+	"github.com/pulumi/pulumi/pkg/v3/codegen"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
 	hclsyntax "github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
@@ -211,6 +212,9 @@ func filterOutput(
 		if elt := discriminatedUnionVariant(prop, t); elt != nil {
 			return filterOutput(prop, elt)
 		}
+		if elt := wireDiscriminatedVariant(prop, t); elt != nil {
+			return filterOutput(prop, elt)
+		}
 		// Pick the first variant whose shape matches the runtime value.
 		for _, elt := range t.ElementTypes {
 			if unionVariantMatches(prop, elt) {
@@ -262,6 +266,178 @@ func discriminatedUnionVariant(prop resource.PropertyValue, union *schema.UnionT
 		}
 	}
 	return nil
+}
+
+// wireDiscriminatedVariant resolves prop to the single element type of union that its full wire shape matches,
+// recursing into required properties rather than just checking top-level object/array/map kind. It only trusts the
+// result when codegen.IsWireDiscriminatableUnionType reports the union's declared members can never share a wire
+// value; otherwise, as when zero or more than one member matches an off-schema value, it returns nil and leaves the
+// caller to fall back to unionVariantMatches's best-effort, non-recursive check.
+func wireDiscriminatedVariant(prop resource.PropertyValue, union *schema.UnionType) schema.Type {
+	if !codegen.IsWireDiscriminatableUnionType(union) {
+		return nil
+	}
+
+	var match schema.Type
+	for _, elt := range union.ElementTypes {
+		if !wireMatches(prop, elt) {
+			continue
+		}
+		if match != nil {
+			return nil
+		}
+		match = elt
+	}
+	return match
+}
+
+// wireMatches reports whether prop's wire shape can belong to typ under the closed-object reading: an object value
+// carries only the properties its type declares, every required property must be present, and each present property
+// must itself match its declared type. It mirrors the reading codegen.IsWireDiscriminatableUnionType assumes when
+// declaring a union safe to resolve this way, so it never needs to guard against recursion the way that type-level
+// check does: a concrete value is finite.
+func wireMatches(prop resource.PropertyValue, typ schema.Type) bool {
+	if prop.IsSecret() {
+		return wireMatches(prop.SecretValue().Element, typ)
+	}
+	if prop.IsOutput() {
+		out := prop.OutputValue()
+		if !out.Known {
+			return true
+		}
+		return wireMatches(out.Element, typ)
+	}
+	if prop.IsComputed() {
+		return true
+	}
+
+	switch t := typ.(type) {
+	case *schema.OptionalType:
+		if prop.IsNull() {
+			return true
+		}
+		return wireMatches(prop, t.ElementType)
+	case *schema.InputType:
+		return wireMatches(prop, t.ElementType)
+	case *schema.TokenType:
+		if t.UnderlyingType == nil {
+			return true // Opaque: assume it admits any value.
+		}
+		return wireMatches(prop, t.UnderlyingType)
+	case *schema.UnionType:
+		for _, e := range t.ElementTypes {
+			if wireMatches(prop, e) {
+				return true
+			}
+		}
+		return false
+	case *schema.EnumType:
+		if len(t.Elements) == 0 {
+			return wireMatches(prop, t.ElementType)
+		}
+		for _, el := range t.Elements {
+			if constValueMatches(prop, el.Value) {
+				return true
+			}
+		}
+		return false
+	case *schema.ArrayType:
+		if !prop.IsArray() {
+			return false
+		}
+		for _, el := range prop.ArrayValue() {
+			if !wireMatches(el, t.ElementType) {
+				return false
+			}
+		}
+		return true
+	case *schema.MapType:
+		if !prop.IsObject() {
+			return false
+		}
+		for _, v := range prop.ObjectValue() {
+			if !wireMatches(v, t.ElementType) {
+				return false
+			}
+		}
+		return true
+	case *schema.ObjectType:
+		return objectWireMatches(prop, t)
+	case *schema.ResourceType:
+		return prop.IsResourceReference()
+	}
+
+	switch typ {
+	case schema.BoolType:
+		return prop.IsBool()
+	case schema.IntType, schema.NumberType:
+		return prop.IsNumber()
+	case schema.StringType:
+		return prop.IsString()
+	case schema.AssetType:
+		return prop.IsAsset()
+	case schema.ArchiveType:
+		return prop.IsArchive()
+	}
+	// Any, JSON, and other annotations we don't recognize can't rule anything out.
+	return true
+}
+
+// objectWireMatches reports whether prop can be an obj: every property obj requires is present and non-null, and
+// every property prop does supply that obj also declares matches its declared type, narrowed to its constant value
+// if it has one. Unlike codegen.IsWireDiscriminatableUnionType's type-level closed-object reading, a key of prop
+// that obj doesn't declare doesn't disqualify the match — filterOutput's whole job is stripping such provider-added
+// keys, so real payloads routinely carry them. This can't make wireDiscriminatedVariant pick the wrong variant: it
+// only trusts a match when exactly one candidate matches, so a value loose enough to satisfy two variants' declared
+// properties is left ambiguous and falls back to the caller's best-effort check instead of being mismatched.
+func objectWireMatches(prop resource.PropertyValue, obj *schema.ObjectType) bool {
+	if !prop.IsObject() {
+		return false
+	}
+	values := prop.ObjectValue()
+	for _, p := range obj.Properties {
+		v, ok := values[resource.PropertyKey(p.Name)]
+		if !ok || v.IsNull() {
+			if p.IsRequired() {
+				return false
+			}
+			continue
+		}
+		if p.ConstValue != nil {
+			if !constValueMatches(v, p.ConstValue) {
+				return false
+			}
+			continue
+		}
+		if !wireMatches(v, p.Type) {
+			return false
+		}
+	}
+	return true
+}
+
+// constValueMatches reports whether prop is the literal value want, as pinned by a schema constant or an enum
+// element. Schema constants are bools, strings, or numbers; schema binding stores integer constants as int32 (see
+// bindConstValue in pkg/codegen/schema/bind.go), so those are widened to float64 alongside the other numeric kinds,
+// matching codegen.normalizeWireValue's treatment of the same values at the type level.
+func constValueMatches(prop resource.PropertyValue, want any) bool {
+	switch w := want.(type) {
+	case bool:
+		return prop.IsBool() && prop.BoolValue() == w
+	case string:
+		return prop.IsString() && prop.StringValue() == w
+	case int:
+		return prop.IsNumber() && prop.NumberValue() == float64(w)
+	case int32:
+		return prop.IsNumber() && prop.NumberValue() == float64(w)
+	case int64:
+		return prop.IsNumber() && prop.NumberValue() == float64(w)
+	case float32:
+		return prop.IsNumber() && prop.NumberValue() == float64(w)
+	case float64:
+		return prop.IsNumber() && prop.NumberValue() == w
+	}
+	return false
 }
 
 // unionVariantMatches reports whether the schema type is structurally compatible with the runtime kind of prop.
