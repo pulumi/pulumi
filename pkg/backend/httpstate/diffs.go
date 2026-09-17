@@ -211,10 +211,12 @@ func marshalSpannedDeployment(b *bytes.Buffer, d *apitype.DeploymentV3, version 
 	// one span for {"version":...,"features":...,"deployment":
 	//     {"manifest":...,"secrets_providers":...,"metadata":...,"resources":[
 	// len(resources) spans for resources,
+	// one span for ],"deferredResources":[
+	// len(deferredResources) spans for deferred resources,
 	// one span for ],"pendingOperations":[
 	// len(operations) spans for operations
 	// one span for ]}}
-	spanner := newSpanner(b, len(d.Resources)+len(d.PendingOperations)+3)
+	spanner := newSpanner(b, len(d.Resources)+len(d.DeferredResources)+len(d.PendingOperations)+3)
 	encoder := segmentio_json.NewEncoder(spanner)
 	encoder.SetAppendNewline(false)
 
@@ -244,6 +246,21 @@ func marshalSpannedDeployment(b *bytes.Buffer, d *apitype.DeploymentV3, version 
 	if len(d.Resources) > 0 {
 		spanner.WriteString(`,"resources":[`)
 		for i, r := range d.Resources {
+			if i > 0 {
+				spanner.WriteByte(',')
+			}
+			spanner.nextSpan()
+			if err := encoder.Encode(r); err != nil {
+				return spans{}, err
+			}
+		}
+		spanner.nextSpan()
+		spanner.WriteByte(']')
+	}
+
+	if len(d.DeferredResources) > 0 {
+		spanner.WriteString(`,"deferredResources":[`)
+		for i, r := range d.DeferredResources {
 			if i > 0 {
 				spanner.WriteByte(',')
 			}

@@ -942,6 +942,30 @@ func generateSnapshots(t testing.TB, r *rand.Rand, resourceCount, resourcePayloa
 	return snaps
 }
 
+// TestMarshalDeploymentIncludesDeferredResources guards against marshalSpannedDeployment silently
+// dropping DeferredResources: the hand-rolled encoder writes only the fields it knows about, so a
+// new DeploymentV3 field must be added there explicitly or it never reaches the wire.
+func TestMarshalDeploymentIncludesDeferredResources(t *testing.T) {
+	t.Parallel()
+
+	deferred := apitype.ResourceV3{
+		URN:  resource.URN("urn:pulumi:test::test::pkgA:m:typA::deferred"),
+		Type: "pkgA:m:typA",
+	}
+	deployment := &apitype.DeploymentV3{DeferredResources: []apitype.ResourceV3{deferred}}
+
+	dds := newDeploymentDiffState(0)
+	marshaled, err := dds.MarshalDeployment(deployment, 3, nil)
+	require.NoError(t, err)
+
+	var roundTripped apitype.DeploymentV3
+	require.NoError(t, json.Unmarshal(marshaled.raw, &struct {
+		Deployment *apitype.DeploymentV3 `json:"deployment"`
+	}{Deployment: &roundTripped}))
+	require.Len(t, roundTripped.DeferredResources, 1)
+	assert.Equal(t, deferred, roundTripped.DeferredResources[0])
+}
+
 func testMarshalDeployment(t *testing.T, snaps []*apitype.DeploymentV3) {
 	t.Parallel()
 

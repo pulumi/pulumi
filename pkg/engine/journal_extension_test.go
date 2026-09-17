@@ -17,9 +17,11 @@ package engine
 import (
 	"testing"
 
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/b64"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/stretchr/testify/require"
 )
 
@@ -64,4 +66,27 @@ func TestJournalExtensionParameterize(t *testing.T) {
 	require.NotNil(t, found.Extension)
 	require.Equal(t, ref, *found.ExtensionRef)
 	require.Equal(t, ext, *found.Extension)
+}
+
+func TestJournalSnapshotManagerAddDeferredResource(t *testing.T) {
+	t.Parallel()
+
+	journal := &captureJournal{}
+	sm, err := NewJournalSnapshotManager(journal, nil, b64.NewBase64SecretsManager())
+	require.NoError(t, err)
+	t.Cleanup(func() { require.NoError(t, sm.Close()) })
+
+	state := &pkgresource.State{URN: resource.URN("urn:pulumi:test::test::pkgA:m:typA::deferred")}
+	require.NoError(t, sm.AddDeferredResource(state))
+
+	var found *JournalEntry
+	for i := range journal.entries {
+		if journal.entries[i].Kind == JournalEntryDeferred {
+			found = &journal.entries[i]
+			break
+		}
+	}
+	require.NotNil(t, found, "expected a JournalEntryDeferred in the journal")
+	require.NotNil(t, found.State)
+	require.Equal(t, state.URN, found.State.URN)
 }

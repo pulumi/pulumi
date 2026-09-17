@@ -33,6 +33,7 @@ const (
 	JournalEntryKindExtensionParameterize JournalEntryKind = 8
 	JournalEntryKindSnippets              JournalEntryKind = 9
 	JournalEntryKindStateMigration        JournalEntryKind = 10
+	JournalEntryKindDeferred              JournalEntryKind = 11
 )
 
 func (k JournalEntryKind) String() string {
@@ -59,6 +60,8 @@ func (k JournalEntryKind) String() string {
 		return "snippets"
 	case JournalEntryKindStateMigration:
 		return "state-migration"
+	case JournalEntryKindDeferred:
+		return "deferred"
 	default:
 		return "invalid"
 	}

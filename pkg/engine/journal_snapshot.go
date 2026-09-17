@@ -112,6 +112,7 @@ const (
 	JournalEntryExtensionParameterize JournalEntryKind = 8
 	JournalEntrySnippets              JournalEntryKind = 9
 	JournalEntryStateMigration        JournalEntryKind = 10
+	JournalEntryDeferred              JournalEntryKind = 11
 )
 
 func (k JournalEntryKind) String() string {
@@ -138,6 +139,8 @@ func (k JournalEntryKind) String() string {
 		return "Snippets"
 	case JournalEntryStateMigration:
 		return "StateMigration"
+	case JournalEntryDeferred:
+		return "Deferred"
 	default:
 		return "Unknown"
 	}
@@ -297,7 +300,7 @@ func (sm *JournalSnapshotManager) updateReplayStates(entry JournalEntry) {
 			return true
 		})
 	case JournalEntryBegin, JournalEntryFailure, JournalEntryWrite, JournalEntrySecretsManager,
-		JournalEntryExtensionParameterize, JournalEntrySnippets:
+		JournalEntryExtensionParameterize, JournalEntrySnippets, JournalEntryDeferred:
 		// These entries do not change the current state of resources produced during this update.
 	default:
 		contract.Failf("unsupported journal entry kind %d", entry.Kind)
@@ -332,6 +335,15 @@ func (sm *JournalSnapshotManager) RegisterSecretsManager(secretsManager secrets.
 func (sm *JournalSnapshotManager) SetSnippets(snippets []resource.Snippet) error {
 	journalEntry := sm.newJournalEntry(JournalEntrySnippets, 0)
 	journalEntry.Snippets = snippets
+	return sm.addJournalEntry(journalEntry)
+}
+
+// AddDeferredResource records a resource goal whose provider operation is awaiting (or whose
+// execution was skipped behind an awaiting dependency), so that replay can surface it in the
+// snapshot's DeferredResources.
+func (sm *JournalSnapshotManager) AddDeferredResource(state *pkgresource.State) error {
+	journalEntry := sm.newJournalEntry(JournalEntryDeferred, 0)
+	journalEntry.State = state.Copy()
 	return sm.addJournalEntry(journalEntry)
 }
 

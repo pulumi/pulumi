@@ -80,6 +80,53 @@ func TestJournalReplayerSeedsExtensionsFromBase(t *testing.T) {
 	assert.Equal(t, ext, deployment.Deployment.Extensions[ref])
 }
 
+func TestJournalDeferredResourceRoundTrip(t *testing.T) {
+	t.Parallel()
+
+	state := &pkgresource.State{
+		URN:  resource.URN("urn:pulumi:test::test::pkgA:m:typA::deferred"),
+		Type: "pkgA:m:typA",
+	}
+
+	engineEntry := engine.JournalEntry{
+		Kind:        engine.JournalEntryDeferred,
+		SequenceID:  1,
+		OperationID: 0,
+		State:       state,
+	}
+
+	serialized, err := SerializeJournalEntry(t.Context(), engineEntry, config.NopEncrypter)
+	require.NoError(t, err)
+	assert.Equal(t, apitype.JournalEntryKindDeferred, serialized.Kind)
+	require.NotNil(t, serialized.State)
+	assert.Equal(t, state.URN, serialized.State.URN)
+
+	replayer := NewJournalReplayer(&apitype.DeploymentV3{})
+	require.NoError(t, replayer.Add(serialized))
+
+	deployment, err := replayer.GenerateDeployment()
+	require.NoError(t, err)
+	require.Len(t, deployment.Deployment.DeferredResources, 1)
+	assert.Equal(t, state.URN, deployment.Deployment.DeferredResources[0].URN)
+}
+
+func TestJournalReplayerSeedsDeferredResourcesFromBase(t *testing.T) {
+	t.Parallel()
+
+	deferred := apitype.ResourceV3{
+		URN:  resource.URN("urn:pulumi:test::test::pkgA:m:typA::deferred"),
+		Type: "pkgA:m:typA",
+	}
+	base := &apitype.DeploymentV3{DeferredResources: []apitype.ResourceV3{deferred}}
+	replayer := NewJournalReplayer(base)
+
+	deployment, err := replayer.GenerateDeployment()
+	require.NoError(t, err)
+	require.Len(t, deployment.Deployment.DeferredResources, 1,
+		"deferred resources from base must survive replay even with no deferred journal entries")
+	assert.Equal(t, deferred, deployment.Deployment.DeferredResources[0])
+}
+
 // TestJournalReplayerRefreshPrunesReplaceWith tests that a targeted refresh which deletes a resource prunes
 // dangling ReplaceWith references to it from resources that were not themselves refreshed, while keeping
 // references that are still valid.

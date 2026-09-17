@@ -16,6 +16,7 @@ package backend
 
 import (
 	"bytes"
+	"cmp"
 	"context"
 	"errors"
 	"fmt"
@@ -206,6 +207,10 @@ type JournalReplayer struct {
 	// extensions accumulates (ref, blob) pairs produced by extension parameterize
 	// entries so the rebuilt DeploymentV3.Extensions map survives cancellation/replay.
 	extensions map[apitype.ExtensionRef]apitype.Extension
+
+	// deferredResources accumulates goals recorded by Deferred entries, keyed by URN so a later
+	// entry for the same resource (e.g. on a subsequent update) replaces an earlier one.
+	deferredResources map[resource.URN]apitype.ResourceV3
 }
 
 func NewJournalReplayer(base *apitype.DeploymentV3) *JournalReplayer {
@@ -219,6 +224,7 @@ func NewJournalReplayer(base *apitype.DeploymentV3) *JournalReplayer {
 		incompleteOps:              make(map[int64]apitype.JournalEntry),
 		newResources:               make([]*apitype.ResourceV3, 0),
 		extensions:                 make(map[apitype.ExtensionRef]apitype.Extension),
+		deferredResources:          make(map[resource.URN]apitype.ResourceV3),
 		base:                       base,
 	}
 	return &replayer
@@ -328,11 +334,16 @@ func (r *JournalReplayer) Add(entry apitype.JournalEntry) error {
 		r.incompleteOps = make(map[int64]apitype.JournalEntry)
 		r.newResources = make([]*apitype.ResourceV3, 0)
 		r.extensions = make(map[apitype.ExtensionRef]apitype.Extension)
+		r.deferredResources = make(map[resource.URN]apitype.ResourceV3)
 	case apitype.JournalEntryKindExtensionParameterize:
 		r.extensions[*entry.ExtensionRef] = *entry.Extension
 	case apitype.JournalEntryKindStateMigration:
 		if err := r.applyStateMigration(entry); err != nil {
 			return err
+		}
+	case apitype.JournalEntryKindDeferred:
+		if entry.State != nil {
+			r.deferredResources[entry.State.URN] = *entry.State
 		}
 	default:
 		return fmt.Errorf("unsupported journal entry kind %d", entry.Kind)
@@ -494,6 +505,19 @@ func (r *JournalReplayer) GenerateDeployment() (apitype.TypedDeployment, error) 
 	maps.Copy(extensions, r.base.Extensions)
 	if len(extensions) > 0 {
 		deployment.Extensions = extensions
+	}
+
+	// Carry deferred resources forward from the base, overlaid with any this plan produced (a
+	// resource deferred again in this plan replaces its earlier recorded goal).
+	deferredResources := make(map[resource.URN]apitype.ResourceV3, len(r.base.DeferredResources)+len(r.deferredResources))
+	for _, res := range r.base.DeferredResources {
+		deferredResources[res.URN] = res
+	}
+	maps.Copy(deferredResources, r.deferredResources)
+	if len(deferredResources) > 0 {
+		deployment.DeferredResources = slices.SortedFunc(maps.Values(deferredResources), func(a, b apitype.ResourceV3) int {
+			return cmp.Compare(a.URN, b.URN)
+		})
 	}
 
 	if len(deployment.Snippets) > 0 {

@@ -884,7 +884,18 @@ func (sm *SnapshotManager) Snap() *deploy.Snapshot {
 	contract.Assertf(len(missing) == 0, "snapshot references unknown extensions: %v", missing)
 
 	snap := deploy.NewSnapshot(manifest, secretsManager, resources, operations, metadata, snippets, snapExtensions)
-	for _, deferred := range sm.deferredResources {
+	// Carry deferred resources forward from the base, overlaid with any this plan produced (a
+	// resource deferred again in this plan replaces its earlier recorded goal).
+	deferredResources := make(map[resource.URN]*pkgresource.State)
+	if base := sm.baseSnapshot; base != nil {
+		for _, deferred := range base.DeferredResources {
+			deferredResources[deferred.URN] = deferred
+		}
+	}
+	for urn, deferred := range sm.deferredResources {
+		deferredResources[urn] = deferred
+	}
+	for _, deferred := range deferredResources {
 		snap.DeferredResources = append(snap.DeferredResources, deferred)
 	}
 	return snap

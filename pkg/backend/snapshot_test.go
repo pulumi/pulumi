@@ -793,6 +793,36 @@ func TestRecordingCreateFailure(t *testing.T) {
 	require.Len(t, deployment.PendingOperations, 0)
 }
 
+func TestRecordingDeferredResource(t *testing.T) {
+	t.Parallel()
+
+	resourceA := NewResource("a")
+	snap := NewSnapshot(nil)
+	manager, sp := MockSetup(t, snap)
+
+	err := manager.AddDeferredResource(resourceA)
+	require.NoError(t, err)
+
+	// A deferred resource should be persisted in the snapshot's DeferredResources, not in
+	// Resources or PendingOperations.
+	deployment := sp.LastSnap()
+	require.Len(t, deployment.Resources, 0)
+	require.Len(t, deployment.PendingOperations, 0)
+	require.Len(t, deployment.DeferredResources, 1)
+	assert.Equal(t, resourceA.URN, deployment.DeferredResources[0].URN)
+
+	// A subsequent update, starting from a base snapshot that already carries a deferred
+	// resource, must carry it forward even if this plan never re-defers it.
+	baseSnap := NewSnapshot(nil)
+	baseSnap.DeferredResources = []*pkgresource.State{resourceA}
+	manager2, sp2 := MockSetup(t, baseSnap)
+	err = manager2.SetSnippets(nil)
+	require.NoError(t, err)
+	deployment2 := sp2.LastSnap()
+	require.Len(t, deployment2.DeferredResources, 1)
+	assert.Equal(t, resourceA.URN, deployment2.DeferredResources[0].URN)
+}
+
 func TestRecordingUpdateSuccess(t *testing.T) {
 	t.Parallel()
 
