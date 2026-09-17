@@ -3234,10 +3234,12 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 	)
 
 	reason := pulumirpc.Result_SUCCESS
+	// Both directly-failed and dependency-skipped steps surface to the SDK as Result_FAIL. The
+	// language SDKs treat any non-success result identically (they synthesize a "failed to
+	// register" error), and the engine keeps the Skipped/Failed distinction internally for
+	// continue-on-error cascade tracking.
 	switch result.Result { //nolint:exhaustive // golangci-lint v2 upgrade
-	case ResultStateSkipped:
-		reason = pulumirpc.Result_SKIP
-	case ResultStateFailed:
+	case ResultStateSkipped, ResultStateFailed:
 		reason = pulumirpc.Result_FAIL
 	}
 	return &pulumirpc.RegisterResourceResponse{

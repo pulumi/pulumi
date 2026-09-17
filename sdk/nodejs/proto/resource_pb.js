@@ -13252,8 +13252,7 @@ proto.pulumirpc.ResourceMonitorFeature = {
  */
 proto.pulumirpc.Result = {
   SUCCESS: 0,
-  FAIL: 1,
-  SKIP: 2
+  FAIL: 1
 };
 
 goog.object.extend(exports, proto.pulumirpc);
