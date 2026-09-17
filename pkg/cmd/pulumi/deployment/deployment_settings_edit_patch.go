@@ -29,6 +29,8 @@ import (
 var editFlagNames = []string{
 	flagGitHubRepo, flagRepo, flagVCSProvider, flagGitURL, flagBranch, flagCommit, flagFolder,
 	flagPreviewPRs, flagPushToDeploy, flagPRTemplate, flagPathFilter,
+	flagDeployTags, flagTagFilter, flagReviewStackLabel,
+	flagInstallationID,
 	flagRunnerPool, flagExecutorImage, flagExecutorRootPath,
 	flagPreRunCommand, flagEnv, flagSecretEnv, flagRemoveEnv, flagRemoveAllEnv,
 	flagSkipInstallDeps, flagSkipIntermediate, flagShell, flagDeleteAfterDestroy,
@@ -45,6 +47,8 @@ var vcsEditFlags = []string{
 	flagGitHubRepo, flagRepo, flagVCSProvider,
 	flagPreviewPRs, flagPushToDeploy, flagPRTemplate,
 	flagPathFilter,
+	flagDeployTags, flagTagFilter, flagReviewStackLabel,
+	flagInstallationID,
 }
 
 // presenceOnlyEditFlags reject an explicit false value rather than silently ignoring it.
@@ -185,6 +189,11 @@ func resolveEditVCS(
 			vcs.Provider, requestedProviderOrigin(args, requested))
 	}
 
+	if changed(flagReviewStackLabel) && vcs.Provider != apitype.VCSProviderGitHub {
+		return nil, fmt.Errorf("--%s is only supported on github sources, and this stack's source is %s",
+			flagReviewStackLabel, vcs.Provider)
+	}
+
 	if changed(flagRepo) {
 		vcs.Repository = args.repo
 	}
@@ -202,6 +211,41 @@ func resolveEditVCS(
 	}
 	if changed(flagPathFilter) {
 		vcs.Paths = clearedByEmptyString(args.pathFilters)
+	}
+	if changed(flagDeployTags) {
+		vcs.DeployTags = args.deployTags
+	}
+	if changed(flagTagFilter) {
+		vcs.TagFilters = clearedByEmptyString(args.tagFilters)
+	}
+	if changed(flagReviewStackLabel) {
+		vcs.ReviewStackLabels = clearedByEmptyString(args.reviewStackLabels)
+	}
+	if changed(flagInstallationID) {
+		vcs.InstallationID = args.installationID
+	}
+
+	// The check runs against the merged object rather than the flags, so it also catches a flag that
+	// conflicts with what the stack already stores. The messages name the stored setting in that case,
+	// since naming a flag the user never passed sends them looking for it.
+	if vcs.DeployCommits && vcs.DeployTags {
+		switch {
+		case changed(flagPushToDeploy) && changed(flagDeployTags):
+			return nil, fmt.Errorf("--%s and --%s are mutually exclusive", flagPushToDeploy, flagDeployTags)
+		case changed(flagPushToDeploy):
+			return nil, fmt.Errorf("this stack deploys on tags; pass --%s=false to deploy on commits instead",
+				flagDeployTags)
+		case changed(flagDeployTags):
+			return nil, fmt.Errorf("this stack deploys on commits; pass --%s=false to deploy on tags instead",
+				flagPushToDeploy)
+		default:
+			// Neither flag was passed, so this edit did not cause the conflict. The object still
+			// cannot be sent, because it replaces the stored one wholesale.
+			return nil, fmt.Errorf(
+				"this stack stores both commit and tag triggers, which the service rejects; "+
+					"pass --%s=false or --%s=false to resolve it",
+				flagPushToDeploy, flagDeployTags)
+		}
 	}
 
 	// The vcs object replaces the stored one wholesale, so an empty repository here would erase the
@@ -259,8 +303,10 @@ func validateEditArgs(args deploymentSettingsEditArgs) error {
 		envKeys[k] = flagRemoveEnv
 	}
 	for flag, values := range map[string][]string{
-		flagPreRunCommand: args.preRunCommands,
-		flagPathFilter:    args.pathFilters,
+		flagPreRunCommand:    args.preRunCommands,
+		flagPathFilter:       args.pathFilters,
+		flagTagFilter:        args.tagFilters,
+		flagReviewStackLabel: args.reviewStackLabels,
 	} {
 		if err := validateListFlag(values, flag); err != nil {
 			return err
