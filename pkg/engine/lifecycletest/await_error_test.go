@@ -67,7 +67,7 @@ func TestAwaitErrorCreate(t *testing.T) {
 	})
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
-	p := &lt.TestPlan{Options: lt.TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true}}
+	p := &lt.TestPlan{Options: lt.TestUpdateOptions{T: t, HostF: hostF}}
 	project := p.GetProject()
 
 	snap, err := lt.TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
@@ -136,7 +136,7 @@ func TestAwaitErrorUpdate(t *testing.T) {
 	})
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
-	p := &lt.TestPlan{Options: lt.TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true}}
+	p := &lt.TestPlan{Options: lt.TestUpdateOptions{T: t, HostF: hostF}}
 	project := p.GetProject()
 
 	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, old), p.Options, false, p.BackendClient, nil, "0")
