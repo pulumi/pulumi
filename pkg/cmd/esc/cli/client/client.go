@@ -1811,8 +1811,6 @@ func (pc *client) httpCall(
 	}
 
 	// Provide a better error if using an authenticated call without having logged in first.
-	// The API client has no access to the CLI's configured command prefix, and this code only
-	// ships as part of the `pulumi` CLI, so name `pulumi login` directly.
 	if resp.StatusCode == 401 && pc.apiToken == "" {
 		return nil, errors.New("this command requires logging in; try running `pulumi login` first")
 	}
