@@ -1,0 +1,4 @@
+component: cli/neo
+kind: fix
+body: Skip the redundant preview step when `pulumi neo` runs the `pulumi_up` tool
+time: 2026-09-18T16:00:00.000000000Z
