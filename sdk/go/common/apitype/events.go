@@ -329,14 +329,12 @@ type UpdateStartedEvent struct {
 	// UpdateID is the operation's unique ID.
 	UpdateID string `json:"updateID"`
 	// Version is the value the backend reported when starting the operation. For an update, it
-	// is the stack version this update becomes. For a preview, the backend still reports the
-	// stack's next version, but a preview never becomes a stack version, so consumers must not
-	// treat it as identifying the preview: the next real update will take that number. The value
-	// is carried as reported; interpreting it is the consumer's job.
+	// is the stack version the update becomes. For a preview, the backend still reports the
+	// stack's next version, which the preview never becomes, so a consumer that started a
+	// preview must not treat it as identifying that preview.
 	Version int `json:"version"`
 	// Permalink is the operation's page in the Pulumi Cloud console.
 	Permalink string `json:"permalink"`
-	IsPreview bool   `json:"isPreview"`
 }
 
 // ProgressType is the type of process occurring.

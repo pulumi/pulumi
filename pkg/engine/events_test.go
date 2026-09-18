@@ -43,7 +43,6 @@ func TestUpdateStartedEventIsEphemeral(t *testing.T) {
 		UpdateID:  "update-1",
 		Version:   3,
 		Permalink: "https://app.pulumi.com/org/proj/stack/updates/3",
-		IsPreview: false,
 	})
 
 	assert.Equal(t, UpdateStartedEvent, e.Type)
