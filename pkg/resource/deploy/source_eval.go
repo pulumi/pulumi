@@ -1561,6 +1561,14 @@ func (rm *resmon) ReadResource(ctx context.Context,
 	contract.Assertf(result != nil, "ReadResource operation returned a nil result")
 	// A read always produces an id, so it is never pending, but it can still be an invoke's declared dependency.
 	rm.trackSettledResource(result.State, parent, true)
+	// Record the parent so that a transform-collection walk starting at a descendant of this read resource can
+	// continue up the chain to find transforms declared on ancestor components. A read never carries transforms
+	// of its own, so there's nothing to add to rm.resourceTransforms here.
+	if result.State != nil && result.State.URN != "" {
+		rm.parentsLock.Lock()
+		rm.parents[result.State.URN] = parent
+		rm.parentsLock.Unlock()
+	}
 
 	marshaled, err := plugin.MarshalProperties(result.State.Outputs, plugin.MarshalOptions{
 		Label:            label,
