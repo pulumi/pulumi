@@ -288,7 +288,7 @@ func (w invariantWorkspace) DownloadPlugin(
 	}
 	pl.downloaded = true
 	pl.pathVisible = true
-	return p, func(success bool) {}, nil
+	return p, func(success bool) error { return nil }, nil
 }
 
 func (w invariantWorkspace) New(string) (pkgWorkspace.W, error) {
