@@ -417,20 +417,19 @@ async def register_package(
     return ref
 
 
-def extension_base(
-    package_name: str, base_provider_name: Optional[str] = None
-) -> Optional[str]:
+def set_extension_base(package_name: str, base_provider_name: str) -> None:
     """
-    Records the base provider for an extension package, or returns it when
-    base_provider_name is omitted.
+    Records the base provider that serves an extension package.
     """
-    bases = SETTINGS.extension_bases
-    if bases is None:
-        return None
-    if base_provider_name is not None:
-        bases[package_name] = base_provider_name
-        return base_provider_name
-    return bases.get(package_name)
+    SETTINGS.extension_bases[package_name] = base_provider_name
+
+
+def get_extension_base(package_name: str) -> Optional[str]:
+    """
+    Returns the base provider that serves an extension package, or None when the
+    package is not an extension.
+    """
+    return SETTINGS.extension_bases.get(package_name)
 
 
 def reset_options(

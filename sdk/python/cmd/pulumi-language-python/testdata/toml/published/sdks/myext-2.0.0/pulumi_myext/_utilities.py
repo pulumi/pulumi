@@ -331,7 +331,7 @@ _BASE_PROVIDER_NAME = "extbase"
 _PACKAGE_NAME = "myext"
 
 def get_package() -> typing.Awaitable[str]:
-	pulumi.runtime.extension_base(_PACKAGE_NAME, _BASE_PROVIDER_NAME)
+	pulumi.runtime.set_extension_base(_PACKAGE_NAME, _BASE_PROVIDER_NAME)
 	return pulumi.runtime.register_package(
 		base_provider_name=_BASE_PROVIDER_NAME,
 		base_provider_version="45.0.0",
