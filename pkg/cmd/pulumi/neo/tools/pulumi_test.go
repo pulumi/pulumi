@@ -576,7 +576,7 @@ func TestPulumi_DrainEvents_ResourcePre_PreviewMode(t *testing.T) {
 	close(ch)
 
 	var buf bytes.Buffer
-	diags, _, _, _ := p.drainEvents("pulumi__pulumi_preview", true, ch, &buf)
+	diags, _ := p.drainEvents("pulumi__pulumi_preview", true, ch, &buf)
 
 	assert.Empty(t, diags, "preview-mode pre-event must not produce diag lines")
 	require.Len(t, rec.resources, 1)
@@ -609,7 +609,7 @@ func TestPulumi_DrainEvents_ResourcePre_UpMode(t *testing.T) {
 	close(ch)
 
 	var buf bytes.Buffer
-	_, _, _, _ = p.drainEvents("pulumi__pulumi_up", false, ch, &buf)
+	_, _ = p.drainEvents("pulumi__pulumi_up", false, ch, &buf)
 
 	require.Len(t, rec.resources, 1)
 	assert.Equal(t, "running", rec.resources[0].status,
@@ -638,7 +638,7 @@ func TestPulumi_DrainEvents_ResourcePre_FiltersInternalAndSame(t *testing.T) {
 	})
 	close(ch)
 
-	_, _, _, _ = p.drainEvents("pulumi__pulumi_preview", true, ch, &bytes.Buffer{})
+	_, _ = p.drainEvents("pulumi__pulumi_preview", true, ch, &bytes.Buffer{})
 	assert.Empty(t, rec.resources, "Internal and OpSame must not invoke OnResource")
 }
 
@@ -656,7 +656,7 @@ func TestPulumi_DrainEvents_ResourceOutputs_UpMarksDone(t *testing.T) {
 	})
 	close(ch)
 
-	_, _, _, _ = p.drainEvents("pulumi__pulumi_up", false, ch, &bytes.Buffer{})
+	_, _ = p.drainEvents("pulumi__pulumi_up", false, ch, &bytes.Buffer{})
 	require.Len(t, rec.resources, 1)
 	assert.Equal(t, "done", rec.resources[0].status)
 	assert.Equal(t, deploy.OpUpdate, rec.resources[0].op)
@@ -676,7 +676,7 @@ func TestPulumi_DrainEvents_ResourceOutputs_PreviewSkipped(t *testing.T) {
 	})
 	close(ch)
 
-	_, _, _, _ = p.drainEvents("pulumi__pulumi_preview", true, ch, &bytes.Buffer{})
+	_, _ = p.drainEvents("pulumi__pulumi_preview", true, ch, &bytes.Buffer{})
 	assert.Empty(t, rec.resources, "outputs in preview mode must not invoke OnResource")
 }
 
@@ -696,7 +696,7 @@ func TestPulumi_DrainEvents_ResourceOutputs_FiltersInternalAndSame(t *testing.T)
 	})
 	close(ch)
 
-	_, _, _, _ = p.drainEvents("pulumi__pulumi_up", false, ch, &bytes.Buffer{})
+	_, _ = p.drainEvents("pulumi__pulumi_up", false, ch, &bytes.Buffer{})
 	assert.Empty(t, rec.resources)
 }
 
@@ -714,7 +714,7 @@ func TestPulumi_DrainEvents_ResourceFailed_MarksFailed(t *testing.T) {
 	})
 	close(ch)
 
-	_, _, _, _ = p.drainEvents("pulumi__pulumi_up", false, ch, &bytes.Buffer{})
+	_, _ = p.drainEvents("pulumi__pulumi_up", false, ch, &bytes.Buffer{})
 	require.Len(t, rec.resources, 1)
 	assert.Equal(t, "failed", rec.resources[0].status)
 }
@@ -739,7 +739,7 @@ func TestPulumi_DrainEvents_Diag_WarningAndError(t *testing.T) {
 	})
 	close(ch)
 
-	diags, _, _, _ := p.drainEvents("pulumi__pulumi_up", false, ch, &bytes.Buffer{})
+	diags, _ := p.drainEvents("pulumi__pulumi_up", false, ch, &bytes.Buffer{})
 	require.Len(t, rec.diags, 2)
 	assert.Equal(t, "warning", rec.diags[0].severity)
 	assert.Equal(t, "deprecated foo", rec.diags[0].message,
@@ -773,7 +773,7 @@ func TestPulumi_DrainEvents_Diag_FiltersEphemeralAndInfo(t *testing.T) {
 	})
 	close(ch)
 
-	diags, _, _, _ := p.drainEvents("pulumi__pulumi_up", false, ch, &bytes.Buffer{})
+	diags, _ := p.drainEvents("pulumi__pulumi_up", false, ch, &bytes.Buffer{})
 	assert.Empty(t, rec.diags)
 	assert.Empty(t, diags)
 }
@@ -803,7 +803,7 @@ func TestPulumi_DrainEvents_NilSinkSafe(t *testing.T) {
 
 	var buf bytes.Buffer
 	require.NotPanics(t, func() {
-		_, _, _, _ = p.drainEvents("pulumi__pulumi_up", false, ch, &buf)
+		_, _ = p.drainEvents("pulumi__pulumi_up", false, ch, &buf)
 	})
 	assert.NotEmpty(t, buf.String(), "NDJSON output must still be written when sink is nil")
 }
@@ -830,7 +830,7 @@ func TestPulumi_DrainEvents_PartialSinkSafe(t *testing.T) {
 	close(ch)
 
 	require.NotPanics(t, func() {
-		_, _, _, _ = p.drainEvents("pulumi__pulumi_up", false, ch, &bytes.Buffer{})
+		_, _ = p.drainEvents("pulumi__pulumi_up", false, ch, &bytes.Buffer{})
 	})
 	assert.Equal(t, 1, calledDiag, "OnDiag must still fire when other callbacks are nil")
 }
@@ -852,7 +852,7 @@ func TestPulumi_DrainEvents_NDJSONIsValidEngineEvent(t *testing.T) {
 	close(ch)
 
 	var buf bytes.Buffer
-	_, _, _, _ = p.drainEvents("pulumi__pulumi_up", false, ch, &buf)
+	_, _ = p.drainEvents("pulumi__pulumi_up", false, ch, &buf)
 
 	line := bytes.TrimSpace(buf.Bytes())
 	require.NotEmpty(t, line)
@@ -873,16 +873,15 @@ func TestPulumi_DrainEvents_UpdateStarted_Update(t *testing.T) {
 		UpdateID:  "update-1",
 		Version:   7,
 		Permalink: "https://app.pulumi.com/org/proj/stack/updates/7",
-		IsPreview: false,
 	})
 	close(ch)
 
-	diags, url, updateID, version := p.drainEvents("pulumi__pulumi_up", false, ch, &bytes.Buffer{})
+	diags, started := p.drainEvents("pulumi__pulumi_up", false, ch, &bytes.Buffer{})
 
 	assert.Empty(t, diags)
-	assert.Equal(t, "https://app.pulumi.com/org/proj/stack/updates/7", url)
-	assert.Equal(t, "update-1", updateID)
-	assert.Equal(t, 7, version)
+	assert.Equal(t, "https://app.pulumi.com/org/proj/stack/updates/7", started.Permalink)
+	assert.Equal(t, "update-1", started.UpdateID)
+	assert.Equal(t, 7, started.Version)
 
 	require.Len(t, rec.permalinks, 1)
 	got := rec.permalinks[0]
@@ -903,16 +902,15 @@ func TestPulumi_DrainEvents_UpdateStarted_PreviewReportsVersionZero(t *testing.T
 		UpdateID:  "preview-1",
 		Version:   9, // the stack's NEXT version, reported as-is by the backend.
 		Permalink: "https://app.pulumi.com/org/proj/stack/previews/preview-1",
-		IsPreview: true,
 	})
 	close(ch)
 
-	_, url, updateID, version := p.drainEvents("pulumi__pulumi_preview", true, ch, &bytes.Buffer{})
+	_, started := p.drainEvents("pulumi__pulumi_preview", true, ch, &bytes.Buffer{})
 
 	// A preview never becomes the reported version, so drainEvents must not surface it.
-	assert.Equal(t, 0, version)
-	assert.Equal(t, "https://app.pulumi.com/org/proj/stack/previews/preview-1", url)
-	assert.Equal(t, "preview-1", updateID)
+	assert.Equal(t, 0, started.Version)
+	assert.Equal(t, "https://app.pulumi.com/org/proj/stack/previews/preview-1", started.Permalink)
+	assert.Equal(t, "preview-1", started.UpdateID)
 
 	require.Len(t, rec.permalinks, 1)
 	got := rec.permalinks[0]
@@ -932,14 +930,11 @@ func TestNewPulumiResultUsesParsedNames(t *testing.T) {
 	proj := &workspace.Project{Name: tokens.PackageName("real-proj")}
 	stackRef := &backend.MockStackReference{NameV: tokens.MustParseStackName("dev")}
 
-	res := newPulumiResult(proj, stackRef, "/tmp/events.ndjson", "https://app.pulumi.com/x", "update-1", 3)
+	res := newPulumiResult(proj, stackRef, "/tmp/events.ndjson")
 
 	assert.Equal(t, "real-proj", res.ProjectName)
 	assert.Equal(t, "dev", res.StackName)
 	assert.Equal(t, "/tmp/events.ndjson", res.EventsFile)
-	assert.Equal(t, "https://app.pulumi.com/x", res.ConsoleURL)
-	assert.Equal(t, "update-1", res.UpdateID)
-	assert.Equal(t, 3, res.Version)
 }
 
 func TestAutonamingStackContextFor_NonHTTPStateStack(t *testing.T) {

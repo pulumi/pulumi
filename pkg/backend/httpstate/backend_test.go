@@ -3470,36 +3470,6 @@ func TestPermalinkForDisplayWithAgentCredentials(t *testing.T) {
 	}
 }
 
-func TestNewUpdateStartedEvent(t *testing.T) {
-	t.Parallel()
-
-	tests := []struct {
-		name    string
-		preview bool
-	}{
-		{name: "update", preview: false},
-		{name: "preview", preview: true},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-
-			ev := newUpdateStartedEvent("update-id", testViewLiveLink, 5, tt.preview)
-
-			require.Equal(t, engine.UpdateStartedEvent, ev.Type)
-			payload, ok := ev.Payload().(engine.UpdateStartedEventPayload)
-			require.True(t, ok)
-			// The real permalink and reported version pass through unchanged; only
-			// the caller (neo/tools) applies the preview-version-zero rule.
-			assert.Equal(t, "update-id", payload.UpdateID)
-			assert.Equal(t, testViewLiveLink, payload.Permalink)
-			assert.Equal(t, 5, payload.Version)
-			assert.Equal(t, tt.preview, payload.IsPreview)
-		})
-	}
-}
-
 func TestGetSnapshotStackOutputs(t *testing.T) {
 	t.Parallel()
 

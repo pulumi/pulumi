@@ -272,7 +272,6 @@ func ConvertEngineEvent(e engine.Event, showSecrets bool) (apitype.EngineEvent, 
 			UpdateID:  p.UpdateID,
 			Version:   p.Version,
 			Permalink: p.Permalink,
-			IsPreview: p.IsPreview,
 		}
 
 	default:
@@ -549,7 +548,6 @@ func ConvertJSONEvent(apiEvent apitype.EngineEvent) (engine.Event, error) {
 			UpdateID:  p.UpdateID,
 			Version:   p.Version,
 			Permalink: p.Permalink,
-			IsPreview: p.IsPreview,
 		})
 
 	default:

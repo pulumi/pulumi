@@ -102,7 +102,6 @@ func TestUpdateStartedEventRoundTrip(t *testing.T) {
 		UpdateID:  "update-1",
 		Version:   5,
 		Permalink: "https://app.pulumi.com/org/proj/stack/updates/5",
-		IsPreview: true,
 	}
 
 	apiEvent, err := ConvertEngineEvent(engine.NewEvent(original), false /* showSecrets */)
@@ -111,7 +110,6 @@ func TestUpdateStartedEventRoundTrip(t *testing.T) {
 	assert.Equal(t, original.UpdateID, apiEvent.UpdateStartedEvent.UpdateID)
 	assert.Equal(t, original.Version, apiEvent.UpdateStartedEvent.Version)
 	assert.Equal(t, original.Permalink, apiEvent.UpdateStartedEvent.Permalink)
-	assert.Equal(t, original.IsPreview, apiEvent.UpdateStartedEvent.IsPreview)
 
 	roundTripped, err := ConvertJSONEvent(apiEvent)
 	require.NoError(t, err)

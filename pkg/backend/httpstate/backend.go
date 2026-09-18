@@ -2021,25 +2021,19 @@ func (b *cloudBackend) apply(
 	// Display messages from the backend if present.
 	displayBackendMessages(updateMeta.messages)
 
+	// realPermalink is the actual console permalink; the event carries this rather than the
+	// display permalink below, which may be swapped for an agent-account claim URL.
 	realPermalink := b.getPermalink(update, updateMeta.version, opts.DryRun)
 	permalink, permalinkLabel := permalinkForDisplay(ctx, b.url, realPermalink)
 	op.Opts.Display.PermalinkLabel = permalinkLabel
-	updateStartedEvent := newUpdateStartedEvent(update.UpdateID, realPermalink, updateMeta.version, opts.DryRun)
+	updateStartedEvent := engine.NewEvent(engine.UpdateStartedEventPayload{
+		UpdateID:  update.UpdateID,
+		Version:   updateMeta.version,
+		Permalink: realPermalink,
+	})
 	return b.runEngineAction(
 		ctx, kind, stack.Ref(), op, update, updateMeta.leaseToken,
 		permalink, updateStartedEvent, events, opts.DryRun, updateMeta.journalVersion)
-}
-
-// newUpdateStartedEvent builds the ephemeral update-started engine event carrying the real
-// (unswapped) console permalink, the update ID and the version the backend reported when
-// starting the operation, exactly as reported by the backend.
-func newUpdateStartedEvent(updateID, permalink string, version int, preview bool) engine.Event {
-	return engine.NewEvent(engine.UpdateStartedEventPayload{
-		UpdateID:  updateID,
-		Version:   version,
-		Permalink: permalink,
-		IsPreview: preview,
-	})
 }
 
 // getPermalink returns a link to the update in the Pulumi Console.
