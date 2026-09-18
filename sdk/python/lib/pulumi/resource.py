@@ -43,7 +43,7 @@ from .runtime.resource import (
 from .runtime.resource import (
     create_urn as create_urn_internal,
 )
-from .runtime.settings import extension_base, get_root_resource
+from .runtime.settings import get_extension_base, get_root_resource
 
 if TYPE_CHECKING:
     from .output import Input, Inputs
@@ -1115,7 +1115,7 @@ class Resource:
         if (
             self._provider
             and self._provider.package != pkg
-            and self._provider.package != (extension_base(pkg) if pkg else None)
+            and self._provider.package != (get_extension_base(pkg) if pkg else None)
         ):
             action = (
                 "get"
@@ -1197,7 +1197,7 @@ class Resource:
 
         provider = ambient_provider or parent_provider
 
-        base_pkg = extension_base(pkg) if pkg else None
+        base_pkg = get_extension_base(pkg) if pkg else None
         if provider is None and base_pkg and base_pkg in opts_providers:
             provider = opts_providers[base_pkg]
 
@@ -1298,7 +1298,7 @@ class Resource:
         if provider is not None:
             return provider
 
-        base_pkg = extension_base(pkg)
+        base_pkg = get_extension_base(pkg)
         return self._providers.get(base_pkg) if base_pkg else None
 
 
