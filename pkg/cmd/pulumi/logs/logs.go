@@ -33,9 +33,15 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/operations"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 )
+
+const logsRemovalWarning = "This command will be removed in a future version of pulumi.\n" +
+	"\n" +
+	"The removal is being tracked in https://github.com/pulumi/pulumi/issues/24718. If you believe that \n" +
+	"`pulumi logs` should not be removed, please comment on the issue explaining why.\n"
 
 func NewLogsCmd(ws pkgWorkspace.Context) *cobra.Command {
 	var stackName string
@@ -54,6 +60,11 @@ func NewLogsCmd(ws pkgWorkspace.Context) *cobra.Command {
 			"provider. For example, for AWS resources, the `pulumi logs` command will query\n" +
 			"CloudWatch Logs for log data relevant to resources in a stack.\n",
 		RunE: func(cobraCmd *cobra.Command, args []string) error {
+			// Setting cobra's Deprecated field would hide the `pulumi logs` subcommands, which are not deprecated.
+			if !env.DisableExperimentalLogsRemovalWarning.Value() {
+				cobraCmd.PrintErrf("Command %q is deprecated, %s\n", cobraCmd.Name(), logsRemovalWarning)
+			}
+
 			ctx := cobraCmd.Context()
 			ssml := cmdStack.NewStackSecretsManagerLoaderFromEnv()
 			opts := display.Options{
