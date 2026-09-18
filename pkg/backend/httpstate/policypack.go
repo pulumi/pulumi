@@ -32,10 +32,12 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	resourceanalyzer "github.com/pulumi/pulumi/pkg/v3/resource/analyzer"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	pkgCmdUtil "github.com/pulumi/pulumi/pkg/v3/util/cmdutil"
+	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/archive"
@@ -560,7 +562,8 @@ func installRequiredPolicy(ctx *plugin.Context, finalDir string, tgz io.ReadClos
 
 	language, err := ctx.Host.LanguageRuntime(ctx, proj.Runtime.Name())
 	if err != nil {
-		return fmt.Errorf("failed to load language plugin %s: %w", proj.Runtime.Name(), err)
+		return pkgWorkspace.EnsurePolicyAnalyzerInstalled(
+			ctx.Request(), ctx.Diag, err, ctx.ProjectPlugins(), schema.NewLoaderServerFromContext)
 	}
 
 	info := plugin.NewProgramInfo(finalDir, finalDir, ".", proj.Runtime.Options())

@@ -15,15 +15,23 @@
 package httpstate
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
+	"io"
 	"os"
+	"path/filepath"
+	"runtime"
 	"testing"
 	"time"
 
+	"github.com/blang/semver"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/esc"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/archive"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -684,4 +692,47 @@ func TestLocalPolicyEnvironmentResolver(t *testing.T) {
 		assert.Nil(t, result.Config)
 		assert.Equal(t, map[string]string{"KEY": "val"}, result.EnvironmentVariables)
 	})
+}
+
+// TestInstallRequiredPolicyWithoutLanguagePlugin checks that installing an enforced policy pack whose
+// runtime has no language plugin (OPA) succeeds by relying on the policy-<runtime> analyzer instead of
+// failing to load a language runtime.
+func TestInstallRequiredPolicyWithoutLanguagePlugin(t *testing.T) {
+	// Not parallel: mutates PULUMI_HOME via t.Setenv.
+
+	if runtime.GOOS == "windows" {
+		t.Skip("plugin binaries in the cache need an .exe suffix on windows")
+	}
+
+	t.Setenv("PULUMI_HOME", t.TempDir())
+
+	// An analyzer already in the plugin cache means no download is attempted.
+	v1 := semver.MustParse("1.0.0")
+	spec := workspace.PluginDescriptor{Kind: apitype.AnalyzerPlugin, Name: "policy-opa", Version: &v1}
+	dir, err := spec.DirPath()
+	require.NoError(t, err)
+	require.NoError(t, os.MkdirAll(dir, 0o700))
+	require.NoError(t, os.WriteFile(filepath.Join(dir, spec.File()), []byte("#!/bin/sh\n"), 0o600))
+
+	host := &plugin.MockHost{
+		LanguageRuntimeF: func(_ *plugin.Context, runtime string) (plugin.LanguageRuntime, error) {
+			return nil, workspace.NewMissingError(
+				workspace.PluginDescriptor{Kind: apitype.LanguagePlugin, Name: runtime}, true)
+		},
+	}
+	ctx, err := plugin.NewContextWithRoot(t.Context(), nil, nil, host, "", "", nil, false, nil, nil, nil, nil)
+	require.NoError(t, err)
+	defer ctx.Close()
+
+	packDir := filepath.Join(t.TempDir(), "package")
+	require.NoError(t, os.MkdirAll(packDir, 0o700))
+	require.NoError(t, os.WriteFile(
+		filepath.Join(packDir, "PulumiPolicy.yaml"), []byte("runtime: opa\nversion: 0.0.1\n"), 0o600))
+	tgz, err := archive.TGZ(packDir, "package", false)
+	require.NoError(t, err)
+
+	finalDir := filepath.Join(t.TempDir(), "pack")
+	err = installRequiredPolicy(ctx, finalDir, io.NopCloser(bytes.NewReader(tgz)), io.Discard, io.Discard)
+	require.NoError(t, err)
+	assert.FileExists(t, filepath.Join(finalDir, "PulumiPolicy.yaml"))
 }

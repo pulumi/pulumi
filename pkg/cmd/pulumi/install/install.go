@@ -79,7 +79,8 @@ func NewInstallCmd(ws pkgWorkspace.Context) *cobra.Command {
 					if err != nil {
 						return err
 					}
-					return policy.InstallPluginDependencies(ctx, cmd.OutOrStdout(), cmd.ErrOrStderr(), root, proj.Runtime)
+					return policy.InstallPolicyPackDependencies(
+						ctx, cmd.OutOrStdout(), cmd.ErrOrStderr(), root, proj.Runtime)
 				}
 			}
 

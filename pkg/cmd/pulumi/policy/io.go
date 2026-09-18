@@ -57,6 +57,16 @@ func ReadPolicyProject(pwd string) (*workspace.PolicyPackProject, string, string
 	return proj, path, filepath.Dir(path), nil
 }
 
+// InstallPolicyPackDependencies installs a policy pack's language dependencies. A runtime with no
+// language plugin, such as OPA, is run by the `policy-<runtime>` analyzer plugin instead, so that
+// plugin is installed and there are no language dependencies to install.
+func InstallPolicyPackDependencies(
+	ctx context.Context, stdout, stderr io.Writer, root string, projRuntime workspace.ProjectRuntimeInfo,
+) error {
+	err := InstallPluginDependencies(ctx, stdout, stderr, root, projRuntime)
+	return pkgWorkspace.EnsurePolicyAnalyzerInstalled(ctx, cmdutil.Diag(), err, nil, schema.NewLoaderServerFromContext)
+}
+
 func InstallPluginDependencies(
 	ctx context.Context, stdout, stderr io.Writer, root string, projRuntime workspace.ProjectRuntimeInfo,
 ) error {

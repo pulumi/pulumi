@@ -1,0 +1,3 @@
+component: cli/policy
+kind: fix
+body: Fix `pulumi policy new` and `pulumi install` for policy packs whose runtime has no language plugin, such as OPA, by installing the `policy-<runtime>` analyzer plugin instead

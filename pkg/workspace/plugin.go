@@ -34,6 +34,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	diagutil "github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -124,6 +125,30 @@ func downloadPlugin(
 		}
 	}
 	return downloadedFile, nil
+}
+
+// EnsurePolicyAnalyzerInstalled handles err from loading a policy pack's language runtime. If err
+// says the runtime has no language plugin, such as OPA, the pack is run by the `policy-<runtime>`
+// analyzer plugin instead, so that plugin is installed and err is dropped. Any other err is
+// returned unchanged.
+func EnsurePolicyAnalyzerInstalled(ctx context.Context, d diag.Sink, err error,
+	projectPlugins []workspace.ProjectPlugin, newLoader plugin.NewLoaderFunc,
+) error {
+	me, ok := errors.AsType[*workspace.MissingError](err)
+	if !ok || me.Spec().Kind != apitype.LanguagePlugin {
+		return err
+	}
+	spec := workspace.PluginDescriptor{Kind: apitype.AnalyzerPlugin, Name: "policy-" + me.Spec().Name}
+	_, err = workspace.GetPluginPath(ctx, d, spec, projectPlugins)
+	me, ok = errors.AsType[*workspace.MissingError](err)
+	if !ok || env.DisableAutomaticPluginAcquisition.Value() {
+		return err
+	}
+	log := func(sev diag.Severity, msg string) {
+		d.Logf(sev, diag.RawMessage("", msg))
+	}
+	_, err = InstallPlugin(ctx, me.Spec(), log, newLoader)
+	return err
 }
 
 // EnsureLanguageInstalled downloads and installs the named language runtime if it is not
