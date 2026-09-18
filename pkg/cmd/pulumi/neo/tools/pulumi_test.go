@@ -495,124 +495,191 @@ func TestPulumi_Run_PreviewAndUpResolveBackend(t *testing.T) {
 	}
 }
 
-// TestPulumi_Run_PopulatesConsoleURLAndUpdateIdentifiers proves run() wires
-// backend.UpdateOptions.OnPermalink through to pulumiResult.ConsoleURL /
-// UpdateID / Version for both preview and up. DeploymentID must stay empty on
-// this in-process path — it is reserved for Deployments-API runs. The fake
-// backend's PreviewF/UpdateF invoke OnPermalink itself, mirroring what
-// cloudBackend.apply does in the real httpstate backend.
+// permalinkCall records one OnPermalink invocation observed by a test's PulumiSink.
+type permalinkCall struct {
+	url, updateID string
+	version       int
+	preview       bool
+}
+
+const (
+	wantPreviewUpdateID = "11111111-1111-1111-1111-111111111111"
+	wantPreviewURL      = "https://app.pulumi.com/o/proj/dev/previews/" + wantPreviewUpdateID
+	wantUpdateID        = "22222222-2222-2222-2222-222222222222"
+	wantUpdateURL       = "https://app.pulumi.com/o/proj/dev/updates/42"
+)
+
+var previewCall = permalinkCall{wantPreviewURL, wantPreviewUpdateID, 0, true}
+
+// newPermalinkTestBackend builds a MockBackend whose PreviewF/UpdateF call fireOnPermalink,
+// mirroring how cloudBackend.apply invokes op.Opts.OnPermalink in the real httpstate backend.
+func newPermalinkTestBackend(
+	previewF func(op backend.UpdateOperation) error,
+	updateF func(op backend.UpdateOperation) error,
+) (backend.Backend, backend.Stack) {
+	stackRef := &backend.MockStackReference{
+		NameV:               tokens.MustParseStackName("dev"),
+		FullyQualifiedNameV: tokens.QName("organization/p/dev"),
+	}
+	var stk backend.Stack
+	be := &backend.MockBackend{
+		ParseStackReferenceF: func(name string) (backend.StackReference, error) {
+			return stackRef, nil
+		},
+		GetStackF: func(_ context.Context, ref backend.StackReference) (backend.Stack, error) {
+			return stk, nil
+		},
+		PreviewF: func(_ context.Context, _ backend.Stack, op backend.UpdateOperation,
+		) (*deploy.Plan, display.ResourceChanges, error) {
+			return nil, display.ResourceChanges{}, previewF(op)
+		},
+		UpdateF: func(_ context.Context, _ backend.Stack, op backend.UpdateOperation,
+		) (display.ResourceChanges, error) {
+			return display.ResourceChanges{}, updateF(op)
+		},
+	}
+	stk = &backend.MockStack{
+		RefF:     func() backend.StackReference { return stackRef },
+		BackendF: func() backend.Backend { return be },
+		DefaultSecretManagerF: func(_ context.Context, _ *workspace.ProjectStack) (secrets.Manager, error) {
+			return b64.NewBase64SecretsManager(), nil
+		},
+	}
+	return be, stk
+}
+
+// runPermalinkTest wires be as the resolved backend and invokes method, returning the
+// result and the ordered OnPermalink calls observed by the sink.
+func runPermalinkTest(t *testing.T, dir, method string, be backend.Backend) (pulumiResult, []permalinkCall) {
+	t.Helper()
+
+	prev := cmdBackend.DefaultLoginManager
+	cmdBackend.DefaultLoginManager = &cmdBackend.MockLoginManager{
+		CurrentF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink,
+			url string, project *workspace.Project, setCurrent bool,
+		) (backend.Backend, error) {
+			return be, nil
+		},
+		LoginF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink,
+			url string, project *workspace.Project, setCurrent bool,
+			insecure bool, color colors.Colorization,
+		) (backend.Backend, error) {
+			return be, nil
+		},
+	}
+	t.Cleanup(func() { cmdBackend.DefaultLoginManager = prev })
+
+	ws := &pkgWorkspace.MockContext{
+		ReadProjectF: func(_ string) (*workspace.Project, string, error) {
+			return &workspace.Project{Name: "p"}, dir, nil
+		},
+	}
+	var sinkCalls []permalinkCall
+	p := &Pulumi{Cwd: dir, Workspace: ws, Sink: &PulumiSink{
+		OnPermalink: func(url, updateID string, version int, preview bool) {
+			sinkCalls = append(sinkCalls, permalinkCall{url, updateID, version, preview})
+		},
+	}}
+
+	args, err := json.Marshal(map[string]any{
+		"project_name":     "p",
+		"stack_name":       "dev",
+		"local_pulumi_dir": dir,
+	})
+	require.NoError(t, err)
+
+	value, _ := p.Invoke(t.Context(), method, args)
+	res, ok := value.(pulumiResult)
+	require.True(t, ok, "expected pulumiResult, got %T", value)
+	return res, sinkCalls
+}
+
+// TestPulumi_Run_Preview_PopulatesConsoleURLAndVersionZero proves a preview reports
+// version 0 alongside its preview permalink and update ID.
 //
 //nolint:paralleltest // mutates the global cmdBackend.DefaultLoginManager
-func TestPulumi_Run_PopulatesConsoleURLAndUpdateIdentifiers(t *testing.T) {
-	const wantUpdateID = "11111111-2222-3333-4444-555555555555"
-	tests := []struct {
-		method      string
-		wantPreview bool
-		wantVersion int
-	}{
-		{method: "pulumi_preview", wantPreview: true, wantVersion: 0},
-		{method: "pulumi_up", wantPreview: false, wantVersion: 42},
-	}
-
-	for _, tc := range tests {
-		//nolint:paralleltest // mutates the global cmdBackend.DefaultLoginManager
-		t.Run(tc.method, func(t *testing.T) {
-			dir := newProjectDir(t)
-
-			const wantURL = "https://app.pulumi.com/o/proj/dev/updates/42"
-			fireOnPermalink := func(op backend.UpdateOperation) {
-				if op.Opts.OnPermalink == nil {
-					return
-				}
-				op.Opts.OnPermalink(wantURL, wantUpdateID, tc.wantVersion, tc.wantPreview)
+func TestPulumi_Run_Preview_PopulatesConsoleURLAndVersionZero(t *testing.T) {
+	dir := newProjectDir(t)
+	be, _ := newPermalinkTestBackend(
+		func(op backend.UpdateOperation) error {
+			if op.Opts.OnPermalink != nil {
+				op.Opts.OnPermalink(previewCall.url, previewCall.updateID, previewCall.version, previewCall.preview)
 			}
+			return nil
+		},
+		func(op backend.UpdateOperation) error { return nil },
+	)
 
-			stackRef := &backend.MockStackReference{
-				NameV:               tokens.MustParseStackName("dev"),
-				FullyQualifiedNameV: tokens.QName("organization/p/dev"),
-			}
+	res, sinkCalls := runPermalinkTest(t, dir, "pulumi_preview", be)
 
-			var stk backend.Stack
-			be := &backend.MockBackend{
-				ParseStackReferenceF: func(name string) (backend.StackReference, error) {
-					return stackRef, nil
-				},
-				GetStackF: func(_ context.Context, ref backend.StackReference) (backend.Stack, error) {
-					return stk, nil
-				},
-				PreviewF: func(_ context.Context, _ backend.Stack, op backend.UpdateOperation,
-				) (*deploy.Plan, display.ResourceChanges, error) {
-					fireOnPermalink(op)
-					return nil, display.ResourceChanges{}, nil
-				},
-				UpdateF: func(_ context.Context, _ backend.Stack, op backend.UpdateOperation,
-				) (display.ResourceChanges, error) {
-					fireOnPermalink(op)
-					return display.ResourceChanges{}, nil
-				},
-			}
-			stk = &backend.MockStack{
-				RefF:     func() backend.StackReference { return stackRef },
-				BackendF: func() backend.Backend { return be },
-				DefaultSecretManagerF: func(_ context.Context, _ *workspace.ProjectStack) (secrets.Manager, error) {
-					return b64.NewBase64SecretsManager(), nil
-				},
-			}
+	assert.Equal(t, "succeeded", res.Status)
+	assert.Equal(t, wantPreviewURL, res.ConsoleURL)
+	assert.Equal(t, wantPreviewUpdateID, res.UpdateID)
+	assert.Equal(t, 0, res.Version)
+	assert.Empty(t, res.DeploymentID,
+		"DeploymentID is reserved for Deployments-API runs and must stay empty in-process")
+	assert.Equal(t, []permalinkCall{previewCall}, sinkCalls)
+}
 
-			prev := cmdBackend.DefaultLoginManager
-			cmdBackend.DefaultLoginManager = &cmdBackend.MockLoginManager{
-				CurrentF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink,
-					url string, project *workspace.Project, setCurrent bool,
-				) (backend.Backend, error) {
-					return be, nil
-				},
-				LoginF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink,
-					url string, project *workspace.Project, setCurrent bool,
-					insecure bool, color colors.Colorization,
-				) (backend.Backend, error) {
-					return be, nil
-				},
+// TestPulumi_Run_Up_PopulatesFromUpdateCallLastWriteWins proves run() wires
+// backend.UpdateOptions.OnPermalink through to pulumiResult.ConsoleURL / UpdateID /
+// Version for a successful up. A real cloud-backend up fires OnPermalink twice (once
+// for the preview step, once for the update), so UpdateF here fires the same realistic
+// sequence; the update's identifiers must win over the earlier preview's, and the sink
+// must observe both calls in order. DeploymentID must stay empty on this in-process
+// path: it is reserved for Deployments-API runs.
+//
+//nolint:paralleltest // mutates the global cmdBackend.DefaultLoginManager
+func TestPulumi_Run_Up_PopulatesFromUpdateCallLastWriteWins(t *testing.T) {
+	dir := newProjectDir(t)
+	updateCall := permalinkCall{wantUpdateURL, wantUpdateID, 42, false}
+	be, _ := newPermalinkTestBackend(
+		func(op backend.UpdateOperation) error { return nil },
+		func(op backend.UpdateOperation) error {
+			if op.Opts.OnPermalink != nil {
+				op.Opts.OnPermalink(previewCall.url, previewCall.updateID, previewCall.version, previewCall.preview)
+				op.Opts.OnPermalink(updateCall.url, updateCall.updateID, updateCall.version, updateCall.preview)
 			}
-			t.Cleanup(func() { cmdBackend.DefaultLoginManager = prev })
+			return nil
+		},
+	)
 
-			ws := &pkgWorkspace.MockContext{
-				ReadProjectF: func(_ string) (*workspace.Project, string, error) {
-					return &workspace.Project{Name: "p"}, dir, nil
-				},
+	res, sinkCalls := runPermalinkTest(t, dir, "pulumi_up", be)
+
+	assert.Equal(t, "succeeded", res.Status)
+	assert.Equal(t, wantUpdateURL, res.ConsoleURL)
+	assert.Equal(t, wantUpdateID, res.UpdateID)
+	assert.Equal(t, 42, res.Version)
+	assert.Empty(t, res.DeploymentID,
+		"DeploymentID is reserved for Deployments-API runs and must stay empty in-process")
+	assert.Equal(t, []permalinkCall{previewCall, updateCall}, sinkCalls,
+		"sink must observe the preview call, then the update call, in order")
+}
+
+// TestPulumi_Run_Up_PreviewStepFailsKeepsPreviewIdentifiers proves that when an up's
+// preview step fails before the update ever runs, the result carries the preview's
+// permalink/UpdateID/version-0, not empty values, and reports status "failed".
+//
+//nolint:paralleltest // mutates the global cmdBackend.DefaultLoginManager
+func TestPulumi_Run_Up_PreviewStepFailsKeepsPreviewIdentifiers(t *testing.T) {
+	dir := newProjectDir(t)
+	be, _ := newPermalinkTestBackend(
+		func(op backend.UpdateOperation) error { return nil },
+		func(op backend.UpdateOperation) error {
+			if op.Opts.OnPermalink != nil {
+				op.Opts.OnPermalink(previewCall.url, previewCall.updateID, previewCall.version, previewCall.preview)
 			}
-			type permalinkCall struct {
-				url, updateID string
-				version       int
-				preview       bool
-			}
-			var sinkCalls []permalinkCall
-			p := &Pulumi{Cwd: dir, Workspace: ws, Sink: &PulumiSink{
-				OnPermalink: func(url, updateID string, version int, preview bool) {
-					sinkCalls = append(sinkCalls, permalinkCall{url, updateID, version, preview})
-				},
-			}}
+			return errors.New("preview failed")
+		},
+	)
 
-			args, err := json.Marshal(map[string]any{
-				"project_name":     "p",
-				"stack_name":       "dev",
-				"local_pulumi_dir": dir,
-			})
-			require.NoError(t, err)
+	res, sinkCalls := runPermalinkTest(t, dir, "pulumi_up", be)
 
-			value, err := p.Invoke(t.Context(), tc.method, args)
-			require.NoError(t, err)
-			res, ok := value.(pulumiResult)
-			require.True(t, ok, "expected pulumiResult, got %T", value)
-			assert.Equal(t, "succeeded", res.Status)
-			assert.Equal(t, wantURL, res.ConsoleURL)
-			assert.Equal(t, wantUpdateID, res.UpdateID)
-			assert.Equal(t, tc.wantVersion, res.Version)
-			assert.Empty(t, res.DeploymentID,
-				"DeploymentID is reserved for Deployments-API runs and must stay empty in-process")
-			assert.Equal(t, []permalinkCall{{wantURL, wantUpdateID, tc.wantVersion, tc.wantPreview}}, sinkCalls,
-				"Sink.OnPermalink must receive exactly the callback the backend fired")
-		})
-	}
+	assert.Equal(t, "failed", res.Status)
+	assert.Equal(t, wantPreviewURL, res.ConsoleURL)
+	assert.Equal(t, wantPreviewUpdateID, res.UpdateID)
+	assert.Equal(t, 0, res.Version)
+	assert.Equal(t, []permalinkCall{previewCall}, sinkCalls)
 }
 
 // recorder collects invocations into the PulumiSink so tests can assert which

@@ -100,8 +100,9 @@ type PulumiSink struct {
 	// from the engine.
 	OnEnd func(toolName, err string, counts display.ResourceChanges, elapsed string)
 	// OnPermalink reports the operation's identifiers when the cloud backend
-	// computes the permalink at operation start; it never fires for non-cloud
-	// backends. Mirrors backend.UpdateOptions.OnPermalink.
+	// computes the permalink; it never fires for non-cloud backends. It can
+	// fire more than once per operation: once for an update's preview step,
+	// then again for the update itself. Mirrors backend.UpdateOptions.OnPermalink.
 	OnPermalink func(url string, updateID string, version int, preview bool)
 }
 
@@ -300,6 +301,8 @@ func (p *Pulumi) run(ctx context.Context, a pulumiArgs, isPreview bool) (pulumiR
 
 	// Populated by opts.OnPermalink when the cloud backend computes the permalink.
 	// The callback runs synchronously on this goroutine, so no locking is needed.
+	// It can fire twice for pulumi_up (preview, then update); last write wins,
+	// so a successful up ends up with the update's identifiers.
 	var consoleURL, updateID string
 	var version int
 
