@@ -195,18 +195,14 @@ type RequiredPolicy interface {
 	Name() string
 	// Version of the PolicyPack.
 	Version() string
-	// Installed returns true if the PolicyPack is already installed locally.
-	Installed() bool
 	// LocalPath returns the local path of the PolicyPack.
 	LocalPath() (string, error)
-	// Download the PolicyPack.
-	Download(
-		ctx context.Context,
-		wrapper func(stream io.ReadCloser, size int64) io.ReadCloser,
-	) (io.ReadCloser, int64, error)
-	// Install the PolicyPack. content is the tarball of the PolicyPack.
-	// stdout and stderr are used for dependency installation output.
-	Install(ctx *plugin.Context, content io.ReadCloser, stdout, stderr io.Writer) error
+	// Ensure that the policy is downloaded & installed on disk.
+	EnsureInstalled(
+		ctx *plugin.Context,
+		downloadWrapper func(stream io.ReadCloser, size int64) io.ReadCloser,
+		installWriter io.Writer,
+	) error
 	// Config returns the PolicyPack's configuration.
 	Config() map[string]*json.RawMessage
 	// ResolveEnvironments opens any referenced ESC environments and returns
