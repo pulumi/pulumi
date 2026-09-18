@@ -2021,11 +2021,25 @@ func (b *cloudBackend) apply(
 	// Display messages from the backend if present.
 	displayBackendMessages(updateMeta.messages)
 
-	permalink, permalinkLabel := permalinkForDisplay(ctx, b.url, b.getPermalink(update, updateMeta.version, opts.DryRun))
+	updatePermalink := b.getPermalink(update, updateMeta.version, opts.DryRun)
+	notifyPermalink(op, updatePermalink, update.UpdateID, updateMeta.version, opts.DryRun)
+	permalink, permalinkLabel := permalinkForDisplay(ctx, b.url, updatePermalink)
 	op.Opts.Display.PermalinkLabel = permalinkLabel
 	return b.runEngineAction(
 		ctx, kind, stack.Ref(), op, update, updateMeta.leaseToken,
 		permalink, events, opts.DryRun, updateMeta.journalVersion)
+}
+
+// notifyPermalink invokes op.Opts.OnPermalink, if set. Previews report version 0: the
+// service hands back the stack's next version for them, but never activates it.
+func notifyPermalink(op backend.UpdateOperation, permalink, updateID string, version int, preview bool) {
+	if op.Opts.OnPermalink == nil {
+		return
+	}
+	if preview {
+		version = 0
+	}
+	op.Opts.OnPermalink(permalink, updateID, version, preview)
 }
 
 // getPermalink returns a link to the update in the Pulumi Console.
