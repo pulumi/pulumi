@@ -32,14 +32,12 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
-// mockRequiredPolicy implements engine.RequiredPolicy for testing.
+// mockRequiredPolicy implements engine.RequiredPolicy for testing. EnsureInstalled fails with installErr.
 type mockRequiredPolicy struct {
-	name      string
-	version   string
-	config    map[string]*json.RawMessage
-	installed bool
-	downloadF func(ctx context.Context, wrapper func(io.ReadCloser, int64) io.ReadCloser) (io.ReadCloser, int64, error)
-	installF  func(ctx *plugin.Context, content io.ReadCloser, stdout, stderr io.Writer) error
+	name       string
+	version    string
+	config     map[string]*json.RawMessage
+	installErr error
 }
 
 var _ engine.RequiredPolicy = (*mockRequiredPolicy)(nil)
@@ -47,30 +45,12 @@ var _ engine.RequiredPolicy = (*mockRequiredPolicy)(nil)
 func (m *mockRequiredPolicy) Name() string                        { return m.name }
 func (m *mockRequiredPolicy) Version() string                     { return m.version }
 func (m *mockRequiredPolicy) Config() map[string]*json.RawMessage { return m.config }
-func (m *mockRequiredPolicy) Installed() bool                     { return m.installed }
 func (m *mockRequiredPolicy) LocalPath() (string, error)          { return "/path/to/" + m.name, nil }
 
-func (m *mockRequiredPolicy) Download(
-	ctx context.Context,
-	wrapper func(io.ReadCloser, int64) io.ReadCloser,
-) (io.ReadCloser, int64, error) {
-	if m.downloadF != nil {
-		return m.downloadF(ctx, wrapper)
-	}
-	content := io.NopCloser(bytes.NewReader([]byte("mock-tarball")))
-	size := int64(len("mock-tarball"))
-	return wrapper(content, size), size, nil
-}
-
-func (m *mockRequiredPolicy) Install(
-	ctx *plugin.Context,
-	content io.ReadCloser,
-	stdout, stderr io.Writer,
+func (m *mockRequiredPolicy) EnsureInstalled(
+	*plugin.Context, func(io.ReadCloser, int64) io.ReadCloser, io.Writer,
 ) error {
-	if m.installF != nil {
-		return m.installF(ctx, content, stdout, stderr)
-	}
-	return nil
+	return m.installErr
 }
 
 func (m *mockRequiredPolicy) ResolveEnvironments(_ context.Context) (*engine.ResolvedPolicyEnvironment, error) {
@@ -273,9 +253,9 @@ func TestPolicyInstallCmd_Run(t *testing.T) {
 		t.Parallel()
 
 		packs := []engine.RequiredPolicy{
-			&mockRequiredPolicy{name: "pack-a", installed: true},
-			&mockRequiredPolicy{name: "pack-b", installed: true},
-			&mockRequiredPolicy{name: "pack-c", installed: true},
+			&mockRequiredPolicy{name: "pack-a"},
+			&mockRequiredPolicy{name: "pack-b"},
+			&mockRequiredPolicy{name: "pack-c"},
 		}
 
 		var stderr bytes.Buffer
@@ -302,7 +282,7 @@ func TestPolicyInstallCmd_Run(t *testing.T) {
 		t.Parallel()
 
 		packs := []engine.RequiredPolicy{
-			&mockRequiredPolicy{name: "my-pack", installed: true},
+			&mockRequiredPolicy{name: "my-pack"},
 		}
 
 		var stderr bytes.Buffer
@@ -329,8 +309,8 @@ func TestPolicyInstallCmd_Run(t *testing.T) {
 		t.Parallel()
 
 		packs := []engine.RequiredPolicy{
-			&mockRequiredPolicy{name: "pack-a", installed: true},
-			&mockRequiredPolicy{name: "pack-b", installed: true},
+			&mockRequiredPolicy{name: "pack-a"},
+			&mockRequiredPolicy{name: "pack-b"},
 		}
 
 		var stderr bytes.Buffer
@@ -358,15 +338,8 @@ func TestPolicyInstallCmd_Run(t *testing.T) {
 
 		installErr := errors.New("install failed")
 		packs := []engine.RequiredPolicy{
-			&mockRequiredPolicy{name: "good-pack", installed: true},
-			&mockRequiredPolicy{
-				name: "bad-pack",
-				downloadF: func(
-					ctx context.Context, wrapper func(io.ReadCloser, int64) io.ReadCloser,
-				) (io.ReadCloser, int64, error) {
-					return nil, 0, installErr
-				},
-			},
+			&mockRequiredPolicy{name: "good-pack"},
+			&mockRequiredPolicy{name: "bad-pack", installErr: installErr},
 		}
 
 		var stderr bytes.Buffer
@@ -394,15 +367,8 @@ func TestPolicyInstallCmd_Run(t *testing.T) {
 
 		installErr := errors.New("install failed")
 		packs := []engine.RequiredPolicy{
-			&mockRequiredPolicy{
-				name: "failing-pack",
-				downloadF: func(
-					ctx context.Context, wrapper func(io.ReadCloser, int64) io.ReadCloser,
-				) (io.ReadCloser, int64, error) {
-					return nil, 0, installErr
-				},
-			},
-			&mockRequiredPolicy{name: "other-pack", installed: true},
+			&mockRequiredPolicy{name: "failing-pack", installErr: installErr},
+			&mockRequiredPolicy{name: "other-pack"},
 		}
 
 		var stderr bytes.Buffer
