@@ -220,7 +220,7 @@ func runNewPolicyPack(ctx context.Context, args newPolicyArgs) error {
 
 	// Install dependencies.
 	if !args.generateOnly {
-		if err := InstallPluginDependencies(ctx, args.stdout, args.stdout, root, proj.Runtime); err != nil {
+		if err := InstallPolicyPackDependencies(ctx, args.stdout, args.stdout, root, proj.Runtime); err != nil {
 			return err
 		}
 	}

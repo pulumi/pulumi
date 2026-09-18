@@ -160,6 +160,51 @@ func TestEnsureLanguageInstalledUsesPathPlugin(t *testing.T) {
 	require.NoError(t, err, "EnsureLanguageInstalled should reuse the runtime on $PATH, not download it")
 }
 
+// TestEnsurePolicyAnalyzerInstalled runs offline: the cancelled context makes any download attempt a
+// deterministic failure.
+//
+//nolint:paralleltest // t.Setenv is incompatible with t.Parallel
+func TestEnsurePolicyAnalyzerInstalled(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("plugin binaries in the cache need an .exe suffix on windows")
+	}
+
+	t.Setenv("PULUMI_HOME", t.TempDir())
+
+	ctx, cancel := context.WithCancel(t.Context())
+	cancel()
+	sink := diagtest.LogSink(t)
+	noLanguage := func(runtime string) error {
+		return workspace.NewMissingError(workspace.PluginDescriptor{Kind: apitype.LanguagePlugin, Name: runtime}, true)
+	}
+
+	t.Run("other error passes through", func(t *testing.T) {
+		other := errors.New("language plugin crashed")
+		assert.Equal(t, other, EnsurePolicyAnalyzerInstalled(ctx, sink, other, nil, nil))
+	})
+
+	t.Run("cached analyzer is reused without a download", func(t *testing.T) {
+		v1 := semver.MustParse("1.0.0")
+		spec := workspace.PluginDescriptor{Kind: apitype.AnalyzerPlugin, Name: "policy-opa", Version: &v1}
+		dir, err := spec.DirPath()
+		require.NoError(t, err)
+		require.NoError(t, os.MkdirAll(dir, 0o700))
+		require.NoError(t, os.WriteFile(filepath.Join(dir, spec.File()), []byte("#!/bin/sh\n"), 0o600))
+
+		require.NoError(t, EnsurePolicyAnalyzerInstalled(ctx, sink, noLanguage("opa"), nil, nil))
+	})
+
+	t.Run("missing analyzer is reported when acquisition is disabled", func(t *testing.T) {
+		t.Setenv("PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION", "true")
+
+		err := EnsurePolicyAnalyzerInstalled(ctx, sink, noLanguage("rego"), nil, nil)
+
+		var me *workspace.MissingError
+		require.ErrorAs(t, err, &me)
+		assert.Equal(t, "policy-rego", me.Spec().Name)
+	})
+}
+
 func TestPluginInstallCancellation(t *testing.T) {
 	t.Parallel()
 
