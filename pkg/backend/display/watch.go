@@ -115,6 +115,9 @@ func ShowWatchEvents(op string, permalink string, events <-chan engine.Event, do
 		case engine.ProgressEvent:
 			// Progress events are ephemeral and should be skipped.
 			continue
+		case engine.UpdateStartedEvent:
+			// Ephemeral and not meant for display.
+			continue
 		default:
 			contract.Failf("unknown event type '%s'", e.Type)
 		}

@@ -323,6 +323,20 @@ type ProgressEvent struct {
 	Done bool `json:"done"`
 }
 
+// UpdateStartedEvent is emitted by backends that track updates once an update or preview has
+// been started, before the engine runs.
+type UpdateStartedEvent struct {
+	// UpdateID is the operation's unique ID.
+	UpdateID string `json:"updateID"`
+	// Version is the value the backend reported when starting the operation. For an update, it
+	// is the stack version the update becomes. For a preview, the backend still reports the
+	// stack's next version, which the preview never becomes, so a consumer that started a
+	// preview must not treat it as identifying that preview.
+	Version int `json:"version"`
+	// Permalink is the operation's page in the Pulumi Cloud console.
+	Permalink string `json:"permalink"`
+}
+
 // ProgressType is the type of process occurring.
 type ProgressType string
 
@@ -366,6 +380,7 @@ type EngineEvent struct {
 	StartDebuggingEvent            *StartDebuggingEvent            `json:"startDebuggingEvent,omitempty"`
 	ProgressEvent                  *ProgressEvent                  `json:"progressEvent,omitempty"`
 	ErrorEvent                     *ErrorEvent                     `json:"errorEvent,omitempty"`
+	UpdateStartedEvent             *UpdateStartedEvent             `json:"updateStartedEvent,omitempty"`
 }
 
 // EngineEventBatch is a group of engine events.
