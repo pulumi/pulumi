@@ -15,7 +15,9 @@
 package toolchain
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -48,7 +50,7 @@ type uv struct {
 	version semver.Version
 }
 
-var minUvVersion = semver.MustParse("0.4.26")
+var minUvVersion = semver.MustParse("0.6.15")
 
 var defaultVirtualEnv = ".venv"
 
@@ -298,49 +300,87 @@ func (u *uv) ValidateVenv(ctx context.Context) error {
 	return nil
 }
 
-func (u *uv) ListPackages(_ context.Context, transitive bool) ([]plugin.DependencyInfo, error) {
-	lockDir, err := searchup(u.root, "uv.lock")
-	if err != nil {
-		return nil, fmt.Errorf("could not find uv.lock: %w", err)
-	}
-	lockFilePath := filepath.Join(lockDir, "uv.lock")
-	content, err := os.ReadFile(lockFilePath)
-	if err != nil {
-		return nil, fmt.Errorf("could not read %s: %w", lockFilePath, err)
-	}
-	virtual, err := uvVirtualPackages(content)
-	if err != nil {
-		return nil, fmt.Errorf("could not identify virtual packages in %s: %w", lockFilePath, err)
-	}
-	return listPackagesFromLockFile(lockFilePath, transitive, virtual)
-}
+// uvExportPackagesScript evaluates markers with the program's interpreter and obtains versions
+// for directory and VCS dependencies, whose versions may be absent from pylock.toml.
+const uvExportPackagesScript = `import importlib.metadata, json, sys
+packages = json.load(sys.stdin)
+result = []
+for package in packages:
+    if package["marker"]:
+        from packaging.markers import Marker
+        if not Marker(package["marker"]).evaluate():
+            continue
+    result.append({
+        "name": package["name"],
+        "version": package["version"] or importlib.metadata.version(package["name"]),
+    })
+print(json.dumps(result))`
 
-// uvLockFile is a minimal representation of uv.lock for identifying virtual packages.
-type uvLockFile struct {
-	Package []uvLockPackage `toml:"package"`
-}
-
-type uvLockPackage struct {
-	Name   string `toml:"name"`
-	Source struct {
-		Virtual string `toml:"virtual"`
-	} `toml:"source"`
-}
-
-// uvVirtualPackages returns the names of packages that are virtual (i.e. the project root or workspace members) in a
-// uv.lock file. Virtual packages have source = { virtual = "..." } and are not real installable packages.
-func uvVirtualPackages(content []byte) (map[string]bool, error) {
-	var lock uvLockFile
-	if _, err := toml.Decode(string(content), &lock); err != nil {
+func (u *uv) ListPackages(ctx context.Context, transitive bool) ([]plugin.DependencyInfo, error) {
+	projectDir, err := searchup(u.root, "pyproject.toml")
+	if err != nil {
+		return nil, fmt.Errorf("could not find pyproject.toml: %w", err)
+	}
+	project, err := LoadPyproject(projectDir)
+	if err != nil {
 		return nil, err
 	}
-	virtual := make(map[string]bool)
-	for _, pkg := range lock.Package {
-		if pkg.Source.Virtual != "" {
-			virtual[normalizePythonPackageName(pkg.Name)] = true
+	if project.Project == nil || project.Project.Name == "" {
+		return nil, fmt.Errorf("missing project name in %s", filepath.Join(projectDir, "pyproject.toml"))
+	}
+
+	cmd := u.uvCommand(ctx, projectDir, false, nil, nil,
+		"export", "--package", project.Project.Name, "--locked", "--format", "pylock.toml")
+	output, err := cmd.Output()
+	if err != nil {
+		return nil, errutil.ErrorWithStderr(err, "exporting uv dependencies")
+	}
+	var exported struct {
+		Packages []struct {
+			Name    string `toml:"name" json:"name"`
+			Version string `toml:"version" json:"version"`
+			Marker  string `toml:"marker" json:"marker"`
+		} `toml:"packages"`
+	}
+	if err := toml.Unmarshal(output, &exported); err != nil {
+		return nil, fmt.Errorf("parsing uv export: %w", err)
+	}
+
+	packages := make([]plugin.DependencyInfo, 0, len(exported.Packages))
+	// If packages have a marker like sys_platform == 'win32', or do not have a version set, we need to use the
+	// `packaging` package to resolve these.
+	needsPythonPackaging := false
+	for _, pkg := range exported.Packages {
+		needsPythonPackaging = needsPythonPackaging || pkg.Marker != "" || pkg.Version == ""
+		packages = append(packages, plugin.DependencyInfo{
+			Name: normalizePythonPackageName(pkg.Name), Version: pkg.Version,
+		})
+	}
+	if needsPythonPackaging {
+		input, err := json.Marshal(exported.Packages)
+		if err != nil {
+			return nil, fmt.Errorf("encoding uv dependencies: %w", err)
+		}
+		cmd, err := u.Command(ctx, "-c", uvExportPackagesScript)
+		if err != nil {
+			return nil, err
+		}
+		cmd.Stdin = bytes.NewReader(input)
+		output, err := cmd.Output()
+		if err != nil {
+			return nil, errutil.ErrorWithStderr(err, "reading uv dependencies from the Python environment")
+		}
+		if err := json.Unmarshal(output, &packages); err != nil {
+			return nil, fmt.Errorf("parsing uv dependencies: %w", err)
+		}
+		for i := range packages {
+			packages[i].Name = normalizePythonPackageName(packages[i].Name)
 		}
 	}
-	return virtual, nil
+	if transitive {
+		return packages, nil
+	}
+	return filterDirectPythonDependencies(projectDir, packages)
 }
 
 func (u *uv) Command(ctx context.Context, args ...string) (*exec.Cmd, error) {
