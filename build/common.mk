@@ -332,7 +332,7 @@ format:: .make/ensure/golangci-lint
 define __ensure_dependency #$(1): the executable to check for: "go", "node", ...
 	$(if                                                                                       \
 		$(shell if ! command -v "$(1)" > /dev/null; then echo "missing"; fi),              \
-		$(error Missing binary dependency "$(1)"),                                         \
+		$(error Missing binary dependency "$(1)". If you use mise: run "mise install"),\
 		$(info $(shell                                                                     \
 			pad="$$(printf '%0.1s' "."{1..20})";                                       \
 			exec="$(1)";                                                               \
