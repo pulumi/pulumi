@@ -1483,6 +1483,7 @@ func (ctx *Context) readPackageResource(
 			Parent:                  inputs.parent,
 			Properties:              inputs.rpcProps,
 			Provider:                inputs.provider,
+			Dependencies:            inputs.deps,
 			Id:                      string(idToRead),
 			AcceptSecrets:           true,
 			AcceptResources:         !disableResourceReferences,

@@ -2040,6 +2040,32 @@ func (i *Interpreter) registerReadResource(ctx context.Context, res *pcl.ReadRes
 		idStr = unwrappedID.StringValue()
 	}
 
+	if res.Options != nil && res.Options.DependsOn != nil {
+		dependsOn, poison, diags := i.evalContext.Evaluate(res.Options.DependsOn)
+		if poison != nil {
+			i.evalContext.SetVariable(res.Name(), makePoisonValue(*poison))
+			return nil
+		}
+		if diags.HasErrors() {
+			return diags
+		}
+		if !dependsOn.IsNull() && !dependsOn.IsComputed() {
+			if !dependsOn.IsArray() {
+				return errors.New("dependsOn must be an array of resource objects")
+			}
+			for _, v := range dependsOn.ArrayValue() {
+				if v.IsNull() || v.IsComputed() {
+					continue
+				}
+				urn, _, err := unwrapResource(v)
+				if err != nil {
+					return fmt.Errorf("dependsOn: %w", err)
+				}
+				dependencies = append(dependencies, urn)
+			}
+		}
+	}
+
 	request := &pulumirpc.ReadResourceRequest{
 		Id:                idStr,
 		Type:              token,
