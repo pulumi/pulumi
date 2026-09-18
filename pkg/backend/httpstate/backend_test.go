@@ -2935,15 +2935,59 @@ func TestRunEngineActionPropagatesSnapshotJournalerError(t *testing.T) {
 	}
 	fx := newRunEngineActionFixture(t, snap, nil, mgr)
 
+	updateStartedEvent := engine.NewEvent(engine.UpdateStartedEventPayload{
+		UpdateID:  "update-id",
+		Version:   3,
+		Permalink: "https://app.pulumi.com/org/proj/stack/updates/3",
+	})
+	callerEvents := make(chan engine.Event, 10)
+
 	var runErr error
 	require.NotPanics(t, func() {
 		_, _, runErr = fx.backend.runEngineAction(
 			t.Context(), apitype.UpdateUpdate, fx.stackRef, fx.op, fx.update,
-			"lease-token", "", nil, false, 0,
+			"lease-token", "", updateStartedEvent, callerEvents, false, 0,
 		)
 	})
 	require.Error(t, runErr)
 	require.ErrorContains(t, runErr, "encrypt boom")
+
+	// The event reaches the caller synchronously as the first thing runEngineAction does, so
+	// it must be there, and only it, even though this journal-init failure returns early
+	// without ever closing engineEvents.
+	require.Len(t, callerEvents, 1)
+	got := <-callerEvents
+	assert.Equal(t, engine.UpdateStartedEvent, got.Type)
+	assert.Equal(t, updateStartedEvent.Payload(), got.Payload())
+}
+
+func TestRunEngineActionDeliversUpdateStartedEventWhenNewUpdateFails(t *testing.T) {
+	t.Parallel()
+
+	mgr := failingSecretsManager{err: errors.New("unused")}
+	fx := newRunEngineActionFixture(t, &deploy.Snapshot{}, nil, mgr)
+	// Point the stack reference at a project the fixture's server doesn't recognize, so
+	// getTarget's export call 404s and newUpdate fails before any snapshot/journal code runs.
+	fx.stackRef.project = tokens.Name("other-project")
+
+	updateStartedEvent := engine.NewEvent(engine.UpdateStartedEventPayload{UpdateID: "update-id"})
+	callerEvents := make(chan engine.Event, 10)
+
+	var runErr error
+	require.NotPanics(t, func() {
+		_, _, runErr = fx.backend.runEngineAction(
+			t.Context(), apitype.UpdateUpdate, fx.stackRef, fx.op, fx.update,
+			"lease-token", "", updateStartedEvent, callerEvents, false, 0,
+		)
+	})
+	require.Error(t, runErr)
+
+	// newUpdate fails before the display goroutine ever starts; the caller is the only
+	// path left that still hears about the operation having started.
+	require.Len(t, callerEvents, 1)
+	got := <-callerEvents
+	assert.Equal(t, engine.UpdateStartedEvent, got.Type)
+	assert.Equal(t, updateStartedEvent.Payload(), got.Payload())
 }
 
 type failingSecretsManager struct{ err error }
@@ -3001,7 +3045,7 @@ func TestRunEngineActionPropagatesJournalManagerError(t *testing.T) {
 			require.NotPanics(t, func() {
 				_, _, runErr = fx.backend.runEngineAction(
 					t.Context(), apitype.UpdateUpdate, fx.stackRef, fx.op, fx.update,
-					"lease-token", "", nil, false, tc.journalVersion,
+					"lease-token", "", engine.NewEvent(engine.UpdateStartedEventPayload{}), nil, false, tc.journalVersion,
 				)
 			})
 			require.Error(t, runErr)
@@ -3468,6 +3512,36 @@ func TestPermalinkForDisplayWithAgentCredentials(t *testing.T) {
 			} else {
 				assert.Empty(t, label)
 			}
+		})
+	}
+}
+
+func TestNewUpdateStartedEvent(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name    string
+		preview bool
+	}{
+		{name: "update", preview: false},
+		{name: "preview", preview: true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			ev := newUpdateStartedEvent("update-id", testViewLiveLink, 5, tt.preview)
+
+			require.Equal(t, engine.UpdateStartedEvent, ev.Type)
+			payload, ok := ev.Payload().(engine.UpdateStartedEventPayload)
+			require.True(t, ok)
+			// The real permalink and reported version pass through unchanged; only
+			// the caller (neo/tools) applies the preview-version-zero rule.
+			assert.Equal(t, "update-id", payload.UpdateID)
+			assert.Equal(t, testViewLiveLink, payload.Permalink)
+			assert.Equal(t, 5, payload.Version)
+			assert.Equal(t, tt.preview, payload.IsPreview)
 		})
 	}
 }

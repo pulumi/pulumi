@@ -1,0 +1,4 @@
+component: cli/neo
+kind: improvement
+body: Report the console URL and update identifiers in `pulumi neo` pulumi_preview/pulumi_up tool results, via a new `update-started` engine event
+time: 2026-09-18T14:30:00.000000000Z

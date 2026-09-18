@@ -99,6 +99,9 @@ type PulumiSink struct {
 	// wrapped engine error string. counts is the typed ResourceChanges map
 	// from the engine.
 	OnEnd func(toolName, err string, counts display.ResourceChanges, elapsed string)
+	// OnPermalink reports the operation's identifiers when the cloud backend starts the
+	// operation. It never fires for other backends. version is 0 for previews.
+	OnPermalink func(url string, updateID string, version int, preview bool)
 }
 
 // NewPulumi creates a Pulumi handler sandboxed under cwd. The workspace is captured
@@ -164,6 +167,7 @@ func (e envVal) Value() string {
 // pulumiResult matches pulumi-service's PulumiOperationResult so tool consumers on the
 // agent side don't care whether the call ran locally or in a Deployment.
 type pulumiResult struct {
+	// DeploymentID is reserved for Deployments-API runs and stays empty for in-process runs.
 	DeploymentID  string `json:"deployment_id"`
 	ConsoleURL    string `json:"console_url"`
 	Logs          string `json:"logs"`
@@ -173,6 +177,8 @@ type pulumiResult struct {
 	StackName     string `json:"stack_name"`
 	UpdateSummary string `json:"update_summary,omitempty"`
 	EventsFile    string `json:"events_file,omitempty"`
+	UpdateID      string `json:"update_id,omitempty"`
+	Version       int    `json:"version,omitempty"`
 }
 
 // Invoke dispatches a single pulumi method call.
@@ -332,10 +338,12 @@ func (p *Pulumi) run(ctx context.Context, a pulumiArgs, isPreview bool) (pulumiR
 
 	eventsCh := make(chan engine.Event, 128)
 	var diagLines []string
+	var consoleURL, updateID string
+	var version int
 	drainDone := make(chan struct{})
 	go func() {
 		defer close(drainDone)
-		diagLines = p.drainEvents(toolName, isPreview, eventsCh, eventsFile)
+		diagLines, consoleURL, updateID, version = p.drainEvents(toolName, isPreview, eventsCh, eventsFile)
 		_ = eventsFile.Close()
 	}()
 
@@ -374,7 +382,7 @@ func (p *Pulumi) run(ctx context.Context, a pulumiArgs, isPreview bool) (pulumiR
 	close(eventsCh)
 	<-drainDone
 
-	res := newPulumiResult(proj, s.Ref(), eventsPath)
+	res := newPulumiResult(proj, s.Ref(), eventsPath, consoleURL, updateID, version)
 
 	switch {
 	case runErr != nil && errors.Is(ctx.Err(), context.Canceled):
@@ -470,12 +478,12 @@ func FormatChangeCounts(changes display.ResourceChanges, joiner string) string {
 // TUI's live preview block. It returns the accumulated diagnostic lines so
 // they can be folded into pulumiResult.Logs at the end of the run; per-resource
 // lines are intentionally not duplicated in memory because the events file
-// already holds them.
+// already holds them. It also returns the console URL, update ID and version
+// reported by an UpdateStartedEventPayload, if one arrived (zero values
+// otherwise); if more than one arrives, the last one wins.
 func (p *Pulumi) drainEvents(
 	toolName string, isPreview bool, events <-chan engine.Event, ndjson io.Writer,
-) []string {
-	var diags []string
-
+) (diags []string, consoleURL string, updateID string, version int) {
 	for e := range events {
 		// Best-effort: skip events that fail to convert.
 		if apiEv, err := backendDisplay.ConvertEngineEvent(e, false /*showSecrets*/); err == nil {
@@ -541,9 +549,23 @@ func (p *Pulumi) drainEvents(
 				p.Sink.OnDiag(toolName, string(payload.Severity), msg, string(payload.URN))
 			}
 			diags = append(diags, fmt.Sprintf("%s: %s", payload.Severity, msg))
+		case engine.UpdateStartedEventPayload:
+			v := payload.Version
+			if payload.IsPreview {
+				// The backend reports the stack's NEXT version for a preview, but a preview
+				// never becomes that version. The next real update will claim it, so don't
+				// report it as if it identified this preview.
+				v = 0
+			}
+			consoleURL = payload.Permalink
+			updateID = payload.UpdateID
+			version = v
+			if p.Sink != nil && p.Sink.OnPermalink != nil {
+				p.Sink.OnPermalink(payload.Permalink, payload.UpdateID, v, payload.IsPreview)
+			}
 		}
 	}
-	return diags
+	return diags, consoleURL, updateID, version
 }
 
 // formatLogs builds the agent-facing pulumiResult.Logs string: a counts line
@@ -654,11 +676,17 @@ func silenceStd() func() {
 // would cause the agent to construct entities with malformed names whenever
 // the LLM passes an FQSN — a phrasing the CLI itself encourages via some of
 // its own error messages.
-func newPulumiResult(proj *workspace.Project, stackRef backend.StackReference, eventsPath string) pulumiResult {
+func newPulumiResult(
+	proj *workspace.Project, stackRef backend.StackReference, eventsPath string,
+	consoleURL string, updateID string, version int,
+) pulumiResult {
 	return pulumiResult{
 		ProjectName: proj.Name.String(),
 		StackName:   stackRef.Name().String(),
 		EventsFile:  eventsPath,
+		ConsoleURL:  consoleURL,
+		UpdateID:    updateID,
+		Version:     version,
 	}
 }
 

@@ -251,6 +251,9 @@ func ShowPreviewDigest(events <-chan engine.Event, done chan<- bool, opts Option
 		case engine.ProgressEvent:
 			// Progress events are ephemeral and should be skipped.
 			continue
+		case engine.UpdateStartedEvent:
+			// Ephemeral and not meant for display.
+			continue
 		case engine.ErrorEvent:
 			// Error events are not for display, so we skip them here.
 			continue

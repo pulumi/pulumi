@@ -1286,6 +1286,9 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 	case engine.ProgressEvent:
 		display.handleProgressEvent(event.Payload().(engine.ProgressEventPayload))
 		return
+	case engine.UpdateStartedEvent:
+		// Ephemeral and not meant for display.
+		return
 	case engine.ErrorEvent:
 		return
 	case engine.PolicyAnalyzeSummaryEvent,

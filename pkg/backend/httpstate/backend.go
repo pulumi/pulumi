@@ -2031,11 +2031,25 @@ func (b *cloudBackend) apply(
 	// Display messages from the backend if present.
 	displayBackendMessages(updateMeta.messages)
 
-	permalink, permalinkLabel := permalinkForDisplay(ctx, b.url, b.getPermalink(update, updateMeta.version, opts.DryRun))
+	realPermalink := b.getPermalink(update, updateMeta.version, opts.DryRun)
+	permalink, permalinkLabel := permalinkForDisplay(ctx, b.url, realPermalink)
 	op.Opts.Display.PermalinkLabel = permalinkLabel
+	updateStartedEvent := newUpdateStartedEvent(update.UpdateID, realPermalink, updateMeta.version, opts.DryRun)
 	return b.runEngineAction(
 		ctx, kind, stack.Ref(), op, update, updateMeta.leaseToken,
-		permalink, events, opts.DryRun, updateMeta.journalVersion)
+		permalink, updateStartedEvent, events, opts.DryRun, updateMeta.journalVersion)
+}
+
+// newUpdateStartedEvent builds the ephemeral update-started engine event carrying the real
+// (unswapped) console permalink, the update ID and the version the backend reported when
+// starting the operation, exactly as reported by the backend.
+func newUpdateStartedEvent(updateID, permalink string, version int, preview bool) engine.Event {
+	return engine.NewEvent(engine.UpdateStartedEventPayload{
+		UpdateID:  updateID,
+		Version:   version,
+		Permalink: permalink,
+		IsPreview: preview,
+	})
 }
 
 // getPermalink returns a link to the update in the Pulumi Console.
@@ -2067,9 +2081,19 @@ func permalinkForDisplay(ctx context.Context, cloudURL, permalink string) (strin
 func (b *cloudBackend) runEngineAction(
 	ctx context.Context, kind apitype.UpdateKind, stackRef backend.StackReference,
 	op backend.UpdateOperation, update client.UpdateIdentifier, token, permalink string,
+	updateStartedEvent engine.Event,
 	callerEventsOpt chan<- engine.Event, dryRun bool, journalVersion int64,
 ) (*deploy.Plan, sdkDisplay.ResourceChanges, error) {
 	contract.Assertf(token != "", "persisted actions require a token")
+
+	// Deliver to the caller first and synchronously, before anything below can fail and
+	// return early: this is the only path that still reaches the caller if newUpdate fails,
+	// and a synchronous send completes before this function can return, so it cannot race
+	// the caller closing its channel afterwards.
+	if callerEventsOpt != nil {
+		callerEventsOpt <- updateStartedEvent
+	}
+
 	u, tokenSource, err := b.newUpdate(ctx, stackRef, op, update, token)
 	if err != nil {
 		return nil, nil, err
@@ -2084,6 +2108,12 @@ func (b *cloudBackend) runEngineAction(
 		ctx, tokenSource, update,
 		backend.ActionLabel(kind, dryRun), kind, stackRef, op, permalink,
 		displayEvents, displayDone, op.Opts.Display, dryRun)
+
+	// Sent directly to the display goroutine started above rather than through the
+	// engineEvents forwarder below. The event never enters engineEvents, so the forwarder
+	// can never hold a pending send to the caller on the journal-init early returns further
+	// down, where engineEvents is not drained or closed.
+	displayEvents <- updateStartedEvent
 
 	if err := pkgLogging.RenameCurrentLogger(string(stackRef.FullyQualifiedName()), update.UpdateID); err != nil {
 		logging.V(3).Infof("encrypted log failed to rename: %v", err)

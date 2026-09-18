@@ -93,6 +93,33 @@ func TestSummaryEventResultRoundTrip(t *testing.T) {
 	assert.Equal(t, original.Result, payload.Result)
 }
 
+// TestUpdateStartedEventRoundTrip verifies the update-started event survives the
+// engine -> apitype -> engine conversion path.
+func TestUpdateStartedEventRoundTrip(t *testing.T) {
+	t.Parallel()
+
+	original := engine.UpdateStartedEventPayload{
+		UpdateID:  "update-1",
+		Version:   5,
+		Permalink: "https://app.pulumi.com/org/proj/stack/updates/5",
+		IsPreview: true,
+	}
+
+	apiEvent, err := ConvertEngineEvent(engine.NewEvent(original), false /* showSecrets */)
+	require.NoError(t, err)
+	require.NotNil(t, apiEvent.UpdateStartedEvent)
+	assert.Equal(t, original.UpdateID, apiEvent.UpdateStartedEvent.UpdateID)
+	assert.Equal(t, original.Version, apiEvent.UpdateStartedEvent.Version)
+	assert.Equal(t, original.Permalink, apiEvent.UpdateStartedEvent.Permalink)
+	assert.Equal(t, original.IsPreview, apiEvent.UpdateStartedEvent.IsPreview)
+
+	roundTripped, err := ConvertJSONEvent(apiEvent)
+	require.NoError(t, err)
+	assert.Equal(t, engine.UpdateStartedEvent, roundTripped.Type)
+	payload := roundTripped.Payload().(engine.UpdateStartedEventPayload)
+	assert.Equal(t, original, payload)
+}
+
 // TestConvertJSONEventExhaustive tests that all fields of the EngineEvent type are handled by ConvertJSONEvent.
 func TestConvertJSONEventExhaustive(t *testing.T) {
 	t.Parallel()

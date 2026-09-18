@@ -35,3 +35,17 @@ func TestTryCloseEventChan(t *testing.T) {
 	assert.Equal(t, true, tryCloseEventChan(c))
 	assert.Equal(t, false, tryCloseEventChan(c))
 }
+
+func TestUpdateStartedEventIsEphemeral(t *testing.T) {
+	t.Parallel()
+
+	e := NewEvent(UpdateStartedEventPayload{
+		UpdateID:  "update-1",
+		Version:   3,
+		Permalink: "https://app.pulumi.com/org/proj/stack/updates/3",
+		IsPreview: false,
+	})
+
+	assert.Equal(t, UpdateStartedEvent, e.Type)
+	assert.True(t, e.Ephemeral())
+}
