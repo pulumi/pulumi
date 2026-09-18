@@ -36,6 +36,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	sdkproviders "github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -370,6 +371,21 @@ func TestStateMigrationRenameChild(t *testing.T) {
 	snap, err = runUpdate(t, env.plan, snap,
 		func(project workspace.Project, target deploy.Target, entries JournalEntries, events []Event, err error) error {
 			assert.Equal(t, map[display.StepOp]int{deploy.OpSame: 3}, countSuccessfulOps(entries))
+			var migrationDiagnostics []DiagEventPayload
+			for _, e := range events {
+				if e.Type == DiagEvent {
+					payload := e.Payload().(DiagEventPayload)
+					if strings.Contains(payload.Message, "State migration applied") {
+						assert.False(t, e.Ephemeral())
+						migrationDiagnostics = append(migrationDiagnostics, payload)
+					}
+				}
+			}
+			require.Len(t, migrationDiagnostics, 1)
+			assert.Equal(t, compURN, migrationDiagnostics[0].URN)
+			assert.Equal(t, diag.Info, migrationDiagnostics[0].Severity)
+			assert.Contains(t, migrationDiagnostics[0].Message, "state entries: 2 before, 2 after")
+			assert.False(t, migrationDiagnostics[0].Ephemeral)
 			return err
 		})
 	require.NoError(t, err)
@@ -1695,6 +1711,11 @@ func TestStateMigrationEchoNoOp(t *testing.T) {
 	_, err = lt.TestOp(Update).Run(project, env.plan.GetTarget(t, snap), env.plan.Options, false, env.plan.BackendClient,
 		func(project workspace.Project, target deploy.Target, entries JournalEntries, events []Event, err error) error {
 			assert.Equal(t, map[display.StepOp]int{deploy.OpSame: 3}, countSuccessfulOps(entries))
+			for _, e := range events {
+				if e.Type == DiagEvent {
+					assert.NotContains(t, e.Payload().(DiagEventPayload).Message, "State migration")
+				}
+			}
 			return err
 		})
 	require.NoError(t, err)

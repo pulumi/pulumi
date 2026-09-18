@@ -1301,6 +1301,10 @@ func (acts *updateActions) OnStateMigration(transaction *deploy.StateMigrationTr
 	if err := manager.StateMigration(transaction); err != nil {
 		return err
 	}
+	// TODO[https://github.com/pulumi/pulumi/issues/24714]: Replace with display event
+	acts.Opts.Diag.Infof(diag.Message(transaction.RootURN,
+		"State migration applied (state entries: %d before, %d after)."),
+		len(transaction.PriorSubtree), len(transaction.ResultSubtree))
 	return nil
 }
 
@@ -1529,6 +1533,10 @@ func (acts *previewActions) OnRebuiltBaseState() error {
 }
 
 func (acts *previewActions) OnStateMigration(transaction *deploy.StateMigrationTransaction) error {
+	// TODO[https://github.com/pulumi/pulumi/issues/24714]: Replace with display event
+	acts.Opts.Diag.Infof(diag.Message(transaction.RootURN,
+		"State migration planned (state entries: %d before, %d after)."),
+		len(transaction.PriorSubtree), len(transaction.ResultSubtree))
 	return nil
 }
 
