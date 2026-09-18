@@ -283,3 +283,7 @@ var GoroutinePanicRecovery = env.Bool("GOROUTINE_PANIC_RECOVERY",
 
 var ParallelAnalyze = env.Int("PARALLEL_ANALYZE",
 	"(Experimental) Number of parallel analyze calls per resource (1 for no parallelism)")
+
+// TODO[https://github.com/pulumi/pulumi/issues/24717]: Remove when `pulumi watch` is removed.
+var DisableExperimentalWatchRemovalWarning = env.Bool("DISABLE_EXPERIMENTAL_WATCH_REMOVAL_WARNING",
+	"Disable the removal warning when using `pulumi watch`.")
