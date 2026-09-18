@@ -697,21 +697,29 @@ func executeStackOperation(
 	return result
 }
 
-// loadMultistackSnapshot loads a stack's snapshot with the same integrity checking every
-// ordinary preview/update applies -- it does NOT relax or disable checking, and it does not
-// mutate the process-global backend.DisableIntegrityChecking flag. An earlier version of this
-// function force-disabled that flag around the read, on the theory that per-stack snapshots from
-// previous multistack runs might carry cross-stack dependency references that ordinary
-// verification would reject; that flag is read from many unrelated, unsynchronized call sites
-// (backend/diy/state.go, backend/httpstate/state.go, snapshot managers, the CLI flag, tests), so
-// toggling it here -- even under a package-local mutex -- could still race with any of those
-// other readers and, worse, silently skip real integrity checking for unrelated concurrent
-// snapshot loads. No evidence was found that dependency edges actually cross stack boundaries in
-// a persisted snapshot (each stack's checkpoint is independent; StackReference resolution is
-// dynamic via the OutputWaiterStore, not a stored URN dependency into another stack's state), so
-// this reverts to ordinary integrity-checked loading. If a real need for relaxed verification
-// turns up, it belongs as an explicit per-call option threaded through the Stack.Snapshot API,
-// not a global.
+// UnverifiedSnapshotStack is implemented by a Stack whose backend can load its latest snapshot
+// without integrity verification. It exists solely for loadMultistackSnapshot: after a real
+// multistack UPDATE, a co-deployed pulumi:pulumi:StackReference resource carries a synthetic
+// dependency on the referenced stack's root URN, added by deploy.MergeSnapshots for destroy
+// ordering and persisted into that resource's own per-stack checkpoint (MergeSnapshots mutates
+// the shared per-stack State objects in place; see its doc comment for why cloning isn't an
+// option there). Loading that checkpoint back through the ordinary, integrity-checked path then
+// fails: the referenced root URN is absent from THIS stack's own checkpoint. Multistack
+// dependency-graph discovery only reads StackReference resources out of the snapshot as a
+// scheduling hint -- the result is never fed into step generation or persistence -- so skipping
+// verification here is safe. This is an explicit, per-call opt-in on the object actually being
+// read; it does not touch the process-global backend.DisableIntegrityChecking flag, which every
+// other snapshot read in the process (including this same stack's own ordinary Stack.Snapshot)
+// continues to honor unchanged.
+type UnverifiedSnapshotStack interface {
+	SnapshotUnchecked(ctx context.Context, secretsProvider secrets.Provider) (*deploy.Snapshot, error)
+}
+
+// loadMultistackSnapshot loads a stack's snapshot for multistack dependency-graph discovery.
+// When the stack's backend supports UnverifiedSnapshotStack, it loads unchecked (see that type's
+// doc comment for why ordinary integrity verification can wrongly reject a checkpoint written by
+// a prior multistack update); otherwise it falls back to the ordinary, integrity-checked
+// Stack.Snapshot.
 //
 // A stack with no prior state returns (nil, nil), exactly as Stack.Snapshot does; any other
 // error (authorization, decryption, transport, corrupt state) is returned rather than swallowed,
@@ -719,6 +727,9 @@ func executeStackOperation(
 func loadMultistackSnapshot(
 	ctx context.Context, stack Stack, secretsProvider secrets.Provider,
 ) (*deploy.Snapshot, error) {
+	if unverified, ok := stack.(UnverifiedSnapshotStack); ok {
+		return unverified.SnapshotUnchecked(ctx, secretsProvider)
+	}
 	return stack.Snapshot(ctx, secretsProvider)
 }
 

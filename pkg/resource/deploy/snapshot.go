@@ -556,6 +556,16 @@ func topoVisit(
 	return nil
 }
 
+// fqnProject extracts the project component from a fully qualified stack name ("org/project/stack"
+// -> "project"). Returns "" if fqn doesn't have at least an org and a project component.
+func fqnProject(fqn string) string {
+	parts := strings.Split(fqn, "/")
+	if len(parts) < 2 {
+		return ""
+	}
+	return parts[len(parts)-2]
+}
+
 // MergeSnapshots merges N snapshots into a single in-memory view for the engine to compute diffs.
 // The merged snapshot is never persisted — all writes go through a RoutingSnapshotManager back to
 // per-stack managers. URNs are naturally unique across stacks because they contain both the stack
@@ -604,26 +614,20 @@ func MergeSnapshots(snapshots []*Snapshot, coDeployedProjects map[string]bool) *
 		if res.Type == "pulumi:pulumi:StackReference" {
 			if nameVal, ok := res.Inputs["name"]; ok && nameVal.IsString() {
 				refName := nameVal.StringValue()
-				// Check if this references a co-deployed stack by checking all stack roots.
-				// The StackReference name is a fully qualified stack name, but we match
-				// against project names in the merged snapshot.
-				for project, rootURN := range stackRoots {
-					_ = project
-					// If the reference name matches a co-deployed stack's FQN, add a dependency.
-					if coDeployedProjects != nil && coDeployedProjects[refName] {
-						// Add dependency from this StackReference to the referenced stack's root.
-						hasDep := false
-						for _, dep := range res.Dependencies {
-							if dep == rootURN {
-								hasDep = true
-								break
-							}
-						}
-						if !hasDep {
-							res.Dependencies = append(res.Dependencies, rootURN)
-						}
-						break
-					}
+				// The StackReference name is a fully qualified stack name ("org/project/stack"),
+				// but stackRoots is keyed by project name, so look up the referenced stack's own
+				// root by its project component -- not by iterating every co-deployed stack's
+				// root and taking whichever one a (randomly ordered) map range produces first.
+				if coDeployedProjects == nil || !coDeployedProjects[refName] {
+					continue
+				}
+				rootURN, ok := stackRoots[fqnProject(refName)]
+				if !ok {
+					continue
+				}
+				// Add dependency from this StackReference to the referenced stack's root.
+				if !slices.Contains(res.Dependencies, rootURN) {
+					res.Dependencies = append(res.Dependencies, rootURN)
 				}
 			}
 		}

@@ -574,6 +574,7 @@ type MockStack struct {
 	OrgNameF              func() string
 	ConfigF               func() config.Map
 	SnapshotF             func(ctx context.Context, secretsProvider secrets.Provider) (*deploy.Snapshot, error)
+	SnapshotUncheckedF    func(ctx context.Context, secretsProvider secrets.Provider) (*deploy.Snapshot, error)
 	TagsF                 func() map[apitype.StackTagName]string
 	BackendF              func() Backend
 	DefaultSecretManagerF func(ctx context.Context, info *workspace.ProjectStack) (secrets.Manager, error)
@@ -629,6 +630,19 @@ func (ms *MockStack) Snapshot(ctx context.Context, secretsProvider secrets.Provi
 		return ms.SnapshotF(ctx, secretsProvider)
 	}
 	panic("not implemented: MockStack.Snapshot")
+}
+
+// SnapshotUnchecked satisfies UnverifiedSnapshotStack for tests that need to exercise
+// loadMultistackSnapshot's unchecked-load branch. Only set SnapshotUncheckedF when a test
+// actually wants MockStack to take that branch; other MockStack users are unaffected since this
+// method is only reached via an explicit type assertion.
+func (ms *MockStack) SnapshotUnchecked(
+	ctx context.Context, secretsProvider secrets.Provider,
+) (*deploy.Snapshot, error) {
+	if ms.SnapshotUncheckedF != nil {
+		return ms.SnapshotUncheckedF(ctx, secretsProvider)
+	}
+	panic("not implemented: MockStack.SnapshotUnchecked")
 }
 
 func (ms *MockStack) SnapshotStackOutputs(

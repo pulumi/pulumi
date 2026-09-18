@@ -236,6 +236,17 @@ func (s *cloudStack) Snapshot(ctx context.Context, secretsProvider secrets.Provi
 	return *s.snapshot.Load(), nil
 }
 
+// SnapshotUnchecked loads the stack's latest snapshot without integrity verification. It
+// satisfies backend.UnverifiedSnapshotStack; see that type's doc comment for why multistack
+// dependency-graph discovery needs an unchecked read. Unlike Snapshot, this never reads or
+// populates s.snapshot: that cache is for the ordinary, verified read path, and must never be
+// filled with the outcome of skipping verification.
+func (s *cloudStack) SnapshotUnchecked(
+	ctx context.Context, secretsProvider secrets.Provider,
+) (*deploy.Snapshot, error) {
+	return s.b.getSnapshotUnchecked(ctx, secretsProvider, s.ref)
+}
+
 func (s *cloudStack) SnapshotStackOutputs(
 	ctx context.Context, secretsProvider secrets.Provider,
 ) (property.Map, error) {

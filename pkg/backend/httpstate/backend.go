@@ -2254,10 +2254,13 @@ func (b *cloudBackend) SetupPerStackSnapshots(
 
 		// Load the per-stack snapshot without integrity checking. Multistack snapshots
 		// may contain cross-stack dependency references from previous multistack runs
-		// that would fail normal integrity verification.
+		// that would fail normal integrity verification. A load failure here (authorization,
+		// decryption, transport, corrupt checkpoint) must abort the whole setup rather than
+		// silently running the update as though the stack were empty.
 		snap, err := b.getSnapshotUnchecked(ctx, entry.Op.SecretsProvider, entry.Stack.Ref())
 		if err != nil {
-			logging.V(4).Infof("multistack: could not load snapshot for %s: %v", fqn, err)
+			cleanup()
+			return nil, nil, nil, fmt.Errorf("loading snapshot for %s: %w", fqn, err)
 		}
 		snapshots[fqn] = snap
 

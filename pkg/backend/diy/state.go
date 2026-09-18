@@ -172,6 +172,21 @@ func (b *diyBackend) getSnapshot(ctx context.Context,
 	return snap, nil
 }
 
+// getSnapshotUnchecked loads a snapshot without running integrity verification. See
+// backend.UnverifiedSnapshotStack for why multistack dependency-graph discovery needs this.
+func (b *diyBackend) getSnapshotUnchecked(ctx context.Context,
+	secretsProvider secrets.Provider, ref *diyBackendReference,
+) (*deploy.Snapshot, error) {
+	contract.Requiref(ref != nil, "ref", "must not be nil")
+
+	checkpoint, _, _, err := b.getCheckpoint(ctx, ref)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load checkpoint: %w", err)
+	}
+
+	return stack.DeserializeCheckpoint(ctx, secretsProvider, checkpoint)
+}
+
 func (b *diyBackend) getSnapshotStackOutputs(ctx context.Context,
 	secretsProvider secrets.Provider, ref *diyBackendReference,
 ) (property.Map, error) {
