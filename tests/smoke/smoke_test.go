@@ -1179,14 +1179,13 @@ func TestPulumiPackageAddForTerraformProvider(t *testing.T) {
 	e := ptesting.NewEnvironment(t)
 	defer e.DeleteIfNotFailed()
 
-	os.Unsetenv("GITHUB_TOKEN")
-
 	projectDir := filepath.Join(e.RootPath, "project")
 	err := os.Mkdir(projectDir, 0o700)
 	require.NoError(t, err)
 
 	e.CWD = projectDir
 	e.Env = append(e.Env,
+		"GITHUB_TOKEN=",
 		"PULUMI_EXPERIMENTAL=true",
 		"PULUMI_DISABLE_REGISTRY_RESOLVE=false",
 		"PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION=false",
