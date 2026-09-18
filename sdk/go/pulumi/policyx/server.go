@@ -226,6 +226,42 @@ func unknownValueErrorFromPanic(err error) error {
 	}
 }
 
+// unknownValueAdvisoryDiagnostic returns the advisory diagnostic reported when a
+// policy fails with an *UnknownValueError during preview. Mirroring the Node.js
+// and Python SDKs, the failure is downgraded to an advisory so the preview can
+// complete even though the policy read a computed property value. The remediation
+// counterpart is unknownValueAdvisoryRemediation.
+func (srv *analyzerServer) unknownValueAdvisoryDiagnostic(
+	p Policy, err error, urn string,
+) *pulumirpc.AnalyzeDiagnostic {
+	return &pulumirpc.AnalyzeDiagnostic{
+		PolicyName:        p.Name(),
+		PolicyPackName:    srv.policyPack.Name(),
+		PolicyPackVersion: srv.policyPack.Version().String(),
+		Description:       p.Description(),
+		Message: fmt.Sprintf(
+			"can't run policy '%s' from policy pack '%s@v%s' during preview: %v",
+			p.Name(), srv.policyPack.Name(), srv.policyPack.Version().String(), err),
+		EnforcementLevel: pulumirpc.EnforcementLevel(EnforcementLevelAdvisory),
+		Urn:              urn,
+	}
+}
+
+// unknownValueAdvisoryRemediation returns the remediation reported when a policy
+// fails with an *UnknownValueError during preview, the remediation counterpart of
+// unknownValueAdvisoryDiagnostic.
+func (srv *analyzerServer) unknownValueAdvisoryRemediation(p Policy, err error) *pulumirpc.Remediation {
+	return &pulumirpc.Remediation{
+		PolicyName:        p.Name(),
+		Description:       p.Description(),
+		PolicyPackName:    srv.policyPack.Name(),
+		PolicyPackVersion: srv.policyPack.Version().String(),
+		Diagnostic: fmt.Sprintf(
+			"can't run remediation '%s' from policy pack '%s@v%s' during preview: %v",
+			p.Name(), srv.policyPack.Name(), srv.policyPack.Version().String(), err),
+	}
+}
+
 // Main starts the analyzer server with the provided policy pack factory function.
 func Main(policyPack func(*pulumi.Context) (PolicyPack, error)) error {
 	// Fire up a gRPC server, letting the kernel choose a free port for us.
@@ -461,17 +497,7 @@ func (srv *analyzerServer) Analyze(
 					if errors.As(err, &unknownValueErr) {
 						// Mirror the Node.js and Python SDKs: report an advisory diagnostic and
 						// let the preview continue.
-						ds = append(ds, &pulumirpc.AnalyzeDiagnostic{
-							PolicyName:        p.Name(),
-							PolicyPackName:    srv.policyPack.Name(),
-							PolicyPackVersion: srv.policyPack.Version().String(),
-							Description:       p.Description(),
-							Message: fmt.Sprintf(
-								"can't run policy '%s' from policy pack '%s@v%s' during preview: %v",
-								p.Name(), srv.policyPack.Name(), srv.policyPack.Version().String(), err),
-							EnforcementLevel: pulumirpc.EnforcementLevel(EnforcementLevelAdvisory),
-							Urn:              req.GetUrn(),
-						})
+						ds = append(ds, srv.unknownValueAdvisoryDiagnostic(p, err, req.GetUrn()))
 						continue
 					}
 					return nil, fmt.Errorf("failed to validate resource %q with policy %q: %w", req.GetUrn(), p.Name(), err)
@@ -542,15 +568,7 @@ func (srv *analyzerServer) Remediate(
 					if errors.As(err, &unknownValueErr) {
 						// Mirror the Node.js and Python SDKs: report the failure as a
 						// diagnostic on the remediation instead of failing the whole call.
-						rs = append(rs, &pulumirpc.Remediation{
-							PolicyName:        p.Name(),
-							Description:       p.Description(),
-							PolicyPackName:    srv.policyPack.Name(),
-							PolicyPackVersion: srv.policyPack.Version().String(),
-							Diagnostic: fmt.Sprintf(
-								"can't run remediation '%s' from policy pack '%s@v%s' during preview: %v",
-								p.Name(), srv.policyPack.Name(), srv.policyPack.Version().String(), err),
-						})
+						rs = append(rs, srv.unknownValueAdvisoryRemediation(p, err))
 						continue
 					}
 					return nil, fmt.Errorf("failed to remediate resource %q with policy %q: %w", req.GetUrn(), p.Name(), err)
@@ -671,17 +689,7 @@ func (srv *analyzerServer) AnalyzeStack(ctx context.Context, req *pulumirpc.Anal
 			if errors.As(err, &unknownValueErr) {
 				// Mirror the Node.js and Python SDKs: report an advisory diagnostic and
 				// let the preview continue.
-				ds = append(ds, &pulumirpc.AnalyzeDiagnostic{
-					PolicyName:        p.Name(),
-					PolicyPackName:    srv.policyPack.Name(),
-					PolicyPackVersion: srv.policyPack.Version().String(),
-					Description:       p.Description(),
-					Message: fmt.Sprintf(
-						"can't run policy '%s' from policy pack '%s@v%s' during preview: %v",
-						p.Name(), srv.policyPack.Name(), srv.policyPack.Version().String(), err),
-					EnforcementLevel: pulumirpc.EnforcementLevel(EnforcementLevelAdvisory),
-					Urn:              "",
-				})
+				ds = append(ds, srv.unknownValueAdvisoryDiagnostic(p, err, ""))
 				continue
 			}
 			return nil, fmt.Errorf("failed to validate stack with policy %q: %w", p.Name(), err)
