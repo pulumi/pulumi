@@ -165,6 +165,8 @@ linters:
           msg: Use resource.NewProperty instead
         - pattern: ^os.Rename$
           msg: "`os.Rename` does not work across file systems and is not atomic for windows. Use with caution"
+        - pattern: ^os\.(Setenv|Unsetenv|Clearenv)$
+          msg: "use t.Setenv or ptesting.Unsetenv in tests"
         # Scoped to non-test code under pkg/cmd/ via exclusion rules below.
         # Cobra commands should use cmd.OutOrStdout() / cmd.ErrOrStderr() so
         # output can be captured, redirected, or tested.
@@ -244,6 +246,10 @@ linters:
           - forbidigo
         path: _test\.go$
         text: 'use (cmd\.OutOrStdout|cmd\.ErrOrStderr|fmt\.Fprint\*)'
+      - linters:
+          - forbidigo
+        path-except: _test\.go$
+        text: 'use t\.Setenv or ptesting\.Unsetenv in tests'
       # These modernizers are not enabled by Go 1.26's go fix. golangci-lint
       # runs them but does not accept their names in modernize.disable.
       - linters:

@@ -299,7 +299,7 @@ func TestStackCommands(t *testing.T) {
 		require.NoError(t, err)
 		err = os.WriteFile(stackFile, bytes, os.FileMode(os.O_CREATE))
 		require.NoError(t, err)
-		os.Unsetenv("PULUMI_CONFIG_PASSPHRASE")
+		ptesting.Unsetenv(t, "PULUMI_CONFIG_PASSPHRASE")
 		_, stderr := e.RunCommand("pulumi", "stack", "import", "--file", "stack.json")
 		assert.Contains(t, stderr, fmt.Sprintf("removing pending operation 'deleting' on '%s'", res.URN))
 		// The engine should be happy now that there are no invalid resources.

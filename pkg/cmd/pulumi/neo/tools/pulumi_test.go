@@ -39,6 +39,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
@@ -232,8 +233,7 @@ func TestApplyEnvVarsSetsAndRestores(t *testing.T) {
 	const absentKey = "PULUMI_NEO_TEST_ABSENT"
 
 	t.Setenv(presentKey, "original")
-	require.NoError(t, os.Unsetenv(absentKey))
-	t.Cleanup(func() { _ = os.Unsetenv(absentKey) })
+	ptesting.Unsetenv(t, absentKey)
 
 	restore := applyEnvVars(map[string]envVal{
 		presentKey: {Plain: "modified"},
@@ -376,12 +376,7 @@ func TestPulumi_Run_ResolvesBackendFromLiveEnv(t *testing.T) {
 
 	// Ensure PULUMI_ACCESS_TOKEN is unset in the ambient environment (CI sets it) so the
 	// "previously unset is unset on restore" behavior is what we actually exercise below.
-	if orig, ok := os.LookupEnv("PULUMI_ACCESS_TOKEN"); ok {
-		require.NoError(t, os.Unsetenv("PULUMI_ACCESS_TOKEN"))
-		// t.Setenv can't express "restore the prior value" (there is no t.Unsetenv), so
-		// restore it ourselves.
-		t.Cleanup(func() { _ = os.Setenv("PULUMI_ACCESS_TOKEN", orig) }) //nolint:usetesting
-	}
+	ptesting.Unsetenv(t, "PULUMI_ACCESS_TOKEN")
 
 	var capturedToken string
 	var resolved bool
