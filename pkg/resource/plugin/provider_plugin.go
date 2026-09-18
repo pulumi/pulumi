@@ -1667,9 +1667,11 @@ func (p *provider) Read(ctx context.Context, req ReadRequest) (ReadResponse, err
 		annotateSecrets(newState, req.State)
 	}
 
-	// make sure any echoed properties restore their original asset contents if they have not changed
+	// make sure any echoed properties restore their original asset contents if they have not changed. Assets
+	// often live only in a resource's outputs, so the old state is a candidate source as well as the old inputs.
 	restoreElidedAssetContents(req.Inputs, newInputs)
 	restoreElidedAssetContents(req.Inputs, newState)
+	restoreElidedAssetContents(req.State, newState)
 
 	logging.V(7).Infof("%s success; id=%q, #outs=%d, #inputs=%d", label, readID, len(newState), len(newInputs))
 	return ReadResponse{ReadResult{
@@ -1826,6 +1828,10 @@ func (p *provider) Update(ctx context.Context, req UpdateRequest) (UpdateRespons
 	if !protocol.acceptSecrets {
 		annotateSecrets(outs, req.NewInputs)
 	}
+
+	// make sure any echoed properties restore their original asset contents if they have not changed
+	restoreElidedAssetContents(req.OldOutputs, outs)
+
 	logging.V(7).Infof("%s success; #outs=%d", label, len(outs))
 
 	return UpdateResponse{
