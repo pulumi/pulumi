@@ -12,6 +12,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/pulumi/pulumi/pkg/v3/display"
+	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	resourceconfig "github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 )
 
@@ -203,12 +205,322 @@ outputs:
 	})
 	require.NoError(t, err)
 	require.Len(t, results, 2)
-	for _, result := range results {
+	consumerURNs, producerURNs := map[string]bool{}, map[string]bool{}
+	for i, result := range results {
 		require.NotNil(t, result.Plan, "approval preview must retain the engine plan")
+		require.NotEmpty(t, result.Plan.ResourcePlans, "member %d must have a nonempty resource plan", i)
 		assert.NotEmpty(t, result.Events, "approval preview must retain native engine details")
+		urns := consumerURNs
+		wantProject := "aaa-consumer"
+		if i == 1 {
+			urns = producerURNs
+			wantProject = "zzz-producer"
+		}
+		for urn := range result.Plan.ResourcePlans {
+			urns[string(urn)] = true
+			assert.Equal(t, wantProject, string(urn.Project()),
+				"member %d's resources must carry its own project, not the other member's", i)
+		}
+	}
+	// The two members' URN sets must be disjoint -- each ran as its own Deployment.
+	for urn := range consumerURNs {
+		assert.False(t, producerURNs[urn], "urn %q must not appear in both members' plans", urn)
 	}
 	// A missing co-preview dependency would fail while evaluating the consumer's output.
 	// Success with the consumer first proves the waiter used the producer's native preview.
+}
+
+// TestDriver_PreviewManyDistinctDefaultProviderURNs is the direct regression test for the
+// "Duplicate resource URN ... pulumi:providers:pulumi::default" failure: three members share the
+// stack name "prod" but have distinct projects, and two of them each need their own default
+// `pulumi` provider (via a StackReference) -- previously, the shared-engine multistack path
+// stamped every member's resources, including that default provider, under whichever member was
+// first in the slice, so the second member's registration collided. Each member now runs as its
+// own Deployment, so every resource -- including default providers -- must carry that member's
+// own project+stack, in either spec order.
+func TestDriver_PreviewManyDistinctDefaultProviderURNs(t *testing.T) {
+	t.Parallel()
+	requireYAMLHost(t)
+
+	root := t.TempDir()
+	backendURL := "file://" + filepath.Join(root, "state")
+
+	sharedTarget := writeProject(t, root, "shared-target", `name: shared-target
+runtime: yaml
+outputs:
+  value: shared
+`)
+	_, err := UpMany(context.Background(), []Options{{BackendURL: backendURL, WorkDir: sharedTarget, Stack: "dev"}})
+	require.NoError(t, err)
+
+	// No StackReference -- mirrors the live shape where the URN was wrongly stamped under the
+	// member that did not even own the colliding registration.
+	foundation := writeProject(t, root, "foundation", `name: foundation
+runtime: yaml
+outputs:
+  ok: "true"
+`)
+	referrerA := writeProject(t, root, "referrer-a", `name: referrer-a
+runtime: yaml
+resources:
+  ref:
+    type: pulumi:pulumi:StackReference
+    properties:
+      name: organization/shared-target/dev
+outputs:
+  value: ${ref.outputs["value"]}
+`)
+	referrerB := writeProject(t, root, "referrer-b", `name: referrer-b
+runtime: yaml
+resources:
+  ref:
+    type: pulumi:pulumi:StackReference
+    properties:
+      name: organization/shared-target/dev
+outputs:
+  value: ${ref.outputs["value"]}
+`)
+
+	orders := [][]string{
+		{foundation, referrerA, referrerB},
+		{referrerB, referrerA, foundation},
+	}
+	for _, order := range orders {
+		specs := make([]Options, len(order))
+		for i, dir := range order {
+			specs[i] = Options{BackendURL: backendURL, WorkDir: dir, Stack: "prod"}
+		}
+		results, err := PreviewMany(context.Background(), specs)
+		require.NoError(t, err)
+		require.Len(t, results, 3)
+		for i, result := range results {
+			require.NotNil(t, result.Plan, "member %d must have its own plan", i)
+			require.NotEmpty(t, result.Plan.ResourcePlans, "member %d must have a nonempty resource plan", i)
+			wantProject := filepath.Base(order[i])
+			for urn := range result.Plan.ResourcePlans {
+				assert.Equal(t, wantProject, string(urn.Project()),
+					"member %d's resources must carry its own project", i)
+				assert.Equal(t, "prod", string(urn.Stack()))
+			}
+		}
+	}
+}
+
+// TestDriver_PreviewManyOnlyChangedMemberPlansChanges is the existing-state differential test:
+// once both members have real state, previewing unchanged programs must plan zero non-Same
+// changes for either member, and changing only one member's program must plan changes for that
+// member alone.
+func TestDriver_PreviewManyOnlyChangedMemberPlansChanges(t *testing.T) {
+	t.Parallel()
+	requireYAMLHost(t)
+
+	root := t.TempDir()
+	backendURL := "file://" + filepath.Join(root, "state")
+
+	// Two referenceable targets so member B's StackReference can point at one, then the
+	// other -- a real resource-property change with a real diff, unlike a bare stack output
+	// (which the yaml host doesn't diff, since it's not an input of any resource).
+	target1 := writeProject(t, root, "target1", `name: target1
+runtime: yaml
+outputs:
+  v: "1"
+`)
+	target2 := writeProject(t, root, "target2", `name: target2
+runtime: yaml
+outputs:
+  v: "2"
+`)
+	for _, dir := range []string{target1, target2} {
+		_, err := UpMany(context.Background(), []Options{{BackendURL: backendURL, WorkDir: dir, Stack: "dev"}})
+		require.NoError(t, err)
+	}
+
+	memberA := writeProject(t, root, "member-a", `name: member-a
+runtime: yaml
+outputs:
+  value: a-v1
+`)
+	memberB := writeProject(t, root, "member-b", `name: member-b
+runtime: yaml
+resources:
+  ref:
+    type: pulumi:pulumi:StackReference
+    properties:
+      name: organization/target1/dev
+`)
+	specs := []Options{
+		{BackendURL: backendURL, WorkDir: memberA, Stack: "dev"},
+		{BackendURL: backendURL, WorkDir: memberB, Stack: "dev"},
+	}
+	_, err := UpMany(context.Background(), specs)
+	require.NoError(t, err)
+
+	nonSame := func(changes display.ResourceChanges) int {
+		total := 0
+		for op, count := range changes {
+			if op != deploy.OpSame {
+				total += count
+			}
+		}
+		return total
+	}
+
+	results, err := PreviewMany(context.Background(), specs)
+	require.NoError(t, err)
+	require.Len(t, results, 2)
+	assert.Zero(t, nonSame(results[0].Changes), "member A expected no changes")
+	assert.Zero(t, nonSame(results[1].Changes), "member B expected no changes")
+
+	// Change only member B's program: point its StackReference at the other target.
+	require.NoError(t, os.WriteFile(filepath.Join(memberB, "Pulumi.yaml"), []byte(`name: member-b
+runtime: yaml
+resources:
+  ref:
+    type: pulumi:pulumi:StackReference
+    properties:
+      name: organization/target2/dev
+`), 0o600))
+
+	results, err = PreviewMany(context.Background(), specs)
+	require.NoError(t, err)
+	assert.Zero(t, nonSame(results[0].Changes), "member A must plan no changes after only B changed")
+	assert.Positive(t, nonSame(results[1].Changes), "member B's changed StackReference target must plan a change")
+}
+
+// TestDriver_PreviewManyConsumerSeesProducersProjectedOutput proves the co-deployed output
+// waiter is actually wired into the Deployment (the constructor hookup the review found
+// missing): the producer has existing committed state with an old output value; its program is
+// then changed to a new value; co-previewing both, with the consumer ordered first, must resolve
+// the consumer's StackReference to the producer's currently-previewed NEW value, not the
+// backend's stale committed one.
+func TestDriver_PreviewManyConsumerSeesProducersProjectedOutput(t *testing.T) {
+	t.Parallel()
+	requireYAMLHost(t)
+
+	root := t.TempDir()
+	backendURL := "file://" + filepath.Join(root, "state")
+
+	producer := writeProject(t, root, "zzz-cascade-producer", `name: zzz-cascade-producer
+runtime: yaml
+outputs:
+  message: old-value
+  secretMessage:
+    fn::secret: old-secret
+`)
+	consumer := writeProject(t, root, "aaa-cascade-consumer", `name: aaa-cascade-consumer
+runtime: yaml
+resources:
+  ref:
+    type: pulumi:pulumi:StackReference
+    properties:
+      name: organization/zzz-cascade-producer/dev
+outputs:
+  message: ${ref.outputs["message"]}
+  secretMessage: ${ref.outputs["secretMessage"]}
+`)
+
+	_, err := UpMany(context.Background(), []Options{{BackendURL: backendURL, WorkDir: producer, Stack: "dev"}})
+	require.NoError(t, err)
+
+	require.NoError(t, os.WriteFile(filepath.Join(producer, "Pulumi.yaml"), []byte(`name: zzz-cascade-producer
+runtime: yaml
+outputs:
+  message: new-value
+  secretMessage:
+    fn::secret: new-secret
+`), 0o600))
+
+	results, err := PreviewMany(context.Background(), []Options{
+		{BackendURL: backendURL, WorkDir: consumer, Stack: "dev"},
+		{BackendURL: backendURL, WorkDir: producer, Stack: "dev"},
+	})
+	require.NoError(t, err)
+	require.Len(t, results, 2)
+
+	// The secret marking on the producer's projected output must survive the co-deployed
+	// StackReference cascade end to end -- through NewDeployment's WithOutputWaiters wiring,
+	// WaitForOutputs, and readStackReference -- not just the plaintext value.
+	secretMsg, ok := results[0].Outputs.GetOk("secretMessage")
+	require.True(t, ok, "consumer's projected secret output must resolve")
+	assert.True(t, secretMsg.Secret(), "the producer's secret output must stay marked secret through the cascade")
+	assert.Equal(t, "new-secret", secretMsg.AsString())
+
+	msg, ok := results[0].Outputs.GetOk("message")
+	require.True(t, ok, "consumer's projected output must resolve")
+	assert.Equal(t, "new-value", msg.AsString(),
+		"consumer must see the producer's currently-previewed value, not stale backend state")
+}
+
+// TestDriver_PreviewManyFailingMemberFailsWholeBatch proves that a member which fails during
+// preview fails the entire PreviewMany call, rather than the other member's provisional success
+// masking it.
+func TestDriver_PreviewManyFailingMemberFailsWholeBatch(t *testing.T) {
+	t.Parallel()
+	requireYAMLHost(t)
+
+	root := t.TempDir()
+	backendURL := "file://" + filepath.Join(root, "state")
+
+	failing := writeProject(t, root, "failing-member", `name: failing-member
+runtime: yaml
+resources:
+  ref:
+    type: pulumi:pulumi:StackReference
+    properties:
+      name: organization/does-not-exist/dev
+outputs:
+  never: ${ref.outputs["nope"]}
+`)
+	okMember := writeProject(t, root, "ok-member", `name: ok-member
+runtime: yaml
+outputs:
+  fine: "true"
+`)
+
+	_, err := PreviewMany(context.Background(), []Options{
+		{BackendURL: backendURL, WorkDir: okMember, Stack: "dev"},
+		{BackendURL: backendURL, WorkDir: failing, Stack: "dev"},
+	})
+	require.Error(t, err)
+}
+
+// TestDriver_PreviewManyCycleFailsWithError proves that two co-deployed members whose
+// StackReferences point at each other terminate with an explicit circular-dependency error
+// instead of hanging forever.
+func TestDriver_PreviewManyCycleFailsWithError(t *testing.T) {
+	t.Parallel()
+	requireYAMLHost(t)
+
+	root := t.TempDir()
+	backendURL := "file://" + filepath.Join(root, "state")
+
+	a := writeProject(t, root, "cycle-a", `name: cycle-a
+runtime: yaml
+resources:
+  ref:
+    type: pulumi:pulumi:StackReference
+    properties:
+      name: organization/cycle-b/dev
+outputs:
+  value: ${ref.outputs["value"]}
+`)
+	b := writeProject(t, root, "cycle-b", `name: cycle-b
+runtime: yaml
+resources:
+  ref:
+    type: pulumi:pulumi:StackReference
+    properties:
+      name: organization/cycle-a/dev
+outputs:
+  value: ${ref.outputs["value"]}
+`)
+
+	_, err := PreviewMany(context.Background(), []Options{
+		{BackendURL: backendURL, WorkDir: a, Stack: "dev"},
+		{BackendURL: backendURL, WorkDir: b, Stack: "dev"},
+	})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "circular dependency detected")
 }
 
 // TestDriver_DefaultsToCurrentBackend proves Select resolves the ambient backend when no

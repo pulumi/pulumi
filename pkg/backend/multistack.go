@@ -84,14 +84,20 @@ type MultistackResult struct {
 	Events []engine.Event
 }
 
-// MultistackPreview runs a unified preview across multiple stacks using a single engine deployment.
-// All stacks' programs run concurrently with resource-level interleaving.
+// MultistackPreview runs an approval preview across multiple stacks. Each member gets its own
+// real Deployment (its own project, target, snapshot and provider/default-provider context),
+// coordinated only through the OutputWaiterStore so a member can read another co-deployed
+// member's projected outputs without waiting for that member's preview to finish. This is the
+// per-stack orchestration path (see runMultistackOperation) rather than the shared-engine path:
+// the shared engine stamps every member's resources -- including default providers -- under the
+// first member's project, which collides as soon as two members need the same default provider
+// (see the "Duplicate resource URN ... pulumi:providers:pulumi::default" failure this replaces).
 func MultistackPreview(
 	ctx context.Context,
 	entries []MultistackEntry,
 	opts MultistackOptions,
 ) (map[string]*MultistackResult, error) {
-	return runMultistackPreviewViaEngine(ctx, entries, opts, false /* isDestroy */)
+	return runMultistackOperation(ctx, entries, opts, operationPreview)
 }
 
 // MultistackUpdate runs an update across multiple stacks.
@@ -149,9 +155,10 @@ func runMultistackPreviewViaEngine(
 	for i, entry := range entries {
 		fqn := string(entry.Stack.Ref().FullyQualifiedName())
 
-		// Load the snapshot without integrity checking. Per-stack snapshots may
-		// contain cross-stack dependency references from previous multistack runs.
-		snapshot := loadMultistackSnapshot(ctx, entry.Stack, entry.Op.SecretsProvider)
+		snapshot, err := loadMultistackSnapshot(ctx, entry.Stack, entry.Op.SecretsProvider)
+		if err != nil {
+			return nil, fmt.Errorf("loading snapshot for stack %q: %w", fqn, err)
+		}
 
 		// Build the deploy target.
 		target := &deploy.Target{
@@ -638,6 +645,7 @@ func executeStackOperation(
 				if e.Type == engine.ResourcePreEvent ||
 					e.Type == engine.ResourceOutputsEvent ||
 					e.Type == engine.PolicyRemediationEvent ||
+					e.Type == engine.DiagEvent ||
 					e.Type == engine.SummaryEvent {
 					collectedEvents = append(collectedEvents, e)
 				}
@@ -689,21 +697,29 @@ func executeStackOperation(
 	return result
 }
 
-// loadMultistackSnapshot loads a stack's snapshot with integrity checking temporarily disabled.
-// Per-stack snapshots from previous multistack runs may contain cross-stack dependency references
-// that would fail normal integrity verification. Returns nil if the snapshot can't be loaded.
-func loadMultistackSnapshot(ctx context.Context, stack Stack, secretsProvider secrets.Provider) *deploy.Snapshot {
-	origDisable := DisableIntegrityChecking
-	DisableIntegrityChecking = true
-	defer func() { DisableIntegrityChecking = origDisable }()
-
-	snap, err := stack.Snapshot(ctx, secretsProvider)
-	if err != nil {
-		fqn := string(stack.Ref().FullyQualifiedName())
-		logging.V(4).Infof("multistack: could not load snapshot for %s: %v", fqn, err)
-		return nil
-	}
-	return snap
+// loadMultistackSnapshot loads a stack's snapshot with the same integrity checking every
+// ordinary preview/update applies -- it does NOT relax or disable checking, and it does not
+// mutate the process-global backend.DisableIntegrityChecking flag. An earlier version of this
+// function force-disabled that flag around the read, on the theory that per-stack snapshots from
+// previous multistack runs might carry cross-stack dependency references that ordinary
+// verification would reject; that flag is read from many unrelated, unsynchronized call sites
+// (backend/diy/state.go, backend/httpstate/state.go, snapshot managers, the CLI flag, tests), so
+// toggling it here -- even under a package-local mutex -- could still race with any of those
+// other readers and, worse, silently skip real integrity checking for unrelated concurrent
+// snapshot loads. No evidence was found that dependency edges actually cross stack boundaries in
+// a persisted snapshot (each stack's checkpoint is independent; StackReference resolution is
+// dynamic via the OutputWaiterStore, not a stored URN dependency into another stack's state), so
+// this reverts to ordinary integrity-checked loading. If a real need for relaxed verification
+// turns up, it belongs as an explicit per-call option threaded through the Stack.Snapshot API,
+// not a global.
+//
+// A stack with no prior state returns (nil, nil), exactly as Stack.Snapshot does; any other
+// error (authorization, decryption, transport, corrupt state) is returned rather than swallowed,
+// so a member is never silently scheduled without its real dependency data.
+func loadMultistackSnapshot(
+	ctx context.Context, stack Stack, secretsProvider secrets.Provider,
+) (*deploy.Snapshot, error) {
+	return stack.Snapshot(ctx, secretsProvider)
 }
 
 // buildMultistackDependencyGraph analyzes StackReference resources in previous snapshots
@@ -719,8 +735,14 @@ func buildMultistackDependencyGraph(
 		key := string(entry.Stack.Ref().FullyQualifiedName())
 		deps[key] = nil // Initialize even if no deps
 
-		// Get the stack's snapshot to find StackReference resources.
-		snapshot := loadMultistackSnapshot(ctx, entry.Stack, entry.Op.SecretsProvider)
+		// Get the stack's snapshot to find StackReference resources. A load failure fails the
+		// whole multistack operation rather than silently scheduling this member with no
+		// dependencies, which could otherwise start it concurrently with a producer it actually
+		// depends on.
+		snapshot, err := loadMultistackSnapshot(ctx, entry.Stack, entry.Op.SecretsProvider)
+		if err != nil {
+			return nil, fmt.Errorf("loading snapshot for stack %q: %w", key, err)
+		}
 		if snapshot == nil {
 			continue
 		}

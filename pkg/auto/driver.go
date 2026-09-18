@@ -338,16 +338,18 @@ func runMany(ctx context.Context, specs []Options, preview bool) ([]Result, erro
 	for i, s := range stacks {
 		res := Result{}
 		res.EnvironmentImports = entries[i].Op.StackConfiguration.EnvironmentImports
-		if r := results[string(s.stack.Ref().FullyQualifiedName())]; r != nil {
-			if r.Error != nil {
-				return nil, fmt.Errorf("stack %s: %w", s.stack.Ref().Name().String(), r.Error)
-			}
-			res.Changes = r.Changes
-			res.Events = r.Events
-			if preview {
-				res.Outputs = projectedStackOutputs(r.Plan)
-				res.Plan = r.Plan
-			}
+		r := results[string(s.stack.Ref().FullyQualifiedName())]
+		if r == nil {
+			return nil, fmt.Errorf("stack %s: multistack operation returned no result", s.stack.Ref().Name().String())
+		}
+		if r.Error != nil {
+			return nil, fmt.Errorf("stack %s: %w", s.stack.Ref().Name().String(), r.Error)
+		}
+		res.Changes = r.Changes
+		res.Events = r.Events
+		if preview {
+			res.Outputs = projectedStackOutputs(r.Plan)
+			res.Plan = r.Plan
 		}
 		if !preview {
 			outs, oerr := s.Outputs(ctx)

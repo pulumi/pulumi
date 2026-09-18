@@ -22,7 +22,11 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/auto"
 	backendDisplay "github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
+	"github.com/pulumi/pulumi/pkg/v3/display"
+	"github.com/pulumi/pulumi/pkg/v3/engine"
+	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	resourceStack "github.com/pulumi/pulumi/pkg/v3/resource/stack"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 )
 
@@ -206,7 +210,11 @@ func runCandidatePreview(ctx context.Context, manifest candidatePreviewManifest)
 			TargetStack: member.TargetStack, Changes: changes,
 			EnvironmentRevisions: environmentRevisions(result.EnvironmentImports)}
 	}
-	serialized, err := resourceStack.SerializePlan(results[0].Plan, config.BlindingCrypter, false)
+	aggregatedPlan, err := aggregateNativePreviewPlan(results, manifest.Members)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	serialized, err := resourceStack.SerializePlan(aggregatedPlan, config.BlindingCrypter, false)
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("serializing native multistack preview plan: %w", err)
 	}
@@ -215,8 +223,9 @@ func runCandidatePreview(ctx context.Context, manifest candidatePreviewManifest)
 		return nil, nil, nil, fmt.Errorf("encoding native multistack preview plan: %w", err)
 	}
 	plan = redactJSONSecrets(plan, secretValues)
-	nativeEvents := make([]any, 0, len(results[0].Events))
-	for _, event := range results[0].Events {
+	aggregatedEvents := aggregateNativePreviewEvents(results)
+	nativeEvents := make([]any, 0, len(aggregatedEvents))
+	for _, event := range aggregatedEvents {
 		converted, err := backendDisplay.ConvertEngineEvent(event, false)
 		if err != nil {
 			return nil, nil, nil, fmt.Errorf("encoding native multistack preview event: %w", err)
@@ -229,6 +238,66 @@ func runCandidatePreview(ctx context.Context, manifest candidatePreviewManifest)
 	}
 	events = redactJSONSecrets(events, secretValues)
 	return stacks, plan, events, nil
+}
+
+// aggregateNativePreviewPlan combines every member's own native preview plan into one
+// display-only union of ResourcePlans keyed by URN, for the Delivery approval preview artifact.
+// Each member now runs as its own real Deployment (see backend.MultistackPreview), so its
+// ResourcePlans already carry that member's own project/stack in every URN; a URN collision
+// here would mean two members produced the exact same resource, which is rejected rather than
+// silently letting one overwrite the other. Plan.Config is deliberately left empty rather than
+// merged: two members can use the same config key with different values, and this aggregate is
+// not a replayable per-stack deployment plan.
+func aggregateNativePreviewPlan(
+	results []auto.Result, members []candidatePreviewMember,
+) (*deploy.Plan, error) {
+	merged := &deploy.Plan{ResourcePlans: map[resource.URN]*deploy.ResourcePlan{}}
+	owner := map[resource.URN]string{}
+	for i, result := range results {
+		if result.Plan == nil {
+			continue
+		}
+		if merged.Manifest.Version == "" {
+			merged.Manifest = result.Plan.Manifest
+		}
+		for urn, rp := range result.Plan.ResourcePlans {
+			if existing, exists := owner[urn]; exists {
+				return nil, fmt.Errorf(
+					"duplicate resource URN %q across delivery members %q and %q",
+					urn, existing, members[i].Name)
+			}
+			owner[urn] = members[i].Name
+			merged.ResourcePlans[urn] = rp
+		}
+	}
+	return merged, nil
+}
+
+// aggregateNativePreviewEvents combines every member's native preview event stream into one
+// ordered stream for the Delivery approval preview artifact: each member's own diffs and
+// diagnostics are preserved in full, and the per-member summary events (one native SummaryEvent
+// per member, each scoped to that member's own changes) collapse into a single coherent summary
+// covering every member's changes -- the shape the console's approval preview expects.
+func aggregateNativePreviewEvents(results []auto.Result) []engine.Event {
+	changes := display.ResourceChanges{}
+	combined := make([]engine.Event, 0)
+	for _, result := range results {
+		for _, event := range result.Events {
+			if event.Type == engine.SummaryEvent {
+				if payload, ok := event.Payload().(engine.SummaryEventPayload); ok {
+					for op, count := range payload.ResourceChanges {
+						changes[op] += count
+					}
+				}
+				continue
+			}
+			combined = append(combined, event)
+		}
+	}
+	return append(combined, engine.NewEvent(engine.SummaryEventPayload{
+		IsPreview:       true,
+		ResourceChanges: changes,
+	}))
 }
 
 // redactJSONSecrets is a final defense for diagnostics and provider messages. Config secrets are

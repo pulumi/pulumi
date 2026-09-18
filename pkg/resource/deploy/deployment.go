@@ -671,6 +671,12 @@ func NewDeployment(
 
 	// Create a new builtin provider. This provider implements features such as `getStack`.
 	builtins := newBuiltinProvider(backendClient, newResources, reads, ctx.Diag)
+	// Wire the co-deployed output waiter store, if this deployment is one member of a
+	// multistack operation. Without this, StackReference reads to other co-deployed members
+	// never take the dynamic-resolution branch and always fall through to the backend.
+	if opts.OutputWaiters != nil {
+		builtins.WithOutputWaiters(opts.OutputWaiters, opts.OutputWaitersStackName)
+	}
 
 	// Create a new provider registry. Although we really only need to pass in any providers that were present in the
 	// old resource list, the registry itself will filter out other sorts of resources when processing the prior state,

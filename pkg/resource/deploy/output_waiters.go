@@ -32,8 +32,14 @@ type OutputWaiterStore struct {
 	errors  map[string]error         // stack name -> error (set when stack fails)
 	ready   map[string]chan struct{} // stack name -> channel closed when outputs are ready
 
-	// For cycle detection: tracks which stacks are waiting on which.
-	waitGraph map[string]string // waiter stack -> waited-on stack
+	// For cycle detection: tracks which stacks are waiting on which. A waiter can have more
+	// than one *concurrent* in-flight wait on the very same target -- its own deployment may
+	// resolve the same StackReference from two resources in parallel -- so each edge carries a
+	// reference count rather than a boolean. The edge only disappears once every in-flight wait
+	// that registered it has exited (completed, failed, or been cancelled); deleting it on the
+	// first exit while a sibling wait on the same target is still active would let a later
+	// target->waiter wait evade checkCycle and deadlock.
+	waitGraph map[string]map[string]int // waiter stack -> (waited-on stack -> active wait count)
 }
 
 // NewOutputWaiterStore creates a new store for the given set of co-deployed stack names.
@@ -49,7 +55,7 @@ func NewOutputWaiterStore(coDeployedStacks []string) *OutputWaiterStore {
 		outputs:   make(map[string]property.Map),
 		errors:    make(map[string]error),
 		ready:     ready,
-		waitGraph: make(map[string]string),
+		waitGraph: make(map[string]map[string]int),
 	}
 }
 
@@ -103,16 +109,19 @@ func (s *OutputWaiterStore) WaitForOutputs(
 ) (property.Map, error) {
 	s.mu.Lock()
 
+	// Check if the target stack has already failed. A failure takes priority over any
+	// provisional outputs the target may have published before failing later in its own
+	// deployment -- a failed member must still fail every waiter, even one that raced in
+	// after the (now-stale) success snapshot was recorded.
+	if err, ok := s.errors[targetStack]; ok {
+		s.mu.Unlock()
+		return property.Map{}, fmt.Errorf("co-deployed stack %q failed: %w", targetStack, err)
+	}
+
 	// Check if outputs are already available.
 	if outputs, ok := s.outputs[targetStack]; ok {
 		s.mu.Unlock()
 		return outputs, nil
-	}
-
-	// Check if the target stack has already failed.
-	if err, ok := s.errors[targetStack]; ok {
-		s.mu.Unlock()
-		return property.Map{}, fmt.Errorf("co-deployed stack %q failed: %w", targetStack, err)
 	}
 
 	// Check for cycles: would this create a cycle in the wait graph?
@@ -121,8 +130,11 @@ func (s *OutputWaiterStore) WaitForOutputs(
 		return property.Map{}, err
 	}
 
-	// Record the wait edge for cycle detection.
-	s.waitGraph[waiterStack] = targetStack
+	// Record the wait edge for cycle detection. A single waiter stack can be blocked on
+	// several targets concurrently, and can have more than one concurrent wait on the SAME
+	// target (two resources in the same deployment both resolving the same StackReference), so
+	// this increments a reference count rather than setting a boolean.
+	s.addWaitEdge(waiterStack, targetStack)
 	ch := s.ready[targetStack]
 	s.mu.Unlock()
 
@@ -130,19 +142,19 @@ func (s *OutputWaiterStore) WaitForOutputs(
 	select {
 	case <-ch:
 		s.mu.Lock()
-		// Check for error first (FailStack closes the channel too).
+		s.removeWaitEdge(waiterStack, targetStack)
+		// Check for error first (FailStack closes the channel too), so a failure that lands
+		// after this target already published outputs still wins.
 		if err, ok := s.errors[targetStack]; ok {
-			delete(s.waitGraph, waiterStack)
 			s.mu.Unlock()
 			return property.Map{}, fmt.Errorf("co-deployed stack %q failed: %w", targetStack, err)
 		}
 		outputs := s.outputs[targetStack]
-		delete(s.waitGraph, waiterStack) // Clean up wait edge
 		s.mu.Unlock()
 		return outputs, nil
 	case <-ctx.Done():
 		s.mu.Lock()
-		delete(s.waitGraph, waiterStack)
+		s.removeWaitEdge(waiterStack, targetStack)
 		s.mu.Unlock()
 		return property.Map{}, fmt.Errorf(
 			"timed out waiting for outputs from co-deployed stack %q: %w", targetStack, ctx.Err(),
@@ -150,28 +162,60 @@ func (s *OutputWaiterStore) WaitForOutputs(
 	}
 }
 
-// checkCycle checks if adding waiter->target edge would create a cycle.
-// Must be called with s.mu held.
+// addWaitEdge registers one more in-flight wait from waiter to target. Must be called with
+// s.mu held.
+func (s *OutputWaiterStore) addWaitEdge(waiter, target string) {
+	if s.waitGraph[waiter] == nil {
+		s.waitGraph[waiter] = make(map[string]int)
+	}
+	s.waitGraph[waiter][target]++
+}
+
+// removeWaitEdge retires one in-flight wait from waiter to target. The edge is only removed
+// from the graph once every in-flight wait that registered it has exited -- otherwise a sibling
+// wait on the same target would vanish from cycle detection while it is still active. Must be
+// called with s.mu held.
+func (s *OutputWaiterStore) removeWaitEdge(waiter, target string) {
+	targets := s.waitGraph[waiter]
+	if targets == nil {
+		return
+	}
+	targets[target]--
+	if targets[target] <= 0 {
+		delete(targets, target)
+	}
+	if len(targets) == 0 {
+		delete(s.waitGraph, waiter)
+	}
+}
+
+// checkCycle checks if adding a waiter->target edge would create a cycle. The wait graph has
+// one node per stack and possibly several outgoing edges per node (a stack can be waiting on
+// more than one other stack concurrently), so this is a depth-first search rather than a
+// single-chain walk. Must be called with s.mu held.
 func (s *OutputWaiterStore) checkCycle(waiter, target string) error {
-	// Walk the wait graph from target to see if we reach waiter.
 	visited := make(map[string]bool)
-	current := target
-	for {
-		if current == waiter {
-			return fmt.Errorf(
-				"circular dependency detected: stack %q and stack %q are waiting on each other's outputs",
-				waiter, target,
-			)
+	var reaches func(node string) bool
+	reaches = func(node string) bool {
+		if node == waiter {
+			return true
 		}
-		if visited[current] {
-			break
+		if visited[node] {
+			return false
 		}
-		visited[current] = true
-		next, ok := s.waitGraph[current]
-		if !ok {
-			break
+		visited[node] = true
+		for next := range s.waitGraph[node] {
+			if reaches(next) {
+				return true
+			}
 		}
-		current = next
+		return false
+	}
+	if reaches(target) {
+		return fmt.Errorf(
+			"circular dependency detected: stack %q and stack %q are waiting on each other's outputs",
+			waiter, target,
+		)
 	}
 	return nil
 }
