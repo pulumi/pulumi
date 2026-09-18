@@ -4,8 +4,8 @@
 # Built by ci-toolchain-image.yml, tagged by content hash (see
 # .github/scripts/toolchain-image-tag).
 #
-# mise installs the tools at build time and is then deleted, leaving plain
-# binaries on PATH: no lazy installs, no runtime resolution to sway (#22181).
+# mise installs the tools and is deleted, leaving frozen bin paths in
+# /etc/toolchain-paths: no lazy installs or runtime resolution (#22181).
 #
 # Language versions come from the test matrix via build args. All other
 # pins come from .mise.toml.
@@ -91,23 +91,9 @@ RUN --mount=type=secret,id=github-token <<'EOF'
     python -m pip install --no-cache-dir --upgrade pip
     python -m pip install --no-cache-dir requests wheel urllib3 chardet build poetry
 
-    # Link every executable into the one directory on the runtime PATH.
-    # ln fails the build if two tools ship the same binary name.
-    mkdir -p /opt/toolchain/bin
-    for dir in $(mise bin-paths); do
-        for file in "$dir"/*; do
-            if [ -f "$file" ] && [ -x "$file" ]; then
-                # Symlinks rather than copies as go, npm, python and java
-                # locate their libraries relative to the executable's path.
-                ln -s "$file" /opt/toolchain/bin/
-            fi
-        done
-    done
-    # mise wraps node's npm launcher in a reshim hook that resolves its
-    # paths from the unresolved $0, so it breaks behind the symlink (and
-    # needs mise). Link npm's real entry point instead, like node's own
-    # npx symlink does.
-    ln -sf "$(mise where node)/lib/node_modules/npm/bin/npm-cli.js" /opt/toolchain/bin/npm
+    # Freeze the resolved bin dirs for ci-run-test.yml to put on PATH.
+    # A static ENV PATH cannot name these versioned directories.
+    mise bin-paths > /etc/toolchain-paths
 
     # Stable paths for JAVA_HOME and DOTNET_ROOT. readlink because
     # dotnet's install dir is itself a symlink.
@@ -119,8 +105,9 @@ RUN --mount=type=secret,id=github-token <<'EOF'
         /root/go /root/.cache/go-build
 EOF
 
-# Plain binaries only, no shims and no runtime version resolution.
-ENV PATH=/opt/toolchain/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin \
+# The toolchain enters PATH via /etc/toolchain-paths. npm's launcher is
+# a mise wrapper, and the reshim skip keeps it working without mise.
+ENV MISE_SKIP_RESHIM=1 \
     JAVA_HOME=/opt/java \
     DOTNET_ROOT=/opt/dotnet \
     DOTNET_CLI_TELEMETRY_OPTOUT=true

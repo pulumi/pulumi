@@ -1,32 +1,28 @@
-#!/usr/bin/env bash
+#!/usr/bin/env python3
 # Copyright 2026, Pulumi Corporation.
 #
 # Prints a [tools] or [vars] pin from .mise.toml, the parser every CI
-# consumer shares. Fails on a missing or duplicated key.
-#
-# Needs python3 3.11+ for tomllib; the CI runners and the mise
-# toolchain both provide it.
+# consumer shares. Fails on a missing or duplicated key. Needs python
+# 3.11+ for tomllib; the CI runners and the mise toolchain provide it.
 #
 # Usage:
 #   tool-pin gradle                    ([tools])
 #   tool-pin github:pulumi/goteststats ([tools])
 #   tool-pin yarn                      ([vars])
-set -euo pipefail
-cd "$(dirname "$0")/../.."
-
-KEY="${1:?usage: $0 <mise-key>}"
-python3 - "$KEY" <<'EOF'
 import sys
 import tomllib
+from pathlib import Path
 
+if len(sys.argv) != 2:
+    sys.exit(f"usage: {sys.argv[0]} <mise-key>")
 key = sys.argv[1]
-with open(".mise.toml", "rb") as f:
-    config = tomllib.load(f)
+
+repo_root = Path(__file__).resolve().parents[2]
+config = tomllib.loads((repo_root / ".mise.toml").read_text())
 
 # Only [tools] and [vars]: other sections reuse key names for non-pins
 # (gradle in [plugins]).
-found = [section[key] for section in (config["tools"], config["vars"]) if key in section]
+found = [section[key] for section in (config.get("tools", {}), config.get("vars", {})) if key in section]
 if len(found) != 1 or not isinstance(found[0], str):
     sys.exit(f"FATAL: expected one string pin for '{key}' in .mise.toml, found {found}")
 print(found[0])
-EOF

@@ -60,6 +60,12 @@ docker run --rm -i --platform linux/amd64 \
   "$IMAGE" bash -s <<'EOF'
 set -uo pipefail
 fail=0
+
+# Put the baked toolchain paths on PATH, as ci-run-test.yml does.
+if [ ! -s /etc/toolchain-paths ]; then
+  echo "FAIL: /etc/toolchain-paths missing or empty"; exit 1
+fi
+export PATH="$(tr '\n' ':' < /etc/toolchain-paths)${PATH}"
 expect() { # expect <label> <expected-substring> <actual>
   if [[ "$3" == *"$2"* ]]; then
     echo "ok:   $1: $3 (contains '$2')"

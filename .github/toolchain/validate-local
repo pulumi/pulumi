@@ -84,6 +84,7 @@ docker run --rm --platform linux/amd64 \
   -w /repo \
   "$REF" bash -c '
     set -euo pipefail
+    export PATH="$(tr "\n" ":" < /etc/toolchain-paths)${PATH}"
     id
     # Volumes from older revisions of this script are root-owned.
     sudo chown -R runner: /home/runner/go /home/runner/.cache/go-build

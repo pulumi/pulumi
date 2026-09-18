@@ -128,6 +128,10 @@ jobs:
         run: |
           HASH=$(echo '${{ inputs.test-name }}-${{ inputs.is-integration-test && 'integration' || 'unit' }}' | git hash-object --literally --stdin | awk '{ print $1 }')
           echo "TEST_HASH_ID=${HASH}" >> "$GITHUB_ENV"
+      # The image bakes its tool bin dirs into this file at build time.
+      - name: Put the toolchain on PATH (container)
+        if: ${{ inputs.toolchain-image != '' }}
+        run: cat /etc/toolchain-paths >> "$GITHUB_PATH"
       - name: "Windows cache workaround"
         # https://github.com/actions/cache/issues/752#issuecomment-1222415717
         # but only modify the path by adding tar.exe
