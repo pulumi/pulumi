@@ -193,7 +193,8 @@ func TestUpContinueOnErrorCreate(t *testing.T) {
 				Dependencies:            []resource.URN{failingResp.URN},
 			})
 		require.NoError(t, err)
-		assert.Equal(t, pulumirpc.Result_FAIL, respDepOnFailing.Result)
+		assert.Equal(t, pulumirpc.Result_SUCCESS, respDepOnFailing.Result)
+		assert.True(t, respDepOnFailing.Unknown)
 
 		return nil
 	})
@@ -803,7 +804,8 @@ func TestUpContinueOnErrorFailedDependencies(t *testing.T) {
 			Parent:                  parent.URN,
 		})
 		require.NoError(t, err)
-		assert.Equal(t, pulumirpc.Result_FAIL, child.Result)
+		assert.Equal(t, pulumirpc.Result_SUCCESS, child.Result)
+		assert.True(t, child.Unknown)
 
 		deletedWith, err := monitor.RegisterResource("pkgB:m:typB", "deletedWith", true, deploytest.ResourceOptions{
 			SupportsResultReporting: true,
@@ -816,7 +818,8 @@ func TestUpContinueOnErrorFailedDependencies(t *testing.T) {
 			DeletedWith:             deletedWith.URN,
 		})
 		require.NoError(t, err)
-		assert.Equal(t, pulumirpc.Result_FAIL, deletedWithDep.Result)
+		assert.Equal(t, pulumirpc.Result_SUCCESS, deletedWithDep.Result)
+		assert.True(t, deletedWithDep.Unknown)
 
 		propDep, err := monitor.RegisterResource("pkgB:m:typB", "propDep", true, deploytest.ResourceOptions{
 			SupportsResultReporting: true,
@@ -829,13 +832,15 @@ func TestUpContinueOnErrorFailedDependencies(t *testing.T) {
 			PropertyDeps:            map[resource.PropertyKey][]urn.URN{resource.PropertyKey("foo"): {propDep.URN}},
 		})
 		require.NoError(t, err)
-		assert.Equal(t, pulumirpc.Result_FAIL, propDepChild.Result)
+		assert.Equal(t, pulumirpc.Result_SUCCESS, propDepChild.Result)
+		assert.True(t, propDepChild.Unknown)
 
 		independent, err := monitor.RegisterResource("pkgA:m:typA", "independent", true, deploytest.ResourceOptions{
 			SupportsResultReporting: true,
 		})
 		require.NoError(t, err)
 		assert.Equal(t, pulumirpc.Result_SUCCESS, independent.Result)
+		assert.False(t, independent.Unknown)
 
 		return nil
 	})
