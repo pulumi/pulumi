@@ -92,6 +92,10 @@ type contextState struct {
 	join workGroup // the waitgroup for non-RPC async work associated with this context
 
 	packageRefs gsync.Map[string, *packageRefEntry] // per-context cache of parameterized provider package refs
+
+	// extensionBases maps an extension package name to the name of the base provider
+	// that serves it, for example "gateway-api" to "kubernetes".
+	extensionBases gsync.Map[string, string]
 }
 
 // Context handles registration of resources and exposes metadata about the current deployment context.
@@ -1438,7 +1442,7 @@ func (ctx *Context) readPackageResource(
 	}
 
 	// Get the provider for the resource.
-	provider := getProvider(t, options.Provider, providers)
+	provider := ctx.getProvider(t, options.Provider, providers)
 	protect := options.Protect
 	if parent != nil && protect == nil {
 		protect = parent.getProtect()
@@ -1815,7 +1819,7 @@ func (ctx *Context) registerResource(
 	}
 
 	// Get the provider for the resource.
-	provider := getProvider(t, options.Provider, providers)
+	provider := ctx.getProvider(t, options.Provider, providers)
 	protect := options.Protect
 	if parent != nil && protect == nil {
 		protect = parent.getProtect()
@@ -2078,6 +2082,9 @@ func (ctx *Context) GetOrRegisterPackageRef(
 			entry.err = err
 			return
 		}
+		if ext := r.GetExtension(); ext != nil && ext.GetName() != "" && r.GetName() != "" {
+			ctx.state.extensionBases.Store(ext.GetName(), r.GetName())
+		}
 		entry.ref = resp.Ref
 	})
 	return entry.ref, entry.err
@@ -2172,12 +2179,24 @@ func (ctx *Context) mergeProviders(t string, parent Resource, provider ProviderR
 }
 
 // getProvider gets the provider for the resource.
-func getProvider(t string, provider ProviderResource, providers map[string]ProviderResource) ProviderResource {
-	pkg := getPackage(t)
-	if provider == nil || provider.getPackage() != pkg {
-		provider = providers[pkg]
+func (ctx *Context) getProvider(
+	typeToken string, providerOption ProviderResource, byPackage map[string]ProviderResource,
+) ProviderResource {
+	pkg := getPackage(typeToken)
+	if providerOption != nil && providerOption.getPackage() == pkg {
+		return providerOption
 	}
-	return provider
+	if inherited, ok := byPackage[pkg]; ok {
+		return inherited
+	}
+	basePkg, ok := ctx.state.extensionBases.Load(pkg)
+	if !ok {
+		return nil
+	}
+	if providerOption != nil && providerOption.getPackage() == basePkg {
+		return providerOption
+	}
+	return byPackage[basePkg]
 }
 
 // getPackage takes in a type and returns the pkg

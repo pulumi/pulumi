@@ -1,0 +1,4 @@
+component: sdk/go
+kind: fix
+body: Use an explicit provider for resources from an extension package, instead of falling back to a default provider
+time: 2026-09-17T13:05:00Z
