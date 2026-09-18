@@ -106,6 +106,9 @@ func renderQueryEvent(event engine.Event, opts Options) string {
 	case engine.ProgressEvent:
 		return ""
 
+	case engine.UpdateStartedEvent:
+		return ""
+
 	default:
 		contract.Failf("unknown event type '%s'", event.Type)
 		return ""

@@ -58,7 +58,7 @@ type EventPayload interface {
 		ResourcePreEventPayload | ResourceOutputsEventPayload | ResourceOperationFailedPayload |
 		PolicyViolationEventPayload | PolicyRemediationEventPayload | PolicyLoadEventPayload | StartDebuggingEventPayload |
 		PolicyAnalyzeSummaryEventPayload | PolicyRemediateSummaryEventPayload | PolicyAnalyzeStackSummaryEventPayload |
-		ProgressEventPayload | ErrorEventPayload
+		ProgressEventPayload | ErrorEventPayload | UpdateStartedEventPayload
 }
 
 func NewCancelEvent() Event {
@@ -110,6 +110,8 @@ func NewEvent[T EventPayload](payload T) Event {
 		typ = ProgressEvent
 	case ErrorEventPayload:
 		typ = ErrorEvent
+	case UpdateStartedEventPayload:
+		typ = UpdateStartedEvent
 	default:
 		contract.Failf("unknown event type %v", typ)
 	}
@@ -141,6 +143,7 @@ const (
 	StartDebuggingEvent            EventType = "debugging-start"
 	ProgressEvent                  EventType = "progress"
 	ErrorEvent                     EventType = "error"
+	UpdateStartedEvent             EventType = "update-started"
 )
 
 // ProgressType is the type of download occurring.
@@ -182,7 +185,7 @@ func (e Event) Internal() bool {
 // only (e.g. progress).
 func (e Event) Ephemeral() bool {
 	switch e.payload.(type) {
-	case ProgressEventPayload:
+	case ProgressEventPayload, UpdateStartedEventPayload:
 		return true
 	default:
 		return false
@@ -289,6 +292,22 @@ type ProgressEventPayload struct {
 	Total int64
 	// True if and only if the process has completed.
 	Done bool
+}
+
+// UpdateStartedEventPayload is emitted by backends that track updates (currently the Pulumi Cloud
+// backend) once an update or preview has been started, before the engine runs. The engine never emits it.
+type UpdateStartedEventPayload struct {
+	// UpdateID is the operation's unique ID.
+	UpdateID string
+	// Version is the value the backend reported when starting the operation. For an update, it
+	// is the stack version this update becomes. For a preview, the backend still reports the
+	// stack's next version, but a preview never becomes a stack version, so consumers must not
+	// treat it as identifying the preview: the next real update will take that number. The value
+	// is carried as reported; interpreting it is the consumer's job.
+	Version int
+	// Permalink is the operation's page in the Pulumi Cloud console.
+	Permalink string
+	IsPreview bool
 }
 
 type StdoutEventPayload struct {
