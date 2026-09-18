@@ -2046,3 +2046,15 @@ func TestSession_ExecToolCallPostFailureUnderCancelStillPostsToolResult(t *testi
 		assert.Equal(t, cancelledContent(), item.Content)
 	}
 }
+
+func (f *fakeStreamer) GetNeoTask(context.Context, string, string) (*client.NeoTask, error) {
+	return nil, errors.New("unexpected task metadata request")
+}
+
+func (f *errStreamer) GetNeoTask(context.Context, string, string) (*client.NeoTask, error) {
+	return nil, errors.New("unexpected task metadata request")
+}
+
+func (f *reconnectStreamer) GetNeoTask(context.Context, string, string) (*client.NeoTask, error) {
+	return nil, errors.New("unexpected task metadata request")
+}
