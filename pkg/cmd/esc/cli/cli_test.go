@@ -125,7 +125,7 @@ func (tfs testFS) Remove(name string) error {
 type testEnviron map[string]string
 
 func TestMain(m *testing.M) {
-	os.Unsetenv("PULUMI_API")
+	os.Unsetenv("PULUMI_API") //nolint:forbidigo // TestMain has no t
 	os.Exit(m.Run())
 }
 

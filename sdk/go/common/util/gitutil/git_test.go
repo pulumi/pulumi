@@ -652,8 +652,7 @@ func TestParseAuthURL(t *testing.T) {
 
 	t.Run("with passphrase-protected key and wrong environment variable (agent unavailable)", func(t *testing.T) {
 		t.Setenv(env.GitSSHPassphrase.Var().Name(), "incorrect passphrase")
-		t.Setenv("SSH_AUTH_SOCK", "")
-		os.Unsetenv("SSH_AUTH_SOCK") // t.Setenv above will restore it after the test
+		ptesting.Unsetenv(t, "SSH_AUTH_SOCK")
 
 		parser := urlAuthParser{
 			sshConfig: &mockSSHConfig{path: generateSSHKey(t, "correct passphrase")},
@@ -681,8 +680,7 @@ func TestParseAuthURL(t *testing.T) {
 	t.Run("Don't cache on error", func(t *testing.T) {
 		// Regression test for https://github.com/pulumi/pulumi/issues/16637
 		t.Setenv(env.GitSSHPassphrase.Var().Name(), "incorrect passphrase")
-		t.Setenv("SSH_AUTH_SOCK", "")
-		os.Unsetenv("SSH_AUTH_SOCK") // t.Setenv above will restore it after the test
+		ptesting.Unsetenv(t, "SSH_AUTH_SOCK")
 
 		parser := urlAuthParser{
 			sshConfig: &mockSSHConfig{path: generateSSHKey(t, "correct passphrase")},
