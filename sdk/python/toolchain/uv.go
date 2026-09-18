@@ -347,16 +347,15 @@ func (u *uv) ListPackages(ctx context.Context, transitive bool) ([]plugin.Depend
 	}
 
 	packages := make([]plugin.DependencyInfo, 0, len(exported.Packages))
-	// If packages have a marker like sys_platform == 'win32', or do not have a version set, we need to use the
-	// `packaging` package to resolve these.
-	needsPythonPackaging := false
+	// Use packaging to evaluate environment markers and importlib.metadata to fill in missing versions.
+	needsPython := false
 	for _, pkg := range exported.Packages {
-		needsPythonPackaging = needsPythonPackaging || pkg.Marker != "" || pkg.Version == ""
+		needsPython = needsPython || pkg.Marker != "" || pkg.Version == ""
 		packages = append(packages, plugin.DependencyInfo{
 			Name: normalizePythonPackageName(pkg.Name), Version: pkg.Version,
 		})
 	}
-	if needsPythonPackaging {
+	if needsPython {
 		input, err := json.Marshal(exported.Packages)
 		if err != nil {
 			return nil, fmt.Errorf("encoding uv dependencies: %w", err)
