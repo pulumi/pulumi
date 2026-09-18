@@ -47,8 +47,8 @@ require (
 	github.com/containerd/errdefs/pkg v0.3.0 // indirect
 	github.com/danieljoos/wincred v1.2.3 // indirect
 	github.com/go-git/gcfg/v2 v2.0.2 // indirect
-	github.com/go-git/go-billy/v6 v6.0.0-alpha.1 // indirect
-	github.com/go-git/go-git/v6 v6.0.0-alpha.4 // indirect
+	github.com/go-git/go-billy/v6 v6.0.0-alpha.2 // indirect
+	github.com/go-git/go-git/v6 v6.0.0-alpha.5 // indirect
 	github.com/golang/glog v1.2.5 // indirect
 	github.com/google/go-tpm v0.9.8 // indirect
 	github.com/jedib0t/go-pretty/v6 v6.7.10 // indirect
