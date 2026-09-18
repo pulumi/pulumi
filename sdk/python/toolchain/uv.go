@@ -322,6 +322,7 @@ func (u *uv) ListPackages(_ context.Context, transitive bool) ([]plugin.Dependen
 
 	// We could not find the current project in the lock file, fall back to reporting every
 	// package it contains.
+	logging.V(5).Infof("could not locate %s within %s, reporting all locked packages", u.root, lockFilePath)
 	return listPackagesFromLockFile(lockFilePath, transitive, lock.virtualPackages())
 }
 

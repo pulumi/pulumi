@@ -48,6 +48,8 @@ source = { virtual = "packages/member-b" }
 dependencies = [
     { name = "pulumi-random" },
     { name = "pytest-cov" },
+    { name = "local-component" },
+    { name = "pulumi-vendored" },
 ]
 
 [package.dev-dependencies]
@@ -67,6 +69,19 @@ source = { virtual = "." }
 name = "pulumi"
 version = "3.264.0"
 source = { registry = "https://pypi.org/simple" }
+
+[[package]]
+name = "local-component"
+version = "0.2.0"
+source = { editable = "packages/local-component" }
+dependencies = [
+    { name = "pulumi" },
+]
+
+[[package]]
+name = "pulumi-vendored"
+version = "2.3.4"
+source = { path = "wheels/pulumi_vendored-2.3.4-py3-none-any.whl" }
 
 [[package]]
 name = "pulumi-onepassword"
@@ -153,7 +168,7 @@ const memberBPyproject = `[project]
 name = "member-b"
 version = "0.1.0"
 requires-python = ">=3.10"
-dependencies = ["pulumi-random", "pytest-cov"]
+dependencies = ["pulumi-random", "pytest-cov", "local-component", "pulumi-vendored"]
 
 [dependency-groups]
 dev = ["pulumi-docker"]
@@ -203,6 +218,11 @@ func TestUvListPackagesScopedToWorkspaceMember(t *testing.T) {
 	// `coverage[toml]` must pull in the packages of coverage's `toml` extra.
 	require.Contains(t, names, "coverage")
 	require.Contains(t, names, "tomli")
+	// A workspace member with a build backend is installed as an editable distribution, so it can
+	// carry a pulumi-plugin.json of its own and must be reported.
+	require.Contains(t, names, "local-component")
+	// Packages locked from a local path keep the name and version recorded in the lock file.
+	require.Contains(t, packages, plugin.DependencyInfo{Name: "pulumi-vendored", Version: "2.3.4"})
 	// `lint` is not a default group, so `uv sync` does not install it.
 	require.NotContains(t, names, "ruff")
 
@@ -229,7 +249,9 @@ func TestUvListPackagesDirectDependenciesScopedToWorkspaceMember(t *testing.T) {
 	packages, err := uv.ListPackages(t.Context(), false /* transitive */)
 	require.NoError(t, err)
 
-	require.ElementsMatch(t, []string{"pulumi-random", "pytest-cov", "pulumi-docker"}, packageNames(packages))
+	require.ElementsMatch(t,
+		[]string{"pulumi-random", "pytest-cov", "local-component", "pulumi-vendored", "pulumi-docker"},
+		packageNames(packages))
 }
 
 // TestUvListPackagesDefaultGroups checks that we follow `tool.uv.default-groups`, which controls
@@ -336,8 +358,9 @@ dependencies = []
 members = ["packages/*"]
 `)
 
-	// Two buildable packages standing in for provider SDKs, so that they show up in the lock file
-	// as real distributions rather than as virtual workspace members.
+	// Two buildable packages standing in for provider SDKs. Having a build backend makes uv record
+	// them as `editable` rather than `virtual` sources, and `uv sync` installs them into the
+	// virtualenv, so they must be reported for the member that depends on them.
 	for _, dep := range []string{"pulumi-onepassword", "pulumi-random"} {
 		dir := filepath.Join(root, "packages", dep)
 		writeFile(dir, "pyproject.toml", `[project]
@@ -371,10 +394,13 @@ dependencies = ["`+dep+`"]
 	require.NoError(t, err, string(out))
 
 	for member, expected := range map[string]string{"member-a": "pulumi-onepassword", "member-b": "pulumi-random"} {
-		uv, err := newUv(filepath.Join(root, "packages", member), "")
+		// Go through ResolveToolchain rather than newUv so that the test covers how the language
+		// host derives the toolchain's root from the program directory.
+		programDir := filepath.Join(root, "packages", member)
+		tc, err := ResolveToolchain(PythonOptions{Toolchain: Uv, Root: programDir, ProgramDir: programDir})
 		require.NoError(t, err)
 
-		packages, err := uv.ListPackages(t.Context(), true /* transitive */)
+		packages, err := tc.ListPackages(t.Context(), true /* transitive */)
 		require.NoError(t, err)
 
 		names := packageNames(packages)
@@ -385,4 +411,27 @@ dependencies = ["`+dep+`"]
 			}
 		}
 	}
+}
+
+// TestUvListPackagesNestedProgramDir checks that we still scope to the owning workspace member when
+// the Pulumi program lives in a subdirectory of that member rather than at its root.
+func TestUvListPackagesNestedProgramDir(t *testing.T) {
+	t.Parallel()
+
+	root := writeUvWorkspace(t, map[string]string{
+		"member-a": memberAPyproject,
+		"member-b": memberBPyproject,
+	})
+	programDir := filepath.Join(root, "packages", "member-b", "infra")
+	require.NoError(t, os.MkdirAll(programDir, 0o700))
+
+	uv, err := newUv(programDir, "")
+	require.NoError(t, err)
+
+	packages, err := uv.ListPackages(t.Context(), true /* transitive */)
+	require.NoError(t, err)
+
+	names := packageNames(packages)
+	require.Contains(t, names, "pulumi-random")
+	require.NotContains(t, names, "pulumi-onepassword")
 }
