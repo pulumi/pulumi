@@ -71,6 +71,9 @@ func TestLanguageNewSmoke(t *testing.T) {
 			e.CWD = projectDir
 
 			e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+			if runtime == "yaml" {
+				e.RunCommand("pulumi", "plugin", "install", "resource", "random", "4.19.0")
+			}
 			e.RunCommand("pulumi", "new", "random-"+Languages[runtime], "--yes")
 			e.RunCommand("pulumi", "up", "--yes")
 			e.RunCommand("pulumi", "destroy", "--yes")
@@ -659,6 +662,16 @@ func TestInstall(t *testing.T) {
 			e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 			// Pass `--generate-only` so dependencies are not installed as part of the `new` command.
 			e.RunCommand("pulumi", "new", "random-"+Languages[runtime], "--yes", "--generate-only")
+
+			if runtime == "yaml" {
+				pulumiYAML := filepath.Join(projectDir, "Pulumi.yaml")
+				data, err := os.ReadFile(pulumiYAML)
+				require.NoError(t, err)
+				require.Contains(t, string(data), "    type: random:RandomPet")
+				data = []byte(strings.Replace(string(data), "    type: random:RandomPet",
+					"    type: random:RandomPet\n    options:\n      version: 4.19.0", 1))
+				require.NoError(t, os.WriteFile(pulumiYAML, data, 0o600))
+			}
 
 			// Ensure `install` works and subsequent `up` and `destroy` operations work.
 			_, stderr := e.RunCommand("pulumi", "install")
