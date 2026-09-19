@@ -60,6 +60,7 @@ type orgAuditLogListArgs struct {
 	eventType    string
 	user         string
 	startTime    string
+	endTime      string
 	count        int64
 	all          bool
 	outputFormat outputflag.OutputFlag[orgAuditLogListRenderFunc]
@@ -107,8 +108,8 @@ func newOrgAuditLogListCmdWith(factory orgAuditLogListClientFactory) *cobra.Comm
 	cmd.Flags().StringVar(&args.org, "org", "", "The organization to list audit logs for")
 	cmd.Flags().StringVar(&args.eventType, "event-type", "", "Filter by event type")
 	cmd.Flags().StringVar(&args.user, "user", "", "Filter by user login")
-	cmd.Flags().StringVar(&args.startTime, "start-time", "",
-		"The upper bound of the time range (V1 semantics)")
+	cmd.Flags().StringVar(&args.startTime, "start-time", "", "The lower bound of the time range, as a Unix timestamp")
+	cmd.Flags().StringVar(&args.endTime, "end-time", "", "The upper bound of the time range, as a Unix timestamp")
 	cmd.Flags().Int64Var(&args.count, "count", 0,
 		"Maximum number of events to return. Defaults to the size of the first page; "+
 			"larger values auto-paginate")
@@ -179,6 +180,7 @@ func runOrgAuditLogList(
 		EventType: args.eventType,
 		User:      args.user,
 		StartTime: args.startTime,
+		EndTime:   args.endTime,
 	})
 	if err != nil {
 		return err
@@ -194,6 +196,7 @@ func runOrgAuditLogList(
 			EventType:         args.eventType,
 			User:              args.user,
 			StartTime:         args.startTime,
+			EndTime:           args.endTime,
 			ContinuationToken: token,
 		})
 		if err != nil {
