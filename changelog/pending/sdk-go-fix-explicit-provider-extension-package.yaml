@@ -1,0 +1,4 @@
+component: sdk/go
+kind: fix
+body: Honor an explicitly-supplied provider for a resource from a parameterized or extension package even though its package name differs from the provider's own package, instead of silently discarding it in favor of a default provider
+time: 2026-09-15T00:00:00Z
