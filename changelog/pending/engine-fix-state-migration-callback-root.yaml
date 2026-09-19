@@ -1,0 +1,4 @@
+component: engine
+kind: fix
+body: Preserve root-first state ordering between chained state migration callbacks
+time: 2026-09-17T14:23:42Z
