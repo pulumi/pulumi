@@ -1,0 +1,3 @@
+component: sdk/python
+kind: fix
+body: Discover plugins from the current uv workspace member’s dependencies
