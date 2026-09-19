@@ -236,6 +236,7 @@ func ConvertEngineEvent(e engine.Event, showSecrets bool) (apitype.EngineEvent, 
 			Metadata: convertStepEventMetadata(p.Metadata, showSecrets),
 			Status:   int(p.Status),
 			Steps:    int(p.Steps),
+			Awaited:  p.Awaited,
 		}
 
 	case engine.PolicyLoadEvent:
@@ -503,6 +504,7 @@ func ConvertJSONEvent(apiEvent apitype.EngineEvent) (engine.Event, error) {
 			Metadata: convertJSONStepEventMetadata(p.Metadata),
 			Status:   resource.Status(p.Status),
 			Steps:    int32(p.Steps),
+			Awaited:  p.Awaited,
 		})
 
 	case apiEvent.PolicyLoadEvent != nil:

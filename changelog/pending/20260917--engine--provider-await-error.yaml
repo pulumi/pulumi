@@ -1,0 +1,4 @@
+component: engine
+kind: feat
+body: Add an AwaitError provider protocol error indicating an operation needs to be awaited; the deployment continues, the resource is reported as failed, and the CLI exits with the dedicated ExitAwaitError code (10)
+time: 2026-09-17T00:00:00Z

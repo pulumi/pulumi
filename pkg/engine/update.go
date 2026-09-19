@@ -1351,10 +1351,17 @@ func (acts *updateActions) OnResourceStepPost(
 			errorURN = step.URN()
 		}
 
-		// Issue a true, bonafide error.
-		acts.Opts.Diag.Errorf(diag.GetResourceOperationFailedError(errorURN), err)
+		// Issue a diagnostic. Await failures surface as warnings (the provider merely couldn't
+		// wait for the operation, and the CLI will report a distinct exit code); all other
+		// failures are true bonafide errors.
+		_, awaited := errors.AsType[*plugin.AwaitError](err)
+		if awaited {
+			acts.Opts.Diag.Warningf(diag.GetResourceOperationFailedError(errorURN), err)
+		} else {
+			acts.Opts.Diag.Errorf(diag.GetResourceOperationFailedError(errorURN), err)
+		}
 		steps := atomic.LoadInt32(&acts.Steps)
-		acts.Opts.Events.resourceOperationFailedEvent(step, status, steps, acts.Opts.Debug, acts.Opts.ShowSecrets)
+		acts.Opts.Events.resourceOperationFailedEvent(step, status, steps, awaited, acts.Opts.Debug, acts.Opts.ShowSecrets)
 	} else {
 		if t := acts.Opts.snippetDeletions; t != nil {
 			t.recordStep(step)

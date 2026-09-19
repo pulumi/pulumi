@@ -189,6 +189,16 @@ func (e Event) Ephemeral() bool {
 	}
 }
 
+// Awaited returns true if this is a ResourceOperationFailed event whose failure was caused by an
+// AwaitError from the provider. Callers use this to distinguish "the operation could not be
+// awaited" from a regular resource failure.
+func (e Event) Awaited() bool {
+	if p, ok := e.payload.(ResourceOperationFailedPayload); ok {
+		return p.Awaited
+	}
+	return false
+}
+
 // DiagEventPayload is the payload for an event with type `diag`
 type DiagEventPayload struct {
 	URN       resource.URN
@@ -314,6 +324,10 @@ type ResourceOperationFailedPayload struct {
 	Metadata StepEventMetadata
 	Status   resource.Status
 	Steps    int32
+	// Awaited is true if the failure was caused by a provider returning AwaitError — i.e. the provider had to await the
+	// operation, and the step is being surfaced as failed but with distinct display treatment ("awaiting" rather than
+	// "failed").
+	Awaited bool
 }
 
 type ResourceOutputsEventPayload struct {
@@ -578,7 +592,7 @@ func (e *eventEmitter) sendEvent(event Event) {
 }
 
 func (e *eventEmitter) resourceOperationFailedEvent(
-	step deploy.Step, status resource.Status, steps int32, debug, showSecrets bool,
+	step deploy.Step, status resource.Status, steps int32, awaited, debug, showSecrets bool,
 ) {
 	contract.Requiref(e != nil, "e", "!= nil")
 
@@ -586,6 +600,7 @@ func (e *eventEmitter) resourceOperationFailedEvent(
 		Metadata: makeStepEventMetadata(step.Op(), step, debug, showSecrets),
 		Status:   status,
 		Steps:    steps,
+		Awaited:  awaited,
 	}))
 }
 

@@ -20,7 +20,9 @@ import (
 	"fmt"
 	"maps"
 	"sync"
+	"sync/atomic"
 
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -122,6 +124,11 @@ type stepExecutor struct {
 
 	erroredStepLock sync.RWMutex
 	erroredSteps    []Step
+
+	// awaited is set if any Create or Update step ended in a provider-reported AwaitError. Tracked
+	// separately from erroredSteps so that a run containing only awaits can be surfaced with the
+	// dedicated exit code, while runs containing any real error still exit with the real-error code.
+	awaited atomic.Bool
 
 	// Channel to collect panic errors from goroutines in this step executor
 	panicErrs chan error
@@ -379,6 +386,14 @@ func (se *stepExecutor) Errored() error {
 	return err
 }
 
+// Awaited returns true if any step in this executor completed as an await (Create or Update where
+// the provider returned an AwaitError). Awaits are tracked separately from Errored so that a run
+// containing any real error still returns that error via Errored, while a run containing only
+// awaits can be surfaced with the dedicated exit code.
+func (se *stepExecutor) Awaited() bool {
+	return se.awaited.Load()
+}
+
 // SignalCompletion signals to the stepExecutor that there are no more chains left to execute. All worker
 // threads will terminate as soon as they retire all of the work they are currently executing.
 func (se *stepExecutor) SignalCompletion() {
@@ -432,6 +447,26 @@ func (se *stepExecutor) executeChain(workerID int, chain chain) {
 }
 
 func (se *stepExecutor) cancelDueToError(err error, step Step) {
+	// AwaitError from Create or Update fails the resource to the SDK like any other error, but
+	// keeps the deployment running (dependents will cascade-skip like continue-on-error) and marks
+	// the deployment so the CLI can surface a dedicated exit code. Only CreateStep and UpdateStep
+	// support await semantics; any other step type receiving an AwaitError falls through and is
+	// treated as a normal error. We do not reject sawError here so that a subsequent real error
+	// still takes precedence over the await when computing the deployment's return error.
+	if _, isAwait := errors.AsType[*plugin.AwaitError](err); isAwait {
+		switch step.(type) {
+		case *CreateStep, *UpdateStep:
+			if !se.ignoreErrors {
+				se.awaited.Store(true)
+				step.Fail()
+				se.erroredStepLock.Lock()
+				defer se.erroredStepLock.Unlock()
+				se.erroredSteps = append(se.erroredSteps, step)
+			}
+			return
+		}
+	}
+
 	set := se.sawError.Reject(err)
 	if !set {
 		logging.V(10).Infof("StepExecutor already recorded an error then saw: %v", err)

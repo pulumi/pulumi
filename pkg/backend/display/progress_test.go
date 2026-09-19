@@ -387,11 +387,13 @@ func TestStatusDisplayFlags(t *testing.T) {
 			doneStatus := d.getStepStatus(step,
 				true,  // done
 				false, // failed
+				false, // awaited
 				false, // interrupted
 			)
 			inProgressStatus := d.getStepStatus(step,
 				false, // done
 				false, // failed
+				false, // awaited
 				false, // interrupted
 			)
 			if tt.shouldRetain {

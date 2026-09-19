@@ -24,6 +24,7 @@ import (
 
 	mapset "github.com/deckarep/golang-set/v2"
 	"github.com/pulumi/pulumi/pkg/v3/resource/graph"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	sdkproviders "github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -479,6 +480,19 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context) (_ *Plan, err e
 	} else if canceled {
 		ex.reportExecResult("canceled")
 		return nil, result.BailErrorf("canceled")
+	}
+
+	// If any step ended in an await (no other real errors above), surface a dedicated error so the
+	// CLI can exit with the await-specific exit code. Emit a warning-level diagnostic rather than
+	// the standard "update failed" error, since nothing failed — the engine just couldn't await
+	// one or more operations.
+	if ex.stepExec.Awaited() {
+		kind := "update"
+		if ex.deployment.opts.DryRun {
+			kind = "preview"
+		}
+		ex.deployment.Diag().Warningf(diag.RawMessage("", kind+" has awaiting resources"))
+		return nil, result.BailError(&plugin.AwaitError{})
 	}
 
 	return ex.deployment.newPlans.plan(), err
