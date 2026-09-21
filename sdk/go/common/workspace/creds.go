@@ -84,11 +84,11 @@ func GetAccountWithAgentFallback(key string) (Account, bool, error) {
 		return account, false, nil
 	}
 
-	agent := agentdetect.Detect(os.Getenv)
-	if agent == "" || hasExplicitPulumiPathEnv() {
+	if !AgentCredentialsFallbackEnabled() {
 		return account, false, err
 	}
 
+	agent := agentdetect.Detect(os.Getenv)
 	if err != nil {
 		logging.V(7).Infof(
 			"Could not read account for %q from default credentials in agent mode (%s); "+
@@ -1221,17 +1221,13 @@ func getConfigFilePath() (string, error) {
 	return filepath.Join(pulumiFolder, "config.json"), nil
 }
 
-// hasExplicitPulumiPathEnv reports whether the user explicitly selected a
-// Pulumi credential or home path, disabling implicit agent fallback paths.
-func hasExplicitPulumiPathEnv() bool {
-	return os.Getenv(PulumiCredentialsPathEnvVar) != "" ||
-		(os.Getenv(env.Home.Var().Name()) != "" && os.Getenv(pulumiTestAllowAgentFallbackEnvVar) != "true")
-}
-
 // AgentCredentialsFallbackEnabled reports whether shared temporary agent
 // credentials may be used as an implicit fallback.
 func AgentCredentialsFallbackEnabled() bool {
-	return agentdetect.Detect(os.Getenv) != "" && !hasExplicitPulumiPathEnv()
+	if agentdetect.Detect(os.Getenv) == "" || os.Getenv(PulumiCredentialsPathEnvVar) != "" {
+		return false
+	}
+	return os.Getenv(env.Home.Var().Name()) == "" || os.Getenv(pulumiTestAllowAgentFallbackEnvVar) == "true"
 }
 
 func GetPulumiConfig() (PulumiConfig, error) {
@@ -1303,8 +1299,7 @@ func writePulumiConfigFile(configFile string, config PulumiConfig) error {
 // getAgentPulumiConfigIfNeeded reads shared agent config when agent mode cannot
 // read the default Pulumi config path.
 func getAgentPulumiConfigIfNeeded(defaultErr error) (PulumiConfig, error) {
-	agent := agentdetect.Detect(os.Getenv)
-	if agent == "" || hasExplicitPulumiPathEnv() {
+	if !AgentCredentialsFallbackEnabled() {
 		return PulumiConfig{}, defaultErr
 	}
 
@@ -1314,7 +1309,7 @@ func getAgentPulumiConfigIfNeeded(defaultErr error) (PulumiConfig, error) {
 	}
 	logging.V(7).Infof(
 		"Could not read default Pulumi config in agent mode (%s); reading shared agent config from %q: %v",
-		agent, configFile, defaultErr)
+		agentdetect.Detect(os.Getenv), configFile, defaultErr)
 	c, err := os.ReadFile(configFile)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -1333,8 +1328,7 @@ func getAgentPulumiConfigIfNeeded(defaultErr error) (PulumiConfig, error) {
 // storeAgentPulumiConfigIfNeeded writes shared agent config when agent mode
 // cannot write the default Pulumi config path.
 func storeAgentPulumiConfigIfNeeded(config PulumiConfig, defaultErr error) error {
-	agent := agentdetect.Detect(os.Getenv)
-	if agent == "" || hasExplicitPulumiPathEnv() {
+	if !AgentCredentialsFallbackEnabled() {
 		return defaultErr
 	}
 
@@ -1344,7 +1338,7 @@ func storeAgentPulumiConfigIfNeeded(config PulumiConfig, defaultErr error) error
 	}
 	logging.V(7).Infof(
 		"Could not write default Pulumi config in agent mode (%s); writing shared agent config to %q: %v",
-		agent, configFile, defaultErr)
+		agentdetect.Detect(os.Getenv), configFile, defaultErr)
 	if err = writePulumiConfigFile(configFile, config); err != nil {
 		return errors.Join(defaultErr, err)
 	}
