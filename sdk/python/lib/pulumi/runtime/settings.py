@@ -80,9 +80,9 @@ class Settings:
         # programs each register against their own engine and receive distinct
         # refs.
         self.package_refs = {}
-        # Maps an extension package name to the name of the base provider that
-        # serves it, for example "gateway-api" to "kubernetes".
-        self.extension_bases = {}
+        # Maps a package reference to the name of the base provider that serves
+        # the extension package it was registered for.
+        self.packages_by_ref = {}
 
         if self.legacy_apply_enabled is None:
             self.legacy_apply_enabled = (
@@ -156,7 +156,7 @@ class Settings:
     def package_refs(self) -> Optional[dict]: ...
 
     @contextproperty
-    def extension_bases(self) -> Optional[dict]: ...
+    def packages_by_ref(self) -> Optional[dict]: ...
 
     @contextproperty
     def callbacks(self) -> Optional[_CallbackServicer]: ...
@@ -420,19 +420,20 @@ async def register_package(
     return ref
 
 
-def set_extension_base(package_name: str, base_provider_name: str) -> None:
+def set_package_by_ref(package_ref: object, base_provider_name: str) -> None:
     """
-    Records the base provider that serves an extension package.
+    Records the base provider that serves the extension package a reference was
+    registered for.
     """
-    SETTINGS.extension_bases[package_name] = base_provider_name
+    SETTINGS.packages_by_ref[package_ref] = base_provider_name
 
 
-def get_extension_base(package_name: str) -> Optional[str]:
+def get_package_by_ref(package_ref: object) -> Optional[str]:
     """
-    Returns the base provider that serves an extension package, or None when the
-    package is not an extension.
+    Returns the base provider recorded for a package reference, or None when the
+    reference is not for an extension package.
     """
-    return SETTINGS.extension_bases.get(package_name)
+    return SETTINGS.packages_by_ref.get(package_ref)
 
 
 def reset_options(

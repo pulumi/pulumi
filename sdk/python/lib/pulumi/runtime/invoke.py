@@ -241,7 +241,7 @@ def _invoke(
     async def do_invoke() -> tuple[InvokeResult, Optional[Exception]]:
         # If a parent was provided, but no provider was provided, use the parent's provider if one was specified.
         if opts is not None and opts.parent is not None and opts.provider is None:
-            opts.provider = opts.parent.get_provider(tok)
+            opts.provider = opts.parent.get_provider(tok, package_ref)
 
         # Construct a provider reference from the given provider, if one was provided to us.
         provider_ref = None

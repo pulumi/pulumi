@@ -43,7 +43,7 @@ from .runtime.resource import (
 from .runtime.resource import (
     create_urn as create_urn_internal,
 )
-from .runtime.settings import get_extension_base, get_root_resource
+from .runtime.settings import get_package_by_ref, get_root_resource
 
 if TYPE_CHECKING:
     from .output import Input, Inputs
@@ -1108,15 +1108,17 @@ class Resource:
             self._providers = opts.parent._providers
 
         pkg = _pkg_from_type(t)
-        opts.provider, opts.providers = self._get_providers(t, pkg, opts)
+        # An extension package is served by its base provider, so resolve the
+        # reference to the base package name before any provider lookup.
+        if package_ref is not None:
+            base_pkg = get_package_by_ref(package_ref)
+            if base_pkg is not None:
+                pkg = base_pkg
+        opts.provider, opts.providers = self._get_providers(t, pkg, opts, package_ref)
 
         self._protect = opts.protect
         self._provider = opts.provider if (custom or remote) else None
-        if (
-            self._provider
-            and self._provider.package != pkg
-            and self._provider.package != (get_extension_base(pkg) if pkg else None)
-        ):
+        if self._provider and self._provider.package != pkg:
             action = (
                 "get"
                 if opts.urn is not None
@@ -1157,7 +1159,11 @@ class Resource:
             )
 
     def _get_providers(
-        self, t: str, pkg: Optional[str], opts: ResourceOptions
+        self,
+        t: str,
+        pkg: Optional[str],
+        opts: ResourceOptions,
+        package_ref: Optional[Awaitable[Optional[str]]] = None,
     ) -> tuple[Optional["ProviderResource"], Mapping[str, "ProviderResource"]]:
         """
         Fetches the correct provider and providers for this resource.
@@ -1192,22 +1198,17 @@ class Resource:
         # of get_provider (which is Optional[ProviderResource]). This holds as
         # long as Resource does not impliment __bool__.
         parent_provider = cast(
-            Optional[ProviderResource], opts.parent and opts.parent.get_provider(t)
+            Optional[ProviderResource],
+            opts.parent and opts.parent.get_provider(t, package_ref),
         )
 
         provider = ambient_provider or parent_provider
-
-        base_pkg = get_extension_base(pkg) if pkg else None
-        if provider is None and base_pkg and base_pkg in opts_providers:
-            provider = opts_providers[base_pkg]
 
         if opts.provider:
             # If an explicit provider was passed in,
             # its package may or may not match the package we're looking for.
             provider_pkg = opts.provider.package
-            if pkg == provider_pkg or (
-                base_pkg is not None and base_pkg == provider_pkg
-            ):
+            if pkg == provider_pkg:
                 # Explicit provider takes precedence over parent or ambient providers.
                 provider = opts.provider
 
@@ -1279,7 +1280,11 @@ class Resource:
         """
         return prop
 
-    def get_provider(self, module_member: str) -> Optional["ProviderResource"]:
+    def get_provider(
+        self,
+        module_member: str,
+        package_ref: Optional[Awaitable[Optional[str]]] = None,
+    ) -> Optional["ProviderResource"]:
         """
         Fetches the provider for the given module member, if this resource has been provided a specific
         provider for the given module member.
@@ -1294,12 +1299,12 @@ class Resource:
         if pkg is None:
             return None
 
-        provider = self._providers.get(pkg)
-        if provider is not None:
-            return provider
+        if package_ref is not None:
+            base_pkg = get_package_by_ref(package_ref)
+            if base_pkg is not None:
+                pkg = base_pkg
 
-        base_pkg = get_extension_base(pkg)
-        return self._providers.get(base_pkg) if base_pkg else None
+        return self._providers.get(pkg)
 
 
 class CustomResource(Resource):

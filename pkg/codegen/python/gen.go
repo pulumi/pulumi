@@ -614,8 +614,7 @@ _BASE_PROVIDER_NAME = %q
 _PACKAGE_NAME = %q
 
 def get_package() -> typing.Awaitable[str]:
-	pulumi.runtime.set_extension_base(_PACKAGE_NAME, _BASE_PROVIDER_NAME)
-	return pulumi.runtime.register_package(
+	ref = pulumi.runtime.register_package(
 		base_provider_name=_BASE_PROVIDER_NAME,
 		base_provider_version=%q,
 		base_provider_download_url=get_plugin_download_url() or "",
@@ -624,6 +623,8 @@ def get_package() -> typing.Awaitable[str]:
 		base64_parameter=%q,
 		extension=True,
 	)
+	pulumi.runtime.set_package_by_ref(ref, _BASE_PROVIDER_NAME)
+	return ref
 	`,
 				baseProvider.Name, pkg.Name, baseProvider.Version, param)
 			if err != nil {
