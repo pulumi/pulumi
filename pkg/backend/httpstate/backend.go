@@ -310,12 +310,6 @@ func getBackendAccount(ctx context.Context, cloudURL string) (workspace.Account,
 	return account, nil
 }
 
-// hasExplicitPulumiPathEnv reports whether the user explicitly selected a
-// Pulumi credential or home path, disabling implicit agent fallback paths.
-func hasExplicitPulumiPathEnv() bool {
-	return os.Getenv(workspace.PulumiCredentialsPathEnvVar) != "" || os.Getenv(env.Home.Var().Name()) != ""
-}
-
 // storeUserAccount stores credentials from a user-controlled source. In agent
 // mode, if the default path is not writable, it skips persistence rather than
 // copying user credentials into the shared agent cache.
@@ -326,15 +320,14 @@ func storeUserAccount(cloudURL string, account workspace.Account, setCurrent boo
 		return nil
 	}
 
-	agent := agentdetect.Detect(os.Getenv)
-	if agent == "" || hasExplicitPulumiPathEnv() {
+	if !workspace.AgentCredentialsFallbackEnabled() {
 		return err
 	}
 
 	logging.V(7).Infof(
 		"Could not store credentials for %q in default credentials in agent mode (%s); "+
 			"continuing without persisting user credentials: %v",
-		cloudURL, agent, err)
+		cloudURL, agentdetect.Detect(os.Getenv), err)
 	return nil
 }
 
@@ -611,7 +604,7 @@ func (m defaultLoginManager) Current(
 	if accessToken == "" {
 		agent := agentdetect.Detect(os.Getenv)
 		if agent != "" {
-			if err != nil && hasExplicitPulumiPathEnv() {
+			if err != nil && !workspace.AgentCredentialsFallbackEnabled() {
 				return nil, err
 			}
 			logging.V(7).Infof("Detected agent mode (%s); checking shared agent credentials", agent)
