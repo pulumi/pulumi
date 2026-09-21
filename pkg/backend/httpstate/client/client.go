@@ -1674,7 +1674,7 @@ func (pc *Client) BeginUpdate(
 	}
 
 	if !env.DisableJournaling.Value() {
-		req.JournalVersion = 1
+		req.JournalVersion = apitype.LatestJournalVersion
 	}
 
 	var resp apitype.BeginUpdateResponse
