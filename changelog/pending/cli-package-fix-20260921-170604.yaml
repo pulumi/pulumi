@@ -1,0 +1,4 @@
+component: cli/package
+kind: fix
+body: Stop leaking package processes from `pulumi package get-schema`
+time: 2026-09-21T17:06:04.504438+02:00
