@@ -94,11 +94,15 @@ type DeliveryCandidatePreviewRequest struct {
 	Error           string                          `json:"error,omitempty"`
 }
 
+// Status is "succeeded" or "not-previewable"; absent means succeeded (pre-partial-preview
+// callers). Reason is set (and required) only for "not-previewable" rows.
 type DeliveryCandidatePreviewStack struct {
 	URN                  string            `json:"urn"`
 	Name                 string            `json:"name"`
 	Stage                string            `json:"stage"`
 	TargetStack          string            `json:"targetStack"`
+	Status               string            `json:"status,omitempty"`
+	Reason               string            `json:"reason,omitempty"`
 	Changes              map[string]int    `json:"changes"`
 	EnvironmentRevisions map[string]string `json:"environmentRevisions,omitempty"`
 }
