@@ -865,6 +865,10 @@ var agentPulumiDir = defaultAgentPulumiDir()
 // agent credentials across concurrently running package tests.
 const pulumiTestAgentPulumiDirEnvVar = "PULUMI_TEST_AGENT_PULUMI_DIR"
 
+// pulumiTestAllowAgentFallbackEnvVar lets tests isolate credentials with PULUMI_HOME
+// while still exercising agent fallback.
+const pulumiTestAllowAgentFallbackEnvVar = "PULUMI_TEST_ALLOW_AGENT_FALLBACK"
+
 // getAgentPulumiDirPath returns the shared temporary directory path used for
 // agent credentials.
 func getAgentPulumiDirPath() string {
@@ -1220,7 +1224,8 @@ func getConfigFilePath() (string, error) {
 // hasExplicitPulumiPathEnv reports whether the user explicitly selected a
 // Pulumi credential or home path, disabling implicit agent fallback paths.
 func hasExplicitPulumiPathEnv() bool {
-	return os.Getenv(PulumiCredentialsPathEnvVar) != "" || os.Getenv(env.Home.Var().Name()) != ""
+	return os.Getenv(PulumiCredentialsPathEnvVar) != "" ||
+		(os.Getenv(env.Home.Var().Name()) != "" && os.Getenv(pulumiTestAllowAgentFallbackEnvVar) != "true")
 }
 
 // AgentCredentialsFallbackEnabled reports whether shared temporary agent
