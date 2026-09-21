@@ -668,6 +668,13 @@ func massageBlobPath(path string) (string, error) {
 		}
 	}
 
+	// On Windows a URI like file:///C:/my/path leaves "/C:/my/path" once the scheme is
+	// stripped. Drop the leading slash so filepath.Abs below doesn't treat the path as
+	// relative to the current drive and duplicate the drive letter (C:\C:\my\path).
+	if os.PathSeparator != '/' && strings.HasPrefix(path, "/") && filepath.VolumeName(path[1:]) != "" {
+		path = path[1:]
+	}
+
 	// For file:// backend, ensure a relative path is resolved. fileblob only supports absolute paths.
 	path, err = filepath.Abs(path)
 	if err != nil {
