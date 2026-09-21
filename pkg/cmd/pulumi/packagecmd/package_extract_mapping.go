@@ -50,6 +50,8 @@ from Terraform to Pulumi). If you need to pass parameters, you must provide a pr
 key. In the event that you wish to pass none, you must therefore explicitly pass an
 empty string.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			ctx := cmd.Context()
+
 			key := args[0]
 			source := args[1]
 			var provider string
@@ -63,8 +65,8 @@ empty string.`,
 			}
 			sink := cmdutil.Diag()
 			registry := cmdCmd.NewDefaultRegistry(
-				cmd.Context(), cmdBackend.DefaultLoginManager, pkgWorkspace.Instance, nil, sink, env.Global())
-			pluginHost, err := pkghost.New(context.WithoutCancel(cmd.Context()), sink, sink, nil,
+				ctx, cmdBackend.DefaultLoginManager, pkgWorkspace.Instance, nil, sink, env.Global())
+			pluginHost, err := pkghost.New(context.WithoutCancel(ctx), sink, sink, nil,
 				pkgWorkspace.EnsureLanguageInstalled, schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext,
 				packageworkspace.NewResolverServer(registry))
 			if err != nil {
@@ -73,7 +75,7 @@ empty string.`,
 			// host is owned here, closed after the context
 			defer contract.IgnoreClose(pluginHost)
 			pctx, err := plugin.NewContext(
-				cmd.Context(), sink, sink, pluginHost, nil, wd, nil, false,
+				ctx, sink, sink, pluginHost, nil, wd, nil, false,
 				nil)
 			if err != nil {
 				return err
@@ -86,6 +88,7 @@ empty string.`,
 			if err != nil {
 				return fmt.Errorf("load provider: %w", err)
 			}
+			defer contract.IgnoreClose(p)
 
 			// If provider parameters have been provided, parameterize the provider with them before requesting a mapping.
 			if len(args) > 3 {
@@ -98,7 +101,7 @@ empty string.`,
 				}
 			}
 
-			mapping, err := p.GetMapping(cmd.Context(), plugin.GetMappingRequest{
+			mapping, err := p.GetMapping(ctx, plugin.GetMappingRequest{
 				Key:      key,
 				Provider: provider,
 			})
