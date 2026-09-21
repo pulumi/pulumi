@@ -436,7 +436,11 @@ func TestUvExportWorkspacePackages(t *testing.T) {
 			require.NoError(t, err)
 			out, err := cmd.Output()
 			require.NoError(t, err)
-			require.Equal(t, filepath.Join(dir, ".venv"), strings.TrimSpace(string(out)))
+			venv, err := filepath.EvalSymlinks(filepath.Join(dir, ".venv"))
+			require.NoError(t, err)
+			prefix, err := filepath.EvalSymlinks(strings.TrimSpace(string(out)))
+			require.NoError(t, err)
+			require.Equal(t, venv, prefix)
 			members[name] = member
 		}
 		require.NoDirExists(t, filepath.Join(root, ".venv"), "there is no shared environment")
