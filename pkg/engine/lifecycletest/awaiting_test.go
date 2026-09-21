@@ -726,6 +726,175 @@ func TestAwaitingSelfSuspendedLastResourceKeepsOldProviderUntilResume(t *testing
 		"the old default provider should finally be deleted once nothing references it")
 }
 
+// TestAwaitingUpdatePreservesOldStateUntilResume verifies that a resource's own Update call
+// returning the non-terminal `awaiting` disposition does NOT overwrite its carried-forward old
+// state with the new (possibly partially unknown) inputs/outputs/modified timestamp -- only a
+// later, non-awaiting update does that. This is the UpdateStep counterpart to CreateStep's
+// existing awaiting handling: see UpdateStep.Apply's `if resp.Awaiting` branch in step.go, which
+// returns before ever touching s.new.Outputs/Modified, and updateSnapshotMutation.End in both
+// pkg/backend/snapshot.go and pkg/engine/journal_snapshot.go, whose "not successful" path never
+// marks the old state done nor the new state new. This was reported as a suspected bug (a
+// deferred Stack member's checkpoint showing null inputs and a fresh modified timestamp) but was
+// not reproducible against this engine's Awaiting machinery -- this test is the verification.
+func TestAwaitingUpdatePreservesOldStateUntilResume(t *testing.T) {
+	t.Parallel()
+
+	ready := true
+	config := "v1"
+	loader := deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+		return &deploytest.Provider{
+			CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+				return plugin.CreateResponse{ID: "target-1", Properties: req.Properties, Status: resource.StatusOK}, nil
+			},
+			UpdateF: func(_ context.Context, req plugin.UpdateRequest) (plugin.UpdateResponse, error) {
+				if !ready {
+					return plugin.UpdateResponse{Status: resource.StatusOK, Awaiting: true}, nil
+				}
+				return plugin.UpdateResponse{Properties: req.NewInputs, Status: resource.StatusOK}, nil
+			},
+		}, nil
+	}, deploytest.WithoutGrpc)
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, err := monitor.RegisterResource("pkgA:m:typA", "target", true, deploytest.ResourceOptions{
+			SupportsResultReporting: true,
+			Inputs:                  resource.PropertyMap{"config": resource.NewStringProperty(config)},
+		})
+		require.NoError(t, err)
+		return nil
+	})
+	p := &lt.TestPlan{Options: lt.TestUpdateOptions{T: t, SkipDisplayTests: true,
+		HostF: deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loader)}}
+	project := p.GetProject()
+	targetURN := resource.URN("urn:pulumi:test::test::pkgA:m:typA::target")
+
+	// Run 0: target is created normally with a known "config" input.
+	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
+	require.NoError(t, err)
+	require.NoError(t, snap.VerifyIntegrity())
+	oldRes := findResourceByURN(snap.Resources, targetURN)
+	require.NotNil(t, oldRes)
+
+	// Run 1: config changes to a new value, but target's own Update call directly returns
+	// Awaiting. The old state (old config, old outputs, old modified) must survive unchanged.
+	ready = false
+	config = "v2"
+	suspended, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
+	var awaitErr *deploy.AwaitingError
+	require.True(t, errors.As(err, &awaitErr), "expected AwaitingError, got %v", err)
+	require.NoError(t, suspended.VerifyIntegrity())
+	keptRes := findResourceByURN(suspended.Resources, targetURN)
+	require.NotNil(t, keptRes)
+
+	assert.Equal(t, oldRes.Inputs, keptRes.Inputs, "old state's inputs must survive unchanged")
+	assert.Equal(t, oldRes.Outputs, keptRes.Outputs, "old state's outputs must survive unchanged")
+	assert.Equal(t, oldRes.Modified, keptRes.Modified, "old state's modified must survive unchanged")
+
+	// Run 2: the provider is ready again, so the update completes normally and migrates to the
+	// new config -- proving the preservation above is specific to the awaiting disposition, not
+	// a general failure to ever apply updates.
+	ready = true
+	resumed, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, suspended), p.Options, false, p.BackendClient, nil, "2")
+	require.NoError(t, err)
+	require.NoError(t, resumed.VerifyIntegrity())
+	migratedRes := findResourceByURN(resumed.Resources, targetURN)
+	require.NotNil(t, migratedRes)
+	assert.Equal(t, resource.NewStringProperty("v2"), migratedRes.Inputs["config"])
+	assert.NotEqual(t, oldRes.Modified, migratedRes.Modified, "modified should advance on a real update")
+}
+
+// TestAwaitingDependencyDeferredUpdatePreservesOldStateUntilResume is the dependency-deferred
+// counterpart to TestAwaitingUpdatePreservesOldStateUntilResume: an EXISTING resource (with known
+// prior inputs) depends on an unrelated resource ("job") that is itself suspended (Awaiting) this
+// update, mirroring TestAwaitingSuspendAndResume -- so target is deferred via hasSkippedDeps (a
+// SameStep that never reaches BeginMutation/Apply at all) rather than via its own Update call
+// returning Awaiting. This is the "Job hadn't run for this generation, so the dependent's input
+// was unknown" shape from the reported incident. Also not reproducible: target's carried-forward
+// old state survives unchanged.
+func TestAwaitingDependencyDeferredUpdatePreservesOldStateUntilResume(t *testing.T) {
+	t.Parallel()
+
+	jobReady := true
+	config := "v1"
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgJob", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					if !jobReady {
+						return plugin.CreateResponse{Status: resource.StatusOK, Awaiting: true}, nil
+					}
+					return plugin.CreateResponse{ID: "job-1", Properties: req.Properties, Status: resource.StatusOK}, nil
+				},
+			}, nil
+		}, deploytest.WithoutGrpc),
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					return plugin.CreateResponse{ID: "target-1", Properties: req.Properties, Status: resource.StatusOK}, nil
+				},
+				UpdateF: func(_ context.Context, req plugin.UpdateRequest) (plugin.UpdateResponse, error) {
+					return plugin.UpdateResponse{Properties: req.NewInputs, Status: resource.StatusOK}, nil
+				},
+			}, nil
+		}, deploytest.WithoutGrpc),
+	}
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		job, err := monitor.RegisterResource("pkgJob:m:typJob", "job", true, deploytest.ResourceOptions{
+			SupportsResultReporting: true,
+		})
+		require.NoError(t, err)
+
+		_, err = monitor.RegisterResource("pkgA:m:typA", "target", true, deploytest.ResourceOptions{
+			SupportsResultReporting: true,
+			Dependencies:            []resource.URN{job.URN},
+			Inputs:                  resource.PropertyMap{"config": resource.NewStringProperty(config)},
+		})
+		require.NoError(t, err)
+		return nil
+	})
+	p := &lt.TestPlan{Options: lt.TestUpdateOptions{T: t, SkipDisplayTests: true,
+		HostF: deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)}}
+	project := p.GetProject()
+	jobURN := resource.URN("urn:pulumi:test::test::pkgJob:m:typJob::job")
+	targetURN := resource.URN("urn:pulumi:test::test::pkgA:m:typA::target")
+
+	// Run 0: job and target are both created normally, so target has real prior state to carry
+	// forward into run 1.
+	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
+	require.NoError(t, err)
+	require.NoError(t, snap.VerifyIntegrity())
+	oldRes := findResourceByURN(snap.Resources, targetURN)
+	require.NotNil(t, oldRes)
+
+	// Run 1: job goes through a forced replace that suspends (Awaiting), and target -- which
+	// also wants to change its own config this update -- is deferred via hasSkippedDeps because
+	// it depends on job.
+	jobReady = false
+	config = "v2"
+	p.Options.ReplaceTargets = deploy.NewUrnTargetsFromUrns([]resource.URN{jobURN})
+	suspended, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
+	var awaitErr *deploy.AwaitingError
+	require.True(t, errors.As(err, &awaitErr), "expected AwaitingError, got %v", err)
+	require.NoError(t, suspended.VerifyIntegrity())
+	keptRes := findResourceByURN(suspended.Resources, targetURN)
+	require.NotNil(t, keptRes)
+
+	assert.Equal(t, oldRes.Inputs, keptRes.Inputs, "old state's inputs must survive unchanged")
+	assert.Equal(t, oldRes.Outputs, keptRes.Outputs, "old state's outputs must survive unchanged")
+	assert.Equal(t, oldRes.Modified, keptRes.Modified, "old state's modified must survive unchanged")
+
+	// Run 2: job is ready, so both job and target resume and target migrates to the new config.
+	jobReady = true
+	resumed, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, suspended), p.Options, false, p.BackendClient, nil, "2")
+	require.NoError(t, err)
+	require.NoError(t, resumed.VerifyIntegrity())
+	migratedRes := findResourceByURN(resumed.Resources, targetURN)
+	require.NotNil(t, migratedRes)
+	assert.Equal(t, resource.NewStringProperty("v2"), migratedRes.Inputs["config"])
+	assert.NotEqual(t, oldRes.Modified, migratedRes.Modified, "modified should advance on a real update")
+}
+
 func snapshotURNs(snap *deploy.Snapshot) []resource.URN {
 	urns := make([]resource.URN, 0, len(snap.Resources))
 	for _, r := range snap.Resources {
