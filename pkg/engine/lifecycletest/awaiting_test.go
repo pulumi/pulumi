@@ -806,11 +806,23 @@ func TestAwaitingUpdatePreservesOldStateUntilResume(t *testing.T) {
 // TestAwaitingDependencyDeferredUpdatePreservesOldStateUntilResume is the dependency-deferred
 // counterpart to TestAwaitingUpdatePreservesOldStateUntilResume: an EXISTING resource (with known
 // prior inputs) depends on an unrelated resource ("job") that is itself suspended (Awaiting) this
-// update, mirroring TestAwaitingSuspendAndResume -- so target is deferred via hasSkippedDeps (a
-// SameStep that never reaches BeginMutation/Apply at all) rather than via its own Update call
-// returning Awaiting. This is the "Job hadn't run for this generation, so the dependent's input
-// was unknown" shape from the reported incident. Also not reproducible: target's carried-forward
-// old state survives unchanged.
+// update, mirroring TestAwaitingSuspendAndResume -- so target is deferred via the hasSkippedDeps
+// branch at step_generator.go:893-906, which returns NewSameStep(deployment, event, old, new).
+// This is the "Job hadn't run for this generation, so the dependent's input was unknown" shape
+// from the reported incident, and matches a specific hypothesis: that this SameStep persists
+// `new` (the goal with the unknown input and a "refreshed" Modified) as the resource's state,
+// since SameStep.Apply only copies ID/Outputs from old onto new, leaving new's Inputs/Modified as
+// constructed. That hypothesis doesn't hold for two independent reasons, both verified here: (1)
+// step_generator.go:831-835 sets the new goal's Modified from old.Modified at construction time,
+// not a fresh timestamp, so even an executed SameStep wouldn't refresh it; and (2) this SameStep
+// never reaches Apply() at all -- deploymentExecutor.handleSingleEvent's fallback loop
+// (deployment_executor.go:695-722) re-checks hasAwaitingDependencies(step.New()) against the same
+// sg.awaitingDependencies the hasSkippedDeps branch just used to decide to emit this SameStep in
+// the first place, so it structurally always re-detects the dependency and calls step.Suspend()
+// before the step is ever added to newSteps -- confirmed by temporarily instrumenting
+// SameStep.Apply with a print statement and re-running this test: it fires only for ordinary
+// same-provider resources, never for the deferred "job" or "target". Also not reproducible:
+// target's carried-forward old state survives unchanged.
 func TestAwaitingDependencyDeferredUpdatePreservesOldStateUntilResume(t *testing.T) {
 	t.Parallel()
 
@@ -892,6 +904,130 @@ func TestAwaitingDependencyDeferredUpdatePreservesOldStateUntilResume(t *testing
 	migratedRes := findResourceByURN(resumed.Resources, targetURN)
 	require.NotNil(t, migratedRes)
 	assert.Equal(t, resource.NewStringProperty("v2"), migratedRes.Inputs["config"])
+	assert.NotEqual(t, oldRes.Modified, migratedRes.Modified, "modified should advance on a real update")
+}
+
+// TestAwaitingUndeclaredUnknownInputPreservesOldStateUntilResume covers the most literal reading
+// of the reported incident: target's new goal carries a genuinely Unknown input value (taken
+// directly from an awaiting resource's Unknown output via gate.Outputs, exactly like
+// TestAwaitingSuspendAndResume's downstream), but WITHOUT declaring that resource as a
+// Dependency/PropertyDependency -- deliberately bypassing hasAwaitingDependencies/hasSkippedDeps
+// (step_generator.go:893-906) so target's registration proceeds through normal Check/Diff/Update
+// with the Unknown value still present, rather than being short-circuited into a SameStep. Also
+// not reproducible: an ordinary UpdateStep, handed a genuinely Unknown NewInputs value, still
+// avoids persisting it (see UpdateStep.Apply's `if resp.Awaiting` branch in step.go).
+func TestAwaitingUndeclaredUnknownInputPreservesOldStateUntilResume(t *testing.T) {
+	t.Parallel()
+
+	includeGate := false
+	gateReady := false
+	updateReady := true
+	// targetUpdateCalls/targetUpdateSawUnknown make the proof explicit: this test's claim only
+	// holds if target's own UpdateF actually ran and actually saw a Computed "config" -- not
+	// merely that *some* AwaitingError surfaced (which gate's own create could produce alone).
+	targetUpdateCalls := 0
+	targetUpdateSawUnknown := false
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgGate", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					if !gateReady {
+						return plugin.CreateResponse{Status: resource.StatusOK, Awaiting: true}, nil
+					}
+					return plugin.CreateResponse{ID: "gate-1", Properties: req.Properties, Status: resource.StatusOK}, nil
+				},
+			}, nil
+		}, deploytest.WithoutGrpc),
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					return plugin.CreateResponse{ID: "target-1", Properties: req.Properties, Status: resource.StatusOK}, nil
+				},
+				UpdateF: func(_ context.Context, req plugin.UpdateRequest) (plugin.UpdateResponse, error) {
+					targetUpdateCalls++
+					if v, has := req.NewInputs["config"]; has && v.IsComputed() {
+						targetUpdateSawUnknown = true
+						if !updateReady {
+							return plugin.UpdateResponse{Status: resource.StatusOK, Awaiting: true}, nil
+						}
+					}
+					return plugin.UpdateResponse{Properties: req.NewInputs, Status: resource.StatusOK}, nil
+				},
+			}, nil
+		}, deploytest.WithoutGrpc),
+	}
+
+	partialValues := true
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		config := resource.NewStringProperty("v1")
+		if includeGate {
+			gate, err := monitor.RegisterResource("pkgGate:m:typGate", "gate", true, deploytest.ResourceOptions{
+				SupportsResultReporting: true,
+				SupportsPartialValues:   &partialValues,
+				Inputs: resource.PropertyMap{
+					"release": resource.NewStringProperty("release:input"),
+				},
+			})
+			require.NoError(t, err)
+			// Feed gate's output directly into target's input WITHOUT declaring a
+			// Dependency/PropertyDependency on gate, so target's own registration doesn't get
+			// short-circuited by hasSkippedDeps. While gate is awaiting on its first-ever
+			// create, this output is genuinely Unknown; once gate is ready, it resolves.
+			config = gate.Outputs["release"]
+			if !gateReady {
+				require.True(t, config.IsComputed(), "gate's output should be unknown while awaiting")
+			}
+		}
+
+		_, err := monitor.RegisterResource("pkgA:m:typA", "target", true, deploytest.ResourceOptions{
+			SupportsResultReporting: true,
+			Inputs:                  resource.PropertyMap{"config": config},
+		})
+		require.NoError(t, err)
+		return nil
+	})
+	p := &lt.TestPlan{Options: lt.TestUpdateOptions{T: t, SkipDisplayTests: true,
+		HostF: deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)}}
+	project := p.GetProject()
+	targetURN := resource.URN("urn:pulumi:test::test::pkgA:m:typA::target")
+
+	// Run 0: target is created on its own (no gate yet), with a known "config" input.
+	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
+	require.NoError(t, err)
+	require.NoError(t, snap.VerifyIntegrity())
+	oldRes := findResourceByURN(snap.Resources, targetURN)
+	require.NotNil(t, oldRes)
+
+	// Run 1: gate is introduced for the first time and is not ready, so target's new goal
+	// carries an Unknown "config" -- with no declared dependency on gate -- and target's own
+	// Update call reports Awaiting on seeing it.
+	includeGate = true
+	updateReady = false
+	suspended, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
+	var awaitErr *deploy.AwaitingError
+	require.True(t, errors.As(err, &awaitErr), "expected AwaitingError, got %v", err)
+	require.NoError(t, suspended.VerifyIntegrity())
+	keptRes := findResourceByURN(suspended.Resources, targetURN)
+	require.NotNil(t, keptRes)
+
+	// Prove this AwaitingError came from target's own Update call actually being invoked with
+	// the Unknown value, not merely from gate's own create suspending.
+	assert.Equal(t, 1, targetUpdateCalls, "target's own UpdateF must have been invoked")
+	assert.True(t, targetUpdateSawUnknown, "target's UpdateF must have seen a Computed config")
+
+	assert.Equal(t, oldRes.Inputs, keptRes.Inputs, "old state's inputs must survive unchanged")
+	assert.Equal(t, oldRes.Outputs, keptRes.Outputs, "old state's outputs must survive unchanged")
+	assert.Equal(t, oldRes.Modified, keptRes.Modified, "old state's modified must survive unchanged")
+
+	// Run 2: gate and target's update are both ready; target migrates to a real config value.
+	gateReady = true
+	updateReady = true
+	resumed, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, suspended), p.Options, false, p.BackendClient, nil, "2")
+	require.NoError(t, err)
+	require.NoError(t, resumed.VerifyIntegrity())
+	migratedRes := findResourceByURN(resumed.Resources, targetURN)
+	require.NotNil(t, migratedRes)
+	assert.False(t, migratedRes.Inputs["config"].IsComputed(), "config should resolve to a known value once gate is ready")
 	assert.NotEqual(t, oldRes.Modified, migratedRes.Modified, "modified should advance on a real update")
 }
 
