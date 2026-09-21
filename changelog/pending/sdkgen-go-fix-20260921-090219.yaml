@@ -1,0 +1,4 @@
+component: sdkgen/go
+kind: fix
+body: Set the default plugin version when the schema sets a Go language option
+time: 2026-09-21T09:02:19Z
