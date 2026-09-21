@@ -2398,6 +2398,54 @@ func (sg *stepGenerator) GenerateRefreshes(
 	return steps, resourceToStep, nil
 }
 
+// referencedByDeferredOldState returns the transitive closure of URNs that a delete pass must not
+// schedule for deletion, because a resource deferred (awaiting) in this update keeps its *old*
+// state in the snapshot verbatim -- see the SameStep emitted for hasSkippedDeps above -- and every
+// reference that old state carries (Provider, Parent, Dependencies, PropertyDependencies,
+// DeletedWith, ReplaceWith -- the same set VerifyIntegrity walks via GetAllDependencies) must still
+// resolve in the written snapshot. A protected ancestor's own old state is, by the same reasoning,
+// also carried forward unmodified whenever the ancestor wasn't otherwise operated on this update,
+// so its own references are protected too, however many levels deep that reaches.
+func (sg *stepGenerator) referencedByDeferredOldState() map[resource.URN]bool {
+	protected := make(map[resource.URN]bool)
+	var visit func(urn resource.URN)
+	visit = func(urn resource.URN) {
+		if urn == "" || protected[urn] || sg.isOperatedOn(urn) {
+			return
+		}
+		old, has := sg.deployment.olds[urn]
+		if !has || old == nil {
+			return
+		}
+		protected[urn] = true
+		provider, allDeps := old.GetAllDependencies()
+		if provider != "" {
+			if ref, err := sdkproviders.ParseReference(provider); err == nil {
+				visit(ref.URN())
+			}
+		}
+		for _, dep := range allDeps {
+			visit(dep.URN)
+		}
+	}
+	for urn := range sg.awaitingDependencies {
+		old, has := sg.deployment.olds[urn]
+		if !has || old == nil {
+			continue
+		}
+		provider, allDeps := old.GetAllDependencies()
+		if provider != "" {
+			if ref, err := sdkproviders.ParseReference(provider); err == nil {
+				visit(ref.URN())
+			}
+		}
+		for _, dep := range allDeps {
+			visit(dep.URN)
+		}
+	}
+	return protected
+}
+
 // GenerateDeletes generates delete steps for the resources that are pending delete from the snapshot, or were not
 // registered in the new snapshot. It also generates delete steps for any resources that were marked for deletion
 // because of `destroy` mode.
@@ -2440,6 +2488,11 @@ func (sg *stepGenerator) GenerateDeletes(targetsOpt UrnTargets, excludesOpt UrnT
 		}
 		return true
 	}
+
+	// Everything still referenced by the old (unmodified, carried-forward) state of a resource
+	// deferred in this update must survive it, or the written snapshot would contain a dangling
+	// reference. See referencedByDeferredOldState.
+	protected := sg.referencedByDeferredOldState()
 
 	// Doesn't matter what order we build this list of steps in as we'll sort them in ScheduleDeletes.
 	deleteSteps := []Step{}
@@ -2497,7 +2550,7 @@ func (sg *stepGenerator) GenerateDeletes(targetsOpt UrnTargets, excludesOpt UrnT
 					sg.deletes[res.URN] = true
 					oldViews := sg.deployment.GetOldViews(res.URN)
 					deleteSteps = append(deleteSteps, NewDeleteReplacementStep(sg.deployment, sg.deletes, res, false, oldViews))
-				} else if !sg.isOperatedOn(res.URN) {
+				} else if !sg.isOperatedOn(res.URN) && !protected[res.URN] {
 					logging.V(7).Infof("Planner decided to delete '%v'", res.URN)
 					sg.deletes[res.URN] = true
 					if !res.PendingReplacement {

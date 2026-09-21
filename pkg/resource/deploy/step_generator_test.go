@@ -1080,6 +1080,84 @@ func TestStepGenerator(t *testing.T) {
 	})
 }
 
+// TestReferencedByDeferredOldState is a focused unit test for the helper GenerateDeletes uses to
+// avoid deleting anything still referenced by the *old* (carried-forward, unmodified) state of a
+// resource deferred by the Awaiting protocol -- see the lifecycle tests
+// TestAwaitingDefaultProviderUpgradeKeepsOldProviderUntilResume and
+// TestAwaitingDeferredOldStateKeepsRemovedDependencyUntilResume for the end-to-end scenarios this
+// backs. It exercises every reference kind GetAllDependencies (and so VerifyIntegrity) walks --
+// Provider, Parent, Dependencies, PropertyDependencies, DeletedWith, ReplaceWith -- plus a
+// two-hop chain (protecting a protected resource's own references) and the negative cases
+// (unrelated resources, and resources this update did operate on, are not protected).
+func TestReferencedByDeferredOldState(t *testing.T) {
+	t.Parallel()
+
+	providerURN := resource.URN("urn:pulumi:test::test::pulumi:providers:pkgA::default")
+	providerRef, err := sdkproviders.NewReference(providerURN, "provider-id")
+	require.NoError(t, err)
+
+	const (
+		deferredURN    resource.URN = "urn:pulumi:test::test::my:mod:Res::deferred"
+		parentURN      resource.URN = "urn:pulumi:test::test::my:mod:Res::parent"
+		depURN         resource.URN = "urn:pulumi:test::test::my:mod:Res::dep"
+		propDepURN     resource.URN = "urn:pulumi:test::test::my:mod:Res::propdep"
+		deletedWithURN resource.URN = "urn:pulumi:test::test::my:mod:Res::deletedwith"
+		replaceWithURN resource.URN = "urn:pulumi:test::test::my:mod:Res::replacewith"
+		grandparentURN resource.URN = "urn:pulumi:test::test::my:mod:Res::grandparent"
+		unrelatedURN   resource.URN = "urn:pulumi:test::test::my:mod:Res::unrelated"
+		operatedOnURN  resource.URN = "urn:pulumi:test::test::my:mod:Res::operatedon"
+	)
+
+	sg := &stepGenerator{
+		deployment: &Deployment{
+			olds: map[resource.URN]*pkgresource.State{
+				deferredURN: {
+					URN:      deferredURN,
+					Provider: providerRef.String(),
+					Parent:   parentURN,
+					Dependencies: []resource.URN{
+						depURN,
+						// operatedOnURN is referenced too, but this update operated on it, so it
+						// must not show up in the protected set (and its own dependencies, if
+						// any, must not be pulled in transitively either).
+						operatedOnURN,
+					},
+					PropertyDependencies: map[resource.PropertyKey][]resource.URN{
+						"someProp": {propDepURN},
+					},
+					DeletedWith: deletedWithURN,
+					ReplaceWith: []resource.URN{replaceWithURN},
+				},
+				providerURN:    {URN: providerURN},
+				parentURN:      {URN: parentURN},
+				propDepURN:     {URN: propDepURN},
+				deletedWithURN: {URN: deletedWithURN},
+				replaceWithURN: {URN: replaceWithURN},
+				unrelatedURN:   {URN: unrelatedURN},
+				operatedOnURN:  {URN: operatedOnURN, Dependencies: []resource.URN{unrelatedURN}},
+				// depURN is itself referenced only via its own Parent (grandparentURN), proving
+				// the walk is transitive: a protected resource's old-state references must also
+				// survive.
+				depURN:         {URN: depURN, Parent: grandparentURN},
+				grandparentURN: {URN: grandparentURN},
+			},
+		},
+		awaitingDependencies: map[resource.URN]bool{deferredURN: true},
+		sames:                map[resource.URN]bool{operatedOnURN: true},
+	}
+
+	protected := sg.referencedByDeferredOldState()
+
+	for _, urn := range []resource.URN{
+		providerURN, parentURN, depURN, propDepURN, deletedWithURN, replaceWithURN, grandparentURN,
+	} {
+		assert.True(t, protected[urn], "expected %v to be protected", urn)
+	}
+	for _, urn := range []resource.URN{unrelatedURN, operatedOnURN, deferredURN} {
+		assert.False(t, protected[urn], "expected %v to not be protected", urn)
+	}
+}
+
 func TestExtensionParameterizeStepApply_Success(t *testing.T) {
 	t.Parallel()
 
