@@ -72,7 +72,7 @@ func ShowWatchEvents(op string, permalink string, events <-chan engine.Event, do
 			}
 			WatchPrefixPrintf(time.Now(), opts.Color,
 				resourceName, "%s", renderDiffDiagEvent(p, opts))
-		case engine.StartDebuggingEvent:
+		case engine.StartDebuggingEvent, engine.UpdateStartedEvent:
 			continue
 		case engine.ResourcePreEvent:
 			p := e.Payload().(engine.ResourcePreEventPayload)
@@ -114,9 +114,6 @@ func ShowWatchEvents(op string, permalink string, events <-chan engine.Event, do
 			}
 		case engine.ProgressEvent:
 			// Progress events are ephemeral and should be skipped.
-			continue
-		case engine.UpdateStartedEvent:
-			// Ephemeral and not meant for display.
 			continue
 		default:
 			contract.Failf("unknown event type '%s'", e.Type)

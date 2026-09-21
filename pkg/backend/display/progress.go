@@ -1278,16 +1278,13 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 		if msg == "" {
 			return
 		}
-	case engine.StartDebuggingEvent:
+	case engine.StartDebuggingEvent, engine.UpdateStartedEvent:
 		return
 	case engine.StdoutColorEvent:
 		display.handleSystemEvent(event.Payload().(engine.StdoutEventPayload))
 		return
 	case engine.ProgressEvent:
 		display.handleProgressEvent(event.Payload().(engine.ProgressEventPayload))
-		return
-	case engine.UpdateStartedEvent:
-		// Ephemeral and not meant for display.
 		return
 	case engine.ErrorEvent:
 		return

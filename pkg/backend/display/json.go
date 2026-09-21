@@ -192,8 +192,8 @@ func ShowPreviewDigest(events <-chan engine.Event, done chan<- bool, opts Option
 					Severity: p.Severity,
 				})
 			}
-		case engine.StartDebuggingEvent:
-			// We don't want to display debugging events in the JSON output.
+		case engine.StartDebuggingEvent, engine.UpdateStartedEvent:
+			// We don't want to display internal events in the JSON output.
 			continue
 
 		case engine.StdoutColorEvent:
@@ -250,9 +250,6 @@ func ShowPreviewDigest(events <-chan engine.Event, done chan<- bool, opts Option
 			digest.MaybeCorrupt = p.MaybeCorrupt
 		case engine.ProgressEvent:
 			// Progress events are ephemeral and should be skipped.
-			continue
-		case engine.UpdateStartedEvent:
-			// Ephemeral and not meant for display.
 			continue
 		case engine.ErrorEvent:
 			// Error events are not for display, so we skip them here.

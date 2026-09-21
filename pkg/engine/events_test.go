@@ -36,7 +36,7 @@ func TestTryCloseEventChan(t *testing.T) {
 	assert.Equal(t, false, tryCloseEventChan(c))
 }
 
-func TestUpdateStartedEventIsEphemeral(t *testing.T) {
+func TestUpdateStartedEventIsInternal(t *testing.T) {
 	t.Parallel()
 
 	e := NewEvent(UpdateStartedEventPayload{
@@ -46,5 +46,5 @@ func TestUpdateStartedEventIsEphemeral(t *testing.T) {
 	})
 
 	assert.Equal(t, UpdateStartedEvent, e.Type)
-	assert.True(t, e.Ephemeral())
+	assert.True(t, e.Internal())
 }

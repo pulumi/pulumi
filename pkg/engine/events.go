@@ -166,14 +166,15 @@ func (e Event) Payload() any {
 	return e.payload
 }
 
-// Returns true if this is a ResourcePreEvent or ResourceOutputsEvent with the internal flag set.
+// Returns true if this is a ResourcePreEvent or ResourceOutputsEvent with the internal flag set, or
+// an event type that is never displayed or persisted (StartDebuggingEvent, UpdateStartedEvent).
 func (e Event) Internal() bool {
 	switch payload := e.payload.(type) {
 	case ResourcePreEventPayload:
 		return payload.Internal
 	case ResourceOutputsEventPayload:
 		return payload.Internal
-	case StartDebuggingEventPayload:
+	case StartDebuggingEventPayload, UpdateStartedEventPayload:
 		return true
 	default:
 		return false
@@ -185,7 +186,7 @@ func (e Event) Internal() bool {
 // only (e.g. progress).
 func (e Event) Ephemeral() bool {
 	switch e.payload.(type) {
-	case ProgressEventPayload, UpdateStartedEventPayload:
+	case ProgressEventPayload:
 		return true
 	default:
 		return false

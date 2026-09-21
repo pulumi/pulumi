@@ -2103,10 +2103,11 @@ func (b *cloudBackend) runEngineAction(
 		backend.ActionLabel(kind, dryRun), kind, stackRef, op, permalink,
 		displayEvents, displayDone, op.Opts.Display, dryRun)
 
-	// Sent directly to the display goroutine started above rather than through the
-	// engineEvents forwarder below. The event never enters engineEvents, so the forwarder
-	// can never hold a pending send to the caller on the journal-init early returns further
-	// down, where engineEvents is not drained or closed.
+	// Hand the event to the display pipeline directly, not through the forwarder below. The
+	// renderers skip internal events, but this is what gets it into the event log. Journal
+	// setup further down can return early and leave the forwarder running, and an event still
+	// inside it would then be sent to the caller after the caller has closed its channel,
+	// which panics.
 	displayEvents <- updateStartedEvent
 
 	if err := pkgLogging.RenameCurrentLogger(string(stackRef.FullyQualifiedName()), update.UpdateID); err != nil {

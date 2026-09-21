@@ -90,7 +90,7 @@ func renderQueryEvent(event engine.Event, opts Options) string {
 	case engine.DiagEvent:
 		return renderQueryDiagEvent(event.Payload().(engine.DiagEventPayload), opts)
 
-	case engine.StartDebuggingEvent:
+	case engine.StartDebuggingEvent, engine.UpdateStartedEvent:
 		return ""
 
 	case engine.PreludeEvent, engine.SummaryEvent, engine.ResourceOperationFailed,
@@ -104,9 +104,6 @@ func renderQueryEvent(event engine.Event, opts Options) string {
 		return ""
 
 	case engine.ProgressEvent:
-		return ""
-
-	case engine.UpdateStartedEvent:
 		return ""
 
 	default:
