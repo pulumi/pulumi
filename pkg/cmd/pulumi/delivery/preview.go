@@ -88,6 +88,10 @@ func (c *command) previewCandidateCommand() *cobra.Command {
 			}
 			stacks, plan, events, previewErr := runCandidatePreview(cmd.Context(), manifest)
 			if previewErr != nil {
+				// The root command silences returned errors, and the executor only relays
+				// the exit status, so print the failure (member stack + engine diagnostics
+				// for a MemberError) before reporting it.
+				fmt.Fprintf(cmd.ErrOrStderr(), "error: %v\n", previewErr)
 				request.Status, request.Error = "failed", previewErr.Error()
 			} else {
 				request.Status, request.Stacks, request.Plan, request.Events = "succeeded", stacks, plan, events

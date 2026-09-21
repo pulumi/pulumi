@@ -21,6 +21,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	backenddisplay "github.com/pulumi/pulumi/pkg/v3/backend/display"
@@ -338,12 +339,13 @@ func runMany(ctx context.Context, specs []Options, preview bool) ([]Result, erro
 	for i, s := range stacks {
 		res := Result{}
 		res.EnvironmentImports = entries[i].Op.StackConfiguration.EnvironmentImports
-		r := results[string(s.stack.Ref().FullyQualifiedName())]
+		fqn := string(s.stack.Ref().FullyQualifiedName())
+		r := results[fqn]
 		if r == nil {
-			return nil, fmt.Errorf("stack %s: multistack operation returned no result", s.stack.Ref().Name().String())
+			return nil, fmt.Errorf("stack %s: multistack operation returned no result", fqn)
 		}
 		if r.Error != nil {
-			return nil, fmt.Errorf("stack %s: %w", s.stack.Ref().Name().String(), r.Error)
+			return nil, &MemberError{Stack: fqn, Diagnostics: errorDiagnostics(r.Events), err: r.Error}
 		}
 		res.Changes = r.Changes
 		res.Events = r.Events
@@ -544,4 +546,56 @@ func applySecretConfig(ctx context.Context, cfg config.Map, values map[string]st
 		cfg[key] = config.NewSecureValue(ciphertext)
 	}
 	return nil
+}
+
+// MemberError reports a failed multistack member. Error() names the member's fully qualified
+// stack and repeats the error-level diagnostics the engine emitted for it, because the
+// underlying engine error is usually just "run bailed" and every member of a Delivery stage
+// tends to share the same bare stack name.
+type MemberError struct {
+	Stack       string
+	Diagnostics []string
+	err         error
+}
+
+func (e *MemberError) Error() string {
+	var b strings.Builder
+	fmt.Fprintf(&b, "stack %s: %v", e.Stack, e.err)
+	for _, d := range e.Diagnostics {
+		b.WriteString("\n  ")
+		b.WriteString(d)
+	}
+	return b.String()
+}
+
+func (e *MemberError) Unwrap() error { return e.err }
+
+// errorDiagnostics returns the distinct, trimmed error-level diagnostic messages in events.
+func errorDiagnostics(events []engine.Event) []string {
+	const maxLen = 2000
+	seen := map[string]bool{}
+	var out []string
+	for _, ev := range events {
+		if ev.Type != engine.DiagEvent {
+			continue
+		}
+		p, ok := ev.Payload().(engine.DiagEventPayload)
+		if !ok || p.Severity != diag.Error {
+			continue
+		}
+		msg := strings.TrimSpace(colors.Never.Colorize(p.Prefix + p.Message))
+		if len(msg) > maxLen {
+			cut := maxLen
+			for cut > 0 && !utf8.RuneStart(msg[cut]) {
+				cut--
+			}
+			msg = msg[:cut] + "..."
+		}
+		if msg == "" || seen[msg] {
+			continue
+		}
+		seen[msg] = true
+		out = append(out, msg)
+	}
+	return out
 }
