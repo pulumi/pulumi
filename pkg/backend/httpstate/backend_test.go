@@ -3015,20 +3015,43 @@ func TestCloudPersistenceSupportsStateMigrations(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name               string
-		journalVersion     int64
-		journalingDisabled bool
-		expected           bool
+		name                            string
+		journalVersion                  int64
+		journalingDisabled              bool
+		expectedUsesJournal             bool
+		expectedSupportsStateMigrations bool
 	}{
-		{name: "legacy snapshot", journalVersion: 0, expected: true},
-		{name: "journal v1", journalVersion: 1},
-		{name: "journal v2", journalVersion: 2, expected: true},
-		{name: "journal v1 disabled", journalVersion: 1, journalingDisabled: true, expected: true},
+		{
+			name: "legacy snapshot", journalVersion: 0, journalingDisabled: false,
+			expectedUsesJournal: false, expectedSupportsStateMigrations: true,
+		},
+		{
+			name: "journal v1", journalVersion: 1, journalingDisabled: false,
+			expectedUsesJournal: true, expectedSupportsStateMigrations: false,
+		},
+		{
+			name: "journal v2", journalVersion: 2, journalingDisabled: false,
+			expectedUsesJournal: true, expectedSupportsStateMigrations: true,
+		},
+		{
+			name: "unknown journal version", journalVersion: 3, journalingDisabled: false,
+			expectedUsesJournal: false, expectedSupportsStateMigrations: true,
+		},
+		{
+			name: "journal v1 disabled", journalVersion: 1, journalingDisabled: true,
+			expectedUsesJournal: false, expectedSupportsStateMigrations: true,
+		},
+		{
+			name: "journal v2 disabled", journalVersion: 2, journalingDisabled: true,
+			expectedUsesJournal: false, expectedSupportsStateMigrations: true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			assert.Equal(t, tt.expected,
+			assert.Equal(t, tt.expectedUsesJournal,
+				cloudPersistenceUsesJournal(tt.journalVersion, tt.journalingDisabled))
+			assert.Equal(t, tt.expectedSupportsStateMigrations,
 				cloudPersistenceSupportsStateMigrations(tt.journalVersion, tt.journalingDisabled))
 		})
 	}

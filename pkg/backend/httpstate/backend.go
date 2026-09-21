@@ -1942,10 +1942,21 @@ func (b *cloudBackend) createAndStartUpdate(
 	}, nil
 }
 
+func cloudPersistenceUsesJournal(journalVersion int64, journalingDisabled bool) bool {
+	// Note that we intentionally only accept versions 1 and 2 of the journal here. If we ever want to evolve the API,
+	// we can send a newer version than 2, and switch out the API completely on the server side, while the client will
+	// continue working with the non-journaling snapshotter. This will be slower but won't be a breaking change for
+	// older clients.
+	return !journalingDisabled && (journalVersion == 1 || journalVersion == 2)
+}
+
 // cloudPersistenceSupportsStateMigrations reports whether the persistence mode selected for an update can store a state
 // migration. Journal v1 cannot, while legacy snapshot persistence and journal v2 can.
 func cloudPersistenceSupportsStateMigrations(journalVersion int64, journalingDisabled bool) bool {
-	return journalingDisabled || journalVersion < 1 || journalVersion >= 2
+	if !cloudPersistenceUsesJournal(journalVersion, journalingDisabled) {
+		return true // Snapshot persistence supports migrations.
+	}
+	return journalVersion == 2
 }
 
 // apply actually performs the provided type of update on a stack hosted in the Pulumi Cloud.
@@ -2115,12 +2126,7 @@ func (b *cloudBackend) runEngineAction(
 	}
 	journalingDisabled := env.DisableJournaling.Value()
 	if kind != apitype.PreviewUpdate && !dryRun {
-		// Note that we accept version 1 or newer of the journal here. Journal version 2 adds state migration
-		// entries. If the service negotiates a version lower than an entry kind requires, the corresponding
-		// feature is rejected at the point it is used, while the client continues working with the
-		// non-journaling snapshotter for version 0. This will be slower but won't be a breaking change for
-		// older clients.
-		if journalVersion >= 1 && !journalingDisabled {
+		if cloudPersistenceUsesJournal(journalVersion, journalingDisabled) {
 			snapshotJournaler := journal.NewJournaler(ctx, b.client, update, tokenSource, op.SecretsManager)
 			journalManager, err := engine.NewJournalSnapshotManagerWithVersion(
 				snapshotJournaler, u.Target.Snapshot, op.SecretsManager, journalVersion)
