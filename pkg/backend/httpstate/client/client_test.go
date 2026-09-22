@@ -2249,6 +2249,26 @@ func TestCreateUpdateSendsCoherenceWindow(t *testing.T) {
 	assert.Equal(t, "d333a711-4aa0-402f-be6d-72af9665fc37", gotBody.CoherenceWindow)
 }
 
+func TestCreateCoherenceWindowSubgroup(t *testing.T) {
+	t.Parallel()
+
+	var gotPath string
+	var gotBody apitype.CreateCoherenceWindowSubgroupRequest
+	server := newMockServerRequestProcessor(200, func(req *http.Request) string {
+		gotPath = req.URL.Path
+		require.NoError(t, json.NewDecoder(req.Body).Decode(&gotBody))
+		return `{"id":"b5c3f6d6-7a1e-4b0e-9a3a-2d1f0c9b8a77"}`
+	})
+	defer server.Close()
+
+	id, err := newMockClient(server).CreateCoherenceWindowSubgroup(
+		t.Context(), "owner", "d333a711-4aa0-402f-be6d-72af9665fc37", 3)
+	require.NoError(t, err)
+	assert.Equal(t, "b5c3f6d6-7a1e-4b0e-9a3a-2d1f0c9b8a77", id)
+	assert.Equal(t, "/api/orgs/owner/coherence-windows/d333a711-4aa0-402f-be6d-72af9665fc37/subgroups", gotPath)
+	assert.Equal(t, 3, gotBody.Size)
+}
+
 func TestBeginUpdateSendsCoherenceWindow(t *testing.T) {
 	t.Parallel()
 

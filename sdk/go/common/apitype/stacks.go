@@ -158,6 +158,21 @@ const (
 	StackOutputsPending StackOutputsState = "pending"
 )
 
+// CreateCoherenceWindowSubgroupRequest defines the request body for creating a subgroup of a
+// coherence window.
+type CreateCoherenceWindowSubgroupRequest struct {
+	// Size is how many stacks take part in the subgroup. A read of a stack that could still join it
+	// waits, rather than fixing that stack at its current state, until the subgroup is full.
+	Size int `json:"size"`
+}
+
+// CreateCoherenceWindowSubgroupResponse defines the response body for creating a subgroup of a
+// coherence window.
+type CreateCoherenceWindowSubgroupResponse struct {
+	// ID is what an update names in place of the window's own ID to join as part of this subgroup.
+	ID string `json:"id"`
+}
+
 // ImportStackRequest defines the request body for importing a Stack.
 type ImportStackRequest UntypedDeployment
 
