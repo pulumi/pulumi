@@ -314,6 +314,7 @@ export class MockMonitor {
             resproto.ResourceMonitorFeature.RESOURCE_MONITOR_FEATURE_PARAMETERIZATION,
             resproto.ResourceMonitorFeature.RESOURCE_MONITOR_FEATURE_RESOURCE_HOOKS,
             resproto.ResourceMonitorFeature.RESOURCE_MONITOR_FEATURE_ERROR_HOOKS,
+            resproto.ResourceMonitorFeature.RESOURCE_MONITOR_FEATURE_STATE_MIGRATIONS,
         ]);
         callback(null, resp);
     }

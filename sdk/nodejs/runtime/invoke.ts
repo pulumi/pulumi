@@ -29,6 +29,7 @@ import {
 } from "./rpc";
 import { awaitStackRegistrations, excessiveDebugOutput, getMonitor, rpcKeepAlive, terminateRpcs } from "./settings";
 import { getStore } from "./state";
+import { ensureNotInStateMigration } from "./stateMigration";
 
 import { CustomResource, DependencyResource, ProviderResource, Resource } from "../resource";
 import * as utils from "../utils";
@@ -87,6 +88,8 @@ export function invoke(
     opts: InvokeOptions = {},
     packageRef?: Promise<string | undefined>,
 ): Promise<any> {
+    ensureNotInStateMigration("invoke");
+
     const optsCopy = { ...opts };
     if ("dependsOn" in optsCopy) {
         // DependsOn is only allowed for invokeOutput.
@@ -110,6 +113,8 @@ export function invokeOutput<T>(
     opts: InvokeOutputOptions = {},
     packageRef?: Promise<string | undefined>,
 ): Output<T> {
+    ensureNotInStateMigration("invoke");
+
     const [output, resolve] = createOutput<T>(`invoke(${tok})`);
     invokeAsync(tok, props, opts, packageRef, true /* checkDependencies */)
         .then((response) => {
@@ -144,6 +149,8 @@ export function invokeSingle(
     opts: InvokeOptions = {},
     packageRef?: Promise<string | undefined>,
 ): Promise<any> {
+    ensureNotInStateMigration("invoke");
+
     return invokeAsync(tok, props, opts, packageRef).then((response) => {
         // ignore secrets for plain invoke
         const { result } = response;
@@ -161,6 +168,8 @@ export function invokeSingleOutput<T>(
     opts: InvokeOptions = {},
     packageRef?: Promise<string | undefined>,
 ): Output<T> {
+    ensureNotInStateMigration("invoke");
+
     const [output, resolve] = createOutput<T>(`invokeSingleOutput(${tok})`);
     invokeAsync(tok, props, opts, packageRef, true /* checkDependencies */)
         .then((response) => {
@@ -557,6 +566,8 @@ export function call<T>(
     res?: Resource,
     packageRef?: Promise<string | undefined>,
 ): Output<T> {
+    ensureNotInStateMigration("call");
+
     const [output, resolve] = createOutput<T>(`call(${tok})`);
     callAsync(tok, props, res, packageRef)
         .then((response) => {
@@ -586,6 +597,8 @@ export function callSingle<T>(
     res?: Resource,
     packageRef?: Promise<string | undefined>,
 ): Output<T> {
+    ensureNotInStateMigration("call");
+
     const [output, resolve] = createOutput<T>(`callSingle(${tok})`);
     callAsync(tok, props, res, packageRef)
         .then((response) => {
