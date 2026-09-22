@@ -1,0 +1,4 @@
+component: engine
+kind: fix
+body: When a Read is skipped because one of its dependencies failed during a `--continue-on-error` update, return the resource's last-known outputs to the SDK if it is already present in state, rather than an empty output map
+time: 2026-09-22T00:00:00Z

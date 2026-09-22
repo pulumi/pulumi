@@ -966,3 +966,154 @@ func TestContinueOnErrorWithChangingProviderOnCreate(t *testing.T) {
 	assert.Equal(t, snap.Resources[1].URN.Name(), "provA")
 	assert.Equal(t, snap.Resources[2].URN.Name(), "resA")
 }
+
+// TestUpContinueOnErrorSkippedNoSDKSupport verifies that a resource which is skipped because
+// one of its dependencies failed is reported to the SDK as an RPC error when the SDK has not
+// advertised support for result reporting. Otherwise older SDKs would silently receive unknown
+// output values from a non-preview update.
+func TestUpContinueOnErrorSkippedNoSDKSupport(t *testing.T) {
+	t.Parallel()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}, deploytest.WithoutGrpc),
+		deploytest.NewProviderLoader("pkgB", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					return plugin.CreateResponse{}, errors.New("intentionally failed create")
+				},
+			}, nil
+		}, deploytest.WithoutGrpc),
+	}
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		// The failing resource opts into result reporting so we get a FAIL back rather than an error.
+		failingResp, err := monitor.RegisterResource("pkgB:m:typB", "failing", true, deploytest.ResourceOptions{
+			SupportsResultReporting: true,
+		})
+		require.NoError(t, err)
+		assert.Equal(t, pulumirpc.Result_FAIL, failingResp.Result)
+
+		// This resource depends on the failing one, so it will be skipped by the engine. It has
+		// NOT advertised result reporting support, so we expect the RPC to error rather than to
+		// receive a bogus success response with unknown outputs.
+		skippedResp, err := monitor.RegisterResource(
+			"pkgA:m:typA", "skipped", true, deploytest.ResourceOptions{
+				SupportsResultReporting: false,
+				Dependencies:            []resource.URN{failingResp.URN},
+			})
+		assert.ErrorContains(t, err, "resource registration failed")
+		assert.Nil(t, skippedResp)
+
+		return nil
+	})
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
+
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{
+			T: t,
+			UpdateOptions: UpdateOptions{
+				ContinueOnError: true,
+			},
+			HostF: hostF,
+		},
+	}
+
+	project := p.GetProject()
+	snap, err := lt.TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	require.ErrorContains(t, err, "intentionally failed create")
+	require.NotNil(t, snap)
+	// Only the two providers should be persisted - neither user resource was created.
+	require.Len(t, snap.Resources, 2)
+	assert.Equal(t, resource.URN("urn:pulumi:test::test::pulumi:providers:pkgB::default"), snap.Resources[0].URN)
+	assert.Equal(t, resource.URN("urn:pulumi:test::test::pulumi:providers:pkgA::default"), snap.Resources[1].URN)
+}
+
+// TestUpContinueOnErrorSkippedReadReturnsOldState verifies that when a Read is skipped because
+// one of its dependencies failed, and the resource has prior state in the snapshot, the last-known
+// outputs are returned to the SDK rather than an empty map. Reads for URNs that have no prior state
+// still return empty.
+func TestUpContinueOnErrorSkippedReadReturnsOldState(t *testing.T) {
+	t.Parallel()
+
+	readOutputs := resource.NewPropertyMapFromMap(map[string]any{"foo": "bar"})
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+					return plugin.ReadResponse{
+						ReadResult: plugin.ReadResult{
+							ID:      req.ID,
+							Inputs:  resource.PropertyMap{},
+							Outputs: readOutputs,
+						},
+						Status: resource.StatusOK,
+					}, nil
+				},
+			}, nil
+		}, deploytest.WithoutGrpc),
+		deploytest.NewProviderLoader("pkgB", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				UpdateF: func(context.Context, plugin.UpdateRequest) (plugin.UpdateResponse, error) {
+					return plugin.UpdateResponse{Status: resource.StatusOK}, errors.New("intentionally failed update")
+				},
+			}, nil
+		}, deploytest.WithoutGrpc),
+	}
+
+	ins := resource.NewPropertyMapFromMap(map[string]any{"foo": "bar"})
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		// A resource whose update fails on the second run.
+		failingResp, err := monitor.RegisterResource("pkgB:m:typB", "failing", true, deploytest.ResourceOptions{
+			SupportsResultReporting: true,
+			Inputs:                  ins,
+		})
+		require.NoError(t, err)
+
+		// A read that depends on the failing resource, submitted through the raw client so we can
+		// set the dependencies field.
+		readReq := &pulumirpc.ReadResourceRequest{
+			Type:         "pkgA:m:typA",
+			Name:         "readWithDep",
+			Id:           "some-id",
+			Provider:     "",
+			Dependencies: []string{string(failingResp.URN)},
+		}
+		readResp, err := monitor.Client().ReadResource(t.Context(), readReq)
+		require.NoError(t, err)
+
+		outs, err := plugin.UnmarshalProperties(readResp.Properties, plugin.MarshalOptions{KeepUnknowns: true})
+		require.NoError(t, err)
+
+		// First run: the read executes for real. After the failing update, the read is skipped. Because the URN has
+		// prior state, the engine should return the previously-read outputs. Which is the same as the first run.
+		assert.Equal(t, resource.NewProperty("bar"), outs["foo"])
+
+		return nil
+	})
+
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
+
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{
+			T: t,
+			UpdateOptions: UpdateOptions{
+				ContinueOnError: true,
+			},
+			HostF: hostF,
+		},
+	}
+
+	project := p.GetProject()
+
+	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
+	require.NoError(t, err)
+	require.NotNil(t, snap)
+
+	ins = resource.NewPropertyMapFromMap(map[string]any{"foo": "baz"})
+	_, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
+	require.ErrorContains(t, err, "intentionally failed update")
+}
