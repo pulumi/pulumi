@@ -461,10 +461,12 @@ func (w Workspace) RunPackage(
 	})
 
 	pctx, err := plugin.NewContextWithHost(ctx, d, d, w.pctx.Host, rootDir, rootDir, w.parentSpan)
-	pctx.CloudCredentialEnv = w.pctx.CloudCredentialEnv
 	if err != nil {
 		return nil, fmt.Errorf("could not start context for plugin at %q: %w", pluginPath, err)
 	}
+	pctx.CloudCredentialEnv = w.pctx.CloudCredentialEnv
+	pctx.DialOptions = w.pctx.DialOptions
+	pctx.DebugTraceMutex = w.pctx.DebugTraceMutex
 	p, err := plugin.NewProviderFromPath(w.pctx.Host, pctx, pluginPath)
 	if err != nil {
 		return nil, fmt.Errorf("could not run plugin at %q: %w", pluginPath, err)

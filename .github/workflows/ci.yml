@@ -55,12 +55,6 @@ on:
         default: false
         description: "If true, fuzz test failures won't block the workflow"
         type: boolean
-      rebuild-release-binaries:
-        required: true
-        description: >-
-          Rebuild uninstrumented binaries after coverage builds. Pass true
-          from callers whose runs package release artifacts.
-        type: boolean
     secrets:
       PULUMI_PROD_ACCESS_TOKEN:
         required: false
@@ -558,11 +552,10 @@ jobs:
           version: v10.0.1
           token: ${{ secrets.CODECOV_TOKEN }}
   build-release-binaries:
-    # Rebuilds the six CLI targets without coverage instrumentation, uploaded
-    # under the unsuffixed artifacts-cli-* names.
+    # This overwrites the previously built testing binaries with versions without coverage.
     name: Rebuild binaries
     needs: [setup]
-    if: ${{ inputs.enable-coverage && inputs.rebuild-release-binaries }}
+    if: ${{ inputs.enable-coverage }}
     strategy:
       fail-fast: ${{ inputs.fail-fast }}
       matrix:

@@ -1,0 +1,4 @@
+component: engine
+kind: improvement
+body: Report planned and applied state migrations through user-facing diagnostics
+time: 2026-09-18T11:57:33Z

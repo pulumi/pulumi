@@ -111,13 +111,11 @@ class _ResultEnumTypeWrapper(google.protobuf.internal.enum_type_wrapper._EnumTyp
     DESCRIPTOR: google.protobuf.descriptor.EnumDescriptor
     SUCCESS: _Result.ValueType  # 0
     FAIL: _Result.ValueType  # 1
-    SKIP: _Result.ValueType  # 2
 
 class Result(_Result, metaclass=_ResultEnumTypeWrapper): ...
 
 SUCCESS: Result.ValueType  # 0
 FAIL: Result.ValueType  # 1
-SKIP: Result.ValueType  # 2
 global___Result = Result
 
 @typing.final

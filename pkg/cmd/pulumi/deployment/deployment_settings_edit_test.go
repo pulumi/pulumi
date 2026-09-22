@@ -20,7 +20,11 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"net/http"
+	"os"
+	"path/filepath"
 	"slices"
+	"strings"
 	"testing"
 
 	"github.com/spf13/pflag"
@@ -40,7 +44,13 @@ type mockDeploymentSettingsEditClient struct {
 	patchErr error
 	getResp  *apitype.DeploymentSettings
 	getErr   error
+	getCalls int
 	captured *capturedEditPatch
+
+	// notFoundUntilPatch models a stack that has never been configured: the service 404s the GET
+	// until a PATCH creates the settings.
+	notFoundUntilPatch bool
+	patched            bool
 }
 
 func (m *mockDeploymentSettingsEditClient) PatchStackDeploymentSettings(
@@ -50,12 +60,17 @@ func (m *mockDeploymentSettingsEditClient) PatchStackDeploymentSettings(
 		m.captured.stack = stack
 		m.captured.patch = patch
 	}
+	m.patched = true
 	return m.patchErr
 }
 
 func (m *mockDeploymentSettingsEditClient) GetStackDeploymentSettings(
 	_ context.Context, _ client.StackIdentifier,
 ) (*apitype.DeploymentSettings, error) {
+	m.getCalls++
+	if m.notFoundUntilPatch && !m.patched {
+		return nil, &apitype.ErrorResponse{Code: http.StatusNotFound, Message: "not found"}
+	}
 	if m.getErr != nil {
 		return nil, m.getErr
 	}
@@ -129,26 +144,26 @@ func TestDeploymentSettingsEdit_DefaultOutput(t *testing.T) {
 	assert.JSONEq(t, `{"sourceContext":{"git":{"branch":"feature","commit":null,"tag":null}}}`, string(captured.patch))
 
 	assert.Equal(t, `Source: GitHub
-  Repository:                    acme/infra
-  Branch:                        main
-  Commit:                        abc123
-  Pulumi.yaml folder:            stacks/prod
-  Run previews for PRs:          yes
-  Run updates on push:           yes
-  PR stack template:             no
-  Path filters:                  stacks/prod/**
+  Repository:           acme/infra
+  Branch:               main
+  Commit:               abc123
+  Pulumi.yaml folder:   stacks/prod
+  Run previews for PRs: yes
+  Run updates on push:  yes
+  PR stack template:    no
+  Path filters:         stacks/prod/**
 
 Deployment runner
-  Runner pool:                   pool-1
-  Executor image:                pulumi/pulumi:latest
+  Runner pool:          pool-1
+  Executor image:       pulumi/pulumi:latest
 
 Pre-run commands
   echo hi
 
 Environment variables
-  API_KEY:                       [secret]
-  BAZ:                           qux
-  FOO:                           bar
+  API_KEY:              [secret]
+  BAZ:                  qux
+  FOO:                  bar
 `, buf.String())
 }
 
@@ -303,7 +318,8 @@ func TestDeploymentSettingsEdit_GitHubSourceFlags(t *testing.T) {
 			flagPreviewPRs, flagPushToDeploy, flagPathFilter),
 	}, &mockDeploymentSettingsEditClient{})
 	assert.JSONEq(t, `{
-		"gitHub": {
+		"vcs": {
+			"provider": "github",
 			"repository": "acme/infra",
 			"previewPullRequests": true,
 			"deployCommits": true,
@@ -318,8 +334,14 @@ func TestDeploymentSettingsEdit_TristateFalse(t *testing.T) {
 	got := captureEditPatch(t, deploymentSettingsEditArgs{
 		previewPRs:   false,
 		flagsChanged: flagsSet(flagPreviewPRs),
-	}, &mockDeploymentSettingsEditClient{})
-	assert.JSONEq(t, `{"gitHub":{"previewPullRequests":false}}`, string(got))
+	}, &mockDeploymentSettingsEditClient{
+		getResp: storedVCSSettings(apitype.DeploymentSettingsVCS{
+			Provider:            apitype.VCSProviderGitHub,
+			Repository:          "acme/infra",
+			PreviewPullRequests: true,
+		}),
+	})
+	assert.JSONEq(t, `{"vcs":{"provider":"github","repository":"acme/infra"}}`, string(got))
 }
 
 func TestDeploymentSettingsEdit_RunnerPoolEmptyClears(t *testing.T) {
@@ -571,6 +593,16 @@ func TestDeploymentSettingsEdit_AdvancedToggles(t *testing.T) {
 	}`, string(got))
 }
 
+// storedVCSSettings is what a GET returns for a stack whose source is already configured.
+func storedVCSSettings(vcs apitype.DeploymentSettingsVCS) *apitype.DeploymentSettings {
+	// A configured source always names a repository, and the patch carries the whole vcs object, so
+	// default it rather than have every case that cares about other fields repeat it.
+	if vcs.Repository == "" {
+		vcs.Repository = "acme/infra"
+	}
+	return &apitype.DeploymentSettings{VCS: &vcs}
+}
+
 // runEditArgs drives runDeploymentSettingsEdit for the cases that assert on the error rather than
 // on the emitted patch.
 func runEditArgs(t *testing.T, args deploymentSettingsEditArgs, c *mockDeploymentSettingsEditClient) error {
@@ -603,6 +635,635 @@ func runEditCmd(
 	cmd.SetErr(io.Discard)
 	cmd.SilenceUsage = true
 	return captured, cmd.ExecuteContext(t.Context())
+}
+
+func TestDeploymentSettingsEdit_VCSProviders(t *testing.T) {
+	t.Parallel()
+	for _, provider := range []apitype.VCSProvider{
+		apitype.VCSProviderGitHub, apitype.VCSProviderGitLab, apitype.VCSProviderAzureDevOps,
+		apitype.VCSProviderBitbucket, apitype.VCSProviderCustom,
+	} {
+		t.Run(string(provider), func(t *testing.T) {
+			t.Parallel()
+			got := captureEditPatch(t, deploymentSettingsEditArgs{
+				repo:         "acme/infra",
+				pushToDeploy: true,
+				flagsChanged: flagsSet(flagRepo, flagPushToDeploy),
+			}, &mockDeploymentSettingsEditClient{
+				getResp: storedVCSSettings(apitype.DeploymentSettingsVCS{Provider: provider}),
+			})
+			assert.JSONEq(t, `{"vcs":{
+				"provider": "`+string(provider)+`",
+				"repository": "acme/infra",
+				"deployCommits": true
+			}}`, string(got))
+			assert.NotContains(t, string(got), "gitHub")
+		})
+	}
+}
+
+// The service replaces the vcs object wholesale, so editing one field has to resend the rest.
+func TestDeploymentSettingsEdit_VCSEditPreservesStoredFields(t *testing.T) {
+	t.Parallel()
+	got := captureEditPatch(t, deploymentSettingsEditArgs{
+		previewPRs:   true,
+		flagsChanged: flagsSet(flagPreviewPRs),
+	}, &mockDeploymentSettingsEditClient{
+		getResp: storedVCSSettings(apitype.DeploymentSettingsVCS{
+			Provider:       apitype.VCSProviderGitLab,
+			Repository:     "acme/infra",
+			Paths:          []string{"stacks/prod/**"},
+			TagFilters:     []string{"v*"},
+			InstallationID: "install-1",
+			DeployTags:     true,
+		}),
+	})
+	assert.JSONEq(t, `{"vcs":{
+		"provider": "gitlab",
+		"repository": "acme/infra",
+		"paths": ["stacks/prod/**"],
+		"tagFilters": ["v*"],
+		"installationId": "install-1",
+		"deployTags": true,
+		"previewPullRequests": true
+	}}`, string(got))
+}
+
+func TestDeploymentSettingsEdit_LegacyGitHubBlockBecomesVCS(t *testing.T) {
+	t.Parallel()
+	got := captureEditPatch(t, deploymentSettingsEditArgs{
+		previewPRs:   true,
+		flagsChanged: flagsSet(flagPreviewPRs),
+	}, &mockDeploymentSettingsEditClient{
+		getResp: &apitype.DeploymentSettings{
+			GitHub: &apitype.DeploymentSettingsGitHub{
+				Repository:     "acme/infra",
+				DeployCommits:  true,
+				Paths:          []string{"stacks/prod/**"},
+				InstallationID: "install-1",
+			},
+		},
+	})
+	assert.JSONEq(t, `{"vcs":{
+		"provider": "github",
+		"repository": "acme/infra",
+		"deployCommits": true,
+		"paths": ["stacks/prod/**"],
+		"installationId": "install-1",
+		"previewPullRequests": true
+	}}`, string(got))
+	assert.NotContains(t, string(got), "gitHub")
+}
+
+func TestDeploymentSettingsEdit_GitHubRepoStillWritesGitHubVCS(t *testing.T) {
+	t.Parallel()
+	got := captureEditPatch(t, deploymentSettingsEditArgs{
+		githubRepo:   "acme/infra",
+		flagsChanged: flagsSet(flagGitHubRepo),
+	}, &mockDeploymentSettingsEditClient{})
+	assert.JSONEq(t, `{"vcs":{"provider":"github","repository":"acme/infra"}}`, string(got))
+
+	cmd := newDeploymentSettingsEditCmdWith(stubSettingsEditFactory(&mockDeploymentSettingsEditClient{}))
+	assert.NotEmpty(t, cmd.Flags().Lookup(flagGitHubRepo).Deprecated)
+}
+
+func TestDeploymentSettingsEdit_GitAuthModesAreMutuallyExclusive(t *testing.T) {
+	t.Parallel()
+	for _, other := range []string{
+		"--" + flagGitAuthSSHKey, "--" + flagGitAuthSSHKeyPath, "--" + flagGitAuthUsername,
+	} {
+		t.Run(other, func(t *testing.T) {
+			t.Parallel()
+			_, err := runEditCmd(t, &mockDeploymentSettingsEditClient{},
+				"--git-auth-access-token", "tok", other, "value")
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), flagGitAuthToken)
+		})
+	}
+}
+
+func TestDeploymentSettingsEdit_GitAuthSSHKeyAndPathAreMutuallyExclusive(t *testing.T) {
+	t.Parallel()
+	_, err := runEditCmd(t, &mockDeploymentSettingsEditClient{},
+		"--"+flagGitAuthSSHKey, "key", "--"+flagGitAuthSSHKeyPath, "/tmp/key")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), flagGitAuthSSHKeyPath)
+}
+
+func TestDeploymentSettingsEdit_GuardRejectsProviderChange(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct {
+		name string
+		args deploymentSettingsEditArgs
+	}{
+		{
+			"github-repo on a gitlab stack",
+			deploymentSettingsEditArgs{
+				githubRepo:   "acme/infra",
+				flagsChanged: flagsSet(flagGitHubRepo),
+			},
+		},
+		{
+			"explicit vcs-provider on a gitlab stack",
+			deploymentSettingsEditArgs{
+				repo:         "acme/infra",
+				vcsProvider:  "github",
+				flagsChanged: flagsSet(flagRepo, flagVCSProvider),
+			},
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			c := &mockDeploymentSettingsEditClient{
+				getResp: storedVCSSettings(apitype.DeploymentSettingsVCS{
+					Provider:   apitype.VCSProviderGitLab,
+					Repository: "acme/infra",
+				}),
+			}
+			err := runEditArgs(t, tc.args, c)
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), "gitlab")
+			assert.Nil(t, c.captured.patch)
+		})
+	}
+}
+
+// storedGitURLSettings models a stack configured against a repository url rather than through a
+// version control integration.
+func storedGitURLSettings(auth *apitype.GitAuthConfig) *apitype.DeploymentSettings {
+	return &apitype.DeploymentSettings{
+		SourceContext: &apitype.SourceContext{
+			Git: &apitype.SourceContextGit{
+				RepoURL: "https://git.acme.example/infra.git",
+				Branch:  "main",
+				GitAuth: auth,
+			},
+		},
+	}
+}
+
+func TestDeploymentSettingsEdit_AdoptingAProviderDropsTheRepoURL(t *testing.T) {
+	t.Parallel()
+	got := captureEditPatch(t, deploymentSettingsEditArgs{
+		repo:         "acme/infra",
+		vcsProvider:  "gitlab",
+		flagsChanged: flagsSet(flagRepo, flagVCSProvider),
+	}, &mockDeploymentSettingsEditClient{getResp: storedGitURLSettings(nil)})
+
+	assert.JSONEq(t, `{
+		"vcs": {"provider": "gitlab", "repository": "acme/infra"},
+		"sourceContext": {"git": {"repoUrl": null}}
+	}`, string(got))
+}
+
+func TestDeploymentSettingsEdit_VCSEditLeavesAnAbsentRepoURLAlone(t *testing.T) {
+	t.Parallel()
+	got := captureEditPatch(t, deploymentSettingsEditArgs{
+		previewPRs:   true,
+		flagsChanged: flagsSet(flagPreviewPRs),
+	}, &mockDeploymentSettingsEditClient{
+		getResp: storedVCSSettings(apitype.DeploymentSettingsVCS{
+			Provider:   apitype.VCSProviderGitLab,
+			Repository: "acme/infra",
+		}),
+	})
+
+	assert.NotContains(t, string(got), "repoUrl")
+}
+
+// Credentials stored for a repository url keep working after an integration is adopted, and the
+// service prefers them over the integration's own token, so the command refuses to carry them
+// silently onto a different repository.
+func TestDeploymentSettingsEdit_AdoptingAProviderRefusesStoredGitCredentials(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct {
+		name string
+		auth *apitype.GitAuthConfig
+	}{
+		{"access token", &apitype.GitAuthConfig{
+			PersonalAccessToken: &apitype.SecretValue{Value: "tok", Secret: true},
+		}},
+		{"ssh key", &apitype.GitAuthConfig{
+			SSHAuth: &apitype.SSHAuth{SSHPrivateKey: apitype.SecretValue{Value: "key", Secret: true}},
+		}},
+		{"basic auth", &apitype.GitAuthConfig{
+			BasicAuth: &apitype.BasicAuth{
+				UserName: apitype.SecretValue{Value: "u", Secret: true},
+				Password: apitype.SecretValue{Value: "p", Secret: true},
+			},
+		}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			c := &mockDeploymentSettingsEditClient{getResp: storedGitURLSettings(tc.auth)}
+			err := runEditArgs(t, deploymentSettingsEditArgs{
+				repo:         "acme/infra",
+				vcsProvider:  "gitlab",
+				flagsChanged: flagsSet(flagRepo, flagVCSProvider),
+			}, c)
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), "https://git.acme.example/infra.git")
+			assert.Contains(t, err.Error(), flagRemoveGitAuth)
+			assert.Nil(t, c.captured.patch)
+		})
+	}
+}
+
+// A stack storing an integration alongside a repository url predates the service validation that
+// rejects the pair. Resolving it here would quietly move the checkout onto the integration's
+// repository, so the url is left for the service to reject as it does today.
+func TestDeploymentSettingsEdit_StoredIntegrationKeepsItsRepoURL(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct {
+		name      string
+		integrate func(*apitype.DeploymentSettings)
+	}{
+		{"legacy github block", func(s *apitype.DeploymentSettings) {
+			s.GitHub = &apitype.DeploymentSettingsGitHub{Repository: "acme/infra"}
+		}},
+		{"vcs block", func(s *apitype.DeploymentSettings) {
+			s.VCS = &apitype.DeploymentSettingsVCS{
+				Provider:   apitype.VCSProviderGitLab,
+				Repository: "acme/infra",
+			}
+		}},
+	} {
+		for _, auth := range []struct {
+			name string
+			conf *apitype.GitAuthConfig
+		}{
+			{"without credentials", nil},
+			{"with credentials", &apitype.GitAuthConfig{
+				PersonalAccessToken: &apitype.SecretValue{Value: "tok", Secret: true},
+			}},
+		} {
+			t.Run(tc.name+" "+auth.name, func(t *testing.T) {
+				t.Parallel()
+				stored := storedGitURLSettings(auth.conf)
+				tc.integrate(stored)
+
+				got := captureEditPatch(t, deploymentSettingsEditArgs{
+					previewPRs:   true,
+					flagsChanged: flagsSet(flagPreviewPRs),
+				}, &mockDeploymentSettingsEditClient{getResp: stored})
+
+				assert.NotContains(t, string(got), "repoUrl")
+			})
+		}
+	}
+}
+
+func TestDeploymentSettingsEdit_AdoptingAProviderAcceptsAGitAuthFlag(t *testing.T) {
+	t.Parallel()
+	stored := storedGitURLSettings(&apitype.GitAuthConfig{
+		PersonalAccessToken: &apitype.SecretValue{Value: "old", Secret: true},
+	})
+
+	got := captureEditPatch(t, deploymentSettingsEditArgs{
+		repo:          "acme/infra",
+		vcsProvider:   "gitlab",
+		removeGitAuth: true,
+		flagsChanged:  flagsSet(flagRepo, flagVCSProvider, flagRemoveGitAuth),
+	}, &mockDeploymentSettingsEditClient{getResp: stored})
+
+	assert.JSONEq(t, `{
+		"vcs": {"provider": "gitlab", "repository": "acme/infra"},
+		"sourceContext": {"git": {"repoUrl": null, "gitAuth": null}}
+	}`, string(got))
+}
+
+func TestDeploymentSettingsEdit_ReviewStackLabelsAreGitHubOnly(t *testing.T) {
+	t.Parallel()
+
+	args := deploymentSettingsEditArgs{
+		reviewStackLabels: []string{"deploy"},
+		flagsChanged:      flagsSet(flagReviewStackLabel),
+	}
+
+	got := captureEditPatch(t, args, &mockDeploymentSettingsEditClient{
+		getResp: storedVCSSettings(apitype.DeploymentSettingsVCS{
+			Provider:   apitype.VCSProviderGitHub,
+			Repository: "acme/infra",
+		}),
+	})
+	assert.JSONEq(t, `{"vcs":{
+		"provider": "github",
+		"repository": "acme/infra",
+		"reviewStackLabels": ["deploy"]
+	}}`, string(got))
+
+	err := runEditArgs(t, args, &mockDeploymentSettingsEditClient{
+		getResp: storedVCSSettings(apitype.DeploymentSettingsVCS{Provider: apitype.VCSProviderGitLab}),
+	})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), flagReviewStackLabel)
+}
+
+func TestDeploymentSettingsEdit_VCSFlagNeedsAProvider(t *testing.T) {
+	t.Parallel()
+	err := runEditArgs(t, deploymentSettingsEditArgs{
+		previewPRs:   true,
+		flagsChanged: flagsSet(flagPreviewPRs),
+	}, &mockDeploymentSettingsEditClient{})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), flagVCSProvider)
+}
+
+func TestDeploymentSettingsEdit_UnknownVCSProvider(t *testing.T) {
+	t.Parallel()
+	err := runEditArgs(t, deploymentSettingsEditArgs{
+		vcsProvider:  "svn",
+		flagsChanged: flagsSet(flagVCSProvider),
+	}, &mockDeploymentSettingsEditClient{})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "svn")
+}
+
+// The conflict is with the merged object, so when only one of the two triggers was passed the
+// message has to point at the stored setting instead of at a flag the user never typed.
+func TestDeploymentSettingsEdit_DeployCommitsAndDeployTagsConflict(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct {
+		name   string
+		args   deploymentSettingsEditArgs
+		stored apitype.DeploymentSettingsVCS
+		want   string
+	}{
+		{
+			"stored deploy commits",
+			deploymentSettingsEditArgs{deployTags: true, flagsChanged: flagsSet(flagDeployTags)},
+			apitype.DeploymentSettingsVCS{Provider: apitype.VCSProviderGitLab, DeployCommits: true},
+			"this stack deploys on commits; pass --push-to-deploy=false to deploy on tags instead",
+		},
+		{
+			"stored deploy tags",
+			deploymentSettingsEditArgs{pushToDeploy: true, flagsChanged: flagsSet(flagPushToDeploy)},
+			apitype.DeploymentSettingsVCS{Provider: apitype.VCSProviderGitLab, DeployTags: true},
+			"this stack deploys on tags; pass --deploy-tags=false to deploy on commits instead",
+		},
+		{
+			"both passed together",
+			deploymentSettingsEditArgs{
+				deployTags:   true,
+				pushToDeploy: true,
+				flagsChanged: flagsSet(flagDeployTags, flagPushToDeploy),
+			},
+			apitype.DeploymentSettingsVCS{Provider: apitype.VCSProviderGitLab},
+			"--push-to-deploy and --deploy-tags are mutually exclusive",
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			err := runEditArgs(t, tc.args, &mockDeploymentSettingsEditClient{
+				getResp: storedVCSSettings(tc.stored),
+			})
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), tc.want)
+		})
+	}
+}
+
+// A stack that already stores both triggers cannot be edited until one is turned off, but the
+// message has to say that rather than name two flags the user never passed.
+func TestDeploymentSettingsEdit_StoredBothTriggersNamesTheStoredState(t *testing.T) {
+	t.Parallel()
+	both := storedVCSSettings(apitype.DeploymentSettingsVCS{
+		Provider:      apitype.VCSProviderGitHub,
+		DeployCommits: true,
+		DeployTags:    true,
+	})
+
+	err := runEditArgs(t, deploymentSettingsEditArgs{
+		repo:         "acme/other",
+		flagsChanged: flagsSet(flagRepo),
+	}, &mockDeploymentSettingsEditClient{getResp: both})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "stores both commit and tag triggers")
+
+	// Turning one off in the same command resolves it.
+	got := captureEditPatch(t, deploymentSettingsEditArgs{
+		flagsChanged: flagsSet(flagDeployTags),
+	}, &mockDeploymentSettingsEditClient{getResp: both})
+	assert.JSONEq(t,
+		`{"vcs":{"provider":"github","repository":"acme/infra","deployCommits":true}}`, string(got))
+}
+
+// A review stack's stored pull request number survives an edit that turns a trigger on. The service
+// ignores it in that state, but deleting it here would lose a setting the user never mentioned and
+// that no flag on this command can put back.
+func TestDeploymentSettingsEdit_EnablingATriggerKeepsAStoredDeployPullRequest(t *testing.T) {
+	t.Parallel()
+	pr := int64(42)
+	for _, tc := range []struct {
+		flag string
+		args deploymentSettingsEditArgs
+		want string
+	}{
+		{
+			flagPreviewPRs,
+			deploymentSettingsEditArgs{previewPRs: true, flagsChanged: flagsSet(flagPreviewPRs)},
+			`{"vcs":{"provider":"github","repository":"acme/infra","previewPullRequests":true,"deployPullRequest":42}}`,
+		},
+		{
+			flagPushToDeploy,
+			deploymentSettingsEditArgs{pushToDeploy: true, flagsChanged: flagsSet(flagPushToDeploy)},
+			`{"vcs":{"provider":"github","repository":"acme/infra","deployCommits":true,"deployPullRequest":42}}`,
+		},
+		{
+			flagPRTemplate,
+			deploymentSettingsEditArgs{prTemplate: true, flagsChanged: flagsSet(flagPRTemplate)},
+			`{"vcs":{"provider":"github","repository":"acme/infra","pullRequestTemplate":true,"deployPullRequest":42}}`,
+		},
+	} {
+		t.Run(tc.flag, func(t *testing.T) {
+			t.Parallel()
+			got := captureEditPatch(t, tc.args, &mockDeploymentSettingsEditClient{
+				getResp: storedVCSSettings(apitype.DeploymentSettingsVCS{
+					Provider:          apitype.VCSProviderGitHub,
+					DeployPullRequest: &pr,
+				}),
+			})
+			assert.JSONEq(t, tc.want, string(got))
+		})
+	}
+}
+
+// PATCH is what creates the settings row, so a stack that has none must still be configurable.
+func TestDeploymentSettingsEdit_CreatesSettingsWhenNoneStored(t *testing.T) {
+	t.Parallel()
+
+	c := &mockDeploymentSettingsEditClient{notFoundUntilPatch: true}
+	got := captureEditPatch(t, deploymentSettingsEditArgs{
+		repo:         "acme/infra",
+		vcsProvider:  string(apitype.VCSProviderGitHub),
+		pushToDeploy: true,
+		flagsChanged: flagsSet(flagRepo, flagVCSProvider, flagPushToDeploy),
+	}, c)
+	assert.JSONEq(t, `{"vcs":{
+		"provider": "github",
+		"repository": "acme/infra",
+		"deployCommits": true
+	}}`, string(got))
+}
+
+func TestDeploymentSettingsEdit_GetBeforePatchError(t *testing.T) {
+	t.Parallel()
+
+	err := runEditArgs(t, deploymentSettingsEditArgs{
+		previewPRs:   true,
+		flagsChanged: flagsSet(flagPreviewPRs),
+	}, &mockDeploymentSettingsEditClient{getErr: errors.New("get boom")})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "reading deployment settings")
+}
+
+// Only a 404 means "no settings yet"; every other status has to stay fatal.
+func TestDeploymentSettingsEdit_GetBeforePatchNonNotFoundIsFatal(t *testing.T) {
+	t.Parallel()
+
+	err := runEditArgs(t, deploymentSettingsEditArgs{
+		previewPRs:   true,
+		flagsChanged: flagsSet(flagPreviewPRs),
+	}, &mockDeploymentSettingsEditClient{
+		getErr: &apitype.ErrorResponse{Code: http.StatusInternalServerError, Message: "boom"},
+	})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "reading deployment settings")
+}
+
+// Only the vcs flags pay for the extra round trip; sourceContext.git flags are provider-neutral.
+func TestDeploymentSettingsEdit_GitFlagsDoNotReadSettingsFirst(t *testing.T) {
+	t.Parallel()
+
+	c := &mockDeploymentSettingsEditClient{}
+	captureEditPatch(t, branchArgs(), c)
+	assert.Equal(t, 1, c.getCalls)
+
+	withVCS := &mockDeploymentSettingsEditClient{
+		getResp: storedVCSSettings(apitype.DeploymentSettingsVCS{Provider: apitype.VCSProviderGitLab}),
+	}
+	captureEditPatch(t, deploymentSettingsEditArgs{
+		previewPRs:   true,
+		flagsChanged: flagsSet(flagPreviewPRs),
+	}, withVCS)
+	assert.Equal(t, 2, withVCS.getCalls)
+}
+
+// The vcs object replaces the stored one wholesale, so an empty repository would erase the source.
+func TestDeploymentSettingsEdit_VCSNeedsARepository(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct {
+		name string
+		args deploymentSettingsEditArgs
+		c    *mockDeploymentSettingsEditClient
+	}{
+		{
+			"empty --repo on a configured stack",
+			deploymentSettingsEditArgs{flagsChanged: flagsSet(flagRepo)},
+			&mockDeploymentSettingsEditClient{
+				getResp: storedVCSSettings(apitype.DeploymentSettingsVCS{
+					Provider: apitype.VCSProviderGitLab,
+				}),
+			},
+		},
+		{
+			"adopting a provider without naming a repository",
+			deploymentSettingsEditArgs{
+				vcsProvider:  string(apitype.VCSProviderGitLab),
+				flagsChanged: flagsSet(flagVCSProvider),
+			},
+			&mockDeploymentSettingsEditClient{getResp: &apitype.DeploymentSettings{}},
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			err := runEditArgs(t, tc.args, tc.c)
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), "needs a repository")
+		})
+	}
+}
+
+func TestDeploymentSettingsEdit_VCSCoverageFlags(t *testing.T) {
+	t.Parallel()
+	got := captureEditPatch(t, deploymentSettingsEditArgs{
+		deployTags:     true,
+		tagFilters:     []string{"v*", "release-*"},
+		installationID: "install-1",
+		flagsChanged:   flagsSet(flagDeployTags, flagTagFilter, flagInstallationID),
+	}, &mockDeploymentSettingsEditClient{
+		getResp: storedVCSSettings(apitype.DeploymentSettingsVCS{Provider: apitype.VCSProviderBitbucket}),
+	})
+	assert.JSONEq(t, `{"vcs":{
+		"provider": "bitbucket",
+		"repository": "acme/infra",
+		"deployTags": true,
+		"tagFilters": ["v*", "release-*"],
+		"installationId": "install-1"
+	}}`, string(got))
+}
+
+func TestDeploymentSettingsEdit_ClearPathFilters(t *testing.T) {
+	t.Parallel()
+	got := captureEditPatch(t, deploymentSettingsEditArgs{
+		pathFilters:  []string{""},
+		flagsChanged: flagsSet(flagPathFilter),
+	}, &mockDeploymentSettingsEditClient{
+		getResp: storedVCSSettings(apitype.DeploymentSettingsVCS{
+			Provider:   apitype.VCSProviderGitLab,
+			Repository: "acme/infra",
+			Paths:      []string{"stacks/prod/**"},
+		}),
+	})
+	assert.JSONEq(t, `{"vcs":{"provider":"gitlab","repository":"acme/infra"}}`, string(got))
+}
+
+func TestDeploymentSettingsEdit_ClearVCSListFlags(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct {
+		name string
+		args deploymentSettingsEditArgs
+		want string
+	}{
+		{
+			"tag filters",
+			deploymentSettingsEditArgs{tagFilters: []string{""}, flagsChanged: flagsSet(flagTagFilter)},
+			`{"vcs":{"provider":"github","repository":"acme/infra","reviewStackLabels":["deploy"]}}`,
+		},
+		{
+			"review stack labels",
+			deploymentSettingsEditArgs{
+				reviewStackLabels: []string{""},
+				flagsChanged:      flagsSet(flagReviewStackLabel),
+			},
+			`{"vcs":{"provider":"github","repository":"acme/infra","tagFilters":["v*"]}}`,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			got := captureEditPatch(t, tc.args, &mockDeploymentSettingsEditClient{
+				getResp: storedVCSSettings(apitype.DeploymentSettingsVCS{
+					Provider:          apitype.VCSProviderGitHub,
+					Repository:        "acme/infra",
+					TagFilters:        []string{"v*"},
+					ReviewStackLabels: []string{"deploy"},
+				}),
+			})
+			assert.JSONEq(t, tc.want, string(got))
+		})
+	}
+}
+
+func TestDeploymentSettingsEdit_ClearReviewStackLabelsIsGitHubOnly(t *testing.T) {
+	t.Parallel()
+	err := runEditArgs(t, deploymentSettingsEditArgs{
+		reviewStackLabels: []string{""},
+		flagsChanged:      flagsSet(flagReviewStackLabel),
+	}, &mockDeploymentSettingsEditClient{
+		getResp: storedVCSSettings(apitype.DeploymentSettingsVCS{Provider: apitype.VCSProviderGitLab}),
+	})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), flagReviewStackLabel)
 }
 
 // Both list and map clears send null: an empty map is a no-op, because the server copies through
@@ -658,12 +1319,20 @@ func TestDeploymentSettingsEdit_PreRunCommandEmptyStringClears(t *testing.T) {
 	assert.JSONEq(t, `{"operationContext":{"preRunCommands":null}}`, string(captured.patch))
 }
 
-func TestDeploymentSettingsEdit_PreRunCommandEmptyStringRejectsCompanions(t *testing.T) {
+func TestDeploymentSettingsEdit_ListFlagEmptyStringRejectsCompanions(t *testing.T) {
 	t.Parallel()
-	_, err := runEditCmd(t, &mockDeploymentSettingsEditClient{},
-		"--pre-run-command", "echo hi", "--pre-run-command", "")
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "cannot be combined with other commands")
+	for _, tc := range []struct{ flag, value string }{
+		{flagPreRunCommand, "echo hi"},
+		{flagPathFilter, "stacks/prod/**"},
+	} {
+		t.Run(tc.flag, func(t *testing.T) {
+			t.Parallel()
+			_, err := runEditCmd(t, &mockDeploymentSettingsEditClient{},
+				"--"+tc.flag, tc.value, "--"+tc.flag, "")
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), "cannot be combined with other values")
+		})
+	}
 }
 
 // The superseded spellings shipped in v3.242.0, so they have to keep producing the same patch and
@@ -721,6 +1390,274 @@ func TestDeploymentSettingsEdit_DurationFlagsClearWithNull(t *testing.T) {
 	}
 }
 
+func TestDeploymentSettingsEdit_GitAuthModes(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct {
+		name string
+		args deploymentSettingsEditArgs
+		want string
+	}{
+		{
+			"access token",
+			deploymentSettingsEditArgs{
+				gitAuthToken: "tok",
+				flagsChanged: flagsSet(flagGitAuthToken),
+			},
+			`{"sourceContext":{"git":{"gitAuth":{
+				"accessToken": {"secret": "tok"}, "sshAuth": null, "basicAuth": null
+			}}}}`,
+		},
+		{
+			"ssh key",
+			deploymentSettingsEditArgs{
+				gitAuthSSHPrivateKey:         "PRIVATE KEY",
+				gitAuthSSHPrivateKeyPassword: "pw",
+				flagsChanged:                 flagsSet(flagGitAuthSSHKey, flagGitAuthSSHKeyPassword),
+			},
+			`{"sourceContext":{"git":{"gitAuth":{
+				"sshAuth": {"sshPrivateKey": {"secret": "PRIVATE KEY"}, "password": {"secret": "pw"}},
+				"accessToken": null, "basicAuth": null
+			}}}}`,
+		},
+		{
+			"ssh key without a password",
+			deploymentSettingsEditArgs{
+				gitAuthSSHPrivateKey: "PRIVATE KEY",
+				flagsChanged:         flagsSet(flagGitAuthSSHKey),
+			},
+			`{"sourceContext":{"git":{"gitAuth":{
+				"sshAuth": {"sshPrivateKey": {"secret": "PRIVATE KEY"}, "password": null},
+				"accessToken": null, "basicAuth": null
+			}}}}`,
+		},
+		{
+			"basic auth",
+			deploymentSettingsEditArgs{
+				gitAuthUsername: "deploy",
+				gitAuthPassword: "pw",
+				flagsChanged:    flagsSet(flagGitAuthUsername, flagGitAuthPassword),
+			},
+			`{"sourceContext":{"git":{"gitAuth":{
+				"basicAuth": {"userName": {"secret": "deploy"}, "password": {"secret": "pw"}},
+				"accessToken": null, "sshAuth": null
+			}}}}`,
+		},
+		{
+			"clear removes every mode",
+			deploymentSettingsEditArgs{removeGitAuth: true, flagsChanged: flagsSet(flagRemoveGitAuth)},
+			`{"sourceContext":{"git":{"gitAuth":null}}}`,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			got := captureEditPatch(t, tc.args, &mockDeploymentSettingsEditClient{})
+			assert.JSONEq(t, tc.want, string(got))
+		})
+	}
+}
+
+func TestDeploymentSettingsEdit_GitAuthSSHKeyPasswordNeedsAKey(t *testing.T) {
+	t.Parallel()
+	err := runEditArgs(t, deploymentSettingsEditArgs{
+		gitAuthSSHPrivateKeyPassword: "pw",
+		flagsChanged:                 flagsSet(flagGitAuthSSHKeyPassword),
+	}, &mockDeploymentSettingsEditClient{})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), flagGitAuthSSHKey)
+}
+
+func TestDeploymentSettingsEdit_GitAuthSSHKeyFromPath(t *testing.T) {
+	t.Parallel()
+
+	path := filepath.Join(t.TempDir(), "id_ed25519")
+	require.NoError(t, os.WriteFile(path, []byte("PRIVATE KEY FROM FILE"), 0o600))
+
+	got := captureEditPatch(t, deploymentSettingsEditArgs{
+		gitAuthSSHPrivateKeyPath: path,
+		flagsChanged:             flagsSet(flagGitAuthSSHKeyPath),
+	}, &mockDeploymentSettingsEditClient{})
+
+	assert.JSONEq(t, `{"sourceContext":{"git":{"gitAuth":{
+		"sshAuth": {"sshPrivateKey": {"secret": "PRIVATE KEY FROM FILE"}, "password": null},
+		"accessToken": null, "basicAuth": null
+	}}}}`, string(got))
+}
+
+func TestDeploymentSettingsEdit_GitAuthSSHKeyPathMustExist(t *testing.T) {
+	t.Parallel()
+
+	err := runEditArgs(t, deploymentSettingsEditArgs{
+		gitAuthSSHPrivateKeyPath: filepath.Join(t.TempDir(), "missing"),
+		flagsChanged:             flagsSet(flagGitAuthSSHKeyPath),
+	}, &mockDeploymentSettingsEditClient{})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "reading SSH private key")
+}
+
+// An empty path is a mistake rather than a request to clear: only the inline flag removes the
+// stored credentials.
+func TestDeploymentSettingsEdit_GitAuthSSHKeyPathRejectsEmpty(t *testing.T) {
+	t.Parallel()
+
+	err := runEditArgs(t, deploymentSettingsEditArgs{
+		flagsChanged: flagsSet(flagGitAuthSSHKeyPath),
+	}, &mockDeploymentSettingsEditClient{})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), flagGitAuthSSHKeyPath)
+}
+
+// A truncated key file would otherwise read as the inline clear sentinel and wipe every stored
+// authentication mode, reporting success.
+func TestDeploymentSettingsEdit_GitAuthSSHKeyPathRejectsAnEmptyFile(t *testing.T) {
+	t.Parallel()
+
+	for _, tc := range []struct{ name, contents string }{
+		{"zero bytes", ""},
+		{"whitespace only", "\n  \n"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			path := filepath.Join(t.TempDir(), "id_ed25519")
+			require.NoError(t, os.WriteFile(path, []byte(tc.contents), 0o600))
+
+			c := &mockDeploymentSettingsEditClient{}
+			err := runEditArgs(t, deploymentSettingsEditArgs{
+				gitAuthSSHPrivateKeyPath: path,
+				flagsChanged:             flagsSet(flagGitAuthSSHKeyPath),
+			}, c)
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), "no key material")
+			assert.False(t, c.patched, "the stored credentials must survive an unreadable key")
+		})
+	}
+}
+
+// An empty username clears the stored credentials, so it is the one case that needs no password.
+func TestDeploymentSettingsEdit_GitAuthUsernameNeedsAPassword(t *testing.T) {
+	t.Parallel()
+
+	err := runEditArgs(t, deploymentSettingsEditArgs{
+		gitAuthUsername: "deploy",
+		flagsChanged:    flagsSet(flagGitAuthUsername),
+	}, &mockDeploymentSettingsEditClient{})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), flagGitAuthPassword)
+
+	err = runEditArgs(t, deploymentSettingsEditArgs{
+		gitAuthPassword: "pw",
+		flagsChanged:    flagsSet(flagGitAuthPassword),
+	}, &mockDeploymentSettingsEditClient{})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), flagGitAuthUsername)
+}
+
+// An empty credential is an unset shell variable far more often than a request to delete, and the
+// stored value can never be read back, so it is refused rather than treated as a clear.
+func TestDeploymentSettingsEdit_EmptyCredentialIsRefused(t *testing.T) {
+	t.Parallel()
+	for _, argv := range [][]string{
+		{"--git-auth-access-token", ""},
+		{"--git-auth-ssh-private-key", ""},
+		{"--git-auth-ssh-private-key-path", ""},
+		{"--git-auth-username", "", "--git-auth-password", "pw"},
+		{"--git-auth-username", "deploy", "--git-auth-password", ""},
+	} {
+		t.Run(strings.Join(argv, " "), func(t *testing.T) {
+			t.Parallel()
+			_, err := runEditCmd(t, &mockDeploymentSettingsEditClient{}, argv...)
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), "must not be empty")
+			assert.Contains(t, err.Error(), flagRemoveGitAuth)
+		})
+	}
+}
+
+// The passphrase is refused separately from the other credentials because --remove-git-auth is the
+// wrong remedy for it: it drops the key too.
+func TestDeploymentSettingsEdit_EmptySSHKeyPasswordIsRefused(t *testing.T) {
+	t.Parallel()
+	_, err := runEditCmd(t, &mockDeploymentSettingsEditClient{},
+		"--git-auth-ssh-private-key", "PRIVATE KEY", "--git-auth-ssh-private-key-password", "")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "must not be empty")
+	assert.Contains(t, err.Error(), "omit it to store the key without a passphrase")
+}
+
+// Omitting the passphrase alongside a key stores the key with none, which is what the refusal
+// above points the user at.
+func TestDeploymentSettingsEdit_KeyWithoutPasswordClearsTheStoredPassphrase(t *testing.T) {
+	t.Parallel()
+	got := captureEditPatch(t, deploymentSettingsEditArgs{
+		gitAuthSSHPrivateKey: "PRIVATE KEY",
+		flagsChanged:         flagsSet(flagGitAuthSSHKey),
+	}, &mockDeploymentSettingsEditClient{})
+	assert.JSONEq(t, `{"sourceContext":{"git":{"gitAuth":{"sshAuth":{`+
+		`"sshPrivateKey":{"secret":"PRIVATE KEY"},"password":null},`+
+		`"accessToken":null,"basicAuth":null}}}}`, string(got))
+}
+
+func TestDeploymentSettingsEdit_OperationCoverageFlags(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct {
+		name string
+		args deploymentSettingsEditArgs
+		want string
+	}{
+		{
+			"remediate on drift",
+			deploymentSettingsEditArgs{
+				remediateIfDrift: true,
+				flagsChanged:     flagsSet(flagRemediateIfDrift),
+			},
+			`{"operationContext":{"options":{"remediateIfDriftDetected":true}}}`,
+		},
+		{
+			"cache enabled",
+			deploymentSettingsEditArgs{cache: true, flagsChanged: flagsSet(flagCache)},
+			`{"cacheOptions":{"enable":true}}`,
+		},
+		{
+			"cache disabled",
+			deploymentSettingsEditArgs{flagsChanged: flagsSet(flagCache)},
+			`{"cacheOptions":{"enable":false}}`,
+		},
+		{
+			"template source url",
+			deploymentSettingsEditArgs{
+				templateSourceURL: "registry://templates/source/acme/vpc",
+				flagsChanged:      flagsSet(flagTemplateSourceURL),
+			},
+			`{"sourceContext":{"template":{"sourceUrl":"registry://templates/source/acme/vpc"}}}`,
+		},
+		{
+			// The whole template object goes, or the service sees a second source next to the git one.
+			"template source url cleared",
+			deploymentSettingsEditArgs{flagsChanged: flagsSet(flagTemplateSourceURL)},
+			`{"sourceContext":{"template":null}}`,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			got := captureEditPatch(t, tc.args, &mockDeploymentSettingsEditClient{})
+			assert.JSONEq(t, tc.want, string(got))
+		})
+	}
+}
+
+// A brace glob is one filter, not two: --path-filter is a repeatable string array rather than a
+// comma-separated slice.
+func TestDeploymentSettingsEdit_PathFilterKeepsBraceGlobs(t *testing.T) {
+	t.Parallel()
+	captured, err := runEditCmd(t, &mockDeploymentSettingsEditClient{
+		getResp: storedVCSSettings(apitype.DeploymentSettingsVCS{Provider: apitype.VCSProviderGitLab}),
+	}, "--path-filter", "**/{apps,libs}/**")
+	require.NoError(t, err)
+	assert.JSONEq(t,
+		`{"vcs":{"provider":"gitlab","repository":"acme/infra","paths":["**/{apps,libs}/**"]}}`,
+		string(captured.patch))
+}
+
 func TestDeploymentSettingsEdit_MutuallyExclusiveFlags(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {
@@ -758,9 +1695,11 @@ func TestDeploymentSettingsEdit_ClearFlagsArePresenceOnly(t *testing.T) {
 		t.Run(flag+" accepts true", func(t *testing.T) {
 			t.Parallel()
 			// A stored provider so that clear flags writing into vcs have one to resolve against.
-			c := &mockDeploymentSettingsEditClient{getResp: &apitype.DeploymentSettings{
-				VCS: &apitype.DeploymentSettingsVCS{Provider: apitype.VCSProviderGitHub},
-			}}
+			c := &mockDeploymentSettingsEditClient{
+				getResp: storedVCSSettings(apitype.DeploymentSettingsVCS{
+					Provider: apitype.VCSProviderGitHub,
+				}),
+			}
 			_, err := runEditCmd(t, c, "--"+flag)
 			require.NoError(t, err)
 		})

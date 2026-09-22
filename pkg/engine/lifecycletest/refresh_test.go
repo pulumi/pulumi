@@ -2984,7 +2984,7 @@ func TestRefreshPreservesInputsWhenReadReturnsNoInputs(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				DiffF: func(ctx context.Context, dr plugin.DiffRequest) (plugin.DiffResult, error) {
-					if dr.OldOutputs["inputProp"] != dr.NewInputs["inputProp"] {
+					if !dr.OldOutputs.Get("inputProp").Equals(dr.NewInputs.Get("inputProp")) {
 						return plugin.DiffResult{
 							Changes: plugin.DiffSome,
 						}, nil

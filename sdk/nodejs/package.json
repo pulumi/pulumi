@@ -1,6 +1,6 @@
 {
     "name": "@pulumi/pulumi",
-    "version": "3.263.0",
+    "version": "3.264.0",
     "description": "Pulumi's Node.js SDK",
     "license": "Apache-2.0",
     "repository": {
@@ -27,7 +27,7 @@
         "execa": "^5.1.0",
         "google-protobuf": "^3.21.4",
         "ini": "^2.0.0",
-        "js-yaml": "^4.0.0",
+        "js-yaml": "^4.3.2",
         "minimist": "^1.2.6",
         "normalize-package-data": "^6.0.0",
         "require-from-string": "^2.0.1",

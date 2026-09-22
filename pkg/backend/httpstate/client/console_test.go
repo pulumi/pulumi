@@ -15,10 +15,11 @@
 package client
 
 import (
-	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+
+	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
 )
 
 //nolint:paralleltest // sets env var, must be run in isolation
@@ -33,7 +34,7 @@ func TestConsoleURL(t *testing.T) {
 
 		// Unset the variable, confirm the "standard behavior" where we
 		// replace "api." with "app.".
-		os.Unsetenv("PULUMI_CONSOLE_DOMAIN")
+		ptesting.Unsetenv(t, "PULUMI_CONSOLE_DOMAIN")
 		assert.Equal(t,
 			"https://app.pulumi.contoso.com/1/2",
 			CloudConsoleURL("https://api.pulumi.contoso.com", "1", "2"))

@@ -213,10 +213,6 @@ func TestLanguageExtraTypes(t *testing.T) {
 		// don't believe it is worth it to test independently.
 		languageInfo: &gocodegen.GoPackageInfo{
 			GenerateResourceContainerTypes: true,
-			// TODO[https://github.com/pulumi/pulumi/issues/21116]:
-			// l2-resource-config requires that RespectSchemaVersion
-			// is set if any language option is set.
-			RespectSchemaVersion: true,
 		},
 	})
 }

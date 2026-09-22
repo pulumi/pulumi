@@ -161,6 +161,28 @@ func init() {
 					assert.Empty(l, policyRemediations, "expected no policy remediations")
 				},
 			},
+			{
+				// Set the value to false again, but lower the remediation policy to advisory. Remediations only run at
+				// the remediate enforcement level, so it doesn't run.
+				PolicyPacks: map[string]map[string]any{
+					"remediate": {
+						"fixup": map[string]any{
+							"value":            false,
+							"enforcementLevel": "advisory",
+						},
+					},
+				},
+				AssertPreview: func(l *L, res AssertPreviewArgs) {
+					require.NoError(l, res.Err)
+					policyRemediations := getPolicyRemediations(l, res.Events)
+					assert.Empty(l, policyRemediations, "expected no policy remediations")
+				},
+				Assert: func(l *L, res AssertArgs) {
+					require.NoError(l, res.Err)
+					policyRemediations := getPolicyRemediations(l, res.Events)
+					assert.Empty(l, policyRemediations, "expected no policy remediations")
+				},
+			},
 		},
 	}
 }

@@ -61,6 +61,8 @@ func DefaultExclusionRules() ExclusionRules {
 		ExcludeDependenciesOnPendingReplacementRefreshV2,
 		// TODO[pulumi/pulumi#22923]
 		ExcludeTargetedUpdateRefreshWithDeletedParent,
+		// TODO[pulumi/pulumi#24680]
+		ExcludeComponentWithProviderRefreshProgram,
 	}
 }
 
@@ -703,6 +705,33 @@ func ExcludeTargetedUpdateRefreshWithDeletedParent(
 
 	for _, res := range snap.Resources {
 		if res.Parent != "" && deletedURNs[res.Parent] {
+			return true
+		}
+	}
+
+	return false
+}
+
+// ExcludeComponentWithProviderRefreshProgram excludes program-based refreshes
+// (a refresh v2, or an update with refresh and a refresh program) against a
+// snapshot that contains a component resource with a provider reference. If
+// the program replaces that provider and the component, the delete-replaced
+// steps for the old provider and the old component run in parallel. When the
+// provider is deleted first, the component still refers to it, which violates
+// snapshot integrity.
+func ExcludeComponentWithProviderRefreshProgram(
+	snap *SnapshotSpec,
+	_ *ProgramSpec,
+	_ *ProviderSpec,
+	plan *PlanSpec,
+) bool {
+	refreshProgramUpdate := plan.Operation == PlanOperationUpdate && plan.Refresh && plan.RefreshProgram
+	if plan.Operation != PlanOperationRefreshV2 && !refreshProgramUpdate {
+		return false
+	}
+
+	for _, res := range snap.Resources {
+		if !res.Custom && res.Provider != "" {
 			return true
 		}
 	}

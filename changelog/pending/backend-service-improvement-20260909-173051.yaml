@@ -1,4 +1,0 @@
-component: backend/service
-kind: improvement
-body: Improve error messages if default org is invalid
-time: 2026-09-09T17:30:51.172667125+02:00

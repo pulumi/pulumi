@@ -206,6 +206,7 @@ func (m *mockMonitor) GetDeploymentInfo(ctx context.Context, in *emptypb.Empty,
 		pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_PARAMETERIZATION,
 		pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_RESOURCE_HOOKS,
 		pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_ERROR_HOOKS,
+		pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_STATE_MIGRATIONS,
 	}
 
 	return &pulumirpc.DeploymentInfo{

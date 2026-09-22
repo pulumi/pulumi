@@ -28,6 +28,7 @@ from collections.abc import Awaitable, Mapping, Sequence
 import grpc
 
 from ._context import wrap_with_context
+from ._state_migration_context import _ensure_not_in_state_migration
 from google.protobuf import struct_pb2
 
 from .. import _types, log
@@ -1060,6 +1061,22 @@ def register_resource(
                 for transform in opts.transforms:
                     callbacks.append(callback_server.register_transform(transform))
 
+            state_migration_callbacks: list[callback_pb2.Callback] = []
+            if opts.state_migrations:
+                if not monitor_supports_feature(
+                    resource_pb2.RESOURCE_MONITOR_FEATURE_STATE_MIGRATIONS
+                ):
+                    raise Exception(
+                        "The Pulumi CLI does not support state migrations. Please update the Pulumi CLI."
+                    )
+                callback_server = await _get_callbacks()
+                if callback_server is None:
+                    raise Exception("Callback server not initialized")
+                for migration in opts.state_migrations:
+                    state_migration_callbacks.append(
+                        callback_server.register_state_migration(migration)
+                    )
+
             property_dependencies = {}
             for key, deps in resolver.property_dependencies.items():
                 property_dependencies[key] = (
@@ -1151,6 +1168,7 @@ def register_resource(
                 sourcePosition=source_position,
                 stackTrace=stack_trace,
                 transforms=callbacks,
+                state_migrations=state_migration_callbacks,
                 supportsResultReporting=True,
                 packageRef=package_ref_str or "",
                 hooks=hooks,
@@ -1278,6 +1296,8 @@ def register_resource(
 def register_resource_outputs(
     res: "Resource", outputs: "Union[Inputs, Output[Inputs]]"
 ):
+    _ensure_not_in_state_migration("register resource outputs")
+
     async def do_register_resource_outputs():
         urn = await res.urn.future()
         # serialize_properties expects a collection (empty is fine) but not None, but this is called pretty
@@ -1444,6 +1464,8 @@ async def _prepare_resource_hooks(
 
 
 def register_resource_hook(hook: "ResourceHook") -> asyncio.Future[None]:
+    _ensure_not_in_state_migration("register resource hook")
+
     async def do_register() -> None:
         callbacks = await _get_callbacks()
         if callbacks is None:
@@ -1469,6 +1491,8 @@ def register_resource_hook(hook: "ResourceHook") -> asyncio.Future[None]:
 
 
 def register_error_hook(hook: "ErrorHook") -> asyncio.Future[None]:
+    _ensure_not_in_state_migration("register error hook")
+
     async def do_register() -> None:
         callbacks = await _get_callbacks()
         if callbacks is None:

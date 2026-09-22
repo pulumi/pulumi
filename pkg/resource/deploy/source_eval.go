@@ -2535,25 +2535,24 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		opts = newOpts
 	}
 
-	// Collect the state migrations registered for this resource. A registration for a constructed resource
-	// reuses the migrations saved by the remote registration that requested construction, mirroring the pending
-	// transform handoff above.
+	// Collect the state migrations registered for this resource. For constructed resources, we run the provider's
+	// migrations before the caller's so caller migrations see the provider's upgraded state.
 	var stateMigrations []StateMigrationFunction
 	err = func() error {
 		rm.pendingStateMigrationsLock.Lock()
 		defer rm.pendingStateMigrationsLock.Unlock()
 
+		stateMigrations, err = slice.MapError(req.StateMigrations, rm.wrapStateMigrationCallback)
+		if err != nil {
+			return err
+		}
 		if pending, ok := rm.pendingStateMigrations[pendingKey]; ok {
 			delete(rm.pendingStateMigrations, pendingKey)
-			stateMigrations = pending.functions
+			stateMigrations = append(stateMigrations, pending.functions...)
 			// The constructed registration may omit aliases from the original remote registration. Keep them so the
 			// migration can find the prior state.
 			opts.Aliases = append(slices.Clone(pending.aliases), opts.Aliases...)
 		} else {
-			stateMigrations, err = slice.MapError(req.StateMigrations, rm.wrapStateMigrationCallback)
-			if err != nil {
-				return err
-			}
 			// We only need to save this for remote calls
 			if remote && len(stateMigrations) > 0 {
 				rm.pendingStateMigrations[pendingKey] = pendingStateMigration{
@@ -3235,10 +3234,12 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 	)
 
 	reason := pulumirpc.Result_SUCCESS
+	// Both directly-failed and dependency-skipped steps surface to the SDK as Result_FAIL. The
+	// language SDKs treat any non-success result identically (they synthesize a "failed to
+	// register" error), and the engine keeps the Skipped/Failed distinction internally for
+	// continue-on-error cascade tracking.
 	switch result.Result { //nolint:exhaustive // golangci-lint v2 upgrade
-	case ResultStateSkipped:
-		reason = pulumirpc.Result_SKIP
-	case ResultStateFailed:
+	case ResultStateSkipped, ResultStateFailed:
 		reason = pulumirpc.Result_FAIL
 	}
 	return &pulumirpc.RegisterResourceResponse{

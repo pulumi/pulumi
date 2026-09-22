@@ -152,7 +152,7 @@ func TestReadingGitRepo(t *testing.T) {
 	// Confirm that data can be inferred from the CI system if unavailable.
 	// Fake running under Travis CI. We also need to unset GITHUB_ACTIONS so that
 	// the GitHub Actions detector doesn't take precedence when running in CI.
-	os.Unsetenv("PULUMI_DISABLE_CI_DETECTION") // Restore our CI/CD detection logic.
+	ptesting.Unsetenv(t, "PULUMI_DISABLE_CI_DETECTION") // Restore our CI/CD detection logic.
 	t.Setenv("GITHUB_ACTIONS", "")
 	t.Setenv("TRAVIS", "1")
 	t.Setenv("TRAVIS_BRANCH", "branch-from-ci")
@@ -260,7 +260,7 @@ func TestReadingHgRepo(t *testing.T) {
 	// CI-driven branch name should be adopted when on the default branch.
 	e.RunCommand("hg", "update", "default")
 
-	os.Unsetenv("PULUMI_DISABLE_CI_DETECTION")
+	ptesting.Unsetenv(t, "PULUMI_DISABLE_CI_DETECTION")
 	t.Setenv("GITHUB_ACTIONS", "")
 	t.Setenv("TRAVIS", "1")
 	t.Setenv("TRAVIS_BRANCH", "branch-from-ci")

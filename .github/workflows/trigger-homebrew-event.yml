@@ -16,9 +16,18 @@ jobs:
       - name: Add Homebrew to the PATH
         run: |
           echo "/home/linuxbrew/.linuxbrew/bin:/home/linuxbrew/.linuxbrew/sbin" >> "${GITHUB_PATH}"
-      - uses: dawidd6/action-homebrew-bump-formula@1446dca236b0440c6f02723a3f14f13be2c04ab0 # v7
-        with:
-          token: ${{secrets.PULUMI_BOT_HOMEBREW_TOKEN}}
-          formula: pulumi
-          tag: v${{env.VERSION}}
-          revision: ${{env.COMMIT_SHA}}
+      - name: Bump Homebrew formula
+        env:
+          HOMEBREW_GITHUB_API_TOKEN: ${{ secrets.PULUMI_BOT_HOMEBREW_TOKEN }}
+        run: |
+          git config --global user.name "Pulumi Bot"
+          git config --global user.email "30351955+pulumi-bot@users.noreply.github.com"
+          brew developer on
+          brew update-reset
+          brew tap homebrew/core --force
+          brew bump-formula-pr \
+            --no-audit \
+            --no-browse \
+            --tag="v${VERSION}" \
+            --revision="${COMMIT_SHA}" \
+            pulumi

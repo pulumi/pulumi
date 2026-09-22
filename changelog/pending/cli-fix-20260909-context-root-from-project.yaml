@@ -1,5 +1,0 @@
-component: cli
-kind: fix
-body: Resolve a project's relative plugin and package paths against the project directory
-    when a plugin starts from a subdirectory of the project
-time: 2026-09-09T00:00:00Z
