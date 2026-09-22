@@ -17,14 +17,43 @@ package httpstate
 import (
 	"context"
 	"fmt"
+	"time"
 
+	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
+
+// awaitStackOutputs reads a stack's outputs on behalf of the running update, waiting while the
+// service reports them as pending.
+func (b *cloudBackend) awaitStackOutputs(
+	ctx context.Context, stackID client.StackIdentifier,
+) (apitype.StackOutputsResponse, error) {
+	var readingUpdateID string
+	if id := b.readingUpdateID.Load(); id != nil {
+		readingUpdateID = *id
+	}
+
+	delay := 500 * time.Millisecond
+	for {
+		resp, err := b.client.GetStackOutputs(ctx, stackID, readingUpdateID)
+		if err != nil || resp.State != apitype.StackOutputsPending {
+			return resp, err
+		}
+		logging.V(7).Infof("waiting for %s to join the coherence window", stackID)
+		select {
+		case <-ctx.Done():
+			return apitype.StackOutputsResponse{}, ctx.Err()
+		case <-time.After(delay):
+		}
+		delay = min(2*delay, 5*time.Second)
+	}
+}
 
 type stackOutputsRecorder struct {
 	outputs resource.PropertyMap
