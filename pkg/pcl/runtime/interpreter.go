@@ -2095,7 +2095,9 @@ func (i *Interpreter) registerReadResource(ctx context.Context, res *pcl.ReadRes
 	outputs["__type"] = resource.NewProperty(token)
 
 	if schemaResource != nil {
-		fillSchemaOutputs(outputs, schemaResource.Properties, i.info.DryRun)
+		// A skipped read reports Unknown=true; treat outputs as unknown so dependents propagate
+		// unknowns instead of seeing empty values as real.
+		fillSchemaOutputs(outputs, schemaResource.Properties, i.info.DryRun || resp.GetUnknown())
 	}
 
 	result := resource.NewProperty(resource.Output{

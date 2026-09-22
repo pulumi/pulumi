@@ -1449,15 +1449,18 @@ func (s *ReadStep) Fail() {
 
 func (s *ReadStep) Skip() {
 	// A skipped read has no dry-run analogue. If we have prior state for this resource we return its last-known outputs
-	// so dependents can still make progress; otherwise there is nothing meaningful to return and the read surfaces as
-	// fully unknown.
+	// so dependents can still make progress; otherwise there is nothing meaningful to return. If we don't have prior
+	// state, we return the result as Unknown so SDKs can propagate unknowns to dependents rather than treating the
+	// empty output as valid.
 	skipState := s.new.Copy()
+	var unknown bool
 	if s.old != nil {
 		skipState.Outputs = s.old.Outputs
 	} else {
 		skipState.Outputs = resource.PropertyMap{}
+		unknown = true
 	}
-	s.event.Done(&ReadResult{State: skipState, Result: ResultStateSkipped})
+	s.event.Done(&ReadResult{State: skipState, Result: ResultStateSkipped, Unknown: unknown})
 }
 
 // RefreshStep is a step used to track the progress of a refresh operation. A refresh operation updates the an existing

@@ -439,6 +439,7 @@ export function readResource(
                             resp = {
                                 getUrn: () => mockurn,
                                 getProperties: () => req.getProperties(),
+                                getUnknown: () => false,
                             };
                         }
                     } catch (e) {
@@ -446,13 +447,17 @@ export function readResource(
                         resp = {
                             getUrn: () => "",
                             getProperties: () => undefined,
+                            getUnknown: () => false,
                         };
                     }
 
                     // Now resolve everything: the URN, the ID (supplied as input), and the output properties.
                     resop.resolveURN(resp.getUrn(), err);
                     resop.resolveID!(resolvedID, resolvedID !== undefined, err);
-                    await resolveOutputs(res, t, name, props, resp.getProperties(), {}, resop.resolvers, err);
+                    // A skipped read reports Unknown=true; resolve outputs as unknown so dependents
+                    // propagate unknowns instead of seeing empty values as real.
+                    const unknown = !isDryRun() && resp.getUnknown();
+                    await resolveOutputs(res, t, name, props, resp.getProperties(), {}, resop.resolvers, err, unknown);
                     done();
                 });
             })
