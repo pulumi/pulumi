@@ -23,6 +23,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -182,6 +183,13 @@ func storeAccountAt(path, key string, account Account, current bool) error {
 		logging.V(3).Infof("replacing credentials that can no longer be decrypted: %v", err)
 		creds = Credentials{}
 	}
+	// stored is the content that the file holds now. It stays nil if the file could not be read.
+	var stored []byte
+	if err == nil {
+		if stored, err = json.Marshal(creds); err != nil {
+			return fmt.Errorf("marshalling credentials object: %w", err)
+		}
+	}
 	if creds.AccessTokens == nil {
 		creds.AccessTokens = make(map[string]string)
 	}
@@ -191,6 +199,17 @@ func storeAccountAt(path, key string, account Account, current bool) error {
 	creds.AccessTokens[key], creds.Accounts[key] = account.AccessToken, account
 	if current {
 		creds.Current = key
+	}
+	updated, err := json.Marshal(creds)
+	if err != nil {
+		return fmt.Errorf("marshalling credentials object: %w", err)
+	}
+	// Each command stores the account that it validated, and most of the time nothing changed. A
+	// write resolves the OS credential store, which can start a subprocess, so do not write
+	// identical content. A pending encryption of a plaintext file, or an upgrade to a stronger
+	// store, then waits for the next change.
+	if bytes.Equal(stored, updated) {
+		return nil
 	}
 	return writeCredentialsFile(path, creds)
 }
@@ -439,7 +458,31 @@ func IsUndecryptableCredentials(err error) bool {
 	return ok
 }
 
+// decryptedEnvelopes holds, for each credentials file, the last envelope that this process
+// decrypted. A call to the OS credential store can start a subprocess, and one command reads the
+// credentials file several times. An envelope with identical bytes has identical plaintext, so a
+// write from any process changes the bytes and an entry cannot go stale.
+var decryptedEnvelopes struct {
+	sync.Mutex
+	byFile map[string]decryptedEnvelope
+}
+
+type decryptedEnvelope struct{ envelope, plaintext []byte }
+
+func forgetDecryptedEnvelopes() {
+	decryptedEnvelopes.Lock()
+	defer decryptedEnvelopes.Unlock()
+	decryptedEnvelopes.byFile = nil
+}
+
 func decryptCredentials(credsFile string, data []byte) ([]byte, error) {
+	decryptedEnvelopes.Lock()
+	cached, ok := decryptedEnvelopes.byFile[credsFile]
+	decryptedEnvelopes.Unlock()
+	if ok && bytes.Equal(cached.envelope, data) {
+		return cached.plaintext, nil
+	}
+
 	backend, err := securestore.EnvelopeBackend(data)
 	if err != nil {
 		if errors.Is(err, securestore.ErrUnsupportedVersion) {
@@ -490,6 +533,13 @@ func decryptCredentials(credsFile string, data []byte) ([]byte, error) {
 				"the credentials; otherwise run `pulumi login` to re-authenticate",
 			credsFile, err)}
 	}
+
+	decryptedEnvelopes.Lock()
+	defer decryptedEnvelopes.Unlock()
+	if decryptedEnvelopes.byFile == nil {
+		decryptedEnvelopes.byFile = map[string]decryptedEnvelope{}
+	}
+	decryptedEnvelopes.byFile[credsFile] = decryptedEnvelope{envelope: data, plaintext: plaintext}
 	return plaintext, nil
 }
 
@@ -630,6 +680,8 @@ var replacedEnvelope atomic.Bool
 // current best one, since they can differ (unparseable envelope, orphaned
 // key, file already gone).
 func dropEnvelopeKey(credsFile string, markReplaced bool) {
+	// A process that deletes the key must not continue to serve plaintext that the key protected.
+	forgetDecryptedEnvelopes()
 	sawEnvelope := false
 	if raw, readErr := os.ReadFile(credsFile); readErr == nil && securestore.IsEnvelope(raw) {
 		sawEnvelope = true

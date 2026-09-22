@@ -778,3 +778,81 @@ func TestUnsetModePlaintextReadDoesNotWarn(t *testing.T) {
 	})
 	assert.Empty(t, out, "plaintext is the expected default without opt-in")
 }
+
+//nolint:paralleltest // t.Setenv and the package-global secure-store mock forbid parallel runs
+func TestUnchangedEnvelopeIsNotDecryptedAgain(t *testing.T) {
+	pinSecureCreds(t, "auto")
+	require.NoError(t, StoreCredentials(testCreds()))
+
+	first, err := GetStoredCredentials()
+	require.NoError(t, err)
+
+	fakeStore(t).getErr = errors.New("the key store must not be read again")
+	second, err := GetStoredCredentials()
+	require.NoError(t, err)
+	assert.Equal(t, first, second)
+}
+
+//nolint:paralleltest // t.Setenv and the package-global secure-store mock forbid parallel runs
+func TestChangedEnvelopeIsDecryptedAgain(t *testing.T) {
+	pinSecureCreds(t, "auto")
+	require.NoError(t, StoreCredentials(testCreds()))
+	_, err := GetStoredCredentials()
+	require.NoError(t, err)
+
+	updated := testCreds()
+	updated.AccessTokens["https://api.other.com"] = "pul-second-token"
+	require.NoError(t, StoreCredentials(updated))
+
+	creds, err := GetStoredCredentials()
+	require.NoError(t, err)
+	assert.Equal(t, updated, creds)
+}
+
+//nolint:paralleltest // t.Setenv and the package-global secure-store mock forbid parallel runs
+func TestStoreAccountDoesNotWriteIdenticalContent(t *testing.T) {
+	pinSecureCreds(t, "auto")
+	credsFile, err := getCredsFilePath()
+	require.NoError(t, err)
+	account := Account{AccessToken: "pul-secret-token", Username: "user"}
+	require.NoError(t, StoreAccount("https://api.pulumi.com", account, true))
+	before, err := os.ReadFile(credsFile)
+	require.NoError(t, err)
+
+	require.NoError(t, StoreAccount("https://api.pulumi.com", account, true))
+
+	// Each seal uses a new nonce, so a write changes the bytes of the file.
+	after, err := os.ReadFile(credsFile)
+	require.NoError(t, err)
+	assert.Equal(t, before, after)
+}
+
+//nolint:paralleltest // t.Setenv and the package-global secure-store mock forbid parallel runs
+func TestStoreAccountWritesAChangedAccount(t *testing.T) {
+	pinSecureCreds(t, "auto")
+	credsFile, err := getCredsFilePath()
+	require.NoError(t, err)
+	require.NoError(t, StoreAccount("https://api.pulumi.com",
+		Account{AccessToken: "pul-secret-token", Username: "user"}, true))
+
+	require.NoError(t, StoreAccount("https://api.pulumi.com",
+		Account{AccessToken: "pul-secret-token", Username: "renamed"}, true))
+
+	account, err := GetAccount("https://api.pulumi.com")
+	require.NoError(t, err)
+	assert.Equal(t, Account{AccessToken: "pul-secret-token", Username: "renamed", sourcePath: credsFile}, account)
+}
+
+//nolint:paralleltest // t.Setenv and the package-global secure-store mock forbid parallel runs
+func TestStoreAccountWritesAChangeOfCurrent(t *testing.T) {
+	pinSecureCreds(t, "auto")
+	first := Account{AccessToken: "pul-first-token"}
+	require.NoError(t, StoreAccount("https://api.first.com", first, true))
+	require.NoError(t, StoreAccount("https://api.second.com", Account{AccessToken: "pul-second-token"}, true))
+
+	require.NoError(t, StoreAccount("https://api.first.com", first, true))
+
+	creds, err := GetStoredCredentials()
+	require.NoError(t, err)
+	assert.Equal(t, "https://api.first.com", creds.Current)
+}

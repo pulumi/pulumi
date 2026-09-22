@@ -44,6 +44,7 @@ func credentialStoreMode() (securestore.Mode, error) {
 // Tests that change PULUMI_CREDENTIAL_STORE or install the mock must call this.
 func resetCredStoreForTesting() {
 	replacedEnvelope.Store(false)
+	forgetDecryptedEnvelopes()
 	plaintextPendingOnce = sync.Once{}
 }
 
