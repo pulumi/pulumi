@@ -1,0 +1,6 @@
+component: cli
+kind: fix
+body: Remove the prompt to create a first project after an interactive login
+time: 2026-09-21T19:10:00+03:00
+custom:
+  PR: "24742"
