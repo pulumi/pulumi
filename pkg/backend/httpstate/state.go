@@ -241,11 +241,7 @@ func (b *cloudBackend) getSnapshotStackOutputs(ctx context.Context,
 		if err != nil {
 			return property.Map{}, err
 		}
-		var readingUpdateID string
-		if id := b.readingUpdateID.Load(); id != nil {
-			readingUpdateID = *id
-		}
-		resp, err := b.client.GetStackOutputs(ctx, stackID, readingUpdateID)
+		resp, err := b.awaitStackOutputs(ctx, stackID)
 		if err != nil {
 			return property.Map{}, err
 		}
