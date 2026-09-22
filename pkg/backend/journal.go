@@ -507,15 +507,14 @@ func (r *JournalReplayer) GenerateDeployment() (apitype.TypedDeployment, error) 
 		deployment.Extensions = extensions
 	}
 
-	// Carry deferred resources forward from the base, overlaid with any this plan produced (a
-	// resource deferred again in this plan replaces its earlier recorded goal).
-	deferredResources := make(map[resource.URN]apitype.ResourceV3, len(r.base.DeferredResources)+len(r.deferredResources))
-	for _, res := range r.base.DeferredResources {
-		deferredResources[res.URN] = res
-	}
-	maps.Copy(deferredResources, r.deferredResources)
-	if len(deferredResources) > 0 {
-		deployment.DeferredResources = slices.SortedFunc(maps.Values(deferredResources), func(a, b apitype.ResourceV3) int {
+	// A deferred goal survives only if this plan deferred the same URN again: the resource is
+	// still awaiting, or was skipped because it depends on one that is. Once a resource's step
+	// completes normally (Same, Create, Update, Delete, Replace) or it no longer appears in the
+	// program, any stale goal recorded by an earlier update must not carry forward -- the
+	// service that reads checkpoints prefers a deferred duplicate over the concrete entry, so a
+	// lingering stale goal would regress that resource to an earlier desired state.
+	if len(r.deferredResources) > 0 {
+		deployment.DeferredResources = slices.SortedFunc(maps.Values(r.deferredResources), func(a, b apitype.ResourceV3) int {
 			return cmp.Compare(a.URN, b.URN)
 		})
 	}

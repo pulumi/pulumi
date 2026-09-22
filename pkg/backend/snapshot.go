@@ -884,18 +884,13 @@ func (sm *SnapshotManager) Snap() *deploy.Snapshot {
 	contract.Assertf(len(missing) == 0, "snapshot references unknown extensions: %v", missing)
 
 	snap := deploy.NewSnapshot(manifest, secretsManager, resources, operations, metadata, snippets, snapExtensions)
-	// Carry deferred resources forward from the base, overlaid with any this plan produced (a
-	// resource deferred again in this plan replaces its earlier recorded goal).
-	deferredResources := make(map[resource.URN]*pkgresource.State)
-	if base := sm.baseSnapshot; base != nil {
-		for _, deferred := range base.DeferredResources {
-			deferredResources[deferred.URN] = deferred
-		}
-	}
-	for urn, deferred := range sm.deferredResources {
-		deferredResources[urn] = deferred
-	}
-	for _, deferred := range deferredResources {
+	// A deferred goal survives only if this plan deferred the same URN again: the resource is
+	// still awaiting, or was skipped because it depends on one that is. Once a resource's step
+	// completes normally (Same, Create, Update, Delete, Replace) or it no longer appears in the
+	// program, any stale goal recorded by an earlier update must not carry forward -- the
+	// service that reads checkpoints prefers a deferred duplicate over the concrete entry, so a
+	// lingering stale goal would regress that resource to an earlier desired state.
+	for _, deferred := range sm.deferredResources {
 		snap.DeferredResources = append(snap.DeferredResources, deferred)
 	}
 	return snap

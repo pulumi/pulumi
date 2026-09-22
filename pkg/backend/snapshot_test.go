@@ -810,17 +810,118 @@ func TestRecordingDeferredResource(t *testing.T) {
 	require.Len(t, deployment.PendingOperations, 0)
 	require.Len(t, deployment.DeferredResources, 1)
 	assert.Equal(t, resourceA.URN, deployment.DeferredResources[0].URN)
+}
 
-	// A subsequent update, starting from a base snapshot that already carries a deferred
-	// resource, must carry it forward even if this plan never re-defers it.
+// TestDeferredResourceEvictedWhenNotReDeferred proves that DeferredResources is exact: a
+// goal recorded by an earlier update does not survive into a later update's snapshot unless
+// that update defers the same URN again. Nothing in this update touches resourceA at all
+// (no step, no re-defer), which is the same outcome as the resource no longer appearing in
+// the program: either way, a stale goal must not linger.
+func TestDeferredResourceEvictedWhenNotReDeferred(t *testing.T) {
+	t.Parallel()
+
+	resourceA := NewResource("a")
 	baseSnap := NewSnapshot(nil)
 	baseSnap.DeferredResources = []*pkgresource.State{resourceA}
-	manager2, sp2 := MockSetup(t, baseSnap)
-	err = manager2.SetSnippets(nil)
+	manager, sp := MockSetup(t, baseSnap)
+
+	err := manager.SetSnippets(nil)
 	require.NoError(t, err)
-	deployment2 := sp2.LastSnap()
-	require.Len(t, deployment2.DeferredResources, 1)
-	assert.Equal(t, resourceA.URN, deployment2.DeferredResources[0].URN)
+
+	deployment := sp.LastSnap()
+	assert.Empty(t, deployment.DeferredResources,
+		"a deferred goal from a prior update must not carry forward unless re-deferred this update")
+}
+
+// TestDeferredResourcePreservedWhenAwaitingAgain proves that a resource still awaiting in
+// this update keeps its goal, and does so alongside a sibling deferred URN that is not
+// re-deferred -- proving eviction is exact per-resource, not all-or-nothing.
+func TestDeferredResourcePreservedWhenAwaitingAgain(t *testing.T) {
+	t.Parallel()
+
+	resourceA := NewResource("a")
+	resourceB := NewResource("b")
+	baseSnap := NewSnapshot(nil)
+	baseSnap.DeferredResources = []*pkgresource.State{resourceA, resourceB}
+	manager, sp := MockSetup(t, baseSnap)
+
+	// Only resourceA is deferred again this update; resourceB is not touched at all.
+	err := manager.AddDeferredResource(resourceA)
+	require.NoError(t, err)
+
+	deployment := sp.LastSnap()
+	require.Len(t, deployment.DeferredResources, 1)
+	assert.Equal(t, resourceA.URN, deployment.DeferredResources[0].URN)
+}
+
+// TestDeferredResourceRemovedAfterUpdateCompletes proves that once a resource's Create step
+// completes successfully, any stale deferred goal recorded by an earlier update is dropped:
+// the resource's real, current state is what a reader should see, not an old deferred goal.
+func TestDeferredResourceRemovedAfterUpdateCompletes(t *testing.T) {
+	t.Parallel()
+
+	resourceA := NewResource("a")
+	baseSnap := NewSnapshot(nil)
+	baseSnap.DeferredResources = []*pkgresource.State{resourceA}
+	manager, sp := MockSetup(t, baseSnap)
+
+	step := deploy.NewCreateStep(nil, &MockRegisterResourceEvent{}, resourceA)
+	mutation, err := manager.BeginMutation(step)
+	require.NoError(t, err)
+	err = mutation.End(step, true /* successful */)
+	require.NoError(t, err)
+
+	deployment := sp.LastSnap()
+	require.Len(t, deployment.Resources, 1)
+	assert.Empty(t, deployment.DeferredResources,
+		"a resource whose step completes successfully must not keep a stale deferred goal")
+}
+
+// TestDeferredResourceRemovedAfterDelete proves that once a resource is deleted from the
+// program, any stale deferred goal recorded by an earlier update is dropped along with it.
+func TestDeferredResourceRemovedAfterDelete(t *testing.T) {
+	t.Parallel()
+
+	resourceA := NewResource("a")
+	baseSnap := NewSnapshot([]*pkgresource.State{resourceA})
+	baseSnap.DeferredResources = []*pkgresource.State{resourceA}
+	manager, sp := MockSetup(t, baseSnap)
+
+	step := deploy.NewDeleteStep(nil, map[resource.URN]bool{}, resourceA, nil)
+	mutation, err := manager.BeginMutation(step)
+	require.NoError(t, err)
+	err = mutation.End(step, true /* successful */)
+	require.NoError(t, err)
+
+	deployment := sp.LastSnap()
+	require.Len(t, deployment.Resources, 0)
+	assert.Empty(t, deployment.DeferredResources,
+		"a resource deleted from the program must not keep a stale deferred goal")
+}
+
+// TestDeferredResourceKeptForSkippedDependent proves that a resource skipped this update
+// because it depends on an awaiting resource keeps its goal, the same way an awaiting
+// resource itself does -- both report through AddDeferredResource, and the snapshot manager
+// makes no distinction between the two reasons.
+func TestDeferredResourceKeptForSkippedDependent(t *testing.T) {
+	t.Parallel()
+
+	gate := NewResource("gate")
+	dependent := NewResource("dependent", gate.URN)
+	snap := NewSnapshot(nil)
+	manager, sp := MockSetup(t, snap)
+
+	// The gate itself is awaiting; the dependent is skipped because it depends on the gate.
+	// The step generator/executor report both the same way: via AddDeferredResource.
+	err := manager.AddDeferredResource(gate)
+	require.NoError(t, err)
+	err = manager.AddDeferredResource(dependent)
+	require.NoError(t, err)
+
+	deployment := sp.LastSnap()
+	require.Len(t, deployment.DeferredResources, 2)
+	deferredURNs := []resource.URN{deployment.DeferredResources[0].URN, deployment.DeferredResources[1].URN}
+	assert.ElementsMatch(t, []resource.URN{gate.URN, dependent.URN}, deferredURNs)
 }
 
 func TestRecordingUpdateSuccess(t *testing.T) {

@@ -110,7 +110,10 @@ func TestJournalDeferredResourceRoundTrip(t *testing.T) {
 	assert.Equal(t, state.URN, deployment.Deployment.DeferredResources[0].URN)
 }
 
-func TestJournalReplayerSeedsDeferredResourcesFromBase(t *testing.T) {
+// TestJournalReplayerEvictsStaleDeferredResourceNotReDeferred proves that DeferredResources
+// is exact: a goal from the base snapshot does not survive replay unless this plan defers
+// the same URN again. With no journal entries at all, nothing re-defers it.
+func TestJournalReplayerEvictsStaleDeferredResourceNotReDeferred(t *testing.T) {
 	t.Parallel()
 
 	deferred := apitype.ResourceV3{
@@ -122,9 +125,120 @@ func TestJournalReplayerSeedsDeferredResourcesFromBase(t *testing.T) {
 
 	deployment, err := replayer.GenerateDeployment()
 	require.NoError(t, err)
-	require.Len(t, deployment.Deployment.DeferredResources, 1,
-		"deferred resources from base must survive replay even with no deferred journal entries")
-	assert.Equal(t, deferred, deployment.Deployment.DeferredResources[0])
+	assert.Empty(t, deployment.Deployment.DeferredResources,
+		"a deferred goal from the base snapshot must not survive replay unless re-deferred this plan")
+}
+
+// TestJournalReplayerPreservesDeferredResourceReDeferred proves that a URN deferred again
+// this plan keeps its goal, alongside a sibling base entry that is not re-deferred and must
+// be evicted -- proving eviction is exact per-resource.
+func TestJournalReplayerPreservesDeferredResourceReDeferred(t *testing.T) {
+	t.Parallel()
+
+	stillAwaiting := apitype.ResourceV3{
+		URN:  resource.URN("urn:pulumi:test::test::pkgA:m:typA::still-awaiting"),
+		Type: "pkgA:m:typA",
+	}
+	stale := apitype.ResourceV3{
+		URN:  resource.URN("urn:pulumi:test::test::pkgA:m:typA::stale"),
+		Type: "pkgA:m:typA",
+	}
+	base := &apitype.DeploymentV3{DeferredResources: []apitype.ResourceV3{stillAwaiting, stale}}
+	replayer := NewJournalReplayer(base)
+
+	state := &pkgresource.State{URN: stillAwaiting.URN, Type: "pkgA:m:typA"}
+	serialized, err := SerializeJournalEntry(t.Context(), engine.JournalEntry{
+		Kind:  engine.JournalEntryDeferred,
+		State: state,
+	}, config.NopEncrypter)
+	require.NoError(t, err)
+	require.NoError(t, replayer.Add(serialized))
+
+	deployment, err := replayer.GenerateDeployment()
+	require.NoError(t, err)
+	require.Len(t, deployment.Deployment.DeferredResources, 1)
+	assert.Equal(t, stillAwaiting.URN, deployment.Deployment.DeferredResources[0].URN)
+}
+
+// TestJournalReplayerEvictsDeferredResourceAfterSuccess proves that once a resource's step
+// completes successfully, a stale deferred goal recorded by an earlier plan is dropped.
+func TestJournalReplayerEvictsDeferredResourceAfterSuccess(t *testing.T) {
+	t.Parallel()
+
+	urn := resource.URN("urn:pulumi:test::test::pkgA:m:typA::a")
+	base := &apitype.DeploymentV3{
+		DeferredResources: []apitype.ResourceV3{{URN: urn, Type: "pkgA:m:typA"}},
+	}
+	replayer := NewJournalReplayer(base)
+
+	require.NoError(t, replayer.Add(apitype.JournalEntry{
+		Version:     1,
+		Kind:        apitype.JournalEntryKindSuccess,
+		OperationID: 1,
+		State:       &apitype.ResourceV3{URN: urn, Type: "pkgA:m:typA", ID: "created"},
+	}))
+
+	deployment, err := replayer.GenerateDeployment()
+	require.NoError(t, err)
+	require.Len(t, deployment.Deployment.Resources, 1)
+	assert.Empty(t, deployment.Deployment.DeferredResources,
+		"a resource whose step completes successfully must not keep a stale deferred goal")
+}
+
+// TestJournalReplayerEvictsDeferredResourceAfterDelete proves that once a resource is
+// deleted from the program, a stale deferred goal recorded by an earlier plan is dropped.
+func TestJournalReplayerEvictsDeferredResourceAfterDelete(t *testing.T) {
+	t.Parallel()
+
+	urn := resource.URN("urn:pulumi:test::test::pkgA:m:typA::a")
+	base := &apitype.DeploymentV3{
+		Resources:         []apitype.ResourceV3{{URN: urn, Type: "pkgA:m:typA", ID: "id-a"}},
+		DeferredResources: []apitype.ResourceV3{{URN: urn, Type: "pkgA:m:typA"}},
+	}
+	replayer := NewJournalReplayer(base)
+
+	removeOld := int64(0)
+	require.NoError(t, replayer.Add(apitype.JournalEntry{
+		Version:     1,
+		Kind:        apitype.JournalEntryKindSuccess,
+		OperationID: 1,
+		RemoveOld:   &removeOld,
+	}))
+
+	deployment, err := replayer.GenerateDeployment()
+	require.NoError(t, err)
+	assert.Empty(t, deployment.Deployment.Resources)
+	assert.Empty(t, deployment.Deployment.DeferredResources,
+		"a resource deleted from the program must not keep a stale deferred goal")
+}
+
+// TestJournalReplayerKeepsDeferredResourceForSkippedDependent proves that a dependent
+// skipped this plan because it depends on an awaiting resource keeps its own goal, the same
+// way the awaiting resource itself does -- both replay as JournalEntryKindDeferred entries.
+func TestJournalReplayerKeepsDeferredResourceForSkippedDependent(t *testing.T) {
+	t.Parallel()
+
+	gate := &pkgresource.State{URN: "urn:pulumi:test::test::pkgGate:m:typ::gate", Type: "pkgGate:m:typ"}
+	dependent := &pkgresource.State{URN: "urn:pulumi:test::test::pkgA:m:typA::dependent", Type: "pkgA:m:typA"}
+
+	replayer := NewJournalReplayer(&apitype.DeploymentV3{})
+	for _, state := range []*pkgresource.State{gate, dependent} {
+		serialized, err := SerializeJournalEntry(t.Context(), engine.JournalEntry{
+			Kind:  engine.JournalEntryDeferred,
+			State: state,
+		}, config.NopEncrypter)
+		require.NoError(t, err)
+		require.NoError(t, replayer.Add(serialized))
+	}
+
+	deployment, err := replayer.GenerateDeployment()
+	require.NoError(t, err)
+	require.Len(t, deployment.Deployment.DeferredResources, 2)
+	deferredURNs := []resource.URN{
+		deployment.Deployment.DeferredResources[0].URN,
+		deployment.Deployment.DeferredResources[1].URN,
+	}
+	assert.ElementsMatch(t, []resource.URN{gate.URN, dependent.URN}, deferredURNs)
 }
 
 // TestJournalReplayerRefreshPrunesReplaceWith tests that a targeted refresh which deletes a resource prunes
