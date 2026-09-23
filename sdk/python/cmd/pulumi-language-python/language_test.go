@@ -105,7 +105,6 @@ var expectedFailures = map[string]string{
 	"l1-builtin-can":                     "Temporarily disabled until pr #18916 is submitted",
 	"l3-deferred-outputs":                "does not type-check",
 	"l3-component-primitive-conversions": "primitive conversions accepted by PCL bind, but not lowered correctly by SDK generators", //nolint:lll
-	"l2-resource-schema-secret":          "does not preserve schema-secret unknown outputs",
 	"l3-range-invoke-output-traversal":   "len()/apply on an Output: generated program fails mypy",
 	"l2-raw-string-bytes":                "the Python SDK does not set accepts_byte_string: strings containing non-UTF8 bytes cannot be received from the engine", //nolint:lll
 }
