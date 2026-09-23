@@ -32,6 +32,7 @@ from .asset import (
     RemoteArchive,
     RemoteAsset,
     StringAsset,
+    string_asset_output,
 )
 
 from .config import (
@@ -154,6 +155,7 @@ __all__ = [
     "RemoteArchive",
     "RemoteAsset",
     "StringAsset",
+    "string_asset_output",
     # config
     "Config",
     "ConfigMissingError",

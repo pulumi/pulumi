@@ -62,6 +62,14 @@ func NewStringAsset(text string) Asset {
 	return &asset{text: text}
 }
 
+// NewStringAssetOutput creates an asset backed by an Output[string].
+// This allows using a string value that is not known until deployment time.
+func NewStringAssetOutput(text StringInput) AssetOutput {
+	return text.ToStringOutput().ApplyT(func(s string) Asset {
+		return NewStringAsset(s)
+	}).(AssetOutput)
+}
+
 // NewRemoteAsset creates an asset backed by a remote file and specified by that file's URL.
 func NewRemoteAsset(uri string) Asset {
 	return &asset{uri: uri}
