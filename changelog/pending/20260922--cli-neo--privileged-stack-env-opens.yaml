@@ -1,0 +1,4 @@
+component: cli/neo
+kind: feat
+body: "Open stack environments as unprivileged for the Neo `pulumi_preview` tool and privileged for `pulumi_up`, and drop the projected environment variables after each call"
+time: 2026-09-22T00:00:00Z
