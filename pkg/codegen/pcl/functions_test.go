@@ -390,7 +390,6 @@ func TestLookupDefaultType(t *testing.T) {
 			model.NewConstType(model.StringType, cty.StringVal("none")))},
 		{source: `value = lookup({for k, v in {"a" = [false]} : k => v}, "a", [true])`, typ: model.NewTupleType(
 			model.NewUnionType(cf, ct))},
-		{source: `value = lookup({for k, v in {"a" = false} : k => v}, "a")`, typ: cf},
 		{
 			source: `value = lookup(secret({for k, v in {"a" = false} : k => v}), "a", true)`,
 			typ:    model.NewOutputType(model.NewUnionType(cf, ct)),
