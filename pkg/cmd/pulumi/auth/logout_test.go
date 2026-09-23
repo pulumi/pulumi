@@ -112,7 +112,7 @@ func TestDeleteAllAccountsSkipsAgentFallbackOutsideAgentMode(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	err = deleteAllAccounts()
+	err = deleteAllAccounts(false)
 	require.NoError(t, err)
 
 	_, err = os.Stat(credsPath)

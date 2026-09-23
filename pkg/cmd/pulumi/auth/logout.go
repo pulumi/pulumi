@@ -63,7 +63,7 @@ func NewLogoutCmd(ws pkgWorkspace.Context) *cobra.Command {
 			"`--local` is a shortcut for `file://~`, matching `pulumi login --local`.\n",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			logOutOfEverything := func() error {
-				if err := deleteAllAccounts(); err != nil {
+				if err := deleteAllAccounts(false); err != nil {
 					return err
 				}
 				fmt.Fprintln(cmd.OutOrStdout(),
@@ -92,11 +92,7 @@ func NewLogoutCmd(ws pkgWorkspace.Context) *cobra.Command {
 
 			var err error
 			if all {
-				var keyErr error
-				if deleteCredentialsKey {
-					keyErr = workspace.DeleteCredentialsKey()
-				}
-				err = errors.Join(deleteAllAccounts(), keyErr)
+				err = deleteAllAccounts(deleteCredentialsKey)
 				fmt.Fprintln(cmd.OutOrStdout(), "Logged out of everything")
 			} else {
 				if cloudURL == "" {
@@ -159,11 +155,15 @@ func NewLogoutCmd(ws pkgWorkspace.Context) *cobra.Command {
 
 // deleteAllAccounts removes user credentials and, in agent mode, any shared
 // temporary agent credentials.
-func deleteAllAccounts() error {
-	if !workspace.AgentCredentialsFallbackEnabled() {
-		return workspace.DeleteAllAccounts()
+func deleteAllAccounts(deleteCredentialsKey bool) error {
+	deleteUserAccounts := workspace.DeleteAllAccounts
+	if deleteCredentialsKey {
+		deleteUserAccounts = workspace.DeleteAllAccountsAndCredentialsKey
 	}
-	if err := workspace.DeleteAllAccounts(); err != nil {
+	if !workspace.AgentCredentialsFallbackEnabled() {
+		return deleteUserAccounts()
+	}
+	if err := deleteUserAccounts(); err != nil {
 		return workspace.DeleteAgentCredentials()
 	}
 	return workspace.DeleteAgentCredentials()

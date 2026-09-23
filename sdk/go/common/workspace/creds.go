@@ -680,21 +680,24 @@ func dropCorruptKey(credsFile string) {
 	}
 }
 
-// DeleteCredentialsKey deletes the credentials encryption key shared by all
-// credentials files. Call it before DeleteAllAccounts.
-func DeleteCredentialsKey() error {
+// DeleteAllAccountsAndCredentialsKey is DeleteAllAccounts that also deletes the
+// credentials encryption key shared by all credentials files.
+func DeleteAllAccountsAndCredentialsKey() error {
 	credsFile, err := getCredsFilePath()
 	if err != nil {
 		return err
 	}
-	sts, errs := credentialsKeyStores(credsFile)
+	sts, keyErr := credentialsKeyStores(credsFile)
+	if err := DeleteAllAccounts(); err != nil {
+		return err
+	}
 	for _, st := range sts {
 		if err := st.DeleteKey(); err != nil {
-			errs = errors.Join(errs, err)
+			keyErr = errors.Join(keyErr, err)
 		}
 	}
-	if errs != nil {
-		return fmt.Errorf("deleting the credentials encryption key: %w", errs)
+	if keyErr != nil {
+		return fmt.Errorf("deleting the credentials encryption key: %w", keyErr)
 	}
 	return nil
 }

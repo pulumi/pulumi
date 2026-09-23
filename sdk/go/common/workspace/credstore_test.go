@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"runtime"
 	"testing"
 
@@ -202,7 +203,7 @@ func TestDeleteCredentialsKeyRemovesKey(t *testing.T) {
 	pinSecureCreds(t, "auto")
 	require.NoError(t, StoreCredentials(testCreds()))
 
-	require.NoError(t, DeleteCredentialsKey())
+	require.NoError(t, DeleteAllAccountsAndCredentialsKey())
 
 	_, err := fakeStore(t).GetKey()
 	assert.ErrorIs(t, err, securestore.ErrKeyNotFound)
@@ -216,7 +217,7 @@ func TestDeleteCredentialsKeyWithoutEnvelopeOrMode(t *testing.T) {
 	t.Setenv("PULUMI_CREDENTIAL_STORE", "")
 	resetCredStoreForTesting()
 
-	require.NoError(t, DeleteCredentialsKey())
+	require.NoError(t, DeleteAllAccountsAndCredentialsKey())
 	_, err := fakeStore(t).GetKey()
 	assert.ErrorIs(t, err, securestore.ErrKeyNotFound)
 }
@@ -401,6 +402,41 @@ func TestResetStoredCredentialsClearsUndecryptableState(t *testing.T) {
 	assert.Empty(t, creds.AccessTokens)
 }
 
+func TestDeleteAllAccountsAndCredentialsKeyUsesEnvelopeBackend(t *testing.T) {
+	t.Setenv(PulumiCredentialsPathEnvVar, t.TempDir())
+	t.Setenv("PULUMI_CREDENTIAL_STORE", "auto")
+	promote := useUpgradableStores(t)
+	require.NoError(t, StoreCredentials(testCreds()))
+	promote()
+	resetCredStoreForTesting()
+
+	require.NoError(t, DeleteAllAccountsAndCredentialsKey())
+
+	weak, err := stores.ForBackend(fakeBackend)
+	require.NoError(t, err)
+	_, err = weak.GetKey()
+	assert.ErrorIs(t, err, securestore.ErrKeyNotFound)
+	credsFile, err := getCredsFilePath()
+	require.NoError(t, err)
+	_, err = os.Stat(credsFile)
+	assert.True(t, os.IsNotExist(err))
+}
+
+//nolint:paralleltest // t.Setenv and the package-global secure-store mock forbid parallel runs
+func TestDeleteAllAccountsAndCredentialsKeyKeepsKeyWhenFileRemains(t *testing.T) {
+	pinSecureCreds(t, "auto")
+	require.NoError(t, StoreCredentials(testCreds()))
+	credsFile, err := getCredsFilePath()
+	require.NoError(t, err)
+	require.NoError(t, os.Remove(credsFile))
+	require.NoError(t, os.MkdirAll(filepath.Join(credsFile, "undeletable"), 0o700))
+
+	require.Error(t, DeleteAllAccountsAndCredentialsKey())
+
+	_, err = fakeStore(t).GetKey()
+	require.NoError(t, err)
+}
+
 func TestDeleteCredentialsKeyForUnparseableEnvelopeRegardlessOfMode(t *testing.T) {
 	pinSecureCreds(t, "auto")
 	require.NoError(t, StoreCredentials(testCreds()))
@@ -411,7 +447,7 @@ func TestDeleteCredentialsKeyForUnparseableEnvelopeRegardlessOfMode(t *testing.T
 	t.Setenv("PULUMI_CREDENTIAL_STORE", "plaintext")
 	resetCredStoreForTesting()
 
-	require.NoError(t, DeleteCredentialsKey())
+	require.NoError(t, DeleteAllAccountsAndCredentialsKey())
 	_, err = fakeStore(t).GetKey()
 	assert.ErrorIs(t, err, securestore.ErrKeyNotFound)
 }
