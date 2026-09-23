@@ -169,9 +169,11 @@ func conversionFrom(dest, src Type, unifying bool, seen cycleSet,
 		}
 		return kind, diags
 	case *ConstType:
-		// We want `EnumType`s too see const types, since they allow safe
-		// conversions.
-		if _, ok := dest.(*EnumType); !ok {
+		// Enum and const destinations must see the const type itself: an enum accepts a member
+		// constant safely, and a constant accepts no other constant.
+		switch dest.(type) {
+		case *EnumType, *ConstType:
+		default:
 			kind, diags := conversionFrom(dest, src.Type, unifying, seen, cache, conversionFromImpl)
 			if cache != nil {
 				cache.Store(src, cacheEntry{kind, diags})

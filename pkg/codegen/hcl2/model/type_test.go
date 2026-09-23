@@ -667,6 +667,27 @@ func TestUnifyType(t *testing.T) {
 	assertUnified(t, m5, m5, m4, m2, m0, m1)
 	assertUnified(t, m5, m5, m4, m0, m2, m1)
 
+	// A constant converts from nothing but itself, so distinct constants unify to their union.
+	cf, ct := NewConstType(BoolType, cty.False), NewConstType(BoolType, cty.True)
+	assert.Equal(t, NoConversion, cf.ConversionFrom(ct))
+	assert.Equal(t, UnsafeConversion, cf.ConversionFrom(BoolType))
+	// The same constant converts as its type does: a schema constant has an input-wrapped type.
+	inputCf := NewConstType(NewUnionType(BoolType, NewOutputType(BoolType)), cty.False)
+	assert.Equal(t, SafeConversion, inputCf.ConversionFrom(cf))
+	assert.Equal(t, NoConversion, inputCf.ConversionFrom(ct))
+	assertUnified(t, NewUnionType(cf, ct), NewUnionType(cf, ct), cf, ct)
+	assertUnified(t, NewTupleType(NewUnionType(cf, ct)), NewTupleType(NewUnionType(cf, ct)),
+		NewTupleType(cf), NewTupleType(ct))
+
+	// Nested tuples of constants with different lengths unify element by element.
+	t6 := NewTupleType(NewTupleType(cf, cf, cf))
+	t7 := NewTupleType(NewTupleType(ct), NewTupleType(cf))
+	t8 := NewTupleType(
+		NewTupleType(NewUnionType(cf, ct), NewOptionalType(cf), NewOptionalType(cf)),
+		NewOptionalType(NewTupleType(cf)),
+	)
+	assertUnified(t, t8, t8, t6, t7)
+
 	// Tuple types unify by constructing a new tuple type whose element types are the unification of the corresponding
 	// element types.
 	t2 := NewTupleType(StringType, NumberType)
