@@ -1,4 +1,0 @@
-component: sdk/go
-kind: fix
-body: Propagate the `dependsOn` resource option on `ReadResource` calls
-time: 2026-09-18T00:00:00Z

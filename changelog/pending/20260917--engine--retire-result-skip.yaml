@@ -1,4 +1,0 @@
-component: engine
-kind: chore
-body: Retire the SKIP value from the RegisterResourceResponse.Result protobuf enum; dependency-skipped resources now report FAIL to the SDK, which matches how every language SDK already interpreted SKIP
-time: 2026-09-17T00:00:00Z

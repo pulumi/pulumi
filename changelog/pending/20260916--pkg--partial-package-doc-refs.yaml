@@ -1,4 +1,0 @@
-component: pkg
-kind: fix
-body: Interpret documentation references on lazily-loaded packages after they are fully bound, and resolve references to members that have not been loaded yet
-time: 2026-09-16T12:00:00.000000000+02:00

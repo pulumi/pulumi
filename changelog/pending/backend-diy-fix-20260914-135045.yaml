@@ -1,4 +1,0 @@
-component: backend/diy
-kind: fix
-body: Fix path handling with absolute paths
-time: 2026-09-14T13:50:45.669615113+02:00
