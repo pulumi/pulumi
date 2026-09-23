@@ -34,11 +34,14 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/esc"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -938,4 +941,101 @@ func TestStackEnvOperation(t *testing.T) {
 
 	assert.False(t, stackEnvOperation(true).Privileged())
 	assert.True(t, stackEnvOperation(false).Privileged())
+}
+
+//nolint:paralleltest // mutates the global cmdBackend.DefaultLoginManager and process env
+func TestPulumi_Run_DropsProjectedEnvBetweenCalls(t *testing.T) {
+	const writeVar = "PULUMI_NEO_TEST_ESC_WRITE"
+	const readVar = "PULUMI_NEO_TEST_ESC_READ"
+	ptesting.Unsetenv(t, writeVar)
+	ptesting.Unsetenv(t, readVar)
+
+	dir := newProjectDir(t)
+	require.NoError(t, os.WriteFile(
+		filepath.Join(dir, "Pulumi.dev.yaml"), []byte("environment:\n  - test\n"), 0o600))
+
+	var writeVarSeenByPreviewOpen bool
+	be := &backend.MockEnvironmentsBackend{
+		OpenYAMLEnvironmentF: func(
+			_ context.Context, _ string, _ []byte, _ time.Duration, _ map[string]string, privileged bool,
+		) (*esc.Environment, apitype.EnvironmentDiagnostics, error) {
+			vars := map[string]esc.Value{readVar: esc.NewValue("read")}
+			if privileged {
+				vars[writeVar] = esc.NewValue("write")
+			} else {
+				_, writeVarSeenByPreviewOpen = os.LookupEnv(writeVar)
+			}
+			return &esc.Environment{Properties: map[string]esc.Value{
+				"environmentVariables": esc.NewValue(vars),
+			}}, nil, nil
+		},
+	}
+	stack := &backend.MockStack{
+		RefF: func() backend.StackReference {
+			return &backend.MockStackReference{
+				StringV:             "org/p/dev",
+				NameV:               tokens.MustParseStackName("dev"),
+				ProjectV:            "p",
+				FullyQualifiedNameV: tokens.QName("org/p/dev"),
+			}
+		},
+		OrgNameF: func() string { return "org" },
+		BackendF: func() backend.Backend { return be },
+		DefaultSecretManagerF: func(context.Context, *workspace.ProjectStack) (secrets.Manager, error) {
+			return &secrets.MockSecretsManager{
+				EncrypterF: func() config.Encrypter { return config.NopEncrypter },
+				DecrypterF: func() config.Decrypter { return config.NopDecrypter },
+			}, nil
+		},
+	}
+	be.ParseStackReferenceF = func(string) (backend.StackReference, error) { return stack.Ref(), nil }
+	be.GetStackF = func(context.Context, backend.StackReference) (backend.Stack, error) { return stack, nil }
+
+	prev := cmdBackend.DefaultLoginManager
+	cmdBackend.DefaultLoginManager = &cmdBackend.MockLoginManager{
+		CurrentF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink,
+			url string, project *workspace.Project, setCurrent bool,
+		) (backend.Backend, error) {
+			return be, nil
+		},
+		LoginF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink,
+			url string, project *workspace.Project, setCurrent bool,
+			insecure bool, color colors.Colorization,
+		) (backend.Backend, error) {
+			return be, nil
+		},
+	}
+	t.Cleanup(func() { cmdBackend.DefaultLoginManager = prev })
+
+	// A required config value with no value stops run() after the environment is projected.
+	proj := &workspace.Project{
+		Name:   "p",
+		Config: map[string]workspace.ProjectConfigType{"required": {Type: new("string")}},
+	}
+	ws := &pkgWorkspace.MockContext{
+		ReadProjectF: func(_ string) (*workspace.Project, string, error) {
+			return proj, dir, nil
+		},
+	}
+	p := &Pulumi{Cwd: dir, Workspace: ws}
+
+	args, err := json.Marshal(map[string]any{
+		"project_name":     "p",
+		"stack_name":       "dev",
+		"local_pulumi_dir": dir,
+	})
+	require.NoError(t, err)
+
+	value, err := p.Invoke(t.Context(), "pulumi_up", args)
+	require.Error(t, err)
+	assertFailedResult(t, value, "validating stack config")
+	_, present := os.LookupEnv(writeVar)
+	assert.False(t, present, "privileged variable should be dropped after pulumi_up")
+
+	value, err = p.Invoke(t.Context(), "pulumi_preview", args)
+	require.Error(t, err)
+	assertFailedResult(t, value, "validating stack config")
+	assert.False(t, writeVarSeenByPreviewOpen, "pulumi_preview inherited a variable projected by pulumi_up")
+	_, present = os.LookupEnv(readVar)
+	assert.False(t, present, "projected variable should be dropped after pulumi_preview")
 }

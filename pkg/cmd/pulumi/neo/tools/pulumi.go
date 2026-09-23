@@ -268,6 +268,12 @@ func (p *Pulumi) run(ctx context.Context, a pulumiArgs, isPreview bool) (pulumiR
 		return failedResult(a, "", fmt.Errorf("stack %q not found", a.StackName))
 	}
 
+	// GetStackConfiguration projects the stack environment's variables into the process.
+	// A privileged pulumi_up must not leave them behind for a later unprivileged call.
+	// TODO(poc): the projected temporary files are not deleted.
+	restoreProjectedEnv := snapshotProcessEnv()
+	defer restoreProjectedEnv()
+
 	ssml := cmdStack.NewStackSecretsManagerLoaderFromEnv()
 	cfg, sm, err := cmdConfig.GetStackConfiguration(ctx, cmdutil.Diag(), ssml, s, proj, "", nil,
 		stackEnvOperation(isPreview))
@@ -607,6 +613,31 @@ func applyEnvVars(vars map[string]envVal) func() {
 				_ = os.Setenv(k, pv.value)
 			} else {
 				_ = os.Unsetenv(k)
+			}
+		}
+	}
+}
+
+func snapshotProcessEnv() func() {
+	before := make(map[string]string)
+	for _, kvp := range os.Environ() {
+		if name, value, ok := strings.Cut(kvp, "="); ok && name != "" {
+			before[name] = value
+		}
+	}
+	return func() {
+		for _, kvp := range os.Environ() {
+			name, _, ok := strings.Cut(kvp, "=")
+			if !ok || name == "" {
+				continue
+			}
+			if _, had := before[name]; !had {
+				_ = os.Unsetenv(name)
+			}
+		}
+		for name, value := range before {
+			if current, ok := os.LookupEnv(name); !ok || current != value {
+				_ = os.Setenv(name, value)
 			}
 		}
 	}
