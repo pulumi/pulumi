@@ -106,10 +106,20 @@ func (t *ConstType) ConversionFrom(src Type) ConversionKind {
 
 func (t *ConstType) conversionFrom(src Type, unifying bool, seen cycleSet) (ConversionKind, lazyDiagnostics) {
 	return conversionFrom(t, src, unifying, seen, t.cache, func() (ConversionKind, lazyDiagnostics) {
+		notConvertible := func() hcl.Diagnostics { return hcl.Diagnostics{typeNotConvertible(t, src)} }
+		if src, ok := src.(*ConstType); ok {
+			// A different constant never converts to this one; the value could not change. The
+			// same constant converts as its type does, so that a literal reaches a constant whose
+			// type is wrapped in an input or output.
+			if !t.Value.RawEquals(src.Value) {
+				return NoConversion, notConvertible
+			}
+			return t.Type.conversionFrom(src.Type, unifying, seen)
+		}
 		if t.Type.ConversionFrom(src) != NoConversion {
 			return UnsafeConversion, nil
 		}
-		return NoConversion, func() hcl.Diagnostics { return hcl.Diagnostics{typeNotConvertible(t, src)} }
+		return NoConversion, notConvertible
 	})
 }
 
