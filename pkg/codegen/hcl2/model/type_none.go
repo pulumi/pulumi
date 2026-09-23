@@ -63,6 +63,10 @@ func (noneType) ConversionFrom(src Type) ConversionKind {
 func (noneType) conversionFrom(src Type, unifying bool, seen cycleSet) (ConversionKind, lazyDiagnostics) {
 	return conversionFrom(NoneType, src, unifying, seen, &gsync.Map[Type, cacheEntry]{},
 		func() (ConversionKind, lazyDiagnostics) {
+			// The null literal is a constant of the none type.
+			if src, ok := src.(*ConstType); ok {
+				return NoneType.conversionFrom(src.Type, unifying, seen)
+			}
 			return NoConversion, func() hcl.Diagnostics {
 				return hcl.Diagnostics{typeNotConvertible(NoneType, src)}
 			}
