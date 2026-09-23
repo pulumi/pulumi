@@ -1,0 +1,4 @@
+component: sdk/go
+kind: improvement
+body: Report unknown keys in ESC import options as errors
+time: 2026-09-22T00:00:00Z

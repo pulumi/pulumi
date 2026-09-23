@@ -1,0 +1,43 @@
+{
+    "decl": {
+        "Description": null,
+        "Imports": {
+            "Elements": [
+                {
+                    "Environment": {
+                        "Value": "a"
+                    },
+                    "Meta": {
+                        "Merge": null
+                    }
+                }
+            ]
+        },
+        "Values": null
+    },
+    "diags": [
+        {
+            "Severity": 1,
+            "Summary": "Field 'merged' does not exist on Object 'import'. Existing fields are: 'merge'",
+            "Detail": "",
+            "Subject": {
+                "Filename": "import-meta-unknown-key",
+                "Start": {
+                    "Line": 3,
+                    "Column": 7,
+                    "Byte": 22
+                },
+                "End": {
+                    "Line": 3,
+                    "Column": 13,
+                    "Byte": 28
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Path": "imports[0].a.merged"
+        }
+    ]
+}

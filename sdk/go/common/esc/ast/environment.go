@@ -182,7 +182,7 @@ func (d *ImportDecl) parse(name string, node syntax.Node) syntax.Diagnostics {
 		d.Environment = StringSyntax(kvp.Key)
 
 		d.Meta = &ImportMetaDecl{}
-		return parseRecord("import", d.Meta, kvp.Value, false)
+		return parseRecord("import", d.Meta, kvp.Value, hcl.DiagError)
 	default:
 		return syntax.Diagnostics{syntax.NodeError(node, "import must be a string or an object")}
 	}
@@ -252,7 +252,7 @@ func Environment(description *StringExpr, imports ImportListDecl, values Propert
 func ParseEnvironment(source []byte, node syntax.Node) (*EnvironmentDecl, syntax.Diagnostics) {
 	environment := EnvironmentDecl{source: source}
 
-	diags := parseRecord("environment", &environment, node, true)
+	diags := parseRecord("environment", &environment, node, hcl.DiagWarning)
 	return &environment, diags
 }
 
@@ -284,7 +284,7 @@ func parseField(name string, dest reflect.Value, node syntax.Node) syntax.Diagno
 			diags.Extend(pdiags...)
 			v = reflect.ValueOf(defaultValue).Elem().Convert(dest.Type())
 		case recordDecl:
-			pdiags := parseRecord(name, x, node, true)
+			pdiags := parseRecord(name, x, node, hcl.DiagWarning)
 			diags.Extend(pdiags...)
 			v = reflect.ValueOf(defaultValue).Elem().Convert(dest.Type())
 		}
@@ -301,7 +301,7 @@ func parseField(name string, dest reflect.Value, node syntax.Node) syntax.Diagno
 	case dest.Type().AssignableTo(recordDeclType):
 		// assume that dest is *T
 		v = reflect.New(dest.Type().Elem())
-		rdiags := parseRecord(name, v.Interface().(recordDecl), node, true)
+		rdiags := parseRecord(name, v.Interface().(recordDecl), node, hcl.DiagWarning)
 		diags.Extend(rdiags...)
 	case dest.Type().AssignableTo(exprType):
 		x, xdiags := ParseExpr(node)
@@ -322,7 +322,12 @@ func parseField(name string, dest reflect.Value, node syntax.Node) syntax.Diagno
 	return diags
 }
 
-func parseRecord(objName string, dest recordDecl, node syntax.Node, noMatchWarning bool) syntax.Diagnostics {
+func parseRecord(
+	objName string,
+	dest recordDecl,
+	node syntax.Node,
+	unknownKeySeverity hcl.DiagnosticSeverity,
+) syntax.Diagnostics {
 	obj, ok := node.(*syntax.ObjectNode)
 	if !ok {
 		return syntax.Diagnostics{syntax.NodeError(node, fmt.Sprintf("%v must be an object", objName))}
@@ -357,7 +362,7 @@ func parseRecord(objName string, dest recordDecl, node syntax.Node, noMatchWarni
 			}
 		}
 
-		if !hasMatch && noMatchWarning {
+		if !hasMatch {
 			var fieldNames []string
 			for f := range t.Fields() {
 				if f.IsExported() {
@@ -370,7 +375,7 @@ func parseRecord(objName string, dest recordDecl, node syntax.Node, noMatchWarni
 			}
 			msg := formatter.Message(key, fmt.Sprintf("Field '%s'", key))
 			nodeError := syntax.NodeError(kvp.Key, msg)
-			nodeError.Severity = hcl.DiagWarning
+			nodeError.Severity = unknownKeySeverity
 			diags = append(diags, nodeError)
 		}
 	}

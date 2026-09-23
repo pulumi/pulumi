@@ -1,0 +1,835 @@
+{
+    "loadDiags": [
+        {
+            "Severity": 1,
+            "Summary": "Field 'merged' does not exist on Object 'import'. Existing fields are: 'merge'",
+            "Detail": "",
+            "Subject": {
+                "Filename": "import-meta-unknown-key",
+                "Start": {
+                    "Line": 4,
+                    "Column": 7,
+                    "Byte": 35
+                },
+                "End": {
+                    "Line": 4,
+                    "Column": 13,
+                    "Byte": 41
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Path": "imports[1].leaf.merged"
+        }
+    ],
+    "checkDiags": [
+        {
+            "Severity": 1,
+            "Summary": "Field 'mergd' does not exist on Object 'import'. Existing fields are: 'merge'",
+            "Detail": "",
+            "Subject": {
+                "Filename": "child",
+                "Start": {
+                    "Line": 3,
+                    "Column": 7,
+                    "Byte": 25
+                },
+                "End": {
+                    "Line": 3,
+                    "Column": 12,
+                    "Byte": 30
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Path": "imports[0].leaf.mergd"
+        },
+        {
+            "Severity": 1,
+            "Summary": "unknown property \"child\"",
+            "Detail": "",
+            "Subject": {
+                "Filename": "import-meta-unknown-key",
+                "Start": {
+                    "Line": 6,
+                    "Column": 23,
+                    "Byte": 79
+                },
+                "End": {
+                    "Line": 6,
+                    "Column": 29,
+                    "Byte": 85
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Path": "values.fromChild"
+        }
+    ],
+    "check": {
+        "exprs": {
+            "fromChild": {
+                "range": {
+                    "environment": "import-meta-unknown-key",
+                    "begin": {
+                        "line": 6,
+                        "column": 14,
+                        "byte": 70
+                    },
+                    "end": {
+                        "line": 6,
+                        "column": 41,
+                        "byte": 97
+                    }
+                },
+                "schema": true,
+                "symbol": [
+                    {
+                        "key": "imports",
+                        "range": {
+                            "environment": "import-meta-unknown-key",
+                            "begin": {
+                                "line": 6,
+                                "column": 16,
+                                "byte": 72
+                            },
+                            "end": {
+                                "line": 6,
+                                "column": 23,
+                                "byte": 79
+                            }
+                        },
+                        "value": {
+                            "environment": "import-meta-unknown-key",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    },
+                    {
+                        "key": "child",
+                        "range": {
+                            "environment": "import-meta-unknown-key",
+                            "begin": {
+                                "line": 6,
+                                "column": 23,
+                                "byte": 79
+                            },
+                            "end": {
+                                "line": 6,
+                                "column": 29,
+                                "byte": 85
+                            }
+                        },
+                        "value": {
+                            "environment": "import-meta-unknown-key",
+                            "begin": {
+                                "line": 6,
+                                "column": 14,
+                                "byte": 70
+                            },
+                            "end": {
+                                "line": 6,
+                                "column": 41,
+                                "byte": 97
+                            }
+                        }
+                    },
+                    {
+                        "key": "childValue",
+                        "range": {
+                            "environment": "import-meta-unknown-key",
+                            "begin": {
+                                "line": 6,
+                                "column": 29,
+                                "byte": 85
+                            },
+                            "end": {
+                                "line": 6,
+                                "column": 40,
+                                "byte": 96
+                            }
+                        },
+                        "value": {
+                            "environment": "import-meta-unknown-key",
+                            "begin": {
+                                "line": 6,
+                                "column": 14,
+                                "byte": 70
+                            },
+                            "end": {
+                                "line": 6,
+                                "column": 41,
+                                "byte": 97
+                            }
+                        }
+                    }
+                ]
+            }
+        },
+        "properties": {
+            "fromChild": {
+                "value": null,
+                "unknown": true,
+                "trace": {
+                    "def": {
+                        "environment": "import-meta-unknown-key",
+                        "begin": {
+                            "line": 6,
+                            "column": 14,
+                            "byte": 70
+                        },
+                        "end": {
+                            "line": 6,
+                            "column": 41,
+                            "byte": 97
+                        }
+                    }
+                }
+            },
+            "leafValue": {
+                "value": "leaf",
+                "trace": {
+                    "def": {
+                        "environment": "leaf",
+                        "begin": {
+                            "line": 2,
+                            "column": 14,
+                            "byte": 21
+                        },
+                        "end": {
+                            "line": 2,
+                            "column": 18,
+                            "byte": 25
+                        }
+                    }
+                }
+            }
+        },
+        "schema": {
+            "properties": {
+                "fromChild": true,
+                "leafValue": {
+                    "type": "string",
+                    "const": "leaf"
+                }
+            },
+            "type": "object",
+            "required": [
+                "fromChild",
+                "leafValue"
+            ]
+        },
+        "executionContext": {
+            "properties": {
+                "currentEnvironment": {
+                    "value": {
+                        "name": {
+                            "value": "import-meta-unknown-key",
+                            "trace": {
+                                "def": {
+                                    "environment": "import-meta-unknown-key",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "import-meta-unknown-key",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                },
+                "pulumi": {
+                    "value": {
+                        "user": {
+                            "value": {
+                                "id": {
+                                    "value": "USER_123",
+                                    "trace": {
+                                        "def": {
+                                            "environment": "import-meta-unknown-key",
+                                            "begin": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            },
+                                            "end": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            }
+                                        }
+                                    }
+                                }
+                            },
+                            "trace": {
+                                "def": {
+                                    "environment": "import-meta-unknown-key",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "import-meta-unknown-key",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                },
+                "rootEnvironment": {
+                    "value": {
+                        "name": {
+                            "value": "import-meta-unknown-key",
+                            "trace": {
+                                "def": {
+                                    "environment": "import-meta-unknown-key",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "import-meta-unknown-key",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                }
+            },
+            "schema": {
+                "properties": {
+                    "currentEnvironment": {
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "const": "import-meta-unknown-key"
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "name"
+                        ]
+                    },
+                    "pulumi": {
+                        "properties": {
+                            "user": {
+                                "properties": {
+                                    "id": {
+                                        "type": "string",
+                                        "const": "USER_123"
+                                    }
+                                },
+                                "type": "object",
+                                "required": [
+                                    "id"
+                                ]
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "user"
+                        ]
+                    },
+                    "rootEnvironment": {
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "const": "import-meta-unknown-key"
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "name"
+                        ]
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "currentEnvironment",
+                    "pulumi",
+                    "rootEnvironment"
+                ]
+            }
+        }
+    },
+    "checkJson": {
+        "fromChild": "[unknown]",
+        "leafValue": "leaf"
+    },
+    "evalDiags": [
+        {
+            "Severity": 1,
+            "Summary": "Field 'mergd' does not exist on Object 'import'. Existing fields are: 'merge'",
+            "Detail": "",
+            "Subject": {
+                "Filename": "child",
+                "Start": {
+                    "Line": 3,
+                    "Column": 7,
+                    "Byte": 25
+                },
+                "End": {
+                    "Line": 3,
+                    "Column": 12,
+                    "Byte": 30
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Path": "imports[0].leaf.mergd"
+        },
+        {
+            "Severity": 1,
+            "Summary": "unknown property \"child\"",
+            "Detail": "",
+            "Subject": {
+                "Filename": "import-meta-unknown-key",
+                "Start": {
+                    "Line": 6,
+                    "Column": 23,
+                    "Byte": 79
+                },
+                "End": {
+                    "Line": 6,
+                    "Column": 29,
+                    "Byte": 85
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Path": "values.fromChild"
+        }
+    ],
+    "eval": {
+        "exprs": {
+            "fromChild": {
+                "range": {
+                    "environment": "import-meta-unknown-key",
+                    "begin": {
+                        "line": 6,
+                        "column": 14,
+                        "byte": 70
+                    },
+                    "end": {
+                        "line": 6,
+                        "column": 41,
+                        "byte": 97
+                    }
+                },
+                "schema": true,
+                "symbol": [
+                    {
+                        "key": "imports",
+                        "range": {
+                            "environment": "import-meta-unknown-key",
+                            "begin": {
+                                "line": 6,
+                                "column": 16,
+                                "byte": 72
+                            },
+                            "end": {
+                                "line": 6,
+                                "column": 23,
+                                "byte": 79
+                            }
+                        },
+                        "value": {
+                            "environment": "import-meta-unknown-key",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    },
+                    {
+                        "key": "child",
+                        "range": {
+                            "environment": "import-meta-unknown-key",
+                            "begin": {
+                                "line": 6,
+                                "column": 23,
+                                "byte": 79
+                            },
+                            "end": {
+                                "line": 6,
+                                "column": 29,
+                                "byte": 85
+                            }
+                        },
+                        "value": {
+                            "environment": "import-meta-unknown-key",
+                            "begin": {
+                                "line": 6,
+                                "column": 14,
+                                "byte": 70
+                            },
+                            "end": {
+                                "line": 6,
+                                "column": 41,
+                                "byte": 97
+                            }
+                        }
+                    },
+                    {
+                        "key": "childValue",
+                        "range": {
+                            "environment": "import-meta-unknown-key",
+                            "begin": {
+                                "line": 6,
+                                "column": 29,
+                                "byte": 85
+                            },
+                            "end": {
+                                "line": 6,
+                                "column": 40,
+                                "byte": 96
+                            }
+                        },
+                        "value": {
+                            "environment": "import-meta-unknown-key",
+                            "begin": {
+                                "line": 6,
+                                "column": 14,
+                                "byte": 70
+                            },
+                            "end": {
+                                "line": 6,
+                                "column": 41,
+                                "byte": 97
+                            }
+                        }
+                    }
+                ]
+            }
+        },
+        "properties": {
+            "fromChild": {
+                "value": null,
+                "unknown": true,
+                "trace": {
+                    "def": {
+                        "environment": "import-meta-unknown-key",
+                        "begin": {
+                            "line": 6,
+                            "column": 14,
+                            "byte": 70
+                        },
+                        "end": {
+                            "line": 6,
+                            "column": 41,
+                            "byte": 97
+                        }
+                    }
+                }
+            },
+            "leafValue": {
+                "value": "leaf",
+                "trace": {
+                    "def": {
+                        "environment": "leaf",
+                        "begin": {
+                            "line": 2,
+                            "column": 14,
+                            "byte": 21
+                        },
+                        "end": {
+                            "line": 2,
+                            "column": 18,
+                            "byte": 25
+                        }
+                    }
+                }
+            }
+        },
+        "schema": {
+            "properties": {
+                "fromChild": true,
+                "leafValue": {
+                    "type": "string",
+                    "const": "leaf"
+                }
+            },
+            "type": "object",
+            "required": [
+                "fromChild",
+                "leafValue"
+            ]
+        },
+        "executionContext": {
+            "properties": {
+                "currentEnvironment": {
+                    "value": {
+                        "name": {
+                            "value": "import-meta-unknown-key",
+                            "trace": {
+                                "def": {
+                                    "environment": "import-meta-unknown-key",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "import-meta-unknown-key",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                },
+                "pulumi": {
+                    "value": {
+                        "user": {
+                            "value": {
+                                "id": {
+                                    "value": "USER_123",
+                                    "trace": {
+                                        "def": {
+                                            "environment": "import-meta-unknown-key",
+                                            "begin": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            },
+                                            "end": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            }
+                                        }
+                                    }
+                                }
+                            },
+                            "trace": {
+                                "def": {
+                                    "environment": "import-meta-unknown-key",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "import-meta-unknown-key",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                },
+                "rootEnvironment": {
+                    "value": {
+                        "name": {
+                            "value": "import-meta-unknown-key",
+                            "trace": {
+                                "def": {
+                                    "environment": "import-meta-unknown-key",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "import-meta-unknown-key",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                }
+            },
+            "schema": {
+                "properties": {
+                    "currentEnvironment": {
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "const": "import-meta-unknown-key"
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "name"
+                        ]
+                    },
+                    "pulumi": {
+                        "properties": {
+                            "user": {
+                                "properties": {
+                                    "id": {
+                                        "type": "string",
+                                        "const": "USER_123"
+                                    }
+                                },
+                                "type": "object",
+                                "required": [
+                                    "id"
+                                ]
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "user"
+                        ]
+                    },
+                    "rootEnvironment": {
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "const": "import-meta-unknown-key"
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "name"
+                        ]
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "currentEnvironment",
+                    "pulumi",
+                    "rootEnvironment"
+                ]
+            }
+        }
+    },
+    "evalJsonRedacted": {
+        "fromChild": "[unknown]",
+        "leafValue": "leaf"
+    },
+    "evalJSONRevealed": {
+        "fromChild": "[unknown]",
+        "leafValue": "leaf"
+    }
+}
