@@ -75,6 +75,18 @@ func BindSpecWithContext(
 	return pkg, nil
 }
 
+// SafeSDKOutputDir returns the directory under sdksDir into which a generated SDK for the
+// package identified by name should be written. name (a package name/namespace, or a
+// parameterization name) can originate from an untrusted schema or a converted program, so
+// it is required to be a single local path segment; a value containing a path separator, "."
+// or a ".." escape is rejected so the SDK write cannot land outside sdksDir.
+func SafeSDKOutputDir(sdksDir, name string) (string, error) {
+	if name == "." || !filepath.IsLocal(name) || strings.ContainsAny(name, `/\`) {
+		return "", fmt.Errorf("invalid package name %q for SDK output directory", name)
+	}
+	return filepath.Join(sdksDir, name), nil
+}
+
 // InstallPackage installs a package to the project by generating an SDK and linking it.
 // It returns the path to the installed package.
 func InstallPackage(stdout io.Writer, ws pkgWorkspace.Context, proj workspace.BaseProject, pctx *plugin.Context,
@@ -133,7 +145,10 @@ func InstallPackage(stdout io.Writer, ws pkgWorkspace.Context, proj workspace.Ba
 	if pkg.Namespace != "" {
 		outName = pkg.Namespace + "-" + outName
 	}
-	out = filepath.Join(out, outName)
+	out, err = SafeSDKOutputDir(out, outName)
+	if err != nil {
+		return nil, nil, diags, err
+	}
 
 	// If directory already exists, remove it completely before copying new files
 	if _, err := os.Stat(out); err == nil {
