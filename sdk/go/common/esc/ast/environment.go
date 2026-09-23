@@ -150,10 +150,18 @@ func (d *MapDecl[T]) parse(name string, node syntax.Node) syntax.Diagnostics {
 	return diags
 }
 
+const (
+	// ImportIncludeInPrivileged restricts an import to privileged opens.
+	ImportIncludeInPrivileged = "privileged"
+	// ImportIncludeInUnprivileged restricts an import to unprivileged opens.
+	ImportIncludeInUnprivileged = "unprivileged"
+)
+
 type ImportMetaDecl struct {
 	declNode
 
-	Merge *BooleanExpr
+	Merge     *BooleanExpr
+	IncludeIn *StringExpr
 }
 
 func (d *ImportMetaDecl) recordSyntax() *syntax.Node {
@@ -182,9 +190,54 @@ func (d *ImportDecl) parse(name string, node syntax.Node) syntax.Diagnostics {
 		d.Environment = StringSyntax(kvp.Key)
 
 		d.Meta = &ImportMetaDecl{}
-		return parseRecord("import", d.Meta, kvp.Value, hcl.DiagError)
+		diags := parseRecord("import", d.Meta, kvp.Value, hcl.DiagError)
+		diags.Extend(d.Meta.validateIncludeIn()...)
+		return diags
 	default:
 		return syntax.Diagnostics{syntax.NodeError(node, "import must be a string or an object")}
+	}
+}
+
+func (d *ImportMetaDecl) validateIncludeIn() syntax.Diagnostics {
+	var diags syntax.Diagnostics
+	if obj, ok := d.syntax.(*syntax.ObjectNode); ok {
+		seen := false
+		for i := 0; i < obj.Len(); i++ {
+			key := obj.Index(i).Key
+			if !strings.EqualFold(key.Value(), "includeIn") {
+				continue
+			}
+			if seen {
+				diags = append(diags, syntax.NodeError(key, "includeIn is specified more than once"))
+			}
+			seen = true
+		}
+	}
+
+	if d.IncludeIn != nil && d.IncludeIn.syntax != nil {
+		switch d.IncludeIn.Value {
+		case ImportIncludeInPrivileged, ImportIncludeInUnprivileged:
+		default:
+			msg := fmt.Sprintf("includeIn must be one of '%s' or '%s'", ImportIncludeInPrivileged, ImportIncludeInUnprivileged)
+			diags = append(diags, syntax.NodeError(d.IncludeIn.syntax, msg))
+		}
+	}
+	return diags
+}
+
+// IncludedIn reports whether the import applies to an open in the given privilege mode. An import without includeIn
+// applies to every open; an import with an unrecognized includeIn value applies to none.
+func (d *ImportDecl) IncludedIn(privileged bool) bool {
+	if d.Meta == nil || d.Meta.IncludeIn == nil {
+		return true
+	}
+	switch d.Meta.IncludeIn.Value {
+	case ImportIncludeInPrivileged:
+		return privileged
+	case ImportIncludeInUnprivileged:
+		return !privileged
+	default:
+		return false
 	}
 }
 

@@ -1,0 +1,40 @@
+{
+    "decl": {
+        "Description": null,
+        "Imports": {
+            "Elements": [
+                {
+                    "Environment": {
+                        "Value": "base"
+                    },
+                    "Meta": null
+                },
+                {
+                    "Environment": {
+                        "Value": "aws/prod-read"
+                    },
+                    "Meta": {
+                        "Merge": null,
+                        "IncludeIn": {
+                            "Value": "unprivileged"
+                        }
+                    }
+                },
+                {
+                    "Environment": {
+                        "Value": "aws/prod-write"
+                    },
+                    "Meta": {
+                        "Merge": {
+                            "Value": true
+                        },
+                        "IncludeIn": {
+                            "Value": "privileged"
+                        }
+                    }
+                }
+            ]
+        },
+        "Values": null
+    }
+}

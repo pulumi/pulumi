@@ -2,7 +2,7 @@
     "loadDiags": [
         {
             "Severity": 1,
-            "Summary": "Field 'merged' does not exist on Object 'import'. Existing fields are: 'merge'",
+            "Summary": "Field 'merged' does not exist on Object 'import'. Existing fields are: 'merge', 'includeIn'",
             "Detail": "",
             "Subject": {
                 "Filename": "import-meta-unknown-key",
@@ -27,7 +27,7 @@
     "checkDiags": [
         {
             "Severity": 1,
-            "Summary": "Field 'mergd' does not exist on Object 'import'. Existing fields are: 'merge'",
+            "Summary": "Field 'mergd' does not exist on Object 'import'. Existing fields are: 'merge', 'includeIn'",
             "Detail": "",
             "Subject": {
                 "Filename": "child",
@@ -429,7 +429,7 @@
     "evalDiags": [
         {
             "Severity": 1,
-            "Summary": "Field 'mergd' does not exist on Object 'import'. Existing fields are: 'merge'",
+            "Summary": "Field 'mergd' does not exist on Object 'import'. Existing fields are: 'merge', 'includeIn'",
             "Detail": "",
             "Subject": {
                 "Filename": "child",

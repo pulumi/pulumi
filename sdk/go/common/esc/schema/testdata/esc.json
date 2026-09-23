@@ -15,9 +15,12 @@
                             "merge": {
                                 "description": "Controls whether or not this import participates in the JSON merge stack.",
                                 "type": "boolean"
+                            },
+                            "includeIn": {
+                                "description": "Restricts this import to privileged or unprivileged opens. Imports without includeIn apply to every open.",
+                                "enum": [ "privileged", "unprivileged" ]
                             }
-                        },
-                        "required": [ "merge" ]
+                        }
                     }
                 ]
             }

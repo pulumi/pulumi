@@ -211,3 +211,56 @@ func TestParse(t *testing.T) {
 		})
 	}
 }
+
+func TestImportDeclIncludedIn(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name         string
+		decl         *ImportDecl
+		privileged   bool
+		unprivileged bool
+	}{
+		{
+			name:         "no meta",
+			decl:         &ImportDecl{Environment: String("env")},
+			privileged:   true,
+			unprivileged: true,
+		},
+		{
+			name:         "no includeIn",
+			decl:         &ImportDecl{Environment: String("env"), Meta: &ImportMetaDecl{Merge: Boolean(false)}},
+			privileged:   true,
+			unprivileged: true,
+		},
+		{
+			name:       "privileged",
+			decl:       &ImportDecl{Environment: String("env"), Meta: &ImportMetaDecl{IncludeIn: String("privileged")}},
+			privileged: true,
+		},
+		{
+			name:         "unprivileged",
+			decl:         &ImportDecl{Environment: String("env"), Meta: &ImportMetaDecl{IncludeIn: String("unprivileged")}},
+			unprivileged: true,
+		},
+		{
+			name: "unknown value",
+			decl: &ImportDecl{Environment: String("env"), Meta: &ImportMetaDecl{IncludeIn: String("always")}},
+		},
+		{
+			name: "wrong case",
+			decl: &ImportDecl{Environment: String("env"), Meta: &ImportMetaDecl{IncludeIn: String("Privileged")}},
+		},
+		{
+			name: "empty",
+			decl: &ImportDecl{Environment: String("env"), Meta: &ImportMetaDecl{IncludeIn: &StringExpr{}}},
+		},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, c.privileged, c.decl.IncludedIn(true))
+			assert.Equal(t, c.unprivileged, c.decl.IncludedIn(false))
+		})
+	}
+}

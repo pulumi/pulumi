@@ -1,0 +1,114 @@
+{
+    "decl": {
+        "Description": null,
+        "Imports": {
+            "Elements": [
+                {
+                    "Environment": {
+                        "Value": "aws/prod-write"
+                    },
+                    "Meta": {
+                        "Merge": null,
+                        "IncludeIn": {
+                            "Value": "always"
+                        }
+                    }
+                },
+                {
+                    "Environment": {
+                        "Value": "aws/prod-read"
+                    },
+                    "Meta": {
+                        "Merge": null,
+                        "IncludeIn": {
+                            "Value": "Privileged"
+                        }
+                    }
+                },
+                {
+                    "Environment": {
+                        "Value": "aws/prod-empty"
+                    },
+                    "Meta": {
+                        "Merge": null,
+                        "IncludeIn": {
+                            "Value": ""
+                        }
+                    }
+                }
+            ]
+        },
+        "Values": null
+    },
+    "diags": [
+        {
+            "Severity": 1,
+            "Summary": "includeIn must be one of 'privileged' or 'unprivileged'",
+            "Detail": "",
+            "Subject": {
+                "Filename": "import-include-in-invalid",
+                "Start": {
+                    "Line": 3,
+                    "Column": 18,
+                    "Byte": 46
+                },
+                "End": {
+                    "Line": 3,
+                    "Column": 24,
+                    "Byte": 52
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Path": "imports[0][\"aws/prod-write\"].includeIn"
+        },
+        {
+            "Severity": 1,
+            "Summary": "includeIn must be one of 'privileged' or 'unprivileged'",
+            "Detail": "",
+            "Subject": {
+                "Filename": "import-include-in-invalid",
+                "Start": {
+                    "Line": 5,
+                    "Column": 18,
+                    "Byte": 89
+                },
+                "End": {
+                    "Line": 5,
+                    "Column": 28,
+                    "Byte": 99
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Path": "imports[1][\"aws/prod-read\"].includeIn"
+        },
+        {
+            "Severity": 1,
+            "Summary": "includeIn must be one of 'privileged' or 'unprivileged'",
+            "Detail": "",
+            "Subject": {
+                "Filename": "import-include-in-invalid",
+                "Start": {
+                    "Line": 7,
+                    "Column": 18,
+                    "Byte": 137
+                },
+                "End": {
+                    "Line": 7,
+                    "Column": 18,
+                    "Byte": 137
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Path": "imports[2][\"aws/prod-empty\"].includeIn"
+        }
+    ]
+}

@@ -1,0 +1,103 @@
+{
+    "decl": {
+        "Description": null,
+        "Imports": {
+            "Elements": [
+                {
+                    "Environment": {
+                        "Value": "aws/prod-write"
+                    },
+                    "Meta": {
+                        "Merge": null,
+                        "IncludeIn": {
+                            "Value": "unprivileged"
+                        }
+                    }
+                },
+                {
+                    "Environment": {
+                        "Value": "aws/prod-read"
+                    },
+                    "Meta": {
+                        "Merge": null,
+                        "IncludeIn": {
+                            "Value": "unprivileged"
+                        }
+                    }
+                }
+            ]
+        },
+        "Values": null
+    },
+    "diags": [
+        {
+            "Severity": 1,
+            "Summary": "includeIn is specified more than once",
+            "Detail": "",
+            "Subject": {
+                "Filename": "import-include-in-duplicate",
+                "Start": {
+                    "Line": 4,
+                    "Column": 7,
+                    "Byte": 63
+                },
+                "End": {
+                    "Line": 4,
+                    "Column": 16,
+                    "Byte": 72
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Path": "imports[0][\"aws/prod-write\"].includein"
+        },
+        {
+            "Severity": 2,
+            "Summary": "duplicate key \"includeIn\"",
+            "Detail": "",
+            "Subject": {
+                "Filename": "import-include-in-duplicate",
+                "Start": {
+                    "Line": 7,
+                    "Column": 7,
+                    "Byte": 142
+                },
+                "End": {
+                    "Line": 7,
+                    "Column": 16,
+                    "Byte": 151
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Path": "imports[1][\"aws/prod-read\"].includeIn"
+        },
+        {
+            "Severity": 1,
+            "Summary": "includeIn is specified more than once",
+            "Detail": "",
+            "Subject": {
+                "Filename": "import-include-in-duplicate",
+                "Start": {
+                    "Line": 7,
+                    "Column": 7,
+                    "Byte": 142
+                },
+                "End": {
+                    "Line": 7,
+                    "Column": 16,
+                    "Byte": 151
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Path": "imports[1][\"aws/prod-read\"].includeIn"
+        }
+    ]
+}

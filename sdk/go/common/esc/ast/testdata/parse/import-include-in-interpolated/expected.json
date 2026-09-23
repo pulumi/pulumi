@@ -5,11 +5,13 @@
             "Elements": [
                 {
                     "Environment": {
-                        "Value": "a"
+                        "Value": "aws/prod-write"
                     },
                     "Meta": {
                         "Merge": null,
-                        "IncludeIn": null
+                        "IncludeIn": {
+                            "Value": ""
+                        }
                     }
                 }
             ]
@@ -19,26 +21,26 @@
     "diags": [
         {
             "Severity": 1,
-            "Summary": "Field 'merged' does not exist on Object 'import'. Existing fields are: 'merge', 'includeIn'",
+            "Summary": "includeIn must be a string",
             "Detail": "",
             "Subject": {
-                "Filename": "import-meta-unknown-key",
+                "Filename": "import-include-in-interpolated",
                 "Start": {
                     "Line": 3,
-                    "Column": 7,
-                    "Byte": 22
+                    "Column": 18,
+                    "Byte": 46
                 },
                 "End": {
                     "Line": 3,
-                    "Column": 13,
-                    "Byte": 28
+                    "Column": 25,
+                    "Byte": 53
                 }
             },
             "Context": null,
             "Expression": null,
             "EvalContext": null,
             "Extra": null,
-            "Path": "imports[0].a.merged"
+            "Path": "imports[0][\"aws/prod-write\"].includeIn"
         }
     ]
 }
