@@ -276,7 +276,7 @@ type evalContext struct {
 
 	traceMode TraceMode // traceMode used during eval and passed to export
 
-	privileged bool // selects which includeIn imports apply
+	privileged bool
 
 	diags syntax.Diagnostics // diagnostics generated during evaluation
 }

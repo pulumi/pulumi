@@ -151,9 +151,7 @@ func (d *MapDecl[T]) parse(name string, node syntax.Node) syntax.Diagnostics {
 }
 
 const (
-	// ImportIncludeInPrivileged restricts an import to privileged opens.
-	ImportIncludeInPrivileged = "privileged"
-	// ImportIncludeInUnprivileged restricts an import to unprivileged opens.
+	ImportIncludeInPrivileged   = "privileged"
 	ImportIncludeInUnprivileged = "unprivileged"
 )
 
