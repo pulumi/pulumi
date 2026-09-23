@@ -378,6 +378,9 @@ func sanitizeComment(str string) string {
 // selfRef is set, refs within the same scope are returned unqualified.
 func (mod *modContext) docRefResolver(selfRef schema.DocRef) func(schema.DocRef) (string, bool) {
 	return func(ref schema.DocRef) (string, bool) {
+		if ref.Type == nil && ref.Function == nil {
+			return "", false
+		}
 		var base string
 		switch ref.Kind {
 		case schema.DocRefKindResource, schema.DocRefKindResourceProperty:
@@ -429,9 +432,9 @@ func (mod *modContext) printComment(w io.Writer, comment, deprecationMessage, in
 		return nil
 	}
 
-	comment, err := mod.pkg.InterpretPulumiRefs(comment, mod.docRefResolver(selfRef))
-	if err != nil {
-		return fmt.Errorf("error interpreting Pulumi references in comment %q: %w", comment, err)
+	comment, diags := mod.pkg.InterpretPulumiRefsWithDiagnostics(comment, mod.docRefResolver(selfRef))
+	if diags.HasErrors() {
+		return fmt.Errorf("error interpreting Pulumi references in comment %q: %w", comment, diags)
 	}
 
 	comment = sanitizeComment(comment)

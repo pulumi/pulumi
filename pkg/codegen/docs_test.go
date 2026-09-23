@@ -168,7 +168,7 @@ func TestInterpretPulumiRefs(t *testing.T) {
 		description := "This is a reference to {{% ref #/resources/test:s3:Bucket %}} and one to the " +
 			"{{% ref #/resources/test:s3:Bucket/properties/region %}} property."
 		expected := "This is a reference to s3.Bucket and one to the region property."
-		result, err := pkg.InterpretPulumiRefs(description, func(ref schema.DocRef) (string, bool) {
+		result, diags := pkg.InterpretPulumiRefsWithDiagnostics(description, func(ref schema.DocRef) (string, bool) {
 			if ref.Kind == schema.DocRefKindResource {
 				rt := ref.Type.(*schema.ResourceType)
 				tok := tokens.Type(rt.Token)
@@ -176,7 +176,7 @@ func TestInterpretPulumiRefs(t *testing.T) {
 			}
 			return "", false
 		})
-		require.NoError(t, err)
+		require.False(t, diags.HasErrors())
 		assert.Equal(t, expected, result, "expected resolved references")
 	})
 
@@ -187,10 +187,10 @@ func TestInterpretPulumiRefs(t *testing.T) {
 		description := "This is a reference to {{% ref #/resources/test:mod:Resource/properties/myProperty %}}" +
 			" and to {{% ref #/resources/test:mod:Resource %}}."
 		expected := "This is a reference to myProperty and to test:mod:Resource."
-		result, err := pkg.InterpretPulumiRefs(description, func(ref schema.DocRef) (string, bool) {
+		result, diags := pkg.InterpretPulumiRefsWithDiagnostics(description, func(ref schema.DocRef) (string, bool) {
 			return "", false
 		})
-		require.NoError(t, err)
+		require.False(t, diags.HasErrors())
 		assert.Equal(t, expected, result, "expected fallback to last segment for unknown references")
 	})
 
@@ -198,10 +198,10 @@ func TestInterpretPulumiRefs(t *testing.T) {
 		t.Parallel()
 
 		pkg := bindTestPackage(t)
-		result, err := pkg.InterpretPulumiRefs("", func(ref schema.DocRef) (string, bool) {
+		result, diags := pkg.InterpretPulumiRefsWithDiagnostics("", func(ref schema.DocRef) (string, bool) {
 			return "ResolvedName", true
 		})
-		require.NoError(t, err)
+		require.False(t, diags.HasErrors())
 		assert.Equal(t, "", result, "expected empty result for empty description")
 	})
 
@@ -211,10 +211,10 @@ func TestInterpretPulumiRefs(t *testing.T) {
 		pkg := bindTestPackage(t)
 		description := "This description has no Pulumi references."
 		expected := "This description has no Pulumi references."
-		result, err := pkg.InterpretPulumiRefs(description, func(ref schema.DocRef) (string, bool) {
+		result, diags := pkg.InterpretPulumiRefsWithDiagnostics(description, func(ref schema.DocRef) (string, bool) {
 			return "ResolvedName", true
 		})
-		require.NoError(t, err)
+		require.False(t, diags.HasErrors())
 		assert.Equal(t, expected, result, "expected unchanged description when no refs are present")
 	})
 
@@ -223,10 +223,11 @@ func TestInterpretPulumiRefs(t *testing.T) {
 
 		pkg := bindTestPackage(t)
 		description := "This is a {{% ref bad %}} reference."
-		_, err := pkg.InterpretPulumiRefs(description, func(ref schema.DocRef) (string, bool) {
+		_, diags := pkg.InterpretPulumiRefsWithDiagnostics(description, func(ref schema.DocRef) (string, bool) {
 			return "ResolvedName", true
 		})
-		require.ErrorContains(t, err, "invalid doc ref: bad")
+		require.True(t, diags.HasErrors())
+		assert.Contains(t, diags.Error(), "invalid doc ref: bad")
 	})
 
 	t.Run("ResolvesExternalRefs", func(t *testing.T) {
@@ -279,7 +280,7 @@ func TestInterpretPulumiRefs(t *testing.T) {
 		require.NoError(t, err)
 		require.False(t, diags.HasErrors(), "diags: %v", diags)
 
-		result, err := pkg.InterpretPulumiRefs(pkg.Description, func(ref schema.DocRef) (string, bool) {
+		result, diags := pkg.InterpretPulumiRefsWithDiagnostics(pkg.Description, func(ref schema.DocRef) (string, bool) {
 			switch ref.Kind { //nolint:exhaustive // test doesn't care about other cases
 			case schema.DocRefKindResource:
 				return ref.Type.(*schema.ResourceType).Token, true
@@ -292,7 +293,7 @@ func TestInterpretPulumiRefs(t *testing.T) {
 			}
 			return "", false
 		})
-		require.NoError(t, err)
+		require.False(t, diags.HasErrors())
 		assert.Contains(t, result, "extdep:mod:ExtType")
 		assert.Contains(t, result, "extdep:mod:ExtResource")
 		assert.Contains(t, result, "extdep:mod:extFunction")
@@ -313,4 +314,100 @@ func (l *stubSchemaLoader) LoadPackage(name string, version *semver.Version) (*s
 
 func (l *stubSchemaLoader) LoadPackageV2(_ context.Context, _ *schema.PackageDescriptor) (*schema.Package, error) {
 	return l.pkg, nil
+}
+
+func TestInterpretPulumiRefsWithDiagnostics(t *testing.T) {
+	t.Parallel()
+
+	resolveToName := func(schema.DocRef) (string, bool) { return "ResolvedName", true }
+
+	t.Run("RendersTheTextAlongsideDiagnostics", func(t *testing.T) {
+		t.Parallel()
+
+		pkg := bindTestPackage(t)
+		description := "Missing {{% ref #/resources/test:s3:Absent %}} here."
+
+		result, diags := pkg.InterpretPulumiRefsWithDiagnostics(description, resolveToName)
+
+		require.True(t, diags.HasErrors())
+		assert.Equal(t, "Missing ResolvedName here.", result)
+	})
+
+	t.Run("KeepsResolvableRefsInADescriptionThatAlsoHasABadOne", func(t *testing.T) {
+		t.Parallel()
+
+		pkg := bindTestPackage(t)
+		description := "Good {{% ref #/resources/test:s3:Bucket %}} and bad {{% ref #/resources/test:s3:Absent %}}."
+
+		result, diags := pkg.InterpretPulumiRefsWithDiagnostics(description, func(ref schema.DocRef) (string, bool) {
+			if ref.Type != nil {
+				return "Bound", true
+			}
+			return "Unbound", true
+		})
+
+		require.True(t, diags.HasErrors())
+		assert.Equal(t, "Good Bound and bad Unbound.", result,
+			"a single unbindable ref must not take the whole description down with it")
+	})
+
+	t.Run("FallsBackWhenTheResolverDeclinesAnUnboundRef", func(t *testing.T) {
+		t.Parallel()
+
+		pkg := bindTestPackage(t)
+		description := "Missing {{% ref #/resources/test:s3:Absent %}} here."
+
+		result, diags := pkg.InterpretPulumiRefsWithDiagnostics(description,
+			func(schema.DocRef) (string, bool) { return "", false })
+
+		require.True(t, diags.HasErrors())
+		assert.Equal(t, "Missing #/resources/test:s3:Absent here.", result,
+			"a declined ref falls back to its own text, never to the empty string")
+	})
+
+	t.Run("PassesRefAndKindForAnUnboundRef", func(t *testing.T) {
+		t.Parallel()
+
+		pkg := bindTestPackage(t)
+		description := "Missing {{% ref #/resources/test:s3:Absent/properties/region %}} here."
+
+		var seen schema.DocRef
+		_, diags := pkg.InterpretPulumiRefsWithDiagnostics(description, func(ref schema.DocRef) (string, bool) {
+			seen = ref
+			return "ResolvedName", true
+		})
+
+		require.True(t, diags.HasErrors())
+		assert.Equal(t, "#/resources/test:s3:Absent/properties/region", seen.Ref)
+		assert.Equal(t, schema.DocRefKindResourceProperty, seen.Kind)
+		assert.Equal(t, "region", seen.Property)
+		assert.Nil(t, seen.Type, "an unbound ref carries no bound type")
+	})
+
+	t.Run("InterpretPulumiRefsStillReportsAnError", func(t *testing.T) {
+		t.Parallel()
+
+		pkg := bindTestPackage(t)
+		description := "Missing {{% ref #/resources/test:s3:Absent %}} here."
+
+		_, err := pkg.InterpretPulumiRefs(description, resolveToName) //nolint:staticcheck
+
+		require.ErrorContains(t, err, "not found", "the existing entry point stays fatal for codegen")
+	})
+
+	t.Run("InterpretPulumiRefsNeverOffersAnUnboundRefToTheResolver", func(t *testing.T) {
+		t.Parallel()
+
+		pkg := bindTestPackage(t)
+		description := "Missing {{% ref #/resources/test:s3:Absent %}} here."
+
+		offered := false
+		_, err := pkg.InterpretPulumiRefs(description, func(schema.DocRef) (string, bool) { //nolint:staticcheck
+			offered = true
+			return "", false
+		})
+
+		require.ErrorContains(t, err, "not found")
+		assert.False(t, offered, "resolvers written for the deprecated entry point assume a bound ref")
+	})
 }
