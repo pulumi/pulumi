@@ -44,6 +44,7 @@ type builtinProvider struct {
 	diag    diag.Sink
 
 	backendClient BackendClient
+	runPulumi     func(ctx context.Context, dir string, args []string) ([]byte, error)
 
 	// news is a map of URNs to new resource states that have been produced by the current deployment.
 	news *gsync.Map[resource.URN, *pkgresource.State]
@@ -62,6 +63,7 @@ func newBuiltinProvider(
 		context:       ctx,
 		cancel:        cancel,
 		backendClient: backendClient,
+		runPulumi:     runPulumi,
 		news:          news,
 		reads:         reads,
 		diag:          d,
@@ -168,6 +170,10 @@ func (p *builtinProvider) Check(_ context.Context, req plugin.CheckRequest) (plu
 		}
 
 		return plugin.CheckResponse{Properties: req.NewInputs}, nil
+	case deliveryStackType:
+		return plugin.CheckResponse{Properties: req.NewInputs, Failures: checkDeliveryStack(req.NewInputs)}, nil
+	case deliveryStackGroupType:
+		return plugin.CheckResponse{Properties: req.NewInputs, Failures: checkDeliveryStackGroup(req.NewInputs)}, nil
 	default:
 		return plugin.CheckResponse{}, fmt.Errorf("unrecognized resource type '%v'", typ)
 	}
@@ -196,6 +202,9 @@ func (p *builtinProvider) Diff(_ context.Context, req plugin.DiffRequest) (plugi
 		}
 
 		return plugin.DiffResult{Changes: plugin.DiffNone}, nil
+	case deliveryStackType, deliveryStackGroupType:
+		// Converging its stacks is what a run of a delivery resource is for, so every run has work.
+		return plugin.DiffResult{Changes: plugin.DiffSome}, nil
 	default:
 		return plugin.DiffResult{}, fmt.Errorf("unrecognized resource type '%v'", typ)
 	}
@@ -245,14 +254,43 @@ func (p *builtinProvider) Create(ctx context.Context, req plugin.CreateRequest) 
 			},
 			Status: resource.StatusOK,
 		}, nil
+	case deliveryStackType, deliveryStackGroupType:
+		state, err := p.deliver(ctx, req.URN, resource.FromResourcePropertyMap(req.Properties), req.Preview)
+		if err != nil {
+			return plugin.CreateResponse{Status: resource.StatusUnknown}, err
+		}
+
+		var id resource.ID
+		if !req.Preview {
+			uuid, err := uuid.NewV4()
+			if err != nil {
+				return plugin.CreateResponse{Status: resource.StatusOK}, err
+			}
+			id = resource.ID(uuid.String())
+		}
+
+		return plugin.CreateResponse{
+			ID:         id,
+			Properties: resource.ToResourcePropertyMap(state),
+			Status:     resource.StatusOK,
+		}, nil
 	default:
 		return plugin.CreateResponse{}, fmt.Errorf("unrecognized resource type '%v'", typ)
 	}
 }
 
-func (p *builtinProvider) Update(_ context.Context, req plugin.UpdateRequest) (plugin.UpdateResponse, error) {
+func (p *builtinProvider) Update(ctx context.Context, req plugin.UpdateRequest) (plugin.UpdateResponse, error) {
 	typ := req.URN.Type()
 	switch typ { //nolint:exhaustive
+	case deliveryStackType, deliveryStackGroupType:
+		state, err := p.deliver(ctx, req.URN, resource.FromResourcePropertyMap(req.NewInputs), req.Preview)
+		if err != nil {
+			return plugin.UpdateResponse{Status: resource.StatusUnknown}, err
+		}
+		return plugin.UpdateResponse{
+			Properties: resource.ToResourcePropertyMap(state),
+			Status:     resource.StatusOK,
+		}, nil
 	case stashType:
 		properties := resource.PropertyMap{
 			"input":  req.NewInputs["input"],
@@ -269,8 +307,11 @@ func (p *builtinProvider) Update(_ context.Context, req plugin.UpdateRequest) (p
 }
 
 func (p *builtinProvider) Delete(_ context.Context, req plugin.DeleteRequest) (plugin.DeleteResponse, error) {
-	contract.Assertf(req.URN.Type() == stackReferenceType || req.URN.Type() == stashType,
-		"expected resource type %v or %v, got %v", stackReferenceType, stashType, req.URN.Type())
+	switch req.URN.Type() { //nolint:exhaustive
+	case stackReferenceType, stashType, deliveryStackType, deliveryStackGroupType:
+	default:
+		contract.Failf("unexpected resource type %v", req.URN.Type())
+	}
 
 	return plugin.DeleteResponse{Status: resource.StatusOK}, nil
 }
@@ -334,6 +375,19 @@ func (p *builtinProvider) Read(ctx context.Context, req plugin.ReadRequest) (plu
 				ID:      req.ID,
 				Inputs:  req.Inputs,
 				Outputs: req.State,
+			},
+			Status: resource.StatusOK,
+		}, nil
+	case deliveryStackType, deliveryStackGroupType:
+		outputs, err := p.refreshDelivery(ctx, req.URN, resource.FromResourcePropertyMap(req.Inputs))
+		if err != nil {
+			return plugin.ReadResponse{Status: resource.StatusUnknown}, err
+		}
+		return plugin.ReadResponse{
+			ReadResult: plugin.ReadResult{
+				ID:      req.ID,
+				Inputs:  req.Inputs,
+				Outputs: resource.ToResourcePropertyMap(outputs),
 			},
 			Status: resource.StatusOK,
 		}, nil
