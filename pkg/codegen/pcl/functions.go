@@ -614,15 +614,18 @@ func pulumiBuiltins(options bindOptions) map[string]*model.Function {
 
 // newMinMaxFunction produces the type signature for the "min" & "max" PCL functions.
 //
-// It is a function from `(int, ...int) -> int` when no argument is a [model.NumberType], and `(number, ...number) ->
-// number` otherwise.
+// It is a function from `(int, ...int) -> int` unless some numeric argument does not convert safely to
+// [model.IntType], in which case it is `(number, ...number) -> number`. A number literal has a const type, so the
+// check is by conversion rather than by identity with [model.NumberType].
 func newMinMaxFunction() *model.Function {
 	return model.NewFunction(model.GenericFunctionSignature(
 		func(args []model.Expression) (model.StaticFunctionSignature, hcl.Diagnostics) {
 			var diags hcl.Diagnostics
 			var typ model.Type = model.IntType
 			for _, v := range args {
-				if model.ResolveOutputs(v.Type()) == model.NumberType {
+				argType := model.ResolveOutputs(v.Type())
+				if model.NumberType.ConversionFrom(argType).Exists() &&
+					model.IntType.ConversionFrom(argType) != model.SafeConversion {
 					typ = model.NumberType
 				}
 			}
