@@ -118,7 +118,8 @@ func TestListConfig(t *testing.T) {
 		preparedStack, project, projectStack, secretsManagerLoader := prepareConfig(t, secretsManager, cfg, nil)
 
 		var stdout bytes.Buffer
-		err := listConfig(ctx, secretsManagerLoader, &stdout, &project, &preparedStack, projectStack, true, false, true, "")
+		err := listConfig(ctx, secretsManagerLoader, &stdout, &project, &preparedStack,
+			projectStack, true, false, true, false, "")
 		require.NoError(t, err)
 
 		require.Equal(t, 0, *calledEncryptValue)
@@ -143,7 +144,8 @@ common:obj  {"commonArray":["cfgVal3","cfgVal4"],"commonValue":"cfgVal2"}
 		preparedStack, project, projectStack, secretsManagerLoader := prepareConfig(t, secretsManager, config.Map{}, openEnv)
 
 		var stdout bytes.Buffer
-		err := listConfig(ctx, secretsManagerLoader, &stdout, &project, &preparedStack, projectStack, true, false, true, "")
+		err := listConfig(ctx, secretsManagerLoader, &stdout, &project, &preparedStack,
+			projectStack, true, false, true, false, "")
 		require.NoError(t, err)
 
 		require.Equal(t, 0, *calledEncryptValue)
@@ -169,7 +171,8 @@ env:value   envVal1
 		preparedStack, project, projectStack, secretsManagerLoader := prepareConfig(t, secretsManager, cfg, openEnv)
 
 		var stdout bytes.Buffer
-		err := listConfig(ctx, secretsManagerLoader, &stdout, &project, &preparedStack, projectStack, true, false, true, "")
+		err := listConfig(ctx, secretsManagerLoader, &stdout, &project, &preparedStack,
+			projectStack, true, false, true, false, "")
 		require.NoError(t, err)
 
 		require.Equal(t, 0, *calledEncryptValue)
@@ -197,7 +200,8 @@ env:value   envVal1
 		preparedStack, project, projectStack, secretsManagerLoader := prepareConfig(t, secretsManager, cfg, openEnv)
 
 		var stdout bytes.Buffer
-		err := listConfig(ctx, secretsManagerLoader, &stdout, &project, &preparedStack, projectStack, false, false, true, "")
+		err := listConfig(ctx, secretsManagerLoader, &stdout, &project, &preparedStack,
+			projectStack, false, false, true, false, "")
 		require.NoError(t, err)
 
 		require.Equal(t, 0, *calledEncryptValue)
@@ -225,7 +229,8 @@ env:value   envVal1
 		preparedStack, project, projectStack, secretsManagerLoader := prepareConfig(t, secretsManager, cfg, checkEnv)
 
 		var stdout bytes.Buffer
-		err := listConfig(ctx, secretsManagerLoader, &stdout, &project, &preparedStack, projectStack, true, false, false, "")
+		err := listConfig(ctx, secretsManagerLoader, &stdout, &project, &preparedStack,
+			projectStack, true, false, false, false, "")
 		require.NoError(t, err)
 
 		require.Equal(t, 0, *calledEncryptValue)
@@ -253,7 +258,8 @@ env:value   envVal1
 		preparedStack, project, projectStack, secretsManagerLoader := prepareConfig(t, secretsManager, cfg, checkEnv)
 
 		var stdout bytes.Buffer
-		err := listConfig(ctx, secretsManagerLoader, &stdout, &project, &preparedStack, projectStack, false, false, false, "")
+		err := listConfig(ctx, secretsManagerLoader, &stdout, &project, &preparedStack,
+			projectStack, false, false, false, false, "")
 		require.NoError(t, err)
 
 		require.Equal(t, 0, *calledEncryptValue)
@@ -281,7 +287,8 @@ env:value   envVal1
 		preparedStack, project, projectStack, secretsManagerLoader := prepareConfig(t, secretsManager, plainCfg, plainEnv)
 
 		var stdout bytes.Buffer
-		err := listConfig(ctx, secretsManagerLoader, &stdout, &project, &preparedStack, projectStack, true, false, true, "")
+		err := listConfig(ctx, secretsManagerLoader, &stdout, &project, &preparedStack,
+			projectStack, true, false, true, false, "")
 		require.NoError(t, err)
 
 		require.Equal(t, 0, *calledEncryptValue)
@@ -307,7 +314,8 @@ env:value   envVal1
 		preparedStack, project, projectStack, secretsManagerLoader := prepareConfig(t, secretsManager, plainCfg, openEnv)
 
 		var stdout bytes.Buffer
-		err := listConfig(ctx, secretsManagerLoader, &stdout, &project, &preparedStack, projectStack, true, false, true, "")
+		err := listConfig(ctx, secretsManagerLoader, &stdout, &project, &preparedStack,
+			projectStack, true, false, true, false, "")
 		require.NoError(t, err)
 
 		require.Equal(t, 0, *calledEncryptValue)
@@ -334,7 +342,8 @@ env:value   envVal1
 		preparedStack, project, projectStack, secretsManagerLoader := prepareConfig(t, secretsManager, plainCfg, openEnv)
 
 		var stdout bytes.Buffer
-		err := listConfig(ctx, secretsManagerLoader, &stdout, &project, &preparedStack, projectStack, true, false, true, "")
+		err := listConfig(ctx, secretsManagerLoader, &stdout, &project, &preparedStack,
+			projectStack, true, false, true, false, "")
 		require.NoError(t, err)
 
 		require.Equal(t, 0, *calledEncryptValue)

@@ -128,6 +128,7 @@ func NewConfigCmd(ws pkgWorkspace.Context) *cobra.Command {
 				showSecrets,
 				jsonOut,
 				openEnvironment,
+				false, /*checkPrivileged*/
 				configFile,
 			)
 		},
@@ -1126,6 +1127,7 @@ func listConfig(
 	showSecrets bool,
 	jsonOut bool,
 	openEnvironment bool,
+	checkPrivileged bool,
 	configFile string,
 ) error {
 	var env *esc.Environment
@@ -1134,7 +1136,7 @@ func listConfig(
 	if openEnvironment {
 		env, diags, err = openStackEnv(ctx, stack, ps, nil, OperationConfig)
 	} else {
-		env, diags, err = checkStackEnv(ctx, stack, ps)
+		env, diags, err = checkStackEnv(ctx, stack, ps, checkPrivileged)
 	}
 	if err != nil {
 		return err
@@ -1322,7 +1324,7 @@ func getConfig(
 	if openEnvironment {
 		env, diags, err = openStackEnv(ctx, stack, ps, nil, OperationConfig)
 	} else {
-		env, diags, err = checkStackEnv(ctx, stack, ps)
+		env, diags, err = checkStackEnv(ctx, stack, ps, false)
 	}
 	if err != nil {
 		return err
@@ -1463,6 +1465,7 @@ func checkStackEnv(
 	ctx context.Context,
 	stack backend.Stack,
 	workspaceStack *workspace.ProjectStack,
+	privileged bool,
 ) (*esc.Environment, []apitype.EnvironmentDiagnostic, error) {
 	yaml := workspaceStack.EnvironmentBytes()
 	if len(yaml) == 0 {
@@ -1479,7 +1482,7 @@ func checkStackEnv(
 	}
 	orgName := orgNamer.OrgName()
 
-	return envs.CheckYAMLEnvironment(ctx, orgName, yaml, false)
+	return envs.CheckYAMLEnvironment(ctx, orgName, yaml, privileged)
 }
 
 func warnOnNoEnvironmentEffects(out io.Writer, env *esc.Environment) {

@@ -1,0 +1,4 @@
+component: cli/config
+kind: feat
+body: "Check stack environments as privileged in `pulumi config env add` and `pulumi config env rm` so the preview shows `includeIn: privileged` imports"
+time: 2026-09-22T00:00:00Z

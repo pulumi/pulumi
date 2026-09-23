@@ -203,6 +203,7 @@ func (cmd *configEnvCmd) editStackEnvironment(
 		showSecrets,
 		false, /*jsonOut*/
 		false, /*openEnvironment*/
+		true,  /*checkPrivileged*/
 		*cmd.configFile,
 	); err != nil {
 		return err
