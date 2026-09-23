@@ -67,3 +67,33 @@ map = length({for k, v in {"a" = 1, "b" = 2, "c" = 3} : k => v})
 		"map":         resource.NewProperty(3.0),
 	}, values)
 }
+
+func TestRange(t *testing.T) {
+	t.Parallel()
+
+	// An empty cty list converts to a nil slice, so the empty case is built without make.
+	list := func(ns ...float64) resource.PropertyValue {
+		if len(ns) == 0 {
+			return resource.NewProperty([]resource.PropertyValue(nil))
+		}
+		values := make([]resource.PropertyValue, len(ns))
+		for i, n := range ns {
+			values[i] = resource.NewProperty(n)
+		}
+		return resource.NewProperty(values)
+	}
+	values := evaluateLocals(t, `
+to = range(3)
+fromTo = range(2, 5)
+empty = range(0)
+empty2 = range(3, 3)
+reversed = range(5, 2)
+`)
+	assert.Equal(t, map[string]resource.PropertyValue{
+		"to":       list(0, 1, 2),
+		"fromTo":   list(2, 3, 4),
+		"empty":    list(),
+		"empty2":   list(),
+		"reversed": list(5, 4, 3),
+	}, values)
+}
