@@ -1,4 +1,0 @@
-component: pcl
-kind: fix
-body: Propagate the `dependsOn` resource option on `read` blocks
-time: 2026-09-18T00:00:00Z

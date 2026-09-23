@@ -1,4 +1,0 @@
-component: sdk/go
-kind: improvement
-body: Remove `policyx.ResourceValidationArgs.DryRun` as it was never correctly set
-time: 2026-09-15T10:15:00.000000000Z

@@ -1,3 +1,0 @@
-component: cli
-kind: fix
-body: Suppress the Neo diagnostic help prompt for informational messages
