@@ -66,6 +66,7 @@ func init() {
 					// resolved to a known value, and so shouldn't have been saved in the snapshot.
 					stack := RequireSingleResource(l, res.Snap.Resources, "pulumi:pulumi:Stack")
 					require.NotContains(l, stack.Outputs, resource.PropertyKey("readValue"))
+					require.NotContains(l, stack.Outputs, resource.PropertyKey("readPropDepValue"))
 				},
 			},
 		},

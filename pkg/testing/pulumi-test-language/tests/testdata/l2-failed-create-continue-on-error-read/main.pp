@@ -10,6 +10,15 @@ read "res" "read:index:Resource" {
     }
 }
 
+read "res_prop_dep" "read:index:Resource" {
+    id = "existing-id"
+    lookup = "existing-key-${failing.value}"
+}
+
 output "readValue" {
     value = res.value
+}
+
+output "readPropDepValue" {
+    value = res_prop_dep.value
 }
