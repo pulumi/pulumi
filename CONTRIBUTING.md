@@ -137,4 +137,4 @@ Finally to create the release, navigate to the [GitHub Releases page](https://gi
 > [!CAUTION]
 > Double-check the version number of the release. The most recent release in [the releases list](https://github.com/pulumi/pulumi/releases) tracks changes to `master`, and might not be the one you want to release if PRs have been merged since the freeze. For this reason, the version you want to release may be the second one in the list. The version should be the one that was in `sdk/.version` *before* the freeze PR was merged.
 
-Finally `pulumi-bot` will create another PR to update with `go.mod` updates and changelog cleanups.  This PR needs to be approved, and will then auto-merge.
+Finally `pulumi-bot` will create another PR to update with `go.mod` updates and changelog cleanups.  This PR is approved and queued to merge automatically.
