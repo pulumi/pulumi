@@ -1,4 +1,4 @@
 component: cli/config
 kind: feat
-body: "Open stack environments as privileged for `up`, `destroy`, `watch` and `do` so `includeIn: privileged` imports apply"
+body: "Open stack environments as privileged for `up`, `destroy`, `watch` and `do` (except `do --dry-run`) so `includeIn: privileged` imports apply"
 time: 2026-09-22T00:00:00Z

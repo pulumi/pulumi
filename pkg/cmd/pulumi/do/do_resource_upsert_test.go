@@ -31,6 +31,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/autonames"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+	cmdConfig "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/config"
 	sdkDisplay "github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	lt "github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest/framework"
@@ -1451,4 +1452,13 @@ func TestDefaultRunStatefulUpdateDeletePassesNilSnippet(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, updateCalled, "stateful delete should call UpdateStack")
 	require.Equal(t, []string{"3fa85f64-5717-4562-b3fc-2c963f66afa6"}, result.SnippetUUIDs)
+}
+
+func TestDoStackEnvOperation(t *testing.T) {
+	t.Parallel()
+
+	assert.Equal(t, cmdConfig.OperationDo, doStackEnvOperation(false))
+	assert.True(t, doStackEnvOperation(false).Privileged())
+	assert.Equal(t, cmdConfig.OperationPreview, doStackEnvOperation(true))
+	assert.False(t, doStackEnvOperation(true).Privileged())
 }

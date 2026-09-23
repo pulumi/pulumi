@@ -786,6 +786,13 @@ func (pc *packageCommand) buildProviderSnippet(
 // caller (typically the upsert command) has already loaded the stack and picked the snippet's
 // UUID; this function loads config + secrets and calls the backend preview/update entrypoint with
 // an UpdateOperation whose engine options carry the snippet and target it.
+func doStackEnvOperation(dryRun bool) cmdConfig.Operation {
+	if dryRun {
+		return cmdConfig.OperationPreview
+	}
+	return cmdConfig.OperationDo
+}
+
 func DefaultRunStatefulUpdate(
 	ctx context.Context, flags *pflag.FlagSet, req StatefulUpdateRequest,
 ) (*StatefulUpdateResult, error) {
@@ -806,7 +813,7 @@ func DefaultRunStatefulUpdate(
 	configFile := workspace.ProjectStackPath(
 		filepath.Join(req.Root, workspace.ProjectFile+".yaml"), req.Proj, req.Stack.Ref().Name().Q())
 	cfg, sm, err := cmdConfig.GetStackConfiguration(ctx, req.Sink, ssml, req.Stack, req.Proj, configFile, nil,
-		cmdConfig.OperationDo)
+		doStackEnvOperation(req.DryRun))
 	if err != nil {
 		return nil, fmt.Errorf("get stack configuration: %w", err)
 	}
