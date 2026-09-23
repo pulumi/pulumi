@@ -1,4 +1,4 @@
 package "selfref" {
   baseProviderName    = "selfref"
-  baseProviderVersion = "1.0.0"
+  baseProviderVersion = "54.0.0"
 }

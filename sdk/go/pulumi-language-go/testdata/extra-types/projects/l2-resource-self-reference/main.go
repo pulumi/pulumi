@@ -1,7 +1,7 @@
 package main
 
 import (
-	"example.com/pulumi-selfref/sdk/go/selfref"
+	"example.com/pulumi-selfref/sdk/go/v54/selfref"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 

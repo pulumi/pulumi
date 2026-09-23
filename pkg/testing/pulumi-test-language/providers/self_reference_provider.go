@@ -42,7 +42,7 @@ func (p *SelfReferenceProvider) Configure(
 }
 
 func (p *SelfReferenceProvider) GetPluginInfo(context.Context) (plugin.PluginInfo, error) {
-	ver := semver.MustParse("1.0.0")
+	ver := semver.MustParse("54.0.0")
 	return plugin.PluginInfo{Version: &ver}, nil
 }
 
@@ -52,10 +52,7 @@ func (p *SelfReferenceProvider) GetSchema(
 	ref := schema.TypeSpec{Ref: "#/resources/selfref:index:Node"}
 	pkg := schema.PackageSpec{
 		Name:    "selfref",
-		Version: "1.0.0",
-		Language: map[string]schema.RawMessage{
-			"go": schema.RawMessage(`{"generateResourceContainerTypes": true}`),
-		},
+		Version: "54.0.0",
 		Resources: map[string]schema.ResourceSpec{
 			"selfref:index:Node": {
 				InputProperties: map[string]schema.PropertySpec{
