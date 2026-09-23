@@ -676,10 +676,16 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		g.Fgen(w, ")")
 	case "length":
 		argType := pcl.UnwrapOption(model.ResolveOutputs(expr.Args[0].Type()))
-		if model.StringType.AssignableFrom(argType) {
+		_, isMap := argType.(*model.MapType)
+		_, isObject := argType.(*model.ObjectType)
+		switch {
+		case model.StringType.AssignableFrom(argType):
 			// Use Intl.Segmenter to count Unicode grapheme clusters, matching PCL's length() semantics.
 			g.Fgenf(w, "[...new Intl.Segmenter().segment(%.20v)].length", expr.Args[0])
-		} else {
+		case isMap || isObject || argType == model.DynamicType:
+			// Object.keys also counts array elements, so it covers dynamic values whose runtime type is unknown.
+			g.Fgenf(w, "Object.keys(%.20v).length", expr.Args[0])
+		default:
 			g.Fgenf(w, "%.20v.length", expr.Args[0])
 		}
 	case "lookup":

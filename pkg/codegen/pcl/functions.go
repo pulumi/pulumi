@@ -194,7 +194,7 @@ func pulumiBuiltins(options bindOptions) map[string]*model.Function {
 				return model.StaticFunctionSignature{
 					Parameters: []model.Parameter{{
 						Name: "value",
-						Type: valueType,
+						Type: model.ResolveOutputs(valueType),
 					}},
 					ReturnType: returnType,
 				}, diagnostics
