@@ -25,13 +25,14 @@ export * from "./stash";
 // Export submodules individually.
 import * as asset from "./asset";
 import * as automation from "./automation";
+import * as delivery from "./delivery";
 import * as dynamic from "./dynamic";
 import * as iterable from "./iterable";
 import * as log from "./log";
 import * as provider from "./provider";
 import * as runtime from "./runtime";
 import * as utils from "./utils";
-export { asset, automation, dynamic, iterable, log, provider, runtime, utils };
+export { asset, automation, delivery, dynamic, iterable, log, provider, runtime, utils };
 
 // @pulumi is a deployment-only module.  If someone tries to capture it, and we fail for some reason
 // we want to give a good message about what the problem likely is.  Note that capturing a
