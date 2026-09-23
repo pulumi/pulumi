@@ -490,6 +490,43 @@ func TestBindIndex(t *testing.T) {
 	}
 }
 
+func TestBindLookup(t *testing.T) {
+	t.Parallel()
+
+	env := environment(map[string]any{
+		"key": StringType,
+		"m":   NewMapType(BoolType),
+		"o":   NewObjectType(map[string]Type{"foo": BoolType, "bar": BoolType}),
+		"om":  NewOutputType(NewMapType(BoolType)),
+	})
+	scope := env.scope()
+
+	cases := []struct {
+		x       string
+		t       Type
+		printed string
+	}{
+		{x: `lookup(m, key)`, t: BoolType, printed: "m[key]"},
+		{x: `lookup(o, "foo")`, t: BoolType, printed: `o["foo"]`},
+		{x: `lookup(o, key)`, t: BoolType, printed: `o[key]`},
+		{x: `lookup(om, key)`, t: NewOutputType(BoolType), printed: "om[key]"},
+		{x: `lookup( m , key )`, t: BoolType, printed: " m[key ]"},
+		{x: "lookup(m, /* c */ key)", t: BoolType, printed: "m[/* c */ key]"},
+	}
+	for _, c := range cases {
+		t.Run(c.x, func(t *testing.T) {
+			t.Parallel()
+
+			expr, diags := BindExpressionText(c.x, scope, hcl.Pos{})
+			require.Len(t, diags, 0)
+			assert.Equal(t, c.t, expr.Type())
+			_, ok := expr.(*IndexExpression)
+			assert.True(t, ok)
+			assert.Equal(t, c.printed, fmt.Sprintf("%v", expr))
+		})
+	}
+}
+
 func TestBindObjectCons(t *testing.T) {
 	t.Parallel()
 
