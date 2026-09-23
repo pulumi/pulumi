@@ -298,6 +298,11 @@ func testLanguage(t *testing.T, config languageTestConfig) {
 				t.Skipf("Skipping known failure: %s", expected)
 			}
 
+			if tt == "l2-resource-self-reference" &&
+				(config.languageInfo == nil || !config.languageInfo.GenerateResourceContainerTypes) {
+				t.Skip("Resource array and map inputs require generateResourceContainerTypes; tested in extra-types mode")
+			}
+
 			if _, has := programOverrides[tt]; config.local && has {
 				t.Skip("Skipping override tests in local mode")
 			}
