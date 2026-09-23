@@ -7,3 +7,5 @@ export const lookupOutput = aMap["keyPresent"] || "default";
 export const lookupOutputDefault = aMap["keyMissing"] || "default";
 const alternativeNames = config.getObject<any>("alternativeNames") || {};
 export const names = Object.entries(alternativeNames).sort().map(([k, v]) => ({key: k, value: v})).map(entry => (entry.value));
+export const lengthOutput = Object.keys(aMap).length;
+export const lengthDynamicOutput = Object.keys(alternativeNames).length;
