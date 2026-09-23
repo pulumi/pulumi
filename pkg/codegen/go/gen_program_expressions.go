@@ -1680,10 +1680,9 @@ func (g *generator) argumentTypeName(destType model.Type, isInput bool) (result 
 		var elmType model.Type
 		for i, t := range destType.ElementTypes {
 			if i == 0 {
-				elmType = t
-				if cns, ok := elmType.(*model.ConstType); ok {
-					elmType = cns.Type
-				}
+				// Literals carry constant types; two elements with different constants share
+				// a Go type when their shapes agree.
+				elmType = withoutConstants(t)
 				continue
 			}
 
@@ -2353,4 +2352,41 @@ func isResourceReference(t model.Type) bool {
 	}
 	_, ok = model.GetObjectTypeAnnotation[*pcl.ResourceAnnotation](obj)
 	return ok
+}
+
+// withoutConstants replaces every constant type in t with the type of its value.
+func withoutConstants(t model.Type) model.Type {
+	switch t := t.(type) {
+	case *model.ConstType:
+		return t.Type
+	case *model.ListType:
+		return model.NewListType(withoutConstants(t.ElementType))
+	case *model.SetType:
+		return model.NewSetType(withoutConstants(t.ElementType))
+	case *model.MapType:
+		return model.NewMapType(withoutConstants(t.ElementType))
+	case *model.OutputType:
+		return model.NewOutputType(withoutConstants(t.ElementType))
+	case *model.PromiseType:
+		return model.NewPromiseType(withoutConstants(t.ElementType))
+	case *model.TupleType:
+		elements := make([]model.Type, len(t.ElementTypes))
+		for i, e := range t.ElementTypes {
+			elements[i] = withoutConstants(e)
+		}
+		return model.NewTupleType(elements...)
+	case *model.UnionType:
+		elements := make([]model.Type, len(t.ElementTypes))
+		for i, e := range t.ElementTypes {
+			elements[i] = withoutConstants(e)
+		}
+		return model.NewUnionTypeAnnotated(elements, t.Annotations...)
+	case *model.ObjectType:
+		properties := make(map[string]model.Type, len(t.Properties))
+		for k, v := range t.Properties {
+			properties[k] = withoutConstants(v)
+		}
+		return model.NewObjectType(properties, t.Annotations...)
+	}
+	return t
 }
