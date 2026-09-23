@@ -1,0 +1,4 @@
+component: cli
+kind: fix
+body: Include `-C <dir>` in the `pulumi stack rm` command suggested after `pulumi destroy`
+    so the hint is runnable when the global `--cwd` flag was used
