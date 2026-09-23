@@ -390,7 +390,6 @@ func TestLookupDefaultType(t *testing.T) {
 			model.NewConstType(model.StringType, cty.StringVal("none")))},
 		{source: `value = lookup({for k, v in {"a" = [false]} : k => v}, "a", [true])`, typ: model.NewTupleType(
 			model.NewUnionType(cf, ct))},
-		{source: `value = lookup({for k, v in {"a" = false} : k => v}, "a")`, typ: cf},
 		{
 			source: `value = lookup(secret({for k, v in {"a" = false} : k => v}), "a", true)`,
 			typ:    model.NewOutputType(model.NewUnionType(cf, ct)),
@@ -407,4 +406,15 @@ func TestLookupDefaultType(t *testing.T) {
 			assert.True(t, c.typ.Equals(typ), "expected %v, got %v", c.typ, typ)
 		})
 	}
+}
+
+// Tests that `lookup` requires a default, as the interpreter's implementation does.
+func TestLookupRequiresDefault(t *testing.T) {
+	t.Parallel()
+
+	program, diags, err := ParseAndBindProgram(t, `value = lookup({for k, v in {"a" = false} : k => v}, "a")`,
+		"program.pp")
+	assert.Nil(t, program, "The program doesn't bind")
+	assert.ErrorContains(t, err, "missing required parameter 'default'")
+	assert.True(t, diags.HasErrors())
 }
