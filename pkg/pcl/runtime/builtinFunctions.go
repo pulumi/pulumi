@@ -1152,6 +1152,7 @@ func (ectx *EvalContext) builtinFunctions() map[string]function.Function {
 		"join":               stdlib.JoinFunc,
 		"length":             lengthFunc,
 		"notImplemented":     notImplementedFn,
+		"range":              stdlib.RangeFunc,
 		"singleOrNone":       singleOrNoneFn,
 		"entries":            entriesFn,
 		"lookup":             stdlib.LookupFunc,
