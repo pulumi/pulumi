@@ -150,10 +150,11 @@ func (w *recordingWorkspace) DownloadPlugin(
 	w.start("DownloadPlugin", ctx, plugin)
 	path, markDone, err := w.w.DownloadPlugin(ctx, plugin)
 	w.finish(path, markDone, err)
-	return path, func(success bool) {
+	return path, func(success bool) error {
 		w.start("DownloadPlugin.MarkInstallationDone", plugin, success)
-		markDone(success)
-		w.finish()
+		err := markDone(success)
+		w.finish(err)
+		return err
 	}, err
 }
 

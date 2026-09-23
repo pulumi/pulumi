@@ -16,58 +16,58 @@ package pluginstorage
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"os"
 	"path/filepath"
 	"regexp"
 
+	"github.com/pulumi/pulumi/pkg/v3/util/atomicinstall"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 // UnpackContents installs a plugin's tarball into the cache. It validates that
-// plugin names are in the expected format. cleanup *must* be called to avoid leaking
-// system level resources. It should be passed `true` if the plugin was successfully
-// installed, and `false` otherwise.
+// plugin names are in the expected format.
 //
-// Cleanup:
-//
-// In addition to the downloaded plugin, this file creates 2 empty files on disk:
-//
-// - "<spec>.lock"
-// - "<spec>.partial"
-//
-// "<spec>.lock" establishes a process level lock on the plugin, preventing some
-// concurrent operations on the plugin from multiple versions of Pulumi. It should always
-// be removed after the plugin is installed, *or* if the install fails for any reason.
-//
-// "<spec>.partial" indicates that the plugin is not yet fully installed. "<spec>.partial"
-// should be removed after the plugin is *successfully* installed, but left if the install
-// fails for any reason.
+// cleanup *must* be called to avoid leaking system level resources.  It should
+// be passed `true` if the plugin was successfully installed, and `false`
+// otherwise. The plugin is not considered installed until cleanup is called,
+// and it is not considered installed successfully until cleanup(true) is
+// called.
 func UnpackContents(
 	ctx context.Context, spec workspace.PluginDescriptor, content Content, reinstall bool,
-) (cleanup func(success bool), err error) {
+) (cleanup func(success bool) error, err error) {
 	defer contract.IgnoreClose(content)
 
-	// Fetch the directory into which we will expand this tarball.
-	finalDir, err := spec.DirPath()
+	pluginDir, err := workspace.GetPluginDir()
+	if err != nil {
+		return nil, err
+	}
+	store := atomicinstall.NewStore(pluginDir)
+	key := spec.Dir()
+
+	lock, err := store.Mutate(ctx, key)
 	if err != nil {
 		return nil, err
 	}
 
-	// Create a file lock file at <pluginsdir>/<kind>-<name>-<version>.lock.
-	unlock, err := lockPluginForInstall(spec)
-	if err != nil {
-		return nil, err
+	if _, ok := lock.Installed(); ok && !reinstall {
+		return func(bool) error { return nil }, lock.Close()
 	}
+
 	// If we are not passing back a cleaup function, then we need to close the lock.
 	defer func() {
 		if cleanup == nil {
-			unlock()
+			contract.IgnoreClose(lock)
 		}
 	}()
+
+	finalDir, err := lock.Reset()
+	if err != nil {
+		return nil, err
+	}
 
 	// Previous versions of Pulumi extracted the tarball to a temp directory first, and then renamed the temp
 	// directory to the final directory. The rename operation fails often enough on Windows due to aggressive
@@ -81,52 +81,6 @@ func UnpackContents(
 		slog.InfoContext(ctx, "Install: Error cleaning up temp dirs", "err", err)
 	}
 
-	// Get the partial file path (e.g. <pluginsdir>/<kind>-<name>-<version>.partial).
-	partialFilePath, err := spec.PartialFilePath()
-	if err != nil {
-		return nil, err
-	}
-
-	// Check whether the directory exists while we were waiting on the lock.
-	_, finalDirStatErr := os.Stat(finalDir)
-	if finalDirStatErr == nil {
-		_, partialFileStatErr := os.Stat(partialFilePath)
-		if partialFileStatErr != nil {
-			if !os.IsNotExist(partialFileStatErr) {
-				return nil, partialFileStatErr
-			}
-			if !reinstall {
-				// finalDir exists, there's no partial file, and we're not reinstalling, so the plugin is already
-				// installed.
-				unlock()
-				return func(bool) {}, nil
-			}
-		}
-
-		// Either the partial file exists--meaning a previous attempt at installing the plugin failed--or we're
-		// deliberately reinstalling the plugin. Delete finalDir so we can try installing again. Create the partial
-		// file before deleting so concurrent processes never observe the directory mid-deletion as a completed
-		// install.
-		if err := os.WriteFile(partialFilePath, nil, 0o600); err != nil {
-			return nil, err
-		}
-		if err := os.RemoveAll(finalDir); err != nil {
-			return nil, err
-		}
-	} else if !os.IsNotExist(finalDirStatErr) {
-		return nil, finalDirStatErr
-	}
-
-	// Create an empty partial file to indicate installation is in-progress.
-	if err := os.WriteFile(partialFilePath, nil, 0o600); err != nil {
-		return nil, err
-	}
-
-	// Create the final directory.
-	if err := os.MkdirAll(finalDir, 0o700); err != nil {
-		return nil, err
-	}
-
 	if err := content.writeToDir(finalDir); err != nil {
 		return nil, err
 	}
@@ -137,11 +91,12 @@ func UnpackContents(
 	contract.IgnoreClose(content)
 
 	// The download is complete.
-	return func(success bool) {
+	return func(success bool) error {
+		var err error
 		if success {
-			contract.IgnoreError(os.Remove(partialFilePath))
+			err = lock.Commit()
 		}
-		unlock()
+		return errors.Join(err, lock.Close())
 	}, nil
 }
 
@@ -171,25 +126,4 @@ func cleanupTempDirs(finalDir string) error {
 	}
 
 	return nil
-}
-
-// LockPluginForInstall acquires a file lock used to prevent concurrent installs.
-func lockPluginForInstall(spec workspace.PluginDescriptor) (func(), error) {
-	finalDir, err := spec.DirPath()
-	if err != nil {
-		return nil, err
-	}
-	lockFilePath := finalDir + ".lock"
-
-	if err := os.MkdirAll(filepath.Dir(lockFilePath), 0o700); err != nil {
-		return nil, fmt.Errorf("creating plugin root: %w", err)
-	}
-
-	mutex := fsutil.NewFileMutex(lockFilePath)
-	if err := mutex.Lock(); err != nil {
-		return nil, err
-	}
-	return func() {
-		contract.IgnoreError(mutex.Unlock())
-	}, nil
 }
