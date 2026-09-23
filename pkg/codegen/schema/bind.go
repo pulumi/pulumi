@@ -258,8 +258,10 @@ func bindSpec(ctx context.Context, spec PackageSpec, languages map[string]Langua
 	if err := pkg.ImportLanguages(languages); err != nil {
 		return nil, nil, err
 	}
-	pkg.interpretPulumiRefs = func(description string, resolver PulumiRefResolver) (string, error) {
-		return interpretPulumiRefsInDescription(description, types, resolver)
+	pkg.interpretPulumiRefs = func(
+		description string, resolver PulumiRefResolver, opts interpretRefsOptions,
+	) (string, hcl.Diagnostics) {
+		return interpretPulumiRefsInDescription(description, types, resolver, opts)
 	}
 	return pkg, diags, nil
 }
@@ -449,8 +451,10 @@ func ImportPartialSpecWithContext(
 	}
 	pkg.types = types
 	types.bindLock = &pkg.m
-	types.pkg.interpretPulumiRefs = func(description string, resolver PulumiRefResolver) (string, error) {
-		return interpretPulumiRefsInDescription(description, types, resolver)
+	types.pkg.interpretPulumiRefs = func(
+		description string, resolver PulumiRefResolver, opts interpretRefsOptions,
+	) (string, hcl.Diagnostics) {
+		return interpretPulumiRefsInDescription(description, types, resolver, opts)
 	}
 	return pkg, nil
 }
@@ -1716,7 +1720,7 @@ func checkDocRefs(types *types, spec PackageSpec) hcl.Diagnostics {
 			return
 		}
 		parsed := ParseDocs([]byte(text))
-		diags = diags.Extend(interpretPulumiRefs(path, types, parsed, resolver))
+		diags = diags.Extend(interpretPulumiRefs(path, types, parsed, resolver, interpretRefsOptions{}))
 	}
 
 	checkProperties := func(basePath string, props map[string]PropertySpec) {

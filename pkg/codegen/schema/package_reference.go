@@ -97,6 +97,11 @@ type PackageReference interface {
 
 	// InterpretPulumiRefs returns the result of interpreting any references in the given string.
 	InterpretPulumiRefs(string, PulumiRefResolver) (string, error)
+
+	// InterpretPulumiRefsWithDiagnostics returns the result of interpreting any references in the
+	// given string alongside any diagnostics, rather than reporting a single failed reference as an
+	// error for the whole string. See [Package.InterpretPulumiRefsWithDiagnostics].
+	InterpretPulumiRefsWithDiagnostics(string, PulumiRefResolver) (string, hcl.Diagnostics)
 }
 
 // PackageTypes provides random and sequential access to a package's types.
@@ -266,6 +271,12 @@ func (p packageDefRef) Definition() (*Package, error) {
 
 func (p packageDefRef) InterpretPulumiRefs(description string, resolver PulumiRefResolver) (string, error) {
 	return p.pkg.InterpretPulumiRefs(description, resolver)
+}
+
+func (p packageDefRef) InterpretPulumiRefsWithDiagnostics(
+	description string, resolver PulumiRefResolver,
+) (string, hcl.Diagnostics) {
+	return p.pkg.InterpretPulumiRefsWithDiagnostics(description, resolver)
 }
 
 type packageDefTypes struct {
@@ -891,6 +902,19 @@ func (p *PartialPackage) InterpretPulumiRefs(description string, resolver Pulumi
 	p.m.Unlock()
 
 	return pkg.InterpretPulumiRefs(description, resolver)
+}
+
+func (p *PartialPackage) InterpretPulumiRefsWithDiagnostics(
+	description string, resolver PulumiRefResolver,
+) (string, hcl.Diagnostics) {
+	p.m.Lock()
+	pkg := p.def
+	if pkg == nil {
+		pkg = p.types.pkg
+	}
+	p.m.Unlock()
+
+	return pkg.InterpretPulumiRefsWithDiagnostics(description, resolver)
 }
 
 type partialPackageTypes struct {
