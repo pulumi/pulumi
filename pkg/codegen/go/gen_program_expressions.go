@@ -305,6 +305,11 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		}
 		fromType := from.Type()
 		isFromOutput, _ := model.ContainsEventuals(fromType)
+		// A resource reference is a plain value whose properties are outputs. It must not be cast
+		// as if the reference itself were an output.
+		if isResourceReference(fromType) {
+			isFromOutput = false
+		}
 
 		switch to := to.(type) {
 		case *model.EnumType:
@@ -2334,4 +2339,18 @@ var functionPackages = map[string][]string{
 
 func (g *generator) genFunctionPackages(x *model.FunctionCallExpression) []string {
 	return functionPackages[x.Name]
+}
+
+// isResourceReference reports whether t is the type of a resource or of a schema property that
+// references a resource type.
+func isResourceReference(t model.Type) bool {
+	obj, ok := model.ResolveOutputs(t).(*model.ObjectType)
+	if !ok {
+		return false
+	}
+	if _, ok := model.GetObjectTypeAnnotation[*schema.ResourceType](obj); ok {
+		return true
+	}
+	_, ok = model.GetObjectTypeAnnotation[*pcl.ResourceAnnotation](obj)
+	return ok
 }
