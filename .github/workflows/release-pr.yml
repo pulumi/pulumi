@@ -57,6 +57,7 @@ jobs:
           PULUMI_VERSION: ${{ inputs.version }}
           QUEUE_MERGE: ${{ inputs.queue-merge }}
           GITHUB_TOKEN: ${{ secrets.PULUMI_BOT_TOKEN }}
+          REVIEW_TOKEN: ${{ secrets.PULUMI_REVIEW_TOKEN }}
         run: |
           set -euo pipefail
           git switch --create "automation/release-v${PULUMI_VERSION}"
@@ -88,6 +89,8 @@ jobs:
           # Note that the title of the PR is used in the on-push workflow.  If the title needs to
           # change here, please also check on-push.yml
           PR=$(gh pr create --title "Changelog and go.mod updates for v${PULUMI_VERSION}" --body "")
+
+          GITHUB_TOKEN="${REVIEW_TOKEN}" gh pr review --approve "${PR}"
 
           if [ "${QUEUE_MERGE}" = "true" ]; then
             gh pr merge --auto --squash "${PR}"
