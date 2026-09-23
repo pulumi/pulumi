@@ -121,6 +121,15 @@ func assignableFrom(dest, src Type, assignableFromImpl func() bool) bool {
 	if cns, ok := src.(*ConstType); ok {
 		return assignableFrom(dest, cns.Type, assignableFromImpl)
 	}
+	// A union is assignable when each of its members is, as a union of constants is to their type.
+	if union, ok := src.(*UnionType); ok {
+		for _, element := range union.ElementTypes {
+			if !dest.AssignableFrom(element) {
+				return false
+			}
+		}
+		return true
+	}
 	return assignableFromImpl()
 }
 
