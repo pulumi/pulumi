@@ -16,7 +16,7 @@ package config
 
 import (
 	"fmt"
-	"strconv"
+	"strings"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 )
@@ -47,9 +47,12 @@ func stackEnvPrivileged(op Operation) (bool, error) {
 	if forced == "" {
 		return op.Privileged(), nil
 	}
-	privileged, err := strconv.ParseBool(forced)
-	if err != nil {
-		return false, fmt.Errorf("PULUMI_ESC_PRIVILEGED must be true or false, got %q", forced)
+	switch {
+	case forced == "1" || strings.EqualFold(forced, "true"):
+		return true, nil
+	case forced == "0" || strings.EqualFold(forced, "false"):
+		return false, nil
+	default:
+		return false, fmt.Errorf("PULUMI_ESC_PRIVILEGED must be true, false, 1 or 0, got %q", forced)
 	}
-	return privileged, nil
 }

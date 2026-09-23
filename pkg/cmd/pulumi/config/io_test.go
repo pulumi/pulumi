@@ -389,6 +389,9 @@ func TestOpenStackEnvPrivileged(t *testing.T) {
 		{envVar: "", want: func(op Operation) bool { return privilegedOperations[op] }},
 		{envVar: "true", want: func(Operation) bool { return true }},
 		{envVar: "false", want: func(Operation) bool { return false }},
+		{envVar: "TRUE", want: func(Operation) bool { return true }},
+		{envVar: "1", want: func(Operation) bool { return true }},
+		{envVar: "0", want: func(Operation) bool { return false }},
 	}
 
 	for _, tc := range cases {
@@ -411,20 +414,22 @@ func TestOpenStackEnvPrivileged(t *testing.T) {
 		}
 	}
 
-	t.Run("invalid PULUMI_ESC_PRIVILEGED", func(t *testing.T) {
-		t.Setenv("PULUMI_ESC_PRIVILEGED", "sometimes")
+	for _, invalid := range []string{"sometimes", "t"} {
+		t.Run(fmt.Sprintf("invalid PULUMI_ESC_PRIVILEGED=%q", invalid), func(t *testing.T) {
+			t.Setenv("PULUMI_ESC_PRIVILEGED", invalid)
 
-		var gotPrivileged *bool
-		stack := newPrivilegedCaptureStack(&gotPrivileged)
+			var gotPrivileged *bool
+			stack := newPrivilegedCaptureStack(&gotPrivileged)
 
-		var projectStack workspace.ProjectStack
-		err := yaml.Unmarshal([]byte("environment:\n  - proj/env"), &projectStack)
-		require.NoError(t, err)
+			var projectStack workspace.ProjectStack
+			err := yaml.Unmarshal([]byte("environment:\n  - proj/env"), &projectStack)
+			require.NoError(t, err)
 
-		_, _, err = openStackEnv(t.Context(), stack, &projectStack, nil, OperationUp)
-		assert.ErrorContains(t, err, "PULUMI_ESC_PRIVILEGED must be true or false")
-		assert.Nil(t, gotPrivileged)
-	})
+			_, _, err = openStackEnv(t.Context(), stack, &projectStack, nil, OperationUp)
+			assert.ErrorContains(t, err, "PULUMI_ESC_PRIVILEGED must be true, false, 1 or 0")
+			assert.Nil(t, gotPrivileged)
+		})
+	}
 }
 
 func newPrivilegedCaptureStack(gotPrivileged **bool) *backend.MockStack {
