@@ -1,0 +1,62 @@
+run: |
+  esc open default/dispatch
+  esc open default/dispatch --privileged
+  esc open default/dispatch --draft=EXAMPLE
+  esc open default/dispatch --draft=EXAMPLE --privileged
+environments:
+  test-user/default/dispatch:
+    imports:
+      - read:
+          includeIn: unprivileged
+      - write:
+          includeIn: privileged
+    values:
+      summary: ${access}
+  test-user/default/dispatch_DRAFT:
+    imports:
+      - read:
+          includeIn: unprivileged
+      - write:
+          includeIn: privileged
+    values:
+      summary: draft ${access}
+  test-user/default/read:
+    values:
+      access: read
+      readOnlyKey: r
+  test-user/default/write:
+    values:
+      access: write
+      writeOnlyKey: w
+
+---
+> esc open default/dispatch
+{
+  "access": "read",
+  "readOnlyKey": "r",
+  "summary": "read"
+}
+> esc open default/dispatch --privileged
+{
+  "access": "write",
+  "summary": "write",
+  "writeOnlyKey": "w"
+}
+> esc open default/dispatch --draft=EXAMPLE
+{
+  "access": "read",
+  "readOnlyKey": "r",
+  "summary": "draft read"
+}
+> esc open default/dispatch --draft=EXAMPLE --privileged
+{
+  "access": "write",
+  "summary": "draft write",
+  "writeOnlyKey": "w"
+}
+
+---
+> esc open default/dispatch
+> esc open default/dispatch --privileged
+> esc open default/dispatch --draft=EXAMPLE
+> esc open default/dispatch --draft=EXAMPLE --privileged

@@ -34,6 +34,7 @@ func newEnvOpenCmd(envcmd *envCommand) *cobra.Command {
 	var duration time.Duration
 	var format string
 	var draft string
+	var privileged bool
 
 	cmd := &cobra.Command{
 		Use:   "open [<org-name>/][<project-name>/]<environment-name>[@<version>] [property path]",
@@ -75,7 +76,7 @@ func newEnvOpenCmd(envcmd *envCommand) *cobra.Command {
 				return fmt.Errorf("unknown output format %q", format)
 			}
 
-			env, diags, err := envcmd.openEnvironment(ctx, ref, duration, draft)
+			env, diags, err := envcmd.openEnvironment(ctx, ref, duration, draft, privileged)
 			if err != nil {
 				return err
 			}
@@ -96,9 +97,15 @@ func newEnvOpenCmd(envcmd *envCommand) *cobra.Command {
 	cmd.Flags().StringVar(
 		&draft, "draft", "",
 		"open an environment draft with --draft=<change-request-id>")
+	cmd.Flags().BoolVar(
+		&privileged, "privileged", false,
+		privilegedFlagUsage)
 
 	return cmd
 }
+
+const privilegedFlagUsage = "evaluate imports marked 'includeIn: privileged' instead of those marked " +
+	"'includeIn: unprivileged'"
 
 func (env *envCommand) renderValue(
 	out io.Writer,
@@ -224,10 +231,12 @@ func (env *envCommand) openEnvironment(
 	ref environmentRef,
 	duration time.Duration,
 	changeRequestID string,
+	privileged bool,
 ) (*esc.Environment, []client.EnvironmentDiagnostic, error) {
 	var envID string
 	var diags []client.EnvironmentDiagnostic
 	var err error
+	opt := client.OpenEnvironmentOption{Privileged: privileged}
 	if changeRequestID == "" {
 		envID, diags, err = env.esc.client.OpenEnvironment(
 			ctx,
@@ -236,9 +245,10 @@ func (env *envCommand) openEnvironment(
 			ref.envName,
 			ref.version,
 			duration,
+			opt,
 		)
 	} else {
-		envID, diags, err = env.esc.client.OpenEnvironmentDraft(ctx, ref.orgName, ref.projectName, ref.envName, changeRequestID, duration) //nolint:lll
+		envID, diags, err = env.esc.client.OpenEnvironmentDraft(ctx, ref.orgName, ref.projectName, ref.envName, changeRequestID, duration, opt) //nolint:lll
 	}
 	if err != nil {
 		return nil, nil, err

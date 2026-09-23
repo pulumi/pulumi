@@ -2176,3 +2176,74 @@ func TestEnvOpenRequestSubmits(t *testing.T) {
 	require.NotNil(t, client.submittedChangeRequests[2].description)
 	assert.Equal(t, "Need prod access for incident 1234", *client.submittedChangeRequests[2].description)
 }
+
+func TestPrivilegedFlagReachesClient(t *testing.T) {
+	t.Setenv("PULUMI_API", "")
+	t.Setenv("PULUMI_HOME", t.TempDir())
+
+	cases := []struct {
+		fixture         string
+		script          string
+		checkPrivileged bool
+		wantPrivileged  bool
+	}{
+		{fixture: "open-privileged.yaml", script: "esc env open default/dispatch", wantPrivileged: false},
+		{fixture: "open-privileged.yaml", script: "esc env open default/dispatch --privileged", wantPrivileged: true},
+		{
+			fixture:        "open-privileged.yaml",
+			script:         "esc env open default/dispatch --draft=EXAMPLE --privileged",
+			wantPrivileged: true,
+		},
+		{fixture: "open-privileged.yaml", script: "esc open default/dispatch --privileged", wantPrivileged: true},
+		{fixture: "run-privileged.yaml", script: "esc env run default/dispatch echo-access", wantPrivileged: false},
+		{
+			fixture:        "run-privileged.yaml",
+			script:         "esc env run default/dispatch --privileged echo-access",
+			wantPrivileged: true,
+		},
+		{
+			fixture:         "env-get-privileged.yaml",
+			script:          "esc env get default/dispatch",
+			checkPrivileged: true,
+			wantPrivileged:  false,
+		},
+		{
+			fixture:         "env-get-privileged.yaml",
+			script:          "esc env get default/dispatch --privileged",
+			checkPrivileged: true,
+			wantPrivileged:  true,
+		},
+		{
+			fixture:         "env-get-privileged.yaml",
+			script:          "esc env get default/dispatch --value json --privileged",
+			checkPrivileged: true,
+			wantPrivileged:  true,
+		},
+	}
+	for _, tc := range cases { //nolint:paralleltest // non-thread-safe shared state
+		t.Run(tc.script, func(t *testing.T) {
+			_, testcase, err := loadTestcase(filepath.Join("testdata", tc.fixture))
+			require.NoError(t, err)
+
+			fake := testcase.exec.client
+			fake.lastOpenPrivileged = !tc.wantPrivileged
+			fake.lastCheckPrivileged = !tc.wantPrivileged
+
+			var stdout, stderr bytes.Buffer
+			err = testcase.exec.runScript(tc.script, &exec.Cmd{
+				Path:   "<script>",
+				Args:   []string{"<script>"},
+				Stdin:  bytes.NewReader(nil),
+				Stdout: &stdout,
+				Stderr: &stderr,
+			})
+			require.NoError(t, err, stderr.String())
+
+			if tc.checkPrivileged {
+				assert.Equal(t, tc.wantPrivileged, fake.lastCheckPrivileged)
+			} else {
+				assert.Equal(t, tc.wantPrivileged, fake.lastOpenPrivileged)
+			}
+		})
+	}
+}

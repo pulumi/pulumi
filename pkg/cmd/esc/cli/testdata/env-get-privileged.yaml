@@ -1,0 +1,68 @@
+run: |
+  esc env get default/dispatch summary
+  esc env get default/dispatch summary --privileged
+  esc env get default/dispatch --value json
+  esc env get default/dispatch --value json --privileged
+environments:
+  test-user/default/dispatch:
+    imports:
+      - read:
+          includeIn: unprivileged
+      - write:
+          includeIn: privileged
+    values:
+      summary: ${access}
+  test-user/default/read:
+    values:
+      access: read
+  test-user/default/write:
+    values:
+      access: write
+      writeOnlyKey: w
+
+---
+> esc env get default/dispatch summary
+# Value
+```json
+"read"
+```
+# Definition
+```yaml
+${access}
+
+```
+
+# Defined at
+- dispatch:7:14
+
+> esc env get default/dispatch summary --privileged
+# Value
+```json
+"write"
+```
+# Definition
+```yaml
+${access}
+
+```
+
+# Defined at
+- dispatch:7:14
+
+> esc env get default/dispatch --value json
+{
+  "access": "read",
+  "summary": "read"
+}
+> esc env get default/dispatch --value json --privileged
+{
+  "access": "write",
+  "summary": "write",
+  "writeOnlyKey": "w"
+}
+
+---
+> esc env get default/dispatch summary
+> esc env get default/dispatch summary --privileged
+> esc env get default/dispatch --value json
+> esc env get default/dispatch --value json --privileged

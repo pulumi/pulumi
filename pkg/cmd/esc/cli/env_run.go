@@ -106,6 +106,7 @@ func newEnvRunCmd(envcmd *envCommand) *cobra.Command {
 	var interactive bool
 	var duration time.Duration
 	var draft string
+	var privileged bool
 
 	shell := valueOrDefault(filepath.Base(envcmd.esc.environ.Get("SHELL")), "sh")
 
@@ -157,7 +158,7 @@ func newEnvRunCmd(envcmd *envCommand) *cobra.Command {
 			}
 			args = args[1:]
 
-			env, diags, err := envcmd.openEnvironment(ctx, ref, duration, draft)
+			env, diags, err := envcmd.openEnvironment(ctx, ref, duration, draft, privileged)
 			if err != nil {
 				return err
 			}
@@ -229,6 +230,9 @@ func newEnvRunCmd(envcmd *envCommand) *cobra.Command {
 	cmd.Flags().StringVar(
 		&draft, "draft", "",
 		"open an environment draft with --draft=<change-request-id>")
+	cmd.Flags().BoolVar(
+		&privileged, "privileged", false,
+		privilegedFlagUsage)
 
 	return cmd
 }

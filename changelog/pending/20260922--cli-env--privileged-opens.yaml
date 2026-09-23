@@ -1,0 +1,4 @@
+component: cli/env
+kind: feat
+body: "Add `--privileged` to `pulumi env open`, `pulumi env run` and `pulumi env get` to select `includeIn: privileged` imports"
+time: 2026-09-22T00:00:00Z

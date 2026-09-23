@@ -1,0 +1,32 @@
+run: |
+  esc env run default/dispatch echo-access
+  esc env run default/dispatch --privileged echo-access
+process:
+  commands:
+    echo-access: |
+      echo "access: $ACCESS"
+environments:
+  test-user/default/dispatch:
+    imports:
+      - read:
+          includeIn: unprivileged
+      - write:
+          includeIn: privileged
+  test-user/default/read:
+    values:
+      environmentVariables:
+        ACCESS: read
+  test-user/default/write:
+    values:
+      environmentVariables:
+        ACCESS: write
+
+---
+> esc env run default/dispatch echo-access
+access: read
+> esc env run default/dispatch --privileged echo-access
+access: write
+
+---
+> esc env run default/dispatch echo-access
+> esc env run default/dispatch --privileged echo-access

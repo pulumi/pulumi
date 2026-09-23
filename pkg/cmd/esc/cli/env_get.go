@@ -41,7 +41,8 @@ import (
 )
 
 type envGetCommand struct {
-	env *envCommand
+	env        *envCommand
+	privileged bool
 }
 
 func newEnvGetCmd(env *envCommand) *cobra.Command {
@@ -148,6 +149,9 @@ func newEnvGetCmd(env *envCommand) *cobra.Command {
 	cmd.Flags().BoolVar(
 		&showSecrets, "show-secrets", false,
 		"Show static secrets in plaintext rather than ciphertext")
+	cmd.Flags().BoolVar(
+		&get.privileged, "privileged", false,
+		privilegedFlagUsage)
 
 	return cmd
 }
@@ -185,7 +189,7 @@ func (get *envGetCommand) writeValue(
 		ctx,
 		ref.orgName,
 		def,
-		client.CheckYAMLOption{ShowSecrets: showSecrets},
+		client.CheckYAMLOption{ShowSecrets: showSecrets, Privileged: get.privileged},
 	)
 	if err != nil {
 		return fmt.Errorf("getting environment: %w", err)
@@ -289,7 +293,7 @@ func (get *envGetCommand) getEntireEnvironment(
 		ctx,
 		orgName,
 		def,
-		client.CheckYAMLOption{ShowSecrets: showSecrets},
+		client.CheckYAMLOption{ShowSecrets: showSecrets, Privileged: get.privileged},
 	)
 	if err != nil {
 		return nil, fmt.Errorf("getting environment metadata: %w", err)
@@ -346,7 +350,7 @@ func (get *envGetCommand) getEnvironmentMember(
 		ctx,
 		orgName,
 		def,
-		client.CheckYAMLOption{ShowSecrets: showSecrets},
+		client.CheckYAMLOption{ShowSecrets: showSecrets, Privileged: get.privileged},
 	)
 	if err != nil {
 		return nil, fmt.Errorf("getting environment metadata: %w", err)
