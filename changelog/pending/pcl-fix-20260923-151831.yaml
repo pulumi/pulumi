@@ -1,0 +1,4 @@
+component: pcl
+kind: fix
+body: Report a type mismatch on a resource input property that the resource does not also declare as an output
+time: 2026-09-23T15:18:31.362459+02:00
