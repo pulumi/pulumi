@@ -94,7 +94,7 @@ jobs:
         if: ${{ matrix.language != 'go' }}
         run: |
           mkdir -p artifacts
-          gh release download "v${PULUMI_VERSION}" --dir ./artifacts --pattern 'sdk-${{ matrix.language }}-*'
+          bash .github/scripts/download-release-artifacts --dir ./artifacts --pattern 'sdk-${{ matrix.language }}-*'
           find artifacts
       - name: Publish Packages
         run: |
@@ -117,7 +117,7 @@ jobs:
       - name: Download release artifacts
         run: |
           mkdir -p artifacts
-          gh release download "v${PULUMI_VERSION}" --dir ./artifacts --pattern 'sdk-npm-*'
+          bash .github/scripts/download-release-artifacts --dir ./artifacts --pattern 'sdk-npm-*'
           find artifacts
       - name: Publish npm CLI wrapper
         run: |
@@ -144,7 +144,7 @@ jobs:
       - name: Download release artifacts
         run: |
           mkdir -p artifacts
-          gh release download "v${PULUMI_VERSION}" --dir ./artifacts --pattern 'pulumi-*'
+          bash .github/scripts/download-release-artifacts --dir ./artifacts --pattern 'pulumi-*'
           find artifacts
       - name: Publish Blobs
         run: |
