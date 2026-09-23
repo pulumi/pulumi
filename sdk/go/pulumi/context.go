@@ -1506,9 +1506,7 @@ func (ctx *Context) readPackageResource(
 			state = resp.Properties
 			// A skipped read reports Unknown=true; resolve outputs as unknown so dependents
 			// propagate unknowns instead of seeing empty values as real.
-			if resp.Result == pulumirpc.Result_SUCCESS && resp.Unknown {
-				keepUnknowns = true
-			}
+			keepUnknowns = resp.Result == pulumirpc.Result_SUCCESS && resp.Unknown
 		}
 	}()
 
