@@ -2175,9 +2175,14 @@ func (b *cloudBackend) runEngineAction(
 	cancellationScope := op.Scopes.NewScope(ctx, engineEvents, dryRun)
 	snapshotManagerClosed := false
 	engineCtx := &engine.Context{
-		Cancel:        cancellationScope.Context(),
-		Events:        engineEvents,
-		BackendClient: httpstateBackendClient{backend: backend.NewBackendClient(b, op.SecretsProvider)},
+		Cancel: cancellationScope.Context(),
+		Events: engineEvents,
+		BackendClient: httpstateBackendClient{
+			backend: backend.NewBackendClient(b, op.SecretsProvider),
+			b:       b,
+			org:     update.Owner,
+			window:  op.CoherenceWindow,
+		},
 		FinalizeUpdateFunc: func() {
 			if snapshotManager == nil || journalPersister == nil {
 				return
@@ -2984,6 +2989,21 @@ func (b *cloudBackend) GetDefaultOrg(ctx context.Context) (string, error) {
 
 type httpstateBackendClient struct {
 	backend deploy.BackendClient
+	b       *cloudBackend
+	org     string
+	window  string
+}
+
+func (c httpstateBackendClient) CoherenceWindow() string {
+	return c.window
+}
+
+func (c httpstateBackendClient) CreateCoherenceWindowSubgroup(ctx context.Context, size int) (string, error) {
+	return c.b.client.CreateCoherenceWindowSubgroup(ctx, c.org, c.window, size)
+}
+
+func (c httpstateBackendClient) CloseCoherenceWindowSubgroup(ctx context.Context, subgroupID string) error {
+	return c.b.client.CloseCoherenceWindowSubgroup(ctx, c.org, c.window, subgroupID)
 }
 
 func (c httpstateBackendClient) GetStackOutputs(

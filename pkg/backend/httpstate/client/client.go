@@ -1472,6 +1472,29 @@ func (pc *Client) ExportStackDeployment(
 	return apitype.UntypedDeployment(resp), nil
 }
 
+// CreateCoherenceWindowSubgroup creates a subgroup of a coherence window admitting size stacks, and
+// returns its ID, which those stacks' updates name in place of the window's own ID.
+func (pc *Client) CreateCoherenceWindowSubgroup(
+	ctx context.Context, orgName, windowID string, size int,
+) (string, error) {
+	req := apitype.CreateCoherenceWindowSubgroupRequest{Size: size}
+	var resp apitype.CreateCoherenceWindowSubgroupResponse
+	path := fmt.Sprintf("/api/orgs/%s/coherence-windows/%s/subgroups",
+		url.PathEscape(orgName), url.PathEscape(windowID))
+	if err := pc.restCall(ctx, "POST", path, nil, &req, &resp); err != nil {
+		return "", err
+	}
+	return resp.ID, nil
+}
+
+// CloseCoherenceWindowSubgroup closes a subgroup of a coherence window: reads of stacks that have not
+// joined it stop waiting for them, and no further update joins it.
+func (pc *Client) CloseCoherenceWindowSubgroup(ctx context.Context, orgName, windowID, subgroupID string) error {
+	path := fmt.Sprintf("/api/orgs/%s/coherence-windows/%s/subgroups/%s",
+		url.PathEscape(orgName), url.PathEscape(windowID), url.PathEscape(subgroupID))
+	return pc.restCall(ctx, "DELETE", path, nil, nil, nil)
+}
+
 // GetStackOutputs reads the outputs of the latest deployment of the indicated stack.
 func (pc *Client) GetStackOutputs(
 	ctx context.Context, stack StackIdentifier, readingUpdateID string,

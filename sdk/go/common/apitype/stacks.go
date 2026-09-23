@@ -142,6 +142,35 @@ type StackOutputsResponse struct {
 	// SecretsProviders is the secrets provider for the secret values in Outputs.
 	// It is absent when the stack has no state.
 	SecretsProviders *SecretsProvidersV1 `json:"secretsProviders,omitempty"`
+	// State is StackOutputsPending while the outputs are not known yet, in which case the response
+	// carries none and the request is repeated until it completes. An absent State is completed.
+	State StackOutputsState `json:"state,omitempty"`
+}
+
+// StackOutputsState reports whether a stack's outputs are known yet.
+type StackOutputsState string
+
+const (
+	// StackOutputsCompleted reports outputs that are in the response.
+	StackOutputsCompleted StackOutputsState = "completed"
+	// StackOutputsPending reports outputs that are not known yet, because a coherence window
+	// subgroup may still run an update of the stack the reading update must observe.
+	StackOutputsPending StackOutputsState = "pending"
+)
+
+// CreateCoherenceWindowSubgroupRequest defines the request body for creating a subgroup of a
+// coherence window.
+type CreateCoherenceWindowSubgroupRequest struct {
+	// Size is how many stacks take part in the subgroup. A read of a stack that could still join it
+	// waits, rather than fixing that stack at its current state, until the subgroup is full.
+	Size int `json:"size"`
+}
+
+// CreateCoherenceWindowSubgroupResponse defines the response body for creating a subgroup of a
+// coherence window.
+type CreateCoherenceWindowSubgroupResponse struct {
+	// ID is what an update names in place of the window's own ID to join as part of this subgroup.
+	ID string `json:"id"`
 }
 
 // ImportStackRequest defines the request body for importing a Stack.
