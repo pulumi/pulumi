@@ -261,7 +261,7 @@ func openStackEnv(
 	}
 	orgName := orgNamer.OrgName()
 
-	return envs.OpenYAMLEnvironment(ctx, orgName, yaml, 2*time.Hour, overrides)
+	return envs.OpenYAMLEnvironment(ctx, orgName, yaml, 2*time.Hour, overrides, false)
 }
 
 // parseEnvironmentOverrides converts <env>=<replacement> pairs into a map sent to ESC,

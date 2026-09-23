@@ -310,7 +310,7 @@ func (cmd *configEnvInitCmd) renderPreview(
 	yaml []byte,
 	showSecrets bool,
 ) (string, error) {
-	env, diags, err := b.CheckYAMLEnvironment(ctx, org, yaml)
+	env, diags, err := b.CheckYAMLEnvironment(ctx, org, yaml, false)
 	if err != nil {
 		return "", err
 	}

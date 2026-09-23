@@ -135,7 +135,8 @@ func (rp *cloudRequiredPolicy) ResolveEnvironments(ctx context.Context) (*engine
 	// This reuses the same path as stack ESC resolution.
 	yaml := workspace.NewEnvironment(rp.Environments).Definition()
 
-	env, diags, err := rp.envs.OpenYAMLEnvironment(ctx, rp.orgName, yaml, 2*time.Hour, nil)
+	// TODO(poc): policy-pack environments open unprivileged even during up; decide per operation.
+	env, diags, err := rp.envs.OpenYAMLEnvironment(ctx, rp.orgName, yaml, 2*time.Hour, nil, false)
 	if err != nil {
 		return nil, fmt.Errorf("opening ESC environments for policy pack %q: %w", rp.RequiredPolicy.Name, err)
 	}
@@ -296,7 +297,8 @@ func (r *localPolicyEnvironmentResolver) ResolveEnvironments(
 
 	yaml := workspace.NewEnvironment(environments).Definition()
 
-	env, diags, err := r.envs.OpenYAMLEnvironment(ctx, r.orgName, yaml, 2*time.Hour, nil)
+	// TODO(poc): policy-pack environments open unprivileged even during up; decide per operation.
+	env, diags, err := r.envs.OpenYAMLEnvironment(ctx, r.orgName, yaml, 2*time.Hour, nil, false)
 	if err != nil {
 		return nil, fmt.Errorf("opening ESC environments: %w", err)
 	}

@@ -59,6 +59,7 @@ func newConfigEnvCmdForTest(
 			ctx context.Context,
 			org string,
 			yaml []byte,
+			_ bool,
 		) (*esc.Environment, apitype.EnvironmentDiagnostics, error) {
 			return env, diags, nil
 		},
@@ -82,6 +83,7 @@ func newConfigEnvCmdForTestWithCheckYAMLEnvironment(
 		ctx context.Context,
 		org string,
 		yaml []byte,
+		_ bool,
 	) (*esc.Environment, apitype.EnvironmentDiagnostics, error),
 	newStackYAML *string,
 ) *configEnvCmd {
@@ -247,6 +249,7 @@ func newConfigEnvCmdForInitTest(
 			ctx context.Context,
 			org string,
 			yaml []byte,
+			_ bool,
 		) (*esc.Environment, apitype.EnvironmentDiagnostics, error) {
 			decl, diags, err := eval.LoadYAMLBytes("<yaml>", yaml)
 			if err != nil {

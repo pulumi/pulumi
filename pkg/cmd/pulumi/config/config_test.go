@@ -440,6 +440,7 @@ func prepareConfig(
 					ctx context.Context,
 					org string,
 					yaml []byte,
+					_ bool,
 				) (*esc.Environment, apitype.EnvironmentDiagnostics, error) {
 					return env, apitype.EnvironmentDiagnostics{}, nil
 				},
@@ -449,6 +450,7 @@ func prepareConfig(
 					yaml []byte,
 					duration time.Duration,
 					_ map[string]string,
+					_ bool,
 				) (*esc.Environment, apitype.EnvironmentDiagnostics, error) {
 					return env, apitype.EnvironmentDiagnostics{}, nil
 				},

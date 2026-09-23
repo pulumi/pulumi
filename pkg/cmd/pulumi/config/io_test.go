@@ -219,6 +219,7 @@ func getMockStackWithEnv(t *testing.T, env map[string]esc.Value) *backend.MockSt
 			yaml []byte,
 			duration time.Duration,
 			_ map[string]string,
+			_ bool,
 		) (*esc.Environment, apitype.EnvironmentDiagnostics, error) {
 			assert.Equal(t, "test-org", org)
 			assert.NotEmpty(t, yaml)
@@ -307,6 +308,7 @@ func TestOpenStackEnvVersionPinned(t *testing.T) {
 			yamlBody []byte,
 			duration time.Duration,
 			_ map[string]string,
+			_ bool,
 		) (*esc.Environment, apitype.EnvironmentDiagnostics, error) {
 			assert.Equal(t, "test-org", org)
 			assert.Contains(t, string(yamlBody), "project/env@3")
@@ -343,6 +345,7 @@ func TestOpenStackEnvOverrides(t *testing.T) {
 			yamlBody []byte,
 			duration time.Duration,
 			environmentOverrides map[string]string,
+			_ bool,
 		) (*esc.Environment, apitype.EnvironmentDiagnostics, error) {
 			gotOverrides = environmentOverrides
 			return &esc.Environment{Properties: map[string]esc.Value{}}, nil, nil
@@ -403,6 +406,7 @@ func TestOpenStackEnvVersionPinnedLiteral(t *testing.T) {
 			yamlBody []byte,
 			duration time.Duration,
 			_ map[string]string,
+			_ bool,
 		) (*esc.Environment, apitype.EnvironmentDiagnostics, error) {
 			assert.Equal(t, "test-org", org)
 			assert.Contains(t, string(yamlBody), "project/env@3")
@@ -615,6 +619,7 @@ func TestOpenStackEnvDiags(t *testing.T) {
 			yaml []byte,
 			duration time.Duration,
 			_ map[string]string,
+			_ bool,
 		) (*esc.Environment, apitype.EnvironmentDiagnostics, error) {
 			return nil, []apitype.EnvironmentDiagnostic{{Summary: "diag"}}, nil
 		},
@@ -646,6 +651,7 @@ func TestOpenStackEnvError(t *testing.T) {
 			yaml []byte,
 			duration time.Duration,
 			_ map[string]string,
+			_ bool,
 		) (*esc.Environment, apitype.EnvironmentDiagnostics, error) {
 			return nil, nil, errors.New("error")
 		},

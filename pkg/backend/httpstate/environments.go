@@ -59,8 +59,9 @@ func (b *cloudBackend) CheckYAMLEnvironment(
 	ctx context.Context,
 	org string,
 	yaml []byte,
+	privileged bool,
 ) (*esc.Environment, apitype.EnvironmentDiagnostics, error) {
-	env, diags, err := b.escClient.CheckYAMLEnvironment(ctx, org, yaml)
+	env, diags, err := b.escClient.CheckYAMLEnvironment(ctx, org, yaml, client.CheckYAMLOption{Privileged: privileged})
 	return env, convertESCDiags(diags), err
 }
 
@@ -70,9 +71,10 @@ func (b *cloudBackend) OpenYAMLEnvironment(
 	yaml []byte,
 	duration time.Duration,
 	environmentOverrides map[string]string,
+	privileged bool,
 ) (*esc.Environment, apitype.EnvironmentDiagnostics, error) {
 	id, diags, err := b.escClient.OpenYAMLEnvironment(ctx, org, yaml, duration,
-		client.OpenYAMLOption{EnvironmentOverrides: environmentOverrides})
+		client.OpenYAMLOption{EnvironmentOverrides: environmentOverrides, Privileged: privileged})
 	if err != nil || len(diags) != 0 {
 		return nil, convertESCDiags(diags), err
 	}

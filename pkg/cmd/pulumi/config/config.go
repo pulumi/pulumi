@@ -1479,7 +1479,7 @@ func checkStackEnv(
 	}
 	orgName := orgNamer.OrgName()
 
-	return envs.CheckYAMLEnvironment(ctx, orgName, yaml)
+	return envs.CheckYAMLEnvironment(ctx, orgName, yaml, false)
 }
 
 func warnOnNoEnvironmentEffects(out io.Writer, env *esc.Environment) {

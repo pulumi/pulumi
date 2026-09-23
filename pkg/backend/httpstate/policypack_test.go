@@ -147,14 +147,14 @@ func (m *mockEnvironmentsBackend) CreateEnvironment(
 }
 
 func (m *mockEnvironmentsBackend) CheckYAMLEnvironment(
-	context.Context, string, []byte,
+	context.Context, string, []byte, bool,
 ) (*esc.Environment, apitype.EnvironmentDiagnostics, error) {
 	return nil, nil, nil
 }
 
 func (m *mockEnvironmentsBackend) OpenYAMLEnvironment(
 	ctx context.Context, org string, yaml []byte, duration time.Duration,
-	environmentOverrides map[string]string,
+	environmentOverrides map[string]string, _ bool,
 ) (*esc.Environment, apitype.EnvironmentDiagnostics, error) {
 	return m.openYAMLEnvironmentF(ctx, org, yaml, duration, environmentOverrides)
 }

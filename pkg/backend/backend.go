@@ -300,19 +300,22 @@ type EnvironmentsBackend interface {
 		yaml []byte,
 	) (apitype.EnvironmentDiagnostics, error)
 
+	// CheckYAMLEnvironment checks a literal environment. privileged selects the includeIn: privileged imports.
 	CheckYAMLEnvironment(
 		ctx context.Context,
 		org string,
 		yaml []byte,
+		privileged bool,
 	) (*esc.Environment, apitype.EnvironmentDiagnostics, error)
 
-	// OpenYAMLEnvironment opens a literal environment.
+	// OpenYAMLEnvironment opens a literal environment. privileged selects the includeIn: privileged imports.
 	OpenYAMLEnvironment(
 		ctx context.Context,
 		org string,
 		yaml []byte,
 		duration time.Duration,
 		environmentOverrides map[string]string,
+		privileged bool,
 	) (*esc.Environment, apitype.EnvironmentDiagnostics, error)
 }
 
