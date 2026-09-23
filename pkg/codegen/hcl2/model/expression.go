@@ -2321,6 +2321,18 @@ func (x *TemplateExpression) Typecheck(typecheckOperands bool) hcl.Diagnostics {
 		}
 	}
 
+	// A quoted string with no interpolation is a constant, like a number or bool literal.
+	switch len(x.Parts) {
+	case 0:
+		x.exprType = NewConstType(StringType, cty.StringVal(""))
+		return diagnostics
+	case 1:
+		if lit, ok := x.Parts[0].(*LiteralValueExpression); ok && lit.Value.Type() == cty.String {
+			x.exprType = NewConstType(StringType, lit.Value)
+			return diagnostics
+		}
+	}
+
 	x.exprType = liftOperationType(StringType, x.Parts...)
 	return diagnostics
 }

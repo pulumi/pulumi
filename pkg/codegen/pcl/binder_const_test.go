@@ -36,6 +36,10 @@ var constLoader = mockLoader{func() schema.PackageSpec {
 				ObjectTypeSpec: schema.ObjectTypeSpec{Type: "integer"},
 				Enum:           []schema.EnumValueSpec{{Value: 1}, {Value: 2}},
 			},
+			"constant:index:Color": {
+				ObjectTypeSpec: schema.ObjectTypeSpec{Type: "string"},
+				Enum:           []schema.EnumValueSpec{{Value: "red"}, {Value: "blue"}},
+			},
 		},
 	}
 	// The properties are inputs only: a mismatch must be reported without an output of the same
@@ -43,7 +47,9 @@ var constLoader = mockLoader{func() schema.PackageSpec {
 	spec.Resources = map[string]schema.ResourceSpec{
 		"constant:index:Resource": {
 			InputProperties: map[string]schema.PropertySpec{
+				"kind":  {TypeSpec: schema.TypeSpec{Type: "string"}, Const: "Constant"},
 				"flag":  {TypeSpec: schema.TypeSpec{Type: "boolean"}, Const: true},
+				"color": {TypeSpec: schema.TypeSpec{Ref: "#/types/constant:index:Color"}},
 				"count": {TypeSpec: schema.TypeSpec{Type: "integer"}, Const: 3},
 				"level": {TypeSpec: schema.TypeSpec{Ref: "#/types/constant:index:Level"}},
 			},
@@ -62,6 +68,13 @@ func TestBindConstantAndEnumLiterals(t *testing.T) {
 		input  string
 		detail string
 	}{
+		{name: "matching string constant", input: `kind = "Constant"`},
+		{
+			name:  "other string constant",
+			input: `kind = "Variable"`,
+			detail: `Cannot assign value "Variable" to attribute of type "Optional<Input<string>>" ` +
+				`for resource "constant::Resource"`,
+		},
 		{name: "matching bool constant", input: "flag = true"},
 		{
 			name:  "other bool constant",
@@ -74,6 +87,13 @@ func TestBindConstantAndEnumLiterals(t *testing.T) {
 			name:   "other int constant",
 			input:  "count = 4",
 			detail: `Cannot assign value 4 to attribute of type "Optional<Input<integer>>" for resource "constant::Resource"`,
+		},
+		{name: "string enum member", input: `color = "blue"`},
+		{
+			name:  "string enum non-member",
+			input: `color = "green"`,
+			detail: `Cannot assign value "green" to attribute of type "Optional<Input<constant:index:Color>>" ` +
+				`for resource "constant::Resource"`,
 		},
 		{name: "enum member", input: "level = 2"},
 		{
