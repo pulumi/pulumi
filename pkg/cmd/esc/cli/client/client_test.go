@@ -15,8 +15,10 @@
 package client
 
 import (
+	"context"
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -1948,4 +1950,71 @@ func TestGetDefaultOrg(t *testing.T) {
 		require.NoError(t, err)
 		assert.Empty(t, orgName)
 	})
+}
+
+func TestPrivilegedQueryParameter(t *testing.T) {
+	t.Parallel()
+
+	calls := []struct {
+		name string
+		path string
+		call func(ctx context.Context, c Client, privileged bool) error
+	}{
+		{
+			name: "OpenEnvironment",
+			path: "/api/esc/environments/test-org/test-project/test-env/open",
+			call: func(ctx context.Context, c Client, privileged bool) error {
+				_, _, err := c.OpenEnvironment(ctx, "test-org", "test-project", "test-env", "", time.Hour,
+					OpenEnvironmentOption{Privileged: privileged})
+				return err
+			},
+		},
+		{
+			name: "OpenEnvironmentDraft",
+			path: "/api/esc/environments/test-org/test-project/test-env/drafts/cr-1/open",
+			call: func(ctx context.Context, c Client, privileged bool) error {
+				_, _, err := c.OpenEnvironmentDraft(ctx, "test-org", "test-project", "test-env", "cr-1", time.Hour,
+					OpenEnvironmentOption{Privileged: privileged})
+				return err
+			},
+		},
+		{
+			name: "OpenYAMLEnvironment",
+			path: "/api/esc/environments/test-org/yaml/open",
+			call: func(ctx context.Context, c Client, privileged bool) error {
+				_, _, err := c.OpenYAMLEnvironment(ctx, "test-org", []byte(`{}`), time.Hour,
+					OpenYAMLOption{Privileged: privileged})
+				return err
+			},
+		},
+		{
+			name: "CheckYAMLEnvironment",
+			path: "/api/esc/environments/test-org/yaml/check",
+			call: func(ctx context.Context, c Client, privileged bool) error {
+				_, _, err := c.CheckYAMLEnvironment(ctx, "test-org", []byte(`{}`),
+					CheckYAMLOption{Privileged: privileged})
+				return err
+			},
+		},
+	}
+
+	for _, tc := range calls {
+		for _, privileged := range []bool{true, false} {
+			t.Run(fmt.Sprintf("%s/privileged=%v", tc.name, privileged), func(t *testing.T) {
+				t.Parallel()
+
+				client := newTestClient(t, http.MethodPost, tc.path, func(w http.ResponseWriter, r *http.Request) {
+					if privileged {
+						assert.Equal(t, "true", r.URL.Query().Get("privileged"))
+					} else {
+						assert.False(t, r.URL.Query().Has("privileged"))
+					}
+					err := json.NewEncoder(w).Encode(map[string]any{"id": "open-id"})
+					require.NoError(t, err)
+				})
+
+				require.NoError(t, tc.call(t.Context(), client, privileged))
+			})
+		}
+	}
 }

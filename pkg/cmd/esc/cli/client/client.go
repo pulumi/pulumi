@@ -49,10 +49,16 @@ const (
 
 type CheckYAMLOption struct {
 	ShowSecrets bool
+	Privileged  bool
 }
 
 type OpenYAMLOption struct {
 	EnvironmentOverrides map[string]string
+	Privileged           bool
+}
+
+type OpenEnvironmentOption struct {
+	Privileged bool
 }
 
 // Client provides a slim wrapper around the Pulumi HTTP/REST API.
@@ -210,6 +216,7 @@ type Client interface {
 		envName string,
 		version string,
 		duration time.Duration,
+		opts ...OpenEnvironmentOption,
 	) (string, []EnvironmentDiagnostic, error)
 
 	// OpenEnvironmentDraft evaluates the environment draft and returns the ID of the opened
@@ -224,6 +231,7 @@ type Client interface {
 		envName string,
 		changeRequestID string,
 		duration time.Duration,
+		opts ...OpenEnvironmentOption,
 	) (string, []EnvironmentDiagnostic, error)
 
 	// RotateEnvironment will rotate credentials in an environment.
@@ -911,6 +919,7 @@ func (pc *client) OpenEnvironment(
 	envName string,
 	version string,
 	duration time.Duration,
+	opts ...OpenEnvironmentOption,
 ) (string, []EnvironmentDiagnostic, error) {
 	path, err := pc.resolveEnvironmentPath(orgName, projectName, envName, version)
 	if err != nil {
@@ -919,9 +928,11 @@ func (pc *client) OpenEnvironment(
 	path += "/open"
 
 	queryObj := struct {
-		Duration string `url:"duration"`
+		Duration   string `url:"duration"`
+		Privileged bool   `url:"privileged,omitempty"`
 	}{
-		Duration: duration.String(),
+		Duration:   duration.String(),
+		Privileged: firstOrDefault(opts).Privileged,
 	}
 
 	var resp struct {
@@ -948,13 +959,16 @@ func (pc *client) OpenEnvironmentDraft(
 	envName string,
 	changeRequestID string,
 	duration time.Duration,
+	opts ...OpenEnvironmentOption,
 ) (string, []EnvironmentDiagnostic, error) {
 	path := fmt.Sprintf("/api/esc/environments/%v/%v/%v/drafts/%v/open", orgName, projectName, envName, changeRequestID)
 
 	queryObj := struct {
-		Duration string `url:"duration"`
+		Duration   string `url:"duration"`
+		Privileged bool   `url:"privileged,omitempty"`
 	}{
-		Duration: duration.String(),
+		Duration:   duration.String(),
+		Privileged: firstOrDefault(opts).Privileged,
 	}
 
 	var resp struct {
@@ -1017,8 +1031,10 @@ func (pc *client) CheckYAMLEnvironment(
 
 	queryObj := struct {
 		ShowSecrets bool `url:"showSecrets"`
+		Privileged  bool `url:"privileged,omitempty"`
 	}{
 		ShowSecrets: firstOrDefault(opts).ShowSecrets,
+		Privileged:  firstOrDefault(opts).Privileged,
 	}
 
 	var resp esc.Environment
@@ -1046,8 +1062,10 @@ func (pc *client) OpenYAMLEnvironment(
 	queryObj := struct {
 		Duration             string `url:"duration"`
 		EnvironmentOverrides string `url:"environmentOverrides,omitempty"`
+		Privileged           bool   `url:"privileged,omitempty"`
 	}{
-		Duration: duration.String(),
+		Duration:   duration.String(),
+		Privileged: firstOrDefault(opts).Privileged,
 	}
 
 	overrides := firstOrDefault(opts).EnvironmentOverrides

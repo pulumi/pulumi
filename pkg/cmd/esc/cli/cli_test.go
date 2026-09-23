@@ -260,6 +260,9 @@ type testPulumiClient struct {
 	// submittedChangeRequests records submitted change requests in call order, so tests can assert
 	// that a command actually submits the change requests it creates.
 	submittedChangeRequests []submittedChangeRequest
+
+	lastOpenPrivileged  bool
+	lastCheckPrivileged bool
 }
 
 type submittedChangeRequest struct {
@@ -432,9 +435,12 @@ func (c *testPulumiClient) checkEnvironment(
 	}
 
 	showSecrets := false
+	privileged := false
 	if len(opts) > 0 {
 		showSecrets = opts[0].ShowSecrets
+		privileged = opts[0].Privileged
 	}
+	c.lastCheckPrivileged = privileged
 
 	checked, checkDiags := eval.CheckEnvironment(
 		ctx,
@@ -445,7 +451,7 @@ func (c *testPulumiClient) checkEnvironment(
 		envLoader,
 		execContext,
 		showSecrets,
-		eval.EvalOptions{TraceMode: eval.TraceModeFull},
+		eval.EvalOptions{TraceMode: eval.TraceModeFull, Privileged: privileged},
 	)
 	diags.Extend(checkDiags...)
 	return checked, mapDiags(diags), nil
@@ -455,7 +461,10 @@ func (c *testPulumiClient) openEnvironment(
 	ctx context.Context,
 	orgName, name string,
 	yaml []byte,
+	privileged bool,
 ) (string, []client.EnvironmentDiagnostic, error) {
+	c.lastOpenPrivileged = privileged
+
 	id, err := uuid.NewV4()
 	if err != nil {
 		return "", nil, err
@@ -485,7 +494,7 @@ func (c *testPulumiClient) openEnvironment(
 		providers,
 		envLoader,
 		execContext,
-		eval.EvalOptions{TraceMode: eval.TraceModeFull},
+		eval.EvalOptions{TraceMode: eval.TraceModeFull, Privileged: privileged},
 	)
 	diags.Extend(evalDiags...)
 
@@ -792,13 +801,15 @@ func (c *testPulumiClient) OpenEnvironment(
 	envName string,
 	version string,
 	duration time.Duration,
+	opts ...client.OpenEnvironmentOption,
 ) (string, []client.EnvironmentDiagnostic, error) {
 	_, env, err := c.getEnvironment(orgName, projectName, envName, version)
 	if err != nil {
 		return "", nil, err
 	}
 
-	return c.openEnvironment(ctx, orgName, envName, env.yaml)
+	privileged := len(opts) > 0 && opts[0].Privileged
+	return c.openEnvironment(ctx, orgName, envName, env.yaml, privileged)
 }
 
 func (c *testPulumiClient) OpenEnvironmentDraft(
@@ -808,9 +819,10 @@ func (c *testPulumiClient) OpenEnvironmentDraft(
 	envName string,
 	changeRequestID string,
 	duration time.Duration,
+	opts ...client.OpenEnvironmentOption,
 ) (string, []client.EnvironmentDiagnostic, error) {
 	envName = envName + "_DRAFT"
-	return c.OpenEnvironment(ctx, orgName, projectName, envName, "", duration)
+	return c.OpenEnvironment(ctx, orgName, projectName, envName, "", duration, opts...)
 }
 
 func (c *testPulumiClient) RotateEnvironment(
@@ -839,7 +851,8 @@ func (c *testPulumiClient) OpenYAMLEnvironment(
 	duration time.Duration,
 	opts ...client.OpenYAMLOption,
 ) (string, []client.EnvironmentDiagnostic, error) {
-	return c.openEnvironment(ctx, orgName, "<yaml>", yaml)
+	privileged := len(opts) > 0 && opts[0].Privileged
+	return c.openEnvironment(ctx, orgName, "<yaml>", yaml, privileged)
 }
 
 func (c *testPulumiClient) GetOpenEnvironment(
