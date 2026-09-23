@@ -1,0 +1,806 @@
+{
+    "checkDiags": [
+        {
+            "Severity": 1,
+            "Summary": "unknown property \"writeOnlyKey\"; did you mean \"readOnlyKey\"?",
+            "Detail": "",
+            "Subject": {
+                "Filename": "import-include-in-missing-value",
+                "Start": {
+                    "Line": 7,
+                    "Column": 16,
+                    "Byte": 111
+                },
+                "End": {
+                    "Line": 7,
+                    "Column": 28,
+                    "Byte": 123
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Path": "values.deployKey"
+        }
+    ],
+    "check": {
+        "exprs": {
+            "deployKey": {
+                "range": {
+                    "environment": "import-include-in-missing-value",
+                    "begin": {
+                        "line": 7,
+                        "column": 14,
+                        "byte": 109
+                    },
+                    "end": {
+                        "line": 7,
+                        "column": 29,
+                        "byte": 124
+                    }
+                },
+                "schema": true,
+                "symbol": [
+                    {
+                        "key": "writeOnlyKey",
+                        "range": {
+                            "environment": "import-include-in-missing-value",
+                            "begin": {
+                                "line": 7,
+                                "column": 16,
+                                "byte": 111
+                            },
+                            "end": {
+                                "line": 7,
+                                "column": 28,
+                                "byte": 123
+                            }
+                        },
+                        "value": {
+                            "environment": "import-include-in-missing-value",
+                            "begin": {
+                                "line": 7,
+                                "column": 14,
+                                "byte": 109
+                            },
+                            "end": {
+                                "line": 7,
+                                "column": 29,
+                                "byte": 124
+                            }
+                        }
+                    }
+                ]
+            }
+        },
+        "properties": {
+            "access": {
+                "value": "read",
+                "trace": {
+                    "def": {
+                        "environment": "read",
+                        "begin": {
+                            "line": 2,
+                            "column": 11,
+                            "byte": 18
+                        },
+                        "end": {
+                            "line": 2,
+                            "column": 15,
+                            "byte": 22
+                        }
+                    }
+                }
+            },
+            "deployKey": {
+                "value": null,
+                "unknown": true,
+                "trace": {
+                    "def": {
+                        "environment": "import-include-in-missing-value",
+                        "begin": {
+                            "line": 7,
+                            "column": 14,
+                            "byte": 109
+                        },
+                        "end": {
+                            "line": 7,
+                            "column": 29,
+                            "byte": 124
+                        }
+                    }
+                }
+            },
+            "environmentVariables": {
+                "value": {
+                    "AWS_ROLE_ARN": {
+                        "value": "arn:aws:iam::123456789012:role/read",
+                        "trace": {
+                            "def": {
+                                "environment": "read",
+                                "begin": {
+                                    "line": 5,
+                                    "column": 19,
+                                    "byte": 82
+                                },
+                                "end": {
+                                    "line": 5,
+                                    "column": 54,
+                                    "byte": 117
+                                }
+                            }
+                        }
+                    }
+                },
+                "trace": {
+                    "def": {
+                        "environment": "read",
+                        "begin": {
+                            "line": 5,
+                            "column": 5,
+                            "byte": 68
+                        },
+                        "end": {
+                            "line": 5,
+                            "column": 54,
+                            "byte": 117
+                        }
+                    }
+                }
+            },
+            "readOnlyKey": {
+                "value": "r",
+                "trace": {
+                    "def": {
+                        "environment": "read",
+                        "begin": {
+                            "line": 3,
+                            "column": 16,
+                            "byte": 38
+                        },
+                        "end": {
+                            "line": 3,
+                            "column": 17,
+                            "byte": 39
+                        }
+                    }
+                }
+            }
+        },
+        "schema": {
+            "properties": {
+                "access": {
+                    "type": "string",
+                    "const": "read"
+                },
+                "deployKey": true,
+                "environmentVariables": {
+                    "properties": {
+                        "AWS_ROLE_ARN": {
+                            "type": "string",
+                            "const": "arn:aws:iam::123456789012:role/read"
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "AWS_ROLE_ARN"
+                    ]
+                },
+                "readOnlyKey": {
+                    "type": "string",
+                    "const": "r"
+                }
+            },
+            "type": "object",
+            "required": [
+                "access",
+                "deployKey",
+                "environmentVariables",
+                "readOnlyKey"
+            ]
+        },
+        "executionContext": {
+            "properties": {
+                "currentEnvironment": {
+                    "value": {
+                        "name": {
+                            "value": "import-include-in-missing-value",
+                            "trace": {
+                                "def": {
+                                    "environment": "import-include-in-missing-value",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "import-include-in-missing-value",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                },
+                "pulumi": {
+                    "value": {
+                        "user": {
+                            "value": {
+                                "id": {
+                                    "value": "USER_123",
+                                    "trace": {
+                                        "def": {
+                                            "environment": "import-include-in-missing-value",
+                                            "begin": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            },
+                                            "end": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            }
+                                        }
+                                    }
+                                }
+                            },
+                            "trace": {
+                                "def": {
+                                    "environment": "import-include-in-missing-value",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "import-include-in-missing-value",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                },
+                "rootEnvironment": {
+                    "value": {
+                        "name": {
+                            "value": "import-include-in-missing-value",
+                            "trace": {
+                                "def": {
+                                    "environment": "import-include-in-missing-value",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "import-include-in-missing-value",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                }
+            },
+            "schema": {
+                "properties": {
+                    "currentEnvironment": {
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "const": "import-include-in-missing-value"
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "name"
+                        ]
+                    },
+                    "pulumi": {
+                        "properties": {
+                            "user": {
+                                "properties": {
+                                    "id": {
+                                        "type": "string",
+                                        "const": "USER_123"
+                                    }
+                                },
+                                "type": "object",
+                                "required": [
+                                    "id"
+                                ]
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "user"
+                        ]
+                    },
+                    "rootEnvironment": {
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "const": "import-include-in-missing-value"
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "name"
+                        ]
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "currentEnvironment",
+                    "pulumi",
+                    "rootEnvironment"
+                ]
+            }
+        }
+    },
+    "checkJson": {
+        "access": "read",
+        "deployKey": "[unknown]",
+        "environmentVariables": {
+            "AWS_ROLE_ARN": "arn:aws:iam::123456789012:role/read"
+        },
+        "readOnlyKey": "r"
+    },
+    "evalDiags": [
+        {
+            "Severity": 1,
+            "Summary": "unknown property \"writeOnlyKey\"; did you mean \"readOnlyKey\"?",
+            "Detail": "",
+            "Subject": {
+                "Filename": "import-include-in-missing-value",
+                "Start": {
+                    "Line": 7,
+                    "Column": 16,
+                    "Byte": 111
+                },
+                "End": {
+                    "Line": 7,
+                    "Column": 28,
+                    "Byte": 123
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Path": "values.deployKey"
+        }
+    ],
+    "eval": {
+        "exprs": {
+            "deployKey": {
+                "range": {
+                    "environment": "import-include-in-missing-value",
+                    "begin": {
+                        "line": 7,
+                        "column": 14,
+                        "byte": 109
+                    },
+                    "end": {
+                        "line": 7,
+                        "column": 29,
+                        "byte": 124
+                    }
+                },
+                "schema": true,
+                "symbol": [
+                    {
+                        "key": "writeOnlyKey",
+                        "range": {
+                            "environment": "import-include-in-missing-value",
+                            "begin": {
+                                "line": 7,
+                                "column": 16,
+                                "byte": 111
+                            },
+                            "end": {
+                                "line": 7,
+                                "column": 28,
+                                "byte": 123
+                            }
+                        },
+                        "value": {
+                            "environment": "import-include-in-missing-value",
+                            "begin": {
+                                "line": 7,
+                                "column": 14,
+                                "byte": 109
+                            },
+                            "end": {
+                                "line": 7,
+                                "column": 29,
+                                "byte": 124
+                            }
+                        }
+                    }
+                ]
+            }
+        },
+        "properties": {
+            "access": {
+                "value": "read",
+                "trace": {
+                    "def": {
+                        "environment": "read",
+                        "begin": {
+                            "line": 2,
+                            "column": 11,
+                            "byte": 18
+                        },
+                        "end": {
+                            "line": 2,
+                            "column": 15,
+                            "byte": 22
+                        }
+                    }
+                }
+            },
+            "deployKey": {
+                "value": null,
+                "unknown": true,
+                "trace": {
+                    "def": {
+                        "environment": "import-include-in-missing-value",
+                        "begin": {
+                            "line": 7,
+                            "column": 14,
+                            "byte": 109
+                        },
+                        "end": {
+                            "line": 7,
+                            "column": 29,
+                            "byte": 124
+                        }
+                    }
+                }
+            },
+            "environmentVariables": {
+                "value": {
+                    "AWS_ROLE_ARN": {
+                        "value": "arn:aws:iam::123456789012:role/read",
+                        "trace": {
+                            "def": {
+                                "environment": "read",
+                                "begin": {
+                                    "line": 5,
+                                    "column": 19,
+                                    "byte": 82
+                                },
+                                "end": {
+                                    "line": 5,
+                                    "column": 54,
+                                    "byte": 117
+                                }
+                            }
+                        }
+                    }
+                },
+                "trace": {
+                    "def": {
+                        "environment": "read",
+                        "begin": {
+                            "line": 5,
+                            "column": 5,
+                            "byte": 68
+                        },
+                        "end": {
+                            "line": 5,
+                            "column": 54,
+                            "byte": 117
+                        }
+                    }
+                }
+            },
+            "readOnlyKey": {
+                "value": "r",
+                "trace": {
+                    "def": {
+                        "environment": "read",
+                        "begin": {
+                            "line": 3,
+                            "column": 16,
+                            "byte": 38
+                        },
+                        "end": {
+                            "line": 3,
+                            "column": 17,
+                            "byte": 39
+                        }
+                    }
+                }
+            }
+        },
+        "schema": {
+            "properties": {
+                "access": {
+                    "type": "string",
+                    "const": "read"
+                },
+                "deployKey": true,
+                "environmentVariables": {
+                    "properties": {
+                        "AWS_ROLE_ARN": {
+                            "type": "string",
+                            "const": "arn:aws:iam::123456789012:role/read"
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "AWS_ROLE_ARN"
+                    ]
+                },
+                "readOnlyKey": {
+                    "type": "string",
+                    "const": "r"
+                }
+            },
+            "type": "object",
+            "required": [
+                "access",
+                "deployKey",
+                "environmentVariables",
+                "readOnlyKey"
+            ]
+        },
+        "executionContext": {
+            "properties": {
+                "currentEnvironment": {
+                    "value": {
+                        "name": {
+                            "value": "import-include-in-missing-value",
+                            "trace": {
+                                "def": {
+                                    "environment": "import-include-in-missing-value",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "import-include-in-missing-value",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                },
+                "pulumi": {
+                    "value": {
+                        "user": {
+                            "value": {
+                                "id": {
+                                    "value": "USER_123",
+                                    "trace": {
+                                        "def": {
+                                            "environment": "import-include-in-missing-value",
+                                            "begin": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            },
+                                            "end": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            }
+                                        }
+                                    }
+                                }
+                            },
+                            "trace": {
+                                "def": {
+                                    "environment": "import-include-in-missing-value",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "import-include-in-missing-value",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                },
+                "rootEnvironment": {
+                    "value": {
+                        "name": {
+                            "value": "import-include-in-missing-value",
+                            "trace": {
+                                "def": {
+                                    "environment": "import-include-in-missing-value",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "import-include-in-missing-value",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                }
+            },
+            "schema": {
+                "properties": {
+                    "currentEnvironment": {
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "const": "import-include-in-missing-value"
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "name"
+                        ]
+                    },
+                    "pulumi": {
+                        "properties": {
+                            "user": {
+                                "properties": {
+                                    "id": {
+                                        "type": "string",
+                                        "const": "USER_123"
+                                    }
+                                },
+                                "type": "object",
+                                "required": [
+                                    "id"
+                                ]
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "user"
+                        ]
+                    },
+                    "rootEnvironment": {
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "const": "import-include-in-missing-value"
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "name"
+                        ]
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "currentEnvironment",
+                    "pulumi",
+                    "rootEnvironment"
+                ]
+            }
+        }
+    },
+    "evalJsonRedacted": {
+        "access": "read",
+        "deployKey": "[unknown]",
+        "environmentVariables": {
+            "AWS_ROLE_ARN": "arn:aws:iam::123456789012:role/read"
+        },
+        "readOnlyKey": "r"
+    },
+    "evalJSONRevealed": {
+        "access": "read",
+        "deployKey": "[unknown]",
+        "environmentVariables": {
+            "AWS_ROLE_ARN": "arn:aws:iam::123456789012:role/read"
+        },
+        "readOnlyKey": "r"
+    }
+}

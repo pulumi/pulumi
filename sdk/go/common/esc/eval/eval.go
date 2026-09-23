@@ -55,6 +55,13 @@ type EnvironmentLoader interface {
 	AuthorizeImport(ctx context.Context, importer string, imported string, importerIsRoot bool) error
 }
 
+// ConditionalImportObserver is optionally implemented by an EnvironmentLoader to learn about imports that carry
+// includeIn, whether or not they applied to this evaluation. For an included import, ConditionalImport is called
+// before AuthorizeImport and LoadEnvironment.
+type ConditionalImportObserver interface {
+	ConditionalImport(ctx context.Context, importer string, imported string, included bool)
+}
+
 // LoadYAML decodes a YAML template from an io.Reader.
 func LoadYAML(filename string, r io.Reader) (*ast.EnvironmentDecl, syntax.Diagnostics, error) {
 	bytes, err := io.ReadAll(r)
@@ -205,6 +212,7 @@ func evalEnvironment(
 		rotatePaths,
 	)
 	ec.traceMode = opts.TraceMode
+	ec.privileged = opts.Privileged
 	v, diags := ec.evaluate()
 
 	s := schema.Never().Schema()
@@ -267,6 +275,8 @@ type evalContext struct {
 	rotationResult RotationResult // result of secret rotations
 
 	traceMode TraceMode // traceMode used during eval and passed to export
+
+	privileged bool // selects which includeIn imports apply
 
 	diags syntax.Diagnostics // diagnostics generated during evaluation
 }
@@ -561,6 +571,16 @@ func (e *evalContext) evaluateImports() {
 		}
 		name := entry.Environment.Value
 
+		if entry.Meta != nil && entry.Meta.IncludeIn != nil {
+			included := entry.IncludedIn(e.privileged)
+			if o, ok := e.environments.(ConditionalImportObserver); ok {
+				o.ConditionalImport(e.ctx, e.name, name, included)
+			}
+			if !included {
+				continue
+			}
+		}
+
 		merge := true
 		if entry.Meta != nil && entry.Meta.Merge != nil {
 			merge = entry.Meta.Merge.Value
@@ -642,6 +662,7 @@ func (e *evalContext) evaluateImport(expr ast.Expr, name string) (*value, bool) 
 		imp := newEvalContext(e.ctx, e.validating, false, resolvedName, env, false, dec, e.providers, e.environments, e.imports, e.execContext, e.showSecrets, nil) //nolint:lll
 		imp.declaredName = name
 		imp.traceMode = e.traceMode
+		imp.privileged = e.privileged
 		v, diags := imp.evaluate()
 		e.diags.Extend(diags...)
 

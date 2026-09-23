@@ -37,4 +37,8 @@ type EvalOptions struct {
 	// TraceMode selects how much of each value's Trace to retain. Applied during
 	// export, so TraceModeNone never allocates the dropped Trace.
 	TraceMode TraceMode
+
+	// Privileged selects imports with includeIn: privileged; the zero value selects unprivileged imports. The mode
+	// applies to every import in the evaluation, at any depth.
+	Privileged bool
 }

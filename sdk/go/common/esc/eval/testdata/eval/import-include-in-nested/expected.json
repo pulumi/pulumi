@@ -1,0 +1,662 @@
+{
+    "check": {
+        "properties": {
+            "access": {
+                "value": "read",
+                "trace": {
+                    "def": {
+                        "environment": "read",
+                        "begin": {
+                            "line": 2,
+                            "column": 11,
+                            "byte": 18
+                        },
+                        "end": {
+                            "line": 2,
+                            "column": 15,
+                            "byte": 22
+                        }
+                    }
+                }
+            },
+            "environmentVariables": {
+                "value": {
+                    "AWS_ROLE_ARN": {
+                        "value": "arn:aws:iam::123456789012:role/read",
+                        "trace": {
+                            "def": {
+                                "environment": "read",
+                                "begin": {
+                                    "line": 5,
+                                    "column": 19,
+                                    "byte": 82
+                                },
+                                "end": {
+                                    "line": 5,
+                                    "column": 54,
+                                    "byte": 117
+                                }
+                            }
+                        }
+                    }
+                },
+                "trace": {
+                    "def": {
+                        "environment": "read",
+                        "begin": {
+                            "line": 5,
+                            "column": 5,
+                            "byte": 68
+                        },
+                        "end": {
+                            "line": 5,
+                            "column": 54,
+                            "byte": 117
+                        }
+                    }
+                }
+            },
+            "mid": {
+                "value": true,
+                "trace": {
+                    "def": {
+                        "environment": "mid",
+                        "begin": {
+                            "line": 7,
+                            "column": 8,
+                            "byte": 103
+                        },
+                        "end": {
+                            "line": 7,
+                            "column": 12,
+                            "byte": 107
+                        }
+                    }
+                }
+            },
+            "readOnlyKey": {
+                "value": "r",
+                "trace": {
+                    "def": {
+                        "environment": "read",
+                        "begin": {
+                            "line": 3,
+                            "column": 16,
+                            "byte": 38
+                        },
+                        "end": {
+                            "line": 3,
+                            "column": 17,
+                            "byte": 39
+                        }
+                    }
+                }
+            }
+        },
+        "schema": {
+            "properties": {
+                "access": {
+                    "type": "string",
+                    "const": "read"
+                },
+                "environmentVariables": {
+                    "properties": {
+                        "AWS_ROLE_ARN": {
+                            "type": "string",
+                            "const": "arn:aws:iam::123456789012:role/read"
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "AWS_ROLE_ARN"
+                    ]
+                },
+                "mid": {
+                    "type": "boolean",
+                    "const": true
+                },
+                "readOnlyKey": {
+                    "type": "string",
+                    "const": "r"
+                }
+            },
+            "type": "object",
+            "required": [
+                "access",
+                "environmentVariables",
+                "mid",
+                "readOnlyKey"
+            ]
+        },
+        "executionContext": {
+            "properties": {
+                "currentEnvironment": {
+                    "value": {
+                        "name": {
+                            "value": "import-include-in-nested",
+                            "trace": {
+                                "def": {
+                                    "environment": "import-include-in-nested",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "import-include-in-nested",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                },
+                "pulumi": {
+                    "value": {
+                        "user": {
+                            "value": {
+                                "id": {
+                                    "value": "USER_123",
+                                    "trace": {
+                                        "def": {
+                                            "environment": "import-include-in-nested",
+                                            "begin": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            },
+                                            "end": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            }
+                                        }
+                                    }
+                                }
+                            },
+                            "trace": {
+                                "def": {
+                                    "environment": "import-include-in-nested",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "import-include-in-nested",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                },
+                "rootEnvironment": {
+                    "value": {
+                        "name": {
+                            "value": "import-include-in-nested",
+                            "trace": {
+                                "def": {
+                                    "environment": "import-include-in-nested",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "import-include-in-nested",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                }
+            },
+            "schema": {
+                "properties": {
+                    "currentEnvironment": {
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "const": "import-include-in-nested"
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "name"
+                        ]
+                    },
+                    "pulumi": {
+                        "properties": {
+                            "user": {
+                                "properties": {
+                                    "id": {
+                                        "type": "string",
+                                        "const": "USER_123"
+                                    }
+                                },
+                                "type": "object",
+                                "required": [
+                                    "id"
+                                ]
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "user"
+                        ]
+                    },
+                    "rootEnvironment": {
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "const": "import-include-in-nested"
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "name"
+                        ]
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "currentEnvironment",
+                    "pulumi",
+                    "rootEnvironment"
+                ]
+            }
+        }
+    },
+    "checkJson": {
+        "access": "read",
+        "environmentVariables": {
+            "AWS_ROLE_ARN": "arn:aws:iam::123456789012:role/read"
+        },
+        "mid": true,
+        "readOnlyKey": "r"
+    },
+    "eval": {
+        "properties": {
+            "access": {
+                "value": "read",
+                "trace": {
+                    "def": {
+                        "environment": "read",
+                        "begin": {
+                            "line": 2,
+                            "column": 11,
+                            "byte": 18
+                        },
+                        "end": {
+                            "line": 2,
+                            "column": 15,
+                            "byte": 22
+                        }
+                    }
+                }
+            },
+            "environmentVariables": {
+                "value": {
+                    "AWS_ROLE_ARN": {
+                        "value": "arn:aws:iam::123456789012:role/read",
+                        "trace": {
+                            "def": {
+                                "environment": "read",
+                                "begin": {
+                                    "line": 5,
+                                    "column": 19,
+                                    "byte": 82
+                                },
+                                "end": {
+                                    "line": 5,
+                                    "column": 54,
+                                    "byte": 117
+                                }
+                            }
+                        }
+                    }
+                },
+                "trace": {
+                    "def": {
+                        "environment": "read",
+                        "begin": {
+                            "line": 5,
+                            "column": 5,
+                            "byte": 68
+                        },
+                        "end": {
+                            "line": 5,
+                            "column": 54,
+                            "byte": 117
+                        }
+                    }
+                }
+            },
+            "mid": {
+                "value": true,
+                "trace": {
+                    "def": {
+                        "environment": "mid",
+                        "begin": {
+                            "line": 7,
+                            "column": 8,
+                            "byte": 103
+                        },
+                        "end": {
+                            "line": 7,
+                            "column": 12,
+                            "byte": 107
+                        }
+                    }
+                }
+            },
+            "readOnlyKey": {
+                "value": "r",
+                "trace": {
+                    "def": {
+                        "environment": "read",
+                        "begin": {
+                            "line": 3,
+                            "column": 16,
+                            "byte": 38
+                        },
+                        "end": {
+                            "line": 3,
+                            "column": 17,
+                            "byte": 39
+                        }
+                    }
+                }
+            }
+        },
+        "schema": {
+            "properties": {
+                "access": {
+                    "type": "string",
+                    "const": "read"
+                },
+                "environmentVariables": {
+                    "properties": {
+                        "AWS_ROLE_ARN": {
+                            "type": "string",
+                            "const": "arn:aws:iam::123456789012:role/read"
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "AWS_ROLE_ARN"
+                    ]
+                },
+                "mid": {
+                    "type": "boolean",
+                    "const": true
+                },
+                "readOnlyKey": {
+                    "type": "string",
+                    "const": "r"
+                }
+            },
+            "type": "object",
+            "required": [
+                "access",
+                "environmentVariables",
+                "mid",
+                "readOnlyKey"
+            ]
+        },
+        "executionContext": {
+            "properties": {
+                "currentEnvironment": {
+                    "value": {
+                        "name": {
+                            "value": "import-include-in-nested",
+                            "trace": {
+                                "def": {
+                                    "environment": "import-include-in-nested",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "import-include-in-nested",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                },
+                "pulumi": {
+                    "value": {
+                        "user": {
+                            "value": {
+                                "id": {
+                                    "value": "USER_123",
+                                    "trace": {
+                                        "def": {
+                                            "environment": "import-include-in-nested",
+                                            "begin": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            },
+                                            "end": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            }
+                                        }
+                                    }
+                                }
+                            },
+                            "trace": {
+                                "def": {
+                                    "environment": "import-include-in-nested",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "import-include-in-nested",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                },
+                "rootEnvironment": {
+                    "value": {
+                        "name": {
+                            "value": "import-include-in-nested",
+                            "trace": {
+                                "def": {
+                                    "environment": "import-include-in-nested",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "import-include-in-nested",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                }
+            },
+            "schema": {
+                "properties": {
+                    "currentEnvironment": {
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "const": "import-include-in-nested"
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "name"
+                        ]
+                    },
+                    "pulumi": {
+                        "properties": {
+                            "user": {
+                                "properties": {
+                                    "id": {
+                                        "type": "string",
+                                        "const": "USER_123"
+                                    }
+                                },
+                                "type": "object",
+                                "required": [
+                                    "id"
+                                ]
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "user"
+                        ]
+                    },
+                    "rootEnvironment": {
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "const": "import-include-in-nested"
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "name"
+                        ]
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "currentEnvironment",
+                    "pulumi",
+                    "rootEnvironment"
+                ]
+            }
+        }
+    },
+    "evalJsonRedacted": {
+        "access": "read",
+        "environmentVariables": {
+            "AWS_ROLE_ARN": "arn:aws:iam::123456789012:role/read"
+        },
+        "mid": true,
+        "readOnlyKey": "r"
+    },
+    "evalJSONRevealed": {
+        "access": "read",
+        "environmentVariables": {
+            "AWS_ROLE_ARN": "arn:aws:iam::123456789012:role/read"
+        },
+        "mid": true,
+        "readOnlyKey": "r"
+    }
+}

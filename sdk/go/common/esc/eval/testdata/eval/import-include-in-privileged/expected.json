@@ -1,0 +1,938 @@
+{
+    "check": {
+        "exprs": {
+            "summary": {
+                "range": {
+                    "environment": "import-include-in-privileged",
+                    "begin": {
+                        "line": 8,
+                        "column": 12,
+                        "byte": 116
+                    },
+                    "end": {
+                        "line": 8,
+                        "column": 34,
+                        "byte": 138
+                    }
+                },
+                "schema": {
+                    "type": "string"
+                },
+                "interpolate": [
+                    {
+                        "value": [
+                            {
+                                "key": "access",
+                                "range": {
+                                    "environment": "import-include-in-privileged",
+                                    "begin": {
+                                        "line": 8,
+                                        "column": 14,
+                                        "byte": 118
+                                    },
+                                    "end": {
+                                        "line": 8,
+                                        "column": 20,
+                                        "byte": 124
+                                    }
+                                },
+                                "value": {
+                                    "environment": "write",
+                                    "begin": {
+                                        "line": 2,
+                                        "column": 11,
+                                        "byte": 18
+                                    },
+                                    "end": {
+                                        "line": 2,
+                                        "column": 16,
+                                        "byte": 23
+                                    }
+                                }
+                            }
+                        ]
+                    },
+                    {
+                        "text": " in ",
+                        "value": [
+                            {
+                                "key": "region",
+                                "range": {
+                                    "environment": "import-include-in-privileged",
+                                    "begin": {
+                                        "line": 8,
+                                        "column": 27,
+                                        "byte": 131
+                                    },
+                                    "end": {
+                                        "line": 8,
+                                        "column": 33,
+                                        "byte": 137
+                                    }
+                                },
+                                "value": {
+                                    "environment": "base",
+                                    "begin": {
+                                        "line": 2,
+                                        "column": 11,
+                                        "byte": 18
+                                    },
+                                    "end": {
+                                        "line": 2,
+                                        "column": 20,
+                                        "byte": 27
+                                    }
+                                }
+                            }
+                        ]
+                    }
+                ]
+            }
+        },
+        "properties": {
+            "access": {
+                "value": "write",
+                "trace": {
+                    "def": {
+                        "environment": "write",
+                        "begin": {
+                            "line": 2,
+                            "column": 11,
+                            "byte": 18
+                        },
+                        "end": {
+                            "line": 2,
+                            "column": 16,
+                            "byte": 23
+                        }
+                    }
+                }
+            },
+            "deploySecret": {
+                "value": "write-secret",
+                "secret": true,
+                "trace": {
+                    "def": {
+                        "environment": "write",
+                        "begin": {
+                            "line": 5,
+                            "column": 17,
+                            "byte": 74
+                        },
+                        "end": {
+                            "line": 5,
+                            "column": 29,
+                            "byte": 86
+                        }
+                    }
+                }
+            },
+            "environmentVariables": {
+                "value": {
+                    "AWS_ROLE_ARN": {
+                        "value": "arn:aws:iam::123456789012:role/write",
+                        "trace": {
+                            "def": {
+                                "environment": "write",
+                                "begin": {
+                                    "line": 7,
+                                    "column": 19,
+                                    "byte": 129
+                                },
+                                "end": {
+                                    "line": 7,
+                                    "column": 55,
+                                    "byte": 165
+                                }
+                            }
+                        }
+                    }
+                },
+                "trace": {
+                    "def": {
+                        "environment": "write",
+                        "begin": {
+                            "line": 7,
+                            "column": 5,
+                            "byte": 115
+                        },
+                        "end": {
+                            "line": 7,
+                            "column": 55,
+                            "byte": 165
+                        }
+                    }
+                }
+            },
+            "region": {
+                "value": "us-west-2",
+                "trace": {
+                    "def": {
+                        "environment": "base",
+                        "begin": {
+                            "line": 2,
+                            "column": 11,
+                            "byte": 18
+                        },
+                        "end": {
+                            "line": 2,
+                            "column": 20,
+                            "byte": 27
+                        }
+                    }
+                }
+            },
+            "summary": {
+                "value": "write in us-west-2",
+                "trace": {
+                    "def": {
+                        "environment": "import-include-in-privileged",
+                        "begin": {
+                            "line": 8,
+                            "column": 12,
+                            "byte": 116
+                        },
+                        "end": {
+                            "line": 8,
+                            "column": 34,
+                            "byte": 138
+                        }
+                    }
+                }
+            },
+            "writeOnlyKey": {
+                "value": "w",
+                "trace": {
+                    "def": {
+                        "environment": "write",
+                        "begin": {
+                            "line": 3,
+                            "column": 17,
+                            "byte": 40
+                        },
+                        "end": {
+                            "line": 3,
+                            "column": 18,
+                            "byte": 41
+                        }
+                    }
+                }
+            }
+        },
+        "schema": {
+            "properties": {
+                "access": {
+                    "type": "string",
+                    "const": "write"
+                },
+                "deploySecret": {
+                    "type": "string",
+                    "const": "write-secret"
+                },
+                "environmentVariables": {
+                    "properties": {
+                        "AWS_ROLE_ARN": {
+                            "type": "string",
+                            "const": "arn:aws:iam::123456789012:role/write"
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "AWS_ROLE_ARN"
+                    ]
+                },
+                "region": {
+                    "type": "string",
+                    "const": "us-west-2"
+                },
+                "summary": {
+                    "type": "string"
+                },
+                "writeOnlyKey": {
+                    "type": "string",
+                    "const": "w"
+                }
+            },
+            "type": "object",
+            "required": [
+                "access",
+                "deploySecret",
+                "environmentVariables",
+                "region",
+                "summary",
+                "writeOnlyKey"
+            ]
+        },
+        "executionContext": {
+            "properties": {
+                "currentEnvironment": {
+                    "value": {
+                        "name": {
+                            "value": "import-include-in-privileged",
+                            "trace": {
+                                "def": {
+                                    "environment": "import-include-in-privileged",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "import-include-in-privileged",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                },
+                "pulumi": {
+                    "value": {
+                        "user": {
+                            "value": {
+                                "id": {
+                                    "value": "USER_123",
+                                    "trace": {
+                                        "def": {
+                                            "environment": "import-include-in-privileged",
+                                            "begin": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            },
+                                            "end": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            }
+                                        }
+                                    }
+                                }
+                            },
+                            "trace": {
+                                "def": {
+                                    "environment": "import-include-in-privileged",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "import-include-in-privileged",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                },
+                "rootEnvironment": {
+                    "value": {
+                        "name": {
+                            "value": "import-include-in-privileged",
+                            "trace": {
+                                "def": {
+                                    "environment": "import-include-in-privileged",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "import-include-in-privileged",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                }
+            },
+            "schema": {
+                "properties": {
+                    "currentEnvironment": {
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "const": "import-include-in-privileged"
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "name"
+                        ]
+                    },
+                    "pulumi": {
+                        "properties": {
+                            "user": {
+                                "properties": {
+                                    "id": {
+                                        "type": "string",
+                                        "const": "USER_123"
+                                    }
+                                },
+                                "type": "object",
+                                "required": [
+                                    "id"
+                                ]
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "user"
+                        ]
+                    },
+                    "rootEnvironment": {
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "const": "import-include-in-privileged"
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "name"
+                        ]
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "currentEnvironment",
+                    "pulumi",
+                    "rootEnvironment"
+                ]
+            }
+        }
+    },
+    "checkJson": {
+        "access": "write",
+        "deploySecret": "[secret]",
+        "environmentVariables": {
+            "AWS_ROLE_ARN": "arn:aws:iam::123456789012:role/write"
+        },
+        "region": "us-west-2",
+        "summary": "write in us-west-2",
+        "writeOnlyKey": "w"
+    },
+    "eval": {
+        "exprs": {
+            "summary": {
+                "range": {
+                    "environment": "import-include-in-privileged",
+                    "begin": {
+                        "line": 8,
+                        "column": 12,
+                        "byte": 116
+                    },
+                    "end": {
+                        "line": 8,
+                        "column": 34,
+                        "byte": 138
+                    }
+                },
+                "schema": {
+                    "type": "string"
+                },
+                "interpolate": [
+                    {
+                        "value": [
+                            {
+                                "key": "access",
+                                "range": {
+                                    "environment": "import-include-in-privileged",
+                                    "begin": {
+                                        "line": 8,
+                                        "column": 14,
+                                        "byte": 118
+                                    },
+                                    "end": {
+                                        "line": 8,
+                                        "column": 20,
+                                        "byte": 124
+                                    }
+                                },
+                                "value": {
+                                    "environment": "write",
+                                    "begin": {
+                                        "line": 2,
+                                        "column": 11,
+                                        "byte": 18
+                                    },
+                                    "end": {
+                                        "line": 2,
+                                        "column": 16,
+                                        "byte": 23
+                                    }
+                                }
+                            }
+                        ]
+                    },
+                    {
+                        "text": " in ",
+                        "value": [
+                            {
+                                "key": "region",
+                                "range": {
+                                    "environment": "import-include-in-privileged",
+                                    "begin": {
+                                        "line": 8,
+                                        "column": 27,
+                                        "byte": 131
+                                    },
+                                    "end": {
+                                        "line": 8,
+                                        "column": 33,
+                                        "byte": 137
+                                    }
+                                },
+                                "value": {
+                                    "environment": "base",
+                                    "begin": {
+                                        "line": 2,
+                                        "column": 11,
+                                        "byte": 18
+                                    },
+                                    "end": {
+                                        "line": 2,
+                                        "column": 20,
+                                        "byte": 27
+                                    }
+                                }
+                            }
+                        ]
+                    }
+                ]
+            }
+        },
+        "properties": {
+            "access": {
+                "value": "write",
+                "trace": {
+                    "def": {
+                        "environment": "write",
+                        "begin": {
+                            "line": 2,
+                            "column": 11,
+                            "byte": 18
+                        },
+                        "end": {
+                            "line": 2,
+                            "column": 16,
+                            "byte": 23
+                        }
+                    }
+                }
+            },
+            "deploySecret": {
+                "value": "write-secret",
+                "secret": true,
+                "trace": {
+                    "def": {
+                        "environment": "write",
+                        "begin": {
+                            "line": 5,
+                            "column": 17,
+                            "byte": 74
+                        },
+                        "end": {
+                            "line": 5,
+                            "column": 29,
+                            "byte": 86
+                        }
+                    }
+                }
+            },
+            "environmentVariables": {
+                "value": {
+                    "AWS_ROLE_ARN": {
+                        "value": "arn:aws:iam::123456789012:role/write",
+                        "trace": {
+                            "def": {
+                                "environment": "write",
+                                "begin": {
+                                    "line": 7,
+                                    "column": 19,
+                                    "byte": 129
+                                },
+                                "end": {
+                                    "line": 7,
+                                    "column": 55,
+                                    "byte": 165
+                                }
+                            }
+                        }
+                    }
+                },
+                "trace": {
+                    "def": {
+                        "environment": "write",
+                        "begin": {
+                            "line": 7,
+                            "column": 5,
+                            "byte": 115
+                        },
+                        "end": {
+                            "line": 7,
+                            "column": 55,
+                            "byte": 165
+                        }
+                    }
+                }
+            },
+            "region": {
+                "value": "us-west-2",
+                "trace": {
+                    "def": {
+                        "environment": "base",
+                        "begin": {
+                            "line": 2,
+                            "column": 11,
+                            "byte": 18
+                        },
+                        "end": {
+                            "line": 2,
+                            "column": 20,
+                            "byte": 27
+                        }
+                    }
+                }
+            },
+            "summary": {
+                "value": "write in us-west-2",
+                "trace": {
+                    "def": {
+                        "environment": "import-include-in-privileged",
+                        "begin": {
+                            "line": 8,
+                            "column": 12,
+                            "byte": 116
+                        },
+                        "end": {
+                            "line": 8,
+                            "column": 34,
+                            "byte": 138
+                        }
+                    }
+                }
+            },
+            "writeOnlyKey": {
+                "value": "w",
+                "trace": {
+                    "def": {
+                        "environment": "write",
+                        "begin": {
+                            "line": 3,
+                            "column": 17,
+                            "byte": 40
+                        },
+                        "end": {
+                            "line": 3,
+                            "column": 18,
+                            "byte": 41
+                        }
+                    }
+                }
+            }
+        },
+        "schema": {
+            "properties": {
+                "access": {
+                    "type": "string",
+                    "const": "write"
+                },
+                "deploySecret": {
+                    "type": "string",
+                    "const": "write-secret"
+                },
+                "environmentVariables": {
+                    "properties": {
+                        "AWS_ROLE_ARN": {
+                            "type": "string",
+                            "const": "arn:aws:iam::123456789012:role/write"
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "AWS_ROLE_ARN"
+                    ]
+                },
+                "region": {
+                    "type": "string",
+                    "const": "us-west-2"
+                },
+                "summary": {
+                    "type": "string"
+                },
+                "writeOnlyKey": {
+                    "type": "string",
+                    "const": "w"
+                }
+            },
+            "type": "object",
+            "required": [
+                "access",
+                "deploySecret",
+                "environmentVariables",
+                "region",
+                "summary",
+                "writeOnlyKey"
+            ]
+        },
+        "executionContext": {
+            "properties": {
+                "currentEnvironment": {
+                    "value": {
+                        "name": {
+                            "value": "import-include-in-privileged",
+                            "trace": {
+                                "def": {
+                                    "environment": "import-include-in-privileged",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "import-include-in-privileged",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                },
+                "pulumi": {
+                    "value": {
+                        "user": {
+                            "value": {
+                                "id": {
+                                    "value": "USER_123",
+                                    "trace": {
+                                        "def": {
+                                            "environment": "import-include-in-privileged",
+                                            "begin": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            },
+                                            "end": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            }
+                                        }
+                                    }
+                                }
+                            },
+                            "trace": {
+                                "def": {
+                                    "environment": "import-include-in-privileged",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "import-include-in-privileged",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                },
+                "rootEnvironment": {
+                    "value": {
+                        "name": {
+                            "value": "import-include-in-privileged",
+                            "trace": {
+                                "def": {
+                                    "environment": "import-include-in-privileged",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "import-include-in-privileged",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                }
+            },
+            "schema": {
+                "properties": {
+                    "currentEnvironment": {
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "const": "import-include-in-privileged"
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "name"
+                        ]
+                    },
+                    "pulumi": {
+                        "properties": {
+                            "user": {
+                                "properties": {
+                                    "id": {
+                                        "type": "string",
+                                        "const": "USER_123"
+                                    }
+                                },
+                                "type": "object",
+                                "required": [
+                                    "id"
+                                ]
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "user"
+                        ]
+                    },
+                    "rootEnvironment": {
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "const": "import-include-in-privileged"
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "name"
+                        ]
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "currentEnvironment",
+                    "pulumi",
+                    "rootEnvironment"
+                ]
+            }
+        }
+    },
+    "evalJsonRedacted": {
+        "access": "write",
+        "deploySecret": "[secret]",
+        "environmentVariables": {
+            "AWS_ROLE_ARN": "arn:aws:iam::123456789012:role/write"
+        },
+        "region": "us-west-2",
+        "summary": "write in us-west-2",
+        "writeOnlyKey": "w"
+    },
+    "evalJSONRevealed": {
+        "access": "write",
+        "deploySecret": "write-secret",
+        "environmentVariables": {
+            "AWS_ROLE_ARN": "arn:aws:iam::123456789012:role/write"
+        },
+        "region": "us-west-2",
+        "summary": "write in us-west-2",
+        "writeOnlyKey": "w"
+    }
+}

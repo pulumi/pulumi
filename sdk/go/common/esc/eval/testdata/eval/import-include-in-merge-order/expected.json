@@ -1,0 +1,612 @@
+{
+    "check": {
+        "properties": {
+            "role": {
+                "value": "write",
+                "trace": {
+                    "def": {
+                        "environment": "write",
+                        "begin": {
+                            "line": 2,
+                            "column": 9,
+                            "byte": 16
+                        },
+                        "end": {
+                            "line": 2,
+                            "column": 14,
+                            "byte": 21
+                        }
+                    },
+                    "base": {
+                        "value": "first",
+                        "trace": {
+                            "def": {
+                                "environment": "first",
+                                "begin": {
+                                    "line": 2,
+                                    "column": 9,
+                                    "byte": 16
+                                },
+                                "end": {
+                                    "line": 2,
+                                    "column": 14,
+                                    "byte": 21
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "tier": {
+                "value": "last",
+                "trace": {
+                    "def": {
+                        "environment": "last",
+                        "begin": {
+                            "line": 2,
+                            "column": 9,
+                            "byte": 16
+                        },
+                        "end": {
+                            "line": 2,
+                            "column": 13,
+                            "byte": 20
+                        }
+                    },
+                    "base": {
+                        "value": "write",
+                        "trace": {
+                            "def": {
+                                "environment": "write",
+                                "begin": {
+                                    "line": 3,
+                                    "column": 9,
+                                    "byte": 30
+                                },
+                                "end": {
+                                    "line": 3,
+                                    "column": 14,
+                                    "byte": 35
+                                }
+                            },
+                            "base": {
+                                "value": "first",
+                                "trace": {
+                                    "def": {
+                                        "environment": "first",
+                                        "begin": {
+                                            "line": 3,
+                                            "column": 9,
+                                            "byte": 30
+                                        },
+                                        "end": {
+                                            "line": 3,
+                                            "column": 14,
+                                            "byte": 35
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "schema": {
+            "properties": {
+                "role": {
+                    "type": "string",
+                    "const": "write"
+                },
+                "tier": {
+                    "type": "string",
+                    "const": "last"
+                }
+            },
+            "type": "object",
+            "required": [
+                "role",
+                "tier"
+            ]
+        },
+        "executionContext": {
+            "properties": {
+                "currentEnvironment": {
+                    "value": {
+                        "name": {
+                            "value": "import-include-in-merge-order",
+                            "trace": {
+                                "def": {
+                                    "environment": "import-include-in-merge-order",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "import-include-in-merge-order",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                },
+                "pulumi": {
+                    "value": {
+                        "user": {
+                            "value": {
+                                "id": {
+                                    "value": "USER_123",
+                                    "trace": {
+                                        "def": {
+                                            "environment": "import-include-in-merge-order",
+                                            "begin": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            },
+                                            "end": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            }
+                                        }
+                                    }
+                                }
+                            },
+                            "trace": {
+                                "def": {
+                                    "environment": "import-include-in-merge-order",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "import-include-in-merge-order",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                },
+                "rootEnvironment": {
+                    "value": {
+                        "name": {
+                            "value": "import-include-in-merge-order",
+                            "trace": {
+                                "def": {
+                                    "environment": "import-include-in-merge-order",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "import-include-in-merge-order",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                }
+            },
+            "schema": {
+                "properties": {
+                    "currentEnvironment": {
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "const": "import-include-in-merge-order"
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "name"
+                        ]
+                    },
+                    "pulumi": {
+                        "properties": {
+                            "user": {
+                                "properties": {
+                                    "id": {
+                                        "type": "string",
+                                        "const": "USER_123"
+                                    }
+                                },
+                                "type": "object",
+                                "required": [
+                                    "id"
+                                ]
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "user"
+                        ]
+                    },
+                    "rootEnvironment": {
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "const": "import-include-in-merge-order"
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "name"
+                        ]
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "currentEnvironment",
+                    "pulumi",
+                    "rootEnvironment"
+                ]
+            }
+        }
+    },
+    "checkJson": {
+        "role": "write",
+        "tier": "last"
+    },
+    "eval": {
+        "properties": {
+            "role": {
+                "value": "write",
+                "trace": {
+                    "def": {
+                        "environment": "write",
+                        "begin": {
+                            "line": 2,
+                            "column": 9,
+                            "byte": 16
+                        },
+                        "end": {
+                            "line": 2,
+                            "column": 14,
+                            "byte": 21
+                        }
+                    },
+                    "base": {
+                        "value": "first",
+                        "trace": {
+                            "def": {
+                                "environment": "first",
+                                "begin": {
+                                    "line": 2,
+                                    "column": 9,
+                                    "byte": 16
+                                },
+                                "end": {
+                                    "line": 2,
+                                    "column": 14,
+                                    "byte": 21
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "tier": {
+                "value": "last",
+                "trace": {
+                    "def": {
+                        "environment": "last",
+                        "begin": {
+                            "line": 2,
+                            "column": 9,
+                            "byte": 16
+                        },
+                        "end": {
+                            "line": 2,
+                            "column": 13,
+                            "byte": 20
+                        }
+                    },
+                    "base": {
+                        "value": "write",
+                        "trace": {
+                            "def": {
+                                "environment": "write",
+                                "begin": {
+                                    "line": 3,
+                                    "column": 9,
+                                    "byte": 30
+                                },
+                                "end": {
+                                    "line": 3,
+                                    "column": 14,
+                                    "byte": 35
+                                }
+                            },
+                            "base": {
+                                "value": "first",
+                                "trace": {
+                                    "def": {
+                                        "environment": "first",
+                                        "begin": {
+                                            "line": 3,
+                                            "column": 9,
+                                            "byte": 30
+                                        },
+                                        "end": {
+                                            "line": 3,
+                                            "column": 14,
+                                            "byte": 35
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "schema": {
+            "properties": {
+                "role": {
+                    "type": "string",
+                    "const": "write"
+                },
+                "tier": {
+                    "type": "string",
+                    "const": "last"
+                }
+            },
+            "type": "object",
+            "required": [
+                "role",
+                "tier"
+            ]
+        },
+        "executionContext": {
+            "properties": {
+                "currentEnvironment": {
+                    "value": {
+                        "name": {
+                            "value": "import-include-in-merge-order",
+                            "trace": {
+                                "def": {
+                                    "environment": "import-include-in-merge-order",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "import-include-in-merge-order",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                },
+                "pulumi": {
+                    "value": {
+                        "user": {
+                            "value": {
+                                "id": {
+                                    "value": "USER_123",
+                                    "trace": {
+                                        "def": {
+                                            "environment": "import-include-in-merge-order",
+                                            "begin": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            },
+                                            "end": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            }
+                                        }
+                                    }
+                                }
+                            },
+                            "trace": {
+                                "def": {
+                                    "environment": "import-include-in-merge-order",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "import-include-in-merge-order",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                },
+                "rootEnvironment": {
+                    "value": {
+                        "name": {
+                            "value": "import-include-in-merge-order",
+                            "trace": {
+                                "def": {
+                                    "environment": "import-include-in-merge-order",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "import-include-in-merge-order",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                }
+            },
+            "schema": {
+                "properties": {
+                    "currentEnvironment": {
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "const": "import-include-in-merge-order"
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "name"
+                        ]
+                    },
+                    "pulumi": {
+                        "properties": {
+                            "user": {
+                                "properties": {
+                                    "id": {
+                                        "type": "string",
+                                        "const": "USER_123"
+                                    }
+                                },
+                                "type": "object",
+                                "required": [
+                                    "id"
+                                ]
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "user"
+                        ]
+                    },
+                    "rootEnvironment": {
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "const": "import-include-in-merge-order"
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "name"
+                        ]
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "currentEnvironment",
+                    "pulumi",
+                    "rootEnvironment"
+                ]
+            }
+        }
+    },
+    "evalJsonRedacted": {
+        "role": "write",
+        "tier": "last"
+    },
+    "evalJSONRevealed": {
+        "role": "write",
+        "tier": "last"
+    }
+}

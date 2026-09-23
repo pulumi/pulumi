@@ -1,0 +1,715 @@
+{
+    "checkDiags": [
+        {
+            "Severity": 1,
+            "Summary": "unknown property \"write\"",
+            "Detail": "",
+            "Subject": {
+                "Filename": "import-include-in-merge-false",
+                "Start": {
+                    "Line": 6,
+                    "Column": 22,
+                    "Byte": 96
+                },
+                "End": {
+                    "Line": 6,
+                    "Column": 28,
+                    "Byte": 102
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Path": "values.writeKey"
+        }
+    ],
+    "check": {
+        "exprs": {
+            "writeKey": {
+                "range": {
+                    "environment": "import-include-in-merge-false",
+                    "begin": {
+                        "line": 6,
+                        "column": 13,
+                        "byte": 87
+                    },
+                    "end": {
+                        "line": 6,
+                        "column": 42,
+                        "byte": 116
+                    }
+                },
+                "schema": true,
+                "symbol": [
+                    {
+                        "key": "imports",
+                        "range": {
+                            "environment": "import-include-in-merge-false",
+                            "begin": {
+                                "line": 6,
+                                "column": 15,
+                                "byte": 89
+                            },
+                            "end": {
+                                "line": 6,
+                                "column": 22,
+                                "byte": 96
+                            }
+                        },
+                        "value": {
+                            "environment": "import-include-in-merge-false",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    },
+                    {
+                        "key": "write",
+                        "range": {
+                            "environment": "import-include-in-merge-false",
+                            "begin": {
+                                "line": 6,
+                                "column": 22,
+                                "byte": 96
+                            },
+                            "end": {
+                                "line": 6,
+                                "column": 28,
+                                "byte": 102
+                            }
+                        },
+                        "value": {
+                            "environment": "import-include-in-merge-false",
+                            "begin": {
+                                "line": 6,
+                                "column": 13,
+                                "byte": 87
+                            },
+                            "end": {
+                                "line": 6,
+                                "column": 42,
+                                "byte": 116
+                            }
+                        }
+                    },
+                    {
+                        "key": "writeOnlyKey",
+                        "range": {
+                            "environment": "import-include-in-merge-false",
+                            "begin": {
+                                "line": 6,
+                                "column": 28,
+                                "byte": 102
+                            },
+                            "end": {
+                                "line": 6,
+                                "column": 41,
+                                "byte": 115
+                            }
+                        },
+                        "value": {
+                            "environment": "import-include-in-merge-false",
+                            "begin": {
+                                "line": 6,
+                                "column": 13,
+                                "byte": 87
+                            },
+                            "end": {
+                                "line": 6,
+                                "column": 42,
+                                "byte": 116
+                            }
+                        }
+                    }
+                ]
+            }
+        },
+        "properties": {
+            "writeKey": {
+                "value": null,
+                "unknown": true,
+                "trace": {
+                    "def": {
+                        "environment": "import-include-in-merge-false",
+                        "begin": {
+                            "line": 6,
+                            "column": 13,
+                            "byte": 87
+                        },
+                        "end": {
+                            "line": 6,
+                            "column": 42,
+                            "byte": 116
+                        }
+                    }
+                }
+            }
+        },
+        "schema": {
+            "properties": {
+                "writeKey": true
+            },
+            "type": "object",
+            "required": [
+                "writeKey"
+            ]
+        },
+        "executionContext": {
+            "properties": {
+                "currentEnvironment": {
+                    "value": {
+                        "name": {
+                            "value": "import-include-in-merge-false",
+                            "trace": {
+                                "def": {
+                                    "environment": "import-include-in-merge-false",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "import-include-in-merge-false",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                },
+                "pulumi": {
+                    "value": {
+                        "user": {
+                            "value": {
+                                "id": {
+                                    "value": "USER_123",
+                                    "trace": {
+                                        "def": {
+                                            "environment": "import-include-in-merge-false",
+                                            "begin": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            },
+                                            "end": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            }
+                                        }
+                                    }
+                                }
+                            },
+                            "trace": {
+                                "def": {
+                                    "environment": "import-include-in-merge-false",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "import-include-in-merge-false",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                },
+                "rootEnvironment": {
+                    "value": {
+                        "name": {
+                            "value": "import-include-in-merge-false",
+                            "trace": {
+                                "def": {
+                                    "environment": "import-include-in-merge-false",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "import-include-in-merge-false",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                }
+            },
+            "schema": {
+                "properties": {
+                    "currentEnvironment": {
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "const": "import-include-in-merge-false"
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "name"
+                        ]
+                    },
+                    "pulumi": {
+                        "properties": {
+                            "user": {
+                                "properties": {
+                                    "id": {
+                                        "type": "string",
+                                        "const": "USER_123"
+                                    }
+                                },
+                                "type": "object",
+                                "required": [
+                                    "id"
+                                ]
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "user"
+                        ]
+                    },
+                    "rootEnvironment": {
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "const": "import-include-in-merge-false"
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "name"
+                        ]
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "currentEnvironment",
+                    "pulumi",
+                    "rootEnvironment"
+                ]
+            }
+        }
+    },
+    "checkJson": {
+        "writeKey": "[unknown]"
+    },
+    "evalDiags": [
+        {
+            "Severity": 1,
+            "Summary": "unknown property \"write\"",
+            "Detail": "",
+            "Subject": {
+                "Filename": "import-include-in-merge-false",
+                "Start": {
+                    "Line": 6,
+                    "Column": 22,
+                    "Byte": 96
+                },
+                "End": {
+                    "Line": 6,
+                    "Column": 28,
+                    "Byte": 102
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Path": "values.writeKey"
+        }
+    ],
+    "eval": {
+        "exprs": {
+            "writeKey": {
+                "range": {
+                    "environment": "import-include-in-merge-false",
+                    "begin": {
+                        "line": 6,
+                        "column": 13,
+                        "byte": 87
+                    },
+                    "end": {
+                        "line": 6,
+                        "column": 42,
+                        "byte": 116
+                    }
+                },
+                "schema": true,
+                "symbol": [
+                    {
+                        "key": "imports",
+                        "range": {
+                            "environment": "import-include-in-merge-false",
+                            "begin": {
+                                "line": 6,
+                                "column": 15,
+                                "byte": 89
+                            },
+                            "end": {
+                                "line": 6,
+                                "column": 22,
+                                "byte": 96
+                            }
+                        },
+                        "value": {
+                            "environment": "import-include-in-merge-false",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    },
+                    {
+                        "key": "write",
+                        "range": {
+                            "environment": "import-include-in-merge-false",
+                            "begin": {
+                                "line": 6,
+                                "column": 22,
+                                "byte": 96
+                            },
+                            "end": {
+                                "line": 6,
+                                "column": 28,
+                                "byte": 102
+                            }
+                        },
+                        "value": {
+                            "environment": "import-include-in-merge-false",
+                            "begin": {
+                                "line": 6,
+                                "column": 13,
+                                "byte": 87
+                            },
+                            "end": {
+                                "line": 6,
+                                "column": 42,
+                                "byte": 116
+                            }
+                        }
+                    },
+                    {
+                        "key": "writeOnlyKey",
+                        "range": {
+                            "environment": "import-include-in-merge-false",
+                            "begin": {
+                                "line": 6,
+                                "column": 28,
+                                "byte": 102
+                            },
+                            "end": {
+                                "line": 6,
+                                "column": 41,
+                                "byte": 115
+                            }
+                        },
+                        "value": {
+                            "environment": "import-include-in-merge-false",
+                            "begin": {
+                                "line": 6,
+                                "column": 13,
+                                "byte": 87
+                            },
+                            "end": {
+                                "line": 6,
+                                "column": 42,
+                                "byte": 116
+                            }
+                        }
+                    }
+                ]
+            }
+        },
+        "properties": {
+            "writeKey": {
+                "value": null,
+                "unknown": true,
+                "trace": {
+                    "def": {
+                        "environment": "import-include-in-merge-false",
+                        "begin": {
+                            "line": 6,
+                            "column": 13,
+                            "byte": 87
+                        },
+                        "end": {
+                            "line": 6,
+                            "column": 42,
+                            "byte": 116
+                        }
+                    }
+                }
+            }
+        },
+        "schema": {
+            "properties": {
+                "writeKey": true
+            },
+            "type": "object",
+            "required": [
+                "writeKey"
+            ]
+        },
+        "executionContext": {
+            "properties": {
+                "currentEnvironment": {
+                    "value": {
+                        "name": {
+                            "value": "import-include-in-merge-false",
+                            "trace": {
+                                "def": {
+                                    "environment": "import-include-in-merge-false",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "import-include-in-merge-false",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                },
+                "pulumi": {
+                    "value": {
+                        "user": {
+                            "value": {
+                                "id": {
+                                    "value": "USER_123",
+                                    "trace": {
+                                        "def": {
+                                            "environment": "import-include-in-merge-false",
+                                            "begin": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            },
+                                            "end": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            }
+                                        }
+                                    }
+                                }
+                            },
+                            "trace": {
+                                "def": {
+                                    "environment": "import-include-in-merge-false",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "import-include-in-merge-false",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                },
+                "rootEnvironment": {
+                    "value": {
+                        "name": {
+                            "value": "import-include-in-merge-false",
+                            "trace": {
+                                "def": {
+                                    "environment": "import-include-in-merge-false",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "import-include-in-merge-false",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                }
+            },
+            "schema": {
+                "properties": {
+                    "currentEnvironment": {
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "const": "import-include-in-merge-false"
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "name"
+                        ]
+                    },
+                    "pulumi": {
+                        "properties": {
+                            "user": {
+                                "properties": {
+                                    "id": {
+                                        "type": "string",
+                                        "const": "USER_123"
+                                    }
+                                },
+                                "type": "object",
+                                "required": [
+                                    "id"
+                                ]
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "user"
+                        ]
+                    },
+                    "rootEnvironment": {
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "const": "import-include-in-merge-false"
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "name"
+                        ]
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "currentEnvironment",
+                    "pulumi",
+                    "rootEnvironment"
+                ]
+            }
+        }
+    },
+    "evalJsonRedacted": {
+        "writeKey": "[unknown]"
+    },
+    "evalJSONRevealed": {
+        "writeKey": "[unknown]"
+    }
+}

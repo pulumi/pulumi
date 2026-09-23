@@ -1,0 +1,5 @@
+values:
+  access: read
+  readOnlyKey: r
+  environmentVariables:
+    AWS_ROLE_ARN: arn:aws:iam::123456789012:role/read

@@ -1,0 +1,7 @@
+values:
+  access: write
+  writeOnlyKey: w
+  deploySecret:
+    fn::secret: write-secret
+  environmentVariables:
+    AWS_ROLE_ARN: arn:aws:iam::123456789012:role/write

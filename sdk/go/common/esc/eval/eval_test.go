@@ -25,6 +25,7 @@ import (
 	"slices"
 	"sort"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -444,6 +445,225 @@ values:
 	assert.Contains(t, environments.authorizations, importAuthorization{importer: "prod", imported: "child"})
 }
 
+type recordingEnvironments struct {
+	defs      map[string]string
+	decrypter Decrypter
+	events    []string
+}
+
+func (e *recordingEnvironments) LoadEnvironment(_ context.Context, name string) ([]byte, string, Decrypter, error) {
+	e.events = append(e.events, "load "+name)
+	def, ok := e.defs[name]
+	if !ok {
+		return nil, "", nil, fmt.Errorf("environment %q not found", name)
+	}
+	return []byte(def), name, e.decrypter, nil
+}
+
+func (e *recordingEnvironments) AuthorizeImport(_ context.Context, importer, imported string, _ bool) error {
+	e.events = append(e.events, fmt.Sprintf("authorize %s -> %s", importer, imported))
+	return nil
+}
+
+func (e *recordingEnvironments) ConditionalImport(_ context.Context, importer, imported string, included bool) {
+	e.events = append(e.events, fmt.Sprintf("conditional %s -> %s included=%v", importer, imported, included))
+}
+
+var _ ConditionalImportObserver = (*recordingEnvironments)(nil)
+
+func TestEvalSkipsExcludedImports(t *testing.T) {
+	t.Parallel()
+
+	const root = `imports:
+  - base
+  - read:
+      includeIn: unprivileged
+  - write:
+      includeIn: privileged
+  - mid
+`
+	defs := map[string]string{
+		"base":  "values:\n  base: true\n",
+		"read":  "values:\n  access: read\n",
+		"write": "values:\n  access: write\n",
+		"mid": `imports:
+  - leaf-read:
+      includeIn: unprivileged
+  - leaf-write:
+      includeIn: privileged
+`,
+		"leaf-read":  "values:\n  leaf: read\n",
+		"leaf-write": "values:\n  leaf: write\n",
+	}
+
+	cases := []struct {
+		privileged bool
+		events     []string
+		values     map[string]any
+	}{
+		{
+			privileged: false,
+			events: []string{
+				"authorize root -> base",
+				"load base",
+				"conditional root -> read included=true",
+				"authorize root -> read",
+				"load read",
+				"conditional root -> write included=false",
+				"authorize root -> mid",
+				"load mid",
+				"conditional mid -> leaf-read included=true",
+				"authorize mid -> leaf-read",
+				"load leaf-read",
+				"conditional mid -> leaf-write included=false",
+			},
+			values: map[string]any{"base": true, "access": "read", "leaf": "read"},
+		},
+		{
+			privileged: true,
+			events: []string{
+				"authorize root -> base",
+				"load base",
+				"conditional root -> read included=false",
+				"conditional root -> write included=true",
+				"authorize root -> write",
+				"load write",
+				"authorize root -> mid",
+				"load mid",
+				"conditional mid -> leaf-read included=false",
+				"conditional mid -> leaf-write included=true",
+				"authorize mid -> leaf-write",
+				"load leaf-write",
+			},
+			values: map[string]any{"base": true, "access": "write", "leaf": "write"},
+		},
+	}
+	for _, c := range cases {
+		t.Run(fmt.Sprintf("privileged=%v", c.privileged), func(t *testing.T) {
+			t.Parallel()
+
+			env, diags, err := LoadYAMLBytes("root", []byte(root))
+			require.NoError(t, err)
+			require.False(t, diags.HasErrors(), "%v", diags)
+
+			execContext, err := esc.NewExecContext(nil)
+			require.NoError(t, err)
+			environments := &recordingEnvironments{defs: defs, decrypter: rot128{}}
+			result, diags := EvalEnvironment(t.Context(), "root", env, rot128{}, testProviders{}, environments,
+				execContext, EvalOptions{Privileged: c.privileged})
+			require.False(t, diags.HasErrors(), "%v", diags)
+			require.NotNil(t, result)
+
+			assert.Equal(t, c.events, environments.events)
+			assert.Equal(t, c.values, esc.NewValue(result.Properties).ToJSON(false))
+		})
+	}
+}
+
+type recordingDecrypter struct {
+	calls atomic.Int32
+}
+
+func (d *recordingDecrypter) Decrypt(ctx context.Context, ciphertext []byte) ([]byte, error) {
+	d.calls.Add(1)
+	return rot128{}.Decrypt(ctx, ciphertext)
+}
+
+type recordingProvider struct {
+	opens atomic.Int32
+}
+
+func (p *recordingProvider) Schema() (*schema.Schema, *schema.Schema) {
+	return schema.Always(), schema.Always()
+}
+
+func (p *recordingProvider) Open(context.Context, map[string]esc.Value, esc.EnvExecContext) (esc.Value, error) {
+	p.opens.Add(1)
+	return esc.NewValue("provider-output"), nil
+}
+
+type recordingProviders struct {
+	provider *recordingProvider
+}
+
+func (p recordingProviders) LoadProvider(_ context.Context, name string) (esc.Provider, error) {
+	if name != "recording" {
+		return nil, fmt.Errorf("unknown provider %q", name)
+	}
+	return p.provider, nil
+}
+
+func (recordingProviders) LoadRotator(_ context.Context, name string) (esc.Rotator, error) {
+	return nil, fmt.Errorf("unknown rotator %q", name)
+}
+
+// The service's view check evaluates the variant that was not requested with showSecrets=false; that pass must never
+// decrypt a static secret or invoke a provider, in either privilege mode.
+func TestCheckWithoutSecretsNeverDecryptsOrOpens(t *testing.T) {
+	t.Parallel()
+
+	const root = `imports:
+  - read:
+      includeIn: unprivileged
+  - write:
+      includeIn: privileged
+`
+	defs := map[string]string{
+		"read": "values:\n  access: read\n",
+		"write": `values:
+  access: write
+  password:
+    fn::secret:
+      ciphertext: ZXNjeAAAAAHo9e705fKyKo30VQ==
+  creds:
+    fn::open::recording: {}
+`,
+	}
+
+	for _, privileged := range []bool{false, true} {
+		t.Run(fmt.Sprintf("privileged=%v", privileged), func(t *testing.T) {
+			t.Parallel()
+
+			env, diags, err := LoadYAMLBytes("root", []byte(root))
+			require.NoError(t, err)
+			require.False(t, diags.HasErrors(), "%v", diags)
+
+			execContext, err := esc.NewExecContext(nil)
+			require.NoError(t, err)
+			decrypter := &recordingDecrypter{}
+			providers := recordingProviders{provider: &recordingProvider{}}
+			environments := &recordingEnvironments{defs: defs, decrypter: decrypter}
+
+			checked, diags := CheckEnvironment(t.Context(), "root", env, decrypter, providers, environments,
+				execContext, false, EvalOptions{Privileged: privileged})
+			require.False(t, diags.HasErrors(), "%v", diags)
+			require.NotNil(t, checked)
+
+			assert.Zero(t, decrypter.calls.Load())
+			assert.Zero(t, providers.provider.opens.Load())
+			checkedJSON, err := json.Marshal(esc.NewValue(checked.Properties).ToJSON(false))
+			require.NoError(t, err)
+			assert.NotContains(t, string(checkedJSON), "hunter2")
+			assert.NotContains(t, string(checkedJSON), "provider-output")
+
+			opened, diags := EvalEnvironment(t.Context(), "root", env, decrypter, providers, environments,
+				execContext, EvalOptions{Privileged: privileged})
+			require.False(t, diags.HasErrors(), "%v", diags)
+			openedJSON, err := json.Marshal(esc.NewValue(opened.Properties).ToJSON(false))
+			require.NoError(t, err)
+			if privileged {
+				assert.Equal(t, int32(1), decrypter.calls.Load())
+				assert.Equal(t, int32(1), providers.provider.opens.Load())
+				assert.Contains(t, string(openedJSON), "hunter2")
+				assert.Contains(t, string(openedJSON), "provider-output")
+			} else {
+				assert.Zero(t, decrypter.calls.Load())
+				assert.Zero(t, providers.provider.opens.Load())
+			}
+		})
+	}
+}
+
 func TestEval(t *testing.T) {
 	t.Parallel()
 	type testOverrides struct {
@@ -451,6 +671,7 @@ func TestEval(t *testing.T) {
 		RootEnvironment string   `json:"rootEnvironment,omitempty"`
 		Rotate          bool     `json:"rotate,omitempty"`
 		RotatePaths     []string `json:"rotatePaths,omitempty"`
+		Privileged      bool     `json:"privileged,omitempty"`
 	}
 
 	type expectedData struct {
@@ -506,6 +727,7 @@ func TestEval(t *testing.T) {
 				environmentName = overrides.RootEnvironment
 			}
 			showSecrets := overrides.ShowSecrets
+			evalOpts := EvalOptions{TraceMode: TraceModeFull, Privileged: overrides.Privileged}
 
 			doRotate := overrides.Rotate
 			rotatePaths := make([]resource.PropertyPath, len(overrides.RotatePaths))
@@ -521,11 +743,11 @@ func TestEval(t *testing.T) {
 				sortEnvironmentDiagnostics(loadDiags)
 
 				check, checkDiags := CheckEnvironment(t.Context(), environmentName, env, rot128{}, testProviders{},
-					&testEnvironments{basePath}, execContext, showSecrets, EvalOptions{TraceMode: TraceModeFull})
+					&testEnvironments{basePath}, execContext, showSecrets, evalOpts)
 				sortEnvironmentDiagnostics(checkDiags)
 
 				actual, evalDiags := EvalEnvironment(t.Context(), environmentName, env, rot128{}, testProviders{},
-					&testEnvironments{basePath}, execContext, EvalOptions{TraceMode: TraceModeFull})
+					&testEnvironments{basePath}, execContext, evalOpts)
 				sortEnvironmentDiagnostics(evalDiags)
 
 				var rotated *esc.Environment
@@ -542,7 +764,7 @@ func TestEval(t *testing.T) {
 						&testEnvironments{basePath},
 						execContext,
 						rotatePaths,
-						EvalOptions{TraceMode: TraceModeFull},
+						evalOpts,
 					)
 					patches = rotationResult.Patches()
 				}
@@ -602,12 +824,12 @@ func TestEval(t *testing.T) {
 			require.Equal(t, expected.LoadDiags, diags)
 
 			check, diags := CheckEnvironment(t.Context(), environmentName, env, rot128{}, testProviders{},
-				&testEnvironments{basePath}, execContext, showSecrets, EvalOptions{TraceMode: TraceModeFull})
+				&testEnvironments{basePath}, execContext, showSecrets, evalOpts)
 			sortEnvironmentDiagnostics(diags)
 			require.Equal(t, expected.CheckDiags, diags)
 
 			actual, diags := EvalEnvironment(t.Context(), environmentName, env, rot128{}, testProviders{},
-				&testEnvironments{basePath}, execContext, EvalOptions{TraceMode: TraceModeFull})
+				&testEnvironments{basePath}, execContext, evalOpts)
 			sortEnvironmentDiagnostics(diags)
 			require.Equal(t, expected.EvalDiags, diags)
 
@@ -622,7 +844,7 @@ func TestEval(t *testing.T) {
 					&testEnvironments{basePath},
 					execContext,
 					rotatePaths,
-					EvalOptions{TraceMode: TraceModeFull},
+					evalOpts,
 				)
 				var patches []*Patch
 				if rotationResult != nil {

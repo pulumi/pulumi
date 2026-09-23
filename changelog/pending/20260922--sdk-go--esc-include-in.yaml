@@ -1,0 +1,4 @@
+component: sdk/go
+kind: feat
+body: Add includeIn to ESC imports to select imports by privileged or unprivileged opens
+time: 2026-09-22T00:00:00Z
