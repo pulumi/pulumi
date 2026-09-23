@@ -73,34 +73,35 @@ func TestBindConstantAndEnumLiterals(t *testing.T) {
 			name:  "other string constant",
 			input: `kind = "Variable"`,
 			detail: `Cannot assign value "Variable" to attribute of type "Optional<Input<string>>" ` +
-				`for resource "constant::Resource"`,
+				`for resource "constant::Resource"; the attribute must be the constant "Constant"`,
 		},
 		{name: "matching bool constant", input: "flag = true"},
 		{
 			name:  "other bool constant",
 			input: "flag = false",
 			detail: `Cannot assign value false to attribute of type "Optional<Input<boolean>>" ` +
-				`for resource "constant::Resource"`,
+				`for resource "constant::Resource"; the attribute must be the constant true`,
 		},
 		{name: "matching int constant", input: "count = 3"},
 		{
-			name:   "other int constant",
-			input:  "count = 4",
-			detail: `Cannot assign value 4 to attribute of type "Optional<Input<integer>>" for resource "constant::Resource"`,
+			name:  "other int constant",
+			input: "count = 4",
+			detail: `Cannot assign value 4 to attribute of type "Optional<Input<integer>>" ` +
+				`for resource "constant::Resource"; the attribute must be the constant 3`,
 		},
 		{name: "string enum member", input: `color = "blue"`},
 		{
 			name:  "string enum non-member",
 			input: `color = "green"`,
 			detail: `Cannot assign value "green" to attribute of type "Optional<Input<constant:index:Color>>" ` +
-				`for resource "constant::Resource"`,
+				`for resource "constant::Resource"; the attribute must be one of "red", "blue"`,
 		},
 		{name: "enum member", input: "level = 2"},
 		{
 			name:  "enum non-member",
 			input: "level = 3",
 			detail: `Cannot assign value 3 to attribute of type "Optional<Input<constant:index:Level>>" ` +
-				`for resource "constant::Resource"`,
+				`for resource "constant::Resource"; the attribute must be one of 1, 2`,
 		},
 	}
 	for _, c := range cases {
