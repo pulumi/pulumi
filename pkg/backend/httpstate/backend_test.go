@@ -3092,6 +3092,41 @@ func TestRunEngineActionCoherenceWindow(t *testing.T) {
 	}
 }
 
+func TestCreateAndStartUpdatePreviewsInADerivedCoherenceWindow(t *testing.T) {
+	t.Parallel()
+
+	window := "d333a711-4aa0-402f-be6d-72af9665fc37"
+	preview := previewCoherenceWindow(window)
+	assert.NotEqual(t, window, preview)
+	assert.Equal(t, preview, previewCoherenceWindow(window))
+
+	cases := []struct {
+		name   string
+		action apitype.UpdateKind
+		dryRun bool
+		want   string
+	}{
+		{"the preview of an update", apitype.UpdateUpdate, true, preview},
+		{"the update itself", apitype.UpdateUpdate, false, window},
+		{"a preview on its own", apitype.PreviewUpdate, true, window},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			fx := newRunEngineActionFixture(t, &deploy.Snapshot{}, nil, b64.NewBase64SecretsManager())
+			fx.backend.capabilities = promise.Run(func() (apitype.Capabilities, error) {
+				return apitype.Capabilities{CoherenceWindows: true, StackOutputs: true}, nil
+			})
+			fx.op.CoherenceWindow = window
+			fx.op.M = &backend.UpdateMetadata{}
+
+			stk := &cloudStack{ref: fx.stackRef, b: fx.backend}
+			_, _, _ = fx.backend.createAndStartUpdate(t.Context(), tc.action, stk, &fx.op, tc.dryRun)
+			assert.Equal(t, tc.want, fx.op.CoherenceWindow)
+		})
+	}
+}
+
 func TestCreateAndStartUpdateRequiresCoherenceWindowCapability(t *testing.T) {
 	t.Parallel()
 

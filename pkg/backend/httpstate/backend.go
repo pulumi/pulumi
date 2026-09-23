@@ -34,6 +34,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	uuid "github.com/gofrs/uuid"
 	"github.com/golang-jwt/jwt/v5"
 	opentracing "github.com/opentracing/opentracing-go"
 	fxs "github.com/pgavlin/fx/v2/slices"
@@ -1825,6 +1826,9 @@ func (b *cloudBackend) createAndStartUpdate(
 			return client.UpdateIdentifier{}, updateMetadata{},
 				errors.New("the Pulumi Cloud backend does not support coherence windows")
 		}
+		if dryRun && action != apitype.PreviewUpdate {
+			op.CoherenceWindow = previewCoherenceWindow(op.CoherenceWindow)
+		}
 	}
 
 	tags, err := backend.GetMergedStackTags(ctx, stack, op.Root, op.Proj, op.StackConfiguration.Config)
@@ -2062,6 +2066,12 @@ func permalinkForDisplay(ctx context.Context, cloudURL, permalink string) (strin
 		return claim.ClaimURL, agentClaimPermalinkLabel
 	}
 	return "", ""
+}
+
+// previewCoherenceWindow is the window the preview an update makes before applying runs in: derived
+// from the update's own, so that the previews of one run read each other rather than its updates.
+func previewCoherenceWindow(window string) string {
+	return uuid.NewV5(uuid.Must(uuid.FromString(window)), "preview").String()
 }
 
 func (b *cloudBackend) runEngineAction(
