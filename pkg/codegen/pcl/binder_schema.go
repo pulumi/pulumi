@@ -494,7 +494,12 @@ func (b *binder) schemaTypeToType(src schema.Type) model.Type {
 			return t
 		}
 
-		properties := map[string]model.Type{}
+		// A resource reference is typed the way a bound resource is: its identity and every
+		// property as an output, so a resource converts to a reference to its own type.
+		properties := map[string]model.Type{
+			"id":  model.NewOutputType(model.IDType),
+			"urn": model.NewOutputType(model.StringType),
+		}
 		objType := model.NewObjectType(properties, src)
 		if b.options.skipResourceTypecheck || b.options.allowMissingProperties {
 			objType.Strict = false
@@ -506,7 +511,7 @@ func (b *binder) schemaTypeToType(src schema.Type) model.Type {
 				typ = &schema.OptionalType{ElementType: typ}
 			}
 
-			properties[prop.Name] = b.schemaTypeToTypeOrConst(typ, prop)
+			properties[prop.Name] = model.NewOutputType(b.schemaTypeToTypeOrConst(typ, prop))
 		}
 		return objType
 	default:
