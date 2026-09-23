@@ -1574,9 +1574,15 @@ func (rm *resmon) ReadResource(ctx context.Context,
 		return nil, fmt.Errorf("failed to marshal %s return state: %w", result.State.URN, err)
 	}
 
+	reason := pulumirpc.Result_SUCCESS
+	if result.Result == ResultStateFailed {
+		reason = pulumirpc.Result_FAIL
+	}
 	return &pulumirpc.ReadResourceResponse{
 		Urn:        string(result.State.URN),
 		Properties: marshaled,
+		Result:     reason,
+		Unknown:    result.Unknown,
 	}, nil
 }
 

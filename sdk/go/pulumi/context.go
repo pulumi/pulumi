@@ -1461,9 +1461,10 @@ func (ctx *Context) readPackageResource(
 		var urn, resID string
 		var inputs *resourceInputs
 		var state *structpb.Struct
+		var keepUnknowns bool
 		var err error
 		defer func() {
-			res.resolve(ctx, err, inputs, urn, resID, state, nil, false)
+			res.resolve(ctx, err, inputs, urn, resID, state, nil, keepUnknowns)
 			ctx.endRPC(err)
 		}()
 
@@ -1503,6 +1504,9 @@ func (ctx *Context) readPackageResource(
 		if resp != nil {
 			urn, resID = resp.Urn, string(idToRead)
 			state = resp.Properties
+			// A skipped read reports Unknown=true; resolve outputs as unknown so dependents
+			// propagate unknowns instead of seeing empty values as real.
+			keepUnknowns = resp.Result == pulumirpc.Result_SUCCESS && resp.Unknown
 		}
 	}()
 

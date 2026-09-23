@@ -1117,3 +1117,70 @@ func TestUpContinueOnErrorSkippedReadReturnsOldState(t *testing.T) {
 	_, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
 	require.ErrorContains(t, err, "intentionally failed update")
 }
+
+// TestUpContinueOnErrorSkippedReadReturnsUnknown verifies that a Read skipped because one of its
+// dependencies failed reports Unknown=true on the response so SDKs can propagate unknowns to
+// dependents rather than treating empty outputs as real.
+func TestUpContinueOnErrorSkippedReadReturnsUnknown(t *testing.T) {
+	t.Parallel()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+					return plugin.ReadResponse{
+						ReadResult: plugin.ReadResult{
+							ID:      req.ID,
+							Inputs:  resource.PropertyMap{},
+							Outputs: resource.NewPropertyMapFromMap(map[string]any{"foo": "bar"}),
+						},
+						Status: resource.StatusOK,
+					}, nil
+				},
+			}, nil
+		}, deploytest.WithoutGrpc),
+		deploytest.NewProviderLoader("pkgB", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					return plugin.CreateResponse{}, errors.New("intentionally failed create")
+				},
+			}, nil
+		}, deploytest.WithoutGrpc),
+	}
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		failingResp, err := monitor.RegisterResource("pkgB:m:typB", "failing", true, deploytest.ResourceOptions{
+			SupportsResultReporting: true,
+		})
+		require.NoError(t, err)
+
+		readReq := &pulumirpc.ReadResourceRequest{
+			Type:         "pkgA:m:typA",
+			Name:         "readWithDep",
+			Id:           "some-id",
+			Dependencies: []string{string(failingResp.URN)},
+		}
+		readResp, err := monitor.Client().ReadResource(t.Context(), readReq)
+		require.NoError(t, err)
+		assert.Equal(t, pulumirpc.Result_SUCCESS, readResp.Result)
+		assert.True(t, readResp.Unknown)
+
+		return nil
+	})
+
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
+
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{
+			T: t,
+			UpdateOptions: UpdateOptions{
+				ContinueOnError: true,
+			},
+			HostF: hostF,
+		},
+	}
+
+	project := p.GetProject()
+	_, err := lt.TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	require.ErrorContains(t, err, "intentionally failed create")
+}
