@@ -34,6 +34,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	uuid "github.com/gofrs/uuid"
 	"github.com/golang-jwt/jwt/v5"
 	opentracing "github.com/opentracing/opentracing-go"
 	fxs "github.com/pgavlin/fx/v2/slices"
@@ -230,6 +231,16 @@ type cloudBackend struct {
 	cachedUpdateData *cachedUpdateData
 
 	readingUpdateID atomic.Pointer[string]
+
+	coherenceWindowOnce sync.Once
+	coherenceWindow     string
+}
+
+// autoCoherenceWindow is the window every update of this process runs in when none was asked for, so
+// that a `pulumi up` previews and updates in the same one.
+func (b *cloudBackend) autoCoherenceWindow() string {
+	b.coherenceWindowOnce.Do(func() { b.coherenceWindow = uuid.Must(uuid.NewV4()).String() })
+	return b.coherenceWindow
 }
 
 // Assert we implement the backend.Backend and backend.SpecificDeploymentExporter interfaces.
@@ -1820,11 +1831,13 @@ func (b *cloudBackend) createAndStartUpdate(
 		Message:     op.M.Message,
 		Environment: op.M.Environment,
 	}
-	if op.CoherenceWindow != "" {
-		if caps := b.Capabilities(ctx); !caps.CoherenceWindows || !caps.StackOutputs {
-			return client.UpdateIdentifier{}, updateMetadata{},
-				errors.New("the Pulumi Cloud backend does not support coherence windows")
-		}
+	caps := b.Capabilities(ctx)
+	switch {
+	case op.CoherenceWindow != "" && (!caps.CoherenceWindows || !caps.StackOutputs):
+		return client.UpdateIdentifier{}, updateMetadata{},
+			errors.New("the Pulumi Cloud backend does not support coherence windows")
+	case op.CoherenceWindow == "" && caps.CoherenceWindows && caps.StackOutputs:
+		op.CoherenceWindow = b.autoCoherenceWindow()
 	}
 
 	tags, err := backend.GetMergedStackTags(ctx, stack, op.Root, op.Proj, op.StackConfiguration.Config)
