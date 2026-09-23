@@ -16,7 +16,6 @@ package securestore
 
 import (
 	"encoding/base64"
-	"errors"
 	"fmt"
 	"strings"
 )
@@ -39,7 +38,7 @@ func formatItem(kind wrapKind, blob []byte) string {
 func parseItem(value string) (wrapKind, []byte, error) {
 	parts := strings.SplitN(value, ":", 3)
 	if len(parts) != 3 || parts[0] != itemPrefix {
-		return "", nil, errors.New("stored key has an unrecognized format")
+		return "", nil, fmt.Errorf("%w: unrecognized format", ErrKeyCorrupt)
 	}
 	kind := wrapKind(parts[1])
 	if kind != wrapRaw && kind != wrapTPM {
@@ -47,7 +46,7 @@ func parseItem(value string) (wrapKind, []byte, error) {
 	}
 	blob, err := base64.StdEncoding.DecodeString(parts[2])
 	if err != nil {
-		return "", nil, fmt.Errorf("stored key is corrupt (not base64): %w", err)
+		return "", nil, fmt.Errorf("%w (not base64): %w", ErrKeyCorrupt, err)
 	}
 	return kind, blob, nil
 }

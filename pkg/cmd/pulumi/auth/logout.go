@@ -32,6 +32,7 @@ func NewLogoutCmd(ws pkgWorkspace.Context) *cobra.Command {
 	var cloudURL string
 	var localMode bool
 	var all bool
+	var deleteCredentialsKey bool
 
 	cmd := &cobra.Command{
 		Use:   "logout",
@@ -53,6 +54,12 @@ func NewLogoutCmd(ws pkgWorkspace.Context) *cobra.Command {
 			"\n" +
 			"    $ pulumi logout --all\n" +
 			"\n" +
+			"Stored credentials may be encrypted with a key kept in the OS credential store. That key is\n" +
+			"shared by all your credentials files, so logging out keeps it. To delete it as well, add\n" +
+			"`--delete-credentials-key` to `--all`:\n" +
+			"\n" +
+			"    $ pulumi logout --all --delete-credentials-key\n" +
+			"\n" +
 			"`--local` is a shortcut for `file://~`, matching `pulumi login --local`.\n",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			logOutOfEverything := func() error {
@@ -63,6 +70,10 @@ func NewLogoutCmd(ws pkgWorkspace.Context) *cobra.Command {
 					"Removed stored credentials that could no longer be decrypted; logged out of everything")
 				return nil
 			}
+			if deleteCredentialsKey && !all {
+				return errors.New("--delete-credentials-key requires --all")
+			}
+
 			// If a <cloud> was specified as an argument, use it.
 			if len(args) > 0 {
 				if cloudURL != "" || all {
@@ -81,7 +92,11 @@ func NewLogoutCmd(ws pkgWorkspace.Context) *cobra.Command {
 
 			var err error
 			if all {
-				err = deleteAllAccounts()
+				var keyErr error
+				if deleteCredentialsKey {
+					keyErr = workspace.DeleteCredentialsKey()
+				}
+				err = errors.Join(deleteAllAccounts(), keyErr)
 				fmt.Fprintln(cmd.OutOrStdout(), "Logged out of everything")
 			} else {
 				if cloudURL == "" {
@@ -130,6 +145,10 @@ func NewLogoutCmd(ws pkgWorkspace.Context) *cobra.Command {
 
 	cmd.PersistentFlags().BoolVar(&all, "all", false,
 		"Log out of all backends")
+	cmd.PersistentFlags().BoolVar(&deleteCredentialsKey, "delete-credentials-key", false,
+		"Also delete the key that encrypts stored credentials from the OS credential store. "+
+			"Encrypted credentials in every other PULUMI_HOME, PULUMI_CREDENTIALS_PATH and the agent "+
+			"credentials file become unreadable. Requires --all")
 	cmd.PersistentFlags().StringVarP(&cloudURL, "cloud-url", "c", "",
 		"A cloud URL to log out of (defaults to the current backend)")
 	cmd.PersistentFlags().BoolVarP(&localMode, "local", "l", false,
