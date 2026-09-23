@@ -191,6 +191,13 @@ func (p *Pulumi) Invoke(ctx context.Context, method string, args json.RawMessage
 	}
 }
 
+func stackEnvOperation(isPreview bool) cmdConfig.Operation {
+	if isPreview {
+		return cmdConfig.OperationPreview
+	}
+	return cmdConfig.OperationUp
+}
+
 func (p *Pulumi) run(ctx context.Context, a pulumiArgs, isPreview bool) (pulumiResult, error) {
 	if a.StackName == "" {
 		return failedResult(a, "", errors.New("stack_name is required"))
@@ -262,7 +269,8 @@ func (p *Pulumi) run(ctx context.Context, a pulumiArgs, isPreview bool) (pulumiR
 	}
 
 	ssml := cmdStack.NewStackSecretsManagerLoaderFromEnv()
-	cfg, sm, err := cmdConfig.GetStackConfiguration(ctx, cmdutil.Diag(), ssml, s, proj, "", nil)
+	cfg, sm, err := cmdConfig.GetStackConfiguration(ctx, cmdutil.Diag(), ssml, s, proj, "", nil,
+		stackEnvOperation(isPreview))
 	if err != nil {
 		return failedResult(a, "", fmt.Errorf("getting stack configuration: %w", err))
 	}

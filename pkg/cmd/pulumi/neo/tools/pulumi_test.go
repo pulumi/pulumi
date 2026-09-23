@@ -932,3 +932,10 @@ func (f *fakeHTTPStack) StackIdentifier() client.StackIdentifier {
 // Compile-time assertion: fakeHTTPStack must satisfy httpstate.Stack so the
 // type assertion in autonamingStackContextFor succeeds.
 var _ httpstate.Stack = (*fakeHTTPStack)(nil)
+
+func TestStackEnvOperation(t *testing.T) {
+	t.Parallel()
+
+	assert.False(t, stackEnvOperation(true).Privileged())
+	assert.True(t, stackEnvOperation(false).Privileged())
+}

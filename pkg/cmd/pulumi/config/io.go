@@ -55,8 +55,9 @@ func GetStackConfiguration(
 	project *workspace.Project,
 	configFile string,
 	envOverrides []string,
+	op Operation,
 ) (backend.StackConfiguration, secrets.Manager, error) {
-	return getStackConfigurationWithFallback(ctx, sink, ssml, stack, project, nil, configFile, envOverrides)
+	return getStackConfigurationWithFallback(ctx, sink, ssml, stack, project, nil, configFile, envOverrides, op)
 }
 
 // GetStackConfigurationOrLatest attempts to load a current stack configuration
@@ -73,6 +74,7 @@ func GetStackConfigurationOrLatest(
 	project *workspace.Project,
 	configFile string,
 	envOverrides []string,
+	op Operation,
 ) (backend.StackConfiguration, secrets.Manager, error) {
 	return getStackConfigurationWithFallback(
 		ctx, sink, ssml, stack, project,
@@ -85,7 +87,7 @@ func GetStackConfigurationOrLatest(
 			}
 			return nil, err
 		},
-		configFile, envOverrides)
+		configFile, envOverrides, op)
 }
 
 func getStackConfigurationWithFallback(
@@ -97,6 +99,7 @@ func getStackConfigurationWithFallback(
 	fallbackGetConfig func(err error) (config.Map, error), // optional
 	configFile string,
 	envOverrides []string,
+	op Operation,
 ) (backend.StackConfiguration, secrets.Manager, error) {
 	workspaceStack, err := cmdStack.LoadProjectStack(ctx, sink, project, s, configFile)
 	if err != nil || workspaceStack == nil {
@@ -120,7 +123,7 @@ func getStackConfigurationWithFallback(
 		return backend.StackConfiguration{}, nil, err
 	}
 
-	config, err := getStackConfigurationFromProjectStack(ctx, s, project, sm, workspaceStack, envOverrides)
+	config, err := getStackConfigurationFromProjectStack(ctx, s, project, sm, workspaceStack, envOverrides, op)
 	if err != nil {
 		return backend.StackConfiguration{}, nil, err
 	}
@@ -134,8 +137,9 @@ func getStackConfigurationFromProjectStack(
 	sm secrets.Manager,
 	workspaceStack *workspace.ProjectStack,
 	envOverrides []string,
+	op Operation,
 ) (backend.StackConfiguration, error) {
-	env, diags, err := openStackEnv(ctx, stack, workspaceStack, envOverrides)
+	env, diags, err := openStackEnv(ctx, stack, workspaceStack, envOverrides, op)
 	if err != nil {
 		return backend.StackConfiguration{}, fmt.Errorf("opening environment: %w", err)
 	}
@@ -240,6 +244,7 @@ func openStackEnv(
 	stack backend.Stack,
 	workspaceStack *workspace.ProjectStack,
 	envOverrides []string,
+	op Operation,
 ) (*esc.Environment, []apitype.EnvironmentDiagnostic, error) {
 	yaml := workspaceStack.EnvironmentBytes()
 	if len(yaml) == 0 {
@@ -247,6 +252,11 @@ func openStackEnv(
 	}
 
 	overrides, err := parseEnvironmentOverrides(envOverrides)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	privileged, err := stackEnvPrivileged(op)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -261,7 +271,7 @@ func openStackEnv(
 	}
 	orgName := orgNamer.OrgName()
 
-	return envs.OpenYAMLEnvironment(ctx, orgName, yaml, 2*time.Hour, overrides, false)
+	return envs.OpenYAMLEnvironment(ctx, orgName, yaml, 2*time.Hour, overrides, privileged)
 }
 
 // parseEnvironmentOverrides converts <env>=<replacement> pairs into a map sent to ESC,

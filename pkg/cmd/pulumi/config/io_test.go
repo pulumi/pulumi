@@ -17,6 +17,7 @@ package config
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 	"time"
 
@@ -90,6 +91,7 @@ func TestGetStackConfigurationDoesNotGetLatestConfiguration(t *testing.T) {
 		nil,
 		"",
 		nil,
+		OperationPreview,
 	)
 }
 
@@ -128,6 +130,7 @@ func TestGetStackConfigurationOrLatest(t *testing.T) {
 		nil,
 		"",
 		nil,
+		OperationPreview,
 	)
 	if !called {
 		t.Fatalf("GetLatestConfiguration should be called in getStackConfigurationOrLatest.")
@@ -188,7 +191,7 @@ func TestOpenStackEnvNoEnv(t *testing.T) {
 	err := yaml.Unmarshal([]byte(""), &projectStack)
 	require.NoError(t, err)
 
-	_, _, err = openStackEnv(t.Context(), stack, &projectStack, nil)
+	_, _, err = openStackEnv(t.Context(), stack, &projectStack, nil, OperationPreview)
 	require.NoError(t, err)
 }
 
@@ -202,7 +205,7 @@ func TestOpenStackEnvUnsupportedBackend(t *testing.T) {
 	err := yaml.Unmarshal([]byte("environment:\n  - test"), &projectStack)
 	require.NoError(t, err)
 
-	_, _, err = openStackEnv(t.Context(), stack, &projectStack, nil)
+	_, _, err = openStackEnv(t.Context(), stack, &projectStack, nil, OperationPreview)
 	assert.Error(t, err)
 }
 
@@ -256,7 +259,7 @@ func TestOpenStackEnv(t *testing.T) {
 	err := yaml.Unmarshal([]byte("environment:\n  - test"), &projectStack)
 	require.NoError(t, err)
 
-	openEnv, diags, err := openStackEnv(t.Context(), stack, &projectStack, nil)
+	openEnv, diags, err := openStackEnv(t.Context(), stack, &projectStack, nil, OperationPreview)
 	require.NoError(t, err)
 	require.Len(t, diags, 0)
 	assert.Equal(t, env, openEnv.Properties)
@@ -283,7 +286,7 @@ func TestOpenStackEnvLiteral(t *testing.T) {
 	err := yaml.Unmarshal([]byte("environment:\n  imports:\n    - test"), &projectStack)
 	require.NoError(t, err)
 
-	openEnv, diags, err := openStackEnv(t.Context(), stack, &projectStack, nil)
+	openEnv, diags, err := openStackEnv(t.Context(), stack, &projectStack, nil, OperationPreview)
 	require.NoError(t, err)
 	require.Len(t, diags, 0)
 	assert.Equal(t, env, openEnv.Properties)
@@ -325,7 +328,7 @@ func TestOpenStackEnvVersionPinned(t *testing.T) {
 	err := yaml.Unmarshal([]byte("environment:\n  - project/env@3\n  - project/other@stable"), &projectStack)
 	require.NoError(t, err)
 
-	openEnv, diags, err := openStackEnv(t.Context(), stack, &projectStack, nil)
+	openEnv, diags, err := openStackEnv(t.Context(), stack, &projectStack, nil, OperationPreview)
 	require.NoError(t, err)
 	require.Len(t, diags, 0)
 	assert.Equal(t, env, openEnv.Properties)
@@ -361,13 +364,90 @@ func TestOpenStackEnvOverrides(t *testing.T) {
 	require.NoError(t, err)
 
 	_, diags, err := openStackEnv(t.Context(), stack, &projectStack,
-		[]string{"proj/env=proj/other@tag", "proj/env2=proj/other2"})
+		[]string{"proj/env=proj/other@tag", "proj/env2=proj/other2"}, OperationPreview)
 	require.NoError(t, err)
 	require.Len(t, diags, 0)
 	assert.Equal(t, map[string]string{
 		"proj/env":  "proj/other@tag",
 		"proj/env2": "proj/other2",
 	}, gotOverrides)
+}
+
+func TestOpenStackEnvPrivileged(t *testing.T) {
+	operations := []Operation{
+		OperationPreview, OperationRefresh, OperationImport, OperationLogs, OperationConfig,
+		OperationUp, OperationDestroy, OperationWatch, OperationDo,
+	}
+	privilegedOperations := map[Operation]bool{
+		OperationUp: true, OperationDestroy: true, OperationWatch: true, OperationDo: true,
+	}
+
+	cases := []struct {
+		envVar string
+		want   func(op Operation) bool
+	}{
+		{envVar: "", want: func(op Operation) bool { return privilegedOperations[op] }},
+		{envVar: "true", want: func(Operation) bool { return true }},
+		{envVar: "false", want: func(Operation) bool { return false }},
+	}
+
+	for _, tc := range cases {
+		for _, op := range operations {
+			t.Run(fmt.Sprintf("PULUMI_ESC_PRIVILEGED=%q/%s", tc.envVar, op), func(t *testing.T) {
+				t.Setenv("PULUMI_ESC_PRIVILEGED", tc.envVar)
+
+				var gotPrivileged *bool
+				stack := newPrivilegedCaptureStack(&gotPrivileged)
+
+				var projectStack workspace.ProjectStack
+				err := yaml.Unmarshal([]byte("environment:\n  - proj/env"), &projectStack)
+				require.NoError(t, err)
+
+				_, _, err = openStackEnv(t.Context(), stack, &projectStack, nil, op)
+				require.NoError(t, err)
+				require.NotNil(t, gotPrivileged)
+				assert.Equal(t, tc.want(op), *gotPrivileged)
+			})
+		}
+	}
+
+	t.Run("invalid PULUMI_ESC_PRIVILEGED", func(t *testing.T) {
+		t.Setenv("PULUMI_ESC_PRIVILEGED", "sometimes")
+
+		var gotPrivileged *bool
+		stack := newPrivilegedCaptureStack(&gotPrivileged)
+
+		var projectStack workspace.ProjectStack
+		err := yaml.Unmarshal([]byte("environment:\n  - proj/env"), &projectStack)
+		require.NoError(t, err)
+
+		_, _, err = openStackEnv(t.Context(), stack, &projectStack, nil, OperationUp)
+		assert.ErrorContains(t, err, "PULUMI_ESC_PRIVILEGED must be true or false")
+		assert.Nil(t, gotPrivileged)
+	})
+}
+
+func newPrivilegedCaptureStack(gotPrivileged **bool) *backend.MockStack {
+	be := &backend.MockEnvironmentsBackend{
+		MockBackend: backend.MockBackend{
+			NameF: func() string { return "test" },
+		},
+		OpenYAMLEnvironmentF: func(
+			ctx context.Context,
+			org string,
+			yamlBody []byte,
+			duration time.Duration,
+			_ map[string]string,
+			privileged bool,
+		) (*esc.Environment, apitype.EnvironmentDiagnostics, error) {
+			*gotPrivileged = &privileged
+			return &esc.Environment{Properties: map[string]esc.Value{}}, nil, nil
+		},
+	}
+	return &backend.MockStack{
+		OrgNameF: func() string { return "test-org" },
+		BackendF: func() backend.Backend { return be },
+	}
 }
 
 func TestParseEnvironmentOverrides(t *testing.T) {
@@ -424,7 +504,7 @@ func TestOpenStackEnvVersionPinnedLiteral(t *testing.T) {
 	err := yaml.Unmarshal([]byte(stackYAML), &projectStack)
 	require.NoError(t, err)
 
-	openEnv, diags, err := openStackEnv(t.Context(), stack, &projectStack, nil)
+	openEnv, diags, err := openStackEnv(t.Context(), stack, &projectStack, nil, OperationPreview)
 	require.NoError(t, err)
 	require.Len(t, diags, 0)
 	assert.Equal(t, env, openEnv.Properties)
@@ -502,6 +582,7 @@ func TestStackEnvConfig(t *testing.T) {
 		mockSecretsManager,
 		&projectStack,
 		nil,
+		OperationPreview,
 	)
 	require.NoError(t, err)
 
@@ -633,7 +714,7 @@ func TestOpenStackEnvDiags(t *testing.T) {
 	err := yaml.Unmarshal([]byte("environment:\n  - test"), &projectStack)
 	require.NoError(t, err)
 
-	_, diags, err := openStackEnv(t.Context(), stack, &projectStack, nil)
+	_, diags, err := openStackEnv(t.Context(), stack, &projectStack, nil, OperationPreview)
 	require.NoError(t, err)
 	require.Len(t, diags, 1)
 }
@@ -665,7 +746,7 @@ func TestOpenStackEnvError(t *testing.T) {
 	err := yaml.Unmarshal([]byte("environment:\n  - test"), &projectStack)
 	require.NoError(t, err)
 
-	_, _, err = openStackEnv(t.Context(), stack, &projectStack, nil)
+	_, _, err = openStackEnv(t.Context(), stack, &projectStack, nil, OperationPreview)
 	assert.Error(t, err)
 }
 

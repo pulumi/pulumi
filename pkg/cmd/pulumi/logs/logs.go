@@ -91,7 +91,8 @@ func NewLogsCmd(ws pkgWorkspace.Context) *cobra.Command {
 				return err
 			}
 
-			cfg, sm, err := config.GetStackConfiguration(ctx, cmdutil.Diag(), ssml, s, proj, configFile, nil)
+			cfg, sm, err := config.GetStackConfiguration(ctx, cmdutil.Diag(), ssml, s, proj, configFile, nil,
+				config.OperationLogs)
 			if err != nil {
 				return fmt.Errorf("getting stack configuration: %w", err)
 			}

@@ -50,6 +50,13 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
+func destroyStackEnvOperation(previewOnly bool) config.Operation {
+	if previewOnly {
+		return config.OperationPreview
+	}
+	return config.OperationDestroy
+}
+
 func NewDestroyCmd() *cobra.Command {
 	var runProgram bool
 	var skipConfigValidation bool
@@ -259,7 +266,8 @@ func NewDestroyCmd() *cobra.Command {
 				// The config may be missing, fallback on the latest configuration in the backend.
 				getConfig = config.GetStackConfigurationOrLatest
 			}
-			cfg, sm, err := getConfig(ctx, cmdutil.Diag(), ssml, s, proj, configFile, envOverrides)
+			cfg, sm, err := getConfig(ctx, cmdutil.Diag(), ssml, s, proj, configFile, envOverrides,
+				destroyStackEnvOperation(previewOnly))
 			if err != nil {
 				return fmt.Errorf("getting stack configuration: %w", err)
 			}

@@ -108,6 +108,10 @@ var DefaultOrg = env.String("DEFAULT_ORGANIZATION",
 	"Set the default organization to use when the organization is not otherwise specified. Takes precedence over "+
 		"any default organization set with `pulumi org set-default`.")
 
+// TODO(poc): experiment knob; decide whether it ships.
+var ESCPrivileged = env.String("ESC_PRIVILEGED",
+	"Force ESC stack environment opens to be privileged (true) or unprivileged (false).")
+
 // Neo environment variables
 
 var SuppressNeoLink = env.Bool("SUPPRESS_NEO_LINK",
