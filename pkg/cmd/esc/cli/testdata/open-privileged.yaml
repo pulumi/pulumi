@@ -7,7 +7,7 @@ environments:
   test-user/default/dispatch:
     imports:
       - read:
-          includeIn: unprivileged
+          excludeIn: privileged
       - write:
           includeIn: privileged
     values:
@@ -15,7 +15,7 @@ environments:
   test-user/default/dispatch_DRAFT:
     imports:
       - read:
-          includeIn: unprivileged
+          excludeIn: privileged
       - write:
           includeIn: privileged
     values:

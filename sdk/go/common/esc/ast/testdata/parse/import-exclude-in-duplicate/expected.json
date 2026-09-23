@@ -5,14 +5,14 @@
             "Elements": [
                 {
                     "Environment": {
-                        "Value": "aws/prod-write"
+                        "Value": "aws/prod-read"
                     },
                     "Meta": {
                         "Merge": null,
-                        "IncludeIn": {
-                            "Value": ""
-                        },
-                        "ExcludeIn": null
+                        "IncludeIn": null,
+                        "ExcludeIn": {
+                            "Value": "privileged"
+                        }
                     }
                 }
             ]
@@ -22,26 +22,26 @@
     "diags": [
         {
             "Severity": 1,
-            "Summary": "includeIn must be a string",
+            "Summary": "excludeIn is specified more than once",
             "Detail": "",
             "Subject": {
-                "Filename": "import-include-in-interpolated",
+                "Filename": "import-exclude-in-duplicate",
                 "Start": {
-                    "Line": 3,
-                    "Column": 18,
-                    "Byte": 46
+                    "Line": 4,
+                    "Column": 7,
+                    "Byte": 62
                 },
                 "End": {
-                    "Line": 3,
-                    "Column": 25,
-                    "Byte": 53
+                    "Line": 4,
+                    "Column": 16,
+                    "Byte": 71
                 }
             },
             "Context": null,
             "Expression": null,
             "EvalContext": null,
             "Extra": null,
-            "Path": "imports[0][\"aws/prod-write\"].includeIn"
+            "Path": "imports[0][\"aws/prod-read\"].excludein"
         }
     ]
 }

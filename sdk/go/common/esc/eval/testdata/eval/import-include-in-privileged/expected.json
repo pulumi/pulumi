@@ -7,12 +7,12 @@
                     "begin": {
                         "line": 8,
                         "column": 12,
-                        "byte": 116
+                        "byte": 114
                     },
                     "end": {
                         "line": 8,
                         "column": 34,
-                        "byte": 138
+                        "byte": 136
                     }
                 },
                 "schema": {
@@ -28,12 +28,12 @@
                                     "begin": {
                                         "line": 8,
                                         "column": 14,
-                                        "byte": 118
+                                        "byte": 116
                                     },
                                     "end": {
                                         "line": 8,
                                         "column": 20,
-                                        "byte": 124
+                                        "byte": 122
                                     }
                                 },
                                 "value": {
@@ -62,12 +62,12 @@
                                     "begin": {
                                         "line": 8,
                                         "column": 27,
-                                        "byte": 131
+                                        "byte": 129
                                     },
                                     "end": {
                                         "line": 8,
                                         "column": 33,
-                                        "byte": 137
+                                        "byte": 135
                                     }
                                 },
                                 "value": {
@@ -190,12 +190,12 @@
                         "begin": {
                             "line": 8,
                             "column": 12,
-                            "byte": 116
+                            "byte": 114
                         },
                         "end": {
                             "line": 8,
                             "column": 34,
-                            "byte": 138
+                            "byte": 136
                         }
                     }
                 }
@@ -470,12 +470,12 @@
                     "begin": {
                         "line": 8,
                         "column": 12,
-                        "byte": 116
+                        "byte": 114
                     },
                     "end": {
                         "line": 8,
                         "column": 34,
-                        "byte": 138
+                        "byte": 136
                     }
                 },
                 "schema": {
@@ -491,12 +491,12 @@
                                     "begin": {
                                         "line": 8,
                                         "column": 14,
-                                        "byte": 118
+                                        "byte": 116
                                     },
                                     "end": {
                                         "line": 8,
                                         "column": 20,
-                                        "byte": 124
+                                        "byte": 122
                                     }
                                 },
                                 "value": {
@@ -525,12 +525,12 @@
                                     "begin": {
                                         "line": 8,
                                         "column": 27,
-                                        "byte": 131
+                                        "byte": 129
                                     },
                                     "end": {
                                         "line": 8,
                                         "column": 33,
-                                        "byte": 137
+                                        "byte": 135
                                     }
                                 },
                                 "value": {
@@ -653,12 +653,12 @@
                         "begin": {
                             "line": 8,
                             "column": 12,
-                            "byte": 116
+                            "byte": 114
                         },
                         "end": {
                             "line": 8,
                             "column": 34,
-                            "byte": 138
+                            "byte": 136
                         }
                     }
                 }

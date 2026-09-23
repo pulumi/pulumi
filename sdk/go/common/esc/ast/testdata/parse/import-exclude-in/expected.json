@@ -1,0 +1,24 @@
+{
+    "decl": {
+        "Description": null,
+        "Imports": {
+            "Elements": [
+                {
+                    "Environment": {
+                        "Value": "aws/prod-read"
+                    },
+                    "Meta": {
+                        "Merge": {
+                            "Value": false
+                        },
+                        "IncludeIn": null,
+                        "ExcludeIn": {
+                            "Value": "privileged"
+                        }
+                    }
+                }
+            ]
+        },
+        "Values": null
+    }
+}

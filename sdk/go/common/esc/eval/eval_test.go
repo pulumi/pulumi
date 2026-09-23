@@ -477,7 +477,7 @@ func TestEvalSkipsExcludedImports(t *testing.T) {
 	const root = `imports:
   - base
   - read:
-      includeIn: unprivileged
+      excludeIn: privileged
   - write:
       includeIn: privileged
   - mid
@@ -488,7 +488,7 @@ func TestEvalSkipsExcludedImports(t *testing.T) {
 		"write": "values:\n  access: write\n",
 		"mid": `imports:
   - leaf-read:
-      includeIn: unprivileged
+      excludeIn: privileged
   - leaf-write:
       includeIn: privileged
 `,
@@ -604,7 +604,7 @@ func TestCheckWithoutSecretsNeverDecryptsOrOpens(t *testing.T) {
 
 	const root = `imports:
   - read:
-      includeIn: unprivileged
+      excludeIn: privileged
   - write:
       includeIn: privileged
 `

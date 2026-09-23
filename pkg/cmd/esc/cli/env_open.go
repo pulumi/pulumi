@@ -105,7 +105,7 @@ func newEnvOpenCmd(envcmd *envCommand) *cobra.Command {
 }
 
 const privilegedFlagUsage = "evaluate imports marked 'includeIn: privileged' instead of those marked " +
-	"'includeIn: unprivileged'"
+	"'excludeIn: privileged'"
 
 func (env *envCommand) renderValue(
 	out io.Writer,

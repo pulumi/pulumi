@@ -150,16 +150,14 @@ func (d *MapDecl[T]) parse(name string, node syntax.Node) syntax.Diagnostics {
 	return diags
 }
 
-const (
-	ImportIncludeInPrivileged   = "privileged"
-	ImportIncludeInUnprivileged = "unprivileged"
-)
+const ImportConditionPrivileged = "privileged"
 
 type ImportMetaDecl struct {
 	declNode
 
 	Merge     *BooleanExpr
 	IncludeIn *StringExpr
+	ExcludeIn *StringExpr
 }
 
 func (d *ImportMetaDecl) recordSyntax() *syntax.Node {
@@ -189,53 +187,69 @@ func (d *ImportDecl) parse(name string, node syntax.Node) syntax.Diagnostics {
 
 		d.Meta = &ImportMetaDecl{}
 		diags := parseRecord("import", d.Meta, kvp.Value, hcl.DiagError)
-		diags.Extend(d.Meta.validateIncludeIn()...)
+		diags.Extend(d.Meta.validateConditions()...)
 		return diags
 	default:
 		return syntax.Diagnostics{syntax.NodeError(node, "import must be a string or an object")}
 	}
 }
 
-func (d *ImportMetaDecl) validateIncludeIn() syntax.Diagnostics {
+func (d *ImportMetaDecl) validateConditions() syntax.Diagnostics {
 	var diags syntax.Diagnostics
 	if obj, ok := d.syntax.(*syntax.ObjectNode); ok {
-		seen := false
+		seen := map[string]bool{}
 		for i := 0; i < obj.Len(); i++ {
 			key := obj.Index(i).Key
-			if !strings.EqualFold(key.Value(), "includeIn") {
-				continue
+			for _, name := range []string{"includeIn", "excludeIn"} {
+				if !strings.EqualFold(key.Value(), name) {
+					continue
+				}
+				if seen[name] {
+					diags = append(diags, syntax.NodeError(key, name+" is specified more than once"))
+				}
+				seen[name] = true
 			}
-			if seen {
-				diags = append(diags, syntax.NodeError(key, "includeIn is specified more than once"))
-			}
-			seen = true
 		}
 	}
 
-	if d.IncludeIn != nil && d.IncludeIn.syntax != nil {
-		switch d.IncludeIn.Value {
-		case ImportIncludeInPrivileged, ImportIncludeInUnprivileged:
-		default:
-			msg := fmt.Sprintf("includeIn must be one of '%s' or '%s'", ImportIncludeInPrivileged, ImportIncludeInUnprivileged)
-			diags = append(diags, syntax.NodeError(d.IncludeIn.syntax, msg))
+	diags = append(diags, validatePrivilegeCondition("includeIn", d.IncludeIn)...)
+	diags = append(diags, validatePrivilegeCondition("excludeIn", d.ExcludeIn)...)
+	if d.IncludeIn != nil && d.ExcludeIn != nil {
+		node := d.syntax
+		if d.ExcludeIn.syntax != nil {
+			node = d.ExcludeIn.syntax
 		}
+		diags = append(diags, syntax.NodeError(node, "includeIn and excludeIn cannot both be specified"))
 	}
 	return diags
 }
 
+func validatePrivilegeCondition(name string, expr *StringExpr) syntax.Diagnostics {
+	if expr == nil || expr.syntax == nil || expr.Value == ImportConditionPrivileged {
+		return nil
+	}
+	msg := fmt.Sprintf("%s must be '%s'", name, ImportConditionPrivileged)
+	return syntax.Diagnostics{syntax.NodeError(expr.syntax, msg)}
+}
+
+// IsConditional reports whether the import carries includeIn or excludeIn.
+func (d *ImportDecl) IsConditional() bool {
+	return d.Meta != nil && (d.Meta.IncludeIn != nil || d.Meta.ExcludeIn != nil)
+}
+
 // IncludedIn reports whether the import applies to an open in the given privilege mode. An import without includeIn
-// applies to every open; an import with an unrecognized includeIn value applies to none.
+// or excludeIn applies to every open; an import with an invalid condition applies to none.
 func (d *ImportDecl) IncludedIn(privileged bool) bool {
-	if d.Meta == nil || d.Meta.IncludeIn == nil {
+	if !d.IsConditional() {
 		return true
 	}
-	switch d.Meta.IncludeIn.Value {
-	case ImportIncludeInPrivileged:
-		return privileged
-	case ImportIncludeInUnprivileged:
-		return !privileged
-	default:
+	switch {
+	case d.Meta.IncludeIn != nil && d.Meta.ExcludeIn != nil:
 		return false
+	case d.Meta.IncludeIn != nil:
+		return d.Meta.IncludeIn.Value == ImportConditionPrivileged && privileged
+	default:
+		return d.Meta.ExcludeIn.Value == ImportConditionPrivileged && !privileged
 	}
 }
 

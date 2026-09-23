@@ -1,4 +1,4 @@
 component: sdk/go
 kind: feat
-body: Add includeIn to ESC imports to select imports by privileged or unprivileged opens
+body: "Add `includeIn: privileged` and `excludeIn: privileged` to ESC imports to select imports by whether the open is privileged"
 time: 2026-09-22T00:00:00Z

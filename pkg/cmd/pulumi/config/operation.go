@@ -37,7 +37,7 @@ const (
 )
 
 // Privileged reports whether the operation changes resources, and so opens the stack's environment with its
-// `includeIn: privileged` imports rather than its `includeIn: unprivileged` ones.
+// `includeIn: privileged` imports rather than its `excludeIn: privileged` ones.
 func (op Operation) Privileged() bool {
 	return op == OperationUp || op == OperationDestroy || op == OperationWatch || op == OperationDo
 }

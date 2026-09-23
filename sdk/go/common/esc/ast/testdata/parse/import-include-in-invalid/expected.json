@@ -11,7 +11,8 @@
                         "Merge": null,
                         "IncludeIn": {
                             "Value": "always"
-                        }
+                        },
+                        "ExcludeIn": null
                     }
                 },
                 {
@@ -22,7 +23,8 @@
                         "Merge": null,
                         "IncludeIn": {
                             "Value": "Privileged"
-                        }
+                        },
+                        "ExcludeIn": null
                     }
                 },
                 {
@@ -33,7 +35,8 @@
                         "Merge": null,
                         "IncludeIn": {
                             "Value": ""
-                        }
+                        },
+                        "ExcludeIn": null
                     }
                 }
             ]
@@ -43,7 +46,7 @@
     "diags": [
         {
             "Severity": 1,
-            "Summary": "includeIn must be one of 'privileged' or 'unprivileged'",
+            "Summary": "includeIn must be 'privileged'",
             "Detail": "",
             "Subject": {
                 "Filename": "import-include-in-invalid",
@@ -66,7 +69,7 @@
         },
         {
             "Severity": 1,
-            "Summary": "includeIn must be one of 'privileged' or 'unprivileged'",
+            "Summary": "includeIn must be 'privileged'",
             "Detail": "",
             "Subject": {
                 "Filename": "import-include-in-invalid",
@@ -89,7 +92,7 @@
         },
         {
             "Severity": 1,
-            "Summary": "includeIn must be one of 'privileged' or 'unprivileged'",
+            "Summary": "includeIn must be 'privileged'",
             "Detail": "",
             "Subject": {
                 "Filename": "import-include-in-invalid",

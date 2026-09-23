@@ -9,7 +9,7 @@ environments:
   test-user/default/dispatch:
     imports:
       - read:
-          includeIn: unprivileged
+          excludeIn: privileged
       - write:
           includeIn: privileged
   test-user/default/read:

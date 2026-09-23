@@ -5,12 +5,12 @@
             "Elements": [
                 {
                     "Environment": {
-                        "Value": "aws/prod-write"
+                        "Value": "aws/prod-read"
                     },
                     "Meta": {
                         "Merge": null,
                         "IncludeIn": {
-                            "Value": ""
+                            "Value": "unprivileged"
                         },
                         "ExcludeIn": null
                     }
@@ -22,26 +22,26 @@
     "diags": [
         {
             "Severity": 1,
-            "Summary": "includeIn must be a string",
+            "Summary": "includeIn must be 'privileged'",
             "Detail": "",
             "Subject": {
-                "Filename": "import-include-in-interpolated",
+                "Filename": "import-include-in-unprivileged",
                 "Start": {
                     "Line": 3,
                     "Column": 18,
-                    "Byte": 46
+                    "Byte": 45
                 },
                 "End": {
                     "Line": 3,
-                    "Column": 25,
-                    "Byte": 53
+                    "Column": 30,
+                    "Byte": 57
                 }
             },
             "Context": null,
             "Expression": null,
             "EvalContext": null,
             "Extra": null,
-            "Path": "imports[0][\"aws/prod-write\"].includeIn"
+            "Path": "imports[0][\"aws/prod-read\"].includeIn"
         }
     ]
 }

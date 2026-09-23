@@ -228,7 +228,7 @@ func TestImportDeclIncludedIn(t *testing.T) {
 			unprivileged: true,
 		},
 		{
-			name:         "no includeIn",
+			name:         "unconditional",
 			decl:         &ImportDecl{Environment: String("env"), Meta: &ImportMetaDecl{Merge: Boolean(false)}},
 			privileged:   true,
 			unprivileged: true,
@@ -239,13 +239,28 @@ func TestImportDeclIncludedIn(t *testing.T) {
 			privileged: true,
 		},
 		{
-			name:         "unprivileged",
-			decl:         &ImportDecl{Environment: String("env"), Meta: &ImportMetaDecl{IncludeIn: String("unprivileged")}},
+			name:         "excludeIn privileged",
+			decl:         &ImportDecl{Environment: String("env"), Meta: &ImportMetaDecl{ExcludeIn: String("privileged")}},
 			unprivileged: true,
+		},
+		{
+			name: "includeIn unprivileged",
+			decl: &ImportDecl{Environment: String("env"), Meta: &ImportMetaDecl{IncludeIn: String("unprivileged")}},
 		},
 		{
 			name: "unknown value",
 			decl: &ImportDecl{Environment: String("env"), Meta: &ImportMetaDecl{IncludeIn: String("always")}},
+		},
+		{
+			name: "excludeIn unknown value",
+			decl: &ImportDecl{Environment: String("env"), Meta: &ImportMetaDecl{ExcludeIn: String("unprivileged")}},
+		},
+		{
+			name: "both",
+			decl: &ImportDecl{
+				Environment: String("env"),
+				Meta:        &ImportMetaDecl{IncludeIn: String("privileged"), ExcludeIn: String("privileged")},
+			},
 		},
 		{
 			name: "wrong case",

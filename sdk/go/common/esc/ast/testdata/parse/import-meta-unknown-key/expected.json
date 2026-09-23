@@ -9,7 +9,8 @@
                     },
                     "Meta": {
                         "Merge": null,
-                        "IncludeIn": null
+                        "IncludeIn": null,
+                        "ExcludeIn": null
                     }
                 }
             ]
@@ -19,7 +20,7 @@
     "diags": [
         {
             "Severity": 1,
-            "Summary": "Field 'merged' does not exist on Object 'import'. Existing fields are: 'merge', 'includeIn'",
+            "Summary": "Field 'merged' does not exist on Object 'import'. Existing fields are: 'merge', 'excludeIn', 'includeIn'",
             "Detail": "",
             "Subject": {
                 "Filename": "import-meta-unknown-key",

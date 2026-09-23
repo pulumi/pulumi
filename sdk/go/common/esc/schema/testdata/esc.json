@@ -17,8 +17,12 @@
                                 "type": "boolean"
                             },
                             "includeIn": {
-                                "description": "Restricts this import to privileged or unprivileged opens. Imports without includeIn apply to every open.",
-                                "enum": [ "privileged", "unprivileged" ]
+                                "description": "Restricts this import to privileged opens. Cannot be combined with excludeIn. Imports without includeIn or excludeIn apply to every open.",
+                                "enum": [ "privileged" ]
+                            },
+                            "excludeIn": {
+                                "description": "Restricts this import to opens that are not privileged. Cannot be combined with includeIn. Imports without includeIn or excludeIn apply to every open.",
+                                "enum": [ "privileged" ]
                             }
                         }
                     }

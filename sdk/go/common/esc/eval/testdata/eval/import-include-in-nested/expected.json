@@ -64,12 +64,12 @@
                         "begin": {
                             "line": 7,
                             "column": 8,
-                            "byte": 103
+                            "byte": 101
                         },
                         "end": {
                             "line": 7,
                             "column": 12,
-                            "byte": 107
+                            "byte": 105
                         }
                     }
                 }
@@ -390,12 +390,12 @@
                         "begin": {
                             "line": 7,
                             "column": 8,
-                            "byte": 103
+                            "byte": 101
                         },
                         "end": {
                             "line": 7,
                             "column": 12,
-                            "byte": 107
+                            "byte": 105
                         }
                     }
                 }

@@ -56,8 +56,8 @@ type EnvironmentLoader interface {
 }
 
 // ConditionalImportObserver is optionally implemented by an EnvironmentLoader to learn about imports that carry
-// includeIn, whether or not they applied to this evaluation. For an included import, ConditionalImport is called
-// before AuthorizeImport and LoadEnvironment.
+// includeIn or excludeIn, whether or not they applied to this evaluation. For an included import, ConditionalImport
+// is called before AuthorizeImport and LoadEnvironment.
 type ConditionalImportObserver interface {
 	ConditionalImport(ctx context.Context, importer string, imported string, included bool)
 }
@@ -571,7 +571,7 @@ func (e *evalContext) evaluateImports() {
 		}
 		name := entry.Environment.Value
 
-		if entry.Meta != nil && entry.Meta.IncludeIn != nil {
+		if entry.IsConditional() {
 			included := entry.IncludedIn(e.privileged)
 			if o, ok := e.environments.(ConditionalImportObserver); ok {
 				o.ConditionalImport(e.ctx, e.name, name, included)
