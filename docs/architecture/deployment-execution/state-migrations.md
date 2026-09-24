@@ -176,8 +176,8 @@ do, while older journal formats do not.
 A state-changing result is rejected when the surrounding update cannot safely
 rewrite the complete checkpoint. This includes:
 
-* updates constrained by `--target`, `--replace`, `--exclude`, or
-  `--target-snippet`
+* updates constrained by `--target`, `--replace`, or `--exclude`, or snippet-targeted
+  updates from `pulumi do`
 * generating or applying a saved update plan
 * snapshots with pending operations, or migrated subtrees with resources
   pending deletion from an earlier update

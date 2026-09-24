@@ -35,7 +35,7 @@ func validateStateMigrationContext(
 	if opts.Targets.IsConstrained() || opts.Excludes.IsConstrained() ||
 		opts.ReplaceTargets.IsConstrained() || len(opts.TargetSnippets) > 0 {
 		return fmt.Errorf("state migration for %s cannot change state during a targeted or excluded update; "+
-			"run a full update without --target, --exclude, --replace, or --target-snippet", urn)
+			"run a full 'pulumi up' without --target, --exclude, or --replace", urn)
 	}
 	if len(snap.PendingOperations) > 0 {
 		return fmt.Errorf("state migration for %s cannot change state while the snapshot has %d pending "+
