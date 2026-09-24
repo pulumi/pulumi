@@ -1,0 +1,4 @@
+component: pcl
+kind: fix
+body: Fix a panic in the PCL interpreter's `entries` built-in on a map whose values have different shapes or on an empty map
+time: 2026-09-24T14:46:57.734371+02:00
