@@ -20,6 +20,24 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestMarshalConfigSchema(t *testing.T) {
+	t.Parallel()
+
+	schema := marshalConfigSchema(&AnalyzerPolicyConfigSchema{
+		Properties: map[string]JSONSchema{
+			"minLength": {
+				"type":    "integer",
+				"default": 12,
+			},
+		},
+		Required: []string{"minLength"},
+	})
+
+	minLength := schema.GetProperties().GetFields()["minLength"].GetStructValue()
+	require.Equal(t, "integer", minLength.GetFields()["type"].GetStringValue())
+	require.Equal(t, 12.0, minLength.GetFields()["default"].GetNumberValue())
+}
+
 func TestConstructEnvWithAdditionalEnv(t *testing.T) {
 	t.Parallel()
 
