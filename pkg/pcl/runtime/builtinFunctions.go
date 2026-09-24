@@ -1101,8 +1101,11 @@ func (ectx *EvalContext) builtinFunctions() map[string]function.Function {
 		},
 		Type: function.StaticReturnType(cty.Number),
 		Impl: func(args []cty.Value, retType cty.Type) (cty.Value, error) {
-			if args[0].Type() == cty.String {
+			switch {
+			case args[0].Type() == cty.String:
 				return stdlib.Strlen(args[0])
+			case args[0].Type().IsObjectType():
+				return args[0].Length(), nil
 			}
 			return stdlib.Length(args[0])
 		},

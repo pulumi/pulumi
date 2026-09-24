@@ -70,6 +70,8 @@ func init() {
 						}),
 						"lookupObjectOutput":        resource.NewProperty("hello"),
 						"lookupObjectOutputDefault": resource.NewProperty("default"),
+						"lengthOutput":              resource.NewProperty(6.0),
+						"lengthObjectOutput":        resource.NewProperty(1.0),
 					}, stack.Outputs)
 				},
 			},

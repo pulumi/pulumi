@@ -64,6 +64,8 @@ func init() {
 						}),
 						"lookupOutput":        resource.NewProperty("value"),
 						"lookupOutputDefault": resource.NewProperty("default"),
+						"lengthOutput":        resource.NewProperty(6.0),
+						"lengthDynamicOutput": resource.NewProperty(2.0),
 						"names": resource.NewProperty([]resource.PropertyValue{
 							resource.NewProperty("first"),
 							resource.NewProperty("second"),

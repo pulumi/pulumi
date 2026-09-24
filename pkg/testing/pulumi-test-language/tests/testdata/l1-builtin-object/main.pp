@@ -21,3 +21,11 @@ config "alternativeNames" {
 output "names" {
   value = [for entry in entries(alternativeNames) : entry.value]
 }
+
+output "lengthOutput" {
+  value = length(aMap)
+}
+
+output "lengthDynamicOutput" {
+  value = length(alternativeNames)
+}

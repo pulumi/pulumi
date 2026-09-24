@@ -1,0 +1,4 @@
+component: programgen
+kind: fix
+body: Fix `length` on output values in generated programs, and count the keys of maps and objects in generated Node.js programs
+time: 2026-09-23T20:11:18.119157+02:00
