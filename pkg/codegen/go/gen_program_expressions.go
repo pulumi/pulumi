@@ -1524,6 +1524,22 @@ func (g *generator) genTupleConsExpression(w io.Writer, expr *model.TupleConsExp
 	g.Fgenf(w, "}")
 }
 
+// constantsToValueTypes replaces each constant in a type, at any tuple depth, with the type of its value, so
+// that the elements of a literal such as [[1, 2], [3, 4]] share one Go array type.
+func constantsToValueTypes(t model.Type) model.Type {
+	switch t := t.(type) {
+	case *model.ConstType:
+		return t.Type
+	case *model.TupleType:
+		elementTypes := make([]model.Type, len(t.ElementTypes))
+		for i, elementType := range t.ElementTypes {
+			elementTypes[i] = constantsToValueTypes(elementType)
+		}
+		return model.NewTupleType(elementTypes...)
+	}
+	return t
+}
+
 // tupleElementType returns the type a tuple literal's destination declares for its i-th element, if any.
 func tupleElementType(destType model.Type, i int) model.Type {
 	switch destType := model.ResolveOutputs(destType).(type) {
@@ -1709,10 +1725,7 @@ func (g *generator) argumentTypeName(destType model.Type, isInput bool) (result 
 		var elmType model.Type
 		for i, t := range destType.ElementTypes {
 			if i == 0 {
-				elmType = t
-				if cns, ok := elmType.(*model.ConstType); ok {
-					elmType = cns.Type
-				}
+				elmType = constantsToValueTypes(t)
 				continue
 			}
 
