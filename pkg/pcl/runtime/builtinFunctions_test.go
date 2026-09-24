@@ -68,6 +68,30 @@ map = length({for k, v in {"a" = 1, "b" = 2, "c" = 3} : k => v})
 	}, values)
 }
 
+func TestEntries(t *testing.T) {
+	t.Parallel()
+
+	entry := func(key string, value property.Value) property.Value {
+		return property.New(map[string]property.Value{"key": property.New(key), "value": value})
+	}
+	list := func(entries ...property.Value) property.Value {
+		return property.New(entries)
+	}
+	values := evaluateLocals(t, `
+uniform = entries({"a" = 1, "b" = 2})
+mixed = entries({"a" = [true], "b" = [true, false]})
+empty = entries({})
+`)
+	assert.Equal(t, map[string]property.Value{
+		"uniform": list(entry("a", property.New(1.0)), entry("b", property.New(2.0))),
+		"mixed": list(
+			entry("a", property.New([]property.Value{property.New(true)})),
+			entry("b", property.New([]property.Value{property.New(true), property.New(false)})),
+		),
+		"empty": list(),
+	}, values)
+}
+
 func TestRange(t *testing.T) {
 	t.Parallel()
 
