@@ -1,0 +1,3 @@
+component: cli/policy
+kind: improvement
+body: Run OPA policy packs through the `pulumi-language-opa` language plugin, which the CLI downloads on demand, and stop falling back to a `pulumi-analyzer-policy-<runtime>` plugin for policy packs whose runtime has no language plugin
