@@ -16,7 +16,10 @@ package python
 
 import (
 	"bytes"
+	"fmt"
 	"testing"
+
+	"github.com/hashicorp/hcl/v2"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model/format"
@@ -67,6 +70,48 @@ func TestLengthOfOutput(t *testing.T) {
 
 			assert.Equal(t, tt.expected, result.String())
 		})
+	}
+}
+
+func TestRewriteApplyLambdaBody(t *testing.T) {
+	t.Parallel()
+
+	for _, multiple := range []bool{false, true} {
+		for _, property := range []bool{false, true} {
+			t.Run(fmt.Sprintf("multiple=%v/property=%v", multiple, property), func(t *testing.T) {
+				t.Parallel()
+				parameter := &model.Variable{Name: "value", VariableType: model.DynamicType}
+				body := model.VariableReference(parameter)
+				if property {
+					body.Traversal = append(body.Traversal, hcl.TraverseAttr{Name: "results"})
+					require.Empty(t, body.Typecheck(false))
+				}
+				lambda := &model.AnonymousFunctionExpression{
+					Parameters: []*model.Variable{parameter},
+					Body:       body,
+				}
+				if multiple {
+					lambda.Parameters = append(lambda.Parameters, &model.Variable{Name: "other", VariableType: model.DynamicType})
+				}
+				g := &generator{}
+				g.Formatter = format.NewFormatter(g)
+				var result bytes.Buffer
+				g.Fgenf(&result, "%.v", rewriteApplyLambdaBody(lambda, "resolved_outputs"))
+				expected := "resolved_outputs"
+				if multiple {
+					expected += "['value']"
+				}
+				if property {
+					expected += ".results"
+				}
+				assert.Equal(t, expected, result.String())
+
+				// A different binding with the same name must remain untouched.
+				other := model.VariableReference(&model.Variable{Name: "value", VariableType: model.DynamicType})
+				lambda.Body = other
+				assert.Same(t, other, rewriteApplyLambdaBody(lambda, "resolved_outputs"))
+			})
+		}
 	}
 }
 

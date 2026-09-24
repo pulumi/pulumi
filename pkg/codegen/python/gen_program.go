@@ -654,35 +654,44 @@ func (g *generator) genComment(w io.Writer, comment syntax.Comment) {
 	}
 }
 
-// rewriteApplyLambdaBody rewrites the body of a lambda where it rewrites the usage of lambda variables
-// into an index expression of a dictionary. for example lambda arg `value` will become <argsParamName>["value"]
+// rewriteApplyLambdaBody adapts a lambda body to a single resolved argument named argsParamName.
+// It rewrites value.results to argsParamName.results for one parameter, or argsParamName["value"].results
+// for multiple parameters combined by Output.all, matching parameter bindings rather than names.
 func rewriteApplyLambdaBody(applyLambda *model.AnonymousFunctionExpression, argsParamName string) model.Expression {
 	rewriter := func(expr model.Expression) (model.Expression, hcl.Diagnostics) {
-		switch expr := expr.(type) {
-		case *model.ScopeTraversalExpression:
-			if len(expr.Parts) == 1 {
-				// check whether this expression is traversing a lambda arg
-				// rewrite arg into argsParamName["argName"]
-				for _, param := range applyLambda.Signature.Parameters {
-					if param.Name == expr.RootName {
-						return &model.IndexExpression{
-							Collection: model.VariableReference(&model.Variable{
-								Name: argsParamName,
-							}),
-							Key: &model.LiteralValueExpression{
-								Value: cty.StringVal(fmt.Sprintf("'%s'", param.Name)),
-							},
-						}, nil
-					}
+		traversal, ok := expr.(*model.ScopeTraversalExpression)
+		if !ok || len(traversal.Parts) == 0 {
+			return expr, nil
+		}
+		for _, param := range applyLambda.Parameters {
+			if traversal.Parts[0] != param {
+				continue
+			}
+			var source model.Expression = model.VariableReference(&model.Variable{
+				Name:         argsParamName,
+				VariableType: param.Type(),
+			})
+			if len(applyLambda.Parameters) > 1 {
+				source = &model.IndexExpression{
+					Collection: source,
+					Key: &model.LiteralValueExpression{
+						Value: cty.StringVal(fmt.Sprintf("'%s'", param.Name)),
+					},
 				}
 			}
+			if len(traversal.Traversal) == 1 {
+				return source, nil
+			}
+			return &model.RelativeTraversalExpression{
+				Source:    source,
+				Parts:     traversal.Parts,
+				Traversal: traversal.Traversal[1:],
+			}, nil
 		}
-
 		return expr, nil
 	}
 
 	rewrittenBody, _ := model.VisitExpression(applyLambda.Body, model.IdentityVisitor, rewriter)
-
 	return rewrittenBody
 }
 
