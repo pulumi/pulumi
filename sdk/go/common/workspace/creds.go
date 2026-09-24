@@ -149,7 +149,7 @@ func DeleteAllAccounts() error {
 		return err
 	}
 
-	dropEnvelopeKey(credsFile, false)
+	dropCorruptKey(credsFile)
 	var result error
 	if err = os.Remove(credsFile); err != nil && !os.IsNotExist(err) {
 		result = errors.Join(result, err)
@@ -625,38 +625,81 @@ func GetStoredCredentials() (Credentials, error) {
 // replacement write stays encrypted.
 var replacedEnvelope atomic.Bool
 
-// Best-effort key cleanup for logout, and for login replacing an unreadable
-// file. Deletes the key under the envelope's recorded backend and under the
-// current best one, since they can differ (unparseable envelope, orphaned
-// key, file already gone).
-func dropEnvelopeKey(credsFile string, markReplaced bool) {
-	sawEnvelope := false
-	if raw, readErr := os.ReadFile(credsFile); readErr == nil && securestore.IsEnvelope(raw) {
-		sawEnvelope = true
-		if markReplaced {
-			replacedEnvelope.Store(true)
+func credentialsKeyStores(credsFile string) ([]keyStore, error) {
+	var sts []keyStore
+	var errs error
+	add := func(st keyStore) {
+		for _, seen := range sts {
+			if seen.Backend() == st.Backend() {
+				return
+			}
 		}
+		sts = append(sts, st)
+	}
+
+	if raw, readErr := os.ReadFile(credsFile); readErr == nil && securestore.IsEnvelope(raw) {
 		if backend, backendErr := securestore.EnvelopeBackend(raw); backendErr == nil {
-			if st, stErr := stores.ForBackend(backend); stErr == nil {
-				if err := st.DeleteKey(); err != nil {
-					logging.V(3).Infof("could not delete credentials encryption key: %v", err)
-				}
+			st, stErr := stores.ForBackend(backend)
+			switch {
+			case stErr == nil:
+				add(st)
+			case !errors.Is(stErr, securestore.ErrBackendUnsupported):
+				errs = errors.Join(errs, stErr)
 			}
 		}
 	}
-	// Without an envelope or an opted-in mode no key can exist, so skip.
-	if !sawEnvelope {
-		mode, err := credentialStoreMode()
-		if err != nil || (mode != securestore.ModeAuto && mode != securestore.ModeOS) {
-			return
-		}
+	st, stErr := stores.Resolve(securestore.ModeAuto)
+	if stErr != nil {
+		return sts, errors.Join(errs, stErr)
 	}
-	// Note: resolving probes the OS stores and may prompt for an unlock.
-	if st, stErr := stores.Resolve(securestore.ModeAuto); stErr == nil {
+	add(st)
+	return sts, errs
+}
+
+func credentialsKeyMayExist(credsFile string) bool {
+	if raw, err := os.ReadFile(credsFile); err == nil && securestore.IsEnvelope(raw) {
+		return true
+	}
+	mode, err := credentialStoreMode()
+	return err == nil && (mode == securestore.ModeAuto || mode == securestore.ModeOS)
+}
+
+// A healthy key is shared with other credentials files, so only a corrupt one is dropped.
+func dropCorruptKey(credsFile string) {
+	if !credentialsKeyMayExist(credsFile) {
+		return
+	}
+	sts, _ := credentialsKeyStores(credsFile)
+	for _, st := range sts {
+		if _, err := st.GetKey(); !errors.Is(err, securestore.ErrKeyCorrupt) {
+			continue
+		}
 		if err := st.DeleteKey(); err != nil {
-			logging.V(3).Infof("could not delete credentials encryption key: %v", err)
+			logging.V(3).Infof("could not delete corrupt credentials encryption key: %v", err)
 		}
 	}
+}
+
+// DeleteAllAccountsAndCredentialsKey is DeleteAllAccounts that also deletes the
+// credentials encryption key shared by all credentials files.
+func DeleteAllAccountsAndCredentialsKey() error {
+	credsFile, err := getCredsFilePath()
+	if err != nil {
+		return err
+	}
+	sts, keyErr := credentialsKeyStores(credsFile)
+	if err := DeleteAllAccounts(); err != nil {
+		return err
+	}
+	for _, st := range sts {
+		if err := st.DeleteKey(); err != nil {
+			keyErr = errors.Join(keyErr, err)
+		}
+	}
+	if keyErr != nil {
+		return fmt.Errorf("deleting the credentials encryption key: %w", keyErr)
+	}
+	return nil
 }
 
 func ResetStoredCredentials() error {
@@ -664,7 +707,9 @@ func ResetStoredCredentials() error {
 	if err != nil {
 		return err
 	}
-	dropEnvelopeKey(credsFile, true)
+	if raw, readErr := os.ReadFile(credsFile); readErr == nil && securestore.IsEnvelope(raw) {
+		replacedEnvelope.Store(true)
+	}
 	if err := os.Remove(credsFile); err != nil && !os.IsNotExist(err) {
 		return err
 	}

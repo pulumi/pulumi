@@ -17,8 +17,10 @@ package workspace
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"runtime"
 	"testing"
 
@@ -155,18 +157,68 @@ func TestLostKeyProducesActionableError(t *testing.T) {
 	assert.Contains(t, err.Error(), "pulumi login")
 }
 
-//nolint:paralleltest // t.Setenv and the package-global secure-store mock forbid parallel runs
-func TestDeleteAllAccountsRemovesKey(t *testing.T) {
+func TestDeleteAllAccountsKeepsKeySharedWithOtherHomes(t *testing.T) {
 	pinSecureCreds(t, "auto")
+	homeA := os.Getenv(PulumiCredentialsPathEnvVar)
 	require.NoError(t, StoreCredentials(testCreds()))
 
-	st := fakeStore(t)
-	_, err := st.GetKey()
-	require.NoError(t, err, "key exists after storing")
+	t.Setenv(PulumiCredentialsPathEnvVar, t.TempDir())
+	require.NoError(t, StoreCredentials(testCreds()))
+	require.NoError(t, DeleteAllAccounts())
+
+	t.Setenv(PulumiCredentialsPathEnvVar, homeA)
+	creds, err := GetStoredCredentials()
+	require.NoError(t, err)
+	assert.Equal(t, "pul-secret-token", creds.AccessTokens["https://api.pulumi.com"])
+}
+
+//nolint:paralleltest // t.Setenv and the package-global secure-store mock forbid parallel runs
+func TestDeleteAllAccountsDropsCorruptKey(t *testing.T) {
+	pinSecureCreds(t, "auto")
+	require.NoError(t, StoreCredentials(testCreds()))
+	fakeStore(t).getErr = fmt.Errorf("%w: unrecognized format", securestore.ErrKeyCorrupt)
 
 	require.NoError(t, DeleteAllAccounts())
 
-	_, err = st.GetKey()
+	_, err := fakeStore(t).GetKey()
+	assert.ErrorIs(t, err, securestore.ErrKeyNotFound)
+}
+
+//nolint:paralleltest // t.Setenv and the package-global secure-store mock forbid parallel runs
+func TestDeleteAllAccountsKeepsKeyOnTransientError(t *testing.T) {
+	pinSecureCreds(t, "auto")
+	require.NoError(t, StoreCredentials(testCreds()))
+	st := fakeStore(t)
+	st.getErr = errors.New("dbus timeout")
+
+	require.NoError(t, DeleteAllAccounts())
+
+	st.getErr = nil
+	_, err := st.GetKey()
+	require.NoError(t, err)
+}
+
+//nolint:paralleltest // t.Setenv and the package-global secure-store mock forbid parallel runs
+func TestDeleteCredentialsKeyRemovesKey(t *testing.T) {
+	pinSecureCreds(t, "auto")
+	require.NoError(t, StoreCredentials(testCreds()))
+
+	require.NoError(t, DeleteAllAccountsAndCredentialsKey())
+
+	_, err := fakeStore(t).GetKey()
+	assert.ErrorIs(t, err, securestore.ErrKeyNotFound)
+}
+
+func TestDeleteCredentialsKeyWithoutEnvelopeOrMode(t *testing.T) {
+	pinSecureCreds(t, "auto")
+	require.NoError(t, StoreCredentials(testCreds()))
+
+	t.Setenv(PulumiCredentialsPathEnvVar, t.TempDir())
+	t.Setenv("PULUMI_CREDENTIAL_STORE", "")
+	resetCredStoreForTesting()
+
+	require.NoError(t, DeleteAllAccountsAndCredentialsKey())
+	_, err := fakeStore(t).GetKey()
 	assert.ErrorIs(t, err, securestore.ErrKeyNotFound)
 }
 
@@ -350,9 +402,42 @@ func TestResetStoredCredentialsClearsUndecryptableState(t *testing.T) {
 	assert.Empty(t, creds.AccessTokens)
 }
 
-func TestLogoutDeletesKeyForUnparseableEnvelopeRegardlessOfMode(t *testing.T) {
-	// The envelope proves encryption was in use, so logout must clean up the
-	// key even in plaintext mode — the recorded backend is unknowable here.
+func TestDeleteAllAccountsAndCredentialsKeyUsesEnvelopeBackend(t *testing.T) {
+	t.Setenv(PulumiCredentialsPathEnvVar, t.TempDir())
+	t.Setenv("PULUMI_CREDENTIAL_STORE", "auto")
+	promote := useUpgradableStores(t)
+	require.NoError(t, StoreCredentials(testCreds()))
+	promote()
+	resetCredStoreForTesting()
+
+	require.NoError(t, DeleteAllAccountsAndCredentialsKey())
+
+	weak, err := stores.ForBackend(fakeBackend)
+	require.NoError(t, err)
+	_, err = weak.GetKey()
+	assert.ErrorIs(t, err, securestore.ErrKeyNotFound)
+	credsFile, err := getCredsFilePath()
+	require.NoError(t, err)
+	_, err = os.Stat(credsFile)
+	assert.True(t, os.IsNotExist(err))
+}
+
+//nolint:paralleltest // t.Setenv and the package-global secure-store mock forbid parallel runs
+func TestDeleteAllAccountsAndCredentialsKeyKeepsKeyWhenFileRemains(t *testing.T) {
+	pinSecureCreds(t, "auto")
+	require.NoError(t, StoreCredentials(testCreds()))
+	credsFile, err := getCredsFilePath()
+	require.NoError(t, err)
+	require.NoError(t, os.Remove(credsFile))
+	require.NoError(t, os.MkdirAll(filepath.Join(credsFile, "undeletable"), 0o700))
+
+	require.Error(t, DeleteAllAccountsAndCredentialsKey())
+
+	_, err = fakeStore(t).GetKey()
+	require.NoError(t, err)
+}
+
+func TestDeleteCredentialsKeyForUnparseableEnvelopeRegardlessOfMode(t *testing.T) {
 	pinSecureCreds(t, "auto")
 	require.NoError(t, StoreCredentials(testCreds()))
 	credsFile, err := getCredsFilePath()
@@ -362,9 +447,32 @@ func TestLogoutDeletesKeyForUnparseableEnvelopeRegardlessOfMode(t *testing.T) {
 	t.Setenv("PULUMI_CREDENTIAL_STORE", "plaintext")
 	resetCredStoreForTesting()
 
-	require.NoError(t, DeleteAllAccounts())
+	require.NoError(t, DeleteAllAccountsAndCredentialsKey())
 	_, err = fakeStore(t).GetKey()
 	assert.ErrorIs(t, err, securestore.ErrKeyNotFound)
+}
+
+func TestResetStoredCredentialsKeepsKeySharedWithOtherHomes(t *testing.T) {
+	pinSecureCreds(t, "auto")
+	homeA := os.Getenv(PulumiCredentialsPathEnvVar)
+	require.NoError(t, StoreCredentials(testCreds()))
+
+	t.Setenv(PulumiCredentialsPathEnvVar, t.TempDir())
+	otherKey := make([]byte, 32)
+	foreign, err := securestore.Seal(otherKey, fakeBackend, []byte(`{"accessTokens":{"x":"tok"}}`))
+	require.NoError(t, err)
+	credsFile, err := getCredsFilePath()
+	require.NoError(t, err)
+	require.NoError(t, os.WriteFile(credsFile, foreign, 0o600))
+	_, err = GetStoredCredentials()
+	require.True(t, IsUndecryptableCredentials(err))
+
+	require.NoError(t, ResetStoredCredentials())
+
+	t.Setenv(PulumiCredentialsPathEnvVar, homeA)
+	creds, err := GetStoredCredentials()
+	require.NoError(t, err)
+	assert.Equal(t, "pul-secret-token", creds.AccessTokens["https://api.pulumi.com"])
 }
 
 //nolint:paralleltest // t.Setenv and the package-global secure-store mock forbid parallel runs

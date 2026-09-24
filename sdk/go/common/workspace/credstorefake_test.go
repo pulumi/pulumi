@@ -68,6 +68,7 @@ func (f *fakeKeyStore) GetOrCreateKey() ([]byte, error) {
 
 func (f *fakeKeyStore) DeleteKey() error {
 	f.key = nil
+	f.getErr = nil
 	return nil
 }
 

@@ -112,7 +112,7 @@ func TestDeleteAllAccountsSkipsAgentFallbackOutsideAgentMode(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	err = deleteAllAccounts()
+	err = deleteAllAccounts(false)
 	require.NoError(t, err)
 
 	_, err = os.Stat(credsPath)
@@ -137,6 +137,18 @@ func TestLogoutCommandAll(t *testing.T) {
 	err := cmd.Execute()
 	require.NoError(t, err)
 	assert.Contains(t, output.String(), "Logged out of everything")
+}
+
+func TestLogoutCommandDeleteCredentialsKeyRequiresAll(t *testing.T) {
+	t.Parallel()
+
+	cmd := NewLogoutCmd(&pkgWorkspace.MockContext{})
+	cmd.SetOut(&bytes.Buffer{})
+	cmd.SetErr(&bytes.Buffer{})
+	cmd.SetArgs([]string{"--delete-credentials-key"})
+
+	err := cmd.Execute()
+	assert.ErrorContains(t, err, "--delete-credentials-key requires --all")
 }
 
 func TestLogoutCommandCloudURL(t *testing.T) {
