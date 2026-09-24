@@ -1,0 +1,4 @@
+component: pcl
+kind: fix
+body: Report an error when a number or bool literal is assigned to a property whose schema constant or enum does not admit it
+time: 2026-09-23T15:00:19.295566+02:00

@@ -675,6 +675,24 @@ func TestUnifyType(t *testing.T) {
 	inputCf := NewConstType(NewUnionType(BoolType, NewOutputType(BoolType)), cty.False)
 	assert.Equal(t, SafeConversion, inputCf.ConversionFrom(cf))
 	assert.Equal(t, NoConversion, inputCf.ConversionFrom(ct))
+	// A union, output, or optional destination sees the constant rather than its base type.
+	assert.Equal(t, SafeConversion, NewOptionalType(cf).ConversionFrom(cf))
+	assert.Equal(t, NoConversion, NewOptionalType(cf).ConversionFrom(ct))
+	assert.Equal(t, SafeConversion, InputType(NewOptionalType(cf)).ConversionFrom(cf))
+	assert.Equal(t, NoConversion, InputType(NewOptionalType(cf)).ConversionFrom(ct))
+	// The null literal is a constant of the none type and converts to any optional type.
+	null := NewConstType(NoneType, cty.NullVal(cty.DynamicPseudoType))
+	assert.Equal(t, SafeConversion, NoneType.ConversionFrom(null))
+	assert.Equal(t, SafeConversion, InputType(NewOptionalType(StringType)).ConversionFrom(null))
+	// An enum accepts a member constant safely, no other constant, and its base type unsafely.
+	c1, c2, c3 := NewConstType(IntType, cty.NumberIntVal(1)), NewConstType(IntType, cty.NumberIntVal(2)),
+		NewConstType(IntType, cty.NumberIntVal(3))
+	enum := NewEnumType("test:index:Level", IntType, []cty.Value{cty.NumberIntVal(1), cty.NumberIntVal(2)})
+	assert.Equal(t, SafeConversion, enum.ConversionFrom(c1))
+	assert.Equal(t, NoConversion, enum.ConversionFrom(c3))
+	assert.Equal(t, UnsafeConversion, enum.ConversionFrom(IntType))
+	assert.Equal(t, SafeConversion, InputType(NewOptionalType(enum)).ConversionFrom(c2))
+	assert.Equal(t, NoConversion, InputType(NewOptionalType(enum)).ConversionFrom(c3))
 	assertUnified(t, NewUnionType(cf, ct), NewUnionType(cf, ct), cf, ct)
 	assertUnified(t, NewTupleType(NewUnionType(cf, ct)), NewTupleType(NewUnionType(cf, ct)),
 		NewTupleType(cf), NewTupleType(ct))
