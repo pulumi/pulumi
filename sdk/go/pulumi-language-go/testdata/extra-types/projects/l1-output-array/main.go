@@ -19,7 +19,7 @@ func main() {
 			pulumi.Int(4),
 			pulumi.Int(5),
 		})
-		ctx.Export("nested", pulumi.Array{
+		ctx.Export("nested", pulumi.IntArrayArray{
 			pulumi.IntArray{
 				pulumi.Int(1),
 				pulumi.Int(2),

@@ -680,6 +680,11 @@ func TestUnifyType(t *testing.T) {
 	assert.Equal(t, NoConversion, NewOptionalType(cf).ConversionFrom(ct))
 	assert.Equal(t, SafeConversion, InputType(NewOptionalType(cf)).ConversionFrom(cf))
 	assert.Equal(t, NoConversion, InputType(NewOptionalType(cf)).ConversionFrom(ct))
+	// A union of constants is assignable to the type of their values.
+	ca, cb := NewConstType(StringType, cty.StringVal("a")), NewConstType(StringType, cty.StringVal("b"))
+	assert.True(t, StringType.AssignableFrom(NewUnionType(ca, cb)))
+	assert.True(t, InputType(StringType).AssignableFrom(NewUnionType(ca, cb)))
+	assert.False(t, StringType.AssignableFrom(NewUnionType(ca, cf)))
 	// The null literal is a constant of the none type and converts to any optional type.
 	null := NewConstType(NoneType, cty.NullVal(cty.DynamicPseudoType))
 	assert.Equal(t, SafeConversion, NoneType.ConversionFrom(null))

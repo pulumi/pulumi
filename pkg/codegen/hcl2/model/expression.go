@@ -20,6 +20,7 @@ import (
 	"math"
 	"math/big"
 	"strconv"
+	"strings"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
@@ -2321,8 +2322,27 @@ func (x *TemplateExpression) Typecheck(typecheckOperands bool) hcl.Diagnostics {
 		}
 	}
 
+	// A quoted string with no interpolation is a constant, like a number or bool literal.
+	if value, ok := constantTemplateValue(x.Parts); ok {
+		x.exprType = NewConstType(StringType, value)
+		return diagnostics
+	}
+
 	x.exprType = liftOperationType(StringType, x.Parts...)
 	return diagnostics
+}
+
+// constantTemplateValue returns the concatenation of parts when every part is a string literal.
+func constantTemplateValue(parts []Expression) (cty.Value, bool) {
+	var value strings.Builder
+	for _, part := range parts {
+		lit, ok := part.(*LiteralValueExpression)
+		if !ok || lit.Value.Type() != cty.String {
+			return cty.NilVal, false
+		}
+		value.WriteString(lit.Value.AsString())
+	}
+	return cty.StringVal(value.String()), true
 }
 
 func (x *TemplateExpression) Evaluate(context *hcl.EvalContext) (cty.Value, hcl.Diagnostics) {

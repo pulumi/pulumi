@@ -1209,7 +1209,7 @@ func (g *generator) genResourceOptions(
 							g.Fprintf(w, ", ")
 						}
 						// If the expression is a string literal, we can inline it directly.
-						if expr.Type().Equals(model.StringType) {
+						if model.StringType.AssignableFrom(expr.Type()) {
 							g.Fprintf(w, "%v", expr)
 							continue
 						}

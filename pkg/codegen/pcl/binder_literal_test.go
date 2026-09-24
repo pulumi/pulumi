@@ -52,6 +52,29 @@ func TestBindNestedCollectionLiterals(t *testing.T) {
 			),
 		},
 		{
+			name:   "quoted string",
+			source: `o = "foo"`,
+			typ:    model.NewConstType(model.StringType, cty.StringVal("foo")),
+		},
+		{
+			name:   "empty string",
+			source: `o = ""`,
+			typ:    model.NewConstType(model.StringType, cty.StringVal("")),
+		},
+		{
+			name:   "interpolated string",
+			source: `o = "a${1}"`,
+			typ:    model.StringType,
+		},
+		{
+			name:   "tuple of strings",
+			source: `o = [for s in ["a", "b"] : s]`,
+			typ: model.NewListType(model.NewUnionType(
+				model.NewConstType(model.StringType, cty.StringVal("a")),
+				model.NewConstType(model.StringType, cty.StringVal("b")),
+			)),
+		},
+		{
 			name:   "splat over objects with tuples of different lengths",
 			source: `o = [{"a" = [false], "b" = [false, false]}, {"a" = [false, false], "b" = [true]}][*].a`,
 			typ:    model.NewListType(model.NewTupleType(cf, optional(cf))),

@@ -118,10 +118,21 @@ func assignableFrom(dest, src Type, assignableFromImpl func() bool) bool {
 	if dest.Equals(src) || dest == DynamicType {
 		return true
 	}
-	if cns, ok := src.(*ConstType); ok {
-		return assignableFrom(dest, cns.Type, assignableFromImpl)
+
+	switch src := src.(type) {
+	case *ConstType:
+		return assignableFrom(dest, src.Type, assignableFromImpl)
+	case *UnionType:
+		// A union U(U_0, U_1, ...) is assignable to a type T when each of its members is assignable to T.
+		for _, element := range src.ElementTypes {
+			if !dest.AssignableFrom(element) {
+				return false
+			}
+		}
+		return true
+	default:
+		return assignableFromImpl()
 	}
-	return assignableFromImpl()
 }
 
 type cacheEntry struct {

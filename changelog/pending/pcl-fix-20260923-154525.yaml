@@ -1,0 +1,4 @@
+component: pcl
+kind: fix
+body: Type a quoted string with no interpolation as a constant so string constants and string enums are validated at bind time
+time: 2026-09-23T15:45:25.583155+02:00

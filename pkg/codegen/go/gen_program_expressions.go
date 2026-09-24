@@ -992,14 +992,6 @@ func (g *generator) genLiteralValueExpression(w io.Writer, expr *model.LiteralVa
 }
 
 func (g *generator) GenObjectConsExpression(w io.Writer, expr *model.ObjectConsExpression) {
-	switch argType := expr.Type().(type) {
-	case *model.ObjectType:
-		if configMetadata, ok := model.GetObjectTypeAnnotation[*ObjectTypeFromConfigMetadata](argType); ok {
-			g.genObjectConsExpressionWithTypeName(w, expr, expr.Type(), configMetadata.TypeName)
-			return
-		}
-	}
-
 	isInput := false
 	g.genObjectConsExpression(w, expr, expr.Type(), isInput)
 }
@@ -1010,6 +1002,13 @@ func (g *generator) genObjectConsExpression(
 	destType model.Type,
 	isInput bool,
 ) {
+	if objectType, ok := model.ResolveOutputs(destType).(*model.ObjectType); ok {
+		if configMetadata, ok := model.GetObjectTypeAnnotation[*ObjectTypeFromConfigMetadata](objectType); ok {
+			g.genObjectConsExpressionWithTypeName(w, expr, destType, configMetadata.TypeName)
+			return
+		}
+	}
+
 	isInput = isInput || isInputty(destType)
 	// If the destination is a schema-typed object whose input shape exists
 	// (i.e. the SDK generates a paired ...Args type), we're populating that
@@ -1150,6 +1149,16 @@ func (g *generator) genObjectConsExpressionWithTypeName(
 						}
 					}
 				}
+			}
+		}
+
+		if obj, ok := item.Value.(*model.ObjectConsExpression); ok && isMap {
+			if mapType, ok := model.ResolveOutputs(destType).(*model.MapType); ok {
+				g.Fgenf(w, ": ")
+				g.genObjectConsExpression(w, obj, mapType.ElementType, false)
+				g.Fgenf(w, ",\n")
+				g.inPlainObjectField = savedPlain
+				continue
 			}
 		}
 
@@ -1502,10 +1511,46 @@ func (g *generator) genTupleConsExpression(w io.Writer, expr *model.TupleConsExp
 		}
 	}
 	g.Fgenf(w, "%s{\n", argType)
-	for _, v := range expr.Expressions {
+	for i, v := range expr.Expressions {
+		if obj, ok := v.(*model.ObjectConsExpression); ok {
+			if elementType := tupleElementType(destType, i); elementType != nil {
+				g.genObjectConsExpression(w, obj, elementType, isInput)
+				g.Fgenf(w, ",\n")
+				continue
+			}
+		}
 		g.Fgenf(w, "%v,\n", v)
 	}
 	g.Fgenf(w, "}")
+}
+
+// constantsToValueTypes replaces each constant in a type, at any tuple depth, with the type of its value, so
+// that the elements of a literal such as [[1, 2], [3, 4]] share one Go array type.
+func constantsToValueTypes(t model.Type) model.Type {
+	switch t := t.(type) {
+	case *model.ConstType:
+		return t.Type
+	case *model.TupleType:
+		elementTypes := make([]model.Type, len(t.ElementTypes))
+		for i, elementType := range t.ElementTypes {
+			elementTypes[i] = constantsToValueTypes(elementType)
+		}
+		return model.NewTupleType(elementTypes...)
+	}
+	return t
+}
+
+// tupleElementType returns the type a tuple literal's destination declares for its i-th element, if any.
+func tupleElementType(destType model.Type, i int) model.Type {
+	switch destType := model.ResolveOutputs(destType).(type) {
+	case *model.ListType:
+		return destType.ElementType
+	case *model.TupleType:
+		if i < len(destType.ElementTypes) {
+			return destType.ElementTypes[i]
+		}
+	}
+	return nil
 }
 
 func (g *generator) GenUnaryOpExpression(w io.Writer, expr *model.UnaryOpExpression) {
@@ -1680,10 +1725,7 @@ func (g *generator) argumentTypeName(destType model.Type, isInput bool) (result 
 		var elmType model.Type
 		for i, t := range destType.ElementTypes {
 			if i == 0 {
-				elmType = t
-				if cns, ok := elmType.(*model.ConstType); ok {
-					elmType = cns.Type
-				}
+				elmType = constantsToValueTypes(t)
 				continue
 			}
 
