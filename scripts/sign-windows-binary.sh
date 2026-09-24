@@ -1,6 +1,4 @@
 #!/usr/bin/env bash
-# Authenticode-signs a Windows binary with Azure Trusted Signing. Run by goreleaser as a post-build hook for every
-# target, so it is a no-op unless the binary is a .exe and SIGN_WINDOWS_BINARIES=true.
 
 set -euo pipefail
 

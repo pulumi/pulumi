@@ -12,16 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Fails if any given PE file has no Authenticode signature.
-
-This only checks that a signature is present, catching signing being silently skipped; it does not validate the
-certificate chain.
-"""
-
 import struct
 import sys
 
-# Index of the certificate table in the PE optional header's data directories.
 SECURITY_DIRECTORY = 4
 
 
