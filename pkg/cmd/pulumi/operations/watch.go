@@ -185,6 +185,12 @@ func NewWatchCmd() *cobra.Command {
 			}
 		},
 	}
+	if !env.DisableExperimentalWatchRemovalWarning.Value() {
+		cmd.Deprecated = "This command will be removed in a future version of pulumi.\n" +
+			"\n" +
+			"The removal is being tracked in https://github.com/pulumi/pulumi/issues/24717. If you believe that \n" +
+			"`pulumi watch` should not be removed, please comment on the issue explaining why.\n"
+	}
 
 	constrictor.AttachArguments(cmd, constrictor.NoArgs)
 

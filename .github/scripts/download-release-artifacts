@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+# Newly published release assets may not be available from the download API immediately.
+for attempt in {1..16}; do
+    # Replace any partial downloads left by a failed attempt.
+    if gh release download "v${PULUMI_VERSION}" --repo pulumi/pulumi --clobber "$@"; then
+        exit 0
+    fi
+
+    if [ "$attempt" -eq 16 ]; then
+        echo "::error::Release artifact download failed after ${attempt} attempts" >&2
+        exit 1
+    fi
+
+    echo "::warning::Release artifact download attempt ${attempt} failed; retrying in 60 seconds" >&2
+    sleep 60
+done

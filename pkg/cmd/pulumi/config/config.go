@@ -25,7 +25,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/nbutton23/zxcvbn-go"
+	"github.com/ccojocar/zxcvbn-go"
 	"github.com/spf13/cobra"
 	"golang.org/x/term"
 

@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"log/slog"
 	"reflect"
+	"slices"
 
 	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -42,6 +43,7 @@ type stateMigrationCallbackResult struct {
 
 // runStateMigrationCallbacks evaluates an ordered callback chain without mutating deployment state. A nil result
 // means every callback was a no-op or the final checkpoint is semantically identical to the original.
+// Each callback receives the logical subtree root first, with references normalized from earlier callbacks.
 func runStateMigrationCallbacks(
 	ctx context.Context,
 	urn resource.URN,
@@ -93,11 +95,15 @@ func runStateMigrationCallbacks(
 			allSuccessors[oldURN] = successor
 		}
 
+		nextRoot := current[0].URN
 		// Rewrite references in the returned subtree before passing it to the next callback.
 		if i+1 < len(migrations) && len(allSuccessors) > 0 {
 			_, resolved, err := finalStateMigrationSuccessors(original, newSet, allSuccessors)
 			if err != nil {
 				return nil, fmt.Errorf("state migration %d of %d for %s: %w", i+1, len(migrations), urn, err)
+			}
+			if successor, ok := resolved[nextRoot]; ok {
+				nextRoot = successor
 			}
 			states, rewritten, err := deserializeStateMigrationResult(urn, newSet, resolved, serializer)
 			if err != nil {
@@ -114,6 +120,16 @@ func runStateMigrationCallbacks(
 				}
 				newSet[j] = res
 			}
+		}
+		if i+1 < len(migrations) {
+			rootIndex := slices.IndexFunc(newSet, func(state apitype.ResourceV3) bool { return state.URN == nextRoot })
+			if rootIndex < 0 {
+				return nil, fmt.Errorf("state migration %d of %d for %s: missing subtree root %s",
+					i+1, len(migrations), urn, nextRoot)
+			}
+			root := newSet[rootIndex]
+			copy(newSet[1:rootIndex+1], newSet[:rootIndex])
+			newSet[0] = root
 			newJSON, err = json.Marshal(newSet)
 			if err != nil {
 				return nil, fmt.Errorf("state migration for %s: marshaling intermediate state: %w", urn, err)

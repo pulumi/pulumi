@@ -310,12 +310,6 @@ func getBackendAccount(ctx context.Context, cloudURL string) (workspace.Account,
 	return account, nil
 }
 
-// hasExplicitPulumiPathEnv reports whether the user explicitly selected a
-// Pulumi credential or home path, disabling implicit agent fallback paths.
-func hasExplicitPulumiPathEnv() bool {
-	return os.Getenv(workspace.PulumiCredentialsPathEnvVar) != "" || os.Getenv(env.Home.Var().Name()) != ""
-}
-
 // storeUserAccount stores credentials from a user-controlled source. In agent
 // mode, if the default path is not writable, it skips persistence rather than
 // copying user credentials into the shared agent cache.
@@ -326,15 +320,14 @@ func storeUserAccount(cloudURL string, account workspace.Account, setCurrent boo
 		return nil
 	}
 
-	agent := agentdetect.Detect(os.Getenv)
-	if agent == "" || hasExplicitPulumiPathEnv() {
+	if !workspace.AgentCredentialsFallbackEnabled() {
 		return err
 	}
 
 	logging.V(7).Infof(
 		"Could not store credentials for %q in default credentials in agent mode (%s); "+
 			"continuing without persisting user credentials: %v",
-		cloudURL, agent, err)
+		cloudURL, agentdetect.Detect(os.Getenv), err)
 	return nil
 }
 
@@ -611,7 +604,7 @@ func (m defaultLoginManager) Current(
 	if accessToken == "" {
 		agent := agentdetect.Detect(os.Getenv)
 		if agent != "" {
-			if err != nil && hasExplicitPulumiPathEnv() {
+			if err != nil && !workspace.AgentCredentialsFallbackEnabled() {
 				return nil, err
 			}
 			logging.V(7).Infof("Detected agent mode (%s); checking shared agent credentials", agent)
@@ -1942,6 +1935,23 @@ func (b *cloudBackend) createAndStartUpdate(
 	}, nil
 }
 
+func cloudPersistenceUsesJournal(journalVersion int64, journalingDisabled bool) bool {
+	// Note that we intentionally only accept versions 1 and 2 of the journal here. If we ever want to evolve the API,
+	// we can send a newer version than 2, and switch out the API completely on the server side, while the client will
+	// continue working with the non-journaling snapshotter. This will be slower but won't be a breaking change for
+	// older clients.
+	return !journalingDisabled && (journalVersion == 1 || journalVersion == 2)
+}
+
+// cloudPersistenceSupportsStateMigrations reports whether the persistence mode selected for an update can store a state
+// migration. Journal v1 cannot, while legacy snapshot persistence and journal v2 can.
+func cloudPersistenceSupportsStateMigrations(journalVersion int64, journalingDisabled bool) bool {
+	if !cloudPersistenceUsesJournal(journalVersion, journalingDisabled) {
+		return true // Snapshot persistence supports migrations.
+	}
+	return journalVersion == 2
+}
+
 // apply actually performs the provided type of update on a stack hosted in the Pulumi Cloud.
 func (b *cloudBackend) apply(
 	ctx context.Context, kind apitype.UpdateKind, stack backend.Stack,
@@ -2107,14 +2117,12 @@ func (b *cloudBackend) runEngineAction(
 			}
 		},
 	}
+	journalingDisabled := env.DisableJournaling.Value()
 	if kind != apitype.PreviewUpdate && !dryRun {
-		// Note that we intentionally only accept version 1 of the journal here.  If we ever want to evolve the API,
-		// we can send a newer version than 1, and switch out the API completely on the server side, while the client
-		// will continue working with the non-journaling snapshotter. This will be slower but won't be a breaking change
-		// for older clients.
-		if journalVersion == 1 && !env.DisableJournaling.Value() {
+		if cloudPersistenceUsesJournal(journalVersion, journalingDisabled) {
 			snapshotJournaler := journal.NewJournaler(ctx, b.client, update, tokenSource, op.SecretsManager)
-			journalManager, err := engine.NewJournalSnapshotManager(snapshotJournaler, u.Target.Snapshot, op.SecretsManager)
+			journalManager, err := engine.NewJournalSnapshotManagerWithVersion(
+				snapshotJournaler, u.Target.Snapshot, op.SecretsManager, journalVersion)
 			if err != nil {
 				return nil, nil, err
 			}
@@ -2128,7 +2136,10 @@ func (b *cloudBackend) runEngineAction(
 			if err != nil {
 				return nil, nil, err
 			}
-			journalManager, err := engine.NewJournalSnapshotManager(snapshotJournaler, u.Target.Snapshot, op.SecretsManager)
+			// The shadow journal is local-only (it validates snapshots against the legacy snapshot manager),
+			// so it always supports the latest journal version.
+			journalManager, err := engine.NewJournalSnapshotManagerWithVersion(
+				snapshotJournaler, u.Target.Snapshot, op.SecretsManager, apitype.LatestJournalVersion)
 			if err != nil {
 				return nil, nil, err
 			}
@@ -2148,6 +2159,9 @@ func (b *cloudBackend) runEngineAction(
 		Cancel:        cancellationScope.Context(),
 		Events:        engineEvents,
 		BackendClient: httpstateBackendClient{backend: backend.NewBackendClient(b, op.SecretsProvider)},
+		SnapshotManagerCapabilities: engine.SnapshotManagerCapabilities{
+			StateMigrations: cloudPersistenceSupportsStateMigrations(journalVersion, journalingDisabled),
+		},
 		FinalizeUpdateFunc: func() {
 			if snapshotManager == nil || journalPersister == nil {
 				return

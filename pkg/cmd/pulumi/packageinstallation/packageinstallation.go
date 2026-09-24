@@ -100,7 +100,7 @@ type Context interface {
 	) (plugin.Provider, error)
 }
 
-type MarkInstallationDone = func(success bool)
+type MarkInstallationDone = func(success bool) error
 
 // A State represents the work already performed during an install.
 //
@@ -622,7 +622,10 @@ func ensureProjectDir(
 			runBundleOut.info.name = name
 			// A binary was found, so this plugin is done.
 			if downloadCleanup != nil {
-				downloadCleanup.f(true)
+				if err := downloadCleanup.f(true); err != nil {
+					return nil, fmt.Errorf("failed to complete download for %q: %w",
+						name, err)
+				}
 				downloadCleanup.called = true
 			}
 			return nil, nil
@@ -964,7 +967,7 @@ type downloadStep struct {
 }
 
 type downloadCleanup struct {
-	f      func(success bool)
+	f      MarkInstallationDone
 	called bool
 }
 
@@ -982,7 +985,7 @@ func (step downloadStep) run(ctx context.Context, p state) error {
 		if step.downloadCleanup.called {
 			return
 		}
-		step.downloadCleanup.f(false)
+		contract.IgnoreError(step.downloadCleanup.f(false))
 	})
 	p.cleanupM.Unlock()
 
@@ -1003,7 +1006,7 @@ func (step installStep) run(ctx context.Context, p state) error {
 	// cleanup function.
 	if step.downloadCleanup != nil {
 		step.downloadCleanup.called = true
-		step.downloadCleanup.f(err == nil)
+		err = errors.Join(step.downloadCleanup.f(err == nil), err)
 	}
 	return err
 }

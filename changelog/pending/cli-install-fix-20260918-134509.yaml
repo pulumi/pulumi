@@ -1,0 +1,4 @@
+component: cli/install
+kind: fix
+body: Cancel cross-process waits with Ctrl-C
+time: 2026-09-18T13:45:09.337584+02:00

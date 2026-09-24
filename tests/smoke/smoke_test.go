@@ -71,6 +71,9 @@ func TestLanguageNewSmoke(t *testing.T) {
 			e.CWD = projectDir
 
 			e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+			if runtime == "yaml" {
+				e.RunCommand("pulumi", "plugin", "install", "resource", "random", "4.19.0")
+			}
 			e.RunCommand("pulumi", "new", "random-"+Languages[runtime], "--yes")
 			e.RunCommand("pulumi", "up", "--yes")
 			e.RunCommand("pulumi", "destroy", "--yes")
@@ -157,7 +160,7 @@ func TestYamlConvertSmoke(t *testing.T) {
 	// Make sure random is installed
 	e.RunCommand("pulumi", "plugin", "install", "resource", "random", "4.13.0")
 	// renovate: datasource=github-releases depName=pulumi/pulumi-yaml
-	e.RunCommand("pulumi", "plugin", "install", "converter", "yaml", "v1.38.6")
+	e.RunCommand("pulumi", "plugin", "install", "converter", "yaml", "v1.38.7")
 
 	e.RunCommand(
 		"pulumi", "convert", "--strict",
@@ -659,6 +662,16 @@ func TestInstall(t *testing.T) {
 			e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 			// Pass `--generate-only` so dependencies are not installed as part of the `new` command.
 			e.RunCommand("pulumi", "new", "random-"+Languages[runtime], "--yes", "--generate-only")
+
+			if runtime == "yaml" {
+				pulumiYAML := filepath.Join(projectDir, "Pulumi.yaml")
+				data, err := os.ReadFile(pulumiYAML)
+				require.NoError(t, err)
+				require.Contains(t, string(data), "    type: random:RandomPet")
+				data = []byte(strings.Replace(string(data), "    type: random:RandomPet",
+					"    type: random:RandomPet\n    options:\n      version: 4.19.0", 1))
+				require.NoError(t, os.WriteFile(pulumiYAML, data, 0o600))
+			}
 
 			// Ensure `install` works and subsequent `up` and `destroy` operations work.
 			_, stderr := e.RunCommand("pulumi", "install")
@@ -1179,14 +1192,13 @@ func TestPulumiPackageAddForTerraformProvider(t *testing.T) {
 	e := ptesting.NewEnvironment(t)
 	defer e.DeleteIfNotFailed()
 
-	os.Unsetenv("GITHUB_TOKEN")
-
 	projectDir := filepath.Join(e.RootPath, "project")
 	err := os.Mkdir(projectDir, 0o700)
 	require.NoError(t, err)
 
 	e.CWD = projectDir
 	e.Env = append(e.Env,
+		"GITHUB_TOKEN=",
 		"PULUMI_EXPERIMENTAL=true",
 		"PULUMI_DISABLE_REGISTRY_RESOLVE=false",
 		"PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION=false",

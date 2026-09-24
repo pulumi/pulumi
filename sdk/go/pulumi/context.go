@@ -82,6 +82,7 @@ type contextState struct {
 	supportsResourceHooks    bool         // true if resource hooks are supported by pulumi
 	supportsErrorHooks       bool         // true if error hooks are supported by pulumi
 	supportsInvokeDependsOn  bool         // true if the monitor gates invokes on their declared dependencies.
+	supportsStateMigrations  bool         // true if state migrations are supported by pulumi
 	rpcs                     int          // the number of outstanding RPC requests.
 	rpcsDone                 *sync.Cond   // an event signaling completion of RPCs.
 	rpcsLock                 sync.Mutex   // a lock protecting the RPC count and event.
@@ -189,6 +190,7 @@ func NewContext(ctx context.Context, info RunInfo) (*Context, error) {
 		supportsResourceHooks:    has(pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_RESOURCE_HOOKS),
 		supportsErrorHooks:       has(pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_ERROR_HOOKS),
 		supportsInvokeDependsOn:  has(pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_INVOKE_DEPENDS_ON),
+		supportsStateMigrations:  has(pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_STATE_MIGRATIONS),
 		registeredOutputs:        make(map[URN]bool),
 	}
 	contextState.rpcsDone = sync.NewCond(&contextState.rpcsLock)
@@ -1459,9 +1461,10 @@ func (ctx *Context) readPackageResource(
 		var urn, resID string
 		var inputs *resourceInputs
 		var state *structpb.Struct
+		var keepUnknowns bool
 		var err error
 		defer func() {
-			res.resolve(ctx, err, inputs, urn, resID, state, nil, false)
+			res.resolve(ctx, err, inputs, urn, resID, state, nil, keepUnknowns)
 			ctx.endRPC(err)
 		}()
 
@@ -1483,6 +1486,7 @@ func (ctx *Context) readPackageResource(
 			Parent:                  inputs.parent,
 			Properties:              inputs.rpcProps,
 			Provider:                inputs.provider,
+			Dependencies:            inputs.deps,
 			Id:                      string(idToRead),
 			AcceptSecrets:           true,
 			AcceptResources:         !disableResourceReferences,
@@ -1500,6 +1504,9 @@ func (ctx *Context) readPackageResource(
 		if resp != nil {
 			urn, resID = resp.Urn, string(idToRead)
 			state = resp.Properties
+			// A skipped read reports Unknown=true; resolve outputs as unknown so dependents
+			// propagate unknowns instead of seeing empty values as real.
+			keepUnknowns = resp.Result == pulumirpc.Result_SUCCESS && resp.Unknown
 		}
 	}()
 
@@ -1856,6 +1863,17 @@ func (ctx *Context) registerResource(
 			transforms = append(transforms, cb)
 		}
 
+		// Register the state migration functions.
+		stateMigrations := make([]*pulumirpc.Callback, 0, len(options.StateMigrations))
+		for _, migration := range options.StateMigrations {
+			var cb *pulumirpc.Callback
+			cb, err = ctx.registerStateMigration(migration)
+			if err != nil {
+				return
+			}
+			stateMigrations = append(stateMigrations, cb)
+		}
+
 		// Collect all the hooks, waiting for their registrations.
 		var hooks *pulumirpc.RegisterResourceRequest_ResourceHooksBinding
 		if options.Hooks != nil {
@@ -1940,6 +1958,7 @@ func (ctx *Context) registerResource(
 				SourcePosition:             sourcePosition,
 				StackTrace:                 stackTrace,
 				Transforms:                 transforms,
+				StateMigrations:            stateMigrations,
 				SupportsResultReporting:    true,
 				PackageRef:                 packageRef,
 				Hooks:                      hooks,

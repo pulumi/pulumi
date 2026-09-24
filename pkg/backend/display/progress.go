@@ -777,11 +777,12 @@ func (display *ProgressDisplay) printResourceDiffs() {
 }
 
 // printDiagnostics prints a new "Diagnostics:" section with all of the diagnostics grouped by
-// resource. If no diagnostics were emitted, prints nothing. Returns whether an error was encountered.
+// resource. If no diagnostics were emitted, prints nothing.
 func (display *ProgressDisplay) printDiagnostics() {
 	// Since we display diagnostic information eagerly, we need to keep track of the first
 	// time we wrote some output so we don't inadvertently print the header twice.
 	wroteDiagnosticHeader := false
+	wroteWarningOrError := false
 
 	eventRows := toResourceRows(display.eventUrnToResourceRow, display.opts.DeterministicOutput)
 
@@ -835,6 +836,7 @@ func (display *ProgressDisplay) printDiagnostics() {
 				}
 
 				wrote = true
+				wroteWarningOrError = wroteWarningOrError || v.Severity == diag.Warning || v.Severity == diag.Error
 			}
 
 			if wrote {
@@ -843,11 +845,11 @@ func (display *ProgressDisplay) printDiagnostics() {
 		}
 	}
 
-	// Print a link to Neo to explain the failure.
+	// Print a link to Neo to explain warnings or errors.
 	// "ShowNeoFeatures" renders the link if it is enabled so don't render it here.
 	showNeoLink := display.opts.ShowLinkToNeo && !display.opts.ShowNeoFeatures
 	// Check for SuppressPermalink ensures we don't print the link for DIY backends
-	if wroteDiagnosticHeader && !display.opts.SuppressPermalink && showNeoLink {
+	if wroteWarningOrError && !display.opts.SuppressPermalink && showNeoLink {
 		display.println("    " +
 			colors.SpecCreateReplacement + "[Pulumi Neo]" + colors.Reset + " Would you like help with these diagnostics?")
 		display.println("    " +

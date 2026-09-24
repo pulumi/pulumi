@@ -360,19 +360,48 @@ func (s *CreateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 
 		var resp plugin.CreateResponse
 
+		// If a create partially fails, the resource exists, so any retries must update it rather than create
+		// another one.
+		var partial *plugin.CreateResponse
+
 		resp, err = withRetries(
 			maxErrorHookRetries,
 			func() (plugin.CreateResponse, error) {
-				resp, err := prov.Create(context.TODO(), plugin.CreateRequest{
-					URN:                   s.URN(),
-					Name:                  s.new.URN.Name(),
-					Type:                  s.new.URN.Type(),
-					Properties:            s.new.Inputs,
-					Timeout:               s.new.CustomTimeouts.Create,
-					Preview:               s.deployment.opts.DryRun,
-					ResourceStatusAddress: resourceStatusAddress,
-					ResourceStatusToken:   resourceStatusToken,
-				})
+				var resp plugin.CreateResponse
+				var err error
+				if partial == nil {
+					resp, err = prov.Create(context.TODO(), plugin.CreateRequest{
+						URN:                   s.URN(),
+						Name:                  s.new.URN.Name(),
+						Type:                  s.new.URN.Type(),
+						Properties:            s.new.Inputs,
+						Timeout:               s.new.CustomTimeouts.Create,
+						Preview:               s.deployment.opts.DryRun,
+						ResourceStatusAddress: resourceStatusAddress,
+						ResourceStatusToken:   resourceStatusToken,
+					})
+				} else {
+					var upd plugin.UpdateResponse
+					upd, err = prov.Update(context.TODO(), plugin.UpdateRequest{
+						URN:                   s.URN(),
+						Name:                  s.new.URN.Name(),
+						Type:                  s.new.URN.Type(),
+						ID:                    partial.ID,
+						OldInputs:             s.new.Inputs,
+						OldOutputs:            partial.Properties,
+						NewInputs:             s.new.Inputs,
+						Timeout:               s.new.CustomTimeouts.Create,
+						Preview:               s.deployment.opts.DryRun,
+						ResourceStatusAddress: resourceStatusAddress,
+						ResourceStatusToken:   resourceStatusToken,
+					})
+					resp = plugin.CreateResponse{
+						ID:                  partial.ID,
+						Properties:          upd.Properties,
+						Status:              upd.Status,
+						RefreshBeforeUpdate: upd.RefreshBeforeUpdate,
+					}
+				}
 
 				if err == nil {
 					resourceError = nil
@@ -386,6 +415,9 @@ func (s *CreateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 
 				resourceError = err
 				resourceStatus = resp.Status
+				if resp.ID != "" {
+					partial = &resp
+				}
 
 				if initErr, isInitErr := err.(*plugin.InitError); isInitErr {
 					s.new.InitErrors = initErr.Reasons
@@ -458,6 +490,9 @@ func (s *CreateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 	s.new.ID = id
 	s.new.Outputs = outs
 	s.new.RefreshBeforeUpdate = refreshBeforeUpdate
+	if resourceError == nil {
+		s.new.InitErrors = nil
+	}
 
 	// Create should set the Create and Modified timestamps as the resource state has been created.
 	now := time.Now().UTC()
@@ -511,7 +546,33 @@ func (s *CreateStep) Fail() {
 }
 
 func (s *CreateStep) Skip() {
-	s.reg.Done(&RegisterResult{State: s.new, Result: ResultStateSkipped})
+	// Ask the provider what a dry-run of this create would produce so dependents get precise
+	// unknowns for the outputs that would actually vary, rather than an everything-unknown answer.
+	// The snapshot is not affected: no create happened, so s.new is not persisted.
+	skipState := s.new.Copy()
+	skipState.Outputs = resource.PropertyMap{}
+	if s.new.Custom {
+		if prov, err := getProvider(s, s.provider); err == nil {
+			resp, previewErr := prov.Create(context.TODO(), plugin.CreateRequest{
+				URN:        s.URN(),
+				Name:       s.new.URN.Name(),
+				Type:       s.new.URN.Type(),
+				Properties: s.new.Inputs,
+				Timeout:    s.new.CustomTimeouts.Create,
+				Preview:    true,
+			})
+			if previewErr == nil {
+				skipState.Outputs = resp.Properties
+			} else {
+				logging.V(5).Infof("CreateStep.Skip: preview Create failed for %s, "+
+					"falling back to fully unknown outputs: %v", s.URN(), previewErr)
+			}
+		} else {
+			logging.V(5).Infof("CreateStep.Skip: could not resolve provider %s for %s, "+
+				"falling back to fully unknown outputs: %v", s.provider, s.URN(), err)
+		}
+	}
+	s.reg.Done(&RegisterResult{State: skipState, Result: ResultStateSkipped, Unknown: true})
 }
 
 // DeleteStep is a mutating step that deletes an existing resource. If `old` is marked "External",
@@ -624,6 +685,11 @@ func (d deleteProtectedError) Error() string {
 }
 
 func (s *DeleteStep) Apply() (resource.Status, StepCompleteFunc, error) {
+	// A pending-replacement resource was already deleted by an interrupted delete-before-replace
+	// operation, so the step generator must never issue another delete for it.
+	contract.Assertf(!s.old.PendingReplacement,
+		"attempting to delete resource %q which is pending replacement", s.old.URN)
+
 	if err := s.Deployment().RunHooks(
 		s.old.ResourceHooks[resource.BeforeDelete],
 		resource.BeforeDelete,
@@ -1143,7 +1209,37 @@ func (s *UpdateStep) Fail() {
 }
 
 func (s *UpdateStep) Skip() {
-	s.reg.Done(&RegisterResult{State: s.new, Result: ResultStateSkipped})
+	// Ask the provider what a dry-run of this update would produce so dependents get precise
+	// unknowns for the outputs that would actually vary, rather than an everything-unknown answer.
+	// The snapshot still writes s.new with its prior outputs; only the SDK response is affected.
+	skipState := s.new.Copy()
+	skipState.Outputs = resource.PropertyMap{}
+	if s.new.Custom {
+		if prov, err := getProvider(s, s.provider); err == nil {
+			resp, previewErr := prov.Update(context.TODO(), plugin.UpdateRequest{
+				URN:           s.URN(),
+				Name:          s.new.URN.Name(),
+				Type:          s.new.URN.Type(),
+				ID:            s.old.ID,
+				OldInputs:     s.old.Inputs,
+				OldOutputs:    s.old.Outputs,
+				NewInputs:     s.new.Inputs,
+				Timeout:       s.new.CustomTimeouts.Update,
+				IgnoreChanges: s.ignoreChanges,
+				Preview:       true,
+			})
+			if previewErr == nil {
+				skipState.Outputs = resp.Properties
+			} else {
+				logging.V(5).Infof("UpdateStep.Skip: preview Update failed for %s, "+
+					"falling back to fully unknown outputs: %v", s.URN(), previewErr)
+			}
+		} else {
+			logging.V(5).Infof("UpdateStep.Skip: could not resolve provider %s for %s, "+
+				"falling back to fully unknown outputs: %v", s.provider, s.URN(), err)
+		}
+	}
+	s.reg.Done(&RegisterResult{State: skipState, Result: ResultStateSkipped, Unknown: true})
 }
 
 // ReplaceStep is a logical step indicating a resource will be replaced.  This is comprised of three physical steps:
@@ -1408,7 +1504,19 @@ func (s *ReadStep) Fail() {
 }
 
 func (s *ReadStep) Skip() {
-	s.event.Done(&ReadResult{State: s.new, Result: ResultStateSkipped})
+	// A skipped read has no dry-run analogue. If we have prior state for this resource we return its last-known outputs
+	// so dependents can still make progress; otherwise there is nothing meaningful to return. If we don't have prior
+	// state, we return the result as Unknown so SDKs can propagate unknowns to dependents rather than treating the
+	// empty output as valid.
+	skipState := s.new.Copy()
+	var unknown bool
+	if s.old != nil {
+		skipState.Outputs = s.old.Outputs
+	} else {
+		skipState.Outputs = resource.PropertyMap{}
+		unknown = true
+	}
+	s.event.Done(&ReadResult{State: skipState, Result: ResultStateSkipped, Unknown: unknown})
 }
 
 // RefreshStep is a step used to track the progress of a refresh operation. A refresh operation updates the an existing
@@ -2229,7 +2337,15 @@ func (s *ImportStep) Fail() {
 }
 
 func (s *ImportStep) Skip() {
-	s.reg.Done(&RegisterResult{State: s.new, Result: ResultStateSkipped})
+	// Reject the completion source so the step generator's continueStepsFromImport goroutine
+	// stops waiting and exits without generating follow-up steps.
+	if s.cts != nil {
+		s.cts.MustReject(errors.New("import skipped"))
+	}
+	// Imports have no dry-run analogue, so a skipped import surfaces as fully unknown.
+	skipState := s.new.Copy()
+	skipState.Outputs = resource.PropertyMap{}
+	s.reg.Done(&RegisterResult{State: skipState, Result: ResultStateSkipped, Unknown: true})
 }
 
 const (

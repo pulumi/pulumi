@@ -17,31 +17,33 @@
 import asyncio
 import copy
 import warnings
+from collections.abc import Awaitable, Callable, Mapping, Sequence
 from typing import (
-    Optional,
-    Any,
-    Union,
     TYPE_CHECKING,
+    Any,
+    Optional,
+    Union,
     cast,
 )
-from collections.abc import Callable
-from collections.abc import Awaitable, Mapping, Sequence
-from . import _types
+
+from . import _types, log
+from . import urn as urn_util
+from .output import Output, _is_prompt, _map2_input, _map_input, _OutputData
 from .resource_hooks import ResourceHookBinding
 from .runtime import known_types
+from .runtime._state_migration_context import _ensure_not_in_state_migration
 from .runtime.resource import (
     _pkg_from_type,
+    collapse_alias_to_urn,
     get_resource,
+    read_resource,
     register_resource,
     register_resource_outputs,
-    read_resource,
-    collapse_alias_to_urn,
+)
+from .runtime.resource import (
     create_urn as create_urn_internal,
 )
 from .runtime.settings import get_root_resource
-from .output import _is_prompt, _map_input, _map2_input, Output, _OutputData
-from . import urn as urn_util
-from . import log
 
 if TYPE_CHECKING:
     from .output import Input, Inputs
@@ -341,6 +343,91 @@ this indicates that the resource will not be transformed.
 """
 
 
+class StateMigrationArgs:
+    """
+    Arguments passed to a state migration callback, containing the prior state of the resource
+    and its descendants in `checkpoint resource format
+    <https://pulumi-developer-docs.readthedocs.io/latest/docs/references/deployment-schema.html#pulumi-resource-state>`__.
+
+    This API is experimental and may change.
+    """
+
+    urn: str
+    """
+    The URN of the resource being registered. This may differ from its URN in `old_state`
+    when the prior resource is matched through an alias.
+    """
+
+    old_state: list[dict[str, Any]]
+    """
+    The prior state of the resource and its descendants in `checkpoint resource format
+    <https://pulumi-developer-docs.readthedocs.io/latest/docs/references/deployment-schema.html#pulumi-resource-state>`__,
+    with the resource itself first. For subsequent callbacks, this includes changes made by
+    earlier callbacks in the chain.
+    """
+
+    def __init__(self, urn: str, old_state: list[dict[str, Any]]) -> None:
+        self.urn = urn
+        self.old_state = old_state
+
+
+class StateMigrationResult:
+    """
+    StateMigrationResult is the result that must be returned by a state migration callback when
+    it changes the state. Every resource present in the old state must either be returned in
+    `new_state` under the same URN or have an entry in `successors`, but not both.
+
+    This API is experimental and may change.
+    """
+
+    new_state: list[dict[str, Any]]
+    """
+    The complete migrated subtree in `checkpoint resource format
+    <https://pulumi-developer-docs.readthedocs.io/latest/docs/references/deployment-schema.html#pulumi-resource-state>`__,
+    including unchanged resources. This replaces `old_state`.
+    """
+
+    successors: Optional[dict[str, str]]
+    """
+    Maps each old URN removed from the state to the URN in `new_state` that succeeds it. Multiple
+    old URNs may map to the same successor. A resource cannot be removed without a successor.
+    The engine uses these mappings to rewrite resource references.
+    """
+
+    def __init__(
+        self,
+        new_state: list[dict[str, Any]],
+        successors: Optional[dict[str, str]] = None,
+    ) -> None:
+        self.new_state = new_state
+        self.successors = successors
+
+
+StateMigration = Callable[
+    [StateMigrationArgs],
+    Optional[Union[Awaitable[Optional[StateMigrationResult]], StateMigrationResult]],
+]
+"""
+StateMigration is the callback signature for the :attr:`pulumi.ResourceOptions.state_migrations` resource option.
+
+This API is experimental and may change.
+
+A callback receives the prior state of the resource and its descendants, and may return a
+replacement subtree for the engine to use before diffing those resources. Returning None leaves
+the callback's input state unchanged and allows later callbacks to run. Callbacks may be synchronous
+or asynchronous and must be idempotent.
+
+Migrations run during updates and previews when prior state exists, including state matched
+through aliases. Migrations rewrite state only, they do not create, import, or modify physical
+resources.
+
+The callback receives plaintext secret values and must not log or otherwise expose them. It must
+not perform Pulumi runtime operations or await unresolved Outputs. Every resource omitted from the
+returned state must identify a returned successor. Provider resource states must remain unchanged,
+and custom resources must preserve their physical identity and lifecycle safety flags.
+"""
+
+
 class ResourceOptions:
     """
     ResourceOptions is a bag of optional settings that control a resource's behavior.
@@ -432,8 +519,15 @@ class ResourceOptions:
     Optional list of transforms to apply to this resource during construction. The
     transforms are applied in order, and are applied prior to transform applied to
     parents walking from the resource up to the stack.
+    """
 
-    This is experimental.
+    state_migrations: Optional[list[StateMigration]]
+    """
+    Optional list of state migrations to apply to this resource's prior state and its descendants.
+    The migrations are applied in order, each receiving the state produced by earlier callbacks.
+    See :obj:`pulumi.StateMigration` for the callback contract and safety restrictions.
+
+    This API is experimental and may change.
     """
 
     hooks: Optional[ResourceHookBinding]
@@ -536,6 +630,7 @@ class ResourceOptions:
         replace_with: Optional[list["Resource"]] = None,
         hide_diffs: Optional[list[str]] = None,
         env_var_mappings: Optional[Mapping[str, str]] = None,
+        state_migrations: Optional[list[StateMigration]] = None,
     ) -> None:
         """
         :param Optional[Resource] parent: If provided, the currently-constructing resource should be the child of
@@ -584,6 +679,9 @@ class ResourceOptions:
         :param Optional[List[Resource]] replace_with: If set, this resource will also be replaced whenever any of the provided resources are replaced.
         :param Optional[ResourceHookBinding] hooks: Optional resource hooks to bind to this resource. The hooks will be
                 invoked during certain step of the lifecycle of the resource.
+        :param Optional[List[StateMigration]] state_migrations: Optional list of state migrations to apply to this
+                resource's prior state and its descendants, in order. See :obj:`pulumi.StateMigration` for the callback contract
+                and safety restrictions. This API is experimental and may change.
         """
 
         self.parent = parent
@@ -601,6 +699,7 @@ class ResourceOptions:
         self.import_ = import_
         self.transformations = transformations
         self.transforms = transforms
+        self.state_migrations = state_migrations
         self.hooks = hooks
         self.urn = urn
         self.replace_on_changes = replace_on_changes
@@ -746,6 +845,9 @@ class ResourceOptions:
             dest.transformations, source.transformations
         )
         dest.transforms = _merge_lists(dest.transforms, source.transforms)
+        dest.state_migrations = _merge_lists(
+            dest.state_migrations, source.state_migrations
+        )
         dest.hooks = ResourceHookBinding.merge(dest.hooks, source.hooks)
         dest.parent = dest.parent if source.parent is None else source.parent
         dest.protect = dest.protect if source.protect is None else source.protect
@@ -916,6 +1018,8 @@ class Resource:
             self._transformations = []
             self._childResources = set()
             return
+
+        _ensure_not_in_state_migration("resource construction")
 
         if props is None:
             props = {}
@@ -1360,6 +1464,8 @@ def export(name: str, value: Any):
     :param str name: The name to assign to this output.
     :param Any value: The value of this output.
     """
+    _ensure_not_in_state_migration("export stack output")
+
     res = cast("Stack", get_root_resource())
     if known_types.is_stack(res):
         res.output(name, value)

@@ -100,7 +100,7 @@ func unsupportedObjectProperty(indexRange hcl.Range) *hcl.Diagnostic {
 }
 
 func tupleIndexOutOfRange(tupleLen int, indexRange hcl.Range) *hcl.Diagnostic {
-	return errorf(indexRange, "tuple index must be between 0 and %d", tupleLen)
+	return errorf(indexRange, "tuple index out of range for tuple of length %d", tupleLen)
 }
 
 func UnknownObjectProperty(name string, indexRange hcl.Range, props []string) *hcl.Diagnostic {

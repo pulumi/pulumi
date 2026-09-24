@@ -108,26 +108,26 @@ func TestDeploymentSettingsGet_DefaultOutput(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.Equal(t, `Source: GitHub
-  Repository:                    acme/infra
-  Branch:                        main
-  Commit:                        abc123
-  Pulumi.yaml folder:            stacks/prod
-  Run previews for PRs:          yes
-  Run updates on push:           yes
-  PR stack template:             no
-  Path filters:                  stacks/prod/**
+  Repository:           acme/infra
+  Branch:               main
+  Commit:               abc123
+  Pulumi.yaml folder:   stacks/prod
+  Run previews for PRs: yes
+  Run updates on push:  yes
+  PR stack template:    no
+  Path filters:         stacks/prod/**
 
 Deployment runner
-  Runner pool:                   pool-1
-  Executor image:                pulumi/pulumi:latest
+  Runner pool:          pool-1
+  Executor image:       pulumi/pulumi:latest
 
 Pre-run commands
   echo hi
 
 Environment variables
-  API_KEY:                       [secret]
-  BAZ:                           qux
-  FOO:                           bar
+  API_KEY:              [secret]
+  BAZ:                  qux
+  FOO:                  bar
 `, buf.String())
 }
 
@@ -412,15 +412,15 @@ func TestDeploymentSettingsGet_VCSProviders(t *testing.T) {
 			text, jsonOut := renderBoth(t, settings)
 
 			assert.Equal(t, tc.heading+`
-  Repository:                    acme/infra
-  Installation ID:               inst-7
-  Branch:                        main
-  Run previews for PRs:          yes
-  Run updates on push:           yes
-  PR stack template:             no
-  Deploy on tag:                 yes
-  Tag filters:                   v*
-  Path filters:                  stacks/prod/**
+  Repository:           acme/infra
+  Installation ID:      inst-7
+  Branch:               main
+  Run previews for PRs: yes
+  Run updates on push:  yes
+  PR stack template:    no
+  Deploy on tag:        yes
+  Tag filters:          v*
+  Path filters:         stacks/prod/**
 `, text)
 
 			assert.JSONEq(t, `{
@@ -455,7 +455,7 @@ func TestDeploymentSettingsGet_ReviewStackLabelsAreGitHubOnly(t *testing.T) {
 	}
 
 	text, jsonOut := renderBoth(t, vcs(apitype.VCSProviderGitHub))
-	assert.Contains(t, text, "  Review stack labels:           deploy, preview\n")
+	assert.Regexp(t, `\n  Review stack labels: +deploy, preview\n`, text)
 	assert.Contains(t, jsonOut, `"reviewStackLabels"`)
 
 	text, jsonOut = renderBoth(t, vcs(apitype.VCSProviderGitLab))
@@ -481,15 +481,15 @@ func TestDeploymentSettingsGet_LegacyGitHubFields(t *testing.T) {
 	text, jsonOut := renderBoth(t, settings)
 
 	assert.Equal(t, `Source: GitHub
-  Repository:                    acme/infra
-  Installation ID:               inst-7
-  Run previews for PRs:          no
-  Run updates on push:           no
-  PR stack template:             no
-  Deploy PR:                     42
-  Deploy on tag:                 yes
-  Tag filters:                   v*, release-*
-  Review stack labels:           deploy
+  Repository:           acme/infra
+  Installation ID:      inst-7
+  Run previews for PRs: no
+  Run updates on push:  no
+  PR stack template:    no
+  Deploy PR:            42
+  Deploy on tag:        yes
+  Tag filters:          v*, release-*
+  Review stack labels:  deploy
 `, text)
 
 	assert.JSONEq(t, `{
@@ -522,10 +522,10 @@ func TestDeploymentSettingsGet_VCSTakesPrecedenceOverLegacyGitHub(t *testing.T) 
 	text, jsonOut := renderBoth(t, settings)
 
 	assert.Equal(t, `Source: GitLab
-  Repository:                    acme/current
-  Run previews for PRs:          no
-  Run updates on push:           no
-  PR stack template:             no
+  Repository:           acme/current
+  Run previews for PRs: no
+  Run updates on push:  no
+  PR stack template:    no
 `, text)
 	assert.NotContains(t, jsonOut, "acme/legacy")
 }
@@ -545,8 +545,8 @@ func TestDeploymentSettingsGet_BranchStripsRefsHeads(t *testing.T) {
 	text, jsonOut := renderBoth(t, settings)
 
 	assert.Equal(t, `Source: Git
-  Repository:                    https://example.com/acme/infra
-  Branch:                        release/1.0
+  Repository: https://example.com/acme/infra
+  Branch:     release/1.0
 `, text)
 
 	assert.JSONEq(t, `{
@@ -574,9 +574,9 @@ func TestDeploymentSettingsGet_GitTag(t *testing.T) {
 	text, jsonOut := renderBoth(t, settings)
 
 	assert.Equal(t, `Source: Git
-  Repository:                    https://example.com/acme/infra
-  Commit:                        abc123
-  Git tag:                       v1.2.3
+  Repository: https://example.com/acme/infra
+  Commit:     abc123
+  Git tag:    v1.2.3
 `, text)
 	assert.JSONEq(t, `{
 		"source": {
@@ -639,8 +639,8 @@ func TestDeploymentSettingsGet_GitAuthModes(t *testing.T) {
 			text, jsonOut := renderBoth(t, settings)
 
 			assert.Equal(t, `Source: Git
-  Repository:                    https://example.com/acme/infra
-  Authentication:                `+tc.want+"\n", text)
+  Repository:     https://example.com/acme/infra
+  Authentication: `+tc.want+"\n", text)
 			assert.JSONEq(t, `{
 				"source": {
 					"kind": "git",
@@ -680,11 +680,11 @@ func TestDeploymentSettingsGet_MercurialSource(t *testing.T) {
 	text, jsonOut := renderBoth(t, settings)
 
 	assert.Equal(t, `Source: Mercurial
-  Repository:                    https://hg.example.com/acme/infra
-  Branch:                        default
-  Revision:                      9f2c4a1
-  Pulumi.yaml folder:            stacks/prod
-  Authentication:                Basic auth
+  Repository:         https://hg.example.com/acme/infra
+  Branch:             default
+  Revision:           9f2c4a1
+  Pulumi.yaml folder: stacks/prod
+  Authentication:     Basic auth
 `, text)
 
 	assert.JSONEq(t, `{
@@ -754,7 +754,7 @@ func TestDeploymentSettingsGet_TemplateSource(t *testing.T) {
 		text, jsonOut := renderBoth(t, settings)
 
 		assert.Equal(t, `Source: Template
-  Template source:               registry://templates/source/acme/base@1.0.0
+  Template source: registry://templates/source/acme/base@1.0.0
 `, text)
 		assert.JSONEq(t, `{
 			"source": {
@@ -781,8 +781,8 @@ func TestDeploymentSettingsGet_TemplateSource(t *testing.T) {
 		text, jsonOut := renderBoth(t, settings)
 
 		assert.Equal(t, `Source: Template
-  Project template source:       https://example.com/acme/templates
-  Authentication:                Access token
+  Project template source: https://example.com/acme/templates
+  Authentication:          Access token
 `, text)
 		assert.JSONEq(t, `{
 			"source": {
@@ -810,9 +810,9 @@ func TestDeploymentSettingsGet_EnvironmentVariableValues(t *testing.T) {
 	text, jsonOut := renderBoth(t, settings)
 
 	assert.Equal(t, `Environment variables
-  API_KEY:                       [secret]
-  DB_PASS:                       [secret]
-  LOG_LEVEL:                     info
+  API_KEY:   [secret]
+  DB_PASS:   [secret]
+  LOG_LEVEL: info
 `, text)
 
 	assert.JSONEq(t, `{
@@ -825,6 +825,62 @@ func TestDeploymentSettingsGet_EnvironmentVariableValues(t *testing.T) {
 	assert.NotContains(t, jsonOut, "AQID")
 	assert.NotContains(t, jsonOut, "API-KEY-PLAINTEXT")
 	assert.NotContains(t, text, "API-KEY-PLAINTEXT")
+}
+
+func TestDeploymentSettingsGet_ValueColumnFitsPrintedLabels(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name string
+		vars map[string]apitype.SecretValue
+		want string
+	}{
+		{
+			name: "the column shrinks to the labels present",
+			vars: map[string]apitype.SecretValue{"FOO": {Value: "bar"}},
+			want: `Source: Git
+  Repository: https://example.com/acme/infra
+
+Environment variables
+  FOO:        bar
+`,
+		},
+		{
+			name: "labels are measured by display width",
+			vars: map[string]apitype.SecretValue{"ラベル": {Value: "bar"}},
+			want: `Source: Git
+  Repository: https://example.com/acme/infra
+
+Environment variables
+  ラベル:     bar
+`,
+		},
+		{
+			name: "a label past the old width overflows its own line",
+			vars: map[string]apitype.SecretValue{"A_VERY_LONG_ENVIRONMENT_VARIABLE_NAME": {Value: "bar"}},
+			want: `Source: Git
+  Repository:                    https://example.com/acme/infra
+
+Environment variables
+  A_VERY_LONG_ENVIRONMENT_VARIABLE_NAME: bar
+`,
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			text, _ := renderBoth(t, &apitype.DeploymentSettings{
+				SourceContext: &apitype.SourceContext{
+					Git: &apitype.SourceContextGit{RepoURL: "https://example.com/acme/infra"},
+				},
+				Operation: &apitype.OperationContext{EnvironmentVariables: tc.vars},
+			})
+
+			assert.Equal(t, tc.want, text)
+		})
+	}
 }
 
 func TestDeploymentSettingsGet_ExecutorImageDetails(t *testing.T) {
@@ -846,9 +902,9 @@ func TestDeploymentSettingsGet_ExecutorImageDetails(t *testing.T) {
 	text, jsonOut := renderBoth(t, settings)
 
 	assert.Equal(t, `Deployment runner
-  Executor image:                pulumi/pulumi:latest
-  Default image:                 yes
-  Image credentials:             configured
+  Executor image:    pulumi/pulumi:latest
+  Default image:     yes
+  Image credentials: configured
 `, text)
 
 	assert.JSONEq(t, `{
@@ -878,11 +934,11 @@ func TestDeploymentSettingsGet_SettingsMetadata(t *testing.T) {
 
 	text, jsonOut := renderBoth(t, settings)
 
-	assert.Equal(t, `Tag:                             rev-42
-Version:                         7
-Settings source:                 github-review-stack
-Deployment role:                 prod-deployer (role-1)
-Dependency cache:                enabled
+	assert.Equal(t, `Tag:              rev-42
+Version:          7
+Settings source:  github-review-stack
+Deployment role:  prod-deployer (role-1)
+Dependency cache: enabled
 `, text)
 
 	assert.JSONEq(t, `{
@@ -908,7 +964,7 @@ func TestDeploymentSettingsGet_DeploymentRoleWithoutName(t *testing.T) {
 
 	text, jsonOut := renderBoth(t, settings)
 
-	assert.Equal(t, "Deployment role:                 role-1\n", text)
+	assert.Equal(t, "Deployment role: role-1\n", text)
 	assert.JSONEq(t, `{"deploymentRole": {"id": "role-1"}}`, jsonOut)
 }
 
@@ -919,7 +975,7 @@ func TestDeploymentSettingsGet_CacheDisabled(t *testing.T) {
 
 	text, jsonOut := renderBoth(t, settings)
 
-	assert.Equal(t, "Dependency cache:                disabled\n", text)
+	assert.Equal(t, "Dependency cache: disabled\n", text)
 	assert.JSONEq(t, `{"cacheEnabled": false}`, jsonOut)
 }
 
@@ -935,7 +991,7 @@ func TestDeploymentSettingsGet_RemediateIfDriftDetectedOnly(t *testing.T) {
 	text, jsonOut := renderBoth(t, settings)
 
 	assert.Equal(t, `Advanced
-  Remediate on drift:            yes
+  Remediate on drift: yes
 `, text)
 	assert.JSONEq(t, `{"advanced": {"remediateIfDriftDetected": true}}`, jsonOut)
 }

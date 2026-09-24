@@ -97,7 +97,7 @@ func (t *TupleType) Traverse(traverser hcl.Traverser) (Traversable, hcl.Diagnost
 	if acc != big.Exact {
 		return DynamicType, hcl.Diagnostics{unsupportedTupleIndex(traverser.SourceRange())}
 	}
-	if elementIndex < 0 || elementIndex > int64(len(t.ElementTypes)) {
+	if elementIndex < 0 || elementIndex >= int64(len(t.ElementTypes)) {
 		return DynamicType, hcl.Diagnostics{tupleIndexOutOfRange(len(t.ElementTypes), traverser.SourceRange())}
 	}
 	return t.ElementTypes[int(elementIndex)], nil
