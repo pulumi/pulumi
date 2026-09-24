@@ -522,3 +522,7 @@ func TestCancelNoopWhenUnknownOrNotStarted(t *testing.T) {
 	defer fp.mu.Unlock()
 	assert.Empty(t, fp.posted)
 }
+
+func (f *fakeTaskAPI) GetNeoTask(context.Context, string, string) (*client.NeoTask, error) {
+	return nil, errors.New("unexpected task metadata request")
+}
