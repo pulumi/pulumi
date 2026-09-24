@@ -1,7 +1,4 @@
 #!/usr/bin/env bash
-# Fails unless every given binary carries a valid Authenticode signature from Pulumi. Trusted Signing issues
-# certificates to many publishers under the same Microsoft root, so a valid chain alone isn't enough: the signer's
-# subject is checked too.
 
 set -euo pipefail
 
