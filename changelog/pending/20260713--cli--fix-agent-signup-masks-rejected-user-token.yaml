@@ -1,0 +1,6 @@
+component: cli
+kind: fix
+body: Under an AI coding agent, a stored login whose token the service has rejected (e.g. revoked or server-expired) no longer triggers automatic signup of a new anonymous agent account; the CLI now reports that `pulumi login` is required instead of silently switching identities
+time: 2026-07-13T00:00:00+00:00
+custom:
+  PR: "23918"
