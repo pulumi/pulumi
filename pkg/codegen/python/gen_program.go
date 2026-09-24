@@ -1199,12 +1199,13 @@ func (g *generator) genResourceOptions(
 						if i > 0 {
 							g.Fprintf(w, ", ")
 						}
-						// An alias is either a string or an object of alias fields.
-						obj, ok := expr.(*model.ObjectConsExpression)
-						if !ok {
+						// If the expression is a string literal, we can inline it directly.
+						if model.StringType.AssignableFrom(expr.Type()) {
 							g.Fprintf(w, "%v", expr)
 							continue
 						}
+						// Otherwise pull off the fields dynamically.
+						obj := expr.(*model.ObjectConsExpression)
 						g.Fprintf(w, "pulumi.Alias(")
 						for j, item := range obj.Items {
 							if j > 0 {

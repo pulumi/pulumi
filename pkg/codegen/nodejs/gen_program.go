@@ -1277,10 +1277,12 @@ func (g *generator) genResourceOptions(
 					if i > 0 {
 						g.Fprint(&buffer, ", ")
 					}
-					// An alias is either a string or an object of alias fields.
-					if obj, ok := expr.(*model.ObjectConsExpression); !ok {
+					// If the expression is a string literal, we can inline it directly.
+					if model.StringType.AssignableFrom(expr.Type()) {
 						g.Fgenf(&buffer, "%v", expr)
 					} else {
+						// Otherwise pull off the fields dynamically.
+						obj := expr.(*model.ObjectConsExpression)
 						g.Fprint(&buffer, "{")
 						for j, item := range obj.Items {
 							if j > 0 {

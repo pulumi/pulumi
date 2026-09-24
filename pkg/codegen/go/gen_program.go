@@ -1488,12 +1488,13 @@ func (g *generator) genResourceOptions(w io.Writer, block *model.Block) {
 				if i > 0 {
 					g.Fgenf(valBuffer, ", ")
 				}
-				// An alias is either a string or an object of alias fields.
-				obj, ok := expr.(*model.ObjectConsExpression)
-				if !ok {
+				// If the expression is a string literal, we can inline it directly.
+				if model.StringType.AssignableFrom(expr.Type()) {
 					g.Fgenf(valBuffer, "pulumi.Alias{ URN: pulumi.URN(%v) }", expr)
 					continue
 				}
+				// Otherwise pull off the fields dynamically.
+				obj := expr.(*model.ObjectConsExpression)
 				g.Fgenf(valBuffer, "pulumi.Alias{")
 				for _, item := range obj.Items {
 					// We need a literal key here.
