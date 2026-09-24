@@ -3289,6 +3289,16 @@ func (pc *Client) DeletePackageVersion(
 	return err
 }
 
+// RawCallWithoutRedirects uses the active authentication path and returns redirects to the caller.
+// This prevents an advertised agent endpoint from forwarding credentials or request content.
+func (pc *Client) RawCallWithoutRedirects(
+	ctx context.Context, method, path string, query url.Values, body io.Reader, header http.Header, gzipCompressBody bool,
+) (*http.Response, error) {
+	return pc.RawCall(
+		context.WithValue(ctx, disableRedirectsKey{}, true), method, path, query, body, header, gzipCompressBody,
+	)
+}
+
 // RawCall issues an arbitrary Pulumi API request and returns the raw
 // *http.Response. Unlike the typed Call methods, RawCall does not
 // deserialize the response body and does not classify 4xx/5xx into typed
