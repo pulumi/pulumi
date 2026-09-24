@@ -375,6 +375,32 @@ func TestMinMaxTypes(t *testing.T) {
 	}
 }
 
+// Tests that `length` accepts a tuple literal whose elements are outputs, as it does a list of outputs.
+func TestLengthOfTupleWithOutputs(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		source string
+		typ    model.Type
+	}{
+		{source: "value = length([secret(false)])", typ: model.NewOutputType(model.IntType)},
+		{source: "value = length([false, secret(false)])", typ: model.NewOutputType(model.IntType)},
+		{source: "value = length([[secret(false)]])", typ: model.NewOutputType(model.IntType)},
+		{source: "value = length([false])", typ: model.IntType},
+	}
+	for _, c := range cases {
+		t.Run(c.source, func(t *testing.T) {
+			t.Parallel()
+			program, diags, err := ParseAndBindProgram(t, c.source, "program.pp")
+			require.NoError(t, err)
+			require.False(t, diags.HasErrors(), diags.Error())
+			require.Len(t, program.Nodes, 1)
+			typ := program.Nodes[0].(*pcl.LocalVariable).Type()
+			assert.True(t, c.typ.Equals(typ), "expected %v, got %v", c.typ, typ)
+		})
+	}
+}
+
 // Tests that `lookup` accepts a default of any type and returns the unification of the element type and
 // the default, as HCL's lookup does.
 func TestLookupDefaultType(t *testing.T) {
