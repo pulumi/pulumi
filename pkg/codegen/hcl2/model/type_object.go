@@ -311,6 +311,11 @@ func (t *ObjectType) conversionFrom(src Type, unifying bool, seen *cycleSet) (Co
 			}
 			return conversionKind, diags
 		case *MapType:
+			if unifying {
+				_, kind := unifyElementTypes(seen, src.ElementType,
+					slices.SortedFunc(maps.Values(t.Properties), Compare)...)
+				return kind, nil
+			}
 			conversionKind := UnsafeConversion
 			var diags lazyDiagnostics
 			for _, dst := range t.Properties {
@@ -366,14 +371,8 @@ func (t *ObjectType) unify(other Type, seen *cycleSet) (Type, ConversionKind) {
 		switch other := other.(type) {
 		case *MapType:
 			// Prefer the map type, but unify the element type.
-			elementType, conversionKind := other.ElementType, SafeConversion
-			for _, t := range slices.SortedFunc(maps.Values(t.Properties), Compare) {
-				element, ck := elementType.unify(t, seen)
-				if ck < conversionKind {
-					conversionKind = ck
-				}
-				elementType = element
-			}
+			elementType, conversionKind := unifyElementTypes(seen, other.ElementType,
+				slices.SortedFunc(maps.Values(t.Properties), Compare)...)
 			return NewMapType(elementType), conversionKind
 		case *ObjectType:
 			// If the other type is an object type, produce a new type whose properties are the union of the two types.

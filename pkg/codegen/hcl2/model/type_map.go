@@ -121,10 +121,20 @@ func (t *MapType) ConversionFrom(src Type) ConversionKind {
 
 func (t *MapType) conversionFrom(src Type, unifying bool, seen *cycleSet) (ConversionKind, lazyDiagnostics) {
 	return conversionFrom(t, src, unifying, seen, t.cache, func() (ConversionKind, lazyDiagnostics) {
+		// When unifying, the conversion kind of two collection types is the kind of unifying their element types.
 		switch src := src.(type) {
 		case *MapType:
+			if unifying {
+				_, kind := unifyElementTypes(seen, t.ElementType, src.ElementType)
+				return kind, nil
+			}
 			return t.ElementType.conversionFrom(src.ElementType, unifying, seen)
 		case *ObjectType:
+			if unifying {
+				_, kind := unifyElementTypes(seen, t.ElementType,
+					slices.SortedFunc(maps.Values(src.Properties), Compare)...)
+				return kind, nil
+			}
 			conversionKind := SafeConversion
 			var diags lazyDiagnostics
 			for _, src := range src.Properties {
@@ -158,14 +168,8 @@ func (t *MapType) unify(other Type, seen *cycleSet) (Type, ConversionKind) {
 			return NewMapType(elementType), conversionKind
 		case *ObjectType:
 			// If the other type is an object type, prefer the map type, but unify the property types.
-			elementType, conversionKind := t.ElementType, SafeConversion
-			for _, other := range slices.SortedFunc(maps.Values(other.Properties), Compare) {
-				element, ck := elementType.unify(other, seen)
-				if ck < conversionKind {
-					conversionKind = ck
-				}
-				elementType = element
-			}
+			elementType, conversionKind := unifyElementTypes(seen, t.ElementType,
+				slices.SortedFunc(maps.Values(other.Properties), Compare)...)
 			return NewMapType(elementType), conversionKind
 		default:
 			// Prefer the map type.

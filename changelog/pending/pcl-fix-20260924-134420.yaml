@@ -1,0 +1,4 @@
+component: pcl
+kind: fix
+body: Unify lists, maps, and sets that hold different constants into one collection of their union so they can be iterated and indexed
+time: 2026-09-24T13:44:20.020041+02:00

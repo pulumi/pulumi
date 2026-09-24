@@ -232,6 +232,10 @@ func (t *TupleType) conversionFrom(src Type, unifying bool, seen *cycleSet) (Con
 
 			return conversionKind, diags
 		case *ListType:
+			if unifying {
+				_, kind := unifyElementTypes(seen, src.ElementType, t.ElementTypes...)
+				return kind, nil
+			}
 			conversionKind := UnsafeConversion
 			var diags lazyDiagnostics
 			for _, t := range t.ElementTypes {
@@ -244,6 +248,10 @@ func (t *TupleType) conversionFrom(src Type, unifying bool, seen *cycleSet) (Con
 			}
 			return conversionKind, diags
 		case *SetType:
+			if unifying {
+				_, kind := unifyElementTypes(seen, src.ElementType, t.ElementTypes...)
+				return min(UnsafeConversion, kind), nil
+			}
 			conversionKind := UnsafeConversion
 			var diags lazyDiagnostics
 			for _, t := range t.ElementTypes {
@@ -291,26 +299,12 @@ func (t *TupleType) unify(other Type, seen *cycleSet) (Type, ConversionKind) {
 			return NewTupleType(unifier.elementTypes...), unifier.conversionKind
 		case *ListType:
 			// Prefer the list type, but unify the element type.
-			elementType, conversionKind := other.ElementType, SafeConversion
-			for _, t := range t.ElementTypes {
-				element, ck := elementType.unify(t, seen)
-				if ck < conversionKind {
-					conversionKind = ck
-				}
-				elementType = element
-			}
+			elementType, conversionKind := unifyElementTypes(seen, other.ElementType, t.ElementTypes...)
 			return NewListType(elementType), conversionKind
 		case *SetType:
 			// Prefer the set type, but unify the element type.
-			elementType, conversionKind := other.ElementType, UnsafeConversion
-			for _, t := range t.ElementTypes {
-				element, ck := elementType.unify(t, seen)
-				if ck < conversionKind {
-					conversionKind = ck
-				}
-				elementType = element
-			}
-			return NewSetType(elementType), conversionKind
+			elementType, conversionKind := unifyElementTypes(seen, other.ElementType, t.ElementTypes...)
+			return NewSetType(elementType), min(UnsafeConversion, conversionKind)
 		default:
 			// Otherwise, prefer the tuple type.
 			kind, _ := t.conversionFrom(other, true, seen)

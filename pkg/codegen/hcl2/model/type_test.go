@@ -710,6 +710,18 @@ func TestUnifyType(t *testing.T) {
 	assert.Equal(t, NoConversion, a.ConversionFrom(b))
 	assertUnified(t, NewTupleType(NewUnionType(cf, ct)), NewTupleType(NewUnionType(cf, ct)), a, b)
 
+	// Collections of distinct constants unify to one collection of their union, across collection kinds.
+	cu := NewUnionType(cf, ct)
+	assertUnified(t, NewListType(cu), NewListType(cu), NewListType(cf), NewListType(ct))
+	assertUnified(t, NewMapType(cu), NewMapType(cu), NewMapType(cf), NewMapType(ct))
+	assertUnified(t, NewSetType(cu), NewSetType(cu), NewSetType(cf), NewSetType(ct))
+	assertUnified(t, NewListType(cu), NewListType(cu), NewListType(cf), NewTupleType(ct, ct))
+	assertUnified(t, NewListType(cu), NewListType(cu), NewListType(cf), NewSetType(ct))
+	assertUnified(t, NewUnionType(NewSetType(cf), NewTupleType(ct)), NewSetType(cu), NewSetType(cf), NewTupleType(ct))
+	assertUnified(t, NewMapType(cu), NewMapType(cu), NewMapType(cf), NewObjectType(map[string]Type{"a": ct}))
+	assertUnified(t, NewListType(NewListType(cu)), NewListType(NewListType(cu)),
+		NewListType(NewListType(cf)), NewListType(NewListType(ct)))
+
 	// Nested tuples of constants with different lengths unify element by element.
 	t6 := NewTupleType(NewTupleType(cf, cf, cf))
 	t7 := NewTupleType(NewTupleType(ct), NewTupleType(cf))

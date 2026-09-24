@@ -271,6 +271,18 @@ func unify(t0, t1 Type, seen *cycleSet, unify func() (Type, ConversionKind)) (Ty
 	}
 }
 
+// unifyElementTypes unifies elementType with each of the other types in turn. It returns the unified type and the
+// least conversion kind seen. Collection types use it to unify their element types.
+func unifyElementTypes(seen *cycleSet, elementType Type, others ...Type) (Type, ConversionKind) {
+	conversionKind := SafeConversion
+	for _, other := range others {
+		var ck ConversionKind
+		elementType, ck = elementType.unify(other, seen)
+		conversionKind = min(conversionKind, ck)
+	}
+	return elementType, conversionKind
+}
+
 // UnifyTypes chooses the most general type that is convertible from all of the input types.
 func UnifyTypes(types ...Type) (safeType Type, unsafeType Type) {
 	for _, t := range types {
