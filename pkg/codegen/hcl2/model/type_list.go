@@ -124,12 +124,25 @@ func (t *ListType) ConversionFrom(src Type) ConversionKind {
 
 func (t *ListType) conversionFrom(src Type, unifying bool, seen cycleSet) (ConversionKind, lazyDiagnostics) {
 	return conversionFrom(t, src, unifying, seen, t.cache, func() (ConversionKind, lazyDiagnostics) {
+		// When unifying, the conversion kind of two collection types is the kind of unifying their element types.
 		switch src := src.(type) {
 		case *ListType:
+			if unifying {
+				_, kind := unifyElementTypes(t.ElementType, src.ElementType)
+				return kind, nil
+			}
 			return t.ElementType.conversionFrom(src.ElementType, unifying, seen)
 		case *SetType:
+			if unifying {
+				_, kind := unifyElementTypes(t.ElementType, src.ElementType)
+				return kind, nil
+			}
 			return t.ElementType.conversionFrom(src.ElementType, unifying, seen)
 		case *TupleType:
+			if unifying {
+				_, kind := unifyElementTypes(t.ElementType, src.ElementTypes...)
+				return kind, nil
+			}
 			conversionKind := SafeConversion
 			var diags lazyDiagnostics
 			for _, src := range src.ElementTypes {
@@ -158,15 +171,8 @@ func (t *ListType) unify(other Type) (Type, ConversionKind) {
 	return unify(t, other, func() (Type, ConversionKind) {
 		switch other := other.(type) {
 		case *TupleType:
-			// If the other element is a list type, prefer the list type, but unify the element type.
-			elementType, conversionKind := t.ElementType, SafeConversion
-			for _, other := range other.ElementTypes {
-				element, ck := elementType.unify(other)
-				if ck < conversionKind {
-					conversionKind = ck
-				}
-				elementType = element
-			}
+			// If the other element is a tuple type, prefer the list type, but unify the element types.
+			elementType, conversionKind := unifyElementTypes(t.ElementType, other.ElementTypes...)
 			return NewListType(elementType), conversionKind
 		case *SetType:
 			// If the other element is a set type, prefer the list type, but unify the element types.

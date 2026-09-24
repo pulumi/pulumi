@@ -81,16 +81,29 @@ func (t *SetType) ConversionFrom(src Type) ConversionKind {
 
 func (t *SetType) conversionFrom(src Type, unifying bool, seen cycleSet) (ConversionKind, lazyDiagnostics) {
 	return conversionFrom(t, src, unifying, seen, t.cache, func() (ConversionKind, lazyDiagnostics) {
+		// When unifying, the conversion kind of two collection types is the kind of unifying their element types.
 		switch src := src.(type) {
 		case *SetType:
+			if unifying {
+				_, kind := unifyElementTypes(t.ElementType, src.ElementType)
+				return kind, nil
+			}
 			return t.ElementType.conversionFrom(src.ElementType, unifying, seen)
 		case *ListType:
+			if unifying {
+				_, kind := unifyElementTypes(t.ElementType, src.ElementType)
+				return kind, nil
+			}
 			if conversionKind, why := t.ElementType.conversionFrom(src.ElementType, unifying, seen); conversionKind ==
 				NoConversion {
 				return NoConversion, why
 			}
 			return UnsafeConversion, nil
 		case *TupleType:
+			if unifying {
+				_, kind := unifyElementTypes(t.ElementType, src.ElementTypes...)
+				return min(UnsafeConversion, kind), nil
+			}
 			if conversionKind, why := NewListType(t.ElementType).conversionFrom(src, unifying, seen); conversionKind ==
 				NoConversion {
 				return NoConversion, why
@@ -142,15 +155,8 @@ func (t *SetType) unify(other Type) (Type, ConversionKind) {
 			return NewListType(element), conversionKind
 		case *TupleType:
 			// Prefer the set type, but unify the element type.
-			elementType, conversionKind := t.ElementType, UnsafeConversion
-			for _, other := range other.ElementTypes {
-				element, ck := elementType.unify(other)
-				if ck < conversionKind {
-					conversionKind = ck
-				}
-				elementType = element
-			}
-			return NewSetType(elementType), conversionKind
+			elementType, conversionKind := unifyElementTypes(t.ElementType, other.ElementTypes...)
+			return NewSetType(elementType), min(UnsafeConversion, conversionKind)
 		default:
 			// Prefer the set type.
 			kind, _ := t.conversionFrom(other, true, nil)
