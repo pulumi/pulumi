@@ -40,6 +40,11 @@ on:
         default: false
         required: false
         type: boolean
+      sign-windows-binaries:
+        description: "Authenticode-sign the Windows release binaries"
+        default: false
+        required: false
+        type: boolean
       fail-fast:
         required: false
         default: false
@@ -569,4 +574,5 @@ jobs:
       build-platform: ${{ matrix.target.build-platform }}
       version-set: ${{ needs.setup.outputs.version-set }}
       enable-coverage: false
+      sign-windows-binaries: ${{ inputs.sign-windows-binaries }}
     secrets: inherit

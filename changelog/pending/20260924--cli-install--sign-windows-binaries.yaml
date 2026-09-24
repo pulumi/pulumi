@@ -1,0 +1,4 @@
+component: cli/install
+kind: improvement
+body: Authenticode-sign the Windows CLI and language host binaries
+time: 2026-09-24T13:40:00-07:00

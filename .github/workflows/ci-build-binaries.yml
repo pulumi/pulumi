@@ -49,6 +49,11 @@ on:
         default: false
         required: false
         type: boolean
+      sign-windows-binaries:
+        description: "Authenticode-sign Windows binaries; fails if signing credentials are unavailable"
+        default: false
+        required: false
+        type: boolean
 
 defaults:
   run:
@@ -115,6 +120,12 @@ jobs:
         run: |
           brew install findutils
           gfind bin -type f -printf "%M    %p/"\\n
+      - name: Install jsign
+        if: ${{ inputs.sign-windows-binaries && inputs.os == 'windows' }}
+        run: |
+          set -euo pipefail
+          curl -sSfL -o "${RUNNER_TEMP}/jsign.jar" https://github.com/ebourg/jsign/releases/download/7.4/jsign-7.4.jar
+          echo "2abf2ade9ea322acc2d60c24794eadc465ff9380938fca4c932d09e0b25f1c28  ${RUNNER_TEMP}/jsign.jar" | sha256sum --check
       - name: Package
         shell: bash
         env:
@@ -122,13 +133,40 @@ jobs:
           PULUMI_VERSION: ${{ inputs.dev-version || inputs.version }}
           PULUMI_BUILD_MODE: ${{ inputs.enable-coverage && inputs.os == 'linux' && 'coverage' || 'normal' }}
           PULUMI_ENABLE_RACE_DETECTION: ${{ inputs.enable-race-detection && 'true' || 'false' }}
+          SIGN_WINDOWS_BINARIES: ${{ inputs.sign-windows-binaries && inputs.os == 'windows' }}
+          JSIGN_JAR: ${{ runner.temp }}/jsign.jar
+          AZURE_SIGNING_CLIENT_ID: ${{ secrets.AZURE_SIGNING_CLIENT_ID }}
+          AZURE_SIGNING_CLIENT_SECRET: ${{ secrets.AZURE_SIGNING_CLIENT_SECRET }}
+          AZURE_SIGNING_TENANT_ID: ${{ secrets.AZURE_SIGNING_TENANT_ID }}
+          AZURE_SIGNING_ACCOUNT_ENDPOINT: https://wus2.codesigning.azure.net/
+          AZURE_SIGNING_ACCOUNT_NAME: pulumi-code-signing
+          AZURE_SIGNING_CERT_PROFILE_NAME: pulumi-code-signing
         run: |
-          set -euxo pipefail
+          set -euo pipefail
+          if [[ "${SIGN_WINDOWS_BINARIES}" == "true" ]]; then
+            AZURE_CONFIG_DIR="$(mktemp -d)"
+            export AZURE_CONFIG_DIR
+            az login --service-principal \
+              --username "${AZURE_SIGNING_CLIENT_ID}" \
+              --password "${AZURE_SIGNING_CLIENT_SECRET}" \
+              --tenant "${AZURE_SIGNING_TENANT_ID}" \
+              --output none
+            AZURE_SIGNING_ACCESS_TOKEN="$(az account get-access-token --resource https://codesigning.azure.net --query accessToken --output tsv)"
+            echo "::add-mask::${AZURE_SIGNING_ACCESS_TOKEN}"
+            export AZURE_SIGNING_ACCESS_TOKEN
+          fi
+          set -x
           # Spurious, this command requires piping via stdin
           # shellcheck disable=SC2002
           cat .goreleaser.yml \
             | go run github.com/t0yv0/goreleaser-filter@v0.3.0 -goos ${{ inputs.os }} -goarch ${{ inputs.arch }} \
             | goreleaser release -f - -p 5 --skip=validate --clean --snapshot
+      - name: Check Windows binaries are signed
+        if: ${{ inputs.sign-windows-binaries && inputs.os == 'windows' }}
+        run: |
+          set -euo pipefail
+          # goreleaser's per-build output, which excludes the bundled binaries built by other repos.
+          python3 scripts/check-windows-signatures.py goreleaser/*_windows_*/*.exe
       - uses: ./.github/actions/retry
         if: ${{ inputs.os != 'js' }}
         with:
