@@ -586,6 +586,10 @@ func TestInputType(t *testing.T) {
 		NewOutputType(NewListType(BoolType))), InputType(NewListType(BoolType)))
 
 	assert.Equal(t, NewUnionType(
+		NewTupleType(NewUnionType(BoolType, NewOutputType(BoolType)), NewUnionType(IntType, NewOutputType(IntType))),
+		NewOutputType(NewTupleType(BoolType, IntType))), InputType(NewTupleType(BoolType, IntType)))
+
+	assert.Equal(t, NewUnionType(
 		NewUnionType(BoolType, IntType, NewOutputType(BoolType), NewOutputType(IntType)),
 		NewOutputType(NewUnionType(BoolType, IntType))),
 		InputType(NewUnionType(BoolType, IntType)))
