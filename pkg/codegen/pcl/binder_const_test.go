@@ -38,17 +38,15 @@ var constLoader = mockLoader{func() schema.PackageSpec {
 			},
 		},
 	}
-	// The binder only reports an input type mismatch for a property the resource also declares
-	// as an output.
-	properties := map[string]schema.PropertySpec{
-		"flag":  {TypeSpec: schema.TypeSpec{Type: "boolean"}, Const: true},
-		"count": {TypeSpec: schema.TypeSpec{Type: "integer"}, Const: 3},
-		"level": {TypeSpec: schema.TypeSpec{Ref: "#/types/constant:index:Level"}},
-	}
+	// The properties are inputs only: a mismatch must be reported without an output of the same
+	// name.
 	spec.Resources = map[string]schema.ResourceSpec{
 		"constant:index:Resource": {
-			ObjectTypeSpec:  schema.ObjectTypeSpec{Type: "object", Properties: properties},
-			InputProperties: properties,
+			InputProperties: map[string]schema.PropertySpec{
+				"flag":  {TypeSpec: schema.TypeSpec{Type: "boolean"}, Const: true},
+				"count": {TypeSpec: schema.TypeSpec{Type: "integer"}, Const: 3},
+				"level": {TypeSpec: schema.TypeSpec{Ref: "#/types/constant:index:Level"}},
+			},
 		},
 	}
 	return spec
@@ -66,21 +64,22 @@ func TestBindConstantAndEnumLiterals(t *testing.T) {
 	}{
 		{name: "matching bool constant", input: "flag = true"},
 		{
-			name:   "other bool constant",
-			input:  "flag = false",
-			detail: `Cannot assign value false to attribute of type "Optional<boolean>" for resource "constant::Resource"`,
+			name:  "other bool constant",
+			input: "flag = false",
+			detail: `Cannot assign value false to attribute of type "Optional<Input<boolean>>" ` +
+				`for resource "constant::Resource"`,
 		},
 		{name: "matching int constant", input: "count = 3"},
 		{
 			name:   "other int constant",
 			input:  "count = 4",
-			detail: `Cannot assign value 4 to attribute of type "Optional<integer>" for resource "constant::Resource"`,
+			detail: `Cannot assign value 4 to attribute of type "Optional<Input<integer>>" for resource "constant::Resource"`,
 		},
 		{name: "enum member", input: "level = 2"},
 		{
 			name:  "enum non-member",
 			input: "level = 3",
-			detail: `Cannot assign value 3 to attribute of type "Optional<constant:index:Level>" ` +
+			detail: `Cannot assign value 3 to attribute of type "Optional<Input<constant:index:Level>>" ` +
 				`for resource "constant::Resource"`,
 		},
 	}

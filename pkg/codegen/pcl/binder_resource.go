@@ -919,7 +919,7 @@ func (b *binder) bindResourceBody(node *Resource) hcl.Diagnostics {
 
 	resourceProperties := make(map[string]schema.Type)
 	if node.Schema != nil {
-		for _, property := range node.Schema.Properties {
+		for _, property := range node.Schema.InputProperties {
 			resourceProperties[property.Name] = property.Type
 		}
 	}
