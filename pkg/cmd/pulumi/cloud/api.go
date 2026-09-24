@@ -37,6 +37,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/agentdetect"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 )
 
@@ -255,6 +256,14 @@ func runAPI(cmd *cobra.Command, args []string, api *apiCommand) error {
 	fields, err := parseFields(api.fields, api.rawFields, os.Stdin)
 	if err != nil {
 		return err
+	}
+
+	if !api.dryRun && !resolvedCtx.LoggedIn && agentdetect.Detect(os.Getenv) != "" {
+		resolvedCtx, err = loginContext(cmd.Context(), resolvedCtx.Project)
+		if err != nil {
+			return NewAPIError(cmdutil.ExitAuthenticationError, ErrNotLoggedIn,
+				fmt.Sprintf("logging in to Pulumi Cloud: %v", err))
+		}
 	}
 
 	bindings, fields, err := resolveBindings(mr, fields, resolvedCtx)

@@ -17,6 +17,7 @@ package cli
 import (
 	"context"
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
@@ -24,6 +25,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/agentdetect"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -114,9 +116,9 @@ func (esc *escCommand) getCachedClient(ctx context.Context) error {
 		return fmt.Errorf("no credentials, please run `%v login` to log in", esc.command)
 	}
 
-	esc.client = esc.newClient(esc.userAgent, acct.BackendURL, acct.AccessToken, acct.Insecure)
+	esc.client = esc.newClient(esc.userAgent, esc.account.BackendURL, esc.account.AccessToken, esc.account.Insecure)
 
-	defaultOrg, err := esc.lookupDefaultOrg(ctx, backendURL, acct.Username)
+	defaultOrg, err := esc.lookupDefaultOrg(ctx, backendURL, esc.account.Username)
 	if err != nil {
 		return fmt.Errorf("looking up org to default to: %w", err)
 	} else if defaultOrg != "" {
@@ -130,6 +132,13 @@ func (esc *escCommand) getCachedCredentials(ctx context.Context, backendURL stri
 	account, err := esc.login.Current(ctx, backendURL, insecure, false)
 	if err != nil {
 		return false, err
+	}
+	if account == nil && agentdetect.Detect(os.Getenv) != "" {
+		account, err = esc.login.Login(ctx, backendURL, insecure, "esc", "Pulumi ESC environments",
+			nil, false, display.Options{Color: esc.colors})
+		if err != nil {
+			return false, err
+		}
 	}
 	if account == nil {
 		return false, nil

@@ -22,6 +22,7 @@ import (
 
 	pkgBackend "github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	"github.com/pulumi/pulumi/pkg/v3/backend/diy"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
 	"github.com/pulumi/pulumi/pkg/v3/backend/state"
@@ -55,10 +56,8 @@ type ResolvedContext struct {
 }
 
 // ResolveContext returns the Pulumi Cloud context for a `pulumi api`
-// invocation. The resolved OrgName comes from pkgBackend.GetDefaultOrg
-// (which prefers a locally-configured default and falls back to the
-// backend's opinion) so {orgName} template vars resolve sensibly even
-// outside a project directory.
+// invocation. OrgName prefers the environment or local default, falling
+// back to the backend's opinion when credentials are available.
 //
 // Credential lookup is non-interactive: when no credentials are stored,
 // ResolveContext returns an anonymous Client + the resolved CloudURL with
@@ -79,13 +78,14 @@ func ResolveContext(ctx context.Context) (*ResolvedContext, error) {
 	// Resolve the URL ourselves before probing credentials so we honour
 	// a project-declared backend (Pulumi.yaml's `backend.url`) without
 	// triggering CurrentBackend's interactive login path.
-	var projectURL string
-	if project != nil {
-		if u, perr := pkgWorkspace.GetCurrentCloudURL(ws, env.Global(), project); perr == nil {
-			projectURL = u
-		}
+	selectedURL, err := pkgWorkspace.GetCurrentCloudURLWithAgentFallback(ws, env.Global(), project)
+	if err != nil {
+		return nil, fmt.Errorf("resolving backend URL: %w", err)
 	}
-	cloudURL := httpstate.ValueOrDefaultURL(ws, projectURL)
+	if diy.IsDIYBackendURL(selectedURL) {
+		return nil, errors.New("`pulumi api` requires the Pulumi Cloud backend; run `pulumi login`")
+	}
+	cloudURL := httpstate.ValueOrDefaultURL(ws, selectedURL)
 
 	// Probe credentials non-interactively. (account == nil, err == nil) is
 	// the legitimate not-logged-in case — fall through to anonymous below.
@@ -95,22 +95,44 @@ func ResolveContext(ctx context.Context) (*ResolvedContext, error) {
 	}
 
 	if account == nil {
+		orgName := env.DefaultOrg.Value()
+		if orgName == "" {
+			config, err := workspace.GetPulumiConfig()
+			if err != nil && !os.IsNotExist(err) {
+				return nil, fmt.Errorf("reading Pulumi config: %w", err)
+			}
+			orgName = config.BackendConfig[cloudURL].DefaultOrg
+		}
 		return &ResolvedContext{
 			Client:   client.NewClient(cloudURL, "", false, cmdutil.Diag()),
 			CloudURL: cloudURL,
+			OrgName:  orgName,
 			Project:  project,
 			LoggedIn: false,
 		}, nil
 	}
 
-	// Authenticated path: get a backend so pkgBackend.GetDefaultOrg can
-	// fall back to the backend's opinion when no local default is set.
-	// CurrentBackend reuses the credentials we just validated.
-	be, err := cmdBackend.CurrentBackend(ctx, ws, cmdBackend.DefaultLoginManager, project,
-		display.Options{Color: cmdutil.GetGlobalColorization()})
+	// Reuse the validated credentials to resolve the backend's default org.
+	be, err := httpstate.New(ctx, cmdutil.Diag(), cloudURL, project, account.Insecure)
 	if err != nil {
 		return nil, fmt.Errorf("resolving backend: %w", err)
 	}
+	return resolveBackendContext(ctx, ws, project, be)
+}
+
+func loginContext(ctx context.Context, project *workspace.Project) (*ResolvedContext, error) {
+	ws := pkgWorkspace.Instance
+	be, err := cmdBackend.CurrentBackend(ctx, ws, cmdBackend.DefaultLoginManager, project,
+		display.Options{Color: cmdutil.GetGlobalColorization()})
+	if err != nil {
+		return nil, err
+	}
+	return resolveBackendContext(ctx, ws, project, be)
+}
+
+func resolveBackendContext(
+	ctx context.Context, ws pkgWorkspace.Context, project *workspace.Project, be pkgBackend.Backend,
+) (*ResolvedContext, error) {
 	cloudBe, ok := be.(httpstate.Backend)
 	if !ok {
 		return nil, errors.New("`pulumi api` requires the Pulumi Cloud backend; " +

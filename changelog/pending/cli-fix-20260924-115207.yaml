@@ -1,0 +1,4 @@
+component: cli
+kind: fix
+body: Prevent automatic agent account creation for public downloads, identity checks, and local configuration
+time: 2026-09-24T11:52:07.39557+01:00

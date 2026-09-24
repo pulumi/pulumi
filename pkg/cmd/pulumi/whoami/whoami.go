@@ -22,12 +22,14 @@ import (
 	"strings"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
+	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/pkg/v3/util/outputflag"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/agentdetect"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/spf13/cobra"
@@ -83,9 +85,17 @@ func NewWhoAmICmd(ws pkgWorkspace.Context, lm cmdBackend.LoginManager) *cobra.Co
 				return err
 			}
 
-			b, err := cmdBackend.CurrentBackend(ctx, ws, lm, project, opts)
+			var b backend.Backend
+			if agentdetect.Detect(os.Getenv) != "" {
+				b, err = cmdBackend.NonInteractiveCurrentBackend(ctx, ws, lm, project)
+			} else {
+				b, err = cmdBackend.CurrentBackend(ctx, ws, lm, project, opts)
+			}
 			if err != nil {
 				return err
+			}
+			if b == nil {
+				return backenderr.ErrLoginRequired
 			}
 
 			name, orgs, tokenInfo, err := b.CurrentUser()

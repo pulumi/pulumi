@@ -17,11 +17,14 @@ package org
 import (
 	"errors"
 	"fmt"
+	"os"
 	"slices"
 
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	"github.com/pulumi/pulumi/pkg/v3/backend/diy"
+	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
@@ -52,19 +55,24 @@ func NewOrgCmd() *cobra.Command {
 				return err
 			}
 
-			cloudURL, err := pkgWorkspace.GetCurrentCloudURL(ws, env.Global(), project)
+			cloudURL, err := pkgWorkspace.GetCurrentCloudURLWithAgentFallback(ws, env.Global(), project)
 			if err != nil {
 				return err
 			}
 
-			currentBe, err := backend.CurrentBackend(ctx, ws, backend.DefaultLoginManager, project, displayOpts)
+			defaultOrg, err := localDefaultOrg(ws, cloudURL)
 			if err != nil {
 				return err
 			}
-
-			defaultOrg, err := currentBe.GetDefaultOrg(ctx)
-			if err != nil {
-				return err
+			if defaultOrg == "" {
+				currentBe, err := backend.CurrentBackend(ctx, ws, backend.DefaultLoginManager, project, displayOpts)
+				if err != nil {
+					return err
+				}
+				defaultOrg, err = currentBe.GetDefaultOrg(ctx)
+				if err != nil {
+					return err
+				}
 			}
 
 			out := cmd.OutOrStdout()
@@ -109,10 +117,6 @@ func newOrgSetDefaultCmd() *cobra.Command {
 			"support create organizations, then an error will be returned by the CLI",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
-			displayOpts := display.Options{
-				Color: cmdutil.GetGlobalColorization(),
-			}
-
 			orgName = args[0]
 
 			// Try to read the current project
@@ -122,25 +126,24 @@ func newOrgSetDefaultCmd() *cobra.Command {
 				return err
 			}
 
-			currentBe, err := backend.CurrentBackend(ctx, ws, backend.DefaultLoginManager, project, displayOpts)
+			cloudURL, err := pkgWorkspace.GetCurrentCloudURLWithAgentFallback(ws, env.Global(), project)
 			if err != nil {
 				return err
 			}
-			if !currentBe.SupportsOrganizations() {
+			if diy.IsDIYBackendURL(cloudURL) {
 				return fmt.Errorf("unable to set a default organization for backend type: %s",
-					currentBe.Name())
+					cloudURL)
 			}
+			cloudURL = httpstate.ValueOrDefaultURL(ws, cloudURL)
 
-			if user, orgs, _, userErr := currentBe.CurrentUser(); userErr == nil &&
-				orgName != user && !slices.Contains(orgs, orgName) {
-				cmdutil.Diag().Warningf(diag.Message("",
-					"you do not appear to be a member of organization %q; "+
-						"commands that use the default organization may fail"), orgName)
-			}
-
-			cloudURL, err := pkgWorkspace.GetCurrentCloudURL(ws, env.Global(), project)
-			if err != nil {
-				return err
+			currentBe, err := backend.NonInteractiveCurrentBackend(ctx, ws, backend.DefaultLoginManager, project)
+			if err == nil && currentBe != nil {
+				if user, orgs, _, userErr := currentBe.CurrentUser(); userErr == nil &&
+					orgName != user && !slices.Contains(orgs, orgName) {
+					cmdutil.Diag().Warningf(diag.Message("",
+						"you do not appear to be a member of organization %q; "+
+							"commands that use the default organization may fail"), orgName)
+				}
 			}
 
 			return workspace.SetBackendConfigDefaultOrg(cloudURL, orgName)
@@ -180,18 +183,28 @@ func newOrgGetDefaultCmd() *cobra.Command {
 				return err
 			}
 
-			currentBe, err := backend.CurrentBackend(ctx, ws, backend.DefaultLoginManager, project, displayOpts)
+			cloudURL, err := pkgWorkspace.GetCurrentCloudURLWithAgentFallback(ws, env.Global(), project)
 			if err != nil {
 				return err
 			}
-			if !currentBe.SupportsOrganizations() {
+			if diy.IsDIYBackendURL(cloudURL) {
 				return fmt.Errorf("backends of this type %q do not support organizations",
-					currentBe.Name())
+					cloudURL)
 			}
 
-			defaultOrg, err := currentBe.GetDefaultOrg(ctx)
+			defaultOrg, err := localDefaultOrg(ws, cloudURL)
 			if err != nil {
 				return err
+			}
+			if defaultOrg == "" {
+				currentBe, err := backend.CurrentBackend(ctx, ws, backend.DefaultLoginManager, project, displayOpts)
+				if err != nil {
+					return err
+				}
+				defaultOrg, err = currentBe.GetDefaultOrg(ctx)
+				if err != nil {
+					return err
+				}
 			}
 
 			if defaultOrg != "" {
@@ -207,4 +220,18 @@ func newOrgGetDefaultCmd() *cobra.Command {
 	constrictor.AttachArguments(cmd, constrictor.NoArgs)
 
 	return cmd
+}
+
+func localDefaultOrg(ws pkgWorkspace.Context, cloudURL string) (string, error) {
+	if diy.IsDIYBackendURL(cloudURL) {
+		return "", nil
+	}
+	if org := env.DefaultOrg.Value(); org != "" {
+		return org, nil
+	}
+	config, err := workspace.GetPulumiConfig()
+	if err != nil && !os.IsNotExist(err) {
+		return "", err
+	}
+	return config.BackendConfig[httpstate.ValueOrDefaultURL(ws, cloudURL)].DefaultOrg, nil
 }

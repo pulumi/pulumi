@@ -123,7 +123,7 @@ func (cmd *configEnvCmd) initArgs() {
 	cmd.ssml = cmdStack.NewStackSecretsManagerLoaderFromEnv()
 }
 
-func (cmd *configEnvCmd) loadEnvPreamble(ctx context.Context,
+func (cmd *configEnvCmd) loadEnvPreamble(ctx context.Context, localAllowed ...func(*workspace.ProjectStack) bool,
 ) (*workspace.ProjectStack, *workspace.Project, *backend.Stack, error) {
 	opts := display.Options{Color: cmd.color}
 
@@ -135,6 +135,16 @@ func (cmd *configEnvCmd) loadEnvPreamble(ctx context.Context,
 	project, _, err := cmd.ws.ReadProject(cwd)
 	if err != nil {
 		return nil, nil, nil, err
+	}
+	if len(localAllowed) != 0 {
+		localStack, ps, err := loadLocalConfigStack(ctx, cmd.diags, cmd.ws, *cmd.stackRef, *cmd.configFile, localAllowed[0])
+		if err != nil {
+			return nil, nil, nil, err
+		}
+		if localStack != nil {
+			var stack backend.Stack = localStack
+			return ps, project, &stack, nil
+		}
 	}
 
 	stack, err := cmd.requireStack(
@@ -165,7 +175,7 @@ func (cmd *configEnvCmd) loadEnvPreamble(ctx context.Context,
 }
 
 func (cmd *configEnvCmd) listStackEnvironments(ctx context.Context, render stackEnvironmentsRenderFunc) error {
-	projectStack, _, _, err := cmd.loadEnvPreamble(ctx)
+	projectStack, _, _, err := cmd.loadEnvPreamble(ctx, func(*workspace.ProjectStack) bool { return true })
 	if err != nil {
 		return err
 	}
@@ -184,13 +194,23 @@ func (cmd *configEnvCmd) editStackEnvironment(
 		return backenderr.ErrNonInteractiveRequiresYes
 	}
 
-	projectStack, project, stack, err := cmd.loadEnvPreamble(ctx)
+	projectStack, project, stack, err := cmd.loadEnvPreamble(ctx, func(ps *workspace.ProjectStack) bool {
+		if showSecrets {
+			return false
+		}
+		if err := edit(ps); err != nil {
+			return false
+		}
+		return len(ps.EnvironmentBytes()) == 0
+	})
 	if err != nil {
 		return err
 	}
 
-	if err := edit(projectStack); err != nil {
-		return err
+	if _, local := (*stack).(*localConfigStack); !local {
+		if err := edit(projectStack); err != nil {
+			return err
+		}
 	}
 
 	if err := listConfig(

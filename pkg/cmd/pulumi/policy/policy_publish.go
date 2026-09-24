@@ -22,6 +22,7 @@ import (
 	"strings"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
+	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
@@ -34,6 +35,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/agentdetect"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -177,12 +179,20 @@ func loginToCloudBackend(
 	if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
 		return nil, err
 	}
-	cloudURL, err := pkgWorkspace.GetCurrentCloudURL(ws, env.Global(), project)
+	cloudURL, err := pkgWorkspace.GetCurrentCloudURLWithAgentFallback(ws, env.Global(), project)
 	if err != nil {
 		return nil, fmt.Errorf("`pulumi policy` command requires the user to be logged into the Pulumi Cloud: %w", err)
 	}
 
-	return lm.Current(ctx, ws, cmdutil.Diag(), cloudURL, project, true /* setCurrent*/)
+	b, err := lm.Current(ctx, ws, cmdutil.Diag(), cloudURL, project, true /* setCurrent */)
+	if err != nil || b != nil {
+		return b, err
+	}
+	if agentdetect.Detect(os.Getenv) == "" {
+		return nil, backenderr.ErrLoginRequired
+	}
+	return lm.Login(ctx, ws, cmdutil.Diag(), cloudURL, project, true,
+		pkgWorkspace.GetCloudInsecure(ws, cloudURL), cmdutil.GetGlobalColorization())
 }
 
 // requirePolicyPack attempts to log into the cloud backend and retrieves the requested policy

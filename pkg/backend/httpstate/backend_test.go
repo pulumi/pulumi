@@ -751,7 +751,7 @@ func TestCurrentInvalidAgentCredentialsWithActiveClaimDoesNotSignup(t *testing.T
 	})
 	require.NoError(t, err)
 
-	account, err := defaultLoginManager{}.currentOrSignupAgentAccount(t.Context(), server.URL, false, true, "codex", nil)
+	account, err := defaultLoginManager{}.currentAgentAccount(t.Context(), server.URL, false, true, "codex", nil, true)
 	require.ErrorIs(t, err, ErrUnauthorized)
 	assert.Nil(t, account)
 	assert.Equal(t, 0, signupCalls)
@@ -800,7 +800,7 @@ func TestCurrentRejectedAgentCredentialsWithUnexpiredTokenDoesNotSignup(t *testi
 	})
 	require.NoError(t, err)
 
-	account, err := defaultLoginManager{}.currentOrSignupAgentAccount(t.Context(), server.URL, false, true, "codex", nil)
+	account, err := defaultLoginManager{}.currentAgentAccount(t.Context(), server.URL, false, true, "codex", nil, true)
 	require.ErrorIs(t, err, ErrUnauthorized)
 	require.ErrorIs(t, err, backenderr.LoginRequiredError{})
 	assert.ErrorContains(t, err, "ask the user to run `pulumi login`")
@@ -850,7 +850,7 @@ func TestCurrentValidAgentCredentialsWithExpiredClaimDoesNotSignup(t *testing.T)
 	require.NoError(t, err)
 
 	ctx := ContextWithAgentCredentialUse(t.Context())
-	account, err := defaultLoginManager{}.currentOrSignupAgentAccount(ctx, server.URL, false, true, "codex", nil)
+	account, err := defaultLoginManager{}.currentAgentAccount(ctx, server.URL, false, true, "codex", nil, true)
 	require.NoError(t, err)
 	require.NotNil(t, account)
 	assert.Equal(t, "valid-agent-token", account.AccessToken)
@@ -931,7 +931,7 @@ func TestCurrentSignupAgentAccountStoresClaimTokenURL(t *testing.T) {
 	t.Cleanup(server.Close)
 
 	ctx := ContextWithAgentCredentialUse(t.Context())
-	account, err := defaultLoginManager{}.currentOrSignupAgentAccount(ctx, server.URL, false, true, "codex", nil)
+	account, err := defaultLoginManager{}.currentAgentAccount(ctx, server.URL, false, true, "codex", nil, true)
 	require.NoError(t, err)
 	require.NotNil(t, account)
 	assert.Equal(t, "agent-token", account.AccessToken)
@@ -1002,7 +1002,7 @@ func TestCurrentSignupAgentAccountStoresRefreshToken(t *testing.T) {
 	t.Cleanup(server.Close)
 
 	ctx := ContextWithAgentCredentialUse(t.Context())
-	account, err := defaultLoginManager{}.currentOrSignupAgentAccount(ctx, server.URL, false, true, "codex", nil)
+	account, err := defaultLoginManager{}.currentAgentAccount(ctx, server.URL, false, true, "codex", nil, true)
 	require.NoError(t, err)
 	require.NotNil(t, account)
 	assert.Equal(t, "agent-access-token", account.AccessToken)
@@ -1067,7 +1067,7 @@ func TestCurrentSignupAgentAccountWithoutRefreshTokenLeavesAccountEmpty(t *testi
 	t.Cleanup(server.Close)
 
 	ctx := ContextWithAgentCredentialUse(t.Context())
-	account, err := defaultLoginManager{}.currentOrSignupAgentAccount(ctx, server.URL, false, true, "codex", nil)
+	account, err := defaultLoginManager{}.currentAgentAccount(ctx, server.URL, false, true, "codex", nil, true)
 	require.NoError(t, err)
 	require.NotNil(t, account)
 	assert.Equal(t, "agent-access-token", account.AccessToken)
@@ -1133,7 +1133,7 @@ func TestCurrentSignupAgentAccountReplacesExistingRefreshTokenOnResignup(t *test
 	t.Cleanup(server.Close)
 
 	// Stale agent creds: locally-expired access token and a stale refresh token that the server
-	// will reject. No claim is stored, so currentOrSignupAgentAccount falls through to re-signup
+	// will reject. No claim is stored, so currentAgentAccount falls through to re-signup
 	// once the refresh attempt fails.
 	expiredAt := time.Now().Add(-time.Hour)
 	require.NoError(t, workspace.StoreAgentAccount(server.URL, workspace.Account{
@@ -1145,7 +1145,7 @@ func TestCurrentSignupAgentAccountReplacesExistingRefreshTokenOnResignup(t *test
 	}, true))
 
 	ctx := ContextWithAgentCredentialUse(t.Context())
-	account, err := defaultLoginManager{}.currentOrSignupAgentAccount(ctx, server.URL, false, true, "codex", nil)
+	account, err := defaultLoginManager{}.currentAgentAccount(ctx, server.URL, false, true, "codex", nil, true)
 	require.NoError(t, err)
 	require.NotNil(t, account)
 	assert.Equal(t, "new-access-token", account.AccessToken)
@@ -1217,7 +1217,7 @@ func TestCurrentAgentAccountRefreshesLocallyExpiredAccessTokenInsteadOfResigning
 	}, true))
 
 	ctx := ContextWithAgentCredentialUse(t.Context())
-	account, err := defaultLoginManager{}.currentOrSignupAgentAccount(ctx, server.URL, false, true, "codex", nil)
+	account, err := defaultLoginManager{}.currentAgentAccount(ctx, server.URL, false, true, "codex", nil, true)
 	require.NoError(t, err)
 	require.NotNil(t, account)
 	assert.Equal(t, "fresh-access-token", account.AccessToken,
@@ -1297,14 +1297,56 @@ func TestCurrentSignupAgentAccountRequiresResponseFields(t *testing.T) {
 			}))
 			t.Cleanup(server.Close)
 
-			account, err := defaultLoginManager{}.currentOrSignupAgentAccount(t.Context(), server.URL, false, true, "codex", nil)
+			account, err := defaultLoginManager{}.currentAgentAccount(t.Context(), server.URL, false, true, "codex", nil, true)
 			require.ErrorContains(t, err, tt.wantErr)
 			assert.Nil(t, account)
 		})
 	}
 }
 
+func TestCurrentDoesNotSignupAgentAccount(t *testing.T) {
+	for _, expired := range []bool{false, true} {
+		t.Run(fmt.Sprintf("expired=%v", expired), func(t *testing.T) {
+			t.Setenv("AI_AGENT", "codex")
+			t.Setenv("PULUMI_ACCESS_TOKEN", "")
+			t.Setenv("PULUMI_CREDENTIALS_PATH", "")
+			t.Setenv("PULUMI_HOME", t.TempDir())
+			t.Setenv("PULUMI_TEST_AGENT_PULUMI_DIR", t.TempDir())
+
+			var requests int
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				requests++
+				w.WriteHeader(http.StatusBadRequest)
+			}))
+			t.Cleanup(server.Close)
+
+			if expired {
+				expiresAt := time.Now().Add(-time.Hour)
+				require.NoError(t, workspace.StoreAgentAccount(server.URL, workspace.Account{
+					AccessToken:      "expired-agent-token",
+					TokenInformation: &workspace.TokenInformation{ExpiresAt: &expiresAt},
+				}, true))
+				require.NoError(t, workspace.StoreAgentClaim(workspace.AgentClaim{
+					CloudURL:   server.URL,
+					ClaimURL:   "https://app.pulumi.com/claim/expired",
+					ValidUntil: expiresAt,
+				}))
+			}
+
+			account, err := NewLoginManager().Current(t.Context(), server.URL, false, true)
+			require.NoError(t, err)
+			assert.Nil(t, account)
+			assert.Zero(t, requests, "looking up credentials must not start signup")
+			stored, err := workspace.GetAgentAccount(server.URL)
+			require.NoError(t, err)
+			assert.False(t, stored.HasCredential())
+		})
+	}
+}
+
 func TestLoginUsesAgentSignupInNonInteractiveAgentMode(t *testing.T) {
+	t.Setenv("PULUMI_TEST_AGENT_PULUMI_DIR", t.TempDir())
+	t.Setenv("PULUMI_CREDENTIALS_PATH", "")
 	oldAgentCreds, err := workspace.GetAgentStoredCredentials()
 	require.NoError(t, err)
 	oldAgentClaim, err := workspace.GetAgentClaim()
@@ -1374,6 +1416,18 @@ func TestLoginUsesAgentSignupInNonInteractiveAgentMode(t *testing.T) {
 	assert.Equal(t, "agent-token", account.AccessToken)
 	assert.Equal(t, []string{http.MethodGet, http.MethodPost}, signupMethods)
 	assert.True(t, AgentCredentialsUsed(ctx, server.URL))
+
+	current, err := NewLoginManager().Current(ctx, server.URL, false, true)
+	require.NoError(t, err)
+	require.NotNil(t, current)
+	assert.Equal(t, account.AccessToken, current.AccessToken)
+
+	reused, err := NewLoginManager().Login(ctx, server.URL, false, "pulumi", "Pulumi Cloud", nil, true,
+		display.Options{})
+	require.NoError(t, err)
+	require.NotNil(t, reused)
+	assert.Equal(t, account.AccessToken, reused.AccessToken)
+	assert.Equal(t, []string{http.MethodGet, http.MethodPost}, signupMethods, "reuse must not sign up again")
 }
 
 //nolint:paralleltest // mutates global configuration

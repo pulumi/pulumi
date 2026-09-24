@@ -440,10 +440,10 @@ func loginWithBrowser(
 
 // LoginManager provides a slim wrapper around functions related to backend logins.
 type LoginManager interface {
-	// Current returns the current cloud backend if one is already logged in.
+	// Current returns existing Cloud credentials without creating an agent account.
 	Current(ctx context.Context, cloudURL string, insecure, setCurrent bool) (*workspace.Account, error)
 
-	// Login logs into the target cloud URL and returns the cloud backend for it.
+	// Login obtains Cloud credentials, creating an agent account when needed in agent sessions.
 	Login(
 		ctx context.Context,
 		cloudURL string,
@@ -550,12 +550,22 @@ func validateStoredAccount(
 	return account, valid, nil
 }
 
-// Current returns the current cloud backend if one is already logged in.
+// Current returns existing Cloud credentials without creating an agent account.
 func (m defaultLoginManager) Current(
 	ctx context.Context,
 	cloudURL string,
 	insecure bool,
 	setCurrent bool,
+) (*workspace.Account, error) {
+	return m.current(ctx, cloudURL, insecure, setCurrent, false /* allowSignup */)
+}
+
+func (m defaultLoginManager) current(
+	ctx context.Context,
+	cloudURL string,
+	insecure bool,
+	setCurrent bool,
+	allowSignup bool,
 ) (*workspace.Account, error) {
 	cloudURL = ValueOrDefaultURL(pkgWorkspace.Instance, cloudURL)
 
@@ -608,7 +618,7 @@ func (m defaultLoginManager) Current(
 				return nil, err
 			}
 			logging.V(7).Infof("Detected agent mode (%s); checking shared agent credentials", agent)
-			return m.currentOrSignupAgentAccount(ctx, cloudURL, insecure, setCurrent, agent, err)
+			return m.currentAgentAccount(ctx, cloudURL, insecure, setCurrent, agent, err, allowSignup)
 		}
 		// No access token available, this isn't an error per-se but we don't have a backend.
 		logging.V(7).Infof("No access token or agent mode detected for %q", cloudURL)
@@ -640,16 +650,16 @@ func (m defaultLoginManager) Current(
 	return &account, nil
 }
 
-// currentOrSignupAgentAccount returns valid credentials from the shared agent
-// cache, reports active claim state when cached credentials cannot
-// authenticate, or creates a new agent account when no usable state remains.
-func (m defaultLoginManager) currentOrSignupAgentAccount(
+// currentAgentAccount reuses shared agent credentials, preserves active claim state,
+// and creates an account only when allowSignup is true and no usable state remains.
+func (m defaultLoginManager) currentAgentAccount(
 	ctx context.Context,
 	cloudURL string,
 	insecure bool,
 	setCurrent bool,
 	agentName string,
 	defaultCredsErr error,
+	allowSignup bool,
 ) (*workspace.Account, error) {
 	now := time.Now()
 	if deleted, err := workspace.DeleteExpiredAgentCredentials(now); err != nil {
@@ -699,15 +709,15 @@ func (m defaultLoginManager) currentOrSignupAgentAccount(
 				"shared agent credentials for %q are no longer valid; claim the account to regain access: %w",
 				cloudURL, ErrUnauthorized)
 		}
-		logging.V(7).Infof("Shared agent credentials for %q are not valid; creating a new agent account", cloudURL)
-	} else {
-		logging.V(7).Infof("No shared agent credentials found for %q; creating a new agent account", cloudURL)
 	}
 
 	// An undecryptable credentials file must surface its actionable error,
 	// not be papered over with a fresh ephemeral agent identity.
 	if workspace.IsUndecryptableCredentials(defaultCredsErr) {
 		return nil, defaultCredsErr
+	}
+	if !allowSignup {
+		return nil, nil
 	}
 
 	logging.V(7).Infof("Calling agent signup endpoint for %q", cloudURL)
@@ -767,7 +777,7 @@ func (m defaultLoginManager) Login(
 	setCurrent bool,
 	opts display.Options,
 ) (*workspace.Account, error) {
-	current, err := m.Current(ctx, cloudURL, insecure, setCurrent)
+	current, err := m.current(ctx, cloudURL, insecure, setCurrent, true /* allowSignup */)
 	if err != nil {
 		return nil, err
 	}

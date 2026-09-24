@@ -87,7 +87,7 @@ func NewConfigCmd(ws pkgWorkspace.Context) *cobra.Command {
 				return err
 			}
 
-			stack, err := cmdStack.RequireStack(
+			stack, err := requireConfigStack(
 				ctx,
 				cmdutil.Diag(),
 				ws,
@@ -96,6 +96,9 @@ func NewConfigCmd(ws pkgWorkspace.Context) *cobra.Command {
 				cmdStack.OfferNew|cmdStack.SetCurrent,
 				opts,
 				configFile,
+				func(ps *workspace.ProjectStack) bool {
+					return len(ps.EnvironmentBytes()) == 0 && (!showSecrets || !ps.Config.HasSecureValue())
+				},
 			)
 			if err != nil {
 				return err
@@ -197,7 +200,18 @@ func newConfigCopyCmd(ws pkgWorkspace.Context, stack *string, configFile *string
 			}
 
 			// Get current stack and ensure that it is a different stack to the destination stack
-			currentStack, err := cmdStack.RequireStack(
+			plaintextCopy := func(ps *workspace.ProjectStack) bool {
+				if len(args) == 0 {
+					return !ps.Config.HasSecureValue()
+				}
+				key, err := ParseConfigKey(ws, args[0], path)
+				if err != nil {
+					return false
+				}
+				value, _, err := ps.Config.Get(key, path)
+				return err == nil && !value.Secure()
+			}
+			currentStack, err := requireConfigStack(
 				ctx,
 				cmdutil.Diag(),
 				ws,
@@ -206,6 +220,7 @@ func newConfigCopyCmd(ws pkgWorkspace.Context, stack *string, configFile *string
 				cmdStack.SetCurrent,
 				opts,
 				*configFile,
+				plaintextCopy,
 			)
 			if err != nil {
 				return err
@@ -219,7 +234,7 @@ func newConfigCopyCmd(ws pkgWorkspace.Context, stack *string, configFile *string
 			}
 
 			// Get the destination stack
-			destinationStack, err := cmdStack.RequireStack(
+			destinationStack, err := requireConfigStack(
 				ctx,
 				cmdutil.Diag(),
 				ws,
@@ -228,6 +243,7 @@ func newConfigCopyCmd(ws pkgWorkspace.Context, stack *string, configFile *string
 				cmdStack.LoadOnly,
 				opts,
 				*configFile,
+				func(*workspace.ProjectStack) bool { return plaintextCopy(currentProjectStack) },
 			)
 			if err != nil {
 				return err
@@ -330,7 +346,7 @@ func newConfigGetCmd(ws pkgWorkspace.Context, stack *string, configFile *string)
 				Color: cmdutil.GetGlobalColorization(),
 			}
 
-			s, err := cmdStack.RequireStack(
+			s, err := requireConfigStack(
 				ctx,
 				cmdutil.Diag(),
 				ws,
@@ -339,6 +355,17 @@ func newConfigGetCmd(ws pkgWorkspace.Context, stack *string, configFile *string)
 				cmdStack.OfferNew|cmdStack.SetCurrent,
 				opts,
 				*configFile,
+				func(ps *workspace.ProjectStack) bool {
+					if len(ps.EnvironmentBytes()) != 0 {
+						return false
+					}
+					key, err := ParseConfigKey(ws, args[0], path)
+					if err != nil {
+						return false
+					}
+					value, _, err := ps.Config.Get(key, path)
+					return err == nil && !value.Secure()
+				},
 			)
 			if err != nil {
 				return err
@@ -405,7 +432,7 @@ func newConfigRemoveCmd(ws pkgWorkspace.Context, stack *string, configFile *stri
 				return err
 			}
 
-			stack, err := cmdStack.RequireStack(
+			stack, err := requireConfigStack(
 				ctx,
 				cmdutil.Diag(),
 				ws,
@@ -414,6 +441,7 @@ func newConfigRemoveCmd(ws pkgWorkspace.Context, stack *string, configFile *stri
 				cmdStack.OfferNew|cmdStack.SetCurrent,
 				opts,
 				*configFile,
+				func(*workspace.ProjectStack) bool { return true },
 			)
 			if err != nil {
 				return err
@@ -490,7 +518,7 @@ func newConfigRemoveAllCmd(ws pkgWorkspace.Context, stack *string, configFile *s
 				return err
 			}
 
-			stack, err := cmdStack.RequireStack(
+			stack, err := requireConfigStack(
 				ctx,
 				cmdutil.Diag(),
 				ws,
@@ -499,6 +527,7 @@ func newConfigRemoveAllCmd(ws pkgWorkspace.Context, stack *string, configFile *s
 				cmdStack.OfferNew,
 				opts,
 				*configFile,
+				func(*workspace.ProjectStack) bool { return true },
 			)
 			if err != nil {
 				return err
@@ -742,8 +771,8 @@ func newConfigSetCmd(ws pkgWorkspace.Context, stack *string, configFile *string)
 				return err
 			}
 
-			// Ensure the stack exists.
-			s, err := cmdStack.RequireStack(
+			// Resolve the stack configuration.
+			s, err := requireConfigStack(
 				ctx,
 				cmdutil.Diag(),
 				ws,
@@ -752,6 +781,7 @@ func newConfigSetCmd(ws pkgWorkspace.Context, stack *string, configFile *string)
 				cmdStack.OfferNew|cmdStack.SetCurrent,
 				opts,
 				*configFile,
+				func(*workspace.ProjectStack) bool { return !configSetCmd.Secret },
 			)
 			if err != nil {
 				return err
@@ -953,8 +983,8 @@ func newConfigSetAllCmd(
 				return err
 			}
 
-			// Ensure the stack exists.
-			stack, err := cmdStack.RequireStack(
+			// Resolve the stack configuration.
+			stack, err := requireConfigStack(
 				ctx,
 				cmdutil.Diag(),
 				ws,
@@ -963,6 +993,23 @@ func newConfigSetAllCmd(
 				cmdStack.OfferNew,
 				opts,
 				*configFile,
+				func(*workspace.ProjectStack) bool {
+					if len(secretArgs) != 0 {
+						return false
+					}
+					if jsonArg != "" {
+						var values map[string]configValueJSON
+						if err := json.Unmarshal([]byte(jsonArg), &values); err != nil {
+							return false
+						}
+						for _, value := range values {
+							if value.Secret {
+								return false
+							}
+						}
+					}
+					return true
+				},
 			)
 			if err != nil {
 				return err

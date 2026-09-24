@@ -24,6 +24,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/esc/cli/client"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/agentdetect"
 	pulumi_workspace "github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -118,6 +119,9 @@ func (invalidatedCredsLoginManager) LoginWithOIDCToken(
 
 // Test for https://github.com/pulumi/esc/issues/367
 func TestCurrentAccountButInvalidToken(t *testing.T) { //nolint:paralleltest // non-thread-safe shared state
+	for _, name := range agentdetect.DetectionEnvVars() {
+		t.Setenv(name, "")
+	}
 	esc := &escCommand{
 		command: "esc",
 		ws: mockWorkspace(pulumi_workspace.Credentials{
@@ -214,6 +218,29 @@ func TestAgentModeUsesPulumiAPIAndLoginManagerWhenPulumiCredentialsUnreadable(t 
 	assert.Equal(t, "http://localhost:8080", esc.account.BackendURL)
 	assert.Equal(t, "agent-org", esc.account.DefaultOrg)
 	assert.Contains(t, login.accounts, "http://localhost:8080")
+}
+
+func TestAgentModeLogsInWhenStoredCredentialsAreInvalid(t *testing.T) {
+	t.Setenv("AI_AGENT", "codex")
+	t.Setenv("PULUMI_BACKEND_URL", "http://localhost:8080")
+	t.Setenv("PULUMI_HOME", t.TempDir())
+	esc := &escCommand{
+		command: "esc",
+		login:   &provisioningLoginManager{},
+		ws: mockWorkspace(pulumi_workspace.Credentials{
+			Accounts: map[string]pulumi_workspace.Account{
+				"http://localhost:8080": {AccessToken: "expired-token", Username: "previous-user"},
+			},
+		}),
+		newClient: func(userAgent, backendURL, accessToken string, insecure bool) client.Client {
+			assert.Equal(t, "agent-access-token", accessToken)
+			return &testPulumiClient{defaultOrg: "agent-org"}
+		},
+	}
+
+	err := esc.getCachedClient(t.Context())
+	require.NoError(t, err)
+	assert.Equal(t, "agent-user", esc.account.Username)
 }
 
 func TestPulumiBackendURLEnvOverridesPulumiAPI(t *testing.T) {

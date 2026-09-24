@@ -319,9 +319,13 @@ func copySingleConfigKey(
 		decrypter = config.NewPanicCrypter()
 	}
 
-	encrypter, _, cerr := ssml.GetEncrypter(ctx, destinationStack, destinationProjectStack)
-	if cerr != nil {
-		return cerr
+	var encrypter config.Encrypter = config.NewPanicCrypter()
+	if v.Secure() {
+		var cerr error
+		encrypter, _, cerr = ssml.GetEncrypter(ctx, destinationStack, destinationProjectStack)
+		if cerr != nil {
+			return cerr
+		}
 	}
 
 	val, err := v.Copy(decrypter, encrypter)

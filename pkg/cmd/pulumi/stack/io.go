@@ -490,9 +490,13 @@ func CopyEntireConfigMap(
 		decrypter = config.NewPanicCrypter()
 	}
 
-	encrypter, _, cerr := ssml.GetEncrypter(ctx, destinationStack, destinationProjectStack)
-	if cerr != nil {
-		return false, cerr
+	var encrypter config.Encrypter = config.NewPanicCrypter()
+	if currentConfig.HasSecureValue() {
+		var cerr error
+		encrypter, _, cerr = ssml.GetEncrypter(ctx, destinationStack, destinationProjectStack)
+		if cerr != nil {
+			return false, cerr
+		}
 	}
 
 	newProjectConfig, err := currentConfig.Copy(decrypter, encrypter)

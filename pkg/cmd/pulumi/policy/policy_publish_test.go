@@ -25,11 +25,42 @@ import (
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func TestRequirePolicyPackLogsInWhenNoCurrentBackend(t *testing.T) {
+	t.Setenv("AI_AGENT", "codex")
+	t.Setenv("PULUMI_HOME", t.TempDir())
+	t.Setenv("PULUMI_BACKEND_URL", "https://api.pulumi.example")
+	pack := &backend.MockPolicyPack{}
+	lm := &cmdBackend.MockLoginManager{
+		CurrentF: func(
+			context.Context, pkgWorkspace.Context, diag.Sink, string, *workspace.Project, bool,
+		) (backend.Backend, error) {
+			return nil, nil
+		},
+		LoginF: func(
+			ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink, url string,
+			project *workspace.Project, setCurrent, insecure bool, color colors.Colorization,
+		) (backend.Backend, error) {
+			assert.Equal(t, "https://api.pulumi.example", url)
+			return &backend.MockBackend{
+				GetPolicyPackF: func(ctx context.Context, name string, sink diag.Sink) (backend.PolicyPack, error) {
+					assert.Equal(t, "my-org/my-policy", name)
+					return pack, nil
+				},
+			}, nil
+		},
+	}
+
+	actual, err := requirePolicyPack(t.Context(), "my-org/my-policy", lm)
+	require.NoError(t, err)
+	assert.Same(t, pack, actual)
+}
 
 func TestPolicyPublishCmd_default(t *testing.T) {
 	t.Parallel()
