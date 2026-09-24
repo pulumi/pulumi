@@ -108,6 +108,7 @@ var expectedFailures = map[string]string{
 	"l1-builtin-can":                "pulumi#18570 Support can in Go program generation",
 	"l1-builtin-list":               "list(string) config decoded as string; element/split emit TODO stubs",
 	"l1-builtin-object":             "entries/lookup emit TODO stubs",
+	"l1-builtin-range":              "range emits a TODO stub",
 	"l2-builtin-object":             "entries/lookup emit TODO stubs",
 	"l1-builtin-to-json":            "Go doesn't support output based toJSON",
 	"l2-resource-config-objects":    "cannot convert plainBooleanMap (variable of type string) to type pulumi.BoolMap",
