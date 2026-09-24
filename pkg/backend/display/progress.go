@@ -1083,17 +1083,21 @@ func (display *ProgressDisplay) printSummary() {
 	if display.summaryEventPayload == nil {
 		return
 	}
-	// track resources errored
+	// track resources errored and awaiting
 	resourcesErrored := 0
+	resourcesAwaited := 0
 
 	rr := toResourceRows(display.eventUrnToResourceRow, display.opts.DeterministicOutput)
 
 	for _, r := range rr {
-		if r.DiagInfo().ErrorCount > 0 {
+		switch {
+		case r.Awaited():
+			resourcesAwaited++
+		case r.DiagInfo().ErrorCount > 0:
 			resourcesErrored++
 		}
 	}
-	msg := renderSummaryEvent(*display.summaryEventPayload, resourcesErrored, false, display.opts)
+	msg := renderSummaryEvent(*display.summaryEventPayload, resourcesErrored, resourcesAwaited, false, display.opts)
 	display.println(msg)
 }
 
@@ -1391,6 +1395,9 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 	case engine.ResourceOperationFailed:
 		display.failed = true
 		row.SetFailed()
+		if event.Awaited() {
+			row.SetAwaited()
+		}
 	case engine.DiagEvent:
 		// also record this diagnostic so we print it at the end.
 		row.RecordDiagEvent(event)
@@ -1519,13 +1526,15 @@ func (display *ProgressDisplay) renderProgressDiagEvent(payload engine.DiagEvent
 }
 
 // getStepStatus handles getting the value to put in the status column.
-func (display *ProgressDisplay) getStepStatus(step engine.StepEventMetadata, done, failed, interrupted bool) string {
+func (display *ProgressDisplay) getStepStatus(
+	step engine.StepEventMetadata, done, failed, awaited, interrupted bool,
+) string {
 	var status string
 	switch {
 	case interrupted:
 		status = display.getStepInterruptedDescription(step)
 	case done:
-		status = display.getStepDoneDescription(step, failed)
+		status = display.getStepDoneDescription(step, failed, awaited)
 	default:
 		status = display.getStepInProgressDescription(step)
 	}
@@ -1582,9 +1591,14 @@ func getStepInProgressOpText(op display.StepOp) string {
 	}
 }
 
-func (display *ProgressDisplay) getStepDoneDescription(step engine.StepEventMetadata, failed bool) string {
+func (display *ProgressDisplay) getStepDoneDescription(
+	step engine.StepEventMetadata, failed, awaited bool,
+) string {
 	makeError := func(v string) string {
 		return colors.SpecError + "**" + v + "**" + colors.Reset
+	}
+	makeAwaited := func(v string) string {
+		return colors.SpecWarning + "**" + v + "**" + colors.Reset
 	}
 
 	op := display.getStepOp(step)
@@ -1597,7 +1611,16 @@ func (display *ProgressDisplay) getStepDoneDescription(step engine.StepEventMeta
 
 	getDescription := func() string {
 		var opText string
-		if failed {
+		if awaited {
+			switch op {
+			case deploy.OpCreate, deploy.OpCreateReplacement:
+				opText = "create awaiting"
+			case deploy.OpUpdate:
+				opText = "update awaiting"
+			default:
+				opText = "awaiting"
+			}
+		} else if failed {
 			switch op {
 			case deploy.OpSame:
 				opText = "failed"
@@ -1689,6 +1712,9 @@ func (display *ProgressDisplay) getStepDoneDescription(step engine.StepEventMeta
 		return fmt.Sprintf("%s (%ds)", opText, int(opDuration))
 	}
 
+	if awaited {
+		return makeAwaited(getDescription())
+	}
 	if failed {
 		return makeError(getDescription())
 	}

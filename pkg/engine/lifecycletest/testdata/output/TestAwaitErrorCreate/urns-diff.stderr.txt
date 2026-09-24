@@ -1,0 +1,2 @@
+<{%fg 3%}>warning: <{%reset%}><{%reset%}>resource is awaiting<{%reset%}>
+<{%fg 3%}>warning: <{%reset%}><{%reset%}>update has awaiting resources<{%reset%}>

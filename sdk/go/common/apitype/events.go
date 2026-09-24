@@ -300,6 +300,10 @@ type ResOpFailedEvent struct {
 	Metadata StepEventMetadata `json:"metadata"`
 	Status   int               `json:"status"`
 	Steps    int               `json:"steps"`
+	// Awaited is true if the failure was caused by the provider returning AwaitError — i.e. the
+	// operation could not be awaited to completion. Consumers can use this to distinguish an
+	// await failure from a genuine resource failure.
+	Awaited bool `json:"awaited,omitempty"`
 }
 
 // PolicyLoadEvent is emitted when a policy starts loading
