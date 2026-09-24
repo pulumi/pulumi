@@ -204,10 +204,12 @@ type ObjectTypeFromConfigMetadata = struct {
 }
 
 func annotateObjectTypedConfig(componentName string, typeName string, objectType *model.ObjectType) *model.ObjectType {
-	objectType.Annotate(&ObjectTypeFromConfigMetadata{
-		TypeName:      typeName,
-		ComponentName: componentName,
-	})
+	if _, ok := model.GetObjectTypeAnnotation[*ObjectTypeFromConfigMetadata](objectType); !ok {
+		objectType.Annotate(&ObjectTypeFromConfigMetadata{
+			TypeName:      typeName,
+			ComponentName: componentName,
+		})
+	}
 
 	return objectType
 }
@@ -1891,71 +1893,22 @@ func (g *generator) genReadResource(w io.Writer, r *pcl.ReadResource) {
 	}
 }
 
-func AnnotateComponentInputs(component *pcl.Component) {
-	componentName := Title(component.Name())
-	configVars := component.Program.ConfigVariables()
-
-	for index := range component.Inputs {
-		attribute := component.Inputs[index]
-		switch expr := attribute.Value.(type) {
-		case *model.ObjectConsExpression:
-			for _, configVar := range configVars {
-				if configVar.Name() == attribute.Name {
-					switch configVar.Type().(type) {
-					case *model.ObjectType:
-						expr.WithType(func(objectExprType model.Type) *model.ObjectConsExpression {
-							switch exprType := objectExprType.(type) {
-							case *model.ObjectType:
-								typeName := configObjectTypeName(configVar.Name())
-								annotateObjectTypedConfig(componentName, typeName, exprType)
-							}
-
-							return expr
-						})
-					case *model.MapType:
-						for _, item := range expr.Items {
-							switch mapValue := item.Value.(type) {
-							case *model.ObjectConsExpression:
-								mapValue.WithType(func(objectExprType model.Type) *model.ObjectConsExpression {
-									switch exprType := objectExprType.(type) {
-									case *model.ObjectType:
-										typeName := configObjectTypeName(configVar.Name())
-										annotateObjectTypedConfig(componentName, typeName, exprType)
-									}
-
-									return mapValue
-								})
-							}
-						}
-					}
-				}
-			}
-		case *model.TupleConsExpression:
-			for _, configVar := range configVars {
-				if configVar.Name() == attribute.Name {
-					switch listType := configVar.Type().(type) {
-					case *model.ListType:
-						switch listType.ElementType.(type) {
-						case *model.ObjectType:
-							for _, item := range expr.Expressions {
-								switch itemExpr := item.(type) {
-								case *model.ObjectConsExpression:
-									itemExpr.WithType(func(objectExprType model.Type) *model.ObjectConsExpression {
-										switch exprType := objectExprType.(type) {
-										case *model.ObjectType:
-											typeName := configObjectTypeName(configVar.Name())
-											annotateObjectTypedConfig(componentName, typeName, exprType)
-										}
-										return itemExpr
-									})
-								}
-							}
-						}
-					}
-				}
-			}
+// genComponentInput generates a component input against the type its config variable declares, so that an
+// object or tuple literal takes the args struct the component file defines for that variable.
+func (g *generator) genComponentInput(w io.Writer, expr model.Expression, configType model.Type) {
+	switch expr := expr.(type) {
+	case *model.TupleConsExpression:
+		if configType != nil {
+			g.genTupleConsExpression(w, expr, configType)
+			return
+		}
+	case *model.ObjectConsExpression:
+		if configType != nil {
+			g.genObjectConsExpression(w, expr, configType, false)
+			return
 		}
 	}
+	g.Fgenf(w, "%.v", expr)
 }
 
 func deferredOutputTypeParameter(outputType model.Type) string {
@@ -2100,7 +2053,7 @@ func (g *generator) genComponent(w io.Writer, r *pcl.Component) {
 	options, temps := g.lowerResourceOptions(r.Options, nil)
 	g.genTemps(w, temps)
 
-	AnnotateComponentInputs(r)
+	collectObjectTypedConfigVariables(r)
 
 	configVariables := r.Program.ConfigVariables()
 
@@ -2155,9 +2108,11 @@ func (g *generator) genComponent(w io.Writer, r *pcl.Component) {
 	}
 
 	// Add conversions to input properties
+	configTypes := map[string]model.Type{}
 	for _, input := range componentInputs {
 		for _, config := range configVariables {
 			if config.Name() == input.Name {
+				configTypes[input.Name] = config.Type()
 				destType := model.NewOutputType(config.Type())
 				expr := input.Value
 				if !isDeferredOutputCast(input.Value) {
@@ -2191,7 +2146,9 @@ func (g *generator) genComponent(w io.Writer, r *pcl.Component) {
 		if len(componentInputs) > 0 {
 			g.Fgenf(w, "&%sArgs{\n", componentName)
 			for _, attr := range componentInputs {
-				g.Fgenf(w, "%s: %.v,\n", Title(attr.Name), attr.Value)
+				g.Fgenf(w, "%s: ", Title(attr.Name))
+				g.genComponentInput(w, attr.Value, configTypes[attr.Name])
+				g.Fgenf(w, ",\n")
 			}
 			g.Fprint(w, "}")
 		} else {
