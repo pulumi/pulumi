@@ -54,6 +54,14 @@
             "description": "The URL to use when downloading the provider plugin binary.",
             "type": "string"
         },
+        "configurationDocsUrl": {
+            "description": "The URL of the provider's installation and configuration documentation, if any.",
+            "type": "string"
+        },
+        "validateCredentialsOnNew": {
+            "description": "Indicates that `pulumi new` may configure the provider after creating a project in order to validate the user's credentials.",
+            "type": "boolean"
+        },
         "publisher": {
             "description": "The name of the person or organization that authored and published the package.",
             "type": "string"

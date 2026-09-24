@@ -245,16 +245,17 @@ func (p *ConfigurerProvider) Configure(
 func (p *ConfigurerProvider) Check(
 	_ context.Context, req plugin.CheckRequest,
 ) (plugin.CheckResponse, error) {
+	news := resource.ToResourcePropertyMap(req.NewInputs)
 	if req.URN.Type() != "configurer:index:Custom" {
 		return plugin.CheckResponse{
 			Failures: makeCheckFailure("", fmt.Sprintf("invalid URN type: %s", req.URN.Type())),
 		}, nil
 	}
-	value, ok := req.News["value"]
+	value, ok := news["value"]
 	if !ok || !value.IsString() {
 		return plugin.CheckResponse{Failures: makeCheckFailure("value", "missing or non-string value")}, nil
 	}
-	return plugin.CheckResponse{Properties: req.News}, nil
+	return plugin.CheckResponse{Properties: resource.FromResourcePropertyMap(news)}, nil
 }
 
 func (p *ConfigurerProvider) Diff(

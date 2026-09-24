@@ -123,9 +123,10 @@ func (p *ExternalEnumRefProvider) DiffConfig(
 func (p *ExternalEnumRefProvider) Check(
 	_ context.Context, req plugin.CheckRequest,
 ) (plugin.CheckResponse, error) {
+	news := resource.ToResourcePropertyMap(req.NewInputs)
 	switch req.URN.Type().String() {
 	case fmt.Sprintf("%s:index:Sink", p.pkg()):
-		return plugin.CheckResponse{Properties: req.News}, nil
+		return plugin.CheckResponse{Properties: resource.FromResourcePropertyMap(news)}, nil
 	default:
 		return plugin.CheckResponse{
 			Failures: makeCheckFailure("", fmt.Sprintf("invalid URN type: %s", req.URN.Type())),

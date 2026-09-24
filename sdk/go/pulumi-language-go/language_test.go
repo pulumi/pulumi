@@ -213,10 +213,6 @@ func TestLanguageExtraTypes(t *testing.T) {
 		// don't believe it is worth it to test independently.
 		languageInfo: &gocodegen.GoPackageInfo{
 			GenerateResourceContainerTypes: true,
-			// TODO[https://github.com/pulumi/pulumi/issues/21116]:
-			// l2-resource-config requires that RespectSchemaVersion
-			// is set if any language option is set.
-			RespectSchemaVersion: true,
 		},
 	})
 }
@@ -300,6 +296,11 @@ func testLanguage(t *testing.T, config languageTestConfig) {
 
 			if expected, ok := expectedFailures[tt]; ok {
 				t.Skipf("Skipping known failure: %s", expected)
+			}
+
+			if tt == "l2-resource-self-reference" &&
+				(config.languageInfo == nil || !config.languageInfo.GenerateResourceContainerTypes) {
+				t.Skip("Resource array and map inputs require generateResourceContainerTypes; tested in extra-types mode")
 			}
 
 			if _, has := programOverrides[tt]; config.local && has {

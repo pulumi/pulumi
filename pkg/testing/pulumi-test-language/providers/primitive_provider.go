@@ -143,6 +143,7 @@ func (p *PrimitiveProvider) CheckConfig(
 func (p *PrimitiveProvider) Check(
 	_ context.Context, req plugin.CheckRequest,
 ) (plugin.CheckResponse, error) {
+	news := resource.ToResourcePropertyMap(req.NewInputs)
 	// URN should be of the form "primitive:index:Resource"
 	if req.URN.Type() != "primitive:index:Resource" {
 		return plugin.CheckResponse{
@@ -168,7 +169,7 @@ func (p *PrimitiveProvider) Check(
 	assertField := func(key resource.PropertyKey, typ string,
 		assertType func(resource.PropertyValue) bool,
 	) *plugin.CheckResponse {
-		v, ok := req.News[key]
+		v, ok := news[key]
 		if !ok {
 			return &plugin.CheckResponse{
 				Failures: makeCheckFailure(key, "missing value"),
@@ -210,7 +211,7 @@ func (p *PrimitiveProvider) Check(
 		return *check, nil
 	}
 	// Check the array is numbers
-	numberArray := unsecret(req.News["numberArray"])
+	numberArray := unsecret(news["numberArray"])
 	for _, v := range numberArray.ArrayValue() {
 		v = unsecret(v)
 		if v.IsComputed() {
@@ -228,7 +229,7 @@ func (p *PrimitiveProvider) Check(
 		return *check, nil
 	}
 	// Check the map values are booleans
-	booleanMap := unsecret(req.News["booleanMap"])
+	booleanMap := unsecret(news["booleanMap"])
 	for _, v := range booleanMap.ObjectValue() {
 		v = unsecret(v)
 		if v.IsComputed() {
@@ -242,13 +243,13 @@ func (p *PrimitiveProvider) Check(
 		}
 	}
 
-	if len(req.News) != 6 {
+	if len(news) != 6 {
 		return plugin.CheckResponse{
-			Failures: makeCheckFailure("", fmt.Sprintf("too many properties: %v", req.News)),
+			Failures: makeCheckFailure("", fmt.Sprintf("too many properties: %v", news)),
 		}, nil
 	}
 
-	return plugin.CheckResponse{Properties: req.News}, nil
+	return plugin.CheckResponse{Properties: resource.FromResourcePropertyMap(news)}, nil
 }
 
 func (p *PrimitiveProvider) Create(

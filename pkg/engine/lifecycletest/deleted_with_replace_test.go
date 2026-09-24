@@ -41,7 +41,7 @@ func TestDeletedWithDependentReplacedOnDeleteBeforeReplace(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				DiffF: func(_ context.Context, req plugin.DiffRequest) (plugin.DiffResult, error) {
-					if !req.OldOutputs["foo"].DeepEquals(req.NewInputs["foo"]) {
+					if !req.OldOutputs.Get("foo").Equals(req.NewInputs.Get("foo")) {
 						return plugin.DiffResult{
 							Changes:             plugin.DiffSome,
 							ReplaceKeys:         []resource.PropertyKey{"foo"},
@@ -133,7 +133,7 @@ func TestDeletedWithTransitiveChain(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				DiffF: func(_ context.Context, req plugin.DiffRequest) (plugin.DiffResult, error) {
-					if !req.OldOutputs["foo"].DeepEquals(req.NewInputs["foo"]) {
+					if !req.OldOutputs.Get("foo").Equals(req.NewInputs.Get("foo")) {
 						return plugin.DiffResult{
 							Changes:             plugin.DiffSome,
 							ReplaceKeys:         []resource.PropertyKey{"foo"},
@@ -232,7 +232,7 @@ func TestDeletedWithDependentReplacedOnCreateBeforeDelete(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				DiffF: func(_ context.Context, req plugin.DiffRequest) (plugin.DiffResult, error) {
-					if !req.OldOutputs["foo"].DeepEquals(req.NewInputs["foo"]) {
+					if !req.OldOutputs.Get("foo").Equals(req.NewInputs.Get("foo")) {
 						return plugin.DiffResult{
 							Changes:     plugin.DiffSome,
 							ReplaceKeys: []resource.PropertyKey{"foo"},
@@ -320,7 +320,7 @@ func TestDeletedWithAddedSameStepAsReplace(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				DiffF: func(_ context.Context, req plugin.DiffRequest) (plugin.DiffResult, error) {
-					if !req.OldOutputs["foo"].DeepEquals(req.NewInputs["foo"]) {
+					if !req.OldOutputs.Get("foo").Equals(req.NewInputs.Get("foo")) {
 						return plugin.DiffResult{
 							Changes:             plugin.DiffSome,
 							ReplaceKeys:         []resource.PropertyKey{"foo"},
@@ -486,7 +486,7 @@ func TestDeletedWithProtectedDependentBlocksReplace(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				DiffF: func(_ context.Context, req plugin.DiffRequest) (plugin.DiffResult, error) {
-					if !req.OldOutputs["foo"].DeepEquals(req.NewInputs["foo"]) {
+					if !req.OldOutputs.Get("foo").Equals(req.NewInputs.Get("foo")) {
 						return plugin.DiffResult{
 							Changes:             plugin.DiffSome,
 							ReplaceKeys:         []resource.PropertyKey{"foo"},

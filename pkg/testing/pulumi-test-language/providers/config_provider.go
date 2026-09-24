@@ -220,6 +220,7 @@ func (p *ConfigProvider) Invoke(
 func (p *ConfigProvider) Check(
 	_ context.Context, req plugin.CheckRequest,
 ) (plugin.CheckResponse, error) {
+	news := resource.ToResourcePropertyMap(req.NewInputs)
 	// URN should be of the form "config:index:Resource"
 	if req.URN.Type() != "config:index:Resource" {
 		return plugin.CheckResponse{
@@ -228,7 +229,7 @@ func (p *ConfigProvider) Check(
 	}
 
 	// Expect just the text string value
-	value, ok := req.News["text"]
+	value, ok := news["text"]
 	if !ok {
 		return plugin.CheckResponse{
 			Failures: makeCheckFailure("text", "missing text"),
@@ -239,13 +240,13 @@ func (p *ConfigProvider) Check(
 			Failures: makeCheckFailure("text", "text is not a string"),
 		}, nil
 	}
-	if len(req.News) != 1 {
+	if len(news) != 1 {
 		return plugin.CheckResponse{
-			Failures: makeCheckFailure("", fmt.Sprintf("too many properties: %v", req.News)),
+			Failures: makeCheckFailure("", fmt.Sprintf("too many properties: %v", news)),
 		}, nil
 	}
 
-	return plugin.CheckResponse{Properties: req.News}, nil
+	return plugin.CheckResponse{Properties: resource.FromResourcePropertyMap(news)}, nil
 }
 
 func (p *ConfigProvider) Create(

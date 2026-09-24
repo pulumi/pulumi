@@ -769,12 +769,12 @@ func TestDoCmdResourceUpsertStateless(t *testing.T) {
 				},
 				CheckF: func(_ context.Context, req plugin.CheckRequest) (plugin.CheckResponse, error) {
 					calls = append(calls, "check")
-					assert.Equal(t, "old", req.Olds["name"].StringValue())
-					assert.Equal(t, "new", req.News["name"].StringValue())
-					assert.Equal(t, 2.0, req.News["size"].NumberValue())
-					_, hasEnabled := req.News["enabled"]
+					assert.Equal(t, "old", req.OldInputs.Get("name").AsString())
+					assert.Equal(t, "new", req.NewInputs.Get("name").AsString())
+					assert.Equal(t, 2.0, req.NewInputs.Get("size").AsNumber())
+					_, hasEnabled := req.NewInputs.GetOk("enabled")
 					assert.False(t, hasEnabled, "inputs should be fully replaced, not merged")
-					return plugin.CheckResponse{Properties: req.News}, nil
+					return plugin.CheckResponse{Properties: req.NewInputs}, nil
 				},
 				DiffF: func(_ context.Context, req plugin.DiffRequest) (plugin.DiffResponse, error) {
 					calls = append(calls, "diff")
@@ -825,9 +825,9 @@ size = 2
 				},
 				CheckF: func(_ context.Context, req plugin.CheckRequest) (plugin.CheckResponse, error) {
 					calls = append(calls, "check")
-					assert.Empty(t, req.Olds)
-					assert.Equal(t, "new", req.News["name"].StringValue())
-					return plugin.CheckResponse{Properties: req.News}, nil
+					assert.Zero(t, req.OldInputs.Len())
+					assert.Equal(t, "new", req.NewInputs.Get("name").AsString())
+					return plugin.CheckResponse{Properties: req.NewInputs}, nil
 				},
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 					calls = append(calls, "create")
@@ -871,7 +871,7 @@ size = 2
 				},
 				CheckF: func(_ context.Context, req plugin.CheckRequest) (plugin.CheckResponse, error) {
 					calls = append(calls, "check")
-					return plugin.CheckResponse{Properties: req.News}, nil
+					return plugin.CheckResponse{Properties: req.NewInputs}, nil
 				},
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 					calls = append(calls, "create")

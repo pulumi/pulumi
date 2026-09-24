@@ -59,12 +59,12 @@ func TestImportOption(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				DiffF: func(_ context.Context, req plugin.DiffRequest) (plugin.DiffResult, error) {
-					if req.OldOutputs["foo"].DeepEquals(req.NewInputs["foo"]) {
+					if req.OldOutputs.Get("foo").Equals(req.NewInputs.Get("foo")) {
 						return plugin.DiffResult{Changes: plugin.DiffNone}, nil
 					}
 
 					diffKind := plugin.DiffUpdate
-					if req.NewInputs["foo"].IsString() && req.NewInputs["foo"].StringValue() == "replace" {
+					if req.NewInputs.Get("foo").IsString() && req.NewInputs.Get("foo").AsString() == "replace" {
 						diffKind = plugin.DiffUpdateReplace
 					}
 
@@ -383,7 +383,7 @@ func TestImportWithDifferingImportIdentifierFormat(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				DiffF: func(_ context.Context, req plugin.DiffRequest) (plugin.DiffResult, error) {
-					if req.OldOutputs["foo"].DeepEquals(req.NewInputs["foo"]) {
+					if req.OldOutputs.Get("foo").Equals(req.NewInputs.Get("foo")) {
 						return plugin.DiffResult{Changes: plugin.DiffNone}, nil
 					}
 
@@ -661,15 +661,16 @@ func diffImportResource(
 	_ context.Context,
 	req plugin.DiffRequest,
 ) (plugin.DiffResult, error) {
-	if req.OldOutputs["foo"].DeepEquals(req.NewInputs["foo"]) && req.OldOutputs["frob"].DeepEquals(req.NewInputs["frob"]) {
+	if req.OldOutputs.Get("foo").Equals(req.NewInputs.Get("foo")) &&
+		req.OldOutputs.Get("frob").Equals(req.NewInputs.Get("frob")) {
 		return plugin.DiffResult{Changes: plugin.DiffNone}, nil
 	}
 
 	detailedDiff := make(map[string]plugin.PropertyDiff)
-	if !req.OldOutputs["foo"].DeepEquals(req.NewInputs["foo"]) {
+	if !req.OldOutputs.Get("foo").Equals(req.NewInputs.Get("foo")) {
 		detailedDiff["foo"] = plugin.PropertyDiff{Kind: plugin.DiffUpdate}
 	}
-	if !req.OldOutputs["frob"].DeepEquals(req.NewInputs["frob"]) {
+	if !req.OldOutputs.Get("frob").Equals(req.NewInputs.Get("frob")) {
 		detailedDiff["frob"] = plugin.PropertyDiff{Kind: plugin.DiffUpdate}
 	}
 
@@ -683,8 +684,8 @@ func TestImportThenSecretValueDoesNotReplace(t *testing.T) {
 	t.Parallel()
 
 	valueDiff := func(_ context.Context, req plugin.DiffRequest) (plugin.DiffResult, error) {
-		old := resource.FromResourcePropertyMap(req.OldOutputs)
-		new := resource.FromResourcePropertyMap(req.NewInputs)
+		old := req.OldOutputs
+		new := req.NewInputs
 		sameSecretValue := old.Get("foo").Equals(new.Get("foo").WithSecret(false).WithDependencies(nil))
 		sameOutputValue := old.Get("fromOutput").Equals(new.Get("fromOutput").WithSecret(false).WithDependencies(nil))
 		if sameSecretValue && sameOutputValue {
@@ -1354,15 +1355,15 @@ func TestImportPlanSpecificProperties(t *testing.T) {
 				) (plugin.CheckResponse, error) {
 					// Error unless "foo" and "frob" are in news
 
-					if _, has := req.News["foo"]; !has {
+					if _, has := req.NewInputs.GetOk("foo"); !has {
 						return plugin.CheckResponse{}, errors.New("Need foo")
 					}
 
-					if _, has := req.News["frob"]; !has {
+					if _, has := req.NewInputs.GetOk("frob"); !has {
 						return plugin.CheckResponse{}, errors.New("Need frob")
 					}
 
-					return plugin.CheckResponse{Properties: req.News}, nil
+					return plugin.CheckResponse{Properties: req.NewInputs}, nil
 				},
 			}, nil
 		}),
@@ -1831,7 +1832,7 @@ func TestImportWithFailedUpdate(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				DiffF: func(_ context.Context, req plugin.DiffRequest) (plugin.DiffResult, error) {
-					if req.OldOutputs["foo"].DeepEquals(req.NewInputs["foo"]) {
+					if req.OldOutputs.Get("foo").Equals(req.NewInputs.Get("foo")) {
 						return plugin.DiffResult{Changes: plugin.DiffNone}, nil
 					}
 
@@ -2043,7 +2044,7 @@ func TestImportIDPreservedAcrossUpdate(t *testing.T) {
 					}, nil
 				},
 				DiffF: func(_ context.Context, req plugin.DiffRequest) (plugin.DiffResult, error) {
-					if req.OldOutputs["foo"].DeepEquals(req.NewInputs["foo"]) {
+					if req.OldOutputs.Get("foo").Equals(req.NewInputs.Get("foo")) {
 						return plugin.DiffResult{Changes: plugin.DiffNone}, nil
 					}
 					return plugin.DiffResult{Changes: plugin.DiffSome}, nil

@@ -1,0 +1,12 @@
+{
+	"name": "l2-resource-read-depends-on",
+	"devDependencies": {
+		"@types/node": "^20"
+	},
+	"dependencies": {
+		"typescript": "^4.7.0",
+		"@pulumi/pulumi": "ROOT/artifacts/pulumi-pulumi-CORE.VERSION.tgz",
+		"@pulumi/read": "ROOT/artifacts/pulumi-read-39.0.0.tgz",
+		"@pulumi/simple": "ROOT/artifacts/pulumi-simple-2.0.0.tgz"
+	}
+}

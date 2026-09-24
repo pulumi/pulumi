@@ -291,6 +291,9 @@ func (p *Pulumi) run(ctx context.Context, a pulumiArgs, isPreview bool) (pulumiR
 
 	opts := backend.UpdateOptions{
 		AutoApprove: true, // Upstream approval already gates pulumi_up before dispatch.
+		// pulumi_up follows an approved pulumi_preview, so don't run a second preview first.
+		// Matches the Automation API's `up --yes --skip-preview`. Never set for pulumi_preview.
+		SkipPreview: !isPreview,
 		Engine: engine.UpdateOptions{
 			Experimental: true,
 			Autonamer:    autonamer,

@@ -32,6 +32,7 @@ import (
 	"slices"
 	"sort"
 	"strings"
+	"sync"
 	"unicode"
 
 	"github.com/blang/semver"
@@ -349,6 +350,8 @@ func newBinder(info PackageInfoSpec, spec specSource, loader Loader,
 		Attribution:               info.Attribution,
 		Repository:                info.Repository,
 		PluginDownloadURL:         info.PluginDownloadURL,
+		ConfigurationDocsURL:      info.ConfigurationDocsURL,
+		ValidateCredentialsOnNew:  info.ValidateCredentialsOnNew,
 		Publisher:                 info.Publisher,
 		Namespace:                 info.Namespace,
 		Dependencies:              info.Dependencies,
@@ -445,6 +448,10 @@ func ImportPartialSpecWithContext(
 		return nil, diags
 	}
 	pkg.types = types
+	types.bindLock = &pkg.m
+	types.pkg.interpretPulumiRefs = func(description string, resolver PulumiRefResolver) (string, error) {
+		return interpretPulumiRefsInDescription(description, types, resolver)
+	}
 	return pkg, nil
 }
 
@@ -560,6 +567,10 @@ type types struct {
 
 	// A pointer to the package reference that `types` is a part of if it exists.
 	bindToReference PackageReference
+
+	// bindLock is the owning PartialPackage's lock. Cached packages are shared across goroutines,
+	// so anything that binds members lazily, including doc ref lookups, must hold it.
+	bindLock sync.Locker
 }
 
 // The package which bound types will link back to.

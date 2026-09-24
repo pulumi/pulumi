@@ -2133,3 +2133,30 @@ func TestResourceReferenceDependencies(t *testing.T) {
 		})
 	}
 }
+
+// Regression test for https://github.com/pulumi/pulumi/issues/13226: a destination typed as an input
+// interface (e.g. StringInput) accepts any value that satisfies it, including outputs.
+func TestMarshalInputInterfaceDestination(t *testing.T) {
+	t.Parallel()
+
+	type componentOutputs struct {
+		Ref  StringInput      `pulumi:"ref"`
+		Refs []StringInput    `pulumi:"refs"`
+		All  StringArrayInput `pulumi:"all"`
+	}
+
+	v, _, err := marshalInput(componentOutputs{
+		Ref:  String("a").ToStringOutput(),
+		Refs: []StringInput{String("b").ToStringOutput(), String("c")},
+		All:  StringArray{String("d")}.ToStringArrayOutput(),
+	}, reflect.TypeFor[componentOutputs]())
+	require.NoError(t, err)
+	assert.Equal(t, resource.NewProperty(resource.PropertyMap{
+		"ref": resource.NewProperty("a"),
+		"refs": resource.NewProperty([]resource.PropertyValue{
+			resource.NewProperty("b"),
+			resource.NewProperty("c"),
+		}),
+		"all": resource.NewProperty([]resource.PropertyValue{resource.NewProperty("d")}),
+	}), v)
+}

@@ -201,6 +201,7 @@ func (p *PlainProvider) CheckConfig(
 func (p *PlainProvider) Check(
 	_ context.Context, req plugin.CheckRequest,
 ) (plugin.CheckResponse, error) {
+	news := resource.ToResourcePropertyMap(req.NewInputs)
 	if req.URN.Type() != "plain:index:Resource" {
 		return plugin.CheckResponse{
 			Failures: makeCheckFailure("", fmt.Sprintf("invalid URN type: %s", req.URN.Type())),
@@ -225,15 +226,15 @@ func (p *PlainProvider) Check(
 		return nil
 	}
 
-	check := assertField(req.News, "data", "object", resource.PropertyValue.IsObject)
+	check := assertField(news, "data", "object", resource.PropertyValue.IsObject)
 	if check != nil {
 		return *check, nil
 	}
 
 	// Should have one to three properties: data is required, nonPlainData and dataList are optional
-	if len(req.News) > 3 {
+	if len(news) > 3 {
 		return plugin.CheckResponse{
-			Failures: makeCheckFailure("", fmt.Sprintf("too many properties: %v", req.News)),
+			Failures: makeCheckFailure("", fmt.Sprintf("too many properties: %v", news)),
 		}, nil
 	}
 
@@ -308,7 +309,7 @@ func (p *PlainProvider) Check(
 	}
 
 	// Check data
-	data := req.News["data"].ObjectValue()
+	data := news["data"].ObjectValue()
 	check = checkData(data)
 	if check != nil {
 		return *check, nil
@@ -319,8 +320,8 @@ func (p *PlainProvider) Check(
 	}
 
 	// Check nonPlainData
-	if _, ok := req.News["nonPlainData"]; ok {
-		nonPlainData := req.News["nonPlainData"].ObjectValue()
+	if _, ok := news["nonPlainData"]; ok {
+		nonPlainData := news["nonPlainData"].ObjectValue()
 		check = checkData(nonPlainData)
 		if check != nil {
 			return *check, nil
@@ -332,7 +333,7 @@ func (p *PlainProvider) Check(
 	}
 
 	// Check dataList
-	if v, ok := req.News["dataList"]; ok {
+	if v, ok := news["dataList"]; ok {
 		if !v.IsArray() {
 			return plugin.CheckResponse{
 				Failures: makeCheckFailure("dataList", "dataList is not an array"),
@@ -351,7 +352,7 @@ func (p *PlainProvider) Check(
 		}
 	}
 
-	return plugin.CheckResponse{Properties: req.News}, nil
+	return plugin.CheckResponse{Properties: resource.FromResourcePropertyMap(news)}, nil
 }
 
 func (p *PlainProvider) Create(

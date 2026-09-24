@@ -360,19 +360,48 @@ func (s *CreateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 
 		var resp plugin.CreateResponse
 
+		// If a create partially fails, the resource exists, so any retries must update it rather than create
+		// another one.
+		var partial *plugin.CreateResponse
+
 		resp, err = withRetries(
 			maxErrorHookRetries,
 			func() (plugin.CreateResponse, error) {
-				resp, err := prov.Create(context.TODO(), plugin.CreateRequest{
-					URN:                   s.URN(),
-					Name:                  s.new.URN.Name(),
-					Type:                  s.new.URN.Type(),
-					Properties:            s.new.Inputs,
-					Timeout:               s.new.CustomTimeouts.Create,
-					Preview:               s.deployment.opts.DryRun,
-					ResourceStatusAddress: resourceStatusAddress,
-					ResourceStatusToken:   resourceStatusToken,
-				})
+				var resp plugin.CreateResponse
+				var err error
+				if partial == nil {
+					resp, err = prov.Create(context.TODO(), plugin.CreateRequest{
+						URN:                   s.URN(),
+						Name:                  s.new.URN.Name(),
+						Type:                  s.new.URN.Type(),
+						Properties:            s.new.Inputs,
+						Timeout:               s.new.CustomTimeouts.Create,
+						Preview:               s.deployment.opts.DryRun,
+						ResourceStatusAddress: resourceStatusAddress,
+						ResourceStatusToken:   resourceStatusToken,
+					})
+				} else {
+					var upd plugin.UpdateResponse
+					upd, err = prov.Update(context.TODO(), plugin.UpdateRequest{
+						URN:                   s.URN(),
+						Name:                  s.new.URN.Name(),
+						Type:                  s.new.URN.Type(),
+						ID:                    partial.ID,
+						OldInputs:             s.new.Inputs,
+						OldOutputs:            partial.Properties,
+						NewInputs:             s.new.Inputs,
+						Timeout:               s.new.CustomTimeouts.Create,
+						Preview:               s.deployment.opts.DryRun,
+						ResourceStatusAddress: resourceStatusAddress,
+						ResourceStatusToken:   resourceStatusToken,
+					})
+					resp = plugin.CreateResponse{
+						ID:                  partial.ID,
+						Properties:          upd.Properties,
+						Status:              upd.Status,
+						RefreshBeforeUpdate: upd.RefreshBeforeUpdate,
+					}
+				}
 
 				if err == nil {
 					resourceError = nil
@@ -386,6 +415,9 @@ func (s *CreateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 
 				resourceError = err
 				resourceStatus = resp.Status
+				if resp.ID != "" {
+					partial = &resp
+				}
 
 				if initErr, isInitErr := err.(*plugin.InitError); isInitErr {
 					s.new.InitErrors = initErr.Reasons
@@ -458,6 +490,9 @@ func (s *CreateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 	s.new.ID = id
 	s.new.Outputs = outs
 	s.new.RefreshBeforeUpdate = refreshBeforeUpdate
+	if resourceError == nil {
+		s.new.InitErrors = nil
+	}
 
 	// Create should set the Create and Modified timestamps as the resource state has been created.
 	now := time.Now().UTC()
@@ -624,6 +659,11 @@ func (d deleteProtectedError) Error() string {
 }
 
 func (s *DeleteStep) Apply() (resource.Status, StepCompleteFunc, error) {
+	// A pending-replacement resource was already deleted by an interrupted delete-before-replace
+	// operation, so the step generator must never issue another delete for it.
+	contract.Assertf(!s.old.PendingReplacement,
+		"attempting to delete resource %q which is pending replacement", s.old.URN)
+
 	if err := s.Deployment().RunHooks(
 		s.old.ResourceHooks[resource.BeforeDelete],
 		resource.BeforeDelete,
@@ -1408,7 +1448,19 @@ func (s *ReadStep) Fail() {
 }
 
 func (s *ReadStep) Skip() {
-	s.event.Done(&ReadResult{State: s.new, Result: ResultStateSkipped})
+	// A skipped read has no dry-run analogue. If we have prior state for this resource we return its last-known outputs
+	// so dependents can still make progress; otherwise there is nothing meaningful to return. If we don't have prior
+	// state, we return the result as Unknown so SDKs can propagate unknowns to dependents rather than treating the
+	// empty output as valid.
+	skipState := s.new.Copy()
+	var unknown bool
+	if s.old != nil {
+		skipState.Outputs = s.old.Outputs
+	} else {
+		skipState.Outputs = resource.PropertyMap{}
+		unknown = true
+	}
+	s.event.Done(&ReadResult{State: skipState, Result: ResultStateSkipped, Unknown: unknown})
 }
 
 // RefreshStep is a step used to track the progress of a refresh operation. A refresh operation updates the an existing
@@ -2178,8 +2230,8 @@ func (s *ImportStep) Apply() (_ resource.Status, _ StepCompleteFunc, err error) 
 			URN:           s.new.URN,
 			Name:          s.URN().Name(),
 			Type:          s.URN().Type(),
-			Olds:          s.old.Inputs,
-			News:          s.new.Inputs,
+			OldInputs:     resource.FromResourcePropertyMap(s.old.Inputs),
+			NewInputs:     resource.FromResourcePropertyMap(s.new.Inputs),
 			AllowUnknowns: s.deployment.opts.DryRun,
 			RandomSeed:    s.randomSeed,
 		})

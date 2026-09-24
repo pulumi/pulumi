@@ -183,6 +183,8 @@ message ReadResourceRequest {
 message ReadResourceResponse {
     string urn = 1;                        // the URN for this resource.
     google.protobuf.Struct properties = 2; // the state of the resource read from the live environment.
+    Result result = 3;                     // the reason, whether the read was successful or failed.
+    bool unknown = 4;                      // true if the result of the read is unknown, e.g. because the read was skipped as part of a --continue-on-error run; result is still SUCCESS and SDKs should resolve outputs as unknown.
 }
 
 // RegisterResourceRequest contains information about a resource object that was newly allocated.
@@ -275,7 +277,12 @@ message RegisterResourceRequest {
 enum Result {
 	SUCCESS = 0;
 	FAIL = 1;
-	SKIP = 2;
+	// 2 was formerly SKIP. All language SDKs treated SKIP and FAIL identically at the wire level,
+	// so the engine now emits FAIL for both directly-failed and dependency-skipped resources. The
+	// tag is reserved so no future value silently changes behaviour for older SDKs still generated
+	// against the old enum.
+	reserved 2;
+	reserved "SKIP";
 }
 
 // RegisterResourceResponse is returned by the engine after a resource has finished being initialized.  It includes the

@@ -169,13 +169,14 @@ func (p *DiscriminatedUnionProvider) DiffConfig(
 func (p *DiscriminatedUnionProvider) Check(
 	_ context.Context, req plugin.CheckRequest,
 ) (plugin.CheckResponse, error) {
+	news := resource.ToResourcePropertyMap(req.NewInputs)
 	if string(req.URN.Type()) != fmt.Sprintf("%s:index:Example", p.pkg()) {
 		return plugin.CheckResponse{
 			Failures: makeCheckFailure("", fmt.Sprintf("invalid URN type: %s", req.URN.Type())),
 		}, nil
 	}
 
-	return plugin.CheckResponse{Properties: req.News}, nil
+	return plugin.CheckResponse{Properties: resource.FromResourcePropertyMap(news)}, nil
 }
 
 func (p *DiscriminatedUnionProvider) Create(

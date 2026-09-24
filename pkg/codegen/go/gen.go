@@ -5658,11 +5658,7 @@ func Pkg%[1]sDefaultOpts(opts []pulumi.%[1]sOption) []pulumi.%[1]sOption {
 	if pkg.mod != "" {
 		versionPackageRef = versionPkgName + "." + versionPackageRef
 	}
-	if info := p.Language["go"]; info != nil {
-		if info.(GoPackageInfo).RespectSchemaVersion && pkg.pkg.Version() != nil {
-			versionPackageRef = fmt.Sprintf("semver.MustParse(%q)", p.Version.String())
-		}
-	} else if pkg.pkg.SupportPack() && pkg.pkg.Version() != nil {
+	if (goPackageInfo(pkg.pkg).RespectSchemaVersion || pkg.pkg.SupportPack()) && pkg.pkg.Version() != nil {
 		versionPackageRef = fmt.Sprintf("semver.MustParse(%q)", p.Version.String())
 	}
 	// Parameterized schemas _always_ respect schema version.

@@ -19,7 +19,6 @@ import (
 	"errors"
 	"io"
 	"os"
-	"path/filepath"
 	"runtime"
 	"testing"
 
@@ -543,25 +542,9 @@ func TestModeIsCaseInsensitive(t *testing.T) {
 }
 
 func TestAgentFallbackSurfacesUndecryptableCredentials(t *testing.T) {
-	// Operates on the real credentials path (saved and restored) with the
-	// agent dir redirected, following the established agent-test pattern.
+	isolateAgentFallbackCredentials(t)
 	useFakeStores(t)
-
-	oldCreds, err := GetStoredCredentials()
-	require.NoError(t, err)
-	oldAgentPulumiDir := agentPulumiDir
-	agentPulumiDir = filepath.Join(t.TempDir(), ".pulumi")
-	t.Cleanup(func() {
-		t.Setenv("PULUMI_CREDENTIAL_STORE", "plaintext")
-		resetCredStoreForTesting()
-		require.NoError(t, StoreCredentials(oldCreds))
-		require.NoError(t, DeleteAgentCredentials())
-		agentPulumiDir = oldAgentPulumiDir
-	})
-
 	setAgentEnv(t)
-	t.Setenv(PulumiCredentialsPathEnvVar, "")
-	t.Setenv("PULUMI_HOME", "")
 	t.Setenv("PULUMI_CREDENTIAL_STORE", "auto")
 	resetCredStoreForTesting()
 
@@ -570,7 +553,7 @@ func TestAgentFallbackSurfacesUndecryptableCredentials(t *testing.T) {
 
 	require.NoError(t, fakeStore(t).DeleteKey())
 
-	_, _, err = GetAccountWithAgentFallback(cloudURL)
+	_, _, err := GetAccountWithAgentFallback(cloudURL)
 	require.Error(t, err, "agent fallback must not swallow the undecryptable error")
 	assert.True(t, IsUndecryptableCredentials(err))
 }

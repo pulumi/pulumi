@@ -33,6 +33,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/diagtest"
 	declared "github.com/pulumi/pulumi/sdk/v3/go/common/util/env"
 )
@@ -88,8 +89,7 @@ func TestListStacksWithMultiplePassphrases_legacy(t *testing.T) {
 	require.NoError(t, err)
 
 	// Remove the config passphrase so that we can no longer deserialize the checkpoints
-	err = os.Unsetenv("PULUMI_CONFIG_PASSPHRASE")
-	require.NoError(t, err)
+	ptesting.Unsetenv(t, "PULUMI_CONFIG_PASSPHRASE")
 
 	// Ensure that we can list the stacks we created even without a passphrase
 	stacks, outContToken, err := b.ListStacks(ctx, backend.ListStacksFilter{}, nil /* inContToken */)

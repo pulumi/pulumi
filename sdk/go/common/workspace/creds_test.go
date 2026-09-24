@@ -185,23 +185,13 @@ func TestAccountSaveWritesToSourceFile(t *testing.T) {
 	})
 }
 
+//nolint:paralleltest // mutates environment and package global
 func TestGetAccountWithAgentFallbackUsesRefreshOnlyDefaultAccount(t *testing.T) {
 	// An account with only a refresh token (no access token) must be treated as usable rather
 	// than skipped in favour of the agent fallback — the wrapper will mint the first access
 	// token on the initial 401.
-	oldCreds, err := GetStoredCredentials()
-	require.NoError(t, err)
-	oldAgentPulumiDir := agentPulumiDir
-	agentPulumiDir = filepath.Join(t.TempDir(), ".pulumi")
-	t.Cleanup(func() {
-		require.NoError(t, StoreCredentials(oldCreds))
-		require.NoError(t, DeleteAgentCredentials())
-		agentPulumiDir = oldAgentPulumiDir
-	})
-
+	isolateAgentFallbackCredentials(t)
 	setAgentEnv(t)
-	t.Setenv(PulumiCredentialsPathEnvVar, "")
-	t.Setenv("PULUMI_HOME", "")
 
 	cloudURL := "https://api.refresh-only.example.com"
 	require.NoError(t, StoreAccount(cloudURL, Account{RefreshToken: "refresh-only"}, true))
@@ -373,20 +363,10 @@ func TestGetAgentAccessTokenExpiresAt(t *testing.T) {
 	assert.True(t, valid)
 }
 
+//nolint:paralleltest // mutates environment and package global
 func TestGetAccountWithAgentFallbackPrefersDefaultCredentials(t *testing.T) {
-	oldCreds, err := GetStoredCredentials()
-	require.NoError(t, err)
-	oldAgentPulumiDir := agentPulumiDir
-	agentPulumiDir = filepath.Join(t.TempDir(), ".pulumi")
-	t.Cleanup(func() {
-		require.NoError(t, StoreCredentials(oldCreds))
-		require.NoError(t, DeleteAgentCredentials())
-		agentPulumiDir = oldAgentPulumiDir
-	})
-
+	isolateAgentFallbackCredentials(t)
 	setAgentEnv(t)
-	t.Setenv(PulumiCredentialsPathEnvVar, "")
-	t.Setenv("PULUMI_HOME", "")
 
 	cloudURL := "https://api.default-wins.example.com"
 	require.NoError(t, StoreAccount(cloudURL, Account{AccessToken: "default-token"}, true))
@@ -398,17 +378,10 @@ func TestGetAccountWithAgentFallbackPrefersDefaultCredentials(t *testing.T) {
 	assert.Equal(t, "default-token", account.AccessToken)
 }
 
+//nolint:paralleltest // mutates environment and package global
 func TestGetAccountWithAgentFallbackUsesAgentCredentials(t *testing.T) {
-	oldAgentPulumiDir := agentPulumiDir
-	agentPulumiDir = filepath.Join(t.TempDir(), ".pulumi")
-	t.Cleanup(func() {
-		require.NoError(t, DeleteAgentCredentials())
-		agentPulumiDir = oldAgentPulumiDir
-	})
-
+	isolateAgentFallbackCredentials(t)
 	setAgentEnv(t)
-	t.Setenv(PulumiCredentialsPathEnvVar, "")
-	t.Setenv("PULUMI_HOME", "")
 
 	cloudURL := "https://api.agent-fallback.example.com"
 	require.NoError(t, StoreAgentAccount(cloudURL, Account{AccessToken: "agent-token"}, true))
@@ -419,23 +392,13 @@ func TestGetAccountWithAgentFallbackUsesAgentCredentials(t *testing.T) {
 	assert.Equal(t, "agent-token", account.AccessToken)
 }
 
+//nolint:paralleltest // mutates environment and package global
 func TestGetAccountWithAgentFallbackDoesNotMergeFieldsAcrossFiles(t *testing.T) {
 	// File-as-a-unit invariant on the read side: a default account with an access token but no
 	// refresh token must not silently acquire a refresh token from the agent file. The loaded
 	// account is wholly from the source file, never a merge across the two.
-	oldCreds, err := GetStoredCredentials()
-	require.NoError(t, err)
-	oldAgentPulumiDir := agentPulumiDir
-	agentPulumiDir = filepath.Join(t.TempDir(), ".pulumi")
-	t.Cleanup(func() {
-		require.NoError(t, StoreCredentials(oldCreds))
-		require.NoError(t, DeleteAgentCredentials())
-		agentPulumiDir = oldAgentPulumiDir
-	})
-
+	isolateAgentFallbackCredentials(t)
 	setAgentEnv(t)
-	t.Setenv(PulumiCredentialsPathEnvVar, "")
-	t.Setenv("PULUMI_HOME", "")
 
 	cloudURL := "https://api.no-cross-file-merge.example.com"
 	require.NoError(t, StoreAccount(cloudURL, Account{AccessToken: "default-access"}, true))
@@ -452,17 +415,10 @@ func TestGetAccountWithAgentFallbackDoesNotMergeFieldsAcrossFiles(t *testing.T) 
 		"fields from the agent file must not leak into a default-sourced account")
 }
 
+//nolint:paralleltest // mutates environment and package global
 func TestGetAccountWithAgentFallbackDisabledOutsideAgentMode(t *testing.T) {
-	oldAgentPulumiDir := agentPulumiDir
-	agentPulumiDir = filepath.Join(t.TempDir(), ".pulumi")
-	t.Cleanup(func() {
-		require.NoError(t, DeleteAgentCredentials())
-		agentPulumiDir = oldAgentPulumiDir
-	})
-
+	isolateAgentFallbackCredentials(t)
 	clearAgentEnv(t)
-	t.Setenv(PulumiCredentialsPathEnvVar, "")
-	t.Setenv("PULUMI_HOME", "")
 
 	cloudURL := "https://api.no-agent-fallback.example.com"
 	require.NoError(t, StoreAgentAccount(cloudURL, Account{AccessToken: "agent-token"}, true))
@@ -484,6 +440,7 @@ func TestGetAccountWithAgentFallbackDisabledWithExplicitHome(t *testing.T) {
 	setAgentEnv(t)
 	t.Setenv(PulumiCredentialsPathEnvVar, "")
 	t.Setenv("PULUMI_HOME", t.TempDir())
+	t.Setenv(pulumiTestAllowAgentFallbackEnvVar, "")
 
 	cloudURL := "https://api.explicit-home.example.com"
 	require.NoError(t, StoreAgentAccount(cloudURL, Account{AccessToken: "agent-token"}, true))
@@ -505,6 +462,7 @@ func TestGetAccountWithAgentFallbackDisabledWithExplicitCredentialsPath(t *testi
 	setAgentEnv(t)
 	t.Setenv(PulumiCredentialsPathEnvVar, t.TempDir())
 	t.Setenv("PULUMI_HOME", "")
+	t.Setenv(pulumiTestAllowAgentFallbackEnvVar, "true")
 
 	cloudURL := "https://api.explicit-credentials-path.example.com"
 	require.NoError(t, StoreAgentAccount(cloudURL, Account{AccessToken: "agent-token"}, true))
@@ -1085,6 +1043,20 @@ func TestAgentCredentialsRepairInsecurePermissions(t *testing.T) {
 	info, err := os.Stat(agentPulumiDir)
 	require.NoError(t, err)
 	assert.Equal(t, fs.FileMode(0o700), info.Mode().Perm())
+}
+
+// isolateAgentFallbackCredentials redirects default and agent credentials to separate temporary directories
+// so fallback tests cannot read or overwrite credentials belonging to the user or other tests.
+func isolateAgentFallbackCredentials(t *testing.T) {
+	t.Helper()
+	t.Setenv(PulumiCredentialsPathEnvVar, "")
+	t.Setenv("PULUMI_HOME", t.TempDir())
+	// Enable agent fallback, even though PULUMI_HOME is set
+	t.Setenv(pulumiTestAllowAgentFallbackEnvVar, "true")
+	t.Setenv(pulumiTestAgentPulumiDirEnvVar, t.TempDir())
+	t.Setenv("PULUMI_CREDENTIAL_STORE", "")
+	resetCredStoreForTesting()
+	t.Cleanup(resetCredStoreForTesting)
 }
 
 func setAgentEnv(t *testing.T) {

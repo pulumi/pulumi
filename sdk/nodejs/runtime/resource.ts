@@ -46,6 +46,7 @@ import {
     getStore,
     PendingResourceRegistration,
 } from "./state";
+import { ensureNotInStateMigration } from "./stateMigration";
 
 import { isGrpcError } from "../errors";
 import {
@@ -438,6 +439,7 @@ export function readResource(
                             resp = {
                                 getUrn: () => mockurn,
                                 getProperties: () => req.getProperties(),
+                                getUnknown: () => false,
                             };
                         }
                     } catch (e) {
@@ -445,13 +447,17 @@ export function readResource(
                         resp = {
                             getUrn: () => "",
                             getProperties: () => undefined,
+                            getUnknown: () => false,
                         };
                     }
 
                     // Now resolve everything: the URN, the ID (supplied as input), and the output properties.
                     resop.resolveURN(resp.getUrn(), err);
                     resop.resolveID!(resolvedID, resolvedID !== undefined, err);
-                    await resolveOutputs(res, t, name, props, resp.getProperties(), {}, resop.resolvers, err);
+                    // A skipped read reports Unknown=true; resolve outputs as unknown so dependents
+                    // propagate unknowns instead of seeing empty values as real.
+                    const unknown = !isDryRun() && resp.getUnknown();
+                    await resolveOutputs(res, t, name, props, resp.getProperties(), {}, resop.resolvers, err, unknown);
                     done();
                 });
             })
@@ -546,6 +552,10 @@ export function registerResource(
     const label = `resource:${name}[${t}]`;
     log.debug(`Registering resource: t=${t}, name=${name}, custom=${custom}, remote=${remote}`);
 
+    if (opts.stateMigrations !== undefined && opts.stateMigrations.length > 0 && !getStore().supportsStateMigrations) {
+        throw new Error("The Pulumi CLI does not support state migrations. Please update the Pulumi CLI");
+    }
+
     // Wait for all values to be available, and then perform the RPC.
     const done = rpcKeepAlive();
 
@@ -580,6 +590,18 @@ export function registerResource(
 
                     for (const transform of opts.transforms) {
                         callbacks.push(await callbackServer.registerTransform(transform));
+                    }
+                }
+
+                const stateMigrations: Callback[] = [];
+                if (opts.stateMigrations !== undefined && opts.stateMigrations.length > 0) {
+                    const callbackServer = getCallbacks();
+                    if (callbackServer === undefined) {
+                        throw new Error("Callback server could not initialize");
+                    }
+
+                    for (const migration of opts.stateMigrations) {
+                        stateMigrations.push(await callbackServer.registerStateMigration(migration));
                     }
                 }
 
@@ -678,6 +700,7 @@ export function registerResource(
                 req.setSourceposition(marshalSourcePosition(sourcePosition));
                 req.setStacktrace(marshalStackTrace(stackTrace));
                 req.setTransformsList(callbacks);
+                req.setStateMigrationsList(stateMigrations);
                 req.setSupportsresultreporting(true);
                 req.setHooks(hooks);
 
@@ -1312,6 +1335,8 @@ async function resolveOutputs(
  * outputs.
  */
 export function registerResourceOutputs(res: Resource, outputs: Inputs | Promise<Inputs> | Output<Inputs>) {
+    ensureNotInStateMigration("register resource outputs");
+
     // Now run the operation. Note that we explicitly do not serialize output registration with
     // respect to other resource operations, as outputs may depend on properties of other resources
     // that will not resolve until later turns. This would create a circular promise chain that can
@@ -1431,6 +1456,8 @@ function runAsyncResourceOp(label: string, callback: () => Promise<void>, serial
 }
 
 export async function registerResourceHook(hook: ResourceHook) {
+    ensureNotInStateMigration("register resource hook");
+
     if (!getStore().supportsResourceHooks) {
         throw new Error("The Pulumi CLI does not support resource hooks. Please update the Pulumi CLI");
     }
@@ -1444,6 +1471,8 @@ export async function registerResourceHook(hook: ResourceHook) {
 }
 
 export async function registerErrorHook(hook: ErrorHook) {
+    ensureNotInStateMigration("register error hook");
+
     if (!getStore().supportsErrorHooks) {
         throw new Error("The Pulumi CLI does not support error hooks. Please update the Pulumi CLI");
     }

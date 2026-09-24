@@ -39,7 +39,7 @@ var gcpPolicyChoices = []policyChoice{
 	{
 		name: "roles/viewer",
 		id:   "roles/viewer",
-		desc: "read-only access (required for Insights)",
+		desc: "read-only access (required for Discovery)",
 	},
 }
 
@@ -116,7 +116,7 @@ func selectGCPProjects(
 
 // createGCPEnvironment adds the gcp-login provider into the environment
 func createGCPEnvironment(
-	ctx context.Context, setup *setupCommand, org, projectName string, r accountSetupResult,
+	ctx context.Context, setup *setupCommand, org string, r accountSetupResult,
 ) error {
 	poolID, ok := gcpResource(r.result, gcpsetup.ResourceTypeGCPWorkloadIdentityPool)
 	if !ok {
@@ -136,8 +136,9 @@ func createGCPEnvironment(
 		return fmt.Errorf("invalid provider path %q: %w", gcpLoginPath, err)
 	}
 
-	ref := setup.env.parseRef(org + "/" + escEnvName(projectName, r.account))
-	fmt.Fprintf(setup.esc().stdout, "\nConfiguring environment %s for project %s:\n", ref.String(), r.account.ID)
+	ref := setup.env.parseRef(org + "/" + setup.escEnvName(r.account))
+	fmt.Fprintf(setup.esc().stdout, "\nConfiguring environment %s for project %s:\n",
+		setup.envLink(ref), r.account.ID)
 
 	node := buildGCPLoginOIDCNode(
 		r.account.Number, poolID, providerID, serviceAccount, "", "", oidcSubjectAttributes)
@@ -201,9 +202,11 @@ func newSetupGCPCmd(setup *setupCommand) *cobra.Command {
 				return err
 			}
 
-			role, err := setup.resolvePolicy(policy, gcpPolicyChoices, yes)
-			if err != nil {
-				return err
+			// Validate --policy if provided
+			if policy != "" || yes {
+				if _, err = setup.resolvePolicy(policy, gcpPolicyChoices, yes); err != nil {
+					return err
+				}
 			}
 
 			client, err := gcpsetup.NewClientFromADC(ctx, oidcIssuer)
@@ -222,7 +225,12 @@ func newSetupGCPCmd(setup *setupCommand) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			if err := checkDuplicateEnvNames(projectName, selected); err != nil {
+			if err := setup.resolveEnvNames(projectName, selected, yes); err != nil {
+				return err
+			}
+
+			role, err := setup.resolvePolicy(policy, gcpPolicyChoices, yes)
+			if err != nil {
 				return err
 			}
 
@@ -233,7 +241,7 @@ func newSetupGCPCmd(setup *setupCommand) *cobra.Command {
 
 			fmt.Fprintf(esc.stdout, "\nAbout to configure OIDC for organization %s:\n", org)
 			for _, p := range selected {
-				ref := setup.env.parseRef(org + "/" + escEnvName(projectName, p))
+				ref := setup.env.parseRef(org + "/" + setup.escEnvName(p))
 				printSetupTarget(esc, fmt.Sprintf("project %s (%s):", p.Name, p.ID))
 				fmt.Fprintf(esc.stdout, "    grant %s\n", role)
 				fmt.Fprintf(esc.stdout, "    %s\n", setup.planEnvLine(ctx, ref, gcpLoginPath))
@@ -250,7 +258,7 @@ func newSetupGCPCmd(setup *setupCommand) *cobra.Command {
 			results := make([]accountSetupResult, 0, len(selected))
 			for _, project := range selected {
 				fmt.Fprintf(esc.stdout, "\nSetting up project %s...\n", project.ID)
-				escEnvName := escEnvName(projectName, project)
+				escEnvName := setup.escEnvName(project)
 				result, err := client.SetupOIDCInfrastructure(
 					ctx, org, orgID, project.ID, gcpOIDCServiceAccountName(orgID, escEnvName), role, escEnvName)
 				results = append(results, accountSetupResult{account: project, result: result, err: err})
@@ -267,18 +275,22 @@ func newSetupGCPCmd(setup *setupCommand) *cobra.Command {
 				if !r.succeeded() {
 					continue
 				}
-				if err := createGCPEnvironment(ctx, setup, org, projectName, r); err != nil {
+				if err := createGCPEnvironment(ctx, setup, org, r); err != nil {
 					fmt.Fprintf(esc.stderr, "  %s: %v\n", r.label(), err)
 					envErr = err
 				}
 			}
-			return envErr
+			if envErr != nil {
+				return envErr
+			}
+			setup.printSuccess("Google Cloud")
+			return nil
 		},
 	}
 
 	cmd.Flags().StringVar(&policy, "policy", "",
 		"the role granted to the service account: roles/editor (required for Deployments), "+
-			"roles/viewer (required for Insights), or any other role; prompted for when omitted")
+			"roles/viewer (required for Discovery), or any other role; prompted for when omitted")
 	cmd.Flags().StringArrayVar(&projectIDs, "project-id", nil,
 		"a GCP `project` to set up (repeatable; prompted for when omitted)")
 	cmd.Flags().StringVar(&orgName, "org", "", "the Pulumi organization to configure OIDC for")

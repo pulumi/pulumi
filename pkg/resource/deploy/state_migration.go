@@ -139,7 +139,7 @@ func (sg *stepGenerator) applyStateMigrations(
 		logStateMigrationResource(ctx, "state migration prior resource", urn, state)
 	}
 
-	callbackResult, err := runStateMigrationCallbacks(ctx, urn, migrations, serialized)
+	callbackResult, err := runStateMigrationCallbacks(ctx, urn, migrations, serialized, opts.StateMigrationSerializer)
 	if err != nil {
 		return err
 	}
@@ -183,25 +183,11 @@ func (sg *stepGenerator) applyStateMigrations(
 			urn, strings.Join(pendingURNs, ", "), urn)
 	}
 
-	resultSubtree := make([]*pkgresource.State, len(callbackResult.resultResources))
-	for i, res := range callbackResult.resultResources {
-		state, err := opts.StateMigrationSerializer.Deserialize(res)
-		if err != nil {
-			return fmt.Errorf("state migration for %s: deserializing returned state of %s: %w", urn, res.URN, err)
-		}
-		resultSubtree[i] = state
-	}
-
-	rewrittenResultSubtree, err := rewriteStateMigrationReferences(
-		resultSubtree, callbackResult.allToFinal, stateMigrationSuccessorIdentities(resultSubtree))
+	_, resultSubtree, err := deserializeStateMigrationResult(
+		urn, callbackResult.resultResources, callbackResult.allToFinal, opts.StateMigrationSerializer)
 	if err != nil {
-		return fmt.Errorf("state migration for %s: rewriting successor references: %w", urn, err)
+		return fmt.Errorf("state migration for %s: %w", urn, err)
 	}
-	if _, err := mapResourcesToPreparedRewrites(
-		urn, resultSubtree, rewrittenResultSubtree, "returned by the migration"); err != nil {
-		return err
-	}
-	resultSubtree = rewrittenResultSubtree
 	for _, state := range resultSubtree {
 		logStateMigrationResource(ctx, "state migration result resource", urn, state)
 	}

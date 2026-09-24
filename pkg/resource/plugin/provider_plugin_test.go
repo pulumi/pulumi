@@ -655,6 +655,31 @@ func TestProvider_ConstructOptions(t *testing.T) {
 				RetainOnDelete: new(true),
 			},
 		},
+		{
+			desc: "resource hooks",
+			give: ConstructOptions{
+				ResourceHooks: map[resource.HookType][]string{
+					resource.BeforeCreate: {"before-create"},
+					resource.AfterCreate:  {"after-create"},
+					resource.BeforeUpdate: {"before-update"},
+					resource.AfterUpdate:  {"after-update"},
+					resource.BeforeDelete: {"before-delete"},
+					resource.AfterDelete:  {"after-delete"},
+					resource.OnError:      {"on-error-1", "on-error-2"},
+				},
+			},
+			want: &pulumirpc.ConstructRequest{
+				ResourceHooks: &pulumirpc.ConstructRequest_ResourceHooksBinding{
+					BeforeCreate: []string{"before-create"},
+					AfterCreate:  []string{"after-create"},
+					BeforeUpdate: []string{"before-update"},
+					AfterUpdate:  []string{"after-update"},
+					BeforeDelete: []string{"before-delete"},
+					AfterDelete:  []string{"after-delete"},
+					OnError:      []string{"on-error-1", "on-error-2"},
+				},
+			},
+		},
 	}
 
 	for _, tt := range tests {

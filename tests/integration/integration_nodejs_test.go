@@ -25,7 +25,6 @@ import (
 	"regexp"
 	"runtime"
 	"strings"
-	"sync"
 	"testing"
 	"time"
 
@@ -3524,18 +3523,24 @@ func TestDebuggerAttachNodejs(t *testing.T) {
 	e.RunCommand("pulumi", "stack", "init", "debugger-test")
 	e.RunCommand("pulumi", "stack", "select", "debugger-test")
 
-	wg := sync.WaitGroup{}
-	wg.Go(func() {
-		e.RunCommand("pulumi", "preview", "--attach-debugger",
-			"--event-log", filepath.Join(e.RootPath, "debugger.log"))
-	})
+	eventLog := filepath.Join(e.RootPath, "debugger.log")
+	var previewStdout, previewStderr string
+	var previewErr error
+	previewDone := make(chan struct{})
+	go func() {
+		defer close(previewDone)
+		previewStdout, previewStderr, previewErr = e.GetCommandResults("pulumi", "preview", "--attach-debugger",
+			"--event-log", eventLog)
+	}()
 
 	// Wait for the debugging event
+	deadline := time.Now().Add(2 * time.Minute)
 	wait := 20 * time.Millisecond
 	var debugEvent *apitype.StartDebuggingEvent
+	exited := false
 outer:
-	for range 50 {
-		events, err := readUpdateEventLog(filepath.Join(e.RootPath, "debugger.log"))
+	for {
+		events, err := readUpdateEventLog(eventLog)
 		require.NoError(t, err)
 		for _, event := range events {
 			if event.StartDebuggingEvent != nil {
@@ -3543,12 +3548,28 @@ outer:
 				break outer
 			}
 		}
-		time.Sleep(wait)
-		if wait < 500*time.Millisecond {
-			wait *= 2
+		if exited || time.Now().After(deadline) {
+			break
+		}
+		select {
+		case <-previewDone:
+			exited = true
+		case <-time.After(wait):
+			if wait < 500*time.Millisecond {
+				wait *= 2
+			}
 		}
 	}
-	require.NotNil(t, debugEvent)
+	if debugEvent == nil {
+		detail := "pulumi preview is still running"
+		select {
+		case <-previewDone:
+			detail = fmt.Sprintf("pulumi preview exited early: %v\nstdout:\n%s\nstderr:\n%s",
+				previewErr, previewStdout, previewStderr)
+		default:
+		}
+		require.NotNilf(t, debugEvent, "no StartDebuggingEvent appeared in the event log; %s", detail)
+	}
 
 	// Port defaults to 9229, but if it's already in use the config will specify a different port.
 	port := 9229
@@ -3565,13 +3586,10 @@ outer:
 	require.NoError(t, ws.Close())
 
 	// Verify the program completed successfully.
-	waitDone := make(chan struct{})
-	go func() {
-		wg.Wait()
-		close(waitDone)
-	}()
 	select {
-	case <-waitDone:
+	case <-previewDone:
+		require.NoError(t, previewErr, "pulumi preview failed:\nstdout:\n%s\nstderr:\n%s",
+			previewStdout, previewStderr)
 	case <-time.After(60 * time.Second):
 		t.Fatal("timed out waiting for program to complete")
 	}

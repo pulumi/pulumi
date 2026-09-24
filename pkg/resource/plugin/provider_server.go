@@ -483,9 +483,9 @@ func (p *providerServer) Check(ctx context.Context, req *pulumirpc.CheckRequest)
 		URN:           urn,
 		Name:          req.Name,
 		Type:          tokens.Type(req.Type),
-		Olds:          state,
-		News:          inputs,
-		OldOutputs:    oldOutputs,
+		OldInputs:     resource.FromResourcePropertyMap(state),
+		NewInputs:     resource.FromResourcePropertyMap(inputs),
+		OldOutputs:    resource.FromResourcePropertyMap(oldOutputs),
 		AllowUnknowns: true,
 		RandomSeed:    req.RandomSeed,
 		Autonaming:    autonaming,
@@ -494,7 +494,7 @@ func (p *providerServer) Check(ctx context.Context, req *pulumirpc.CheckRequest)
 		return nil, err
 	}
 
-	rpcInputs, err := MarshalProperties(resp.Properties, p.marshalOptions("newInputs"))
+	rpcInputs, err := MarshalProperties(resource.ToResourcePropertyMap(resp.Properties), p.marshalOptions("newInputs"))
 	if err != nil {
 		return nil, err
 	}
@@ -547,9 +547,9 @@ func (p *providerServer) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (
 		Name:          req.Name,
 		Type:          tokens.Type(req.Type),
 		ID:            id,
-		OldInputs:     oldInputs,
-		OldOutputs:    oldOutputs,
-		NewInputs:     newInputs,
+		OldInputs:     resource.FromResourcePropertyMap(oldInputs),
+		OldOutputs:    resource.FromResourcePropertyMap(oldOutputs),
+		NewInputs:     resource.FromResourcePropertyMap(newInputs),
 		AllowUnknowns: true,
 		IgnoreChanges: req.GetIgnoreChanges(),
 	})

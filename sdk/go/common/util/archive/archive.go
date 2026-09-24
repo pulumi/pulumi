@@ -61,11 +61,15 @@ func TGZ(dir, prefixPathInsideTar string, useDefaultExcludes bool) ([]byte, erro
 	return buffer.Bytes(), nil
 }
 
-func extractFile(r *tar.Reader, header *tar.Header, dir string) error {
+func extractFile(r *tar.Reader, header *tar.Header, dir string, rename func(string) string) error {
 	// Guard against ZipSlip path traversal: ensure the resolved target stays inside dir.
 	cleanDir := filepath.Clean(dir)
-	//nolint:gosec // G305: path traversal is explicitly checked immediately below.
-	path := filepath.Join(cleanDir, header.Name)
+	relName := rename(header.Name)
+	if relName == "" {
+		return nil
+	}
+
+	path := filepath.Join(cleanDir, relName)
 	if path != cleanDir && !strings.HasPrefix(path, cleanDir+string(os.PathSeparator)) {
 		return fmt.Errorf("tar entry %q escapes destination directory", header.Name)
 	}
@@ -139,6 +143,14 @@ func extractFile(r *tar.Reader, header *tar.Header, dir string) error {
 
 // ExtractTGZ uncompresses a .tar.gz/.tgz file into a specific directory.
 func ExtractTGZ(r io.Reader, dir string) error {
+	return ExtractTGZWithRemap(r, dir, func(path string) string { return path })
+}
+
+// ExtractTGZ uncompresses a .tar.gz/.tgz file into a specific directory.
+//
+// rename is called on each file header and can be used to rename files during
+// unpacking. If rename returns "", the file will be dropped.
+func ExtractTGZWithRemap(r io.Reader, dir string, rename func(path string) string) error {
 	// Convert to absolute path so that path traversal checks in extractFile are reliable.
 	absDir, err := filepath.Abs(dir)
 	if err != nil {
@@ -160,7 +172,7 @@ func ExtractTGZ(r io.Reader, dir string) error {
 			return fmt.Errorf("extracting: %w", err)
 		}
 
-		if err = extractFile(tr, header, absDir); err != nil {
+		if err = extractFile(tr, header, absDir, rename); err != nil {
 			return err
 		}
 	}

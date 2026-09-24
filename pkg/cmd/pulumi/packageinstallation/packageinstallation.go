@@ -100,7 +100,7 @@ type Context interface {
 	) (plugin.Provider, error)
 }
 
-type MarkInstallationDone = func(success bool)
+type MarkInstallationDone = func(success bool) error
 
 // A State represents the work already performed during an install.
 //
@@ -196,16 +196,16 @@ func InstallPluginSet(
 				continue
 			}
 
-			installed, version, err := packageresolution.IsPluginInstalled(ctx,
+			installState, version, err := packageresolution.GetInstallState(ctx,
 				resolved.PluginDescriptor, ws, options.Options)
 			if err != nil {
 				return err
 			}
-			if installed && version != nil {
+			if installState.Available() && version != nil {
 				resolved.Version = version
 			}
 			err = enqueueResolvedProjectDescriptor(ctx, state,
-				resolved.PluginDescriptor, new(runBundle), root, installed)
+				resolved.PluginDescriptor, new(runBundle), root, installState)
 			if err != nil {
 				return err
 			}
@@ -622,7 +622,10 @@ func ensureProjectDir(
 			runBundleOut.info.name = name
 			// A binary was found, so this plugin is done.
 			if downloadCleanup != nil {
-				downloadCleanup.f(true)
+				if err := downloadCleanup.f(true); err != nil {
+					return nil, fmt.Errorf("failed to complete download for %q: %w",
+						name, err)
+				}
 				downloadCleanup.called = true
 			}
 			return nil, nil
@@ -637,7 +640,8 @@ func ensureProjectDir(
 
 func enqueueResolvedProjectDescriptor(
 	ctx context.Context, p state,
-	descriptor workspace.PluginDescriptor, runBundleOut *runBundle, parent pdag.Node, installed bool,
+	descriptor workspace.PluginDescriptor, runBundleOut *runBundle, parent pdag.Node,
+	installState pluginstorage.InstallState,
 ) error {
 	specFinished, specReady, isDuplicate, err := newSpecNode(
 		hashPluginSpec(descriptor), descriptor, runBundleOut, p, parent)
@@ -648,7 +652,14 @@ func enqueueResolvedProjectDescriptor(
 		return nil
 	}
 
-	if installed {
+	// An attached plugin already runs, so it has nothing to download and no directory in
+	// the plugin cache to install from.
+	if installState == pluginstorage.PluginAttached {
+		specReady()
+		return nil
+	}
+
+	if installState == pluginstorage.PluginInstalled {
 		defer specReady()
 		pluginDir, err := p.ws.GetPluginPath(ctx, descriptor)
 		if err != nil {
@@ -926,7 +937,7 @@ func (step resolveStep) run(ctx context.Context, p state) error {
 		}
 
 		return enqueueResolvedProjectDescriptor(ctx, p, result.Pkg.PluginDescriptor,
-			step.runBundleOut, step.parent, result.InstalledInWorkspace)
+			step.runBundleOut, step.parent, result.InstallState)
 
 	case packageresolution.PluginResolution:
 		*step.resolvedSpec = result.Spec
@@ -939,7 +950,7 @@ func (step resolveStep) run(ctx context.Context, p state) error {
 		}
 
 		return enqueueResolvedProjectDescriptor(ctx, p, result.Pkg.PluginDescriptor,
-			step.runBundleOut, step.parent, result.InstalledInWorkspace)
+			step.runBundleOut, step.parent, result.InstallState)
 	default:
 		panic(fmt.Sprintf("unexpected package resolution result of type %T: %[1]s", result))
 	}
@@ -956,7 +967,7 @@ type downloadStep struct {
 }
 
 type downloadCleanup struct {
-	f      func(success bool)
+	f      MarkInstallationDone
 	called bool
 }
 
@@ -974,7 +985,7 @@ func (step downloadStep) run(ctx context.Context, p state) error {
 		if step.downloadCleanup.called {
 			return
 		}
-		step.downloadCleanup.f(false)
+		contract.IgnoreError(step.downloadCleanup.f(false))
 	})
 	p.cleanupM.Unlock()
 
@@ -995,7 +1006,7 @@ func (step installStep) run(ctx context.Context, p state) error {
 	// cleanup function.
 	if step.downloadCleanup != nil {
 		step.downloadCleanup.called = true
-		step.downloadCleanup.f(err == nil)
+		err = errors.Join(step.downloadCleanup.f(err == nil), err)
 	}
 	return err
 }
@@ -1040,7 +1051,7 @@ func (step gatherPackageDependenciesStep) run(ctx context.Context, p state) erro
 		}
 		defer ready()
 
-		if p.ws.HasPlugin(ctx, pkg.PluginDescriptor) {
+		if p.ws.HasPlugin(ctx, pkg.PluginDescriptor).Available() {
 			continue
 		}
 

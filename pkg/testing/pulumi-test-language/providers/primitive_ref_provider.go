@@ -153,6 +153,7 @@ func (p *PrimitiveRefProvider) CheckConfig(
 func (p *PrimitiveRefProvider) Check(
 	_ context.Context, req plugin.CheckRequest,
 ) (plugin.CheckResponse, error) {
+	news := resource.ToResourcePropertyMap(req.NewInputs)
 	if req.URN.Type() != "primitive-ref:index:Resource" {
 		return plugin.CheckResponse{
 			Failures: makeCheckFailure("", fmt.Sprintf("invalid URN type: %s", req.URN.Type())),
@@ -177,18 +178,18 @@ func (p *PrimitiveRefProvider) Check(
 		return nil
 	}
 
-	check := assertField(req.News, "data", "object", resource.PropertyValue.IsObject)
+	check := assertField(news, "data", "object", resource.PropertyValue.IsObject)
 	if check != nil {
 		return *check, nil
 	}
 
-	if len(req.News) != 1 {
+	if len(news) != 1 {
 		return plugin.CheckResponse{
-			Failures: makeCheckFailure("", fmt.Sprintf("too many properties: %v", req.News)),
+			Failures: makeCheckFailure("", fmt.Sprintf("too many properties: %v", news)),
 		}, nil
 	}
 
-	data := req.News["data"].ObjectValue()
+	data := news["data"].ObjectValue()
 
 	// Expect all required properties
 	check = assertField(data, "boolean", "boolean", resource.PropertyValue.IsBool)
@@ -236,7 +237,7 @@ func (p *PrimitiveRefProvider) Check(
 		}, nil
 	}
 
-	return plugin.CheckResponse{Properties: req.News}, nil
+	return plugin.CheckResponse{Properties: resource.FromResourcePropertyMap(news)}, nil
 }
 
 func (p *PrimitiveRefProvider) Create(

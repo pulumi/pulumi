@@ -102,8 +102,10 @@ func (NopPluginManager) IsExternalURL(ctx context.Context, source string) bool {
 	return workspace.IsExternalURL(source)
 }
 
-func (NopPluginManager) HasPlugin(ctx context.Context, spec workspace.PluginDescriptor) bool {
-	return true
+func (NopPluginManager) HasPlugin(
+	ctx context.Context, spec workspace.PluginDescriptor,
+) pluginstorage.InstallState {
+	return pluginstorage.PluginInstalled
 }
 
 func (NopPluginManager) HasPluginGTE(

@@ -237,7 +237,8 @@ func (p *NestedObjectProvider) CheckConfig(
 func (p *NestedObjectProvider) Check(
 	_ context.Context, req plugin.CheckRequest,
 ) (plugin.CheckResponse, error) {
-	return plugin.CheckResponse{Properties: req.News}, nil
+	news := resource.ToResourcePropertyMap(req.NewInputs)
+	return plugin.CheckResponse{Properties: resource.FromResourcePropertyMap(news)}, nil
 }
 
 func (p *NestedObjectProvider) Create(

@@ -136,7 +136,7 @@ func (prov *Provider) Configure(ctx context.Context, req plugin.ConfigureRequest
 func (prov *Provider) Check(ctx context.Context, req plugin.CheckRequest) (plugin.CheckResponse, error) {
 	contract.Requiref(req.RandomSeed != nil, "randomSeed", "must not be nil")
 	if prov.CheckF == nil {
-		return plugin.CheckResponse{Properties: req.News}, nil
+		return plugin.CheckResponse{Properties: req.NewInputs}, nil
 	}
 	return prov.CheckF(ctx, req)
 }

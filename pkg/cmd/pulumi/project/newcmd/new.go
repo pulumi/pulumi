@@ -345,8 +345,8 @@ func runNew(ctx context.Context, args newArgs) error {
 
 	// Create the stack, if needed.
 	var createdStackName string
+	sink := diag.DefaultSink(args.stderr, args.stderr, diag.FormatOptions{Color: opts.Color})
 	if !args.generateOnly && s == nil {
-		sink := diag.DefaultSink(args.stderr, args.stderr, diag.FormatOptions{Color: opts.Color})
 		if s, createdStackName, err = confirmed.createStack(ctx, sink, ws, b, root, args, opts); err != nil {
 			return err
 		}
@@ -429,6 +429,7 @@ func runNew(ctx context.Context, args newArgs) error {
 	}
 
 	// Install dependencies, but only if we have a runtime to install with.
+	var packages []workspace.PackageDescriptor
 	if !args.generateOnly && proj.Runtime.Name() != "" {
 		registry := cmdCmd.NewDefaultRegistry(
 			ctx, cmdBackend.DefaultLoginManager, pkgWorkspace.Instance, proj, cmdutil.Diag(), env.Global(),
@@ -441,8 +442,9 @@ func runNew(ctx context.Context, args newArgs) error {
 		if err := InstallDependencies(pluginCtx, &proj.Runtime, entryPoint); err != nil {
 			return err
 		}
-		if err := InstallRequiredPackages(ctx, pluginCtx, proj, root, entryPoint,
-			continuation, -1, false, registry, args.stderr, args.stderr); err != nil {
+		packages, err = InstallRequiredPackages(ctx, pluginCtx, proj, root, entryPoint,
+			continuation, -1, false, registry, args.stderr, args.stderr)
+		if err != nil {
 			return err
 		}
 	}
@@ -453,6 +455,8 @@ func runNew(ctx context.Context, args newArgs) error {
 		)+
 			" "+cmdutil.EmojiOr("✨", ""))
 	fmt.Fprintln(args.stdout)
+
+	preflightCloudCredentials(ctx, args, sink, pluginHost, proj, root, s, packages, opts)
 
 	if confirmed != nil {
 		// Any other stack announced itself as it was created, or already existed.

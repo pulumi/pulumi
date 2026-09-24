@@ -1,0 +1,1 @@
+HasPlugin{PluginDescriptor{Name:"attached-provider", Kind:"resource"}} -> {pluginstorage.PluginAttached}

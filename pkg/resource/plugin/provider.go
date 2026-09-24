@@ -258,17 +258,19 @@ type CheckRequest struct {
 	URN  resource.URN
 	Name string
 	Type tokens.Type
-	// TODO Change to (State, Input)
-	Olds, News resource.PropertyMap
-	// OldOutputs is the previously persisted outputs of the resource, if any.
-	OldOutputs    resource.PropertyMap
+	// NewInputs are the new inputs for the resource from the program.
+	NewInputs property.Map
+	// OldInputs are the previously persisted inputs of the resource, if any.
+	OldInputs property.Map
+	// OldOutputs are the previously persisted outputs of the resource, if any.
+	OldOutputs    property.Map
 	AllowUnknowns bool
 	RandomSeed    []byte
 	Autonaming    *AutonamingOptions
 }
 
 type CheckResponse struct {
-	Properties resource.PropertyMap
+	Properties property.Map
 	Failures   []CheckFailure
 }
 
@@ -277,10 +279,14 @@ type DiffRequest struct {
 	Name string
 	Type tokens.Type
 	ID   resource.ID
-	// TODO Change to (OldInputs, OldState, NewInputs)
-	OldInputs, OldOutputs, NewInputs resource.PropertyMap
-	AllowUnknowns                    bool
-	IgnoreChanges                    []string
+	// NewInputs are the new inputs for the resource from the program.
+	NewInputs property.Map
+	// OldInputs are the previously persisted inputs of the resource, if any.
+	OldInputs property.Map
+	// OldOutputs are the previously persisted outputs of the resource, if any.
+	OldOutputs    property.Map
+	AllowUnknowns bool
+	IgnoreChanges []string
 }
 
 type DiffResponse = DiffResult

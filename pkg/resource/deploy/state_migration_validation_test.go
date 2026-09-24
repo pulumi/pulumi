@@ -24,6 +24,99 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 )
 
+func TestStateMigrationSplitValidation(t *testing.T) {
+	t.Parallel()
+	old := apitype.ResourceV3{
+		URN:    "urn:pulumi:test::test::pkgA:m:Component$pkgA:m:Resource::resource",
+		Custom: true, ID: "resource-id", Provider: "provider",
+	}
+	additional := old
+	additional.URN = "urn:pulumi:test::test::pkgA:m:Component$pkgA:m:Settings::settings"
+	for _, tt := range []struct {
+		name   string
+		change func(*apitype.ResourceV3)
+	}{
+		{"ID", func(s *apitype.ResourceV3) { s.ID = "different" }},
+		{"provider", func(s *apitype.ResourceV3) { s.Provider = "different" }},
+		{"extension", func(s *apitype.ResourceV3) { s.ExtensionRef = "different" }},
+		{"ownership", func(s *apitype.ResourceV3) { s.External = true }},
+		{"pending replacement", func(s *apitype.ResourceV3) { s.PendingReplacement = true }},
+		{"taint", func(s *apitype.ResourceV3) { s.Taint = true }},
+		{"protection", func(s *apitype.ResourceV3) { s.Protect = true }},
+		{"retention", func(s *apitype.ResourceV3) { s.RetainOnDelete = true }},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			changed := additional
+			tt.change(&changed)
+			require.Error(t, validateStateMigrationManagedIdentity(old.URN,
+				[]apitype.ResourceV3{old}, []apitype.ResourceV3{old, changed}, nil))
+		})
+	}
+	t.Run("same identity", func(t *testing.T) {
+		t.Parallel()
+		require.NoError(t, validateStateMigrationManagedIdentity(old.URN,
+			[]apitype.ResourceV3{old}, []apitype.ResourceV3{old, additional}, nil))
+	})
+	for _, tt := range []struct {
+		name   string
+		change func(*apitype.ResourceV3)
+	}{
+		{"ownership", func(s *apitype.ResourceV3) { s.External = true }},
+		{"PendingReplacement", func(s *apitype.ResourceV3) { s.PendingReplacement = true }},
+		{"Taint", func(s *apitype.ResourceV3) { s.Taint = true }},
+	} {
+		t.Run("conflicting matches/"+tt.name, func(t *testing.T) {
+			t.Parallel()
+			other := old
+			other.URN = "urn:pulumi:test::test::pkgA:m:Component$pkgA:m:OtherSettings::other-settings"
+			other.Protect, other.RetainOnDelete = true, true
+			tt.change(&other)
+			for _, sources := range [][]apitype.ResourceV3{{old, other}, {other, old}} {
+				for _, useOtherFlags := range []bool{false, true} {
+					target := additional
+					if useOtherFlags {
+						tt.change(&target)
+						target.Protect, target.RetainOnDelete = true, true
+					}
+					require.ErrorContains(t, validateStateMigrationManagedIdentity(old.URN, sources,
+						[]apitype.ResourceV3{old, other, target}, nil), "changes "+tt.name)
+				}
+			}
+			// Matching non-default flags are valid when all candidates agree.
+			target := additional
+			tt.change(&target)
+			target.Protect, target.RetainOnDelete = true, true
+			require.NoError(t, validateStateMigrationManagedIdentity(old.URN,
+				[]apitype.ResourceV3{other}, []apitype.ResourceV3{other, target}, nil))
+		})
+	}
+	t.Run("empty identity", func(t *testing.T) {
+		t.Parallel()
+		source, target := old, additional
+		source.ID, target.ID = "", ""
+		require.ErrorContains(t, validateStateMigrationManagedIdentity(old.URN,
+			[]apitype.ResourceV3{source}, []apitype.ResourceV3{source, target}, nil), "without a managed custom predecessor")
+	})
+	t.Run("all matching sources contribute safety flags", func(t *testing.T) {
+		t.Parallel()
+		other := old
+		other.URN = "urn:pulumi:test::test::pkgA:m:Component$pkgA:m:OtherSettings::other-settings"
+		other.Protect, other.RetainOnDelete = true, true
+		for _, sources := range [][]apitype.ResourceV3{{old, other}, {other, old}} {
+			require.ErrorContains(t, validateStateMigrationManagedIdentity(old.URN, sources,
+				[]apitype.ResourceV3{old, other, additional}, nil), "changes Protect")
+			target := additional
+			target.Protect = true
+			require.ErrorContains(t, validateStateMigrationManagedIdentity(old.URN, sources,
+				[]apitype.ResourceV3{old, other, target}, nil), "changes RetainOnDelete")
+			target.RetainOnDelete = true
+			require.NoError(t, validateStateMigrationManagedIdentity(old.URN, sources,
+				[]apitype.ResourceV3{old, other, target}, nil))
+		}
+	})
+}
+
 func TestValidateStateMigrationContext(t *testing.T) {
 	t.Parallel()
 

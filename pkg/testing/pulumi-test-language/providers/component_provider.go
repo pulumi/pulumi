@@ -356,8 +356,9 @@ func (p *ComponentProvider) Check(
 	_ context.Context,
 	req plugin.CheckRequest,
 ) (plugin.CheckResponse, error) {
+	news := resource.ToResourcePropertyMap(req.NewInputs)
 	if req.URN.Type() == "component:index:Custom" {
-		value, ok := req.News["value"]
+		value, ok := news["value"]
 		if !ok {
 			return plugin.CheckResponse{
 				Failures: makeCheckFailure("value", "missing value"),
@@ -370,13 +371,13 @@ func (p *ComponentProvider) Check(
 			}, nil
 		}
 
-		if len(req.News) != 1 {
+		if len(news) != 1 {
 			return plugin.CheckResponse{
-				Failures: makeCheckFailure("", fmt.Sprintf("too many properties: %v", req.News)),
+				Failures: makeCheckFailure("", fmt.Sprintf("too many properties: %v", news)),
 			}, nil
 		}
 
-		return plugin.CheckResponse{Properties: req.News}, nil
+		return plugin.CheckResponse{Properties: resource.FromResourcePropertyMap(news)}, nil
 	}
 
 	return plugin.CheckResponse{

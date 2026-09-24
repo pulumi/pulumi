@@ -111,13 +111,11 @@ class _ResultEnumTypeWrapper(google.protobuf.internal.enum_type_wrapper._EnumTyp
     DESCRIPTOR: google.protobuf.descriptor.EnumDescriptor
     SUCCESS: _Result.ValueType  # 0
     FAIL: _Result.ValueType  # 1
-    SKIP: _Result.ValueType  # 2
 
 class Result(_Result, metaclass=_ResultEnumTypeWrapper): ...
 
 SUCCESS: Result.ValueType  # 0
 FAIL: Result.ValueType  # 1
-SKIP: Result.ValueType  # 2
 global___Result = Result
 
 @typing.final
@@ -358,8 +356,14 @@ class ReadResourceResponse(google.protobuf.message.Message):
 
     URN_FIELD_NUMBER: builtins.int
     PROPERTIES_FIELD_NUMBER: builtins.int
+    RESULT_FIELD_NUMBER: builtins.int
+    UNKNOWN_FIELD_NUMBER: builtins.int
     urn: builtins.str
     """the URN for this resource."""
+    result: global___Result.ValueType
+    """the reason, whether the read was successful or failed."""
+    unknown: builtins.bool
+    """true if the result of the read is unknown, e.g. because the read was skipped as part of a --continue-on-error run; result is still SUCCESS and SDKs should resolve outputs as unknown."""
     @property
     def properties(self) -> google.protobuf.struct_pb2.Struct:
         """the state of the resource read from the live environment."""
@@ -369,9 +373,11 @@ class ReadResourceResponse(google.protobuf.message.Message):
         *,
         urn: builtins.str = ...,
         properties: google.protobuf.struct_pb2.Struct | None = ...,
+        result: global___Result.ValueType = ...,
+        unknown: builtins.bool = ...,
     ) -> None: ...
     def HasField(self, field_name: typing.Literal["properties", b"properties"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing.Literal["properties", b"properties", "urn", b"urn"]) -> None: ...
+    def ClearField(self, field_name: typing.Literal["properties", b"properties", "result", b"result", "unknown", b"unknown", "urn", b"urn"]) -> None: ...
 
 global___ReadResourceResponse = ReadResourceResponse
 

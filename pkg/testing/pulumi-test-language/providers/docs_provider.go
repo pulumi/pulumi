@@ -211,6 +211,7 @@ func (p *DocsProvider) CheckConfig(
 func (p *DocsProvider) Check(
 	_ context.Context, req plugin.CheckRequest,
 ) (plugin.CheckResponse, error) {
+	news := resource.ToResourcePropertyMap(req.NewInputs)
 	// URN should be of the form "docs:index:Resource"
 	if req.URN.Type() != "docs:index:Resource" {
 		return plugin.CheckResponse{
@@ -221,7 +222,7 @@ func (p *DocsProvider) Check(
 	assertField := func(key resource.PropertyKey, typ string,
 		assertType func(resource.PropertyValue) bool,
 	) *plugin.CheckResponse {
-		v, ok := req.News[key]
+		v, ok := news[key]
 		if !ok {
 			return &plugin.CheckResponse{
 				Failures: makeCheckFailure(key, "missing value"),
@@ -242,19 +243,19 @@ func (p *DocsProvider) Check(
 		return *check, nil
 	}
 
-	if v, ok := req.News["externalEnum"]; ok && !v.IsString() {
+	if v, ok := news["externalEnum"]; ok && !v.IsString() {
 		return plugin.CheckResponse{
 			Failures: makeCheckFailure("externalEnum", "value is not a string"),
 		}, nil
 	}
 
-	if len(req.News) != 1 && len(req.News) != 2 {
+	if len(news) != 1 && len(news) != 2 {
 		return plugin.CheckResponse{
-			Failures: makeCheckFailure("", fmt.Sprintf("too many properties: %v", req.News)),
+			Failures: makeCheckFailure("", fmt.Sprintf("too many properties: %v", news)),
 		}, nil
 	}
 
-	return plugin.CheckResponse{Properties: req.News}, nil
+	return plugin.CheckResponse{Properties: resource.FromResourcePropertyMap(news)}, nil
 }
 
 func (p *DocsProvider) Create(

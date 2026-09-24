@@ -485,19 +485,20 @@ func (p *SimpleInvokeProvider) Invoke(
 func (p *SimpleInvokeProvider) Check(
 	_ context.Context, req plugin.CheckRequest,
 ) (plugin.CheckResponse, error) {
+	news := resource.ToResourcePropertyMap(req.NewInputs)
 	if req.URN.Type() != "simple-invoke:index:StringResource" {
 		return plugin.CheckResponse{
 			Failures: makeCheckFailure("", fmt.Sprintf("invalid URN type: %s", req.URN.Type())),
 		}, nil
 	}
 
-	if len(req.News) != 1 {
+	if len(news) != 1 {
 		return plugin.CheckResponse{
-			Failures: makeCheckFailure("", fmt.Sprintf("expected exactly one property: %v", req.News)),
+			Failures: makeCheckFailure("", fmt.Sprintf("expected exactly one property: %v", news)),
 		}, nil
 	}
 
-	return plugin.CheckResponse{Properties: req.News}, nil
+	return plugin.CheckResponse{Properties: resource.FromResourcePropertyMap(news)}, nil
 }
 
 func (p *SimpleInvokeProvider) Create(

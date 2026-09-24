@@ -1,0 +1,4 @@
+component: engine
+kind: fix
+body: Report `Unknown=true` on the `ReadResourceResponse` when a Read is skipped because one of its dependencies failed during a `--continue-on-error` update, so SDKs can propagate unknowns to dependents rather than treating empty outputs as real
+time: 2026-09-22T00:00:00Z

@@ -677,7 +677,7 @@ func destroySpecificTargets(
 					_ context.Context,
 					req plugin.DiffRequest,
 				) (plugin.DiffResult, error) {
-					if !req.OldOutputs["A"].DeepEquals(req.NewInputs["A"]) {
+					if !req.OldOutputs.Get("A").Equals(req.NewInputs.Get("A")) {
 						return plugin.DiffResult{ReplaceKeys: []resource.PropertyKey{"A"}}, nil
 					}
 					return plugin.DiffResult{}, nil
@@ -1816,7 +1816,7 @@ func destroySpecificTargetsWithChildren(
 					return plugin.DiffResult{}, nil
 				},
 				DiffF: func(_ context.Context, req plugin.DiffRequest) (plugin.DiffResult, error) {
-					if !req.OldOutputs["A"].DeepEquals(req.NewInputs["A"]) {
+					if !req.OldOutputs.Get("A").Equals(req.NewInputs.Get("A")) {
 						return plugin.DiffResult{ReplaceKeys: []resource.PropertyKey{"A"}}, nil
 					}
 					return plugin.DiffResult{}, nil
@@ -1966,8 +1966,9 @@ func TestEnsureUntargetedSame(t *testing.T) {
 					req plugin.CheckRequest,
 				) (plugin.CheckResponse, error) {
 					// Pulumi GCP provider alters inputs during Check.
-					req.News["__defaults"] = resource.NewProperty("exists")
-					return plugin.CheckResponse{Properties: req.News}, nil
+					newInputs := resource.ToResourcePropertyMap(req.NewInputs)
+					newInputs["__defaults"] = resource.NewProperty("exists")
+					return plugin.CheckResponse{Properties: resource.FromResourcePropertyMap(newInputs)}, nil
 				},
 			}, nil
 		}),
@@ -5134,7 +5135,7 @@ func TestTargetedUpdateAppliesNewInputs_Issue24303(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				DiffF: func(_ context.Context, req plugin.DiffRequest) (plugin.DiffResult, error) {
-					if !req.OldInputs["value"].DeepEquals(req.NewInputs["value"]) {
+					if !req.OldInputs.Get("value").Equals(req.NewInputs.Get("value")) {
 						return plugin.DiffResult{Changes: plugin.DiffSome}, nil
 					}
 					return plugin.DiffResult{Changes: plugin.DiffNone}, nil
