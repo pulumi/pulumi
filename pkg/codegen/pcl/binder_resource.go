@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"maps"
 	"slices"
+	"strings"
 
 	mapset "github.com/deckarep/golang-set/v2"
 
@@ -560,10 +561,26 @@ func (b *binder) bindAndCollectBaseResourceBlock(
 	return block, inputs, options, logicalName, diagnostics
 }
 
+// propertyValueHint names the values a property admits when its schema restricts them to a
+// constant or to the members of an enum.
+func propertyValueHint(property *schema.Property) string {
+	if property.ConstValue != nil {
+		return fmt.Sprintf("; the attribute must be the constant %#v", property.ConstValue)
+	}
+	if enum, ok := codegen.UnwrapType(property.Type).(*schema.EnumType); ok {
+		values := make([]string, len(enum.Elements))
+		for i, element := range enum.Elements {
+			values[i] = fmt.Sprintf("%#v", element.Value)
+		}
+		return "; the attribute must be one of " + strings.Join(values, ", ")
+	}
+	return ""
+}
+
 func (b *binder) typecheckBaseResourceAttributes(
 	inputType model.Type,
 	inputs []*model.Attribute,
-	resourceProperties map[string]schema.Type,
+	resourceProperties map[string]*schema.Property,
 	token string,
 	block *model.Block,
 ) hcl.Diagnostics {
@@ -587,15 +604,16 @@ func (b *binder) typecheckBaseResourceAttributes(
 		if typ, ok := objectType.Properties[attr.Name]; ok {
 			conversion := typ.ConversionFrom(attr.Value.Type())
 			if !conversion.Exists() {
-				if propertyType, ok := resourceProperties[attr.Name]; ok {
+				if property, ok := resourceProperties[attr.Name]; ok {
 					attributeRange := attr.Value.SyntaxNode().Range()
 					diag(&hcl.Diagnostic{
 						Severity: hcl.DiagError,
 						Subject:  &attributeRange,
-						Detail: fmt.Sprintf("Cannot assign value %s to attribute of type %q for resource %q",
+						Detail: fmt.Sprintf("Cannot assign value %s to attribute of type %q for resource %q%s",
 							attr.Value.Type().Pretty().String(),
-							propertyType.String(),
-							token),
+							property.Type.String(),
+							token,
+							propertyValueHint(property)),
 					})
 				}
 			}
@@ -917,10 +935,10 @@ func (b *binder) bindResourceBody(node *Resource) hcl.Diagnostics {
 		node.logicalName = logicalName
 	}
 
-	resourceProperties := make(map[string]schema.Type)
+	resourceProperties := make(map[string]*schema.Property)
 	if node.Schema != nil {
 		for _, property := range node.Schema.InputProperties {
-			resourceProperties[property.Name] = property.Type
+			resourceProperties[property.Name] = property
 		}
 	}
 
