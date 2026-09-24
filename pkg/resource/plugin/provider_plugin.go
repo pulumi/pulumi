@@ -253,7 +253,6 @@ func NewProvider(host Host, ctx *Context, spec workspace.PluginDescriptor,
 			if pkg == tokens.Package(nodejsDynamicProviderPackage) {
 				// The Node.js SDK uses PULUMI_NODEJS_PROJECT to set the project name.
 				// Eventually, we should standardize on PULUMI_PROJECT for all SDKs.
-				// Also see `constructEnv` in pkg/resource/plugin/analyzer_plugin.go
 				optionsStore["PULUMI_NODEJS_PROJECT"] = projectName.String()
 			}
 			optionsStore["PULUMI_PROJECT"] = projectName.String()
