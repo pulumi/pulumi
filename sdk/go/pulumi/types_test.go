@@ -1114,11 +1114,71 @@ func TestJSONMarshalNested(t *testing.T) {
 	}()
 	json := JSONMarshal(out)
 	v, known, secret, deps, err := await(json)
-	assert.EqualError(t, err, "json: error calling MarshalJSON for type *pulumi.AnyOutput: outputs can not be marshaled to JSON")
+	require.NoError(t, err)
 	assert.True(t, known)
 	assert.False(t, secret)
 	assert.Nil(t, deps)
+	assert.Equal(t, "[0,1]", v.(string))
+}
+
+// TestJSONMarshalNestedInMap covers https://github.com/pulumi/pulumi/issues/12460: JSONMarshal must
+// support Outputs nested inside plain Go containers (maps, slices, structs, pointers), not just at
+// the top level.
+func TestJSONMarshalNestedInMap(t *testing.T) {
+	t.Parallel()
+
+	name, resolveName, _ := NewOutput()
+	go func() {
+		resolveName("hello")
+	}()
+
+	json := JSONMarshal(map[string]any{"key": name})
+	v, known, secret, deps, err := await(json)
+	require.NoError(t, err)
+	assert.True(t, known)
+	assert.False(t, secret)
+	assert.Nil(t, deps)
+	assert.Equal(t, `{"key":"hello"}`, v.(string))
+}
+
+// TestJSONMarshalNestedUnknown covers the unknown (preview-time) counterpart of
+// TestJSONMarshalNestedInMap: an unknown Output nested inside a plain Go container should make the
+// overall result unknown, not error.
+func TestJSONMarshalNestedUnknown(t *testing.T) {
+	t.Parallel()
+
+	unk := UnsafeUnknownOutput(nil)
+
+	json := JSONMarshal(map[string]any{"key": unk})
+	v, known, secret, deps, err := await(json)
+	require.NoError(t, err)
+	assert.False(t, known)
+	assert.False(t, secret)
+	assert.Nil(t, deps)
 	assert.Nil(t, v)
+}
+
+// TestJSONMarshalOutputSlice covers a slice whose *static* element type is the Output interface
+// itself (as opposed to `any`), which requires widening the slice's element type during marshaling.
+func TestJSONMarshalOutputSlice(t *testing.T) {
+	t.Parallel()
+
+	a, resolvea, _ := NewOutput()
+	go func() {
+		resolvea(0)
+	}()
+	b, resolveb, _ := NewOutput()
+	go func() {
+		resolveb(1)
+	}()
+
+	json := JSONMarshal([]Output{a, b})
+	v, known, secret, deps, err := await(json)
+	require.NoError(t, err)
+	assert.True(t, known)
+	assert.False(t, secret)
+	assert.Nil(t, deps)
+	assert.Equal(t, "[0,1]", v.(string))
 }
 
 func TestJSONUnmarshalBasic(t *testing.T) {
