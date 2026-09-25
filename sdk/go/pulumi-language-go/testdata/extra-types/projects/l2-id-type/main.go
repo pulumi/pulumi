@@ -78,7 +78,7 @@ func main() {
 		}
 		ctx.Export("ids", pulumi.IDMap(idMap))
 		ctx.Export("base64", sink2.ID().ApplyT(func(id pulumi.ID) (pulumi.String, error) {
-			return pulumi.String(base64.StdEncoding.EncodeToString([]byte(pulumi.String(id)))), nil
+			return pulumi.String(base64.StdEncoding.EncodeToString([]byte(id))), nil
 		}).(pulumi.StringOutput))
 		return nil
 	})

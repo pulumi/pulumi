@@ -1,0 +1,4 @@
+component: pcl
+kind: fix
+body: Order the members of a union type by a fixed structural order rather than by their printed form, so that a recursive object type prints all of its properties and diagnostics list union members consistently
+time: 2026-09-25T13:36:36.09509+02:00

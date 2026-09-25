@@ -304,6 +304,12 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 			to = cns.Type
 		}
 		fromType := from.Type()
+		// An optional source converts as its element does: LowerConversion picked the member of the
+		// destination for the element, so the none member must not force a cast, as in the other
+		// generators.
+		if model.IsOptionalType(fromType) {
+			fromType = pcl.UnwrapOption(fromType)
+		}
 		isFromOutput, _ := model.ContainsEventuals(fromType)
 		// A resource reference is a plain value whose properties are outputs. It must not be cast
 		// as if the reference itself were an output.
