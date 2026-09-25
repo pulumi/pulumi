@@ -22,9 +22,10 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"maps"
 	"os"
 	"path/filepath"
-	"sort"
+	"slices"
 	"strings"
 
 	"github.com/hashicorp/hcl/v2"
@@ -902,31 +903,46 @@ func (ectx *EvalContext) builtinFunctions() map[string]function.Function {
 				Type: cty.DynamicPseudoType,
 			},
 		},
-		Type: function.StaticReturnType(cty.List(cty.Object(map[string]cty.Type{
-			"key":   cty.String,
-			"value": cty.DynamicPseudoType,
-		}))),
+		Type: func(args []cty.Value) (cty.Type, error) {
+			entryType := func(valueType cty.Type) cty.Type {
+				return cty.Object(map[string]cty.Type{"key": cty.String, "value": valueType})
+			}
+			collection := args[0].Type()
+			switch {
+			case collection.IsMapType():
+				return cty.List(entryType(collection.ElementType())), nil
+			case collection.IsObjectType():
+				attributes := collection.AttributeTypes()
+				types := make([]cty.Type, 0, len(attributes))
+				for _, k := range slices.Sorted(maps.Keys(attributes)) {
+					types = append(types, entryType(attributes[k]))
+				}
+				if len(types) == 0 {
+					return cty.List(entryType(cty.DynamicPseudoType)), nil
+				}
+				for _, t := range types[1:] {
+					if !t.Equals(types[0]) {
+						return cty.Tuple(types), nil
+					}
+				}
+				return cty.List(types[0]), nil
+			}
+			return cty.NilType, fmt.Errorf("entries argument must be a collection, was %s", collection.FriendlyName())
+		},
 		Impl: func(args []cty.Value, retType cty.Type) (cty.Value, error) {
-			if len(args) != 1 {
-				return cty.NilVal, errors.New("entries requires a collection argument")
-			}
-			if !args[0].Type().IsMapType() && !args[0].Type().IsObjectType() {
-				return cty.NilVal, fmt.Errorf("entries argument must be a collection, was %s", args[0].Type().FriendlyName())
-			}
-			obj := args[0]
-			valueMap := obj.AsValueMap()
-			keys := make([]string, 0, len(valueMap))
-			for k := range valueMap {
-				keys = append(keys, k)
-			}
-			sort.Strings(keys)
-			var entries []cty.Value
-			for _, k := range keys {
-				entry := cty.ObjectVal(map[string]cty.Value{
+			valueMap := args[0].AsValueMap()
+			entries := make([]cty.Value, 0, len(valueMap))
+			for _, k := range slices.Sorted(maps.Keys(valueMap)) {
+				entries = append(entries, cty.ObjectVal(map[string]cty.Value{
 					"key":   cty.StringVal(k),
 					"value": valueMap[k],
-				})
-				entries = append(entries, entry)
+				}))
+			}
+			switch {
+			case retType.IsTupleType():
+				return cty.TupleVal(entries), nil
+			case len(entries) == 0:
+				return cty.ListValEmpty(retType.ElementType()), nil
 			}
 			return cty.ListVal(entries), nil
 		},
