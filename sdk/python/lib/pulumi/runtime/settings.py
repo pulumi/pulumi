@@ -80,8 +80,6 @@ class Settings:
         # programs each register against their own engine and receive distinct
         # refs.
         self.package_refs = {}
-        # Maps the package reference of an extension package to the name of the
-        # base provider that serves it.
         self.base_providers_by_ref = {}
 
         if self.legacy_apply_enabled is None:

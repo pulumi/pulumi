@@ -253,8 +253,6 @@ def _invoke(
 
         # If a parent was provided, but no provider was provided, use the parent's provider if one was specified.
         if opts is not None and opts.parent is not None and opts.provider is None:
-            # An extension package is served by its base provider, so look up
-            # the parent's provider for the base package.
             base = get_base_provider_for_ref(package_ref_str)
             if base is not None:
                 opts.provider = opts.parent._providers.get(base)

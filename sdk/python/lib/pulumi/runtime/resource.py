@@ -838,12 +838,10 @@ def read_resource(
 
     async def do_read():
         try:
-            # If we have a package reference, we need to wait for it to resolve.
             package_ref_str = None
             if package_ref is not None:
                 package_ref_str = await package_ref
-                # If we have a package reference we can clear some of the invoke
-                # options.
+                # A package reference carries the version and download URL.
                 if package_ref_str is not None:
                     opts.plugin_download_url = None
                     opts.version = None
