@@ -36,9 +36,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/autonaming"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
-	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
@@ -285,7 +283,7 @@ func LoadLocalPolicyPackAnalyzers(
 		if err != nil {
 			return nil, err
 		}
-		analyzer, err := loadPolicyAnalyzer(ctx, plugctx, tokens.QName(abs), pack.Path, analyzerOpts)
+		analyzer, err := plugctx.Host.PolicyAnalyzer(plugctx, tokens.QName(abs), pack.Path, analyzerOpts)
 		if err != nil {
 			return nil, err
 		}
@@ -768,59 +766,6 @@ func installPlugins(
 	return allPlugins, defaultProviderVersions, nil
 }
 
-// installPluginFunc is the function used to install plugins.
-// It is a variable so tests can replace it with a stub.
-var installPluginFunc = pkgWorkspace.InstallPlugin
-
-// loadPolicyAnalyzer attempts to load a policy analyzer plugin. If the plugin is missing, it attempts
-// to automatically install it and retry, similar to how resource provider plugins are auto-installed
-// in loadProvider (pkg/resource/deploy/providers/registry.go).
-func loadPolicyAnalyzer(
-	ctx context.Context, plugctx *plugin.Context,
-	name tokens.QName, path string, opts *plugin.PolicyAnalyzerOptions,
-) (plugin.Analyzer, error) {
-	analyzer, err := plugctx.Host.PolicyAnalyzer(plugctx, name, path, opts)
-	if err == nil {
-		return analyzer, nil
-	}
-
-	me, ok := errors.AsType[*workspace.MissingError](err)
-	if !ok {
-		return nil, err
-	}
-
-	if env.DisableAutomaticPluginAcquisition.Value() {
-		return nil, policyAnalyzerMissingError(name, me)
-	}
-
-	log := func(sev diag.Severity, msg string) {
-		plugctx.Host.Log(sev, "", msg, 0)
-	}
-
-	_, installErr := installPluginFunc(ctx, me.Spec(), log, schema.NewLoaderServerFromContext)
-	if installErr != nil {
-		return nil, fmt.Errorf("failed to automatically install analyzer plugin %q: %w: %w",
-			string(name), installErr, me)
-	}
-
-	analyzer, err = plugctx.Host.PolicyAnalyzer(plugctx, name, path, opts)
-	if err != nil {
-		if retryMe, ok := errors.AsType[*workspace.MissingError](err); ok {
-			return nil, policyAnalyzerMissingError(name, retryMe)
-		}
-		return nil, err
-	}
-	return analyzer, nil
-}
-
-func policyAnalyzerMissingError(name tokens.QName, me *workspace.MissingError) error {
-	return fmt.Errorf("could not start policy pack %q because the built-in analyzer "+
-		"plugin that runs policy plugins is missing. This might occur when the plugin "+
-		"directory is not on your $PATH, when the installed version of the Pulumi SDK "+
-		"does not support resource policies, or when the required analyzer plugin "+
-		"has not been installed: %w", string(name), me)
-}
-
 // loadPolicyPlugins loads all required policy plugins and packages as well as any
 // local policy packs. It returns fully populated metadata about those policy plugins.
 func loadPolicyPlugins(plugctx *plugin.Context,
@@ -879,8 +824,7 @@ func loadPolicyPlugins(plugctx *plugin.Context,
 				return
 			}
 
-			analyzer, err := loadPolicyAnalyzer(
-				plugctx.Base(), plugctx, tokens.QName(policy.Name()), policyPath, &policyOpts)
+			analyzer, err := plugctx.Host.PolicyAnalyzer(plugctx, tokens.QName(policy.Name()), policyPath, &policyOpts)
 			if err != nil {
 				errs <- err
 				return
@@ -978,7 +922,7 @@ func loadPolicyPlugins(plugctx *plugin.Context,
 				}
 			}
 
-			analyzer, err := loadPolicyAnalyzer(plugctx.Base(), plugctx, tokens.QName(abs), pack.Path, &policyOpts)
+			analyzer, err := plugctx.Host.PolicyAnalyzer(plugctx, tokens.QName(abs), pack.Path, &policyOpts)
 			if err != nil {
 				errs <- err
 				return

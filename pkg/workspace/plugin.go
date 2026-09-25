@@ -34,6 +34,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	diagutil "github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
@@ -153,6 +154,9 @@ func EnsureLanguageInstalled(ctx context.Context, runtime string) error {
 	// downloading, since that is the version the language host will load anyway.
 	quiet := diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{Color: colors.Never})
 	if path, err := workspace.GetPluginPath(ctx, quiet, spec, nil); err == nil && path != "" {
+		return nil
+	}
+	if env.DisableAutomaticPluginAcquisition.Value() {
 		return nil
 	}
 	log := func(sev diag.Severity, msg string) {

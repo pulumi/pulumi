@@ -120,6 +120,40 @@ func TestGetLatestPluginIncludedVersion(t *testing.T) {
 	require.NoError(t, err)
 }
 
+// TestInstallKnownLanguageRuntime checks that installing a known unbundled language runtime without a
+// version uses the CLI's pinned release and its download repository rather than asking the default
+// pulumi/pulumi-<name> repository for its latest release.
+func TestInstallKnownLanguageRuntime(t *testing.T) {
+	// An empty plugin cache, so the install is not skipped because the runtime is already present.
+	t.Setenv("PULUMI_HOME", t.TempDir())
+
+	var pluginWasInstalled bool
+	cmd := &pluginInstallCmd{
+		diag: diagtest.LogSink(t),
+		pluginGetLatestVersion: func(ps workspace.PluginDescriptor, ctx context.Context) (*semver.Version, error) {
+			assert.Fail(t, "GetLatestVersion should not have been called")
+			return nil, nil
+		},
+		installPluginSpec: func(
+			_ context.Context, _ string,
+			install workspace.PluginDescriptor, file string,
+			_ diag.Sink, _ *progress.Group, _ colors.Colorization, _ bool,
+		) error {
+			pluginWasInstalled = true
+			assert.Empty(t, file)
+			assert.Equal(t, "opa", install.Name)
+			assert.Equal(t, apitype.LanguagePlugin, install.Kind)
+			require.NotNil(t, install.Version)
+			assert.Equal(t, "github://api.github.com/pulumi/pulumi-policy-opa", install.PluginDownloadURL)
+			return nil
+		},
+	}
+
+	err := cmd.Run(t.Context(), []string{"language", "opa"})
+	require.NoError(t, err)
+	assert.True(t, pluginWasInstalled, "installPluginSpec should have been called")
+}
+
 func TestGetPluginDownloadURLFromRegistry(t *testing.T) {
 	t.Parallel()
 

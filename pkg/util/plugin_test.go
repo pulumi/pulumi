@@ -71,6 +71,33 @@ func TestKnownLanguageRuntimeHCL(t *testing.T) {
 	}, spec)
 }
 
+func TestKnownLanguageRuntimeOPA(t *testing.T) {
+	t.Parallel()
+
+	spec := workspace.PluginDescriptor{
+		Name: "opa",
+		Kind: apitype.LanguagePlugin,
+	}
+	res := SetKnownPluginDownloadURL(&spec)
+	assert.True(t, res)
+
+	// The language runtime is released from the pulumi-policy-opa repository, not pulumi-opa.
+	require.NotNil(t, spec.Version)
+	assert.NotZero(t, *spec.Version)
+	assert.Equal(t, "github://api.github.com/pulumi/pulumi-policy-opa", spec.PluginDownloadURL)
+
+	// An explicit version keeps that version but still needs the repository.
+	explicit := semver.MustParse("1.1.2")
+	spec = workspace.PluginDescriptor{
+		Name:    "opa",
+		Kind:    apitype.LanguagePlugin,
+		Version: &explicit,
+	}
+	assert.False(t, SetKnownPluginDownloadURL(&spec))
+	assert.Equal(t, &explicit, spec.Version)
+	assert.Equal(t, "github://api.github.com/pulumi/pulumi-policy-opa", spec.PluginDownloadURL)
+}
+
 func TestKnownLanguageRuntimePreservesExplicitVersion(t *testing.T) {
 	t.Parallel()
 
