@@ -1,4 +1,0 @@
-component: sdkgen/nodejs
-kind: fix
-body: Fix generated Node.js SDK compilation for self-referencing resource inputs
-time: 2026-09-23T11:54:24.170755+02:00
