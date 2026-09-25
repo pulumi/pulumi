@@ -1,0 +1,4 @@
+component: sdk
+kind: feat
+body: Add runtime functions to the Go, Node.js and Python SDKs that check whether a resource with a given ID exists without adopting it into the stack
+time: 2026-09-25T15:51:49.497008+02:00
