@@ -17,6 +17,8 @@ package engine
 import (
 	"testing"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -34,4 +36,19 @@ func TestTryCloseEventChan(t *testing.T) {
 	c := make(chan Event, 100)
 	assert.Equal(t, true, tryCloseEventChan(c))
 	assert.Equal(t, false, tryCloseEventChan(c))
+}
+
+func TestDiagEventReportsExistsURNAtStackLevel(t *testing.T) {
+	t.Parallel()
+
+	c := make(chan Event, 2)
+	e := eventEmitter{ch: c}
+
+	urn := resource.URN("urn:pulumi:stack::project::pkgA:m:typA::__exists__1")
+	diagEvent(&e, diag.Message(urn, "exists"), "", "exists", diag.Warning, false)
+	assert.Equal(t, resource.URN(""), (<-c).Payload().(DiagEventPayload).URN)
+
+	urn = resource.URN("urn:pulumi:stack::project::pkgA:m:typA::res")
+	diagEvent(&e, diag.Message(urn, "resource"), "", "resource", diag.Warning, false)
+	assert.Equal(t, urn, (<-c).Payload().(DiagEventPayload).URN)
 }

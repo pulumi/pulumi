@@ -1586,6 +1586,15 @@ func (rm *resmon) ReadResource(ctx context.Context,
 	}, nil
 }
 
+const existsURNPrefix = "__exists__"
+
+var existsURNCounter atomic.Int64
+
+// IsExistsURN reports whether urn is one of the synthetic URNs that ExistsResource passes to a provider's Read.
+func IsExistsURN(urn resource.URN) bool {
+	return urn.IsValid() && strings.HasPrefix(urn.Name(), existsURNPrefix)
+}
+
 func (rm *resmon) ExistsResource(ctx context.Context,
 	req *pulumirpc.ExistsResourceRequest,
 ) (*pulumirpc.ExistsResourceResponse, error) {
@@ -1665,7 +1674,7 @@ func (rm *resmon) ExistsResource(ctx context.Context,
 	urn := resource.NewURN(
 		tokens.QName(rm.constructInfo.Stack),
 		tokens.PackageName(rm.constructInfo.Project),
-		parentType, t, "__exists__")
+		parentType, t, fmt.Sprintf("%s%d", existsURNPrefix, existsURNCounter.Add(1)))
 
 	// Call the provider's Read method to check if the resource exists.
 	readResult, err := prov.Read(ctx, plugin.ReadRequest{
