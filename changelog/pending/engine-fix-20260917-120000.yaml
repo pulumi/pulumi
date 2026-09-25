@@ -1,4 +1,4 @@
 component: engine
 kind: fix
-body: Apply resource transforms declared on an ancestor component to resources parented under a read (`.get()`) resource
+body: Apply resource transforms declared on an ancestor component to resources parented under a resource read
 time: 2026-09-17T12:00:00.000000000Z

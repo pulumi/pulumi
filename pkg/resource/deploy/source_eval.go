@@ -1198,7 +1198,8 @@ func (rm *resmon) Invoke(
 	return &pulumirpc.ResourceInvokeResponse{Return: mret, Failures: chkfails}, nil
 }
 
-// trackSettledResource records the resource a completed registration or read produced.
+// trackSettledResource records the resource a completed registration or read produced, along with its parent so that
+// transforms declared on ancestors can be found even when the chain passes through a resource read.
 //
 // parent and custom are the caller's, not the state's: Construct hands back a state carrying only a URN and outputs, so
 // a remote component's own state has neither, and filing it under the empty parent would hide it and everything beneath
@@ -1210,6 +1211,11 @@ func (rm *resmon) trackSettledResource(state *pkgresource.State, parent resource
 	state.Lock.Lock()
 	urn, id := state.URN, state.ID
 	state.Lock.Unlock()
+
+	rm.parentsLock.Lock()
+	rm.parents[urn] = parent
+	rm.parentsLock.Unlock()
+
 	rm.registrations.Track(urn, parent, custom, id != "")
 }
 
@@ -1561,14 +1567,6 @@ func (rm *resmon) ReadResource(ctx context.Context,
 	contract.Assertf(result != nil, "ReadResource operation returned a nil result")
 	// A read always produces an id, so it is never pending, but it can still be an invoke's declared dependency.
 	rm.trackSettledResource(result.State, parent, true)
-	// Record the parent so that a transform-collection walk starting at a descendant of this read resource can
-	// continue up the chain to find transforms declared on ancestor components. A read never carries transforms
-	// of its own, so there's nothing to add to rm.resourceTransforms here.
-	if result.State != nil && result.State.URN != "" {
-		rm.parentsLock.Lock()
-		rm.parents[result.State.URN] = parent
-		rm.parentsLock.Unlock()
-	}
 
 	marshaled, err := plugin.MarshalProperties(result.State.Outputs, plugin.MarshalOptions{
 		Label:            label,
@@ -3091,12 +3089,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 	}
 
 	if result != nil && result.State != nil && result.State.URN != "" {
-		// We've got a safe URN now, save the parent and transformations
-		func() {
-			rm.parentsLock.Lock()
-			defer rm.parentsLock.Unlock()
-			rm.parents[result.State.URN] = parent
-		}()
+		// We've got a safe URN now, save the transformations
 		func() {
 			rm.resourceTransformsLock.Lock()
 			defer rm.resourceTransformsLock.Unlock()
