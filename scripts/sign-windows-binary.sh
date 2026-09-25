@@ -20,6 +20,6 @@ ENDPOINT_HOST="${ENDPOINT_HOST%/}"
 java -jar "${JSIGN_JAR}" \
     --storetype TRUSTEDSIGNING \
     --keystore "${ENDPOINT_HOST}" \
-    --storepass "${AZURE_SIGNING_ACCESS_TOKEN}" \
+    --storepass "env:AZURE_SIGNING_ACCESS_TOKEN" \
     --alias "${AZURE_SIGNING_ACCOUNT_NAME}/${AZURE_SIGNING_CERT_PROFILE_NAME}" \
     "${BINARY}"

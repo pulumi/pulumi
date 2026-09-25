@@ -16,7 +16,7 @@ for binary in "$@"; do
         echo "invalid signature: ${binary}"
         echo "${output}" | tail -5
         failed=1
-    elif ! echo "${output}" | grep -m1 -A1 'Signer #0:' | grep -qF "${EXPECTED_SIGNER}"; then
+    elif ! echo "${output}" | grep -m1 -A1 'Signer #0:' | grep -q "${EXPECTED_SIGNER}$"; then
         echo "unexpected signer: ${binary}"
         echo "${output}" | grep -m1 -A1 'Signer #0:' | head -2
         failed=1
