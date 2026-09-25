@@ -1052,9 +1052,7 @@ def register_resource(
                 if package_ref_str is not None:
                     opts.plugin_download_url = None
                     opts.version = None
-                _select_base_provider(
-                    res, ty, opts, package_ref_str, custom or remote
-                )
+                _select_base_provider(res, ty, opts, package_ref_str, custom or remote)
 
             try:
                 resolver = await prepare_resource(
