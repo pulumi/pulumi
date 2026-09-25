@@ -2944,9 +2944,6 @@ func TestInstallLocalPluginCycle(t *testing.T) {
 
 func TestInstallMultiComponentGitRepo(t *testing.T) {
 	t.Parallel()
-
-	t.Skip("https://github.com/pulumi/pulumi/issues/22407")
-
 	// TODO[pulumi/pulumi#21154]: This test doesn't work on windows due to exceeding
 	// the 255 character limit when installing the plugin.
 	if runtime.GOOS == "windows" {
@@ -2963,15 +2960,7 @@ func TestInstallMultiComponentGitRepo(t *testing.T) {
 
 	e.RunCommand("pulumi", "install")
 
-	// Install additional dependencies (TLS provider needed by test-provider &
-	// test-provider-2 components)
-	//
-	// TODO[https://github.com/pulumi/pulumi/issues/20963]: Remove the need for this
-	// install.
 	e.Env = []string{"PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION=true"}
-	e.RunCommand("pulumi", "plugin", "install", "resource", "tls", "v5.3.0")
-	e.RunCommand("pulumi", "plugin", "install", "resource", "tls", "4.11.1")
-
 	e.RunCommand("pulumi", "up", "--non-interactive", "--skip-preview")
 
 	// Verify outputs exist from both components, confirming both resources were created
