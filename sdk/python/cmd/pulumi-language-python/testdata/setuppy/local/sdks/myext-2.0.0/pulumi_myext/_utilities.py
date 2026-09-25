@@ -327,19 +327,14 @@ def get_plugin_download_url():
 def get_version():
     return "2.0.0"
 
-_BASE_PROVIDER_NAME = "extbase"
-_PACKAGE_NAME = "myext"
-
-def get_package() -> typing.Awaitable[str]:
-	ref = pulumi.runtime.register_package(
-		base_provider_name=_BASE_PROVIDER_NAME,
+async def get_package() -> str:
+	return await pulumi.runtime.register_package(
+		base_provider_name="extbase",
 		base_provider_version="45.0.0",
 		base_provider_download_url=get_plugin_download_url() or "",
-		package_name=_PACKAGE_NAME,
+		package_name="myext",
 		package_version=get_version(),
 		base64_parameter="SGVsbG8=",
 		extension=True,
 	)
-	pulumi.runtime.set_package_by_ref(ref, _BASE_PROVIDER_NAME)
-	return ref
 	

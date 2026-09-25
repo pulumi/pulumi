@@ -178,6 +178,27 @@ async def _create_provider_ref(provider: "ProviderResource") -> str:
     return f"{urn}::{pid}"
 
 
+def _select_base_provider(
+    res: "Resource",
+    ty: str,
+    opts: "ResourceOptions",
+    package_ref: Optional[str],
+    has_provider: bool,
+) -> None:
+    """
+    An extension package is served by its base provider, so a resource of an
+    extension package must use the provider selected for the base package. The
+    base package is only known once the package reference has resolved, so this
+    replaces the provider that was selected when the resource was constructed.
+    """
+    base = settings.get_base_provider_for_ref(package_ref)
+    if base is None:
+        return
+    opts.provider, opts.providers = res._get_providers(ty, base, opts)
+    if has_provider:
+        res._provider = opts.provider
+
+
 # Prepares for an RPC that will manufacture a resource, and hence deals with input and output properties.
 async def prepare_resource(
     res: "Resource",
@@ -817,6 +838,18 @@ def read_resource(
 
     async def do_read():
         try:
+            # If we have a package reference, we need to wait for it to resolve.
+            package_ref_str = None
+            if package_ref is not None:
+                package_ref_str = await package_ref
+                # If we have a package reference we can clear some of the invoke
+                # options.
+                if package_ref_str is not None:
+                    opts.plugin_download_url = None
+                    opts.version = None
+                    log.debug(f"Read using package reference {package_ref_str}")
+                _select_base_provider(res, ty, opts, package_ref_str, True)
+
             resolver = await prepare_resource(res, ty, True, False, props, opts, typ)
 
             # Resolve the ID that we were given. Note that we are explicitly discarding the list of
@@ -836,17 +869,6 @@ def read_resource(
             accept_resources = os.getenv(
                 "PULUMI_DISABLE_RESOURCE_REFERENCES", ""
             ).upper() not in {"TRUE", "1"}
-
-            # If we have a package reference, we need to wait for it to resolve.
-            package_ref_str = None
-            if package_ref is not None:
-                package_ref_str = await package_ref
-                # If we have a package reference we can clear some of the invoke
-                # options.
-                if package_ref_str is not None:
-                    opts.plugin_download_url = None
-                    opts.version = None
-                    log.debug(f"Read using package reference {package_ref_str}")
 
             req = resource_pb2.ReadResourceRequest(
                 type=ty,
@@ -1030,6 +1052,9 @@ def register_resource(
                 if package_ref_str is not None:
                     opts.plugin_download_url = None
                     opts.version = None
+                _select_base_provider(
+                    res, ty, opts, package_ref_str, custom or remote
+                )
 
             try:
                 resolver = await prepare_resource(

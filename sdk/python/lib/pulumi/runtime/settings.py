@@ -80,9 +80,9 @@ class Settings:
         # programs each register against their own engine and receive distinct
         # refs.
         self.package_refs = {}
-        # Maps a package reference to the name of the base provider that serves
-        # the extension package it was registered for.
-        self.packages_by_ref = {}
+        # Maps the package reference of an extension package to the name of the
+        # base provider that serves it.
+        self.base_providers_by_ref = {}
 
         if self.legacy_apply_enabled is None:
             self.legacy_apply_enabled = (
@@ -156,7 +156,7 @@ class Settings:
     def package_refs(self) -> Optional[dict]: ...
 
     @contextproperty
-    def packages_by_ref(self) -> Optional[dict]: ...
+    def base_providers_by_ref(self) -> Optional[dict]: ...
 
     @contextproperty
     def callbacks(self) -> Optional[_CallbackServicer]: ...
@@ -417,23 +417,20 @@ async def register_package(
     response = monitor.RegisterPackage(request)
     ref = response.ref
     package_refs[key] = ref
+    if extension:
+        SETTINGS.base_providers_by_ref[ref] = base_provider_name
     return ref
 
 
-def set_package_by_ref(package_ref: object, base_provider_name: str) -> None:
+def get_base_provider_for_ref(package_ref: Optional[str]) -> Optional[str]:
     """
-    Records the base provider that serves the extension package a reference was
-    registered for.
+    Returns the name of the base provider that serves the extension package the
+    reference was registered for, or None when the reference is not for an
+    extension package.
     """
-    SETTINGS.packages_by_ref[package_ref] = base_provider_name
-
-
-def get_package_by_ref(package_ref: object) -> Optional[str]:
-    """
-    Returns the base provider recorded for a package reference, or None when the
-    reference is not for an extension package.
-    """
-    return SETTINGS.packages_by_ref.get(package_ref)
+    if package_ref is None:
+        return None
+    return SETTINGS.base_providers_by_ref.get(package_ref)
 
 
 def reset_options(

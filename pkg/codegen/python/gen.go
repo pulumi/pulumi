@@ -607,30 +607,9 @@ def get_version():
 			requestKwarg = "extension"
 		}
 		param := base64.StdEncoding.EncodeToString(parameter)
-
+		extensionArg := ""
 		if requestKwarg == "extension" {
-			_, err = fmt.Fprintf(buffer, `
-_BASE_PROVIDER_NAME = %q
-_PACKAGE_NAME = %q
-
-def get_package() -> typing.Awaitable[str]:
-	ref = pulumi.runtime.register_package(
-		base_provider_name=_BASE_PROVIDER_NAME,
-		base_provider_version=%q,
-		base_provider_download_url=get_plugin_download_url() or "",
-		package_name=_PACKAGE_NAME,
-		package_version=get_version(),
-		base64_parameter=%q,
-		extension=True,
-	)
-	pulumi.runtime.set_package_by_ref(ref, _BASE_PROVIDER_NAME)
-	return ref
-	`,
-				baseProvider.Name, pkg.Name, baseProvider.Version, param)
-			if err != nil {
-				return nil, err
-			}
-			return buffer.Bytes(), nil
+			extensionArg = "\n\t\textension=True,"
 		}
 
 		_, err = fmt.Fprintf(buffer, `
@@ -641,10 +620,10 @@ async def get_package() -> str:
 		base_provider_download_url=get_plugin_download_url() or "",
 		package_name=%q,
 		package_version=get_version(),
-		base64_parameter=%q,
+		base64_parameter=%q,%s
 	)
 	`,
-			baseProvider.Name, baseProvider.Version, pkg.Name, param)
+			baseProvider.Name, baseProvider.Version, pkg.Name, param, extensionArg)
 		if err != nil {
 			return nil, err
 		}
