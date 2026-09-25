@@ -1,0 +1,4 @@
+component: pcl
+kind: fix
+body: Unify two recursive object types, or a map with an object, to the same finite type on every run instead of overflowing the stack or picking a different type each time
+time: 2026-09-25T18:00:00.000000+02:00

@@ -1315,3 +1315,78 @@ func (*y) f() string {
 var _ i = (*y)(nil)
 
 type z struct{}
+
+// TestUnifyRecursiveObjectTypes verifies that two recursive object types of different shapes unify to one
+// recursive object type instead of recursing without end.
+func TestUnifyRecursiveObjectTypes(t *testing.T) {
+	t.Parallel()
+
+	t.Run("list", func(t *testing.T) {
+		t.Parallel()
+
+		aProps := map[string]Type{}
+		a := NewObjectType(aProps)
+		aProps["self"] = NewListType(a)
+		bProps := map[string]Type{"b": IntType}
+		b := NewObjectType(bProps)
+		bProps["self"] = NewListType(b)
+
+		expectedProps := map[string]Type{"b": NewOptionalType(IntType)}
+		expected := NewObjectType(expectedProps)
+		expectedProps["self"] = NewListType(expected)
+
+		assertUnified(t, expected, expected, a, b)
+	})
+
+	t.Run("optional", func(t *testing.T) {
+		t.Parallel()
+
+		aProps := map[string]Type{}
+		a := NewObjectType(aProps)
+		aProps["self"] = NewOptionalType(a)
+		bProps := map[string]Type{"b": IntType}
+		b := NewObjectType(bProps)
+		bProps["self"] = NewOptionalType(b)
+
+		expected := NewObjectType(map[string]Type{
+			"b":    NewOptionalType(IntType),
+			"self": NewUnionType(NoneType, a, b),
+		})
+
+		assertUnified(t, expected, expected, a, b)
+	})
+}
+
+// TestUnifyMapWithObject verifies that a map unifies with an object by folding the object's property types into
+// the map's element type in an order that does not depend on the property names.
+func TestUnifyMapWithObject(t *testing.T) {
+	t.Parallel()
+
+	m := NewMapType(NewUnionType(BoolType, IntType, NoneType))
+	properties := map[string]Type{
+		"a": BoolType,
+		"b": NumberType,
+		"c": NewConstType(StringType, cty.StringVal("y")),
+	}
+	reordered := map[string]Type{
+		"a": properties["c"],
+		"b": properties["a"],
+		"c": properties["b"],
+	}
+	expectedUnsafe := NewMapType(NewUnionType(NumberType, NoneType, NewConstType(StringType, cty.StringVal("y"))))
+
+	for _, obj := range []Type{NewObjectType(properties), NewObjectType(reordered)} {
+		assertUnified(t, NewUnionType(m, obj), expectedUnsafe, m, obj)
+	}
+}
+
+// TestTupleConversionFromShorterTuple verifies that a tuple converts from a shorter tuple only when the elements
+// that the source lacks are optional.
+func TestTupleConversionFromShorterTuple(t *testing.T) {
+	t.Parallel()
+
+	assert.Equal(t, SafeConversion,
+		NewTupleType(IntType, NewOptionalType(BoolType)).ConversionFrom(NewTupleType(IntType)))
+	assert.Equal(t, NoConversion, NewTupleType(IntType, BoolType).ConversionFrom(NewTupleType(IntType)))
+	assert.Equal(t, NoConversion, NewTupleType(IntType).ConversionFrom(NewTupleType(IntType, BoolType)))
+}

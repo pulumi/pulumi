@@ -103,7 +103,7 @@ func (t *PromiseType) ConversionFrom(src Type) ConversionKind {
 }
 
 func (t *PromiseType) conversionFrom(
-	src Type, unifying bool, seen cycleSet,
+	src Type, unifying bool, seen *cycleSet,
 ) (ConversionKind, lazyDiagnostics) {
 	return conversionFrom(t, src, unifying, seen, t.cache, func() (ConversionKind, lazyDiagnostics) {
 		if src, ok := src.(*PromiseType); ok {
@@ -127,20 +127,20 @@ func (t *PromiseType) string(seen map[Type]struct{}) string {
 	return fmt.Sprintf("promise(%s)", t.ElementType.string(seen))
 }
 
-func (t *PromiseType) unify(other Type) (Type, ConversionKind) {
-	return unify(t, other, func() (Type, ConversionKind) {
+func (t *PromiseType) unify(other Type, seen *cycleSet) (Type, ConversionKind) {
+	return unify(t, other, seen, func() (Type, ConversionKind) {
 		switch other := other.(type) {
 		case *PromiseType:
 			// If the other type is a promise type, unify based on the element type.
-			elementType, conversionKind := t.ElementType.unify(other.ElementType)
+			elementType, conversionKind := t.ElementType.unify(other.ElementType, seen)
 			return NewPromiseType(elementType), conversionKind
 		case *OutputType:
 			// If the other type is an output type, prefer the output type, but unify the element types.
-			elementType, conversionKind := t.ElementType.unify(other.ElementType)
+			elementType, conversionKind := t.ElementType.unify(other.ElementType, seen)
 			return NewOutputType(elementType), conversionKind
 		default:
 			// Prefer the promise type.
-			kind, _ := t.conversionFrom(other, true, nil)
+			kind, _ := t.conversionFrom(other, true, seen)
 			return t, kind
 		}
 	})
