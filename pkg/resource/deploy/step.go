@@ -100,6 +100,9 @@ type SameStep struct {
 	// If this is a same-step emitted for a resource that was not included in a
 	// target-constrained operation.
 	untargeted bool
+
+	waitURNs   []resource.URN
+	waitTokens []completionToken
 }
 
 var _ Step = (*SameStep)(nil)
@@ -129,9 +132,12 @@ func NewSameStep(deployment *Deployment, reg RegisterResourceEvent, old, new *pk
 
 // NewUntargetedSameStep produces a SameStep for a resource that is only "same" because it was not
 // included in a target-constrained operation, as opposed to having been diffed and found unchanged.
-func NewUntargetedSameStep(deployment *Deployment, reg RegisterResourceEvent, old, new *pkgresource.State) Step {
+func NewUntargetedSameStep(
+	deployment *Deployment, reg RegisterResourceEvent, old, new *pkgresource.State, waitURNs []resource.URN,
+) Step {
 	step := NewSameStep(deployment, reg, old, new).(*SameStep)
 	step.untargeted = true
+	step.waitURNs = waitURNs
 	return step
 }
 
