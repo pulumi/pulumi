@@ -3472,6 +3472,60 @@ func TestPermalinkForDisplayWithAgentCredentials(t *testing.T) {
 	}
 }
 
+// notifyPermalinkCall records one notifyPermalink -> OnPermalink invocation.
+type notifyPermalinkCall struct {
+	permalink, updateID string
+	version             int
+	preview             bool
+}
+
+func TestNotifyPermalink(t *testing.T) {
+	t.Parallel()
+
+	const permalink = "https://app.pulumi.com/o/org/proj/dev/updates/3"
+	const updateID = "11111111-2222-3333-4444-555555555555"
+
+	tests := []struct {
+		name        string
+		nilCallback bool
+		preview     bool
+		version     int
+		wantVersion int
+	}{
+		{name: "nil callback does not panic", nilCallback: true, preview: false, version: 3, wantVersion: 3},
+		{name: "preview zeroes a nonzero version", preview: true, version: 3, wantVersion: 0},
+		{name: "non-preview passes version through", preview: false, version: 3, wantVersion: 3},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			var got *notifyPermalinkCall
+			op := backend.UpdateOperation{}
+			if !tt.nilCallback {
+				op.Opts.OnPermalink = func(url string, id string, version int, preview bool) {
+					got = &notifyPermalinkCall{url, id, version, preview}
+				}
+			}
+
+			require.NotPanics(t, func() {
+				notifyPermalink(op, permalink, updateID, tt.version, tt.preview)
+			})
+
+			if tt.nilCallback {
+				assert.Nil(t, got)
+				return
+			}
+			require.NotNil(t, got)
+			assert.Equal(t, permalink, got.permalink)
+			assert.Equal(t, updateID, got.updateID)
+			assert.Equal(t, tt.wantVersion, got.version)
+			assert.Equal(t, tt.preview, got.preview)
+		})
+	}
+}
+
 func TestGetSnapshotStackOutputs(t *testing.T) {
 	t.Parallel()
 
