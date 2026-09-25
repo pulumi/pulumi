@@ -30,7 +30,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v3/go/pulumi-internal/gsync"
 )
 
 // ObjectType represents schematized maps from strings to particular types.
@@ -43,7 +42,7 @@ type ObjectType struct {
 	propertyUnion Type
 	s             atomic.Value // Value<string>
 
-	cache *gsync.Map[Type, cacheEntry]
+	cache *typeCache
 	// Whether typechecking and traversal emit error or warning diagnostics. Non-strict mode returns warnings.
 	Strict bool
 }
@@ -53,7 +52,7 @@ func NewObjectType(properties map[string]Type, annotations ...any) *ObjectType {
 	return &ObjectType{
 		Properties:  properties,
 		Annotations: annotations,
-		cache:       &gsync.Map[Type, cacheEntry]{},
+		cache:       &typeCache{},
 		Strict:      true,
 	}
 }

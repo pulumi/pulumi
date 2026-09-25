@@ -26,7 +26,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model/pretty"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
-	"github.com/pulumi/pulumi/sdk/v3/go/pulumi-internal/gsync"
 )
 
 // UnionType represents values that may be any one of a specified set of types.
@@ -38,7 +37,7 @@ type UnionType struct {
 
 	s atomic.Value // Value<string>
 
-	cache *gsync.Map[Type, cacheEntry]
+	cache *typeCache
 }
 
 // NewUnionTypeAnnotated creates a new union type with the given element types and annotations.
@@ -82,7 +81,7 @@ func NewUnionTypeAnnotated(types []Type, annotations ...any) Type {
 		return elementTypes[0]
 	}
 
-	return &UnionType{ElementTypes: elementTypes, Annotations: annotations, cache: &gsync.Map[Type, cacheEntry]{}}
+	return &UnionType{ElementTypes: elementTypes, Annotations: annotations, cache: &typeCache{}}
 }
 
 // NewUnionType creates a new union type with the given element types. Any element types that are union types are

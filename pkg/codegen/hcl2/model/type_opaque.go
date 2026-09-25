@@ -23,7 +23,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model/pretty"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v3/go/pulumi-internal/gsync"
 )
 
 // OpaqueType represents a type that is named by a string.
@@ -68,7 +67,7 @@ func (t *OpaqueType) conversionFromImpl(
 	src Type, unifying, checkUnsafe bool, seen cycleSet,
 ) (ConversionKind, lazyDiagnostics) {
 	return conversionFrom(
-		t, src, unifying, seen, &gsync.Map[Type, cacheEntry]{}, func() (ConversionKind, lazyDiagnostics) {
+		t, src, unifying, seen, &typeCache{}, func() (ConversionKind, lazyDiagnostics) {
 			if constType, ok := src.(*ConstType); ok {
 				return t.conversionFrom(constType.Type, unifying, seen)
 			}
