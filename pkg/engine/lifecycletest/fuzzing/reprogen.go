@@ -87,8 +87,8 @@ import (
 	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 
 	lt "github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest/framework"
@@ -287,7 +287,7 @@ func writeSnapshotTestFunction(
 			g.writeLine("")
 			g.writeLine("// Trigger the reproduction.")
 			g.writeLinef(
-				"reproSnap, err := "+
+				"_, err := "+
 					"lt.TestOp(%s).RunStep(project, p.GetTarget(t, setupSnap), reproOpts, false, p.BackendClient, nil, \"1\")",
 				operation,
 			)
@@ -451,7 +451,7 @@ func writeFrameworkTestFunction(
 			g.writeLine("")
 			g.writeLine("// Trigger the reproduction.")
 			g.writeLinef(
-				"reproSnap, err := "+
+				"_, err = "+
 					"lt.TestOp(%s).RunStep(project, p.GetTarget(t, setupSnap), reproOpts, false, p.BackendClient, nil, \"1\")",
 				operation,
 			)
@@ -717,15 +717,49 @@ func writeResourceRegistrationStatements(t require.TestingT, rs []*ResourceSpec)
 			return "unknownProvRef"
 		}
 
+		// A registration result that no later registration refers to is assigned to the blank identifier, so that the
+		// generated test compiles.
+		referenced := map[resource.URN]bool{}
+		for _, r := range rs {
+			referenced[r.Parent] = true
+			referenced[r.DeletedWith] = true
+			for _, dep := range r.Dependencies {
+				referenced[dep] = true
+			}
+			for _, deps := range r.PropertyDependencies {
+				for _, dep := range deps {
+					referenced[dep] = true
+				}
+			}
+			if r.Provider != "" {
+				ref, err := providers.ParseReference(r.Provider)
+				require.NoError(t, err)
+				referenced[ref.URN()] = true
+			}
+		}
+
+		errDeclared := false
 		for i, r := range rs {
 			indicesByURN[r.URN()] = i
 
 			provRefVar := provRefVarFor(r.Provider)
+			if provRefVar != "" {
+				errDeclared = true
+			}
+
+			resultVar, assign := varFor(r.URN()), ":="
+			if !referenced[r.URN()] {
+				resultVar = "_"
+				if errDeclared {
+					assign = "="
+				}
+			}
+			errDeclared = true
 
 			g.writeBlock(
 				fmt.Sprintf(
-					"%s, err := monitor.RegisterResource(\"%s\", \"%s\", %v, deploytest.ResourceOptions{",
-					varFor(r.URN()), r.Type, r.Name, r.Custom,
+					"%s, err %s monitor.RegisterResource(\"%s\", \"%s\", %v, deploytest.ResourceOptions{",
+					resultVar, assign, r.Type, r.Name, r.Custom,
 				),
 				func(g *generator) {
 					if r.Delete {
