@@ -36,7 +36,12 @@ const (
 	ExitNoChanges           = 7
 	ExitCancelled           = 8
 	ExitTimeout             = 9
-	ExitInternalError       = 255
+	// ExitResourceNotFound reports that the resource an operation targeted does not exist. It is
+	// distinct from ExitCodeError so that callers driving the CLI — retry loops and controllers
+	// reconciling against a desired state in particular — can tell "there is nothing left to do
+	// here" apart from "this failed, try again" without matching on error text.
+	ExitResourceNotFound = 10
+	ExitInternalError    = 255
 )
 
 // An error that specifies it's own error code.
@@ -65,8 +70,13 @@ func ExitCodeFor(err error) int {
 		return ExitSuccess
 	}
 
-	if c, ok := err.(CustomExitCodeError); ok {
-		return c.CustomExitCode()
+	// Matched with errors.As rather than a bare type assertion: these errors are routinely wrapped
+	// on the way out (processCmdErrors wraps in a BailError to suppress double-printing, and
+	// callers add context), and a wrapped error would otherwise silently fall through to the
+	// generic default. Same reasoning as the cloud.APIError branch below.
+	var custom CustomExitCodeError
+	if errors.As(err, &custom) {
+		return custom.CustomExitCode()
 	}
 
 	// `pulumi api` carries its own semantic exit code on the error so
