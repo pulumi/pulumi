@@ -1,0 +1,4 @@
+component: pcl
+kind: fix
+body: Fix PCL type conversion checks whose result depended on whether the same types had been unified first
+time: 2026-09-25T11:13:35.539815+02:00

@@ -702,6 +702,14 @@ func TestUnifyType(t *testing.T) {
 	assertUnified(t, NewTupleType(NewUnionType(cf, ct)), NewTupleType(NewUnionType(cf, ct)),
 		NewTupleType(cf), NewTupleType(ct))
 
+	// A conversion check and a unification of the same types do not share a cached result, in either order.
+	a, b := NewTupleType(cf), NewTupleType(ct)
+	assertUnified(t, NewTupleType(NewUnionType(cf, ct)), NewTupleType(NewUnionType(cf, ct)), a, b)
+	assert.Equal(t, NoConversion, a.ConversionFrom(b))
+	a, b = NewTupleType(cf), NewTupleType(ct)
+	assert.Equal(t, NoConversion, a.ConversionFrom(b))
+	assertUnified(t, NewTupleType(NewUnionType(cf, ct)), NewTupleType(NewUnionType(cf, ct)), a, b)
+
 	// Nested tuples of constants with different lengths unify element by element.
 	t6 := NewTupleType(NewTupleType(cf, cf, cf))
 	t7 := NewTupleType(NewTupleType(ct), NewTupleType(cf))

@@ -22,7 +22,6 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model/pretty"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
-	"github.com/pulumi/pulumi/sdk/v3/go/pulumi-internal/gsync"
 )
 
 // PromiseType represents eventual values that do not carry additional information.
@@ -30,13 +29,13 @@ type PromiseType struct {
 	// ElementType is the element type of the promise.
 	ElementType Type
 
-	cache *gsync.Map[Type, cacheEntry]
+	cache *typeCache
 }
 
 // NewPromiseType creates a new promise type with the given element type after replacing any promise types within
 // the element type with their respective element types.
 func NewPromiseType(elementType Type) *PromiseType {
-	return &PromiseType{ElementType: ResolvePromises(elementType), cache: &gsync.Map[Type, cacheEntry]{}}
+	return &PromiseType{ElementType: ResolvePromises(elementType), cache: &typeCache{}}
 }
 
 // SyntaxNode returns the syntax node for the type. This is always syntax.None.
