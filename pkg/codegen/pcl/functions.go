@@ -227,9 +227,7 @@ func pulumiBuiltins(options bindOptions) map[string]*model.Function {
 					argIsEventual = p || o
 				}
 
-				// The default need not convert to the element type: lookup returns whichever of the
-				// two it finds, so the result is their unification.
-				returnType, defaultType := elementType, model.NewOptionalType(elementType)
+				returnType, defaultType := elementType, elementType
 				if len(args) > 2 {
 					defaultType = args[2].Type()
 					returnType, _ = model.UnifyTypes(elementType, defaultType)
