@@ -49,6 +49,8 @@ type deploymentExecutor struct {
 	// to be posted back to us from async work such as DiffSteps.
 	asyncEventsExpected int32
 
+	// The completion tokens for each URN. These can be used to wait for a resource to complete before continuing.
+	// This can be used for example for waiting for dependencies in untargeted same steps.
 	chainTokens map[resource.URN]completionToken
 }
 

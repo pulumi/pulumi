@@ -101,7 +101,13 @@ type SameStep struct {
 	// target-constrained operation.
 	untargeted bool
 
-	waitURNs   []resource.URN
+	// A list of URNs (all dependencies of the step) that this step needs to wait on before completing. In
+	// untargeted same steps this is used to wait for any dependencies that may no longer be in the users
+	// program, but still in the state, so they need to be waited on to have correct state ordering.  They are
+	// turned into waitTokens when the step is applied, so URNs that no longer exist in the program don't get a
+	// wait token and will not be waited on to prevent deadlocks.
+	waitURNs []resource.URN
+	// The list of completion tokens that the step actually waits on.
 	waitTokens []completionToken
 }
 
