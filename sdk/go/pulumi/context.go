@@ -1533,7 +1533,7 @@ func (ctx *Context) ExistsPackageResource(
 func (ctx *Context) existsPackageResource(
 	t string, id IDInput, props Input, packageRef string, opts ...ResourceOption,
 ) BoolOutput {
-	output := ctx.newOutput(reflect.TypeOf(BoolOutput{}))
+	output := ctx.newOutput(reflect.TypeFor[BoolOutput]())
 
 	go func() {
 		options := merge(opts...)

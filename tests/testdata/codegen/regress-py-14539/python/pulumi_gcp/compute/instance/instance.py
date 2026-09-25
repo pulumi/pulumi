@@ -154,7 +154,7 @@ class Instance(pulumi.CustomResource):
     @staticmethod
     def exists(id: pulumi.Input[str],
             opts: Optional[pulumi.ResourceOptions] = None,
-            boot_disk: pulumi.Input[Optional[Union['_compute.instancebootdisk.InstanceBootDiskArgs', '_compute.instancebootdisk.InstanceBootDiskArgsDict']]] = None) -> pulumi.Output[bool]:
+            boot_disk: pulumi.Input[Optional[Union['_compute.instancebootdisk.InstanceBootDiskArgs', '_compute.instancebootdisk.InstanceBootDiskArgsDict', '_compute.instancebootdisk.outputs.InstanceBootDisk']]] = None) -> pulumi.Output[bool]:
         __props__ = _InstanceState.__new__(_InstanceState)
 
         __props__.__dict__["boot_disk"] = boot_disk
