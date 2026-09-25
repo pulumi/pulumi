@@ -324,7 +324,7 @@ func ExcludeProtectedResourceWithDuplicateProviderDestroyV2(
 	}
 
 	for _, res := range snap.Resources {
-		if !res.Protect {
+		if res.Protect == nil || !*res.Protect {
 			continue
 		}
 
