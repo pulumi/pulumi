@@ -17,6 +17,7 @@ package model
 import (
 	"fmt"
 	"maps"
+	"slices"
 	"sort"
 	"strings"
 	"sync/atomic"
@@ -310,6 +311,10 @@ func (t *ObjectType) conversionFrom(src Type, unifying bool, seen cycleSet) (Con
 			}
 			return conversionKind, diags
 		case *MapType:
+			if unifying {
+				_, kind := unifyElementTypes(src.ElementType, slices.Collect(maps.Values(t.Properties))...)
+				return kind, nil
+			}
 			conversionKind := UnsafeConversion
 			var diags lazyDiagnostics
 			for _, dst := range t.Properties {
@@ -365,14 +370,7 @@ func (t *ObjectType) unify(other Type) (Type, ConversionKind) {
 		switch other := other.(type) {
 		case *MapType:
 			// Prefer the map type, but unify the element type.
-			elementType, conversionKind := other.ElementType, SafeConversion
-			for _, t := range t.Properties {
-				element, ck := elementType.unify(t)
-				if ck < conversionKind {
-					conversionKind = ck
-				}
-				elementType = element
-			}
+			elementType, conversionKind := unifyElementTypes(other.ElementType, slices.Collect(maps.Values(t.Properties))...)
 			return NewMapType(elementType), conversionKind
 		case *ObjectType:
 			// If the other type is an object type, produce a new type whose properties are the union of the two types.

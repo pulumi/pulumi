@@ -245,6 +245,18 @@ func unify(t0, t1 Type, unify func() (Type, ConversionKind)) (Type, ConversionKi
 	}
 }
 
+// unifyElementTypes unifies elementType with each of the other types in turn. It returns the unified type and the
+// least conversion kind seen. Collection types use it to unify their element types.
+func unifyElementTypes(elementType Type, others ...Type) (Type, ConversionKind) {
+	conversionKind := SafeConversion
+	for _, other := range others {
+		var ck ConversionKind
+		elementType, ck = elementType.unify(other)
+		conversionKind = min(conversionKind, ck)
+	}
+	return elementType, conversionKind
+}
+
 // UnifyTypes chooses the most general type that is convertible from all of the input types.
 func UnifyTypes(types ...Type) (safeType Type, unsafeType Type) {
 	for _, t := range types {

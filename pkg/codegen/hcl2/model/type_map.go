@@ -16,6 +16,8 @@ package model
 
 import (
 	"fmt"
+	"maps"
+	"slices"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
@@ -119,10 +121,19 @@ func (t *MapType) ConversionFrom(src Type) ConversionKind {
 
 func (t *MapType) conversionFrom(src Type, unifying bool, seen cycleSet) (ConversionKind, lazyDiagnostics) {
 	return conversionFrom(t, src, unifying, seen, t.cache, func() (ConversionKind, lazyDiagnostics) {
+		// When unifying, the conversion kind of two collection types is the kind of unifying their element types.
 		switch src := src.(type) {
 		case *MapType:
+			if unifying {
+				_, kind := unifyElementTypes(t.ElementType, src.ElementType)
+				return kind, nil
+			}
 			return t.ElementType.conversionFrom(src.ElementType, unifying, seen)
 		case *ObjectType:
+			if unifying {
+				_, kind := unifyElementTypes(t.ElementType, slices.Collect(maps.Values(src.Properties))...)
+				return kind, nil
+			}
 			conversionKind := SafeConversion
 			var diags lazyDiagnostics
 			for _, src := range src.Properties {
@@ -156,14 +167,7 @@ func (t *MapType) unify(other Type) (Type, ConversionKind) {
 			return NewMapType(elementType), conversionKind
 		case *ObjectType:
 			// If the other type is an object type, prefer the map type, but unify the property types.
-			elementType, conversionKind := t.ElementType, SafeConversion
-			for _, other := range other.Properties {
-				element, ck := elementType.unify(other)
-				if ck < conversionKind {
-					conversionKind = ck
-				}
-				elementType = element
-			}
+			elementType, conversionKind := unifyElementTypes(t.ElementType, slices.Collect(maps.Values(other.Properties))...)
 			return NewMapType(elementType), conversionKind
 		default:
 			// Prefer the map type.
