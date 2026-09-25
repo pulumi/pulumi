@@ -31,12 +31,11 @@ which you can do as follows:
    to your shell's configuration file (e.g. `.bashrc`, `.zshrc`, etc.).
 3. Restart your shell session so that your configuration changes take effect.
 4. `cd` into the root of this repository. Run `mise trust` to allow the
-   repository to specify the required tools, all of which are listed in the
-   top-level `.mise.toml` file. After this, you should find that the tools you
-   need are now available in your `$PATH`.
-5. Run `mise settings experimental=true` or use the `MISE_EXPERIMENTAL` environment variable. 
-   This is currently required to enable the [Go backend](https://mise.jdx.dev/dev-tools/backends/go.html#go-backend).
-6. Run `mise install` to ensure all tools are up to date. You may need to re-run
-   this if the tool list changes.
+   repository to specify the required tools. After this, you should find that
+   the tools you need are now available in your `$PATH`.
+5. Run `mise install` to ensure all tools are up to date. You may need to re-run
+   this if the tool list changes. (On mise versions older than 2026.4, the
+   [Go backend](https://mise.jdx.dev/dev-tools/backends/go.html#go-backend)
+   may ask for `mise settings experimental=true`; current versions do not.)
 
 Use of Mise is currently experimental and optional.
