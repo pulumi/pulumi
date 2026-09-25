@@ -151,7 +151,7 @@ func (t *EnumType) ConversionFrom(src Type) ConversionKind {
 	return kind
 }
 
-func (t *EnumType) conversionFrom(src Type, unifying bool, seen cycleSet) (ConversionKind, lazyDiagnostics) {
+func (t *EnumType) conversionFrom(src Type, unifying bool, seen *cycleSet) (ConversionKind, lazyDiagnostics) {
 	return conversionFrom(t, src, unifying, seen, t.cache, func() (ConversionKind, lazyDiagnostics) {
 		// A constant converts safely when it is a member of the enum and not at all otherwise.
 		if src, ok := src.(*ConstType); ok {
@@ -192,8 +192,8 @@ func (t *EnumType) string(seen map[Type]struct{}) string {
 	return s
 }
 
-func (t *EnumType) unify(other Type) (Type, ConversionKind) {
-	return unify(t, other, func() (Type, ConversionKind) {
+func (t *EnumType) unify(other Type, seen *cycleSet) (Type, ConversionKind) {
+	return unify(t, other, seen, func() (Type, ConversionKind) {
 		return nil, NoConversion
 	})
 }

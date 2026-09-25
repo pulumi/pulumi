@@ -244,7 +244,7 @@ func (t *UnionType) ConversionFrom(src Type) ConversionKind {
 	return kind
 }
 
-func (t *UnionType) conversionFrom(src Type, unifying bool, seen cycleSet) (ConversionKind, lazyDiagnostics) {
+func (t *UnionType) conversionFrom(src Type, unifying bool, seen *cycleSet) (ConversionKind, lazyDiagnostics) {
 	return conversionFrom(t, src, unifying, seen, t.cache, func() (ConversionKind, lazyDiagnostics) {
 		var conversionKind ConversionKind
 		var diags []lazyDiagnostics
@@ -280,7 +280,7 @@ func (t *UnionType) conversionFrom(src Type, unifying bool, seen cycleSet) (Conv
 // If all conversions to a dest type from a union type are safe, the conversion is safe.
 // If no conversions to a dest type from a union type exist, the conversion does not exist.
 // Otherwise, the conversion is unsafe.
-func (t *UnionType) conversionTo(dest Type, unifying bool, seen cycleSet) (ConversionKind, lazyDiagnostics) {
+func (t *UnionType) conversionTo(dest Type, unifying bool, seen *cycleSet) (ConversionKind, lazyDiagnostics) {
 	conversionKind, exists := SafeConversion, false
 	for _, t := range t.ElementTypes {
 		switch kind, _ := dest.conversionFrom(t, unifying, seen); kind {
@@ -322,13 +322,13 @@ func (t *UnionType) string(seen map[Type]struct{}) string {
 	return s
 }
 
-func (t *UnionType) unify(other Type) (Type, ConversionKind) {
-	return unify(t, other, func() (Type, ConversionKind) {
-		return t.unifyTo(other)
+func (t *UnionType) unify(other Type, seen *cycleSet) (Type, ConversionKind) {
+	return unify(t, other, seen, func() (Type, ConversionKind) {
+		return t.unifyTo(other, seen)
 	})
 }
 
-func (t *UnionType) unifyTo(other Type) (Type, ConversionKind) {
+func (t *UnionType) unifyTo(other Type, seen *cycleSet) (Type, ConversionKind) {
 	switch other := other.(type) {
 	case *UnionType:
 		// If the other type is also a union type, produce a new type that is the union of their elements.
@@ -340,7 +340,7 @@ func (t *UnionType) unifyTo(other Type) (Type, ConversionKind) {
 		// Otherwise, unify the other type with each element of the union and return a new union type.
 		elements, conversionKind := make([]Type, len(t.ElementTypes)), SafeConversion
 		for i, t := range t.ElementTypes {
-			element, ck := t.unify(other)
+			element, ck := t.unify(other, seen)
 			if ck < conversionKind {
 				conversionKind = ck
 			}
