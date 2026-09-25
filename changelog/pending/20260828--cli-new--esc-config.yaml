@@ -1,0 +1,5 @@
+component: cli/new
+kind: feat
+body: Add an experimental `--esc-config` flag to `pulumi new` and `pulumi stack init`
+    that creates the new stack's ESC environments and records them as its `mainEnvironment`
+time: 2026-08-28T00:00:00Z

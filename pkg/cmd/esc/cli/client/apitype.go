@@ -231,6 +231,29 @@ type UpdateEnvironmentResponse struct {
 	EnvironmentDiagnosticError
 }
 
+// CreateEnvironmentRevisionRequest is the body of a request to create a revision of an environment
+// from an explicitly named parent revision. The definition is carried as a JSON string rather than as
+// a raw YAML body, which is how UpdateEnvironment sends it.
+type CreateEnvironmentRevisionRequest struct {
+	// Definition is the complete environment definition, in YAML.
+	Definition string `json:"definition"`
+}
+
+// CreateEnvironmentRevisionResponse describes the revision a CreateEnvironmentRevision call created. The
+// environment's `latest` tag is unchanged by the call, so Number is reachable only by naming it.
+type CreateEnvironmentRevisionResponse struct {
+	// Number identifies the newly created revision.
+	Number int `json:"number"`
+	// Parent is the revision the new revision was created from, with any tag the caller named already
+	// resolved to a number.
+	Parent int `json:"parent"`
+	// ObjectName is a content hash of the new revision's definition, suitable for display. It is not a
+	// version identifier: two revisions with identical definitions share it.
+	ObjectName string `json:"objectName,omitempty"`
+	// Diagnostics are the diagnostics produced while validating the definition.
+	Diagnostics []EnvironmentDiagnostic `json:"diagnostics,omitempty"`
+}
+
 type CheckEnvironmentResponse struct {
 	Diagnostics []EnvironmentDiagnostic `json:"diagnostics,omitempty"`
 }

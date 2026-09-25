@@ -22,6 +22,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"sort"
 	"strings"
 	"text/template"
 
@@ -54,7 +55,9 @@ func newConfigEnvInitCmd(parent *configEnvCmd) *cobra.Command {
 		Short: "Creates an environment for a stack",
 		Long: "Creates an environment for a specific stack based on the stack's configuration values,\n" +
 			"then replaces the stack's configuration values with a reference to that environment.\n" +
-			"The environment will be created in the same organization as the stack.",
+			"The environment will be created in the same organization as the stack.\n\n" +
+			"[EXPERIMENTAL] Pass --main to record the environment as the stack's `mainEnvironment`, which\n" +
+			"also makes it the target of `pulumi config set` and `pulumi config rm`.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			parent.initArgs()
 			return impl.run(cmd.Context(), args)
@@ -74,6 +77,11 @@ func newConfigEnvInitCmd(parent *configEnvCmd) *cobra.Command {
 	cmd.Flags().BoolVar(
 		&impl.keepConfig, "keep-config", false,
 		"Do not remove configuration values from the stack after creating the environment",
+	)
+	cmd.Flags().BoolVar(
+		&impl.main, "main", false,
+		"Bind the environment to the stack as its `mainEnvironment`, so that `pulumi config set` and "+
+			"`pulumi config rm` write to it, instead of appending it to the stack's `environment` list",
 	)
 	cmd.Flags().BoolVarP(
 		&impl.yes, "yes", "y", false,
@@ -100,6 +108,7 @@ type configEnvInitCmd struct {
 	envName     string
 	showSecrets bool
 	keepConfig  bool
+	main        bool
 	yes         bool
 }
 
@@ -160,6 +169,10 @@ func (cmd *configEnvInitCmd) run(ctx context.Context, args []string) error {
 	if err != nil {
 		return err
 	}
+	if cmd.main {
+		// Migrating must not silently retype values, so undo the engine's scalar coercion.
+		config = preserveScalarStringTypes(projectStack.Config, config)
+	}
 
 	crypter, err := cmd.newCrypter()
 	if err != nil {
@@ -202,14 +215,70 @@ func (cmd *configEnvInitCmd) run(ctx context.Context, args []string) error {
 	}
 
 	fullName := fmt.Sprintf("%s/%s", envProject, envName)
-	projectStack.Environment = projectStack.Environment.Append(fullName)
+	if cmd.main {
+		// Bind the environment as the stack's single source of configuration and target of config writes.
+		// The stack's `environment` list is deliberately left alone.
+		projectStack.MainEnvironment = &workspace.MainEnvironment{Project: envProject, Name: envName}
+	} else {
+		projectStack.Environment = projectStack.Environment.Append(fullName)
+	}
 	if !cmd.keepConfig {
 		projectStack.Config = nil
 	}
 	if err = cmd.parent.saveProjectStack(ctx, stack, projectStack, *cmd.parent.configFile); err != nil {
 		return fmt.Errorf("saving stack config: %w", err)
 	}
+	if cmd.main {
+		cmd.printMigrationSummary(fullName, config)
+	}
 	return nil
+}
+
+// preserveScalarStringTypes restores the string-ness of untyped scalar configuration values.
+//
+// config.Map.AsDecryptedPropertyMap coerces an untyped "6" into the number 6, which is what the engine
+// hands to a program. A migration must not retype the stack's data, so a value that the stack file held
+// as a plain string is written to the environment as a string.
+func preserveScalarStringTypes(cfg config.Map, m property.Map) property.Map {
+	values := m.AsMap()
+	for k, v := range cfg {
+		if v.Secure() || v.Object() {
+			continue
+		}
+		raw, err := v.ToObject()
+		if err != nil {
+			continue
+		}
+		if s, ok := raw.(string); ok {
+			values[k.String()] = property.New(s)
+		}
+	}
+	return property.NewMap(values)
+}
+
+// printMigrationSummary reports which configuration values moved into the environment. The PoC does not
+// verify that the migrated environment resolves to values equivalent to the original config block, so
+// saying exactly what moved is how a user checks the migration themselves.
+func (cmd *configEnvInitCmd) printMigrationSummary(fullName string, config property.Map) {
+	keys := make([]string, 0, config.Len())
+	secrets := 0
+	for k, v := range config.All {
+		keys = append(keys, k)
+		if v.Secret() {
+			secrets++
+		}
+	}
+	sort.Strings(keys)
+
+	fmt.Fprintf(cmd.parent.stdout, "Moved %d configuration value(s) (%d secret) to %v:\n",
+		len(keys), secrets, fullName)
+	for _, k := range keys {
+		fmt.Fprintf(cmd.parent.stdout, "  %v\n", k)
+	}
+	if cmd.keepConfig {
+		fmt.Fprintf(cmd.parent.stdout,
+			"The stack's 'config' block was kept and still overrides %v.\n", fullName)
+	}
 }
 
 func (cmd *configEnvInitCmd) getStackConfig(
