@@ -1269,3 +1269,16 @@ func TestGetOrRegisterPackageRef(t *testing.T) {
 		assert.Equal(t, int32(1), mon.calls.Load(), "concurrent calls should result in single registration")
 	})
 }
+
+func TestExistsResource(t *testing.T) {
+	t.Parallel()
+
+	err := RunErr(func(ctx *Context) error {
+		exists, known, _, _, err := await(ctx.ExistsResource("pkg:index:Resource", ID("some-id"), nil))
+		require.NoError(t, err)
+		assert.True(t, known)
+		assert.Equal(t, false, exists)
+		return nil
+	}, WithMocks("project", "stack", &testMonitor{}))
+	require.NoError(t, err)
+}
