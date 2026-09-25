@@ -1,0 +1,4 @@
+component: sdk/nodejs
+kind: fix
+body: Fix closure serialization for `__importStar`-wrapped cached modules
+time: 2026-09-25T09:25:00Z

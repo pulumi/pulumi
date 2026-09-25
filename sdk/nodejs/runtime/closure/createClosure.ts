@@ -1596,21 +1596,16 @@ function isImportStarResult(obj: any): obj is { default: unknown } {
  * be `/`).
  */
 async function findNormalizedModuleNameAsync(obj: any): Promise<string | undefined> {
-    // First, check the built-in modules
-    const modules = await getBuiltInModules();
-    const key = modules.get(obj);
-    if (key) {
-        return key;
-    }
-
     // When TypeScript compiles `import * as foo from "foo"` with `module: "nodenext"`, it emits
     // `__importStar(require("foo"))`. This creates a wrapper object with a `default` property that holds the original
     // module.
-    if (isImportStarResult(obj)) {
-        const unwrappedKey = modules.get(obj.default);
-        if (unwrappedKey) {
-            return unwrappedKey;
-        }
+    const target = isImportStarResult(obj) ? obj.default : obj;
+
+    // First, check the built-in modules
+    const modules = await getBuiltInModules();
+    const key = modules.get(target);
+    if (key) {
+        return key;
     }
 
     // Next, check the Node module require cache, which will store cached values
@@ -1619,7 +1614,7 @@ async function findNormalizedModuleNameAsync(obj: any): Promise<string | undefin
     // dynamically during execution.
     for (const path of Object.keys(require.cache)) {
         const c = require.cache[path];
-        if (c !== undefined && c.exports === obj) {
+        if (c !== undefined && c.exports === target) {
             // Rewrite the path to be a local module reference relative to the current working
             // directory.
             const modPath = upath.relative(process.cwd(), path);
