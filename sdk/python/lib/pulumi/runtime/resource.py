@@ -940,7 +940,9 @@ def exists_resource(
     secret_future: asyncio.Future[bool] = asyncio.Future()
 
     deps = {res} if res is not None else set()
-    result_output: Output[bool] = Output(deps, value_future, known_future, secret_future)
+    result_output: Output[bool] = Output(
+        deps, value_future, known_future, secret_future
+    )
 
     async def do_exists():
         try:
@@ -965,7 +967,9 @@ def exists_resource(
             else:
                 # No backing resource: resolve the parent and provider directly from opts and let the
                 # engine resolve the default provider when none is given.
-                parent_urn = await opts.parent.urn.future() if opts.parent is not None else None
+                parent_urn = (
+                    await opts.parent.urn.future() if opts.parent is not None else None
+                )
                 provider_ref = None
                 if opts.provider is not None:
                     provider_urn = await opts.provider.urn.future()
@@ -1009,14 +1013,14 @@ def exists_resource(
             secret_future.set_exception(exn)
             raise
 
-        log.debug(f"resource exists check successful: ty={ty}, exists={resp.exists}, known={resp.known}")
+        log.debug(
+            f"resource exists check successful: ty={ty}, exists={resp.exists}, known={resp.known}"
+        )
         value_future.set_result(resp.exists)
         known_future.set_result(resp.known)
         secret_future.set_result(False)
 
-    asyncio.ensure_future(
-        _get_rpc_manager().do_rpc("exists resource", do_exists)()
-    )
+    asyncio.ensure_future(_get_rpc_manager().do_rpc("exists resource", do_exists)())
 
     return result_output
 

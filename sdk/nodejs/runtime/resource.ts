@@ -501,9 +501,7 @@ export function existsResource(
             }
 
             // Serialize properties if provided.
-            const serializedProps = props
-                ? await serializeProperties(label, props, { keepOutputValues: false })
-                : {};
+            const serializedProps = props ? await serializeProperties(label, props, { keepOutputValues: false }) : {};
 
             // Resolve provider reference.
             let providerRef: string | undefined;
@@ -551,9 +549,7 @@ export function existsResource(
                     req,
                     (rpcError: grpc.ServiceError | null, innerResponse: resproto.ExistsResourceResponse) => {
                         if (rpcError) {
-                            reject(
-                                new Error(`failed to check existence of resource [${type}]: ${rpcError.message}`),
-                            );
+                            reject(new Error(`failed to check existence of resource [${type}]: ${rpcError.message}`));
                         } else {
                             resolve(innerResponse);
                         }
