@@ -27,6 +27,9 @@ builds:
     # google.golang.org/grpc has a build tag `grpcnotrace` which builds the package without x/net/trace. This avoids
     # dead code elimation from being disabled by the compiler, see https://github.com/pulumi/pulumi/pull/22012.
     - grpcnotrace
+  hooks:
+    post:
+      - scripts/sign-windows-binary.sh {{ .Path }}
 - <<: *pulumibin
   id: pulumi-language-go
   binary: pulumi-language-go
