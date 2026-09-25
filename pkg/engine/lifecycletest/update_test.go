@@ -948,3 +948,71 @@ func TestRefreshProgramUpdateReplacedComponentProvider(t *testing.T) {
 		require.NoError(t, err)
 	}
 }
+
+// TestUpdateDeleteBeforeReplaceProviderOfComponent covers an update that
+// delete-before-replaces a provider that a component resource refers to. The
+// engine removes the old provider from the state as soon as the replacement is
+// created, while the component still refers to the old provider by ID. Custom
+// resources are not affected: the engine deletes and re-creates them as
+// dependent replacements of the provider, but it never does that for components.
+func TestUpdateDeleteBeforeReplaceProviderOfComponent(t *testing.T) {
+	t.Parallel()
+
+	// TODO[https://github.com/pulumi/pulumi/issues/24788]: Fix the underlying issue and re-enable this test.
+	t.Skip("Skipping: delete-before-replace of a provider removes it from the state while a component still refers to it")
+
+	p := &lt.TestPlan{
+		Project: "test-project",
+		Stack:   "test-stack",
+	}
+
+	prov := &pkgresource.State{
+		Type:   "pulumi:providers:pkgA",
+		URN:    "urn:pulumi:test-stack::test-project::pulumi:providers:pkgA::prov",
+		Custom: true,
+		ID:     "id-prov",
+	}
+	provRef, err := providers.NewReference(prov.URN, prov.ID)
+	require.NoError(t, err)
+	comp := &pkgresource.State{
+		Type:     "pkgA:m:TypeA",
+		URN:      "urn:pulumi:test-stack::test-project::pkgA:m:TypeA::comp",
+		Custom:   false,
+		Provider: provRef.String(),
+	}
+	snap := &deploy.Snapshot{Resources: []*pkgresource.State{prov, comp}}
+	require.NoError(t, snap.VerifyIntegrity())
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				DiffConfigF: func(_ context.Context, _ plugin.DiffConfigRequest) (plugin.DiffConfigResponse, error) {
+					return plugin.DiffResult{Changes: plugin.DiffSome, ReplaceKeys: []resource.PropertyKey{"foo"}}, nil
+				},
+			}, nil
+		}),
+	}
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		resp, err := monitor.RegisterResource("pulumi:providers:pkgA", "prov", true, deploytest.ResourceOptions{
+			Inputs:              resource.PropertyMap{"foo": resource.NewProperty("bar")},
+			DeleteBeforeReplace: new(true),
+		})
+		require.NoError(t, err)
+		ref, err := providers.NewReference(resp.URN, resp.ID)
+		require.NoError(t, err)
+		_, err = monitor.RegisterResource("pkgA:m:TypeA", "comp", false, deploytest.ResourceOptions{
+			Provider: ref.String(),
+		})
+		require.NoError(t, err)
+		return nil
+	})
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
+	_, err = lt.TestOp(engine.Update).RunStep(
+		p.GetProject(), p.GetTarget(t, snap), lt.TestUpdateOptions{
+			T:                t,
+			HostF:            hostF,
+			SkipDisplayTests: true,
+		},
+		false, p.BackendClient, nil, "1")
+	require.NoError(t, err)
+}

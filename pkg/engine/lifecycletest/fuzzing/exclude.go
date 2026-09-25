@@ -63,6 +63,8 @@ func DefaultExclusionRules() ExclusionRules {
 		ExcludeTargetedUpdateRefreshWithDeletedParent,
 		// TODO[pulumi/pulumi#24680]
 		ExcludeComponentWithProviderRefreshProgram,
+		// TODO[pulumi/pulumi#24788]
+		ExcludeComponentWithCascadeReplacedProviderUpdate,
 	}
 }
 
@@ -732,6 +734,52 @@ func ExcludeComponentWithProviderRefreshProgram(
 
 	for _, res := range snap.Resources {
 		if !res.Custom && res.Provider != "" {
+			return true
+		}
+	}
+
+	return false
+}
+
+// ExcludeComponentWithCascadeReplacedProviderUpdate excludes updates against a
+// snapshot that contains a component resource whose provider is deleted with,
+// or replaced with, another resource. If the program delete-before-replaces
+// that other resource, the engine delete-before-replaces the provider too, and
+// it removes the old provider from the state as soon as the replacement is
+// created. The component still refers to the old provider at that point, which
+// violates snapshot integrity.
+func ExcludeComponentWithCascadeReplacedProviderUpdate(
+	snap *SnapshotSpec,
+	prog *ProgramSpec,
+	_ *ProviderSpec,
+	plan *PlanSpec,
+) bool {
+	if plan.Operation != PlanOperationUpdate {
+		return false
+	}
+
+	cascadeReplacedProviders := make(map[resource.URN]bool)
+	addCascadeReplacedProviders := func(resources []*ResourceSpec) {
+		for _, res := range resources {
+			if providers.IsProviderType(res.Type) && (res.DeletedWith != "" || len(res.ReplaceWith) > 0) {
+				cascadeReplacedProviders[res.URN()] = true
+			}
+		}
+	}
+	addCascadeReplacedProviders(snap.Resources)
+	addCascadeReplacedProviders(prog.ResourceRegistrations)
+
+	for _, res := range snap.Resources {
+		if res.Custom || res.Provider == "" {
+			continue
+		}
+
+		providerRef, err := providers.ParseReference(res.Provider)
+		if err != nil {
+			continue
+		}
+
+		if cascadeReplacedProviders[providerRef.URN()] {
 			return true
 		}
 	}
