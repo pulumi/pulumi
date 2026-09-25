@@ -103,7 +103,7 @@ func (t *ConstType) ConversionFrom(src Type) ConversionKind {
 	return kind
 }
 
-func (t *ConstType) conversionFrom(src Type, unifying bool, seen cycleSet) (ConversionKind, lazyDiagnostics) {
+func (t *ConstType) conversionFrom(src Type, unifying bool, seen *cycleSet) (ConversionKind, lazyDiagnostics) {
 	return conversionFrom(t, src, unifying, seen, t.cache, func() (ConversionKind, lazyDiagnostics) {
 		notConvertible := func() hcl.Diagnostics { return hcl.Diagnostics{typeNotConvertible(t, src)} }
 		if src, ok := src.(*ConstType); ok {
@@ -128,9 +128,10 @@ func (t *ConstType) string(_ map[Type]struct{}) string {
 	return t.String()
 }
 
-func (t *ConstType) unify(other Type) (Type, ConversionKind) {
-	return unify(t, other, func() (Type, ConversionKind) {
-		return t, other.ConversionFrom(t)
+func (t *ConstType) unify(other Type, seen *cycleSet) (Type, ConversionKind) {
+	return unify(t, other, seen, func() (Type, ConversionKind) {
+		kind, _ := other.conversionFrom(t, true, seen)
+		return t, kind
 	})
 }
 
