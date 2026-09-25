@@ -48,6 +48,8 @@ type deploymentExecutor struct {
 	// The number of expected events remaining from step generaton, this tells us we're still expecting events
 	// to be posted back to us from async work such as DiffSteps.
 	asyncEventsExpected int32
+
+	chainTokens map[resource.URN]completionToken
 }
 
 // checkTargets validates that all the targets passed in refer to existing resources.  Diagnostics
@@ -697,7 +699,22 @@ func (ex *deploymentExecutor) handleSingleEvent(ctx context.Context, event Sourc
 		return nil
 	}
 
-	ex.stepExec.ExecuteSerial(newSteps)
+	if ex.chainTokens == nil {
+		ex.chainTokens = map[resource.URN]completionToken{}
+	}
+	for _, step := range newSteps {
+		if same, ok := step.(*SameStep); ok {
+			for _, urn := range same.waitURNs {
+				if tok, has := ex.chainTokens[urn]; has {
+					same.waitTokens = append(same.waitTokens, tok)
+				}
+			}
+		}
+	}
+	tok := ex.stepExec.ExecuteSerial(newSteps)
+	for _, step := range newSteps {
+		ex.chainTokens[step.URN()] = tok
+	}
 	return nil
 }
 

@@ -24,6 +24,7 @@ import (
 	"sync"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
 
@@ -2029,6 +2030,124 @@ func TestEnsureUntargetedSame(t *testing.T) {
 
 		assert.Equal(t, initialState, finalState)
 	}
+}
+
+// TestUntargetedSameWithInFlightTargetedDependency reproduces
+// https://github.com/pulumi/pulumi/issues/22089: an untargeted resource's SameStep completing
+// while the targeted dependency's update is still in flight persisted the dependent before its
+// dependency, corrupting the snapshot.
+func TestUntargetedSameWithInFlightTargetedDependency(t *testing.T) {
+	t.Parallel()
+
+	updateStarted := make(chan struct{})
+	unblockUpdate := make(chan struct{})
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				UpdateF: func(_ context.Context, req plugin.UpdateRequest) (plugin.UpdateResponse, error) {
+					close(updateStarted)
+					<-unblockUpdate
+					return plugin.UpdateResponse{Properties: req.NewInputs}, nil
+				},
+			}, nil
+		}),
+	}
+
+	const resAURN = resource.URN("urn:pulumi:test::test::pkgA:m:typA::resA")
+
+	targetedStep := false
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, err := monitor.RegisterResource("pulumi:pulumi:Stack", "test-test", false)
+		require.NoError(t, err)
+
+		if !targetedStep {
+			respA, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+				Inputs: resource.PropertyMap{"foo": resource.NewProperty("v1")},
+			})
+			require.NoError(t, err)
+
+			_, err = monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
+				Inputs:       resource.PropertyMap{"bar": resource.NewProperty("v1")},
+				Dependencies: []resource.URN{respA.URN},
+			})
+			require.NoError(t, err)
+			return nil
+		}
+
+		var wg sync.WaitGroup
+		wg.Add(1)
+		var errA error
+		go func() {
+			defer wg.Done()
+			_, errA = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+				Inputs: resource.PropertyMap{"foo": resource.NewProperty("v2")},
+			})
+		}()
+
+		<-updateStarted
+		bDone := make(chan struct{})
+		var errB error
+		go func() {
+			defer close(bDone)
+			_, errB = monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
+				Inputs: resource.PropertyMap{"bar": resource.NewProperty("v1")},
+			})
+		}()
+
+		// resB's registration now waits for resA's update, so it can't be awaited before
+		// unblocking the update; the grace period lets it reach the engine first.
+		select {
+		case <-bDone:
+		case <-time.After(time.Second):
+		}
+		close(unblockUpdate)
+
+		<-bDone
+		require.NoError(t, errB)
+		wg.Wait()
+		require.NoError(t, errA)
+		return nil
+	})
+
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
+	p := &lt.TestPlan{}
+	project := p.GetProject()
+
+	options := lt.TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true}
+	origSnap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), options, false, p.BackendClient, nil, "0")
+	require.NoError(t, err)
+
+	targetedStep = true
+	options = lt.TestUpdateOptions{
+		T:                t,
+		HostF:            hostF,
+		SkipDisplayTests: true,
+		UpdateOptions: UpdateOptions{
+			Parallel: 4,
+			Targets:  deploy.NewUrnTargets([]string{string(resAURN)}),
+		},
+	}
+	finalSnap, err := lt.TestOp(Update).
+		RunStep(project, p.GetTarget(t, origSnap), options, false, p.BackendClient, nil, "1")
+	require.NoError(t, err)
+
+	indexOf := func(urn resource.URN) int {
+		for i, r := range finalSnap.Resources {
+			if r.URN == urn {
+				return i
+			}
+		}
+		return -1
+	}
+	iA := indexOf(resAURN)
+	iB := indexOf("urn:pulumi:test::test::pkgA:m:typA::resB")
+	require.GreaterOrEqual(t, iA, 0)
+	require.GreaterOrEqual(t, iB, 0)
+	require.Less(t, iA, iB, "resA must precede its dependent resB in the snapshot")
+
+	resA := finalSnap.Resources[iA]
+	require.Equal(t, resource.NewProperty("v2"), resA.Inputs["foo"])
 }
 
 // TestReplaceSpecificTargetsPlan checks combinations of --target and --replace for expected behavior.

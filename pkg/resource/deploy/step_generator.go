@@ -1697,6 +1697,8 @@ func (sg *stepGenerator) continueStepsFromImport(
 				sg.sames[urn] = true
 				sg.sames[old.URN] = true
 
+				var waitFor []resource.URN
+
 				providerRef, allDeps := old.GetAllDependencies()
 				if providerRef != "" {
 					provRef, err := sdkproviders.ParseReference(providerRef)
@@ -1719,12 +1721,16 @@ func (sg *stepGenerator) continueStepsFromImport(
 							}
 							steps = append(steps, depSteps...)
 						}
+					} else {
+						waitFor = append(waitFor, provURN)
 					}
 				}
 
 				for _, dep := range allDeps {
 					generatedDep := sg.hasGeneratedStep(dep.URN)
-					if !generatedDep {
+					if generatedDep {
+						waitFor = append(waitFor, dep.URN)
+					} else {
 						depOld, has := sg.deployment.Olds()[dep.URN]
 						if !has {
 							var message string
@@ -1764,7 +1770,7 @@ func (sg *stepGenerator) continueStepsFromImport(
 
 				new := old.Copy()
 				new.ID = ""
-				rootStep := NewUntargetedSameStep(sg.deployment, event, old, new)
+				rootStep := NewUntargetedSameStep(sg.deployment, event, old, new, waitFor)
 				steps = append(steps, rootStep)
 				return steps, nil
 			}
@@ -2249,20 +2255,30 @@ func (sg *stepGenerator) queueUntargetedDependencySames(new *pkgresource.State) 
 			return
 		}
 		sg.pendingUntargetedSameURNs[urn] = true
+		var waitFor []resource.URN
 		if old.Provider != "" {
 			if ref, err := sdkproviders.ParseReference(old.Provider); err == nil {
 				if provOld, ok := sg.deployment.olds[ref.URN()]; ok && provOld.ID == ref.ID() {
-					queue(ref.URN())
+					if sg.hasGeneratedStep(ref.URN()) {
+						waitFor = append(waitFor, ref.URN())
+					} else {
+						queue(ref.URN())
+					}
 				}
 			}
 		}
 		_, allDeps := old.GetAllDependencies()
 		for _, dep := range allDeps {
-			queue(dep.URN)
+			if sg.hasGeneratedStep(dep.URN) {
+				waitFor = append(waitFor, dep.URN)
+			} else {
+				queue(dep.URN)
+			}
 		}
 		copied := old.Copy()
 		copied.ID = ""
-		sg.pendingUntargetedSames = append(sg.pendingUntargetedSames, NewUntargetedSameStep(sg.deployment, nil, old, copied))
+		sg.pendingUntargetedSames = append(sg.pendingUntargetedSames,
+			NewUntargetedSameStep(sg.deployment, nil, old, copied, waitFor))
 	}
 	_, allDeps := new.GetAllDependencies()
 	for _, dep := range allDeps {
@@ -2481,7 +2497,7 @@ func (sg *stepGenerator) GenerateDeletes(targetsOpt UrnTargets, excludesOpt UrnT
 				if !sg.isOperatedOn(res.URN) {
 					new := res.Copy()
 					new.ID = ""
-					sameSteps = append(sameSteps, NewUntargetedSameStep(sg.deployment, nil, res, new))
+					sameSteps = append(sameSteps, NewUntargetedSameStep(sg.deployment, nil, res, new, nil))
 				}
 			}
 		}
@@ -3165,7 +3181,8 @@ func (sg *stepGenerator) loadResourceProvider(
 			sg.pendingUntargetedSameURNs[old.URN] = true
 			new := old.Copy()
 			new.ID = ""
-			sg.pendingUntargetedSames = append(sg.pendingUntargetedSames, NewUntargetedSameStep(sg.deployment, nil, old, new))
+			sg.pendingUntargetedSames = append(sg.pendingUntargetedSames,
+				NewUntargetedSameStep(sg.deployment, nil, old, new, nil))
 		}
 		p, ok = sg.deployment.GetProvider(ref)
 		contract.Assertf(ok, "EnsureProvider succeeded but provider %v is not registered", ref)
