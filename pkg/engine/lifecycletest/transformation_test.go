@@ -1202,7 +1202,7 @@ func TestRemoteTransformByteString(t *testing.T) {
 }
 
 // Test that a transform declared on an ancestor component is still applied to a custom resource whose parent
-// chain passes through a read (`.get()`) resource.
+// chain passes through a resource read.
 func TestTransformInheritedThroughReadParent(t *testing.T) {
 	t.Parallel()
 
@@ -1245,7 +1245,7 @@ func TestTransformInheritedThroughReadParent(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		// A read (`.get()`) resource parented to the component.
+		// A resource read parented to the component.
 		readURN, _, err := monitor.ReadResource(
 			"pkgA:m:typRead", "readR", "read-id", component.URN,
 			resource.PropertyMap{}, "", "", "", nil, "", "")
