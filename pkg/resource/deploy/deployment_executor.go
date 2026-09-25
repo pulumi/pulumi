@@ -704,7 +704,9 @@ func (ex *deploymentExecutor) handleSingleEvent(ctx context.Context, event Sourc
 	if ex.chainTokens == nil {
 		ex.chainTokens = map[resource.URN]completionToken{}
 	}
-	for _, step := range newSteps {
+	stepURNs := make([]resource.URN, len(newSteps))
+	for i, step := range newSteps {
+		stepURNs[i] = step.URN()
 		if same, ok := step.(*SameStep); ok {
 			for _, urn := range same.waitURNs {
 				if tok, has := ex.chainTokens[urn]; has {
@@ -714,8 +716,8 @@ func (ex *deploymentExecutor) handleSingleEvent(ctx context.Context, event Sourc
 		}
 	}
 	tok := ex.stepExec.ExecuteSerial(newSteps)
-	for _, step := range newSteps {
-		ex.chainTokens[step.URN()] = tok
+	for _, urn := range stepURNs {
+		ex.chainTokens[urn] = tok
 	}
 	return nil
 }
