@@ -31,36 +31,37 @@ import (
 // resolved; if false, the caller falls back to a default rendering of the ref.
 type PulumiRefResolver func(ref DocRef) (string, bool)
 
+type interpretRefsOptions struct {
+	resolveUnbound bool
+}
+
 // interpretPulumiRefsInDescription interprets Pulumi refs in a documentation string,
 // then renders the result back to text.
 func interpretPulumiRefsInDescription(
-	description string, types *types, resolver PulumiRefResolver,
-) (string, error) {
+	description string, types *types, resolver PulumiRefResolver, opts interpretRefsOptions,
+) (string, hcl.Diagnostics) {
 	if description == "" {
 		return "", nil
 	}
 
 	source := []byte(description)
 	parsed := ParseDocs(source)
-	err := interpretPulumiRefs("", types, parsed, resolver)
-	if err != nil {
-		return "", err
-	}
+	diags := interpretPulumiRefs("", types, parsed, resolver, opts)
 
-	return RenderDocsToString(source, parsed), nil
+	return RenderDocsToString(source, parsed), diags
 }
 
 // interpretPulumiRefs parses all {{% ref %}} shortcodes that descend from the given node. Each ref is passed to the
 // `resolveRefToName` callback to replace the shortcode with literal text.
 func interpretPulumiRefs(
 	path string, types *types,
-	node ast.Node, resolveRefToName PulumiRefResolver,
+	node ast.Node, resolveRefToName PulumiRefResolver, opts interpretRefsOptions,
 ) hcl.Diagnostics {
 	var diags hcl.Diagnostics
 
 	var c, next ast.Node
 	for c = node.FirstChild(); c != nil; c = next {
-		subdiags := interpretPulumiRefs(path, types, c, resolveRefToName)
+		subdiags := interpretPulumiRefs(path, types, c, resolveRefToName, opts)
 		diags = append(diags, subdiags...)
 
 		next = c.NextSibling()
@@ -168,12 +169,13 @@ func interpretPulumiRefs(
 		}
 
 		var name string
-		if !subdiags.HasErrors() {
-			name, ok = resolveRefToName(ref)
+		var resolved bool
+		if !subdiags.HasErrors() || opts.resolveUnbound {
+			name, resolved = resolveRefToName(ref)
 		}
 		diags = append(diags, subdiags...)
 
-		if !ok {
+		if !resolved {
 			// If we didn't resolve the ref via `resolveRefToName` then just return a sensible default textual value.
 			if ref.Property != "" {
 				name = ref.Property
