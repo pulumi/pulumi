@@ -776,8 +776,8 @@ func TestRecursiveObjectType(t *testing.T) {
 	assert.False(t, linkedListType.Equals(linkedListTypeNonEqual))
 
 	// String conversion
-	// Note: 'next' property is not visible because the string value is memoized at the time of Optional creation.
-	assert.Equal(t, "union(list(object({data = output(int), sibling = ...})), none)", linkedListType.String())
+	assert.Equal(t, "union(none, list(object({data = output(int), next = union(none, list(...)), sibling = ...})))",
+		linkedListType.String())
 
 	// Convert from another type
 	assert.Equal(t, UnsafeConversion, linkedListType.ConversionFrom(linkedListTypeNonEqual))
@@ -789,7 +789,7 @@ func TestRecursiveObjectType(t *testing.T) {
 
 	// Resolving eventuals
 	resolvedLinkedListType := ResolveOutputs(linkedListType)
-	data := resolvedLinkedListType.(*UnionType).ElementTypes[0].(*ListType).ElementType.(*ObjectType).Properties["data"]
+	data := resolvedLinkedListType.(*UnionType).ElementTypes[1].(*ListType).ElementType.(*ObjectType).Properties["data"]
 	assert.True(t, data.Equals(IntType))
 	hasOutputs, _ = ContainsEventuals(resolvedLinkedListType)
 	assert.False(t, hasOutputs)

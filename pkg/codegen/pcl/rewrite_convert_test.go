@@ -16,6 +16,7 @@ package pcl
 
 import (
 	"fmt"
+	"slices"
 	"testing"
 
 	"github.com/hashicorp/hcl/v2"
@@ -235,4 +236,61 @@ func TestRewriteConversionsExpandFinal(t *testing.T) {
 	call := expr.(*model.FunctionCallExpression)
 	assert.True(t, call.ExpandFinal)
 	require.IsType(t, &model.TupleConsExpression{}, call.Args[1])
+}
+
+// Tests that LowerConversion picks a member of a union destination without regard to the order of the members: a
+// source of unknown type is left as it is, none is never a target, and a plain member is preferred to an eventual
+// one when only unsafe conversions exist.
+func TestLowerConversionIsOrderIndependent(t *testing.T) {
+	t.Parallel()
+
+	variable := func(name string, typ model.Type) model.Expression {
+		return model.VariableReference(&model.Variable{Name: name, VariableType: typ})
+	}
+	optionalString := model.NewOptionalType(model.StringType)
+	cases := []struct {
+		name    string
+		from    model.Expression
+		members []model.Type
+		want    model.Type
+	}{
+		{
+			name:    "unknown source is left alone",
+			from:    variable("x", model.DynamicType),
+			members: []model.Type{model.StringType, model.NoneType, model.NewOutputType(model.StringType)},
+			want:    nil,
+		},
+		{
+			name:    "optional source skips none",
+			from:    variable("x", optionalString),
+			members: []model.Type{model.StringType, model.NoneType, model.NewOutputType(model.StringType)},
+			want:    model.StringType,
+		},
+		{
+			name:    "plain member preferred to eventual",
+			from:    variable("x", model.StringType),
+			members: []model.Type{model.NumberType, model.NewOutputType(model.NumberType)},
+			want:    model.NumberType,
+		},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+			for _, members := range [][]model.Type{c.members, reversed(c.members)} {
+				union := &model.UnionType{ElementTypes: members}
+				got := LowerConversion(c.from, union)
+				want := c.want
+				if want == nil {
+					want = union
+				}
+				assert.True(t, want.Equals(got), "members %v: expected %v, got %v", members, want, got)
+			}
+		})
+	}
+}
+
+func reversed(types []model.Type) []model.Type {
+	out := slices.Clone(types)
+	slices.Reverse(out)
+	return out
 }

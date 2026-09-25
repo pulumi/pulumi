@@ -431,11 +431,28 @@ func lowerConversion(from model.Expression, to model.Type) (model.Type, bool) {
 			}
 		}
 
-		// Unsafe conversions:
+		// Unsafe conversions. A value of unknown type is left as it is: no member is a better target than
+		// another, and a cast that a generator emits for it may be wrong when the value resolves. Otherwise the
+		// choice must not depend on the order of the union's members: none is never a target, and a plain member
+		// is preferred to an eventual one, so that the cast the conversion needs is generated.
+		if model.ResolveOutputs(from.Type()) == model.DynamicType {
+			return nil, false
+		}
+		isEventual := func(t model.Type) bool {
+			outputs, promises := model.ContainsEventuals(t)
+			return outputs || promises
+		}
+		var unsafe model.Type
 		for i, to := range to.ElementTypes {
-			if conversions[i] == model.UnsafeConversion {
-				return to, true
+			if conversions[i] != model.UnsafeConversion || to == model.NoneType {
+				continue
 			}
+			if unsafe == nil || !isEventual(to) && isEventual(unsafe) {
+				unsafe = to
+			}
+		}
+		if unsafe != nil {
+			return unsafe, true
 		}
 		return nil, false
 	default:
