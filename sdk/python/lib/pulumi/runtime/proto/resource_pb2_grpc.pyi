@@ -74,6 +74,11 @@ class ResourceMonitorStub:
         pulumi.resource_pb2.ReadResourceResponse,
     ]
 
+    ExistsResource: grpc.UnaryUnaryMultiCallable[
+        pulumi.resource_pb2.ExistsResourceRequest,
+        pulumi.resource_pb2.ExistsResourceResponse,
+    ]
+
     RegisterResource: grpc.UnaryUnaryMultiCallable[
         pulumi.resource_pb2.RegisterResourceRequest,
         pulumi.resource_pb2.RegisterResourceResponse,
@@ -169,6 +174,11 @@ class ResourceMonitorAsyncStub:
     ReadResource: grpc.aio.UnaryUnaryMultiCallable[
         pulumi.resource_pb2.ReadResourceRequest,
         pulumi.resource_pb2.ReadResourceResponse,
+    ]
+
+    ExistsResource: grpc.aio.UnaryUnaryMultiCallable[
+        pulumi.resource_pb2.ExistsResourceRequest,
+        pulumi.resource_pb2.ExistsResourceResponse,
     ]
 
     RegisterResource: grpc.aio.UnaryUnaryMultiCallable[
@@ -277,6 +287,13 @@ class ResourceMonitorServicer(metaclass=abc.ABCMeta):
         request: pulumi.resource_pb2.ReadResourceRequest,
         context: _ServicerContext,
     ) -> typing.Union[pulumi.resource_pb2.ReadResourceResponse, collections.abc.Awaitable[pulumi.resource_pb2.ReadResourceResponse]]: ...
+
+    
+    def ExistsResource(
+        self,
+        request: pulumi.resource_pb2.ExistsResourceRequest,
+        context: _ServicerContext,
+    ) -> typing.Union[pulumi.resource_pb2.ExistsResourceResponse, collections.abc.Awaitable[pulumi.resource_pb2.ExistsResourceResponse]]: ...
 
     
     def RegisterResource(
