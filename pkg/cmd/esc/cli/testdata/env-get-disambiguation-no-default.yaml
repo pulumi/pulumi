@@ -1,0 +1,32 @@
+run: |
+  esc env get --value json || echo -n ""
+  esc env get test --value json
+  esc env get default/other --value json
+  esc env get default/other foo --value json
+environments:
+  test-user/default/other:
+    values:
+      foo: other-bar
+  test-user/default/test:
+    values:
+      foo: bar
+
+---
+> esc env get --value json
+> esc env get test --value json
+{
+  "foo": "bar"
+}
+> esc env get default/other --value json
+{
+  "foo": "other-bar"
+}
+> esc env get default/other foo --value json
+"other-bar"
+
+---
+> esc env get --value json
+Error: no environment name specified
+> esc env get test --value json
+> esc env get default/other --value json
+> esc env get default/other foo --value json

@@ -103,7 +103,7 @@ func newEnvDiffCmd(env *envCommand) *cobra.Command {
 				return fmt.Errorf("unknown output format %q", format)
 			}
 
-			baseData, err := diff.getEnvironment(ctx, baseRef, path, showSecrets)
+			baseData, err := diff.getEnvironment(ctx, envTarget{ref: baseRef}, path, showSecrets)
 			if err != nil {
 				return err
 			}
@@ -111,7 +111,7 @@ func newEnvDiffCmd(env *envCommand) *cobra.Command {
 				baseData = &envGetTemplateData{}
 			}
 
-			compareData, err := diff.getEnvironment(ctx, compareRef, path, showSecrets)
+			compareData, err := diff.getEnvironment(ctx, envTarget{ref: compareRef}, path, showSecrets)
 			if err != nil {
 				return err
 			}

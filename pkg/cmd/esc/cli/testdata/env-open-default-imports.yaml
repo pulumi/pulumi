@@ -1,0 +1,34 @@
+run: |
+  esc env open
+  esc env open foo
+  esc env open --draft=00000000-0000-0000-0000-000000000000 || echo -n ""
+process:
+  fs:
+    .esc.yaml: |
+      environment:
+        imports:
+          - default/base
+          - default/staging
+environments:
+  test-user/default/base:
+    values:
+      foo: bar
+  test-user/default/staging:
+    values:
+      baz: qux
+
+---
+> esc env open
+{
+  "baz": "qux",
+  "foo": "bar"
+}
+> esc env open foo
+"bar"
+> esc env open --draft=00000000-0000-0000-0000-000000000000
+
+---
+> esc env open
+> esc env open foo
+> esc env open --draft=00000000-0000-0000-0000-000000000000
+Error: --draft requires a named environment

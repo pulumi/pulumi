@@ -1,0 +1,21 @@
+run: esc env default
+error: exit status 1
+process:
+  fs:
+    Pulumi.dev.yaml: |
+      environment:
+        - default/base
+    Pulumi.yaml: |
+      name: my-project
+      runtime: nodejs
+environments:
+  test-user/default/base:
+    values:
+      foo: bar
+
+---
+> esc env default
+
+---
+> esc env default
+Error: no default environment
