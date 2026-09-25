@@ -1269,3 +1269,52 @@ func TestGetOrRegisterPackageRef(t *testing.T) {
 		assert.Equal(t, int32(1), mon.calls.Load(), "concurrent calls should result in single registration")
 	})
 }
+
+// TestGetProvider covers provider resolution for both ordinary resources and resources
+// belonging to a parameterized/extension package (packageRef != ""). For the latter, the
+// resource's own package (e.g. "gateway-api") is expected to differ from the package of the
+// provider that serves it (e.g. "kubernetes", parameterized as the "gateway-api" extension), so
+// an explicitly-supplied provider must be honored even though its package doesn't match.
+func TestGetProvider(t *testing.T) {
+	t.Parallel()
+
+	kubernetesProvider := &ProviderResourceState{pkg: "kubernetes"}
+	gatewayAPIProvider := &ProviderResourceState{pkg: "gateway-api"}
+
+	t.Run("explicit provider with matching package is used", func(t *testing.T) {
+		t.Parallel()
+		got := getProvider("gateway-api:v1:Gateway", gatewayAPIProvider, nil, "" /* packageRef */)
+		assert.Same(t, gatewayAPIProvider, got)
+	})
+
+	t.Run("explicit provider with mismatched package falls back to providers map", func(t *testing.T) {
+		t.Parallel()
+		fallback := &ProviderResourceState{pkg: "gateway-api"}
+		providers := map[string]ProviderResource{"gateway-api": fallback}
+		got := getProvider("gateway-api:v1:Gateway", kubernetesProvider, providers, "" /* packageRef */)
+		assert.Same(t, fallback, got, "a provider for the wrong package should not be used for an ordinary resource")
+	})
+
+	t.Run("no explicit provider falls back to providers map", func(t *testing.T) {
+		t.Parallel()
+		providers := map[string]ProviderResource{"gateway-api": gatewayAPIProvider}
+		got := getProvider("gateway-api:v1:Gateway", nil, providers, "" /* packageRef */)
+		assert.Same(t, gatewayAPIProvider, got)
+	})
+
+	t.Run("extension resource keeps an explicit provider from a different base package", func(t *testing.T) {
+		t.Parallel()
+		// A "gateway-api" resource is served by a "kubernetes" provider that the engine
+		// parameterizes as the "gateway-api" extension. The package mismatch here is
+		// expected, not an error, so the explicit provider must be returned as-is.
+		got := getProvider("gateway-api:v1:Gateway", kubernetesProvider, nil, "some-package-ref")
+		assert.Same(t, kubernetesProvider, got)
+	})
+
+	t.Run("extension resource with no explicit provider falls back to providers map", func(t *testing.T) {
+		t.Parallel()
+		providers := map[string]ProviderResource{"gateway-api": gatewayAPIProvider}
+		got := getProvider("gateway-api:v1:Gateway", nil, providers, "some-package-ref")
+		assert.Same(t, gatewayAPIProvider, got)
+	})
+}

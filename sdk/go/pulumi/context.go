@@ -1440,7 +1440,7 @@ func (ctx *Context) readPackageResource(
 	}
 
 	// Get the provider for the resource.
-	provider := getProvider(t, options.Provider, providers)
+	provider := getProvider(t, options.Provider, providers, packageRef)
 	protect := options.Protect
 	if parent != nil && protect == nil {
 		protect = parent.getProtect()
@@ -1822,7 +1822,7 @@ func (ctx *Context) registerResource(
 	}
 
 	// Get the provider for the resource.
-	provider := getProvider(t, options.Provider, providers)
+	provider := getProvider(t, options.Provider, providers, packageRef)
 	protect := options.Protect
 	if parent != nil && protect == nil {
 		protect = parent.getProtect()
@@ -2191,9 +2191,19 @@ func (ctx *Context) mergeProviders(t string, parent Resource, provider ProviderR
 }
 
 // getProvider gets the provider for the resource.
-func getProvider(t string, provider ProviderResource, providers map[string]ProviderResource) ProviderResource {
+//
+// packageRef is non-empty when the resource was registered through RegisterPackageResource /
+// ReadPackageResource, i.e. it belongs to a parameterized or extension package (see
+// GetOrRegisterPackageRef). For such resources, the resource's own package (derived from its
+// type token, e.g. "gateway-api") is expected to differ from the package of the provider that
+// actually serves it (e.g. "kubernetes", parameterized as the "gateway-api" extension): that
+// mismatch is the whole point of the mechanism, not a sign that the wrong provider was passed.
+// So, unlike for ordinary resources, an explicitly-supplied provider must be honored as-is
+// without the package-match check below -- the engine parameterizes it for the resource's
+// extension before use, regardless of the provider's own package.
+func getProvider(t string, provider ProviderResource, providers map[string]ProviderResource, packageRef string) ProviderResource {
 	pkg := getPackage(t)
-	if provider == nil || provider.getPackage() != pkg {
+	if provider == nil || (packageRef == "" && provider.getPackage() != pkg) {
 		provider = providers[pkg]
 	}
 	return provider
