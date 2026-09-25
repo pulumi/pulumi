@@ -24,6 +24,7 @@ import (
 	"sync"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
 
@@ -2030,6 +2031,382 @@ func TestEnsureUntargetedSame(t *testing.T) {
 
 		assert.Equal(t, initialState, finalState)
 	}
+}
+
+// TestUntargetedSameWithInFlightTargetedDependency reproduces
+// https://github.com/pulumi/pulumi/issues/22089: an untargeted resource's SameStep completing
+// while the targeted dependency's update is still in flight persisted the dependent before its
+// dependency, corrupting the snapshot.
+func TestUntargetedSameWithInFlightTargetedDependency(t *testing.T) {
+	t.Parallel()
+
+	updateStarted := make(chan struct{})
+	unblockUpdate := make(chan struct{})
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				UpdateF: func(_ context.Context, req plugin.UpdateRequest) (plugin.UpdateResponse, error) {
+					close(updateStarted)
+					<-unblockUpdate
+					return plugin.UpdateResponse{Properties: req.NewInputs}, nil
+				},
+			}, nil
+		}),
+	}
+
+	const resAURN = resource.URN("urn:pulumi:test::test::pkgA:m:typA::resA")
+
+	targetedStep := false
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, err := monitor.RegisterResource("pulumi:pulumi:Stack", "test-test", false)
+		require.NoError(t, err)
+
+		if !targetedStep {
+			respA, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+				Inputs: resource.PropertyMap{"foo": resource.NewProperty("v1")},
+			})
+			require.NoError(t, err)
+
+			_, err = monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
+				Inputs:       resource.PropertyMap{"bar": resource.NewProperty("v1")},
+				Dependencies: []resource.URN{respA.URN},
+			})
+			require.NoError(t, err)
+			return nil
+		}
+
+		var wg sync.WaitGroup
+		wg.Add(1)
+		var errA error
+		go func() {
+			defer wg.Done()
+			_, errA = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+				Inputs: resource.PropertyMap{"foo": resource.NewProperty("v2")},
+			})
+		}()
+
+		<-updateStarted
+		bDone := make(chan struct{})
+		var errB error
+		go func() {
+			defer close(bDone)
+			_, errB = monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
+				Inputs: resource.PropertyMap{"bar": resource.NewProperty("v1")},
+			})
+		}()
+
+		// resB's registration now waits for resA's update, so it can't be awaited before
+		// unblocking the update; the grace period lets it reach the engine first.
+		select {
+		case <-bDone:
+		case <-time.After(time.Second):
+		}
+		close(unblockUpdate)
+
+		<-bDone
+		require.NoError(t, errB)
+		wg.Wait()
+		require.NoError(t, errA)
+		return nil
+	})
+
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
+	p := &lt.TestPlan{}
+	project := p.GetProject()
+
+	options := lt.TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true}
+	origSnap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), options, false, p.BackendClient, nil, "0")
+	require.NoError(t, err)
+
+	targetedStep = true
+	options = lt.TestUpdateOptions{
+		T:                t,
+		HostF:            hostF,
+		SkipDisplayTests: true,
+		UpdateOptions: UpdateOptions{
+			Parallel: 4,
+			Targets:  deploy.NewUrnTargets([]string{string(resAURN)}),
+		},
+	}
+	finalSnap, err := lt.TestOp(Update).
+		RunStep(project, p.GetTarget(t, origSnap), options, false, p.BackendClient, nil, "1")
+	require.NoError(t, err)
+
+	indexOf := func(urn resource.URN) int {
+		for i, r := range finalSnap.Resources {
+			if r.URN == urn {
+				return i
+			}
+		}
+		return -1
+	}
+	iA := indexOf(resAURN)
+	iB := indexOf("urn:pulumi:test::test::pkgA:m:typA::resB")
+	require.GreaterOrEqual(t, iA, 0)
+	require.GreaterOrEqual(t, iB, 0)
+	require.Less(t, iA, iB, "resA must precede its dependent resB in the snapshot")
+
+	resA := finalSnap.Resources[iA]
+	require.Equal(t, resource.NewProperty("v2"), resA.Inputs["foo"])
+}
+
+// TestUntargetedSameWithDependencyRemovedFromProgram checks that when a dependency is removed
+// from the program entirely and its dependent is re-registered without the dependency, an update
+// targeting an unrelated resource carries both forward with their old state, dependency first.
+func TestUntargetedSameWithDependencyRemovedFromProgram(t *testing.T) {
+	t.Parallel()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+	}
+
+	const (
+		resAURN = resource.URN("urn:pulumi:test::test::pkgA:m:typA::resA")
+		resBURN = resource.URN("urn:pulumi:test::test::pkgA:m:typA::resB")
+		resCURN = resource.URN("urn:pulumi:test::test::pkgA:m:typA::resC")
+	)
+
+	removedStep := false
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, err := monitor.RegisterResource("pulumi:pulumi:Stack", "test-test", false)
+		require.NoError(t, err)
+
+		if !removedStep {
+			respA, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+				Inputs: resource.PropertyMap{"p": resource.NewProperty("v1")},
+			})
+			require.NoError(t, err)
+
+			_, err = monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
+				Inputs:       resource.PropertyMap{"prop": resource.NewProperty("from-a")},
+				Dependencies: []resource.URN{respA.URN},
+			})
+			require.NoError(t, err)
+		} else {
+			_, err := monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
+				Inputs: resource.PropertyMap{"prop": resource.NewProperty(1.0)},
+			})
+			require.NoError(t, err)
+		}
+
+		inputC := "v1"
+		if removedStep {
+			inputC = "v2"
+		}
+		_, err = monitor.RegisterResource("pkgA:m:typA", "resC", true, deploytest.ResourceOptions{
+			Inputs: resource.PropertyMap{"foo": resource.NewProperty(inputC)},
+		})
+		require.NoError(t, err)
+		return nil
+	})
+
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
+	p := &lt.TestPlan{}
+	project := p.GetProject()
+
+	options := lt.TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true}
+	origSnap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), options, false, p.BackendClient, nil, "0")
+	require.NoError(t, err)
+
+	removedStep = true
+	options = lt.TestUpdateOptions{
+		T:                t,
+		HostF:            hostF,
+		SkipDisplayTests: true,
+		UpdateOptions: UpdateOptions{
+			Targets: deploy.NewUrnTargets([]string{string(resCURN)}),
+		},
+	}
+	finalSnap, err := lt.TestOp(Update).
+		RunStep(project, p.GetTarget(t, origSnap), options, false, p.BackendClient, nil, "1")
+	require.NoError(t, err)
+
+	origA := findResourceByURN(origSnap.Resources, resAURN)
+	origB := findResourceByURN(origSnap.Resources, resBURN)
+	finalA := findResourceByURN(finalSnap.Resources, resAURN)
+	finalB := findResourceByURN(finalSnap.Resources, resBURN)
+	finalC := findResourceByURN(finalSnap.Resources, resCURN)
+	require.NotNil(t, finalA)
+	require.NotNil(t, finalB)
+	require.NotNil(t, finalC)
+
+	require.Equal(t, origA, finalA)
+	require.Equal(t, origB, finalB)
+	require.Equal(t, resource.NewProperty("from-a"), finalB.Inputs["prop"])
+	require.Equal(t, []resource.URN{resAURN}, finalB.Dependencies)
+	require.Equal(t, resource.NewProperty("v2"), finalC.Inputs["foo"])
+
+	iA := slices.Index(finalSnap.Resources, finalA)
+	iB := slices.Index(finalSnap.Resources, finalB)
+	require.Less(t, iA, iB, "resA must precede its dependent resB in the snapshot")
+}
+
+// TestUntargetedSameWithReversedProgramDependency checks the shape b = new B(); a = new
+// A(prop=b.a) with --target b: the program reverses the dependency recorded in state and the
+// reversed edge's dependent is untargeted, so it keeps its old state, including its old
+// (empty) dependencies.
+func TestUntargetedSameWithReversedProgramDependency(t *testing.T) {
+	t.Parallel()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+	}
+
+	const (
+		resAURN = resource.URN("urn:pulumi:test::test::pkgA:m:typA::resA")
+		resBURN = resource.URN("urn:pulumi:test::test::pkgA:m:typA::resB")
+	)
+
+	reversed := false
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, err := monitor.RegisterResource("pulumi:pulumi:Stack", "test-test", false)
+		require.NoError(t, err)
+
+		if !reversed {
+			respA, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+				Inputs: resource.PropertyMap{"p": resource.NewProperty("v1")},
+			})
+			require.NoError(t, err)
+
+			_, err = monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
+				Inputs:       resource.PropertyMap{"prop": resource.NewProperty("v1")},
+				Dependencies: []resource.URN{respA.URN},
+			})
+			require.NoError(t, err)
+			return nil
+		}
+
+		respB, err := monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
+			Inputs: resource.PropertyMap{"prop": resource.NewProperty("v2")},
+		})
+		require.NoError(t, err)
+
+		_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+			Inputs:       resource.PropertyMap{"p": resource.NewProperty("v2")},
+			Dependencies: []resource.URN{respB.URN},
+		})
+		require.NoError(t, err)
+		return nil
+	})
+
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
+	p := &lt.TestPlan{}
+	project := p.GetProject()
+
+	options := lt.TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true}
+	origSnap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), options, false, p.BackendClient, nil, "0")
+	require.NoError(t, err)
+
+	reversed = true
+	options = lt.TestUpdateOptions{
+		T:                t,
+		HostF:            hostF,
+		SkipDisplayTests: true,
+		UpdateOptions: UpdateOptions{
+			Targets: deploy.NewUrnTargets([]string{string(resBURN)}),
+		},
+	}
+	finalSnap, err := lt.TestOp(Update).
+		RunStep(project, p.GetTarget(t, origSnap), options, false, p.BackendClient, nil, "1")
+	require.NoError(t, err)
+
+	origA := findResourceByURN(origSnap.Resources, resAURN)
+	finalA := findResourceByURN(finalSnap.Resources, resAURN)
+	finalB := findResourceByURN(finalSnap.Resources, resBURN)
+	require.NotNil(t, finalA)
+	require.NotNil(t, finalB)
+
+	require.Equal(t, origA, finalA)
+	require.Empty(t, finalA.Dependencies)
+	require.Equal(t, resource.NewProperty("v2"), finalB.Inputs["prop"])
+	require.Empty(t, finalB.Dependencies)
+}
+
+// TestUntargetedSameWithReversedProgramDependencyTargetingDependent checks the shape b = new
+// B(); a = new A(prop=b.a) with --target a. Untargeted b registers first, and its old-state
+// dependency walk claims a's URN, so a's own registration fails with a duplicate resource URN
+// error. The update bails before touching a, leaving a consistent snapshot.
+func TestUntargetedSameWithReversedProgramDependencyTargetingDependent(t *testing.T) {
+	t.Parallel()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+	}
+
+	const (
+		resAURN = resource.URN("urn:pulumi:test::test::pkgA:m:typA::resA")
+		resBURN = resource.URN("urn:pulumi:test::test::pkgA:m:typA::resB")
+	)
+
+	reversed := false
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, err := monitor.RegisterResource("pulumi:pulumi:Stack", "test-test", false)
+		require.NoError(t, err)
+
+		if !reversed {
+			respA, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+				Inputs: resource.PropertyMap{"p": resource.NewProperty("v1")},
+			})
+			require.NoError(t, err)
+
+			_, err = monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
+				Inputs:       resource.PropertyMap{"prop": resource.NewProperty("v1")},
+				Dependencies: []resource.URN{respA.URN},
+			})
+			require.NoError(t, err)
+			return nil
+		}
+
+		respB, err := monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
+			Inputs: resource.PropertyMap{"prop": resource.NewProperty("v2")},
+		})
+		require.NoError(t, err)
+
+		// The deployment bails on this registration; the response may error or never arrive, so
+		// nothing after this may touch t.
+		_, _ = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+			Inputs:       resource.PropertyMap{"p": resource.NewProperty("v2")},
+			Dependencies: []resource.URN{respB.URN},
+		})
+		return nil
+	})
+
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
+	p := &lt.TestPlan{}
+	project := p.GetProject()
+
+	options := lt.TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true}
+	origSnap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), options, false, p.BackendClient, nil, "0")
+	require.NoError(t, err)
+
+	reversed = true
+	options = lt.TestUpdateOptions{
+		T:                t,
+		HostF:            hostF,
+		SkipDisplayTests: true,
+		UpdateOptions: UpdateOptions{
+			Targets: deploy.NewUrnTargets([]string{string(resAURN)}),
+		},
+	}
+	finalSnap, err := lt.TestOp(Update).
+		RunStep(project, p.GetTarget(t, origSnap), options, false, p.BackendClient, nil, "1")
+	require.ErrorContains(t, err, "Duplicate resource URN")
+
+	require.NotNil(t, finalSnap)
+	finalA := findResourceByURN(finalSnap.Resources, resAURN)
+	finalB := findResourceByURN(finalSnap.Resources, resBURN)
+	require.NotNil(t, finalA)
+	require.NotNil(t, finalB)
+	require.Equal(t, resource.NewProperty("v1"), finalA.Inputs["p"])
+	require.Less(t, slices.Index(finalSnap.Resources, finalA), slices.Index(finalSnap.Resources, finalB),
+		"resA must precede its dependent resB in the snapshot")
 }
 
 // TestReplaceSpecificTargetsPlan checks combinations of --target and --replace for expected behavior.

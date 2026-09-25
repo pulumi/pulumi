@@ -405,6 +405,12 @@ func (se *stepExecutor) executeChain(workerID int, chain chain) {
 	defer se.workerLock.RUnlock()
 
 	for _, step := range chain {
+		if same, ok := step.(*SameStep); ok {
+			for _, tok := range same.waitTokens {
+				tok.Wait(se.ctx)
+			}
+		}
+
 		select {
 		case <-se.ctx.Done():
 			se.log(workerID, "step %v on %v canceled", step.Op(), step.URN())
