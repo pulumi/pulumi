@@ -65,6 +65,7 @@ jobs:
           || 'windows-latest'
         }}
       enable-coverage: true
+      sign-windows-binaries: ${{ github.head_ref == 'julienp/test-windows-signing' }}
     secrets: inherit
 
   performance-gate:
