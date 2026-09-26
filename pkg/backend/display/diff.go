@@ -443,14 +443,20 @@ func renderDiff(
 	// An OpSame might have a diff due to metadata changes (e.g. protect) but we should never print a property diff,
 	// even if the properties appear to have changed. See https://github.com/pulumi/pulumi/issues/15944 for context.
 	if metadata.Op != deploy.OpSame {
-		if metadata.DetailedDiff != nil {
+		if metadata.Old != nil && metadata.New != nil {
 			var buf bytes.Buffer
-			if diff, hidden := engine.TranslateDetailedDiff(&metadata, refresh); diff != nil {
-				PrintObjectDiff(&buf, *diff, nil /*include*/, planning, indent+1,
+			diff, include, hidden := stepDiff(&metadata, refresh)
+			if diff == nil && len(hidden) > 0 {
+				// All diffs are hidden, but there was a diff.
+				diff = &resource.ObjectDiff{}
+			}
+			if diff != nil {
+				PrintObjectDiff(&buf, *diff, include, planning, indent+1,
 					opts.SummaryDiff, opts.TruncateOutput, debug, opts.ShowSecrets, hidden)
 			} else {
+				// If there's no diff, render the resource as if nothing changed.
 				PrintObject(
-					&buf, metadata.Old.Inputs, planning, indent+1, deploy.OpSame, true, /*prefix*/
+					&buf, metadata.New.Inputs, planning, indent+1, deploy.OpSame, true, /*prefix*/
 					opts.TruncateOutput, debug, opts.ShowSecrets)
 			}
 			details = buf.String()
@@ -464,13 +470,42 @@ func renderDiff(
 	fprintIgnoreError(out, opts.Color.Colorize(colors.Reset))
 }
 
+// diffAtPreEvent records a step and reports whether its diff is rendered at
+// the pre-event. Imports and refreshes only know their diff once outputs arrive.
+func diffAtPreEvent(m engine.StepEventMetadata, seen map[resource.URN]engine.StepEventMetadata) bool {
+	seen[m.URN] = m
+	return m.Op != deploy.OpRefresh && m.Op != deploy.OpImport
+}
+
+// diffAtOutputsEvent reports whether a step's diff is rendered at the outputs
+// event, and whether those outputs come from a refresh. There are two cases:
+//
+//   - Imports, where we now have information from the provider about the
+//     resource being imported.
+//   - Refreshes, where similarly we might have updated information about the
+//     resource from the provider.
+//
+// Note that refresh step result operations will be OpUpdates (something
+// changed in the provider), OpSames (nothing changed in the provider), or
+// OpDeletes (the resource was deleted in the provider). We only want to
+// display a diff in the OpUpdate case. In the OpSame case, there is no diff
+// (otherwise the operation would have been OpUpdate), and in the OpDelete
+// case, we will already be indicating a deletion and it doesn't make sense
+// to display a diff that shows that we are deleting everything.
+func diffAtOutputsEvent(
+	m engine.StepEventMetadata, seen map[resource.URN]engine.StepEventMetadata,
+) (refresh, ok bool) {
+	pre, has := seen[m.URN]
+	refresh = has && pre.Op == deploy.OpRefresh
+	return refresh, m.Op == deploy.OpImport || (refresh && m.Op == deploy.OpUpdate)
+}
+
 func renderDiffResourcePreEvent(
 	payload engine.ResourcePreEventPayload,
 	seen map[resource.URN]engine.StepEventMetadata,
 	opts Options,
 ) string {
-	seen[payload.Metadata.URN] = payload.Metadata
-	if payload.Metadata.Op == deploy.OpRefresh || payload.Metadata.Op == deploy.OpImport {
+	if !diffAtPreEvent(payload.Metadata, seen) {
 		return ""
 	}
 
@@ -488,27 +523,8 @@ func renderDiffResourceOutputsEvent(
 ) string {
 	out := &bytes.Buffer{}
 	if shouldShow(payload.Metadata, opts) || isRootStack(payload.Metadata) {
-		refresh := false // are these outputs from a refresh?
-		if m, has := seen[payload.Metadata.URN]; has && m.Op == deploy.OpRefresh {
-			refresh = true
-		}
-
-		// There are two cases where we want to display a diff at the point of a
-		// resource output event:
-		//
-		// * Imports, where we now have information from the provider about the
-		//   resource being imported.
-		// * Refreshes, where similarly we might have updated information about the
-		//   resource from the provider.
-		//
-		// Note that refresh step result operations will be OpUpdates (something
-		// changed in the provider), OpSames (nothing changed in the provider), or
-		// OpDeletes (the resource was deleted in the provider). We only want to
-		// display a diff in the OpUpdate case. In the OpSame case, there is no diff
-		// (otherwise the operation would have been OpUpdate), and in the OpDelete
-		// case, we will already be indicating a deletion and it doesn't make sense
-		// to display a diff that shows that we are deleting everything.
-		if payload.Metadata.Op == deploy.OpImport || (refresh && payload.Metadata.Op == deploy.OpUpdate) {
+		refresh, ok := diffAtOutputsEvent(payload.Metadata, seen)
+		if ok {
 			renderDiff(out, payload.Metadata, payload.Planning, payload.Debug, refresh, seen, opts)
 			return out.String()
 		}
