@@ -1,0 +1,3 @@
+component: cli
+kind: fix
+body: Reject package names that would write a generated SDK outside the project's `sdks` directory in `pulumi convert` and `pulumi package add`

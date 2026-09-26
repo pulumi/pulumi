@@ -326,3 +326,37 @@ func TestBindSpecReportsAllDiagnostics(t *testing.T) {
 	assert.Contains(t, err.Error(), "#/resources/bad:index:One/properties/a/type: unknown type kind bogus")
 	assert.Contains(t, err.Error(), "#/resources/bad:index:Two/properties/b/type: unknown type kind alsoBogus")
 }
+
+func TestSafeSDKOutputDir(t *testing.T) {
+	t.Parallel()
+
+	sdksDir := filepath.Join("proj", "sdks")
+
+	t.Run("valid names are contained", func(t *testing.T) {
+		t.Parallel()
+		for _, name := range []string{"aws", "azure-native", "my_pkg", "acme-terraform-provider"} {
+			out, err := SafeSDKOutputDir(sdksDir, name)
+			require.NoError(t, err)
+			// A valid name resolves to a single child of the sdks directory.
+			assert.Equal(t, filepath.Join(sdksDir, name), out)
+			assert.Equal(t, sdksDir, filepath.Dir(out))
+		}
+	})
+
+	t.Run("escaping names are rejected", func(t *testing.T) {
+		t.Parallel()
+		for _, name := range []string{
+			"../evil",
+			"../../../../tmp/pwn",
+			"..",
+			".",
+			"a/b",
+			"nested/../../escape",
+			`..\evil`,
+			"/etc/passwd",
+		} {
+			_, err := SafeSDKOutputDir(sdksDir, name)
+			assert.Error(t, err, "expected name %q to be rejected", name)
+		}
+	})
+}

@@ -641,7 +641,10 @@ func generateAndLinkSdksForPackages(
 			return fmt.Errorf("error generating sdk: %w", err)
 		}
 
-		sdkOut := filepath.Join(targetDirectory, "sdks", pkg.Parameterization.Name)
+		sdkOut, err := packages.SafeSDKOutputDir(filepath.Join(targetDirectory, "sdks"), pkg.Parameterization.Name)
+		if err != nil {
+			return err
+		}
 		err = fsutil.CopyFile(sdkOut, filepath.Join(tempOut, language), nil)
 		if err != nil {
 			return fmt.Errorf("failed to move SDK to project: %w", err)
