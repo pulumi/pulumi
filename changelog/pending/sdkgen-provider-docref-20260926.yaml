@@ -1,0 +1,4 @@
+component: sdkgen
+kind: improvement
+body: Support `#/provider` doc references in schema descriptions
+time: 2026-09-26T12:00:00.000000+02:00
