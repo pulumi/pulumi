@@ -126,7 +126,7 @@ func interpretPulumiRefs(
 				}
 			}
 		case DocRefKindProvider, DocRefKindProviderProperty, DocRefKindProviderInputProperty:
-			res, ok, err := types.lookupProviderForDocRef()
+			res, ok, err := types.lookupProviderForDocRef(iref)
 			switch {
 			case err != nil:
 				subdiags = hcl.Diagnostics{errorf(path,
@@ -294,13 +294,21 @@ func (t *types) lookupTypeForDocRef(iref internalDocRef) (Type, bool, error) {
 	return pkg.Types().Get(string(iref.Token))
 }
 
-// lookupProviderForDocRef resolves a provider doc ref to the *ResourceType for this package's provider.
-func (t *types) lookupProviderForDocRef() (*ResourceType, bool, error) {
-	token := "pulumi:providers:" + t.pkg.Name
-	unlock := t.lockBind()
-	rt, diags, err := t.bindResourceTypeDef(token, ValidationOptions{AllowDanglingReferences: true})
-	unlock()
-	return rt, rt != nil, bindErr(diags, err)
+// lookupProviderForDocRef resolves a provider doc ref to the *ResourceType, in either the current
+// package or an external package reachable via Dependencies.
+func (t *types) lookupProviderForDocRef(iref internalDocRef) (*ResourceType, bool, error) {
+	pkg, external, err := t.externalPackageForDocRef(iref)
+	if err != nil {
+		return nil, false, err
+	}
+	if !external {
+		token := "pulumi:providers:" + t.pkg.Name
+		unlock := t.lockBind()
+		rt, diags, err := t.bindResourceTypeDef(token, ValidationOptions{AllowDanglingReferences: true})
+		unlock()
+		return rt, rt != nil, bindErr(diags, err)
+	}
+	return pkg.Resources().GetType("pulumi:providers:" + pkg.Name())
 }
 
 // lookupFunctionForDocRef resolves a function doc ref to its *Function, in either the current package
