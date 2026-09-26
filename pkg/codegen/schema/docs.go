@@ -125,6 +125,34 @@ func interpretPulumiRefs(
 					}
 				}
 			}
+		case DocRefKindProvider, DocRefKindProviderProperty, DocRefKindProviderInputProperty:
+			res, ok, err := types.lookupProviderForDocRef(iref)
+			switch {
+			case err != nil:
+				subdiags = hcl.Diagnostics{errorf(path,
+					"resolving reference to provider: %v", err)}
+			case !ok:
+				subdiags = hcl.Diagnostics{errorf(path,
+					"reference to provider not found in package %s", types.pkg.Name)}
+			default:
+				ref.Type = res
+				switch iref.Kind { //nolint:exhaustive
+				case DocRefKindProvider:
+					// Top-level provider ref; no property to validate.
+				case DocRefKindProviderProperty:
+					if !hasPropertyNamed(res.Resource.Properties, iref.Property) {
+						subdiags = hcl.Diagnostics{errorf(path,
+							"property '%s' not found on provider", iref.Property)}
+					}
+				case DocRefKindProviderInputProperty:
+					if !hasPropertyNamed(res.Resource.InputProperties, iref.Property) {
+						subdiags = hcl.Diagnostics{errorf(path,
+							"input property '%s' not found on provider", iref.Property)}
+					}
+				default:
+					contract.Failf("unexpected provider ref kind: %v", iref.Kind)
+				}
+			}
 		case DocRefKindFunction, DocRefKindFunctionInputProperty, DocRefKindFunctionOutputProperty:
 			fun, has, err := types.lookupFunctionForDocRef(iref)
 			switch {
@@ -266,6 +294,23 @@ func (t *types) lookupTypeForDocRef(iref internalDocRef) (Type, bool, error) {
 	return pkg.Types().Get(string(iref.Token))
 }
 
+// lookupProviderForDocRef resolves a provider doc ref to the *ResourceType, in either the current
+// package or an external package reachable via Dependencies.
+func (t *types) lookupProviderForDocRef(iref internalDocRef) (*ResourceType, bool, error) {
+	pkg, external, err := t.externalPackageForDocRef(iref)
+	if err != nil {
+		return nil, false, err
+	}
+	if !external {
+		token := "pulumi:providers:" + t.pkg.Name
+		unlock := t.lockBind()
+		rt, diags, err := t.bindResourceTypeDef(token, ValidationOptions{AllowDanglingReferences: true})
+		unlock()
+		return rt, rt != nil, bindErr(diags, err)
+	}
+	return pkg.Resources().GetType("pulumi:providers:" + pkg.Name())
+}
+
 // lookupFunctionForDocRef resolves a function doc ref to its *Function, in either the current package
 // or an external package reachable via Dependencies.
 func (t *types) lookupFunctionForDocRef(iref internalDocRef) (*Function, bool, error) {
@@ -328,6 +373,14 @@ const (
 	// DocRefKindTypeProperty refers to a property on a named object type
 	// (`#/types/{token}/properties/{property}`).
 	DocRefKindTypeProperty DocRefKind = "typeProperty"
+	// DocRefKindProvider refers to the package's provider resource (`#/provider`).
+	DocRefKindProvider DocRefKind = "provider"
+	// DocRefKindProviderProperty refers to an output property on the provider
+	// (`#/provider/properties/{property}`).
+	DocRefKindProviderProperty DocRefKind = "providerProperty"
+	// DocRefKindProviderInputProperty refers to an input property on the provider
+	// (`#/provider/inputProperties/{property}`).
+	DocRefKindProviderInputProperty DocRefKind = "providerInputProperty"
 )
 
 // DocRef is a parsed and (when possible) bound reference to a schema entity that appears in a documentation
@@ -373,20 +426,20 @@ func (r DocRef) tokenString() string {
 // This is used during doc ref interpretation to determine if a referenced property
 // belongs to the entity currently being documented (selfRef).
 func (r DocRef) IsWithin(other DocRef) bool {
-	rTok := r.tokenString()
-	oTok := other.tokenString()
-	if rTok == "" || oTok == "" {
-		return false
-	}
 	switch r.Kind {
-	case DocRefKindUnknown, DocRefKindResource, DocRefKindFunction, DocRefKindType:
+	case DocRefKindUnknown, DocRefKindResource, DocRefKindFunction, DocRefKindType, DocRefKindProvider:
 		return false
+	case DocRefKindProviderProperty, DocRefKindProviderInputProperty:
+		return other.Kind == DocRefKindProvider
 	case DocRefKindResourceProperty, DocRefKindResourceInputProperty:
-		return other.Kind == DocRefKindResource && rTok == oTok
+		rTok, oTok := r.tokenString(), other.tokenString()
+		return rTok != "" && oTok != "" && other.Kind == DocRefKindResource && rTok == oTok
 	case DocRefKindFunctionInputProperty, DocRefKindFunctionOutputProperty:
-		return other.Kind == DocRefKindFunction && rTok == oTok
+		rTok, oTok := r.tokenString(), other.tokenString()
+		return rTok != "" && oTok != "" && other.Kind == DocRefKindFunction && rTok == oTok
 	case DocRefKindTypeProperty:
-		return other.Kind == DocRefKindType && rTok == oTok
+		rTok, oTok := r.tokenString(), other.tokenString()
+		return rTok != "" && oTok != "" && other.Kind == DocRefKindType && rTok == oTok
 	}
 	return false
 }
@@ -409,6 +462,9 @@ func DocRefForType(t Type) DocRef {
 
 // DocRefForResource returns a DocRef for the given resource.
 func DocRefForResource(r *Resource) DocRef {
+	if r.IsProvider {
+		return DocRef{Kind: DocRefKindProvider, Ref: "#/provider"}
+	}
 	return DocRef{Kind: DocRefKindResource, Ref: "#/resources/" + url.PathEscape(r.Token)}
 }
 
@@ -466,7 +522,35 @@ func parseDocRef(ref string) internalDocRef {
 	parts := strings.Split(parsedURL.EscapedFragment(), "/")
 	// EscapedFragment returns "/resources/token" for `#/resources/token`, so parts[0] is the empty
 	// string between the leading slash and the rest.
-	if len(parts) < 3 || parts[0] != "" {
+	if len(parts) < 2 || parts[0] != "" {
+		return docRefUnknown
+	}
+	// Provider refs use the fragment `#/provider[/{propertyKind}/{property}]` and do not carry a token.
+	if parts[1] == "provider" {
+		base := internalDocRef{Ref: ref, Package: pkgName, Version: pkgVersion}
+		switch len(parts) {
+		case 2:
+			base.Kind = DocRefKindProvider
+			return base
+		case 4:
+			property, err := url.PathUnescape(parts[3])
+			if err != nil || property == "" {
+				return docRefUnknown
+			}
+			switch parts[2] {
+			case "properties":
+				base.Kind = DocRefKindProviderProperty
+				base.Property = property
+				return base
+			case "inputProperties":
+				base.Kind = DocRefKindProviderInputProperty
+				base.Property = property
+				return base
+			}
+		}
+		return docRefUnknown
+	}
+	if len(parts) < 3 {
 		return docRefUnknown
 	}
 	var topLevelType string

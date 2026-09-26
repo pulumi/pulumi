@@ -64,12 +64,38 @@ func (p *DocsProvider) GetSchema(
 		Dependencies: []schema.PackageDescriptor{
 			{Name: "enum", Version: &enumVersion},
 		},
+		Provider: &schema.ResourceSpec{
+			ObjectTypeSpec: schema.ObjectTypeSpec{
+				Type: "object",
+				Description: "{{% ref #/provider %}} is the provider for docs, configured via " +
+					"{{% ref #/provider/properties/someConfig %}}.",
+				Properties: map[string]schema.PropertySpec{
+					"someConfig": {
+						TypeSpec: schema.TypeSpec{
+							Type: "string",
+						},
+						Description: "A configuration value for {{% ref #/provider %}}.",
+					},
+				},
+			},
+			InputProperties: map[string]schema.PropertySpec{
+				"someConfig": {
+					TypeSpec: schema.TypeSpec{
+						Type: "string",
+					},
+					Description: "A configuration value for {{% ref #/provider %}}.",
+				},
+			},
+		},
 		Resources: map[string]schema.ResourceSpec{
 			"docs:index:Resource": {
 				ObjectTypeSpec: schema.ObjectTypeSpec{
 					Type: "object",
-					Description: "{{% ref #/resources/docs:index:Resource %}} is a basic resource." +
-						" Use {{% ref #/functions/docs:index:fun %}} to set {{% ref" +
+					Description: "{{% ref #/resources/docs:index:Resource %}} is a basic resource" +
+						" configured by {{% ref #/provider %}} using {{% ref " +
+						"#/provider/properties/someConfig %}}." +
+						" See also the external {{% ref /enum/v" + enumVersionString + "/schema.json#/provider %}}." +
+						" Use {{% ref #/functions/docs:index:fun %}} to set {{% ref " +
 						"#/resources/docs:index:Resource/inputProperties/in %}} using {{% ref " +
 						"#/functions/docs:index:fun/outputs/properties/out %}}.",
 					Properties: map[string]schema.PropertySpec{

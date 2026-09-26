@@ -392,6 +392,10 @@ func (mod *modContext) docRefResolver(selfRef schema.DocRef) func(schema.DocRef)
 			base = tokenToName(ref.Function.Token) + "Result"
 		case schema.DocRefKindType, schema.DocRefKindTypeProperty:
 			base = tokenToName(ref.Type.String())
+		case schema.DocRefKindProvider, schema.DocRefKindProviderProperty:
+			base = "Provider"
+		case schema.DocRefKindProviderInputProperty:
+			base = "ProviderArgs"
 		case schema.DocRefKindUnknown:
 			return "", false
 		}
@@ -402,9 +406,9 @@ func (mod *modContext) docRefResolver(selfRef schema.DocRef) func(schema.DocRef)
 
 		var property string
 		switch ref.Kind {
-		case schema.DocRefKindResource, schema.DocRefKindFunction, schema.DocRefKindType:
+		case schema.DocRefKindResource, schema.DocRefKindFunction, schema.DocRefKindType, schema.DocRefKindProvider:
 			return base, true
-		case schema.DocRefKindUnknown, schema.DocRefKindResourceProperty, schema.DocRefKindResourceInputProperty, schema.DocRefKindFunctionInputProperty, schema.DocRefKindFunctionOutputProperty, schema.DocRefKindTypeProperty:
+		case schema.DocRefKindUnknown, schema.DocRefKindResourceProperty, schema.DocRefKindResourceInputProperty, schema.DocRefKindFunctionInputProperty, schema.DocRefKindFunctionOutputProperty, schema.DocRefKindTypeProperty, schema.DocRefKindProviderProperty, schema.DocRefKindProviderInputProperty:
 			property = cgstrings.Camel(ref.Property)
 		}
 
