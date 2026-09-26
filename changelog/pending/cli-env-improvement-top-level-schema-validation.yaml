@@ -1,0 +1,4 @@
+component: cli/env
+kind: improvement
+body: Add support for environment-level schema validation with a top-level `schema` key
+time: 2026-07-09T00:00:00.000000+00:00

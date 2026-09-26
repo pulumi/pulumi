@@ -48,7 +48,8 @@
                     }
                 }
             ]
-        }
+        },
+        "Schema": null
     },
     "diags": [
         {
