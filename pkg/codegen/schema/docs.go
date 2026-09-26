@@ -427,23 +427,19 @@ func (r DocRef) tokenString() string {
 // belongs to the entity currently being documented (selfRef).
 func (r DocRef) IsWithin(other DocRef) bool {
 	switch r.Kind {
-	case DocRefKindProviderProperty, DocRefKindProviderInputProperty:
-		return other.Kind == DocRefKindProvider
-	}
-	rTok := r.tokenString()
-	oTok := other.tokenString()
-	if rTok == "" || oTok == "" {
-		return false
-	}
-	switch r.Kind {
 	case DocRefKindUnknown, DocRefKindResource, DocRefKindFunction, DocRefKindType, DocRefKindProvider:
 		return false
+	case DocRefKindProviderProperty, DocRefKindProviderInputProperty:
+		return other.Kind == DocRefKindProvider
 	case DocRefKindResourceProperty, DocRefKindResourceInputProperty:
-		return other.Kind == DocRefKindResource && rTok == oTok
+		rTok, oTok := r.tokenString(), other.tokenString()
+		return rTok != "" && oTok != "" && other.Kind == DocRefKindResource && rTok == oTok
 	case DocRefKindFunctionInputProperty, DocRefKindFunctionOutputProperty:
-		return other.Kind == DocRefKindFunction && rTok == oTok
+		rTok, oTok := r.tokenString(), other.tokenString()
+		return rTok != "" && oTok != "" && other.Kind == DocRefKindFunction && rTok == oTok
 	case DocRefKindTypeProperty:
-		return other.Kind == DocRefKindType && rTok == oTok
+		rTok, oTok := r.tokenString(), other.tokenString()
+		return rTok != "" && oTok != "" && other.Kind == DocRefKindType && rTok == oTok
 	}
 	return false
 }
