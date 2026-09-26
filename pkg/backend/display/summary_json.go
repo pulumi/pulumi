@@ -49,8 +49,8 @@ type SummaryJSON struct {
 }
 
 // ResourceJSON is the per-resource entry that appears in SummaryJSON.Resources.
-// It is intentionally compact: callers that need full diffs / property values
-// should use `--json` (the streaming event format) instead.
+// It is intentionally compact unless `--diff` is also set, in which case each
+// entry carries the same property diff the `--diff` view renders as text.
 type ResourceJSON struct {
 	// URN is the canonical, globally-unique identifier of the resource.
 	URN string `json:"urn"`
@@ -62,6 +62,9 @@ type ResourceJSON struct {
 	Op apitype.OpType `json:"op"`
 	// Parent is the URN of this resource's parent, if any.
 	Parent string `json:"parent,omitempty"`
+	// Diff is the resource's property diff. It is only populated when `--diff`
+	// is set alongside `--output json`.
+	Diff *ObjectDiffJSON `json:"diff,omitempty"`
 }
 
 // summaryJSONFromEvent extracts the summary JSON shape from a SummaryEventPayload.
@@ -79,11 +82,11 @@ func summaryJSONFromEvent(p engine.SummaryEventPayload) SummaryJSON {
 // per-resource JSON shape. Returns nil when the event should be skipped:
 // internal events never surface to users, and `same` (unchanged) resources are
 // omitted unless the display is configured to show them.
-func resourceJSONFromEvent(p engine.ResourcePreEventPayload, showSames bool) *ResourceJSON {
+func resourceJSONFromEvent(p engine.ResourcePreEventPayload, opts Options) *ResourceJSON {
 	if p.Internal {
 		return nil
 	}
-	if p.Metadata.Op == deploy.OpSame && !showSames {
+	if p.Metadata.Op == deploy.OpSame && !opts.ShowSameResources {
 		return nil
 	}
 
@@ -98,6 +101,9 @@ func resourceJSONFromEvent(p engine.ResourcePreEventPayload, showSames bool) *Re
 	}
 
 	r := NewResourceJSON(p.Metadata.URN, apitype.OpType(p.Metadata.Op), parent)
+	if opts.Type == DisplayDiff {
+		r.Diff = stepDiffJSON(p.Metadata, opts.ShowSecrets)
+	}
 	return &r
 }
 
@@ -150,7 +156,7 @@ func tapSummaryJSON(in <-chan engine.Event, opts Options) <-chan engine.Event {
 			switch e.Type { //nolint:exhaustive // we only care about two event types here
 			case engine.ResourcePreEvent:
 				if payload, ok := e.Payload().(engine.ResourcePreEventPayload); ok {
-					if r := resourceJSONFromEvent(payload, opts.ShowSameResources); r != nil {
+					if r := resourceJSONFromEvent(payload, opts); r != nil {
 						resources = append(resources, *r)
 					}
 				}
