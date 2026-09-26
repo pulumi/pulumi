@@ -62,7 +62,7 @@ class Resource(pulumi.CustomResource):
                  in_: pulumi.Input[Optional[_builtins.bool]] = None,
                  __props__=None):
         """
-        Resource is a basic resource. Use fun to set {{% ref#/resources/docs:index:Resource/inputProperties/in %}} using FunResult.out.
+        Resource is a basic resource configured by Provider using Provider.some_config. Use fun to set in_ using FunResult.out.
 
         :param str resource_name: The name of the resource.
         :param pulumi.ResourceOptions opts: Options for the resource.
@@ -76,7 +76,7 @@ class Resource(pulumi.CustomResource):
                  args: ResourceArgs,
                  opts: Optional[pulumi.ResourceOptions] = None):
         """
-        Resource is a basic resource. Use fun to set {{% ref#/resources/docs:index:Resource/inputProperties/in %}} using FunResult.out.
+        Resource is a basic resource configured by Provider using Provider.some_config. Use fun to set in_ using FunResult.out.
 
         :param str resource_name: The name of the resource.
         :param ResourceArgs args: The arguments to use to populate this resource's properties.

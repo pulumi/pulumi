@@ -13,7 +13,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
-// Resource is a basic resource. Use Fun to set {{% ref#/resources/docs:index:Resource/inputProperties/in %}} using Fun.Out.
+// Resource is a basic resource configured by Provider using Provider.SomeConfig. Use Fun to set In using Fun.Out.
 type Resource struct {
 	pulumi.CustomResourceState
 

@@ -94,7 +94,7 @@ func (p *DocsProvider) GetSchema(
 					Description: "{{% ref #/resources/docs:index:Resource %}} is a basic resource" +
 						" configured by {{% ref #/provider %}} using {{% ref " +
 						"#/provider/properties/someConfig %}}." +
-						" Use {{% ref #/functions/docs:index:fun %}} to set {{% ref" +
+						" Use {{% ref #/functions/docs:index:fun %}} to set {{% ref " +
 						"#/resources/docs:index:Resource/inputProperties/in %}} using {{% ref " +
 						"#/functions/docs:index:fun/outputs/properties/out %}}.",
 					Properties: map[string]schema.PropertySpec{
