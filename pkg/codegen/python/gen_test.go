@@ -108,6 +108,54 @@ func TestGeneratePackage(t *testing.T) {
 	})
 }
 
+func TestGenerateDoubleUnderscoreProperties(t *testing.T) {
+	t.Parallel()
+
+	pkg, err := schema.ImportSpec(schema.PackageSpec{
+		Name:    "dunder",
+		Version: "1.0.0",
+		Types: map[string]schema.ComplexTypeSpec{
+			"dunder:index:Tagged": {
+				ObjectTypeSpec: schema.ObjectTypeSpec{
+					Type: "object",
+					Properties: map[string]schema.PropertySpec{
+						"__type": {
+							TypeSpec: schema.TypeSpec{Type: "string"},
+							Const:    "tagged",
+						},
+						"__value": {TypeSpec: schema.TypeSpec{Type: "string"}},
+					},
+					Required: []string{"__type", "__value"},
+				},
+			},
+		},
+		Resources: map[string]schema.ResourceSpec{
+			"dunder:index:Resource": {
+				InputProperties: map[string]schema.PropertySpec{
+					"tagged": {TypeSpec: schema.TypeSpec{Ref: "#/types/dunder:index:Tagged"}},
+				},
+			},
+		},
+		Language: map[string]schema.RawMessage{
+			"python": []byte(`{"inputTypes":"classes-and-dicts"}`),
+		},
+	}, nil, schema.NewNullLoader(), schema.ValidationOptions{})
+	require.NoError(t, err)
+
+	files, err := GeneratePackage("test", pkg, nil, nil)
+	require.NoError(t, err)
+	inputs := string(files["pulumi_dunder/_inputs.py"])
+
+	assert.NotContains(t, inputs, "def __init__(__self__, *, __type:")
+	assert.Contains(t, inputs, "__value_: pulumi.Input[_builtins.str]")
+	assert.Contains(t, inputs, `@pulumi.getter(name="__value")`)
+	assert.Contains(t, inputs, `def __value_(self)`)
+	assert.Contains(t, inputs, `pulumi.set(__self__, "__type_", 'tagged')`)
+	assert.Contains(t, inputs, `TaggedArgsDict = TypedDict("TaggedArgsDict", {`)
+	assert.Contains(t, inputs, `"__type": pulumi.Input[Literal['tagged']]`)
+	assert.Contains(t, inputs, `"__value": pulumi.Input[_builtins.str]`)
+}
+
 func absTestsPath() (string, error) {
 	hereDir, err := filepath.Abs(".")
 	if err != nil {

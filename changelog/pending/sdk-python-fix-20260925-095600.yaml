@@ -1,0 +1,2 @@
+kind: fix
+title: Fix Python code generation for double-underscore properties
