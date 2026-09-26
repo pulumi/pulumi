@@ -93,6 +93,10 @@ func renderQueryEvent(event engine.Event, opts Options) string {
 	case engine.StartDebuggingEvent:
 		return ""
 
+	case engine.UpdateStartedEvent:
+		// Internal events are filtered out by ShowEvents. Listed for the exhaustive linter.
+		return ""
+
 	case engine.PreludeEvent, engine.SummaryEvent, engine.ResourceOperationFailed,
 		engine.ResourceOutputsEvent, engine.ResourcePreEvent:
 
