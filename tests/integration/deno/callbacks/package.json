@@ -1,0 +1,8 @@
+{
+  "name": "deno-callbacks",
+  "main": "index.ts",
+  "type": "module",
+  "dependencies": {
+    "@pulumi/pulumi": "latest"
+  }
+}

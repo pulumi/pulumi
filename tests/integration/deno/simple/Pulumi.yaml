@@ -1,0 +1,3 @@
+name: deno-simple
+description: Tests a package.json-based Pulumi program with Deno as the runtime
+runtime: deno

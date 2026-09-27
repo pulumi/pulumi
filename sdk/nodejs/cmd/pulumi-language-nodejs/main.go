@@ -154,7 +154,7 @@ func main() {
 		engineAddress = args[0]
 	}
 
-	if runtimeName != "nodejs" && runtimeName != "bun" {
+	if runtimeName != "nodejs" && runtimeName != "bun" && runtimeName != "deno" {
 		cmdutil.Exit(fmt.Errorf("unsupported runtime: %s", runtimeName))
 	}
 
@@ -198,8 +198,20 @@ func main() {
 	}
 }
 
-// locateModule resolves a node module name to a file path that can be loaded
-func locateModule(ctx context.Context, mod, programDir, nodeBin string, isPlugin bool) (string, error) {
+// locateModule resolves a node module name to a file path that can be loaded.
+func locateModule(ctx context.Context, mod, programDir, runtimeBin, runtime string, isPlugin bool) (string, error) {
+	if runtime == "deno" {
+		if native, configPath, err := nativeDenoProject(programDir); err != nil {
+			return "", err
+		} else if native && mod == "@pulumi/pulumi/cmd/run" {
+			nodeModulesDir, err := denoNodeModulesDir(configPath)
+			if err != nil {
+				return "", err
+			}
+			return locateDenoNativeRunModule(ctx, programDir, runtimeBin, nodeModulesDir)
+		}
+	}
+
 	installCommand := "pulumi install"
 	if isPlugin {
 		installCommand = "npm install in " + programDir
@@ -214,18 +226,46 @@ func locateModule(ctx context.Context, mod, programDir, nodeBin string, isPlugin
 		}
 		process.exit(1);
 	}`, mod, installCommand)
+	args := []string{"-e", script}
+	if runtime == "deno" {
+		nodeModulesDir := "manual"
+		if native, configPath, err := nativeDenoProject(programDir); err != nil {
+			return "", err
+		} else if native {
+			nodeModulesDir, err = denoNodeModulesDir(configPath)
+			if err != nil {
+				return "", err
+			}
+		}
+		script = fmt.Sprintf(`import { createRequire } from "node:module";
+import { pathToFileURL } from "node:url";
+const require = createRequire(pathToFileURL(Deno.cwd() + "/$deno$eval.mjs"));
+try {
+	console.log(require.resolve(%q));
+} catch (error) {
+	if (error.code === 'MODULE_NOT_FOUND') {
+		console.error("It looks like the Pulumi SDK has not been installed. Have you run %s?");
+	} else {
+		console.error(error.message);
+	}
+			Deno.exit(1);
+}`, mod, installCommand)
+		args = []string{"eval", "--allow-all", "--node-modules-dir=" + nodeModulesDir, script}
+	}
 	// The Volta package manager installs shim executables that route to the user's chosen nodejs
 	// version. On Windows this does not properly handle arguments with newlines, so we need to
 	// ensure that the script is a single line.
 	// https://github.com/pulumi/pulumi/issues/16393
-	script = strings.ReplaceAll(script, "\n", "")
-	args := []string{"-e", script}
+	if runtime != "deno" {
+		script = strings.ReplaceAll(script, "\n", "")
+		args[1] = script
+	}
 
 	tracingSpan, _ := opentracing.StartSpanFromContext(ctx,
 		"locateModule",
 		opentracing.Tag{Key: "module", Value: mod},
 		opentracing.Tag{Key: "component", Value: "exec.Command"},
-		opentracing.Tag{Key: "command", Value: nodeBin},
+		opentracing.Tag{Key: "command", Value: runtimeBin},
 		opentracing.Tag{Key: "args", Value: args})
 	defer tracingSpan.Finish()
 
@@ -234,12 +274,12 @@ func locateModule(ctx context.Context, mod, programDir, nodeBin string, isPlugin
 		trace.WithAttributes(
 			attribute.String("module", mod),
 			attribute.String("component", "exec.Command"),
-			attribute.String("command", nodeBin),
+			attribute.String("command", runtimeBin),
 			attribute.StringSlice("args", args),
 		))
 	defer otelSpan.End()
 
-	cmd := exec.Command(nodeBin, args...)
+	cmd := exec.Command(runtimeBin, args...)
 	cmd.Dir = programDir
 	out, err := cmd.Output()
 	if err != nil {
@@ -249,6 +289,175 @@ func locateModule(ctx context.Context, mod, programDir, nodeBin string, isPlugin
 		return "", err
 	}
 	return strings.TrimSpace(string(out)), nil
+}
+
+func locateDenoNativeRunModule(ctx context.Context, programDir, runtimeBin, nodeModulesDir string) (string, error) {
+	const script = `
+const sdk = import.meta.resolve("@pulumi/pulumi");
+const { dirname, join } = await import("node:path");
+const { fileURLToPath } = await import("node:url");
+console.log(join(dirname(fileURLToPath(sdk)), "cmd", "run", "index.js"));
+`
+	cmd := exec.CommandContext(ctx, runtimeBin, "eval", "--allow-all", "--node-modules-dir="+nodeModulesDir, script)
+	cmd.Dir = programDir
+	out, err := cmd.Output()
+	if err != nil {
+		if exitErr, ok := errors.AsType[*exec.ExitError](err); ok {
+			return "", fmt.Errorf("could not resolve @pulumi/pulumi through deno.json: %s",
+				strings.TrimSpace(string(exitErr.Stderr)))
+		}
+		return "", fmt.Errorf("could not resolve @pulumi/pulumi through deno.json: %w", err)
+	}
+	modulePath := strings.TrimSpace(string(out))
+	if _, err := os.Stat(modulePath); err != nil {
+		return "", fmt.Errorf("Deno resolved @pulumi/pulumi, but its language runner was not found at %s: %w",
+			modulePath, err)
+	}
+	return modulePath, nil
+}
+
+// nativeDenoProject finds a Deno config that is not part of a package.json-based project. The closest package
+// manifest takes precedence when both runtimes are present in a directory.
+func nativeDenoProject(startDir string) (bool, string, error) {
+	dir, err := filepath.Abs(startDir)
+	if err != nil {
+		return false, "", fmt.Errorf("getting full path for Deno project %s: %w", startDir, err)
+	}
+	for {
+		for _, manifest := range npm.PackageManifestNames {
+			if _, err := os.Stat(filepath.Join(dir, manifest)); err == nil {
+				return false, "", nil
+			} else if !errors.Is(err, os.ErrNotExist) {
+				return false, "", fmt.Errorf("checking package manifest in %s: %w", dir, err)
+			}
+		}
+		for _, config := range []string{"deno.json", "deno.jsonc"} {
+			path := filepath.Join(dir, config)
+			if _, err := os.Stat(path); err == nil {
+				return true, path, nil
+			} else if !errors.Is(err, os.ErrNotExist) {
+				return false, "", fmt.Errorf("checking Deno config %s: %w", path, err)
+			}
+		}
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			return false, "", nil
+		}
+		dir = parent
+	}
+}
+
+func denoNodeModulesDir(configPath string) (string, error) {
+	contents, err := os.ReadFile(configPath)
+	if err != nil {
+		return "", fmt.Errorf("reading Deno config %s: %w", configPath, err)
+	}
+	contents = stripTrailingJSONCommas(stripJSONComments(contents))
+	var config struct {
+		NodeModulesDir json.RawMessage `json:"nodeModulesDir"`
+	}
+	if err := json.Unmarshal(contents, &config); err != nil {
+		return "", fmt.Errorf("parsing Deno config %s: %w", configPath, err)
+	}
+	mode := "auto"
+	if len(config.NodeModulesDir) > 0 {
+		var configuredMode *string
+		if err := json.Unmarshal(config.NodeModulesDir, &configuredMode); err != nil || configuredMode == nil {
+			return "", fmt.Errorf("Deno nodeModulesDir in %s must be a string", configPath)
+		}
+		mode = *configuredMode
+	}
+	switch mode {
+	case "auto", "manual":
+		return mode, nil
+	case "none":
+		return "", errors.New("Deno projects require nodeModulesDir auto or manual for Pulumi provider discovery")
+	default:
+		return "", fmt.Errorf("unsupported Deno nodeModulesDir mode %q; use auto or manual", mode)
+	}
+}
+
+func stripJSONComments(input []byte) []byte {
+	output := make([]byte, len(input))
+	copy(output, input)
+	var inString, escaped, lineComment, blockComment bool
+	for i := 0; i < len(output); i++ {
+		if lineComment {
+			if output[i] == '\n' || output[i] == '\r' {
+				lineComment = false
+			} else {
+				output[i] = ' '
+			}
+			continue
+		}
+		if blockComment {
+			if output[i] == '*' && i+1 < len(output) && output[i+1] == '/' {
+				output[i], output[i+1] = ' ', ' '
+				i++
+				blockComment = false
+			} else if output[i] != '\n' && output[i] != '\r' {
+				output[i] = ' '
+			}
+			continue
+		}
+		if inString {
+			if escaped {
+				escaped = false
+			} else if output[i] == '\\' {
+				escaped = true
+			} else if output[i] == '"' {
+				inString = false
+			}
+			continue
+		}
+		if output[i] == '"' {
+			inString = true
+		} else if output[i] == '/' && i+1 < len(output) && output[i+1] == '/' {
+			output[i], output[i+1] = ' ', ' '
+			i++
+			lineComment = true
+		} else if output[i] == '/' && i+1 < len(output) && output[i+1] == '*' {
+			output[i], output[i+1] = ' ', ' '
+			i++
+			blockComment = true
+		}
+	}
+	return output
+}
+
+func stripTrailingJSONCommas(input []byte) []byte {
+	output := make([]byte, len(input))
+	copy(output, input)
+	var inString, escaped bool
+	for i := range output {
+		if inString {
+			if escaped {
+				escaped = false
+			} else if output[i] == '\\' {
+				escaped = true
+			} else if output[i] == '"' {
+				inString = false
+			}
+			continue
+		}
+		if output[i] == '"' {
+			inString = true
+			continue
+		}
+		if output[i] != ',' {
+			continue
+		}
+		for next := i + 1; next < len(output); next++ {
+			if output[next] == ' ' || output[next] == '\t' || output[next] == '\n' || output[next] == '\r' {
+				continue
+			}
+			if output[next] == '}' || output[next] == ']' {
+				output[i] = ' '
+			}
+			break
+		}
+	}
+	return output
 }
 
 // nodeLanguageHost implements the LanguageRuntimeServer interface
@@ -281,6 +490,9 @@ type nodeOptions struct {
 	tsconfigpath string
 	// Arguments for the Node process
 	nodeargs string
+	// Arguments for the Deno process. denoargsSet distinguishes an omitted option from an explicitly empty one.
+	denoargs    string
+	denoargsSet bool
 	// The packagemanger to use to install dependencies.
 	// One of auto, npm, yarn, pnpm or bun, defaults to auto.
 	packagemanager npm.PackageManagerType
@@ -315,6 +527,15 @@ func parseOptions(options map[string]any, runtime string) (nodeOptions, error) {
 			nodeOptions.nodeargs = args
 		} else {
 			return nodeOptions, errors.New("nodeargs option must be a string")
+		}
+	}
+
+	if denoargs, ok := options["denoargs"]; ok {
+		if args, ok := denoargs.(string); ok {
+			nodeOptions.denoargs = args
+			nodeOptions.denoargsSet = true
+		} else {
+			return nodeOptions, errors.New("denoargs option must be a string")
 		}
 	}
 
@@ -371,8 +592,42 @@ func parseOptions(options map[string]any, runtime string) (nodeOptions, error) {
 		}
 		nodeOptions.packagemanager = npm.BunPackageManager
 	}
+	if runtime == "deno" {
+		// Deno executes TypeScript itself, so the Node.js TypeScript loader must not be used.
+		nodeOptions.typescript = false
+		nodeOptions.tsconfigpath = ""
+		nodeOptions.nodeargs = ""
+	}
 
 	return nodeOptions, nil
+}
+
+func denoRuntimeArguments(
+	denoargs string, denoargsSet bool, nodeModulesDir string, native bool, programArgs []string,
+) ([]string, error) {
+	permissions := []string{"--allow-all"}
+	if denoargsSet {
+		var err error
+		permissions, err = shlex.Split(denoargs)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse denoargs: %w", err)
+		}
+	}
+	for _, arg := range permissions {
+		if native && isDenoConfigOverride(arg) {
+			return nil, fmt.Errorf("the denoargs option cannot override %s for a native Deno project", arg)
+		}
+	}
+
+	args := append([]string{"run", "--no-prompt", "--node-modules-dir=" + nodeModulesDir}, permissions...)
+	return append(args, programArgs...), nil
+}
+
+func isDenoConfigOverride(arg string) bool {
+	return arg == "--config" || arg == "-c" || strings.HasPrefix(arg, "--config=") ||
+		strings.HasPrefix(arg, "-c") && !strings.HasPrefix(arg, "--") ||
+		arg == "--no-config" || strings.HasPrefix(arg, "--no-config=") ||
+		arg == "--import-map" || strings.HasPrefix(arg, "--import-map=") || strings.HasPrefix(arg, "--node-modules-dir")
 }
 
 func newLanguageHost(
@@ -777,6 +1032,10 @@ func getPluginVersion(info packageJSON) (string, error) {
 
 // Run is the RPC endpoint for LanguageRuntimeServer::Run
 func (host *nodeLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest) (*pulumirpc.RunResponse, error) {
+	if host.runtime == "deno" && req.GetAttachDebugger() {
+		return &pulumirpc.RunResponse{Error: "the deno runtime does not support the debugger"}, nil
+	}
+
 	tracingSpan := opentracing.SpanFromContext(ctx)
 
 	engineClient, closer, err := host.connectToEngine()
@@ -856,7 +1115,7 @@ func (host *nodeLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest
 		req.Info.EntryPoint = "bin"
 	}
 
-	runPath, err = locateModule(ctx, runPath, req.Info.ProgramDirectory, runtimeBin, false)
+	runPath, err = locateModule(ctx, runPath, req.Info.ProgramDirectory, runtimeBin, host.runtime, false)
 	if err != nil {
 		return &pulumirpc.RunResponse{Error: err.Error()}, nil
 	}
@@ -926,9 +1185,11 @@ func (host *nodeLanguageHost) execRuntime(ctx context.Context, req *pulumirpc.Ru
 	}
 
 	var runtimeArgs []string
-	runtimeArgs, err = shlex.Split(opts.nodeargs)
-	if err != nil {
-		return &pulumirpc.RunResponse{Error: err.Error()}
+	if host.runtime != "deno" {
+		runtimeArgs, err = shlex.Split(opts.nodeargs)
+		if err != nil {
+			return &pulumirpc.RunResponse{Error: err.Error()}
+		}
 	}
 
 	var port int
@@ -946,8 +1207,24 @@ func (host *nodeLanguageHost) execRuntime(ctx context.Context, req *pulumirpc.Ru
 	if host.runtime == "bun" {
 		runtimeArgs = append([]string{"run"}, runtimeArgs...)
 	}
-
 	runtimeArgs = append(runtimeArgs, args...)
+	if host.runtime == "deno" {
+		nativeDeno, configPath, modeErr := nativeDenoProject(req.Info.ProgramDirectory)
+		if modeErr != nil {
+			return &pulumirpc.RunResponse{Error: modeErr.Error()}
+		}
+		nodeModulesDir := "manual"
+		if nativeDeno {
+			nodeModulesDir, modeErr = denoNodeModulesDir(configPath)
+			if modeErr != nil {
+				return &pulumirpc.RunResponse{Error: modeErr.Error()}
+			}
+		}
+		runtimeArgs, err = denoRuntimeArguments(opts.denoargs, opts.denoargsSet, nodeModulesDir, nativeDeno, runtimeArgs)
+		if err != nil {
+			return &pulumirpc.RunResponse{Error: err.Error()}
+		}
+	}
 
 	if logging.V(5).Enabled() {
 		commandStr := strings.Join(runtimeArgs, " ")
@@ -1188,7 +1465,7 @@ func (host *nodeLanguageHost) InstallDependencies(
 	)
 	defer otelSpan.End()
 
-	if req.UseLanguageVersionTools {
+	if req.UseLanguageVersionTools && host.runtime != "deno" {
 		// Look for a .nvmrc or .node-version file, install the version specified in it, and set it
 		// as the default nodejs version.
 		if err := installNodeVersion(req.Info.ProgramDirectory, stdout); err != nil {
@@ -1201,6 +1478,29 @@ func (host *nodeLanguageHost) InstallDependencies(
 	}
 
 	stdout.Write([]byte("Installing dependencies...\n\n"))
+
+	if host.runtime == "deno" {
+		if native, configPath, err := nativeDenoProject(req.Info.ProgramDirectory); err != nil {
+			return err
+		} else if native {
+			nodeModulesDir, err := denoNodeModulesDir(configPath)
+			if err != nil {
+				return err
+			}
+			deno, err := executable.FindExecutable("deno")
+			if err != nil {
+				return fmt.Errorf("could not find executable %q: %w", "deno", err)
+			}
+			fmt.Fprintf(stdout, "$ deno install --node-modules-dir=%s\n", nodeModulesDir)
+			cmd := exec.CommandContext(ctx, deno, "install", "--node-modules-dir="+nodeModulesDir)
+			cmd.Dir = req.Info.ProgramDirectory
+			if err := runWithOutput(cmd, stdout, stderr); err != nil {
+				return errutil.ErrorWithStderr(err, "deno install")
+			}
+			stdout.Write([]byte("Finished installing dependencies\n\n"))
+			return closer.Close()
+		}
+	}
 
 	workspaceRoot := req.Info.ProgramDirectory
 	newWorkspaceRoot, err := npm.FindWorkspaceRoot(req.Info.ProgramDirectory)
@@ -1335,9 +1635,17 @@ func (host *nodeLanguageHost) RuntimeOptionsPrompts(ctx context.Context,
 	req *pulumirpc.RuntimeOptionsRequest,
 ) (*pulumirpc.RuntimeOptionsResponse, error) {
 	var prompts []*pulumirpc.RuntimeOptionPrompt
+	nativeDeno := false
+	if host.runtime == "deno" {
+		var err error
+		nativeDeno, _, err = nativeDenoProject(req.Info.ProgramDirectory)
+		if err != nil {
+			return nil, err
+		}
+	}
 
-	// When using bun the package manager is always bun; no prompt is needed.
-	if host.runtime != "bun" {
+	// Bun and native Deno projects use their runtime's package manager directly.
+	if host.runtime != "bun" && !nativeDeno {
 		rawOpts := req.Info.Options.AsMap()
 		if _, hasPackagemanager := rawOpts["packagemanager"]; !hasPackagemanager {
 			prompts = append(prompts, &pulumirpc.RuntimeOptionPrompt{
@@ -1385,6 +1693,14 @@ func (host *nodeLanguageHost) Template(ctx context.Context,
 func (host *nodeLanguageHost) About(ctx context.Context,
 	req *pulumirpc.AboutRequest,
 ) (*pulumirpc.AboutResponse, error) {
+	if host.runtime == "deno" {
+		if native, _, err := nativeDenoProject(req.Info.ProgramDirectory); err != nil {
+			return nil, err
+		} else if native {
+			return denoAbout(ctx)
+		}
+	}
+
 	opts, err := parseOptions(req.Info.Options.AsMap(), host.runtime)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse options: %w", err)
@@ -1492,6 +1808,14 @@ func (host *nodeLanguageHost) Handshake(ctx context.Context,
 func (host *nodeLanguageHost) GetProgramDependencies(
 	ctx context.Context, req *pulumirpc.GetProgramDependenciesRequest,
 ) (*pulumirpc.GetProgramDependenciesResponse, error) {
+	if host.runtime == "deno" {
+		if native, _, err := nativeDenoProject(req.Info.ProgramDirectory); err != nil {
+			return nil, err
+		} else if native {
+			return getDenoProgramDependencies(ctx, req.Info.ProgramDirectory, req.TransitiveDependencies)
+		}
+	}
+
 	opts, err := parseOptions(req.Info.Options.AsMap(), host.runtime)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse options: %w", err)
@@ -1516,6 +1840,149 @@ func (host *nodeLanguageHost) GetProgramDependencies(
 	return &pulumirpc.GetProgramDependenciesResponse{
 		Dependencies: dependencies,
 	}, nil
+}
+
+func denoAbout(ctx context.Context) (*pulumirpc.AboutResponse, error) {
+	deno, err := executable.FindExecutable("deno")
+	if err != nil {
+		return nil, fmt.Errorf("could not find executable %q: %w", "deno", err)
+	}
+	cmd := exec.CommandContext(ctx, deno, "--version")
+	out, err := cmd.Output()
+	if err != nil {
+		return nil, fmt.Errorf("could not determine Deno version: %w", err)
+	}
+	var version, typescriptVersion string
+	for line := range strings.SplitSeq(string(out), "\n") {
+		fields := strings.Fields(line)
+		if len(fields) > 1 && fields[0] == "deno" {
+			version = fields[1]
+		}
+		if len(fields) > 1 && fields[0] == "typescript" {
+			typescriptVersion = fields[1]
+		}
+	}
+	metadata := map[string]string{"packagemanager": "deno"}
+	if version != "" {
+		metadata["packagemanagerVersion"] = version
+	}
+	if typescriptVersion != "" {
+		metadata["typescriptVersion"] = typescriptVersion
+	}
+	return &pulumirpc.AboutResponse{
+		Executable: deno,
+		Version:    version,
+		Metadata:   metadata,
+	}, nil
+}
+
+func getDenoProgramDependencies(
+	ctx context.Context, programDir string, transitive bool,
+) (*pulumirpc.GetProgramDependenciesResponse, error) {
+	deno, err := executable.FindExecutable("deno")
+	if err != nil {
+		return nil, fmt.Errorf("could not find executable %q: %w", "deno", err)
+	}
+	args := []string{"list", "--depth", "0"}
+	if transitive {
+		args[2] = "99"
+	}
+	cmd := exec.CommandContext(ctx, deno, args...)
+	cmd.Dir = programDir
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+	err = cmd.Run()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get Deno dependencies: %w: %s", err,
+			strings.TrimSpace(stderr.String()+"\n"+stdout.String()))
+	}
+	dependencies, err := parseDenoListOutput(stdout.String())
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse Deno dependencies: %w", err)
+	}
+	return &pulumirpc.GetProgramDependenciesResponse{Dependencies: dependencies}, nil
+}
+
+func parseDenoListOutput(output string) ([]*pulumirpc.DependencyInfo, error) {
+	var dependencies []*pulumirpc.DependencyInfo
+	var table bool
+	for line := range strings.SplitSeq(output, "\n") {
+		columns := strings.Split(line, "│")
+		if len(columns) == 5 && strings.TrimSpace(columns[1]) == "Package" {
+			table = true
+			break
+		}
+	}
+	if table {
+		for line := range strings.SplitSeq(output, "\n") {
+			columns := strings.Split(line, "│")
+			if len(columns) != 5 {
+				continue
+			}
+			name := strings.TrimSpace(columns[1])
+			if name == "" || name == "Package" {
+				continue
+			}
+			dependency, ok := parseDenoDependency(name, strings.TrimSpace(columns[3]))
+			if !ok {
+				return nil, fmt.Errorf("unexpected dependency %q in Deno list output", name)
+			}
+			dependencies = append(dependencies, dependency)
+		}
+		return dependencies, nil
+	}
+
+	var unknown []string
+	for line := range strings.SplitSeq(output, "\n") {
+		line = strings.TrimSpace(strings.TrimLeft(line, " │├└─"))
+		if line == "" {
+			continue
+		}
+		if line == "No matching dependencies." {
+			continue
+		}
+		dependency, ok := parseDenoDependency(line, "")
+		if !ok {
+			unknown = append(unknown, line)
+			continue
+		}
+		dependencies = append(dependencies, dependency)
+	}
+	if len(unknown) > 0 {
+		return nil, fmt.Errorf("unrecognized Deno list output: %q", strings.Join(unknown, "\n"))
+	}
+	return dependencies, nil
+}
+
+func parseDenoDependency(specifier, resolved string) (*pulumirpc.DependencyInfo, bool) {
+	prefix := "npm:"
+	if strings.HasPrefix(specifier, "jsr:") {
+		prefix = "jsr:"
+	} else if !strings.HasPrefix(specifier, "npm:") {
+		return nil, false
+	}
+
+	specifier = strings.TrimPrefix(specifier, prefix)
+	unresolved := strings.HasSuffix(specifier, " (unresolved)")
+	for _, status := range []string{" (unresolved)", " (resolved)"} {
+		specifier = strings.TrimSuffix(specifier, status)
+	}
+	name := specifier
+	version := resolved
+	if version == "-" {
+		version = ""
+	}
+	if at := strings.LastIndex(specifier, "@"); at > strings.LastIndex(specifier, "/") {
+		name = specifier[:at]
+		if version == "" && !unresolved {
+			version = specifier[at+1:]
+		}
+	}
+	if name == "" {
+		return nil, false
+	}
+	return &pulumirpc.DependencyInfo{Name: name, Version: version}, true
 }
 
 func getDebuggerSetup(runtime string) (
@@ -1607,6 +2074,10 @@ func startDebugging(
 func (host *nodeLanguageHost) RunPlugin(
 	req *pulumirpc.RunPluginRequest, server pulumirpc.LanguageRuntime_RunPluginServer,
 ) (err error) {
+	if host.runtime == "deno" {
+		return errors.New("the deno runtime does not support plugin execution")
+	}
+
 	logging.V(5).Infof("Attempting to run nodejs plugin in %s", req.Info.ProgramDirectory)
 	ctx := server.Context()
 
@@ -1665,7 +2136,7 @@ func (host *nodeLanguageHost) RunPlugin(
 		}
 	}
 
-	runPath, err = locateModule(ctx, runPath, req.Info.ProgramDirectory, runtimeBin, true)
+	runPath, err = locateModule(ctx, runPath, req.Info.ProgramDirectory, runtimeBin, host.runtime, true)
 	if err != nil {
 		return err
 	}

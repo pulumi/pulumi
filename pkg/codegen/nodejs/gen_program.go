@@ -16,6 +16,7 @@ package nodejs
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"io"
 	"maps"
@@ -58,6 +59,7 @@ type generator struct {
 
 	// Generate ESM (ECMAScript modules) output instead of CJS (CommonJS), see https://nodejs.org/api/esm.html
 	esm                     bool
+	deno                    bool
 	asyncMain               bool
 	configCreated           bool
 	isComponent             bool
@@ -75,7 +77,7 @@ type generator struct {
 
 // ProgramOptions controls optional code generation behaviour for GenerateProgramWithOptions.
 type ProgramOptions struct {
-	// The runtime we are generating code for ("nodejs", "bun").
+	// The runtime we are generating code for ("nodejs", "bun", "deno").
 	Runtime string
 }
 
@@ -94,7 +96,8 @@ func GenerateProgramWithOptions(program *pcl.Program, opts ProgramOptions) (map[
 
 	g := &generator{
 		program: program,
-		esm:     opts.Runtime == "bun",
+		esm:     opts.Runtime == "bun" || opts.Runtime == "deno",
+		deno:    opts.Runtime == "deno",
 	}
 	g.Formatter = format.NewFormatter(g)
 
@@ -203,6 +206,7 @@ func GenerateProgramWithOptions(program *pcl.Program, opts ProgramOptions) (map[
 		componentGenerator := &generator{
 			program:     component.Program,
 			isComponent: true,
+			deno:        g.deno,
 		}
 
 		componentGenerator.Formatter = format.NewFormatter(componentGenerator)
@@ -222,19 +226,23 @@ func generatePackageJSON(
 	runtimeName string,
 ) ([]byte, error) {
 	var packageJSON bytes.Buffer
-	if runtimeName == "bun" {
+	if runtimeName == "bun" || runtimeName == "deno" {
+		typeDefinitions := `"@types/bun": "latest"`
+		if runtimeName == "deno" {
+			typeDefinitions = fmt.Sprintf(`"@types/node": "%s"`, MinimumNodeTypesVersion)
+		}
 		fmt.Fprintf(&packageJSON, `{
 	"name": "%s",
 	"main": "index.ts",
 	"type": "module",
 	"devDependencies": {
-		"@types/bun": "latest"
+		%s
 	},
 	"peerDependencies": {
 		"typescript": "^5"
 	},
 	"dependencies": {
-		`, projectName)
+		`, projectName, typeDefinitions)
 	} else {
 		fmt.Fprintf(&packageJSON, `{
 	"name": "%s",
@@ -323,11 +331,59 @@ func generatePackageJSON(
 	return packageJSON.Bytes(), nil
 }
 
+func generateDenoJSON(
+	program *pcl.Program, projectName string, localDependencies map[string]string,
+) ([]byte, error) {
+	if err := validateDenoLocalDependencies(localDependencies); err != nil {
+		return nil, err
+	}
+
+	packageJSON, err := generatePackageJSON(program, projectName, nil, "deno")
+	if err != nil {
+		return nil, err
+	}
+	var packageManifest struct {
+		Dependencies map[string]string `json:"dependencies"`
+	}
+	if err := json.Unmarshal(packageJSON, &packageManifest); err != nil {
+		return nil, fmt.Errorf("parsing generated Deno dependencies: %w", err)
+	}
+	imports := make(map[string]string, len(packageManifest.Dependencies))
+	for name, version := range packageManifest.Dependencies {
+		imports[name] = "npm:" + name + "@" + version
+	}
+	config := struct {
+		NodeModulesDir string            `json:"nodeModulesDir"`
+		Imports        map[string]string `json:"imports"`
+	}{
+		NodeModulesDir: "auto",
+		Imports:        imports,
+	}
+
+	contents, err := json.MarshalIndent(config, "", "  ")
+	if err != nil {
+		return nil, err
+	}
+	return append(contents, '\n'), nil
+}
+
+func validateDenoLocalDependencies(localDependencies map[string]string) error {
+	if len(localDependencies) == 0 {
+		return nil
+	}
+	names := make([]string, 0, len(localDependencies))
+	for name := range localDependencies {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	return fmt.Errorf("Deno project generation does not support local dependency %q", names[0])
+}
+
 func generateTSConfig(runtimeName string, files map[string][]byte) []byte {
 	var tsConfig bytes.Buffer
 
-	if runtimeName == "bun" {
-		// https://bun.sh/docs/typescript#suggested-compileroptions
+	if runtimeName == "bun" || runtimeName == "deno" {
+		// Use bundler mode and preserve TypeScript imports for runtimes that execute TypeScript directly.
 		tsConfig.WriteString(`{
 	"compilerOptions": {
 		// Environment setup & latest features
@@ -406,6 +462,11 @@ func GenerateProject(
 	program *pcl.Program, localDependencies map[string]string,
 	forceTsc bool, runtimeName string,
 ) error {
+	if runtimeName == "deno" {
+		if err := validateDenoLocalDependencies(localDependencies); err != nil {
+			return err
+		}
+	}
 	files, diagnostics, err := GenerateProgramWithOptions(program, ProgramOptions{Runtime: runtimeName})
 	if err != nil {
 		return err
@@ -444,18 +505,28 @@ func GenerateProject(
 		return fmt.Errorf("write Pulumi.yaml: %w", err)
 	}
 
-	packageJSON, err := generatePackageJSON(program, project.Name.String(), localDependencies, runtimeName)
-	if err != nil {
-		return err
+	if runtimeName == "deno" {
+		denoJSON, err := generateDenoJSON(program, project.Name.String(), localDependencies)
+		if err != nil {
+			return err
+		}
+		files["deno.json"] = denoJSON
+	} else {
+		packageJSON, err := generatePackageJSON(program, project.Name.String(), localDependencies, runtimeName)
+		if err != nil {
+			return err
+		}
+		files["package.json"] = packageJSON
 	}
-	files["package.json"] = packageJSON
 
 	// Add the language specific .gitignore
 	files[".gitignore"] = []byte(`/bin/
 /node_modules/
 `)
 
-	files["tsconfig.json"] = generateTSConfig(runtimeName, files)
+	if runtimeName != "deno" {
+		files["tsconfig.json"] = generateTSConfig(runtimeName, files)
+	}
 
 	for filename, data := range files {
 		outPath := path.Join(directory, filename)
@@ -642,7 +713,11 @@ func (g *generator) collectProgramImports(program *pcl.Program) programImports {
 			componentName := n.DeclarationName()
 			dirAndName := componentDir + "-" + componentName
 			if _, ok := seenComponentImports[dirAndName]; !ok {
-				importStatement := fmt.Sprintf("import { %s } from \"./%s\";", componentName, componentDir)
+				componentPath := "./" + componentDir
+				if g.deno {
+					componentPath += ".ts"
+				}
+				importStatement := fmt.Sprintf("import { %s } from \"%s\";", componentName, componentPath)
 				componentImports = append(componentImports, importStatement)
 				seenComponentImports[dirAndName] = true
 			}

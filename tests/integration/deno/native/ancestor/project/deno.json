@@ -1,0 +1,6 @@
+{
+  "nodeModulesDir": "manual",
+  "imports": {
+    "@pulumi/pulumi": "npm:@pulumi/pulumi@^3.0.0"
+  }
+}

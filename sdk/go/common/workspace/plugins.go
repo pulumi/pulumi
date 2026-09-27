@@ -2080,6 +2080,7 @@ func GetPluginsFromDir(dir string) ([]PluginInfo, error) {
 func IsPluginBundled(kind apitype.PluginKind, name string) bool {
 	return (kind == apitype.LanguagePlugin && name == "nodejs") ||
 		(kind == apitype.LanguagePlugin && name == "bun") ||
+		(kind == apitype.LanguagePlugin && name == "deno") ||
 		(kind == apitype.LanguagePlugin && name == "go") ||
 		(kind == apitype.LanguagePlugin && name == "python") ||
 		(kind == apitype.LanguagePlugin && name == "dotnet") ||

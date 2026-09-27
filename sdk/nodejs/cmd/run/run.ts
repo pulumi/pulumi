@@ -30,7 +30,7 @@ import { register } from "module";
 import { ResourceError, RunError } from "../../errors";
 import * as log from "../../log";
 import { Inputs } from "../../output";
-import { readPackageManifest, searchupPackageManifest } from "../../runtime/manifest";
+import { PACKAGE_MANIFEST_NAMES, readPackageManifest, searchupPackageManifest } from "../../runtime/manifest";
 import * as settings from "../../runtime/settings";
 import * as stack from "../../runtime/stack";
 import * as tsutils from "../../tsutils";
@@ -66,7 +66,8 @@ async function reportModuleLoadFailure(program: string, error: Error): Promise<v
 /**
  * @internal
  * This function searches for the nearest package manifest (package.json or
- * package.yaml), scanning up from the program path until it finds one. If it
+ * package.yaml), scanning up from the program path until it finds one. For native
+ * Deno projects it also uses deno.json or deno.jsonc as a project boundary. If it
  * does not find a manifest, it returns the folder enclosing the program.
  * @param programPath the path to the Pulumi program; this is the project "main" directory,
  * which defaults to the project "root" directory.
@@ -83,6 +84,12 @@ async function npmPackageRootFromProgramPath(programPath: string): Promise<strin
         // Do nothing, because isDirectory is already false.
     }
     const programDirectory = isDirectory ? programPath : path.dirname(programPath);
+    if (process.versions.deno) {
+        const projectRoot = searchupDenoProjectRoot(programDirectory);
+        if (projectRoot !== undefined) {
+            return projectRoot;
+        }
+    }
     const manifestPath = searchupPackageManifest(programDirectory);
     if (manifestPath === undefined) {
         log.warn(
@@ -92,6 +99,25 @@ async function npmPackageRootFromProgramPath(programPath: string): Promise<strin
         return programDirectory;
     }
     return path.dirname(manifestPath);
+}
+
+function searchupDenoProjectRoot(startDir: string): string | undefined {
+    let dir = startDir;
+    while (true) {
+        for (const manifest of PACKAGE_MANIFEST_NAMES) {
+            if (fs.existsSync(path.join(dir, manifest))) {
+                return dir;
+            }
+        }
+        if (fs.existsSync(path.join(dir, "deno.json")) || fs.existsSync(path.join(dir, "deno.jsonc"))) {
+            return dir;
+        }
+        const parent = path.dirname(dir);
+        if (parent === dir) {
+            return undefined;
+        }
+        dir = parent;
+    }
 }
 
 function packageObjectFromProjectRoot(projectRoot: string): Record<string, any> {
@@ -257,7 +283,7 @@ export async function run(
     }
 
     // If this is a typescript project, we'll want to load node-ts.
-    const typeScript: boolean = process.env["PULUMI_NODEJS_TYPESCRIPT"] === "true";
+    const typeScript: boolean = !process.versions.deno && process.env["PULUMI_NODEJS_TYPESCRIPT"] === "true";
 
     // We provide reasonable defaults for many ts options, meaning you don't need to have a tsconfig.json present
     // if you want to use TypeScript with Pulumi. However, ts-node's default behavior is to walk up from the cwd to
@@ -494,7 +520,7 @@ ${defaultErrorMessage(err)}`,
             let programExport: any;
 
             // We use dynamic import instead of require for projects using native ES modules instead of commonjs
-            if (packageObject["type"] === "module") {
+            if (process.versions.deno || packageObject["type"] === "module") {
                 // Use the same behavior for loading the main entrypoint as `node <program>`.
                 // See https://github.com/nodejs/node/blob/v20.x/lib/internal/modules/run_main.js#L23
                 let mainPath = await fspromises.realpath(path.resolve(program));

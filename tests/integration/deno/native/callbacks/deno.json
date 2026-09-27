@@ -1,0 +1,6 @@
+{
+  "nodeModulesDir": "auto",
+  "imports": {
+	"@pulumi/pulumi": "./node_modules/@pulumi/pulumi/index.js"
+  }
+}
