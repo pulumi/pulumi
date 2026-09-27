@@ -295,9 +295,8 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 	switch expr.Name {
 	case pcl.IntrinsicConvert:
 		from := expr.Args[0]
-		to := pcl.LowerConversion(from, expr.Signature.ReturnType)
-
-		originalTo := to
+		originalTo := expr.Signature.ReturnType
+		to := pcl.LowerConversion(from, originalTo)
 		isOutput, _ := model.ContainsEventuals(to)
 		to = model.ResolveOutputs(to)
 		if cns, ok := to.(*model.ConstType); ok {
@@ -357,6 +356,14 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 				fromInner = cns.Type
 			}
 			if fromInner.Equals(model.IDType) && !to.Equals(model.IDType) {
+				if union, ok := expr.Signature.ReturnType.(*model.UnionType); ok {
+					for _, annotation := range union.Annotations {
+						if inputType, ok := annotation.(*schema.InputType); ok && inputType.ElementType == schema.StringType {
+							g.Fgenf(w, "%.v", from)
+							return
+						}
+					}
+				}
 				if g.genIDConversion(w, from, to) {
 					return
 				}
@@ -1885,24 +1892,24 @@ func (g *generator) secretOutputTypeName(expr *model.FunctionCallExpression) str
 func (g *generator) genIDConversion(w io.Writer, from model.Expression, to model.Type) bool {
 	switch to {
 	case model.StringType:
-		g.Fgenf(w, "%.v.ToIDOutput().ToStringOutput()", from)
+		g.Fgenf(w, "%.v.ToStringOutput()", from)
 		return true
 	case model.BoolType:
 		g.importer.Import("strconv", "strconv")
 		g.Fgenf(w,
-			"%.v.ToIDOutput().ApplyT(func(id pulumi.ID) (bool, error) {"+
+			"%.v.ApplyT(func(id pulumi.ID) (bool, error) {"+
 				" return strconv.ParseBool(string(id)) }).(pulumi.BoolOutput)", from)
 		return true
 	case model.IntType:
 		g.importer.Import("strconv", "strconv")
 		g.Fgenf(w,
-			"%.v.ToIDOutput().ApplyT(func(id pulumi.ID) (int, error) {"+
+			"%.v.ApplyT(func(id pulumi.ID) (int, error) {"+
 				" return strconv.Atoi(string(id)) }).(pulumi.IntOutput)", from)
 		return true
 	case model.NumberType:
 		g.importer.Import("strconv", "strconv")
 		g.Fgenf(w,
-			"%.v.ToIDOutput().ApplyT(func(id pulumi.ID) (float64, error) {"+
+			"%.v.ApplyT(func(id pulumi.ID) (float64, error) {"+
 				" return strconv.ParseFloat(string(id), 64) }).(pulumi.Float64Output)", from)
 		return true
 	}
