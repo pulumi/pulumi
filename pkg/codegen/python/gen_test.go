@@ -131,6 +131,12 @@ func TestGenerateDoubleUnderscoreProperties(t *testing.T) {
 		},
 		Resources: map[string]schema.ResourceSpec{
 			"dunder:index:Resource": {
+				ObjectTypeSpec: schema.ObjectTypeSpec{
+					Type: "object",
+					Properties: map[string]schema.PropertySpec{
+						"tagged": {TypeSpec: schema.TypeSpec{Ref: "#/types/dunder:index:Tagged"}},
+					},
+				},
 				InputProperties: map[string]schema.PropertySpec{
 					"tagged": {TypeSpec: schema.TypeSpec{Ref: "#/types/dunder:index:Tagged"}},
 				},
@@ -145,15 +151,81 @@ func TestGenerateDoubleUnderscoreProperties(t *testing.T) {
 	files, err := GeneratePackage("test", pkg, nil, nil)
 	require.NoError(t, err)
 	inputs := string(files["pulumi_dunder/_inputs.py"])
+	outputs := string(files["pulumi_dunder/outputs.py"])
 
 	assert.NotContains(t, inputs, "def __init__(__self__, *, __type:")
-	assert.Contains(t, inputs, "__value_: pulumi.Input[_builtins.str]")
+	assert.Contains(t, inputs, "_value: pulumi.Input[_builtins.str]")
 	assert.Contains(t, inputs, `@pulumi.getter(name="__value")`)
-	assert.Contains(t, inputs, `def __value_(self)`)
-	assert.Contains(t, inputs, `pulumi.set(__self__, "__type_", 'tagged')`)
+	assert.Contains(t, inputs, `def _value(self)`)
+	assert.Contains(t, inputs, `pulumi.set(__self__, "__type", 'tagged')`)
+	assert.Contains(t, inputs, `pulumi.set(__self__, "__value", _value)`)
+	assert.Contains(t, inputs, `return pulumi.get(self, "__value")`)
+	assert.Contains(t, outputs, `pulumi.set(__self__, "__value", _value)`)
+	assert.Contains(t, outputs, `return pulumi.get(self, "__value")`)
 	assert.Contains(t, inputs, `TaggedArgsDict = TypedDict("TaggedArgsDict", {`)
 	assert.Contains(t, inputs, `"__type": pulumi.Input[Literal['tagged']]`)
 	assert.Contains(t, inputs, `"__value": pulumi.Input[_builtins.str]`)
+
+	tempDir := t.TempDir()
+	inputsPath := filepath.Join(tempDir, "inputs.py")
+	outputsPath := filepath.Join(tempDir, "outputs.py")
+	require.NoError(t, os.WriteFile(inputsPath, files["pulumi_dunder/_inputs.py"], 0o600))
+	require.NoError(t, os.WriteFile(outputsPath, files["pulumi_dunder/outputs.py"], 0o600))
+	probe := `
+import pathlib
+import sys
+import types
+import typing
+
+pulumi = types.ModuleType("pulumi")
+pulumi.runtime = types.ModuleType("pulumi.runtime")
+sys.modules["pulumi"] = pulumi
+sys.modules["pulumi.runtime"] = pulumi.runtime
+
+class Input:
+    def __class_getitem__(cls, item):
+        return typing.Any
+
+pulumi.Input = Input
+pulumi.input_type = lambda cls: cls
+pulumi.output_type = lambda cls: cls
+pulumi.getter = lambda fn=None, **kwargs: (lambda f: f) if fn is None else fn
+pulumi.log = types.SimpleNamespace(warn=lambda message: None)
+
+def get(obj, name):
+    if isinstance(obj, dict):
+        return dict.get(obj, name)
+    return obj.__dict__.get(name)
+
+def set_(obj, name, value):
+    if isinstance(obj, dict):
+        obj[name] = value
+    else:
+        obj.__dict__[name] = value
+
+pulumi.get = get
+pulumi.set = set_
+
+def load(path):
+    source = pathlib.Path(path).read_text()
+    source = source.replace("from . import _utilities\n", "")
+    namespace = {"__name__": "generated"}
+    exec(compile(source, path, "exec"), namespace)
+    return namespace
+
+inputs = load(sys.argv[1])
+arg = inputs["TaggedArgs"](_value="input")
+assert arg.__dict__ == {"__type": "tagged", "__value": "input"}, arg.__dict__
+assert arg._value == "input"
+
+outputs = load(sys.argv[2])
+result = outputs["Tagged"](_type="ignored", _value="output")
+assert dict(result) == {"__type": "tagged", "__value": "output"}, result
+assert result._value == "output"
+`
+	cmd := exec.Command("python3", "-c", probe, inputsPath, outputsPath)
+	output, err := cmd.CombinedOutput()
+	require.NoError(t, err, string(output))
 }
 
 func absTestsPath() (string, error) {

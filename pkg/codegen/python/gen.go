@@ -1772,12 +1772,13 @@ func (mod *modContext) genProperties(w io.Writer, properties []*schema.Property,
 			}
 			printComment(w, comment, indent+"        ")
 		}
-		fmt.Fprintf(w, "%s        return pulumi.get(self, %q)\n\n", indent, pname)
+		storageName := pythonPropertyStorageName(prop.Name)
+		fmt.Fprintf(w, "%s        return pulumi.get(self, %q)\n\n", indent, storageName)
 
 		if setters {
 			fmt.Fprintf(w, "%s    @%s.setter\n", indent, pname)
 			fmt.Fprintf(w, "%s    def %s(self, value: %s):\n", indent, pname, ty)
-			fmt.Fprintf(w, "%s        pulumi.set(self, %q, value)\n\n", indent, pname)
+			fmt.Fprintf(w, "%s        pulumi.set(self, %q, value)\n\n", indent, storageName)
 		}
 	}
 	return nil
@@ -3190,7 +3191,8 @@ func (mod *modContext) genType(w io.Writer, name, comment string, properties []*
 			indent = "    "
 		}
 
-		fmt.Fprintf(w, "%s        pulumi.set(__self__, \"%s\", %s)\n", indent, pname, arg)
+		storageName := pythonPropertyStorageName(prop.Name)
+		fmt.Fprintf(w, "%s        pulumi.set(__self__, \"%s\", %s)\n", indent, storageName, arg)
 	}
 	fmt.Fprintf(w, "\n")
 
@@ -3291,9 +3293,17 @@ func isNameMangled(name string) bool {
 func pythonPropertyName(name string) string {
 	name = PyName(name)
 	if isNameMangled(name) {
-		return name + "_"
+		return strings.TrimPrefix(name, "_")
 	}
 	return name
+}
+
+func pythonPropertyStorageName(name string) string {
+	pythonName := PyName(name)
+	if isNameMangled(pythonName) {
+		return name
+	}
+	return pythonName
 }
 
 func getPrimitiveValue(value any) (string, error) {
