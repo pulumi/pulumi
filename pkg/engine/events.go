@@ -774,8 +774,15 @@ func diagEvent(e *eventEmitter, d *diag.Diag, prefix, msg string, sev diag.Sever
 ) {
 	contract.Requiref(e != nil, "e", "!= nil")
 
+	// Diagnostics logged by a provider during an existence check carry a synthetic URN that doesn't name a resource
+	// in the stack, so report them at the stack level instead.
+	urn := d.URN
+	if deploy.IsExistsURN(urn) {
+		urn = ""
+	}
+
 	e.sendEvent(NewEvent(DiagEventPayload{
-		URN:       d.URN,
+		URN:       urn,
 		Prefix:    logging.FilterString(prefix),
 		Message:   logging.FilterString(msg),
 		Color:     colors.Raw,
