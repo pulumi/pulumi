@@ -120,9 +120,6 @@ func TestGetLatestPluginIncludedVersion(t *testing.T) {
 	require.NoError(t, err)
 }
 
-// TestInstallKnownLanguageRuntime checks that installing a known unbundled language runtime without a
-// version uses the CLI's pinned release and its download repository rather than asking the default
-// pulumi/pulumi-<name> repository for its latest release.
 func TestInstallKnownLanguageRuntime(t *testing.T) {
 	// An empty plugin cache, so the install is not skipped because the runtime is already present.
 	t.Setenv("PULUMI_HOME", t.TempDir())

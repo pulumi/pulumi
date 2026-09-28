@@ -160,9 +160,7 @@ func TestEnsureLanguageInstalledUsesPathPlugin(t *testing.T) {
 	require.NoError(t, err, "EnsureLanguageInstalled should reuse the runtime on $PATH, not download it")
 }
 
-// TestEnsureLanguageInstalledHonoursDisabledAcquisition checks that a known but uninstalled language
-// runtime is not downloaded when automatic plugin acquisition is disabled. The cancelled context
-// turns any download attempt into a deterministic failure.
+// The cancelled context turns any download attempt into a deterministic failure.
 func TestEnsureLanguageInstalledHonoursDisabledAcquisition(t *testing.T) {
 	// Not parallel: mutates PATH, PULUMI_HOME and PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION via t.Setenv.
 	t.Setenv("PATH", t.TempDir())

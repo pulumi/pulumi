@@ -81,12 +81,10 @@ func TestKnownLanguageRuntimeOPA(t *testing.T) {
 	res := SetKnownPluginDownloadURL(&spec)
 	assert.True(t, res)
 
-	// The language runtime is released from the pulumi-policy-opa repository, not pulumi-opa.
 	require.NotNil(t, spec.Version)
 	assert.NotZero(t, *spec.Version)
 	assert.Equal(t, "github://api.github.com/pulumi/pulumi-policy-opa", spec.PluginDownloadURL)
 
-	// An explicit version keeps that version but still needs the repository.
 	explicit := semver.MustParse("1.1.2")
 	spec = workspace.PluginDescriptor{
 		Name:    "opa",
