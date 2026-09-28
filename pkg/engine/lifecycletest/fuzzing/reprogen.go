@@ -546,7 +546,7 @@ func writeSnapshotStatements(t require.TestingT, snapSpec *SnapshotSpec) func(g 
 
 					g.writeLinef("ID:                 \"%s\",", r.ID)
 
-					if r.Protect {
+					if r.Protect != nil && *r.Protect {
 						g.writeLine("Protect:            true,")
 					}
 
@@ -771,8 +771,8 @@ func writeResourceRegistrationStatements(t require.TestingT, rs []*ResourceSpec)
 						g.writeLine("// PendingReplacement: true,")
 					}
 
-					if r.Protect {
-						g.writeLine("Protect: new(true),")
+					if r.Protect != nil {
+						g.writeLinef("Protect: new(%v),", *r.Protect)
 					}
 					if r.RetainOnDelete {
 						g.writeLine("RetainOnDelete: new(true),")
