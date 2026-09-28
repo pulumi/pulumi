@@ -33,7 +33,8 @@ import (
 
 // TestAwaitErrorCreate verifies that when a provider returns an AwaitError from Create:
 //   - no resource state is written to the snapshot,
-//   - the SDK receives Result_FAIL for the awaiting resource,
+//   - the SDK receives Result_SUCCESS + Unknown=true with empty outputs so dependents propagate
+//     unknowns rather than treating any output as real,
 //   - the deployment does not halt: independent resources registered after the awaited one still
 //     complete successfully,
 //   - the deployment reports an overall error so the CLI can surface the dedicated exit code.
@@ -57,7 +58,9 @@ func TestAwaitErrorCreate(t *testing.T) {
 		awaitResp, err := monitor.RegisterResource(
 			"pkgA:m:typA", "awaiting", true, deploytest.ResourceOptions{SupportsResultReporting: true})
 		require.NoError(t, err)
-		assert.Equal(t, pulumirpc.Result_FAIL, awaitResp.Result)
+		assert.Equal(t, pulumirpc.Result_SUCCESS, awaitResp.Result)
+		assert.True(t, awaitResp.Unknown, "awaited resource should be reported as Unknown")
+		assert.Empty(t, awaitResp.Outputs, "awaited resource should have no outputs")
 
 		nextResp, err := monitor.RegisterResource(
 			"pkgA:m:typA", "after", true, deploytest.ResourceOptions{SupportsResultReporting: true})
@@ -89,7 +92,7 @@ func TestAwaitErrorCreate(t *testing.T) {
 
 // TestAwaitErrorUpdate verifies that when a provider returns an AwaitError from Update:
 //   - the prior resource state is preserved unchanged in the snapshot,
-//   - the SDK receives Result_FAIL,
+//   - the SDK receives Result_SUCCESS + Unknown=true with empty outputs,
 //   - the deployment does not halt, but reports an overall error.
 func TestAwaitErrorUpdate(t *testing.T) {
 	t.Parallel()
@@ -131,7 +134,9 @@ func TestAwaitErrorUpdate(t *testing.T) {
 			Inputs:                  resource.PropertyMap{"in": resource.NewProperty("v2")},
 		})
 		require.NoError(t, err)
-		assert.Equal(t, pulumirpc.Result_FAIL, resp.Result)
+		assert.Equal(t, pulumirpc.Result_SUCCESS, resp.Result)
+		assert.True(t, resp.Unknown, "awaited resource should be reported as Unknown")
+		assert.Empty(t, resp.Outputs, "awaited resource should have no outputs")
 		return nil
 	})
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)

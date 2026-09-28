@@ -545,6 +545,15 @@ func (s *CreateStep) Fail() {
 	s.reg.Done(&RegisterResult{State: s.new, Result: ResultStateFailed})
 }
 
+// Await surfaces a provider-reported AwaitError to the SDK as SUCCESS + Unknown=true with empty
+// outputs. The resource's state is not coherent yet (the operation is in progress) so dependents
+// should propagate unknowns rather than treating any output as real.
+func (s *CreateStep) Await() {
+	skipState := s.new.Copy()
+	skipState.Outputs = resource.PropertyMap{}
+	s.reg.Done(&RegisterResult{State: skipState, Result: ResultStateSkipped, Unknown: true})
+}
+
 func (s *CreateStep) Skip() {
 	// Ask the provider what a dry-run of this create would produce so dependents get precise
 	// unknowns for the outputs that would actually vary, rather than an everything-unknown answer.
@@ -1206,6 +1215,15 @@ func (s *UpdateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 
 func (s *UpdateStep) Fail() {
 	s.reg.Done(&RegisterResult{State: s.new, Result: ResultStateFailed})
+}
+
+// Await surfaces a provider-reported AwaitError to the SDK as SUCCESS + Unknown=true with empty
+// outputs. The resource's state is not coherent yet (the operation is in progress) so dependents
+// should propagate unknowns rather than treating any output as real.
+func (s *UpdateStep) Await() {
+	skipState := s.new.Copy()
+	skipState.Outputs = resource.PropertyMap{}
+	s.reg.Done(&RegisterResult{State: skipState, Result: ResultStateSkipped, Unknown: true})
 }
 
 func (s *UpdateStep) Skip() {
