@@ -2083,7 +2083,8 @@ func (b *cloudBackend) runEngineAction(
 	// Deliver to the caller first and synchronously, before anything below can fail and
 	// return early: this is the only path that still reaches the caller if newUpdate fails,
 	// and a synchronous send completes before this function can return, so it cannot race
-	// the caller closing its channel afterwards.
+	// the caller closing its channel afterwards. It deliberately never goes to displayEvents:
+	// it is internal, and the display would still stamp it into the event log's sequence.
 	if callerEventsOpt != nil {
 		callerEventsOpt <- updateStartedEvent
 	}
@@ -2102,13 +2103,6 @@ func (b *cloudBackend) runEngineAction(
 		ctx, tokenSource, update,
 		backend.ActionLabel(kind, dryRun), kind, stackRef, op, permalink,
 		displayEvents, displayDone, op.Opts.Display, dryRun)
-
-	// Hand the event to the display pipeline directly, not through the forwarder below. The
-	// renderers skip internal events, but this is what gets it into the event log. Journal
-	// setup further down can return early and leave the forwarder running, and an event still
-	// inside it would then be sent to the caller after the caller has closed its channel,
-	// which panics.
-	displayEvents <- updateStartedEvent
 
 	if err := pkgLogging.RenameCurrentLogger(string(stackRef.FullyQualifiedName()), update.UpdateID); err != nil {
 		logging.V(3).Infof("encrypted log failed to rename: %v", err)

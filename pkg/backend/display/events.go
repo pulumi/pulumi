@@ -264,15 +264,8 @@ func ConvertEngineEvent(e engine.Event, showSecrets bool) (apitype.EngineEvent, 
 		}
 
 	case engine.UpdateStartedEvent:
-		p, ok := e.Payload().(engine.UpdateStartedEventPayload)
-		if !ok {
-			return apiEvent, eventTypePayloadMismatch
-		}
-		apiEvent.UpdateStartedEvent = &apitype.UpdateStartedEvent{
-			UpdateID:  p.UpdateID,
-			Version:   p.Version,
-			Permalink: p.Permalink,
-		}
+		// Internal to in-process callers; it has no wire representation.
+		return apiEvent, fmt.Errorf("event type %q is not serializable", e.Type)
 
 	default:
 		return apiEvent, fmt.Errorf("unknown event type %q", e.Type)
@@ -540,14 +533,6 @@ func ConvertJSONEvent(apiEvent apitype.EngineEvent) (engine.Event, error) {
 		p := apiEvent.ErrorEvent
 		event = engine.NewEvent(engine.ErrorEventPayload{
 			Error: p.Error,
-		})
-
-	case apiEvent.UpdateStartedEvent != nil:
-		p := apiEvent.UpdateStartedEvent
-		event = engine.NewEvent(engine.UpdateStartedEventPayload{
-			UpdateID:  p.UpdateID,
-			Version:   p.Version,
-			Permalink: p.Permalink,
 		})
 
 	default:

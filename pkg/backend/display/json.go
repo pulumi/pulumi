@@ -196,7 +196,7 @@ func ShowPreviewDigest(events <-chan engine.Event, done chan<- bool, opts Option
 			// We don't want to display debugging events in the JSON output.
 			continue
 		case engine.UpdateStartedEvent:
-			// Internal events are filtered out by ShowEvents. Listed for the exhaustive linter.
+			// Only sent to in-process callers, never to the display. Listed for the exhaustive linter.
 			continue
 
 		case engine.StdoutColorEvent:

@@ -75,7 +75,7 @@ func ShowWatchEvents(op string, permalink string, events <-chan engine.Event, do
 		case engine.StartDebuggingEvent:
 			continue
 		case engine.UpdateStartedEvent:
-			// Internal events are filtered out by ShowEvents. Listed for the exhaustive linter.
+			// Only sent to in-process callers, never to the display. Listed for the exhaustive linter.
 			continue
 		case engine.ResourcePreEvent:
 			p := e.Payload().(engine.ResourcePreEventPayload)

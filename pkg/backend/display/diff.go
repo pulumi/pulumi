@@ -118,7 +118,7 @@ func RenderDiffEvent(event engine.Event, resourcesErrored int,
 	case engine.StartDebuggingEvent:
 		return ""
 	case engine.UpdateStartedEvent:
-		// Internal events are filtered out by ShowEvents. Listed for the exhaustive linter.
+		// Only sent to in-process callers, never to the display. Listed for the exhaustive linter.
 		return ""
 	case engine.ProgressEvent:
 		return ""
