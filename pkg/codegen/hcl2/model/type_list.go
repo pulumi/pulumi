@@ -22,7 +22,6 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model/pretty"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
-	"github.com/pulumi/pulumi/sdk/v3/go/pulumi-internal/gsync"
 )
 
 // ListType represents lists of particular element types.
@@ -30,12 +29,12 @@ type ListType struct {
 	// ElementType is the element type of the list.
 	ElementType Type
 
-	cache *gsync.Map[Type, cacheEntry]
+	cache *typeCache
 }
 
 // NewListType creates a new list type with the given element type.
 func NewListType(elementType Type) *ListType {
-	return &ListType{ElementType: elementType, cache: &gsync.Map[Type, cacheEntry]{}}
+	return &ListType{ElementType: elementType, cache: &typeCache{}}
 }
 
 // SyntaxNode returns the syntax node for the type. This is always syntax.None.

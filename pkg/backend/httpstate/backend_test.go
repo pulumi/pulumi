@@ -3194,8 +3194,8 @@ func TestCurrentSurfacesUndecryptableCredentials(t *testing.T) {
 	require.NoError(t, err)
 	cloudURL := "https://api.undecryptable-current.example.com"
 	payload, err := json.Marshal(workspace.Credentials{
-		Current:      cloudURL,
-		AccessTokens: map[string]string{cloudURL: "pul-lost"},
+		Current:  cloudURL,
+		Accounts: map[string]workspace.Account{cloudURL: {AccessToken: "pul-lost"}},
 	})
 	require.NoError(t, err)
 	envelope, err := securestore.Seal(key, unreachable, payload)

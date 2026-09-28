@@ -702,6 +702,14 @@ func TestUnifyType(t *testing.T) {
 	assertUnified(t, NewTupleType(NewUnionType(cf, ct)), NewTupleType(NewUnionType(cf, ct)),
 		NewTupleType(cf), NewTupleType(ct))
 
+	// A conversion check and a unification of the same types do not share a cached result, in either order.
+	a, b := NewTupleType(cf), NewTupleType(ct)
+	assertUnified(t, NewTupleType(NewUnionType(cf, ct)), NewTupleType(NewUnionType(cf, ct)), a, b)
+	assert.Equal(t, NoConversion, a.ConversionFrom(b))
+	a, b = NewTupleType(cf), NewTupleType(ct)
+	assert.Equal(t, NoConversion, a.ConversionFrom(b))
+	assertUnified(t, NewTupleType(NewUnionType(cf, ct)), NewTupleType(NewUnionType(cf, ct)), a, b)
+
 	// Nested tuples of constants with different lengths unify element by element.
 	t6 := NewTupleType(NewTupleType(cf, cf, cf))
 	t7 := NewTupleType(NewTupleType(ct), NewTupleType(cf))
@@ -768,8 +776,8 @@ func TestRecursiveObjectType(t *testing.T) {
 	assert.False(t, linkedListType.Equals(linkedListTypeNonEqual))
 
 	// String conversion
-	// Note: 'next' property is not visible because the string value is memoized at the time of Optional creation.
-	assert.Equal(t, "union(list(object({data = output(int), sibling = ...})), none)", linkedListType.String())
+	assert.Equal(t, "union(none, list(object({data = output(int), next = union(none, list(...)), sibling = ...})))",
+		linkedListType.String())
 
 	// Convert from another type
 	assert.Equal(t, UnsafeConversion, linkedListType.ConversionFrom(linkedListTypeNonEqual))
@@ -781,7 +789,7 @@ func TestRecursiveObjectType(t *testing.T) {
 
 	// Resolving eventuals
 	resolvedLinkedListType := ResolveOutputs(linkedListType)
-	data := resolvedLinkedListType.(*UnionType).ElementTypes[0].(*ListType).ElementType.(*ObjectType).Properties["data"]
+	data := resolvedLinkedListType.(*UnionType).ElementTypes[1].(*ListType).ElementType.(*ObjectType).Properties["data"]
 	assert.True(t, data.Equals(IntType))
 	hasOutputs, _ = ContainsEventuals(resolvedLinkedListType)
 	assert.False(t, hasOutputs)

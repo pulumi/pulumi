@@ -63,15 +63,12 @@ func getAccountAt(path, key string) (Account, error) {
 		return Account{}, err
 	}
 
-	if account, ok := creds.Accounts[key]; ok {
-		account.sourcePath = path
-		return account, nil
-	}
-	token, ok := creds.AccessTokens[key]
+	account, ok := creds.Accounts[key]
 	if !ok {
 		return Account{}, nil
 	}
-	return Account{AccessToken: token, sourcePath: path}, nil
+	account.sourcePath = path
+	return account, nil
 }
 
 // GetAccountWithAgentFallback returns an account from default credentials, or
@@ -131,9 +128,6 @@ func DeleteAccount(key string) error {
 // deleteAccountFromCredentials removes a cloud URL from a credentials object
 // and clears it as current if it was selected.
 func deleteAccountFromCredentials(creds Credentials, key string) Credentials {
-	if creds.AccessTokens != nil {
-		delete(creds.AccessTokens, key)
-	}
 	if creds.Accounts != nil {
 		delete(creds.Accounts, key)
 	}
@@ -182,13 +176,10 @@ func storeAccountAt(path, key string, account Account, current bool) error {
 		logging.V(3).Infof("replacing credentials that can no longer be decrypted: %v", err)
 		creds = Credentials{}
 	}
-	if creds.AccessTokens == nil {
-		creds.AccessTokens = make(map[string]string)
-	}
 	if creds.Accounts == nil {
 		creds.Accounts = make(map[string]Account)
 	}
-	creds.AccessTokens[key], creds.Accounts[key] = account.AccessToken, account
+	creds.Accounts[key] = account
 	if current {
 		creds.Current = key
 	}
@@ -313,11 +304,29 @@ func NewAuthContextForTokenExchange(organization, team, user, token, expirationD
 }
 
 // Credentials hold the information necessary for authenticating Pulumi Cloud API requests.  It contains
-// a map from the cloud API URL to the associated access token.
+// a map from the backend URL to the associated account.
 type Credentials struct {
-	Current      string             `json:"current,omitempty"`      // the currently selected key.
-	AccessTokens map[string]string  `json:"accessTokens,omitempty"` // a map of arbitrary key strings to tokens.
-	Accounts     map[string]Account `json:"accounts,omitempty"`     // a map of arbitrary keys to account info.
+	Current  string             `json:"current,omitempty"`  // the currently selected key.
+	Accounts map[string]Account `json:"accounts,omitempty"` // a map of backend URLs to account info.
+}
+
+func (c Credentials) MarshalJSON() ([]byte, error) {
+	// To maintain backwards compatibility with CLIs v3.265.0 and earlier, we add back the
+	// "accessTokens" map, as derived from Accounts.
+
+	accessTokens := make(map[string]string, len(c.Accounts))
+	for key, account := range c.Accounts {
+		accessTokens[key] = account.AccessToken
+	}
+	return json.Marshal(struct {
+		Current      string             `json:"current,omitempty"`
+		AccessTokens map[string]string  `json:"accessTokens,omitempty"`
+		Accounts     map[string]Account `json:"accounts,omitempty"`
+	}{
+		Current:      c.Current,
+		AccessTokens: accessTokens,
+		Accounts:     c.Accounts,
+	})
 }
 
 // getCredsFilePath returns the path to the Pulumi credentials file on disk, regardless of
@@ -408,11 +417,11 @@ func readCredentialsFile(credsFile string) (Credentials, error) {
 			"or delete invalid credentials file: '%s': %w", credsFile, err)
 	}
 
-	secrets := slice.Prealloc[string](len(creds.AccessTokens) + len(creds.Accounts))
-	for _, v := range creds.AccessTokens {
-		secrets = append(secrets, v)
-	}
+	secrets := slice.Prealloc[string](2 * len(creds.Accounts))
 	for _, account := range creds.Accounts {
+		if account.AccessToken != "" {
+			secrets = append(secrets, account.AccessToken)
+		}
 		if account.RefreshToken != "" {
 			secrets = append(secrets, account.RefreshToken)
 		}
@@ -496,7 +505,7 @@ func decryptCredentials(credsFile string, data []byte) ([]byte, error) {
 // Agent credentials go through here too — all agent processes share one OS
 // user and one key.
 func writeCredentialsFile(credsFile string, creds Credentials) error {
-	if len(creds.AccessTokens) == 0 {
+	if len(creds.Accounts) == 0 {
 		err := os.Remove(credsFile)
 		if err != nil && !os.IsNotExist(err) {
 			return err

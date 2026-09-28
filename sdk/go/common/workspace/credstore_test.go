@@ -40,8 +40,8 @@ func pinSecureCreds(t *testing.T, mode string) {
 
 func testCreds() Credentials {
 	return Credentials{
-		Current:      "https://api.pulumi.com",
-		AccessTokens: map[string]string{"https://api.pulumi.com": "pul-secret-token"},
+		Current:  "https://api.pulumi.com",
+		Accounts: map[string]Account{"https://api.pulumi.com": {AccessToken: "pul-secret-token"}},
 	}
 }
 
@@ -60,7 +60,7 @@ func TestStoreCredentialsEncryptsInAutoMode(t *testing.T) {
 
 	creds, err := GetStoredCredentials()
 	require.NoError(t, err)
-	assert.Equal(t, "pul-secret-token", creds.AccessTokens["https://api.pulumi.com"])
+	assert.Equal(t, "pul-secret-token", creds.Accounts["https://api.pulumi.com"].AccessToken)
 }
 
 //nolint:paralleltest // t.Setenv and the package-global secure-store mock forbid parallel runs
@@ -95,12 +95,13 @@ func TestPlaintextFileMigratesOnWriteNotRead(t *testing.T) {
 
 	credsFile, err := getCredsFilePath()
 	require.NoError(t, err)
-	require.NoError(t, os.WriteFile(credsFile,
-		[]byte(`{"current":"https://api.pulumi.com","accessTokens":{"https://api.pulumi.com":"pul-legacy"}}`), 0o600))
+	require.NoError(t, os.WriteFile(credsFile, []byte(
+		`{"current":"https://api.pulumi.com","accounts":{"https://api.pulumi.com":{"accessToken":"pul-legacy"}}}`,
+	), 0o600))
 
 	creds, err := GetStoredCredentials()
 	require.NoError(t, err)
-	assert.Equal(t, "pul-legacy", creds.AccessTokens["https://api.pulumi.com"])
+	assert.Equal(t, "pul-legacy", creds.Accounts["https://api.pulumi.com"].AccessToken)
 	raw, err := os.ReadFile(credsFile)
 	require.NoError(t, err)
 	assert.False(t, securestore.IsEnvelope(raw), "a read must leave the file untouched")
@@ -113,7 +114,7 @@ func TestPlaintextFileMigratesOnWriteNotRead(t *testing.T) {
 
 	creds, err = GetStoredCredentials()
 	require.NoError(t, err)
-	assert.Equal(t, "pul-legacy", creds.AccessTokens["https://api.pulumi.com"])
+	assert.Equal(t, "pul-legacy", creds.Accounts["https://api.pulumi.com"].AccessToken)
 }
 
 //nolint:paralleltest // t.Setenv and the package-global secure-store mock forbid parallel runs
@@ -122,7 +123,7 @@ func TestNoMigrationWhenModeUnset(t *testing.T) {
 
 	credsFile, err := getCredsFilePath()
 	require.NoError(t, err)
-	plaintext := []byte(`{"current":"x","accessTokens":{"x":"tok"}}`)
+	plaintext := []byte(`{"current":"x","accounts":{"x":{"accessToken":"tok"}}}`)
 	require.NoError(t, os.WriteFile(credsFile, plaintext, 0o600))
 
 	_, err = GetStoredCredentials()
@@ -142,7 +143,7 @@ func TestEncryptedFileReadableRegardlessOfMode(t *testing.T) {
 
 	creds, err := GetStoredCredentials()
 	require.NoError(t, err)
-	assert.Equal(t, "pul-secret-token", creds.AccessTokens["https://api.pulumi.com"])
+	assert.Equal(t, "pul-secret-token", creds.Accounts["https://api.pulumi.com"].AccessToken)
 }
 
 //nolint:paralleltest // t.Setenv and the package-global secure-store mock forbid parallel runs
@@ -169,7 +170,7 @@ func TestDeleteAllAccountsKeepsKeySharedWithOtherHomes(t *testing.T) {
 	t.Setenv(PulumiCredentialsPathEnvVar, homeA)
 	creds, err := GetStoredCredentials()
 	require.NoError(t, err)
-	assert.Equal(t, "pul-secret-token", creds.AccessTokens["https://api.pulumi.com"])
+	assert.Equal(t, "pul-secret-token", creds.Accounts["https://api.pulumi.com"].AccessToken)
 }
 
 //nolint:paralleltest // t.Setenv and the package-global secure-store mock forbid parallel runs
@@ -333,7 +334,7 @@ func TestUnsetModePreservesExistingEncryption(t *testing.T) {
 	resetCredStoreForTesting()
 
 	updated := testCreds()
-	updated.AccessTokens["https://api.other.com"] = "pul-second-token"
+	updated.Accounts["https://api.other.com"] = Account{AccessToken: "pul-second-token"}
 	require.NoError(t, StoreCredentials(updated))
 
 	credsFile, err := getCredsFilePath()
@@ -345,7 +346,7 @@ func TestUnsetModePreservesExistingEncryption(t *testing.T) {
 
 	creds, err := GetStoredCredentials()
 	require.NoError(t, err)
-	assert.Equal(t, "pul-second-token", creds.AccessTokens["https://api.other.com"])
+	assert.Equal(t, "pul-second-token", creds.Accounts["https://api.other.com"].AccessToken)
 }
 
 func TestExplicitPlaintextModeDowngrades(t *testing.T) {
@@ -380,7 +381,7 @@ func TestStoreAccountRecoversFromUndecryptableFile(t *testing.T) {
 
 	creds, err := GetStoredCredentials()
 	require.NoError(t, err)
-	assert.Equal(t, "pul-fresh-token", creds.AccessTokens["https://api.pulumi.com"])
+	assert.Equal(t, "pul-fresh-token", creds.Accounts["https://api.pulumi.com"].AccessToken)
 }
 
 //nolint:paralleltest // t.Setenv and the package-global secure-store mock forbid parallel runs
@@ -399,7 +400,7 @@ func TestResetStoredCredentialsClearsUndecryptableState(t *testing.T) {
 
 	creds, err := GetStoredCredentials()
 	require.NoError(t, err)
-	assert.Empty(t, creds.AccessTokens)
+	assert.Empty(t, creds.Accounts)
 }
 
 func TestDeleteAllAccountsAndCredentialsKeyUsesEnvelopeBackend(t *testing.T) {
@@ -459,7 +460,7 @@ func TestResetStoredCredentialsKeepsKeySharedWithOtherHomes(t *testing.T) {
 
 	t.Setenv(PulumiCredentialsPathEnvVar, t.TempDir())
 	otherKey := make([]byte, 32)
-	foreign, err := securestore.Seal(otherKey, fakeBackend, []byte(`{"accessTokens":{"x":"tok"}}`))
+	foreign, err := securestore.Seal(otherKey, fakeBackend, []byte(`{"accounts":{"x":{"accessToken":"tok"}}}`))
 	require.NoError(t, err)
 	credsFile, err := getCredsFilePath()
 	require.NoError(t, err)
@@ -472,7 +473,7 @@ func TestResetStoredCredentialsKeepsKeySharedWithOtherHomes(t *testing.T) {
 	t.Setenv(PulumiCredentialsPathEnvVar, homeA)
 	creds, err := GetStoredCredentials()
 	require.NoError(t, err)
-	assert.Equal(t, "pul-secret-token", creds.AccessTokens["https://api.pulumi.com"])
+	assert.Equal(t, "pul-secret-token", creds.Accounts["https://api.pulumi.com"].AccessToken)
 }
 
 //nolint:paralleltest // t.Setenv and the package-global secure-store mock forbid parallel runs
@@ -493,7 +494,7 @@ func TestDeleteAllAccountsWorksWhenUndecryptable(t *testing.T) {
 func futureEnvelope(t *testing.T) []byte {
 	t.Helper()
 	key := make([]byte, 32)
-	env, err := securestore.Seal(key, fakeBackend, []byte(`{"accessTokens":{"x":"tok"}}`))
+	env, err := securestore.Seal(key, fakeBackend, []byte(`{"accounts":{"x":{"accessToken":"tok"}}}`))
 	require.NoError(t, err)
 	future := bytes.Replace(env, []byte(`"$pulumiSecureStore": 1`), []byte(`"$pulumiSecureStore": 99`), 1)
 	require.NotEqual(t, env, future)
@@ -687,9 +688,9 @@ func TestWriteUpgradesToStrongerBackend(t *testing.T) {
 
 	creds, err := GetStoredCredentials()
 	require.NoError(t, err)
-	assert.Equal(t, "pul-secret-token", creds.AccessTokens["https://api.pulumi.com"])
+	assert.Equal(t, "pul-secret-token", creds.Accounts["https://api.pulumi.com"].AccessToken)
 
-	creds.AccessTokens["https://api.other.com"] = "pul-second-token"
+	creds.Accounts["https://api.other.com"] = Account{AccessToken: "pul-second-token"}
 	require.NoError(t, StoreCredentials(creds))
 
 	raw, err = os.ReadFile(credsFile)
@@ -701,8 +702,8 @@ func TestWriteUpgradesToStrongerBackend(t *testing.T) {
 
 	upgraded, err := GetStoredCredentials()
 	require.NoError(t, err)
-	assert.Equal(t, "pul-secret-token", upgraded.AccessTokens["https://api.pulumi.com"], "existing data preserved")
-	assert.Equal(t, "pul-second-token", upgraded.AccessTokens["https://api.other.com"])
+	assert.Equal(t, "pul-secret-token", upgraded.Accounts["https://api.pulumi.com"].AccessToken, "existing data preserved")
+	assert.Equal(t, "pul-second-token", upgraded.Accounts["https://api.other.com"].AccessToken)
 
 	// Left in place: the shared agent file may still be encrypted under it.
 	weak, err := stores.ForBackend(fakeBackend)
@@ -734,7 +735,7 @@ func TestRecoveryFromLostKeyStaysEncrypted(t *testing.T) {
 
 	creds, err := GetStoredCredentials()
 	require.NoError(t, err)
-	assert.Equal(t, "pul-secret-token", creds.AccessTokens["https://api.pulumi.com"])
+	assert.Equal(t, "pul-secret-token", creds.Accounts["https://api.pulumi.com"].AccessToken)
 }
 
 func TestRecoveryInExplicitPlaintextModeWritesPlaintext(t *testing.T) {
@@ -761,7 +762,7 @@ func TestOptedInPlaintextReadWarnsOnce(t *testing.T) {
 		forceAttended(t)
 		credsFile, err := getCredsFilePath()
 		require.NoError(t, err)
-		plaintext := []byte(`{"current":"x","accessTokens":{"x":"tok"}}`)
+		plaintext := []byte(`{"current":"x","accounts":{"x":{"accessToken":"tok"}}}`)
 		require.NoError(t, os.WriteFile(credsFile, plaintext, 0o600))
 
 		out := withStderrCapture(t, func() {
@@ -789,7 +790,7 @@ func TestMigrationConfirmsEncryption(t *testing.T) {
 	credsFile, err := getCredsFilePath()
 	require.NoError(t, err)
 	require.NoError(t, os.WriteFile(credsFile,
-		[]byte(`{"current":"x","accessTokens":{"x":"tok"}}`), 0o600))
+		[]byte(`{"current":"x","accounts":{"x":{"accessToken":"tok"}}}`), 0o600))
 
 	out := withStderrCapture(t, func() {
 		require.NoError(t, StoreCredentials(testCreds()))
@@ -822,7 +823,7 @@ func TestSuppressPlaintextPendingWarning(t *testing.T) {
 	credsFile, err := getCredsFilePath()
 	require.NoError(t, err)
 	require.NoError(t, os.WriteFile(credsFile,
-		[]byte(`{"current":"x","accessTokens":{"x":"tok"}}`), 0o600))
+		[]byte(`{"current":"x","accounts":{"x":{"accessToken":"tok"}}}`), 0o600))
 
 	SuppressPlaintextPendingWarning()
 	out := withStderrCapture(t, func() {
@@ -842,7 +843,7 @@ func TestPendingWarningRequiresUsableStore(t *testing.T) {
 	credsFile, err := getCredsFilePath()
 	require.NoError(t, err)
 	require.NoError(t, os.WriteFile(credsFile,
-		[]byte(`{"current":"x","accessTokens":{"x":"tok"}}`), 0o600))
+		[]byte(`{"current":"x","accounts":{"x":{"accessToken":"tok"}}}`), 0o600))
 
 	out := withStderrCapture(t, func() {
 		_, err = GetStoredCredentials()
@@ -878,7 +879,7 @@ func TestUnsetModePlaintextReadDoesNotWarn(t *testing.T) {
 	forceAttended(t)
 	credsFile, err := getCredsFilePath()
 	require.NoError(t, err)
-	require.NoError(t, os.WriteFile(credsFile, []byte(`{"current":"x","accessTokens":{"x":"tok"}}`), 0o600))
+	require.NoError(t, os.WriteFile(credsFile, []byte(`{"current":"x","accounts":{"x":{"accessToken":"tok"}}}`), 0o600))
 
 	out := withStderrCapture(t, func() {
 		_, err = GetStoredCredentials()

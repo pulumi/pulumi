@@ -20,7 +20,6 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model/pretty"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
-	"github.com/pulumi/pulumi/sdk/v3/go/pulumi-internal/gsync"
 )
 
 type noneType int
@@ -61,7 +60,7 @@ func (noneType) ConversionFrom(src Type) ConversionKind {
 }
 
 func (noneType) conversionFrom(src Type, unifying bool, seen cycleSet) (ConversionKind, lazyDiagnostics) {
-	return conversionFrom(NoneType, src, unifying, seen, &gsync.Map[Type, cacheEntry]{},
+	return conversionFrom(NoneType, src, unifying, seen, &typeCache{},
 		func() (ConversionKind, lazyDiagnostics) {
 			// The null literal is a constant of the none type.
 			if src, ok := src.(*ConstType); ok {

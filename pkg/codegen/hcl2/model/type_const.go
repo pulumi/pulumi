@@ -23,7 +23,6 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model/pretty"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
-	"github.com/pulumi/pulumi/sdk/v3/go/pulumi-internal/gsync"
 )
 
 // ConstType represents a type that is a single constant value.
@@ -33,12 +32,12 @@ type ConstType struct {
 	// Value is the constant value.
 	Value cty.Value
 
-	cache *gsync.Map[Type, cacheEntry]
+	cache *typeCache
 }
 
 // NewConstType creates a new constant type with the given type and value.
 func NewConstType(typ Type, value cty.Value) *ConstType {
-	return &ConstType{Type: typ, Value: value, cache: &gsync.Map[Type, cacheEntry]{}}
+	return &ConstType{Type: typ, Value: value, cache: &typeCache{}}
 }
 
 func (t *ConstType) pretty(seenFormatters map[Type]pretty.Formatter) pretty.Formatter {

@@ -1,4 +1,0 @@
-component: programgen
-kind: fix
-body: Fill the lists that `range` produces in Node.js programs
-time: 2026-09-24T09:00:00.000000+02:00
