@@ -2080,11 +2080,8 @@ func (b *cloudBackend) runEngineAction(
 ) (*deploy.Plan, sdkDisplay.ResourceChanges, error) {
 	contract.Assertf(token != "", "persisted actions require a token")
 
-	// Deliver to the caller first and synchronously, before anything below can fail and
-	// return early: this is the only path that still reaches the caller if newUpdate fails,
-	// and a synchronous send completes before this function can return, so it cannot race
-	// the caller closing its channel afterwards. It deliberately never goes to displayEvents:
-	// it is internal, and the display would still stamp it into the event log's sequence.
+	// Send synchronously before anything can fail, so the caller always gets it and the send
+	// can't outlive the caller's channel. Not sent to the display: it would land in the event log.
 	if callerEventsOpt != nil {
 		callerEventsOpt <- updateStartedEvent
 	}

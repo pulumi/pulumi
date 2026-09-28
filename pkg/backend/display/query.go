@@ -94,7 +94,6 @@ func renderQueryEvent(event engine.Event, opts Options) string {
 		return ""
 
 	case engine.UpdateStartedEvent:
-		// Only sent to in-process callers, never to the display. Listed for the exhaustive linter.
 		return ""
 
 	case engine.PreludeEvent, engine.SummaryEvent, engine.ResourceOperationFailed,
