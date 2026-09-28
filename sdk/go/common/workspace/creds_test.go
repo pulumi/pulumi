@@ -41,11 +41,11 @@ func TestConcurrentCredentialsWrites(t *testing.T) {
 		require.NoError(t, err)
 	}()
 
-	// use test creds that have at least 1 AccessToken to force a
+	// use test creds that have at least 1 account to force a
 	// disk write and contention
 	testCreds := Credentials{
-		AccessTokens: map[string]string{
-			"token-name": "token-value",
+		Accounts: map[string]Account{
+			"token-name": {AccessToken: "token-value"},
 		},
 	}
 
@@ -70,7 +70,7 @@ func TestConcurrentCredentialsWrites(t *testing.T) {
 			defer wg.Done()
 			creds, err := GetStoredCredentials()
 			require.NoError(t, err)
-			assert.Equal(t, "token-value", creds.AccessTokens["token-name"])
+			assert.Equal(t, "token-value", creds.Accounts["token-name"].AccessToken)
 		}()
 	}
 	wg.Wait()
@@ -299,26 +299,58 @@ func TestMarkAgentClaimUnavailable(t *testing.T) {
 	require.NoError(t, ClearAgentClaimUnavailable(), "clearing an unset marker is a no-op")
 }
 
-//nolint:paralleltest // mutates package global
-func TestGetAgentAccountUsesLegacyAccessTokenMap(t *testing.T) {
-	oldAgentPulumiDir := agentPulumiDir
-	agentPulumiDir = filepath.Join(t.TempDir(), ".pulumi")
-	t.Cleanup(func() {
-		agentPulumiDir = oldAgentPulumiDir
-	})
+func TestCredentialsMarshalJSON(t *testing.T) {
+	t.Parallel()
 
-	require.NoError(t, StoreAgentCredentials(Credentials{
-		AccessTokens: map[string]string{
-			"https://api.legacy-agent-token.example.com": "legacy-token",
+	raw, err := json.MarshalIndent(Credentials{
+		Current: "https://api.example.com",
+		Accounts: map[string]Account{
+			"https://api.example.com": {AccessToken: "token-value", Username: "user"},
+			"file://~":                {},
 		},
-	}))
+	}, "", "    ")
+	require.NoError(t, err)
 
-	account, err := GetAgentAccount("https://api.legacy-agent-token.example.com")
+	assert.Equal(t, `{
+    "current": "https://api.example.com",
+    "accessTokens": {
+        "file://~": "",
+        "https://api.example.com": "token-value"
+    },
+    "accounts": {
+        "file://~": {
+            "lastValidatedAt": "0001-01-01T00:00:00Z"
+        },
+        "https://api.example.com": {
+            "accessToken": "token-value",
+            "username": "user",
+            "lastValidatedAt": "0001-01-01T00:00:00Z"
+        }
+    }
+}`, string(raw))
+}
+
+func TestCredentialsMarshalJSONWithoutAccounts(t *testing.T) {
+	t.Parallel()
+
+	raw, err := json.Marshal(Credentials{Current: "https://api.example.com"})
 	require.NoError(t, err)
-	assert.Equal(t, "legacy-token", account.AccessToken)
-	account, err = GetAgentAccount("https://api.missing-agent-token.example.com")
+
+	assert.Equal(t, `{"current":"https://api.example.com"}`, string(raw))
+}
+
+func TestGetStoredCredentialsIgnoresAccessTokensObject(t *testing.T) {
+	credsDir := t.TempDir()
+	t.Setenv(PulumiCredentialsPathEnvVar, credsDir)
+	t.Setenv("PULUMI_HOME", "")
+
+	require.NoError(t, os.WriteFile(filepath.Join(credsDir, "credentials.json"),
+		[]byte(`{"current":"https://api.example.com","accessTokens":{"https://api.example.com":"token-value"}}`),
+		0o600))
+
+	creds, err := GetStoredCredentials()
 	require.NoError(t, err)
-	assert.Empty(t, account.AccessToken)
+	assert.Equal(t, Credentials{Current: "https://api.example.com"}, creds)
 }
 
 func TestAgentPulumiDirTestOverride(t *testing.T) {
@@ -633,9 +665,9 @@ func TestDeleteAccountDeletesBackendConfig(t *testing.T) {
 	t.Setenv("PULUMI_HOME", "")
 
 	err := StoreCredentials(Credentials{
-		AccessTokens: map[string]string{
-			"https://api.example.com":       "token-value",
-			"https://api.other.example.com": "other-token",
+		Accounts: map[string]Account{
+			"https://api.example.com":       {AccessToken: "token-value"},
+			"https://api.other.example.com": {AccessToken: "other-token"},
 		},
 	})
 	require.NoError(t, err)
@@ -652,8 +684,8 @@ func TestDeleteAccountDeletesBackendConfig(t *testing.T) {
 
 	creds, err := GetStoredCredentials()
 	require.NoError(t, err)
-	assert.NotContains(t, creds.AccessTokens, "https://api.example.com")
-	assert.Equal(t, "other-token", creds.AccessTokens["https://api.other.example.com"])
+	assert.NotContains(t, creds.Accounts, "https://api.example.com")
+	assert.Equal(t, "other-token", creds.Accounts["https://api.other.example.com"].AccessToken)
 	config, err := GetPulumiConfig()
 	require.NoError(t, err)
 	assert.NotContains(t, config.BackendConfig, "https://api.example.com")
@@ -666,8 +698,8 @@ func TestDeleteAccountDeletesBackendConfigFileWhenEmpty(t *testing.T) {
 	t.Setenv("PULUMI_HOME", "")
 
 	err := StoreCredentials(Credentials{
-		AccessTokens: map[string]string{
-			"https://api.example.com": "token-value",
+		Accounts: map[string]Account{
+			"https://api.example.com": {AccessToken: "token-value"},
 		},
 	})
 	require.NoError(t, err)
@@ -691,8 +723,8 @@ func TestDeleteAllAccountsDeletesBackendConfig(t *testing.T) {
 	t.Setenv("PULUMI_HOME", "")
 
 	err := StoreCredentials(Credentials{
-		AccessTokens: map[string]string{
-			"https://api.example.com": "token-value",
+		Accounts: map[string]Account{
+			"https://api.example.com": {AccessToken: "token-value"},
 		},
 	})
 	require.NoError(t, err)
@@ -732,8 +764,8 @@ func TestDeleteAllAccountsReturnsBackendConfigDeleteError(t *testing.T) {
 	t.Setenv("PULUMI_HOME", "")
 
 	require.NoError(t, StoreCredentials(Credentials{
-		AccessTokens: map[string]string{
-			"https://api.example.com": "token-value",
+		Accounts: map[string]Account{
+			"https://api.example.com": {AccessToken: "token-value"},
 		},
 	}))
 	require.NoError(t, os.Mkdir(filepath.Join(credsDir, "config.json"), 0o700))

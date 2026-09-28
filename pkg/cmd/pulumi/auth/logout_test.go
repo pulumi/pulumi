@@ -63,9 +63,6 @@ func TestCredentialsContainAccountIncludesTokenlessCurrentBackend(t *testing.T) 
 	cloudURL := "file://~"
 	creds := workspace.Credentials{
 		Current: cloudURL,
-		AccessTokens: map[string]string{
-			cloudURL: "",
-		},
 		Accounts: map[string]workspace.Account{
 			cloudURL: {},
 		},
@@ -82,8 +79,8 @@ func TestDeleteAccountSkipsAgentFallbackWhenExplicitPathSet(t *testing.T) {
 	t.Setenv("PULUMI_TEST_AGENT_PULUMI_DIR", t.TempDir())
 
 	err := workspace.StoreCredentials(workspace.Credentials{
-		AccessTokens: map[string]string{
-			"https://api.logout-explicit.example.com": "default-token",
+		Accounts: map[string]workspace.Account{
+			"https://api.logout-explicit.example.com": {AccessToken: "default-token"},
 		},
 	})
 	require.NoError(t, err)
@@ -93,7 +90,7 @@ func TestDeleteAccountSkipsAgentFallbackWhenExplicitPathSet(t *testing.T) {
 
 	creds, err := workspace.GetStoredCredentials()
 	require.NoError(t, err)
-	assert.NotContains(t, creds.AccessTokens, "https://api.logout-explicit.example.com")
+	assert.NotContains(t, creds.Accounts, "https://api.logout-explicit.example.com")
 }
 
 func TestDeleteAllAccountsSkipsAgentFallbackOutsideAgentMode(t *testing.T) {
@@ -106,8 +103,8 @@ func TestDeleteAllAccountsSkipsAgentFallbackOutsideAgentMode(t *testing.T) {
 	t.Setenv(env.Home.Var().Name(), "")
 
 	err := workspace.StoreCredentials(workspace.Credentials{
-		AccessTokens: map[string]string{
-			"https://api.logout-all.example.com": "default-token",
+		Accounts: map[string]workspace.Account{
+			"https://api.logout-all.example.com": {AccessToken: "default-token"},
 		},
 	})
 	require.NoError(t, err)
@@ -124,8 +121,8 @@ func TestLogoutCommandAll(t *testing.T) {
 	t.Setenv(workspace.PulumiCredentialsPathEnvVar, credsDir)
 	t.Setenv(env.Home.Var().Name(), "")
 	require.NoError(t, workspace.StoreCredentials(workspace.Credentials{
-		AccessTokens: map[string]string{
-			"https://api.logout-command-all.example.com": "default-token",
+		Accounts: map[string]workspace.Account{
+			"https://api.logout-command-all.example.com": {AccessToken: "default-token"},
 		},
 	}))
 
@@ -157,8 +154,8 @@ func TestLogoutCommandCloudURL(t *testing.T) {
 	t.Setenv(env.Home.Var().Name(), "")
 	cloudURL := "https://api.logout-command.example.com"
 	require.NoError(t, workspace.StoreCredentials(workspace.Credentials{
-		AccessTokens: map[string]string{
-			cloudURL: "default-token",
+		Accounts: map[string]workspace.Account{
+			cloudURL: {AccessToken: "default-token"},
 		},
 	}))
 

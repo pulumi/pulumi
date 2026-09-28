@@ -795,7 +795,7 @@ func getCLIVersionInfo(
 	metadata map[string]string,
 ) (semver.Version, semver.Version, semver.Version, error) {
 	creds, err := workspace.GetStoredCredentials()
-	apiToken := creds.AccessTokens[creds.Current]
+	apiToken := creds.Accounts[creds.Current].AccessToken
 
 	if err != nil || creds.Current != cloudURL {
 		apiToken = ""

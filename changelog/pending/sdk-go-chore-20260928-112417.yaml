@@ -1,0 +1,4 @@
+component: sdk/go
+kind: chore
+body: Remove `workspace.Credentials.AccessTokens` and read stored logins only from the `accounts` object of `credentials.json`
+time: 2026-09-28T11:24:17.323589+01:00
