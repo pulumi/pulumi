@@ -1,0 +1,4 @@
+component: sdkgen/nodejs
+kind: fix
+body: Link `@pulumi/pulumi` types in generated docs to their TypeDoc pages instead of missing anchors
+time: 2026-09-28T00:00:00Z
