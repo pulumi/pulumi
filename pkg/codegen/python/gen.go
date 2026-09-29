@@ -3113,10 +3113,10 @@ func (mod *modContext) genType(w io.Writer, name, comment string, properties []*
 		}
 	}
 
-	// Generate an __init__ method. Constant properties are initialized below and are not arguments.
+	// Generate an __init__ method. Name-mangled constant input properties are initialized below and are not arguments.
 	initProps := slice.Prealloc[*schema.Property](len(props))
 	for _, prop := range props {
-		if !input || prop.ConstValue == nil {
+		if !input || prop.ConstValue == nil || !isNameMangled(PyName(prop.Name)) {
 			initProps = append(initProps, prop)
 		}
 	}
@@ -3128,7 +3128,7 @@ func (mod *modContext) genType(w io.Writer, name, comment string, properties []*
 	for _, prop := range initProps {
 		pname := pythonPropertyName(prop.Name)
 		ty := mod.propertyTypeString(prop, prop.Type, typeStringOpts{input: input})
-		if (!input || prop.ConstValue == nil) && prop.DefaultValue != nil {
+		if prop.DefaultValue != nil {
 			ty = mod.propertyTypeString(prop, codegen.OptionalType(prop), typeStringOpts{input: input})
 		}
 
@@ -3155,8 +3155,10 @@ func (mod *modContext) genType(w io.Writer, name, comment string, properties []*
 		var arg any
 		var err error
 
+		omitInitArg := input && prop.ConstValue != nil && isNameMangled(PyName(prop.Name))
+
 		// Check that the property isn't deprecated.
-		if input && prop.ConstValue == nil && prop.DeprecationMessage != "" {
+		if input && !omitInitArg && prop.DeprecationMessage != "" {
 			escaped := strings.ReplaceAll(prop.DeprecationMessage, `"`, `\"`)
 			fmt.Fprintf(w, "        if %s is not None:\n", pname)
 			fmt.Fprintf(w, "            warnings.warn(\"\"\"%s\"\"\", DeprecationWarning)\n", escaped)
@@ -3164,15 +3166,13 @@ func (mod *modContext) genType(w io.Writer, name, comment string, properties []*
 		}
 
 		// Fill in computed defaults for arguments.
-		if !input || prop.ConstValue == nil {
-			if prop.DefaultValue != nil {
-				dv, err := getDefaultValue(prop.DefaultValue, codegen.UnwrapType(prop.Type))
-				if err != nil {
-					return err
-				}
-				fmt.Fprintf(w, "        if %s is None:\n", pname)
-				fmt.Fprintf(w, "            %s = %s\n", pname, dv)
+		if !omitInitArg && prop.DefaultValue != nil {
+			dv, err := getDefaultValue(prop.DefaultValue, codegen.UnwrapType(prop.Type))
+			if err != nil {
+				return err
 			}
+			fmt.Fprintf(w, "        if %s is None:\n", pname)
+			fmt.Fprintf(w, "            %s = %s\n", pname, dv)
 		}
 
 		// And add it to the dictionary.
@@ -3186,7 +3186,7 @@ func (mod *modContext) genType(w io.Writer, name, comment string, properties []*
 		}
 
 		var indent string
-		if (!input || prop.ConstValue == nil) && !prop.IsRequired() {
+		if !omitInitArg && !prop.IsRequired() {
 			fmt.Fprintf(w, "        if %s is not None:\n", pname)
 			indent = "    "
 		}

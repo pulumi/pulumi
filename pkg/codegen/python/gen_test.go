@@ -124,6 +124,10 @@ func TestGenerateDoubleUnderscoreProperties(t *testing.T) {
 							Const:    "tagged",
 						},
 						"__value": {TypeSpec: schema.TypeSpec{Type: "string"}},
+						"kind": {
+							TypeSpec: schema.TypeSpec{Type: "string"},
+							Const:    "ordinary",
+						},
 					},
 					Required: []string{"__type", "__value"},
 				},
@@ -155,6 +159,7 @@ func TestGenerateDoubleUnderscoreProperties(t *testing.T) {
 
 	assert.NotContains(t, inputs, "def __init__(__self__, *, __type:")
 	assert.Contains(t, inputs, "_value: pulumi.Input[_builtins.str]")
+	assert.Contains(t, inputs, "kind: pulumi.Input[Optional[Literal['ordinary']]] = None")
 	assert.Contains(t, inputs, `@pulumi.getter(name="__value")`)
 	assert.Contains(t, inputs, `def _value(self)`)
 	assert.Contains(t, inputs, `pulumi.set(__self__, "__type", 'tagged')`)
@@ -214,8 +219,8 @@ def load(path):
     return namespace
 
 inputs = load(sys.argv[1])
-arg = inputs["TaggedArgs"](_value="input")
-assert arg.__dict__ == {"__type": "tagged", "__value": "input"}, arg.__dict__
+arg = inputs["TaggedArgs"](_value="input", kind="ignored")
+assert arg.__dict__ == {"__type": "tagged", "__value": "input", "kind": "ordinary"}, arg.__dict__
 assert arg._value == "input"
 
 outputs = load(sys.argv[2])
