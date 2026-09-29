@@ -290,7 +290,7 @@ func TestProviderUpdateDestroyWithProgram(t *testing.T) {
 					}
 
 					if req.Name == "resA" || req.Name == "resB" {
-						assert.Equal(t, programInputs, req.Properties)
+						assert.Equal(t, programInputs, resource.ToResourcePropertyMap(req.Properties))
 
 						return plugin.CreateResponse{
 							ID:         resource.ID(uuid.String()),
