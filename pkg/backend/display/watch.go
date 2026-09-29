@@ -74,6 +74,8 @@ func ShowWatchEvents(op string, permalink string, events <-chan engine.Event, do
 				resourceName, "%s", renderDiffDiagEvent(p, opts))
 		case engine.StartDebuggingEvent:
 			continue
+		case engine.UpdateStartedEvent:
+			continue
 		case engine.ResourcePreEvent:
 			p := e.Payload().(engine.ResourcePreEventPayload)
 			if shouldShow(p.Metadata, opts) {
