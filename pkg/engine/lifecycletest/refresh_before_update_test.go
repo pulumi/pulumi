@@ -27,6 +27,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -50,10 +51,10 @@ func TestRefreshBeforeUpdate(t *testing.T) {
 					}, nil
 				},
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
-					props := resource.ToResourcePropertyMap(req.Properties).Copy()
+					props := req.Properties.AsMap()
 					props["result"] = props["input"]
 					return plugin.CreateResponse{
-						Properties:          resource.FromResourcePropertyMap(props),
+						Properties:          property.NewMap(props),
 						ID:                  "new-id",
 						RefreshBeforeUpdate: true,
 					}, nil
@@ -245,10 +246,10 @@ func TestRefreshBeforeUpdateDeletedResource(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
-					props := resource.ToResourcePropertyMap(req.Properties).Copy()
+					props := req.Properties.AsMap()
 					props["result"] = props["input"]
 					return plugin.CreateResponse{
-						Properties:          resource.FromResourcePropertyMap(props),
+						Properties:          property.NewMap(props),
 						ID:                  "new-id",
 						RefreshBeforeUpdate: true,
 					}, nil
