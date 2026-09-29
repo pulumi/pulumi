@@ -18,7 +18,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"maps"
 	"sync/atomic"
 	"testing"
 
@@ -772,11 +771,10 @@ func TestPclSnippetResourceReference(t *testing.T) {
 					return plugin.GetSchemaResponse{Schema: []byte(schemaJSON)}, nil
 				},
 				CreateF: func(_ context.Context, cr plugin.CreateRequest) (plugin.CreateResponse, error) {
-					out := resource.PropertyMap{}
-					maps.Copy(out, resource.ToResourcePropertyMap(cr.Properties))
+					out := cr.Properties.AsMap()
 					// Give the producer a deterministic output for the snippet to consume.
-					if seed, ok := resource.ToResourcePropertyMap(cr.Properties)["seed"]; ok {
-						out["value"] = resource.NewProperty("value-of-" + seed.StringValue())
+					if seed, ok := cr.Properties.GetOk("seed"); ok {
+						out["value"] = property.New("value-of-" + seed.AsString())
 					}
 					uuid, err := uuid.NewV4()
 					if err != nil {
@@ -786,7 +784,7 @@ func TestPclSnippetResourceReference(t *testing.T) {
 					if cr.Preview {
 						id = ""
 					}
-					return plugin.CreateResponse{ID: resource.ID(id), Properties: resource.FromResourcePropertyMap(out)}, nil
+					return plugin.CreateResponse{ID: resource.ID(id), Properties: property.NewMap(out)}, nil
 				},
 			}, nil
 		}),
@@ -1003,10 +1001,9 @@ func TestPclSnippetMissingProgramReference(t *testing.T) {
 					return plugin.GetSchemaResponse{Schema: []byte(schemaJSON)}, nil
 				},
 				CreateF: func(_ context.Context, cr plugin.CreateRequest) (plugin.CreateResponse, error) {
-					out := resource.PropertyMap{}
-					maps.Copy(out, resource.ToResourcePropertyMap(cr.Properties))
-					if seed, ok := resource.ToResourcePropertyMap(cr.Properties)["seed"]; ok {
-						out["value"] = resource.NewProperty("value-of-" + seed.StringValue())
+					out := cr.Properties.AsMap()
+					if seed, ok := cr.Properties.GetOk("seed"); ok {
+						out["value"] = property.New("value-of-" + seed.AsString())
 					}
 					uuid, err := uuid.NewV4()
 					if err != nil {
@@ -1016,7 +1013,7 @@ func TestPclSnippetMissingProgramReference(t *testing.T) {
 					if cr.Preview {
 						id = ""
 					}
-					return plugin.CreateResponse{ID: resource.ID(id), Properties: resource.FromResourcePropertyMap(out)}, nil
+					return plugin.CreateResponse{ID: resource.ID(id), Properties: property.NewMap(out)}, nil
 				},
 			}, nil
 		}),
@@ -1115,11 +1112,10 @@ func TestPclSnippetMissingSnippetReference(t *testing.T) {
 					return plugin.GetSchemaResponse{Schema: []byte(schemaJSON)}, nil
 				},
 				CreateF: func(_ context.Context, cr plugin.CreateRequest) (plugin.CreateResponse, error) {
-					out := resource.PropertyMap{}
-					maps.Copy(out, resource.ToResourcePropertyMap(cr.Properties))
+					out := cr.Properties.AsMap()
 					// Give each producer a deterministic output for the next snippet to consume.
-					if seed, ok := resource.ToResourcePropertyMap(cr.Properties)["seed"]; ok {
-						out["value"] = resource.NewProperty("value-of-" + seed.StringValue())
+					if seed, ok := cr.Properties.GetOk("seed"); ok {
+						out["value"] = property.New("value-of-" + seed.AsString())
 					}
 					uuid, err := uuid.NewV4()
 					if err != nil {
@@ -1129,7 +1125,7 @@ func TestPclSnippetMissingSnippetReference(t *testing.T) {
 					if cr.Preview {
 						id = ""
 					}
-					return plugin.CreateResponse{ID: resource.ID(id), Properties: resource.FromResourcePropertyMap(out)}, nil
+					return plugin.CreateResponse{ID: resource.ID(id), Properties: property.NewMap(out)}, nil
 				},
 			}, nil
 		}),
@@ -2085,17 +2081,16 @@ func TestPclSnippetTargetReferenceUntargetedSnippet(t *testing.T) {
 					return plugin.GetSchemaResponse{Schema: []byte(schemaJSON)}, nil
 				},
 				CreateF: func(_ context.Context, cr plugin.CreateRequest) (plugin.CreateResponse, error) {
-					out := resource.PropertyMap{}
-					maps.Copy(out, resource.ToResourcePropertyMap(cr.Properties))
-					if seed, ok := resource.ToResourcePropertyMap(cr.Properties)["seed"]; ok {
+					out := cr.Properties.AsMap()
+					if seed, ok := cr.Properties.GetOk("seed"); ok {
 						producerCreates.Add(1)
-						out["value"] = resource.NewProperty("value-of-" + seed.StringValue())
+						out["value"] = property.New("value-of-" + seed.AsString())
 					}
 					id, err := uuid.NewV4()
 					if err != nil {
 						return plugin.CreateResponse{}, err
 					}
-					return plugin.CreateResponse{ID: resource.ID(id.String()), Properties: resource.FromResourcePropertyMap(out)}, nil
+					return plugin.CreateResponse{ID: resource.ID(id.String()), Properties: property.NewMap(out)}, nil
 				},
 			}, nil
 		}),

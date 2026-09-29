@@ -153,7 +153,6 @@ func (pcs ProviderCreateSpec) Pretty(indent string) string {
 // Returns a CreateF-compatible callback that implements this ProviderCreateSpec.
 func (pcs ProviderCreateSpec) AsCreateF() func(context.Context, plugin.CreateRequest) (plugin.CreateResponse, error) {
 	return func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
-		properties := resource.ToResourcePropertyMap(req.Properties)
 		if action, ok := pcs[req.URN]; ok {
 			switch action {
 			case ProviderCreateFailure:
@@ -165,10 +164,10 @@ func (pcs ProviderCreateSpec) AsCreateF() func(context.Context, plugin.CreateReq
 
 		// To avoid having to randomly generate IDs here, we allow resources to specify an __id input that we'll use as the
 		// ID we return. ResourceSpec.AsResource makes use of this, for instance.
-		id := properties["__id"].String()
+		id := req.Properties.Get("__id").GoString()
 		return plugin.CreateResponse{
 			ID:         resource.ID(id),
-			Properties: resource.FromResourcePropertyMap(properties),
+			Properties: req.Properties,
 			Status:     resource.StatusOK,
 		}, nil
 	}

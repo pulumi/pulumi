@@ -832,8 +832,7 @@ func TestDoCmdResourceConfirmationSummary(t *testing.T) {
 					return plugin.CheckResponse{Properties: req.NewInputs}, nil
 				},
 				CreateF: func(ctx context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
-					properties := resource.ToResourcePropertyMap(req.Properties)
-					return plugin.CreateResponse{ID: "res-1", Properties: resource.FromResourcePropertyMap(properties)}, nil
+					return plugin.CreateResponse{ID: "res-1", Properties: req.Properties}, nil
 				},
 			},
 		})

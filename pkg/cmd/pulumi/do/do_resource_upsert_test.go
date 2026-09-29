@@ -661,11 +661,10 @@ func TestDoCmdResourceUpsertEndToEnd(t *testing.T) {
 					return plugin.GetSchemaResponse{Schema: []byte(azureSchemaJSON)}, nil
 				},
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
-					properties := resource.ToResourcePropertyMap(req.Properties)
-					createdInputs = properties
+					createdInputs = resource.ToResourcePropertyMap(req.Properties)
 					return plugin.CreateResponse{
 						ID:         "res-1",
-						Properties: resource.FromResourcePropertyMap(properties),
+						Properties: req.Properties,
 					}, nil
 				},
 			}, nil
