@@ -2417,8 +2417,10 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		// If this request did not specify property dependencies, treat each property as depending on every resource
 		// in the request's dependency list. We don't need to do this when remote is true, because all clients that
 		// support remote already support passing property dependencies, so there's no need to backfill here.
+		// Clone so that downstream code merging a property's Output-value dependencies into its set does not
+		// leak those dependencies into every other property via a shared underlying set instance.
 		for pk := range props {
-			propertyDependencies[pk] = dependencies
+			propertyDependencies[pk] = dependencies.Clone()
 		}
 	} else {
 		// Otherwise, unmarshal the per-property dependency information.
