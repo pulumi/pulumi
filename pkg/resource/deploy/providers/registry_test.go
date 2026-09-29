@@ -352,7 +352,7 @@ func TestCRUD(t *testing.T) {
 		assert.NotEqual(t, "", create.ID)
 		assert.NotEqual(t, UnconfiguredID, create.ID)
 		assert.NotEqual(t, UnknownID, create.ID)
-		assert.Equal(t, resource.PropertyMap{}, create.Properties)
+		assert.Equal(t, property.Map{}, create.Properties)
 		assert.Equal(t, resource.StatusOK, create.Status)
 
 		p2, ok := r.GetProvider(mustNewReference(urn, create.ID))
