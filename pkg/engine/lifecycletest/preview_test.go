@@ -76,7 +76,7 @@ func TestPreviewRefreshWithProgram(t *testing.T) {
 					}
 
 					if req.Name == "resA" {
-						assert.Equal(t, programInputs, req.Properties)
+						assert.Equal(t, programInputs, resource.ToResourcePropertyMap(req.Properties))
 
 						return plugin.CreateResponse{
 							ID:         resource.ID(uuid.String()),

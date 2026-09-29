@@ -184,7 +184,7 @@ func (p *CamelNamesProvider) Create(
 	properties := resource.PropertyMap{
 		"theOutput": value,
 	}
-	if name, hasName := properties["resourceName"]; hasName {
+	if name, hasName := inputs["resourceName"]; hasName {
 		properties["resourceName"] = name
 	}
 
