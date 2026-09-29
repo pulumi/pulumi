@@ -55,6 +55,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	codegenrpc "github.com/pulumi/pulumi/sdk/v3/proto/go/codegen"
 )
@@ -272,8 +273,8 @@ func evaluatePCL(
 		func(context.Context, string) (*schema.Function, error) {
 			return nil, notSupported("reference functions")
 		},
-		func(context.Context, resource.ResourceReference) (resource.PropertyMap, error) {
-			return nil, notSupported("reference resources")
+		func(context.Context, resource.ResourceReference) (property.Map, error) {
+			return property.Map{}, notSupported("reference resources")
 		},
 		func(context.Context, *pulumirpc.ResourceInvokeRequest) (*pulumirpc.ResourceInvokeResponse, error) {
 			return nil, notSupported("invoke functions")
