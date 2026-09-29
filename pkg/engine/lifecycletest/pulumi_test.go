@@ -3909,17 +3909,17 @@ func TestOldCheckedInputsAreSent(t *testing.T) {
 					// Check that the old inputs are passed to CheckF
 					if firstUpdate {
 						assert.Equal(t, property.Map{}, req.OldInputs)
-						assert.Equal(t, resource.FromResourcePropertyMap(resource.NewPropertyMapFromMap(map[string]any{
-							"foo": "bar",
-						})), req.NewInputs)
+						assert.Equal(t, property.NewMap(map[string]property.Value{
+							"foo": property.New("bar"),
+						}), req.NewInputs)
 					} else {
-						assert.Equal(t, resource.FromResourcePropertyMap(resource.NewPropertyMapFromMap(map[string]any{
-							"foo":     "bar",
-							"default": "default",
-						})), req.OldInputs)
-						assert.Equal(t, resource.FromResourcePropertyMap(resource.NewPropertyMapFromMap(map[string]any{
-							"foo": "baz",
-						})), req.NewInputs)
+						assert.Equal(t, property.NewMap(map[string]property.Value{
+							"foo":     property.New("bar"),
+							"default": property.New("default"),
+						}), req.OldInputs)
+						assert.Equal(t, property.NewMap(map[string]property.Value{
+							"foo": property.New("baz"),
+						}), req.NewInputs)
 					}
 
 					// Add a default property
@@ -3934,23 +3934,23 @@ func TestOldCheckedInputsAreSent(t *testing.T) {
 					if firstUpdate {
 						assert.Equal(t, property.Map{}, req.OldInputs)
 						assert.Equal(t, property.Map{}, req.OldOutputs)
-						assert.Equal(t, resource.FromResourcePropertyMap(resource.NewPropertyMapFromMap(map[string]any{
-							"foo": "bar",
-						})), req.NewInputs)
+						assert.Equal(t, property.NewMap(map[string]property.Value{
+							"foo": property.New("bar"),
+						}), req.NewInputs)
 					} else {
-						assert.Equal(t, resource.FromResourcePropertyMap(resource.NewPropertyMapFromMap(map[string]any{
-							"foo":     "bar",
-							"default": "default",
-						})), req.OldInputs)
-						assert.Equal(t, resource.FromResourcePropertyMap(resource.NewPropertyMapFromMap(map[string]any{
-							"foo":      "bar",
-							"default":  "default",
-							"computed": "computed",
-						})), req.OldOutputs)
-						assert.Equal(t, resource.FromResourcePropertyMap(resource.NewPropertyMapFromMap(map[string]any{
-							"foo":     "baz",
-							"default": "default",
-						})), req.NewInputs)
+						assert.Equal(t, property.NewMap(map[string]property.Value{
+							"foo":     property.New("bar"),
+							"default": property.New("default"),
+						}), req.OldInputs)
+						assert.Equal(t, property.NewMap(map[string]property.Value{
+							"foo":      property.New("bar"),
+							"default":  property.New("default"),
+							"computed": property.New("computed"),
+						}), req.OldOutputs)
+						assert.Equal(t, property.NewMap(map[string]property.Value{
+							"foo":     property.New("baz"),
+							"default": property.New("default"),
+						}), req.NewInputs)
 					}
 
 					// Let the engine do the diff, we just want to assert the conditions above

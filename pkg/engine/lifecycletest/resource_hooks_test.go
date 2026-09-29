@@ -31,6 +31,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"github.com/stretchr/testify/require"
 )
@@ -125,10 +126,10 @@ func TestResourceHooksAfterCreate(t *testing.T) {
 			return &deploytest.Provider{
 				CheckF: func(context.Context, plugin.CheckRequest) (plugin.CheckResponse, error) {
 					return plugin.CheckResponse{
-						Properties: resource.FromResourcePropertyMap(resource.NewPropertyMapFromMap(map[string]any{
-							"a": "A",
-							"c": "C",
-						})),
+						Properties: property.NewMap(map[string]property.Value{
+							"a": property.New("A"),
+							"c": property.New("C"),
+						}),
 					}, nil
 				},
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
@@ -456,7 +457,7 @@ func TestResourceHookAfterDelete(t *testing.T) {
 					}
 					return plugin.CreateResponse{
 						ID:         id,
-						Properties: resource.FromResourcePropertyMap(resource.NewPropertyMapFromMap(map[string]any{"a": "A"})),
+						Properties: property.NewMap(map[string]property.Value{"a": property.New("A")}),
 						Status:     resource.StatusOK,
 					}, nil
 				},
@@ -658,9 +659,9 @@ func TestResourceHookBeforeDeleteError(t *testing.T) {
 					}
 					return plugin.CreateResponse{
 						ID: id,
-						Properties: resource.FromResourcePropertyMap(resource.NewPropertyMapFromMap(map[string]any{
-							"a": "A",
-						})),
+						Properties: property.NewMap(map[string]property.Value{
+							"a": property.New("A"),
+						}),
 						Status: resource.StatusOK,
 					}, nil
 				},
@@ -1300,7 +1301,7 @@ func TestResourceHookAfterCreateError(t *testing.T) {
 					}
 					return plugin.CreateResponse{
 						ID:         id,
-						Properties: resource.FromResourcePropertyMap(resource.NewPropertyMapFromMap(map[string]any{"a": "A"})),
+						Properties: property.NewMap(map[string]property.Value{"a": property.New("A")}),
 						Status:     resource.StatusOK,
 					}, nil
 				},
@@ -1476,9 +1477,9 @@ func TestResourceHookAfterDeleteError(t *testing.T) {
 					}
 					return plugin.CreateResponse{
 						ID: id,
-						Properties: resource.FromResourcePropertyMap(resource.NewPropertyMapFromMap(map[string]any{
-							"a": "A",
-						})),
+						Properties: property.NewMap(map[string]property.Value{
+							"a": property.New("A"),
+						}),
 						Status: resource.StatusOK,
 					}, nil
 				},
@@ -1644,7 +1645,7 @@ func TestResourceHookAfterCreateErrorIgnoreErrors(t *testing.T) {
 					}
 					return plugin.CreateResponse{
 						ID:         id,
-						Properties: resource.FromResourcePropertyMap(resource.NewPropertyMapFromMap(map[string]any{"a": "A"})),
+						Properties: property.NewMap(map[string]property.Value{"a": property.New("A")}),
 						Status:     resource.StatusOK,
 					}, nil
 				},
@@ -1726,7 +1727,7 @@ func TestResourceHookBeforeCreateErrorIgnoreErrors(t *testing.T) {
 					}
 					return plugin.CreateResponse{
 						ID:         id,
-						Properties: resource.FromResourcePropertyMap(resource.NewPropertyMapFromMap(map[string]any{"a": "A"})),
+						Properties: property.NewMap(map[string]property.Value{"a": property.New("A")}),
 						Status:     resource.StatusOK,
 					}, nil
 				},
