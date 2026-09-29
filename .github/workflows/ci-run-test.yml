@@ -269,6 +269,12 @@ jobs:
         uses: ./.github/actions/retry
         with:
           action: oven-sh/setup-bun@v2
+      - name: Install deno
+        uses: ./.github/actions/retry
+        with:
+          action: denoland/setup-deno@v2
+          with: |
+            deno-version: 2.9.6
       - name: Install Python deps
         run: |
           python -m pip install --upgrade pip requests wheel urllib3 chardet build

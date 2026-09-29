@@ -1,0 +1,3 @@
+kind: Features
+component: sdk/nodejs
+body: Add support for Pulumi programs configured with Deno's deno.json

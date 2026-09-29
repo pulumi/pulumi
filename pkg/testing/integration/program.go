@@ -68,6 +68,7 @@ const (
 	PythonRuntime = "python"
 	NodeJSRuntime = "nodejs"
 	BunRuntime    = "bun"
+	DenoRuntime   = "deno"
 	GoRuntime     = "go"
 	DotNetRuntime = "dotnet"
 	YAMLRuntime   = "yaml"
@@ -327,6 +328,8 @@ type ProgramTestOptions struct {
 	UseNpm bool
 	// BunBin is a location of a `bun` executable to be run.  Taken from the $PATH if missing.
 	BunBin string
+	// DenoBin is a location of a `deno` executable to be run.  Taken from the $PATH if missing.
+	DenoBin string
 	// GoBin is a location of a `go` executable to be run.  Taken from the $PATH if missing.
 	GoBin string
 	// PythonBin is a location of a `python` executable to be run.  Taken from the $PATH if missing.
@@ -674,6 +677,9 @@ func (opts ProgramTestOptions) With(overrides ProgramTestOptions) ProgramTestOpt
 	if overrides.YarnBin != "" {
 		opts.YarnBin = overrides.YarnBin
 	}
+	if overrides.DenoBin != "" {
+		opts.DenoBin = overrides.DenoBin
+	}
 	if overrides.UseNpm {
 		opts.UseNpm = overrides.UseNpm
 	}
@@ -932,6 +938,7 @@ type ProgramTester struct {
 	npmBin         string              // the `npm` binary we are using.
 	yarnBin        string              // the `yarn` binary we are using.
 	bunBin         string              // the `bun` binary we are using.
+	denoBin        string              // the `deno` binary we are using.
 	goBin          string              // the `go` binary we are using.
 	pythonBin      string              // the `python` binary we are using.
 	pipenvBin      string              // The `pipenv` binary we are using.
@@ -996,6 +1003,10 @@ func (pt *ProgramTester) useNpm() bool {
 
 func (pt *ProgramTester) getBunBin() (string, error) {
 	return getCmdBin(&pt.bunBin, "bun", pt.opts.BunBin)
+}
+
+func (pt *ProgramTester) getDenoBin() (string, error) {
+	return getCmdBin(&pt.denoBin, "deno", pt.opts.DenoBin)
 }
 
 func (pt *ProgramTester) getGoBin() (string, error) {
@@ -1088,6 +1099,16 @@ func (pt *ProgramTester) yarnCmd(args []string) ([]string, error) {
 
 func (pt *ProgramTester) bunCmd(args []string) ([]string, error) {
 	bin, err := pt.getBunBin()
+	if err != nil {
+		return nil, err
+	}
+	result := slice.Prealloc[string](1 + len(args))
+	result = append(result, bin)
+	return append(result, args...), nil
+}
+
+func (pt *ProgramTester) denoCmd(args []string) ([]string, error) {
+	bin, err := pt.getDenoBin()
 	if err != nil {
 		return nil, err
 	}
@@ -1306,6 +1327,14 @@ func (pt *ProgramTester) runBunCommand(name string, args []string, wd string) er
 	return err
 }
 
+func (pt *ProgramTester) runDenoCommand(name string, args []string, wd string) error {
+	cmd, err := pt.denoCmd(args)
+	if err != nil {
+		return err
+	}
+	return pt.runCommand(name, cmd, wd)
+}
+
 func (pt *ProgramTester) runPythonCommand(name string, args []string, wd string) error {
 	cmd, err := pt.pythonCmd(args)
 	if err != nil {
@@ -1518,6 +1547,29 @@ func upgradeProjectDeps(projectDir string, pt *ProgramTester) error {
 			if err = pt.yarnLinkPackageDeps(projectDir); err != nil {
 				return err
 			}
+		}
+	case DenoRuntime:
+		cwd, _, cwdErr := projInfo.GetPwdMain()
+		if cwdErr != nil {
+			return cwdErr
+		}
+		native, nativeErr := isNativeDenoProject(cwd)
+		if nativeErr != nil {
+			return nativeErr
+		}
+		if native {
+			return pt.prepareDenoProject(projInfo)
+		}
+		if pt.useNpm() {
+			cwd, cwdErr := pt.nodejsWorkspaceCwd(projInfo)
+			if cwdErr != nil {
+				return cwdErr
+			}
+			if err = pt.npmLinkPackageDeps(cwd); err != nil {
+				return err
+			}
+		} else if err = pt.yarnLinkPackageDeps(projectDir); err != nil {
+			return err
 		}
 	case BunRuntime:
 		if err = pt.bunLinkPackageDeps(projectDir); err != nil {
@@ -3145,6 +3197,8 @@ func (pt *ProgramTester) defaultPrepareProject(projinfo *engine.Projinfo) error 
 	switch rt := projinfo.Proj.Runtime.Name(); rt {
 	case NodeJSRuntime:
 		return pt.prepareNodeJSProject(projinfo)
+	case DenoRuntime:
+		return pt.prepareDenoProject(projinfo)
 	case BunRuntime:
 		return pt.prepareBunProject(projinfo)
 	case PythonRuntime:
@@ -3159,6 +3213,44 @@ func (pt *ProgramTester) defaultPrepareProject(projinfo *engine.Projinfo) error 
 		return nil
 	default:
 		return fmt.Errorf("unrecognized project runtime: %s", rt)
+	}
+}
+
+func (pt *ProgramTester) prepareDenoProject(projinfo *engine.Projinfo) error {
+	cwd, _, err := projinfo.GetPwdMain()
+	if err != nil {
+		return err
+	}
+	native, err := isNativeDenoProject(cwd)
+	if err != nil {
+		return err
+	}
+	if !native {
+		return pt.prepareNodeJSProject(projinfo)
+	}
+	return pt.runDenoCommand("deno-install", []string{"install"}, cwd)
+}
+
+func isNativeDenoProject(startDir string) (bool, error) {
+	for dir := startDir; ; dir = filepath.Dir(dir) {
+		for _, manifest := range npm.PackageManifestNames {
+			if _, err := os.Stat(filepath.Join(dir, manifest)); err == nil {
+				return false, nil
+			} else if !os.IsNotExist(err) {
+				return false, err
+			}
+		}
+		for _, config := range []string{"deno.json", "deno.jsonc"} {
+			if _, err := os.Stat(filepath.Join(dir, config)); err == nil {
+				return true, nil
+			} else if !os.IsNotExist(err) {
+				return false, err
+			}
+		}
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			return false, nil
+		}
 	}
 }
 

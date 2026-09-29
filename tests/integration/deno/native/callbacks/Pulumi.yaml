@@ -1,0 +1,3 @@
+name: deno-native-callbacks
+description: Tests resource hooks in a native Deno Pulumi project
+runtime: deno

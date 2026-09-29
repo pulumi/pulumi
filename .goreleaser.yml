@@ -49,6 +49,12 @@ builds:
   main: ./
   tool: ../../../../scripts/go-wrapper.sh
 - <<: *pulumibin
+  id: pulumi-language-deno
+  binary: pulumi-language-deno
+  dir: sdk/nodejs/cmd/pulumi-language-deno
+  main: ./
+  tool: ../../../../scripts/go-wrapper.sh
+- <<: *pulumibin
   id: pulumi-language-python
   binary: pulumi-language-python
   dir: sdk/python/cmd/pulumi-language-python

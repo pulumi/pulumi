@@ -248,7 +248,7 @@ function main(args: string[]): void {
     addToEnvIfDefined("PULUMI_NODEJS_SYNC", argv["sync"]);
 
     const initializeHooks = async (): Promise<void> => {
-        if (process.versions.bun) {
+        if (process.versions.bun || process.versions.deno) {
             return;
         }
         // Ensure that we're connected to v8's inspector API. We need to do this as some information is only sent out as

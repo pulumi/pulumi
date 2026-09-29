@@ -488,8 +488,9 @@ async function analyzeFunctionInfoAsync(
     serialize: (o: any) => boolean,
     logInfo?: boolean,
 ): Promise<FunctionInfo> {
-    if (process.versions.bun) {
-        throw new Error("Function serialization is not supported when using bun as a runtime.");
+    if (process.versions.bun || process.versions.deno) {
+        const runtime = process.versions.deno ? "deno" : "bun";
+        throw new Error(`Function serialization is not supported when using ${runtime} as a runtime.`);
     }
     const v8 = await import("./v8");
     // logInfo = logInfo || func.name === "addHandler";

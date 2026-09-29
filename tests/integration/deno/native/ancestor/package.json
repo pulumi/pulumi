@@ -1,0 +1,5 @@
+{
+  "name": "deno-ancestor",
+  "main": "wrong.ts",
+  "exports": "./wrong.ts"
+}

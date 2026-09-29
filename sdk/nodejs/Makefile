@@ -4,6 +4,7 @@ VERSION          := $(if ${PULUMI_VERSION},${PULUMI_VERSION},$(shell ../../scrip
 
 LANGHOST_NODE_PKG := github.com/pulumi/pulumi/sdk/nodejs/cmd/pulumi-language-nodejs/v3
 LANGHOST_BUN_PKG  := github.com/pulumi/pulumi/sdk/nodejs/cmd/pulumi-language-bun/v3
+LANGHOST_DENO_PKG := github.com/pulumi/pulumi/sdk/nodejs/cmd/pulumi-language-deno/v3
 
 SDK_GO_PKGS = $(shell go list ./... | grep -v /node_modules/)
 LANGHOST_PKGS = $(shell cd cmd/pulumi-language-nodejs && go list ./... | grep -v /vendor/ | grep -v templates)
@@ -50,7 +51,7 @@ build_package:: ensure
 	mkdir -p bin/tests/runtime/langhost/cases/
 	find tests/runtime/langhost/cases/* -type d -exec cp -R {} bin/tests/runtime/langhost/cases/ \;
 
-build_plugin: ../../bin/pulumi-language-nodejs ../../bin/pulumi-language-bun
+build_plugin: ../../bin/pulumi-language-nodejs ../../bin/pulumi-language-bun ../../bin/pulumi-language-deno
 	cp ./dist/pulumi-resource-pulumi-nodejs ../../bin
 
 .PHONY: ../../bin/pulumi-language-nodejs
@@ -69,6 +70,14 @@ build_plugin: ../../bin/pulumi-language-nodejs ../../bin/pulumi-language-bun
 		-ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" \
 		github.com/pulumi/pulumi/sdk/nodejs/cmd/pulumi-language-bun/v3
 
+.PHONY: ../../bin/pulumi-language-deno
+../../bin/pulumi-language-deno:
+	go build -C cmd/pulumi-language-deno \
+	-o ../../$@ \
+		-tags="${GO_BUILD_TAGS}" \
+		-ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" \
+		${LANGHOST_DENO_PKG}
+
 build:: build_package build_plugin
 
 install_package:: build
@@ -81,6 +90,9 @@ install_plugin:: build
 	GOBIN=$(PULUMI_BIN) go install -C cmd/pulumi-language-bun \
 	   -tags="${GO_BUILD_TAGS}" \
 	   -ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" ${LANGHOST_BUN_PKG}
+	GOBIN=$(PULUMI_BIN) go install -C cmd/pulumi-language-deno \
+	   -tags="${GO_BUILD_TAGS}" \
+	   -ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" ${LANGHOST_DENO_PKG}
 
 install:: install_package install_plugin
 
@@ -168,6 +180,9 @@ dist::
 	go install -C cmd/pulumi-language-bun \
 		-tags="${GO_BUILD_TAGS}" \
 		-ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" ${LANGHOST_BUN_PKG}
+	go install -C cmd/pulumi-language-deno \
+		-tags="${GO_BUILD_TAGS}" \
+		-ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" ${LANGHOST_DENO_PKG}
 
 	cp dist/pulumi-resource-pulumi-nodejs "${GOBIN}"
 
@@ -179,6 +194,9 @@ brew::
 	go install -C cmd/pulumi-language-bun \
 		-tags="${GO_BUILD_TAGS}" \
 		-ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" ${LANGHOST_BUN_PKG}
+	go install -C cmd/pulumi-language-deno \
+		-tags="${GO_BUILD_TAGS}" \
+		-ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" ${LANGHOST_DENO_PKG}
 	cp dist/pulumi-resource-pulumi-nodejs "$$(go env GOPATH)"/bin/
 
 clean::

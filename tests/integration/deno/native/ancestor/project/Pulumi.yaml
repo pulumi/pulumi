@@ -1,0 +1,3 @@
+name: deno-native
+description: Tests a native Deno Pulumi project
+runtime: deno
