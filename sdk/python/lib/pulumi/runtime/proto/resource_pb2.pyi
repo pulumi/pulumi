@@ -68,6 +68,12 @@ class _ResourceMonitorFeatureEnumTypeWrapper(google.protobuf.internal.enum_type_
     """The monitor resolves an invoke's provider from the `parent` field on `ResourceInvokeRequest`."""
     RESOURCE_MONITOR_FEATURE_STATE_MIGRATIONS: _ResourceMonitorFeature.ValueType  # 16
     """The monitor accepts state migration callbacks on resource registrations."""
+    RESOURCE_MONITOR_FEATURE_DEPENDENCIES_FROM_INPUTS: _ResourceMonitorFeature.ValueType  # 17
+    """The monitor reconstructs a resource's `dependencies` and `propertyDependencies` from Output property values
+    embedded in its inputs. SDKs that see this feature may omit the flat `dependencies` and `propertyDependencies`
+    fields on `RegisterResourceRequest` and instead encode dependency information inline on input values as
+    Output property values.
+    """
 
 class ResourceMonitorFeature(_ResourceMonitorFeature, metaclass=_ResourceMonitorFeatureEnumTypeWrapper):
     """ResourceMonitorFeature is a strongly typed monitor capability identifier.
@@ -101,6 +107,12 @@ RESOURCE_MONITOR_FEATURE_INVOKE_PARENT: ResourceMonitorFeature.ValueType  # 15
 """The monitor resolves an invoke's provider from the `parent` field on `ResourceInvokeRequest`."""
 RESOURCE_MONITOR_FEATURE_STATE_MIGRATIONS: ResourceMonitorFeature.ValueType  # 16
 """The monitor accepts state migration callbacks on resource registrations."""
+RESOURCE_MONITOR_FEATURE_DEPENDENCIES_FROM_INPUTS: ResourceMonitorFeature.ValueType  # 17
+"""The monitor reconstructs a resource's `dependencies` and `propertyDependencies` from Output property values
+embedded in its inputs. SDKs that see this feature may omit the flat `dependencies` and `propertyDependencies`
+fields on `RegisterResourceRequest` and instead encode dependency information inline on input values as
+Output property values.
+"""
 global___ResourceMonitorFeature = ResourceMonitorFeature
 
 class _Result:

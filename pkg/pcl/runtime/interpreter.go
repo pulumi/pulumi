@@ -92,6 +92,30 @@ type Interpreter struct {
 	// snippetID is the UUID of the snippet driving this interpreter, if any. When set, it is
 	// propagated onto every RegisterResourceRequest emitted by the interpreter.
 	snippetID string
+
+	// acceptsInputDeps is true when the resource monitor advertises the DEPENDENCIES_FROM_INPUTS feature.
+	// When set, the interpreter marshals resource inputs preserving Output property values and omits the
+	// flat `dependencies` / `propertyDependencies` fields on RegisterResourceRequest, leaving the engine
+	// to reconstruct them from the embedded Output values.
+	acceptsInputDeps bool
+}
+
+// discoverMonitorFeatures queries the resource monitor for its supported features and caches the ones the
+// interpreter cares about. Monitors that don't implement GetDeploymentInfo (older engines) are treated as
+// not supporting any feature the interpreter probes here.
+func (i *Interpreter) discoverMonitorFeatures(ctx context.Context) {
+	if i.monitor == nil {
+		return
+	}
+	info, err := i.monitor.GetDeploymentInfo(ctx, &emptypb.Empty{})
+	if err != nil {
+		return
+	}
+	for _, f := range info.GetSupportedFeatures() {
+		if f == pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_DEPENDENCIES_FROM_INPUTS {
+			i.acceptsInputDeps = true
+		}
+	}
 }
 
 func NewInterpreter(program *pcl.Program, info RunInfo) *Interpreter {
@@ -474,6 +498,7 @@ func (i *Interpreter) Run(ctx context.Context) error {
 	}
 	defer contract.IgnoreClose(monitorConn)
 	i.monitor = pulumirpc.NewResourceMonitorClient(monitorConn)
+	i.discoverMonitorFeatures(ctx)
 
 	loader, err := schema.NewLoaderClient(i.info.LoaderAddress)
 	if err != nil {
@@ -561,6 +586,7 @@ func (i *Interpreter) RunEmbedded(
 	i.monitor = monitor
 	i.loader = loader
 	i.snippetID = snippetID
+	i.discoverMonitorFeatures(ctx)
 
 	i.evalContext = NewEvalContext(
 		i.info.WorkingDir,
@@ -1337,10 +1363,11 @@ func (i *Interpreter) registerResourceWith(
 	}
 
 	marshalOpts := plugin.MarshalOptions{
-		KeepUnknowns:   true,
-		KeepSecrets:    true,
-		KeepResources:  true,
-		KeepByteString: true,
+		KeepUnknowns:     true,
+		KeepSecrets:      true,
+		KeepResources:    true,
+		KeepByteString:   true,
+		KeepOutputValues: i.acceptsInputDeps,
 	}
 	obj, err := plugin.MarshalProperties(inputs, marshalOpts)
 	if err != nil {
@@ -1356,12 +1383,16 @@ func (i *Interpreter) registerResourceWith(
 
 	dependencies := []string{}
 	propertyDependencies := map[string]*pulumirpc.RegisterResourceRequest_PropertyDependencies{}
-	for key, val := range inputs {
-		deps := getAllDependencies(val)
-		if len(deps) > 0 {
-			dependencies = append(dependencies, deps...)
-			propertyDependencies[string(key)] = &pulumirpc.RegisterResourceRequest_PropertyDependencies{
-				Urns: deps,
+	if !i.acceptsInputDeps {
+		// When the monitor advertises DEPENDENCIES_FROM_INPUTS the engine reconstructs these fields from the Output
+		// property values carried on the inputs themselves, so we skip populating them here.
+		for key, val := range inputs {
+			deps := getAllDependencies(val)
+			if len(deps) > 0 {
+				dependencies = append(dependencies, deps...)
+				propertyDependencies[string(key)] = &pulumirpc.RegisterResourceRequest_PropertyDependencies{
+					Urns: deps,
+				}
 			}
 		}
 	}
@@ -2125,10 +2156,11 @@ func (i *Interpreter) registerComponent(ctx context.Context, component *pcl.Comp
 	}
 
 	marshalOpts := plugin.MarshalOptions{
-		KeepUnknowns:   true,
-		KeepSecrets:    true,
-		KeepResources:  true,
-		KeepByteString: true,
+		KeepUnknowns:     true,
+		KeepSecrets:      true,
+		KeepResources:    true,
+		KeepByteString:   true,
+		KeepOutputValues: i.acceptsInputDeps,
 	}
 	obj, err := plugin.MarshalProperties(inputs, marshalOpts)
 	if err != nil {
@@ -2142,12 +2174,14 @@ func (i *Interpreter) registerComponent(ctx context.Context, component *pcl.Comp
 
 	dependencies := []string{}
 	propertyDependencies := map[string]*pulumirpc.RegisterResourceRequest_PropertyDependencies{}
-	for key, val := range inputs {
-		deps := getAllDependencies(val)
-		if len(deps) > 0 {
-			dependencies = append(dependencies, deps...)
-			propertyDependencies[string(key)] = &pulumirpc.RegisterResourceRequest_PropertyDependencies{
-				Urns: deps,
+	if !i.acceptsInputDeps {
+		for key, val := range inputs {
+			deps := getAllDependencies(val)
+			if len(deps) > 0 {
+				dependencies = append(dependencies, deps...)
+				propertyDependencies[string(key)] = &pulumirpc.RegisterResourceRequest_PropertyDependencies{
+					Urns: deps,
+				}
 			}
 		}
 	}
@@ -2241,14 +2275,15 @@ func (i *Interpreter) registerComponent(ctx context.Context, component *pcl.Comp
 	}
 
 	componentInterpreter := &Interpreter{
-		program:     component.Program,
-		info:        i.info,
-		monitor:     i.monitor,
-		engine:      i.engine,
-		loader:      i.loader,
-		stackURN:    resp.GetUrn(),
-		namePrefix:  componentName,
-		packageRefs: i.packageRefs,
+		program:          component.Program,
+		info:             i.info,
+		monitor:          i.monitor,
+		engine:           i.engine,
+		loader:           i.loader,
+		stackURN:         resp.GetUrn(),
+		namePrefix:       componentName,
+		packageRefs:      i.packageRefs,
+		acceptsInputDeps: i.acceptsInputDeps,
 	}
 	// The eval context must call back into the component's own interpreter so that invokes written
 	// in the component are parented to the component.

@@ -399,6 +399,11 @@ type UpdateOptions struct {
 	// true if the engine should disable output value support.
 	DisableOutputValues bool
 
+	// true if the engine should not advertise the DEPENDENCIES_FROM_INPUTS feature to SDKs. When false (default)
+	// the engine advertises the feature and SDKs may omit the flat `dependencies` and `propertyDependencies`
+	// fields on RegisterResourceRequest, letting the engine reconstruct them from Output values on the inputs.
+	DisableDependenciesFromInputs bool
+
 	// HostFactory builds the plugin host for this operation.
 	HostFactory HostFactory
 
@@ -1136,12 +1141,13 @@ func newUpdateSource(ctx context.Context,
 	}
 
 	evalOpts := deploy.EvalSourceOptions{
-		DryRun:                    opts.DryRun,
-		Parallel:                  opts.Parallel,
-		DisableResourceReferences: opts.DisableResourceReferences,
-		DisableOutputValues:       opts.DisableOutputValues,
-		AttachDebugger:            opts.AttachDebugger,
-		SupportsStateMigrations:   opts.supportsStateMigrations,
+		DryRun:                        opts.DryRun,
+		Parallel:                      opts.Parallel,
+		DisableResourceReferences:     opts.DisableResourceReferences,
+		DisableOutputValues:           opts.DisableOutputValues,
+		DisableDependenciesFromInputs: opts.DisableDependenciesFromInputs,
+		AttachDebugger:                opts.AttachDebugger,
+		SupportsStateMigrations:       opts.supportsStateMigrations,
 	}
 
 	program := deploy.NewProgramSource(plugctx, runinfo, evalOpts, panicErrs)

@@ -67,6 +67,11 @@ const (
 	ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_INVOKE_PARENT ResourceMonitorFeature = 15
 	// The monitor accepts state migration callbacks on resource registrations.
 	ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_STATE_MIGRATIONS ResourceMonitorFeature = 16
+	// The monitor reconstructs a resource's `dependencies` and `propertyDependencies` from Output property values
+	// embedded in its inputs. SDKs that see this feature may omit the flat `dependencies` and `propertyDependencies`
+	// fields on `RegisterResourceRequest` and instead encode dependency information inline on input values as
+	// Output property values.
+	ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_DEPENDENCIES_FROM_INPUTS ResourceMonitorFeature = 17
 )
 
 // Enum value maps for ResourceMonitorFeature.
@@ -89,25 +94,27 @@ var (
 		14: "RESOURCE_MONITOR_FEATURE_INVOKE_DEPENDS_ON",
 		15: "RESOURCE_MONITOR_FEATURE_INVOKE_PARENT",
 		16: "RESOURCE_MONITOR_FEATURE_STATE_MIGRATIONS",
+		17: "RESOURCE_MONITOR_FEATURE_DEPENDENCIES_FROM_INPUTS",
 	}
 	ResourceMonitorFeature_value = map[string]int32{
-		"RESOURCE_MONITOR_FEATURE_SECRETS":                0,
-		"RESOURCE_MONITOR_FEATURE_RESOURCE_REFERENCES":    1,
-		"RESOURCE_MONITOR_FEATURE_OUTPUT_VALUES":          2,
-		"RESOURCE_MONITOR_FEATURE_ALIAS_SPECS":            3,
-		"RESOURCE_MONITOR_FEATURE_REPLACEMENT_TRIGGER":    4,
-		"RESOURCE_MONITOR_FEATURE_DELETED_WITH":           5,
-		"RESOURCE_MONITOR_FEATURE_REPLACE_WITH":           6,
-		"RESOURCE_MONITOR_FEATURE_TRANSFORMS":             7,
-		"RESOURCE_MONITOR_FEATURE_INVOKE_TRANSFORMS":      8,
-		"RESOURCE_MONITOR_FEATURE_PARAMETERIZATION":       9,
-		"RESOURCE_MONITOR_FEATURE_RESOURCE_HOOKS":         10,
-		"RESOURCE_MONITOR_FEATURE_ERROR_HOOKS":            11,
-		"RESOURCE_MONITOR_FEATURE_SENDS_OPTIONS_TO_HOOKS": 12,
-		"RESOURCE_MONITOR_FEATURE_BYTE_STRING":            13,
-		"RESOURCE_MONITOR_FEATURE_INVOKE_DEPENDS_ON":      14,
-		"RESOURCE_MONITOR_FEATURE_INVOKE_PARENT":          15,
-		"RESOURCE_MONITOR_FEATURE_STATE_MIGRATIONS":       16,
+		"RESOURCE_MONITOR_FEATURE_SECRETS":                  0,
+		"RESOURCE_MONITOR_FEATURE_RESOURCE_REFERENCES":      1,
+		"RESOURCE_MONITOR_FEATURE_OUTPUT_VALUES":            2,
+		"RESOURCE_MONITOR_FEATURE_ALIAS_SPECS":              3,
+		"RESOURCE_MONITOR_FEATURE_REPLACEMENT_TRIGGER":      4,
+		"RESOURCE_MONITOR_FEATURE_DELETED_WITH":             5,
+		"RESOURCE_MONITOR_FEATURE_REPLACE_WITH":             6,
+		"RESOURCE_MONITOR_FEATURE_TRANSFORMS":               7,
+		"RESOURCE_MONITOR_FEATURE_INVOKE_TRANSFORMS":        8,
+		"RESOURCE_MONITOR_FEATURE_PARAMETERIZATION":         9,
+		"RESOURCE_MONITOR_FEATURE_RESOURCE_HOOKS":           10,
+		"RESOURCE_MONITOR_FEATURE_ERROR_HOOKS":              11,
+		"RESOURCE_MONITOR_FEATURE_SENDS_OPTIONS_TO_HOOKS":   12,
+		"RESOURCE_MONITOR_FEATURE_BYTE_STRING":              13,
+		"RESOURCE_MONITOR_FEATURE_INVOKE_DEPENDS_ON":        14,
+		"RESOURCE_MONITOR_FEATURE_INVOKE_PARENT":            15,
+		"RESOURCE_MONITOR_FEATURE_STATE_MIGRATIONS":         16,
+		"RESOURCE_MONITOR_FEATURE_DEPENDENCIES_FROM_INPUTS": 17,
 	}
 )
 
@@ -3713,7 +3720,7 @@ const file_pulumi_resource_proto_rawDesc = "" +
 	"\rignore_errors\x18\x04 \x01(\bR\fignoreErrors\"_\n" +
 	"\x18RegisterErrorHookRequest\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12/\n" +
-	"\bcallback\x18\x02 \x01(\v2\x13.pulumirpc.CallbackR\bcallback*\x97\x06\n" +
+	"\bcallback\x18\x02 \x01(\v2\x13.pulumirpc.CallbackR\bcallback*\xce\x06\n" +
 	"\x16ResourceMonitorFeature\x12$\n" +
 	" RESOURCE_MONITOR_FEATURE_SECRETS\x10\x00\x120\n" +
 	",RESOURCE_MONITOR_FEATURE_RESOURCE_REFERENCES\x10\x01\x12*\n" +
@@ -3732,7 +3739,8 @@ const file_pulumi_resource_proto_rawDesc = "" +
 	"$RESOURCE_MONITOR_FEATURE_BYTE_STRING\x10\r\x12.\n" +
 	"*RESOURCE_MONITOR_FEATURE_INVOKE_DEPENDS_ON\x10\x0e\x12*\n" +
 	"&RESOURCE_MONITOR_FEATURE_INVOKE_PARENT\x10\x0f\x12-\n" +
-	")RESOURCE_MONITOR_FEATURE_STATE_MIGRATIONS\x10\x10*+\n" +
+	")RESOURCE_MONITOR_FEATURE_STATE_MIGRATIONS\x10\x10\x125\n" +
+	"1RESOURCE_MONITOR_FEATURE_DEPENDENCIES_FROM_INPUTS\x10\x11*+\n" +
 	"\x06Result\x12\v\n" +
 	"\aSUCCESS\x10\x00\x12\b\n" +
 	"\x04FAIL\x10\x01\"\x04\b\x02\x10\x02*\x04SKIP2\xcd\b\n" +

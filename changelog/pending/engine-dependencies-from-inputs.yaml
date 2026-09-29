@@ -1,0 +1,4 @@
+component: engine
+kind: feat
+body: Advertise the DEPENDENCIES_FROM_INPUTS monitor feature so SDKs may encode input dependencies inline as Output property values and omit the flat `dependencies` and `propertyDependencies` fields on `RegisterResource`
+time: 2026-09-29T09:00:00Z
