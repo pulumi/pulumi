@@ -1726,9 +1726,14 @@ func (ctx *Context) registerErrorHook(f ErrorHookFunction) (*pulumirpc.Callback,
 }
 
 // StashReducerFunction combines the previously stashed input and output with the current
-// program input to produce a new output. It is invoked by the engine on update; on create the
-// initial output is just the current input.
-type StashReducerFunction = func(oldInput, oldOutput, newInput any) (any, error)
+// program input to produce a new output. It is invoked by the engine on both create (with
+// oldInput/oldOutput as PropertyValue.Null()) and update, so a reducer whose output shape
+// differs from its input can seed that shape from the first run.
+//
+// Values are passed as resource.PropertyValue so richly-typed Pulumi values (secrets, assets,
+// archives, resource references, ...) round-trip through the callback with their sig markers
+// preserved.
+type StashReducerFunction = func(oldInput, oldOutput, newInput resource.PropertyValue) (resource.PropertyValue, error)
 
 // registerStashReducer starts up a callback server if not already running and registers the
 // given reducer function. The returned Callback is smuggled through the resource's inputs as a
@@ -1739,11 +1744,41 @@ func (ctx *Context) registerStashReducer(f StashReducerFunction) (*pulumirpc.Cal
 		if err := proto.Unmarshal(request, &req); err != nil {
 			return nil, fmt.Errorf("unmarshaling StashReduceRequest: %w", err)
 		}
-		reduced, err := f(req.OldInput.AsInterface(), req.OldOutput.AsInterface(), req.NewInput.AsInterface())
+		mOpts := plugin.MarshalOptions{
+			KeepUnknowns:  true,
+			KeepSecrets:   true,
+			KeepResources: true,
+		}
+		unmarshal := func(v *structpb.Value) (resource.PropertyValue, error) {
+			if v == nil {
+				return resource.NewNullProperty(), nil
+			}
+			pv, err := plugin.UnmarshalPropertyValue("", v, mOpts)
+			if err != nil {
+				return resource.PropertyValue{}, err
+			}
+			if pv == nil {
+				return resource.NewNullProperty(), nil
+			}
+			return *pv, nil
+		}
+		oldInput, err := unmarshal(req.OldInput)
+		if err != nil {
+			return nil, fmt.Errorf("unmarshaling old_input: %w", err)
+		}
+		oldOutput, err := unmarshal(req.OldOutput)
+		if err != nil {
+			return nil, fmt.Errorf("unmarshaling old_output: %w", err)
+		}
+		newInput, err := unmarshal(req.NewInput)
+		if err != nil {
+			return nil, fmt.Errorf("unmarshaling new_input: %w", err)
+		}
+		reduced, err := f(oldInput, oldOutput, newInput)
 		if err != nil {
 			return nil, err
 		}
-		val, err := structpb.NewValue(reduced)
+		val, err := plugin.MarshalPropertyValue("", reduced, mOpts)
 		if err != nil {
 			return nil, fmt.Errorf("marshaling stash reducer result: %w", err)
 		}

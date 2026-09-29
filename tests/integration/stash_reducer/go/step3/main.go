@@ -5,16 +5,15 @@
 package main
 
 import (
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
-func reduce(_oldInput, oldOutput, newInput any) (any, error) {
-	if oldOutput == nil {
+func reduce(_oldInput, oldOutput, newInput resource.PropertyValue) (resource.PropertyValue, error) {
+	if oldOutput.IsNull() {
 		return newInput, nil
 	}
-	o, _ := oldOutput.(bool)
-	n, _ := newInput.(bool)
-	return o && n, nil
+	return resource.NewProperty(oldOutput.BoolValue() && newInput.BoolValue()), nil
 }
 
 // Once the reduced output is false, flipping input back to true must not resurrect it:

@@ -5,19 +5,18 @@
 package main
 
 import (
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
 // Motivating case: an AND reducer where true sticks to false. Once the reduced output
 // becomes false, it cannot flip back to true even if the program's input is true again.
-// On create oldOutput is nil; treat that as the identity for &&.
-func reduce(_oldInput, oldOutput, newInput any) (any, error) {
-	if oldOutput == nil {
+// On create oldOutput is null; treat that as the identity for &&.
+func reduce(_oldInput, oldOutput, newInput resource.PropertyValue) (resource.PropertyValue, error) {
+	if oldOutput.IsNull() {
 		return newInput, nil
 	}
-	o, _ := oldOutput.(bool)
-	n, _ := newInput.(bool)
-	return o && n, nil
+	return resource.NewProperty(oldOutput.BoolValue() && newInput.BoolValue()), nil
 }
 
 func main() {

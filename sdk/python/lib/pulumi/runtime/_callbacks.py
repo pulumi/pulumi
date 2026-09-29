@@ -506,30 +506,29 @@ class _CallbackServicer(callback_pb2_grpc.CallbacksServicer):
         it. The engine invokes the callback during Check on update to combine the previously
         persisted stash input and output with the current program input."""
         from google.protobuf import struct_pb2
+        from .rpc import deserialize_property, serialize_property
+
+        # Decode a wire protobuf.Value into a Pulumi property value. deserialize_property
+        # knows how to unpack Struct/List submessages containing sig markers into their
+        # runtime types (assets, archives, resource references, secret markers, etc.); for
+        # primitive kinds we hand it the raw Python value.
+        def from_wire(v: struct_pb2.Value) -> Any:
+            kind = v.WhichOneof("kind")
+            if kind is None or kind == "null_value":
+                return None
+            if kind == "struct_value":
+                return deserialize_property(v.struct_value, keep_unknowns=True)
+            if kind == "list_value":
+                return deserialize_property(v.list_value, keep_unknowns=True)
+            # Primitive scalar (bool/number/string) — deserialize_property is identity here.
+            return getattr(v, kind)
 
         async def cb(s: bytes) -> Message:
             request = resource_pb2.StashReduceRequest.FromString(s)
 
-            # Unpack protobuf Values into plain Python values for the reducer.
-            def unpack(v: struct_pb2.Value) -> Any:
-                kind = v.WhichOneof("kind")
-                if kind is None or kind == "null_value":
-                    return None
-                if kind == "bool_value":
-                    return v.bool_value
-                if kind == "number_value":
-                    return v.number_value
-                if kind == "string_value":
-                    return v.string_value
-                if kind == "struct_value":
-                    return {k: unpack(val) for k, val in v.struct_value.fields.items()}
-                if kind == "list_value":
-                    return [unpack(val) for val in v.list_value.values]
-                return None
-
-            old_input = unpack(request.old_input)
-            old_output = unpack(request.old_output)
-            new_input = unpack(request.new_input)
+            old_input = from_wire(request.old_input)
+            old_output = from_wire(request.old_output)
+            new_input = from_wire(request.new_input)
 
             maybe = reducer(old_input, old_output, new_input)
             if isinstance(maybe, Awaitable):
@@ -537,28 +536,36 @@ class _CallbackServicer(callback_pb2_grpc.CallbacksServicer):
             else:
                 result = maybe
 
-            def pack(value: Any) -> struct_pb2.Value:
-                v = struct_pb2.Value()
-                if value is None:
-                    v.null_value = struct_pb2.NULL_VALUE
-                elif isinstance(value, bool):
-                    v.bool_value = value
-                elif isinstance(value, (int, float)):
-                    v.number_value = float(value)
-                elif isinstance(value, str):
-                    v.string_value = value
-                elif isinstance(value, Mapping):
-                    for k, val in value.items():
-                        v.struct_value.fields[k].CopyFrom(pack(val))
-                elif isinstance(value, (list, tuple)):
-                    for elem in value:
-                        v.list_value.values.append(pack(elem))
+            # Serialize the reducer's result back through the property machinery so any
+            # secrets/assets/resource-refs it returns are encoded with the right sig markers
+            # for the engine to decode.
+            reduced = await serialize_property(
+                result,
+                deps=None,
+                property_key=None,
+                return_protobuf_value=True,
+            )
+            if not isinstance(reduced, struct_pb2.Value):
+                # serialize_property returned a plain Python value; wrap it. This path is
+                # hit for primitives when return_protobuf_value round-trips a scalar.
+                wrapped = struct_pb2.Value()
+                if reduced is None:
+                    wrapped.null_value = struct_pb2.NULL_VALUE
+                elif isinstance(reduced, bool):
+                    wrapped.bool_value = reduced
+                elif isinstance(reduced, (int, float)):
+                    wrapped.number_value = float(reduced)
+                elif isinstance(reduced, str):
+                    wrapped.string_value = reduced
+                elif isinstance(reduced, Mapping):
+                    wrapped.struct_value.update(reduced)
+                elif isinstance(reduced, (list, tuple)):
+                    wrapped.list_value.extend(reduced)
                 else:
-                    # Fall back to string representation for unsupported types.
-                    v.string_value = str(value)
-                return v
+                    wrapped.string_value = str(reduced)
+                reduced = wrapped
 
-            return resource_pb2.StashReduceResponse(reduced=pack(result))
+            return resource_pb2.StashReduceResponse(reduced=reduced)
 
         token = str(uuid.uuid4())
         self._callbacks[token] = cb

@@ -722,12 +722,21 @@ export class CallbackServer implements ICallbackServer {
     async registerStashReducer(reducer: StashReducer): Promise<callproto.Callback> {
         const cb = async (bytes: Uint8Array): Promise<jspb.Message> => {
             const request = resproto.StashReduceRequest.deserializeBinary(bytes);
-            const oldInput = request.getOldInput()?.toJavaScript();
-            const oldOutput = request.getOldOutput()?.toJavaScript();
-            const newInput = request.getNewInput()?.toJavaScript();
+            // Deserialize each protobuf.Value into a Pulumi property value: this decodes any
+            // sig-marker payloads (secrets, resource references, assets/archives, etc.) into
+            // their runtime types rather than exposing raw sig-marker dicts to the reducer.
+            const fromWire = (v?: gstruct.Value): any =>
+                v === undefined ? undefined : deserializeProperty(v.toJavaScript(), true /*keepUnknowns*/);
+            const oldInput = fromWire(request.getOldInput());
+            const oldOutput = fromWire(request.getOldOutput());
+            const newInput = fromWire(request.getNewInput());
             const reduced = await reducer(oldInput, oldOutput, newInput);
+            // Serialize the reducer's result back through the property-value machinery so any
+            // secrets/assets/resource-refs it returns are encoded with the right sig markers
+            // for the engine to decode.
+            const serialized = await serializeProperty("reducer.result", reduced);
             const response = new resproto.StashReduceResponse();
-            response.setReduced(gstruct.Value.fromJavaScript(reduced ?? null));
+            response.setReduced(gstruct.Value.fromJavaScript(serialized ?? null));
             return response;
         };
 
