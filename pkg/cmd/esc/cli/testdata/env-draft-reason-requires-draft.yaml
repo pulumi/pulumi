@@ -1,0 +1,14 @@
+run: |
+  esc env set default/test foo baz --reason "Rotate foo"
+error: exit status 1
+environments:
+  test-user/default/test:
+    values:
+      foo: bar
+
+---
+> esc env set default/test foo baz --reason Rotate foo
+
+---
+> esc env set default/test foo baz --reason Rotate foo
+Error: --reason requires --draft without a change request ID

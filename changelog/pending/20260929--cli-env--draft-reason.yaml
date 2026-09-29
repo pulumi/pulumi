@@ -1,0 +1,3 @@
+component: cli/env
+kind: improvement
+body: Add `--reason` to `pulumi env` commands that support `--draft` to set the change request description
