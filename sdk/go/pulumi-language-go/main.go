@@ -1532,6 +1532,11 @@ func (host *goLanguageHost) GeneratePackage(
 	}
 
 	for filename, data := range files {
+		// Generated file names derive from schema type tokens, which are attacker-controlled for an
+		// untrusted package. Reject any path that would escape the target directory before writing.
+		if !filepath.IsLocal(filename) {
+			return nil, fmt.Errorf("refusing to write generated file outside the target directory: %q", filename)
+		}
 		outPath := filepath.Join(req.Directory, filename)
 		err := os.MkdirAll(filepath.Dir(outPath), 0o700)
 		if err != nil {

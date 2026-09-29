@@ -740,7 +740,13 @@ func (host *pclLanguageHost) GeneratePackage(
 	if pkg.Version != nil {
 		version = "-" + pkg.Version.String()
 	}
-	dest := filepath.Join(req.Directory, fmt.Sprintf("%s%s.pp", pkg.Name, version))
+	// The package name comes from an untrusted schema and is used verbatim in the file name, so
+	// reject any value that would escape the target directory before writing.
+	fileName := fmt.Sprintf("%s%s.pp", pkg.Name, version)
+	if !filepath.IsLocal(fileName) {
+		return nil, fmt.Errorf("refusing to write generated file outside the target directory: %q", fileName)
+	}
+	dest := filepath.Join(req.Directory, fileName)
 
 	err = os.MkdirAll(req.Directory, 0o700)
 	if err != nil {

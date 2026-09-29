@@ -34,6 +34,36 @@ import (
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 
+func TestGeneratePackageRejectsPathTraversal(t *testing.T) {
+	t.Parallel()
+
+	root := t.TempDir()
+	target := filepath.Join(root, "sdk")
+	require.NoError(t, os.MkdirAll(target, 0o700))
+
+	// A resource whose token carries a traversing module segment makes codegen emit file paths that
+	// escape the target directory (here, into a sibling of the target under root).
+	schemaJSON := `{
+		"name": "evil",
+		"version": "1.0.0",
+		"resources": {
+			"evil:../../evil-escape:Res": {
+				"properties": { "foo": { "type": "string" } }
+			}
+		}
+	}`
+
+	host := &goLanguageHost{}
+	_, err := host.GeneratePackage(context.Background(), &pulumirpc.GeneratePackageRequest{
+		Directory:    target,
+		Schema:       schemaJSON,
+		LoaderTarget: "127.0.0.1:1", // never dialed: the schema only references builtin types
+	})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "outside the target directory")
+	assert.NoDirExists(t, filepath.Join(root, "evil-escape"))
+}
+
 func TestParseRunParams(t *testing.T) {
 	t.Parallel()
 
