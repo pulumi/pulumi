@@ -1186,7 +1186,7 @@ func TestErrorHooks_RetryLimitWarningAt100_Create(t *testing.T) {
 					createCalls++
 					return plugin.CreateResponse{
 						ID:         resource.ID("partial-id-" + req.URN.Name()),
-						Properties: resource.FromResourcePropertyMap(resource.PropertyMap{"attempt": resource.NewProperty(0.0)}),
+						Properties: property.NewMap(map[string]property.Value{"attempt": property.New(0.0)}),
 						Status:     resource.StatusPartialFailure,
 					}, errors.New("create failed")
 				},
@@ -2112,7 +2112,7 @@ func TestErrorHooks_RetryAfterInitErrorUpdatesInsteadOfCreating(t *testing.T) {
 					createCalls++
 					return plugin.CreateResponse{
 						ID:         "created-id",
-						Properties: resource.FromResourcePropertyMap(resource.PropertyMap{"out": resource.NewProperty("partial")}),
+						Properties: property.NewMap(map[string]property.Value{"out": property.New("partial")}),
 						Status:     resource.StatusPartialFailure,
 					}, &plugin.InitError{Reasons: []string{"not ready"}}
 				},

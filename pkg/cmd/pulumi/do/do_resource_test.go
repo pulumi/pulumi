@@ -38,6 +38,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -236,10 +237,10 @@ func TestDoCmdResourceCreate(t *testing.T) {
 				assert.Equal(t, "example", properties["name"].StringValue())
 				return plugin.CreateResponse{
 					ID: "res-1",
-					Properties: resource.FromResourcePropertyMap(resource.PropertyMap{
-						"name":  resource.NewProperty("example"),
-						"size":  resource.NewProperty(2.0),
-						"extra": resource.NewProperty("hidden"),
+					Properties: property.NewMap(map[string]property.Value{
+						"name":  property.New("example"),
+						"size":  property.New(2.0),
+						"extra": property.New("hidden"),
 					}),
 				}, nil
 			},

@@ -356,8 +356,8 @@ func (p *OutputOnlyInvokeProvider) Create(
 
 	return plugin.CreateResponse{
 		ID: resource.ID(id),
-		Properties: resource.FromResourcePropertyMap(resource.PropertyMap{
-			"text": resource.NewProperty("Goodbye"),
+		Properties: property.NewMap(map[string]property.Value{
+			"text": property.New("Goodbye"),
 		}),
 		Status: resource.StatusOK,
 	}, nil

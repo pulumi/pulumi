@@ -29,6 +29,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -124,8 +125,8 @@ func TestSecretMasked(t *testing.T) {
 					// Return the secret value as an unmasked output. This should get masked by the engine.
 					return plugin.CreateResponse{
 						ID: "id",
-						Properties: resource.FromResourcePropertyMap(resource.PropertyMap{
-							"shouldBeSecret": resource.NewProperty("bar"),
+						Properties: property.NewMap(map[string]property.Value{
+							"shouldBeSecret": property.New("bar"),
 						}),
 						Status: resource.StatusOK,
 					}, nil

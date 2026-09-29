@@ -26,6 +26,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 // ByteSourceProvider produces strings containing arbitrary (non-UTF8) bytes. Its resource decodes the
@@ -186,9 +187,9 @@ func (p *ByteSourceProvider) Create(
 
 	return plugin.CreateResponse{
 		ID: resource.ID(id),
-		Properties: resource.FromResourcePropertyMap(resource.PropertyMap{
-			"base64": resource.NewProperty(encoded),
-			"bytes":  resource.NewProperty(string(decoded)),
+		Properties: property.NewMap(map[string]property.Value{
+			"base64": property.New(encoded),
+			"bytes":  property.New(string(decoded)),
 		}),
 		Status: resource.StatusOK,
 	}, nil

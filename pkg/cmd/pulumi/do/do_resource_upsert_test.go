@@ -48,6 +48,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 // installMockUpsertBackend wires a MockBackend + MockStack whose snapshot exposes the given
@@ -836,9 +837,9 @@ size = 2
 					assert.Equal(t, "new", properties["name"].StringValue())
 					return plugin.CreateResponse{
 						ID: "res-2",
-						Properties: resource.FromResourcePropertyMap(resource.PropertyMap{
-							"name": resource.NewProperty("new"),
-							"size": resource.NewProperty(2.0),
+						Properties: property.NewMap(map[string]property.Value{
+							"name": property.New("new"),
+							"size": property.New(2.0),
 						}),
 					}, nil
 				},
@@ -879,8 +880,8 @@ size = 2
 					calls = append(calls, "create")
 					return plugin.CreateResponse{
 						ID: "res-2",
-						Properties: resource.FromResourcePropertyMap(resource.PropertyMap{
-							"name": resource.NewProperty("new"),
+						Properties: property.NewMap(map[string]property.Value{
+							"name": property.New("new"),
 						}),
 					}, nil
 				},
