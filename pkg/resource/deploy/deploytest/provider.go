@@ -145,7 +145,7 @@ func (prov *Provider) Create(ctx context.Context, req plugin.CreateRequest) (plu
 	if prov.CreateF == nil {
 		// A real provider cannot know the id of a resource it has not created yet.
 		if req.Preview {
-			return plugin.CreateResponse{Properties: resource.FromResourcePropertyMap(resource.PropertyMap{})}, nil
+			return plugin.CreateResponse{Properties: property.Map{}}, nil
 		}
 		// generate a new uuid
 		uuid, err := uuid.NewV4()
@@ -154,7 +154,7 @@ func (prov *Provider) Create(ctx context.Context, req plugin.CreateRequest) (plu
 		}
 		return plugin.CreateResponse{
 			ID:         resource.ID(uuid.String()),
-			Properties: resource.FromResourcePropertyMap(resource.PropertyMap{}),
+			Properties: property.Map{},
 		}, nil
 	}
 	return prov.CreateF(ctx, req)

@@ -25,6 +25,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 // FlakyCreateProvider is a provider whose resource fails its first Create with a retryable
@@ -122,14 +123,14 @@ func (p *FlakyCreateProvider) Create(
 		// with init errors.
 		return plugin.CreateResponse{
 			ID:         "id",
-			Properties: resource.FromResourcePropertyMap(resource.PropertyMap{}),
+			Properties: property.Map{},
 			Status:     resource.StatusPartialFailure,
 		}, &plugin.InitError{Reasons: []string{"first create attempt fails"}}
 	}
 
 	return plugin.CreateResponse{
 		ID:         "id",
-		Properties: resource.FromResourcePropertyMap(resource.PropertyMap{}),
+		Properties: property.Map{},
 		Status:     resource.StatusOK,
 	}, nil
 }

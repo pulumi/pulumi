@@ -533,7 +533,7 @@ func TestDependencyChangeDBR(t *testing.T) {
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 					return plugin.CreateResponse{
 						ID:         "created-id",
-						Properties: resource.FromResourcePropertyMap(resource.ToResourcePropertyMap(req.Properties)),
+						Properties: req.Properties,
 						Status:     resource.StatusOK,
 					}, nil
 				},
@@ -644,7 +644,7 @@ func TestDBRProtect(t *testing.T) {
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 					return plugin.CreateResponse{
 						ID:         "created-id",
-						Properties: resource.FromResourcePropertyMap(resource.ToResourcePropertyMap(req.Properties)),
+						Properties: req.Properties,
 						Status:     resource.StatusOK,
 					}, nil
 				},
@@ -725,7 +725,7 @@ func TestDBRReplaceOnChanges(t *testing.T) {
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 					return plugin.CreateResponse{
 						ID:         "created-id",
-						Properties: resource.FromResourcePropertyMap(resource.ToResourcePropertyMap(req.Properties)),
+						Properties: req.Properties,
 						Status:     resource.StatusOK,
 					}, nil
 				},
@@ -843,7 +843,7 @@ func TestDBRParallel(t *testing.T) {
 							}
 							return plugin.CreateResponse{
 								ID:         "created-id",
-								Properties: resource.FromResourcePropertyMap(resource.ToResourcePropertyMap(req.Properties)),
+								Properties: req.Properties,
 								Status:     resource.StatusOK,
 							}, nil
 						},

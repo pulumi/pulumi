@@ -907,7 +907,7 @@ func TestStateMigrationSplit(t *testing.T) {
 			return &deploytest.Provider{
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 					creates++
-					return plugin.CreateResponse{ID: "resource-id", Properties: resource.FromResourcePropertyMap(resource.ToResourcePropertyMap(req.Properties)), Status: resource.StatusOK}, nil
+					return plugin.CreateResponse{ID: "resource-id", Properties: req.Properties, Status: resource.StatusOK}, nil
 				},
 			}, nil
 		}),
@@ -1233,7 +1233,7 @@ func TestStateMigrationS3BucketFold(t *testing.T) {
 					// The bucket and sidecar have the same provider identity, allowing them to share a successor.
 					return plugin.CreateResponse{
 						ID:         "bucket-name",
-						Properties: resource.FromResourcePropertyMap(resource.ToResourcePropertyMap(req.Properties)),
+						Properties: req.Properties,
 						Status:     resource.StatusOK,
 					}, nil
 				},

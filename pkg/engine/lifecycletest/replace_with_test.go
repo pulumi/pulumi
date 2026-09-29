@@ -52,7 +52,7 @@ func TestReplaceWith(t *testing.T) {
 					resourceID := resource.ID(fmt.Sprintf("created-id-%d", len(created)))
 					return plugin.CreateResponse{
 						ID:         resourceID,
-						Properties: resource.FromResourcePropertyMap(resource.ToResourcePropertyMap(req.Properties)),
+						Properties: req.Properties,
 						Status:     resource.StatusOK,
 					}, nil
 				},
@@ -150,7 +150,7 @@ func TestReplaceWithAndDeletedWith(t *testing.T) {
 					resourceID := resource.ID(fmt.Sprintf("created-id-%d", len(created)))
 					return plugin.CreateResponse{
 						ID:         resourceID,
-						Properties: resource.FromResourcePropertyMap(resource.ToResourcePropertyMap(req.Properties)),
+						Properties: req.Properties,
 						Status:     resource.StatusOK,
 					}, nil
 				},
@@ -269,7 +269,7 @@ func TestReplaceWithDeleteBeforeReplace(t *testing.T) {
 					resourceID := resource.ID(fmt.Sprintf("created-id-%d", len(created)))
 					return plugin.CreateResponse{
 						ID:         resourceID,
-						Properties: resource.FromResourcePropertyMap(resource.ToResourcePropertyMap(req.Properties)),
+						Properties: req.Properties,
 						Status:     resource.StatusOK,
 					}, nil
 				},

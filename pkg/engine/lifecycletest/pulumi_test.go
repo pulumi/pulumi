@@ -565,7 +565,7 @@ func TestProviderCancellation(t *testing.T) {
 
 					return plugin.CreateResponse{
 						ID:         resource.ID(req.URN.Name()),
-						Properties: resource.FromResourcePropertyMap(resource.PropertyMap{}),
+						Properties: property.Map{},
 						Status:     resource.StatusOK,
 					}, nil
 				},
@@ -1677,7 +1677,7 @@ func replaceOnChangesTest(t *testing.T, name string, diffFunc DiffFunc) {
 					CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 						return plugin.CreateResponse{
 							ID:         resource.ID("id123"),
-							Properties: resource.FromResourcePropertyMap(resource.ToResourcePropertyMap(req.Properties)),
+							Properties: req.Properties,
 							Status:     resource.StatusOK,
 						}, nil
 					},
@@ -2134,7 +2134,7 @@ func TestProviderPreview(t *testing.T) {
 					assert.Equal(t, req.Preview, resource.ToResourcePropertyMap(req.Properties).ContainsUnknowns())
 					return plugin.CreateResponse{
 						ID:         "created-id",
-						Properties: resource.FromResourcePropertyMap(resource.ToResourcePropertyMap(req.Properties)),
+						Properties: req.Properties,
 						Status:     resource.StatusOK,
 					}, nil
 				},
@@ -2224,7 +2224,7 @@ func TestProviderPreviewGrpc(t *testing.T) {
 					assert.Equal(t, req.Preview, resource.ToResourcePropertyMap(req.Properties).ContainsUnknowns())
 					return plugin.CreateResponse{
 						ID:         "created-id",
-						Properties: resource.FromResourcePropertyMap(resource.ToResourcePropertyMap(req.Properties)),
+						Properties: req.Properties,
 						Status:     resource.StatusOK,
 					}, nil
 				},
@@ -2328,7 +2328,7 @@ func TestProviderPreviewUnknowns(t *testing.T) {
 
 					return plugin.CreateResponse{
 						ID:         "created-id",
-						Properties: resource.FromResourcePropertyMap(resource.ToResourcePropertyMap(req.Properties)),
+						Properties: req.Properties,
 						Status:     resource.StatusOK,
 					}, nil
 				},
@@ -2742,7 +2742,7 @@ func TestProtect(t *testing.T) {
 					idCounter = idCounter + 1
 					return plugin.CreateResponse{
 						ID:         resourceID,
-						Properties: resource.FromResourcePropertyMap(resource.ToResourcePropertyMap(req.Properties)),
+						Properties: req.Properties,
 						Status:     resource.StatusOK,
 					}, nil
 				},
@@ -3007,7 +3007,7 @@ func TestDeletedWith(t *testing.T) {
 					idCounter = idCounter + 1
 					return plugin.CreateResponse{
 						ID:         resourceID,
-						Properties: resource.FromResourcePropertyMap(resource.ToResourcePropertyMap(req.Properties)),
+						Properties: req.Properties,
 						Status:     resource.StatusOK,
 					}, nil
 				},
@@ -3120,7 +3120,7 @@ func TestReplaceWithAndPropertyChange(t *testing.T) {
 					resourceID := resource.ID(fmt.Sprintf("created-id-%d", len(created)))
 					return plugin.CreateResponse{
 						ID:         resourceID,
-						Properties: resource.FromResourcePropertyMap(resource.ToResourcePropertyMap(req.Properties)),
+						Properties: req.Properties,
 						Status:     resource.StatusOK,
 					}, nil
 				},
@@ -3243,7 +3243,7 @@ func TestEventSecrets(t *testing.T) {
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 					return plugin.CreateResponse{
 						ID:         "id123",
-						Properties: resource.FromResourcePropertyMap(resource.ToResourcePropertyMap(req.Properties)),
+						Properties: req.Properties,
 						Status:     resource.StatusOK,
 					}, nil
 				},
@@ -3328,7 +3328,7 @@ func TestAdditionalSecretOutputs(t *testing.T) {
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 					return plugin.CreateResponse{
 						ID:         "id123",
-						Properties: resource.FromResourcePropertyMap(resource.ToResourcePropertyMap(req.Properties)),
+						Properties: req.Properties,
 						Status:     resource.StatusOK,
 					}, nil
 				},
@@ -3403,7 +3403,7 @@ func TestDefaultParents(t *testing.T) {
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 					return plugin.CreateResponse{
 						ID:         "created-id",
-						Properties: resource.FromResourcePropertyMap(resource.ToResourcePropertyMap(req.Properties)),
+						Properties: req.Properties,
 						Status:     resource.StatusOK,
 					}, nil
 				},
@@ -3493,7 +3493,7 @@ func TestPendingDeleteOrder(t *testing.T) {
 					}
 					return plugin.CreateResponse{
 						ID:         id,
-						Properties: resource.FromResourcePropertyMap(resource.ToResourcePropertyMap(req.Properties)),
+						Properties: req.Properties,
 						Status:     resource.StatusOK,
 					}, nil
 				},
@@ -3636,7 +3636,7 @@ func TestPendingDeleteReplacement(t *testing.T) {
 					}
 					return plugin.CreateResponse{
 						ID:         id,
-						Properties: resource.FromResourcePropertyMap(resource.ToResourcePropertyMap(req.Properties)),
+						Properties: req.Properties,
 						Status:     resource.StatusOK,
 					}, nil
 				},
@@ -3791,7 +3791,7 @@ func TestTimestampTracking(t *testing.T) {
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 					return plugin.CreateResponse{
 						ID:         "created-id",
-						Properties: resource.FromResourcePropertyMap(resource.ToResourcePropertyMap(req.Properties)),
+						Properties: req.Properties,
 						Status:     resource.StatusOK,
 					}, nil
 				},
@@ -4117,7 +4117,7 @@ func TestResourceNames(t *testing.T) {
 						CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 							return plugin.CreateResponse{
 								ID:         "1",
-								Properties: resource.FromResourcePropertyMap(resource.PropertyMap{}),
+								Properties: property.Map{},
 								Status:     resource.StatusOK,
 							}, nil
 						},
@@ -4240,7 +4240,7 @@ func TestSourcePositions(t *testing.T) {
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 					return plugin.CreateResponse{
 						ID:         "created-id",
-						Properties: resource.FromResourcePropertyMap(resource.ToResourcePropertyMap(req.Properties)),
+						Properties: req.Properties,
 						Status:     resource.StatusOK,
 					}, nil
 				},

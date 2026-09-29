@@ -44,7 +44,7 @@ func TestReplacementTrigger(t *testing.T) {
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 					return plugin.CreateResponse{
 						ID:         resource.ID("id123"),
-						Properties: resource.FromResourcePropertyMap(resource.ToResourcePropertyMap(req.Properties)),
+						Properties: req.Properties,
 						Status:     resource.StatusOK,
 					}, nil
 				},
@@ -123,7 +123,7 @@ func TestReplacementTriggerWithSecret(t *testing.T) {
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 					return plugin.CreateResponse{
 						ID:         resource.ID("id123"),
-						Properties: resource.FromResourcePropertyMap(resource.ToResourcePropertyMap(req.Properties)),
+						Properties: req.Properties,
 						Status:     resource.StatusOK,
 					}, nil
 				},
@@ -182,7 +182,7 @@ func TestReplacementTriggerWithDeepSecret(t *testing.T) {
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 					return plugin.CreateResponse{
 						ID:         resource.ID("id123"),
-						Properties: resource.FromResourcePropertyMap(resource.ToResourcePropertyMap(req.Properties)),
+						Properties: req.Properties,
 						Status:     resource.StatusOK,
 					}, nil
 				},
@@ -241,7 +241,7 @@ func TestReplacementTriggerWithOutput(t *testing.T) {
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 					return plugin.CreateResponse{
 						ID:         resource.ID("id123"),
-						Properties: resource.FromResourcePropertyMap(resource.ToResourcePropertyMap(req.Properties)),
+						Properties: req.Properties,
 						Status:     resource.StatusOK,
 					}, nil
 				},
@@ -346,7 +346,7 @@ func TestReplacementTriggerWithComputed(t *testing.T) {
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 					return plugin.CreateResponse{
 						ID:         resource.ID("id123"),
-						Properties: resource.FromResourcePropertyMap(resource.ToResourcePropertyMap(req.Properties)),
+						Properties: req.Properties,
 						Status:     resource.StatusOK,
 					}, nil
 				},
@@ -428,7 +428,7 @@ func TestReplacementTriggerOutputWrappedPlainValue(t *testing.T) {
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 					return plugin.CreateResponse{
 						ID:         resource.ID("id123"),
-						Properties: resource.FromResourcePropertyMap(resource.ToResourcePropertyMap(req.Properties)),
+						Properties: req.Properties,
 						Status:     resource.StatusOK,
 					}, nil
 				},

@@ -869,7 +869,7 @@ func writeCreateFStatements(provSpec *ProviderSpec) func(g *generator) {
 		g.writeBlock(
 			"return plugin.CreateResponse{",
 			func(g *generator) {
-				g.writeLine("Properties: resource.FromResourcePropertyMap(resource.ToResourcePropertyMap(req.Properties)),")
+				g.writeLine("Properties: req.Properties,")
 				g.writeLine("Status: resource.StatusOK,")
 			},
 			"}, nil",

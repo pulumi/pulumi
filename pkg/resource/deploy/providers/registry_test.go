@@ -1066,7 +1066,7 @@ func TestEnvironmentVariableMappings(t *testing.T) {
 		// Check should succeed and preserve the mappings
 		check, err := r.Check(t.Context(), plugin.CheckRequest{
 			URN:       urn,
-			OldInputs: resource.FromResourcePropertyMap(resource.PropertyMap{}),
+			OldInputs: property.Map{},
 			NewInputs: resource.FromResourcePropertyMap(news),
 		})
 		require.NoError(t, err)
@@ -1100,7 +1100,7 @@ func TestEnvironmentVariableMappings(t *testing.T) {
 		// Call Check first
 		check, err := r.Check(t.Context(), plugin.CheckRequest{
 			URN:       urn,
-			OldInputs: resource.FromResourcePropertyMap(resource.PropertyMap{}),
+			OldInputs: property.Map{},
 			NewInputs: resource.FromResourcePropertyMap(inputs),
 		})
 		require.NoError(t, err)
@@ -1165,7 +1165,7 @@ func TestEnvMappingsPassedToHost(t *testing.T) {
 	// Load the provider and pass env to host
 	_, err := r.Check(t.Context(), plugin.CheckRequest{
 		URN:       urn,
-		OldInputs: resource.FromResourcePropertyMap(resource.PropertyMap{}),
+		OldInputs: property.Map{},
 		NewInputs: resource.FromResourcePropertyMap(inputs),
 	})
 	require.NoError(t, err)

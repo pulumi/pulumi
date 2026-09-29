@@ -58,7 +58,7 @@ func TestResourceReferences(t *testing.T) {
 
 					return plugin.CreateResponse{
 						ID:         resource.ID(id),
-						Properties: resource.FromResourcePropertyMap(resource.ToResourcePropertyMap(req.Properties)),
+						Properties: req.Properties,
 						Status:     resource.StatusOK,
 					}, nil
 				},
@@ -222,7 +222,7 @@ func TestResourceReferences_DownlevelEngine(t *testing.T) {
 
 					return plugin.CreateResponse{
 						ID:         resource.ID(id),
-						Properties: resource.FromResourcePropertyMap(resource.ToResourcePropertyMap(req.Properties)),
+						Properties: req.Properties,
 						Status:     resource.StatusOK,
 					}, nil
 				},
@@ -301,7 +301,7 @@ func TestResourceReferences_GetResource(t *testing.T) {
 					}
 					return plugin.CreateResponse{
 						ID:         resource.ID(id),
-						Properties: resource.FromResourcePropertyMap(resource.ToResourcePropertyMap(req.Properties)),
+						Properties: req.Properties,
 						Status:     resource.StatusOK,
 					}, nil
 				},
@@ -376,7 +376,7 @@ func TestResourceReferences_NameAndTypeFilledByEngine(t *testing.T) {
 					}
 					return plugin.CreateResponse{
 						ID:         resource.ID(id),
-						Properties: resource.FromResourcePropertyMap(resource.ToResourcePropertyMap(req.Properties)),
+						Properties: req.Properties,
 						Status:     resource.StatusOK,
 					}, nil
 				},
