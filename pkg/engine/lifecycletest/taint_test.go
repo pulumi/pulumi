@@ -47,7 +47,7 @@ func TestTaintReplacement(t *testing.T) {
 					id++
 					return plugin.CreateResponse{
 						ID:         resource.ID(strconv.Itoa(id)),
-						Properties: resource.ToResourcePropertyMap(req.Properties),
+						Properties: resource.FromResourcePropertyMap(resource.ToResourcePropertyMap(req.Properties)),
 						Status:     resource.StatusOK,
 					}, nil
 				},
@@ -127,7 +127,7 @@ func TestTaintMultipleResources(t *testing.T) {
 					createIDs[name]++
 					return plugin.CreateResponse{
 						ID:         resource.ID(name + "-v" + string(rune('0'+createIDs[name]))),
-						Properties: resource.ToResourcePropertyMap(req.Properties),
+						Properties: resource.FromResourcePropertyMap(resource.ToResourcePropertyMap(req.Properties)),
 						Status:     resource.StatusOK,
 					}, nil
 				},
@@ -209,7 +209,7 @@ func TestTaintWithPendingDelete(t *testing.T) {
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 					return plugin.CreateResponse{
 						ID:         "new-id",
-						Properties: resource.ToResourcePropertyMap(req.Properties),
+						Properties: resource.FromResourcePropertyMap(resource.ToResourcePropertyMap(req.Properties)),
 						Status:     resource.StatusOK,
 					}, nil
 				},
@@ -310,7 +310,7 @@ func TestTaintNoChanges(t *testing.T) {
 					id++
 					return plugin.CreateResponse{
 						ID:         resource.ID("id-" + string(rune('0'+id))),
-						Properties: resource.ToResourcePropertyMap(req.Properties),
+						Properties: resource.FromResourcePropertyMap(resource.ToResourcePropertyMap(req.Properties)),
 						Status:     resource.StatusOK,
 					}, nil
 				},

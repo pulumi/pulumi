@@ -53,7 +53,7 @@ func TestRefreshBeforeUpdate(t *testing.T) {
 					props := resource.ToResourcePropertyMap(req.Properties).Copy()
 					props["result"] = props["input"]
 					return plugin.CreateResponse{
-						Properties:          props,
+						Properties:          resource.FromResourcePropertyMap(props),
 						ID:                  "new-id",
 						RefreshBeforeUpdate: true,
 					}, nil
@@ -248,7 +248,7 @@ func TestRefreshBeforeUpdateDeletedResource(t *testing.T) {
 					props := resource.ToResourcePropertyMap(req.Properties).Copy()
 					props["result"] = props["input"]
 					return plugin.CreateResponse{
-						Properties:          props,
+						Properties:          resource.FromResourcePropertyMap(props),
 						ID:                  "new-id",
 						RefreshBeforeUpdate: true,
 					}, nil

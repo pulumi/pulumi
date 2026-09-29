@@ -79,14 +79,14 @@ func TestPreviewRefreshWithProgram(t *testing.T) {
 
 						return plugin.CreateResponse{
 							ID:         resource.ID(uuid.String()),
-							Properties: createOutputs,
+							Properties: resource.FromResourcePropertyMap(createOutputs),
 							Status:     resource.StatusOK,
 						}, nil
 					}
 
 					return plugin.CreateResponse{
 						ID:         resource.ID(uuid.String()),
-						Properties: resource.PropertyMap{},
+						Properties: resource.FromResourcePropertyMap(resource.PropertyMap{}),
 						Status:     resource.StatusOK,
 					}, nil
 				},

@@ -214,7 +214,7 @@ func (pc *packageCommand) runStatelessCreate(
 		if id == "" {
 			id = resource.ID("[unknown]")
 		}
-		return resultState(urn, id, nil, response.Properties, res), nil
+		return resultState(urn, id, nil, resource.ToResourcePropertyMap(response.Properties), res), nil
 	}
 	if pc.dryrun {
 		return pc.runDisplayedStep(cmd, displayedStep{

@@ -143,7 +143,7 @@ func TestResourceHooksAfterCreate(t *testing.T) {
 					})
 					return plugin.CreateResponse{
 						ID:         id,
-						Properties: props,
+						Properties: resource.FromResourcePropertyMap(props),
 						Status:     resource.StatusOK,
 					}, nil
 				},
@@ -212,7 +212,7 @@ func TestResourceHooks_OptionsAreSent(t *testing.T) {
 					}
 					return plugin.CreateResponse{
 						ID:         id,
-						Properties: resource.ToResourcePropertyMap(req.Properties),
+						Properties: resource.FromResourcePropertyMap(resource.ToResourcePropertyMap(req.Properties)),
 						Status:     resource.StatusOK,
 					}, nil
 				},
@@ -456,7 +456,7 @@ func TestResourceHookAfterDelete(t *testing.T) {
 					}
 					return plugin.CreateResponse{
 						ID:         id,
-						Properties: resource.NewPropertyMapFromMap(map[string]any{"a": "A"}),
+						Properties: resource.FromResourcePropertyMap(resource.NewPropertyMapFromMap(map[string]any{"a": "A"})),
 						Status:     resource.StatusOK,
 					}, nil
 				},
@@ -658,9 +658,9 @@ func TestResourceHookBeforeDeleteError(t *testing.T) {
 					}
 					return plugin.CreateResponse{
 						ID: id,
-						Properties: resource.NewPropertyMapFromMap(map[string]any{
+						Properties: resource.FromResourcePropertyMap(resource.NewPropertyMapFromMap(map[string]any{
 							"a": "A",
-						}),
+						})),
 						Status: resource.StatusOK,
 					}, nil
 				},
@@ -762,7 +762,7 @@ func TestResourceHookBeforeUpdate(t *testing.T) {
 					}
 					return plugin.CreateResponse{
 						ID:         id,
-						Properties: createOutputs,
+						Properties: resource.FromResourcePropertyMap(createOutputs),
 						Status:     resource.StatusOK,
 					}, nil
 				},
@@ -898,7 +898,7 @@ func TestResourceHookBeforeUpdateError(t *testing.T) {
 					}
 					return plugin.CreateResponse{
 						ID:         id,
-						Properties: resource.ToResourcePropertyMap(req.Properties),
+						Properties: resource.FromResourcePropertyMap(resource.ToResourcePropertyMap(req.Properties)),
 						Status:     resource.StatusOK,
 					}, nil
 				},
@@ -1300,7 +1300,7 @@ func TestResourceHookAfterCreateError(t *testing.T) {
 					}
 					return plugin.CreateResponse{
 						ID:         id,
-						Properties: resource.NewPropertyMapFromMap(map[string]any{"a": "A"}),
+						Properties: resource.FromResourcePropertyMap(resource.NewPropertyMapFromMap(map[string]any{"a": "A"})),
 						Status:     resource.StatusOK,
 					}, nil
 				},
@@ -1394,7 +1394,7 @@ func TestResourceHookAfterCreateErrorFailsFast(t *testing.T) {
 					}
 					return plugin.CreateResponse{
 						ID:         id,
-						Properties: resource.ToResourcePropertyMap(req.Properties),
+						Properties: resource.FromResourcePropertyMap(resource.ToResourcePropertyMap(req.Properties)),
 						Status:     resource.StatusOK,
 					}, nil
 				},
@@ -1476,9 +1476,9 @@ func TestResourceHookAfterDeleteError(t *testing.T) {
 					}
 					return plugin.CreateResponse{
 						ID: id,
-						Properties: resource.NewPropertyMapFromMap(map[string]any{
+						Properties: resource.FromResourcePropertyMap(resource.NewPropertyMapFromMap(map[string]any{
 							"a": "A",
-						}),
+						})),
 						Status: resource.StatusOK,
 					}, nil
 				},
@@ -1567,7 +1567,7 @@ func TestResourceHookAfterCreateErrorContinueOnError(t *testing.T) {
 					}
 					return plugin.CreateResponse{
 						ID:         id,
-						Properties: resource.ToResourcePropertyMap(req.Properties),
+						Properties: resource.FromResourcePropertyMap(resource.ToResourcePropertyMap(req.Properties)),
 						Status:     resource.StatusOK,
 					}, nil
 				},
@@ -1644,7 +1644,7 @@ func TestResourceHookAfterCreateErrorIgnoreErrors(t *testing.T) {
 					}
 					return plugin.CreateResponse{
 						ID:         id,
-						Properties: resource.NewPropertyMapFromMap(map[string]any{"a": "A"}),
+						Properties: resource.FromResourcePropertyMap(resource.NewPropertyMapFromMap(map[string]any{"a": "A"})),
 						Status:     resource.StatusOK,
 					}, nil
 				},
@@ -1726,7 +1726,7 @@ func TestResourceHookBeforeCreateErrorIgnoreErrors(t *testing.T) {
 					}
 					return plugin.CreateResponse{
 						ID:         id,
-						Properties: resource.NewPropertyMapFromMap(map[string]any{"a": "A"}),
+						Properties: resource.FromResourcePropertyMap(resource.NewPropertyMapFromMap(map[string]any{"a": "A"})),
 						Status:     resource.StatusOK,
 					}, nil
 				},
@@ -1808,7 +1808,7 @@ func TestResourceHookByteString(t *testing.T) {
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 					return plugin.CreateResponse{
 						ID:         "created-id",
-						Properties: resource.ToResourcePropertyMap(req.Properties),
+						Properties: resource.FromResourcePropertyMap(resource.ToResourcePropertyMap(req.Properties)),
 						Status:     resource.StatusOK,
 					}, nil
 				},

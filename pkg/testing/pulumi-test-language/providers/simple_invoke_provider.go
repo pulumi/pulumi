@@ -522,9 +522,9 @@ func (p *SimpleInvokeProvider) Create(
 
 	return plugin.CreateResponse{
 		ID: resource.ID(id),
-		Properties: resource.PropertyMap{
+		Properties: resource.FromResourcePropertyMap(resource.PropertyMap{
 			"text": resource.NewProperty(text),
-		},
+		}),
 		Status: resource.StatusOK,
 	}, nil
 }

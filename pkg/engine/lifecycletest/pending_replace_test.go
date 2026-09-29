@@ -99,7 +99,7 @@ func TestPendingReplaceFailureDoesNotViolateSnapshotIntegrity(t *testing.T) {
 		createsCalled[req.URN.Name()] = true
 		return plugin.CreateResponse{
 			ID:         resource.ID(fmt.Sprintf("%s-%s", req.URN.Name(), trackingCreateIDSuffix)),
-			Properties: resource.ToResourcePropertyMap(req.Properties),
+			Properties: resource.FromResourcePropertyMap(resource.ToResourcePropertyMap(req.Properties)),
 			Status:     resource.StatusOK,
 		}, nil
 	}
@@ -257,7 +257,7 @@ func TestPendingReplaceResumeWithSameGoals(t *testing.T) {
 	) (plugin.CreateResponse, error) {
 		createCalled = true
 		return plugin.CreateResponse{
-			Properties: resource.ToResourcePropertyMap(req.Properties),
+			Properties: resource.FromResourcePropertyMap(resource.ToResourcePropertyMap(req.Properties)),
 			Status:     resource.StatusUnknown,
 		}, errors.New("interrupt replace")
 	}
@@ -269,7 +269,7 @@ func TestPendingReplaceResumeWithSameGoals(t *testing.T) {
 		createCalled = true
 		return plugin.CreateResponse{
 			ID:         "created-id",
-			Properties: resource.ToResourcePropertyMap(req.Properties),
+			Properties: resource.FromResourcePropertyMap(resource.ToResourcePropertyMap(req.Properties)),
 			Status:     resource.StatusOK,
 		}, nil
 	}
@@ -409,7 +409,7 @@ func TestPendingReplaceResumeWithSameGoalsRefreshRunProgram(t *testing.T) {
 	) (plugin.CreateResponse, error) {
 		createCalled = true
 		return plugin.CreateResponse{
-			Properties: resource.ToResourcePropertyMap(req.Properties),
+			Properties: resource.FromResourcePropertyMap(resource.ToResourcePropertyMap(req.Properties)),
 			Status:     resource.StatusUnknown,
 		}, errors.New("interrupt replace")
 	}
@@ -421,7 +421,7 @@ func TestPendingReplaceResumeWithSameGoalsRefreshRunProgram(t *testing.T) {
 		createCalled = true
 		return plugin.CreateResponse{
 			ID:         "created-id",
-			Properties: resource.ToResourcePropertyMap(req.Properties),
+			Properties: resource.FromResourcePropertyMap(resource.ToResourcePropertyMap(req.Properties)),
 			Status:     resource.StatusOK,
 		}, nil
 	}
@@ -561,7 +561,7 @@ func TestPendingReplaceResumeWithDeletedGoals(t *testing.T) {
 	) (plugin.CreateResponse, error) {
 		createCalled = true
 		return plugin.CreateResponse{
-			Properties: resource.ToResourcePropertyMap(req.Properties),
+			Properties: resource.FromResourcePropertyMap(resource.ToResourcePropertyMap(req.Properties)),
 			Status:     resource.StatusUnknown,
 		}, errors.New("interrupt replace")
 	}
@@ -573,7 +573,7 @@ func TestPendingReplaceResumeWithDeletedGoals(t *testing.T) {
 		createCalled = true
 		return plugin.CreateResponse{
 			ID:         "created-id",
-			Properties: resource.ToResourcePropertyMap(req.Properties),
+			Properties: resource.FromResourcePropertyMap(resource.ToResourcePropertyMap(req.Properties)),
 			Status:     resource.StatusOK,
 		}, nil
 	}
@@ -738,7 +738,7 @@ func TestPendingReplaceResumeWithUpdatedGoals(t *testing.T) {
 	) (plugin.CreateResponse, error) {
 		createCalled = true
 		return plugin.CreateResponse{
-			Properties: resource.ToResourcePropertyMap(req.Properties),
+			Properties: resource.FromResourcePropertyMap(resource.ToResourcePropertyMap(req.Properties)),
 			Status:     resource.StatusUnknown,
 		}, errors.New("interrupt replace")
 	}
@@ -750,7 +750,7 @@ func TestPendingReplaceResumeWithUpdatedGoals(t *testing.T) {
 		createCalled = true
 		return plugin.CreateResponse{
 			ID:         "created-id",
-			Properties: resource.ToResourcePropertyMap(req.Properties),
+			Properties: resource.FromResourcePropertyMap(resource.ToResourcePropertyMap(req.Properties)),
 			Status:     resource.StatusOK,
 		}, nil
 	}
@@ -958,7 +958,7 @@ func TestInteruptedPendingReplace(t *testing.T) {
 			CreateF: func(ctx context.Context, cr plugin.CreateRequest) (plugin.CreateResponse, error) {
 				return plugin.CreateResponse{
 					ID:         "created-id",
-					Properties: resource.ToResourcePropertyMap(cr.Properties),
+					Properties: resource.FromResourcePropertyMap(resource.ToResourcePropertyMap(cr.Properties)),
 				}, nil
 			},
 		}
@@ -1023,7 +1023,7 @@ func TestPendingReplaceDependentDeleteNotRetried(t *testing.T) {
 		createsCalled[req.URN.Name()] = true
 		return plugin.CreateResponse{
 			ID:         resource.ID(req.URN.Name() + "-created-id"),
-			Properties: resource.ToResourcePropertyMap(req.Properties),
+			Properties: resource.FromResourcePropertyMap(resource.ToResourcePropertyMap(req.Properties)),
 			Status:     resource.StatusOK,
 		}, nil
 	}
@@ -1162,7 +1162,7 @@ func TestPendingReplaceDependentResumeAfterReplacement(t *testing.T) {
 		}
 		return plugin.CreateResponse{
 			ID:         resource.ID(req.URN.Name() + "-created-id"),
-			Properties: resource.ToResourcePropertyMap(req.Properties),
+			Properties: resource.FromResourcePropertyMap(resource.ToResourcePropertyMap(req.Properties)),
 			Status:     resource.StatusOK,
 		}, nil
 	}
@@ -1174,7 +1174,7 @@ func TestPendingReplaceDependentResumeAfterReplacement(t *testing.T) {
 		createsCalled[req.URN.Name()] = true
 		return plugin.CreateResponse{
 			ID:         resource.ID(req.URN.Name() + "-created-id"),
-			Properties: resource.ToResourcePropertyMap(req.Properties),
+			Properties: resource.FromResourcePropertyMap(resource.ToResourcePropertyMap(req.Properties)),
 			Status:     resource.StatusOK,
 		}, nil
 	}

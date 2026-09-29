@@ -136,7 +136,7 @@ func (p *ConfigEnumProvider) Create(
 	}
 	return plugin.CreateResponse{
 		ID:         "id",
-		Properties: properties,
+		Properties: resource.FromResourcePropertyMap(properties),
 		Status:     resource.StatusOK,
 	}, nil
 }

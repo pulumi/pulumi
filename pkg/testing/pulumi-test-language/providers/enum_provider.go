@@ -223,7 +223,7 @@ func (p *EnumProvider) Create(
 		fmt.Sprintf("%s:index:Deluxe", p.pkg()):
 		return plugin.CreateResponse{
 			ID:         resource.ID("new-resource-id"),
-			Properties: properties,
+			Properties: resource.FromResourcePropertyMap(properties),
 			Status:     resource.StatusOK,
 		}, nil
 	default:

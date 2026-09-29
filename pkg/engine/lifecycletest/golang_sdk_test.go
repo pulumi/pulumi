@@ -68,7 +68,7 @@ func TestSingleResourceDefaultProviderGolangLifecycle(t *testing.T) {
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 					return plugin.CreateResponse{
 						ID:         "created-id",
-						Properties: resource.ToResourcePropertyMap(req.Properties),
+						Properties: resource.FromResourcePropertyMap(resource.ToResourcePropertyMap(req.Properties)),
 						Status:     resource.StatusOK,
 					}, nil
 				},
@@ -138,7 +138,7 @@ func TestIgnoreChangesGolangLifecycle(t *testing.T) {
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 					return plugin.CreateResponse{
 						ID:         "created-id",
-						Properties: resource.ToResourcePropertyMap(req.Properties),
+						Properties: resource.FromResourcePropertyMap(resource.ToResourcePropertyMap(req.Properties)),
 						Status:     resource.StatusOK,
 					}, nil
 				},
@@ -427,7 +427,7 @@ func TestProviderInheritanceGolangLifecycle(t *testing.T) {
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 					return plugin.CreateResponse{
 						ID:         "created-id",
-						Properties: resource.ToResourcePropertyMap(req.Properties),
+						Properties: resource.FromResourcePropertyMap(resource.ToResourcePropertyMap(req.Properties)),
 						Status:     resource.StatusOK,
 					}, nil
 				},
@@ -452,7 +452,7 @@ func TestProviderInheritanceGolangLifecycle(t *testing.T) {
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 					return plugin.CreateResponse{
 						ID:         "created-id",
-						Properties: resource.ToResourcePropertyMap(req.Properties),
+						Properties: resource.FromResourcePropertyMap(resource.ToResourcePropertyMap(req.Properties)),
 						Status:     resource.StatusOK,
 					}, nil
 				},
@@ -608,7 +608,7 @@ func TestReplaceOnChangesGolangLifecycle(t *testing.T) {
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 					return plugin.CreateResponse{
 						ID:         "created-id",
-						Properties: resource.ToResourcePropertyMap(req.Properties),
+						Properties: resource.FromResourcePropertyMap(resource.ToResourcePropertyMap(req.Properties)),
 						Status:     resource.StatusOK,
 					}, nil
 				},
@@ -713,7 +713,7 @@ func TestRemoteComponentGolang(t *testing.T) {
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 					return plugin.CreateResponse{
 						ID:         "created-id",
-						Properties: resource.ToResourcePropertyMap(req.Properties),
+						Properties: resource.FromResourcePropertyMap(resource.ToResourcePropertyMap(req.Properties)),
 						Status:     resource.StatusOK,
 					}, nil
 				},

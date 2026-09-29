@@ -102,7 +102,7 @@ func TestResolverServerFromContext_RealProvider(t *testing.T) {
 		"version": resource.NewProperty("1.0.0"),
 		"server":  resource.NewProperty(""),
 		"schema":  resource.NewProperty(`{"name":"resolvetest","version":"1.0.0"}`),
-	}, res.Properties)
+	}, resource.ToResourcePropertyMap(res.Properties))
 }
 
 // TestResolverServerFromContext_ParameterizedProvider verifies that the resolver surfaces a
@@ -163,8 +163,9 @@ func TestResolverServerFromContext_ParameterizedProvider(t *testing.T) {
 
 	// The loaded schema is fetched by feeding the resolved dependency back into the loader, which runs
 	// and parameterizes paramtest. Assert it separately, then check the resolve-level coordinates.
-	loaded := res.Properties["schema"]
-	delete(res.Properties, "schema")
+	resProps := resource.ToResourcePropertyMap(res.Properties)
+	loaded := resProps["schema"]
+	delete(resProps, "schema")
 	var loadedSpec schema.PackageSpec
 	require.NoError(t, json.Unmarshal([]byte(loaded.StringValue()), &loadedSpec))
 	assert.Equal(t, schema.PackageSpec{
@@ -186,7 +187,7 @@ func TestResolverServerFromContext_ParameterizedProvider(t *testing.T) {
 		"param_name":    resource.NewProperty("random"),
 		"param_version": resource.NewProperty("3.0.0"),
 		"param_value":   resource.NewProperty("random-param-value"),
-	}, res.Properties)
+	}, resProps)
 }
 
 // providerBinName returns the resource-plugin binary name for a provider, accounting for the Windows

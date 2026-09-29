@@ -53,7 +53,7 @@ func TestRetainOnDelete(t *testing.T) {
 					idCounter = idCounter + 1
 					return plugin.CreateResponse{
 						ID:         resourceID,
-						Properties: resource.ToResourcePropertyMap(req.Properties),
+						Properties: resource.FromResourcePropertyMap(resource.ToResourcePropertyMap(req.Properties)),
 						Status:     resource.StatusOK,
 					}, nil
 				},

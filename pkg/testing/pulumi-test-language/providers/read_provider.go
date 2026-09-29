@@ -98,7 +98,7 @@ func (p *ReadProvider) Create(_ context.Context, req plugin.CreateRequest) (plug
 	}
 	return plugin.CreateResponse{
 		ID:         resource.ID(id),
-		Properties: properties,
+		Properties: resource.FromResourcePropertyMap(properties),
 		Status:     resource.StatusOK,
 	}, nil
 }

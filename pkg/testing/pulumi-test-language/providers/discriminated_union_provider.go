@@ -186,7 +186,7 @@ func (p *DiscriminatedUnionProvider) Create(
 	if string(req.URN.Type()) == fmt.Sprintf("%s:index:Example", p.pkg()) {
 		return plugin.CreateResponse{
 			ID:         resource.ID("new-resource-id"),
-			Properties: properties,
+			Properties: resource.FromResourcePropertyMap(properties),
 			Status:     resource.StatusOK,
 		}, nil
 	}

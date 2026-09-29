@@ -388,7 +388,7 @@ func (s *CreateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 						Type:                  s.new.URN.Type(),
 						ID:                    partial.ID,
 						OldInputs:             s.new.Inputs,
-						OldOutputs:            partial.Properties,
+						OldOutputs:            resource.ToResourcePropertyMap(partial.Properties),
 						NewInputs:             s.new.Inputs,
 						Timeout:               s.new.CustomTimeouts.Create,
 						Preview:               s.deployment.opts.DryRun,
@@ -397,7 +397,7 @@ func (s *CreateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 					})
 					resp = plugin.CreateResponse{
 						ID:                  partial.ID,
-						Properties:          upd.Properties,
+						Properties:          resource.FromResourcePropertyMap(upd.Properties),
 						Status:              upd.Status,
 						RefreshBeforeUpdate: upd.RefreshBeforeUpdate,
 					}
@@ -474,7 +474,7 @@ func (s *CreateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 
 		if err == nil || resourceStatus == resource.StatusPartialFailure {
 			id = resp.ID
-			outs = resp.Properties
+			outs = resource.ToResourcePropertyMap(resp.Properties)
 			refreshBeforeUpdate = resp.RefreshBeforeUpdate
 
 			if err == nil && !s.deployment.opts.DryRun && id == "" {

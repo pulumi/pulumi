@@ -168,7 +168,7 @@ func (pcs ProviderCreateSpec) AsCreateF() func(context.Context, plugin.CreateReq
 		id := properties["__id"].String()
 		return plugin.CreateResponse{
 			ID:         resource.ID(id),
-			Properties: properties,
+			Properties: resource.FromResourcePropertyMap(properties),
 			Status:     resource.StatusOK,
 		}, nil
 	}

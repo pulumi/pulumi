@@ -126,7 +126,7 @@ func (p *snapshotBenchProvider) Create(ctx context.Context, req plugin.CreateReq
 	}
 	return plugin.CreateResponse{
 		ID:         "id",
-		Properties: outputs,
+		Properties: resource.FromResourcePropertyMap(outputs),
 	}, nil
 }
 

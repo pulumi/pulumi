@@ -1471,7 +1471,7 @@ func TestProvider_PartialFailure(t *testing.T) {
 	assert.Equal(t, []string{"create issue"}, initErr.Reasons)
 	assert.Equal(t, CreateResponse{
 		ID:                  "some-id",
-		Properties:          liveProperties,
+		Properties:          resource.FromResourcePropertyMap(liveProperties),
 		Status:              resource.StatusPartialFailure,
 		RefreshBeforeUpdate: true,
 	}, createResp)

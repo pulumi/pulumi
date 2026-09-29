@@ -306,7 +306,7 @@ type CreateRequest struct {
 
 type CreateResponse struct {
 	ID         resource.ID
-	Properties resource.PropertyMap
+	Properties property.Map
 	Status     resource.Status
 	// Indicates that this resource should always be refreshed prior to updates.
 	RefreshBeforeUpdate bool

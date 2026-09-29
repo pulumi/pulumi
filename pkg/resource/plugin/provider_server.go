@@ -595,7 +595,7 @@ func (p *providerServer) Create(ctx context.Context, req *pulumirpc.CreateReques
 		return nil, err
 	}
 
-	rpcState, err := MarshalProperties(resp.Properties, p.marshalOptions("newState"))
+	rpcState, err := MarshalProperties(resource.ToResourcePropertyMap(resp.Properties), p.marshalOptions("newState"))
 	if err != nil {
 		return nil, err
 	}

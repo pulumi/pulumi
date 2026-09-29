@@ -664,7 +664,7 @@ func TestDoCmdResourceUpsertEndToEnd(t *testing.T) {
 					createdInputs = properties
 					return plugin.CreateResponse{
 						ID:         "res-1",
-						Properties: properties,
+						Properties: resource.FromResourcePropertyMap(properties),
 					}, nil
 				},
 			}, nil
@@ -836,10 +836,10 @@ size = 2
 					assert.Equal(t, "new", properties["name"].StringValue())
 					return plugin.CreateResponse{
 						ID: "res-2",
-						Properties: resource.PropertyMap{
+						Properties: resource.FromResourcePropertyMap(resource.PropertyMap{
 							"name": resource.NewProperty("new"),
 							"size": resource.NewProperty(2.0),
-						},
+						}),
 					}, nil
 				},
 			},
@@ -879,9 +879,9 @@ size = 2
 					calls = append(calls, "create")
 					return plugin.CreateResponse{
 						ID: "res-2",
-						Properties: resource.PropertyMap{
+						Properties: resource.FromResourcePropertyMap(resource.PropertyMap{
 							"name": resource.NewProperty("new"),
-						},
+						}),
 					}, nil
 				},
 				UpdateF: func(_ context.Context, req plugin.UpdateRequest) (plugin.UpdateResponse, error) {

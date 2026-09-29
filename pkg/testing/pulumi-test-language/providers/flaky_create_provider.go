@@ -122,14 +122,14 @@ func (p *FlakyCreateProvider) Create(
 		// with init errors.
 		return plugin.CreateResponse{
 			ID:         "id",
-			Properties: resource.PropertyMap{},
+			Properties: resource.FromResourcePropertyMap(resource.PropertyMap{}),
 			Status:     resource.StatusPartialFailure,
 		}, &plugin.InitError{Reasons: []string{"first create attempt fails"}}
 	}
 
 	return plugin.CreateResponse{
 		ID:         "id",
-		Properties: resource.PropertyMap{},
+		Properties: resource.FromResourcePropertyMap(resource.PropertyMap{}),
 		Status:     resource.StatusOK,
 	}, nil
 }

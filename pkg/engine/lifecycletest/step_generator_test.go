@@ -124,9 +124,9 @@ func TestSecretMasked(t *testing.T) {
 					// Return the secret value as an unmasked output. This should get masked by the engine.
 					return plugin.CreateResponse{
 						ID: "id",
-						Properties: resource.PropertyMap{
+						Properties: resource.FromResourcePropertyMap(resource.PropertyMap{
 							"shouldBeSecret": resource.NewProperty("bar"),
-						},
+						}),
 						Status: resource.StatusOK,
 					}, nil
 				},
@@ -171,7 +171,7 @@ func TestReadReplaceStep(t *testing.T) {
 			CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 				return plugin.CreateResponse{
 					ID:         "created-id",
-					Properties: resource.ToResourcePropertyMap(req.Properties),
+					Properties: resource.FromResourcePropertyMap(resource.ToResourcePropertyMap(req.Properties)),
 					Status:     resource.StatusOK,
 				}, nil
 			},
@@ -227,7 +227,7 @@ func TestRelinquishStep(t *testing.T) {
 				// Should match the ReadResource resource ID.
 				return plugin.CreateResponse{
 					ID:         resourceID,
-					Properties: resource.ToResourcePropertyMap(req.Properties),
+					Properties: resource.FromResourcePropertyMap(resource.ToResourcePropertyMap(req.Properties)),
 					Status:     resource.StatusOK,
 				}, nil
 			},
@@ -303,7 +303,7 @@ func TestTakeOwnershipStep(t *testing.T) {
 						// Should match the ReadF resource ID.
 						return plugin.CreateResponse{
 							ID:         "my-resource-id",
-							Properties: resource.ToResourcePropertyMap(req.Properties),
+							Properties: resource.FromResourcePropertyMap(resource.ToResourcePropertyMap(req.Properties)),
 							Status:     resource.StatusOK,
 						}, nil
 					},
@@ -358,7 +358,7 @@ func TestInitErrorsStep(t *testing.T) {
 			CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 				return plugin.CreateResponse{
 					ID:         "my-resource-id",
-					Properties: resource.ToResourcePropertyMap(req.Properties),
+					Properties: resource.FromResourcePropertyMap(resource.ToResourcePropertyMap(req.Properties)),
 					Status:     resource.StatusOK,
 				}, nil
 			},
@@ -412,7 +412,7 @@ func TestInitErrorsIgnoreChanges(t *testing.T) {
 			CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 				return plugin.CreateResponse{
 					ID:         "my-resource-id",
-					Properties: resource.ToResourcePropertyMap(req.Properties),
+					Properties: resource.FromResourcePropertyMap(resource.ToResourcePropertyMap(req.Properties)),
 					Status:     resource.StatusOK,
 				}, nil
 			},
@@ -465,7 +465,7 @@ func TestExternalEventMetadata(t *testing.T) {
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 					return plugin.CreateResponse{
 						ID:         "created-id",
-						Properties: resource.ToResourcePropertyMap(req.Properties),
+						Properties: resource.FromResourcePropertyMap(resource.ToResourcePropertyMap(req.Properties)),
 						Status:     resource.StatusOK,
 					}, nil
 				},

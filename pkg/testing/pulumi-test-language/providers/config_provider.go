@@ -275,7 +275,7 @@ func (p *ConfigProvider) Create(
 
 	return plugin.CreateResponse{
 		ID:         resource.ID(id),
-		Properties: props,
+		Properties: resource.FromResourcePropertyMap(props),
 		Status:     resource.StatusOK,
 	}, nil
 }

@@ -271,7 +271,7 @@ func (p *SnakeNamesProvider) Create(
 		nestedValue := nested.ObjectValue()["nested_value"].StringValue()
 		return plugin.CreateResponse{
 			ID: resource.ID(id),
-			Properties: resource.PropertyMap{
+			Properties: resource.FromResourcePropertyMap(resource.PropertyMap{
 				"the_output": resource.NewProperty(resource.PropertyMap{
 					"someKey": resource.NewProperty([]resource.PropertyValue{
 						resource.NewProperty(resource.PropertyMap{
@@ -279,7 +279,7 @@ func (p *SnakeNamesProvider) Create(
 						}),
 					}),
 				}),
-			},
+			}),
 			Status: resource.StatusOK,
 		}, nil
 	case "snake_names:cool_module:another_resource":
@@ -289,9 +289,9 @@ func (p *SnakeNamesProvider) Create(
 		}
 		return plugin.CreateResponse{
 			ID: resource.ID(id),
-			Properties: resource.PropertyMap{
+			Properties: resource.FromResourcePropertyMap(resource.PropertyMap{
 				"the_input": theInput,
-			},
+			}),
 			Status: resource.StatusOK,
 		}, nil
 	case tokens.RootStackType:

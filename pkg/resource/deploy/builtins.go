@@ -223,7 +223,7 @@ func (p *builtinProvider) Create(ctx context.Context, req plugin.CreateRequest) 
 
 		return plugin.CreateResponse{
 			ID:         id,
-			Properties: resource.ToResourcePropertyMap(state),
+			Properties: resource.FromResourcePropertyMap(resource.ToResourcePropertyMap(state)),
 			Status:     resource.StatusOK,
 		}, nil
 	case stashType:
@@ -239,10 +239,10 @@ func (p *builtinProvider) Create(ctx context.Context, req plugin.CreateRequest) 
 
 		return plugin.CreateResponse{
 			ID: id,
-			Properties: resource.PropertyMap{
+			Properties: resource.FromResourcePropertyMap(resource.PropertyMap{
 				"input":  resource.ToResourcePropertyMap(req.Properties)["input"],
 				"output": resource.ToResourcePropertyMap(req.Properties)["input"],
-			},
+			}),
 			Status: resource.StatusOK,
 		}, nil
 	default:

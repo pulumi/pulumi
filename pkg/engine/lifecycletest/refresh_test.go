@@ -1283,14 +1283,14 @@ func TestRefreshWithProgram(t *testing.T) {
 
 						return plugin.CreateResponse{
 							ID:         resource.ID(uuid.String()),
-							Properties: createOutputs,
+							Properties: resource.FromResourcePropertyMap(createOutputs),
 							Status:     resource.StatusOK,
 						}, nil
 					}
 
 					return plugin.CreateResponse{
 						ID:         resource.ID(uuid.String()),
-						Properties: resource.PropertyMap{},
+						Properties: resource.FromResourcePropertyMap(resource.PropertyMap{}),
 						Status:     resource.StatusOK,
 					}, nil
 				},
@@ -1374,7 +1374,7 @@ func TestRefreshWithProviderThatHasDependencies(t *testing.T) {
 
 					return plugin.CreateResponse{
 						ID:         resource.ID(uuid.String()),
-						Properties: resource.PropertyMap{},
+						Properties: resource.FromResourcePropertyMap(resource.PropertyMap{}),
 						Status:     resource.StatusOK,
 					}, nil
 				},
@@ -1516,14 +1516,14 @@ func TestRefreshWithProgramUpdateExplicitProvider(t *testing.T) {
 
 						return plugin.CreateResponse{
 							ID:         resource.ID(uuid.String()),
-							Properties: createOutputs,
+							Properties: resource.FromResourcePropertyMap(createOutputs),
 							Status:     resource.StatusOK,
 						}, nil
 					}
 
 					return plugin.CreateResponse{
 						ID:         resource.ID(uuid.String()),
-						Properties: resource.PropertyMap{},
+						Properties: resource.FromResourcePropertyMap(resource.PropertyMap{}),
 						Status:     resource.StatusOK,
 					}, nil
 				},
@@ -1654,14 +1654,14 @@ func TestRefreshWithProgramUpdateDefaultProvider(t *testing.T) {
 
 						return plugin.CreateResponse{
 							ID:         resource.ID(uuid.String()),
-							Properties: createOutputs,
+							Properties: resource.FromResourcePropertyMap(createOutputs),
 							Status:     resource.StatusOK,
 						}, nil
 					}
 
 					return plugin.CreateResponse{
 						ID:         resource.ID(uuid.String()),
-						Properties: resource.PropertyMap{},
+						Properties: resource.FromResourcePropertyMap(resource.PropertyMap{}),
 						Status:     resource.StatusOK,
 					}, nil
 				},
@@ -1789,14 +1789,14 @@ func TestRefreshWithProgramUpdateDefaultProviderWithoutRegistration(t *testing.T
 
 						return plugin.CreateResponse{
 							ID:         resource.ID(uuid.String()),
-							Properties: createOutputs,
+							Properties: resource.FromResourcePropertyMap(createOutputs),
 							Status:     resource.StatusOK,
 						}, nil
 					}
 
 					return plugin.CreateResponse{
 						ID:         resource.ID(uuid.String()),
-						Properties: resource.PropertyMap{},
+						Properties: resource.FromResourcePropertyMap(resource.PropertyMap{}),
 						Status:     resource.StatusOK,
 					}, nil
 				},
@@ -1916,14 +1916,14 @@ func TestRefreshWithProgramWithDeletedResource(t *testing.T) {
 
 						return plugin.CreateResponse{
 							ID:         resource.ID(uuid.String()),
-							Properties: createOutputs,
+							Properties: resource.FromResourcePropertyMap(createOutputs),
 							Status:     resource.StatusOK,
 						}, nil
 					}
 
 					return plugin.CreateResponse{
 						ID:         resource.ID(uuid.String()),
-						Properties: resource.PropertyMap{},
+						Properties: resource.FromResourcePropertyMap(resource.PropertyMap{}),
 						Status:     resource.StatusOK,
 					}, nil
 				},
@@ -2038,14 +2038,14 @@ func TestRefreshWithBigProgram(t *testing.T) {
 
 						return plugin.CreateResponse{
 							ID:         resource.ID(uuid.String()),
-							Properties: createOutputs,
+							Properties: resource.FromResourcePropertyMap(createOutputs),
 							Status:     resource.StatusOK,
 						}, nil
 					}
 
 					return plugin.CreateResponse{
 						ID:         resource.ID(uuid.String()),
-						Properties: resource.PropertyMap{},
+						Properties: resource.FromResourcePropertyMap(resource.PropertyMap{}),
 						Status:     resource.StatusOK,
 					}, nil
 				},
@@ -2158,14 +2158,14 @@ func TestRefreshWithAlias(t *testing.T) {
 
 						return plugin.CreateResponse{
 							ID:         resource.ID(uuid.String()),
-							Properties: createOutputs,
+							Properties: resource.FromResourcePropertyMap(createOutputs),
 							Status:     resource.StatusOK,
 						}, nil
 					}
 
 					return plugin.CreateResponse{
 						ID:         resource.ID(uuid.String()),
-						Properties: resource.PropertyMap{},
+						Properties: resource.FromResourcePropertyMap(resource.PropertyMap{}),
 						Status:     resource.StatusOK,
 					}, nil
 				},
@@ -2274,14 +2274,14 @@ func TestRefreshRunProgramDeletedResource(t *testing.T) {
 
 						return plugin.CreateResponse{
 							ID:         resource.ID(uuid.String()),
-							Properties: createOutputs,
+							Properties: resource.FromResourcePropertyMap(createOutputs),
 							Status:     resource.StatusOK,
 						}, nil
 					}
 
 					return plugin.CreateResponse{
 						ID:         resource.ID(uuid.String()),
-						Properties: resource.PropertyMap{},
+						Properties: resource.FromResourcePropertyMap(resource.PropertyMap{}),
 						Status:     resource.StatusOK,
 					}, nil
 				},
@@ -2379,14 +2379,14 @@ func TestRefreshRunProgramDBRReplacedResource(t *testing.T) {
 
 						return plugin.CreateResponse{
 							ID:         resource.ID(uuid.String()),
-							Properties: createOutputs,
+							Properties: resource.FromResourcePropertyMap(createOutputs),
 							Status:     resource.StatusOK,
 						}, nil
 					}
 
 					return plugin.CreateResponse{
 						ID:         resource.ID(uuid.String()),
-						Properties: resource.PropertyMap{},
+						Properties: resource.FromResourcePropertyMap(resource.PropertyMap{}),
 						Status:     resource.StatusOK,
 					}, nil
 				},
@@ -2501,14 +2501,14 @@ func TestRefreshRunProgramReplacedResource(t *testing.T) {
 
 						return plugin.CreateResponse{
 							ID:         resource.ID(uuid.String()),
-							Properties: resource.ToResourcePropertyMap(req.Properties),
+							Properties: resource.FromResourcePropertyMap(resource.ToResourcePropertyMap(req.Properties)),
 							Status:     resource.StatusOK,
 						}, nil
 					}
 
 					return plugin.CreateResponse{
 						ID:         resource.ID(uuid.String()),
-						Properties: resource.PropertyMap{},
+						Properties: resource.FromResourcePropertyMap(resource.PropertyMap{}),
 						Status:     resource.StatusOK,
 					}, nil
 				},

@@ -89,5 +89,5 @@ func TestLoaderServerFromContext_RealProvider(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, resource.PropertyMap{
 		"schema": resource.NewProperty(`{"name":"loadtest","version":"1.0.0"}`),
-	}, res.Properties)
+	}, resource.ToResourcePropertyMap(res.Properties))
 }

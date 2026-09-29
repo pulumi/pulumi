@@ -195,13 +195,13 @@ func (p *DiscriminatedUnionMarkedKeyProvider) Create(
 
 	return plugin.CreateResponse{
 		ID: id,
-		Properties: resource.PropertyMap{
+		Properties: resource.FromResourcePropertyMap(resource.PropertyMap{
 			"unionIn": properties["unionIn"],
 			"unionOut": resource.NewProperty(resource.PropertyMap{
 				"discriminantKind": discriminant,
 				"field1":           resource.NewProperty("hello"),
 			}),
-		},
+		}),
 		Status: resource.StatusOK,
 	}, nil
 }

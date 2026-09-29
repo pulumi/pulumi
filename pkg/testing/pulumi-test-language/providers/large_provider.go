@@ -214,9 +214,9 @@ func (p *LargeProvider) Create(
 		}
 		return plugin.CreateResponse{
 			ID: resource.ID(id),
-			Properties: resource.PropertyMap{
+			Properties: resource.FromResourcePropertyMap(resource.PropertyMap{
 				"value": built,
-			},
+			}),
 			Status: resource.StatusOK,
 		}, nil
 	}
@@ -229,7 +229,7 @@ func (p *LargeProvider) Create(
 	}
 	return plugin.CreateResponse{
 		ID:         resource.ID(id),
-		Properties: result,
+		Properties: resource.FromResourcePropertyMap(result),
 		Status:     resource.StatusOK,
 	}, nil
 }

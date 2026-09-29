@@ -282,7 +282,7 @@ func (p *ConfigurerProvider) Create(
 		}
 		return plugin.CreateResponse{
 			ID:         resource.ID(id),
-			Properties: outs,
+			Properties: resource.FromResourcePropertyMap(outs),
 			Status:     resource.StatusOK,
 		}, nil
 	default:

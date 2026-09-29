@@ -221,7 +221,7 @@ func (p *UnionProvider) Create(
 	if urnType == exampleType {
 		return plugin.CreateResponse{
 			ID:         resource.ID("new-resource-id"),
-			Properties: properties,
+			Properties: resource.FromResourcePropertyMap(properties),
 			Status:     resource.StatusOK,
 		}, nil
 	}
@@ -230,7 +230,7 @@ func (p *UnionProvider) Create(
 		outputs["type"] = resource.NewProperty("Block")
 		return plugin.CreateResponse{
 			ID:         resource.ID("enum-output-id"),
-			Properties: outputs,
+			Properties: resource.FromResourcePropertyMap(outputs),
 			Status:     resource.StatusOK,
 		}, nil
 	}

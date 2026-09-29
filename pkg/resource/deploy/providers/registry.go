@@ -982,7 +982,7 @@ func (r *Registry) Create(ctx context.Context, req plugin.CreateRequest) (plugin
 	r.setProvider(mustNewReference(req.URN, id), provider)
 	return plugin.CreateResponse{
 		ID:         id,
-		Properties: filteredProperties,
+		Properties: resource.FromResourcePropertyMap(filteredProperties),
 		Status:     resource.StatusOK,
 	}, nil
 }

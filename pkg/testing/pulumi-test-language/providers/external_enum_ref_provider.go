@@ -142,7 +142,7 @@ func (p *ExternalEnumRefProvider) Create(
 	case fmt.Sprintf("%s:index:Sink", p.pkg()):
 		return plugin.CreateResponse{
 			ID:         resource.ID("new-resource-id"),
-			Properties: properties,
+			Properties: resource.FromResourcePropertyMap(properties),
 			Status:     resource.StatusOK,
 		}, nil
 	default:

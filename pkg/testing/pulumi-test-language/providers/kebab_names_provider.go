@@ -263,11 +263,11 @@ func (p *KebabNamesProvider) Create(
 		nestedValue := nested.ObjectValue()["nested-value"].StringValue()
 		return plugin.CreateResponse{
 			ID: resource.ID(id),
-			Properties: resource.PropertyMap{
+			Properties: resource.FromResourcePropertyMap(resource.PropertyMap{
 				"the-output": resource.NewProperty(resource.PropertyMap{
 					"nested-output": resource.NewProperty(nestedValue),
 				}),
-			},
+			}),
 			Status: resource.StatusOK,
 		}, nil
 	case "kebab-names:kebab-module:another-resource":
@@ -277,9 +277,9 @@ func (p *KebabNamesProvider) Create(
 		}
 		return plugin.CreateResponse{
 			ID: resource.ID(id),
-			Properties: resource.PropertyMap{
+			Properties: resource.FromResourcePropertyMap(resource.PropertyMap{
 				"the-input": theInput,
-			},
+			}),
 			Status: resource.StatusOK,
 		}, nil
 	case tokens.RootStackType:

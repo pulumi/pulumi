@@ -113,7 +113,7 @@ func (p *SyncProvider) Create(
 
 	return plugin.CreateResponse{
 		ID:         resource.ID(id),
-		Properties: resource.PropertyMap{},
+		Properties: resource.FromResourcePropertyMap(resource.PropertyMap{}),
 		Status:     resource.StatusOK,
 	}, nil
 }

@@ -77,14 +77,14 @@ func TestDestroyWithProgram(t *testing.T) {
 
 						return plugin.CreateResponse{
 							ID:         resource.ID(uuid.String()),
-							Properties: createOutputs,
+							Properties: resource.FromResourcePropertyMap(createOutputs),
 							Status:     resource.StatusOK,
 						}, nil
 					}
 
 					return plugin.CreateResponse{
 						ID:         resource.ID(uuid.String()),
-						Properties: resource.PropertyMap{},
+						Properties: resource.FromResourcePropertyMap(resource.PropertyMap{}),
 						Status:     resource.StatusOK,
 					}, nil
 				},
@@ -185,14 +185,14 @@ func TestTargetedDestroyWithProgram(t *testing.T) {
 
 						return plugin.CreateResponse{
 							ID:         resource.ID(uuid.String()),
-							Properties: createOutputs,
+							Properties: resource.FromResourcePropertyMap(createOutputs),
 							Status:     resource.StatusOK,
 						}, nil
 					}
 
 					return plugin.CreateResponse{
 						ID:         resource.ID(uuid.String()),
-						Properties: resource.PropertyMap{},
+						Properties: resource.FromResourcePropertyMap(resource.PropertyMap{}),
 						Status:     resource.StatusOK,
 					}, nil
 				},
@@ -293,14 +293,14 @@ func TestProviderUpdateDestroyWithProgram(t *testing.T) {
 
 						return plugin.CreateResponse{
 							ID:         resource.ID(uuid.String()),
-							Properties: createOutputs,
+							Properties: resource.FromResourcePropertyMap(createOutputs),
 							Status:     resource.StatusOK,
 						}, nil
 					}
 
 					return plugin.CreateResponse{
 						ID:         resource.ID(uuid.String()),
-						Properties: resource.PropertyMap{},
+						Properties: resource.FromResourcePropertyMap(resource.PropertyMap{}),
 						Status:     resource.StatusOK,
 					}, nil
 				},
@@ -411,14 +411,14 @@ func TestExplicitProviderUpdateDestroyWithProgram(t *testing.T) {
 
 						return plugin.CreateResponse{
 							ID:         resource.ID(uuid.String()),
-							Properties: createOutputs,
+							Properties: resource.FromResourcePropertyMap(createOutputs),
 							Status:     resource.StatusOK,
 						}, nil
 					}
 
 					return plugin.CreateResponse{
 						ID:         resource.ID(uuid.String()),
-						Properties: resource.PropertyMap{},
+						Properties: resource.FromResourcePropertyMap(resource.PropertyMap{}),
 						Status:     resource.StatusOK,
 					}, nil
 				},
@@ -551,14 +551,14 @@ func TestDestroyWithProgramWithComponents(t *testing.T) {
 
 						return plugin.CreateResponse{
 							ID:         resource.ID(uuid.String()),
-							Properties: createOutputs,
+							Properties: resource.FromResourcePropertyMap(createOutputs),
 							Status:     resource.StatusOK,
 						}, nil
 					}
 
 					return plugin.CreateResponse{
 						ID:         resource.ID(uuid.String()),
-						Properties: resource.PropertyMap{},
+						Properties: resource.FromResourcePropertyMap(resource.PropertyMap{}),
 						Status:     resource.StatusOK,
 					}, nil
 				},
@@ -650,7 +650,7 @@ func TestDestroyWithProgramWithSkippedComponents(t *testing.T) {
 
 						return plugin.CreateResponse{
 							ID:         resource.ID(uuid.String()),
-							Properties: createOutputs,
+							Properties: resource.FromResourcePropertyMap(createOutputs),
 							Status:     resource.StatusOK,
 						}, nil
 					}
@@ -765,7 +765,7 @@ func TestDestroyWithProgramWithSkippedAlias(t *testing.T) {
 
 						return plugin.CreateResponse{
 							ID:         resource.ID(uuid.String()),
-							Properties: createOutputs,
+							Properties: resource.FromResourcePropertyMap(createOutputs),
 							Status:     resource.StatusOK,
 						}, nil
 					}
@@ -887,7 +887,7 @@ func TestDestroyWithProgramResourceRead(t *testing.T) {
 
 						return plugin.CreateResponse{
 							ID:         resource.ID(uuid.String()),
-							Properties: createOutputs,
+							Properties: resource.FromResourcePropertyMap(createOutputs),
 							Status:     resource.StatusOK,
 						}, nil
 					}

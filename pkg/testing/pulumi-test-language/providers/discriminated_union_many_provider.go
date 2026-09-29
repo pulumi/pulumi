@@ -224,7 +224,7 @@ func (p *DiscriminatedUnionManyProvider) Create(
 	if p.isKnownType(req.URN.Type()) {
 		return plugin.CreateResponse{
 			ID:         resource.ID("new-resource-id"),
-			Properties: properties,
+			Properties: resource.FromResourcePropertyMap(properties),
 			Status:     resource.StatusOK,
 		}, nil
 	}

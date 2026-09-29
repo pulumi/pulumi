@@ -121,7 +121,7 @@ func (p *ReservedNamesProvider) Create(
 
 	return plugin.CreateResponse{
 		ID:         resource.ID(id),
-		Properties: properties.Copy(),
+		Properties: resource.FromResourcePropertyMap(properties.Copy()),
 		Status:     resource.StatusOK,
 	}, nil
 }

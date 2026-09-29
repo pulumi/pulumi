@@ -1440,12 +1440,12 @@ func (p *provider) Create(ctx context.Context, req CreateRequest) (CreateRespons
 		// by extending the provider gRPC interface with a `SupportsFeature` API similar to the language monitor.
 		if !pcfg.known {
 			if p.legacyPreview {
-				return CreateResponse{Properties: resource.ToResourcePropertyMap(req.Properties)}, nil
+				return CreateResponse{Properties: req.Properties}, nil
 			}
 			return CreateResponse{}, nil
 		}
 		if !protocol.supportsPreview || p.disableProviderPreview {
-			return CreateResponse{Properties: resource.ToResourcePropertyMap(req.Properties)}, nil
+			return CreateResponse{Properties: req.Properties}, nil
 		}
 	}
 
@@ -1521,7 +1521,7 @@ func (p *provider) Create(ctx context.Context, req CreateRequest) (CreateRespons
 
 	return CreateResponse{
 		ID:                  id,
-		Properties:          outs,
+		Properties:          resource.FromResourcePropertyMap(outs),
 		Status:              resourceStatus,
 		RefreshBeforeUpdate: refreshBeforeUpdate && supportsRefreshBeforeUpdate,
 	}, resourceError

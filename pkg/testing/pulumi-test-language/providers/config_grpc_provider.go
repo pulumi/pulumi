@@ -277,9 +277,9 @@ func (p *ConfigGrpcProvider) Create(
 		// Send out Config-related requests.
 		return plugin.CreateResponse{
 			ID: resource.ID(id),
-			Properties: resource.PropertyMap{
+			Properties: resource.FromResourcePropertyMap(resource.PropertyMap{
 				"config": resource.NewProperty(string(requestsJSON)),
-			},
+			}),
 			Status: resource.StatusOK,
 		}, nil
 	}
