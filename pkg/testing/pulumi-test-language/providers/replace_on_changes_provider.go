@@ -189,6 +189,7 @@ func (p *ReplaceOnChangesProvider) Check(
 func (p *ReplaceOnChangesProvider) Create(
 	_ context.Context, req plugin.CreateRequest,
 ) (plugin.CreateResponse, error) {
+	properties := resource.ToResourcePropertyMap(req.Properties)
 	urnType := req.URN.Type()
 	if urnType != "replaceonchanges:index:ResourceA" && urnType != "replaceonchanges:index:ResourceB" {
 		return plugin.CreateResponse{
@@ -203,7 +204,7 @@ func (p *ReplaceOnChangesProvider) Create(
 
 	return plugin.CreateResponse{
 		ID:         resource.ID(id),
-		Properties: req.Properties,
+		Properties: properties,
 		Status:     resource.StatusOK,
 	}, nil
 }

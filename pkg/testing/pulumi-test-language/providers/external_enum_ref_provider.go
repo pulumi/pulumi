@@ -137,11 +137,12 @@ func (p *ExternalEnumRefProvider) Check(
 func (p *ExternalEnumRefProvider) Create(
 	_ context.Context, req plugin.CreateRequest,
 ) (plugin.CreateResponse, error) {
+	properties := resource.ToResourcePropertyMap(req.Properties)
 	switch req.URN.Type().String() {
 	case fmt.Sprintf("%s:index:Sink", p.pkg()):
 		return plugin.CreateResponse{
 			ID:         resource.ID("new-resource-id"),
-			Properties: req.Properties,
+			Properties: properties,
 			Status:     resource.StatusOK,
 		}, nil
 	default:

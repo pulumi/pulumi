@@ -55,7 +55,7 @@ func TestDeletedWithDependentReplacedOnDeleteBeforeReplace(t *testing.T) {
 					resourceID := resource.ID(fmt.Sprintf("created-id-%d", len(created)))
 					return plugin.CreateResponse{
 						ID:         resourceID,
-						Properties: req.Properties,
+						Properties: resource.ToResourcePropertyMap(req.Properties),
 						Status:     resource.StatusOK,
 					}, nil
 				},
@@ -147,7 +147,7 @@ func TestDeletedWithTransitiveChain(t *testing.T) {
 					resourceID := resource.ID(fmt.Sprintf("created-id-%d", len(created)))
 					return plugin.CreateResponse{
 						ID:         resourceID,
-						Properties: req.Properties,
+						Properties: resource.ToResourcePropertyMap(req.Properties),
 						Status:     resource.StatusOK,
 					}, nil
 				},
@@ -245,7 +245,7 @@ func TestDeletedWithDependentReplacedOnCreateBeforeDelete(t *testing.T) {
 					resourceID := resource.ID(fmt.Sprintf("created-id-%d", len(created)))
 					return plugin.CreateResponse{
 						ID:         resourceID,
-						Properties: req.Properties,
+						Properties: resource.ToResourcePropertyMap(req.Properties),
 						Status:     resource.StatusOK,
 					}, nil
 				},
@@ -334,7 +334,7 @@ func TestDeletedWithAddedSameStepAsReplace(t *testing.T) {
 					resourceID := resource.ID(fmt.Sprintf("created-id-%d", len(created)))
 					return plugin.CreateResponse{
 						ID:         resourceID,
-						Properties: req.Properties,
+						Properties: resource.ToResourcePropertyMap(req.Properties),
 						Status:     resource.StatusOK,
 					}, nil
 				},
@@ -416,7 +416,7 @@ func TestDeletedWithTargetedDestroy(t *testing.T) {
 					resourceID := resource.ID(fmt.Sprintf("created-id-%d", len(created)))
 					return plugin.CreateResponse{
 						ID:         resourceID,
-						Properties: req.Properties,
+						Properties: resource.ToResourcePropertyMap(req.Properties),
 						Status:     resource.StatusOK,
 					}, nil
 				},
@@ -498,7 +498,7 @@ func TestDeletedWithProtectedDependentBlocksReplace(t *testing.T) {
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 					return plugin.CreateResponse{
 						ID:         "created-id",
-						Properties: req.Properties,
+						Properties: resource.ToResourcePropertyMap(req.Properties),
 						Status:     resource.StatusOK,
 					}, nil
 				},

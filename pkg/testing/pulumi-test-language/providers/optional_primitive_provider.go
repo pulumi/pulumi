@@ -243,6 +243,7 @@ func (p *OptionalPrimitiveProvider) Check(
 func (p *OptionalPrimitiveProvider) Create(
 	_ context.Context, req plugin.CreateRequest,
 ) (plugin.CreateResponse, error) {
+	inputs := resource.ToResourcePropertyMap(req.Properties)
 	// URN should be of the form "optionalprimitive:index:Resource"
 	if req.URN.Type() != "optionalprimitive:index:Resource" {
 		return plugin.CreateResponse{
@@ -269,7 +270,7 @@ func (p *OptionalPrimitiveProvider) Create(
 	}
 
 	properties := resource.PropertyMap{}
-	for k, v := range req.Properties {
+	for k, v := range inputs {
 		if isMissingLike(v) {
 			continue
 		}

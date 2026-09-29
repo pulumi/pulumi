@@ -161,6 +161,7 @@ func (p *NamesProvider) Check(
 func (p *NamesProvider) Create(
 	_ context.Context, req plugin.CreateRequest,
 ) (plugin.CreateResponse, error) {
+	properties := resource.ToResourcePropertyMap(req.Properties)
 	if !slices.Contains(p.Types(), req.URN.Type().String()) {
 		return plugin.CreateResponse{
 			Status: resource.StatusUnknown,
@@ -174,7 +175,7 @@ func (p *NamesProvider) Create(
 
 	return plugin.CreateResponse{
 		ID:         resource.ID(id),
-		Properties: req.Properties,
+		Properties: properties,
 		Status:     resource.StatusOK,
 	}, nil
 }

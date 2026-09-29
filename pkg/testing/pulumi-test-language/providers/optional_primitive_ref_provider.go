@@ -242,6 +242,7 @@ func (p *OptionalPrimitiveRefProvider) Check(
 func (p *OptionalPrimitiveRefProvider) Create(
 	_ context.Context, req plugin.CreateRequest,
 ) (plugin.CreateResponse, error) {
+	properties := resource.ToResourcePropertyMap(req.Properties)
 	if req.URN.Type() != "optional-primitive-ref:index:Resource" {
 		return plugin.CreateResponse{
 			Status: resource.StatusUnknown,
@@ -255,7 +256,7 @@ func (p *OptionalPrimitiveRefProvider) Create(
 
 	return plugin.CreateResponse{
 		ID:         resource.ID(id),
-		Properties: req.Properties,
+		Properties: properties,
 		Status:     resource.StatusOK,
 	}, nil
 }

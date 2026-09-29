@@ -164,13 +164,14 @@ func (p *ByteSourceProvider) Check(
 func (p *ByteSourceProvider) Create(
 	_ context.Context, req plugin.CreateRequest,
 ) (plugin.CreateResponse, error) {
+	properties := resource.ToResourcePropertyMap(req.Properties)
 	if req.URN.Type() != "bytesource:index:Resource" {
 		return plugin.CreateResponse{
 			Status: resource.StatusUnknown,
 		}, fmt.Errorf("invalid URN type: %s", req.URN.Type())
 	}
 
-	encoded := req.Properties["base64"].StringValue()
+	encoded := properties["base64"].StringValue()
 	decoded, err := base64.StdEncoding.DecodeString(encoded)
 	if err != nil {
 		return plugin.CreateResponse{

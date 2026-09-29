@@ -345,7 +345,7 @@ func TestCRUD(t *testing.T) {
 			URN:        urn,
 			Name:       urn.Name(),
 			Type:       urn.Type(),
-			Properties: resource.ToResourcePropertyMap(check.Properties),
+			Properties: check.Properties,
 			Timeout:    timeout,
 		})
 		require.NoError(t, err)
@@ -1109,7 +1109,7 @@ func TestEnvironmentVariableMappings(t *testing.T) {
 			URN:        urn,
 			Name:       urn.Name(),
 			Type:       urn.Type(),
-			Properties: resource.ToResourcePropertyMap(check.Properties),
+			Properties: check.Properties,
 			Timeout:    120,
 		})
 		require.NoError(t, err)

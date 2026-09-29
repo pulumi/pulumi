@@ -91,7 +91,7 @@ func TestExtensionParameterizedProvider(t *testing.T) {
 						"Parameterize must be witnessed before Create on the extension plugin")
 					return plugin.CreateResponse{
 						ID:         resource.ID("id-" + req.URN.Name()),
-						Properties: req.Properties,
+						Properties: resource.ToResourcePropertyMap(req.Properties),
 						Status:     resource.StatusOK,
 					}, nil
 				},
@@ -277,7 +277,7 @@ func TestExtensionParameterizedProviderDeleteParameterizesFromState(t *testing.T
 						CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 							return plugin.CreateResponse{
 								ID:         resource.ID("id-" + req.URN.Name()),
-								Properties: req.Properties,
+								Properties: resource.ToResourcePropertyMap(req.Properties),
 								Status:     resource.StatusOK,
 							}, nil
 						},

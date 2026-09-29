@@ -660,10 +660,11 @@ func TestDoCmdResourceUpsertEndToEnd(t *testing.T) {
 					return plugin.GetSchemaResponse{Schema: []byte(azureSchemaJSON)}, nil
 				},
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
-					createdInputs = req.Properties
+					properties := resource.ToResourcePropertyMap(req.Properties)
+					createdInputs = properties
 					return plugin.CreateResponse{
 						ID:         "res-1",
-						Properties: req.Properties,
+						Properties: properties,
 					}, nil
 				},
 			}, nil
@@ -830,8 +831,9 @@ size = 2
 					return plugin.CheckResponse{Properties: req.NewInputs}, nil
 				},
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					properties := resource.ToResourcePropertyMap(req.Properties)
 					calls = append(calls, "create")
-					assert.Equal(t, "new", req.Properties["name"].StringValue())
+					assert.Equal(t, "new", properties["name"].StringValue())
 					return plugin.CreateResponse{
 						ID: "res-2",
 						Properties: resource.PropertyMap{

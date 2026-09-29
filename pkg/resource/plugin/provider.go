@@ -295,7 +295,7 @@ type CreateRequest struct {
 	URN        resource.URN
 	Name       string
 	Type       tokens.Type
-	Properties resource.PropertyMap
+	Properties property.Map
 	Timeout    float64
 	Preview    bool
 	// The gRPC address of the ResourceStatus service which can be used to create view resources.

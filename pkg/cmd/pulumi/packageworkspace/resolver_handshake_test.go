@@ -37,6 +37,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/diagtest"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 // TestResolverServerFromContext_RealProvider verifies the full package-resolver handshake loop against a
@@ -87,9 +88,9 @@ func TestResolverServerFromContext_RealProvider(t *testing.T) {
 	binaryPath := filepath.Join(pluginDir, providerBinName("resolvetest"))
 	res, err := p.Create(t.Context(), plugin.CreateRequest{
 		URN: resource.NewURN("test", "test", "", "resolvetest:index:Res", "res"),
-		Properties: resource.PropertyMap{
-			"source": resource.NewProperty(binaryPath),
-		},
+		Properties: property.NewMap(map[string]property.Value{
+			"source": property.New(binaryPath),
+		}),
 	})
 	require.NoError(t, err)
 	// The resolver ran the local plugin path through the real package-installation machinery and read its
@@ -153,10 +154,10 @@ func TestResolverServerFromContext_ParameterizedProvider(t *testing.T) {
 
 	res, err := p.Create(t.Context(), plugin.CreateRequest{
 		URN: resource.NewURN("test", "test", "", "resolvetest:index:Res", "res"),
-		Properties: resource.PropertyMap{
-			"source":     resource.NewProperty("paramtest"),
-			"parameters": resource.NewProperty([]resource.PropertyValue{resource.NewProperty("hashicorp/random")}),
-		},
+		Properties: property.NewMap(map[string]property.Value{
+			"source":     property.New("paramtest"),
+			"parameters": property.New([]property.Value{property.New("hashicorp/random")}),
+		}),
 	})
 	require.NoError(t, err)
 

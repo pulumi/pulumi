@@ -142,6 +142,7 @@ func (p *AlphaProvider) Check(
 func (p *AlphaProvider) Create(
 	_ context.Context, req plugin.CreateRequest,
 ) (plugin.CreateResponse, error) {
+	properties := resource.ToResourcePropertyMap(req.Properties)
 	// URN should be of the form "alpha:index:Resource"
 	if req.URN.Type() != "alpha:index:Resource" {
 		return plugin.CreateResponse{
@@ -156,7 +157,7 @@ func (p *AlphaProvider) Create(
 
 	return plugin.CreateResponse{
 		ID:         resource.ID(id),
-		Properties: req.Properties,
+		Properties: properties,
 		Status:     resource.StatusOK,
 	}, nil
 }

@@ -299,7 +299,7 @@ func TestConstructCallSecretsUnknowns(t *testing.T) {
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 					return plugin.CreateResponse{
 						ID:         "created-id",
-						Properties: req.Properties,
+						Properties: resource.ToResourcePropertyMap(req.Properties),
 						Status:     resource.StatusOK,
 					}, nil
 				},
@@ -393,7 +393,7 @@ func TestConstructCallReturnDependencies(t *testing.T) {
 					CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 						return plugin.CreateResponse{
 							ID:         "created-id",
-							Properties: req.Properties,
+							Properties: resource.ToResourcePropertyMap(req.Properties),
 							Status:     resource.StatusOK,
 						}, nil
 					},
@@ -539,7 +539,7 @@ func TestConstructCallReturnOutputs(t *testing.T) {
 					CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 						return plugin.CreateResponse{
 							ID:         "created-id",
-							Properties: req.Properties,
+							Properties: resource.ToResourcePropertyMap(req.Properties),
 							Status:     resource.StatusOK,
 						}, nil
 					},
@@ -678,7 +678,7 @@ func TestConstructCallSendDependencies(t *testing.T) {
 					CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 						return plugin.CreateResponse{
 							ID:         "created-id",
-							Properties: req.Properties,
+							Properties: resource.ToResourcePropertyMap(req.Properties),
 							Status:     resource.StatusOK,
 						}, nil
 					},
@@ -843,7 +843,7 @@ func TestConstructCallDependencyDedeuplication(t *testing.T) {
 					CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 						return plugin.CreateResponse{
 							ID:         "created-id",
-							Properties: req.Properties,
+							Properties: resource.ToResourcePropertyMap(req.Properties),
 							Status:     resource.StatusOK,
 						}, nil
 					},
@@ -1197,7 +1197,7 @@ func TestComponentRegisteredResourceOutputCanBeHydratedByProgram(t *testing.T) {
 					if req.URN.Type() == "pkgA:index:Custom" {
 						return plugin.CreateResponse{
 							ID:         resource.ID(req.URN.Name() + "-id"),
-							Properties: req.Properties,
+							Properties: resource.ToResourcePropertyMap(req.Properties),
 							Status:     resource.StatusOK,
 						}, nil
 					}
@@ -1310,7 +1310,7 @@ func TestComponentRegisteredResourceOutputCanBeHydratedByComponent(t *testing.T)
 					if req.URN.Type() == "pkgA:index:Custom" {
 						return plugin.CreateResponse{
 							ID:         resource.ID(req.URN.Name() + "-id"),
-							Properties: req.Properties,
+							Properties: resource.ToResourcePropertyMap(req.Properties),
 							Status:     resource.StatusOK,
 						}, nil
 					}

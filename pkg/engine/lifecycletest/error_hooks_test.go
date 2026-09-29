@@ -242,7 +242,7 @@ func TestErrorHooks_OldAndNewOptionsAreSentOnUpdate(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
-					return plugin.CreateResponse{ID: "id", Properties: req.Properties, Status: resource.StatusOK}, nil
+					return plugin.CreateResponse{ID: "id", Properties: resource.ToResourcePropertyMap(req.Properties), Status: resource.StatusOK}, nil
 				},
 				UpdateF: func(_ context.Context, _ plugin.UpdateRequest) (plugin.UpdateResponse, error) {
 					return plugin.UpdateResponse{Status: resource.StatusPartialFailure}, errors.New("update failed")
@@ -556,7 +556,7 @@ func TestErrorHooks_RetrySemanticsAndNoRetryWhenNoHooks_Update_RetryIfAnyHookRet
 
 			return &deploytest.Provider{
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
-					return plugin.CreateResponse{ID: "id", Properties: req.Properties, Status: resource.StatusOK}, nil
+					return plugin.CreateResponse{ID: "id", Properties: resource.ToResourcePropertyMap(req.Properties), Status: resource.StatusOK}, nil
 				},
 				UpdateF: func(_ context.Context, req plugin.UpdateRequest) (plugin.UpdateResponse, error) {
 					if req.Preview {
@@ -635,7 +635,7 @@ func TestErrorHooks_RetrySemanticsAndNoRetryWhenNoHooks_Update_NoRetryWhenNoHook
 
 			return &deploytest.Provider{
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
-					return plugin.CreateResponse{ID: "id", Properties: req.Properties, Status: resource.StatusOK}, nil
+					return plugin.CreateResponse{ID: "id", Properties: resource.ToResourcePropertyMap(req.Properties), Status: resource.StatusOK}, nil
 				},
 				UpdateF: func(_ context.Context, req plugin.UpdateRequest) (plugin.UpdateResponse, error) {
 					if req.Preview {

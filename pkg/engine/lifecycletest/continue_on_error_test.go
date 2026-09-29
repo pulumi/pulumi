@@ -737,7 +737,7 @@ func TestContinueOnErrorImport(t *testing.T) {
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 					return plugin.CreateResponse{
 						ID:         "created-id",
-						Properties: req.Properties,
+						Properties: resource.ToResourcePropertyMap(req.Properties),
 						Status:     resource.StatusOK,
 					}, nil
 				},

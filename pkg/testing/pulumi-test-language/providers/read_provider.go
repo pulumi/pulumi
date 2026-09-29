@@ -86,6 +86,7 @@ func (p *ReadProvider) Check(_ context.Context, req plugin.CheckRequest) (plugin
 }
 
 func (p *ReadProvider) Create(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+	properties := resource.ToResourcePropertyMap(req.Properties)
 	if req.URN.Type() != "read:index:Resource" {
 		return plugin.CreateResponse{
 			Status: resource.StatusUnknown,
@@ -97,7 +98,7 @@ func (p *ReadProvider) Create(_ context.Context, req plugin.CreateRequest) (plug
 	}
 	return plugin.CreateResponse{
 		ID:         resource.ID(id),
-		Properties: req.Properties,
+		Properties: properties,
 		Status:     resource.StatusOK,
 	}, nil
 }

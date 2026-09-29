@@ -33,6 +33,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/diagtest"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 // TestLoaderServerFromContext_RealProvider verifies the full loader handshake loop against a real provider binary,
@@ -83,7 +84,7 @@ func TestLoaderServerFromContext_RealProvider(t *testing.T) {
 
 	res, err := p.Create(t.Context(), plugin.CreateRequest{
 		URN:        resource.NewURN("test", "test", "", "loadtest:index:Res", "res"),
-		Properties: resource.PropertyMap{},
+		Properties: property.Map{},
 	})
 	require.NoError(t, err)
 	assert.Equal(t, resource.PropertyMap{

@@ -171,6 +171,7 @@ func (p *LargeProvider) Check(
 func (p *LargeProvider) Create(
 	_ context.Context, req plugin.CreateRequest,
 ) (plugin.CreateResponse, error) {
+	properties := resource.ToResourcePropertyMap(req.Properties)
 	if req.URN.Type() != "large:index:String" && req.URN.Type() != "large:index:Map" {
 		return plugin.CreateResponse{
 			Status: resource.StatusUnknown,
@@ -182,7 +183,7 @@ func (p *LargeProvider) Create(
 		id = ""
 	}
 
-	value, ok := req.Properties["value"]
+	value, ok := properties["value"]
 	if !ok {
 		return plugin.CreateResponse{
 			Status: resource.StatusUnknown,
@@ -196,7 +197,7 @@ func (p *LargeProvider) Create(
 	}
 
 	if req.URN.Type() == "large:index:Map" {
-		depth, ok := req.Properties["depth"]
+		depth, ok := properties["depth"]
 		if !ok || !depth.IsNumber() {
 			return plugin.CreateResponse{
 				Status: resource.StatusUnknown,

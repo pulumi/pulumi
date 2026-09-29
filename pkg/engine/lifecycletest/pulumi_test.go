@@ -1677,7 +1677,7 @@ func replaceOnChangesTest(t *testing.T, name string, diffFunc DiffFunc) {
 					CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 						return plugin.CreateResponse{
 							ID:         resource.ID("id123"),
-							Properties: req.Properties,
+							Properties: resource.ToResourcePropertyMap(req.Properties),
 							Status:     resource.StatusOK,
 						}, nil
 					},
@@ -2131,10 +2131,10 @@ func TestProviderPreview(t *testing.T) {
 						sawPreview = true
 					}
 
-					assert.Equal(t, req.Preview, req.Properties.ContainsUnknowns())
+					assert.Equal(t, req.Preview, resource.ToResourcePropertyMap(req.Properties).ContainsUnknowns())
 					return plugin.CreateResponse{
 						ID:         "created-id",
-						Properties: req.Properties,
+						Properties: resource.ToResourcePropertyMap(req.Properties),
 						Status:     resource.StatusOK,
 					}, nil
 				},
@@ -2221,10 +2221,10 @@ func TestProviderPreviewGrpc(t *testing.T) {
 						sawPreview = true
 					}
 
-					assert.Equal(t, req.Preview, req.Properties.ContainsUnknowns())
+					assert.Equal(t, req.Preview, resource.ToResourcePropertyMap(req.Properties).ContainsUnknowns())
 					return plugin.CreateResponse{
 						ID:         "created-id",
-						Properties: req.Properties,
+						Properties: resource.ToResourcePropertyMap(req.Properties),
 						Status:     resource.StatusOK,
 					}, nil
 				},
@@ -2328,7 +2328,7 @@ func TestProviderPreviewUnknowns(t *testing.T) {
 
 					return plugin.CreateResponse{
 						ID:         "created-id",
-						Properties: req.Properties,
+						Properties: resource.ToResourcePropertyMap(req.Properties),
 						Status:     resource.StatusOK,
 					}, nil
 				},
@@ -2742,7 +2742,7 @@ func TestProtect(t *testing.T) {
 					idCounter = idCounter + 1
 					return plugin.CreateResponse{
 						ID:         resourceID,
-						Properties: req.Properties,
+						Properties: resource.ToResourcePropertyMap(req.Properties),
 						Status:     resource.StatusOK,
 					}, nil
 				},
@@ -3007,7 +3007,7 @@ func TestDeletedWith(t *testing.T) {
 					idCounter = idCounter + 1
 					return plugin.CreateResponse{
 						ID:         resourceID,
-						Properties: req.Properties,
+						Properties: resource.ToResourcePropertyMap(req.Properties),
 						Status:     resource.StatusOK,
 					}, nil
 				},
@@ -3120,7 +3120,7 @@ func TestReplaceWithAndPropertyChange(t *testing.T) {
 					resourceID := resource.ID(fmt.Sprintf("created-id-%d", len(created)))
 					return plugin.CreateResponse{
 						ID:         resourceID,
-						Properties: req.Properties,
+						Properties: resource.ToResourcePropertyMap(req.Properties),
 						Status:     resource.StatusOK,
 					}, nil
 				},
@@ -3243,7 +3243,7 @@ func TestEventSecrets(t *testing.T) {
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 					return plugin.CreateResponse{
 						ID:         "id123",
-						Properties: req.Properties,
+						Properties: resource.ToResourcePropertyMap(req.Properties),
 						Status:     resource.StatusOK,
 					}, nil
 				},
@@ -3328,7 +3328,7 @@ func TestAdditionalSecretOutputs(t *testing.T) {
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 					return plugin.CreateResponse{
 						ID:         "id123",
-						Properties: req.Properties,
+						Properties: resource.ToResourcePropertyMap(req.Properties),
 						Status:     resource.StatusOK,
 					}, nil
 				},
@@ -3403,7 +3403,7 @@ func TestDefaultParents(t *testing.T) {
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 					return plugin.CreateResponse{
 						ID:         "created-id",
-						Properties: req.Properties,
+						Properties: resource.ToResourcePropertyMap(req.Properties),
 						Status:     resource.StatusOK,
 					}, nil
 				},
@@ -3489,11 +3489,11 @@ func TestPendingDeleteOrder(t *testing.T) {
 
 					id := resource.ID(strconv.Itoa(len(cloudState)))
 					if !req.Preview {
-						cloudState[id] = req.Properties
+						cloudState[id] = resource.ToResourcePropertyMap(req.Properties)
 					}
 					return plugin.CreateResponse{
 						ID:         id,
-						Properties: req.Properties,
+						Properties: resource.ToResourcePropertyMap(req.Properties),
 						Status:     resource.StatusOK,
 					}, nil
 				},
@@ -3632,11 +3632,11 @@ func TestPendingDeleteReplacement(t *testing.T) {
 					if !req.Preview {
 						id = resource.ID(strconv.Itoa(cloudID))
 						cloudID = cloudID + 1
-						cloudState[id] = req.Properties
+						cloudState[id] = resource.ToResourcePropertyMap(req.Properties)
 					}
 					return plugin.CreateResponse{
 						ID:         id,
-						Properties: req.Properties,
+						Properties: resource.ToResourcePropertyMap(req.Properties),
 						Status:     resource.StatusOK,
 					}, nil
 				},
@@ -3791,7 +3791,7 @@ func TestTimestampTracking(t *testing.T) {
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 					return plugin.CreateResponse{
 						ID:         "created-id",
-						Properties: req.Properties,
+						Properties: resource.ToResourcePropertyMap(req.Properties),
 						Status:     resource.StatusOK,
 					}, nil
 				},
@@ -3959,7 +3959,7 @@ func TestOldCheckedInputsAreSent(t *testing.T) {
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 					id := resource.ID("")
 					results := resource.PropertyMap{}
-					maps.Copy(results, req.Properties)
+					maps.Copy(results, resource.ToResourcePropertyMap(req.Properties))
 					// Add a computed property
 					results["computed"] = resource.MakeComputed(resource.NewProperty(""))
 
@@ -4240,7 +4240,7 @@ func TestSourcePositions(t *testing.T) {
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 					return plugin.CreateResponse{
 						ID:         "created-id",
-						Properties: req.Properties,
+						Properties: resource.ToResourcePropertyMap(req.Properties),
 						Status:     resource.StatusOK,
 					}, nil
 				},

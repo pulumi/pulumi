@@ -471,6 +471,7 @@ func (p *ModuleFormatProvider) Check(
 func (p *ModuleFormatProvider) Create(
 	_ context.Context, req plugin.CreateRequest,
 ) (plugin.CreateResponse, error) {
+	properties := resource.ToResourcePropertyMap(req.Properties)
 	switch req.URN.Type().String() {
 	case "module-format:index_Resource:Resource", "module-format:mod_Resource:Resource", "module-format:mod/nested_Resource:Resource": //nolint:lll
 	default:
@@ -487,7 +488,7 @@ func (p *ModuleFormatProvider) Create(
 	return plugin.CreateResponse{
 		ID: resource.ID(id),
 		Properties: resource.PropertyMap{
-			"text": req.Properties["text"],
+			"text": properties["text"],
 		},
 		Status: resource.StatusOK,
 	}, nil

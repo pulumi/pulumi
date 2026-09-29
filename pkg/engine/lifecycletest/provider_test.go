@@ -413,7 +413,7 @@ func (p *configurableProvider) create(
 	p.creates.Store(id, p.id)
 	return plugin.CreateResponse{
 		ID:         id,
-		Properties: req.Properties,
+		Properties: resource.ToResourcePropertyMap(req.Properties),
 		Status:     resource.StatusOK,
 	}, nil
 }
@@ -2347,7 +2347,7 @@ func TestMissingIDRefresh(t *testing.T) {
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 					return plugin.CreateResponse{
 						ID:         expectedID,
-						Properties: req.Properties,
+						Properties: resource.ToResourcePropertyMap(req.Properties),
 					}, nil
 				},
 				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
@@ -2581,7 +2581,7 @@ func TestDefaultProviderInheritance(t *testing.T) {
 					return plugin.CreateResponse{
 						Status:     resource.StatusOK,
 						ID:         resource.ID(uuid.Must(uuid.NewV4()).String()),
-						Properties: cr.Properties,
+						Properties: resource.ToResourcePropertyMap(cr.Properties),
 					}, nil
 				},
 			}, nil
@@ -2596,7 +2596,7 @@ func TestDefaultProviderInheritance(t *testing.T) {
 					return plugin.CreateResponse{
 						Status:     resource.StatusOK,
 						ID:         resource.ID(uuid.Must(uuid.NewV4()).String()),
-						Properties: cr.Properties,
+						Properties: resource.ToResourcePropertyMap(cr.Properties),
 					}, nil
 				},
 			}, nil

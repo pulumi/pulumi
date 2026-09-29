@@ -325,6 +325,7 @@ func (p *RefRefProvider) Check(
 func (p *RefRefProvider) Create(
 	_ context.Context, req plugin.CreateRequest,
 ) (plugin.CreateResponse, error) {
+	properties := resource.ToResourcePropertyMap(req.Properties)
 	if req.URN.Type() != "ref-ref:index:Resource" {
 		return plugin.CreateResponse{
 			Status: resource.StatusUnknown,
@@ -338,7 +339,7 @@ func (p *RefRefProvider) Create(
 
 	return plugin.CreateResponse{
 		ID:         resource.ID(id),
-		Properties: req.Properties,
+		Properties: properties,
 		Status:     resource.StatusOK,
 	}, nil
 }

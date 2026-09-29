@@ -387,6 +387,7 @@ func (p *IndexModProvider) Check(
 func (p *IndexModProvider) Create(
 	_ context.Context, req plugin.CreateRequest,
 ) (plugin.CreateResponse, error) {
+	properties := resource.ToResourcePropertyMap(req.Properties)
 	switch req.URN.Type().String() {
 	case "index-mod:indexMine:Resource", "index-mod:indexMine/nested:Resource":
 	default:
@@ -403,7 +404,7 @@ func (p *IndexModProvider) Create(
 	return plugin.CreateResponse{
 		ID: resource.ID(id),
 		Properties: resource.PropertyMap{
-			"text": req.Properties["text"],
+			"text": properties["text"],
 		},
 		Status: resource.StatusOK,
 	}, nil

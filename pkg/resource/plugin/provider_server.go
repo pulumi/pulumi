@@ -585,7 +585,7 @@ func (p *providerServer) Create(ctx context.Context, req *pulumirpc.CreateReques
 		URN:                   urn,
 		Name:                  req.Name,
 		Type:                  tokens.Type(req.Type),
-		Properties:            inputs,
+		Properties:            resource.FromResourcePropertyMap(inputs),
 		Timeout:               req.GetTimeout(),
 		Preview:               req.GetPreview(),
 		ResourceStatusAddress: req.GetResourceStatusAddress(),

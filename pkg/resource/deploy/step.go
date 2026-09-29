@@ -374,7 +374,7 @@ func (s *CreateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 						URN:                   s.URN(),
 						Name:                  s.new.URN.Name(),
 						Type:                  s.new.URN.Type(),
-						Properties:            s.new.Inputs,
+						Properties:            resource.FromResourcePropertyMap(s.new.Inputs),
 						Timeout:               s.new.CustomTimeouts.Create,
 						Preview:               s.deployment.opts.DryRun,
 						ResourceStatusAddress: resourceStatusAddress,

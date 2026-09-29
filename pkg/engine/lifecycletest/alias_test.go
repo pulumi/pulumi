@@ -1229,7 +1229,7 @@ func TestDuplicatesDueToAliases(t *testing.T) {
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 					return plugin.CreateResponse{
 						ID:         "created-id",
-						Properties: req.Properties,
+						Properties: resource.ToResourcePropertyMap(req.Properties),
 						Status:     resource.StatusOK,
 					}, nil
 				},
@@ -1339,7 +1339,7 @@ func TestCorrectResourceChosen(t *testing.T) {
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 					return plugin.CreateResponse{
 						ID:         "created-id",
-						Properties: req.Properties,
+						Properties: resource.ToResourcePropertyMap(req.Properties),
 						Status:     resource.StatusOK,
 					}, nil
 				},
@@ -1443,7 +1443,7 @@ func TestComponentToCustomUpdate(t *testing.T) {
 					}
 					return plugin.CreateResponse{
 						ID:         id,
-						Properties: req.Properties,
+						Properties: resource.ToResourcePropertyMap(req.Properties),
 						Status:     resource.StatusOK,
 					}, nil
 				},
@@ -1542,7 +1542,7 @@ func TestParentAlias(t *testing.T) {
 					}
 					return plugin.CreateResponse{
 						ID:         id,
-						Properties: req.Properties,
+						Properties: resource.ToResourcePropertyMap(req.Properties),
 						Status:     resource.StatusOK,
 					}, nil
 				},
@@ -1629,7 +1629,7 @@ func TestEmptyParentAlias(t *testing.T) {
 					}
 					return plugin.CreateResponse{
 						ID:         id,
-						Properties: req.Properties,
+						Properties: resource.ToResourcePropertyMap(req.Properties),
 						Status:     resource.StatusOK,
 					}, nil
 				},
@@ -1705,7 +1705,7 @@ func TestSplitUpdateComponentAliases(t *testing.T) {
 
 					return plugin.CreateResponse{
 						ID:         "created-id",
-						Properties: req.Properties,
+						Properties: resource.ToResourcePropertyMap(req.Properties),
 						Status:     resource.StatusOK,
 					}, nil
 				},
@@ -1870,7 +1870,7 @@ func TestFailDeleteDuplicateAliases(t *testing.T) {
 
 					return plugin.CreateResponse{
 						ID:         "created-id",
-						Properties: req.Properties,
+						Properties: resource.ToResourcePropertyMap(req.Properties),
 						Status:     resource.StatusOK,
 					}, nil
 				},

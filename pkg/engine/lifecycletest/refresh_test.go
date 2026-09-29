@@ -2501,7 +2501,7 @@ func TestRefreshRunProgramReplacedResource(t *testing.T) {
 
 						return plugin.CreateResponse{
 							ID:         resource.ID(uuid.String()),
-							Properties: req.Properties,
+							Properties: resource.ToResourcePropertyMap(req.Properties),
 							Status:     resource.StatusOK,
 						}, nil
 					}

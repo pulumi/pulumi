@@ -129,13 +129,14 @@ func (p *ConfigEnumProvider) Check(
 func (p *ConfigEnumProvider) Create(
 	_ context.Context, req plugin.CreateRequest,
 ) (plugin.CreateResponse, error) {
+	properties := resource.ToResourcePropertyMap(req.Properties)
 	if req.URN.Type() != "config-enum:index:Resource" {
 		return plugin.CreateResponse{Status: resource.StatusUnknown},
 			fmt.Errorf("invalid URN type: %s", req.URN.Type())
 	}
 	return plugin.CreateResponse{
 		ID:         "id",
-		Properties: req.Properties,
+		Properties: properties,
 		Status:     resource.StatusOK,
 	}, nil
 }

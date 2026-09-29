@@ -204,7 +204,7 @@ func (pc *packageCommand) runStatelessCreate(
 			URN:        urn,
 			Name:       urn.Name(),
 			Type:       urn.Type(),
-			Properties: checked,
+			Properties: resource.FromResourcePropertyMap(checked),
 			Preview:    pc.dryrun,
 		})
 		if err != nil {

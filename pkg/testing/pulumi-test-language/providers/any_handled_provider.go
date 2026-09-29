@@ -97,6 +97,7 @@ func (p *AnyHandledProvider) Check(
 func (p *AnyHandledProvider) Create(
 	_ context.Context, req plugin.CreateRequest,
 ) (plugin.CreateResponse, error) {
+	properties := resource.ToResourcePropertyMap(req.Properties)
 	if req.URN.Type() != "any-handled:index:Resource" {
 		return plugin.CreateResponse{Status: resource.StatusUnknown},
 			fmt.Errorf("invalid URN type: %s", req.URN.Type())
@@ -107,7 +108,7 @@ func (p *AnyHandledProvider) Create(
 	}
 	return plugin.CreateResponse{
 		ID:         resource.ID(id),
-		Properties: req.Properties,
+		Properties: properties,
 		Status:     resource.StatusOK,
 	}, nil
 }

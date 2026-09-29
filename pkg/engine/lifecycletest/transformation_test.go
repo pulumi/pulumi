@@ -569,7 +569,7 @@ func TestRemoteTransformsDependencies(t *testing.T) {
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 					return plugin.CreateResponse{
 						ID:         "some-id",
-						Properties: req.Properties,
+						Properties: resource.ToResourcePropertyMap(req.Properties),
 						Status:     resource.StatusOK,
 					}, nil
 				},
@@ -755,7 +755,7 @@ func TestTransformsProviderOpt(t *testing.T) {
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 					return plugin.CreateResponse{
 						ID:         "some-id",
-						Properties: req.Properties,
+						Properties: resource.ToResourcePropertyMap(req.Properties),
 						Status:     resource.StatusOK,
 					}, nil
 				},
@@ -1057,16 +1057,17 @@ func TestAssetArchiveRoundtrip(t *testing.T) {
 			return &deploytest.Provider{
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 					// Ensure the archive is rehydrated before we use it.
+					props := resource.ToResourcePropertyMap(req.Properties)
 					assert.Equal(t,
 						"b94d27b9934d3e08a52e52d7da7dabfac484efe37a5380ee9088f7ace2efcde9",
-						req.Properties["asset"].AssetValue().Hash)
+						props["asset"].AssetValue().Hash)
 					assert.Equal(t,
 						"f19bab27a7f9d59cff97df356effce0047fefb13c8265e04d0874c0f09df4a16",
-						req.Properties["archive"].ArchiveValue().Hash)
+						props["archive"].ArchiveValue().Hash)
 
 					return plugin.CreateResponse{
 						ID:         "some-id",
-						Properties: req.Properties,
+						Properties: resource.ToResourcePropertyMap(req.Properties),
 						Status:     resource.StatusOK,
 					}, nil
 				},

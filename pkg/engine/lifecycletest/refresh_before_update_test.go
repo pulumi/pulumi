@@ -50,7 +50,7 @@ func TestRefreshBeforeUpdate(t *testing.T) {
 					}, nil
 				},
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
-					props := req.Properties.Copy()
+					props := resource.ToResourcePropertyMap(req.Properties).Copy()
 					props["result"] = props["input"]
 					return plugin.CreateResponse{
 						Properties:          props,
@@ -245,7 +245,7 @@ func TestRefreshBeforeUpdateDeletedResource(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
-					props := req.Properties.Copy()
+					props := resource.ToResourcePropertyMap(req.Properties).Copy()
 					props["result"] = props["input"]
 					return plugin.CreateResponse{
 						Properties:          props,

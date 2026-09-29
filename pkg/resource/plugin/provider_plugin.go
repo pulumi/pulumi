@@ -1414,13 +1414,10 @@ func (p *provider) Create(ctx context.Context, req CreateRequest) (CreateRespons
 		"req.Name (%s) != req.URN.Name() (%s)", req.Name, req.URN.Name())
 	contract.Assertf(req.Type == "" || req.Type == req.URN.Type(),
 		"req.Type (%s) != req.URN.Type() (%s)", req.Type, req.URN.Type())
-	contract.Assertf(req.Properties != nil, "Create requires new input properties")
-
 	contract.Assertf(req.URN != "", "Create requires a URN")
-	contract.Assertf(req.Properties != nil, "Create requires properties")
 
 	label := fmt.Sprintf("%s.Create(%s)", p.label(), req.URN)
-	logging.V(7).Infof("%s executing (#props=%v)", label, len(req.Properties))
+	logging.V(7).Infof("%s executing (#props=%v)", label, req.Properties.Len())
 
 	// Ensure that the plugin is configured.
 	client := p.clientRaw
@@ -1443,19 +1440,19 @@ func (p *provider) Create(ctx context.Context, req CreateRequest) (CreateRespons
 		// by extending the provider gRPC interface with a `SupportsFeature` API similar to the language monitor.
 		if !pcfg.known {
 			if p.legacyPreview {
-				return CreateResponse{Properties: req.Properties}, nil
+				return CreateResponse{Properties: resource.ToResourcePropertyMap(req.Properties)}, nil
 			}
 			return CreateResponse{}, nil
 		}
 		if !protocol.supportsPreview || p.disableProviderPreview {
-			return CreateResponse{Properties: req.Properties}, nil
+			return CreateResponse{Properties: resource.ToResourcePropertyMap(req.Properties)}, nil
 		}
 	}
 
 	// We should only be calling {Create,Update,Delete} if the provider is fully configured.
 	contract.Assertf(pcfg.known, "Create cannot be called if the configuration is unknown")
 
-	mprops, err := MarshalProperties(req.Properties, MarshalOptions{
+	mprops, err := MarshalProperties(resource.ToResourcePropertyMap(req.Properties), MarshalOptions{
 		Label:          label + ".inputs",
 		KeepUnknowns:   req.Preview,
 		KeepSecrets:    protocol.acceptSecrets,
@@ -1517,7 +1514,7 @@ func (p *provider) Create(ctx context.Context, req CreateRequest) (CreateRespons
 	// allows us to retain metadata about secrets in many cases, even for providers that do not understand secrets
 	// natively.
 	if !protocol.acceptSecrets {
-		annotateSecrets(outs, req.Properties)
+		annotateSecrets(outs, resource.ToResourcePropertyMap(req.Properties))
 	}
 
 	logging.V(7).Infof("%s success: id=%s; #outs=%d", label, id, len(outs))

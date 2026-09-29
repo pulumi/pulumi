@@ -58,10 +58,10 @@ func TestViewsBasic(t *testing.T) {
 								Type: tokens.Type("pkgA:m:typAView"),
 								Name: req.URN.Name() + "-child",
 								Inputs: resource.FromResourcePropertyMap(resource.PropertyMap{
-									"input": req.Properties["foo"],
+									"input": resource.ToResourcePropertyMap(req.Properties)["foo"],
 								}),
 								Outputs: resource.FromResourcePropertyMap(resource.PropertyMap{
-									"result": req.Properties["foo"],
+									"result": resource.ToResourcePropertyMap(req.Properties)["foo"],
 								}),
 							},
 						},
@@ -70,7 +70,7 @@ func TestViewsBasic(t *testing.T) {
 
 					return plugin.CreateResponse{
 						ID:         "new-id",
-						Properties: req.Properties,
+						Properties: resource.ToResourcePropertyMap(req.Properties),
 						Status:     resource.StatusOK,
 					}, nil
 				},
@@ -302,10 +302,10 @@ func TestViewsUpdateError(t *testing.T) {
 								Type: tokens.Type("pkgA:m:typAView"),
 								Name: req.URN.Name() + "-child",
 								Inputs: resource.FromResourcePropertyMap(resource.PropertyMap{
-									"input": req.Properties["foo"],
+									"input": resource.ToResourcePropertyMap(req.Properties)["foo"],
 								}),
 								Outputs: resource.FromResourcePropertyMap(resource.PropertyMap{
-									"result": req.Properties["foo"],
+									"result": resource.ToResourcePropertyMap(req.Properties)["foo"],
 								}),
 							},
 						},
@@ -314,7 +314,7 @@ func TestViewsUpdateError(t *testing.T) {
 
 					return plugin.CreateResponse{
 						ID:         "new-id",
-						Properties: req.Properties,
+						Properties: resource.ToResourcePropertyMap(req.Properties),
 						Status:     resource.StatusOK,
 					}, nil
 				},
@@ -464,10 +464,10 @@ func TestViewsUpdateDelete(t *testing.T) {
 								Type: tokens.Type("pkgA:m:typAView"),
 								Name: req.URN.Name() + "-child",
 								Inputs: resource.FromResourcePropertyMap(resource.PropertyMap{
-									"input": req.Properties["foo"],
+									"input": resource.ToResourcePropertyMap(req.Properties)["foo"],
 								}),
 								Outputs: resource.FromResourcePropertyMap(resource.PropertyMap{
-									"result": req.Properties["foo"],
+									"result": resource.ToResourcePropertyMap(req.Properties)["foo"],
 								}),
 							},
 						},
@@ -476,7 +476,7 @@ func TestViewsUpdateDelete(t *testing.T) {
 
 					return plugin.CreateResponse{
 						ID:         "new-id",
-						Properties: req.Properties,
+						Properties: resource.ToResourcePropertyMap(req.Properties),
 						Status:     resource.StatusOK,
 					}, nil
 				},
@@ -635,7 +635,7 @@ func TestViewsRefreshSame(t *testing.T) {
 
 					return plugin.CreateResponse{
 						ID:         "new-id",
-						Properties: req.Properties,
+						Properties: resource.ToResourcePropertyMap(req.Properties),
 						Status:     resource.StatusOK,
 					}, nil
 				},
@@ -768,7 +768,7 @@ func TestViews_RefreshBeforeUpdate_Same(t *testing.T) {
 
 					return plugin.CreateResponse{
 						ID:                  "new-id",
-						Properties:          req.Properties,
+						Properties:          resource.ToResourcePropertyMap(req.Properties),
 						Status:              resource.StatusOK,
 						RefreshBeforeUpdate: true,
 					}, nil
@@ -903,7 +903,7 @@ func TestViewsRefreshUpdate(t *testing.T) {
 
 					return plugin.CreateResponse{
 						ID:         "new-id",
-						Properties: req.Properties,
+						Properties: resource.ToResourcePropertyMap(req.Properties),
 						Status:     resource.StatusOK,
 					}, nil
 				},
@@ -1041,7 +1041,7 @@ func TestViews_RefreshBeforeUpdate_Update(t *testing.T) {
 
 					return plugin.CreateResponse{
 						ID:                  "new-id",
-						Properties:          req.Properties,
+						Properties:          resource.ToResourcePropertyMap(req.Properties),
 						Status:              resource.StatusOK,
 						RefreshBeforeUpdate: true,
 					}, nil
@@ -1180,7 +1180,7 @@ func TestViewsRefreshDelete(t *testing.T) {
 
 					return plugin.CreateResponse{
 						ID:         "new-id",
-						Properties: req.Properties,
+						Properties: resource.ToResourcePropertyMap(req.Properties),
 						Status:     resource.StatusOK,
 					}, nil
 				},
@@ -1299,7 +1299,7 @@ func TestViews_RefreshBeforeUpdate_Delete(t *testing.T) {
 
 					return plugin.CreateResponse{
 						ID:                  "new-id",
-						Properties:          req.Properties,
+						Properties:          resource.ToResourcePropertyMap(req.Properties),
 						Status:              resource.StatusOK,
 						RefreshBeforeUpdate: true,
 					}, nil
@@ -1419,7 +1419,7 @@ func TestViewsImport(t *testing.T) {
 
 					return plugin.CreateResponse{
 						ID:         "new-id",
-						Properties: req.Properties,
+						Properties: resource.ToResourcePropertyMap(req.Properties),
 						Status:     resource.StatusOK,
 					}, nil
 				},
@@ -1502,10 +1502,10 @@ func TestViewsDeleteBeforeReplace(t *testing.T) {
 								Type: tokens.Type("pkgA:m:typAView"),
 								Name: req.URN.Name() + "-child",
 								Inputs: resource.FromResourcePropertyMap(resource.PropertyMap{
-									"input": req.Properties["foo"],
+									"input": resource.ToResourcePropertyMap(req.Properties)["foo"],
 								}),
 								Outputs: resource.FromResourcePropertyMap(resource.PropertyMap{
-									"result": req.Properties["foo"],
+									"result": resource.ToResourcePropertyMap(req.Properties)["foo"],
 								}),
 							},
 						},
@@ -1514,7 +1514,7 @@ func TestViewsDeleteBeforeReplace(t *testing.T) {
 
 					return plugin.CreateResponse{
 						ID:         "new-id",
-						Properties: req.Properties,
+						Properties: resource.ToResourcePropertyMap(req.Properties),
 						Status:     resource.StatusOK,
 					}, nil
 				},
@@ -1704,10 +1704,10 @@ func TestViewsCreateBeforeReplace(t *testing.T) {
 								Type: tokens.Type("pkgA:m:typAView"),
 								Name: req.URN.Name() + "-child",
 								Inputs: resource.FromResourcePropertyMap(resource.PropertyMap{
-									"input": req.Properties["foo"],
+									"input": resource.ToResourcePropertyMap(req.Properties)["foo"],
 								}),
 								Outputs: resource.FromResourcePropertyMap(resource.PropertyMap{
-									"result": req.Properties["foo"],
+									"result": resource.ToResourcePropertyMap(req.Properties)["foo"],
 								}),
 							},
 						},
@@ -1716,7 +1716,7 @@ func TestViewsCreateBeforeReplace(t *testing.T) {
 
 					return plugin.CreateResponse{
 						ID:         "new-id",
-						Properties: req.Properties,
+						Properties: resource.ToResourcePropertyMap(req.Properties),
 						Status:     resource.StatusOK,
 					}, nil
 				},
@@ -1926,7 +1926,7 @@ func TestViewsRefreshDriftDeleteCreate_UpdateRefresh(t *testing.T) {
 
 					return plugin.CreateResponse{
 						ID:         "new-id",
-						Properties: req.Properties,
+						Properties: resource.ToResourcePropertyMap(req.Properties),
 						Status:     resource.StatusOK,
 					}, nil
 				},
@@ -2091,7 +2091,7 @@ func TestViewsRefreshDriftDeleteCreate_RefreshBeforeUpdate(t *testing.T) {
 
 					return plugin.CreateResponse{
 						ID:                  "new-id",
-						Properties:          req.Properties,
+						Properties:          resource.ToResourcePropertyMap(req.Properties),
 						Status:              resource.StatusOK,
 						RefreshBeforeUpdate: true,
 					}, nil
@@ -2262,7 +2262,7 @@ func TestViewsRefreshDriftDeleteCreate_RefreshProgram(t *testing.T) {
 
 					return plugin.CreateResponse{
 						ID:         "new-id",
-						Properties: req.Properties,
+						Properties: resource.ToResourcePropertyMap(req.Properties),
 						Status:     resource.StatusOK,
 					}, nil
 				},
@@ -2417,10 +2417,10 @@ func TestViewsDestroyPreview(t *testing.T) {
 								Type: tokens.Type("pkgA:m:typAView"),
 								Name: req.URN.Name() + "-child",
 								Inputs: resource.FromResourcePropertyMap(resource.PropertyMap{
-									"input": req.Properties["foo"],
+									"input": resource.ToResourcePropertyMap(req.Properties)["foo"],
 								}),
 								Outputs: resource.FromResourcePropertyMap(resource.PropertyMap{
-									"result": req.Properties["foo"],
+									"result": resource.ToResourcePropertyMap(req.Properties)["foo"],
 								}),
 							},
 						},
@@ -2429,7 +2429,7 @@ func TestViewsDestroyPreview(t *testing.T) {
 
 					return plugin.CreateResponse{
 						ID:         "new-id",
-						Properties: req.Properties,
+						Properties: resource.ToResourcePropertyMap(req.Properties),
 						Status:     resource.StatusOK,
 					}, nil
 				},

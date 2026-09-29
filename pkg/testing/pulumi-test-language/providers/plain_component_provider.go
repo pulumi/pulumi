@@ -226,19 +226,20 @@ func (p *PlainComponentProvider) Diff(
 func (p *PlainComponentProvider) Create(
 	_ context.Context, req plugin.CreateRequest,
 ) (plugin.CreateResponse, error) {
+	properties := resource.ToResourcePropertyMap(req.Properties)
 	if req.URN.Type() != "plaincomponent:index:Custom" {
 		return plugin.CreateResponse{Status: resource.StatusUnknown},
 			fmt.Errorf("invalid URN type: %s", req.URN.Type())
 	}
 
-	id := "id-" + req.Properties["value"].StringValue()
+	id := "id-" + properties["value"].StringValue()
 	if req.Preview {
 		id = ""
 	}
 
 	return plugin.CreateResponse{
 		ID:         resource.ID(id),
-		Properties: req.Properties,
+		Properties: properties,
 		Status:     resource.StatusOK,
 	}, nil
 }

@@ -62,7 +62,7 @@ func pclSnippetTestProvider(
 					if cr.Preview {
 						id = ""
 					}
-					return plugin.CreateResponse{ID: resource.ID(id), Properties: cr.Properties}, nil
+					return plugin.CreateResponse{ID: resource.ID(id), Properties: resource.ToResourcePropertyMap(cr.Properties)}, nil
 				},
 				DiffF: func(_ context.Context, req plugin.DiffRequest) (plugin.DiffResult, error) {
 					if !req.OldInputs.Equals(req.NewInputs) {
@@ -139,7 +139,7 @@ func TestPclSnippet(t *testing.T) {
 					}
 					return plugin.CreateResponse{
 						ID:         resource.ID(id),
-						Properties: cr.Properties,
+						Properties: resource.ToResourcePropertyMap(cr.Properties),
 					}, nil
 				},
 			}, nil
@@ -225,7 +225,7 @@ func TestPclInvalidSnippet(t *testing.T) {
 					}
 					return plugin.CreateResponse{
 						ID:         resource.ID(id),
-						Properties: cr.Properties,
+						Properties: resource.ToResourcePropertyMap(cr.Properties),
 					}, nil
 				},
 			}, nil
@@ -481,7 +481,7 @@ func TestPclSnippetBuiltins(t *testing.T) {
 					if cr.Preview {
 						id = ""
 					}
-					return plugin.CreateResponse{ID: resource.ID(id), Properties: cr.Properties}, nil
+					return plugin.CreateResponse{ID: resource.ID(id), Properties: resource.ToResourcePropertyMap(cr.Properties)}, nil
 				},
 			}, nil
 		}),
@@ -577,7 +577,7 @@ func TestPclSnippetDirectories(t *testing.T) {
 					if cr.Preview {
 						id = ""
 					}
-					return plugin.CreateResponse{ID: resource.ID(id), Properties: cr.Properties}, nil
+					return plugin.CreateResponse{ID: resource.ID(id), Properties: resource.ToResourcePropertyMap(cr.Properties)}, nil
 				},
 			}, nil
 		}),
@@ -677,7 +677,7 @@ func TestPclSnippetInvoke(t *testing.T) {
 					if cr.Preview {
 						id = ""
 					}
-					return plugin.CreateResponse{ID: resource.ID(id), Properties: cr.Properties}, nil
+					return plugin.CreateResponse{ID: resource.ID(id), Properties: resource.ToResourcePropertyMap(cr.Properties)}, nil
 				},
 				InvokeF: func(_ context.Context, req plugin.InvokeRequest) (plugin.InvokeResponse, error) {
 					input := req.Args.Get("input").AsString()
@@ -773,9 +773,9 @@ func TestPclSnippetResourceReference(t *testing.T) {
 				},
 				CreateF: func(_ context.Context, cr plugin.CreateRequest) (plugin.CreateResponse, error) {
 					out := resource.PropertyMap{}
-					maps.Copy(out, cr.Properties)
+					maps.Copy(out, resource.ToResourcePropertyMap(cr.Properties))
 					// Give the producer a deterministic output for the snippet to consume.
-					if seed, ok := cr.Properties["seed"]; ok {
+					if seed, ok := resource.ToResourcePropertyMap(cr.Properties)["seed"]; ok {
 						out["value"] = resource.NewProperty("value-of-" + seed.StringValue())
 					}
 					uuid, err := uuid.NewV4()
@@ -1004,8 +1004,8 @@ func TestPclSnippetMissingProgramReference(t *testing.T) {
 				},
 				CreateF: func(_ context.Context, cr plugin.CreateRequest) (plugin.CreateResponse, error) {
 					out := resource.PropertyMap{}
-					maps.Copy(out, cr.Properties)
-					if seed, ok := cr.Properties["seed"]; ok {
+					maps.Copy(out, resource.ToResourcePropertyMap(cr.Properties))
+					if seed, ok := resource.ToResourcePropertyMap(cr.Properties)["seed"]; ok {
 						out["value"] = resource.NewProperty("value-of-" + seed.StringValue())
 					}
 					uuid, err := uuid.NewV4()
@@ -1116,9 +1116,9 @@ func TestPclSnippetMissingSnippetReference(t *testing.T) {
 				},
 				CreateF: func(_ context.Context, cr plugin.CreateRequest) (plugin.CreateResponse, error) {
 					out := resource.PropertyMap{}
-					maps.Copy(out, cr.Properties)
+					maps.Copy(out, resource.ToResourcePropertyMap(cr.Properties))
 					// Give each producer a deterministic output for the next snippet to consume.
-					if seed, ok := cr.Properties["seed"]; ok {
+					if seed, ok := resource.ToResourcePropertyMap(cr.Properties)["seed"]; ok {
 						out["value"] = resource.NewProperty("value-of-" + seed.StringValue())
 					}
 					uuid, err := uuid.NewV4()
@@ -1247,7 +1247,7 @@ func TestPclSnippetReferenceFollowsAlias(t *testing.T) {
 					if cr.Preview {
 						id = ""
 					}
-					return plugin.CreateResponse{ID: resource.ID(id), Properties: cr.Properties}, nil
+					return plugin.CreateResponse{ID: resource.ID(id), Properties: resource.ToResourcePropertyMap(cr.Properties)}, nil
 				},
 				DiffF: func(_ context.Context, req plugin.DiffRequest) (plugin.DiffResult, error) {
 					if !req.OldInputs.Equals(req.NewInputs) {
@@ -1991,7 +1991,7 @@ func TestPclSnippetTargetSkipsUntargetedProviders(t *testing.T) {
 					if err != nil {
 						return plugin.CreateResponse{}, err
 					}
-					return plugin.CreateResponse{ID: resource.ID(id.String()), Properties: cr.Properties}, nil
+					return plugin.CreateResponse{ID: resource.ID(id.String()), Properties: resource.ToResourcePropertyMap(cr.Properties)}, nil
 				},
 			}, nil
 		}))
@@ -2086,8 +2086,8 @@ func TestPclSnippetTargetReferenceUntargetedSnippet(t *testing.T) {
 				},
 				CreateF: func(_ context.Context, cr plugin.CreateRequest) (plugin.CreateResponse, error) {
 					out := resource.PropertyMap{}
-					maps.Copy(out, cr.Properties)
-					if seed, ok := cr.Properties["seed"]; ok {
+					maps.Copy(out, resource.ToResourcePropertyMap(cr.Properties))
+					if seed, ok := resource.ToResourcePropertyMap(cr.Properties)["seed"]; ok {
 						producerCreates.Add(1)
 						out["value"] = resource.NewProperty("value-of-" + seed.StringValue())
 					}
@@ -2197,7 +2197,7 @@ func TestPclSnippetTargetExplicitProviderFromState(t *testing.T) {
 					if err != nil {
 						return plugin.CreateResponse{}, err
 					}
-					return plugin.CreateResponse{ID: resource.ID(id.String()), Properties: cr.Properties}, nil
+					return plugin.CreateResponse{ID: resource.ID(id.String()), Properties: resource.ToResourcePropertyMap(cr.Properties)}, nil
 				},
 				DiffF: func(_ context.Context, req plugin.DiffRequest) (plugin.DiffResult, error) {
 					if !req.OldInputs.Equals(req.NewInputs) {
@@ -2293,7 +2293,7 @@ func pclSnippetDeleteFailPlan(t *testing.T, failDelete func(plugin.DeleteRequest
 					if err != nil {
 						return plugin.CreateResponse{}, err
 					}
-					return plugin.CreateResponse{ID: resource.ID(id.String()), Properties: cr.Properties}, nil
+					return plugin.CreateResponse{ID: resource.ID(id.String()), Properties: resource.ToResourcePropertyMap(cr.Properties)}, nil
 				},
 				DiffF: func(_ context.Context, req plugin.DiffRequest) (plugin.DiffResult, error) {
 					if !req.OldInputs.Get("propA").Equals(req.NewInputs.Get("propA")) {
