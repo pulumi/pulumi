@@ -137,6 +137,8 @@ var expectedFailures = map[string]string{
 	"l2-resource-primitive-conversions":  "primitive conversions accepted by PCL bind, but not lowered correctly by SDK generators",   //nolint:lll
 	"l3-component-primitive-conversions": "primitive conversions accepted by PCL bind, but not lowered correctly by SDK generators",   //nolint:lll
 
+	"l2-dependencies-from-inputs": "the Go SDK does not yet participate in the DEPENDENCIES_FROM_INPUTS wire format",
+
 	"l3-range-list-ref": "fails with syntax errors: undefined: err",
 	"l3-range-map-ref":  "fails with syntax errors: mapResource.K1 undefined (type []*nestedobject.Target has no field or method K1)", //nolint:lll
 	"l3-range-bool-ref": "fails with syntax errors: index < createBool (mismatched types int and bool)",

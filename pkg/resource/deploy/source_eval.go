@@ -103,6 +103,10 @@ type EvalSourceOptions struct {
 	DisableResourceReferences bool
 	// true to disable output value support.
 	DisableOutputValues bool
+	// true to disable advertising the DEPENDENCIES_FROM_INPUTS feature. When advertised, SDKs may omit the flat
+	// `dependencies` and `propertyDependencies` fields on RegisterResourceRequest and rely on the engine to
+	// reconstruct them from Output property values embedded in the inputs.
+	DisableDependenciesFromInputs bool
 	// true if this deployment can safely execute and persist state migrations.
 	SupportsStateMigrations bool
 	// AttachDebugger is the list of things to debug.  This can be "program", "all", "plugins", or "plugin:<plugin-name>".
@@ -1033,6 +1037,10 @@ func (rm *resmon) supportedMonitorFeatures() []pulumirpc.ResourceMonitorFeature 
 	}
 	if rm.opts.SupportsStateMigrations {
 		features = append(features, pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_STATE_MIGRATIONS)
+	}
+	if !rm.opts.DisableDependenciesFromInputs {
+		features = append(features,
+			pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_DEPENDENCIES_FROM_INPUTS)
 	}
 	return append(features,
 		pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_BYTE_STRING,
@@ -2417,8 +2425,10 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		// If this request did not specify property dependencies, treat each property as depending on every resource
 		// in the request's dependency list. We don't need to do this when remote is true, because all clients that
 		// support remote already support passing property dependencies, so there's no need to backfill here.
+		// Clone so downstream code that mutates per-property sets (e.g., merging Output-value dependencies) does
+		// not accidentally leak dependencies across every property via a shared set instance.
 		for pk := range props {
-			propertyDependencies[pk] = dependencies
+			propertyDependencies[pk] = dependencies.Clone()
 		}
 	} else {
 		// Otherwise, unmarshal the per-property dependency information.
@@ -2686,12 +2696,16 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		}
 	} else {
 		// If we ran transforms we would have merged all the dependencies togther already, but if we didn't we want to
-		// ensure any output values add their dependencies to the dependencies map we send to the provider.
+		// ensure any output values add their dependencies to the dependencies map we send to the provider and to the
+		// overall dependencies list we persist to state. This is the path that supports SDKs advertising the
+		// DEPENDENCIES_FROM_INPUTS feature: they may omit the flat `dependencies` and `propertyDependencies` fields
+		// and rely on this reconstruction from Output property values.
 		for key, output := range props {
 			if propertyDependencies[key] == nil {
 				propertyDependencies[key] = mapset.NewSet[resource.URN]()
 			}
 			addOutputDependencies(propertyDependencies[key], output)
+			dependencies = dependencies.Union(propertyDependencies[key])
 		}
 	}
 

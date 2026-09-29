@@ -107,6 +107,7 @@ var expectedFailures = map[string]string{
 	"l3-component-primitive-conversions": "primitive conversions accepted by PCL bind, but not lowered correctly by SDK generators", //nolint:lll
 	"l2-resource-schema-secret":          "does not preserve schema-secret unknown outputs",
 	"l2-raw-string-bytes":                "the Python SDK does not set accepts_byte_string: strings containing non-UTF8 bytes cannot be received from the engine", //nolint:lll
+	"l2-dependencies-from-inputs":        "the Python SDK does not yet participate in the DEPENDENCIES_FROM_INPUTS wire format",
 }
 
 type languageTestConfig struct {
