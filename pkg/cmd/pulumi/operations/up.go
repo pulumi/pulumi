@@ -287,6 +287,8 @@ func NewUpCmd() *cobra.Command {
 			maps.Copy(m.Environment, metadata)
 		}
 
+		opts.StackOperationOverrides = stackOperationOverrides(cmd, proj, opts.Engine)
+
 		changes, err := backend.UpdateStack(ctx, s, backend.UpdateOperation{
 			Proj:               proj,
 			Root:               root,
@@ -559,6 +561,8 @@ func NewUpCmd() *cobra.Command {
 		// - suppress preview display/prompt unless error.
 		// - attempt `destroy` on any update errors.
 		// - show template.Quickstart?
+
+		opts.StackOperationOverrides = stackOperationOverrides(cmd, proj, opts.Engine)
 
 		changes, err := backend.UpdateStack(ctx, s, backend.UpdateOperation{
 			Proj:               proj,

@@ -360,6 +360,8 @@ type LatestConfiguration struct {
 type UpdateOptions struct {
 	// Engine contains all of the engine-specific options.
 	Engine engine.UpdateOptions
+	// StackOperationOverrides enables Cloud stack defaults like refresh or run-program.
+	StackOperationOverrides *apitype.StackOperationDefaults
 	// Display contains all of the backend display options.
 	Display display.Options
 

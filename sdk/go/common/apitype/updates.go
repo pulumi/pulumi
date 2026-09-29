@@ -96,6 +96,15 @@ type AISettingsForUpdate struct {
 	CopilotIsEnabled bool `json:"copilotIsEnabled"`
 }
 
+// StackOperationDefaults contains optional defaults for operations on a stack.
+// Explicit local options take precedence; nil fields leave local defaults unchanged.
+type StackOperationDefaults struct {
+	Refresh         *bool `json:"refresh,omitempty"`
+	ContinueOnError *bool `json:"continueOnError,omitempty"`
+	RunProgram      *bool `json:"runProgram,omitempty"`
+	Parallel        *int  `json:"parallel,omitempty"`
+}
+
 // UpdateProgramResponse is the result of an update program request.
 type UpdateProgramResponse struct {
 	// UpdateID is the opaque identifier of the requested update. This value is needed to begin an update, as
@@ -109,6 +118,8 @@ type UpdateProgramResponse struct {
 	Messages []Message `json:"messages,omitempty"`
 
 	AISettings AISettingsForUpdate `json:"aiSettings,omitempty"`
+
+	StackOperationDefaults StackOperationDefaults `json:"stackOperationDefaults,omitempty"`
 }
 
 // LatestJournalVersion is the maximum journal version supported by this version of the code. Version 1 is the

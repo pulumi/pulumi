@@ -352,6 +352,8 @@ func NewRefreshCmd() *cobra.Command {
 				SkipPluginPreInstall:      skipPluginPreInstall,
 			}
 
+			opts.StackOperationOverrides = stackOperationOverrides(cmd, proj, opts.Engine)
+
 			changes, err := backend.RefreshStack(ctx, s, backend.UpdateOperation{
 				Proj:               proj,
 				Root:               root,

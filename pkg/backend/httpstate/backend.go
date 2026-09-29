@@ -1823,6 +1823,7 @@ func (b *cloudBackend) createAndStartUpdate(
 	var requiredPolicies []apitype.RequiredPolicy
 	var messages []apitype.Message
 	var isNeoIntegrationEnabled bool
+	var stackDefaults apitype.StackOperationDefaults
 
 	if b.Capabilities(ctx).BeginUpdate && os.Getenv("PULUMI_DISABLE_BEGIN_UPDATE") != "true" {
 		logging.V(7).Infof("Using combined begin-update endpoint for %s", stackRef)
@@ -1848,6 +1849,7 @@ func (b *cloudBackend) createAndStartUpdate(
 		requiredPolicies = resp.RequiredPolicies
 		messages = resp.Messages
 		isNeoIntegrationEnabled = resp.AISettings.CopilotIsEnabled
+		stackDefaults = resp.StackOperationDefaults
 
 		// Cache the deployment, stack tags, and stack for later use.
 		b.cachedUpdateData = &cachedUpdateData{
@@ -1864,6 +1866,7 @@ func (b *cloudBackend) createAndStartUpdate(
 			return client.UpdateIdentifier{}, updateMetadata{}, err
 		}
 
+		stackDefaults = updateDetails.StackOperationDefaults
 		requiredPolicies = updateDetails.RequiredPolicies
 		messages = updateDetails.Messages
 		isNeoIntegrationEnabled = updateDetails.IsNeoIntegrationEnabled
@@ -1894,6 +1897,8 @@ func (b *cloudBackend) createAndStartUpdate(
 		op.Opts.Engine.RequiredPolicies = append(
 			op.Opts.Engine.RequiredPolicies, newCloudRequiredPolicy(b.client, b, policy, update.Owner))
 	}
+
+	applyStackOperationDefaults(action, &op.Opts, stackDefaults)
 
 	// Provide ESC environment resolver for local policy packs.
 	op.Opts.Engine.PolicyEnvResolver = NewLocalPolicyEnvironmentResolver(b, update.Owner)

@@ -1508,6 +1508,7 @@ type CreateUpdateDetails struct {
 	Messages                []apitype.Message
 	RequiredPolicies        []apitype.RequiredPolicy
 	IsNeoIntegrationEnabled bool
+	StackOperationDefaults  apitype.StackOperationDefaults
 }
 
 // CreateUpdate creates a new update for the indicated stack with the given kind and assorted options. If the update
@@ -1585,6 +1586,7 @@ func (pc *Client) CreateUpdate(
 			Messages:                updateResponse.Messages,
 			RequiredPolicies:        updateResponse.RequiredPolicies,
 			IsNeoIntegrationEnabled: updateResponse.AISettings.CopilotIsEnabled,
+			StackOperationDefaults:  updateResponse.StackOperationDefaults,
 		}, nil
 }
 

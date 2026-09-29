@@ -1,0 +1,4 @@
+component: cli
+kind: feat
+body: Use operation settings provided by Pulumi Cloud
+time: 2026-09-28T14:38:20.222743+00:00

@@ -612,6 +612,8 @@ func NewPreviewCmd() *cobra.Command {
 				maps.Copy(m.Environment, metadata)
 			}
 
+			opts.StackOperationOverrides = stackOperationOverrides(cmd, proj, opts.Engine)
+
 			plan, changes, res := backend.PreviewStack(ctx, s, backend.UpdateOperation{
 				Proj:               proj,
 				Root:               root,

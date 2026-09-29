@@ -362,6 +362,8 @@ func NewDestroyCmd() *cobra.Command {
 				SkipPluginPreInstall:      skipPluginPreInstall,
 			}
 
+			opts.StackOperationOverrides = stackOperationOverrides(cmd, proj, opts.Engine)
+
 			_, destroyErr := backend.DestroyStack(ctx, s, backend.UpdateOperation{
 				Proj:               proj,
 				Root:               root,
