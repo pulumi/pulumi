@@ -22,7 +22,7 @@ import (
 )
 
 // This test pins the desired invoke-dependency semantics: a consumer of an invoke's return value
-// must depend on the union of every resource that fed the invoke's args. 
+// must depend on the union of every resource that fed the invoke's args.
 func init() {
 	LanguageTests["l2-invoke-union-dependencies"] = LanguageTest{
 		Providers: []func() plugin.Provider{
