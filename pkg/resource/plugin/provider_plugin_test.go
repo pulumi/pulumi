@@ -350,8 +350,8 @@ func TestProvider_DeleteRequests(t *testing.T) {
 			give: DeleteRequest{
 				ID:  id,
 				URN: urn,
-				Inputs: resource.FromResourcePropertyMap(resource.PropertyMap{
-					"foo": resource.NewProperty("bar"),
+				Inputs: property.NewMap(map[string]property.Value{
+					"foo": property.New("bar"),
 				}),
 				Outputs: property.Map{},
 			},
@@ -374,8 +374,8 @@ func TestProvider_DeleteRequests(t *testing.T) {
 				ID:     id,
 				URN:    urn,
 				Inputs: property.Map{},
-				Outputs: resource.FromResourcePropertyMap(resource.PropertyMap{
-					"baz": resource.NewProperty("quux"),
+				Outputs: property.NewMap(map[string]property.Value{
+					"baz": property.New("quux"),
 				}),
 			},
 			want: &pulumirpc.DeleteRequest{
@@ -415,11 +415,11 @@ func TestProvider_DeleteRequests(t *testing.T) {
 			give: DeleteRequest{
 				ID:  id,
 				URN: urn,
-				Inputs: resource.FromResourcePropertyMap(resource.PropertyMap{
-					"foo": resource.NewProperty("bar"),
+				Inputs: property.NewMap(map[string]property.Value{
+					"foo": property.New("bar"),
 				}),
-				Outputs: resource.FromResourcePropertyMap(resource.PropertyMap{
-					"baz": resource.NewProperty("quux"),
+				Outputs: property.NewMap(map[string]property.Value{
+					"baz": property.New("quux"),
 				}),
 				Timeout: 30,
 			},
