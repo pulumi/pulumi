@@ -1248,9 +1248,9 @@ func TestErrorHooks_RetryLimitWarningAt100_Create(t *testing.T) {
 		require.Len(t, updateReqs, 99)
 		for i, req := range updateReqs {
 			require.Equal(t, resource.ID("partial-id-resA"), req.ID)
-			require.Equal(t, resource.NewPropertyMapFromMap(map[string]any{"v": "a"}), req.OldInputs)
-			require.Equal(t, resource.NewPropertyMapFromMap(map[string]any{"v": "a"}), req.NewInputs)
-			require.Equal(t, resource.PropertyMap{"attempt": resource.NewProperty(float64(i))}, req.OldOutputs)
+			require.Equal(t, property.NewMap(map[string]property.Value{"v": property.New("a")}), req.OldInputs)
+			require.Equal(t, property.NewMap(map[string]property.Value{"v": property.New("a")}), req.NewInputs)
+			require.Equal(t, property.NewMap(map[string]property.Value{"attempt": property.New(float64(i))}), req.OldOutputs)
 		}
 		require.Equal(t, 99, hookCalls)
 
@@ -2176,8 +2176,8 @@ func TestErrorHooks_RetryAfterInitErrorUpdatesInsteadOfCreating(t *testing.T) {
 	require.Empty(t, hookOldOutputs)
 	require.Len(t, updateReqs, 1)
 	require.Equal(t, resource.ID("created-id"), updateReqs[0].ID)
-	require.Equal(t, resource.NewPropertyMapFromMap(map[string]any{"v": "a"}), updateReqs[0].OldInputs)
-	require.Equal(t, resource.PropertyMap{"out": resource.NewProperty("partial")}, updateReqs[0].OldOutputs)
+	require.Equal(t, property.NewMap(map[string]property.Value{"v": property.New("a")}), updateReqs[0].OldInputs)
+	require.Equal(t, property.NewMap(map[string]property.Value{"out": property.New("partial")}), updateReqs[0].OldOutputs)
 
 	require.Len(t, snap.Resources, 2)
 	res := snap.Resources[1]
