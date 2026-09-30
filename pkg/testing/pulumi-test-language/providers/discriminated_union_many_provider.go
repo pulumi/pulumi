@@ -220,10 +220,11 @@ func (p *DiscriminatedUnionManyProvider) Check(
 func (p *DiscriminatedUnionManyProvider) Create(
 	_ context.Context, req plugin.CreateRequest,
 ) (plugin.CreateResponse, error) {
+	properties := resource.ToResourcePropertyMap(req.Properties)
 	if p.isKnownType(req.URN.Type()) {
 		return plugin.CreateResponse{
 			ID:         resource.ID("new-resource-id"),
-			Properties: req.Properties,
+			Properties: resource.FromResourcePropertyMap(properties),
 			Status:     resource.StatusOK,
 		}, nil
 	}

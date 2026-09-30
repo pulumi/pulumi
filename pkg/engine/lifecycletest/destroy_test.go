@@ -36,6 +36,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
@@ -73,18 +74,18 @@ func TestDestroyWithProgram(t *testing.T) {
 					}
 
 					if req.Name == "resA" || req.Name == "resB" {
-						assert.Equal(t, programInputs, req.Properties)
+						assert.Equal(t, programInputs, resource.ToResourcePropertyMap(req.Properties))
 
 						return plugin.CreateResponse{
 							ID:         resource.ID(uuid.String()),
-							Properties: createOutputs,
+							Properties: resource.FromResourcePropertyMap(createOutputs),
 							Status:     resource.StatusOK,
 						}, nil
 					}
 
 					return plugin.CreateResponse{
 						ID:         resource.ID(uuid.String()),
-						Properties: resource.PropertyMap{},
+						Properties: property.Map{},
 						Status:     resource.StatusOK,
 					}, nil
 				},
@@ -181,18 +182,18 @@ func TestTargetedDestroyWithProgram(t *testing.T) {
 					}
 
 					if req.Name == "resA" || req.Name == "resB" {
-						assert.Equal(t, programInputs, req.Properties)
+						assert.Equal(t, programInputs, resource.ToResourcePropertyMap(req.Properties))
 
 						return plugin.CreateResponse{
 							ID:         resource.ID(uuid.String()),
-							Properties: createOutputs,
+							Properties: resource.FromResourcePropertyMap(createOutputs),
 							Status:     resource.StatusOK,
 						}, nil
 					}
 
 					return plugin.CreateResponse{
 						ID:         resource.ID(uuid.String()),
-						Properties: resource.PropertyMap{},
+						Properties: property.Map{},
 						Status:     resource.StatusOK,
 					}, nil
 				},
@@ -289,18 +290,18 @@ func TestProviderUpdateDestroyWithProgram(t *testing.T) {
 					}
 
 					if req.Name == "resA" || req.Name == "resB" {
-						assert.Equal(t, programInputs, req.Properties)
+						assert.Equal(t, programInputs, resource.ToResourcePropertyMap(req.Properties))
 
 						return plugin.CreateResponse{
 							ID:         resource.ID(uuid.String()),
-							Properties: createOutputs,
+							Properties: resource.FromResourcePropertyMap(createOutputs),
 							Status:     resource.StatusOK,
 						}, nil
 					}
 
 					return plugin.CreateResponse{
 						ID:         resource.ID(uuid.String()),
-						Properties: resource.PropertyMap{},
+						Properties: property.Map{},
 						Status:     resource.StatusOK,
 					}, nil
 				},
@@ -407,18 +408,18 @@ func TestExplicitProviderUpdateDestroyWithProgram(t *testing.T) {
 					}
 
 					if req.Name == "resA" || req.Name == "resB" {
-						assert.Equal(t, programInputs, req.Properties)
+						assert.Equal(t, programInputs, resource.ToResourcePropertyMap(req.Properties))
 
 						return plugin.CreateResponse{
 							ID:         resource.ID(uuid.String()),
-							Properties: createOutputs,
+							Properties: resource.FromResourcePropertyMap(createOutputs),
 							Status:     resource.StatusOK,
 						}, nil
 					}
 
 					return plugin.CreateResponse{
 						ID:         resource.ID(uuid.String()),
-						Properties: resource.PropertyMap{},
+						Properties: property.Map{},
 						Status:     resource.StatusOK,
 					}, nil
 				},
@@ -547,18 +548,18 @@ func TestDestroyWithProgramWithComponents(t *testing.T) {
 					}
 
 					if req.Name == "resA" || req.Name == "resB" {
-						assert.Equal(t, programInputs, req.Properties)
+						assert.Equal(t, programInputs, resource.ToResourcePropertyMap(req.Properties))
 
 						return plugin.CreateResponse{
 							ID:         resource.ID(uuid.String()),
-							Properties: createOutputs,
+							Properties: resource.FromResourcePropertyMap(createOutputs),
 							Status:     resource.StatusOK,
 						}, nil
 					}
 
 					return plugin.CreateResponse{
 						ID:         resource.ID(uuid.String()),
-						Properties: resource.PropertyMap{},
+						Properties: property.Map{},
 						Status:     resource.StatusOK,
 					}, nil
 				},
@@ -646,11 +647,11 @@ func TestDestroyWithProgramWithSkippedComponents(t *testing.T) {
 					}
 
 					if req.Name == "resA" {
-						assert.Equal(t, programInputs, req.Properties)
+						assert.Equal(t, programInputs, resource.ToResourcePropertyMap(req.Properties))
 
 						return plugin.CreateResponse{
 							ID:         resource.ID(uuid.String()),
-							Properties: createOutputs,
+							Properties: resource.FromResourcePropertyMap(createOutputs),
 							Status:     resource.StatusOK,
 						}, nil
 					}
@@ -761,11 +762,11 @@ func TestDestroyWithProgramWithSkippedAlias(t *testing.T) {
 					}
 
 					if req.Name == "resA" {
-						assert.Equal(t, programInputs, req.Properties)
+						assert.Equal(t, programInputs, resource.ToResourcePropertyMap(req.Properties))
 
 						return plugin.CreateResponse{
 							ID:         resource.ID(uuid.String()),
-							Properties: createOutputs,
+							Properties: resource.FromResourcePropertyMap(createOutputs),
 							Status:     resource.StatusOK,
 						}, nil
 					}
@@ -883,11 +884,11 @@ func TestDestroyWithProgramResourceRead(t *testing.T) {
 					}
 
 					if req.Name == "resB" {
-						assert.Equal(t, programInputs, req.Properties)
+						assert.Equal(t, programInputs, resource.ToResourcePropertyMap(req.Properties))
 
 						return plugin.CreateResponse{
 							ID:         resource.ID(uuid.String()),
-							Properties: createOutputs,
+							Properties: resource.FromResourcePropertyMap(createOutputs),
 							Status:     resource.StatusOK,
 						}, nil
 					}

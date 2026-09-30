@@ -1083,7 +1083,7 @@ func TestPlannedInputOutputDifferences(t *testing.T) {
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 					return plugin.CreateResponse{
 						ID:         resource.ID("created-id-" + req.URN.Name()),
-						Properties: createOutputs,
+						Properties: resource.FromResourcePropertyMap(createOutputs),
 						Status:     resource.StatusOK,
 					}, nil
 				},

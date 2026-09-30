@@ -287,6 +287,7 @@ func (p *DocsProvider) Check(
 func (p *DocsProvider) Create(
 	_ context.Context, req plugin.CreateRequest,
 ) (plugin.CreateResponse, error) {
+	inputs := resource.ToResourcePropertyMap(req.Properties)
 	// URN should be of the form "docs:index:Resource"
 	if req.URN.Type() != "docs:index:Resource" {
 		return plugin.CreateResponse{
@@ -300,19 +301,19 @@ func (p *DocsProvider) Create(
 	}
 
 	properties := resource.NewPropertyMapFromMap(map[string]any{
-		"in":  req.Properties["in"],
-		"out": !req.Properties["in"].BoolValue(),
+		"in":  inputs["in"],
+		"out": !inputs["in"].BoolValue(),
 		"data": map[string]any{
 			"state": "internal data",
 		},
 	})
-	if externalEnum, ok := req.Properties["externalEnum"]; ok {
+	if externalEnum, ok := inputs["externalEnum"]; ok {
 		properties["externalEnum"] = externalEnum
 	}
 
 	return plugin.CreateResponse{
 		ID:         resource.ID(id),
-		Properties: properties,
+		Properties: resource.FromResourcePropertyMap(properties),
 		Status:     resource.StatusOK,
 	}, nil
 }

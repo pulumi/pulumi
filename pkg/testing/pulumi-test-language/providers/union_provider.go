@@ -213,6 +213,7 @@ func (p *UnionProvider) Check(
 func (p *UnionProvider) Create(
 	_ context.Context, req plugin.CreateRequest,
 ) (plugin.CreateResponse, error) {
+	properties := resource.ToResourcePropertyMap(req.Properties)
 	urnType := string(req.URN.Type())
 	exampleType := fmt.Sprintf("%s:index:Example", p.pkg())
 	enumOutputType := fmt.Sprintf("%s:index:EnumOutput", p.pkg())
@@ -220,16 +221,16 @@ func (p *UnionProvider) Create(
 	if urnType == exampleType {
 		return plugin.CreateResponse{
 			ID:         resource.ID("new-resource-id"),
-			Properties: req.Properties,
+			Properties: resource.FromResourcePropertyMap(properties),
 			Status:     resource.StatusOK,
 		}, nil
 	}
 	if urnType == enumOutputType {
-		outputs := req.Properties.Copy()
+		outputs := properties.Copy()
 		outputs["type"] = resource.NewProperty("Block")
 		return plugin.CreateResponse{
 			ID:         resource.ID("enum-output-id"),
-			Properties: outputs,
+			Properties: resource.FromResourcePropertyMap(outputs),
 			Status:     resource.StatusOK,
 		}, nil
 	}

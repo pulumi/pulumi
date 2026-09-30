@@ -32,6 +32,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"github.com/stretchr/testify/require"
 )
@@ -55,7 +56,7 @@ func TestErrorHooks_OperationIdentifierAndMultipleHooks_Create(t *testing.T) {
 					}
 					return plugin.CreateResponse{
 						ID:         resource.ID("created-id-" + req.URN.Name()),
-						Properties: resource.PropertyMap{},
+						Properties: property.Map{},
 						Status:     resource.StatusOK,
 					}, nil
 				},
@@ -139,7 +140,7 @@ func TestErrorHooks_OperationIdentifierAndMultipleHooks_Update(t *testing.T) {
 			updateCalls := 0
 			return &deploytest.Provider{
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
-					return plugin.CreateResponse{ID: "id", Properties: resource.PropertyMap{}, Status: resource.StatusOK}, nil
+					return plugin.CreateResponse{ID: "id", Properties: property.Map{}, Status: resource.StatusOK}, nil
 				},
 				UpdateF: func(_ context.Context, req plugin.UpdateRequest) (plugin.UpdateResponse, error) {
 					updateCalls++
@@ -331,7 +332,7 @@ func TestErrorHooks_OperationIdentifierAndMultipleHooks_Delete(t *testing.T) {
 			deleteCalls := 0
 			return &deploytest.Provider{
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
-					return plugin.CreateResponse{ID: "id", Properties: resource.PropertyMap{}, Status: resource.StatusOK}, nil
+					return plugin.CreateResponse{ID: "id", Properties: property.Map{}, Status: resource.StatusOK}, nil
 				},
 				DeleteF: func(_ context.Context, req plugin.DeleteRequest) (plugin.DeleteResponse, error) {
 					deleteCalls++
@@ -442,7 +443,7 @@ func TestErrorHooks_RetrySemanticsAndNoRetryWhenNoHooks_Create_RetryIfAnyHookRet
 							Status: resource.StatusPartialFailure,
 						}, errors.New("create failed")
 					}
-					return plugin.CreateResponse{ID: "id", Properties: resource.PropertyMap{}, Status: resource.StatusOK}, nil
+					return plugin.CreateResponse{ID: "id", Properties: property.Map{}, Status: resource.StatusOK}, nil
 				},
 			}, nil
 		}),
@@ -508,7 +509,7 @@ func TestErrorHooks_RetrySemanticsAndNoRetryWhenNoHooks_Create_NoRetryWhenNoHook
 							Status: resource.StatusPartialFailure,
 						}, errors.New("create failed")
 					}
-					return plugin.CreateResponse{ID: "id", Properties: resource.PropertyMap{}, Status: resource.StatusOK}, nil
+					return plugin.CreateResponse{ID: "id", Properties: property.Map{}, Status: resource.StatusOK}, nil
 				},
 			}, nil
 		}),
@@ -706,7 +707,7 @@ func TestErrorHooks_RetrySemanticsAndNoRetryWhenNoHooks_Delete_RetryIfAnyHookRet
 
 			return &deploytest.Provider{
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
-					return plugin.CreateResponse{ID: "id", Properties: resource.PropertyMap{}, Status: resource.StatusOK}, nil
+					return plugin.CreateResponse{ID: "id", Properties: property.Map{}, Status: resource.StatusOK}, nil
 				},
 				DeleteF: func(_ context.Context, req plugin.DeleteRequest) (plugin.DeleteResponse, error) {
 					deleteCalls++
@@ -778,7 +779,7 @@ func TestErrorHooks_RetrySemanticsAndNoRetryWhenNoHooks_Delete_NoRetryWhenNoHook
 
 			return &deploytest.Provider{
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
-					return plugin.CreateResponse{ID: "id", Properties: resource.PropertyMap{}, Status: resource.StatusOK}, nil
+					return plugin.CreateResponse{ID: "id", Properties: property.Map{}, Status: resource.StatusOK}, nil
 				},
 				DeleteF: func(_ context.Context, req plugin.DeleteRequest) (plugin.DeleteResponse, error) {
 					deleteCalls++
@@ -903,7 +904,7 @@ func TestErrorHooks_NoRetryIfAllHooksReturnFalse_Update(t *testing.T) {
 					if req.Preview {
 						return plugin.CreateResponse{Status: resource.StatusOK}, nil
 					}
-					return plugin.CreateResponse{ID: "id", Properties: resource.PropertyMap{}, Status: resource.StatusOK}, nil
+					return plugin.CreateResponse{ID: "id", Properties: property.Map{}, Status: resource.StatusOK}, nil
 				},
 				UpdateF: func(_ context.Context, req plugin.UpdateRequest) (plugin.UpdateResponse, error) {
 					if req.Preview {
@@ -977,7 +978,7 @@ func TestErrorHooks_NoRetryIfAllHooksReturnFalse_Delete(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
-					return plugin.CreateResponse{ID: "id", Properties: resource.PropertyMap{}, Status: resource.StatusOK}, nil
+					return plugin.CreateResponse{ID: "id", Properties: property.Map{}, Status: resource.StatusOK}, nil
 				},
 				DeleteF: func(_ context.Context, req plugin.DeleteRequest) (plugin.DeleteResponse, error) {
 					return plugin.DeleteResponse{Status: resource.StatusPartialFailure}, errors.New("delete failed")
@@ -1041,7 +1042,7 @@ func TestErrorHooks_NotCalledOnSuccess_Update(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
-					return plugin.CreateResponse{ID: "id", Properties: resource.PropertyMap{}, Status: resource.StatusOK}, nil
+					return plugin.CreateResponse{ID: "id", Properties: property.Map{}, Status: resource.StatusOK}, nil
 				},
 				UpdateF: func(_ context.Context, req plugin.UpdateRequest) (plugin.UpdateResponse, error) {
 					return plugin.UpdateResponse{Properties: req.NewInputs, Status: resource.StatusOK}, nil
@@ -1111,7 +1112,7 @@ func TestErrorHooks_NotCalledOnSuccess_Delete(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
-					return plugin.CreateResponse{ID: "id", Properties: resource.PropertyMap{}, Status: resource.StatusOK}, nil
+					return plugin.CreateResponse{ID: "id", Properties: property.Map{}, Status: resource.StatusOK}, nil
 				},
 				DeleteF: func(_ context.Context, req plugin.DeleteRequest) (plugin.DeleteResponse, error) {
 					return plugin.DeleteResponse{Status: resource.StatusOK}, nil
@@ -1185,7 +1186,7 @@ func TestErrorHooks_RetryLimitWarningAt100_Create(t *testing.T) {
 					createCalls++
 					return plugin.CreateResponse{
 						ID:         resource.ID("partial-id-" + req.URN.Name()),
-						Properties: resource.PropertyMap{"attempt": resource.NewProperty(0.0)},
+						Properties: property.NewMap(map[string]property.Value{"attempt": property.New(0.0)}),
 						Status:     resource.StatusPartialFailure,
 					}, errors.New("create failed")
 				},
@@ -1280,7 +1281,7 @@ func TestErrorHooks_RetryLimitWarningAt100_Update(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
-					return plugin.CreateResponse{ID: "id", Properties: resource.PropertyMap{}, Status: resource.StatusOK}, nil
+					return plugin.CreateResponse{ID: "id", Properties: property.Map{}, Status: resource.StatusOK}, nil
 				},
 				UpdateF: func(_ context.Context, req plugin.UpdateRequest) (plugin.UpdateResponse, error) {
 					if req.Preview {
@@ -1390,7 +1391,7 @@ func TestErrorHooks_RetryLimitWarningAt100_Delete(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
-					return plugin.CreateResponse{ID: "id", Properties: resource.PropertyMap{}, Status: resource.StatusOK}, nil
+					return plugin.CreateResponse{ID: "id", Properties: property.Map{}, Status: resource.StatusOK}, nil
 				},
 				DeleteF: func(_ context.Context, req plugin.DeleteRequest) (plugin.DeleteResponse, error) {
 					deleteCalls++
@@ -1565,7 +1566,7 @@ func TestErrorHooks_RetryThenNoRetry_OperationFails_Update(t *testing.T) {
 			updateCalls := 0
 			return &deploytest.Provider{
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
-					return plugin.CreateResponse{ID: "id", Properties: resource.PropertyMap{}, Status: resource.StatusOK}, nil
+					return plugin.CreateResponse{ID: "id", Properties: property.Map{}, Status: resource.StatusOK}, nil
 				},
 				UpdateF: func(_ context.Context, req plugin.UpdateRequest) (plugin.UpdateResponse, error) {
 					if req.Preview {
@@ -1647,7 +1648,7 @@ func TestErrorHooks_RetryThenNoRetry_OperationFails_Delete(t *testing.T) {
 			deleteCalls := 0
 			return &deploytest.Provider{
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
-					return plugin.CreateResponse{ID: "id", Properties: resource.PropertyMap{}, Status: resource.StatusOK}, nil
+					return plugin.CreateResponse{ID: "id", Properties: property.Map{}, Status: resource.StatusOK}, nil
 				},
 				DeleteF: func(_ context.Context, req plugin.DeleteRequest) (plugin.DeleteResponse, error) {
 					deleteCalls++
@@ -1746,7 +1747,7 @@ func TestErrorHooks_IndependentPerResource_Create(t *testing.T) {
 					}
 					return plugin.CreateResponse{
 						ID:         resource.ID("id-" + req.URN.Name()),
-						Properties: resource.PropertyMap{},
+						Properties: property.Map{},
 						Status:     resource.StatusOK,
 					}, nil
 				},
@@ -1838,7 +1839,7 @@ func TestErrorHooks_IndependentPerResource_Update(t *testing.T) {
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 					return plugin.CreateResponse{
 						ID:         resource.ID("id-" + req.URN.Name()),
-						Properties: resource.PropertyMap{},
+						Properties: property.Map{},
 						Status:     resource.StatusOK,
 					}, nil
 				},
@@ -1946,7 +1947,7 @@ func TestErrorHooks_IndependentPerResource_Delete(t *testing.T) {
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 					return plugin.CreateResponse{
 						ID:         resource.ID("id-" + req.URN.Name()),
-						Properties: resource.PropertyMap{},
+						Properties: property.Map{},
 						Status:     resource.StatusOK,
 					}, nil
 				},
@@ -2111,7 +2112,7 @@ func TestErrorHooks_RetryAfterInitErrorUpdatesInsteadOfCreating(t *testing.T) {
 					createCalls++
 					return plugin.CreateResponse{
 						ID:         "created-id",
-						Properties: resource.PropertyMap{"out": resource.NewProperty("partial")},
+						Properties: property.NewMap(map[string]property.Value{"out": property.New("partial")}),
 						Status:     resource.StatusPartialFailure,
 					}, &plugin.InitError{Reasons: []string{"not ready"}}
 				},

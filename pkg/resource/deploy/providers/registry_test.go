@@ -345,14 +345,14 @@ func TestCRUD(t *testing.T) {
 			URN:        urn,
 			Name:       urn.Name(),
 			Type:       urn.Type(),
-			Properties: resource.ToResourcePropertyMap(check.Properties),
+			Properties: check.Properties,
 			Timeout:    timeout,
 		})
 		require.NoError(t, err)
 		assert.NotEqual(t, "", create.ID)
 		assert.NotEqual(t, UnconfiguredID, create.ID)
 		assert.NotEqual(t, UnknownID, create.ID)
-		assert.Equal(t, resource.PropertyMap{}, create.Properties)
+		assert.Equal(t, property.Map{}, create.Properties)
 		assert.Equal(t, resource.StatusOK, create.Status)
 
 		p2, ok := r.GetProvider(mustNewReference(urn, create.ID))
@@ -1066,7 +1066,7 @@ func TestEnvironmentVariableMappings(t *testing.T) {
 		// Check should succeed and preserve the mappings
 		check, err := r.Check(t.Context(), plugin.CheckRequest{
 			URN:       urn,
-			OldInputs: resource.FromResourcePropertyMap(resource.PropertyMap{}),
+			OldInputs: property.Map{},
 			NewInputs: resource.FromResourcePropertyMap(news),
 		})
 		require.NoError(t, err)
@@ -1100,7 +1100,7 @@ func TestEnvironmentVariableMappings(t *testing.T) {
 		// Call Check first
 		check, err := r.Check(t.Context(), plugin.CheckRequest{
 			URN:       urn,
-			OldInputs: resource.FromResourcePropertyMap(resource.PropertyMap{}),
+			OldInputs: property.Map{},
 			NewInputs: resource.FromResourcePropertyMap(inputs),
 		})
 		require.NoError(t, err)
@@ -1109,7 +1109,7 @@ func TestEnvironmentVariableMappings(t *testing.T) {
 			URN:        urn,
 			Name:       urn.Name(),
 			Type:       urn.Type(),
-			Properties: resource.ToResourcePropertyMap(check.Properties),
+			Properties: check.Properties,
 			Timeout:    120,
 		})
 		require.NoError(t, err)
@@ -1165,7 +1165,7 @@ func TestEnvMappingsPassedToHost(t *testing.T) {
 	// Load the provider and pass env to host
 	_, err := r.Check(t.Context(), plugin.CheckRequest{
 		URN:       urn,
-		OldInputs: resource.FromResourcePropertyMap(resource.PropertyMap{}),
+		OldInputs: property.Map{},
 		NewInputs: resource.FromResourcePropertyMap(inputs),
 	})
 	require.NoError(t, err)
