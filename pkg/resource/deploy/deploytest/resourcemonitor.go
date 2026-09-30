@@ -449,6 +449,11 @@ type ResourceOptions struct {
 	DisableResourceReferences bool
 	GrpcRequestHeaders        map[string]string
 
+	// KeepOutputValues, if set, preserves Output property values on the marshalled inputs sent to the resource
+	// monitor. Real SDKs only do this for remote (component) resources today, but the test harness allows it for
+	// custom resources too so we can exercise engine paths that handle unusual SDK behaviour.
+	KeepOutputValues bool
+
 	Transforms           []*pulumirpc.Callback
 	StateMigrations      []*pulumirpc.Callback
 	ResourceHookBindings ResourceHookBindings
@@ -495,7 +500,7 @@ func (rm *ResourceMonitor) RegisterResource(t tokens.Type, name string, custom b
 		KeepUnknowns:     true,
 		KeepSecrets:      rm.supportsSecrets,
 		KeepResources:    rm.supportsResourceReferences,
-		KeepOutputValues: opts.Remote,
+		KeepOutputValues: opts.Remote || opts.KeepOutputValues,
 		KeepByteString:   true,
 	})
 	if err != nil {
