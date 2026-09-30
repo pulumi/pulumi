@@ -71,7 +71,7 @@ func TestRefreshBeforeUpdate(t *testing.T) {
 					assert.Equal(t, fmt.Sprintf("<FRESH-INPUT-%d>", readToken), oldInputs["input"].StringValue())
 					assert.Equal(t, fmt.Sprintf("<FRESH-RESULT-%d>", readToken), oldOutputs["result"].StringValue())
 
-					props := resource.ToResourcePropertyMap(req.NewInputs).Copy()
+					props := resource.ToResourcePropertyMap(req.NewInputs)
 					props["result"] = props["input"]
 					return plugin.UpdateResponse{
 						Properties:          resource.FromResourcePropertyMap(props),
