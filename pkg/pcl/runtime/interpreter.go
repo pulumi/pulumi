@@ -18,6 +18,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 	"maps"
 	"os/exec"
 	"sort"
@@ -1030,23 +1031,23 @@ func unwrapOutputs(value resource.PropertyValue) (resource.PropertyValue, []reso
 // reference map the resource monitor expects. The option may be written either as an array of
 // provider resources, in which case each provider's package is taken from its URN, or as a map from
 // package name to provider resource.
-func providerReferences(providers resource.PropertyValue) (map[string]string, error) {
-	reference := func(v resource.PropertyValue) (string, string, error) {
+func providerReferences(providers property.Value) (map[string]string, error) {
+	reference := func(v property.Value) (string, string, error) {
 		urn, id, err := unwrapResource(v)
 		if err != nil {
 			return "", "", fmt.Errorf("providers: %w", err)
 		}
 		idstr := plugin.UnknownStringValue
 		if id.IsString() {
-			idstr = id.StringValue()
+			idstr = id.AsString()
 		}
 		return urn, fmt.Sprintf("%s::%s", urn, idstr), nil
 	}
 
 	psopt := map[string]string{}
 	switch {
-	case providers.IsObject():
-		for k, v := range providers.ObjectValue() {
+	case providers.IsMap():
+		for k, v := range providers.AsMap().All {
 			_, ref, err := reference(v)
 			if err != nil {
 				return nil, err
@@ -1054,7 +1055,7 @@ func providerReferences(providers resource.PropertyValue) (map[string]string, er
 			psopt[string(k)] = ref
 		}
 	case providers.IsArray():
-		for _, v := range providers.ArrayValue() {
+		for _, v := range providers.AsArray().All {
 			urn, ref, err := reference(v)
 			if err != nil {
 				return nil, err
@@ -1447,7 +1448,7 @@ func (i *Interpreter) registerResourceWith(
 					return cty.NilVal, errors.New("dependsOn must be an array of resource objects")
 				}
 				var dependsOnUrns []string
-				for _, v := range dependsOn.ArrayValue() {
+				for _, v := range dependsOn.AsArray().All {
 					if v.IsNull() || v.IsComputed() {
 						continue
 					}
@@ -1469,17 +1470,17 @@ func (i *Interpreter) registerResourceWith(
 				return cty.NilVal, diags
 			}
 			if !envVars.IsNull() && !envVars.IsComputed() {
-				if !envVars.IsObject() {
+				if !envVars.IsMap() {
 					return cty.NilVal, errors.New(
 						"envVarMappings must be an object mapping environment variable names to input property keys")
 				}
 				envVarMappings := map[string]string{}
-				for envVar, propKey := range envVars.ObjectValue() {
+				for envVar, propKey := range envVars.AsMap().All {
 					if propKey.IsNull() || propKey.IsComputed() || !propKey.IsString() {
 						return cty.NilVal, errors.New(
 							"envVarMappings must be an object mapping environment variable names to input property keys")
 					}
-					envVarMappings[string(envVar)] = propKey.StringValue()
+					envVarMappings[string(envVar)] = propKey.AsString()
 				}
 				request.EnvVarMappings = envVarMappings
 			}
@@ -1496,7 +1497,7 @@ func (i *Interpreter) registerResourceWith(
 				if !importID.IsString() {
 					return cty.NilVal, errors.New("import must be a string")
 				}
-				request.ImportId = importID.StringValue()
+				request.ImportId = importID.AsString()
 			}
 		}
 		if res.Options.IgnoreChanges != nil {
@@ -1512,14 +1513,14 @@ func (i *Interpreter) registerResourceWith(
 					return cty.NilVal, errors.New("ignoreChanges must be an array of strings")
 				}
 				icopt := []string{}
-				for _, v := range ignoreChanges.ArrayValue() {
+				for _, v := range ignoreChanges.AsArray().All {
 					if v.IsNull() || v.IsComputed() {
 						continue
 					}
 					if !v.IsString() {
 						return cty.NilVal, errors.New("ignoreChanges must be an array of strings")
 					}
-					icopt = append(icopt, v.StringValue())
+					icopt = append(icopt, v.AsString())
 				}
 				request.IgnoreChanges = icopt
 			}
@@ -1535,8 +1536,7 @@ func (i *Interpreter) registerResourceWith(
 			if !protect.IsComputed() {
 				var popt *bool
 				if protect.IsBool() {
-					b := protect.BoolValue()
-					popt = &b
+					popt = new(protect.AsBool())
 				} else if !protect.IsNull() {
 					return cty.NilVal, errors.New("protect must be a boolean or null")
 				}
@@ -1556,7 +1556,7 @@ func (i *Interpreter) registerResourceWith(
 					return cty.NilVal, errors.New("replaceWith must be an array of resources")
 				}
 				var rwopt []string
-				for _, v := range replaceWith.ArrayValue() {
+				for _, v := range replaceWith.AsArray().All {
 					if v.IsNull() || v.IsComputed() {
 						continue
 					}
@@ -1582,14 +1582,14 @@ func (i *Interpreter) registerResourceWith(
 					return cty.NilVal, errors.New("replaceOnChanges must be an array of strings")
 				}
 				rocopt := []string{}
-				for _, v := range replaceOnChanges.ArrayValue() {
+				for _, v := range replaceOnChanges.AsArray().All {
 					if v.IsNull() || v.IsComputed() {
 						continue
 					}
 					if !v.IsString() {
 						return cty.NilVal, errors.New("replaceOnChanges must be an array of strings")
 					}
-					rocopt = append(rocopt, v.StringValue())
+					rocopt = append(rocopt, v.AsString())
 				}
 				request.ReplaceOnChanges = rocopt
 			}
@@ -1602,11 +1602,7 @@ func (i *Interpreter) registerResourceWith(
 			if diags.HasErrors() {
 				return cty.NilVal, diags
 			}
-			request.ReplacementTrigger, err = plugin.MarshalPropertyValue(
-				"replacementTrigger", replacement, marshalOpts)
-			if err != nil {
-				return cty.NilVal, err
-			}
+			request.ReplacementTrigger = propertyrpc.MarshalValue(replacement)
 		}
 		if res.Options.RetainOnDelete != nil {
 			retain, poison, diags := evalCtx.Evaluate(res.Options.RetainOnDelete)
@@ -1619,8 +1615,7 @@ func (i *Interpreter) registerResourceWith(
 			if !retain.IsNull() && !retain.IsComputed() {
 				var retainOnDelete *bool
 				if retain.IsBool() {
-					b := retain.BoolValue()
-					retainOnDelete = &b
+					retainOnDelete = new(retain.AsBool())
 				} else {
 					return cty.NilVal, errors.New("retainOnDelete must be a boolean or null")
 				}
@@ -1639,7 +1634,7 @@ func (i *Interpreter) registerResourceWith(
 				if !version.IsString() {
 					return cty.NilVal, errors.New("version must be a string")
 				}
-				request.Version = version.StringValue()
+				request.Version = version.AsString()
 			}
 		}
 		if res.Options.CustomTimeouts != nil {
@@ -1651,18 +1646,18 @@ func (i *Interpreter) registerResourceWith(
 				return cty.NilVal, diags
 			}
 			if !timeouts.IsNull() && !timeouts.IsComputed() {
-				if !timeouts.IsObject() {
+				if !timeouts.IsMap() {
 					return cty.NilVal, errors.New("customTimeouts must be an object")
 				}
 				timeoutValues := map[string]string{}
-				for k, v := range timeouts.ObjectValue() {
+				for k, v := range timeouts.AsMap().All {
 					if v.IsNull() || v.IsComputed() {
 						continue
 					}
 					if !v.IsString() {
 						return cty.NilVal, fmt.Errorf("customTimeouts.%s must be a string", k)
 					}
-					timeoutValues[string(k)] = v.StringValue()
+					timeoutValues[string(k)] = v.AsString()
 				}
 				request.CustomTimeouts = &pulumirpc.RegisterResourceRequest_CustomTimeouts{
 					Create: timeoutValues["create"],
@@ -1682,7 +1677,7 @@ func (i *Interpreter) registerResourceWith(
 			}
 			if !dbr.IsNull() && !dbr.IsComputed() {
 				if dbr.IsBool() {
-					request.DeleteBeforeReplace = dbr.BoolValue()
+					request.DeleteBeforeReplace = dbr.AsBool()
 					request.DeleteBeforeReplaceDefined = true
 				} else if !dbr.IsNull() {
 					return cty.NilVal, errors.New("deleteBeforeReplace must be a boolean or null")
@@ -1717,7 +1712,7 @@ func (i *Interpreter) registerResourceWith(
 				if !downloadURL.IsString() {
 					return cty.NilVal, errors.New("pluginDownloadURL must be a string")
 				}
-				request.PluginDownloadURL = downloadURL.StringValue()
+				request.PluginDownloadURL = downloadURL.AsString()
 			}
 		}
 		if res.Options.Parent != nil {
@@ -1751,7 +1746,7 @@ func (i *Interpreter) registerResourceWith(
 				}
 				var idstr string
 				if id.IsString() {
-					idstr = id.StringValue()
+					idstr = id.AsString()
 				} else {
 					idstr = plugin.UnknownStringValue
 				}
@@ -1787,14 +1782,14 @@ func (i *Interpreter) registerResourceWith(
 					return cty.NilVal, errors.New("hideDiffs must be an array of strings")
 				}
 				hdopt := []string{}
-				for _, v := range hideDiffs.ArrayValue() {
+				for _, v := range hideDiffs.AsArray().All {
 					if v.IsNull() || v.IsComputed() {
 						continue
 					}
 					if !v.IsString() {
 						return cty.NilVal, errors.New("hideDiffs must be an array of strings")
 					}
-					hdopt = append(hdopt, v.StringValue())
+					hdopt = append(hdopt, v.AsString())
 				}
 				request.HideDiffs = hdopt
 			}
@@ -1810,11 +1805,11 @@ func (i *Interpreter) registerResourceWith(
 				return cty.NilVal, diags
 			}
 			if !hooksVal.IsNull() && !hooksVal.IsComputed() {
-				if !hooksVal.IsObject() {
+				if !hooksVal.IsMap() {
 					return cty.NilVal, errors.New("hooks must be an object mapping hook types to command lists")
 				}
 				binding := &pulumirpc.RegisterResourceRequest_ResourceHooksBinding{}
-				for hookType, commandLists := range hooksVal.ObjectValue() {
+				for hookType, commandLists := range hooksVal.AsMap().All {
 					if commandLists.IsNull() || commandLists.IsComputed() {
 						continue
 					}
@@ -1822,14 +1817,14 @@ func (i *Interpreter) registerResourceWith(
 						return cty.NilVal, fmt.Errorf("hooks.%s must be an array of hooks", hookType)
 					}
 					var hookNames []string
-					for idx, hookVal := range commandLists.ArrayValue() {
+					for idx, hookVal := range commandLists.AsArray().All {
 						if hookVal.IsNull() || hookVal.IsComputed() {
 							continue
 						}
 						if !hookVal.IsString() {
 							return cty.NilVal, fmt.Errorf("hooks.%s[%d] must be a reference to a named hook block", hookType, idx)
 						}
-						hookNames = append(hookNames, hookVal.StringValue())
+						hookNames = append(hookNames, hookVal.AsString())
 					}
 					switch hookType {
 					case "beforeCreate":
@@ -1892,7 +1887,7 @@ func (i *Interpreter) registerResourceWith(
 		return makePoisonValue(res.Name()), nil
 	}
 
-	outputs, err := plugin.UnmarshalProperties(resp.Object, marshalOpts)
+	outputs, err := propertyrpc.Unmarshal(resp.Object)
 	if err != nil {
 		return cty.NilVal, err
 	}
@@ -1903,13 +1898,14 @@ func (i *Interpreter) registerResourceWith(
 	// one; represent it as unknown rather than a known empty string so it can't be
 	// observed as a real value.
 	if id := resp.GetId(); id == "" && (i.info.DryRun || unknown) {
-		outputs["id"] = resource.MakeComputed(resource.NewProperty(""))
+		outputs = outputs.Set("id", property.New(property.Computed))
 	} else {
-		outputs["id"] = resource.NewProperty(id)
+		outputs = outputs.Set("id", property.New(id))
 	}
-	outputs["urn"] = resource.NewProperty(resp.GetUrn())
-	outputs["__name"] = resource.NewProperty(request.Name)
-	outputs["__type"] = resource.NewProperty(request.Type)
+	outputs = outputs.
+		Set("urn", property.New(resp.GetUrn())).
+		Set("__name", property.New(request.Name)).
+		Set("__type", property.New(request.Type))
 
 	// Ensure every schema-declared output property is present, recursing into nested object
 	// types so that programs which traverse into an optional inner field see a typed null
@@ -1917,16 +1913,11 @@ func (i *Interpreter) registerResourceWith(
 	// - preview or skipped create: unknown/computed
 	// - update: explicit null
 	if schemaResource != nil {
-		fillSchemaOutputs(outputs, schemaResource.Properties, i.info.DryRun || unknown)
+		outputs = fillSchemaOutputs(outputs, schemaResource.Properties, i.info.DryRun || unknown)
 	}
 
-	result := resource.NewProperty(resource.Output{
-		Element:      resource.NewProperty(outputs),
-		Dependencies: []resource.URN{resource.URN(resp.GetUrn())},
-		Known:        true,
-	})
-
-	return propertyValueToCty(ctx, i.getResource, result)
+	return propertyValueToCty(ctx, i.getResource, property.New(outputs).
+		WithDependencies([]resource.URN{resource.URN(resp.GetUrn())}))
 }
 
 func (i *Interpreter) registerReadResource(ctx context.Context, res *pcl.ReadResource) error {
@@ -1955,37 +1946,26 @@ func (i *Interpreter) registerReadResource(ctx context.Context, res *pcl.ReadRes
 		return diags
 	}
 
-	idVal, hasID := inputs["id"]
+	idVal, hasID := inputs.GetOk("id")
 	if !hasID {
 		return fmt.Errorf("read resource %s is missing the id attribute", res.Name())
 	}
-	delete(inputs, "id")
+	inputs = inputs.Delete("id")
 
-	marshalOpts := plugin.MarshalOptions{
-		KeepUnknowns:   true,
-		KeepSecrets:    true,
-		KeepResources:  true,
-		KeepByteString: true,
-	}
-	obj, err := plugin.MarshalProperties(inputs, marshalOpts)
-	if err != nil {
-		return err
-	}
-	// The rest of this method can send output values
-	marshalOpts.KeepOutputValues = true
+	obj := propertyrpc.Marshal(inputs)
 
 	dependencies := []string{}
-	for _, val := range inputs {
-		dependencies = append(dependencies, getAllDependencies(val)...)
+	for _, val := range allDependencies(property.New(inputs)) {
+		dependencies = append(dependencies, string(val))
 	}
 
-	unwrappedID, idDeps := unwrapOutputs(idVal)
+	idDeps := allDependencies(idVal)
 	for _, dep := range idDeps {
 		dependencies = append(dependencies, string(dep))
 	}
 	idStr := plugin.UnknownStringValue
-	if unwrappedID.IsString() {
-		idStr = unwrappedID.StringValue()
+	if idVal.IsString() {
+		idStr = idVal.AsString()
 	}
 
 	if res.Options != nil && res.Options.DependsOn != nil {
@@ -2001,7 +1981,7 @@ func (i *Interpreter) registerReadResource(ctx context.Context, res *pcl.ReadRes
 			if !dependsOn.IsArray() {
 				return errors.New("dependsOn must be an array of resource objects")
 			}
-			for _, v := range dependsOn.ArrayValue() {
+			for _, v := range dependsOn.AsArray().All {
 				if v.IsNull() || v.IsComputed() {
 					continue
 				}
@@ -2032,27 +2012,24 @@ func (i *Interpreter) registerReadResource(ctx context.Context, res *pcl.ReadRes
 		return err
 	}
 
-	outputs, err := plugin.UnmarshalProperties(resp.GetProperties(), marshalOpts)
+	outputs, err := propertyrpc.Unmarshal(resp.GetProperties())
 	if err != nil {
 		return err
 	}
 
-	outputs["id"] = resource.NewProperty(request.Id)
-	outputs["urn"] = resource.NewProperty(resp.GetUrn())
-	outputs["__name"] = resource.NewProperty(logicalName)
-	outputs["__type"] = resource.NewProperty(token)
+	outputs = outputs.
+		Set("id", property.New(request.Id)).
+		Set("urn", property.New(resp.GetUrn())).
+		Set("__name", property.New(logicalName)).
+		Set("__type", property.New(token))
 
 	if schemaResource != nil {
 		// A skipped read reports Unknown=true; treat outputs as unknown so dependents propagate
 		// unknowns instead of seeing empty values as real.
-		fillSchemaOutputs(outputs, schemaResource.Properties, i.info.DryRun || resp.GetUnknown())
+		outputs = fillSchemaOutputs(outputs, schemaResource.Properties, i.info.DryRun || resp.GetUnknown())
 	}
 
-	result := resource.NewProperty(resource.Output{
-		Element:      resource.NewProperty(outputs),
-		Dependencies: []resource.URN{resource.URN(resp.GetUrn())},
-		Known:        true,
-	})
+	result := property.New(outputs).WithDependencies([]urn.URN{resource.URN(resp.GetUrn())})
 
 	ctyResult, err := propertyValueToCty(ctx, i.getResource, result)
 	if err != nil {
@@ -2072,21 +2049,7 @@ func (i *Interpreter) registerComponent(ctx context.Context, component *pcl.Comp
 		return diags
 	}
 
-	marshalOpts := plugin.MarshalOptions{
-		KeepUnknowns:   true,
-		KeepSecrets:    true,
-		KeepResources:  true,
-		KeepByteString: true,
-	}
-	obj, err := plugin.MarshalProperties(inputs, marshalOpts)
-	if err != nil {
-		return hcl.Diagnostics{{
-			Severity: hcl.DiagError,
-			Summary:  "Failed to marshal component inputs",
-			Detail:   err.Error(),
-		}}
-	}
-	marshalOpts.KeepOutputValues = true
+	obj := propertyrpc.Marshal(inputs)
 
 	dependencies := []string{}
 	propertyDependencies := map[string]*pulumirpc.RegisterResourceRequest_PropertyDependencies{}

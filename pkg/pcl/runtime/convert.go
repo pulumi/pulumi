@@ -325,58 +325,47 @@ func applySchemaInputs(
 // Only the structural set of attributes is materialised; values returned by the provider
 // are not transformed. Properties whose key does not match any schema property pass
 // through unchanged.
-func fillSchemaOutputs(outputs resource.PropertyMap, properties []*schema.Property, fillUnknown bool) {
-	if outputs == nil {
-		return
-	}
+func fillSchemaOutputs(outputs property.Map, properties []*schema.Property, fillUnknown bool) property.Map {
 	for _, prop := range properties {
-		key := resource.PropertyKey(prop.Name)
-		v, ok := outputs[key]
+		key := prop.Name
+		v, ok := outputs.GetOk(key)
 		if !ok {
 			if fillUnknown {
-				outputs[key] = resource.NewProperty(resource.Computed{Element: resource.NewProperty("")})
+				outputs = outputs.Set(key, property.New(property.Computed).WithSecret(prop.Secret))
 			} else {
-				outputs[key] = resource.NewNullProperty()
-			}
-			if prop.Secret {
-				outputs[key] = resource.MakeSecret(outputs[key])
+				outputs = outputs.Set(key, property.New(property.Null).WithSecret(prop.Secret))
 			}
 			continue
 		}
-		fillSchemaOutputValue(v, prop.Type, fillUnknown)
+		outputs = outputs.Set(key, fillSchemaOutputValue(v, prop.Type, fillUnknown))
 	}
+	return outputs
 }
 
-func fillSchemaOutputValue(value resource.PropertyValue, targetType schema.Type, fillUnknown bool) {
-	if value.IsSecret() {
-		fillSchemaOutputValue(value.SecretValue().Element, targetType, fillUnknown)
-		return
-	}
-	if value.IsOutput() {
-		out := value.OutputValue()
-		if out.Known {
-			fillSchemaOutputValue(out.Element, targetType, fillUnknown)
-		}
-		return
-	}
+func fillSchemaOutputValue(value property.Value, targetType schema.Type, fillUnknown bool) property.Value {
 	switch t := codegen.UnwrapType(targetType).(type) {
 	case *schema.ObjectType:
-		if value.IsObject() {
-			fillSchemaOutputs(value.ObjectValue(), t.Properties, fillUnknown)
+		if value.IsMap() {
+			return property.New(fillSchemaOutputs(value.AsMap(), t.Properties, fillUnknown))
 		}
 	case *schema.ArrayType:
 		if value.IsArray() {
-			for _, elem := range value.ArrayValue() {
-				fillSchemaOutputValue(elem, t.ElementType, fillUnknown)
+			arr := value.AsArray().AsSlice()
+			for i, elem := range arr {
+				arr[i] = fillSchemaOutputValue(elem, t.ElementType, fillUnknown)
 			}
+			return property.New(arr)
 		}
 	case *schema.MapType:
-		if value.IsObject() {
-			for _, elem := range value.ObjectValue() {
-				fillSchemaOutputValue(elem, t.ElementType, fillUnknown)
+		if value.IsMap() {
+			m := value.AsMap().AsMap()
+			for k, elem := range m {
+				m[k] = fillSchemaOutputValue(elem, t.ElementType, fillUnknown)
 			}
+			return property.New(m)
 		}
 	}
+	return value
 }
 
 func applySchemaInputsInner(
