@@ -156,12 +156,12 @@ func TestApplySchemaInputs_Defaults(t *testing.T) {
 			DefaultValue: &schema.DefaultValue{Value: false},
 		},
 		{
-			Name:         "numberArray",
-			DefaultValue: &schema.DefaultValue{Value: []any{0.0}},
+			Name:         "string",
+			DefaultValue: &schema.DefaultValue{Value: "s"},
 		},
 		{
-			Name:         "booleanMap",
-			DefaultValue: &schema.DefaultValue{Value: map[string]any{"default": false}},
+			Name:         "number",
+			DefaultValue: &schema.DefaultValue{Value: int32(5)},
 		},
 	}
 
@@ -173,12 +173,8 @@ func TestApplySchemaInputs_Defaults(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.Equal(t, property.New(true), converted.Get("boolean"))
-	assert.Equal(t, property.New([]property.Value{
-		property.New(0.0),
-	}), converted.Get("numberArray"))
-	assert.Equal(t, property.New(map[string]property.Value{
-		"default": property.New(false),
-	}), converted.Get("booleanMap"))
+	assert.Equal(t, property.New("s"), converted.Get("string"))
+	assert.Equal(t, property.New(5.0), converted.Get("number"))
 }
 
 func TestApplySchemaInputs_Conversions(t *testing.T) {
