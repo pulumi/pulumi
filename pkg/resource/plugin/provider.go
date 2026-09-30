@@ -339,7 +339,7 @@ type UpdateRequest struct {
 	Name                             string
 	Type                             tokens.Type
 	ID                               resource.ID
-	OldInputs, OldOutputs, NewInputs resource.PropertyMap
+	OldInputs, OldOutputs, NewInputs property.Map
 	Timeout                          float64
 	IgnoreChanges                    []string
 	Preview                          bool
@@ -352,7 +352,7 @@ type UpdateRequest struct {
 }
 
 type UpdateResponse struct {
-	Properties resource.PropertyMap
+	Properties property.Map
 	Status     resource.Status
 	// Indicates that this resource should always be refreshed prior to updates.
 	RefreshBeforeUpdate bool

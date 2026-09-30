@@ -1193,8 +1193,10 @@ func TestErrorHooks_RetryLimitWarningAt100_Create(t *testing.T) {
 				UpdateF: func(_ context.Context, req plugin.UpdateRequest) (plugin.UpdateResponse, error) {
 					updateReqs = append(updateReqs, req)
 					return plugin.UpdateResponse{
-						Properties: resource.PropertyMap{"attempt": resource.NewProperty(float64(len(updateReqs)))},
-						Status:     resource.StatusPartialFailure,
+						Properties: property.NewMap(map[string]property.Value{
+							"attempt": property.New(float64(len(updateReqs))),
+						}),
+						Status: resource.StatusPartialFailure,
 					}, errors.New("create failed")
 				},
 			}, nil
@@ -1758,7 +1760,7 @@ func TestErrorHooks_IndependentPerResource_Create(t *testing.T) {
 							return plugin.UpdateResponse{Status: resource.StatusPartialFailure}, errors.New("resB create failed")
 						}
 					}
-					return plugin.UpdateResponse{Properties: resource.PropertyMap{}, Status: resource.StatusOK}, nil
+					return plugin.UpdateResponse{Properties: property.Map{}, Status: resource.StatusOK}, nil
 				},
 			}, nil
 		}),
@@ -2119,7 +2121,7 @@ func TestErrorHooks_RetryAfterInitErrorUpdatesInsteadOfCreating(t *testing.T) {
 				UpdateF: func(_ context.Context, req plugin.UpdateRequest) (plugin.UpdateResponse, error) {
 					updateReqs = append(updateReqs, req)
 					return plugin.UpdateResponse{
-						Properties: resource.PropertyMap{"out": resource.NewProperty("ready")},
+						Properties: property.NewMap(map[string]property.Value{"out": property.New("ready")}),
 						Status:     resource.StatusOK,
 					}, nil
 				},

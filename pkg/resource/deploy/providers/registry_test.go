@@ -406,12 +406,12 @@ func TestCRUD(t *testing.T) {
 		update, err := r.Update(t.Context(), plugin.UpdateRequest{
 			URN:        urn,
 			ID:         id,
-			OldOutputs: olds,
-			NewInputs:  resource.ToResourcePropertyMap(check.Properties),
+			OldOutputs: resource.FromResourcePropertyMap(olds),
+			NewInputs:  check.Properties,
 			Timeout:    timeout,
 		})
 		require.NoError(t, err)
-		assert.Equal(t, resource.PropertyMap{}, update.Properties)
+		assert.Equal(t, property.Map{}, update.Properties)
 		assert.Equal(t, resource.StatusOK, update.Status)
 
 		p3, ok := r.GetProvider(mustNewReference(urn, id))
@@ -1266,8 +1266,8 @@ func TestSameUpdateRace_UpdateFirst(t *testing.T) {
 	_, err = r.Update(t.Context(), plugin.UpdateRequest{
 		URN:        urn,
 		ID:         id,
-		OldOutputs: oldInputs,
-		NewInputs:  resource.ToResourcePropertyMap(check.Properties),
+		OldOutputs: resource.FromResourcePropertyMap(oldInputs),
+		NewInputs:  check.Properties,
 	})
 	require.NoError(t, err)
 
@@ -1372,8 +1372,8 @@ func TestSameUpdateRace_SameFirst(t *testing.T) {
 	_, err = r.Update(t.Context(), plugin.UpdateRequest{
 		URN:        urn,
 		ID:         id,
-		OldOutputs: oldInputs,
-		NewInputs:  resource.ToResourcePropertyMap(check.Properties),
+		OldOutputs: resource.FromResourcePropertyMap(oldInputs),
+		NewInputs:  check.Properties,
 	})
 	require.NoError(t, err)
 
@@ -1465,8 +1465,8 @@ func TestSameUpdateRace_Concurrent(t *testing.T) {
 				_, _ = r.Update(t.Context(), plugin.UpdateRequest{
 					URN:        urn,
 					ID:         id,
-					OldOutputs: oldInputs,
-					NewInputs:  resource.ToResourcePropertyMap(check.Properties),
+					OldOutputs: resource.FromResourcePropertyMap(oldInputs),
+					NewInputs:  check.Properties,
 				})
 			}()
 

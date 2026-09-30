@@ -413,15 +413,15 @@ func (pc *packageCommand) runStatelessUpdate(
 			Name:       urn.Name(),
 			Type:       urn.Type(),
 			ID:         id,
-			OldInputs:  oldInputs,
-			OldOutputs: read.Outputs,
-			NewInputs:  checked,
+			OldInputs:  resource.FromResourcePropertyMap(oldInputs),
+			OldOutputs: resource.FromResourcePropertyMap(read.Outputs),
+			NewInputs:  resource.FromResourcePropertyMap(checked),
 			Preview:    pc.dryrun,
 		})
 		if err != nil {
 			return nil, err
 		}
-		return resultState(urn, id, checked, response.Properties, res), nil
+		return resultState(urn, id, checked, resource.ToResourcePropertyMap(response.Properties), res), nil
 	})
 }
 

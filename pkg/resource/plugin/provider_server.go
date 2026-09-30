@@ -771,9 +771,9 @@ func (p *providerServer) Update(ctx context.Context, req *pulumirpc.UpdateReques
 		Name:                  req.Name,
 		Type:                  tokens.Type(req.Type),
 		ID:                    id,
-		OldInputs:             oldInputs,
-		OldOutputs:            oldOutputs,
-		NewInputs:             newInputs,
+		OldInputs:             resource.FromResourcePropertyMap(oldInputs),
+		OldOutputs:            resource.FromResourcePropertyMap(oldOutputs),
+		NewInputs:             resource.FromResourcePropertyMap(newInputs),
 		Timeout:               req.GetTimeout(),
 		IgnoreChanges:         req.GetIgnoreChanges(),
 		Preview:               req.GetPreview(),
@@ -785,7 +785,7 @@ func (p *providerServer) Update(ctx context.Context, req *pulumirpc.UpdateReques
 		return nil, err
 	}
 
-	rpcState, err := MarshalProperties(resp.Properties, p.marshalOptions("newState"))
+	rpcState, err := MarshalProperties(resource.ToResourcePropertyMap(resp.Properties), p.marshalOptions("newState"))
 	if err != nil {
 		return nil, err
 	}

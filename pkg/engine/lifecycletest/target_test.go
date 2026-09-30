@@ -794,11 +794,11 @@ func updateSpecificTargets(t *testing.T, targets, globTargets []string, targetDe
 				},
 
 				UpdateF: func(_ context.Context, req plugin.UpdateRequest) (plugin.UpdateResponse, error) {
-					outputs := req.OldOutputs.Copy()
+					outputs := resource.ToResourcePropertyMap(req.OldOutputs).Copy()
 
 					outputs["output_prop"] = resource.NewPropertyValue(42)
 					return plugin.UpdateResponse{
-						Properties: outputs,
+						Properties: resource.FromResourcePropertyMap(outputs),
 						Status:     resource.StatusOK,
 					}, nil
 				},
@@ -897,11 +897,11 @@ func updateInvalidTarget(t *testing.T) {
 				},
 
 				UpdateF: func(_ context.Context, req plugin.UpdateRequest) (plugin.UpdateResponse, error) {
-					outputs := req.OldOutputs.Copy()
+					outputs := resource.ToResourcePropertyMap(req.OldOutputs).Copy()
 
 					outputs["output_prop"] = resource.NewPropertyValue(42)
 					return plugin.UpdateResponse{
-						Properties: outputs,
+						Properties: resource.FromResourcePropertyMap(outputs),
 						Status:     resource.StatusOK,
 					}, nil
 				},

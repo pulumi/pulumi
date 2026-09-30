@@ -295,10 +295,10 @@ func (p *OutputProvider) Update(
 		}, fmt.Errorf("invalid URN type: %s", req.URN.Type())
 	}
 
-	properties := p.makeOutputs(req.URN.Type(), req.NewInputs, req.Preview)
+	properties := p.makeOutputs(req.URN.Type(), resource.ToResourcePropertyMap(req.NewInputs), req.Preview)
 
 	return plugin.UpdateResponse{
-		Properties: properties,
+		Properties: resource.FromResourcePropertyMap(properties),
 		Status:     resource.StatusOK,
 	}, nil
 }

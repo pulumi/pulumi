@@ -786,15 +786,16 @@ func TestDoCmdResourceUpsertStateless(t *testing.T) {
 				},
 				UpdateF: func(_ context.Context, req plugin.UpdateRequest) (plugin.UpdateResponse, error) {
 					calls = append(calls, "update")
-					assert.Equal(t, "new", req.NewInputs["name"].StringValue())
-					assert.Equal(t, 2.0, req.NewInputs["size"].NumberValue())
-					_, hasEnabled := req.NewInputs["enabled"]
+					newInputs := resource.ToResourcePropertyMap(req.NewInputs)
+					assert.Equal(t, "new", newInputs["name"].StringValue())
+					assert.Equal(t, 2.0, newInputs["size"].NumberValue())
+					_, hasEnabled := newInputs["enabled"]
 					assert.False(t, hasEnabled, "inputs should be fully replaced, not merged")
 					return plugin.UpdateResponse{
-						Properties: resource.PropertyMap{
+						Properties: resource.FromResourcePropertyMap(resource.PropertyMap{
 							"name": resource.NewProperty("new"),
 							"size": resource.NewProperty(2.0),
-						},
+						}),
 					}, nil
 				},
 			},

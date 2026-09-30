@@ -28,6 +28,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/urn"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi-internal/gsync"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -455,9 +456,9 @@ func TestUpdateStep(t *testing.T) {
 				provider: &deploytest.Provider{
 					UpdateF: func(context.Context, plugin.UpdateRequest) (plugin.UpdateResponse, error) {
 						return plugin.UpdateResponse{
-								Properties: resource.PropertyMap{
-									"key": resource.NewProperty("expected-value"),
-								},
+								Properties: property.NewMap(map[string]property.Value{
+									"key": property.New("expected-value"),
+								}),
 								Status: resource.StatusPartialFailure,
 							}, &plugin.InitError{
 								Reasons: []string{
