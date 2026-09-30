@@ -487,8 +487,8 @@ func (pc *packageCommand) newResourceDeleteCommand(res *schema.Resource) *cobra.
 					Name:    urn.Name(),
 					Type:    urn.Type(),
 					ID:      id,
-					Inputs:  response.Inputs,
-					Outputs: response.Outputs,
+					Inputs:  resource.FromResourcePropertyMap(response.Inputs),
+					Outputs: resource.FromResourcePropertyMap(response.Outputs),
 				})
 				return nil, err
 			})

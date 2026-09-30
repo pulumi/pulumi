@@ -333,8 +333,8 @@ func TestProvider_DeleteRequests(t *testing.T) {
 			give: DeleteRequest{
 				ID:      id,
 				URN:     urn,
-				Inputs:  resource.PropertyMap{},
-				Outputs: resource.PropertyMap{},
+				Inputs:  property.Map{},
+				Outputs: property.Map{},
 			},
 			want: &pulumirpc.DeleteRequest{
 				Id:         string(id),
@@ -350,10 +350,10 @@ func TestProvider_DeleteRequests(t *testing.T) {
 			give: DeleteRequest{
 				ID:  id,
 				URN: urn,
-				Inputs: resource.PropertyMap{
+				Inputs: resource.FromResourcePropertyMap(resource.PropertyMap{
 					"foo": resource.NewProperty("bar"),
-				},
-				Outputs: resource.PropertyMap{},
+				}),
+				Outputs: property.Map{},
 			},
 			want: &pulumirpc.DeleteRequest{
 				Id:   string(id),
@@ -373,10 +373,10 @@ func TestProvider_DeleteRequests(t *testing.T) {
 			give: DeleteRequest{
 				ID:     id,
 				URN:    urn,
-				Inputs: resource.PropertyMap{},
-				Outputs: resource.PropertyMap{
+				Inputs: property.Map{},
+				Outputs: resource.FromResourcePropertyMap(resource.PropertyMap{
 					"baz": resource.NewProperty("quux"),
-				},
+				}),
 			},
 			want: &pulumirpc.DeleteRequest{
 				Id:        string(id),
@@ -397,8 +397,8 @@ func TestProvider_DeleteRequests(t *testing.T) {
 				ID:      id,
 				URN:     urn,
 				Timeout: 30,
-				Inputs:  resource.PropertyMap{},
-				Outputs: resource.PropertyMap{},
+				Inputs:  property.Map{},
+				Outputs: property.Map{},
 			},
 			want: &pulumirpc.DeleteRequest{
 				Id:         string(id),
@@ -415,12 +415,12 @@ func TestProvider_DeleteRequests(t *testing.T) {
 			give: DeleteRequest{
 				ID:  id,
 				URN: urn,
-				Inputs: resource.PropertyMap{
+				Inputs: resource.FromResourcePropertyMap(resource.PropertyMap{
 					"foo": resource.NewProperty("bar"),
-				},
-				Outputs: resource.PropertyMap{
+				}),
+				Outputs: resource.FromResourcePropertyMap(resource.PropertyMap{
 					"baz": resource.NewProperty("quux"),
-				},
+				}),
 				Timeout: 30,
 			},
 			want: &pulumirpc.DeleteRequest{
@@ -792,8 +792,8 @@ func TestProvider_ConfigureDeleteRace(t *testing.T) {
 			Name:    "qux",
 			Type:    "bar:baz",
 			ID:      "whatever",
-			Inputs:  props,
-			Outputs: props,
+			Inputs:  resource.FromResourcePropertyMap(props),
+			Outputs: resource.FromResourcePropertyMap(props),
 			Timeout: 1000,
 		})
 		require.NoError(t, err, "Delete failed")
