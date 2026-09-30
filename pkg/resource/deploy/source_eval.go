@@ -2957,8 +2957,9 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 			},
 		}
 
-		// The provider may have returned OutputValues in "Outputs", we need to downgrade them to Computed or
-		// Secret but also add them to the outputDeps map.
+		// The provider may have returned OutputValues in "Outputs". Harvest their dependencies into the
+		// outputDeps map; the OutputValues themselves are downgraded to Computed/Secret later by
+		// MarshalProperties (called without KeepOutputValues) before being sent back to the SDK.
 		if constructResult.OutputDependencies == nil {
 			constructResult.OutputDependencies = map[resource.PropertyKey][]resource.URN{}
 		}
