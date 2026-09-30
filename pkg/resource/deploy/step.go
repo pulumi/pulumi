@@ -387,9 +387,9 @@ func (s *CreateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 						Name:                  s.new.URN.Name(),
 						Type:                  s.new.URN.Type(),
 						ID:                    partial.ID,
-						OldInputs:             s.new.Inputs,
-						OldOutputs:            resource.ToResourcePropertyMap(partial.Properties),
-						NewInputs:             s.new.Inputs,
+						OldInputs:             resource.FromResourcePropertyMap(s.new.Inputs),
+						OldOutputs:            partial.Properties,
+						NewInputs:             resource.FromResourcePropertyMap(s.new.Inputs),
 						Timeout:               s.new.CustomTimeouts.Create,
 						Preview:               s.deployment.opts.DryRun,
 						ResourceStatusAddress: resourceStatusAddress,
@@ -397,7 +397,7 @@ func (s *CreateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 					})
 					resp = plugin.CreateResponse{
 						ID:                  partial.ID,
-						Properties:          resource.FromResourcePropertyMap(upd.Properties),
+						Properties:          upd.Properties,
 						Status:              upd.Status,
 						RefreshBeforeUpdate: upd.RefreshBeforeUpdate,
 					}
@@ -1050,9 +1050,9 @@ func (s *UpdateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 					Name:                  s.URN().Name(),
 					Type:                  s.URN().Type(),
 					ID:                    s.old.ID,
-					OldInputs:             s.old.Inputs,
-					OldOutputs:            s.old.Outputs,
-					NewInputs:             s.new.Inputs,
+					OldInputs:             resource.FromResourcePropertyMap(s.old.Inputs),
+					OldOutputs:            resource.FromResourcePropertyMap(s.old.Outputs),
+					NewInputs:             resource.FromResourcePropertyMap(s.new.Inputs),
 					Timeout:               s.new.CustomTimeouts.Update,
 					IgnoreChanges:         s.ignoreChanges,
 					Preview:               s.deployment.opts.DryRun,
@@ -1131,7 +1131,7 @@ func (s *UpdateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 		defer s.new.Lock.Unlock()
 
 		// Now copy any output state back in case the update triggered cascading updates to other properties.
-		s.new.Outputs = resp.Properties
+		s.new.Outputs = resource.ToResourcePropertyMap(resp.Properties)
 		s.new.RefreshBeforeUpdate = resp.RefreshBeforeUpdate
 
 		// UpdateStep doesn't create, but does modify state.

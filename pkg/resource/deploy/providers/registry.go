@@ -994,7 +994,7 @@ func (r *Registry) Create(ctx context.Context, req plugin.CreateRequest) (plugin
 func (r *Registry) Update(ctx context.Context, req plugin.UpdateRequest) (plugin.UpdateResponse, error) {
 	label := fmt.Sprintf("%s.Update(%s,%s)", r.label(), req.ID, req.URN)
 	logging.V(7).Infof("%s: executing (#oldInputs=%d#oldOutputs=%d,#newInputs=%d)",
-		label, len(req.OldInputs), len(req.OldOutputs), len(req.NewInputs))
+		label, req.OldInputs.Len(), req.OldOutputs.Len(), req.NewInputs.Len())
 
 	// Fetch the unconfigured provider, configure it, and register it under a new ID. We remove the
 	// unconfigured ID from the provider map so nothing else tries to use and re-configure this instance.
@@ -1004,7 +1004,7 @@ func (r *Registry) Update(ctx context.Context, req plugin.UpdateRequest) (plugin
 	name := req.URN.Name()
 	typ := req.URN.Type()
 
-	filteredProperties := FilterProviderConfig(req.NewInputs)
+	filteredProperties := FilterProviderConfig(resource.ToResourcePropertyMap(req.NewInputs))
 	_, err := provider.Configure(ctx, plugin.ConfigureRequest{
 		URN:    &req.URN,
 		Name:   &name,
@@ -1020,7 +1020,10 @@ func (r *Registry) Update(ctx context.Context, req plugin.UpdateRequest) (plugin
 	// EnsureProvider for dependency diffing) may have registered an old provider at this ref.
 	// See https://github.com/pulumi/pulumi/issues/20529
 	r.setProviderAndCloseOld(mustNewReference(req.URN, req.ID), provider)
-	return plugin.UpdateResponse{Properties: filteredProperties, Status: resource.StatusOK}, nil
+	return plugin.UpdateResponse{
+		Properties: resource.FromResourcePropertyMap(filteredProperties),
+		Status:     resource.StatusOK,
+	}, nil
 }
 
 // Delete unregisters and unloads the provider with the given URN and ID. If the provider was never loaded

@@ -1687,13 +1687,10 @@ func (p *provider) Update(ctx context.Context, req UpdateRequest) (UpdateRespons
 
 	contract.Assertf(req.URN != "", "Update requires a URN")
 	contract.Assertf(req.ID != "", "Update requires an ID")
-	contract.Assertf(req.OldInputs != nil, "Update requires old inputs")
-	contract.Assertf(req.OldOutputs != nil, "Update requires old outputs")
-	contract.Assertf(req.NewInputs != nil, "Update requires new properties")
 
 	label := fmt.Sprintf("%s.Update(%s,%s)", p.label(), req.ID, req.URN)
 	logging.V(7).Infof("%s executing (#oldInputs=%v,#oldOutputs=%v,#newInputs=%v)",
-		label, len(req.OldInputs), len(req.OldOutputs), len(req.NewInputs))
+		label, req.OldInputs.Len(), req.OldOutputs.Len(), req.NewInputs.Len())
 
 	// Ensure that the plugin is configured.
 	client := p.clientRaw
@@ -1718,7 +1715,7 @@ func (p *provider) Update(ctx context.Context, req UpdateRequest) (UpdateRespons
 			if p.legacyPreview {
 				return UpdateResponse{Properties: req.NewInputs, Status: resource.StatusOK}, nil
 			}
-			return UpdateResponse{Properties: resource.PropertyMap{}, Status: resource.StatusOK}, nil
+			return UpdateResponse{Properties: property.Map{}, Status: resource.StatusOK}, nil
 		}
 		if !protocol.supportsPreview || p.disableProviderPreview {
 			return UpdateResponse{Properties: req.NewInputs, Status: resource.StatusOK}, nil
@@ -1728,7 +1725,7 @@ func (p *provider) Update(ctx context.Context, req UpdateRequest) (UpdateRespons
 	// We should only be calling {Create,Update,Delete} if the provider is fully configured.
 	contract.Assertf(pcfg.known, "Update cannot be called if the configuration is unknown")
 
-	mOldInputs, err := MarshalProperties(req.OldInputs, MarshalOptions{
+	mOldInputs, err := MarshalProperties(resource.ToResourcePropertyMap(req.OldInputs), MarshalOptions{
 		Label:              label + ".oldInputs",
 		ElideAssetContents: true,
 		KeepSecrets:        protocol.acceptSecrets,
@@ -1739,7 +1736,7 @@ func (p *provider) Update(ctx context.Context, req UpdateRequest) (UpdateRespons
 	if err != nil {
 		return UpdateResponse{Status: resource.StatusOK}, err
 	}
-	mOldOutputs, err := MarshalProperties(req.OldOutputs, MarshalOptions{
+	mOldOutputs, err := MarshalProperties(resource.ToResourcePropertyMap(req.OldOutputs), MarshalOptions{
 		Label:              label + ".oldOutputs",
 		ElideAssetContents: true,
 		KeepSecrets:        protocol.acceptSecrets,
@@ -1750,7 +1747,7 @@ func (p *provider) Update(ctx context.Context, req UpdateRequest) (UpdateRespons
 	if err != nil {
 		return UpdateResponse{Status: resource.StatusOK}, err
 	}
-	mNewInputs, err := MarshalProperties(req.NewInputs, MarshalOptions{
+	mNewInputs, err := MarshalProperties(resource.ToResourcePropertyMap(req.NewInputs), MarshalOptions{
 		Label:          label + ".newInputs",
 		KeepUnknowns:   req.Preview,
 		KeepSecrets:    protocol.acceptSecrets,
@@ -1821,12 +1818,12 @@ func (p *provider) Update(ctx context.Context, req UpdateRequest) (UpdateRespons
 	// allows us to retain metadata about secrets in many cases, even for providers that do not understand secrets
 	// natively.
 	if !protocol.acceptSecrets {
-		annotateSecrets(outs, req.NewInputs)
+		annotateSecrets(outs, resource.ToResourcePropertyMap(req.NewInputs))
 	}
 	logging.V(7).Infof("%s success; #outs=%d", label, len(outs))
 
 	return UpdateResponse{
-		Properties:          outs,
+		Properties:          resource.FromResourcePropertyMap(outs),
 		Status:              resourceStatus,
 		RefreshBeforeUpdate: refreshBeforeUpdate && supportsRefreshBeforeUpdate,
 	}, resourceError

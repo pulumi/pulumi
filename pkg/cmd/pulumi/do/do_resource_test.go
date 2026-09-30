@@ -442,15 +442,16 @@ func TestDoCmdResourceReadDeletePatch(t *testing.T) {
 				},
 				UpdateF: func(ctx context.Context, req plugin.UpdateRequest) (plugin.UpdateResponse, error) {
 					calls = append(calls, "update")
-					assert.Equal(t, "new", req.NewInputs["name"].StringValue())
-					assert.Equal(t, 1.0, req.NewInputs["size"].NumberValue())
-					assert.Equal(t, true, req.NewInputs["enabled"].BoolValue())
+					newInputs := resource.ToResourcePropertyMap(req.NewInputs)
+					assert.Equal(t, "new", newInputs["name"].StringValue())
+					assert.Equal(t, 1.0, newInputs["size"].NumberValue())
+					assert.Equal(t, true, newInputs["enabled"].BoolValue())
 					return plugin.UpdateResponse{
-						Properties: resource.PropertyMap{
+						Properties: resource.FromResourcePropertyMap(resource.PropertyMap{
 							"name":    resource.NewProperty("new"),
 							"size":    resource.NewProperty(1.0),
 							"enabled": resource.NewProperty(true),
-						},
+						}),
 					}, nil
 				},
 			},
@@ -502,10 +503,10 @@ enabled = true
 				},
 				UpdateF: func(ctx context.Context, req plugin.UpdateRequest) (plugin.UpdateResponse, error) {
 					return plugin.UpdateResponse{
-						Properties: resource.PropertyMap{
+						Properties: resource.FromResourcePropertyMap(resource.PropertyMap{
 							"name":    resource.NewProperty("existing"),
 							"enabled": resource.NewProperty(true),
-						},
+						}),
 					}, nil
 				},
 			},
