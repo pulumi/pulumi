@@ -520,7 +520,8 @@ func (ectx *EvalContext) builtinFunctions() map[string]function.Function {
 			if err != nil {
 				return cty.NilVal, fmt.Errorf("invalid invoke arguments: %w", err)
 			}
-			argsPM := argsPV.AsMap()
+			// A resource that is passed directly must not be a dependency of its own argument.
+			argsPM := collapseResourceReferences(argsPV).AsMap()
 			if fun.Inputs != nil {
 				argsPM, err = applySchemaInputs(argsPM, fun.Inputs.Properties)
 				if err != nil {
