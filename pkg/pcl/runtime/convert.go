@@ -265,7 +265,7 @@ func ctyToPropertyValue(value cty.Value) (out property.Value, _ error) {
 
 	switch {
 	case value.Type().IsListType() || value.Type().IsTupleType():
-		var elements []property.Value
+		elements := make([]property.Value, 0, value.LengthInt())
 		it := value.ElementIterator()
 		for it.Next() {
 			_, v := it.Element()
@@ -342,15 +342,16 @@ func fillSchemaOutputValue(value property.Value, targetType schema.Type, fillUnk
 	switch t := codegen.UnwrapType(targetType).(type) {
 	case *schema.ObjectType:
 		if value.IsMap() {
-			return property.New(fillSchemaOutputs(value.AsMap(), t.Properties, fillUnknown))
+			return property.WithGoValue(value, fillSchemaOutputs(value.AsMap(), t.Properties, fillUnknown))
 		}
 	case *schema.ArrayType:
 		if value.IsArray() {
-			arr := value.AsArray().AsSlice()
-			for i, elem := range arr {
+			array := value.AsArray()
+			arr := make([]property.Value, array.Len())
+			for i, elem := range array.All {
 				arr[i] = fillSchemaOutputValue(elem, t.ElementType, fillUnknown)
 			}
-			return property.New(arr)
+			return property.WithGoValue(value, arr)
 		}
 	case *schema.MapType:
 		if value.IsMap() {
@@ -358,7 +359,7 @@ func fillSchemaOutputValue(value property.Value, targetType schema.Type, fillUnk
 			for k, elem := range m {
 				m[k] = fillSchemaOutputValue(elem, t.ElementType, fillUnknown)
 			}
-			return property.New(m)
+			return property.WithGoValue(value, m)
 		}
 	}
 	return value

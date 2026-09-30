@@ -451,7 +451,7 @@ func (ectx *EvalContext) builtinFunctions() map[string]function.Function {
 					resultPV = v
 				}
 			}
-			resultPV = resultPV.WithDependencies(dependsOn)
+			resultPV = resultPV.WithDependencies(append(resultPV.Dependencies(), dependsOn...))
 			return propertyValueToCty(context.TODO(), ectx.getResource, resultPV)
 		},
 	})
@@ -617,7 +617,7 @@ func (ectx *EvalContext) builtinFunctions() map[string]function.Function {
 			} else {
 				resultPV = property.New(resultPM)
 			}
-			resultPV = resultPV.WithDependencies(dependsOn)
+			resultPV = resultPV.WithDependencies(append(resultPV.Dependencies(), dependsOn...))
 			return propertyValueToCty(context.TODO(), ectx.getResource, resultPV)
 		},
 	})

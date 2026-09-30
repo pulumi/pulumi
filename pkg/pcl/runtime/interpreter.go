@@ -286,7 +286,7 @@ func (i *Interpreter) registerHookNode(ctx context.Context, h *pcl.Hook) error {
 		var cmdArgs []string
 		for _, arg := range cmdVal.AsArray().All {
 			if !arg.IsString() {
-				return nil, fmt.Errorf("hook %s: command elements must be strings was %v", hookName, arg)
+				return nil, fmt.Errorf("hook %s: command elements must be strings", hookName)
 			}
 			cmdArgs = append(cmdArgs, arg.AsString())
 		}
@@ -983,47 +983,6 @@ func allDependencies(value property.Value) []urn.URN {
 	return deps
 }
 
-// TODO: 86
-func unwrapOutputs(value resource.PropertyValue) (resource.PropertyValue, []resource.URN) {
-	if value.IsOutput() {
-		o := value.OutputValue()
-		elem := o.Element
-		val, deps := unwrapOutputs(elem)
-		if o.Secret {
-			val = resource.MakeSecret(val)
-		}
-		if !o.Known {
-			val = resource.NewProperty(resource.Computed{Element: resource.NewProperty("")})
-		}
-		return val, append(o.Dependencies, deps...)
-	}
-	if value.IsSecret() {
-		val, deps := unwrapOutputs(value.SecretValue().Element)
-		return resource.MakeSecret(val), deps
-	}
-	if value.IsArray() {
-		var arr []resource.PropertyValue
-		var deps []resource.URN
-		for _, v := range value.ArrayValue() {
-			val, d := unwrapOutputs(v)
-			arr = append(arr, val)
-			deps = append(deps, d...)
-		}
-		return resource.NewProperty(arr), deps
-	}
-	if value.IsObject() {
-		obj := resource.PropertyMap{}
-		var deps []resource.URN
-		for k, v := range value.ObjectValue() {
-			val, d := unwrapOutputs(v)
-			obj[k] = val
-			deps = append(deps, d...)
-		}
-		return resource.NewProperty(obj), deps
-	}
-	return value, nil
-}
-
 // providerReferences translates an evaluated `providers` option into the package name to provider
 // reference map the resource monitor expects. The option may be written either as an array of
 // provider resources, in which case each provider's package is taken from its URN, or as a map from
@@ -1071,7 +1030,7 @@ func providerReferences(providers property.Value) (map[string]string, error) {
 
 func unwrapResource(value property.Value) (string, property.Value, error) {
 	if !value.IsMap() {
-		return "", property.Value{}, fmt.Errorf("expected resource object, got %v", value)
+		return "", property.Value{}, errors.New("expected resource object")
 	}
 	obj := value.AsMap()
 	urnVal, ok := obj.GetOk("urn")
@@ -1091,14 +1050,6 @@ func unwrapResource(value property.Value) (string, property.Value, error) {
 }
 
 func collapseResourceReferences(value property.Value) property.Value {
-	// If this is an output for a single URN and that URN is now the inner resource reference value then we can
-	// collapse this output into a resource reference directly.
-	if d := value.Dependencies(); len(d) == 1 &&
-		value.IsResourceReference() &&
-		value.AsResourceReference().URN == d[0] {
-		return value.WithDependencies(nil)
-	}
-
 	switch {
 	case value.IsArray():
 		array := value.AsArray()
@@ -1106,7 +1057,7 @@ func collapseResourceReferences(value property.Value) property.Value {
 		for i, elem := range array.All {
 			collapsed[i] = collapseResourceReferences(elem)
 		}
-		return property.New(collapsed)
+		return property.WithGoValue(value, collapsed)
 	case value.IsMap():
 		obj := value.AsMap()
 		collapsed := make(map[string]property.Value, obj.Len())
@@ -1120,12 +1071,17 @@ func collapseResourceReferences(value property.Value) property.Value {
 		id, hasID := collapsed["id"]
 		typ, hasType := collapsed["__type"]
 		if hasURN && hasID && hasType && urn.IsString() && typ.IsString() {
-			return property.New(property.ResourceReference{
+			ref := property.ResourceReference{
 				URN: resource.URN(urn.AsString()),
 				ID:  id,
-			})
+			}
+			// A dependency on only the referenced resource adds nothing to the reference itself.
+			if d := value.Dependencies(); len(d) == 1 && d[0] == ref.URN {
+				value = value.WithDependencies(nil)
+			}
+			return property.WithGoValue(value, ref)
 		}
-		return property.New(collapsed)
+		return property.WithGoValue(value, collapsed)
 	default:
 		return value
 	}
@@ -1301,11 +1257,9 @@ func (i *Interpreter) registerResourceWith(
 	dependencies := []string{}
 	propertyDependencies := map[string]*pulumirpc.RegisterResourceRequest_PropertyDependencies{}
 	for key, val := range inputs.All {
-		if d := allDependencies(val); len(d) > 0 {
-			deps := make([]string, len(d))
-			for i, v := range deps {
-				deps[i] = v
-			}
+		deps := castSliceToString(allDependencies(val))
+		if len(deps) > 0 {
+			dependencies = append(dependencies, deps...)
 			propertyDependencies[string(key)] = &pulumirpc.RegisterResourceRequest_PropertyDependencies{
 				Urns: deps,
 			}
