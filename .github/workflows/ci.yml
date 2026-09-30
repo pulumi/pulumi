@@ -55,6 +55,11 @@ on:
         default: 0
         description: "Retry tests n times if there are failures"
         type: number
+      base-sha:
+        required: false
+        default: ""
+        description: "If set, compute changed files against this commit and skip test suites unaffected by them"
+        type: string
       fuzz-test-optional:
         required: false
         default: false
@@ -127,6 +132,9 @@ jobs:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
         with:
           ref: ${{ inputs.ref }}
+          # Full history (without blobs) is needed to find the merge base with base-sha.
+          fetch-depth: ${{ inputs.base-sha != '' && 0 || 1 }}
+          filter: ${{ inputs.base-sha != '' && 'blob:none' || '' }}
       - name: Configure Go Cache Key
         env:
           CACHE_KEY: "matrix-setup"
@@ -158,6 +166,7 @@ jobs:
         id: matrix
         env:
           TEST_VERSION_SETS: ${{ inputs.test-version-sets }}
+          BASE_SHA: ${{ inputs.base-sha }}
           INPUT_INTEGRATION_TEST_PLATFORMS: ${{ inputs.integration-test-platforms }}
           INPUT_ACCEPTANCE_TEST_PLATFORMS: ${{ inputs.acceptance-test-platforms }}
         run: |
@@ -177,6 +186,14 @@ jobs:
           readarray -td' ' INTEGRATION_PLATFORMS < <(echo -n "$INPUT_INTEGRATION_TEST_PLATFORMS"); declare -p INTEGRATION_PLATFORMS;
           readarray -td' ' ACCEPTANCE_PLATFORMS < <(echo -n "$INPUT_ACCEPTANCE_TEST_PLATFORMS"); declare -p ACCEPTANCE_PLATFORMS;
 
+          CHANGED_FILES_FLAG=()
+          if [ -n "${BASE_SHA}" ]; then
+            git diff --name-only "${BASE_SHA}...HEAD" > changed-files.txt
+            echo "Changed files since ${BASE_SHA}:"
+            cat changed-files.txt
+            CHANGED_FILES_FLAG=(--changed-files changed-files.txt)
+          fi
+
           CODEGEN_TESTS_FLAG=--codegen-tests
           PKG_UNIT_TEST_PARTITIONS=7
 
@@ -186,6 +203,7 @@ jobs:
             generate-matrix \
             --kind unit-test \
             "$CODEGEN_TESTS_FLAG" \
+            "${CHANGED_FILES_FLAG[@]}" \
             --platform "${INTEGRATION_PLATFORMS[@]}" "${ACCEPTANCE_PLATFORMS[@]}" \
             --version-set current \
             --partition-module pkg "$PKG_UNIT_TEST_PARTITIONS" \
@@ -202,6 +220,7 @@ jobs:
             generate-matrix \
             --kind integration-test \
             "$CODEGEN_TESTS_FLAG" \
+            "${CHANGED_FILES_FLAG[@]}" \
             --platform "${INTEGRATION_PLATFORMS[@]}" \
             --version-set "${VERSION_SETS_TO_TEST[@]}" \
             --partition-module pkg 1 \
@@ -244,6 +263,7 @@ jobs:
               generate-matrix \
               --kind acceptance-test \
               "$CODEGEN_TESTS_FLAG" \
+              "${CHANGED_FILES_FLAG[@]}" \
               --platform windows-latest \
               --version-set current \
               --partition-module pkg 2 \
@@ -262,6 +282,7 @@ jobs:
               generate-matrix \
               --kind acceptance-test \
               "$CODEGEN_TESTS_FLAG" \
+              "${CHANGED_FILES_FLAG[@]}" \
               --platform macos-latest \
               --version-set current \
               --partition-module pkg 1 \

@@ -65,6 +65,13 @@ jobs:
           || 'windows-latest'
         }}
       enable-coverage: true
+      # Skip test suites unaffected by the PR's changes, unless all tests were requested.
+      base-sha: >- # No newlines or trailing newline.
+        ${{
+          !contains(github.event.pull_request.labels.*.name, 'ci/test')
+          && github.event.pull_request.base.sha
+          || ''
+        }}
     secrets: inherit
 
   performance-gate:

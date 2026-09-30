@@ -11,6 +11,7 @@ Uses `gotestsum tool ci-matrix` to divide up Go packages into partitions to redu
 
 
 import argparse
+import fnmatch
 import itertools
 import json
 import os
@@ -102,6 +103,60 @@ def is_codegen_test(pkg: str) -> bool:
             return True
 
     return False
+
+
+# Node.js SDK and language host tests only run on PRs that change a file under one of these
+# paths, since they are what those tests build and exercise. Err on the side of listing too
+# much: a missing entry lets a breaking change past PR CI (the merge queue still runs everything).
+NODEJS_RELEVANT_PATHS = [
+    "sdk/nodejs/",
+    "pkg/",
+    "proto/",
+    "sdk/proto/",
+    "sdk/go/",
+    "sdk/go.mod",
+    "sdk/go.sum",
+    "sdk/*.go",
+    "tools/automation/",
+    ".github/workflows/",
+    ".github/actions/",
+    "scripts/",
+    "build/",
+    "Makefile",
+    ".mise.toml",
+]
+
+# Paths under NODEJS_RELEVANT_PATHS that the Node.js tests don't depend on.
+NODEJS_IRRELEVANT_PATHS = [
+    "pkg/codegen/docs/",
+    "pkg/codegen/dotnet/",
+    "pkg/codegen/go/",
+    "pkg/codegen/python/",
+    "sdk/go/pulumi-language-go/",
+]
+
+
+def _path_matches(path: str, patterns: List[str]) -> bool:
+    for pattern in patterns:
+        if pattern.endswith("/"):
+            if path.startswith(pattern):
+                return True
+        elif fnmatch.fnmatchcase(path, pattern):
+            return True
+    return False
+
+
+def nodejs_tests_needed(changed_files: List[str]) -> bool:
+    """Checks whether any of the changed files can affect the Node.js SDK tests"""
+    return any(
+        _path_matches(f, NODEJS_RELEVANT_PATHS) and not _path_matches(f, NODEJS_IRRELEVANT_PATHS)
+        for f in changed_files
+    )
+
+
+def is_nodejs_test(name: str) -> bool:
+    """Checks if a Makefile test name, Go package or package directory belongs to the Node.js SDK"""
+    return name.startswith("sdk/nodejs") or name.startswith("github.com/pulumi/pulumi/sdk/v3/nodejs/")
 
 
 class MakefileTest(TypedDict):
@@ -407,6 +462,7 @@ def get_matrix(
     version_sets: List[VersionSet],
     fast: bool = False,
     codegen_tests: bool = False,
+    skip_nodejs: bool = False,
 ) -> Matrix:
     """Compute a job matrix"""
     if kind == JobKind.INTEGRATION_TEST:
@@ -429,8 +485,13 @@ def get_matrix(
     for test in makefile_tests:
         if fast and test["eta"] > 5:
             continue
+        if skip_nodejs and is_nodejs_test(test["name"]):
+            continue
 
         test_suites.append({"name": test["name"], "command": test["run"]})
+
+    if skip_nodejs:
+        partition_packages = [part for part in partition_packages if not is_nodejs_test(part.package_dir)]
 
     partitioned_packages = {part.package for part in partition_packages}
 
@@ -439,6 +500,8 @@ def get_matrix(
         go_packages = set(go_packages) - partitioned_packages
         if not codegen_tests:
             go_packages = {pkg for pkg in go_packages if not is_codegen_test(pkg)}
+        if skip_nodejs:
+            go_packages = {pkg for pkg in go_packages if not is_nodejs_test(pkg)}
 
         if kind == JobKind.INTEGRATION_TEST or kind == JobKind.ACCEPTANCE_TEST:
             go_packages = {pkg for pkg in go_packages if (not is_unit_test(pkg) and not is_performance_test(pkg))}
@@ -520,6 +583,14 @@ def generate_matrix(args: argparse.Namespace):
 
     version_sets = get_version_sets(args)
 
+    skip_nodejs = False
+    if args.changed_files is not None:
+        with open(args.changed_files, encoding="utf-8") as f:
+            changed_files = [line.strip() for line in f if line.strip()]
+        skip_nodejs = not nodejs_tests_needed(changed_files)
+        if skip_nodejs and global_verbosity >= 1:
+            print("No Node.js-relevant files changed, skipping Node.js tests", file=sys.stderr)
+
     matrix = get_matrix(
         kind=args.kind,
         platforms=args.platform,
@@ -529,6 +600,7 @@ def generate_matrix(args: argparse.Namespace):
         partition_packages=partition_packages,
         version_sets=version_sets,
         codegen_tests=args.codegen_tests,
+        skip_nodejs=skip_nodejs,
     )
 
     if not matrix["platform"] or not matrix["test-suite"] or not matrix["version-set"]:
@@ -555,6 +627,13 @@ def add_generate_matrix_args(parser: argparse.ArgumentParser):
     )
     parser.add_argument(
         "--fast", action="store_true", default=False, help="Exclude slow tests"
+    )
+    parser.add_argument(
+        "--changed-files",
+        default=None,
+        metavar="PATH",
+        help="File listing the changed files, one per line. If given, test suites unaffected "
+        + "by the changes are skipped. By default, all test suites run.",
     )
     parser.add_argument(
         "--partition-module",
