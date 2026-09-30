@@ -21,10 +21,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// KNOWN RED: this test pins the desired invoke-dependency semantics: a consumer of an invoke's return value
-// must depend on the union of every resource that fed the invoke's args. PCL today drops these dependencies
-// (d.Dependencies comes back nil / partial), so this test fails until that behaviour is corrected. Do not
-// weaken the assertions to "make it green"; fix the SDK.
+// This test pins the desired invoke-dependency semantics: a consumer of an invoke's return value
+// must depend on the union of every resource that fed the invoke's args. 
 func init() {
 	LanguageTests["l2-invoke-union-dependencies"] = LanguageTest{
 		Providers: []func() plugin.Provider{
