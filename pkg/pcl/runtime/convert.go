@@ -216,23 +216,19 @@ func makePoisonValue(name string) cty.Value {
 }
 
 func ctyToPropertyValue(value cty.Value) (out property.Value, _ error) {
-	value, poison := unmark[poisonMark](value)
-	if poison != nil {
-		return property.Value{}, &poisonError{name: poison.name}
-	}
-
-	depsOf := func(value cty.Value) []resource.URN {
-		var dependencies []resource.URN
-		value, dependency := unmark[dependencyMark](value)
-		for dependency != nil {
-			dependencies = append(dependencies, dependency.dependency)
-			value, dependency = unmark[dependencyMark](value)
+	// The accessors below panic on a marked value, so move the marks onto the result.
+	value, marks := value.Unmark()
+	var dependencies []resource.URN
+	for mark := range marks {
+		switch mark := mark.(type) {
+		case poisonMark:
+			return property.Value{}, &poisonError{name: mark.name}
+		case dependencyMark:
+			dependencies = append(dependencies, mark.dependency)
 		}
-		return dependencies
 	}
-
-	defer func() { out = out.WithSecret(value.HasMark(secretMark{})) }()
-	defer func() { out = out.WithDependencies(depsOf(value)) }()
+	_, secret := marks[secretMark{}]
+	defer func() { out = out.WithSecret(secret).WithDependencies(dependencies) }()
 
 	if !value.IsKnown() {
 		return property.New(property.Computed), nil
