@@ -222,11 +222,11 @@ func ctyToPropertyValue(value cty.Value) (resource.PropertyValue, error) {
 		// First check for dependencies as that will lift this to an output type. A single cty value may carry
 		// more than one dependencyMark (one per source URN), so pull them all off in one pass.
 		value, depMarks := unmark[dependencyMark](value)
-		var dependencies []resource.URN
+		dependencies := make([]resource.URN, 0, len(depMarks))
 		for _, dm := range depMarks {
 			dependencies = append(dependencies, dm.dependency)
 		}
-		if dependencies != nil {
+		if len(dependencies) > 0 {
 			pv, err := inner(value)
 			if err != nil {
 				return resource.PropertyValue{}, err
