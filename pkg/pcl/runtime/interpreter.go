@@ -1008,7 +1008,7 @@ func providerReferences(providers property.Value) (map[string]string, error) {
 			if err != nil {
 				return nil, err
 			}
-			psopt[string(k)] = ref
+			psopt[k] = ref
 		}
 	case providers.IsArray():
 		for _, v := range providers.AsArray().All {
@@ -1260,7 +1260,7 @@ func (i *Interpreter) registerResourceWith(
 		deps := castSliceToString(allDependencies(val))
 		if len(deps) > 0 {
 			dependencies = append(dependencies, deps...)
-			propertyDependencies[string(key)] = &pulumirpc.RegisterResourceRequest_PropertyDependencies{
+			propertyDependencies[key] = &pulumirpc.RegisterResourceRequest_PropertyDependencies{
 				Urns: deps,
 			}
 		}
@@ -1431,7 +1431,7 @@ func (i *Interpreter) registerResourceWith(
 						return cty.NilVal, errors.New(
 							"envVarMappings must be an object mapping environment variable names to input property keys")
 					}
-					envVarMappings[string(envVar)] = propKey.AsString()
+					envVarMappings[envVar] = propKey.AsString()
 				}
 				request.EnvVarMappings = envVarMappings
 			}
@@ -1608,7 +1608,7 @@ func (i *Interpreter) registerResourceWith(
 					if !v.IsString() {
 						return cty.NilVal, fmt.Errorf("customTimeouts.%s must be a string", k)
 					}
-					timeoutValues[string(k)] = v.AsString()
+					timeoutValues[k] = v.AsString()
 				}
 				request.CustomTimeouts = &pulumirpc.RegisterResourceRequest_CustomTimeouts{
 					Create: timeoutValues["create"],
@@ -2008,7 +2008,7 @@ func (i *Interpreter) registerComponent(ctx context.Context, component *pcl.Comp
 		deps := castSliceToString(allDependencies(val))
 		if len(deps) > 0 {
 			dependencies = append(dependencies, deps...)
-			propertyDependencies[string(key)] = &pulumirpc.RegisterResourceRequest_PropertyDependencies{
+			propertyDependencies[key] = &pulumirpc.RegisterResourceRequest_PropertyDependencies{
 				Urns: deps,
 			}
 		}
@@ -2128,10 +2128,10 @@ func (i *Interpreter) registerComponent(ctx context.Context, component *pcl.Comp
 	)
 
 	for k, v := range inputs.All {
-		if err := componentInterpreter.setVariable(ctx, string(k), v); err != nil {
+		if err := componentInterpreter.setVariable(ctx, k, v); err != nil {
 			return hcl.Diagnostics{{
 				Severity: hcl.DiagError,
-				Summary:  fmt.Sprintf("Failed to set component input %s", k),
+				Summary:  "Failed to set component input " + k,
 				Detail:   err.Error(),
 			}}
 		}

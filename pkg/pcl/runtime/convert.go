@@ -599,7 +599,7 @@ func propertyValueToCty(
 			if err != nil {
 				return cty.NilVal, err
 			}
-			vals[string(k)] = ctyVal
+			vals[k] = ctyVal
 		}
 		return cty.ObjectVal(vals), nil
 	case value.IsResourceReference():
