@@ -4006,14 +4006,14 @@ func TestOldCheckedInputsAreSent(t *testing.T) {
 				},
 				DeleteF: func(_ context.Context, req plugin.DeleteRequest) (plugin.DeleteResponse, error) {
 					// Check that the old inputs and outputs are passed to UpdateF
-					assert.Equal(t, resource.NewPropertyMapFromMap(map[string]any{
-						"foo":     "baz",
-						"default": "default",
+					assert.Equal(t, property.NewMap(map[string]property.Value{
+						"foo":     property.New("baz"),
+						"default": property.New("default"),
 					}), req.Inputs)
-					assert.Equal(t, resource.NewPropertyMapFromMap(map[string]any{
-						"foo":      "baz",
-						"default":  "default",
-						"computed": "computed",
+					assert.Equal(t, property.NewMap(map[string]property.Value{
+						"foo":      property.New("baz"),
+						"default":  property.New("default"),
+						"computed": property.New("computed"),
 					}), req.Outputs)
 
 					return plugin.DeleteResponse{}, nil

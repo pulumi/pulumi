@@ -363,7 +363,7 @@ type DeleteRequest struct {
 	Name            string
 	Type            tokens.Type
 	ID              resource.ID
-	Inputs, Outputs resource.PropertyMap
+	Inputs, Outputs property.Map
 	Timeout         float64
 	// The gRPC address of the ResourceStatus service which can be used to delete view resources.
 	ResourceStatusAddress string

@@ -433,8 +433,8 @@ func TestCRUD(t *testing.T) {
 		resp, err := r.Delete(t.Context(), plugin.DeleteRequest{
 			URN:     urn,
 			ID:      id,
-			Inputs:  resource.PropertyMap{},
-			Outputs: resource.PropertyMap{},
+			Inputs:  property.Map{},
+			Outputs: property.Map{},
 			Timeout: timeout,
 		})
 		require.NoError(t, err)

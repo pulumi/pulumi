@@ -1840,11 +1840,8 @@ func (p *provider) Delete(ctx context.Context, req DeleteRequest) (DeleteRespons
 	contract.Assertf(req.URN != "", "Delete requires a URN")
 	contract.Assertf(req.ID != "", "Delete requires an ID")
 
-	contract.Assertf(req.Inputs != nil, "Delete requires input properties")
-	contract.Assertf(req.Outputs != nil, "Delete requires output properties")
-
 	label := fmt.Sprintf("%s.Delete(%s,%s)", p.label(), req.URN, req.ID)
-	logging.V(7).Infof("%s executing (#inputs=%d, #outputs=%d)", label, len(req.Inputs), len(req.Outputs))
+	logging.V(7).Infof("%s executing (#inputs=%d, #outputs=%d)", label, req.Inputs.Len(), req.Outputs.Len())
 
 	// Ensure that the plugin is configured.
 	client := p.clientRaw
@@ -1856,7 +1853,7 @@ func (p *provider) Delete(ctx context.Context, req DeleteRequest) (DeleteRespons
 	// We should never call delete at preview time, so we should never see unknowns here
 	contract.Assertf(pcfg.known, "Delete cannot be called if the configuration is unknown")
 
-	minputs, err := MarshalProperties(req.Inputs, MarshalOptions{
+	minputs, err := MarshalProperties(resource.ToResourcePropertyMap(req.Inputs), MarshalOptions{
 		Label:              label,
 		ElideAssetContents: true,
 		KeepSecrets:        protocol.acceptSecrets,
@@ -1868,7 +1865,7 @@ func (p *provider) Delete(ctx context.Context, req DeleteRequest) (DeleteRespons
 		return DeleteResponse{}, err
 	}
 
-	moutputs, err := MarshalProperties(req.Outputs, MarshalOptions{
+	moutputs, err := MarshalProperties(resource.ToResourcePropertyMap(req.Outputs), MarshalOptions{
 		Label:              label,
 		ElideAssetContents: true,
 		KeepSecrets:        protocol.acceptSecrets,
