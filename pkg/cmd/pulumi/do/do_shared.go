@@ -273,7 +273,7 @@ func evaluatePCL(
 		func(context.Context, string) (*schema.Function, error) {
 			return nil, notSupported("reference functions")
 		},
-		func(context.Context, resource.ResourceReference) (property.Map, error) {
+		func(context.Context, property.ResourceReference) (property.Map, error) {
 			return property.Map{}, notSupported("reference resources")
 		},
 		func(context.Context, *pulumirpc.ResourceInvokeRequest) (*pulumirpc.ResourceInvokeResponse, error) {
@@ -292,7 +292,7 @@ func evaluatePCL(
 	if diags.HasErrors() {
 		return nil, diags
 	}
-	return result, nil
+	return resource.ToResourcePropertyMap(result), nil
 }
 
 // parseFile reads an input file in the given format and returns it ready for evaluation. For non-PCL formats the source

@@ -18,8 +18,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
-	"maps"
 	"os/exec"
 	"sort"
 	"strconv"
@@ -44,7 +42,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/urn"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/pulumi/pulumi/sdk/v3/go/propertyrpc"
@@ -2053,8 +2050,8 @@ func (i *Interpreter) registerComponent(ctx context.Context, component *pcl.Comp
 
 	dependencies := []string{}
 	propertyDependencies := map[string]*pulumirpc.RegisterResourceRequest_PropertyDependencies{}
-	for key, val := range inputs {
-		deps := getAllDependencies(val)
+	for key, val := range inputs.All {
+		deps := castSliceToString(allDependencies(val))
 		if len(deps) > 0 {
 			dependencies = append(dependencies, deps...)
 			propertyDependencies[string(key)] = &pulumirpc.RegisterResourceRequest_PropertyDependencies{
@@ -2148,7 +2145,7 @@ func (i *Interpreter) registerComponent(ctx context.Context, component *pcl.Comp
 	// A component declared without a source has no inner program to interpret and no outputs, but its variable
 	// must still be published so that children can parent to it.
 	if component.Program == nil {
-		return i.setComponentVariable(ctx, component, resp, nil)
+		return i.setComponentVariable(ctx, component, resp, property.Map{})
 	}
 
 	componentInterpreter := &Interpreter{
@@ -2176,7 +2173,7 @@ func (i *Interpreter) registerComponent(ctx context.Context, component *pcl.Comp
 		componentInterpreter.call,
 	)
 
-	for k, v := range inputs {
+	for k, v := range inputs.All {
 		if err := componentInterpreter.setVariable(ctx, string(k), v); err != nil {
 			return hcl.Diagnostics{{
 				Severity: hcl.DiagError,
@@ -2194,18 +2191,11 @@ func (i *Interpreter) registerComponent(ctx context.Context, component *pcl.Comp
 			Detail:   err.Error(),
 		}}
 	}
-	for key, val := range componentOutputs {
-		componentOutputs[key] = collapseResourceReferences(val)
+	for key, val := range componentOutputs.All {
+		componentOutputs = componentOutputs.Set(key, collapseResourceReferences(val))
 	}
 
-	outObj, err := plugin.MarshalProperties(componentOutputs, marshalOpts)
-	if err != nil {
-		return hcl.Diagnostics{{
-			Severity: hcl.DiagError,
-			Summary:  "Failed to marshal component outputs",
-			Detail:   err.Error(),
-		}}
-	}
+	outObj := propertyrpc.Marshal(componentOutputs)
 	_, err = i.monitor.RegisterResourceOutputs(ctx, &pulumirpc.RegisterResourceOutputsRequest{
 		Urn:     resp.GetUrn(),
 		Outputs: outObj,
@@ -2226,19 +2216,13 @@ func (i *Interpreter) setComponentVariable(
 	ctx context.Context,
 	component *pcl.Component,
 	resp *pulumirpc.RegisterResourceResponse,
-	componentOutputs resource.PropertyMap,
+	componentOutputs property.Map,
 ) hcl.Diagnostics {
-	componentObject := resource.PropertyMap{
-		"id":  resource.NewProperty(resp.GetId()),
-		"urn": resource.NewProperty(resp.GetUrn()),
-	}
-	maps.Copy(componentObject, componentOutputs)
+	result := property.New(componentOutputs.
+		Set("id", property.New(resp.GetId())).
+		Set("urn", property.New(resp.GetUrn()))).
+		WithDependencies([]resource.URN{resource.URN(resp.GetUrn())})
 
-	result := resource.NewProperty(resource.Output{
-		Element:      resource.NewProperty(componentObject),
-		Dependencies: []resource.URN{resource.URN(resp.GetUrn())},
-		Known:        true,
-	})
 	if err := i.setVariable(ctx, component.Name(), result); err != nil {
 		return hcl.Diagnostics{{
 			Severity: hcl.DiagError,
@@ -2247,6 +2231,17 @@ func (i *Interpreter) setComponentVariable(
 		}}
 	}
 	return nil
+}
+
+func castSliceToString[T ~string](arr []T) []string {
+	if arr == nil {
+		return nil
+	}
+	dst := make([]string, len(arr))
+	for i, v := range arr {
+		dst[i] = string(v)
+	}
+	return dst
 }
 
 func (i *Interpreter) registerStackOutputs(ctx context.Context, outputs property.Map) error {
