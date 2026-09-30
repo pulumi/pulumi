@@ -987,6 +987,9 @@ func getAllDependencies(value resource.PropertyValue) []string {
 		}
 		return append(strDeps, getAllDependencies(output.Element)...)
 	}
+	if value.IsSecret() {
+		return getAllDependencies(value.SecretValue().Element)
+	}
 	if value.IsObject() {
 		var deps []string
 		for _, v := range value.ObjectValue() {

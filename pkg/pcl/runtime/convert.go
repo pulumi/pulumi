@@ -49,15 +49,18 @@ var (
 	archiveType = cty.Capsule("archive", reflect.TypeFor[archive.Archive]())
 )
 
-func unmark[T any](value cty.Value) (cty.Value, *T) {
+// unmark strips every mark of type T from value and returns all such marks. A single cty value can carry
+// several marks of the same type (e.g. one dependencyMark per dependency URN), so callers that treat a mark
+// class as a boolean should just check `len(marks) > 0`.
+func unmark[T any](value cty.Value) (cty.Value, []T) {
 	unmarked, marks := value.Unmark()
 	if marks == nil {
 		return value, nil
 	}
-	var found *T
+	var found []T
 	for mark := range marks {
 		if t, ok := mark.(T); ok {
-			found = &t
+			found = append(found, t)
 			continue
 		}
 		unmarked = unmarked.Mark(mark)
@@ -216,12 +219,12 @@ func makePoisonValue(name string) cty.Value {
 func ctyToPropertyValue(value cty.Value) (resource.PropertyValue, error) {
 	var inner func(cty.Value) (resource.PropertyValue, error)
 	inner = func(value cty.Value) (resource.PropertyValue, error) {
-		// First check for dependencies as that will lift this to an output type
+		// First check for dependencies as that will lift this to an output type. A single cty value may carry
+		// more than one dependencyMark (one per source URN), so pull them all off in one pass.
+		value, depMarks := unmark[dependencyMark](value)
 		var dependencies []resource.URN
-		value, dependency := unmark[dependencyMark](value)
-		for dependency != nil {
-			dependencies = append(dependencies, dependency.dependency)
-			value, dependency = unmark[dependencyMark](value)
+		for _, dm := range depMarks {
+			dependencies = append(dependencies, dm.dependency)
 		}
 		if dependencies != nil {
 			pv, err := inner(value)
@@ -303,17 +306,17 @@ func ctyToPropertyValue(value cty.Value) (resource.PropertyValue, error) {
 		return resource.PropertyValue{}, fmt.Errorf("unsupported value type %s", value.Type().FriendlyName())
 	}
 
-	value, poison := unmark[poisonMark](value)
-	if poison != nil {
-		return resource.PropertyValue{}, &poisonError{name: poison.name}
+	value, poisons := unmark[poisonMark](value)
+	if len(poisons) > 0 {
+		return resource.PropertyValue{}, &poisonError{name: poisons[0].name}
 	}
 
-	value, secret := unmark[secretMark](value)
+	value, secrets := unmark[secretMark](value)
 	pv, err := inner(value)
 	if err != nil {
 		return resource.PropertyValue{}, err
 	}
-	if secret != nil {
+	if len(secrets) > 0 {
 		return resource.MakeSecret(pv), nil
 	}
 	return pv, nil
