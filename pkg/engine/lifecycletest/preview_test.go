@@ -97,17 +97,17 @@ func TestPreviewRefreshWithProgram(t *testing.T) {
 					if req.Name == "resA" {
 						// This should get called as part of the preview _after_ refresh so we should see the
 						// program inputs and the read outputs.
-						assert.Equal(t, programInputs, req.NewInputs)
-						assert.Equal(t, readOutputs, req.OldOutputs)
+						assert.Equal(t, programInputs, resource.ToResourcePropertyMap(req.NewInputs))
+						assert.Equal(t, readOutputs, resource.ToResourcePropertyMap(req.OldOutputs))
 
 						return plugin.UpdateResponse{
-							Properties: updateOutputs,
+							Properties: resource.FromResourcePropertyMap(updateOutputs),
 							Status:     resource.StatusOK,
 						}, nil
 					}
 
 					return plugin.UpdateResponse{
-						Properties: resource.PropertyMap{},
+						Properties: property.Map{},
 						Status:     resource.StatusOK,
 					}, nil
 				},

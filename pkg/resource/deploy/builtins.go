@@ -254,13 +254,15 @@ func (p *builtinProvider) Update(_ context.Context, req plugin.UpdateRequest) (p
 	typ := req.URN.Type()
 	switch typ { //nolint:exhaustive
 	case stashType:
+		newInputs := resource.ToResourcePropertyMap(req.NewInputs)
+		oldOutputs := resource.ToResourcePropertyMap(req.OldOutputs)
 		properties := resource.PropertyMap{
-			"input":  req.NewInputs["input"],
-			"output": req.OldOutputs["output"],
+			"input":  newInputs["input"],
+			"output": oldOutputs["output"],
 		}
 
 		return plugin.UpdateResponse{
-			Properties: properties,
+			Properties: resource.FromResourcePropertyMap(properties),
 			Status:     resource.StatusOK,
 		}, nil
 	default:

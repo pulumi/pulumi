@@ -1501,14 +1501,14 @@ func TestProvider_PartialFailure(t *testing.T) {
 		Name:       urn.Name(),
 		Type:       urn.Type(),
 		ID:         "some-id",
-		OldInputs:  resource.PropertyMap{},
-		OldOutputs: resource.PropertyMap{},
-		NewInputs:  resource.PropertyMap{},
+		OldInputs:  property.Map{},
+		OldOutputs: property.Map{},
+		NewInputs:  property.Map{},
 	})
 	require.ErrorAs(t, err, &initErr, "expected an InitError")
 	assert.Equal(t, []string{"update issue"}, initErr.Reasons)
 	assert.Equal(t, UpdateResponse{
-		Properties:          liveProperties,
+		Properties:          resource.FromResourcePropertyMap(liveProperties),
 		Status:              resource.StatusPartialFailure,
 		RefreshBeforeUpdate: true,
 	}, updateResp)

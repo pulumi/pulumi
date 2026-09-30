@@ -18,7 +18,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"maps"
 	"os/exec"
 	"sort"
 	"strconv"
@@ -41,8 +40,11 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/v3/util/pdag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/urn"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
+	"github.com/pulumi/pulumi/sdk/v3/go/propertyrpc"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
@@ -197,7 +199,7 @@ func (i *Interpreter) registerHookNode(ctx context.Context, h *pcl.Hook) error {
 			return diags
 		}
 		if odrVal.IsBool() {
-			onDryRun = odrVal.BoolValue()
+			onDryRun = odrVal.AsBool()
 		} else {
 			return fmt.Errorf("hook %s: onDryRun must be a boolean", h.Name())
 		}
@@ -210,7 +212,7 @@ func (i *Interpreter) registerHookNode(ctx context.Context, h *pcl.Hook) error {
 			return diags
 		}
 		if ieVal.IsBool() {
-			ignoreErrors = ieVal.BoolValue()
+			ignoreErrors = ieVal.AsBool()
 		} else {
 			return fmt.Errorf("hook %s: ignoreErrors must be a boolean", h.Name())
 		}
@@ -230,14 +232,12 @@ func (i *Interpreter) registerHookNode(ctx context.Context, h *pcl.Hook) error {
 		if s == nil {
 			return cty.EmptyObjectVal, nil
 		}
-		mopts := plugin.MarshalOptions{
-			KeepSecrets: true,
-		}
-		props, err := plugin.UnmarshalProperties(s, mopts)
+
+		props, err := propertyrpc.Unmarshal(s)
 		if err != nil {
 			return cty.EmptyObjectVal, err
 		}
-		val, err := propertyValueToCty(ctx, i.getResource, resource.NewProperty(props))
+		val, err := propertyValueToCty(ctx, i.getResource, property.New(props))
 		if err != nil {
 			return cty.EmptyObjectVal, err
 		}
@@ -284,12 +284,11 @@ func (i *Interpreter) registerHookNode(ctx context.Context, h *pcl.Hook) error {
 			return nil, fmt.Errorf("hook %s: command must be a list of strings", hookName)
 		}
 		var cmdArgs []string
-		for _, arg := range cmdVal.ArrayValue() {
-			arg, _ = unwrapOutputs(arg)
+		for _, arg := range cmdVal.AsArray().All {
 			if !arg.IsString() {
-				return nil, fmt.Errorf("hook %s: command elements must be strings was %v", hookName, arg)
+				return nil, fmt.Errorf("hook %s: command elements must be strings", hookName)
 			}
-			cmdArgs = append(cmdArgs, arg.StringValue())
+			cmdArgs = append(cmdArgs, arg.AsString())
 		}
 		if len(cmdArgs) == 0 {
 			return nil, fmt.Errorf("hook %s: command must not be empty", hookName)
@@ -415,7 +414,7 @@ func (i *Interpreter) call(
 	return resp, err
 }
 
-func (i *Interpreter) getResource(ctx context.Context, ref resource.ResourceReference) (resource.PropertyMap, error) {
+func (i *Interpreter) getResource(ctx context.Context, ref property.ResourceReference) (property.Map, error) {
 	args, err := structpb.NewStruct(map[string]any{
 		"urn": string(ref.URN),
 	})
@@ -428,26 +427,18 @@ func (i *Interpreter) getResource(ctx context.Context, ref resource.ResourceRefe
 		AcceptsByteString: true,
 	})
 	if err != nil {
-		return resource.PropertyMap{}, fmt.Errorf("invoke getResource for %s: %w", ref.URN, err)
+		return property.Map{}, fmt.Errorf("invoke getResource for %s: %w", ref.URN, err)
 	}
 
-	marshalOpts := plugin.MarshalOptions{
-		KeepUnknowns:  true,
-		KeepSecrets:   true,
-		KeepResources: true,
-	}
-	outputs, err := plugin.UnmarshalProperties(resp.Return, marshalOpts)
+	outputs, err := propertyrpc.Unmarshal(resp.Return)
 	if err != nil {
-		return resource.PropertyMap{}, fmt.Errorf("unmarshal stack outputs: %w", err)
+		return property.Map{}, fmt.Errorf("unmarshal stack outputs: %w", err)
 	}
-	outputs = outputs["state"].ObjectValue()
-
-	outputs["id"] = ref.ID
-	outputs["urn"] = resource.NewProperty(string(ref.URN))
-	outputs["__name"] = resource.NewProperty(ref.URN.Name())
-	outputs["__type"] = resource.NewProperty(string(ref.URN.Type()))
-
-	return outputs, nil
+	return outputs.Get("state").AsMap().
+		Set("id", ref.ID).
+		Set("urn", property.New(string(ref.URN))).
+		Set("__name", property.New(ref.URN.Name())).
+		Set("__type", property.New(string(ref.URN.Type()))), nil
 }
 
 // effectiveName returns the name to use when registering a resource or component with the given
@@ -555,7 +546,7 @@ func (i *Interpreter) RunEmbedded(
 	ctx context.Context,
 	monitor pulumirpc.ResourceMonitorClient,
 	loader schema.ReferenceLoader,
-	scopeVars map[string]resource.PropertyValue,
+	scopeVars map[string]property.Value,
 	snippetID string,
 ) error {
 	i.monitor = monitor
@@ -597,7 +588,7 @@ func (i *Interpreter) RunEmbedded(
 	return nil
 }
 
-func (i *Interpreter) executeProgramNodes(ctx context.Context) (resource.PropertyMap, error) {
+func (i *Interpreter) executeProgramNodes(ctx context.Context) (property.Map, error) {
 	dag := pdag.New[pcl.Node]()
 	nodes := map[pcl.Node]pdag.Node{}
 
@@ -614,7 +605,7 @@ func (i *Interpreter) executeProgramNodes(ctx context.Context) (resource.Propert
 			contract.Assertf(ok, "missing node for dependency %s", dep.Name())
 			err := dag.NewEdge(dagNodeB, dagNodeA)
 			if err != nil {
-				return nil, fmt.Errorf("failed to create edge from %s to %s: %w", dep.Name(), node.Name(), err)
+				return property.Map{}, fmt.Errorf("failed to create edge from %s to %s: %w", dep.Name(), node.Name(), err)
 			}
 		}
 	}
@@ -628,7 +619,7 @@ func (i *Interpreter) executeProgramNodes(ctx context.Context) (resource.Propert
 			switch node.(type) {
 			case *pcl.Resource, *pcl.Component:
 				if err := dag.NewEdge(gateDagNode, nodes[node]); err != nil {
-					return nil, fmt.Errorf("failed to create edge from %s to %s: %w",
+					return property.Map{}, fmt.Errorf("failed to create edge from %s to %s: %w",
 						gate.Name(), node.Name(), err)
 				}
 			}
@@ -636,7 +627,7 @@ func (i *Interpreter) executeProgramNodes(ctx context.Context) (resource.Propert
 	}
 
 	var outputsLock sync.Mutex
-	outputs := resource.PropertyMap{}
+	outputs := map[string]property.Value{}
 	err := dag.Walk(ctx, func(ctx context.Context, node pcl.Node) error {
 		switch node := node.(type) {
 		case *pcl.ConfigVariable:
@@ -691,7 +682,7 @@ func (i *Interpreter) executeProgramNodes(ctx context.Context) (resource.Propert
 				return diags
 			}
 			outputsLock.Lock()
-			outputs[resource.PropertyKey(node.LogicalName())] = value
+			outputs[node.LogicalName()] = value
 			outputsLock.Unlock()
 		default:
 			return fmt.Errorf("unknown node type: %T", node)
@@ -699,10 +690,10 @@ func (i *Interpreter) executeProgramNodes(ctx context.Context) (resource.Propert
 		return nil
 	}, pdag.MaxProcs(int(i.info.Parallel)))
 	if err != nil {
-		return nil, err
+		return property.Map{}, err
 	}
 
-	return outputs, nil
+	return property.NewMap(outputs), nil
 }
 
 func (i *Interpreter) lookupResource(ctx context.Context, token string) (*schema.Resource, error) {
@@ -870,7 +861,7 @@ func (i *Interpreter) bindConfigVariable(ctx context.Context, cfg *pcl.ConfigVar
 			contract.Assertf(poison == nil, "config variables can't be poisoned")
 			diagnostics = append(diagnostics, diags...)
 			if _, isSecret := secretKeys[key]; isSecret || cfg.Secret {
-				value = resource.MakeSecret(value)
+				value = value.WithSecret(true)
 			}
 			if !diags.HasErrors() {
 				if err := i.setVariable(ctx, cfg.Name(), value); err != nil {
@@ -897,7 +888,7 @@ func (i *Interpreter) bindConfigVariable(ctx context.Context, cfg *pcl.ConfigVar
 	diagnostics = append(diagnostics, diags...)
 	if !diags.HasErrors() {
 		if _, isSecret := secretKeys[key]; isSecret || cfg.Secret {
-			value = resource.MakeSecret(value)
+			value = value.WithSecret(true)
 		}
 		if err := i.setVariable(ctx, cfg.Name(), value); err != nil {
 			diagnostics = append(diagnostics, &hcl.Diagnostic{
@@ -936,7 +927,7 @@ func (i *Interpreter) enforceRequiredVersion(ctx context.Context) error {
 	}
 
 	_, err := i.engine.RequirePulumiVersion(ctx, &pulumirpc.RequirePulumiVersionRequest{
-		PulumiVersionRange: value.StringValue(),
+		PulumiVersionRange: value.AsString(),
 	})
 	return err
 }
@@ -958,17 +949,12 @@ func (i *Interpreter) registerStack(ctx context.Context) error {
 		return errors.New("stack URN was empty")
 	}
 	if resp.Object != nil {
-		marshalOpts := plugin.MarshalOptions{
-			KeepUnknowns:  true,
-			KeepSecrets:   true,
-			KeepResources: true,
-		}
-		objectValue, err := plugin.UnmarshalProperties(resp.Object, marshalOpts)
+		objectValue, err := propertyrpc.Unmarshal(resp.Object)
 		if err != nil {
 			return fmt.Errorf("unmarshal stack outputs: %w", err)
 		}
 
-		err = i.setVariable(ctx, "pulumi", resource.NewProperty(objectValue))
+		err = i.setVariable(ctx, "pulumi", property.New(objectValue))
 		if err != nil {
 			return fmt.Errorf("set pulumi variable: %w", err)
 		}
@@ -977,105 +963,55 @@ func (i *Interpreter) registerStack(ctx context.Context) error {
 	return nil
 }
 
-func getAllDependencies(value resource.PropertyValue) []string {
-	if value.IsOutput() {
-		output := value.OutputValue()
-		deps := output.Dependencies
-		strDeps := make([]string, 0, len(deps))
-		for _, dep := range deps {
-			strDeps = append(strDeps, string(dep))
+func allDependencies(value property.Value) []urn.URN {
+	var deps []urn.URN
+	var inner func(value property.Value)
+	inner = func(value property.Value) {
+		deps = append(deps, value.Dependencies()...)
+		switch {
+		case value.IsMap():
+			for _, v := range value.AsMap().AllStable {
+				inner(v)
+			}
+		case value.IsArray():
+			for _, v := range value.AsArray().All {
+				inner(v)
+			}
 		}
-		return append(strDeps, getAllDependencies(output.Element)...)
 	}
-	if value.IsSecret() {
-		return getAllDependencies(value.SecretValue().Element)
-	}
-	if value.IsObject() {
-		var deps []string
-		for _, v := range value.ObjectValue() {
-			deps = append(deps, getAllDependencies(v)...)
-		}
-		return deps
-	}
-	if value.IsArray() {
-		var deps []string
-		for _, v := range value.ArrayValue() {
-			deps = append(deps, getAllDependencies(v)...)
-		}
-		return deps
-	}
-	return nil
-}
-
-func unwrapOutputs(value resource.PropertyValue) (resource.PropertyValue, []resource.URN) {
-	if value.IsOutput() {
-		o := value.OutputValue()
-		elem := o.Element
-		val, deps := unwrapOutputs(elem)
-		if o.Secret {
-			val = resource.MakeSecret(val)
-		}
-		if !o.Known {
-			val = resource.NewProperty(resource.Computed{Element: resource.NewProperty("")})
-		}
-		return val, append(o.Dependencies, deps...)
-	}
-	if value.IsSecret() {
-		val, deps := unwrapOutputs(value.SecretValue().Element)
-		return resource.MakeSecret(val), deps
-	}
-	if value.IsArray() {
-		var arr []resource.PropertyValue
-		var deps []resource.URN
-		for _, v := range value.ArrayValue() {
-			val, d := unwrapOutputs(v)
-			arr = append(arr, val)
-			deps = append(deps, d...)
-		}
-		return resource.NewProperty(arr), deps
-	}
-	if value.IsObject() {
-		obj := resource.PropertyMap{}
-		var deps []resource.URN
-		for k, v := range value.ObjectValue() {
-			val, d := unwrapOutputs(v)
-			obj[k] = val
-			deps = append(deps, d...)
-		}
-		return resource.NewProperty(obj), deps
-	}
-	return value, nil
+	inner(value)
+	return deps
 }
 
 // providerReferences translates an evaluated `providers` option into the package name to provider
 // reference map the resource monitor expects. The option may be written either as an array of
 // provider resources, in which case each provider's package is taken from its URN, or as a map from
 // package name to provider resource.
-func providerReferences(providers resource.PropertyValue) (map[string]string, error) {
-	reference := func(v resource.PropertyValue) (string, string, error) {
+func providerReferences(providers property.Value) (map[string]string, error) {
+	reference := func(v property.Value) (string, string, error) {
 		urn, id, err := unwrapResource(v)
 		if err != nil {
 			return "", "", fmt.Errorf("providers: %w", err)
 		}
 		idstr := plugin.UnknownStringValue
 		if id.IsString() {
-			idstr = id.StringValue()
+			idstr = id.AsString()
 		}
 		return urn, fmt.Sprintf("%s::%s", urn, idstr), nil
 	}
 
 	psopt := map[string]string{}
 	switch {
-	case providers.IsObject():
-		for k, v := range providers.ObjectValue() {
+	case providers.IsMap():
+		for k, v := range providers.AsMap().All {
 			_, ref, err := reference(v)
 			if err != nil {
 				return nil, err
 			}
-			psopt[string(k)] = ref
+			psopt[k] = ref
 		}
 	case providers.IsArray():
-		for _, v := range providers.ArrayValue() {
+		for _, v := range providers.AsArray().All {
 			urn, ref, err := reference(v)
 			if err != nil {
 				return nil, err
@@ -1092,66 +1028,40 @@ func providerReferences(providers resource.PropertyValue) (map[string]string, er
 	return psopt, nil
 }
 
-func unwrapResource(value resource.PropertyValue) (string, resource.PropertyValue, error) {
-	value, _ = unwrapOutputs(value)
-	if !value.IsObject() {
-		return "", resource.PropertyValue{}, fmt.Errorf("expected resource object, got %s", value.TypeString())
+func unwrapResource(value property.Value) (string, property.Value, error) {
+	if !value.IsMap() {
+		return "", property.Value{}, errors.New("expected resource object")
 	}
-	obj := value.ObjectValue()
-	urnVal, ok := obj["urn"]
+	obj := value.AsMap()
+	urnVal, ok := obj.GetOk("urn")
 	if !ok || urnVal.IsNull() || urnVal.IsComputed() || !urnVal.IsString() {
-		return "", resource.PropertyValue{}, errors.New("expected resource object with known urn property")
+		return "", property.Value{}, errors.New("expected resource object with known urn property")
 	}
-	idVal, ok := obj["id"]
+	idVal, ok := obj.GetOk("id")
 	if !ok || idVal.IsNull() {
-		return "", resource.PropertyValue{}, errors.New("expected resource object with id property of type string")
+		return "", property.Value{}, errors.New("expected resource object with id property of type string")
 	}
 
 	if !idVal.IsComputed() && !idVal.IsString() {
-		return "", resource.PropertyValue{}, errors.New("expected resource object with id property of type string")
+		return "", property.Value{}, errors.New("expected resource object with id property of type string")
 	}
 
-	return urnVal.StringValue(), idVal, nil
+	return urnVal.AsString(), idVal, nil
 }
 
-func collapseResourceReferences(value resource.PropertyValue) resource.PropertyValue {
+func collapseResourceReferences(value property.Value) property.Value {
 	switch {
-	case value.IsOutput():
-		output := value.OutputValue()
-		newOutput := resource.Output{
-			Dependencies: output.Dependencies,
-			Secret:       output.Secret,
-			Known:        output.Known,
-			Element:      collapseResourceReferences(output.Element),
-		}
-		// If this is an output for a single URN and that URN is now the inner resource reference value then we can
-		// collapse this output into a resource reference directly.
-		if len(newOutput.Dependencies) == 1 &&
-			output.Known &&
-			!output.Element.IsResourceReference() &&
-			newOutput.Element.IsResourceReference() &&
-			newOutput.Element.ResourceReferenceValue().URN == newOutput.Dependencies[0] {
-			if newOutput.Secret {
-				return resource.MakeSecret(newOutput.Element)
-			}
-			return newOutput.Element
-		}
-		return resource.NewProperty(newOutput)
-	case value.IsSecret():
-		secret := value.SecretValue()
-		secret.Element = collapseResourceReferences(secret.Element)
-		return resource.NewProperty(secret)
 	case value.IsArray():
-		array := value.ArrayValue()
-		collapsed := make([]resource.PropertyValue, len(array))
-		for i, elem := range array {
+		array := value.AsArray()
+		collapsed := make([]property.Value, array.Len())
+		for i, elem := range array.All {
 			collapsed[i] = collapseResourceReferences(elem)
 		}
-		return resource.NewProperty(collapsed)
-	case value.IsObject():
-		obj := value.ObjectValue()
-		collapsed := make(resource.PropertyMap, len(obj))
-		for key, elem := range obj {
+		return property.WithGoValue(value, collapsed)
+	case value.IsMap():
+		obj := value.AsMap()
+		collapsed := make(map[string]property.Value, obj.Len())
+		for key, elem := range obj.All {
 			collapsed[key] = collapseResourceReferences(elem)
 		}
 
@@ -1161,12 +1071,17 @@ func collapseResourceReferences(value resource.PropertyValue) resource.PropertyV
 		id, hasID := collapsed["id"]
 		typ, hasType := collapsed["__type"]
 		if hasURN && hasID && hasType && urn.IsString() && typ.IsString() {
-			return resource.NewProperty(resource.ResourceReference{
-				URN: resource.URN(urn.StringValue()),
+			ref := property.ResourceReference{
+				URN: resource.URN(urn.AsString()),
 				ID:  id,
-			})
+			}
+			// A dependency on only the referenced resource adds nothing to the reference itself.
+			if d := value.Dependencies(); len(d) == 1 && d[0] == ref.URN {
+				value = value.WithDependencies(nil)
+			}
+			return property.WithGoValue(value, ref)
 		}
-		return resource.NewProperty(collapsed)
+		return property.WithGoValue(value, collapsed)
 	default:
 		return value
 	}
@@ -1192,14 +1107,13 @@ func (i *Interpreter) registerResource(ctx context.Context, res *pcl.Resource) e
 		return diags
 	}
 
-	// Unwrap any output values, but if the range is computed we just have to skip this resource
-	rangeValue, _ = unwrapOutputs(rangeValue)
+	// If the range is computed we just have to skip this resource
 	if rangeValue.IsComputed() {
 		return nil
 	}
 
 	if rangeValue.IsBool() {
-		if !rangeValue.BoolValue() {
+		if !rangeValue.AsBool() {
 			return nil
 		}
 		result, err := i.registerResourceWith(ctx, res, i.evalContext, logicalBaseName)
@@ -1243,7 +1157,7 @@ func (i *Interpreter) registerResource(ctx context.Context, res *pcl.Resource) e
 	}
 
 	if rangeValue.IsNumber() {
-		count := max(int(rangeValue.NumberValue()), 0)
+		count := max(int(rangeValue.AsNumber()), 0)
 		items := make([]struct {
 			suffix  string
 			evalCtx *EvalContext
@@ -1262,12 +1176,12 @@ func (i *Interpreter) registerResource(ctx context.Context, res *pcl.Resource) e
 	}
 
 	if rangeValue.IsArray() {
-		values := rangeValue.ArrayValue()
+		values := rangeValue.AsArray()
 		items := make([]struct {
 			suffix  string
 			evalCtx *EvalContext
-		}, 0, len(values))
-		for idx, v := range values {
+		}, 0, values.Len())
+		for idx, v := range values.All {
 			val, err := propertyValueToCty(ctx, i.getResource, v)
 			if err != nil {
 				return err
@@ -1283,16 +1197,11 @@ func (i *Interpreter) registerResource(ctx context.Context, res *pcl.Resource) e
 		return registerMany(items)
 	}
 
-	if rangeValue.IsObject() {
-		values := rangeValue.ObjectValue()
-		keys := make([]string, 0, len(values))
-		for k := range values {
-			keys = append(keys, string(k))
-		}
-		sort.Strings(keys)
-		resultMap := make(map[string]cty.Value, len(keys))
-		for _, key := range keys {
-			val, err := propertyValueToCty(ctx, i.getResource, values[resource.PropertyKey(key)])
+	if rangeValue.IsMap() {
+		values := rangeValue.AsMap()
+		resultMap := make(map[string]cty.Value, values.Len())
+		for key, value := range values.AllStable {
+			val, err := propertyValueToCty(ctx, i.getResource, value)
 			if err != nil {
 				return err
 			}
@@ -1339,19 +1248,7 @@ func (i *Interpreter) registerResourceWith(
 		return cty.NilVal, diags
 	}
 
-	marshalOpts := plugin.MarshalOptions{
-		KeepUnknowns:   true,
-		KeepSecrets:    true,
-		KeepResources:  true,
-		KeepByteString: true,
-	}
-	obj, err := plugin.MarshalProperties(inputs, marshalOpts)
-	if err != nil {
-		return cty.NilVal, err
-	}
-	// The rest of this method can send output values
-	marshalOpts.KeepOutputValues = true
-
+	obj := propertyrpc.Marshal(inputs)
 	custom := true
 	if schemaResource != nil {
 		custom = !schemaResource.IsComponent
@@ -1359,11 +1256,11 @@ func (i *Interpreter) registerResourceWith(
 
 	dependencies := []string{}
 	propertyDependencies := map[string]*pulumirpc.RegisterResourceRequest_PropertyDependencies{}
-	for key, val := range inputs {
-		deps := getAllDependencies(val)
+	for key, val := range inputs.All {
+		deps := castSliceToString(allDependencies(val))
 		if len(deps) > 0 {
 			dependencies = append(dependencies, deps...)
-			propertyDependencies[string(key)] = &pulumirpc.RegisterResourceRequest_PropertyDependencies{
+			propertyDependencies[key] = &pulumirpc.RegisterResourceRequest_PropertyDependencies{
 				Urns: deps,
 			}
 		}
@@ -1399,14 +1296,14 @@ func (i *Interpreter) registerResourceWith(
 					return cty.NilVal, errors.New("additionalSecretOutputs must be an array of strings")
 				}
 				var additionalSecretOutputKeys []string
-				for _, v := range additionalSecretOutputs.ArrayValue() {
+				for _, v := range additionalSecretOutputs.AsArray().All {
 					if v.IsNull() || v.IsComputed() {
 						continue
 					}
 					if !v.IsString() {
 						return cty.NilVal, errors.New("additionalSecretOutputs must be an array of strings")
 					}
-					additionalSecretOutputKeys = append(additionalSecretOutputKeys, v.StringValue())
+					additionalSecretOutputKeys = append(additionalSecretOutputKeys, v.AsString())
 				}
 				request.AdditionalSecretOutputs = additionalSecretOutputKeys
 			}
@@ -1425,24 +1322,24 @@ func (i *Interpreter) registerResourceWith(
 				}
 				var aliasOpts []*pulumirpc.Alias
 				// Translate each alias expression (either string or object) into an rpc alias object
-				for _, alias := range aliases.ArrayValue() {
+				for _, alias := range aliases.AsArray().All {
 					if alias.IsString() {
 						aliasOpts = append(aliasOpts, &pulumirpc.Alias{
 							Alias: &pulumirpc.Alias_Urn{
-								Urn: alias.StringValue(),
+								Urn: alias.AsString(),
 							},
 						})
-					} else if alias.IsObject() {
-						obj := alias.ObjectValue()
+					} else if alias.IsMap() {
+						obj := alias.AsMap()
 						aliasOpt := &pulumirpc.Alias_Spec{}
 
-						setString := func(field resource.PropertyKey, setter func(string)) error {
-							attr, ok := obj[field]
+						setString := func(field string, setter func(string)) error {
+							attr, ok := obj.GetOk(field)
 							if ok && !attr.IsNull() && !attr.IsComputed() {
 								if !attr.IsString() {
 									return fmt.Errorf("%s must be a string", field)
 								}
-								setter(attr.StringValue())
+								setter(attr.AsString())
 							}
 							return nil
 						}
@@ -1456,17 +1353,17 @@ func (i *Interpreter) registerResourceWith(
 							return cty.NilVal, err
 						}
 
-						noParent, ok := obj["noParent"]
+						noParent, ok := obj.GetOk("noParent")
 						if ok && !noParent.IsNull() && !noParent.IsComputed() {
 							if !noParent.IsBool() {
 								return cty.NilVal, errors.New("noParent must be a boolean")
 							}
 							aliasOpt.Parent = &pulumirpc.Alias_Spec_NoParent{
-								NoParent: noParent.BoolValue(),
+								NoParent: noParent.AsBool(),
 							}
 						}
 
-						parent, ok := obj["parent"]
+						parent, ok := obj.GetOk("parent")
 						if ok && !parent.IsNull() && !parent.IsComputed() {
 							urn, _, err := unwrapResource(parent)
 							if err != nil {
@@ -1502,7 +1399,7 @@ func (i *Interpreter) registerResourceWith(
 					return cty.NilVal, errors.New("dependsOn must be an array of resource objects")
 				}
 				var dependsOnUrns []string
-				for _, v := range dependsOn.ArrayValue() {
+				for _, v := range dependsOn.AsArray().All {
 					if v.IsNull() || v.IsComputed() {
 						continue
 					}
@@ -1524,17 +1421,17 @@ func (i *Interpreter) registerResourceWith(
 				return cty.NilVal, diags
 			}
 			if !envVars.IsNull() && !envVars.IsComputed() {
-				if !envVars.IsObject() {
+				if !envVars.IsMap() {
 					return cty.NilVal, errors.New(
 						"envVarMappings must be an object mapping environment variable names to input property keys")
 				}
 				envVarMappings := map[string]string{}
-				for envVar, propKey := range envVars.ObjectValue() {
+				for envVar, propKey := range envVars.AsMap().All {
 					if propKey.IsNull() || propKey.IsComputed() || !propKey.IsString() {
 						return cty.NilVal, errors.New(
 							"envVarMappings must be an object mapping environment variable names to input property keys")
 					}
-					envVarMappings[string(envVar)] = propKey.StringValue()
+					envVarMappings[envVar] = propKey.AsString()
 				}
 				request.EnvVarMappings = envVarMappings
 			}
@@ -1551,7 +1448,7 @@ func (i *Interpreter) registerResourceWith(
 				if !importID.IsString() {
 					return cty.NilVal, errors.New("import must be a string")
 				}
-				request.ImportId = importID.StringValue()
+				request.ImportId = importID.AsString()
 			}
 		}
 		if res.Options.IgnoreChanges != nil {
@@ -1567,14 +1464,14 @@ func (i *Interpreter) registerResourceWith(
 					return cty.NilVal, errors.New("ignoreChanges must be an array of strings")
 				}
 				icopt := []string{}
-				for _, v := range ignoreChanges.ArrayValue() {
+				for _, v := range ignoreChanges.AsArray().All {
 					if v.IsNull() || v.IsComputed() {
 						continue
 					}
 					if !v.IsString() {
 						return cty.NilVal, errors.New("ignoreChanges must be an array of strings")
 					}
-					icopt = append(icopt, v.StringValue())
+					icopt = append(icopt, v.AsString())
 				}
 				request.IgnoreChanges = icopt
 			}
@@ -1590,8 +1487,7 @@ func (i *Interpreter) registerResourceWith(
 			if !protect.IsComputed() {
 				var popt *bool
 				if protect.IsBool() {
-					b := protect.BoolValue()
-					popt = &b
+					popt = new(protect.AsBool())
 				} else if !protect.IsNull() {
 					return cty.NilVal, errors.New("protect must be a boolean or null")
 				}
@@ -1611,7 +1507,7 @@ func (i *Interpreter) registerResourceWith(
 					return cty.NilVal, errors.New("replaceWith must be an array of resources")
 				}
 				var rwopt []string
-				for _, v := range replaceWith.ArrayValue() {
+				for _, v := range replaceWith.AsArray().All {
 					if v.IsNull() || v.IsComputed() {
 						continue
 					}
@@ -1637,14 +1533,14 @@ func (i *Interpreter) registerResourceWith(
 					return cty.NilVal, errors.New("replaceOnChanges must be an array of strings")
 				}
 				rocopt := []string{}
-				for _, v := range replaceOnChanges.ArrayValue() {
+				for _, v := range replaceOnChanges.AsArray().All {
 					if v.IsNull() || v.IsComputed() {
 						continue
 					}
 					if !v.IsString() {
 						return cty.NilVal, errors.New("replaceOnChanges must be an array of strings")
 					}
-					rocopt = append(rocopt, v.StringValue())
+					rocopt = append(rocopt, v.AsString())
 				}
 				request.ReplaceOnChanges = rocopt
 			}
@@ -1657,11 +1553,7 @@ func (i *Interpreter) registerResourceWith(
 			if diags.HasErrors() {
 				return cty.NilVal, diags
 			}
-			request.ReplacementTrigger, err = plugin.MarshalPropertyValue(
-				"replacementTrigger", replacement, marshalOpts)
-			if err != nil {
-				return cty.NilVal, err
-			}
+			request.ReplacementTrigger = propertyrpc.MarshalValue(replacement)
 		}
 		if res.Options.RetainOnDelete != nil {
 			retain, poison, diags := evalCtx.Evaluate(res.Options.RetainOnDelete)
@@ -1674,8 +1566,7 @@ func (i *Interpreter) registerResourceWith(
 			if !retain.IsNull() && !retain.IsComputed() {
 				var retainOnDelete *bool
 				if retain.IsBool() {
-					b := retain.BoolValue()
-					retainOnDelete = &b
+					retainOnDelete = new(retain.AsBool())
 				} else {
 					return cty.NilVal, errors.New("retainOnDelete must be a boolean or null")
 				}
@@ -1694,7 +1585,7 @@ func (i *Interpreter) registerResourceWith(
 				if !version.IsString() {
 					return cty.NilVal, errors.New("version must be a string")
 				}
-				request.Version = version.StringValue()
+				request.Version = version.AsString()
 			}
 		}
 		if res.Options.CustomTimeouts != nil {
@@ -1706,18 +1597,18 @@ func (i *Interpreter) registerResourceWith(
 				return cty.NilVal, diags
 			}
 			if !timeouts.IsNull() && !timeouts.IsComputed() {
-				if !timeouts.IsObject() {
+				if !timeouts.IsMap() {
 					return cty.NilVal, errors.New("customTimeouts must be an object")
 				}
 				timeoutValues := map[string]string{}
-				for k, v := range timeouts.ObjectValue() {
+				for k, v := range timeouts.AsMap().All {
 					if v.IsNull() || v.IsComputed() {
 						continue
 					}
 					if !v.IsString() {
 						return cty.NilVal, fmt.Errorf("customTimeouts.%s must be a string", k)
 					}
-					timeoutValues[string(k)] = v.StringValue()
+					timeoutValues[k] = v.AsString()
 				}
 				request.CustomTimeouts = &pulumirpc.RegisterResourceRequest_CustomTimeouts{
 					Create: timeoutValues["create"],
@@ -1737,7 +1628,7 @@ func (i *Interpreter) registerResourceWith(
 			}
 			if !dbr.IsNull() && !dbr.IsComputed() {
 				if dbr.IsBool() {
-					request.DeleteBeforeReplace = dbr.BoolValue()
+					request.DeleteBeforeReplace = dbr.AsBool()
 					request.DeleteBeforeReplaceDefined = true
 				} else if !dbr.IsNull() {
 					return cty.NilVal, errors.New("deleteBeforeReplace must be a boolean or null")
@@ -1772,7 +1663,7 @@ func (i *Interpreter) registerResourceWith(
 				if !downloadURL.IsString() {
 					return cty.NilVal, errors.New("pluginDownloadURL must be a string")
 				}
-				request.PluginDownloadURL = downloadURL.StringValue()
+				request.PluginDownloadURL = downloadURL.AsString()
 			}
 		}
 		if res.Options.Parent != nil {
@@ -1806,7 +1697,7 @@ func (i *Interpreter) registerResourceWith(
 				}
 				var idstr string
 				if id.IsString() {
-					idstr = id.StringValue()
+					idstr = id.AsString()
 				} else {
 					idstr = plugin.UnknownStringValue
 				}
@@ -1842,14 +1733,14 @@ func (i *Interpreter) registerResourceWith(
 					return cty.NilVal, errors.New("hideDiffs must be an array of strings")
 				}
 				hdopt := []string{}
-				for _, v := range hideDiffs.ArrayValue() {
+				for _, v := range hideDiffs.AsArray().All {
 					if v.IsNull() || v.IsComputed() {
 						continue
 					}
 					if !v.IsString() {
 						return cty.NilVal, errors.New("hideDiffs must be an array of strings")
 					}
-					hdopt = append(hdopt, v.StringValue())
+					hdopt = append(hdopt, v.AsString())
 				}
 				request.HideDiffs = hdopt
 			}
@@ -1865,11 +1756,11 @@ func (i *Interpreter) registerResourceWith(
 				return cty.NilVal, diags
 			}
 			if !hooksVal.IsNull() && !hooksVal.IsComputed() {
-				if !hooksVal.IsObject() {
+				if !hooksVal.IsMap() {
 					return cty.NilVal, errors.New("hooks must be an object mapping hook types to command lists")
 				}
 				binding := &pulumirpc.RegisterResourceRequest_ResourceHooksBinding{}
-				for hookType, commandLists := range hooksVal.ObjectValue() {
+				for hookType, commandLists := range hooksVal.AsMap().All {
 					if commandLists.IsNull() || commandLists.IsComputed() {
 						continue
 					}
@@ -1877,14 +1768,14 @@ func (i *Interpreter) registerResourceWith(
 						return cty.NilVal, fmt.Errorf("hooks.%s must be an array of hooks", hookType)
 					}
 					var hookNames []string
-					for idx, hookVal := range commandLists.ArrayValue() {
+					for idx, hookVal := range commandLists.AsArray().All {
 						if hookVal.IsNull() || hookVal.IsComputed() {
 							continue
 						}
 						if !hookVal.IsString() {
 							return cty.NilVal, fmt.Errorf("hooks.%s[%d] must be a reference to a named hook block", hookType, idx)
 						}
-						hookNames = append(hookNames, hookVal.StringValue())
+						hookNames = append(hookNames, hookVal.AsString())
 					}
 					switch hookType {
 					case "beforeCreate":
@@ -1947,7 +1838,7 @@ func (i *Interpreter) registerResourceWith(
 		return makePoisonValue(res.Name()), nil
 	}
 
-	outputs, err := plugin.UnmarshalProperties(resp.Object, marshalOpts)
+	outputs, err := propertyrpc.Unmarshal(resp.Object)
 	if err != nil {
 		return cty.NilVal, err
 	}
@@ -1958,13 +1849,14 @@ func (i *Interpreter) registerResourceWith(
 	// one; represent it as unknown rather than a known empty string so it can't be
 	// observed as a real value.
 	if id := resp.GetId(); id == "" && (i.info.DryRun || unknown) {
-		outputs["id"] = resource.MakeComputed(resource.NewProperty(""))
+		outputs = outputs.Set("id", property.New(property.Computed))
 	} else {
-		outputs["id"] = resource.NewProperty(id)
+		outputs = outputs.Set("id", property.New(id))
 	}
-	outputs["urn"] = resource.NewProperty(resp.GetUrn())
-	outputs["__name"] = resource.NewProperty(request.Name)
-	outputs["__type"] = resource.NewProperty(request.Type)
+	outputs = outputs.
+		Set("urn", property.New(resp.GetUrn())).
+		Set("__name", property.New(request.Name)).
+		Set("__type", property.New(request.Type))
 
 	// Ensure every schema-declared output property is present, recursing into nested object
 	// types so that programs which traverse into an optional inner field see a typed null
@@ -1972,16 +1864,11 @@ func (i *Interpreter) registerResourceWith(
 	// - preview or skipped create: unknown/computed
 	// - update: explicit null
 	if schemaResource != nil {
-		fillSchemaOutputs(outputs, schemaResource.Properties, i.info.DryRun || unknown)
+		outputs = fillSchemaOutputs(outputs, schemaResource.Properties, i.info.DryRun || unknown)
 	}
 
-	result := resource.NewProperty(resource.Output{
-		Element:      resource.NewProperty(outputs),
-		Dependencies: []resource.URN{resource.URN(resp.GetUrn())},
-		Known:        true,
-	})
-
-	return propertyValueToCty(ctx, i.getResource, result)
+	return propertyValueToCty(ctx, i.getResource, property.New(outputs).
+		WithDependencies([]resource.URN{resource.URN(resp.GetUrn())}))
 }
 
 func (i *Interpreter) registerReadResource(ctx context.Context, res *pcl.ReadResource) error {
@@ -2010,37 +1897,26 @@ func (i *Interpreter) registerReadResource(ctx context.Context, res *pcl.ReadRes
 		return diags
 	}
 
-	idVal, hasID := inputs["id"]
+	idVal, hasID := inputs.GetOk("id")
 	if !hasID {
 		return fmt.Errorf("read resource %s is missing the id attribute", res.Name())
 	}
-	delete(inputs, "id")
+	inputs = inputs.Delete("id")
 
-	marshalOpts := plugin.MarshalOptions{
-		KeepUnknowns:   true,
-		KeepSecrets:    true,
-		KeepResources:  true,
-		KeepByteString: true,
-	}
-	obj, err := plugin.MarshalProperties(inputs, marshalOpts)
-	if err != nil {
-		return err
-	}
-	// The rest of this method can send output values
-	marshalOpts.KeepOutputValues = true
+	obj := propertyrpc.Marshal(inputs)
 
 	dependencies := []string{}
-	for _, val := range inputs {
-		dependencies = append(dependencies, getAllDependencies(val)...)
+	for _, val := range allDependencies(property.New(inputs)) {
+		dependencies = append(dependencies, string(val))
 	}
 
-	unwrappedID, idDeps := unwrapOutputs(idVal)
+	idDeps := allDependencies(idVal)
 	for _, dep := range idDeps {
 		dependencies = append(dependencies, string(dep))
 	}
 	idStr := plugin.UnknownStringValue
-	if unwrappedID.IsString() {
-		idStr = unwrappedID.StringValue()
+	if idVal.IsString() {
+		idStr = idVal.AsString()
 	}
 
 	if res.Options != nil && res.Options.DependsOn != nil {
@@ -2056,7 +1932,7 @@ func (i *Interpreter) registerReadResource(ctx context.Context, res *pcl.ReadRes
 			if !dependsOn.IsArray() {
 				return errors.New("dependsOn must be an array of resource objects")
 			}
-			for _, v := range dependsOn.ArrayValue() {
+			for _, v := range dependsOn.AsArray().All {
 				if v.IsNull() || v.IsComputed() {
 					continue
 				}
@@ -2087,27 +1963,24 @@ func (i *Interpreter) registerReadResource(ctx context.Context, res *pcl.ReadRes
 		return err
 	}
 
-	outputs, err := plugin.UnmarshalProperties(resp.GetProperties(), marshalOpts)
+	outputs, err := propertyrpc.Unmarshal(resp.GetProperties())
 	if err != nil {
 		return err
 	}
 
-	outputs["id"] = resource.NewProperty(request.Id)
-	outputs["urn"] = resource.NewProperty(resp.GetUrn())
-	outputs["__name"] = resource.NewProperty(logicalName)
-	outputs["__type"] = resource.NewProperty(token)
+	outputs = outputs.
+		Set("id", property.New(request.Id)).
+		Set("urn", property.New(resp.GetUrn())).
+		Set("__name", property.New(logicalName)).
+		Set("__type", property.New(token))
 
 	if schemaResource != nil {
 		// A skipped read reports Unknown=true; treat outputs as unknown so dependents propagate
 		// unknowns instead of seeing empty values as real.
-		fillSchemaOutputs(outputs, schemaResource.Properties, i.info.DryRun || resp.GetUnknown())
+		outputs = fillSchemaOutputs(outputs, schemaResource.Properties, i.info.DryRun || resp.GetUnknown())
 	}
 
-	result := resource.NewProperty(resource.Output{
-		Element:      resource.NewProperty(outputs),
-		Dependencies: []resource.URN{resource.URN(resp.GetUrn())},
-		Known:        true,
-	})
+	result := property.New(outputs).WithDependencies([]urn.URN{resource.URN(resp.GetUrn())})
 
 	ctyResult, err := propertyValueToCty(ctx, i.getResource, result)
 	if err != nil {
@@ -2127,29 +2000,15 @@ func (i *Interpreter) registerComponent(ctx context.Context, component *pcl.Comp
 		return diags
 	}
 
-	marshalOpts := plugin.MarshalOptions{
-		KeepUnknowns:   true,
-		KeepSecrets:    true,
-		KeepResources:  true,
-		KeepByteString: true,
-	}
-	obj, err := plugin.MarshalProperties(inputs, marshalOpts)
-	if err != nil {
-		return hcl.Diagnostics{{
-			Severity: hcl.DiagError,
-			Summary:  "Failed to marshal component inputs",
-			Detail:   err.Error(),
-		}}
-	}
-	marshalOpts.KeepOutputValues = true
+	obj := propertyrpc.Marshal(inputs)
 
 	dependencies := []string{}
 	propertyDependencies := map[string]*pulumirpc.RegisterResourceRequest_PropertyDependencies{}
-	for key, val := range inputs {
-		deps := getAllDependencies(val)
+	for key, val := range inputs.All {
+		deps := castSliceToString(allDependencies(val))
 		if len(deps) > 0 {
 			dependencies = append(dependencies, deps...)
-			propertyDependencies[string(key)] = &pulumirpc.RegisterResourceRequest_PropertyDependencies{
+			propertyDependencies[key] = &pulumirpc.RegisterResourceRequest_PropertyDependencies{
 				Urns: deps,
 			}
 		}
@@ -2240,7 +2099,7 @@ func (i *Interpreter) registerComponent(ctx context.Context, component *pcl.Comp
 	// A component declared without a source has no inner program to interpret and no outputs, but its variable
 	// must still be published so that children can parent to it.
 	if component.Program == nil {
-		return i.setComponentVariable(ctx, component, resp, nil)
+		return i.setComponentVariable(ctx, component, resp, property.Map{})
 	}
 
 	componentInterpreter := &Interpreter{
@@ -2268,11 +2127,11 @@ func (i *Interpreter) registerComponent(ctx context.Context, component *pcl.Comp
 		componentInterpreter.call,
 	)
 
-	for k, v := range inputs {
-		if err := componentInterpreter.setVariable(ctx, string(k), v); err != nil {
+	for k, v := range inputs.All {
+		if err := componentInterpreter.setVariable(ctx, k, v); err != nil {
 			return hcl.Diagnostics{{
 				Severity: hcl.DiagError,
-				Summary:  fmt.Sprintf("Failed to set component input %s", k),
+				Summary:  "Failed to set component input " + k,
 				Detail:   err.Error(),
 			}}
 		}
@@ -2286,18 +2145,11 @@ func (i *Interpreter) registerComponent(ctx context.Context, component *pcl.Comp
 			Detail:   err.Error(),
 		}}
 	}
-	for key, val := range componentOutputs {
-		componentOutputs[key] = collapseResourceReferences(val)
+	for key, val := range componentOutputs.All {
+		componentOutputs = componentOutputs.Set(key, collapseResourceReferences(val))
 	}
 
-	outObj, err := plugin.MarshalProperties(componentOutputs, marshalOpts)
-	if err != nil {
-		return hcl.Diagnostics{{
-			Severity: hcl.DiagError,
-			Summary:  "Failed to marshal component outputs",
-			Detail:   err.Error(),
-		}}
-	}
+	outObj := propertyrpc.Marshal(componentOutputs)
 	_, err = i.monitor.RegisterResourceOutputs(ctx, &pulumirpc.RegisterResourceOutputsRequest{
 		Urn:     resp.GetUrn(),
 		Outputs: outObj,
@@ -2318,19 +2170,13 @@ func (i *Interpreter) setComponentVariable(
 	ctx context.Context,
 	component *pcl.Component,
 	resp *pulumirpc.RegisterResourceResponse,
-	componentOutputs resource.PropertyMap,
+	componentOutputs property.Map,
 ) hcl.Diagnostics {
-	componentObject := resource.PropertyMap{
-		"id":  resource.NewProperty(resp.GetId()),
-		"urn": resource.NewProperty(resp.GetUrn()),
-	}
-	maps.Copy(componentObject, componentOutputs)
+	result := property.New(componentOutputs.
+		Set("id", property.New(resp.GetId())).
+		Set("urn", property.New(resp.GetUrn()))).
+		WithDependencies([]resource.URN{resource.URN(resp.GetUrn())})
 
-	result := resource.NewProperty(resource.Output{
-		Element:      resource.NewProperty(componentObject),
-		Dependencies: []resource.URN{resource.URN(resp.GetUrn())},
-		Known:        true,
-	})
 	if err := i.setVariable(ctx, component.Name(), result); err != nil {
 		return hcl.Diagnostics{{
 			Severity: hcl.DiagError,
@@ -2341,31 +2187,35 @@ func (i *Interpreter) setComponentVariable(
 	return nil
 }
 
-func (i *Interpreter) registerStackOutputs(ctx context.Context, outputs resource.PropertyMap) error {
+func castSliceToString[T ~string](arr []T) []string {
+	if arr == nil {
+		return nil
+	}
+	dst := make([]string, len(arr))
+	for i, v := range arr {
+		dst[i] = string(v)
+	}
+	return dst
+}
+
+func (i *Interpreter) registerStackOutputs(ctx context.Context, outputs property.Map) error {
 	if i.stackURN == "" {
 		return errors.New("missing stack URN")
 	}
-	for key, val := range outputs {
-		outputs[key] = collapseResourceReferences(val)
+	collapsedOutputs := make(map[string]property.Value, outputs.Len())
+	for key, val := range outputs.All {
+		collapsedOutputs[key] = collapseResourceReferences(val)
 	}
-	marshalOpts := plugin.MarshalOptions{
-		KeepUnknowns:   true,
-		KeepSecrets:    true,
-		KeepResources:  true,
-		KeepByteString: true,
-	}
-	obj, err := plugin.MarshalProperties(outputs, marshalOpts)
-	if err != nil {
-		return err
-	}
-	_, err = i.monitor.RegisterResourceOutputs(ctx, &pulumirpc.RegisterResourceOutputsRequest{
+
+	obj := propertyrpc.Marshal(property.NewMap(collapsedOutputs))
+	_, err := i.monitor.RegisterResourceOutputs(ctx, &pulumirpc.RegisterResourceOutputsRequest{
 		Urn:     i.stackURN,
 		Outputs: obj,
 	})
 	return err
 }
 
-func (i *Interpreter) setVariable(ctx context.Context, name string, value resource.PropertyValue) error {
+func (i *Interpreter) setVariable(ctx context.Context, name string, value property.Value) error {
 	ctyValue, err := propertyValueToCty(ctx, i.getResource, value)
 	if err != nil {
 		return err
@@ -2374,10 +2224,10 @@ func (i *Interpreter) setVariable(ctx context.Context, name string, value resour
 	return nil
 }
 
-func parseConfigPropertyValue(raw string, typ model.Type) (resource.PropertyValue, hcl.Diagnostics) {
+func parseConfigPropertyValue(raw string, typ model.Type) (property.Value, hcl.Diagnostics) {
 	ctyValue, diags := parseConfigValue(raw, typ)
 	if diags.HasErrors() {
-		return resource.PropertyValue{}, diags
+		return property.Value{}, diags
 	}
 	pv, err := ctyToPropertyValue(ctyValue)
 	if err != nil {
@@ -2389,40 +2239,31 @@ func parseConfigPropertyValue(raw string, typ model.Type) (resource.PropertyValu
 	return pv, diags
 }
 
-func getStackOutput(stackRef resource.PropertyValue, outputName string) (resource.PropertyValue, error) {
-	if stackRef.IsSecret() {
-		stackRef = stackRef.SecretValue().Element
-	}
-	if !stackRef.IsObject() {
-		return resource.NewNullProperty(), nil
+func getStackOutput(stackRef property.Value, outputName string) (property.Value, error) {
+	if !stackRef.IsMap() {
+		return property.New(property.Null), nil
 	}
 
-	obj := stackRef.ObjectValue()
-	outputs, ok := obj[resource.PropertyKey("outputs")]
+	obj := stackRef.AsMap()
+	outputs, ok := obj.GetOk("outputs")
 	if !ok {
-		return resource.NewNullProperty(), nil
+		return property.New(property.Null), nil
 	}
-	if outputs.IsSecret() {
-		outputs = outputs.SecretValue().Element
-	}
-	if !outputs.IsObject() {
-		return resource.NewNullProperty(), nil
+	if !outputs.IsMap() {
+		return property.New(property.Null), nil
 	}
 
-	outMap := outputs.ObjectValue()
-	output, ok := outMap[resource.PropertyKey(outputName)]
+	outMap := outputs.AsMap()
+	output, ok := outMap.GetOk(outputName)
 	if !ok {
-		return resource.NewNullProperty(), nil
+		return property.New(property.Null), nil
 	}
 
 	secretByName := false
-	if secretNames, ok := obj[resource.PropertyKey("secretOutputNames")]; ok {
-		if secretNames.IsSecret() {
-			secretNames = secretNames.SecretValue().Element
-		}
+	if secretNames, ok := obj.GetOk("secretOutputNames"); ok {
 		if secretNames.IsArray() {
-			for _, name := range secretNames.ArrayValue() {
-				if name.IsString() && name.StringValue() == outputName {
+			for _, name := range secretNames.AsArray().All {
+				if name.IsString() && name.AsString() == outputName {
 					secretByName = true
 					break
 				}
@@ -2430,9 +2271,5 @@ func getStackOutput(stackRef resource.PropertyValue, outputName string) (resourc
 		}
 	}
 
-	if secretByName && !output.IsSecret() {
-		output = resource.MakeSecret(output)
-	}
-
-	return output, nil
+	return output.WithSecret(secretByName || output.Secret()), nil
 }

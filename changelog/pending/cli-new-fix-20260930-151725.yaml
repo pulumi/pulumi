@@ -1,0 +1,4 @@
+component: cli/new
+kind: fix
+body: Fix concurrent `pulumi new` runs failing to clone the templates repository
+time: 2026-09-30T15:17:25.065953+09:00

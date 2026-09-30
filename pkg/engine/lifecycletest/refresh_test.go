@@ -3005,12 +3005,13 @@ func TestRefreshPreservesInputsWhenReadReturnsNoInputs(t *testing.T) {
 					}, nil
 				},
 				UpdateF: func(ctx context.Context, ur plugin.UpdateRequest) (plugin.UpdateResponse, error) {
+					newInputs := resource.ToResourcePropertyMap(ur.NewInputs)
 					return plugin.UpdateResponse{
-						Properties: resource.PropertyMap{
-							"inputProp": ur.NewInputs["inputProp"],
+						Properties: resource.FromResourcePropertyMap(resource.PropertyMap{
+							"inputProp": newInputs["inputProp"],
 							"outputProp": resource.NewProperty(
-								strings.ReplaceAll(ur.NewInputs["inputProp"].StringValue(), "Input", "Output")),
-						},
+								strings.ReplaceAll(newInputs["inputProp"].StringValue(), "Input", "Output")),
+						}),
 					}, nil
 				},
 			}, nil

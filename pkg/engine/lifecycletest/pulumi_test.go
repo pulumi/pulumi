@@ -958,7 +958,7 @@ func TestUpdatePartialFailure(t *testing.T) {
 					})
 
 					return plugin.UpdateResponse{
-						Properties: outputs,
+						Properties: resource.FromResourcePropertyMap(outputs),
 						Status:     resource.StatusPartialFailure,
 					}, errors.New("update failed to apply")
 				},
@@ -2143,7 +2143,7 @@ func TestProviderPreview(t *testing.T) {
 						sawPreview = true
 					}
 
-					assert.Equal(t, req.Preview, req.NewInputs.ContainsUnknowns())
+					assert.Equal(t, req.Preview, resource.ToResourcePropertyMap(req.NewInputs).ContainsUnknowns())
 					return plugin.UpdateResponse{
 						Properties: req.NewInputs,
 						Status:     resource.StatusOK,
@@ -2233,7 +2233,7 @@ func TestProviderPreviewGrpc(t *testing.T) {
 						sawPreview = true
 					}
 
-					assert.Equal(t, req.Preview, req.NewInputs.ContainsUnknowns())
+					assert.Equal(t, req.Preview, resource.ToResourcePropertyMap(req.NewInputs).ContainsUnknowns())
 					return plugin.UpdateResponse{
 						Properties: req.NewInputs,
 						Status:     resource.StatusOK,
@@ -3803,7 +3803,7 @@ func TestTimestampTracking(t *testing.T) {
 						"foo": "bar",
 					})
 					return plugin.UpdateResponse{
-						Properties: outputs,
+						Properties: resource.FromResourcePropertyMap(outputs),
 						Status:     resource.StatusOK,
 					}, nil
 				},
@@ -3975,22 +3975,23 @@ func TestOldCheckedInputsAreSent(t *testing.T) {
 				},
 				UpdateF: func(_ context.Context, req plugin.UpdateRequest) (plugin.UpdateResponse, error) {
 					// Check that the old inputs and outputs are passed to UpdateF
+					newInputs := resource.ToResourcePropertyMap(req.NewInputs)
 					assert.Equal(t, resource.NewPropertyMapFromMap(map[string]any{
 						"foo":     "bar",
 						"default": "default",
-					}), req.OldInputs)
+					}), resource.ToResourcePropertyMap(req.OldInputs))
 					assert.Equal(t, resource.NewPropertyMapFromMap(map[string]any{
 						"foo":      "bar",
 						"default":  "default",
 						"computed": "computed",
-					}), req.OldOutputs)
+					}), resource.ToResourcePropertyMap(req.OldOutputs))
 					assert.Equal(t, resource.NewPropertyMapFromMap(map[string]any{
 						"foo":     "baz",
 						"default": "default",
-					}), req.NewInputs)
+					}), newInputs)
 
 					results := resource.PropertyMap{}
-					maps.Copy(results, req.NewInputs)
+					maps.Copy(results, newInputs)
 					// Add a computed property
 					results["computed"] = resource.MakeComputed(resource.NewProperty(""))
 
@@ -3999,7 +4000,7 @@ func TestOldCheckedInputsAreSent(t *testing.T) {
 					}
 
 					return plugin.UpdateResponse{
-						Properties: results,
+						Properties: resource.FromResourcePropertyMap(results),
 						Status:     resource.StatusOK,
 					}, nil
 				},

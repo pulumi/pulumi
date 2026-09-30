@@ -1089,7 +1089,7 @@ func TestPlannedInputOutputDifferences(t *testing.T) {
 				},
 				UpdateF: func(_ context.Context, req plugin.UpdateRequest) (plugin.UpdateResponse, error) {
 					return plugin.UpdateResponse{
-						Properties: updateOutputs,
+						Properties: resource.FromResourcePropertyMap(updateOutputs),
 						Status:     resource.StatusOK,
 					}, nil
 				},

@@ -66,13 +66,15 @@ func TestRefreshBeforeUpdate(t *testing.T) {
 					return plugin.DiffResponse{Changes: plugin.DiffSome}, nil
 				},
 				UpdateF: func(_ context.Context, req plugin.UpdateRequest) (plugin.UpdateResponse, error) {
-					assert.Equal(t, fmt.Sprintf("<FRESH-INPUT-%d>", readToken), req.OldInputs["input"].StringValue())
-					assert.Equal(t, fmt.Sprintf("<FRESH-RESULT-%d>", readToken), req.OldOutputs["result"].StringValue())
+					oldInputs := resource.ToResourcePropertyMap(req.OldInputs)
+					oldOutputs := resource.ToResourcePropertyMap(req.OldOutputs)
+					assert.Equal(t, fmt.Sprintf("<FRESH-INPUT-%d>", readToken), oldInputs["input"].StringValue())
+					assert.Equal(t, fmt.Sprintf("<FRESH-RESULT-%d>", readToken), oldOutputs["result"].StringValue())
 
-					props := req.NewInputs.Copy()
+					props := resource.ToResourcePropertyMap(req.NewInputs)
 					props["result"] = props["input"]
 					return plugin.UpdateResponse{
-						Properties:          props,
+						Properties:          resource.FromResourcePropertyMap(props),
 						RefreshBeforeUpdate: true,
 					}, nil
 				},
