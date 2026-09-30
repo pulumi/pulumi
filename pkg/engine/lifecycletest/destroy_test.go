@@ -55,8 +55,8 @@ func TestDestroyWithProgram(t *testing.T) {
 				DeleteF: func(_ context.Context, req plugin.DeleteRequest) (plugin.DeleteResponse, error) {
 					if req.Name == "resA" || req.Name == "resB" {
 						atomic.AddInt32(&deleteCalled, 1)
-						assert.Equal(t, createInputs, req.Inputs)
-						assert.Equal(t, createOutputs, req.Outputs)
+						assert.Equal(t, createInputs, resource.ToResourcePropertyMap(req.Inputs))
+						assert.Equal(t, createOutputs, resource.ToResourcePropertyMap(req.Outputs))
 
 						return plugin.DeleteResponse{
 							Status: resource.StatusOK,
@@ -163,8 +163,8 @@ func TestTargetedDestroyWithProgram(t *testing.T) {
 				DeleteF: func(_ context.Context, req plugin.DeleteRequest) (plugin.DeleteResponse, error) {
 					if req.Name == "resA" || req.Name == "resB" {
 						deleteCalled++
-						assert.Equal(t, createInputs, req.Inputs)
-						assert.Equal(t, createOutputs, req.Outputs)
+						assert.Equal(t, createInputs, resource.ToResourcePropertyMap(req.Inputs))
+						assert.Equal(t, createOutputs, resource.ToResourcePropertyMap(req.Outputs))
 
 						return plugin.DeleteResponse{
 							Status: resource.StatusOK,
@@ -273,8 +273,8 @@ func TestProviderUpdateDestroyWithProgram(t *testing.T) {
 				DeleteF: func(_ context.Context, req plugin.DeleteRequest) (plugin.DeleteResponse, error) {
 					if req.Name == "resB" {
 						atomic.AddInt32(&deleteCalled, 1)
-						assert.Equal(t, createInputs, req.Inputs)
-						assert.Equal(t, createOutputs, req.Outputs)
+						assert.Equal(t, createInputs, resource.ToResourcePropertyMap(req.Inputs))
+						assert.Equal(t, createOutputs, resource.ToResourcePropertyMap(req.Outputs))
 
 						return plugin.DeleteResponse{
 							Status: resource.StatusOK,
@@ -312,8 +312,8 @@ func TestProviderUpdateDestroyWithProgram(t *testing.T) {
 				DeleteF: func(_ context.Context, req plugin.DeleteRequest) (plugin.DeleteResponse, error) {
 					if req.Name == "resA" {
 						atomic.AddInt32(&deleteCalled, 1)
-						assert.Equal(t, createInputs, req.Inputs)
-						assert.Equal(t, createOutputs, req.Outputs)
+						assert.Equal(t, createInputs, resource.ToResourcePropertyMap(req.Inputs))
+						assert.Equal(t, createOutputs, resource.ToResourcePropertyMap(req.Outputs))
 
 						return plugin.DeleteResponse{
 							Status: resource.StatusOK,
@@ -430,8 +430,8 @@ func TestExplicitProviderUpdateDestroyWithProgram(t *testing.T) {
 				DeleteF: func(_ context.Context, req plugin.DeleteRequest) (plugin.DeleteResponse, error) {
 					if req.Name == "resA" || req.Name == "resB" {
 						atomic.AddInt32(&deleteCalled, 1)
-						assert.Equal(t, createInputs, req.Inputs)
-						assert.Equal(t, createOutputs, req.Outputs)
+						assert.Equal(t, createInputs, resource.ToResourcePropertyMap(req.Inputs))
+						assert.Equal(t, createOutputs, resource.ToResourcePropertyMap(req.Outputs))
 
 						return plugin.DeleteResponse{
 							Status: resource.StatusOK,
@@ -529,8 +529,8 @@ func TestDestroyWithProgramWithComponents(t *testing.T) {
 				DeleteF: func(_ context.Context, req plugin.DeleteRequest) (plugin.DeleteResponse, error) {
 					if req.Name == "resA" || req.Name == "resB" {
 						deleteCalled++
-						assert.Equal(t, createInputs, req.Inputs)
-						assert.Equal(t, createOutputs, req.Outputs)
+						assert.Equal(t, createInputs, resource.ToResourcePropertyMap(req.Inputs))
+						assert.Equal(t, createOutputs, resource.ToResourcePropertyMap(req.Outputs))
 
 						return plugin.DeleteResponse{
 							Status: resource.StatusOK,
@@ -630,8 +630,8 @@ func TestDestroyWithProgramWithSkippedComponents(t *testing.T) {
 				DeleteF: func(_ context.Context, req plugin.DeleteRequest) (plugin.DeleteResponse, error) {
 					if req.Name == "resA" {
 						deleteCalled++
-						assert.Equal(t, createInputs, req.Inputs)
-						assert.Equal(t, createOutputs, req.Outputs)
+						assert.Equal(t, createInputs, resource.ToResourcePropertyMap(req.Inputs))
+						assert.Equal(t, createOutputs, resource.ToResourcePropertyMap(req.Outputs))
 
 						return plugin.DeleteResponse{
 							Status: resource.StatusOK,
@@ -745,8 +745,8 @@ func TestDestroyWithProgramWithSkippedAlias(t *testing.T) {
 				DeleteF: func(_ context.Context, req plugin.DeleteRequest) (plugin.DeleteResponse, error) {
 					if req.Name == "resA" {
 						deleteCalled++
-						assert.Equal(t, createInputs, req.Inputs)
-						assert.Equal(t, createOutputs, req.Outputs)
+						assert.Equal(t, createInputs, resource.ToResourcePropertyMap(req.Inputs))
+						assert.Equal(t, createOutputs, resource.ToResourcePropertyMap(req.Outputs))
 
 						return plugin.DeleteResponse{
 							Status: resource.StatusOK,
@@ -867,8 +867,8 @@ func TestDestroyWithProgramResourceRead(t *testing.T) {
 				DeleteF: func(_ context.Context, req plugin.DeleteRequest) (plugin.DeleteResponse, error) {
 					if req.Name == "resB" {
 						deleteCalled++
-						assert.Equal(t, createInputs, req.Inputs)
-						assert.Equal(t, createOutputs, req.Outputs)
+						assert.Equal(t, createInputs, resource.ToResourcePropertyMap(req.Inputs))
+						assert.Equal(t, createOutputs, resource.ToResourcePropertyMap(req.Outputs))
 
 						return plugin.DeleteResponse{
 							Status: resource.StatusOK,

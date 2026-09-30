@@ -387,8 +387,8 @@ func TestDoCmdResourceReadDeletePatch(t *testing.T) {
 				},
 				DeleteF: func(ctx context.Context, req plugin.DeleteRequest) (plugin.DeleteResponse, error) {
 					assert.Equal(t, resource.ID("res-1"), req.ID)
-					assert.Equal(t, resource.PropertyMap{"name": resource.NewProperty("in")}, req.Inputs)
-					assert.Equal(t, resource.PropertyMap{"name": resource.NewProperty("out")}, req.Outputs)
+					assert.Equal(t, resource.PropertyMap{"name": resource.NewProperty("in")}, resource.ToResourcePropertyMap(req.Inputs))
+					assert.Equal(t, resource.PropertyMap{"name": resource.NewProperty("out")}, resource.ToResourcePropertyMap(req.Outputs))
 					deleted = true
 					return plugin.DeleteResponse{}, nil
 				},
@@ -992,8 +992,8 @@ func TestDoCmdResourceConfirmationSummary(t *testing.T) {
 					}, nil
 				},
 				DeleteF: func(ctx context.Context, req plugin.DeleteRequest) (plugin.DeleteResponse, error) {
-					assert.Equal(t, resource.PropertyMap{"name": resource.NewProperty("in")}, req.Inputs)
-					assert.Equal(t, resource.PropertyMap{"name": resource.NewProperty("out")}, req.Outputs)
+					assert.Equal(t, resource.PropertyMap{"name": resource.NewProperty("in")}, resource.ToResourcePropertyMap(req.Inputs))
+					assert.Equal(t, resource.PropertyMap{"name": resource.NewProperty("out")}, resource.ToResourcePropertyMap(req.Outputs))
 					return plugin.DeleteResponse{}, nil
 				},
 			},
