@@ -24,6 +24,7 @@ import (
 	"runtime"
 	"testing"
 
+	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/securestore"
 	"github.com/stretchr/testify/assert"
@@ -33,7 +34,7 @@ import (
 // Temp credential dir, fake store, chosen mode.
 func pinSecureCreds(t *testing.T, mode string) {
 	t.Helper()
-	t.Setenv(PulumiCredentialsPathEnvVar, t.TempDir())
+	ptesting.IsolateCredentials(t)
 	t.Setenv("PULUMI_CREDENTIAL_STORE", mode)
 	useFakeStores(t)
 }
@@ -160,14 +161,14 @@ func TestLostKeyProducesActionableError(t *testing.T) {
 
 func TestDeleteAllAccountsKeepsKeySharedWithOtherHomes(t *testing.T) {
 	pinSecureCreds(t, "auto")
-	homeA := os.Getenv(PulumiCredentialsPathEnvVar)
+	homeA := os.Getenv("PULUMI_HOME")
 	require.NoError(t, StoreCredentials(testCreds()))
 
-	t.Setenv(PulumiCredentialsPathEnvVar, t.TempDir())
+	t.Setenv("PULUMI_HOME", t.TempDir())
 	require.NoError(t, StoreCredentials(testCreds()))
 	require.NoError(t, DeleteAllAccounts())
 
-	t.Setenv(PulumiCredentialsPathEnvVar, homeA)
+	t.Setenv("PULUMI_HOME", homeA)
 	creds, err := GetStoredCredentials()
 	require.NoError(t, err)
 	assert.Equal(t, "pul-secret-token", creds.Accounts["https://api.pulumi.com"].AccessToken)
@@ -214,7 +215,7 @@ func TestDeleteCredentialsKeyWithoutEnvelopeOrMode(t *testing.T) {
 	pinSecureCreds(t, "auto")
 	require.NoError(t, StoreCredentials(testCreds()))
 
-	t.Setenv(PulumiCredentialsPathEnvVar, t.TempDir())
+	t.Setenv("PULUMI_HOME", t.TempDir())
 	t.Setenv("PULUMI_CREDENTIAL_STORE", "")
 	resetCredStoreForTesting()
 
@@ -223,9 +224,9 @@ func TestDeleteCredentialsKeyWithoutEnvelopeOrMode(t *testing.T) {
 	assert.ErrorIs(t, err, securestore.ErrKeyNotFound)
 }
 
+//nolint:paralleltest // pinSecureCreds changes environment variables and installs a fake store.
 func TestAgentCredentialsEncryptedToo(t *testing.T) {
 	pinSecureCreds(t, "auto")
-	t.Setenv("PULUMI_TEST_AGENT_PULUMI_DIR", t.TempDir())
 
 	require.NoError(t, StoreAgentCredentials(testCreds()))
 
@@ -404,7 +405,7 @@ func TestResetStoredCredentialsClearsUndecryptableState(t *testing.T) {
 }
 
 func TestDeleteAllAccountsAndCredentialsKeyUsesEnvelopeBackend(t *testing.T) {
-	t.Setenv(PulumiCredentialsPathEnvVar, t.TempDir())
+	ptesting.IsolateCredentials(t)
 	t.Setenv("PULUMI_CREDENTIAL_STORE", "auto")
 	promote := useUpgradableStores(t)
 	require.NoError(t, StoreCredentials(testCreds()))
@@ -455,10 +456,10 @@ func TestDeleteCredentialsKeyForUnparseableEnvelopeRegardlessOfMode(t *testing.T
 
 func TestResetStoredCredentialsKeepsKeySharedWithOtherHomes(t *testing.T) {
 	pinSecureCreds(t, "auto")
-	homeA := os.Getenv(PulumiCredentialsPathEnvVar)
+	homeA := os.Getenv("PULUMI_HOME")
 	require.NoError(t, StoreCredentials(testCreds()))
 
-	t.Setenv(PulumiCredentialsPathEnvVar, t.TempDir())
+	t.Setenv("PULUMI_HOME", t.TempDir())
 	otherKey := make([]byte, 32)
 	foreign, err := securestore.Seal(otherKey, fakeBackend, []byte(`{"accounts":{"x":{"accessToken":"tok"}}}`))
 	require.NoError(t, err)
@@ -470,7 +471,7 @@ func TestResetStoredCredentialsKeepsKeySharedWithOtherHomes(t *testing.T) {
 
 	require.NoError(t, ResetStoredCredentials())
 
-	t.Setenv(PulumiCredentialsPathEnvVar, homeA)
+	t.Setenv("PULUMI_HOME", homeA)
 	creds, err := GetStoredCredentials()
 	require.NoError(t, err)
 	assert.Equal(t, "pul-secret-token", creds.Accounts["https://api.pulumi.com"].AccessToken)
@@ -532,7 +533,7 @@ func TestWriteRefusesToClobberFutureEnvelope(t *testing.T) {
 }
 
 func TestDeclinedUnlockNeverWritesPlaintext(t *testing.T) {
-	t.Setenv(PulumiCredentialsPathEnvVar, t.TempDir())
+	ptesting.IsolateCredentials(t)
 	t.Setenv("PULUMI_CREDENTIAL_STORE", "auto")
 	st := useFakeStores(t)
 	st.declineErr = securestore.ErrDeclined
@@ -651,9 +652,10 @@ func TestModeIsCaseInsensitive(t *testing.T) {
 }
 
 func TestAgentFallbackSurfacesUndecryptableCredentials(t *testing.T) {
-	isolateAgentFallbackCredentials(t)
+	ptesting.IsolateCredentials(t)
+	t.Setenv(pulumiTestAllowAgentFallbackEnvVar, "true")
 	useFakeStores(t)
-	setAgentEnv(t)
+	t.Setenv("CODEX_SANDBOX", "1")
 	t.Setenv("PULUMI_CREDENTIAL_STORE", "auto")
 	resetCredStoreForTesting()
 
@@ -670,7 +672,7 @@ func TestAgentFallbackSurfacesUndecryptableCredentials(t *testing.T) {
 func TestWriteUpgradesToStrongerBackend(t *testing.T) {
 	// Data must be re-encrypted under a stronger backend once one appears,
 	// staying readable throughout via the envelope's recorded backend.
-	t.Setenv(PulumiCredentialsPathEnvVar, t.TempDir())
+	ptesting.IsolateCredentials(t)
 	t.Setenv("PULUMI_CREDENTIAL_STORE", "auto")
 	promote := useUpgradableStores(t)
 

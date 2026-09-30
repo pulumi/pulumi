@@ -19,6 +19,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -55,34 +56,24 @@ func TestDetectProjectAndPath(t *testing.T) {
 }
 
 func TestPulumiHomeDirForPathFallsBackToAgentDir(t *testing.T) {
-	oldAgentPulumiDir := agentPulumiDir
-	agentPulumiDir = filepath.Join(t.TempDir(), BookkeepingDir)
-	t.Cleanup(func() {
-		agentPulumiDir = oldAgentPulumiDir
-	})
+	ptesting.IsolateCredentials(t)
+	t.Setenv(pulumiTestAllowAgentFallbackEnvVar, "true")
 
 	t.Setenv("CODEX_SANDBOX", "1")
-	t.Setenv(PulumiCredentialsPathEnvVar, "")
-	t.Setenv(PulumiHomeEnvVar, "")
 
 	badHome := filepath.Join(t.TempDir(), "not-a-directory")
 	require.NoError(t, os.WriteFile(badHome, []byte("not a directory"), 0o600))
 
 	dir, err := pulumiHomeDirForPath(badHome)
 	require.NoError(t, err)
-	assert.Equal(t, agentPulumiDir, dir)
+	assert.Equal(t, os.Getenv(pulumiTestAgentPulumiDirEnvVar), dir)
 }
 
 func TestPulumiHomeDirForPathKeepsWritableHomeForAgent(t *testing.T) {
-	oldAgentPulumiDir := agentPulumiDir
-	agentPulumiDir = filepath.Join(t.TempDir(), BookkeepingDir)
-	t.Cleanup(func() {
-		agentPulumiDir = oldAgentPulumiDir
-	})
+	ptesting.IsolateCredentials(t)
+	t.Setenv(pulumiTestAllowAgentFallbackEnvVar, "true")
 
 	t.Setenv("CODEX_SANDBOX", "1")
-	t.Setenv(PulumiCredentialsPathEnvVar, "")
-	t.Setenv(PulumiHomeEnvVar, "")
 
 	home := filepath.Join(t.TempDir(), BookkeepingDir)
 	dir, err := pulumiHomeDirForPath(home)
@@ -91,11 +82,7 @@ func TestPulumiHomeDirForPathKeepsWritableHomeForAgent(t *testing.T) {
 }
 
 func TestPulumiHomeDirForPathKeepsExplicitPath(t *testing.T) {
-	oldAgentPulumiDir := agentPulumiDir
-	agentPulumiDir = filepath.Join(t.TempDir(), BookkeepingDir)
-	t.Cleanup(func() {
-		agentPulumiDir = oldAgentPulumiDir
-	})
+	ptesting.IsolateCredentials(t)
 
 	t.Setenv("CODEX_SANDBOX", "1")
 	t.Setenv(PulumiHomeEnvVar, filepath.Join(t.TempDir(), "explicit-home"))
