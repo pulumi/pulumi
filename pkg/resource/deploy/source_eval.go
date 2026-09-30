@@ -103,6 +103,8 @@ type EvalSourceOptions struct {
 	DisableResourceReferences bool
 	// true to disable output value support.
 	DisableOutputValues bool
+	// true to not advertise INVOKE_OUTPUT_VALUES on the monitor. Legacy SDKs / test knob for the fallback path.
+	DisableInvokeOutputValues bool
 	// true if this deployment can safely execute and persist state migrations.
 	SupportsStateMigrations bool
 	// AttachDebugger is the list of things to debug.  This can be "program", "all", "plugins", or "plugin:<plugin-name>".
@@ -1034,11 +1036,15 @@ func (rm *resmon) supportedMonitorFeatures() []pulumirpc.ResourceMonitorFeature 
 	if rm.opts.SupportsStateMigrations {
 		features = append(features, pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_STATE_MIGRATIONS)
 	}
-	return append(features,
+	features = append(features,
 		pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_BYTE_STRING,
 		pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_INVOKE_DEPENDS_ON,
 		pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_INVOKE_PARENT,
 	)
+	if !rm.opts.DisableInvokeOutputValues {
+		features = append(features, pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_INVOKE_OUTPUT_VALUES)
+	}
+	return features
 }
 
 func (rm *resmon) GetDeploymentInfo(_ context.Context,
@@ -1080,6 +1086,7 @@ func (rm *resmon) Invoke(
 			KeepUnknowns:     true,
 			KeepSecrets:      true,
 			KeepResources:    true,
+			KeepOutputValues: true,
 			WorkingDirectory: rm.workingDirectory,
 		},
 	)
@@ -1142,20 +1149,23 @@ func (rm *resmon) Invoke(
 		return nil, fmt.Errorf("Invoke: %w", err)
 	}
 
-	// If the caller declared dependencies, the invoke must observe the resources it depends on.
-	if deps := req.GetDependsOn(); len(deps) > 0 {
-		roots := mapset.NewThreadUnsafeSetWithSize[resource.URN](len(deps))
-		for _, dep := range deps {
-			urn, err := resource.ParseURN(dep)
-			if err != nil {
-				return nil, fmt.Errorf("invalid dependsOn URN %q: %w", dep, err)
-			}
-			roots.Add(urn)
+	// The invoke must observe the resources it depends on. Dependencies come from two places: an explicit
+	// `dependsOn` list on the request (legacy SDKs, and any dependency the SDK deliberately declared), and any
+	// OutputValues nested in `args` (new-world SDKs that opt into `INVOKE_OUTPUT_VALUES`). We union both.
+	roots := mapset.NewThreadUnsafeSet[resource.URN]()
+	for _, dep := range req.GetDependsOn() {
+		urn, err := resource.ParseURN(dep)
+		if err != nil {
+			return nil, fmt.Errorf("invalid dependsOn URN %q: %w", dep, err)
 		}
-		if rm.registrations.HasUnresolved(roots) {
-			logging.V(5).Infof("ResourceMonitor.Invoke: tok=%v has pending dependencies, returning unknown", tok)
-			return &pulumirpc.ResourceInvokeResponse{Unknown: true}, nil
-		}
+		roots.Add(urn)
+	}
+	for _, v := range args {
+		addOutputDependencies(roots, v)
+	}
+	if roots.Cardinality() > 0 && rm.registrations.HasUnresolved(roots) {
+		logging.V(5).Infof("ResourceMonitor.Invoke: tok=%v has pending dependencies, returning unknown", tok)
+		return &pulumirpc.ResourceInvokeResponse{Unknown: true}, nil
 	}
 
 	// Do the invoke and then return the arguments.
@@ -1183,6 +1193,7 @@ func (rm *resmon) Invoke(
 		KeepSecrets:      true,
 		KeepResources:    keepResources,
 		KeepByteString:   req.GetAcceptsByteString(),
+		KeepOutputValues: req.GetAcceptOutputValues(),
 		WorkingDirectory: rm.workingDirectory,
 	})
 	if err != nil {

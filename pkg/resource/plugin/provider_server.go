@@ -45,6 +45,9 @@ type providerServer struct {
 	// capabilities this defaults to false: it is only enabled when the caller advertises it via Handshake or
 	// Configure, since older engines cannot decode the encoding.
 	sendByteString bool
+
+	// True if the provider negotiated OutputValues on Invoke via Handshake (both sides opted in).
+	invokeOutputValues bool
 }
 
 func NewProviderServer(provider Provider) pulumirpc.ResourceProviderServer {
@@ -164,6 +167,7 @@ func (p *providerServer) Handshake(
 		ResolverTarget:              req.ResolverTarget,
 		AcceptsByteString:           req.AcceptsByteString,
 		SendsOldOutputsToCheck:      req.SendsOldOutputsToCheck,
+		AcceptsOutputsInInvoke:      req.AcceptsOutputsInInvoke,
 	})
 	if err != nil {
 		return nil, err
@@ -172,6 +176,7 @@ func (p *providerServer) Handshake(
 	p.acceptSecrets = res.AcceptSecrets
 	p.acceptResources = res.AcceptResources
 	p.sendByteString = req.AcceptsByteString
+	p.invokeOutputValues = req.AcceptsOutputsInInvoke && res.AcceptsOutputsInInvoke
 
 	return &pulumirpc.ProviderHandshakeResponse{
 		AcceptSecrets:                   res.AcceptSecrets,
@@ -180,7 +185,8 @@ func (p *providerServer) Handshake(
 		SupportsAutonamingConfiguration: res.SupportsAutonamingConfiguration,
 		// providerServer unmarshals byte string into plain Go strings before handing them to the wrapped
 		// provider, so it can shim support regardless of the provider's own answer.
-		AcceptsByteString: true,
+		AcceptsByteString:      true,
+		AcceptsOutputsInInvoke: res.AcceptsOutputsInInvoke,
 	}, nil
 }
 
@@ -1003,7 +1009,7 @@ func (p *providerServer) Construct(ctx context.Context,
 }
 
 func (p *providerServer) Invoke(ctx context.Context, req *pulumirpc.InvokeRequest) (*pulumirpc.InvokeResponse, error) {
-	args, err := UnmarshalProperties(req.GetArgs(), p.unmarshalOptions("args", false /* keepOutputValues */))
+	args, err := UnmarshalProperties(req.GetArgs(), p.unmarshalOptions("args", p.invokeOutputValues))
 	if err != nil {
 		return nil, err
 	}
@@ -1017,7 +1023,9 @@ func (p *providerServer) Invoke(ctx context.Context, req *pulumirpc.InvokeReques
 		return nil, err
 	}
 
-	rpcResult, err := MarshalProperties(resource.ToResourcePropertyMap(resp.Properties), p.marshalOptions("result"))
+	resultOpts := p.marshalOptions("result")
+	resultOpts.KeepOutputValues = p.invokeOutputValues
+	rpcResult, err := MarshalProperties(resource.ToResourcePropertyMap(resp.Properties), resultOpts)
 	if err != nil {
 		return nil, err
 	}

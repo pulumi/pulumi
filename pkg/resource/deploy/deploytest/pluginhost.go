@@ -454,6 +454,7 @@ func (host *pluginHost) plugin(kind apitype.PluginKind, name string, version *se
 				InvokeWithPreview:           true,
 				AcceptsByteString:           true,
 				SendsOldOutputsToCheck:      true,
+				AcceptsOutputsInInvoke:      true,
 			})
 			if err != nil {
 				return nil, errors.Join(err, provider.Close())

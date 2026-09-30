@@ -121,6 +121,9 @@ type pluginProtocol struct {
 
 	// True if this plugin accepts strings containing bytes that are not valid UTF-8.
 	acceptsByteString bool
+
+	// True if this plugin accepts OutputValues on Invoke args and may return OutputValues on Invoke.
+	acceptsOutputsInInvoke bool
 }
 
 // pluginConfig holds the configuration of the provider
@@ -215,6 +218,7 @@ func NewProvider(host Host, ctx *Context, spec workspace.PluginDescriptor,
 				ResolverTarget:              resolverAddr,
 				AcceptsByteString:           true,
 				SendsOldOutputsToCheck:      true,
+				AcceptsOutputsInInvoke:      true,
 			}
 			return handshake(ctx, bin, prefix, conn, req)
 		}
@@ -283,6 +287,7 @@ func NewProvider(host Host, ctx *Context, spec workspace.PluginDescriptor,
 				ResolverTarget:              resolverAddr,
 				AcceptsByteString:           true,
 				SendsOldOutputsToCheck:      true,
+				AcceptsOutputsInInvoke:      true,
 			}
 			return handshake(ctx, bin, prefix, conn, req)
 		}
@@ -324,6 +329,7 @@ func NewProvider(host Host, ctx *Context, spec workspace.PluginDescriptor,
 			acceptOutputs:                   handshakeRes.AcceptOutputs,
 			supportsAutonamingConfiguration: handshakeRes.SupportsAutonamingConfiguration,
 			acceptsByteString:               handshakeRes.AcceptsByteString,
+			acceptsOutputsInInvoke:          handshakeRes.AcceptsOutputsInInvoke,
 		}
 	}
 
@@ -386,6 +392,7 @@ func handshake(
 		ResolverTarget:              req.ResolverTarget,
 		AcceptsByteString:           req.AcceptsByteString,
 		SendsOldOutputsToCheck:      req.SendsOldOutputsToCheck,
+		AcceptsOutputsInInvoke:      req.AcceptsOutputsInInvoke,
 	})
 	if err != nil {
 		status, ok := status.FromError(err)
@@ -404,6 +411,7 @@ func handshake(
 		AcceptOutputs:                   res.GetAcceptOutputs(),
 		SupportsAutonamingConfiguration: res.GetSupportsAutonamingConfiguration(),
 		AcceptsByteString:               res.GetAcceptsByteString(),
+		AcceptsOutputsInInvoke:          res.GetAcceptsOutputsInInvoke(),
 	}, nil
 }
 
@@ -453,6 +461,7 @@ func NewProviderFromPath(host Host, ctx *Context, path string) (Provider, error)
 			ResolverTarget:              resolverAddr,
 			AcceptsByteString:           true,
 			SendsOldOutputsToCheck:      true,
+			AcceptsOutputsInInvoke:      true,
 		}
 		return handshake(ctx, bin, prefix, conn, req)
 	}
@@ -485,6 +494,7 @@ func NewProviderFromPath(host Host, ctx *Context, path string) (Provider, error)
 			acceptOutputs:                   handshakeRes.AcceptOutputs,
 			supportsAutonamingConfiguration: handshakeRes.SupportsAutonamingConfiguration,
 			acceptsByteString:               handshakeRes.AcceptsByteString,
+			acceptsOutputsInInvoke:          handshakeRes.AcceptsOutputsInInvoke,
 		}
 	}
 
@@ -586,6 +596,7 @@ func (p *provider) Handshake(ctx context.Context, req ProviderHandshakeRequest) 
 		ResolverTarget:              req.ResolverTarget,
 		AcceptsByteString:           req.AcceptsByteString,
 		SendsOldOutputsToCheck:      req.SendsOldOutputsToCheck,
+		AcceptsOutputsInInvoke:      req.AcceptsOutputsInInvoke,
 	})
 	if err != nil {
 		return nil, err
@@ -600,6 +611,7 @@ func (p *provider) Handshake(ctx context.Context, req ProviderHandshakeRequest) 
 		acceptOutputs:                   res.GetAcceptOutputs(),
 		supportsAutonamingConfiguration: res.GetSupportsAutonamingConfiguration(),
 		acceptsByteString:               res.GetAcceptsByteString(),
+		acceptsOutputsInInvoke:          res.GetAcceptsOutputsInInvoke(),
 	}
 
 	return &ProviderHandshakeResponse{
@@ -608,6 +620,7 @@ func (p *provider) Handshake(ctx context.Context, req ProviderHandshakeRequest) 
 		AcceptOutputs:                   res.GetAcceptOutputs(),
 		SupportsAutonamingConfiguration: res.GetSupportsAutonamingConfiguration(),
 		AcceptsByteString:               res.GetAcceptsByteString(),
+		AcceptsOutputsInInvoke:          res.GetAcceptsOutputsInInvoke(),
 	}, nil
 }
 
@@ -2221,6 +2234,75 @@ func (p *provider) Construct(ctx context.Context, req ConstructRequest) (Constru
 }
 
 // Invoke dynamically executes a built-in function in the provider.
+// collectArgDependencies returns the union of dependencies from every OutputValue nested in args (arrays, objects,
+// secrets, and other OutputValues are walked recursively). Order-stable for determinism.
+func collectArgDependencies(args resource.PropertyMap) []resource.URN {
+	seen := map[resource.URN]struct{}{}
+	var out []resource.URN
+	var walk func(v resource.PropertyValue)
+	walk = func(v resource.PropertyValue) {
+		switch {
+		case v.IsOutput():
+			o := v.OutputValue()
+			for _, d := range o.Dependencies {
+				if _, ok := seen[d]; !ok {
+					seen[d] = struct{}{}
+					out = append(out, d)
+				}
+			}
+			if o.Known {
+				walk(o.Element)
+			}
+		case v.IsSecret():
+			walk(v.SecretValue().Element)
+		case v.IsObject():
+			for _, e := range v.ObjectValue() {
+				walk(e)
+			}
+		case v.IsArray():
+			for _, e := range v.ArrayValue() {
+				walk(e)
+			}
+		}
+	}
+	for _, v := range args {
+		walk(v)
+	}
+	return out
+}
+
+// wrapWithDependencies wraps v in an OutputValue carrying the given dependencies. If v is already an OutputValue,
+// its existing dependencies are merged in.
+func wrapWithDependencies(v resource.PropertyValue, deps []resource.URN) resource.PropertyValue {
+	if v.IsOutput() {
+		o := v.OutputValue()
+		merged := append([]resource.URN(nil), o.Dependencies...)
+		seen := map[resource.URN]struct{}{}
+		for _, d := range o.Dependencies {
+			seen[d] = struct{}{}
+		}
+		for _, d := range deps {
+			if _, ok := seen[d]; !ok {
+				seen[d] = struct{}{}
+				merged = append(merged, d)
+			}
+		}
+		o.Dependencies = merged
+		return resource.NewProperty(o)
+	}
+	secret := v.IsSecret()
+	element := v
+	if secret {
+		element = v.SecretValue().Element
+	}
+	return resource.NewProperty(resource.Output{
+		Element:      element,
+		Known:        !v.IsComputed(),
+		Secret:       secret,
+		Dependencies: deps,
+	})
+}
+
 func (p *provider) Invoke(ctx context.Context, req InvokeRequest) (InvokeResponse, error) {
 	contract.Assertf(req.Tok != "", "Invoke requires a token")
 
@@ -2240,12 +2322,22 @@ func (p *provider) Invoke(ctx context.Context, req InvokeRequest) (InvokeRespons
 	}
 
 	args := resource.ToResourcePropertyMap(req.Args)
+
+	// If the provider does not accept OutputValues we lose the per-value dependency information on the wire.
+	// Collect the union of dependencies from the args first so we can re-hydrate the return values below,
+	// preserving a (coarser) dependency relationship for a downstream SDK that accepts OutputValues.
+	var argDeps []resource.URN
+	if !protocol.acceptsOutputsInInvoke {
+		argDeps = collectArgDependencies(args)
+	}
+
 	margs, err := MarshalProperties(args, MarshalOptions{
-		Label:          label + ".args",
-		KeepSecrets:    protocol.acceptSecrets,
-		KeepResources:  protocol.acceptResources,
-		KeepByteString: protocol.acceptsByteString,
-		PropagateNil:   true,
+		Label:            label + ".args",
+		KeepSecrets:      protocol.acceptSecrets,
+		KeepResources:    protocol.acceptResources,
+		KeepByteString:   protocol.acceptsByteString,
+		KeepOutputValues: protocol.acceptsOutputsInInvoke,
+		PropagateNil:     true,
 	})
 	if err != nil {
 		return InvokeResponse{}, err
@@ -2264,11 +2356,12 @@ func (p *provider) Invoke(ctx context.Context, req InvokeRequest) (InvokeRespons
 
 	// Unmarshal any return values.
 	ret, err := UnmarshalProperties(resp.GetReturn(), MarshalOptions{
-		Label:          label + ".returns",
-		RejectUnknowns: true,
-		KeepSecrets:    true,
-		KeepResources:  true,
-		PropagateNil:   true,
+		Label:            label + ".returns",
+		RejectUnknowns:   true,
+		KeepSecrets:      true,
+		KeepResources:    true,
+		KeepOutputValues: protocol.acceptsOutputsInInvoke,
+		PropagateNil:     true,
 	})
 	if err != nil {
 		return InvokeResponse{}, err
@@ -2286,6 +2379,14 @@ func (p *provider) Invoke(ctx context.Context, req InvokeRequest) (InvokeRespons
 				continue
 			}
 			ret[k] = resource.MakeSecret(v)
+		}
+	}
+
+	// Re-hydrate OutputValues on the return with the union of arg dependencies when the provider did not
+	// support OutputValues on Invoke. See `argDeps` above.
+	if len(argDeps) > 0 {
+		for k, v := range ret {
+			ret[k] = wrapWithDependencies(v, argDeps)
 		}
 	}
 

@@ -100,6 +100,10 @@ enum ResourceMonitorFeature {
     RESOURCE_MONITOR_FEATURE_INVOKE_PARENT = 15;
     // The monitor accepts state migration callbacks on resource registrations.
     RESOURCE_MONITOR_FEATURE_STATE_MIGRATIONS = 16;
+    // The monitor accepts OutputValues nested in `ResourceInvokeRequest.args` (and will harvest their
+    // dependencies into the invoke's wait-set), and will honour `accept_output_values` on the request to return
+    // OutputValues in `ResourceInvokeResponse.return`.
+    RESOURCE_MONITOR_FEATURE_INVOKE_OUTPUT_VALUES = 17;
 }
 
 // DeploymentInfo returns monitor execution state currently sent to programs
@@ -337,6 +341,10 @@ message ResourceInvokeRequest {
     // the provider its parent's `providers` option names for the invoke's package, the same resolution applied to
     // resource registrations. Only respected when the monitor advertises `INVOKE_PARENT`.
     string parent = 15;
+
+    // When true the SDK accepts OutputValues in `ResourceInvokeResponse.return`. Only meaningful when the monitor
+    // advertises `INVOKE_OUTPUT_VALUES`; older monitors will ignore this field.
+    bool accept_output_values = 16;
 }
 
 message ResourceInvokeResponse {

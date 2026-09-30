@@ -68,6 +68,11 @@ class _ResourceMonitorFeatureEnumTypeWrapper(google.protobuf.internal.enum_type_
     """The monitor resolves an invoke's provider from the `parent` field on `ResourceInvokeRequest`."""
     RESOURCE_MONITOR_FEATURE_STATE_MIGRATIONS: _ResourceMonitorFeature.ValueType  # 16
     """The monitor accepts state migration callbacks on resource registrations."""
+    RESOURCE_MONITOR_FEATURE_INVOKE_OUTPUT_VALUES: _ResourceMonitorFeature.ValueType  # 17
+    """The monitor accepts OutputValues nested in `ResourceInvokeRequest.args` (and will harvest their
+    dependencies into the invoke's wait-set), and will honour `accept_output_values` on the request to return
+    OutputValues in `ResourceInvokeResponse.return`.
+    """
 
 class ResourceMonitorFeature(_ResourceMonitorFeature, metaclass=_ResourceMonitorFeatureEnumTypeWrapper):
     """ResourceMonitorFeature is a strongly typed monitor capability identifier.
@@ -101,6 +106,11 @@ RESOURCE_MONITOR_FEATURE_INVOKE_PARENT: ResourceMonitorFeature.ValueType  # 15
 """The monitor resolves an invoke's provider from the `parent` field on `ResourceInvokeRequest`."""
 RESOURCE_MONITOR_FEATURE_STATE_MIGRATIONS: ResourceMonitorFeature.ValueType  # 16
 """The monitor accepts state migration callbacks on resource registrations."""
+RESOURCE_MONITOR_FEATURE_INVOKE_OUTPUT_VALUES: ResourceMonitorFeature.ValueType  # 17
+"""The monitor accepts OutputValues nested in `ResourceInvokeRequest.args` (and will harvest their
+dependencies into the invoke's wait-set), and will honour `accept_output_values` on the request to return
+OutputValues in `ResourceInvokeResponse.return`.
+"""
 global___ResourceMonitorFeature = ResourceMonitorFeature
 
 class _Result:
@@ -921,6 +931,7 @@ class ResourceInvokeRequest(google.protobuf.message.Message):
     ACCEPTS_BYTE_STRING_FIELD_NUMBER: builtins.int
     DEPENDSON_FIELD_NUMBER: builtins.int
     PARENT_FIELD_NUMBER: builtins.int
+    ACCEPT_OUTPUT_VALUES_FIELD_NUMBER: builtins.int
     tok: builtins.str
     """the function token to invoke."""
     provider: builtins.str
@@ -943,6 +954,10 @@ class ResourceInvokeRequest(google.protobuf.message.Message):
     """An optional URN of the resource this invoke is parented to. When `provider` is empty, the invoke is served by
     the provider its parent's `providers` option names for the invoke's package, the same resolution applied to
     resource registrations. Only respected when the monitor advertises `INVOKE_PARENT`.
+    """
+    accept_output_values: builtins.bool
+    """When true the SDK accepts OutputValues in `ResourceInvokeResponse.return`. Only meaningful when the monitor
+    advertises `INVOKE_OUTPUT_VALUES`; older monitors will ignore this field.
     """
     @property
     def args(self) -> google.protobuf.struct_pb2.Struct:
@@ -984,9 +999,10 @@ class ResourceInvokeRequest(google.protobuf.message.Message):
         accepts_byte_string: builtins.bool = ...,
         dependsOn: collections.abc.Iterable[builtins.str] | None = ...,
         parent: builtins.str = ...,
+        accept_output_values: builtins.bool = ...,
     ) -> None: ...
     def HasField(self, field_name: typing.Literal["args", b"args", "sourcePosition", b"sourcePosition", "stackTrace", b"stackTrace"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing.Literal["acceptResources", b"acceptResources", "accepts_byte_string", b"accepts_byte_string", "args", b"args", "dependsOn", b"dependsOn", "packageRef", b"packageRef", "parent", b"parent", "parentStackTraceHandle", b"parentStackTraceHandle", "pluginChecksums", b"pluginChecksums", "pluginDownloadURL", b"pluginDownloadURL", "provider", b"provider", "sourcePosition", b"sourcePosition", "stackTrace", b"stackTrace", "tok", b"tok", "version", b"version"]) -> None: ...
+    def ClearField(self, field_name: typing.Literal["acceptResources", b"acceptResources", "accept_output_values", b"accept_output_values", "accepts_byte_string", b"accepts_byte_string", "args", b"args", "dependsOn", b"dependsOn", "packageRef", b"packageRef", "parent", b"parent", "parentStackTraceHandle", b"parentStackTraceHandle", "pluginChecksums", b"pluginChecksums", "pluginDownloadURL", b"pluginDownloadURL", "provider", b"provider", "sourcePosition", b"sourcePosition", "stackTrace", b"stackTrace", "tok", b"tok", "version", b"version"]) -> None: ...
 
 global___ResourceInvokeRequest = ResourceInvokeRequest
 
