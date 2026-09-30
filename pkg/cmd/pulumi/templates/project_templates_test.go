@@ -18,8 +18,13 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sync"
 	"testing"
+	"time"
 
+	"github.com/go-git/go-git/v6"
+	"github.com/go-git/go-git/v6/config"
+	"github.com/go-git/go-git/v6/plumbing/object"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -430,6 +435,44 @@ func TestRetrieveFileTemplate(t *testing.T) {
 			assert.Equal(t, ".", repository.Root)
 			assert.Equal(t, ".", repository.SubDirectory)
 		})
+	}
+}
+
+func TestRetrievePulumiTemplatesConcurrently(t *testing.T) {
+	source := t.TempDir()
+	repo, err := git.PlainInit(source, false)
+	require.NoError(t, err)
+	// go-git honors the user's commit.gpgSign, so turn it off for this scratch repo.
+	cfg, err := repo.Config()
+	require.NoError(t, err)
+	cfg.Commit.GpgSign = config.OptBoolFalse
+	require.NoError(t, repo.SetConfig(cfg))
+	require.NoError(t, os.WriteFile(filepath.Join(source, "Pulumi.yaml"), []byte("name: test\n"), 0o600))
+	worktree, err := repo.Worktree()
+	require.NoError(t, err)
+	_, err = worktree.Add("Pulumi.yaml")
+	require.NoError(t, err)
+	_, err = worktree.Commit("initial", &git.CommitOptions{
+		Author: &object.Signature{Name: "test", Email: "test@example.com", When: time.Now()},
+	})
+	require.NoError(t, err)
+	head, err := repo.Head()
+	require.NoError(t, err)
+
+	t.Setenv(env.TemplateGitRepository.Var().Name(), source)
+	t.Setenv(env.TemplateBranch.Var().Name(), head.Name().Short())
+	t.Setenv(env.TemplatePath.Var().Name(), filepath.Join(t.TempDir(), "templates"))
+
+	errs := make([]error, 8)
+	var wg sync.WaitGroup
+	for i := range errs {
+		wg.Go(func() {
+			_, errs[i] = retrievePulumiTemplates(t.Context(), false, TemplateKindPulumiProject)
+		})
+	}
+	wg.Wait()
+	for _, err := range errs {
+		require.NoError(t, err)
 	}
 }
 
