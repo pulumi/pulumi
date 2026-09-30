@@ -31,12 +31,11 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// Temp credential dir, fake store, chosen mode.
-func pinSecureCreds(t *testing.T, mode string) {
+func isolateSecureCredentials(t *testing.T, mode string) *fakeKeyStore {
 	t.Helper()
 	ptesting.IsolateCredentials(t)
 	t.Setenv("PULUMI_CREDENTIAL_STORE", mode)
-	useFakeStores(t)
+	return useFakeStores(t)
 }
 
 func testCreds() Credentials {
@@ -48,7 +47,7 @@ func testCreds() Credentials {
 
 //nolint:paralleltest // t.Setenv and the package-global secure-store mock forbid parallel runs
 func TestStoreCredentialsEncryptsInAutoMode(t *testing.T) {
-	pinSecureCreds(t, "auto")
+	isolateSecureCredentials(t, "auto")
 
 	require.NoError(t, StoreCredentials(testCreds()))
 
@@ -66,7 +65,7 @@ func TestStoreCredentialsEncryptsInAutoMode(t *testing.T) {
 
 //nolint:paralleltest // t.Setenv and the package-global secure-store mock forbid parallel runs
 func TestStoreCredentialsPlaintextByDefault(t *testing.T) {
-	pinSecureCreds(t, "")
+	isolateSecureCredentials(t, "")
 
 	require.NoError(t, StoreCredentials(testCreds()))
 
@@ -80,7 +79,7 @@ func TestStoreCredentialsPlaintextByDefault(t *testing.T) {
 
 //nolint:paralleltest // t.Setenv and the package-global secure-store mock forbid parallel runs
 func TestStoreCredentialsPlaintextModeExplicit(t *testing.T) {
-	pinSecureCreds(t, "plaintext")
+	isolateSecureCredentials(t, "plaintext")
 
 	require.NoError(t, StoreCredentials(testCreds()))
 	credsFile, err := getCredsFilePath()
@@ -92,7 +91,7 @@ func TestStoreCredentialsPlaintextModeExplicit(t *testing.T) {
 
 //nolint:paralleltest // t.Setenv and the package-global secure-store mock forbid parallel runs
 func TestPlaintextFileMigratesOnWriteNotRead(t *testing.T) {
-	pinSecureCreds(t, "auto")
+	isolateSecureCredentials(t, "auto")
 
 	credsFile, err := getCredsFilePath()
 	require.NoError(t, err)
@@ -120,7 +119,7 @@ func TestPlaintextFileMigratesOnWriteNotRead(t *testing.T) {
 
 //nolint:paralleltest // t.Setenv and the package-global secure-store mock forbid parallel runs
 func TestNoMigrationWhenModeUnset(t *testing.T) {
-	pinSecureCreds(t, "")
+	isolateSecureCredentials(t, "")
 
 	credsFile, err := getCredsFilePath()
 	require.NoError(t, err)
@@ -135,12 +134,11 @@ func TestNoMigrationWhenModeUnset(t *testing.T) {
 }
 
 func TestEncryptedFileReadableRegardlessOfMode(t *testing.T) {
-	pinSecureCreds(t, "auto")
+	isolateSecureCredentials(t, "auto")
 	require.NoError(t, StoreCredentials(testCreds()))
 
 	// Reads always use the envelope's recorded backend.
 	t.Setenv("PULUMI_CREDENTIAL_STORE", "plaintext")
-	resetCredStoreForTesting()
 
 	creds, err := GetStoredCredentials()
 	require.NoError(t, err)
@@ -149,10 +147,10 @@ func TestEncryptedFileReadableRegardlessOfMode(t *testing.T) {
 
 //nolint:paralleltest // t.Setenv and the package-global secure-store mock forbid parallel runs
 func TestLostKeyProducesActionableError(t *testing.T) {
-	pinSecureCreds(t, "auto")
+	st := isolateSecureCredentials(t, "auto")
 	require.NoError(t, StoreCredentials(testCreds()))
 
-	require.NoError(t, fakeStore(t).DeleteKey())
+	require.NoError(t, st.DeleteKey())
 
 	_, err := GetStoredCredentials()
 	require.Error(t, err)
@@ -160,7 +158,7 @@ func TestLostKeyProducesActionableError(t *testing.T) {
 }
 
 func TestDeleteAllAccountsKeepsKeySharedWithOtherHomes(t *testing.T) {
-	pinSecureCreds(t, "auto")
+	isolateSecureCredentials(t, "auto")
 	homeA := os.Getenv("PULUMI_HOME")
 	require.NoError(t, StoreCredentials(testCreds()))
 
@@ -176,21 +174,20 @@ func TestDeleteAllAccountsKeepsKeySharedWithOtherHomes(t *testing.T) {
 
 //nolint:paralleltest // t.Setenv and the package-global secure-store mock forbid parallel runs
 func TestDeleteAllAccountsDropsCorruptKey(t *testing.T) {
-	pinSecureCreds(t, "auto")
+	st := isolateSecureCredentials(t, "auto")
 	require.NoError(t, StoreCredentials(testCreds()))
-	fakeStore(t).getErr = fmt.Errorf("%w: unrecognized format", securestore.ErrKeyCorrupt)
+	st.getErr = fmt.Errorf("%w: unrecognized format", securestore.ErrKeyCorrupt)
 
 	require.NoError(t, DeleteAllAccounts())
 
-	_, err := fakeStore(t).GetKey()
+	_, err := st.GetKey()
 	assert.ErrorIs(t, err, securestore.ErrKeyNotFound)
 }
 
 //nolint:paralleltest // t.Setenv and the package-global secure-store mock forbid parallel runs
 func TestDeleteAllAccountsKeepsKeyOnTransientError(t *testing.T) {
-	pinSecureCreds(t, "auto")
+	st := isolateSecureCredentials(t, "auto")
 	require.NoError(t, StoreCredentials(testCreds()))
-	st := fakeStore(t)
 	st.getErr = errors.New("dbus timeout")
 
 	require.NoError(t, DeleteAllAccounts())
@@ -202,31 +199,30 @@ func TestDeleteAllAccountsKeepsKeyOnTransientError(t *testing.T) {
 
 //nolint:paralleltest // t.Setenv and the package-global secure-store mock forbid parallel runs
 func TestDeleteCredentialsKeyRemovesKey(t *testing.T) {
-	pinSecureCreds(t, "auto")
+	st := isolateSecureCredentials(t, "auto")
 	require.NoError(t, StoreCredentials(testCreds()))
 
 	require.NoError(t, DeleteAllAccountsAndCredentialsKey())
 
-	_, err := fakeStore(t).GetKey()
+	_, err := st.GetKey()
 	assert.ErrorIs(t, err, securestore.ErrKeyNotFound)
 }
 
 func TestDeleteCredentialsKeyWithoutEnvelopeOrMode(t *testing.T) {
-	pinSecureCreds(t, "auto")
+	st := isolateSecureCredentials(t, "auto")
 	require.NoError(t, StoreCredentials(testCreds()))
 
 	t.Setenv("PULUMI_HOME", t.TempDir())
 	t.Setenv("PULUMI_CREDENTIAL_STORE", "")
-	resetCredStoreForTesting()
 
 	require.NoError(t, DeleteAllAccountsAndCredentialsKey())
-	_, err := fakeStore(t).GetKey()
+	_, err := st.GetKey()
 	assert.ErrorIs(t, err, securestore.ErrKeyNotFound)
 }
 
-//nolint:paralleltest // pinSecureCreds changes environment variables and installs a fake store.
+//nolint:paralleltest // isolateSecureCredentials changes environment variables and installs a fake store.
 func TestAgentCredentialsEncryptedToo(t *testing.T) {
-	pinSecureCreds(t, "auto")
+	isolateSecureCredentials(t, "auto")
 
 	require.NoError(t, StoreAgentCredentials(testCreds()))
 
@@ -277,9 +273,9 @@ func withStderrCapture(t *testing.T, fn func()) string {
 func TestAutoFallbackToPlaintextIsQuiet(t *testing.T) {
 	// Auto without a usable store resolves to plaintext by design: that is
 	// the promised best effort, not worth a warning.
-	pinSecureCreds(t, "auto")
+	st := isolateSecureCredentials(t, "auto")
 	forceAttended(t)
-	fakeStore(t).absent = true
+	st.absent = true
 
 	out := withStderrCapture(t, func() {
 		require.NoError(t, StoreCredentials(testCreds()))
@@ -297,9 +293,9 @@ func TestAutoFallbackToPlaintextIsQuiet(t *testing.T) {
 func TestKeyFailureFallbackWarnsWithReason(t *testing.T) {
 	// A store that resolved as available but failed its key operation lands
 	// the write on plaintext unexpectedly — that does deserve a warning.
-	pinSecureCreds(t, "auto")
+	st := isolateSecureCredentials(t, "auto")
 	forceAttended(t)
-	fakeStore(t).createErr = errors.New("keychain hiccup")
+	st.createErr = errors.New("keychain hiccup")
 
 	out := withStderrCapture(t, func() {
 		require.NoError(t, StoreCredentials(testCreds()))
@@ -311,15 +307,14 @@ func TestKeyFailureFallbackWarnsWithReason(t *testing.T) {
 func TestRecoveryDowngradeToPlaintextWarns(t *testing.T) {
 	// A previously encrypted user whose store disappeared between losing the
 	// key and logging back in is being downgraded — warn about it.
-	pinSecureCreds(t, "auto")
+	st := isolateSecureCredentials(t, "auto")
 	forceAttended(t)
 	require.NoError(t, StoreCredentials(testCreds()))
-	require.NoError(t, fakeStore(t).DeleteKey())
+	require.NoError(t, st.DeleteKey())
 
 	t.Setenv("PULUMI_CREDENTIAL_STORE", "")
-	resetCredStoreForTesting()
 	require.NoError(t, ResetStoredCredentials())
-	fakeStore(t).absent = true
+	st.absent = true
 
 	out := withStderrCapture(t, func() {
 		require.NoError(t, StoreCredentials(testCreds()))
@@ -328,11 +323,10 @@ func TestRecoveryDowngradeToPlaintextWarns(t *testing.T) {
 }
 
 func TestUnsetModePreservesExistingEncryption(t *testing.T) {
-	pinSecureCreds(t, "auto")
+	isolateSecureCredentials(t, "auto")
 	require.NoError(t, StoreCredentials(testCreds()))
 
 	t.Setenv("PULUMI_CREDENTIAL_STORE", "")
-	resetCredStoreForTesting()
 
 	updated := testCreds()
 	updated.Accounts["https://api.other.com"] = Account{AccessToken: "pul-second-token"}
@@ -351,11 +345,10 @@ func TestUnsetModePreservesExistingEncryption(t *testing.T) {
 }
 
 func TestExplicitPlaintextModeDowngrades(t *testing.T) {
-	pinSecureCreds(t, "auto")
+	isolateSecureCredentials(t, "auto")
 	require.NoError(t, StoreCredentials(testCreds()))
 
 	t.Setenv("PULUMI_CREDENTIAL_STORE", "plaintext")
-	resetCredStoreForTesting()
 
 	require.NoError(t, StoreCredentials(testCreds()))
 	credsFile, err := getCredsFilePath()
@@ -368,10 +361,10 @@ func TestExplicitPlaintextModeDowngrades(t *testing.T) {
 
 //nolint:paralleltest // t.Setenv and the package-global secure-store mock forbid parallel runs
 func TestStoreAccountRecoversFromUndecryptableFile(t *testing.T) {
-	pinSecureCreds(t, "auto")
+	st := isolateSecureCredentials(t, "auto")
 	require.NoError(t, StoreCredentials(testCreds()))
 
-	require.NoError(t, fakeStore(t).DeleteKey())
+	require.NoError(t, st.DeleteKey())
 	_, err := GetStoredCredentials()
 	require.Error(t, err)
 	assert.True(t, IsUndecryptableCredentials(err))
@@ -387,10 +380,10 @@ func TestStoreAccountRecoversFromUndecryptableFile(t *testing.T) {
 
 //nolint:paralleltest // t.Setenv and the package-global secure-store mock forbid parallel runs
 func TestResetStoredCredentialsClearsUndecryptableState(t *testing.T) {
-	pinSecureCreds(t, "auto")
+	st := isolateSecureCredentials(t, "auto")
 	require.NoError(t, StoreCredentials(testCreds()))
 
-	require.NoError(t, fakeStore(t).DeleteKey())
+	require.NoError(t, st.DeleteKey())
 
 	require.NoError(t, ResetStoredCredentials())
 
@@ -410,7 +403,6 @@ func TestDeleteAllAccountsAndCredentialsKeyUsesEnvelopeBackend(t *testing.T) {
 	promote := useUpgradableStores(t)
 	require.NoError(t, StoreCredentials(testCreds()))
 	promote()
-	resetCredStoreForTesting()
 
 	require.NoError(t, DeleteAllAccountsAndCredentialsKey())
 
@@ -426,7 +418,7 @@ func TestDeleteAllAccountsAndCredentialsKeyUsesEnvelopeBackend(t *testing.T) {
 
 //nolint:paralleltest // t.Setenv and the package-global secure-store mock forbid parallel runs
 func TestDeleteAllAccountsAndCredentialsKeyKeepsKeyWhenFileRemains(t *testing.T) {
-	pinSecureCreds(t, "auto")
+	st := isolateSecureCredentials(t, "auto")
 	require.NoError(t, StoreCredentials(testCreds()))
 	credsFile, err := getCredsFilePath()
 	require.NoError(t, err)
@@ -435,27 +427,26 @@ func TestDeleteAllAccountsAndCredentialsKeyKeepsKeyWhenFileRemains(t *testing.T)
 
 	require.Error(t, DeleteAllAccountsAndCredentialsKey())
 
-	_, err = fakeStore(t).GetKey()
+	_, err = st.GetKey()
 	require.NoError(t, err)
 }
 
 func TestDeleteCredentialsKeyForUnparseableEnvelopeRegardlessOfMode(t *testing.T) {
-	pinSecureCreds(t, "auto")
+	st := isolateSecureCredentials(t, "auto")
 	require.NoError(t, StoreCredentials(testCreds()))
 	credsFile, err := getCredsFilePath()
 	require.NoError(t, err)
 	require.NoError(t, os.WriteFile(credsFile, futureEnvelope(t), 0o600))
 
 	t.Setenv("PULUMI_CREDENTIAL_STORE", "plaintext")
-	resetCredStoreForTesting()
 
 	require.NoError(t, DeleteAllAccountsAndCredentialsKey())
-	_, err = fakeStore(t).GetKey()
+	_, err = st.GetKey()
 	assert.ErrorIs(t, err, securestore.ErrKeyNotFound)
 }
 
 func TestResetStoredCredentialsKeepsKeySharedWithOtherHomes(t *testing.T) {
-	pinSecureCreds(t, "auto")
+	isolateSecureCredentials(t, "auto")
 	homeA := os.Getenv("PULUMI_HOME")
 	require.NoError(t, StoreCredentials(testCreds()))
 
@@ -479,10 +470,10 @@ func TestResetStoredCredentialsKeepsKeySharedWithOtherHomes(t *testing.T) {
 
 //nolint:paralleltest // t.Setenv and the package-global secure-store mock forbid parallel runs
 func TestDeleteAllAccountsWorksWhenUndecryptable(t *testing.T) {
-	pinSecureCreds(t, "auto")
+	st := isolateSecureCredentials(t, "auto")
 	require.NoError(t, StoreCredentials(testCreds()))
 
-	require.NoError(t, fakeStore(t).DeleteKey())
+	require.NoError(t, st.DeleteKey())
 
 	require.NoError(t, DeleteAllAccounts(), "logout --all must not require reading the file")
 
@@ -504,7 +495,7 @@ func futureEnvelope(t *testing.T) []byte {
 
 //nolint:paralleltest // t.Setenv and the package-global secure-store mock forbid parallel runs
 func TestFutureEnvelopeIsNotReadAsLoggedOut(t *testing.T) {
-	pinSecureCreds(t, "")
+	isolateSecureCredentials(t, "")
 	credsFile, err := getCredsFilePath()
 	require.NoError(t, err)
 	require.NoError(t, os.WriteFile(credsFile, futureEnvelope(t), 0o600))
@@ -517,7 +508,7 @@ func TestFutureEnvelopeIsNotReadAsLoggedOut(t *testing.T) {
 //nolint:paralleltest // t.Setenv and the package-global secure-store mock forbid parallel runs
 func TestWriteRefusesToClobberFutureEnvelope(t *testing.T) {
 	for _, mode := range []string{"", "auto"} {
-		pinSecureCreds(t, mode)
+		isolateSecureCredentials(t, mode)
 		credsFile, err := getCredsFilePath()
 		require.NoError(t, err)
 		future := futureEnvelope(t)
@@ -532,10 +523,9 @@ func TestWriteRefusesToClobberFutureEnvelope(t *testing.T) {
 	}
 }
 
+//nolint:paralleltest // isolateSecureCredentials changes environment variables and installs a fake store.
 func TestDeclinedUnlockNeverWritesPlaintext(t *testing.T) {
-	ptesting.IsolateCredentials(t)
-	t.Setenv("PULUMI_CREDENTIAL_STORE", "auto")
-	st := useFakeStores(t)
+	st := isolateSecureCredentials(t, "auto")
 	st.declineErr = securestore.ErrDeclined
 
 	err := StoreCredentials(testCreds())
@@ -551,10 +541,10 @@ func TestDeclinedUnlockNeverWritesPlaintext(t *testing.T) {
 //nolint:paralleltest // t.Setenv and the package-global secure-store mock forbid parallel runs
 func TestDeclinedUnlockOnReadIsNotAdviceToReAuthenticate(t *testing.T) {
 	// Their credentials are intact and one click away.
-	pinSecureCreds(t, "auto")
+	st := isolateSecureCredentials(t, "auto")
 	require.NoError(t, StoreCredentials(testCreds()))
 
-	fakeStore(t).declineErr = securestore.ErrDeclined
+	st.declineErr = securestore.ErrDeclined
 	_, err := GetStoredCredentials()
 	require.Error(t, err)
 	assert.ErrorIs(t, err, securestore.ErrDeclined)
@@ -566,10 +556,10 @@ func TestDeclinedUnlockOnReadIsNotAdviceToReAuthenticate(t *testing.T) {
 //nolint:paralleltest // t.Setenv and the package-global secure-store mock forbid parallel runs
 func TestUnusableStoreIsNotTreatedAsUnreadableCredentials(t *testing.T) {
 	// A store unusable right now must not authorise replacing the file.
-	pinSecureCreds(t, "auto")
+	st := isolateSecureCredentials(t, "auto")
 	require.NoError(t, StoreCredentials(testCreds()))
 
-	fakeStore(t).absent = true
+	st.absent = true
 	_, err := GetStoredCredentials()
 	require.Error(t, err)
 	assert.False(t, IsUndecryptableCredentials(err),
@@ -581,10 +571,10 @@ func TestUnusableStoreIsNotTreatedAsUnreadableCredentials(t *testing.T) {
 func TestTransientKeyErrorIsNotTreatedAsUnreadableCredentials(t *testing.T) {
 	// An unexpected failure from an available store may be transient, so it
 	// must not authorise `pulumi login` to replace the file.
-	pinSecureCreds(t, "auto")
+	st := isolateSecureCredentials(t, "auto")
 	require.NoError(t, StoreCredentials(testCreds()))
 
-	fakeStore(t).getErr = errors.New("dbus timeout")
+	st.getErr = errors.New("dbus timeout")
 	_, err := GetStoredCredentials()
 	require.Error(t, err)
 	assert.False(t, IsUndecryptableCredentials(err))
@@ -594,10 +584,10 @@ func TestTransientKeyErrorIsNotTreatedAsUnreadableCredentials(t *testing.T) {
 //nolint:paralleltest // t.Setenv and the package-global secure-store mock forbid parallel runs
 func TestLostKeyStillAllowsRecovery(t *testing.T) {
 	// The key is genuinely gone, so login may replace the data.
-	pinSecureCreds(t, "auto")
+	st := isolateSecureCredentials(t, "auto")
 	require.NoError(t, StoreCredentials(testCreds()))
 
-	require.NoError(t, fakeStore(t).DeleteKey())
+	require.NoError(t, st.DeleteKey())
 	_, err := GetStoredCredentials()
 	require.Error(t, err)
 	assert.True(t, IsUndecryptableCredentials(err))
@@ -605,7 +595,7 @@ func TestLostKeyStillAllowsRecovery(t *testing.T) {
 
 func TestDeclinedUnlockOnStickyWriteKeepsTheEnvelope(t *testing.T) {
 	// Must fail rather than fall through to "refusing to overwrite".
-	pinSecureCreds(t, "auto")
+	st := isolateSecureCredentials(t, "auto")
 	require.NoError(t, StoreCredentials(testCreds()))
 	credsFile, err := getCredsFilePath()
 	require.NoError(t, err)
@@ -613,8 +603,7 @@ func TestDeclinedUnlockOnStickyWriteKeepsTheEnvelope(t *testing.T) {
 	require.NoError(t, err)
 
 	t.Setenv("PULUMI_CREDENTIAL_STORE", "")
-	resetCredStoreForTesting()
-	fakeStore(t).declineErr = securestore.ErrDeclined
+	st.declineErr = securestore.ErrDeclined
 
 	err = StoreCredentials(testCreds())
 	require.Error(t, err)
@@ -626,7 +615,7 @@ func TestDeclinedUnlockOnStickyWriteKeepsTheEnvelope(t *testing.T) {
 
 //nolint:paralleltest // t.Setenv and the package-global secure-store mock forbid parallel runs
 func TestInvalidModeSurfacesOnWrite(t *testing.T) {
-	pinSecureCreds(t, "bogus")
+	isolateSecureCredentials(t, "bogus")
 	err := StoreCredentials(testCreds())
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "PULUMI_CREDENTIAL_STORE")
@@ -634,7 +623,7 @@ func TestInvalidModeSurfacesOnWrite(t *testing.T) {
 
 //nolint:paralleltest // t.Setenv and the package-global secure-store mock forbid parallel runs
 func TestInvalidModeSurfacesOnRead(t *testing.T) {
-	pinSecureCreds(t, "bogus")
+	isolateSecureCredentials(t, "bogus")
 	_, err := GetStoredCredentials()
 	require.Error(t, err, "read-only commands must reject an invalid mode too")
 	assert.Contains(t, err.Error(), "PULUMI_CREDENTIAL_STORE")
@@ -642,7 +631,7 @@ func TestInvalidModeSurfacesOnRead(t *testing.T) {
 
 //nolint:paralleltest // t.Setenv and the package-global secure-store mock forbid parallel runs
 func TestModeIsCaseInsensitive(t *testing.T) {
-	pinSecureCreds(t, "OS")
+	isolateSecureCredentials(t, "OS")
 	require.NoError(t, StoreCredentials(testCreds()))
 	credsFile, err := getCredsFilePath()
 	require.NoError(t, err)
@@ -652,17 +641,14 @@ func TestModeIsCaseInsensitive(t *testing.T) {
 }
 
 func TestAgentFallbackSurfacesUndecryptableCredentials(t *testing.T) {
-	ptesting.IsolateCredentials(t)
+	st := isolateSecureCredentials(t, "auto")
 	t.Setenv(pulumiTestAllowAgentFallbackEnvVar, "true")
-	useFakeStores(t)
 	t.Setenv("CODEX_SANDBOX", "1")
-	t.Setenv("PULUMI_CREDENTIAL_STORE", "auto")
-	resetCredStoreForTesting()
 
 	cloudURL := "https://api.undecryptable.example.com"
 	require.NoError(t, StoreAccount(cloudURL, Account{AccessToken: "tok"}, true))
 
-	require.NoError(t, fakeStore(t).DeleteKey())
+	require.NoError(t, st.DeleteKey())
 
 	_, _, err := GetAccountWithAgentFallback(cloudURL)
 	require.Error(t, err, "agent fallback must not swallow the undecryptable error")
@@ -686,7 +672,6 @@ func TestWriteUpgradesToStrongerBackend(t *testing.T) {
 	require.Equal(t, fakeBackend, backend)
 
 	promote()
-	resetCredStoreForTesting()
 
 	creds, err := GetStoredCredentials()
 	require.NoError(t, err)
@@ -716,15 +701,14 @@ func TestWriteUpgradesToStrongerBackend(t *testing.T) {
 
 func TestRecoveryFromLostKeyStaysEncrypted(t *testing.T) {
 	// Recovery is not the explicit "plaintext" opt-out.
-	pinSecureCreds(t, "auto")
+	st := isolateSecureCredentials(t, "auto")
 	require.NoError(t, StoreCredentials(testCreds()))
 
-	require.NoError(t, fakeStore(t).DeleteKey())
+	require.NoError(t, st.DeleteKey())
 	_, err := GetStoredCredentials()
 	require.True(t, IsUndecryptableCredentials(err))
 
 	t.Setenv("PULUMI_CREDENTIAL_STORE", "")
-	resetCredStoreForTesting()
 	require.NoError(t, ResetStoredCredentials())
 	require.NoError(t, StoreCredentials(testCreds()))
 
@@ -741,12 +725,11 @@ func TestRecoveryFromLostKeyStaysEncrypted(t *testing.T) {
 }
 
 func TestRecoveryInExplicitPlaintextModeWritesPlaintext(t *testing.T) {
-	pinSecureCreds(t, "auto")
+	st := isolateSecureCredentials(t, "auto")
 	require.NoError(t, StoreCredentials(testCreds()))
-	require.NoError(t, fakeStore(t).DeleteKey())
+	require.NoError(t, st.DeleteKey())
 
 	t.Setenv("PULUMI_CREDENTIAL_STORE", "plaintext")
-	resetCredStoreForTesting()
 	require.NoError(t, ResetStoredCredentials())
 	require.NoError(t, StoreCredentials(testCreds()))
 
@@ -760,7 +743,7 @@ func TestRecoveryInExplicitPlaintextModeWritesPlaintext(t *testing.T) {
 //nolint:paralleltest // t.Setenv and the package-global secure-store mock forbid parallel runs
 func TestOptedInPlaintextReadWarnsOnce(t *testing.T) {
 	for _, mode := range []string{"auto", "os"} {
-		pinSecureCreds(t, mode)
+		isolateSecureCredentials(t, mode)
 		forceAttended(t)
 		credsFile, err := getCredsFilePath()
 		require.NoError(t, err)
@@ -787,7 +770,7 @@ func TestOptedInPlaintextReadWarnsOnce(t *testing.T) {
 
 //nolint:paralleltest // t.Setenv and the package-global secure-store mock forbid parallel runs
 func TestMigrationConfirmsEncryption(t *testing.T) {
-	pinSecureCreds(t, "auto")
+	isolateSecureCredentials(t, "auto")
 	forceAttended(t)
 	credsFile, err := getCredsFilePath()
 	require.NoError(t, err)
@@ -807,7 +790,7 @@ func TestMigrationConfirmsEncryption(t *testing.T) {
 
 //nolint:paralleltest // t.Setenv and the package-global secure-store mock forbid parallel runs
 func TestFreshEncryptedWriteDoesNotClaimMigration(t *testing.T) {
-	pinSecureCreds(t, "auto")
+	isolateSecureCredentials(t, "auto")
 	forceAttended(t)
 
 	out := withStderrCapture(t, func() {
@@ -820,7 +803,7 @@ func TestFreshEncryptedWriteDoesNotClaimMigration(t *testing.T) {
 func TestSuppressPlaintextPendingWarning(t *testing.T) {
 	// `pulumi login` migrates the file itself, so the "next login will
 	// encrypt" warning from its own credential reads must stay silent.
-	pinSecureCreds(t, "os")
+	isolateSecureCredentials(t, "os")
 	forceAttended(t)
 	credsFile, err := getCredsFilePath()
 	require.NoError(t, err)
@@ -839,9 +822,9 @@ func TestSuppressPlaintextPendingWarning(t *testing.T) {
 func TestPendingWarningRequiresUsableStore(t *testing.T) {
 	// With no usable store the next login falls back to plaintext, so
 	// promising "will encrypt" would be false — and would nag every command.
-	pinSecureCreds(t, "auto")
+	st := isolateSecureCredentials(t, "auto")
 	forceAttended(t)
-	fakeStore(t).absent = true
+	st.absent = true
 	credsFile, err := getCredsFilePath()
 	require.NoError(t, err)
 	require.NoError(t, os.WriteFile(credsFile,
@@ -858,14 +841,14 @@ func TestPendingWarningRequiresUsableStore(t *testing.T) {
 func TestKeyFailureOnAvailableStoreKeepsTheEnvelope(t *testing.T) {
 	// A store that resolves but then fails its key operation must not
 	// downgrade an encrypted file to plaintext, even in auto mode.
-	pinSecureCreds(t, "auto")
+	st := isolateSecureCredentials(t, "auto")
 	require.NoError(t, StoreCredentials(testCreds()))
 	credsFile, err := getCredsFilePath()
 	require.NoError(t, err)
 	before, err := os.ReadFile(credsFile)
 	require.NoError(t, err)
 
-	fakeStore(t).createErr = errors.New("keychain hiccup")
+	st.createErr = errors.New("keychain hiccup")
 
 	err = StoreCredentials(testCreds())
 	require.Error(t, err)
@@ -877,7 +860,7 @@ func TestKeyFailureOnAvailableStoreKeepsTheEnvelope(t *testing.T) {
 
 //nolint:paralleltest // t.Setenv and the package-global secure-store mock forbid parallel runs
 func TestUnsetModePlaintextReadDoesNotWarn(t *testing.T) {
-	pinSecureCreds(t, "")
+	isolateSecureCredentials(t, "")
 	forceAttended(t)
 	credsFile, err := getCredsFilePath()
 	require.NoError(t, err)
