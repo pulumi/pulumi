@@ -160,6 +160,14 @@ func (u *uv) InstallDependencies(ctx context.Context, cwd string, useLanguageVer
 	}
 }
 
+func (u *uv) InstallPackage(ctx context.Context, cwd string, useLanguageVersionTools,
+	showOutput bool, infoWriter, errorWriter io.Writer,
+) error {
+	// InstallDependencies runs `uv sync`. If the project defines a build system, `uv sync` builds the project and
+	// installs it into the virtual environment, so there is nothing to do here.
+	return nil
+}
+
 // PrepareProject prepares a project for use with uv. It will create a suitable pyproject.toml project file. If a
 // requirements.txt file exists, its dependencies will be added to pyproject.toml. If a pyproject.toml exists but
 // has no [project] section and a colocated requirements.txt is present, [project] is appended and the deps from

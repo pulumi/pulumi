@@ -1,0 +1,4 @@
+component: sdk/python
+kind: fix
+body: Fix `pulumi install` for Python plugins and policy packs that use the uv toolchain and a `[build-system]` table
+time: 2026-09-30T14:12:31Z
