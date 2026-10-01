@@ -187,6 +187,10 @@ func (src *evalSource) Iterate(ctx context.Context, providers ProviderSource) (S
 	regOutChan := make(chan *registerResourceOutputsEvent)
 	regReadChan := make(chan *readResourceEvent)
 	finChan := make(chan error)
+	var finOnce sync.Once
+	signalFin := func(err error) {
+		finOnce.Do(func() { finChan <- err })
+	}
 	programComplete := &promise.CompletionSource[struct{}]{}
 
 	mon, err := newResourceMonitor(
@@ -195,7 +199,7 @@ func (src *evalSource) Iterate(ctx context.Context, providers ProviderSource) (S
 		regChan,
 		regOutChan,
 		regReadChan,
-		finChan,
+		signalFin,
 		programComplete.Promise(),
 		config,
 		configSecretKeys,
@@ -213,6 +217,7 @@ func (src *evalSource) Iterate(ctx context.Context, providers ProviderSource) (S
 		regOutChan:      regOutChan,
 		regReadChan:     regReadChan,
 		finChan:         finChan,
+		signalFin:       signalFin,
 		programComplete: programComplete,
 		panicErrs:       src.panicErrs,
 	}
@@ -233,6 +238,7 @@ type evalSourceIterator struct {
 	regReadChan chan *readResourceEvent            // the channel that contains read resource requests.
 	// the channel that communicates that no more events will be sent from the program.
 	finChan         chan error
+	signalFin       func(error)
 	programComplete *promise.CompletionSource[struct{}] // the completion source to record program completion.
 	done            bool                                // set to true when the evaluation is done.
 	aborted         bool                                // set to true when the iterator is aborted.
@@ -325,7 +331,7 @@ func (iter *evalSourceIterator) forkRun(
 		// SDKs will already have signalled to `iter.finChan` via
 		// `SignalAndWaitForShutdown`, but old SDKs signal completion here when
 		// they exit.
-		iter.finChan <- err
+		iter.signalFin(err)
 	})
 }
 
@@ -415,8 +421,8 @@ type resmon struct {
 	abortChan              chan bool                          // a channel that can abort iteration of resources.
 	cancel                 chan bool                          // a channel that can cancel the server.
 	done                   <-chan error                       // a channel that resolves when the server completes.
-	// a channel to signal that no more events will be sent from the program.
-	finChan             chan<- error
+	// signals that no more events will be sent from the program.
+	signalFin           func(error)
 	programComplete     *promise.Promise[struct{}] // a promise that resolves when the program has exited.
 	waitForShutdownChan chan struct{}              // a channel on which the runtime can wait before shutting down.
 	hasWaiter           atomic.Bool                // indicates whether something is waiting on `waitForShutdownChan`.
@@ -473,7 +479,7 @@ func newResourceMonitor(
 	regChan chan *registerResourceEvent,
 	regOutChan chan *registerResourceOutputsEvent,
 	regReadChan chan *readResourceEvent,
-	finChan chan<- error,
+	signalFin func(error),
 	programComplete *promise.Promise[struct{}],
 	config map[config.Key]string,
 	configSecretKeys []config.Key,
@@ -511,7 +517,7 @@ func newResourceMonitor(
 		regReadChan:             regReadChan,
 		abortChan:               abortChan,
 		cancel:                  cancel,
-		finChan:                 finChan,
+		signalFin:               signalFin,
 		programComplete:         programComplete,
 		waitForShutdownChan:     make(chan struct{}, 1),
 		opts:                    src.opts,
@@ -1770,7 +1776,7 @@ func (rm *resmon) RegisterStackInvokeTransform(ctx context.Context, cb *pulumirp
 func (rm *resmon) SignalAndWaitForShutdown(ctx context.Context, req *emptypb.Empty) (*emptypb.Empty, error) {
 	logging.V(6).Infof("SignalAndWaitForShutdown waiting ...")
 	if rm.hasWaiter.CompareAndSwap(false, true) {
-		rm.finChan <- nil        // Let the source iterator know there will be no more events ...
+		rm.signalFin(nil)        // Let the source iterator know there will be no more events ...
 		<-rm.waitForShutdownChan // and then wait for the resource monitor to tell us it's done.
 	} else {
 		return &emptypb.Empty{}, errors.New("Already waiting for shutdown")
