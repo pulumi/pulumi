@@ -384,6 +384,8 @@ func (t *tracingTransport) RoundTrip(req *http.Request) (*http.Response, error) 
 	return resp, err
 }
 
+type disableRedirectsKey struct{}
+
 // defaultHTTPClient is an implementation of httpClient that provides a basic implementation of Do
 // using the specified *http.Client, with retry support.
 type defaultHTTPClient struct {
@@ -421,6 +423,9 @@ func (c *defaultHTTPClient) Do(req *http.Request, policy retryPolicy) (*http.Res
 		transport = http.DefaultTransport
 	}
 	tracingClient := *c.client
+	if disabled, _ := req.Context().Value(disableRedirectsKey{}).(bool); disabled {
+		tracingClient.CheckRedirect = func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }
+	}
 	tracingClient.Transport = &tracingTransport{base: transport}
 
 	// Wait 1s before retrying on failure. Then increase by 2x until the
@@ -691,9 +696,13 @@ func (c *defaultRESTClient) Call(ctx context.Context, diag diag.Sink, cloudAPI, 
 	sentAccessToken, _ := tok.Get(ctx)
 	url, resp, err := pulumiAPICall(
 		ctx, requestSpan, diag, c.client, cloudAPI, method, path+querystring, reqBody, tok, opts)
-	if err != nil && errors.Is(err, backenderr.LoginRequiredError{}) {
+	if errors.Is(err, backenderr.LoginRequiredError{}) ||
+		(opts.SkipDecodeErrors && resp != nil && resp.StatusCode == http.StatusUnauthorized) {
 		if r, ok := tok.(refreshable); ok {
 			if refreshErr := r.Refresh(ctx, sentAccessToken); refreshErr == nil {
+				if resp != nil {
+					resp.Body.Close()
+				}
 				url, resp, err = pulumiAPICall(
 					ctx, requestSpan, diag, c.client, cloudAPI, method, path+querystring, reqBody, tok, opts)
 			}
