@@ -1110,8 +1110,6 @@ func TestCreateDuringTargetedUpdate_UntargetedCreateReferencedByChangedTarget(t 
 		_, _ = monitor.RegisterResource("pkgA:m:typA", "b", true, deploytest.ResourceOptions{
 			Dependencies: []resource.URN{resA.URN},
 		})
-		require.Fail(t, "RegisterResource should not return")
-
 		return nil
 	})
 
@@ -1179,8 +1177,6 @@ func TestCreateDuringTargetedUpdate_UntargetedCreateReferencedByUnchangedTarget(
 		_, _ = monitor.RegisterResource("pkgA:m:typA", "b", true, deploytest.ResourceOptions{
 			Dependencies: []resource.URN{resA.URN},
 		})
-		require.Fail(t, "RegisterResource should not return")
-
 		return nil
 	})
 
@@ -1263,8 +1259,6 @@ func TestCreateDuringTargetedUpdate_UntargetedCreateReferencedByTargetPropertyDe
 				"prop": {resA.URN},
 			},
 		})
-		require.Fail(t, "RegisterResource should not return")
-
 		return nil
 	})
 
@@ -1345,8 +1339,6 @@ func TestCreateDuringTargetedUpdate_UntargetedCreateReferencedByTargetDeletedWit
 		_, _ = monitor.RegisterResource("pkgA:m:typA", "b", true, deploytest.ResourceOptions{
 			DeletedWith: resA.URN,
 		})
-		require.Fail(t, "RegisterResource should not return")
-
 		return nil
 	})
 
@@ -1430,8 +1422,6 @@ func TestCreateDuringTargetedUpdate_UntargetedCreateReferencedByTargetParent(t *
 			Parent:    resA.URN,
 			AliasURNs: []resource.URN{resBOldURN},
 		})
-		require.Fail(t, "RegisterResource should not return")
-
 		return nil
 	})
 
@@ -2482,7 +2472,7 @@ func TestTargetUntargetedParent(t *testing.T) {
 				Inputs: inputs,
 			})
 			if expectError {
-				require.Fail(t, "RegisterResource should not return")
+				return nil
 			} else {
 				require.NoError(t, err)
 			}
@@ -3027,7 +3017,7 @@ func TestTargetUntargetedParentWithUpdatedDependency(t *testing.T) {
 				Inputs: inputs,
 			})
 			if expectError {
-				require.Fail(t, "RegisterResource should not return")
+				return nil
 			} else {
 				require.NoError(t, err)
 			}
@@ -3157,7 +3147,7 @@ func TestTargetChangeProviderVersion(t *testing.T) {
 			Version: providerVersion,
 		})
 		if expectError {
-			require.Fail(t, "RegisterResource should not return")
+			return nil
 		} else {
 			require.NoError(t, err)
 		}
@@ -4387,7 +4377,7 @@ func TestUntargetedProviderChange(t *testing.T) {
 			Provider: provider.String(),
 		})
 		if expectError {
-			require.Fail(t, "RegisterResource should not return")
+			return nil
 		} else {
 			require.NoError(t, err)
 		}

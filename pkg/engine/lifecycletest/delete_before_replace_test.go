@@ -739,7 +739,7 @@ func TestDBRProtect(t *testing.T) {
 			})
 			require.NoError(t, err)
 		} else {
-			require.Fail(t, "RegisterResource should not return")
+			return nil
 		}
 
 		return nil

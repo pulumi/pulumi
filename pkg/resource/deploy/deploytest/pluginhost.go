@@ -550,6 +550,9 @@ func (host *pluginHost) Close() error {
 	if host.isClosed() {
 		return nil // Close is idempotent
 	}
+	if lr, ok := host.languageRuntime.(*languageRuntime); ok {
+		lr.running.Wait()
+	}
 	host.m.Lock()
 	defer host.m.Unlock()
 

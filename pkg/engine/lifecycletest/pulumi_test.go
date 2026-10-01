@@ -1374,8 +1374,6 @@ func TestLoadFailureShutdown(t *testing.T) {
 		require.NoError(t, err)
 
 		_, _ = monitor.RegisterResource(providers.MakeProviderType("pkgB"), "provB", true)
-		require.Fail(t, "RegisterResource should not return")
-
 		return nil
 	})
 
@@ -2769,7 +2767,7 @@ func TestProtect(t *testing.T) {
 				Protect: &shouldProtect,
 			})
 			if expectError {
-				require.Fail(t, "RegisterResource should not return")
+				return nil
 			} else {
 				require.NoError(t, err)
 			}
@@ -2928,7 +2926,9 @@ func TestImportDiff(t *testing.T) {
 			Inputs:   ins,
 			ImportID: "imported-id",
 		})
-		require.NoError(t, err)
+		if err != nil {
+			return err
+		}
 
 		return nil
 	})
@@ -3568,7 +3568,7 @@ func TestPendingDeleteOrder(t *testing.T) {
 			Dependencies: []resource.URN{resp.URN},
 		})
 		if failCreationOfTypB {
-			require.Fail(t, "RegisterResource should not return")
+			return nil
 		} else {
 			require.NoError(t, err)
 		}
@@ -4728,7 +4728,6 @@ func TestStackOutputsResourceError(t *testing.T) {
 
 		case 1:
 			_, _ = monitor.RegisterResource("pkgA:m:typA", "resA", true)
-			require.Fail(t, "RegisterResource should not return")
 			// RegisterResourceOutputs not called here, simulating what happens in SDKs when an output of resA
 			// is exported as a stack output.
 
@@ -4740,7 +4739,6 @@ func TestStackOutputsResourceError(t *testing.T) {
 			require.NoError(t, outsErr)
 
 			_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true)
-			require.Fail(t, "RegisterResource should not return")
 		}
 
 		return err
@@ -5009,9 +5007,6 @@ func TestResourceError(t *testing.T) {
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, _ = monitor.RegisterResource("pkgA:m:typA", "resA", true)
-		// The resource registration fails, and the engine knows this and
-		// cancels the deployment. RegisterResource will not return.
-		t.Fatalf("We should not return from RegisterResource")
 		return nil
 	})
 

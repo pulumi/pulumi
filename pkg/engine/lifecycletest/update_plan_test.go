@@ -59,7 +59,7 @@ func TestPlannedUpdate(t *testing.T) {
 			Inputs: ins,
 		})
 		if expectError {
-			require.Fail(t, "RegisterResource should not return")
+			return nil
 		} else {
 			require.NoError(t, err)
 		}
@@ -179,7 +179,7 @@ func TestPlanViolationSecrets(t *testing.T) {
 				Inputs: ins,
 			})
 			if expectError {
-				require.Fail(t, "RegisterResource should not return")
+				return nil
 			} else {
 				require.NoError(t, err)
 			}
@@ -396,7 +396,7 @@ func TestExpectedDelete(t *testing.T) {
 				Inputs: ins,
 			})
 			if expectError {
-				require.Fail(t, "RegisterResource should not return")
+				return nil
 			} else {
 				require.NoError(t, err)
 			}
@@ -544,7 +544,7 @@ func TestPropertySetChange(t *testing.T) {
 			Inputs: ins,
 		})
 		if expectError {
-			require.Fail(t, "RegisterResource should not return")
+			return nil
 		} else {
 			require.NoError(t, err)
 		}
@@ -843,7 +843,7 @@ func TestPlannedPreviews(t *testing.T) {
 			Inputs: ins,
 		})
 		if expectError {
-			require.Fail(t, "RegisterResource should not return")
+			return nil
 		} else {
 			require.NoError(t, err)
 		}
@@ -938,7 +938,7 @@ func TestPlannedUpdateChangedStack(t *testing.T) {
 			Inputs: ins,
 		})
 		if expectError {
-			require.Fail(t, "RegisterResource should not return")
+			return nil
 		} else {
 			require.NoError(t, err)
 		}
@@ -1107,7 +1107,7 @@ func TestPlannedInputOutputDifferences(t *testing.T) {
 			Inputs: inputs,
 		})
 		if expectError {
-			require.Fail(t, "RegisterResource should not return")
+			return nil
 		} else {
 			require.NoError(t, err)
 		}
@@ -1423,7 +1423,7 @@ func TestPlannedUpdateWithNondeterministicCheck(t *testing.T) {
 				}),
 			})
 			if expectError {
-				require.Fail(t, "RegisterResource should not return")
+				return nil
 			} else {
 				require.NoError(t, err)
 			}
@@ -1511,7 +1511,7 @@ func TestPlannedUpdateWithCheckFailure(t *testing.T) {
 			Inputs: ins,
 		})
 		if expectError {
-			require.Fail(t, "RegisterResource should not return")
+			return nil
 		} else {
 			require.NoError(t, err)
 		}
@@ -1818,7 +1818,7 @@ func TestResourcesTargeted(t *testing.T) {
 			},
 		})
 		if expectError {
-			require.Fail(t, "RegisterResource should not return")
+			return nil
 		} else {
 			require.NoError(t, err)
 		}

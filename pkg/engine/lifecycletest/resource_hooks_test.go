@@ -408,7 +408,6 @@ func TestResourceHookBeforeCreateError(t *testing.T) {
 				BeforeCreate: []*deploytest.ResourceHook{myHook},
 			},
 		})
-		require.Fail(t, "RegisterResource should not return")
 		return nil
 	})
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
@@ -948,7 +947,6 @@ func TestResourceHookBeforeUpdateError(t *testing.T) {
 		})
 
 		if isUpdate {
-			require.Fail(t, "RegisterResource should not return")
 			return err
 		}
 

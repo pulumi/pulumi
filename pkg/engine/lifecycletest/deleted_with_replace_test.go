@@ -512,7 +512,9 @@ func TestDeletedWithProtectedDependentBlocksReplace(t *testing.T) {
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		respT, err := monitor.RegisterResource("pkgA:m:typA", "resT", true, deploytest.ResourceOptions{Inputs: ins})
-		require.NoError(t, err)
+		if err != nil {
+			return err
+		}
 
 		protect := true
 		_, err = monitor.RegisterResource("pkgA:m:typA", "resD", true, deploytest.ResourceOptions{

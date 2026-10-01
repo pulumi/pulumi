@@ -224,11 +224,15 @@ func (src *source) Iterate(ctx context.Context, providers ProviderSource) (Sourc
 
 type iterator struct {
 	closed      bool
+	closeCtxErr chan error
 	returnError bool
 }
 
-func (iter *iterator) Cancel(context.Context) error {
+func (iter *iterator) Cancel(ctx context.Context) error {
 	iter.closed = true
+	if iter.closeCtxErr != nil {
+		iter.closeCtxErr <- ctx.Err()
+	}
 	return nil
 }
 
@@ -439,10 +443,10 @@ func TestSourceIteratorClose(t *testing.T) {
 	require.True(t, iter.closed, "The source iterator should be closed after execution")
 }
 
-// If we run into an error, bail out and don't attempt to close the iterator.
-func TestSourceIteratorNoCloseOnError(t *testing.T) {
+// If we run into an error, close the iterator but don't wait for the program to complete.
+func TestSourceIteratorCloseWithoutWaitOnError(t *testing.T) {
 	t.Parallel()
-	iter := &iterator{returnError: true}
+	iter := &iterator{returnError: true, closeCtxErr: make(chan error, 1)}
 	ex := &deploymentExecutor{
 		deployment: &Deployment{
 			source: &source{iter},
@@ -458,5 +462,10 @@ func TestSourceIteratorNoCloseOnError(t *testing.T) {
 
 	_, err := ex.Execute(t.Context())
 	require.ErrorContains(t, err, "BAIL")
-	require.False(t, iter.closed)
+	select {
+	case closeCtxErr := <-iter.closeCtxErr:
+		require.ErrorIs(t, closeCtxErr, context.Canceled)
+	case <-time.After(10 * time.Second):
+		require.Fail(t, "source iterator was not closed")
+	}
 }
