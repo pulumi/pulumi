@@ -234,14 +234,30 @@ func filterOutput(
 }
 
 // wireDiscriminatedVariant resolves prop to the single element type of union that its full wire shape matches,
-// recursing into required properties rather than just checking top-level object/array/map kind, and, when union
-// declares a discriminator, also requiring prop's discriminator value to agree with the candidate's token. It only
-// trusts the result when exactly one element type matches; zero or multiple matches leave the caller to fall back
-// to unionVariantMatches's best-effort, non-recursive check.
+// recursing into required properties rather than just checking top-level object/array/map kind. The union's declared
+// discriminator is not consulted: a discriminator property pinned to a constant on each variant already separates
+// them structurally.
+//
+// It first applies the closed-object reading codegen.IsWireDiscriminatableUnionType assumes (an object value carries
+// only properties its type declares), so every union that function accepts resolves a value carrying only declared
+// properties. Invoke results can also carry properties outside the schema, which filterOutput then strips; such a
+// value matches no variant under the closed reading, so it is retried under the open reading, which ignores
+// undeclared keys. Each reading is only trusted when exactly one element type matches; if neither resolves, the
+// caller falls back to unionVariantMatches's best-effort, non-recursive check.
 func wireDiscriminatedVariant(prop property.Value, union *schema.UnionType) schema.Type {
+	for _, closed := range []bool{true, false} {
+		if match := uniqueWireMatch(prop, union, closed); match != nil {
+			return match
+		}
+	}
+	return nil
+}
+
+// uniqueWireMatch returns the single element type of union that prop wire-matches, or nil if zero or several do.
+func uniqueWireMatch(prop property.Value, union *schema.UnionType, closed bool) schema.Type {
 	var match schema.Type
 	for _, elt := range union.ElementTypes {
-		if !wireMatches(prop, elt) || !discriminatorAgrees(prop, union, elt) {
+		if !wireMatches(prop, elt, closed) {
 			continue
 		}
 		if match != nil {
@@ -252,52 +268,13 @@ func wireDiscriminatedVariant(prop property.Value, union *schema.UnionType) sche
 	return match
 }
 
-// discriminatorAgrees reports whether elt is consistent with union's discriminator property on prop. Only a
-// positive mismatch rules out an otherwise wire-matching candidate: a union with no discriminator, a prop that
-// isn't an object, a missing or non-string discriminator value, or an elt that isn't an ObjectType all count as
-// agreement, since none of them contradict elt being the right choice.
-func discriminatorAgrees(prop property.Value, union *schema.UnionType, elt schema.Type) bool {
-	if union.Discriminator == "" || !prop.IsMap() {
-		return true
-	}
-
-	discValue, ok := prop.AsMap().GetOk(union.Discriminator)
-	if !ok || !discValue.IsString() {
-		return true
-	}
-
-	typeToken := discValue.AsString()
-	if mapped, ok := union.Mapping[typeToken]; ok {
-		typeToken = mapped
-	}
-	wantName, err := tokens.ParseTypeToken(typeToken)
-	if err != nil {
-		return true
-	}
-
-	unwrapped := elt
-	if opt, ok := unwrapped.(*schema.OptionalType); ok {
-		unwrapped = opt.ElementType
-	}
-	obj, ok := unwrapped.(*schema.ObjectType)
-	if !ok {
-		return true
-	}
-	eltName, err := tokens.ParseTypeToken(obj.Token)
-	if err != nil {
-		return true
-	}
-	return eltName.Name() == wantName.Name()
-}
-
-// wireMatches reports whether prop's wire shape can belong to typ under the closed-object reading: an object value
-// carries only the properties its type declares, every required property must be present, and each present property
-// must itself match its declared type. It mirrors the reading codegen.IsWireDiscriminatableUnionType assumes when
-// declaring a union safe to resolve this way, so it never needs to guard against recursion the way that type-level
-// check does: a concrete value is finite.
-func wireMatches(prop property.Value, typ schema.Type) bool {
+// wireMatches reports whether prop's wire shape can belong to typ: every required property of an object must be
+// present, and each present declared property must itself match its declared type. When closed is set, an object
+// value must also carry only properties its type declares. It never needs to guard against recursion the way the
+// type-level codegen.IsWireDiscriminatableUnionType check does: a concrete value is finite.
+func wireMatches(prop property.Value, typ schema.Type, closed bool) bool {
 	if prop.Secret() {
-		return wireMatches(prop.WithSecret(false), typ)
+		return wireMatches(prop.WithSecret(false), typ, closed)
 	}
 	if prop.IsComputed() {
 		return true
@@ -308,24 +285,24 @@ func wireMatches(prop property.Value, typ schema.Type) bool {
 		if prop.IsNull() {
 			return true
 		}
-		return wireMatches(prop, t.ElementType)
+		return wireMatches(prop, t.ElementType, closed)
 	case *schema.InputType:
-		return wireMatches(prop, t.ElementType)
+		return wireMatches(prop, t.ElementType, closed)
 	case *schema.TokenType:
 		if t.UnderlyingType == nil {
 			return true // Opaque: assume it admits any value.
 		}
-		return wireMatches(prop, t.UnderlyingType)
+		return wireMatches(prop, t.UnderlyingType, closed)
 	case *schema.UnionType:
 		for _, e := range t.ElementTypes {
-			if wireMatches(prop, e) {
+			if wireMatches(prop, e, closed) {
 				return true
 			}
 		}
 		return false
 	case *schema.EnumType:
 		if len(t.Elements) == 0 {
-			return wireMatches(prop, t.ElementType)
+			return wireMatches(prop, t.ElementType, closed)
 		}
 		for _, el := range t.Elements {
 			if constValueMatches(prop, el.Value) {
@@ -338,7 +315,7 @@ func wireMatches(prop property.Value, typ schema.Type) bool {
 			return false
 		}
 		for _, el := range prop.AsArray().All {
-			if !wireMatches(el, t.ElementType) {
+			if !wireMatches(el, t.ElementType, closed) {
 				return false
 			}
 		}
@@ -348,13 +325,13 @@ func wireMatches(prop property.Value, typ schema.Type) bool {
 			return false
 		}
 		for _, v := range prop.AsMap().All {
-			if !wireMatches(v, t.ElementType) {
+			if !wireMatches(v, t.ElementType, closed) {
 				return false
 			}
 		}
 		return true
 	case *schema.ObjectType:
-		return objectWireMatches(prop, t)
+		return objectWireMatches(prop, t, closed)
 	case *schema.ResourceType:
 		return prop.IsResourceReference()
 	}
@@ -377,16 +354,19 @@ func wireMatches(prop property.Value, typ schema.Type) bool {
 
 // objectWireMatches reports whether prop can be an obj: every property obj requires is present and non-null, and
 // every property prop does supply that obj also declares matches its declared type, narrowed to its constant value
-// if it has one. Unlike codegen.IsWireDiscriminatableUnionType's type-level closed-object reading, a key of prop
-// that obj doesn't declare doesn't disqualify the match — filterOutput's whole job is stripping such provider-added
-// keys, so real payloads routinely carry them. This can't make wireDiscriminatedVariant pick the wrong variant: it
-// only trusts a match when exactly one candidate matches, so a value loose enough to satisfy two variants' declared
-// properties is left ambiguous and falls back to the caller's best-effort check instead of being mismatched.
-func objectWireMatches(prop property.Value, obj *schema.ObjectType) bool {
+// if it has one. When closed is set, prop must also carry no property obj doesn't declare.
+func objectWireMatches(prop property.Value, obj *schema.ObjectType, closed bool) bool {
 	if !prop.IsMap() {
 		return false
 	}
 	values := prop.AsMap()
+	if closed {
+		for k := range values.All {
+			if _, declared := obj.Property(k); !declared {
+				return false
+			}
+		}
+	}
 	for _, p := range obj.Properties {
 		v, ok := values.GetOk(p.Name)
 		if !ok || v.IsNull() {
@@ -401,7 +381,7 @@ func objectWireMatches(prop property.Value, obj *schema.ObjectType) bool {
 			}
 			continue
 		}
-		if !wireMatches(v, p.Type) {
+		if !wireMatches(v, p.Type, closed) {
 			return false
 		}
 	}
@@ -433,8 +413,7 @@ func constValueMatches(prop property.Value, want any) bool {
 }
 
 // unionVariantMatches reports whether the schema type is structurally compatible with the runtime kind of prop.
-// Used to pick a union variant for output filtering when the union has no discriminator, or the discriminator
-// doesn't resolve to one of its element types.
+// Used to pick a union variant for output filtering when wireDiscriminatedVariant can't resolve a single variant.
 func unionVariantMatches(prop property.Value, typ schema.Type) bool {
 	if opt, ok := typ.(*schema.OptionalType); ok {
 		typ = opt.ElementType

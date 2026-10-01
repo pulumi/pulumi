@@ -388,10 +388,10 @@ func TestDoCmdFunctionInvokeFiltersNestedObjectsInCollections(t *testing.T) {
 	assert.Equal(t, expected, stdout.String())
 }
 
-// TestDoCmdFunctionInvokeFiltersDiscriminatedUnion asserts that filterOutput uses a union's discriminator property
-// to select the matching element type, rather than always picking the first object-shaped variant. Without the
-// discriminator, a "Dog" result would be incorrectly filtered against "Cat"'s properties, since both are ObjectType
-// and object-shaped variants can't otherwise be told apart.
+// TestDoCmdFunctionInvokeFiltersDiscriminatedUnion asserts that filterOutput selects the matching element type of a
+// discriminated union whose variants pin the discriminator property to a constant, rather than always picking the
+// first object-shaped variant. The constant alone separates the variants by wire shape; the declared discriminator
+// is not consulted. Before the fix, a "Dog" result was filtered against "Cat"'s properties.
 func TestDoCmdFunctionInvokeFiltersDiscriminatedUnion(t *testing.T) {
 	t.Parallel()
 
@@ -405,7 +405,7 @@ func TestDoCmdFunctionInvokeFiltersDiscriminatedUnion(t *testing.T) {
 					ObjectTypeSpec: schema.ObjectTypeSpec{
 						Type: "object",
 						Properties: map[string]schema.PropertySpec{
-							"kind": {TypeSpec: schema.TypeSpec{Type: "string"}},
+							"kind": {TypeSpec: schema.TypeSpec{Type: "string"}, Const: "cat"},
 							"name": {TypeSpec: schema.TypeSpec{Type: "string"}},
 							"meow": {TypeSpec: schema.TypeSpec{Type: "string"}},
 						},
@@ -415,7 +415,7 @@ func TestDoCmdFunctionInvokeFiltersDiscriminatedUnion(t *testing.T) {
 					ObjectTypeSpec: schema.ObjectTypeSpec{
 						Type: "object",
 						Properties: map[string]schema.PropertySpec{
-							"kind": {TypeSpec: schema.TypeSpec{Type: "string"}},
+							"kind": {TypeSpec: schema.TypeSpec{Type: "string"}, Const: "dog"},
 							"name": {TypeSpec: schema.TypeSpec{Type: "string"}},
 							"bark": {TypeSpec: schema.TypeSpec{Type: "string"}},
 						},
