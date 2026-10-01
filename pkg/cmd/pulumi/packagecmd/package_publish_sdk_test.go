@@ -19,6 +19,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/executable"
@@ -229,9 +230,18 @@ case "$1" in
     ;;
 esac
 `
-	npmPath := filepath.Join(binDir, "npm")
-	require.NoError(t, os.WriteFile(npmPath, []byte(npm), 0o600))
-	require.NoError(t, os.Chmod(npmPath, 0o700))
+	if runtime.GOOS == "windows" {
+		npm = `@echo off
+echo %1>> "` + recordFile + `"
+if "%1"=="whoami" (
+  echo whoami should not be called 1>&2
+  exit /b 1
+)
+if "%1"=="info" exit /b 1
+if "%1"=="publish" exit /b 0
+`
+	}
+	writeTestNPM(t, binDir, npm)
 	t.Setenv("GOPATH", filepath.Join(tmp, "gopath"))
 	t.Setenv("PATH", binDir+string(os.PathListSeparator)+os.Getenv("PATH"))
 	t.Setenv("NODE_AUTH_TOKEN", "")
@@ -244,6 +254,18 @@ esac
 	require.NoError(t, err)
 	assert.NotContains(t, string(calls), "whoami")
 	assert.Contains(t, string(calls), "publish")
+}
+
+func writeTestNPM(t *testing.T, binDir, contents string) {
+	t.Helper()
+
+	npmName := "npm"
+	if runtime.GOOS == "windows" {
+		npmName = "npm.cmd"
+	}
+	npmPath := filepath.Join(binDir, npmName)
+	require.NoError(t, os.WriteFile(npmPath, []byte(contents), 0o600))
+	require.NoError(t, os.Chmod(npmPath, 0o700))
 }
 
 func TestPublishToNPMRunsWhoamiWithToken(t *testing.T) {
@@ -262,9 +284,17 @@ fi
 echo "unexpected npm command: $1" >&2
 exit 1
 `
-	npmPath := filepath.Join(binDir, "npm")
-	require.NoError(t, os.WriteFile(npmPath, []byte(npm), 0o600))
-	require.NoError(t, os.Chmod(npmPath, 0o700))
+	if runtime.GOOS == "windows" {
+		npm = `@echo off
+if "%1"=="whoami" (
+  echo token auth failed 1>&2
+  exit /b 42
+)
+echo unexpected npm command: %1 1>&2
+exit /b 1
+`
+	}
+	writeTestNPM(t, binDir, npm)
 	t.Setenv("GOPATH", filepath.Join(tmp, "gopath"))
 	t.Setenv("PATH", binDir+string(os.PathListSeparator)+os.Getenv("PATH"))
 	t.Setenv("NODE_AUTH_TOKEN", "npm_token")
