@@ -183,9 +183,9 @@ func TestExternalRefreshDoesNotCallDiff(t *testing.T) {
 					readCall++
 					return plugin.ReadResponse{
 						ReadResult: plugin.ReadResult{
-							Outputs: resource.PropertyMap{
-								"o1": resource.NewProperty(float64(readCall)),
-							},
+							Outputs: new(property.NewMap(map[string]property.Value{
+								"o1": property.New(float64(readCall)),
+							})),
 						},
 						Status: resource.StatusOK,
 					}, nil
@@ -268,7 +268,7 @@ func TestRefreshInitFailure(t *testing.T) {
 						return plugin.ReadResponse{
 							ReadResult: plugin.ReadResult{
 								ID:      req.ID,
-								Outputs: resource.PropertyMap{},
+								Outputs: new(property.Map{}),
 							},
 							Status: resource.StatusPartialFailure,
 						}, err
@@ -276,7 +276,7 @@ func TestRefreshInitFailure(t *testing.T) {
 						return plugin.ReadResponse{
 							ReadResult: plugin.ReadResult{
 								ID:      req.ID,
-								Outputs: res2Outputs,
+								Outputs: ptrMap(res2Outputs),
 							},
 							Status: resource.StatusOK,
 						}, nil
@@ -284,7 +284,7 @@ func TestRefreshInitFailure(t *testing.T) {
 					return plugin.ReadResponse{
 						ReadResult: plugin.ReadResult{
 							ID:      req.ID,
-							Outputs: resource.PropertyMap{},
+							Outputs: new(property.Map{}),
 						},
 						Status: resource.StatusOK,
 					}, nil
@@ -463,7 +463,7 @@ func TestRefreshDeletePropertyDependencies(t *testing.T) {
 					return plugin.ReadResponse{
 						ReadResult: plugin.ReadResult{
 							ID:      req.ID,
-							Outputs: resource.PropertyMap{},
+							Outputs: new(property.Map{}),
 						},
 					}, nil
 				},
@@ -527,7 +527,7 @@ func TestRefreshDeleteDeletedWith(t *testing.T) {
 					return plugin.ReadResponse{
 						ReadResult: plugin.ReadResult{
 							ID:      req.ID,
-							Outputs: resource.PropertyMap{},
+							Outputs: new(property.Map{}),
 						},
 						Status: resource.StatusOK,
 					}, nil
@@ -647,8 +647,8 @@ func validateRefreshDeleteCombination(t *testing.T, names []string, targets []st
 						return plugin.ReadResponse{
 							ReadResult: plugin.ReadResult{
 								ID:      req.ID,
-								Inputs:  req.Inputs,
-								Outputs: req.State,
+								Inputs:  &req.Inputs,
+								Outputs: &req.State,
 							},
 							Status: resource.StatusOK,
 						}, nil
@@ -796,20 +796,23 @@ func validateRefreshBasicsCombination(t *testing.T, names []string, targets []st
 
 	newStates := map[resource.ID]plugin.ReadResult{
 		// A::0 and A::3 will have no changes.
-		"0": {Outputs: resource.PropertyMap{}, Inputs: resource.PropertyMap{}},
-		"3": {Outputs: resource.PropertyMap{}, Inputs: resource.PropertyMap{}},
+		"0": {Outputs: new(property.Map{}), Inputs: new(property.Map{})},
+		"3": {Outputs: new(property.Map{}), Inputs: new(property.Map{})},
 
 		// B::1 has output-only changes which will not be reported as a refresh diff.
-		"1": {Outputs: resource.PropertyMap{"foo": resource.NewProperty("bar")}, Inputs: resource.PropertyMap{}},
+		"1": {
+			Outputs: new(property.NewMap(map[string]property.Value{"foo": property.New("bar")})),
+			Inputs:  new(property.Map{}),
+		},
 
 		// A::4 will have input and output changes. The changes that impact the inputs will be reported
 		// as a refresh diff.
 		"4": {
-			Outputs: resource.PropertyMap{
-				"baz": resource.NewProperty("qux"),
-				"oof": resource.NewProperty("zab"),
-			},
-			Inputs: resource.PropertyMap{"oof": resource.NewProperty("zab")},
+			Outputs: new(property.NewMap(map[string]property.Value{
+				"baz": property.New("qux"),
+				"oof": property.New("zab"),
+			})),
+			Inputs: new(property.NewMap(map[string]property.Value{"oof": property.New("zab")})),
 		},
 
 		// C::2 and C::5 will be deleted.
@@ -871,7 +874,7 @@ func validateRefreshBasicsCombination(t *testing.T, names []string, targets []st
 				} else {
 					// If there were changes to the inputs, we want the result op to be an
 					// OpUpdate. Otherwise we want an OpSame.
-					if reflect.DeepEqual(old.Inputs, expected.Inputs) {
+					if reflect.DeepEqual(old.Inputs, resource.ToResourcePropertyMap(*expected.Inputs)) {
 						assert.Equal(t, deploy.OpSame, resultOp)
 					} else {
 						assert.Equal(t, deploy.OpUpdate, resultOp)
@@ -881,8 +884,8 @@ func validateRefreshBasicsCombination(t *testing.T, names []string, targets []st
 					new = new.Copy()
 
 					// Only the inputs and outputs should have changed (if anything changed).
-					old.Inputs = expected.Inputs
-					old.Outputs = expected.Outputs
+					old.Inputs = resource.ToResourcePropertyMap(*expected.Inputs)
+					old.Outputs = resource.ToResourcePropertyMap(*expected.Outputs)
 
 					// Discard timestamps for refresh test.
 					new.Modified = nil
@@ -930,8 +933,16 @@ func validateRefreshBasicsCombination(t *testing.T, names []string, targets []st
 		// and timestamp.
 		old := oldResources[int(idx)]
 		if targetedForRefresh {
-			old.Inputs = expected.Inputs
-			old.Outputs = expected.Outputs
+			if expected.Inputs != nil {
+				old.Inputs = resource.ToResourcePropertyMap(*expected.Inputs)
+			} else {
+				old.Inputs = nil
+			}
+			if expected.Outputs != nil {
+				old.Outputs = resource.ToResourcePropertyMap(*expected.Outputs)
+			} else {
+				old.Outputs = nil
+			}
 			old.Modified = r.Modified
 		}
 
@@ -974,12 +985,12 @@ func TestCanceledRefresh(t *testing.T) {
 		// A::0 will have input and output changes. The changes that impact the inputs will be reported
 		// as a refresh diff.
 		"0": {
-			Outputs: resource.PropertyMap{"foo": resource.NewProperty("bar")},
-			Inputs:  resource.PropertyMap{"oof": resource.NewProperty("rab")},
+			Outputs: new(resource.FromResourcePropertyMap(resource.PropertyMap{"foo": resource.NewProperty("bar")})),
+			Inputs:  new(resource.FromResourcePropertyMap(resource.PropertyMap{"oof": resource.NewProperty("rab")})),
 		},
 		// B::1 will have output changes.
 		"1": {
-			Outputs: resource.PropertyMap{"baz": resource.NewProperty("qux")},
+			Outputs: new(resource.FromResourcePropertyMap(resource.PropertyMap{"baz": resource.NewProperty("qux")})),
 		},
 		// C::2 will be deleted.
 		"2": {},
@@ -1055,9 +1066,13 @@ func TestCanceledRefresh(t *testing.T) {
 				assert.Nil(t, new)
 				assert.Equal(t, deploy.OpDelete, resultOp)
 			} else {
+				var expectedInputs resource.PropertyMap
+				if expected.Inputs != nil {
+					expectedInputs = resource.ToResourcePropertyMap(*expected.Inputs)
+				}
 				// If there were changes to the inputs, we want the result op to be an
 				// OpUpdate. Otherwise we want an OpSame.
-				if reflect.DeepEqual(old.Inputs, expected.Inputs) {
+				if reflect.DeepEqual(old.Inputs, expectedInputs) {
 					assert.Equal(t, deploy.OpSame, resultOp)
 				} else {
 					assert.Equal(t, deploy.OpUpdate, resultOp)
@@ -1066,8 +1081,8 @@ func TestCanceledRefresh(t *testing.T) {
 				// The inputs, outputs and modified timestamps should have changed (if
 				// anything changed at all).
 				old = old.Copy()
-				old.Inputs = expected.Inputs
-				old.Outputs = expected.Outputs
+				old.Inputs = expectedInputs
+				old.Outputs = resource.ToResourcePropertyMap(*expected.Outputs)
 				old.Modified = new.Modified
 
 				assert.Equal(t, old, new)
@@ -1109,8 +1124,12 @@ func TestCanceledRefresh(t *testing.T) {
 
 				// The inputs, outputs and modified timestamps should have changed (if
 				// anything changed at all).
-				old.Inputs = expected.Inputs
-				old.Outputs = expected.Outputs
+				var expectedInputs resource.PropertyMap
+				if expected.Inputs != nil {
+					expectedInputs = resource.ToResourcePropertyMap(*expected.Inputs)
+				}
+				old.Inputs = expectedInputs
+				old.Outputs = resource.ToResourcePropertyMap(*expected.Outputs)
 				old.Modified = r.Modified
 
 				assert.Equal(t, old, r)
@@ -1141,8 +1160,8 @@ func TestRefreshStepWillPersistUpdatedIDs(t *testing.T) {
 					return plugin.ReadResponse{
 						ReadResult: plugin.ReadResult{
 							ID:      idAfter,
-							Inputs:  resource.PropertyMap{},
-							Outputs: outputs,
+							Inputs:  new(property.Map{}),
+							Outputs: ptrMap(outputs),
 						},
 						Status: resource.StatusOK,
 					}, nil
@@ -1242,9 +1261,9 @@ func TestRefreshUpdateWithDeletedResource(t *testing.T) {
 func TestRefreshWithProgram(t *testing.T) {
 	t.Parallel()
 
-	programInputs := resource.PropertyMap{"foo": resource.NewProperty("bar")}
-	createOutputs := resource.PropertyMap{"foo": resource.NewProperty("bar")}
-	readOutputs := resource.PropertyMap{"foo": resource.NewProperty("baz")}
+	programInputs := property.NewMap(map[string]property.Value{"foo": property.New("bar")})
+	createOutputs := property.NewMap(map[string]property.Value{"foo": property.New("bar")})
+	readOutputs := property.NewMap(map[string]property.Value{"foo": property.New("baz")})
 
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
@@ -1257,8 +1276,8 @@ func TestRefreshWithProgram(t *testing.T) {
 						return plugin.ReadResponse{
 							ReadResult: plugin.ReadResult{
 								ID:      req.ID,
-								Inputs:  req.Inputs,
-								Outputs: readOutputs,
+								Inputs:  &req.Inputs,
+								Outputs: &readOutputs,
 							},
 							Status: resource.StatusOK,
 						}, nil
@@ -1267,8 +1286,8 @@ func TestRefreshWithProgram(t *testing.T) {
 					return plugin.ReadResponse{
 						ReadResult: plugin.ReadResult{
 							ID:      req.ID,
-							Inputs:  resource.PropertyMap{},
-							Outputs: resource.PropertyMap{},
+							Inputs:  new(property.Map{}),
+							Outputs: new(property.Map{}),
 						},
 						Status: resource.StatusOK,
 					}, nil
@@ -1280,11 +1299,11 @@ func TestRefreshWithProgram(t *testing.T) {
 					}
 
 					if req.Name == "resA" {
-						assert.Equal(t, programInputs, resource.ToResourcePropertyMap(req.Properties))
+						assert.Equal(t, programInputs, req.Properties)
 
 						return plugin.CreateResponse{
 							ID:         resource.ID(uuid.String()),
-							Properties: resource.FromResourcePropertyMap(createOutputs),
+							Properties: createOutputs,
 							Status:     resource.StatusOK,
 						}, nil
 					}
@@ -1304,15 +1323,15 @@ func TestRefreshWithProgram(t *testing.T) {
 		programExecutions++
 
 		resp, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
-			Inputs: programInputs,
+			Inputs: resource.ToResourcePropertyMap(programInputs),
 		})
 		require.NoError(t, err)
 
 		// First time we should see the create outputs, second time the read outputs
 		if programExecutions == 1 {
-			assert.Equal(t, createOutputs, resp.Outputs)
+			assert.Equal(t, createOutputs, resource.FromResourcePropertyMap(resp.Outputs))
 		} else {
-			assert.Equal(t, readOutputs, resp.Outputs)
+			assert.Equal(t, readOutputs, resource.FromResourcePropertyMap(resp.Outputs))
 		}
 
 		return nil
@@ -1331,11 +1350,11 @@ func TestRefreshWithProgram(t *testing.T) {
 		RunStep(p.GetProject(), p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
 	require.NoError(t, err)
 	assert.Equal(t, 1, programExecutions)
-	assert.Equal(t, createOutputs, snap.Resources[1].Inputs)
-	assert.Equal(t, createOutputs, snap.Resources[1].Outputs)
+	assert.Equal(t, createOutputs, resource.FromResourcePropertyMap(snap.Resources[1].Inputs))
+	assert.Equal(t, createOutputs, resource.FromResourcePropertyMap(snap.Resources[1].Outputs))
 
 	// Change the program inputs to check we don't changed inputs to the provider
-	programInputs["foo"] = resource.NewProperty("qux")
+	programInputs = programInputs.Set("foo", property.New("qux"))
 	// Run a refresh
 	snap, err = lt.TestOp(RefreshV2).
 		RunStep(p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
@@ -1343,8 +1362,8 @@ func TestRefreshWithProgram(t *testing.T) {
 	// Should have run the program again
 	assert.Equal(t, 2, programExecutions)
 	// Inputs should match what the provider returned, not what was in the program.
-	assert.Equal(t, createOutputs, snap.Resources[1].Inputs)
-	assert.Equal(t, readOutputs, snap.Resources[1].Outputs)
+	assert.Equal(t, createOutputs, resource.FromResourcePropertyMap(snap.Resources[1].Inputs))
+	assert.Equal(t, readOutputs, resource.FromResourcePropertyMap(snap.Resources[1].Outputs))
 }
 
 // Test that we can run a refresh with a provider that has a dependency on a resource
@@ -1352,7 +1371,7 @@ func TestRefreshWithProgram(t *testing.T) {
 func TestRefreshWithProviderThatHasDependencies(t *testing.T) {
 	t.Parallel()
 
-	programInputs := resource.PropertyMap{"foo": resource.NewProperty("bar")}
+	programInputs := property.NewMap(map[string]property.Value{"foo": property.New("bar")})
 
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
@@ -1361,8 +1380,8 @@ func TestRefreshWithProviderThatHasDependencies(t *testing.T) {
 					return plugin.ReadResponse{
 						ReadResult: plugin.ReadResult{
 							ID:      req.ID,
-							Inputs:  req.Inputs,
-							Outputs: resource.PropertyMap{},
+							Inputs:  &req.Inputs,
+							Outputs: new(property.Map{}),
 						},
 						Status: resource.StatusOK,
 					}, nil
@@ -1387,12 +1406,12 @@ func TestRefreshWithProviderThatHasDependencies(t *testing.T) {
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		programExecutions++
 		resp, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
-			Inputs: programInputs,
+			Inputs: resource.ToResourcePropertyMap(programInputs),
 		})
 		require.NoError(t, err)
 
 		resp, err = monitor.RegisterResource("pulumi:providers:pkgA", "resX", true, deploytest.ResourceOptions{
-			Inputs:       programInputs,
+			Inputs:       resource.ToResourcePropertyMap(programInputs),
 			Dependencies: []resource.URN{resp.URN},
 		})
 		require.NoError(t, err)
@@ -1401,7 +1420,7 @@ func TestRefreshWithProviderThatHasDependencies(t *testing.T) {
 		require.NoError(t, err)
 
 		_, err = monitor.RegisterResource("pkgA:m:typB", "resB", true, deploytest.ResourceOptions{
-			Inputs:   programInputs,
+			Inputs:   resource.ToResourcePropertyMap(programInputs),
 			Provider: ref.String(),
 		})
 		require.NoError(t, err)
@@ -1459,9 +1478,9 @@ func TestRefreshWithProviderThatHasDependencies(t *testing.T) {
 func TestRefreshWithProgramUpdateExplicitProvider(t *testing.T) {
 	t.Parallel()
 
-	programInputs := resource.PropertyMap{"foo": resource.NewProperty("bar")}
-	createOutputs := resource.PropertyMap{"foo": resource.NewProperty("bar")}
-	readOutputs := resource.PropertyMap{"foo": resource.NewProperty("baz")}
+	programInputs := property.NewMap(map[string]property.Value{"foo": property.New("bar")})
+	createOutputs := property.NewMap(map[string]property.Value{"foo": property.New("bar")})
+	readOutputs := property.NewMap(map[string]property.Value{"foo": property.New("baz")})
 
 	expectedAuth := resource.NewProperty("upauth")
 
@@ -1486,8 +1505,8 @@ func TestRefreshWithProgramUpdateExplicitProvider(t *testing.T) {
 						return plugin.ReadResponse{
 							ReadResult: plugin.ReadResult{
 								ID:      req.ID,
-								Inputs:  req.Inputs,
-								Outputs: readOutputs,
+								Inputs:  &req.Inputs,
+								Outputs: &readOutputs,
 							},
 							Status: resource.StatusOK,
 						}, nil
@@ -1496,8 +1515,8 @@ func TestRefreshWithProgramUpdateExplicitProvider(t *testing.T) {
 					return plugin.ReadResponse{
 						ReadResult: plugin.ReadResult{
 							ID:      req.ID,
-							Inputs:  resource.PropertyMap{},
-							Outputs: resource.PropertyMap{},
+							Inputs:  new(property.Map{}),
+							Outputs: new(property.Map{}),
 						},
 						Status: resource.StatusOK,
 					}, nil
@@ -1513,11 +1532,11 @@ func TestRefreshWithProgramUpdateExplicitProvider(t *testing.T) {
 					}
 
 					if req.Name == "resA" {
-						assert.Equal(t, programInputs, resource.ToResourcePropertyMap(req.Properties))
+						assert.Equal(t, programInputs, req.Properties)
 
 						return plugin.CreateResponse{
 							ID:         resource.ID(uuid.String()),
-							Properties: resource.FromResourcePropertyMap(createOutputs),
+							Properties: createOutputs,
 							Status:     resource.StatusOK,
 						}, nil
 					}
@@ -1546,15 +1565,15 @@ func TestRefreshWithProgramUpdateExplicitProvider(t *testing.T) {
 
 		resp, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 			Provider: provRef.String(),
-			Inputs:   programInputs,
+			Inputs:   resource.ToResourcePropertyMap(programInputs),
 		})
 		require.NoError(t, err)
 
 		// First time we should see the create outputs, second time the read outputs
 		if programExecutions == 1 {
-			assert.Equal(t, createOutputs, resp.Outputs)
+			assert.Equal(t, createOutputs, resource.FromResourcePropertyMap(resp.Outputs))
 		} else {
-			assert.Equal(t, readOutputs, resp.Outputs)
+			assert.Equal(t, readOutputs, resource.FromResourcePropertyMap(resp.Outputs))
 		}
 
 		return nil
@@ -1573,11 +1592,11 @@ func TestRefreshWithProgramUpdateExplicitProvider(t *testing.T) {
 		RunStep(p.GetProject(), p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
 	require.NoError(t, err)
 	assert.Equal(t, 1, programExecutions)
-	assert.Equal(t, createOutputs, snap.Resources[1].Inputs)
-	assert.Equal(t, createOutputs, snap.Resources[1].Outputs)
+	assert.Equal(t, createOutputs, resource.FromResourcePropertyMap(snap.Resources[1].Inputs))
+	assert.Equal(t, createOutputs, resource.FromResourcePropertyMap(snap.Resources[1].Outputs))
 
 	// Change the program inputs to check we don't changed inputs to the provider
-	programInputs["foo"] = resource.NewProperty("qux")
+	programInputs = programInputs.Set("foo", property.New("qux"))
 	// And update the expected auth required for the provider, if we loaded the provider just from state we
 	// wouldn't pick this up.
 	expectedAuth = resource.NewProperty("refreshauth")
@@ -1588,8 +1607,8 @@ func TestRefreshWithProgramUpdateExplicitProvider(t *testing.T) {
 	// Should have run the program again
 	assert.Equal(t, 2, programExecutions)
 	// Inputs should match what the provider returned, not what was in the program.
-	assert.Equal(t, createOutputs, snap.Resources[1].Inputs)
-	assert.Equal(t, readOutputs, snap.Resources[1].Outputs)
+	assert.Equal(t, createOutputs, resource.FromResourcePropertyMap(snap.Resources[1].Inputs))
+	assert.Equal(t, readOutputs, resource.FromResourcePropertyMap(snap.Resources[1].Outputs))
 }
 
 // Test that we can run a refresh by executing the program for it and get updated provider configuration for
@@ -1597,9 +1616,9 @@ func TestRefreshWithProgramUpdateExplicitProvider(t *testing.T) {
 func TestRefreshWithProgramUpdateDefaultProvider(t *testing.T) {
 	t.Parallel()
 
-	programInputs := resource.PropertyMap{"foo": resource.NewProperty("bar")}
-	createOutputs := resource.PropertyMap{"foo": resource.NewProperty("bar")}
-	readOutputs := resource.PropertyMap{"foo": resource.NewProperty("baz")}
+	programInputs := property.NewMap(map[string]property.Value{"foo": property.New("bar")})
+	createOutputs := property.NewMap(map[string]property.Value{"foo": property.New("bar")})
+	readOutputs := property.NewMap(map[string]property.Value{"foo": property.New("baz")})
 
 	expectedAuth := resource.NewProperty("upauth")
 
@@ -1624,8 +1643,8 @@ func TestRefreshWithProgramUpdateDefaultProvider(t *testing.T) {
 						return plugin.ReadResponse{
 							ReadResult: plugin.ReadResult{
 								ID:      req.ID,
-								Inputs:  req.Inputs,
-								Outputs: readOutputs,
+								Inputs:  &req.Inputs,
+								Outputs: &readOutputs,
 							},
 							Status: resource.StatusOK,
 						}, nil
@@ -1634,8 +1653,8 @@ func TestRefreshWithProgramUpdateDefaultProvider(t *testing.T) {
 					return plugin.ReadResponse{
 						ReadResult: plugin.ReadResult{
 							ID:      req.ID,
-							Inputs:  resource.PropertyMap{},
-							Outputs: resource.PropertyMap{},
+							Inputs:  new(property.Map{}),
+							Outputs: new(property.Map{}),
 						},
 						Status: resource.StatusOK,
 					}, nil
@@ -1651,11 +1670,11 @@ func TestRefreshWithProgramUpdateDefaultProvider(t *testing.T) {
 					}
 
 					if req.Name == "resA" {
-						assert.Equal(t, programInputs, resource.ToResourcePropertyMap(req.Properties))
+						assert.Equal(t, programInputs, req.Properties)
 
 						return plugin.CreateResponse{
 							ID:         resource.ID(uuid.String()),
-							Properties: resource.FromResourcePropertyMap(createOutputs),
+							Properties: createOutputs,
 							Status:     resource.StatusOK,
 						}, nil
 					}
@@ -1675,15 +1694,15 @@ func TestRefreshWithProgramUpdateDefaultProvider(t *testing.T) {
 		programExecutions++
 
 		resp, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
-			Inputs: programInputs,
+			Inputs: resource.ToResourcePropertyMap(programInputs),
 		})
 		require.NoError(t, err)
 
 		// First time we should see the create outputs, second time the read outputs
 		if programExecutions == 1 {
-			assert.Equal(t, createOutputs, resp.Outputs)
+			assert.Equal(t, createOutputs, resource.FromResourcePropertyMap(resp.Outputs))
 		} else {
-			assert.Equal(t, readOutputs, resp.Outputs)
+			assert.Equal(t, readOutputs, resource.FromResourcePropertyMap(resp.Outputs))
 		}
 
 		return nil
@@ -1705,11 +1724,11 @@ func TestRefreshWithProgramUpdateDefaultProvider(t *testing.T) {
 		RunStep(p.GetProject(), p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
 	require.NoError(t, err)
 	assert.Equal(t, 1, programExecutions)
-	assert.Equal(t, createOutputs, snap.Resources[1].Inputs)
-	assert.Equal(t, createOutputs, snap.Resources[1].Outputs)
+	assert.Equal(t, createOutputs, resource.FromResourcePropertyMap(snap.Resources[1].Inputs))
+	assert.Equal(t, createOutputs, resource.FromResourcePropertyMap(snap.Resources[1].Outputs))
 
 	// Change the program inputs to check we don't changed inputs to the provider
-	programInputs["foo"] = resource.NewProperty("qux")
+	programInputs = programInputs.Set("foo", property.New("qux"))
 	// And update the expected auth required for the provider, if we loaded the provider just from state we
 	// wouldn't pick this up.
 	expectedAuth = resource.NewProperty("refreshauth")
@@ -1723,8 +1742,8 @@ func TestRefreshWithProgramUpdateDefaultProvider(t *testing.T) {
 	// Should have run the program again
 	assert.Equal(t, 2, programExecutions)
 	// Inputs should match what the provider returned, not what was in the program.
-	assert.Equal(t, createOutputs, snap.Resources[1].Inputs)
-	assert.Equal(t, readOutputs, snap.Resources[1].Outputs)
+	assert.Equal(t, createOutputs, resource.FromResourcePropertyMap(snap.Resources[1].Inputs))
+	assert.Equal(t, readOutputs, resource.FromResourcePropertyMap(snap.Resources[1].Outputs))
 }
 
 // Test that we can run a refresh by executing the program for it and get stale provider configuration for
@@ -1732,9 +1751,9 @@ func TestRefreshWithProgramUpdateDefaultProvider(t *testing.T) {
 func TestRefreshWithProgramUpdateDefaultProviderWithoutRegistration(t *testing.T) {
 	t.Parallel()
 
-	programInputs := resource.PropertyMap{"foo": resource.NewProperty("bar")}
-	createOutputs := resource.PropertyMap{"foo": resource.NewProperty("bar")}
-	readOutputs := resource.PropertyMap{"foo": resource.NewProperty("baz")}
+	programInputs := property.NewMap(map[string]property.Value{"foo": property.New("bar")})
+	createOutputs := property.NewMap(map[string]property.Value{"foo": property.New("bar")})
+	readOutputs := property.NewMap(map[string]property.Value{"foo": property.New("baz")})
 
 	expectedAuth := resource.NewProperty("upauth")
 
@@ -1759,8 +1778,8 @@ func TestRefreshWithProgramUpdateDefaultProviderWithoutRegistration(t *testing.T
 						return plugin.ReadResponse{
 							ReadResult: plugin.ReadResult{
 								ID:      req.ID,
-								Inputs:  req.Inputs,
-								Outputs: readOutputs,
+								Inputs:  &req.Inputs,
+								Outputs: &readOutputs,
 							},
 							Status: resource.StatusOK,
 						}, nil
@@ -1769,8 +1788,8 @@ func TestRefreshWithProgramUpdateDefaultProviderWithoutRegistration(t *testing.T
 					return plugin.ReadResponse{
 						ReadResult: plugin.ReadResult{
 							ID:      req.ID,
-							Inputs:  resource.PropertyMap{},
-							Outputs: resource.PropertyMap{},
+							Inputs:  new(property.Map{}),
+							Outputs: new(property.Map{}),
 						},
 						Status: resource.StatusOK,
 					}, nil
@@ -1786,11 +1805,11 @@ func TestRefreshWithProgramUpdateDefaultProviderWithoutRegistration(t *testing.T
 					}
 
 					if req.Name == "resA" {
-						assert.Equal(t, programInputs, resource.ToResourcePropertyMap(req.Properties))
+						assert.Equal(t, programInputs, req.Properties)
 
 						return plugin.CreateResponse{
 							ID:         resource.ID(uuid.String()),
-							Properties: resource.FromResourcePropertyMap(createOutputs),
+							Properties: createOutputs,
 							Status:     resource.StatusOK,
 						}, nil
 					}
@@ -1813,11 +1832,11 @@ func TestRefreshWithProgramUpdateDefaultProviderWithoutRegistration(t *testing.T
 			// First time we should register the resource and see the create outputs, second time we don't
 			// send a registration.
 			resp, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
-				Inputs: programInputs,
+				Inputs: resource.ToResourcePropertyMap(programInputs),
 			})
 			require.NoError(t, err)
 
-			assert.Equal(t, createOutputs, resp.Outputs)
+			assert.Equal(t, createOutputs, resource.FromResourcePropertyMap(resp.Outputs))
 		}
 
 		return nil
@@ -1839,11 +1858,11 @@ func TestRefreshWithProgramUpdateDefaultProviderWithoutRegistration(t *testing.T
 		RunStep(p.GetProject(), p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
 	require.NoError(t, err)
 	assert.Equal(t, 1, programExecutions)
-	assert.Equal(t, createOutputs, snap.Resources[1].Inputs)
-	assert.Equal(t, createOutputs, snap.Resources[1].Outputs)
+	assert.Equal(t, createOutputs, resource.FromResourcePropertyMap(snap.Resources[1].Inputs))
+	assert.Equal(t, createOutputs, resource.FromResourcePropertyMap(snap.Resources[1].Outputs))
 
 	// Change the program inputs to check we don't changed inputs to the provider
-	programInputs["foo"] = resource.NewProperty("qux")
+	programInputs = programInputs.Set("foo", property.New("qux"))
 	// We can't change the 'expectedauth' in this case because we're re-loading the provider
 	// from state. We change config here to show that's the case.
 	p.Config = config.Map{
@@ -1856,17 +1875,17 @@ func TestRefreshWithProgramUpdateDefaultProviderWithoutRegistration(t *testing.T
 	// Should have run the program again
 	assert.Equal(t, 2, programExecutions)
 	// Inputs should match what the provider returned, not what was in the program.
-	assert.Equal(t, createOutputs, snap.Resources[1].Inputs)
-	assert.Equal(t, readOutputs, snap.Resources[1].Outputs)
+	assert.Equal(t, createOutputs, resource.FromResourcePropertyMap(snap.Resources[1].Inputs))
+	assert.Equal(t, readOutputs, resource.FromResourcePropertyMap(snap.Resources[1].Outputs))
 }
 
 // Test that if refresh detects a resource has been deleted we flow that information to the program.
 func TestRefreshWithProgramWithDeletedResource(t *testing.T) {
 	t.Parallel()
 
-	programInputs := resource.PropertyMap{"foo": resource.NewProperty("bar")}
-	createOutputs := resource.PropertyMap{"foo": resource.NewProperty("bar")}
-	readOutputs := resource.PropertyMap{"foo": resource.NewProperty("baz")}
+	programInputs := property.NewMap(map[string]property.Value{"foo": property.New("bar")})
+	createOutputs := property.NewMap(map[string]property.Value{"foo": property.New("bar")})
+	readOutputs := property.NewMap(map[string]property.Value{"foo": property.New("baz")})
 
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
@@ -1890,8 +1909,8 @@ func TestRefreshWithProgramWithDeletedResource(t *testing.T) {
 						return plugin.ReadResponse{
 							ReadResult: plugin.ReadResult{
 								ID:      req.ID,
-								Inputs:  req.Inputs,
-								Outputs: readOutputs,
+								Inputs:  &req.Inputs,
+								Outputs: &readOutputs,
 							},
 							Status: resource.StatusOK,
 						}, nil
@@ -1900,8 +1919,8 @@ func TestRefreshWithProgramWithDeletedResource(t *testing.T) {
 					return plugin.ReadResponse{
 						ReadResult: plugin.ReadResult{
 							ID:      req.ID,
-							Inputs:  resource.PropertyMap{},
-							Outputs: resource.PropertyMap{},
+							Inputs:  new(property.Map{}),
+							Outputs: new(property.Map{}),
 						},
 						Status: resource.StatusOK,
 					}, nil
@@ -1913,11 +1932,11 @@ func TestRefreshWithProgramWithDeletedResource(t *testing.T) {
 					}
 
 					if req.Name == "resA" || req.Name == "resB" {
-						assert.Equal(t, programInputs, resource.ToResourcePropertyMap(req.Properties))
+						assert.Equal(t, programInputs, req.Properties)
 
 						return plugin.CreateResponse{
 							ID:         resource.ID(uuid.String()),
-							Properties: resource.FromResourcePropertyMap(createOutputs),
+							Properties: createOutputs,
 							Status:     resource.StatusOK,
 						}, nil
 					}
@@ -1937,29 +1956,29 @@ func TestRefreshWithProgramWithDeletedResource(t *testing.T) {
 		programExecutions++
 
 		resp, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
-			Inputs: programInputs,
+			Inputs: resource.ToResourcePropertyMap(programInputs),
 		})
 		require.NoError(t, err)
 
 		// First time we should see the create outputs, second time we should see nothing because it will be deleted
 		if programExecutions == 1 {
-			assert.Equal(t, createOutputs, resp.Outputs)
+			assert.Equal(t, createOutputs, resource.FromResourcePropertyMap(resp.Outputs))
 		} else {
 			assert.Equal(t, resource.ID(""), resp.ID)
 			assert.Empty(t, resp.Outputs)
 		}
 
 		resp, err = monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
-			Inputs:       programInputs,
+			Inputs:       resource.ToResourcePropertyMap(programInputs),
 			Dependencies: []resource.URN{resp.URN},
 		})
 		require.NoError(t, err)
 
 		// First time we should see the create outputs, second time the read outputs
 		if programExecutions == 1 {
-			assert.Equal(t, createOutputs, resp.Outputs)
+			assert.Equal(t, createOutputs, resource.FromResourcePropertyMap(resp.Outputs))
 		} else {
-			assert.Equal(t, readOutputs, resp.Outputs)
+			assert.Equal(t, readOutputs, resource.FromResourcePropertyMap(resp.Outputs))
 		}
 
 		return nil
@@ -1981,7 +2000,7 @@ func TestRefreshWithProgramWithDeletedResource(t *testing.T) {
 	require.Len(t, snap.Resources, 3)
 
 	// Change the program inputs to check we don't changed inputs to the provider
-	programInputs["foo"] = resource.NewProperty("qux")
+	programInputs = programInputs.Set("foo", property.New("qux"))
 	// Run a refresh
 	snap, err = lt.TestOp(RefreshV2).
 		RunStep(p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
@@ -1997,9 +2016,9 @@ func TestRefreshWithProgramWithDeletedResource(t *testing.T) {
 func TestRefreshWithBigProgram(t *testing.T) {
 	t.Parallel()
 
-	programInputs := resource.PropertyMap{"foo": resource.NewProperty("bar")}
-	createOutputs := resource.PropertyMap{"foo": resource.NewProperty("bar")}
-	readOutputs := resource.PropertyMap{"foo": resource.NewProperty("baz")}
+	programInputs := property.NewMap(map[string]property.Value{"foo": property.New("bar")})
+	createOutputs := property.NewMap(map[string]property.Value{"foo": property.New("bar")})
+	readOutputs := property.NewMap(map[string]property.Value{"foo": property.New("baz")})
 
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
@@ -2012,8 +2031,8 @@ func TestRefreshWithBigProgram(t *testing.T) {
 						return plugin.ReadResponse{
 							ReadResult: plugin.ReadResult{
 								ID:      req.ID,
-								Inputs:  req.Inputs,
-								Outputs: readOutputs,
+								Inputs:  &req.Inputs,
+								Outputs: &readOutputs,
 							},
 							Status: resource.StatusOK,
 						}, nil
@@ -2022,8 +2041,8 @@ func TestRefreshWithBigProgram(t *testing.T) {
 					return plugin.ReadResponse{
 						ReadResult: plugin.ReadResult{
 							ID:      req.ID,
-							Inputs:  resource.PropertyMap{},
-							Outputs: resource.PropertyMap{},
+							Inputs:  new(property.Map{}),
+							Outputs: new(property.Map{}),
 						},
 						Status: resource.StatusOK,
 					}, nil
@@ -2035,11 +2054,11 @@ func TestRefreshWithBigProgram(t *testing.T) {
 					}
 
 					if strings.HasPrefix(req.Name, "resA") {
-						assert.Equal(t, programInputs, resource.ToResourcePropertyMap(req.Properties))
+						assert.Equal(t, programInputs, req.Properties)
 
 						return plugin.CreateResponse{
 							ID:         resource.ID(uuid.String()),
-							Properties: resource.FromResourcePropertyMap(createOutputs),
+							Properties: createOutputs,
 							Status:     resource.StatusOK,
 						}, nil
 					}
@@ -2063,15 +2082,15 @@ func TestRefreshWithBigProgram(t *testing.T) {
 			resp, err := monitor.RegisterResource(
 				"pkgA:m:typA", "resA"+strconv.FormatInt(int64(i), 10), true,
 				deploytest.ResourceOptions{
-					Inputs: programInputs,
+					Inputs: resource.ToResourcePropertyMap(programInputs),
 				})
 			require.NoError(t, err)
 
 			// First time we should see the create outputs, second time the read outputs
 			if programExecutions == 1 {
-				assert.Equal(t, createOutputs, resp.Outputs)
+				assert.Equal(t, createOutputs, resource.FromResourcePropertyMap(resp.Outputs))
 			} else {
-				assert.Equal(t, readOutputs, resp.Outputs)
+				assert.Equal(t, readOutputs, resource.FromResourcePropertyMap(resp.Outputs))
 			}
 		}
 
@@ -2094,11 +2113,11 @@ func TestRefreshWithBigProgram(t *testing.T) {
 		RunStep(p.GetProject(), p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
 	require.NoError(t, err)
 	assert.Equal(t, 1, programExecutions)
-	assert.Equal(t, createOutputs, snap.Resources[1].Inputs)
-	assert.Equal(t, createOutputs, snap.Resources[1].Outputs)
+	assert.Equal(t, createOutputs, resource.FromResourcePropertyMap(snap.Resources[1].Inputs))
+	assert.Equal(t, createOutputs, resource.FromResourcePropertyMap(snap.Resources[1].Outputs))
 
 	// Change the program inputs to check we don't changed inputs to the provider
-	programInputs["foo"] = resource.NewProperty("qux")
+	programInputs = programInputs.Set("foo", property.New("qux"))
 	// Run a refresh
 	snap, err = lt.TestOp(RefreshV2).
 		RunStep(p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
@@ -2106,8 +2125,8 @@ func TestRefreshWithBigProgram(t *testing.T) {
 	// Should have run the program again
 	assert.Equal(t, 2, programExecutions)
 	// Inputs should match what the provider returned, not what was in the program.
-	assert.Equal(t, createOutputs, snap.Resources[1].Inputs)
-	assert.Equal(t, readOutputs, snap.Resources[1].Outputs)
+	assert.Equal(t, createOutputs, resource.FromResourcePropertyMap(snap.Resources[1].Inputs))
+	assert.Equal(t, readOutputs, resource.FromResourcePropertyMap(snap.Resources[1].Outputs))
 }
 
 // Regression test for https://github.com/pulumi/pulumi/issues/19561. Run a refresh with a resource that
@@ -2115,9 +2134,9 @@ func TestRefreshWithBigProgram(t *testing.T) {
 func TestRefreshWithAlias(t *testing.T) {
 	t.Parallel()
 
-	programInputs := resource.PropertyMap{"foo": resource.NewProperty("bar")}
-	createOutputs := resource.PropertyMap{"foo": resource.NewProperty("bar")}
-	readOutputs := resource.PropertyMap{"foo": resource.NewProperty("baz")}
+	programInputs := property.NewMap(map[string]property.Value{"foo": property.New("bar")})
+	createOutputs := property.NewMap(map[string]property.Value{"foo": property.New("bar")})
+	readOutputs := property.NewMap(map[string]property.Value{"foo": property.New("baz")})
 
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
@@ -2132,8 +2151,8 @@ func TestRefreshWithAlias(t *testing.T) {
 						return plugin.ReadResponse{
 							ReadResult: plugin.ReadResult{
 								ID:      req.ID,
-								Inputs:  req.Inputs,
-								Outputs: readOutputs,
+								Inputs:  &req.Inputs,
+								Outputs: &readOutputs,
 							},
 							Status: resource.StatusOK,
 						}, nil
@@ -2142,8 +2161,8 @@ func TestRefreshWithAlias(t *testing.T) {
 					return plugin.ReadResponse{
 						ReadResult: plugin.ReadResult{
 							ID:      req.ID,
-							Inputs:  resource.PropertyMap{},
-							Outputs: resource.PropertyMap{},
+							Inputs:  new(property.Map{}),
+							Outputs: new(property.Map{}),
 						},
 						Status: resource.StatusOK,
 					}, nil
@@ -2155,11 +2174,11 @@ func TestRefreshWithAlias(t *testing.T) {
 					}
 
 					if req.Name == "resA" {
-						assert.Equal(t, programInputs, resource.ToResourcePropertyMap(req.Properties))
+						assert.Equal(t, programInputs, req.Properties)
 
 						return plugin.CreateResponse{
 							ID:         resource.ID(uuid.String()),
-							Properties: resource.FromResourcePropertyMap(createOutputs),
+							Properties: createOutputs,
 							Status:     resource.StatusOK,
 						}, nil
 					}
@@ -2181,14 +2200,14 @@ func TestRefreshWithAlias(t *testing.T) {
 		// First time we should see the create outputs, second time the read outputs
 		if programExecutions == 1 {
 			resp, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
-				Inputs: programInputs,
+				Inputs: resource.ToResourcePropertyMap(programInputs),
 			})
 			require.NoError(t, err)
-			assert.Equal(t, createOutputs, resp.Outputs)
+			assert.Equal(t, createOutputs, resource.FromResourcePropertyMap(resp.Outputs))
 		} else {
 			// Register the resource with a different type, but with an alias.
 			resp, err := monitor.RegisterResource("pkgA:m:typB", "resA", true, deploytest.ResourceOptions{
-				Inputs: programInputs,
+				Inputs: resource.ToResourcePropertyMap(programInputs),
 				Aliases: []*pulumirpc.Alias{{
 					Alias: &pulumirpc.Alias_Spec_{
 						Spec: &pulumirpc.Alias_Spec{
@@ -2198,7 +2217,7 @@ func TestRefreshWithAlias(t *testing.T) {
 				}},
 			})
 			require.NoError(t, err)
-			assert.Equal(t, readOutputs, resp.Outputs)
+			assert.Equal(t, readOutputs, resource.FromResourcePropertyMap(resp.Outputs))
 		}
 
 		return nil
@@ -2217,11 +2236,11 @@ func TestRefreshWithAlias(t *testing.T) {
 		RunStep(p.GetProject(), p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
 	require.NoError(t, err)
 	assert.Equal(t, 1, programExecutions)
-	assert.Equal(t, createOutputs, snap.Resources[1].Inputs)
-	assert.Equal(t, createOutputs, snap.Resources[1].Outputs)
+	assert.Equal(t, createOutputs, resource.FromResourcePropertyMap(snap.Resources[1].Inputs))
+	assert.Equal(t, createOutputs, resource.FromResourcePropertyMap(snap.Resources[1].Outputs))
 
 	// Change the program inputs to check we don't changed inputs to the provider
-	programInputs["foo"] = resource.NewProperty("qux")
+	programInputs = programInputs.Set("foo", property.New("qux"))
 	// Run a refresh
 	snap, err = lt.TestOp(RefreshV2).
 		RunStep(p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
@@ -2229,16 +2248,16 @@ func TestRefreshWithAlias(t *testing.T) {
 	// Should have run the program again
 	assert.Equal(t, 2, programExecutions)
 	// Inputs should match what the provider returned, not what was in the program.
-	assert.Equal(t, createOutputs, snap.Resources[1].Inputs)
-	assert.Equal(t, readOutputs, snap.Resources[1].Outputs)
+	assert.Equal(t, createOutputs, resource.FromResourcePropertyMap(snap.Resources[1].Inputs))
+	assert.Equal(t, readOutputs, resource.FromResourcePropertyMap(snap.Resources[1].Outputs))
 }
 
 // When running a --refresh update with --run-program if a resource has been deleted we should re-create it.
 func TestRefreshRunProgramDeletedResource(t *testing.T) {
 	t.Parallel()
 
-	programInputs := resource.PropertyMap{"foo": resource.NewProperty("bar")}
-	createOutputs := resource.PropertyMap{"foo": resource.NewProperty("bar")}
+	programInputs := property.NewMap(map[string]property.Value{"foo": property.New("bar")})
+	createOutputs := property.NewMap(map[string]property.Value{"foo": property.New("bar")})
 
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
@@ -2258,8 +2277,8 @@ func TestRefreshRunProgramDeletedResource(t *testing.T) {
 					return plugin.ReadResponse{
 						ReadResult: plugin.ReadResult{
 							ID:      req.ID,
-							Inputs:  resource.PropertyMap{},
-							Outputs: resource.PropertyMap{},
+							Inputs:  new(property.Map{}),
+							Outputs: new(property.Map{}),
 						},
 						Status: resource.StatusOK,
 					}, nil
@@ -2271,11 +2290,11 @@ func TestRefreshRunProgramDeletedResource(t *testing.T) {
 					}
 
 					if req.Name == "resA" {
-						assert.Equal(t, programInputs, resource.ToResourcePropertyMap(req.Properties))
+						assert.Equal(t, programInputs, req.Properties)
 
 						return plugin.CreateResponse{
 							ID:         resource.ID(uuid.String()),
-							Properties: resource.FromResourcePropertyMap(createOutputs),
+							Properties: createOutputs,
 							Status:     resource.StatusOK,
 						}, nil
 					}
@@ -2295,10 +2314,10 @@ func TestRefreshRunProgramDeletedResource(t *testing.T) {
 		programExecutions++
 
 		resp, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
-			Inputs: programInputs,
+			Inputs: resource.ToResourcePropertyMap(programInputs),
 		})
 		require.NoError(t, err)
-		assert.Equal(t, createOutputs, resp.Outputs)
+		assert.Equal(t, createOutputs, resource.FromResourcePropertyMap(resp.Outputs))
 
 		return nil
 	})
@@ -2320,7 +2339,7 @@ func TestRefreshRunProgramDeletedResource(t *testing.T) {
 	firstID := snap.Resources[1].ID
 
 	// Change the program inputs to check we don't changed inputs to the provider
-	programInputs["foo"] = resource.NewProperty("qux")
+	programInputs = programInputs.Set("foo", property.New("qux"))
 	p.Options.Refresh = true
 	p.Options.RefreshProgram = true
 	// Run a refresh update
@@ -2339,8 +2358,8 @@ func TestRefreshRunProgramDeletedResource(t *testing.T) {
 func TestRefreshRunProgramDBRReplacedResource(t *testing.T) {
 	t.Parallel()
 
-	programInputs := resource.PropertyMap{"foo": resource.NewProperty("bar")}
-	createOutputs := resource.PropertyMap{"foo": resource.NewProperty("bar")}
+	programInputs := property.NewMap(map[string]property.Value{"foo": property.New("bar")})
+	createOutputs := property.NewMap(map[string]property.Value{"foo": property.New("bar")})
 
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
@@ -2353,8 +2372,8 @@ func TestRefreshRunProgramDBRReplacedResource(t *testing.T) {
 						return plugin.ReadResponse{
 							ReadResult: plugin.ReadResult{
 								ID:      req.ID,
-								Inputs:  req.Inputs,
-								Outputs: req.State,
+								Inputs:  &req.Inputs,
+								Outputs: &req.State,
 							},
 							Status: resource.StatusOK,
 						}, nil
@@ -2363,8 +2382,8 @@ func TestRefreshRunProgramDBRReplacedResource(t *testing.T) {
 					return plugin.ReadResponse{
 						ReadResult: plugin.ReadResult{
 							ID:      req.ID,
-							Inputs:  resource.PropertyMap{},
-							Outputs: resource.PropertyMap{},
+							Inputs:  new(property.Map{}),
+							Outputs: new(property.Map{}),
 						},
 						Status: resource.StatusOK,
 					}, nil
@@ -2376,11 +2395,11 @@ func TestRefreshRunProgramDBRReplacedResource(t *testing.T) {
 					}
 
 					if req.Name == "resA" || req.Name == "resB" {
-						assert.Equal(t, programInputs, resource.ToResourcePropertyMap(req.Properties))
+						assert.Equal(t, programInputs, req.Properties)
 
 						return plugin.CreateResponse{
 							ID:         resource.ID(uuid.String()),
-							Properties: resource.FromResourcePropertyMap(createOutputs),
+							Properties: createOutputs,
 							Status:     resource.StatusOK,
 						}, nil
 					}
@@ -2411,17 +2430,17 @@ func TestRefreshRunProgramDBRReplacedResource(t *testing.T) {
 		programExecutions++
 
 		resp, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
-			Inputs: programInputs,
+			Inputs: resource.ToResourcePropertyMap(programInputs),
 		})
 		require.NoError(t, err)
-		assert.Equal(t, createOutputs, resp.Outputs)
+		assert.Equal(t, createOutputs, resource.FromResourcePropertyMap(resp.Outputs))
 
 		resp, err = monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
 			Inputs:       resp.Outputs,
 			Dependencies: []resource.URN{resp.URN},
 		})
 		require.NoError(t, err)
-		assert.Equal(t, createOutputs, resp.Outputs)
+		assert.Equal(t, createOutputs, resource.FromResourcePropertyMap(resp.Outputs))
 
 		return nil
 	})
@@ -2442,7 +2461,7 @@ func TestRefreshRunProgramDBRReplacedResource(t *testing.T) {
 	require.Len(t, snap.Resources, 3)
 	firstID := snap.Resources[1].ID
 
-	programInputs["foo"] = resource.NewProperty("qux")
+	programInputs = programInputs.Set("foo", property.New("qux"))
 	p.Options.Refresh = true
 	p.Options.RefreshProgram = true
 	// Run a refresh update
@@ -2461,8 +2480,8 @@ func TestRefreshRunProgramDBRReplacedResource(t *testing.T) {
 func TestRefreshRunProgramReplacedResource(t *testing.T) {
 	t.Parallel()
 
-	programInputs := resource.PropertyMap{"foo": resource.NewProperty("bar")}
-	initialProperties := resource.PropertyMap{"foo": resource.NewProperty("bar")}
+	programInputs := property.NewMap(map[string]property.Value{"foo": property.New("bar")})
+	initialProperties := property.NewMap(map[string]property.Value{"foo": property.New("bar")})
 
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
@@ -2475,8 +2494,8 @@ func TestRefreshRunProgramReplacedResource(t *testing.T) {
 						return plugin.ReadResponse{
 							ReadResult: plugin.ReadResult{
 								ID:      req.ID,
-								Inputs:  req.Inputs,
-								Outputs: req.State,
+								Inputs:  &req.Inputs,
+								Outputs: &req.State,
 							},
 							Status: resource.StatusOK,
 						}, nil
@@ -2485,8 +2504,8 @@ func TestRefreshRunProgramReplacedResource(t *testing.T) {
 					return plugin.ReadResponse{
 						ReadResult: plugin.ReadResult{
 							ID:      req.ID,
-							Inputs:  resource.PropertyMap{},
-							Outputs: resource.PropertyMap{},
+							Inputs:  new(property.Map{}),
+							Outputs: new(property.Map{}),
 						},
 						Status: resource.StatusOK,
 					}, nil
@@ -2498,7 +2517,7 @@ func TestRefreshRunProgramReplacedResource(t *testing.T) {
 					}
 
 					if req.Name == "resA" {
-						assert.Equal(t, programInputs, resource.ToResourcePropertyMap(req.Properties))
+						assert.Equal(t, programInputs, req.Properties)
 
 						return plugin.CreateResponse{
 							ID:         resource.ID(uuid.String()),
@@ -2532,10 +2551,10 @@ func TestRefreshRunProgramReplacedResource(t *testing.T) {
 		programExecutions++
 
 		resp, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
-			Inputs: programInputs,
+			Inputs: resource.ToResourcePropertyMap(programInputs),
 		})
 		require.NoError(t, err)
-		assert.Equal(t, programInputs, resp.Outputs)
+		assert.Equal(t, programInputs, resource.FromResourcePropertyMap(resp.Outputs))
 
 		return nil
 	})
@@ -2556,7 +2575,7 @@ func TestRefreshRunProgramReplacedResource(t *testing.T) {
 	require.Len(t, snap.Resources, 2)
 	firstID := snap.Resources[1].ID
 
-	programInputs["foo"] = resource.NewProperty("qux")
+	programInputs = programInputs.Set("foo", property.New("qux"))
 	p.Options.Refresh = true
 	p.Options.RefreshProgram = true
 	// Run a refresh update
@@ -2587,8 +2606,8 @@ func TestRefreshDeleteParent(t *testing.T) {
 					return plugin.ReadResponse{
 						ReadResult: plugin.ReadResult{
 							ID:      req.ID,
-							Inputs:  resource.PropertyMap{},
-							Outputs: resource.PropertyMap{},
+							Inputs:  new(property.Map{}),
+							Outputs: new(property.Map{}),
 						},
 						Status: resource.StatusOK,
 					}, nil
@@ -2804,7 +2823,7 @@ func TestRefreshV2FailedRead(t *testing.T) {
 						}, fmt.Errorf("read failure for %s", req.URN)
 					}
 					return plugin.ReadResponse{
-						ReadResult: plugin.ReadResult{Outputs: resource.PropertyMap{}},
+						ReadResult: plugin.ReadResult{Outputs: new(property.Map{})},
 						Status:     resource.StatusOK,
 					}, nil
 				},
@@ -2902,7 +2921,7 @@ func TestRefreshDeletedResourceWithChild(t *testing.T) {
 
 	readF := func(ctx context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
 		return plugin.ReadResponse{
-			ReadResult: plugin.ReadResult{Outputs: resource.PropertyMap{}},
+			ReadResult: plugin.ReadResult{Outputs: new(property.Map{})},
 			Status:     resource.StatusOK,
 		}, nil
 	}
@@ -2999,7 +3018,7 @@ func TestRefreshPreservesInputsWhenReadReturnsNoInputs(t *testing.T) {
 					return plugin.ReadResponse{
 						ReadResult: plugin.ReadResult{
 							ID:      req.ID,
-							Outputs: newOutputsFromRead,
+							Outputs: ptrMap(newOutputsFromRead),
 						},
 						Status: resource.StatusOK,
 					}, nil
@@ -3299,7 +3318,7 @@ func TestRefreshV2ParentChildOrdering(t *testing.T) {
 
 	readF := func(ctx context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
 		return plugin.ReadResponse{
-			ReadResult: plugin.ReadResult{Outputs: resource.PropertyMap{}},
+			ReadResult: plugin.ReadResult{Outputs: new(property.Map{})},
 			Status:     resource.StatusOK,
 		}, nil
 	}
@@ -3440,7 +3459,7 @@ func TestRefreshV2ExcludesChildWithExcludedParent(t *testing.T) {
 
 	readF := func(ctx context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
 		return plugin.ReadResponse{
-			ReadResult: plugin.ReadResult{Outputs: resource.PropertyMap{}},
+			ReadResult: plugin.ReadResult{Outputs: new(property.Map{})},
 			Status:     resource.StatusOK,
 		}, nil
 	}
@@ -3491,9 +3510,9 @@ func TestRefreshV2ExcludeTarget(t *testing.T) {
 					return plugin.ReadResponse{
 						ReadResult: plugin.ReadResult{
 							ID: req.ID,
-							Outputs: resource.PropertyMap{
-								"refreshed": resource.NewProperty(true),
-							},
+							Outputs: new(property.NewMap(map[string]property.Value{
+								"refreshed": property.New(true),
+							})),
 						},
 						Status: resource.StatusOK,
 					}, nil
@@ -3572,9 +3591,9 @@ func TestRefreshV2IncludeTarget(t *testing.T) {
 					return plugin.ReadResponse{
 						ReadResult: plugin.ReadResult{
 							ID: req.ID,
-							Outputs: resource.PropertyMap{
-								"refreshed": resource.NewProperty(true),
-							},
+							Outputs: new(property.NewMap(map[string]property.Value{
+								"refreshed": property.New(true),
+							})),
 						},
 						Status: resource.StatusOK,
 					}, nil

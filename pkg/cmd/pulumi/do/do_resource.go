@@ -40,8 +40,16 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	codegenrpc "github.com/pulumi/pulumi/sdk/v3/proto/go/codegen"
 )
+
+func derefMap(m *property.Map) resource.PropertyMap {
+	if m == nil {
+		return resource.PropertyMap{}
+	}
+	return resource.ToResourcePropertyMap(*m)
+}
 
 func resourceSchemaHelp(res *schema.Resource) string {
 	color := cmdutil.GetGlobalColorization()
@@ -264,8 +272,8 @@ func (pc *packageCommand) newResourceReadCommand(res *schema.Resource) *cobra.Co
 					Name:   urn.Name(),
 					Type:   urn.Type(),
 					ID:     id,
-					Inputs: resource.PropertyMap{},
-					State:  resource.PropertyMap{},
+					Inputs: property.Map{},
+					State:  property.Map{},
 				})
 				if err != nil {
 					return nil, err
@@ -276,7 +284,7 @@ func (pc *packageCommand) newResourceReadCommand(res *schema.Resource) *cobra.Co
 				if response.ID != "" {
 					id = response.ID
 				}
-				return resultState(urn, id, nil, response.Outputs, res), nil
+				return resultState(urn, id, nil, resource.ToResourcePropertyMap(*response.Outputs), res), nil
 			})
 		},
 	}
@@ -339,8 +347,8 @@ func (pc *packageCommand) newStatelessResourcePatchCommand(res *schema.Resource)
 				Name:   urn.Name(),
 				Type:   urn.Type(),
 				ID:     id,
-				Inputs: resource.PropertyMap{},
-				State:  resource.PropertyMap{},
+				Inputs: property.Map{},
+				State:  property.Map{},
 			})
 			if err != nil {
 				return err
@@ -358,7 +366,7 @@ func (pc *packageCommand) newStatelessResourcePatchCommand(res *schema.Resource)
 				return fmt.Errorf("parse input file: %w", err)
 			}
 
-			newInputs := read.Inputs.Copy()
+			newInputs := derefMap(read.Inputs)
 			maps.Copy(newInputs, patch)
 			return pc.runStatelessUpdate(cmd, res, id, read, newInputs, "patch", yes)
 		},
@@ -377,7 +385,8 @@ func (pc *packageCommand) runStatelessUpdate(
 ) error {
 	ctx := cmd.Context()
 	urn := resourceURN(res)
-	oldInputs := read.Inputs
+	oldInputs := derefMap(read.Inputs)
+	oldOutputs := derefMap(read.Outputs)
 	checked, err := pc.checkResourceInputs(ctx, urn, res, oldInputs, newInputs)
 	if err != nil {
 		return err
@@ -389,7 +398,7 @@ func (pc *packageCommand) runStatelessUpdate(
 		Type:       urn.Type(),
 		ID:         id,
 		OldInputs:  resource.FromResourcePropertyMap(oldInputs),
-		OldOutputs: resource.FromResourcePropertyMap(read.Outputs),
+		OldOutputs: resource.FromResourcePropertyMap(oldOutputs),
 		NewInputs:  resource.FromResourcePropertyMap(checked),
 	})
 	if err != nil {
@@ -403,7 +412,7 @@ func (pc *packageCommand) runStatelessUpdate(
 
 	return pc.runDisplayedStep(cmd, displayedStep{
 		Op:           deploy.OpUpdate,
-		Old:          operationState(urn, id, oldInputs, read.Outputs),
+		Old:          operationState(urn, id, oldInputs, oldOutputs),
 		New:          operationState(urn, id, checked, nil),
 		Diffs:        diff.ChangedKeys,
 		DetailedDiff: diff.DetailedDiff,
@@ -414,7 +423,7 @@ func (pc *packageCommand) runStatelessUpdate(
 			Type:       urn.Type(),
 			ID:         id,
 			OldInputs:  resource.FromResourcePropertyMap(oldInputs),
-			OldOutputs: resource.FromResourcePropertyMap(read.Outputs),
+			OldOutputs: *read.Outputs,
 			NewInputs:  resource.FromResourcePropertyMap(checked),
 			Preview:    pc.dryrun,
 		})
@@ -456,8 +465,8 @@ func (pc *packageCommand) newResourceDeleteCommand(res *schema.Resource) *cobra.
 				Name:   urn.Name(),
 				Type:   urn.Type(),
 				ID:     resource.ID(args[0]),
-				Inputs: resource.PropertyMap{},
-				State:  resource.PropertyMap{},
+				Inputs: property.Map{},
+				State:  property.Map{},
 			})
 			if err != nil {
 				return err
@@ -482,13 +491,20 @@ func (pc *packageCommand) newResourceDeleteCommand(res *schema.Resource) *cobra.
 				Op:  deploy.OpDelete,
 				Old: operationState(urn, id, nil, nil),
 			}, func() (*pkgresource.State, error) {
+				var readInputs, readOutputs property.Map
+				if response.Inputs != nil {
+					readInputs = *response.Inputs
+				}
+				if response.Outputs != nil {
+					readOutputs = *response.Outputs
+				}
 				_, err := pc.provider.Delete(ctx, plugin.DeleteRequest{
 					URN:     urn,
 					Name:    urn.Name(),
 					Type:    urn.Type(),
 					ID:      id,
-					Inputs:  resource.FromResourcePropertyMap(response.Inputs),
-					Outputs: resource.FromResourcePropertyMap(response.Outputs),
+					Inputs:  readInputs,
+					Outputs: readOutputs,
 				})
 				return nil, err
 			})

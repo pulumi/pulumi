@@ -1481,16 +1481,16 @@ func TestProvider_PartialFailure(t *testing.T) {
 		Name:   urn.Name(),
 		Type:   urn.Type(),
 		ID:     "some-id",
-		Inputs: resource.PropertyMap{},
-		State:  resource.PropertyMap{},
+		Inputs: property.Map{},
+		State:  property.Map{},
 	})
 	require.ErrorAs(t, err, &initErr, "expected an InitError")
 	assert.Equal(t, []string{"read issue"}, initErr.Reasons)
 	assert.Equal(t, ReadResponse{
 		ReadResult: ReadResult{
 			ID:                  "some-id",
-			Inputs:              liveInputs,
-			Outputs:             liveProperties,
+			Inputs:              new(resource.FromResourcePropertyMap(liveInputs)),
+			Outputs:             new(resource.FromResourcePropertyMap(liveProperties)),
 			RefreshBeforeUpdate: true,
 		},
 		Status: resource.StatusPartialFailure,

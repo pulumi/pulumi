@@ -317,7 +317,7 @@ type ReadRequest struct {
 	Name          string
 	Type          tokens.Type
 	ID            resource.ID
-	Inputs, State resource.PropertyMap
+	Inputs, State property.Map
 	// Timeout is the time, in seconds, that the caller is prepared to wait for the operation to complete.
 	Timeout float64
 	// The gRPC address of the ResourceStatus service which can be used to read view resources.
@@ -888,10 +888,10 @@ type ReadResult struct {
 	ID resource.ID
 	// Inputs contains the new inputs for the resource, if any. If this field is nil, the provider does not support
 	// returning inputs from a call to Read and the old inputs (if any) should be preserved.
-	Inputs resource.PropertyMap
+	Inputs *property.Map
 	// Outputs contains the new outputs/state for the resource, if any. If this field is nil, the resource does not
 	// exist.
-	Outputs resource.PropertyMap
+	Outputs *property.Map
 	// Indicates that this resource should always be refreshed prior to updates.
 	RefreshBeforeUpdate bool
 }
