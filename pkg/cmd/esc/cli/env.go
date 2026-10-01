@@ -19,6 +19,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net/http"
 	"os"
 	"sort"
 	"strings"
@@ -475,7 +476,8 @@ func (esc *escCommand) updateEnvironment(
 		}
 		if !client.DiagnosticsHaveErrors(diags) {
 			fmt.Fprintf(esc.stdout, "Change request created: %v\n", changeRequestID)
-			fmt.Fprintf(esc.stdout, "Change request URL: %v\n", esc.changeRequestURL(ref, changeRequestID))
+			url := esc.changeRequestURL(ref, changeRequestID)
+			fmt.Fprintf(esc.stdout, "Change request URL: %v\n", esc.colors.Hyperlink(url, url))
 
 			err = esc.client.SubmitChangeRequest(ctx, ref.orgName, changeRequestID, nil)
 			if err != nil {
@@ -492,11 +494,16 @@ func (esc *escCommand) updateEnvironment(
 		}
 		if !client.DiagnosticsHaveErrors(diags) {
 			fmt.Fprintln(esc.stdout, "Change request updated")
-			fmt.Fprintf(esc.stdout, "Change request URL: %v\n", esc.changeRequestURL(ref, changeRequestID))
+			url := esc.changeRequestURL(ref, changeRequestID)
+			fmt.Fprintf(esc.stdout, "Change request URL: %v\n", esc.colors.Hyperlink(url, url))
 		}
 		return diags, nil
 	} else {
 		diags, revision, err := esc.client.UpdateEnvironment(ctx, ref.orgName, ref.projectName, ref.envName, yaml, tag)
+		if isApprovalRequired(err) {
+			return nil, fmt.Errorf("updating environment definition: %w\n"+
+				"Re-run with --draft to submit your changes as a change request", err)
+		}
 		if err != nil {
 			return nil, fmt.Errorf("updating environment definition: %w", err)
 		}
@@ -505,4 +512,11 @@ func (esc *escCommand) updateEnvironment(
 		}
 		return diags, nil
 	}
+}
+
+// isApprovalRequired reports whether err is the service rejecting a direct update because the
+// environment requires approvals.
+func isApprovalRequired(err error) bool {
+	errResp, ok := errors.AsType[*client.EnvironmentErrorResponse](err)
+	return ok && errResp.Code == http.StatusConflict && strings.Contains(errResp.Message, "change request")
 }
