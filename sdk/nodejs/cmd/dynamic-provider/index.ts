@@ -269,7 +269,12 @@ class ResourceProviderService implements provrpc.IResourceProviderServer {
             const resp = new provproto.ReadResponse();
 
             const id = req.getId();
-            const props = req.getProperties().toJavaScript();
+            // On refresh the engine passes prior outputs in `properties`; on a user-driven Get it passes nil
+            // (only `inputs` is populated). Fall back to inputs so the serialized `__provider` can still be found.
+            let props = req.getProperties()?.toJavaScript() ?? {};
+            if (Object.keys(props).length === 0 && req.getInputs()) {
+                props = req.getInputs().toJavaScript();
+            }
             const provider = await getProvider(props, this.config);
             if (provider.read) {
                 // If there's a read function, consult the provider. Ensure to propagate the special __provider
@@ -288,7 +293,7 @@ class ResourceProviderService implements provrpc.IResourceProviderServer {
             } else {
                 // In the event of a missing read, simply return back the input state.
                 resp.setId(id);
-                resp.setProperties(req.getProperties());
+                resp.setProperties(structproto.Struct.fromJavaScript(props));
             }
 
             callback(undefined, resp);
