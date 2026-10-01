@@ -125,6 +125,8 @@ type stepExecutor struct {
 
 	// Channel to collect panic errors from goroutines in this step executor
 	panicErrs chan error
+	completed chan struct{}
+	complete  sync.Once
 
 	// ExecuteRegisterResourceOutputs will save the event for the stack resource so that the stack outputs
 	// can be finalized at the end of the deployment. We do this so we can determine whether or not the
@@ -391,6 +393,7 @@ func (se *stepExecutor) WaitForCompletion() {
 	se.log(synchronousWorkerID, "StepExecutor.waitForCompletion(): waiting for worker threads to exit")
 	se.workers.Wait()
 	se.log(synchronousWorkerID, "StepExecutor.waitForCompletion(): worker threads all exited")
+	se.complete.Do(func() { close(se.completed) })
 }
 
 //
@@ -734,14 +737,28 @@ func newStepExecutor(
 		ctx:            ctx,
 		cancel:         cancel,
 		panicErrs:      make(chan error, 1),
+		completed:      make(chan struct{}),
 	}
 
+	handlePanic := func(panicErr error) {
+		exec.cancelDueToError(panicErr, nil)
+		if deployment.panicErrs != nil {
+			deployment.panicErrs <- panicErr
+		}
+	}
 	// Start a goroutine to monitor for panic errors and handle them
 	go func() {
-		for panicErr := range exec.panicErrs {
-			exec.cancelDueToError(panicErr, nil)
-			if deployment.panicErrs != nil {
-				deployment.panicErrs <- panicErr
+		for {
+			select {
+			case panicErr := <-exec.panicErrs:
+				handlePanic(panicErr)
+			case <-exec.completed:
+				select {
+				case panicErr := <-exec.panicErrs:
+					handlePanic(panicErr)
+				default:
+				}
+				return
 			}
 		}
 	}()
