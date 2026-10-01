@@ -372,6 +372,17 @@ type GetDefaultOrganizationResponse struct {
 	Organization string `json:"gitHubLogin"`
 }
 
+type EnvironmentMetadata struct {
+	ID           string   `json:"id"`
+	GatedActions []string `json:"gatedActions,omitempty"`
+	// ActiveChangeRequest is the caller's open draft, which blocks them from creating another.
+	ActiveChangeRequest *ChangeRequestRef `json:"activeChangeRequest,omitempty"`
+}
+
+type ChangeRequestRef struct {
+	ChangeRequestID string `json:"changeRequestId"`
+}
+
 type EnvironmentSettings struct {
 	DeletionProtected bool `json:"deletionProtected"`
 }
