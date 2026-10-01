@@ -128,7 +128,7 @@ func publishToNPM(stdout, stderr io.Writer, path string) error {
 	// Verify npm exists and is set up: npm, user login
 	npm, err := executable.FindExecutable("npm")
 	if err != nil {
-		return fmt.Errorf("npm whoami: %w", err)
+		return fmt.Errorf("find npm executable: %w", err)
 	}
 
 	// verify auth for npm. npm whoami returns 401 under trusted publishing, even though
