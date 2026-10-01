@@ -1,5 +1,5 @@
 run: |
-  printf '\n' | esc env edit default/test
+  printf '\n\n' | esc env edit default/test
   esc env get default/test
 process:
   environ:
@@ -7,17 +7,22 @@ process:
   commands:
     my-editor: |
       reopened=
+      invalid=
       while IFS= read -r line; do
         case "$line" in
           *"changed after it was read"*) reopened=yes ;;
+          "imports:") invalid=yes ;;
         esac
       done <$1
-      if [ -z "$reopened" ]; then
-        esc env set default/test bar concurrent
-        echo -e "values:\n  foo: baz\n" >$1
-      else
+      if [ -n "$invalid" ]; then
         while IFS= read -r line; do echo "| $line"; done <$1
         echo -e "values:\n  foo: baz\n  bar: concurrent\n" >$1
+      elif [ -n "$reopened" ]; then
+        while IFS= read -r line; do echo "| $line"; done <$1
+        echo -e "imports:\n" >$1
+      else
+        esc env set default/test bar concurrent
+        echo -e "values:\n  foo: baz\n" >$1
       fi
 environments:
   test-user/default/test:
@@ -38,6 +43,17 @@ environments:
 | # values:
 | #   foo: bar
 | #   bar: concurrent
+| ---
+| # Please edit the environment definition above.
+| # The object below is the current result of
+| # evaluating the environment and will not be
+| # saved. An empty definition aborts the edit.
+| 
+| {
+|   "foo": "bar"
+| }
+| imports:
+| 
 | ---
 | # Please edit the environment definition above.
 | # The object below is the current result of
@@ -69,5 +85,11 @@ values:
 > esc env edit default/test
 > esc env set default/test bar concurrent
 Your edits were not saved because the definition changed after it was read.
+Press ENTER to continue editing or ^D to exit
+Error: imports must be a list
+
+  on default/test line 1:
+   1: imports:
+
 Press ENTER to continue editing or ^D to exit
 > esc env get default/test
