@@ -17,6 +17,7 @@ package config
 import (
 	"encoding/json"
 	"math"
+	"strings"
 	"testing"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -149,17 +150,20 @@ func TestMarshalPlaintext(t *testing.T) {
 	})
 }
 
-//nolint:paralleltest // changes global defaultMaxChunkSize variable
 func TestEncryptMap(t *testing.T) {
+	t.Parallel()
+
 	ctx := t.Context()
 
 	t.Run("empty map", func(t *testing.T) {
+		t.Parallel()
 		result, err := encryptMap(ctx, map[Key]Plaintext{}, nopCrypter{})
 		require.NoError(t, err)
 		assert.Empty(t, result)
 	})
 
 	t.Run("Plaintext values", func(t *testing.T) {
+		t.Parallel()
 		input := map[Key]Plaintext{
 			MustParseKey("ns:foo"): NewPlaintext("bar"),
 			MustParseKey("ns:num"): NewPlaintext(int64(42)),
@@ -171,6 +175,7 @@ func TestEncryptMap(t *testing.T) {
 	})
 
 	t.Run("secure values", func(t *testing.T) {
+		t.Parallel()
 		input := map[Key]Plaintext{
 			MustParseKey("ns:secret"): NewPlaintext(PlaintextSecret("Plaintext")),
 		}
@@ -181,6 +186,7 @@ func TestEncryptMap(t *testing.T) {
 	})
 
 	t.Run("nested secure values", func(t *testing.T) {
+		t.Parallel()
 		input := map[Key]Plaintext{
 			MustParseKey("ns:secret"): NewPlaintext(map[string]Plaintext{
 				"foo": NewPlaintext(PlaintextSecret("Plaintext")),
@@ -196,6 +202,7 @@ func TestEncryptMap(t *testing.T) {
 	})
 
 	t.Run("mixed values", func(t *testing.T) {
+		t.Parallel()
 		input := map[Key]Plaintext{
 			MustParseKey("ns:plain"):  NewPlaintext("value"),
 			MustParseKey("ns:secret"): NewPlaintext(PlaintextSecret("Plaintext")),
@@ -208,24 +215,22 @@ func TestEncryptMap(t *testing.T) {
 	})
 
 	t.Run("chunking", func(t *testing.T) {
-		origChunkSize := defaultMaxChunkSize
-		defaultMaxChunkSize = 2 // force batching for test
-		defer func() { defaultMaxChunkSize = origChunkSize }()
-
+		t.Parallel()
+		// Each secret is larger than half of the chunk limit, so each secret gets its own chunk.
+		s1 := strings.Repeat("a", defaultMaxChunkSize/2+1)
+		s2 := strings.Repeat("b", defaultMaxChunkSize/2+1)
 		input := map[Key]Plaintext{
-			MustParseKey("ns:a"): NewPlaintext(PlaintextSecret("s1")),
-			MustParseKey("ns:b"): NewPlaintext(PlaintextSecret("s2")),
-			MustParseKey("ns:c"): NewPlaintext(PlaintextSecret("s3")),
-			MustParseKey("ns:d"): NewPlaintext("plain"),
+			MustParseKey("ns:a"): NewPlaintext(PlaintextSecret(s1)),
+			MustParseKey("ns:b"): NewPlaintext(PlaintextSecret(s2)),
+			MustParseKey("ns:c"): NewPlaintext("plain"),
 		}
 		result, err := encryptMap(ctx, input, nopCrypter{})
 		require.NoError(t, err)
-		assert.Equal(t, CiphertextSecret{"s1"}, result[MustParseKey("ns:a")].value)
-		assert.Equal(t, CiphertextSecret{"s2"}, result[MustParseKey("ns:b")].value)
-		assert.Equal(t, CiphertextSecret{"s3"}, result[MustParseKey("ns:c")].value)
-		assert.Equal(t, "plain", result[MustParseKey("ns:d")].value)
+		// assert.Equal prints its arguments on failure, which is too much output for these secrets.
+		assert.True(t, result[MustParseKey("ns:a")].value == CiphertextSecret{s1})
+		assert.True(t, result[MustParseKey("ns:b")].value == CiphertextSecret{s2})
+		assert.Equal(t, "plain", result[MustParseKey("ns:c")].value)
 		assert.True(t, result[MustParseKey("ns:a")].Secure())
 		assert.True(t, result[MustParseKey("ns:b")].Secure())
-		assert.True(t, result[MustParseKey("ns:c")].Secure())
 	})
 }
