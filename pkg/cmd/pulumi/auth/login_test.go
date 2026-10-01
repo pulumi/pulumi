@@ -46,10 +46,19 @@ func TestLoginURLResolution(t *testing.T) {
 	type capturedLogin struct {
 		url       string
 		oidcToken string
+		calls     int
 	}
 
 	credsF := func() (workspace.Credentials, error) {
 		return workspace.Credentials{Current: "https://stored-creds.example.com"}, nil
+	}
+	configuredWorkspace := &pkgWorkspace.MockContext{
+		ReadProjectF: func(string) (*workspace.Project, string, error) {
+			return &workspace.Project{
+				Backend: &workspace.ProjectBackend{URL: "https://project-backend.example.com"},
+			}, "", nil
+		},
+		GetStoredCredentialsF: credsF,
 	}
 
 	tests := []struct {
@@ -63,9 +72,12 @@ func TestLoginURLResolution(t *testing.T) {
 		expectedError string
 	}{
 		{
-			name:        "command argument takes precedence",
-			args:        []string{"s3://my-bucket"},
-			ws:          &pkgWorkspace.MockContext{},
+			name: "command argument takes precedence",
+			args: []string{"s3://my-bucket"},
+			ws:   configuredWorkspace,
+			envVars: map[string]string{
+				"PULUMI_BACKEND_URL": "https://env-backend.example.com",
+			},
 			expectedURL: "s3://my-bucket",
 		},
 		{
@@ -73,7 +85,10 @@ func TestLoginURLResolution(t *testing.T) {
 			flags: map[string]string{
 				"cloud-url": "https://custom.example.com",
 			},
-			ws:          &pkgWorkspace.MockContext{},
+			ws: configuredWorkspace,
+			envVars: map[string]string{
+				"PULUMI_BACKEND_URL": "https://env-backend.example.com",
+			},
 			expectedURL: "https://custom.example.com",
 		},
 		{
@@ -81,7 +96,10 @@ func TestLoginURLResolution(t *testing.T) {
 			flags: map[string]string{
 				"local": "true",
 			},
-			ws:          &pkgWorkspace.MockContext{},
+			ws: configuredWorkspace,
+			envVars: map[string]string{
+				"PULUMI_BACKEND_URL": "https://env-backend.example.com",
+			},
 			expectedURL: "file://~",
 		},
 		{
@@ -106,24 +124,15 @@ func TestLoginURLResolution(t *testing.T) {
 		},
 		{
 			name: "environment variable used when no explicit URL",
-			ws: &pkgWorkspace.MockContext{
-				GetStoredCredentialsF: credsF,
-			},
+			ws:   configuredWorkspace,
 			envVars: map[string]string{
 				"PULUMI_BACKEND_URL": "https://env-backend.example.com",
 			},
 			expectedURL: "https://env-backend.example.com",
 		},
 		{
-			name: "project backend URL used when no env var",
-			ws: &pkgWorkspace.MockContext{
-				ReadProjectF: func(string) (*workspace.Project, string, error) {
-					return &workspace.Project{
-						Backend: &workspace.ProjectBackend{URL: "https://project-backend.example.com"},
-					}, "", nil
-				},
-				GetStoredCredentialsF: credsF,
-			},
+			name:        "project backend URL used when no env var",
+			ws:          configuredWorkspace,
 			expectedURL: "https://project-backend.example.com",
 		},
 		{
@@ -190,6 +199,7 @@ func TestLoginURLResolution(t *testing.T) {
 					insecure bool,
 					color colors.Colorization,
 				) (pkgBackend.Backend, error) {
+					captured.calls++
 					captured.url = url
 					return &pkgBackend.MockBackend{
 						URLF:  func() string { return url },
@@ -208,6 +218,7 @@ func TestLoginURLResolution(t *testing.T) {
 					insecure bool,
 					authContext workspace.AuthContext,
 				) (pkgBackend.Backend, error) {
+					captured.calls++
 					captured.url = url
 					captured.oidcToken = authContext.Token
 					return &pkgBackend.MockBackend{
@@ -241,13 +252,16 @@ func TestLoginURLResolution(t *testing.T) {
 
 			if tt.expectError {
 				require.Error(t, err)
+				assert.Zero(t, captured.calls)
 				if tt.expectedError != "" {
 					require.ErrorContains(t, err, tt.expectedError)
 				}
 			} else {
 				require.NoError(t, err)
+				assert.Equal(t, 1, captured.calls)
 				assert.Equal(t, tt.expectedURL, captured.url,
 					"login should be called with expected URL")
+				assert.Equal(t, tt.flags["oidc-token"], captured.oidcToken)
 			}
 		})
 	}

@@ -77,25 +77,36 @@ func TestDeleteAccountSkipsAgentFallbackWhenExplicitPathSet(t *testing.T) {
 	t.Setenv("CODEX_SANDBOX", "1")
 	t.Setenv(workspace.PulumiCredentialsPathEnvVar, credsDir)
 
+	const cloudURL = "https://api.logout-explicit.example.com"
+	require.NoError(t, workspace.StoreAgentAccount(cloudURL, workspace.Account{AccessToken: "agent-token"}, true))
 	err := workspace.StoreCredentials(workspace.Credentials{
 		Accounts: map[string]workspace.Account{
-			"https://api.logout-explicit.example.com": {AccessToken: "default-token"},
+			cloudURL: {AccessToken: "default-token"},
 		},
 	})
 	require.NoError(t, err)
 
-	err = deleteAccount("https://api.logout-explicit.example.com")
+	err = deleteAccount(cloudURL)
 	require.NoError(t, err)
 
 	creds, err := workspace.GetStoredCredentials()
 	require.NoError(t, err)
-	assert.NotContains(t, creds.Accounts, "https://api.logout-explicit.example.com")
+	assert.NotContains(t, creds.Accounts, cloudURL)
+
+	// Logging out again must leave the agent account alone
+	require.NoError(t, deleteAccount(cloudURL))
+	agentAccount, err := workspace.GetAgentAccount(cloudURL)
+	require.NoError(t, err)
+	assert.Equal(t, "agent-token", agentAccount.AccessToken)
 }
 
 func TestDeleteAllAccountsSkipsAgentFallbackOutsideAgentMode(t *testing.T) {
 	credsDir := ptesting.IsolateCredentials(t).Home
 	t.Setenv("PULUMI_TEST_ALLOW_AGENT_FALLBACK", "true")
 	credsPath := filepath.Join(credsDir, "credentials.json")
+
+	const agentURL = "https://api.agent.example.com"
+	require.NoError(t, workspace.StoreAgentAccount(agentURL, workspace.Account{AccessToken: "agent-token"}, true))
 
 	err := workspace.StoreCredentials(workspace.Credentials{
 		Accounts: map[string]workspace.Account{
@@ -109,6 +120,9 @@ func TestDeleteAllAccountsSkipsAgentFallbackOutsideAgentMode(t *testing.T) {
 
 	_, err = os.Stat(credsPath)
 	assert.True(t, os.IsNotExist(err))
+	agentAccount, err := workspace.GetAgentAccount(agentURL)
+	require.NoError(t, err)
+	assert.Equal(t, "agent-token", agentAccount.AccessToken)
 }
 
 //nolint:paralleltest // IsolateCredentials changes process-wide environment variables.
@@ -117,6 +131,7 @@ func TestLogoutCommandAll(t *testing.T) {
 	require.NoError(t, workspace.StoreCredentials(workspace.Credentials{
 		Accounts: map[string]workspace.Account{
 			"https://api.logout-command-all.example.com": {AccessToken: "default-token"},
+			"https://api.other.example.com":              {AccessToken: "other-token"},
 		},
 	}))
 
@@ -128,6 +143,10 @@ func TestLogoutCommandAll(t *testing.T) {
 	err := cmd.Execute()
 	require.NoError(t, err)
 	assert.Contains(t, output.String(), "Logged out of everything")
+	creds, err := workspace.GetStoredCredentials()
+	require.NoError(t, err)
+	assert.Empty(t, creds.Current)
+	assert.Empty(t, creds.Accounts)
 }
 
 func TestLogoutCommandDeleteCredentialsKeyRequiresAll(t *testing.T) {
@@ -148,7 +167,8 @@ func TestLogoutCommandCloudURL(t *testing.T) {
 	cloudURL := "https://api.logout-command.example.com"
 	require.NoError(t, workspace.StoreCredentials(workspace.Credentials{
 		Accounts: map[string]workspace.Account{
-			cloudURL: {AccessToken: "default-token"},
+			cloudURL:                        {AccessToken: "default-token"},
+			"https://api.other.example.com": {AccessToken: "other-token"},
 		},
 	}))
 
@@ -160,6 +180,10 @@ func TestLogoutCommandCloudURL(t *testing.T) {
 	err := cmd.Execute()
 	require.NoError(t, err)
 	assert.Contains(t, output.String(), "Logged out of "+cloudURL)
+	creds, err := workspace.GetStoredCredentials()
+	require.NoError(t, err)
+	assert.NotContains(t, creds.Accounts, cloudURL)
+	assert.Equal(t, "other-token", creds.Accounts["https://api.other.example.com"].AccessToken)
 }
 
 func TestLogoutCommandFallsBackToAgentCurrentCloud(t *testing.T) {
