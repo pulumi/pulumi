@@ -38,6 +38,13 @@ func isolateSecureCredentials(t *testing.T, mode string) *fakeKeyStore {
 	return useFakeStores(t)
 }
 
+func isolateUpgradableCredentials(t *testing.T) (promote func()) {
+	t.Helper()
+	ptesting.IsolateCredentials(t)
+	t.Setenv("PULUMI_CREDENTIAL_STORE", "auto")
+	return useUpgradableStores(t)
+}
+
 func testCreds() Credentials {
 	return Credentials{
 		Current:  "https://api.pulumi.com",
@@ -220,7 +227,7 @@ func TestDeleteCredentialsKeyWithoutEnvelopeOrMode(t *testing.T) {
 	assert.ErrorIs(t, err, securestore.ErrKeyNotFound)
 }
 
-//nolint:paralleltest // isolateSecureCredentials changes environment variables and installs a fake store.
+//nolint:paralleltest // t.Setenv and the package-global secure-store mock forbid parallel runs
 func TestAgentCredentialsEncryptedToo(t *testing.T) {
 	isolateSecureCredentials(t, "auto")
 
@@ -397,10 +404,9 @@ func TestResetStoredCredentialsClearsUndecryptableState(t *testing.T) {
 	assert.Empty(t, creds.Accounts)
 }
 
+//nolint:paralleltest // t.Setenv and the package-global secure-store mock forbid parallel runs
 func TestDeleteAllAccountsAndCredentialsKeyUsesEnvelopeBackend(t *testing.T) {
-	ptesting.IsolateCredentials(t)
-	t.Setenv("PULUMI_CREDENTIAL_STORE", "auto")
-	promote := useUpgradableStores(t)
+	promote := isolateUpgradableCredentials(t)
 	require.NoError(t, StoreCredentials(testCreds()))
 	promote()
 
@@ -523,7 +529,7 @@ func TestWriteRefusesToClobberFutureEnvelope(t *testing.T) {
 	}
 }
 
-//nolint:paralleltest // isolateSecureCredentials changes environment variables and installs a fake store.
+//nolint:paralleltest // t.Setenv and the package-global secure-store mock forbid parallel runs
 func TestDeclinedUnlockNeverWritesPlaintext(t *testing.T) {
 	st := isolateSecureCredentials(t, "auto")
 	st.declineErr = securestore.ErrDeclined
@@ -655,12 +661,11 @@ func TestAgentFallbackSurfacesUndecryptableCredentials(t *testing.T) {
 	assert.True(t, IsUndecryptableCredentials(err))
 }
 
+//nolint:paralleltest // t.Setenv and the package-global secure-store mock forbid parallel runs
 func TestWriteUpgradesToStrongerBackend(t *testing.T) {
 	// Data must be re-encrypted under a stronger backend once one appears,
 	// staying readable throughout via the envelope's recorded backend.
-	ptesting.IsolateCredentials(t)
-	t.Setenv("PULUMI_CREDENTIAL_STORE", "auto")
-	promote := useUpgradableStores(t)
+	promote := isolateUpgradableCredentials(t)
 
 	require.NoError(t, StoreCredentials(testCreds()))
 	credsFile, err := getCredsFilePath()
