@@ -93,7 +93,7 @@ func TestDeleteAccountSkipsAgentFallbackWhenExplicitPathSet(t *testing.T) {
 }
 
 func TestDeleteAllAccountsSkipsAgentFallbackOutsideAgentMode(t *testing.T) {
-	credsDir := ptesting.IsolateCredentials(t)
+	credsDir := ptesting.IsolateCredentials(t).Home
 	t.Setenv("PULUMI_TEST_ALLOW_AGENT_FALLBACK", "true")
 	credsPath := filepath.Join(credsDir, "credentials.json")
 
@@ -163,9 +163,8 @@ func TestLogoutCommandCloudURL(t *testing.T) {
 }
 
 func TestLogoutCommandFallsBackToAgentCurrentCloud(t *testing.T) {
-	ptesting.IsolateCredentials(t)
+	agentDir := ptesting.IsolateCredentials(t).AgentDir
 	t.Setenv("PULUMI_TEST_ALLOW_AGENT_FALLBACK", "true")
-	agentDir := os.Getenv("PULUMI_TEST_AGENT_PULUMI_DIR")
 	t.Setenv("CODEX_SANDBOX", "1")
 
 	cloudURL := "https://api.logout-agent-current.example.com"

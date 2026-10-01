@@ -3102,10 +3102,12 @@ func (nopBatchDecrypter) Enqueue(context.Context, string, *resource.Secret) erro
 
 // Regression test: an undecryptable credentials file must surface its
 // actionable error from Current instead of degrading into "not logged in".
+// Mirrors the report: PULUMI_BACKEND_URL set (so no earlier read fails),
+// explicit credentials path, no env token, no agent environment.
 //
 //nolint:paralleltest // IsolateCredentials changes process-wide environment variables.
 func TestCurrentSurfacesUndecryptableCredentials(t *testing.T) {
-	credsDir := ptesting.IsolateCredentials(t)
+	credsDir := ptesting.IsolateCredentials(t).Home
 
 	// An envelope recording a backend that exists on no platform is
 	// undecryptable everywhere, which is what a lost key looks like.
@@ -3131,7 +3133,7 @@ func TestCurrentSurfacesUndecryptableCredentials(t *testing.T) {
 }
 
 func TestCurrentEnvTokenDoesNotBypassUndecryptableCredentials(t *testing.T) {
-	credsDir := ptesting.IsolateCredentials(t)
+	credsDir := ptesting.IsolateCredentials(t).Home
 	// While PULUMI_ACCESS_TOKEN is persisted into the credentials file,
 	// proceeding despite an undecryptable file would end in a write over an
 	// envelope that may only be temporarily unreadable. Surface the

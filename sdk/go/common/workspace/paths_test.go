@@ -56,7 +56,7 @@ func TestDetectProjectAndPath(t *testing.T) {
 }
 
 func TestPulumiHomeDirForPathFallsBackToAgentDir(t *testing.T) {
-	ptesting.IsolateCredentials(t)
+	agentDir := ptesting.IsolateCredentials(t).AgentDir
 	t.Setenv(pulumiTestAllowAgentFallbackEnvVar, "true")
 
 	t.Setenv("CODEX_SANDBOX", "1")
@@ -66,7 +66,7 @@ func TestPulumiHomeDirForPathFallsBackToAgentDir(t *testing.T) {
 
 	dir, err := pulumiHomeDirForPath(badHome)
 	require.NoError(t, err)
-	assert.Equal(t, os.Getenv(pulumiTestAgentPulumiDirEnvVar), dir)
+	assert.Equal(t, agentDir, dir)
 }
 
 func TestPulumiHomeDirForPathKeepsWritableHomeForAgent(t *testing.T) {

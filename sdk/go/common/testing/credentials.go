@@ -20,17 +20,26 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/agentdetect"
 )
 
+// IsolatedCredentials holds the temporary directories created by IsolateCredentials.
+type IsolatedCredentials struct {
+	// Home is the temporary PULUMI_HOME directory that holds default credentials.
+	Home string
+	// AgentDir is the temporary directory that holds shared agent credentials.
+	AgentDir string
+}
+
 // IsolateCredentials clears inherited authentication and redirects default and agent credentials
-// to separate temporary directories. It returns the temporary PULUMI_HOME directory.
-func IsolateCredentials(t testing.TB) string {
+// to separate temporary directories.
+func IsolateCredentials(t testing.TB) IsolatedCredentials {
 	t.Helper()
 
-	home := t.TempDir()
+	dirs := IsolatedCredentials{Home: t.TempDir(), AgentDir: t.TempDir()}
 	t.Setenv("PULUMI_CREDENTIALS_PATH", "")
-	t.Setenv("PULUMI_HOME", home)
-	t.Setenv("PULUMI_TEST_AGENT_PULUMI_DIR", t.TempDir())
+	t.Setenv("PULUMI_HOME", dirs.Home)
+	t.Setenv("PULUMI_TEST_AGENT_PULUMI_DIR", dirs.AgentDir)
 
-	// An explicit PULUMI_HOME disables agent fallback; tests can opt in with this hook.
+	// Explicitly setting PULUMI_HOME, as done above, disables agent fallback. Tests can re-enable it by setting
+	// `PULUMI_TEST_ALLOW_AGENT_FALLBACK=true`.
 	t.Setenv("PULUMI_TEST_ALLOW_AGENT_FALLBACK", "")
 
 	// Temporary files still share the OS credential-store key with real credentials.
@@ -44,5 +53,5 @@ func IsolateCredentials(t testing.TB) string {
 	for _, name := range agentdetect.DetectionEnvVars() {
 		t.Setenv(name, "")
 	}
-	return home
+	return dirs
 }
