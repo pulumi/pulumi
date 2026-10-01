@@ -229,7 +229,9 @@ case "$1" in
     ;;
 esac
 `
-	require.NoError(t, os.WriteFile(filepath.Join(binDir, "npm"), []byte(npm), 0o700))
+	npmPath := filepath.Join(binDir, "npm")
+	require.NoError(t, os.WriteFile(npmPath, []byte(npm), 0o600))
+	require.NoError(t, os.Chmod(npmPath, 0o700))
 	t.Setenv("GOPATH", filepath.Join(tmp, "gopath"))
 	t.Setenv("PATH", binDir+string(os.PathListSeparator)+os.Getenv("PATH"))
 	t.Setenv("NODE_AUTH_TOKEN", "")
@@ -260,7 +262,9 @@ fi
 echo "unexpected npm command: $1" >&2
 exit 1
 `
-	require.NoError(t, os.WriteFile(filepath.Join(binDir, "npm"), []byte(npm), 0o700))
+	npmPath := filepath.Join(binDir, "npm")
+	require.NoError(t, os.WriteFile(npmPath, []byte(npm), 0o600))
+	require.NoError(t, os.Chmod(npmPath, 0o700))
 	t.Setenv("GOPATH", filepath.Join(tmp, "gopath"))
 	t.Setenv("PATH", binDir+string(os.PathListSeparator)+os.Getenv("PATH"))
 	t.Setenv("NODE_AUTH_TOKEN", "npm_token")
