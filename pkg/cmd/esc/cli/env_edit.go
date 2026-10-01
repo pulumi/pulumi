@@ -24,13 +24,16 @@ import (
 	"io/fs"
 	"net/http"
 	"os/exec"
+	"slices"
 	"strings"
 	"unicode"
 
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/v3/cmd/esc/cli/client"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/esc"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
@@ -118,6 +121,12 @@ func newEnvEditCmd(env *envCommand) *cobra.Command {
 				return err
 			}
 
+			if draft == "" {
+				if draft, err = edit.chooseDraft(ctx, ref); err != nil {
+					return err
+				}
+			}
+
 			if draft != "" && draft != "new" && showSecrets {
 				// This could potentially be implemented in the future, environments have a separate API endpoint for this purpose
 				return errors.New("--show-secrets is not supported for updating drafts")
@@ -145,8 +154,17 @@ func newEnvEditCmd(env *envCommand) *cobra.Command {
 				}
 
 				diags, err := edit.env.esc.updateEnvironment(ctx, ref, draft, reason, newYAML, tag, "Environment updated.")
+				// Edge case: if approval gates are turned on during editing, offer to create a change request
+				if draft == "" && isApprovalRequired(err) && cmdutil.Interactive() {
+					msg := "This environment requires approval. Submit your changes as a change request?"
+					if ui.PromptUser(msg, []string{"yes", "no"}, "yes", edit.env.esc.colors) != "yes" {
+						return err
+					}
+					draft = "new"
+					diags, err = edit.env.esc.updateEnvironment(ctx, ref, draft, reason, newYAML, tag, "Environment updated.")
+				}
 				switch {
-				case draft != "new" && isConflict(err):
+				case draft != "new" && !isApprovalRequired(err) && isConflict(err):
 					current, tag, err = edit.getDefinition(ctx, ref, draft, showSecrets)
 					if err != nil {
 						return err
@@ -204,6 +222,54 @@ func newEnvEditCmd(env *envCommand) *cobra.Command {
 	cmd.Flags().StringVar(&reason, "reason", "", "the description for the change request created by --draft")
 
 	return cmd
+}
+
+// chooseDraft asks how to proceed when updates to the environment require approval. It returns the
+// --draft value to use, or "" to update the environment directly.
+func (edit *envEditCommand) chooseDraft(ctx context.Context, ref environmentRef) (string, error) {
+	esc := edit.env.esc
+	meta, err := esc.client.GetEnvironmentMetadata(ctx, ref.orgName, ref.projectName, ref.envName)
+	if err != nil {
+		return "", fmt.Errorf("getting environment metadata: %w", err)
+	}
+	if !slices.Contains(meta.GatedActions, "update") {
+		return "", nil
+	}
+	if !cmdutil.Interactive() {
+		return "", errors.New("this environment requires approval; " +
+			"re-run with --draft to submit your changes as a change request")
+	}
+
+	var options []string
+	changeRequestIDs := map[string]string{}
+	changeRequests, err := esc.client.ListEnvironmentChangeRequests(ctx, ref.orgName, meta.ID)
+	if err != nil {
+		return "", fmt.Errorf("listing change requests: %w", err)
+	}
+	for _, cr := range changeRequests {
+		isTerminal := cr.Status == "applied" || cr.Status == "closed"
+		if cr.Action != "update" || isTerminal {
+			continue
+		}
+		label := fmt.Sprintf("Edit change request %s (by %s)", cr.ID, cr.CreatedBy.GithubLogin)
+		options = append(options, label)
+		changeRequestIDs[label] = cr.ID
+	}
+	const createNew, cancel = "Create a new change request", "Cancel"
+	if meta.ActiveChangeRequest == nil {
+		options = append(options, createNew)
+	}
+	options = append(options, cancel)
+
+	msg := "This environment requires approval. How would you like to proceed?"
+	choice := ui.PromptUser(msg, options, options[0], esc.colors)
+	if id, ok := changeRequestIDs[choice]; ok {
+		return id, nil
+	}
+	if choice == createNew {
+		return "new", nil
+	}
+	return "", errors.New("edit cancelled")
 }
 
 func parseEditorCommand(editor string) []string {
