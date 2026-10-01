@@ -112,6 +112,10 @@ func determineNPMTagForStableVersion(npm, pkgName, currentVersion string) (strin
 	return determineNPMTagFromCommandResult(currentVersion, string(output), stderr.String(), err)
 }
 
+func shouldRunNPMWhoami(nodeAuthToken, actionsIDTokenRequestURL string) bool {
+	return nodeAuthToken != "" || actionsIDTokenRequestURL == ""
+}
+
 func publishToNPM(stdout, stderr io.Writer, path string) error {
 	info, err := os.Stat(path)
 	if err != nil {
@@ -127,15 +131,20 @@ func publishToNPM(stdout, stderr io.Writer, path string) error {
 		return fmt.Errorf("npm whoami: %w", err)
 	}
 
-	// verify auth for npm
-	whoamiCmd := exec.Command(npm, "whoami")
-	whoamiCmd.Stderr = stderr
-	whoami, err := whoamiCmd.Output()
-	if err != nil {
-		return err
-	}
+	// verify auth for npm. npm whoami returns 401 under trusted publishing, even though
+	// npm publish can later succeed via the GitHub Actions OIDC environment.
+	if shouldRunNPMWhoami(os.Getenv("NODE_AUTH_TOKEN"), os.Getenv("ACTIONS_ID_TOKEN_REQUEST_URL")) {
+		whoamiCmd := exec.Command(npm, "whoami")
+		whoamiCmd.Stderr = stderr
+		whoami, err := whoamiCmd.Output()
+		if err != nil {
+			return err
+		}
 
-	slog.Info("Logged in as", "user", whoami)
+		slog.Info("Logged in as", "user", whoami)
+	} else {
+		slog.Info("Skipping npm whoami; npm authentication will use GitHub Actions OIDC")
+	}
 
 	// TODO: possibly check package dependencies
 
