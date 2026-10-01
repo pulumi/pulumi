@@ -46,14 +46,10 @@ import (
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/protobuf/proto"
 
-	pconvert "github.com/pulumi/pulumi/pkg/v3/codegen/convert"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
-	"github.com/pulumi/pulumi/pkg/v3/pluginstorage"
 	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/resourcetracker"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
-	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
@@ -163,44 +159,6 @@ func (src *evalSource) Close() error {
 	return nil
 }
 
-// newRunMapper builds a caching provider mapper for use during a program run. It mirrors the mapper used during
-// `pulumi convert`: it enumerates installed resource plugins for mappings and can auto-install missing providers when
-// automatic plugin acquisition is enabled. The "terraform" conversion key matches the default used by the generic
-// plugin RPC server (see pkg/cmd/pulumi/plugin/rpc.go).
-func newRunMapper(ctx context.Context, pctx *plugin.Context) (pconvert.Mapper, error) {
-	log := func(sev diag.Severity, msg string) {
-		pctx.Diag.Logf(sev, diag.RawMessage("", msg))
-	}
-
-	installPlugin := func(pluginName string) *semver.Version {
-		if env.DisableAutomaticPluginAcquisition.Value() {
-			return nil
-		}
-		pluginSpec := workspace.PluginDescriptor{
-			Name: pluginName,
-			Kind: apitype.ResourcePlugin,
-		}
-		version, err := pkgWorkspace.InstallPlugin(pctx.Base(), pluginSpec, log, schema.NewLoaderServerFromContext)
-		if err != nil {
-			log(diag.Warning, fmt.Sprintf("failed to install provider %q: %v", pluginName, err))
-			return nil
-		}
-		return version
-	}
-
-	baseMapper, err := pconvert.NewBasePluginMapper(
-		pluginstorage.Instance,
-		"terraform",
-		pconvert.ProviderFactoryFromHost(ctx, pctx),
-		installPlugin,
-		nil, /*mappings*/
-	)
-	if err != nil {
-		return nil, err
-	}
-	return pconvert.NewCachingMapper(baseMapper), nil
-}
-
 // Project is the name of the project being run by this evaluation source.
 func (src *evalSource) Project() tokens.PackageName {
 	return src.runinfo.Proj.Name
@@ -247,25 +205,8 @@ func (src *evalSource) Iterate(ctx context.Context, providers ProviderSource) (S
 		return nil, fmt.Errorf("failed to start resource monitor: %w", err)
 	}
 
-	// Also start up a schema loader and a provider mapper for the language runtime to use to fetch
-	// schema and mapping information.
-	loaderRegistration := schema.LoaderRegistration(
-		schema.NewLoaderServer(schema.NewPluginLoader(src.plugctx)))
-
-	mapper, err := newRunMapper(ctx, src.plugctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create provider mapper: %w", err)
-	}
-	mapperRegistration := pconvert.MapperRegistration(pconvert.NewMapperServer(mapper))
-
-	loaderServer, err := plugin.NewServer(src.plugctx, loaderRegistration, mapperRegistration)
-	if err != nil {
-		return nil, fmt.Errorf("failed to start loader server: %w", err)
-	}
-
 	// Create a new iterator with appropriate channels, and gear up to go!
 	iter := &evalSourceIterator{
-		loaderServer:    loaderServer,
 		mon:             mon,
 		src:             src,
 		regChan:         regChan,
@@ -285,12 +226,11 @@ func (src *evalSource) Iterate(ctx context.Context, providers ProviderSource) (S
 }
 
 type evalSourceIterator struct {
-	loaderServer *plugin.GrpcServer                 // the grpc server for the schema loader.
-	mon          SourceResourceMonitor              // the resource monitor, per iterator.
-	src          *evalSource                        // the owning eval source object.
-	regChan      chan *registerResourceEvent        // the channel that contains resource registrations.
-	regOutChan   chan *registerResourceOutputsEvent // the channel that contains resource completions.
-	regReadChan  chan *readResourceEvent            // the channel that contains read resource requests.
+	mon         SourceResourceMonitor              // the resource monitor, per iterator.
+	src         *evalSource                        // the owning eval source object.
+	regChan     chan *registerResourceEvent        // the channel that contains resource registrations.
+	regOutChan  chan *registerResourceOutputsEvent // the channel that contains resource completions.
+	regReadChan chan *readResourceEvent            // the channel that contains read resource requests.
 	// the channel that communicates that no more events will be sent from the program.
 	finChan         chan error
 	programComplete *promise.CompletionSource[struct{}] // the completion source to record program completion.
