@@ -17,9 +17,11 @@ package do
 import (
 	"testing"
 
+	"github.com/pulumi/pulumi/pkg/v3/codegen"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // TestWireMatchesResourceType asserts that a *schema.ResourceType union member only matches an actual resource
@@ -32,12 +34,12 @@ func TestWireMatchesResourceType(t *testing.T) {
 	resourceType := &schema.ResourceType{Token: "azure:index:Widget"}
 
 	ref := resource.NewProperty(resource.ResourceReference{URN: "urn:pulumi:stack::project::azure:index:Widget::name"})
-	assert.True(t, wireMatches(ref, resourceType))
+	assert.True(t, wireMatches(ref, resourceType, false))
 
 	obj := resource.NewProperty(resource.PropertyMap{
 		"name": resource.NewProperty("not-a-resource-reference"),
 	})
-	assert.False(t, wireMatches(obj, resourceType))
+	assert.False(t, wireMatches(obj, resourceType, false))
 }
 
 // TestConstValueMatchesIntegerConstant asserts that constValueMatches matches an integer schema constant against a
@@ -54,4 +56,45 @@ func TestConstValueMatchesIntegerConstant(t *testing.T) {
 	assert.True(t, constValueMatches(prop, float32(2)))
 	assert.True(t, constValueMatches(prop, float64(2)))
 	assert.False(t, constValueMatches(prop, int32(3)))
+}
+
+// TestWireDiscriminatedVariantClosedThenOpen asserts that wireDiscriminatedVariant resolves every value of a union
+// codegen.IsWireDiscriminatableUnionType accepts when the value carries only declared properties, even if it also
+// satisfies another variant's required properties, and that it still resolves a value carrying an undeclared key
+// when only one variant's required properties are present.
+func TestWireDiscriminatedVariantClosedThenOpen(t *testing.T) {
+	t.Parallel()
+
+	short := &schema.ObjectType{
+		Token: "pkg:index:Short",
+		Properties: []*schema.Property{
+			{Name: "x", Type: schema.StringType},
+		},
+	}
+	long := &schema.ObjectType{
+		Token: "pkg:index:Long",
+		Properties: []*schema.Property{
+			{Name: "x", Type: schema.StringType},
+			{Name: "y", Type: schema.StringType},
+		},
+	}
+	union := &schema.UnionType{ElementTypes: []schema.Type{short, long}}
+	require.True(t, codegen.IsWireDiscriminatableUnionType(union))
+
+	obj := func(keys ...string) resource.PropertyValue {
+		m := resource.PropertyMap{}
+		for _, k := range keys {
+			m[resource.PropertyKey(k)] = resource.NewProperty("v")
+		}
+		return resource.NewProperty(m)
+	}
+
+	// Satisfies both variants' required properties, but only Long declares y.
+	assert.Equal(t, long, wireDiscriminatedVariant(obj("x", "y"), union))
+	assert.Equal(t, short, wireDiscriminatedVariant(obj("x"), union))
+	// An undeclared key rules out both variants under the closed reading; only Short's required properties are all
+	// present, so the open reading resolves it.
+	assert.Equal(t, short, wireDiscriminatedVariant(obj("x", "extra"), union))
+	// Under the open reading both variants match, so neither is trusted.
+	assert.Nil(t, wireDiscriminatedVariant(obj("x", "y", "extra"), union))
 }
