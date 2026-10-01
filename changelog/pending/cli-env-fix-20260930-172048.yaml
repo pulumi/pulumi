@@ -1,4 +1,4 @@
 component: cli/env
 kind: fix
-body: Fix `pulumi env edit`, `env set`, `env rm` and `env provider` overwriting changes made after they read the environment; they now fail with a conflict
+body: Fix `pulumi env edit`, `env set`, `env rm` and `env provider` overwriting changes made after they read the environment; on a conflict, `env edit` reopens the editor with your edits and the current definition, and the others fail
 time: 2026-09-30T17:20:48-07:00
