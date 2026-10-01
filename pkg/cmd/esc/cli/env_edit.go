@@ -151,6 +151,7 @@ func newEnvEditCmd(env *envCommand) *cobra.Command {
 				case err != nil:
 					return err
 				default:
+					current = nil
 					if len(diags) != 0 {
 						err = edit.env.writeYAMLEnvironmentDiagnostics(
 							edit.env.esc.stderr,
