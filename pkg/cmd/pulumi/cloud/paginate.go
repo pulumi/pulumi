@@ -29,9 +29,8 @@ import (
 
 // PaginationLimit caps the number of pages we'll follow. Higher than any
 // realistic list endpoint; keeps a runaway loop from hanging the CLI if the
-// service returns a cursor that never terminates. Declared as var so tests
-// can lower it without having to fake 1000+ network round trips.
-var PaginationLimit = 1000
+// service returns a cursor that never terminates.
+const PaginationLimit = 1000
 
 // paginateRequest is the subset of an outgoing request that the paginate
 // loop needs to mutate the cursor on each iteration.
