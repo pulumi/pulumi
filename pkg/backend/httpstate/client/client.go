@@ -242,9 +242,8 @@ type Client struct {
 	DisableCapabilityProbing bool
 }
 
-// newClient creates a new Pulumi API client with the given URL and API token. It is a variable instead of a regular
-// function so it can be set to a different implementation at runtime, if necessary.
-var newClient = func(apiURL, apiToken string, insecure bool, d diag.Sink) *Client {
+// NewClient creates a new Pulumi API client with the given URL and API token.
+func NewClient(apiURL, apiToken string, insecure bool, d diag.Sink) *Client {
 	var httpClient *http.Client
 	if insecure {
 		tr := &http.Transport{
@@ -272,11 +271,6 @@ var newClient = func(apiURL, apiToken string, insecure bool, d diag.Sink) *Clien
 // Returns true if this client is insecure (i.e. has TLS disabled).
 func (pc *Client) Insecure() bool {
 	return pc.insecure
-}
-
-// NewClient creates a new Pulumi API client with the given URL and API token.
-func NewClient(apiURL, apiToken string, insecure bool, d diag.Sink) *Client {
-	return newClient(apiURL, apiToken, insecure, d)
 }
 
 // WithHTTPClient sets the HTTP client for the API client.
