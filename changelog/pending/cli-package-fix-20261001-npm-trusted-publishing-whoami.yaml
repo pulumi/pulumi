@@ -1,0 +1,4 @@
+component: cli/package
+kind: fix
+body: Support publishing npm packages with trusted publishing credentials
+time: 2026-10-01T00:00:00Z
