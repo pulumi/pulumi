@@ -775,7 +775,7 @@ func (pc *client) UpdateEnvironment(
 ) ([]EnvironmentDiagnostic, int, error) {
 	header := http.Header{}
 	if tag != "" {
-		header.Set(etagHeader, tag)
+		header.Set("If-Match", tag)
 	}
 
 	var errResp EnvironmentErrorResponse
