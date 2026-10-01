@@ -119,16 +119,9 @@ func TestEnabledFullyQualifiedStackNames(t *testing.T) {
 	assert.Equal(t, expected, actual)
 }
 
+//nolint:paralleltest // IsolateCredentials changes process-wide environment variables.
 func TestMissingPulumiAccessToken(t *testing.T) {
-	t.Setenv("PULUMI_ACCESS_TOKEN", "")
-	t.Setenv("AI_AGENT", "")
-	t.Setenv("CODEX_SANDBOX", "")
-	t.Setenv("CODEX_CI", "")
-	t.Setenv("CODEX_THREAD_ID", "")
-	t.Setenv("CURSOR_TRACE_ID", "")
-	t.Setenv("CURSOR_AGENT", "")
-	t.Setenv("CLAUDECODE", "")
-	t.Setenv("CLAUDE_CODE", "")
+	ptesting.IsolateCredentials(t)
 
 	{ // Disable interactive mode
 		disableInteractive := cmdutil.DisableInteractive
@@ -148,17 +141,8 @@ func TestMissingPulumiAccessToken(t *testing.T) {
 }
 
 func TestGetBackendAccountDoesNotFallbackToAgentCredentialsWithExplicitPath(t *testing.T) {
-	oldAgentCreds, err := workspace.GetAgentStoredCredentials()
-	require.NoError(t, err)
-	oldAgentClaim, err := workspace.GetAgentClaim()
-	require.NoError(t, err)
-	t.Cleanup(func() {
-		require.NoError(t, workspace.DeleteAgentCredentials())
-		require.NoError(t, workspace.StoreAgentCredentials(oldAgentCreds))
-		if oldAgentClaim.ClaimURL != "" {
-			require.NoError(t, workspace.StoreAgentClaim(oldAgentClaim))
-		}
-	})
+	ptesting.IsolateCredentials(t)
+	t.Setenv("PULUMI_TEST_ALLOW_AGENT_FALLBACK", "true")
 
 	badCredentialsDir := t.TempDir()
 	badCredentialsPath := badCredentialsDir + "/not-a-directory"
@@ -166,7 +150,7 @@ func TestGetBackendAccountDoesNotFallbackToAgentCredentialsWithExplicitPath(t *t
 	t.Setenv(workspace.PulumiCredentialsPathEnvVar, badCredentialsPath)
 	t.Setenv("CODEX_SANDBOX", "1")
 
-	err = workspace.StoreAgentAccount("https://api.example.com", workspace.Account{AccessToken: "agent-token"}, true)
+	err := workspace.StoreAgentAccount("https://api.example.com", workspace.Account{AccessToken: "agent-token"}, true)
 	require.NoError(t, err)
 
 	account, err := getBackendAccount(t.Context(), "https://api.example.com")
@@ -175,17 +159,8 @@ func TestGetBackendAccountDoesNotFallbackToAgentCredentialsWithExplicitPath(t *t
 }
 
 func TestCurrentEnvTokenFailsWithInaccessibleExplicitPath(t *testing.T) {
-	oldAgentCreds, err := workspace.GetAgentStoredCredentials()
-	require.NoError(t, err)
-	oldAgentClaim, err := workspace.GetAgentClaim()
-	require.NoError(t, err)
-	t.Cleanup(func() {
-		require.NoError(t, workspace.DeleteAgentCredentials())
-		require.NoError(t, workspace.StoreAgentCredentials(oldAgentCreds))
-		if oldAgentClaim.ClaimURL != "" {
-			require.NoError(t, workspace.StoreAgentClaim(oldAgentClaim))
-		}
-	})
+	ptesting.IsolateCredentials(t)
+	t.Setenv("PULUMI_TEST_ALLOW_AGENT_FALLBACK", "true")
 
 	badCredentialsDir := t.TempDir()
 	badCredentialsPath := badCredentialsDir + "/not-a-directory"
@@ -214,20 +189,9 @@ func TestCurrentEnvTokenFailsWithInaccessibleExplicitPath(t *testing.T) {
 }
 
 func TestCurrentEnvTokenStoresInDefaultPathWhenWritable(t *testing.T) {
-	oldAgentCreds, err := workspace.GetAgentStoredCredentials()
-	require.NoError(t, err)
-	oldAgentClaim, err := workspace.GetAgentClaim()
-	require.NoError(t, err)
-	t.Cleanup(func() {
-		require.NoError(t, workspace.DeleteAgentCredentials())
-		require.NoError(t, workspace.StoreAgentCredentials(oldAgentCreds))
-		if oldAgentClaim.ClaimURL != "" {
-			require.NoError(t, workspace.StoreAgentClaim(oldAgentClaim))
-		}
-	})
+	ptesting.IsolateCredentials(t)
+	t.Setenv("PULUMI_TEST_ALLOW_AGENT_FALLBACK", "true")
 
-	pulumiHome := t.TempDir()
-	t.Setenv("PULUMI_HOME", pulumiHome)
 	t.Setenv("CODEX_SANDBOX", "1")
 	t.Setenv("PULUMI_ACCESS_TOKEN", "env-token")
 
@@ -254,10 +218,9 @@ func TestCurrentEnvTokenStoresInDefaultPathWhenWritable(t *testing.T) {
 	assert.Empty(t, agentAccount.AccessToken)
 }
 
+//nolint:paralleltest // IsolateCredentials changes process-wide environment variables.
 func TestCurrentRefreshesAccessTokenOn401WhenRefreshTokenStored(t *testing.T) {
-	pulumiHome := t.TempDir()
-	t.Setenv("PULUMI_HOME", pulumiHome)
-	t.Setenv("PULUMI_ACCESS_TOKEN", "")
+	ptesting.IsolateCredentials(t)
 
 	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 		switch req.URL.Path {
@@ -319,12 +282,11 @@ func TestCurrentRefreshesAccessTokenOn401WhenRefreshTokenStored(t *testing.T) {
 		"validateStoredAccount must stamp LastValidatedAt when it actually validates")
 }
 
+//nolint:paralleltest // IsolateCredentials changes process-wide environment variables.
 func TestCurrentRefreshesFromRefreshOnlyStoredAccount(t *testing.T) {
+	ptesting.IsolateCredentials(t)
 	// HasCredential opens the gate for accounts with a refresh token but no access token. The
 	// wrapper mints the first access token on the initial 401 from an empty bearer.
-	pulumiHome := t.TempDir()
-	t.Setenv("PULUMI_HOME", pulumiHome)
-	t.Setenv("PULUMI_ACCESS_TOKEN", "")
 
 	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 		switch req.URL.Path {
@@ -368,14 +330,13 @@ func TestCurrentRefreshesFromRefreshOnlyStoredAccount(t *testing.T) {
 	assert.Equal(t, "bob", account.Username)
 }
 
+//nolint:paralleltest // IsolateCredentials changes process-wide environment variables.
 func TestCurrentPersistsRotatedRefreshToken(t *testing.T) {
+	ptesting.IsolateCredentials(t)
 	// True rotation: the refresh-token grant returns a refresh token DIFFERENT from the one we
 	// sent. The wrapper updates the in-memory account and the writeback persists the rotated
 	// value to credentials.json. Server-side rotation is a Phase 2 behavior — this test pins the
 	// CLI side so we don't need a change when it lands.
-	pulumiHome := t.TempDir()
-	t.Setenv("PULUMI_HOME", pulumiHome)
-	t.Setenv("PULUMI_ACCESS_TOKEN", "")
 
 	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 		switch req.URL.Path {
@@ -426,13 +387,12 @@ func TestCurrentPersistsRotatedRefreshToken(t *testing.T) {
 		"credentials.json must reflect the rotated refresh token")
 }
 
+//nolint:paralleltest // IsolateCredentials changes process-wide environment variables.
 func TestCurrentPreservesRefreshTokenWhenGrantResponseOmitsIt(t *testing.T) {
+	ptesting.IsolateCredentials(t)
 	// RFC 6749 §6: omitted (or empty) refresh_token in the grant response means "keep using
 	// yours" — the server is not signalling termination. credentials.json must hold onto the
 	// existing refresh token so the next 401 can refresh again.
-	pulumiHome := t.TempDir()
-	t.Setenv("PULUMI_HOME", pulumiHome)
-	t.Setenv("PULUMI_ACCESS_TOKEN", "")
 
 	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 		switch req.URL.Path {
@@ -494,13 +454,12 @@ func TestValidateStoredAccountSkipsNetworkWhenNoCredential(t *testing.T) {
 	assert.Empty(t, account.AccessToken)
 }
 
+//nolint:paralleltest // IsolateCredentials changes process-wide environment variables.
 func TestCurrentRefreshesLocallyExpiredAccessTokenWhenRefreshTokenStored(t *testing.T) {
+	ptesting.IsolateCredentials(t)
 	// Cold-start with a locally-expired access token: validateStoredAccount must take the refresh
 	// path instead of hard-failing, so the next call silently mints a fresh access token and
 	// credentials.json is updated in place.
-	pulumiHome := t.TempDir()
-	t.Setenv("PULUMI_HOME", pulumiHome)
-	t.Setenv("PULUMI_ACCESS_TOKEN", "")
 
 	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 		switch req.URL.Path {
@@ -569,16 +528,15 @@ func TestCurrentRefreshesLocallyExpiredAccessTokenWhenRefreshTokenStored(t *test
 		"the new ExpiresAt must be in the future (roughly now + ExpiresIn)")
 }
 
+//nolint:paralleltest // IsolateCredentials changes process-wide environment variables.
 func TestCurrentPreservesExpiresAtWhenServerAcceptsLocallyExpiredAccessToken(t *testing.T) {
+	ptesting.IsolateCredentials(t)
 	// Cold-start with a locally-expired access token whose server-side TTL is actually still
 	// valid: validateStoredAccount enters the refresh-or-fetch branch and /api/user succeeds
 	// without firing a refresh. /api/user never returns ExpiresAt, so the merge must keep the
 	// existing (now-past) ExpiresAt instead of nullifying TokenInformation entirely — otherwise
 	// every subsequent run forfeits the cold-start refresh path and the agent-auth banner
 	// mis-reports the account as unable to authenticate.
-	pulumiHome := t.TempDir()
-	t.Setenv("PULUMI_HOME", pulumiHome)
-	t.Setenv("PULUMI_ACCESS_TOKEN", "")
 
 	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 		switch req.URL.Path {
@@ -619,22 +577,12 @@ func TestCurrentPreservesExpiresAtWhenServerAcceptsLocallyExpiredAccessToken(t *
 		"ExpiresAt must survive the merge so the banner and cold-start path keep working")
 }
 
+//nolint:paralleltest // IsolateCredentials changes process-wide environment variables.
 func TestCurrentReturnsNoAccountWhenAccessTokenLocallyExpiredAndNoRefreshToken(t *testing.T) {
+	ptesting.IsolateCredentials(t)
 	// Cold-start with a locally-expired access token but no refresh token must short-circuit
 	// before hitting the network — preserves the pre-refresh-token behavior for accounts that
 	// were stored without one.
-	pulumiHome := t.TempDir()
-	t.Setenv("PULUMI_HOME", pulumiHome)
-	t.Setenv("PULUMI_ACCESS_TOKEN", "")
-	// Ensure agent-mode fallback doesn't trigger — we're verifying the no-login path.
-	t.Setenv("AI_AGENT", "")
-	t.Setenv("CODEX_SANDBOX", "")
-	t.Setenv("CODEX_CI", "")
-	t.Setenv("CODEX_THREAD_ID", "")
-	t.Setenv("CURSOR_TRACE_ID", "")
-	t.Setenv("CURSOR_AGENT", "")
-	t.Setenv("CLAUDECODE", "")
-	t.Setenv("CLAUDE_CODE", "")
 
 	var hits int
 	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
@@ -659,8 +607,9 @@ func TestCurrentReturnsNoAccountWhenAccessTokenLocallyExpiredAndNoRefreshToken(t
 	assert.Equal(t, 0, hits, "validateStoredAccount must short-circuit without any network call")
 }
 
-//nolint:paralleltest // makes real HTTP calls to a test server
 func TestGetAccountDetailsInstallsRefreshWrapperWhenRefreshTokenSupplied(t *testing.T) {
+	t.Parallel()
+
 	var refreshCalls, userCalls int
 	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 		switch req.URL.Path {
@@ -713,19 +662,9 @@ func TestGetAccountDetailsInstallsRefreshWrapperWhenRefreshTokenSupplied(t *test
 		"ExpiresAt is roughly now+ExpiresIn (3600s in this fixture)")
 }
 
-//nolint:paralleltest // mutates shared temporary agent credentials
+//nolint:paralleltest // isolates credentials with t.Setenv
 func TestCurrentInvalidAgentCredentialsWithActiveClaimDoesNotSignup(t *testing.T) {
-	oldAgentCreds, err := workspace.GetAgentStoredCredentials()
-	require.NoError(t, err)
-	oldAgentClaim, err := workspace.GetAgentClaim()
-	require.NoError(t, err)
-	t.Cleanup(func() {
-		require.NoError(t, workspace.DeleteAgentCredentials())
-		require.NoError(t, workspace.StoreAgentCredentials(oldAgentCreds))
-		if oldAgentClaim.ClaimURL != "" {
-			require.NoError(t, workspace.StoreAgentClaim(oldAgentClaim))
-		}
-	})
+	ptesting.IsolateCredentials(t)
 
 	signupCalls := 0
 	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
@@ -737,7 +676,7 @@ func TestCurrentInvalidAgentCredentialsWithActiveClaimDoesNotSignup(t *testing.T
 	t.Cleanup(server.Close)
 
 	expiredAt := time.Now().Add(-time.Hour)
-	err = workspace.StoreAgentAccount(server.URL, workspace.Account{
+	err := workspace.StoreAgentAccount(server.URL, workspace.Account{
 		AccessToken: "expired-agent-token",
 		TokenInformation: &workspace.TokenInformation{
 			ExpiresAt: &expiredAt,
@@ -757,19 +696,9 @@ func TestCurrentInvalidAgentCredentialsWithActiveClaimDoesNotSignup(t *testing.T
 	assert.Equal(t, 0, signupCalls)
 }
 
-//nolint:paralleltest // mutates shared temporary agent credentials
+//nolint:paralleltest // isolates credentials with t.Setenv
 func TestCurrentRejectedAgentCredentialsWithUnexpiredTokenDoesNotSignup(t *testing.T) {
-	oldAgentCreds, err := workspace.GetAgentStoredCredentials()
-	require.NoError(t, err)
-	oldAgentClaim, err := workspace.GetAgentClaim()
-	require.NoError(t, err)
-	t.Cleanup(func() {
-		require.NoError(t, workspace.DeleteAgentCredentials())
-		require.NoError(t, workspace.StoreAgentCredentials(oldAgentCreds))
-		if oldAgentClaim.ClaimURL != "" {
-			require.NoError(t, workspace.StoreAgentClaim(oldAgentClaim))
-		}
-	})
+	ptesting.IsolateCredentials(t)
 
 	signupCalls := 0
 	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
@@ -786,7 +715,7 @@ func TestCurrentRejectedAgentCredentialsWithUnexpiredTokenDoesNotSignup(t *testi
 	t.Cleanup(server.Close)
 
 	expiresAt := time.Now().Add(time.Hour)
-	err = workspace.StoreAgentAccount(server.URL, workspace.Account{
+	err := workspace.StoreAgentAccount(server.URL, workspace.Account{
 		AccessToken: "locally-unexpired-agent-token",
 		TokenInformation: &workspace.TokenInformation{
 			ExpiresAt: &expiresAt,
@@ -808,19 +737,9 @@ func TestCurrentRejectedAgentCredentialsWithUnexpiredTokenDoesNotSignup(t *testi
 	assert.Equal(t, 0, signupCalls)
 }
 
-//nolint:paralleltest // mutates shared temporary agent credentials
+//nolint:paralleltest // isolates credentials with t.Setenv
 func TestCurrentValidAgentCredentialsWithExpiredClaimDoesNotSignup(t *testing.T) {
-	oldAgentCreds, err := workspace.GetAgentStoredCredentials()
-	require.NoError(t, err)
-	oldAgentClaim, err := workspace.GetAgentClaim()
-	require.NoError(t, err)
-	t.Cleanup(func() {
-		require.NoError(t, workspace.DeleteAgentCredentials())
-		require.NoError(t, workspace.StoreAgentCredentials(oldAgentCreds))
-		if oldAgentClaim.ClaimURL != "" {
-			require.NoError(t, workspace.StoreAgentClaim(oldAgentClaim))
-		}
-	})
+	ptesting.IsolateCredentials(t)
 
 	signupCalls := 0
 	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
@@ -832,7 +751,7 @@ func TestCurrentValidAgentCredentialsWithExpiredClaimDoesNotSignup(t *testing.T)
 	t.Cleanup(server.Close)
 
 	expiresAt := time.Now().Add(time.Hour)
-	err = workspace.StoreAgentAccount(server.URL, workspace.Account{
+	err := workspace.StoreAgentAccount(server.URL, workspace.Account{
 		AccessToken:     "valid-agent-token",
 		Username:        "agent-user",
 		Organizations:   []string{"agent-org"},
@@ -868,17 +787,7 @@ func TestCurrentValidAgentCredentialsWithExpiredClaimDoesNotSignup(t *testing.T)
 }
 
 func TestCurrentSignupAgentAccountStoresClaimTokenURL(t *testing.T) {
-	oldAgentCreds, err := workspace.GetAgentStoredCredentials()
-	require.NoError(t, err)
-	oldAgentClaim, err := workspace.GetAgentClaim()
-	require.NoError(t, err)
-	t.Cleanup(func() {
-		require.NoError(t, workspace.DeleteAgentCredentials())
-		require.NoError(t, workspace.StoreAgentCredentials(oldAgentCreds))
-		if oldAgentClaim.ClaimURL != "" {
-			require.NoError(t, workspace.StoreAgentClaim(oldAgentClaim))
-		}
-	})
+	ptesting.IsolateCredentials(t)
 	t.Setenv(client.ConsoleDomainEnvVar, "app.example.com")
 
 	accessTokenValidUntil := time.Now().UTC().Add(time.Hour).Truncate(time.Second)
@@ -952,17 +861,7 @@ func TestCurrentSignupAgentAccountStoresClaimTokenURL(t *testing.T) {
 func TestCurrentSignupAgentAccountStoresRefreshToken(t *testing.T) {
 	// The refresh token returned by agent signup must land in the stored Account so the
 	// auto-refresh wrapper can use it once the access token expires.
-	oldAgentCreds, err := workspace.GetAgentStoredCredentials()
-	require.NoError(t, err)
-	oldAgentClaim, err := workspace.GetAgentClaim()
-	require.NoError(t, err)
-	t.Cleanup(func() {
-		require.NoError(t, workspace.DeleteAgentCredentials())
-		require.NoError(t, workspace.StoreAgentCredentials(oldAgentCreds))
-		if oldAgentClaim.ClaimURL != "" {
-			require.NoError(t, workspace.StoreAgentClaim(oldAgentClaim))
-		}
-	})
+	ptesting.IsolateCredentials(t)
 	t.Setenv(client.ConsoleDomainEnvVar, "app.example.com")
 
 	accessTokenValidUntil := time.Now().UTC().Add(time.Hour).Truncate(time.Second)
@@ -1018,17 +917,7 @@ func TestCurrentSignupAgentAccountStoresRefreshToken(t *testing.T) {
 func TestCurrentSignupAgentAccountWithoutRefreshTokenLeavesAccountEmpty(t *testing.T) {
 	// Back-compat with a server that doesn't (yet) issue refresh tokens at signup: the response
 	// omits refreshToken and the CLI must not error or invent a value.
-	oldAgentCreds, err := workspace.GetAgentStoredCredentials()
-	require.NoError(t, err)
-	oldAgentClaim, err := workspace.GetAgentClaim()
-	require.NoError(t, err)
-	t.Cleanup(func() {
-		require.NoError(t, workspace.DeleteAgentCredentials())
-		require.NoError(t, workspace.StoreAgentCredentials(oldAgentCreds))
-		if oldAgentClaim.ClaimURL != "" {
-			require.NoError(t, workspace.StoreAgentClaim(oldAgentClaim))
-		}
-	})
+	ptesting.IsolateCredentials(t)
 	t.Setenv(client.ConsoleDomainEnvVar, "app.example.com")
 
 	accessTokenValidUntil := time.Now().UTC().Add(time.Hour).Truncate(time.Second)
@@ -1082,7 +971,7 @@ func TestCurrentSignupAgentAccountReplacesExistingRefreshTokenOnResignup(t *test
 	// When existing agent creds are no longer valid AND the stored refresh token is rejected by
 	// the server, the CLI falls through to re-signup. The refresh token returned by the new
 	// signup replaces the stale one — the prior value must not survive into the rebuilt Account.
-	t.Setenv("PULUMI_TEST_AGENT_PULUMI_DIR", t.TempDir())
+	ptesting.IsolateCredentials(t)
 	t.Setenv(client.ConsoleDomainEnvVar, "app.example.com")
 
 	accessTokenValidUntil := time.Now().UTC().Add(time.Hour).Truncate(time.Second)
@@ -1161,7 +1050,7 @@ func TestCurrentAgentAccountRefreshesLocallyExpiredAccessTokenInsteadOfResigning
 	// Cold-start in agent mode with a locally-expired access token but a valid refresh token:
 	// validateStoredAccount must refresh through /api/oauth/token instead of falling through to
 	// re-signup. Re-signup would burn a fresh agent identity and lose the claim association.
-	t.Setenv("PULUMI_TEST_AGENT_PULUMI_DIR", t.TempDir())
+	ptesting.IsolateCredentials(t)
 	t.Setenv(client.ConsoleDomainEnvVar, "app.example.com")
 
 	signupCalls := 0
@@ -1233,6 +1122,7 @@ func TestCurrentAgentAccountRefreshesLocallyExpiredAccessTokenInsteadOfResigning
 	assert.Equal(t, "stored-refresh-token", stored.RefreshToken)
 }
 
+//nolint:paralleltest // IsolateCredentials changes process-wide environment variables.
 func TestCurrentSignupAgentAccountRequiresResponseFields(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -1278,7 +1168,7 @@ func TestCurrentSignupAgentAccountRequiresResponseFields(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			t.Setenv("PULUMI_TEST_AGENT_PULUMI_DIR", t.TempDir())
+			ptesting.IsolateCredentials(t)
 			server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 				assert.Equal(t, "/api/agents/signup", req.URL.Path)
 				switch req.Method {
@@ -1305,17 +1195,7 @@ func TestCurrentSignupAgentAccountRequiresResponseFields(t *testing.T) {
 }
 
 func TestLoginUsesAgentSignupInNonInteractiveAgentMode(t *testing.T) {
-	oldAgentCreds, err := workspace.GetAgentStoredCredentials()
-	require.NoError(t, err)
-	oldAgentClaim, err := workspace.GetAgentClaim()
-	require.NoError(t, err)
-	t.Cleanup(func() {
-		require.NoError(t, workspace.DeleteAgentCredentials())
-		require.NoError(t, workspace.StoreAgentCredentials(oldAgentCreds))
-		if oldAgentClaim.ClaimURL != "" {
-			require.NoError(t, workspace.StoreAgentClaim(oldAgentClaim))
-		}
-	})
+	ptesting.IsolateCredentials(t)
 
 	disableInteractive := cmdutil.DisableInteractive
 	cmdutil.DisableInteractive = true
@@ -1323,8 +1203,6 @@ func TestLoginUsesAgentSignupInNonInteractiveAgentMode(t *testing.T) {
 		cmdutil.DisableInteractive = disableInteractive
 	})
 
-	t.Setenv("PULUMI_ACCESS_TOKEN", "")
-	t.Setenv("PULUMI_HOME", t.TempDir())
 	t.Setenv("CODEX_SANDBOX", "1")
 	t.Setenv(client.ConsoleDomainEnvVar, "app.example.com")
 
@@ -3226,9 +3104,10 @@ func (nopBatchDecrypter) Enqueue(context.Context, string, *resource.Secret) erro
 // actionable error from Current instead of degrading into "not logged in".
 // Mirrors the report: PULUMI_BACKEND_URL set (so no earlier read fails),
 // explicit credentials path, no env token, no agent environment.
+//
+//nolint:paralleltest // IsolateCredentials changes process-wide environment variables.
 func TestCurrentSurfacesUndecryptableCredentials(t *testing.T) {
-	t.Setenv("PULUMI_CREDENTIALS_PATH", t.TempDir())
-	t.Setenv("PULUMI_ACCESS_TOKEN", "")
+	credsDir := ptesting.IsolateCredentials(t).Home
 
 	// An envelope recording a backend that exists on no platform is
 	// undecryptable everywhere, which is what a lost key looks like.
@@ -3244,7 +3123,7 @@ func TestCurrentSurfacesUndecryptableCredentials(t *testing.T) {
 	require.NoError(t, err)
 	envelope, err := securestore.Seal(key, unreachable, payload)
 	require.NoError(t, err)
-	credsFile := filepath.Join(os.Getenv("PULUMI_CREDENTIALS_PATH"), "credentials.json")
+	credsFile := filepath.Join(credsDir, "credentials.json")
 	require.NoError(t, os.WriteFile(credsFile, envelope, 0o600))
 
 	_, err = defaultLoginManager{}.Current(t.Context(), cloudURL, false, false)
@@ -3254,13 +3133,12 @@ func TestCurrentSurfacesUndecryptableCredentials(t *testing.T) {
 }
 
 func TestCurrentEnvTokenDoesNotBypassUndecryptableCredentials(t *testing.T) {
+	credsDir := ptesting.IsolateCredentials(t).Home
 	// While PULUMI_ACCESS_TOKEN is persisted into the credentials file,
 	// proceeding despite an undecryptable file would end in a write over an
 	// envelope that may only be temporarily unreadable. Surface the
 	// actionable error instead; revisit once the env token is no longer
 	// written to disk.
-	credsDir := t.TempDir()
-	t.Setenv(workspace.PulumiCredentialsPathEnvVar, credsDir)
 	t.Setenv("PULUMI_ACCESS_TOKEN", "env-token")
 
 	key := make([]byte, 32)
@@ -3417,8 +3295,9 @@ const (
 	testViewLiveLink      = "https://app.pulumi.com/org/proj/stack/updates/1"
 )
 
+//nolint:paralleltest // IsolateCredentials changes process-wide environment variables.
 func TestPermalinkForDisplayWithoutAgentCredentials(t *testing.T) {
-	t.Setenv("PULUMI_TEST_AGENT_PULUMI_DIR", t.TempDir())
+	ptesting.IsolateCredentials(t)
 
 	// A leftover claim in the shared agent store must not affect commands
 	// that ran on user credentials.
@@ -3434,6 +3313,7 @@ func TestPermalinkForDisplayWithoutAgentCredentials(t *testing.T) {
 	assert.Empty(t, label)
 }
 
+//nolint:paralleltest // IsolateCredentials changes process-wide environment variables.
 func TestPermalinkForDisplayWithAgentCredentials(t *testing.T) {
 	past := time.Now().Add(-time.Hour)
 	future := time.Now().Add(24 * time.Hour)
@@ -3497,7 +3377,7 @@ func TestPermalinkForDisplayWithAgentCredentials(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			t.Setenv("PULUMI_TEST_AGENT_PULUMI_DIR", t.TempDir())
+			ptesting.IsolateCredentials(t)
 			if tt.claim != nil {
 				require.NoError(t, workspace.StoreAgentClaim(*tt.claim))
 			}
