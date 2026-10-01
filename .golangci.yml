@@ -1,7 +1,4 @@
 version: "2"
-run:
-  build-tags:
-    - all
 linters:
   enable:
     - depguard
