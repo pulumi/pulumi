@@ -299,7 +299,7 @@ func (p *builtinProvider) Read(ctx context.Context, req plugin.ReadRequest) (plu
 			return plugin.ReadResponse{Status: resource.StatusUnknown}, errors.New("stack reference can not be imported")
 		}
 
-		outputs, err := p.readStackReference(ctx, resource.FromResourcePropertyMap(req.State))
+		outputs, err := p.readStackReference(ctx, resource.FromResourcePropertyMap(req.Inputs))
 		if err != nil {
 			return plugin.ReadResponse{Status: resource.StatusUnknown}, err
 		}

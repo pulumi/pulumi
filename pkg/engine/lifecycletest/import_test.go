@@ -52,8 +52,8 @@ func TestImportOption(t *testing.T) {
 		"out": resource.NewProperty(41.0),
 	}
 
-	// For imports we expect inputs and state to be nil, but when we change to do a read they should both be set to the
-	// resource inputs.
+	// For imports we expect inputs and state to be nil. For a read we expect the resource inputs to be passed in the
+	// Inputs field; State is nil (the engine no longer duplicates Inputs into State on reads).
 	var expectedInputs, expectedState resource.PropertyMap
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
@@ -327,7 +327,7 @@ func TestImportOption(t *testing.T) {
 
 	// Change the program to read a resource rather than creating one.
 	readID = "id"
-	expectedInputs, expectedState = inputs, inputs
+	expectedInputs, expectedState = inputs, nil
 	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient,
 		func(_ workspace.Project, _ deploy.Target, entries JournalEntries, _ []Event, err error) error {
 			for _, entry := range entries {
@@ -1825,8 +1825,8 @@ func TestImportWithFailedUpdate(t *testing.T) {
 		"out": resource.NewProperty(41.0),
 	}
 
-	// For imports we expect inputs and state to be nil, but when we change to do a read they should both be set to the
-	// resource inputs.
+	// For imports we expect inputs and state to be nil. For a read we expect the resource inputs to be passed in the
+	// Inputs field; State is nil (the engine no longer duplicates Inputs into State on reads).
 	var expectedInputs, expectedState resource.PropertyMap
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {

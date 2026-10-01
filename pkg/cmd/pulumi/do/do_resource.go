@@ -260,12 +260,10 @@ func (pc *packageCommand) newResourceReadCommand(res *schema.Resource) *cobra.Co
 				New: operationState(urn, id, nil, nil),
 			}, func() (*pkgresource.State, error) {
 				response, err := pc.provider.Read(ctx, plugin.ReadRequest{
-					URN:    urn,
-					Name:   urn.Name(),
-					Type:   urn.Type(),
-					ID:     id,
-					Inputs: resource.PropertyMap{},
-					State:  resource.PropertyMap{},
+					URN:  urn,
+					Name: urn.Name(),
+					Type: urn.Type(),
+					ID:   id,
 				})
 				if err != nil {
 					return nil, err
@@ -335,12 +333,10 @@ func (pc *packageCommand) newStatelessResourcePatchCommand(res *schema.Resource)
 			urn := resourceURN(res)
 			id := resource.ID(args[0])
 			read, err := pc.provider.Read(ctx, plugin.ReadRequest{
-				URN:    urn,
-				Name:   urn.Name(),
-				Type:   urn.Type(),
-				ID:     id,
-				Inputs: resource.PropertyMap{},
-				State:  resource.PropertyMap{},
+				URN:  urn,
+				Name: urn.Name(),
+				Type: urn.Type(),
+				ID:   id,
 			})
 			if err != nil {
 				return err
@@ -452,12 +448,10 @@ func (pc *packageCommand) newResourceDeleteCommand(res *schema.Resource) *cobra.
 			// Delete call needs the real ID + any inputs/outputs. terraform-pf bridge for example will fail to
 			// delete if just passed the ID and no state.
 			response, err := pc.provider.Read(ctx, plugin.ReadRequest{
-				URN:    urn,
-				Name:   urn.Name(),
-				Type:   urn.Type(),
-				ID:     resource.ID(args[0]),
-				Inputs: resource.PropertyMap{},
-				State:  resource.PropertyMap{},
+				URN:  urn,
+				Name: urn.Name(),
+				Type: urn.Type(),
+				ID:   resource.ID(args[0]),
 			})
 			if err != nil {
 				return err

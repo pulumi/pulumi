@@ -1372,16 +1372,18 @@ func (s *ReadStep) Apply() (resource.Status, StepCompleteFunc, error) {
 			return resource.StatusOK, nil, err
 		}
 
-		// Technically the only data we have at this point is "inputs", but we've been passing that as "state" to
-		// providers since forever and it would probably break things to stop sending that now. Thus this strange double
-		// send of inputs as both "inputs" and "state". Something to break to tidy up in V4.
 		result, err := prov.Read(context.TODO(), plugin.ReadRequest{
-			URN:                   urn,
-			Name:                  urn.Name(),
-			Type:                  urn.Type(),
-			ID:                    id,
-			Inputs:                s.new.Inputs,
-			State:                 s.new.Inputs,
+			URN:    urn,
+			Name:   urn.Name(),
+			Type:   urn.Type(),
+			ID:     id,
+			Inputs: s.new.Inputs,
+			// N.B. We used to send "inputs" as "state" only, but since 2019 have been filling in both Inputs and State.
+			// This was a back-compat to deal with providers that were only looking at "state" (because originally there
+			// was no "inputs" field). Enough time has passed that we can assume providers have updated to looking at
+			// "inputs" now. This allows providers to tell the difference between a read/import and a refresh because only
+			// refresh will send non-nil state.
+			State:                 nil,
 			Timeout:               s.new.CustomTimeouts.Read,
 			ResourceStatusAddress: resourceStatusAddress,
 			ResourceStatusToken:   resourceStatusToken,

@@ -307,7 +307,7 @@ func TestConstructCallSecretsUnknowns(t *testing.T) {
 					return plugin.ReadResponse{
 						ReadResult: plugin.ReadResult{
 							Inputs:  req.Inputs,
-							Outputs: req.State,
+							Outputs: coalesceReadOutputs(req),
 						},
 						Status: resource.StatusOK,
 					}, nil
@@ -401,7 +401,7 @@ func TestConstructCallReturnDependencies(t *testing.T) {
 						return plugin.ReadResponse{
 							ReadResult: plugin.ReadResult{
 								Inputs:  req.Inputs,
-								Outputs: req.State,
+								Outputs: coalesceReadOutputs(req),
 							},
 							Status: resource.StatusOK,
 						}, nil
@@ -547,7 +547,7 @@ func TestConstructCallReturnOutputs(t *testing.T) {
 						return plugin.ReadResponse{
 							ReadResult: plugin.ReadResult{
 								Inputs:  req.Inputs,
-								Outputs: req.State,
+								Outputs: coalesceReadOutputs(req),
 							},
 							Status: resource.StatusOK,
 						}, nil
@@ -686,7 +686,7 @@ func TestConstructCallSendDependencies(t *testing.T) {
 						return plugin.ReadResponse{
 							ReadResult: plugin.ReadResult{
 								Inputs:  req.Inputs,
-								Outputs: req.State,
+								Outputs: coalesceReadOutputs(req),
 							},
 							Status: resource.StatusOK,
 						}, nil
@@ -851,7 +851,7 @@ func TestConstructCallDependencyDedeuplication(t *testing.T) {
 						return plugin.ReadResponse{
 							ReadResult: plugin.ReadResult{
 								Inputs:  req.Inputs,
-								Outputs: req.State,
+								Outputs: coalesceReadOutputs(req),
 							},
 							Status: resource.StatusOK,
 						}, nil
