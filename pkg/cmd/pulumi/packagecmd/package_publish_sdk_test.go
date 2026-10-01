@@ -15,7 +15,10 @@
 package packagecmd
 
 import (
+	"bytes"
 	"errors"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/executable"
@@ -156,6 +159,117 @@ func TestDetermineNPMTagFromCommandResult(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestShouldRunNPMWhoami(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name                     string
+		nodeAuthToken            string
+		actionsIDTokenRequestURL string
+		expected                 bool
+	}{
+		{
+			name:     "tokenless non-OIDC path still runs whoami",
+			expected: true,
+		},
+		{
+			name:                     "token path still runs whoami in Actions OIDC",
+			nodeAuthToken:            "npm_token",
+			actionsIDTokenRequestURL: "https://pipelines.actions.githubusercontent.com/example",
+			expected:                 true,
+		},
+		{
+			name:                     "tokenless Actions OIDC skips whoami",
+			actionsIDTokenRequestURL: "https://pipelines.actions.githubusercontent.com/example",
+			expected:                 false,
+		},
+		{
+			name:          "token without Actions OIDC runs whoami",
+			nodeAuthToken: "npm_token",
+			expected:      true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			assert.Equal(t, tt.expected, shouldRunNPMWhoami(tt.nodeAuthToken, tt.actionsIDTokenRequestURL))
+		})
+	}
+}
+
+func TestPublishToNPMSkipsWhoamiForOIDC(t *testing.T) {
+	tmp := t.TempDir()
+	pkgDir := filepath.Join(tmp, "pkg")
+	require.NoError(t, os.Mkdir(pkgDir, 0o700))
+	require.NoError(t, os.WriteFile(filepath.Join(pkgDir, "package.json"), []byte(`{
+		"name": "@pulumi/test-package",
+		"version": "1.0.0-alpha.1"
+	}`), 0o600))
+
+	binDir := filepath.Join(tmp, "bin")
+	require.NoError(t, os.Mkdir(binDir, 0o700))
+	recordFile := filepath.Join(tmp, "npm-calls")
+	npm := `#!/usr/bin/env bash
+set -euo pipefail
+echo "$1" >> "` + recordFile + `"
+case "$1" in
+  whoami)
+    echo "whoami should not be called" >&2
+    exit 1
+    ;;
+  info)
+    exit 1
+    ;;
+  publish)
+    exit 0
+    ;;
+esac
+`
+	require.NoError(t, os.WriteFile(filepath.Join(binDir, "npm"), []byte(npm), 0o700))
+	t.Setenv("GOPATH", filepath.Join(tmp, "gopath"))
+	t.Setenv("PATH", binDir+string(os.PathListSeparator)+os.Getenv("PATH"))
+	t.Setenv("NODE_AUTH_TOKEN", "")
+	t.Setenv("ACTIONS_ID_TOKEN_REQUEST_URL", "https://pipelines.actions.githubusercontent.com/example")
+
+	var stdout, stderr bytes.Buffer
+	require.NoError(t, publishToNPM(&stdout, &stderr, pkgDir))
+
+	calls, err := os.ReadFile(recordFile)
+	require.NoError(t, err)
+	assert.NotContains(t, string(calls), "whoami")
+	assert.Contains(t, string(calls), "publish")
+}
+
+func TestPublishToNPMRunsWhoamiWithToken(t *testing.T) {
+	tmp := t.TempDir()
+	pkgDir := filepath.Join(tmp, "pkg")
+	require.NoError(t, os.Mkdir(pkgDir, 0o700))
+
+	binDir := filepath.Join(tmp, "bin")
+	require.NoError(t, os.Mkdir(binDir, 0o700))
+	npm := `#!/usr/bin/env bash
+set -euo pipefail
+if [[ "$1" == "whoami" ]]; then
+  echo "token auth failed" >&2
+  exit 42
+fi
+echo "unexpected npm command: $1" >&2
+exit 1
+`
+	require.NoError(t, os.WriteFile(filepath.Join(binDir, "npm"), []byte(npm), 0o700))
+	t.Setenv("GOPATH", filepath.Join(tmp, "gopath"))
+	t.Setenv("PATH", binDir+string(os.PathListSeparator)+os.Getenv("PATH"))
+	t.Setenv("NODE_AUTH_TOKEN", "npm_token")
+	t.Setenv("ACTIONS_ID_TOKEN_REQUEST_URL", "https://pipelines.actions.githubusercontent.com/example")
+
+	var stdout, stderr bytes.Buffer
+	err := publishToNPM(&stdout, &stderr, pkgDir)
+	require.Error(t, err)
+	assert.Contains(t, stderr.String(), "token auth failed")
 }
 
 func TestDetermineNPMTagForStableVersion(t *testing.T) {
