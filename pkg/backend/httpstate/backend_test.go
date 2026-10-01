@@ -2410,12 +2410,12 @@ func TestIsExpectedTokenFormat(t *testing.T) {
 	}
 }
 
-//nolint:paralleltest // Cannot use t.Parallel() because subtests use t.Setenv
 func TestGetTokenValue(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name        string
 		token       string
-		setupEnv    func(*testing.T)
 		setupFile   func(*testing.T) string
 		wantValue   string
 		wantErr     bool
@@ -2431,13 +2431,9 @@ func TestGetTokenValue(t *testing.T) {
 			name:  "token from file",
 			token: "file://",
 			setupFile: func(t *testing.T) string {
-				tmpFile, err := os.CreateTemp(t.TempDir(), "token-*.txt")
-				require.NoError(t, err)
-				t.Cleanup(func() { os.Remove(tmpFile.Name()) })
-				_, err = fmt.Fprintf(tmpFile, "  %s  \n", testJWT)
-				require.NoError(t, err)
-				tmpFile.Close()
-				return tmpFile.Name()
+				path := filepath.Join(t.TempDir(), "token.txt")
+				require.NoError(t, os.WriteFile(path, []byte("  "+testJWT+"  \n"), 0o600))
+				return path
 			},
 			wantValue: testJWT,
 			wantErr:   false,
@@ -2452,11 +2448,9 @@ func TestGetTokenValue(t *testing.T) {
 			name:  "empty file",
 			token: "file://",
 			setupFile: func(t *testing.T) string {
-				tmpFile, err := os.CreateTemp(t.TempDir(), "token-*.txt")
-				require.NoError(t, err)
-				t.Cleanup(func() { os.Remove(tmpFile.Name()) })
-				tmpFile.Close()
-				return tmpFile.Name()
+				path := filepath.Join(t.TempDir(), "token.txt")
+				require.NoError(t, os.WriteFile(path, nil, 0o600))
+				return path
 			},
 			wantErr:     true,
 			errContains: "is empty",
@@ -2465,13 +2459,9 @@ func TestGetTokenValue(t *testing.T) {
 			name:  "file with unexpected token format",
 			token: "file://",
 			setupFile: func(t *testing.T) string {
-				tmpFile, err := os.CreateTemp(t.TempDir(), "token-*.txt")
-				require.NoError(t, err)
-				t.Cleanup(func() { os.Remove(tmpFile.Name()) })
-				_, err = tmpFile.WriteString("unexpected-token-format\n")
-				require.NoError(t, err)
-				tmpFile.Close()
-				return tmpFile.Name()
+				path := filepath.Join(t.TempDir(), "token.txt")
+				require.NoError(t, os.WriteFile(path, []byte("unexpected-token-format\n"), 0o600))
+				return path
 			},
 			wantErr:     true,
 			errContains: "token format in file",
@@ -2480,12 +2470,9 @@ func TestGetTokenValue(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Cannot use t.Parallel() here because some tests use t.Setenv or create temp files
+			t.Parallel()
 
 			token := tt.token
-			if tt.setupEnv != nil {
-				tt.setupEnv(t)
-			}
 			if tt.setupFile != nil {
 				filePath := tt.setupFile(t)
 				token = "file://" + filePath
@@ -2494,7 +2481,7 @@ func TestGetTokenValue(t *testing.T) {
 			value, err := getTokenValue(token)
 
 			if tt.wantErr {
-				assert.Error(t, err)
+				require.Error(t, err)
 				if tt.errContains != "" {
 					assert.Contains(t, err.Error(), tt.errContains)
 				}
