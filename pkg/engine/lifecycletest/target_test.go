@@ -3430,8 +3430,8 @@ func TestUntargetedDependencyChainsArePreserved(t *testing.T) {
 		//
 		// * A is removed from the program
 		// * An update targeting TARGET is performed
-		//nolint:paralleltest // golangci-lint v2 upgrade
 		t.Run("deleting the bottom of a dependency chain", func(t *testing.T) {
+			t.Parallel()
 			// Arrange.
 			p := &lt.TestPlan{}
 			project := p.GetProject()
@@ -3480,8 +3480,8 @@ func TestUntargetedDependencyChainsArePreserved(t *testing.T) {
 		//
 		// * B is removed from the program
 		// * An update targeting TARGET is performed
-		//nolint:paralleltest // golangci-lint v2 upgrade
 		t.Run("deleting the middle of a dependency chain", func(t *testing.T) {
+			t.Parallel()
 			// Arrange.
 			p := &lt.TestPlan{}
 			project := p.GetProject()
@@ -3529,8 +3529,8 @@ func TestUntargetedDependencyChainsArePreserved(t *testing.T) {
 		// * A is removed from the program
 		// * B is removed from the program
 		// * An update targeting TARGET is performed
-		//nolint:paralleltest // golangci-lint v2 upgrade
 		t.Run("deleting the entirety of a dependency chain", func(t *testing.T) {
+			t.Parallel()
 			// Arrange.
 			p := &lt.TestPlan{}
 			project := p.GetProject()
