@@ -870,8 +870,7 @@ func toPropertyMapPtr(m resource.PropertyMap) *property.Map {
 	if m == nil {
 		return nil
 	}
-	pm := resource.FromResourcePropertyMap(m)
-	return &pm
+	return new(resource.FromResourcePropertyMap(m))
 }
 
 // RunHooks runs all the before/after hooks on the given state. A hook that returns an error will cause an error return,
