@@ -359,11 +359,6 @@
             "flags": {}
         },
         {
-            "path": ["version"],
-            "propagate": true,
-            "flags": {}
-        },
-        {
             "path": ["view-trace"],
             "propagate": true,
             "exclude": true,
