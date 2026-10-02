@@ -1002,7 +1002,7 @@ func stripOutputs(value property.Value) property.Value {
 	case value.IsMap():
 		m := value.AsMap()
 		stripped := map[string]property.Value{}
-		for k, v := range m.AllStable {
+		for k, v := range m.All {
 			stripped[k] = stripOutputs(v)
 		}
 		value = property.New(property.NewMap(stripped))
