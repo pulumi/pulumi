@@ -35,6 +35,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -1250,6 +1251,79 @@ func TestImportPlanEmptyState(t *testing.T) {
 
 	require.NoError(t, err)
 	require.Len(t, snap.Resources, 3)
+}
+
+func TestImportCheckFailureRedactsSecrets(t *testing.T) {
+	t.Parallel()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				CheckF: func(context.Context, plugin.CheckRequest) (plugin.CheckResponse, error) {
+					return plugin.CheckResponse{
+						Failures: []plugin.CheckFailure{{Property: "foo", Reason: "bad foo"}},
+					}, nil
+				},
+				ReadF: func(context.Context, plugin.ReadRequest) (plugin.ReadResponse, error) {
+					inputs := resource.PropertyMap{"foo": resource.MakeSecret(resource.NewProperty("secret-input-value"))}
+					return plugin.ReadResponse{
+						ReadResult: plugin.ReadResult{Inputs: inputs, Outputs: inputs.Copy()},
+						Status:     resource.StatusOK,
+					}, nil
+				},
+			}, nil
+		}),
+	}
+	hostF := deploytest.NewPluginHostF(nil, nil, deploytest.NewLanguageRuntimeF(nil), nil, nil, loaders...)
+
+	cases := []struct {
+		name        string
+		showSecrets bool
+		expected    string
+	}{
+		{
+			name:     "redacted",
+			expected: "pkgA:m:typA resource 'resB': property foo value {[secret]} has a problem: bad foo\n",
+		},
+		{
+			name:        "with ShowSecrets",
+			showSecrets: true,
+			expected:    "pkgA:m:typA resource 'resB': property foo value {&{{secret-input-value}}} has a problem: bad foo\n",
+		},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+
+			p := &lt.TestPlan{
+				Options: lt.TestUpdateOptions{
+					T:                t,
+					HostF:            hostF,
+					UpdateOptions:    UpdateOptions{ShowSecrets: c.showSecrets},
+					SkipDisplayTests: true,
+				},
+			}
+			validate := func(project workspace.Project, target deploy.Target, entries JournalEntries,
+				evts []Event, err error,
+			) error {
+				var msgs []string
+				for _, evt := range evts {
+					if evt.Type == DiagEvent {
+						msgs = append(msgs, colors.Never.Colorize(evt.Payload().(DiagEventPayload).Message))
+					}
+				}
+				assert.Contains(t, msgs, c.expected)
+				return err
+			}
+
+			_, err := lt.ImportOp([]deploy.Import{{
+				Type: "pkgA:m:typA",
+				Name: "resB",
+				ID:   "imported-id",
+			}}).Run(p.GetProject(), p.GetTarget(t, nil), p.Options, false, p.BackendClient, validate)
+			require.NoError(t, err)
+		})
+	}
 }
 
 func TestImportPlanSpecificProvider(t *testing.T) {

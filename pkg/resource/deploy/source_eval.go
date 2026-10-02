@@ -105,6 +105,8 @@ type EvalSourceOptions struct {
 	DisableOutputValues bool
 	// true if this deployment can safely execute and persist state migrations.
 	SupportsStateMigrations bool
+	// true if the engine should display secrets in diagnostic messages.
+	ShowSecrets bool
 	// AttachDebugger is the list of things to debug.  This can be "program", "all", "plugins", or "plugin:<plugin-name>".
 	AttachDebugger []string
 }
@@ -1414,7 +1416,7 @@ func (rm *resmon) Call(ctx context.Context, req *pulumirpc.ResourceCallRequest) 
 			rpcError = err
 		}
 
-		message := errorToMessage(rpcError, args)
+		message := errorToMessage(rpcError, args, rm.opts.ShowSecrets)
 		rm.diagnostics.Errorf(diag.GetCallFailedError(), tok, message)
 
 		rm.abortChan <- true
@@ -2283,8 +2285,8 @@ func (rm *resmon) resolveProvider(
 // Turn the GRPC status into a message, which can later be logged.  Currently we only support a subset
 // of the possible details types, which can be expanded later.  If the details type is not recognized, we
 // still return the message, but will leave out the details.  This will allow us to be forward compatible
-// when new details types are added.
-func errorToMessage(err error, inputs resource.PropertyMap) string {
+// when new details types are added.  Secret input values are redacted unless showSecrets is set.
+func errorToMessage(err error, inputs resource.PropertyMap, showSecrets bool) string {
 	switch e := err.(type) {
 	case *rpcerror.Error:
 		message := e.Message()
@@ -2292,6 +2294,10 @@ func errorToMessage(err error, inputs resource.PropertyMap) string {
 			message = fmt.Sprintf("%v: %v", message, e.Cause().Message())
 		}
 		if len(e.InputPropertiesErrors()) > 0 {
+			render := resource.PropertyValue.RedactSecrets
+			if showSecrets {
+				render = resource.PropertyValue.String
+			}
 			props := resource.NewProperty(inputs)
 			for _, err := range e.InputPropertiesErrors() {
 				propertyPath, e := resource.ParsePropertyPath(err.PropertyPath)
@@ -2299,7 +2305,7 @@ func errorToMessage(err error, inputs resource.PropertyMap) string {
 					value, ok := propertyPath.Get(props)
 					if ok {
 						message = fmt.Sprintf("%v\n\t\t- property %v with value '%v' has a problem: %v",
-							message, err.PropertyPath, value, err.Reason)
+							message, err.PropertyPath, render(value), err.Reason)
 						continue
 					}
 				}
@@ -2936,7 +2942,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 				if !ok {
 					rpcError = err
 				}
-				message := errorToMessage(rpcError, props)
+				message := errorToMessage(rpcError, props, rm.opts.ShowSecrets)
 				rm.diagnostics.Errorf(diag.GetResourceInvalidError(constructResult.URN), t, name, message)
 
 				rm.abortChan <- true

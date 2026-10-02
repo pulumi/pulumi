@@ -1,0 +1,4 @@
+component: engine
+kind: fix
+body: Redact secret values in invalid input diagnostics unless `--show-secrets` is passed
+time: 2026-10-02T17:30:54.159162+09:00
