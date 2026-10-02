@@ -261,9 +261,7 @@ func NewClient(apiURL, apiToken string, insecure bool, d diag.Sink) *Client {
 		diag:     d,
 		insecure: insecure,
 		restClient: &defaultRESTClient{
-			client: &defaultHTTPClient{
-				client: httpClient,
-			},
+			client: newDefaultHTTPClient(httpClient, apiURL),
 		},
 	}
 }
@@ -277,11 +275,18 @@ func (pc *Client) Insecure() bool {
 // Useful for testing.
 func (pc *Client) WithHTTPClient(httpClient *http.Client) *Client {
 	pc.restClient = &defaultRESTClient{
-		client: &defaultHTTPClient{
-			client: httpClient,
-		},
+		client: newDefaultHTTPClient(httpClient, pc.apiURL),
 	}
 	return pc
+}
+
+// newDefaultHTTPClient returns a defaultHTTPClient that sends the trace context to the host of apiURL.
+func newDefaultHTTPClient(client *http.Client, apiURL string) *defaultHTTPClient {
+	var apiHost string
+	if u, err := url.Parse(apiURL); err == nil {
+		apiHost = u.Host
+	}
+	return &defaultHTTPClient{client: client, apiHost: apiHost}
 }
 
 // WithRefresh wires an OAuth refresh token + a credentials-writeback callback into this client.
