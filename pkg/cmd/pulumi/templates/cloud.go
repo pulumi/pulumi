@@ -117,8 +117,10 @@ func NewTemplateMatcher(urlInfo *registry.URLInfo, templateName string) func(Tem
 }
 
 // Sharing one registry across fetches costs one backend lookup, not one per fetch.
-func defaultRegistry(ctx context.Context, e env.Env) registry.Registry {
-	return cmdCmd.NewDefaultRegistry(ctx, cmdBackend.DefaultLoginManager, pkgWorkspace.Instance, nil, cmdutil.Diag(), e)
+func defaultRegistry(
+	ctx context.Context, ws pkgWorkspace.Context, lm cmdBackend.LoginManager, e env.Env,
+) registry.Registry {
+	return cmdCmd.NewDefaultRegistry(ctx, lm, ws, nil, cmdutil.Diag(), e)
 }
 
 func (f *fetch) listRegistry(
@@ -305,14 +307,16 @@ func (r registryTemplate) GetTemplateName() string { return r.Name() }
 func (r registryTemplate) GetSource() string       { return r.t.Source }
 func (r registryTemplate) GetPublisher() string    { return r.t.Publisher }
 
-func (f *fetch) listOrgTemplates(ctx context.Context, templateName string, e env.Env, c *cleanup) {
+func (f *fetch) listOrgTemplates(
+	ctx context.Context, ws pkgWorkspace.Context, lm cmdBackend.LoginManager,
+	templateName string, e env.Env, c *cleanup,
+) {
 	cwd, err := os.Getwd()
 	if err != nil {
 		f.addError(fmt.Errorf("getting current working directory: %w", err))
 		return
 	}
 
-	ws := pkgWorkspace.Instance
 	project, _, err := ws.ReadProject(cwd)
 	if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
 		f.addError(fmt.Errorf("could not read the current project: %w", err))
@@ -325,7 +329,7 @@ func (f *fetch) listOrgTemplates(ctx context.Context, templateName string, e env
 		return
 	}
 
-	b, err := cmdBackend.DefaultLoginManager.Current(ctx, ws, cmdutil.Diag(), url, project, false)
+	b, err := lm.Current(ctx, ws, cmdutil.Diag(), url, project, false)
 	if err != nil {
 		if !errors.Is(err, backenderr.MissingEnvVarForNonInteractiveError{}) {
 			f.addError(fmt.Errorf("could not get the current backend: %w", err))
