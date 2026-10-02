@@ -1469,6 +1469,7 @@ func TestPulumiNewEmptyOperations(t *testing.T) {
 	defer e.DeleteIfNotFailed()
 	require.NoError(t, os.Remove(filepath.Join(e.RootPath, ".yarnrc")))
 
+	e.SetBackend(e.LocalURL())
 	e.RunCommand("pulumi", "new", "-y")
 	e.RunCommand("pulumi", "stack", "init", "testing")
 	e.RunCommand("pulumi", "config", "set", "key", "value")
