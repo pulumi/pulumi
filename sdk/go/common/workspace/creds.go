@@ -22,7 +22,6 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
-	"strings"
 	"sync/atomic"
 	"time"
 
@@ -753,129 +752,6 @@ func (c AgentClaim) Active(now time.Time) bool {
 	return c.ClaimURL != "" &&
 		c.ClaimUnavailableAt == nil &&
 		(c.ValidUntil.IsZero() || c.ValidUntil.After(now))
-}
-
-// FormatAgentClaimInstruction returns the structured instruction shown to
-// coding agents when the CLI has an automatically created agent account claim
-// URL to surface. It prefers the access token expiration while the token is
-// still valid, then falls back to the claim URL expiration.
-func FormatAgentClaimInstruction(
-	claimURL string,
-	accessTokenExpiresAt *time.Time,
-	claimValidUntil time.Time,
-	now time.Time,
-) string {
-	if claimURL == "" {
-		return ""
-	}
-	var expirationLine string
-	var instruction string
-	if accessTokenExpiresAt != nil && accessTokenExpiresAt.After(now) {
-		validFor := FormatAgentClaimValidFor(*accessTokenExpiresAt, now)
-		expirationLine = fmt.Sprintf("EPHEMERAL_ACCOUNT_ACCESS_EXPIRES_IN=%s\n", validFor)
-		instruction = fmt.Sprintf(
-			"Tell the user Pulumi created an ephemeral agent account. "+
-				"It is important to surface the claim URL to the user so they can take ownership of the account. "+
-				"Include the claim URL and say they must claim the account within %s before agent access expires. "+
-				"Tell them claiming the account will lock the Pulumi organization during the claim process, "+
-				"so they should let the agent finish its work before claiming it.\n",
-			validFor)
-	} else if !claimValidUntil.IsZero() && claimValidUntil.After(now) {
-		validFor := FormatAgentClaimValidFor(claimValidUntil, now)
-		expirationLine = fmt.Sprintf("CLAIM_URL_VALID_FOR=%s\n", validFor)
-		instruction = fmt.Sprintf(
-			"Tell the user this ephemeral agent account can no longer authenticate, "+
-				"but the claim URL is still valid for %s. Include the claim URL and the remaining time. "+
-				"Tell them claiming the account will lock the Pulumi organization during the claim process, "+
-				"so they should let the agent finish its work before claiming it.\n",
-			validFor)
-	} else {
-		return ""
-	}
-	message := fmt.Sprintf(
-		"PULUMI_EPHEMERAL_AGENT_ACCOUNT\n"+
-			"CLAIM_URL=%s\n",
-		claimURL)
-	message += expirationLine
-	message += "ACTION_REQUIRED=Tell the user to claim this Pulumi agent account.\n"
-	message += "INSTRUCTION=" + instruction
-	return message
-}
-
-// AgentLoginRequiredReason identifies why an agent must ask the user to log in.
-type AgentLoginRequiredReason int
-
-const (
-	// AgentLoginTokenRejected means a locally unexpired agent access token was
-	// rejected by the service.
-	AgentLoginTokenRejected AgentLoginRequiredReason = iota
-	// AgentLoginClaimUnavailable means the service reported the stored claim
-	// token is no longer claimable.
-	AgentLoginClaimUnavailable
-)
-
-// FormatAgentLoginRequiredInstruction returns the structured instruction shown
-// to coding agents when an ephemeral agent account can no longer authenticate
-// and the user must run pulumi login before retrying.
-func FormatAgentLoginRequiredInstruction(
-	reason AgentLoginRequiredReason,
-	accessTokenExpiresAt *time.Time,
-	now time.Time,
-) string {
-	var message strings.Builder
-	message.WriteString("PULUMI_EPHEMERAL_AGENT_ACCOUNT\n")
-	if accessTokenExpiresAt != nil {
-		fmt.Fprintf(&message,
-			"EPHEMERAL_ACCOUNT_ACCESS_EXPIRES_IN=%s\n",
-			FormatAgentClaimValidFor(*accessTokenExpiresAt, now))
-	}
-	message.WriteString(
-		"ACTION_REQUIRED=Tell the user to run pulumi login.\n" +
-			"INSTRUCTION=Tell the user this Pulumi ephemeral agent account can no longer authenticate")
-	switch reason {
-	case AgentLoginTokenRejected:
-		message.WriteString(" even though local access had not expired. The account was likely claimed or revoked. " +
-			"The stacks the agent was working with may have moved to the user's Pulumi account, so the agent's " +
-			"existing access to those stacks may have changed. Ask the user to run pulumi login before retrying.\n")
-	case AgentLoginClaimUnavailable:
-		message.WriteString(", and its claim URL is no longer claimable. The account was likely already claimed, expired, " +
-			"or revoked. If it was claimed, the stacks the agent was working with moved to the user's Pulumi account, " +
-			"so the agent's existing access to those stacks changed. Ask the user to run pulumi login before retrying.\n")
-	default:
-		contract.Failf("unknown agent login required reason %v", reason)
-	}
-	return message.String()
-}
-
-// FormatAgentClaimValidFor returns a compact, approximate duration until an
-// agent account or claim URL expires.
-func FormatAgentClaimValidFor(validUntil, now time.Time) string {
-	validFor := validUntil.Sub(now)
-	if validFor <= 0 {
-		return "expired"
-	}
-	validFor = validFor.Truncate(time.Minute)
-	if validFor < time.Minute {
-		return "<1m"
-	}
-
-	days := int(validFor / (24 * time.Hour))
-	validFor -= time.Duration(days) * 24 * time.Hour
-	hours := int(validFor / time.Hour)
-	validFor -= time.Duration(hours) * time.Hour
-	minutes := int(validFor / time.Minute)
-
-	var b strings.Builder
-	if days > 0 {
-		fmt.Fprintf(&b, "%dd", days)
-	}
-	if hours > 0 {
-		fmt.Fprintf(&b, "%dh", hours)
-	}
-	if minutes > 0 || b.Len() == 0 {
-		fmt.Fprintf(&b, "%dm", minutes)
-	}
-	return b.String()
 }
 
 // agentAccessTokenExpiresAt returns the agent account access-token expiration,

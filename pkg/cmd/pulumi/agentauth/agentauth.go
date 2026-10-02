@@ -97,7 +97,7 @@ func MaybePrintClaimWarning(ctx context.Context, stderr io.Writer) {
 		return
 	}
 
-	warning := workspace.FormatAgentClaimInstruction(claim.ClaimURL, accessTokenExpiresAt, claim.ValidUntil, now)
+	warning := formatAgentClaimInstruction(claim.ClaimURL, accessTokenExpiresAt, claim.ValidUntil, now)
 	_, err = io.WriteString(stderr, warning)
 	contract.IgnoreError(err)
 }
@@ -122,8 +122,8 @@ func AuthRequiredMessage(ctx context.Context, now time.Time) string {
 	expiresAt, valid := workspace.AgentAccessTokenExpiresAt(account, now)
 	claim = revalidatedClaim(ctx, claim)
 	if claim.ClaimUnavailableAt != nil {
-		return workspace.FormatAgentLoginRequiredInstruction(
-			workspace.AgentLoginClaimUnavailable, expiresAt, now)
+		return formatAgentLoginRequiredInstruction(
+			agentLoginClaimUnavailable, expiresAt, now)
 	}
 	if claim.ClaimToken != "" {
 		claimable, err := validateAgentClaim(ctx, claim.CloudURL, claim.ClaimToken)
@@ -133,15 +133,15 @@ func AuthRequiredMessage(ctx context.Context, now time.Time) string {
 			if err = workspace.MarkAgentClaimUnavailable(now); err != nil {
 				slog.Info("Could not mark agent claim unavailable", "cloud-url", claim.CloudURL, "err", err)
 			}
-			return workspace.FormatAgentLoginRequiredInstruction(
-				workspace.AgentLoginClaimUnavailable, expiresAt, now)
+			return formatAgentLoginRequiredInstruction(
+				agentLoginClaimUnavailable, expiresAt, now)
 		} else {
-			return workspace.FormatAgentClaimInstruction(claim.ClaimURL, expiresAt, claim.ValidUntil, now)
+			return formatAgentClaimInstruction(claim.ClaimURL, expiresAt, claim.ValidUntil, now)
 		}
 	}
 	if valid && expiresAt != nil {
-		return workspace.FormatAgentLoginRequiredInstruction(
-			workspace.AgentLoginTokenRejected, expiresAt, now)
+		return formatAgentLoginRequiredInstruction(
+			agentLoginTokenRejected, expiresAt, now)
 	}
-	return workspace.FormatAgentClaimInstruction(claim.ClaimURL, expiresAt, claim.ValidUntil, now)
+	return formatAgentClaimInstruction(claim.ClaimURL, expiresAt, claim.ValidUntil, now)
 }
