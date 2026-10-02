@@ -26,7 +26,6 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
-	"github.com/pulumi/pulumi/pkg/v3/util/testutil"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
@@ -100,6 +99,16 @@ func (mss *mockStackSummary) ResourceCount() *int {
 	return nil
 }
 
+func mockLoginManager(b backend.Backend) cmdBackend.LoginManager {
+	return &cmdBackend.MockLoginManager{
+		LoginF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink,
+			url string, project *workspace.Project, setCurrent bool, insecure bool, color colors.Colorization,
+		) (backend.Backend, error) {
+			return b, nil
+		},
+	}
+}
+
 type stackLSInputs struct {
 	filter      backend.ListStacksFilter
 	inContToken backend.ContinuationToken
@@ -110,8 +119,9 @@ type stackLSOutputs struct {
 	outContToken backend.ContinuationToken
 }
 
-//nolint:paralleltest // This test uses the global backendInstance variable
 func TestListStacksPagination(t *testing.T) {
+	t.Parallel()
+
 	// We mock out the ListStacks call so that it will return 4x well-known responses, and
 	// keep track of the parameters used for validation.
 	var requestsMade []stackLSInputs
@@ -150,19 +160,6 @@ func TestListStacksPagination(t *testing.T) {
 		},
 	}
 
-	testutil.MockLoginManager(t, &cmdBackend.MockLoginManager{
-		CurrentF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink,
-			url string, project *workspace.Project, setCurrent bool,
-		) (backend.Backend, error) {
-			return mockBackend, nil
-		},
-		LoginF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink,
-			url string, project *workspace.Project, setCurrent bool, insecure bool, color colors.Colorization,
-		) (backend.Backend, error) {
-			return mockBackend, nil
-		},
-	})
-
 	const testOrgName, testProjName = "comprehendingdevice", "website"
 
 	// Execute the command, which will use our mocked backend. Confirm the expected number of
@@ -172,7 +169,7 @@ func TestListStacksPagination(t *testing.T) {
 		orgFilter:  testOrgName,
 		projFilter: testProjName,
 	}
-	if err := runStackLS(ctx, args); err != nil {
+	if err := runStackLS(ctx, &pkgWorkspace.MockContext{}, mockLoginManager(mockBackend), args); err != nil {
 		t.Fatalf("runStackLS returned an error: %v", err)
 	}
 	if len(requestsMade) != 4 {
@@ -202,8 +199,9 @@ func TestListStacksPagination(t *testing.T) {
 	}
 }
 
-//nolint:paralleltest // This test uses the global backendInstance variable
 func TestListStacksJsonProgress(t *testing.T) {
+	t.Parallel()
+
 	mockTime := time.Unix(1, 0)
 
 	mockBackend := &backend.MockBackend{
@@ -238,19 +236,6 @@ func TestListStacksJsonProgress(t *testing.T) {
 		},
 	}
 
-	testutil.MockLoginManager(t, &cmdBackend.MockLoginManager{
-		CurrentF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink,
-			url string, project *workspace.Project, setCurrent bool,
-		) (backend.Backend, error) {
-			return mockBackend, nil
-		},
-		LoginF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink,
-			url string, project *workspace.Project, setCurrent bool, insecure bool, color colors.Colorization,
-		) (backend.Backend, error) {
-			return mockBackend, nil
-		},
-	})
-
 	var buff bytes.Buffer
 	ctx := t.Context()
 	args := stackLSArgs{
@@ -262,7 +247,7 @@ func TestListStacksJsonProgress(t *testing.T) {
 		allStacks: true,
 		stdout:    &buff,
 	}
-	err := runStackLS(ctx, args)
+	err := runStackLS(ctx, &pkgWorkspace.MockContext{}, mockLoginManager(mockBackend), args)
 	require.NoError(t, err)
 
 	assert.JSONEq(t, `[
@@ -284,8 +269,9 @@ func TestListStacksJsonProgress(t *testing.T) {
 		]`, buff.String())
 }
 
-//nolint:paralleltest // This test uses the global backendInstance variable
 func TestListStacksJsonNoProgress(t *testing.T) {
+	t.Parallel()
+
 	mockTime := time.Unix(1, 0)
 
 	mockBackend := &backend.MockBackend{
@@ -313,19 +299,6 @@ func TestListStacksJsonNoProgress(t *testing.T) {
 		},
 	}
 
-	testutil.MockLoginManager(t, &cmdBackend.MockLoginManager{
-		CurrentF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink,
-			url string, project *workspace.Project, setCurrent bool,
-		) (backend.Backend, error) {
-			return mockBackend, nil
-		},
-		LoginF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink,
-			url string, project *workspace.Project, setCurrent bool, insecure bool, color colors.Colorization,
-		) (backend.Backend, error) {
-			return mockBackend, nil
-		},
-	})
-
 	var buff bytes.Buffer
 	ctx := t.Context()
 	args := stackLSArgs{
@@ -337,7 +310,7 @@ func TestListStacksJsonNoProgress(t *testing.T) {
 		allStacks: true,
 		stdout:    &buff,
 	}
-	err := runStackLS(ctx, args)
+	err := runStackLS(ctx, &pkgWorkspace.MockContext{}, mockLoginManager(mockBackend), args)
 	require.NoError(t, err)
 
 	assert.JSONEq(t, `[
