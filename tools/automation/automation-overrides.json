@@ -361,7 +361,6 @@
         {
             "path": ["version"],
             "propagate": true,
-            "exclude": true,
             "flags": {}
         },
         {
