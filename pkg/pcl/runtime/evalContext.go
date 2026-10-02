@@ -43,6 +43,11 @@ type EvalContext struct {
 	call        func(context.Context, *pulumirpc.ResourceCallRequest) (*pulumirpc.CallResponse, error)
 	getResource func(context.Context, property.ResourceReference) (property.Map, error)
 
+	// invokeOutputValues is true when the resource monitor advertised INVOKE_OUTPUT_VALUES. When set, invoke
+	// preserves OutputValues in args and trusts the per-value OutputValues on the response; otherwise it falls
+	// back to unwrapping args into a `dependsOn` list and unioning those onto the whole return.
+	invokeOutputValues bool
+
 	// We read and write variables to the hcl.EvalContext + children in parallel during
 	// execution, so we synchronize access to it.
 	evalLock    *sync.Mutex
@@ -83,19 +88,26 @@ func (ectx *EvalContext) NewChild() *EvalContext {
 	defer ectx.evalLock.Unlock()
 	child := ectx.evalContext.NewChild()
 	return &EvalContext{
-		workingDirectory: ectx.workingDirectory,
-		rootDirectory:    ectx.rootDirectory,
-		organization:     ectx.organization,
-		project:          ectx.project,
-		stack:            ectx.stack,
-		lookupResource:   ectx.lookupResource,
-		lookupFunction:   ectx.lookupFunction,
-		getResource:      ectx.getResource,
-		invoke:           ectx.invoke,
-		call:             ectx.call,
-		evalLock:         ectx.evalLock,
-		evalContext:      child,
+		workingDirectory:   ectx.workingDirectory,
+		rootDirectory:      ectx.rootDirectory,
+		organization:       ectx.organization,
+		project:            ectx.project,
+		stack:              ectx.stack,
+		lookupResource:     ectx.lookupResource,
+		lookupFunction:     ectx.lookupFunction,
+		getResource:        ectx.getResource,
+		invoke:             ectx.invoke,
+		call:               ectx.call,
+		invokeOutputValues: ectx.invokeOutputValues,
+		evalLock:           ectx.evalLock,
+		evalContext:        child,
 	}
+}
+
+// SetInvokeOutputValues records whether the resource monitor advertised INVOKE_OUTPUT_VALUES. See the field
+// on EvalContext for the effect this has on the invoke builtin.
+func (ectx *EvalContext) SetInvokeOutputValues(v bool) {
+	ectx.invokeOutputValues = v
 }
 
 func (ectx *EvalContext) SetVariable(name string, value cty.Value) {

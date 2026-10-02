@@ -88,6 +88,10 @@ type ProviderHandshakeRequest struct {
 	// True if the engine populates OldOutputs on CheckRequest for update-path Check calls. Older engines never
 	// set this, so providers should treat an absent value as false and fall back to legacy behavior.
 	SendsOldOutputsToCheck bool
+
+	// True if the engine can send OutputValues nested in Invoke args and will accept OutputValues in Invoke return
+	// values. Providers that opt in should set AcceptsOutputsInInvoke on the response.
+	AcceptsOutputsInInvoke bool
 }
 
 // The type of responses sent as part of a Handshake call.
@@ -112,6 +116,10 @@ type ProviderHandshakeResponse struct {
 	// objects carrying the byte string signature and a base64 encoding of the string's bytes. If true, the
 	// caller may pass such values to the provider.
 	AcceptsByteString bool
+
+	// True if and only if the provider accepts OutputValues nested in Invoke args and may return OutputValues in
+	// Invoke return values. Only meaningful when the engine advertised AcceptsOutputsInInvoke on the handshake request.
+	AcceptsOutputsInInvoke bool
 }
 
 // ParameterizeParameters can either be of concrete type ParameterizeArgs or ParameterizeValue, for when parameterizing

@@ -354,7 +354,20 @@ func (ectx *EvalContext) builtinFunctions() map[string]function.Function {
 			if err != nil {
 				return cty.NilVal, fmt.Errorf("invalid invoke arguments: %w", err)
 			}
+			// When the monitor advertises INVOKE_OUTPUT_VALUES, keep per-value Dependencies and Secret
+			// marks on args so the engine (a) harvests deps into its wait-set, and (b) the provider sees
+			// per-value secrets if it supports them. Otherwise fall back to the legacy path: strip both,
+			// collect their union, and apply that union to the whole return value.
+			//
+			// dependsOn is populated in both modes: even in the new path we need it to attribute an
+			// Unknown response (returned when the engine gates the invoke on pending deps) to the right
+			// resources.
 			dependsOn := allDependencies(argsPV)
+			var anyArgSecret bool
+			if !ectx.invokeOutputValues {
+				anyArgSecret = argsPV.HasSecrets()
+				argsPV = stripOutputs(argsPV)
+			}
 			if fun.Inputs != nil {
 				args, err := applySchemaInputs(argsPV.AsMap(), fun.Inputs.Properties)
 				if err != nil {
@@ -364,9 +377,10 @@ func (ectx *EvalContext) builtinFunctions() map[string]function.Function {
 			}
 
 			request := &pulumirpc.ResourceInvokeRequest{
-				Tok:               token,
-				Args:              propertyrpc.Marshal(argsPV.AsMap()),
-				AcceptsByteString: true,
+				Tok:                token,
+				Args:               propertyrpc.Marshal(argsPV.AsMap()),
+				AcceptsByteString:  true,
+				AcceptOutputValues: ectx.invokeOutputValues,
 			}
 
 			if len(args) == 3 && !args[2].IsNull() {
@@ -451,7 +465,18 @@ func (ectx *EvalContext) builtinFunctions() map[string]function.Function {
 					resultPV = v
 				}
 			}
-			resultPV = resultPV.WithDependencies(append(resultPV.Dependencies(), dependsOn...))
+			// Only apply the union of arg deps/secretness in the legacy path. In the INVOKE_OUTPUT_VALUES
+			// path the engine and provider have already stamped per-value deps and secrets onto the
+			// returned values; unioning here would poison a return that was supposed to carry only a
+			// subset of the arg marks.
+			if !ectx.invokeOutputValues {
+				if len(dependsOn) > 0 {
+					resultPV = resultPV.WithDependencies(append(resultPV.Dependencies(), dependsOn...))
+				}
+				if anyArgSecret {
+					resultPV = resultPV.WithSecret(true)
+				}
+			}
 			return propertyValueToCty(context.TODO(), ectx.getResource, resultPV)
 		},
 	})

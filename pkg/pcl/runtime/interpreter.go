@@ -19,6 +19,7 @@ import (
 	"errors"
 	"fmt"
 	"os/exec"
+	"slices"
 	"sort"
 	"strconv"
 	"sync"
@@ -497,6 +498,15 @@ func (i *Interpreter) Run(ctx context.Context) error {
 		i.invoke,
 		i.call,
 	)
+
+	// Probe the monitor for the INVOKE_OUTPUT_VALUES capability. Older monitors don't implement GetDeploymentInfo
+	// (or don't advertise the feature); in either case we silently fall back to the legacy path.
+	if info, err := i.monitor.GetDeploymentInfo(ctx, &emptypb.Empty{}); err == nil {
+		if slices.Contains(info.GetSupportedFeatures(),
+			pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_INVOKE_OUTPUT_VALUES) {
+			i.evalContext.SetInvokeOutputValues(true)
+		}
+	}
 
 	if err := i.registerStack(ctx); err != nil {
 		return err
@@ -981,6 +991,30 @@ func allDependencies(value property.Value) []urn.URN {
 	}
 	inner(value)
 	return deps
+}
+
+// stripOutputs returns a copy of value with all per-value Dependencies and Secret marks cleared,
+// walking into Map and Array children. Used on invoke args when the resource monitor hasn't advertised
+// INVOKE_OUTPUT_VALUES, so the engine and provider see plain values; the caller then unions the deps
+// and secretness onto the whole return value.
+func stripOutputs(value property.Value) property.Value {
+	switch {
+	case value.IsMap():
+		m := value.AsMap()
+		stripped := map[string]property.Value{}
+		for k, v := range m.All {
+			stripped[k] = stripOutputs(v)
+		}
+		value = property.New(property.NewMap(stripped))
+	case value.IsArray():
+		a := value.AsArray()
+		stripped := make([]property.Value, 0, a.Len())
+		for _, v := range a.All {
+			stripped = append(stripped, stripOutputs(v))
+		}
+		value = property.New(property.NewArray(stripped))
+	}
+	return value.WithDependencies(nil).WithSecret(false)
 }
 
 // providerReferences translates an evaluated `providers` option into the package name to provider
