@@ -1,0 +1,4 @@
+component: cli/policy
+kind: fix
+body: Fix `pulumi policy group edit` so that it adds and removes stacks, Policy Packs, and Insights accounts
+time: 2026-10-02T11:13:04.20781+02:00
