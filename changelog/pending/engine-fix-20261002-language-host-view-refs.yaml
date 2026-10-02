@@ -1,0 +1,4 @@
+component: engine
+kind: fix
+body: Fix a language host process leak when the schema loader boots a plugin that runs in a language host
+time: 2026-10-02T14:20:00.000000000Z
