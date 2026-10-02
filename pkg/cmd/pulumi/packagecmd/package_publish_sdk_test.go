@@ -168,25 +168,33 @@ func TestShouldRunNPMWhoami(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name                     string
-		nodeAuthToken            string
-		actionsIDTokenRequestURL string
-		expected                 bool
+		name                       string
+		nodeAuthToken              string
+		actionsIDTokenRequestURL   string
+		actionsIDTokenRequestToken string
+		expected                   bool
 	}{
 		{
 			name:     "tokenless non-OIDC path still runs whoami",
 			expected: true,
 		},
 		{
-			name:                     "token path still runs whoami in Actions OIDC",
-			nodeAuthToken:            "npm_token",
+			name:                       "token path still runs whoami in Actions OIDC",
+			nodeAuthToken:              "npm_token",
+			actionsIDTokenRequestURL:   "https://pipelines.actions.githubusercontent.com/example",
+			actionsIDTokenRequestToken: "request_token",
+			expected:                   true,
+		},
+		{
+			name:                     "tokenless partial Actions OIDC environment runs whoami",
 			actionsIDTokenRequestURL: "https://pipelines.actions.githubusercontent.com/example",
 			expected:                 true,
 		},
 		{
-			name:                     "tokenless Actions OIDC skips whoami",
-			actionsIDTokenRequestURL: "https://pipelines.actions.githubusercontent.com/example",
-			expected:                 false,
+			name:                       "tokenless Actions OIDC skips whoami",
+			actionsIDTokenRequestURL:   "https://pipelines.actions.githubusercontent.com/example",
+			actionsIDTokenRequestToken: "request_token",
+			expected:                   false,
 		},
 		{
 			name:          "token without Actions OIDC runs whoami",
@@ -199,7 +207,11 @@ func TestShouldRunNPMWhoami(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			assert.Equal(t, tt.expected, shouldRunNPMWhoami(tt.nodeAuthToken, tt.actionsIDTokenRequestURL))
+			assert.Equal(t, tt.expected, shouldRunNPMWhoami(
+				tt.nodeAuthToken,
+				tt.actionsIDTokenRequestURL,
+				tt.actionsIDTokenRequestToken,
+			))
 		})
 	}
 }
@@ -252,6 +264,7 @@ func main() {
 	t.Setenv("PATH", binDir+string(os.PathListSeparator)+os.Getenv("PATH"))
 	t.Setenv("NODE_AUTH_TOKEN", "")
 	t.Setenv("ACTIONS_ID_TOKEN_REQUEST_URL", "https://pipelines.actions.githubusercontent.com/example")
+	t.Setenv("ACTIONS_ID_TOKEN_REQUEST_TOKEN", "request_token")
 
 	var stdout, stderr bytes.Buffer
 	require.NoError(t, publishToNPM(&stdout, &stderr, pkgDir))
@@ -278,6 +291,46 @@ func writeTestNPM(t *testing.T, binDir, source string) {
 	output, err := cmd.CombinedOutput()
 	t.Log(string(output))
 	require.NoError(t, err)
+}
+
+func TestPublishToNPMRunsWhoamiWithoutTokenOrOIDC(t *testing.T) {
+	tmp := t.TempDir()
+	pkgDir := filepath.Join(tmp, "pkg")
+	require.NoError(t, os.Mkdir(pkgDir, 0o700))
+
+	binDir := filepath.Join(tmp, "bin")
+	require.NoError(t, os.Mkdir(binDir, 0o700))
+	writeTestNPM(t, binDir, `
+package main
+
+import (
+	"fmt"
+	"os"
+)
+
+func main() {
+	arg := ""
+	if len(os.Args) > 1 {
+		arg = os.Args[1]
+	}
+	if arg == "whoami" {
+		fmt.Fprintln(os.Stderr, "whoami failed")
+		os.Exit(42)
+	}
+	fmt.Fprintf(os.Stderr, "unexpected npm command: %s\n", arg)
+	os.Exit(1)
+}
+`)
+	t.Setenv("GOPATH", filepath.Join(tmp, "gopath"))
+	t.Setenv("PATH", binDir+string(os.PathListSeparator)+os.Getenv("PATH"))
+	t.Setenv("NODE_AUTH_TOKEN", "")
+	t.Setenv("ACTIONS_ID_TOKEN_REQUEST_URL", "")
+	t.Setenv("ACTIONS_ID_TOKEN_REQUEST_TOKEN", "")
+
+	var stdout, stderr bytes.Buffer
+	err := publishToNPM(&stdout, &stderr, pkgDir)
+	require.Error(t, err)
+	assert.Contains(t, stderr.String(), "whoami failed")
 }
 
 func TestPublishToNPMRunsWhoamiWithToken(t *testing.T) {
@@ -312,6 +365,7 @@ func main() {
 	t.Setenv("PATH", binDir+string(os.PathListSeparator)+os.Getenv("PATH"))
 	t.Setenv("NODE_AUTH_TOKEN", "npm_token")
 	t.Setenv("ACTIONS_ID_TOKEN_REQUEST_URL", "https://pipelines.actions.githubusercontent.com/example")
+	t.Setenv("ACTIONS_ID_TOKEN_REQUEST_TOKEN", "request_token")
 
 	var stdout, stderr bytes.Buffer
 	err := publishToNPM(&stdout, &stderr, pkgDir)
