@@ -2452,9 +2452,9 @@ func TestParameterizedNode(t *testing.T) {
 
 // Regression test for https://github.com/pulumi/pulumi/issues/21950: when an inline program runs more than once in the
 // same Node.js process, each run must register the parameterized package against its own engine.
-//
-//nolint:paralleltest // mutates environment
 func TestStaleParameterizedPackageRefNode(t *testing.T) {
+	t.Parallel()
+
 	e := ptesting.NewEnvironment(t)
 	defer e.DeleteIfNotFailed()
 	e.ImportDirectory(filepath.Join("nodejs", "stale-parameterized-packageref"))
@@ -2561,8 +2561,9 @@ func TestPackageAddNode(t *testing.T) {
 	}
 }
 
-//nolint:paralleltest // mutates environment
 func TestConvertTerraformProviderNode(t *testing.T) {
+	t.Parallel()
+
 	e := ptesting.NewEnvironment(t)
 
 	var err error
@@ -2597,8 +2598,9 @@ func TestConvertTerraformProviderNode(t *testing.T) {
 	require.NoError(t, err, "node_modules directory should exist after pulumi convert")
 }
 
-//nolint:paralleltest // mutates environment
 func TestConvertTerraformProviderNodeGenerateOnly(t *testing.T) {
+	t.Parallel()
+
 	e := ptesting.NewEnvironment(t)
 
 	var err error
