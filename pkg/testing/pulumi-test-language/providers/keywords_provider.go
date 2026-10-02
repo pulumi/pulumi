@@ -273,11 +273,12 @@ func (p *KeywordsProvider) Read(ctx context.Context, req plugin.ReadRequest) (pl
 		properties[resource.PropertyKey(prop)] = resource.NewProperty(prop)
 	}
 
+	m := resource.FromResourcePropertyMap(properties)
 	return plugin.ReadResponse{
 		ReadResult: plugin.ReadResult{
 			ID:      req.ID,
-			Inputs:  properties,
-			Outputs: properties,
+			Inputs:  &m,
+			Outputs: &m,
 		},
 		Status: resource.StatusOK,
 	}, nil

@@ -1214,7 +1214,7 @@ func TestTransformInheritedThroughReadParent(t *testing.T) {
 					return plugin.ReadResponse{
 						ReadResult: plugin.ReadResult{
 							ID:      req.ID,
-							Outputs: req.State,
+							Outputs: &req.State,
 						},
 						Status: resource.StatusOK,
 					}, nil

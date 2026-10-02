@@ -244,15 +244,17 @@ func (p *SimpleProvider) Read(ctx context.Context, req plugin.ReadRequest) (plug
 		}, fmt.Errorf("invalid URN type: %s", req.URN.Type())
 	}
 
+	inputs := resource.FromResourcePropertyMap(resource.PropertyMap{
+		"value": resource.NewProperty(true),
+	})
+	outputs := resource.FromResourcePropertyMap(resource.PropertyMap{
+		"value": resource.NewProperty(true),
+	})
 	return plugin.ReadResponse{
 		ReadResult: plugin.ReadResult{
-			ID: req.ID,
-			Inputs: resource.PropertyMap{
-				"value": resource.NewProperty(true),
-			},
-			Outputs: resource.PropertyMap{
-				"value": resource.NewProperty(true),
-			},
+			ID:      req.ID,
+			Inputs:  &inputs,
+			Outputs: &outputs,
 		},
 		Status: resource.StatusOK,
 	}, nil

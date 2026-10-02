@@ -30,6 +30,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/urn"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -398,8 +399,8 @@ func TestUpContinueOnErrorUpdateWithRefresh(t *testing.T) {
 					return plugin.ReadResponse{
 						ReadResult: plugin.ReadResult{
 							ID:      req.ID,
-							Inputs:  resource.PropertyMap{},
-							Outputs: resource.PropertyMap{},
+							Inputs:  new(property.Map{}),
+							Outputs: new(property.Map{}),
 						},
 						Status: resource.StatusOK,
 					}, nil
@@ -1046,8 +1047,8 @@ func TestUpContinueOnErrorSkippedReadReturnsOldState(t *testing.T) {
 					return plugin.ReadResponse{
 						ReadResult: plugin.ReadResult{
 							ID:      req.ID,
-							Inputs:  resource.PropertyMap{},
-							Outputs: readOutputs,
+							Inputs:  new(property.Map{}),
+							Outputs: ptrMap(readOutputs),
 						},
 						Status: resource.StatusOK,
 					}, nil
@@ -1131,8 +1132,8 @@ func TestUpContinueOnErrorSkippedReadReturnsUnknown(t *testing.T) {
 					return plugin.ReadResponse{
 						ReadResult: plugin.ReadResult{
 							ID:      req.ID,
-							Inputs:  resource.PropertyMap{},
-							Outputs: resource.NewPropertyMapFromMap(map[string]any{"foo": "bar"}),
+							Inputs:  new(property.Map{}),
+							Outputs: ptrMap(resource.NewPropertyMapFromMap(map[string]any{"foo": "bar"})),
 						},
 						Status: resource.StatusOK,
 					}, nil
@@ -1197,8 +1198,8 @@ func TestUpContinueOnErrorSkippedImportReturnsUnknown(t *testing.T) {
 					return plugin.ReadResponse{
 						ReadResult: plugin.ReadResult{
 							ID:      req.ID,
-							Inputs:  resource.PropertyMap{},
-							Outputs: resource.NewPropertyMapFromMap(map[string]any{"foo": "bar"}),
+							Inputs:  new(property.Map{}),
+							Outputs: ptrMap(resource.NewPropertyMapFromMap(map[string]any{"foo": "bar"})),
 						},
 						Status: resource.StatusOK,
 					}, nil

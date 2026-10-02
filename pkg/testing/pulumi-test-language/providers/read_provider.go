@@ -129,23 +129,26 @@ func (p *ReadProvider) Read(_ context.Context, req plugin.ReadRequest) (plugin.R
 		}, fmt.Errorf("invalid URN type: %s", req.URN.Type())
 	}
 
-	lookup, ok := req.Inputs["lookup"]
+	inputs := resource.ToResourcePropertyMap(req.Inputs)
+	lookup, ok := inputs["lookup"]
 	if !ok || !lookup.IsString() {
 		return plugin.ReadResponse{
 			Status: resource.StatusUnknown,
 		}, errors.New("lookup input is required and must be a string")
 	}
 
+	readInputs := resource.FromResourcePropertyMap(resource.PropertyMap{
+		"lookup": lookup,
+	})
+	readOutputs := resource.FromResourcePropertyMap(resource.PropertyMap{
+		"lookup": lookup,
+		"value":  resource.NewProperty(true),
+	})
 	return plugin.ReadResponse{
 		ReadResult: plugin.ReadResult{
-			ID: req.ID,
-			Inputs: resource.PropertyMap{
-				"lookup": lookup,
-			},
-			Outputs: resource.PropertyMap{
-				"lookup": lookup,
-				"value":  resource.NewProperty(true),
-			},
+			ID:      req.ID,
+			Inputs:  &readInputs,
+			Outputs: &readOutputs,
 		},
 		Status: resource.StatusOK,
 	}, nil

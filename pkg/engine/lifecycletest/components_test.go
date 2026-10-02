@@ -306,8 +306,8 @@ func TestConstructCallSecretsUnknowns(t *testing.T) {
 				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
 					return plugin.ReadResponse{
 						ReadResult: plugin.ReadResult{
-							Inputs:  req.Inputs,
-							Outputs: req.State,
+							Inputs:  &req.Inputs,
+							Outputs: &req.State,
 						},
 						Status: resource.StatusOK,
 					}, nil
@@ -400,8 +400,8 @@ func TestConstructCallReturnDependencies(t *testing.T) {
 					ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
 						return plugin.ReadResponse{
 							ReadResult: plugin.ReadResult{
-								Inputs:  req.Inputs,
-								Outputs: req.State,
+								Inputs:  &req.Inputs,
+								Outputs: &req.State,
 							},
 							Status: resource.StatusOK,
 						}, nil
@@ -546,8 +546,8 @@ func TestConstructCallReturnOutputs(t *testing.T) {
 					ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
 						return plugin.ReadResponse{
 							ReadResult: plugin.ReadResult{
-								Inputs:  req.Inputs,
-								Outputs: req.State,
+								Inputs:  &req.Inputs,
+								Outputs: &req.State,
 							},
 							Status: resource.StatusOK,
 						}, nil
@@ -685,8 +685,8 @@ func TestConstructCallSendDependencies(t *testing.T) {
 					ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
 						return plugin.ReadResponse{
 							ReadResult: plugin.ReadResult{
-								Inputs:  req.Inputs,
-								Outputs: req.State,
+								Inputs:  &req.Inputs,
+								Outputs: &req.State,
 							},
 							Status: resource.StatusOK,
 						}, nil
@@ -850,8 +850,8 @@ func TestConstructCallDependencyDedeuplication(t *testing.T) {
 					ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
 						return plugin.ReadResponse{
 							ReadResult: plugin.ReadResult{
-								Inputs:  req.Inputs,
-								Outputs: req.State,
+								Inputs:  &req.Inputs,
+								Outputs: &req.State,
 							},
 							Status: resource.StatusOK,
 						}, nil
@@ -1443,7 +1443,7 @@ func TestComponentReadResourceOutputCanBeHydratedByProgram(t *testing.T) {
 						return plugin.ReadResponse{
 							ReadResult: plugin.ReadResult{
 								ID:      req.ID,
-								Outputs: req.Inputs,
+								Outputs: &req.Inputs,
 							},
 							Status: resource.StatusOK,
 						}, nil
@@ -1568,7 +1568,7 @@ func TestComponentReadResourceOutputCanBeHydratedByComponent(t *testing.T) {
 						return plugin.ReadResponse{
 							ReadResult: plugin.ReadResult{
 								ID:      req.ID,
-								Outputs: req.Inputs,
+								Outputs: &req.Inputs,
 							},
 							Status: resource.StatusOK,
 						}, nil

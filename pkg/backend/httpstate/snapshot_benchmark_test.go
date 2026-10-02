@@ -138,7 +138,7 @@ func (p *snapshotBenchProvider) Read(ctx context.Context, req plugin.ReadRequest
 	return plugin.ReadResponse{
 		ReadResult: plugin.ReadResult{
 			ID:      "id",
-			Outputs: outputs,
+			Outputs: new(resource.FromResourcePropertyMap(outputs)),
 		},
 	}, nil
 }

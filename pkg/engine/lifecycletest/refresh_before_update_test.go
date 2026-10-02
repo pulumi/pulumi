@@ -79,17 +79,17 @@ func TestRefreshBeforeUpdate(t *testing.T) {
 					}, nil
 				},
 				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
-					inputs := req.Inputs.Copy()
+					inputs := resource.ToResourcePropertyMap(req.Inputs)
 					inputs["input"] = resource.NewProperty(fmt.Sprintf("<FRESH-INPUT-%d>", readToken))
-					props := req.State.Copy()
+					props := resource.ToResourcePropertyMap(req.State)
 					props["input"] = inputs["input"]
 					props["result"] = resource.NewProperty(fmt.Sprintf("<FRESH-RESULT-%d>", readToken))
 					return plugin.ReadResponse{
 						Status: resource.StatusOK,
 						ReadResult: plugin.ReadResult{
 							ID:                  "new-id",
-							Inputs:              inputs,
-							Outputs:             props,
+							Inputs:              ptrMap(inputs),
+							Outputs:             ptrMap(props),
 							RefreshBeforeUpdate: true,
 						},
 					}, nil
@@ -270,8 +270,8 @@ func TestRefreshBeforeUpdateDeletedResource(t *testing.T) {
 						Status: resource.StatusOK,
 						ReadResult: plugin.ReadResult{
 							ID:                  "new-id",
-							Inputs:              req.Inputs,
-							Outputs:             req.State,
+							Inputs:              &req.Inputs,
+							Outputs:             &req.State,
 							RefreshBeforeUpdate: true,
 						},
 					}, nil

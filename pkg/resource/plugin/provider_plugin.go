@@ -1540,7 +1540,7 @@ func (p *provider) Read(ctx context.Context, req ReadRequest) (ReadResponse, err
 	contract.Assertf(req.ID != "", "Read ID was empty")
 
 	label := fmt.Sprintf("%s.Read(%s,%s)", p.label(), req.ID, req.URN)
-	logging.V(7).Infof("%s executing (#inputs=%v, #state=%v)", label, len(req.Inputs), len(req.State))
+	logging.V(7).Infof("%s executing (#inputs=%v, #state=%v)", label, req.Inputs.Len(), req.State.Len())
 
 	// Ensure that the plugin is configured.
 	client := p.clientRaw
@@ -1552,15 +1552,15 @@ func (p *provider) Read(ctx context.Context, req ReadRequest) (ReadResponse, err
 	// If the provider is not fully configured, return an empty bag.
 	if !pcfg.known {
 		return ReadResponse{ReadResult{
-			Outputs: resource.PropertyMap{},
-			Inputs:  resource.PropertyMap{},
+			Outputs: new(property.Map{}),
+			Inputs:  new(property.Map{}),
 		}, resource.StatusUnknown}, nil
 	}
 
 	// Marshal the resource inputs and state so we can perform the RPC.
 	var minputs *structpb.Struct
-	if req.Inputs != nil {
-		m, err := MarshalProperties(req.Inputs, MarshalOptions{
+	if req.Inputs.Len() != 0 {
+		m, err := MarshalProperties(resource.ToResourcePropertyMap(req.Inputs), MarshalOptions{
 			Label:              label,
 			ElideAssetContents: true,
 			KeepSecrets:        protocol.acceptSecrets,
@@ -1573,7 +1573,7 @@ func (p *provider) Read(ctx context.Context, req ReadRequest) (ReadResponse, err
 		}
 		minputs = m
 	}
-	mstate, err := MarshalProperties(req.State, MarshalOptions{
+	mstate, err := MarshalProperties(resource.ToResourcePropertyMap(req.State), MarshalOptions{
 		Label:              label,
 		ElideAssetContents: true,
 		KeepSecrets:        protocol.acceptSecrets,
@@ -1659,20 +1659,29 @@ func (p *provider) Read(ctx context.Context, req ReadRequest) (ReadResponse, err
 	// If we could not pass secrets to the provider, retain the secret bit on any property with the same name. This
 	// allows us to retain metadata about secrets in many cases, even for providers that do not understand secrets
 	// natively.
+	reqInputs := resource.ToResourcePropertyMap(req.Inputs)
+	reqState := resource.ToResourcePropertyMap(req.State)
 	if !protocol.acceptSecrets {
-		annotateSecrets(newInputs, req.Inputs)
-		annotateSecrets(newState, req.State)
+		annotateSecrets(newInputs, reqInputs)
+		annotateSecrets(newState, reqState)
 	}
 
 	// make sure any echoed properties restore their original asset contents if they have not changed
-	restoreElidedAssetContents(req.Inputs, newInputs)
-	restoreElidedAssetContents(req.Inputs, newState)
+	restoreElidedAssetContents(reqInputs, newInputs)
+	restoreElidedAssetContents(reqInputs, newState)
 
 	logging.V(7).Infof("%s success; id=%q, #outs=%d, #inputs=%d", label, readID, len(newState), len(newInputs))
+	var outputs, inputs *property.Map
+	if newState != nil {
+		outputs = new(resource.FromResourcePropertyMap(newState))
+	}
+	if newInputs != nil {
+		inputs = new(resource.FromResourcePropertyMap(newInputs))
+	}
 	return ReadResponse{ReadResult{
 		ID:                  readID,
-		Outputs:             newState,
-		Inputs:              newInputs,
+		Outputs:             outputs,
+		Inputs:              inputs,
 		RefreshBeforeUpdate: refreshBeforeUpdate && supportsRefreshBeforeUpdate,
 	}, resourceStatus}, resourceError
 }

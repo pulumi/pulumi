@@ -68,7 +68,7 @@ type stubProvider struct {
 
 	ReadFunc func(
 		urn resource.URN, id resource.ID,
-		inputs, state resource.PropertyMap,
+		inputs, state property.Map,
 	) (ReadResult, resource.Status, error)
 
 	ConfigureFunc func(property.Map) error
@@ -102,15 +102,15 @@ func TestProviderServer_Read_respects_ID(t *testing.T) {
 	provider := stubProvider{
 		ReadFunc: func(
 			urn resource.URN, id resource.ID,
-			inputs, state resource.PropertyMap,
+			inputs, state property.Map,
 		) (ReadResult, resource.Status, error) {
 			return ReadResult{
 				ID: resource.ID("none"),
-				Outputs: resource.NewPropertyMapFromMap(map[string]any{
+				Outputs: new(resource.FromResourcePropertyMap(resource.NewPropertyMapFromMap(map[string]any{
 					"result": resource.NewProperty(&resource.Secret{
 						Element: resource.NewProperty(string(id)),
 					}),
-				}),
+				}))),
 			}, resource.StatusOK, nil
 		},
 	}

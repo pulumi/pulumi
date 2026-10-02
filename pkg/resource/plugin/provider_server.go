@@ -644,8 +644,8 @@ func (p *providerServer) Read(ctx context.Context, req *pulumirpc.ReadRequest) (
 		Name:                  req.Name,
 		Type:                  tokens.Type(req.Type),
 		ID:                    requestID,
-		Inputs:                inputs,
-		State:                 state,
+		Inputs:                resource.FromResourcePropertyMap(inputs),
+		State:                 resource.FromResourcePropertyMap(state),
 		Timeout:               req.GetTimeout(),
 		ResourceStatusAddress: req.GetResourceStatusAddress(),
 		ResourceStatusToken:   req.GetResourceStatusToken(),
@@ -655,12 +655,19 @@ func (p *providerServer) Read(ctx context.Context, req *pulumirpc.ReadRequest) (
 		return nil, err
 	}
 
-	rpcState, err := MarshalProperties(resp.Outputs, p.marshalOptions("newState"))
+	var respOutputs, respInputs property.Map
+	if resp.Outputs != nil {
+		respOutputs = *resp.Outputs
+	}
+	if resp.Inputs != nil {
+		respInputs = *resp.Inputs
+	}
+	rpcState, err := MarshalProperties(resource.ToResourcePropertyMap(respOutputs), p.marshalOptions("newState"))
 	if err != nil {
 		return nil, err
 	}
 
-	rpcInputs, err := MarshalProperties(resp.Inputs, p.marshalOptions("newInputs"))
+	rpcInputs, err := MarshalProperties(resource.ToResourcePropertyMap(respInputs), p.marshalOptions("newInputs"))
 	if err != nil {
 		return nil, err
 	}
