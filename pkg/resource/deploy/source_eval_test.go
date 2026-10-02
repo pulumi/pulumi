@@ -4057,6 +4057,10 @@ func TestValidationFailures(t *testing.T) {
 					Reason:       "nested property error",
 					PropertyPath: "nested[0]",
 				},
+				{
+					Reason:       "invalid",
+					PropertyPath: "secretproperty",
+				},
 			},
 		},
 	)
@@ -4065,6 +4069,7 @@ func TestValidationFailures(t *testing.T) {
 	cases := []struct {
 		name           string
 		err            error
+		showSecrets    bool
 		expectedStderr string
 	}{
 		{
@@ -4077,7 +4082,17 @@ func TestValidationFailures(t *testing.T) {
 			err:  badRequestError,
 			expectedStderr: "error: pulumi:providers:some-type resource 'some-name' has a problem: bad request\n" +
 				"\t\t- property testproperty with value '{testvalue}' has a problem: missing\n" +
-				"\t\t- property nested[0] with value '{nestedvalue}' has a problem: nested property error\n",
+				"\t\t- property nested[0] with value '{nestedvalue}' has a problem: nested property error\n" +
+				"\t\t- property secretproperty with value '{[secret]}' has a problem: invalid\n",
+		},
+		{
+			name:        "bad request with --show-secrets",
+			err:         badRequestError,
+			showSecrets: true,
+			expectedStderr: "error: pulumi:providers:some-type resource 'some-name' has a problem: bad request\n" +
+				"\t\t- property testproperty with value '{testvalue}' has a problem: missing\n" +
+				"\t\t- property nested[0] with value '{nestedvalue}' has a problem: nested property error\n" +
+				"\t\t- property secretproperty with value '{&{{secretvalue}}}' has a problem: invalid\n",
 		},
 	}
 	for _, c := range cases {
@@ -4108,6 +4123,7 @@ func TestValidationFailures(t *testing.T) {
 			diagnostics: diagtest.MockSink(&stdout, &stderr),
 			cancel:      cancel,
 			abortChan:   abortChan,
+			opts:        EvalSourceOptions{ShowSecrets: c.showSecrets},
 			defaultProviders: &defaultProviders{
 				requests: requests,
 				config:   &configSourceMock{},
@@ -4132,9 +4148,10 @@ func TestValidationFailures(t *testing.T) {
 			"nested": resource.NewProperty(
 				[]resource.PropertyValue{resource.NewPropertyValue("nestedvalue")},
 			),
+			"secretproperty": resource.MakeSecret(resource.NewPropertyValue("secretvalue")),
 		}
 
-		marshalledProps, err := plugin.MarshalProperties(props, plugin.MarshalOptions{})
+		marshalledProps, err := plugin.MarshalProperties(props, plugin.MarshalOptions{KeepSecrets: true})
 		require.NoError(t, err)
 
 		req := &pulumirpc.RegisterResourceRequest{
