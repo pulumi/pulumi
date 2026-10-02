@@ -445,8 +445,6 @@ func TestReadNilOutputs(t *testing.T) {
 		}).
 		RunUpdate(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 			_, _, _ = monitor.ReadResource("pkgA:m:typA", "resA", resourceID, "", nil, "", "", "", nil, "", "")
-			require.Fail(t, "RegisterResource should not return")
-
 			return nil
 		}, true).
 		Then(func(snap *deploy.Snapshot, err error) {

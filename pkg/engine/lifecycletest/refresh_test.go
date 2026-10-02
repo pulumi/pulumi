@@ -2841,7 +2841,9 @@ func TestRefreshV2FailedRead(t *testing.T) {
 		_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 			Provider: provRef.String(),
 		})
-		require.NoError(t, err)
+		if err != nil {
+			return err
+		}
 
 		return nil
 	})

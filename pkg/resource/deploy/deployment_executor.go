@@ -206,6 +206,12 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context) (_ *Plan, err e
 				ex.reportError("", closeErr)
 				err = result.BailError(closeErr)
 			}
+		} else {
+			cancelled, cancel := context.WithCancel(callerCtx)
+			cancel()
+			go func() {
+				contract.IgnoreError(src.Cancel(cancelled))
+			}()
 		}
 	}()
 

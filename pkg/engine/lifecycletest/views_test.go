@@ -386,7 +386,7 @@ func TestViewsUpdateError(t *testing.T) {
 			Inputs: ins,
 		})
 		if expectError {
-			require.Fail(t, "RegisterResource should not return")
+			return nil
 		} else {
 			require.NoError(t, err)
 		}

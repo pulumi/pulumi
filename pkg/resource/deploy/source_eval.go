@@ -2871,6 +2871,11 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 				Options: options,
 			})
 			if err != nil {
+				select {
+				case <-rm.cancel:
+					return
+				default:
+				}
 				var rpcError error
 				rpcError, ok := rpcerror.FromError(err)
 				if !ok {

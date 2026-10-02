@@ -121,7 +121,7 @@ func TestImportOption(t *testing.T) {
 				assert.Equal(t, expectedID, resp.ID)
 				assert.Equal(t, expectedOutputs, resource.FromResourcePropertyMap(resp.Outputs))
 			} else {
-				require.Fail(t, "RegisterResource should not return")
+				return nil
 			}
 		}
 		return nil
@@ -1873,7 +1873,6 @@ func TestImportWithFailedUpdate(t *testing.T) {
 			Inputs:   inputs,
 			ImportID: importID,
 		})
-		require.Fail(t, "RegisterResource should not return")
 		return nil
 	})
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)

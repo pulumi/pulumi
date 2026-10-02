@@ -298,7 +298,9 @@ func TestErrorHooks_OldAndNewOptionsAreSentOnUpdate(t *testing.T) {
 				OnError: []*deploytest.ResourceHook{hook},
 			},
 		})
-		require.NoError(t, err)
+		if err != nil {
+			return err
+		}
 
 		err = monitor.SignalAndWaitForShutdown(context.Background()) //nolint:usetesting // the engine outlives t.Context
 		require.NoError(t, err)
@@ -531,7 +533,9 @@ func TestErrorHooks_RetrySemanticsAndNoRetryWhenNoHooks_Create_NoRetryWhenNoHook
 				OnError: hooks,
 			},
 		})
-		require.NoError(t, err)
+		if err != nil {
+			return err
+		}
 
 		err = monitor.SignalAndWaitForShutdown(context.Background()) //nolint:usetesting // the engine outlives t.Context
 		require.NoError(t, err)
@@ -674,7 +678,9 @@ func TestErrorHooks_RetrySemanticsAndNoRetryWhenNoHooks_Update_NoRetryWhenNoHook
 				OnError: hooks,
 			},
 		})
-		require.NoError(t, err)
+		if err != nil {
+			return err
+		}
 
 		err = monitor.SignalAndWaitForShutdown(context.Background()) //nolint:usetesting // the engine outlives t.Context
 		require.NoError(t, err)
@@ -876,7 +882,9 @@ func TestErrorHooks_NoRetryIfAllHooksReturnFalse_Create(t *testing.T) {
 				OnError: []*deploytest.ResourceHook{h},
 			},
 		})
-		require.NoError(t, err)
+		if err != nil {
+			return err
+		}
 
 		err = monitor.SignalAndWaitForShutdown(context.Background()) //nolint:usetesting // the engine outlives t.Context
 		require.NoError(t, err)
@@ -946,7 +954,9 @@ func TestErrorHooks_NoRetryIfAllHooksReturnFalse_Update(t *testing.T) {
 				OnError: []*deploytest.ResourceHook{h},
 			},
 		})
-		require.NoError(t, err)
+		if err != nil {
+			return err
+		}
 
 		err = monitor.SignalAndWaitForShutdown(context.Background()) //nolint:usetesting // the engine outlives t.Context
 		require.NoError(t, err)
@@ -1226,7 +1236,9 @@ func TestErrorHooks_RetryLimitWarningAt100_Create(t *testing.T) {
 				OnError: []*deploytest.ResourceHook{h},
 			},
 		})
-		require.NoError(t, err)
+		if err != nil {
+			return err
+		}
 
 		err = monitor.SignalAndWaitForShutdown(context.Background()) //nolint:usetesting // the engine outlives t.Context
 		require.NoError(t, err)
@@ -1325,7 +1337,9 @@ func TestErrorHooks_RetryLimitWarningAt100_Update(t *testing.T) {
 				OnError: []*deploytest.ResourceHook{h},
 			},
 		})
-		require.NoError(t, err)
+		if err != nil {
+			return err
+		}
 
 		err = monitor.SignalAndWaitForShutdown(context.Background()) //nolint:usetesting // the engine outlives t.Context
 		require.NoError(t, err)
@@ -1542,7 +1556,9 @@ func TestErrorHooks_RetryThenNoRetry_OperationFails_Create(t *testing.T) {
 				OnError: []*deploytest.ResourceHook{h},
 			},
 		})
-		require.NoError(t, err)
+		if err != nil {
+			return err
+		}
 
 		err = monitor.SignalAndWaitForShutdown(context.Background()) //nolint:usetesting // the engine outlives t.Context
 		require.NoError(t, err)
@@ -1619,7 +1635,9 @@ func TestErrorHooks_RetryThenNoRetry_OperationFails_Update(t *testing.T) {
 				OnError: []*deploytest.ResourceHook{h},
 			},
 		})
-		require.NoError(t, err)
+		if err != nil {
+			return err
+		}
 
 		err = monitor.SignalAndWaitForShutdown(context.Background()) //nolint:usetesting // the engine outlives t.Context
 		require.NoError(t, err)
@@ -2081,7 +2099,9 @@ func TestErrorHooks_PlainCreateErrorRunsOnErrorHook(t *testing.T) {
 				OnError: []*deploytest.ResourceHook{h},
 			},
 		})
-		require.NoError(t, err)
+		if err != nil {
+			return err
+		}
 
 		err = monitor.SignalAndWaitForShutdown(context.Background()) //nolint:usetesting // the engine outlives t.Context
 		require.NoError(t, err)
