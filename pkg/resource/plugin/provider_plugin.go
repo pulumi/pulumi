@@ -2235,7 +2235,7 @@ func (p *provider) Construct(ctx context.Context, req ConstructRequest) (Constru
 
 // Invoke dynamically executes a built-in function in the provider.
 // collectArgDependencies returns the union of dependencies from every OutputValue nested in args (arrays, objects,
-// secrets, and other OutputValues are walked recursively). Order-stable for determinism.
+// secrets, and other OutputValues are walked recursively).
 func collectArgDependencies(args resource.PropertyMap) []resource.URN {
 	seen := map[resource.URN]struct{}{}
 	var out []resource.URN
