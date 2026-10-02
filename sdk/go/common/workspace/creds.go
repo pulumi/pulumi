@@ -253,55 +253,6 @@ type TokenInformation struct {
 	ExpiresAt    *time.Time `json:"expiresAt,omitempty"`    // The time when this token expires.
 }
 
-type AuthContext struct {
-	GrantType    string
-	Organization string
-	Scope        string
-	Token        string
-	TokenExpired bool
-	Expiration   time.Duration
-}
-
-//nolint:gosec // This is an OAuth grant type URN, not a credential
-const AuthContextGrantTypeTokenExchange = "urn:ietf:params:oauth:grant-type:token-exchange"
-
-func NewAuthContextForTokenExchange(organization, team, user, token, expirationDuration string) (AuthContext, error) {
-	if token == "" {
-		return AuthContext{}, errors.New("oidc token must be specified for token exchange")
-	}
-	if env.AccessToken.Value() != "" {
-		return AuthContext{}, errors.New("cannot perform token exchange when an access token is set as environment variable")
-	}
-	if organization == "" {
-		return AuthContext{}, errors.New("organization must be specified for token exchange")
-	}
-	if team != "" && user != "" {
-		return AuthContext{}, errors.New("only one of team or user may be specified for token exchange")
-	}
-	scope := ""
-	if team != "" {
-		scope = "team:" + team
-	}
-	if user != "" {
-		scope = "user:" + user
-	}
-	expiration := 2 * time.Hour
-	if expirationDuration != "" {
-		duration, err := time.ParseDuration(expirationDuration)
-		if err != nil {
-			return AuthContext{}, fmt.Errorf("could not parse expiration duration: %w", err)
-		}
-		expiration = duration
-	}
-	return AuthContext{
-		GrantType:    AuthContextGrantTypeTokenExchange,
-		Organization: organization,
-		Scope:        scope,
-		Token:        token,
-		Expiration:   expiration,
-	}, nil
-}
-
 // Credentials hold the information necessary for authenticating Pulumi Cloud API requests.  It contains
 // a map from the backend URL to the associated account.
 type Credentials struct {
