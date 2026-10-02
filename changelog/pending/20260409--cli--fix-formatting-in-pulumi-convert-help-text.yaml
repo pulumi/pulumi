@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: cli
+  description: Fix missing blank line in `pulumi convert --help` output between the target languages list and the example usage section
