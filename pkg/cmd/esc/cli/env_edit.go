@@ -16,11 +16,13 @@ package cli
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"io/fs"
+	"net/http"
 	"os/exec"
 	"strings"
 	"unicode"
@@ -112,28 +114,13 @@ func newEnvEditCmd(env *envCommand) *cobra.Command {
 				return err
 			}
 
-			var yaml []byte
-			var tag string
-			if draft != "" && draft != "new" {
-				if showSecrets {
-					// This could potentially be implemented in the future, environments have a separate API endpoint for this purpose
-					return errors.New("--show-secrets is not supported for updating drafts")
-				}
-				yaml, tag, err = env.esc.client.GetEnvironmentDraft(
-					ctx,
-					ref.orgName,
-					ref.projectName,
-					ref.envName,
-					draft,
-				)
-				if err != nil {
-					return fmt.Errorf("getting environment draft definition: %w", err)
-				}
-			} else {
-				yaml, tag, _, err = env.esc.client.GetEnvironment(ctx, ref.orgName, ref.projectName, ref.envName, "", showSecrets)
-				if err != nil {
-					return fmt.Errorf("getting environment definition: %w", err)
-				}
+			if draft != "" && draft != "new" && showSecrets {
+				// This could potentially be implemented in the future, environments have a separate API endpoint for this purpose
+				return errors.New("--show-secrets is not supported for updating drafts")
+			}
+			yaml, tag, err := edit.getDefinition(ctx, ref, draft, showSecrets)
+			if err != nil {
+				return err
 			}
 
 			var env *esc.Environment
@@ -142,8 +129,9 @@ func newEnvEditCmd(env *envCommand) *cobra.Command {
 				env, diags, _ = edit.env.esc.client.CheckYAMLEnvironment(ctx, ref.orgName, yaml)
 			}
 
+			var current []byte
 			for {
-				newYAML, err := edit.editWithYAMLEditor(editor, ref.envName, yaml, env, diags)
+				newYAML, err := edit.editWithYAMLEditor(editor, ref.envName, yaml, env, diags, current)
 				if err != nil {
 					return err
 				}
@@ -153,21 +141,29 @@ func newEnvEditCmd(env *envCommand) *cobra.Command {
 				}
 
 				diags, err := edit.env.esc.updateEnvironment(ctx, ref, draft, newYAML, tag, "Environment updated.")
-				if err != nil {
+				switch {
+				case draft != "new" && isConflict(err):
+					current, tag, err = edit.getDefinition(ctx, ref, draft, showSecrets)
+					if err != nil {
+						return err
+					}
+					fmt.Fprintln(edit.env.esc.stderr, "Your edits were not saved because the definition changed after it was read.")
+				case err != nil:
 					return err
-				}
-
-				if len(diags) != 0 {
-					err = edit.env.writeYAMLEnvironmentDiagnostics(
-						edit.env.esc.stderr,
-						ref.projectName+"/"+ref.envName,
-						newYAML,
-						diags,
-					)
-					contract.IgnoreError(err)
-				}
-				if !client.DiagnosticsHaveErrors(diags) {
-					return nil
+				default:
+					current = nil
+					if len(diags) != 0 {
+						err = edit.env.writeYAMLEnvironmentDiagnostics(
+							edit.env.esc.stderr,
+							ref.projectName+"/"+ref.envName,
+							newYAML,
+							diags,
+						)
+						contract.IgnoreError(err)
+					}
+					if !client.DiagnosticsHaveErrors(diags) {
+						return nil
+					}
 				}
 
 				fmt.Fprintln(edit.env.esc.stderr, "Press ENTER to continue editing or ^D to exit")
@@ -272,14 +268,50 @@ func (edit *envEditCommand) getEditor() ([]string, error) {
 	return args, nil
 }
 
+func (edit *envEditCommand) getDefinition(
+	ctx context.Context,
+	ref environmentRef,
+	draft string,
+	showSecrets bool,
+) ([]byte, string, error) {
+	c := edit.env.esc.client
+	if draft != "" && draft != "new" {
+		yaml, tag, err := c.GetEnvironmentDraft(ctx, ref.orgName, ref.projectName, ref.envName, draft)
+		if err != nil {
+			return nil, "", fmt.Errorf("getting environment draft definition: %w", err)
+		}
+		return yaml, tag, nil
+	}
+
+	yaml, tag, _, err := c.GetEnvironment(ctx, ref.orgName, ref.projectName, ref.envName, "", showSecrets)
+	if err != nil {
+		return nil, "", fmt.Errorf("getting environment definition: %w", err)
+	}
+	return yaml, tag, nil
+}
+
+func isConflict(err error) bool {
+	errResp, ok := errors.AsType[*client.EnvironmentErrorResponse](err)
+	return ok && errResp.Code == http.StatusConflict
+}
+
 func (edit *envEditCommand) editWithYAMLEditor(
 	editor []string,
 	envName string,
 	yaml []byte,
 	checked *esc.Environment,
 	diags []client.EnvironmentDiagnostic,
+	current []byte,
 ) ([]byte, error) {
 	var details bytes.Buffer
+	if current != nil {
+		fmt.Fprintln(&details, "---")
+		fmt.Fprintln(&details, "# The definition changed after it was read, so the edits above were")
+		fmt.Fprintln(&details, "# not saved. The current definition is below. Saving replaces it with")
+		fmt.Fprintln(&details, "# the definition above, so copy in any changes you want to keep.")
+		fmt.Fprintln(&details, "#")
+		fmt.Fprintln(&details, "# "+strings.ReplaceAll(strings.TrimRight(string(current), "\n"), "\n", "\n# "))
+	}
 	if len(diags) != 0 {
 		var tmp bytes.Buffer
 		fmt.Fprintln(&tmp, "# Diagnostics")
