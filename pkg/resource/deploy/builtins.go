@@ -288,18 +288,19 @@ func (p *builtinProvider) Read(ctx context.Context, req plugin.ReadRequest) (plu
 	typ := req.URN.Type()
 	switch typ { //nolint:exhaustive
 	case stackReferenceType:
-		for k := range req.Inputs {
+		reqInputs := resource.ToResourcePropertyMap(req.Inputs)
+		for k := range reqInputs {
 			if k != "name" {
 				return plugin.ReadResponse{Status: resource.StatusUnknown}, fmt.Errorf("unknown property \"%v\"", k)
 			}
 		}
 		// If the name is not provided, we should return an error. This is probably due to a user trying to import
 		// this stack reference.
-		if _, ok := req.Inputs["name"]; !ok {
+		if _, ok := reqInputs["name"]; !ok {
 			return plugin.ReadResponse{Status: resource.StatusUnknown}, errors.New("stack reference can not be imported")
 		}
 
-		outputs, err := p.readStackReference(ctx, resource.FromResourcePropertyMap(req.Inputs))
+		outputs, err := p.readStackReference(ctx, req.Inputs)
 		if err != nil {
 			return plugin.ReadResponse{Status: resource.StatusUnknown}, err
 		}
@@ -307,8 +308,8 @@ func (p *builtinProvider) Read(ctx context.Context, req plugin.ReadRequest) (plu
 		return plugin.ReadResponse{
 			ReadResult: plugin.ReadResult{
 				ID:      req.ID,
-				Inputs:  req.Inputs,
-				Outputs: resource.ToResourcePropertyMap(outputs),
+				Inputs:  &req.Inputs,
+				Outputs: &outputs,
 			},
 			Status: resource.StatusOK,
 		}, nil
@@ -317,15 +318,15 @@ func (p *builtinProvider) Read(ctx context.Context, req plugin.ReadRequest) (plu
 		// An import supplies no prior state. A stash has no backing system to read,
 		// so it adopts the id and holds a null value; the program's configured input
 		// then applies as an update.
-		if len(req.Inputs) == 0 {
+		if req.Inputs.Len() == 0 {
 			return plugin.ReadResponse{
 				ReadResult: plugin.ReadResult{
 					ID:     req.ID,
-					Inputs: resource.PropertyMap{"input": resource.NewNullProperty()},
-					Outputs: resource.PropertyMap{
+					Inputs: new(resource.FromResourcePropertyMap(resource.PropertyMap{"input": resource.NewNullProperty()})),
+					Outputs: new(resource.FromResourcePropertyMap(resource.PropertyMap{
 						"input":  resource.NewNullProperty(),
 						"output": resource.NewNullProperty(),
-					},
+					})),
 				},
 				Status: resource.StatusOK,
 			}, nil
@@ -334,8 +335,8 @@ func (p *builtinProvider) Read(ctx context.Context, req plugin.ReadRequest) (plu
 		return plugin.ReadResponse{
 			ReadResult: plugin.ReadResult{
 				ID:      req.ID,
-				Inputs:  req.Inputs,
-				Outputs: req.State,
+				Inputs:  &req.Inputs,
+				Outputs: &req.State,
 			},
 			Status: resource.StatusOK,
 		}, nil

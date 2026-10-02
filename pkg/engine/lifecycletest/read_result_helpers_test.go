@@ -15,18 +15,16 @@
 package lifecycletest
 
 import (
-	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
-// coalesceReadOutputs returns the outputs a trivial mock provider should surface from a Read.
-// On refresh the engine passes prior outputs in req.State; on a user-driven Get the engine
-// passes an empty map, so fall back to req.Inputs to emulate a provider that returns the live state.
-func coalesceReadOutputs(req plugin.ReadRequest) *property.Map {
-	if req.State.Len() > 0 {
-		s := req.State
-		return &s
+// ptrMap converts a resource.PropertyMap to a *property.Map for use in
+// plugin.ReadResult literals that now expect pointer-valued Inputs/Outputs.
+func ptrMap(m resource.PropertyMap) *property.Map {
+	if m == nil {
+		return nil
 	}
-	i := req.Inputs
-	return &i
+	pm := resource.FromResourcePropertyMap(m)
+	return &pm
 }

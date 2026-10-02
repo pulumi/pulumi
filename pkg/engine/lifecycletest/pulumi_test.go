@@ -2899,8 +2899,8 @@ func TestImportDiff(t *testing.T) {
 					return plugin.ReadResponse{
 						ReadResult: plugin.ReadResult{
 							ID:      req.ID,
-							Inputs:  props,
-							Outputs: props,
+							Inputs:  ptrMap(props),
+							Outputs: ptrMap(props),
 						},
 						Status: resource.StatusOK,
 					}, nil
@@ -4248,7 +4248,7 @@ func TestSourcePositions(t *testing.T) {
 				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
 					return plugin.ReadResponse{
 						ReadResult: plugin.ReadResult{
-							Inputs:  req.Inputs,
+							Inputs:  &req.Inputs,
 							Outputs: coalesceReadOutputs(req),
 						},
 						Status: resource.StatusOK,

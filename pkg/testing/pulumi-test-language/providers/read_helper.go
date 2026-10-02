@@ -16,15 +16,17 @@ package providers
 
 import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
-// readOutputs returns the outputs a trivial mock provider should surface from a Read.
+// coalesceReadOutputs returns the outputs a trivial mock provider should surface from a Read.
 // On refresh the engine passes prior outputs in req.State; on a user-driven Get the engine
-// passes nil, so fall back to req.Inputs to emulate a provider that returns the live state.
-func coalesceReadOutputs(req plugin.ReadRequest) resource.PropertyMap {
-	if req.State != nil {
-		return req.State
+// passes an empty map, so fall back to req.Inputs to emulate a provider that returns the live state.
+func coalesceReadOutputs(req plugin.ReadRequest) *property.Map {
+	if req.State.Len() > 0 {
+		s := req.State
+		return &s
 	}
-	return req.Inputs
+	i := req.Inputs
+	return &i
 }

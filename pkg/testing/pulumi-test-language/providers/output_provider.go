@@ -361,7 +361,7 @@ func (p *OutputProvider) Read(ctx context.Context, req plugin.ReadRequest) (plug
 	return plugin.ReadResponse{
 		ReadResult: plugin.ReadResult{
 			ID:      req.ID,
-			Inputs:  req.Inputs,
+			Inputs:  &req.Inputs,
 			Outputs: coalesceReadOutputs(req),
 		},
 		Status: resource.StatusOK,

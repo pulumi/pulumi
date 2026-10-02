@@ -26,36 +26,38 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/esc/schema"
 )
 
-var testProviderSchema = schema.Object().
-	Properties(schema.BuilderMap{
-		"address": schema.String().
-			Description("The URL of the Vault server. Must contain a scheme and hostname, but no path."),
-		"jwt": schema.Object().
-			Properties(schema.BuilderMap{
-				"mount": schema.String().Description("The name of the authentication engine mount."),
-				"role":  schema.String().Description("The name of the role to use for login."),
-			}).
-			Required("role").
-			Description("Options for JWT login. JWT login uses an OIDC token issued by the Pulumi Cloud to generate an ephemeral token."), //nolint:lll
-		"token": schema.Object().
-			Properties(schema.BuilderMap{
-				"displayName": schema.String().
-					Description("The display name of the ephemeral token. Defaults to 'pulumi'."),
-				"token": schema.String().Description("The parent token."),
-				"maxTtl": schema.String().
-					Pattern(`^([0-9]+h)?([0-9]+m)?([0-9]+s)?$`).
-					Description("The maximum TTL of the ephemeral token."),
-			}).
-			Required("token").
-			Description("Options for token login. Token login creates an ephemeral child token."),
-	}).
-	Required("address").
-	Schema()
+func newTestProviderSchema() *schema.Schema {
+	return schema.Object().
+		Properties(schema.BuilderMap{
+			"address": schema.String().
+				Description("The URL of the Vault server. Must contain a scheme and hostname, but no path."),
+			"jwt": schema.Object().
+				Properties(schema.BuilderMap{
+					"mount": schema.String().Description("The name of the authentication engine mount."),
+					"role":  schema.String().Description("The name of the role to use for login."),
+				}).
+				Required("role").
+				Description("Options for JWT login. JWT login uses an OIDC token issued by the Pulumi Cloud to generate an ephemeral token."), //nolint:lll
+			"token": schema.Object().
+				Properties(schema.BuilderMap{
+					"displayName": schema.String().
+						Description("The display name of the ephemeral token. Defaults to 'pulumi'."),
+					"token": schema.String().Description("The parent token."),
+					"maxTtl": schema.String().
+						Pattern(`^([0-9]+h)?([0-9]+m)?([0-9]+s)?$`).
+						Description("The maximum TTL of the ephemeral token."),
+				}).
+				Required("token").
+				Description("Options for token login. Token login creates an ephemeral child token."),
+		}).
+		Required("address").
+		Schema()
+}
 
 type testProvider struct{}
 
 func (testProvider) Schema() (*schema.Schema, *schema.Schema) {
-	return testProviderSchema, schema.Always()
+	return newTestProviderSchema(), schema.Always()
 }
 
 func (testProvider) Open(

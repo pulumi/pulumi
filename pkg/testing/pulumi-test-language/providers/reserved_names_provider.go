@@ -181,7 +181,7 @@ func (p *ReservedNamesProvider) Read(
 	return plugin.ReadResponse{
 		ReadResult: plugin.ReadResult{
 			ID:      req.ID,
-			Inputs:  req.Inputs,
+			Inputs:  &req.Inputs,
 			Outputs: coalesceReadOutputs(req),
 		},
 		Status: resource.StatusOK,

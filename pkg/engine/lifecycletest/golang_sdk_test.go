@@ -76,7 +76,7 @@ func TestSingleResourceDefaultProviderGolangLifecycle(t *testing.T) {
 					return plugin.ReadResponse{
 						ReadResult: plugin.ReadResult{
 							ID:      req.ID,
-							Inputs:  req.Inputs,
+							Inputs:  &req.Inputs,
 							Outputs: coalesceReadOutputs(req),
 						},
 						Status: resource.StatusOK,
@@ -145,7 +145,7 @@ func TestIgnoreChangesGolangLifecycle(t *testing.T) {
 				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
 					return plugin.ReadResponse{
 						ReadResult: plugin.ReadResult{
-							Inputs:  req.Inputs,
+							Inputs:  &req.Inputs,
 							Outputs: coalesceReadOutputs(req),
 						},
 						Status: resource.StatusOK,
@@ -348,7 +348,7 @@ func TestReadResourceGolangLifecycle(t *testing.T) {
 					assert.Equal(t, resource.ID("someId"), req.ID)
 					return plugin.ReadResponse{
 						ReadResult: plugin.ReadResult{
-							Inputs:  req.Inputs,
+							Inputs:  &req.Inputs,
 							Outputs: coalesceReadOutputs(req),
 						},
 						Status: resource.StatusOK,
@@ -434,7 +434,7 @@ func TestProviderInheritanceGolangLifecycle(t *testing.T) {
 				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
 					return plugin.ReadResponse{
 						ReadResult: plugin.ReadResult{
-							Inputs:  req.Inputs,
+							Inputs:  &req.Inputs,
 							Outputs: coalesceReadOutputs(req),
 						},
 						Status: resource.StatusOK,
@@ -459,7 +459,7 @@ func TestProviderInheritanceGolangLifecycle(t *testing.T) {
 				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
 					return plugin.ReadResponse{
 						ReadResult: plugin.ReadResult{
-							Inputs:  req.Inputs,
+							Inputs:  &req.Inputs,
 							Outputs: coalesceReadOutputs(req),
 						},
 						Status: resource.StatusOK,

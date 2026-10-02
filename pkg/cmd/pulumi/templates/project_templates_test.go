@@ -476,7 +476,6 @@ func TestRetrievePulumiTemplatesConcurrently(t *testing.T) {
 	}
 }
 
-//nolint:paralleltest
 func TestCopyTemplateFiles(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
@@ -522,12 +521,9 @@ func TestCopyTemplateFiles(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run("Copy "+tt.testName+": force=false", func(t *testing.T) {
-			testDataDir := "CopyTemplateFilesTestData-Copy"
+			t.Parallel()
 
-			defer func() {
-				err := os.RemoveAll(testDataDir)
-				require.NoError(t, err)
-			}()
+			testDataDir := t.TempDir()
 
 			projectDir, copyDestDir := setupTestData(t, testDataDir, tt.files, tt.directories)
 
@@ -538,12 +534,9 @@ func TestCopyTemplateFiles(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run("Copy "+tt.testName+": force=true", func(t *testing.T) {
-			testDataDir := "CopyTemplateFilesTestData-CopyForce"
+			t.Parallel()
 
-			defer func() {
-				err := os.RemoveAll(testDataDir)
-				require.NoError(t, err)
-			}()
+			testDataDir := t.TempDir()
 
 			projectDir, copyDestDir := setupTestData(t, testDataDir, tt.files, tt.directories)
 
@@ -554,12 +547,9 @@ func TestCopyTemplateFiles(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run("Overwrite "+tt.testName+": force=false", func(t *testing.T) {
-			testDataDir := "CopyTemplateFilesTestData-Overwrite"
+			t.Parallel()
 
-			defer func() {
-				err := os.RemoveAll(testDataDir)
-				require.NoError(t, err)
-			}()
+			testDataDir := t.TempDir()
 
 			projectDir, copyDestDir := setupTestData(t, testDataDir, tt.files, tt.directories)
 
@@ -573,12 +563,9 @@ func TestCopyTemplateFiles(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run("Overwrite "+tt.testName+": force=true", func(t *testing.T) {
-			testDataDir := "CopyTemplateFilesTestData-OverwriteForce"
+			t.Parallel()
 
-			defer func() {
-				err := os.RemoveAll(testDataDir)
-				require.NoError(t, err)
-			}()
+			testDataDir := t.TempDir()
 
 			projectDir, copyDestDir := setupTestData(t, testDataDir, tt.files, tt.directories)
 
@@ -591,12 +578,9 @@ func TestCopyTemplateFiles(t *testing.T) {
 	}
 
 	t.Run("Overwrite directory over file: force=false", func(t *testing.T) {
-		testDataDir := "CopyTemplateFilesTestData-OverwriteDirectoryOverFile"
+		t.Parallel()
 
-		defer func() {
-			err := os.RemoveAll(testDataDir)
-			require.NoError(t, err)
-		}()
+		testDataDir := t.TempDir()
 
 		directories := []string{"src"}
 		files := []string{"src/main.go", "Pulumi.yaml", "Pulumi.dev.yaml"}
@@ -619,12 +603,9 @@ func TestCopyTemplateFiles(t *testing.T) {
 	})
 
 	t.Run("Overwrite directory over file: force=true", func(t *testing.T) {
-		testDataDir := "CopyTemplateFilesTestData-OverwriteDirectoryOverFileForce"
+		t.Parallel()
 
-		defer func() {
-			err := os.RemoveAll(testDataDir)
-			require.NoError(t, err)
-		}()
+		testDataDir := t.TempDir()
 
 		directories := []string{"src"}
 		files := []string{"src/main.go", "Pulumi.yaml", "Pulumi.dev.yaml"}
@@ -647,12 +628,9 @@ func TestCopyTemplateFiles(t *testing.T) {
 	})
 
 	t.Run("Overwrite file over empty directory: force=false", func(t *testing.T) {
-		testDataDir := "CopyTemplateFilesTestData-OverwriteFileOverEmptyDirectory"
+		t.Parallel()
 
-		defer func() {
-			err := os.RemoveAll(testDataDir)
-			require.NoError(t, err)
-		}()
+		testDataDir := t.TempDir()
 
 		directories := []string{"src"}
 		files := []string{"src/main.go", "Pulumi.yaml", "Pulumi.dev.yaml"}
@@ -675,12 +653,9 @@ func TestCopyTemplateFiles(t *testing.T) {
 	})
 
 	t.Run("Overwrite file over empty directory: force=true", func(t *testing.T) {
-		testDataDir := "CopyTemplateFilesTestData-OverwriteFileOverEmptyDirectoryForce"
+		t.Parallel()
 
-		defer func() {
-			err := os.RemoveAll(testDataDir)
-			require.NoError(t, err)
-		}()
+		testDataDir := t.TempDir()
 
 		directories := []string{"src"}
 		files := []string{"src/main.go", "Pulumi.yaml", "Pulumi.dev.yaml"}
@@ -703,12 +678,9 @@ func TestCopyTemplateFiles(t *testing.T) {
 	})
 
 	t.Run("Overwrite file over non-empty directory: force=true", func(t *testing.T) {
-		testDataDir := "CopyTemplateFilesTestData-OverwriteFileOverNonEmptyDirectoryWithForce"
+		t.Parallel()
 
-		defer func() {
-			err := os.RemoveAll(testDataDir)
-			require.NoError(t, err)
-		}()
+		testDataDir := t.TempDir()
 
 		directories := []string{"src"}
 		files := []string{"src/main.go", "Pulumi.yaml", "Pulumi.dev.yaml"}

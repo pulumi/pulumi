@@ -25,6 +25,8 @@ import (
 	"sync/atomic"
 	"testing"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
+
 	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
 
 	"github.com/blang/semver"
@@ -65,9 +67,9 @@ func TestRefreshTargetChildren(t *testing.T) {
 					return plugin.ReadResponse{
 						ReadResult: plugin.ReadResult{
 							ID: req.ID,
-							Outputs: resource.PropertyMap{
-								"count": resource.NewProperty(float64(count)),
-							},
+							Outputs: new(property.NewMap(map[string]property.Value{
+								"count": property.New(float64(count)),
+							})),
 						},
 						Status: resource.StatusOK,
 					}, nil
@@ -504,9 +506,9 @@ func TestRefreshExcludeTarget(t *testing.T) {
 					return plugin.ReadResponse{
 						ReadResult: plugin.ReadResult{
 							ID: req.ID,
-							Outputs: resource.PropertyMap{
-								"count": resource.NewProperty(float64(count)),
-							},
+							Outputs: new(property.NewMap(map[string]property.Value{
+								"count": property.New(float64(count)),
+							})),
 						},
 						Status: resource.StatusOK,
 					}, nil
@@ -584,9 +586,9 @@ func TestRefreshExcludeChildren(t *testing.T) {
 					return plugin.ReadResponse{
 						ReadResult: plugin.ReadResult{
 							ID: req.ID,
-							Outputs: resource.PropertyMap{
-								"count": resource.NewProperty(callCount),
-							},
+							Outputs: new(property.NewMap(map[string]property.Value{
+								"count": property.New(callCount),
+							})),
 						},
 						Status: resource.StatusOK,
 					}, nil
@@ -3430,8 +3432,8 @@ func TestUntargetedDependencyChainsArePreserved(t *testing.T) {
 		//
 		// * A is removed from the program
 		// * An update targeting TARGET is performed
-		//nolint:paralleltest // golangci-lint v2 upgrade
 		t.Run("deleting the bottom of a dependency chain", func(t *testing.T) {
+			t.Parallel()
 			// Arrange.
 			p := &lt.TestPlan{}
 			project := p.GetProject()
@@ -3480,8 +3482,8 @@ func TestUntargetedDependencyChainsArePreserved(t *testing.T) {
 		//
 		// * B is removed from the program
 		// * An update targeting TARGET is performed
-		//nolint:paralleltest // golangci-lint v2 upgrade
 		t.Run("deleting the middle of a dependency chain", func(t *testing.T) {
+			t.Parallel()
 			// Arrange.
 			p := &lt.TestPlan{}
 			project := p.GetProject()
@@ -3529,8 +3531,8 @@ func TestUntargetedDependencyChainsArePreserved(t *testing.T) {
 		// * A is removed from the program
 		// * B is removed from the program
 		// * An update targeting TARGET is performed
-		//nolint:paralleltest // golangci-lint v2 upgrade
 		t.Run("deleting the entirety of a dependency chain", func(t *testing.T) {
+			t.Parallel()
 			// Arrange.
 			p := &lt.TestPlan{}
 			project := p.GetProject()
@@ -5284,7 +5286,7 @@ func TestTargetDependentsThroughReadResource(t *testing.T) {
 			return &deploytest.Provider{
 				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
 					return plugin.ReadResponse{
-						ReadResult: plugin.ReadResult{ID: req.ID, Outputs: resource.PropertyMap{}},
+						ReadResult: plugin.ReadResult{ID: req.ID, Outputs: new(property.Map{})},
 						Status:     resource.StatusOK,
 					}, nil
 				},

@@ -306,7 +306,7 @@ func TestConstructCallSecretsUnknowns(t *testing.T) {
 				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
 					return plugin.ReadResponse{
 						ReadResult: plugin.ReadResult{
-							Inputs:  req.Inputs,
+							Inputs:  &req.Inputs,
 							Outputs: coalesceReadOutputs(req),
 						},
 						Status: resource.StatusOK,
@@ -400,7 +400,7 @@ func TestConstructCallReturnDependencies(t *testing.T) {
 					ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
 						return plugin.ReadResponse{
 							ReadResult: plugin.ReadResult{
-								Inputs:  req.Inputs,
+								Inputs:  &req.Inputs,
 								Outputs: coalesceReadOutputs(req),
 							},
 							Status: resource.StatusOK,
@@ -546,7 +546,7 @@ func TestConstructCallReturnOutputs(t *testing.T) {
 					ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
 						return plugin.ReadResponse{
 							ReadResult: plugin.ReadResult{
-								Inputs:  req.Inputs,
+								Inputs:  &req.Inputs,
 								Outputs: coalesceReadOutputs(req),
 							},
 							Status: resource.StatusOK,
@@ -685,7 +685,7 @@ func TestConstructCallSendDependencies(t *testing.T) {
 					ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
 						return plugin.ReadResponse{
 							ReadResult: plugin.ReadResult{
-								Inputs:  req.Inputs,
+								Inputs:  &req.Inputs,
 								Outputs: coalesceReadOutputs(req),
 							},
 							Status: resource.StatusOK,
@@ -850,7 +850,7 @@ func TestConstructCallDependencyDedeuplication(t *testing.T) {
 					ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
 						return plugin.ReadResponse{
 							ReadResult: plugin.ReadResult{
-								Inputs:  req.Inputs,
+								Inputs:  &req.Inputs,
 								Outputs: coalesceReadOutputs(req),
 							},
 							Status: resource.StatusOK,
@@ -1443,7 +1443,7 @@ func TestComponentReadResourceOutputCanBeHydratedByProgram(t *testing.T) {
 						return plugin.ReadResponse{
 							ReadResult: plugin.ReadResult{
 								ID:      req.ID,
-								Outputs: req.Inputs,
+								Outputs: &req.Inputs,
 							},
 							Status: resource.StatusOK,
 						}, nil
@@ -1568,7 +1568,7 @@ func TestComponentReadResourceOutputCanBeHydratedByComponent(t *testing.T) {
 						return plugin.ReadResponse{
 							ReadResult: plugin.ReadResult{
 								ID:      req.ID,
-								Outputs: req.Inputs,
+								Outputs: &req.Inputs,
 							},
 							Status: resource.StatusOK,
 						}, nil
