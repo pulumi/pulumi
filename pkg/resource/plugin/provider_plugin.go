@@ -1825,8 +1825,8 @@ func (p *provider) Update(ctx context.Context, req UpdateRequest) (UpdateRespons
 	}
 
 	// make sure any echoed properties restore their original asset contents if they have not changed
-	restoreElidedAssetContents(req.OldInputs, outs)
-	restoreElidedAssetContents(req.OldOutputs, outs)
+	restoreElidedAssetContents(resource.ToResourcePropertyMap(req.OldInputs), outs)
+	restoreElidedAssetContents(resource.ToResourcePropertyMap(req.OldOutputs), outs)
 
 	logging.V(7).Infof("%s success; #outs=%d", label, len(outs))
 

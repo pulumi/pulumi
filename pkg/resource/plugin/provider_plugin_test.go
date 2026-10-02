@@ -1583,11 +1583,11 @@ func TestProvider_RestoresElidedAssetsFromState(t *testing.T) {
 		resp, err := p.Update(t.Context(), UpdateRequest{
 			URN:        urn,
 			ID:         "some-id",
-			OldInputs:  inputs,
-			OldOutputs: outputs,
-			NewInputs:  inputs,
+			OldInputs:  resource.FromResourcePropertyMap(inputs),
+			OldOutputs: resource.FromResourcePropertyMap(outputs),
+			NewInputs:  resource.FromResourcePropertyMap(inputs),
 		})
 		require.NoError(t, err)
-		assertRestored(t, resp.Properties)
+		assertRestored(t, resource.ToResourcePropertyMap(resp.Properties))
 	})
 }
