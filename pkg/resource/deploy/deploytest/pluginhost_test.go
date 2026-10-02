@@ -26,6 +26,7 @@ import (
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 
@@ -104,9 +105,11 @@ func TestHostEngine(t *testing.T) {
 
 			for _, ephemeral := range []bool{true, false} {
 				for _, tt := range tests {
-					tt.req.Ephemeral = ephemeral
-					t.Run(tt.name, func(t *testing.T) { //nolint:paralleltest // golangci-lint v2 upgrade
-						output, err := hostEngine.Log(t.Context(), tt.req)
+					t.Run(tt.name, func(t *testing.T) {
+						t.Parallel()
+						req := proto.Clone(tt.req).(*pulumirpc.LogRequest)
+						req.Ephemeral = ephemeral
+						output, err := hostEngine.Log(t.Context(), req)
 						assert.Equal(t, tt.expectedError, err)
 						assert.Equal(t, tt.expectedOutput, output)
 					})
