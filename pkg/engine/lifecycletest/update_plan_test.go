@@ -1083,13 +1083,13 @@ func TestPlannedInputOutputDifferences(t *testing.T) {
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 					return plugin.CreateResponse{
 						ID:         resource.ID("created-id-" + req.URN.Name()),
-						Properties: createOutputs,
+						Properties: resource.FromResourcePropertyMap(createOutputs),
 						Status:     resource.StatusOK,
 					}, nil
 				},
 				UpdateF: func(_ context.Context, req plugin.UpdateRequest) (plugin.UpdateResponse, error) {
 					return plugin.UpdateResponse{
-						Properties: updateOutputs,
+						Properties: resource.FromResourcePropertyMap(updateOutputs),
 						Status:     resource.StatusOK,
 					}, nil
 				},

@@ -206,7 +206,7 @@ func (p *builtinProvider) Create(ctx context.Context, req plugin.CreateRequest) 
 	switch typ { //nolint:exhaustive
 	case stackReferenceType:
 
-		state, err := p.readStackReference(ctx, resource.FromResourcePropertyMap(req.Properties))
+		state, err := p.readStackReference(ctx, req.Properties)
 		if err != nil {
 			return plugin.CreateResponse{Status: resource.StatusUnknown}, err
 		}
@@ -223,7 +223,7 @@ func (p *builtinProvider) Create(ctx context.Context, req plugin.CreateRequest) 
 
 		return plugin.CreateResponse{
 			ID:         id,
-			Properties: resource.ToResourcePropertyMap(state),
+			Properties: state,
 			Status:     resource.StatusOK,
 		}, nil
 	case stashType:
@@ -239,10 +239,10 @@ func (p *builtinProvider) Create(ctx context.Context, req plugin.CreateRequest) 
 
 		return plugin.CreateResponse{
 			ID: id,
-			Properties: resource.PropertyMap{
-				"input":  req.Properties["input"],
-				"output": req.Properties["input"],
-			},
+			Properties: resource.FromResourcePropertyMap(resource.PropertyMap{
+				"input":  resource.ToResourcePropertyMap(req.Properties)["input"],
+				"output": resource.ToResourcePropertyMap(req.Properties)["input"],
+			}),
 			Status: resource.StatusOK,
 		}, nil
 	default:
@@ -254,13 +254,15 @@ func (p *builtinProvider) Update(_ context.Context, req plugin.UpdateRequest) (p
 	typ := req.URN.Type()
 	switch typ { //nolint:exhaustive
 	case stashType:
+		newInputs := resource.ToResourcePropertyMap(req.NewInputs)
+		oldOutputs := resource.ToResourcePropertyMap(req.OldOutputs)
 		properties := resource.PropertyMap{
-			"input":  req.NewInputs["input"],
-			"output": req.OldOutputs["output"],
+			"input":  newInputs["input"],
+			"output": oldOutputs["output"],
 		}
 
 		return plugin.UpdateResponse{
-			Properties: properties,
+			Properties: resource.FromResourcePropertyMap(properties),
 			Status:     resource.StatusOK,
 		}, nil
 	default:

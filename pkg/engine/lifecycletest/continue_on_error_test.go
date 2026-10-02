@@ -1184,3 +1184,75 @@ func TestUpContinueOnErrorSkippedReadReturnsUnknown(t *testing.T) {
 	_, err := lt.TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
 	require.ErrorContains(t, err, "intentionally failed create")
 }
+
+// TestUpContinueOnErrorSkippedImportReturnsUnknown verifies that an ImportStep skipped because one of
+// its dependencies failed reports SUCCESS + Unknown=true so SDKs propagate unknowns to dependents.
+func TestUpContinueOnErrorSkippedImportReturnsUnknown(t *testing.T) {
+	t.Parallel()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+					return plugin.ReadResponse{
+						ReadResult: plugin.ReadResult{
+							ID:      req.ID,
+							Inputs:  resource.PropertyMap{},
+							Outputs: resource.NewPropertyMapFromMap(map[string]any{"foo": "bar"}),
+						},
+						Status: resource.StatusOK,
+					}, nil
+				},
+			}, nil
+		}, deploytest.WithoutGrpc),
+		deploytest.NewProviderLoader("pkgB", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					return plugin.CreateResponse{}, errors.New("intentionally failed create")
+				},
+			}, nil
+		}, deploytest.WithoutGrpc),
+	}
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		failingResp, err := monitor.RegisterResource("pkgB:m:typB", "failing", true, deploytest.ResourceOptions{
+			SupportsResultReporting: true,
+		})
+		require.NoError(t, err)
+		assert.Equal(t, pulumirpc.Result_FAIL, failingResp.Result)
+
+		// An import that depends on the failing resource; the ImportStep should be skipped and
+		// report Unknown=true on the response. The Result field's mapping of Skipped is a
+		// separate concern (still FAIL at this commit) that will be updated alongside the
+		// Create/Update Skip work.
+		importResp, err := monitor.RegisterResource("pkgA:m:typA", "imported", true, deploytest.ResourceOptions{
+			SupportsResultReporting: true,
+			ImportID:                resource.ID("existing-id"),
+			Dependencies:            []resource.URN{failingResp.URN},
+		})
+		require.NoError(t, err)
+		assert.True(t, importResp.Unknown, "expected skipped import to report Unknown=true")
+
+		return nil
+	})
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
+
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{
+			T: t,
+			UpdateOptions: UpdateOptions{
+				ContinueOnError: true,
+			},
+			HostF: hostF,
+		},
+	}
+
+	project := p.GetProject()
+	snap, err := lt.TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	require.ErrorContains(t, err, "intentionally failed create")
+	require.NotNil(t, snap)
+	// The skipped import should not have been persisted.
+	for _, r := range snap.Resources {
+		assert.NotEqual(t, "imported", r.URN.Name(), "expected skipped import to be absent from snapshot")
+	}
+}

@@ -16,6 +16,7 @@ package pcl_test
 
 import (
 	"bytes"
+	"context"
 	"encoding/base64"
 	"fmt"
 	"os"
@@ -23,6 +24,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 
@@ -1559,4 +1561,25 @@ resource stackRef "pulumi:pulumi:StackReference" {
 
 	token, _ := resource.GetToken()
 	assert.Equal(t, "pulumi:pulumi:StackReference", token)
+}
+
+type mockLoader struct{ spec schema.PackageSpec }
+
+func (m mockLoader) LoadPackage(pkg string, version *semver.Version) (*schema.Package, error) {
+	return m.LoadPackageV2(context.Background(), &schema.PackageDescriptor{Name: pkg, Version: version})
+}
+
+func (m mockLoader) LoadPackageV2(_ context.Context, d *schema.PackageDescriptor) (*schema.Package, error) {
+	if d.Name != m.spec.Name || (d.Version != nil && m.spec.Version != d.Version.String()) {
+		return nil, fmt.Errorf("%s does not match expected descriptor %s@%s", d, m.spec.Name, m.spec.Version)
+	}
+
+	pkg, diags, err := schema.BindSpec(m.spec, schema.NewNullLoader(), schema.ValidationOptions{})
+	if err != nil {
+		return nil, err
+	}
+	if diags.HasErrors() {
+		return nil, diags
+	}
+	return pkg, nil
 }

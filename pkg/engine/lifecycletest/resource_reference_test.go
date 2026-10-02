@@ -50,7 +50,7 @@ func TestResourceReferences(t *testing.T) {
 					}
 
 					if req.URN.Name() == "resC" {
-						assert.True(t, req.Properties.DeepEquals(resource.PropertyMap{
+						assert.True(t, resource.ToResourcePropertyMap(req.Properties).DeepEquals(resource.PropertyMap{
 							"resA": resource.MakeComponentResourceReference(urnA, ""),
 							"resB": resource.MakeCustomResourceReference(urnB, idB, ""),
 						}))
@@ -142,7 +142,7 @@ func TestResourceReferences_DownlevelSDK(t *testing.T) {
 
 					return plugin.CreateResponse{
 						ID:         resource.ID(id),
-						Properties: state,
+						Properties: resource.FromResourcePropertyMap(state),
 						Status:     resource.StatusOK,
 					}, nil
 				},
@@ -215,8 +215,9 @@ func TestResourceReferences_DownlevelEngine(t *testing.T) {
 
 					// If we have resource references here, the engine has not properly disabled them.
 					if req.URN.Name() == "resC" {
-						assert.Equal(t, resource.NewProperty(string(urnA)), req.Properties["resA"])
-						assert.Equal(t, refB.ResourceReferenceValue().ID, req.Properties["resB"])
+						props := resource.ToResourcePropertyMap(req.Properties)
+						assert.Equal(t, resource.NewProperty(string(urnA)), props["resA"])
+						assert.Equal(t, refB.ResourceReferenceValue().ID, props["resB"])
 					}
 
 					return plugin.CreateResponse{

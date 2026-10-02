@@ -92,8 +92,14 @@ type contextState struct {
 
 	join workGroup // the waitgroup for non-RPC async work associated with this context
 
-	packageRefs gsync.Map[string, *packageRefEntry] // per-context cache of parameterized provider package refs
+	packageRefs   gsync.Map[packageName, *packageRefEntry] // per-context cache of parameterized provider package refs
+	packagesByRef gsync.Map[packageRef, packageName]
 }
+
+type (
+	packageRef  = string
+	packageName = string
+)
 
 // Context handles registration of resources and exposes metadata about the current deployment context.
 type Context struct {
@@ -1440,7 +1446,7 @@ func (ctx *Context) readPackageResource(
 	}
 
 	// Get the provider for the resource.
-	provider := getProvider(t, options.Provider, providers)
+	provider := ctx.getProvider(t, packageRef, options.Provider, providers)
 	protect := options.Protect
 	if parent != nil && protect == nil {
 		protect = parent.getProtect()
@@ -1822,7 +1828,7 @@ func (ctx *Context) registerResource(
 	}
 
 	// Get the provider for the resource.
-	provider := getProvider(t, options.Provider, providers)
+	provider := ctx.getProvider(t, packageRef, options.Provider, providers)
 	protect := options.Protect
 	if parent != nil && protect == nil {
 		protect = parent.getProtect()
@@ -2097,6 +2103,9 @@ func (ctx *Context) GetOrRegisterPackageRef(
 			entry.err = err
 			return
 		}
+		if ext := r.GetExtension(); ext != nil && r.GetName() != "" {
+			ctx.state.packagesByRef.Store(resp.Ref, r.GetName())
+		}
 		entry.ref = resp.Ref
 	})
 	return entry.ref, entry.err
@@ -2191,8 +2200,15 @@ func (ctx *Context) mergeProviders(t string, parent Resource, provider ProviderR
 }
 
 // getProvider gets the provider for the resource.
-func getProvider(t string, provider ProviderResource, providers map[string]ProviderResource) ProviderResource {
+func (ctx *Context) getProvider(
+	t string, packageRef packageRef, provider ProviderResource, providers map[string]ProviderResource,
+) ProviderResource {
 	pkg := getPackage(t)
+	if packageRef != "" {
+		if p, ok := ctx.state.packagesByRef.Load(packageRef); ok {
+			pkg = p
+		}
+	}
 	if provider == nil || provider.getPackage() != pkg {
 		provider = providers[pkg]
 	}

@@ -345,3 +345,32 @@ func TestInvalidBindingPulumiResourceTypeName(t *testing.T) {
 		}
 	}
 }
+
+// Tests that `min` and `max` are typed int only when every argument is an int, including number literals,
+// which carry const types.
+func TestMinMaxTypes(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		source string
+		typ    model.Type
+	}{
+		{source: "value = max(1, 2)", typ: model.IntType},
+		{source: "value = min(1, 2)", typ: model.IntType},
+		{source: "value = max(1.5, 2)", typ: model.NumberType},
+		{source: "value = min(1, 2.5)", typ: model.NumberType},
+		{source: "value = max(1, secret(2))", typ: model.NewOutputType(model.IntType)},
+		{source: "value = max(1, secret(2.5))", typ: model.NewOutputType(model.NumberType)},
+	}
+	for _, c := range cases {
+		t.Run(c.source, func(t *testing.T) {
+			t.Parallel()
+			program, diags, err := ParseAndBindProgram(t, c.source, "program.pp")
+			require.NoError(t, err)
+			require.False(t, diags.HasErrors(), diags.Error())
+			require.Len(t, program.Nodes, 1)
+			typ := program.Nodes[0].(*pcl.LocalVariable).Type()
+			assert.True(t, c.typ.Equals(typ), "expected %v, got %v", c.typ, typ)
+		})
+	}
+}

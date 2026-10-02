@@ -164,6 +164,7 @@ func (p *CamelNamesProvider) Check(
 func (p *CamelNamesProvider) Create(
 	_ context.Context, req plugin.CreateRequest,
 ) (plugin.CreateResponse, error) {
+	inputs := resource.ToResourcePropertyMap(req.Properties)
 	if req.URN.Type() != "camelNames:CoolModule:SomeResource" {
 		return plugin.CreateResponse{
 			Status: resource.StatusUnknown,
@@ -175,7 +176,7 @@ func (p *CamelNamesProvider) Create(
 		id = ""
 	}
 
-	value, ok := req.Properties["theInput"]
+	value, ok := inputs["theInput"]
 	if !ok {
 		return plugin.CreateResponse{}, errors.New("missing theInput property")
 	}
@@ -183,13 +184,13 @@ func (p *CamelNamesProvider) Create(
 	properties := resource.PropertyMap{
 		"theOutput": value,
 	}
-	if name, hasName := req.Properties["resourceName"]; hasName {
+	if name, hasName := inputs["resourceName"]; hasName {
 		properties["resourceName"] = name
 	}
 
 	return plugin.CreateResponse{
 		ID:         resource.ID(id),
-		Properties: properties,
+		Properties: resource.FromResourcePropertyMap(properties),
 		Status:     resource.StatusOK,
 	}, nil
 }

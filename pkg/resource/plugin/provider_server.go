@@ -585,7 +585,7 @@ func (p *providerServer) Create(ctx context.Context, req *pulumirpc.CreateReques
 		URN:                   urn,
 		Name:                  req.Name,
 		Type:                  tokens.Type(req.Type),
-		Properties:            inputs,
+		Properties:            resource.FromResourcePropertyMap(inputs),
 		Timeout:               req.GetTimeout(),
 		Preview:               req.GetPreview(),
 		ResourceStatusAddress: req.GetResourceStatusAddress(),
@@ -595,7 +595,7 @@ func (p *providerServer) Create(ctx context.Context, req *pulumirpc.CreateReques
 		return nil, err
 	}
 
-	rpcState, err := MarshalProperties(resp.Properties, p.marshalOptions("newState"))
+	rpcState, err := MarshalProperties(resource.ToResourcePropertyMap(resp.Properties), p.marshalOptions("newState"))
 	if err != nil {
 		return nil, err
 	}
@@ -771,9 +771,9 @@ func (p *providerServer) Update(ctx context.Context, req *pulumirpc.UpdateReques
 		Name:                  req.Name,
 		Type:                  tokens.Type(req.Type),
 		ID:                    id,
-		OldInputs:             oldInputs,
-		OldOutputs:            oldOutputs,
-		NewInputs:             newInputs,
+		OldInputs:             resource.FromResourcePropertyMap(oldInputs),
+		OldOutputs:            resource.FromResourcePropertyMap(oldOutputs),
+		NewInputs:             resource.FromResourcePropertyMap(newInputs),
 		Timeout:               req.GetTimeout(),
 		IgnoreChanges:         req.GetIgnoreChanges(),
 		Preview:               req.GetPreview(),
@@ -785,7 +785,7 @@ func (p *providerServer) Update(ctx context.Context, req *pulumirpc.UpdateReques
 		return nil, err
 	}
 
-	rpcState, err := MarshalProperties(resp.Properties, p.marshalOptions("newState"))
+	rpcState, err := MarshalProperties(resource.ToResourcePropertyMap(resp.Properties), p.marshalOptions("newState"))
 	if err != nil {
 		return nil, err
 	}
@@ -833,8 +833,8 @@ func (p *providerServer) Delete(ctx context.Context, req *pulumirpc.DeleteReques
 		Name:                  req.Name,
 		Type:                  tokens.Type(req.Type),
 		ID:                    id,
-		Inputs:                inputs,
-		Outputs:               outputs,
+		Inputs:                resource.FromResourcePropertyMap(inputs),
+		Outputs:               resource.FromResourcePropertyMap(outputs),
 		Timeout:               req.GetTimeout(),
 		ResourceStatusAddress: req.GetResourceStatusAddress(),
 		ResourceStatusToken:   req.GetResourceStatusToken(),

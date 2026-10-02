@@ -27,6 +27,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/stretchr/testify/assert"
+	"github.com/zclconf/go-cty/cty"
 )
 
 type exprTestCase struct {
@@ -210,6 +211,17 @@ func TestArgumentTypeName(t *testing.T) {
 	assert.Equal(t, "[]interface{}", plainDynamicListType)
 	inputDynamicListType := g.argumentTypeName(model.NewListType(model.DynamicType), true /*isInput*/)
 	assert.Equal(t, "pulumi.Array", inputDynamicListType)
+
+	// A tuple of constants collapses to the array type of their values, at any depth of nesting.
+	intConst := func(n int64) model.Type { return model.NewConstType(model.IntType, cty.NumberIntVal(n)) }
+	one, two, three, four := intConst(1), intConst(2), intConst(3), intConst(4)
+	assert.Equal(t, "pulumi.IntArray", g.argumentTypeName(model.NewTupleType(one, two), true /*isInput*/))
+	assert.Equal(t, "[]int", g.argumentTypeName(model.NewTupleType(one, two), false /*isInput*/))
+	nestedTuple := model.NewTupleType(model.NewTupleType(one, two), model.NewTupleType(three, four))
+	assert.Equal(t, "pulumi.IntArrayArray", g.argumentTypeName(nestedTuple, true /*isInput*/))
+	assert.Equal(t, "[][]int", g.argumentTypeName(nestedTuple, false /*isInput*/))
+	mixedTuple := model.NewTupleType(model.NewTupleType(one, two), model.NewTupleType(model.StringType))
+	assert.Equal(t, "pulumi.Array", g.argumentTypeName(mixedTuple, true /*isInput*/))
 
 	// Asset and Archive opaque types must be qualified with the pulumi package, otherwise nested compositions
 	// render bare names like []AssetMap which is invalid Go.

@@ -333,8 +333,8 @@ func TestProvider_DeleteRequests(t *testing.T) {
 			give: DeleteRequest{
 				ID:      id,
 				URN:     urn,
-				Inputs:  resource.PropertyMap{},
-				Outputs: resource.PropertyMap{},
+				Inputs:  property.Map{},
+				Outputs: property.Map{},
 			},
 			want: &pulumirpc.DeleteRequest{
 				Id:         string(id),
@@ -350,10 +350,10 @@ func TestProvider_DeleteRequests(t *testing.T) {
 			give: DeleteRequest{
 				ID:  id,
 				URN: urn,
-				Inputs: resource.PropertyMap{
-					"foo": resource.NewProperty("bar"),
-				},
-				Outputs: resource.PropertyMap{},
+				Inputs: property.NewMap(map[string]property.Value{
+					"foo": property.New("bar"),
+				}),
+				Outputs: property.Map{},
 			},
 			want: &pulumirpc.DeleteRequest{
 				Id:   string(id),
@@ -373,10 +373,10 @@ func TestProvider_DeleteRequests(t *testing.T) {
 			give: DeleteRequest{
 				ID:     id,
 				URN:    urn,
-				Inputs: resource.PropertyMap{},
-				Outputs: resource.PropertyMap{
-					"baz": resource.NewProperty("quux"),
-				},
+				Inputs: property.Map{},
+				Outputs: property.NewMap(map[string]property.Value{
+					"baz": property.New("quux"),
+				}),
 			},
 			want: &pulumirpc.DeleteRequest{
 				Id:        string(id),
@@ -397,8 +397,8 @@ func TestProvider_DeleteRequests(t *testing.T) {
 				ID:      id,
 				URN:     urn,
 				Timeout: 30,
-				Inputs:  resource.PropertyMap{},
-				Outputs: resource.PropertyMap{},
+				Inputs:  property.Map{},
+				Outputs: property.Map{},
 			},
 			want: &pulumirpc.DeleteRequest{
 				Id:         string(id),
@@ -415,12 +415,12 @@ func TestProvider_DeleteRequests(t *testing.T) {
 			give: DeleteRequest{
 				ID:  id,
 				URN: urn,
-				Inputs: resource.PropertyMap{
-					"foo": resource.NewProperty("bar"),
-				},
-				Outputs: resource.PropertyMap{
-					"baz": resource.NewProperty("quux"),
-				},
+				Inputs: property.NewMap(map[string]property.Value{
+					"foo": property.New("bar"),
+				}),
+				Outputs: property.NewMap(map[string]property.Value{
+					"baz": property.New("quux"),
+				}),
 				Timeout: 30,
 			},
 			want: &pulumirpc.DeleteRequest{
@@ -792,8 +792,8 @@ func TestProvider_ConfigureDeleteRace(t *testing.T) {
 			Name:    "qux",
 			Type:    "bar:baz",
 			ID:      "whatever",
-			Inputs:  props,
-			Outputs: props,
+			Inputs:  resource.FromResourcePropertyMap(props),
+			Outputs: resource.FromResourcePropertyMap(props),
 			Timeout: 1000,
 		})
 		require.NoError(t, err, "Delete failed")
@@ -1465,13 +1465,13 @@ func TestProvider_PartialFailure(t *testing.T) {
 		URN:        urn,
 		Name:       urn.Name(),
 		Type:       urn.Type(),
-		Properties: resource.PropertyMap{},
+		Properties: property.Map{},
 	})
 	require.ErrorAs(t, err, &initErr, "expected an InitError")
 	assert.Equal(t, []string{"create issue"}, initErr.Reasons)
 	assert.Equal(t, CreateResponse{
 		ID:                  "some-id",
-		Properties:          liveProperties,
+		Properties:          resource.FromResourcePropertyMap(liveProperties),
 		Status:              resource.StatusPartialFailure,
 		RefreshBeforeUpdate: true,
 	}, createResp)
@@ -1501,14 +1501,14 @@ func TestProvider_PartialFailure(t *testing.T) {
 		Name:       urn.Name(),
 		Type:       urn.Type(),
 		ID:         "some-id",
-		OldInputs:  resource.PropertyMap{},
-		OldOutputs: resource.PropertyMap{},
-		NewInputs:  resource.PropertyMap{},
+		OldInputs:  property.Map{},
+		OldOutputs: property.Map{},
+		NewInputs:  property.Map{},
 	})
 	require.ErrorAs(t, err, &initErr, "expected an InitError")
 	assert.Equal(t, []string{"update issue"}, initErr.Reasons)
 	assert.Equal(t, UpdateResponse{
-		Properties:          liveProperties,
+		Properties:          resource.FromResourcePropertyMap(liveProperties),
 		Status:              resource.StatusPartialFailure,
 		RefreshBeforeUpdate: true,
 	}, updateResp)

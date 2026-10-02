@@ -21,7 +21,6 @@ import (
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model/pretty"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
-	"github.com/pulumi/pulumi/sdk/v3/go/pulumi-internal/gsync"
 )
 
 // OutputType represents eventual values that carry additional application-specific information.
@@ -29,13 +28,13 @@ type OutputType struct {
 	// ElementType is the element type of the output.
 	ElementType Type
 
-	cache *gsync.Map[Type, cacheEntry]
+	cache *typeCache
 }
 
 // NewOutputType creates a new output type with the given element type after replacing any output or promise types
 // within the element type with their respective element types.
 func NewOutputType(elementType Type) *OutputType {
-	return &OutputType{ElementType: ResolveOutputs(elementType), cache: &gsync.Map[Type, cacheEntry]{}}
+	return &OutputType{ElementType: ResolveOutputs(elementType), cache: &typeCache{}}
 }
 
 // SyntaxNode returns the syntax node for the type. This is always syntax.None.

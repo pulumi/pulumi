@@ -164,7 +164,7 @@ func (pcs ProviderCreateSpec) AsCreateF() func(context.Context, plugin.CreateReq
 
 		// To avoid having to randomly generate IDs here, we allow resources to specify an __id input that we'll use as the
 		// ID we return. ResourceSpec.AsResource makes use of this, for instance.
-		id := req.Properties["__id"].String()
+		id := req.Properties.Get("__id").GoString()
 		return plugin.CreateResponse{
 			ID:         resource.ID(id),
 			Properties: req.Properties,

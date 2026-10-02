@@ -2031,11 +2031,19 @@ func (b *cloudBackend) apply(
 	// Display messages from the backend if present.
 	displayBackendMessages(updateMeta.messages)
 
-	permalink, permalinkLabel := permalinkForDisplay(ctx, b.url, b.getPermalink(update, updateMeta.version, opts.DryRun))
+	// realPermalink is the actual console permalink; the event carries this rather than the
+	// display permalink below, which may be swapped for an agent-account claim URL.
+	realPermalink := b.getPermalink(update, updateMeta.version, opts.DryRun)
+	permalink, permalinkLabel := permalinkForDisplay(ctx, b.url, realPermalink)
 	op.Opts.Display.PermalinkLabel = permalinkLabel
+	updateStartedEvent := engine.NewEvent(engine.UpdateStartedEventPayload{
+		UpdateID:  update.UpdateID,
+		Version:   updateMeta.version,
+		Permalink: realPermalink,
+	})
 	return b.runEngineAction(
 		ctx, kind, stack.Ref(), op, update, updateMeta.leaseToken,
-		permalink, events, opts.DryRun, updateMeta.journalVersion)
+		permalink, updateStartedEvent, events, opts.DryRun, updateMeta.journalVersion)
 }
 
 // getPermalink returns a link to the update in the Pulumi Console.
@@ -2067,9 +2075,17 @@ func permalinkForDisplay(ctx context.Context, cloudURL, permalink string) (strin
 func (b *cloudBackend) runEngineAction(
 	ctx context.Context, kind apitype.UpdateKind, stackRef backend.StackReference,
 	op backend.UpdateOperation, update client.UpdateIdentifier, token, permalink string,
+	updateStartedEvent engine.Event,
 	callerEventsOpt chan<- engine.Event, dryRun bool, journalVersion int64,
 ) (*deploy.Plan, sdkDisplay.ResourceChanges, error) {
 	contract.Assertf(token != "", "persisted actions require a token")
+
+	// Send synchronously before anything can fail, so the caller always gets it and the send
+	// can't outlive the caller's channel. Not sent to the display: it would land in the event log.
+	if callerEventsOpt != nil {
+		callerEventsOpt <- updateStartedEvent
+	}
+
 	u, tokenSource, err := b.newUpdate(ctx, stackRef, op, update, token)
 	if err != nil {
 		return nil, nil, err

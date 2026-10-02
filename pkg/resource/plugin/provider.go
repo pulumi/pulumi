@@ -295,7 +295,7 @@ type CreateRequest struct {
 	URN        resource.URN
 	Name       string
 	Type       tokens.Type
-	Properties resource.PropertyMap
+	Properties property.Map
 	Timeout    float64
 	Preview    bool
 	// The gRPC address of the ResourceStatus service which can be used to create view resources.
@@ -306,7 +306,7 @@ type CreateRequest struct {
 
 type CreateResponse struct {
 	ID         resource.ID
-	Properties resource.PropertyMap
+	Properties property.Map
 	Status     resource.Status
 	// Indicates that this resource should always be refreshed prior to updates.
 	RefreshBeforeUpdate bool
@@ -339,7 +339,7 @@ type UpdateRequest struct {
 	Name                             string
 	Type                             tokens.Type
 	ID                               resource.ID
-	OldInputs, OldOutputs, NewInputs resource.PropertyMap
+	OldInputs, OldOutputs, NewInputs property.Map
 	Timeout                          float64
 	IgnoreChanges                    []string
 	Preview                          bool
@@ -352,7 +352,7 @@ type UpdateRequest struct {
 }
 
 type UpdateResponse struct {
-	Properties resource.PropertyMap
+	Properties property.Map
 	Status     resource.Status
 	// Indicates that this resource should always be refreshed prior to updates.
 	RefreshBeforeUpdate bool
@@ -363,7 +363,7 @@ type DeleteRequest struct {
 	Name            string
 	Type            tokens.Type
 	ID              resource.ID
-	Inputs, Outputs resource.PropertyMap
+	Inputs, Outputs property.Map
 	Timeout         float64
 	// The gRPC address of the ResourceStatus service which can be used to delete view resources.
 	ResourceStatusAddress string

@@ -15,14 +15,128 @@
 package python
 
 import (
+	"bytes"
+	"fmt"
 	"testing"
 
+	"github.com/hashicorp/hcl/v2"
+
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model/format"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func TestLengthOfOutput(t *testing.T) {
+	t.Parallel()
+
+	for _, tt := range []struct {
+		name     string
+		argType  model.Type
+		expected string
+	}{
+		{
+			name:     "output",
+			argType:  model.NewOutputType(model.NewListType(model.StringType)),
+			expected: "values.apply(lambda value: len(value))",
+		},
+		{
+			name:     "list of outputs",
+			argType:  model.NewListType(model.NewOutputType(model.StringType)),
+			expected: "pulumi.Output.from_input(values).apply(lambda value: len(value))",
+		},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			values := model.VariableReference(&model.Variable{
+				Name:         "values",
+				VariableType: tt.argType,
+			})
+			expr := &model.FunctionCallExpression{
+				Name: "length",
+				Signature: model.StaticFunctionSignature{
+					Parameters: []model.Parameter{{Name: "value", Type: values.Type()}},
+					ReturnType: model.NewOutputType(model.IntType),
+				},
+				Args: []model.Expression{values},
+			}
+
+			g := &generator{}
+			g.Formatter = format.NewFormatter(g)
+			var result bytes.Buffer
+			g.GenFunctionCallExpression(&result, expr)
+
+			assert.Equal(t, tt.expected, result.String())
+		})
+	}
+}
+
+func TestRewriteApplyLambdaBody(t *testing.T) {
+	t.Parallel()
+
+	for _, multiple := range []bool{false, true} {
+		for _, property := range []bool{false, true} {
+			t.Run(fmt.Sprintf("multiple=%v/property=%v", multiple, property), func(t *testing.T) {
+				t.Parallel()
+				parameter := &model.Variable{Name: "value", VariableType: model.DynamicType}
+				body := model.VariableReference(parameter)
+				if property {
+					body.Traversal = append(body.Traversal, hcl.TraverseAttr{Name: "results"})
+					require.Empty(t, body.Typecheck(false))
+				}
+				lambda := &model.AnonymousFunctionExpression{
+					Parameters: []*model.Variable{parameter},
+					Body:       body,
+				}
+				if multiple {
+					lambda.Parameters = append(lambda.Parameters, &model.Variable{Name: "other", VariableType: model.DynamicType})
+				}
+				g := &generator{}
+				g.Formatter = format.NewFormatter(g)
+				var result bytes.Buffer
+				g.Fgenf(&result, "%.v", rewriteApplyLambdaBody(lambda, "resolved_outputs"))
+				expected := "resolved_outputs"
+				if multiple {
+					expected += "['value']"
+				}
+				if property {
+					expected += ".results"
+				}
+				assert.Equal(t, expected, result.String())
+
+				// A different binding with the same name must remain untouched.
+				other := model.VariableReference(&model.Variable{Name: "value", VariableType: model.DynamicType})
+				lambda.Body = other
+				assert.Same(t, other, rewriteApplyLambdaBody(lambda, "resolved_outputs"))
+			})
+		}
+	}
+}
+
+func TestApplyLambdaCapturesRangeValue(t *testing.T) {
+	t.Parallel()
+
+	rangeVariable := &model.Variable{Name: "range", VariableType: model.DynamicType}
+	valueParameter := &model.Variable{Name: "value", VariableType: model.DynamicType}
+	expr := &model.AnonymousFunctionExpression{
+		Signature: model.StaticFunctionSignature{
+			Parameters: []model.Parameter{{Name: "value", Type: model.DynamicType}},
+			ReturnType: model.DynamicType,
+		},
+		Parameters: []*model.Variable{valueParameter},
+		Body:       model.VariableReference(rangeVariable),
+	}
+
+	g := &generator{rangeVariable: "routes_range"}
+	g.Formatter = format.NewFormatter(g)
+	var result bytes.Buffer
+	g.GenAnonymousFunctionExpression(&result, expr)
+
+	assert.Equal(t, "lambda value, _routes_range=routes_range: _routes_range", result.String())
+	assert.Equal(t, "routes_range", g.rangeVariable)
+}
 
 func TestComponentInputElementTypeUsesQualifiedBuiltins(t *testing.T) {
 	t.Parallel()

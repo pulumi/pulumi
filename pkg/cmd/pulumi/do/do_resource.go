@@ -204,7 +204,7 @@ func (pc *packageCommand) runStatelessCreate(
 			URN:        urn,
 			Name:       urn.Name(),
 			Type:       urn.Type(),
-			Properties: checked,
+			Properties: resource.FromResourcePropertyMap(checked),
 			Preview:    pc.dryrun,
 		})
 		if err != nil {
@@ -214,7 +214,7 @@ func (pc *packageCommand) runStatelessCreate(
 		if id == "" {
 			id = resource.ID("[unknown]")
 		}
-		return resultState(urn, id, nil, response.Properties, res), nil
+		return resultState(urn, id, nil, resource.ToResourcePropertyMap(response.Properties), res), nil
 	}
 	if pc.dryrun {
 		return pc.runDisplayedStep(cmd, displayedStep{
@@ -413,15 +413,15 @@ func (pc *packageCommand) runStatelessUpdate(
 			Name:       urn.Name(),
 			Type:       urn.Type(),
 			ID:         id,
-			OldInputs:  oldInputs,
-			OldOutputs: read.Outputs,
-			NewInputs:  checked,
+			OldInputs:  resource.FromResourcePropertyMap(oldInputs),
+			OldOutputs: resource.FromResourcePropertyMap(read.Outputs),
+			NewInputs:  resource.FromResourcePropertyMap(checked),
 			Preview:    pc.dryrun,
 		})
 		if err != nil {
 			return nil, err
 		}
-		return resultState(urn, id, checked, response.Properties, res), nil
+		return resultState(urn, id, checked, resource.ToResourcePropertyMap(response.Properties), res), nil
 	})
 }
 
@@ -487,8 +487,8 @@ func (pc *packageCommand) newResourceDeleteCommand(res *schema.Resource) *cobra.
 					Name:    urn.Name(),
 					Type:    urn.Type(),
 					ID:      id,
-					Inputs:  response.Inputs,
-					Outputs: response.Outputs,
+					Inputs:  resource.FromResourcePropertyMap(response.Inputs),
+					Outputs: resource.FromResourcePropertyMap(response.Outputs),
 				})
 				return nil, err
 			})

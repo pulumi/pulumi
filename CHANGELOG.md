@@ -1,5 +1,66 @@
 # Changelog
 
+## 3.267.0 (2026-10-01)
+
+### Bug Fixes
+
+- [cli/new] Fix concurrent `pulumi new` runs failing to clone the templates repository [#24939](https://github.com/pulumi/pulumi/pull/24939)
+- [sdk/python] Fix `pulumi install` for Python plugins and policy packs that use the uv toolchain and a `[build-system]` table [#24951](https://github.com/pulumi/pulumi/pull/24951)
+## 3.266.0 (2026-09-30)
+
+### Bug Fixes
+
+- [sdk/go] Use an explicit provider for resources from an extension package, instead of falling back to a default provider [#24702](https://github.com/pulumi/pulumi/pull/24702)
+- [sdk/python] Use an explicit provider for resources from an extension package, instead of falling back to a default provider [#24702](https://github.com/pulumi/pulumi/pull/24702)
+- [pcl] Order the members of a union type by a fixed structural order rather than by their printed form, so that a recursive object type prints all of its properties and diagnostics list union members consistently [#24804](https://github.com/pulumi/pulumi/pull/24804)
+- [cli/new] Avoid printing the provider docs link twice in the `pulumi new` credentials warning [#24925](https://github.com/pulumi/pulumi/pull/24925)
+
+### Improvements
+
+- [cli/neo] Report the console URL and update identifiers in `pulumi neo` pulumi_preview/pulumi_up tool results [#24721](https://github.com/pulumi/pulumi/pull/24721)
+- [sdkgen] Support `#/provider` doc references in schema descriptions [#24918](https://github.com/pulumi/pulumi/pull/24918)
+
+### Miscellaneous
+
+- [sdk/go] Remove `workspace.Credentials.AccessTokens` and read stored logins only from the `accounts` object of `credentials.json` [#24922](https://github.com/pulumi/pulumi/pull/24922)
+- [sdk/dotnet] Upgrade dotnet to v3.114.1 [#24926](https://github.com/pulumi/pulumi/pull/24926)
+- [java] Upgrade java to v1.37.3 [#24926](https://github.com/pulumi/pulumi/pull/24926)
+- [yaml] Upgrade yaml to v1.38.8 [#24926](https://github.com/pulumi/pulumi/pull/24926)
+- [hcl] Upgrade hcl to v0.18.3 [#24926](https://github.com/pulumi/pulumi/pull/24926)
+## 3.265.0 (2026-09-25)
+
+### Features
+
+- [cli/auth] Add `pulumi logout --all --delete-credentials-key` to delete the key that encrypts stored credentials from the OS credential store [#24764](https://github.com/pulumi/pulumi/pull/24764)
+
+### Bug Fixes
+
+- [programgen/python] Generate valid Python for output-dependent resource ranges [#24474](https://github.com/pulumi/pulumi/pull/24474)
+- [cli/policy] Recover from partial installs & wait for parallel installs [#24705](https://github.com/pulumi/pulumi/pull/24705)
+- [cli/install] Cancel cross-process waits with Ctrl-C [#24711](https://github.com/pulumi/pulumi/pull/24711)
+- [engine] Report `Unknown=true` on the `ReadResourceResponse` when a Read is skipped because one of its dependencies failed during a `--continue-on-error` update, so SDKs can propagate unknowns to dependents rather than treating empty outputs as real [#24747](https://github.com/pulumi/pulumi/pull/24747)
+- [cli/auth] Keep encrypted credentials in other `PULUMI_HOME` directories readable after `pulumi logout --all` or `pulumi login` in one of them [#24764](https://github.com/pulumi/pulumi/pull/24764)
+- [engine] Report `Unknown=true` on the register response when an Import step is skipped because one of its dependencies failed during a `--continue-on-error` update, so SDKs propagate unknowns to dependents rather than treating empty outputs as real [#24774](https://github.com/pulumi/pulumi/pull/24774)
+- [sdkgen/nodejs] Fix generated Node.js SDK compilation for self-referencing resource inputs [#24752](https://github.com/pulumi/pulumi/pull/24752)
+- [pcl] Fix a panic when a PCL program indexes a tuple literal with an index equal to its length [#24755](https://github.com/pulumi/pulumi/pull/24755)
+- [pcl] Fix a binder panic on nested tuple literals of different shapes, and unify collection literals that hold different constants into one collection type so they can be iterated [#24756](https://github.com/pulumi/pulumi/pull/24756)
+- [pcl] Fix the `length` built-in in the PCL interpreter to accept objects and maps [#24757](https://github.com/pulumi/pulumi/pull/24757)
+- [pcl] Add the `range` built-in to the PCL interpreter [#24758](https://github.com/pulumi/pulumi/pull/24758)
+- [pcl] Type `min` and `max` as number when any argument is a non-integer literal [#24759](https://github.com/pulumi/pulumi/pull/24759)
+- [pcl] Report an error when a number or bool literal is assigned to a property whose schema constant or enum does not admit it [#24761](https://github.com/pulumi/pulumi/pull/24761)
+- [pcl] Report a type mismatch on a resource input property that the resource does not also declare as an output [#24765](https://github.com/pulumi/pulumi/pull/24765)
+- [pcl] Allow a resource to be assigned to a plain property typed as a reference to its resource type [#24763](https://github.com/pulumi/pulumi/pull/24763)
+- [pcl] Type a quoted string with no interpolation as a constant so string constants and string enums are validated at bind time [#24766](https://github.com/pulumi/pulumi/pull/24766)
+- [programgen] Fix `length` on output values in generated programs, and count the keys of maps and objects in generated Node.js programs [#24757](https://github.com/pulumi/pulumi/pull/24757)
+- [sdk/go] Fix policy analyzer config schema serialization for Go analyzers [#24775](https://github.com/pulumi/pulumi/pull/24775)
+- [programgen] Fill the lists that `range` produces in Node.js programs [#24758](https://github.com/pulumi/pulumi/pull/24758)
+- [pcl] Fix PCL type conversion checks whose result depended on whether the same types had been unified first [#24793](https://github.com/pulumi/pulumi/pull/24793)
+- [sdk/nodejs] Fix closure serialization for `__importStar`-wrapped cached modules [#24797](https://github.com/pulumi/pulumi/pull/24797)
+
+### Improvements
+
+- [pcl] Name the constant or the enum members a resource property admits when a literal does not match it [#24770](https://github.com/pulumi/pulumi/pull/24770)
+- [cli/install] Authenticode-sign the Windows CLI and language host binaries [#24785](https://github.com/pulumi/pulumi/pull/24785)
 ## 3.264.0 (2026-09-23)
 
 ### Features

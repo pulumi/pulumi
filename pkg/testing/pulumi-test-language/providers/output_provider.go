@@ -265,6 +265,7 @@ func (p *OutputProvider) Check(
 func (p *OutputProvider) Create(
 	_ context.Context, req plugin.CreateRequest,
 ) (plugin.CreateResponse, error) {
+	inputs := resource.ToResourcePropertyMap(req.Properties)
 	if req.URN.Type() != "output:index:Resource" && req.URN.Type() != "output:index:ComplexResource" {
 		return plugin.CreateResponse{
 			Status: resource.StatusUnknown,
@@ -276,11 +277,11 @@ func (p *OutputProvider) Create(
 		id = ""
 	}
 
-	properties := p.makeOutputs(req.URN.Type(), req.Properties, req.Preview)
+	properties := p.makeOutputs(req.URN.Type(), inputs, req.Preview)
 
 	return plugin.CreateResponse{
 		ID:         resource.ID(id),
-		Properties: properties,
+		Properties: resource.FromResourcePropertyMap(properties),
 		Status:     resource.StatusOK,
 	}, nil
 }
@@ -294,10 +295,10 @@ func (p *OutputProvider) Update(
 		}, fmt.Errorf("invalid URN type: %s", req.URN.Type())
 	}
 
-	properties := p.makeOutputs(req.URN.Type(), req.NewInputs, req.Preview)
+	properties := p.makeOutputs(req.URN.Type(), resource.ToResourcePropertyMap(req.NewInputs), req.Preview)
 
 	return plugin.UpdateResponse{
-		Properties: properties,
+		Properties: resource.FromResourcePropertyMap(properties),
 		Status:     resource.StatusOK,
 	}, nil
 }

@@ -77,7 +77,8 @@ func (p prefixCrypter) BatchDecrypt(ctx context.Context, ciphertexts []string) (
 // restoreConfigFile must return false when the underlying os write fails, so callers know to
 // preserve the redundant `.bak` rather than removing it (which could lose the only good copy
 // of the source config).
-func TestRestoreConfigFile_FailureKeepsCallerInformed(t *testing.T) { //nolint: paralleltest
+func TestRestoreConfigFile_FailureKeepsCallerInformed(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	// Make `dir/sub` a file so writing under it fails ("not a directory").
 	blocker := dir + "/sub"
@@ -473,7 +474,8 @@ func TestStackMigrate_RejectsInvalidSecretsProvider(t *testing.T) {
 	assert.Contains(t, err.Error(), "unknown secrets provider")
 }
 
-func TestStackMigrate_EarlyErrorPaths(t *testing.T) { //nolint: paralleltest
+func TestStackMigrate_EarlyErrorPaths(t *testing.T) {
+	t.Parallel()
 	sourceURL := "file:///tmp/source"
 	project := migrationProject("proj")
 
@@ -647,8 +649,9 @@ func TestStackMigrate_EarlyErrorPaths(t *testing.T) { //nolint: paralleltest
 		},
 	}
 
-	for _, tt := range tests { //nolint:paralleltest // subtests share the test's workspace setup.
+	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			err := runMigrate(t, tt.ws, withMigrationTarget(sourceURL, tt.lm, tt.targetBE), []string{sourceURL, "dev"})
 			require.Error(t, err)
 			assert.Contains(t, err.Error(), tt.wantSubstr)
@@ -726,7 +729,8 @@ func TestStackMigrate_PromptsAndCancelsSameNameMigration(t *testing.T) { //nolin
 	assert.Contains(t, stdout.String(), "Migration cancelled")
 }
 
-func TestStackMigrate_RejectsSameBackend(t *testing.T) { //nolint: paralleltest
+func TestStackMigrate_RejectsSameBackend(t *testing.T) {
+	t.Parallel()
 	url := "file:///var/state"
 
 	be := &backend.MockBackend{

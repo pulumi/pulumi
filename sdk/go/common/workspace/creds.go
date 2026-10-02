@@ -63,15 +63,12 @@ func getAccountAt(path, key string) (Account, error) {
 		return Account{}, err
 	}
 
-	if account, ok := creds.Accounts[key]; ok {
-		account.sourcePath = path
-		return account, nil
-	}
-	token, ok := creds.AccessTokens[key]
+	account, ok := creds.Accounts[key]
 	if !ok {
 		return Account{}, nil
 	}
-	return Account{AccessToken: token, sourcePath: path}, nil
+	account.sourcePath = path
+	return account, nil
 }
 
 // GetAccountWithAgentFallback returns an account from default credentials, or
@@ -131,9 +128,6 @@ func DeleteAccount(key string) error {
 // deleteAccountFromCredentials removes a cloud URL from a credentials object
 // and clears it as current if it was selected.
 func deleteAccountFromCredentials(creds Credentials, key string) Credentials {
-	if creds.AccessTokens != nil {
-		delete(creds.AccessTokens, key)
-	}
 	if creds.Accounts != nil {
 		delete(creds.Accounts, key)
 	}
@@ -149,7 +143,7 @@ func DeleteAllAccounts() error {
 		return err
 	}
 
-	dropEnvelopeKey(credsFile, false)
+	dropCorruptKey(credsFile)
 	var result error
 	if err = os.Remove(credsFile); err != nil && !os.IsNotExist(err) {
 		result = errors.Join(result, err)
@@ -182,13 +176,10 @@ func storeAccountAt(path, key string, account Account, current bool) error {
 		logging.V(3).Infof("replacing credentials that can no longer be decrypted: %v", err)
 		creds = Credentials{}
 	}
-	if creds.AccessTokens == nil {
-		creds.AccessTokens = make(map[string]string)
-	}
 	if creds.Accounts == nil {
 		creds.Accounts = make(map[string]Account)
 	}
-	creds.AccessTokens[key], creds.Accounts[key] = account.AccessToken, account
+	creds.Accounts[key] = account
 	if current {
 		creds.Current = key
 	}
@@ -313,11 +304,29 @@ func NewAuthContextForTokenExchange(organization, team, user, token, expirationD
 }
 
 // Credentials hold the information necessary for authenticating Pulumi Cloud API requests.  It contains
-// a map from the cloud API URL to the associated access token.
+// a map from the backend URL to the associated account.
 type Credentials struct {
-	Current      string             `json:"current,omitempty"`      // the currently selected key.
-	AccessTokens map[string]string  `json:"accessTokens,omitempty"` // a map of arbitrary key strings to tokens.
-	Accounts     map[string]Account `json:"accounts,omitempty"`     // a map of arbitrary keys to account info.
+	Current  string             `json:"current,omitempty"`  // the currently selected key.
+	Accounts map[string]Account `json:"accounts,omitempty"` // a map of backend URLs to account info.
+}
+
+func (c Credentials) MarshalJSON() ([]byte, error) {
+	// To maintain backwards compatibility with CLIs v3.265.0 and earlier, we add back the
+	// "accessTokens" map, as derived from Accounts.
+
+	accessTokens := make(map[string]string, len(c.Accounts))
+	for key, account := range c.Accounts {
+		accessTokens[key] = account.AccessToken
+	}
+	return json.Marshal(struct {
+		Current      string             `json:"current,omitempty"`
+		AccessTokens map[string]string  `json:"accessTokens,omitempty"`
+		Accounts     map[string]Account `json:"accounts,omitempty"`
+	}{
+		Current:      c.Current,
+		AccessTokens: accessTokens,
+		Accounts:     c.Accounts,
+	})
 }
 
 // getCredsFilePath returns the path to the Pulumi credentials file on disk, regardless of
@@ -408,11 +417,11 @@ func readCredentialsFile(credsFile string) (Credentials, error) {
 			"or delete invalid credentials file: '%s': %w", credsFile, err)
 	}
 
-	secrets := slice.Prealloc[string](len(creds.AccessTokens) + len(creds.Accounts))
-	for _, v := range creds.AccessTokens {
-		secrets = append(secrets, v)
-	}
+	secrets := slice.Prealloc[string](2 * len(creds.Accounts))
 	for _, account := range creds.Accounts {
+		if account.AccessToken != "" {
+			secrets = append(secrets, account.AccessToken)
+		}
 		if account.RefreshToken != "" {
 			secrets = append(secrets, account.RefreshToken)
 		}
@@ -496,7 +505,7 @@ func decryptCredentials(credsFile string, data []byte) ([]byte, error) {
 // Agent credentials go through here too — all agent processes share one OS
 // user and one key.
 func writeCredentialsFile(credsFile string, creds Credentials) error {
-	if len(creds.AccessTokens) == 0 {
+	if len(creds.Accounts) == 0 {
 		err := os.Remove(credsFile)
 		if err != nil && !os.IsNotExist(err) {
 			return err
@@ -625,38 +634,81 @@ func GetStoredCredentials() (Credentials, error) {
 // replacement write stays encrypted.
 var replacedEnvelope atomic.Bool
 
-// Best-effort key cleanup for logout, and for login replacing an unreadable
-// file. Deletes the key under the envelope's recorded backend and under the
-// current best one, since they can differ (unparseable envelope, orphaned
-// key, file already gone).
-func dropEnvelopeKey(credsFile string, markReplaced bool) {
-	sawEnvelope := false
-	if raw, readErr := os.ReadFile(credsFile); readErr == nil && securestore.IsEnvelope(raw) {
-		sawEnvelope = true
-		if markReplaced {
-			replacedEnvelope.Store(true)
+func credentialsKeyStores(credsFile string) ([]keyStore, error) {
+	var sts []keyStore
+	var errs error
+	add := func(st keyStore) {
+		for _, seen := range sts {
+			if seen.Backend() == st.Backend() {
+				return
+			}
 		}
+		sts = append(sts, st)
+	}
+
+	if raw, readErr := os.ReadFile(credsFile); readErr == nil && securestore.IsEnvelope(raw) {
 		if backend, backendErr := securestore.EnvelopeBackend(raw); backendErr == nil {
-			if st, stErr := stores.ForBackend(backend); stErr == nil {
-				if err := st.DeleteKey(); err != nil {
-					logging.V(3).Infof("could not delete credentials encryption key: %v", err)
-				}
+			st, stErr := stores.ForBackend(backend)
+			switch {
+			case stErr == nil:
+				add(st)
+			case !errors.Is(stErr, securestore.ErrBackendUnsupported):
+				errs = errors.Join(errs, stErr)
 			}
 		}
 	}
-	// Without an envelope or an opted-in mode no key can exist, so skip.
-	if !sawEnvelope {
-		mode, err := credentialStoreMode()
-		if err != nil || (mode != securestore.ModeAuto && mode != securestore.ModeOS) {
-			return
-		}
+	st, stErr := stores.Resolve(securestore.ModeAuto)
+	if stErr != nil {
+		return sts, errors.Join(errs, stErr)
 	}
-	// Note: resolving probes the OS stores and may prompt for an unlock.
-	if st, stErr := stores.Resolve(securestore.ModeAuto); stErr == nil {
+	add(st)
+	return sts, errs
+}
+
+func credentialsKeyMayExist(credsFile string) bool {
+	if raw, err := os.ReadFile(credsFile); err == nil && securestore.IsEnvelope(raw) {
+		return true
+	}
+	mode, err := credentialStoreMode()
+	return err == nil && (mode == securestore.ModeAuto || mode == securestore.ModeOS)
+}
+
+// A healthy key is shared with other credentials files, so only a corrupt one is dropped.
+func dropCorruptKey(credsFile string) {
+	if !credentialsKeyMayExist(credsFile) {
+		return
+	}
+	sts, _ := credentialsKeyStores(credsFile)
+	for _, st := range sts {
+		if _, err := st.GetKey(); !errors.Is(err, securestore.ErrKeyCorrupt) {
+			continue
+		}
 		if err := st.DeleteKey(); err != nil {
-			logging.V(3).Infof("could not delete credentials encryption key: %v", err)
+			logging.V(3).Infof("could not delete corrupt credentials encryption key: %v", err)
 		}
 	}
+}
+
+// DeleteAllAccountsAndCredentialsKey is DeleteAllAccounts that also deletes the
+// credentials encryption key shared by all credentials files.
+func DeleteAllAccountsAndCredentialsKey() error {
+	credsFile, err := getCredsFilePath()
+	if err != nil {
+		return err
+	}
+	sts, keyErr := credentialsKeyStores(credsFile)
+	if err := DeleteAllAccounts(); err != nil {
+		return err
+	}
+	for _, st := range sts {
+		if err := st.DeleteKey(); err != nil {
+			keyErr = errors.Join(keyErr, err)
+		}
+	}
+	if keyErr != nil {
+		return fmt.Errorf("deleting the credentials encryption key: %w", keyErr)
+	}
+	return nil
 }
 
 func ResetStoredCredentials() error {
@@ -664,7 +716,9 @@ func ResetStoredCredentials() error {
 	if err != nil {
 		return err
 	}
-	dropEnvelopeKey(credsFile, true)
+	if raw, readErr := os.ReadFile(credsFile); readErr == nil && securestore.IsEnvelope(raw) {
+		replacedEnvelope.Store(true)
+	}
 	if err := os.Remove(credsFile); err != nil && !os.IsNotExist(err) {
 		return err
 	}

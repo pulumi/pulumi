@@ -38,6 +38,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -231,15 +232,16 @@ func TestDoCmdResourceCreate(t *testing.T) {
 				return plugin.CheckResponse{Properties: req.NewInputs}, nil
 			},
 			CreateF: func(ctx context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+				properties := resource.ToResourcePropertyMap(req.Properties)
 				calls = append(calls, "create")
-				assert.Equal(t, "example", req.Properties["name"].StringValue())
+				assert.Equal(t, "example", properties["name"].StringValue())
 				return plugin.CreateResponse{
 					ID: "res-1",
-					Properties: resource.PropertyMap{
-						"name":  resource.NewProperty("example"),
-						"size":  resource.NewProperty(2.0),
-						"extra": resource.NewProperty("hidden"),
-					},
+					Properties: property.NewMap(map[string]property.Value{
+						"name":  property.New("example"),
+						"size":  property.New(2.0),
+						"extra": property.New("hidden"),
+					}),
 				}, nil
 			},
 		},
@@ -307,9 +309,10 @@ func TestDoCmdResourceCreateWithPCLInputFlags(t *testing.T) {
 				return plugin.CheckResponse{Properties: req.NewInputs}, nil
 			},
 			CreateF: func(ctx context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+				properties := resource.ToResourcePropertyMap(req.Properties)
 				return plugin.CreateResponse{
 					ID:         "res-1",
-					Properties: req.Properties,
+					Properties: resource.FromResourcePropertyMap(properties),
 				}, nil
 			},
 		},
@@ -384,8 +387,8 @@ func TestDoCmdResourceReadDeletePatch(t *testing.T) {
 				},
 				DeleteF: func(ctx context.Context, req plugin.DeleteRequest) (plugin.DeleteResponse, error) {
 					assert.Equal(t, resource.ID("res-1"), req.ID)
-					assert.Equal(t, resource.PropertyMap{"name": resource.NewProperty("in")}, req.Inputs)
-					assert.Equal(t, resource.PropertyMap{"name": resource.NewProperty("out")}, req.Outputs)
+					assert.Equal(t, property.NewMap(map[string]property.Value{"name": property.New("in")}), req.Inputs)
+					assert.Equal(t, property.NewMap(map[string]property.Value{"name": property.New("out")}), req.Outputs)
 					deleted = true
 					return plugin.DeleteResponse{}, nil
 				},
@@ -439,15 +442,16 @@ func TestDoCmdResourceReadDeletePatch(t *testing.T) {
 				},
 				UpdateF: func(ctx context.Context, req plugin.UpdateRequest) (plugin.UpdateResponse, error) {
 					calls = append(calls, "update")
-					assert.Equal(t, "new", req.NewInputs["name"].StringValue())
-					assert.Equal(t, 1.0, req.NewInputs["size"].NumberValue())
-					assert.Equal(t, true, req.NewInputs["enabled"].BoolValue())
+					newInputs := resource.ToResourcePropertyMap(req.NewInputs)
+					assert.Equal(t, "new", newInputs["name"].StringValue())
+					assert.Equal(t, 1.0, newInputs["size"].NumberValue())
+					assert.Equal(t, true, newInputs["enabled"].BoolValue())
 					return plugin.UpdateResponse{
-						Properties: resource.PropertyMap{
+						Properties: resource.FromResourcePropertyMap(resource.PropertyMap{
 							"name":    resource.NewProperty("new"),
 							"size":    resource.NewProperty(1.0),
 							"enabled": resource.NewProperty(true),
-						},
+						}),
 					}, nil
 				},
 			},
@@ -499,10 +503,10 @@ enabled = true
 				},
 				UpdateF: func(ctx context.Context, req plugin.UpdateRequest) (plugin.UpdateResponse, error) {
 					return plugin.UpdateResponse{
-						Properties: resource.PropertyMap{
+						Properties: resource.FromResourcePropertyMap(resource.PropertyMap{
 							"name":    resource.NewProperty("existing"),
 							"enabled": resource.NewProperty(true),
-						},
+						}),
 					}, nil
 				},
 			},
@@ -988,8 +992,8 @@ func TestDoCmdResourceConfirmationSummary(t *testing.T) {
 					}, nil
 				},
 				DeleteF: func(ctx context.Context, req plugin.DeleteRequest) (plugin.DeleteResponse, error) {
-					assert.Equal(t, resource.PropertyMap{"name": resource.NewProperty("in")}, req.Inputs)
-					assert.Equal(t, resource.PropertyMap{"name": resource.NewProperty("out")}, req.Outputs)
+					assert.Equal(t, property.NewMap(map[string]property.Value{"name": property.New("in")}), req.Inputs)
+					assert.Equal(t, property.NewMap(map[string]property.Value{"name": property.New("out")}), req.Outputs)
 					return plugin.DeleteResponse{}, nil
 				},
 			},

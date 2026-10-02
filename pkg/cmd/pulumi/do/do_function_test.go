@@ -807,7 +807,7 @@ param1 = ["hello"]
 			wantErrs: []string{
 				`Cannot assign value to input "param1"`,
 				`to input "param1" of type string`,
-				`Cannot assign value (string)`,
+				`Cannot assign value ("hello")`,
 			},
 		},
 		{
@@ -825,7 +825,7 @@ param4 = "tag"
 `,
 			wantErrs: []string{
 				`Cannot assign value to input "param4"`,
-				`Cannot assign value string to input "param4" of type list(string)`,
+				`Cannot assign value "tag" to input "param4" of type list(string)`,
 			},
 		},
 		{
@@ -836,7 +836,7 @@ param4 = ["tag", []]
 `,
 			wantErrs: []string{
 				`Cannot assign value to input "param4"`,
-				`Cannot assign value (string, ()) to input "param4" of type list(string)`,
+				`Cannot assign value ("tag", ()) to input "param4" of type list(string)`,
 			},
 		},
 		{

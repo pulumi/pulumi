@@ -23,7 +23,6 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model/pretty"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
-	"github.com/pulumi/pulumi/sdk/v3/go/pulumi-internal/gsync"
 )
 
 // ConstType represents a type that is a single constant value.
@@ -33,12 +32,12 @@ type ConstType struct {
 	// Value is the constant value.
 	Value cty.Value
 
-	cache *gsync.Map[Type, cacheEntry]
+	cache *typeCache
 }
 
 // NewConstType creates a new constant type with the given type and value.
 func NewConstType(typ Type, value cty.Value) *ConstType {
-	return &ConstType{Type: typ, Value: value, cache: &gsync.Map[Type, cacheEntry]{}}
+	return &ConstType{Type: typ, Value: value, cache: &typeCache{}}
 }
 
 func (t *ConstType) pretty(seenFormatters map[Type]pretty.Formatter) pretty.Formatter {
@@ -106,10 +105,18 @@ func (t *ConstType) ConversionFrom(src Type) ConversionKind {
 
 func (t *ConstType) conversionFrom(src Type, unifying bool, seen cycleSet) (ConversionKind, lazyDiagnostics) {
 	return conversionFrom(t, src, unifying, seen, t.cache, func() (ConversionKind, lazyDiagnostics) {
-		if t.Type.ConversionFrom(src) != NoConversion {
+		notConvertible := func() hcl.Diagnostics { return hcl.Diagnostics{typeNotConvertible(t, src)} }
+		if src, ok := src.(*ConstType); ok {
+			// A constant either matches or does not, since we know the value.
+			if !t.Value.RawEquals(src.Value) {
+				return NoConversion, notConvertible
+			}
+			return SafeConversion, nil
+		}
+		if kind, _ := t.Type.conversionFrom(src, unifying, seen); kind != NoConversion {
 			return UnsafeConversion, nil
 		}
-		return NoConversion, func() hcl.Diagnostics { return hcl.Diagnostics{typeNotConvertible(t, src)} }
+		return NoConversion, notConvertible
 	})
 }
 

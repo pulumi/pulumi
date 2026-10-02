@@ -1198,7 +1198,8 @@ func (rm *resmon) Invoke(
 	return &pulumirpc.ResourceInvokeResponse{Return: mret, Failures: chkfails}, nil
 }
 
-// trackSettledResource records the resource a completed registration or read produced.
+// trackSettledResource records the resource a completed registration or read produced, along with its parent so that
+// transforms declared on ancestors can be found even when the chain passes through a resource read.
 //
 // parent and custom are the caller's, not the state's: Construct hands back a state carrying only a URN and outputs, so
 // a remote component's own state has neither, and filing it under the empty parent would hide it and everything beneath
@@ -1210,6 +1211,11 @@ func (rm *resmon) trackSettledResource(state *pkgresource.State, parent resource
 	state.Lock.Lock()
 	urn, id := state.URN, state.ID
 	state.Lock.Unlock()
+
+	rm.parentsLock.Lock()
+	rm.parents[urn] = parent
+	rm.parentsLock.Unlock()
+
 	rm.registrations.Track(urn, parent, custom, id != "")
 }
 
@@ -2417,8 +2423,10 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		// If this request did not specify property dependencies, treat each property as depending on every resource
 		// in the request's dependency list. We don't need to do this when remote is true, because all clients that
 		// support remote already support passing property dependencies, so there's no need to backfill here.
+		// Clone so that downstream code merging a property's Output-value dependencies into its set does not
+		// leak those dependencies into every other property via a shared underlying set instance.
 		for pk := range props {
-			propertyDependencies[pk] = dependencies
+			propertyDependencies[pk] = dependencies.Clone()
 		}
 	} else {
 		// Otherwise, unmarshal the per-property dependency information.
@@ -2957,8 +2965,9 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 			},
 		}
 
-		// The provider may have returned OutputValues in "Outputs", we need to downgrade them to Computed or
-		// Secret but also add them to the outputDeps map.
+		// The provider may have returned OutputValues in "Outputs". Harvest their dependencies into the
+		// outputDeps map; the OutputValues themselves are downgraded to Computed/Secret later by
+		// MarshalProperties (called without KeepOutputValues) before being sent back to the SDK.
 		if constructResult.OutputDependencies == nil {
 			constructResult.OutputDependencies = map[resource.PropertyKey][]resource.URN{}
 		}
@@ -3089,12 +3098,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 	}
 
 	if result != nil && result.State != nil && result.State.URN != "" {
-		// We've got a safe URN now, save the parent and transformations
-		func() {
-			rm.parentsLock.Lock()
-			defer rm.parentsLock.Unlock()
-			rm.parents[result.State.URN] = parent
-		}()
+		// We've got a safe URN now, save the transformations
 		func() {
 			rm.resourceTransformsLock.Lock()
 			defer rm.resourceTransformsLock.Unlock()

@@ -155,6 +155,7 @@ func (p *AssetArchiveProvider) Check(
 func (p *AssetArchiveProvider) Create(
 	_ context.Context, req plugin.CreateRequest,
 ) (plugin.CreateResponse, error) {
+	properties := resource.ToResourcePropertyMap(req.Properties)
 	_, err := p.checkType(req.URN)
 	if err != nil {
 		return plugin.CreateResponse{Status: resource.StatusUnknown}, err
@@ -167,7 +168,7 @@ func (p *AssetArchiveProvider) Create(
 
 	return plugin.CreateResponse{
 		ID:         resource.ID(id),
-		Properties: req.Properties,
+		Properties: resource.FromResourcePropertyMap(properties),
 		Status:     resource.StatusOK,
 	}, nil
 }

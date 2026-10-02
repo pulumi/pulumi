@@ -118,16 +118,34 @@ func assignableFrom(dest, src Type, assignableFromImpl func() bool) bool {
 	if dest.Equals(src) || dest == DynamicType {
 		return true
 	}
-	if cns, ok := src.(*ConstType); ok {
-		return assignableFrom(dest, cns.Type, assignableFromImpl)
+
+	switch src := src.(type) {
+	case *ConstType:
+		return assignableFrom(dest, src.Type, assignableFromImpl)
+	case *UnionType:
+		// A union U(U_0, U_1, ...) is assignable to a type T when each of its members is assignable to T.
+		for _, element := range src.ElementTypes {
+			if !dest.AssignableFrom(element) {
+				return false
+			}
+		}
+		return true
+	default:
+		return assignableFromImpl()
 	}
-	return assignableFromImpl()
+}
+
+type cacheKey struct {
+	src      Type
+	unifying bool
 }
 
 type cacheEntry struct {
 	kind  ConversionKind
 	diags lazyDiagnostics
 }
+
+type typeCache = gsync.Map[cacheKey, cacheEntry]
 
 // cycleSet tracks `(destination, source)` pairs currently mid-flight in a
 // recursive [Type.conversionFrom] computation. Cycle detection is keyed by
@@ -150,14 +168,15 @@ func (c cycleSet) pop(dst, src Type) {
 }
 
 func conversionFrom(dest, src Type, unifying bool, seen cycleSet,
-	cache *gsync.Map[Type, cacheEntry],
+	cache *typeCache,
 	conversionFromImpl func() (ConversionKind, lazyDiagnostics),
 ) (ConversionKind, lazyDiagnostics) {
 	if dest.Equals(src) || dest == DynamicType {
 		return SafeConversion, nil
 	}
 
-	if c, ok := cache.Load(src); ok {
+	key := cacheKey{src: src, unifying: unifying}
+	if c, ok := cache.Load(key); ok {
 		return c.kind, c.diags
 	}
 
@@ -165,29 +184,19 @@ func conversionFrom(dest, src Type, unifying bool, seen cycleSet,
 	case *UnionType:
 		kind, diags := src.conversionTo(dest, unifying, seen)
 		if cache != nil {
-			cache.Store(src, cacheEntry{kind: kind, diags: diags})
+			cache.Store(key, cacheEntry{kind: kind, diags: diags})
 		}
 		return kind, diags
-	case *ConstType:
-		// We want `EnumType`s too see const types, since they allow safe
-		// conversions.
-		if _, ok := dest.(*EnumType); !ok {
-			kind, diags := conversionFrom(dest, src.Type, unifying, seen, cache, conversionFromImpl)
-			if cache != nil {
-				cache.Store(src, cacheEntry{kind, diags})
-			}
-			return kind, diags
-		}
 	}
 	if src == DynamicType {
 		if cache != nil {
-			cache.Store(src, cacheEntry{UnsafeConversion, nil})
+			cache.Store(key, cacheEntry{UnsafeConversion, nil})
 		}
 		return UnsafeConversion, nil
 	}
 	kind, diags := conversionFromImpl()
 	if cache != nil {
-		cache.Store(src, cacheEntry{kind, diags})
+		cache.Store(key, cacheEntry{kind, diags})
 	}
 
 	contract.Assertf(

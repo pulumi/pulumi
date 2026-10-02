@@ -20,10 +20,10 @@ uv = "0.11.28"
 protoc = "29.5"
 "go:google.golang.org/protobuf/cmd/protoc-gen-go" = "v1.36.6"
 "go:google.golang.org/grpc/cmd/protoc-gen-go-grpc" = "v1.5.1"
-"npm:grpc-tools" = { version = "1.13.0", npm_args = "--ignore-scripts=false" }
+"npm:grpc-tools" = { version = "1.13.0", allow_builds = ["grpc-tools"], npm_args = "--ignore-scripts=false" }
 "npm:grpc_tools_node_protoc_ts" = "5.3.3"
 # This is a dev only dependency that fails to install on windows
-"npm:protoc-gen-js" = { version = "3.21.4", os = ["linux", "macos"], npm_args = "--ignore-scripts=false" }
+"npm:protoc-gen-js" = { version = "3.21.4", os = ["linux", "macos"], allow_builds = ["protoc-gen-js"], npm_args = "--ignore-scripts=false" }
 "go:go.abhg.dev/requiredfield/cmd/requiredfield" = "0.8.0"
 "github:WebAssembly/wabt" = "1.0.37"
 dotnet = "8"
