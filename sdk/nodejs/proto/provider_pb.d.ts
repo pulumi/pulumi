@@ -1691,6 +1691,23 @@ export namespace ErrorResourceInitFailed {
     }
 }
 
+export class ErrorResourceAwaitFailed extends jspb.Message { 
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): ErrorResourceAwaitFailed.AsObject;
+    static toObject(includeInstance: boolean, msg: ErrorResourceAwaitFailed): ErrorResourceAwaitFailed.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: ErrorResourceAwaitFailed, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): ErrorResourceAwaitFailed;
+    static deserializeBinaryFromReader(message: ErrorResourceAwaitFailed, reader: jspb.BinaryReader): ErrorResourceAwaitFailed;
+}
+
+export namespace ErrorResourceAwaitFailed {
+    export type AsObject = {
+    }
+}
+
 export class GetMappingRequest extends jspb.Message { 
     getKey(): string;
     setKey(value: string): GetMappingRequest;

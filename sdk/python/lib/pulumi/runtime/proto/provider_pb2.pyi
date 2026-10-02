@@ -2241,6 +2241,22 @@ class ErrorResourceInitFailed(google.protobuf.message.Message):
 global___ErrorResourceInitFailed = ErrorResourceInitFailed
 
 @typing.final
+class ErrorResourceAwaitFailed(google.protobuf.message.Message):
+    """ErrorResourceAwaitFailed is sent as a Detail when `ResourceProvider.{Create, Update}` fail because the provider had
+    to await the operation. Unlike [](pulumirpc.ErrorResourceInitFailed), no resource state was written (Create) or the
+    prior state is preserved unchanged (Update). The engine reports the resource as failed to the SDK and continues the
+    deployment, but the CLI exits with a dedicated non-zero code.
+    """
+
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    def __init__(
+        self,
+    ) -> None: ...
+
+global___ErrorResourceAwaitFailed = ErrorResourceAwaitFailed
+
+@typing.final
 class GetMappingRequest(google.protobuf.message.Message):
     """`GetMappingRequest` is the type of requests sent as part of a [](pulumirpc.ResourceProvider.GetMapping) call."""
 

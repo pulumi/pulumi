@@ -545,8 +545,43 @@ func (s *CreateStep) Fail() {
 	s.reg.Done(&RegisterResult{State: s.new, Result: ResultStateFailed})
 }
 
+// Await surfaces a provider-reported AwaitError to the SDK as SUCCESS + Unknown=true with empty
+// outputs. The resource's state is not coherent yet (the operation is in progress) so dependents
+// should propagate unknowns rather than treating any output as real.
+func (s *CreateStep) Await() {
+	skipState := s.new.Copy()
+	skipState.Outputs = resource.PropertyMap{}
+	s.reg.Done(&RegisterResult{State: skipState, Result: ResultStateSkipped, Unknown: true})
+}
+
 func (s *CreateStep) Skip() {
-	s.reg.Done(&RegisterResult{State: s.new, Result: ResultStateSkipped})
+	// Ask the provider what a dry-run of this create would produce so dependents get precise
+	// unknowns for the outputs that would actually vary, rather than an everything-unknown answer.
+	// The snapshot is not affected: no create happened, so s.new is not persisted.
+	skipState := s.new.Copy()
+	skipState.Outputs = resource.PropertyMap{}
+	if s.new.Custom {
+		if prov, err := getProvider(s, s.provider); err == nil {
+			resp, previewErr := prov.Create(context.TODO(), plugin.CreateRequest{
+				URN:        s.URN(),
+				Name:       s.new.URN.Name(),
+				Type:       s.new.URN.Type(),
+				Properties: s.new.Inputs,
+				Timeout:    s.new.CustomTimeouts.Create,
+				Preview:    true,
+			})
+			if previewErr == nil {
+				skipState.Outputs = resp.Properties
+			} else {
+				logging.V(5).Infof("CreateStep.Skip: preview Create failed for %s, "+
+					"falling back to fully unknown outputs: %v", s.URN(), previewErr)
+			}
+		} else {
+			logging.V(5).Infof("CreateStep.Skip: could not resolve provider %s for %s, "+
+				"falling back to fully unknown outputs: %v", s.provider, s.URN(), err)
+		}
+	}
+	s.reg.Done(&RegisterResult{State: skipState, Result: ResultStateSkipped, Unknown: true})
 }
 
 // DeleteStep is a mutating step that deletes an existing resource. If `old` is marked "External",
@@ -1182,8 +1217,47 @@ func (s *UpdateStep) Fail() {
 	s.reg.Done(&RegisterResult{State: s.new, Result: ResultStateFailed})
 }
 
+// Await surfaces a provider-reported AwaitError to the SDK as SUCCESS + Unknown=true with empty
+// outputs. The resource's state is not coherent yet (the operation is in progress) so dependents
+// should propagate unknowns rather than treating any output as real.
+func (s *UpdateStep) Await() {
+	skipState := s.new.Copy()
+	skipState.Outputs = resource.PropertyMap{}
+	s.reg.Done(&RegisterResult{State: skipState, Result: ResultStateSkipped, Unknown: true})
+}
+
 func (s *UpdateStep) Skip() {
-	s.reg.Done(&RegisterResult{State: s.new, Result: ResultStateSkipped})
+	// Ask the provider what a dry-run of this update would produce so dependents get precise
+	// unknowns for the outputs that would actually vary, rather than an everything-unknown answer.
+	// The snapshot still writes s.new with its prior outputs; only the SDK response is affected.
+	skipState := s.new.Copy()
+	skipState.Outputs = resource.PropertyMap{}
+	if s.new.Custom {
+		if prov, err := getProvider(s, s.provider); err == nil {
+			resp, previewErr := prov.Update(context.TODO(), plugin.UpdateRequest{
+				URN:           s.URN(),
+				Name:          s.new.URN.Name(),
+				Type:          s.new.URN.Type(),
+				ID:            s.old.ID,
+				OldInputs:     s.old.Inputs,
+				OldOutputs:    s.old.Outputs,
+				NewInputs:     s.new.Inputs,
+				Timeout:       s.new.CustomTimeouts.Update,
+				IgnoreChanges: s.ignoreChanges,
+				Preview:       true,
+			})
+			if previewErr == nil {
+				skipState.Outputs = resp.Properties
+			} else {
+				logging.V(5).Infof("UpdateStep.Skip: preview Update failed for %s, "+
+					"falling back to fully unknown outputs: %v", s.URN(), previewErr)
+			}
+		} else {
+			logging.V(5).Infof("UpdateStep.Skip: could not resolve provider %s for %s, "+
+				"falling back to fully unknown outputs: %v", s.provider, s.URN(), err)
+		}
+	}
+	s.reg.Done(&RegisterResult{State: skipState, Result: ResultStateSkipped, Unknown: true})
 }
 
 // ReplaceStep is a logical step indicating a resource will be replaced.  This is comprised of three physical steps:

@@ -85,6 +85,7 @@ var testProviders = func() map[string]testProvider {
 		"testprovider:index:doMultiEcho":       ep,
 		"testprovider:index:FailsOnDelete":     &failsOnDeleteProvider{},
 		"testprovider:index:FailsOnCreate":     &failsOnCreateProvider{},
+		"testprovider:index:AwaitsOnCreate":    &awaitsOnCreateProvider{},
 		"testprovider:index:Named":             &namedProvider{},
 	}
 	return testProviders
