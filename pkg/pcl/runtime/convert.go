@@ -412,131 +412,128 @@ func applySchemaInputsInner(
 
 func applySchemaInputConversion(
 	value property.Value, targetType schema.Type, insideSecret bool,
-) (out property.Value, _ error) {
+) (property.Value, error) {
 	targetType = codegen.UnwrapType(targetType)
 
 	if value.Secret() {
 		insideSecret = true
-		// Anything inside the secret wrap is by definition "inside a secret".
-		defer func() { out = out.WithSecret(true) }()
-	}
-	if d := value.Dependencies(); len(d) > 0 {
-		defer func() { out = out.WithDependencies(append(d, out.Dependencies()...)) }()
 	}
 
 	if value.IsComputed() {
 		return value, nil
 	}
 
-	switch t := targetType.(type) {
-	case *schema.ArrayType:
-		if !value.IsArray() {
-			return value, nil
-		}
-		arr := value.AsArray()
-		converted := make([]property.Value, arr.Len())
-		for i, elem := range arr.All {
-			v, err := applySchemaInputConversion(elem, t.ElementType, insideSecret)
-			if err != nil {
-				return property.Value{}, fmt.Errorf("array index %d: %w", i, err)
+	return value.Bind(func(value property.Value) (property.Value, error) {
+		switch t := targetType.(type) {
+		case *schema.ArrayType:
+			if !value.IsArray() {
+				return value, nil
 			}
-			converted[i] = v
-		}
-		return property.New(converted), nil
-	case *schema.MapType:
-		if !value.IsMap() {
-			return value, nil
-		}
-		obj := value.AsMap()
-		converted := make(map[string]property.Value, obj.Len())
-		for key, elem := range obj.All {
-			v, err := applySchemaInputConversion(elem, t.ElementType, insideSecret)
-			if err != nil {
-				return property.Value{}, fmt.Errorf("map key %q: %w", key, err)
-			}
-			converted[key] = v
-		}
-		return property.New(converted), nil
-	case *schema.ObjectType:
-		if !value.IsMap() {
-			return value, nil
-		}
-		// Recurse with the full helper so nested objects also fill in schema defaults and
-		// mark schema-secret properties. Pass insideSecret through so the inner pass knows
-		// to suppress redundant marks when the outer is already a secret.
-		converted, err := applySchemaInputsInner(value.AsMap(), t.Properties, insideSecret)
-		if err != nil {
-			return property.Value{}, err
-		}
-		return property.New(converted), nil
-	case *schema.UnionType:
-		// Prefer the original value if it already matches the target type, otherwise try to convert to each element
-		// type in turn.
-		var first *property.Value
-		var errs []error
-		for _, elementType := range t.ElementTypes {
-			converted, err := applySchemaInputConversion(value, elementType, insideSecret)
-			if err != nil {
-				errs = append(errs, err)
-			} else {
-				if converted.Equals(value) {
-					return value, nil
+			arr := value.AsArray()
+			converted := make([]property.Value, arr.Len())
+			for i, elem := range arr.All {
+				v, err := applySchemaInputConversion(elem, t.ElementType, insideSecret)
+				if err != nil {
+					return property.Value{}, fmt.Errorf("array index %d: %w", i, err)
 				}
-				if first == nil {
-					first = &converted
+				converted[i] = v
+			}
+			return property.New(converted), nil
+		case *schema.MapType:
+			if !value.IsMap() {
+				return value, nil
+			}
+			obj := value.AsMap()
+			converted := make(map[string]property.Value, obj.Len())
+			for key, elem := range obj.All {
+				v, err := applySchemaInputConversion(elem, t.ElementType, insideSecret)
+				if err != nil {
+					return property.Value{}, fmt.Errorf("map key %q: %w", key, err)
+				}
+				converted[key] = v
+			}
+			return property.New(converted), nil
+		case *schema.ObjectType:
+			if !value.IsMap() {
+				return value, nil
+			}
+			// Recurse with the full helper so nested objects also fill in schema defaults and
+			// mark schema-secret properties. Pass insideSecret through so the inner pass knows
+			// to suppress redundant marks when the outer is already a secret.
+			converted, err := applySchemaInputsInner(value.AsMap(), t.Properties, insideSecret)
+			if err != nil {
+				return property.Value{}, err
+			}
+			return property.New(converted), nil
+		case *schema.UnionType:
+			// Prefer the original value if it already matches the target type, otherwise try to convert to each element
+			// type in turn.
+			var first *property.Value
+			var errs []error
+			for _, elementType := range t.ElementTypes {
+				converted, err := applySchemaInputConversion(value, elementType, insideSecret)
+				if err != nil {
+					errs = append(errs, err)
+				} else {
+					if converted.Equals(value) {
+						return value, nil
+					}
+					if first == nil {
+						first = &converted
+					}
 				}
 			}
+			// If we got here we didn't no-op convert in the list above, so just return the first successful conversion if
+			// there was one.
+			if first != nil {
+				return *first, nil
+			}
+			// Else return what errors we saw in trying to convert to each element type, if any.
+			return property.Value{}, fmt.Errorf("cannot convert to any type in union: %v", errs)
+		case *schema.ResourceType:
+			return value, nil
 		}
-		// If we got here we didn't no-op convert in the list above, so just return the first successful conversion if
-		// there was one.
-		if first != nil {
-			return *first, nil
+
+		switch targetType {
+		case schema.BoolType:
+			if value.IsBool() {
+				return value, nil
+			}
+			if value.IsString() {
+				converted, err := strconv.ParseBool(value.AsString())
+				if err != nil {
+					return property.Value{}, fmt.Errorf(
+						"cannot convert string %q to bool: %w", value.AsString(), err)
+				}
+				return property.New(converted), nil
+			}
+		case schema.IntType, schema.NumberType:
+			if value.IsNumber() {
+				return value, nil
+			}
+			if value.IsString() {
+				converted, err := strconv.ParseFloat(value.AsString(), 64)
+				if err != nil {
+					return property.Value{}, fmt.Errorf(
+						"cannot convert string %q to number: %w", value.AsString(), err)
+				}
+				return property.New(converted), nil
+			}
+		case schema.StringType:
+			if value.IsString() {
+				return value, nil
+			}
+			if value.IsBool() {
+				return property.New(strconv.FormatBool(value.AsBool())), nil
+			}
+			if value.IsNumber() {
+				return property.New(strconv.FormatFloat(value.AsNumber(), 'f', -1, 64)), nil
+			}
 		}
-		// Else return what errors we saw in trying to convert to each element type, if any.
-		return property.Value{}, fmt.Errorf("cannot convert to any type in union: %v", errs)
-	case *schema.ResourceType:
+
+		// If we couldn't convert to the target type, just try and pass the value as is.
 		return value, nil
-	}
-
-	switch targetType {
-	case schema.BoolType:
-		if value.IsBool() {
-			return value, nil
-		}
-		if value.IsString() {
-			converted, err := strconv.ParseBool(value.AsString())
-			if err != nil {
-				return property.Value{}, fmt.Errorf(
-					"cannot convert string %q to bool: %w", value.AsString(), err)
-			}
-			return property.New(converted), nil
-		}
-	case schema.IntType, schema.NumberType:
-		if value.IsNumber() {
-			return value, nil
-		}
-		if value.IsString() {
-			converted, err := strconv.ParseFloat(value.AsString(), 64)
-			if err != nil {
-				return property.Value{}, fmt.Errorf(
-					"cannot convert string %q to number: %w", value.AsString(), err)
-			}
-			return property.New(converted), nil
-		}
-	case schema.StringType:
-		if value.IsString() {
-			return value, nil
-		}
-		if value.IsBool() {
-			return property.New(strconv.FormatBool(value.AsBool())), nil
-		}
-		if value.IsNumber() {
-			return property.New(strconv.FormatFloat(value.AsNumber(), 'f', -1, 64)), nil
-		}
-	}
-
-	// If we couldn't convert to the target type, just try and pass the value as is.
-	return value, nil
+	})
 }
 
 func propertyValueToCty(

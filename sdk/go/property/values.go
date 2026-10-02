@@ -306,3 +306,14 @@ func WithGoValue[T GoValue](value Value, newGoValue T) Value {
 	value.v = normalize(newGoValue)
 	return value
 }
+
+// Bind maps a function over a property value to return a new property value while preserving secrets and dependencies.
+func (v Value) Bind(f func(Value) (Value, error)) (Value, error) {
+	newValue, err := f(v)
+	if err != nil {
+		return Value{}, err
+	}
+	newValue.isSecret = v.isSecret || newValue.isSecret
+	newValue.dependencies = append(newValue.dependencies, v.dependencies...)
+	return newValue, nil
+}
