@@ -1,0 +1,4 @@
+component: auto
+kind: feat
+body: Add `gen-completion` to the generated automation APIs for NodeJS, Python and Go
+time: 2026-10-02T12:20:23.305574+02:00
