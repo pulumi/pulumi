@@ -196,7 +196,7 @@ func TestReadReplaceStep(t *testing.T) {
 				WithProvider("pkgA", "1.0.0", &deploytest.Provider{
 					ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
 						return plugin.ReadResponse{
-							ReadResult: plugin.ReadResult{Outputs: resource.PropertyMap{}},
+							ReadResult: plugin.ReadResult{Outputs: new(property.Map{})},
 							Status:     resource.StatusOK,
 						}, nil
 					},
@@ -249,7 +249,7 @@ func TestRelinquishStep(t *testing.T) {
 				WithProvider("pkgA", "1.0.0", &deploytest.Provider{
 					ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
 						return plugin.ReadResponse{
-							ReadResult: plugin.ReadResult{Outputs: resource.PropertyMap{}},
+							ReadResult: plugin.ReadResult{Outputs: new(property.Map{})},
 							Status:     resource.StatusOK,
 						}, nil
 					},
@@ -278,7 +278,7 @@ func TestTakeOwnershipStep(t *testing.T) {
 		WithProvider("pkgA", "1.0.0", &deploytest.Provider{
 			ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
 				return plugin.ReadResponse{
-					ReadResult: plugin.ReadResult{Outputs: resource.PropertyMap{}},
+					ReadResult: plugin.ReadResult{Outputs: new(property.Map{})},
 					Status:     resource.StatusOK,
 				}, nil
 			},
@@ -472,7 +472,7 @@ func TestExternalEventMetadata(t *testing.T) {
 				},
 				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
 					return plugin.ReadResponse{
-						ReadResult: plugin.ReadResult{Outputs: resource.PropertyMap{}},
+						ReadResult: plugin.ReadResult{Outputs: new(property.Map{})},
 						Status:     resource.StatusOK,
 					}, nil
 				},

@@ -755,16 +755,16 @@ func TestDoCmdResourceUpsertStateless(t *testing.T) {
 					return plugin.ReadResponse{
 						ReadResult: plugin.ReadResult{
 							ID: "res-1",
-							Inputs: resource.PropertyMap{
-								"name":    resource.NewProperty("old"),
-								"size":    resource.NewProperty(1.0),
-								"enabled": resource.NewProperty(true),
-							},
-							Outputs: resource.PropertyMap{
-								"name":    resource.NewProperty("old"),
-								"size":    resource.NewProperty(1.0),
-								"enabled": resource.NewProperty(true),
-							},
+							Inputs: new(property.NewMap(map[string]property.Value{
+								"name":    property.New("old"),
+								"size":    property.New(1.0),
+								"enabled": property.New(true),
+							})),
+							Outputs: new(property.NewMap(map[string]property.Value{
+								"name":    property.New("old"),
+								"size":    property.New(1.0),
+								"enabled": property.New(true),
+							})),
 						},
 					}, nil
 				},
@@ -868,8 +868,8 @@ size = 2
 				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
 					calls = append(calls, "read")
 					return plugin.ReadResponse{ReadResult: plugin.ReadResult{
-						Inputs:  resource.PropertyMap{},
-						Outputs: resource.PropertyMap{},
+						Inputs:  new(property.Map{}),
+						Outputs: new(property.Map{}),
 					}}, nil
 				},
 				CheckF: func(_ context.Context, req plugin.CheckRequest) (plugin.CheckResponse, error) {

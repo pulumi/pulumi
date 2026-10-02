@@ -192,20 +192,11 @@ func (prov *Provider) Read(ctx context.Context, req plugin.ReadRequest) (plugin.
 	contract.Assertf(req.URN != "", "Read URN was empty")
 	contract.Assertf(req.ID != "", "Read ID was empty")
 	if prov.ReadF == nil {
-		state := req.State
-		if state == nil {
-			state = resource.PropertyMap{}
-		}
-		inputs := req.Inputs
-		if inputs == nil {
-			inputs = resource.PropertyMap{}
-		}
-
 		return plugin.ReadResponse{
 			ReadResult: plugin.ReadResult{
 				ID:      req.ID,
-				Outputs: state,
-				Inputs:  inputs,
+				Outputs: &req.State,
+				Inputs:  &req.Inputs,
 			},
 			Status: resource.StatusOK,
 		}, nil

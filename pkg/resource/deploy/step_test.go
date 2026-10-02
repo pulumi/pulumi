@@ -562,12 +562,12 @@ func TestReadStep(t *testing.T) {
 						return plugin.ReadResponse{
 								ReadResult: plugin.ReadResult{
 									ID: "new-id",
-									Inputs: resource.PropertyMap{
+									Inputs: new(resource.FromResourcePropertyMap(resource.PropertyMap{
 										"inputs-key": resource.NewProperty("expected-value"),
-									},
-									Outputs: resource.PropertyMap{
+									})),
+									Outputs: new(resource.FromResourcePropertyMap(resource.PropertyMap{
 										"outputs-key": resource.NewProperty("expected-value"),
-									},
+									})),
 								},
 								Status: resource.StatusPartialFailure,
 							}, &plugin.InitError{
@@ -832,8 +832,8 @@ func TestRefreshStepPatterns(t *testing.T) {
 					return plugin.ReadResponse{
 						ReadResult: plugin.ReadResult{
 							ID:      req.ID,
-							Inputs:  tc.readInputs,
-							Outputs: tc.readOutputs,
+							Inputs:  new(resource.FromResourcePropertyMap(tc.readInputs)),
+							Outputs: new(resource.FromResourcePropertyMap(tc.readOutputs)),
 						},
 						Status: resource.StatusOK,
 					}, nil
@@ -917,12 +917,12 @@ func TestRefreshStep(t *testing.T) {
 					return plugin.ReadResponse{
 							ReadResult: plugin.ReadResult{
 								ID: "new-id",
-								Inputs: resource.PropertyMap{
+								Inputs: new(resource.FromResourcePropertyMap(resource.PropertyMap{
 									"inputs-key": resource.NewProperty("expected-value"),
-								},
-								Outputs: resource.PropertyMap{
+								})),
+								Outputs: new(resource.FromResourcePropertyMap(resource.PropertyMap{
 									"outputs-key": resource.NewProperty("expected-value"),
-								},
+								})),
 							},
 							Status: resource.StatusPartialFailure,
 						}, &plugin.InitError{
@@ -1091,7 +1091,7 @@ func TestImportStep(t *testing.T) {
 						ReadF: func(context.Context, plugin.ReadRequest) (plugin.ReadResponse, error) {
 							return plugin.ReadResponse{
 								ReadResult: plugin.ReadResult{
-									Outputs: resource.PropertyMap{},
+									Outputs: new(property.Map{}),
 								},
 								Status: resource.StatusOK,
 							}, nil

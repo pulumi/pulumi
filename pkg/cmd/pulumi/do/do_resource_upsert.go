@@ -47,6 +47,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	codegenrpc "github.com/pulumi/pulumi/sdk/v3/proto/go/codegen"
 )
 
@@ -145,8 +146,8 @@ func (pc *packageCommand) newStatelessResourceUpsertCommand(res *schema.Resource
 				Name:   urn.Name(),
 				Type:   urn.Type(),
 				ID:     id,
-				Inputs: resource.PropertyMap{},
-				State:  resource.PropertyMap{},
+				Inputs: property.Map{},
+				State:  property.Map{},
 			})
 			if err != nil {
 				return err

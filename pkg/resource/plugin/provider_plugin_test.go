@@ -1481,16 +1481,16 @@ func TestProvider_PartialFailure(t *testing.T) {
 		Name:   urn.Name(),
 		Type:   urn.Type(),
 		ID:     "some-id",
-		Inputs: resource.PropertyMap{},
-		State:  resource.PropertyMap{},
+		Inputs: property.Map{},
+		State:  property.Map{},
 	})
 	require.ErrorAs(t, err, &initErr, "expected an InitError")
 	assert.Equal(t, []string{"read issue"}, initErr.Reasons)
 	assert.Equal(t, ReadResponse{
 		ReadResult: ReadResult{
 			ID:                  "some-id",
-			Inputs:              liveInputs,
-			Outputs:             liveProperties,
+			Inputs:              new(resource.FromResourcePropertyMap(liveInputs)),
+			Outputs:             new(resource.FromResourcePropertyMap(liveProperties)),
 			RefreshBeforeUpdate: true,
 		},
 		Status: resource.StatusPartialFailure,
@@ -1563,11 +1563,12 @@ func TestProvider_RestoresElidedAssetsFromState(t *testing.T) {
 		resp, err := p.Read(t.Context(), ReadRequest{
 			URN:    urn,
 			ID:     "some-id",
-			Inputs: inputs,
-			State:  outputs,
+			Inputs: resource.FromResourcePropertyMap(inputs),
+			State:  resource.FromResourcePropertyMap(outputs),
 		})
 		require.NoError(t, err)
-		assertRestored(t, resp.Outputs)
+		require.NotNil(t, resp.Outputs)
+		assertRestored(t, resource.ToResourcePropertyMap(*resp.Outputs))
 	})
 
 	t.Run("update", func(t *testing.T) {
