@@ -302,8 +302,7 @@ func (i arrayLenInput) ToIntPtrOutput() IntPtrOutput {
 
 func (i arrayLenInput) ToIntPtrOutputWithContext(ctx context.Context) IntPtrOutput {
 	return ToOutput(i).ApplyT(func(arr []any) *int {
-		v := len(arr)
-		return &v
+		return new(len(arr))
 	}).(IntPtrOutput)
 }
 
