@@ -1,0 +1,4 @@
+component: cli/package
+kind: fix
+body: Print the Go import path of the generated SDK when the schema sets a Go module path or import base path
+time: 2026-08-24T10:51:17.000000-07:00
