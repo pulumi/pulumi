@@ -19,6 +19,7 @@ import (
 	"errors"
 	"fmt"
 	"sort"
+	"strings"
 	"testing"
 
 	"github.com/blang/semver"
@@ -743,6 +744,124 @@ func TestRemoteComponentTransforms(t *testing.T) {
 	assert.Equal(t, resource.PropertyMap{
 		"foo": resource.NewProperty(2.0),
 	}, res.Inputs)
+}
+
+// TestRemoteComponentTransformComposition combines provider and caller transforms on a remote component and
+// its children, including a child registered after Construct returns.
+//
+//	component
+//	├─ inside  (registered by the provider during Construct)
+//	└─ outside (registered by the program after Construct returns)
+//
+// Both children explicitly use the component as their parent and must inherit its combined transforms,
+// regardless of which process registers them or whether Construct has returned.
+//
+//	remote request:        caller transforms
+//	provider registration: provider transforms -> caller transforms
+//	children:              provider transforms -> caller transforms
+func TestRemoteComponentTransformComposition(t *testing.T) {
+	t.Parallel()
+
+	for _, tt := range []struct {
+		name           string
+		provider       []string
+		caller         []string
+		componentCalls []string
+		childCalls     []string
+	}{
+		{
+			name: "caller only", caller: []string{"C1", "C2"},
+			componentCalls: []string{"C1", "C2", "C1", "C2"}, childCalls: []string{"C1", "C2"},
+		},
+		{
+			name: "provider only", provider: []string{"P1", "P2"},
+			componentCalls: []string{"P1", "P2"}, childCalls: []string{"P1", "P2"},
+		},
+		{
+			name: "provider and caller", provider: []string{"P1", "P2"}, caller: []string{"C1", "C2"},
+			componentCalls: []string{"C1", "C2", "P1", "P2", "C1", "C2"},
+			childCalls:     []string{"P1", "P2", "C1", "C2"},
+		},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			callbacks, err := deploytest.NewCallbacksServer()
+			require.NoError(t, err)
+			t.Cleanup(func() { require.NoError(t, callbacks.Close()) })
+
+			calls := map[string][]string{}
+			transforms := func(labels []string) []*pulumirpc.Callback {
+				result := make([]*pulumirpc.Callback, 0, len(labels))
+				for _, label := range labels {
+					callback, err := callbacks.Allocate(TransformFunction(func(
+						name, typ string, custom bool, parent string,
+						props resource.PropertyMap, opts *pulumirpc.TransformResourceOptions,
+					) (resource.PropertyMap, *pulumirpc.TransformResourceOptions, error) {
+						calls[name] = append(calls[name], label)
+						props["trace"] = pvApply(props["trace"], func(v resource.PropertyValue) resource.PropertyValue {
+							return resource.NewProperty(v.StringValue() + label)
+						})
+						return props, opts, nil
+					}))
+					require.NoError(t, err)
+					result = append(result, callback)
+				}
+				return result
+			}
+			providerTransforms, callerTransforms := transforms(tt.provider), transforms(tt.caller)
+			inputs := resource.PropertyMap{"trace": resource.NewProperty("")}
+			loaders := []*deploytest.ProviderLoader{
+				deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+					return &deploytest.Provider{
+						ConstructF: func(
+							_ context.Context, req plugin.ConstructRequest, monitor *deploytest.ResourceMonitor,
+						) (plugin.ConstructResponse, error) {
+							resp, err := monitor.RegisterResource(req.Type, req.Name, false, deploytest.ResourceOptions{
+								Inputs: resource.ToResourcePropertyMap(req.Inputs), Transforms: providerTransforms,
+							})
+							if err != nil {
+								return plugin.ConstructResponse{}, err
+							}
+							_, err = monitor.RegisterResource("pkgA:m:Child", "inside", true, deploytest.ResourceOptions{
+								Parent: resp.URN, Inputs: inputs,
+							})
+							return plugin.ConstructResponse{URN: resp.URN}, err
+						},
+					}, nil
+				}),
+			}
+			program := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+				resp, err := monitor.RegisterResource("pkgA:m:Component", "component", false, deploytest.ResourceOptions{
+					Remote: true, Inputs: inputs, Transforms: callerTransforms,
+				})
+				if err != nil {
+					return err
+				}
+				_, err = monitor.RegisterResource("pkgA:m:Child", "outside", true, deploytest.ResourceOptions{
+					Parent: resp.URN, Inputs: inputs,
+				})
+				return err
+			})
+			host := deploytest.NewPluginHostF(nil, nil, program, nil, nil, loaders...)
+			plan := &lt.TestPlan{Options: lt.TestUpdateOptions{T: t, HostF: host, SkipDisplayTests: true}}
+			snap, err := lt.TestOp(Update).Run(plan.GetProject(), plan.GetTarget(t, nil), plan.Options,
+				false, plan.BackendClient, nil)
+			require.NoError(t, err)
+			assert.Equal(t, map[string][]string{
+				"component": tt.componentCalls, "inside": tt.childCalls, "outside": tt.childCalls,
+			}, calls)
+			require.Len(t, snap.Resources, 4)
+			for _, res := range snap.Resources {
+				want := tt.childCalls
+				if res.URN.Name() == "component" {
+					want = tt.componentCalls
+				} else if res.URN.Name() != "inside" && res.URN.Name() != "outside" {
+					continue
+				}
+				assert.Equal(t, resource.NewProperty(strings.Join(want, "")), res.Inputs["trace"])
+			}
+		})
+	}
 }
 
 func TestTransformsProviderOpt(t *testing.T) {
