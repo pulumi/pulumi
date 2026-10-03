@@ -291,6 +291,7 @@ func TestCredentialsMarshalJSON(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.Equal(t, `{
+    "version": 1,
     "current": "https://api.example.com",
     "accessTokens": {
         "file://~": "",
@@ -315,7 +316,7 @@ func TestCredentialsMarshalJSONWithoutAccounts(t *testing.T) {
 	raw, err := json.Marshal(Credentials{Current: "https://api.example.com"})
 	require.NoError(t, err)
 
-	assert.Equal(t, `{"current":"https://api.example.com"}`, string(raw))
+	assert.Equal(t, `{"version":1,"current":"https://api.example.com"}`, string(raw))
 }
 
 //nolint:paralleltest // IsolateCredentials changes process-wide environment variables.
