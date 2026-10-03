@@ -1,0 +1,4 @@
+component: engine
+kind: feat
+body: Negotiate OutputValues on Call so SDKs receive per-value return dependencies
+time: 2026-10-02T12:00:00Z
