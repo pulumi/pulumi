@@ -66,6 +66,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil/rpcerror"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi-internal/gsync"
 	interceptors "github.com/pulumi/pulumi/sdk/v3/go/pulumi-internal/rpcdebug"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
@@ -1807,7 +1808,7 @@ func (rm *resmon) wrapResourceHookCallback(name string, cb *pulumirpc.Callback) 
 
 	return func(ctx context.Context, urn resource.URN, id resource.ID,
 		name string, typ tokens.Type, oldOptions, newOptions *pulumirpc.ResourceOptions,
-		newInputs, oldInputs, newOutputs, oldOutputs resource.PropertyMap,
+		newInputs, oldInputs, newOutputs, oldOutputs *property.Map,
 	) error {
 		logging.V(6).Infof("ResourceHook calling hook %q for urn %s", name, urn)
 		var mNewInputs, mOldInputs, mNewOutputs, mOldOutputs *structpb.Struct
@@ -1820,25 +1821,25 @@ func (rm *resmon) wrapResourceHookCallback(name string, cb *pulumirpc.Callback) 
 			KeepByteString:   cb.AcceptsByteString,
 		}
 		if newInputs != nil {
-			mNewInputs, err = plugin.MarshalProperties(newInputs, mOpts)
+			mNewInputs, err = plugin.MarshalProperties(resource.ToResourcePropertyMap(*newInputs), mOpts)
 			if err != nil {
 				return fmt.Errorf("marshaling new inputs for resource hook %q: %w", name, err)
 			}
 		}
 		if oldInputs != nil {
-			mOldInputs, err = plugin.MarshalProperties(oldInputs, mOpts)
+			mOldInputs, err = plugin.MarshalProperties(resource.ToResourcePropertyMap(*oldInputs), mOpts)
 			if err != nil {
 				return fmt.Errorf("marshaling old inputs for resource hook %q: %w", name, err)
 			}
 		}
 		if newOutputs != nil {
-			mNewOutputs, err = plugin.MarshalProperties(newOutputs, mOpts)
+			mNewOutputs, err = plugin.MarshalProperties(resource.ToResourcePropertyMap(*newOutputs), mOpts)
 			if err != nil {
 				return fmt.Errorf("marshaling new outputs for resource hook %q: %w", name, err)
 			}
 		}
 		if oldOutputs != nil {
-			mOldOutputs, err = plugin.MarshalProperties(oldOutputs, mOpts)
+			mOldOutputs, err = plugin.MarshalProperties(resource.ToResourcePropertyMap(*oldOutputs), mOpts)
 			if err != nil {
 				return fmt.Errorf("marshaling old outputs for resource hook %q: %w", name, err)
 			}
@@ -1908,7 +1909,7 @@ func (rm *resmon) wrapErrorHookCallback(
 
 	return func(ctx context.Context, urn resource.URN, id resource.ID,
 		name string, typ tokens.Type, oldOptions, newOptions *pulumirpc.ResourceOptions,
-		newInputs, oldInputs, oldOutputs resource.PropertyMap,
+		newInputs, oldInputs, oldOutputs *property.Map,
 		failedOperation string, errorMessages []string,
 	) (bool, error) {
 		logging.V(6).Infof("ErrorHook calling hook %q for urn %s", name, urn)
@@ -1922,19 +1923,19 @@ func (rm *resmon) wrapErrorHookCallback(
 			KeepByteString:   cb.AcceptsByteString,
 		}
 		if newInputs != nil {
-			mNewInputs, err = plugin.MarshalProperties(newInputs, mOpts)
+			mNewInputs, err = plugin.MarshalProperties(resource.ToResourcePropertyMap(*newInputs), mOpts)
 			if err != nil {
 				return false, fmt.Errorf("marshaling new inputs for resource error hook %q: %w", name, err)
 			}
 		}
 		if oldInputs != nil {
-			mOldInputs, err = plugin.MarshalProperties(oldInputs, mOpts)
+			mOldInputs, err = plugin.MarshalProperties(resource.ToResourcePropertyMap(*oldInputs), mOpts)
 			if err != nil {
 				return false, fmt.Errorf("marshaling old inputs for resource error hook %q: %w", name, err)
 			}
 		}
 		if oldOutputs != nil {
-			mOldOutputs, err = plugin.MarshalProperties(oldOutputs, mOpts)
+			mOldOutputs, err = plugin.MarshalProperties(resource.ToResourcePropertyMap(*oldOutputs), mOpts)
 			if err != nil {
 				return false, fmt.Errorf("marshaling old outputs for resource error hook %q: %w", name, err)
 			}
