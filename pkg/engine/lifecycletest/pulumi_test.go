@@ -374,6 +374,114 @@ func TestCheckFailureInvalidPropertyRecord(t *testing.T) {
 	p.Run(t, nil)
 }
 
+func TestInvalidInputDiagnosticsRedactSecrets(t *testing.T) {
+	t.Parallel()
+
+	st, err := status.New(codes.InvalidArgument, "bad request").WithDetails(&pulumirpc.InputPropertiesError{
+		Errors: []*pulumirpc.InputPropertiesError_PropertyError{{PropertyPath: "conn", Reason: "bad conn"}},
+	})
+	require.NoError(t, err)
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				CheckF: func(context.Context, plugin.CheckRequest) (plugin.CheckResponse, error) {
+					return plugin.CheckResponse{
+						Failures: []plugin.CheckFailure{{Property: "conn", Reason: "bad conn"}},
+					}, nil
+				},
+				ConstructF: func(
+					context.Context, plugin.ConstructRequest, *deploytest.ResourceMonitor,
+				) (plugin.ConstructResponse, error) {
+					return plugin.ConstructResponse{}, st.Err()
+				},
+			}, nil
+		}),
+	}
+
+	inputs := resource.PropertyMap{
+		"conn": resource.NewProperty(resource.PropertyMap{
+			"host":     resource.NewProperty("example.com"),
+			"password": resource.MakeSecret(resource.NewProperty("secret-input-value")),
+		}),
+	}
+
+	cases := []struct {
+		name        string
+		remote      bool
+		showSecrets bool
+		expected    string
+	}{
+		{
+			name: "check redacted",
+			expected: "pkgA:m:typA resource 'resA': property conn value " +
+				"{map[host:{example.com} password:{[secret]}]} has a problem: bad conn\n",
+		},
+		{
+			name:        "check with --show-secrets",
+			showSecrets: true,
+			expected: "pkgA:m:typA resource 'resA': property conn value " +
+				"{map[host:{example.com} password:{&{{secret-input-value}}}]} has a problem: bad conn\n",
+		},
+		{
+			name:   "construct redacted",
+			remote: true,
+			expected: "pkgA:m:typA resource 'resA' has a problem: bad request\n" +
+				"\t\t- property conn with value '{map[host:{example.com} password:{[secret]}]}' has a problem: bad conn\n",
+		},
+		{
+			name:        "construct with --show-secrets",
+			remote:      true,
+			showSecrets: true,
+			expected: "pkgA:m:typA resource 'resA' has a problem: bad request\n" +
+				"\t\t- property conn with value '{map[host:{example.com} password:{&{{secret-input-value}}}]}' " +
+				"has a problem: bad conn\n",
+		},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+
+			programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+				_, err := monitor.RegisterResource("pkgA:m:typA", "resA", !c.remote, deploytest.ResourceOptions{
+					Remote: c.remote,
+					Inputs: inputs,
+				})
+				assert.Error(t, err)
+				return err
+			})
+			hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
+			p := &lt.TestPlan{
+				Options: lt.TestUpdateOptions{
+					T:                t,
+					HostF:            hostF,
+					UpdateOptions:    UpdateOptions{ShowSecrets: c.showSecrets},
+					SkipDisplayTests: true,
+				},
+				Steps: []lt.TestStep{{
+					Op:            Update,
+					ExpectFailure: true,
+					SkipPreview:   true,
+					Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
+						evts []Event, err error,
+					) error {
+						var msgs []string
+						for _, evt := range evts {
+							if evt.Type == DiagEvent {
+								msgs = append(msgs, colors.Never.Colorize(evt.Payload().(DiagEventPayload).Message))
+							}
+						}
+						assert.Contains(t, msgs, c.expected)
+						return err
+					},
+				}},
+			}
+
+			p.Run(t, nil)
+		})
+	}
+}
+
 // Tests that errors returned directly from the language host get logged by the engine.
 func TestLanguageHostDiagnostics(t *testing.T) {
 	t.Parallel()

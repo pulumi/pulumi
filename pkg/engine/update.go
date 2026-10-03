@@ -1148,6 +1148,7 @@ func newUpdateSource(ctx context.Context,
 		DisableInvokeOutputValues: opts.DisableInvokeOutputValues,
 		AttachDebugger:            opts.AttachDebugger,
 		SupportsStateMigrations:   opts.supportsStateMigrations,
+		ShowSecrets:               opts.ShowSecrets,
 	}
 
 	program := deploy.NewProgramSource(plugctx, runinfo, evalOpts, panicErrs)
