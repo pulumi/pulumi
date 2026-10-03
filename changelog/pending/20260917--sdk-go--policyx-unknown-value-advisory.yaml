@@ -1,0 +1,4 @@
+component: sdk/go
+kind: fix
+body: Handle unknown property values in the experimental Go policy SDK (policyx) by reporting an advisory diagnostic and recovering panics, matching the Node.js and Python policy SDKs
+time: 2026-09-17T00:00:00Z
