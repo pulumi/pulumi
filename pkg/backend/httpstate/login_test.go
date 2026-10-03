@@ -20,15 +20,18 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
@@ -126,7 +129,7 @@ func TestCurrentEnvTokenStoresInDefaultPathWhenWritable(t *testing.T) {
 	account, err := NewLoginManager().Current(t.Context(), server.URL, false, true)
 	require.NoError(t, err)
 	require.NotNil(t, account)
-	assert.Equal(t, "env-token", account.AccessToken)
+	assert.Equal(t, "env-token", account.Account.AccessToken)
 
 	defaultAccount, err := workspace.GetAccount(server.URL)
 	require.NoError(t, err)
@@ -134,6 +137,96 @@ func TestCurrentEnvTokenStoresInDefaultPathWhenWritable(t *testing.T) {
 	agentAccount, err := workspace.GetAgentAccount(server.URL)
 	require.NoError(t, err)
 	assert.Empty(t, agentAccount.AccessToken)
+}
+
+func TestBrowserLoginPersistence(t *testing.T) {
+	for _, tt := range []struct {
+		name          string
+		failSave      bool
+		allowFallback bool
+		explicitPath  bool
+	}{
+		{name: "writable"},
+		{name: "save failure", failSave: true},
+		{name: "save failure in agent mode", failSave: true, allowFallback: true},
+		{name: "explicit path", failSave: true, allowFallback: true, explicitPath: true},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			dirs := ptesting.IsolateCredentials(t)
+			t.Setenv(client.ConsoleDomainEnvVar, "app.example.com")
+			if tt.allowFallback {
+				t.Setenv("CODEX_SANDBOX", "1")
+				t.Setenv("PULUMI_TEST_ALLOW_AGENT_FALLBACK", "true")
+			}
+			if tt.explicitPath {
+				t.Setenv(workspace.PulumiCredentialsPathEnvVar, dirs.Home)
+			}
+			if tt.failSave {
+				require.NoError(t, os.Mkdir(filepath.Join(dirs.Home, "credentials.json"), 0o700))
+			}
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				assert.Equal(t, "/api/user", r.URL.Path)
+				assert.Equal(t, "token browser-token", r.Header.Get("Authorization"))
+				require.NoError(t, json.NewEncoder(w).Encode(map[string]any{"githubLogin": "browser-user"}))
+			}))
+			t.Cleanup(server.Close)
+
+			browserDone := make(chan error, 1)
+			openURL := func(loginURL string) error {
+				u, err := url.Parse(loginURL)
+				require.NoError(t, err)
+				callback := url.URL{
+					Scheme: "http",
+					Host:   "127.0.0.1:" + u.Query().Get("cliSessionPort"),
+					RawQuery: url.Values{
+						"accessToken": {"browser-token"},
+						"nonce":       {u.Query().Get("cliSessionNonce")},
+					}.Encode(),
+				}
+				go func() {
+					browserClient := &http.Client{
+						Timeout: 5 * time.Second,
+						CheckRedirect: func(*http.Request, []*http.Request) error {
+							return http.ErrUseLastResponse
+						},
+					}
+					resp, err := browserClient.Get(callback.String())
+					if err == nil {
+						assert.Equal(t, http.StatusTemporaryRedirect, resp.StatusCode)
+						resp.Body.Close()
+					}
+					browserDone <- err
+				}()
+				return nil
+			}
+			welcomed := false
+			credentials, err := loginWithBrowser(t.Context(), server.URL, false, "pulumi",
+				func(display.Options) { welcomed = true }, true, display.Options{}, openURL)
+			require.NoError(t, <-browserDone)
+			assert.NoFileExists(t, filepath.Join(dirs.AgentDir, "credentials.json"))
+			if tt.failSave && (!tt.allowFallback || tt.explicitPath) {
+				require.Error(t, err)
+				assert.Nil(t, credentials)
+				assert.False(t, welcomed)
+				return
+			}
+			require.NoError(t, err)
+			require.NotNil(t, credentials)
+			assert.True(t, welcomed)
+			assert.Equal(t, "browser-token", credentials.Account.AccessToken)
+			assert.Equal(t, "browser-user", credentials.Account.Username)
+			updated := credentials.Account
+			updated.AccessToken = "updated-token"
+			require.NoError(t, credentials.Persist(updated))
+			assert.NoFileExists(t, filepath.Join(dirs.AgentDir, "credentials.json"))
+			if !tt.failSave {
+				saved, err := workspace.GetStoredCredentials()
+				require.NoError(t, err)
+				assert.Equal(t, server.URL, saved.Current)
+				assert.Equal(t, "updated-token", saved.Accounts[server.URL].AccessToken)
+			}
+		})
+	}
 }
 
 func TestValidateStoredAccountSkipsNetworkWhenNoCredential(t *testing.T) {

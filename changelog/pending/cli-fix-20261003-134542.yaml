@@ -1,0 +1,4 @@
+component: cli
+kind: fix
+body: Preserve the selected user identity when login cannot save credentials in agent mode
+time: 2026-10-03T13:45:42.745664+02:00
