@@ -42,6 +42,7 @@ import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/pgavlin/fx/v2"
 	"github.com/pgavlin/fx/v2/maps"
+	"github.com/pulumi/pulumi/pkg/v3/auth"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/esc/cli/client"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
@@ -272,12 +273,12 @@ type testLoginManager struct {
 	creds workspace.Credentials
 }
 
-// Current returns the current cloud backend if one is already logged in.
+// Current returns credentials for the current backend if one is already logged in.
 func (lm *testLoginManager) Current(
 	ctx context.Context,
 	cloudURL string,
 	insecure, setCurrent bool,
-) (*workspace.Account, error) {
+) (*auth.Credentials, error) {
 	if lm.creds.Current == "" {
 		return nil, nil
 	}
@@ -286,10 +287,10 @@ func (lm *testLoginManager) Current(
 	if !ok {
 		return nil, errors.New("unauthorized")
 	}
-	return &acct, nil
+	return &auth.Credentials{BackendURL: cloudURL, Account: acct}, nil
 }
 
-// Login logs into the target cloud URL and returns the cloud backend for it.
+// Login logs into the target cloud URL and returns its credentials.
 func (lm *testLoginManager) Login(
 	ctx context.Context,
 	cloudURL string,
@@ -299,7 +300,7 @@ func (lm *testLoginManager) Login(
 	welcome func(display.Options),
 	current bool,
 	opts display.Options,
-) (*workspace.Account, error) {
+) (*auth.Credentials, error) {
 	acct, ok := lm.creds.Accounts[cloudURL]
 	if !ok {
 		if cloudURL != "https://api.pulumi.com" {
@@ -310,9 +311,9 @@ func (lm *testLoginManager) Login(
 			AccessToken: "access-token",
 		}
 		lm.creds.Accounts[cloudURL] = acct
-		return &acct, nil
+		return &auth.Credentials{BackendURL: cloudURL, Account: acct}, nil
 	}
-	return &acct, nil
+	return &auth.Credentials{BackendURL: cloudURL, Account: acct}, nil
 }
 
 func (lm *testLoginManager) LoginWithOIDCToken(
@@ -325,7 +326,7 @@ func (lm *testLoginManager) LoginWithOIDCToken(
 	scope string,
 	expiration time.Duration,
 	setCurrent bool,
-) (*workspace.Account, error) {
+) (*auth.Credentials, error) {
 	acct, ok := lm.creds.Accounts[cloudURL]
 	if !ok {
 		if cloudURL != "https://api.pulumi.com" {
@@ -336,9 +337,9 @@ func (lm *testLoginManager) LoginWithOIDCToken(
 			AccessToken: "access-token",
 		}
 		lm.creds.Accounts[cloudURL] = acct
-		return &acct, nil
+		return &auth.Credentials{BackendURL: cloudURL, Account: acct}, nil
 	}
-	return &acct, nil
+	return &auth.Credentials{BackendURL: cloudURL, Account: acct}, nil
 }
 
 func mapDiags(diags syntax.Diagnostics) []client.EnvironmentDiagnostic {

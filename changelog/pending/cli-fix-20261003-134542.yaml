@@ -1,0 +1,4 @@
+component: cli
+kind: fix
+body: Use credentials selected during login directly when connecting to cloud backends
+time: 2026-10-03T13:45:42.745664+02:00
