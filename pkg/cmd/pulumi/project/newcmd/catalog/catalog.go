@@ -118,8 +118,7 @@ func (c *Catalog[T]) Resolve(providerID, languageID string) (T, bool) {
 	return template, ok
 }
 
-// The longest known language suffix wins, which keeps "java-gradle" whole instead of reading it as
-// provider "java".
+// The longest matching suffix wins so a hyphenated language ID is not truncated to a shorter one.
 func splitTemplateName(name string) (providerID, languageID string, ok bool) {
 	if _, isLanguage := languageDisplayNames[name]; isLanguage {
 		return noneProvider, name, true
