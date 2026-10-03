@@ -104,6 +104,7 @@ var expectedFailures = map[string]string{
 	"l3-range-invoke-output-traversal":   "pulumi#12507: range loop variable captured by reference; indexed output resolves with the wrong index",                  //nolint:lll
 	"l2-raw-string-bytes":                "the Node.js SDK does not set accepts_byte_string: strings containing non-UTF8 bytes cannot be received from the engine", //nolint:lll
 	"l2-invoke-per-value-deps":           "output aware invokes not yet implemented",
+	"l2-call-per-value-deps":             "output aware calls not yet implemented",
 }
 
 // testLanguage runs the language conformance tests for the given runtime ("nodejs" or "bun").

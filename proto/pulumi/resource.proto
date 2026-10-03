@@ -104,6 +104,10 @@ enum ResourceMonitorFeature {
     // dependencies into the invoke's wait-set), and will honour `accept_output_values` on the request to return
     // OutputValues in `ResourceInvokeResponse.return`.
     RESOURCE_MONITOR_FEATURE_INVOKE_OUTPUT_VALUES = 17;
+    // The monitor accepts OutputValues nested in `ResourceCallRequest.args` (and will harvest their
+    // dependencies into the call's wait-set), and will honour `accept_output_values` on the request to return
+    // OutputValues in `CallResponse.return`.
+    RESOURCE_MONITOR_FEATURE_CALL_OUTPUT_VALUES = 18;
 }
 
 // DeploymentInfo returns monitor execution state currently sent to programs
@@ -385,6 +389,10 @@ message ResourceCallRequest {
     // When true operations may return strings containing bytes that are not valid UTF-8, marshaled as objects
     // carrying the byte string signature and a base64 encoding of the string's bytes.
     bool accepts_byte_string = 20;
+
+    // When true the SDK accepts OutputValues in `CallResponse.return`. Only meaningful when the monitor
+    // advertises `CALL_OUTPUT_VALUES`; older monitors will ignore this field.
+    bool accept_output_values = 21;
 }
 
 // TransformResourceOptions is a subset of all resource options that are relevant to transforms.
