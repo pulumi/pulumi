@@ -25,6 +25,5 @@ func ptrMap(m resource.PropertyMap) *property.Map {
 	if m == nil {
 		return nil
 	}
-	pm := resource.FromResourcePropertyMap(m)
-	return &pm
+	return new(resource.FromResourcePropertyMap(m))
 }

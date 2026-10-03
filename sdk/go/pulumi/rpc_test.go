@@ -1663,8 +1663,7 @@ func (o TreeSizeOutput) ToStringPtrOutput() StringPtrOutput {
 
 func (o TreeSizeOutput) ToStringPtrOutputWithContext(ctx context.Context) StringPtrOutput {
 	return o.ApplyTWithContext(ctx, func(_ context.Context, e TreeSize) *string {
-		v := string(e)
-		return &v
+		return new(string(e))
 	}).(StringPtrOutput)
 }
 
@@ -1701,8 +1700,7 @@ func (o TreeSizePtrOutput) ToStringPtrOutputWithContext(ctx context.Context) Str
 		if e == nil {
 			return nil
 		}
-		v := string(*e)
-		return &v
+		return new(string(*e))
 	}).(StringPtrOutput)
 }
 

@@ -36,11 +36,6 @@ func TestGetRequiredPluginsWithoutRuntime(t *testing.T) {
 	assert.Empty(t, plugins)
 }
 
-func mustMakeVersion(v string) *semver.Version {
-	ver := semver.MustParse(v)
-	return &ver
-}
-
 func TestDefaultProvidersSingle(t *testing.T) {
 	t.Parallel()
 
@@ -48,14 +43,14 @@ func TestDefaultProvidersSingle(t *testing.T) {
 	languagePlugins.Add(workspace.PackageDescriptor{
 		PluginDescriptor: workspace.PluginDescriptor{
 			Name:    "aws",
-			Version: mustMakeVersion("0.17.1"),
+			Version: new(semver.MustParse("0.17.1")),
 			Kind:    apitype.ResourcePlugin,
 		},
 	})
 	languagePlugins.Add(workspace.PackageDescriptor{
 		PluginDescriptor: workspace.PluginDescriptor{
 			Name:              "kubernetes",
-			Version:           mustMakeVersion("0.22.0"),
+			Version:           new(semver.MustParse("0.22.0")),
 			Kind:              apitype.ResourcePlugin,
 			PluginDownloadURL: "com.server.url",
 		},
@@ -86,7 +81,7 @@ func TestDefaultProvidersOverrideNoVersion(t *testing.T) {
 	languagePlugins.Add(workspace.PackageDescriptor{
 		PluginDescriptor: workspace.PluginDescriptor{
 			Name:    "aws",
-			Version: mustMakeVersion("0.17.1"),
+			Version: new(semver.MustParse("0.17.1")),
 			Kind:    apitype.ResourcePlugin,
 		},
 	})
@@ -115,21 +110,21 @@ func TestDefaultProvidersOverrideNewerVersion(t *testing.T) {
 	languagePlugins.Add(workspace.PackageDescriptor{
 		PluginDescriptor: workspace.PluginDescriptor{
 			Name:    "aws",
-			Version: mustMakeVersion("0.17.0"),
+			Version: new(semver.MustParse("0.17.0")),
 			Kind:    apitype.ResourcePlugin,
 		},
 	})
 	languagePlugins.Add(workspace.PackageDescriptor{
 		PluginDescriptor: workspace.PluginDescriptor{
 			Name:    "aws",
-			Version: mustMakeVersion("0.17.1"),
+			Version: new(semver.MustParse("0.17.1")),
 			Kind:    apitype.ResourcePlugin,
 		},
 	})
 	languagePlugins.Add(workspace.PackageDescriptor{
 		PluginDescriptor: workspace.PluginDescriptor{
 			Name:    "aws",
-			Version: mustMakeVersion("0.17.2-dev.1553126336"),
+			Version: new(semver.MustParse("0.17.2-dev.1553126336")),
 			Kind:    apitype.ResourcePlugin,
 		},
 	})
@@ -158,7 +153,7 @@ func TestDefaultProvidersSnapshotOverrides(t *testing.T) {
 	snapshotPlugins.Add(workspace.PackageDescriptor{
 		PluginDescriptor: workspace.PluginDescriptor{
 			Name:    "aws",
-			Version: mustMakeVersion("0.17.0"),
+			Version: new(semver.MustParse("0.17.0")),
 			Kind:    apitype.ResourcePlugin,
 		},
 	})
@@ -643,14 +638,14 @@ func TestDefaultProvidersConflictAcrossDifferentPlugins(t *testing.T) {
 	target := workspace.PackageDescriptor{
 		PluginDescriptor: workspace.PluginDescriptor{
 			Name:    "target",
-			Version: mustMakeVersion("1.47.0"),
+			Version: new(semver.MustParse("1.47.0")),
 			Kind:    apitype.ResourcePlugin,
 		},
 	}
 	parameterized := workspace.PackageDescriptor{
 		PluginDescriptor: workspace.PluginDescriptor{
 			Name:    "parameterize-base",
-			Version: mustMakeVersion("1.1.1"),
+			Version: new(semver.MustParse("1.1.1")),
 			Kind:    apitype.ResourcePlugin,
 		},
 		Parameterization: &workspace.Parameterization{
@@ -677,7 +672,7 @@ func TestDefaultProvidersSameBridgeDifferentVersions(t *testing.T) {
 	older := workspace.PackageDescriptor{
 		PluginDescriptor: workspace.PluginDescriptor{
 			Name:    "parameterize-base",
-			Version: mustMakeVersion("1.1.1"),
+			Version: new(semver.MustParse("1.1.1")),
 			Kind:    apitype.ResourcePlugin,
 		},
 		Parameterization: &workspace.Parameterization{
@@ -688,7 +683,7 @@ func TestDefaultProvidersSameBridgeDifferentVersions(t *testing.T) {
 	newer := workspace.PackageDescriptor{
 		PluginDescriptor: workspace.PluginDescriptor{
 			Name:    "parameterize-base",
-			Version: mustMakeVersion("1.1.1"),
+			Version: new(semver.MustParse("1.1.1")),
 			Kind:    apitype.ResourcePlugin,
 		},
 		Parameterization: &workspace.Parameterization{
@@ -711,14 +706,14 @@ func TestAmbigiousPluginSourceErrorMessage(t *testing.T) {
 	target := workspace.PackageDescriptor{
 		PluginDescriptor: workspace.PluginDescriptor{
 			Name:    "target",
-			Version: mustMakeVersion("1.47.0"),
+			Version: new(semver.MustParse("1.47.0")),
 			Kind:    apitype.ResourcePlugin,
 		},
 	}
 	parameterized := workspace.PackageDescriptor{
 		PluginDescriptor: workspace.PluginDescriptor{
 			Name:    "parameterize-base",
-			Version: mustMakeVersion("1.1.1"),
+			Version: new(semver.MustParse("1.1.1")),
 			Kind:    apitype.ResourcePlugin,
 		},
 		Parameterization: &workspace.Parameterization{

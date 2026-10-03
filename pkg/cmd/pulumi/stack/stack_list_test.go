@@ -212,15 +212,13 @@ func TestListStacksJsonProgress(t *testing.T) {
 				&mockStackSummary{
 					name: "stack-in-page-1",
 					LastUpdateF: func() *time.Time {
-						t := mockTime
-						return &t
+						return &mockTime
 					},
 				},
 				&mockStackSummary{
 					name: "stack-in-page-2",
 					LastUpdateF: func() *time.Time {
-						t := time.Unix(0, 0)
-						return &t
+						return new(time.Unix(0, 0))
 					},
 				},
 				&mockStackSummary{
@@ -282,8 +280,7 @@ func TestListStacksJsonNoProgress(t *testing.T) {
 				&mockStackSummary{
 					name: "stack-in-page-1",
 					LastUpdateF: func() *time.Time {
-						t := mockTime
-						return &t
+						return &mockTime
 					},
 				},
 				&mockStackSummary{

@@ -774,7 +774,7 @@ func TestImportResourceRef(t *testing.T) {
 func Test_parseTypeSpecRef(t *testing.T) {
 	t.Parallel()
 
-	toVersionPtr := func(version string) *semver.Version { v := semver.MustParse(version); return &v }
+	toVersionPtr := func(version string) *semver.Version { return new(semver.MustParse(version)) }
 	toURL := func(rawurl string) *url.URL {
 		parsed, err := url.Parse(rawurl)
 		require.NoError(t, err, "failed to parse ref")

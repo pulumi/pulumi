@@ -360,8 +360,7 @@ func TestMergePolicyConfig(t *testing.T) {
 	t.Parallel()
 
 	raw := func(s string) *json.RawMessage {
-		r := json.RawMessage(s)
-		return &r
+		return new(json.RawMessage(s))
 	}
 
 	t.Run("nil base and nil esc returns nil", func(t *testing.T) {

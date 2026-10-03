@@ -39,19 +39,14 @@ func createSnapshot() Snapshot {
 	return Snapshot{Resources: resources}
 }
 
-func createSnapshotPtr() *Snapshot {
-	s := createSnapshot()
-	return &s
-}
-
 func TestSnapshotNormalizeURNReferences(t *testing.T) {
 	t.Parallel()
-	s1 := createSnapshotPtr()
+	s1 := new(createSnapshot())
 	s1n, err := s1.NormalizeURNReferences()
 	require.NoError(t, err)
 	assert.Same(t, s1, s1n)
 
-	s2 := createSnapshotPtr()
+	s2 := new(createSnapshot())
 	r0 := s2.Resources[0]
 	r0.Aliases = []resource.URN{r0.URN}
 	s2.Resources[2].Parent = r0.URN
@@ -67,7 +62,7 @@ func TestSnapshotNormalizeURNReferences(t *testing.T) {
 
 func TestSnapshotWithUpdatedResources(t *testing.T) {
 	t.Parallel()
-	s1 := createSnapshotPtr()
+	s1 := new(createSnapshot())
 
 	s := s1.withUpdatedResources(func(r *pkgresource.State) *pkgresource.State {
 		return r

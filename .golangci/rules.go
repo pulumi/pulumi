@@ -31,3 +31,16 @@ func ptrHelper(m dsl.Matcher) {
 		Where(m["name"].Text.Matches(`^[a-z]`)).
 		Report(`pointer-wrapping helper "$name" is unnecessary; use new(expr) instead`)
 }
+
+// addrOfLocal flags the pattern of assigning a value to a local only to take
+// its address, which Go 1.26's `new(expr)` subsumes. The sequential match
+// ensures the local is not read between its definition and `&$x`, so cases
+// where the local is reused are left alone.
+func addrOfLocal(m dsl.Matcher) {
+	m.Match(
+		`$x := $expr; return &$x`,
+		`var $x = $expr; return &$x`,
+	).
+		Report(`local "$x" exists only to be addressed; use "return new($expr)" instead`).
+		Suggest(`return new($expr)`)
+}
