@@ -67,14 +67,15 @@ type toolBatch struct {
 // blocks the drain loop rather than dropping work.
 const batchQueueCap = 8
 
-// EventStreamer is the subset of *client.Client we depend on for the SSE event stream and
-// for posting CLI tool result user events back to the Neo task. It is an interface so the
-// loop can be unit-tested without a live HTTP backend.
+// EventStreamer is the subset of *client.Client used to read task permissions,
+// stream events, and post CLI tool results. The interface permits testing the loop
+// without a live HTTP backend.
 //
 // lastEventID is the SSE id of the last event the caller successfully processed; the
 // service replays only events with sequence greater than that id, so a reconnect resumes
 // losslessly. Pass "" for the initial connection.
 type EventStreamer interface {
+	GetNeoTask(ctx context.Context, orgName, taskID string) (*client.NeoTask, error)
 	StreamNeoTaskEvents(ctx context.Context, orgName, taskID, lastEventID string) (<-chan client.NeoStreamEvent, error)
 	PostNeoTaskUserEvent(ctx context.Context, orgName, taskID string, body any) error
 }
@@ -527,6 +528,29 @@ func (s *Session) invokeToolCall(
 		res.IsError = true
 		res.Content = map[string]string{"error": fmt.Sprintf("tool %q is not available in CLI mode", server)}
 		return res
+	}
+	if call.Name == "pulumi__pulumi_up" {
+		task, err := s.Client.GetNeoTask(ctx, s.OrgName, s.TaskID)
+		if ctx.Err() != nil {
+			res.IsError = true
+			res.Content = cancelledContent()
+			return res
+		}
+		switch {
+		case err != nil:
+			err = fmt.Errorf("cannot verify deployment permission: %w", err)
+		case task == nil:
+			err = errors.New("cannot verify deployment permission: missing task metadata")
+		case task.PermissionMode == client.NeoPermissionModeReadOnly:
+			err = errors.New("pulumi_up is not allowed in read-only mode")
+		case task.PermissionMode != client.NeoPermissionModeDefault:
+			err = fmt.Errorf("cannot deploy with unrecognized permission mode %q", task.PermissionMode)
+		}
+		if err != nil {
+			res.IsError = true
+			res.Content = map[string]string{"error": err.Error()}
+			return res
+		}
 	}
 	value, err := handler.Invoke(ctx, method, call.Args)
 	cancelled := errors.Is(ctx.Err(), context.Canceled)
