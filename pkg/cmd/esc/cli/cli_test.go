@@ -2163,3 +2163,27 @@ func TestEnvOpenRequestSubmits(t *testing.T) {
 	require.NotNil(t, client.submittedChangeRequests[2].description)
 	assert.Equal(t, "Need prod access for incident 1234", *client.submittedChangeRequests[2].description)
 }
+
+func TestEnvDraftReasonSubmits(t *testing.T) {
+	t.Setenv("PULUMI_API", "")
+	t.Setenv("PULUMI_HOME", t.TempDir())
+
+	_, testcase, err := loadTestcase(filepath.Join("testdata", "env-draft-reason.yaml"))
+	require.NoError(t, err)
+
+	var stdout, stderr bytes.Buffer
+	err = testcase.exec.runScript(testcase.script, &exec.Cmd{
+		Path:   "<script>",
+		Args:   []string{"<script>"},
+		Stdin:  bytes.NewReader(nil),
+		Stdout: &stdout,
+		Stderr: &stderr,
+	})
+	require.NoError(t, err)
+
+	subs := testcase.exec.client.submittedChangeRequests
+	require.Len(t, subs, 2)
+	require.NotNil(t, subs[0].description)
+	assert.Equal(t, "Rotate foo", *subs[0].description)
+	assert.Nil(t, subs[1].description)
+}

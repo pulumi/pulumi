@@ -1,0 +1,24 @@
+run: |
+  esc env set default/a foo baz --draft --reason "Rotate foo"
+  esc env set default/b foo baz --draft
+environments:
+  test-user/default/a:
+    values:
+      foo: bar
+  test-user/default/b:
+    values:
+      foo: bar
+
+---
+> esc env set default/a foo baz --draft --reason Rotate foo
+Change request created: 00000000-0000-0000-0000-000000000000
+Change request URL: https://app.fake.pulumi.com/test-user/esc/default/a?version=00000000-0000-0000-0000-000000000000
+Change request submitted
+> esc env set default/b foo baz --draft
+Change request created: 00000000-0000-0000-0000-000000000000
+Change request URL: https://app.fake.pulumi.com/test-user/esc/default/b?version=00000000-0000-0000-0000-000000000000
+Change request submitted
+
+---
+> esc env set default/a foo baz --draft --reason Rotate foo
+> esc env set default/b foo baz --draft

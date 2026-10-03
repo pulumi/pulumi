@@ -287,7 +287,7 @@ func createAzureEnvironments(
 			failed++
 			continue
 		}
-		if err := applyProviderUpdate(ctx, setup.env, ref, "", path, node, envVars); err != nil {
+		if err := applyProviderUpdate(ctx, setup.env, ref, "", "", path, node, envVars); err != nil {
 			fmt.Fprintf(setup.esc().stderr, "  %v\n", err)
 			failed++
 			continue
