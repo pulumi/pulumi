@@ -124,6 +124,9 @@ type pluginProtocol struct {
 
 	// True if this plugin accepts OutputValues on Invoke args and may return OutputValues on Invoke.
 	acceptsOutputsInInvoke bool
+
+	// True if this plugin accepts OutputValues on Call args and may return OutputValues on Call.
+	acceptsOutputsInCall bool
 }
 
 // pluginConfig holds the configuration of the provider
@@ -219,6 +222,7 @@ func NewProvider(host Host, ctx *Context, spec workspace.PluginDescriptor,
 				AcceptsByteString:           true,
 				SendsOldOutputsToCheck:      true,
 				AcceptsOutputsInInvoke:      true,
+				AcceptsOutputsInCall:        true,
 			}
 			return handshake(ctx, bin, prefix, conn, req)
 		}
@@ -288,6 +292,7 @@ func NewProvider(host Host, ctx *Context, spec workspace.PluginDescriptor,
 				AcceptsByteString:           true,
 				SendsOldOutputsToCheck:      true,
 				AcceptsOutputsInInvoke:      true,
+				AcceptsOutputsInCall:        true,
 			}
 			return handshake(ctx, bin, prefix, conn, req)
 		}
@@ -330,6 +335,7 @@ func NewProvider(host Host, ctx *Context, spec workspace.PluginDescriptor,
 			supportsAutonamingConfiguration: handshakeRes.SupportsAutonamingConfiguration,
 			acceptsByteString:               handshakeRes.AcceptsByteString,
 			acceptsOutputsInInvoke:          handshakeRes.AcceptsOutputsInInvoke,
+			acceptsOutputsInCall:            handshakeRes.AcceptsOutputsInCall,
 		}
 	}
 
@@ -393,6 +399,7 @@ func handshake(
 		AcceptsByteString:           req.AcceptsByteString,
 		SendsOldOutputsToCheck:      req.SendsOldOutputsToCheck,
 		AcceptsOutputsInInvoke:      req.AcceptsOutputsInInvoke,
+		AcceptsOutputsInCall:        req.AcceptsOutputsInCall,
 	})
 	if err != nil {
 		status, ok := status.FromError(err)
@@ -412,6 +419,7 @@ func handshake(
 		SupportsAutonamingConfiguration: res.GetSupportsAutonamingConfiguration(),
 		AcceptsByteString:               res.GetAcceptsByteString(),
 		AcceptsOutputsInInvoke:          res.GetAcceptsOutputsInInvoke(),
+		AcceptsOutputsInCall:            res.GetAcceptsOutputsInCall(),
 	}, nil
 }
 
@@ -462,6 +470,7 @@ func NewProviderFromPath(host Host, ctx *Context, path string) (Provider, error)
 			AcceptsByteString:           true,
 			SendsOldOutputsToCheck:      true,
 			AcceptsOutputsInInvoke:      true,
+			AcceptsOutputsInCall:        true,
 		}
 		return handshake(ctx, bin, prefix, conn, req)
 	}
@@ -495,6 +504,7 @@ func NewProviderFromPath(host Host, ctx *Context, path string) (Provider, error)
 			supportsAutonamingConfiguration: handshakeRes.SupportsAutonamingConfiguration,
 			acceptsByteString:               handshakeRes.AcceptsByteString,
 			acceptsOutputsInInvoke:          handshakeRes.AcceptsOutputsInInvoke,
+			acceptsOutputsInCall:            handshakeRes.AcceptsOutputsInCall,
 		}
 	}
 
@@ -597,6 +607,7 @@ func (p *provider) Handshake(ctx context.Context, req ProviderHandshakeRequest) 
 		AcceptsByteString:           req.AcceptsByteString,
 		SendsOldOutputsToCheck:      req.SendsOldOutputsToCheck,
 		AcceptsOutputsInInvoke:      req.AcceptsOutputsInInvoke,
+		AcceptsOutputsInCall:        req.AcceptsOutputsInCall,
 	})
 	if err != nil {
 		return nil, err
@@ -612,6 +623,7 @@ func (p *provider) Handshake(ctx context.Context, req ProviderHandshakeRequest) 
 		supportsAutonamingConfiguration: res.GetSupportsAutonamingConfiguration(),
 		acceptsByteString:               res.GetAcceptsByteString(),
 		acceptsOutputsInInvoke:          res.GetAcceptsOutputsInInvoke(),
+		acceptsOutputsInCall:            res.GetAcceptsOutputsInCall(),
 	}
 
 	return &ProviderHandshakeResponse{
@@ -621,6 +633,7 @@ func (p *provider) Handshake(ctx context.Context, req ProviderHandshakeRequest) 
 		SupportsAutonamingConfiguration: res.GetSupportsAutonamingConfiguration(),
 		AcceptsByteString:               res.GetAcceptsByteString(),
 		AcceptsOutputsInInvoke:          res.GetAcceptsOutputsInInvoke(),
+		AcceptsOutputsInCall:            res.GetAcceptsOutputsInCall(),
 	}, nil
 }
 
@@ -2433,15 +2446,23 @@ func (p *provider) Call(_ context.Context, req CallRequest) (CallResponse, error
 		return CallResult{}, nil
 	}
 
-	margs, err := MarshalProperties(resource.ToResourcePropertyMap(req.Args), MarshalOptions{
-		Label:          label + ".args",
-		KeepUnknowns:   true,
-		KeepSecrets:    true,
-		KeepResources:  true,
-		KeepByteString: protocol.acceptsByteString,
-		// To initially scope the use of this new feature, we only keep output values for
-		// Construct and Call (when the client accepts them).
-		KeepOutputValues: protocol.acceptOutputs,
+	args := resource.ToResourcePropertyMap(req.Args)
+
+	// If the provider does not accept OutputValues we lose the per-value dependency information on the wire.
+	// Collect the union of dependencies from the args first so we can re-hydrate the return values below,
+	// preserving a (coarser) dependency relationship for a downstream SDK that accepts OutputValues.
+	var argDeps []resource.URN
+	if !protocol.acceptsOutputsInCall {
+		argDeps = collectArgDependencies(args)
+	}
+
+	margs, err := MarshalProperties(args, MarshalOptions{
+		Label:            label + ".args",
+		KeepUnknowns:     true,
+		KeepSecrets:      true,
+		KeepResources:    true,
+		KeepByteString:   protocol.acceptsByteString,
+		KeepOutputValues: protocol.acceptsOutputsInCall,
 		PropagateNil:     true,
 	})
 	if err != nil {
@@ -2503,6 +2524,18 @@ func (p *provider) Call(_ context.Context, req CallRequest) (CallResponse, error
 			urns[i] = resource.URN(d)
 		}
 		returnDependencies[resource.PropertyKey(k)] = urns
+	}
+
+	// Re-hydrate OutputValues on the return with the union of arg dependencies and the per-key return
+	// dependencies when the provider did not support OutputValues on Call. See `argDeps` above.
+	if !protocol.acceptsOutputsInCall {
+		for k, v := range ret {
+			deps := append([]resource.URN(nil), argDeps...)
+			deps = append(deps, returnDependencies[k]...)
+			if len(deps) > 0 {
+				ret[k] = wrapWithDependencies(v, deps)
+			}
+		}
 	}
 
 	// And now any properties that failed verification.

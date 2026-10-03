@@ -6679,7 +6679,8 @@ sourceposition: (f = msg.getSourceposition()) && pulumi_source_pb.SourcePosition
 stacktrace: (f = msg.getStacktrace()) && pulumi_source_pb.StackTrace.toObject(includeInstance, f),
 parentstacktracehandle: jspb.Message.getFieldWithDefault(msg, 19, ""),
 packageref: jspb.Message.getFieldWithDefault(msg, 17, ""),
-acceptsByteString: jspb.Message.getBooleanFieldWithDefault(msg, 20, false)
+acceptsByteString: jspb.Message.getBooleanFieldWithDefault(msg, 20, false),
+acceptOutputValues: jspb.Message.getBooleanFieldWithDefault(msg, 21, false)
   };
 
   if (includeInstance) {
@@ -6770,6 +6771,10 @@ proto.pulumirpc.ResourceCallRequest.deserializeBinaryFromReader = function(msg, 
     case 20:
       var value = /** @type {boolean} */ (reader.readBool());
       msg.setAcceptsByteString(value);
+      break;
+    case 21:
+      var value = /** @type {boolean} */ (reader.readBool());
+      msg.setAcceptOutputValues(value);
       break;
     default:
       reader.skipField();
@@ -6878,6 +6883,13 @@ proto.pulumirpc.ResourceCallRequest.serializeBinaryToWriter = function(message, 
   if (f) {
     writer.writeBool(
       20,
+      f
+    );
+  }
+  f = message.getAcceptOutputValues();
+  if (f) {
+    writer.writeBool(
+      21,
       f
     );
   }
@@ -7320,6 +7332,24 @@ proto.pulumirpc.ResourceCallRequest.prototype.getAcceptsByteString = function() 
  */
 proto.pulumirpc.ResourceCallRequest.prototype.setAcceptsByteString = function(value) {
   return jspb.Message.setProto3BooleanField(this, 20, value);
+};
+
+
+/**
+ * optional bool accept_output_values = 21;
+ * @return {boolean}
+ */
+proto.pulumirpc.ResourceCallRequest.prototype.getAcceptOutputValues = function() {
+  return /** @type {boolean} */ (jspb.Message.getBooleanFieldWithDefault(this, 21, false));
+};
+
+
+/**
+ * @param {boolean} value
+ * @return {!proto.pulumirpc.ResourceCallRequest} returns this
+ */
+proto.pulumirpc.ResourceCallRequest.prototype.setAcceptOutputValues = function(value) {
+  return jspb.Message.setProto3BooleanField(this, 21, value);
 };
 
 
@@ -13335,7 +13365,8 @@ proto.pulumirpc.ResourceMonitorFeature = {
   RESOURCE_MONITOR_FEATURE_INVOKE_DEPENDS_ON: 14,
   RESOURCE_MONITOR_FEATURE_INVOKE_PARENT: 15,
   RESOURCE_MONITOR_FEATURE_STATE_MIGRATIONS: 16,
-  RESOURCE_MONITOR_FEATURE_INVOKE_OUTPUT_VALUES: 17
+  RESOURCE_MONITOR_FEATURE_INVOKE_OUTPUT_VALUES: 17,
+  RESOURCE_MONITOR_FEATURE_CALL_OUTPUT_VALUES: 18
 };
 
 /**

@@ -48,6 +48,11 @@ type EvalContext struct {
 	// back to unwrapping args into a `dependsOn` list and unioning those onto the whole return.
 	invokeOutputValues bool
 
+	// callOutputValues is true when the resource monitor advertised CALL_OUTPUT_VALUES. When set, call
+	// preserves OutputValues in args and trusts the per-value OutputValues on the response; otherwise it falls
+	// back to unwrapping args into a `dependsOn` list and unioning those onto the whole return.
+	callOutputValues bool
+
 	// We read and write variables to the hcl.EvalContext + children in parallel during
 	// execution, so we synchronize access to it.
 	evalLock    *sync.Mutex
@@ -99,6 +104,7 @@ func (ectx *EvalContext) NewChild() *EvalContext {
 		invoke:             ectx.invoke,
 		call:               ectx.call,
 		invokeOutputValues: ectx.invokeOutputValues,
+		callOutputValues:   ectx.callOutputValues,
 		evalLock:           ectx.evalLock,
 		evalContext:        child,
 	}
@@ -108,6 +114,12 @@ func (ectx *EvalContext) NewChild() *EvalContext {
 // on EvalContext for the effect this has on the invoke builtin.
 func (ectx *EvalContext) SetInvokeOutputValues(v bool) {
 	ectx.invokeOutputValues = v
+}
+
+// SetCallOutputValues records whether the resource monitor advertised CALL_OUTPUT_VALUES. See the field
+// on EvalContext for the effect this has on the call builtin.
+func (ectx *EvalContext) SetCallOutputValues(v bool) {
+	ectx.callOutputValues = v
 }
 
 func (ectx *EvalContext) SetVariable(name string, value cty.Value) {

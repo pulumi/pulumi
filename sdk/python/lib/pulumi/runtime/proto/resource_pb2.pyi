@@ -73,6 +73,11 @@ class _ResourceMonitorFeatureEnumTypeWrapper(google.protobuf.internal.enum_type_
     dependencies into the invoke's wait-set), and will honour `accept_output_values` on the request to return
     OutputValues in `ResourceInvokeResponse.return`.
     """
+    RESOURCE_MONITOR_FEATURE_CALL_OUTPUT_VALUES: _ResourceMonitorFeature.ValueType  # 18
+    """The monitor accepts OutputValues nested in `ResourceCallRequest.args` (and will harvest their
+    dependencies into the call's wait-set), and will honour `accept_output_values` on the request to return
+    OutputValues in `CallResponse.return`.
+    """
 
 class ResourceMonitorFeature(_ResourceMonitorFeature, metaclass=_ResourceMonitorFeatureEnumTypeWrapper):
     """ResourceMonitorFeature is a strongly typed monitor capability identifier.
@@ -110,6 +115,11 @@ RESOURCE_MONITOR_FEATURE_INVOKE_OUTPUT_VALUES: ResourceMonitorFeature.ValueType 
 """The monitor accepts OutputValues nested in `ResourceInvokeRequest.args` (and will harvest their
 dependencies into the invoke's wait-set), and will honour `accept_output_values` on the request to return
 OutputValues in `ResourceInvokeResponse.return`.
+"""
+RESOURCE_MONITOR_FEATURE_CALL_OUTPUT_VALUES: ResourceMonitorFeature.ValueType  # 18
+"""The monitor accepts OutputValues nested in `ResourceCallRequest.args` (and will harvest their
+dependencies into the call's wait-set), and will honour `accept_output_values` on the request to return
+OutputValues in `CallResponse.return`.
 """
 global___ResourceMonitorFeature = ResourceMonitorFeature
 
@@ -1100,6 +1110,7 @@ class ResourceCallRequest(google.protobuf.message.Message):
     PARENTSTACKTRACEHANDLE_FIELD_NUMBER: builtins.int
     PACKAGEREF_FIELD_NUMBER: builtins.int
     ACCEPTS_BYTE_STRING_FIELD_NUMBER: builtins.int
+    ACCEPT_OUTPUT_VALUES_FIELD_NUMBER: builtins.int
     tok: builtins.str
     """the function token to invoke."""
     provider: builtins.str
@@ -1115,6 +1126,10 @@ class ResourceCallRequest(google.protobuf.message.Message):
     accepts_byte_string: builtins.bool
     """When true operations may return strings containing bytes that are not valid UTF-8, marshaled as objects
     carrying the byte string signature and a base64 encoding of the string's bytes.
+    """
+    accept_output_values: builtins.bool
+    """When true the SDK accepts OutputValues in `CallResponse.return`. Only meaningful when the monitor
+    advertises `CALL_OUTPUT_VALUES`; older monitors will ignore this field.
     """
     @property
     def args(self) -> google.protobuf.struct_pb2.Struct:
@@ -1151,9 +1166,10 @@ class ResourceCallRequest(google.protobuf.message.Message):
         parentStackTraceHandle: builtins.str = ...,
         packageRef: builtins.str = ...,
         accepts_byte_string: builtins.bool = ...,
+        accept_output_values: builtins.bool = ...,
     ) -> None: ...
     def HasField(self, field_name: typing.Literal["args", b"args", "sourcePosition", b"sourcePosition", "stackTrace", b"stackTrace"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing.Literal["accepts_byte_string", b"accepts_byte_string", "argDependencies", b"argDependencies", "args", b"args", "packageRef", b"packageRef", "parentStackTraceHandle", b"parentStackTraceHandle", "pluginChecksums", b"pluginChecksums", "pluginDownloadURL", b"pluginDownloadURL", "provider", b"provider", "sourcePosition", b"sourcePosition", "stackTrace", b"stackTrace", "tok", b"tok", "version", b"version"]) -> None: ...
+    def ClearField(self, field_name: typing.Literal["accept_output_values", b"accept_output_values", "accepts_byte_string", b"accepts_byte_string", "argDependencies", b"argDependencies", "args", b"args", "packageRef", b"packageRef", "parentStackTraceHandle", b"parentStackTraceHandle", "pluginChecksums", b"pluginChecksums", "pluginDownloadURL", b"pluginDownloadURL", "provider", b"provider", "sourcePosition", b"sourcePosition", "stackTrace", b"stackTrace", "tok", b"tok", "version", b"version"]) -> None: ...
 
 global___ResourceCallRequest = ResourceCallRequest
 

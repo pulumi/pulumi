@@ -574,9 +574,10 @@ func (ectx *EvalContext) builtinFunctions() map[string]function.Function {
 			}))
 
 			request := &pulumirpc.ResourceCallRequest{
-				Tok:               fun.Token,
-				Args:              propertyrpc.Marshal(argsPM),
-				AcceptsByteString: true,
+				Tok:                fun.Token,
+				Args:               propertyrpc.Marshal(argsPM),
+				AcceptsByteString:  true,
+				AcceptOutputValues: ectx.callOutputValues,
 			}
 
 			var dependsOn []resource.URN
@@ -624,6 +625,24 @@ func (ectx *EvalContext) builtinFunctions() map[string]function.Function {
 			if err != nil {
 				return cty.NilVal, fmt.Errorf("unmarshal invoke result: %w", err)
 			}
+			// In the legacy path per-value deps come from the response's ReturnDependencies map, not from
+			// OutputValues on the return value itself. Attach them per-key before wrapping, so a downstream
+			// consumer of resultPM[k] sees the deps the provider recorded for k. In the CALL_OUTPUT_VALUES
+			// path the engine and provider already stamped per-value deps onto the returned values and the
+			// ReturnDependencies entries are redundant with them.
+			if !ectx.callOutputValues {
+				for k, deps := range resp.GetReturnDependencies() {
+					v, ok := resultPM.GetOk(k)
+					if !ok {
+						continue
+					}
+					urns := make([]resource.URN, len(deps.GetUrns()))
+					for i, u := range deps.GetUrns() {
+						urns[i] = resource.URN(u)
+					}
+					resultPM = resultPM.Set(k, v.WithDependencies(append(v.Dependencies(), urns...)))
+				}
+			}
 			// Methods declared with ReturnTypePlain but no object return type carry the single value in a
 			// property map with exactly one entry, whose key may be any name. Unwrap it so callers get the
 			// value directly.
@@ -643,7 +662,10 @@ func (ectx *EvalContext) builtinFunctions() map[string]function.Function {
 			} else {
 				resultPV = property.New(resultPM)
 			}
-			resultPV = resultPV.WithDependencies(append(resultPV.Dependencies(), dependsOn...))
+			// User-declared dependsOn always applies at the top level, in both modes.
+			if len(dependsOn) > 0 {
+				resultPV = resultPV.WithDependencies(append(resultPV.Dependencies(), dependsOn...))
+			}
 			return propertyValueToCty(context.TODO(), ectx.getResource, resultPV)
 		},
 	})
