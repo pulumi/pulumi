@@ -242,9 +242,8 @@ type Client struct {
 	DisableCapabilityProbing bool
 }
 
-// newClient creates a new Pulumi API client with the given URL and API token. It is a variable instead of a regular
-// function so it can be set to a different implementation at runtime, if necessary.
-var newClient = func(apiURL, apiToken string, insecure bool, d diag.Sink) *Client {
+// NewClient creates a new Pulumi API client with the given URL and API token.
+func NewClient(apiURL, apiToken string, insecure bool, d diag.Sink) *Client {
 	var httpClient *http.Client
 	if insecure {
 		tr := &http.Transport{
@@ -262,9 +261,7 @@ var newClient = func(apiURL, apiToken string, insecure bool, d diag.Sink) *Clien
 		diag:     d,
 		insecure: insecure,
 		restClient: &defaultRESTClient{
-			client: &defaultHTTPClient{
-				client: httpClient,
-			},
+			client: newDefaultHTTPClient(httpClient, apiURL),
 		},
 	}
 }
@@ -274,20 +271,22 @@ func (pc *Client) Insecure() bool {
 	return pc.insecure
 }
 
-// NewClient creates a new Pulumi API client with the given URL and API token.
-func NewClient(apiURL, apiToken string, insecure bool, d diag.Sink) *Client {
-	return newClient(apiURL, apiToken, insecure, d)
-}
-
 // WithHTTPClient sets the HTTP client for the API client.
 // Useful for testing.
 func (pc *Client) WithHTTPClient(httpClient *http.Client) *Client {
 	pc.restClient = &defaultRESTClient{
-		client: &defaultHTTPClient{
-			client: httpClient,
-		},
+		client: newDefaultHTTPClient(httpClient, pc.apiURL),
 	}
 	return pc
+}
+
+// newDefaultHTTPClient returns a defaultHTTPClient that sends the trace context to the host of apiURL.
+func newDefaultHTTPClient(client *http.Client, apiURL string) *defaultHTTPClient {
+	var apiHost string
+	if u, err := url.Parse(apiURL); err == nil {
+		apiHost = u.Host
+	}
+	return &defaultHTTPClient{client: client, apiHost: apiHost}
 }
 
 // WithRefresh wires an OAuth refresh token + a credentials-writeback callback into this client.
@@ -1612,7 +1611,7 @@ func (pc *Client) StartUpdate(ctx context.Context, update UpdateIdentifier,
 	}
 
 	if !env.DisableJournaling.Value() {
-		req.JournalVersion = 1
+		req.JournalVersion = apitype.LatestJournalVersion
 	}
 
 	var resp apitype.StartUpdateResponse
@@ -1621,6 +1620,69 @@ func (pc *Client) StartUpdate(ctx context.Context, update UpdateIdentifier,
 	}
 
 	return resp.Version, resp.Token, resp.JournalVersion, nil
+}
+
+// BeginUpdate combines CreateUpdate, StartUpdate, ExportStackDeployment, and GetStack into a
+// single API call to reduce latency. Returns all data needed to start the engine execution.
+// This is only supported on backends with the "begin-update" capability.
+func (pc *Client) BeginUpdate(
+	ctx context.Context, kind apitype.UpdateKind, stack StackIdentifier, proj *workspace.Project,
+	cfg config.Map, m apitype.UpdateMetadata, opts engine.UpdateOptions,
+	tags map[apitype.StackTagName]string, dryRun bool,
+) (*apitype.BeginUpdateResponse, error) {
+	if err := validation.ValidateStackTags(tags); err != nil {
+		return nil, fmt.Errorf("validating stack properties: %w", err)
+	}
+
+	wireConfig := make(map[string]apitype.ConfigValue)
+	for k, cv := range cfg {
+		v, err := cv.Value(config.NopDecrypter)
+		contract.AssertNoErrorf(err, "error fetching config value for key %v", k)
+
+		wireConfig[k.String()] = apitype.ConfigValue{
+			String: v,
+			Secret: cv.Secure(),
+			Object: cv.Object(),
+		}
+	}
+
+	description := ""
+	if proj.Description != nil {
+		description = *proj.Description
+	}
+
+	updateRequest := apitype.UpdateProgramRequest{
+		Name:        string(proj.Name),
+		Runtime:     proj.Runtime.Name(),
+		Main:        proj.Main,
+		Description: description,
+		Config:      wireConfig,
+		Options: apitype.UpdateOptions{
+			LocalPolicyPackPaths: engine.ConvertLocalPolicyPacksToPaths(opts.LocalPolicyPacks),
+			Color:                colors.Raw,
+			DryRun:               dryRun,
+			Parallel:             opts.Parallel,
+		},
+		Metadata: m,
+	}
+
+	req := apitype.BeginUpdateRequest{
+		UpdateKind:         kind,
+		Program:            updateRequest,
+		StartUpdateRequest: apitype.StartUpdateRequest{Tags: tags},
+	}
+
+	if !env.DisableJournaling.Value() {
+		req.JournalVersion = apitype.LatestJournalVersion
+	}
+
+	var resp apitype.BeginUpdateResponse
+	path := getStackPath(stack, "begin-update")
+	if err := pc.restCall(ctx, "POST", path, nil, &req, &resp); err != nil {
+		return nil, err
+	}
+
+	return &resp, nil
 }
 
 // ListPolicyGroups lists all `PolicyGroups` the organization has in the Pulumi service.

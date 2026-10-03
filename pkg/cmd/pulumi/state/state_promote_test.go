@@ -51,7 +51,42 @@ func TestPromoteSnippetFromSnapshot_RemovesSnippetAndClearsResourceOwnership(t *
 	require.Len(t, snap.Snippets, 1)
 	assert.Equal(t, "other-snippet", snap.Snippets[0].UUID)
 	assert.Empty(t, snap.Resources[0].SnippetID)
+	assert.True(t, snap.Resources[0].Protect,
+		"promoted resource should be protected so the user can safely copy the generated code")
 	assert.Equal(t, "other-snippet", snap.Resources[1].SnippetID)
+	assert.False(t, snap.Resources[1].Protect,
+		"resources belonging to other snippets should be untouched")
+}
+
+func TestPromoteSnippetFromSnapshot_ProtectsAllRangeResources(t *testing.T) {
+	t.Parallel()
+
+	// A snippet with `options { range = ... }` produces multiple resources that all share the
+	// same SnippetID. Promote must protect every one of them, not just the first match.
+	const snippetID = "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+	urnA := resource.URN("urn:pulumi:dev::proj::aws:s3/bucket:Bucket::bucket-0")
+	urnB := resource.URN("urn:pulumi:dev::proj::aws:s3/bucket:Bucket::bucket-1")
+	urnC := resource.URN("urn:pulumi:dev::proj::aws:s3/bucket:Bucket::bucket-2")
+	snap := &deploy.Snapshot{
+		Snippets: []resource.Snippet{
+			{UUID: snippetID, Name: "bucket", Type: string(urnA.Type())},
+		},
+		Resources: []*pkgresource.State{
+			{URN: urnA, Type: urnA.Type(), Custom: true, SnippetID: snippetID},
+			{URN: urnB, Type: urnB.Type(), Custom: true, SnippetID: snippetID},
+			{URN: urnC, Type: urnC.Type(), Custom: true, SnippetID: snippetID},
+		},
+	}
+
+	cleared, err := promoteSnippetFromSnapshot(snap, snap.Snippets[0])
+	require.NoError(t, err)
+
+	assert.Equal(t, 3, cleared)
+	assert.Empty(t, snap.Snippets)
+	for i, res := range snap.Resources {
+		assert.Emptyf(t, res.SnippetID, "resource %d should have SnippetID cleared", i)
+		assert.Truef(t, res.Protect, "range resource %d should be protected", i)
+	}
 }
 
 func TestPromoteSnippetFromSnapshot_MissingSnippet(t *testing.T) {

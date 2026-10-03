@@ -3,7 +3,7 @@
 
 The *callback system* allows programs, or even component libraries, to expose user-authored functions to the engine and call them across process boundaries. These functions are defined alongside the rest of the Pulumi program, and run in the same process, but are typically not called directly by user code. Instead they are called by the engine at specific moments of the deployment. This mechanism enables features like [resource transforms](https://www.pulumi.com/docs/concepts/options/transforms/) and [resource hooks](https://www.pulumi.com/docs/iac/concepts/resources/options/hooks/).
 
-The language SDKs start a gRPC server implementing the [](pulumirpc.Callbacks) service (for example, [_callbacks.py](gh-file:pulumi#sdk/python/lib/pulumi/runtime/_callbacks.py#L68)). This server exposes a single method: [](pulumirpc.Callbacks.Invoke). User-authored functions are registered with this server, and the engine is informed of their existence by calling [](pulumirpc.ResourceMonitor.RegisterStackTransform) or [](pulumirpc.ResourceMonitor.RegisterResourceHook).
+The language SDKs start a gRPC server implementing the [](pulumirpc.Callbacks) service (for example, [_callbacks.py](gh-file:pulumi#sdk/python/lib/pulumi/runtime/_callbacks.py#L68)). This server exposes a single method: [](pulumirpc.Callbacks.Invoke). User-authored functions are registered with this server, and a callback reference is passed to the engine through the relevant resource-monitor request, such as [](pulumirpc.ResourceMonitor.RegisterStackTransform), [](pulumirpc.ResourceMonitor.RegisterResourceHook), or [](pulumirpc.ResourceMonitor.RegisterResource).
 
 The [](pulumirpc.Callback) message is used to register a callback. It represents a callback reference and contains two essential pieces of information:
 
@@ -26,3 +26,4 @@ The system supports multiple callback types, each with their own request/respons
 * **Resource transforms**: [](pulumirpc.TransformRequest) and [](pulumirpc.TransformResponse)
 * **Invoke transforms**: [](pulumirpc.TransformInvokeRequest) and [](pulumirpc.TransformInvokeResponse)
 * **Resource hooks**: [](pulumirpc.ResourceHookRequest) and [](pulumirpc.ResourceHookResponse)
+* **[Component state migrations](/docs/architecture/deployment-execution/state-migrations.md)**: [](pulumirpc.StateMigrationRequest) and [](pulumirpc.StateMigrationResponse)

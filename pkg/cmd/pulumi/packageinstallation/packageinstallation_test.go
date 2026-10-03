@@ -18,6 +18,7 @@ import (
 	"context"
 	"errors"
 	"iter"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -26,6 +27,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageinstallation"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageresolution"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageworkspace"
+	"github.com/pulumi/pulumi/pkg/v3/pluginstorage"
 	"github.com/pulumi/pulumi/pkg/v3/registry"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -47,7 +49,7 @@ func TestInstallAlreadyInstalledPackage(t *testing.T) {
 				Kind: apitype.ResourcePlugin,
 			},
 			downloaded: true,
-			installed:  true,
+			state:      pluginstorage.PluginInstalled,
 			hasBinary:  true,
 		},
 	})
@@ -82,7 +84,7 @@ func TestInstallAlreadyInstalledPlugin(t *testing.T) {
 				Kind:    apitype.ResourcePlugin,
 			},
 			downloaded: true,
-			installed:  true,
+			state:      pluginstorage.PluginInstalled,
 			hasBinary:  true,
 		},
 	})
@@ -114,7 +116,7 @@ func TestDoNotInstallDependenciesOfAlreadyInstalledPackage(t *testing.T) {
 				Kind: apitype.ResourcePlugin,
 			},
 			downloaded: true,
-			installed:  true,
+			state:      pluginstorage.PluginInstalled,
 			project: &workspace.PluginProject{
 				Runtime: workspace.NewProjectRuntimeInfo("go", nil),
 				Packages: map[string]workspace.PackageSpec{
@@ -909,9 +911,11 @@ func TestInstallPluginWithMultipleVersions(t *testing.T) {
 	pluginBPath := "$HOME/.pulumi/plugins/resource-plugin-b"
 
 	require.True(t, ws.plugins[sharedV1Path].downloaded, "shared-plugin v1.0.0 should be downloaded")
-	require.True(t, ws.plugins[sharedV1Path].installed, "shared-plugin v1.0.0 should be installed")
+	require.Equal(t, pluginstorage.PluginInstalled, ws.plugins[sharedV1Path].state,
+		"shared-plugin v1.0.0 should be installed")
 	require.True(t, ws.plugins[sharedV2Path].downloaded, "shared-plugin v2.0.0 should be downloaded")
-	require.True(t, ws.plugins[sharedV2Path].installed, "shared-plugin v2.0.0 should be installed")
+	require.Equal(t, pluginstorage.PluginInstalled, ws.plugins[sharedV2Path].state,
+		"shared-plugin v2.0.0 should be installed")
 
 	// Verify that plugin-a is linked to v1.0.0 and plugin-b is linked to v2.0.0
 	require.Contains(t, ws.plugins[pluginAPath].linked, sharedV1Path+"/sdk-<nil>",
@@ -1332,9 +1336,10 @@ func TestInstallPluginWithRequiredPackages(t *testing.T) {
 	pluginBPath := "$HOME/.pulumi/plugins/resource-plugin-b-v2.0.0"
 
 	require.True(t, ws.plugins[pluginAPath].downloaded, "plugin-a should be downloaded")
-	require.True(t, ws.plugins[pluginAPath].installed, "plugin-a should be installed")
+	require.Equal(t, pluginstorage.PluginInstalled, ws.plugins[pluginAPath].state, "plugin-a should be installed")
 	require.True(t, ws.plugins[pluginBPath].downloaded, "plugin-b should be downloaded (as a required package)")
-	require.True(t, ws.plugins[pluginBPath].installed, "plugin-b should be installed (as a required package)")
+	require.Equal(t, pluginstorage.PluginInstalled, ws.plugins[pluginBPath].state,
+		"plugin-b should be installed (as a required package)")
 }
 
 // TestInstallPluginWithRequiredPackageSpecs tests that the package specs returned as the
@@ -1405,9 +1410,10 @@ func TestInstallPluginWithRequiredPackageSpecs(t *testing.T) {
 	pluginBPath := "$HOME/.pulumi/plugins/resource-plugin-b-v2.0.0"
 
 	require.True(t, ws.plugins[pluginAPath].downloaded, "plugin-a should be downloaded")
-	require.True(t, ws.plugins[pluginAPath].installed, "plugin-a should be installed")
+	require.Equal(t, pluginstorage.PluginInstalled, ws.plugins[pluginAPath].state, "plugin-a should be installed")
 	require.True(t, ws.plugins[pluginBPath].downloaded, "plugin-b should be downloaded (as a required spec)")
-	require.True(t, ws.plugins[pluginBPath].installed, "plugin-b should be installed (as a required spec)")
+	require.Equal(t, pluginstorage.PluginInstalled, ws.plugins[pluginBPath].state,
+		"plugin-b should be installed (as a required spec)")
 
 	require.Contains(t, ws.plugins[pluginAPath].linked, pluginBPath+"/sdk-<nil>",
 		"plugin-a should have a local SDK for plugin-b linked in (as a required spec)")
@@ -1725,9 +1731,9 @@ func TestInstallSharedDependencyInParallel(t *testing.T) {
 	pluginCSDK := "$HOME/.pulumi/plugins/resource-plugin-c/sdk-<nil>"
 	pluginDSDK := "$HOME/.pulumi/plugins/resource-plugin-d/sdk-<nil>"
 
-	require.True(t, baselineWs.plugins[componentAPath].installed,
+	require.Equal(t, pluginstorage.PluginInstalled, baselineWs.plugins[componentAPath].state,
 		"component-a should be installed in baseline")
-	require.True(t, baselineWs.plugins[componentBPath].installed,
+	require.Equal(t, pluginstorage.PluginInstalled, baselineWs.plugins[componentBPath].state,
 		"component-b should be installed in baseline")
 
 	require.Contains(t, baselineWs.plugins[componentAPath].linked, pluginCSDK,
@@ -1837,9 +1843,9 @@ func TestRequiredPackagesDeclaredInProjectPackagesNotDownloaded(t *testing.T) {
 	providerPath := "/work/provider"
 	providerNestedPath := "/work/provider-nested"
 
-	require.True(t, ws.plugins[providerPath].installed,
+	require.Equal(t, pluginstorage.PluginInstalled, ws.plugins[providerPath].state,
 		"provider should be installed")
-	require.True(t, ws.plugins[providerNestedPath].installed,
+	require.Equal(t, pluginstorage.PluginInstalled, ws.plugins[providerNestedPath].state,
 		"provider-nested should be installed (via provider's packages)")
 }
 
@@ -1903,6 +1909,44 @@ func TestInstallPluginSet(t *testing.T) {
 
 	require.True(t, ws.plugins[descriptorPath].downloaded, "descriptor plugin should be downloaded")
 	require.True(t, ws.plugins[specPath].downloaded, "spec plugin should be downloaded")
+}
+
+// A provider that is attached with PULUMI_DEBUG_PROVIDERS already runs. It has no
+// directory in the plugin cache, so the install must not download it or look for its
+// path on disk.
+func TestInstallPluginSetAttachedProvider(t *testing.T) {
+	t.Parallel()
+
+	attached := workspace.PluginDescriptor{
+		Name: "attached-provider",
+		Kind: apitype.ResourcePlugin,
+	}
+	ws := newInvariantWorkspace(t, []string{"/project"}, nil, []invariantPlugin{
+		{d: attached, state: pluginstorage.PluginAttached},
+	})
+
+	rws := &recordingWorkspace{ws, nil}
+	defer rws.save(t)
+
+	_, err := packageinstallation.InstallPluginSet(t.Context(),
+		[]workspace.PackageDescriptor{{PluginDescriptor: attached}},
+		nil,
+		&workspace.Project{
+			Name:    "test-project",
+			Runtime: workspace.NewProjectRuntimeInfo("go", nil),
+		}, "/project", packageinstallation.Options{
+			Options: packageresolution.Options{
+				ResolveVersionWithLocalWorkspace:           true,
+				AllowNonInvertableLocalWorkspaceResolution: true,
+			},
+			Concurrency: 1,
+		}, nil, rws)
+	require.NoError(t, err)
+
+	assert.Equal(t, invariantPlugin{
+		d:     attached,
+		state: pluginstorage.PluginAttached,
+	}, *ws.plugins["$HOME/.pulumi/plugins/resource-attached-provider"])
 }
 
 // TestInstallPluginSetRemotePackageOverride checks that a remote (registry)
@@ -2180,4 +2224,82 @@ func TestInstallContinuationAcrossInstallsDoesNotCycle(t *testing.T) {
 	_, err = packageinstallation.InstallPluginSet(t.Context(),
 		descriptors, specs, proj, "/project", options(continuation), nil, ws)
 	require.NoError(t, err)
+}
+
+// TestInstallLocalPluginDependenciesFirst tests that a local plugin directory
+// is run to generate the project's SDK only after the packages its runtime
+// reports as required are installed. The plugin resolves those packages when
+// it starts. The plugin itself is installed first, because its runtime reads
+// the required packages from what the install produced.
+func TestInstallLocalPluginDependenciesFirst(t *testing.T) {
+	t.Parallel()
+
+	pluginB := workspace.PluginDescriptor{
+		Name:              "plugin-b",
+		Version:           &semver.Version{Major: 2},
+		Kind:              apitype.ResourcePlugin,
+		PluginDownloadURL: "https://example.com/plugin-b.tar.gz",
+	}
+	ws := &invariantWorkspace{
+		t:  t,
+		rw: new(sync.RWMutex),
+		plugins: map[string]*invariantPlugin{
+			"/work/plugin-a": {
+				d: workspace.PluginDescriptor{
+					Name: "plugin-a",
+					Kind: apitype.ResourcePlugin,
+				},
+				project: &workspace.PluginProject{
+					Runtime: workspace.NewProjectRuntimeInfo("go", nil),
+				},
+				requiredPackages: []workspace.PackageDescriptor{{PluginDescriptor: pluginB}},
+				downloaded:       true,
+				pathVisible:      true,
+				projectDetected:  true,
+			},
+			"$HOME/.pulumi/plugins/resource-plugin-b-v2.0.0": {
+				d: pluginB,
+				project: &workspace.PluginProject{
+					Runtime: workspace.NewProjectRuntimeInfo("go", nil),
+				},
+			},
+		},
+		binaryPaths: map[string]string{},
+		downloadedWorkspace: map[string]*invariantWorkDir{
+			"/work/project": {},
+		},
+	}
+
+	rws := &recordingWorkspace{ws, nil}
+	defer rws.save(t)
+
+	_, err := packageinstallation.InstallProjectPlugins(t.Context(), &workspace.Project{
+		Name:    "test-project",
+		Runtime: workspace.NewProjectRuntimeInfo("go", nil),
+		Packages: map[string]workspace.PackageSpec{
+			"a": {Source: "../plugin-a"},
+		},
+	}, "/work/project", packageinstallation.Options{
+		Options: packageresolution.Options{
+			ResolveVersionWithLocalWorkspace:           true,
+			AllowNonInvertableLocalWorkspaceResolution: true,
+		},
+		Concurrency: 1,
+	}, nil, rws)
+	require.NoError(t, err)
+
+	stepIndex := func(prefix string) int {
+		for i, s := range rws.steps {
+			if strings.HasPrefix(normalizeStep(s), prefix) {
+				return i
+			}
+		}
+		t.Fatalf("no step starts with %q", prefix)
+		return -1
+	}
+	installA := stepIndex(`InstallPluginAt{ctx, "/work/plugin-a"`)
+	installB := stepIndex(`InstallPluginAt{ctx, "$HOME/.pulumi/plugins/resource-plugin-b-v2.0.0"`)
+	runA := stepIndex(`RunPackage{ctx, "/work/project", "/work/plugin-a"`)
+	assert.Less(t, installA, installB, "plugin-a must be installed before its dependencies are gathered")
+	assert.Less(t, installB, runA, "plugin-b must be installed before plugin-a runs")
 }

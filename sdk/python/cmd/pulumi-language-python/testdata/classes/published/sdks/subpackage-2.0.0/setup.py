@@ -31,7 +31,7 @@ setup(name='pulumi_subpackage',
           ]
       },
       install_requires=[
-          'parver>=0.2.1',
+          'packaging>=24.0',
           'pulumi>=3.247.0,<4.0.0',
           'semver>=2.8.1'
       ],

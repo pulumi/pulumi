@@ -48,6 +48,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 // installMockUpsertBackend wires a MockBackend + MockStack whose snapshot exposes the given
@@ -660,7 +661,7 @@ func TestDoCmdResourceUpsertEndToEnd(t *testing.T) {
 					return plugin.GetSchemaResponse{Schema: []byte(azureSchemaJSON)}, nil
 				},
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
-					createdInputs = req.Properties
+					createdInputs = resource.ToResourcePropertyMap(req.Properties)
 					return plugin.CreateResponse{
 						ID:         "res-1",
 						Properties: req.Properties,
@@ -754,27 +755,27 @@ func TestDoCmdResourceUpsertStateless(t *testing.T) {
 					return plugin.ReadResponse{
 						ReadResult: plugin.ReadResult{
 							ID: "res-1",
-							Inputs: resource.PropertyMap{
-								"name":    resource.NewProperty("old"),
-								"size":    resource.NewProperty(1.0),
-								"enabled": resource.NewProperty(true),
-							},
-							Outputs: resource.PropertyMap{
-								"name":    resource.NewProperty("old"),
-								"size":    resource.NewProperty(1.0),
-								"enabled": resource.NewProperty(true),
-							},
+							Inputs: new(property.NewMap(map[string]property.Value{
+								"name":    property.New("old"),
+								"size":    property.New(1.0),
+								"enabled": property.New(true),
+							})),
+							Outputs: new(property.NewMap(map[string]property.Value{
+								"name":    property.New("old"),
+								"size":    property.New(1.0),
+								"enabled": property.New(true),
+							})),
 						},
 					}, nil
 				},
 				CheckF: func(_ context.Context, req plugin.CheckRequest) (plugin.CheckResponse, error) {
 					calls = append(calls, "check")
-					assert.Equal(t, "old", req.Olds["name"].StringValue())
-					assert.Equal(t, "new", req.News["name"].StringValue())
-					assert.Equal(t, 2.0, req.News["size"].NumberValue())
-					_, hasEnabled := req.News["enabled"]
+					assert.Equal(t, "old", req.OldInputs.Get("name").AsString())
+					assert.Equal(t, "new", req.NewInputs.Get("name").AsString())
+					assert.Equal(t, 2.0, req.NewInputs.Get("size").AsNumber())
+					_, hasEnabled := req.NewInputs.GetOk("enabled")
 					assert.False(t, hasEnabled, "inputs should be fully replaced, not merged")
-					return plugin.CheckResponse{Properties: req.News}, nil
+					return plugin.CheckResponse{Properties: req.NewInputs}, nil
 				},
 				DiffF: func(_ context.Context, req plugin.DiffRequest) (plugin.DiffResponse, error) {
 					calls = append(calls, "diff")
@@ -785,15 +786,16 @@ func TestDoCmdResourceUpsertStateless(t *testing.T) {
 				},
 				UpdateF: func(_ context.Context, req plugin.UpdateRequest) (plugin.UpdateResponse, error) {
 					calls = append(calls, "update")
-					assert.Equal(t, "new", req.NewInputs["name"].StringValue())
-					assert.Equal(t, 2.0, req.NewInputs["size"].NumberValue())
-					_, hasEnabled := req.NewInputs["enabled"]
+					newInputs := resource.ToResourcePropertyMap(req.NewInputs)
+					assert.Equal(t, "new", newInputs["name"].StringValue())
+					assert.Equal(t, 2.0, newInputs["size"].NumberValue())
+					_, hasEnabled := newInputs["enabled"]
 					assert.False(t, hasEnabled, "inputs should be fully replaced, not merged")
 					return plugin.UpdateResponse{
-						Properties: resource.PropertyMap{
+						Properties: resource.FromResourcePropertyMap(resource.PropertyMap{
 							"name": resource.NewProperty("new"),
 							"size": resource.NewProperty(2.0),
-						},
+						}),
 					}, nil
 				},
 			},
@@ -825,19 +827,20 @@ size = 2
 				},
 				CheckF: func(_ context.Context, req plugin.CheckRequest) (plugin.CheckResponse, error) {
 					calls = append(calls, "check")
-					assert.Empty(t, req.Olds)
-					assert.Equal(t, "new", req.News["name"].StringValue())
-					return plugin.CheckResponse{Properties: req.News}, nil
+					assert.Zero(t, req.OldInputs.Len())
+					assert.Equal(t, "new", req.NewInputs.Get("name").AsString())
+					return plugin.CheckResponse{Properties: req.NewInputs}, nil
 				},
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					properties := resource.ToResourcePropertyMap(req.Properties)
 					calls = append(calls, "create")
-					assert.Equal(t, "new", req.Properties["name"].StringValue())
+					assert.Equal(t, "new", properties["name"].StringValue())
 					return plugin.CreateResponse{
 						ID: "res-2",
-						Properties: resource.PropertyMap{
-							"name": resource.NewProperty("new"),
-							"size": resource.NewProperty(2.0),
-						},
+						Properties: property.NewMap(map[string]property.Value{
+							"name": property.New("new"),
+							"size": property.New(2.0),
+						}),
 					}, nil
 				},
 			},
@@ -865,21 +868,21 @@ size = 2
 				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
 					calls = append(calls, "read")
 					return plugin.ReadResponse{ReadResult: plugin.ReadResult{
-						Inputs:  resource.PropertyMap{},
-						Outputs: resource.PropertyMap{},
+						Inputs:  new(property.Map{}),
+						Outputs: new(property.Map{}),
 					}}, nil
 				},
 				CheckF: func(_ context.Context, req plugin.CheckRequest) (plugin.CheckResponse, error) {
 					calls = append(calls, "check")
-					return plugin.CheckResponse{Properties: req.News}, nil
+					return plugin.CheckResponse{Properties: req.NewInputs}, nil
 				},
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 					calls = append(calls, "create")
 					return plugin.CreateResponse{
 						ID: "res-2",
-						Properties: resource.PropertyMap{
-							"name": resource.NewProperty("new"),
-						},
+						Properties: property.NewMap(map[string]property.Value{
+							"name": property.New("new"),
+						}),
 					}, nil
 				},
 				UpdateF: func(_ context.Context, req plugin.UpdateRequest) (plugin.UpdateResponse, error) {

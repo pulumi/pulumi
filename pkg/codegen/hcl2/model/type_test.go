@@ -667,6 +667,58 @@ func TestUnifyType(t *testing.T) {
 	assertUnified(t, m5, m5, m4, m2, m0, m1)
 	assertUnified(t, m5, m5, m4, m0, m2, m1)
 
+	// A constant converts from nothing but itself, so distinct constants unify to their union.
+	cf, ct := NewConstType(BoolType, cty.False), NewConstType(BoolType, cty.True)
+	assert.Equal(t, NoConversion, cf.ConversionFrom(ct))
+	assert.Equal(t, UnsafeConversion, cf.ConversionFrom(BoolType))
+	// The same constant converts as its type does: a schema constant has an input-wrapped type.
+	inputCf := NewConstType(NewUnionType(BoolType, NewOutputType(BoolType)), cty.False)
+	assert.Equal(t, SafeConversion, inputCf.ConversionFrom(cf))
+	assert.Equal(t, NoConversion, inputCf.ConversionFrom(ct))
+	// A union, output, or optional destination sees the constant rather than its base type.
+	assert.Equal(t, SafeConversion, NewOptionalType(cf).ConversionFrom(cf))
+	assert.Equal(t, NoConversion, NewOptionalType(cf).ConversionFrom(ct))
+	assert.Equal(t, SafeConversion, InputType(NewOptionalType(cf)).ConversionFrom(cf))
+	assert.Equal(t, NoConversion, InputType(NewOptionalType(cf)).ConversionFrom(ct))
+	// A union of constants is assignable to the type of their values.
+	ca, cb := NewConstType(StringType, cty.StringVal("a")), NewConstType(StringType, cty.StringVal("b"))
+	assert.True(t, StringType.AssignableFrom(NewUnionType(ca, cb)))
+	assert.True(t, InputType(StringType).AssignableFrom(NewUnionType(ca, cb)))
+	assert.False(t, StringType.AssignableFrom(NewUnionType(ca, cf)))
+	// The null literal is a constant of the none type and converts to any optional type.
+	null := NewConstType(NoneType, cty.NullVal(cty.DynamicPseudoType))
+	assert.Equal(t, SafeConversion, NoneType.ConversionFrom(null))
+	assert.Equal(t, SafeConversion, InputType(NewOptionalType(StringType)).ConversionFrom(null))
+	// An enum accepts a member constant safely, no other constant, and its base type unsafely.
+	c1, c2, c3 := NewConstType(IntType, cty.NumberIntVal(1)), NewConstType(IntType, cty.NumberIntVal(2)),
+		NewConstType(IntType, cty.NumberIntVal(3))
+	enum := NewEnumType("test:index:Level", IntType, []cty.Value{cty.NumberIntVal(1), cty.NumberIntVal(2)})
+	assert.Equal(t, SafeConversion, enum.ConversionFrom(c1))
+	assert.Equal(t, NoConversion, enum.ConversionFrom(c3))
+	assert.Equal(t, UnsafeConversion, enum.ConversionFrom(IntType))
+	assert.Equal(t, SafeConversion, InputType(NewOptionalType(enum)).ConversionFrom(c2))
+	assert.Equal(t, NoConversion, InputType(NewOptionalType(enum)).ConversionFrom(c3))
+	assertUnified(t, NewUnionType(cf, ct), NewUnionType(cf, ct), cf, ct)
+	assertUnified(t, NewTupleType(NewUnionType(cf, ct)), NewTupleType(NewUnionType(cf, ct)),
+		NewTupleType(cf), NewTupleType(ct))
+
+	// A conversion check and a unification of the same types do not share a cached result, in either order.
+	a, b := NewTupleType(cf), NewTupleType(ct)
+	assertUnified(t, NewTupleType(NewUnionType(cf, ct)), NewTupleType(NewUnionType(cf, ct)), a, b)
+	assert.Equal(t, NoConversion, a.ConversionFrom(b))
+	a, b = NewTupleType(cf), NewTupleType(ct)
+	assert.Equal(t, NoConversion, a.ConversionFrom(b))
+	assertUnified(t, NewTupleType(NewUnionType(cf, ct)), NewTupleType(NewUnionType(cf, ct)), a, b)
+
+	// Nested tuples of constants with different lengths unify element by element.
+	t6 := NewTupleType(NewTupleType(cf, cf, cf))
+	t7 := NewTupleType(NewTupleType(ct), NewTupleType(cf))
+	t8 := NewTupleType(
+		NewTupleType(NewUnionType(cf, ct), NewOptionalType(cf), NewOptionalType(cf)),
+		NewOptionalType(NewTupleType(cf)),
+	)
+	assertUnified(t, t8, t8, t6, t7)
+
 	// Tuple types unify by constructing a new tuple type whose element types are the unification of the corresponding
 	// element types.
 	t2 := NewTupleType(StringType, NumberType)
@@ -724,8 +776,8 @@ func TestRecursiveObjectType(t *testing.T) {
 	assert.False(t, linkedListType.Equals(linkedListTypeNonEqual))
 
 	// String conversion
-	// Note: 'next' property is not visible because the string value is memoized at the time of Optional creation.
-	assert.Equal(t, "union(list(object({data = output(int), sibling = ...})), none)", linkedListType.String())
+	assert.Equal(t, "union(none, list(object({data = output(int), next = union(none, list(...)), sibling = ...})))",
+		linkedListType.String())
 
 	// Convert from another type
 	assert.Equal(t, UnsafeConversion, linkedListType.ConversionFrom(linkedListTypeNonEqual))
@@ -737,7 +789,7 @@ func TestRecursiveObjectType(t *testing.T) {
 
 	// Resolving eventuals
 	resolvedLinkedListType := ResolveOutputs(linkedListType)
-	data := resolvedLinkedListType.(*UnionType).ElementTypes[0].(*ListType).ElementType.(*ObjectType).Properties["data"]
+	data := resolvedLinkedListType.(*UnionType).ElementTypes[1].(*ListType).ElementType.(*ObjectType).Properties["data"]
 	assert.True(t, data.Equals(IntType))
 	hasOutputs, _ = ContainsEventuals(resolvedLinkedListType)
 	assert.False(t, hasOutputs)

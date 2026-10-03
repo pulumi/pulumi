@@ -81,7 +81,7 @@ func processCmdErrors(ctx context.Context, err error, stderr io.Writer) error {
 	}
 
 	if isAuthRequiredError(err) {
-		if message := agentauth.AuthRequiredMessage(time.Now()); message != "" {
+		if message := agentauth.AuthRequiredMessage(ctx, time.Now()); message != "" {
 			_, printErr := fmt.Fprint(stderr, message)
 			contract.IgnoreError(printErr)
 			return result.BailError(err)

@@ -234,6 +234,7 @@ func (p *OutputProvider) CheckConfig(
 func (p *OutputProvider) Check(
 	_ context.Context, req plugin.CheckRequest,
 ) (plugin.CheckResponse, error) {
+	news := resource.ToResourcePropertyMap(req.NewInputs)
 	if req.URN.Type() != "output:index:Resource" && req.URN.Type() != "output:index:ComplexResource" {
 		return plugin.CheckResponse{
 			Failures: makeCheckFailure("", fmt.Sprintf("invalid URN type: %s", req.URN.Type())),
@@ -241,7 +242,7 @@ func (p *OutputProvider) Check(
 	}
 
 	// Expect just the number value
-	value, ok := req.News["value"]
+	value, ok := news["value"]
 	if !ok {
 		return plugin.CheckResponse{
 			Failures: makeCheckFailure("value", "missing value"),
@@ -252,18 +253,19 @@ func (p *OutputProvider) Check(
 			Failures: makeCheckFailure("value", "value is not a number"),
 		}, nil
 	}
-	if len(req.News) != 1 {
+	if len(news) != 1 {
 		return plugin.CheckResponse{
-			Failures: makeCheckFailure("", fmt.Sprintf("too many properties: %v", req.News)),
+			Failures: makeCheckFailure("", fmt.Sprintf("too many properties: %v", news)),
 		}, nil
 	}
 
-	return plugin.CheckResponse{Properties: req.News}, nil
+	return plugin.CheckResponse{Properties: resource.FromResourcePropertyMap(news)}, nil
 }
 
 func (p *OutputProvider) Create(
 	_ context.Context, req plugin.CreateRequest,
 ) (plugin.CreateResponse, error) {
+	inputs := resource.ToResourcePropertyMap(req.Properties)
 	if req.URN.Type() != "output:index:Resource" && req.URN.Type() != "output:index:ComplexResource" {
 		return plugin.CreateResponse{
 			Status: resource.StatusUnknown,
@@ -275,11 +277,11 @@ func (p *OutputProvider) Create(
 		id = ""
 	}
 
-	properties := p.makeOutputs(req.URN.Type(), req.Properties, req.Preview)
+	properties := p.makeOutputs(req.URN.Type(), inputs, req.Preview)
 
 	return plugin.CreateResponse{
 		ID:         resource.ID(id),
-		Properties: properties,
+		Properties: resource.FromResourcePropertyMap(properties),
 		Status:     resource.StatusOK,
 	}, nil
 }
@@ -293,10 +295,10 @@ func (p *OutputProvider) Update(
 		}, fmt.Errorf("invalid URN type: %s", req.URN.Type())
 	}
 
-	properties := p.makeOutputs(req.URN.Type(), req.NewInputs, req.Preview)
+	properties := p.makeOutputs(req.URN.Type(), resource.ToResourcePropertyMap(req.NewInputs), req.Preview)
 
 	return plugin.UpdateResponse{
-		Properties: properties,
+		Properties: resource.FromResourcePropertyMap(properties),
 		Status:     resource.StatusOK,
 	}, nil
 }
@@ -332,7 +334,7 @@ func (p *OutputProvider) Diff(
 
 	changes := plugin.DiffNone
 	var changedKeys []resource.PropertyKey
-	if !req.OldInputs["value"].DeepEquals(req.NewInputs["value"]) {
+	if !req.OldInputs.Get("value").Equals(req.NewInputs.Get("value")) {
 		changes = plugin.DiffSome
 		changedKeys = append(changedKeys, "value")
 	}
@@ -359,8 +361,8 @@ func (p *OutputProvider) Read(ctx context.Context, req plugin.ReadRequest) (plug
 	return plugin.ReadResponse{
 		ReadResult: plugin.ReadResult{
 			ID:      req.ID,
-			Inputs:  req.Inputs,
-			Outputs: req.State,
+			Inputs:  &req.Inputs,
+			Outputs: &req.State,
 		},
 		Status: resource.StatusOK,
 	}, nil

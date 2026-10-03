@@ -59,6 +59,14 @@ Additional properties: [Property Definition](#property-definition)
 
 ---
 
+### `configurationDocsUrl`
+
+The URL of the provider's installation and configuration documentation, if any.
+
+`string`
+
+---
+
 ### `dependencies`
 
 A list of package descriptors that describes the set of dependencies for this package.
@@ -253,6 +261,14 @@ A map from type token to complexTypeSpec that describes the set of complex types
 Property names: [Token](#token)
 
 Additional properties: [Type Definition](#type-definition)
+
+---
+
+### `validateCredentialsOnNew`
+
+Indicates that `pulumi new` may configure the provider after creating a project in order to validate the user's credentials.
+
+`boolean`
 
 ---
 

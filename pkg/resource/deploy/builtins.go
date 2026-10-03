@@ -127,15 +127,17 @@ func (p *builtinProvider) Check(_ context.Context, req plugin.CheckRequest) (plu
 			"Update your SDK or if already up to date raise an issue at https://github.com/pulumi/pulumi/issues."
 		p.diag.Warningf(diag.Message(req.URN, msg))
 
-		for k := range req.News {
+		for k := range req.NewInputs.All {
 			if k != "name" {
 				return plugin.CheckResponse{
-					Failures: []plugin.CheckFailure{{Property: k, Reason: fmt.Sprintf("unknown property \"%v\"", k)}},
+					Failures: []plugin.CheckFailure{
+						{Property: resource.PropertyKey(k), Reason: fmt.Sprintf("unknown property \"%v\"", k)},
+					},
 				}, nil
 			}
 		}
 
-		name, ok := req.News["name"]
+		name, ok := req.NewInputs.GetOk("name")
 		if !ok {
 			return plugin.CheckResponse{
 				Failures: []plugin.CheckFailure{{Property: "name", Reason: `missing required property "name"`}},
@@ -146,24 +148,26 @@ func (p *builtinProvider) Check(_ context.Context, req plugin.CheckRequest) (plu
 				Failures: []plugin.CheckFailure{{Property: "name", Reason: `property "name" must be a string`}},
 			}, nil
 		}
-		return plugin.CheckResponse{Properties: req.News}, nil
+		return plugin.CheckResponse{Properties: req.NewInputs}, nil
 	case stashType:
-		for k := range req.News {
+		for k := range req.NewInputs.All {
 			if k != "input" {
 				return plugin.CheckResponse{
-					Failures: []plugin.CheckFailure{{Property: k, Reason: fmt.Sprintf("unknown property \"%v\"", k)}},
+					Failures: []plugin.CheckFailure{
+						{Property: resource.PropertyKey(k), Reason: fmt.Sprintf("unknown property \"%v\"", k)},
+					},
 				}, nil
 			}
 		}
 
-		_, ok := req.News["input"]
+		_, ok := req.NewInputs.GetOk("input")
 		if !ok {
 			return plugin.CheckResponse{
 				Failures: []plugin.CheckFailure{{Property: "input", Reason: `missing required property "input"`}},
 			}, nil
 		}
 
-		return plugin.CheckResponse{Properties: req.News}, nil
+		return plugin.CheckResponse{Properties: req.NewInputs}, nil
 	default:
 		return plugin.CheckResponse{}, fmt.Errorf("unrecognized resource type '%v'", typ)
 	}
@@ -173,7 +177,7 @@ func (p *builtinProvider) Diff(_ context.Context, req plugin.DiffRequest) (plugi
 	typ := req.URN.Type()
 	switch typ { //nolint:exhaustive
 	case stackReferenceType:
-		if !req.NewInputs["name"].DeepEquals(req.OldInputs["name"]) {
+		if !req.NewInputs.Get("name").Equals(req.OldInputs.Get("name")) {
 			return plugin.DiffResult{
 				Changes:     plugin.DiffSome,
 				ReplaceKeys: []resource.PropertyKey{"name"},
@@ -184,7 +188,7 @@ func (p *builtinProvider) Diff(_ context.Context, req plugin.DiffRequest) (plugi
 	case stashType:
 		// If the input has changed we need to update, although that update might just be to copy the new input
 		// value to the output side property called "input".
-		if !req.NewInputs["input"].DeepEquals(req.OldInputs["input"]) {
+		if !req.NewInputs.Get("input").Equals(req.OldInputs.Get("input")) {
 			return plugin.DiffResult{
 				Changes:     plugin.DiffSome,
 				ChangedKeys: []resource.PropertyKey{"input"},
@@ -202,7 +206,7 @@ func (p *builtinProvider) Create(ctx context.Context, req plugin.CreateRequest) 
 	switch typ { //nolint:exhaustive
 	case stackReferenceType:
 
-		state, err := p.readStackReference(ctx, resource.FromResourcePropertyMap(req.Properties))
+		state, err := p.readStackReference(ctx, req.Properties)
 		if err != nil {
 			return plugin.CreateResponse{Status: resource.StatusUnknown}, err
 		}
@@ -219,7 +223,7 @@ func (p *builtinProvider) Create(ctx context.Context, req plugin.CreateRequest) 
 
 		return plugin.CreateResponse{
 			ID:         id,
-			Properties: resource.ToResourcePropertyMap(state),
+			Properties: state,
 			Status:     resource.StatusOK,
 		}, nil
 	case stashType:
@@ -235,10 +239,10 @@ func (p *builtinProvider) Create(ctx context.Context, req plugin.CreateRequest) 
 
 		return plugin.CreateResponse{
 			ID: id,
-			Properties: resource.PropertyMap{
-				"input":  req.Properties["input"],
-				"output": req.Properties["input"],
-			},
+			Properties: resource.FromResourcePropertyMap(resource.PropertyMap{
+				"input":  resource.ToResourcePropertyMap(req.Properties)["input"],
+				"output": resource.ToResourcePropertyMap(req.Properties)["input"],
+			}),
 			Status: resource.StatusOK,
 		}, nil
 	default:
@@ -250,13 +254,15 @@ func (p *builtinProvider) Update(_ context.Context, req plugin.UpdateRequest) (p
 	typ := req.URN.Type()
 	switch typ { //nolint:exhaustive
 	case stashType:
+		newInputs := resource.ToResourcePropertyMap(req.NewInputs)
+		oldOutputs := resource.ToResourcePropertyMap(req.OldOutputs)
 		properties := resource.PropertyMap{
-			"input":  req.NewInputs["input"],
-			"output": req.OldOutputs["output"],
+			"input":  newInputs["input"],
+			"output": oldOutputs["output"],
 		}
 
 		return plugin.UpdateResponse{
-			Properties: properties,
+			Properties: resource.FromResourcePropertyMap(properties),
 			Status:     resource.StatusOK,
 		}, nil
 	default:
@@ -282,18 +288,19 @@ func (p *builtinProvider) Read(ctx context.Context, req plugin.ReadRequest) (plu
 	typ := req.URN.Type()
 	switch typ { //nolint:exhaustive
 	case stackReferenceType:
-		for k := range req.Inputs {
+		reqInputs := resource.ToResourcePropertyMap(req.Inputs)
+		for k := range reqInputs {
 			if k != "name" {
 				return plugin.ReadResponse{Status: resource.StatusUnknown}, fmt.Errorf("unknown property \"%v\"", k)
 			}
 		}
 		// If the name is not provided, we should return an error. This is probably due to a user trying to import
 		// this stack reference.
-		if _, ok := req.Inputs["name"]; !ok {
+		if _, ok := reqInputs["name"]; !ok {
 			return plugin.ReadResponse{Status: resource.StatusUnknown}, errors.New("stack reference can not be imported")
 		}
 
-		outputs, err := p.readStackReference(ctx, resource.FromResourcePropertyMap(req.State))
+		outputs, err := p.readStackReference(ctx, req.State)
 		if err != nil {
 			return plugin.ReadResponse{Status: resource.StatusUnknown}, err
 		}
@@ -301,8 +308,8 @@ func (p *builtinProvider) Read(ctx context.Context, req plugin.ReadRequest) (plu
 		return plugin.ReadResponse{
 			ReadResult: plugin.ReadResult{
 				ID:      req.ID,
-				Inputs:  req.Inputs,
-				Outputs: resource.ToResourcePropertyMap(outputs),
+				Inputs:  &req.Inputs,
+				Outputs: &outputs,
 			},
 			Status: resource.StatusOK,
 		}, nil
@@ -311,15 +318,15 @@ func (p *builtinProvider) Read(ctx context.Context, req plugin.ReadRequest) (plu
 		// An import supplies no prior state. A stash has no backing system to read,
 		// so it adopts the id and holds a null value; the program's configured input
 		// then applies as an update.
-		if len(req.Inputs) == 0 {
+		if req.Inputs.Len() == 0 {
 			return plugin.ReadResponse{
 				ReadResult: plugin.ReadResult{
 					ID:     req.ID,
-					Inputs: resource.PropertyMap{"input": resource.NewNullProperty()},
-					Outputs: resource.PropertyMap{
+					Inputs: new(resource.FromResourcePropertyMap(resource.PropertyMap{"input": resource.NewNullProperty()})),
+					Outputs: new(resource.FromResourcePropertyMap(resource.PropertyMap{
 						"input":  resource.NewNullProperty(),
 						"output": resource.NewNullProperty(),
-					},
+					})),
 				},
 				Status: resource.StatusOK,
 			}, nil
@@ -328,8 +335,8 @@ func (p *builtinProvider) Read(ctx context.Context, req plugin.ReadRequest) (plu
 		return plugin.ReadResponse{
 			ReadResult: plugin.ReadResult{
 				ID:      req.ID,
-				Inputs:  req.Inputs,
-				Outputs: req.State,
+				Inputs:  &req.Inputs,
+				Outputs: &req.State,
 			},
 			Status: resource.StatusOK,
 		}, nil

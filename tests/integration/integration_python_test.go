@@ -1553,8 +1553,9 @@ func TestPackageAddPython(t *testing.T) {
 	}
 }
 
-//nolint:paralleltest // mutates environment
 func TestConvertTerraformProviderPython(t *testing.T) {
+	t.Parallel()
+
 	e := ptesting.NewEnvironment(t)
 
 	var err error

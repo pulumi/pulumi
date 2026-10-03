@@ -42,7 +42,7 @@ func newEnvWebhookNewCmd(env *envCommand) *cobra.Command {
 			"This command attaches a new webhook to the given environment. The positional\n" +
 			"argument is the human-readable display name; the service generates the webhook's\n" +
 			"unique name, which is printed on success and is the identifier used by the other\n" +
-			"`esc env webhook` subcommands (edit, get, rm, ping, delivery list).\n" +
+			fmt.Sprintf("`%s env webhook` subcommands (edit, get, rm, ping, delivery list).\n", env.esc.command) +
 			"\n" +
 			"The webhook will be delivered to --url whenever the environment changes. Use\n" +
 			"--event to limit the set of events that trigger a delivery, or --group to\n" +

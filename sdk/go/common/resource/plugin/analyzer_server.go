@@ -318,9 +318,9 @@ func marshalConfigSchema(schema *AnalyzerPolicyConfigSchema) *pulumirpc.PolicyCo
 		return nil
 	}
 
-	props := make(map[string]any)
+	props := make(map[string]any, len(schema.Properties))
 	for k, v := range schema.Properties {
-		props[k] = v
+		props[k] = map[string]any(v)
 	}
 
 	properties, err := structpb.NewStruct(props)

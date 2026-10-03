@@ -18,7 +18,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"maps"
 	"sync/atomic"
 	"testing"
 
@@ -65,7 +64,7 @@ func pclSnippetTestProvider(
 					return plugin.CreateResponse{ID: resource.ID(id), Properties: cr.Properties}, nil
 				},
 				DiffF: func(_ context.Context, req plugin.DiffRequest) (plugin.DiffResult, error) {
-					if !req.OldInputs.DeepEquals(req.NewInputs) {
+					if !req.OldInputs.Equals(req.NewInputs) {
 						return plugin.DiffResult{Changes: plugin.DiffSome}, nil
 					}
 					return plugin.DiffResult{}, nil
@@ -772,11 +771,10 @@ func TestPclSnippetResourceReference(t *testing.T) {
 					return plugin.GetSchemaResponse{Schema: []byte(schemaJSON)}, nil
 				},
 				CreateF: func(_ context.Context, cr plugin.CreateRequest) (plugin.CreateResponse, error) {
-					out := resource.PropertyMap{}
-					maps.Copy(out, cr.Properties)
+					out := cr.Properties.AsMap()
 					// Give the producer a deterministic output for the snippet to consume.
-					if seed, ok := cr.Properties["seed"]; ok {
-						out["value"] = resource.NewProperty("value-of-" + seed.StringValue())
+					if seed, ok := cr.Properties.GetOk("seed"); ok {
+						out["value"] = property.New("value-of-" + seed.AsString())
 					}
 					uuid, err := uuid.NewV4()
 					if err != nil {
@@ -786,7 +784,7 @@ func TestPclSnippetResourceReference(t *testing.T) {
 					if cr.Preview {
 						id = ""
 					}
-					return plugin.CreateResponse{ID: resource.ID(id), Properties: out}, nil
+					return plugin.CreateResponse{ID: resource.ID(id), Properties: property.NewMap(out)}, nil
 				},
 			}, nil
 		}),
@@ -1003,10 +1001,9 @@ func TestPclSnippetMissingProgramReference(t *testing.T) {
 					return plugin.GetSchemaResponse{Schema: []byte(schemaJSON)}, nil
 				},
 				CreateF: func(_ context.Context, cr plugin.CreateRequest) (plugin.CreateResponse, error) {
-					out := resource.PropertyMap{}
-					maps.Copy(out, cr.Properties)
-					if seed, ok := cr.Properties["seed"]; ok {
-						out["value"] = resource.NewProperty("value-of-" + seed.StringValue())
+					out := cr.Properties.AsMap()
+					if seed, ok := cr.Properties.GetOk("seed"); ok {
+						out["value"] = property.New("value-of-" + seed.AsString())
 					}
 					uuid, err := uuid.NewV4()
 					if err != nil {
@@ -1016,7 +1013,7 @@ func TestPclSnippetMissingProgramReference(t *testing.T) {
 					if cr.Preview {
 						id = ""
 					}
-					return plugin.CreateResponse{ID: resource.ID(id), Properties: out}, nil
+					return plugin.CreateResponse{ID: resource.ID(id), Properties: property.NewMap(out)}, nil
 				},
 			}, nil
 		}),
@@ -1115,11 +1112,10 @@ func TestPclSnippetMissingSnippetReference(t *testing.T) {
 					return plugin.GetSchemaResponse{Schema: []byte(schemaJSON)}, nil
 				},
 				CreateF: func(_ context.Context, cr plugin.CreateRequest) (plugin.CreateResponse, error) {
-					out := resource.PropertyMap{}
-					maps.Copy(out, cr.Properties)
+					out := cr.Properties.AsMap()
 					// Give each producer a deterministic output for the next snippet to consume.
-					if seed, ok := cr.Properties["seed"]; ok {
-						out["value"] = resource.NewProperty("value-of-" + seed.StringValue())
+					if seed, ok := cr.Properties.GetOk("seed"); ok {
+						out["value"] = property.New("value-of-" + seed.AsString())
 					}
 					uuid, err := uuid.NewV4()
 					if err != nil {
@@ -1129,7 +1125,7 @@ func TestPclSnippetMissingSnippetReference(t *testing.T) {
 					if cr.Preview {
 						id = ""
 					}
-					return plugin.CreateResponse{ID: resource.ID(id), Properties: out}, nil
+					return plugin.CreateResponse{ID: resource.ID(id), Properties: property.NewMap(out)}, nil
 				},
 			}, nil
 		}),
@@ -1250,7 +1246,7 @@ func TestPclSnippetReferenceFollowsAlias(t *testing.T) {
 					return plugin.CreateResponse{ID: resource.ID(id), Properties: cr.Properties}, nil
 				},
 				DiffF: func(_ context.Context, req plugin.DiffRequest) (plugin.DiffResult, error) {
-					if !req.OldInputs.DeepEquals(req.NewInputs) {
+					if !req.OldInputs.Equals(req.NewInputs) {
 						return plugin.DiffResult{Changes: plugin.DiffSome}, nil
 					}
 					return plugin.DiffResult{}, nil
@@ -2085,17 +2081,16 @@ func TestPclSnippetTargetReferenceUntargetedSnippet(t *testing.T) {
 					return plugin.GetSchemaResponse{Schema: []byte(schemaJSON)}, nil
 				},
 				CreateF: func(_ context.Context, cr plugin.CreateRequest) (plugin.CreateResponse, error) {
-					out := resource.PropertyMap{}
-					maps.Copy(out, cr.Properties)
-					if seed, ok := cr.Properties["seed"]; ok {
+					out := cr.Properties.AsMap()
+					if seed, ok := cr.Properties.GetOk("seed"); ok {
 						producerCreates.Add(1)
-						out["value"] = resource.NewProperty("value-of-" + seed.StringValue())
+						out["value"] = property.New("value-of-" + seed.AsString())
 					}
 					id, err := uuid.NewV4()
 					if err != nil {
 						return plugin.CreateResponse{}, err
 					}
-					return plugin.CreateResponse{ID: resource.ID(id.String()), Properties: out}, nil
+					return plugin.CreateResponse{ID: resource.ID(id.String()), Properties: property.NewMap(out)}, nil
 				},
 			}, nil
 		}),
@@ -2200,7 +2195,7 @@ func TestPclSnippetTargetExplicitProviderFromState(t *testing.T) {
 					return plugin.CreateResponse{ID: resource.ID(id.String()), Properties: cr.Properties}, nil
 				},
 				DiffF: func(_ context.Context, req plugin.DiffRequest) (plugin.DiffResult, error) {
-					if !req.OldInputs.DeepEquals(req.NewInputs) {
+					if !req.OldInputs.Equals(req.NewInputs) {
 						return plugin.DiffResult{Changes: plugin.DiffSome}, nil
 					}
 					return plugin.DiffResult{}, nil
@@ -2296,7 +2291,7 @@ func pclSnippetDeleteFailPlan(t *testing.T, failDelete func(plugin.DeleteRequest
 					return plugin.CreateResponse{ID: resource.ID(id.String()), Properties: cr.Properties}, nil
 				},
 				DiffF: func(_ context.Context, req plugin.DiffRequest) (plugin.DiffResult, error) {
-					if !req.OldInputs["propA"].DeepEquals(req.NewInputs["propA"]) {
+					if !req.OldInputs.Get("propA").Equals(req.NewInputs.Get("propA")) {
 						return plugin.DiffResult{Changes: plugin.DiffSome, ReplaceKeys: []resource.PropertyKey{"propA"}}, nil
 					}
 					return plugin.DiffResult{}, nil

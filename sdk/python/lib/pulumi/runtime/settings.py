@@ -35,6 +35,7 @@ from ..errors import RunError
 from ..runtime.proto import engine_pb2_grpc, resource_pb2, resource_pb2_grpc, engine_pb2
 from ._callbacks import _CallbackServicer
 from ._grpc_settings import _GRPC_CHANNEL_OPTIONS
+from ._state_migration_context import _ensure_not_in_state_migration
 from .rpc_manager import RPCManager
 
 if TYPE_CHECKING:
@@ -79,6 +80,7 @@ class Settings:
         # programs each register against their own engine and receive distinct
         # refs.
         self.package_refs = {}
+        self.base_providers_by_ref = {}
 
         if self.legacy_apply_enabled is None:
             self.legacy_apply_enabled = (
@@ -150,6 +152,9 @@ class Settings:
 
     @contextproperty
     def package_refs(self) -> Optional[dict]: ...
+
+    @contextproperty
+    def base_providers_by_ref(self) -> Optional[dict]: ...
 
     @contextproperty
     def callbacks(self) -> Optional[_CallbackServicer]: ...
@@ -363,6 +368,8 @@ async def register_package(
     receive distinct refs. When extension is True, the package is registered as
     an extension parameterization rather than a replacement.
     """
+    _ensure_not_in_state_migration("register package")
+
     key = "\0".join(
         [
             base_provider_name,
@@ -408,7 +415,20 @@ async def register_package(
     response = monitor.RegisterPackage(request)
     ref = response.ref
     package_refs[key] = ref
+    if extension:
+        SETTINGS.base_providers_by_ref[ref] = base_provider_name
     return ref
+
+
+def get_base_provider_for_ref(package_ref: Optional[str]) -> Optional[str]:
+    """
+    Returns the name of the base provider that serves the extension package the
+    reference was registered for, or None when the reference is not for an
+    extension package.
+    """
+    if package_ref is None:
+        return None
+    return SETTINGS.base_providers_by_ref.get(package_ref)
 
 
 def reset_options(

@@ -205,38 +205,39 @@ func (p *KebabNamesProvider) CheckConfig(
 func (p *KebabNamesProvider) Check(
 	_ context.Context, req plugin.CheckRequest,
 ) (plugin.CheckResponse, error) {
+	news := resource.ToResourcePropertyMap(req.NewInputs)
 	switch typ := req.URN.Type(); typ {
 	case "kebab-names:kebab-module:some-resource":
-		if _, ok := req.News["the-input"]; !ok {
+		if _, ok := news["the-input"]; !ok {
 			return plugin.CheckResponse{
 				Failures: makeCheckFailure("the-input", "missing the-input"),
 			}, nil
 		}
-		if _, ok := req.News["nested"]; !ok {
+		if _, ok := news["nested"]; !ok {
 			return plugin.CheckResponse{
 				Failures: makeCheckFailure("nested", "missing nested"),
 			}, nil
 		}
-		if len(req.News) != 2 {
+		if len(news) != 2 {
 			return plugin.CheckResponse{
-				Failures: makeCheckFailure("", fmt.Sprintf("unexpected properties: %v", req.News)),
+				Failures: makeCheckFailure("", fmt.Sprintf("unexpected properties: %v", news)),
 			}, nil
 		}
-		return plugin.CheckResponse{Properties: req.News}, nil
+		return plugin.CheckResponse{Properties: resource.FromResourcePropertyMap(news)}, nil
 	case "kebab-names:kebab-module:another-resource":
-		if _, ok := req.News["the-input"]; !ok {
+		if _, ok := news["the-input"]; !ok {
 			return plugin.CheckResponse{
 				Failures: makeCheckFailure("the-input", "missing the-input"),
 			}, nil
 		}
-		if len(req.News) != 1 {
+		if len(news) != 1 {
 			return plugin.CheckResponse{
-				Failures: makeCheckFailure("", fmt.Sprintf("unexpected properties: %v", req.News)),
+				Failures: makeCheckFailure("", fmt.Sprintf("unexpected properties: %v", news)),
 			}, nil
 		}
-		return plugin.CheckResponse{Properties: req.News}, nil
+		return plugin.CheckResponse{Properties: resource.FromResourcePropertyMap(news)}, nil
 	case tokens.RootStackType:
-		return plugin.CheckResponse{Properties: req.News}, nil
+		return plugin.CheckResponse{Properties: resource.FromResourcePropertyMap(news)}, nil
 	default:
 		return plugin.CheckResponse{
 			Failures: makeCheckFailure("", fmt.Sprintf("invalid URN type: %s", typ)),
@@ -247,6 +248,7 @@ func (p *KebabNamesProvider) Check(
 func (p *KebabNamesProvider) Create(
 	_ context.Context, req plugin.CreateRequest,
 ) (plugin.CreateResponse, error) {
+	properties := resource.ToResourcePropertyMap(req.Properties)
 	id := "id"
 	if req.Preview {
 		id = ""
@@ -254,30 +256,30 @@ func (p *KebabNamesProvider) Create(
 
 	switch typ := req.URN.Type(); typ {
 	case "kebab-names:kebab-module:some-resource":
-		nested, ok := req.Properties["nested"]
+		nested, ok := properties["nested"]
 		if !ok {
 			return plugin.CreateResponse{Status: resource.StatusUnknown}, errors.New("missing nested property")
 		}
 		nestedValue := nested.ObjectValue()["nested-value"].StringValue()
 		return plugin.CreateResponse{
 			ID: resource.ID(id),
-			Properties: resource.PropertyMap{
+			Properties: resource.FromResourcePropertyMap(resource.PropertyMap{
 				"the-output": resource.NewProperty(resource.PropertyMap{
 					"nested-output": resource.NewProperty(nestedValue),
 				}),
-			},
+			}),
 			Status: resource.StatusOK,
 		}, nil
 	case "kebab-names:kebab-module:another-resource":
-		theInput, ok := req.Properties["the-input"]
+		theInput, ok := properties["the-input"]
 		if !ok {
 			return plugin.CreateResponse{Status: resource.StatusUnknown}, errors.New("missing the-input property")
 		}
 		return plugin.CreateResponse{
 			ID: resource.ID(id),
-			Properties: resource.PropertyMap{
+			Properties: resource.FromResourcePropertyMap(resource.PropertyMap{
 				"the-input": theInput,
-			},
+			}),
 			Status: resource.StatusOK,
 		}, nil
 	case tokens.RootStackType:

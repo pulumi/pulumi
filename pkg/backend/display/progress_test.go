@@ -18,6 +18,7 @@ package display
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -48,6 +49,66 @@ func defaultOpts() Options {
 		DeterministicOutput:  true,
 		ShowLinkToNeo:        false,
 		RenderOnDirty:        true,
+	}
+}
+
+func TestProgressEventsNeoDiagnosticLink(t *testing.T) {
+	t.Parallel()
+
+	for _, tt := range []struct {
+		name      string
+		severity  diag.Severity
+		ephemeral bool
+		wantLink  bool
+	}{
+		{name: "migration info", severity: diag.Info},
+		{name: "info on stderr", severity: diag.Infoerr},
+		{name: "debug", severity: diag.Debug},
+		{name: "warning", severity: diag.Warning, wantLink: true},
+		{name: "error", severity: diag.Error, wantLink: true},
+		{name: "ephemeral warning", severity: diag.Warning, ephemeral: true},
+		{name: "ephemeral error", severity: diag.Error, ephemeral: true},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			var jsonEvent apitype.EngineEvent
+			require.NoError(t, json.Unmarshal([]byte(fmt.Sprintf(`{
+				"diagnosticEvent": {
+					"urn": "urn:pulumi:stack::project::example:index:Component::root",
+					"message": "State migration applied (state entries: 2 before, 2 after).\n",
+					"color": "never",
+					"severity": %q,
+					"ephemeral": %t
+				}
+			}`, tt.severity, tt.ephemeral)), &jsonEvent))
+			event, err := ConvertJSONEvent(jsonEvent)
+			require.NoError(t, err)
+
+			var stdout, stderr bytes.Buffer
+			opts := defaultOpts()
+			opts.Color = colors.Never
+			opts.Stdout, opts.Stderr = &stdout, &stderr
+			opts.ShowLinkToNeo = true
+			opts.Debug = true
+			events := sliceToBufferedChan([]engine.Event{event, engine.NewCancelEvent()})
+			done := make(chan bool)
+			go ShowProgressEvents("test", "update", tokens.MustParseStackName("stack"), "project", "link",
+				events, done, opts, false)
+			<-done
+
+			if tt.wantLink {
+				assert.Contains(t, stdout.String(), "link?explainFailure")
+				assert.Contains(t, stdout.String(), "pulumi neo --debug-update")
+			} else {
+				assert.NotContains(t, stdout.String(), "[Pulumi Neo]")
+				assert.NotContains(t, stdout.String(), "explainFailure")
+				assert.NotContains(t, stdout.String(), "pulumi neo --debug-update")
+			}
+			if !tt.ephemeral {
+				assert.Contains(t, stdout.String(), "State migration applied (state entries: 2 before, 2 after).")
+			}
+		})
 	}
 }
 

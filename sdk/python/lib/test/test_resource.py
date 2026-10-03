@@ -14,6 +14,7 @@
 
 from typing import Optional, TypeVar, Awaitable, List, Any
 import asyncio
+import inspect
 import os
 import unittest
 from unittest import mock
@@ -64,6 +65,26 @@ def test_convert_providers_merges_provider_with_provider_sequence():
 
     assert result["aws"] is aws_provider
     assert result["component"] is component_provider
+
+
+@pytest.mark.parametrize("exception_type", [ValueError, AssertionError])
+def test_register_resource_adds_resource_context(exception_type):
+    @pulumi.runtime.test
+    async def run_test():
+        with mock.patch(
+            "pulumi.runtime.resource.prepare_resource",
+            new=mock.AsyncMock(side_effect=exception_type("preparation failed")),
+        ):
+            resource = pulumi.ComponentResource("python:test:Component", "bad-resource")
+            await resource.urn.future()
+
+    with pytest.raises(exception_type) as raised:
+        run_test()
+
+    message = str(raised.value)
+    assert "While processing resource: 'bad-resource'" in message
+    assert "'python:test:Component'" in message
+    assert f"{exception_type.__name__} has risen: preparation failed" in message
 
 
 @pytest.fixture(autouse=True)
@@ -317,6 +338,23 @@ class MockResource(pulumi.CustomResource):
 
 
 class MergeResourceOptions(unittest.TestCase):
+    def test_state_migrations_preserve_positional_compatibility(self):
+        parameters = list(inspect.signature(ResourceOptions).parameters)
+        assert parameters[-1] == "state_migrations"
+
+    def test_state_migrations_merge_in_order(self):
+        def first(_):
+            return None
+
+        def second(_):
+            return None
+
+        merged = ResourceOptions.merge(
+            ResourceOptions(state_migrations=[first]),
+            ResourceOptions(state_migrations=[second]),
+        )
+        assert merged.state_migrations == [first, second]
+
     def test_parent(self):
         opts1 = ResourceOptions()
         assert opts1.protect is None

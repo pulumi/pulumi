@@ -16,12 +16,14 @@ package newcmd
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os"
 	"strings"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
+	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -126,6 +128,9 @@ func createStackWithRetry(ctx context.Context, sink diag.Sink, w io.Writer, ws p
 			return s, formatted, nil
 		}
 		if yes {
+			return nil, "", err
+		}
+		if _, ok := errors.AsType[backenderr.DefaultOrgError](err); ok {
 			return nil, "", err
 		}
 		// Let the user know about the error and loop around to try again.

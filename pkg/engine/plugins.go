@@ -494,7 +494,7 @@ func ensurePluginsAreInstalled(ctx context.Context, opts *deploymentOptions, d d
 			// If the plugin already exists, don't download it unless `reinstall` was specified.
 			label := fmt.Sprintf("%s plugin %s", plug.Kind, plug)
 			if plug.Version != nil {
-				if pluginManager.HasPlugin(ctx, plug) {
+				if pluginManager.HasPlugin(ctx, plug).Available() {
 					logging.V(1).Infof("%s skipping install (existing == match)", label)
 					continue
 				}

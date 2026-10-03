@@ -55,12 +55,26 @@ func TestTranslateLegacyS3Params(t *testing.T) {
 			give: "s3://bucket?endpoint=https://example.com&request_checksum_calculation=when_supported",
 		},
 		{
-			name: "disableSSL translated",
+			name: "disableSSL dropped when endpoint has explicit https scheme",
 			give: "s3://bucket?endpoint=https://minio:9000&disableSSL=true",
 			wantQuery: url.Values{
 				"endpoint":                     {"https://minio:9000"},
-				"disable_https":                {"true"},
 				"request_checksum_calculation": {"when_required"},
+			},
+		},
+		{
+			name: "disableSSL dropped when endpoint has explicit http scheme",
+			give: "s3://bucket?endpoint=http://minio:9000&disableSSL=true",
+			wantQuery: url.Values{
+				"endpoint":                     {"http://minio:9000"},
+				"request_checksum_calculation": {"when_required"},
+			},
+		},
+		{
+			name: "disableSSL translated without endpoint",
+			give: "s3://bucket?disableSSL=true",
+			wantQuery: url.Values{
+				"disable_https": {"true"},
 			},
 		},
 		{

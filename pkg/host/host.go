@@ -230,7 +230,7 @@ type analyzerPlugin struct {
 	Plugin plugin.Analyzer
 	Info   plugin.PluginInfo
 	Name   string
-	refs   map[*plugin.Context]struct{} // the contexts this plugin was loaded for; it dies with the last one.
+	refs   map[*plugin.Context]struct{} // the lifetime contexts this plugin was loaded for; it dies with the last one.
 }
 
 // languagePluginKey identifies a booted language plugin. The working directory is part of the
@@ -245,7 +245,7 @@ type languagePlugin struct {
 	Plugin plugin.LanguageRuntime
 	Info   plugin.PluginInfo
 	Name   string
-	refs   map[*plugin.Context]struct{} // the contexts this plugin was loaded for; it dies with the last one.
+	refs   map[*plugin.Context]struct{} // the lifetime contexts this plugin was loaded for; it dies with the last one.
 }
 
 type resourcePlugin struct {
@@ -339,7 +339,7 @@ func (host *defaultHost) PolicyAnalyzer(
 		// First see if we already loaded this plugin.
 		if plug, has := host.analyzerPlugins[key]; has {
 			contract.Assertf(plug != nil, "analyzer plugin %v was loaded but is nil", name)
-			plug.refs[ctx] = struct{}{}
+			plug.refs[ctx.LifetimeContext()] = struct{}{}
 			return plug.Plugin, nil
 		}
 
@@ -354,7 +354,8 @@ func (host *defaultHost) PolicyAnalyzer(
 
 			// Memoize the result.
 			host.analyzerPlugins[key] = &analyzerPlugin{
-				Plugin: plug, Info: info, Name: string(name), refs: map[*plugin.Context]struct{}{ctx: {}},
+				Plugin: plug, Info: info, Name: string(name),
+				refs: map[*plugin.Context]struct{}{ctx.LifetimeContext(): {}},
 			}
 		}
 
@@ -484,7 +485,7 @@ func (host *defaultHost) LanguageRuntime(ctx *plugin.Context, runtime string,
 		// First see if we already loaded this plugin.
 		if plug, has := host.languagePlugins[key]; has {
 			contract.Assertf(plug != nil, "language plugin %v was loaded but is nil", runtime)
-			plug.refs[ctx] = struct{}{}
+			plug.refs[ctx.LifetimeContext()] = struct{}{}
 			return plug.Plugin, nil
 		}
 
@@ -506,7 +507,8 @@ func (host *defaultHost) LanguageRuntime(ctx *plugin.Context, runtime string,
 
 			// Memoize the result.
 			host.languagePlugins[key] = &languagePlugin{
-				Plugin: plug, Info: info, Name: runtime, refs: map[*plugin.Context]struct{}{ctx: {}},
+				Plugin: plug, Info: info, Name: runtime,
+				refs: map[*plugin.Context]struct{}{ctx.LifetimeContext(): {}},
 			}
 		}
 

@@ -29,6 +29,7 @@ import (
 
 	survey "github.com/AlecAivazis/survey/v2"
 	surveycore "github.com/AlecAivazis/survey/v2/core"
+	pkgauth "github.com/pulumi/pulumi/pkg/v3/auth"
 	pkgBackend "github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/diy"
@@ -227,8 +228,8 @@ func NewLoginCmd(ws pkgWorkspace.Context, lm backend.LoginManager, store env.Env
 					return fmt.Errorf("problem logging in: %w", innerErr)
 				}
 
-				authContext, innerErr := workspace.NewAuthContextForTokenExchange(
-					resolvedOrg, resolvedTeam, resolvedUser, oidcToken, oidcExpiration,
+				authContext, innerErr := pkgauth.NewAuthContextForTokenExchange(
+					resolvedOrg, resolvedTeam, resolvedUser, oidcToken, oidcExpiration, store.GetString(env.AccessToken),
 				)
 				if innerErr != nil {
 					return fmt.Errorf("problem logging in: %w", innerErr)
@@ -266,7 +267,7 @@ func NewLoginCmd(ws pkgWorkspace.Context, lm backend.LoginManager, store env.Env
 				fmt.Fprintf(cmd.OutOrStdout(), "Logged in to %s (%s)\n", be.Name(), be.URL())
 			}
 
-			return offerFirstStep(ctx, be, cwd, cmd.OutOrStdout(), displayOptions, cmdutil.Interactive())
+			return nil
 		},
 	}
 

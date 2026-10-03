@@ -51,7 +51,7 @@ var awsPolicyChoices = []policyChoice{
 	{
 		name: "ReadOnlyAccess",
 		id:   "arn:aws:iam::aws:policy/ReadOnlyAccess",
-		desc: "read-only access (required for Insights)",
+		desc: "read-only access (required for Discovery)",
 	},
 }
 
@@ -408,46 +408,41 @@ func resolveAWSCredentialSource(
 		return source, true, err
 	}
 
-	ambient, ambientErr := newAmbientCredentialSource(ctx)
-	if ambientErr != nil {
-		if !interactive || !errors.Is(ambientErr, errNoAWSCredentials) {
-			return nil, false, ambientErr
-		}
-		fmt.Fprintf(esc.stdout, "No existing AWS credentials found; signing in with AWS SSO.\n")
-		source, err := newDeviceCredentialSource(ctx, esc, ssoStartURL, ssoRegion)
-		return source, true, err
-	}
-
-	existing, existingMulti := existingCredentialSource(ctx, ambient)
 	existingLabel := "Use existing AWS credentials"
 	deviceAuthLabel := "Sign in with AWS SSO in your browser"
-
-	announceExisting := func() {
-		if existingMulti {
-			fmt.Fprintf(esc.stdout, "Reusing your existing AWS SSO session.\n")
-		} else {
-			fmt.Fprintf(esc.stdout, "Using AWS account %s (via %s).\n", ambient.account.ID, ambient.origin)
+	choice := existingLabel
+	if interactive && !yes {
+		var err error
+		choice, err = ui.PromptUserErr(
+			"How would you like to authenticate to AWS?",
+			[]string{existingLabel, deviceAuthLabel}, existingLabel, esc.colors)
+		if err != nil {
+			return nil, false, err
 		}
 	}
-
-	if yes {
-		announceExisting()
-		return existing, existingMulti, nil
-	}
-
-	choice := ui.PromptUser(
-		"How would you like to authenticate to AWS?",
-		[]string{existingLabel, deviceAuthLabel}, existingLabel, esc.colors)
-	switch choice {
-	case existingLabel:
-		announceExisting()
-		return existing, existingMulti, nil
-	case deviceAuthLabel:
+	if choice == deviceAuthLabel {
 		source, err := newDeviceCredentialSource(ctx, esc, ssoStartURL, ssoRegion)
 		return source, true, err
-	default:
-		return nil, false, errors.New("cancelled")
 	}
+
+	ambient, err := newAmbientCredentialSource(ctx)
+	if errors.Is(err, errNoAWSCredentials) {
+		return nil, false, fmt.Errorf("%w\n\nDo one of the following:\n"+
+			"  - run `aws configure` to set up static credentials\n"+
+			"  - run `aws sso login` to sign in to an existing SSO profile\n"+
+			"  - set AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY\n"+
+			"  - pass --sso to sign in with AWS SSO in your browser", err)
+	}
+	if err != nil {
+		return nil, false, err
+	}
+	existing, existingMulti := existingCredentialSource(ctx, ambient)
+	if existingMulti {
+		fmt.Fprintf(esc.stdout, "Reusing your existing AWS SSO session.\n")
+	} else {
+		fmt.Fprintf(esc.stdout, "Using AWS account %s (via %s).\n", ambient.account.ID, ambient.origin)
+	}
+	return existing, existingMulti, nil
 }
 
 // selectedAWSAccount is an account the user chose, along with the SSO role to assume in it.
@@ -544,11 +539,12 @@ func selectAWSAccountRole(
 // setupAWSAccounts configures OIDC in each selected account, collecting per-account outcomes.
 func setupAWSAccounts(
 	ctx context.Context,
-	esc *escCommand,
+	setup *setupCommand,
 	source awsCredentialSource,
 	selected []selectedAWSAccount,
-	oidcIssuer, orgName, orgID, policyArn, projectName string,
+	oidcIssuer, orgName, orgID, policyArn string,
 ) []accountSetupResult {
+	esc := setup.esc()
 	results := make([]accountSetupResult, 0, len(selected))
 	for _, sel := range selected {
 		fmt.Fprintf(esc.stdout, "\nSetting up account %s...\n", sel.account.ID)
@@ -559,7 +555,7 @@ func setupAWSAccounts(
 			continue
 		}
 
-		escEnvName := escEnvName(projectName, sel.account)
+		escEnvName := setup.escEnvName(sel.account)
 		result, err := client.SetupOIDCInfrastructure(
 			ctx, orgName, awsOIDCRoleName(orgID, escEnvName), policyArn, escEnvName)
 		results = append(results, accountSetupResult{account: sel.account, result: result, err: err})
@@ -603,8 +599,6 @@ func warnReusedRoles(esc *escCommand, results []accountSetupResult, policyArn st
 
 // awsEnvOptions configures the ESC environments written after setup succeeds.
 type awsEnvOptions struct {
-	// projectName is the ESC project that per-account environments are created in.
-	projectName string
 	sessionName string
 	duration    string
 }
@@ -632,9 +626,10 @@ func createAWSEnvironments(
 			continue
 		}
 
-		ref := setup.env.parseRef(org + "/" + escEnvName(opts.projectName, r.account))
+		ref := setup.env.parseRef(org + "/" + setup.escEnvName(r.account))
 
-		fmt.Fprintf(setup.esc().stdout, "\nConfiguring environment %s for account %s:\n", ref.String(), r.account.ID)
+		fmt.Fprintf(setup.esc().stdout, "\nConfiguring environment %s for account %s:\n",
+			setup.envLink(ref), r.account.ID)
 
 		node := buildAWSLoginOIDCNode(roleArn, opts.sessionName, opts.duration, nil, oidcSubjectAttributes)
 		if err := ensureProviderEnv(ctx, setup.env, ref, true); err != nil {
@@ -650,10 +645,26 @@ func createAWSEnvironments(
 		}
 	}
 
-	if attempted > 0 && failed == attempted {
-		return errors.New("failed to create any environment")
+	if failed > 0 {
+		return fmt.Errorf("failed to create %d of %d environments", failed, attempted)
 	}
 	return nil
+}
+
+// resolveAWSPolicy resolves --policy to a policy ARN, prompting when it was omitted.
+func resolveAWSPolicy(setup *setupCommand, policy string, yes bool) (string, error) {
+	policyArn, err := setup.resolvePolicy(policy, awsPolicyChoices, yes)
+	if err != nil {
+		return "", err
+	}
+	if _, err := arn.Parse(policyArn); err != nil {
+		names := make([]string, len(awsPolicyChoices))
+		for i, choice := range awsPolicyChoices {
+			names[i] = choice.name
+		}
+		return "", fmt.Errorf("--policy must be %s, or a policy ARN: %w", strings.Join(names, ", "), err)
+	}
+	return policyArn, nil
 }
 
 // awsLoginPath is the property path under `values` where the login block is written,
@@ -732,18 +743,11 @@ func newSetupAWSCmd(setup *setupCommand) *cobra.Command {
 				return err
 			}
 
-			policyArn, err := setup.resolvePolicy(policy, awsPolicyChoices, yes)
-			if err != nil {
-				return err
-			}
-			if _, err := arn.Parse(policyArn); err != nil {
-				policyNameChoices := make([]string, len(awsPolicyChoices))
-				for i, choice := range awsPolicyChoices {
-					policyNameChoices[i] = choice.name
+			// Validate --policy if provided
+			if policy != "" || yes {
+				if _, err = resolveAWSPolicy(setup, policy, yes); err != nil {
+					return err
 				}
-
-				// Error if a policy is custom but not an ARN
-				return fmt.Errorf("--policy must be %s, or a policy ARN: %w", strings.Join(policyNameChoices, ", "), err)
 			}
 
 			source, multiAccount, err := resolveAWSCredentialSource(ctx, esc, ssoStartURL, ssoRegion, sso, yes, interactive)
@@ -780,7 +784,12 @@ func newSetupAWSCmd(setup *setupCommand) *cobra.Command {
 			for i, sel := range selected {
 				selectedAccounts[i] = sel.account
 			}
-			if err := checkDuplicateEnvNames(projectName, selectedAccounts); err != nil {
+			if err := setup.resolveEnvNames(projectName, selectedAccounts, yes); err != nil {
+				return err
+			}
+
+			policyArn, err := resolveAWSPolicy(setup, policy, yes)
+			if err != nil {
 				return err
 			}
 
@@ -791,7 +800,7 @@ func newSetupAWSCmd(setup *setupCommand) *cobra.Command {
 
 			fmt.Fprintf(esc.stdout, "\nAbout to configure OIDC for organization %s:\n", org)
 			for _, sel := range selected {
-				escEnvName := escEnvName(projectName, sel.account)
+				escEnvName := setup.escEnvName(sel.account)
 				ref := setup.env.parseRef(org + "/" + escEnvName)
 				printSetupTarget(esc, fmt.Sprintf("account %s:", sel.account.ID))
 				fmt.Fprintf(esc.stdout, "    create role %s\n", awsOIDCRoleName(orgID, escEnvName))
@@ -807,7 +816,7 @@ func newSetupAWSCmd(setup *setupCommand) *cobra.Command {
 			}
 
 			setup.printHeading("Setting up Infrastructure")
-			results := setupAWSAccounts(ctx, esc, source, selected, oidcIssuer, org, orgID, policyArn, projectName)
+			results := setupAWSAccounts(ctx, setup, source, selected, oidcIssuer, org, orgID, policyArn)
 			renderSetupResults(esc.stdout, results, awsResourceNames)
 			warnReusedRoles(esc, results, policyArn)
 
@@ -816,11 +825,14 @@ func newSetupAWSCmd(setup *setupCommand) *cobra.Command {
 			}
 
 			setup.printHeading("Setting up Environment(s)")
-			return createAWSEnvironments(ctx, setup, org, results, awsEnvOptions{
-				projectName: projectName,
+			if err := createAWSEnvironments(ctx, setup, org, results, awsEnvOptions{
 				sessionName: sessionName,
 				duration:    duration,
-			})
+			}); err != nil {
+				return err
+			}
+			setup.printSuccess("AWS")
+			return nil
 		},
 	}
 
@@ -837,7 +849,7 @@ func newSetupAWSCmd(setup *setupCommand) *cobra.Command {
 		"an AWS `account` to set up (repeatable; prompted for when omitted)")
 	cmd.Flags().StringVar(&policy, "policy", "",
 		"the policy attached to the OIDC role: AdministratorAccess (required for Deployments), "+
-			"ReadOnlyAccess (required for Insights), or any other policy ARN; prompted for when omitted")
+			"ReadOnlyAccess (required for Discovery), or any other policy ARN; prompted for when omitted")
 	cmd.Flags().StringVar(&orgName, "org", "", "the Pulumi organization to configure OIDC for")
 	cmd.Flags().BoolVar(&yes, "yes", false, "skip all confirmation prompts")
 	cmd.Flags().StringVar(&projectName, "project", "aws-login",

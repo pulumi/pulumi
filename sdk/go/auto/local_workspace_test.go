@@ -115,11 +115,8 @@ func TestWorkspaceSecretsProvider(t *testing.T) {
 	s := mkstack("password")
 
 	defer func() {
-		err := os.Unsetenv("PULUMI_CONFIG_PASSPHRASE")
-		require.NoError(t, err, "failed to unset EnvVar.")
-
 		// -- pulumi stack rm --
-		err = s.Workspace().RemoveStack(ctx, s.Name())
+		err := s.Workspace().RemoveStack(ctx, s.Name())
 		require.NoError(t, err, "failed to remove stack. Resources have leaked.")
 	}()
 

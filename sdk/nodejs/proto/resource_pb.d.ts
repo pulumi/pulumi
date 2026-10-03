@@ -193,6 +193,10 @@ export class ReadResourceResponse extends jspb.Message {
     clearProperties(): void;
     getProperties(): google_protobuf_struct_pb.Struct | undefined;
     setProperties(value?: google_protobuf_struct_pb.Struct): ReadResourceResponse;
+    getResult(): Result;
+    setResult(value: Result): ReadResourceResponse;
+    getUnknown(): boolean;
+    setUnknown(value: boolean): ReadResourceResponse;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): ReadResourceResponse.AsObject;
@@ -208,6 +212,8 @@ export namespace ReadResourceResponse {
     export type AsObject = {
         urn: string,
         properties?: google_protobuf_struct_pb.Struct.AsObject,
+        result: Result,
+        unknown: boolean,
     }
 }
 
@@ -653,6 +659,8 @@ export class ResourceInvokeRequest extends jspb.Message {
     addDependson(value: string, index?: number): string;
     getParent(): string;
     setParent(value: string): ResourceInvokeRequest;
+    getAcceptOutputValues(): boolean;
+    setAcceptOutputValues(value: boolean): ResourceInvokeRequest;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): ResourceInvokeRequest.AsObject;
@@ -681,6 +689,7 @@ export namespace ResourceInvokeRequest {
         acceptsByteString: boolean,
         dependsonList: Array<string>,
         parent: string,
+        acceptOutputValues: boolean,
     }
 }
 
@@ -1590,10 +1599,10 @@ export enum ResourceMonitorFeature {
     RESOURCE_MONITOR_FEATURE_INVOKE_DEPENDS_ON = 14,
     RESOURCE_MONITOR_FEATURE_INVOKE_PARENT = 15,
     RESOURCE_MONITOR_FEATURE_STATE_MIGRATIONS = 16,
+    RESOURCE_MONITOR_FEATURE_INVOKE_OUTPUT_VALUES = 17,
 }
 
 export enum Result {
     SUCCESS = 0,
     FAIL = 1,
-    SKIP = 2,
 }

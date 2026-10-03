@@ -25,7 +25,6 @@ import (
 	"regexp"
 	"runtime"
 	"strings"
-	"sync"
 	"testing"
 	"time"
 
@@ -2453,9 +2452,9 @@ func TestParameterizedNode(t *testing.T) {
 
 // Regression test for https://github.com/pulumi/pulumi/issues/21950: when an inline program runs more than once in the
 // same Node.js process, each run must register the parameterized package against its own engine.
-//
-//nolint:paralleltest // mutates environment
 func TestStaleParameterizedPackageRefNode(t *testing.T) {
+	t.Parallel()
+
 	e := ptesting.NewEnvironment(t)
 	defer e.DeleteIfNotFailed()
 	e.ImportDirectory(filepath.Join("nodejs", "stale-parameterized-packageref"))
@@ -2562,8 +2561,9 @@ func TestPackageAddNode(t *testing.T) {
 	}
 }
 
-//nolint:paralleltest // mutates environment
 func TestConvertTerraformProviderNode(t *testing.T) {
+	t.Parallel()
+
 	e := ptesting.NewEnvironment(t)
 
 	var err error
@@ -2598,8 +2598,9 @@ func TestConvertTerraformProviderNode(t *testing.T) {
 	require.NoError(t, err, "node_modules directory should exist after pulumi convert")
 }
 
-//nolint:paralleltest // mutates environment
 func TestConvertTerraformProviderNodeGenerateOnly(t *testing.T) {
+	t.Parallel()
+
 	e := ptesting.NewEnvironment(t)
 
 	var err error
@@ -2945,9 +2946,6 @@ func TestInstallLocalPluginCycle(t *testing.T) {
 
 func TestInstallMultiComponentGitRepo(t *testing.T) {
 	t.Parallel()
-
-	t.Skip("https://github.com/pulumi/pulumi/issues/22407")
-
 	// TODO[pulumi/pulumi#21154]: This test doesn't work on windows due to exceeding
 	// the 255 character limit when installing the plugin.
 	if runtime.GOOS == "windows" {
@@ -2964,15 +2962,7 @@ func TestInstallMultiComponentGitRepo(t *testing.T) {
 
 	e.RunCommand("pulumi", "install")
 
-	// Install additional dependencies (TLS provider needed by test-provider &
-	// test-provider-2 components)
-	//
-	// TODO[https://github.com/pulumi/pulumi/issues/20963]: Remove the need for this
-	// install.
 	e.Env = []string{"PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION=true"}
-	e.RunCommand("pulumi", "plugin", "install", "resource", "tls", "v5.3.0")
-	e.RunCommand("pulumi", "plugin", "install", "resource", "tls", "4.11.1")
-
 	e.RunCommand("pulumi", "up", "--non-interactive", "--skip-preview")
 
 	// Verify outputs exist from both components, confirming both resources were created
@@ -3524,18 +3514,24 @@ func TestDebuggerAttachNodejs(t *testing.T) {
 	e.RunCommand("pulumi", "stack", "init", "debugger-test")
 	e.RunCommand("pulumi", "stack", "select", "debugger-test")
 
-	wg := sync.WaitGroup{}
-	wg.Go(func() {
-		e.RunCommand("pulumi", "preview", "--attach-debugger",
-			"--event-log", filepath.Join(e.RootPath, "debugger.log"))
-	})
+	eventLog := filepath.Join(e.RootPath, "debugger.log")
+	var previewStdout, previewStderr string
+	var previewErr error
+	previewDone := make(chan struct{})
+	go func() {
+		defer close(previewDone)
+		previewStdout, previewStderr, previewErr = e.GetCommandResults("pulumi", "preview", "--attach-debugger",
+			"--event-log", eventLog)
+	}()
 
 	// Wait for the debugging event
+	deadline := time.Now().Add(2 * time.Minute)
 	wait := 20 * time.Millisecond
 	var debugEvent *apitype.StartDebuggingEvent
+	exited := false
 outer:
-	for range 50 {
-		events, err := readUpdateEventLog(filepath.Join(e.RootPath, "debugger.log"))
+	for {
+		events, err := readUpdateEventLog(eventLog)
 		require.NoError(t, err)
 		for _, event := range events {
 			if event.StartDebuggingEvent != nil {
@@ -3543,12 +3539,28 @@ outer:
 				break outer
 			}
 		}
-		time.Sleep(wait)
-		if wait < 500*time.Millisecond {
-			wait *= 2
+		if exited || time.Now().After(deadline) {
+			break
+		}
+		select {
+		case <-previewDone:
+			exited = true
+		case <-time.After(wait):
+			if wait < 500*time.Millisecond {
+				wait *= 2
+			}
 		}
 	}
-	require.NotNil(t, debugEvent)
+	if debugEvent == nil {
+		detail := "pulumi preview is still running"
+		select {
+		case <-previewDone:
+			detail = fmt.Sprintf("pulumi preview exited early: %v\nstdout:\n%s\nstderr:\n%s",
+				previewErr, previewStdout, previewStderr)
+		default:
+		}
+		require.NotNilf(t, debugEvent, "no StartDebuggingEvent appeared in the event log; %s", detail)
+	}
 
 	// Port defaults to 9229, but if it's already in use the config will specify a different port.
 	port := 9229
@@ -3565,13 +3577,10 @@ outer:
 	require.NoError(t, ws.Close())
 
 	// Verify the program completed successfully.
-	waitDone := make(chan struct{})
-	go func() {
-		wg.Wait()
-		close(waitDone)
-	}()
 	select {
-	case <-waitDone:
+	case <-previewDone:
+		require.NoError(t, previewErr, "pulumi preview failed:\nstdout:\n%s\nstderr:\n%s",
+			previewStdout, previewStderr)
 	case <-time.After(60 * time.Second):
 		t.Fatal("timed out waiting for program to complete")
 	}

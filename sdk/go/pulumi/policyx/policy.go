@@ -66,8 +66,6 @@ type ResourceValidationArgs struct {
 	Resource AnalyzerResource
 	// Config is the policy configuration.
 	Config map[string]any
-	// DryRun indicates if the current operation is a dry run (preview).
-	DryRun bool
 	// StackTags contains the stack tags for the stack being analyzed.
 	StackTags map[string]string
 }

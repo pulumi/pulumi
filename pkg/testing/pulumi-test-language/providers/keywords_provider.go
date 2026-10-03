@@ -143,6 +143,7 @@ func (p *KeywordsProvider) isValidResourceType(t tokens.Type) bool {
 func (p *KeywordsProvider) Check(
 	_ context.Context, req plugin.CheckRequest,
 ) (plugin.CheckResponse, error) {
+	news := resource.ToResourcePropertyMap(req.NewInputs)
 	if !p.isValidResourceType(req.URN.Type()) {
 		return plugin.CheckResponse{
 			Failures: makeCheckFailure("", fmt.Sprintf("invalid URN type: %s", req.URN.Type())),
@@ -151,7 +152,7 @@ func (p *KeywordsProvider) Check(
 
 	for _, prop := range p.properties() {
 		propKey := resource.PropertyKey(prop)
-		value, ok := req.News[propKey]
+		value, ok := news[propKey]
 		if !ok {
 			return plugin.CheckResponse{
 				Failures: makeCheckFailure(propKey, fmt.Sprintf("missing %s", propKey)),
@@ -163,18 +164,19 @@ func (p *KeywordsProvider) Check(
 			}, nil
 		}
 	}
-	if len(req.News) != len(p.properties()) {
+	if len(news) != len(p.properties()) {
 		return plugin.CheckResponse{
-			Failures: makeCheckFailure("", fmt.Sprintf("too many properties: %v", req.News)),
+			Failures: makeCheckFailure("", fmt.Sprintf("too many properties: %v", news)),
 		}, nil
 	}
 
-	return plugin.CheckResponse{Properties: req.News}, nil
+	return plugin.CheckResponse{Properties: resource.FromResourcePropertyMap(news)}, nil
 }
 
 func (p *KeywordsProvider) Create(
 	_ context.Context, req plugin.CreateRequest,
 ) (plugin.CreateResponse, error) {
+	inputs := resource.ToResourcePropertyMap(req.Properties)
 	if !p.isValidResourceType(req.URN.Type()) {
 		return plugin.CreateResponse{
 			Status: resource.StatusUnknown,
@@ -189,7 +191,7 @@ func (p *KeywordsProvider) Create(
 	properties := make(resource.PropertyMap)
 	for _, prop := range p.properties() {
 		propKey := resource.PropertyKey(prop)
-		value, ok := req.Properties[propKey]
+		value, ok := inputs[propKey]
 		if !ok {
 			return plugin.CreateResponse{}, fmt.Errorf("missing property %s", propKey)
 		}
@@ -198,7 +200,7 @@ func (p *KeywordsProvider) Create(
 
 	return plugin.CreateResponse{
 		ID:         resource.ID(id),
-		Properties: properties,
+		Properties: resource.FromResourcePropertyMap(properties),
 		Status:     resource.StatusOK,
 	}, nil
 }
@@ -271,11 +273,12 @@ func (p *KeywordsProvider) Read(ctx context.Context, req plugin.ReadRequest) (pl
 		properties[resource.PropertyKey(prop)] = resource.NewProperty(prop)
 	}
 
+	m := resource.FromResourcePropertyMap(properties)
 	return plugin.ReadResponse{
 		ReadResult: plugin.ReadResult{
 			ID:      req.ID,
-			Inputs:  properties,
-			Outputs: properties,
+			Inputs:  &m,
+			Outputs: &m,
 		},
 		Status: resource.StatusOK,
 	}, nil

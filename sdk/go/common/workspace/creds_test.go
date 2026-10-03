@@ -27,25 +27,18 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/agentdetect"
+	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
 )
 
 //nolint:paralleltest // mutates environment
 func TestConcurrentCredentialsWrites(t *testing.T) {
-	// save and remember to restore creds in ~/.pulumi/credentials
-	// as the test will be modifying them
-	oldCreds, err := GetStoredCredentials()
-	require.NoError(t, err)
-	defer func() {
-		err := StoreCredentials(oldCreds)
-		require.NoError(t, err)
-	}()
+	ptesting.IsolateCredentials(t)
 
-	// use test creds that have at least 1 AccessToken to force a
+	// use test creds that have at least 1 account to force a
 	// disk write and contention
 	testCreds := Credentials{
-		AccessTokens: map[string]string{
-			"token-name": "token-value",
+		Accounts: map[string]Account{
+			"token-name": {AccessToken: "token-value"},
 		},
 	}
 
@@ -57,7 +50,7 @@ func TestConcurrentCredentialsWrites(t *testing.T) {
 
 	// Store testCreds initially so asserts in
 	// GetStoredCredentials goroutines find the expected data
-	err = StoreCredentials(testCreds)
+	err := StoreCredentials(testCreds)
 	require.NoError(t, err)
 
 	for range n {
@@ -70,14 +63,14 @@ func TestConcurrentCredentialsWrites(t *testing.T) {
 			defer wg.Done()
 			creds, err := GetStoredCredentials()
 			require.NoError(t, err)
-			assert.Equal(t, "token-value", creds.AccessTokens["token-name"])
+			assert.Equal(t, "token-value", creds.Accounts["token-name"].AccessToken)
 		}()
 	}
 	wg.Wait()
 }
 
 func TestCredentialsDoNotFallbackToTemp(t *testing.T) {
-	t.Setenv("PULUMI_CREDENTIALS_PATH", "")
+	ptesting.IsolateCredentials(t)
 
 	homeParent := t.TempDir()
 	homePath := filepath.Join(homeParent, "not-a-directory")
@@ -89,6 +82,7 @@ func TestCredentialsDoNotFallbackToTemp(t *testing.T) {
 }
 
 func TestExplicitCredentialsPathDoesNotFallbackToTemp(t *testing.T) {
+	ptesting.IsolateCredentials(t)
 	credentialsParent := t.TempDir()
 	credentialsPath := filepath.Join(credentialsParent, "not-a-directory")
 	require.NoError(t, os.WriteFile(credentialsPath, []byte("not a directory"), 0o600))
@@ -128,25 +122,16 @@ func TestAccountSaveErrorsOnEmptySource(t *testing.T) {
 	assert.Contains(t, err.Error(), "not loaded")
 }
 
-//nolint:paralleltest // mutates environment and package global
+//nolint:paralleltest // IsolateCredentials changes process-wide environment variables.
 func TestAccountSaveWritesToSourceFile(t *testing.T) {
 	// File-as-a-unit invariant: an account loaded from a file must Save back to that same file.
 	// Loaded-from-default must not bleed into agent, and loaded-from-agent must not bleed into
 	// default (the bug the source field exists to prevent).
-	credsDir := t.TempDir()
-	t.Setenv(PulumiCredentialsPathEnvVar, credsDir)
-	t.Setenv("PULUMI_HOME", "")
-
-	oldAgentPulumiDir := agentPulumiDir
-	agentPulumiDir = filepath.Join(t.TempDir(), ".pulumi")
-	t.Cleanup(func() {
-		require.NoError(t, DeleteAgentCredentials())
-		agentPulumiDir = oldAgentPulumiDir
-	})
 
 	const cloudURL = "https://api.example.com"
 
 	t.Run("loaded from default writes back to default", func(t *testing.T) {
+		ptesting.IsolateCredentials(t)
 		require.NoError(t, StoreAccount(cloudURL, Account{AccessToken: "orig-default"}, false))
 		require.NoError(t, StoreAgentAccount(cloudURL, Account{AccessToken: "orig-agent"}, false))
 
@@ -166,6 +151,7 @@ func TestAccountSaveWritesToSourceFile(t *testing.T) {
 	})
 
 	t.Run("loaded from agent writes back to agent", func(t *testing.T) {
+		ptesting.IsolateCredentials(t)
 		require.NoError(t, StoreAccount(cloudURL, Account{AccessToken: "orig-default"}, false))
 		require.NoError(t, StoreAgentAccount(cloudURL, Account{AccessToken: "orig-agent"}, false))
 
@@ -189,19 +175,9 @@ func TestGetAccountWithAgentFallbackUsesRefreshOnlyDefaultAccount(t *testing.T) 
 	// An account with only a refresh token (no access token) must be treated as usable rather
 	// than skipped in favour of the agent fallback — the wrapper will mint the first access
 	// token on the initial 401.
-	oldCreds, err := GetStoredCredentials()
-	require.NoError(t, err)
-	oldAgentPulumiDir := agentPulumiDir
-	agentPulumiDir = filepath.Join(t.TempDir(), ".pulumi")
-	t.Cleanup(func() {
-		require.NoError(t, StoreCredentials(oldCreds))
-		require.NoError(t, DeleteAgentCredentials())
-		agentPulumiDir = oldAgentPulumiDir
-	})
-
-	setAgentEnv(t)
-	t.Setenv(PulumiCredentialsPathEnvVar, "")
-	t.Setenv("PULUMI_HOME", "")
+	ptesting.IsolateCredentials(t)
+	t.Setenv(pulumiTestAllowAgentFallbackEnvVar, "true")
+	t.Setenv("CODEX_SANDBOX", "1")
 
 	cloudURL := "https://api.refresh-only.example.com"
 	require.NoError(t, StoreAccount(cloudURL, Account{RefreshToken: "refresh-only"}, true))
@@ -214,11 +190,12 @@ func TestGetAccountWithAgentFallbackUsesRefreshOnlyDefaultAccount(t *testing.T) 
 	assert.Empty(t, account.AccessToken)
 }
 
+//nolint:paralleltest // IsolateCredentials changes process-wide environment variables.
 func TestAccountRefreshTokenRoundTrip(t *testing.T) {
+	ptesting.IsolateCredentials(t)
 	// The refresh token is held off-the-wire and exchanged at /api/oauth/token for short-lived
 	// access tokens. It needs to survive credentials.json read/write so the CLI can use it across
 	// process invocations.
-	t.Setenv("PULUMI_CREDENTIALS_PATH", filepath.Join(t.TempDir(), "credentials.json"))
 
 	const cloudURL = "https://api.example.com"
 	original := Account{
@@ -244,13 +221,9 @@ func TestAccountRefreshTokenRoundTrip(t *testing.T) {
 	assert.Empty(t, loadedPlain.RefreshToken)
 }
 
-//nolint:paralleltest // mutates package global
+//nolint:paralleltest // IsolateCredentials changes process-wide environment variables.
 func TestAgentCredentialsAndClaim(t *testing.T) {
-	oldAgentPulumiDir := agentPulumiDir
-	agentPulumiDir = filepath.Join(t.TempDir(), ".pulumi")
-	t.Cleanup(func() {
-		agentPulumiDir = oldAgentPulumiDir
-	})
+	ptesting.IsolateCredentials(t)
 
 	err := StoreAgentAccount("https://api.example.com", Account{AccessToken: "token-value"}, true)
 	require.NoError(t, err)
@@ -274,13 +247,9 @@ func TestAgentCredentialsAndClaim(t *testing.T) {
 	assert.True(t, claim.ValidUntil.Equal(validUntil))
 }
 
-//nolint:paralleltest // mutates package global
+//nolint:paralleltest // IsolateCredentials changes process-wide environment variables.
 func TestMarkAgentClaimUnavailable(t *testing.T) {
-	oldAgentPulumiDir := agentPulumiDir
-	agentPulumiDir = filepath.Join(t.TempDir(), ".pulumi")
-	t.Cleanup(func() {
-		agentPulumiDir = oldAgentPulumiDir
-	})
+	ptesting.IsolateCredentials(t)
 
 	validUntil := time.Now().Add(time.Hour).UTC()
 	require.NoError(t, StoreAgentClaim(AgentClaim{
@@ -299,36 +268,71 @@ func TestMarkAgentClaimUnavailable(t *testing.T) {
 	assert.True(t, claim.ValidUntil.Equal(validUntil))
 	require.NotNil(t, claim.ClaimUnavailableAt)
 	assert.True(t, claim.ClaimUnavailableAt.Equal(unavailableAt))
+
+	require.NoError(t, ClearAgentClaimUnavailable())
+	claim, err = GetAgentClaim()
+	require.NoError(t, err)
+	assert.Nil(t, claim.ClaimUnavailableAt)
+	assert.Equal(t, "abc123", claim.ClaimToken, "clearing the marker keeps the rest of the claim")
+
+	require.NoError(t, ClearAgentClaimUnavailable(), "clearing an unset marker is a no-op")
 }
 
-//nolint:paralleltest // mutates package global
-func TestGetAgentAccountUsesLegacyAccessTokenMap(t *testing.T) {
-	oldAgentPulumiDir := agentPulumiDir
-	agentPulumiDir = filepath.Join(t.TempDir(), ".pulumi")
-	t.Cleanup(func() {
-		agentPulumiDir = oldAgentPulumiDir
-	})
+func TestCredentialsMarshalJSON(t *testing.T) {
+	t.Parallel()
 
-	require.NoError(t, StoreAgentCredentials(Credentials{
-		AccessTokens: map[string]string{
-			"https://api.legacy-agent-token.example.com": "legacy-token",
+	raw, err := json.MarshalIndent(Credentials{
+		Current: "https://api.example.com",
+		Accounts: map[string]Account{
+			"https://api.example.com": {AccessToken: "token-value", Username: "user"},
+			"file://~":                {},
 		},
-	}))
+	}, "", "    ")
+	require.NoError(t, err)
 
-	account, err := GetAgentAccount("https://api.legacy-agent-token.example.com")
+	assert.Equal(t, `{
+    "current": "https://api.example.com",
+    "accessTokens": {
+        "file://~": "",
+        "https://api.example.com": "token-value"
+    },
+    "accounts": {
+        "file://~": {
+            "lastValidatedAt": "0001-01-01T00:00:00Z"
+        },
+        "https://api.example.com": {
+            "accessToken": "token-value",
+            "username": "user",
+            "lastValidatedAt": "0001-01-01T00:00:00Z"
+        }
+    }
+}`, string(raw))
+}
+
+func TestCredentialsMarshalJSONWithoutAccounts(t *testing.T) {
+	t.Parallel()
+
+	raw, err := json.Marshal(Credentials{Current: "https://api.example.com"})
 	require.NoError(t, err)
-	assert.Equal(t, "legacy-token", account.AccessToken)
-	account, err = GetAgentAccount("https://api.missing-agent-token.example.com")
+
+	assert.Equal(t, `{"current":"https://api.example.com"}`, string(raw))
+}
+
+//nolint:paralleltest // IsolateCredentials changes process-wide environment variables.
+func TestGetStoredCredentialsIgnoresAccessTokensObject(t *testing.T) {
+	credsDir := ptesting.IsolateCredentials(t).Home
+
+	require.NoError(t, os.WriteFile(filepath.Join(credsDir, "credentials.json"),
+		[]byte(`{"current":"https://api.example.com","accessTokens":{"https://api.example.com":"token-value"}}`),
+		0o600))
+
+	creds, err := GetStoredCredentials()
 	require.NoError(t, err)
-	assert.Empty(t, account.AccessToken)
+	assert.Equal(t, Credentials{Current: "https://api.example.com"}, creds)
 }
 
 func TestAgentPulumiDirTestOverride(t *testing.T) {
-	oldAgentPulumiDir := agentPulumiDir
-	agentPulumiDir = filepath.Join(t.TempDir(), ".pulumi")
-	t.Cleanup(func() {
-		agentPulumiDir = oldAgentPulumiDir
-	})
+	ptesting.IsolateCredentials(t)
 
 	override := filepath.Join(t.TempDir(), "agent")
 	t.Setenv(pulumiTestAgentPulumiDirEnvVar, override)
@@ -341,13 +345,9 @@ func TestAgentPulumiDirTestOverride(t *testing.T) {
 	assert.Equal(t, filepath.Join(override, "config.json"), getAgentConfigFilePathNoEnsure())
 }
 
-//nolint:paralleltest // mutates package global
+//nolint:paralleltest // IsolateCredentials changes process-wide environment variables.
 func TestGetAgentAccessTokenExpiresAt(t *testing.T) {
-	oldAgentPulumiDir := agentPulumiDir
-	agentPulumiDir = filepath.Join(t.TempDir(), ".pulumi")
-	t.Cleanup(func() {
-		agentPulumiDir = oldAgentPulumiDir
-	})
+	ptesting.IsolateCredentials(t)
 
 	now := time.Now().UTC()
 	expiresAt := now.Add(time.Hour)
@@ -366,19 +366,9 @@ func TestGetAgentAccessTokenExpiresAt(t *testing.T) {
 }
 
 func TestGetAccountWithAgentFallbackPrefersDefaultCredentials(t *testing.T) {
-	oldCreds, err := GetStoredCredentials()
-	require.NoError(t, err)
-	oldAgentPulumiDir := agentPulumiDir
-	agentPulumiDir = filepath.Join(t.TempDir(), ".pulumi")
-	t.Cleanup(func() {
-		require.NoError(t, StoreCredentials(oldCreds))
-		require.NoError(t, DeleteAgentCredentials())
-		agentPulumiDir = oldAgentPulumiDir
-	})
-
-	setAgentEnv(t)
-	t.Setenv(PulumiCredentialsPathEnvVar, "")
-	t.Setenv("PULUMI_HOME", "")
+	ptesting.IsolateCredentials(t)
+	t.Setenv(pulumiTestAllowAgentFallbackEnvVar, "true")
+	t.Setenv("CODEX_SANDBOX", "1")
 
 	cloudURL := "https://api.default-wins.example.com"
 	require.NoError(t, StoreAccount(cloudURL, Account{AccessToken: "default-token"}, true))
@@ -391,16 +381,9 @@ func TestGetAccountWithAgentFallbackPrefersDefaultCredentials(t *testing.T) {
 }
 
 func TestGetAccountWithAgentFallbackUsesAgentCredentials(t *testing.T) {
-	oldAgentPulumiDir := agentPulumiDir
-	agentPulumiDir = filepath.Join(t.TempDir(), ".pulumi")
-	t.Cleanup(func() {
-		require.NoError(t, DeleteAgentCredentials())
-		agentPulumiDir = oldAgentPulumiDir
-	})
-
-	setAgentEnv(t)
-	t.Setenv(PulumiCredentialsPathEnvVar, "")
-	t.Setenv("PULUMI_HOME", "")
+	ptesting.IsolateCredentials(t)
+	t.Setenv(pulumiTestAllowAgentFallbackEnvVar, "true")
+	t.Setenv("CODEX_SANDBOX", "1")
 
 	cloudURL := "https://api.agent-fallback.example.com"
 	require.NoError(t, StoreAgentAccount(cloudURL, Account{AccessToken: "agent-token"}, true))
@@ -415,19 +398,9 @@ func TestGetAccountWithAgentFallbackDoesNotMergeFieldsAcrossFiles(t *testing.T) 
 	// File-as-a-unit invariant on the read side: a default account with an access token but no
 	// refresh token must not silently acquire a refresh token from the agent file. The loaded
 	// account is wholly from the source file, never a merge across the two.
-	oldCreds, err := GetStoredCredentials()
-	require.NoError(t, err)
-	oldAgentPulumiDir := agentPulumiDir
-	agentPulumiDir = filepath.Join(t.TempDir(), ".pulumi")
-	t.Cleanup(func() {
-		require.NoError(t, StoreCredentials(oldCreds))
-		require.NoError(t, DeleteAgentCredentials())
-		agentPulumiDir = oldAgentPulumiDir
-	})
-
-	setAgentEnv(t)
-	t.Setenv(PulumiCredentialsPathEnvVar, "")
-	t.Setenv("PULUMI_HOME", "")
+	ptesting.IsolateCredentials(t)
+	t.Setenv(pulumiTestAllowAgentFallbackEnvVar, "true")
+	t.Setenv("CODEX_SANDBOX", "1")
 
 	cloudURL := "https://api.no-cross-file-merge.example.com"
 	require.NoError(t, StoreAccount(cloudURL, Account{AccessToken: "default-access"}, true))
@@ -445,16 +418,8 @@ func TestGetAccountWithAgentFallbackDoesNotMergeFieldsAcrossFiles(t *testing.T) 
 }
 
 func TestGetAccountWithAgentFallbackDisabledOutsideAgentMode(t *testing.T) {
-	oldAgentPulumiDir := agentPulumiDir
-	agentPulumiDir = filepath.Join(t.TempDir(), ".pulumi")
-	t.Cleanup(func() {
-		require.NoError(t, DeleteAgentCredentials())
-		agentPulumiDir = oldAgentPulumiDir
-	})
-
-	clearAgentEnv(t)
-	t.Setenv(PulumiCredentialsPathEnvVar, "")
-	t.Setenv("PULUMI_HOME", "")
+	ptesting.IsolateCredentials(t)
+	t.Setenv(pulumiTestAllowAgentFallbackEnvVar, "true")
 
 	cloudURL := "https://api.no-agent-fallback.example.com"
 	require.NoError(t, StoreAgentAccount(cloudURL, Account{AccessToken: "agent-token"}, true))
@@ -466,16 +431,8 @@ func TestGetAccountWithAgentFallbackDisabledOutsideAgentMode(t *testing.T) {
 }
 
 func TestGetAccountWithAgentFallbackDisabledWithExplicitHome(t *testing.T) {
-	oldAgentPulumiDir := agentPulumiDir
-	agentPulumiDir = filepath.Join(t.TempDir(), ".pulumi")
-	t.Cleanup(func() {
-		require.NoError(t, DeleteAgentCredentials())
-		agentPulumiDir = oldAgentPulumiDir
-	})
-
-	setAgentEnv(t)
-	t.Setenv(PulumiCredentialsPathEnvVar, "")
-	t.Setenv("PULUMI_HOME", t.TempDir())
+	ptesting.IsolateCredentials(t)
+	t.Setenv("CODEX_SANDBOX", "1")
 
 	cloudURL := "https://api.explicit-home.example.com"
 	require.NoError(t, StoreAgentAccount(cloudURL, Account{AccessToken: "agent-token"}, true))
@@ -487,16 +444,11 @@ func TestGetAccountWithAgentFallbackDisabledWithExplicitHome(t *testing.T) {
 }
 
 func TestGetAccountWithAgentFallbackDisabledWithExplicitCredentialsPath(t *testing.T) {
-	oldAgentPulumiDir := agentPulumiDir
-	agentPulumiDir = filepath.Join(t.TempDir(), ".pulumi")
-	t.Cleanup(func() {
-		require.NoError(t, DeleteAgentCredentials())
-		agentPulumiDir = oldAgentPulumiDir
-	})
+	ptesting.IsolateCredentials(t)
+	t.Setenv(pulumiTestAllowAgentFallbackEnvVar, "true")
 
-	setAgentEnv(t)
+	t.Setenv("CODEX_SANDBOX", "1")
 	t.Setenv(PulumiCredentialsPathEnvVar, t.TempDir())
-	t.Setenv("PULUMI_HOME", "")
 
 	cloudURL := "https://api.explicit-credentials-path.example.com"
 	require.NoError(t, StoreAgentAccount(cloudURL, Account{AccessToken: "agent-token"}, true))
@@ -526,107 +478,8 @@ func TestAgentClaimActive(t *testing.T) {
 	}.Active(now))
 }
 
-func TestFormatAgentClaimInstruction(t *testing.T) {
-	t.Parallel()
-
-	claimURL := "https://app.pulumi.com/claim/abc123"
-	now := time.Date(2026, time.May, 17, 8, 24, 56, 0, time.UTC)
-	validUntil := now.Add(3*24*time.Hour + 4*time.Hour + 10*time.Minute + 30*time.Second)
-	expiresAt := now.Add(2*24*time.Hour + 3*time.Hour + 9*time.Minute)
-
-	assert.Equal(t,
-		"PULUMI_EPHEMERAL_AGENT_ACCOUNT\n"+
-			"CLAIM_URL=https://app.pulumi.com/claim/abc123\n"+
-			"EPHEMERAL_ACCOUNT_ACCESS_EXPIRES_IN=2d3h9m\n"+
-			"ACTION_REQUIRED=Tell the user to claim this Pulumi agent account.\n"+
-			"INSTRUCTION=Tell the user Pulumi created an ephemeral agent account. "+
-			"It is important to surface the claim URL to the user so they can take ownership of the account. "+
-			"Include the claim URL and say they must claim the account within 2d3h9m before agent access expires. "+
-			"Tell them claiming the account will lock the Pulumi organization during the claim process, "+
-			"so they should let the agent finish its work before claiming it.\n",
-		FormatAgentClaimInstruction(claimURL, &expiresAt, validUntil, now))
-	expiredAt := now.Add(-time.Minute)
-	assert.Equal(t,
-		"PULUMI_EPHEMERAL_AGENT_ACCOUNT\n"+
-			"CLAIM_URL=https://app.pulumi.com/claim/abc123\n"+
-			"CLAIM_URL_VALID_FOR=3d4h10m\n"+
-			"ACTION_REQUIRED=Tell the user to claim this Pulumi agent account.\n"+
-			"INSTRUCTION=Tell the user this ephemeral agent account can no longer authenticate, "+
-			"but the claim URL is still valid for 3d4h10m. Include the claim URL and the remaining time. "+
-			"Tell them claiming the account will lock the Pulumi organization during the claim process, "+
-			"so they should let the agent finish its work before claiming it.\n",
-		FormatAgentClaimInstruction(claimURL, &expiredAt, validUntil, now))
-	assert.Empty(t, FormatAgentClaimInstruction(claimURL, nil, time.Time{}, now))
-	assert.Empty(t, FormatAgentClaimInstruction("", &expiresAt, validUntil, now))
-}
-
-func TestFormatAgentLoginRequiredInstruction(t *testing.T) {
-	t.Parallel()
-
-	now := time.Date(2026, time.May, 17, 8, 24, 56, 0, time.UTC)
-	expiresAt := now.Add(2*24*time.Hour + 3*time.Hour + 9*time.Minute)
-
-	assert.Equal(t,
-		"PULUMI_EPHEMERAL_AGENT_ACCOUNT\n"+
-			"EPHEMERAL_ACCOUNT_ACCESS_EXPIRES_IN=2d3h9m\n"+
-			"ACTION_REQUIRED=Tell the user to run pulumi login.\n"+
-			"INSTRUCTION=Tell the user this Pulumi ephemeral agent account can no longer authenticate "+
-			"even though local access had not expired. The account was likely claimed or revoked. "+
-			"The stacks the agent was working with may have moved to the user's Pulumi account, so the agent's "+
-			"existing access to those stacks may have changed. Ask the user to run pulumi login before retrying.\n",
-		FormatAgentLoginRequiredInstruction(AgentLoginTokenRejected, &expiresAt, now))
-	assert.Equal(t,
-		"PULUMI_EPHEMERAL_AGENT_ACCOUNT\n"+
-			"EPHEMERAL_ACCOUNT_ACCESS_EXPIRES_IN=2d3h9m\n"+
-			"ACTION_REQUIRED=Tell the user to run pulumi login.\n"+
-			"INSTRUCTION=Tell the user this Pulumi ephemeral agent account can no longer authenticate, "+
-			"and its claim URL is no longer claimable. The account was likely already claimed, expired, "+
-			"or revoked. If it was claimed, the stacks the agent was working with moved to the user's Pulumi account, "+
-			"so the agent's existing access to those stacks changed. Ask the user to run pulumi login before retrying.\n",
-		FormatAgentLoginRequiredInstruction(AgentLoginClaimUnavailable, &expiresAt, now))
-}
-
-func TestFormatAgentClaimValidFor(t *testing.T) {
-	t.Parallel()
-
-	now := time.Date(2026, time.May, 17, 8, 24, 56, 0, time.UTC)
-	tests := []struct {
-		name       string
-		validUntil time.Time
-		want       string
-	}{
-		{
-			name:       "days hours minutes",
-			validUntil: now.Add(3*24*time.Hour + 4*time.Hour + 10*time.Minute + 30*time.Second),
-			want:       "3d4h10m",
-		},
-		{
-			name:       "hours only",
-			validUntil: now.Add(2 * time.Hour),
-			want:       "2h",
-		},
-		{
-			name:       "less than minute",
-			validUntil: now.Add(30 * time.Second),
-			want:       "<1m",
-		},
-		{
-			name:       "expired",
-			validUntil: now.Add(-time.Minute),
-			want:       "expired",
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-			assert.Equal(t, tt.want, FormatAgentClaimValidFor(tt.validUntil, now))
-		})
-	}
-}
-
+//nolint:paralleltest // The Windows case changes TMP and TEMP with t.Setenv.
 func TestDefaultAgentPulumiDir(t *testing.T) {
-	t.Parallel()
-
 	if runtime.GOOS == "windows" {
 		tempDir := t.TempDir()
 		t.Setenv("TMP", tempDir)
@@ -638,14 +491,9 @@ func TestDefaultAgentPulumiDir(t *testing.T) {
 }
 
 func TestAgentPulumiConfigUsesDefaultPathWhenWritable(t *testing.T) {
-	oldAgentPulumiDir := agentPulumiDir
-	agentPulumiDir = filepath.Join(t.TempDir(), ".pulumi")
-	t.Cleanup(func() {
-		agentPulumiDir = oldAgentPulumiDir
-	})
-	t.Setenv(PulumiCredentialsPathEnvVar, "")
-	pulumiHome := t.TempDir()
-	t.Setenv("PULUMI_HOME", pulumiHome)
+	dirs := ptesting.IsolateCredentials(t)
+	pulumiHome, agentPulumiDir := dirs.Home, dirs.AgentDir
+	t.Setenv(pulumiTestAllowAgentFallbackEnvVar, "true")
 	t.Setenv("CODEX_SANDBOX", "1")
 
 	err := SetBackendConfigDefaultOrg("https://api.example.com", "agent-org")
@@ -661,15 +509,14 @@ func TestAgentPulumiConfigUsesDefaultPathWhenWritable(t *testing.T) {
 	require.True(t, os.IsNotExist(err))
 }
 
+//nolint:paralleltest // IsolateCredentials changes process-wide environment variables.
 func TestDeleteAccountDeletesBackendConfig(t *testing.T) {
-	credsDir := t.TempDir()
-	t.Setenv(PulumiCredentialsPathEnvVar, credsDir)
-	t.Setenv("PULUMI_HOME", "")
+	ptesting.IsolateCredentials(t)
 
 	err := StoreCredentials(Credentials{
-		AccessTokens: map[string]string{
-			"https://api.example.com":       "token-value",
-			"https://api.other.example.com": "other-token",
+		Accounts: map[string]Account{
+			"https://api.example.com":       {AccessToken: "token-value"},
+			"https://api.other.example.com": {AccessToken: "other-token"},
 		},
 	})
 	require.NoError(t, err)
@@ -686,22 +533,21 @@ func TestDeleteAccountDeletesBackendConfig(t *testing.T) {
 
 	creds, err := GetStoredCredentials()
 	require.NoError(t, err)
-	assert.NotContains(t, creds.AccessTokens, "https://api.example.com")
-	assert.Equal(t, "other-token", creds.AccessTokens["https://api.other.example.com"])
+	assert.NotContains(t, creds.Accounts, "https://api.example.com")
+	assert.Equal(t, "other-token", creds.Accounts["https://api.other.example.com"].AccessToken)
 	config, err := GetPulumiConfig()
 	require.NoError(t, err)
 	assert.NotContains(t, config.BackendConfig, "https://api.example.com")
 	assert.Equal(t, "other-org", config.BackendConfig["https://api.other.example.com"].DefaultOrg)
 }
 
+//nolint:paralleltest // IsolateCredentials changes process-wide environment variables.
 func TestDeleteAccountDeletesBackendConfigFileWhenEmpty(t *testing.T) {
-	credsDir := t.TempDir()
-	t.Setenv(PulumiCredentialsPathEnvVar, credsDir)
-	t.Setenv("PULUMI_HOME", "")
+	credsDir := ptesting.IsolateCredentials(t).Home
 
 	err := StoreCredentials(Credentials{
-		AccessTokens: map[string]string{
-			"https://api.example.com": "token-value",
+		Accounts: map[string]Account{
+			"https://api.example.com": {AccessToken: "token-value"},
 		},
 	})
 	require.NoError(t, err)
@@ -719,14 +565,13 @@ func TestDeleteAccountDeletesBackendConfigFileWhenEmpty(t *testing.T) {
 	require.True(t, os.IsNotExist(err))
 }
 
+//nolint:paralleltest // IsolateCredentials changes process-wide environment variables.
 func TestDeleteAllAccountsDeletesBackendConfig(t *testing.T) {
-	credsDir := t.TempDir()
-	t.Setenv(PulumiCredentialsPathEnvVar, credsDir)
-	t.Setenv("PULUMI_HOME", "")
+	credsDir := ptesting.IsolateCredentials(t).Home
 
 	err := StoreCredentials(Credentials{
-		AccessTokens: map[string]string{
-			"https://api.example.com": "token-value",
+		Accounts: map[string]Account{
+			"https://api.example.com": {AccessToken: "token-value"},
 		},
 	})
 	require.NoError(t, err)
@@ -747,10 +592,9 @@ func TestDeleteAllAccountsDeletesBackendConfig(t *testing.T) {
 	assert.Empty(t, config.BackendConfig)
 }
 
+//nolint:paralleltest // IsolateCredentials changes process-wide environment variables.
 func TestDeleteAllAccountsReturnsCredentialsDeleteError(t *testing.T) {
-	credsDir := t.TempDir()
-	t.Setenv(PulumiCredentialsPathEnvVar, credsDir)
-	t.Setenv("PULUMI_HOME", "")
+	credsDir := ptesting.IsolateCredentials(t).Home
 
 	credentialsPath := filepath.Join(credsDir, "credentials.json")
 	require.NoError(t, os.Mkdir(credentialsPath, 0o700))
@@ -760,14 +604,13 @@ func TestDeleteAllAccountsReturnsCredentialsDeleteError(t *testing.T) {
 	require.Error(t, err)
 }
 
+//nolint:paralleltest // IsolateCredentials changes process-wide environment variables.
 func TestDeleteAllAccountsReturnsBackendConfigDeleteError(t *testing.T) {
-	credsDir := t.TempDir()
-	t.Setenv(PulumiCredentialsPathEnvVar, credsDir)
-	t.Setenv("PULUMI_HOME", "")
+	credsDir := ptesting.IsolateCredentials(t).Home
 
 	require.NoError(t, StoreCredentials(Credentials{
-		AccessTokens: map[string]string{
-			"https://api.example.com": "token-value",
+		Accounts: map[string]Account{
+			"https://api.example.com": {AccessToken: "token-value"},
 		},
 	}))
 	require.NoError(t, os.Mkdir(filepath.Join(credsDir, "config.json"), 0o700))
@@ -776,19 +619,17 @@ func TestDeleteAllAccountsReturnsBackendConfigDeleteError(t *testing.T) {
 	require.ErrorContains(t, err, "reading")
 }
 
+//nolint:paralleltest // IsolateCredentials changes process-wide environment variables.
 func TestDeleteBackendConfigMissingFile(t *testing.T) {
-	credsDir := t.TempDir()
-	t.Setenv(PulumiCredentialsPathEnvVar, credsDir)
-	t.Setenv("PULUMI_HOME", "")
+	ptesting.IsolateCredentials(t)
 
 	err := deleteBackendConfig("https://api.example.com")
 	require.NoError(t, err)
 }
 
+//nolint:paralleltest // IsolateCredentials changes process-wide environment variables.
 func TestDeleteBackendConfigInvalidJSON(t *testing.T) {
-	credsDir := t.TempDir()
-	t.Setenv(PulumiCredentialsPathEnvVar, credsDir)
-	t.Setenv("PULUMI_HOME", "")
+	credsDir := ptesting.IsolateCredentials(t).Home
 
 	require.NoError(t, os.WriteFile(filepath.Join(credsDir, "config.json"), []byte("{"), 0o600))
 
@@ -797,28 +638,26 @@ func TestDeleteBackendConfigInvalidJSON(t *testing.T) {
 }
 
 func TestDeleteBackendConfigPathError(t *testing.T) {
+	ptesting.IsolateCredentials(t)
 	credsPath := filepath.Join(t.TempDir(), "not-a-directory")
 	require.NoError(t, os.WriteFile(credsPath, []byte("not a directory"), 0o600))
 	t.Setenv(PulumiCredentialsPathEnvVar, credsPath)
-	t.Setenv("PULUMI_HOME", "")
 
 	err := deleteBackendConfig("https://api.example.com")
 	require.ErrorContains(t, err, "failed to create")
 }
 
+//nolint:paralleltest // IsolateCredentials changes process-wide environment variables.
 func TestDeleteAllBackendConfigMissingFile(t *testing.T) {
-	credsDir := t.TempDir()
-	t.Setenv(PulumiCredentialsPathEnvVar, credsDir)
-	t.Setenv("PULUMI_HOME", "")
+	ptesting.IsolateCredentials(t)
 
 	err := deleteAllBackendConfig()
 	require.NoError(t, err)
 }
 
+//nolint:paralleltest // IsolateCredentials changes process-wide environment variables.
 func TestDeleteAllBackendConfigInvalidJSON(t *testing.T) {
-	credsDir := t.TempDir()
-	t.Setenv(PulumiCredentialsPathEnvVar, credsDir)
-	t.Setenv("PULUMI_HOME", "")
+	credsDir := ptesting.IsolateCredentials(t).Home
 
 	require.NoError(t, os.WriteFile(filepath.Join(credsDir, "config.json"), []byte("{"), 0o600))
 
@@ -827,21 +666,18 @@ func TestDeleteAllBackendConfigInvalidJSON(t *testing.T) {
 }
 
 func TestDeleteAllBackendConfigPathError(t *testing.T) {
+	ptesting.IsolateCredentials(t)
 	credsPath := filepath.Join(t.TempDir(), "not-a-directory")
 	require.NoError(t, os.WriteFile(credsPath, []byte("not a directory"), 0o600))
 	t.Setenv(PulumiCredentialsPathEnvVar, credsPath)
-	t.Setenv("PULUMI_HOME", "")
 
 	err := deleteAllBackendConfig()
 	require.ErrorContains(t, err, "failed to create")
 }
 
 func TestAgentPulumiConfigExplicitPathDoesNotFallbackToAgentPath(t *testing.T) {
-	oldAgentPulumiDir := agentPulumiDir
-	agentPulumiDir = filepath.Join(t.TempDir(), ".pulumi")
-	t.Cleanup(func() {
-		agentPulumiDir = oldAgentPulumiDir
-	})
+	agentPulumiDir := ptesting.IsolateCredentials(t).AgentDir
+	t.Setenv(pulumiTestAllowAgentFallbackEnvVar, "true")
 	badCredentialsPath := filepath.Join(t.TempDir(), "not-a-directory")
 	require.NoError(t, os.WriteFile(badCredentialsPath, []byte("not a directory"), 0o600))
 	t.Setenv(PulumiCredentialsPathEnvVar, badCredentialsPath)
@@ -855,14 +691,9 @@ func TestAgentPulumiConfigExplicitPathDoesNotFallbackToAgentPath(t *testing.T) {
 }
 
 func TestAgentPulumiConfigExplicitHomeDoesNotFallbackToAgentPath(t *testing.T) {
-	oldAgentPulumiDir := agentPulumiDir
-	agentPulumiDir = filepath.Join(t.TempDir(), ".pulumi")
-	t.Cleanup(func() {
-		agentPulumiDir = oldAgentPulumiDir
-	})
+	agentPulumiDir := ptesting.IsolateCredentials(t).AgentDir
 	badHomePath := filepath.Join(t.TempDir(), "not-a-directory")
 	require.NoError(t, os.WriteFile(badHomePath, []byte("not a directory"), 0o600))
-	t.Setenv(PulumiCredentialsPathEnvVar, "")
 	t.Setenv("PULUMI_HOME", badHomePath)
 	t.Setenv("CODEX_SANDBOX", "1")
 
@@ -873,13 +704,9 @@ func TestAgentPulumiConfigExplicitHomeDoesNotFallbackToAgentPath(t *testing.T) {
 	require.True(t, os.IsNotExist(err))
 }
 
-//nolint:paralleltest // mutates package global
+//nolint:paralleltest // IsolateCredentials changes process-wide environment variables.
 func TestDeleteExpiredAgentCredentials(t *testing.T) {
-	oldAgentPulumiDir := agentPulumiDir
-	agentPulumiDir = filepath.Join(t.TempDir(), ".pulumi")
-	t.Cleanup(func() {
-		agentPulumiDir = oldAgentPulumiDir
-	})
+	agentPulumiDir := ptesting.IsolateCredentials(t).AgentDir
 	now := time.Now().UTC()
 	expiresAt := now.Add(2 * time.Hour)
 	err := StoreAgentAccount("https://api.example.com", Account{
@@ -946,13 +773,9 @@ func TestDeleteExpiredAgentCredentials(t *testing.T) {
 	require.True(t, os.IsNotExist(err))
 }
 
-//nolint:paralleltest // mutates package global
+//nolint:paralleltest // IsolateCredentials changes process-wide environment variables.
 func TestDeleteExpiredAgentCredentialsDoesNotReuseUnrelatedValidAccount(t *testing.T) {
-	oldAgentPulumiDir := agentPulumiDir
-	agentPulumiDir = filepath.Join(t.TempDir(), ".pulumi")
-	t.Cleanup(func() {
-		agentPulumiDir = oldAgentPulumiDir
-	})
+	ptesting.IsolateCredentials(t)
 	now := time.Now().UTC()
 	expiresAt := now.Add(2 * time.Hour)
 	err := StoreAgentAccount("https://api.example.com", Account{
@@ -978,13 +801,9 @@ func TestDeleteExpiredAgentCredentialsDoesNotReuseUnrelatedValidAccount(t *testi
 	assert.Empty(t, account.AccessToken)
 }
 
-//nolint:paralleltest // mutates package global
+//nolint:paralleltest // IsolateCredentials changes process-wide environment variables.
 func TestDeleteAgentAccount(t *testing.T) {
-	oldAgentPulumiDir := agentPulumiDir
-	agentPulumiDir = filepath.Join(t.TempDir(), ".pulumi")
-	t.Cleanup(func() {
-		agentPulumiDir = oldAgentPulumiDir
-	})
+	ptesting.IsolateCredentials(t)
 
 	err := StoreAgentAccount("https://api.example.com", Account{AccessToken: "token-value"}, true)
 	require.NoError(t, err)
@@ -1026,49 +845,40 @@ func TestDeleteAgentAccount(t *testing.T) {
 	assert.Equal(t, "other-org", config.BackendConfig["https://api.other.example.com"].DefaultOrg)
 }
 
-//nolint:paralleltest // mutates package global
 func TestAgentCredentialsRequireAccessibleTempDir(t *testing.T) {
-	oldAgentPulumiDir := agentPulumiDir
+	ptesting.IsolateCredentials(t)
 	parent := t.TempDir()
-	agentPulumiDir = filepath.Join(parent, "not-a-directory")
-	t.Cleanup(func() {
-		agentPulumiDir = oldAgentPulumiDir
-	})
+	agentPulumiDir := filepath.Join(parent, "not-a-directory")
+	t.Setenv(pulumiTestAgentPulumiDirEnvVar, agentPulumiDir)
 	require.NoError(t, os.WriteFile(agentPulumiDir, []byte("not a directory"), 0o600))
 
 	_, err := GetAgentStoredCredentials()
 	require.ErrorContains(t, err, "agent mode requires read/write access to "+agentPulumiDir)
 }
 
-//nolint:paralleltest // mutates package global
 func TestAgentCredentialsRequireNonSymlinkDir(t *testing.T) {
+	ptesting.IsolateCredentials(t)
 	if runtime.GOOS == "windows" {
 		t.Skip("symlink permissions vary on Windows")
 	}
-	oldAgentPulumiDir := agentPulumiDir
 	parent := t.TempDir()
 	target := filepath.Join(parent, "target")
 	require.NoError(t, os.Mkdir(target, 0o700))
-	agentPulumiDir = filepath.Join(parent, "link")
-	t.Cleanup(func() {
-		agentPulumiDir = oldAgentPulumiDir
-	})
+	agentPulumiDir := filepath.Join(parent, "link")
+	t.Setenv(pulumiTestAgentPulumiDirEnvVar, agentPulumiDir)
 	require.NoError(t, os.Symlink(target, agentPulumiDir))
 
 	_, err := GetAgentStoredCredentials()
 	require.ErrorContains(t, err, "must not be a symlink")
 }
 
-//nolint:paralleltest // mutates package global
 func TestAgentCredentialsRepairInsecurePermissions(t *testing.T) {
+	ptesting.IsolateCredentials(t)
 	if runtime.GOOS == "windows" {
 		t.Skip("chmod permission bits vary on Windows")
 	}
-	oldAgentPulumiDir := agentPulumiDir
-	agentPulumiDir = filepath.Join(t.TempDir(), ".pulumi")
-	t.Cleanup(func() {
-		agentPulumiDir = oldAgentPulumiDir
-	})
+	agentPulumiDir := filepath.Join(t.TempDir(), ".pulumi")
+	t.Setenv(pulumiTestAgentPulumiDirEnvVar, agentPulumiDir)
 	require.NoError(t, os.Mkdir(agentPulumiDir, 0o777))
 
 	dir, err := getAgentPulumiDir()
@@ -1077,17 +887,4 @@ func TestAgentCredentialsRepairInsecurePermissions(t *testing.T) {
 	info, err := os.Stat(agentPulumiDir)
 	require.NoError(t, err)
 	assert.Equal(t, fs.FileMode(0o700), info.Mode().Perm())
-}
-
-func setAgentEnv(t *testing.T) {
-	t.Helper()
-	clearAgentEnv(t)
-	t.Setenv("CODEX_SANDBOX", "1")
-}
-
-func clearAgentEnv(t *testing.T) {
-	t.Helper()
-	for _, name := range agentdetect.DetectionEnvVars() {
-		t.Setenv(name, "")
-	}
 }

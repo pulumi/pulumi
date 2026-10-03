@@ -137,11 +137,12 @@ func (p *LargeProvider) CheckConfig(
 func (p *LargeProvider) Check(
 	_ context.Context, req plugin.CheckRequest,
 ) (plugin.CheckResponse, error) {
+	news := resource.ToResourcePropertyMap(req.NewInputs)
 	if req.URN.Type() != "large:index:String" && req.URN.Type() != "large:index:Map" {
 		return plugin.CheckResponse{Failures: makeCheckFailure("", fmt.Sprintf("invalid URN type: %s", req.URN.Type()))}, nil
 	}
 
-	value, ok := req.News["value"]
+	value, ok := news["value"]
 	if !ok {
 		return plugin.CheckResponse{Failures: makeCheckFailure("value", "missing value")}, nil
 	}
@@ -152,7 +153,7 @@ func (p *LargeProvider) Check(
 	expectedLen := 1
 	if req.URN.Type() == "large:index:Map" {
 		expectedLen = 2
-		depth, ok := req.News["depth"]
+		depth, ok := news["depth"]
 		if !ok {
 			return plugin.CheckResponse{Failures: makeCheckFailure("depth", "missing depth")}, nil
 		}
@@ -160,16 +161,17 @@ func (p *LargeProvider) Check(
 			return plugin.CheckResponse{Failures: makeCheckFailure("depth", "depth is not a number")}, nil
 		}
 	}
-	if len(req.News) != expectedLen {
-		return plugin.CheckResponse{Failures: makeCheckFailure("", fmt.Sprintf("too many properties: %v", req.News))}, nil
+	if len(news) != expectedLen {
+		return plugin.CheckResponse{Failures: makeCheckFailure("", fmt.Sprintf("too many properties: %v", news))}, nil
 	}
 
-	return plugin.CheckResponse{Properties: req.News}, nil
+	return plugin.CheckResponse{Properties: resource.FromResourcePropertyMap(news)}, nil
 }
 
 func (p *LargeProvider) Create(
 	_ context.Context, req plugin.CreateRequest,
 ) (plugin.CreateResponse, error) {
+	properties := resource.ToResourcePropertyMap(req.Properties)
 	if req.URN.Type() != "large:index:String" && req.URN.Type() != "large:index:Map" {
 		return plugin.CreateResponse{
 			Status: resource.StatusUnknown,
@@ -181,7 +183,7 @@ func (p *LargeProvider) Create(
 		id = ""
 	}
 
-	value, ok := req.Properties["value"]
+	value, ok := properties["value"]
 	if !ok {
 		return plugin.CreateResponse{
 			Status: resource.StatusUnknown,
@@ -195,7 +197,7 @@ func (p *LargeProvider) Create(
 	}
 
 	if req.URN.Type() == "large:index:Map" {
-		depth, ok := req.Properties["depth"]
+		depth, ok := properties["depth"]
 		if !ok || !depth.IsNumber() {
 			return plugin.CreateResponse{
 				Status: resource.StatusUnknown,
@@ -212,9 +214,9 @@ func (p *LargeProvider) Create(
 		}
 		return plugin.CreateResponse{
 			ID: resource.ID(id),
-			Properties: resource.PropertyMap{
+			Properties: resource.FromResourcePropertyMap(resource.PropertyMap{
 				"value": built,
-			},
+			}),
 			Status: resource.StatusOK,
 		}, nil
 	}
@@ -227,7 +229,7 @@ func (p *LargeProvider) Create(
 	}
 	return plugin.CreateResponse{
 		ID:         resource.ID(id),
-		Properties: result,
+		Properties: resource.FromResourcePropertyMap(result),
 		Status:     resource.StatusOK,
 	}, nil
 }

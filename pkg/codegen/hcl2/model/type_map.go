@@ -22,7 +22,6 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model/pretty"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
-	"github.com/pulumi/pulumi/sdk/v3/go/pulumi-internal/gsync"
 )
 
 // MapType represents maps from strings to particular element types.
@@ -30,12 +29,12 @@ type MapType struct {
 	// ElementType is the element type of the map.
 	ElementType Type
 
-	cache *gsync.Map[Type, cacheEntry]
+	cache *typeCache
 }
 
 // NewMapType creates a new map type with the given element type.
 func NewMapType(elementType Type) *MapType {
-	return &MapType{ElementType: elementType, cache: &gsync.Map[Type, cacheEntry]{}}
+	return &MapType{ElementType: elementType, cache: &typeCache{}}
 }
 
 func (t *MapType) pretty(seenFormatters map[Type]pretty.Formatter) pretty.Formatter {

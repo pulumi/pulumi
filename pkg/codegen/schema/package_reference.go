@@ -884,13 +884,13 @@ func (p *PartialPackage) Snapshot() (*Package, error) {
 
 func (p *PartialPackage) InterpretPulumiRefs(description string, resolver PulumiRefResolver) (string, error) {
 	p.m.Lock()
-	defer p.m.Unlock()
-
-	if p.def != nil {
-		return p.def.InterpretPulumiRefs(description, resolver)
+	pkg := p.def
+	if pkg == nil {
+		pkg = p.types.pkg
 	}
+	p.m.Unlock()
 
-	return interpretPulumiRefsInDescription(description, p.types, resolver)
+	return pkg.InterpretPulumiRefs(description, resolver)
 }
 
 type partialPackageTypes struct {

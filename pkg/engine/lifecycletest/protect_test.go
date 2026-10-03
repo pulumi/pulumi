@@ -425,7 +425,7 @@ func TestIgnoreProtectReplace(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				DiffF: func(_ context.Context, req plugin.DiffRequest) (plugin.DiffResult, error) {
-					if !req.OldOutputs["A"].DeepEquals(req.NewInputs["A"]) {
+					if !req.OldOutputs.Get("A").Equals(req.NewInputs.Get("A")) {
 						return plugin.DiffResult{
 							ReplaceKeys: []resource.PropertyKey{"A"},
 						}, nil
@@ -449,7 +449,9 @@ func TestIgnoreProtectReplace(t *testing.T) {
 			Inputs:  inputsA,
 			Protect: new(true),
 		})
-		require.NoError(t, err)
+		if err != nil {
+			return err
+		}
 
 		return nil
 	})
@@ -500,7 +502,7 @@ func TestIgnoreProtectDBRChain(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				DiffF: func(_ context.Context, req plugin.DiffRequest) (plugin.DiffResult, error) {
-					if !req.OldOutputs["A"].DeepEquals(req.NewInputs["A"]) {
+					if !req.OldOutputs.Get("A").Equals(req.NewInputs.Get("A")) {
 						return plugin.DiffResult{
 							ReplaceKeys:         []resource.PropertyKey{"A"},
 							DeleteBeforeReplace: true,
@@ -528,7 +530,9 @@ func TestIgnoreProtectDBRChain(t *testing.T) {
 		respA, err := monitor.RegisterResource(resType, "resA", true, deploytest.ResourceOptions{
 			Inputs: inputsA,
 		})
-		require.NoError(t, err)
+		if err != nil {
+			return err
+		}
 
 		inputDepsB := map[resource.PropertyKey][]resource.URN{"A": {respA.URN}}
 		_, err = monitor.RegisterResource(resType, "resB", true, deploytest.ResourceOptions{

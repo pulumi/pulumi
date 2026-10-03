@@ -50,9 +50,10 @@ func newPluginRemoveCmd(pluginContext pluginstorage.Context) *cobra.Command {
 			"NAME are specified, but not VERSION, all versions of the plugin with the\n" +
 			"given KIND and NAME will be removed.  VERSION may be a range.\n" +
 			"\n" +
-			"This removal cannot be undone.  If a deleted plugin is subsequently required\n" +
-			"in order to execute a Pulumi program, it must be re-downloaded and installed\n" +
-			"using the plugin install command.",
+			"Valid values for KIND are: resource, language, analyzer, converter, or tool.\n" +
+			"\n" +
+			"If a deleted plugin is subsequently required to execute a Pulumi program,\n" +
+			"the Pulumi CLI will attempt to download and install it automatically.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			yes = yes || env.SkipConfirmations.Value()
 			opts := display.Options{

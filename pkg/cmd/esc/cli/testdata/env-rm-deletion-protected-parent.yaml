@@ -1,0 +1,32 @@
+parent: pulumi
+run: |
+  pulumi esc env settings set default/test deletion-protected true
+  pulumi esc env rm default/test --yes
+error: exit status 1
+environments:
+  test-user/default/test:
+    values: {}
+
+---
+> pulumi esc env settings set default/test deletion-protected true
+true
+> pulumi esc env rm default/test --yes
+Usage:
+  pulumi esc env remove [<org-name>/][<project-name>/]<environment-name> [path] [flags]
+
+Aliases:
+  remove, rm, delete
+
+Flags:
+  -h, --help   help for remove
+  -y, --yes    Skip confirmation prompts, and proceed with removal anyway
+
+Global Flags:
+      --env string   The name of the environment to operate on.
+
+
+---
+> pulumi esc env settings set default/test deletion-protected true
+> pulumi esc env rm default/test --yes
+Error: cannot delete environment: deletion protection is enabled. Disable deletion protection with 'pulumi env settings set test-user/default/test deletion-protected false' before deleting
+Error: cannot delete environment: deletion protection is enabled. Disable deletion protection with 'pulumi env settings set test-user/default/test deletion-protected false' before deleting

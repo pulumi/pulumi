@@ -239,6 +239,25 @@ func TestResolveTemplateWithoutGuidedFlowUsesTheFullSetOnly(t *testing.T) {
 	assert.Nil(t, got, "--yes takes no template rather than guessing among several")
 }
 
+func TestResolveTemplateYesErrorsOnAmbiguousName(t *testing.T) {
+	t.Parallel()
+
+	src := unsplitSource{all: []cmdTemplates.Template{
+		fakeTemplate{name: "aws-typescript"},
+		fakeRegistryTemplate{fakeTemplate: fakeTemplate{name: "aws-typescript"}, publisher: "pequod"},
+	}}
+
+	noPrompt := func(string, []string, display.Options) (int, error) {
+		t.Error("--yes must never prompt")
+		return 0, nil
+	}
+	got, err := resolveTemplate(
+		src, newArgs{yes: true, templateNameOrURL: "aws-typescript"}, display.Options{}, noPrompt)
+	assert.Nil(t, got)
+	assert.ErrorContains(t, err, `template "aws-typescript" is ambiguous`)
+	assert.ErrorContains(t, err, "rerun without --yes")
+}
+
 func TestSortedForDisplaySortsAndMarksBroken(t *testing.T) {
 	t.Parallel()
 

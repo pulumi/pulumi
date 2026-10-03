@@ -26,6 +26,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 // ByteSourceProvider produces strings containing arbitrary (non-UTF8) bytes. Its resource decodes the
@@ -127,13 +128,14 @@ func (p *ByteSourceProvider) CheckConfig(
 func (p *ByteSourceProvider) Check(
 	_ context.Context, req plugin.CheckRequest,
 ) (plugin.CheckResponse, error) {
+	news := resource.ToResourcePropertyMap(req.NewInputs)
 	if req.URN.Type() != "bytesource:index:Resource" {
 		return plugin.CheckResponse{
 			Failures: makeCheckFailure("", fmt.Sprintf("invalid URN type: %s", req.URN.Type())),
 		}, nil
 	}
 
-	value, ok := req.News["base64"]
+	value, ok := news["base64"]
 	if !ok {
 		return plugin.CheckResponse{
 			Failures: makeCheckFailure("base64", "missing base64"),
@@ -151,25 +153,26 @@ func (p *ByteSourceProvider) Check(
 			}, nil
 		}
 	}
-	if len(req.News) != 1 {
+	if len(news) != 1 {
 		return plugin.CheckResponse{
-			Failures: makeCheckFailure("", fmt.Sprintf("too many properties: %v", req.News)),
+			Failures: makeCheckFailure("", fmt.Sprintf("too many properties: %v", news)),
 		}, nil
 	}
 
-	return plugin.CheckResponse{Properties: req.News}, nil
+	return plugin.CheckResponse{Properties: resource.FromResourcePropertyMap(news)}, nil
 }
 
 func (p *ByteSourceProvider) Create(
 	_ context.Context, req plugin.CreateRequest,
 ) (plugin.CreateResponse, error) {
+	properties := resource.ToResourcePropertyMap(req.Properties)
 	if req.URN.Type() != "bytesource:index:Resource" {
 		return plugin.CreateResponse{
 			Status: resource.StatusUnknown,
 		}, fmt.Errorf("invalid URN type: %s", req.URN.Type())
 	}
 
-	encoded := req.Properties["base64"].StringValue()
+	encoded := properties["base64"].StringValue()
 	decoded, err := base64.StdEncoding.DecodeString(encoded)
 	if err != nil {
 		return plugin.CreateResponse{
@@ -184,10 +187,10 @@ func (p *ByteSourceProvider) Create(
 
 	return plugin.CreateResponse{
 		ID: resource.ID(id),
-		Properties: resource.PropertyMap{
-			"base64": resource.NewProperty(encoded),
-			"bytes":  resource.NewProperty(string(decoded)),
-		},
+		Properties: property.NewMap(map[string]property.Value{
+			"base64": property.New(encoded),
+			"bytes":  property.New(string(decoded)),
+		}),
 		Status: resource.StatusOK,
 	}, nil
 }

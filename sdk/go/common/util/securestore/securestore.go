@@ -72,6 +72,7 @@ var (
 	ErrDeclined    = errors.New("the OS credential store was not unlocked")
 	ErrKeyNotFound = errors.New("no key stored in the OS credential store")
 	ErrWrongKey    = errors.New("data cannot be decrypted with the stored key")
+	ErrKeyCorrupt  = errors.New("stored key is corrupt")
 )
 
 // itemStore persists one opaque string item. Implementations must be
@@ -219,7 +220,7 @@ func (s *Store) GetKey() ([]byte, error) {
 		return nil, err
 	}
 	if len(key) != 32 {
-		return nil, fmt.Errorf("stored key is corrupt (%d bytes, want 32)", len(key))
+		return nil, fmt.Errorf("%w (%d bytes, want 32)", ErrKeyCorrupt, len(key))
 	}
 	return key, nil
 }

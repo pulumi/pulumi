@@ -117,6 +117,8 @@ func RenderDiffEvent(event engine.Event, resourcesErrored int,
 		return ""
 	case engine.StartDebuggingEvent:
 		return ""
+	case engine.UpdateStartedEvent:
+		return ""
 	case engine.ProgressEvent:
 		return ""
 	case engine.ErrorEvent:

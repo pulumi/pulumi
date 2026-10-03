@@ -17,6 +17,7 @@ package org
 import (
 	"errors"
 	"fmt"
+	"slices"
 
 	"github.com/spf13/cobra"
 
@@ -24,6 +25,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -127,6 +129,13 @@ func newOrgSetDefaultCmd() *cobra.Command {
 			if !currentBe.SupportsOrganizations() {
 				return fmt.Errorf("unable to set a default organization for backend type: %s",
 					currentBe.Name())
+			}
+
+			if user, orgs, _, userErr := currentBe.CurrentUser(); userErr == nil &&
+				orgName != user && !slices.Contains(orgs, orgName) {
+				cmdutil.Diag().Warningf(diag.Message("",
+					"you do not appear to be a member of organization %q; "+
+						"commands that use the default organization may fail"), orgName)
 			}
 
 			cloudURL, err := pkgWorkspace.GetCurrentCloudURL(ws, env.Global(), project)

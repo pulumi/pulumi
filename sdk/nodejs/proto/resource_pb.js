@@ -2213,7 +2213,9 @@ proto.pulumirpc.ReadResourceResponse.prototype.toObject = function(opt_includeIn
 proto.pulumirpc.ReadResourceResponse.toObject = function(includeInstance, msg) {
   var f, obj = {
 urn: jspb.Message.getFieldWithDefault(msg, 1, ""),
-properties: (f = msg.getProperties()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f)
+properties: (f = msg.getProperties()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
+result: jspb.Message.getFieldWithDefault(msg, 3, 0),
+unknown: jspb.Message.getBooleanFieldWithDefault(msg, 4, false)
   };
 
   if (includeInstance) {
@@ -2259,6 +2261,14 @@ proto.pulumirpc.ReadResourceResponse.deserializeBinaryFromReader = function(msg,
       reader.readMessage(value,google_protobuf_struct_pb.Struct.deserializeBinaryFromReader);
       msg.setProperties(value);
       break;
+    case 3:
+      var value = /** @type {!proto.pulumirpc.Result} */ (reader.readEnum());
+      msg.setResult(value);
+      break;
+    case 4:
+      var value = /** @type {boolean} */ (reader.readBool());
+      msg.setUnknown(value);
+      break;
     default:
       reader.skipField();
       break;
@@ -2301,6 +2311,20 @@ proto.pulumirpc.ReadResourceResponse.serializeBinaryToWriter = function(message,
       2,
       f,
       google_protobuf_struct_pb.Struct.serializeBinaryToWriter
+    );
+  }
+  f = message.getResult();
+  if (f !== 0.0) {
+    writer.writeEnum(
+      3,
+      f
+    );
+  }
+  f = message.getUnknown();
+  if (f) {
+    writer.writeBool(
+      4,
+      f
     );
   }
 };
@@ -2358,6 +2382,42 @@ proto.pulumirpc.ReadResourceResponse.prototype.clearProperties = function() {
  */
 proto.pulumirpc.ReadResourceResponse.prototype.hasProperties = function() {
   return jspb.Message.getField(this, 2) != null;
+};
+
+
+/**
+ * optional Result result = 3;
+ * @return {!proto.pulumirpc.Result}
+ */
+proto.pulumirpc.ReadResourceResponse.prototype.getResult = function() {
+  return /** @type {!proto.pulumirpc.Result} */ (jspb.Message.getFieldWithDefault(this, 3, 0));
+};
+
+
+/**
+ * @param {!proto.pulumirpc.Result} value
+ * @return {!proto.pulumirpc.ReadResourceResponse} returns this
+ */
+proto.pulumirpc.ReadResourceResponse.prototype.setResult = function(value) {
+  return jspb.Message.setProto3EnumField(this, 3, value);
+};
+
+
+/**
+ * optional bool unknown = 4;
+ * @return {boolean}
+ */
+proto.pulumirpc.ReadResourceResponse.prototype.getUnknown = function() {
+  return /** @type {boolean} */ (jspb.Message.getBooleanFieldWithDefault(this, 4, false));
+};
+
+
+/**
+ * @param {boolean} value
+ * @return {!proto.pulumirpc.ReadResourceResponse} returns this
+ */
+proto.pulumirpc.ReadResourceResponse.prototype.setUnknown = function(value) {
+  return jspb.Message.setProto3BooleanField(this, 4, value);
 };
 
 
@@ -5744,7 +5804,8 @@ parentstacktracehandle: jspb.Message.getFieldWithDefault(msg, 11, ""),
 packageref: jspb.Message.getFieldWithDefault(msg, 9, ""),
 acceptsByteString: jspb.Message.getBooleanFieldWithDefault(msg, 12, false),
 dependsonList: (f = jspb.Message.getRepeatedField(msg, 13)) == null ? undefined : f,
-parent: jspb.Message.getFieldWithDefault(msg, 15, "")
+parent: jspb.Message.getFieldWithDefault(msg, 15, ""),
+acceptOutputValues: jspb.Message.getBooleanFieldWithDefault(msg, 16, false)
   };
 
   if (includeInstance) {
@@ -5841,6 +5902,10 @@ proto.pulumirpc.ResourceInvokeRequest.deserializeBinaryFromReader = function(msg
     case 15:
       var value = /** @type {string} */ (reader.readString());
       msg.setParent(value);
+      break;
+    case 16:
+      var value = /** @type {boolean} */ (reader.readBool());
+      msg.setAcceptOutputValues(value);
       break;
     default:
       reader.skipField();
@@ -5966,6 +6031,13 @@ proto.pulumirpc.ResourceInvokeRequest.serializeBinaryToWriter = function(message
   if (f.length > 0) {
     writer.writeString(
       15,
+      f
+    );
+  }
+  f = message.getAcceptOutputValues();
+  if (f) {
+    writer.writeBool(
+      16,
       f
     );
   }
@@ -6302,6 +6374,24 @@ proto.pulumirpc.ResourceInvokeRequest.prototype.getParent = function() {
  */
 proto.pulumirpc.ResourceInvokeRequest.prototype.setParent = function(value) {
   return jspb.Message.setProto3StringField(this, 15, value);
+};
+
+
+/**
+ * optional bool accept_output_values = 16;
+ * @return {boolean}
+ */
+proto.pulumirpc.ResourceInvokeRequest.prototype.getAcceptOutputValues = function() {
+  return /** @type {boolean} */ (jspb.Message.getBooleanFieldWithDefault(this, 16, false));
+};
+
+
+/**
+ * @param {boolean} value
+ * @return {!proto.pulumirpc.ResourceInvokeRequest} returns this
+ */
+proto.pulumirpc.ResourceInvokeRequest.prototype.setAcceptOutputValues = function(value) {
+  return jspb.Message.setProto3BooleanField(this, 16, value);
 };
 
 
@@ -13244,7 +13334,8 @@ proto.pulumirpc.ResourceMonitorFeature = {
   RESOURCE_MONITOR_FEATURE_BYTE_STRING: 13,
   RESOURCE_MONITOR_FEATURE_INVOKE_DEPENDS_ON: 14,
   RESOURCE_MONITOR_FEATURE_INVOKE_PARENT: 15,
-  RESOURCE_MONITOR_FEATURE_STATE_MIGRATIONS: 16
+  RESOURCE_MONITOR_FEATURE_STATE_MIGRATIONS: 16,
+  RESOURCE_MONITOR_FEATURE_INVOKE_OUTPUT_VALUES: 17
 };
 
 /**
@@ -13252,8 +13343,7 @@ proto.pulumirpc.ResourceMonitorFeature = {
  */
 proto.pulumirpc.Result = {
   SUCCESS: 0,
-  FAIL: 1,
-  SKIP: 2
+  FAIL: 1
 };
 
 goog.object.extend(exports, proto.pulumirpc);

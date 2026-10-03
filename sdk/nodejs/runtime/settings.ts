@@ -19,6 +19,7 @@ import { ComponentResource } from "../resource";
 import { CallbackServer, ICallbackServer } from "./callbacks";
 import { debuggablePromise } from "./debuggable";
 import { getLocalStore, getPackageRefs, getStore } from "./state";
+import { ensureNotInStateMigration } from "./stateMigration";
 
 import * as engrpc from "../proto/engine_grpc_pb";
 import * as engproto from "../proto/engine_pb";
@@ -396,6 +397,9 @@ export async function awaitFeatureSupport(): Promise<void> {
     store.supportsErrorHooks = features.includes(resproto.ResourceMonitorFeature.RESOURCE_MONITOR_FEATURE_ERROR_HOOKS);
     store.supportsInvokeDependsOn = features.includes(
         resproto.ResourceMonitorFeature.RESOURCE_MONITOR_FEATURE_INVOKE_DEPENDS_ON,
+    );
+    store.supportsStateMigrations = features.includes(
+        resproto.ResourceMonitorFeature.RESOURCE_MONITOR_FEATURE_STATE_MIGRATIONS,
     );
 }
 
@@ -847,6 +851,8 @@ export interface RegisterPackageArgs {
  * receive distinct refs.
  */
 export function registerPackage(args: RegisterPackageArgs): Promise<string> {
+    ensureNotInStateMigration("register package");
+
     const key = [
         args.baseProviderName,
         args.baseProviderVersion,

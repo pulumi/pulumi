@@ -1002,7 +1002,6 @@ func TestOutputValueMarshalling(t *testing.T) {
 		{value: map[string]string{}, expected: resource.NewProperty(resource.PropertyMap{})},
 		{value: []string{}, expected: resource.NewProperty([]resource.PropertyValue{})},
 	}
-	//nolint:paralleltest // parallel parent, would require refactor to silence lint
 	for _, value := range values {
 		for _, deps := range [][]resource.URN{nil, {"fakeURN1", "fakeURN2"}} {
 			for _, known := range []bool{true, false} {
@@ -1038,8 +1037,9 @@ func TestOutputValueMarshalling(t *testing.T) {
 					}
 
 					name := fmt.Sprintf("value=%v, known=%v, secret=%v, deps=%v", value, known, secret, deps)
-					//nolint:paralleltest // very small test, parallel parent
 					t.Run(name, func(t *testing.T) {
+						t.Parallel()
+
 						actual, _, _, err := marshalInputs(inputs)
 						require.NoError(t, err)
 						assert.Equal(t, expected, actual)
@@ -1663,8 +1663,7 @@ func (o TreeSizeOutput) ToStringPtrOutput() StringPtrOutput {
 
 func (o TreeSizeOutput) ToStringPtrOutputWithContext(ctx context.Context) StringPtrOutput {
 	return o.ApplyTWithContext(ctx, func(_ context.Context, e TreeSize) *string {
-		v := string(e)
-		return &v
+		return new(string(e))
 	}).(StringPtrOutput)
 }
 
@@ -1701,8 +1700,7 @@ func (o TreeSizePtrOutput) ToStringPtrOutputWithContext(ctx context.Context) Str
 		if e == nil {
 			return nil
 		}
-		v := string(*e)
-		return &v
+		return new(string(*e))
 	}).(StringPtrOutput)
 }
 
@@ -2132,4 +2130,31 @@ func TestResourceReferenceDependencies(t *testing.T) {
 			assert.ElementsMatch(t, tt.expected, deps)
 		})
 	}
+}
+
+// Regression test for https://github.com/pulumi/pulumi/issues/13226: a destination typed as an input
+// interface (e.g. StringInput) accepts any value that satisfies it, including outputs.
+func TestMarshalInputInterfaceDestination(t *testing.T) {
+	t.Parallel()
+
+	type componentOutputs struct {
+		Ref  StringInput      `pulumi:"ref"`
+		Refs []StringInput    `pulumi:"refs"`
+		All  StringArrayInput `pulumi:"all"`
+	}
+
+	v, _, err := marshalInput(componentOutputs{
+		Ref:  String("a").ToStringOutput(),
+		Refs: []StringInput{String("b").ToStringOutput(), String("c")},
+		All:  StringArray{String("d")}.ToStringArrayOutput(),
+	}, reflect.TypeFor[componentOutputs]())
+	require.NoError(t, err)
+	assert.Equal(t, resource.NewProperty(resource.PropertyMap{
+		"ref": resource.NewProperty("a"),
+		"refs": resource.NewProperty([]resource.PropertyValue{
+			resource.NewProperty("b"),
+			resource.NewProperty("c"),
+		}),
+		"all": resource.NewProperty([]resource.PropertyValue{resource.NewProperty("d")}),
+	}), v)
 }

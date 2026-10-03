@@ -29,6 +29,8 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/archive"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/asset"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/zclconf/go-cty/cty"
 	ctyjson "github.com/zclconf/go-cty/cty/json"
 )
@@ -213,110 +215,82 @@ func makePoisonValue(name string) cty.Value {
 	return cty.DynamicVal.Mark(poisonMark{name: name})
 }
 
-func ctyToPropertyValue(value cty.Value) (resource.PropertyValue, error) {
-	var inner func(cty.Value) (resource.PropertyValue, error)
-	inner = func(value cty.Value) (resource.PropertyValue, error) {
-		// First check for dependencies as that will lift this to an output type
-		var dependencies []resource.URN
-		value, dependency := unmark[dependencyMark](value)
-		for dependency != nil {
-			dependencies = append(dependencies, dependency.dependency)
-			value, dependency = unmark[dependencyMark](value)
+func ctyToPropertyValue(value cty.Value) (out property.Value, _ error) {
+	// The accessors below panic on a marked value, so move the marks onto the result.
+	value, marks := value.Unmark()
+	var dependencies []resource.URN
+	for mark := range marks {
+		switch mark := mark.(type) {
+		case poisonMark:
+			return property.Value{}, &poisonError{name: mark.name}
+		case dependencyMark:
+			dependencies = append(dependencies, mark.dependency)
 		}
-		if dependencies != nil {
-			pv, err := inner(value)
+	}
+	_, secret := marks[secretMark{}]
+	defer func() { out = out.WithSecret(secret).WithDependencies(dependencies) }()
+
+	if !value.IsKnown() {
+		return property.New(property.Computed), nil
+	}
+	if value.IsNull() {
+		return property.New(property.Null), nil
+	}
+
+	if value.Type().Equals(assetType) {
+		assetValue, ok := value.EncapsulatedValue().(*asset.Asset)
+		if !ok {
+			return property.Value{}, errors.New("unexpected non-asset capsule value")
+		}
+		return property.New(assetValue), nil
+	}
+
+	if value.Type().Equals(archiveType) {
+		archiveValue, ok := value.EncapsulatedValue().(*archive.Archive)
+		if !ok {
+			return property.Value{}, errors.New("unexpected non-archive capsule value")
+		}
+		return property.New(archiveValue), nil
+	}
+
+	switch value.Type() {
+	case cty.String:
+		return property.New(value.AsString()), nil
+	case cty.Bool:
+		return property.New(value.True()), nil
+	case cty.Number:
+		f, _ := value.AsBigFloat().Float64()
+		return property.New(f), nil
+	}
+
+	switch {
+	case value.Type().IsListType() || value.Type().IsTupleType():
+		elements := make([]property.Value, 0, value.LengthInt())
+		it := value.ElementIterator()
+		for it.Next() {
+			_, v := it.Element()
+			pv, err := ctyToPropertyValue(v)
 			if err != nil {
-				return resource.PropertyValue{}, err
+				return property.Value{}, err
 			}
-			return resource.NewProperty(resource.Output{
-				Element:      pv,
-				Known:        true,
-				Dependencies: dependencies,
-			}), nil
+			elements = append(elements, pv)
 		}
-
-		if !value.IsKnown() {
-			return resource.NewProperty(resource.Computed{Element: resource.NewProperty("")}), nil
-		}
-		if value.IsNull() {
-			return resource.NewNullProperty(), nil
-		}
-
-		if value.Type().Equals(assetType) {
-			assetValue, ok := value.EncapsulatedValue().(*asset.Asset)
-			if !ok {
-				return resource.PropertyValue{}, errors.New("unexpected non-asset capsule value")
+		return property.New(elements), nil
+	case value.Type().IsMapType() || value.Type().IsObjectType():
+		result := make(map[string]property.Value, value.LengthInt())
+		it := value.ElementIterator()
+		for it.Next() {
+			k, v := it.Element()
+			pv, err := ctyToPropertyValue(v)
+			if err != nil {
+				return property.Value{}, err
 			}
-			return resource.NewProperty(assetValue), nil
+			result[k.AsString()] = pv
 		}
-
-		if value.Type().Equals(archiveType) {
-			archiveValue, ok := value.EncapsulatedValue().(*archive.Archive)
-			if !ok {
-				return resource.PropertyValue{}, errors.New("unexpected non-archive capsule value")
-			}
-			return resource.NewProperty(archiveValue), nil
-		}
-
-		switch value.Type() {
-		case cty.String:
-			pv := resource.NewProperty(value.AsString())
-			return pv, nil
-		case cty.Bool:
-			pv := resource.NewProperty(value.True())
-			return pv, nil
-		case cty.Number:
-			f, _ := value.AsBigFloat().Float64()
-			pv := resource.NewProperty(f)
-			return pv, nil
-		}
-
-		switch {
-		case value.Type().IsListType() || value.Type().IsTupleType():
-			var elements []resource.PropertyValue
-			it := value.ElementIterator()
-			for it.Next() {
-				_, v := it.Element()
-				pv, err := ctyToPropertyValue(v)
-				if err != nil {
-					return resource.PropertyValue{}, err
-				}
-				elements = append(elements, pv)
-			}
-			pv := resource.NewProperty(elements)
-			return pv, nil
-		case value.Type().IsMapType() || value.Type().IsObjectType():
-			result := resource.PropertyMap{}
-			it := value.ElementIterator()
-			for it.Next() {
-				k, v := it.Element()
-				pv, err := ctyToPropertyValue(v)
-				if err != nil {
-					return resource.PropertyValue{}, err
-				}
-				result[resource.PropertyKey(k.AsString())] = pv
-			}
-			pv := resource.NewProperty(result)
-			return pv, nil
-		}
-
-		return resource.PropertyValue{}, fmt.Errorf("unsupported value type %s", value.Type().FriendlyName())
+		return property.New(result), nil
 	}
 
-	value, poison := unmark[poisonMark](value)
-	if poison != nil {
-		return resource.PropertyValue{}, &poisonError{name: poison.name}
-	}
-
-	value, secret := unmark[secretMark](value)
-	pv, err := inner(value)
-	if err != nil {
-		return resource.PropertyValue{}, err
-	}
-	if secret != nil {
-		return resource.MakeSecret(pv), nil
-	}
-	return pv, nil
+	return property.Value{}, fmt.Errorf("unsupported value type %s", value.Type().FriendlyName())
 }
 
 // applySchemaInputs returns a new PropertyMap derived from inputs by, for each schema
@@ -331,8 +305,8 @@ func ctyToPropertyValue(value cty.Value) (resource.PropertyValue, error) {
 // the snapshot, like the language conformance suite). User-supplied inner secrets are
 // preserved untouched.
 func applySchemaInputs(
-	inputs resource.PropertyMap, properties []*schema.Property,
-) (resource.PropertyMap, error) {
+	inputs property.Map, properties []*schema.Property,
+) (property.Map, error) {
 	return applySchemaInputsInner(inputs, properties, false)
 }
 
@@ -347,134 +321,107 @@ func applySchemaInputs(
 // Only the structural set of attributes is materialised; values returned by the provider
 // are not transformed. Properties whose key does not match any schema property pass
 // through unchanged.
-func fillSchemaOutputs(outputs resource.PropertyMap, properties []*schema.Property, fillUnknown bool) {
-	if outputs == nil {
-		return
-	}
+func fillSchemaOutputs(outputs property.Map, properties []*schema.Property, fillUnknown bool) property.Map {
 	for _, prop := range properties {
-		key := resource.PropertyKey(prop.Name)
-		v, ok := outputs[key]
+		key := prop.Name
+		v, ok := outputs.GetOk(key)
 		if !ok {
 			if fillUnknown {
-				outputs[key] = resource.NewProperty(resource.Computed{Element: resource.NewProperty("")})
+				outputs = outputs.Set(key, property.New(property.Computed).WithSecret(prop.Secret))
 			} else {
-				outputs[key] = resource.NewNullProperty()
-			}
-			if prop.Secret {
-				outputs[key] = resource.MakeSecret(outputs[key])
+				outputs = outputs.Set(key, property.New(property.Null).WithSecret(prop.Secret))
 			}
 			continue
 		}
-		fillSchemaOutputValue(v, prop.Type, fillUnknown)
+		outputs = outputs.Set(key, fillSchemaOutputValue(v, prop.Type, fillUnknown))
 	}
+	return outputs
 }
 
-func fillSchemaOutputValue(value resource.PropertyValue, targetType schema.Type, fillUnknown bool) {
-	if value.IsSecret() {
-		fillSchemaOutputValue(value.SecretValue().Element, targetType, fillUnknown)
-		return
-	}
-	if value.IsOutput() {
-		out := value.OutputValue()
-		if out.Known {
-			fillSchemaOutputValue(out.Element, targetType, fillUnknown)
-		}
-		return
-	}
+func fillSchemaOutputValue(value property.Value, targetType schema.Type, fillUnknown bool) property.Value {
 	switch t := codegen.UnwrapType(targetType).(type) {
 	case *schema.ObjectType:
-		if value.IsObject() {
-			fillSchemaOutputs(value.ObjectValue(), t.Properties, fillUnknown)
+		if value.IsMap() {
+			return property.WithGoValue(value, fillSchemaOutputs(value.AsMap(), t.Properties, fillUnknown))
 		}
 	case *schema.ArrayType:
 		if value.IsArray() {
-			for _, elem := range value.ArrayValue() {
-				fillSchemaOutputValue(elem, t.ElementType, fillUnknown)
+			array := value.AsArray()
+			arr := make([]property.Value, array.Len())
+			for i, elem := range array.All {
+				arr[i] = fillSchemaOutputValue(elem, t.ElementType, fillUnknown)
 			}
+			return property.WithGoValue(value, arr)
 		}
 	case *schema.MapType:
-		if value.IsObject() {
-			for _, elem := range value.ObjectValue() {
-				fillSchemaOutputValue(elem, t.ElementType, fillUnknown)
+		if value.IsMap() {
+			m := value.AsMap().AsMap()
+			for k, elem := range m {
+				m[k] = fillSchemaOutputValue(elem, t.ElementType, fillUnknown)
 			}
+			return property.WithGoValue(value, m)
 		}
 	}
+	return value
 }
 
 func applySchemaInputsInner(
-	inputs resource.PropertyMap, properties []*schema.Property, insideSecret bool,
-) (resource.PropertyMap, error) {
-	converted := make(resource.PropertyMap, len(inputs))
-	seen := make(map[resource.PropertyKey]struct{}, len(properties))
+	inputs property.Map, properties []*schema.Property, insideSecret bool,
+) (property.Map, error) {
+	converted := make(map[string]property.Value, inputs.Len())
+	seen := make(map[string]struct{}, len(properties))
 
 	for _, prop := range properties {
-		key := resource.PropertyKey(prop.Name)
+		key := prop.Name
 		seen[key] = struct{}{}
 
 		// Anything nested below a secret-marked property is itself "inside a secret".
 		nestedInsideSecret := insideSecret || prop.Secret
 
-		var val resource.PropertyValue
-		if input, hasInput := inputs[key]; hasInput {
+		var val property.Value
+		if input, hasInput := inputs.GetOk(key); hasInput {
 			v, err := applySchemaInputConversion(input, prop.Type, nestedInsideSecret)
 			if err != nil {
-				return nil, fmt.Errorf("property %q: %w", key, err)
+				return property.Map{}, fmt.Errorf("property %q: %w", key, err)
 			}
 			val = v
 		} else if prop.DefaultValue != nil {
-			val = resource.NewPropertyValue(prop.DefaultValue.Value)
+			var err error
+			val, err = property.Any(prop.DefaultValue.Value)
+			contract.AssertNoErrorf(err, "invalid default value of type %T", prop.DefaultValue.Value)
 		} else {
 			continue
 		}
 
 		// Only add a fresh secret marker at the outermost level — once inside a secret,
 		// schema-driven marks would just duplicate the outer wrap.
-		if !insideSecret && prop.Secret && !val.IsSecret() {
-			val = resource.MakeSecret(val)
+		if !insideSecret && prop.Secret && !val.Secret() {
+			val = val.WithSecret(true)
 		}
 		converted[key] = val
 	}
 
-	for key, value := range inputs {
+	for key, value := range inputs.All {
 		if _, ok := seen[key]; !ok {
 			converted[key] = value
 		}
 	}
 
-	return converted, nil
+	return property.NewMap(converted), nil
 }
 
 func applySchemaInputConversion(
-	value resource.PropertyValue, targetType schema.Type, insideSecret bool,
-) (resource.PropertyValue, error) {
+	value property.Value, targetType schema.Type, insideSecret bool,
+) (out property.Value, _ error) {
 	targetType = codegen.UnwrapType(targetType)
 
-	if value.IsSecret() {
+	if value.Secret() {
+		insideSecret = true
 		// Anything inside the secret wrap is by definition "inside a secret".
-		converted, err := applySchemaInputConversion(value.SecretValue().Element, targetType, true)
-		if err != nil {
-			return resource.PropertyValue{}, err
-		}
-		return resource.MakeSecret(converted), nil
+		defer func() { out = out.WithSecret(true) }()
 	}
-
-	if value.IsOutput() {
-		out := value.OutputValue()
-		copied := resource.Output{
-			Element:      out.Element,
-			Known:        out.Known,
-			Secret:       out.Secret,
-			Dependencies: out.Dependencies,
-		}
-
-		if copied.Known {
-			converted, err := applySchemaInputConversion(copied.Element, targetType, insideSecret || out.Secret)
-			if err != nil {
-				return resource.PropertyValue{}, err
-			}
-			copied.Element = converted
-		}
-		return resource.NewProperty(copied), nil
+	if d := value.Dependencies(); len(d) > 0 {
+		defer func() { out = out.WithDependencies(append(d, out.Dependencies()...)) }()
 	}
 
 	if value.IsComputed() {
@@ -486,53 +433,53 @@ func applySchemaInputConversion(
 		if !value.IsArray() {
 			return value, nil
 		}
-		arr := value.ArrayValue()
-		converted := make([]resource.PropertyValue, len(arr))
-		for i, elem := range arr {
+		arr := value.AsArray()
+		converted := make([]property.Value, arr.Len())
+		for i, elem := range arr.All {
 			v, err := applySchemaInputConversion(elem, t.ElementType, insideSecret)
 			if err != nil {
-				return resource.PropertyValue{}, fmt.Errorf("array index %d: %w", i, err)
+				return property.Value{}, fmt.Errorf("array index %d: %w", i, err)
 			}
 			converted[i] = v
 		}
-		return resource.NewProperty(converted), nil
+		return property.New(converted), nil
 	case *schema.MapType:
-		if !value.IsObject() {
+		if !value.IsMap() {
 			return value, nil
 		}
-		obj := value.ObjectValue()
-		converted := make(resource.PropertyMap, len(obj))
-		for key, elem := range obj {
+		obj := value.AsMap()
+		converted := make(map[string]property.Value, obj.Len())
+		for key, elem := range obj.All {
 			v, err := applySchemaInputConversion(elem, t.ElementType, insideSecret)
 			if err != nil {
-				return resource.PropertyValue{}, fmt.Errorf("map key %q: %w", key, err)
+				return property.Value{}, fmt.Errorf("map key %q: %w", key, err)
 			}
 			converted[key] = v
 		}
-		return resource.NewProperty(converted), nil
+		return property.New(converted), nil
 	case *schema.ObjectType:
-		if !value.IsObject() {
+		if !value.IsMap() {
 			return value, nil
 		}
 		// Recurse with the full helper so nested objects also fill in schema defaults and
 		// mark schema-secret properties. Pass insideSecret through so the inner pass knows
 		// to suppress redundant marks when the outer is already a secret.
-		converted, err := applySchemaInputsInner(value.ObjectValue(), t.Properties, insideSecret)
+		converted, err := applySchemaInputsInner(value.AsMap(), t.Properties, insideSecret)
 		if err != nil {
-			return resource.PropertyValue{}, err
+			return property.Value{}, err
 		}
-		return resource.NewProperty(converted), nil
+		return property.New(converted), nil
 	case *schema.UnionType:
 		// Prefer the original value if it already matches the target type, otherwise try to convert to each element
 		// type in turn.
-		var first *resource.PropertyValue
+		var first *property.Value
 		var errs []error
 		for _, elementType := range t.ElementTypes {
 			converted, err := applySchemaInputConversion(value, elementType, insideSecret)
 			if err != nil {
 				errs = append(errs, err)
 			} else {
-				if converted.DeepEquals(value) {
+				if converted.Equals(value) {
 					return value, nil
 				}
 				if first == nil {
@@ -546,7 +493,7 @@ func applySchemaInputConversion(
 			return *first, nil
 		}
 		// Else return what errors we saw in trying to convert to each element type, if any.
-		return resource.PropertyValue{}, fmt.Errorf("cannot convert to any type in union: %v", errs)
+		return property.Value{}, fmt.Errorf("cannot convert to any type in union: %v", errs)
 	case *schema.ResourceType:
 		return value, nil
 	}
@@ -557,32 +504,34 @@ func applySchemaInputConversion(
 			return value, nil
 		}
 		if value.IsString() {
-			converted, err := strconv.ParseBool(value.StringValue())
+			converted, err := strconv.ParseBool(value.AsString())
 			if err != nil {
-				return value, nil
+				return property.Value{}, fmt.Errorf(
+					"cannot convert string %q to bool: %w", value.AsString(), err)
 			}
-			return resource.NewProperty(converted), nil
+			return property.New(converted), nil
 		}
 	case schema.IntType, schema.NumberType:
 		if value.IsNumber() {
 			return value, nil
 		}
 		if value.IsString() {
-			converted, err := strconv.ParseFloat(value.StringValue(), 64)
+			converted, err := strconv.ParseFloat(value.AsString(), 64)
 			if err != nil {
-				return value, nil
+				return property.Value{}, fmt.Errorf(
+					"cannot convert string %q to number: %w", value.AsString(), err)
 			}
-			return resource.NewProperty(converted), nil
+			return property.New(converted), nil
 		}
 	case schema.StringType:
 		if value.IsString() {
 			return value, nil
 		}
 		if value.IsBool() {
-			return resource.NewProperty(strconv.FormatBool(value.BoolValue())), nil
+			return property.New(strconv.FormatBool(value.AsBool())), nil
 		}
 		if value.IsNumber() {
-			return resource.NewProperty(strconv.FormatFloat(value.NumberValue(), 'f', -1, 64)), nil
+			return property.New(strconv.FormatFloat(value.AsNumber(), 'f', -1, 64)), nil
 		}
 	}
 
@@ -592,55 +541,40 @@ func applySchemaInputConversion(
 
 func propertyValueToCty(
 	ctx context.Context,
-	getResource func(context.Context, resource.ResourceReference) (resource.PropertyMap, error),
-	value resource.PropertyValue,
-) (cty.Value, error) {
+	getResource func(context.Context, property.ResourceReference) (property.Map, error),
+	value property.Value,
+) (out cty.Value, _ error) {
+	if value.Secret() {
+		defer func() { out = out.Mark(secretMark{}) }()
+	}
+	if d := value.Dependencies(); len(d) > 0 {
+		defer func() {
+			for _, dep := range d {
+				out = out.Mark(dependencyMark{dependency: dep})
+			}
+		}()
+	}
 	switch {
 	case value.IsAsset():
-		a := value.AssetValue()
+		a := value.AsAsset()
 		return cty.CapsuleVal(assetType, a), nil
 	case value.IsArchive():
-		a := value.ArchiveValue()
+		a := value.AsArchive()
 		return cty.CapsuleVal(archiveType, a), nil
-	case value.IsSecret():
-		ctyVal, err := propertyValueToCty(ctx, getResource, value.SecretValue().Element)
-		if err != nil {
-			return cty.NilVal, err
-		}
-		return ctyVal.Mark(secretMark{}), nil
-	case value.IsOutput():
-		output := value.OutputValue()
-		var ctyVal cty.Value
-		if !output.Known {
-			ctyVal = cty.UnknownVal(cty.DynamicPseudoType)
-		} else {
-			var err error
-			ctyVal, err = propertyValueToCty(ctx, getResource, output.Element)
-			if err != nil {
-				return cty.NilVal, err
-			}
-		}
-		if output.Secret {
-			ctyVal = ctyVal.Mark(secretMark{})
-		}
-		for _, dep := range output.Dependencies {
-			ctyVal = ctyVal.Mark(dependencyMark{dependency: dep})
-		}
-		return ctyVal, nil
 	case value.IsComputed():
 		return cty.UnknownVal(cty.DynamicPseudoType), nil
 	case value.IsNull():
 		return cty.NullVal(cty.DynamicPseudoType), nil
 	case value.IsBool():
-		return cty.BoolVal(value.BoolValue()), nil
+		return cty.BoolVal(value.AsBool()), nil
 	case value.IsString():
-		return cty.StringVal(value.StringValue()), nil
+		return cty.StringVal(value.AsString()), nil
 	case value.IsNumber():
-		return cty.NumberFloatVal(value.NumberValue()), nil
+		return cty.NumberFloatVal(value.AsNumber()), nil
 	case value.IsArray():
-		array := value.ArrayValue()
-		vals := make([]cty.Value, len(array))
-		for i, elem := range array {
+		array := value.AsArray()
+		vals := make([]cty.Value, array.Len())
+		for i, elem := range array.All {
 			ctyElem, err := propertyValueToCty(ctx, getResource, elem)
 			if err != nil {
 				return cty.NilVal, err
@@ -657,27 +591,27 @@ func propertyValueToCty(
 			}
 		}
 		return cty.ListVal(vals), nil
-	case value.IsObject():
-		obj := value.ObjectValue()
+	case value.IsMap():
+		obj := value.AsMap()
 		vals := map[string]cty.Value{}
-		for k, v := range obj {
+		for k, v := range obj.All {
 			ctyVal, err := propertyValueToCty(ctx, getResource, v)
 			if err != nil {
 				return cty.NilVal, err
 			}
-			vals[string(k)] = ctyVal
+			vals[k] = ctyVal
 		}
 		return cty.ObjectVal(vals), nil
 	case value.IsResourceReference():
 		// We need to expand the resource into a resource object
-		ref := value.ResourceReferenceValue()
+		ref := value.AsResourceReference()
 
 		outputs, err := getResource(ctx, ref)
 		if err != nil {
 			return cty.NilVal, fmt.Errorf("get resource for %s: %w", ref.URN, err)
 		}
 
-		return propertyValueToCty(ctx, getResource, resource.NewProperty(outputs))
+		return propertyValueToCty(ctx, getResource, property.New(outputs))
 	}
 
 	return cty.NilVal, errors.New("unsupported property value")

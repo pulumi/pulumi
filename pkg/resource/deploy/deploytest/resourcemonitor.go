@@ -449,6 +449,11 @@ type ResourceOptions struct {
 	DisableResourceReferences bool
 	GrpcRequestHeaders        map[string]string
 
+	// KeepOutputValues, if set, preserves Output property values on the marshalled inputs sent to the resource
+	// monitor. Real SDKs only do this for remote (component) resources today, but the test harness allows it for
+	// custom resources too so we can exercise engine paths that handle unusual SDK behaviour.
+	KeepOutputValues bool
+
 	Transforms           []*pulumirpc.Callback
 	StateMigrations      []*pulumirpc.Callback
 	ResourceHookBindings ResourceHookBindings
@@ -495,7 +500,7 @@ func (rm *ResourceMonitor) RegisterResource(t tokens.Type, name string, custom b
 		KeepUnknowns:     true,
 		KeepSecrets:      rm.supportsSecrets,
 		KeepResources:    rm.supportsResourceReferences,
-		KeepOutputValues: opts.Remote,
+		KeepOutputValues: opts.Remote || opts.KeepOutputValues,
 		KeepByteString:   true,
 	})
 	if err != nil {
@@ -734,6 +739,12 @@ type InvokeOptions struct {
 	Parent resource.URN
 	// DependsOn is the set of dependency URNs to declare on the request.
 	DependsOn []resource.URN
+	// KeepArgOutputValues preserves OutputValues in `inputs` when marshalling the request. Simulates an SDK that
+	// sends OutputValues in Invoke args.
+	KeepArgOutputValues bool
+	// AcceptOutputValues sets `accept_output_values` on the request. Simulates an SDK that accepts OutputValues in
+	// the response.
+	AcceptOutputValues bool
 }
 
 // InvokeResult is the full result of an invoke, including the unknown marker that the plain Invoke wrapper discards.
@@ -767,13 +778,20 @@ func (rm *ResourceMonitor) InvokeWithResult(tok tokens.ModuleMember, inputs reso
 		if o.DependsOn != nil {
 			opts.DependsOn = o.DependsOn
 		}
+		if o.KeepArgOutputValues {
+			opts.KeepArgOutputValues = true
+		}
+		if o.AcceptOutputValues {
+			opts.AcceptOutputValues = true
+		}
 	}
 
 	// marshal inputs
 	ins, err := plugin.MarshalProperties(inputs, plugin.MarshalOptions{
-		KeepUnknowns:  true,
-		KeepResources: true,
-		KeepSecrets:   true,
+		KeepUnknowns:     true,
+		KeepResources:    true,
+		KeepSecrets:      true,
+		KeepOutputValues: opts.KeepArgOutputValues,
 	})
 	if err != nil {
 		return nil, err
@@ -786,13 +804,14 @@ func (rm *ResourceMonitor) InvokeWithResult(tok tokens.ModuleMember, inputs reso
 
 	// submit request
 	resp, err := rm.resmon.Invoke(context.Background(), &pulumirpc.ResourceInvokeRequest{
-		Tok:        string(tok),
-		Provider:   provider,
-		Parent:     string(opts.Parent),
-		Args:       ins,
-		Version:    version,
-		PackageRef: packageRef,
-		DependsOn:  dependsOn,
+		Tok:                string(tok),
+		Provider:           provider,
+		Parent:             string(opts.Parent),
+		Args:               ins,
+		Version:            version,
+		PackageRef:         packageRef,
+		DependsOn:          dependsOn,
+		AcceptOutputValues: opts.AcceptOutputValues,
 	})
 	if err != nil {
 		return nil, err

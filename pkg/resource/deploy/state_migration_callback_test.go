@@ -78,7 +78,7 @@ func TestRunStateMigrationCallbacksRejectsInvalidAccounting(t *testing.T) {
 				return state, tt.successors, err
 			}
 			_, err := runStateMigrationCallbacks(
-				t.Context(), rootURN, []StateMigrationFunction{callback}, original)
+				t.Context(), rootURN, []StateMigrationFunction{callback}, original, nil)
 			require.ErrorContains(t, err, tt.want)
 		})
 	}

@@ -77,7 +77,13 @@ func (prov *testProvider) CheckConfig(
 func (prov *testProvider) DiffConfig(
 	_ context.Context, req plugin.DiffConfigRequest,
 ) (plugin.DiffConfigResponse, error) {
-	return prov.diffConfig(req.URN, req.OldOutputs, req.NewInputs, req.AllowUnknowns, req.IgnoreChanges)
+	return prov.diffConfig(
+		req.URN,
+		resource.ToResourcePropertyMap(req.OldOutputs),
+		resource.ToResourcePropertyMap(req.NewInputs),
+		req.AllowUnknowns,
+		req.IgnoreChanges,
+	)
 }
 
 func (prov *testProvider) Configure(
@@ -321,12 +327,12 @@ func TestCRUD(t *testing.T) {
 
 		// Check
 		check, err := r.Check(t.Context(), plugin.CheckRequest{
-			URN:  urn,
-			Olds: olds,
-			News: news,
+			URN:       urn,
+			OldInputs: resource.FromResourcePropertyMap(olds),
+			NewInputs: resource.FromResourcePropertyMap(news),
 		})
 		require.NoError(t, err)
-		assert.Equal(t, news, check.Properties)
+		assert.Equal(t, news, resource.ToResourcePropertyMap(check.Properties))
 		assert.Empty(t, check.Failures)
 
 		// Since this is not a preview, the provider should not yet be configured.
@@ -346,7 +352,7 @@ func TestCRUD(t *testing.T) {
 		assert.NotEqual(t, "", create.ID)
 		assert.NotEqual(t, UnconfiguredID, create.ID)
 		assert.NotEqual(t, UnknownID, create.ID)
-		assert.Equal(t, resource.PropertyMap{}, create.Properties)
+		assert.Equal(t, property.Map{}, create.Properties)
 		assert.Equal(t, resource.StatusOK, create.Status)
 
 		p2, ok := r.GetProvider(mustNewReference(urn, create.ID))
@@ -367,12 +373,12 @@ func TestCRUD(t *testing.T) {
 
 		// Check
 		check, err := r.Check(t.Context(), plugin.CheckRequest{
-			URN:  urn,
-			Olds: olds,
-			News: news,
+			URN:       urn,
+			OldInputs: resource.FromResourcePropertyMap(olds),
+			NewInputs: resource.FromResourcePropertyMap(news),
 		})
 		require.NoError(t, err)
-		assert.Equal(t, news, check.Properties)
+		assert.Equal(t, news, resource.ToResourcePropertyMap(check.Properties))
 		assert.Empty(t, check.Failures)
 
 		// Since this is not a preview, the provider should not yet be configured.
@@ -385,8 +391,8 @@ func TestCRUD(t *testing.T) {
 		diff, err := r.Diff(t.Context(), plugin.DiffRequest{
 			URN:        urn,
 			ID:         id,
-			OldOutputs: olds,
-			NewInputs:  news,
+			OldOutputs: resource.FromResourcePropertyMap(olds),
+			NewInputs:  resource.FromResourcePropertyMap(news),
 		})
 		require.NoError(t, err)
 		assert.Equal(t, plugin.DiffResult{Changes: plugin.DiffNone}, diff)
@@ -400,12 +406,12 @@ func TestCRUD(t *testing.T) {
 		update, err := r.Update(t.Context(), plugin.UpdateRequest{
 			URN:        urn,
 			ID:         id,
-			OldOutputs: olds,
+			OldOutputs: resource.FromResourcePropertyMap(olds),
 			NewInputs:  check.Properties,
 			Timeout:    timeout,
 		})
 		require.NoError(t, err)
-		assert.Equal(t, resource.PropertyMap{}, update.Properties)
+		assert.Equal(t, property.Map{}, update.Properties)
 		assert.Equal(t, resource.StatusOK, update.Status)
 
 		p3, ok := r.GetProvider(mustNewReference(urn, id))
@@ -427,8 +433,8 @@ func TestCRUD(t *testing.T) {
 		resp, err := r.Delete(t.Context(), plugin.DeleteRequest{
 			URN:     urn,
 			ID:      id,
-			Inputs:  resource.PropertyMap{},
-			Outputs: resource.PropertyMap{},
+			Inputs:  property.Map{},
+			Outputs: property.Map{},
 			Timeout: timeout,
 		})
 		require.NoError(t, err)
@@ -506,12 +512,12 @@ func TestCRUDPreview(t *testing.T) {
 
 		// Check
 		check, err := r.Check(t.Context(), plugin.CheckRequest{
-			URN:  urn,
-			Olds: olds,
-			News: news,
+			URN:       urn,
+			OldInputs: resource.FromResourcePropertyMap(olds),
+			NewInputs: resource.FromResourcePropertyMap(news),
 		})
 		require.NoError(t, err)
-		assert.Equal(t, news, check.Properties)
+		assert.Equal(t, news, resource.ToResourcePropertyMap(check.Properties))
 		assert.Empty(t, check.Failures)
 
 		// The provider should not be configured: configuration will occur during the previewed Create.
@@ -531,12 +537,12 @@ func TestCRUDPreview(t *testing.T) {
 
 		// Check
 		check, err := r.Check(t.Context(), plugin.CheckRequest{
-			URN:  urn,
-			Olds: olds,
-			News: news,
+			URN:       urn,
+			OldInputs: resource.FromResourcePropertyMap(olds),
+			NewInputs: resource.FromResourcePropertyMap(news),
 		})
 		require.NoError(t, err)
-		assert.Equal(t, news, check.Properties)
+		assert.Equal(t, news, resource.ToResourcePropertyMap(check.Properties))
 		assert.Empty(t, check.Failures)
 
 		// The provider should remain unconfigured.
@@ -549,8 +555,8 @@ func TestCRUDPreview(t *testing.T) {
 		diff, err := r.Diff(t.Context(), plugin.DiffRequest{
 			URN:        urn,
 			ID:         id,
-			OldOutputs: olds,
-			NewInputs:  news,
+			OldOutputs: resource.FromResourcePropertyMap(olds),
+			NewInputs:  resource.FromResourcePropertyMap(news),
 		})
 		require.NoError(t, err)
 		assert.Equal(t, plugin.DiffResult{Changes: plugin.DiffNone}, diff)
@@ -573,12 +579,12 @@ func TestCRUDPreview(t *testing.T) {
 
 		// Check
 		check, err := r.Check(t.Context(), plugin.CheckRequest{
-			URN:  urn,
-			Olds: olds,
-			News: news,
+			URN:       urn,
+			OldInputs: resource.FromResourcePropertyMap(olds),
+			NewInputs: resource.FromResourcePropertyMap(news),
 		})
 		require.NoError(t, err)
-		assert.Equal(t, news, check.Properties)
+		assert.Equal(t, news, resource.ToResourcePropertyMap(check.Properties))
 		assert.Empty(t, check.Failures)
 
 		// The provider should remain unconfigured.
@@ -591,8 +597,8 @@ func TestCRUDPreview(t *testing.T) {
 		diff, err := r.Diff(t.Context(), plugin.DiffRequest{
 			URN:        urn,
 			ID:         id,
-			OldOutputs: olds,
-			NewInputs:  news,
+			OldOutputs: resource.FromResourcePropertyMap(olds),
+			NewInputs:  resource.FromResourcePropertyMap(news),
 		})
 		require.NoError(t, err)
 		assert.True(t, diff.Replace())
@@ -619,13 +625,13 @@ func TestCRUDNoProviders(t *testing.T) {
 
 	// Check
 	check, err := r.Check(t.Context(), plugin.CheckRequest{
-		URN:  urn,
-		Olds: olds,
-		News: news,
+		URN:       urn,
+		OldInputs: resource.FromResourcePropertyMap(olds),
+		NewInputs: resource.FromResourcePropertyMap(news),
 	})
 	assert.Error(t, err)
 	assert.Empty(t, check.Failures)
-	assert.Nil(t, check.Properties)
+	assert.Equal(t, property.Map{}, check.Properties)
 }
 
 func TestCRUDWrongPackage(t *testing.T) {
@@ -645,13 +651,13 @@ func TestCRUDWrongPackage(t *testing.T) {
 
 	// Check
 	check, err := r.Check(t.Context(), plugin.CheckRequest{
-		URN:  urn,
-		Olds: olds,
-		News: news,
+		URN:       urn,
+		OldInputs: resource.FromResourcePropertyMap(olds),
+		NewInputs: resource.FromResourcePropertyMap(news),
 	})
 	assert.Error(t, err)
 	assert.Empty(t, check.Failures)
-	assert.Nil(t, check.Properties)
+	assert.Equal(t, property.Map{}, check.Properties)
 }
 
 func TestCRUDWrongVersion(t *testing.T) {
@@ -671,13 +677,13 @@ func TestCRUDWrongVersion(t *testing.T) {
 
 	// Check
 	check, err := r.Check(t.Context(), plugin.CheckRequest{
-		URN:  urn,
-		Olds: olds,
-		News: news,
+		URN:       urn,
+		OldInputs: resource.FromResourcePropertyMap(olds),
+		NewInputs: resource.FromResourcePropertyMap(news),
 	})
 	assert.Error(t, err)
 	assert.Empty(t, check.Failures)
-	assert.Nil(t, check.Properties)
+	assert.Equal(t, property.Map{}, check.Properties)
 }
 
 func TestCRUDBadVersionNotString(t *testing.T) {
@@ -697,14 +703,14 @@ func TestCRUDBadVersionNotString(t *testing.T) {
 
 	// Check
 	check, err := r.Check(t.Context(), plugin.CheckRequest{
-		URN:  urn,
-		Olds: olds,
-		News: news,
+		URN:       urn,
+		OldInputs: resource.FromResourcePropertyMap(olds),
+		NewInputs: resource.FromResourcePropertyMap(news),
 	})
 	require.NoError(t, err)
 	require.Len(t, check.Failures, 1)
 	assert.Equal(t, "version", string(check.Failures[0].Property))
-	assert.Nil(t, check.Properties)
+	assert.Equal(t, property.Map{}, check.Properties)
 }
 
 func TestCRUDBadVersion(t *testing.T) {
@@ -724,14 +730,14 @@ func TestCRUDBadVersion(t *testing.T) {
 
 	// Check
 	check, err := r.Check(t.Context(), plugin.CheckRequest{
-		URN:  urn,
-		Olds: olds,
-		News: news,
+		URN:       urn,
+		OldInputs: resource.FromResourcePropertyMap(olds),
+		NewInputs: resource.FromResourcePropertyMap(news),
 	})
 	require.NoError(t, err)
 	require.Len(t, check.Failures, 1)
 	assert.Equal(t, "version", string(check.Failures[0].Property))
-	assert.Nil(t, check.Properties)
+	assert.Equal(t, property.Map{}, check.Properties)
 }
 
 func TestLoadProvider_missingError(t *testing.T) {
@@ -816,14 +822,14 @@ func TestConcurrentRegistryUsage(t *testing.T) {
 
 			// Check
 			check, err := r.Check(t.Context(), plugin.CheckRequest{
-				URN:  providerURN,
-				Olds: olds,
-				News: news,
+				URN:       providerURN,
+				OldInputs: resource.FromResourcePropertyMap(olds),
+				NewInputs: resource.FromResourcePropertyMap(news),
 			})
 			require.NoError(t, err)
 			require.Len(t, check.Failures, 1)
 			assert.Equal(t, "version", string(check.Failures[0].Property))
-			assert.Nil(t, check.Properties)
+			assert.Equal(t, property.Map{}, check.Properties)
 		}(i)
 	}
 }
@@ -1059,15 +1065,15 @@ func TestEnvironmentVariableMappings(t *testing.T) {
 
 		// Check should succeed and preserve the mappings
 		check, err := r.Check(t.Context(), plugin.CheckRequest{
-			URN:  urn,
-			Olds: resource.PropertyMap{},
-			News: news,
+			URN:       urn,
+			OldInputs: property.Map{},
+			NewInputs: resource.FromResourcePropertyMap(news),
 		})
 		require.NoError(t, err)
 		assert.Empty(t, check.Failures)
 
 		// The returned properties should contain the mappings
-		retrieved, err := GetEnvironmentVariableMappings(check.Properties)
+		retrieved, err := GetEnvironmentVariableMappings(resource.ToResourcePropertyMap(check.Properties))
 		require.NoError(t, err)
 		assert.Equal(t, mappings, retrieved)
 	})
@@ -1093,9 +1099,9 @@ func TestEnvironmentVariableMappings(t *testing.T) {
 
 		// Call Check first
 		check, err := r.Check(t.Context(), plugin.CheckRequest{
-			URN:  urn,
-			Olds: resource.PropertyMap{},
-			News: inputs,
+			URN:       urn,
+			OldInputs: property.Map{},
+			NewInputs: resource.FromResourcePropertyMap(inputs),
 		})
 		require.NoError(t, err)
 
@@ -1158,9 +1164,9 @@ func TestEnvMappingsPassedToHost(t *testing.T) {
 
 	// Load the provider and pass env to host
 	_, err := r.Check(t.Context(), plugin.CheckRequest{
-		URN:  urn,
-		Olds: resource.PropertyMap{},
-		News: inputs,
+		URN:       urn,
+		OldInputs: property.Map{},
+		NewInputs: resource.FromResourcePropertyMap(inputs),
 	})
 	require.NoError(t, err)
 
@@ -1243,24 +1249,24 @@ func TestSameUpdateRace_UpdateFirst(t *testing.T) {
 
 	// First, do the Check/Diff/Update flow to register the provider with new config.
 	check, err := r.Check(t.Context(), plugin.CheckRequest{
-		URN:  urn,
-		Olds: oldInputs,
-		News: newInputs,
+		URN:       urn,
+		OldInputs: resource.FromResourcePropertyMap(oldInputs),
+		NewInputs: resource.FromResourcePropertyMap(newInputs),
 	})
 	require.NoError(t, err)
 
 	_, err = r.Diff(t.Context(), plugin.DiffRequest{
 		URN:        urn,
 		ID:         id,
-		OldOutputs: oldInputs,
-		NewInputs:  newInputs,
+		OldOutputs: resource.FromResourcePropertyMap(oldInputs),
+		NewInputs:  resource.FromResourcePropertyMap(newInputs),
 	})
 	require.NoError(t, err)
 
 	_, err = r.Update(t.Context(), plugin.UpdateRequest{
 		URN:        urn,
 		ID:         id,
-		OldOutputs: oldInputs,
+		OldOutputs: resource.FromResourcePropertyMap(oldInputs),
 		NewInputs:  check.Properties,
 	})
 	require.NoError(t, err)
@@ -1343,17 +1349,17 @@ func TestSameUpdateRace_SameFirst(t *testing.T) {
 
 	// Now do the Check/Diff/Update flow.
 	check, err := r.Check(t.Context(), plugin.CheckRequest{
-		URN:  urn,
-		Olds: oldInputs,
-		News: newInputs,
+		URN:       urn,
+		OldInputs: resource.FromResourcePropertyMap(oldInputs),
+		NewInputs: resource.FromResourcePropertyMap(newInputs),
 	})
 	require.NoError(t, err)
 
 	_, err = r.Diff(t.Context(), plugin.DiffRequest{
 		URN:        urn,
 		ID:         id,
-		OldOutputs: oldInputs,
-		NewInputs:  newInputs,
+		OldOutputs: resource.FromResourcePropertyMap(oldInputs),
+		NewInputs:  resource.FromResourcePropertyMap(newInputs),
 	})
 	require.NoError(t, err)
 
@@ -1366,7 +1372,7 @@ func TestSameUpdateRace_SameFirst(t *testing.T) {
 	_, err = r.Update(t.Context(), plugin.UpdateRequest{
 		URN:        urn,
 		ID:         id,
-		OldOutputs: oldInputs,
+		OldOutputs: resource.FromResourcePropertyMap(oldInputs),
 		NewInputs:  check.Properties,
 	})
 	require.NoError(t, err)
@@ -1430,17 +1436,17 @@ func TestSameUpdateRace_Concurrent(t *testing.T) {
 
 			// Do Check first (outside of goroutines) since Update depends on it.
 			check, err := r.Check(t.Context(), plugin.CheckRequest{
-				URN:  urn,
-				Olds: oldInputs,
-				News: newInputs,
+				URN:       urn,
+				OldInputs: resource.FromResourcePropertyMap(oldInputs),
+				NewInputs: resource.FromResourcePropertyMap(newInputs),
 			})
 			require.NoError(t, err)
 
 			_, err = r.Diff(t.Context(), plugin.DiffRequest{
 				URN:        urn,
 				ID:         id,
-				OldOutputs: oldInputs,
-				NewInputs:  newInputs,
+				OldOutputs: resource.FromResourcePropertyMap(oldInputs),
+				NewInputs:  resource.FromResourcePropertyMap(newInputs),
 			})
 			require.NoError(t, err)
 
@@ -1459,7 +1465,7 @@ func TestSameUpdateRace_Concurrent(t *testing.T) {
 				_, _ = r.Update(t.Context(), plugin.UpdateRequest{
 					URN:        urn,
 					ID:         id,
-					OldOutputs: oldInputs,
+					OldOutputs: resource.FromResourcePropertyMap(oldInputs),
 					NewInputs:  check.Properties,
 				})
 			}()

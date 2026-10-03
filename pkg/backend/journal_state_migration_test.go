@@ -55,17 +55,26 @@ func stateMigrationComponentBase() *apitype.DeploymentV3 {
 	}
 }
 
+func layoutBase(index int64) apitype.JournalLayoutItem {
+	return apitype.JournalLayoutItem{BaseIndex: &index}
+}
+
+func layoutState(index int64) apitype.JournalLayoutItem {
+	return apitype.JournalLayoutItem{StateIndex: &index}
+}
+
+// validComponentStateMigrationEntry replaces base resource "a" with "successor".
 func validComponentStateMigrationEntry() apitype.JournalEntry {
 	return apitype.JournalEntry{
-		Version:    2,
-		Kind:       apitype.JournalEntryKindStateMigration,
-		RemoveOlds: []int64{0},
-		States:     []apitype.ResourceV3{stateMigrationComponent("successor")},
+		Version: 2,
+		Kind:    apitype.JournalEntryKindStateMigration,
+		Layout:  []apitype.JournalLayoutItem{layoutState(0), layoutBase(1), layoutBase(2)},
+		States:  []apitype.ResourceV3{stateMigrationComponent("successor")},
 	}
 }
 
-// TestJournalReplayerStateMigration tests that a state migration journal entry removes the given base indices
-// and inserts the migrated states at the greatest removed base index.
+// TestJournalReplayerStateMigration tests that a state migration journal entry rebuilds the base snapshot from its
+// layout, dropping the base resources the layout omits.
 func TestJournalReplayerStateMigration(t *testing.T) {
 	t.Parallel()
 
@@ -74,10 +83,10 @@ func TestJournalReplayerStateMigration(t *testing.T) {
 
 	migrated := stateMigrationComponent("d")
 	require.NoError(t, replayer.Add(apitype.JournalEntry{
-		Version:    2,
-		Kind:       apitype.JournalEntryKindStateMigration,
-		RemoveOlds: []int64{2, 0},
-		States:     []apitype.ResourceV3{migrated},
+		Version: 2,
+		Kind:    apitype.JournalEntryKindStateMigration,
+		Layout:  []apitype.JournalLayoutItem{layoutBase(1), layoutState(0)},
+		States:  []apitype.ResourceV3{migrated},
 	}))
 
 	deployment, err := replayer.GenerateDeployment()
@@ -87,7 +96,7 @@ func TestJournalReplayerStateMigration(t *testing.T) {
 	for i, res := range deployment.Deployment.Resources {
 		urns[i] = res.URN
 	}
-	// "a" and "c" are removed; "d" takes the position of "c", which has the greatest removed index.
+	// "a" and "c" are removed; "d" is inserted after "b".
 	assert.Equal(t, []resource.URN{
 		"urn:pulumi:test::test::pkgA:m:typA::b",
 		"urn:pulumi:test::test::pkgA:m:typA::d",
@@ -119,10 +128,10 @@ func TestJournalReplayerStateMigrationRemapsIndices(t *testing.T) {
 	// into "d", moving "c" to index 1. The pending deletion must follow "c" to its new index. Once "c" is removed,
 	// ordinary refresh cleanup prunes "e"'s dangling dependency on it.
 	require.NoError(t, replayer.Add(apitype.JournalEntry{
-		Version:    2,
-		Kind:       apitype.JournalEntryKindStateMigration,
-		RemoveOlds: []int64{0, 1},
-		States:     []apitype.ResourceV3{stateMigrationComponent("d")},
+		Version: 2,
+		Kind:    apitype.JournalEntryKindStateMigration,
+		Layout:  []apitype.JournalLayoutItem{layoutState(0), layoutBase(2), layoutBase(3)},
+		States:  []apitype.ResourceV3{stateMigrationComponent("d")},
 	}))
 
 	deployment, err := replayer.GenerateDeployment()
@@ -169,10 +178,10 @@ func TestJournalReplayerStateMigrationPatchReplacesEarlierOutputs(t *testing.T) 
 		"reference": stateMigrationResourceReference(migrated.URN),
 	}
 	require.NoError(t, replayer.Add(apitype.JournalEntry{
-		Version:    2,
-		Kind:       apitype.JournalEntryKindStateMigration,
-		RemoveOlds: []int64{0, 1},
-		States:     []apitype.ResourceV3{migrated},
+		Version: 2,
+		Kind:    apitype.JournalEntryKindStateMigration,
+		Layout:  []apitype.JournalLayoutItem{layoutState(0), layoutBase(2)},
+		States:  []apitype.ResourceV3{migrated},
 		BaseStatePatches: []apitype.JournalBaseStatePatch{{
 			Index: 2,
 			State: migrationPatch,
@@ -221,10 +230,10 @@ func TestJournalReplayerStateMigrationAppliesPatches(t *testing.T) {
 	}
 	// A migration folds "a" and "c" into "d".
 	require.NoError(t, replayer.Add(apitype.JournalEntry{
-		Version:    2,
-		Kind:       apitype.JournalEntryKindStateMigration,
-		RemoveOlds: []int64{0, 2},
-		States:     []apitype.ResourceV3{d},
+		Version: 2,
+		Kind:    apitype.JournalEntryKindStateMigration,
+		Layout:  []apitype.JournalLayoutItem{layoutBase(1), layoutState(0), layoutBase(3)},
+		States:  []apitype.ResourceV3{d},
 		BaseStatePatches: []apitype.JournalBaseStatePatch{{
 			Index: 3,
 			State: patched,
@@ -364,13 +373,56 @@ func TestJournalReplayerRejectsMalformedStateMigration(t *testing.T) {
 		require.ErrorContains(t, err, "must use version 2")
 	})
 
-	t.Run("duplicate remove index", func(t *testing.T) {
+	for name, c := range map[string]struct {
+		layout []apitype.JournalLayoutItem
+		err    string
+	}{
+		"base resource placed twice": {
+			layout: []apitype.JournalLayoutItem{layoutState(0), layoutBase(1), layoutBase(1)},
+			err:    "places base resource 1 more than once",
+		},
+		"inserted state placed twice": {
+			layout: []apitype.JournalLayoutItem{layoutState(0), layoutState(0), layoutBase(1), layoutBase(2)},
+			err:    "places inserted state 0 more than once",
+		},
+		"inserted state not placed": {
+			layout: []apitype.JournalLayoutItem{layoutBase(1), layoutBase(2)},
+			err:    "places 0 of 1 inserted states",
+		},
+		"base index out of range": {
+			layout: []apitype.JournalLayoutItem{layoutState(0), layoutBase(3)},
+			err:    "base index 3 outside base snapshot with 3 resources",
+		},
+		"state index out of range": {
+			layout: []apitype.JournalLayoutItem{layoutState(1), layoutBase(1), layoutBase(2)},
+			err:    "inserted state 1, but the entry has 1 states",
+		},
+		"item with both references": {
+			layout: []apitype.JournalLayoutItem{{BaseIndex: layoutBase(1).BaseIndex, StateIndex: layoutState(0).StateIndex}},
+			err:    "refers to both a base resource and an inserted state",
+		},
+		"item without references": {
+			layout: []apitype.JournalLayoutItem{layoutState(0), {}},
+			err:    "refers to neither a base resource nor an inserted state",
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			base := stateMigrationComponentBase()
+			entry := validComponentStateMigrationEntry()
+			entry.Layout = c.layout
+			err := NewJournalReplayer(base).Add(entry)
+			require.ErrorContains(t, err, c.err)
+		})
+	}
+
+	t.Run("patch for removed base resource", func(t *testing.T) {
 		t.Parallel()
 		base := stateMigrationComponentBase()
 		entry := validComponentStateMigrationEntry()
-		entry.RemoveOlds = []int64{0, 0}
+		entry.BaseStatePatches = []apitype.JournalBaseStatePatch{{Index: 0, State: base.Resources[0]}}
 		err := NewJournalReplayer(base).Add(entry)
-		require.ErrorContains(t, err, "duplicate remove index 0")
+		require.ErrorContains(t, err, "base patch index 0 is not retained by the layout")
 	})
 
 	t.Run("inserted pending-delete state", func(t *testing.T) {
@@ -419,4 +471,42 @@ func TestJournalReplayerRejectsMalformedStateMigration(t *testing.T) {
 		err := NewJournalReplayer(base).Add(entry)
 		require.ErrorContains(t, err, "references unknown extension")
 	})
+}
+
+// TestJournalReplayerStateMigrationReordersRetainedResources tests that a layout can move retained base resources
+// and that lifecycle markers recorded by earlier entries follow them to their new positions.
+func TestJournalReplayerStateMigrationReordersRetainedResources(t *testing.T) {
+	t.Parallel()
+
+	base := stateMigrationComponentBase()
+	replayer := NewJournalReplayer(base)
+
+	// An earlier entry marks base resource "b" (index 1) as deleted.
+	deleteOld := int64(1)
+	require.NoError(t, replayer.Add(apitype.JournalEntry{
+		Version:   1,
+		Kind:      apitype.JournalEntryKindSuccess,
+		DeleteOld: &deleteOld,
+	}))
+
+	// The migration replaces "a" with "d" and moves "c" ahead of both.
+	require.NoError(t, replayer.Add(apitype.JournalEntry{
+		Version: 2,
+		Kind:    apitype.JournalEntryKindStateMigration,
+		Layout:  []apitype.JournalLayoutItem{layoutBase(2), layoutState(0), layoutBase(1)},
+		States:  []apitype.ResourceV3{stateMigrationComponent("d")},
+	}))
+
+	deployment, err := replayer.GenerateDeployment()
+	require.NoError(t, err)
+	urns := make([]resource.URN, len(deployment.Deployment.Resources))
+	for i, res := range deployment.Deployment.Resources {
+		urns[i] = res.URN
+	}
+	assert.Equal(t, []resource.URN{
+		"urn:pulumi:test::test::pkgA:m:typA::c",
+		"urn:pulumi:test::test::pkgA:m:typA::d",
+		"urn:pulumi:test::test::pkgA:m:typA::b",
+	}, urns)
+	assert.True(t, deployment.Deployment.Resources[2].Delete)
 }

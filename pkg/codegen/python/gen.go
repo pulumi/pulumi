@@ -2653,6 +2653,10 @@ func (mod *modContext) docRefResolver(selfRef schema.DocRef) func(schema.DocRef)
 			case *schema.EnumType:
 				base = tokenToName(t.Token)
 			}
+		case schema.DocRefKindProvider, schema.DocRefKindProviderProperty:
+			base = "Provider"
+		case schema.DocRefKindProviderInputProperty:
+			base = "ProviderArgs"
 		case schema.DocRefKindUnknown:
 			return "", false
 		}
@@ -2663,9 +2667,9 @@ func (mod *modContext) docRefResolver(selfRef schema.DocRef) func(schema.DocRef)
 
 		var property string
 		switch ref.Kind {
-		case schema.DocRefKindResource, schema.DocRefKindFunction, schema.DocRefKindType:
+		case schema.DocRefKindResource, schema.DocRefKindFunction, schema.DocRefKindType, schema.DocRefKindProvider:
 			return base, true
-		case schema.DocRefKindUnknown, schema.DocRefKindResourceProperty, schema.DocRefKindResourceInputProperty, schema.DocRefKindFunctionInputProperty, schema.DocRefKindFunctionOutputProperty, schema.DocRefKindTypeProperty:
+		case schema.DocRefKindUnknown, schema.DocRefKindResourceProperty, schema.DocRefKindResourceInputProperty, schema.DocRefKindFunctionInputProperty, schema.DocRefKindFunctionOutputProperty, schema.DocRefKindTypeProperty, schema.DocRefKindProviderProperty, schema.DocRefKindProviderInputProperty:
 			property = PyName(ref.Property)
 		}
 
@@ -3853,8 +3857,8 @@ func calculateDeps(parameterized bool, requires map[string]string) ([][2]string,
 	// or else we'd be writing nil to the file, but since we append
 	// them here, I'd expect them to show up twice in the output file.
 	deps := []string{
+		"packaging>=24.0",
 		"semver>=2.8.1",
-		"parver>=0.2.1",
 	}
 	for dep := range requires {
 		deps = append(deps, dep)

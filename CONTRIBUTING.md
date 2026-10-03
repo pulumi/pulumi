@@ -126,7 +126,7 @@ If you're using an AI coding assistant to contribute:
 
 Whenever a new PR is merged in this repository, the latest draft release on the [GitHub Releases page](https://github.com/pulumi/pulumi/releases) is updated with the latest binaries.  To release one of those draft releases a few steps are necessary:
 
-The [weekly minor release](https://github.com/pulumi/pulumi/actions/workflows/cron-minor-release.yml) workflow runs every Wednesday, and can also be triggered by hand.  It bumps `sdk/.version` to the next minor version and opens a PR containing the changelog the release is expected to publish.  Merging that PR "freezes" the draft release for the previous version, which is the one we are about to publish.
+A weekly job runs every Wednesday.  It bumps `sdk/.version` to the next minor version and opens a PR containing the changelog the release is expected to publish, which is approved and queued to merge automatically.  Merging that PR "freezes" the draft release for the previous version, which is the one we are about to publish.
 
 To cut a patch release instead, bump `sdk/.version` to the next patch version by hand using `scripts/set-version.py <next-patch-version>`, and merge that.
 
@@ -137,4 +137,4 @@ Finally to create the release, navigate to the [GitHub Releases page](https://gi
 > [!CAUTION]
 > Double-check the version number of the release. The most recent release in [the releases list](https://github.com/pulumi/pulumi/releases) tracks changes to `master`, and might not be the one you want to release if PRs have been merged since the freeze. For this reason, the version you want to release may be the second one in the list. The version should be the one that was in `sdk/.version` *before* the freeze PR was merged.
 
-Finally `pulumi-bot` will create another PR to update with `go.mod` updates and changelog cleanups.  This PR needs to be approved, and will then auto-merge.
+Finally `pulumi-bot` will create another PR to update with `go.mod` updates and changelog cleanups.  This PR is approved and queued to merge automatically.

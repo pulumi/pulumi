@@ -177,8 +177,8 @@ func applyProviderUpdate(
 		if err != nil {
 			if client.IsNotFound(err) {
 				return fmt.Errorf(
-					"environment %s does not exist; pass --create to create it, or run `esc env init %s` first",
-					ref.String(), ref.String())
+					"environment %s does not exist; pass --create to create it, or run `%s env init %s` first",
+					ref.String(), env.esc.command, ref.String())
 			}
 			return fmt.Errorf("getting environment definition: %w", err)
 		}
@@ -193,7 +193,7 @@ func applyProviderUpdate(
 		return nil
 	}
 
-	diags, err := env.esc.updateEnvironment(ctx, ref, draft, newYAML, tag, "Provider updated.")
+	diags, err := env.esc.updateEnvironment(ctx, ref, draft, newYAML, tag, "Environment updated.")
 	if err != nil {
 		return err
 	}

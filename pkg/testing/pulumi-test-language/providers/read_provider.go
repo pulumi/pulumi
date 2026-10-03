@@ -78,13 +78,15 @@ func (p *ReadProvider) CheckConfig(context.Context, plugin.CheckConfigRequest) (
 }
 
 func (p *ReadProvider) Check(_ context.Context, req plugin.CheckRequest) (plugin.CheckResponse, error) {
+	news := resource.ToResourcePropertyMap(req.NewInputs)
 	if req.URN.Type() != "read:index:Resource" {
 		return plugin.CheckResponse{}, fmt.Errorf("invalid URN type: %s", req.URN.Type())
 	}
-	return plugin.CheckResponse{Properties: req.News}, nil
+	return plugin.CheckResponse{Properties: resource.FromResourcePropertyMap(news)}, nil
 }
 
 func (p *ReadProvider) Create(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+	properties := resource.ToResourcePropertyMap(req.Properties)
 	if req.URN.Type() != "read:index:Resource" {
 		return plugin.CreateResponse{
 			Status: resource.StatusUnknown,
@@ -96,7 +98,7 @@ func (p *ReadProvider) Create(_ context.Context, req plugin.CreateRequest) (plug
 	}
 	return plugin.CreateResponse{
 		ID:         resource.ID(id),
-		Properties: req.Properties,
+		Properties: resource.FromResourcePropertyMap(properties),
 		Status:     resource.StatusOK,
 	}, nil
 }
@@ -127,23 +129,26 @@ func (p *ReadProvider) Read(_ context.Context, req plugin.ReadRequest) (plugin.R
 		}, fmt.Errorf("invalid URN type: %s", req.URN.Type())
 	}
 
-	lookup, ok := req.Inputs["lookup"]
+	inputs := resource.ToResourcePropertyMap(req.Inputs)
+	lookup, ok := inputs["lookup"]
 	if !ok || !lookup.IsString() {
 		return plugin.ReadResponse{
 			Status: resource.StatusUnknown,
 		}, errors.New("lookup input is required and must be a string")
 	}
 
+	readInputs := resource.FromResourcePropertyMap(resource.PropertyMap{
+		"lookup": lookup,
+	})
+	readOutputs := resource.FromResourcePropertyMap(resource.PropertyMap{
+		"lookup": lookup,
+		"value":  resource.NewProperty(true),
+	})
 	return plugin.ReadResponse{
 		ReadResult: plugin.ReadResult{
-			ID: req.ID,
-			Inputs: resource.PropertyMap{
-				"lookup": lookup,
-			},
-			Outputs: resource.PropertyMap{
-				"lookup": lookup,
-				"value":  resource.NewProperty(true),
-			},
+			ID:      req.ID,
+			Inputs:  &readInputs,
+			Outputs: &readOutputs,
 		},
 		Status: resource.StatusOK,
 	}, nil

@@ -360,19 +360,48 @@ func (s *CreateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 
 		var resp plugin.CreateResponse
 
+		// If a create partially fails, the resource exists, so any retries must update it rather than create
+		// another one.
+		var partial *plugin.CreateResponse
+
 		resp, err = withRetries(
 			maxErrorHookRetries,
 			func() (plugin.CreateResponse, error) {
-				resp, err := prov.Create(context.TODO(), plugin.CreateRequest{
-					URN:                   s.URN(),
-					Name:                  s.new.URN.Name(),
-					Type:                  s.new.URN.Type(),
-					Properties:            s.new.Inputs,
-					Timeout:               s.new.CustomTimeouts.Create,
-					Preview:               s.deployment.opts.DryRun,
-					ResourceStatusAddress: resourceStatusAddress,
-					ResourceStatusToken:   resourceStatusToken,
-				})
+				var resp plugin.CreateResponse
+				var err error
+				if partial == nil {
+					resp, err = prov.Create(context.TODO(), plugin.CreateRequest{
+						URN:                   s.URN(),
+						Name:                  s.new.URN.Name(),
+						Type:                  s.new.URN.Type(),
+						Properties:            resource.FromResourcePropertyMap(s.new.Inputs),
+						Timeout:               s.new.CustomTimeouts.Create,
+						Preview:               s.deployment.opts.DryRun,
+						ResourceStatusAddress: resourceStatusAddress,
+						ResourceStatusToken:   resourceStatusToken,
+					})
+				} else {
+					var upd plugin.UpdateResponse
+					upd, err = prov.Update(context.TODO(), plugin.UpdateRequest{
+						URN:                   s.URN(),
+						Name:                  s.new.URN.Name(),
+						Type:                  s.new.URN.Type(),
+						ID:                    partial.ID,
+						OldInputs:             resource.FromResourcePropertyMap(s.new.Inputs),
+						OldOutputs:            partial.Properties,
+						NewInputs:             resource.FromResourcePropertyMap(s.new.Inputs),
+						Timeout:               s.new.CustomTimeouts.Create,
+						Preview:               s.deployment.opts.DryRun,
+						ResourceStatusAddress: resourceStatusAddress,
+						ResourceStatusToken:   resourceStatusToken,
+					})
+					resp = plugin.CreateResponse{
+						ID:                  partial.ID,
+						Properties:          upd.Properties,
+						Status:              upd.Status,
+						RefreshBeforeUpdate: upd.RefreshBeforeUpdate,
+					}
+				}
 
 				if err == nil {
 					resourceError = nil
@@ -386,6 +415,9 @@ func (s *CreateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 
 				resourceError = err
 				resourceStatus = resp.Status
+				if resp.ID != "" {
+					partial = &resp
+				}
 
 				if initErr, isInitErr := err.(*plugin.InitError); isInitErr {
 					s.new.InitErrors = initErr.Reasons
@@ -442,7 +474,7 @@ func (s *CreateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 
 		if err == nil || resourceStatus == resource.StatusPartialFailure {
 			id = resp.ID
-			outs = resp.Properties
+			outs = resource.ToResourcePropertyMap(resp.Properties)
 			refreshBeforeUpdate = resp.RefreshBeforeUpdate
 
 			if err == nil && !s.deployment.opts.DryRun && id == "" {
@@ -458,6 +490,9 @@ func (s *CreateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 	s.new.ID = id
 	s.new.Outputs = outs
 	s.new.RefreshBeforeUpdate = refreshBeforeUpdate
+	if resourceError == nil {
+		s.new.InitErrors = nil
+	}
 
 	// Create should set the Create and Modified timestamps as the resource state has been created.
 	now := time.Now().UTC()
@@ -624,6 +659,11 @@ func (d deleteProtectedError) Error() string {
 }
 
 func (s *DeleteStep) Apply() (resource.Status, StepCompleteFunc, error) {
+	// A pending-replacement resource was already deleted by an interrupted delete-before-replace
+	// operation, so the step generator must never issue another delete for it.
+	contract.Assertf(!s.old.PendingReplacement,
+		"attempting to delete resource %q which is pending replacement", s.old.URN)
+
 	if err := s.Deployment().RunHooks(
 		s.old.ResourceHooks[resource.BeforeDelete],
 		resource.BeforeDelete,
@@ -690,8 +730,8 @@ func (s *DeleteStep) Apply() (resource.Status, StepCompleteFunc, error) {
 					Name:                  s.URN().Name(),
 					Type:                  s.URN().Type(),
 					ID:                    s.old.ID,
-					Inputs:                s.old.Inputs,
-					Outputs:               s.old.Outputs,
+					Inputs:                resource.FromResourcePropertyMap(s.old.Inputs),
+					Outputs:               resource.FromResourcePropertyMap(s.old.Outputs),
 					Timeout:               s.old.CustomTimeouts.Delete,
 					ResourceStatusAddress: resourceStatusAddress,
 					ResourceStatusToken:   resourceStatusToken,
@@ -1010,9 +1050,9 @@ func (s *UpdateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 					Name:                  s.URN().Name(),
 					Type:                  s.URN().Type(),
 					ID:                    s.old.ID,
-					OldInputs:             s.old.Inputs,
-					OldOutputs:            s.old.Outputs,
-					NewInputs:             s.new.Inputs,
+					OldInputs:             resource.FromResourcePropertyMap(s.old.Inputs),
+					OldOutputs:            resource.FromResourcePropertyMap(s.old.Outputs),
+					NewInputs:             resource.FromResourcePropertyMap(s.new.Inputs),
 					Timeout:               s.new.CustomTimeouts.Update,
 					IgnoreChanges:         s.ignoreChanges,
 					Preview:               s.deployment.opts.DryRun,
@@ -1091,7 +1131,7 @@ func (s *UpdateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 		defer s.new.Lock.Unlock()
 
 		// Now copy any output state back in case the update triggered cascading updates to other properties.
-		s.new.Outputs = resp.Properties
+		s.new.Outputs = resource.ToResourcePropertyMap(resp.Properties)
 		s.new.RefreshBeforeUpdate = resp.RefreshBeforeUpdate
 
 		// UpdateStep doesn't create, but does modify state.
@@ -1340,8 +1380,8 @@ func (s *ReadStep) Apply() (resource.Status, StepCompleteFunc, error) {
 			Name:                  urn.Name(),
 			Type:                  urn.Type(),
 			ID:                    id,
-			Inputs:                s.new.Inputs,
-			State:                 s.new.Inputs,
+			Inputs:                resource.FromResourcePropertyMap(s.new.Inputs),
+			State:                 resource.FromResourcePropertyMap(s.new.Inputs),
 			Timeout:               s.new.CustomTimeouts.Read,
 			ResourceStatusAddress: resourceStatusAddress,
 			ResourceStatusToken:   resourceStatusToken,
@@ -1367,7 +1407,7 @@ func (s *ReadStep) Apply() (resource.Status, StepCompleteFunc, error) {
 		if result.Outputs == nil {
 			return resource.StatusOK, nil, fmt.Errorf("resource '%s' does not exist", id)
 		}
-		s.new.Outputs = result.Outputs
+		s.new.Outputs = resource.ToResourcePropertyMap(*result.Outputs)
 
 		if result.ID != "" {
 			s.new.ID = result.ID
@@ -1408,7 +1448,19 @@ func (s *ReadStep) Fail() {
 }
 
 func (s *ReadStep) Skip() {
-	s.event.Done(&ReadResult{State: s.new, Result: ResultStateSkipped})
+	// A skipped read has no dry-run analogue. If we have prior state for this resource we return its last-known outputs
+	// so dependents can still make progress; otherwise there is nothing meaningful to return. If we don't have prior
+	// state, we return the result as Unknown so SDKs can propagate unknowns to dependents rather than treating the
+	// empty output as valid.
+	skipState := s.new.Copy()
+	var unknown bool
+	if s.old != nil {
+		skipState.Outputs = s.old.Outputs
+	} else {
+		skipState.Outputs = resource.PropertyMap{}
+		unknown = true
+	}
+	s.event.Done(&ReadResult{State: skipState, Result: ResultStateSkipped, Unknown: unknown})
 }
 
 // RefreshStep is a step used to track the progress of a refresh operation. A refresh operation updates the an existing
@@ -1582,8 +1634,8 @@ func (s *RefreshStep) Apply() (resource.Status, StepCompleteFunc, error) {
 		Name:                  s.new.URN.Name(),
 		Type:                  s.new.URN.Type(),
 		ID:                    resourceID,
-		Inputs:                s.old.Inputs,
-		State:                 s.old.Outputs,
+		Inputs:                resource.FromResourcePropertyMap(s.old.Inputs),
+		State:                 resource.FromResourcePropertyMap(s.old.Outputs),
 		Timeout:               s.old.CustomTimeouts.Read,
 		ResourceStatusAddress: resourceStatusAddress,
 		ResourceStatusToken:   resourceStatusToken,
@@ -1610,19 +1662,26 @@ func (s *RefreshStep) Apply() (resource.Status, StepCompleteFunc, error) {
 		}
 	}
 
+	var refreshedInputs, refreshedOutputs resource.PropertyMap
+	if refreshed.Inputs != nil {
+		refreshedInputs = resource.ToResourcePropertyMap(*refreshed.Inputs)
+	}
+	if refreshed.Outputs != nil {
+		refreshedOutputs = resource.ToResourcePropertyMap(*refreshed.Outputs)
+	}
 	logging.V(10).Infof("Refreshed resource ID: %q, Inputs: #%d, Outputs: #%d",
-		refreshed.ID, len(refreshed.Inputs), len(refreshed.Outputs))
+		refreshed.ID, len(refreshedInputs), len(refreshedOutputs))
 
 	// If the ID is blank treat this as a delete, and leave outputs blank.
 	var outputs resource.PropertyMap
 	if refreshed.ID != "" {
-		outputs = refreshed.Outputs
+		outputs = refreshedOutputs
 	}
 
 	// If the provider specified new inputs for this resource, pick them up now. Otherwise, retain the current inputs.
 	inputs := s.old.Inputs
 	if refreshed.Inputs != nil {
-		inputs = refreshed.Inputs
+		inputs = refreshedInputs
 	}
 
 	if outputs != nil {
@@ -1659,8 +1718,8 @@ func (s *RefreshStep) Apply() (resource.Status, StepCompleteFunc, error) {
 			// * The user has explicitly opted into this legacy behaviour by setting
 			//   the `UseLegacyRefreshDiff` option to true.
 			if s.old.External || s.deployment.opts.UseLegacyRefreshDiff {
-				inputsChange = !refreshed.Inputs.DeepEquals(s.old.Inputs)
-				outputsChange = !refreshed.Outputs.DeepEquals(s.old.Outputs)
+				inputsChange = !refreshedInputs.DeepEquals(s.old.Inputs)
+				outputsChange = !refreshedOutputs.DeepEquals(s.old.Outputs)
 			} else {
 				inputsChange = !inputs.DeepEquals(s.old.Inputs)
 				outputsChange = !outputs.DeepEquals(s.old.Outputs)
@@ -2072,10 +2131,11 @@ func (s *ImportStep) Apply() (_ resource.Status, _ StepCompleteFunc, err error) 
 		} else {
 			s.new.ID = s.new.ImportID
 		}
-		inputs = read.Inputs
-		outputs = read.Outputs
+		readInputs := resource.ToResourcePropertyMap(*read.Inputs)
+		inputs = readInputs
+		outputs = resource.ToResourcePropertyMap(*read.Outputs)
 		if s.planned {
-			inputs = mergeSuppliedProperties(read.Inputs, suppliedInputs)
+			inputs = mergeSuppliedProperties(readInputs, suppliedInputs)
 		}
 		s.new.RefreshBeforeUpdate = read.RefreshBeforeUpdate
 	} else {
@@ -2178,8 +2238,8 @@ func (s *ImportStep) Apply() (_ resource.Status, _ StepCompleteFunc, err error) 
 			URN:           s.new.URN,
 			Name:          s.URN().Name(),
 			Type:          s.URN().Type(),
-			Olds:          s.old.Inputs,
-			News:          s.new.Inputs,
+			OldInputs:     resource.FromResourcePropertyMap(s.old.Inputs),
+			NewInputs:     resource.FromResourcePropertyMap(s.new.Inputs),
 			AllowUnknowns: s.deployment.opts.DryRun,
 			RandomSeed:    s.randomSeed,
 		})
@@ -2229,7 +2289,15 @@ func (s *ImportStep) Fail() {
 }
 
 func (s *ImportStep) Skip() {
-	s.reg.Done(&RegisterResult{State: s.new, Result: ResultStateSkipped})
+	// Reject the completion source so the step generator's continueStepsFromImport goroutine
+	// stops waiting and exits without generating follow-up steps.
+	if s.cts != nil {
+		s.cts.MustReject(errors.New("import skipped"))
+	}
+	// Imports have no dry-run analogue, so a skipped import surfaces as fully unknown.
+	skipState := s.new.Copy()
+	skipState.Outputs = resource.PropertyMap{}
+	s.reg.Done(&RegisterResult{State: skipState, Result: ResultStateSkipped, Unknown: true})
 }
 
 const (

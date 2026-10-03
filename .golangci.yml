@@ -1,7 +1,4 @@
 version: "2"
-run:
-  build-tags:
-    - all
 linters:
   enable:
     - depguard
@@ -121,6 +118,9 @@ linters:
         limitations under the License.
     gosec:
       excludes:
+        - G104
+        - G301
+        - G302
         # Taint analysis rules produce excessive false positives in a CLI
         # tool where virtually all file and command operations use
         # user-provided paths.
@@ -165,6 +165,8 @@ linters:
           msg: Use resource.NewProperty instead
         - pattern: ^os.Rename$
           msg: "`os.Rename` does not work across file systems and is not atomic for windows. Use with caution"
+        - pattern: ^os\.(Setenv|Unsetenv|Clearenv)$
+          msg: "use t.Setenv or ptesting.Unsetenv in tests"
         # Scoped to non-test code under pkg/cmd/ via exclusion rules below.
         # Cobra commands should use cmd.OutOrStdout() / cmd.ErrOrStderr() so
         # output can be captured, redirected, or tested.
@@ -186,22 +188,8 @@ linters:
     presets:
       - comments
       - common-false-positives
-      - legacy
       - std-error-handling
     rules:
-      - linters:
-          - revive
-        text: 'unused-parameter: parameter \S+ seems to be unused, consider removing or renaming it as _'
-      - linters:
-          - revive
-        text: 'empty-block: this block is empty, you can remove it'
-      - linters:
-          - revive
-        text: 'redefines-builtin-id: redefinition of the built-in function new'
-      - path: (.+)\.go$
-        text: 'Name is deprecated: Name returns the variable or declaration name of the resource'
-      - path: (.+)\.go$
-        text: '"github.com/golang/protobuf/[\w/]+" is deprecated'
       - path: (.+)\.go$
         text: strings.Title has been deprecated
       - path: (.+)\.go$
@@ -244,6 +232,10 @@ linters:
           - forbidigo
         path: _test\.go$
         text: 'use (cmd\.OutOrStdout|cmd\.ErrOrStderr|fmt\.Fprint\*)'
+      - linters:
+          - forbidigo
+        path-except: _test\.go$
+        text: 'use t\.Setenv or ptesting\.Unsetenv in tests'
       # These modernizers are not enabled by Go 1.26's go fix. golangci-lint
       # runs them but does not accept their names in modernize.disable.
       - linters:

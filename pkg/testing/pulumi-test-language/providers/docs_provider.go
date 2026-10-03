@@ -64,12 +64,38 @@ func (p *DocsProvider) GetSchema(
 		Dependencies: []schema.PackageDescriptor{
 			{Name: "enum", Version: &enumVersion},
 		},
+		Provider: &schema.ResourceSpec{
+			ObjectTypeSpec: schema.ObjectTypeSpec{
+				Type: "object",
+				Description: "{{% ref #/provider %}} is the provider for docs, configured via " +
+					"{{% ref #/provider/properties/someConfig %}}.",
+				Properties: map[string]schema.PropertySpec{
+					"someConfig": {
+						TypeSpec: schema.TypeSpec{
+							Type: "string",
+						},
+						Description: "A configuration value for {{% ref #/provider %}}.",
+					},
+				},
+			},
+			InputProperties: map[string]schema.PropertySpec{
+				"someConfig": {
+					TypeSpec: schema.TypeSpec{
+						Type: "string",
+					},
+					Description: "A configuration value for {{% ref #/provider %}}.",
+				},
+			},
+		},
 		Resources: map[string]schema.ResourceSpec{
 			"docs:index:Resource": {
 				ObjectTypeSpec: schema.ObjectTypeSpec{
 					Type: "object",
-					Description: "{{% ref #/resources/docs:index:Resource %}} is a basic resource." +
-						" Use {{% ref #/functions/docs:index:fun %}} to set {{% ref" +
+					Description: "{{% ref #/resources/docs:index:Resource %}} is a basic resource" +
+						" configured by {{% ref #/provider %}} using {{% ref " +
+						"#/provider/properties/someConfig %}}." +
+						" See also the external {{% ref /enum/v" + enumVersionString + "/schema.json#/provider %}}." +
+						" Use {{% ref #/functions/docs:index:fun %}} to set {{% ref " +
 						"#/resources/docs:index:Resource/inputProperties/in %}} using {{% ref " +
 						"#/functions/docs:index:fun/outputs/properties/out %}}.",
 					Properties: map[string]schema.PropertySpec{
@@ -211,6 +237,7 @@ func (p *DocsProvider) CheckConfig(
 func (p *DocsProvider) Check(
 	_ context.Context, req plugin.CheckRequest,
 ) (plugin.CheckResponse, error) {
+	news := resource.ToResourcePropertyMap(req.NewInputs)
 	// URN should be of the form "docs:index:Resource"
 	if req.URN.Type() != "docs:index:Resource" {
 		return plugin.CheckResponse{
@@ -221,7 +248,7 @@ func (p *DocsProvider) Check(
 	assertField := func(key resource.PropertyKey, typ string,
 		assertType func(resource.PropertyValue) bool,
 	) *plugin.CheckResponse {
-		v, ok := req.News[key]
+		v, ok := news[key]
 		if !ok {
 			return &plugin.CheckResponse{
 				Failures: makeCheckFailure(key, "missing value"),
@@ -242,24 +269,25 @@ func (p *DocsProvider) Check(
 		return *check, nil
 	}
 
-	if v, ok := req.News["externalEnum"]; ok && !v.IsString() {
+	if v, ok := news["externalEnum"]; ok && !v.IsString() {
 		return plugin.CheckResponse{
 			Failures: makeCheckFailure("externalEnum", "value is not a string"),
 		}, nil
 	}
 
-	if len(req.News) != 1 && len(req.News) != 2 {
+	if len(news) != 1 && len(news) != 2 {
 		return plugin.CheckResponse{
-			Failures: makeCheckFailure("", fmt.Sprintf("too many properties: %v", req.News)),
+			Failures: makeCheckFailure("", fmt.Sprintf("too many properties: %v", news)),
 		}, nil
 	}
 
-	return plugin.CheckResponse{Properties: req.News}, nil
+	return plugin.CheckResponse{Properties: resource.FromResourcePropertyMap(news)}, nil
 }
 
 func (p *DocsProvider) Create(
 	_ context.Context, req plugin.CreateRequest,
 ) (plugin.CreateResponse, error) {
+	inputs := resource.ToResourcePropertyMap(req.Properties)
 	// URN should be of the form "docs:index:Resource"
 	if req.URN.Type() != "docs:index:Resource" {
 		return plugin.CreateResponse{
@@ -273,19 +301,19 @@ func (p *DocsProvider) Create(
 	}
 
 	properties := resource.NewPropertyMapFromMap(map[string]any{
-		"in":  req.Properties["in"],
-		"out": !req.Properties["in"].BoolValue(),
+		"in":  inputs["in"],
+		"out": !inputs["in"].BoolValue(),
 		"data": map[string]any{
 			"state": "internal data",
 		},
 	})
-	if externalEnum, ok := req.Properties["externalEnum"]; ok {
+	if externalEnum, ok := inputs["externalEnum"]; ok {
 		properties["externalEnum"] = externalEnum
 	}
 
 	return plugin.CreateResponse{
 		ID:         resource.ID(id),
-		Properties: properties,
+		Properties: resource.FromResourcePropertyMap(properties),
 		Status:     resource.StatusOK,
 	}, nil
 }

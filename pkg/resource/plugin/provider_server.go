@@ -45,6 +45,9 @@ type providerServer struct {
 	// capabilities this defaults to false: it is only enabled when the caller advertises it via Handshake or
 	// Configure, since older engines cannot decode the encoding.
 	sendByteString bool
+
+	// True if the provider negotiated OutputValues on Invoke via Handshake (both sides opted in).
+	invokeOutputValues bool
 }
 
 func NewProviderServer(provider Provider) pulumirpc.ResourceProviderServer {
@@ -164,6 +167,7 @@ func (p *providerServer) Handshake(
 		ResolverTarget:              req.ResolverTarget,
 		AcceptsByteString:           req.AcceptsByteString,
 		SendsOldOutputsToCheck:      req.SendsOldOutputsToCheck,
+		AcceptsOutputsInInvoke:      req.AcceptsOutputsInInvoke,
 	})
 	if err != nil {
 		return nil, err
@@ -172,6 +176,7 @@ func (p *providerServer) Handshake(
 	p.acceptSecrets = res.AcceptSecrets
 	p.acceptResources = res.AcceptResources
 	p.sendByteString = req.AcceptsByteString
+	p.invokeOutputValues = req.AcceptsOutputsInInvoke && res.AcceptsOutputsInInvoke
 
 	return &pulumirpc.ProviderHandshakeResponse{
 		AcceptSecrets:                   res.AcceptSecrets,
@@ -180,7 +185,8 @@ func (p *providerServer) Handshake(
 		SupportsAutonamingConfiguration: res.SupportsAutonamingConfiguration,
 		// providerServer unmarshals byte string into plain Go strings before handing them to the wrapped
 		// provider, so it can shim support regardless of the provider's own answer.
-		AcceptsByteString: true,
+		AcceptsByteString:      true,
+		AcceptsOutputsInInvoke: res.AcceptsOutputsInInvoke,
 	}, nil
 }
 
@@ -357,9 +363,9 @@ func (p *providerServer) DiffConfig(ctx context.Context, req *pulumirpc.DiffRequ
 		URN:           urn,
 		Name:          req.Name,
 		Type:          tokens.Type(req.Type),
-		OldInputs:     oldInputs,
-		OldOutputs:    oldOutputs,
-		NewInputs:     newInputs,
+		OldInputs:     resource.FromResourcePropertyMap(oldInputs),
+		OldOutputs:    resource.FromResourcePropertyMap(oldOutputs),
+		NewInputs:     resource.FromResourcePropertyMap(newInputs),
 		AllowUnknowns: true,
 		IgnoreChanges: req.GetIgnoreChanges(),
 	})
@@ -483,9 +489,9 @@ func (p *providerServer) Check(ctx context.Context, req *pulumirpc.CheckRequest)
 		URN:           urn,
 		Name:          req.Name,
 		Type:          tokens.Type(req.Type),
-		Olds:          state,
-		News:          inputs,
-		OldOutputs:    oldOutputs,
+		OldInputs:     resource.FromResourcePropertyMap(state),
+		NewInputs:     resource.FromResourcePropertyMap(inputs),
+		OldOutputs:    resource.FromResourcePropertyMap(oldOutputs),
 		AllowUnknowns: true,
 		RandomSeed:    req.RandomSeed,
 		Autonaming:    autonaming,
@@ -494,7 +500,7 @@ func (p *providerServer) Check(ctx context.Context, req *pulumirpc.CheckRequest)
 		return nil, err
 	}
 
-	rpcInputs, err := MarshalProperties(resp.Properties, p.marshalOptions("newInputs"))
+	rpcInputs, err := MarshalProperties(resource.ToResourcePropertyMap(resp.Properties), p.marshalOptions("newInputs"))
 	if err != nil {
 		return nil, err
 	}
@@ -547,9 +553,9 @@ func (p *providerServer) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (
 		Name:          req.Name,
 		Type:          tokens.Type(req.Type),
 		ID:            id,
-		OldInputs:     oldInputs,
-		OldOutputs:    oldOutputs,
-		NewInputs:     newInputs,
+		OldInputs:     resource.FromResourcePropertyMap(oldInputs),
+		OldOutputs:    resource.FromResourcePropertyMap(oldOutputs),
+		NewInputs:     resource.FromResourcePropertyMap(newInputs),
 		AllowUnknowns: true,
 		IgnoreChanges: req.GetIgnoreChanges(),
 	})
@@ -585,7 +591,7 @@ func (p *providerServer) Create(ctx context.Context, req *pulumirpc.CreateReques
 		URN:                   urn,
 		Name:                  req.Name,
 		Type:                  tokens.Type(req.Type),
-		Properties:            inputs,
+		Properties:            resource.FromResourcePropertyMap(inputs),
 		Timeout:               req.GetTimeout(),
 		Preview:               req.GetPreview(),
 		ResourceStatusAddress: req.GetResourceStatusAddress(),
@@ -595,7 +601,7 @@ func (p *providerServer) Create(ctx context.Context, req *pulumirpc.CreateReques
 		return nil, err
 	}
 
-	rpcState, err := MarshalProperties(resp.Properties, p.marshalOptions("newState"))
+	rpcState, err := MarshalProperties(resource.ToResourcePropertyMap(resp.Properties), p.marshalOptions("newState"))
 	if err != nil {
 		return nil, err
 	}
@@ -644,8 +650,8 @@ func (p *providerServer) Read(ctx context.Context, req *pulumirpc.ReadRequest) (
 		Name:                  req.Name,
 		Type:                  tokens.Type(req.Type),
 		ID:                    requestID,
-		Inputs:                inputs,
-		State:                 state,
+		Inputs:                resource.FromResourcePropertyMap(inputs),
+		State:                 resource.FromResourcePropertyMap(state),
 		Timeout:               req.GetTimeout(),
 		ResourceStatusAddress: req.GetResourceStatusAddress(),
 		ResourceStatusToken:   req.GetResourceStatusToken(),
@@ -655,12 +661,19 @@ func (p *providerServer) Read(ctx context.Context, req *pulumirpc.ReadRequest) (
 		return nil, err
 	}
 
-	rpcState, err := MarshalProperties(resp.Outputs, p.marshalOptions("newState"))
+	var respOutputs, respInputs property.Map
+	if resp.Outputs != nil {
+		respOutputs = *resp.Outputs
+	}
+	if resp.Inputs != nil {
+		respInputs = *resp.Inputs
+	}
+	rpcState, err := MarshalProperties(resource.ToResourcePropertyMap(respOutputs), p.marshalOptions("newState"))
 	if err != nil {
 		return nil, err
 	}
 
-	rpcInputs, err := MarshalProperties(resp.Inputs, p.marshalOptions("newInputs"))
+	rpcInputs, err := MarshalProperties(resource.ToResourcePropertyMap(respInputs), p.marshalOptions("newInputs"))
 	if err != nil {
 		return nil, err
 	}
@@ -771,9 +784,9 @@ func (p *providerServer) Update(ctx context.Context, req *pulumirpc.UpdateReques
 		Name:                  req.Name,
 		Type:                  tokens.Type(req.Type),
 		ID:                    id,
-		OldInputs:             oldInputs,
-		OldOutputs:            oldOutputs,
-		NewInputs:             newInputs,
+		OldInputs:             resource.FromResourcePropertyMap(oldInputs),
+		OldOutputs:            resource.FromResourcePropertyMap(oldOutputs),
+		NewInputs:             resource.FromResourcePropertyMap(newInputs),
 		Timeout:               req.GetTimeout(),
 		IgnoreChanges:         req.GetIgnoreChanges(),
 		Preview:               req.GetPreview(),
@@ -785,7 +798,7 @@ func (p *providerServer) Update(ctx context.Context, req *pulumirpc.UpdateReques
 		return nil, err
 	}
 
-	rpcState, err := MarshalProperties(resp.Properties, p.marshalOptions("newState"))
+	rpcState, err := MarshalProperties(resource.ToResourcePropertyMap(resp.Properties), p.marshalOptions("newState"))
 	if err != nil {
 		return nil, err
 	}
@@ -833,8 +846,8 @@ func (p *providerServer) Delete(ctx context.Context, req *pulumirpc.DeleteReques
 		Name:                  req.Name,
 		Type:                  tokens.Type(req.Type),
 		ID:                    id,
-		Inputs:                inputs,
-		Outputs:               outputs,
+		Inputs:                resource.FromResourcePropertyMap(inputs),
+		Outputs:               resource.FromResourcePropertyMap(outputs),
 		Timeout:               req.GetTimeout(),
 		ResourceStatusAddress: req.GetResourceStatusAddress(),
 		ResourceStatusToken:   req.GetResourceStatusToken(),
@@ -1003,7 +1016,7 @@ func (p *providerServer) Construct(ctx context.Context,
 }
 
 func (p *providerServer) Invoke(ctx context.Context, req *pulumirpc.InvokeRequest) (*pulumirpc.InvokeResponse, error) {
-	args, err := UnmarshalProperties(req.GetArgs(), p.unmarshalOptions("args", false /* keepOutputValues */))
+	args, err := UnmarshalProperties(req.GetArgs(), p.unmarshalOptions("args", p.invokeOutputValues))
 	if err != nil {
 		return nil, err
 	}
@@ -1017,7 +1030,9 @@ func (p *providerServer) Invoke(ctx context.Context, req *pulumirpc.InvokeReques
 		return nil, err
 	}
 
-	rpcResult, err := MarshalProperties(resource.ToResourcePropertyMap(resp.Properties), p.marshalOptions("result"))
+	resultOpts := p.marshalOptions("result")
+	resultOpts.KeepOutputValues = p.invokeOutputValues
+	rpcResult, err := MarshalProperties(resource.ToResourcePropertyMap(resp.Properties), resultOpts)
 	if err != nil {
 		return nil, err
 	}

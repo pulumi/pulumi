@@ -292,9 +292,9 @@ func (g *generator) genRange(w io.Writer, call *model.FunctionCallExpression, en
 		contract.Failf("expected range() to have exactly 1 or 2 args; got %v", len(call.Args))
 	}
 
-	genPrefix := func() { g.Fprint(w, "((from, to) => (new Array(to - from))") }
+	genPrefix := func() { g.Fprint(w, "((from, to) => Array.from({length: to - from}, (_, i) => ") }
 	mapValue := "from + i"
-	genSuffix := func() { g.Fgenf(w, ")(%.v, %.v)", from, to) }
+	genSuffix := func() { g.Fgenf(w, "))(%.v, %.v)", from, to) }
 
 	if litFrom, ok := from.(*model.LiteralValueExpression); ok {
 		fromV, err := convert.Convert(litFrom.Value, cty.Number)
@@ -311,12 +311,12 @@ func (g *generator) genRange(w io.Writer, call *model.FunctionCallExpression, en
 			} else {
 				mapValue = fmt.Sprintf("%d + i", from)
 			}
-			genPrefix = func() { g.Fprintf(w, "(new Array(%d))", to-from) }
-			genSuffix = func() {}
+			genPrefix = func() { g.Fprintf(w, "Array.from({length: %d}, (_, i) => ", to-from) }
+			genSuffix = func() { g.Fprint(w, ")") }
 		} else if from == 0 {
-			genPrefix = func() { g.Fgenf(w, "(new Array(%.v))", to) }
+			genPrefix = func() { g.Fgenf(w, "Array.from({length: %.v}, (_, i) => ", to) }
 			mapValue = "i"
-			genSuffix = func() {}
+			genSuffix = func() { g.Fprint(w, ")") }
 		}
 	}
 
@@ -325,7 +325,7 @@ func (g *generator) genRange(w io.Writer, call *model.FunctionCallExpression, en
 	}
 
 	genPrefix()
-	g.Fprintf(w, ".map((_, i) => %v)", mapValue)
+	g.Fprint(w, mapValue)
 	genSuffix()
 }
 
@@ -676,10 +676,16 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		g.Fgen(w, ")")
 	case "length":
 		argType := pcl.UnwrapOption(model.ResolveOutputs(expr.Args[0].Type()))
-		if model.StringType.AssignableFrom(argType) {
+		_, isMap := argType.(*model.MapType)
+		_, isObject := argType.(*model.ObjectType)
+		switch {
+		case model.StringType.AssignableFrom(argType):
 			// Use Intl.Segmenter to count Unicode grapheme clusters, matching PCL's length() semantics.
 			g.Fgenf(w, "[...new Intl.Segmenter().segment(%.20v)].length", expr.Args[0])
-		} else {
+		case isMap || isObject || argType == model.DynamicType:
+			// Object.keys also counts array elements, so it covers dynamic values whose runtime type is unknown.
+			g.Fgenf(w, "Object.keys(%.20v).length", expr.Args[0])
+		default:
 			g.Fgenf(w, "%.20v.length", expr.Args[0])
 		}
 	case "lookup":

@@ -71,6 +71,9 @@ func TestLanguageNewSmoke(t *testing.T) {
 			e.CWD = projectDir
 
 			e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+			if runtime == "yaml" {
+				e.RunCommand("pulumi", "plugin", "install", "resource", "random", "4.19.0")
+			}
 			e.RunCommand("pulumi", "new", "random-"+Languages[runtime], "--yes")
 			e.RunCommand("pulumi", "up", "--yes")
 			e.RunCommand("pulumi", "destroy", "--yes")
@@ -156,6 +159,8 @@ func TestYamlConvertSmoke(t *testing.T) {
 
 	// Make sure random is installed
 	e.RunCommand("pulumi", "plugin", "install", "resource", "random", "4.13.0")
+	// renovate: datasource=github-releases depName=pulumi/pulumi-yaml
+	e.RunCommand("pulumi", "plugin", "install", "converter", "yaml", "v1.38.8")
 
 	e.RunCommand(
 		"pulumi", "convert", "--strict",
@@ -473,6 +478,7 @@ func TestLanguageImportSmoke(t *testing.T) {
 
 			e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 			e.RunCommand("pulumi", "new", Languages[runtime], "--yes")
+			e.RunCommand("pulumi", "plugin", "install", "resource", "random", "4.19.0")
 			e.RunCommand("pulumi", "import", "--yes", "random:index/randomId:RandomId", "identifier", "p-9hUg")
 		})
 	}
@@ -596,7 +602,7 @@ func TestPluginRun(t *testing.T) {
 
 	e.RunCommand("pulumi", "plugin", "rm", "resource", "random", "--all", "--yes")
 
-	_, stderr := e.RunCommandExpectError("pulumi", "plugin", "run", "--kind=resource", "random", "--", "--help")
+	_, stderr := e.RunCommandExpectError("pulumi", "plugin", "run", "--kind=resource", "random@4.19.0", "--", "--help")
 	assert.Contains(t, stderr, "flag: help requested")
 }
 
@@ -656,6 +662,16 @@ func TestInstall(t *testing.T) {
 			e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 			// Pass `--generate-only` so dependencies are not installed as part of the `new` command.
 			e.RunCommand("pulumi", "new", "random-"+Languages[runtime], "--yes", "--generate-only")
+
+			if runtime == "yaml" {
+				pulumiYAML := filepath.Join(projectDir, "Pulumi.yaml")
+				data, err := os.ReadFile(pulumiYAML)
+				require.NoError(t, err)
+				require.Contains(t, string(data), "    type: random:RandomPet")
+				data = []byte(strings.Replace(string(data), "    type: random:RandomPet",
+					"    type: random:RandomPet\n    options:\n      version: 4.19.0", 1))
+				require.NoError(t, os.WriteFile(pulumiYAML, data, 0o600))
+			}
 
 			// Ensure `install` works and subsequent `up` and `destroy` operations work.
 			_, stderr := e.RunCommand("pulumi", "install")
@@ -1182,6 +1198,7 @@ func TestPulumiPackageAddForTerraformProvider(t *testing.T) {
 
 	e.CWD = projectDir
 	e.Env = append(e.Env,
+		"GITHUB_TOKEN=",
 		"PULUMI_EXPERIMENTAL=true",
 		"PULUMI_DISABLE_REGISTRY_RESOLVE=false",
 		"PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION=false",
@@ -1192,11 +1209,11 @@ func TestPulumiPackageAddForTerraformProvider(t *testing.T) {
 	// Create a new python project based of the local random template
 	e.RunCommand("pulumi", "new", "python", "--yes")
 	e.RunCommand("pulumi", "install")
-	e.RunCommand("pulumi", "package", "add", "opentofu/aptible/aptible@0.9.19")
+	e.RunCommand("pulumi", "package", "add", "opentofu/hashicorp/local@2.9.0")
 
-	e.WriteTestFile("__main__.py", `import pulumi_aptible as aptible
+	e.WriteTestFile("__main__.py", `import pulumi_local as local
 
-example = aptible.Provider("provider")`)
+example = local.Provider("provider")`)
 
 	e.RunCommand("pulumi", "up", "--yes")
 
@@ -1284,6 +1301,8 @@ func TestDoCommandLocalRun(t *testing.T) {
 	// Allow auto-acquiring the command plugin.
 	e.Env = append(e.Env, "PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION=false")
 
+	e.RunCommand("pulumi", "plugin", "install", "resource", "command", "1.0.4")
+
 	// logging = "none" suppresses the command provider's own stdout/stderr echo so the only thing on our stdout
 	// is the JSON result. The provider still captures stdout/stderr as outputs.
 	e.WriteTestFile("inputs.pcl", `command = "echo hello"`+"\n"+`logging = "none"`+"\n")
@@ -1338,6 +1357,8 @@ func TestDoCommandLocalCommand(t *testing.T) {
 
 	// Allow auto-acquiring the command plugin.
 	e.Env = append(e.Env, "PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION=false")
+
+	e.RunCommand("pulumi", "plugin", "install", "resource", "command", "1.0.4")
 
 	e.WriteTestFile("inputs.pcl", "create = \"echo hello\"\n")
 
@@ -1448,6 +1469,7 @@ func TestPulumiNewEmptyOperations(t *testing.T) {
 	defer e.DeleteIfNotFailed()
 	require.NoError(t, os.Remove(filepath.Join(e.RootPath, ".yarnrc")))
 
+	e.SetBackend(e.LocalURL())
 	e.RunCommand("pulumi", "new", "-y")
 	e.RunCommand("pulumi", "stack", "init", "testing")
 	e.RunCommand("pulumi", "config", "set", "key", "value")

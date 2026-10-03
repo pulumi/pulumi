@@ -17,7 +17,11 @@ import pytest
 
 from pulumi.runtime import settings
 from pulumi.runtime.proto import resource_pb2
-from pulumi.runtime.settings import Settings, _load_monitor_feature_support
+from pulumi.runtime.settings import (
+    Settings,
+    _load_monitor_feature_support,
+    monitor_supports_feature,
+)
 
 
 class _UnimplementedError(grpc.RpcError):
@@ -71,7 +75,8 @@ async def test_loads_features_from_get_deployment_info():
             resource_pb2.RESOURCE_MONITOR_FEATURE_TRANSFORMS,
             resource_pb2.RESOURCE_MONITOR_FEATURE_RESOURCE_HOOKS,
             resource_pb2.RESOURCE_MONITOR_FEATURE_INVOKE_DEPENDS_ON,
-            # Features the SDK does not track never show up in feature_support.
+            resource_pb2.RESOURCE_MONITOR_FEATURE_STATE_MIGRATIONS,
+            # Preserve features that this version of the SDK does not use.
             resource_pb2.RESOURCE_MONITOR_FEATURE_BYTE_STRING,
         ]
     )
@@ -86,8 +91,12 @@ async def test_loads_features_from_get_deployment_info():
         resource_pb2.RESOURCE_MONITOR_FEATURE_TRANSFORMS,
         resource_pb2.RESOURCE_MONITOR_FEATURE_RESOURCE_HOOKS,
         resource_pb2.RESOURCE_MONITOR_FEATURE_INVOKE_DEPENDS_ON,
+        resource_pb2.RESOURCE_MONITOR_FEATURE_STATE_MIGRATIONS,
         resource_pb2.RESOURCE_MONITOR_FEATURE_BYTE_STRING,
     }
+    assert monitor_supports_feature(
+        resource_pb2.RESOURCE_MONITOR_FEATURE_STATE_MIGRATIONS
+    )
     assert monitor.supports_feature_calls == 0
 
 
@@ -116,3 +125,6 @@ async def test_falls_back_to_supports_feature_when_unimplemented():
         "secrets",
         "transforms",
     ]
+    assert not monitor_supports_feature(
+        resource_pb2.RESOURCE_MONITOR_FEATURE_STATE_MIGRATIONS
+    )

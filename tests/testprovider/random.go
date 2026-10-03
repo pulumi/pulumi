@@ -11,8 +11,8 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+
 //go:build !all
-// +build !all
 
 package main
 
@@ -26,7 +26,7 @@ import (
 	pschema "github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
-	rpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
+	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 
 	"google.golang.org/protobuf/types/known/emptypb"
 )
@@ -66,11 +66,11 @@ func init() {
 
 type randomProvider struct{}
 
-func (p *randomProvider) Check(ctx context.Context, req *rpc.CheckRequest) (*rpc.CheckResponse, error) {
-	return &rpc.CheckResponse{Inputs: req.News, Failures: nil}, nil
+func (p *randomProvider) Check(ctx context.Context, req *pulumirpc.CheckRequest) (*pulumirpc.CheckResponse, error) {
+	return &pulumirpc.CheckResponse{Inputs: req.News, Failures: nil}, nil
 }
 
-func (p *randomProvider) Diff(ctx context.Context, req *rpc.DiffRequest) (*rpc.DiffResponse, error) {
+func (p *randomProvider) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (*pulumirpc.DiffResponse, error) {
 	olds, err := plugin.UnmarshalProperties(req.GetOlds(), plugin.MarshalOptions{KeepUnknowns: true, SkipNulls: true})
 	if err != nil {
 		return nil, err
@@ -83,24 +83,24 @@ func (p *randomProvider) Diff(ctx context.Context, req *rpc.DiffRequest) (*rpc.D
 
 	d := olds.Diff(news)
 	var replaces []string
-	changes := rpc.DiffResponse_DIFF_NONE
+	changes := pulumirpc.DiffResponse_DIFF_NONE
 	if d.Changed("length") {
-		changes = rpc.DiffResponse_DIFF_SOME
+		changes = pulumirpc.DiffResponse_DIFF_SOME
 		replaces = append(replaces, "length")
 	}
 
 	if d.Changed("prefix") {
-		changes = rpc.DiffResponse_DIFF_SOME
+		changes = pulumirpc.DiffResponse_DIFF_SOME
 		replaces = append(replaces, "prefix")
 	}
 
-	return &rpc.DiffResponse{
+	return &pulumirpc.DiffResponse{
 		Changes:  changes,
 		Replaces: replaces,
 	}, nil
 }
 
-func (p *randomProvider) Create(ctx context.Context, req *rpc.CreateRequest) (*rpc.CreateResponse, error) {
+func (p *randomProvider) Create(ctx context.Context, req *pulumirpc.CreateRequest) (*pulumirpc.CreateResponse, error) {
 	inputs, err := plugin.UnmarshalProperties(req.GetProperties(), plugin.MarshalOptions{
 		KeepUnknowns: true,
 		SkipNulls:    true,
@@ -145,13 +145,13 @@ func (p *randomProvider) Create(ctx context.Context, req *rpc.CreateRequest) (*r
 	if err != nil {
 		return nil, err
 	}
-	return &rpc.CreateResponse{
+	return &pulumirpc.CreateResponse{
 		Id:         result,
 		Properties: outputProperties,
 	}, nil
 }
 
-func (p *randomProvider) Read(ctx context.Context, req *rpc.ReadRequest) (*rpc.ReadResponse, error) {
+func (p *randomProvider) Read(ctx context.Context, req *pulumirpc.ReadRequest) (*pulumirpc.ReadResponse, error) {
 	// if this is an import (no state or properties) then create a random state from the ID
 	if (req.Properties == nil || len(req.Properties.Fields) == 0) && (req.Inputs == nil || len(req.Inputs.Fields) == 0) {
 		// Split the ID at : into prefix and result
@@ -193,29 +193,29 @@ func (p *randomProvider) Read(ctx context.Context, req *rpc.ReadRequest) (*rpc.R
 	}
 
 	// Else just return back the input state.
-	return &rpc.ReadResponse{
+	return &pulumirpc.ReadResponse{
 		Id:         req.Id,
 		Properties: req.Properties,
 		Inputs:     req.Inputs,
 	}, nil
 }
 
-func (p *randomProvider) Update(ctx context.Context, req *rpc.UpdateRequest) (*rpc.UpdateResponse, error) {
+func (p *randomProvider) Update(ctx context.Context, req *pulumirpc.UpdateRequest) (*pulumirpc.UpdateResponse, error) {
 	// Our Random resource will never be updated - if there is a diff, it will be a replacement.
 	panic("Update not implemented")
 }
 
-func (p *randomProvider) Delete(ctx context.Context, req *rpc.DeleteRequest) (*emptypb.Empty, error) {
+func (p *randomProvider) Delete(ctx context.Context, req *pulumirpc.DeleteRequest) (*emptypb.Empty, error) {
 	// Note that for our Random resource, we don't have to do anything on Delete.
 	return &emptypb.Empty{}, nil
 }
 
-func (p *randomProvider) Invoke(ctx context.Context, req *rpc.InvokeRequest) (*rpc.InvokeResponse, error) {
+func (p *randomProvider) Invoke(ctx context.Context, req *pulumirpc.InvokeRequest) (*pulumirpc.InvokeResponse, error) {
 	// The random provider doesn't support any invokes currently.
 	panic("Invoke not implemented")
 }
 
-func (p *randomProvider) Call(ctx context.Context, req *rpc.CallRequest) (*rpc.CallResponse, error) {
+func (p *randomProvider) Call(ctx context.Context, req *pulumirpc.CallRequest) (*pulumirpc.CallResponse, error) {
 	// The random provider doesn't support any call currently.
 	panic("Call not implemented")
 }

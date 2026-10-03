@@ -35,6 +35,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	diagutil "github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
@@ -167,10 +168,12 @@ func EnsureLanguageInstalled(ctx context.Context, runtime string) error {
 	}
 	logging.V(1).Infof("Automatically installing language runtime %s", runtime)
 	done, err := pluginstorage.UnpackContents(ctx, spec, pluginstorage.TarPlugin(downloadedFile), false)
+	if err == nil {
+		err = done(true)
+	}
 	if err != nil {
 		return &InstallPluginError{Spec: spec, Err: fmt.Errorf("error installing language runtime %s: %w", runtime, err)}
 	}
-	done(true)
 
 	if dir, err := spec.DirPath(); err == nil {
 		pluginYaml := filepath.Join(dir, spec.SubDir(), "PulumiPlugin.yaml")
@@ -196,7 +199,13 @@ func InstallPluginContent(
 	if err != nil {
 		return err
 	}
-	defer func() { done(err == nil) }()
+	defer func() {
+		if err == nil {
+			err = done(true)
+		} else {
+			contract.IgnoreError(done(false))
+		}
+	}()
 
 	return installDependenciesForPluginSpec(ctx, spec,
 		os.Stderr /* redirect stdout to stderr */, os.Stderr, newLoader)

@@ -485,19 +485,20 @@ func (p *SimpleInvokeProvider) Invoke(
 func (p *SimpleInvokeProvider) Check(
 	_ context.Context, req plugin.CheckRequest,
 ) (plugin.CheckResponse, error) {
+	news := resource.ToResourcePropertyMap(req.NewInputs)
 	if req.URN.Type() != "simple-invoke:index:StringResource" {
 		return plugin.CheckResponse{
 			Failures: makeCheckFailure("", fmt.Sprintf("invalid URN type: %s", req.URN.Type())),
 		}, nil
 	}
 
-	if len(req.News) != 1 {
+	if len(news) != 1 {
 		return plugin.CheckResponse{
-			Failures: makeCheckFailure("", fmt.Sprintf("expected exactly one property: %v", req.News)),
+			Failures: makeCheckFailure("", fmt.Sprintf("expected exactly one property: %v", news)),
 		}, nil
 	}
 
-	return plugin.CheckResponse{Properties: req.News}, nil
+	return plugin.CheckResponse{Properties: resource.FromResourcePropertyMap(news)}, nil
 }
 
 func (p *SimpleInvokeProvider) Create(
@@ -521,9 +522,21 @@ func (p *SimpleInvokeProvider) Create(
 
 	return plugin.CreateResponse{
 		ID: resource.ID(id),
-		Properties: resource.PropertyMap{
-			"text": resource.NewProperty(text),
-		},
+		Properties: property.NewMap(map[string]property.Value{
+			"text": property.New(text),
+		}),
 		Status: resource.StatusOK,
 	}, nil
+}
+
+func (p *SimpleInvokeProvider) DiffConfig(
+	context.Context, plugin.DiffConfigRequest,
+) (plugin.DiffConfigResponse, error) {
+	return plugin.DiffResult{}, nil
+}
+
+func (p *SimpleInvokeProvider) Diff(
+	context.Context, plugin.DiffRequest,
+) (plugin.DiffResult, error) {
+	return plugin.DiffResult{}, nil
 }

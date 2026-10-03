@@ -195,18 +195,14 @@ type RequiredPolicy interface {
 	Name() string
 	// Version of the PolicyPack.
 	Version() string
-	// Installed returns true if the PolicyPack is already installed locally.
-	Installed() bool
 	// LocalPath returns the local path of the PolicyPack.
 	LocalPath() (string, error)
-	// Download the PolicyPack.
-	Download(
-		ctx context.Context,
-		wrapper func(stream io.ReadCloser, size int64) io.ReadCloser,
-	) (io.ReadCloser, int64, error)
-	// Install the PolicyPack. content is the tarball of the PolicyPack.
-	// stdout and stderr are used for dependency installation output.
-	Install(ctx *plugin.Context, content io.ReadCloser, stdout, stderr io.Writer) error
+	// Ensure that the policy is downloaded & installed on disk.
+	EnsureInstalled(
+		ctx *plugin.Context,
+		downloadWrapper func(stream io.ReadCloser, size int64) io.ReadCloser,
+		installWriter io.Writer,
+	) error
 	// Config returns the PolicyPack's configuration.
 	Config() map[string]*json.RawMessage
 	// ResolveEnvironments opens any referenced ESC environments and returns
@@ -402,6 +398,11 @@ type UpdateOptions struct {
 
 	// true if the engine should disable output value support.
 	DisableOutputValues bool
+
+	// true if the engine should not advertise the INVOKE_OUTPUT_VALUES monitor feature. SDKs that check the
+	// feature list before opting in will fall back to the legacy union-of-arg-deps behaviour on Invoke. Test-only
+	// knob for exercising the fallback path against providers that do advertise `accepts_outputs_in_invoke`.
+	DisableInvokeOutputValues bool
 
 	// HostFactory builds the plugin host for this operation.
 	HostFactory HostFactory
@@ -1144,6 +1145,7 @@ func newUpdateSource(ctx context.Context,
 		Parallel:                  opts.Parallel,
 		DisableResourceReferences: opts.DisableResourceReferences,
 		DisableOutputValues:       opts.DisableOutputValues,
+		DisableInvokeOutputValues: opts.DisableInvokeOutputValues,
 		AttachDebugger:            opts.AttachDebugger,
 		SupportsStateMigrations:   opts.supportsStateMigrations,
 	}
@@ -1301,6 +1303,10 @@ func (acts *updateActions) OnStateMigration(transaction *deploy.StateMigrationTr
 	if err := manager.StateMigration(transaction); err != nil {
 		return err
 	}
+	// TODO[https://github.com/pulumi/pulumi/issues/24714]: Replace with display event
+	acts.Opts.Diag.Infof(diag.Message(transaction.RootURN,
+		"State migration applied (state entries: %d before, %d after)."),
+		len(transaction.PriorSubtree), len(transaction.ResultSubtree))
 	return nil
 }
 
@@ -1529,6 +1535,10 @@ func (acts *previewActions) OnRebuiltBaseState() error {
 }
 
 func (acts *previewActions) OnStateMigration(transaction *deploy.StateMigrationTransaction) error {
+	// TODO[https://github.com/pulumi/pulumi/issues/24714]: Replace with display event
+	acts.Opts.Diag.Infof(diag.Message(transaction.RootURN,
+		"State migration planned (state entries: %d before, %d after)."),
+		len(transaction.PriorSubtree), len(transaction.ResultSubtree))
 	return nil
 }
 

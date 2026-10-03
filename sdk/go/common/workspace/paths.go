@@ -300,8 +300,7 @@ func GetPulumiPath(elem ...string) (string, error) {
 // construction, falling back to the shared agent directory when an agent cannot
 // write the default home directory.
 func pulumiHomeDirForPath(homeDir string) (string, error) {
-	agent := agentdetect.Detect(os.Getenv)
-	if agent == "" || hasExplicitPulumiPathEnv() {
+	if !AgentCredentialsFallbackEnabled() {
 		return homeDir, nil
 	}
 	if err := ensurePulumiHomeWritable(homeDir); err == nil {
@@ -309,7 +308,7 @@ func pulumiHomeDirForPath(homeDir string) (string, error) {
 	} else {
 		logging.V(7).Infof(
 			"Could not use default Pulumi home directory %q in agent mode (%s); using shared agent Pulumi directory: %v",
-			homeDir, agent, err,
+			homeDir, agentdetect.Detect(os.Getenv), err,
 		)
 	}
 	return getAgentPulumiDir()

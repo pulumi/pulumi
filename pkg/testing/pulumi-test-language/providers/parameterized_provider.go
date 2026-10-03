@@ -226,6 +226,7 @@ func (p *ParameterizedProvider) CheckConfig(
 func (p *ParameterizedProvider) Check(
 	_ context.Context, req plugin.CheckRequest,
 ) (plugin.CheckResponse, error) {
+	news := resource.ToResourcePropertyMap(req.NewInputs)
 	// URN should be of the form "{sub-package}:index:{parameterized-resource}"
 	expectedToken := fmt.Sprintf("%s:index:%s", p.parameterPackage, string(p.parameterValue))
 	if string(req.URN.Type()) != expectedToken {
@@ -235,7 +236,7 @@ func (p *ParameterizedProvider) Check(
 		}, nil
 	}
 
-	return plugin.CheckResponse{Properties: req.News}, nil
+	return plugin.CheckResponse{Properties: resource.FromResourcePropertyMap(news)}, nil
 }
 
 func (p *ParameterizedProvider) Create(
@@ -266,7 +267,7 @@ func (p *ParameterizedProvider) Create(
 
 	return plugin.CreateResponse{
 		ID:         resource.ID(id),
-		Properties: outputs,
+		Properties: resource.FromResourcePropertyMap(outputs),
 		Status:     resource.StatusOK,
 	}, nil
 }

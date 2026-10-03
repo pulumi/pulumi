@@ -35,12 +35,12 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	resourceanalyzer "github.com/pulumi/pulumi/pkg/v3/resource/analyzer"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
+	"github.com/pulumi/pulumi/pkg/v3/util/atomicinstall"
 	pkgCmdUtil "github.com/pulumi/pulumi/pkg/v3/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/archive"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/nodejs/npm"
 )
@@ -56,21 +56,19 @@ var _ engine.RequiredPolicy = (*cloudRequiredPolicy)(nil)
 
 func newCloudRequiredPolicy(client *client.Client, envs backend.EnvironmentsBackend,
 	policy apitype.RequiredPolicy, orgName string,
-) *cloudRequiredPolicy {
+) engine.RequiredPolicy {
 	return &cloudRequiredPolicy{
+		RequiredPolicy: policy,
 		client:         client,
 		envs:           envs,
-		RequiredPolicy: policy,
 		orgName:        orgName,
 	}
 }
 
 func (rp *cloudRequiredPolicy) Name() string    { return rp.RequiredPolicy.Name }
 func (rp *cloudRequiredPolicy) Version() string { return rp.VersionTag }
-func (rp *cloudRequiredPolicy) OrgName() string { return rp.orgName }
 
-func (rp *cloudRequiredPolicy) policyVersion() string {
-	policy := rp.RequiredPolicy
+func policyVersion(policy apitype.RequiredPolicy) string {
 	// If version tag is empty, we use the version. This is to support older versions of
 	// pulumi/policy that do not have a version tag.
 	version := policy.VersionTag
@@ -80,46 +78,66 @@ func (rp *cloudRequiredPolicy) policyVersion() string {
 	return version
 }
 
-func (rp *cloudRequiredPolicy) policyPath() (string, bool, error) {
-	version := rp.policyVersion()
-	return workspace.GetPolicyPath(
-		rp.OrgName(),
-		strings.ReplaceAll(rp.RequiredPolicy.Name, tokens.QNameDelimiter, "_"),
-		version)
+func policyPath(orgName string, policy apitype.RequiredPolicy) (string, error) {
+	p, _, err := workspace.GetPolicyPath(
+		orgName,
+		strings.ReplaceAll(policy.Name, tokens.QNameDelimiter, "_"),
+		policyVersion(policy))
+	return p, err
 }
 
-// Installed returns true if the PolicyPack is already installed locally.
-func (rp *cloudRequiredPolicy) Installed() bool {
-	_, installed, err := rp.policyPath()
-	contract.IgnoreError(err)
-	return installed
+func (rp *cloudRequiredPolicy) EnsureInstalled(
+	ctx *plugin.Context,
+	downloadWrapper func(stream io.ReadCloser, size int64) io.ReadCloser,
+	installOut io.Writer,
+) error {
+	store, key, err := rp.storeKey()
+	if err != nil {
+		return err
+	}
+	_, err = store.Install(ctx.Base(), key, func(_ context.Context, dir string) error {
+		tarball, size, err := rp.client.DownloadPolicyPack(ctx.Base(), rp.PackLocation)
+		if err != nil {
+			return err
+		}
+		tarball = downloadWrapper(tarball, size)
+		defer contract.IgnoreClose(tarball)
+		return installRequiredPolicy(ctx, dir, tarball, installOut /* stdout */, installOut /* stderr */)
+	})
+	return err
 }
 
 // LocalPath returns the local path of the PolicyPack.
 func (rp *cloudRequiredPolicy) LocalPath() (string, error) {
-	policyPath, _, err := rp.policyPath()
-	return policyPath, err
+	store, key, err := rp.storeKey()
+	if err != nil {
+		return "", err
+	}
+
+	path, found, err := store.Lookup(key)
+	if err != nil {
+		return "", err
+	}
+	if !found {
+		return "", PolicyNotInstalledError{key}
+	}
+	return path, nil
 }
 
-// Download the PolicyPack.
-func (rp *cloudRequiredPolicy) Download(
-	ctx context.Context,
-	wrapper func(stream io.ReadCloser, size int64) io.ReadCloser,
-) (io.ReadCloser, int64, error) {
-	tarball, size, err := rp.client.DownloadPolicyPack(ctx, rp.PackLocation)
-	if err != nil {
-		return nil, 0, err
-	}
-	return wrapper(tarball, size), size, nil
+type PolicyNotInstalledError struct {
+	policy string
 }
 
-// Install the PolicyPack. content is the tarball of the PolicyPack.
-func (rp *cloudRequiredPolicy) Install(ctx *plugin.Context, content io.ReadCloser, stdout, stderr io.Writer) error {
-	policyPackPath, _, err := rp.policyPath()
+func (err PolicyNotInstalledError) Error() string {
+	return fmt.Sprintf("policy %q not installed", err.policy)
+}
+
+func (rp *cloudRequiredPolicy) storeKey() (atomicinstall.Store, string, error) {
+	path, err := policyPath(rp.orgName, rp.RequiredPolicy)
 	if err != nil {
-		return err
+		return atomicinstall.Store{}, "", err
 	}
-	return installRequiredPolicy(ctx, policyPackPath, content, stdout, stderr)
+	return atomicinstall.NewStore(filepath.Dir(path)), filepath.Base(path), nil
 }
 
 func (rp *cloudRequiredPolicy) Config() map[string]*json.RawMessage { return rp.RequiredPolicy.Config }
@@ -494,33 +512,16 @@ func (pack *cloudPolicyPack) Remove(ctx context.Context, op backend.PolicyPackOp
 	return pack.cl.RemovePolicyPackByVersion(ctx, pack.ref.orgName, string(pack.ref.name), *op.VersionTag)
 }
 
-const packageDir = "package"
+const packageDir = "package/" // Tar entries always use "/" as their separator.
 
 func installRequiredPolicy(ctx *plugin.Context, finalDir string, tgz io.ReadCloser, stdout, stderr io.Writer) error {
-	// If part of the directory tree is missing, os.MkdirTemp will return an error, so make sure
-	// the path we're going to create the temporary folder in actually exists.
-	if err := os.MkdirAll(filepath.Dir(finalDir), 0o700); err != nil {
-		return fmt.Errorf("creating plugin root: %w", err)
-	}
-
-	tempDir, err := os.MkdirTemp(filepath.Dir(finalDir), filepath.Base(finalDir)+".tmp")
-	if err != nil {
-		return fmt.Errorf("creating plugin directory %s: %w", tempDir, err)
-	}
-
-	// The policy pack files are actually in a directory called `package`.
-	tempPackageDir := filepath.Join(tempDir, packageDir)
-	if err := os.MkdirAll(tempPackageDir, 0o700); err != nil {
-		return fmt.Errorf("creating plugin root: %w", err)
-	}
-
-	// If we early out of this function, try to remove the temp folder we created.
-	defer func() {
-		contract.IgnoreError(os.RemoveAll(tempDir))
-	}()
-
 	// Uncompress the policy pack.
-	err = archive.ExtractTGZ(tgz, tempDir)
+	err := archive.ExtractTGZWithRemap(tgz, finalDir, func(path string) string {
+		if after, ok := strings.CutPrefix(path, packageDir); ok {
+			return after
+		}
+		return ""
+	})
 	if err != nil {
 		return fmt.Errorf("failed to extract tarball: %w", err)
 	}
@@ -528,17 +529,6 @@ func installRequiredPolicy(ctx *plugin.Context, finalDir string, tgz io.ReadClos
 	// Close the tarball stream to emit its Done progress event, dismissing the
 	// "Installing policy pack" progress bar before dependency installation begins.
 	contract.IgnoreClose(tgz)
-
-	logging.V(7).Infof("Unpacking policy pack %q %q\n", tempDir, finalDir)
-
-	// If two calls to `plugin install` for the same plugin are racing, the second one will be
-	// unable to rename the directory. That's OK, just ignore the error. The temp directory created
-	// as part of the install will be cleaned up when we exit by the defer above.
-	//
-	//nolint:forbidigo // historic os.Rename usage
-	if err := os.Rename(tempPackageDir, finalDir); err != nil && !os.IsExist(err) {
-		return fmt.Errorf("moving plugin: %w", err)
-	}
 
 	projPath := filepath.Join(finalDir, "PulumiPolicy.yaml")
 	proj, err := workspace.LoadPolicyPack(projPath)

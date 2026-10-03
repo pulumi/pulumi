@@ -100,11 +100,11 @@ func resourceJSONFromEvent(p engine.ResourcePreEventPayload, opts Options) *Reso
 		parent = string(p.Metadata.Old.Parent)
 	}
 
-	r := NewResourceJSON(p.Metadata.URN, apitype.OpType(p.Metadata.Op), parent)
+	r := new(NewResourceJSON(p.Metadata.URN, apitype.OpType(p.Metadata.Op), parent))
 	if opts.Type == DisplayDiff {
 		r.Diff = stepDiffJSON(p.Metadata, opts.ShowSecrets)
 	}
-	return &r
+	return r
 }
 
 // NewResourceJSON builds the per-resource summary entry from the fields

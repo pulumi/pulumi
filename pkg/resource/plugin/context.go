@@ -17,6 +17,7 @@ package plugin
 import (
 	"context"
 	"io"
+	"path/filepath"
 	"sync"
 
 	"github.com/opentracing/opentracing-go"
@@ -194,7 +195,10 @@ func NewContext(ctx context.Context, d, statusD diag.Sink, host Host, _ ConfigSo
 	// TODO: really this ought to just take plugins *workspace.Plugins and packages map[string]workspace.PackageSpec
 	// as args, but yaml depends on this function so *sigh*. For now just see if there's a project we should be using,
 	// and use it if there is.
+	// The project's plugin and package paths are relative to the project
+	// directory, so that directory is the root when a project is found.
 	projPath, err := workspace.DetectProjectPath()
+	root := pwd
 	var plugins *workspace.Plugins
 	var packages map[string]workspace.PackageSpec
 	if err == nil && projPath != "" {
@@ -202,10 +206,11 @@ func NewContext(ctx context.Context, d, statusD diag.Sink, host Host, _ ConfigSo
 		if err == nil {
 			plugins = project.Plugins
 			packages = project.GetPackageSpecs()
+			root = filepath.Dir(projPath)
 		}
 	}
 
-	return NewContextWithRoot(ctx, d, statusD, host, pwd, pwd, runtimeOptions,
+	return NewContextWithRoot(ctx, d, statusD, host, pwd, root, runtimeOptions,
 		disableProviderPreview, parentSpan, plugins, packages, nil)
 }
 

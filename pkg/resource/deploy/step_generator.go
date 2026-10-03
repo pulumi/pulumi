@@ -216,6 +216,18 @@ func (sg *stepGenerator) isExcludedFromUpdate(res *pkgresource.State) bool {
 	return false
 }
 
+// recordActualTargeting adds `res` to the set of resources that are actually targeted or excluded,
+// so that `--target-dependents`/`--exclude-dependents` can propagate through it. Resources are
+// visited in topological order, so a dependency is always recorded before its dependents are
+// considered.
+func (sg *stepGenerator) recordActualTargeting(isTargeted bool, res *pkgresource.State) {
+	if sg.deployment.opts.Excludes.IsConstrained() && !isTargeted && sg.isExcludedFromUpdate(res) {
+		sg.excludesActual.addLiteral(res.URN)
+	} else if isTargeted && sg.isTargetedForUpdate(res) {
+		sg.targetsActual.addLiteral(res.URN)
+	}
+}
+
 func (sg *stepGenerator) isTargetedReplace(urn resource.URN, old *pkgresource.State) bool {
 	// If this was specified by a replace target explicitly by URN, it will be replaced.
 	if sg.deployment.opts.ReplaceTargets.IsConstrained() && sg.deployment.opts.ReplaceTargets.Contains(urn) {
@@ -355,6 +367,8 @@ func (sg *stepGenerator) GenerateReadSteps(event ReadResourceEvent) ([]Step, err
 	if newState.ID == "" {
 		return nil, fmt.Errorf("Expected an ID for %v", urn)
 	}
+
+	sg.recordActualTargeting(sg.isIncludedInOperation(newState), newState)
 
 	// If the snapshot has an old resource for this URN and it's not external, we're going
 	// to have to delete the old resource and conceptually replace it with the resource we
@@ -1345,7 +1359,7 @@ func (sg *stepGenerator) continueStepsFromImport(
 		if !isTargeted {
 			// If not targeted, stub out the provider check and use the old inputs directly.
 			checkInputs = func(context.Context, plugin.CheckRequest) (plugin.CheckResponse, error) {
-				return plugin.CheckResponse{Properties: oldInputs}, nil
+				return plugin.CheckResponse{Properties: resource.FromResourcePropertyMap(oldInputs)}, nil
 			}
 		}
 
@@ -1356,7 +1370,7 @@ func (sg *stepGenerator) continueStepsFromImport(
 		if recreating || wasExternal || sg.isTargetedReplace(urn, old) || old == nil {
 			resp, err = checkInputs(context.TODO(), plugin.CheckRequest{
 				URN:           urn,
-				News:          resource.ToResourcePropertyMap(goal.Properties),
+				NewInputs:     goal.Properties,
 				AllowUnknowns: allowUnknowns,
 				RandomSeed:    randomSeed,
 				Autonaming:    autonaming,
@@ -1364,15 +1378,15 @@ func (sg *stepGenerator) continueStepsFromImport(
 		} else {
 			resp, err = checkInputs(context.TODO(), plugin.CheckRequest{
 				URN:           urn,
-				Olds:          oldInputs,
-				News:          inputs,
-				OldOutputs:    oldOutputs,
+				OldInputs:     resource.FromResourcePropertyMap(oldInputs),
+				NewInputs:     resource.FromResourcePropertyMap(inputs),
+				OldOutputs:    resource.FromResourcePropertyMap(oldOutputs),
 				AllowUnknowns: allowUnknowns,
 				RandomSeed:    randomSeed,
 				Autonaming:    autonaming,
 			})
 		}
-		inputs = resp.Properties
+		inputs = resource.ToResourcePropertyMap(resp.Properties)
 
 		if err != nil {
 			return nil, false, err
@@ -1559,11 +1573,7 @@ func (sg *stepGenerator) continueStepsFromImport(
 	// `excludesActual`. Because we go through our resources in topological
 	// order, this means that, if a parent `P` of a dependency `D` is targeted or
 	// excluded, `P` will be added to the relevant list before we consider `D`.
-	if sg.deployment.opts.Excludes.IsConstrained() && !isTargeted && sg.isExcludedFromUpdate(new) {
-		sg.excludesActual.addLiteral(urn)
-	} else if isTargeted && sg.isTargetedForUpdate(new) {
-		sg.targetsActual.addLiteral(urn)
-	}
+	sg.recordActualTargeting(isTargeted, new)
 
 	// Case 3: hasOld
 	//  In this case, the resource we are operating upon now exists in the old snapshot.
@@ -2039,13 +2049,13 @@ func (sg *stepGenerator) continueStepsFromDiff(diffEvent ContinueResourceDiffEve
 			if prov != nil && !sg.isTargetedReplace(urn, old) {
 				resp, err := prov.Check(context.TODO(), plugin.CheckRequest{
 					URN:           urn,
-					News:          resource.ToResourcePropertyMap(goal.Properties),
+					NewInputs:     goal.Properties,
 					AllowUnknowns: allowUnknowns,
 					RandomSeed:    randomSeed,
 					Autonaming:    autonaming,
 				})
 				failures := resp.Failures
-				inputs := resp.Properties
+				inputs := resource.ToResourcePropertyMap(resp.Properties)
 				if err != nil {
 					return nil, err
 				} else if issueCheckErrors(sg.deployment, new, urn, failures) {
@@ -2119,6 +2129,14 @@ func (sg *stepGenerator) continueStepsFromDiff(diffEvent ContinueResourceDiffEve
 						continue
 					}
 
+					// If the resource is already pending replacement its delete has already been performed by
+					// an earlier interrupted operation, so there is nothing left to delete. The resource will
+					// be recreated when it is registered, or removed from the state by GenerateDeletes if it
+					// no longer is.
+					if dependentResource.PendingReplacement {
+						continue
+					}
+
 					// If we're generating plans create a plan for this delete
 					if sg.deployment.opts.GeneratePlan {
 						if _, ok := sg.deployment.newPlans.get(dependentResource.URN); !ok {
@@ -2186,6 +2204,18 @@ func (sg *stepGenerator) continueStepsFromDiff(diffEvent ContinueResourceDiffEve
 						sg.deployment, event, old, new, diff.ReplaceKeys, diff.ChangedKeys, diff.DetailedDiff, false,
 					),
 				), nil
+			}
+
+			// If the resource is already pending replacement its delete has already been performed, so
+			// all that's left is to create the replacement. The "old" currently pending replace resource
+			// will get removed from the state when the CreateReplacementStep is successful.
+			if old.PendingReplacement {
+				return []Step{
+					NewReplaceStep(sg.deployment, old, new, diff.ReplaceKeys, diff.ChangedKeys, diff.DetailedDiff, false),
+					NewCreateReplacementStep(
+						sg.deployment, event, old, new, diff.ReplaceKeys, diff.ChangedKeys, diff.DetailedDiff, false,
+					),
+				}, nil
 			}
 
 			return []Step{
@@ -2451,8 +2481,15 @@ func (sg *stepGenerator) GenerateDeletes(targetsOpt UrnTargets, excludesOpt UrnT
 
 					logging.V(7).Infof("Planner decided to delete '%v' due to replacement", res.URN)
 					sg.deletes[res.URN] = true
-					oldViews := sg.deployment.GetOldViews(res.URN)
-					deleteSteps = append(deleteSteps, NewDeleteReplacementStep(sg.deployment, sg.deletes, res, false, oldViews))
+					if res.PendingReplacement {
+						// A state written by an older CLI can contain a pending-delete resource that is also
+						// pending replacement; its delete has already been performed, so just remove it.
+						deleteSteps = append(deleteSteps, NewRemovePendingReplaceStep(sg.deployment, res))
+					} else {
+						oldViews := sg.deployment.GetOldViews(res.URN)
+						deleteSteps = append(deleteSteps,
+							NewDeleteReplacementStep(sg.deployment, sg.deletes, res, false, oldViews))
+					}
 				} else if !sg.isOperatedOn(res.URN) {
 					logging.V(7).Infof("Planner decided to delete '%v'", res.URN)
 					sg.deletes[res.URN] = true
@@ -2887,9 +2924,9 @@ func (sg *stepGenerator) providerChanged(urn resource.URN, old, new *pkgresource
 
 	diff, err := newProv.DiffConfig(context.TODO(), plugin.DiffConfigRequest{
 		URN:           newRef.URN(),
-		OldInputs:     providers.FilterProviderConfig(oldRes.Inputs),
-		OldOutputs:    oldRes.Outputs,
-		NewInputs:     providers.FilterProviderConfig(newRes.Inputs),
+		OldInputs:     resource.FromResourcePropertyMap(providers.FilterProviderConfig(oldRes.Inputs)),
+		OldOutputs:    resource.FromResourcePropertyMap(oldRes.Outputs),
+		NewInputs:     resource.FromResourcePropertyMap(providers.FilterProviderConfig(newRes.Inputs)),
 		AllowUnknowns: true,
 	})
 	if err != nil {
@@ -3016,9 +3053,9 @@ func diffResource(d diag.Sink, urn resource.URN, id resource.ID, oldInputs, oldO
 		Name:          urn.Name(),
 		Type:          urn.Type(),
 		ID:            id,
-		OldInputs:     oldInputs,
-		OldOutputs:    oldOutputs,
-		NewInputs:     newInputs,
+		OldInputs:     resource.FromResourcePropertyMap(oldInputs),
+		OldOutputs:    resource.FromResourcePropertyMap(oldOutputs),
+		NewInputs:     resource.FromResourcePropertyMap(newInputs),
 		AllowUnknowns: allowUnknowns,
 		IgnoreChanges: ignoreChanges,
 	})

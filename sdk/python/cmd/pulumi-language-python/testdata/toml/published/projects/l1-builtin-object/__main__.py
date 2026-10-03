@@ -9,3 +9,5 @@ alternative_names = config.get_object("alternativeNames")
 if alternative_names is None:
     alternative_names = {}
 pulumi.export("names", [entry["value"] for entry in [{"key": k, "value": v} for k, v in sorted(alternative_names.items())]])
+pulumi.export("lengthOutput", len(a_map))
+pulumi.export("lengthDynamicOutput", len(alternative_names))

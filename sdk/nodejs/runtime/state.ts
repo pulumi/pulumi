@@ -207,6 +207,11 @@ export interface Store {
     supportsInvokeDependsOn: boolean;
 
     /**
+     * Tells us if the resource monitor supports state migration callbacks.
+     */
+    supportsStateMigrations: boolean;
+
+    /**
      * The callback service running for this deployment. This registers
      * callbacks and forwards them to the engine.
      */
@@ -339,6 +344,7 @@ export class LocalStore implements Store {
     supportsResourceHooks = false;
     supportsErrorHooks = false;
     supportsInvokeDependsOn = false;
+    supportsStateMigrations = false;
     resourcePackages = new Map<string, ResourcePackage[]>();
     resourceModules = new Map<string, ResourceModule[]>();
     packageRefs = new Map<string, Promise<string>>();

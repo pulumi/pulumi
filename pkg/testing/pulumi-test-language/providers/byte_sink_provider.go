@@ -122,6 +122,7 @@ func (p *ByteSinkProvider) CheckConfig(
 func (p *ByteSinkProvider) Check(
 	_ context.Context, req plugin.CheckRequest,
 ) (plugin.CheckResponse, error) {
+	news := resource.ToResourcePropertyMap(req.NewInputs)
 	if req.URN.Type() != "bytesink:index:Resource" {
 		return plugin.CheckResponse{
 			Failures: makeCheckFailure("", fmt.Sprintf("invalid URN type: %s", req.URN.Type())),
@@ -129,7 +130,7 @@ func (p *ByteSinkProvider) Check(
 	}
 
 	for _, key := range []resource.PropertyKey{"bytes", "expectBase64"} {
-		value, ok := req.News[key]
+		value, ok := news[key]
 		if !ok {
 			return plugin.CheckResponse{
 				Failures: makeCheckFailure(key, fmt.Sprintf("missing %s", key)),
@@ -141,31 +142,32 @@ func (p *ByteSinkProvider) Check(
 			}, nil
 		}
 	}
-	if len(req.News) != 2 {
+	if len(news) != 2 {
 		return plugin.CheckResponse{
-			Failures: makeCheckFailure("", fmt.Sprintf("too many properties: %v", req.News)),
+			Failures: makeCheckFailure("", fmt.Sprintf("too many properties: %v", news)),
 		}, nil
 	}
 
-	return plugin.CheckResponse{Properties: req.News}, nil
+	return plugin.CheckResponse{Properties: resource.FromResourcePropertyMap(news)}, nil
 }
 
 func (p *ByteSinkProvider) Create(
 	_ context.Context, req plugin.CreateRequest,
 ) (plugin.CreateResponse, error) {
+	properties := resource.ToResourcePropertyMap(req.Properties)
 	if req.URN.Type() != "bytesink:index:Resource" {
 		return plugin.CreateResponse{
 			Status: resource.StatusUnknown,
 		}, fmt.Errorf("invalid URN type: %s", req.URN.Type())
 	}
 
-	expected, err := base64.StdEncoding.DecodeString(req.Properties["expectBase64"].StringValue())
+	expected, err := base64.StdEncoding.DecodeString(properties["expectBase64"].StringValue())
 	if err != nil {
 		return plugin.CreateResponse{
 			Status: resource.StatusUnknown,
 		}, fmt.Errorf("expectBase64 is not valid base64: %w", err)
 	}
-	actual := req.Properties["bytes"].StringValue()
+	actual := properties["bytes"].StringValue()
 	if actual != string(expected) {
 		return plugin.CreateResponse{
 			Status: resource.StatusUnknown,
@@ -179,7 +181,7 @@ func (p *ByteSinkProvider) Create(
 
 	return plugin.CreateResponse{
 		ID:         resource.ID(id),
-		Properties: req.Properties,
+		Properties: resource.FromResourcePropertyMap(properties),
 		Status:     resource.StatusOK,
 	}, nil
 }

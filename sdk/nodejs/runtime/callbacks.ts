@@ -34,6 +34,7 @@ import {
     Resource,
     ResourceHook,
     ResourceOptions,
+    StateMigration,
     ResourceTransform,
     ResourceTransformArgs,
     URN,
@@ -53,12 +54,14 @@ import {
 } from "./rpc";
 import { debuggablePromise } from "./debuggable";
 import { grpcChannelOptions, rpcKeepAlive } from "./settings";
+import { runStateMigration } from "./stateMigration";
 import { Http2Server, Http2Session } from "http2";
 
 type CallbackFunction = (args: Uint8Array) => Promise<jspb.Message>;
 
 export interface ICallbackServer {
     registerTransform(callback: ResourceTransform): Promise<callproto.Callback>;
+    registerStateMigration(callback: StateMigration): Promise<callproto.Callback>;
     registerStackTransform(callback: ResourceTransform): void;
     registerStackInvokeTransform(callback: InvokeTransform): void;
     registerStackInvokeTransformAsync(callback: InvokeTransform): Promise<callproto.Callback>;
@@ -450,6 +453,42 @@ export class CallbackServer implements ICallbackServer {
         req.setToken(uuid);
         req.setTarget(await this._target);
         return req;
+    }
+
+    async registerStateMigration(migration: StateMigration): Promise<callproto.Callback> {
+        const cb = async (bytes: Uint8Array): Promise<jspb.Message> => {
+            const request = resproto.StateMigrationRequest.deserializeBinary(bytes);
+            const oldState = JSON.parse(Buffer.from(request.getOldState_asU8()).toString("utf8")) as Record<
+                string,
+                any
+            >[];
+
+            const result = await runStateMigration(request.getUrn(), () =>
+                migration({
+                    urn: request.getUrn(),
+                    oldState,
+                }),
+            );
+
+            const response = new resproto.StateMigrationResponse();
+            if (result === undefined) {
+                return response;
+            }
+
+            response.setNewState(Buffer.from(JSON.stringify(result.newState), "utf8"));
+            const successors = response.getSuccessorsMap();
+            for (const [oldUrn, newUrn] of Object.entries(result.successors ?? {})) {
+                successors.set(oldUrn, newUrn);
+            }
+            return response;
+        };
+
+        const token = randomUUID();
+        this._callbacks.set(token, cb);
+        const callback = new Callback();
+        callback.setToken(token);
+        callback.setTarget(await this._target);
+        return callback;
     }
 
     registerStackTransform(transform: ResourceTransform): void {

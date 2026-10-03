@@ -32,6 +32,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"github.com/stretchr/testify/require"
 )
@@ -55,7 +56,7 @@ func TestErrorHooks_OperationIdentifierAndMultipleHooks_Create(t *testing.T) {
 					}
 					return plugin.CreateResponse{
 						ID:         resource.ID("created-id-" + req.URN.Name()),
-						Properties: resource.PropertyMap{},
+						Properties: property.Map{},
 						Status:     resource.StatusOK,
 					}, nil
 				},
@@ -139,7 +140,7 @@ func TestErrorHooks_OperationIdentifierAndMultipleHooks_Update(t *testing.T) {
 			updateCalls := 0
 			return &deploytest.Provider{
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
-					return plugin.CreateResponse{ID: "id", Properties: resource.PropertyMap{}, Status: resource.StatusOK}, nil
+					return plugin.CreateResponse{ID: "id", Properties: property.Map{}, Status: resource.StatusOK}, nil
 				},
 				UpdateF: func(_ context.Context, req plugin.UpdateRequest) (plugin.UpdateResponse, error) {
 					updateCalls++
@@ -297,7 +298,9 @@ func TestErrorHooks_OldAndNewOptionsAreSentOnUpdate(t *testing.T) {
 				OnError: []*deploytest.ResourceHook{hook},
 			},
 		})
-		require.NoError(t, err)
+		if err != nil {
+			return err
+		}
 
 		err = monitor.SignalAndWaitForShutdown(context.Background()) //nolint:usetesting // the engine outlives t.Context
 		require.NoError(t, err)
@@ -331,7 +334,7 @@ func TestErrorHooks_OperationIdentifierAndMultipleHooks_Delete(t *testing.T) {
 			deleteCalls := 0
 			return &deploytest.Provider{
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
-					return plugin.CreateResponse{ID: "id", Properties: resource.PropertyMap{}, Status: resource.StatusOK}, nil
+					return plugin.CreateResponse{ID: "id", Properties: property.Map{}, Status: resource.StatusOK}, nil
 				},
 				DeleteF: func(_ context.Context, req plugin.DeleteRequest) (plugin.DeleteResponse, error) {
 					deleteCalls++
@@ -442,7 +445,7 @@ func TestErrorHooks_RetrySemanticsAndNoRetryWhenNoHooks_Create_RetryIfAnyHookRet
 							Status: resource.StatusPartialFailure,
 						}, errors.New("create failed")
 					}
-					return plugin.CreateResponse{ID: "id", Properties: resource.PropertyMap{}, Status: resource.StatusOK}, nil
+					return plugin.CreateResponse{ID: "id", Properties: property.Map{}, Status: resource.StatusOK}, nil
 				},
 			}, nil
 		}),
@@ -508,7 +511,7 @@ func TestErrorHooks_RetrySemanticsAndNoRetryWhenNoHooks_Create_NoRetryWhenNoHook
 							Status: resource.StatusPartialFailure,
 						}, errors.New("create failed")
 					}
-					return plugin.CreateResponse{ID: "id", Properties: resource.PropertyMap{}, Status: resource.StatusOK}, nil
+					return plugin.CreateResponse{ID: "id", Properties: property.Map{}, Status: resource.StatusOK}, nil
 				},
 			}, nil
 		}),
@@ -530,7 +533,9 @@ func TestErrorHooks_RetrySemanticsAndNoRetryWhenNoHooks_Create_NoRetryWhenNoHook
 				OnError: hooks,
 			},
 		})
-		require.NoError(t, err)
+		if err != nil {
+			return err
+		}
 
 		err = monitor.SignalAndWaitForShutdown(context.Background()) //nolint:usetesting // the engine outlives t.Context
 		require.NoError(t, err)
@@ -673,7 +678,9 @@ func TestErrorHooks_RetrySemanticsAndNoRetryWhenNoHooks_Update_NoRetryWhenNoHook
 				OnError: hooks,
 			},
 		})
-		require.NoError(t, err)
+		if err != nil {
+			return err
+		}
 
 		err = monitor.SignalAndWaitForShutdown(context.Background()) //nolint:usetesting // the engine outlives t.Context
 		require.NoError(t, err)
@@ -706,7 +713,7 @@ func TestErrorHooks_RetrySemanticsAndNoRetryWhenNoHooks_Delete_RetryIfAnyHookRet
 
 			return &deploytest.Provider{
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
-					return plugin.CreateResponse{ID: "id", Properties: resource.PropertyMap{}, Status: resource.StatusOK}, nil
+					return plugin.CreateResponse{ID: "id", Properties: property.Map{}, Status: resource.StatusOK}, nil
 				},
 				DeleteF: func(_ context.Context, req plugin.DeleteRequest) (plugin.DeleteResponse, error) {
 					deleteCalls++
@@ -778,7 +785,7 @@ func TestErrorHooks_RetrySemanticsAndNoRetryWhenNoHooks_Delete_NoRetryWhenNoHook
 
 			return &deploytest.Provider{
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
-					return plugin.CreateResponse{ID: "id", Properties: resource.PropertyMap{}, Status: resource.StatusOK}, nil
+					return plugin.CreateResponse{ID: "id", Properties: property.Map{}, Status: resource.StatusOK}, nil
 				},
 				DeleteF: func(_ context.Context, req plugin.DeleteRequest) (plugin.DeleteResponse, error) {
 					deleteCalls++
@@ -875,7 +882,9 @@ func TestErrorHooks_NoRetryIfAllHooksReturnFalse_Create(t *testing.T) {
 				OnError: []*deploytest.ResourceHook{h},
 			},
 		})
-		require.NoError(t, err)
+		if err != nil {
+			return err
+		}
 
 		err = monitor.SignalAndWaitForShutdown(context.Background()) //nolint:usetesting // the engine outlives t.Context
 		require.NoError(t, err)
@@ -903,7 +912,7 @@ func TestErrorHooks_NoRetryIfAllHooksReturnFalse_Update(t *testing.T) {
 					if req.Preview {
 						return plugin.CreateResponse{Status: resource.StatusOK}, nil
 					}
-					return plugin.CreateResponse{ID: "id", Properties: resource.PropertyMap{}, Status: resource.StatusOK}, nil
+					return plugin.CreateResponse{ID: "id", Properties: property.Map{}, Status: resource.StatusOK}, nil
 				},
 				UpdateF: func(_ context.Context, req plugin.UpdateRequest) (plugin.UpdateResponse, error) {
 					if req.Preview {
@@ -945,7 +954,9 @@ func TestErrorHooks_NoRetryIfAllHooksReturnFalse_Update(t *testing.T) {
 				OnError: []*deploytest.ResourceHook{h},
 			},
 		})
-		require.NoError(t, err)
+		if err != nil {
+			return err
+		}
 
 		err = monitor.SignalAndWaitForShutdown(context.Background()) //nolint:usetesting // the engine outlives t.Context
 		require.NoError(t, err)
@@ -977,7 +988,7 @@ func TestErrorHooks_NoRetryIfAllHooksReturnFalse_Delete(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
-					return plugin.CreateResponse{ID: "id", Properties: resource.PropertyMap{}, Status: resource.StatusOK}, nil
+					return plugin.CreateResponse{ID: "id", Properties: property.Map{}, Status: resource.StatusOK}, nil
 				},
 				DeleteF: func(_ context.Context, req plugin.DeleteRequest) (plugin.DeleteResponse, error) {
 					return plugin.DeleteResponse{Status: resource.StatusPartialFailure}, errors.New("delete failed")
@@ -1041,7 +1052,7 @@ func TestErrorHooks_NotCalledOnSuccess_Update(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
-					return plugin.CreateResponse{ID: "id", Properties: resource.PropertyMap{}, Status: resource.StatusOK}, nil
+					return plugin.CreateResponse{ID: "id", Properties: property.Map{}, Status: resource.StatusOK}, nil
 				},
 				UpdateF: func(_ context.Context, req plugin.UpdateRequest) (plugin.UpdateResponse, error) {
 					return plugin.UpdateResponse{Properties: req.NewInputs, Status: resource.StatusOK}, nil
@@ -1111,7 +1122,7 @@ func TestErrorHooks_NotCalledOnSuccess_Delete(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
-					return plugin.CreateResponse{ID: "id", Properties: resource.PropertyMap{}, Status: resource.StatusOK}, nil
+					return plugin.CreateResponse{ID: "id", Properties: property.Map{}, Status: resource.StatusOK}, nil
 				},
 				DeleteF: func(_ context.Context, req plugin.DeleteRequest) (plugin.DeleteResponse, error) {
 					return plugin.DeleteResponse{Status: resource.StatusOK}, nil
@@ -1174,6 +1185,7 @@ func TestErrorHooks_RetryLimitWarningAt100_Create(t *testing.T) {
 	t.Parallel()
 
 	createCalls := 0
+	var updateReqs []plugin.UpdateRequest
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
@@ -1183,7 +1195,17 @@ func TestErrorHooks_RetryLimitWarningAt100_Create(t *testing.T) {
 					}
 					createCalls++
 					return plugin.CreateResponse{
-						ID:     resource.ID("partial-id-" + req.URN.Name()),
+						ID:         resource.ID("partial-id-" + req.URN.Name()),
+						Properties: property.NewMap(map[string]property.Value{"attempt": property.New(0.0)}),
+						Status:     resource.StatusPartialFailure,
+					}, errors.New("create failed")
+				},
+				UpdateF: func(_ context.Context, req plugin.UpdateRequest) (plugin.UpdateResponse, error) {
+					updateReqs = append(updateReqs, req)
+					return plugin.UpdateResponse{
+						Properties: property.NewMap(map[string]property.Value{
+							"attempt": property.New(float64(len(updateReqs))),
+						}),
 						Status: resource.StatusPartialFailure,
 					}, errors.New("create failed")
 				},
@@ -1214,7 +1236,9 @@ func TestErrorHooks_RetryLimitWarningAt100_Create(t *testing.T) {
 				OnError: []*deploytest.ResourceHook{h},
 			},
 		})
-		require.NoError(t, err)
+		if err != nil {
+			return err
+		}
 
 		err = monitor.SignalAndWaitForShutdown(context.Background()) //nolint:usetesting // the engine outlives t.Context
 		require.NoError(t, err)
@@ -1232,7 +1256,14 @@ func TestErrorHooks_RetryLimitWarningAt100_Create(t *testing.T) {
 
 		// The provider is invoked 100 times, but the hook is invoked 99 times because we stop once the max retry count
 		// is reached (without running hooks again on the final failure).
-		require.Equal(t, 100, createCalls)
+		require.Equal(t, 1, createCalls)
+		require.Len(t, updateReqs, 99)
+		for i, req := range updateReqs {
+			require.Equal(t, resource.ID("partial-id-resA"), req.ID)
+			require.Equal(t, property.NewMap(map[string]property.Value{"v": property.New("a")}), req.OldInputs)
+			require.Equal(t, property.NewMap(map[string]property.Value{"v": property.New("a")}), req.NewInputs)
+			require.Equal(t, property.NewMap(map[string]property.Value{"attempt": property.New(float64(i))}), req.OldOutputs)
+		}
 		require.Equal(t, 99, hookCalls)
 
 		sawWarning := false
@@ -1264,7 +1295,7 @@ func TestErrorHooks_RetryLimitWarningAt100_Update(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
-					return plugin.CreateResponse{ID: "id", Properties: resource.PropertyMap{}, Status: resource.StatusOK}, nil
+					return plugin.CreateResponse{ID: "id", Properties: property.Map{}, Status: resource.StatusOK}, nil
 				},
 				UpdateF: func(_ context.Context, req plugin.UpdateRequest) (plugin.UpdateResponse, error) {
 					if req.Preview {
@@ -1306,7 +1337,9 @@ func TestErrorHooks_RetryLimitWarningAt100_Update(t *testing.T) {
 				OnError: []*deploytest.ResourceHook{h},
 			},
 		})
-		require.NoError(t, err)
+		if err != nil {
+			return err
+		}
 
 		err = monitor.SignalAndWaitForShutdown(context.Background()) //nolint:usetesting // the engine outlives t.Context
 		require.NoError(t, err)
@@ -1374,7 +1407,7 @@ func TestErrorHooks_RetryLimitWarningAt100_Delete(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
-					return plugin.CreateResponse{ID: "id", Properties: resource.PropertyMap{}, Status: resource.StatusOK}, nil
+					return plugin.CreateResponse{ID: "id", Properties: property.Map{}, Status: resource.StatusOK}, nil
 				},
 				DeleteF: func(_ context.Context, req plugin.DeleteRequest) (plugin.DeleteResponse, error) {
 					deleteCalls++
@@ -1478,20 +1511,18 @@ func TestErrorHooks_RetryThenNoRetry_OperationFails_Create(t *testing.T) {
 
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
-			createCalls := 0
 			return &deploytest.Provider{
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 					if req.Preview {
 						return plugin.CreateResponse{Status: resource.StatusOK}, nil
 					}
-					createCalls++
-					if createCalls <= 2 {
-						return plugin.CreateResponse{
-							ID:     resource.ID("partial-id-" + req.URN.Name()),
-							Status: resource.StatusPartialFailure,
-						}, fmt.Errorf("create failed %d", createCalls)
-					}
-					return plugin.CreateResponse{ID: "id", Properties: resource.PropertyMap{}, Status: resource.StatusOK}, nil
+					return plugin.CreateResponse{
+						ID:     resource.ID("partial-id-" + req.URN.Name()),
+						Status: resource.StatusPartialFailure,
+					}, errors.New("create failed 1")
+				},
+				UpdateF: func(context.Context, plugin.UpdateRequest) (plugin.UpdateResponse, error) {
+					return plugin.UpdateResponse{Status: resource.StatusPartialFailure}, errors.New("create failed 2")
 				},
 			}, nil
 		}),
@@ -1525,7 +1556,9 @@ func TestErrorHooks_RetryThenNoRetry_OperationFails_Create(t *testing.T) {
 				OnError: []*deploytest.ResourceHook{h},
 			},
 		})
-		require.NoError(t, err)
+		if err != nil {
+			return err
+		}
 
 		err = monitor.SignalAndWaitForShutdown(context.Background()) //nolint:usetesting // the engine outlives t.Context
 		require.NoError(t, err)
@@ -1551,7 +1584,7 @@ func TestErrorHooks_RetryThenNoRetry_OperationFails_Update(t *testing.T) {
 			updateCalls := 0
 			return &deploytest.Provider{
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
-					return plugin.CreateResponse{ID: "id", Properties: resource.PropertyMap{}, Status: resource.StatusOK}, nil
+					return plugin.CreateResponse{ID: "id", Properties: property.Map{}, Status: resource.StatusOK}, nil
 				},
 				UpdateF: func(_ context.Context, req plugin.UpdateRequest) (plugin.UpdateResponse, error) {
 					if req.Preview {
@@ -1602,7 +1635,9 @@ func TestErrorHooks_RetryThenNoRetry_OperationFails_Update(t *testing.T) {
 				OnError: []*deploytest.ResourceHook{h},
 			},
 		})
-		require.NoError(t, err)
+		if err != nil {
+			return err
+		}
 
 		err = monitor.SignalAndWaitForShutdown(context.Background()) //nolint:usetesting // the engine outlives t.Context
 		require.NoError(t, err)
@@ -1633,7 +1668,7 @@ func TestErrorHooks_RetryThenNoRetry_OperationFails_Delete(t *testing.T) {
 			deleteCalls := 0
 			return &deploytest.Provider{
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
-					return plugin.CreateResponse{ID: "id", Properties: resource.PropertyMap{}, Status: resource.StatusOK}, nil
+					return plugin.CreateResponse{ID: "id", Properties: property.Map{}, Status: resource.StatusOK}, nil
 				},
 				DeleteF: func(_ context.Context, req plugin.DeleteRequest) (plugin.DeleteResponse, error) {
 					deleteCalls++
@@ -1732,9 +1767,18 @@ func TestErrorHooks_IndependentPerResource_Create(t *testing.T) {
 					}
 					return plugin.CreateResponse{
 						ID:         resource.ID("id-" + req.URN.Name()),
-						Properties: resource.PropertyMap{},
+						Properties: property.Map{},
 						Status:     resource.StatusOK,
 					}, nil
+				},
+				UpdateF: func(_ context.Context, req plugin.UpdateRequest) (plugin.UpdateResponse, error) {
+					if req.URN.Name() == "resB" {
+						resBCalls++
+						if resBCalls <= 2 {
+							return plugin.UpdateResponse{Status: resource.StatusPartialFailure}, errors.New("resB create failed")
+						}
+					}
+					return plugin.UpdateResponse{Properties: property.Map{}, Status: resource.StatusOK}, nil
 				},
 			}, nil
 		}),
@@ -1815,7 +1859,7 @@ func TestErrorHooks_IndependentPerResource_Update(t *testing.T) {
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 					return plugin.CreateResponse{
 						ID:         resource.ID("id-" + req.URN.Name()),
-						Properties: resource.PropertyMap{},
+						Properties: property.Map{},
 						Status:     resource.StatusOK,
 					}, nil
 				},
@@ -1923,7 +1967,7 @@ func TestErrorHooks_IndependentPerResource_Delete(t *testing.T) {
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 					return plugin.CreateResponse{
 						ID:         resource.ID("id-" + req.URN.Name()),
-						Properties: resource.PropertyMap{},
+						Properties: property.Map{},
 						Status:     resource.StatusOK,
 					}, nil
 				},
@@ -2055,7 +2099,9 @@ func TestErrorHooks_PlainCreateErrorRunsOnErrorHook(t *testing.T) {
 				OnError: []*deploytest.ResourceHook{h},
 			},
 		})
-		require.NoError(t, err)
+		if err != nil {
+			return err
+		}
 
 		err = monitor.SignalAndWaitForShutdown(context.Background()) //nolint:usetesting // the engine outlives t.Context
 		require.NoError(t, err)
@@ -2070,4 +2116,92 @@ func TestErrorHooks_PlainCreateErrorRunsOnErrorHook(t *testing.T) {
 	_, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
 	require.Error(t, err)
 	require.Equal(t, 1, hookCalls)
+}
+
+// Retrying a create that partially failed must update the resource that was created rather than create another one.
+func TestErrorHooks_RetryAfterInitErrorUpdatesInsteadOfCreating(t *testing.T) {
+	t.Parallel()
+
+	createCalls := 0
+	var updateReqs []plugin.UpdateRequest
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					if req.Preview {
+						return plugin.CreateResponse{Status: resource.StatusOK}, nil
+					}
+					createCalls++
+					return plugin.CreateResponse{
+						ID:         "created-id",
+						Properties: property.NewMap(map[string]property.Value{"out": property.New("partial")}),
+						Status:     resource.StatusPartialFailure,
+					}, &plugin.InitError{Reasons: []string{"not ready"}}
+				},
+				UpdateF: func(_ context.Context, req plugin.UpdateRequest) (plugin.UpdateResponse, error) {
+					updateReqs = append(updateReqs, req)
+					return plugin.UpdateResponse{
+						Properties: property.NewMap(map[string]property.Value{"out": property.New("ready")}),
+						Status:     resource.StatusOK,
+					}, nil
+				},
+			}, nil
+		}),
+	}
+
+	hookCalls := 0
+	var hookOp string
+	var hookOldOpts *pulumirpc.ResourceOptions
+	var hookOldInputs, hookOldOutputs resource.PropertyMap
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		callbacks, err := deploytest.NewCallbacksServer()
+		require.NoError(t, err)
+		defer func() { require.NoError(t, callbacks.Close()) }()
+
+		h, err := deploytest.NewErrorHook(monitor, callbacks, "hook",
+			func(_ context.Context, _ resource.URN, _ resource.ID, _ string,
+				_ tokens.Type, oldOpts, _ *pulumirpc.ResourceOptions, _, oldInputs, oldOutputs resource.PropertyMap,
+				failedOperation string, _ []string,
+			) (bool, error) {
+				hookCalls++
+				hookOp, hookOldOpts, hookOldInputs, hookOldOutputs = failedOperation, oldOpts, oldInputs, oldOutputs
+				return hookCalls == 1, nil
+			})
+		require.NoError(t, err)
+
+		_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+			Inputs:               resource.NewPropertyMapFromMap(map[string]any{"v": "a"}),
+			ResourceHookBindings: deploytest.ResourceHookBindings{OnError: []*deploytest.ResourceHook{h}},
+		})
+		require.NoError(t, err)
+
+		err = monitor.SignalAndWaitForShutdown(context.Background()) //nolint:usetesting // the engine outlives t.Context
+		require.NoError(t, err)
+		return nil
+	})
+
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true},
+	}
+	project := p.GetProject()
+	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
+	require.NoError(t, err)
+
+	require.Equal(t, 1, createCalls)
+	require.Equal(t, 1, hookCalls)
+	require.Equal(t, "create", hookOp)
+	require.Nil(t, hookOldOpts)
+	require.Empty(t, hookOldInputs)
+	require.Empty(t, hookOldOutputs)
+	require.Len(t, updateReqs, 1)
+	require.Equal(t, resource.ID("created-id"), updateReqs[0].ID)
+	require.Equal(t, property.NewMap(map[string]property.Value{"v": property.New("a")}), updateReqs[0].OldInputs)
+	require.Equal(t, property.NewMap(map[string]property.Value{"out": property.New("partial")}), updateReqs[0].OldOutputs)
+
+	require.Len(t, snap.Resources, 2)
+	res := snap.Resources[1]
+	require.Equal(t, resource.ID("created-id"), res.ID)
+	require.Equal(t, resource.PropertyMap{"out": resource.NewProperty("ready")}, res.Outputs)
+	require.Empty(t, res.InitErrors)
 }

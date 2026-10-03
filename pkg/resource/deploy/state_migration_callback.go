@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"log/slog"
 	"reflect"
+	"slices"
 
 	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -42,11 +43,13 @@ type stateMigrationCallbackResult struct {
 
 // runStateMigrationCallbacks evaluates an ordered callback chain without mutating deployment state. A nil result
 // means every callback was a no-op or the final checkpoint is semantically identical to the original.
+// Each callback receives the logical subtree root first, with references normalized from earlier callbacks.
 func runStateMigrationCallbacks(
 	ctx context.Context,
 	urn resource.URN,
 	migrations []StateMigrationFunction,
 	original []apitype.ResourceV3,
+	serializer StateMigrationResourceSerializer,
 ) (*stateMigrationCallbackResult, error) {
 	currentJSON, err := json.Marshal(original)
 	if err != nil {
@@ -92,6 +95,46 @@ func runStateMigrationCallbacks(
 			allSuccessors[oldURN] = successor
 		}
 
+		nextRoot := current[0].URN
+		// Rewrite references in the returned subtree before passing it to the next callback.
+		if i+1 < len(migrations) && len(allSuccessors) > 0 {
+			_, resolved, err := finalStateMigrationSuccessors(original, newSet, allSuccessors)
+			if err != nil {
+				return nil, fmt.Errorf("state migration %d of %d for %s: %w", i+1, len(migrations), urn, err)
+			}
+			if successor, ok := resolved[nextRoot]; ok {
+				nextRoot = successor
+			}
+			states, rewritten, err := deserializeStateMigrationResult(urn, newSet, resolved, serializer)
+			if err != nil {
+				return nil, fmt.Errorf("state migration %d of %d for %s: %w", i+1, len(migrations), urn, err)
+			}
+			for j, state := range rewritten {
+				if state == states[j] {
+					continue
+				}
+				res, err := serializer.Serialize(ctx, state)
+				if err != nil {
+					return nil, fmt.Errorf("state migration %d of %d for %s: serializing intermediate state of %s: %w",
+						i+1, len(migrations), urn, state.URN, err)
+				}
+				newSet[j] = res
+			}
+		}
+		if i+1 < len(migrations) {
+			rootIndex := slices.IndexFunc(newSet, func(state apitype.ResourceV3) bool { return state.URN == nextRoot })
+			if rootIndex < 0 {
+				return nil, fmt.Errorf("state migration %d of %d for %s: missing subtree root %s",
+					i+1, len(migrations), urn, nextRoot)
+			}
+			root := newSet[rootIndex]
+			copy(newSet[1:rootIndex+1], newSet[:rootIndex])
+			newSet[0] = root
+			newJSON, err = json.Marshal(newSet)
+			if err != nil {
+				return nil, fmt.Errorf("state migration for %s: marshaling intermediate state: %w", urn, err)
+			}
+		}
 		current, currentJSON, changed = newSet, newJSON, true
 	}
 
@@ -123,4 +166,26 @@ func runStateMigrationCallbacks(
 		originalToFinal: originalToFinal,
 		allToFinal:      allToFinal,
 	}, nil
+}
+
+func deserializeStateMigrationResult(
+	urn resource.URN, resources []apitype.ResourceV3,
+	successors map[resource.URN]resource.URN, serializer StateMigrationResourceSerializer,
+) ([]*pkgresource.State, []*pkgresource.State, error) {
+	states := make([]*pkgresource.State, len(resources))
+	for i, res := range resources {
+		state, err := serializer.Deserialize(res)
+		if err != nil {
+			return nil, nil, fmt.Errorf("deserializing returned state of %s: %w", res.URN, err)
+		}
+		states[i] = state
+	}
+	rewritten, err := rewriteStateMigrationReferences(states, successors, stateMigrationSuccessorIdentities(states))
+	if err != nil {
+		return nil, nil, fmt.Errorf("rewriting successor references: %w", err)
+	}
+	if _, err := mapResourcesToPreparedRewrites(urn, states, rewritten, "returned by the migration"); err != nil {
+		return nil, nil, err
+	}
+	return states, rewritten, nil
 }

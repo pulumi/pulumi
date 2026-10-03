@@ -25,6 +25,7 @@ from collections.abc import Awaitable
 import grpc
 
 from ._context import wrap_with_context
+from ._state_migration_context import _ensure_not_in_state_migration
 from google.protobuf import struct_pb2
 
 from semver import VersionInfo
@@ -38,6 +39,7 @@ from . import rpc
 from ._depends_on import _resolve_depends_on_urns, _resolve_depends_on
 from .settings import (
     _get_rpc_manager,
+    get_base_provider_for_ref,
     get_monitor,
     grpc_error_to_exception,
     handle_grpc_error,
@@ -159,6 +161,8 @@ def invoke_output(
     resolves when the invoke finishes.
     """
 
+    _ensure_not_in_state_migration("invoke")
+
     # Setup the future for the output data.
     resolve_data: asyncio.Future[_OutputData[Any]] = asyncio.Future()
 
@@ -227,6 +231,7 @@ def _invoke(
     package_ref: Optional[Awaitable[Optional[str]]],
     check_dependencies: Optional[bool] = False,
 ) -> Awaitable[InvokeResult]:
+    _ensure_not_in_state_migration("invoke")
     log.debug(f"Invoking function: tok={tok}")
     if opts is None:
         opts = InvokeOptions()
@@ -235,18 +240,6 @@ def _invoke(
         raise TypeError("Expected typ to be decorated with @output_type")
 
     async def do_invoke() -> tuple[InvokeResult, Optional[Exception]]:
-        # If a parent was provided, but no provider was provided, use the parent's provider if one was specified.
-        if opts is not None and opts.parent is not None and opts.provider is None:
-            opts.provider = opts.parent.get_provider(tok)
-
-        # Construct a provider reference from the given provider, if one was provided to us.
-        provider_ref = None
-        if opts is not None and opts.provider is not None:
-            provider_urn = await opts.provider.urn.future()
-            provider_id = (await opts.provider.id.future()) or rpc.UNKNOWN
-            provider_ref = f"{provider_urn}::{provider_id}"
-            log.debug(f"Invoke using provider {provider_ref}")
-
         # If we have a package reference, we need to wait for it to resolve.
         package_ref_str = None
         if package_ref is not None:
@@ -257,6 +250,22 @@ def _invoke(
                 opts.plugin_download_url = None
                 opts.version = None
                 log.debug(f"Invoke using package reference {package_ref_str}")
+
+        # If a parent was provided, but no provider was provided, use the parent's provider if one was specified.
+        if opts is not None and opts.parent is not None and opts.provider is None:
+            base = get_base_provider_for_ref(package_ref_str)
+            if base is not None:
+                opts.provider = opts.parent._providers.get(base)
+            else:
+                opts.provider = opts.parent.get_provider(tok)
+
+        # Construct a provider reference from the given provider, if one was provided to us.
+        provider_ref = None
+        if opts is not None and opts.provider is not None:
+            provider_urn = await opts.provider.urn.future()
+            provider_id = (await opts.provider.id.future()) or rpc.UNKNOWN
+            provider_ref = f"{provider_urn}::{provider_id}"
+            log.debug(f"Invoke using provider {provider_ref}")
 
         monitor = get_monitor()
         # keep track of the dependencies of the inputs
@@ -425,6 +434,7 @@ def call(
     call dynamically invokes the function, tok, which is offered by a provider plugin.  The inputs
     can be a bag of computed values (Ts or Awaitable[T]s).
     """
+    _ensure_not_in_state_migration("call")
     log.debug(f"Calling function: tok={tok}")
 
     if typ and not _types.is_output_type(typ):
@@ -442,6 +452,9 @@ def call(
             # Construct a provider reference from the given provider, if one is available on the resource.
             provider_ref, version, plugin_download_url = None, "", ""
             if res is not None:
+                # The provider of a resource from an extension package is
+                # selected during registration, so wait for it to finish.
+                await res.urn.future()
                 if res._provider is not None:
                     provider_urn = await res._provider.urn.future()
                     provider_id = (await res._provider.id.future()) or rpc.UNKNOWN

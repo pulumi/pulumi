@@ -25,6 +25,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 // FlakyCreateProvider is a provider whose resource fails its first Create with a retryable
@@ -95,19 +96,20 @@ func (p *FlakyCreateProvider) CheckConfig(
 func (p *FlakyCreateProvider) Check(
 	_ context.Context, req plugin.CheckRequest,
 ) (plugin.CheckResponse, error) {
+	news := resource.ToResourcePropertyMap(req.NewInputs)
 	if req.URN.Type() != "flaky:index:FlakyCreate" {
 		return plugin.CheckResponse{
 			Failures: makeCheckFailure("", fmt.Sprintf("invalid URN type: %s", req.URN.Type())),
 		}, nil
 	}
 
-	if len(req.News) != 0 {
+	if len(news) != 0 {
 		return plugin.CheckResponse{
-			Failures: makeCheckFailure("", fmt.Sprintf("too many properties: %v", req.News)),
+			Failures: makeCheckFailure("", fmt.Sprintf("too many properties: %v", news)),
 		}, nil
 	}
 
-	return plugin.CheckResponse{Properties: req.News}, nil
+	return plugin.CheckResponse{Properties: resource.FromResourcePropertyMap(news)}, nil
 }
 
 func (p *FlakyCreateProvider) Create(
@@ -121,14 +123,14 @@ func (p *FlakyCreateProvider) Create(
 		// with init errors.
 		return plugin.CreateResponse{
 			ID:         "id",
-			Properties: resource.PropertyMap{},
+			Properties: property.Map{},
 			Status:     resource.StatusPartialFailure,
 		}, &plugin.InitError{Reasons: []string{"first create attempt fails"}}
 	}
 
 	return plugin.CreateResponse{
 		ID:         "id",
-		Properties: resource.PropertyMap{},
+		Properties: property.Map{},
 		Status:     resource.StatusOK,
 	}, nil
 }

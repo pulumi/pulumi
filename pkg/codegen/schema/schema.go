@@ -662,6 +662,11 @@ type Package struct {
 	LogoURL string
 	// PluginDownloadURL is the URL to use to acquire the provider plugin binary, if any.
 	PluginDownloadURL string
+	// ConfigurationDocsURL is the URL of the provider's installation and configuration documentation, if any.
+	ConfigurationDocsURL string
+	// ValidateCredentialsOnNew indicates that `pulumi new` may configure the provider after creating a project
+	// in order to validate the user's credentials.
+	ValidateCredentialsOnNew bool
 	// Publisher is the name of the person or organization that authored and published the package.
 	Publisher string
 	// Namespace is the namespace of the package, that's used to diambiguate the package name.
@@ -1223,6 +1228,8 @@ func (pkg *Package) MarshalSpec() (spec *PackageSpec, err error) {
 		Repository:                pkg.Repository,
 		LogoURL:                   pkg.LogoURL,
 		PluginDownloadURL:         pkg.PluginDownloadURL,
+		ConfigurationDocsURL:      pkg.ConfigurationDocsURL,
+		ValidateCredentialsOnNew:  pkg.ValidateCredentialsOnNew,
 		Meta:                      metadata,
 		Dependencies:              pkg.Dependencies,
 		Types:                     map[string]ComplexTypeSpec{},
@@ -2301,6 +2308,11 @@ type PackageInfoSpec struct {
 	LogoURL string `json:"logoUrl,omitempty" yaml:"logoUrl,omitempty"`
 	// PluginDownloadURL is the URL to use to acquire the provider plugin binary, if any.
 	PluginDownloadURL string `json:"pluginDownloadURL,omitempty" yaml:"pluginDownloadURL,omitempty"`
+	// ConfigurationDocsURL is the URL of the provider's installation and configuration documentation, if any.
+	ConfigurationDocsURL string `json:"configurationDocsUrl,omitempty" yaml:"configurationDocsUrl,omitempty"`
+	// ValidateCredentialsOnNew indicates that `pulumi new` may configure the provider after creating a project
+	// in order to validate the user's credentials.
+	ValidateCredentialsOnNew bool `json:"validateCredentialsOnNew,omitempty" yaml:"validateCredentialsOnNew,omitempty"`
 	// Publisher is the name of the person or organization that authored and published the package.
 	Publisher string `json:"publisher,omitempty" yaml:"publisher,omitempty"`
 	// Namespace is the namespace of the package, that's used to diambiguate the package name.
@@ -2405,6 +2417,11 @@ type PackageSpec struct {
 	LogoURL string `json:"logoUrl,omitempty" yaml:"logoUrl,omitempty"`
 	// PluginDownloadURL is the URL to use to acquire the provider plugin binary, if any.
 	PluginDownloadURL string `json:"pluginDownloadURL,omitempty" yaml:"pluginDownloadURL,omitempty"`
+	// ConfigurationDocsURL is the URL of the provider's installation and configuration documentation, if any.
+	ConfigurationDocsURL string `json:"configurationDocsUrl,omitempty" yaml:"configurationDocsUrl,omitempty"`
+	// ValidateCredentialsOnNew indicates that `pulumi new` may configure the provider after creating a project
+	// in order to validate the user's credentials.
+	ValidateCredentialsOnNew bool `json:"validateCredentialsOnNew,omitempty" yaml:"validateCredentialsOnNew,omitempty"`
 	// Publisher is the name of the person or organization that authored and published the package.
 	Publisher string `json:"publisher,omitempty" yaml:"publisher,omitempty"`
 	// Namespace is the namespace of the package, that's used to diambiguate the package name.
@@ -2454,6 +2471,8 @@ func (p *PackageSpec) Info() PackageInfoSpec {
 		Repository:                p.Repository,
 		LogoURL:                   p.LogoURL,
 		PluginDownloadURL:         p.PluginDownloadURL,
+		ConfigurationDocsURL:      p.ConfigurationDocsURL,
+		ValidateCredentialsOnNew:  p.ValidateCredentialsOnNew,
 		Publisher:                 p.Publisher,
 		Namespace:                 p.Namespace,
 		Dependencies:              p.Dependencies,

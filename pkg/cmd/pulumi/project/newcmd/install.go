@@ -74,21 +74,21 @@ func InstallRequiredPackages(
 	ctx context.Context, pctx *plugin.Context, proj *workspace.Project, root, main string,
 	prior packageinstallation.State, parallelism int, useLanguageVersionTools bool,
 	reg registry.Registry, stdout, stderr io.Writer,
-) error {
+) ([]workspace.PackageDescriptor, error) {
 	lang, err := pctx.Host.LanguageRuntime(pctx, proj.Runtime.Name())
 	if err != nil {
-		return fmt.Errorf("failed to load language plugin %s: %w", proj.Runtime.Name(), err)
+		return nil, fmt.Errorf("failed to load language plugin %s: %w", proj.Runtime.Name(), err)
 	}
 
 	programInfo := plugin.NewProgramInfo(pctx.Root, pctx.Pwd, main, proj.Runtime.Options())
 	packages, specs, err := lang.GetRequiredPackages(ctx, programInfo)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	projPath, err := workspace.DetectProjectPathFrom(root)
 	if err != nil {
-		return fmt.Errorf("locating Pulumi.yaml: %w", err)
+		return nil, fmt.Errorf("locating Pulumi.yaml: %w", err)
 	}
 
 	ws := packageworkspace.New(pluginstorage.Instance, pkgWorkspace.Instance, pctx, stdout, stderr, nil,
@@ -107,9 +107,9 @@ func InstallRequiredPackages(
 			},
 		}, reg, ws)
 	if err != nil {
-		return fmt.Errorf("installing packages: %w", err)
+		return nil, fmt.Errorf("installing packages: %w", err)
 	}
-	return nil
+	return packages, nil
 }
 
 // InstallPackagesFromProject processes packages specified in the Pulumi.yaml file

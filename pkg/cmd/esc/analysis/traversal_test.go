@@ -24,7 +24,9 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestExpressionAt(t *testing.T) { //nolint:paralleltest // non-thread-safe shared state
+func TestExpressionAt(t *testing.T) {
+	t.Parallel()
+
 	syntax, diags, err := eval.LoadYAMLBytes("def", []byte(def))
 	require.NoError(t, err)
 	require.Empty(t, diags)
@@ -45,10 +47,12 @@ func TestExpressionAt(t *testing.T) { //nolint:paralleltest // non-thread-safe s
 	)
 	require.Empty(t, diags)
 
-	analysis := New(*env, map[string]*schema.Schema{"test": testProviderSchema})
+	analysis := New(*env, map[string]*schema.Schema{"test": newTestProviderSchema()})
 
 	visitExprs(env, func(path string, x esc.Expr) {
-		t.Run(path, func(t *testing.T) { //nolint:paralleltest // non-thread-safe shared state
+		t.Run(path, func(t *testing.T) {
+			t.Parallel()
+
 			pos := x.Range.Begin
 			pos.Byte = 0
 
@@ -58,7 +62,9 @@ func TestExpressionAt(t *testing.T) { //nolint:paralleltest // non-thread-safe s
 		})
 	})
 
-	t.Run("none", func(t *testing.T) { //nolint:paralleltest // non-thread-safe shared state
+	t.Run("none", func(t *testing.T) {
+		t.Parallel()
+
 		actual, ok := analysis.ExpressionAtPos(esc.Pos{})
 		require.False(t, ok)
 		assert.Nil(t, actual)

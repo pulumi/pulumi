@@ -107,14 +107,19 @@ func TestResolvePolicy_OmittedWithYes(t *testing.T) {
 	assert.Contains(t, err.Error(), "ReadonlyPolicy")
 }
 
-func TestESCEnvName(t *testing.T) {
+func TestResolveEnvNames(t *testing.T) {
 	t.Parallel()
 
+	setup := &setupCommand{env: &envCommand{esc: &escCommand{}}}
+	require.NoError(t, setup.resolveEnvNames("AWS-Login", []cloudsetup.CloudAccount{
+		{Name: "My Account", ID: "123456789012"},
+		{ID: "210987654321"},
+	}, true))
 	assert.Equal(t, "aws-login/my-account-env",
-		escEnvName("aws-login", cloudsetup.CloudAccount{Name: "My Account", ID: "123456789012"}))
+		setup.escEnvName(cloudsetup.CloudAccount{Name: "My Account", ID: "123456789012"}))
 	// Accounts without a name fall back to the ID.
-	assert.Equal(t, "aws-login/123456789012-env",
-		escEnvName("aws-login", cloudsetup.CloudAccount{ID: "123456789012"}))
+	assert.Equal(t, "aws-login/210987654321-env",
+		setup.escEnvName(cloudsetup.CloudAccount{ID: "210987654321"}))
 }
 
 // The plan the user confirms has to distinguish a create from a replacement, because
@@ -172,28 +177,29 @@ func TestValidateESCProject(t *testing.T) {
 
 // Two accounts that derive the same environment name have to be caught before setup runs:
 // both would get cloud resources, but only the last login block written would survive.
-func TestCheckDuplicateEnvNames(t *testing.T) {
+func TestResolveEnvNamesDuplicates(t *testing.T) {
 	t.Parallel()
 
-	require.NoError(t, checkDuplicateEnvNames("aws-login", []cloudsetup.CloudAccount{
+	setup := &setupCommand{env: &envCommand{esc: &escCommand{}}}
+	require.NoError(t, setup.resolveEnvNames("aws-login", []cloudsetup.CloudAccount{
 		{ID: "111111111111", Name: "Sandbox"},
 		{ID: "222222222222", Name: "Production"},
-	}))
+	}, true))
 
 	// Display names are not unique on any of the three providers, and the account ID is only
 	// a fallback for an empty name, so it does not disambiguate these.
-	err := checkDuplicateEnvNames("aws-login", []cloudsetup.CloudAccount{
+	err := setup.resolveEnvNames("aws-login", []cloudsetup.CloudAccount{
 		{ID: "111111111111", Name: "Sandbox"},
 		{ID: "222222222222", Name: "Sandbox"},
-	})
+	}, true)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "111111111111")
 	assert.Contains(t, err.Error(), "222222222222")
 	assert.Contains(t, err.Error(), "aws-login/sandbox-env")
 
 	// Sanitizing collapses different names onto the same environment too.
-	require.Error(t, checkDuplicateEnvNames("aws-login", []cloudsetup.CloudAccount{
+	require.Error(t, setup.resolveEnvNames("aws-login", []cloudsetup.CloudAccount{
 		{ID: "111111111111", Name: "My Team"},
 		{ID: "222222222222", Name: "My/Team"},
-	}))
+	}, true))
 }

@@ -85,7 +85,7 @@ func newStackListCmd() *cobra.Command {
 				tagFilter:    tagFilter,
 				stdout:       cmd.OutOrStdout(),
 			}
-			return runStackLS(ctx, cmdArgs)
+			return runStackLS(ctx, pkgWorkspace.Instance, cmdBackend.DefaultLoginManager, cmdArgs)
 		},
 	}
 
@@ -115,7 +115,9 @@ type stackLSArgs struct {
 	stdout       io.Writer
 }
 
-func runStackLS(ctx context.Context, args stackLSArgs) error {
+func runStackLS(
+	ctx context.Context, ws pkgWorkspace.Context, lm cmdBackend.LoginManager, args stackLSArgs,
+) error {
 	if args.stdout == nil {
 		args.stdout = io.Discard
 	}
@@ -159,7 +161,6 @@ func runStackLS(ctx context.Context, args stackLSArgs) error {
 	}
 
 	// Try to read the current project
-	ws := pkgWorkspace.Instance
 	project, _, err := ws.ReadProject("")
 	if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
 		return err
@@ -167,7 +168,7 @@ func runStackLS(ctx context.Context, args stackLSArgs) error {
 
 	// Get the current backend.
 	b, err := cmdBackend.CurrentBackend(
-		ctx, ws, cmdBackend.DefaultLoginManager, project,
+		ctx, ws, lm, project,
 		display.Options{Color: cmdutil.GetGlobalColorization()})
 	if err != nil {
 		return err

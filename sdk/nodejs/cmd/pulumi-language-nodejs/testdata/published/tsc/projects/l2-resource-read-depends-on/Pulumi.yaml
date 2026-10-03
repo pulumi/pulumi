@@ -1,0 +1,5 @@
+name: l2-resource-read-depends-on
+runtime:
+  name: nodejs
+  options:
+    typescript: false

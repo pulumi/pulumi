@@ -288,8 +288,7 @@ func (css cloudStackSummary) LastUpdate() *time.Time {
 	if css.summary.LastUpdate == nil {
 		return nil
 	}
-	t := time.Unix(*css.summary.LastUpdate, 0)
-	return &t
+	return new(time.Unix(*css.summary.LastUpdate, 0))
 }
 
 func (css cloudStackSummary) ResourceCount() *int {

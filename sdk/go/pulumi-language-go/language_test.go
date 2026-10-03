@@ -108,6 +108,7 @@ var expectedFailures = map[string]string{
 	"l1-builtin-can":                "pulumi#18570 Support can in Go program generation",
 	"l1-builtin-list":               "list(string) config decoded as string; element/split emit TODO stubs",
 	"l1-builtin-object":             "entries/lookup emit TODO stubs",
+	"l1-builtin-range":              "range emits a TODO stub",
 	"l2-builtin-object":             "entries/lookup emit TODO stubs",
 	"l1-builtin-to-json":            "Go doesn't support output based toJSON",
 	"l2-resource-config-objects":    "cannot convert plainBooleanMap (variable of type string) to type pulumi.BoolMap",
@@ -143,6 +144,8 @@ var expectedFailures = map[string]string{
 	"l1-builtin-string": "cannot convert strings.Split(aString, \"-\") (value of type []string) to type pulumi.StringArray", //nolint:lll
 
 	"l2-failed-create-recover-continue-on-error": "Go SDK output recovery is not implemented",
+
+	"l2-invoke-per-value-deps": "output aware invokes not yet implemented",
 }
 
 // Add program overrides here for programs that can't yet be generated correctly due to programgen bugs.
@@ -213,10 +216,6 @@ func TestLanguageExtraTypes(t *testing.T) {
 		// don't believe it is worth it to test independently.
 		languageInfo: &gocodegen.GoPackageInfo{
 			GenerateResourceContainerTypes: true,
-			// TODO[https://github.com/pulumi/pulumi/issues/21116]:
-			// l2-resource-config requires that RespectSchemaVersion
-			// is set if any language option is set.
-			RespectSchemaVersion: true,
 		},
 	})
 }
@@ -300,6 +299,11 @@ func testLanguage(t *testing.T, config languageTestConfig) {
 
 			if expected, ok := expectedFailures[tt]; ok {
 				t.Skipf("Skipping known failure: %s", expected)
+			}
+
+			if tt == "l2-resource-self-reference" &&
+				(config.languageInfo == nil || !config.languageInfo.GenerateResourceContainerTypes) {
+				t.Skip("Resource array and map inputs require generateResourceContainerTypes; tested in extra-types mode")
 			}
 
 			if _, has := programOverrides[tt]; config.local && has {

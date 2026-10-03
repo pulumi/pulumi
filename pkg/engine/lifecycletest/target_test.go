@@ -25,6 +25,8 @@ import (
 	"sync/atomic"
 	"testing"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
+
 	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
 
 	"github.com/blang/semver"
@@ -65,9 +67,9 @@ func TestRefreshTargetChildren(t *testing.T) {
 					return plugin.ReadResponse{
 						ReadResult: plugin.ReadResult{
 							ID: req.ID,
-							Outputs: resource.PropertyMap{
-								"count": resource.NewProperty(float64(count)),
-							},
+							Outputs: new(property.NewMap(map[string]property.Value{
+								"count": property.New(float64(count)),
+							})),
 						},
 						Status: resource.StatusOK,
 					}, nil
@@ -504,9 +506,9 @@ func TestRefreshExcludeTarget(t *testing.T) {
 					return plugin.ReadResponse{
 						ReadResult: plugin.ReadResult{
 							ID: req.ID,
-							Outputs: resource.PropertyMap{
-								"count": resource.NewProperty(float64(count)),
-							},
+							Outputs: new(property.NewMap(map[string]property.Value{
+								"count": property.New(float64(count)),
+							})),
 						},
 						Status: resource.StatusOK,
 					}, nil
@@ -584,9 +586,9 @@ func TestRefreshExcludeChildren(t *testing.T) {
 					return plugin.ReadResponse{
 						ReadResult: plugin.ReadResult{
 							ID: req.ID,
-							Outputs: resource.PropertyMap{
-								"count": resource.NewProperty(callCount),
-							},
+							Outputs: new(property.NewMap(map[string]property.Value{
+								"count": property.New(callCount),
+							})),
 						},
 						Status: resource.StatusOK,
 					}, nil
@@ -665,7 +667,7 @@ func destroySpecificTargets(
 					_ context.Context,
 					req plugin.DiffConfigRequest,
 				) (plugin.DiffResult, error) {
-					if !req.OldOutputs["A"].DeepEquals(req.NewInputs["A"]) {
+					if !req.OldOutputs.Get("A").Equals(req.NewInputs.Get("A")) {
 						return plugin.DiffResult{
 							ReplaceKeys:         []resource.PropertyKey{"A"},
 							DeleteBeforeReplace: true,
@@ -677,7 +679,7 @@ func destroySpecificTargets(
 					_ context.Context,
 					req plugin.DiffRequest,
 				) (plugin.DiffResult, error) {
-					if !req.OldOutputs["A"].DeepEquals(req.NewInputs["A"]) {
+					if !req.OldOutputs.Get("A").Equals(req.NewInputs.Get("A")) {
 						return plugin.DiffResult{ReplaceKeys: []resource.PropertyKey{"A"}}, nil
 					}
 					return plugin.DiffResult{}, nil
@@ -794,11 +796,11 @@ func updateSpecificTargets(t *testing.T, targets, globTargets []string, targetDe
 				},
 
 				UpdateF: func(_ context.Context, req plugin.UpdateRequest) (plugin.UpdateResponse, error) {
-					outputs := req.OldOutputs.Copy()
+					outputs := resource.ToResourcePropertyMap(req.OldOutputs)
 
 					outputs["output_prop"] = resource.NewPropertyValue(42)
 					return plugin.UpdateResponse{
-						Properties: outputs,
+						Properties: resource.FromResourcePropertyMap(outputs),
 						Status:     resource.StatusOK,
 					}, nil
 				},
@@ -897,11 +899,11 @@ func updateInvalidTarget(t *testing.T) {
 				},
 
 				UpdateF: func(_ context.Context, req plugin.UpdateRequest) (plugin.UpdateResponse, error) {
-					outputs := req.OldOutputs.Copy()
+					outputs := resource.ToResourcePropertyMap(req.OldOutputs)
 
 					outputs["output_prop"] = resource.NewPropertyValue(42)
 					return plugin.UpdateResponse{
-						Properties: outputs,
+						Properties: resource.FromResourcePropertyMap(outputs),
 						Status:     resource.StatusOK,
 					}, nil
 				},
@@ -1110,8 +1112,6 @@ func TestCreateDuringTargetedUpdate_UntargetedCreateReferencedByChangedTarget(t 
 		_, _ = monitor.RegisterResource("pkgA:m:typA", "b", true, deploytest.ResourceOptions{
 			Dependencies: []resource.URN{resA.URN},
 		})
-		require.Fail(t, "RegisterResource should not return")
-
 		return nil
 	})
 
@@ -1179,8 +1179,6 @@ func TestCreateDuringTargetedUpdate_UntargetedCreateReferencedByUnchangedTarget(
 		_, _ = monitor.RegisterResource("pkgA:m:typA", "b", true, deploytest.ResourceOptions{
 			Dependencies: []resource.URN{resA.URN},
 		})
-		require.Fail(t, "RegisterResource should not return")
-
 		return nil
 	})
 
@@ -1263,8 +1261,6 @@ func TestCreateDuringTargetedUpdate_UntargetedCreateReferencedByTargetPropertyDe
 				"prop": {resA.URN},
 			},
 		})
-		require.Fail(t, "RegisterResource should not return")
-
 		return nil
 	})
 
@@ -1345,8 +1341,6 @@ func TestCreateDuringTargetedUpdate_UntargetedCreateReferencedByTargetDeletedWit
 		_, _ = monitor.RegisterResource("pkgA:m:typA", "b", true, deploytest.ResourceOptions{
 			DeletedWith: resA.URN,
 		})
-		require.Fail(t, "RegisterResource should not return")
-
 		return nil
 	})
 
@@ -1430,8 +1424,6 @@ func TestCreateDuringTargetedUpdate_UntargetedCreateReferencedByTargetParent(t *
 			Parent:    resA.URN,
 			AliasURNs: []resource.URN{resBOldURN},
 		})
-		require.Fail(t, "RegisterResource should not return")
-
 		return nil
 	})
 
@@ -1807,7 +1799,7 @@ func destroySpecificTargetsWithChildren(
 					_ context.Context,
 					req plugin.DiffConfigRequest,
 				) (plugin.DiffResult, error) {
-					if !req.OldOutputs["A"].DeepEquals(req.NewInputs["A"]) {
+					if !req.OldOutputs.Get("A").Equals(req.NewInputs.Get("A")) {
 						return plugin.DiffResult{
 							ReplaceKeys:         []resource.PropertyKey{"A"},
 							DeleteBeforeReplace: true,
@@ -1816,7 +1808,7 @@ func destroySpecificTargetsWithChildren(
 					return plugin.DiffResult{}, nil
 				},
 				DiffF: func(_ context.Context, req plugin.DiffRequest) (plugin.DiffResult, error) {
-					if !req.OldOutputs["A"].DeepEquals(req.NewInputs["A"]) {
+					if !req.OldOutputs.Get("A").Equals(req.NewInputs.Get("A")) {
 						return plugin.DiffResult{ReplaceKeys: []resource.PropertyKey{"A"}}, nil
 					}
 					return plugin.DiffResult{}, nil
@@ -1966,8 +1958,9 @@ func TestEnsureUntargetedSame(t *testing.T) {
 					req plugin.CheckRequest,
 				) (plugin.CheckResponse, error) {
 					// Pulumi GCP provider alters inputs during Check.
-					req.News["__defaults"] = resource.NewProperty("exists")
-					return plugin.CheckResponse{Properties: req.News}, nil
+					newInputs := resource.ToResourcePropertyMap(req.NewInputs)
+					newInputs["__defaults"] = resource.NewProperty("exists")
+					return plugin.CheckResponse{Properties: resource.FromResourcePropertyMap(newInputs)}, nil
 				},
 			}, nil
 		}),
@@ -2481,7 +2474,7 @@ func TestTargetUntargetedParent(t *testing.T) {
 				Inputs: inputs,
 			})
 			if expectError {
-				require.Fail(t, "RegisterResource should not return")
+				return nil
 			} else {
 				require.NoError(t, err)
 			}
@@ -3026,7 +3019,7 @@ func TestTargetUntargetedParentWithUpdatedDependency(t *testing.T) {
 				Inputs: inputs,
 			})
 			if expectError {
-				require.Fail(t, "RegisterResource should not return")
+				return nil
 			} else {
 				require.NoError(t, err)
 			}
@@ -3156,7 +3149,7 @@ func TestTargetChangeProviderVersion(t *testing.T) {
 			Version: providerVersion,
 		})
 		if expectError {
-			require.Fail(t, "RegisterResource should not return")
+			return nil
 		} else {
 			require.NoError(t, err)
 		}
@@ -3429,8 +3422,8 @@ func TestUntargetedDependencyChainsArePreserved(t *testing.T) {
 		//
 		// * A is removed from the program
 		// * An update targeting TARGET is performed
-		//nolint:paralleltest // golangci-lint v2 upgrade
 		t.Run("deleting the bottom of a dependency chain", func(t *testing.T) {
+			t.Parallel()
 			// Arrange.
 			p := &lt.TestPlan{}
 			project := p.GetProject()
@@ -3479,8 +3472,8 @@ func TestUntargetedDependencyChainsArePreserved(t *testing.T) {
 		//
 		// * B is removed from the program
 		// * An update targeting TARGET is performed
-		//nolint:paralleltest // golangci-lint v2 upgrade
 		t.Run("deleting the middle of a dependency chain", func(t *testing.T) {
+			t.Parallel()
 			// Arrange.
 			p := &lt.TestPlan{}
 			project := p.GetProject()
@@ -3528,8 +3521,8 @@ func TestUntargetedDependencyChainsArePreserved(t *testing.T) {
 		// * A is removed from the program
 		// * B is removed from the program
 		// * An update targeting TARGET is performed
-		//nolint:paralleltest // golangci-lint v2 upgrade
 		t.Run("deleting the entirety of a dependency chain", func(t *testing.T) {
+			t.Parallel()
 			// Arrange.
 			p := &lt.TestPlan{}
 			project := p.GetProject()
@@ -4386,7 +4379,7 @@ func TestUntargetedProviderChange(t *testing.T) {
 			Provider: provider.String(),
 		})
 		if expectError {
-			require.Fail(t, "RegisterResource should not return")
+			return nil
 		} else {
 			require.NoError(t, err)
 		}
@@ -5134,7 +5127,7 @@ func TestTargetedUpdateAppliesNewInputs_Issue24303(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				DiffF: func(_ context.Context, req plugin.DiffRequest) (plugin.DiffResult, error) {
-					if !req.OldInputs["value"].DeepEquals(req.NewInputs["value"]) {
+					if !req.OldInputs.Get("value").Equals(req.NewInputs.Get("value")) {
 						return plugin.DiffResult{Changes: plugin.DiffSome}, nil
 					}
 					return plugin.DiffResult{Changes: plugin.DiffNone}, nil
@@ -5271,4 +5264,70 @@ func TestTargetedUpdateAppliesNewInputs_Issue24303(t *testing.T) {
 		}
 	}
 	require.Equal(t, rollbackCount, found, "expected all rollback resources in snapshot")
+}
+
+// Regression test for https://github.com/pulumi/pulumi/issues/12368. A resource that is read via
+// `.get()` should propagate `--target-dependents` to the resources that depend on it.
+func TestTargetDependentsThroughReadResource(t *testing.T) {
+	t.Parallel()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+					return plugin.ReadResponse{
+						ReadResult: plugin.ReadResult{ID: req.ID, Outputs: new(property.Map{})},
+						Status:     resource.StatusOK,
+					}, nil
+				},
+			}, nil
+		}),
+	}
+
+	cValue := "old"
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		resA, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
+		require.NoError(t, err)
+
+		readB, _, err := monitor.ReadResource(
+			"pkgA:m:typA", "readB", "some-id", resA.URN, resource.PropertyMap{}, "", "", "", nil, "", "")
+		require.NoError(t, err)
+
+		_, err = monitor.RegisterResource("pkgA:m:typA", "resC", true, deploytest.ResourceOptions{
+			Inputs:       resource.PropertyMap{"foo": resource.NewProperty(cValue)},
+			Dependencies: []resource.URN{readB},
+		})
+		require.NoError(t, err)
+
+		return nil
+	})
+
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
+	p := &lt.TestPlan{}
+	project := p.GetProject()
+
+	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), lt.TestUpdateOptions{
+		T: t, HostF: hostF,
+	}, false, p.BackendClient, nil, "0")
+	require.NoError(t, err)
+
+	// Now change resC's inputs and only target resA, with --target-dependents. resC depends on the
+	// read resource readB, which in turn depends on resA, so resC should be updated.
+	cValue = "new"
+	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), lt.TestUpdateOptions{
+		T: t, HostF: hostF,
+		UpdateOptions: UpdateOptions{
+			Targets:          deploy.NewUrnTargets([]string{"urn:pulumi:test::test::pkgA:m:typA::resA"}),
+			TargetDependents: true,
+		},
+	}, false, p.BackendClient, nil, "1")
+	require.NoError(t, err)
+
+	for _, r := range snap.Resources {
+		if r.URN.Name() == "resC" {
+			assert.Equal(t, resource.NewProperty("new"), r.Inputs["foo"])
+			return
+		}
+	}
+	t.Fatal("resC not found in snapshot")
 }

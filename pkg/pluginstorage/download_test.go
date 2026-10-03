@@ -18,6 +18,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/blang/semver"
 	"github.com/stretchr/testify/assert"
@@ -58,7 +59,7 @@ func TestUnpackContentsFreshInstall(t *testing.T) {
 
 	cleanup, err := UnpackContents(t.Context(), spec, testPluginContent(t, "new"), false)
 	require.NoError(t, err)
-	cleanup(true)
+	require.NoError(t, cleanup(true))
 
 	assert.Equal(t, "new", binaryContents(t, spec))
 	assert.True(t, workspace.HasPlugin(spec))
@@ -70,11 +71,11 @@ func TestUnpackContentsKeepsCompleteInstall(t *testing.T) {
 
 	cleanup, err := UnpackContents(t.Context(), spec, testPluginContent(t, "original"), false)
 	require.NoError(t, err)
-	cleanup(true)
+	require.NoError(t, cleanup(true))
 
 	cleanup, err = UnpackContents(t.Context(), spec, testPluginContent(t, "new"), false)
 	require.NoError(t, err)
-	cleanup(true)
+	require.NoError(t, cleanup(true))
 
 	assert.Equal(t, "original", binaryContents(t, spec))
 	assert.True(t, workspace.HasPlugin(spec))
@@ -86,11 +87,11 @@ func TestUnpackContentsReinstallOverwrites(t *testing.T) {
 
 	cleanup, err := UnpackContents(t.Context(), spec, testPluginContent(t, "original"), false)
 	require.NoError(t, err)
-	cleanup(true)
+	require.NoError(t, cleanup(true))
 
 	cleanup, err = UnpackContents(t.Context(), spec, testPluginContent(t, "new"), true)
 	require.NoError(t, err)
-	cleanup(true)
+	require.NoError(t, cleanup(true))
 
 	assert.Equal(t, "new", binaryContents(t, spec))
 	assert.True(t, workspace.HasPlugin(spec))
@@ -102,14 +103,42 @@ func TestUnpackContentsRecoversFailedInstall(t *testing.T) {
 
 	cleanup, err := UnpackContents(t.Context(), spec, testPluginContent(t, "broken"), false)
 	require.NoError(t, err)
-	cleanup(false)
+	require.NoError(t, cleanup(false))
 
 	assert.False(t, workspace.HasPlugin(spec))
 
 	cleanup, err = UnpackContents(t.Context(), spec, testPluginContent(t, "new"), false)
 	require.NoError(t, err)
-	cleanup(true)
+	require.NoError(t, cleanup(true))
 
 	assert.Equal(t, "new", binaryContents(t, spec))
 	assert.True(t, workspace.HasPlugin(spec))
+}
+
+//nolint:paralleltest // testPluginSpec calls t.Setenv
+func TestUnpackContentsWaitsForConcurrentInstall(t *testing.T) {
+	spec := testPluginSpec(t)
+	secondContent := testPluginContent(t, "second")
+
+	first, err := UnpackContents(t.Context(), spec, testPluginContent(t, "first"), false)
+	require.NoError(t, err)
+
+	second := make(chan error, 1)
+	go func() {
+		cleanup, err := UnpackContents(t.Context(), spec, secondContent, false)
+		if err == nil {
+			err = cleanup(true)
+		}
+		second <- err
+	}()
+
+	select {
+	case err := <-second:
+		require.FailNow(t, "the second install did not wait for the first install", "%v", err)
+	case <-time.After(100 * time.Millisecond):
+	}
+
+	require.NoError(t, first(true))
+	require.NoError(t, <-second)
+	assert.Equal(t, "first", binaryContents(t, spec))
 }
