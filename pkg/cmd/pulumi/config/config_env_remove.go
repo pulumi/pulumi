@@ -62,7 +62,7 @@ type configEnvRmCmd struct {
 
 func (cmd *configEnvRmCmd) run(ctx context.Context, args []string) error {
 	return cmd.parent.editStackEnvironment(
-		ctx, cmd.showSecrets, cmd.yes, func(stack *workspace.ProjectStack) error {
+		ctx, "rm", cmd.showSecrets, cmd.yes, func(stack *workspace.ProjectStack) error {
 			stack.Environment = stack.Environment.Remove(args[0])
 			return nil
 		})

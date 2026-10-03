@@ -287,3 +287,44 @@ runtime: yaml`
 		assert.Equal(t, expectedYAML, newStackYAML)
 	})
 }
+
+// TestConfigEnvInitMain covers the migration path: `--main` moves the stack's `config:` block into the
+// environment and rewrites the stack file to `mainEnvironment:`.
+func TestConfigEnvInitMain(t *testing.T) {
+	t.Parallel()
+
+	projectYAML := `name: test
+runtime: yaml`
+
+	cfg := map[config.Key]config.Value{
+		config.MustMakeKey("aws", "region"):        config.NewValue("us-west-2"),
+		config.MustMakeKey("app", "instanceCount"): config.NewValue("6"),
+		config.MustMakeKey("app", "password"):      config.NewSecureValue("aHVudGVyMg==" /*base64 of hunter2*/),
+	}
+
+	stackYAML, err := encoding.YAML.Marshal(workspace.ProjectStack{Config: cfg})
+	require.NoError(t, err)
+
+	var newStackYAML string
+	stdin := strings.NewReader("y")
+	var stdout bytes.Buffer
+	parent := newConfigEnvCmdForInitTest(stdin, &stdout, projectYAML, string(stackYAML), &newStackYAML, envDefMap{})
+	init := &configEnvInitCmd{
+		parent: parent, newCrypter: newBase64EvalCrypter, showSecrets: true, main: true, yes: true,
+	}
+	require.NoError(t, init.run(t.Context(), nil))
+
+	out := cleanStdout(stdout.String())
+	// Value types are preserved: the string "6" stays a string, and the stack secret becomes an ESC secret.
+	assert.Contains(t, out, "    app:instanceCount: \"6\"\n")
+	assert.Contains(t, out, "    app:password:\n      fn::secret: hunter2\n")
+	// The command reports what moved, since it does not verify value-equivalence itself.
+	assert.Contains(t, out, "Moved 3 configuration value(s) (1 secret) to test/stack:\n"+
+		"  app:instanceCount\n"+
+		"  app:password\n"+
+		"  aws:region\n")
+
+	// The stack file now binds the environment as its main environment, with no `environment:` list and
+	// no leftover `config:` block.
+	assert.Equal(t, "mainEnvironment: test/stack\n", newStackYAML)
+}
