@@ -1,0 +1,18 @@
+run: esc env default
+error: exit status 1
+process:
+  fs:
+    Pulumi.dev.yaml: |
+      environment: [
+    Pulumi.yaml: |
+      name: my-project
+      runtime: nodejs
+pulumi:
+  selected-stack: dev
+
+---
+> esc env default
+
+---
+> esc env default
+Error: invalid Pulumi.dev.yaml: invalid YAML file: yaml: line 1: did not find expected node content

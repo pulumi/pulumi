@@ -1,0 +1,32 @@
+run: |
+  esc env open || echo -n ""
+  esc env open test
+  esc env open default/other
+  esc env open default/other foo
+environments:
+  test-user/default/other:
+    values:
+      foo: other-bar
+  test-user/default/test:
+    values:
+      foo: bar
+
+---
+> esc env open
+> esc env open test
+{
+  "foo": "bar"
+}
+> esc env open default/other
+{
+  "foo": "other-bar"
+}
+> esc env open default/other foo
+"other-bar"
+
+---
+> esc env open
+Error: no environment name specified
+> esc env open test
+> esc env open default/other
+> esc env open default/other foo

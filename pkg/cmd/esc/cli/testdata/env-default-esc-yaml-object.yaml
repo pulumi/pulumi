@@ -1,0 +1,28 @@
+run: esc env default
+process:
+  fs:
+    .esc.yaml: |
+      environment:
+        organization: test-org
+        imports:
+          - project-a/base
+          - project-a/staging
+environments:
+  test-org/project-a/base:
+    values:
+      foo: bar
+  test-org/project-a/staging:
+    values:
+      baz: qux
+
+---
+> esc env default
+environment:
+  organization: test-org
+  imports:
+    - project-a/base
+    - project-a/staging
+source: .esc.yaml
+
+---
+> esc env default

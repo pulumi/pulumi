@@ -1,0 +1,32 @@
+run: esc env default
+process:
+  fs:
+    work/Pulumi.dev.yaml: |
+      environment:
+        - default/base
+        - default/staging
+    work/Pulumi.yaml: |
+      name: my-project
+      runtime: nodejs
+  cwd: work/app
+pulumi:
+  selected-stack: dev
+environments:
+  test-user/default/base:
+    values:
+      foo: bar
+  test-user/default/staging:
+    values:
+      baz: qux
+
+---
+> esc env default
+environment:
+  organization: test-user
+  imports:
+    - default/base
+    - default/staging
+source: stack dev
+
+---
+> esc env default

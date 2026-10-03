@@ -143,13 +143,25 @@ func (env testEnviron) Vars() []string {
 }
 
 // mockWorkspace returns a pulumi workspace Context that serves the given stored credentials,
-// used to drive ESC's credential reads in tests.
-func mockWorkspace(creds workspace.Credentials) pkgWorkspace.Context {
-	return &pkgWorkspace.MockContext{
+// used to drive ESC's credential reads in tests. If selectedStack is non-empty, the context also
+// serves a workspace whose selected stack is selectedStack; otherwise New reports that there is no
+// project, which the default environment resolver treats as "no selected stack".
+func mockWorkspace(creds workspace.Credentials, selectedStack string) pkgWorkspace.Context {
+	ctx := &pkgWorkspace.MockContext{
 		GetStoredCredentialsF: func() (workspace.Credentials, error) {
 			return creds, nil
 		},
 	}
+	if selectedStack != "" {
+		ctx.NewF = func(string) (pkgWorkspace.W, error) {
+			return &pkgWorkspace.MockW{
+				SettingsF: func() *pkgWorkspace.Settings {
+					return &pkgWorkspace.Settings{Stack: selectedStack}
+				},
+			}, nil
+		}
+	}
+	return ctx
 }
 
 type testProvider struct{}
@@ -1597,6 +1609,9 @@ type testExec struct {
 	fs       testFS
 	environ  map[string]string
 	commands map[string]string
+	cwd      string
+
+	selectedStack string
 
 	parentPath string
 	login      *testLoginManager
@@ -1649,11 +1664,12 @@ func (c *testExec) runScript(script string, cmd *exec.Cmd) error {
 					Stderr:     hc.Stderr,
 					Colors:     colors.Never,
 					Login:      c.login,
-					ws:         mockWorkspace(c.creds),
+					ws:         mockWorkspace(c.creds, c.selectedStack),
 					fs:         c.fs,
 					environ:    environ,
 					exec:       c,
 					pager:      testPager(0),
+					wd:         testWD(valueOrDefault(c.cwd, ".")),
 					newClient: func(_, backendURL, accessToken string, insecure bool) client.Client {
 						return c.client
 					},
@@ -1738,6 +1754,19 @@ type cliTestcaseProcess struct {
 	FS       map[string]string `yaml:"fs,omitempty"`
 	Environ  map[string]string `yaml:"environ,omitempty"`
 	Commands map[string]string `yaml:"commands,omitempty"`
+	Cwd      string            `yaml:"cwd,omitempty"`
+}
+
+// cliTestcasePulumi describes the state of the Pulumi CLI's workspace for a testcase.
+type cliTestcasePulumi struct {
+	SelectedStack string `yaml:"selected-stack,omitempty"`
+}
+
+// testWD is a working directory implementation backed by a fixed path.
+type testWD string
+
+func (wd testWD) Getwd() (string, error) {
+	return string(wd), nil
 }
 
 type cliTestcaseRetract struct {
@@ -1885,6 +1914,7 @@ type cliTestcaseYAML struct {
 	Error string `yaml:"error,omitempty"`
 
 	Process *cliTestcaseProcess `yaml:"process,omitempty"`
+	Pulumi  *cliTestcasePulumi  `yaml:"pulumi,omitempty"`
 
 	Environments map[string]yaml.Node `yaml:"environments,omitempty"`
 }
@@ -1931,6 +1961,11 @@ func loadTestcase(path string) (*cliTestcaseYAML, *cliTestcase, error) {
 
 		exec.environ = testcase.Process.Environ
 		exec.commands = testcase.Process.Commands
+		exec.cwd = testcase.Process.Cwd
+	}
+
+	if testcase.Pulumi != nil {
+		exec.selectedStack = testcase.Pulumi.SelectedStack
 	}
 
 	environments := map[string]*testEnvironment{}

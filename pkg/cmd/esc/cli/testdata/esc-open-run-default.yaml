@@ -1,0 +1,35 @@
+run: |
+  esc open
+  esc open foo
+  esc run -- dump-env
+process:
+  fs:
+    .esc.yaml: |
+      environment: test-user/default/test
+  commands:
+    dump-env: |
+      echo "foo: $FOO"
+environments:
+  test-user/default/test:
+    values:
+      foo: bar
+      environmentVariables:
+        FOO: ${foo}
+
+---
+> esc open
+{
+  "environmentVariables": {
+    "FOO": "bar"
+  },
+  "foo": "bar"
+}
+> esc open foo
+"bar"
+> esc run -- dump-env
+foo: bar
+
+---
+> esc open
+> esc open foo
+> esc run -- dump-env

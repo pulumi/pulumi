@@ -52,6 +52,7 @@ type Options struct {
 	exec    cmdExec
 	pager   pager
 	ws      pkgWorkspace.Context
+	wd      workingDir
 
 	newClient func(userAgent, backendURL, accessToken string, insecure bool) client.Client
 }
@@ -62,6 +63,7 @@ type escCommand struct {
 	exec    cmdExec
 	pager   pager
 	ws      pkgWorkspace.Context
+	wd      workingDir
 
 	stdin  io.Reader
 	stdout io.Writer
@@ -86,6 +88,7 @@ func newESC(opts *Options) *escCommand {
 		environ:   valueOrDefault(opts.environ, newEnviron()),
 		exec:      valueOrDefault(opts.exec, newCmdExec()),
 		pager:     valueOrDefault(opts.pager, newPager()),
+		wd:        valueOrDefault(opts.wd, newWorkingDir()),
 		stdin:     valueOrDefault(opts.Stdin, io.Reader(os.Stdin)),
 		stdout:    valueOrDefault(opts.Stdout, io.Writer(os.Stdout)), //nolint:forbidigo,lll // default writer for the ESC CLI root command
 		stderr:    valueOrDefault(opts.Stderr, io.Writer(os.Stderr)), //nolint:forbidigo,lll // default writer for the ESC CLI root command

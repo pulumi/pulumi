@@ -1,0 +1,13 @@
+run: esc env default
+error: exit status 1
+process:
+  fs:
+    .esc.yaml: |
+      environment: [
+
+---
+> esc env default
+
+---
+> esc env default
+Error: invalid .esc.yaml: yaml: line 1: did not find expected node content

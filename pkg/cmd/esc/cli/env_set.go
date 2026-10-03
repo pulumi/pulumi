@@ -15,6 +15,7 @@
 package cli
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -40,14 +41,19 @@ func newEnvSetCmd(env *envCommand) *cobra.Command {
 	var file string
 
 	cmd := &cobra.Command{
-		Use:   "set [<org-name>/][<project-name>/]<environment-name> <path> <value>",
-		Args:  cobra.RangeArgs(1, 3),
+		Use:   "set [[<org-name>/][<project-name>/]<environment-name>] <path> <value>",
+		Args:  cobra.MaximumNArgs(3),
 		Short: "Set a value within an environment.",
 		Long: "Set a value within an environment\n" +
 			"\n" +
 			"This command fetches the current definition for the named environment and modifies a\n" +
 			"value within it. The path to the value to set is a Pulumi property path. The value\n" +
-			"is interpreted as YAML.\n",
+			"is interpreted as YAML.\n" +
+			"\n" +
+			"If no environment is given, the default environment for the working directory is\n" +
+			"used. Because this command requires a named environment, a default that is an\n" +
+			"anonymous list of imports is rejected. Run `env default` to see the default\n" +
+			"environment in effect.\n",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 
@@ -55,7 +61,7 @@ func newEnvSetCmd(env *envCommand) *cobra.Command {
 				return err
 			}
 
-			ref, args, err := env.getExistingEnvRef(ctx, args)
+			ref, args, err := env.getEnvRefForSet(ctx, args, file != "")
 			if err != nil {
 				return err
 			}
@@ -234,6 +240,42 @@ func newEnvSetCmd(env *envCommand) *cobra.Command {
 	cmd.Flag("draft").NoOptDefVal = "new"
 
 	return cmd
+}
+
+// getEnvRefForSet resolves the environment for `env set`, which accepts an optional environment
+// followed by a path and a value (or, with --file, just a path).
+//
+// Disambiguation follows the same rules as `open` and `get`: an argument that contains a '/' is
+// always an environment reference, and a bare leading argument names an environment only when no
+// default environment is configured. A full-form invocation (all positionals present) always names
+// an environment.
+func (cmd *envCommand) getEnvRefForSet(
+	ctx context.Context,
+	args []string,
+	hasFile bool,
+) (environmentRef, []string, error) {
+	if cmd.envNameFlag != "" {
+		ref, err := cmd.getExistingEnvRefWithRelative(ctx, cmd.envNameFlag, nil)
+		return ref, args, err
+	}
+
+	fullForm := len(args) >= 3 || (hasFile && len(args) >= 2)
+	if fullForm || (len(args) != 0 && strings.Contains(args[0], "/")) {
+		return cmd.getExistingEnvRef(ctx, args)
+	}
+
+	def, err := cmd.resolveDefaultEnvironment(ctx)
+	if err != nil {
+		return environmentRef{}, nil, err
+	}
+	if def == nil {
+		// No default: the first argument names an environment, as it always has.
+		return cmd.getExistingEnvRef(ctx, args)
+	}
+	if def.ref == nil {
+		return environmentRef{}, nil, errAnonymousDefault
+	}
+	return *def.ref, args, nil
 }
 
 // keyPattern is the regular expression a configuration key must match before we check (and error) if we think

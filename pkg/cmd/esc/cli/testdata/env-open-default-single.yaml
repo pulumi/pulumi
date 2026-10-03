@@ -1,0 +1,28 @@
+run: |
+  esc env open
+  esc env open foo
+process:
+  fs:
+    .esc.yaml: |
+      environment: test-user/default/test
+environments:
+  test-user/default/test:
+    values:
+      foo: bar
+      nested:
+        baz: qux
+
+---
+> esc env open
+{
+  "foo": "bar",
+  "nested": {
+    "baz": "qux"
+  }
+}
+> esc env open foo
+"bar"
+
+---
+> esc env open
+> esc env open foo

@@ -46,7 +46,7 @@ func newEnvEditCmd(env *envCommand) *cobra.Command {
 	edit := &envEditCommand{env: env}
 
 	cmd := &cobra.Command{
-		Use:     "edit [<org-name>/][<project-name>/]<environment-name>",
+		Use:     "edit [[<org-name>/][<project-name>/]<environment-name>]",
 		Aliases: []string{"update", "modify"},
 		Args:    cobra.MaximumNArgs(1),
 		Short:   "Edit an environment definition",
@@ -57,7 +57,12 @@ func newEnvEditCmd(env *envCommand) *cobra.Command {
 			"variable. If VISUAL is not set, EDITOR is used. These values are interpreted as\n" +
 			"commands to which the name of the temporary file used for the environment is appended.\n" +
 			"If no editor is specified via the --editor flag or environment variables, edit\n" +
-			"defaults to `vi`.\n",
+			"defaults to `vi`.\n" +
+			"\n" +
+			"If no environment is given, the default environment for the working directory is\n" +
+			"used. Because this command requires a named environment, a default that is an\n" +
+			"anonymous list of imports is rejected. Run `env default` to see the default\n" +
+			"environment in effect.\n",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 
