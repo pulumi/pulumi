@@ -27,76 +27,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestAnalyzerSpawn(t *testing.T) {
-	d := diagtest.LogSink(t)
-	h, err := New(t.Context(), d, d, nil, nil, nil, nil, nil)
-	require.NoError(t, err)
-	defer func() { require.NoError(t, h.Close()) }()
-	ctx, err := plugin.NewContextWithHost(t.Context(), d, d, h, "", "", nil)
-	require.NoError(t, err)
-
-	// Sanity test that from config.Map to envvars we see what we expect to see
-	proj := "test-project"
-	configMap := config.Map{
-		config.MustMakeKey(proj, "bool"):   config.NewTypedValue("true", config.TypeBool),
-		config.MustMakeKey(proj, "float"):  config.NewTypedValue("1.5", config.TypeFloat),
-		config.MustMakeKey(proj, "string"): config.NewTypedValue("hello", config.TypeString),
-		config.MustMakeKey(proj, "obj"):    config.NewObjectValue("{\"key\": \"value\"}"),
-	}
-
-	configDecrypted, err := configMap.Decrypt(config.NopDecrypter)
-	require.NoError(t, err)
-
-	opts := plugin.PolicyAnalyzerOptions{
-		Organization: "test-org",
-		Project:      proj,
-		Stack:        "test-stack",
-		DryRun:       true,
-		Config:       configDecrypted,
-		Tags:         map[string]string{"tag1": "value1", "tag2": "value2"},
-	}
-
-	pluginPath, err := filepath.Abs("./testdata/analyzer")
-	require.NoError(t, err)
-
-	path := os.Getenv("PATH")
-	t.Setenv("PATH", pluginPath+string(os.PathListSeparator)+path)
-
-	// Check exec.LookPath finds the analyzer
-	file, err := exec.LookPath("pulumi-analyzer-policy-test")
-	require.NoError(t, err)
-	require.Contains(t, file, "pulumi-analyzer-policy-test")
-
-	analyzer, err := plugin.NewPolicyAnalyzer(ctx.Host, ctx, "policypack", "./testdata/policypack", &opts, nil)
-	require.NoError(t, err)
-
-	err = analyzer.Close()
-	require.NoError(t, err)
-}
-
-func TestAnalyzerSpawnNoConfig(t *testing.T) {
-	d := diagtest.LogSink(t)
-	h, err := New(t.Context(), d, d, nil, nil, nil, nil, nil)
-	require.NoError(t, err)
-	defer func() { require.NoError(t, h.Close()) }()
-	ctx, err := plugin.NewContextWithHost(t.Context(), d, d, h, "", "", nil)
-	require.NoError(t, err)
-
-	pluginPath, err := filepath.Abs("./testdata/analyzer-no-config")
-	require.NoError(t, err)
-
-	path := os.Getenv("PATH")
-	t.Setenv("PATH", pluginPath+string(os.PathListSeparator)+path)
-
-	// Pass `nil` for the config, this is used for example in `pulumi policy
-	// publish`, which does not run in the context of a stack.
-	analyzer, err := plugin.NewPolicyAnalyzer(ctx.Host, ctx, "policypack", "./testdata/policypack", nil, nil)
-	require.NoError(t, err)
-
-	err = analyzer.Close()
-	require.NoError(t, err)
-}
-
 // TestAnalyzerSpawnBinary verifies that NewPolicyAnalyzer can launch an analyzer plugin
 // that is provided as a bare executable binary (no PulumiPolicy.yaml alongside it), mirroring
 // the behavior of NewProvider.
@@ -139,7 +69,7 @@ func TestAnalyzerSpawnBinary(t *testing.T) {
 	t.Log(string(stdout))
 	require.NoError(t, err)
 
-	_, err = plugin.NewPolicyAnalyzer(ctx.Host, ctx, "binary-analyzer", filepath.Join(tmp, bin), nil, nil)
+	_, err = plugin.NewPolicyAnalyzer(ctx.Host, ctx, "binary-analyzer", filepath.Join(tmp, bin), nil)
 	require.Error(t, err)
 	require.ErrorContains(t, err, "exit status 1")
 }
@@ -164,7 +94,7 @@ func TestAnalyzerBinaryVersionFromYaml(t *testing.T) {
 	pluginPath, err := filepath.Abs(filepath.Join("./testdata/analyzer-binary", binName))
 	require.NoError(t, err)
 
-	analyzer, err := plugin.NewPolicyAnalyzer(ctx.Host, ctx, "binary-analyzer", pluginPath, nil, nil)
+	analyzer, err := plugin.NewPolicyAnalyzer(ctx.Host, ctx, "binary-analyzer", pluginPath, nil)
 	require.NoError(t, err)
 	defer func() { require.NoError(t, analyzer.Close()) }()
 
@@ -214,7 +144,7 @@ func TestAnalyzerSpawnViaLanguage(t *testing.T) {
 	require.NoError(t, err)
 	require.Contains(t, file, "pulumi-language-test")
 
-	analyzer, err := plugin.NewPolicyAnalyzer(ctx.Host, ctx, "policypack", "./testdata/policypack", &opts, nil)
+	analyzer, err := plugin.NewPolicyAnalyzer(ctx.Host, ctx, "policypack", "./testdata/policypack", &opts)
 	require.NoError(t, err)
 
 	err = analyzer.Close()

@@ -344,7 +344,7 @@ func (host *defaultHost) PolicyAnalyzer(
 		}
 
 		// If not, try to load and bind to a plugin.
-		plug, err := plugin.NewPolicyAnalyzer(host, ctx, name, path, opts, nil)
+		plug, err := plugin.NewPolicyAnalyzer(host, ctx, name, path, opts)
 		if err == nil && plug != nil {
 			info, infoerr := plug.GetPluginInfo(ctx.Request())
 			if infoerr != nil {
