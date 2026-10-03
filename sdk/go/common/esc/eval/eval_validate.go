@@ -180,14 +180,19 @@ func (e *validator) validateSchemaType(x, accept *schema.Schema, loc validationL
 		return true
 	}
 	if accept.Never {
-		return false
+		// A schema only validates the Never schema if it is itself Never: Never admits no values, so nothing other
+		// than Never itself can be a subtype of it.
+		if x.Never {
+			return true
+		}
+		return e.errorf(loc, "value is never valid")
 	}
 
 	if e.isAny(x) {
 		return true
 	}
 	if x.Never {
-		return false
+		return e.errorf(loc, "value is never valid")
 	}
 
 	refOK := accept.GetRef() == nil || e.validateSchemaType(x, accept.GetRef(), loc)
@@ -426,7 +431,7 @@ func (e *validator) validateElement(v *value, accept *schema.Schema, loc validat
 		return true
 	}
 	if accept.Never {
-		return false
+		return e.errorf(loc, "value is never valid")
 	}
 	if v.unknown {
 		return e.validateSchemaType(v.schema, accept, loc)

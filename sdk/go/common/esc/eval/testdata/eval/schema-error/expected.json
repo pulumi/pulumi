@@ -71,29 +71,6 @@
         },
         {
             "Severity": 1,
-            "Summary": "expected number, got boolean",
-            "Detail": "",
-            "Subject": {
-                "Filename": "schema-error",
-                "Start": {
-                    "Line": 42,
-                    "Column": 14,
-                    "Byte": 1000
-                },
-                "End": {
-                    "Line": 42,
-                    "Column": 29,
-                    "Byte": 1015
-                }
-            },
-            "Context": null,
-            "Expression": null,
-            "EvalContext": null,
-            "Extra": null,
-            "Path": "values.sink[\"fn::open::schema\"].anyOf"
-        },
-        {
-            "Severity": 1,
             "Summary": "at least one subschema must match",
             "Detail": "",
             "Subject": {
@@ -118,6 +95,29 @@
         {
             "Severity": 1,
             "Summary": "expected string, got boolean",
+            "Detail": "",
+            "Subject": {
+                "Filename": "schema-error",
+                "Start": {
+                    "Line": 42,
+                    "Column": 14,
+                    "Byte": 1000
+                },
+                "End": {
+                    "Line": 42,
+                    "Column": 29,
+                    "Byte": 1015
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Path": "values.sink[\"fn::open::schema\"].anyOf"
+        },
+        {
+            "Severity": 1,
+            "Summary": "expected number, got boolean",
             "Detail": "",
             "Subject": {
                 "Filename": "schema-error",
@@ -252,6 +252,52 @@
             "EvalContext": null,
             "Extra": null,
             "Path": "values.sink[\"fn::open::schema\"][\"const-object\"]"
+        },
+        {
+            "Severity": 1,
+            "Summary": "[2]: value is never valid",
+            "Detail": "",
+            "Subject": {
+                "Filename": "schema-error",
+                "Start": {
+                    "Line": 47,
+                    "Column": 15,
+                    "Byte": 1161
+                },
+                "End": {
+                    "Line": 47,
+                    "Column": 31,
+                    "Byte": 1177
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Path": "values.sink[\"fn::open::schema\"].double"
+        },
+        {
+            "Severity": 1,
+            "Summary": "[2]: value is never valid",
+            "Detail": "",
+            "Subject": {
+                "Filename": "schema-error",
+                "Start": {
+                    "Line": 48,
+                    "Column": 15,
+                    "Byte": 1192
+                },
+                "End": {
+                    "Line": 48,
+                    "Column": 31,
+                    "Byte": 1208
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Path": "values.sink[\"fn::open::schema\"].triple"
         },
         {
             "Severity": 1,
@@ -6495,6 +6541,29 @@
     "evalDiags": [
         {
             "Severity": 1,
+            "Summary": "value is never valid",
+            "Detail": "",
+            "Subject": {
+                "Filename": "schema-error",
+                "Start": {
+                    "Line": 3,
+                    "Column": 5,
+                    "Byte": 22
+                },
+                "End": {
+                    "Line": 35,
+                    "Column": 32,
+                    "Byte": 832
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Path": "values.source"
+        },
+        {
+            "Severity": 1,
             "Summary": "expected boolean, got null",
             "Detail": "",
             "Subject": {
@@ -6656,7 +6725,7 @@
         },
         {
             "Severity": 1,
-            "Summary": "exactly one subschema must match",
+            "Summary": "expected string, got boolean",
             "Detail": "",
             "Subject": {
                 "Filename": "schema-error",
@@ -6702,7 +6771,7 @@
         },
         {
             "Severity": 1,
-            "Summary": "expected string, got boolean",
+            "Summary": "exactly one subschema must match",
             "Detail": "",
             "Subject": {
                 "Filename": "schema-error",
