@@ -205,12 +205,6 @@
             "flags": {}
         },
         {
-            "path": ["gen-completion"],
-            "propagate": true,
-            "exclude": true,
-            "flags": {}
-        },
-        {
             "path": ["gen-markdown"],
             "propagate": true,
             "exclude": true,
