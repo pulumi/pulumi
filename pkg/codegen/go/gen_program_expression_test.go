@@ -448,6 +448,42 @@ func TestIntrinsicConvertScopeTraversalToInputScalarNoDoubleWrap(t *testing.T) {
 	assert.Equal(t, "pulumi.String(bucketName)", index.String())
 }
 
+// Regression test for pulumi/pulumi#24201.
+func TestIntrinsicConvertIDOutputToStringInput(t *testing.T) {
+	t.Parallel()
+
+	g := newTestGenerator(t, filepath.Join("transpiled_examples", "random-pp", "random.pp"))
+	var index bytes.Buffer
+
+	inputType := model.NewUnionTypeAnnotated(
+		[]model.Type{model.StringType, model.NewOutputType(model.StringType)},
+		&schema.InputType{ElementType: schema.StringType},
+	)
+	expr := pcl.NewConvertCall(
+		model.VariableReference(&model.Variable{Name: "resourceID", VariableType: model.NewOutputType(model.IDType)}),
+		inputType,
+	)
+
+	g.Fgenf(&index, "%v", expr)
+	assert.Equal(t, "resourceID", index.String())
+}
+
+// IDOutput already exposes string conversion directly; do not emit an identity ToIDOutput call.
+func TestIntrinsicConvertIDOutputToStringOutput(t *testing.T) {
+	t.Parallel()
+
+	g := newTestGenerator(t, filepath.Join("transpiled_examples", "random-pp", "random.pp"))
+	var index bytes.Buffer
+
+	expr := pcl.NewConvertCall(
+		model.VariableReference(&model.Variable{Name: "resourceID", VariableType: model.NewOutputType(model.IDType)}),
+		model.NewOutputType(model.StringType),
+	)
+
+	g.Fgenf(&index, "%v", expr)
+	assert.Equal(t, "resourceID.ToStringOutput()", index.String())
+}
+
 func TestTupleConsExpression(t *testing.T) {
 	t.Parallel()
 
