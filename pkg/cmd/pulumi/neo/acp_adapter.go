@@ -41,10 +41,10 @@ import (
 // terminal, since an interactive login cannot run over the stdio JSON-RPC
 // channel. The same flow is duplicated as pre-stabilization terminal-auth meta
 // for editors (e.g. current stable Zed) that execute that instead of the typed
-// fields; there the command is explicit, so we name our own binary. For editors
-// without either mechanism the agent degrades the method to the untyped form
-// and the description tells the user to run `pulumi login` themselves; in
-// every case `authenticate` only verifies that a login session exists (see
+// fields; there the command is explicit, so we name our own binary. Editors
+// without either mechanism ignore the type per spec and surface the
+// description telling the user to run `pulumi login` themselves; in every case
+// `authenticate` only verifies that a login session exists (see
 // acpDelegate.CheckAuth).
 func neoACPIdentity() acp.Identity {
 	// Fall back to resolution via PATH if we can't name our own binary.
