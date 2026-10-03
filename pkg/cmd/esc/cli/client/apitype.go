@@ -20,6 +20,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/esc"
 )
 
@@ -263,6 +264,29 @@ type GetDefaultOrganizationResponse struct {
 	// Returns the organization name.
 	// Can be an empty string, if the user is a member of no organizations
 	Organization string `json:"gitHubLogin"`
+}
+
+type EnvironmentMetadata struct {
+	ID           string   `json:"id"`
+	GatedActions []string `json:"gatedActions,omitempty"`
+	// ActiveChangeRequest is the caller's open draft, which blocks them from creating another.
+	ActiveChangeRequest *ChangeRequestRef `json:"activeChangeRequest,omitempty"`
+}
+
+type ChangeRequestRef struct {
+	ChangeRequestID string `json:"changeRequestId"`
+}
+
+type ChangeRequest struct {
+	ID        string           `json:"id"`
+	Status    string           `json:"status"`
+	Action    string           `json:"action"`
+	CreatedBy apitype.UserInfo `json:"createdBy"`
+}
+
+type ListChangeRequestsResponse struct {
+	ChangeRequests    []ChangeRequest `json:"changeRequests"`
+	ContinuationToken string          `json:"continuationToken,omitempty"`
 }
 
 type EnvironmentSettings struct {

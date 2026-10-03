@@ -15,6 +15,8 @@
 package cli
 
 import (
+	"fmt"
+	"net/http"
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/cmd/esc/cli/client"
@@ -88,4 +90,22 @@ func TestGetEnvRef(t *testing.T) {
 		assert.Equal(t, ref.version, "v1")
 		assert.Equal(t, isRelative, true)
 	})
+}
+
+func TestIsApprovalRequired(t *testing.T) {
+	t.Parallel()
+
+	approval := &client.EnvironmentErrorResponse{
+		Code: http.StatusConflict,
+		Message: "This environment requires updates to be approved via change request. " +
+			"Please use the draft endpoint instead.",
+	}
+	assert.True(t, isApprovalRequired(approval))
+	assert.True(t, isApprovalRequired(fmt.Errorf("updating: %w", approval)))
+
+	assert.False(t, isApprovalRequired(nil))
+	etag := &client.EnvironmentErrorResponse{Code: http.StatusConflict, Message: "etag mismatch"}
+	assert.False(t, isApprovalRequired(etag))
+	badRequest := &client.EnvironmentErrorResponse{Code: http.StatusBadRequest, Message: "change request"}
+	assert.False(t, isApprovalRequired(badRequest))
 }
