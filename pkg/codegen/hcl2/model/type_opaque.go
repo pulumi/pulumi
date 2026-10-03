@@ -64,7 +64,7 @@ func (t *OpaqueType) AssignableFrom(src Type) bool {
 }
 
 func (t *OpaqueType) conversionFromImpl(
-	src Type, unifying, checkUnsafe bool, seen cycleSet,
+	src Type, unifying, checkUnsafe bool, seen *cycleSet,
 ) (ConversionKind, lazyDiagnostics) {
 	return conversionFrom(
 		t, src, unifying, seen, &typeCache{}, func() (ConversionKind, lazyDiagnostics) {
@@ -132,7 +132,7 @@ func (t *OpaqueType) conversionFromImpl(
 		})
 }
 
-func (t *OpaqueType) conversionFrom(src Type, unifying bool, seen cycleSet) (ConversionKind, lazyDiagnostics) {
+func (t *OpaqueType) conversionFrom(src Type, unifying bool, seen *cycleSet) (ConversionKind, lazyDiagnostics) {
 	return t.conversionFromImpl(src, unifying, true, seen)
 }
 
@@ -193,8 +193,8 @@ func (t *OpaqueType) string(_ map[Type]struct{}) string {
 
 var opaquePrecedence = []Type{StringType, NumberType, IntType, BoolType, IDType}
 
-func (t *OpaqueType) unify(other Type) (Type, ConversionKind) {
-	return unify(t, other, func() (Type, ConversionKind) {
+func (t *OpaqueType) unify(other Type, seen *cycleSet) (Type, ConversionKind) {
+	return unify(t, other, seen, func() (Type, ConversionKind) {
 		if t == DynamicType || other == DynamicType {
 			// These should have been handled by unify.
 			contract.Failf("unexpected type %v in OpaqueType.unify", t)
@@ -203,11 +203,11 @@ func (t *OpaqueType) unify(other Type) (Type, ConversionKind) {
 
 		for _, goal := range opaquePrecedence {
 			if t == goal {
-				kind, _ := goal.conversionFrom(other, true, nil)
+				kind, _ := goal.conversionFrom(other, true, seen)
 				return goal, kind
 			}
 			if other == goal {
-				kind, _ := goal.conversionFrom(t, true, nil)
+				kind, _ := goal.conversionFrom(t, true, seen)
 				return goal, kind
 			}
 		}
