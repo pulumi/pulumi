@@ -60,8 +60,9 @@ try:
 except ImportError:
     pass
 try:
-    from typing_extensions import NotRequired as _TypingExtNotRequired
-    from typing_extensions import Required as _TypingExtRequired
+    # Also recognize annotations supplied by typing_extensions.
+    from typing_extensions import NotRequired as _TypingExtNotRequired  # noqa: UP035
+    from typing_extensions import Required as _TypingExtRequired  # noqa: UP035
 
     _NotRequiredTypes += (_TypingExtNotRequired,)
     _RequiredTypes += (_TypingExtRequired,)

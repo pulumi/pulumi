@@ -20,10 +20,12 @@ import (
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
+	"github.com/pulumi/pulumi/tests/testutil"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestPythonTypes(t *testing.T) {
+	testutil.SkipPythonDynamicProviders(t)
 	t.Parallel()
 
 	//nolint:paralleltest // ProgramTest calls t.Parallel()

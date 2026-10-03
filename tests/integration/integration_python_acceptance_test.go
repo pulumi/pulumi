@@ -30,6 +30,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
 	"github.com/pulumi/pulumi/sdk/v3/python/toolchain"
+	"github.com/pulumi/pulumi/tests/testutil"
 )
 
 // TestEmptyPython simply tests that we can run an empty Python project.
@@ -49,6 +50,7 @@ func TestEmptyPython(t *testing.T) {
 //
 //nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestDynamicPython(t *testing.T) {
+	testutil.SkipPythonDynamicProviders(t)
 	var randomVal string
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir: filepath.Join("dynamic", "python"),
@@ -97,6 +99,7 @@ func TestDynamicPython(t *testing.T) {
 //
 //nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestDynamicPythonReadInputs(t *testing.T) {
+	testutil.SkipPythonDynamicProviders(t)
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir: filepath.Join("dynamic", "python-read-inputs"),
 		Dependencies: []string{

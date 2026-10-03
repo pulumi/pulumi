@@ -20,7 +20,6 @@ from typing import Any, Optional
 import os
 import sys
 import traceback
-import dill
 import grpc
 from google.protobuf import empty_pb2
 from pulumi.metadata import get_project
@@ -29,6 +28,9 @@ from pulumi.runtime import configure, proto, rpc, Settings
 from pulumi.runtime._grpc_settings import _GRPC_CHANNEL_OPTIONS
 from pulumi.runtime.proto import provider_pb2_grpc, ResourceProviderServicer
 from pulumi.dynamic import ResourceProvider, ConfigureRequest, Config
+from pulumi.dynamic.dynamic import _load_dill
+
+dill = _load_dill()
 
 _ONE_DAY_IN_SECONDS = 60 * 60 * 24
 PROVIDER_KEY = "__provider"
