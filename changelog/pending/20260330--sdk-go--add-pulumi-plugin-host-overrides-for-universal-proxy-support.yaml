@@ -1,0 +1,9 @@
+changes:
+- type: feat
+  scope: sdk/go
+  description: >
+    Add `PULUMI_PLUGIN_HOST_OVERRIDES` environment variable to transparently rewrite hostnames
+    in all plugin download requests. Format is `host1=proxy1,host2=proxy2`. Applies universally
+    to all plugin sources (GitHub, GitLab, get.pulumi.com, custom HTTP sources) without any
+    per-source configuration, making it suitable for environments that route traffic through
+    reverse proxies such as Artifactory generic remote repositories.
