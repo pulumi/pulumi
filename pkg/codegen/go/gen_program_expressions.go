@@ -486,7 +486,13 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 					if isOutput && to.Equals(model.DynamicType) {
 						typeName = "pulumi.AnyOutput"
 					}
-					g.Fgenf(w, "%.v.(%s)", from, typeName)
+					// A Dynamic-typed source may actually emit as a concrete Go value (e.g. when
+					// produced by a chain of __convert calls that unwrap through Dynamic without
+					// introducing a Go `interface{}` lift). A direct `.(T)` type assertion then
+					// fails to compile because its LHS is concrete, not an interface. Interpose
+					// an explicit `interface{}(x)` to lift the value to `interface{}` so the type
+					// assertion sees the right static type.
+					g.Fgenf(w, "interface{}(%.v).(%s)", from, typeName)
 				} else {
 					g.Fgenf(w, "%s(%.v)", typeName, from)
 				}

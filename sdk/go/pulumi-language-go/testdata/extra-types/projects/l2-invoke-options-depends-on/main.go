@@ -16,7 +16,7 @@ func main() {
 		data := simpleinvoke.MyInvokeOutput(ctx, simpleinvoke.MyInvokeOutputArgs{
 			Value: pulumi.String("hello"),
 		}, pulumi.DependsOn([]pulumi.Resource{
-			pulumi.Resource(first),
+			interface{}(first).(pulumi.Resource),
 		}))
 		_, err = simpleinvoke.NewStringResource(ctx, "second", &simpleinvoke.StringResourceArgs{
 			Text: data.Result(),

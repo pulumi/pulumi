@@ -14,7 +14,7 @@ func notImplemented(message string) any {
 func main() {
 	pulumi.Run(func(ctx *pulumi.Context) error {
 		panicHook, err := ctx.RegisterResourceHook("panicHook", func(args *pulumi.ResourceHookArgs) error {
-			return exec.Command(notImplemented("hook panic").(string)).Run()
+			return exec.Command(interface{}(notImplemented("hook panic")).(string)).Run()
 		}, nil)
 		if err != nil {
 			return err

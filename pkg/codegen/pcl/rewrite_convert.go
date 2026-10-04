@@ -73,8 +73,10 @@ func rewriteConversions(x model.Expression, to model.Type, diags *hcl.Diagnostic
 	case *model.AnonymousFunctionExpression:
 		x.Body, _ = rewriteConversions(x.Body, to, diags)
 	case *model.BinaryOpExpression:
-		x.LeftOperand, _ = rewriteConversions(x.LeftOperand, model.InputType(x.LeftOperandType()), diags)
-		x.RightOperand, _ = rewriteConversions(x.RightOperand, model.InputType(x.RightOperandType()), diags)
+		x.LeftOperand, _ = rewriteConversions(
+			x.LeftOperand, operandConversionTarget(x.LeftOperand, x.LeftOperandType()), diags)
+		x.RightOperand, _ = rewriteConversions(
+			x.RightOperand, operandConversionTarget(x.RightOperand, x.RightOperandType()), diags)
 		left, leftUnwrapped := unwrapIntToNumberConvert(x.LeftOperand)
 		right, rightUnwrapped := unwrapIntToNumberConvert(x.RightOperand)
 		if leftUnwrapped && rightUnwrapped {
@@ -83,7 +85,7 @@ func rewriteConversions(x model.Expression, to model.Type, diags *hcl.Diagnostic
 		}
 	case *model.ConditionalExpression:
 		var trueChanged, falseChanged bool
-		x.Condition, _ = rewriteConversions(x.Condition, model.InputType(model.BoolType), diags)
+		x.Condition, _ = rewriteConversions(x.Condition, operandConversionTarget(x.Condition, model.BoolType), diags)
 		x.TrueResult, trueChanged = rewriteConversions(x.TrueResult, to, diags)
 		x.FalseResult, falseChanged = rewriteConversions(x.FalseResult, to, diags)
 		typecheck = trueChanged || falseChanged
@@ -91,10 +93,10 @@ func rewriteConversions(x model.Expression, to model.Type, diags *hcl.Diagnostic
 		traverserType := model.NumberType
 		if x.Key != nil {
 			traverserType = model.StringType
-			x.Key, _ = rewriteConversions(x.Key, model.InputType(model.StringType), diags)
+			x.Key, _ = rewriteConversions(x.Key, operandConversionTarget(x.Key, model.StringType), diags)
 		}
 		if x.Condition != nil {
-			x.Condition, _ = rewriteConversions(x.Condition, model.InputType(model.BoolType), diags)
+			x.Condition, _ = rewriteConversions(x.Condition, operandConversionTarget(x.Condition, model.BoolType), diags)
 		}
 
 		valueType, tdiags := to.Traverse(model.MakeTraverser(traverserType))
@@ -102,6 +104,16 @@ func rewriteConversions(x model.Expression, to model.Type, diags *hcl.Diagnostic
 
 		x.Value, typecheck = rewriteConversions(x.Value, valueType.(model.Type), diags)
 	case *model.FunctionCallExpression:
+		// `__convert`'s single argument is the source value being converted. The signature's
+		// declared parameter type was captured at construction (NewConvertCall uses from.Type())
+		// and goes stale when upstream rewriters replace the argument. Target the recursion at
+		// the argument's current type instead so its own substructure (binary ops, nested
+		// function calls, etc.) still gets rewritten, but we don't insert a redundant conversion
+		// to the stale parameter type.
+		if x.Name == IntrinsicConvert && len(x.Args) == 1 {
+			x.Args[0], _ = rewriteConversions(x.Args[0], x.Args[0].Type(), diags)
+			break
+		}
 		args := x.Args
 		var expandedFinal model.Expression
 		if x.ExpandFinal && len(args) > 0 {
@@ -112,12 +124,13 @@ func rewriteConversions(x model.Expression, to model.Type, diags *hcl.Diagnostic
 			if len(args) == 0 {
 				break
 			}
-			args[0], _ = rewriteConversions(args[0], model.InputType(param.Type), diags)
+			args[0], _ = rewriteConversions(args[0], operandConversionTarget(args[0], param.Type), diags)
 			args = args[1:]
 		}
 		if x.Signature.VarargsParameter != nil {
 			for i := range args {
-				args[i], _ = rewriteConversions(args[i], model.InputType(x.Signature.VarargsParameter.Type), diags)
+				args[i], _ = rewriteConversions(args[i],
+					operandConversionTarget(args[i], x.Signature.VarargsParameter.Type), diags)
 			}
 		}
 		if expandedFinal != nil {
@@ -148,7 +161,7 @@ func rewriteConversions(x model.Expression, to model.Type, diags *hcl.Diagnostic
 			*diags = diags.Extend(tdiags)
 
 			var valueChanged bool
-			item.Key, _ = rewriteConversions(item.Key, model.InputType(model.StringType), diags)
+			item.Key, _ = rewriteConversions(item.Key, operandConversionTarget(item.Key, model.StringType), diags)
 			item.Value, valueChanged = rewriteConversions(item.Value, valueType.(model.Type), diags)
 			typecheck = typecheck || valueChanged
 		}
@@ -170,7 +183,7 @@ func rewriteConversions(x model.Expression, to model.Type, diags *hcl.Diagnostic
 			typecheck = typecheck || exprChanged
 		}
 	case *model.UnaryOpExpression:
-		x.Operand, _ = rewriteConversions(x.Operand, model.InputType(x.OperandType()), diags)
+		x.Operand, _ = rewriteConversions(x.Operand, operandConversionTarget(x.Operand, x.OperandType()), diags)
 		operand, unwrapped := unwrapIntToNumberConvert(x.Operand)
 		if unwrapped {
 			x.Operand = operand
@@ -196,6 +209,21 @@ func rewriteConversions(x model.Expression, to model.Type, diags *hcl.Diagnostic
 
 	// Otherwise, wrap the expression in a call to __convert.
 	return NewConvertCall(x, to), true
+}
+
+// operandConversionTarget returns the type to use as the conversion target when rewriting a
+// subexpression that was previously widened via [model.InputType] — binary and unary operands,
+// conditional and for-expression conditions / keys, function-call arguments, object-cons keys.
+//
+// The widening used to accommodate eventual operands by making an `Output<T>` assignable to the
+// target. By the time `rewriteConversions` runs, however, `RewriteApplies` has already lifted
+// eventual subexpressions into __apply callbacks, so operands reaching this point are prompt and
+// the widening is dead weight — it produced a `__convert` whose declared return type claimed an
+// eventualness it did not have at runtime, which `RewriteApplies` would then lift into an
+// unnecessary apply that strongly-typed code generators render as `<literal>.ApplyT(...)` —
+// invalid in Go.
+func operandConversionTarget(_ model.Expression, declared model.Type) model.Type {
+	return declared
 }
 
 func unwrapIntToNumberConvert(expr model.Expression) (model.Expression, bool) {
