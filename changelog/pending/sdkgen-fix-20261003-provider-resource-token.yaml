@@ -1,0 +1,4 @@
+component: sdkgen
+kind: fix
+body: Reject schemas that define a resource named `provider` in the root module through `moduleFormat`, instead of panicking during SDK generation
+time: 2026-10-03T00:00:00.000000000Z
