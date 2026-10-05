@@ -90,7 +90,7 @@ func TestWhoAmICmd_verbose(t *testing.T) {
 }
 
 func TestWhoAmICmd_json(t *testing.T) {
-	t.Parallel()
+	t.Setenv("PULUMI_ACCESS_TOKEN", "")
 
 	ws := &pkgWorkspace.MockContext{}
 	be := &backend.MockBackend{
@@ -119,7 +119,8 @@ func TestWhoAmICmd_json(t *testing.T) {
 	assert.JSONEq(t, `{
 		"user": "user3",
 		"organizations": ["org1", "org2"],
-		"url": "https://pulumi.example.com"
+		"url": "https://pulumi.example.com",
+		"accessTokenSource": "account credentials"
 	}`, buff.String())
 }
 
@@ -162,7 +163,7 @@ func TestWhoAmICmd_verbose_teamToken(t *testing.T) {
 }
 
 func TestWhoAmICmd_json_teamToken(t *testing.T) {
-	t.Parallel()
+	t.Setenv("PULUMI_ACCESS_TOKEN", "")
 
 	ws := &pkgWorkspace.MockContext{}
 	be := &backend.MockBackend{
@@ -195,7 +196,8 @@ func TestWhoAmICmd_json_teamToken(t *testing.T) {
 		"user": "user3",
 		"organizations": ["org1", "org2"],
 		"tokenInformation": {"name": "team-token", "team": "myTeam"},
-		"url": "https://pulumi.example.com"
+		"url": "https://pulumi.example.com",
+		"accessTokenSource": "account credentials"
 	}`, buff.String())
 }
 

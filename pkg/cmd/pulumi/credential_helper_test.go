@@ -253,6 +253,170 @@ func TestCredentialHelperRedactsRefreshedCredentials(t *testing.T) {
 	}
 }
 
+func TestCredentialHelperCommands(t *testing.T) {
+	for _, command := range [][]string{
+		{"login"},
+		{"login", "--default-org", "test-org"},
+		{"whoami"},
+		{"whoami", "--verbose"},
+		{"org"},
+		{"api", "/api/user"},
+		{"env", "ls"},
+		{"about", "--json"},
+	} {
+		t.Run(strings.Join(command, " "), func(t *testing.T) {
+			ptesting.IsolateCredentials(t)
+			t.Chdir(t.TempDir())
+			t.Setenv("PULUMI_DEFAULT_ORGANIZATION", "helper-user")
+			var requests atomic.Int32
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				requests.Add(1)
+				assert.Equal(t, "token helper-command-token", r.Header.Get("Authorization"))
+				assert.Equal(t, "helper-command-header", r.Header.Get("X-Helper"))
+				authtest.ServeBackend(t, w, r, "helper-user", map[string]string{
+					"/api/esc/environments": `{"environments":[]}`,
+					"/api/openapi/pulumi-spec.json": `{
+						"openapi":"3.0.0", "info":{"title":"test","version":"1"},
+						"components":{"schemas":{}},
+						"paths":{"/api/user":{"get":{"operationId":"GetUser","responses":{"200":{"description":"OK"}}}}}
+					}`,
+				})
+			}))
+			defer server.Close()
+			calls := configureTestCredentialHelper(t, map[string]any{
+				"initial": map[string]any{
+					"version": 1, "backendUrl": server.URL, "accessToken": "helper-command-token",
+					"headers": map[string][]string{"X-Helper": {"helper-command-header"}},
+				},
+			})
+			output, err := runCredentialCommand(t, command...)
+			require.NoError(t, err)
+			assert.Positive(t, requests.Load())
+			assert.Equal(t, []credentialhelper.Request{{Version: 1, Reason: credentialhelper.Initial}}, calls())
+			if command[0] == "login" || (command[0] == "whoami" && len(command) > 1) {
+				assert.Contains(t, output, "Credential helper: "+os.Getenv("PULUMI_CREDENTIAL_HELPER"))
+			}
+			if command[0] == "whoami" && len(command) > 1 {
+				assert.Contains(t, output, "Access token source: credential helper")
+			}
+			if command[0] == "about" {
+				var summary map[string]any
+				require.NoError(t, json.Unmarshal([]byte(output), &summary))
+				assert.Equal(t, map[string]any{
+					"path": os.Getenv("PULUMI_CREDENTIAL_HELPER"), "source": "environment",
+				}, summary["credentialHelper"])
+			}
+			if command[0] == "org" {
+				assert.Contains(t, output, "Current Backend: "+server.URL)
+			}
+			if len(command) > 1 && command[1] == "--default-org" {
+				config, err := workspace.GetPulumiConfig()
+				require.NoError(t, err)
+				assert.Equal(t, "test-org", config.BackendConfig[server.URL].DefaultOrg)
+			}
+			stored, err := workspace.GetStoredCredentials()
+			require.NoError(t, err)
+			assert.Equal(t, server.URL, stored.Current)
+			assert.Empty(t, stored.Accounts)
+			assert.Nil(t, stored.CredentialHelper)
+		})
+	}
+}
+
+func TestCredentialHelperLoginPersistence(t *testing.T) {
+	for _, test := range []struct {
+		name             string
+		environmentToken string
+		reject           bool
+	}{
+		{name: "helper replaces stored identity"},
+		{name: "environment token wins", environmentToken: "environment-command-token"},
+		{name: "failed login preserves current", reject: true},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			ptesting.IsolateCredentials(t)
+			t.Chdir(t.TempDir())
+			t.Setenv("PULUMI_DEFAULT_ORGANIZATION", "selected-user")
+			t.Setenv("PULUMI_ACCESS_TOKEN", test.environmentToken)
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				expected := "helper-login-token"
+				if test.environmentToken != "" {
+					expected = test.environmentToken
+				}
+				assert.Equal(t, "token "+expected, r.Header.Get("Authorization"))
+				assert.Equal(t, "helper-login-header", r.Header.Get("X-Helper"))
+				if test.reject {
+					w.WriteHeader(http.StatusUnauthorized)
+					return
+				}
+				authtest.ServeBackend(t, w, r, "selected-user", nil)
+			}))
+			defer server.Close()
+			require.NoError(t, workspace.StoreAccount("https://old.example.com", workspace.Account{
+				AccessToken: "old-token",
+			}, true))
+			require.NoError(t, workspace.StoreAccount(server.URL, workspace.Account{
+				AccessToken: "stored-token", Username: "stored-user",
+			}, false))
+			calls := configureTestCredentialHelper(t, map[string]any{
+				"initial": map[string]any{
+					"version": 1, "backendUrl": server.URL, "accessToken": "helper-login-token",
+					"headers": map[string][]string{"X-Helper": {"helper-login-header"}},
+				},
+				"initial " + server.URL: map[string]any{
+					"version": 1, "accessToken": "helper-login-token",
+					"headers": map[string][]string{"X-Helper": {"helper-login-header"}},
+				},
+				"rejected": map[string]any{
+					"version": 1, "accessToken": "helper-login-token",
+					"headers": map[string][]string{"X-Helper": {"helper-login-header"}},
+				},
+			})
+			output, err := runCredentialCommand(t, "login")
+			if test.reject {
+				require.Error(t, err)
+				require.Len(t, calls(), 2)
+			} else {
+				require.NoError(t, err)
+				assert.Contains(t, output, "as selected-user")
+				require.Len(t, calls(), 1)
+			}
+			assert.Empty(t, calls()[0].SelectedBackendURL)
+			stored, err := workspace.GetStoredCredentials()
+			require.NoError(t, err)
+			expectedCurrent := server.URL
+			if test.reject {
+				expectedCurrent = "https://old.example.com"
+			}
+			assert.Equal(t, expectedCurrent, stored.Current)
+			expectedToken := "stored-token"
+			if test.environmentToken != "" {
+				expectedToken = test.environmentToken
+			}
+			assert.Equal(t, expectedToken, stored.Accounts[server.URL].AccessToken)
+			if test.environmentToken == "" {
+				assert.Equal(t, "stored-user", stored.Accounts[server.URL].Username)
+			}
+			data, err := json.Marshal(stored)
+			require.NoError(t, err)
+			assert.NotContains(t, string(data), "helper-login-token")
+			assert.NotContains(t, string(data), "helper-login-header")
+			if !test.reject {
+				output, err := runCredentialCommand(t, "whoami", "--verbose")
+				require.NoError(t, err)
+				source := "credential helper"
+				if test.environmentToken != "" {
+					source = "PULUMI_ACCESS_TOKEN"
+				}
+				assert.Contains(t, output, "Access token source: "+source)
+				output, err = runCredentialCommand(t, "whoami", "--json")
+				require.NoError(t, err)
+				assert.Contains(t, output, fmt.Sprintf("%q: %q", "accessTokenSource", source))
+			}
+		})
+	}
+}
+
 func TestCredentialHelperLoginFlags(t *testing.T) {
 	for _, decline := range []bool{false, true} {
 		t.Run(fmt.Sprintf("decline=%t", decline), func(t *testing.T) {
