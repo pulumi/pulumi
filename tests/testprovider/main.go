@@ -98,23 +98,41 @@ func providerForURN(urn string) (testProvider, string, bool) {
 	return provider, ty, ok
 }
 
-// startupDelayEnvVar names a duration to sleep before serving, for tests that need a provider that is slow to launch.
-const startupDelayEnvVar = "PULUMI_TEST_PROVIDER_STARTUP_DELAY"
+// Durations to sleep before serving and before answering GetPluginInfo, for tests that need a provider that is slow
+// to launch or slow to answer the first request it gets once launched.
+const (
+	startupDelayEnvVar    = "PULUMI_TEST_PROVIDER_STARTUP_DELAY"
+	pluginInfoDelayEnvVar = "PULUMI_TEST_PROVIDER_PLUGIN_INFO_DELAY"
+)
 
-func main() {
-	if v := os.Getenv(startupDelayEnvVar); v != "" {
-		delay, err := time.ParseDuration(v)
-		if err != nil {
-			cmdutil.Exit(fmt.Errorf("parsing %s: %w", startupDelayEnvVar, err))
-		}
-		time.Sleep(delay)
+func delayFrom(envVar string) (time.Duration, error) {
+	v := os.Getenv(envVar)
+	if v == "" {
+		return 0, nil
 	}
+	delay, err := time.ParseDuration(v)
+	if err != nil {
+		return 0, fmt.Errorf("parsing %s: %w", envVar, err)
+	}
+	return delay, nil
+}
 
-	if err := pulumiprovider.Main(providerName, func(
+func run() error {
+	delay, err := delayFrom(startupDelayEnvVar)
+	if err != nil {
+		return err
+	}
+	time.Sleep(delay)
+
+	return pulumiprovider.Main(providerName, func(
 		host *pulumiprovider.HostClient,
 	) (pulumirpc.ResourceProviderServer, error) {
 		return makeProvider(host, providerName, version)
-	}); err != nil {
+	})
+}
+
+func main() {
+	if err := run(); err != nil {
 		cmdutil.Exit(err)
 	}
 }
@@ -307,7 +325,17 @@ func (p *testproviderProvider) Construct(ctx context.Context,
 }
 
 // GetPluginInfo returns generic information about this plugin, like its version.
-func (p *testproviderProvider) GetPluginInfo(context.Context, *emptypb.Empty) (*pulumirpc.PluginInfo, error) {
+func (p *testproviderProvider) GetPluginInfo(ctx context.Context, _ *emptypb.Empty) (*pulumirpc.PluginInfo, error) {
+	delay, err := delayFrom(pluginInfoDelayEnvVar)
+	if err != nil {
+		return nil, err
+	}
+	select {
+	case <-time.After(delay):
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	}
+
 	return &pulumirpc.PluginInfo{
 		Version: p.version,
 	}, nil

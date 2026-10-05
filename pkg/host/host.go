@@ -405,6 +405,10 @@ func (host *defaultHost) Provider(
 	}
 	info, infoerr := plug.GetPluginInfo(ctx.Request())
 	if infoerr != nil {
+		// Send Cancel first so that Plugin.Close does not treat the shutdown as a premature crash.
+		cancelCtx, cancelCancel := context.WithTimeout(host.hostCtx, 5*time.Second)
+		defer cancelCancel()
+		contract.IgnoreError(plug.SignalCancellation(cancelCtx))
 		contract.IgnoreClose(plug)
 		return nil, infoerr
 	}
