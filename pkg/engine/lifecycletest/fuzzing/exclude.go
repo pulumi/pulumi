@@ -67,6 +67,8 @@ func DefaultExclusionRules() ExclusionRules {
 		ExcludeComponentWithCascadeReplacedProviderUpdate,
 		// TODO[pulumi/pulumi#24989]
 		ExcludeDroppedReplaceDependentTargetedUpdate,
+		// TODO[pulumi/pulumi#25004]
+		ExcludeProtectedChildOfDuplicatePendingDeleteParent,
 	}
 }
 
@@ -885,6 +887,33 @@ func ExcludeDroppedReplaceDependentTargetedUpdate(
 
 	for urn := range replaced {
 		if !targeted[urn] && !registered[urn] && dependedOn[urn] {
+			return true
+		}
+	}
+
+	return false
+}
+
+// ExcludeProtectedChildOfDuplicatePendingDeleteParent excludes snapshots where
+// a protected resource has a parent with more than one copy marked for
+// deletion. The engine cannot delete the protected child, but deletes the copy
+// of the parent that precedes it, which leaves the child before the remaining
+// copy of its parent and violates snapshot integrity.
+func ExcludeProtectedChildOfDuplicatePendingDeleteParent(
+	snap *SnapshotSpec,
+	_ *ProgramSpec,
+	_ *ProviderSpec,
+	_ *PlanSpec,
+) bool {
+	pendingDeletes := make(map[resource.URN]int)
+	for _, res := range snap.Resources {
+		if res.Delete {
+			pendingDeletes[res.URN()]++
+		}
+	}
+
+	for _, res := range snap.Resources {
+		if res.Protect != nil && *res.Protect && res.Parent != "" && pendingDeletes[res.Parent] > 1 {
 			return true
 		}
 	}

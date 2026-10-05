@@ -330,8 +330,11 @@ func TestProtectedDeleteChainsWithDuplicateDeletedResources(t *testing.T) {
 // TestDeleteBeforeReplaceWithProtectedPendingDeleteDependent is a regression test for
 // https://github.com/pulumi/pulumi/issues/25014: when a delete-before-replace must delete a
 // dependent that is protected and already pending deletion (for example left over from an
-// earlier failed replacement), the engine used to schedule a doomed delete step and then hang
-// instead of failing fast with a protection error.
+// earlier failed replacement), the engine used to schedule a plain delete step for it. The
+// protection check in DeleteStep.Apply refused the delete, breaking the replacement chain
+// and hanging the update. The pending-delete dependent is now deleted as part of the
+// replacement chain (like GenerateDeletes already does for pending-deletes), so the
+// replacement completes instead.
 func TestDeleteBeforeReplaceWithProtectedPendingDeleteDependent(t *testing.T) {
 	t.Parallel()
 
@@ -400,17 +403,41 @@ func TestDeleteBeforeReplaceWithProtectedPendingDeleteDependent(t *testing.T) {
 	}
 
 	p.Steps = []lt.TestStep{{
-		Op:            Update,
-		ExpectFailure: true,
-		SkipPreview:   true,
+		Op:          Update,
+		SkipPreview: true,
 		Validate: func(_ workspace.Project, _ deploy.Target, entries JournalEntries,
 			_ []Event, err error,
 		) error {
-			require.ErrorContains(t, err, "marked for protection")
+			require.NoError(t, err)
+
+			// resB must be deleted as part of the replacement chain
+			// (OpDeleteReplaced), not as a standalone delete (OpDelete),
+			// which the protection check would refuse and which broke the
+			// replacement chain.
+			var sawReplacementDelete bool
+			for _, s := range SuccessfulSteps(entries) {
+				if s.URN() == resBURN {
+					assert.NotEqual(t, deploy.OpDelete, s.Op(),
+						"resB must not be deleted as a standalone step")
+					if s.Op() == deploy.OpDeleteReplaced {
+						sawReplacementDelete = true
+					}
+				}
+			}
+			assert.True(t, sawReplacementDelete,
+				"expected a replacement delete step for resB")
 			return err
 		},
 	}}
-	p.Run(t, old)
+	snap := p.Run(t, old)
+
+	// resB is gone from the state and resA was replaced.
+	names := make([]string, 0, len(snap.Resources))
+	for _, r := range snap.Resources {
+		names = append(names, r.URN.Name())
+	}
+	assert.NotContains(t, names, "resB")
+	assert.Contains(t, names, "resA")
 }
 
 // TestIgnoreProtect tests that a preview and up can delete protected resources when
