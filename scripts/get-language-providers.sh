@@ -55,9 +55,9 @@ LANGUAGES=(
   # renovate: datasource=github-releases depName=pulumi/pulumi-dotnet
   "dotnet v3.114.1"
   # renovate: datasource=github-releases depName=pulumi/pulumi-java
-  "java v1.37.3"
+  "java v1.37.4"
   # renovate: datasource=github-releases depName=pulumi/pulumi-yaml
-  "yaml v1.38.8"
+  "yaml v1.38.9"
 )
 
 for i in "${LANGUAGES[@]}"; do
