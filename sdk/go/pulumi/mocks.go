@@ -356,7 +356,6 @@ func (m *mockMonitor) ExistsResource(ctx context.Context, in *pulumirpc.ExistsRe
 ) (*pulumirpc.ExistsResourceResponse, error) {
 	return &pulumirpc.ExistsResourceResponse{
 		Exists: false,
-		Known:  true,
 	}, nil
 }
 
