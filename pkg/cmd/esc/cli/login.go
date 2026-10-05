@@ -97,7 +97,7 @@ func (esc *escCommand) getCachedClient(ctx context.Context) error {
 		}
 
 		acct = &Account{
-			Account: *nAccount,
+			Account: nAccount.Account,
 		}
 	}
 
@@ -136,7 +136,7 @@ func (esc *escCommand) getCachedCredentials(ctx context.Context, backendURL stri
 	}
 
 	esc.account = Account{
-		Account:    *account,
+		Account:    account.Account,
 		BackendURL: backendURL,
 	}
 	return true, nil
