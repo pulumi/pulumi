@@ -27,11 +27,15 @@ import (
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 // LoginManager provides a slim wrapper around functions related to backend logins.
 type LoginManager interface {
+	// Session returns the credential helper session this manager prepares and opens backends with.
+	Session() *pkgauth.Session
+
 	// Current returns the currently logged in backend instance for the given url.
 	//
 	// If the user does not have a logged in backend, then Current will return (nil, nil).
@@ -67,20 +71,52 @@ type LoginManager interface {
 	) (backend.Backend, error)
 }
 
-var DefaultLoginManager LoginManager = &lm{}
+// DefaultLoginManager opens backends for the CLI with the process's credential helper session.
+var DefaultLoginManager = NewLoginManager(pkgauth.DefaultSession())
 
-type lm struct{}
+// NewLoginManager returns a LoginManager that runs the session's credential helper for the backends
+// it opens.
+func NewLoginManager(session *pkgauth.Session) LoginManager {
+	session.SetBackendValidator(acceptHelperSelection)
+	return &lm{session: session}
+}
+
+type lm struct {
+	session *pkgauth.Session
+}
+
+func (f *lm) Session() *pkgauth.Session {
+	return f.session
+}
+
+func (f *lm) prepare(
+	ctx context.Context, ws pkgWorkspace.Context, project *workspace.Project, url string,
+) (string, error) {
+	if url != "" {
+		return f.session.PrepareBackend(ctx, url)
+	}
+	url, _, err := PrepareCurrentBackend(ctx, f.session, ws, env.Global(), project)
+	return url, err
+}
 
 func (f *lm) Current(
 	ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink, url string, project *workspace.Project, setCurrent bool,
 ) (backend.Backend, error) {
+	url, err := f.prepare(ctx, ws, project, url)
+	if err != nil {
+		return nil, err
+	}
 	if diy.IsDIYBackendURL(url) {
+		if url == f.session.SelectedBackend() {
+			return diy.Login(ctx, sink, url, project)
+		}
 		return diy.New(ctx, sink, url, project)
 	}
 
 	insecure := pkgWorkspace.GetCloudInsecure(ws, url)
 	lm := httpstate.NewLoginManager()
-	credentials, err := lm.Current(ctx, url, insecure, setCurrent)
+	// A backend the helper selected is saved as current, like one the user logged in to.
+	credentials, err := lm.Current(ctx, url, insecure, setCurrent || url == f.session.SelectedBackend())
 	if err != nil || credentials == nil {
 		return nil, err
 	}
@@ -91,6 +127,12 @@ func (f *lm) Login(
 	ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink, url string, project *workspace.Project, setCurrent bool,
 	insecure bool, color colors.Colorization,
 ) (backend.Backend, error) {
+	url, err := f.prepare(ctx, ws, project, url)
+	if err != nil {
+		return nil, err
+	}
+	// A backend the helper selected is saved as current, like one the user logged in to.
+	setCurrent = setCurrent || url == f.session.SelectedBackend()
 	if diy.IsDIYBackendURL(url) {
 		if setCurrent {
 			return diy.Login(ctx, sink, url, project)
@@ -103,7 +145,7 @@ func (f *lm) Login(
 	opts := display.Options{
 		Color: color,
 	}
-	consoleURL := client.CloudConsoleURL(httpstate.ValueOrDefaultURL(ws, url))
+	consoleURL := client.CloudConsoleURL(url)
 	welcome := func(opts display.Options) { httpstate.WelcomeUser(opts, consoleURL) }
 	credentials, err := lm.Login(ctx, url, insecure, "pulumi", "Pulumi stacks", welcome, setCurrent, opts)
 	if err != nil {
@@ -167,9 +209,19 @@ type MockLoginManager struct {
 		insecure bool,
 		authContext pkgauth.AuthContext,
 	) (backend.Backend, error)
+
+	// HelperSession is the session returned by Session. Nil means a session without a helper.
+	HelperSession *pkgauth.Session
 }
 
 var _ LoginManager = (*MockLoginManager)(nil)
+
+func (lm *MockLoginManager) Session() *pkgauth.Session {
+	if lm.HelperSession != nil {
+		return lm.HelperSession
+	}
+	return pkgauth.NewSessionWithHelperFunc(nil)
+}
 
 func (lm *MockLoginManager) Login(
 	ctx context.Context,

@@ -15,6 +15,7 @@
 package backend
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -25,11 +26,14 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/pulumi/pulumi/pkg/v3/auth"
+	"github.com/pulumi/pulumi/pkg/v3/auth/credentialhelper"
 	pkgBackend "github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/diagtest"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -66,7 +70,7 @@ func TestLoginManagerUsesReturnedCredentialsWhenPersistenceIsSkipped(t *testing.
 			AccessToken: "agent-token", Username: "agent-user",
 		}, true))
 
-		manager := &lm{}
+		manager := NewLoginManager(auth.NewSessionWithHelperFunc(nil))
 		var be pkgBackend.Backend
 		var err error
 		if interactive {
@@ -84,5 +88,129 @@ func TestLoginManagerUsesReturnedCredentialsWhenPersistenceIsSkipped(t *testing.
 		agent, err := workspace.GetAgentAccount(server.URL)
 		require.NoError(t, err)
 		assert.Equal(t, "agent-token", agent.AccessToken)
+	}
+}
+
+//nolint:paralleltest // IsolateCredentials changes process-wide environment variables.
+func TestLoginManagerPreparesHelperSelectedDIYBackend(t *testing.T) {
+	for _, mode := range []string{"interactive", "noninteractive"} {
+		t.Run(mode, func(t *testing.T) {
+			ptesting.IsolateCredentials(t)
+			t.Chdir(t.TempDir())
+			backendURL := "file://" + filepath.ToSlash(t.TempDir())
+			ptesting.Unsetenv(t, "HELPER_BACKEND_READY")
+			calls := 0
+			session := auth.NewSessionWithHelperFunc(func(
+				context.Context, credentialhelper.Request,
+			) (*credentialhelper.Response, error) {
+				calls++
+				return &credentialhelper.Response{
+					BackendURL: backendURL, Env: map[string]string{"HELPER_BACKEND_READY": "ready"},
+				}, nil
+			})
+			ctx, lm := t.Context(), NewLoginManager(session)
+			open := func(url string) (pkgBackend.Backend, error) {
+				return lm.Current(ctx, pkgWorkspace.Instance, diagtest.LogSink(t), url, nil, false)
+			}
+			if mode == "interactive" {
+				open = func(url string) (pkgBackend.Backend, error) {
+					return lm.Login(ctx, pkgWorkspace.Instance, diagtest.LogSink(t), url, nil, false, false, colors.Never)
+				}
+			}
+			diy, err := IsDIYBackend(ctx, pkgWorkspace.Instance, lm)
+			require.NoError(t, err)
+			assert.True(t, diy)
+			assert.Equal(t, "ready", os.Getenv("HELPER_BACKEND_READY"))
+			stored, err := workspace.GetStoredCredentials()
+			require.NoError(t, err)
+			assert.Empty(t, stored.Current)
+			be, err := open("")
+			require.NoError(t, err)
+			assert.Equal(t, backendURL, be.URL())
+			assert.Equal(t, 1, calls)
+			stored, err = workspace.GetStoredCredentials()
+			require.NoError(t, err)
+			assert.Equal(t, backendURL, stored.Current)
+
+			otherURL := "file://" + filepath.ToSlash(t.TempDir())
+			be, err = open(otherURL)
+			require.NoError(t, err)
+			assert.Equal(t, otherURL, be.URL())
+			stored, err = workspace.GetStoredCredentials()
+			require.NoError(t, err)
+			assert.Equal(t, backendURL, stored.Current)
+		})
+	}
+}
+
+func TestPrepareCurrentBackendSelectionPrecedence(t *testing.T) {
+	t.Parallel()
+	const (
+		environmentURL = "https://environment.example.com"
+		projectURL     = "https://project.example.com"
+		storedURL      = "https://stored.example.com"
+		overrideURL    = "https://override.example.com"
+		helperURL      = "https://helper.example.com"
+	)
+	for _, tt := range []struct {
+		name        string
+		backendURL  string
+		projectURL  string
+		currentURL  string
+		apiURL      string
+		decline     bool
+		selectedURL string
+		wantURL     string
+		setCurrent  bool
+	}{
+		{
+			name:       "environment overrides project, stored backend, and PULUMI_API",
+			backendURL: environmentURL, projectURL: projectURL, currentURL: storedURL, apiURL: overrideURL,
+			selectedURL: environmentURL, wantURL: environmentURL,
+		},
+		{
+			name:       "project overrides stored backend and PULUMI_API",
+			projectURL: projectURL, currentURL: storedURL, apiURL: overrideURL,
+			selectedURL: projectURL, wantURL: projectURL,
+		},
+		{
+			name: "stored backend overrides PULUMI_API", currentURL: storedURL, apiURL: overrideURL,
+			selectedURL: storedURL, wantURL: storedURL,
+		},
+		{
+			name: "PULUMI_API selects a fixed backend", apiURL: overrideURL,
+			selectedURL: overrideURL, wantURL: overrideURL, setCurrent: true,
+		},
+		{name: "helper replaces implicit fallback", wantURL: helperURL, setCurrent: true},
+		{name: "helper declines implicit fallback", decline: true, wantURL: "https://api.pulumi.com", setCurrent: true},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			store := env.NewEnv(env.MapStore{
+				"PULUMI_BACKEND_URL": tt.backendURL,
+				"PULUMI_API":         tt.apiURL,
+			})
+			ws := &pkgWorkspace.MockContext{
+				GetStoredCredentialsF: func() (workspace.Credentials, error) {
+					return workspace.Credentials{Current: tt.currentURL}, nil
+				},
+			}
+			project := &workspace.Project{Backend: &workspace.ProjectBackend{URL: tt.projectURL}}
+			var selections []string
+			session := auth.NewSessionWithHelperFunc(func(
+				_ context.Context, request credentialhelper.Request,
+			) (*credentialhelper.Response, error) {
+				selections = append(selections, request.SelectedBackendURL)
+				if request.SelectedBackendURL != "" || tt.decline {
+					return nil, nil
+				}
+				return &credentialhelper.Response{BackendURL: helperURL}, nil
+			})
+			url, setCurrent, err := PrepareCurrentBackend(t.Context(), session, ws, store, project)
+			require.NoError(t, err)
+			assert.Equal(t, tt.wantURL, url)
+			assert.Equal(t, tt.setCurrent, setCurrent)
+			assert.Equal(t, []string{tt.selectedURL}, selections)
+		})
 	}
 }

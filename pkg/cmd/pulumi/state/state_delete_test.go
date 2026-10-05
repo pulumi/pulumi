@@ -87,7 +87,7 @@ func TestStateDeleteMultipleURNs(t *testing.T) {
 			_ context.Context, _ pkgWorkspace.Context, _ diag.Sink,
 			url string, project *workspace.Project, _ bool, _ bool, _ colors.Colorization,
 		) (backend.Backend, error) {
-			assert.Equal(t, "", url)
+			assert.Equal(t, "https://api.pulumi.com", url)
 			assert.Equal(t, tokens.PackageName("proj"), project.Name)
 			return mockBackend, nil
 		},
@@ -156,7 +156,7 @@ func TestStateDeleteMultipleURNsResolvesDependencyOrder(t *testing.T) {
 			_ context.Context, _ pkgWorkspace.Context, _ diag.Sink,
 			url string, project *workspace.Project, _ bool, _ bool, _ colors.Colorization,
 		) (backend.Backend, error) {
-			assert.Equal(t, "", url)
+			assert.Equal(t, "https://api.pulumi.com", url)
 			assert.Equal(t, tokens.PackageName("proj"), project.Name)
 			return mockBackend, nil
 		},
@@ -221,7 +221,7 @@ func TestStateDeleteParentAndChild(t *testing.T) {
 			_ context.Context, _ pkgWorkspace.Context, _ diag.Sink,
 			url string, project *workspace.Project, _ bool, _ bool, _ colors.Colorization,
 		) (backend.Backend, error) {
-			assert.Equal(t, "", url)
+			assert.Equal(t, "https://api.pulumi.com", url)
 			assert.Equal(t, tokens.PackageName("proj"), project.Name)
 			return mockBackend, nil
 		},
@@ -272,7 +272,7 @@ func TestStateDeleteInvalidURN(t *testing.T) {
 			_ context.Context, _ pkgWorkspace.Context, _ diag.Sink,
 			url string, project *workspace.Project, _ bool, _ bool, _ colors.Colorization,
 		) (backend.Backend, error) {
-			assert.Equal(t, "", url)
+			assert.Equal(t, "https://api.pulumi.com", url)
 			assert.Equal(t, tokens.PackageName("proj"), project.Name)
 			return mockBackend, nil
 		},
@@ -316,7 +316,7 @@ func TestStateDeleteURNNotFound(t *testing.T) {
 			_ context.Context, _ pkgWorkspace.Context, _ diag.Sink,
 			url string, project *workspace.Project, _ bool, _ bool, _ colors.Colorization,
 		) (backend.Backend, error) {
-			assert.Equal(t, "", url)
+			assert.Equal(t, "https://api.pulumi.com", url)
 			assert.Equal(t, tokens.PackageName("proj"), project.Name)
 			return mockBackend, nil
 		},
@@ -351,7 +351,7 @@ func TestNoProject(t *testing.T) {
 			ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink,
 			url string, project *workspace.Project, setCurrent bool, insecure bool, color colors.Colorization,
 		) (backend.Backend, error) {
-			assert.Equal(t, "", url)
+			assert.Equal(t, "https://api.pulumi.com", url)
 			return mockBackend, nil
 		},
 	}
@@ -405,7 +405,7 @@ func TestStateDeleteURN(t *testing.T) {
 			_ context.Context, _ pkgWorkspace.Context, _ diag.Sink,
 			url string, project *workspace.Project, _ bool, _ bool, _ colors.Colorization,
 		) (backend.Backend, error) {
-			assert.Equal(t, "", url)
+			assert.Equal(t, "https://api.pulumi.com", url)
 			assert.Equal(t, tokens.PackageName("proj"), project.Name)
 			return mockBackend, nil
 		},
@@ -459,7 +459,7 @@ func TestStateDeleteDependency(t *testing.T) {
 			_ context.Context, _ pkgWorkspace.Context, _ diag.Sink,
 			url string, project *workspace.Project, _ bool, _ bool, _ colors.Colorization,
 		) (backend.Backend, error) {
-			assert.Equal(t, "", url)
+			assert.Equal(t, "https://api.pulumi.com", url)
 			assert.Equal(t, tokens.PackageName("proj"), project.Name)
 			return mockBackend, nil
 		},
@@ -518,7 +518,7 @@ func TestStateDeleteProtected(t *testing.T) {
 			_ context.Context, _ pkgWorkspace.Context, _ diag.Sink,
 			url string, project *workspace.Project, _ bool, _ bool, _ colors.Colorization,
 		) (backend.Backend, error) {
-			assert.Equal(t, "", url)
+			assert.Equal(t, "https://api.pulumi.com", url)
 			assert.Equal(t, tokens.PackageName("proj"), project.Name)
 			return mockBackend, nil
 		},
@@ -591,7 +591,7 @@ func TestStateDeleteAll(t *testing.T) {
 			_ context.Context, _ pkgWorkspace.Context, _ diag.Sink,
 			url string, project *workspace.Project, _ bool, _ bool, _ colors.Colorization,
 		) (backend.Backend, error) {
-			assert.Equal(t, "", url)
+			assert.Equal(t, "https://api.pulumi.com", url)
 			assert.Equal(t, tokens.PackageName("proj"), project.Name)
 			return mockBackend, nil
 		},

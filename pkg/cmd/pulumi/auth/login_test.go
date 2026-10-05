@@ -28,6 +28,7 @@ import (
 	"testing"
 
 	pkgauth "github.com/pulumi/pulumi/pkg/v3/auth"
+	"github.com/pulumi/pulumi/pkg/v3/auth/credentialhelper"
 	pkgBackend "github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
@@ -63,14 +64,16 @@ func TestLoginURLResolution(t *testing.T) {
 	}
 
 	tests := []struct {
-		name          string
-		args          []string
-		flags         map[string]string
-		ws            pkgWorkspace.Context
-		envVars       map[string]string
-		expectedURL   string
-		expectError   bool
-		expectedError string
+		name            string
+		args            []string
+		flags           map[string]string
+		ws              pkgWorkspace.Context
+		envVars         map[string]string
+		expectedURL     string
+		helperURL       string
+		helperSelection string
+		expectError     bool
+		expectedError   string
 	}{
 		{
 			name: "command argument takes precedence",
@@ -175,9 +178,33 @@ func TestLoginURLResolution(t *testing.T) {
 			expectedURL: "https://env-backend.example.com",
 		},
 		{
-			name:        "empty URL without OIDC triggers interactive (captured as empty)",
+			name:        "unselected URL is resolved by the login manager",
 			ws:          &pkgWorkspace.MockContext{},
 			expectedURL: "",
+		},
+		{
+			name:      "helper replaces saved current backend during login",
+			ws:        &pkgWorkspace.MockContext{GetStoredCredentialsF: credsF},
+			helperURL: "https://helper.example.com", expectedURL: "https://helper.example.com",
+		},
+		{
+			name:      "explicit login backend stays selected",
+			args:      []string{"https://explicit.example.com"},
+			ws:        &pkgWorkspace.MockContext{GetStoredCredentialsF: credsF},
+			helperURL: "https://helper.example.com", helperSelection: "https://explicit.example.com",
+			expectedURL: "https://explicit.example.com",
+		},
+		{
+			name:      "legacy API override prevents helper selection",
+			ws:        &pkgWorkspace.MockContext{},
+			envVars:   map[string]string{"PULUMI_API": "https://override.example.com"},
+			helperURL: "https://helper.example.com", helperSelection: "https://override.example.com",
+			expectedURL: "",
+		},
+		{
+			name:      "helper replaces implicit login fallback",
+			ws:        &pkgWorkspace.MockContext{},
+			helperURL: "https://helper.example.com", expectedURL: "https://helper.example.com",
 		},
 	}
 
@@ -232,6 +259,18 @@ func TestLoginURLResolution(t *testing.T) {
 				},
 			}
 
+			var helperSelections []string
+			if tt.helperURL != "" {
+				mockLoginManager.HelperSession = pkgauth.NewSessionWithHelperFunc(func(
+					_ context.Context, request credentialhelper.Request,
+				) (*credentialhelper.Response, error) {
+					helperSelections = append(helperSelections, request.SelectedBackendURL)
+					if request.SelectedBackendURL != "" {
+						return nil, nil
+					}
+					return &credentialhelper.Response{BackendURL: tt.helperURL}, nil
+				})
+			}
 			store := env.NewEnv(env.MapStore(tt.envVars))
 			cmd := NewLoginCmd(tt.ws, mockLoginManager, store)
 			cmd.SetOut(io.Discard)
@@ -251,6 +290,9 @@ func TestLoginURLResolution(t *testing.T) {
 
 			err := cmd.Execute()
 
+			if tt.helperURL != "" {
+				assert.Equal(t, []string{tt.helperSelection}, helperSelections)
+			}
 			if tt.expectError {
 				require.Error(t, err)
 				assert.Zero(t, captured.calls)
