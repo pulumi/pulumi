@@ -50,6 +50,11 @@ func IsolateCredentials(t testing.TB) IsolatedCredentials {
 	t.Setenv("PULUMI_BACKEND_URL", "")
 	t.Setenv("PULUMI_API", "")
 
+	// A credential helper configured or installed on the machine must not run in tests. Tests that
+	// exercise a saved or discovered helper clear this variable.
+	t.Setenv("PULUMI_CREDENTIAL_HELPER", "none")
+	t.Setenv("PULUMI_CREDENTIAL_HELPER_ARGS", "")
+
 	for _, name := range agentdetect.DetectionEnvVars() {
 		t.Setenv(name, "")
 	}

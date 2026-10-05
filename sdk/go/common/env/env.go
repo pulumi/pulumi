@@ -148,6 +148,15 @@ var CredentialStore = env.String("CREDENTIAL_STORE",
 		`system (macOS Keychain, Windows Credential Manager, Linux Secret Service, TPM) when such `+
 		`protection is usable, "os" requires it, and "plaintext" uses the plaintext credentials file.`)
 
+var CredentialHelper = env.String("CREDENTIAL_HELPER",
+	`[EXPERIMENTAL] The credential helper to run before opening a backend, as a path or a command name found on PATH. `+
+		`Overrides the helper saved by "pulumi login --credential-helper". Set to "none" to disable `+
+		`credential helpers, including automatic discovery.`)
+
+var CredentialHelperArgs = env.String("CREDENTIAL_HELPER_ARGS",
+	"[EXPERIMENTAL] A JSON array of literal arguments passed to the credential helper named by "+
+		"PULUMI_CREDENTIAL_HELPER.")
+
 var DisableSecretCache = env.Bool("DISABLE_SECRET_CACHE",
 	"Disable caching encryption operations for unchanged stack secrets.")
 
