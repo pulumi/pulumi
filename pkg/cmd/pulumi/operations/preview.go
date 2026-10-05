@@ -32,7 +32,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
-	"github.com/pulumi/pulumi/pkg/v3/backend/secrets"
+	"github.com/pulumi/pulumi/pkg/v3/backend/diy"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/autonaming"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/config"
@@ -380,7 +380,6 @@ func NewPreviewCmd() *cobra.Command {
 
 			var proj *workspace.Project
 			var root string
-			var meta *promise.Promise[map[string]string]
 			if !remoteArgs.Remote {
 				var err error
 				proj, root, err = readProjectForUpdate(ws, client)
@@ -391,8 +390,6 @@ func NewPreviewCmd() *cobra.Command {
 				if err := plugin.ValidatePulumiVersionRange(proj.RequiredPulumiVersion, version.Version); err != nil {
 					return err
 				}
-
-				meta = metadata.GetLanguageRuntimeMetadata(ctx, root, proj)
 			}
 
 			if err := validateAttachDebuggerFlag(attachDebugger); err != nil {
@@ -464,10 +461,11 @@ func NewPreviewCmd() *cobra.Command {
 				return deployment.RunDeployment(ctx, ws, cmd, displayOpts, apitype.Preview, stackName, url, remoteArgs)
 			}
 
-			isDIYBackend, err := cmdBackend.IsDIYBackend(ws, displayOpts)
+			backendURL, err := cmdBackend.PrepareBackend(ctx, ws, cmdBackend.DefaultLoginManager)
 			if err != nil {
 				return err
 			}
+			isDIYBackend := diy.IsDIYBackendURL(backendURL)
 
 			// by default, we are going to suppress the permalink when using DIY backends
 			// this can be re-enabled by explicitly passing "false" to the `suppress-permalink` flag
@@ -504,6 +502,8 @@ func NewPreviewCmd() *cobra.Command {
 			if err = parseAndSaveConfigArray(ctx, cmdutil.Diag(), ws, s, configArray, configPath, configFile); err != nil {
 				return err
 			}
+
+			meta := metadata.GetLanguageRuntimeMetadata(ctx, root, proj, cmdBackend.PluginCredentials(s.Backend()))
 
 			cfg, sm, err := config.GetStackConfiguration(ctx, cmdutil.Diag(), ssml, s, proj, configFile, envOverrides)
 			if err != nil {
@@ -620,7 +620,7 @@ func NewPreviewCmd() *cobra.Command {
 				Opts:               opts,
 				StackConfiguration: cfg,
 				SecretsManager:     sm,
-				SecretsProvider:    secrets.DefaultProvider,
+				SecretsProvider:    cmdBackend.SecretsProvider(cmdBackend.DefaultLoginManager),
 				Scopes:             backend.CancellationScopes,
 				CoherenceWindow:    coherenceWindow,
 			}, events)

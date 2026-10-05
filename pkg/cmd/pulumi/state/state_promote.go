@@ -26,8 +26,8 @@ import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/spf13/cobra"
 
+	"github.com/pulumi/pulumi/pkg/v3/auth"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
-	"github.com/pulumi/pulumi/pkg/v3/backend/secrets"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
@@ -82,7 +82,7 @@ a backing project runtime.`,
 			if err != nil {
 				return fmt.Errorf("load stack: %w", err)
 			}
-			snap, err := s.Snapshot(ctx, secrets.DefaultProvider)
+			snap, err := s.Snapshot(ctx, cmdBackend.SecretsProvider(lm))
 			if err != nil {
 				return fmt.Errorf("load stack snapshot: %w", err)
 			}
@@ -98,7 +98,8 @@ a backing project runtime.`,
 				return err
 			}
 
-			files, err := generateSnippetProgram(ctx, sink, ws, lm, proj, root, snippet)
+			files, err := generateSnippetProgram(
+				ctx, sink, ws, lm, proj, root, snippet, cmdBackend.PluginCredentials(s.Backend()))
 			if err != nil {
 				return fmt.Errorf("generate program: %w", err)
 			}
@@ -264,6 +265,7 @@ func generateSnippetProgram(
 	proj *sdkWorkspace.Project,
 	root string,
 	snippet resource.Snippet,
+	credentials *auth.Credentials,
 ) (map[string][]byte, error) {
 	wd, _, err := (&engine.Projinfo{Proj: proj, Root: root}).GetPwdMain()
 	if err != nil {
@@ -280,7 +282,7 @@ func generateSnippetProgram(
 	}
 	defer contract.IgnoreClose(host)
 
-	pctx, err := plugin.NewContext(ctx, sink, sink, host, nil, wd, nil, true, nil)
+	pctx, err := plugin.NewContext(ctx, sink, sink, host, nil, wd, nil, true, nil, credentials)
 	if err != nil {
 		return nil, fmt.Errorf("create plugin context: %w", err)
 	}

@@ -352,6 +352,13 @@ func runNew(ctx context.Context, args newArgs) error {
 		}
 	}
 
+	credentials := cmdBackend.PluginCredentials(b)
+	if b == nil {
+		credentials, err = cmdBackend.ResolveCurrentCredentials(ctx, ws, cmdBackend.DefaultLoginManager, env.Global(), proj)
+		if err != nil {
+			return err
+		}
+	}
 	projinfo := &engine.Projinfo{Proj: proj, Root: root}
 	hostReg := cmdCmd.NewDefaultRegistry(
 		ctx, cmdBackend.DefaultLoginManager, pkgWorkspace.Instance, proj, cmdutil.Diag(), env.Global(),
@@ -374,6 +381,7 @@ func runNew(ctx context.Context, args newArgs) error {
 		false, /* disableProviderPreview */
 		nil,   /* tracingSpan */
 		nil,   /* config */
+		credentials,
 	)
 	if err != nil {
 		return err

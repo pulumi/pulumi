@@ -37,7 +37,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
-	"github.com/pulumi/pulumi/pkg/v3/backend/secrets"
+	"github.com/pulumi/pulumi/pkg/v3/backend/diy"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/config"
@@ -687,7 +687,9 @@ func getCurrentDeploymentForStack(
 	if err != nil {
 		return nil, err
 	}
-	snap, err := resourcestack.DeserializeUntypedDeployment(ctx, deployment, secrets.DefaultProvider)
+	snap, err := resourcestack.DeserializeUntypedDeployment(
+		ctx, deployment, cmdBackend.SecretsProvider(cmdBackend.DefaultLoginManager),
+	)
 	if err != nil {
 		return nil, resourcestack.FormatDeploymentDeserializationError(err, s.Ref().Name().String())
 	}
@@ -903,6 +905,72 @@ func NewImportCmd() *cobra.Command {
 				return fmt.Errorf("get working directory: %w", err)
 			}
 			sink := cmdutil.Diag()
+
+			yes = yes || skipPreview || env.SkipConfirmations.Value()
+			interactive := cmdutil.Interactive()
+			if !interactive && !yes && !previewOnly {
+				return backenderr.NoConfirmationInNonInteractiveError{}
+			}
+
+			opts, err := updateFlagsToOptions(interactive, skipPreview, yes, previewOnly)
+			if err != nil {
+				return err
+			}
+
+			displayType := display.DisplayProgress
+			if diffDisplay {
+				displayType = display.DisplayDiff
+			}
+
+			opts.Display = display.Options{
+				Color:            cmdutil.GetGlobalColorization(),
+				ShowConfig:       showConfig,
+				ShowURNs:         showURNs,
+				SuppressOutputs:  suppressOutputs,
+				SuppressProgress: suppressProgress,
+				IsInteractive:    interactive,
+				Type:             displayType,
+				EventLogPath:     eventLogPath,
+				Debug:            debug,
+				JSONDisplay:      jsonDisplay,
+				SummaryJSON:      outputFormat == "json",
+			}
+
+			// we only suppress permalinks if the user passes true. the default is an empty string
+			// which we pass as 'false'
+			if suppressPermalink == "true" {
+				opts.Display.SuppressPermalink = true
+			} else {
+				opts.Display.SuppressPermalink = false
+			}
+
+			backendURL, err := cmdBackend.PrepareBackend(ctx, ws, cmdBackend.DefaultLoginManager)
+			if err != nil {
+				return err
+			}
+			isDIYBackend := diy.IsDIYBackendURL(backendURL)
+
+			// by default, we are going to suppress the permalink when using DIY backends
+			// this can be re-enabled by explicitly passing "false" to the `suppress-permalink` flag
+			if suppressPermalink != "false" && isDIYBackend {
+				opts.Display.SuppressPermalink = true
+			}
+
+			// Fetch the current stack.
+			s, err := cmdStack.RequireStack(
+				ctx,
+				sink,
+				ws,
+				cmdBackend.DefaultLoginManager,
+				stackName,
+				cmdStack.LoadOnly,
+				opts.Display,
+				configFile,
+			)
+			if err != nil {
+				return err
+			}
+
 			reg := cmdCmd.NewDefaultRegistry(ctx, cmdBackend.DefaultLoginManager, ws, proj, sink, env.Global())
 			pluginHost, err := pkghost.New(context.WithoutCancel(ctx), sink, sink, nil,
 				pkgWorkspace.EnsureLanguageInstalled, schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext,
@@ -912,7 +980,8 @@ func NewImportCmd() *cobra.Command {
 			}
 			// host is owned here, closed after the context
 			defer contract.IgnoreClose(pluginHost)
-			pCtx, err := plugin.NewContext(ctx, sink, sink, pluginHost, nil, cwd, nil, true, nil)
+			pCtx, err := plugin.NewContext(ctx, sink, sink, pluginHost, nil, cwd, nil, true, nil,
+				cmdBackend.PluginCredentials(s.Backend()))
 			if err != nil {
 				return fmt.Errorf("create plugin context: %w", err)
 			}
@@ -958,7 +1027,9 @@ func NewImportCmd() *cobra.Command {
 						pCtx.Diag.Warningf(diag.Message("", "failed to create plugin spec for provider %q: %v"), pluginName, err)
 						return nil
 					}
-					version, err := pkgWorkspace.InstallPlugin(ctx, pluginSpec, log, schema.NewLoaderServerFromContext)
+					version, err := pkgWorkspace.InstallPlugin(
+						ctx, pluginSpec, log, schema.NewLoaderServerFromContext, pCtx.Credentials(),
+					)
 					if err != nil {
 						pCtx.Diag.Warningf(diag.Message("", "failed to install provider %q: %v"), pluginName, err)
 						return nil
@@ -1056,70 +1127,6 @@ func NewImportCmd() *cobra.Command {
 				output = f
 			}
 
-			yes = yes || skipPreview || env.SkipConfirmations.Value()
-			interactive := cmdutil.Interactive()
-			if !interactive && !yes && !previewOnly {
-				return backenderr.NoConfirmationInNonInteractiveError{}
-			}
-
-			opts, err := updateFlagsToOptions(interactive, skipPreview, yes, previewOnly)
-			if err != nil {
-				return err
-			}
-
-			displayType := display.DisplayProgress
-			if diffDisplay {
-				displayType = display.DisplayDiff
-			}
-
-			opts.Display = display.Options{
-				Color:            cmdutil.GetGlobalColorization(),
-				ShowConfig:       showConfig,
-				ShowURNs:         showURNs,
-				SuppressOutputs:  suppressOutputs,
-				SuppressProgress: suppressProgress,
-				IsInteractive:    interactive,
-				Type:             displayType,
-				EventLogPath:     eventLogPath,
-				Debug:            debug,
-				JSONDisplay:      jsonDisplay,
-				SummaryJSON:      outputFormat == "json",
-			}
-
-			// we only suppress permalinks if the user passes true. the default is an empty string
-			// which we pass as 'false'
-			if suppressPermalink == "true" {
-				opts.Display.SuppressPermalink = true
-			} else {
-				opts.Display.SuppressPermalink = false
-			}
-
-			isDIYBackend, err := cmdBackend.IsDIYBackend(ws, opts.Display)
-			if err != nil {
-				return err
-			}
-
-			// by default, we are going to suppress the permalink when using DIY backends
-			// this can be re-enabled by explicitly passing "false" to the `suppress-permalink` flag
-			if suppressPermalink != "false" && isDIYBackend {
-				opts.Display.SuppressPermalink = true
-			}
-
-			// Fetch the current stack.
-			s, err := cmdStack.RequireStack(
-				ctx,
-				sink,
-				ws,
-				cmdBackend.DefaultLoginManager,
-				stackName,
-				cmdStack.LoadOnly,
-				opts.Display,
-				configFile,
-			)
-			if err != nil {
-				return err
-			}
-
 			cfg, sm, err := config.GetStackConfiguration(ctx, sink, ssml, s, proj, configFile, nil)
 			if err != nil {
 				return fmt.Errorf("getting stack configuration: %w", err)
@@ -1157,7 +1164,8 @@ func NewImportCmd() *cobra.Command {
 				}
 				// host is owned here, closed after the context
 				defer contract.IgnoreClose(innerHost)
-				ctx, err := plugin.NewContext(ctx, sink, sink, innerHost, nil, cwd, nil, true, nil)
+				ctx, err := plugin.NewContext(ctx, sink, sink, innerHost, nil, cwd, nil, true, nil,
+					cmdBackend.PluginCredentials(s.Backend()))
 				if err != nil {
 					return nil, nil, err
 				}
@@ -1222,7 +1230,7 @@ func NewImportCmd() *cobra.Command {
 				Opts:               opts,
 				StackConfiguration: cfg,
 				SecretsManager:     sm,
-				SecretsProvider:    secrets.DefaultProvider,
+				SecretsProvider:    cmdBackend.SecretsProvider(cmdBackend.DefaultLoginManager),
 				Scopes:             backend.CancellationScopes,
 			}, imports)
 

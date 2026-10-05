@@ -26,6 +26,8 @@ import (
 	"regexp"
 	"strings"
 
+	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+
 	"github.com/hashicorp/hcl/v2"
 	segmentiojson "github.com/segmentio/encoding/json"
 
@@ -349,13 +351,20 @@ func NewPluginContext(cwd string, reg registry.Registry) (*plugin.Context, error
 	sink := diag.DefaultSink(os.Stderr, os.Stderr, diag.FormatOptions{ //nolint:forbidigo
 		Color: cmdutil.GetGlobalColorization(),
 	})
+	credentials, err := cmdBackend.ResolveCurrentCredentials(
+		context.TODO(), pkgWorkspace.Instance, cmdBackend.DefaultLoginManager, env.Global(), nil,
+	)
+	if err != nil {
+		return nil, err
+	}
 	pluginHost, err := pkghost.New(context.TODO(), sink, sink, nil,
 		pkgWorkspace.EnsureLanguageInstalled, schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext,
 		packageworkspace.NewResolverServer(reg))
 	if err != nil {
 		return nil, err
 	}
-	pluginCtx, err := plugin.NewContext(context.TODO(), sink, sink, pluginHost, nil, cwd, nil, true, nil)
+	pluginCtx, err := plugin.NewContext(context.TODO(), sink, sink, pluginHost, nil, cwd, nil, true, nil,
+		credentials)
 	if err != nil {
 		return nil, errors.Join(err, pluginHost.Close())
 	}

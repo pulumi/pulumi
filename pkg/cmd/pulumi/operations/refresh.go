@@ -27,7 +27,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
-	"github.com/pulumi/pulumi/pkg/v3/backend/secrets"
+	"github.com/pulumi/pulumi/pkg/v3/backend/diy"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/config"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
@@ -207,10 +207,11 @@ func NewRefreshCmd() *cobra.Command {
 				return deployment.RunDeployment(ctx, ws, cmd, opts.Display, apitype.Refresh, stackName, url, remoteArgs)
 			}
 
-			isDIYBackend, err := cmdBackend.IsDIYBackend(ws, opts.Display)
+			backendURL, err := cmdBackend.PrepareBackend(ctx, ws, cmdBackend.DefaultLoginManager)
 			if err != nil {
 				return err
 			}
+			isDIYBackend := diy.IsDIYBackendURL(backendURL)
 
 			// by default, we are going to suppress the permalink when using DIY backends
 			// this can be re-enabled by explicitly passing "false" to the `suppress-permalink` flag
@@ -303,7 +304,7 @@ func NewRefreshCmd() *cobra.Command {
 				}
 			}
 
-			snap, err := s.Snapshot(ctx, secrets.DefaultProvider)
+			snap, err := s.Snapshot(ctx, cmdBackend.SecretsProvider(cmdBackend.DefaultLoginManager))
 			if err != nil {
 				return fmt.Errorf("getting snapshot: %w", err)
 			}
@@ -360,7 +361,7 @@ func NewRefreshCmd() *cobra.Command {
 				Opts:               opts,
 				StackConfiguration: cfg,
 				SecretsManager:     sm,
-				SecretsProvider:    secrets.DefaultProvider,
+				SecretsProvider:    cmdBackend.SecretsProvider(cmdBackend.DefaultLoginManager),
 				Scopes:             backend.CancellationScopes,
 				CoherenceWindow:    coherenceWindow,
 			})
@@ -542,7 +543,8 @@ type editPendingOp = func(op pkgresource.Operation) (*pkgresource.Operation, err
 func filterMapPendingCreates(
 	ctx context.Context, s backend.Stack, opts display.Options, yes bool, f editPendingOp,
 ) error {
-	return state.TotalStateEdit(ctx, s, yes, opts, func(opts display.Options, snap *deploy.Snapshot) error {
+	provider := cmdBackend.SecretsProvider(cmdBackend.DefaultLoginManager)
+	return state.TotalStateEdit(ctx, s, provider, yes, opts, func(opts display.Options, snap *deploy.Snapshot) error {
 		var pending []pkgresource.Operation
 		for _, op := range snap.PendingOperations {
 			if op.Resource == nil {

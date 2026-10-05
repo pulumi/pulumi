@@ -25,6 +25,7 @@ import (
 
 	"github.com/blang/semver"
 
+	"github.com/pulumi/pulumi/pkg/v3/auth"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/convert"
 	pkghost "github.com/pulumi/pulumi/pkg/v3/host"
 	"github.com/pulumi/pulumi/pkg/v3/pluginstorage"
@@ -73,7 +74,7 @@ func (err *InstallPluginError) Unwrap() error {
 
 func InstallPlugin(ctx context.Context, pluginSpec workspace.PluginDescriptor,
 	log func(sev diag.Severity, msg string),
-	newLoader plugin.NewLoaderFunc,
+	newLoader plugin.NewLoaderFunc, credentials *auth.Credentials,
 ) (*semver.Version, error) {
 	downloadedFile, err := downloadPlugin(ctx, &pluginSpec, log)
 	if err != nil {
@@ -81,7 +82,7 @@ func InstallPlugin(ctx context.Context, pluginSpec workspace.PluginDescriptor,
 	}
 
 	logging.V(1).Infof("Automatically installing provider %s", pluginSpec.Name)
-	err = InstallPluginContent(ctx, pluginSpec, pluginstorage.TarPlugin(downloadedFile), false, newLoader)
+	err = InstallPluginContent(ctx, pluginSpec, pluginstorage.TarPlugin(downloadedFile), false, newLoader, credentials)
 	if err != nil {
 		return nil, &InstallPluginError{
 			Spec: pluginSpec,
@@ -197,7 +198,7 @@ func EnsureLanguageInstalled(ctx context.Context, runtime string) error {
 // installed.
 func InstallPluginContent(
 	ctx context.Context, spec workspace.PluginDescriptor, content pluginstorage.Content, reinstall bool,
-	newLoader plugin.NewLoaderFunc,
+	newLoader plugin.NewLoaderFunc, credentials *auth.Credentials,
 ) (err error) {
 	done, err := pluginstorage.UnpackContents(ctx, spec, content, reinstall)
 	if err != nil {
@@ -212,12 +213,12 @@ func InstallPluginContent(
 	}()
 
 	return installDependenciesForPluginSpec(ctx, spec,
-		os.Stderr /* redirect stdout to stderr */, os.Stderr, newLoader)
+		os.Stderr /* redirect stdout to stderr */, os.Stderr, newLoader, credentials)
 }
 
 func installDependenciesForPluginSpec(
 	ctx context.Context, spec workspace.PluginDescriptor, stdout, stderr io.Writer,
-	newLoader plugin.NewLoaderFunc,
+	newLoader plugin.NewLoaderFunc, credentials *auth.Credentials,
 ) error {
 	dir, err := spec.DirPath()
 	if err != nil {
@@ -253,6 +254,7 @@ func installDependenciesForPluginSpec(
 		nil,   // Plugins
 		proj.GetPackageSpecs(),
 		nil, // config
+		credentials,
 	)
 	if err != nil {
 		return errors.Join(err, pluginHost.Close())

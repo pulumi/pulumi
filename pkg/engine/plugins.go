@@ -24,6 +24,8 @@ import (
 	"slices"
 	"time"
 
+	"github.com/pulumi/pulumi/pkg/v3/auth"
+
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
@@ -93,7 +95,10 @@ func (f tempFile) Close() error {
 }
 
 // The defaultPluginManager is implemented using the standard workspace methods.
-type defaultPluginManager struct{ pluginstorage.Context }
+type defaultPluginManager struct {
+	pluginstorage.Context
+	credentials *auth.Credentials
+}
 
 func (defaultPluginManager) GetPluginPath(
 	ctx context.Context,
@@ -119,13 +124,15 @@ func (defaultPluginManager) DownloadPlugin(
 	return tempFile{tarball}, info.Size(), nil
 }
 
-func (defaultPluginManager) InstallPlugin(
+func (m defaultPluginManager) InstallPlugin(
 	ctx context.Context,
 	plugin workspace.PluginDescriptor,
 	content pluginstorage.Content,
 	reinstall bool,
 ) error {
-	return pkgWorkspace.InstallPluginContent(ctx, plugin, content, reinstall, schema.NewLoaderServerFromContext)
+	return pkgWorkspace.InstallPluginContent(
+		ctx, plugin, content, reinstall, schema.NewLoaderServerFromContext, m.credentials,
+	)
 }
 
 // PluginSet represents a set of plugins.
@@ -469,7 +476,7 @@ func ensurePluginsAreInstalled(ctx context.Context, opts *deploymentOptions, d d
 		pluginManager = opts.pluginManager
 	}
 	if pluginManager == nil {
-		pluginManager = defaultPluginManager{pluginstorage.Instance}
+		pluginManager = defaultPluginManager{Context: pluginstorage.Instance}
 	}
 
 	logging.V(preparePluginLog).Infof("ensurePluginsAreInstalled(): beginning")

@@ -120,9 +120,11 @@ splitting a stack into multiple stacks or when merging multiple stacks into one.
 			stateMove.IncludeParents = includeParents
 
 			sourceSecretsProvider := backend_secrets.NamedStackProvider{
+				Provider:  cmdBackend.SecretsProvider(cmdBackend.DefaultLoginManager),
 				StackName: sourceStack.Ref().FullyQualifiedName().String(),
 			}
 			destSecretsProvider := backend_secrets.NamedStackProvider{
+				Provider:  cmdBackend.SecretsProvider(cmdBackend.DefaultLoginManager),
 				StackName: destStack.Ref().FullyQualifiedName().String(),
 			}
 

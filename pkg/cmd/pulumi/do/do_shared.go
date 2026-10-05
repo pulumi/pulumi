@@ -28,6 +28,8 @@ import (
 	"strings"
 	"unicode"
 
+	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+
 	"github.com/gofrs/uuid"
 	"github.com/hashicorp/hcl/v2"
 	hclv2syntax "github.com/hashicorp/hcl/v2/hclsyntax"
@@ -40,7 +42,6 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
-	backendSecrets "github.com/pulumi/pulumi/pkg/v3/backend/secrets"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/schemainfo"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
@@ -980,7 +981,7 @@ func (pc *packageCommand) loadProviderInputsFromStack(
 	if err != nil {
 		return property.Map{}, fmt.Errorf("load stack: %w", err)
 	}
-	snap, err := s.Snapshot(ctx, backendSecrets.DefaultProvider)
+	snap, err := s.Snapshot(ctx, cmdBackend.SecretsProvider(pc.lm))
 	if err != nil {
 		return property.Map{}, fmt.Errorf("load stack snapshot: %w", err)
 	}

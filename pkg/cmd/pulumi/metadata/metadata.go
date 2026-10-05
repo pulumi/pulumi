@@ -32,6 +32,7 @@ import (
 
 	git "github.com/go-git/go-git/v6"
 
+	"github.com/pulumi/pulumi/pkg/v3/auth"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
@@ -78,6 +79,7 @@ func GetLanguageRuntimeMetadata(
 	ctx context.Context,
 	root string,
 	proj *workspace.Project,
+	credentials *auth.Credentials,
 ) *promise.Promise[map[string]string] {
 	return promise.Run(func() (map[string]string, error) {
 		if proj.Runtime.Name() == "" {
@@ -96,7 +98,7 @@ func GetLanguageRuntimeMetadata(
 		}
 		defer contract.IgnoreClose(pluginHost) // host is owned here, closed after the context
 		pwd, main, pctx, err := engine.ProjectInfoContext(
-			ctx, projinfo, pluginHost, cmdutil.Diag(), cmdutil.Diag(), false, nil, nil)
+			ctx, projinfo, pluginHost, cmdutil.Diag(), cmdutil.Diag(), false, nil, nil, credentials)
 		if err != nil {
 			return nil, err
 		}

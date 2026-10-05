@@ -15,10 +15,14 @@
 package plugin
 
 import (
+	"context"
 	"fmt"
 	"net"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 
+	"github.com/pulumi/pulumi/pkg/v3/auth"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"github.com/stretchr/testify/assert"
@@ -239,18 +243,54 @@ func TestCheckVersionRange(t *testing.T) {
 	}
 }
 
-func TestCloudCredentialEnvVars(t *testing.T) {
+func TestApplyCloudCredentialEnv(t *testing.T) {
 	t.Parallel()
-
-	ctx := &Context{CloudCredentialEnv: map[string]string{"PULUMI_ACCESS_TOKEN": "secret"}}
 
 	t.Run("env is injected", func(t *testing.T) {
 		t.Parallel()
-		assert.Equal(t, []string{"PULUMI_ACCESS_TOKEN=secret"}, cloudCredentialEnvVars(ctx))
+		ctx := &Context{credentials: &auth.Credentials{
+			BackendURL: "https://api.example.com",
+			HTTPAuth:   auth.NewHTTPAuth("https://api.example.com", "secret", nil),
+		}}
+		assert.ElementsMatch(t, []string{"PULUMI_API=https://api.example.com", "PULUMI_ACCESS_TOKEN=secret"},
+			applyCloudCredentialEnv(ctx, []string{"PULUMI_API=https://other.example.com", "PULUMI_ACCESS_TOKEN=ambient"}))
 	})
 
-	t.Run("nil context is safe", func(t *testing.T) {
+	t.Run("empty token removes every inherited value", func(t *testing.T) {
 		t.Parallel()
-		assert.Empty(t, cloudCredentialEnvVars(nil))
+		ctx := &Context{credentials: &auth.Credentials{BackendURL: "https://api.example.com"}}
+		environment := []string{"PULUMI_ACCESS_TOKEN=ambient", "OTHER=kept", "PULUMI_ACCESS_TOKEN=override"}
+		assert.ElementsMatch(t, []string{"OTHER=kept", "PULUMI_API=https://api.example.com"},
+			applyCloudCredentialEnv(ctx, environment))
+	})
+
+	t.Run("later launches see refreshed credentials", func(t *testing.T) {
+		t.Parallel()
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.Header.Get("Authorization") != "token refreshed" {
+				w.WriteHeader(http.StatusUnauthorized)
+			}
+		}))
+		defer server.Close()
+		a := auth.NewHTTPAuth(server.URL, "initial", func(context.Context) (string, error) { return "refreshed", nil })
+		ctx := &Context{credentials: &auth.Credentials{BackendURL: server.URL, HTTPAuth: a}}
+		assert.Contains(t, applyCloudCredentialEnv(ctx, nil), "PULUMI_ACCESS_TOKEN=initial")
+
+		req, err := http.NewRequestWithContext(auth.WithHTTPAuth(t.Context(), a), http.MethodGet, server.URL, nil)
+		require.NoError(t, err)
+		client := &http.Client{Transport: auth.Transport(nil)}
+		resp, err := client.Do(req)
+		require.NoError(t, err)
+		require.NoError(t, resp.Body.Close())
+		require.Equal(t, http.StatusOK, resp.StatusCode)
+		assert.Contains(t, applyCloudCredentialEnv(ctx, nil), "PULUMI_ACCESS_TOKEN=refreshed")
+	})
+
+	t.Run("no cloud credentials preserves the environment", func(t *testing.T) {
+		t.Parallel()
+		for _, ctx := range []*Context{nil, {}, {credentials: &auth.Credentials{BackendURL: "s3://state"}}} {
+			environment := []string{"PULUMI_ACCESS_TOKEN=ambient", "OTHER=kept"}
+			assert.Equal(t, environment, applyCloudCredentialEnv(ctx, environment))
+		}
 	})
 }

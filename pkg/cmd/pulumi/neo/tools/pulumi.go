@@ -29,7 +29,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	backendDisplay "github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
-	"github.com/pulumi/pulumi/pkg/v3/backend/secrets"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/autonaming"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	cmdConfig "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/config"
@@ -364,7 +363,7 @@ func (p *Pulumi) run(ctx context.Context, a pulumiArgs, isPreview bool) (pulumiR
 		Opts:               opts,
 		StackConfiguration: cfg,
 		SecretsManager:     sm,
-		SecretsProvider:    secrets.DefaultProvider,
+		SecretsProvider:    cmdBackend.SecretsProvider(cmdBackend.DefaultLoginManager),
 		Scopes:             ctxOnlyCancellationSource{},
 	}
 

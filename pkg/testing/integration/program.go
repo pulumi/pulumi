@@ -38,12 +38,13 @@ import (
 	"testing"
 	"time"
 
+	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+
 	multierror "github.com/hashicorp/go-multierror"
 	"golang.org/x/mod/modfile"
 	"golang.org/x/mod/module"
 	"gopkg.in/yaml.v3"
 
-	"github.com/pulumi/pulumi/pkg/v3/backend/secrets"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/operations"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
@@ -782,7 +783,7 @@ func GetLogs(
 	snap, err := stack.DeserializeDeploymentV3(
 		t.Context(),
 		*stackInfo.Deployment,
-		secrets.DefaultProvider)
+		cmdBackend.SecretsProvider(cmdBackend.DefaultLoginManager))
 	require.NoError(t, err)
 
 	tree := operations.NewResourceTree(snap.Resources)

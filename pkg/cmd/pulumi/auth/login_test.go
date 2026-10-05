@@ -175,9 +175,9 @@ func TestLoginURLResolution(t *testing.T) {
 			expectedURL: "https://env-backend.example.com",
 		},
 		{
-			name:        "empty URL without OIDC triggers interactive (captured as empty)",
+			name:        "empty URL resolves to Pulumi Cloud",
 			ws:          &pkgWorkspace.MockContext{},
-			expectedURL: "",
+			expectedURL: "https://api.pulumi.com",
 		},
 	}
 

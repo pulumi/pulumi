@@ -39,13 +39,13 @@ import (
 	fxs "github.com/pgavlin/fx/v2/slices"
 	"github.com/pkg/browser"
 
+	"github.com/pulumi/pulumi/pkg/v3/auth"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/diy"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/journal"
-	backend_secrets "github.com/pulumi/pulumi/pkg/v3/backend/secrets"
 	esc_client "github.com/pulumi/pulumi/pkg/v3/cmd/esc/cli/client"
 	sdkDisplay "github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
@@ -250,7 +250,7 @@ type cloudBackend struct {
 // Assert we implement the backend.Backend and backend.SpecificDeploymentExporter interfaces.
 var _ backend.SpecificDeploymentExporter = &cloudBackend{}
 
-// New creates a new Pulumi backend for the given cloud API URL and token.
+// New creates a Pulumi backend using stored credentials for the given cloud API URL.
 func New(ctx context.Context, d diag.Sink,
 	cloudURL string, project *workspace.Project, insecure bool,
 ) (Backend, error) {
@@ -260,14 +260,24 @@ func New(ctx context.Context, d diag.Sink,
 	if err != nil {
 		return nil, fmt.Errorf("getting stored credentials: %w", err)
 	}
-	apiToken := account.AccessToken
-
-	apiClient := client.NewClient(cloudURL, apiToken, insecure, d)
-	apiClient.WithRefresh(account.RefreshToken, func(at string, expiresAt time.Time, rt string) error {
-		account.SetCredentials(at, expiresAt, rt)
-		return account.Save(cloudURL, false)
+	account.Insecure = insecure
+	credentials := newAccountCredentials(cloudURL, account, func(updated workspace.Account) error {
+		return updated.Save(cloudURL, false)
 	})
-	escClient := esc_client.NewWithHTTPAuth(client.UserAgent(), cloudURL, insecure, apiClient.HTTPAuth())
+	return NewWithCredentials(ctx, d, *credentials, project)
+}
+
+// NewWithCredentials creates a Pulumi backend using the provided credentials.
+func NewWithCredentials(
+	ctx context.Context, d diag.Sink, credentials auth.Credentials, project *workspace.Project,
+) (Backend, error) {
+	contract.Requiref(d != nil, "d", "expected a non-nil diag.Sink")
+	if credentials.BackendURL == "" {
+		return nil, errors.New("backend URL is required with explicit credentials")
+	}
+	cloudURL := strings.TrimSuffix(credentials.BackendURL, "/")
+	apiClient := client.NewClient(cloudURL, "", credentials.Insecure, d).WithHTTPAuth(credentials.HTTPAuth)
+	escClient := esc_client.NewWithHTTPAuth(client.UserAgent(), cloudURL, credentials.Insecure, credentials.HTTPAuth)
 
 	org := env.DefaultOrg.Value()
 	if org == "" {
@@ -304,10 +314,49 @@ func New(ctx context.Context, d diag.Sink,
 		client:         apiClient,
 		escClient:      escClient,
 		capabilities:   detectCapabilities(ctx, d, apiClient),
-		userInfo:       detectUserInfo(ctx, d, cloudURL, apiClient),
+		userInfo:       detectUserInfo(ctx, d, credentials.Identity, apiClient),
 		defaultOrg:     defaultOrg,
 		currentProject: project,
 	}, nil
+}
+
+// finishLogin saves the account and uses the same save operation for later token refreshes.
+func finishLogin(
+	cloudURL string,
+	account workspace.Account,
+	setCurrent bool,
+	save func(string, workspace.Account, bool) error,
+) (*auth.Credentials, error) {
+	if err := save(cloudURL, account, setCurrent); err != nil {
+		return nil, err
+	}
+	return newAccountCredentials(cloudURL, account, func(updated workspace.Account) error {
+		return save(cloudURL, updated, false)
+	}), nil
+}
+
+// finishUserLoginWithAgentFallback tolerates user credential save failures when agent fallback is enabled.
+func finishUserLoginWithAgentFallback(
+	cloudURL string,
+	account workspace.Account,
+	setCurrent bool,
+	save func(string, workspace.Account, bool) error,
+) (*auth.Credentials, error) {
+	if !workspace.AgentCredentialsFallbackEnabled() {
+		return finishLogin(cloudURL, account, setCurrent, save)
+	}
+
+	agent := agentdetect.Detect(os.Getenv)
+	return finishLogin(cloudURL, account, setCurrent,
+		func(cloudURL string, updated workspace.Account, current bool) error {
+			if err := save(cloudURL, updated, current); err != nil {
+				logging.V(7).Infof(
+					"Could not store credentials for %q in default credentials in agent mode (%s); "+
+						"continuing without persisting user credentials: %v",
+					cloudURL, agent, err)
+			}
+			return nil
+		})
 }
 
 // getBackendAccount returns account credentials for a backend, falling back to
@@ -328,28 +377,7 @@ func getBackendAccount(ctx context.Context, cloudURL string) (workspace.Account,
 	return account, nil
 }
 
-// storeUserAccount stores credentials from a user-controlled source. In agent
-// mode, if the default path is not writable, it skips persistence rather than
-// copying user credentials into the shared agent cache.
-func storeUserAccount(cloudURL string, account workspace.Account, setCurrent bool) error {
-	err := workspace.StoreAccount(cloudURL, account, setCurrent)
-	if err == nil {
-		logging.V(7).Infof("Stored credentials for %q in default credentials", cloudURL)
-		return nil
-	}
-
-	if !workspace.AgentCredentialsFallbackEnabled() {
-		return err
-	}
-
-	logging.V(7).Infof(
-		"Could not store credentials for %q in default credentials in agent mode (%s); "+
-			"continuing without persisting user credentials: %v",
-		cloudURL, agentdetect.Detect(os.Getenv), err)
-	return nil
-}
-
-// loginWithBrowser uses a web-browser to log into the cloud and returns the cloud backend for it.
+// loginWithBrowser uses a web browser to log into the cloud and returns its credentials.
 func loginWithBrowser(
 	ctx context.Context,
 	cloudURL string,
@@ -358,7 +386,7 @@ func loginWithBrowser(
 	welcome func(display.Options),
 	current bool,
 	opts display.Options,
-) (*workspace.Account, error) {
+) (*auth.Credentials, error) {
 	// Locally, we generate a nonce and spin up a web server listening on a random port on localhost. We then open a
 	// browser to a special endpoint on the Pulumi.com console, passing the generated nonce as well as the port of the
 	// webserver we launched. This endpoint does the OAuth flow and when it completes, redirects to localhost passing
@@ -378,6 +406,7 @@ func loginWithBrowser(
 	if err != nil {
 		return nil, fmt.Errorf("could not start listener: %w", err)
 	}
+	defer l.Close()
 
 	// Extract the port
 	_, port, err := net.SplitHostPort(l.Addr().String())
@@ -444,7 +473,8 @@ func loginWithBrowser(
 		Insecure:         insecure,
 		TokenInformation: tokenInfo,
 	}
-	if err = workspace.StoreAccount(cloudURL, account, current); err != nil {
+	credentials, err := finishUserLoginWithAgentFallback(cloudURL, account, current, workspace.StoreAccount)
+	if err != nil {
 		return nil, err
 	}
 
@@ -453,15 +483,15 @@ func loginWithBrowser(
 		welcome(opts)
 	}
 
-	return &account, nil
+	return credentials, nil
 }
 
-// LoginManager provides a slim wrapper around functions related to backend logins.
+// LoginManager obtains account credentials from stored accounts, the environment, and login flows.
 type LoginManager interface {
-	// Current returns the current cloud backend if one is already logged in.
-	Current(ctx context.Context, cloudURL string, insecure, setCurrent bool) (*workspace.Account, error)
+	// Current returns credentials for the backend if one is already logged in.
+	Current(ctx context.Context, cloudURL string, insecure, setCurrent bool) (*auth.Credentials, error)
 
-	// Login logs into the target cloud URL and returns the cloud backend for it.
+	// Login logs into the target cloud URL and returns its credentials.
 	Login(
 		ctx context.Context,
 		cloudURL string,
@@ -471,7 +501,7 @@ type LoginManager interface {
 		welcome func(display.Options),
 		setCurrent bool,
 		opts display.Options,
-	) (*workspace.Account, error)
+	) (*auth.Credentials, error)
 
 	// LoginWithOIDCToken logs into the target cloud URL using OIDC token exchange.
 	// It exchanges the provided OIDC token for a cloud backend access token and stores the credentials.
@@ -486,17 +516,11 @@ type LoginManager interface {
 		scope string,
 		expiration time.Duration,
 		setCurrent bool,
-	) (*workspace.Account, error)
+	) (*auth.Credentials, error)
 }
 
-// NewLoginManager returns a LoginManager for handling backend logins.
+// NewLoginManager returns a LoginManager that obtains and saves account credentials.
 func NewLoginManager() LoginManager {
-	return newLoginManager()
-}
-
-// newLoginManager creates a new LoginManager for handling logins. It is a variable instead of a regular
-// function so it can be set to a different implementation at runtime, if necessary.
-var newLoginManager = func() LoginManager {
 	return defaultLoginManager{}
 }
 
@@ -568,13 +592,13 @@ func validateStoredAccount(
 	return account, valid, nil
 }
 
-// Current returns the current cloud backend if one is already logged in.
+// Current returns credentials for the backend if one is already logged in.
 func (m defaultLoginManager) Current(
 	ctx context.Context,
 	cloudURL string,
 	insecure bool,
 	setCurrent bool,
-) (*workspace.Account, error) {
+) (*auth.Credentials, error) {
 	cloudURL = ValueOrDefaultURL(pkgWorkspace.Instance, cloudURL)
 
 	// We intentionally don't accept command-line args for the user's access token. Having it in
@@ -606,13 +630,11 @@ func (m defaultLoginManager) Current(
 		}
 
 		if valid {
-			// Save the token. While it hasn't changed this will update the current cloud we are logged into, as well.
 			logging.V(7).Infof("Using valid stored credentials for %q", cloudURL)
-			if err = storeUserAccount(cloudURL, existingAccount, setCurrent); err != nil {
-				return nil, err
-			}
-
-			return &existingAccount, nil
+			return finishUserLoginWithAgentFallback(cloudURL, existingAccount, setCurrent,
+				func(cloudURL string, updated workspace.Account, current bool) error {
+					return updated.Save(cloudURL, current)
+				})
 		}
 	}
 
@@ -651,11 +673,7 @@ func (m defaultLoginManager) Current(
 		LastValidatedAt:  time.Now(),
 		Insecure:         insecure,
 	}
-	if err = storeUserAccount(cloudURL, account, setCurrent); err != nil {
-		return nil, err
-	}
-
-	return &account, nil
+	return finishUserLoginWithAgentFallback(cloudURL, account, setCurrent, workspace.StoreAccount)
 }
 
 // currentOrSignupAgentAccount returns valid credentials from the shared agent
@@ -668,7 +686,7 @@ func (m defaultLoginManager) currentOrSignupAgentAccount(
 	setCurrent bool,
 	agentName string,
 	defaultCredsErr error,
-) (*workspace.Account, error) {
+) (*auth.Credentials, error) {
 	now := time.Now()
 	if deleted, err := workspace.DeleteExpiredAgentCredentials(now); err != nil {
 		return nil, err
@@ -689,11 +707,15 @@ func (m defaultLoginManager) currentOrSignupAgentAccount(
 		}
 		if valid {
 			logging.V(7).Infof("Using valid shared agent credentials for %q", cloudURL)
-			if err = agentAccount.Save(cloudURL, setCurrent); err != nil {
+			credentials, err := finishLogin(cloudURL, agentAccount, setCurrent,
+				func(cloudURL string, updated workspace.Account, current bool) error {
+					return updated.Save(cloudURL, current)
+				})
+			if err != nil {
 				return nil, err
 			}
 			MarkAgentCredentialsUsed(ctx, cloudURL)
-			return &agentAccount, nil
+			return credentials, nil
 		}
 		// `pulumi login` is how users recover from rejected agent credentials.
 		if skipAgentSignup(ctx) && !workspace.IsUndecryptableCredentials(defaultCredsErr) {
@@ -765,7 +787,8 @@ func (m defaultLoginManager) currentOrSignupAgentAccount(
 		Insecure:         insecure,
 	}
 	account.SetCredentials(signup.AccessToken, signup.AccessTokenValidUntil, signup.RefreshToken)
-	if err = workspace.StoreAgentAccount(cloudURL, account, setCurrent); err != nil {
+	credentials, err := finishLogin(cloudURL, account, setCurrent, workspace.StoreAgentAccount)
+	if err != nil {
 		return nil, err
 	}
 	MarkAgentCredentialsUsed(ctx, cloudURL)
@@ -781,10 +804,10 @@ func (m defaultLoginManager) currentOrSignupAgentAccount(
 	}
 	logging.V(7).Infof("Stored shared agent claim metadata for %q; valid until %s", cloudURL, claim.ValidUntil)
 
-	return &account, nil
+	return credentials, nil
 }
 
-// Login logs into the target cloud URL and returns the cloud backend for it.
+// Login logs into the target cloud URL and returns its credentials.
 func (m defaultLoginManager) Login(
 	ctx context.Context,
 	cloudURL string,
@@ -794,7 +817,7 @@ func (m defaultLoginManager) Login(
 	welcome func(display.Options),
 	setCurrent bool,
 	opts display.Options,
-) (*workspace.Account, error) {
+) (*auth.Credentials, error) {
 	current, err := m.Current(ctx, cloudURL, insecure, setCurrent)
 	if err != nil {
 		return nil, err
@@ -882,11 +905,7 @@ func (m defaultLoginManager) Login(
 		LastValidatedAt:  time.Now(),
 		Insecure:         insecure,
 	}
-	if err = storeUserAccount(cloudURL, account, setCurrent); err != nil {
-		return nil, err
-	}
-
-	return &account, nil
+	return finishUserLoginWithAgentFallback(cloudURL, account, setCurrent, workspace.StoreAccount)
 }
 
 func (m defaultLoginManager) LoginWithOIDCToken(
@@ -899,7 +918,8 @@ func (m defaultLoginManager) LoginWithOIDCToken(
 	scope string,
 	expiration time.Duration,
 	setCurrent bool,
-) (*workspace.Account, error) {
+) (*auth.Credentials, error) {
+	cloudURL = ValueOrDefaultURL(pkgWorkspace.Instance, cloudURL)
 	accessToken, expiresAt, err := exchangeOidcToken(
 		ctx, sink, cloudURL, insecure, oidcTokenSource, organization, scope, expiration)
 	if err != nil {
@@ -919,11 +939,7 @@ func (m defaultLoginManager) LoginWithOIDCToken(
 		Insecure:         insecure,
 	}
 	account.SetCredentials(accessToken, expiresAt, "")
-	if err = storeUserAccount(cloudURL, account, setCurrent); err != nil {
-		return nil, err
-	}
-
-	return &account, nil
+	return finishUserLoginWithAgentFallback(cloudURL, account, setCurrent, workspace.StoreAccount)
 }
 
 // WelcomeUser prints a Welcome to Pulumi message. consoleURL may be empty, in which case the
@@ -2221,7 +2237,7 @@ func (b *cloudBackend) runEngineAction(
 		} else {
 			persister := b.newSnapshotPersister(ctx, update, tokenSource)
 			snapshotJournaler, err = backend.NewSnapshotJournaler(
-				ctx, journalPersister, op.SecretsManager, backend_secrets.DefaultProvider, u.Target.Snapshot)
+				ctx, journalPersister, op.SecretsManager, op.SecretsProvider, u.Target.Snapshot)
 			if err != nil {
 				return nil, nil, err
 			}
@@ -2248,6 +2264,10 @@ func (b *cloudBackend) runEngineAction(
 		Cancel:        cancellationScope.Context(),
 		Events:        engineEvents,
 		BackendClient: httpstateBackendClient{backend: backend.NewBackendClient(b, op.SecretsProvider)},
+		Credentials: &auth.Credentials{
+			BackendURL: b.url,
+			HTTPAuth:   b.client.HTTPAuth(),
+		},
 		SnapshotManagerCapabilities: engine.SnapshotManagerCapabilities{
 			StateMigrations: cloudPersistenceSupportsStateMigrations(journalVersion, journalingDisabled),
 		},
@@ -3139,17 +3159,16 @@ func doDetectCapabilities(ctx context.Context, d diag.Sink, client *client.Clien
 func detectUserInfo(
 	ctx context.Context,
 	d diag.Sink,
-	cloudURL string,
+	identity auth.Identity,
 	client *client.Client,
 ) *promise.Promise[userInfo] {
 	return promise.Run(func() (userInfo, error) {
-		account, err := workspace.GetAccount(cloudURL)
-		if err == nil && account.Username != "" {
+		if identity.Username != "" {
 			logging.V(1).Infof("found cached username for access token")
 			return userInfo{
-				username:      account.Username,
-				organizations: account.Organizations,
-				tokenInfo:     account.TokenInformation,
+				username:      identity.Username,
+				organizations: identity.Organizations,
+				tokenInfo:     identity.TokenInformation,
 			}, nil
 		}
 

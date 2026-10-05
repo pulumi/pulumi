@@ -20,6 +20,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/pulumi/pulumi/pkg/v3/auth"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/esc/cli/client"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
@@ -31,16 +32,16 @@ import (
 
 type noCredsLoginManager int
 
-// Current returns the current cloud backend if one is already logged in.
+// Current returns credentials for the current backend if one is already logged in.
 func (noCredsLoginManager) Current(
 	ctx context.Context,
 	cloudURL string,
 	insecure, setCurrent bool,
-) (*pulumi_workspace.Account, error) {
+) (*auth.Credentials, error) {
 	return nil, nil
 }
 
-// Login logs into the target cloud URL and returns the cloud backend for it.
+// Login logs into the target cloud URL and returns its credentials.
 func (noCredsLoginManager) Login(
 	ctx context.Context,
 	cloudURL string,
@@ -50,7 +51,7 @@ func (noCredsLoginManager) Login(
 	welcome func(display.Options),
 	current bool,
 	opts display.Options,
-) (*pulumi_workspace.Account, error) {
+) (*auth.Credentials, error) {
 	return nil, errors.New("unauthorized")
 }
 
@@ -64,7 +65,7 @@ func (noCredsLoginManager) LoginWithOIDCToken(
 	scope string,
 	expiration time.Duration,
 	setCurrent bool,
-) (*pulumi_workspace.Account, error) {
+) (*auth.Credentials, error) {
 	return nil, errors.New("unauthorized")
 }
 
@@ -84,7 +85,7 @@ func (invalidatedCredsLoginManager) Current(
 	ctx context.Context,
 	cloudURL string,
 	insecure, setCurrent bool,
-) (*pulumi_workspace.Account, error) {
+) (*auth.Credentials, error) {
 	// nil, nil is a valid response to Current and will be returned by the httpstate backend when an account is current
 	// but it's token has expired.
 	return nil, nil
@@ -99,7 +100,7 @@ func (invalidatedCredsLoginManager) Login(
 	welcome func(display.Options),
 	current bool,
 	opts display.Options,
-) (*pulumi_workspace.Account, error) {
+) (*auth.Credentials, error) {
 	return nil, errors.New("not expected to call")
 }
 
@@ -113,7 +114,7 @@ func (invalidatedCredsLoginManager) LoginWithOIDCToken(
 	scope string,
 	expiration time.Duration,
 	setCurrent bool,
-) (*pulumi_workspace.Account, error) {
+) (*auth.Credentials, error) {
 	return nil, errors.New("not expected to call")
 }
 
@@ -143,12 +144,12 @@ type provisioningLoginManager struct {
 
 func (lm *provisioningLoginManager) Current(
 	ctx context.Context, cloudURL string, insecure, setCurrent bool,
-) (*pulumi_workspace.Account, error) {
+) (*auth.Credentials, error) {
 	acct, ok := lm.accounts[cloudURL]
 	if !ok {
 		return nil, nil
 	}
-	return &acct, nil
+	return testCredentials(cloudURL, acct), nil
 }
 
 func (lm *provisioningLoginManager) Login(
@@ -160,7 +161,7 @@ func (lm *provisioningLoginManager) Login(
 	welcome func(display.Options),
 	current bool,
 	opts display.Options,
-) (*pulumi_workspace.Account, error) {
+) (*auth.Credentials, error) {
 	if lm.accounts == nil {
 		lm.accounts = map[string]pulumi_workspace.Account{}
 	}
@@ -170,7 +171,7 @@ func (lm *provisioningLoginManager) Login(
 		Insecure:    insecure,
 	}
 	lm.accounts[cloudURL] = acct
-	return &acct, nil
+	return testCredentials(cloudURL, acct), nil
 }
 
 func (lm *provisioningLoginManager) LoginWithOIDCToken(
@@ -183,7 +184,7 @@ func (lm *provisioningLoginManager) LoginWithOIDCToken(
 	scope string,
 	expiration time.Duration,
 	setCurrent bool,
-) (*pulumi_workspace.Account, error) {
+) (*auth.Credentials, error) {
 	return nil, errors.New("not expected to call")
 }
 
@@ -198,9 +199,9 @@ func TestAgentModeUsesPulumiAPIAndLoginManagerWhenPulumiCredentialsUnreadable(t 
 	esc := &escCommand{
 		command: "esc",
 		login:   login,
-		newClient: func(userAgent, backendURL, accessToken string, insecure bool) client.Client {
-			assert.Equal(t, "http://localhost:8080", backendURL)
-			assert.Equal(t, "agent-access-token", accessToken)
+		newClient: func(userAgent string, credentials auth.Credentials) client.Client {
+			assert.Equal(t, "http://localhost:8080", credentials.BackendURL)
+			assert.Equal(t, "agent-access-token", credentials.HTTPAuth.AccessToken())
 			return &testPulumiClient{defaultOrg: "agent-org"}
 		},
 		ws: &pkgWorkspace.MockContext{
@@ -229,8 +230,8 @@ func TestPulumiBackendURLEnvOverridesPulumiAPI(t *testing.T) {
 	esc := &escCommand{
 		command: "esc",
 		login:   login,
-		newClient: func(userAgent, backendURL, accessToken string, insecure bool) client.Client {
-			assert.Equal(t, "http://localhost:8081", backendURL)
+		newClient: func(userAgent string, credentials auth.Credentials) client.Client {
+			assert.Equal(t, "http://localhost:8081", credentials.BackendURL)
 			return &testPulumiClient{defaultOrg: "agent-org"}
 		},
 		ws: &pkgWorkspace.MockContext{
@@ -302,8 +303,9 @@ func TestEnvVarOverridesAccounts(t *testing.T) {
 		command: "esc",
 		login:   &testLoginManager{creds: creds},
 		ws:      mockWorkspace(creds),
-		newClient: func(userAgent, backendURL, accessToken string, insecure bool) client.Client {
-			return client.New(userAgent, backendURL, accessToken, insecure)
+		newClient: func(userAgent string, credentials auth.Credentials) client.Client {
+			return client.NewWithHTTPAuth(
+				userAgent, credentials.BackendURL, credentials.Insecure, credentials.HTTPAuth)
 		},
 	}
 
@@ -352,7 +354,7 @@ func TestDefaultOrgConfiguration(t *testing.T) {
 			command: "esc",
 			login:   &testLoginManager{creds: creds},
 			ws:      mockWorkspace(creds),
-			newClient: func(userAgent, backendURL, accessToken string, insecure bool) client.Client {
+			newClient: func(userAgent string, credentials auth.Credentials) client.Client {
 				return &testClient
 			},
 		}
@@ -376,7 +378,7 @@ func TestDefaultOrgConfiguration(t *testing.T) {
 			command: "esc",
 			login:   &testLoginManager{creds: creds},
 			ws:      mockWorkspace(creds),
-			newClient: func(userAgent, backendURL, accessToken string, insecure bool) client.Client {
+			newClient: func(userAgent string, credentials auth.Credentials) client.Client {
 				return &testClient
 			},
 		}
@@ -405,7 +407,7 @@ func TestDefaultOrgConfiguration(t *testing.T) {
 			command: "esc",
 			login:   &testLoginManager{creds: creds},
 			ws:      mockWorkspace(creds),
-			newClient: func(userAgent, backendURL, accessToken string, insecure bool) client.Client {
+			newClient: func(userAgent string, credentials auth.Credentials) client.Client {
 				return &testClient
 			},
 		}
@@ -431,7 +433,7 @@ func TestDefaultOrgConfiguration(t *testing.T) {
 			command: "esc",
 			login:   &testLoginManager{creds: creds},
 			ws:      mockWorkspace(creds),
-			newClient: func(userAgent, backendURL, accessToken string, insecure bool) client.Client {
+			newClient: func(userAgent string, credentials auth.Credentials) client.Client {
 				return &testClient
 			},
 		}

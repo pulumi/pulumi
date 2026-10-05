@@ -31,7 +31,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
-	"github.com/pulumi/pulumi/pkg/v3/backend/secrets"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
@@ -118,7 +117,8 @@ func NewStackCmd() *cobra.Command {
 
 	cmd.AddCommand(newStackExportCmd())
 	cmd.AddCommand(newStackGraphCmd())
-	cmd.AddCommand(newStackImportCmd(pkgWorkspace.Instance, cmdBackend.DefaultLoginManager, secrets.DefaultProvider))
+	cmd.AddCommand(newStackImportCmd(pkgWorkspace.Instance, cmdBackend.DefaultLoginManager,
+		cmdBackend.SecretsProvider(cmdBackend.DefaultLoginManager)))
 	cmd.AddCommand(newStackNewCmd())
 	cmd.AddCommand(newStackListCmd())
 	cmd.AddCommand(newStackOutputCmd())
@@ -149,7 +149,7 @@ func writeStackName(out io.Writer, s backend.Stack, fullyQualify bool) {
 type stackRenderFunc func(ctx context.Context, s backend.Stack, out io.Writer, args stackArgs) error
 
 func runStackText(ctx context.Context, s backend.Stack, out io.Writer, args stackArgs) error {
-	snap, err := s.Snapshot(ctx, secrets.DefaultProvider)
+	snap, err := s.Snapshot(ctx, cmdBackend.SecretsProvider(cmdBackend.DefaultLoginManager))
 	if err != nil {
 		return err
 	}

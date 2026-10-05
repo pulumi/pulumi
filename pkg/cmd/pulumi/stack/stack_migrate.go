@@ -29,7 +29,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
-	backend_secrets "github.com/pulumi/pulumi/pkg/v3/backend/secrets"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
@@ -38,6 +37,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -50,7 +50,7 @@ type stackMigrateCmd struct {
 	yes             bool
 	force           bool
 
-	// Test seam: overrides backend_secrets.DefaultProvider during deployment deserialize.
+	// Test seam: overrides cmdBackend.SecretsProvider(lm) during deployment deserialize.
 	deploymentSecretsProvider secrets.Provider
 }
 
@@ -249,11 +249,15 @@ func (cmd *stackMigrateCmd) Run(
 		return err
 	}
 
+	// Let the target select a backend before preparing an explicitly named source.
+	if _, _, err := cmdBackend.PrepareCurrentBackend(ctx, lm, ws, env.Global(), project); err != nil {
+		return fmt.Errorf("preparing target backend: %w", err)
+	}
+
 	// setCurrent=false: open source without overwriting the saved current cloud URL.
 	sourceBE, err := lm.Login(
 		ctx, ws, sink, sourceURL, project,
-		false,
-		pkgWorkspace.GetCloudInsecure(ws, sourceURL), color,
+		cmdBackend.LoginOptions{Insecure: pkgWorkspace.GetCloudInsecure(ws, sourceURL), Color: color},
 	)
 	if err != nil {
 		return fmt.Errorf("opening source backend %q: %w", sourceURL, err)
@@ -371,6 +375,7 @@ func (cmd *stackMigrateCmd) Run(
 
 	// Source-side network / passphrase work runs AFTER confirm so cancels are cheap.
 	ssml := NewStackSecretsManagerLoaderFromEnv()
+	ssml.SecretsProvider = cmdBackend.SecretsProvider(lm)
 	var (
 		oldDecrypter config.Decrypter
 		srcSM        secrets.Manager // cached so DeserializeUntypedDeployment can reuse it
@@ -518,7 +523,7 @@ func (cmd *stackMigrateCmd) Run(
 	deploySP := cmd.deploymentSecretsProvider
 	if deploySP == nil {
 		// Reuse srcSM (built above for config decryption) so passphrase isn't prompted twice.
-		deploySP = &reusingSecretsProvider{cached: srcSM, fallback: backend_secrets.DefaultProvider}
+		deploySP = &reusingSecretsProvider{cached: srcSM, fallback: cmdBackend.SecretsProvider(lm)}
 	}
 	// Deserialize before rename so encrypted secrets are available to the shared rename path below.
 	snap, err := stack.DeserializeUntypedDeployment(ctx, sourceDeployment, deploySP)

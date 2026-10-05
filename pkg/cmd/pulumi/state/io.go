@@ -23,6 +23,8 @@ import (
 	"strings"
 	"unicode"
 
+	"github.com/pulumi/pulumi/pkg/v3/secrets"
+
 	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
 
 	survey "github.com/AlecAivazis/survey/v2"
@@ -31,7 +33,6 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
-	"github.com/pulumi/pulumi/pkg/v3/backend/secrets"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
@@ -76,7 +77,7 @@ func runTotalStateEdit(
 	if err != nil {
 		return err
 	}
-	return TotalStateEdit(ctx, s, showPrompt, opts, operation, nil)
+	return TotalStateEdit(ctx, s, cmdBackend.SecretsProvider(lm), showPrompt, opts, operation, nil)
 }
 
 // runTotalStateEditWithPrompt is the same as runTotalStateEdit, but allows the caller to
@@ -107,18 +108,19 @@ func runTotalStateEditWithPrompt(
 	if err != nil {
 		return err
 	}
-	return TotalStateEdit(ctx, s, showPrompt, opts, operation, &overridePromptMessage)
+	return TotalStateEdit(ctx, s, cmdBackend.SecretsProvider(lm), showPrompt, opts, operation, &overridePromptMessage)
 }
 
 func TotalStateEdit(
 	ctx context.Context,
 	s backend.Stack,
+	sp secrets.Provider,
 	showPrompt bool,
 	opts display.Options,
 	operation func(opts display.Options, snap *deploy.Snapshot) error,
 	overridePromptMessage *string,
 ) error {
-	snap, err := s.Snapshot(ctx, secrets.DefaultProvider)
+	snap, err := s.Snapshot(ctx, sp)
 	if err != nil {
 		return err
 	} else if snap == nil {
@@ -336,7 +338,7 @@ func getURNFromState(
 		if err != nil {
 			return "", err
 		}
-		*snap, err = s.Snapshot(ctx, secrets.DefaultProvider)
+		*snap, err = s.Snapshot(ctx, cmdBackend.SecretsProvider(lm))
 		if err != nil {
 			return "", err
 		}

@@ -517,6 +517,10 @@ func runConvert(
 		}
 
 		projinfo := &engine.Projinfo{Proj: proj, Root: root}
+		credentials, err := cmdBackend.ResolveCurrentCredentials(ctx, ws, lm, e, proj)
+		if err != nil {
+			return err
+		}
 		pluginHost, err := pkghost.New(
 			context.WithoutCancel(ctx), cmdutil.Diag(), cmdutil.Diag(), nil, pkgWorkspace.EnsureLanguageInstalled,
 			schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext,
@@ -528,6 +532,7 @@ func runConvert(
 		defer contract.IgnoreClose(pluginHost) // host is owned here, closed after the context
 		_, main, pctx, err := engine.ProjectInfoContext(
 			ctx, projinfo, pluginHost, cmdutil.Diag(), cmdutil.Diag(), false, nil, nil,
+			credentials,
 		)
 		if err != nil {
 			return err

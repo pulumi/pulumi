@@ -161,7 +161,19 @@ func getSummaryAbout(
 	var pwd string
 	if proj, pwd, err = ws.ReadProject(cwd); err != nil {
 		addError(err, "Failed to read project")
-	} else {
+	}
+	be, backendErr := cmdBackend.NonInteractiveCurrentBackend(ctx, ws, lm, proj)
+	if backendErr != nil {
+		addError(backendErr, "Could not access the backend")
+	}
+	if proj != nil {
+		credentials := cmdBackend.PluginCredentials(be)
+		if be == nil {
+			credentials, err = cmdBackend.ResolveCurrentCredentials(ctx, ws, lm, cmdEnv.Global(), proj)
+			if err != nil {
+				addError(err, "Could not resolve plugin credentials")
+			}
+		}
 		projinfo := &engine.Projinfo{Proj: proj, Root: pwd}
 		reg := cmdCmd.NewDefaultRegistry(ctx, lm, ws, proj, cmdutil.Diag(), cmdEnv.Global())
 		pluginHost, hostErr := pkghost.New(
@@ -173,6 +185,7 @@ func getSummaryAbout(
 			addError(hostErr, "Failed to create plugin host")
 		} else if pwd, program, pluginContext, err := engine.ProjectInfoContext(
 			ctx, projinfo, pluginHost, cmdutil.Diag(), cmdutil.Diag(), false, nil, nil,
+			credentials,
 		); err != nil {
 			addError(err, "Failed to create plugin context")
 			contract.IgnoreClose(pluginHost)
@@ -223,19 +236,15 @@ func getSummaryAbout(
 		}
 	}
 
-	var backend backend.Backend
-	backend, err = cmdBackend.NonInteractiveCurrentBackend(ctx, ws, lm, proj)
-	if err != nil {
-		addError(err, "Could not access the backend")
-	} else if backend != nil {
+	if be != nil {
 		var stack currentStackAbout
-		if stack, err = getCurrentStackAbout(ctx, ws, backend, selectedStack); err != nil {
+		if stack, err = getCurrentStackAbout(ctx, ws, be, selectedStack); err != nil {
 			addError(err, "Failed to get information about the current stack")
 		} else {
 			result.CurrentStack = &stack
 		}
 
-		tmp := getBackendAbout(backend)
+		tmp := getBackendAbout(be)
 		result.Backend = &tmp
 	}
 	return result

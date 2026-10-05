@@ -24,7 +24,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
-	"github.com/pulumi/pulumi/pkg/v3/backend/secrets"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/autonames"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
@@ -73,7 +72,7 @@ this command will prompt for one.`,
 			if err != nil {
 				return fmt.Errorf("load stack: %w", err)
 			}
-			snap, err := s.Snapshot(ctx, secrets.DefaultProvider)
+			snap, err := s.Snapshot(ctx, cmdBackend.SecretsProvider(lm))
 			if err != nil {
 				return fmt.Errorf("load stack snapshot: %w", err)
 			}

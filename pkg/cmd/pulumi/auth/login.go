@@ -20,7 +20,6 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
-	"slices"
 	"sort"
 	"strings"
 
@@ -191,17 +190,8 @@ func NewLoginCmd(ws pkgWorkspace.Context, lm backend.LoginManager, store env.Env
 				if cloudURL == "" && oidcToken != "" {
 					cloudURL = "https://api.pulumi.com"
 				}
-			} else if url := strings.TrimPrefix(strings.TrimPrefix(
-				cloudURL, "https://",
-			), "http://"); strings.HasPrefix(url, "app.pulumi.com/") ||
-				strings.HasPrefix(url, "pulumi.com") {
-				return fmt.Errorf("%s is not a valid self-hosted backend, "+
-					"use `pulumi login` without arguments to log into the Pulumi Cloud backend", cloudURL)
-			} else {
-				// Ensure we have the correct cloudurl type before logging in
-				if err := validateCloudBackendType(cloudURL); err != nil {
-					return err
-				}
+			} else if err := backend.ValidateLoginBackendURL(cloudURL); err != nil {
+				return err
 			}
 
 			if userProvidedURL {
@@ -241,7 +231,7 @@ func NewLoginCmd(ws pkgWorkspace.Context, lm backend.LoginManager, store env.Env
 			} else {
 				be, err = lm.Login(
 					httpstate.ContextWithoutAgentSignup(ctx), ws, cmdutil.Diag(), cloudURL, project,
-					true /* setCurrent */, insecure, displayOptions.Color,
+					backend.LoginOptions{SetCurrent: true, Insecure: insecure, Color: displayOptions.Color},
 				)
 			}
 
@@ -367,17 +357,6 @@ func unwrapBucketOpenError(err error, cloudURL string) error {
 		return pathErr.Err
 	}
 	return cause
-}
-
-func validateCloudBackendType(typ string) error {
-	kind, _, _ := strings.Cut(typ, ":")
-	supportedKinds := []string{"azblob", "gs", "s3", "file", "https", "http", "postgres"}
-	if slices.Contains(supportedKinds, kind) {
-		return nil
-	}
-	return fmt.Errorf("unknown backend cloudUrl format '%s' (supported Url formats are: "+
-		"azblob://, gs://, s3://, file://, https://, http:// and postgres://)",
-		kind)
 }
 
 // chooseAccount will prompt the user to choose amongst the available accounts.

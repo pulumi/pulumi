@@ -19,6 +19,7 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/pulumi/pulumi/pkg/v3/auth"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/cloud"
@@ -27,24 +28,25 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 )
 
-// DefaultProvider is the default DefaultProvider to use when deserializing deployments.
-var DefaultProvider secrets.Provider = &secretsProvider{}
+// NewProvider returns a secrets provider that resolves credentials for service secrets on demand.
+func NewProvider(resolve auth.ResolveCredentials) secrets.Provider {
+	return secretsProvider{resolve: resolve}
+}
 
-// secretsProvider implements the secrets.ManagerProviderFactory interface. Essentially
-// it is the global location where new secrets managers can be registered for use when
-// decrypting checkpoints.
-type secretsProvider struct{}
+type secretsProvider struct {
+	resolve auth.ResolveCredentials
+}
 
 // OfType returns a secrets manager for the given secrets type. Returns an error
 // if the type is unknown or the state is invalid.
-func (secretsProvider) OfType(ctx context.Context, ty string, state json.RawMessage) (secrets.Manager, error) {
+func (s secretsProvider) OfType(ctx context.Context, ty string, state json.RawMessage) (secrets.Manager, error) {
 	var sm secrets.Manager
 	var err error
 	switch ty {
 	case passphrase.Type:
 		sm, err = passphrase.NewPromptingPassphraseSecretsManagerFromState(state)
 	case service.Type:
-		sm, err = service.NewServiceSecretsManagerFromState(ctx, state)
+		sm, err = service.NewServiceSecretsManagerFromState(ctx, s.resolve, state)
 	case cloud.Type:
 		sm, err = cloud.NewCloudSecretsManagerFromState(state)
 	default:
@@ -100,32 +102,20 @@ func (d redactingDecrypter) BatchDecrypt(ctx context.Context, ciphertexts []stri
 	return config.DefaultBatchDecrypt(ctx, d, ciphertexts)
 }
 
-// NamedStackProvider is the same as the default secrets provider,
-// but is aware of the stack name for which it is used.  Currently
-// this is only used for prompting passphrase secrets managers to show
-// the stackname in the prompt for the passphrase.
+// NamedStackProvider adds the stack name to passphrase prompts and delegates other secrets types to Provider.
 type NamedStackProvider struct {
 	StackName string
+	Provider  secrets.Provider
 }
 
-// OfType returns a secrets manager for the given secrets type. Returns an error
-// if the type is unknown or the state is invalid.
+// OfType returns a secrets manager for the given secrets type and state.
 func (s NamedStackProvider) OfType(ctx context.Context, ty string, state json.RawMessage) (secrets.Manager, error) {
-	var sm secrets.Manager
-	var err error
-	switch ty {
-	case passphrase.Type:
-		sm, err = passphrase.NewStackPromptingPassphraseSecretsManagerFromState(state, s.StackName)
-	case service.Type:
-		sm, err = service.NewServiceSecretsManagerFromState(ctx, state)
-	case cloud.Type:
-		sm, err = cloud.NewCloudSecretsManagerFromState(state)
-	default:
-		return nil, fmt.Errorf("no known secrets provider for type %q", ty)
+	if ty != passphrase.Type {
+		return s.Provider.OfType(ctx, ty, state)
 	}
+	sm, err := passphrase.NewStackPromptingPassphraseSecretsManagerFromState(state, s.StackName)
 	if err != nil {
 		return nil, fmt.Errorf("constructing secrets manager of type %q: %w", ty, err)
 	}
-
 	return stack.NewBatchingCachingSecretsManager(sm), nil
 }

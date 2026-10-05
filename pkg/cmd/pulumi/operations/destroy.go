@@ -30,7 +30,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
-	"github.com/pulumi/pulumi/pkg/v3/backend/secrets"
+	"github.com/pulumi/pulumi/pkg/v3/backend/diy"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/config"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
@@ -201,10 +201,11 @@ func NewDestroyCmd() *cobra.Command {
 				return deployment.RunDeployment(ctx, ws, cmd, opts.Display, apitype.Destroy, stackName, url, remoteArgs)
 			}
 
-			isDIYBackend, err := cmdBackend.IsDIYBackend(ws, opts.Display)
+			backendURL, err := cmdBackend.PrepareBackend(ctx, ws, cmdBackend.DefaultLoginManager)
 			if err != nil {
 				return err
 			}
+			isDIYBackend := diy.IsDIYBackendURL(backendURL)
 
 			// by default, we are going to suppress the permalink when using DIY backends
 			// this can be re-enabled by explicitly passing "false" to the `suppress-permalink` flag
@@ -314,7 +315,7 @@ func NewDestroyCmd() *cobra.Command {
 			excludeUrns := *excludes
 			protectedCount := 0
 			if excludeProtected {
-				snapshot, err := s.Snapshot(ctx, secrets.DefaultProvider)
+				snapshot, err := s.Snapshot(ctx, cmdBackend.SecretsProvider(cmdBackend.DefaultLoginManager))
 				if err != nil {
 					return err
 				} else if snapshot == nil {
@@ -370,7 +371,7 @@ func NewDestroyCmd() *cobra.Command {
 				Opts:               opts,
 				StackConfiguration: cfg,
 				SecretsManager:     sm,
-				SecretsProvider:    secrets.DefaultProvider,
+				SecretsProvider:    cmdBackend.SecretsProvider(cmdBackend.DefaultLoginManager),
 				Scopes:             backend.CancellationScopes,
 				CoherenceWindow:    coherenceWindow,
 			})

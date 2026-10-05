@@ -1,0 +1,328 @@
+// Copyright 2026, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package httpstate
+
+import (
+	"context"
+	"encoding/json"
+	"errors"
+	"net/http"
+	"net/http/httptest"
+	"os"
+	"path/filepath"
+	"strconv"
+	"strings"
+	"sync/atomic"
+	"testing"
+	"time"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
+	"github.com/pulumi/pulumi/pkg/v3/auth"
+	esc_client "github.com/pulumi/pulumi/pkg/v3/cmd/esc/cli/client"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/diagtest"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+)
+
+func TestBackendSharesHTTPAuthWithESC(t *testing.T) {
+	t.Setenv("PULUMI_DEFAULT_ORGANIZATION", "selected-org")
+	var refreshes atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		token := "token-2"
+		if r.URL.Path == "/api/capabilities" {
+			token = "token-1"
+		}
+		if r.Header.Get("Authorization") != "token "+token {
+			w.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+		switch r.URL.Path {
+		case "/api/capabilities":
+			require.NoError(t, json.NewEncoder(w).Encode(apitype.CapabilitiesResponse{
+				Capabilities: []apitype.APICapabilityConfig{{Capability: apitype.BatchEncrypt}},
+			}))
+		case "/api/esc/environments":
+			_, err := w.Write([]byte(`{"environments":[{"name":"shared"}]}`))
+			require.NoError(t, err)
+		case "/api/user":
+			_, err := w.Write([]byte(`{"githubLogin":"selected-user"}`))
+			require.NoError(t, err)
+		default:
+			t.Errorf("unexpected request: %s", r.URL.Path)
+			w.WriteHeader(http.StatusNotFound)
+		}
+	}))
+	t.Cleanup(server.Close)
+	credentials := auth.Credentials{
+		BackendURL: server.URL, Identity: auth.Identity{Username: "selected-user"},
+		HTTPAuth: auth.NewHTTPAuth(server.URL, "token-0", func(context.Context) (string, error) {
+			return "token-" + strconv.Itoa(int(refreshes.Add(1))), nil
+		}),
+	}
+	ctx := t.Context()
+	be, err := NewWithCredentials(ctx, diagtest.LogSink(t), credentials, nil)
+	require.NoError(t, err)
+	assert.True(t, be.Capabilities(ctx).BatchEncryption)
+	assert.EqualValues(t, 1, refreshes.Load())
+	// ESC starts with the backend's refreshed token and shares its own refresh with the backend.
+	cloud := be.(*cloudBackend)
+	environments, _, err := cloud.escClient.ListEnvironments(ctx, "")
+	require.NoError(t, err)
+	require.Len(t, environments, 1)
+	assert.Equal(t, "shared", environments[0].Name)
+	username, _, _, err := cloud.client.GetPulumiAccountDetails(ctx)
+	require.NoError(t, err)
+	assert.Equal(t, "selected-user", username)
+	assert.EqualValues(t, 2, refreshes.Load())
+}
+
+func TestHTTPBackendUsesInMemoryCredentials(t *testing.T) {
+	dirs := ptesting.IsolateCredentials(t)
+	t.Setenv("PULUMI_DEFAULT_ORGANIZATION", "selected-org")
+	path := filepath.Join(dirs.Home, "credentials.json")
+	contents := []byte("invalid credentials JSON") // Stored credentials are unavailable.
+	require.NoError(t, os.WriteFile(path, contents, 0o600))
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "token memory-token", r.Header.Get("Authorization"))
+		switch r.URL.Path {
+		case "/api/capabilities":
+			require.NoError(t, json.NewEncoder(w).Encode(apitype.CapabilitiesResponse{
+				Capabilities: []apitype.APICapabilityConfig{{Capability: apitype.BatchEncrypt}},
+			}))
+		case "/api/user":
+			require.NoError(t, json.NewEncoder(w).Encode(map[string]string{"githubLogin": "remote-user"}))
+		default:
+			t.Errorf("unexpected request: %s", r.URL.Path)
+			w.WriteHeader(http.StatusNotFound)
+		}
+	}))
+	t.Cleanup(server.Close)
+
+	credentials := newAccountCredentials(server.URL, workspace.Account{
+		AccessToken: "memory-token", Username: "selected-user", Organizations: []string{"selected-org"},
+		TokenInformation: &workspace.TokenInformation{Name: "selected-token"},
+	}, nil)
+	be, err := NewWithCredentials(t.Context(), diagtest.LogSink(t), *credentials, nil)
+	require.NoError(t, err)
+	assert.True(t, be.Capabilities(t.Context()).BatchEncryption)
+	username, orgs, tokenInfo, err := be.CurrentUser()
+	require.NoError(t, err)
+	assert.Equal(t, "selected-user", username)
+	assert.Equal(t, []string{"selected-org"}, orgs)
+	assert.Equal(t, credentials.Identity.TokenInformation, tokenInfo)
+	// Login can use supplied authentication when no connection settings need to be saved.
+	validated, err := loginWithHTTPAuth(t.Context(), server.URL, false, credentials.HTTPAuth, false)
+	require.NoError(t, err)
+	assert.Same(t, credentials.HTTPAuth, validated.HTTPAuth)
+	assert.Equal(t, "remote-user", validated.Identity.Username)
+	// Required connection settings must not overwrite an unreadable credentials file.
+	for _, settings := range []struct{ insecure, setCurrent bool }{{true, false}, {false, true}} {
+		_, err := loginWithHTTPAuth(t.Context(), server.URL, settings.insecure, credentials.HTTPAuth, settings.setCurrent)
+		require.Error(t, err)
+	}
+
+	after, err := os.ReadFile(path)
+	require.NoError(t, err)
+	assert.Equal(t, contents, after)
+	assert.NoFileExists(t, filepath.Join(dirs.AgentDir, "credentials.json"))
+}
+
+//nolint:paralleltest // IsolateCredentials changes process-wide environment variables.
+func TestAccountCredentialsRefreshPersistence(t *testing.T) {
+	for _, mode := range []string{"callback", "memory only"} {
+		t.Run(mode, func(t *testing.T) {
+			dirs := ptesting.IsolateCredentials(t)
+			server := newOAuthRefreshServer(t)
+
+			expiry := time.Now().Add(24 * time.Hour)
+			account := workspace.Account{
+				AccessToken: "stale-access-token", RefreshToken: "initial-refresh-token",
+				Username: "selected-user", TokenInformation: &workspace.TokenInformation{ExpiresAt: &expiry},
+			}
+			var saved *workspace.Account
+			var persist func(workspace.Account) error
+			if mode == "callback" {
+				persist = func(updated workspace.Account) error {
+					saved = &updated
+					return nil
+				}
+			}
+			credentials := newAccountCredentials(server.URL, account, persist)
+			// ESC can refresh the account before a backend client is constructed.
+			esc := esc_client.NewWithHTTPAuth("test", server.URL, false, credentials.HTTPAuth)
+			_, _, _, err := esc.GetPulumiAccountDetails(t.Context())
+			require.NoError(t, err)
+			if mode == "callback" {
+				require.NotNil(t, saved)
+				assert.Equal(t, "new-access-token", saved.AccessToken)
+				assert.Equal(t, "new-refresh-token", saved.RefreshToken)
+				assert.Equal(t, "selected-user", saved.Username)
+				require.NotNil(t, saved.TokenInformation)
+				require.NotNil(t, saved.TokenInformation.ExpiresAt)
+				assert.WithinDuration(t, time.Now().Add(time.Hour), *saved.TokenInformation.ExpiresAt, time.Minute)
+			}
+			assert.True(t, expiry.Equal(*credentials.Identity.TokenInformation.ExpiresAt))
+			assert.NoFileExists(t, filepath.Join(dirs.Home, "credentials.json"))
+			assert.NoFileExists(t, filepath.Join(dirs.AgentDir, "credentials.json"))
+		})
+	}
+}
+
+func TestAccountCredentialsPersistToOriginalFile(t *testing.T) {
+	for _, source := range []string{"user", "agent", "resolved user", "resolved agent"} {
+		t.Run(source, func(t *testing.T) {
+			dirs := ptesting.IsolateCredentials(t)
+			store, dir, unusedDir := workspace.StoreAccount, dirs.Home, dirs.AgentDir
+			if strings.HasSuffix(source, "agent") {
+				store, dir, unusedDir = workspace.StoreAgentAccount, dirs.AgentDir, dirs.Home
+			}
+			server := newOAuthRefreshServer(t)
+			cloudURL := server.URL
+			expiry := time.Now().Add(time.Hour)
+			require.NoError(t, store(cloudURL, workspace.Account{
+				AccessToken: "initial-token", RefreshToken: "initial-refresh-token",
+				Username: "selected-user", LastValidatedAt: time.Now(),
+				TokenInformation: &workspace.TokenInformation{ExpiresAt: &expiry},
+			}, false))
+
+			var credentials *auth.Credentials
+			var err error
+			if strings.HasPrefix(source, "resolved") {
+				t.Setenv("CODEX_SANDBOX", "1")
+				t.Setenv("PULUMI_TEST_ALLOW_AGENT_FALLBACK", "true")
+				credentials, err = LoadCredentials(cloudURL)
+			} else if source == "user" {
+				credentials, err = NewLoginManager().Current(t.Context(), cloudURL, false, true)
+			} else {
+				credentials, err = defaultLoginManager{}.currentOrSignupAgentAccount(
+					t.Context(), cloudURL, false, true, "codex", nil)
+			}
+			require.NoError(t, err)
+			require.NotNil(t, credentials)
+			require.NotNil(t, credentials.HTTPAuth)
+
+			// A later refresh must preserve the current backend and the original file location.
+			const currentURL = "https://api.other.example.com"
+			require.NoError(t, store(currentURL, workspace.Account{AccessToken: "other-token"}, true))
+			otherHome, otherAgent := t.TempDir(), t.TempDir()
+			t.Setenv("PULUMI_HOME", otherHome)
+			t.Setenv("PULUMI_TEST_AGENT_PULUMI_DIR", otherAgent)
+			esc := esc_client.NewWithHTTPAuth("test", server.URL, false, credentials.HTTPAuth)
+			_, _, _, err = esc.GetPulumiAccountDetails(t.Context())
+			require.NoError(t, err)
+
+			raw, err := os.ReadFile(filepath.Join(dir, "credentials.json"))
+			require.NoError(t, err)
+			var saved workspace.Credentials
+			require.NoError(t, json.Unmarshal(raw, &saved))
+			assert.Equal(t, currentURL, saved.Current)
+			assert.Equal(t, "new-access-token", saved.Accounts[cloudURL].AccessToken)
+			assert.Equal(t, "other-token", saved.Accounts[currentURL].AccessToken)
+			assert.NoFileExists(t, filepath.Join(unusedDir, "credentials.json"))
+			assert.NoFileExists(t, filepath.Join(otherHome, "credentials.json"))
+			assert.NoFileExists(t, filepath.Join(otherAgent, "credentials.json"))
+		})
+	}
+}
+
+func TestLoginPersistenceFailurePolicy(t *testing.T) {
+	for _, tt := range []struct {
+		name          string
+		agentAccount  bool
+		allowFallback bool
+		wantError     bool
+	}{
+		{name: "user", wantError: true},
+		{name: "user with agent fallback", allowFallback: true},
+		{name: "agent", agentAccount: true, allowFallback: true, wantError: true},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			ptesting.IsolateCredentials(t)
+			t.Setenv("CODEX_SANDBOX", "1")
+			t.Setenv("PULUMI_TEST_ALLOW_AGENT_FALLBACK", strconv.FormatBool(tt.allowFallback))
+			// Allow the initial save, then simulate a failed save during refresh.
+			var nextSaveErr error
+			saves := 0
+			save := func(string, workspace.Account, bool) error {
+				saves++
+				return nextSaveErr
+			}
+			account := workspace.Account{AccessToken: "initial-token", RefreshToken: "initial-refresh-token"}
+			server := newOAuthRefreshServer(t)
+			cloudURL := server.URL
+			var credentials *auth.Credentials
+			var err error
+			if tt.agentAccount {
+				credentials, err = finishLogin(cloudURL, account, true, save)
+			} else {
+				credentials, err = finishUserLoginWithAgentFallback(cloudURL, account, true, save)
+			}
+			require.NoError(t, err)
+			require.NotNil(t, credentials)
+			require.NotNil(t, credentials.HTTPAuth)
+
+			// Later refreshes retain the failure policy selected at login.
+			t.Setenv("PULUMI_TEST_ALLOW_AGENT_FALLBACK", strconv.FormatBool(!tt.allowFallback))
+			nextSaveErr = errors.New("save failed")
+			esc := esc_client.NewWithHTTPAuth("test", server.URL, false, credentials.HTTPAuth)
+			_, _, _, err = esc.GetPulumiAccountDetails(t.Context())
+			assert.Equal(t, 2, saves)
+			if tt.wantError {
+				require.Error(t, err)
+				assert.Equal(t, "initial-token", credentials.HTTPAuth.AccessToken())
+			} else {
+				require.NoError(t, err)
+				assert.Equal(t, "new-access-token", credentials.HTTPAuth.AccessToken())
+			}
+		})
+	}
+}
+
+func newOAuthRefreshServer(t *testing.T) *httptest.Server {
+	t.Helper()
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/api/oauth/token" {
+			require.NoError(t, r.ParseForm())
+			assert.Equal(t, "initial-refresh-token", r.Form.Get("refresh_token"))
+			require.NoError(t, json.NewEncoder(w).Encode(apitype.TokenExchangeGrantResponse{
+				AccessToken: "new-access-token", RefreshToken: "new-refresh-token", ExpiresIn: 3600,
+			}))
+			return
+		}
+		if r.Header.Get("Authorization") != "token new-access-token" {
+			w.WriteHeader(http.StatusUnauthorized)
+			require.NoError(t, json.NewEncoder(w).Encode(apitype.ErrorResponse{Code: 401}))
+			return
+		}
+		switch r.URL.Path {
+		case "/api/capabilities":
+			require.NoError(t, json.NewEncoder(w).Encode(apitype.CapabilitiesResponse{
+				Capabilities: []apitype.APICapabilityConfig{{Capability: apitype.BatchEncrypt}},
+			}))
+		case "/api/user":
+			_, err := w.Write([]byte(`{"githubLogin":"selected-user"}`))
+			require.NoError(t, err)
+		default:
+			t.Errorf("unexpected request: %s", r.URL.Path)
+			w.WriteHeader(http.StatusNotFound)
+		}
+	}))
+	t.Cleanup(server.Close)
+	return server
+}

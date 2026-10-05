@@ -79,11 +79,9 @@ func TestCurrentRefreshesAccessTokenOn401WhenRefreshTokenStored(t *testing.T) {
 	account, err := NewLoginManager().Current(t.Context(), server.URL, false, true)
 	require.NoError(t, err)
 	require.NotNil(t, account)
-	assert.Equal(t, "fresh-access-token", account.AccessToken,
+	assert.Equal(t, "fresh-access-token", account.HTTPAuth.AccessToken(),
 		"the stored access token should be refreshed before reporting the account as valid")
-	assert.Equal(t, "stored-refresh-token", account.RefreshToken,
-		"the refresh token is preserved (Phase 1: server doesn't rotate)")
-	assert.Equal(t, "alice", account.Username)
+	assert.Equal(t, "alice", account.Identity.Username)
 
 	saved, err := workspace.GetAccount(server.URL)
 	require.NoError(t, err)
@@ -138,8 +136,8 @@ func TestCurrentRefreshesFromRefreshOnlyStoredAccount(t *testing.T) {
 	account, err := NewLoginManager().Current(t.Context(), server.URL, false, true)
 	require.NoError(t, err)
 	require.NotNil(t, account)
-	assert.Equal(t, "minted-access-token", account.AccessToken)
-	assert.Equal(t, "bob", account.Username)
+	assert.Equal(t, "minted-access-token", account.HTTPAuth.AccessToken())
+	assert.Equal(t, "bob", account.Identity.Username)
 }
 
 //nolint:paralleltest // IsolateCredentials changes process-wide environment variables.
@@ -189,8 +187,7 @@ func TestCurrentPersistsRotatedRefreshToken(t *testing.T) {
 	account, err := NewLoginManager().Current(t.Context(), server.URL, false, true)
 	require.NoError(t, err)
 	require.NotNil(t, account)
-	assert.Equal(t, "fresh-access-token", account.AccessToken)
-	assert.Equal(t, "rotated-refresh-token", account.RefreshToken)
+	assert.Equal(t, "fresh-access-token", account.HTTPAuth.AccessToken())
 
 	saved, err := workspace.GetAccount(server.URL)
 	require.NoError(t, err)
@@ -245,9 +242,7 @@ func TestCurrentPreservesRefreshTokenWhenGrantResponseOmitsIt(t *testing.T) {
 	account, err := NewLoginManager().Current(t.Context(), server.URL, false, true)
 	require.NoError(t, err)
 	require.NotNil(t, account)
-	assert.Equal(t, "fresh-access-token", account.AccessToken)
-	assert.Equal(t, "stored-refresh-token", account.RefreshToken,
-		"omitted refresh_token in the response must not destroy the existing one")
+	assert.Equal(t, "fresh-access-token", account.HTTPAuth.AccessToken())
 
 	saved, err := workspace.GetAccount(server.URL)
 	require.NoError(t, err)
@@ -312,10 +307,9 @@ func TestCurrentRefreshesLocallyExpiredAccessTokenWhenRefreshTokenStored(t *test
 	account, err := NewLoginManager().Current(t.Context(), server.URL, false, true)
 	require.NoError(t, err)
 	require.NotNil(t, account)
-	assert.Equal(t, "fresh-access-token", account.AccessToken,
+	assert.Equal(t, "fresh-access-token", account.HTTPAuth.AccessToken(),
 		"a locally-expired access token must trigger a refresh instead of failing the validate step")
-	assert.Equal(t, "stored-refresh-token", account.RefreshToken)
-	assert.Equal(t, "alice", account.Username)
+	assert.Equal(t, "alice", account.Identity.Username)
 
 	saved, err := workspace.GetAccount(server.URL)
 	require.NoError(t, err)
@@ -371,11 +365,11 @@ func TestCurrentPreservesExpiresAtWhenServerAcceptsLocallyExpiredAccessToken(t *
 	account, err := NewLoginManager().Current(t.Context(), server.URL, false, true)
 	require.NoError(t, err)
 	require.NotNil(t, account)
-	assert.Equal(t, "live-access-token", account.AccessToken, "no refresh, no rotation")
-	assert.Equal(t, "alice", account.Username)
-	require.NotNil(t, account.TokenInformation,
+	assert.Equal(t, "live-access-token", account.HTTPAuth.AccessToken(), "no refresh, no rotation")
+	assert.Equal(t, "alice", account.Identity.Username)
+	require.NotNil(t, account.Identity.TokenInformation,
 		"TokenInformation must survive a fetch that returns no token info of its own")
-	require.NotNil(t, account.TokenInformation.ExpiresAt,
+	require.NotNil(t, account.Identity.TokenInformation.ExpiresAt,
 		"ExpiresAt must survive the merge so the banner and cold-start path keep working")
 }
 

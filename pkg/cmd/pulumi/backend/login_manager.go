@@ -17,6 +17,10 @@ package backend
 import (
 	"context"
 	"fmt"
+	"sync"
+
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/httputil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 
 	pkgauth "github.com/pulumi/pulumi/pkg/v3/auth"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
@@ -27,11 +31,16 @@ import (
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 // LoginManager provides a slim wrapper around functions related to backend logins.
 type LoginManager interface {
+	// ResolveCredentials prepares available credentials without validating an account or logging in.
+	// An empty URL resolves the current backend; a nonempty URL stays fixed.
+	ResolveCredentials(context.Context, pkgWorkspace.Context, string, *workspace.Project) (*pkgauth.Credentials, error)
+
 	// Current returns the currently logged in backend instance for the given url.
 	//
 	// If the user does not have a logged in backend, then Current will return (nil, nil).
@@ -51,9 +60,7 @@ type LoginManager interface {
 		sink diag.Sink,
 		url string,
 		project *workspace.Project,
-		setCurrent bool,
-		insecure bool,
-		color colors.Colorization,
+		options LoginOptions,
 	) (backend.Backend, error)
 
 	LoginFromAuthContext(
@@ -67,30 +74,77 @@ type LoginManager interface {
 	) (backend.Backend, error)
 }
 
-var DefaultLoginManager LoginManager = &lm{}
+// LoginOptions controls connection settings for a login.
+type LoginOptions struct {
+	SetCurrent bool
+	Insecure   bool
+	Color      colors.Colorization
+}
 
-type lm struct{}
+// DefaultLoginManager shares credentials across backends opened by the CLI.
+var DefaultLoginManager = NewLoginManager()
+
+// NewLoginManager returns a manager that shares resolved credentials across backend clients.
+func NewLoginManager() LoginManager {
+	return &lm{credentials: map[string]*pkgauth.Credentials{}}
+}
+
+type lm struct {
+	mu          sync.Mutex
+	credentials map[string]*pkgauth.Credentials
+}
+
+func (f *lm) ResolveCredentials(ctx context.Context, ws pkgWorkspace.Context, url string,
+	project *workspace.Project,
+) (*pkgauth.Credentials, error) {
+	url, _, err := f.prepare(ctx, ws, project, url)
+	if err != nil {
+		return nil, err
+	}
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if credentials := f.credentials[url]; credentials != nil {
+		return credentials, nil
+	}
+	credentials := &pkgauth.Credentials{BackendURL: url}
+	if pkgauth.IsHTTPBackend(url) {
+		credentials, err = httpstate.LoadCredentials(url)
+		if err != nil {
+			return nil, err
+		}
+	}
+	f.credentials[url] = credentials
+	return credentials, nil
+}
+
+func (f *lm) rememberCredentials(credentials *pkgauth.Credentials) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.credentials[credentials.BackendURL] = credentials
+}
+
+func (f *lm) prepare(
+	ctx context.Context, ws pkgWorkspace.Context, project *workspace.Project, url string,
+) (string, bool, error) {
+	if url != "" {
+		logging.AddGlobalSecretFilter(httputil.URLSecrets(url), "[credential]")
+		return url, false, nil
+	}
+	url, setCurrent, err := configuredBackendURL(ws, env.Global(), project)
+	if url == "" {
+		url = client.PulumiCloudURL
+	}
+	return url, setCurrent, err
+}
 
 func (f *lm) Current(
 	ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink, url string, project *workspace.Project, setCurrent bool,
 ) (backend.Backend, error) {
-	if diy.IsDIYBackendURL(url) {
-		return diy.New(ctx, sink, url, project)
-	}
-
-	insecure := pkgWorkspace.GetCloudInsecure(ws, url)
-	lm := httpstate.NewLoginManager()
-	account, err := lm.Current(ctx, url, insecure, setCurrent)
-	if err != nil || account == nil {
+	url, preparedCurrent, err := f.prepare(ctx, ws, project, url)
+	if err != nil {
 		return nil, err
 	}
-	return httpstate.New(ctx, sink, url, project, insecure)
-}
-
-func (f *lm) Login(
-	ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink, url string, project *workspace.Project, setCurrent bool,
-	insecure bool, color colors.Colorization,
-) (backend.Backend, error) {
+	setCurrent = setCurrent || preparedCurrent
 	if diy.IsDIYBackendURL(url) {
 		if setCurrent {
 			return diy.Login(ctx, sink, url, project)
@@ -98,19 +152,64 @@ func (f *lm) Login(
 		return diy.New(ctx, sink, url, project)
 	}
 
-	lm := httpstate.NewLoginManager()
-	// Color is the only thing used by lm.Login, so we can just request a colors.Colorization and only fill that part of
-	// the display options in. It's hard to change Login itself because it's circularly depended on by esc.
-	opts := display.Options{
-		Color: color,
+	insecure := pkgWorkspace.GetCloudInsecure(ws, url)
+	credentials, err := httpstate.NewLoginManager().Current(ctx, url, insecure, setCurrent)
+	if err != nil || credentials == nil {
+		return nil, err
 	}
-	consoleURL := client.CloudConsoleURL(httpstate.ValueOrDefaultURL(ws, url))
-	welcome := func(opts display.Options) { httpstate.WelcomeUser(opts, consoleURL) }
-	_, err := lm.Login(ctx, url, insecure, "pulumi", "Pulumi stacks", welcome, setCurrent, opts)
+	f.rememberCredentials(credentials)
+	return httpstate.NewWithCredentials(ctx, sink, *credentials, project)
+}
+
+func (f *lm) Login(
+	ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink, url string, project *workspace.Project,
+	options LoginOptions,
+) (backend.Backend, error) {
+	url, preparedCurrent, err := prepareLogin(ctx, ws, url, project, options)
+	options.SetCurrent = options.SetCurrent || preparedCurrent
 	if err != nil {
 		return nil, err
 	}
-	return httpstate.New(ctx, sink, url, project, insecure)
+	var be backend.Backend
+	if diy.IsDIYBackendURL(url) {
+		if options.SetCurrent {
+			be, err = diy.Login(ctx, sink, url, project)
+		} else {
+			be, err = diy.New(ctx, sink, url, project)
+		}
+	} else {
+		opts := display.Options{Color: options.Color}
+		consoleURL := client.CloudConsoleURL(url)
+		welcome := func(opts display.Options) { httpstate.WelcomeUser(opts, consoleURL) }
+		var credentials *pkgauth.Credentials
+		credentials, err = httpstate.NewLoginManager().Login(
+			ctx, url, options.Insecure, "pulumi", "Pulumi stacks", welcome, options.SetCurrent, opts)
+		if err == nil {
+			f.rememberCredentials(credentials)
+			be, err = httpstate.NewWithCredentials(ctx, sink, *credentials, project)
+		}
+	}
+	if err != nil {
+		return nil, fmt.Errorf("logging in to %s: %w", url, err)
+	}
+	return be, nil
+}
+
+func prepareLogin(ctx context.Context, ws pkgWorkspace.Context, url string,
+	project *workspace.Project, options LoginOptions,
+) (string, bool, error) {
+	if url != "" {
+		return url, false, nil
+	}
+	fallback, err := pkgWorkspace.GetCurrentCloudURLWithAgentFallback(ws, env.Global(), project)
+	if err != nil {
+		return "", false, err
+	}
+	setCurrent := fallback == ""
+	if fallback == "" {
+		fallback = httpstate.ValueOrDefaultURL(ws, "")
+	}
+	return fallback, setCurrent, nil
 }
 
 // LoginFromAuthContext logs in to a backend using the provided authentication context.
@@ -127,13 +226,14 @@ func (f *lm) LoginFromAuthContext(
 ) (backend.Backend, error) {
 	if authContext.GrantType == pkgauth.AuthContextGrantTypeTokenExchange {
 		lm := httpstate.NewLoginManager()
-		_, err := lm.LoginWithOIDCToken(
+		credentials, err := lm.LoginWithOIDCToken(
 			ctx, sink, url, insecure, authContext.Token, authContext.Organization, authContext.Scope,
 			authContext.Expiration, setCurrent)
 		if err != nil {
 			return nil, err
 		}
-		return httpstate.New(ctx, sink, url, project, insecure)
+		f.rememberCredentials(credentials)
+		return httpstate.NewWithCredentials(ctx, sink, *credentials, project)
 	}
 	return nil, fmt.Errorf("unknown auth context grant type: %s", authContext.GrantType)
 }
@@ -168,22 +268,33 @@ type MockLoginManager struct {
 		insecure bool,
 		authContext pkgauth.AuthContext,
 	) (backend.Backend, error)
+
+	ResolveCredentialsF func(
+		context.Context, pkgWorkspace.Context, string, *workspace.Project,
+	) (*pkgauth.Credentials, error)
 }
 
 var _ LoginManager = (*MockLoginManager)(nil)
 
-func (lm *MockLoginManager) Login(
-	ctx context.Context,
-	ws pkgWorkspace.Context,
-	sink diag.Sink,
-	url string,
+func (lm *MockLoginManager) ResolveCredentials(ctx context.Context, ws pkgWorkspace.Context, url string,
 	project *workspace.Project,
-	setCurrent bool,
-	insecure bool,
-	color colors.Colorization,
+) (*pkgauth.Credentials, error) {
+	if lm.ResolveCredentialsF != nil {
+		return lm.ResolveCredentialsF(ctx, ws, url, project)
+	}
+	return NewLoginManager().ResolveCredentials(ctx, ws, url, project)
+}
+
+func (lm *MockLoginManager) Login(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink, url string,
+	project *workspace.Project, options LoginOptions,
 ) (backend.Backend, error) {
 	if lm.LoginF != nil {
-		return lm.LoginF(ctx, ws, sink, url, project, setCurrent, insecure, color)
+		url, preparedCurrent, err := prepareLogin(ctx, ws, url, project, options)
+		options.SetCurrent = options.SetCurrent || preparedCurrent
+		if err != nil {
+			return nil, err
+		}
+		return lm.LoginF(ctx, ws, sink, url, project, options.SetCurrent, options.Insecure, options.Color)
 	}
 	panic("not implemented")
 }

@@ -28,7 +28,6 @@ import (
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
-	"github.com/pulumi/pulumi/pkg/v3/backend/secrets"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -107,7 +106,9 @@ func newStackExportCmd() *cobra.Command {
 
 			if showSecrets {
 				// log show secrets event
-				snap, err := stack.DeserializeUntypedDeployment(ctx, deployment, secrets.DefaultProvider)
+				snap, err := stack.DeserializeUntypedDeployment(
+					ctx, deployment, cmdBackend.SecretsProvider(cmdBackend.DefaultLoginManager),
+				)
 				if err != nil {
 					return stack.FormatDeploymentDeserializationError(err, stackName)
 				}

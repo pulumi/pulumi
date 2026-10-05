@@ -67,6 +67,12 @@ The <provider> argument can be specified in the same way as in 'pulumi package a
 			sink := cmdutil.Diag()
 			registry := cmdCmd.NewDefaultRegistry(
 				cmd.Context(), cmdBackend.DefaultLoginManager, pkgWorkspace.Instance, nil, sink, env.Global())
+			credentials, err := cmdBackend.ResolveCurrentCredentials(
+				cmd.Context(), pkgWorkspace.Instance, cmdBackend.DefaultLoginManager, env.Global(), nil,
+			)
+			if err != nil {
+				return err
+			}
 			pluginHost, err := pkghost.New(context.WithoutCancel(cmd.Context()), sink, sink, nil,
 				pkgWorkspace.EnsureLanguageInstalled, schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext,
 				packageworkspace.NewResolverServer(registry))
@@ -76,7 +82,7 @@ The <provider> argument can be specified in the same way as in 'pulumi package a
 			// host is owned here, closed after the context
 			defer contract.IgnoreClose(pluginHost)
 			pctx, err := plugin.NewContext(cmd.Context(), sink, sink, pluginHost, nil, wd, nil, false,
-				nil)
+				nil, credentials)
 			if err != nil {
 				return err
 			}

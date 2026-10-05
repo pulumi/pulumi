@@ -25,6 +25,8 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -32,6 +34,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/pulumi/pulumi/pkg/v3/auth"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 
 	"github.com/blang/semver"
@@ -472,17 +475,24 @@ func parsePort(portString string) (int, error) {
 	return port, nil
 }
 
-// cloudCredentialEnvVars returns the KEY=value environment entries the context injects into a
-// plugin. They are passed to every plugin kind as part of `ExecPlugin`.
-func cloudCredentialEnvVars(ctx *Context) []string {
-	if ctx == nil {
-		return nil
+// applyCloudCredentialEnv applies backend credentials to a plugin's environment, removing empty values.
+func applyCloudCredentialEnv(ctx *Context, environment []string) []string {
+	if ctx == nil || ctx.credentials == nil || !auth.IsHTTPBackend(ctx.credentials.BackendURL) {
+		return environment
 	}
-	vars := make([]string, 0, len(ctx.CloudCredentialEnv))
-	for k, v := range ctx.CloudCredentialEnv {
-		vars = append(vars, k+"="+v)
+	for name, value := range map[string]string{
+		env.APIURL.Var().Name():      ctx.credentials.BackendURL,
+		env.AccessToken.Var().Name(): ctx.credentials.HTTPAuth.AccessToken(),
+	} {
+		environment = slices.DeleteFunc(environment, func(entry string) bool {
+			key, _, _ := strings.Cut(entry, "=")
+			return key == name || runtime.GOOS == "windows" && strings.EqualFold(key, name)
+		})
+		if value != "" {
+			environment = append(environment, name+"="+value)
+		}
 	}
-	return vars
+	return environment
 }
 
 // ExecPlugin starts a plugin executable either via a direct exec or via a language runtime.
@@ -511,8 +521,8 @@ func ExecPlugin(ctx *Context, bin, prefix string, kind apitype.PluginKind,
 		environment = append(environment, "PULUMI_LOG_OTLP_ENDPOINT="+logEP)
 	}
 
-	// Appended last to win over ambient values.
-	environment = append(environment, cloudCredentialEnvVars(ctx)...)
+	// Backend credentials take precedence over ambient values.
+	environment = applyCloudCredentialEnv(ctx, environment)
 
 	// Check to see if we have a binary we can invoke directly
 	stat, err := os.Stat(bin)

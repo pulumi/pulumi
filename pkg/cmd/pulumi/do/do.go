@@ -179,6 +179,10 @@ func NewDoCmd(
 		loading := startSpinner(fmt.Sprintf("Loading provider '%s'", pkgargs[0]))
 		defer loading()
 
+		credentials, err := cmdBackend.ResolveCurrentCredentials(ctx, ws, lm, env.Global(), proj)
+		if err != nil {
+			return nil, nil, fmt.Errorf("resolve credentials: %w", err)
+		}
 		host, err := newHost(ctx, diagFwd, statusFwd)
 		if err != nil {
 			return nil, nil, fmt.Errorf("create plugin host: %w", err)
@@ -186,7 +190,7 @@ func NewDoCmd(
 
 		pctx, err := plugin.NewContext(
 			ctx, diagFwd, statusFwd, host, nil, wd, nil, false,
-			nil)
+			nil, credentials)
 		if err != nil {
 			contract.IgnoreClose(host)
 			return nil, nil, fmt.Errorf("create plugin context: %w", err)

@@ -20,11 +20,14 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/pulumi/pulumi/pkg/v3/pluginstorage"
+
 	"github.com/opentracing/opentracing-go"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 
+	"github.com/pulumi/pulumi/pkg/v3/auth"
 	"github.com/pulumi/pulumi/pkg/v3/display"
 	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
@@ -50,7 +53,7 @@ const clientRuntimeName = "client"
 // so the caller must close it after closing the context.
 func ProjectInfoContext(ctx context.Context, projinfo *Projinfo, host plugin.Host,
 	diag, statusDiag diag.Sink, disableProviderPreview bool,
-	tracingSpan opentracing.Span, config map[config.Key]string,
+	tracingSpan opentracing.Span, config map[config.Key]string, credentials *auth.Credentials,
 ) (string, string, *plugin.Context, error) {
 	contract.Requiref(projinfo != nil, "projinfo", "must not be nil")
 	contract.Requiref(host != nil, "host", "must not be nil")
@@ -69,7 +72,7 @@ func ProjectInfoContext(ctx context.Context, projinfo *Projinfo, host plugin.Hos
 
 	pctx, err := plugin.NewContextWithRoot(pluginCtx, diag, statusDiag, host, pwd, projinfo.Root,
 		projinfo.Proj.Runtime.Options(), disableProviderPreview, tracingSpan, projinfo.Proj.Plugins,
-		projinfo.Proj.GetPackageSpecs(), config)
+		projinfo.Proj.GetPackageSpecs(), config, credentials)
 	if err != nil {
 		return "", "", nil, err
 	}
@@ -238,6 +241,10 @@ func newDeployment(
 	contract.Assertf(info != nil, "a deployment context must be provided")
 	contract.Assertf(opts.SourceFunc != nil, "a source factory must be provided")
 
+	if opts.pluginManager == nil {
+		opts.pluginManager = defaultPluginManager{Context: pluginstorage.Instance, credentials: ctx.Credentials}
+	}
+
 	// First, load the package metadata and the deployment target in preparation for executing the package's program
 	// and creating resources.  This includes fetching its pwd and main overrides.
 	proj, target := info.Update.Project, info.Update.Target
@@ -256,7 +263,7 @@ func newDeployment(
 	// Create a context for plugins.
 	baseCtx := trace.ContextWithSpan(ctx.Cancel.Base(), info.otelSpan)
 	pwd, main, plugctx, err := ProjectInfoContext(baseCtx, projinfo, opts.host,
-		opts.Diag, opts.StatusDiag, opts.DisableProviderPreview, info.TracingSpan, decryptedConfig)
+		opts.Diag, opts.StatusDiag, opts.DisableProviderPreview, info.TracingSpan, decryptedConfig, ctx.Credentials)
 	if err != nil {
 		return nil, err
 	}

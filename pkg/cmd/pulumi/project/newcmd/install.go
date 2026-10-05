@@ -22,6 +22,8 @@ import (
 	"os"
 	"path/filepath"
 
+	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+
 	cmdDiag "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/diag"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageinstallation"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageresolution"
@@ -122,13 +124,19 @@ func InstallPackagesFromProject(
 	d := diag.DefaultSink(stdout, stderr, diag.FormatOptions{
 		Color: utilCmdutil.GetGlobalColorization(),
 	})
+	credentials, err := cmdBackend.ResolveCurrentCredentials(
+		ctx, pkgWorkspace.Instance, cmdBackend.DefaultLoginManager, e, nil,
+	)
+	if err != nil {
+		return packageinstallation.State{}, err
+	}
 	pluginHost, err := pkghost.New(context.WithoutCancel(ctx), d, d, nil, pkgWorkspace.EnsureLanguageInstalled,
 		schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext,
 		packageworkspace.NewResolverServer(registry))
 	if err != nil {
 		return packageinstallation.State{}, err
 	}
-	pctx, err := plugin.NewContext(ctx, d, d, pluginHost, nil, root, nil, false, nil)
+	pctx, err := plugin.NewContext(ctx, d, d, pluginHost, nil, root, nil, false, nil, credentials)
 	if err != nil {
 		return packageinstallation.State{}, errors.Join(err, pluginHost.Close())
 	}

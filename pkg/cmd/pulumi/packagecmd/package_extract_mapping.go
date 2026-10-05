@@ -66,6 +66,12 @@ empty string.`,
 			sink := cmdutil.Diag()
 			registry := cmdCmd.NewDefaultRegistry(
 				ctx, cmdBackend.DefaultLoginManager, pkgWorkspace.Instance, nil, sink, env.Global())
+			credentials, err := cmdBackend.ResolveCurrentCredentials(
+				cmd.Context(), pkgWorkspace.Instance, cmdBackend.DefaultLoginManager, env.Global(), nil,
+			)
+			if err != nil {
+				return err
+			}
 			pluginHost, err := pkghost.New(context.WithoutCancel(ctx), sink, sink, nil,
 				pkgWorkspace.EnsureLanguageInstalled, schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext,
 				packageworkspace.NewResolverServer(registry))
@@ -76,7 +82,7 @@ empty string.`,
 			defer contract.IgnoreClose(pluginHost)
 			pctx, err := plugin.NewContext(
 				ctx, sink, sink, pluginHost, nil, wd, nil, false,
-				nil)
+				nil, credentials)
 			if err != nil {
 				return err
 			}

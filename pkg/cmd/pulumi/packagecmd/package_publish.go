@@ -178,7 +178,8 @@ func (cmd *packagePublishCmd) Run(
 	}
 	// host is owned here, closed after the context
 	defer contract.IgnoreClose(pluginHost)
-	pctx, err := plugin.NewContext(ctx, sink, sink, pluginHost, nil, wd, nil, false, nil)
+	pctx, err := plugin.NewContext(ctx, sink, sink, pluginHost, nil, wd, nil, false, nil,
+		cmdBackend.PluginCredentials(b))
 	if err != nil {
 		return err
 	}

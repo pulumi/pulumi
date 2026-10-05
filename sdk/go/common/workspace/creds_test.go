@@ -888,3 +888,29 @@ func TestAgentCredentialsRepairInsecurePermissions(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, fs.FileMode(0o700), info.Mode().Perm())
 }
+
+//nolint:paralleltest // IsolateCredentials changes process-wide environment variables.
+func TestCredentialsWithoutAccounts(t *testing.T) {
+	for _, tt := range []struct {
+		name  string
+		creds Credentials
+		keep  bool
+	}{
+		{name: "current backend", creds: Credentials{Current: "s3://state"}, keep: true},
+		{name: "empty"},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			dir := ptesting.IsolateCredentials(t).Home
+			require.NoError(t, StoreCredentials(testCreds()))
+			require.NoError(t, StoreCredentials(tt.creds))
+			if !tt.keep {
+				assert.NoFileExists(t, filepath.Join(dir, "credentials.json"))
+				return
+			}
+			assert.FileExists(t, filepath.Join(dir, "credentials.json"))
+			loaded, err := GetStoredCredentials()
+			require.NoError(t, err)
+			assert.Equal(t, tt.creds, loaded)
+		})
+	}
+}

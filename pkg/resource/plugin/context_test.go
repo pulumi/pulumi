@@ -21,6 +21,7 @@ import (
 	"testing"
 
 	"github.com/opentracing/opentracing-go/mocktracer"
+	"github.com/pulumi/pulumi/pkg/v3/auth"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/diagtest"
 	"github.com/stretchr/testify/require"
 )
@@ -38,6 +39,7 @@ func TestContextRequest_race(t *testing.T) {
 		nil,                 // runtimeOptions
 		false,               // disableProviderPreview
 		mocktracer.New().StartSpan("root"),
+		nil,
 	)
 	require.NoError(t, err)
 
@@ -65,6 +67,7 @@ func TestWithoutProviderDebugging(t *testing.T) {
 		nil,
 		false,
 		mocktracer.New().StartSpan("root"),
+		nil,
 	)
 	require.NoError(t, err)
 
@@ -107,8 +110,41 @@ func TestNewContextRootsAtDetectedProject(t *testing.T) { //nolint:paralleltest 
 		nil,
 		false,
 		mocktracer.New().StartSpan("root"),
+		nil,
 	)
 	require.NoError(t, err)
 	require.Equal(t, projectDir, ctx.Root)
 	require.Equal(t, componentDir, ctx.Pwd)
+}
+
+func TestContextUsesSuppliedCredentials(t *testing.T) {
+	t.Setenv("PULUMI_BACKEND_URL", "https://ambient.example.com")
+	t.Setenv("PULUMI_ACCESS_TOKEN", "ambient-token")
+	pwd := t.TempDir()
+
+	for name, create := range map[string]func(*auth.Credentials) (*Context, error){
+		"NewContext": func(creds *auth.Credentials) (*Context, error) {
+			return NewContext(t.Context(), nil, nil, &MockHost{}, nil, pwd, nil, false, nil, creds)
+		},
+		"NewContextWithRoot": func(creds *auth.Credentials) (*Context, error) {
+			return NewContextWithRoot(t.Context(), nil, nil, &MockHost{}, pwd, pwd, nil, false, nil, nil, nil, nil, creds)
+		},
+		"NewContextWithHost": func(creds *auth.Credentials) (*Context, error) {
+			return NewContextWithHost(t.Context(), nil, nil, &MockHost{}, pwd, pwd, nil, creds)
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			for _, creds := range []*auth.Credentials{nil, {BackendURL: "https://selected.example.com"}} {
+				ctx, err := create(creds)
+				require.NoError(t, err)
+				if creds == nil {
+					require.Nil(t, ctx.Credentials())
+				} else {
+					require.Same(t, creds, ctx.Credentials())
+				}
+				require.NoError(t, ctx.Close())
+			}
+		})
+	}
 }

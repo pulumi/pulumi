@@ -323,7 +323,7 @@ func (f *fetch) listOrgTemplates(
 		return
 	}
 
-	url, err := pkgWorkspace.GetCurrentCloudURL(ws, e, project)
+	url, _, err := cmdBackend.PrepareCurrentBackend(ctx, lm, ws, e, project)
 	if err != nil {
 		f.addError(fmt.Errorf("could not get current cloud url: %w", err))
 		return

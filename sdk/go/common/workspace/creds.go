@@ -455,7 +455,7 @@ func decryptCredentials(credsFile string, data []byte) ([]byte, error) {
 // Agent credentials go through here too — all agent processes share one OS
 // user and one key.
 func writeCredentialsFile(credsFile string, creds Credentials) error {
-	if len(creds.Accounts) == 0 {
+	if len(creds.Accounts) == 0 && creds.Current == "" {
 		err := os.Remove(credsFile)
 		if err != nil && !os.IsNotExist(err) {
 			return err

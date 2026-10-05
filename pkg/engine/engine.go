@@ -17,6 +17,7 @@ package engine
 import (
 	"github.com/opentracing/opentracing-go"
 
+	"github.com/pulumi/pulumi/pkg/v3/auth"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/util/cancel"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -45,6 +46,8 @@ type Context struct {
 	BackendClient               deploy.BackendClient
 	ParentSpan                  opentracing.SpanContext
 	PluginManager               PluginManager
+	// Credentials supplies the opened backend's credentials to plugins.
+	Credentials *auth.Credentials
 	// FinalizeUpdateFunc is an optional function that is called at the end of an update. It can be used to
 	// perform any finalization steps, including sending engine events.
 	FinalizeUpdateFunc func()

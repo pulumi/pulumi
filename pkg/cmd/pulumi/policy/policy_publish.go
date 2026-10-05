@@ -139,7 +139,7 @@ func (cmd *policyPublishCmd) Run(ctx context.Context, lm cmdBackend.LoginManager
 	// host is owned here, closed after the context
 	defer contract.IgnoreClose(pluginHost)
 	plugctx, err := plugin.NewContextWithRoot(ctx, cmdutil.Diag(), cmdutil.Diag(), pluginHost, pwd, projinfo.Root,
-		projinfo.Proj.Runtime.Options(), false, nil, nil, nil, nil)
+		projinfo.Proj.Runtime.Options(), false, nil, nil, nil, nil, cmdBackend.PluginCredentials(b))
 	if err != nil {
 		return err
 	}
@@ -177,12 +177,12 @@ func loginToCloudBackend(
 	if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
 		return nil, err
 	}
-	cloudURL, err := pkgWorkspace.GetCurrentCloudURL(ws, env.Global(), project)
+	b, err := lm.Current(ctx, ws, cmdutil.Diag(), "", project, true /* setCurrent */)
 	if err != nil {
 		return nil, fmt.Errorf("`pulumi policy` command requires the user to be logged into the Pulumi Cloud: %w", err)
 	}
 
-	return lm.Current(ctx, ws, cmdutil.Diag(), cloudURL, project, true /* setCurrent*/)
+	return b, nil
 }
 
 // requirePolicyPack attempts to log into the cloud backend and retrieves the requested policy

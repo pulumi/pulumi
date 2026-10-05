@@ -314,12 +314,10 @@ func (lm *migrationLoginManager) Login(
 	sink diag.Sink,
 	url string,
 	project *workspace.Project,
-	setCurrent bool,
-	insecure bool,
-	color colors.Colorization,
+	options cmdBackend.LoginOptions,
 ) (backend.Backend, error) {
 	if url == lm.sourceURL {
-		return lm.LoginManager.Login(ctx, ws, sink, url, project, setCurrent, insecure, color)
+		return lm.LoginManager.Login(ctx, ws, sink, url, project, options)
 	}
 	if url == lm.targetURL {
 		return lm.targetBE, nil
@@ -346,7 +344,7 @@ func TestMigrationLoginManagerRoutesExactURLs(t *testing.T) {
 		},
 	}
 	login := func(lm cmdBackend.LoginManager, url string) (backend.Backend, error) {
-		return lm.Login(t.Context(), &pkgWorkspace.MockContext{}, nil, url, nil, false, false, colors.Never)
+		return lm.Login(t.Context(), &pkgWorkspace.MockContext{}, nil, url, nil, cmdBackend.LoginOptions{Color: colors.Never})
 	}
 	lm := withMigrationTarget(sourceURL, sourceLM, targetBE)
 

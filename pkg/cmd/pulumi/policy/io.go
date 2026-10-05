@@ -70,6 +70,12 @@ func InstallPluginDependencies(
 	}, Root: root}
 	reg := cmdCmd.NewDefaultRegistry(
 		ctx, cmdBackend.DefaultLoginManager, pkgWorkspace.Instance, nil, cmdutil.Diag(), env.Global())
+	credentials, err := cmdBackend.ResolveCurrentCredentials(
+		ctx, pkgWorkspace.Instance, cmdBackend.DefaultLoginManager, env.Global(), nil,
+	)
+	if err != nil {
+		return err
+	}
 	pluginHost, err := pkghost.New(
 		context.WithoutCancel(ctx), cmdutil.Diag(), cmdutil.Diag(), nil, pkgWorkspace.EnsureLanguageInstalled,
 		schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext,
@@ -87,6 +93,7 @@ func InstallPluginDependencies(
 		false,
 		span,
 		nil,
+		credentials,
 	)
 	if err != nil {
 		return err

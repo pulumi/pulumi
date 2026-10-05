@@ -24,6 +24,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/pulumi/pulumi/pkg/v3/auth"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	backendsecrets "github.com/pulumi/pulumi/pkg/v3/backend/secrets"
@@ -92,12 +93,20 @@ func newPolicyAnalyzeCmd(
 					"the number of --policy-pack-config paths must match the number of --policy-pack paths")
 			}
 
+			var credentials *auth.Credentials
+
 			// Default: loadAnalyzers.
 			if loadAnalyzers == nil {
 				loadAnalyzers = func(ctx context.Context, packs []engine.LocalPolicyPack) ([]plugin.Analyzer, func(), error) {
 					cwd, err := os.Getwd()
 					if err != nil {
 						return nil, nil, fmt.Errorf("getting working directory: %w", err)
+					}
+					if credentials == nil {
+						credentials, err = cmdBackend.ResolveCurrentCredentials(ctx, ws, lm, env.Global(), nil)
+						if err != nil {
+							return nil, nil, err
+						}
 					}
 					reg := cmdCmd.NewDefaultRegistry(ctx, lm, ws, nil, cmdutil.Diag(), env.Global())
 					pluginHost, err := pkghost.New(context.WithoutCancel(ctx), cmdutil.Diag(), cmdutil.Diag(),
@@ -108,7 +117,7 @@ func newPolicyAnalyzeCmd(
 						return nil, nil, fmt.Errorf("creating plugin host: %w", err)
 					}
 					pctx, err := plugin.NewContext(ctx, cmdutil.Diag(), cmdutil.Diag(),
-						pluginHost, nil, cwd, nil, true, nil)
+						pluginHost, nil, cwd, nil, true, nil, credentials)
 					if err != nil {
 						contract.IgnoreClose(pluginHost)
 						return nil, nil, fmt.Errorf("creating plugin context: %w", err)
@@ -175,6 +184,7 @@ func newPolicyAnalyzeCmd(
 					return err
 				}
 
+				credentials = cmdBackend.PluginCredentials(s.Backend())
 				snap, err = s.Snapshot(ctx, secretsProvider)
 				if err != nil {
 					return fmt.Errorf("loading stack snapshot: %w", err)

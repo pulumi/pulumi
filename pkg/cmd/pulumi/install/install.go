@@ -128,6 +128,10 @@ func NewInstallCmd(ws pkgWorkspace.Context) *cobra.Command {
 			projinfo := &engine.Projinfo{Proj: proj, Root: root}
 			reg := cmdCmd.NewDefaultRegistry(
 				cmd.Context(), cmdBackend.DefaultLoginManager, pkgWorkspace.Instance, proj, cmdutil.Diag(), env.Global())
+			credentials, err := cmdBackend.ResolveCurrentCredentials(ctx, ws, cmdBackend.DefaultLoginManager, env.Global(), proj)
+			if err != nil {
+				return err
+			}
 			pluginHost, err := pkghost.New(
 				context.WithoutCancel(ctx), cmdutil.Diag(), cmdutil.Diag(), nil, pkgWorkspace.EnsureLanguageInstalled,
 				schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext,
@@ -145,6 +149,7 @@ func NewInstallCmd(ws pkgWorkspace.Context) *cobra.Command {
 				false,
 				span,
 				nil,
+				credentials,
 			)
 			if err != nil {
 				return err

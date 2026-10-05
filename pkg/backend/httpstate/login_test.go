@@ -126,7 +126,7 @@ func TestCurrentEnvTokenStoresInDefaultPathWhenWritable(t *testing.T) {
 	account, err := NewLoginManager().Current(t.Context(), server.URL, false, true)
 	require.NoError(t, err)
 	require.NotNil(t, account)
-	assert.Equal(t, "env-token", account.AccessToken)
+	assert.Equal(t, "env-token", account.HTTPAuth.AccessToken())
 
 	defaultAccount, err := workspace.GetAccount(server.URL)
 	require.NoError(t, err)
@@ -140,7 +140,8 @@ func TestValidateStoredAccountSkipsNetworkWhenNoCredential(t *testing.T) {
 	t.Parallel()
 	// An account with neither an access nor a refresh token can't authenticate and must short-
 	// circuit before any network attempt — the cloudURL here intentionally points nowhere.
-	account, valid, err := validateStoredAccount(t.Context(), "http://127.0.0.1:0", false, workspace.Account{})
+	account, valid, err := validateStoredAccount(
+		t.Context(), "http://127.0.0.1:0", false, workspace.Account{})
 	require.NoError(t, err)
 	assert.False(t, valid)
 	assert.Empty(t, account.AccessToken)

@@ -338,10 +338,14 @@ func installPluginSpec(
 	install workspace.PluginDescriptor, file string,
 	sink diag.Sink, bars *progress.Group, color colors.Colorization, reinstall bool,
 ) error {
+	credentials, err := cmdBackend.ResolveCurrentCredentials(
+		ctx, pkgWorkspace.Instance, cmdBackend.DefaultLoginManager, env.Global(), nil)
+	if err != nil {
+		return err
+	}
 	// If we got here, actually try to do the download.
 	var source string
 	var payload pluginstorage.Content
-	var err error
 	if file == "" {
 		withProgress := func(stream io.ReadCloser, size int64) io.ReadCloser {
 			return bars.Wrap(stream, size, fmt.Sprintf("Downloading plugin %s", install), color)
@@ -376,7 +380,7 @@ func installPluginSpec(
 	}
 	slog.InfoContext(ctx, "installing tarball ...", "label", label)
 	if err = pkgWorkspace.InstallPluginContent(
-		ctx, install, payload, reinstall, schema.NewLoaderServerFromContext,
+		ctx, install, payload, reinstall, schema.NewLoaderServerFromContext, credentials,
 	); err != nil {
 		return fmt.Errorf("installing %s from %s: %w", label, source, err)
 	}

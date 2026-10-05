@@ -23,6 +23,9 @@ import (
 	"os"
 	"path/filepath"
 
+	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+	"github.com/pulumi/pulumi/pkg/v3/secrets"
+
 	"github.com/blang/semver"
 	"github.com/gofrs/uuid"
 	"github.com/spf13/cobra"
@@ -30,7 +33,6 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
-	backendSecrets "github.com/pulumi/pulumi/pkg/v3/backend/secrets"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/autonames"
 	cmdConfig "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/config"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/metadata"
@@ -59,15 +61,16 @@ import (
 // UUID against any existing snippet of the same Name+Type); the resolved Stack is passed through
 // here so the hook doesn't repeat the load.
 type StatefulUpdateRequest struct {
-	Snippets    []resource.Snippet
-	Stack       backend.Stack
-	DryRun      bool
-	Yes         bool
-	ShowSecrets bool
-	Delete      bool
-	Proj        *workspace.Project
-	Root        string
-	Sink        diag.Sink
+	SecretsProvider secrets.Provider
+	Snippets        []resource.Snippet
+	Stack           backend.Stack
+	DryRun          bool
+	Yes             bool
+	ShowSecrets     bool
+	Delete          bool
+	Proj            *workspace.Project
+	Root            string
+	Sink            diag.Sink
 }
 
 // StatefulUpdateResult carries whatever the caller wants to render after the update.
@@ -215,7 +218,7 @@ func (pc *packageCommand) runStatefulSnippetUpdate(cmd *cobra.Command, args stat
 	if err != nil {
 		return err
 	}
-	snap, err := stack.Snapshot(ctx, backendSecrets.DefaultProvider)
+	snap, err := stack.Snapshot(ctx, cmdBackend.SecretsProvider(pc.lm))
 	if err != nil {
 		return fmt.Errorf("load stack snapshot: %w", err)
 	}
@@ -304,14 +307,15 @@ func (pc *packageCommand) runStatefulSnippetUpdate(cmd *cobra.Command, args stat
 	snippets = append(snippets, snippet)
 
 	result, err := pc.runStatefulUpdate(ctx, cmd.Flags(), StatefulUpdateRequest{
-		Snippets:    snippets,
-		Stack:       stack,
-		DryRun:      pc.dryrun,
-		Yes:         args.yes,
-		ShowSecrets: pc.showSecrets,
-		Proj:        pc.proj,
-		Root:        pc.root,
-		Sink:        pc.diagFwd,
+		SecretsProvider: cmdBackend.SecretsProvider(pc.lm),
+		Snippets:        snippets,
+		Stack:           stack,
+		DryRun:          pc.dryrun,
+		Yes:             args.yes,
+		ShowSecrets:     pc.showSecrets,
+		Proj:            pc.proj,
+		Root:            pc.root,
+		Sink:            pc.diagFwd,
 	})
 	if err != nil {
 		return err
@@ -346,7 +350,7 @@ func (pc *packageCommand) runStatefulSnippetPatch(
 	if err != nil {
 		return err
 	}
-	snap, err := stack.Snapshot(ctx, backendSecrets.DefaultProvider)
+	snap, err := stack.Snapshot(ctx, cmdBackend.SecretsProvider(pc.lm))
 	if err != nil {
 		return fmt.Errorf("load stack snapshot: %w", err)
 	}
@@ -404,14 +408,15 @@ func (pc *packageCommand) runStatefulSnippetPatch(
 	patched.References = references
 
 	result, err := pc.runStatefulUpdate(ctx, cmd.Flags(), StatefulUpdateRequest{
-		Snippets:    []resource.Snippet{patched},
-		Stack:       stack,
-		DryRun:      pc.dryrun,
-		Yes:         yes,
-		ShowSecrets: pc.showSecrets,
-		Proj:        pc.proj,
-		Root:        pc.root,
-		Sink:        pc.diagFwd,
+		SecretsProvider: cmdBackend.SecretsProvider(pc.lm),
+		Snippets:        []resource.Snippet{patched},
+		Stack:           stack,
+		DryRun:          pc.dryrun,
+		Yes:             yes,
+		ShowSecrets:     pc.showSecrets,
+		Proj:            pc.proj,
+		Root:            pc.root,
+		Sink:            pc.diagFwd,
 	})
 	if err != nil {
 		return err
@@ -457,7 +462,7 @@ func (pc *packageCommand) runStatefulSnippetDelete(
 	if err != nil {
 		return err
 	}
-	snap, err := stack.Snapshot(ctx, backendSecrets.DefaultProvider)
+	snap, err := stack.Snapshot(ctx, cmdBackend.SecretsProvider(pc.lm))
 	if err != nil {
 		return fmt.Errorf("load stack snapshot: %w", err)
 	}
@@ -471,6 +476,7 @@ func (pc *packageCommand) runStatefulSnippetDelete(
 	}
 
 	result, err := pc.runStatefulUpdate(ctx, cmd.Flags(), StatefulUpdateRequest{
+		SecretsProvider: cmdBackend.SecretsProvider(pc.lm),
 		Snippets: []resource.Snippet{{
 			UUID: snippetUUID,
 			Name: name,
@@ -800,7 +806,7 @@ func DefaultRunStatefulUpdate(
 		ShowDiff:      true,
 	}
 
-	ssml := cmdStack.SecretsManagerLoader{FallbackToState: true}
+	ssml := cmdStack.SecretsManagerLoader{FallbackToState: true, SecretsProvider: req.SecretsProvider}
 	// Compute the stack config file path from req.Root rather than letting LoadProjectStack walk
 	// upward from CWD — for `pulumi do` we may be running outside any Pulumi project directory
 	// (with req.Proj/req.Root supplied by the global fallback under $PULUMI_HOME).
@@ -855,7 +861,7 @@ func DefaultRunStatefulUpdate(
 		Opts:               backend.UpdateOptions{Engine: engineOpts, Display: displayOpts, AutoApprove: req.Yes},
 		StackConfiguration: cfg,
 		SecretsManager:     sm,
-		SecretsProvider:    backendSecrets.DefaultProvider,
+		SecretsProvider:    req.SecretsProvider,
 		Scopes:             backend.CancellationScopes,
 	}
 

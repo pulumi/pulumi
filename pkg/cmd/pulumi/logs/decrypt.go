@@ -199,7 +199,10 @@ func secretsManagerFromStack(ctx context.Context, s backend.Stack) (secrets.Mana
 		return nil, errors.New("deployment has no secrets provider configured")
 	}
 
-	provider := backend_secrets.NamedStackProvider{StackName: s.Ref().Name().String()}
+	provider := backend_secrets.NamedStackProvider{
+		Provider:  cmdBackend.SecretsProvider(cmdBackend.DefaultLoginManager),
+		StackName: s.Ref().Name().String(),
+	}
 	return provider.OfType(ctx, v3.SecretsProviders.Type, v3.SecretsProviders.State)
 }
 

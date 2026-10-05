@@ -80,6 +80,12 @@ func getProjectPlugins(ctx context.Context) ([]workspace.PluginDescriptor, error
 	projinfo := &engine.Projinfo{Proj: proj, Root: root}
 	reg := cmdCmd.NewDefaultRegistry(
 		ctx, cmdBackend.DefaultLoginManager, pkgWorkspace.Instance, nil, cmdutil.Diag(), env.Global())
+	credentials, err := cmdBackend.ResolveCurrentCredentials(
+		ctx, pkgWorkspace.Instance, cmdBackend.DefaultLoginManager, env.Global(), proj,
+	)
+	if err != nil {
+		return nil, err
+	}
 	pluginHost, err := pkghost.New(
 		context.WithoutCancel(ctx), cmdutil.Diag(), cmdutil.Diag(), nil, pkgWorkspace.EnsureLanguageInstalled,
 		schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext,
@@ -89,7 +95,8 @@ func getProjectPlugins(ctx context.Context) ([]workspace.PluginDescriptor, error
 	}
 	defer contract.IgnoreClose(pluginHost) // host is owned here, closed after the context
 	pwd, main, pctx, err := engine.ProjectInfoContext(
-		ctx, projinfo, pluginHost, cmdutil.Diag(), cmdutil.Diag(), false, nil, nil)
+		ctx, projinfo, pluginHost, cmdutil.Diag(), cmdutil.Diag(), false, nil, nil,
+		credentials)
 	if err != nil {
 		return nil, err
 	}
@@ -120,6 +127,12 @@ func resolvePlugins(ctx context.Context, plugins []workspace.PluginDescriptor) (
 
 	projinfo := &engine.Projinfo{Proj: proj, Root: root}
 	reg := cmdCmd.NewDefaultRegistry(ctx, cmdBackend.DefaultLoginManager, pkgWorkspace.Instance, nil, d, env.Global())
+	credentials, err := cmdBackend.ResolveCurrentCredentials(
+		ctx, pkgWorkspace.Instance, cmdBackend.DefaultLoginManager, env.Global(), proj,
+	)
+	if err != nil {
+		return nil, err
+	}
 	pluginHost, err := pkghost.New(context.WithoutCancel(ctx), d, d, nil, pkgWorkspace.EnsureLanguageInstalled,
 		schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext,
 		packageworkspace.NewResolverServer(reg))
@@ -127,7 +140,8 @@ func resolvePlugins(ctx context.Context, plugins []workspace.PluginDescriptor) (
 		return nil, err
 	}
 	defer contract.IgnoreClose(pluginHost) // host is owned here, closed after the context
-	_, _, pctx, err := engine.ProjectInfoContext(ctx, projinfo, pluginHost, d, d, false, nil, nil)
+	_, _, pctx, err := engine.ProjectInfoContext(ctx, projinfo, pluginHost, d, d, false, nil, nil,
+		credentials)
 	if err != nil {
 		return nil, err
 	}

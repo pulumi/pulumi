@@ -24,6 +24,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
@@ -109,7 +110,8 @@ func preflightCloudCredentials(
 	}
 
 	// The check has its own plugin context so that the providers it launches are released when it is done.
-	pctx, err := plugin.NewContextWithHost(ctx, sink, sink, host, root, root, nil)
+	pctx, err := plugin.NewContextWithHost(ctx, sink, sink, host, root, root, nil,
+		cmdBackend.PluginCredentials(s.Backend()))
 	if err != nil {
 		slog.DebugContext(ctx, "skipping credentials check", "err", err)
 		return

@@ -47,7 +47,9 @@ func newInstallPluginFunc(pctx *plugin.Context) func(string) *semver.Version {
 			Name: pluginName,
 			Kind: apitype.ResourcePlugin,
 		}
-		version, err := pkgWorkspace.InstallPlugin(pctx.Base(), pluginSpec, log, schema.NewLoaderServerFromContext)
+		version, err := pkgWorkspace.InstallPlugin(
+			pctx.Base(), pluginSpec, log, schema.NewLoaderServerFromContext, pctx.Credentials(),
+		)
 		if err != nil {
 			log(diag.Warning, fmt.Sprintf("failed to install provider %s: %v", pluginName, err))
 			return nil

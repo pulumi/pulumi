@@ -73,6 +73,12 @@ or a JSON/YAML schema file. Pass "-" to read a JSON schema from stdin.`,
 			sink := cmdutil.Diag()
 			reg := cmdCmd.NewDefaultRegistry(
 				cmd.Context(), cmdBackend.DefaultLoginManager, pkgWorkspace.Instance, nil, sink, env.Global())
+			credentials, err := cmdBackend.ResolveCurrentCredentials(
+				cmd.Context(), pkgWorkspace.Instance, cmdBackend.DefaultLoginManager, env.Global(), nil,
+			)
+			if err != nil {
+				return err
+			}
 			pluginHost, err := pkghost.New(context.WithoutCancel(cmd.Context()), sink, sink, nil,
 				pkgWorkspace.EnsureLanguageInstalled, schema.NewLoaderServerFromContext,
 				convert.NewMapperServerFromContext, packageworkspace.NewResolverServer(reg))
@@ -81,7 +87,8 @@ or a JSON/YAML schema file. Pass "-" to read a JSON schema from stdin.`,
 			}
 			// host is owned here, closed after the context
 			defer contract.IgnoreClose(pluginHost)
-			pctx, err := plugin.NewContext(cmd.Context(), sink, sink, pluginHost, nil, wd, nil, false, nil)
+			pctx, err := plugin.NewContext(cmd.Context(), sink, sink, pluginHost, nil, wd, nil, false, nil,
+				credentials)
 			if err != nil {
 				return err
 			}

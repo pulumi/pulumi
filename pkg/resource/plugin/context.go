@@ -23,6 +23,7 @@ import (
 	"github.com/opentracing/opentracing-go"
 	"google.golang.org/grpc"
 
+	"github.com/pulumi/pulumi/pkg/v3/auth"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
@@ -47,15 +48,13 @@ type Context struct {
 	// metadata describing the plugin.
 	DialOptions func(pluginInfo any) []grpc.DialOption
 
-	// Environment injected into every plugin launched with this context, appended by ExecPlugin.
-	CloudCredentialEnv map[string]string
-
 	DebugTraceMutex *sync.Mutex // used internally to syncronize debug tracing
 
 	tracingSpan opentracing.Span // the OpenTracing span to parent requests within.
 
 	cancel      context.CancelFunc
 	baseContext context.Context
+	credentials *auth.Credentials
 
 	// Per-workspace state used when booting plugins. A Host is stateless with respect to
 	// workspaces; each Host method takes a Context and reads this state from it, so a single
@@ -185,12 +184,18 @@ func (ctx *Context) ProjectPlugins() []workspace.ProjectPlugin {
 	return ctx.projectPlugins
 }
 
+// Credentials returns the backend credentials shared by plugins launched with this context.
+func (ctx *Context) Credentials() *auth.Credentials {
+	return ctx.credentials
+}
+
 // NewContext allocates a new context with a given sink and host. The host is required and is
 // owned by the caller: closing the context does not close the host, since a single host may be
 // shared by several contexts.
+// Nil credentials leave the plugin environment unchanged.
 func NewContext(ctx context.Context, d, statusD diag.Sink, host Host, _ ConfigSource,
 	pwd string, runtimeOptions map[string]any, disableProviderPreview bool,
-	parentSpan opentracing.Span,
+	parentSpan opentracing.Span, credentials *auth.Credentials,
 ) (*Context, error) {
 	// TODO: really this ought to just take plugins *workspace.Plugins and packages map[string]workspace.PackageSpec
 	// as args, but yaml depends on this function so *sigh*. For now just see if there's a project we should be using,
@@ -211,14 +216,15 @@ func NewContext(ctx context.Context, d, statusD diag.Sink, host Host, _ ConfigSo
 	}
 
 	return NewContextWithRoot(ctx, d, statusD, host, pwd, root, runtimeOptions,
-		disableProviderPreview, parentSpan, plugins, packages, nil)
+		disableProviderPreview, parentSpan, plugins, packages, nil, credentials)
 }
 
 // NewContextWithRoot is a variation of NewContext that also sets known project Root. Additionally accepts Plugins
+// Nil credentials leave the plugin environment unchanged.
 func NewContextWithRoot(ctx context.Context, d, statusD diag.Sink, host Host,
 	pwd, root string, runtimeOptions map[string]any, disableProviderPreview bool,
 	parentSpan opentracing.Span, plugins *workspace.Plugins, packages map[string]workspace.PackageSpec,
-	config map[config.Key]string,
+	config map[config.Key]string, credentials *auth.Credentials,
 ) (*Context, error) {
 	contract.Assertf(host != nil, "host cannot be nil")
 	if d == nil {
@@ -229,11 +235,9 @@ func NewContextWithRoot(ctx context.Context, d, statusD diag.Sink, host Host,
 	}
 
 	var projectName tokens.PackageName
-	var project *workspace.Project
 	projPath, err := workspace.DetectProjectPath()
 	if err == nil && projPath != "" {
 		if p, loadErr := workspace.LoadProject(projPath); loadErr == nil {
-			project = p
 			projectName = p.Name
 		}
 	}
@@ -254,7 +258,7 @@ func NewContextWithRoot(ctx context.Context, d, statusD diag.Sink, host Host,
 		disableProviderPreview: disableProviderPreview,
 		config:                 config,
 		projectName:            projectName,
-		CloudCredentialEnv:     pulumiCloudCredentialEnv(env.Global(), project),
+		credentials:            credentials,
 	}
 
 	projectPlugins, err := projectPluginsFromProject(pctx, plugins, packages)
@@ -293,12 +297,14 @@ func NewContextWithRoot(ctx context.Context, d, statusD diag.Sink, host Host,
 // The host is owned by the caller: closing the returned context does not close the host.
 //
 // d, statusD and parentSpan may all be nil.
+// Nil credentials leave the plugin environment unchanged.
 func NewContextWithHost(
 	ctx context.Context,
 	d, statusD diag.Sink,
 	host Host,
 	pwd, root string,
 	parentSpan opentracing.Span,
+	credentials *auth.Credentials,
 ) (*Context, error) {
 	contract.Assertf(host != nil, "NewContextWithHost requires a non-nil host")
 	if d == nil {
@@ -319,6 +325,7 @@ func NewContextWithHost(
 		tracingSpan:     parentSpan,
 		DebugTraceMutex: &sync.Mutex{},
 		cancel:          cancel,
+		credentials:     credentials,
 		baseContext:     ctx,
 	}
 

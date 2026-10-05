@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/pulumi/pulumi/pkg/v3/auth"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/diy"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
@@ -27,10 +28,10 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
-// Account holds details about a Pulumi account: the shared Pulumi account plus the backend URL and
-// default org the ESC CLI resolved it against.
+// Account holds the authenticated identity and backend settings for the ESC CLI.
 type Account struct {
-	workspace.Account
+	auth.Identity
+	Insecure bool
 
 	// The URL of the account's backend.
 	BackendURL string
@@ -67,7 +68,6 @@ func (esc *escCommand) getCachedClient(ctx context.Context) error {
 	backendURL := httpstate.ValueOrDefaultURL(esc.ws, projectURL)
 
 	// Read the stored account for the backend from Pulumi's shared credentials.
-	var acct *Account
 	creds, err := esc.ws.GetStoredCredentials()
 	if err != nil {
 		if !workspace.AgentCredentialsFallbackEnabled() {
@@ -77,12 +77,17 @@ func (esc *escCommand) getCachedClient(ctx context.Context) error {
 		// login manager below.
 		creds = workspace.Credentials{}
 	}
-	if a, ok := creds.Accounts[backendURL]; ok {
-		acct = &Account{Account: a, BackendURL: backendURL}
+	if err := esc.checkBackendURL(backendURL); err != nil {
+		return err
 	}
 
-	if acct == nil {
-		nAccount, err := esc.login.Login(
+	var credentials *auth.Credentials
+	login := valueOrDefault(esc.login, httpstate.NewLoginManager())
+	account, hasAccount := creds.Accounts[backendURL]
+	if hasAccount {
+		credentials, err = login.Current(ctx, backendURL, account.Insecure, false)
+	} else {
+		credentials, err = login.Login(
 			ctx,
 			backendURL,
 			false,
@@ -92,31 +97,24 @@ func (esc *escCommand) getCachedClient(ctx context.Context) error {
 			false,
 			display.Options{Color: esc.colors},
 		)
-		if err != nil {
-			return fmt.Errorf("could not determine current cloud: %w", err)
-		}
-
-		acct = &Account{
-			Account: *nAccount,
-		}
 	}
-
-	acct.BackendURL = backendURL
-	if err := esc.checkBackendURL(acct.BackendURL); err != nil {
-		return err
-	}
-
-	ok, err := esc.getCachedCredentials(ctx, acct.BackendURL, acct.Insecure)
 	if err != nil {
-		return fmt.Errorf("getting credentials: %w", err)
+		if hasAccount {
+			return fmt.Errorf("getting credentials: %w", err)
+		}
+		return fmt.Errorf("could not determine current cloud: %w", err)
 	}
-	if !ok {
+	if credentials == nil {
 		return fmt.Errorf("no credentials, please run `%v login` to log in", esc.command)
 	}
 
-	esc.client = esc.newClient(esc.userAgent, acct.BackendURL, acct.AccessToken, acct.Insecure)
+	esc.account = Account{
+		Identity: credentials.Identity, Insecure: credentials.Insecure, BackendURL: credentials.BackendURL,
+	}
+	esc.client = esc.newClient(esc.userAgent, *credentials)
 
-	defaultOrg, err := esc.lookupDefaultOrg(ctx, backendURL, acct.Username)
+	// Use the authenticated backend identity.
+	defaultOrg, err := esc.lookupDefaultOrg(ctx, backendURL, esc.account.Username)
 	if err != nil {
 		return fmt.Errorf("looking up org to default to: %w", err)
 	} else if defaultOrg != "" {
@@ -124,20 +122,4 @@ func (esc *escCommand) getCachedClient(ctx context.Context) error {
 	}
 
 	return nil
-}
-
-func (esc *escCommand) getCachedCredentials(ctx context.Context, backendURL string, insecure bool) (bool, error) {
-	account, err := esc.login.Current(ctx, backendURL, insecure, false)
-	if err != nil {
-		return false, err
-	}
-	if account == nil {
-		return false, nil
-	}
-
-	esc.account = Account{
-		Account:    *account,
-		BackendURL: backendURL,
-	}
-	return true, nil
 }

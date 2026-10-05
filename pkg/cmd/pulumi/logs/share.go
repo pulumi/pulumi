@@ -244,14 +244,17 @@ func writeEncryptedLog(outPath string, sessionID string, sessionKey []byte, plai
 func createEncryptionSessionFromAPI(
 	ctx context.Context, ws pkgWorkspace.Context,
 ) (sessionID string, sessionKey []byte, err error) {
-	// Resolve the cloud URL without requiring login — this endpoint needs no auth.
+	// Resolve credentials without requiring login; the endpoint also permits anonymous requests.
 	cloudURL := httpstate.ValueOrDefaultURL(ws, "")
 	if cloudURL == "" {
 		return "", nil, errors.New("could not determine Pulumi Cloud URL; set PULUMI_API or run `pulumi login`")
 	}
-	insecure := pkgWorkspace.GetCloudInsecure(ws, cloudURL)
-
-	apiClient := client.NewClient(cloudURL, "" /*apiToken*/, insecure, cmdutil.Diag())
+	credentials, err := cmdBackend.DefaultLoginManager.ResolveCredentials(ctx, ws, cloudURL, nil)
+	if err != nil {
+		return "", nil, fmt.Errorf("preparing backend: %w", err)
+	}
+	apiClient := client.NewClient(cloudURL, "" /*apiToken*/, credentials.Insecure, cmdutil.Diag()).
+		WithHTTPAuth(credentials.HTTPAuth)
 	resp, err := apiClient.CreateLogEncryptionSession(ctx, apitype.LogEncryptionSessionInitRequest{
 		SessionKeyType: apitype.SessionKeyTypePlogV1,
 	})

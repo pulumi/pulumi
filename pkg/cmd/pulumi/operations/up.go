@@ -31,8 +31,8 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	"github.com/pulumi/pulumi/pkg/v3/backend/diy"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
-	"github.com/pulumi/pulumi/pkg/v3/backend/secrets"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/autonaming"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
@@ -56,7 +56,6 @@ import (
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -155,7 +154,6 @@ func NewUpCmd() *cobra.Command {
 		lm cmdBackend.LoginManager,
 		opts backend.UpdateOptions,
 		cmd *cobra.Command,
-		meta *promise.Promise[map[string]string],
 	) error {
 		s, err := cmdStack.RequireStack(
 			ctx,
@@ -180,6 +178,7 @@ func NewUpCmd() *cobra.Command {
 		if err != nil {
 			return err
 		}
+		meta := metadata.GetLanguageRuntimeMetadata(ctx, root, proj, cmdBackend.PluginCredentials(s.Backend()))
 
 		cfg, sm, err := cmdConfig.GetStackConfiguration(ctx, cmdutil.Diag(), ssml, s, proj, configFile, envOverrides)
 		if err != nil {
@@ -295,7 +294,7 @@ func NewUpCmd() *cobra.Command {
 			Opts:               opts,
 			StackConfiguration: cfg,
 			SecretsManager:     sm,
-			SecretsProvider:    secrets.DefaultProvider,
+			SecretsProvider:    cmdBackend.SecretsProvider(lm),
 			Scopes:             backend.CancellationScopes,
 			CoherenceWindow:    coherenceWindow,
 		}, nil /* events */)
@@ -320,7 +319,6 @@ func NewUpCmd() *cobra.Command {
 		templateNameOrURL string,
 		opts backend.UpdateOptions,
 		cmd *cobra.Command,
-		meta *promise.Promise[map[string]string],
 	) error {
 		// Retrieve the template repo.
 		templateSource := cmdTemplates.New(ctx,
@@ -438,6 +436,8 @@ func NewUpCmd() *cobra.Command {
 			// cmdStack.CreateStack prints "Created stack '<stack>'" on success.
 		}
 
+		meta := metadata.GetLanguageRuntimeMetadata(ctx, root, proj, cmdBackend.PluginCredentials(s.Backend()))
+
 		// Prompt for config values (if needed) and save.
 		if err = newcmd.HandleConfig(
 			ctx,
@@ -473,6 +473,7 @@ func NewUpCmd() *cobra.Command {
 		defer contract.IgnoreClose(pluginHost) // host is owned here, closed after the context
 		_, main, pctx, err := engine.ProjectInfoContext(
 			ctx, projinfo, pluginHost, cmdutil.Diag(), cmdutil.Diag(), false, nil, nil,
+			cmdBackend.PluginCredentials(s.Backend()),
 		)
 		if err != nil {
 			return fmt.Errorf("building project context: %w", err)
@@ -569,7 +570,7 @@ func NewUpCmd() *cobra.Command {
 			Opts:               opts,
 			StackConfiguration: cfg,
 			SecretsManager:     sm,
-			SecretsProvider:    secrets.DefaultProvider,
+			SecretsProvider:    cmdBackend.SecretsProvider(lm),
 			Scopes:             backend.CancellationScopes,
 			CoherenceWindow:    coherenceWindow,
 		}, nil /* events */)
@@ -608,9 +609,8 @@ func NewUpCmd() *cobra.Command {
 			ctx := cmd.Context()
 			ws := pkgWorkspace.Instance
 
-			var meta *promise.Promise[map[string]string]
 			if !remoteArgs.Remote {
-				proj, root, err := readProjectForUpdate(ws, client)
+				proj, _, err := readProjectForUpdate(ws, client)
 				if err != nil {
 					return err
 				}
@@ -618,8 +618,6 @@ func NewUpCmd() *cobra.Command {
 				if err := plugin.ValidatePulumiVersionRange(proj.RequiredPulumiVersion, version.Version); err != nil {
 					return err
 				}
-
-				meta = metadata.GetLanguageRuntimeMetadata(ctx, root, proj)
 			}
 
 			ssml := cmdStack.NewStackSecretsManagerLoaderFromEnv()
@@ -709,10 +707,11 @@ func NewUpCmd() *cobra.Command {
 				return deployment.RunDeployment(ctx, ws, cmd, opts.Display, apitype.Update, stackName, url, remoteArgs)
 			}
 
-			isDIYBackend, err := cmdBackend.IsDIYBackend(ws, opts.Display)
+			backendURL, err := cmdBackend.PrepareBackend(ctx, ws, cmdBackend.DefaultLoginManager)
 			if err != nil {
 				return err
 			}
+			isDIYBackend := diy.IsDIYBackendURL(backendURL)
 
 			// by default, we are going to suppress the permalink when using DIY backends
 			// this can be re-enabled by explicitly passing "false" to the `suppress-permalink` flag
@@ -736,7 +735,6 @@ func NewUpCmd() *cobra.Command {
 					args[0],
 					opts,
 					cmd,
-					meta,
 				)
 			}
 
@@ -747,7 +745,6 @@ func NewUpCmd() *cobra.Command {
 				cmdBackend.DefaultLoginManager,
 				opts,
 				cmd,
-				meta,
 			)
 		},
 	}

@@ -21,6 +21,8 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/pulumi/pulumi/pkg/v3/auth"
+
 	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
 
 	"github.com/blang/semver"
@@ -131,7 +133,7 @@ func TestLoadPolicyAnalyzer(t *testing.T) {
 			},
 		}
 		plugctx, err := plugin.NewContextWithRoot(
-			t.Context(), nil, nil, host, "", "", nil, false, nil, nil, nil, nil)
+			t.Context(), nil, nil, host, "", "", nil, false, nil, nil, nil, nil, nil)
 		require.NoError(t, err)
 		defer plugctx.Close()
 
@@ -152,7 +154,7 @@ func TestLoadPolicyAnalyzer(t *testing.T) {
 			},
 		}
 		plugctx, err := plugin.NewContextWithRoot(
-			t.Context(), nil, nil, host, "", "", nil, false, nil, nil, nil, nil)
+			t.Context(), nil, nil, host, "", "", nil, false, nil, nil, nil, nil, nil)
 		require.NoError(t, err)
 		defer plugctx.Close()
 
@@ -174,7 +176,7 @@ func TestLoadPolicyAnalyzer(t *testing.T) {
 			},
 		}
 		plugctx, err := plugin.NewContextWithRoot(
-			t.Context(), nil, nil, host, "", "", nil, false, nil, nil, nil, nil)
+			t.Context(), nil, nil, host, "", "", nil, false, nil, nil, nil, nil, nil)
 		require.NoError(t, err)
 		defer plugctx.Close()
 
@@ -196,7 +198,7 @@ func TestLoadPolicyAnalyzer(t *testing.T) {
 		origInstall := installPluginFunc
 		installPluginFunc = func(
 			_ context.Context, _ workspace.PluginDescriptor,
-			_ func(diag.Severity, string), _ plugin.NewLoaderFunc,
+			_ func(diag.Severity, string), _ plugin.NewLoaderFunc, _ *auth.Credentials,
 		) (*semver.Version, error) {
 			return nil, nil
 		}
@@ -218,7 +220,7 @@ func TestLoadPolicyAnalyzer(t *testing.T) {
 			},
 		}
 		plugctx, err := plugin.NewContextWithRoot(
-			t.Context(), nil, nil, host, "", "", nil, false, nil, nil, nil, nil)
+			t.Context(), nil, nil, host, "", "", nil, false, nil, nil, nil, nil, nil)
 		require.NoError(t, err)
 		defer plugctx.Close()
 
@@ -234,7 +236,7 @@ func TestLoadPolicyAnalyzer(t *testing.T) {
 		installErr := errors.New("network timeout")
 		installPluginFunc = func(
 			_ context.Context, _ workspace.PluginDescriptor,
-			_ func(diag.Severity, string), _ plugin.NewLoaderFunc,
+			_ func(diag.Severity, string), _ plugin.NewLoaderFunc, _ *auth.Credentials,
 		) (*semver.Version, error) {
 			return nil, installErr
 		}
@@ -251,7 +253,7 @@ func TestLoadPolicyAnalyzer(t *testing.T) {
 			},
 		}
 		plugctx, err := plugin.NewContextWithRoot(
-			t.Context(), nil, nil, host, "", "", nil, false, nil, nil, nil, nil)
+			t.Context(), nil, nil, host, "", "", nil, false, nil, nil, nil, nil, nil)
 		require.NoError(t, err)
 		defer plugctx.Close()
 
@@ -269,7 +271,7 @@ func TestLoadPolicyAnalyzer(t *testing.T) {
 		origInstall := installPluginFunc
 		installPluginFunc = func(
 			_ context.Context, _ workspace.PluginDescriptor,
-			_ func(diag.Severity, string), _ plugin.NewLoaderFunc,
+			_ func(diag.Severity, string), _ plugin.NewLoaderFunc, _ *auth.Credentials,
 		) (*semver.Version, error) {
 			return nil, nil
 		}
@@ -287,7 +289,7 @@ func TestLoadPolicyAnalyzer(t *testing.T) {
 			},
 		}
 		plugctx, err := plugin.NewContextWithRoot(
-			t.Context(), nil, nil, host, "", "", nil, false, nil, nil, nil, nil)
+			t.Context(), nil, nil, host, "", "", nil, false, nil, nil, nil, nil, nil)
 		require.NoError(t, err)
 		defer plugctx.Close()
 
