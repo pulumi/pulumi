@@ -145,7 +145,7 @@ func createGCPEnvironment(
 	if err := ensureProviderEnv(ctx, setup.env, ref, true); err != nil {
 		return err
 	}
-	return applyProviderUpdate(ctx, setup.env, ref, "", path, node, gcpLoginEnvVars(propertyPathRef(path)))
+	return applyProviderUpdate(ctx, setup.env, ref, "", "", path, node, gcpLoginEnvVars(propertyPathRef(path)))
 }
 
 func newSetupGCPCmd(setup *setupCommand) *cobra.Command {

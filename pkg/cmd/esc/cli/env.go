@@ -452,15 +452,20 @@ func (esc *escCommand) changeRequestURL(ref environmentRef, changeRequestID stri
 // If draft is empty, the environment is directly updated.
 // If draft is "new", a change request is created and submitted.
 // If draft is a change request ID, an existing change request is updated.
+// If reason is non-empty, it is used as the description of a newly created change request.
 // Progress is logged to stdout. However, diagnostics are not logged, that is left up to the caller.
 func (esc *escCommand) updateEnvironment(
 	ctx context.Context,
 	ref environmentRef,
 	draft string,
+	reason string,
 	yaml []byte,
 	tag string,
 	envUpdateSuccessMessage string,
 ) ([]client.EnvironmentDiagnostic, error) {
+	if err := checkReason(draft, reason); err != nil {
+		return nil, err
+	}
 	if draft == "new" {
 		changeRequestID, diags, err := esc.client.CreateEnvironmentDraft(
 			ctx,
@@ -477,7 +482,11 @@ func (esc *escCommand) updateEnvironment(
 			fmt.Fprintf(esc.stdout, "Change request created: %v\n", changeRequestID)
 			fmt.Fprintf(esc.stdout, "Change request URL: %v\n", esc.changeRequestURL(ref, changeRequestID))
 
-			err = esc.client.SubmitChangeRequest(ctx, ref.orgName, changeRequestID, nil)
+			var description *string
+			if reason != "" {
+				description = &reason
+			}
+			err = esc.client.SubmitChangeRequest(ctx, ref.orgName, changeRequestID, description)
 			if err != nil {
 				return nil, fmt.Errorf("submitting change request: %w", err)
 			}
@@ -505,4 +514,12 @@ func (esc *escCommand) updateEnvironment(
 		}
 		return diags, nil
 	}
+}
+
+// checkReason returns an error if --reason is set without --draft creating a new change request.
+func checkReason(draft, reason string) error {
+	if reason != "" && draft != "new" {
+		return errors.New("--reason requires --draft without a change request ID")
+	}
+	return nil
 }
