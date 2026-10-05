@@ -17,11 +17,11 @@ package cli
 import (
 	"context"
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/pulumi/pulumi/pkg/v3/auth"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
-	"github.com/pulumi/pulumi/pkg/v3/backend/diy"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
@@ -49,7 +49,7 @@ func (esc *escCommand) checkBackendURL(url string) error {
 	case isInvalidSelfHostedURL(url):
 		return fmt.Errorf("%s is not a valid self-hosted backend, "+
 			"use `%s login` without arguments to log into the Pulumi Cloud backend", url, esc.command)
-	case diy.IsDIYBackendURL(url):
+	case !auth.IsHTTPBackend(url):
 		return fmt.Errorf("%s does not support Pulumi ESC. Pulumi ESC requires the Pulumi Cloud backend; "+
 			"use `%s login` without arguments to log into the Pulumi Cloud backend", url, esc.command)
 	default:
@@ -58,23 +58,37 @@ func (esc *escCommand) checkBackendURL(url string) error {
 }
 
 func (esc *escCommand) getCachedClient(ctx context.Context) error {
-	// Resolve the current cloud URL exactly as the rest of the Pulumi CLI does (see
-	// pkg/cmd/pulumi/cloud/resolve.go): honor PULUMI_BACKEND_URL, then PULUMI_API, then the
-	// current stored account, then the default cloud.
+	// Resolve the current backend, falling back to PULUMI_API and then Pulumi Cloud.
 	projectURL, err := pkgWorkspace.GetCurrentCloudURLWithAgentFallback(esc.ws, env.Global(), nil)
 	if err != nil {
 		projectURL = ""
 	}
-	backendURL := httpstate.ValueOrDefaultURL(esc.ws, projectURL)
+	// A credential helper supplies the backend's credentials, and may select the backend when nothing
+	// else has. A project's backend is not used here, but still keeps the helper from selecting one.
+	session := esc.session
+	if session == nil {
+		session = auth.NewSessionWithHelperFunc(nil)
+	}
+	fallback := httpstate.ValueOrDefaultURL(esc.ws, projectURL)
+	selecting := projectURL == "" && env.APIURL.Value() == "" && !esc.projectSelectsBackend()
+	var backendURL string
+	if selecting {
+		backendURL, err = session.SelectBackend(ctx, fallback, esc.checkBackendURL)
+	} else {
+		backendURL, err = session.PrepareBackend(ctx, fallback)
+	}
+	if err != nil {
+		return fmt.Errorf("preparing backend: %w", err)
+	}
 
 	// Read the stored account for the backend from Pulumi's shared credentials.
+	helperAuth := session.HelperHTTPAuth(backendURL)
 	creds, err := esc.ws.GetStoredCredentials()
 	if err != nil {
-		if !workspace.AgentCredentialsFallbackEnabled() {
+		if helperAuth == nil && !workspace.AgentCredentialsFallbackEnabled() {
 			return fmt.Errorf("could not determine current cloud: %w", err)
 		}
-		// Agent mode with unreadable credentials: treat as no stored account and defer to the
-		// login manager below.
+		// Supplied authentication can work without a stored account. Login handles any required persistence.
 		creds = workspace.Credentials{}
 	}
 	if err := esc.checkBackendURL(backendURL); err != nil {
@@ -82,21 +96,14 @@ func (esc *escCommand) getCachedClient(ctx context.Context) error {
 	}
 
 	var credentials *auth.Credentials
-	login := valueOrDefault(esc.login, httpstate.NewLoginManager())
 	account, hasAccount := creds.Accounts[backendURL]
+	setCurrent := selecting && backendURL != fallback
+	login := valueOrDefault(esc.login, httpstate.NewLoginManager(session))
 	if hasAccount {
-		credentials, err = login.Current(ctx, backendURL, account.Insecure, false)
+		credentials, err = login.Current(ctx, backendURL, account.Insecure, setCurrent)
 	} else {
-		credentials, err = login.Login(
-			ctx,
-			backendURL,
-			false,
-			"esc",
-			"Pulumi ESC environments",
-			nil,
-			false,
-			display.Options{Color: esc.colors},
-		)
+		credentials, err = login.Login(ctx, backendURL, false, "esc", "Pulumi ESC environments",
+			nil, setCurrent, display.Options{Color: esc.colors})
 	}
 	if err != nil {
 		if hasAccount {
@@ -122,4 +129,14 @@ func (esc *escCommand) getCachedClient(ctx context.Context) error {
 	}
 
 	return nil
+}
+
+// projectSelectsBackend reports whether the project in the working directory names a backend.
+func (esc *escCommand) projectSelectsBackend() bool {
+	cwd, err := os.Getwd()
+	if err != nil {
+		return false
+	}
+	project, _, err := esc.ws.ReadProject(cwd)
+	return err == nil && project.Backend != nil && project.Backend.URL != ""
 }

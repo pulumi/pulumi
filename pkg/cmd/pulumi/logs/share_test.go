@@ -16,13 +16,23 @@ package logs
 
 import (
 	"bytes"
+	"context"
 	"crypto/rand"
+	"encoding/base64"
 	"encoding/json"
+	"net/http"
+	"net/http/httptest"
 	"path/filepath"
 	"strings"
 	"testing"
 
+	"github.com/pulumi/pulumi/pkg/v3/auth"
+	"github.com/pulumi/pulumi/pkg/v3/auth/credentialhelper"
+	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -280,5 +290,47 @@ func TestRedactSecretsPreservesMultipleLines(t *testing.T) {
 		var got map[string]any
 		require.NoError(t, json.Unmarshal([]byte(lines[i]), &got))
 		assert.Equal(t, expected, got["msg"])
+	}
+}
+
+func TestCreateEncryptionSessionWithHelper(t *testing.T) {
+	ptesting.IsolateCredentials(t)
+	t.Setenv("PULUMI_ACCESS_TOKEN", "")
+	for _, helper := range []bool{false, true} {
+		var calls int
+		key := []byte("session-key")
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if helper {
+				assert.Equal(t, "gate", r.Header.Get("X-Helper"))
+			} else {
+				assert.Empty(t, r.Header.Get("X-Helper"))
+			}
+			assert.Empty(t, r.Header.Get("Authorization"))
+			require.NoError(t, json.NewEncoder(w).Encode(apitype.LogEncryptionSessionInitResponse{
+				SessionID: "session-id", SessionKey: base64.StdEncoding.EncodeToString(key),
+			}))
+		}))
+		t.Cleanup(server.Close)
+		t.Setenv("PULUMI_API", server.URL)
+		session := auth.NewSessionWithHelperFunc(nil)
+		if helper {
+			session = auth.NewSessionWithHelperFunc(func(
+				_ context.Context, req credentialhelper.Request,
+			) (*credentialhelper.Response, error) {
+				calls++
+				assert.Equal(t, server.URL, req.SelectedBackendURL)
+				return &credentialhelper.Response{Headers: http.Header{"X-Helper": {"gate"}}}, nil
+			})
+		}
+		previous := cmdBackend.DefaultLoginManager
+		cmdBackend.DefaultLoginManager = cmdBackend.NewLoginManager(session)
+		t.Cleanup(func() { cmdBackend.DefaultLoginManager = previous })
+		id, gotKey, err := createEncryptionSessionFromAPI(t.Context(), pkgWorkspace.Instance)
+		require.NoError(t, err)
+		assert.Equal(t, "session-id", id)
+		assert.Equal(t, key, gotKey)
+		if helper {
+			assert.Equal(t, 1, calls)
+		}
 	}
 }

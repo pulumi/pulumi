@@ -76,7 +76,7 @@ func TestCurrentRefreshesAccessTokenOn401WhenRefreshTokenStored(t *testing.T) {
 		RefreshToken: "stored-refresh-token",
 	}, true))
 
-	account, err := NewLoginManager().Current(t.Context(), server.URL, false, true)
+	account, err := NewLoginManager(nil).Current(t.Context(), server.URL, false, true)
 	require.NoError(t, err)
 	require.NotNil(t, account)
 	assert.Equal(t, "fresh-access-token", account.HTTPAuth.AccessToken(),
@@ -133,7 +133,7 @@ func TestCurrentRefreshesFromRefreshOnlyStoredAccount(t *testing.T) {
 		RefreshToken: "only-refresh-token",
 	}, true))
 
-	account, err := NewLoginManager().Current(t.Context(), server.URL, false, true)
+	account, err := NewLoginManager(nil).Current(t.Context(), server.URL, false, true)
 	require.NoError(t, err)
 	require.NotNil(t, account)
 	assert.Equal(t, "minted-access-token", account.HTTPAuth.AccessToken())
@@ -184,7 +184,7 @@ func TestCurrentPersistsRotatedRefreshToken(t *testing.T) {
 		RefreshToken: "stored-refresh-token",
 	}, true))
 
-	account, err := NewLoginManager().Current(t.Context(), server.URL, false, true)
+	account, err := NewLoginManager(nil).Current(t.Context(), server.URL, false, true)
 	require.NoError(t, err)
 	require.NotNil(t, account)
 	assert.Equal(t, "fresh-access-token", account.HTTPAuth.AccessToken())
@@ -239,7 +239,7 @@ func TestCurrentPreservesRefreshTokenWhenGrantResponseOmitsIt(t *testing.T) {
 		RefreshToken: "stored-refresh-token",
 	}, true))
 
-	account, err := NewLoginManager().Current(t.Context(), server.URL, false, true)
+	account, err := NewLoginManager(nil).Current(t.Context(), server.URL, false, true)
 	require.NoError(t, err)
 	require.NotNil(t, account)
 	assert.Equal(t, "fresh-access-token", account.HTTPAuth.AccessToken())
@@ -304,7 +304,7 @@ func TestCurrentRefreshesLocallyExpiredAccessTokenWhenRefreshTokenStored(t *test
 		},
 	}, true))
 
-	account, err := NewLoginManager().Current(t.Context(), server.URL, false, true)
+	account, err := NewLoginManager(nil).Current(t.Context(), server.URL, false, true)
 	require.NoError(t, err)
 	require.NotNil(t, account)
 	assert.Equal(t, "fresh-access-token", account.HTTPAuth.AccessToken(),
@@ -362,7 +362,7 @@ func TestCurrentPreservesExpiresAtWhenServerAcceptsLocallyExpiredAccessToken(t *
 		},
 	}, true))
 
-	account, err := NewLoginManager().Current(t.Context(), server.URL, false, true)
+	account, err := NewLoginManager(nil).Current(t.Context(), server.URL, false, true)
 	require.NoError(t, err)
 	require.NotNil(t, account)
 	assert.Equal(t, "live-access-token", account.HTTPAuth.AccessToken(), "no refresh, no rotation")
@@ -397,7 +397,7 @@ func TestCurrentReturnsNoAccountWhenAccessTokenLocallyExpiredAndNoRefreshToken(t
 		},
 	}, true))
 
-	account, err := NewLoginManager().Current(t.Context(), server.URL, false, true)
+	account, err := NewLoginManager(nil).Current(t.Context(), server.URL, false, true)
 	require.NoError(t, err)
 	assert.Nil(t, account, "no refresh token + locally-expired access token must not produce a logged-in account")
 	assert.Equal(t, 0, hits, "validateStoredAccount must short-circuit without any network call")

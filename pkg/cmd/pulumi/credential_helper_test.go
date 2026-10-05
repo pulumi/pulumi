@@ -15,8 +15,13 @@
 package main
 
 import (
+	"bytes"
+	"compress/gzip"
 	"encoding/json"
 	"fmt"
+	"io"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -97,4 +102,75 @@ func TestCredentialHelperLifecycle(t *testing.T) {
 	output, err = runCredentialCommand(t, "login", backendURL)
 	require.NoError(t, err, output)
 	assert.Equal(t, 1, strings.Count(output, "helper diagnostic"))
+}
+
+func TestCredentialHelperRedactsRefreshedCredentials(t *testing.T) {
+	dirs := ptesting.IsolateCredentials(t)
+	t.Chdir(t.TempDir())
+	t.Setenv("PULUMI_DEFAULT_ORGANIZATION", "helper-user")
+	const (
+		initialToken     = "initial-helper-token-secret"
+		initialHeader    = "initial-helper-header-secret"
+		refreshedToken   = "refreshed-helper-token-secret"
+		refreshedHeader  = "refreshed-helper-header-secret"
+		environmentValue = "helper-environment-secret"
+	)
+	secrets := []string{initialToken, initialHeader, refreshedToken, refreshedHeader, environmentValue}
+	user, err := json.Marshal(map[string]any{"githubLogin": "helper-user", "echoedSecrets": secrets})
+	require.NoError(t, err)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("Authorization") == "token "+initialToken {
+			assert.Equal(t, initialHeader, r.Header.Get("X-Helper"))
+			w.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+		assert.Equal(t, "token "+refreshedToken, r.Header.Get("Authorization"))
+		assert.Equal(t, refreshedHeader, r.Header.Get("X-Helper"))
+		body := []byte(`{}`)
+		if r.URL.Path == "/api/user" {
+			body = user
+		} else {
+			assert.Equal(t, "/api/capabilities", r.URL.Path)
+		}
+		_, err := w.Write(body)
+		require.NoError(t, err)
+	}))
+	defer server.Close()
+	executable, err := os.Executable()
+	require.NoError(t, err)
+	t.Setenv("PULUMI_CREDENTIAL_HELPER", executable)
+	t.Setenv("PULUMI_CREDENTIAL_HELPER_ARGS", `["--credential-helper-test"]`)
+	for reason, response := range map[string]map[string]any{
+		"INITIAL": {
+			"version": 1, "backendUrl": server.URL, "accessToken": initialToken,
+			"headers": http.Header{"X-Helper": {initialHeader}}, "env": map[string]string{"HELPER_TEST_VALUE": environmentValue},
+		},
+		"REJECTED": {"version": 1, "accessToken": refreshedToken, "headers": http.Header{"X-Helper": {refreshedHeader}}},
+	} {
+		data, err := json.Marshal(response)
+		require.NoError(t, err)
+		t.Setenv("PULUMI_TEST_HELPER_"+reason, string(data))
+	}
+	output, err := runCredentialCommand(t, "login", "--logtostderr", "--verbose=11")
+	require.NoError(t, err, output)
+	assert.Contains(t, output, "Pulumi API call response body")
+	assert.Contains(t, output, "echoedSecrets")
+	assert.Contains(t, output, "[credential]")
+	logs, err := filepath.Glob(filepath.Join(dirs.Home, "logs", "*.log"))
+	require.NoError(t, err)
+	require.Len(t, logs, 1)
+	compressed, err := os.ReadFile(logs[0])
+	require.NoError(t, err)
+	reader, err := gzip.NewReader(bytes.NewReader(compressed))
+	require.NoError(t, err)
+	log, err := io.ReadAll(reader)
+	require.NoError(t, err)
+	require.NoError(t, reader.Close())
+	for _, contents := range []string{output, string(log)} {
+		assert.Contains(t, contents, "Invoking credential helper for initial backend preparation")
+		assert.Contains(t, contents, "Refreshing credential helper HTTP credentials")
+		for _, secret := range secrets {
+			assert.NotContains(t, contents, secret)
+		}
+	}
 }

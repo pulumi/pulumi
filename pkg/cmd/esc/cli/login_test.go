@@ -17,14 +17,22 @@ package cli
 import (
 	"context"
 	"errors"
+	"fmt"
+	"io"
+	"net/http"
+	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
 	"github.com/pulumi/pulumi/pkg/v3/auth"
+	"github.com/pulumi/pulumi/pkg/v3/auth/credentialhelper"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/esc/cli/client"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
 	pulumi_workspace "github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -124,9 +132,9 @@ func TestCurrentAccountButInvalidToken(t *testing.T) {
 	esc := &escCommand{
 		command: "esc",
 		ws: mockWorkspace(pulumi_workspace.Credentials{
-			Current: "bobm",
+			Current: "https://api.pulumi.com",
 			Accounts: map[string]pulumi_workspace.Account{
-				"bobm": {
+				"https://api.pulumi.com": {
 					AccessToken: "expired",
 					Username:    "bobm",
 				},
@@ -139,12 +147,14 @@ func TestCurrentAccountButInvalidToken(t *testing.T) {
 }
 
 type provisioningLoginManager struct {
-	accounts map[string]pulumi_workspace.Account
+	accounts   map[string]pulumi_workspace.Account
+	setCurrent bool
 }
 
 func (lm *provisioningLoginManager) Current(
 	ctx context.Context, cloudURL string, insecure, setCurrent bool,
 ) (*auth.Credentials, error) {
+	lm.setCurrent = setCurrent
 	acct, ok := lm.accounts[cloudURL]
 	if !ok {
 		return nil, nil
@@ -162,6 +172,7 @@ func (lm *provisioningLoginManager) Login(
 	current bool,
 	opts display.Options,
 ) (*auth.Credentials, error) {
+	lm.setCurrent = current
 	if lm.accounts == nil {
 		lm.accounts = map[string]pulumi_workspace.Account{}
 	}
@@ -445,4 +456,162 @@ func TestDefaultOrgConfiguration(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, username, esc.account.DefaultOrg)
 	})
+}
+
+func TestCredentialHelperSelection(t *testing.T) {
+	for _, tt := range []struct {
+		name           string
+		projectBackend string
+		wantSelected   string
+		wantBackend    string
+		helperURL      string
+		setCurrent     bool
+	}{
+		{
+			name: "nothing selected", helperURL: "https://helper.example.com",
+			wantBackend: "https://helper.example.com", setCurrent: true,
+		},
+		{name: "declines", wantBackend: "https://api.pulumi.com"},
+		{name: "selects fallback", helperURL: "https://api.pulumi.com", wantBackend: "https://api.pulumi.com"},
+		{
+			name: "project backend", projectBackend: "s3://project-state",
+			wantSelected: "https://api.pulumi.com", wantBackend: "https://api.pulumi.com",
+		},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			ptesting.IsolateCredentials(t)
+			t.Setenv("PULUMI_API", "")
+			var requests []credentialhelper.Request
+			session := auth.NewSessionWithHelperFunc(func(
+				_ context.Context, request credentialhelper.Request,
+			) (*credentialhelper.Response, error) {
+				requests = append(requests, request)
+				if request.SelectedBackendURL != "" {
+					return nil, nil
+				}
+				return &credentialhelper.Response{BackendURL: tt.helperURL}, nil
+			})
+			login := &provisioningLoginManager{}
+			esc := &escCommand{
+				command: "esc",
+				login:   login,
+				session: session,
+				newClient: func(userAgent string, credentials auth.Credentials) client.Client {
+					return &testPulumiClient{}
+				},
+				ws: &pkgWorkspace.MockContext{
+					ReadProjectF: func(string) (*pulumi_workspace.Project, string, error) {
+						project := &pulumi_workspace.Project{}
+						if tt.projectBackend != "" {
+							project.Backend = &pulumi_workspace.ProjectBackend{URL: tt.projectBackend}
+						}
+						return project, "", nil
+					},
+				},
+			}
+
+			require.NoError(t, esc.getCachedClient(t.Context()))
+			require.Len(t, requests, 1)
+			assert.Equal(t, tt.wantSelected, requests[0].SelectedBackendURL)
+			assert.Equal(t, tt.wantBackend, esc.account.BackendURL)
+			assert.Equal(t, tt.setCurrent, login.setCurrent)
+		})
+	}
+}
+
+func TestDefaultOrgUsesAuthenticatedIdentity(t *testing.T) {
+	for _, stored := range []string{"none", "account", "unreadable"} {
+		t.Run(stored, func(t *testing.T) {
+			dirs := ptesting.IsolateCredentials(t)
+			t.Setenv("PULUMI_DEFAULT_ORGANIZATION", "")
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				assert.Equal(t, "token helper-token", r.Header.Get("Authorization"))
+				assert.Equal(t, "helper-header", r.Header.Get("X-Test-Auth"))
+				_, err := io.WriteString(w, `{"githubLogin":"helper-user"}`)
+				require.NoError(t, err)
+			}))
+			t.Cleanup(server.Close)
+			t.Setenv("PULUMI_BACKEND_URL", server.URL)
+			session := auth.NewSessionWithHelperFunc(func(
+				_ context.Context, request credentialhelper.Request,
+			) (*credentialhelper.Response, error) {
+				return &credentialhelper.Response{
+					BackendURL:  request.SelectedBackendURL,
+					AccessToken: "helper-token",
+					Headers:     http.Header{"X-Test-Auth": {"helper-header"}},
+				}, nil
+			})
+			creds := pulumi_workspace.Credentials{Current: server.URL}
+			if stored == "account" {
+				creds.Accounts = map[string]pulumi_workspace.Account{
+					server.URL: {AccessToken: "stored-token", Username: "stored-user"},
+				}
+			}
+			if stored == "unreadable" {
+				require.NoError(t, os.WriteFile(filepath.Join(dirs.Home, "credentials.json"), []byte("invalid JSON"), 0o600))
+			} else {
+				require.NoError(t, pulumi_workspace.StoreCredentials(creds))
+			}
+			testClient := &testPulumiClient{}
+			esc := newESC(&Options{
+				Session: session,
+				newClient: func(_ string, credentials auth.Credentials) client.Client {
+					assert.Equal(t, server.URL, credentials.BackendURL)
+					assert.Equal(t, "helper-user", credentials.Identity.Username)
+					assert.Equal(t, "helper-token", credentials.HTTPAuth.AccessToken())
+					assert.Same(t, session.HelperHTTPAuth(server.URL), credentials.HTTPAuth)
+					return testClient
+				},
+			})
+
+			require.NoError(t, esc.getCachedClient(t.Context()))
+			assert.Same(t, testClient, esc.client)
+			assert.Equal(t, "helper-user", esc.account.DefaultOrg)
+		})
+	}
+}
+
+func TestHelperHeadersExcludeStoredOAuth(t *testing.T) {
+	for _, accepted := range []bool{false, true} {
+		t.Run(fmt.Sprintf("accepted=%v", accepted), func(t *testing.T) {
+			ptesting.IsolateCredentials(t)
+			t.Setenv("PULUMI_ACCESS_TOKEN", "environment-token")
+			t.Setenv("PULUMI_DEFAULT_ORGANIZATION", "helper-user")
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				assert.Equal(t, "/api/user", r.URL.Path, "stored OAuth must not be refreshed")
+				assert.Empty(t, r.Header.Get("Authorization"))
+				if !accepted || r.Header.Get("X-Helper") != "refreshed" {
+					w.WriteHeader(http.StatusUnauthorized)
+					return
+				}
+				_, err := io.WriteString(w, `{"githubLogin":"helper-user"}`)
+				require.NoError(t, err)
+			}))
+			defer server.Close()
+			account := pulumi_workspace.Account{AccessToken: "stored-token", RefreshToken: "stored-refresh-token"}
+			require.NoError(t, pulumi_workspace.StoreAccount(server.URL, account, true))
+			var reasons []credentialhelper.Reason
+			session := auth.NewSessionWithHelperFunc(func(
+				_ context.Context, request credentialhelper.Request,
+			) (*credentialhelper.Response, error) {
+				reasons = append(reasons, request.Reason)
+				header := "initial"
+				if request.Reason == credentialhelper.Rejected {
+					header = "refreshed"
+				}
+				return &credentialhelper.Response{Headers: http.Header{"X-Helper": {header}}}, nil
+			})
+			esc := newESC(&Options{Session: session})
+			err := esc.getCachedClient(t.Context())
+			if accepted {
+				require.NoError(t, err)
+			} else {
+				require.Error(t, err)
+			}
+			assert.Equal(t, []credentialhelper.Reason{credentialhelper.Initial, credentialhelper.Rejected}, reasons)
+			stored, err := pulumi_workspace.GetStoredCredentials()
+			require.NoError(t, err)
+			assert.Equal(t, account, stored.Accounts[server.URL])
+		})
+	}
 }

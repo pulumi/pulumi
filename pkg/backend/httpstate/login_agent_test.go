@@ -615,7 +615,7 @@ func TestLoginUsesAgentSignupInNonInteractiveAgentMode(t *testing.T) {
 	t.Cleanup(server.Close)
 
 	ctx := ContextWithAgentCredentialUse(t.Context())
-	account, err := NewLoginManager().Login(ctx, server.URL, false, "pulumi", "Pulumi Cloud", nil, true,
+	account, err := NewLoginManager(nil).Login(ctx, server.URL, false, "pulumi", "Pulumi Cloud", nil, true,
 		display.Options{})
 	require.NoError(t, err)
 	require.NotNil(t, account)
@@ -645,7 +645,7 @@ func TestLoginWithoutAgentSignupDoesNotCreateAgentAccount(t *testing.T) {
 	t.Cleanup(server.Close)
 
 	ctx := ContextWithoutAgentSignup(t.Context())
-	account, err := NewLoginManager().Login(ctx, server.URL, false, "pulumi", "Pulumi Cloud", nil, true,
+	account, err := NewLoginManager(nil).Login(ctx, server.URL, false, "pulumi", "Pulumi Cloud", nil, true,
 		display.Options{})
 	require.ErrorAs(t, err, &backenderr.MissingEnvVarForNonInteractiveError{})
 	assert.Nil(t, account)

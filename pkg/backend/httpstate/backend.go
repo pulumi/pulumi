@@ -519,12 +519,13 @@ type LoginManager interface {
 	) (*auth.Credentials, error)
 }
 
-// NewLoginManager returns a LoginManager that obtains and saves account credentials.
-func NewLoginManager() LoginManager {
-	return defaultLoginManager{}
+// NewLoginManager returns a manager that authenticates HTTP backends.
+// A nil session disables credential helpers.
+func NewLoginManager(session *auth.Session) LoginManager {
+	return defaultLoginManager{session: session}
 }
 
-type defaultLoginManager struct{}
+type defaultLoginManager struct{ session *auth.Session }
 
 // validateStoredAccount checks whether a stored account can still authenticate, refreshing cached
 // user and token metadata when needed. An account that carries a refresh token but a stale (or
@@ -600,6 +601,17 @@ func (m defaultLoginManager) Current(
 	setCurrent bool,
 ) (*auth.Credentials, error) {
 	cloudURL = ValueOrDefaultURL(pkgWorkspace.Instance, cloudURL)
+
+	if m.session != nil {
+		var err error
+		cloudURL, err = m.session.PrepareBackend(ctx, cloudURL)
+		if err != nil {
+			return nil, err
+		}
+		if httpAuth := m.session.HelperHTTPAuth(cloudURL); httpAuth != nil {
+			return loginWithHTTPAuth(ctx, cloudURL, insecure, httpAuth, setCurrent)
+		}
+	}
 
 	// We intentionally don't accept command-line args for the user's access token. Having it in
 	// .bash_history is not great, and specifying it via flag isn't of much use.

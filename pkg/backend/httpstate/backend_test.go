@@ -84,7 +84,7 @@ func TestEnabledFullyQualifiedStackNames(t *testing.T) {
 
 	ctx := t.Context()
 
-	_, err := NewLoginManager().Login(ctx, client.PulumiCloudURL, false, "", "", nil, true, display.Options{})
+	_, err := NewLoginManager(nil).Login(ctx, client.PulumiCloudURL, false, "", "", nil, true, display.Options{})
 	require.NoError(t, err)
 
 	b, err := New(ctx, diagtest.LogSink(t), client.PulumiCloudURL, &workspace.Project{Name: "testproj"}, false)
@@ -123,7 +123,7 @@ func TestDisabledFullyQualifiedStackNames(t *testing.T) {
 
 	ctx := t.Context()
 
-	_, err := NewLoginManager().Login(ctx, client.PulumiCloudURL, false, "", "", nil, true, display.Options{})
+	_, err := NewLoginManager(nil).Login(ctx, client.PulumiCloudURL, false, "", "", nil, true, display.Options{})
 	require.NoError(t, err)
 
 	b, err := New(ctx, diagtest.LogSink(t), client.PulumiCloudURL, &workspace.Project{Name: "testproj"}, false)
@@ -478,7 +478,7 @@ func TestDisableIntegrityChecking(t *testing.T) {
 
 	ctx := t.Context()
 
-	_, err := NewLoginManager().Login(ctx, client.PulumiCloudURL, false, "", "", nil, true, display.Options{})
+	_, err := NewLoginManager(nil).Login(ctx, client.PulumiCloudURL, false, "", "", nil, true, display.Options{})
 	require.NoError(t, err)
 
 	b, err := New(ctx, diagtest.LogSink(t), client.PulumiCloudURL, &workspace.Project{Name: "testproj"}, false)
@@ -633,7 +633,7 @@ func TestListStackNames(t *testing.T) {
 
 	ctx := t.Context()
 
-	_, err := NewLoginManager().Login(ctx, client.PulumiCloudURL, false, "", "", nil, true, display.Options{})
+	_, err := NewLoginManager(nil).Login(ctx, client.PulumiCloudURL, false, "", "", nil, true, display.Options{})
 	require.NoError(t, err)
 
 	b, err := New(ctx, diagtest.LogSink(t), client.PulumiCloudURL, &workspace.Project{Name: "testproj-list-stacks"}, false)
@@ -748,7 +748,7 @@ func TestListStackNamesVsListStacks(t *testing.T) {
 
 	ctx := t.Context()
 
-	_, err := NewLoginManager().Login(ctx, client.PulumiCloudURL, false, "", "", nil, true, display.Options{})
+	_, err := NewLoginManager(nil).Login(ctx, client.PulumiCloudURL, false, "", "", nil, true, display.Options{})
 	require.NoError(t, err)
 
 	b, err := New(ctx, diagtest.LogSink(t), client.PulumiCloudURL, &workspace.Project{Name: "testproj-list-stacks"}, false)

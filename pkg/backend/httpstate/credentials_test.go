@@ -208,7 +208,7 @@ func TestAccountCredentialsPersistToOriginalFile(t *testing.T) {
 				t.Setenv("PULUMI_TEST_ALLOW_AGENT_FALLBACK", "true")
 				credentials, err = LoadCredentials(cloudURL)
 			} else if source == "user" {
-				credentials, err = NewLoginManager().Current(t.Context(), cloudURL, false, true)
+				credentials, err = NewLoginManager(nil).Current(t.Context(), cloudURL, false, true)
 			} else {
 				credentials, err = defaultLoginManager{}.currentOrSignupAgentAccount(
 					t.Context(), cloudURL, false, true, "codex", nil)

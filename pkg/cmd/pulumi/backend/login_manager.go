@@ -108,7 +108,10 @@ func (f *lm) ResolveCredentials(ctx context.Context, ws pkgWorkspace.Context, ur
 		return credentials, nil
 	}
 	credentials := &pkgauth.Credentials{BackendURL: url}
-	if pkgauth.IsHTTPBackend(url) {
+	if helperAuth := f.session.HelperHTTPAuth(url); helperAuth != nil {
+		credentials.HTTPAuth = helperAuth
+		credentials.Insecure = pkgWorkspace.GetCloudInsecure(ws, url)
+	} else if pkgauth.IsHTTPBackend(url) {
 		credentials, err = httpstate.LoadCredentials(url)
 		if err != nil {
 			return nil, err
@@ -151,7 +154,7 @@ func (f *lm) Current(
 	}
 
 	insecure := pkgWorkspace.GetCloudInsecure(ws, url)
-	credentials, err := httpstate.NewLoginManager().Current(ctx, url, insecure, setCurrent)
+	credentials, err := httpstate.NewLoginManager(f.session).Current(ctx, url, insecure, setCurrent)
 	if err != nil || credentials == nil {
 		return nil, err
 	}
@@ -180,7 +183,7 @@ func (f *lm) Login(
 		consoleURL := client.CloudConsoleURL(url)
 		welcome := func(opts display.Options) { httpstate.WelcomeUser(opts, consoleURL) }
 		var credentials *pkgauth.Credentials
-		credentials, err = httpstate.NewLoginManager().Login(
+		credentials, err = httpstate.NewLoginManager(f.session).Login(
 			ctx, url, options.Insecure, "pulumi", "Pulumi stacks", welcome, options.SetCurrent, opts)
 		if err == nil {
 			f.rememberCredentials(credentials)
@@ -225,7 +228,7 @@ func (f *lm) LoginFromAuthContext(
 	authContext pkgauth.AuthContext,
 ) (backend.Backend, error) {
 	if authContext.GrantType == pkgauth.AuthContextGrantTypeTokenExchange {
-		lm := httpstate.NewLoginManager()
+		lm := httpstate.NewLoginManager(f.session)
 		credentials, err := lm.LoginWithOIDCToken(
 			ctx, sink, url, insecure, authContext.Token, authContext.Organization, authContext.Scope,
 			authContext.Expiration, setCurrent)

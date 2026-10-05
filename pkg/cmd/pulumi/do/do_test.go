@@ -19,9 +19,14 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"io"
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/pulumi/pulumi/pkg/v3/auth"
+	"github.com/pulumi/pulumi/pkg/v3/auth/credentialhelper"
+	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
 
 	"github.com/blang/semver"
 	"github.com/spf13/cobra"
@@ -1418,4 +1423,41 @@ func TestPropertyValueToPCLLiteral(t *testing.T) {
 		"cfg", property.New(property.Computed))
 	require.ErrorContains(t, err, `"cfg"`)
 	require.ErrorContains(t, err, "computed/output")
+}
+
+func TestDoResolvesHelperCredentialsBeforeStartingPlugins(t *testing.T) {
+	ptesting.IsolateCredentials(t)
+	t.Setenv("PULUMI_BACKEND_URL", "https://backend.example.com")
+	ptesting.Unsetenv(t, "HELPER_PLUGIN_READY")
+	calls := 0
+	manager := cmdBackend.NewLoginManager(auth.NewSessionWithHelperFunc(func(
+		_ context.Context, request credentialhelper.Request,
+	) (*credentialhelper.Response, error) {
+		calls++
+		assert.Equal(t, "https://backend.example.com", request.SelectedBackendURL)
+		return &credentialhelper.Response{
+			AccessToken: "helper-token", Env: map[string]string{"HELPER_PLUGIN_READY": "yes"},
+		}, nil
+	}))
+	host := func(ctx context.Context, d, statusD diag.Sink) (plugin.Host, error) {
+		assert.Equal(t, "yes", os.Getenv("HELPER_PLUGIN_READY"))
+		return testHost(ctx, d, statusD)
+	}
+	loaded := false
+	loader := func(_ context.Context, pctx *plugin.Context, _, _ string) (plugin.Provider, error) {
+		loaded = true
+		assert.Equal(t, "helper-token", pctx.Credentials().HTTPAuth.AccessToken())
+		return &testProvider{spec: schema.PackageSpec{Name: "test"}}, nil
+	}
+	cmd := NewDoCmd(manager, newTestWorkspace(t), loader, host, panicLoadConverterPlugin, nil)
+	cmd.SetOut(io.Discard)
+	cmd.SetErr(io.Discard)
+	cmd.SetArgs([]string{"--package", "test"})
+	require.NoError(t, cmd.ExecuteContext(t.Context()))
+	assert.True(t, loaded)
+	assert.Equal(t, 1, calls)
+	stored, err := workspace.GetStoredCredentials()
+	require.NoError(t, err)
+	assert.Empty(t, stored.Current)
+	assert.Empty(t, stored.Accounts)
 }

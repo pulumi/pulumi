@@ -16,7 +16,9 @@ package backend
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -29,7 +31,9 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/auth"
 	"github.com/pulumi/pulumi/pkg/v3/auth/credentialhelper"
 	pkgBackend "github.com/pulumi/pulumi/pkg/v3/backend"
+	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
+	"github.com/pulumi/pulumi/pkg/v3/secrets/service"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
@@ -156,6 +160,62 @@ func TestLoginManagerPreparesHelperSelectedDIYBackend(t *testing.T) {
 	}
 }
 
+func TestLoginManagerPreparesEachBackendOnce(t *testing.T) {
+	ptesting.IsolateCredentials(t)
+	t.Setenv("PULUMI_DEFAULT_ORGANIZATION", "migration-user")
+	servers := make([]*httptest.Server, 2)
+	tokens := map[string]string{}
+	for i := range servers {
+		token := fmt.Sprintf("backend-%d-token", i)
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			assert.Equal(t, "token "+token, r.Header.Get("Authorization"))
+			switch r.URL.Path {
+			case "/api/user":
+				require.NoError(t, json.NewEncoder(w).Encode(map[string]string{"githubLogin": "migration-user"}))
+			case "/api/capabilities":
+				require.NoError(t, json.NewEncoder(w).Encode(apitype.CapabilitiesResponse{}))
+			default:
+				t.Errorf("unexpected request: %s", r.URL.Path)
+			}
+		}))
+		defer server.Close()
+		servers[i] = server
+		tokens[server.URL] = token
+	}
+	require.NoError(t, workspace.StoreCredentials(workspace.Credentials{Current: servers[1].URL}))
+	var requests []credentialhelper.Request
+	session := auth.NewSessionWithHelperFunc(func(
+		_ context.Context, request credentialhelper.Request,
+	) (*credentialhelper.Response, error) {
+		requests = append(requests, request)
+		return &credentialhelper.Response{AccessToken: tokens[request.SelectedBackendURL]}, nil
+	})
+	ctx, lm := t.Context(), NewLoginManager(session)
+	for range 2 {
+		source, err := lm.Login(ctx, pkgWorkspace.Instance, diagtest.LogSink(t),
+			servers[0].URL, nil, LoginOptions{Color: colors.Never})
+		require.NoError(t, err)
+		source.(httpstate.Backend).Capabilities(ctx)
+		_, _, _, err = source.CurrentUser()
+		require.NoError(t, err)
+		target, err := CurrentBackend(ctx, pkgWorkspace.Instance, lm, nil, display.Options{Color: colors.Never})
+		require.NoError(t, err)
+		target.(httpstate.Backend).Capabilities(ctx)
+		_, _, _, err = target.CurrentUser()
+		require.NoError(t, err)
+		assert.Equal(t, servers[1].URL, target.(httpstate.Backend).CloudURL())
+	}
+	assert.Equal(t, []credentialhelper.Request{
+		{Reason: credentialhelper.Initial, SelectedBackendURL: servers[0].URL},
+		{Reason: credentialhelper.Initial, SelectedBackendURL: servers[1].URL},
+	}, requests)
+	assert.Equal(t, "backend-1-token", session.HelperHTTPAuth(servers[1].URL).AccessToken())
+	stored, err := workspace.GetStoredCredentials()
+	require.NoError(t, err)
+	assert.Equal(t, servers[1].URL, stored.Current)
+	assert.Empty(t, stored.Accounts)
+}
+
 func TestPrepareCurrentBackendSelectionPrecedence(t *testing.T) {
 	t.Parallel()
 	const (
@@ -228,14 +288,98 @@ func TestPrepareCurrentBackendSelectionPrecedence(t *testing.T) {
 	}
 }
 
+func TestHelperLoginPreservesAccounts(t *testing.T) {
+	for _, mode := range []string{"token", "headers only", "rejected", "insecure"} {
+		t.Run(mode, func(t *testing.T) {
+			ptesting.IsolateCredentials(t)
+			t.Setenv("PULUMI_ACCESS_TOKEN", "environment-token")
+			t.Setenv("PULUMI_DEFAULT_ORGANIZATION", "helper-user")
+			token, authorization := "helper-token", "token helper-token"
+			if mode == "headers only" {
+				token, authorization = "", ""
+			}
+			serve := httptest.NewServer
+			if mode == "insecure" {
+				serve = httptest.NewTLSServer
+			}
+			server := serve(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				assert.Equal(t, authorization, r.Header.Get("Authorization"))
+				assert.Equal(t, "helper-header", r.Header.Get("X-Helper"))
+				if mode == "rejected" {
+					w.WriteHeader(http.StatusUnauthorized)
+					return
+				}
+				switch r.URL.Path {
+				case "/api/user":
+					require.NoError(t, json.NewEncoder(w).Encode(map[string]string{"githubLogin": "helper-user"}))
+				case "/api/capabilities":
+					require.NoError(t, json.NewEncoder(w).Encode(apitype.CapabilitiesResponse{}))
+				default:
+					t.Errorf("unexpected request: %s", r.URL.Path)
+				}
+			}))
+			defer server.Close()
+			oldAccount := workspace.Account{AccessToken: "stored-token", Username: "stored-user"}
+			require.NoError(t, workspace.StoreAccount("https://old.example.com", oldAccount, true))
+			require.NoError(t, workspace.StoreAccount(server.URL, oldAccount, false))
+			run := func(context.Context, credentialhelper.Request) (*credentialhelper.Response, error) {
+				return &credentialhelper.Response{AccessToken: token, Headers: http.Header{"X-Helper": {"helper-header"}}}, nil
+			}
+			manager := NewLoginManager(auth.NewSessionWithHelperFunc(run))
+			be, err := manager.Login(t.Context(), pkgWorkspace.Instance, diagtest.LogSink(t), server.URL,
+				nil, LoginOptions{SetCurrent: true, Insecure: mode == "insecure", Color: colors.Never})
+			expectedCurrent := server.URL
+			if mode == "rejected" {
+				require.Error(t, err)
+				expectedCurrent = "https://old.example.com"
+			} else {
+				require.NoError(t, err)
+				be.(httpstate.Backend).Capabilities(t.Context())
+				username, _, _, err := be.CurrentUser()
+				require.NoError(t, err)
+				assert.Equal(t, "helper-user", username)
+				pluginCredentials := PluginCredentials(be)
+				t.Setenv("PULUMI_API", "https://unrelated.example.com")
+				assert.Equal(t, server.URL, pluginCredentials.BackendURL)
+				assert.Equal(t, token, pluginCredentials.HTTPAuth.AccessToken())
+			}
+			stored, err := workspace.GetStoredCredentials()
+			require.NoError(t, err)
+			assert.Equal(t, expectedCurrent, stored.Current)
+			assert.Equal(t, oldAccount, stored.Accounts["https://old.example.com"])
+			oldAccount.Insecure = mode == "insecure"
+			assert.Equal(t, oldAccount, stored.Accounts[server.URL])
+			if mode == "insecure" {
+				// A fresh login manager must use the saved TLS setting.
+				manager = NewLoginManager(auth.NewSessionWithHelperFunc(run))
+				be, err = manager.Current(t.Context(), pkgWorkspace.Instance, diagtest.LogSink(t), server.URL, nil, false)
+				require.NoError(t, err)
+				be.(httpstate.Backend).Capabilities(t.Context())
+			}
+		})
+	}
+}
+
 func TestResolveCredentialsWithoutLogin(t *testing.T) {
 	for _, tt := range []struct {
 		name, envToken, wantToken string
 		missing                   bool
+		helper                    bool
+		response                  *credentialhelper.Response
 	}{
 		{name: "missing", missing: true},
 		{name: "stored", wantToken: "stored-token"},
 		{name: "environment", envToken: "env-token", wantToken: "env-token"},
+		{
+			name: "helper", helper: true, envToken: "env-token",
+			response:  &credentialhelper.Response{AccessToken: "helper-token"},
+			wantToken: "helper-token",
+		},
+		{
+			name: "header only", helper: true, envToken: "env-token",
+			response: &credentialhelper.Response{Headers: http.Header{"X-Gate": {"secret"}}},
+		},
+		{name: "declined", helper: true, envToken: "env-token", wantToken: "env-token"},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			ptesting.IsolateCredentials(t)
@@ -250,6 +394,14 @@ func TestResolveCredentialsWithoutLogin(t *testing.T) {
 			before, err := workspace.GetStoredCredentials()
 			require.NoError(t, err)
 			session := auth.NewSessionWithHelperFunc(nil)
+			if tt.helper {
+				session = auth.NewSessionWithHelperFunc(func(
+					_ context.Context, request credentialhelper.Request,
+				) (*credentialhelper.Response, error) {
+					assert.Equal(t, server.URL, request.SelectedBackendURL)
+					return tt.response, nil
+				})
+			}
 			manager := NewLoginManager(session)
 			credentials, err := manager.ResolveCredentials(t.Context(), pkgWorkspace.Instance, server.URL, nil)
 			require.NoError(t, err)
@@ -262,4 +414,45 @@ func TestResolveCredentialsWithoutLogin(t *testing.T) {
 			assert.Equal(t, before, after)
 		})
 	}
+}
+
+func TestServiceSecretsResolveTheirOwnBackend(t *testing.T) {
+	ptesting.IsolateCredentials(t)
+	const currentURL = "https://current.example.com"
+	require.NoError(t, workspace.StoreCredentials(workspace.Credentials{Current: currentURL}))
+	t.Setenv("PULUMI_ACCESS_TOKEN", "unused-token")
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Empty(t, r.Header.Get("Authorization"))
+		assert.Equal(t, "secret", r.Header.Get("X-Gate"))
+		switch r.URL.Path {
+		case "/api/capabilities":
+			fmt.Fprint(w, `{}`)
+		case "/api/stacks/owner/project/stack/decrypt":
+			fmt.Fprintf(w, `{"plaintext":%q}`, base64.StdEncoding.EncodeToString([]byte("decrypted")))
+		default:
+			t.Errorf("unexpected request: %s", r.URL.Path)
+		}
+	}))
+	defer server.Close()
+	var requests []credentialhelper.Request
+	manager := NewLoginManager(auth.NewSessionWithHelperFunc(func(
+		_ context.Context, request credentialhelper.Request,
+	) (*credentialhelper.Response, error) {
+		requests = append(requests, request)
+		return &credentialhelper.Response{Headers: http.Header{"X-Gate": {"secret"}}}, nil
+	}))
+	state := json.RawMessage(fmt.Sprintf(`{"url":%q,"owner":"owner","project":"project","stack":"stack"}`, server.URL))
+	sm, err := SecretsProvider(manager).OfType(t.Context(), service.Type, state)
+	require.NoError(t, err)
+	plaintext, err := sm.Decrypter().DecryptValue(t.Context(), base64.StdEncoding.EncodeToString([]byte("ciphertext")))
+	require.NoError(t, err)
+	assert.Equal(t, "decrypted", plaintext)
+	assert.JSONEq(t, string(state), string(sm.State()))
+	assert.Equal(t, []credentialhelper.Request{
+		{Reason: credentialhelper.Initial, SelectedBackendURL: server.URL},
+	}, requests)
+	stored, err := workspace.GetStoredCredentials()
+	require.NoError(t, err)
+	assert.Equal(t, currentURL, stored.Current)
+	assert.Empty(t, stored.Accounts)
 }

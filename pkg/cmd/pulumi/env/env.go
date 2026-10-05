@@ -17,7 +17,7 @@ package env
 import (
 	"github.com/spf13/cobra"
 
-	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
+	"github.com/pulumi/pulumi/pkg/v3/auth"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/esc/cli"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -27,7 +27,7 @@ func NewEnvCmd() *cobra.Command {
 	escCLI := cli.New(&cli.Options{
 		ParentPath: "pulumi",
 		Colors:     cmdutil.GetGlobalColorization(),
-		Login:      httpstate.NewLoginManager(),
+		Session:    auth.DefaultSession(),
 		UserAgent:  client.UserAgent(),
 	})
 

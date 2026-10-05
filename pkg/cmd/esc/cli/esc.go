@@ -46,7 +46,10 @@ type Options struct {
 
 	Colors colors.Colorization
 
+	// Login resolves account credentials when the session supplies no HTTP authentication.
 	Login httpstate.LoginManager
+	// Session runs the credential helper for the backend. Nil means no helper.
+	Session *auth.Session
 
 	fs      escFS
 	environ environ
@@ -71,7 +74,8 @@ type escCommand struct {
 	command string
 	colors  colors.Colorization
 
-	login httpstate.LoginManager
+	login   httpstate.LoginManager
+	session *auth.Session
 
 	userAgent string
 	newClient func(userAgent string, credentials auth.Credentials) client.Client
@@ -93,6 +97,7 @@ func newESC(opts *Options) *escCommand {
 		command:   valueOrDefault(opts.ParentPath, "esc"),
 		colors:    valueOrDefault(opts.Colors, cmdutil.GetGlobalColorization()),
 		login:     opts.Login,
+		session:   valueOrDefault(opts.Session, auth.NewSessionWithHelperFunc(nil)),
 		ws:        valueOrDefault(opts.ws, pkgWorkspace.Instance),
 		userAgent: valueOrDefault(opts.UserAgent, fmt.Sprintf("esc-cli/1 (%s; %s)", version.Version, runtime.GOOS)),
 		newClient: opts.newClient,

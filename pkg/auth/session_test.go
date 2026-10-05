@@ -107,6 +107,7 @@ func TestPrepareSelection(t *testing.T) {
 			require.NoError(t, err)
 			assert.Equal(t, tt.wantURL, prepared)
 			assert.Equal(t, 1, calls)
+			assert.Equal(t, tt.httpAuth, session.HelperHTTPAuth(tt.wantURL) != nil)
 			assert.Equal(t, tt.wantResponse, session.prepared[normalizeBackendURL(tt.wantURL)].hasHelperResponse)
 			if IsHTTPBackend(tt.wantURL) {
 				assert.Equal(t, tt.wantResponse, session.prepared[normalizeBackendURL(tt.wantURL+"/")].hasHelperResponse)
@@ -130,6 +131,27 @@ func TestPrepareAnotherDefaultAfterDecline(t *testing.T) {
 		assert.Equal(t, url, prepared)
 	}
 	assert.Equal(t, []string{"", "s3://second"}, selections)
+}
+
+func TestPrepareKeepsEarlierResult(t *testing.T) {
+	t.Setenv("PULUMI_ACCESS_TOKEN", "")
+	session := NewSessionWithHelperFunc(func(
+		_ context.Context, request credentialhelper.Request,
+	) (*credentialhelper.Response, error) {
+		if request.SelectedBackendURL != "" {
+			return &credentialhelper.Response{AccessToken: "selected-token"}, nil
+		}
+		return &credentialhelper.Response{BackendURL: testBackendURL, AccessToken: "must-not-replace-token"}, nil
+	})
+	_, err := session.PrepareBackend(t.Context(), testBackendURL)
+	require.NoError(t, err)
+	httpAuth := session.HelperHTTPAuth(testBackendURL)
+	prepared, err := session.SelectBackend(t.Context(), "https://api.pulumi.com", nil)
+	require.NoError(t, err)
+	assert.Equal(t, testBackendURL, prepared)
+	assert.True(t, session.prepared[normalizeBackendURL(prepared)].hasHelperResponse)
+	assert.Same(t, httpAuth, session.HelperHTTPAuth(testBackendURL))
+	assert.Equal(t, "selected-token", session.HelperHTTPAuth(testBackendURL).AccessToken())
 }
 
 //nolint:paralleltest // The test checks a process-wide environment variable.

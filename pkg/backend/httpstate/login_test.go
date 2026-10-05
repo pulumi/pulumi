@@ -51,7 +51,7 @@ func TestMissingPulumiAccessToken(t *testing.T) {
 
 	ctx := t.Context()
 
-	_, err := NewLoginManager().Login(ctx, "https://api.example.com", false, "", "", nil, true, display.Options{})
+	_, err := NewLoginManager(nil).Login(ctx, "https://api.example.com", false, "", "", nil, true, display.Options{})
 	var expectedErr backenderr.MissingEnvVarForNonInteractiveError
 	if assert.ErrorAs(t, err, &expectedErr) {
 		assert.Equal(t, env.AccessToken.Var(), expectedErr.Var)
@@ -97,7 +97,7 @@ func TestCurrentEnvTokenFailsWithInaccessibleExplicitPath(t *testing.T) {
 	}))
 	t.Cleanup(server.Close)
 
-	account, err := NewLoginManager().Current(t.Context(), server.URL, false, true)
+	account, err := NewLoginManager(nil).Current(t.Context(), server.URL, false, true)
 	require.Error(t, err)
 	assert.Nil(t, account)
 
@@ -123,7 +123,7 @@ func TestCurrentEnvTokenStoresInDefaultPathWhenWritable(t *testing.T) {
 	}))
 	t.Cleanup(server.Close)
 
-	account, err := NewLoginManager().Current(t.Context(), server.URL, false, true)
+	account, err := NewLoginManager(nil).Current(t.Context(), server.URL, false, true)
 	require.NoError(t, err)
 	require.NotNil(t, account)
 	assert.Equal(t, "env-token", account.HTTPAuth.AccessToken())
@@ -289,7 +289,7 @@ func TestCurrentEnvTokenDoesNotBypassUndecryptableCredentials(t *testing.T) {
 	}))
 	t.Cleanup(server.Close)
 
-	account, err := NewLoginManager().Current(t.Context(), server.URL, false, true)
+	account, err := NewLoginManager(nil).Current(t.Context(), server.URL, false, true)
 	require.Error(t, err)
 	assert.Nil(t, account)
 	assert.True(t, workspace.IsUndecryptableCredentials(err),

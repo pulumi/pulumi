@@ -1,0 +1,4 @@
+component: cli
+kind: feat
+body: Authenticate HTTP backends and plugins with an experimental credential helper's token and headers
+time: 2026-10-06T13:10:49+02:00

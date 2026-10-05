@@ -55,6 +55,7 @@ type preparedBackend struct {
 	selectedByHelper  bool
 	hasHelperResponse bool
 	err               error
+	httpAuth          *HTTPAuth
 }
 
 var (
@@ -180,10 +181,14 @@ func (s *Session) prepare(
 	// A backend the command already opened by URL keeps the credentials it was given then.
 	if earlier, ok := s.prepared[result.url]; ok && err == nil {
 		result.hasHelperResponse, result.err, response = earlier.hasHelperResponse, earlier.err, nil
+		result.httpAuth = earlier.httpAuth
 	}
 	if response != nil {
 		redactHelperCredentials(response)
 		result.err = s.applyEnvironment(response.Env)
+		if result.err == nil && response.HasHTTPCredentials() && IsHTTPBackend(result.url) {
+			result.httpAuth = newHelperHTTPAuth(result.url, response, s.runHelper)
+		}
 	}
 	if helperMaySelect {
 		s.unselected = &result
@@ -192,6 +197,13 @@ func (s *Session) prepare(
 		s.prepared[result.url] = result
 	}
 	return result.url, result.err
+}
+
+// HelperHTTPAuth returns the helper's HTTP credentials for a prepared backend, or nil if it supplied none.
+func (s *Session) HelperHTTPAuth(backendURL string) *HTTPAuth {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.prepared[normalizeBackendURL(backendURL)].httpAuth
 }
 
 func redactHelperCredentials(response *credentialhelper.Response) {
