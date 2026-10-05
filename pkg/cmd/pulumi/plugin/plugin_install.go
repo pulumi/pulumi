@@ -78,9 +78,10 @@ func newPluginInstallCmd() *cobra.Command {
 			"  - `tool`: an arbitrary plugin that can be run as a tool.\n" +
 			"\n" +
 			"If VERSION is specified, it cannot be a range; it must be a specific number.\n" +
-			"If VERSION is unspecified, Pulumi installs the pinned version of language plugins\n" +
-			"it knows about (such as `hcl` and `opa`). For other plugins it will attempt to look\n" +
-			"up the latest version, though the result is not guaranteed.",
+			"If VERSION is unspecified, a language plugin that is distributed separately from\n" +
+			"the CLI installs the version this release of the CLI is pinned to. For any other\n" +
+			"plugin, Pulumi will attempt to look up the latest version, though the result is\n" +
+			"not guaranteed.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			picmd.stderr = cmd.ErrOrStderr()
