@@ -49,6 +49,7 @@ type Session struct {
 	unselected *preparedBackend
 	// validateBackend rejects a backend the helper selected that the caller cannot open.
 	validateBackend func(backendURL string) error
+	httpAuth        map[string]*HTTPAuth
 }
 
 type preparedBackend struct {
@@ -101,6 +102,7 @@ func NewSessionWithHelperFunc(run runHelperFunc) *Session {
 		run:       run,
 		helperEnv: map[string]string{},
 		prepared:  map[string]preparedBackend{},
+		httpAuth:  map[string]*HTTPAuth{},
 	}
 }
 
@@ -204,6 +206,9 @@ func (s *Session) prepare(ctx context.Context, url string, helperMaySelect bool)
 	if response != nil {
 		redactHelperCredentials(response)
 		result.err = s.applyEnvironment(response.Env)
+		if result.err == nil && response.HasHTTPCredentials() && IsHTTPBackend(result.url) {
+			s.httpAuth[result.url] = newHTTPAuth(result.url, response, s.run)
+		}
 	}
 	if helperMaySelect {
 		s.unselected = &result
@@ -212,6 +217,13 @@ func (s *Session) prepare(ctx context.Context, url string, helperMaySelect bool)
 		s.prepared[result.url] = result
 	}
 	return result.url, result.err
+}
+
+// HTTPAuth returns the helper's HTTP credentials for a prepared backend, or nil if it supplied none.
+func (s *Session) HTTPAuth(backendURL string) *HTTPAuth {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.httpAuth[normalizeBackendURL(backendURL)]
 }
 
 func redactHelperCredentials(response *credentialhelper.Response) {

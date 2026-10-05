@@ -140,7 +140,7 @@ func TestValidateStoredAccountSkipsNetworkWhenNoCredential(t *testing.T) {
 	t.Parallel()
 	// An account with neither an access nor a refresh token can't authenticate and must short-
 	// circuit before any network attempt — the cloudURL here intentionally points nowhere.
-	account, valid, err := validateStoredAccount(t.Context(), "http://127.0.0.1:0", false, workspace.Account{})
+	account, valid, err := validateStoredAccount(t.Context(), nil, "http://127.0.0.1:0", false, workspace.Account{})
 	require.NoError(t, err)
 	assert.False(t, valid)
 	assert.Empty(t, account.AccessToken)
@@ -214,7 +214,7 @@ func TestGetAccountDetails(t *testing.T) {
 			}
 
 			username, orgs, tokenInfo, err := getAccountDetails(
-				t.Context(), cloudURL, false, tt.accessToken, "", nil,
+				t.Context(), nil, cloudURL, false, tt.accessToken, "", nil,
 			)
 
 			if tt.wantErr {

@@ -15,6 +15,7 @@
 package httpstate
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -22,6 +23,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -29,11 +31,92 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/pkg/v3/auth"
+	"github.com/pulumi/pulumi/pkg/v3/auth/credentialhelper"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/diagtest"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
+
+func TestBackendSharesHelperCredentialsWithESC(t *testing.T) {
+	for _, helperToken := range []bool{false, true} {
+		name := "headers"
+		if helperToken {
+			name = "token and headers"
+		}
+		t.Run(name, func(t *testing.T) {
+			t.Setenv("PULUMI_DEFAULT_ORGANIZATION", "selected-org")
+			t.Setenv("PULUMI_ACCESS_TOKEN", "")
+			var refreshes atomic.Int32
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				gate, token := "gate-2", "token stored"
+				if r.URL.Path == "/api/capabilities" {
+					gate = "gate-1"
+				}
+				if helperToken {
+					token = "token helper-token"
+				}
+				if r.Header.Get("X-Gate") != gate || r.Header.Get("Authorization") != token {
+					w.WriteHeader(http.StatusUnauthorized)
+					return
+				}
+				switch r.URL.Path {
+				case "/api/capabilities":
+					require.NoError(t, json.NewEncoder(w).Encode(apitype.CapabilitiesResponse{
+						Capabilities: []apitype.APICapabilityConfig{{Capability: apitype.BatchEncrypt}},
+					}))
+				case "/api/esc/environments":
+					_, err := w.Write([]byte(`{"environments":[{"name":"shared"}]}`))
+					require.NoError(t, err)
+				case "/api/user":
+					_, err := w.Write([]byte(`{"githubLogin":"selected-user"}`))
+					require.NoError(t, err)
+				default:
+					t.Errorf("unexpected request: %s", r.URL.Path)
+					w.WriteHeader(http.StatusNotFound)
+				}
+			}))
+			t.Cleanup(server.Close)
+			session := auth.NewSessionWithHelperFunc(func(
+				_ context.Context, request credentialhelper.Request,
+			) (*credentialhelper.Response, error) {
+				response := &credentialhelper.Response{Headers: http.Header{"X-Gate": {"gate-0"}}}
+				if request.Reason != credentialhelper.Initial {
+					assert.Equal(t, credentialhelper.Rejected, request.Reason)
+					response.Headers.Set("X-Gate", "gate-"+strconv.Itoa(int(refreshes.Add(1))))
+				}
+				if helperToken {
+					response.AccessToken = "helper-token"
+				}
+				return response, nil
+			})
+			ctx := t.Context()
+			_, err := session.PrepareBackend(ctx, server.URL)
+			require.NoError(t, err)
+			credentials := auth.Credentials{
+				BackendURL: server.URL, Account: workspace.Account{Username: "selected-user"},
+				HTTPAuth: session.HTTPAuth(server.URL),
+			}
+			if !helperToken {
+				credentials.Account.AccessToken = "stored"
+			}
+			be, err := NewWithCredentials(ctx, diagtest.LogSink(t), credentials, nil, false)
+			require.NoError(t, err)
+			assert.True(t, be.Capabilities(ctx).BatchEncryption)
+			assert.EqualValues(t, 1, refreshes.Load())
+			// The ESC client starts from the refreshed headers and shares its own refresh with the backend.
+			cloud := be.(*cloudBackend)
+			environments, _, err := cloud.escClient.ListEnvironments(ctx, "")
+			require.NoError(t, err)
+			require.Len(t, environments, 1)
+			assert.Equal(t, "shared", environments[0].Name)
+			username, _, _, err := cloud.client.GetPulumiAccountDetails(ctx)
+			require.NoError(t, err)
+			assert.Equal(t, "selected-user", username)
+			assert.EqualValues(t, 2, refreshes.Load())
+		})
+	}
+}
 
 func TestNewWithCredentialsUsesSelectedAccount(t *testing.T) {
 	dirs := ptesting.IsolateCredentials(t)

@@ -23,4 +23,6 @@ type Credentials struct {
 	Account workspace.Account
 	// Persist saves an account after token refresh. Nil keeps refreshed credentials in memory.
 	Persist func(workspace.Account) error
+	// HTTPAuth is the credential helper's token and headers for the backend, or nil.
+	HTTPAuth *HTTPAuth
 }

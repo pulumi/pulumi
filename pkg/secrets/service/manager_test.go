@@ -15,7 +15,17 @@
 package service
 
 import (
+	"context"
+	"encoding/base64"
+	"encoding/json"
+	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"testing"
+
+	"github.com/pulumi/pulumi/pkg/v3/auth"
+	"github.com/pulumi/pulumi/pkg/v3/auth/credentialhelper"
+	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -81,4 +91,39 @@ func TestGetServiceSecretsAccountDoesNotFallbackWithExplicitPath(t *testing.T) {
 func isolateAgentCredentials(t *testing.T) {
 	t.Helper()
 	t.Setenv("PULUMI_TEST_AGENT_PULUMI_DIR", t.TempDir())
+}
+
+func TestServiceSecretsUseSessionCredentials(t *testing.T) {
+	ptesting.IsolateCredentials(t)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "token memory-only-token", r.Header.Get("Authorization"))
+		switch r.URL.Path {
+		case "/api/capabilities":
+			fmt.Fprint(w, `{}`)
+		case "/api/stacks/owner/project/stack/decrypt":
+			fmt.Fprintf(w, `{"plaintext":%q}`, base64.StdEncoding.EncodeToString([]byte("decrypted")))
+		default:
+			t.Errorf("unexpected request: %s", r.URL.Path)
+			w.WriteHeader(http.StatusNotFound)
+		}
+	}))
+	defer server.Close()
+	t.Setenv("PULUMI_ACCESS_TOKEN", "")
+	session := auth.NewSessionWithHelperFunc(func(
+		context.Context, credentialhelper.Request,
+	) (*credentialhelper.Response, error) {
+		return &credentialhelper.Response{AccessToken: "memory-only-token"}, nil
+	})
+	ctx := t.Context()
+	_, err := session.PrepareBackend(ctx, server.URL)
+	require.NoError(t, err)
+	state, err := json.Marshal(serviceSecretsManagerState{
+		URL: server.URL, Owner: "owner", Project: "project", Stack: "stack",
+	})
+	require.NoError(t, err)
+	manager, err := NewServiceSecretsManagerFromState(ctx, session, state)
+	require.NoError(t, err)
+	plaintext, err := manager.Decrypter().DecryptValue(ctx, base64.StdEncoding.EncodeToString([]byte("ciphertext")))
+	require.NoError(t, err)
+	assert.Equal(t, "decrypted", plaintext)
 }

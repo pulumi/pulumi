@@ -17,6 +17,7 @@ package backend
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -27,8 +28,10 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/pkg/v3/auth"
+	"github.com/pulumi/pulumi/pkg/v3/auth/authtest"
 	"github.com/pulumi/pulumi/pkg/v3/auth/credentialhelper"
 	pkgBackend "github.com/pulumi/pulumi/pkg/v3/backend"
+	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -141,6 +144,55 @@ func TestLoginManagerPreparesHelperSelectedDIYBackend(t *testing.T) {
 			assert.Equal(t, backendURL, stored.Current)
 		})
 	}
+}
+
+func TestLoginManagerPreparesEachBackendOnce(t *testing.T) {
+	ptesting.IsolateCredentials(t)
+	t.Setenv("PULUMI_DEFAULT_ORGANIZATION", "migration-user")
+	servers := make([]*httptest.Server, 2)
+	tokens := map[string]string{}
+	for i := range servers {
+		token := fmt.Sprintf("backend-%d-token", i)
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			assert.Equal(t, "token "+token, r.Header.Get("Authorization"))
+			authtest.ServeBackend(t, w, r, "migration-user", nil)
+		}))
+		defer server.Close()
+		servers[i] = server
+		tokens[server.URL] = token
+	}
+	require.NoError(t, workspace.StoreCredentials(workspace.Credentials{Current: servers[1].URL}))
+	var requests []credentialhelper.Request
+	session := auth.NewSessionWithHelperFunc(func(
+		_ context.Context, request credentialhelper.Request,
+	) (*credentialhelper.Response, error) {
+		requests = append(requests, request)
+		return &credentialhelper.Response{AccessToken: tokens[request.SelectedBackendURL]}, nil
+	})
+	ctx, lm := t.Context(), NewLoginManager(session)
+	for range 2 {
+		source, err := lm.Login(ctx, pkgWorkspace.Instance, diagtest.LogSink(t),
+			servers[0].URL, nil, false, false, colors.Never)
+		require.NoError(t, err)
+		source.(httpstate.Backend).Capabilities(ctx)
+		_, _, _, err = source.CurrentUser()
+		require.NoError(t, err)
+		target, err := CurrentBackend(ctx, pkgWorkspace.Instance, lm, nil, display.Options{Color: colors.Never})
+		require.NoError(t, err)
+		target.(httpstate.Backend).Capabilities(ctx)
+		_, _, _, err = target.CurrentUser()
+		require.NoError(t, err)
+		assert.Equal(t, servers[1].URL, target.(httpstate.Backend).CloudURL())
+	}
+	assert.Equal(t, []credentialhelper.Request{
+		{Reason: credentialhelper.Initial, SelectedBackendURL: servers[0].URL},
+		{Reason: credentialhelper.Initial, SelectedBackendURL: servers[1].URL},
+	}, requests)
+	assert.Equal(t, "backend-1-token", lm.Session().HTTPAuth(servers[1].URL).AccessToken())
+	stored, err := workspace.GetStoredCredentials()
+	require.NoError(t, err)
+	assert.Equal(t, servers[1].URL, stored.Current)
+	assert.Empty(t, stored.Accounts)
 }
 
 func TestPrepareCurrentBackendSelectionPrecedence(t *testing.T) {

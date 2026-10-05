@@ -15,6 +15,8 @@
 package auth
 
 import (
+	"fmt"
+
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -24,4 +26,17 @@ func SavedHelper() (*workspace.CredentialHelper, error) {
 		return nil, err
 	}
 	return credentials.CredentialHelper, nil
+}
+
+// SaveCurrentBackend changes the saved selection without storing helper credentials.
+func SaveCurrentBackend(backendURL string) error {
+	credentials, err := workspace.GetStoredCredentials()
+	if err != nil {
+		return err
+	}
+	credentials.Current = backendURL
+	if err := workspace.StoreCredentials(credentials); err != nil {
+		return fmt.Errorf("saving current backend: %w", err)
+	}
+	return nil
 }

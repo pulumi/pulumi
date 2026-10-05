@@ -23,6 +23,7 @@ import (
 	"github.com/opentracing/opentracing-go"
 	"google.golang.org/grpc"
 
+	"github.com/pulumi/pulumi/pkg/v3/auth"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
@@ -254,7 +255,7 @@ func NewContextWithRoot(ctx context.Context, d, statusD diag.Sink, host Host,
 		disableProviderPreview: disableProviderPreview,
 		config:                 config,
 		projectName:            projectName,
-		CloudCredentialEnv:     pulumiCloudCredentialEnv(env.Global(), project),
+		CloudCredentialEnv:     pulumiCloudCredentialEnv(auth.DefaultSession(), env.Global(), project),
 	}
 
 	projectPlugins, err := projectPluginsFromProject(pctx, plugins, packages)

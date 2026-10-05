@@ -33,6 +33,7 @@ import (
 	"time"
 
 	"github.com/google/go-querystring/query"
+	"github.com/pulumi/pulumi/pkg/v3/auth"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/esc"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
 
@@ -508,6 +509,7 @@ type client struct {
 	insecure   bool
 	userAgent  string
 	httpClient *http.Client
+	httpAuth   *auth.HTTPAuth
 }
 
 func newHTTPClient(insecure bool) *http.Client {
@@ -546,6 +548,16 @@ func NewDefaultClient(apiToken string) Client {
 // New creates a new Pulumi API client with the given URL and API token.
 func New(userAgent, apiURL, apiToken string, insecure bool) Client {
 	return newClient(userAgent, apiURL, apiToken, newHTTPClient(insecure))
+}
+
+// NewWithHTTPAuth creates a new ESC client whose requests also carry a credential helper's token and
+// headers. A nil httpAuth behaves like New.
+func NewWithHTTPAuth(userAgent, apiURL, apiToken string, insecure bool, httpAuth *auth.HTTPAuth) Client {
+	httpClient := *newHTTPClient(insecure)
+	httpClient.Transport = httpAuth.Transport(httpClient.Transport)
+	client := newClient(userAgent, apiURL, apiToken, &httpClient)
+	client.httpAuth = httpAuth
+	return client
 }
 
 // URL returns the URL of the API endpoint this client interacts with
@@ -1744,6 +1756,10 @@ func (pc *client) httpCall(
 	body []byte,
 	opts httpCallOptions,
 ) (*http.Response, error) {
+	// A backend API call carries the credential helper's token and headers. The request and its
+	// retries share one helper refresh.
+	ctx = auth.WithHelperAuth(ctx)
+
 	// Normalize URL components
 	cloudAPI := strings.TrimSuffix(pc.apiURL, "/")
 	path = cleanPath(path)
@@ -1811,7 +1827,7 @@ func (pc *client) httpCall(
 	}
 
 	// Provide a better error if using an authenticated call without having logged in first.
-	if resp.StatusCode == 401 && pc.apiToken == "" {
+	if resp.StatusCode == 401 && pc.apiToken == "" && pc.httpAuth.AccessToken() == "" {
 		return nil, errors.New("this command requires logging in; try running `pulumi login` first")
 	}
 
