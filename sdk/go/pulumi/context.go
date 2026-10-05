@@ -1622,8 +1622,8 @@ func (ctx *Context) ExistsPackageResource(
 			return
 		}
 
-		logging.V(9).Infof("ExistsResource(%s): success: exists=%v known=%v", t, resp.Exists, resp.Known)
-		internal.ResolveOutput(output, resp.Exists, resp.Known, false /* secret */, nil)
+		logging.V(9).Infof("ExistsResource(%s): success: exists=%v unknown=%v", t, resp.Exists, resp.Unknown)
+		internal.ResolveOutput(output, resp.Exists, !resp.Unknown, false /* secret */, nil)
 	}()
 
 	return output.(BoolOutput)

@@ -557,7 +557,7 @@ export function existsResource(
                 );
             });
 
-            return { exists: resp.getExists(), known: resp.getKnown() };
+            return { exists: resp.getExists(), known: !resp.getUnknown() };
         })(),
         label,
     );

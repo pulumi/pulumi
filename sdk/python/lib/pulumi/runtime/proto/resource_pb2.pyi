@@ -469,18 +469,18 @@ class ExistsResourceResponse(google.protobuf.message.Message):
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
     EXISTS_FIELD_NUMBER: builtins.int
-    KNOWN_FIELD_NUMBER: builtins.int
+    UNKNOWN_FIELD_NUMBER: builtins.int
     exists: builtins.bool
-    """whether the resource exists; only meaningful when known is true."""
-    known: builtins.bool
-    """false if existence could not be determined, e.g. because the id is unknown during preview or the provider was configured with unknown values."""
+    """whether the resource exists; only meaningful when unknown is false."""
+    unknown: builtins.bool
+    """true if existence could not be determined, e.g. because the id is unknown during preview or the provider was configured with unknown values."""
     def __init__(
         self,
         *,
         exists: builtins.bool = ...,
-        known: builtins.bool = ...,
+        unknown: builtins.bool = ...,
     ) -> None: ...
-    def ClearField(self, field_name: typing.Literal["exists", b"exists", "known", b"known"]) -> None: ...
+    def ClearField(self, field_name: typing.Literal["exists", b"exists", "unknown", b"unknown"]) -> None: ...
 
 global___ExistsResourceResponse = ExistsResourceResponse
 

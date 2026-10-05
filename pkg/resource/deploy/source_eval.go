@@ -1612,7 +1612,7 @@ func (rm *resmon) ExistsResource(ctx context.Context,
 	// If the ID is unknown (during preview), we can't check existence.
 	if id == plugin.UnknownStringValue {
 		return &pulumirpc.ExistsResourceResponse{
-			Known: false,
+			Unknown: true,
 		}, nil
 	}
 
@@ -1653,13 +1653,15 @@ func (rm *resmon) ExistsResource(ctx context.Context,
 		return nil, fmt.Errorf("reading resource '%s': %w", id, err)
 	}
 
-	exists := readResult.Outputs != nil
 	// This is a bit of an odd condition, and is intended to handle the case where the provider is configured with
 	// unknowns. In that case, the provider will return non-nil but empty outputs.
-	known := readResult.Outputs == nil || readResult.Outputs.Len() > 0
+	if readResult.Outputs != nil && readResult.Outputs.Len() == 0 {
+		return &pulumirpc.ExistsResourceResponse{
+			Unknown: true,
+		}, nil
+	}
 	return &pulumirpc.ExistsResourceResponse{
-		Exists: exists,
-		Known:  known,
+		Exists: readResult.Outputs != nil,
 	}, nil
 }
 

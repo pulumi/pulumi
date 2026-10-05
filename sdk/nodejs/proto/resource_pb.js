@@ -2498,14 +2498,14 @@ proto.pulumirpc.ExistsResourceRequest.prototype.toObject = function(opt_includeI
 proto.pulumirpc.ExistsResourceRequest.toObject = function(includeInstance, msg) {
   var f, obj = {
 type: jspb.Message.getFieldWithDefault(msg, 1, ""),
-id: jspb.Message.getFieldWithDefault(msg, 3, ""),
-parent: jspb.Message.getFieldWithDefault(msg, 4, ""),
+id: jspb.Message.getFieldWithDefault(msg, 2, ""),
+parent: jspb.Message.getFieldWithDefault(msg, 3, ""),
 properties: (f = msg.getProperties()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
-provider: jspb.Message.getFieldWithDefault(msg, 6, ""),
-version: jspb.Message.getFieldWithDefault(msg, 7, ""),
-plugindownloadurl: jspb.Message.getFieldWithDefault(msg, 10, ""),
+provider: jspb.Message.getFieldWithDefault(msg, 5, ""),
+version: jspb.Message.getFieldWithDefault(msg, 6, ""),
+plugindownloadurl: jspb.Message.getFieldWithDefault(msg, 7, ""),
 pluginchecksumsMap: (f = msg.getPluginchecksumsMap()) ? f.toObject(includeInstance, undefined) : [],
-packageref: jspb.Message.getFieldWithDefault(msg, 12, "")
+packageref: jspb.Message.getFieldWithDefault(msg, 9, "")
   };
 
   if (includeInstance) {
@@ -2546,38 +2546,38 @@ proto.pulumirpc.ExistsResourceRequest.deserializeBinaryFromReader = function(msg
       var value = /** @type {string} */ (reader.readString());
       msg.setType(value);
       break;
-    case 3:
+    case 2:
       var value = /** @type {string} */ (reader.readString());
       msg.setId(value);
       break;
-    case 4:
+    case 3:
       var value = /** @type {string} */ (reader.readString());
       msg.setParent(value);
       break;
-    case 5:
+    case 4:
       var value = new google_protobuf_struct_pb.Struct;
       reader.readMessage(value,google_protobuf_struct_pb.Struct.deserializeBinaryFromReader);
       msg.setProperties(value);
       break;
-    case 6:
+    case 5:
       var value = /** @type {string} */ (reader.readString());
       msg.setProvider(value);
       break;
-    case 7:
+    case 6:
       var value = /** @type {string} */ (reader.readString());
       msg.setVersion(value);
       break;
-    case 10:
+    case 7:
       var value = /** @type {string} */ (reader.readString());
       msg.setPlugindownloadurl(value);
       break;
-    case 11:
+    case 8:
       var value = msg.getPluginchecksumsMap();
       reader.readMessage(value, function(message, reader) {
         jspb.Map.deserializeBinary(message, reader, jspb.BinaryReader.prototype.readString, jspb.BinaryReader.prototype.readBytes, null, "", "");
          });
       break;
-    case 12:
+    case 9:
       var value = /** @type {string} */ (reader.readString());
       msg.setPackageref(value);
       break;
@@ -2620,21 +2620,21 @@ proto.pulumirpc.ExistsResourceRequest.serializeBinaryToWriter = function(message
   f = message.getId();
   if (f.length > 0) {
     writer.writeString(
-      3,
+      2,
       f
     );
   }
   f = message.getParent();
   if (f.length > 0) {
     writer.writeString(
-      4,
+      3,
       f
     );
   }
   f = message.getProperties();
   if (f != null) {
     writer.writeMessage(
-      5,
+      4,
       f,
       google_protobuf_struct_pb.Struct.serializeBinaryToWriter
     );
@@ -2642,32 +2642,32 @@ proto.pulumirpc.ExistsResourceRequest.serializeBinaryToWriter = function(message
   f = message.getProvider();
   if (f.length > 0) {
     writer.writeString(
-      6,
+      5,
       f
     );
   }
   f = message.getVersion();
   if (f.length > 0) {
     writer.writeString(
-      7,
+      6,
       f
     );
   }
   f = message.getPlugindownloadurl();
   if (f.length > 0) {
     writer.writeString(
-      10,
+      7,
       f
     );
   }
   f = message.getPluginchecksumsMap(true);
   if (f && f.getLength() > 0) {
-    f.serializeBinary(11, writer, jspb.BinaryWriter.prototype.writeString, jspb.BinaryWriter.prototype.writeBytes);
+    f.serializeBinary(8, writer, jspb.BinaryWriter.prototype.writeString, jspb.BinaryWriter.prototype.writeBytes);
   }
   f = message.getPackageref();
   if (f.length > 0) {
     writer.writeString(
-      12,
+      9,
       f
     );
   }
@@ -2693,11 +2693,11 @@ proto.pulumirpc.ExistsResourceRequest.prototype.setType = function(value) {
 
 
 /**
- * optional string id = 3;
+ * optional string id = 2;
  * @return {string}
  */
 proto.pulumirpc.ExistsResourceRequest.prototype.getId = function() {
-  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 3, ""));
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 2, ""));
 };
 
 
@@ -2706,16 +2706,16 @@ proto.pulumirpc.ExistsResourceRequest.prototype.getId = function() {
  * @return {!proto.pulumirpc.ExistsResourceRequest} returns this
  */
 proto.pulumirpc.ExistsResourceRequest.prototype.setId = function(value) {
-  return jspb.Message.setProto3StringField(this, 3, value);
+  return jspb.Message.setProto3StringField(this, 2, value);
 };
 
 
 /**
- * optional string parent = 4;
+ * optional string parent = 3;
  * @return {string}
  */
 proto.pulumirpc.ExistsResourceRequest.prototype.getParent = function() {
-  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 4, ""));
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 3, ""));
 };
 
 
@@ -2724,17 +2724,17 @@ proto.pulumirpc.ExistsResourceRequest.prototype.getParent = function() {
  * @return {!proto.pulumirpc.ExistsResourceRequest} returns this
  */
 proto.pulumirpc.ExistsResourceRequest.prototype.setParent = function(value) {
-  return jspb.Message.setProto3StringField(this, 4, value);
+  return jspb.Message.setProto3StringField(this, 3, value);
 };
 
 
 /**
- * optional google.protobuf.Struct properties = 5;
+ * optional google.protobuf.Struct properties = 4;
  * @return {?proto.google.protobuf.Struct}
  */
 proto.pulumirpc.ExistsResourceRequest.prototype.getProperties = function() {
   return /** @type{?proto.google.protobuf.Struct} */ (
-    jspb.Message.getWrapperField(this, google_protobuf_struct_pb.Struct, 5));
+    jspb.Message.getWrapperField(this, google_protobuf_struct_pb.Struct, 4));
 };
 
 
@@ -2743,7 +2743,7 @@ proto.pulumirpc.ExistsResourceRequest.prototype.getProperties = function() {
  * @return {!proto.pulumirpc.ExistsResourceRequest} returns this
 */
 proto.pulumirpc.ExistsResourceRequest.prototype.setProperties = function(value) {
-  return jspb.Message.setWrapperField(this, 5, value);
+  return jspb.Message.setWrapperField(this, 4, value);
 };
 
 
@@ -2761,16 +2761,16 @@ proto.pulumirpc.ExistsResourceRequest.prototype.clearProperties = function() {
  * @return {boolean}
  */
 proto.pulumirpc.ExistsResourceRequest.prototype.hasProperties = function() {
-  return jspb.Message.getField(this, 5) != null;
+  return jspb.Message.getField(this, 4) != null;
 };
 
 
 /**
- * optional string provider = 6;
+ * optional string provider = 5;
  * @return {string}
  */
 proto.pulumirpc.ExistsResourceRequest.prototype.getProvider = function() {
-  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 6, ""));
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 5, ""));
 };
 
 
@@ -2779,16 +2779,16 @@ proto.pulumirpc.ExistsResourceRequest.prototype.getProvider = function() {
  * @return {!proto.pulumirpc.ExistsResourceRequest} returns this
  */
 proto.pulumirpc.ExistsResourceRequest.prototype.setProvider = function(value) {
-  return jspb.Message.setProto3StringField(this, 6, value);
+  return jspb.Message.setProto3StringField(this, 5, value);
 };
 
 
 /**
- * optional string version = 7;
+ * optional string version = 6;
  * @return {string}
  */
 proto.pulumirpc.ExistsResourceRequest.prototype.getVersion = function() {
-  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 7, ""));
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 6, ""));
 };
 
 
@@ -2797,16 +2797,16 @@ proto.pulumirpc.ExistsResourceRequest.prototype.getVersion = function() {
  * @return {!proto.pulumirpc.ExistsResourceRequest} returns this
  */
 proto.pulumirpc.ExistsResourceRequest.prototype.setVersion = function(value) {
-  return jspb.Message.setProto3StringField(this, 7, value);
+  return jspb.Message.setProto3StringField(this, 6, value);
 };
 
 
 /**
- * optional string pluginDownloadURL = 10;
+ * optional string pluginDownloadURL = 7;
  * @return {string}
  */
 proto.pulumirpc.ExistsResourceRequest.prototype.getPlugindownloadurl = function() {
-  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 10, ""));
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 7, ""));
 };
 
 
@@ -2815,19 +2815,19 @@ proto.pulumirpc.ExistsResourceRequest.prototype.getPlugindownloadurl = function(
  * @return {!proto.pulumirpc.ExistsResourceRequest} returns this
  */
 proto.pulumirpc.ExistsResourceRequest.prototype.setPlugindownloadurl = function(value) {
-  return jspb.Message.setProto3StringField(this, 10, value);
+  return jspb.Message.setProto3StringField(this, 7, value);
 };
 
 
 /**
- * map<string, bytes> pluginChecksums = 11;
+ * map<string, bytes> pluginChecksums = 8;
  * @param {boolean=} opt_noLazyCreate Do not create the map if
  * empty, instead returning `undefined`
  * @return {!jspb.Map<string,!(string|Uint8Array)>}
  */
 proto.pulumirpc.ExistsResourceRequest.prototype.getPluginchecksumsMap = function(opt_noLazyCreate) {
   return /** @type {!jspb.Map<string,!(string|Uint8Array)>} */ (
-      jspb.Message.getMapField(this, 11, opt_noLazyCreate,
+      jspb.Message.getMapField(this, 8, opt_noLazyCreate,
       null));
 };
 
@@ -2843,11 +2843,11 @@ proto.pulumirpc.ExistsResourceRequest.prototype.clearPluginchecksumsMap = functi
 
 
 /**
- * optional string packageRef = 12;
+ * optional string packageRef = 9;
  * @return {string}
  */
 proto.pulumirpc.ExistsResourceRequest.prototype.getPackageref = function() {
-  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 12, ""));
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 9, ""));
 };
 
 
@@ -2856,7 +2856,7 @@ proto.pulumirpc.ExistsResourceRequest.prototype.getPackageref = function() {
  * @return {!proto.pulumirpc.ExistsResourceRequest} returns this
  */
 proto.pulumirpc.ExistsResourceRequest.prototype.setPackageref = function(value) {
-  return jspb.Message.setProto3StringField(this, 12, value);
+  return jspb.Message.setProto3StringField(this, 9, value);
 };
 
 
@@ -2893,7 +2893,7 @@ proto.pulumirpc.ExistsResourceResponse.prototype.toObject = function(opt_include
 proto.pulumirpc.ExistsResourceResponse.toObject = function(includeInstance, msg) {
   var f, obj = {
 exists: jspb.Message.getBooleanFieldWithDefault(msg, 1, false),
-known: jspb.Message.getBooleanFieldWithDefault(msg, 2, false)
+unknown: jspb.Message.getBooleanFieldWithDefault(msg, 2, false)
   };
 
   if (includeInstance) {
@@ -2936,7 +2936,7 @@ proto.pulumirpc.ExistsResourceResponse.deserializeBinaryFromReader = function(ms
       break;
     case 2:
       var value = /** @type {boolean} */ (reader.readBool());
-      msg.setKnown(value);
+      msg.setUnknown(value);
       break;
     default:
       reader.skipField();
@@ -2974,7 +2974,7 @@ proto.pulumirpc.ExistsResourceResponse.serializeBinaryToWriter = function(messag
       f
     );
   }
-  f = message.getKnown();
+  f = message.getUnknown();
   if (f) {
     writer.writeBool(
       2,
@@ -3003,10 +3003,10 @@ proto.pulumirpc.ExistsResourceResponse.prototype.setExists = function(value) {
 
 
 /**
- * optional bool known = 2;
+ * optional bool unknown = 2;
  * @return {boolean}
  */
-proto.pulumirpc.ExistsResourceResponse.prototype.getKnown = function() {
+proto.pulumirpc.ExistsResourceResponse.prototype.getUnknown = function() {
   return /** @type {boolean} */ (jspb.Message.getBooleanFieldWithDefault(this, 2, false));
 };
 
@@ -3015,7 +3015,7 @@ proto.pulumirpc.ExistsResourceResponse.prototype.getKnown = function() {
  * @param {boolean} value
  * @return {!proto.pulumirpc.ExistsResourceResponse} returns this
  */
-proto.pulumirpc.ExistsResourceResponse.prototype.setKnown = function(value) {
+proto.pulumirpc.ExistsResourceResponse.prototype.setUnknown = function(value) {
   return jspb.Message.setProto3BooleanField(this, 2, value);
 };
 
