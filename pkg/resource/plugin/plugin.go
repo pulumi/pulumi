@@ -115,8 +115,9 @@ type Plugin struct {
 	stdoutDone <-chan bool
 	stderrDone <-chan bool
 
-	// shutdownAcknowledged is set when the plugin has acknowledged a Cancel RPC (returned success or Unimplemented). If
-	// the plugin exits after that, it's expected — not a premature crash.
+	// shutdownAcknowledged is set when the plugin has acknowledged a Cancel RPC (returned success or Unimplemented), or
+	// when its launch was abandoned because the plugin context ended. If the plugin exits after that, it's expected —
+	// not a premature crash.
 	shutdownAcknowledged atomic.Bool
 
 	// The unstructured output of the process.
@@ -311,6 +312,9 @@ func newPlugin[T any](
 	// If we did not successfully launch the plugin, we still need to wait for stderr and stdout to drain.
 	defer func() {
 		if plug.Conn == nil {
+			if ctx.Base().Err() != nil {
+				plug.shutdownAcknowledged.Store(true)
+			}
 			contract.IgnoreClose(plug)
 		}
 	}()

@@ -23,7 +23,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
 	"strings"
+	"time"
 
 	pschema "github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -96,7 +98,18 @@ func providerForURN(urn string) (testProvider, string, bool) {
 	return provider, ty, ok
 }
 
+// startupDelayEnvVar names a duration to sleep before serving, for tests that need a provider that is slow to launch.
+const startupDelayEnvVar = "PULUMI_TEST_PROVIDER_STARTUP_DELAY"
+
 func main() {
+	if v := os.Getenv(startupDelayEnvVar); v != "" {
+		delay, err := time.ParseDuration(v)
+		if err != nil {
+			cmdutil.Exit(fmt.Errorf("parsing %s: %w", startupDelayEnvVar, err))
+		}
+		time.Sleep(delay)
+	}
+
 	if err := pulumiprovider.Main(providerName, func(
 		host *pulumiprovider.HostClient,
 	) (pulumirpc.ResourceProviderServer, error) {

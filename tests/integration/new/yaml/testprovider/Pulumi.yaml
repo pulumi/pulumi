@@ -1,0 +1,10 @@
+name: ${PROJECT}
+description: ${DESCRIPTION}
+runtime: yaml
+resources:
+  random:
+    type: testprovider:index:Random
+    properties:
+      length: 8
+    options:
+      version: 0.0.1

@@ -126,3 +126,36 @@ func TestPulumiNewWithPackages(t *testing.T) {
 
 	e.RunCommand("pulumi", "up", "--non-interactive", "--skip-preview")
 }
+
+// The credentials check that interactive `pulumi new` runs is best-effort: when it runs out of time while a provider
+// is still launching, it must not report the provider it stops as having crashed.
+func TestPulumiNewCredentialsCheckTimeout(t *testing.T) {
+	t.Parallel()
+
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+
+	templatePath, err := filepath.Abs(filepath.Join("yaml", "testprovider"))
+	require.NoError(t, err)
+
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+	e.RunCommand("pulumi", "plugin", "install", "resource", "testprovider", "0.0.1",
+		"--file", testutil.TestProvider(t))
+
+	e.SetEnvVars(
+		// The credentials check only runs in interactive mode.
+		"PULUMI_TEST_INTERACTIVE=1",
+		// Keep the provider launching for longer than the credentials check is willing to wait, which is
+		// defaultCredentialsPreflightTimeout (15s) in pkg/cmd/pulumi/project/newcmd.
+		"PULUMI_TEST_PROVIDER_STARTUP_DELAY=17s",
+	)
+
+	stdout, stderr := e.RunCommand("pulumi", "new", templatePath, "--yes", "--force",
+		"--name", "test-credentials-check",
+		"--stack", "test-credentials-check",
+	)
+
+	require.Contains(t, stdout, "Your new project is ready to go!")
+	require.NotContains(t, stdout, "exited prematurely")
+	require.NotContains(t, stderr, "exited prematurely")
+}

@@ -15,10 +15,15 @@
 package plugin
 
 import (
+	"context"
 	"fmt"
 	"net"
+	"os"
+	"path/filepath"
+	"runtime"
 	"testing"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"github.com/stretchr/testify/assert"
@@ -148,6 +153,49 @@ func TestPrematureExit(t *testing.T) {
 	msg := sink.Messages[diag.Error][0].Diag.Message
 	require.Contains(t, msg, "exited prematurely")
 	require.Contains(t, msg, "some plugin output")
+}
+
+// A plugin whose launch fails is reported as having exited prematurely, unless the launch was abandoned because the
+// context it ran under ended.
+func TestFailedLaunchPrematureExit(t *testing.T) {
+	t.Parallel()
+	if runtime.GOOS == "windows" {
+		t.Skip("the fake plugin is a shell script")
+	}
+
+	launch := func(t *testing.T, ctx context.Context, script string) *diag.MockSink {
+		bin := filepath.Join(t.TempDir(), "pulumi-resource-test")
+		//nolint:gosec // the fake plugin has to be executable
+		require.NoError(t, os.WriteFile(bin, []byte("#!/bin/sh\n"+script+"\n"), 0o700))
+
+		sink := &diag.MockSink{}
+		pctx := &Context{Diag: sink, baseContext: ctx}
+		_, _, err := newPlugin(pctx, t.TempDir(), bin, "test", apitype.ResourcePlugin, nil, nil,
+			testConnection, []grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())}, false)
+		require.Error(t, err)
+		return sink
+	}
+
+	t.Run("plugin crashes", func(t *testing.T) {
+		t.Parallel()
+
+		sink := launch(t, t.Context(), "echo 'some plugin output' >&2; exit 1")
+
+		require.Len(t, sink.Messages[diag.Error], 1)
+		msg := sink.Messages[diag.Error][0].Diag.Message
+		require.Contains(t, msg, "exited prematurely")
+		require.Contains(t, msg, "some plugin output")
+	})
+
+	t.Run("context ends", func(t *testing.T) {
+		t.Parallel()
+
+		ctx, cancel := context.WithCancel(t.Context())
+		cancel()
+		sink := launch(t, ctx, "echo 1; exec sleep 60")
+
+		require.Empty(t, sink.Messages[diag.Error])
+	})
 }
 
 func TestCheckVersionRange(t *testing.T) {
