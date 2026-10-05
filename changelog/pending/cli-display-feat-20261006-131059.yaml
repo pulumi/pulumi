@@ -1,0 +1,4 @@
+component: cli/display
+kind: feat
+body: Show experimental credential helper diagnostics as system messages
+time: 2026-10-06T13:10:59+02:00

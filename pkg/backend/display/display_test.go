@@ -16,19 +16,89 @@ package display
 
 import (
 	"bytes"
+	"encoding/json"
+	"io"
+	"net/http"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
+	"github.com/pulumi/pulumi/pkg/v3/auth"
+	"github.com/pulumi/pulumi/pkg/v3/auth/authtest"
+	"github.com/pulumi/pulumi/pkg/v3/backend/display/internal/terminal"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func TestMain(m *testing.M) {
+	if code, ran := authtest.RunHelper(); ran {
+		os.Exit(code)
+	}
+	os.Exit(m.Run())
+}
+
+type helperTestTransport struct{}
+
+func (helperTestTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	return &http.Response{StatusCode: http.StatusOK, Body: io.NopCloser(strings.NewReader("")), Request: req}, nil
+}
+
+func TestCredentialHelperDiagnosticsDuringRendering(t *testing.T) {
+	t.Parallel()
+	var stdout, stderr bytes.Buffer
+	helper := authtest.NewHelper(t, map[string]any{
+		"initial": authtest.Reply{
+			Response: map[string]any{
+				"version": 1, "headers": map[string][]string{"X-Gate": {"old"}}, "expiresAt": "2000-01-01T00:00:00Z",
+			},
+			Stderr: "helper initial diagnostic\n",
+		},
+		"expired": authtest.Reply{
+			Response: map[string]any{"version": 1, "headers": map[string][]string{"X-Gate": {"new"}}},
+			Stderr:   "helper expired diagnostic\n",
+		},
+	})
+	session := auth.NewSession(&stderr)
+	require.NoError(t, session.UseHelper(workspace.CredentialHelper{Path: helper.Path, Args: helper.Args}))
+	ctx := t.Context()
+	const backendURL = "https://api.example.com"
+	_, err := session.PrepareBackend(ctx, backendURL)
+	require.NoError(t, err)
+	httpAuth := session.HTTPAuth(backendURL)
+
+	var jsonEvent apitype.EngineEvent
+	require.NoError(t, json.Unmarshal([]byte(`{
+		"stdoutEvent":{"message":"existing system message\n","color":"never"}
+	}`), &jsonEvent))
+	event, err := ConvertJSONEvent(jsonEvent)
+	require.NoError(t, err)
+	events, done := make(chan engine.Event), make(chan bool)
+	go ShowProgressEvents("test", apitype.UpdateUpdate, tokens.MustParseStackName("stack"), "project", "",
+		events, done, Options{
+			IsInteractive: true, Color: colors.Never, Stdout: &stdout, Stderr: &stderr,
+			HelperDiagnostics: httpAuth.CaptureHelperStderr,
+			term:              terminal.NewMockTerminal(&stdout, 100, 40, true), DeterministicOutput: true,
+		}, false)
+	events <- event
+	request, err := http.NewRequestWithContext(auth.WithHelperAuth(ctx), http.MethodGet, backendURL+"/api/user", nil)
+	require.NoError(t, err)
+	response, err := httpAuth.Transport(helperTestTransport{}).RoundTrip(request)
+	require.NoError(t, err)
+	require.NoError(t, response.Body.Close())
+	events <- engine.NewCancelEvent()
+	<-done
+	assert.Equal(t, "helper initial diagnostic\n", stderr.String())
+	assert.Contains(t, stdout.String(), "existing system message")
+	assert.Contains(t, stdout.String(), "helper expired diagnostic")
+}
 
 func TestShowEvents(t *testing.T) {
 	t.Parallel()

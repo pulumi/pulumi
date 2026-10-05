@@ -41,6 +41,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi-internal/gsync"
 )
 
@@ -134,6 +135,7 @@ type ProgressDisplay struct {
 	// Any system events we've received. They will be printed at the bottom of all
 	// the status rows.
 	systemEventPayloads []engine.StdoutEventPayload
+	helperMessages      <-chan string
 
 	// Any active download progress events that we've received.
 	progressEventPayloads *gsync.Map[string, engine.ProgressEventPayload]
@@ -277,6 +279,11 @@ func ShowProgressEvents(op string, action apitype.UpdateKind, stack tokens.Stack
 		close(done)
 	}()
 	renderer.initializeDisplay(display)
+	if isInteractive && opts.HelperDiagnostics != nil {
+		messages, restore := opts.HelperDiagnostics()
+		defer restore()
+		display.helperMessages = messages
+	}
 
 	ticker := time.NewTicker(1 * time.Second)
 	if opts.DeterministicOutput {
@@ -1492,6 +1499,8 @@ func (display *ProgressDisplay) processEvents(ticker *time.Ticker, events <-chan
 		select {
 		case <-ticker.C:
 			display.processTick()
+		case message := <-display.helperMessages:
+			display.handleSystemEvent(engine.StdoutEventPayload{Message: logging.FilterString(message), Color: colors.Raw})
 
 		case event := <-events:
 			if event.Type == "" || event.Type == engine.CancelEvent {

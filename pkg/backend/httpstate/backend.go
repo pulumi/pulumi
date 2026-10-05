@@ -228,6 +228,9 @@ type cloudBackend struct {
 
 	// Cached data from BeginUpdate to avoid extra HTTP calls.
 	cachedUpdateData *cachedUpdateData
+
+	// httpAuth is the credential helper's token and headers for this backend, or nil.
+	httpAuth *auth.HTTPAuth
 }
 
 // Assert we implement the backend.Backend and backend.SpecificDeploymentExporter interfaces.
@@ -317,6 +320,7 @@ func NewWithCredentials(
 		url:            cloudURL,
 		client:         apiClient,
 		escClient:      escClient,
+		httpAuth:       httpAuth,
 		capabilities:   detectCapabilities(ctx, d, apiClient),
 		userInfo:       detectUserInfo(ctx, d, credentials.Account, apiClient),
 		defaultOrg:     defaultOrg,
@@ -3037,6 +3041,7 @@ func (b *cloudBackend) showDeploymentEvents(ctx context.Context, stackID client.
 	opts.SuppressTimings = true
 
 	permalink := b.getPermalink(update, version, dryRun)
+	opts.HelperDiagnostics = b.httpAuth.CaptureHelperStderr
 	go display.ShowEvents(
 		backend.ActionLabel(kind, dryRun), kind, stackID.Stack, tokens.PackageName(stackID.Project),
 		permalink, events, done, opts, dryRun)
