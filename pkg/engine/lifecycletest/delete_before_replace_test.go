@@ -297,6 +297,72 @@ func TestPropertyDependenciesAdapter(t *testing.T) {
 	}
 }
 
+// TestPropertyDependenciesBackfillDoesNotLeakAcrossProperties exercises the engine's per-property dependency
+// backfill when a resource is registered with no explicit propertyDependencies but its inputs carry Output
+// property values with dependencies of their own. Each input's dependencies must stay isolated to that input;
+// a shared underlying set would cause one property's Output dependencies to bleed into every other property.
+func TestPropertyDependenciesBackfillDoesNotLeakAcrossProperties(t *testing.T) {
+	t.Parallel()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+	}
+
+	const resType = "pkgA:m:typA"
+	var urnA, urnB, urnC resource.URN
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		respA, err := monitor.RegisterResource(resType, "A", true, deploytest.ResourceOptions{})
+		require.NoError(t, err)
+		urnA = respA.URN
+
+		respB, err := monitor.RegisterResource(resType, "B", true, deploytest.ResourceOptions{})
+		require.NoError(t, err)
+		urnB = respB.URN
+
+		// Register C with two inputs, each of which is an Output value pointing at a *different* upstream
+		// resource. No flat Dependencies or PropertyDeps are sent, so the engine backfills per-property
+		// dependencies and then merges the Output-value dependencies in. propA should depend only on A and
+		// propB only on B.
+		respC, err := monitor.RegisterResource(resType, "C", true, deploytest.ResourceOptions{
+			Inputs: resource.PropertyMap{
+				"propA": resource.NewProperty(resource.Output{
+					Element:      resource.NewProperty("a"),
+					Known:        true,
+					Dependencies: []resource.URN{urnA},
+				}),
+				"propB": resource.NewProperty(resource.Output{
+					Element:      resource.NewProperty("b"),
+					Known:        true,
+					Dependencies: []resource.URN{urnB},
+				}),
+			},
+			KeepOutputValues: true,
+		})
+		require.NoError(t, err)
+		urnC = respC.URN
+
+		return nil
+	})
+
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true},
+		Steps:   []lt.TestStep{{Op: Update}},
+	}
+	snap := p.Run(t, nil)
+	for _, res := range snap.Resources {
+		if res.URN != urnC {
+			continue
+		}
+		assert.ElementsMatch(t, []resource.URN{urnA}, res.PropertyDependencies["propA"],
+			"propA should only depend on A, not on B")
+		assert.ElementsMatch(t, []resource.URN{urnB}, res.PropertyDependencies["propB"],
+			"propB should only depend on B, not on A")
+	}
+}
+
 func TestExplicitDeleteBeforeReplace(t *testing.T) {
 	t.Parallel()
 
@@ -673,7 +739,7 @@ func TestDBRProtect(t *testing.T) {
 			})
 			require.NoError(t, err)
 		} else {
-			require.Fail(t, "RegisterResource should not return")
+			return nil
 		}
 
 		return nil

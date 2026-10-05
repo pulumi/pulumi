@@ -136,888 +136,1033 @@ func TestOutputApply(t *testing.T) {
 		out := newIntOutput()
 		go func() { internal.ResolveOutput(out, 42, true, false, nil) }()
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::ArchiveOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) Archive { return *new(Archive) }).(ArchiveOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::ArchiveArrayOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) []Archive { return *new([]Archive) }).(ArchiveArrayOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::ArchiveMapOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) map[string]Archive { return *new(map[string]Archive) }).(ArchiveMapOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::ArchiveArrayMapOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) map[string][]Archive { return *new(map[string][]Archive) }).(ArchiveArrayMapOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::ArchiveMapArrayOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) []map[string]Archive { return *new([]map[string]Archive) }).(ArchiveMapArrayOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::ArchiveMapMapOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) map[string]map[string]Archive { return *new(map[string]map[string]Archive) }).(ArchiveMapMapOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::ArchiveArrayArrayOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) [][]Archive { return *new([][]Archive) }).(ArchiveArrayArrayOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::ArchiveArrayMapMapOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) map[string]map[string][]Archive { return *new(map[string]map[string][]Archive) }).(ArchiveArrayMapMapOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::ArchiveMapArrayMapOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) map[string][]map[string]Archive { return *new(map[string][]map[string]Archive) }).(ArchiveMapArrayMapOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::ArchiveMapMapArrayOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) []map[string]map[string]Archive { return *new([]map[string]map[string]Archive) }).(ArchiveMapMapArrayOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::ArchiveArrayMapArrayOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) []map[string][]Archive { return *new([]map[string][]Archive) }).(ArchiveArrayMapArrayOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::ArchiveArrayArrayMapOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) map[string][][]Archive { return *new(map[string][][]Archive) }).(ArchiveArrayArrayMapOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::ArchiveArrayArrayArrayOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) [][][]Archive { return *new([][][]Archive) }).(ArchiveArrayArrayArrayOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::ArchiveMapMapMapOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) map[string]map[string]map[string]Archive {
 				return *new(map[string]map[string]map[string]Archive)
 			}).(ArchiveMapMapMapOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::AssetOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) Asset { return *new(Asset) }).(AssetOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::AssetArrayOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) []Asset { return *new([]Asset) }).(AssetArrayOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::AssetMapOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) map[string]Asset { return *new(map[string]Asset) }).(AssetMapOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::AssetArrayMapOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) map[string][]Asset { return *new(map[string][]Asset) }).(AssetArrayMapOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::AssetMapArrayOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) []map[string]Asset { return *new([]map[string]Asset) }).(AssetMapArrayOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::AssetMapMapOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) map[string]map[string]Asset { return *new(map[string]map[string]Asset) }).(AssetMapMapOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::AssetArrayArrayOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) [][]Asset { return *new([][]Asset) }).(AssetArrayArrayOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::AssetArrayMapMapOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) map[string]map[string][]Asset { return *new(map[string]map[string][]Asset) }).(AssetArrayMapMapOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::AssetMapArrayMapOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) map[string][]map[string]Asset { return *new(map[string][]map[string]Asset) }).(AssetMapArrayMapOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::AssetMapMapArrayOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) []map[string]map[string]Asset { return *new([]map[string]map[string]Asset) }).(AssetMapMapArrayOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::AssetArrayMapArrayOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) []map[string][]Asset { return *new([]map[string][]Asset) }).(AssetArrayMapArrayOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::AssetArrayArrayMapOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) map[string][][]Asset { return *new(map[string][][]Asset) }).(AssetArrayArrayMapOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::AssetArrayArrayArrayOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) [][][]Asset { return *new([][][]Asset) }).(AssetArrayArrayArrayOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::AssetMapMapMapOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) map[string]map[string]map[string]Asset {
 				return *new(map[string]map[string]map[string]Asset)
 			}).(AssetMapMapMapOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::AssetOrArchiveOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) AssetOrArchive { return *new(AssetOrArchive) }).(AssetOrArchiveOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::AssetOrArchiveArrayOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) []AssetOrArchive { return *new([]AssetOrArchive) }).(AssetOrArchiveArrayOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::AssetOrArchiveMapOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) map[string]AssetOrArchive { return *new(map[string]AssetOrArchive) }).(AssetOrArchiveMapOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::AssetOrArchiveArrayMapOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) map[string][]AssetOrArchive { return *new(map[string][]AssetOrArchive) }).(AssetOrArchiveArrayMapOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::AssetOrArchiveMapArrayOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) []map[string]AssetOrArchive { return *new([]map[string]AssetOrArchive) }).(AssetOrArchiveMapArrayOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::AssetOrArchiveMapMapOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) map[string]map[string]AssetOrArchive { return *new(map[string]map[string]AssetOrArchive) }).(AssetOrArchiveMapMapOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::AssetOrArchiveArrayArrayOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) [][]AssetOrArchive { return *new([][]AssetOrArchive) }).(AssetOrArchiveArrayArrayOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::AssetOrArchiveArrayMapMapOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) map[string]map[string][]AssetOrArchive {
 				return *new(map[string]map[string][]AssetOrArchive)
 			}).(AssetOrArchiveArrayMapMapOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::AssetOrArchiveMapArrayMapOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) map[string][]map[string]AssetOrArchive {
 				return *new(map[string][]map[string]AssetOrArchive)
 			}).(AssetOrArchiveMapArrayMapOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::AssetOrArchiveMapMapArrayOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) []map[string]map[string]AssetOrArchive {
 				return *new([]map[string]map[string]AssetOrArchive)
 			}).(AssetOrArchiveMapMapArrayOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::AssetOrArchiveArrayMapArrayOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) []map[string][]AssetOrArchive { return *new([]map[string][]AssetOrArchive) }).(AssetOrArchiveArrayMapArrayOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::AssetOrArchiveArrayArrayMapOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) map[string][][]AssetOrArchive { return *new(map[string][][]AssetOrArchive) }).(AssetOrArchiveArrayArrayMapOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::AssetOrArchiveArrayArrayArrayOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) [][][]AssetOrArchive { return *new([][][]AssetOrArchive) }).(AssetOrArchiveArrayArrayArrayOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::AssetOrArchiveMapMapMapOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) map[string]map[string]map[string]AssetOrArchive {
 				return *new(map[string]map[string]map[string]AssetOrArchive)
 			}).(AssetOrArchiveMapMapMapOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::BoolOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) bool { return *new(bool) }).(BoolOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::BoolPtrOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) *bool { return *new(*bool) }).(BoolPtrOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::BoolArrayOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) []bool { return *new([]bool) }).(BoolArrayOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::BoolMapOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) map[string]bool { return *new(map[string]bool) }).(BoolMapOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::BoolArrayMapOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) map[string][]bool { return *new(map[string][]bool) }).(BoolArrayMapOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::BoolMapArrayOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) []map[string]bool { return *new([]map[string]bool) }).(BoolMapArrayOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::BoolMapMapOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) map[string]map[string]bool { return *new(map[string]map[string]bool) }).(BoolMapMapOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::BoolArrayArrayOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) [][]bool { return *new([][]bool) }).(BoolArrayArrayOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::BoolArrayMapMapOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) map[string]map[string][]bool { return *new(map[string]map[string][]bool) }).(BoolArrayMapMapOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::BoolMapArrayMapOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) map[string][]map[string]bool { return *new(map[string][]map[string]bool) }).(BoolMapArrayMapOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::BoolMapMapArrayOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) []map[string]map[string]bool { return *new([]map[string]map[string]bool) }).(BoolMapMapArrayOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::BoolArrayMapArrayOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) []map[string][]bool { return *new([]map[string][]bool) }).(BoolArrayMapArrayOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::BoolArrayArrayMapOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) map[string][][]bool { return *new(map[string][][]bool) }).(BoolArrayArrayMapOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::BoolArrayArrayArrayOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) [][][]bool { return *new([][][]bool) }).(BoolArrayArrayArrayOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::BoolMapMapMapOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) map[string]map[string]map[string]bool { return *new(map[string]map[string]map[string]bool) }).(BoolMapMapMapOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::Float64Output", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) float64 { return *new(float64) }).(Float64Output)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::Float64PtrOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) *float64 { return *new(*float64) }).(Float64PtrOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::Float64ArrayOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) []float64 { return *new([]float64) }).(Float64ArrayOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::Float64MapOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) map[string]float64 { return *new(map[string]float64) }).(Float64MapOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::Float64ArrayMapOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) map[string][]float64 { return *new(map[string][]float64) }).(Float64ArrayMapOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::Float64MapArrayOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) []map[string]float64 { return *new([]map[string]float64) }).(Float64MapArrayOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::Float64MapMapOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) map[string]map[string]float64 { return *new(map[string]map[string]float64) }).(Float64MapMapOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::Float64ArrayArrayOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) [][]float64 { return *new([][]float64) }).(Float64ArrayArrayOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::Float64ArrayMapMapOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) map[string]map[string][]float64 { return *new(map[string]map[string][]float64) }).(Float64ArrayMapMapOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::Float64MapArrayMapOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) map[string][]map[string]float64 { return *new(map[string][]map[string]float64) }).(Float64MapArrayMapOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::Float64MapMapArrayOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) []map[string]map[string]float64 { return *new([]map[string]map[string]float64) }).(Float64MapMapArrayOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::Float64ArrayMapArrayOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) []map[string][]float64 { return *new([]map[string][]float64) }).(Float64ArrayMapArrayOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::Float64ArrayArrayMapOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) map[string][][]float64 { return *new(map[string][][]float64) }).(Float64ArrayArrayMapOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::Float64ArrayArrayArrayOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) [][][]float64 { return *new([][][]float64) }).(Float64ArrayArrayArrayOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::Float64MapMapMapOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) map[string]map[string]map[string]float64 {
 				return *new(map[string]map[string]map[string]float64)
 			}).(Float64MapMapMapOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::IDOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) ID { return *new(ID) }).(IDOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::IDPtrOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) *ID { return *new(*ID) }).(IDPtrOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::IDArrayOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) []ID { return *new([]ID) }).(IDArrayOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::IDMapOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) map[string]ID { return *new(map[string]ID) }).(IDMapOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::IDArrayMapOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) map[string][]ID { return *new(map[string][]ID) }).(IDArrayMapOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::IDMapArrayOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) []map[string]ID { return *new([]map[string]ID) }).(IDMapArrayOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::IDMapMapOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) map[string]map[string]ID { return *new(map[string]map[string]ID) }).(IDMapMapOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::IDArrayArrayOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) [][]ID { return *new([][]ID) }).(IDArrayArrayOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::IDArrayMapMapOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) map[string]map[string][]ID { return *new(map[string]map[string][]ID) }).(IDArrayMapMapOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::IDMapArrayMapOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) map[string][]map[string]ID { return *new(map[string][]map[string]ID) }).(IDMapArrayMapOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::IDMapMapArrayOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) []map[string]map[string]ID { return *new([]map[string]map[string]ID) }).(IDMapMapArrayOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::IDArrayMapArrayOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) []map[string][]ID { return *new([]map[string][]ID) }).(IDArrayMapArrayOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::IDArrayArrayMapOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) map[string][][]ID { return *new(map[string][][]ID) }).(IDArrayArrayMapOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::IDArrayArrayArrayOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) [][][]ID { return *new([][][]ID) }).(IDArrayArrayArrayOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::IDMapMapMapOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) map[string]map[string]map[string]ID { return *new(map[string]map[string]map[string]ID) }).(IDMapMapMapOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::ArrayOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) []any { return *new([]any) }).(ArrayOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::MapOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) map[string]any { return *new(map[string]any) }).(MapOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::ArrayMapOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) map[string][]any { return *new(map[string][]any) }).(ArrayMapOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::MapArrayOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) []map[string]any { return *new([]map[string]any) }).(MapArrayOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::MapMapOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) map[string]map[string]any { return *new(map[string]map[string]any) }).(MapMapOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::ArrayArrayOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) [][]any { return *new([][]any) }).(ArrayArrayOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::ArrayMapMapOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) map[string]map[string][]any { return *new(map[string]map[string][]any) }).(ArrayMapMapOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::MapArrayMapOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) map[string][]map[string]any { return *new(map[string][]map[string]any) }).(MapArrayMapOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::MapMapArrayOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) []map[string]map[string]any { return *new([]map[string]map[string]any) }).(MapMapArrayOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::ArrayMapArrayOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) []map[string][]any { return *new([]map[string][]any) }).(ArrayMapArrayOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::ArrayArrayMapOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) map[string][][]any { return *new(map[string][][]any) }).(ArrayArrayMapOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::ArrayArrayArrayOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) [][][]any { return *new([][][]any) }).(ArrayArrayArrayOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::MapMapMapOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) map[string]map[string]map[string]any { return *new(map[string]map[string]map[string]any) }).(MapMapMapOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::IntOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) int { return *new(int) }).(IntOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::IntPtrOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) *int { return *new(*int) }).(IntPtrOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::IntArrayOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) []int { return *new([]int) }).(IntArrayOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::IntMapOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) map[string]int { return *new(map[string]int) }).(IntMapOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::IntArrayMapOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) map[string][]int { return *new(map[string][]int) }).(IntArrayMapOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::IntMapArrayOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) []map[string]int { return *new([]map[string]int) }).(IntMapArrayOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::IntMapMapOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) map[string]map[string]int { return *new(map[string]map[string]int) }).(IntMapMapOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::IntArrayArrayOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) [][]int { return *new([][]int) }).(IntArrayArrayOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::IntArrayMapMapOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) map[string]map[string][]int { return *new(map[string]map[string][]int) }).(IntArrayMapMapOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::IntMapArrayMapOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) map[string][]map[string]int { return *new(map[string][]map[string]int) }).(IntMapArrayMapOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::IntMapMapArrayOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) []map[string]map[string]int { return *new([]map[string]map[string]int) }).(IntMapMapArrayOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::IntArrayMapArrayOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) []map[string][]int { return *new([]map[string][]int) }).(IntArrayMapArrayOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::IntArrayArrayMapOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) map[string][][]int { return *new(map[string][][]int) }).(IntArrayArrayMapOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::IntArrayArrayArrayOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) [][][]int { return *new([][][]int) }).(IntArrayArrayArrayOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::IntMapMapMapOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) map[string]map[string]map[string]int { return *new(map[string]map[string]map[string]int) }).(IntMapMapMapOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::StringOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) string { return *new(string) }).(StringOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::StringPtrOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) *string { return *new(*string) }).(StringPtrOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::StringArrayOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) []string { return *new([]string) }).(StringArrayOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::StringMapOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) map[string]string { return *new(map[string]string) }).(StringMapOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::StringArrayMapOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) map[string][]string { return *new(map[string][]string) }).(StringArrayMapOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::StringMapArrayOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) []map[string]string { return *new([]map[string]string) }).(StringMapArrayOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::StringMapMapOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) map[string]map[string]string { return *new(map[string]map[string]string) }).(StringMapMapOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::StringArrayArrayOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) [][]string { return *new([][]string) }).(StringArrayArrayOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::StringArrayMapMapOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) map[string]map[string][]string { return *new(map[string]map[string][]string) }).(StringArrayMapMapOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::StringMapArrayMapOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) map[string][]map[string]string { return *new(map[string][]map[string]string) }).(StringMapArrayMapOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::StringMapMapArrayOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) []map[string]map[string]string { return *new([]map[string]map[string]string) }).(StringMapMapArrayOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::StringArrayMapArrayOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) []map[string][]string { return *new([]map[string][]string) }).(StringArrayMapArrayOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::StringArrayArrayMapOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) map[string][][]string { return *new(map[string][][]string) }).(StringArrayArrayMapOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::StringArrayArrayArrayOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) [][][]string { return *new([][][]string) }).(StringArrayArrayArrayOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::StringMapMapMapOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) map[string]map[string]map[string]string {
 				return *new(map[string]map[string]map[string]string)
 			}).(StringMapMapMapOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::URNOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) URN { return *new(URN) }).(URNOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::URNPtrOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) *URN { return *new(*URN) }).(URNPtrOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::URNArrayOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) []URN { return *new([]URN) }).(URNArrayOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::URNMapOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) map[string]URN { return *new(map[string]URN) }).(URNMapOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::URNArrayMapOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) map[string][]URN { return *new(map[string][]URN) }).(URNArrayMapOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::URNMapArrayOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) []map[string]URN { return *new([]map[string]URN) }).(URNMapArrayOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::URNMapMapOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) map[string]map[string]URN { return *new(map[string]map[string]URN) }).(URNMapMapOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::URNArrayArrayOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) [][]URN { return *new([][]URN) }).(URNArrayArrayOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::URNArrayMapMapOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) map[string]map[string][]URN { return *new(map[string]map[string][]URN) }).(URNArrayMapMapOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::URNMapArrayMapOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) map[string][]map[string]URN { return *new(map[string][]map[string]URN) }).(URNMapArrayMapOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::URNMapMapArrayOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) []map[string]map[string]URN { return *new([]map[string]map[string]URN) }).(URNMapMapArrayOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::URNArrayMapArrayOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) []map[string][]URN { return *new([]map[string][]URN) }).(URNArrayMapArrayOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::URNArrayArrayMapOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) map[string][][]URN { return *new(map[string][][]URN) }).(URNArrayArrayMapOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::URNArrayArrayArrayOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) [][][]URN { return *new([][][]URN) }).(URNArrayArrayArrayOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::URNMapMapMapOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) map[string]map[string]map[string]URN { return *new(map[string]map[string]map[string]URN) }).(URNMapMapMapOutput)
 			assert.True(t, ok)
 		})

@@ -209,7 +209,7 @@ type JournalReplayer struct {
 }
 
 func NewJournalReplayer(base *apitype.DeploymentV3) *JournalReplayer {
-	replayer := JournalReplayer{
+	return new(JournalReplayer{
 		toRemove:                   make(map[int64]struct{}),
 		toDeleteInSnapshot:         make(map[int64]struct{}),
 		toReplaceInSnapshot:        make(map[int64]*apitype.ResourceV3),
@@ -220,8 +220,7 @@ func NewJournalReplayer(base *apitype.DeploymentV3) *JournalReplayer {
 		newResources:               make([]*apitype.ResourceV3, 0),
 		extensions:                 make(map[apitype.ExtensionRef]apitype.Extension),
 		base:                       base,
-	}
-	return &replayer
+	})
 }
 
 func (r *JournalReplayer) Add(entry apitype.JournalEntry) error {

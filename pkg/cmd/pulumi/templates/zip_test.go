@@ -160,8 +160,9 @@ func TestRetrieveZIPTemplates_FailsOnInvalidURLs(t *testing.T) {
 	}
 }
 
-//nolint:paralleltest // uses shared server URL
 func TestRetrieveZIPTemplates_FailsWhenPulumiYAMLIsMissing(t *testing.T) {
+	t.Parallel()
+
 	// Arrange.
 	cases := map[string][]string{
 		"empty.zip":          {},
@@ -179,8 +180,9 @@ func TestRetrieveZIPTemplates_FailsWhenPulumiYAMLIsMissing(t *testing.T) {
 	}
 }
 
-//nolint:paralleltest // uses shared server URL
 func TestRetrieveZIPTemplates_SucceedsWhenPulumiYAMLIsPresent(t *testing.T) {
+	t.Parallel()
+
 	// Arrange.
 	cases := map[string][]string{
 		"just-pulumi-yaml.zip":                    {"Pulumi.yaml"},

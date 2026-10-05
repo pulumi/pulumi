@@ -333,8 +333,8 @@ func TestProvider_DeleteRequests(t *testing.T) {
 			give: DeleteRequest{
 				ID:      id,
 				URN:     urn,
-				Inputs:  resource.PropertyMap{},
-				Outputs: resource.PropertyMap{},
+				Inputs:  property.Map{},
+				Outputs: property.Map{},
 			},
 			want: &pulumirpc.DeleteRequest{
 				Id:         string(id),
@@ -350,10 +350,10 @@ func TestProvider_DeleteRequests(t *testing.T) {
 			give: DeleteRequest{
 				ID:  id,
 				URN: urn,
-				Inputs: resource.PropertyMap{
-					"foo": resource.NewProperty("bar"),
-				},
-				Outputs: resource.PropertyMap{},
+				Inputs: property.NewMap(map[string]property.Value{
+					"foo": property.New("bar"),
+				}),
+				Outputs: property.Map{},
 			},
 			want: &pulumirpc.DeleteRequest{
 				Id:   string(id),
@@ -373,10 +373,10 @@ func TestProvider_DeleteRequests(t *testing.T) {
 			give: DeleteRequest{
 				ID:     id,
 				URN:    urn,
-				Inputs: resource.PropertyMap{},
-				Outputs: resource.PropertyMap{
-					"baz": resource.NewProperty("quux"),
-				},
+				Inputs: property.Map{},
+				Outputs: property.NewMap(map[string]property.Value{
+					"baz": property.New("quux"),
+				}),
 			},
 			want: &pulumirpc.DeleteRequest{
 				Id:        string(id),
@@ -397,8 +397,8 @@ func TestProvider_DeleteRequests(t *testing.T) {
 				ID:      id,
 				URN:     urn,
 				Timeout: 30,
-				Inputs:  resource.PropertyMap{},
-				Outputs: resource.PropertyMap{},
+				Inputs:  property.Map{},
+				Outputs: property.Map{},
 			},
 			want: &pulumirpc.DeleteRequest{
 				Id:         string(id),
@@ -415,12 +415,12 @@ func TestProvider_DeleteRequests(t *testing.T) {
 			give: DeleteRequest{
 				ID:  id,
 				URN: urn,
-				Inputs: resource.PropertyMap{
-					"foo": resource.NewProperty("bar"),
-				},
-				Outputs: resource.PropertyMap{
-					"baz": resource.NewProperty("quux"),
-				},
+				Inputs: property.NewMap(map[string]property.Value{
+					"foo": property.New("bar"),
+				}),
+				Outputs: property.NewMap(map[string]property.Value{
+					"baz": property.New("quux"),
+				}),
 				Timeout: 30,
 			},
 			want: &pulumirpc.DeleteRequest{
@@ -792,8 +792,8 @@ func TestProvider_ConfigureDeleteRace(t *testing.T) {
 			Name:    "qux",
 			Type:    "bar:baz",
 			ID:      "whatever",
-			Inputs:  props,
-			Outputs: props,
+			Inputs:  resource.FromResourcePropertyMap(props),
+			Outputs: resource.FromResourcePropertyMap(props),
 			Timeout: 1000,
 		})
 		require.NoError(t, err, "Delete failed")
@@ -1465,13 +1465,13 @@ func TestProvider_PartialFailure(t *testing.T) {
 		URN:        urn,
 		Name:       urn.Name(),
 		Type:       urn.Type(),
-		Properties: resource.PropertyMap{},
+		Properties: property.Map{},
 	})
 	require.ErrorAs(t, err, &initErr, "expected an InitError")
 	assert.Equal(t, []string{"create issue"}, initErr.Reasons)
 	assert.Equal(t, CreateResponse{
 		ID:                  "some-id",
-		Properties:          liveProperties,
+		Properties:          resource.FromResourcePropertyMap(liveProperties),
 		Status:              resource.StatusPartialFailure,
 		RefreshBeforeUpdate: true,
 	}, createResp)
@@ -1481,16 +1481,16 @@ func TestProvider_PartialFailure(t *testing.T) {
 		Name:   urn.Name(),
 		Type:   urn.Type(),
 		ID:     "some-id",
-		Inputs: resource.PropertyMap{},
-		State:  resource.PropertyMap{},
+		Inputs: property.Map{},
+		State:  property.Map{},
 	})
 	require.ErrorAs(t, err, &initErr, "expected an InitError")
 	assert.Equal(t, []string{"read issue"}, initErr.Reasons)
 	assert.Equal(t, ReadResponse{
 		ReadResult: ReadResult{
 			ID:                  "some-id",
-			Inputs:              liveInputs,
-			Outputs:             liveProperties,
+			Inputs:              new(resource.FromResourcePropertyMap(liveInputs)),
+			Outputs:             new(resource.FromResourcePropertyMap(liveProperties)),
 			RefreshBeforeUpdate: true,
 		},
 		Status: resource.StatusPartialFailure,
@@ -1501,15 +1501,94 @@ func TestProvider_PartialFailure(t *testing.T) {
 		Name:       urn.Name(),
 		Type:       urn.Type(),
 		ID:         "some-id",
-		OldInputs:  resource.PropertyMap{},
-		OldOutputs: resource.PropertyMap{},
-		NewInputs:  resource.PropertyMap{},
+		OldInputs:  property.Map{},
+		OldOutputs: property.Map{},
+		NewInputs:  property.Map{},
 	})
 	require.ErrorAs(t, err, &initErr, "expected an InitError")
 	assert.Equal(t, []string{"update issue"}, initErr.Reasons)
 	assert.Equal(t, UpdateResponse{
-		Properties:          liveProperties,
+		Properties:          resource.FromResourcePropertyMap(liveProperties),
 		Status:              resource.StatusPartialFailure,
 		RefreshBeforeUpdate: true,
 	}, updateResp)
+}
+
+// Tests that assets echoed back by a provider are restored from the old state, not just the old inputs.
+// Assets frequently live only in a resource's outputs, and eliding their contents on the way to the provider
+// must not persist a contentless asset into the snapshot.
+func TestProvider_RestoresElidedAssetsFromState(t *testing.T) {
+	t.Parallel()
+
+	urn := resource.NewURN("org/proj/dev", "foo", "", "test:index:Resource", "qux")
+
+	textAsset, err := asset.FromText("Hello world")
+	require.NoError(t, err)
+
+	// The asset only ever appears in the outputs, never in the inputs.
+	inputs := resource.PropertyMap{"assetPaths": resource.NewProperty("build/**")}
+	outputs := resource.PropertyMap{"assets": resource.NewProperty(textAsset)}
+
+	assertRestored := func(t *testing.T, got resource.PropertyMap) {
+		a := got["assets"].AssetValue()
+		assert.Equal(t, textAsset.Hash, a.Hash)
+		assert.True(t, a.HasContents(), "asset lost its contents")
+		assert.Equal(t, "Hello world", a.Text)
+	}
+
+	newProvider := func(t *testing.T, client *stubClient) Provider {
+		client.ConfigureF = func(req *pulumirpc.ConfigureRequest) (*pulumirpc.ConfigureResponse, error) {
+			return &pulumirpc.ConfigureResponse{AcceptSecrets: true}, nil
+		}
+		p := NewProviderWithClient(newTestContext(t), client, false /* disablePreview */)
+		_, err := p.Configure(t.Context(), ConfigureRequest{Type: new(tokens.Type("pulumi:providers:test"))})
+		require.NoError(t, err, "Configure failed")
+		return p
+	}
+
+	t.Run("read", func(t *testing.T) {
+		t.Parallel()
+
+		p := newProvider(t, &stubClient{
+			ReadF: func(req *pulumirpc.ReadRequest) (*pulumirpc.ReadResponse, error) {
+				// Echo the state back, as a provider with no remote state to consult would.
+				return &pulumirpc.ReadResponse{
+					Id:         req.GetId(),
+					Properties: req.GetProperties(),
+					Inputs:     req.GetInputs(),
+				}, nil
+			},
+		})
+
+		resp, err := p.Read(t.Context(), ReadRequest{
+			URN:    urn,
+			ID:     "some-id",
+			Inputs: resource.FromResourcePropertyMap(inputs),
+			State:  resource.FromResourcePropertyMap(outputs),
+		})
+		require.NoError(t, err)
+		require.NotNil(t, resp.Outputs)
+		assertRestored(t, resource.ToResourcePropertyMap(*resp.Outputs))
+	})
+
+	t.Run("update", func(t *testing.T) {
+		t.Parallel()
+
+		p := newProvider(t, &stubClient{
+			UpdateF: func(req *pulumirpc.UpdateRequest) (*pulumirpc.UpdateResponse, error) {
+				// Echo the old outputs back, as a provider that did not touch the asset would.
+				return &pulumirpc.UpdateResponse{Properties: req.GetOlds()}, nil
+			},
+		})
+
+		resp, err := p.Update(t.Context(), UpdateRequest{
+			URN:        urn,
+			ID:         "some-id",
+			OldInputs:  resource.FromResourcePropertyMap(inputs),
+			OldOutputs: resource.FromResourcePropertyMap(outputs),
+			NewInputs:  resource.FromResourcePropertyMap(inputs),
+		})
+		require.NoError(t, err)
+		assertRestored(t, resource.ToResourcePropertyMap(resp.Properties))
+	})
 }

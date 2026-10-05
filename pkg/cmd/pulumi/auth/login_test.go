@@ -27,11 +27,13 @@ import (
 	"strings"
 	"testing"
 
+	pkgauth "github.com/pulumi/pulumi/pkg/v3/auth"
 	pkgBackend "github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
+	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
@@ -45,10 +47,19 @@ func TestLoginURLResolution(t *testing.T) {
 	type capturedLogin struct {
 		url       string
 		oidcToken string
+		calls     int
 	}
 
 	credsF := func() (workspace.Credentials, error) {
 		return workspace.Credentials{Current: "https://stored-creds.example.com"}, nil
+	}
+	configuredWorkspace := &pkgWorkspace.MockContext{
+		ReadProjectF: func(string) (*workspace.Project, string, error) {
+			return &workspace.Project{
+				Backend: &workspace.ProjectBackend{URL: "https://project-backend.example.com"},
+			}, "", nil
+		},
+		GetStoredCredentialsF: credsF,
 	}
 
 	tests := []struct {
@@ -62,9 +73,12 @@ func TestLoginURLResolution(t *testing.T) {
 		expectedError string
 	}{
 		{
-			name:        "command argument takes precedence",
-			args:        []string{"s3://my-bucket"},
-			ws:          &pkgWorkspace.MockContext{},
+			name: "command argument takes precedence",
+			args: []string{"s3://my-bucket"},
+			ws:   configuredWorkspace,
+			envVars: map[string]string{
+				"PULUMI_BACKEND_URL": "https://env-backend.example.com",
+			},
 			expectedURL: "s3://my-bucket",
 		},
 		{
@@ -72,7 +86,10 @@ func TestLoginURLResolution(t *testing.T) {
 			flags: map[string]string{
 				"cloud-url": "https://custom.example.com",
 			},
-			ws:          &pkgWorkspace.MockContext{},
+			ws: configuredWorkspace,
+			envVars: map[string]string{
+				"PULUMI_BACKEND_URL": "https://env-backend.example.com",
+			},
 			expectedURL: "https://custom.example.com",
 		},
 		{
@@ -80,7 +97,10 @@ func TestLoginURLResolution(t *testing.T) {
 			flags: map[string]string{
 				"local": "true",
 			},
-			ws:          &pkgWorkspace.MockContext{},
+			ws: configuredWorkspace,
+			envVars: map[string]string{
+				"PULUMI_BACKEND_URL": "https://env-backend.example.com",
+			},
 			expectedURL: "file://~",
 		},
 		{
@@ -105,38 +125,21 @@ func TestLoginURLResolution(t *testing.T) {
 		},
 		{
 			name: "environment variable used when no explicit URL",
-			ws: &pkgWorkspace.MockContext{
-				GetStoredCredentialsF: credsF,
-			},
+			ws:   configuredWorkspace,
 			envVars: map[string]string{
 				"PULUMI_BACKEND_URL": "https://env-backend.example.com",
 			},
 			expectedURL: "https://env-backend.example.com",
 		},
 		{
-			name: "project backend URL used when no env var",
-			ws: &pkgWorkspace.MockContext{
-				ReadProjectF: func(string) (*workspace.Project, string, error) {
-					return &workspace.Project{
-						Backend: &workspace.ProjectBackend{URL: "https://project-backend.example.com"},
-					}, "", nil
-				},
-				GetStoredCredentialsF: credsF,
-			},
-			// Clear PULUMI_BACKEND_URL to ensure project backend is used
-			envVars: map[string]string{
-				"PULUMI_BACKEND_URL": "",
-			},
+			name:        "project backend URL used when no env var",
+			ws:          configuredWorkspace,
 			expectedURL: "https://project-backend.example.com",
 		},
 		{
 			name: "stored credentials used as fallback",
 			ws: &pkgWorkspace.MockContext{
 				GetStoredCredentialsF: credsF,
-			},
-			// Clear PULUMI_BACKEND_URL to ensure stored credentials are used
-			envVars: map[string]string{
-				"PULUMI_BACKEND_URL": "",
 			},
 			expectedURL: "https://stored-creds.example.com",
 		},
@@ -146,10 +149,7 @@ func TestLoginURLResolution(t *testing.T) {
 				"oidc-token": "test-token",
 				"oidc-org":   "test-org",
 			},
-			ws: &pkgWorkspace.MockContext{},
-			envVars: map[string]string{
-				"PULUMI_ACCESS_TOKEN": "",
-			},
+			ws:          &pkgWorkspace.MockContext{},
 			expectedURL: "https://api.pulumi.com",
 		},
 		{
@@ -159,10 +159,7 @@ func TestLoginURLResolution(t *testing.T) {
 				"oidc-token": "test-token",
 				"oidc-org":   "test-org",
 			},
-			ws: &pkgWorkspace.MockContext{},
-			envVars: map[string]string{
-				"PULUMI_ACCESS_TOKEN": "",
-			},
+			ws:          &pkgWorkspace.MockContext{},
 			expectedURL: "https://custom.example.com",
 		},
 		{
@@ -173,23 +170,20 @@ func TestLoginURLResolution(t *testing.T) {
 			},
 			ws: &pkgWorkspace.MockContext{},
 			envVars: map[string]string{
-				"PULUMI_ACCESS_TOKEN": "",
-				"PULUMI_BACKEND_URL":  "https://env-backend.example.com",
+				"PULUMI_BACKEND_URL": "https://env-backend.example.com",
 			},
 			expectedURL: "https://env-backend.example.com",
 		},
 		{
-			name: "empty URL without OIDC triggers interactive (captured as empty)",
-			ws:   &pkgWorkspace.MockContext{},
-			envVars: map[string]string{
-				"PULUMI_BACKEND_URL": "",
-			},
+			name:        "empty URL without OIDC triggers interactive (captured as empty)",
+			ws:          &pkgWorkspace.MockContext{},
 			expectedURL: "",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			ptesting.IsolateCredentials(t)
 			for k, v := range tt.envVars {
 				t.Setenv(k, v)
 			}
@@ -206,6 +200,7 @@ func TestLoginURLResolution(t *testing.T) {
 					insecure bool,
 					color colors.Colorization,
 				) (pkgBackend.Backend, error) {
+					captured.calls++
 					captured.url = url
 					return &pkgBackend.MockBackend{
 						URLF:  func() string { return url },
@@ -222,8 +217,9 @@ func TestLoginURLResolution(t *testing.T) {
 					project *workspace.Project,
 					setCurrent bool,
 					insecure bool,
-					authContext workspace.AuthContext,
+					authContext pkgauth.AuthContext,
 				) (pkgBackend.Backend, error) {
+					captured.calls++
 					captured.url = url
 					captured.oidcToken = authContext.Token
 					return &pkgBackend.MockBackend{
@@ -257,13 +253,47 @@ func TestLoginURLResolution(t *testing.T) {
 
 			if tt.expectError {
 				require.Error(t, err)
+				assert.Zero(t, captured.calls)
 				if tt.expectedError != "" {
 					require.ErrorContains(t, err, tt.expectedError)
 				}
 			} else {
 				require.NoError(t, err)
+				assert.Equal(t, 1, captured.calls)
 				assert.Equal(t, tt.expectedURL, captured.url,
 					"login should be called with expected URL")
+				assert.Equal(t, tt.flags["oidc-token"], captured.oidcToken)
+			}
+		})
+	}
+}
+
+//nolint:paralleltest // Shares an isolated credential directory and process environment.
+func TestLoginOIDCUsesInjectedEnvironment(t *testing.T) {
+	ptesting.IsolateCredentials(t)
+	t.Setenv("PULUMI_ACCESS_TOKEN", "process-token")
+
+	for _, accessToken := range []string{"", "injected-token"} {
+		t.Run("accessToken="+accessToken, func(t *testing.T) {
+			reachedLogin := errors.New("reached token exchange")
+			lm := &backend.MockLoginManager{
+				LoginFromAuthContextF: func(
+					context.Context, diag.Sink, string, *workspace.Project, bool, bool, pkgauth.AuthContext,
+				) (pkgBackend.Backend, error) {
+					return nil, reachedLogin
+				},
+			}
+			store := env.NewEnv(env.MapStore{"PULUMI_ACCESS_TOKEN": accessToken})
+			cmd := NewLoginCmd(&pkgWorkspace.MockContext{}, lm, store)
+			cmd.SetOut(io.Discard)
+			cmd.SetErr(io.Discard)
+			cmd.SetArgs([]string{"--oidc-token", "oidc-token", "--oidc-org", "org"})
+			err := cmd.ExecuteContext(t.Context())
+			if accessToken == "" {
+				require.ErrorIs(t, err, reachedLogin)
+			} else {
+				require.EqualError(t, err,
+					"problem logging in: cannot perform token exchange when an access token is set as environment variable")
 			}
 		})
 	}
@@ -459,8 +489,10 @@ func TestExtractOIDCDefaults(t *testing.T) {
 
 // TestLoginEnvConflict tests that we warn the user if they login with a cloud URL that conflicts with the
 // PULUMI_BACKEND_URL environment variable.
+//
+//nolint:paralleltest // IsolateCredentials changes process-wide environment variables.
 func TestLoginEnvConflict(t *testing.T) {
-	t.Parallel()
+	ptesting.IsolateCredentials(t)
 
 	ws := &pkgWorkspace.MockContext{}
 	lm := &backend.MockLoginManager{
@@ -579,6 +611,7 @@ func TestLoginErrorMessage(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			ptesting.IsolateCredentials(t)
 			if tt.inProjectDir {
 				dir := t.TempDir()
 				require.NoError(t, os.WriteFile(filepath.Join(dir, "Pulumi.yaml"),

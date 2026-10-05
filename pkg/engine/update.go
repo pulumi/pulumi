@@ -399,6 +399,11 @@ type UpdateOptions struct {
 	// true if the engine should disable output value support.
 	DisableOutputValues bool
 
+	// true if the engine should not advertise the INVOKE_OUTPUT_VALUES monitor feature. SDKs that check the
+	// feature list before opting in will fall back to the legacy union-of-arg-deps behaviour on Invoke. Test-only
+	// knob for exercising the fallback path against providers that do advertise `accepts_outputs_in_invoke`.
+	DisableInvokeOutputValues bool
+
 	// HostFactory builds the plugin host for this operation.
 	HostFactory HostFactory
 
@@ -1140,6 +1145,7 @@ func newUpdateSource(ctx context.Context,
 		Parallel:                  opts.Parallel,
 		DisableResourceReferences: opts.DisableResourceReferences,
 		DisableOutputValues:       opts.DisableOutputValues,
+		DisableInvokeOutputValues: opts.DisableInvokeOutputValues,
 		AttachDebugger:            opts.AttachDebugger,
 		SupportsStateMigrations:   opts.supportsStateMigrations,
 	}

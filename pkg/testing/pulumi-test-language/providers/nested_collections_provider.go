@@ -130,12 +130,13 @@ func (p *NestedCollectionsProvider) Check(
 func (p *NestedCollectionsProvider) Create(
 	_ context.Context, req plugin.CreateRequest,
 ) (plugin.CreateResponse, error) {
+	properties := resource.ToResourcePropertyMap(req.Properties)
 	id := "id"
 	if req.Preview {
 		id = ""
 	}
 
-	outputs := req.Properties.Copy()
+	outputs := properties.Copy()
 
 	if req.URN.Type() == "nestedcollections:index:Foo" {
 		bar := func(prop string) resource.PropertyValue {
@@ -159,7 +160,7 @@ func (p *NestedCollectionsProvider) Create(
 
 	return plugin.CreateResponse{
 		ID:         resource.ID(id),
-		Properties: outputs,
+		Properties: resource.FromResourcePropertyMap(outputs),
 		Status:     resource.StatusOK,
 	}, nil
 }
@@ -219,8 +220,8 @@ func (p *NestedCollectionsProvider) Read(
 	return plugin.ReadResponse{
 		ReadResult: plugin.ReadResult{
 			ID:      req.ID,
-			Inputs:  req.Inputs,
-			Outputs: req.State,
+			Inputs:  &req.Inputs,
+			Outputs: &req.State,
 		},
 		Status: resource.StatusOK,
 	}, nil

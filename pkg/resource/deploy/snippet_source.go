@@ -38,6 +38,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
@@ -163,7 +164,7 @@ func (s *snippet) run(resourceMonitorTarget string) *promise.Promise[struct{}] {
 		// Wait on the observer for every Reference. Once they resolve, shape each entry as a Pulumi resource
 		// value (object with urn + id + outputs, wrapped in an Output so traversals work) so the interpreter
 		// sees it the same way it would see a sibling resource declared in the same program.
-		scopeVars := make(map[string]resource.PropertyValue, len(s.snippet.References))
+		scopeVars := make(map[string]property.Value, len(s.snippet.References))
 		if len(s.snippet.References) > 0 {
 			refURNs := make(map[string]resource.URN, len(s.snippet.References))
 			for name, raw := range s.snippet.References {
@@ -180,7 +181,7 @@ func (s *snippet) run(resourceMonitorTarget string) *promise.Promise[struct{}] {
 					fail(fmt.Errorf("waiting for reference %q (%s): %w", name, urn, err))
 					return
 				}
-				scopeVars[name] = snippetReferenceValue(urn, reg)
+				scopeVars[name] = resource.FromResourcePropertyValue(snippetReferenceValue(urn, reg))
 			}
 		}
 

@@ -60,7 +60,7 @@ func main() {
 	go func() {
 		for sig := range sigChan {
 			if cmd.Process != nil {
-				cmd.Process.Signal(sig)
+				_ = cmd.Process.Signal(sig)
 			}
 		}
 	}()

@@ -1,6 +1,18 @@
-// Copyright 2016, Pulumi Corporation.  All rights reserved.
+// Copyright 2016, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 //go:build !all
-// +build !all
 
 package main
 
@@ -9,9 +21,9 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"strconv"
 	"strings"
 
-	"github.com/pulumi/pulumi/pkg/v3/resource/provider"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
@@ -35,7 +47,7 @@ type ResourceArgs struct {
 }
 
 func (ResourceArgs) ElementType() reflect.Type {
-	return reflect.TypeOf((*resourceArgs)(nil)).Elem()
+	return reflect.TypeFor[resourceArgs]()
 }
 
 func NewResource(ctx *pulumi.Context, name string, echo pulumi.Input,
@@ -101,7 +113,7 @@ func NewComponent(ctx *pulumi.Context, name string, args *ComponentArgs,
 		return nil, err
 	}
 
-	res, err := NewResource(ctx, fmt.Sprintf("child-%s", name), args.Echo, pulumi.Parent(component))
+	res, err := NewResource(ctx, "child-"+name, args.Echo, pulumi.Parent(component))
 	if err != nil {
 		return nil, err
 	}
@@ -129,7 +141,9 @@ const (
 var currentID int
 
 func main() {
-	err := provider.Main(providerName, func(host *provider.HostClient) (pulumirpc.ResourceProviderServer, error) {
+	err := pulumiprovider.Main(providerName, func(
+		host *pulumiprovider.HostClient,
+	) (pulumirpc.ResourceProviderServer, error) {
 		return makeProvider(host, providerName, version)
 	})
 	if err != nil {
@@ -140,12 +154,12 @@ func main() {
 type Provider struct {
 	pulumirpc.UnimplementedResourceProviderServer
 
-	host    *provider.HostClient
+	host    *pulumiprovider.HostClient
 	name    string
 	version string
 }
 
-func makeProvider(host *provider.HostClient, name, version string) (pulumirpc.ResourceProviderServer, error) {
+func makeProvider(host *pulumiprovider.HostClient, name, version string) (pulumirpc.ResourceProviderServer, error) {
 	return &Provider{
 		host:    host,
 		name:    name,
@@ -166,7 +180,7 @@ func (p *Provider) Create(ctx context.Context,
 	currentID++
 
 	return &pulumirpc.CreateResponse{
-		Id: fmt.Sprintf("%v", id),
+		Id: strconv.Itoa(id),
 	}, nil
 }
 

@@ -53,7 +53,7 @@ type Value struct {
 //
 // Value can also be a null value.
 type GoValue interface {
-	bool | float64 | string | // Primitive types
+	bool | int32 | float64 | string | // Primitive types
 		Map | map[string]Value | // Map types
 		Array | []Value | // Array types
 		Asset | Archive | // Pulumi types
@@ -90,6 +90,8 @@ func normalize(goValue any) any {
 			return nil
 		}
 		return copyAsset(goValue)
+	case int32:
+		return float64(goValue)
 	case null:
 		return nil
 	}
@@ -103,6 +105,8 @@ func Any(goValue any) (Value, error) {
 	case bool:
 		return New(goValue), nil
 	case float64:
+		return New(goValue), nil
+	case int32:
 		return New(goValue), nil
 	case string:
 		return New(goValue), nil

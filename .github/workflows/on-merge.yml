@@ -44,6 +44,7 @@ jobs:
       ref: ${{ github.ref }}
       version: ${{ needs.info.outputs.version }}
       enable-coverage: true
+      sign-windows-binaries: true
       fail-fast: true
       test-retries: 2
       acceptance-test-platforms: 'macos-latest'

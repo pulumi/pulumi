@@ -249,7 +249,9 @@ func (pf credentialsPreflight) printWarning(cp cloudProvider, problem *credentia
 		fmt.Fprintf(pf.stdout, "    %s\n", line)
 	}
 	fmt.Fprintln(pf.stdout, "`pulumi up` may fail until this is resolved.")
-	if cp.docURL != "" {
+	// Providers often link their configuration docs in the error itself; don't repeat the link.
+	details := strings.Join(problem.details, "\n")
+	if cp.docURL != "" && !strings.Contains(details, strings.TrimSuffix(cp.docURL, "/")) {
 		fmt.Fprintf(pf.stdout, "For help configuring the %s provider, see %s\n", cp.displayName, cp.docURL)
 	}
 	fmt.Fprintln(pf.stdout)

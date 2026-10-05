@@ -35,6 +35,7 @@ import (
 	"time"
 
 	"github.com/blang/semver"
+	git "github.com/go-git/go-git/v6"
 	"github.com/go-git/go-git/v6/plumbing"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
@@ -2129,6 +2130,72 @@ func TestGitSourceDownloadSemver(t *testing.T) {
 	buf, err := io.ReadAll(tarReader)
 	require.NoError(t, err)
 	require.Equal(t, "a string", string(buf))
+}
+
+func TestGitSourceDownloadUnprefixedTag(t *testing.T) {
+	t.Parallel()
+
+	prefixed := plumbing.ReferenceName("refs/tags/v1.0.0")
+	unprefixed := plumbing.ReferenceName("refs/tags/1.0.0")
+	prefixedNotFound := fmt.Errorf("%w: %s", git.ErrRemoteRefNotFound, prefixed)
+	unprefixedNotFound := fmt.Errorf("%w: %s", git.ErrRemoteRefNotFound, unprefixed)
+	errAuth := errors.New("authentication required")
+
+	cases := []struct {
+		name         string
+		cloneErrs    map[plumbing.ReferenceName]error
+		expectedRefs []plumbing.ReferenceName
+		expectedErrs []error
+	}{
+		{
+			name:         "only unprefixed tag exists",
+			cloneErrs:    map[plumbing.ReferenceName]error{prefixed: prefixedNotFound},
+			expectedRefs: []plumbing.ReferenceName{prefixed, unprefixed},
+		},
+		{
+			name: "no tag exists",
+			cloneErrs: map[plumbing.ReferenceName]error{
+				prefixed:   prefixedNotFound,
+				unprefixed: unprefixedNotFound,
+			},
+			expectedRefs: []plumbing.ReferenceName{prefixed, unprefixed},
+			expectedErrs: []error{prefixedNotFound, unprefixedNotFound},
+		},
+		{
+			name:         "other clone error",
+			cloneErrs:    map[plumbing.ReferenceName]error{prefixed: errAuth},
+			expectedRefs: []plumbing.ReferenceName{prefixed},
+			expectedErrs: []error{errAuth},
+		},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+
+			var refs []plumbing.ReferenceName
+			gitSource := &gitSource{
+				url: "https://example.com/repo/test",
+				cloneOrPull: func(_ context.Context, _ string, ref plumbing.ReferenceName, tmpdir string, _ bool) error {
+					refs = append(refs, ref)
+					if err := c.cloneErrs[ref]; err != nil {
+						return err
+					}
+					return os.WriteFile(filepath.Join(tmpdir, "test"), []byte("a string"), 0o600)
+				},
+			}
+			readCloser, _, err := gitSource.Download(t.Context(), semver.MustParse("1.0.0"), "unused", "unused",
+				func(*http.Request) (io.ReadCloser, int64, error) { panic("unused") })
+			require.Equal(t, c.expectedRefs, refs)
+			if len(c.expectedErrs) > 0 {
+				for _, expected := range c.expectedErrs {
+					require.ErrorIs(t, err, expected)
+				}
+				return
+			}
+			require.NoError(t, err)
+			require.NotNil(t, readCloser)
+		})
+	}
 }
 
 func TestGitSourceDownloadHEAD(t *testing.T) {

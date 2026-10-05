@@ -220,10 +220,8 @@ func TestSecretConfig(t *testing.T) {
 		select {
 		case err = <-errChan:
 			require.NoError(t, err)
-			break
 		case r := <-result:
 			assert.Equal(t, "a string value", r)
-			break
 		}
 	}
 
@@ -256,10 +254,8 @@ func TestSecretConfig(t *testing.T) {
 		select {
 		case err = <-errChan:
 			require.NoError(t, err)
-			break
 		case o := <-objResult:
 			assert.Equal(t, expectedTestStruct, o)
-			break
 		}
 	}
 
@@ -286,10 +282,8 @@ func TestSecretConfig(t *testing.T) {
 		select {
 		case err = <-errChan:
 			require.NoError(t, err)
-			break
 		case r := <-resultBool:
 			assert.Equal(t, true, r)
-			break
 		}
 	}
 
@@ -316,10 +310,8 @@ func TestSecretConfig(t *testing.T) {
 		select {
 		case err = <-errChan:
 			require.NoError(t, err)
-			break
 		case r := <-resultInt:
 			assert.Equal(t, 42, r)
-			break
 		}
 	}
 }

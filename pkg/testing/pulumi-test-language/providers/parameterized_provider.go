@@ -267,7 +267,7 @@ func (p *ParameterizedProvider) Create(
 
 	return plugin.CreateResponse{
 		ID:         resource.ID(id),
-		Properties: outputs,
+		Properties: resource.FromResourcePropertyMap(outputs),
 		Status:     resource.StatusOK,
 	}, nil
 }

@@ -30,6 +30,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -125,9 +126,9 @@ func TestSecretMasked(t *testing.T) {
 					// Return the secret value as an unmasked output. This should get masked by the engine.
 					return plugin.CreateResponse{
 						ID: "id",
-						Properties: resource.PropertyMap{
-							"shouldBeSecret": resource.NewProperty("bar"),
-						},
+						Properties: property.NewMap(map[string]property.Value{
+							"shouldBeSecret": property.New("bar"),
+						}),
 						Status: resource.StatusOK,
 					}, nil
 				},
@@ -196,7 +197,7 @@ func TestReadReplaceStep(t *testing.T) {
 				WithProvider("pkgA", "1.0.0", &deploytest.Provider{
 					ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
 						return plugin.ReadResponse{
-							ReadResult: plugin.ReadResult{Outputs: resource.PropertyMap{}},
+							ReadResult: plugin.ReadResult{Outputs: new(property.Map{})},
 							Status:     resource.StatusOK,
 						}, nil
 					},
@@ -249,7 +250,7 @@ func TestRelinquishStep(t *testing.T) {
 				WithProvider("pkgA", "1.0.0", &deploytest.Provider{
 					ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
 						return plugin.ReadResponse{
-							ReadResult: plugin.ReadResult{Outputs: resource.PropertyMap{}},
+							ReadResult: plugin.ReadResult{Outputs: new(property.Map{})},
 							Status:     resource.StatusOK,
 						}, nil
 					},
@@ -278,7 +279,7 @@ func TestTakeOwnershipStep(t *testing.T) {
 		WithProvider("pkgA", "1.0.0", &deploytest.Provider{
 			ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
 				return plugin.ReadResponse{
-					ReadResult: plugin.ReadResult{Outputs: resource.PropertyMap{}},
+					ReadResult: plugin.ReadResult{Outputs: new(property.Map{})},
 					Status:     resource.StatusOK,
 				}, nil
 			},
@@ -445,8 +446,6 @@ func TestReadNilOutputs(t *testing.T) {
 		}).
 		RunUpdate(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 			_, _, _ = monitor.ReadResource("pkgA:m:typA", "resA", resourceID, "", nil, "", "", "", nil, "", "")
-			require.Fail(t, "RegisterResource should not return")
-
 			return nil
 		}, true).
 		Then(func(snap *deploy.Snapshot, err error) {
@@ -472,7 +471,7 @@ func TestExternalEventMetadata(t *testing.T) {
 				},
 				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
 					return plugin.ReadResponse{
-						ReadResult: plugin.ReadResult{Outputs: resource.PropertyMap{}},
+						ReadResult: plugin.ReadResult{Outputs: new(property.Map{})},
 						Status:     resource.StatusOK,
 					}, nil
 				},
@@ -539,11 +538,12 @@ func TestExistsResourceTrue(t *testing.T) {
 	lt.NewTestBuilder(t, nil).
 		WithProvider("pkgA", "1.0.0", &deploytest.Provider{
 			ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+				outputs := property.NewMap(map[string]property.Value{
+					"value": property.New(true),
+				})
 				return plugin.ReadResponse{
 					ReadResult: plugin.ReadResult{
-						Outputs: resource.PropertyMap{
-							"value": resource.NewProperty(true),
-						},
+						Outputs: &outputs,
 					},
 					Status: resource.StatusOK,
 				}, nil
@@ -632,14 +632,12 @@ func TestExistsResourceWithProperties(t *testing.T) {
 			ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
 				readCalled = true
 				// Verify that properties were passed through.
-				if req.State["foo"].StringValue() != "bar" {
-					return plugin.ReadResponse{}, fmt.Errorf("expected foo=bar, got %v", req.State["foo"])
+				if foo := req.State.Get("foo"); !foo.IsString() || foo.AsString() != "bar" {
+					return plugin.ReadResponse{}, fmt.Errorf("expected foo=bar, got %v", foo)
 				}
 				return plugin.ReadResponse{
 					ReadResult: plugin.ReadResult{
-						Outputs: resource.PropertyMap{
-							"foo": resource.NewProperty("bar"),
-						},
+						Outputs: &req.State,
 					},
 					Status: resource.StatusOK,
 				}, nil

@@ -105,6 +105,7 @@ jobs:
       build-platform: ${{ matrix.build-platform }}
       version-set: ${{ needs.matrix.outputs.version-set }}
       enable-coverage: false
+      sign-windows-binaries: true
     secrets: inherit
 
   build-sdks:

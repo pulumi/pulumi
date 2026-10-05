@@ -1337,29 +1337,17 @@ func (host *pythonLanguageHost) InstallDependencies(
 		return err
 	}
 
-	// For plugins with pyproject.toml (bootstrap-less mode), we need to install the package itself
-	// in addition to any dependencies listed in requirements.txt.
+	// For plugins with a buildable pyproject.toml (bootstrap-less mode), we need to install the package itself
+	// in addition to its dependencies.
 	if req.IsPlugin {
 		buildable, err := toolchain.IsBuildablePackage(req.Info.ProgramDirectory)
 		if err != nil {
 			return fmt.Errorf("checking if plugin is a buildable package: %w", err)
 		}
 		if buildable {
-			// Ensure the virtual environment exists first
-			if err := tc.EnsureVenv(server.Context(), req.Info.ProgramDirectory, req.UseLanguageVersionTools,
+			if err := tc.InstallPackage(server.Context(), req.Info.ProgramDirectory, req.UseLanguageVersionTools,
 				true /*showOutput*/, stdout, stderr); err != nil {
-				return fmt.Errorf("creating virtual environment: %w", err)
-			}
-
-			// Install the package itself (pip install .)
-			cmd, err := tc.ModuleCommand(server.Context(), "pip", "install", req.Info.ProgramDirectory)
-			if err != nil {
-				return fmt.Errorf("preparing pip install command: %w", err)
-			}
-			cmd.Stdout = stdout
-			cmd.Stderr = stderr
-			if err := cmd.Run(); err != nil {
-				return fmt.Errorf("installing package: %w", err)
+				return err
 			}
 		}
 	}
