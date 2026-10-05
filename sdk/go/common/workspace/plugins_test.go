@@ -19,6 +19,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"context"
+	"crypto/sha256"
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -32,6 +33,7 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+	stdiotest "testing/iotest"
 	"time"
 
 	"github.com/blang/semver"
@@ -1263,6 +1265,61 @@ func TestDownloadToFile_retries(t *testing.T) {
 	}).DownloadToFile(t.Context(), spec)
 	assert.ErrorContains(t, err, "failed to download plugin: myplugin-1.0.0")
 	assert.Equal(t, numRequests, numRetries)
+}
+
+func TestChecksumSource_finalReadWithEOF(t *testing.T) {
+	t.Parallel()
+
+	// Verifies that bytes returned together with io.EOF are covered by the checksum.
+	// net/http returns the end of a body with a known Content-Length this way.
+
+	archive := []byte("plugin archive")
+	checksum := sha256.Sum256(archive)
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, err := w.Write(archive)
+		require.NoError(t, err)
+	}))
+	t.Cleanup(server.Close)
+
+	version := semver.MustParse("1.0.0")
+	spec := PluginDescriptor{
+		Name:              "myplugin",
+		Kind:              apitype.ResourcePlugin,
+		Version:           &version,
+		PluginDownloadURL: server.URL,
+		Checksums:         map[string][]byte{"linux-amd64": checksum[:]},
+	}
+	source, err := spec.GetSource()
+	require.NoError(t, err)
+
+	t.Run("valid archive", func(t *testing.T) {
+		t.Parallel()
+
+		r, _, err := source.Download(t.Context(), version, "linux", "amd64", getHTTPResponse)
+		require.NoError(t, err)
+		defer r.Close()
+		readBytes, err := io.ReadAll(r)
+		require.NoError(t, err)
+		assert.Equal(t, archive, readBytes)
+	})
+
+	t.Run("trailing data", func(t *testing.T) {
+		t.Parallel()
+
+		// The archive matches the checksum, but more bytes follow it in the final read.
+		getHTTPResponse := func(*http.Request) (io.ReadCloser, int64, error) {
+			body := io.MultiReader(
+				bytes.NewReader(archive),
+				stdiotest.DataErrReader(strings.NewReader("trailing data")))
+			return io.NopCloser(body), -1, nil
+		}
+		r, _, err := source.Download(t.Context(), version, "linux", "amd64", getHTTPResponse)
+		require.NoError(t, err)
+		_, err = io.ReadAll(r)
+		var checksumErr *checksumError
+		require.ErrorAs(t, err, &checksumErr)
+	})
 }
 
 func TestUnmarshalProjectWithProviderList(t *testing.T) {
