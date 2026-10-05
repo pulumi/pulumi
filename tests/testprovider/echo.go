@@ -11,8 +11,8 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+
 //go:build !all
-// +build !all
 
 package main
 
@@ -23,7 +23,7 @@ import (
 
 	pschema "github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
-	rpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
+	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 
 	"google.golang.org/protobuf/types/known/emptypb"
 )
@@ -145,11 +145,11 @@ type echoProvider struct {
 	id int
 }
 
-func (p *echoProvider) Check(ctx context.Context, req *rpc.CheckRequest) (*rpc.CheckResponse, error) {
-	return &rpc.CheckResponse{Inputs: req.News, Failures: nil}, nil
+func (p *echoProvider) Check(ctx context.Context, req *pulumirpc.CheckRequest) (*pulumirpc.CheckResponse, error) {
+	return &pulumirpc.CheckResponse{Inputs: req.News, Failures: nil}, nil
 }
 
-func (p *echoProvider) Diff(ctx context.Context, req *rpc.DiffRequest) (*rpc.DiffResponse, error) {
+func (p *echoProvider) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (*pulumirpc.DiffResponse, error) {
 	olds, err := plugin.UnmarshalProperties(req.GetOlds(), plugin.MarshalOptions{KeepUnknowns: true, SkipNulls: true})
 	if err != nil {
 		return nil, err
@@ -161,20 +161,20 @@ func (p *echoProvider) Diff(ctx context.Context, req *rpc.DiffRequest) (*rpc.Dif
 	}
 
 	d := olds.Diff(news)
-	changes := rpc.DiffResponse_DIFF_NONE
+	changes := pulumirpc.DiffResponse_DIFF_NONE
 	var replaces []string
 	if d != nil && d.Changed("echo") {
-		changes = rpc.DiffResponse_DIFF_SOME
+		changes = pulumirpc.DiffResponse_DIFF_SOME
 		replaces = append(replaces, "echo")
 	}
 
-	return &rpc.DiffResponse{
+	return &pulumirpc.DiffResponse{
 		Changes:  changes,
 		Replaces: replaces,
 	}, nil
 }
 
-func (p *echoProvider) Create(ctx context.Context, req *rpc.CreateRequest) (*rpc.CreateResponse, error) {
+func (p *echoProvider) Create(ctx context.Context, req *pulumirpc.CreateRequest) (*pulumirpc.CreateResponse, error) {
 	inputs, err := plugin.UnmarshalProperties(req.GetProperties(), plugin.MarshalOptions{
 		KeepUnknowns: true,
 		SkipNulls:    true,
@@ -192,31 +192,31 @@ func (p *echoProvider) Create(ctx context.Context, req *rpc.CreateRequest) (*rpc
 	}
 
 	p.id++
-	return &rpc.CreateResponse{
+	return &pulumirpc.CreateResponse{
 		Id:         strconv.Itoa(p.id),
 		Properties: outputProperties,
 	}, nil
 }
 
-func (p *echoProvider) Read(ctx context.Context, req *rpc.ReadRequest) (*rpc.ReadResponse, error) {
-	return &rpc.ReadResponse{
+func (p *echoProvider) Read(ctx context.Context, req *pulumirpc.ReadRequest) (*pulumirpc.ReadResponse, error) {
+	return &pulumirpc.ReadResponse{
 		Id:         req.Id,
 		Properties: req.Properties,
 	}, nil
 }
 
-func (p *echoProvider) Update(ctx context.Context, req *rpc.UpdateRequest) (*rpc.UpdateResponse, error) {
+func (p *echoProvider) Update(ctx context.Context, req *pulumirpc.UpdateRequest) (*pulumirpc.UpdateResponse, error) {
 	panic("Update not implemented")
 }
 
-func (p *echoProvider) Delete(ctx context.Context, req *rpc.DeleteRequest) (*emptypb.Empty, error) {
+func (p *echoProvider) Delete(ctx context.Context, req *pulumirpc.DeleteRequest) (*emptypb.Empty, error) {
 	return &emptypb.Empty{}, nil
 }
 
-func (p *echoProvider) Invoke(ctx context.Context, req *rpc.InvokeRequest) (*rpc.InvokeResponse, error) {
-	return &rpc.InvokeResponse{Return: req.Args}, nil
+func (p *echoProvider) Invoke(ctx context.Context, req *pulumirpc.InvokeRequest) (*pulumirpc.InvokeResponse, error) {
+	return &pulumirpc.InvokeResponse{Return: req.Args}, nil
 }
 
-func (p *echoProvider) Call(ctx context.Context, req *rpc.CallRequest) (*rpc.CallResponse, error) {
-	return &rpc.CallResponse{Return: req.Args}, nil
+func (p *echoProvider) Call(ctx context.Context, req *pulumirpc.CallRequest) (*pulumirpc.CallResponse, error) {
+	return &pulumirpc.CallResponse{Return: req.Args}, nil
 }

@@ -731,6 +731,8 @@ export class ResourceInvokeRequest extends jspb.Message {
     addDependson(value: string, index?: number): string;
     getParent(): string;
     setParent(value: string): ResourceInvokeRequest;
+    getAcceptOutputValues(): boolean;
+    setAcceptOutputValues(value: boolean): ResourceInvokeRequest;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): ResourceInvokeRequest.AsObject;
@@ -759,6 +761,7 @@ export namespace ResourceInvokeRequest {
         acceptsByteString: boolean,
         dependsonList: Array<string>,
         parent: string,
+        acceptOutputValues: boolean,
     }
 }
 
@@ -1668,6 +1671,7 @@ export enum ResourceMonitorFeature {
     RESOURCE_MONITOR_FEATURE_INVOKE_DEPENDS_ON = 14,
     RESOURCE_MONITOR_FEATURE_INVOKE_PARENT = 15,
     RESOURCE_MONITOR_FEATURE_STATE_MIGRATIONS = 16,
+    RESOURCE_MONITOR_FEATURE_INVOKE_OUTPUT_VALUES = 17,
 }
 
 export enum Result {

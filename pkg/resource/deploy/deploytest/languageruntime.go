@@ -19,6 +19,7 @@ import (
 	"errors"
 	"io"
 	"strings"
+	"sync"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
@@ -62,6 +63,7 @@ type languageRuntime struct {
 	program          ProgramFunc
 	closed           bool
 	shutdown         func()
+	running          sync.WaitGroup
 }
 
 func (p *languageRuntime) Close() error {
@@ -84,6 +86,8 @@ func (p *languageRuntime) Run(
 	if p.closed {
 		return "", false, ErrLanguageRuntimeIsClosed
 	}
+	p.running.Add(1)
+	defer p.running.Done()
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	monitor, err := dialMonitor(ctx, info.MonitorAddress)

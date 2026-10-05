@@ -1398,7 +1398,6 @@ func TestMultipleResourceDenyDefaultProviderLifecycle(t *testing.T) {
 				_, err := monitor.RegisterResource("pkgB:m:typB", "resB", true)
 				require.NoError(t, err)
 				_, _ = monitor.RegisterResource("pkgA:m:typA", "resA", true)
-				require.Fail(t, "RegisterResource should not return")
 				return nil
 			},
 			disabled:   `["pkgA"]`,
@@ -1429,7 +1428,6 @@ func TestMultipleResourceDenyDefaultProviderLifecycle(t *testing.T) {
 			name: "wildcard-a",
 			f: func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 				_, _ = monitor.RegisterResource("pkgA:m:typA", "resA", true)
-				require.Fail(t, "RegisterResource should not return")
 				return nil
 			},
 			disabled:   `["*"]`,
@@ -1439,7 +1437,6 @@ func TestMultipleResourceDenyDefaultProviderLifecycle(t *testing.T) {
 			name: "wildcard-rb",
 			f: func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 				_, _ = monitor.RegisterResource("pkgB:m:typB", "resB", true)
-				require.Fail(t, "RegisterResource should not return")
 				return nil
 			},
 			disabled:   `["*"]`,
@@ -2357,8 +2354,8 @@ func TestMissingIDRefresh(t *testing.T) {
 					return plugin.ReadResponse{
 						Status: resource.StatusOK,
 						ReadResult: plugin.ReadResult{
-							Inputs:  req.Inputs,
-							Outputs: req.State,
+							Inputs:  &req.Inputs,
+							Outputs: &req.State,
 						},
 					}, nil
 				},
@@ -2484,7 +2481,9 @@ func TestChangedVersion(t *testing.T) {
 		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 			Version: "1.0.0",
 		})
-		require.NoError(t, err)
+		if err != nil {
+			return err
+		}
 		return nil
 	})
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)

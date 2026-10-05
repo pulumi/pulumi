@@ -103,6 +103,7 @@ var expectedFailures = map[string]string{
 	"l2-resource-schema-secret":          "does not preserve schema-secret unknown outputs",
 	"l3-range-invoke-output-traversal":   "pulumi#12507: range loop variable captured by reference; indexed output resolves with the wrong index",                  //nolint:lll
 	"l2-raw-string-bytes":                "the Node.js SDK does not set accepts_byte_string: strings containing non-UTF8 bytes cannot be received from the engine", //nolint:lll
+	"l2-invoke-per-value-deps":           "output aware invokes not yet implemented",
 }
 
 // testLanguage runs the language conformance tests for the given runtime ("nodejs" or "bun").
@@ -223,22 +224,6 @@ func testLanguage(t *testing.T, runtime string, forceTsc bool) {
 
 					if expected, ok := expectedFailures[tt]; ok {
 						t.Skipf("Skipping known failure: %s", expected)
-					}
-
-					// Skip l2-large-string on Node.js 24 https://github.com/nodejs/node/issues/58197
-					// TODO: https://github.com/pulumi/pulumi/issues/19442
-					if runtime == "nodejs" && tt == "l2-large-string" {
-						cmd := exec.Command("node", "-v")
-						output, err := cmd.Output()
-						require.NoError(t, err)
-
-						var major int
-						_, err = fmt.Sscanf(string(output), "v%d", &major)
-						require.NoError(t, err)
-
-						if major >= 24 {
-							t.Skip("Skipping test on Node.js 24+ due to known regression")
-						}
 					}
 
 					result, err := engine.RunLanguageTest(t.Context(), &testingrpc.RunLanguageTestRequest{

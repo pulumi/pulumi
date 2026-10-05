@@ -113,6 +113,7 @@ func (p *ReservedNamesProvider) Check(
 func (p *ReservedNamesProvider) Create(
 	_ context.Context, req plugin.CreateRequest,
 ) (plugin.CreateResponse, error) {
+	properties := resource.ToResourcePropertyMap(req.Properties)
 	id := "id"
 	if req.Preview {
 		id = ""
@@ -120,7 +121,7 @@ func (p *ReservedNamesProvider) Create(
 
 	return plugin.CreateResponse{
 		ID:         resource.ID(id),
-		Properties: req.Properties.Copy(),
+		Properties: resource.FromResourcePropertyMap(properties.Copy()),
 		Status:     resource.StatusOK,
 	}, nil
 }
@@ -180,8 +181,8 @@ func (p *ReservedNamesProvider) Read(
 	return plugin.ReadResponse{
 		ReadResult: plugin.ReadResult{
 			ID:      req.ID,
-			Inputs:  req.Inputs,
-			Outputs: req.State,
+			Inputs:  &req.Inputs,
+			Outputs: &req.State,
 		},
 		Status: resource.StatusOK,
 	}, nil

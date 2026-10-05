@@ -38,6 +38,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -231,15 +232,16 @@ func TestDoCmdResourceCreate(t *testing.T) {
 				return plugin.CheckResponse{Properties: req.NewInputs}, nil
 			},
 			CreateF: func(ctx context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+				properties := resource.ToResourcePropertyMap(req.Properties)
 				calls = append(calls, "create")
-				assert.Equal(t, "example", req.Properties["name"].StringValue())
+				assert.Equal(t, "example", properties["name"].StringValue())
 				return plugin.CreateResponse{
 					ID: "res-1",
-					Properties: resource.PropertyMap{
-						"name":  resource.NewProperty("example"),
-						"size":  resource.NewProperty(2.0),
-						"extra": resource.NewProperty("hidden"),
-					},
+					Properties: property.NewMap(map[string]property.Value{
+						"name":  property.New("example"),
+						"size":  property.New(2.0),
+						"extra": property.New("hidden"),
+					}),
 				}, nil
 			},
 		},
@@ -307,9 +309,10 @@ func TestDoCmdResourceCreateWithPCLInputFlags(t *testing.T) {
 				return plugin.CheckResponse{Properties: req.NewInputs}, nil
 			},
 			CreateF: func(ctx context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+				properties := resource.ToResourcePropertyMap(req.Properties)
 				return plugin.CreateResponse{
 					ID:         "res-1",
-					Properties: req.Properties,
+					Properties: resource.FromResourcePropertyMap(properties),
 				}, nil
 			},
 		},
@@ -352,10 +355,10 @@ func TestDoCmdResourceReadDeletePatch(t *testing.T) {
 					return plugin.ReadResponse{
 						ReadResult: plugin.ReadResult{
 							ID: "res-1",
-							Outputs: resource.PropertyMap{
-								"name": resource.NewProperty("read"),
-								"size": resource.NewProperty(3.0),
-							},
+							Outputs: new(property.NewMap(map[string]property.Value{
+								"name": property.New("read"),
+								"size": property.New(3.0),
+							})),
 						},
 					}, nil
 				},
@@ -377,15 +380,15 @@ func TestDoCmdResourceReadDeletePatch(t *testing.T) {
 					return plugin.ReadResponse{
 						ReadResult: plugin.ReadResult{
 							ID:      req.ID,
-							Inputs:  resource.PropertyMap{"name": resource.NewProperty("in")},
-							Outputs: resource.PropertyMap{"name": resource.NewProperty("out")},
+							Inputs:  new(property.NewMap(map[string]property.Value{"name": property.New("in")})),
+							Outputs: new(property.NewMap(map[string]property.Value{"name": property.New("out")})),
 						},
 					}, nil
 				},
 				DeleteF: func(ctx context.Context, req plugin.DeleteRequest) (plugin.DeleteResponse, error) {
 					assert.Equal(t, resource.ID("res-1"), req.ID)
-					assert.Equal(t, resource.PropertyMap{"name": resource.NewProperty("in")}, req.Inputs)
-					assert.Equal(t, resource.PropertyMap{"name": resource.NewProperty("out")}, req.Outputs)
+					assert.Equal(t, property.NewMap(map[string]property.Value{"name": property.New("in")}), req.Inputs)
+					assert.Equal(t, property.NewMap(map[string]property.Value{"name": property.New("out")}), req.Outputs)
 					deleted = true
 					return plugin.DeleteResponse{}, nil
 				},
@@ -409,16 +412,16 @@ func TestDoCmdResourceReadDeletePatch(t *testing.T) {
 					return plugin.ReadResponse{
 						ReadResult: plugin.ReadResult{
 							ID: "res-1",
-							Inputs: resource.PropertyMap{
-								"name":    resource.NewProperty("old"),
-								"size":    resource.NewProperty(1.0),
-								"enabled": resource.NewProperty(false),
-							},
-							Outputs: resource.PropertyMap{
-								"name":    resource.NewProperty("old"),
-								"size":    resource.NewProperty(1.0),
-								"enabled": resource.NewProperty(false),
-							},
+							Inputs: new(property.NewMap(map[string]property.Value{
+								"name":    property.New("old"),
+								"size":    property.New(1.0),
+								"enabled": property.New(false),
+							})),
+							Outputs: new(property.NewMap(map[string]property.Value{
+								"name":    property.New("old"),
+								"size":    property.New(1.0),
+								"enabled": property.New(false),
+							})),
 						},
 					}, nil
 				},
@@ -439,15 +442,16 @@ func TestDoCmdResourceReadDeletePatch(t *testing.T) {
 				},
 				UpdateF: func(ctx context.Context, req plugin.UpdateRequest) (plugin.UpdateResponse, error) {
 					calls = append(calls, "update")
-					assert.Equal(t, "new", req.NewInputs["name"].StringValue())
-					assert.Equal(t, 1.0, req.NewInputs["size"].NumberValue())
-					assert.Equal(t, true, req.NewInputs["enabled"].BoolValue())
+					newInputs := resource.ToResourcePropertyMap(req.NewInputs)
+					assert.Equal(t, "new", newInputs["name"].StringValue())
+					assert.Equal(t, 1.0, newInputs["size"].NumberValue())
+					assert.Equal(t, true, newInputs["enabled"].BoolValue())
 					return plugin.UpdateResponse{
-						Properties: resource.PropertyMap{
+						Properties: resource.FromResourcePropertyMap(resource.PropertyMap{
 							"name":    resource.NewProperty("new"),
 							"size":    resource.NewProperty(1.0),
 							"enabled": resource.NewProperty(true),
-						},
+						}),
 					}, nil
 				},
 			},
@@ -478,14 +482,14 @@ enabled = true
 					return plugin.ReadResponse{
 						ReadResult: plugin.ReadResult{
 							ID: "res-1",
-							Inputs: resource.PropertyMap{
-								"name":    resource.NewProperty("existing"),
-								"enabled": resource.NewProperty(false),
-							},
-							Outputs: resource.PropertyMap{
-								"name":    resource.NewProperty("existing"),
-								"enabled": resource.NewProperty(false),
-							},
+							Inputs: new(property.NewMap(map[string]property.Value{
+								"name":    property.New("existing"),
+								"enabled": property.New(false),
+							})),
+							Outputs: new(property.NewMap(map[string]property.Value{
+								"name":    property.New("existing"),
+								"enabled": property.New(false),
+							})),
 						},
 					}, nil
 				},
@@ -499,10 +503,10 @@ enabled = true
 				},
 				UpdateF: func(ctx context.Context, req plugin.UpdateRequest) (plugin.UpdateResponse, error) {
 					return plugin.UpdateResponse{
-						Properties: resource.PropertyMap{
+						Properties: resource.FromResourcePropertyMap(resource.PropertyMap{
 							"name":    resource.NewProperty("existing"),
 							"enabled": resource.NewProperty(true),
-						},
+						}),
 					}, nil
 				},
 			},
@@ -531,8 +535,8 @@ func TestDoCmdResourceMissingResourceNotFound(t *testing.T) {
 				ReadF: func(ctx context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
 					return plugin.ReadResponse{ReadResult: plugin.ReadResult{
 						ID:      req.ID,
-						Inputs:  resource.PropertyMap{},
-						Outputs: resource.PropertyMap{},
+						Inputs:  new(property.Map{}),
+						Outputs: new(property.Map{}),
 					}}, nil
 				},
 				DeleteF: func(ctx context.Context, req plugin.DeleteRequest) (plugin.DeleteResponse, error) {
@@ -550,12 +554,12 @@ func TestDoCmdResourceMissingResourceNotFound(t *testing.T) {
 	notFoundResponses := map[string]plugin.ReadResponse{
 		"nil outputs": {},
 		"empty outputs": {ReadResult: plugin.ReadResult{
-			Inputs:  resource.PropertyMap{},
-			Outputs: resource.PropertyMap{},
+			Inputs:  new(property.Map{}),
+			Outputs: new(property.Map{}),
 		}},
 		"blank id": {ReadResult: plugin.ReadResult{
-			Inputs:  resource.PropertyMap{"name": resource.NewProperty("stale")},
-			Outputs: resource.PropertyMap{"name": resource.NewProperty("stale")},
+			Inputs:  new(property.NewMap(map[string]property.Value{"name": property.New("stale")})),
+			Outputs: new(property.NewMap(map[string]property.Value{"name": property.New("stale")})),
 		}},
 	}
 
@@ -757,8 +761,8 @@ func TestDoCmdResourceDeleteDryRun(t *testing.T) {
 				return plugin.ReadResponse{
 					ReadResult: plugin.ReadResult{
 						ID:      req.ID,
-						Inputs:  resource.PropertyMap{"name": resource.NewProperty("read")},
-						Outputs: resource.PropertyMap{"name": resource.NewProperty("read")},
+						Inputs:  new(property.NewMap(map[string]property.Value{"name": property.New("read")})),
+						Outputs: new(property.NewMap(map[string]property.Value{"name": property.New("read")})),
 					},
 				}, nil
 			},
@@ -788,7 +792,7 @@ func TestDoCmdResourceDryRunIgnoredForReadOnlyOps(t *testing.T) {
 					return plugin.ReadResponse{
 						ReadResult: plugin.ReadResult{
 							ID:      req.ID,
-							Outputs: resource.PropertyMap{"name": resource.NewProperty("read")},
+							Outputs: new(property.NewMap(map[string]property.Value{"name": property.New("read")})),
 						},
 					}, nil
 				},
@@ -886,8 +890,8 @@ func TestDoCmdResourceConfirmationSummary(t *testing.T) {
 				ReadF: func(ctx context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
 					return plugin.ReadResponse{ReadResult: plugin.ReadResult{
 						ID:      "res-1",
-						Inputs:  resource.PropertyMap{"name": resource.NewProperty("read")},
-						Outputs: resource.PropertyMap{"name": resource.NewProperty("read")},
+						Inputs:  new(property.NewMap(map[string]property.Value{"name": property.New("read")})),
+						Outputs: new(property.NewMap(map[string]property.Value{"name": property.New("read")})),
 					}}, nil
 				},
 			},
@@ -911,8 +915,8 @@ func TestDoCmdResourceConfirmationSummary(t *testing.T) {
 				ReadF: func(ctx context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
 					return plugin.ReadResponse{ReadResult: plugin.ReadResult{
 						ID:      "res-1",
-						Inputs:  resource.PropertyMap{},
-						Outputs: resource.PropertyMap{"name": resource.MakeSecret(resource.NewProperty("hunter2"))},
+						Inputs:  new(property.Map{}),
+						Outputs: new(property.NewMap(map[string]property.Value{"name": property.New("hunter2").WithSecret(true)})),
 					}}, nil
 				},
 			},
@@ -931,8 +935,8 @@ func TestDoCmdResourceConfirmationSummary(t *testing.T) {
 				ReadF: func(ctx context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
 					return plugin.ReadResponse{ReadResult: plugin.ReadResult{
 						ID:      "res-1",
-						Inputs:  resource.PropertyMap{"name": resource.NewProperty("old")},
-						Outputs: resource.PropertyMap{"name": resource.NewProperty("old")},
+						Inputs:  new(property.NewMap(map[string]property.Value{"name": property.New("old")})),
+						Outputs: new(property.NewMap(map[string]property.Value{"name": property.New("old")})),
 					}}, nil
 				},
 				CheckF: func(ctx context.Context, req plugin.CheckRequest) (plugin.CheckResponse, error) {
@@ -982,14 +986,14 @@ func TestDoCmdResourceConfirmationSummary(t *testing.T) {
 					return plugin.ReadResponse{
 						ReadResult: plugin.ReadResult{
 							ID:      req.ID,
-							Inputs:  resource.PropertyMap{"name": resource.NewProperty("in")},
-							Outputs: resource.PropertyMap{"name": resource.NewProperty("out")},
+							Inputs:  new(property.NewMap(map[string]property.Value{"name": property.New("in")})),
+							Outputs: new(property.NewMap(map[string]property.Value{"name": property.New("out")})),
 						},
 					}, nil
 				},
 				DeleteF: func(ctx context.Context, req plugin.DeleteRequest) (plugin.DeleteResponse, error) {
-					assert.Equal(t, resource.PropertyMap{"name": resource.NewProperty("in")}, req.Inputs)
-					assert.Equal(t, resource.PropertyMap{"name": resource.NewProperty("out")}, req.Outputs)
+					assert.Equal(t, property.NewMap(map[string]property.Value{"name": property.New("in")}), req.Inputs)
+					assert.Equal(t, property.NewMap(map[string]property.Value{"name": property.New("out")}), req.Outputs)
 					return plugin.DeleteResponse{}, nil
 				},
 			},
@@ -1218,7 +1222,7 @@ func TestDoCmdResourceProviderFlagMergesStackInputs(t *testing.T) {
 				ReadF: func(_ context.Context, _ plugin.ReadRequest) (plugin.ReadResponse, error) {
 					return plugin.ReadResponse{ReadResult: plugin.ReadResult{
 						ID:      "res-1",
-						Outputs: resource.PropertyMap{"name": resource.NewProperty("hello")},
+						Outputs: new(property.NewMap(map[string]property.Value{"name": property.New("hello")})),
 					}}, nil
 				},
 			},
@@ -1261,8 +1265,8 @@ func TestDoCmdResourceProviderErrorTidied(t *testing.T) {
 			ReadF: func(ctx context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
 				return plugin.ReadResponse{ReadResult: plugin.ReadResult{
 					ID:      req.ID,
-					Inputs:  resource.PropertyMap{},
-					Outputs: resource.PropertyMap{"name": resource.NewProperty("existing")},
+					Inputs:  new(property.Map{}),
+					Outputs: new(property.NewMap(map[string]property.Value{"name": property.New("existing")})),
 				}}, nil
 			},
 			DeleteF: func(ctx context.Context, req plugin.DeleteRequest) (plugin.DeleteResponse, error) {

@@ -161,6 +161,7 @@ func (p *SimpleProvider) Check(
 func (p *SimpleProvider) Create(
 	_ context.Context, req plugin.CreateRequest,
 ) (plugin.CreateResponse, error) {
+	properties := resource.ToResourcePropertyMap(req.Properties)
 	// URN should be of the form "simple:index:Resource"
 	if req.URN.Type() != "simple:index:Resource" {
 		return plugin.CreateResponse{
@@ -175,7 +176,7 @@ func (p *SimpleProvider) Create(
 
 	return plugin.CreateResponse{
 		ID:         resource.ID(id),
-		Properties: req.Properties,
+		Properties: resource.FromResourcePropertyMap(properties),
 		Status:     resource.StatusOK,
 	}, nil
 }
@@ -243,15 +244,17 @@ func (p *SimpleProvider) Read(ctx context.Context, req plugin.ReadRequest) (plug
 		}, fmt.Errorf("invalid URN type: %s", req.URN.Type())
 	}
 
+	inputs := resource.FromResourcePropertyMap(resource.PropertyMap{
+		"value": resource.NewProperty(true),
+	})
+	outputs := resource.FromResourcePropertyMap(resource.PropertyMap{
+		"value": resource.NewProperty(true),
+	})
 	return plugin.ReadResponse{
 		ReadResult: plugin.ReadResult{
-			ID: req.ID,
-			Inputs: resource.PropertyMap{
-				"value": resource.NewProperty(true),
-			},
-			Outputs: resource.PropertyMap{
-				"value": resource.NewProperty(true),
-			},
+			ID:      req.ID,
+			Inputs:  &inputs,
+			Outputs: &outputs,
 		},
 		Status: resource.StatusOK,
 	}, nil

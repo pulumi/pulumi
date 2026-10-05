@@ -187,9 +187,6 @@ func credentialsContainAccount(creds workspace.Credentials, cloudURL string) boo
 	if creds.Current == cloudURL {
 		return true
 	}
-	if _, ok := creds.AccessTokens[cloudURL]; ok {
-		return true
-	}
 	_, ok := creds.Accounts[cloudURL]
 	return ok
 }

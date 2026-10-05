@@ -88,6 +88,7 @@ func (p *SelfReferenceProvider) Check(
 func (p *SelfReferenceProvider) Create(
 	_ context.Context, req plugin.CreateRequest,
 ) (plugin.CreateResponse, error) {
+	properties := resource.ToResourcePropertyMap(req.Properties)
 	if req.URN.Type() != "selfref:index:Node" {
 		return plugin.CreateResponse{Status: resource.StatusUnknown},
 			fmt.Errorf("invalid URN type: %s", req.URN.Type())
@@ -98,7 +99,7 @@ func (p *SelfReferenceProvider) Create(
 	}
 	return plugin.CreateResponse{
 		ID:         resource.ID(id),
-		Properties: req.Properties,
+		Properties: resource.FromResourcePropertyMap(properties),
 		Status:     resource.StatusOK,
 	}, nil
 }

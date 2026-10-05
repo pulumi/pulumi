@@ -174,8 +174,7 @@ func (t *OpaqueType) String() string {
 }
 
 func NewOpaqueType(name string) *OpaqueType {
-	t := OpaqueType(name)
-	return &t
+	return new(OpaqueType(name))
 }
 
 func (t *OpaqueType) pretty(seenFormatters map[Type]pretty.Formatter) pretty.Formatter {

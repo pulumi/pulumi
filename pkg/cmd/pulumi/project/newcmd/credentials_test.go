@@ -446,6 +446,51 @@ func TestCheckCloudCredentialsConfigureError(t *testing.T) {
 	}
 }
 
+func TestCheckCloudCredentialsErrorIncludesDocURL(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name          string
+		checkFailures []plugin.CheckFailure
+		configureErr  error
+	}{
+		{
+			name:         "configure error",
+			configureErr: status.Error(codes.Unknown, "unable to validate AWS credentials.\nSee "+awsDocURL),
+		},
+		{
+			name: "check failure",
+			checkFailures: []plugin.CheckFailure{
+				{Reason: "unable to validate AWS credentials.\nSee " + awsDocURL},
+			},
+		},
+		{
+			name: "without trailing slash",
+			configureErr: status.Error(codes.Unknown,
+				"unable to validate AWS credentials.\nSee "+strings.TrimSuffix(awsDocURL, "/")+" for details"),
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			mock := &plugin.MockProvider{
+				CheckConfigF: func(_ context.Context, req plugin.CheckConfigRequest) (plugin.CheckConfigResponse, error) {
+					return plugin.CheckConfigResponse{Properties: req.News, Failures: tt.checkFailures}, nil
+				},
+				ConfigureF: func(context.Context, plugin.ConfigureRequest) (plugin.ConfigureResponse, error) {
+					return plugin.ConfigureResponse{}, tt.configureErr
+				},
+			}
+
+			warned, out := runCheck(t, awsProvider, mock, property.Map{}, time.Second)
+			assert.True(t, warned)
+			assert.Equal(t, 1, strings.Count(out, strings.TrimSuffix(awsDocURL, "/")))
+			assert.NotContains(t, out, "For help configuring")
+		})
+	}
+}
+
 func TestCheckCloudCredentialsConfigureTimeout(t *testing.T) {
 	t.Parallel()
 

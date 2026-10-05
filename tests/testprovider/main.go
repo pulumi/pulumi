@@ -11,8 +11,8 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+
 //go:build !all
-// +build !all
 
 // A provider with resources for use in tests.
 package main
@@ -21,16 +21,16 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 
 	pschema "github.com/pulumi/pulumi/pkg/v3/codegen/schema"
-	"github.com/pulumi/pulumi/pkg/v3/resource/provider"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 	pulumiprovider "github.com/pulumi/pulumi/sdk/v3/go/pulumi/provider"
-	rpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
+	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 
 	"google.golang.org/protobuf/types/known/emptypb"
 )
@@ -64,14 +64,14 @@ var providerSchema = pschema.PackageSpec{
 
 // Minimal set of methods to implement a basic provider.
 type testProvider interface {
-	Check(ctx context.Context, req *rpc.CheckRequest) (*rpc.CheckResponse, error)
-	Diff(ctx context.Context, req *rpc.DiffRequest) (*rpc.DiffResponse, error)
-	Create(ctx context.Context, req *rpc.CreateRequest) (*rpc.CreateResponse, error)
-	Read(ctx context.Context, req *rpc.ReadRequest) (*rpc.ReadResponse, error)
-	Update(ctx context.Context, req *rpc.UpdateRequest) (*rpc.UpdateResponse, error)
-	Delete(ctx context.Context, req *rpc.DeleteRequest) (*emptypb.Empty, error)
-	Invoke(ctx context.Context, req *rpc.InvokeRequest) (*rpc.InvokeResponse, error)
-	Call(ctx context.Context, req *rpc.CallRequest) (*rpc.CallResponse, error)
+	Check(ctx context.Context, req *pulumirpc.CheckRequest) (*pulumirpc.CheckResponse, error)
+	Diff(ctx context.Context, req *pulumirpc.DiffRequest) (*pulumirpc.DiffResponse, error)
+	Create(ctx context.Context, req *pulumirpc.CreateRequest) (*pulumirpc.CreateResponse, error)
+	Read(ctx context.Context, req *pulumirpc.ReadRequest) (*pulumirpc.ReadResponse, error)
+	Update(ctx context.Context, req *pulumirpc.UpdateRequest) (*pulumirpc.UpdateResponse, error)
+	Delete(ctx context.Context, req *pulumirpc.DeleteRequest) (*emptypb.Empty, error)
+	Invoke(ctx context.Context, req *pulumirpc.InvokeRequest) (*pulumirpc.InvokeResponse, error)
+	Call(ctx context.Context, req *pulumirpc.CallRequest) (*pulumirpc.CallResponse, error)
 }
 
 var testProviders = func() map[string]testProvider {
@@ -96,9 +96,10 @@ func providerForURN(urn string) (testProvider, string, bool) {
 	return provider, ty, ok
 }
 
-//nolint:unused
 func main() {
-	if err := provider.Main(providerName, func(host *provider.HostClient) (rpc.ResourceProviderServer, error) {
+	if err := pulumiprovider.Main(providerName, func(
+		host *pulumiprovider.HostClient,
+	) (pulumirpc.ResourceProviderServer, error) {
 		return makeProvider(host, providerName, version)
 	}); err != nil {
 		cmdutil.Exit(err)
@@ -106,16 +107,16 @@ func main() {
 }
 
 type testproviderProvider struct {
-	rpc.UnimplementedResourceProviderServer
+	pulumirpc.UnimplementedResourceProviderServer
 
 	parameter string
 
-	host    *provider.HostClient
+	host    *pulumiprovider.HostClient
 	name    string
 	version string
 }
 
-func makeProvider(host *provider.HostClient, name, version string) (rpc.ResourceProviderServer, error) {
+func makeProvider(host *pulumiprovider.HostClient, name, version string) (pulumirpc.ResourceProviderServer, error) {
 	// Return the new provider
 	return &testproviderProvider{
 		host:    host,
@@ -125,67 +126,77 @@ func makeProvider(host *provider.HostClient, name, version string) (rpc.Resource
 }
 
 // CheckConfig validates the configuration for this provider.
-func (p *testproviderProvider) CheckConfig(ctx context.Context, req *rpc.CheckRequest) (*rpc.CheckResponse, error) {
-	return &rpc.CheckResponse{Inputs: req.GetNews()}, nil
+func (p *testproviderProvider) CheckConfig(ctx context.Context,
+	req *pulumirpc.CheckRequest,
+) (*pulumirpc.CheckResponse, error) {
+	return &pulumirpc.CheckResponse{Inputs: req.GetNews()}, nil
 }
 
 // DiffConfig diffs the configuration for this provider.
-func (p *testproviderProvider) DiffConfig(ctx context.Context, req *rpc.DiffRequest) (*rpc.DiffResponse, error) {
-	return &rpc.DiffResponse{}, nil
+func (p *testproviderProvider) DiffConfig(ctx context.Context,
+	req *pulumirpc.DiffRequest,
+) (*pulumirpc.DiffResponse, error) {
+	return &pulumirpc.DiffResponse{}, nil
 }
 
 // Configure configures the resource provider with "globals" that control its behavior.
-func (p *testproviderProvider) Configure(_ context.Context, req *rpc.ConfigureRequest) (*rpc.ConfigureResponse, error) {
-	return &rpc.ConfigureResponse{
+func (p *testproviderProvider) Configure(_ context.Context,
+	req *pulumirpc.ConfigureRequest,
+) (*pulumirpc.ConfigureResponse, error) {
+	return &pulumirpc.ConfigureResponse{
 		AcceptSecrets:                   true,
 		SupportsAutonamingConfiguration: true,
 	}, nil
 }
 
-func (p *testproviderProvider) Parameterize(_ context.Context, req *rpc.ParameterizeRequest) (*rpc.ParameterizeResponse, error) {
+func (p *testproviderProvider) Parameterize(_ context.Context,
+	req *pulumirpc.ParameterizeRequest,
+) (*pulumirpc.ParameterizeResponse, error) {
 	switch params := req.GetParameters().(type) {
-	case *rpc.ParameterizeRequest_Args:
+	case *pulumirpc.ParameterizeRequest_Args:
 		args := params.Args.Args
 		if len(args) != 1 {
-			return nil, fmt.Errorf("expected exactly one argument")
+			return nil, errors.New("expected exactly one argument")
 		}
 		p.parameter = args[0]
-	case *rpc.ParameterizeRequest_Value:
+	case *pulumirpc.ParameterizeRequest_Value:
 		val := string(params.Value.Value)
 		if val == "" {
-			return nil, fmt.Errorf("expected a non-empty string value")
+			return nil, errors.New("expected a non-empty string value")
 		}
 		p.parameter = val
 	default:
-		return nil, fmt.Errorf("unexpected parameter type")
+		return nil, errors.New("unexpected parameter type")
 	}
 
 	for k, prov := range testProviders {
 		testProviders[strings.Replace(k, "testprovider", p.parameter, 1)] = prov
 	}
 
-	return &rpc.ParameterizeResponse{
+	return &pulumirpc.ParameterizeResponse{
 		Name:    p.parameter,
 		Version: version,
 	}, nil
 }
 
 // Invoke dynamically executes a built-in function in the provider.
-func (p *testproviderProvider) Invoke(_ context.Context, req *rpc.InvokeRequest) (*rpc.InvokeResponse, error) {
+func (p *testproviderProvider) Invoke(_ context.Context,
+	req *pulumirpc.InvokeRequest,
+) (*pulumirpc.InvokeResponse, error) {
 	if p, ok := testProviders[req.GetTok()]; ok {
 		return p.Invoke(context.Background(), req)
 	}
 
 	tok := req.GetTok()
 	if tok == "testprovider:index:returnArgs" {
-		return &rpc.InvokeResponse{
+		return &pulumirpc.InvokeResponse{
 			Return: req.Args,
 		}, nil
 	}
 	return nil, fmt.Errorf("Unknown Invoke token '%s'", tok)
 }
 
-func (p *testproviderProvider) Call(_ context.Context, req *rpc.CallRequest) (*rpc.CallResponse, error) {
+func (p *testproviderProvider) Call(_ context.Context, req *pulumirpc.CallRequest) (*pulumirpc.CallResponse, error) {
 	tok := req.GetTok()
 
 	if p, ok := testProviders[tok]; ok {
@@ -195,7 +206,9 @@ func (p *testproviderProvider) Call(_ context.Context, req *rpc.CallRequest) (*r
 	return nil, fmt.Errorf("Unknown Call token '%s'", tok)
 }
 
-func (p *testproviderProvider) Check(ctx context.Context, req *rpc.CheckRequest) (*rpc.CheckResponse, error) {
+func (p *testproviderProvider) Check(ctx context.Context,
+	req *pulumirpc.CheckRequest,
+) (*pulumirpc.CheckResponse, error) {
 	provider, ty, ok := providerForURN(req.GetUrn())
 	if !ok {
 		return nil, fmt.Errorf("Unknown resource type '%s'", ty)
@@ -204,7 +217,7 @@ func (p *testproviderProvider) Check(ctx context.Context, req *rpc.CheckRequest)
 }
 
 // Diff checks what impacts a hypothetical update will have on the resource's properties.
-func (p *testproviderProvider) Diff(ctx context.Context, req *rpc.DiffRequest) (*rpc.DiffResponse, error) {
+func (p *testproviderProvider) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (*pulumirpc.DiffResponse, error) {
 	provider, ty, ok := providerForURN(req.GetUrn())
 	if !ok {
 		return nil, fmt.Errorf("Unknown resource type '%s'", ty)
@@ -213,7 +226,9 @@ func (p *testproviderProvider) Diff(ctx context.Context, req *rpc.DiffRequest) (
 }
 
 // Create allocates a new instance of the provided resource and returns its unique ID afterwards.
-func (p *testproviderProvider) Create(ctx context.Context, req *rpc.CreateRequest) (*rpc.CreateResponse, error) {
+func (p *testproviderProvider) Create(ctx context.Context,
+	req *pulumirpc.CreateRequest,
+) (*pulumirpc.CreateResponse, error) {
 	provider, ty, ok := providerForURN(req.GetUrn())
 	if !ok {
 		return nil, fmt.Errorf("Unknown resource type '%s'", ty)
@@ -222,7 +237,7 @@ func (p *testproviderProvider) Create(ctx context.Context, req *rpc.CreateReques
 }
 
 // Read the current live state associated with a resource.
-func (p *testproviderProvider) Read(ctx context.Context, req *rpc.ReadRequest) (*rpc.ReadResponse, error) {
+func (p *testproviderProvider) Read(ctx context.Context, req *pulumirpc.ReadRequest) (*pulumirpc.ReadResponse, error) {
 	provider, ty, ok := providerForURN(req.GetUrn())
 	if !ok {
 		return nil, fmt.Errorf("Unknown resource type '%s'", ty)
@@ -231,7 +246,9 @@ func (p *testproviderProvider) Read(ctx context.Context, req *rpc.ReadRequest) (
 }
 
 // Update updates an existing resource with new values.
-func (p *testproviderProvider) Update(ctx context.Context, req *rpc.UpdateRequest) (*rpc.UpdateResponse, error) {
+func (p *testproviderProvider) Update(ctx context.Context,
+	req *pulumirpc.UpdateRequest,
+) (*pulumirpc.UpdateResponse, error) {
 	provider, ty, ok := providerForURN(req.GetUrn())
 	if !ok {
 		return nil, fmt.Errorf("Unknown resource type '%s'", ty)
@@ -241,7 +258,7 @@ func (p *testproviderProvider) Update(ctx context.Context, req *rpc.UpdateReques
 
 // Delete tears down an existing resource with the given ID.  If it fails, the resource is assumed
 // to still exist.
-func (p *testproviderProvider) Delete(ctx context.Context, req *rpc.DeleteRequest) (*emptypb.Empty, error) {
+func (p *testproviderProvider) Delete(ctx context.Context, req *pulumirpc.DeleteRequest) (*emptypb.Empty, error) {
 	provider, ty, ok := providerForURN(req.GetUrn())
 	if !ok {
 		return nil, fmt.Errorf("Unknown resource type '%s'", ty)
@@ -250,7 +267,9 @@ func (p *testproviderProvider) Delete(ctx context.Context, req *rpc.DeleteReques
 }
 
 // Construct creates a new component resource.
-func (p *testproviderProvider) Construct(ctx context.Context, req *rpc.ConstructRequest) (*rpc.ConstructResponse, error) {
+func (p *testproviderProvider) Construct(ctx context.Context,
+	req *pulumirpc.ConstructRequest,
+) (*pulumirpc.ConstructResponse, error) {
 	if req.Type != "testprovider:index:Component" {
 		return nil, fmt.Errorf("unknown resource type %s", req.Type)
 	}
@@ -275,20 +294,20 @@ func (p *testproviderProvider) Construct(ctx context.Context, req *rpc.Construct
 }
 
 // GetPluginInfo returns generic information about this plugin, like its version.
-func (p *testproviderProvider) GetPluginInfo(context.Context, *emptypb.Empty) (*rpc.PluginInfo, error) {
-	return &rpc.PluginInfo{
+func (p *testproviderProvider) GetPluginInfo(context.Context, *emptypb.Empty) (*pulumirpc.PluginInfo, error) {
+	return &pulumirpc.PluginInfo{
 		Version: p.version,
 	}, nil
 }
 
-func (p *testproviderProvider) Attach(ctx context.Context, req *rpc.PluginAttach) (*emptypb.Empty, error) {
+func (p *testproviderProvider) Attach(ctx context.Context, req *pulumirpc.PluginAttach) (*emptypb.Empty, error) {
 	return &emptypb.Empty{}, nil
 }
 
 // GetSchema returns the JSON-serialized schema for the provider.
 func (p *testproviderProvider) GetSchema(ctx context.Context,
-	req *rpc.GetSchemaRequest,
-) (*rpc.GetSchemaResponse, error) {
+	req *pulumirpc.GetSchemaRequest,
+) (*pulumirpc.GetSchemaResponse, error) {
 	makeJSONString := func(v any) ([]byte, error) {
 		var out bytes.Buffer
 		encoder := json.NewEncoder(&out)
@@ -329,8 +348,8 @@ func (p *testproviderProvider) GetSchema(ctx context.Context,
 			for k, f := range providerSchema.Functions {
 				sch.Functions[strings.Replace(k, "testprovider", p.parameter, 1)] = f
 				for k, prop := range f.Inputs.Properties {
-					if prop.TypeSpec.Ref != "" {
-						prop.TypeSpec.Ref = strings.Replace(prop.TypeSpec.Ref, "testprovider", p.parameter, 1)
+					if prop.Ref != "" {
+						prop.Ref = strings.Replace(prop.Ref, "testprovider", p.parameter, 1)
 						f.Inputs.Properties[k] = prop
 					}
 				}
@@ -344,7 +363,7 @@ func (p *testproviderProvider) GetSchema(ctx context.Context,
 	if err != nil {
 		return nil, err
 	}
-	return &rpc.GetSchemaResponse{
+	return &pulumirpc.GetSchemaResponse{
 		Schema: string(schemaJSON),
 	}, nil
 }
@@ -358,6 +377,8 @@ func (p *testproviderProvider) Cancel(context.Context, *emptypb.Empty) (*emptypb
 	return &emptypb.Empty{}, nil
 }
 
-func (p *testproviderProvider) GetMapping(context.Context, *rpc.GetMappingRequest) (*rpc.GetMappingResponse, error) {
-	return &rpc.GetMappingResponse{}, nil
+func (p *testproviderProvider) GetMapping(context.Context,
+	*pulumirpc.GetMappingRequest,
+) (*pulumirpc.GetMappingResponse, error) {
+	return &pulumirpc.GetMappingResponse{}, nil
 }

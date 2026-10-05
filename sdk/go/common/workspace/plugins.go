@@ -42,6 +42,7 @@ import (
 
 	"github.com/blang/semver"
 	"github.com/djherbis/times"
+	git "github.com/go-git/go-git/v6"
 	"github.com/go-git/go-git/v6/plumbing"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -393,7 +394,7 @@ func (source *gitSource) GetLatestVersion(
 
 // Downloads a plugin from a git repository.  If the version is a pre-release version, the version is expected to be
 // a commit hash, that will be checked out.  Otherwise, the version is expected to be a tag, that will be checked out.
-// The tag is expected to be prefixed with a 'v' character.
+// The 'v'-prefixed tag is tried first, falling back to the unprefixed tag if it does not exist.
 // If the version is the special sentinel version 0.0.0, we'll use the latest commit on the default branch.
 func (source *gitSource) Download(
 	ctx context.Context, version semver.Version, _ string, _ string,
@@ -424,6 +425,15 @@ func (source *gitSource) Download(
 			ref = plumbing.ReferenceName("refs/tags/v" + version.String())
 		}
 		err := source.cloneOrPull(ctx, source.url, ref, tmpdir, true /* shallow */)
+		if ref != plumbing.HEAD && errors.Is(err, git.ErrRemoteRefNotFound) {
+			unprefixed := plumbing.ReferenceName("refs/tags/" + version.String())
+			unprefixedErr := source.cloneOrPull(ctx, source.url, unprefixed, tmpdir, true /* shallow */)
+			if unprefixedErr == nil {
+				err = nil
+			} else {
+				err = errors.Join(err, unprefixedErr)
+			}
+		}
 		if err != nil {
 			return nil, -1, err
 		}

@@ -176,6 +176,7 @@ func (p *KeywordsProvider) Check(
 func (p *KeywordsProvider) Create(
 	_ context.Context, req plugin.CreateRequest,
 ) (plugin.CreateResponse, error) {
+	inputs := resource.ToResourcePropertyMap(req.Properties)
 	if !p.isValidResourceType(req.URN.Type()) {
 		return plugin.CreateResponse{
 			Status: resource.StatusUnknown,
@@ -190,7 +191,7 @@ func (p *KeywordsProvider) Create(
 	properties := make(resource.PropertyMap)
 	for _, prop := range p.properties() {
 		propKey := resource.PropertyKey(prop)
-		value, ok := req.Properties[propKey]
+		value, ok := inputs[propKey]
 		if !ok {
 			return plugin.CreateResponse{}, fmt.Errorf("missing property %s", propKey)
 		}
@@ -199,7 +200,7 @@ func (p *KeywordsProvider) Create(
 
 	return plugin.CreateResponse{
 		ID:         resource.ID(id),
-		Properties: properties,
+		Properties: resource.FromResourcePropertyMap(properties),
 		Status:     resource.StatusOK,
 	}, nil
 }
@@ -272,11 +273,12 @@ func (p *KeywordsProvider) Read(ctx context.Context, req plugin.ReadRequest) (pl
 		properties[resource.PropertyKey(prop)] = resource.NewProperty(prop)
 	}
 
+	m := resource.FromResourcePropertyMap(properties)
 	return plugin.ReadResponse{
 		ReadResult: plugin.ReadResult{
 			ID:      req.ID,
-			Inputs:  properties,
-			Outputs: properties,
+			Inputs:  &m,
+			Outputs: &m,
 		},
 		Status: resource.StatusOK,
 	}, nil

@@ -252,6 +252,7 @@ func (p *ConfigProvider) Check(
 func (p *ConfigProvider) Create(
 	_ context.Context, req plugin.CreateRequest,
 ) (plugin.CreateResponse, error) {
+	properties := resource.ToResourcePropertyMap(req.Properties)
 	// URN should be of the form "config:index:Resource"
 	if req.URN.Type() != "config:index:Resource" {
 		return plugin.CreateResponse{
@@ -266,7 +267,7 @@ func (p *ConfigProvider) Create(
 
 	// Check should have already checked this, good practice would be to check again but for tests we can just panic
 	// here.
-	text := req.Properties["text"].StringValue()
+	text := properties["text"].StringValue()
 
 	props := resource.PropertyMap{
 		"text": resource.NewProperty(p.prefix + ": " + text),
@@ -274,7 +275,7 @@ func (p *ConfigProvider) Create(
 
 	return plugin.CreateResponse{
 		ID:         resource.ID(id),
-		Properties: props,
+		Properties: resource.FromResourcePropertyMap(props),
 		Status:     resource.StatusOK,
 	}, nil
 }

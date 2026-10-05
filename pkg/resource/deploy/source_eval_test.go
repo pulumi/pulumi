@@ -3564,6 +3564,7 @@ func TestReadResource(t *testing.T) {
 		regReadChan := make(chan *readResourceEvent, 1)
 		rm := &resmon{
 			regReadChan: regReadChan,
+			parents:     map[resource.URN]resource.URN{},
 			defaultProviders: &defaultProviders{
 				config: &configSourceMock{},
 			},
@@ -3611,6 +3612,7 @@ func TestReadResource(t *testing.T) {
 		regReadChan := make(chan *readResourceEvent, 1)
 		rm := &resmon{
 			regReadChan: regReadChan,
+			parents:     map[resource.URN]resource.URN{},
 			cancel:      cancel,
 			defaultProviders: &defaultProviders{
 				config: &configSourceMock{},

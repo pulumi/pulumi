@@ -67,6 +67,10 @@ const (
 	ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_INVOKE_PARENT ResourceMonitorFeature = 15
 	// The monitor accepts state migration callbacks on resource registrations.
 	ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_STATE_MIGRATIONS ResourceMonitorFeature = 16
+	// The monitor accepts OutputValues nested in `ResourceInvokeRequest.args` (and will harvest their
+	// dependencies into the invoke's wait-set), and will honour `accept_output_values` on the request to return
+	// OutputValues in `ResourceInvokeResponse.return`.
+	ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_INVOKE_OUTPUT_VALUES ResourceMonitorFeature = 17
 )
 
 // Enum value maps for ResourceMonitorFeature.
@@ -89,6 +93,7 @@ var (
 		14: "RESOURCE_MONITOR_FEATURE_INVOKE_DEPENDS_ON",
 		15: "RESOURCE_MONITOR_FEATURE_INVOKE_PARENT",
 		16: "RESOURCE_MONITOR_FEATURE_STATE_MIGRATIONS",
+		17: "RESOURCE_MONITOR_FEATURE_INVOKE_OUTPUT_VALUES",
 	}
 	ResourceMonitorFeature_value = map[string]int32{
 		"RESOURCE_MONITOR_FEATURE_SECRETS":                0,
@@ -108,6 +113,7 @@ var (
 		"RESOURCE_MONITOR_FEATURE_INVOKE_DEPENDS_ON":      14,
 		"RESOURCE_MONITOR_FEATURE_INVOKE_PARENT":          15,
 		"RESOURCE_MONITOR_FEATURE_STATE_MIGRATIONS":       16,
+		"RESOURCE_MONITOR_FEATURE_INVOKE_OUTPUT_VALUES":   17,
 	}
 )
 
@@ -1368,9 +1374,12 @@ type ResourceInvokeRequest struct {
 	// An optional URN of the resource this invoke is parented to. When `provider` is empty, the invoke is served by
 	// the provider its parent's `providers` option names for the invoke's package, the same resolution applied to
 	// resource registrations. Only respected when the monitor advertises `INVOKE_PARENT`.
-	Parent        string `protobuf:"bytes,15,opt,name=parent,proto3" json:"parent,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Parent string `protobuf:"bytes,15,opt,name=parent,proto3" json:"parent,omitempty"`
+	// When true the SDK accepts OutputValues in `ResourceInvokeResponse.return`. Only meaningful when the monitor
+	// advertises `INVOKE_OUTPUT_VALUES`; older monitors will ignore this field.
+	AcceptOutputValues bool `protobuf:"varint,16,opt,name=accept_output_values,json=acceptOutputValues,proto3" json:"accept_output_values,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
 }
 
 func (x *ResourceInvokeRequest) Reset() {
@@ -1499,6 +1508,13 @@ func (x *ResourceInvokeRequest) GetParent() string {
 		return x.Parent
 	}
 	return ""
+}
+
+func (x *ResourceInvokeRequest) GetAcceptOutputValues() bool {
+	if x != nil {
+		return x.AcceptOutputValues
+	}
+	return false
 }
 
 type ResourceInvokeResponse struct {
@@ -3668,7 +3684,7 @@ const file_pulumi_resource_proto_rawDesc = "" +
 	"\x05value\x18\x02 \x01(\v28.pulumirpc.RegisterResourceResponse.PropertyDependenciesR\x05value:\x028\x01\"e\n" +
 	"\x1eRegisterResourceOutputsRequest\x12\x10\n" +
 	"\x03urn\x18\x01 \x01(\tR\x03urn\x121\n" +
-	"\aoutputs\x18\x02 \x01(\v2\x17.google.protobuf.StructR\aoutputs\"\xc1\x05\n" +
+	"\aoutputs\x18\x02 \x01(\v2\x17.google.protobuf.StructR\aoutputs\"\xf3\x05\n" +
 	"\x15ResourceInvokeRequest\x12\x10\n" +
 	"\x03tok\x18\x01 \x01(\tR\x03tok\x12+\n" +
 	"\x04args\x18\x02 \x01(\v2\x17.google.protobuf.StructR\x04args\x12\x1a\n" +
@@ -3688,7 +3704,8 @@ const file_pulumi_resource_proto_rawDesc = "" +
 	"packageRef\x12.\n" +
 	"\x13accepts_byte_string\x18\f \x01(\bR\x11acceptsByteString\x12\x1c\n" +
 	"\tdependsOn\x18\r \x03(\tR\tdependsOn\x12\x16\n" +
-	"\x06parent\x18\x0f \x01(\tR\x06parent\x1aB\n" +
+	"\x06parent\x18\x0f \x01(\tR\x06parent\x120\n" +
+	"\x14accept_output_values\x18\x10 \x01(\bR\x12acceptOutputValues\x1aB\n" +
 	"\x14PluginChecksumsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\fR\x05value:\x028\x01\"\x98\x01\n" +
@@ -3897,7 +3914,7 @@ const file_pulumi_resource_proto_rawDesc = "" +
 	"\rignore_errors\x18\x04 \x01(\bR\fignoreErrors\"_\n" +
 	"\x18RegisterErrorHookRequest\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12/\n" +
-	"\bcallback\x18\x02 \x01(\v2\x13.pulumirpc.CallbackR\bcallback*\x97\x06\n" +
+	"\bcallback\x18\x02 \x01(\v2\x13.pulumirpc.CallbackR\bcallback*\xca\x06\n" +
 	"\x16ResourceMonitorFeature\x12$\n" +
 	" RESOURCE_MONITOR_FEATURE_SECRETS\x10\x00\x120\n" +
 	",RESOURCE_MONITOR_FEATURE_RESOURCE_REFERENCES\x10\x01\x12*\n" +
@@ -3916,7 +3933,8 @@ const file_pulumi_resource_proto_rawDesc = "" +
 	"$RESOURCE_MONITOR_FEATURE_BYTE_STRING\x10\r\x12.\n" +
 	"*RESOURCE_MONITOR_FEATURE_INVOKE_DEPENDS_ON\x10\x0e\x12*\n" +
 	"&RESOURCE_MONITOR_FEATURE_INVOKE_PARENT\x10\x0f\x12-\n" +
-	")RESOURCE_MONITOR_FEATURE_STATE_MIGRATIONS\x10\x10*+\n" +
+	")RESOURCE_MONITOR_FEATURE_STATE_MIGRATIONS\x10\x10\x121\n" +
+	"-RESOURCE_MONITOR_FEATURE_INVOKE_OUTPUT_VALUES\x10\x11*+\n" +
 	"\x06Result\x12\v\n" +
 	"\aSUCCESS\x10\x00\x12\b\n" +
 	"\x04FAIL\x10\x01\"\x04\b\x02\x10\x02*\x04SKIP2\xa6\t\n" +

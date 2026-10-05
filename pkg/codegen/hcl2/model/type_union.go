@@ -17,7 +17,6 @@ package model
 import (
 	"fmt"
 	"slices"
-	"sort"
 	"strings"
 	"sync/atomic"
 
@@ -58,9 +57,7 @@ func NewUnionTypeAnnotated(types []Type, annotations ...any) Type {
 
 	// Remove duplicate types
 	// We first sort the types so duplicates will be adjacent
-	sort.Slice(elementTypes, func(i, j int) bool {
-		return elementTypes[i].String() < elementTypes[j].String()
-	})
+	slices.SortFunc(elementTypes, Compare)
 	// We then filter out adjacent duplicates
 	dst := 0
 	for src := 0; src < len(elementTypes); {
@@ -203,12 +200,25 @@ func (t *UnionType) equals(other Type, seen map[Type]struct{}) bool {
 	if len(t.ElementTypes) != len(otherUnion.ElementTypes) {
 		return false
 	}
-	for i, t := range t.ElementTypes {
-		if !t.equals(otherUnion.ElementTypes[i], seen) {
+	elementTypes, otherElementTypes := t.sortedElementTypes(nil), otherUnion.sortedElementTypes(nil)
+	for i, t := range elementTypes {
+		if !t.equals(otherElementTypes[i], seen) {
 			return false
 		}
 	}
 	return true
+}
+
+// sortedElementTypes returns the members in the order Compare defines. They are sorted when the union is built,
+// but a member that was a recursive object type still under construction may have sorted differently, so a union
+// is compared and tested for equality as a set. The comparison in flight, if any, passes its pairs so that a
+// member that refers back to an object being compared does not start the comparison over.
+func (t *UnionType) sortedElementTypes(seen comparePairs) []Type {
+	compare := func(a, b Type) int { return compareTypes(a, b, seen) }
+	if slices.IsSortedFunc(t.ElementTypes, compare) {
+		return t.ElementTypes
+	}
+	return slices.SortedFunc(slices.Values(t.ElementTypes), compare)
 }
 
 // AssignableFrom returns true if this type is assignable from the indicated source type. A union(T_0, ..., T_N)

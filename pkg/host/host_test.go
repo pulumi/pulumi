@@ -292,6 +292,43 @@ func TestContextCloseRefcountsSharedPlugins(t *testing.T) {
 	}, state)
 }
 
+// TestContextCloseReleasesPluginsLoadedThroughView locks in that a cached plugin loaded through a
+// view of a context is released when that context closes. The schema loader boots providers
+// through such a view, and a provider that runs in a language host loads its runtime with it.
+func TestContextCloseReleasesPluginsLoadedThroughView(t *testing.T) {
+	t.Parallel()
+
+	sink := diagtest.LogSink(t)
+	host := newHost(t, nil)
+
+	ctx, err := plugin.NewContextWithHost(t.Context(), sink, sink, host, "", "", nil)
+	require.NoError(t, err)
+	view := ctx.WithoutProviderDebugging()
+	require.NotSame(t, ctx, view)
+
+	runtime := &stubLanguageRuntime{}
+	host.languagePlugins[languagePluginKey{runtime: "test", workingDirectory: ctx.Pwd}] = &languagePlugin{
+		Plugin: runtime, Name: "test", refs: map[*plugin.Context]struct{}{ctx: {}},
+	}
+
+	analyzer := &stubAnalyzer{}
+	host.analyzerPlugins[analyzerPluginKey{name: "test-analyzer", policy: true}] = &analyzerPlugin{
+		Plugin: analyzer, Name: "test-analyzer", refs: map[*plugin.Context]struct{}{ctx: {}},
+	}
+
+	loadedRuntime, err := host.LanguageRuntime(view, "test")
+	require.NoError(t, err)
+	require.Same(t, runtime, loadedRuntime)
+	loadedAnalyzer, err := host.PolicyAnalyzer(view, "test-analyzer", "", nil)
+	require.NoError(t, err)
+	require.Same(t, analyzer, loadedAnalyzer)
+
+	// Release is synchronous, so the plugins are closed as soon as Close returns.
+	require.NoError(t, ctx.Close())
+	assert.True(t, runtime.closed, "the language runtime must close with its context")
+	assert.True(t, analyzer.closed, "the analyzer must close with its context")
+}
+
 func TestClosePanic(t *testing.T) {
 	t.Parallel()
 

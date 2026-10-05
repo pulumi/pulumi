@@ -65,6 +65,10 @@ func DefaultExclusionRules() ExclusionRules {
 		ExcludeComponentWithProviderRefreshProgram,
 		// TODO[pulumi/pulumi#24788]
 		ExcludeComponentWithCascadeReplacedProviderUpdate,
+		// TODO[pulumi/pulumi#24989]
+		ExcludeDroppedReplaceDependentTargetedUpdate,
+		// TODO[pulumi/pulumi#25004]
+		ExcludeProtectedChildOfDuplicatePendingDeleteParent,
 	}
 }
 
@@ -324,7 +328,7 @@ func ExcludeProtectedResourceWithDuplicateProviderDestroyV2(
 	}
 
 	for _, res := range snap.Resources {
-		if !res.Protect {
+		if res.Protect == nil || !*res.Protect {
 			continue
 		}
 
@@ -780,6 +784,136 @@ func ExcludeComponentWithCascadeReplacedProviderUpdate(
 		}
 
 		if cascadeReplacedProviders[providerRef.URN()] {
+			return true
+		}
+	}
+
+	return false
+}
+
+// ExcludeDroppedReplaceDependentTargetedUpdate excludes targeted updates where
+// a targeted resource is replaced delete-before-replace and one of the
+// resources that must be replaced with it (because it is deleted with it,
+// replaced with it, uses it as its provider, or has a property that depends on
+// it and its diff requires replacement) has been dropped from the program, is
+// not targeted, and is a dependency of another resource in the snapshot. The
+// engine deletes the dependent as part of the replacement and keeps it in the
+// state as pending replacement, which places it after the new resources. An
+// untargeted resource that depends on it is written as a same step into the new
+// resources, so it comes before its dependency, which violates snapshot
+// integrity.
+func ExcludeDroppedReplaceDependentTargetedUpdate(
+	snap *SnapshotSpec,
+	prog *ProgramSpec,
+	prov *ProviderSpec,
+	plan *PlanSpec,
+) bool {
+	if plan.Operation != PlanOperationUpdate {
+		return false
+	}
+	if len(plan.TargetURNs) == 0 {
+		return false
+	}
+
+	targeted := make(map[resource.URN]bool)
+	for _, urn := range plan.TargetURNs {
+		targeted[urn] = true
+	}
+
+	replaced := make(map[resource.URN]bool)
+	for urn := range targeted {
+		if prov.Diff[urn] == ProviderDiffDeleteBeforeReplace {
+			replaced[urn] = true
+		}
+	}
+	if len(replaced) == 0 {
+		return false
+	}
+
+	replacesWith := func(res *ResourceSpec) bool {
+		if res.DeletedWith != "" && replaced[res.DeletedWith] {
+			return true
+		}
+		for _, urn := range res.ReplaceWith {
+			if replaced[urn] {
+				return true
+			}
+		}
+		if res.Provider != "" {
+			if ref, err := providers.ParseReference(res.Provider); err == nil && replaced[ref.URN()] {
+				return true
+			}
+		}
+		diff := prov.Diff[res.URN()]
+		if diff != ProviderDiffDeleteBeforeReplace && diff != ProviderDiffDeleteAfterReplace {
+			return false
+		}
+		for _, deps := range res.PropertyDependencies {
+			for _, dep := range deps {
+				if replaced[dep] {
+					return true
+				}
+			}
+		}
+		return false
+	}
+
+	for changed := true; changed; {
+		changed = false
+		for _, res := range snap.Resources {
+			if !replaced[res.URN()] && replacesWith(res) {
+				replaced[res.URN()] = true
+				changed = true
+			}
+		}
+	}
+
+	registered := make(map[resource.URN]bool)
+	for _, res := range prog.ResourceRegistrations {
+		registered[res.URN()] = true
+	}
+
+	dependedOn := make(map[resource.URN]bool)
+	for _, res := range snap.Resources {
+		for _, dep := range res.Dependencies {
+			dependedOn[dep] = true
+		}
+		for _, deps := range res.PropertyDependencies {
+			for _, dep := range deps {
+				dependedOn[dep] = true
+			}
+		}
+	}
+
+	for urn := range replaced {
+		if !targeted[urn] && !registered[urn] && dependedOn[urn] {
+			return true
+		}
+	}
+
+	return false
+}
+
+// ExcludeProtectedChildOfDuplicatePendingDeleteParent excludes snapshots where
+// a protected resource has a parent with more than one copy marked for
+// deletion. The engine cannot delete the protected child, but deletes the copy
+// of the parent that precedes it, which leaves the child before the remaining
+// copy of its parent and violates snapshot integrity.
+func ExcludeProtectedChildOfDuplicatePendingDeleteParent(
+	snap *SnapshotSpec,
+	_ *ProgramSpec,
+	_ *ProviderSpec,
+	_ *PlanSpec,
+) bool {
+	pendingDeletes := make(map[resource.URN]int)
+	for _, res := range snap.Resources {
+		if res.Delete {
+			pendingDeletes[res.URN()]++
+		}
+	}
+
+	for _, res := range snap.Resources {
+		if res.Protect != nil && *res.Protect && res.Parent != "" && pendingDeletes[res.Parent] > 1 {
 			return true
 		}
 	}

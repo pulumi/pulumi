@@ -244,16 +244,17 @@ func (p *NestedObjectProvider) Check(
 func (p *NestedObjectProvider) Create(
 	_ context.Context, req plugin.CreateRequest,
 ) (plugin.CreateResponse, error) {
+	properties := resource.ToResourcePropertyMap(req.Properties)
 	id := "id"
 	if req.Preview {
 		id = ""
 	}
 
-	outputs := req.Properties.Copy()
+	outputs := properties.Copy()
 
 	if req.URN.Type() == "nestedobject:index:Container" {
 		// Compute details from inputs: for each input, create a detail object.
-		inputs := req.Properties["inputs"]
+		inputs := properties["inputs"]
 		if inputs.IsArray() {
 			details := make([]resource.PropertyValue, len(inputs.ArrayValue()))
 			for i, input := range inputs.ArrayValue() {
@@ -268,7 +269,7 @@ func (p *NestedObjectProvider) Create(
 
 	return plugin.CreateResponse{
 		ID:         resource.ID(id),
-		Properties: outputs,
+		Properties: resource.FromResourcePropertyMap(outputs),
 		Status:     resource.StatusOK,
 	}, nil
 }
@@ -326,8 +327,8 @@ func (p *NestedObjectProvider) Read(_ context.Context, req plugin.ReadRequest) (
 	return plugin.ReadResponse{
 		ReadResult: plugin.ReadResult{
 			ID:      req.ID,
-			Inputs:  req.Inputs,
-			Outputs: req.State,
+			Inputs:  &req.Inputs,
+			Outputs: &req.State,
 		},
 		Status: resource.StatusOK,
 	}, nil
