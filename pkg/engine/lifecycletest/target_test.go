@@ -2088,13 +2088,16 @@ func TestUntargetedSameWithInFlightTargetedDependency(t *testing.T) {
 			})
 		}()
 
-		// resB's registration now waits for resA's update, so it can't be awaited before
-		// unblocking the update; the grace period lets it reach the engine first.
+		// resB's registration must wait for resA's in-flight update, so it can only complete
+		// after unblockUpdate is closed; the grace period lets it reach the engine first.
+		// Unblock the update before failing, so the deployment can finish instead of hanging.
 		select {
 		case <-bDone:
+			close(unblockUpdate)
+			require.FailNow(t, "resB's registration completed while resA's update was still in flight")
 		case <-time.After(time.Second):
+			close(unblockUpdate)
 		}
-		close(unblockUpdate)
 
 		<-bDone
 		require.NoError(t, errB)

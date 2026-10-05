@@ -54,6 +54,13 @@ type deploymentExecutor struct {
 	chainTokens map[resource.URN]completionToken
 }
 
+func newDeploymentExecutor(deployment *Deployment) *deploymentExecutor {
+	return &deploymentExecutor{
+		deployment:  deployment,
+		chainTokens: map[resource.URN]completionToken{},
+	}
+}
+
 // checkTargets validates that all the targets passed in refer to existing resources.  Diagnostics
 // are generated for any target that cannot be found.  The target must either have existed in the stack
 // prior to running the operation, or it must be the urn for a resource that was created.
@@ -707,9 +714,6 @@ func (ex *deploymentExecutor) handleSingleEvent(ctx context.Context, event Sourc
 		return nil
 	}
 
-	if ex.chainTokens == nil {
-		ex.chainTokens = map[resource.URN]completionToken{}
-	}
 	stepURNs := make([]resource.URN, len(newSteps))
 	for i, step := range newSteps {
 		stepURNs[i] = step.URN()
