@@ -2152,27 +2152,37 @@ func (sg *stepGenerator) continueStepsFromDiff(diffEvent ContinueResourceDiffEve
 					logging.V(7).Infof("Planner decided to delete '%v' due to dependence on condemned resource '%v'",
 						dependentResource.URN, urn)
 
-					// Check if the resource is protected, if it is we can't do this replacement chain.
-					// This has to run before the pending-delete branch below: a protected resource
-					// that is already pending deletion would otherwise get a plain delete step here,
-					// which the executor then refuses, stalling the update.
-					if dependentResource.Protect && !sg.deployment.opts.IgnoreProtect {
-						message := fmt.Sprintf("unable to replace resource %q as part of replacing %q "+
-							"as it is currently marked for protection. To unprotect the resource, "+
-							"remove the `protect` flag from the resource in your Pulumi "+
-							"program and run `pulumi up`, or use the command:\n"+
-							"`pulumi state unprotect %s`",
-							dependentResource.URN, urn, dependentResource.URN.Quote())
-						sg.deployment.ctx.Diag.Errorf(diag.StreamMessage(urn, message, 0))
-						sg.sawError = true
-						return nil, result.BailErrorf("%s", message)
-					}
-
 					// This resource might already be pending-delete
 					if dependentResource.Delete {
+						// Check if the resource is protected, if it is we can't do this replacement chain.
+						// A pending-delete resource is no longer in the program, so it can't be
+						// unprotected there; the only way out is `pulumi state unprotect`.
+						if dependentResource.Protect && !sg.deployment.opts.IgnoreProtect {
+							message := fmt.Sprintf("unable to replace resource %q as part of replacing %q "+
+								"as it is currently marked for protection. The resource is pending deletion "+
+								"and is no longer in your Pulumi program, so it cannot be unprotected there. "+
+								"Use the command:\n"+
+								"`pulumi state unprotect %s`",
+								dependentResource.URN, urn, dependentResource.URN.Quote())
+							sg.deployment.ctx.Diag.Errorf(diag.StreamMessage(urn, message, 0))
+							sg.sawError = true
+							return nil, result.BailErrorf("%s", message)
+						}
 						oldViews := sg.deployment.GetOldViews(dependentResource.URN)
 						steps = append(steps, NewDeleteStep(sg.deployment, sg.deletes, dependentResource, oldViews))
 					} else {
+						// Check if the resource is protected, if it is we can't do this replacement chain.
+						if dependentResource.Protect && !sg.deployment.opts.IgnoreProtect {
+							message := fmt.Sprintf("unable to replace resource %q as part of replacing %q "+
+								"as it is currently marked for protection. To unprotect the resource, "+
+								"remove the `protect` flag from the resource in your Pulumi "+
+								"program and run `pulumi up`, or use the command:\n"+
+								"`pulumi state unprotect %s`",
+								dependentResource.URN, urn, dependentResource.URN.Quote())
+							sg.deployment.ctx.Diag.Errorf(diag.StreamMessage(urn, message, 0))
+							sg.sawError = true
+							return nil, result.BailErrorf("%s", message)
+						}
 						oldViews := sg.deployment.GetOldViews(dependentResource.URN)
 						steps = append(steps,
 							NewDeleteReplacementStep(sg.deployment, sg.deletes, dependentResource, true, oldViews))

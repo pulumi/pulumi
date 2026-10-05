@@ -27,6 +27,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	. "github.com/pulumi/pulumi/pkg/v3/engine"
 	lt "github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest/framework"
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
@@ -324,6 +325,92 @@ func TestProtectedDeleteChainsWithDuplicateDeletedResources(t *testing.T) {
 
 	require.Equal(t, "resA", snap.Resources[1].URN.Name())
 	require.Equal(t, "resB", snap.Resources[2].URN.Name())
+}
+
+// TestDeleteBeforeReplaceWithProtectedPendingDeleteDependent is a regression test for
+// https://github.com/pulumi/pulumi/issues/25014: when a delete-before-replace must delete a
+// dependent that is protected and already pending deletion (for example left over from an
+// earlier failed replacement), the engine used to schedule a doomed delete step and then hang
+// instead of failing fast with a protection error.
+func TestDeleteBeforeReplaceWithProtectedPendingDeleteDependent(t *testing.T) {
+	t.Parallel()
+
+	p := &lt.TestPlan{
+		Project: "test-project",
+		Stack:   "test-stack",
+	}
+
+	resAURN := p.NewURN("pkgA:m:typA", "resA", "")
+	resBURN := p.NewURN("pkgA:m:typA", "resB", "")
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				DiffF: func(_ context.Context, req plugin.DiffRequest) (plugin.DiffResult, error) {
+					if req.URN.Name() == "resA" {
+						return plugin.DiffResult{
+							Changes:             plugin.DiffSome,
+							ReplaceKeys:         []resource.PropertyKey{"foo"},
+							DeleteBeforeReplace: true,
+						}, nil
+					}
+					return plugin.DiffResult{}, nil
+				},
+			}, nil
+		}),
+	}
+
+	// The program registers resA with a changed input so the provider reports a
+	// delete-before-replace. resB stays out of the program: it is pending deletion.
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+			Inputs: resource.NewPropertyMapFromMap(map[string]any{"foo": "changed"}),
+		})
+		require.NoError(t, err)
+		return nil
+	})
+
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
+	p.Options.HostF = hostF
+	p.Options.T = t
+
+	// Starting state: resA, plus resB which is protected, pending deletion, and deletedWith resA.
+	old := &deploy.Snapshot{
+		Resources: []*pkgresource.State{
+			{
+				Type:    resAURN.Type(),
+				URN:     resAURN,
+				Custom:  true,
+				ID:      "resA-id",
+				Inputs:  resource.PropertyMap{},
+				Outputs: resource.PropertyMap{},
+			},
+			{
+				Type:        resBURN.Type(),
+				URN:         resBURN,
+				Custom:      true,
+				ID:          "resB-id",
+				Inputs:      resource.PropertyMap{},
+				Outputs:     resource.PropertyMap{},
+				Protect:     true,
+				Delete:      true,
+				DeletedWith: resAURN,
+			},
+		},
+	}
+
+	p.Steps = []lt.TestStep{{
+		Op:            Update,
+		ExpectFailure: true,
+		SkipPreview:   true,
+		Validate: func(_ workspace.Project, _ deploy.Target, entries JournalEntries,
+			_ []Event, err error,
+		) error {
+			require.ErrorContains(t, err, "marked for protection")
+			return err
+		},
+	}}
+	p.Run(t, old)
 }
 
 // TestIgnoreProtect tests that a preview and up can delete protected resources when
