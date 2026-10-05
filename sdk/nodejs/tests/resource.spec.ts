@@ -196,9 +196,15 @@ describe("CustomResource", () => {
     });
 
     it("checks whether a resource exists", async () => {
-        const exists = runtime.existsResource("test:index:MyCustomResource", "some-id");
+        await new MyCustomResource("existing").id.promise();
+
+        const exists = runtime.existsResource("test:index:MyCustomResource", "existing_id");
         assert.strictEqual(await exists.isKnown, true);
-        assert.strictEqual(await exists.promise(), false);
+        assert.strictEqual(await exists.promise(), true);
+
+        const missing = runtime.existsResource("test:index:MyCustomResource", "some-id");
+        assert.strictEqual(await missing.isKnown, true);
+        assert.strictEqual(await missing.promise(), false);
     });
 });
 

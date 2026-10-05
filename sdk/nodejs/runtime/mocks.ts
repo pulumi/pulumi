@@ -221,8 +221,12 @@ export class MockMonitor {
     }
 
     public existsResource(req: any, callback: (err: any, innerResponse: any) => void) {
+        const prefix = "urn:pulumi:" + [getStack(), getProject()].join("::") + "::";
+        const exists = [...this.resources.values()].some(
+            (r) => r.id === req.getId() && r.urn.slice(prefix.length).split("::")[0].split("$").pop() === req.getType(),
+        );
         const response = new resproto.ExistsResourceResponse();
-        response.setExists(false);
+        response.setExists(exists);
         response.setKnown(true);
         callback(null, response);
     }
