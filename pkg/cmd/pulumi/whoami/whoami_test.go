@@ -19,6 +19,8 @@ import (
 	"context"
 	"testing"
 
+	"github.com/pulumi/pulumi/pkg/v3/auth"
+
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
@@ -37,8 +39,12 @@ func TestWhoAmICmd_default(t *testing.T) {
 		CurrentUserF: func() (string, []string, *workspace.TokenInformation, error) {
 			return "user1", []string{"org1", "org2"}, nil, nil
 		},
+		URLF: func() string {
+			return "https://pulumi.example.com"
+		},
 	}
 	lm := &cmdBackend.MockLoginManager{
+		ResolveCredentialsF: storedCredentials,
 		LoginF: func(
 			context.Context, pkgWorkspace.Context, diag.Sink, string, *workspace.Project, bool, bool, colors.Colorization,
 		) (backend.Backend, error) {
@@ -68,6 +74,7 @@ func TestWhoAmICmd_verbose(t *testing.T) {
 		},
 	}
 	lm := &cmdBackend.MockLoginManager{
+		ResolveCredentialsF: storedCredentials,
 		LoginF: func(
 			context.Context, pkgWorkspace.Context, diag.Sink, string, *workspace.Project, bool, bool, colors.Colorization,
 		) (backend.Backend, error) {
@@ -90,7 +97,7 @@ func TestWhoAmICmd_verbose(t *testing.T) {
 }
 
 func TestWhoAmICmd_json(t *testing.T) {
-	t.Parallel()
+	t.Setenv("PULUMI_ACCESS_TOKEN", "")
 
 	ws := &pkgWorkspace.MockContext{}
 	be := &backend.MockBackend{
@@ -102,6 +109,7 @@ func TestWhoAmICmd_json(t *testing.T) {
 		},
 	}
 	lm := &cmdBackend.MockLoginManager{
+		ResolveCredentialsF: storedCredentials,
 		LoginF: func(
 			context.Context, pkgWorkspace.Context, diag.Sink, string, *workspace.Project, bool, bool, colors.Colorization,
 		) (backend.Backend, error) {
@@ -119,7 +127,8 @@ func TestWhoAmICmd_json(t *testing.T) {
 	assert.JSONEq(t, `{
 		"user": "user3",
 		"organizations": ["org1", "org2"],
-		"url": "https://pulumi.example.com"
+		"url": "https://pulumi.example.com",
+		"accessTokenSource": "account credentials"
 	}`, buff.String())
 }
 
@@ -139,6 +148,7 @@ func TestWhoAmICmd_verbose_teamToken(t *testing.T) {
 		},
 	}
 	lm := &cmdBackend.MockLoginManager{
+		ResolveCredentialsF: storedCredentials,
 		LoginF: func(
 			context.Context, pkgWorkspace.Context, diag.Sink, string, *workspace.Project, bool, bool, colors.Colorization,
 		) (backend.Backend, error) {
@@ -162,7 +172,7 @@ func TestWhoAmICmd_verbose_teamToken(t *testing.T) {
 }
 
 func TestWhoAmICmd_json_teamToken(t *testing.T) {
-	t.Parallel()
+	t.Setenv("PULUMI_ACCESS_TOKEN", "")
 
 	ws := &pkgWorkspace.MockContext{}
 	be := &backend.MockBackend{
@@ -177,6 +187,7 @@ func TestWhoAmICmd_json_teamToken(t *testing.T) {
 		},
 	}
 	lm := &cmdBackend.MockLoginManager{
+		ResolveCredentialsF: storedCredentials,
 		LoginF: func(
 			context.Context, pkgWorkspace.Context, diag.Sink, string, *workspace.Project, bool, bool, colors.Colorization,
 		) (backend.Backend, error) {
@@ -195,7 +206,8 @@ func TestWhoAmICmd_json_teamToken(t *testing.T) {
 		"user": "user3",
 		"organizations": ["org1", "org2"],
 		"tokenInformation": {"name": "team-token", "team": "myTeam"},
-		"url": "https://pulumi.example.com"
+		"url": "https://pulumi.example.com",
+		"accessTokenSource": "account credentials"
 	}`, buff.String())
 }
 
@@ -214,6 +226,7 @@ func TestWhoAmICmd_verbose_unknownToken(t *testing.T) {
 		},
 	}
 	lm := &cmdBackend.MockLoginManager{
+		ResolveCredentialsF: storedCredentials,
 		LoginF: func(
 			context.Context, pkgWorkspace.Context, diag.Sink, string, *workspace.Project, bool, bool, colors.Colorization,
 		) (backend.Backend, error) {
@@ -234,4 +247,10 @@ func TestWhoAmICmd_verbose_unknownToken(t *testing.T) {
 	assert.Contains(t, stdout, "Backend URL: https://pulumi.example.com")
 	assert.Contains(t, stdout, "Token type: unknown")
 	assert.Contains(t, stdout, "Token name: bad-token")
+}
+
+func storedCredentials(_ context.Context, _ pkgWorkspace.Context, url string,
+	_ *workspace.Project,
+) (*auth.Credentials, error) {
+	return &auth.Credentials{BackendURL: url, Info: auth.CredentialInfo{AccessTokenSource: "account credentials"}}, nil
 }

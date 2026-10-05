@@ -1,0 +1,4 @@
+component: cli
+kind: feat
+body: Show the experimental credential helper in `pulumi about` and `pulumi whoami`
+time: 2026-10-06T13:10:56+02:00

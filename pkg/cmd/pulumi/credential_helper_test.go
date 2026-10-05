@@ -137,6 +137,19 @@ func TestCredentialHelperLifecycle(t *testing.T) {
 	output, err = runCredentialCommand(t, "whoami")
 	require.NoError(t, err, output)
 	assert.Equal(t, 1, strings.Count(output, "helper diagnostic"))
+
+	// Diagnostics report the saved helper configuration.
+	t.Setenv("PULUMI_TEST_HELPER_STDERR", "")
+	output, err = runCredentialCommand(t, "whoami", "--json")
+	require.NoError(t, err, output)
+	var identity map[string]any
+	require.NoError(t, json.Unmarshal([]byte(output), &identity))
+	assert.Equal(t, helper, identity["credentialHelper"])
+	output, err = runCredentialCommand(t, "about", "--json")
+	require.NoError(t, err, output)
+	var summary map[string]any
+	require.NoError(t, json.Unmarshal([]byte(output), &summary))
+	assert.Equal(t, map[string]any{"path": helper, "source": "saved"}, summary["credentialHelper"])
 }
 
 func TestCredentialHelperRedactsRefreshedCredentials(t *testing.T) {

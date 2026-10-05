@@ -21,8 +21,10 @@ import (
 	"os"
 	"strings"
 
+	"github.com/pulumi/pulumi/pkg/v3/auth"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	"github.com/pulumi/pulumi/pkg/v3/backend/state"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
@@ -39,17 +41,30 @@ func NewWhoAmICmd(ws pkgWorkspace.Context, lm cmdBackend.LoginManager) *cobra.Co
 	output := outputflag.OutputFlag[whoAmIRenderFunc]{
 		RenderForTerminal: func(
 			w io.Writer, b backend.Backend, name string, orgs []string, tokenInfo *workspace.TokenInformation,
+			source credentialSource,
 		) error {
-			return renderWhoAmIText(w, b, name, orgs, tokenInfo, verbose)
+			if err := renderWhoAmIText(w, b, name, orgs, tokenInfo, verbose); err != nil {
+				return err
+			}
+			if verbose {
+				if source.helperPath != "" {
+					fmt.Fprintf(w, "Credential helper: %s\n", source.helperPath)
+				}
+				fmt.Fprintf(w, "Access token source: %s\n", source.accessToken)
+			}
+			return nil
 		},
 		RenderJSON: func(
 			w io.Writer, b backend.Backend, name string, orgs []string, tokenInfo *workspace.TokenInformation,
+			source credentialSource,
 		) error {
 			return ui.FprintJSON(w, whoAmIJSON{
-				User:             name,
-				Organizations:    orgs,
-				URL:              b.URL(),
-				TokenInformation: tokenInfo,
+				User:              name,
+				Organizations:     orgs,
+				URL:               b.URL(),
+				TokenInformation:  tokenInfo,
+				CredentialHelper:  source.helperPath,
+				AccessTokenSource: source.accessToken,
 			})
 		},
 	}
@@ -93,7 +108,15 @@ func NewWhoAmICmd(ws pkgWorkspace.Context, lm cmdBackend.LoginManager) *cobra.Co
 				return err
 			}
 
-			return output.Get()(stdout, b, name, orgs, tokenInfo)
+			credentials, err := lm.ResolveCredentials(ctx, ws, state.BackendURLKey(b), project)
+			if err != nil {
+				return err
+			}
+			source := credentialSource{accessToken: credentials.Info.AccessTokenSource}
+			if helper, err := auth.FindHelper(); err == nil && helper != nil {
+				source.helperPath = helper.Path
+			}
+			return output.Get()(stdout, b, name, orgs, tokenInfo, source)
 		},
 	}
 
@@ -111,7 +134,15 @@ func NewWhoAmICmd(ws pkgWorkspace.Context, lm cmdBackend.LoginManager) *cobra.Co
 
 type whoAmIRenderFunc func(
 	w io.Writer, b backend.Backend, name string, orgs []string, tokenInfo *workspace.TokenInformation,
+	source credentialSource,
 ) error
+
+// credentialSource describes where the backend's credentials come from, without exposing them.
+type credentialSource struct {
+	// helperPath is the credential helper in use, if any.
+	helperPath  string
+	accessToken string
+}
 
 func renderWhoAmIText(
 	w io.Writer, b backend.Backend, name string, orgs []string,
@@ -146,4 +177,7 @@ type whoAmIJSON struct {
 	Organizations    []string                    `json:"organizations,omitempty"`
 	URL              string                      `json:"url"`
 	TokenInformation *workspace.TokenInformation `json:"tokenInformation,omitempty"`
+	// CredentialHelper is the path of the credential helper in use, if any.
+	CredentialHelper  string `json:"credentialHelper,omitempty"`
+	AccessTokenSource string `json:"accessTokenSource,omitempty"`
 }
