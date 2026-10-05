@@ -627,9 +627,7 @@ func (host *defaultHost) ReleaseContext(ctx *plugin.Context) error {
 
 	// Shut down the loader and mapper gRPC servers hosted for ctx, after the plugins they may have
 	// booted have been released.
-	errs = append(errs, host.releaseContextServers(ctx))
-
-	return errors.Join(errs...)
+	return errors.Join(errors.Join(errs...), host.releaseContextServers(ctx))
 }
 
 func (host *defaultHost) SignalCancellation() error {
