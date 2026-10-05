@@ -137,7 +137,6 @@
         {
             "path": ["whoami"],
             "propagate": false,
-            "exclude": true,
             "flags": {
                 "json": { "omit": true, "preset": true }
             }
