@@ -234,12 +234,6 @@
             "flags": {}
         },
         {
-            "path": ["install"],
-            "propagate": true,
-            "exclude": true,
-            "flags": {}
-        },
-        {
             "path": ["login"],
             "propagate": true,
             "exclude": true,
