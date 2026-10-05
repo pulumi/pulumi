@@ -127,16 +127,16 @@ func TestPulumiNewWithPackages(t *testing.T) {
 	e.RunCommand("pulumi", "up", "--non-interactive", "--skip-preview")
 }
 
-// The credentials check that interactive `pulumi new` runs is best-effort: when it runs out of time while a provider
-// is still starting up, it must not report the provider it stops as having crashed.
-func TestPulumiNewCredentialsCheckTimeout(t *testing.T) {
+// The credentials check that interactive `pulumi new` runs must not report a provider that is slow to start up as
+// having crashed.
+func TestPulumiNewCredentialsCheckSlowProvider(t *testing.T) {
 	t.Parallel()
 
 	templatePath, err := filepath.Abs(filepath.Join("yaml", "testprovider"))
 	require.NoError(t, err)
 
-	// Each delay keeps the provider busy for longer than the credentials check is willing to wait, which is
-	// defaultCredentialsPreflightTimeout (15s) in pkg/cmd/pulumi/project/newcmd.
+	// Each delay keeps the provider busy for longer than the 15s deadline the credentials check used to put on
+	// starting providers, which is what made it report them.
 	for name, delay := range map[string]string{
 		"slow to launch":               "PULUMI_TEST_PROVIDER_STARTUP_DELAY=17s",
 		"slow to answer once launched": "PULUMI_TEST_PROVIDER_PLUGIN_INFO_DELAY=17s",

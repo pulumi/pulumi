@@ -1,4 +1,4 @@
 component: cli/new
 kind: fix
-body: Fix spurious provider "exited prematurely" error when the `pulumi new` credentials check times out
+body: Fix spurious provider "exited prematurely" error from the `pulumi new` credentials check, which no longer has a timeout
 time: 2026-10-05T14:48:12+03:00

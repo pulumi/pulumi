@@ -979,7 +979,7 @@ func (h *langhost) Cancel(ctx context.Context) error {
 		status, ok := status.FromError(err)
 		if ok && status.Code() == codes.Unimplemented {
 			if h.plug != nil {
-				h.plug.shutdownExpected.Store(true)
+				h.plug.shutdownAcknowledged.Store(true)
 			}
 			logging.V(7).Infof("%s not implemented by language runtime, skipping", label)
 			return nil
@@ -989,7 +989,7 @@ func (h *langhost) Cancel(ctx context.Context) error {
 	}
 
 	if h.plug != nil {
-		h.plug.shutdownExpected.Store(true)
+		h.plug.shutdownAcknowledged.Store(true)
 	}
 	logging.V(7).Infof("%s success", label)
 	return nil

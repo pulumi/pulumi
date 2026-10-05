@@ -64,7 +64,7 @@ func TestLogWithNilSink(t *testing.T) {
 
 // TestHostManagedProviderCloseSignalsCancellation locks in the contract that hostManagedProvider.Close sends
 // SignalCancellation before tearing the underlying provider down. Without this, Plugin.Close treats the subsequent
-// process exit as a premature crash (since shutdownExpected is flipped on Cancel RPC ack) and emits a
+// process exit as a premature crash (since shutdownAcknowledged is only flipped on Cancel RPC ack) and emits a
 // misleading "exited prematurely" error to the user. defaultHost.Close does the same thing for plugins still
 // registered at shutdown; callers that close individual providers (e.g. the convert mapper) bypass that path.
 func TestHostManagedProviderCloseSignalsCancellation(t *testing.T) {
