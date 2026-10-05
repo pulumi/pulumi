@@ -43,3 +43,13 @@ async def test_mock_registered_resources(setup_mocks: mocks.MockMonitor):
     registrations = setup_mocks.get_registered_resources()
     assert component_urn in registrations
     assert custom_urn in registrations
+
+
+@pulumi.runtime.test
+async def test_mock_exists_resource(setup_mocks: mocks.MockMonitor):
+    exists = pulumi.runtime.exists_resource(
+        None, "test:index:Custom", "some-id", {}, pulumi.ResourceOptions()
+    )
+
+    assert await exists.is_known()
+    assert await exists.future() is False

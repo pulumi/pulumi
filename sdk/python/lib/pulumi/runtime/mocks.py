@@ -296,6 +296,9 @@ class MockMonitor:
 
         return resource_pb2.ReadResourceResponse(urn=urn, properties=props_proto)
 
+    def ExistsResource(self, request):
+        return resource_pb2.ExistsResourceResponse(exists=False, known=True)
+
     def RegisterResource(self, request):
         urn = self.make_urn(request.parent, request.type, request.name)
 
