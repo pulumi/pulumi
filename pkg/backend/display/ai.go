@@ -80,7 +80,9 @@ func RenderNeoErrorSummary(
 
 	fmt.Fprintln(out)
 
-	PrintNeoLink(out, opts, permalink, isPreview)
+	if !opts.NeoTaskCreationDisabled {
+		PrintNeoLink(out, opts, permalink, isPreview)
+	}
 }
 
 // PrintNeoLink prints the "would you like help" link plus the terminal command to debug the

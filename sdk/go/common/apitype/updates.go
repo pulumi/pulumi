@@ -94,6 +94,9 @@ type Message struct {
 
 type AISettingsForUpdate struct {
 	CopilotIsEnabled bool `json:"copilotIsEnabled"`
+	// NeoTaskCreationDisabled is true when the organization cannot start Neo tasks. Absent on services that
+	// predate the field, in which case task creation is assumed to be available.
+	NeoTaskCreationDisabled bool `json:"neoTaskCreationDisabled,omitempty"`
 }
 
 // UpdateProgramResponse is the result of an update program request.

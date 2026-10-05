@@ -1,0 +1,4 @@
+component: backend/service
+kind: improvement
+body: Hide Neo task links and skip starting Neo tasks when Pulumi Cloud reports that Neo task creation is disabled for the organization
+time: 2026-10-05T12:00:00.000000+02:00

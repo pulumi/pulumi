@@ -1822,7 +1822,7 @@ func (b *cloudBackend) createAndStartUpdate(
 	var journalVersion int64
 	var requiredPolicies []apitype.RequiredPolicy
 	var messages []apitype.Message
-	var isNeoIntegrationEnabled bool
+	var isNeoIntegrationEnabled, isNeoTaskCreationDisabled bool
 
 	if b.Capabilities(ctx).BeginUpdate && os.Getenv("PULUMI_DISABLE_BEGIN_UPDATE") != "true" {
 		logging.V(7).Infof("Using combined begin-update endpoint for %s", stackRef)
@@ -1848,6 +1848,7 @@ func (b *cloudBackend) createAndStartUpdate(
 		requiredPolicies = resp.RequiredPolicies
 		messages = resp.Messages
 		isNeoIntegrationEnabled = resp.AISettings.CopilotIsEnabled
+		isNeoTaskCreationDisabled = resp.AISettings.NeoTaskCreationDisabled
 
 		// Cache the deployment, stack tags, and stack for later use.
 		b.cachedUpdateData = &cachedUpdateData{
@@ -1867,6 +1868,7 @@ func (b *cloudBackend) createAndStartUpdate(
 		requiredPolicies = updateDetails.RequiredPolicies
 		messages = updateDetails.Messages
 		isNeoIntegrationEnabled = updateDetails.IsNeoIntegrationEnabled
+		isNeoTaskCreationDisabled = updateDetails.IsNeoTaskCreationDisabled
 
 		version, token, journalVersion, err = b.client.StartUpdate(ctx, update, tags)
 		if err != nil {
@@ -1923,6 +1925,13 @@ func (b *cloudBackend) createAndStartUpdate(
 		op.Opts.Display.ShowLinkToNeo = false
 		op.Opts.Display.ShowNeoFeatures = false
 		neoEnabledValueString = "is not"
+	}
+	if isNeoTaskCreationDisabled {
+		// The org cannot start Neo tasks, so don't offer anything that would start one. Summaries are unaffected.
+		op.Opts.Display.ShowLinkToNeo = false
+		op.Opts.Display.StartNeoTaskOnError = false
+		op.Opts.Display.NeoTaskCreationDisabled = true
+		continuationString += "; Neo task creation is disabled"
 	}
 	logging.V(7).Infof("Neo in org '%s' %s enabled for user '%s'%s",
 		stackID.Owner, neoEnabledValueString, userName, continuationString)

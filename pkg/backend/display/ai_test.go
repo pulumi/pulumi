@@ -88,6 +88,27 @@ func TestRenderCopilotErrorSummaryError(t *testing.T) {
 	assert.Equal(t, expectedCopilotSummaryWithError, buf.String())
 }
 
+func TestRenderNeoErrorSummaryTaskCreationDisabled(t *testing.T) {
+	t.Parallel()
+
+	buf := new(bytes.Buffer)
+	opts := Options{
+		Stdout:                  buf,
+		Color:                   colors.Never,
+		NeoTaskCreationDisabled: true,
+	}
+
+	RenderNeoErrorSummary(&NeoErrorSummaryMetadata{
+		Summary: "This is a test summary",
+	}, nil, opts, "http://foo.bar/baz", false)
+
+	expected := fmt.Sprintf(`Neo Diagnostics%s
+  This is a test summary
+
+`, neoDelimiterEmoji())
+	assert.Equal(t, expected, buf.String())
+}
+
 func TestRenderCopilotErrorSummaryNoSummaryOrError(t *testing.T) {
 	t.Parallel()
 
