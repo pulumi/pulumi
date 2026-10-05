@@ -52,3 +52,16 @@ func TestDiagEventReportsExistsURNAtStackLevel(t *testing.T) {
 	diagEvent(&e, diag.Message(urn, "resource"), "", "resource", diag.Warning, false)
 	assert.Equal(t, urn, (<-c).Payload().(DiagEventPayload).URN)
 }
+
+func TestUpdateStartedEventIsInternal(t *testing.T) {
+	t.Parallel()
+
+	e := NewEvent(UpdateStartedEventPayload{
+		UpdateID:  "update-1",
+		Version:   3,
+		Permalink: "https://app.pulumi.com/org/proj/stack/updates/3",
+	})
+
+	assert.Equal(t, UpdateStartedEvent, e.Type)
+	assert.True(t, e.Internal())
+}

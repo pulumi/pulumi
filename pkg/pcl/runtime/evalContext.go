@@ -24,7 +24,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"github.com/zclconf/go-cty/cty"
 )
@@ -41,8 +41,13 @@ type EvalContext struct {
 
 	invoke         func(context.Context, *pulumirpc.ResourceInvokeRequest) (*pulumirpc.ResourceInvokeResponse, error)
 	call           func(context.Context, *pulumirpc.ResourceCallRequest) (*pulumirpc.CallResponse, error)
-	getResource    func(context.Context, resource.ResourceReference) (resource.PropertyMap, error)
+	getResource    func(context.Context, property.ResourceReference) (property.Map, error)
 	existsResource func(context.Context, *pulumirpc.ExistsResourceRequest) (*pulumirpc.ExistsResourceResponse, error)
+
+	// invokeOutputValues is true when the resource monitor advertised INVOKE_OUTPUT_VALUES. When set, invoke
+	// preserves OutputValues in args and trusts the per-value OutputValues on the response; otherwise it falls
+	// back to unwrapping args into a `dependsOn` list and unioning those onto the whole return.
+	invokeOutputValues bool
 
 	// We read and write variables to the hcl.EvalContext + children in parallel during
 	// execution, so we synchronize access to it.
@@ -54,7 +59,7 @@ func NewEvalContext(
 	workingDirectory, rootDirectory, organization, project, stack string,
 	lookupResource func(context.Context, string) (*schema.Resource, error),
 	lookupFunction func(context.Context, string) (*schema.Function, error),
-	getResource func(context.Context, resource.ResourceReference) (resource.PropertyMap, error),
+	getResource func(context.Context, property.ResourceReference) (property.Map, error),
 	invoke func(context.Context, *pulumirpc.ResourceInvokeRequest) (*pulumirpc.ResourceInvokeResponse, error),
 	call func(context.Context, *pulumirpc.ResourceCallRequest) (*pulumirpc.CallResponse, error),
 	existsResource func(context.Context, *pulumirpc.ExistsResourceRequest) (*pulumirpc.ExistsResourceResponse, error),
@@ -86,20 +91,27 @@ func (ectx *EvalContext) NewChild() *EvalContext {
 	defer ectx.evalLock.Unlock()
 	child := ectx.evalContext.NewChild()
 	return &EvalContext{
-		workingDirectory: ectx.workingDirectory,
-		rootDirectory:    ectx.rootDirectory,
-		organization:     ectx.organization,
-		project:          ectx.project,
-		stack:            ectx.stack,
-		lookupResource:   ectx.lookupResource,
-		lookupFunction:   ectx.lookupFunction,
-		getResource:      ectx.getResource,
-		invoke:           ectx.invoke,
-		call:             ectx.call,
-		existsResource:   ectx.existsResource,
-		evalLock:         ectx.evalLock,
-		evalContext:      child,
+		workingDirectory:   ectx.workingDirectory,
+		rootDirectory:      ectx.rootDirectory,
+		organization:       ectx.organization,
+		project:            ectx.project,
+		stack:              ectx.stack,
+		lookupResource:     ectx.lookupResource,
+		lookupFunction:     ectx.lookupFunction,
+		getResource:        ectx.getResource,
+		invoke:             ectx.invoke,
+		call:               ectx.call,
+		existsResource:     ectx.existsResource,
+		invokeOutputValues: ectx.invokeOutputValues,
+		evalLock:           ectx.evalLock,
+		evalContext:        child,
 	}
+}
+
+// SetInvokeOutputValues records whether the resource monitor advertised INVOKE_OUTPUT_VALUES. See the field
+// on EvalContext for the effect this has on the invoke builtin.
+func (ectx *EvalContext) SetInvokeOutputValues(v bool) {
+	ectx.invokeOutputValues = v
 }
 
 func (ectx *EvalContext) SetVariable(name string, value cty.Value) {
@@ -122,24 +134,24 @@ func (ectx *EvalContext) HasVariable(name string) bool {
 // Evaluate evaluates an expression in the context of the interpreter's evalContext and returns a PropertyValue. If the
 // expression evaluates to a poisoned value, the culprit resource's name will be returned in the second return value. If
 // there are any errors during evaluation, they will be returned in the diagnostics.
-func (ectx *EvalContext) Evaluate(expr model.Expression) (resource.PropertyValue, *string, hcl.Diagnostics) {
+func (ectx *EvalContext) Evaluate(expr model.Expression) (property.Value, *string, hcl.Diagnostics) {
 	ectx.evalLock.Lock()
 	defer ectx.evalLock.Unlock()
 	value, diags := expr.Evaluate(ectx.evalContext)
 
 	if diags.HasErrors() {
-		return resource.PropertyValue{}, nil, diags
+		return property.Value{}, nil, diags
 	}
 	pv, err := ctyToPropertyValue(value)
 	if err != nil {
 		if poison, ok := errors.AsType[*poisonError](err); ok {
-			return resource.PropertyValue{}, &poison.name, nil
+			return property.Value{}, &poison.name, nil
 		}
 		diags = append(diags, &hcl.Diagnostic{
 			Severity: hcl.DiagError,
 			Summary:  err.Error(),
 		})
-		return resource.PropertyValue{}, nil, diags
+		return property.Value{}, nil, diags
 	}
 	return pv, nil, diags
 }
@@ -150,8 +162,8 @@ func (ectx *EvalContext) Evaluate(expr model.Expression) (resource.PropertyValue
 // dependents are skipped) or surface it as an error (one-shot callers like `pulumi do`).
 func (ectx *EvalContext) EvaluateObject(
 	attrs []*model.Attribute, inputType model.Type, properties []*schema.Property,
-) (resource.PropertyMap, *string, hcl.Diagnostics) {
-	values := resource.PropertyMap{}
+) (property.Map, *string, hcl.Diagnostics) {
+	values := map[string]property.Value{}
 	var diagnostics hcl.Diagnostics
 
 	// Look up the per-attribute target type from inputType once, unwrapping any optional wrapper. We want the same
@@ -181,12 +193,12 @@ func (ectx *EvalContext) EvaluateObject(
 		}
 		if poison != nil {
 			// Stop evaluating further attributes — the caller will decide what to do with the poison.
-			return nil, poison, diagnostics
+			return property.Map{}, poison, diagnostics
 		}
-		values[resource.PropertyKey(attr.Name)] = collapseResourceReferences(value)
+		values[attr.Name] = collapseResourceReferences(value)
 	}
 
-	values, err := applySchemaInputs(values, properties)
+	valuesMap, err := applySchemaInputs(property.NewMap(values), properties)
 	if err != nil {
 		// Subject is the start and end of the attributes
 		var rng hcl.Range
@@ -205,8 +217,8 @@ func (ectx *EvalContext) EvaluateObject(
 			Summary:  fmt.Sprintf("apply schema inputs: %v", err),
 		}
 		diagnostics = append(diagnostics, diag)
-		return nil, nil, diagnostics
+		return property.Map{}, nil, diagnostics
 	}
 
-	return values, nil, diagnostics
+	return valuesMap, nil, diagnostics
 }

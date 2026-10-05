@@ -565,7 +565,7 @@ func TestProviderCancellation(t *testing.T) {
 
 					return plugin.CreateResponse{
 						ID:         resource.ID(req.URN.Name()),
-						Properties: resource.PropertyMap{},
+						Properties: property.Map{},
 						Status:     resource.StatusOK,
 					}, nil
 				},
@@ -958,7 +958,7 @@ func TestUpdatePartialFailure(t *testing.T) {
 					})
 
 					return plugin.UpdateResponse{
-						Properties: outputs,
+						Properties: resource.FromResourcePropertyMap(outputs),
 						Status:     resource.StatusPartialFailure,
 					}, errors.New("update failed to apply")
 				},
@@ -1374,8 +1374,6 @@ func TestLoadFailureShutdown(t *testing.T) {
 		require.NoError(t, err)
 
 		_, _ = monitor.RegisterResource(providers.MakeProviderType("pkgB"), "provB", true)
-		require.Fail(t, "RegisterResource should not return")
-
 		return nil
 	})
 
@@ -2131,7 +2129,7 @@ func TestProviderPreview(t *testing.T) {
 						sawPreview = true
 					}
 
-					assert.Equal(t, req.Preview, req.Properties.ContainsUnknowns())
+					assert.Equal(t, req.Preview, resource.ToResourcePropertyMap(req.Properties).ContainsUnknowns())
 					return plugin.CreateResponse{
 						ID:         "created-id",
 						Properties: req.Properties,
@@ -2143,7 +2141,7 @@ func TestProviderPreview(t *testing.T) {
 						sawPreview = true
 					}
 
-					assert.Equal(t, req.Preview, req.NewInputs.ContainsUnknowns())
+					assert.Equal(t, req.Preview, resource.ToResourcePropertyMap(req.NewInputs).ContainsUnknowns())
 					return plugin.UpdateResponse{
 						Properties: req.NewInputs,
 						Status:     resource.StatusOK,
@@ -2221,7 +2219,7 @@ func TestProviderPreviewGrpc(t *testing.T) {
 						sawPreview = true
 					}
 
-					assert.Equal(t, req.Preview, req.Properties.ContainsUnknowns())
+					assert.Equal(t, req.Preview, resource.ToResourcePropertyMap(req.Properties).ContainsUnknowns())
 					return plugin.CreateResponse{
 						ID:         "created-id",
 						Properties: req.Properties,
@@ -2233,7 +2231,7 @@ func TestProviderPreviewGrpc(t *testing.T) {
 						sawPreview = true
 					}
 
-					assert.Equal(t, req.Preview, req.NewInputs.ContainsUnknowns())
+					assert.Equal(t, req.Preview, resource.ToResourcePropertyMap(req.NewInputs).ContainsUnknowns())
 					return plugin.UpdateResponse{
 						Properties: req.NewInputs,
 						Status:     resource.StatusOK,
@@ -2769,7 +2767,7 @@ func TestProtect(t *testing.T) {
 				Protect: &shouldProtect,
 			})
 			if expectError {
-				require.Fail(t, "RegisterResource should not return")
+				return nil
 			} else {
 				require.NoError(t, err)
 			}
@@ -2899,8 +2897,8 @@ func TestImportDiff(t *testing.T) {
 					return plugin.ReadResponse{
 						ReadResult: plugin.ReadResult{
 							ID:      req.ID,
-							Inputs:  props,
-							Outputs: props,
+							Inputs:  ptrMap(props),
+							Outputs: ptrMap(props),
 						},
 						Status: resource.StatusOK,
 					}, nil
@@ -2928,7 +2926,9 @@ func TestImportDiff(t *testing.T) {
 			Inputs:   ins,
 			ImportID: "imported-id",
 		})
-		require.NoError(t, err)
+		if err != nil {
+			return err
+		}
 
 		return nil
 	})
@@ -3489,7 +3489,7 @@ func TestPendingDeleteOrder(t *testing.T) {
 
 					id := resource.ID(strconv.Itoa(len(cloudState)))
 					if !req.Preview {
-						cloudState[id] = req.Properties
+						cloudState[id] = resource.ToResourcePropertyMap(req.Properties)
 					}
 					return plugin.CreateResponse{
 						ID:         id,
@@ -3568,7 +3568,7 @@ func TestPendingDeleteOrder(t *testing.T) {
 			Dependencies: []resource.URN{resp.URN},
 		})
 		if failCreationOfTypB {
-			require.Fail(t, "RegisterResource should not return")
+			return nil
 		} else {
 			require.NoError(t, err)
 		}
@@ -3632,7 +3632,7 @@ func TestPendingDeleteReplacement(t *testing.T) {
 					if !req.Preview {
 						id = resource.ID(strconv.Itoa(cloudID))
 						cloudID = cloudID + 1
-						cloudState[id] = req.Properties
+						cloudState[id] = resource.ToResourcePropertyMap(req.Properties)
 					}
 					return plugin.CreateResponse{
 						ID:         id,
@@ -3803,7 +3803,7 @@ func TestTimestampTracking(t *testing.T) {
 						"foo": "bar",
 					})
 					return plugin.UpdateResponse{
-						Properties: outputs,
+						Properties: resource.FromResourcePropertyMap(outputs),
 						Status:     resource.StatusOK,
 					}, nil
 				},
@@ -3909,17 +3909,17 @@ func TestOldCheckedInputsAreSent(t *testing.T) {
 					// Check that the old inputs are passed to CheckF
 					if firstUpdate {
 						assert.Equal(t, property.Map{}, req.OldInputs)
-						assert.Equal(t, resource.FromResourcePropertyMap(resource.NewPropertyMapFromMap(map[string]any{
-							"foo": "bar",
-						})), req.NewInputs)
+						assert.Equal(t, property.NewMap(map[string]property.Value{
+							"foo": property.New("bar"),
+						}), req.NewInputs)
 					} else {
-						assert.Equal(t, resource.FromResourcePropertyMap(resource.NewPropertyMapFromMap(map[string]any{
-							"foo":     "bar",
-							"default": "default",
-						})), req.OldInputs)
-						assert.Equal(t, resource.FromResourcePropertyMap(resource.NewPropertyMapFromMap(map[string]any{
-							"foo": "baz",
-						})), req.NewInputs)
+						assert.Equal(t, property.NewMap(map[string]property.Value{
+							"foo":     property.New("bar"),
+							"default": property.New("default"),
+						}), req.OldInputs)
+						assert.Equal(t, property.NewMap(map[string]property.Value{
+							"foo": property.New("baz"),
+						}), req.NewInputs)
 					}
 
 					// Add a default property
@@ -3934,23 +3934,23 @@ func TestOldCheckedInputsAreSent(t *testing.T) {
 					if firstUpdate {
 						assert.Equal(t, property.Map{}, req.OldInputs)
 						assert.Equal(t, property.Map{}, req.OldOutputs)
-						assert.Equal(t, resource.FromResourcePropertyMap(resource.NewPropertyMapFromMap(map[string]any{
-							"foo": "bar",
-						})), req.NewInputs)
+						assert.Equal(t, property.NewMap(map[string]property.Value{
+							"foo": property.New("bar"),
+						}), req.NewInputs)
 					} else {
-						assert.Equal(t, resource.FromResourcePropertyMap(resource.NewPropertyMapFromMap(map[string]any{
-							"foo":     "bar",
-							"default": "default",
-						})), req.OldInputs)
-						assert.Equal(t, resource.FromResourcePropertyMap(resource.NewPropertyMapFromMap(map[string]any{
-							"foo":      "bar",
-							"default":  "default",
-							"computed": "computed",
-						})), req.OldOutputs)
-						assert.Equal(t, resource.FromResourcePropertyMap(resource.NewPropertyMapFromMap(map[string]any{
-							"foo":     "baz",
-							"default": "default",
-						})), req.NewInputs)
+						assert.Equal(t, property.NewMap(map[string]property.Value{
+							"foo":     property.New("bar"),
+							"default": property.New("default"),
+						}), req.OldInputs)
+						assert.Equal(t, property.NewMap(map[string]property.Value{
+							"foo":      property.New("bar"),
+							"default":  property.New("default"),
+							"computed": property.New("computed"),
+						}), req.OldOutputs)
+						assert.Equal(t, property.NewMap(map[string]property.Value{
+							"foo":     property.New("baz"),
+							"default": property.New("default"),
+						}), req.NewInputs)
 					}
 
 					// Let the engine do the diff, we just want to assert the conditions above
@@ -3959,7 +3959,7 @@ func TestOldCheckedInputsAreSent(t *testing.T) {
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 					id := resource.ID("")
 					results := resource.PropertyMap{}
-					maps.Copy(results, req.Properties)
+					maps.Copy(results, resource.ToResourcePropertyMap(req.Properties))
 					// Add a computed property
 					results["computed"] = resource.MakeComputed(resource.NewProperty(""))
 
@@ -3969,28 +3969,29 @@ func TestOldCheckedInputsAreSent(t *testing.T) {
 					}
 					return plugin.CreateResponse{
 						ID:         id,
-						Properties: results,
+						Properties: resource.FromResourcePropertyMap(results),
 						Status:     resource.StatusOK,
 					}, nil
 				},
 				UpdateF: func(_ context.Context, req plugin.UpdateRequest) (plugin.UpdateResponse, error) {
 					// Check that the old inputs and outputs are passed to UpdateF
+					newInputs := resource.ToResourcePropertyMap(req.NewInputs)
 					assert.Equal(t, resource.NewPropertyMapFromMap(map[string]any{
 						"foo":     "bar",
 						"default": "default",
-					}), req.OldInputs)
+					}), resource.ToResourcePropertyMap(req.OldInputs))
 					assert.Equal(t, resource.NewPropertyMapFromMap(map[string]any{
 						"foo":      "bar",
 						"default":  "default",
 						"computed": "computed",
-					}), req.OldOutputs)
+					}), resource.ToResourcePropertyMap(req.OldOutputs))
 					assert.Equal(t, resource.NewPropertyMapFromMap(map[string]any{
 						"foo":     "baz",
 						"default": "default",
-					}), req.NewInputs)
+					}), newInputs)
 
 					results := resource.PropertyMap{}
-					maps.Copy(results, req.NewInputs)
+					maps.Copy(results, newInputs)
 					// Add a computed property
 					results["computed"] = resource.MakeComputed(resource.NewProperty(""))
 
@@ -3999,20 +4000,20 @@ func TestOldCheckedInputsAreSent(t *testing.T) {
 					}
 
 					return plugin.UpdateResponse{
-						Properties: results,
+						Properties: resource.FromResourcePropertyMap(results),
 						Status:     resource.StatusOK,
 					}, nil
 				},
 				DeleteF: func(_ context.Context, req plugin.DeleteRequest) (plugin.DeleteResponse, error) {
 					// Check that the old inputs and outputs are passed to UpdateF
-					assert.Equal(t, resource.NewPropertyMapFromMap(map[string]any{
-						"foo":     "baz",
-						"default": "default",
+					assert.Equal(t, property.NewMap(map[string]property.Value{
+						"foo":     property.New("baz"),
+						"default": property.New("default"),
 					}), req.Inputs)
-					assert.Equal(t, resource.NewPropertyMapFromMap(map[string]any{
-						"foo":      "baz",
-						"default":  "default",
-						"computed": "computed",
+					assert.Equal(t, property.NewMap(map[string]property.Value{
+						"foo":      property.New("baz"),
+						"default":  property.New("default"),
+						"computed": property.New("computed"),
 					}), req.Outputs)
 
 					return plugin.DeleteResponse{}, nil
@@ -4117,7 +4118,7 @@ func TestResourceNames(t *testing.T) {
 						CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 							return plugin.CreateResponse{
 								ID:         "1",
-								Properties: resource.PropertyMap{},
+								Properties: property.Map{},
 								Status:     resource.StatusOK,
 							}, nil
 						},
@@ -4247,8 +4248,8 @@ func TestSourcePositions(t *testing.T) {
 				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
 					return plugin.ReadResponse{
 						ReadResult: plugin.ReadResult{
-							Inputs:  req.Inputs,
-							Outputs: req.State,
+							Inputs:  &req.Inputs,
+							Outputs: &req.State,
 						},
 						Status: resource.StatusOK,
 					}, nil
@@ -4727,7 +4728,6 @@ func TestStackOutputsResourceError(t *testing.T) {
 
 		case 1:
 			_, _ = monitor.RegisterResource("pkgA:m:typA", "resA", true)
-			require.Fail(t, "RegisterResource should not return")
 			// RegisterResourceOutputs not called here, simulating what happens in SDKs when an output of resA
 			// is exported as a stack output.
 
@@ -4739,7 +4739,6 @@ func TestStackOutputsResourceError(t *testing.T) {
 			require.NoError(t, outsErr)
 
 			_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true)
-			require.Fail(t, "RegisterResource should not return")
 		}
 
 		return err
@@ -5008,9 +5007,6 @@ func TestResourceError(t *testing.T) {
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, _ = monitor.RegisterResource("pkgA:m:typA", "resA", true)
-		// The resource registration fails, and the engine knows this and
-		// cancels the deployment. RegisterResource will not return.
-		t.Fatalf("We should not return from RegisterResource")
 		return nil
 	})
 

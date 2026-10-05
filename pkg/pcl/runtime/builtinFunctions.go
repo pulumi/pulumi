@@ -30,10 +30,11 @@ import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/ext/customdecode"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
-	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/archive"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/asset"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
+	"github.com/pulumi/pulumi/sdk/v3/go/propertyrpc"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"github.com/zclconf/go-cty/cty"
 	"github.com/zclconf/go-cty/cty/function"
@@ -53,7 +54,7 @@ var invokeOptionsType = cty.ObjectWithOptionalAttrs(map[string]cty.Type{
 
 func tryExpressions(
 	args []cty.Value,
-	getResource func(context.Context, resource.ResourceReference) (resource.PropertyMap, error),
+	getResource func(context.Context, property.ResourceReference) (property.Map, error),
 ) (cty.Value, error) {
 	if len(args) == 0 {
 		return cty.NilVal, errors.New("at least one argument is required")
@@ -100,7 +101,7 @@ func tryExpressions(
 
 func recoverExpression(
 	args []cty.Value,
-	getResource func(context.Context, resource.ResourceReference) (resource.PropertyMap, error),
+	getResource func(context.Context, property.ResourceReference) (property.Map, error),
 ) (cty.Value, error) {
 	if len(args) != 2 {
 		return cty.NilVal, errors.New("recover requires a value and recovery expression")
@@ -266,8 +267,8 @@ func (ectx *EvalContext) builtinFunctions() map[string]function.Function {
 			if err != nil {
 				return cty.False, nil
 			}
-			if pv.IsSecret() {
-				return propertyValueToCty(context.TODO(), ectx.getResource, resource.MakeSecret(resource.NewProperty(true)))
+			if pv.Secret() {
+				return propertyValueToCty(context.TODO(), ectx.getResource, property.New(true).WithSecret(true))
 			}
 			return cty.True, nil
 		},
@@ -295,7 +296,6 @@ func (ectx *EvalContext) builtinFunctions() map[string]function.Function {
 			if err != nil {
 				return cty.DynamicVal, nil
 			}
-			stackRefPV, _ = unwrapOutputs(stackRefPV)
 			if stackRefPV.IsNull() {
 				return cty.DynamicVal, nil
 			}
@@ -354,30 +354,33 @@ func (ectx *EvalContext) builtinFunctions() map[string]function.Function {
 			if err != nil {
 				return cty.NilVal, fmt.Errorf("invalid invoke arguments: %w", err)
 			}
-			argsPV, dependsOn := unwrapOutputs(argsPV)
+			// When the monitor advertises INVOKE_OUTPUT_VALUES, keep per-value Dependencies and Secret
+			// marks on args so the engine (a) harvests deps into its wait-set, and (b) the provider sees
+			// per-value secrets if it supports them. Otherwise fall back to the legacy path: strip both,
+			// collect their union, and apply that union to the whole return value.
+			//
+			// dependsOn is populated in both modes: even in the new path we need it to attribute an
+			// Unknown response (returned when the engine gates the invoke on pending deps) to the right
+			// resources.
+			dependsOn := allDependencies(argsPV)
+			var anyArgSecret bool
+			if !ectx.invokeOutputValues {
+				anyArgSecret = argsPV.HasSecrets()
+				argsPV = stripOutputs(argsPV)
+			}
 			if fun.Inputs != nil {
-				args, err := applySchemaInputs(argsPV.ObjectValue(), fun.Inputs.Properties)
+				args, err := applySchemaInputs(argsPV.AsMap(), fun.Inputs.Properties)
 				if err != nil {
 					return cty.NilVal, fmt.Errorf("convert invoke arguments: %w", err)
 				}
-				argsPV = resource.NewProperty(args)
-			}
-
-			marshalOpts := plugin.MarshalOptions{
-				KeepUnknowns:   true,
-				KeepSecrets:    true,
-				KeepResources:  true,
-				KeepByteString: true,
-			}
-			obj, err := plugin.MarshalProperties(argsPV.ObjectValue(), marshalOpts)
-			if err != nil {
-				return cty.NilVal, fmt.Errorf("marshal invoke arguments: %w", err)
+				argsPV = property.New(args)
 			}
 
 			request := &pulumirpc.ResourceInvokeRequest{
-				Tok:               token,
-				Args:              obj,
-				AcceptsByteString: true,
+				Tok:                token,
+				Args:               propertyrpc.Marshal(argsPV.AsMap()),
+				AcceptsByteString:  true,
+				AcceptOutputValues: ectx.invokeOutputValues,
 			}
 
 			if len(args) == 3 && !args[2].IsNull() {
@@ -442,34 +445,37 @@ func (ectx *EvalContext) builtinFunctions() map[string]function.Function {
 			}
 
 			if resp.Unknown {
-				return propertyValueToCty(context.TODO(), ectx.getResource, resource.NewProperty(resource.Output{
-					Known:        false,
-					Dependencies: dependsOn,
-				}))
+				return propertyValueToCty(context.TODO(), ectx.getResource,
+					property.New(property.Computed).WithDependencies(dependsOn))
 			}
 
-			resultPM, err := plugin.UnmarshalProperties(resp.GetReturn(), marshalOpts)
+			resultPM, err := propertyrpc.Unmarshal(resp.GetReturn())
 			if err != nil {
 				return cty.NilVal, fmt.Errorf("unmarshal invoke result: %w", err)
 			}
 			// If this is a scalar invoke pull off the one property in the map
-			var resultPV resource.PropertyValue
+			var resultPV property.Value
 			if _, ok := fun.ReturnType.(*schema.ObjectType); ok {
-				resultPV = resource.NewProperty(resultPM)
+				resultPV = property.New(resultPM)
 			} else {
-				if len(resultPM) != 1 {
-					return cty.NilVal, fmt.Errorf("expected scalar invoke result to have exactly one property, got %d", len(resultPM))
+				if resultPM.Len() != 1 {
+					return cty.NilVal, fmt.Errorf("expected scalar invoke result to have exactly one property, got %d", resultPM.Len())
 				}
-				for _, v := range resultPM {
+				for _, v := range resultPM.All {
 					resultPV = v
 				}
 			}
-			if len(dependsOn) > 0 {
-				resultPV = resource.NewProperty(resource.Output{
-					Element:      resultPV,
-					Known:        true,
-					Dependencies: dependsOn,
-				})
+			// Only apply the union of arg deps/secretness in the legacy path. In the INVOKE_OUTPUT_VALUES
+			// path the engine and provider have already stamped per-value deps and secrets onto the
+			// returned values; unioning here would poison a return that was supposed to carry only a
+			// subset of the arg marks.
+			if !ectx.invokeOutputValues {
+				if len(dependsOn) > 0 {
+					resultPV = resultPV.WithDependencies(append(resultPV.Dependencies(), dependsOn...))
+				}
+				if anyArgSecret {
+					resultPV = resultPV.WithSecret(true)
+				}
 			}
 			return propertyValueToCty(context.TODO(), ectx.getResource, resultPV)
 		},
@@ -539,8 +545,8 @@ func (ectx *EvalContext) builtinFunctions() map[string]function.Function {
 			if err != nil {
 				return cty.NilVal, fmt.Errorf("invalid invoke arguments: %w", err)
 			}
-			argsPV, _ = unwrapOutputs(argsPV)
-			argsPM := argsPV.ObjectValue()
+			// A resource that is passed directly must not be a dependency of its own argument.
+			argsPM := collapseResourceReferences(argsPV).AsMap()
 			if fun.Inputs != nil {
 				argsPM, err = applySchemaInputs(argsPM, fun.Inputs.Properties)
 				if err != nil {
@@ -558,30 +564,18 @@ func (ectx *EvalContext) builtinFunctions() map[string]function.Function {
 			}
 
 			// The ID is unknown when self is a resource still being created during a preview.
-			idPV := resource.MakeComputed(resource.NewProperty(""))
+			idPV := property.New(property.Computed)
 			if id.IsKnown() {
-				idPV = resource.NewProperty(id.AsString())
+				idPV = property.New(id.AsString())
 			}
-			argsPM["__self__"] = resource.NewProperty(resource.ResourceReference{
+			argsPM = argsPM.Set("__self__", property.New(property.ResourceReference{
 				URN: resource.URN(urnVal.AsString()),
 				ID:  idPV,
-			})
-
-			marshalOpts := plugin.MarshalOptions{
-				KeepUnknowns:     true,
-				KeepSecrets:      true,
-				KeepResources:    true,
-				KeepOutputValues: true,
-				KeepByteString:   true,
-			}
-			obj, err := plugin.MarshalProperties(argsPM, marshalOpts)
-			if err != nil {
-				return cty.NilVal, fmt.Errorf("marshal invoke arguments: %w", err)
-			}
+			}))
 
 			request := &pulumirpc.ResourceCallRequest{
 				Tok:               fun.Token,
-				Args:              obj,
+				Args:              propertyrpc.Marshal(argsPM),
 				AcceptsByteString: true,
 			}
 
@@ -626,36 +620,30 @@ func (ectx *EvalContext) builtinFunctions() map[string]function.Function {
 				return cty.NilVal, errors.New(buf.String())
 			}
 
-			resultPM, err := plugin.UnmarshalProperties(resp.GetReturn(), marshalOpts)
+			resultPM, err := propertyrpc.Unmarshal(resp.GetReturn())
 			if err != nil {
 				return cty.NilVal, fmt.Errorf("unmarshal invoke result: %w", err)
 			}
 			// Methods declared with ReturnTypePlain but no object return type carry the single value in a
 			// property map with exactly one entry, whose key may be any name. Unwrap it so callers get the
 			// value directly.
-			var resultPV resource.PropertyValue
+			var resultPV property.Value
 			if fun.ReturnTypePlain {
 				if _, isObject := fun.ReturnType.(*schema.ObjectType); !isObject {
-					if len(resultPM) != 1 {
+					if resultPM.Len() != 1 {
 						return cty.NilVal, fmt.Errorf(
-							"invoke %q: expected a single return value, got %d", fun.Token, len(resultPM))
+							"invoke %q: expected a single return value, got %d", fun.Token, resultPM.Len())
 					}
-					for _, v := range resultPM {
+					for _, v := range resultPM.All {
 						resultPV = v
 					}
 				} else {
-					resultPV = resource.NewProperty(resultPM)
+					resultPV = property.New(resultPM)
 				}
 			} else {
-				resultPV = resource.NewProperty(resultPM)
+				resultPV = property.New(resultPM)
 			}
-			if len(dependsOn) > 0 {
-				resultPV = resource.NewProperty(resource.Output{
-					Element:      resultPV,
-					Known:        true,
-					Dependencies: dependsOn,
-				})
-			}
+			resultPV = resultPV.WithDependencies(append(resultPV.Dependencies(), dependsOn...))
 			return propertyValueToCty(context.TODO(), ectx.getResource, resultPV)
 		},
 	})
@@ -716,7 +704,7 @@ func (ectx *EvalContext) builtinFunctions() map[string]function.Function {
 			if err != nil {
 				return cty.NilVal, fmt.Errorf("creating file asset: %w", err)
 			}
-			return propertyValueToCty(context.TODO(), ectx.getResource, resource.NewProperty(a))
+			return propertyValueToCty(context.TODO(), ectx.getResource, property.New(a))
 		},
 	})
 
@@ -740,7 +728,7 @@ func (ectx *EvalContext) builtinFunctions() map[string]function.Function {
 			if err != nil {
 				return cty.NilVal, fmt.Errorf("creating file archive: %w", err)
 			}
-			return propertyValueToCty(context.TODO(), ectx.getResource, resource.NewProperty(a))
+			return propertyValueToCty(context.TODO(), ectx.getResource, property.New(a))
 		},
 	})
 
@@ -769,7 +757,7 @@ func (ectx *EvalContext) builtinFunctions() map[string]function.Function {
 			if err != nil {
 				return cty.NilVal, fmt.Errorf("creating archive from assets: %w", err)
 			}
-			return propertyValueToCty(context.TODO(), ectx.getResource, resource.NewProperty(a))
+			return propertyValueToCty(context.TODO(), ectx.getResource, property.New(a))
 		},
 	})
 
@@ -793,7 +781,7 @@ func (ectx *EvalContext) builtinFunctions() map[string]function.Function {
 			if err != nil {
 				return cty.NilVal, fmt.Errorf("creating string asset: %w", err)
 			}
-			return propertyValueToCty(context.TODO(), ectx.getResource, resource.NewProperty(a))
+			return propertyValueToCty(context.TODO(), ectx.getResource, property.New(a))
 		},
 	})
 
@@ -817,7 +805,7 @@ func (ectx *EvalContext) builtinFunctions() map[string]function.Function {
 			if err != nil {
 				return cty.NilVal, fmt.Errorf("creating remote asset: %w", err)
 			}
-			return propertyValueToCty(context.TODO(), ectx.getResource, resource.NewProperty(a))
+			return propertyValueToCty(context.TODO(), ectx.getResource, property.New(a))
 		},
 	})
 
@@ -841,7 +829,7 @@ func (ectx *EvalContext) builtinFunctions() map[string]function.Function {
 			if err != nil {
 				return cty.NilVal, fmt.Errorf("creating remote archive: %w", err)
 			}
-			return propertyValueToCty(context.TODO(), ectx.getResource, resource.NewProperty(a))
+			return propertyValueToCty(context.TODO(), ectx.getResource, property.New(a))
 		},
 	})
 

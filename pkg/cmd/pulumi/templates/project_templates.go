@@ -32,6 +32,7 @@ import (
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/gitutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 
@@ -384,14 +385,26 @@ func retrieveFileTemplates(path string) (TemplateRepository, error) {
 func retrievePulumiTemplates(
 	ctx context.Context, offline bool, templateKind TemplateKind,
 ) (TemplateRepository, error) {
-	// Cleanup the template directory.
-	if err := cleanupLegacyTemplateDir(templateKind); err != nil {
-		return TemplateRepository{}, err
-	}
-
 	// Get the template directory.
 	templateDir, err := GetTemplateDir(templateKind)
 	if err != nil {
+		return TemplateRepository{}, err
+	}
+
+	// Concurrent pulumi processes share this directory, and the cleanup below would delete a clone in progress.
+	lockPath := filepath.Clean(templateDir) + ".lock"
+	if err := os.MkdirAll(filepath.Dir(lockPath), 0o700); err != nil {
+		return TemplateRepository{}, err
+	}
+	mutex := fsutil.NewFileMutex(lockPath)
+	if err := mutex.Lock(); err != nil {
+		slog.Debug("Could not lock the template directory", "path", lockPath, "err", err)
+	} else {
+		defer func() { _ = mutex.Unlock() }()
+	}
+
+	// Cleanup the template directory.
+	if err := cleanupLegacyTemplateDir(templateKind); err != nil {
 		return TemplateRepository{}, err
 	}
 

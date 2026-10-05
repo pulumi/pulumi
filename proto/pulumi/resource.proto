@@ -101,6 +101,10 @@ enum ResourceMonitorFeature {
     RESOURCE_MONITOR_FEATURE_INVOKE_PARENT = 15;
     // The monitor accepts state migration callbacks on resource registrations.
     RESOURCE_MONITOR_FEATURE_STATE_MIGRATIONS = 16;
+    // The monitor accepts OutputValues nested in `ResourceInvokeRequest.args` (and will harvest their
+    // dependencies into the invoke's wait-set), and will honour `accept_output_values` on the request to return
+    // OutputValues in `ResourceInvokeResponse.return`.
+    RESOURCE_MONITOR_FEATURE_INVOKE_OUTPUT_VALUES = 17;
 }
 
 // DeploymentInfo returns monitor execution state currently sent to programs
@@ -190,18 +194,18 @@ message ReadResourceResponse {
 
 // ExistsResourceRequest contains enough information to check whether a resource with a given ID exists.
 message ExistsResourceRequest {
-    string type = 1;                       // the type of the resource object.
-    reserved 2;                            // previously name, removed as there is no relevant logical identity.
-    string id = 3;                         // the ID of the resource to check.
-    string parent = 4;                     // an optional parent URN that this child resource belongs to.
-    google.protobuf.Struct properties = 5; // optional state sufficient to uniquely identify the resource.
-    string provider = 6;                   // an optional reference to the provider to use for this check.
-    string version = 7;                    // the version of the provider to use when servicing this request.
-    reserved 8;                            // previously acceptSecrets, not needed since ExistsResource only returns a bool.
-    reserved 9;                            // previously acceptResources, not needed since ExistsResource only returns a bool.
-    string pluginDownloadURL = 10;         // the server url of the provider to use when servicing this request.
+    string type = 1;                         // the type of the resource object.
+    reserved 2;                              // previously name, removed as there is no relevant logical identity.
+    string id = 3;                           // the ID of the resource to check.
+    string parent = 4;                       // an optional parent URN that this child resource belongs to.
+    google.protobuf.Struct properties = 5;   // optional state sufficient to uniquely identify the resource.
+    string provider = 6;                     // an optional reference to the provider to use for this check.
+    string version = 7;                      // the version of the provider to use when servicing this request.
+    reserved 8;                              // previously acceptSecrets, not needed since ExistsResource only returns a bool.
+    reserved 9;                              // previously acceptResources, not needed since ExistsResource only returns a bool.
+    string pluginDownloadURL = 10;           // the server url of the provider to use when servicing this request.
     map<string, bytes> pluginChecksums = 11; // a map of checksums of the provider to use when servicing this request.
-    string packageRef = 12;                // a reference from RegisterPackageRequest.
+    string packageRef = 12;                  // a reference from RegisterPackageRequest.
 }
 
 // ExistsResourceResponse contains the result of checking whether a resource exists.
@@ -360,6 +364,10 @@ message ResourceInvokeRequest {
     // the provider its parent's `providers` option names for the invoke's package, the same resolution applied to
     // resource registrations. Only respected when the monitor advertises `INVOKE_PARENT`.
     string parent = 15;
+
+    // When true the SDK accepts OutputValues in `ResourceInvokeResponse.return`. Only meaningful when the monitor
+    // advertises `INVOKE_OUTPUT_VALUES`; older monitors will ignore this field.
+    bool accept_output_values = 16;
 }
 
 message ResourceInvokeResponse {

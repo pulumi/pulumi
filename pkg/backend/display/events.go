@@ -263,6 +263,10 @@ func ConvertEngineEvent(e engine.Event, showSecrets bool) (apitype.EngineEvent, 
 			Error: p.Error,
 		}
 
+	case engine.UpdateStartedEvent:
+		// Internal to in-process callers; it has no wire representation.
+		return apiEvent, fmt.Errorf("event type %q is not serializable", e.Type)
+
 	default:
 		return apiEvent, fmt.Errorf("unknown event type %q", e.Type)
 	}

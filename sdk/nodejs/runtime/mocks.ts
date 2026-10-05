@@ -220,6 +220,13 @@ export class MockMonitor {
         }
     }
 
+    public existsResource(req: any, callback: (err: any, innerResponse: any) => void) {
+        const response = new resproto.ExistsResourceResponse();
+        response.setExists(false);
+        response.setKnown(true);
+        callback(null, response);
+    }
+
     public async registerResource(req: any, callback: (err: any, innerResponse: any) => void) {
         try {
             const transforms = req

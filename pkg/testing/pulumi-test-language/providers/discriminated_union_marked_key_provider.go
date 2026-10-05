@@ -178,6 +178,7 @@ func (p *DiscriminatedUnionMarkedKeyProvider) Check(
 func (p *DiscriminatedUnionMarkedKeyProvider) Create(
 	_ context.Context, req plugin.CreateRequest,
 ) (plugin.CreateResponse, error) {
+	properties := resource.ToResourcePropertyMap(req.Properties)
 	if string(req.URN.Type()) != fmt.Sprintf("%s:index:Example", p.pkg()) {
 		return plugin.CreateResponse{Status: resource.StatusUnknown},
 			fmt.Errorf("invalid URN type: %s", req.URN.Type())
@@ -194,13 +195,13 @@ func (p *DiscriminatedUnionMarkedKeyProvider) Create(
 
 	return plugin.CreateResponse{
 		ID: id,
-		Properties: resource.PropertyMap{
-			"unionIn": req.Properties["unionIn"],
+		Properties: resource.FromResourcePropertyMap(resource.PropertyMap{
+			"unionIn": properties["unionIn"],
 			"unionOut": resource.NewProperty(resource.PropertyMap{
 				"discriminantKind": discriminant,
 				"field1":           resource.NewProperty("hello"),
 			}),
-		},
+		}),
 		Status: resource.StatusOK,
 	}, nil
 }

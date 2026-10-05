@@ -174,7 +174,7 @@ func (r *Resource) Traverse(traverser hcl.Traverser) (model.Traversable, hcl.Dia
 	return traversable, diags
 }
 
-// Deprecated: Name returns the variable or declaration name of the resource.
+// Name returns the variable or declaration name of the resource.
 func (r *Resource) Name() string {
 	return r.Definition.Labels[0]
 }
@@ -271,7 +271,7 @@ func (r *ReadResource) Traverse(traverser hcl.Traverser) (model.Traversable, hcl
 	return traversable, diags
 }
 
-// Deprecated: Name returns the variable or declaration name of the resource.
+// Name returns the variable or declaration name of the resource.
 func (r *ReadResource) Name() string {
 	return r.Definition.Labels[0]
 }

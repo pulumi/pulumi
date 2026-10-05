@@ -28,8 +28,7 @@ func TestNeoUpgradeMessage(t *testing.T) {
 	t.Parallel()
 
 	minVer := func(s string) *semver.Version {
-		v := semver.MustParse(s)
-		return &v
+		return new(semver.MustParse(s))
 	}
 
 	cases := []struct {

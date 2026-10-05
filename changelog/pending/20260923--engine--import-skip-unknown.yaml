@@ -1,4 +1,0 @@
-component: engine
-kind: fix
-body: Report `Unknown=true` on the register response when an Import step is skipped because one of its dependencies failed during a `--continue-on-error` update, so SDKs propagate unknowns to dependents rather than treating empty outputs as real
-time: 2026-09-23T00:00:00Z

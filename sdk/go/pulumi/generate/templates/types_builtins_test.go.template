@@ -137,8 +137,9 @@ func TestOutputApply(t *testing.T) {
 		go func() { internal.ResolveOutput(out, 42, true, false, nil) }()
 
 {{range .Builtins}}
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::{{.Name}}Output", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) {{.ElementType}} { return *new({{.ElementType}}) }).({{.Name}}Output)
 			assert.True(t, ok)
 		})

@@ -24,12 +24,12 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 // evaluateLocals binds a program of local variables and evaluates each one with no
 // resources, invokes, or environment.
-func evaluateLocals(t *testing.T, source string) map[string]resource.PropertyValue {
+func evaluateLocals(t *testing.T, source string) map[string]property.Value {
 	parser := syntax.NewParser()
 	require.NoError(t, parser.ParseFile(strings.NewReader(source), "main.pp"))
 	require.False(t, parser.Diagnostics.HasErrors(), parser.Diagnostics.Error())
@@ -38,7 +38,7 @@ func evaluateLocals(t *testing.T, source string) map[string]resource.PropertyVal
 	require.False(t, diags.HasErrors(), diags.Error())
 
 	ectx := NewEvalContext("", "", "", "", "", nil, nil, nil, nil, nil, nil)
-	values := map[string]resource.PropertyValue{}
+	values := map[string]property.Value{}
 	for _, node := range program.Nodes {
 		local := node.(*pcl.LocalVariable)
 		value, poison, diags := ectx.Evaluate(local.Definition.Value)
@@ -59,28 +59,24 @@ object = length({"a" = 1, "b" = 2})
 emptyObject = length({})
 map = length({for k, v in {"a" = 1, "b" = 2, "c" = 3} : k => v})
 `)
-	assert.Equal(t, map[string]resource.PropertyValue{
-		"string":      resource.NewProperty(3.0),
-		"tuple":       resource.NewProperty(3.0),
-		"object":      resource.NewProperty(2.0),
-		"emptyObject": resource.NewProperty(0.0),
-		"map":         resource.NewProperty(3.0),
+	assert.Equal(t, map[string]property.Value{
+		"string":      property.New(3.0),
+		"tuple":       property.New(3.0),
+		"object":      property.New(2.0),
+		"emptyObject": property.New(0.0),
+		"map":         property.New(3.0),
 	}, values)
 }
 
 func TestRange(t *testing.T) {
 	t.Parallel()
 
-	// An empty cty list converts to a nil slice, so the empty case is built without make.
-	list := func(ns ...float64) resource.PropertyValue {
-		if len(ns) == 0 {
-			return resource.NewProperty([]resource.PropertyValue(nil))
-		}
-		values := make([]resource.PropertyValue, len(ns))
+	list := func(ns ...float64) property.Value {
+		values := make([]property.Value, len(ns))
 		for i, n := range ns {
-			values[i] = resource.NewProperty(n)
+			values[i] = property.New(n)
 		}
-		return resource.NewProperty(values)
+		return property.New(values)
 	}
 	values := evaluateLocals(t, `
 to = range(3)
@@ -89,7 +85,7 @@ empty = range(0)
 empty2 = range(3, 3)
 reversed = range(5, 2)
 `)
-	assert.Equal(t, map[string]resource.PropertyValue{
+	assert.Equal(t, map[string]property.Value{
 		"to":       list(0, 1, 2),
 		"fromTo":   list(2, 3, 4),
 		"empty":    list(),

@@ -16,7 +16,6 @@ package httputil
 
 import (
 	"context"
-	"crypto/tls"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -25,34 +24,16 @@ import (
 	"testing"
 	"time"
 
-	"golang.org/x/net/http2"
-
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func http2ServerAndClient(handler http.Handler) (*httptest.Server, *http.Client) {
-	// Create an HTTP/2 test server.
-	// httptest.StartTLS will set NextProtos to ["http/1.1"] if it's unset, so we need to add
-	// HTTP/2 eagerly before starting the server.
 	server := httptest.NewUnstartedServer(handler)
-	server.TLS = &tls.Config{
-		NextProtos: []string{http2.NextProtoTLS},
-	}
+	server.EnableHTTP2 = true
 	server.StartTLS()
 
-	// Create a client for the test server that will use HTTP/2.
-	// We need a client that will (a) upgrade to HTTP/2 and (b) trust the test server's certs.
-	// In order to satisfy (b), httptest sets Transport to an `http.Transport`, breaking (a),
-	// so we have to manually create an `http2.Transport` and copy over the `tls.Config`.
-	tlsConfig := server.Client().Transport.(*http.Transport).TLSClientConfig
-	client := &http.Client{
-		Transport: &http2.Transport{
-			TLSClientConfig: tlsConfig,
-		},
-	}
-
-	return server, client
+	return server, server.Client()
 }
 
 // Test that DoWithRetry rewinds and resends the request body when retrying POSTs over HTTP/2.
