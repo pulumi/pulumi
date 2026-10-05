@@ -771,6 +771,33 @@ func TestUnwrapBucketOpenError(t *testing.T) {
 	}
 }
 
+func TestLoginRejectsConflictingHelperFlags(t *testing.T) {
+	helper := filepath.Join(t.TempDir(), "helper")
+	// Discovery accepts this fixture, but executing it cannot succeed.
+	//nolint:gosec // Executable discovery fixture.
+	require.NoError(t, os.WriteFile(helper, []byte("not a program"), 0o700))
+	for _, tt := range []struct {
+		args    []string
+		message string
+	}{
+		{[]string{"--oidc-token", "unused"}, "--oidc-token cannot be used with a credential helper"},
+		{[]string{"--oidc-token", "unused", "--credential-helper", helper}, "credential-helper oidc-token"},
+		{[]string{"--credential-helper-arg", "orphaned"}, "--credential-helper-arg requires --credential-helper"},
+		{[]string{"--credential-helper="}, "credential helper path must not be empty"},
+	} {
+		t.Run(tt.message, func(t *testing.T) {
+			ptesting.IsolateCredentials(t)
+			t.Setenv("PULUMI_CREDENTIAL_HELPER", helper)
+			lm := backend.NewLoginManager(pkgauth.NewSession(io.Discard))
+			cmd := NewLoginCmd(pkgWorkspace.Instance, lm, env.NewEnv(env.MapStore{}))
+			cmd.SetOut(io.Discard)
+			cmd.SetErr(io.Discard)
+			cmd.SetArgs(tt.args)
+			require.ErrorContains(t, cmd.Execute(), tt.message)
+		})
+	}
+}
+
 func TestLoginDeclineReusesPreparedBackend(t *testing.T) {
 	ptesting.IsolateCredentials(t)
 	url := "file://" + filepath.ToSlash(t.TempDir())

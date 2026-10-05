@@ -74,11 +74,12 @@ type LoginManager interface {
 	) (backend.Backend, error)
 }
 
-// LoginOptions controls connection settings for a login.
+// LoginOptions controls connection settings and optional helper configuration for a login.
 type LoginOptions struct {
 	SetCurrent bool
 	Insecure   bool
 	Color      colors.Colorization
+	Helper     *workspace.CredentialHelper
 }
 
 // DefaultLoginManager opens backends for the CLI with the process's credential helper session.
@@ -117,11 +118,27 @@ func (f *lm) ResolveCredentials(ctx context.Context, ws pkgWorkspace.Context, ur
 			return nil, err
 		}
 	}
+	f.describeCredentials(credentials)
 	f.credentials[url] = credentials
 	return credentials, nil
 }
 
+func (f *lm) describeCredentials(credentials *pkgauth.Credentials) {
+	info := f.session.CredentialInfo(credentials.BackendURL)
+	if info.AccessTokenSource == "" {
+		info.AccessTokenSource = "none"
+		if credentials.HTTPAuth.AccessToken() != "" {
+			info.AccessTokenSource = "account credentials"
+			if env.AccessToken.Value() != "" {
+				info.AccessTokenSource = "PULUMI_ACCESS_TOKEN"
+			}
+		}
+	}
+	credentials.Info = info
+}
+
 func (f *lm) rememberCredentials(credentials *pkgauth.Credentials) {
+	f.describeCredentials(credentials)
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.credentials[credentials.BackendURL] = credentials
@@ -193,12 +210,26 @@ func (f *lm) Login(
 	if err != nil {
 		return nil, fmt.Errorf("logging in to %s: %w", url, err)
 	}
+	if options.Helper != nil {
+		helper, err := f.session.ResolveHelper()
+		if err != nil {
+			return nil, err
+		}
+		if err := pkgauth.SaveHelper(&helper.CredentialHelper); err != nil {
+			return nil, err
+		}
+	}
 	return be, nil
 }
 
 func prepareLogin(ctx context.Context, session *pkgauth.Session, ws pkgWorkspace.Context, url string,
 	project *workspace.Project, options LoginOptions,
 ) (string, bool, error) {
+	if options.Helper != nil {
+		if err := session.UseHelper(*options.Helper); err != nil {
+			return "", false, err
+		}
+	}
 	if url != "" {
 		url, err := session.PrepareBackend(ctx, url)
 		return url, false, err

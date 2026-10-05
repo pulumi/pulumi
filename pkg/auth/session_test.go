@@ -17,8 +17,10 @@ package auth
 import (
 	"context"
 	"errors"
+	"io"
 	"net/http"
 	"os"
+	"path/filepath"
 	"runtime"
 	"sync"
 	"testing"
@@ -29,6 +31,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/auth/credentialhelper"
 	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 const testBackendURL = "https://backend.example.com"
@@ -306,4 +309,52 @@ func TestPrepareRedactsHTTPCredentials(t *testing.T) {
 	_, err := session.PrepareBackend(t.Context(), testBackendURL)
 	require.NoError(t, err)
 	assert.Equal(t, "[credential] [credential]", logging.FilterString("redacted-session-token redacted-session-header"))
+}
+
+func TestSessionWithoutHelper(t *testing.T) {
+	t.Parallel()
+	session := NewSessionWithHelperFunc(nil)
+	prepared, err := session.SelectBackend(t.Context(), "https://api.pulumi.com", nil)
+	require.NoError(t, err)
+	assert.Equal(t, "https://api.pulumi.com", prepared)
+	assert.False(t, session.prepared[normalizeBackendURL(prepared)].hasHelperResponse)
+	assert.Nil(t, session.HelperHTTPAuth("https://api.pulumi.com"))
+	helper, err := session.ResolveHelper()
+	require.NoError(t, err)
+	assert.Nil(t, helper)
+	require.ErrorContains(t, session.UseHelper(workspace.CredentialHelper{}),
+		"cannot be changed after preparing a backend")
+}
+
+func TestSessionFindsSavedHelperWithoutExecuting(t *testing.T) {
+	ptesting.IsolateCredentials(t)
+	t.Setenv("PULUMI_CREDENTIAL_HELPER", "")
+	path := filepath.Join(t.TempDir(), "helper")
+	require.NoError(t, os.WriteFile(path, []byte("not an executable program"), 0o700)) //nolint:gosec // Discovery fixture.
+	require.NoError(t, workspace.StoreCredentials(workspace.Credentials{
+		CredentialHelper: &workspace.CredentialHelper{Path: path},
+	}))
+	helper, err := NewSession(io.Discard).ResolveHelper()
+	require.NoError(t, err)
+	resolvedPath, err := filepath.EvalSymlinks(path)
+	require.NoError(t, err)
+	require.NotNil(t, helper)
+	assert.Equal(t, resolvedPath, helper.Path)
+	assert.Equal(t, credentialhelper.SourceSaved, helper.Source)
+}
+
+func TestSessionDisabledHelper(t *testing.T) {
+	ptesting.IsolateCredentials(t)
+	require.NoError(t, workspace.StoreCredentials(workspace.Credentials{
+		CredentialHelper: &workspace.CredentialHelper{Path: filepath.Join(t.TempDir(), "missing-helper")},
+	}))
+	t.Setenv("PULUMI_CREDENTIAL_HELPER", "none")
+	session := NewSession(io.Discard)
+	helper, err := session.ResolveHelper()
+	require.NoError(t, err)
+	assert.Nil(t, helper)
+	prepared, err := session.PrepareBackend(t.Context(), testBackendURL)
+	require.NoError(t, err)
+	assert.Equal(t, testBackendURL, prepared)
+	assert.False(t, session.prepared[normalizeBackendURL(prepared)].hasHelperResponse)
 }

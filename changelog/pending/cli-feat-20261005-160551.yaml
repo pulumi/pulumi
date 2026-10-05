@@ -1,0 +1,4 @@
+component: cli
+kind: feat
+body: Add the experimental `pulumi login --credential-helper` flag to save a credential helper
+time: 2026-10-05T16:05:51+02:00

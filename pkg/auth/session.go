@@ -41,6 +41,7 @@ type Session struct {
 	// discoverHelper initializes runHelper lazily. It is nil when runHelper was supplied directly.
 	discoverHelper func() error
 	runHelper      runHelperFunc
+	resolved       *credentialhelper.Resolved
 	stderr         io.Writer
 	// helperEnv holds the variables applied so far, to detect conflicts between backends.
 	helperEnv map[string]string
@@ -79,6 +80,7 @@ func NewSession(stderr io.Writer) *Session {
 		if err != nil || resolved == nil {
 			return err
 		}
+		session.resolved = resolved
 		session.runHelper = session.executableRunner(resolved)
 		return nil
 	})
@@ -97,6 +99,24 @@ func FindHelper() (*credentialhelper.Resolved, error) {
 	return credentialhelper.ResolveHelper(credentialhelper.ResolveHelperOptions{Saved: saved})
 }
 
+// CredentialInfo describes the helper's contribution to a prepared backend for diagnostic output.
+func (s *Session) CredentialInfo(url string) CredentialInfo {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	result := s.prepared[normalizeBackendURL(url)]
+	info := CredentialInfo{}
+	if result.hasHelperResponse && s.resolved != nil {
+		info.HelperPath = s.resolved.Path
+	}
+	if result.httpAuth != nil {
+		info.AccessTokenSource = "none"
+		if result.httpAuth.AccessToken() != "" {
+			info.AccessTokenSource = "credential helper"
+		}
+	}
+	return info
+}
+
 // NewSessionWithHelperFunc returns a session that uses run directly, without helper discovery.
 // A nil run disables the helper.
 func NewSessionWithHelperFunc(run runHelperFunc) *Session {
@@ -112,6 +132,35 @@ func (s *Session) executableRunner(resolved *credentialhelper.Resolved) runHelpe
 		runner := credentialhelper.Runner{Path: resolved.Path, Args: resolved.Args, Stderr: s.stderr}
 		return runner.Run(ctx, request)
 	}
+}
+
+// UseHelper selects an explicitly configured helper before any backends are prepared.
+func (s *Session) UseHelper(config workspace.CredentialHelper) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if len(s.prepared) != 0 || s.unselected != nil {
+		return errors.New("credential helper cannot be changed after preparing a backend")
+	}
+	resolved, err := credentialhelper.ResolveHelper(credentialhelper.ResolveHelperOptions{Explicit: &config})
+	if err != nil {
+		return err
+	}
+	s.resolved = resolved
+	s.runHelper = s.executableRunner(resolved)
+	s.discoverHelper = nil
+	return nil
+}
+
+// ResolveHelper discovers the helper without executing it. Nil means no helper is in use.
+func (s *Session) ResolveHelper() (*credentialhelper.Resolved, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.discoverHelper != nil {
+		if err := s.discoverHelper(); err != nil {
+			return nil, err
+		}
+	}
+	return s.resolved, nil
 }
 
 // PrepareBackend runs the helper if available, applies its environment variables, and returns the normalized URL.

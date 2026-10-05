@@ -931,6 +931,17 @@ func (m defaultLoginManager) LoginWithOIDCToken(
 	expiration time.Duration,
 	setCurrent bool,
 ) (*auth.Credentials, error) {
+	if m.session != nil {
+		helper, err := m.session.ResolveHelper()
+		if err != nil {
+			return nil, err
+		}
+		if helper != nil {
+			return nil, errors.New("--oidc-token cannot be used with a credential helper; " +
+				"set PULUMI_CREDENTIAL_HELPER=none to disable the helper for this login")
+		}
+	}
+
 	cloudURL = ValueOrDefaultURL(pkgWorkspace.Instance, cloudURL)
 	accessToken, expiresAt, err := exchangeOidcToken(
 		ctx, sink, cloudURL, insecure, oidcTokenSource, organization, scope, expiration)

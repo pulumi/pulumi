@@ -27,6 +27,14 @@ type Credentials struct {
 	Insecure   bool
 	Identity   Identity
 	HTTPAuth   *HTTPAuth
+	// Info describes credential origins for diagnostic output.
+	Info CredentialInfo
+}
+
+// CredentialInfo describes authentication without exposing credential values.
+type CredentialInfo struct {
+	HelperPath        string
+	AccessTokenSource string
 }
 
 // ResolveCredentials obtains credentials for a fixed backend URL without logging in.

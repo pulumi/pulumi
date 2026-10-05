@@ -362,24 +362,24 @@ func TestHelperLoginPreservesAccounts(t *testing.T) {
 
 func TestResolveCredentialsWithoutLogin(t *testing.T) {
 	for _, tt := range []struct {
-		name, envToken, wantToken string
-		missing                   bool
-		helper                    bool
-		response                  *credentialhelper.Response
+		name, envToken, wantToken, wantSource string
+		missing                               bool
+		helper                                bool
+		response                              *credentialhelper.Response
 	}{
-		{name: "missing", missing: true},
-		{name: "stored", wantToken: "stored-token"},
-		{name: "environment", envToken: "env-token", wantToken: "env-token"},
+		{name: "missing", missing: true, wantSource: "none"},
+		{name: "stored", wantToken: "stored-token", wantSource: "account credentials"},
+		{name: "environment", envToken: "env-token", wantToken: "env-token", wantSource: "PULUMI_ACCESS_TOKEN"},
 		{
 			name: "helper", helper: true, envToken: "env-token",
 			response:  &credentialhelper.Response{AccessToken: "helper-token"},
-			wantToken: "helper-token",
+			wantToken: "helper-token", wantSource: "credential helper",
 		},
 		{
 			name: "header only", helper: true, envToken: "env-token",
-			response: &credentialhelper.Response{Headers: http.Header{"X-Gate": {"secret"}}},
+			response: &credentialhelper.Response{Headers: http.Header{"X-Gate": {"secret"}}}, wantSource: "none",
 		},
-		{name: "declined", helper: true, envToken: "env-token", wantToken: "env-token"},
+		{name: "declined", helper: true, envToken: "env-token", wantToken: "env-token", wantSource: "PULUMI_ACCESS_TOKEN"},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			ptesting.IsolateCredentials(t)
@@ -406,6 +406,7 @@ func TestResolveCredentialsWithoutLogin(t *testing.T) {
 			credentials, err := manager.ResolveCredentials(t.Context(), pkgWorkspace.Instance, server.URL, nil)
 			require.NoError(t, err)
 			assert.Equal(t, tt.wantToken, credentials.HTTPAuth.AccessToken())
+			assert.Equal(t, tt.wantSource, credentials.Info.AccessTokenSource)
 			again, err := manager.ResolveCredentials(t.Context(), pkgWorkspace.Instance, server.URL, nil)
 			require.NoError(t, err)
 			assert.Same(t, credentials.HTTPAuth, again.HTTPAuth)

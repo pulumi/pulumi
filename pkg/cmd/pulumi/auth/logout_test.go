@@ -129,6 +129,7 @@ func TestDeleteAllAccountsSkipsAgentFallbackOutsideAgentMode(t *testing.T) {
 func TestLogoutCommandAll(t *testing.T) {
 	ptesting.IsolateCredentials(t)
 	require.NoError(t, workspace.StoreCredentials(workspace.Credentials{
+		CredentialHelper: &workspace.CredentialHelper{Path: filepath.Join(t.TempDir(), "missing-helper")},
 		Accounts: map[string]workspace.Account{
 			"https://api.logout-command-all.example.com": {AccessToken: "default-token"},
 			"https://api.other.example.com":              {AccessToken: "other-token"},
@@ -147,6 +148,7 @@ func TestLogoutCommandAll(t *testing.T) {
 	require.NoError(t, err)
 	assert.Empty(t, creds.Current)
 	assert.Empty(t, creds.Accounts)
+	assert.Nil(t, creds.CredentialHelper)
 }
 
 func TestLogoutCommandDeleteCredentialsKeyRequiresAll(t *testing.T) {
@@ -163,27 +165,40 @@ func TestLogoutCommandDeleteCredentialsKeyRequiresAll(t *testing.T) {
 
 //nolint:paralleltest // IsolateCredentials changes process-wide environment variables.
 func TestLogoutCommandCloudURL(t *testing.T) {
-	ptesting.IsolateCredentials(t)
 	cloudURL := "https://api.logout-command.example.com"
-	require.NoError(t, workspace.StoreCredentials(workspace.Credentials{
-		Accounts: map[string]workspace.Account{
-			cloudURL:                        {AccessToken: "default-token"},
-			"https://api.other.example.com": {AccessToken: "other-token"},
-		},
-	}))
+	for _, name := range []string{"current", "named"} {
+		t.Run(name, func(t *testing.T) {
+			ptesting.IsolateCredentials(t)
+			helper := &workspace.CredentialHelper{Path: filepath.Join(t.TempDir(), "missing-helper")}
+			require.NoError(t, workspace.StoreCredentials(workspace.Credentials{
+				Current:          cloudURL,
+				CredentialHelper: helper,
+				Accounts: map[string]workspace.Account{
+					cloudURL:                        {AccessToken: "default-token"},
+					"https://api.other.example.com": {AccessToken: "other-token"},
+				},
+			}))
 
-	cmd := NewLogoutCmd(&pkgWorkspace.MockContext{})
-	var output bytes.Buffer
-	cmd.SetOut(&output)
-	cmd.SetArgs([]string{"--cloud-url", cloudURL})
-
-	err := cmd.Execute()
-	require.NoError(t, err)
-	assert.Contains(t, output.String(), "Logged out of "+cloudURL)
-	creds, err := workspace.GetStoredCredentials()
-	require.NoError(t, err)
-	assert.NotContains(t, creds.Accounts, cloudURL)
-	assert.Equal(t, "other-token", creds.Accounts["https://api.other.example.com"].AccessToken)
+			cmd := NewLogoutCmd(&pkgWorkspace.MockContext{GetStoredCredentialsF: workspace.GetStoredCredentials})
+			var output bytes.Buffer
+			cmd.SetOut(&output)
+			if name == "named" {
+				cmd.SetArgs([]string{"--cloud-url", cloudURL})
+			}
+			require.NoError(t, cmd.Execute())
+			assert.Contains(t, output.String(), "Logged out of "+cloudURL)
+			creds, err := workspace.GetStoredCredentials()
+			require.NoError(t, err)
+			assert.Empty(t, creds.Current)
+			assert.NotContains(t, creds.Accounts, cloudURL)
+			assert.Equal(t, "other-token", creds.Accounts["https://api.other.example.com"].AccessToken)
+			if name == "named" {
+				assert.Equal(t, helper, creds.CredentialHelper)
+			} else {
+				assert.Nil(t, creds.CredentialHelper)
+			}
+		})
+	}
 }
 
 func TestLogoutCommandFallsBackToAgentCurrentCloud(t *testing.T) {

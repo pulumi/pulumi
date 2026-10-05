@@ -21,6 +21,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	pkgauth "github.com/pulumi/pulumi/pkg/v3/auth"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
@@ -53,6 +54,11 @@ func NewLogoutCmd(ws pkgWorkspace.Context) *cobra.Command {
 			"To log out of every backend at once, pass `--all`:\n" +
 			"\n" +
 			"    $ pulumi logout --all\n" +
+			"\n" +
+			"Logging out without a URL, or with `--all`, also removes the saved credential helper, an\n" +
+			"experimental feature.\n" +
+			"Logging out of a named backend keeps it. Environment configuration and automatic helper\n" +
+			"discovery remain available; set PULUMI_CREDENTIAL_HELPER=none to disable them.\n" +
 			"\n" +
 			"Stored credentials may be encrypted with a key kept in the OS credential store. That key is\n" +
 			"shared by all your credentials files, so logging out keeps it. To delete it as well, add\n" +
@@ -91,6 +97,7 @@ func NewLogoutCmd(ws pkgWorkspace.Context) *cobra.Command {
 			}
 
 			var err error
+			removeHelper := cloudURL == ""
 			if all {
 				err = deleteAllAccounts(deleteCredentialsKey)
 				fmt.Fprintln(cmd.OutOrStdout(), "Logged out of everything")
@@ -124,6 +131,12 @@ func NewLogoutCmd(ws pkgWorkspace.Context) *cobra.Command {
 				err = deleteAccount(cloudURL)
 				if workspace.IsUndecryptableCredentials(err) {
 					return logOutOfEverything()
+				}
+				if err == nil && removeHelper {
+					var saved *workspace.CredentialHelper
+					if saved, err = pkgauth.SavedHelper(); err == nil && saved != nil {
+						err = pkgauth.SaveHelper(nil)
+					}
 				}
 				fmt.Fprintf(cmd.OutOrStdout(), "Logged out of %s\n", cloudURL)
 			}

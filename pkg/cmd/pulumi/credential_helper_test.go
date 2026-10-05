@@ -35,6 +35,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/auth/credentialhelper"
 	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 func TestMain(m *testing.M) {
@@ -92,6 +93,8 @@ func TestCredentialHelperLifecycle(t *testing.T) {
 	if err := os.Link(executable, helper); err != nil {
 		require.NoError(t, fsutil.CopyFile(helper, executable, nil))
 	}
+	helper, err = filepath.EvalSymlinks(helper)
+	require.NoError(t, err)
 	t.Setenv("PATH", dir)
 
 	output, err := runCredentialCommand(t, "version")
@@ -100,6 +103,38 @@ func TestCredentialHelperLifecycle(t *testing.T) {
 	t.Setenv("PULUMI_CREDENTIAL_HELPER", "")
 	backendURL := "file://" + filepath.ToSlash(t.TempDir())
 	output, err = runCredentialCommand(t, "login", backendURL)
+	require.NoError(t, err, output)
+	assert.Equal(t, 1, strings.Count(output, "helper diagnostic"))
+
+	// Explicit login saves the helper only after the backend opens, even when the helper declines.
+	t.Setenv("PULUMI_CREDENTIAL_HELPER", "none")
+	t.Setenv("PULUMI_TEST_HELPER_INITIAL", `{}`)
+	stored, err := workspace.GetStoredCredentials()
+	require.NoError(t, err)
+	previous := &workspace.CredentialHelper{Path: filepath.Join(t.TempDir(), "missing-helper")}
+	stored.CredentialHelper = previous
+	require.NoError(t, workspace.StoreCredentials(stored))
+	literal := "literal $(argument), with spaces"
+	flags := []string{"login", backendURL, "--credential-helper", helper, "--credential-helper-arg=" + literal}
+	blocked := filepath.Join(t.TempDir(), "not-a-directory")
+	require.NoError(t, os.WriteFile(blocked, nil, 0o600))
+	flags[1] = "file://" + filepath.ToSlash(filepath.Join(blocked, "backend"))
+	_, err = runCredentialCommand(t, flags...)
+	require.Error(t, err)
+	stored, err = workspace.GetStoredCredentials()
+	require.NoError(t, err)
+	assert.Equal(t, previous, stored.CredentialHelper)
+	flags[1] = backendURL
+	output, err = runCredentialCommand(t, flags...)
+	require.NoError(t, err, output)
+	stored, err = workspace.GetStoredCredentials()
+	require.NoError(t, err)
+	assert.Equal(t, &workspace.CredentialHelper{Path: helper, Args: []string{literal}}, stored.CredentialHelper)
+
+	// A fresh command discovers the saved helper without PATH or explicit configuration.
+	t.Setenv("PULUMI_CREDENTIAL_HELPER", "")
+	t.Setenv("PATH", t.TempDir())
+	output, err = runCredentialCommand(t, "whoami")
 	require.NoError(t, err, output)
 	assert.Equal(t, 1, strings.Count(output, "helper diagnostic"))
 }
