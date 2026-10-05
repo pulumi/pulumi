@@ -247,12 +247,6 @@
             "flags": {}
         },
         {
-            "path": ["logout"],
-            "propagate": true,
-            "exclude": true,
-            "flags": {}
-        },
-        {
             "path": ["logs"],
             "propagate": true,
             "exclude": true,
