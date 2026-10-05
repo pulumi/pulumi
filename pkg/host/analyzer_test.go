@@ -150,3 +150,26 @@ func TestAnalyzerSpawnViaLanguage(t *testing.T) {
 	err = analyzer.Close()
 	require.NoError(t, err)
 }
+
+func TestAnalyzerSpawnViaLanguageNoConfig(t *testing.T) {
+	d := diagtest.LogSink(t)
+	h, err := New(t.Context(), d, d, nil, nil, nil, nil, nil)
+	require.NoError(t, err)
+	defer func() { require.NoError(t, h.Close()) }()
+	ctx, err := plugin.NewContextWithHost(t.Context(), d, d, h, "", "", nil)
+	require.NoError(t, err)
+
+	pluginPath, err := filepath.Abs("./testdata/analyzer-language")
+	require.NoError(t, err)
+
+	path := os.Getenv("PATH")
+	t.Setenv("PATH", pluginPath+string(os.PathListSeparator)+path)
+
+	// Pass `nil` for the config, this is used for example in `pulumi policy
+	// publish`, which does not run in the context of a stack.
+	analyzer, err := plugin.NewPolicyAnalyzer(ctx.Host, ctx, "policypack", "./testdata/policypack-no-config", nil)
+	require.NoError(t, err)
+
+	err = analyzer.Close()
+	require.NoError(t, err)
+}
