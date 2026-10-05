@@ -202,7 +202,7 @@ describe("CustomResource", () => {
         assert.strictEqual(await exists.isKnown, true);
         assert.strictEqual(await exists.promise(), true);
 
-        const missing = runtime.existsResource("test:index:MyCustomResource", "some-id");
+        const missing = runtime.existsResource("test:index:MyCustomResource", "missing_id");
         assert.strictEqual(await missing.isKnown, true);
         assert.strictEqual(await missing.promise(), false);
     });

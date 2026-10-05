@@ -60,7 +60,7 @@ async def test_mock_exists_resource(setup_mocks: mocks.MockMonitor):
     assert await exists.future() is True
 
     missing = pulumi.runtime.exists_resource(
-        None, "test:index:Custom", "some-id", {}, pulumi.ResourceOptions()
+        None, "test:index:Custom", "missing_id", {}, pulumi.ResourceOptions()
     )
     assert await missing.is_known()
     assert await missing.future() is False
