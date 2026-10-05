@@ -1274,7 +1274,17 @@ func TestExistsResource(t *testing.T) {
 	t.Parallel()
 
 	err := RunErr(func(ctx *Context) error {
-		exists, known, _, _, err := await(ctx.ExistsResource("pkg:index:Resource", ID("some-id"), nil))
+		var res testResource
+		require.NoError(t, ctx.RegisterResource("pkg:index:Resource", "existing", nil, &res))
+		_, _, _, _, err := await(res.ID())
+		require.NoError(t, err)
+
+		exists, known, _, _, err := await(ctx.ExistsResource("pkg:index:Resource", ID("existing"), nil))
+		require.NoError(t, err)
+		assert.True(t, known)
+		assert.Equal(t, true, exists)
+
+		exists, known, _, _, err = await(ctx.ExistsResource("pkg:index:Resource", ID("some-id"), nil))
 		require.NoError(t, err)
 		assert.True(t, known)
 		assert.Equal(t, false, exists)
