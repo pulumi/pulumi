@@ -1555,7 +1555,7 @@ func (ctx *Context) existsPackageResource(
 		}
 
 		// Get the provider for the resource.
-		provider := getProvider(t, options.Provider, providers)
+		provider := ctx.getProvider(t, packageRef, options.Provider, providers)
 
 		// Resolve the provider reference.
 		var providerRef string
