@@ -33,6 +33,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/diy"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
+	"github.com/pulumi/pulumi/pkg/v3/backend/state"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
@@ -194,6 +195,13 @@ func NewLoginCmd(ws pkgWorkspace.Context, lm backend.LoginManager, store env.Env
 				return err
 			}
 
+			// An explicit login lets the helper choose before the saved account and PULUMI_API.
+			// URLs from command arguments, the environment, or the project remain fixed.
+			loginURL := cloudURL
+			if oidcToken == "" && urlSource == pkgWorkspace.CloudURLSourceCredentials {
+				loginURL = ""
+			}
+
 			if userProvidedURL {
 				if envURL := store.GetString(env.BackendURL); envURL != "" && envURL != cloudURL {
 					fmt.Fprintf(cmd.ErrOrStderr(),
@@ -230,7 +238,7 @@ func NewLoginCmd(ws pkgWorkspace.Context, lm backend.LoginManager, store env.Env
 				)
 			} else {
 				be, err = lm.Login(
-					httpstate.ContextWithoutAgentSignup(ctx), ws, cmdutil.Diag(), cloudURL, project,
+					httpstate.ContextWithoutAgentSignup(ctx), ws, cmdutil.Diag(), loginURL, project,
 					backend.LoginOptions{SetCurrent: true, Insecure: insecure, Color: displayOptions.Color},
 				)
 			}
@@ -238,6 +246,8 @@ func NewLoginCmd(ws pkgWorkspace.Context, lm backend.LoginManager, store env.Env
 			if err != nil {
 				return loginError(cloudURL, urlSource, cwd, err)
 			}
+
+			cloudURL = state.BackendURLKey(be)
 
 			if diy.IsDIYBackendURL(cloudURL) {
 				if defaultOrg != "" {

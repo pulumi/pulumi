@@ -38,7 +38,7 @@ import (
 // LoginManager provides a slim wrapper around functions related to backend logins.
 type LoginManager interface {
 	// ResolveCredentials prepares available credentials without validating an account or logging in.
-	// An empty URL resolves the current backend; a nonempty URL stays fixed.
+	// An empty URL resolves the current backend; a nonempty URL cannot be changed by the helper.
 	ResolveCredentials(context.Context, pkgWorkspace.Context, string, *workspace.Project) (*pkgauth.Credentials, error)
 
 	// Current returns the currently logged in backend instance for the given url.
@@ -81,15 +81,16 @@ type LoginOptions struct {
 	Color      colors.Colorization
 }
 
-// DefaultLoginManager shares credentials across backends opened by the CLI.
-var DefaultLoginManager = NewLoginManager()
+// DefaultLoginManager opens backends for the CLI with the process's credential helper session.
+var DefaultLoginManager = NewLoginManager(pkgauth.DefaultSession())
 
-// NewLoginManager returns a manager that shares resolved credentials across backend clients.
-func NewLoginManager() LoginManager {
-	return &lm{credentials: map[string]*pkgauth.Credentials{}}
+// NewLoginManager returns a LoginManager that prepares backends with the session's optional credential helper.
+func NewLoginManager(session *pkgauth.Session) LoginManager {
+	return &lm{session: session, credentials: map[string]*pkgauth.Credentials{}}
 }
 
 type lm struct {
+	session     *pkgauth.Session
 	mu          sync.Mutex
 	credentials map[string]*pkgauth.Credentials
 }
@@ -128,13 +129,10 @@ func (f *lm) prepare(
 ) (string, bool, error) {
 	if url != "" {
 		logging.AddGlobalSecretFilter(httputil.URLSecrets(url), "[credential]")
-		return url, false, nil
+		url, err := f.session.PrepareBackend(ctx, url)
+		return url, false, err
 	}
-	url, setCurrent, err := configuredBackendURL(ws, env.Global(), project)
-	if url == "" {
-		url = client.PulumiCloudURL
-	}
-	return url, setCurrent, err
+	return prepareCurrentBackend(ctx, f.session, ws, env.Global(), project)
 }
 
 func (f *lm) Current(
@@ -165,7 +163,7 @@ func (f *lm) Login(
 	ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink, url string, project *workspace.Project,
 	options LoginOptions,
 ) (backend.Backend, error) {
-	url, preparedCurrent, err := prepareLogin(ctx, ws, url, project, options)
+	url, preparedCurrent, err := prepareLogin(ctx, f.session, ws, url, project, options)
 	options.SetCurrent = options.SetCurrent || preparedCurrent
 	if err != nil {
 		return nil, err
@@ -195,11 +193,12 @@ func (f *lm) Login(
 	return be, nil
 }
 
-func prepareLogin(ctx context.Context, ws pkgWorkspace.Context, url string,
+func prepareLogin(ctx context.Context, session *pkgauth.Session, ws pkgWorkspace.Context, url string,
 	project *workspace.Project, options LoginOptions,
 ) (string, bool, error) {
 	if url != "" {
-		return url, false, nil
+		url, err := session.PrepareBackend(ctx, url)
+		return url, false, err
 	}
 	fallback, err := pkgWorkspace.GetCurrentCloudURLWithAgentFallback(ws, env.Global(), project)
 	if err != nil {
@@ -209,7 +208,8 @@ func prepareLogin(ctx context.Context, ws pkgWorkspace.Context, url string,
 	if fallback == "" {
 		fallback = httpstate.ValueOrDefaultURL(ws, "")
 	}
-	return fallback, setCurrent, nil
+	url, err = session.SelectBackend(ctx, fallback, ValidateLoginBackendURL)
+	return url, setCurrent, err
 }
 
 // LoginFromAuthContext logs in to a backend using the provided authentication context.
@@ -272,9 +272,19 @@ type MockLoginManager struct {
 	ResolveCredentialsF func(
 		context.Context, pkgWorkspace.Context, string, *workspace.Project,
 	) (*pkgauth.Credentials, error)
+
+	// HelperSession supplies helper behavior for tests. Nil disables the helper.
+	HelperSession *pkgauth.Session
 }
 
 var _ LoginManager = (*MockLoginManager)(nil)
+
+func (lm *MockLoginManager) session() *pkgauth.Session {
+	if lm.HelperSession != nil {
+		return lm.HelperSession
+	}
+	return pkgauth.NewSessionWithHelperFunc(nil)
+}
 
 func (lm *MockLoginManager) ResolveCredentials(ctx context.Context, ws pkgWorkspace.Context, url string,
 	project *workspace.Project,
@@ -282,14 +292,14 @@ func (lm *MockLoginManager) ResolveCredentials(ctx context.Context, ws pkgWorksp
 	if lm.ResolveCredentialsF != nil {
 		return lm.ResolveCredentialsF(ctx, ws, url, project)
 	}
-	return NewLoginManager().ResolveCredentials(ctx, ws, url, project)
+	return NewLoginManager(lm.session()).ResolveCredentials(ctx, ws, url, project)
 }
 
 func (lm *MockLoginManager) Login(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink, url string,
 	project *workspace.Project, options LoginOptions,
 ) (backend.Backend, error) {
 	if lm.LoginF != nil {
-		url, preparedCurrent, err := prepareLogin(ctx, ws, url, project, options)
+		url, preparedCurrent, err := prepareLogin(ctx, lm.session(), ws, url, project, options)
 		options.SetCurrent = options.SetCurrent || preparedCurrent
 		if err != nil {
 			return nil, err

@@ -22,11 +22,11 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	"github.com/pulumi/pulumi/pkg/v3/backend/state"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
@@ -52,11 +52,6 @@ func NewOrgCmd() *cobra.Command {
 				return err
 			}
 
-			cloudURL, err := pkgWorkspace.GetCurrentCloudURL(ws, env.Global(), project)
-			if err != nil {
-				return err
-			}
-
 			currentBe, err := backend.CurrentBackend(ctx, ws, backend.DefaultLoginManager, project, displayOpts)
 			if err != nil {
 				return err
@@ -68,7 +63,7 @@ func NewOrgCmd() *cobra.Command {
 			}
 
 			out := cmd.OutOrStdout()
-			fmt.Fprintf(out, "Current Backend: %s\n", cloudURL)
+			fmt.Fprintf(out, "Current Backend: %s\n", state.BackendURLKey(currentBe))
 			if defaultOrg != "" {
 				fmt.Fprintf(out, "Default Org: %s\n", defaultOrg)
 			} else {
@@ -138,12 +133,7 @@ func newOrgSetDefaultCmd() *cobra.Command {
 						"commands that use the default organization may fail"), orgName)
 			}
 
-			cloudURL, err := pkgWorkspace.GetCurrentCloudURL(ws, env.Global(), project)
-			if err != nil {
-				return err
-			}
-
-			return workspace.SetBackendConfigDefaultOrg(cloudURL, orgName)
+			return workspace.SetBackendConfigDefaultOrg(state.BackendURLKey(currentBe), orgName)
 		},
 	}
 

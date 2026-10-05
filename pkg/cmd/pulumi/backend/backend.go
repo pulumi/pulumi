@@ -18,6 +18,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"os"
 	"slices"
 	"strings"
@@ -25,12 +26,16 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/auth"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	"github.com/pulumi/pulumi/pkg/v3/backend/diy"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
+	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
 	backendSecrets "github.com/pulumi/pulumi/pkg/v3/backend/secrets"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/httputil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -46,7 +51,34 @@ func configuredBackendURL(ws pkgWorkspace.Context, e env.Env, project *workspace
 	return url, setCurrent, nil
 }
 
+func prepareCurrentBackend(ctx context.Context, session *auth.Session, ws pkgWorkspace.Context,
+	e env.Env, project *workspace.Project,
+) (string, bool, error) {
+	url, setCurrent, err := configuredBackendURL(ws, e, project)
+	if err != nil {
+		return "", false, err
+	}
+	logging.AddGlobalSecretFilter(httputil.URLSecrets(url), "[credential]")
+	if url != "" {
+		url, err = session.PrepareBackend(ctx, url)
+	} else {
+		url, err = session.SelectBackend(ctx, client.PulumiCloudURL, acceptHelperSelection)
+	}
+	logging.AddGlobalSecretFilter(httputil.URLSecrets(url), "[credential]")
+	slog.InfoContext(ctx, "Current cloud URL", "url", url)
+	return url, setCurrent, err
+}
+
+// acceptHelperSelection rejects a backend the credential helper selected that the CLI cannot open.
+func acceptHelperSelection(backendURL string) error {
+	if !diy.IsDIYBackendURL(backendURL) && !auth.IsHTTPBackend(backendURL) {
+		return errors.New("credential helper returned an unsupported backendUrl")
+	}
+	return nil
+}
+
 // PrepareBackend reads the current project and prepares its selected backend, returning the backend URL.
+// Preparation may discover and run a credential helper before the backend is opened.
 func PrepareBackend(ctx context.Context, ws pkgWorkspace.Context, lm LoginManager) (string, error) {
 	cwd, err := os.Getwd()
 	if err != nil {
