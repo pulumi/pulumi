@@ -28,6 +28,19 @@ func SavedHelper() (*workspace.CredentialHelper, error) {
 	return credentials.CredentialHelper, nil
 }
 
+// SaveHelper saves or removes the helper configuration while preserving accounts and the current backend.
+func SaveHelper(helper *workspace.CredentialHelper) error {
+	credentials, err := workspace.GetStoredCredentials()
+	if err != nil {
+		return err
+	}
+	credentials.CredentialHelper = helper
+	if err := workspace.StoreCredentials(credentials); err != nil {
+		return fmt.Errorf("saving credential helper configuration: %w", err)
+	}
+	return nil
+}
+
 // SaveCurrentBackend changes the saved selection without storing helper credentials.
 func SaveCurrentBackend(backendURL string) error {
 	credentials, err := workspace.GetStoredCredentials()

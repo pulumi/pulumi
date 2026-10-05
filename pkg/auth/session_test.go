@@ -15,10 +15,13 @@
 package auth
 
 import (
+	"bytes"
 	"context"
 	"errors"
+	"io"
 	"net/http"
 	"os"
+	"path/filepath"
 	"runtime"
 	"sync"
 	"testing"
@@ -26,12 +29,21 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/pulumi/pulumi/pkg/v3/auth/authtest"
 	"github.com/pulumi/pulumi/pkg/v3/auth/credentialhelper"
 	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 const testBackendURL = "https://backend.example.com"
+
+func TestMain(m *testing.M) {
+	if code, ran := authtest.RunHelper(); ran {
+		os.Exit(code)
+	}
+	os.Exit(m.Run())
+}
 
 // unsetEnvironment removes variables a helper is about to apply, and restores them when the test ends.
 func unsetEnvironment(t *testing.T, names ...string) {
@@ -316,4 +328,66 @@ func TestSessionWithoutHelper(t *testing.T) {
 	assert.Empty(t, session.SelectedBackend())
 	assert.False(t, session.HasHelperResponse(prepared))
 	assert.Nil(t, session.HTTPAuth("https://api.pulumi.com"))
+	helper, err := session.Helper()
+	require.NoError(t, err)
+	assert.Nil(t, helper)
+}
+
+//nolint:paralleltest // The helper applies process-wide environment variables.
+func TestSessionRunsConfiguredHelper(t *testing.T) {
+	unsetEnvironment(t, "HELPER_APPLIED")
+	fake := authtest.NewHelper(t, map[string]any{
+		"initial": authtest.Reply{
+			Response: map[string]any{"version": 1, "env": map[string]string{"HELPER_APPLIED": "yes"}},
+			Stderr:   "session helper diagnostic\n",
+		},
+	})
+	var stderr bytes.Buffer
+	session := NewSession(&stderr)
+	config := workspace.CredentialHelper{Path: fake.Path, Args: fake.Args}
+	require.NoError(t, session.UseHelper(config))
+	helper, err := session.Helper()
+	require.NoError(t, err)
+	require.NotNil(t, helper)
+	prepared, err := session.PrepareBackend(t.Context(), "s3://bucket")
+	require.NoError(t, err)
+	assert.Equal(t, "s3://bucket", prepared)
+	assert.True(t, session.HasHelperResponse(prepared))
+	assert.Equal(t, "yes", os.Getenv("HELPER_APPLIED"))
+	assert.Equal(t, "session helper diagnostic\n", stderr.String())
+	require.ErrorContains(t, session.UseHelper(config), "cannot be changed after preparing a backend")
+}
+
+func TestSessionFindsSavedHelperWithoutExecuting(t *testing.T) {
+	ptesting.IsolateCredentials(t)
+	t.Setenv("PULUMI_CREDENTIAL_HELPER", "")
+	path := filepath.Join(t.TempDir(), "helper")
+	require.NoError(t, os.WriteFile(path, []byte("not an executable program"), 0o700)) //nolint:gosec // Discovery fixture.
+	require.NoError(t, workspace.StoreCredentials(workspace.Credentials{
+		CredentialHelper: &workspace.CredentialHelper{Path: path},
+	}))
+	helper, err := NewSession(io.Discard).Helper()
+	require.NoError(t, err)
+	resolvedPath, err := filepath.EvalSymlinks(path)
+	require.NoError(t, err)
+	require.NotNil(t, helper)
+	assert.Equal(t, resolvedPath, helper.Path)
+	assert.Equal(t, credentialhelper.SourceSaved, helper.Source)
+}
+
+func TestSessionDisabledHelper(t *testing.T) {
+	ptesting.IsolateCredentials(t)
+	require.NoError(t, workspace.StoreCredentials(workspace.Credentials{
+		CredentialHelper: &workspace.CredentialHelper{Path: filepath.Join(t.TempDir(), "missing-helper")},
+	}))
+	t.Setenv("PULUMI_CREDENTIAL_HELPER", "none")
+	session := NewSession(io.Discard)
+	helper, err := session.Helper()
+	require.NoError(t, err)
+	assert.Nil(t, helper)
+	prepared, err := session.PrepareBackend(t.Context(), testBackendURL)
+	require.NoError(t, err)
+	assert.Equal(t, testBackendURL, prepared)
+	assert.Empty(t, session.SelectedBackend())
+	assert.False(t, session.HasHelperResponse(prepared))
 }
