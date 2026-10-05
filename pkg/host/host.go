@@ -541,11 +541,11 @@ func (host *defaultHost) ReleaseContext(ctx *plugin.Context) error {
 	var errs []error
 	closePlugins := func(channel chan pluginLoadRequest, collect func() []func(cancelCtx context.Context) error) error {
 		_, err := host.loadPlugin(channel, func() (any, error) {
-			cancelCtx, cancelCancel := context.WithTimeout(host.hostCtx, 5*time.Second)
-			defer cancelCancel()
 			var wg sync.WaitGroup
 			for _, shutdown := range collect() {
 				wg.Go(func() {
+					cancelCtx, cancelCancel := context.WithTimeout(host.hostCtx, 5*time.Second)
+					defer cancelCancel()
 					if err := shutdown(cancelCtx); err != nil {
 						mu.Lock()
 						errs = append(errs, err)
