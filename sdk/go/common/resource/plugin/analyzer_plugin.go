@@ -141,9 +141,12 @@ func NewPolicyAnalyzer(
 		return res, nil
 	}
 
-	// Back compatibility for runtimes without a language plugin: run "pulumi-analyzer-policy-<runtime>" with the
-	// engine address and the policy pack path. The CLI no longer takes this path (OPA now ships
-	// pulumi-language-opa); it is kept for existing callers of this exported function.
+	// This first section is a back compatibility bit for the old way of running analyzer plugins where we
+	// would look for a plugin called "pulumi-analyzer-policy-<runtime>" and invoke that plugin with two
+	// arguments, the engine address and the policy pack path. We don't do this for actual "languages" (i.e.
+	// things with language plugins), but have to leave this in to ensure things like
+	// https://github.com/pulumi/pulumi-policy-opa continue to work (although in time they could probably be
+	// moved to just be language runtimes like the rest).
 	if hasPlugin == nil {
 		hasPlugin = func(spec workspace.PluginDescriptor) bool {
 			path, err := workspace.GetPluginPath(
