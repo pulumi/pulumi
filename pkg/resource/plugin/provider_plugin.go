@@ -2577,13 +2577,13 @@ func (p *provider) SignalCancellation(ctx context.Context) error {
 		if rpcError.Code() == codes.Unimplemented {
 			// For backwards compatibility, do nothing if it's not implemented.
 			if p.plug != nil {
-				p.plug.shutdownAcknowledged.Store(true)
+				p.plug.shutdownExpected.Store(true)
 			}
 			return nil
 		}
 	} else {
 		if p.plug != nil {
-			p.plug.shutdownAcknowledged.Store(true)
+			p.plug.shutdownExpected.Store(true)
 		}
 	}
 

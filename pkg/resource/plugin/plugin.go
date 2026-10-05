@@ -115,10 +115,10 @@ type Plugin struct {
 	stdoutDone <-chan bool
 	stderrDone <-chan bool
 
-	// shutdownAcknowledged is set when the plugin has acknowledged a Cancel RPC (returned success or Unimplemented), or
-	// when its launch was abandoned because the plugin context ended. If the plugin exits after that, it's expected —
-	// not a premature crash.
-	shutdownAcknowledged atomic.Bool
+	// shutdownExpected is set when the plugin has acknowledged a Cancel RPC (returned success or Unimplemented), or
+	// when its launch was abandoned because the plugin context ended. If the plugin exits after that, it's not a
+	// premature crash.
+	shutdownExpected atomic.Bool
 
 	// The unstructured output of the process.
 	//
@@ -313,7 +313,7 @@ func newPlugin[T any](
 	defer func() {
 		if plug.Conn == nil {
 			if ctx.Base().Err() != nil {
-				plug.shutdownAcknowledged.Store(true)
+				plug.shutdownExpected.Store(true)
 			}
 			contract.IgnoreClose(plug)
 		}
@@ -766,7 +766,7 @@ func (p *Plugin) Close() error {
 	// to the user - including any potential stack trace.
 	//
 	// To help debug (and to avoid attempting to detect the stack trace), we dump the captured stdout.
-	if !p.shutdownAcknowledged.Load() &&
+	if !p.shutdownExpected.Load() &&
 		p.unstructuredOutput != nil &&
 		p.unstructuredOutput.done.CompareAndSwap(false, true) {
 		id := atomic.AddInt32(&nextStreamID, 1)
