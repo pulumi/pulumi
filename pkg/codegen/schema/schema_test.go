@@ -442,6 +442,10 @@ func TestInvalidTypes(t *testing.T) {
 		{"bad-type-2.json", "invalid token 'fake-provider::provider' (provider is a reserved word for the root module)"},
 		{"bad-type-3.json", "invalid token 'fake-provider:noModulePart' (should have three parts)"},
 		{"bad-type-4.json", "invalid token 'noParts' (should have three parts); "},
+		{
+			"bad-type-5.json",
+			"invalid token 'fake-provider:index/provider:Provider' (provider is a reserved word for the root module)",
+		},
 	}
 
 	for _, tt := range tests {
