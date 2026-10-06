@@ -87,15 +87,15 @@ type Import struct {
 	// ProviderInputs holds the full inputs for this resource's explicit provider when it is not
 	// yet in state, as supplied by the import file's deprecated providerInputs section. Imports
 	// of providers themselves carry their configuration in Inputs instead.
-	ProviderInputs resource.PropertyMap
+	ProviderInputs property.Map
 
 	// Inputs holds input properties supplied for the resource, if any. When the provider's Read cannot
 	// return a property supplied here (e.g. a write-only attribute), the supplied value is used instead.
 	// For an import of a provider, Inputs is its configuration.
-	Inputs resource.PropertyMap
+	Inputs property.Map
 	// Outputs holds the full output state supplied for the resource, if any. When set, the resource is
 	// imported from these values directly and the provider's Read is skipped entirely.
-	Outputs resource.PropertyMap
+	Outputs property.Map
 
 	// True if this import should create an empty component resource. ID must not be set if this is used.
 	Component bool
@@ -510,12 +510,7 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 
 		// Use the full provider inputs from the import file instead of ambient config.
 		// Some providers (e.g. random) don't need any config, so Inputs may be nil.
-		var inputs resource.PropertyMap
-		if imp.Inputs != nil {
-			inputs = imp.Inputs.Copy()
-		} else {
-			inputs = resource.PropertyMap{}
-		}
+		inputs := resource.ToResourcePropertyMap(imp.Inputs)
 
 		// Overlay version/URL/checksums/parameterization from the Import if present and not already
 		// in inputs.
@@ -737,10 +732,7 @@ func (i *importer) importResources(ctx context.Context) error {
 			contract.Assertf(ok, "provider reference for URN %v not found", providerURN)
 		}
 
-		inputs := imp.Inputs
-		if inputs == nil {
-			inputs = resource.PropertyMap{}
-		}
+		inputs := resource.ToResourcePropertyMap(imp.Inputs)
 
 		// Create the new desired state. Note that the resource is protected. Provider might be "" at this point.
 		new := pkgresource.NewState{
@@ -750,7 +742,7 @@ func (i *importer) importResources(ctx context.Context) error {
 			Delete:                  false,
 			ID:                      "",
 			Inputs:                  inputs,
-			Outputs:                 imp.Outputs,
+			Outputs:                 resource.ToResourcePropertyMap(imp.Outputs),
 			Parent:                  parent,
 			Protect:                 imp.Protect,
 			Taint:                   false,
