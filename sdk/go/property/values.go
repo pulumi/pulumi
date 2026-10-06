@@ -17,6 +17,7 @@ package property
 import (
 	"fmt"
 	"slices"
+	"unsafe"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/archive"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/asset"
@@ -37,7 +38,12 @@ type (
 //
 // The zero value of Value is null, and is valid for use.
 type Value struct {
-	isSecret bool
+	// secret is nil if the Value is not secret. For a secret Value, secret points to a
+	// freshly allocated non-zero-size cell that acts as a stable identity for the
+	// secret, usable as a map key via [Value.SecretID]. The pointed-to byte is always
+	// zero, so [reflect.DeepEqual] (and therefore testify's assert.Equal) treats two
+	// secret Values with equal payloads as equal regardless of the pointer address.
+	secret *[1]byte
 
 	dependencies []urn.URN // the dependencies associated with this value.
 
@@ -236,15 +242,33 @@ func (v Value) asArchiveMut() Archive { return asMut[Archive](v) }
 //
 // It does not check if there are nested values that are secret. To recursively check if
 // the [Value] contains a secret, use [Value.HasSecrets].
-func (v Value) Secret() bool { return v.isSecret }
+func (v Value) Secret() bool { return v.secret != nil }
+
+// SecretID returns an opaque identity for a secret [Value], or 0 if the Value is not
+// secret. The identity is a pointer value and so is only meaningful within a single
+// process; serialising a Value and reading it back produces a new identity.
+//
+// Values that share a SecretID were derived from a common [Value.WithSecret] call. This
+// is useful for caching the ciphertext of a particular secret across repeated
+// serialisations within one process.
+func (v Value) SecretID() uintptr { return uintptr(unsafe.Pointer(v.secret)) }
 
 // HasSecrets returns true if the Value or any nested Value is secret.
 func (v Value) HasSecrets() bool { return v.any(Value.Secret) }
 
 // WithSecret produces a new [Value] identical to it's receiver except that it's secret
-// market is set to isSecret.
+// marker is set to isSecret.
+//
+// Marking a non-secret value secret allocates a fresh identity, retrievable via
+// [Value.SecretID]. Marking an already-secret value secret preserves the existing
+// identity, so round-tripping through WithSecret(true) is a no-op.
 func (v Value) WithSecret(isSecret bool) Value {
-	v.isSecret = isSecret
+	switch {
+	case !isSecret:
+		v.secret = nil
+	case v.secret == nil:
+		v.secret = new([1]byte)
+	}
 	return v
 }
 
@@ -281,7 +305,7 @@ func (v Value) WithDependencies(dependencies []urn.URN) Value {
 // hasValue returns true if a value not a plain null. This is private to discourage external use, null _should_ normally
 // be semantically meaningful, but currently for diffs we have to treat missing and null the same.
 func (v Value) hasValue() bool {
-	return !v.IsNull() || v.isSecret || len(v.dependencies) != 0
+	return !v.IsNull() || v.secret != nil || len(v.dependencies) != 0
 }
 
 // WithGoValue creates a new Value with the inner value newGoValue.
