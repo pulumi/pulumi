@@ -778,6 +778,266 @@ export class API {
         return this.__run(options, __final);
     }
 
+    preview(options: PulumiPreviewOptions): ReturnType<API["__run"]> {
+        const __final: string[] = [];
+        __final.push("preview");
+
+        const __flags: string[] = [];
+
+        if (options.color != null) {
+            __flags.push("--color", "" + options.color);
+        }
+
+        if (options.disableIntegrityChecking) {
+            __flags.push("--disable-integrity-checking");
+        }
+
+        if (options.fullyQualifyStackNames) {
+            __flags.push("--fully-qualify-stack-names");
+        }
+
+        if (options.logflow) {
+            __flags.push("--logflow");
+        }
+
+        if (options.logtostderr) {
+            __flags.push("--logtostderr");
+        }
+
+        if (options.memprofilerate != null) {
+            __flags.push("--memprofilerate", "" + options.memprofilerate);
+        }
+
+        if (options.otelTraces != null) {
+            __flags.push("--otel-traces", "" + options.otelTraces);
+        }
+
+        if (options.profiling != null) {
+            __flags.push("--profiling", "" + options.profiling);
+        }
+
+        if (options.tracing != null) {
+            __flags.push("--tracing", "" + options.tracing);
+        }
+
+        if (options.tracingHeader != null) {
+            __flags.push("--tracing-header", "" + options.tracingHeader);
+        }
+
+        if (options.verbose != null) {
+            __flags.push("--verbose", "" + options.verbose);
+        }
+
+        for (const __item of options.attachDebugger ?? []) {
+            if (__item != null) {
+                __flags.push("--attach-debugger", "" + __item);
+            }
+        }
+
+        if (options.client != null) {
+            __flags.push("--client", "" + options.client);
+        }
+
+        for (const __item of options.config ?? []) {
+            if (__item != null) {
+                __flags.push("--config", "" + __item);
+            }
+        }
+
+        if (options.configFile != null) {
+            __flags.push("--config-file", "" + options.configFile);
+        }
+
+        if (options.configPath) {
+            __flags.push("--config-path");
+        }
+
+        if (options.copilot) {
+            __flags.push("--copilot");
+        }
+
+        if (options.debug) {
+            __flags.push("--debug");
+        }
+
+        if (options.diff) {
+            __flags.push("--diff");
+        }
+
+        for (const __item of options.exclude ?? []) {
+            if (__item != null) {
+                __flags.push("--exclude", "" + __item);
+            }
+        }
+
+        if (options.excludeDependents) {
+            __flags.push("--exclude-dependents");
+        }
+
+        if (options.execAgent != null) {
+            __flags.push("--exec-agent", "" + options.execAgent);
+        }
+
+        if (options.execKind != null) {
+            __flags.push("--exec-kind", "" + options.execKind);
+        }
+
+        if (options.expectNoChanges) {
+            __flags.push("--expect-no-changes");
+        }
+
+        if (options.ignoreProtect) {
+            __flags.push("--ignore-protect");
+        }
+
+        if (options.importFile != null) {
+            __flags.push("--import-file", "" + options.importFile);
+        }
+
+        if (options.json) {
+            __flags.push("--json");
+        }
+
+        if (options.message != null) {
+            __flags.push("--message", "" + options.message);
+        }
+
+        if (options.neo) {
+            __flags.push("--neo");
+        }
+
+        if (options.neoTaskOnFailure) {
+            __flags.push("--neo-task-on-failure");
+        }
+
+        if (options.output != null) {
+            __flags.push("--output", "" + options.output);
+        }
+
+        for (const __item of options.overrideEnv ?? []) {
+            if (__item != null) {
+                __flags.push("--override-env", "" + __item);
+            }
+        }
+
+        if (options.parallel != null) {
+            __flags.push("--parallel", "" + options.parallel);
+        }
+
+        for (const __item of options.policyPack ?? []) {
+            if (__item != null) {
+                __flags.push("--policy-pack", "" + __item);
+            }
+        }
+
+        for (const __item of options.policyPackConfig ?? []) {
+            if (__item != null) {
+                __flags.push("--policy-pack-config", "" + __item);
+            }
+        }
+
+        if (options.refresh != null) {
+            __flags.push("--refresh", "" + options.refresh);
+        }
+
+        for (const __item of options.replace ?? []) {
+            if (__item != null) {
+                __flags.push("--replace", "" + __item);
+            }
+        }
+
+        if (options.runProgram) {
+            __flags.push("--run-program");
+        }
+
+        if (options.savePlan != null) {
+            __flags.push("--save-plan", "" + options.savePlan);
+        }
+
+        if (options.showConfig) {
+            __flags.push("--show-config");
+        }
+
+        if (options.showFullOutput) {
+            __flags.push("--show-full-output");
+        }
+
+        if (options.showPolicyRemediations) {
+            __flags.push("--show-policy-remediations");
+        }
+
+        if (options.showReads) {
+            __flags.push("--show-reads");
+        }
+
+        if (options.showReplacementSteps) {
+            __flags.push("--show-replacement-steps");
+        }
+
+        if (options.showSames) {
+            __flags.push("--show-sames");
+        }
+
+        if (options.showSecrets) {
+            __flags.push("--show-secrets");
+        }
+
+        if (options.skipConfigValidation) {
+            __flags.push("--skip-config-validation");
+        }
+
+        if (options.skipPluginPreInstall) {
+            __flags.push("--skip-plugin-pre-install");
+        }
+
+        if (options.stack != null) {
+            __flags.push("--stack", "" + options.stack);
+        }
+
+        if (options.suppressOutputs) {
+            __flags.push("--suppress-outputs");
+        }
+
+        if (options.suppressPermalink != null) {
+            __flags.push("--suppress-permalink", "" + options.suppressPermalink);
+        }
+
+        if (options.suppressProgress) {
+            __flags.push("--suppress-progress");
+        }
+
+        for (const __item of options.target ?? []) {
+            if (__item != null) {
+                __flags.push("--target", "" + __item);
+            }
+        }
+
+        if (options.targetDependents) {
+            __flags.push("--target-dependents");
+        }
+
+        for (const __item of options.targetReplace ?? []) {
+            if (__item != null) {
+                __flags.push("--target-replace", "" + __item);
+            }
+        }
+
+        if (options.urns) {
+            __flags.push("--urns");
+        }
+
+        __final.push(...__flags);
+
+        const __arguments: string[] = [];
+
+        if (__arguments.length > 0) {
+            __final.push("--");
+            __final.push(...__arguments);
+        }
+
+        return this.__run(options, __final);
+    }
+
     version(options: PulumiVersionOptions): ReturnType<API["__run"]> {
         const __final: string[] = [];
         __final.push("version");
@@ -1222,6 +1482,120 @@ export interface PulumiOrgSetDefaultOptions extends BaseOptions {
     tracingHeader?: string;
     /** Enable verbose logging (e.g., v=3); anything >3 is very verbose */
     verbose?: number;
+}
+
+/** Options for the `pulumi preview` command. */
+export interface PulumiPreviewOptions extends BaseOptions {
+    /** Colorize output. Choices are: always, never, raw, auto */
+    color?: string;
+    /** Disable integrity checking of checkpoint files */
+    disableIntegrityChecking?: boolean;
+    /** Show fully-qualified stack names */
+    fullyQualifyStackNames?: boolean;
+    /** Flow log settings to child processes (like plugins) */
+    logflow?: boolean;
+    /** Log to stderr instead of to files */
+    logtostderr?: boolean;
+    /** Enable more precise (and expensive) memory allocation profiles by setting runtime.MemProfileRate */
+    memprofilerate?: number;
+    /** Export OpenTelemetry traces to the specified endpoint. Use file:// for local JSON files, grpc:// or https:// for remote collectors */
+    otelTraces?: string;
+    /** Emit CPU and memory profiles and an execution trace to '[filename].[pid].{cpu,mem,trace}', respectively */
+    profiling?: string;
+    /** Emit tracing to the specified endpoint. Use the `file:` scheme to write tracing data to a local file */
+    tracing?: string;
+    /** Include the tracing header with the given contents. */
+    tracingHeader?: string;
+    /** Enable verbose logging (e.g., v=3); anything >3 is very verbose */
+    verbose?: number;
+    /** Enable the ability to attach a debugger to the program and source based plugins being executed. Can limit debug type to 'program', 'plugins', 'plugin:<name>' or 'all'. */
+    attachDebugger?: string[];
+    /** The address of an existing language runtime host to connect to */
+    client?: string;
+    /** Config to use during the preview and save to the stack config file */
+    config?: string[];
+    /** Use the configuration values in the specified file rather than detecting the file name */
+    configFile?: string;
+    /** Config keys contain a path to a property in a map or list to set */
+    configPath?: boolean;
+    /** [DEPRECATED] Use --neo instead. Enable Pulumi Neo's assistance for improved CLI experience and insights (can also be set with PULUMI_COPILOT environment variable) */
+    copilot?: boolean;
+    /** Print detailed debugging output during resource operations */
+    debug?: boolean;
+    /** Display operation as a rich diff showing the overall change */
+    diff?: boolean;
+    /** Specify a resource URN to ignore. These resources will not be updated. Multiple resources can be specified using --exclude urn1 --exclude urn2. Wildcards (*, **) are also supported */
+    exclude?: string[];
+    /** Allow ignoring of dependent targets discovered but not specified in --exclude list */
+    excludeDependents?: boolean;
+    execAgent?: string;
+    execKind?: string;
+    /** Return an error if any changes are proposed by this preview */
+    expectNoChanges?: boolean;
+    /** Ignore the protect resource option for this operation, previewing the deletion or replacement of protected resources instead of failing */
+    ignoreProtect?: boolean;
+    /** Save any creates seen during the preview into an import file to use with 'pulumi import' */
+    importFile?: string;
+    /** Serialize the preview diffs, operations, and overall output as JSON. Set PULUMI_ENABLE_STREAMING_JSON_PREVIEW to stream JSON events instead. */
+    json?: boolean;
+    /** Optional message to associate with the preview operation */
+    message?: string;
+    /** Enable Pulumi Neo's assistance for improved CLI experience and insights (can also be set with PULUMI_NEO environment variable) */
+    neo?: boolean;
+    /** Start a Neo task to help debug errors that occur during the operation */
+    neoTaskOnFailure?: boolean;
+    /** Output format. Supported values are: default, json */
+    output?: string;
+    /** [EXPERIMENTAL] Override an imported environment for this run only, as <env>=<replacement>; repeatable */
+    overrideEnv?: string[];
+    /** Allow P resource operations to run in parallel at once (1 for no parallelism). */
+    parallel?: number;
+    /** Run one or more policy packs as part of this update */
+    policyPack?: string[];
+    /** Path to JSON file containing the config for the policy pack of the corresponding "--policy-pack" flag */
+    policyPackConfig?: string[];
+    /** Refresh the state of the stack's resources before this update */
+    refresh?: string;
+    /** Specify resources to replace. Multiple resources can be specified using --replace urn1 --replace urn2 */
+    replace?: string[];
+    /** Run the program to determine up-to-date state for providers to refresh resources, this only applies if --refresh is set */
+    runProgram?: boolean;
+    /** [PREVIEW] Save the operations proposed by the preview to a plan file at the given path */
+    savePlan?: string;
+    /** Show configuration keys and variables */
+    showConfig?: boolean;
+    /** Display full length of inputs & outputs */
+    showFullOutput?: boolean;
+    /** Show per-resource policy remediation details instead of a summary */
+    showPolicyRemediations?: boolean;
+    /** Show resources that are being read in, alongside those being managed directly in the stack */
+    showReads?: boolean;
+    /** Show detailed resource replacement creates and deletes instead of a single step */
+    showReplacementSteps?: boolean;
+    /** Show resources that needn't be updated because they haven't changed, alongside those that do */
+    showSames?: boolean;
+    /** Show secrets in plaintext in the CLI output, if used with --save-plan the secrets will also be shown in the plan file. Defaults to `false` */
+    showSecrets?: boolean;
+    /** Skip validation of stack config values against the project config schema */
+    skipConfigValidation?: boolean;
+    /** Skip the up-front provider plugin install step; missing plugins are installed lazily by the engine */
+    skipPluginPreInstall?: boolean;
+    /** The name of the stack to operate on. Defaults to the current stack */
+    stack?: string;
+    /** Suppress display of stack outputs (in case they contain sensitive values) */
+    suppressOutputs?: boolean;
+    /** Suppress display of the state permalink */
+    suppressPermalink?: string;
+    /** Suppress display of periodic progress dots */
+    suppressProgress?: boolean;
+    /** Specify a single resource URN to update. Other resources will not be updated. Multiple resources can be specified using --target urn1 --target urn2 */
+    target?: string[];
+    /** Allow updating of dependent targets discovered but not specified in --target list */
+    targetDependents?: boolean;
+    /** Specify a single resource URN to replace. Other resources will not be updated. Shorthand for --target urn --replace urn. */
+    targetReplace?: string[];
+    /** Display full URNs instead of short resource names */
+    urns?: boolean;
 }
 
 /** Options for the `pulumi version` command. */
