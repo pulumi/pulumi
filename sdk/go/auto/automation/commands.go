@@ -22,6 +22,7 @@ import (
 
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/base"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optcancel"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optconvert"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optimport"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optnew"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optorg"
@@ -112,6 +113,120 @@ func (a *API) Cancel(
 	args := []string{}
 	if stackName != nil {
 		args = append(args, fmt.Sprint(*stackName))
+	}
+	if len(args) > 0 {
+		final = append(final, "--")
+		final = append(final, args...)
+	}
+
+	return a.run(ctx, base.BaseOptions{
+		Cwd:           o.Cwd,
+		AdditionalEnv: o.AdditionalEnv,
+		Stdout:        o.Stdout,
+		Stderr:        o.Stderr,
+		Stdin:         o.Stdin,
+	}, final)
+}
+
+// Convert corresponds to `pulumi convert`.
+//
+// Convert Pulumi programs from a supported source program into other supported languages.
+//
+// The source program to convert will default to the current working directory.
+//
+// Valid source languages: yaml, terraform, bicep, arm, kubernetes
+//
+// Valid target languages: typescript, python, csharp, go, java, yaml
+// Example command usage:
+//
+//	pulumi convert --from yaml --language java --out .
+//
+// Note that certain target languages may require additional arguments to be passed to this command.
+func (a *API) Convert(
+	ctx context.Context,
+	arg []string,
+	opts ...optconvert.Option,
+) (base.CommandResult, error) {
+	o := optconvert.Options{}
+	for _, opt := range opts {
+		opt(&o)
+	}
+
+	final := []string{"convert"}
+
+	if o.Color != "" {
+		final = append(final, "--color", fmt.Sprint(o.Color))
+	}
+
+	if o.DisableIntegrityChecking {
+		final = append(final, "--disable-integrity-checking")
+	}
+
+	if o.From != "" {
+		final = append(final, "--from", fmt.Sprint(o.From))
+	}
+
+	if o.FullyQualifyStackNames {
+		final = append(final, "--fully-qualify-stack-names")
+	}
+
+	if o.GenerateOnly {
+		final = append(final, "--generate-only")
+	}
+
+	final = append(final, "--language", fmt.Sprint(o.Language))
+
+	if o.Logflow {
+		final = append(final, "--logflow")
+	}
+
+	if o.Logtostderr {
+		final = append(final, "--logtostderr")
+	}
+
+	for _, v := range o.Mappings {
+		final = append(final, "--mappings", fmt.Sprint(v))
+	}
+
+	if o.Memprofilerate != 0 {
+		final = append(final, "--memprofilerate", fmt.Sprint(o.Memprofilerate))
+	}
+
+	if o.Name != "" {
+		final = append(final, "--name", fmt.Sprint(o.Name))
+	}
+
+	if o.OtelTraces != "" {
+		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
+	}
+
+	if o.Out != "" {
+		final = append(final, "--out", fmt.Sprint(o.Out))
+	}
+
+	if o.Profiling != "" {
+		final = append(final, "--profiling", fmt.Sprint(o.Profiling))
+	}
+
+	if o.Strict {
+		final = append(final, "--strict")
+	}
+
+	if o.Tracing != "" {
+		final = append(final, "--tracing", fmt.Sprint(o.Tracing))
+	}
+
+	if o.TracingHeader != "" {
+		final = append(final, "--tracing-header", fmt.Sprint(o.TracingHeader))
+	}
+
+	if o.Verbose != 0 {
+		final = append(final, "--verbose", fmt.Sprint(o.Verbose))
+	}
+
+	args := []string{}
+	for _, v := range arg {
+		args = append(args, fmt.Sprint(v))
 	}
 	if len(args) > 0 {
 		final = append(final, "--")

@@ -174,12 +174,6 @@
             "flags": {}
         },
         {
-            "path": ["convert"],
-            "propagate": true,
-            "exclude": true,
-            "flags": {}
-        },
-        {
             "path": ["convert-trace"],
             "propagate": true,
             "exclude": true,
