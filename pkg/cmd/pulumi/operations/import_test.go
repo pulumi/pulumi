@@ -615,7 +615,7 @@ func TestParseImportFileProviderInputs(t *testing.T) {
 
 	// Verify the provider inputs were deserialized and attached to the import.
 	assert.Equal(t, providerURN, imports[0].Provider)
-	require.NotZero(t, imports[0].ProviderInputs.Len())
+	require.NotZero(t, imports[0].ProviderInputs)
 	assert.Equal(t, property.New("eu-west-1"), imports[0].ProviderInputs.Get("region"))
 	assert.Equal(t, property.New("6.0.0"), imports[0].ProviderInputs.Get("version"))
 }
@@ -838,7 +838,7 @@ func TestParseImportFileProviderInputsWithoutEntry(t *testing.T) {
 	require.Len(t, imports, 1)
 
 	assert.Equal(t, providerURN, imports[0].Provider)
-	assert.Zero(t, imports[0].ProviderInputs.Len())
+	assert.Zero(t, imports[0].ProviderInputs)
 }
 
 // Small test to ensure that importFile is marshalled to JSON sensibly, mostly checking that optional fields
