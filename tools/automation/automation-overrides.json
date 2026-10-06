@@ -186,12 +186,6 @@
             "flags": {}
         },
         {
-            "path": ["deployment"],
-            "propagate": true,
-            "exclude": true,
-            "flags": {}
-        },
-        {
             "path": ["do"],
             "propagate": true,
             "exclude": true,
