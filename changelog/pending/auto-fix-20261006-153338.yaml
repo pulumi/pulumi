@@ -1,0 +1,4 @@
+component: auto
+kind: fix
+body: Fix project settings in projects that live in symlinked directories
+time: 2026-10-06T15:33:38.512326276+02:00

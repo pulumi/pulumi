@@ -110,6 +110,13 @@ func (pw *projectWorkspace) Settings() *Settings {
 func (pw *projectWorkspace) Save() error {
 	settingsFile := pw.settingsPath()
 
+	if legacySettingsFile := pw.settingsPathFor(pw.project); legacySettingsFile != settingsFile {
+		err := os.Remove(legacySettingsFile)
+		if err != nil && !os.IsNotExist(err) {
+			return err
+		}
+	}
+
 	// If the settings file is empty, don't write an new one, and delete the old one if present. Since we put workspaces
 	// under ~/.pulumi/workspaces, cleaning them out when possible prevents us from littering a bunch of files in the
 	// home directory.
@@ -161,6 +168,10 @@ func (pw *projectWorkspace) readSettings() error {
 
 	b, err := os.ReadFile(settingsPath)
 	if err != nil && os.IsNotExist(err) {
+		settingsPath = pw.settingsPathFor(pw.project)
+		b, err = os.ReadFile(settingsPath)
+	}
+	if err != nil && os.IsNotExist(err) {
 		// not an error to not have an existing settings file.
 		pw.settings = &Settings{}
 		return nil
@@ -180,7 +191,15 @@ func (pw *projectWorkspace) readSettings() error {
 }
 
 func (pw *projectWorkspace) settingsPath() string {
-	uniqueFileName := string(pw.name) + "-" + sha1HexString(pw.project) + "-" + WorkspaceFile
+	project, err := filepath.EvalSymlinks(pw.project)
+	if err != nil {
+		project = pw.project
+	}
+	return pw.settingsPathFor(project)
+}
+
+func (pw *projectWorkspace) settingsPathFor(project string) string {
+	uniqueFileName := string(pw.name) + "-" + sha1HexString(project) + "-" + WorkspaceFile
 	path, err := workspace.GetPulumiPath(WorkspaceDir, uniqueFileName)
 	contract.AssertNoErrorf(err, "could not get workspace path")
 	return path
