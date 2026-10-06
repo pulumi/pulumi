@@ -298,6 +298,1095 @@ class API:
             on_error=on_error,
         )
 
+    def insights_account_list(
+        self,
+        *,
+        color: Optional[str] = None,
+        disable_integrity_checking: bool = False,
+        fully_qualify_stack_names: bool = False,
+        logflow: bool = False,
+        logtostderr: bool = False,
+        memprofilerate: Optional[int] = None,
+        otel_traces: Optional[str] = None,
+        profiling: Optional[str] = None,
+        tracing: Optional[str] = None,
+        tracing_header: Optional[str] = None,
+        verbose: Optional[int] = None,
+        all: bool = False,
+        count: Optional[int] = None,
+        org: Optional[str] = None,
+        output: Optional[str] = None,
+        parent: Optional[str] = None,
+        role_id: Optional[str] = None,
+        cwd: Optional[str] = None,
+        additional_env: Optional[Mapping[str, str]] = None,
+        on_output: Optional[Callable[[str], Any]] = None,
+        on_error: Optional[Callable[[str], Any]] = None,
+    ):
+        """Run `pulumi insights account list`.
+
+        :param color: Colorize output. Choices are: always, never, raw, auto
+        :param disable_integrity_checking: Disable integrity checking of checkpoint files
+        :param fully_qualify_stack_names: Show fully-qualified stack names
+        :param logflow: Flow log settings to child processes (like plugins)
+        :param logtostderr: Log to stderr instead of to files
+        :param memprofilerate: Enable more precise (and expensive) memory allocation profiles by setting runtime.MemProfileRate
+        :param otel_traces: Export OpenTelemetry traces to the specified endpoint. Use file:// for local JSON files, grpc:// or https:// for remote collectors
+        :param profiling: Emit CPU and memory profiles and an execution trace to '[filename].[pid].{cpu,mem,trace}', respectively
+        :param tracing: Emit tracing to the specified endpoint. Use the `file:` scheme to write tracing data to a local file
+        :param tracing_header: Include the tracing header with the given contents.
+        :param verbose: Enable verbose logging (e.g., v=3); anything >3 is very verbose
+        :param all: Return every matching account
+        :param count: Return at most this many accounts (--count 0 is equivalent to --all)
+        :param org: Organization to list accounts for (defaults to the current default org)
+        :param output: Output format. Supported values are: default and json
+        :param parent: Filter to child accounts of the named parent account
+        :param role_id: Filter to accounts accessible by the named role
+        :param cwd: Working directory to run the command in.
+        :param additional_env: Additional environment variables to set when running the command.
+        :param on_output: A callback to invoke when the command outputs stdout data.
+        :param on_error: A callback to invoke when the command outputs stderr data."""
+        __final = []
+        __final.append("insights")
+        __final.append("account")
+        __final.append("list")
+        __flags = []
+        if color is not None:
+            __flags.extend(["--color", str(color)])
+        if disable_integrity_checking:
+            __flags.append("--disable-integrity-checking")
+        if fully_qualify_stack_names:
+            __flags.append("--fully-qualify-stack-names")
+        if logflow:
+            __flags.append("--logflow")
+        if logtostderr:
+            __flags.append("--logtostderr")
+        if memprofilerate is not None:
+            __flags.extend(["--memprofilerate", str(memprofilerate)])
+        if otel_traces is not None:
+            __flags.extend(["--otel-traces", str(otel_traces)])
+        if profiling is not None:
+            __flags.extend(["--profiling", str(profiling)])
+        if tracing is not None:
+            __flags.extend(["--tracing", str(tracing)])
+        if tracing_header is not None:
+            __flags.extend(["--tracing-header", str(tracing_header)])
+        if verbose is not None:
+            __flags.extend(["--verbose", str(verbose)])
+        if all:
+            __flags.append("--all")
+        if count is not None:
+            __flags.extend(["--count", str(count)])
+        if org is not None:
+            __flags.extend(["--org", str(org)])
+        if output is not None:
+            __flags.extend(["--output", str(output)])
+        if parent is not None:
+            __flags.extend(["--parent", str(parent)])
+        if role_id is not None:
+            __flags.extend(["--role-id", str(role_id)])
+        __final.extend(__flags)
+        __arguments: list[str] = []
+        if __arguments:
+            __final.append("--")
+            __final.extend(__arguments)
+        return self._run(
+            __final,
+            cwd=cwd,
+            additional_env=additional_env,
+            on_output=on_output,
+            on_error=on_error,
+        )
+
+    def insights_account_new(
+        self,
+        name: str,
+        *,
+        color: Optional[str] = None,
+        disable_integrity_checking: bool = False,
+        fully_qualify_stack_names: bool = False,
+        logflow: bool = False,
+        logtostderr: bool = False,
+        memprofilerate: Optional[int] = None,
+        otel_traces: Optional[str] = None,
+        profiling: Optional[str] = None,
+        tracing: Optional[str] = None,
+        tracing_header: Optional[str] = None,
+        verbose: Optional[int] = None,
+        agent_pool_id: Optional[str] = None,
+        environment: Optional[str] = None,
+        org: Optional[str] = None,
+        output: Optional[str] = None,
+        provider: Optional[str] = None,
+        provider_config: Optional[str] = None,
+        scan_schedule: Optional[str] = None,
+        cwd: Optional[str] = None,
+        additional_env: Optional[Mapping[str, str]] = None,
+        on_output: Optional[Callable[[str], Any]] = None,
+        on_error: Optional[Callable[[str], Any]] = None,
+    ):
+        """Run `pulumi insights account new`.
+
+        :param color: Colorize output. Choices are: always, never, raw, auto
+        :param disable_integrity_checking: Disable integrity checking of checkpoint files
+        :param fully_qualify_stack_names: Show fully-qualified stack names
+        :param logflow: Flow log settings to child processes (like plugins)
+        :param logtostderr: Log to stderr instead of to files
+        :param memprofilerate: Enable more precise (and expensive) memory allocation profiles by setting runtime.MemProfileRate
+        :param otel_traces: Export OpenTelemetry traces to the specified endpoint. Use file:// for local JSON files, grpc:// or https:// for remote collectors
+        :param profiling: Emit CPU and memory profiles and an execution trace to '[filename].[pid].{cpu,mem,trace}', respectively
+        :param tracing: Emit tracing to the specified endpoint. Use the `file:` scheme to write tracing data to a local file
+        :param tracing_header: Include the tracing header with the given contents.
+        :param verbose: Enable verbose logging (e.g., v=3); anything >3 is very verbose
+        :param agent_pool_id: ID of the agent pool to run discovery workflows (defaults to the org's default pool)
+        :param environment: ESC environment containing provider credentials, in the form project/environment with an optional @version suffix
+        :param org: Organization that will own the Insights account (defaults to the current default org)
+        :param output: Output format. Supported values are: default and json
+        :param provider: Cloud provider for the account. One of: aws, gcp, azure-native, oci, kubernetes
+        :param provider_config: Provider-specific configuration as an inline JSON object (e.g. '{"regions":["us-east-1"]}')
+        :param scan_schedule: Automated scan schedule. One of: none, 12h, daily
+        :param cwd: Working directory to run the command in.
+        :param additional_env: Additional environment variables to set when running the command.
+        :param on_output: A callback to invoke when the command outputs stdout data.
+        :param on_error: A callback to invoke when the command outputs stderr data."""
+        __final = []
+        __final.append("insights")
+        __final.append("account")
+        __final.append("new")
+        __flags = []
+        __flags.append("--yes")
+        if color is not None:
+            __flags.extend(["--color", str(color)])
+        if disable_integrity_checking:
+            __flags.append("--disable-integrity-checking")
+        if fully_qualify_stack_names:
+            __flags.append("--fully-qualify-stack-names")
+        if logflow:
+            __flags.append("--logflow")
+        if logtostderr:
+            __flags.append("--logtostderr")
+        if memprofilerate is not None:
+            __flags.extend(["--memprofilerate", str(memprofilerate)])
+        if otel_traces is not None:
+            __flags.extend(["--otel-traces", str(otel_traces)])
+        if profiling is not None:
+            __flags.extend(["--profiling", str(profiling)])
+        if tracing is not None:
+            __flags.extend(["--tracing", str(tracing)])
+        if tracing_header is not None:
+            __flags.extend(["--tracing-header", str(tracing_header)])
+        if verbose is not None:
+            __flags.extend(["--verbose", str(verbose)])
+        if agent_pool_id is not None:
+            __flags.extend(["--agent-pool-id", str(agent_pool_id)])
+        if environment is not None:
+            __flags.extend(["--environment", str(environment)])
+        if org is not None:
+            __flags.extend(["--org", str(org)])
+        if output is not None:
+            __flags.extend(["--output", str(output)])
+        if provider is not None:
+            __flags.extend(["--provider", str(provider)])
+        if provider_config is not None:
+            __flags.extend(["--provider-config", str(provider_config)])
+        if scan_schedule is not None:
+            __flags.extend(["--scan-schedule", str(scan_schedule)])
+        __final.extend(__flags)
+        __arguments: list[str] = []
+        __arguments.append(str(name))
+        if __arguments:
+            __final.append("--")
+            __final.extend(__arguments)
+        return self._run(
+            __final,
+            cwd=cwd,
+            additional_env=additional_env,
+            on_output=on_output,
+            on_error=on_error,
+        )
+
+    def insights_account_scan_get(
+        self,
+        account: str,
+        scan_id: str,
+        *,
+        color: Optional[str] = None,
+        disable_integrity_checking: bool = False,
+        fully_qualify_stack_names: bool = False,
+        logflow: bool = False,
+        logtostderr: bool = False,
+        memprofilerate: Optional[int] = None,
+        otel_traces: Optional[str] = None,
+        profiling: Optional[str] = None,
+        tracing: Optional[str] = None,
+        tracing_header: Optional[str] = None,
+        verbose: Optional[int] = None,
+        agent_pool: Optional[str] = None,
+        batch_size: Optional[int] = None,
+        list_concurrency: Optional[int] = None,
+        org: Optional[str] = None,
+        output: Optional[str] = None,
+        read_concurrency: Optional[int] = None,
+        read_timeout: Optional[str] = None,
+        cwd: Optional[str] = None,
+        additional_env: Optional[Mapping[str, str]] = None,
+        on_output: Optional[Callable[[str], Any]] = None,
+        on_error: Optional[Callable[[str], Any]] = None,
+    ):
+        """Run `pulumi insights account scan get`.
+
+        :param color: Colorize output. Choices are: always, never, raw, auto
+        :param disable_integrity_checking: Disable integrity checking of checkpoint files
+        :param fully_qualify_stack_names: Show fully-qualified stack names
+        :param logflow: Flow log settings to child processes (like plugins)
+        :param logtostderr: Log to stderr instead of to files
+        :param memprofilerate: Enable more precise (and expensive) memory allocation profiles by setting runtime.MemProfileRate
+        :param otel_traces: Export OpenTelemetry traces to the specified endpoint. Use file:// for local JSON files, grpc:// or https:// for remote collectors
+        :param profiling: Emit CPU and memory profiles and an execution trace to '[filename].[pid].{cpu,mem,trace}', respectively
+        :param tracing: Emit tracing to the specified endpoint. Use the `file:` scheme to write tracing data to a local file
+        :param tracing_header: Include the tracing header with the given contents.
+        :param verbose: Enable verbose logging (e.g., v=3); anything >3 is very verbose
+        :param agent_pool: Agent pool ID to use for the scan (defaults to the account's default pool)
+        :param batch_size: Number of resources processed per batch (server default when 0)
+        :param list_concurrency: Parallelism for list operations during the scan (server default when 0)
+        :param org: Organization that owns the Insights account (defaults to the current default org)
+        :param output: Output format. Supported values are: default and json
+        :param read_concurrency: Parallelism for read operations during the scan (server default when 0)
+        :param read_timeout: Per-read timeout as a Go duration (e.g. '30s', '5m'); server default when empty
+        :param cwd: Working directory to run the command in.
+        :param additional_env: Additional environment variables to set when running the command.
+        :param on_output: A callback to invoke when the command outputs stdout data.
+        :param on_error: A callback to invoke when the command outputs stderr data."""
+        __final = []
+        __final.append("insights")
+        __final.append("account")
+        __final.append("scan")
+        __final.append("get")
+        __flags = []
+        if color is not None:
+            __flags.extend(["--color", str(color)])
+        if disable_integrity_checking:
+            __flags.append("--disable-integrity-checking")
+        if fully_qualify_stack_names:
+            __flags.append("--fully-qualify-stack-names")
+        if logflow:
+            __flags.append("--logflow")
+        if logtostderr:
+            __flags.append("--logtostderr")
+        if memprofilerate is not None:
+            __flags.extend(["--memprofilerate", str(memprofilerate)])
+        if otel_traces is not None:
+            __flags.extend(["--otel-traces", str(otel_traces)])
+        if profiling is not None:
+            __flags.extend(["--profiling", str(profiling)])
+        if tracing is not None:
+            __flags.extend(["--tracing", str(tracing)])
+        if tracing_header is not None:
+            __flags.extend(["--tracing-header", str(tracing_header)])
+        if verbose is not None:
+            __flags.extend(["--verbose", str(verbose)])
+        if agent_pool is not None:
+            __flags.extend(["--agent-pool", str(agent_pool)])
+        if batch_size is not None:
+            __flags.extend(["--batch-size", str(batch_size)])
+        if list_concurrency is not None:
+            __flags.extend(["--list-concurrency", str(list_concurrency)])
+        if org is not None:
+            __flags.extend(["--org", str(org)])
+        if output is not None:
+            __flags.extend(["--output", str(output)])
+        if read_concurrency is not None:
+            __flags.extend(["--read-concurrency", str(read_concurrency)])
+        if read_timeout is not None:
+            __flags.extend(["--read-timeout", str(read_timeout)])
+        __final.extend(__flags)
+        __arguments: list[str] = []
+        __arguments.append(str(account))
+        __arguments.append(str(scan_id))
+        if __arguments:
+            __final.append("--")
+            __final.extend(__arguments)
+        return self._run(
+            __final,
+            cwd=cwd,
+            additional_env=additional_env,
+            on_output=on_output,
+            on_error=on_error,
+        )
+
+    def insights_account_scan_list(
+        self,
+        account: str,
+        *,
+        color: Optional[str] = None,
+        disable_integrity_checking: bool = False,
+        fully_qualify_stack_names: bool = False,
+        logflow: bool = False,
+        logtostderr: bool = False,
+        memprofilerate: Optional[int] = None,
+        otel_traces: Optional[str] = None,
+        profiling: Optional[str] = None,
+        tracing: Optional[str] = None,
+        tracing_header: Optional[str] = None,
+        verbose: Optional[int] = None,
+        agent_pool: Optional[str] = None,
+        batch_size: Optional[int] = None,
+        list_concurrency: Optional[int] = None,
+        org: Optional[str] = None,
+        output: Optional[str] = None,
+        read_concurrency: Optional[int] = None,
+        read_timeout: Optional[str] = None,
+        all: bool = False,
+        count: Optional[int] = None,
+        cwd: Optional[str] = None,
+        additional_env: Optional[Mapping[str, str]] = None,
+        on_output: Optional[Callable[[str], Any]] = None,
+        on_error: Optional[Callable[[str], Any]] = None,
+    ):
+        """Run `pulumi insights account scan list`.
+
+        :param color: Colorize output. Choices are: always, never, raw, auto
+        :param disable_integrity_checking: Disable integrity checking of checkpoint files
+        :param fully_qualify_stack_names: Show fully-qualified stack names
+        :param logflow: Flow log settings to child processes (like plugins)
+        :param logtostderr: Log to stderr instead of to files
+        :param memprofilerate: Enable more precise (and expensive) memory allocation profiles by setting runtime.MemProfileRate
+        :param otel_traces: Export OpenTelemetry traces to the specified endpoint. Use file:// for local JSON files, grpc:// or https:// for remote collectors
+        :param profiling: Emit CPU and memory profiles and an execution trace to '[filename].[pid].{cpu,mem,trace}', respectively
+        :param tracing: Emit tracing to the specified endpoint. Use the `file:` scheme to write tracing data to a local file
+        :param tracing_header: Include the tracing header with the given contents.
+        :param verbose: Enable verbose logging (e.g., v=3); anything >3 is very verbose
+        :param agent_pool: Agent pool ID to use for the scan (defaults to the account's default pool)
+        :param batch_size: Number of resources processed per batch (server default when 0)
+        :param list_concurrency: Parallelism for list operations during the scan (server default when 0)
+        :param org: Organization that owns the Insights account (defaults to the current default org)
+        :param output: Output format. Supported values are: default and json
+        :param read_concurrency: Parallelism for read operations during the scan (server default when 0)
+        :param read_timeout: Per-read timeout as a Go duration (e.g. '30s', '5m'); server default when empty
+        :param all: Return every matching scan
+        :param count: Return at most this many scans (--count 0 is equivalent to --all)
+        :param cwd: Working directory to run the command in.
+        :param additional_env: Additional environment variables to set when running the command.
+        :param on_output: A callback to invoke when the command outputs stdout data.
+        :param on_error: A callback to invoke when the command outputs stderr data."""
+        __final = []
+        __final.append("insights")
+        __final.append("account")
+        __final.append("scan")
+        __final.append("list")
+        __flags = []
+        if color is not None:
+            __flags.extend(["--color", str(color)])
+        if disable_integrity_checking:
+            __flags.append("--disable-integrity-checking")
+        if fully_qualify_stack_names:
+            __flags.append("--fully-qualify-stack-names")
+        if logflow:
+            __flags.append("--logflow")
+        if logtostderr:
+            __flags.append("--logtostderr")
+        if memprofilerate is not None:
+            __flags.extend(["--memprofilerate", str(memprofilerate)])
+        if otel_traces is not None:
+            __flags.extend(["--otel-traces", str(otel_traces)])
+        if profiling is not None:
+            __flags.extend(["--profiling", str(profiling)])
+        if tracing is not None:
+            __flags.extend(["--tracing", str(tracing)])
+        if tracing_header is not None:
+            __flags.extend(["--tracing-header", str(tracing_header)])
+        if verbose is not None:
+            __flags.extend(["--verbose", str(verbose)])
+        if agent_pool is not None:
+            __flags.extend(["--agent-pool", str(agent_pool)])
+        if batch_size is not None:
+            __flags.extend(["--batch-size", str(batch_size)])
+        if list_concurrency is not None:
+            __flags.extend(["--list-concurrency", str(list_concurrency)])
+        if org is not None:
+            __flags.extend(["--org", str(org)])
+        if output is not None:
+            __flags.extend(["--output", str(output)])
+        if read_concurrency is not None:
+            __flags.extend(["--read-concurrency", str(read_concurrency)])
+        if read_timeout is not None:
+            __flags.extend(["--read-timeout", str(read_timeout)])
+        if all:
+            __flags.append("--all")
+        if count is not None:
+            __flags.extend(["--count", str(count)])
+        __final.extend(__flags)
+        __arguments: list[str] = []
+        __arguments.append(str(account))
+        if __arguments:
+            __final.append("--")
+            __final.extend(__arguments)
+        return self._run(
+            __final,
+            cwd=cwd,
+            additional_env=additional_env,
+            on_output=on_output,
+            on_error=on_error,
+        )
+
+    def insights_account_scan_log(
+        self,
+        account: str,
+        scan_id: str,
+        *,
+        color: Optional[str] = None,
+        disable_integrity_checking: bool = False,
+        fully_qualify_stack_names: bool = False,
+        logflow: bool = False,
+        logtostderr: bool = False,
+        memprofilerate: Optional[int] = None,
+        otel_traces: Optional[str] = None,
+        profiling: Optional[str] = None,
+        tracing: Optional[str] = None,
+        tracing_header: Optional[str] = None,
+        verbose: Optional[int] = None,
+        agent_pool: Optional[str] = None,
+        batch_size: Optional[int] = None,
+        list_concurrency: Optional[int] = None,
+        org: Optional[str] = None,
+        output: Optional[str] = None,
+        read_concurrency: Optional[int] = None,
+        read_timeout: Optional[str] = None,
+        all: bool = False,
+        count: Optional[int] = None,
+        job: Optional[int] = None,
+        step: Optional[int] = None,
+        cwd: Optional[str] = None,
+        additional_env: Optional[Mapping[str, str]] = None,
+        on_output: Optional[Callable[[str], Any]] = None,
+        on_error: Optional[Callable[[str], Any]] = None,
+    ):
+        """Run `pulumi insights account scan log`.
+
+        :param color: Colorize output. Choices are: always, never, raw, auto
+        :param disable_integrity_checking: Disable integrity checking of checkpoint files
+        :param fully_qualify_stack_names: Show fully-qualified stack names
+        :param logflow: Flow log settings to child processes (like plugins)
+        :param logtostderr: Log to stderr instead of to files
+        :param memprofilerate: Enable more precise (and expensive) memory allocation profiles by setting runtime.MemProfileRate
+        :param otel_traces: Export OpenTelemetry traces to the specified endpoint. Use file:// for local JSON files, grpc:// or https:// for remote collectors
+        :param profiling: Emit CPU and memory profiles and an execution trace to '[filename].[pid].{cpu,mem,trace}', respectively
+        :param tracing: Emit tracing to the specified endpoint. Use the `file:` scheme to write tracing data to a local file
+        :param tracing_header: Include the tracing header with the given contents.
+        :param verbose: Enable verbose logging (e.g., v=3); anything >3 is very verbose
+        :param agent_pool: Agent pool ID to use for the scan (defaults to the account's default pool)
+        :param batch_size: Number of resources processed per batch (server default when 0)
+        :param list_concurrency: Parallelism for list operations during the scan (server default when 0)
+        :param org: Organization that owns the Insights account (defaults to the current default org)
+        :param output: Output format. Supported values are: default and json
+        :param read_concurrency: Parallelism for read operations during the scan (server default when 0)
+        :param read_timeout: Per-read timeout as a Go duration (e.g. '30s', '5m'); server default when empty
+        :param all: Fetch every entry (mutually exclusive with --count)
+        :param count: Number of log entries to display
+        :param job: Switch to step mode and select this job index (combine with --step)
+        :param step: Step index within --job whose log output to fetch
+        :param cwd: Working directory to run the command in.
+        :param additional_env: Additional environment variables to set when running the command.
+        :param on_output: A callback to invoke when the command outputs stdout data.
+        :param on_error: A callback to invoke when the command outputs stderr data."""
+        __final = []
+        __final.append("insights")
+        __final.append("account")
+        __final.append("scan")
+        __final.append("log")
+        __flags = []
+        if color is not None:
+            __flags.extend(["--color", str(color)])
+        if disable_integrity_checking:
+            __flags.append("--disable-integrity-checking")
+        if fully_qualify_stack_names:
+            __flags.append("--fully-qualify-stack-names")
+        if logflow:
+            __flags.append("--logflow")
+        if logtostderr:
+            __flags.append("--logtostderr")
+        if memprofilerate is not None:
+            __flags.extend(["--memprofilerate", str(memprofilerate)])
+        if otel_traces is not None:
+            __flags.extend(["--otel-traces", str(otel_traces)])
+        if profiling is not None:
+            __flags.extend(["--profiling", str(profiling)])
+        if tracing is not None:
+            __flags.extend(["--tracing", str(tracing)])
+        if tracing_header is not None:
+            __flags.extend(["--tracing-header", str(tracing_header)])
+        if verbose is not None:
+            __flags.extend(["--verbose", str(verbose)])
+        if agent_pool is not None:
+            __flags.extend(["--agent-pool", str(agent_pool)])
+        if batch_size is not None:
+            __flags.extend(["--batch-size", str(batch_size)])
+        if list_concurrency is not None:
+            __flags.extend(["--list-concurrency", str(list_concurrency)])
+        if org is not None:
+            __flags.extend(["--org", str(org)])
+        if output is not None:
+            __flags.extend(["--output", str(output)])
+        if read_concurrency is not None:
+            __flags.extend(["--read-concurrency", str(read_concurrency)])
+        if read_timeout is not None:
+            __flags.extend(["--read-timeout", str(read_timeout)])
+        if all:
+            __flags.append("--all")
+        if count is not None:
+            __flags.extend(["--count", str(count)])
+        if job is not None:
+            __flags.extend(["--job", str(job)])
+        if step is not None:
+            __flags.extend(["--step", str(step)])
+        __final.extend(__flags)
+        __arguments: list[str] = []
+        __arguments.append(str(account))
+        __arguments.append(str(scan_id))
+        if __arguments:
+            __final.append("--")
+            __final.extend(__arguments)
+        return self._run(
+            __final,
+            cwd=cwd,
+            additional_env=additional_env,
+            on_output=on_output,
+            on_error=on_error,
+        )
+
+    def insights_account_scan(
+        self,
+        *,
+        color: Optional[str] = None,
+        disable_integrity_checking: bool = False,
+        fully_qualify_stack_names: bool = False,
+        logflow: bool = False,
+        logtostderr: bool = False,
+        memprofilerate: Optional[int] = None,
+        otel_traces: Optional[str] = None,
+        profiling: Optional[str] = None,
+        tracing: Optional[str] = None,
+        tracing_header: Optional[str] = None,
+        verbose: Optional[int] = None,
+        agent_pool: Optional[str] = None,
+        batch_size: Optional[int] = None,
+        list_concurrency: Optional[int] = None,
+        org: Optional[str] = None,
+        output: Optional[str] = None,
+        read_concurrency: Optional[int] = None,
+        read_timeout: Optional[str] = None,
+        cwd: Optional[str] = None,
+        additional_env: Optional[Mapping[str, str]] = None,
+        on_output: Optional[Callable[[str], Any]] = None,
+        on_error: Optional[Callable[[str], Any]] = None,
+    ):
+        """Run `pulumi insights account scan`.
+
+        :param color: Colorize output. Choices are: always, never, raw, auto
+        :param disable_integrity_checking: Disable integrity checking of checkpoint files
+        :param fully_qualify_stack_names: Show fully-qualified stack names
+        :param logflow: Flow log settings to child processes (like plugins)
+        :param logtostderr: Log to stderr instead of to files
+        :param memprofilerate: Enable more precise (and expensive) memory allocation profiles by setting runtime.MemProfileRate
+        :param otel_traces: Export OpenTelemetry traces to the specified endpoint. Use file:// for local JSON files, grpc:// or https:// for remote collectors
+        :param profiling: Emit CPU and memory profiles and an execution trace to '[filename].[pid].{cpu,mem,trace}', respectively
+        :param tracing: Emit tracing to the specified endpoint. Use the `file:` scheme to write tracing data to a local file
+        :param tracing_header: Include the tracing header with the given contents.
+        :param verbose: Enable verbose logging (e.g., v=3); anything >3 is very verbose
+        :param agent_pool: Agent pool ID to use for the scan (defaults to the account's default pool)
+        :param batch_size: Number of resources processed per batch (server default when 0)
+        :param list_concurrency: Parallelism for list operations during the scan (server default when 0)
+        :param org: Organization that owns the Insights account (defaults to the current default org)
+        :param output: Output format. Supported values are: default and json
+        :param read_concurrency: Parallelism for read operations during the scan (server default when 0)
+        :param read_timeout: Per-read timeout as a Go duration (e.g. '30s', '5m'); server default when empty
+        :param cwd: Working directory to run the command in.
+        :param additional_env: Additional environment variables to set when running the command.
+        :param on_output: A callback to invoke when the command outputs stdout data.
+        :param on_error: A callback to invoke when the command outputs stderr data."""
+        __final = []
+        __final.append("insights")
+        __final.append("account")
+        __final.append("scan")
+        __flags = []
+        if color is not None:
+            __flags.extend(["--color", str(color)])
+        if disable_integrity_checking:
+            __flags.append("--disable-integrity-checking")
+        if fully_qualify_stack_names:
+            __flags.append("--fully-qualify-stack-names")
+        if logflow:
+            __flags.append("--logflow")
+        if logtostderr:
+            __flags.append("--logtostderr")
+        if memprofilerate is not None:
+            __flags.extend(["--memprofilerate", str(memprofilerate)])
+        if otel_traces is not None:
+            __flags.extend(["--otel-traces", str(otel_traces)])
+        if profiling is not None:
+            __flags.extend(["--profiling", str(profiling)])
+        if tracing is not None:
+            __flags.extend(["--tracing", str(tracing)])
+        if tracing_header is not None:
+            __flags.extend(["--tracing-header", str(tracing_header)])
+        if verbose is not None:
+            __flags.extend(["--verbose", str(verbose)])
+        if agent_pool is not None:
+            __flags.extend(["--agent-pool", str(agent_pool)])
+        if batch_size is not None:
+            __flags.extend(["--batch-size", str(batch_size)])
+        if list_concurrency is not None:
+            __flags.extend(["--list-concurrency", str(list_concurrency)])
+        if org is not None:
+            __flags.extend(["--org", str(org)])
+        if output is not None:
+            __flags.extend(["--output", str(output)])
+        if read_concurrency is not None:
+            __flags.extend(["--read-concurrency", str(read_concurrency)])
+        if read_timeout is not None:
+            __flags.extend(["--read-timeout", str(read_timeout)])
+        __final.extend(__flags)
+        __arguments: list[str] = []
+        if __arguments:
+            __final.append("--")
+            __final.extend(__arguments)
+        return self._run(
+            __final,
+            cwd=cwd,
+            additional_env=additional_env,
+            on_output=on_output,
+            on_error=on_error,
+        )
+
+    def insights_account(
+        self,
+        *,
+        color: Optional[str] = None,
+        disable_integrity_checking: bool = False,
+        fully_qualify_stack_names: bool = False,
+        logflow: bool = False,
+        logtostderr: bool = False,
+        memprofilerate: Optional[int] = None,
+        otel_traces: Optional[str] = None,
+        profiling: Optional[str] = None,
+        tracing: Optional[str] = None,
+        tracing_header: Optional[str] = None,
+        verbose: Optional[int] = None,
+        cwd: Optional[str] = None,
+        additional_env: Optional[Mapping[str, str]] = None,
+        on_output: Optional[Callable[[str], Any]] = None,
+        on_error: Optional[Callable[[str], Any]] = None,
+    ):
+        """Run `pulumi insights account`.
+
+        :param color: Colorize output. Choices are: always, never, raw, auto
+        :param disable_integrity_checking: Disable integrity checking of checkpoint files
+        :param fully_qualify_stack_names: Show fully-qualified stack names
+        :param logflow: Flow log settings to child processes (like plugins)
+        :param logtostderr: Log to stderr instead of to files
+        :param memprofilerate: Enable more precise (and expensive) memory allocation profiles by setting runtime.MemProfileRate
+        :param otel_traces: Export OpenTelemetry traces to the specified endpoint. Use file:// for local JSON files, grpc:// or https:// for remote collectors
+        :param profiling: Emit CPU and memory profiles and an execution trace to '[filename].[pid].{cpu,mem,trace}', respectively
+        :param tracing: Emit tracing to the specified endpoint. Use the `file:` scheme to write tracing data to a local file
+        :param tracing_header: Include the tracing header with the given contents.
+        :param verbose: Enable verbose logging (e.g., v=3); anything >3 is very verbose
+        :param cwd: Working directory to run the command in.
+        :param additional_env: Additional environment variables to set when running the command.
+        :param on_output: A callback to invoke when the command outputs stdout data.
+        :param on_error: A callback to invoke when the command outputs stderr data."""
+        __final = []
+        __final.append("insights")
+        __final.append("account")
+        __flags = []
+        if color is not None:
+            __flags.extend(["--color", str(color)])
+        if disable_integrity_checking:
+            __flags.append("--disable-integrity-checking")
+        if fully_qualify_stack_names:
+            __flags.append("--fully-qualify-stack-names")
+        if logflow:
+            __flags.append("--logflow")
+        if logtostderr:
+            __flags.append("--logtostderr")
+        if memprofilerate is not None:
+            __flags.extend(["--memprofilerate", str(memprofilerate)])
+        if otel_traces is not None:
+            __flags.extend(["--otel-traces", str(otel_traces)])
+        if profiling is not None:
+            __flags.extend(["--profiling", str(profiling)])
+        if tracing is not None:
+            __flags.extend(["--tracing", str(tracing)])
+        if tracing_header is not None:
+            __flags.extend(["--tracing-header", str(tracing_header)])
+        if verbose is not None:
+            __flags.extend(["--verbose", str(verbose)])
+        __final.extend(__flags)
+        __arguments: list[str] = []
+        if __arguments:
+            __final.append("--")
+            __final.extend(__arguments)
+        return self._run(
+            __final,
+            cwd=cwd,
+            additional_env=additional_env,
+            on_output=on_output,
+            on_error=on_error,
+        )
+
+    def insights_resource_get(
+        self,
+        resource_type_and_id: str,
+        *,
+        color: Optional[str] = None,
+        disable_integrity_checking: bool = False,
+        fully_qualify_stack_names: bool = False,
+        logflow: bool = False,
+        logtostderr: bool = False,
+        memprofilerate: Optional[int] = None,
+        otel_traces: Optional[str] = None,
+        profiling: Optional[str] = None,
+        tracing: Optional[str] = None,
+        tracing_header: Optional[str] = None,
+        verbose: Optional[int] = None,
+        account: str,
+        org: Optional[str] = None,
+        output: Optional[str] = None,
+        cwd: Optional[str] = None,
+        additional_env: Optional[Mapping[str, str]] = None,
+        on_output: Optional[Callable[[str], Any]] = None,
+        on_error: Optional[Callable[[str], Any]] = None,
+    ):
+        """Run `pulumi insights resource get`.
+
+        :param color: Colorize output. Choices are: always, never, raw, auto
+        :param disable_integrity_checking: Disable integrity checking of checkpoint files
+        :param fully_qualify_stack_names: Show fully-qualified stack names
+        :param logflow: Flow log settings to child processes (like plugins)
+        :param logtostderr: Log to stderr instead of to files
+        :param memprofilerate: Enable more precise (and expensive) memory allocation profiles by setting runtime.MemProfileRate
+        :param otel_traces: Export OpenTelemetry traces to the specified endpoint. Use file:// for local JSON files, grpc:// or https:// for remote collectors
+        :param profiling: Emit CPU and memory profiles and an execution trace to '[filename].[pid].{cpu,mem,trace}', respectively
+        :param tracing: Emit tracing to the specified endpoint. Use the `file:` scheme to write tracing data to a local file
+        :param tracing_header: Include the tracing header with the given contents.
+        :param verbose: Enable verbose logging (e.g., v=3); anything >3 is very verbose
+        :param account: Insights account containing the resource
+        :param org: Organization that owns the Insights account (defaults to the current default org)
+        :param output: Output format. Supported values are: default and json
+        :param cwd: Working directory to run the command in.
+        :param additional_env: Additional environment variables to set when running the command.
+        :param on_output: A callback to invoke when the command outputs stdout data.
+        :param on_error: A callback to invoke when the command outputs stderr data."""
+        __final = []
+        __final.append("insights")
+        __final.append("resource")
+        __final.append("get")
+        __flags = []
+        if color is not None:
+            __flags.extend(["--color", str(color)])
+        if disable_integrity_checking:
+            __flags.append("--disable-integrity-checking")
+        if fully_qualify_stack_names:
+            __flags.append("--fully-qualify-stack-names")
+        if logflow:
+            __flags.append("--logflow")
+        if logtostderr:
+            __flags.append("--logtostderr")
+        if memprofilerate is not None:
+            __flags.extend(["--memprofilerate", str(memprofilerate)])
+        if otel_traces is not None:
+            __flags.extend(["--otel-traces", str(otel_traces)])
+        if profiling is not None:
+            __flags.extend(["--profiling", str(profiling)])
+        if tracing is not None:
+            __flags.extend(["--tracing", str(tracing)])
+        if tracing_header is not None:
+            __flags.extend(["--tracing-header", str(tracing_header)])
+        if verbose is not None:
+            __flags.extend(["--verbose", str(verbose)])
+        __flags.extend(["--account", str(account)])
+        if org is not None:
+            __flags.extend(["--org", str(org)])
+        if output is not None:
+            __flags.extend(["--output", str(output)])
+        __final.extend(__flags)
+        __arguments: list[str] = []
+        __arguments.append(str(resource_type_and_id))
+        if __arguments:
+            __final.append("--")
+            __final.extend(__arguments)
+        return self._run(
+            __final,
+            cwd=cwd,
+            additional_env=additional_env,
+            on_output=on_output,
+            on_error=on_error,
+        )
+
+    def insights_resource_search(
+        self,
+        *,
+        color: Optional[str] = None,
+        disable_integrity_checking: bool = False,
+        fully_qualify_stack_names: bool = False,
+        logflow: bool = False,
+        logtostderr: bool = False,
+        memprofilerate: Optional[int] = None,
+        otel_traces: Optional[str] = None,
+        profiling: Optional[str] = None,
+        tracing: Optional[str] = None,
+        tracing_header: Optional[str] = None,
+        verbose: Optional[int] = None,
+        asc: bool = False,
+        collapse: bool = False,
+        cursor: Optional[str] = None,
+        org: Optional[str] = None,
+        output: Optional[str] = None,
+        page: Optional[int] = None,
+        page_size: Optional[int] = None,
+        properties: bool = False,
+        query: Optional[str] = None,
+        sort: Optional[list[str]] = None,
+        cwd: Optional[str] = None,
+        additional_env: Optional[Mapping[str, str]] = None,
+        on_output: Optional[Callable[[str], Any]] = None,
+        on_error: Optional[Callable[[str], Any]] = None,
+    ):
+        """Run `pulumi insights resource search`.
+
+        :param color: Colorize output. Choices are: always, never, raw, auto
+        :param disable_integrity_checking: Disable integrity checking of checkpoint files
+        :param fully_qualify_stack_names: Show fully-qualified stack names
+        :param logflow: Flow log settings to child processes (like plugins)
+        :param logtostderr: Log to stderr instead of to files
+        :param memprofilerate: Enable more precise (and expensive) memory allocation profiles by setting runtime.MemProfileRate
+        :param otel_traces: Export OpenTelemetry traces to the specified endpoint. Use file:// for local JSON files, grpc:// or https:// for remote collectors
+        :param profiling: Emit CPU and memory profiles and an execution trace to '[filename].[pid].{cpu,mem,trace}', respectively
+        :param tracing: Emit tracing to the specified endpoint. Use the `file:` scheme to write tracing data to a local file
+        :param tracing_header: Include the tracing header with the given contents.
+        :param verbose: Enable verbose logging (e.g., v=3); anything >3 is very verbose
+        :param asc: Sort in ascending order (default: descending)
+        :param collapse: Consolidate resources that exist in multiple sources into a single result
+        :param cursor: Opaque cursor to continue pagination from (Enterprise plans only)
+        :param org: Organization to search within (defaults to the current default org)
+        :param output: Output format. Supported values are: default and json
+        :param page: 1-based page of results to return (max 10,000 total results)
+        :param page_size: Number of results per page
+        :param properties: Include resource input/output values (requires a supported subscription)
+        :param query: Search query in Pulumi query syntax
+        :param sort: Field(s) to sort results by; repeat or comma-separate for multiple. Allowed values: category, created, custom, delete, dependencies, id, managed, modified, module, name, package, parentUrn, project, protected, providerUrn, stack, type, urn
+        :param cwd: Working directory to run the command in.
+        :param additional_env: Additional environment variables to set when running the command.
+        :param on_output: A callback to invoke when the command outputs stdout data.
+        :param on_error: A callback to invoke when the command outputs stderr data."""
+        __final = []
+        __final.append("insights")
+        __final.append("resource")
+        __final.append("search")
+        __flags = []
+        if color is not None:
+            __flags.extend(["--color", str(color)])
+        if disable_integrity_checking:
+            __flags.append("--disable-integrity-checking")
+        if fully_qualify_stack_names:
+            __flags.append("--fully-qualify-stack-names")
+        if logflow:
+            __flags.append("--logflow")
+        if logtostderr:
+            __flags.append("--logtostderr")
+        if memprofilerate is not None:
+            __flags.extend(["--memprofilerate", str(memprofilerate)])
+        if otel_traces is not None:
+            __flags.extend(["--otel-traces", str(otel_traces)])
+        if profiling is not None:
+            __flags.extend(["--profiling", str(profiling)])
+        if tracing is not None:
+            __flags.extend(["--tracing", str(tracing)])
+        if tracing_header is not None:
+            __flags.extend(["--tracing-header", str(tracing_header)])
+        if verbose is not None:
+            __flags.extend(["--verbose", str(verbose)])
+        if asc:
+            __flags.append("--asc")
+        if collapse:
+            __flags.append("--collapse")
+        if cursor is not None:
+            __flags.extend(["--cursor", str(cursor)])
+        if org is not None:
+            __flags.extend(["--org", str(org)])
+        if output is not None:
+            __flags.extend(["--output", str(output)])
+        if page is not None:
+            __flags.extend(["--page", str(page)])
+        if page_size is not None:
+            __flags.extend(["--page-size", str(page_size)])
+        if properties:
+            __flags.append("--properties")
+        if query is not None:
+            __flags.extend(["--query", str(query)])
+        for __item in sort or []:
+            __flags.extend(["--sort", str(__item)])
+        __final.extend(__flags)
+        __arguments: list[str] = []
+        if __arguments:
+            __final.append("--")
+            __final.extend(__arguments)
+        return self._run(
+            __final,
+            cwd=cwd,
+            additional_env=additional_env,
+            on_output=on_output,
+            on_error=on_error,
+        )
+
+    def insights_resource(
+        self,
+        *,
+        color: Optional[str] = None,
+        disable_integrity_checking: bool = False,
+        fully_qualify_stack_names: bool = False,
+        logflow: bool = False,
+        logtostderr: bool = False,
+        memprofilerate: Optional[int] = None,
+        otel_traces: Optional[str] = None,
+        profiling: Optional[str] = None,
+        tracing: Optional[str] = None,
+        tracing_header: Optional[str] = None,
+        verbose: Optional[int] = None,
+        cwd: Optional[str] = None,
+        additional_env: Optional[Mapping[str, str]] = None,
+        on_output: Optional[Callable[[str], Any]] = None,
+        on_error: Optional[Callable[[str], Any]] = None,
+    ):
+        """Run `pulumi insights resource`.
+
+        :param color: Colorize output. Choices are: always, never, raw, auto
+        :param disable_integrity_checking: Disable integrity checking of checkpoint files
+        :param fully_qualify_stack_names: Show fully-qualified stack names
+        :param logflow: Flow log settings to child processes (like plugins)
+        :param logtostderr: Log to stderr instead of to files
+        :param memprofilerate: Enable more precise (and expensive) memory allocation profiles by setting runtime.MemProfileRate
+        :param otel_traces: Export OpenTelemetry traces to the specified endpoint. Use file:// for local JSON files, grpc:// or https:// for remote collectors
+        :param profiling: Emit CPU and memory profiles and an execution trace to '[filename].[pid].{cpu,mem,trace}', respectively
+        :param tracing: Emit tracing to the specified endpoint. Use the `file:` scheme to write tracing data to a local file
+        :param tracing_header: Include the tracing header with the given contents.
+        :param verbose: Enable verbose logging (e.g., v=3); anything >3 is very verbose
+        :param cwd: Working directory to run the command in.
+        :param additional_env: Additional environment variables to set when running the command.
+        :param on_output: A callback to invoke when the command outputs stdout data.
+        :param on_error: A callback to invoke when the command outputs stderr data."""
+        __final = []
+        __final.append("insights")
+        __final.append("resource")
+        __flags = []
+        if color is not None:
+            __flags.extend(["--color", str(color)])
+        if disable_integrity_checking:
+            __flags.append("--disable-integrity-checking")
+        if fully_qualify_stack_names:
+            __flags.append("--fully-qualify-stack-names")
+        if logflow:
+            __flags.append("--logflow")
+        if logtostderr:
+            __flags.append("--logtostderr")
+        if memprofilerate is not None:
+            __flags.extend(["--memprofilerate", str(memprofilerate)])
+        if otel_traces is not None:
+            __flags.extend(["--otel-traces", str(otel_traces)])
+        if profiling is not None:
+            __flags.extend(["--profiling", str(profiling)])
+        if tracing is not None:
+            __flags.extend(["--tracing", str(tracing)])
+        if tracing_header is not None:
+            __flags.extend(["--tracing-header", str(tracing_header)])
+        if verbose is not None:
+            __flags.extend(["--verbose", str(verbose)])
+        __final.extend(__flags)
+        __arguments: list[str] = []
+        if __arguments:
+            __final.append("--")
+            __final.extend(__arguments)
+        return self._run(
+            __final,
+            cwd=cwd,
+            additional_env=additional_env,
+            on_output=on_output,
+            on_error=on_error,
+        )
+
+    def insights(
+        self,
+        *,
+        color: Optional[str] = None,
+        disable_integrity_checking: bool = False,
+        fully_qualify_stack_names: bool = False,
+        logflow: bool = False,
+        logtostderr: bool = False,
+        memprofilerate: Optional[int] = None,
+        otel_traces: Optional[str] = None,
+        profiling: Optional[str] = None,
+        tracing: Optional[str] = None,
+        tracing_header: Optional[str] = None,
+        verbose: Optional[int] = None,
+        cwd: Optional[str] = None,
+        additional_env: Optional[Mapping[str, str]] = None,
+        on_output: Optional[Callable[[str], Any]] = None,
+        on_error: Optional[Callable[[str], Any]] = None,
+    ):
+        """Run `pulumi insights`.
+
+        :param color: Colorize output. Choices are: always, never, raw, auto
+        :param disable_integrity_checking: Disable integrity checking of checkpoint files
+        :param fully_qualify_stack_names: Show fully-qualified stack names
+        :param logflow: Flow log settings to child processes (like plugins)
+        :param logtostderr: Log to stderr instead of to files
+        :param memprofilerate: Enable more precise (and expensive) memory allocation profiles by setting runtime.MemProfileRate
+        :param otel_traces: Export OpenTelemetry traces to the specified endpoint. Use file:// for local JSON files, grpc:// or https:// for remote collectors
+        :param profiling: Emit CPU and memory profiles and an execution trace to '[filename].[pid].{cpu,mem,trace}', respectively
+        :param tracing: Emit tracing to the specified endpoint. Use the `file:` scheme to write tracing data to a local file
+        :param tracing_header: Include the tracing header with the given contents.
+        :param verbose: Enable verbose logging (e.g., v=3); anything >3 is very verbose
+        :param cwd: Working directory to run the command in.
+        :param additional_env: Additional environment variables to set when running the command.
+        :param on_output: A callback to invoke when the command outputs stdout data.
+        :param on_error: A callback to invoke when the command outputs stderr data."""
+        __final = []
+        __final.append("insights")
+        __flags = []
+        if color is not None:
+            __flags.extend(["--color", str(color)])
+        if disable_integrity_checking:
+            __flags.append("--disable-integrity-checking")
+        if fully_qualify_stack_names:
+            __flags.append("--fully-qualify-stack-names")
+        if logflow:
+            __flags.append("--logflow")
+        if logtostderr:
+            __flags.append("--logtostderr")
+        if memprofilerate is not None:
+            __flags.extend(["--memprofilerate", str(memprofilerate)])
+        if otel_traces is not None:
+            __flags.extend(["--otel-traces", str(otel_traces)])
+        if profiling is not None:
+            __flags.extend(["--profiling", str(profiling)])
+        if tracing is not None:
+            __flags.extend(["--tracing", str(tracing)])
+        if tracing_header is not None:
+            __flags.extend(["--tracing-header", str(tracing_header)])
+        if verbose is not None:
+            __flags.extend(["--verbose", str(verbose)])
+        __final.extend(__flags)
+        __arguments: list[str] = []
+        if __arguments:
+            __final.append("--")
+            __final.extend(__arguments)
+        return self._run(
+            __final,
+            cwd=cwd,
+            additional_env=additional_env,
+            on_output=on_output,
+            on_error=on_error,
+        )
+
     def new(
         self,
         template_or_url: Optional[str] = None,
