@@ -73,8 +73,16 @@ func rewriteConversions(x model.Expression, to model.Type, diags *hcl.Diagnostic
 	case *model.AnonymousFunctionExpression:
 		x.Body, _ = rewriteConversions(x.Body, to, diags)
 	case *model.BinaryOpExpression:
-		x.LeftOperand, _ = rewriteConversions(x.LeftOperand, model.InputType(x.LeftOperandType()), diags)
-		x.RightOperand, _ = rewriteConversions(x.RightOperand, model.InputType(x.RightOperandType()), diags)
+		// InputType widens the operand's declared type with an output branch so an eventual
+		// operand is still assignable. When the actual operand is already prompt, the output
+		// branch is dead weight that would produce a __convert whose declared return type
+		// claims eventualness it doesn't have, misleading RewriteApplies into lifting a
+		// prompt value into a `__apply(literal, cb)` that strongly-typed code generators
+		// render as `<literal>.ApplyT(...)` — invalid in Go.
+		x.LeftOperand, _ = rewriteConversions(
+			x.LeftOperand, operandConversionTarget(x.LeftOperand, x.LeftOperandType()), diags)
+		x.RightOperand, _ = rewriteConversions(
+			x.RightOperand, operandConversionTarget(x.RightOperand, x.RightOperandType()), diags)
 		left, leftUnwrapped := unwrapIntToNumberConvert(x.LeftOperand)
 		right, rightUnwrapped := unwrapIntToNumberConvert(x.RightOperand)
 		if leftUnwrapped && rightUnwrapped {
@@ -170,7 +178,7 @@ func rewriteConversions(x model.Expression, to model.Type, diags *hcl.Diagnostic
 			typecheck = typecheck || exprChanged
 		}
 	case *model.UnaryOpExpression:
-		x.Operand, _ = rewriteConversions(x.Operand, model.InputType(x.OperandType()), diags)
+		x.Operand, _ = rewriteConversions(x.Operand, operandConversionTarget(x.Operand, x.OperandType()), diags)
 		operand, unwrapped := unwrapIntToNumberConvert(x.Operand)
 		if unwrapped {
 			x.Operand = operand
@@ -196,6 +204,19 @@ func rewriteConversions(x model.Expression, to model.Type, diags *hcl.Diagnostic
 
 	// Otherwise, wrap the expression in a call to __convert.
 	return NewConvertCall(x, to), true
+}
+
+// operandConversionTarget returns the type to use as the conversion target when rewriting an
+// operand of a binary / unary expression. If the operand's actual type contains eventual values,
+// the declared operand type is widened to its [model.InputType] so the operand's eventualness
+// stays assignable; otherwise the declared type is used directly, avoiding an InputType widening
+// whose output branch is dead weight for a prompt value.
+func operandConversionTarget(operand model.Expression, declared model.Type) model.Type {
+	o, p := model.ContainsEventuals(operand.Type())
+	if o || p {
+		return model.InputType(declared)
+	}
+	return declared
 }
 
 func unwrapIntToNumberConvert(expr model.Expression) (model.Expression, bool) {

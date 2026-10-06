@@ -1,0 +1,4 @@
+component: pcl
+kind: fix
+body: Stop lifting a prompt operand's type-conversion wrapper into an unnecessary apply, which produced invalid Go code
+time: 2026-10-04T11:30:00.000000000Z
