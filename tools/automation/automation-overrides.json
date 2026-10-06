@@ -198,12 +198,6 @@
             "flags": {}
         },
         {
-            "path": ["events"],
-            "propagate": true,
-            "exclude": true,
-            "flags": {}
-        },
-        {
             "path": ["gen-completion"],
             "propagate": true,
             "exclude": true,
