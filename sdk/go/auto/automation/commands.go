@@ -22,6 +22,18 @@ import (
 
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/base"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optcancel"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optconfig"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optconfigcopy"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optconfigenvadd"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optconfigenvinit"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optconfigenvlist"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optconfigenvremove"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optconfigget"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optconfigrefresh"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optconfigremove"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optconfigremoveall"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optconfigset"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optconfigsetall"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optconvert"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optimport"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optinstall"
@@ -119,6 +131,1231 @@ func (a *API) Cancel(
 	if len(args) > 0 {
 		final = append(final, "--")
 		final = append(final, args...)
+	}
+
+	return a.run(ctx, base.BaseOptions{
+		Cwd:           o.Cwd,
+		AdditionalEnv: o.AdditionalEnv,
+		Stdout:        o.Stdout,
+		Stderr:        o.Stderr,
+		Stdin:         o.Stdin,
+	}, final)
+}
+
+// Config corresponds to `pulumi config`.
+func (a *API) Config(
+	ctx context.Context,
+	opts ...optconfig.Option,
+) (base.CommandResult, error) {
+	o := optconfig.Options{}
+	for _, opt := range opts {
+		opt(&o)
+	}
+
+	final := []string{"config"}
+
+	final = append(final, "--json")
+
+	if o.Color != "" {
+		final = append(final, "--color", fmt.Sprint(o.Color))
+	}
+
+	if o.ConfigFile != "" {
+		final = append(final, "--config-file", fmt.Sprint(o.ConfigFile))
+	}
+
+	if o.DisableIntegrityChecking {
+		final = append(final, "--disable-integrity-checking")
+	}
+
+	if o.FullyQualifyStackNames {
+		final = append(final, "--fully-qualify-stack-names")
+	}
+
+	if o.Logflow {
+		final = append(final, "--logflow")
+	}
+
+	if o.Logtostderr {
+		final = append(final, "--logtostderr")
+	}
+
+	if o.Memprofilerate != 0 {
+		final = append(final, "--memprofilerate", fmt.Sprint(o.Memprofilerate))
+	}
+
+	if o.Open {
+		final = append(final, "--open")
+	}
+
+	if o.OtelTraces != "" {
+		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
+	}
+
+	if o.Profiling != "" {
+		final = append(final, "--profiling", fmt.Sprint(o.Profiling))
+	}
+
+	if o.ShowSecrets {
+		final = append(final, "--show-secrets")
+	}
+
+	if o.Stack != "" {
+		final = append(final, "--stack", fmt.Sprint(o.Stack))
+	}
+
+	if o.Tracing != "" {
+		final = append(final, "--tracing", fmt.Sprint(o.Tracing))
+	}
+
+	if o.TracingHeader != "" {
+		final = append(final, "--tracing-header", fmt.Sprint(o.TracingHeader))
+	}
+
+	if o.Verbose != 0 {
+		final = append(final, "--verbose", fmt.Sprint(o.Verbose))
+	}
+
+	return a.run(ctx, base.BaseOptions{
+		Cwd:           o.Cwd,
+		AdditionalEnv: o.AdditionalEnv,
+		Stdout:        o.Stdout,
+		Stderr:        o.Stderr,
+		Stdin:         o.Stdin,
+	}, final)
+}
+
+// ConfigCopy corresponds to `pulumi config copy`.
+//
+// Copies the config from the current stack to the destination stack. If `key` is omitted,
+// then all of the config from the current stack will be copied to the destination stack.
+func (a *API) ConfigCopy(
+	ctx context.Context,
+	key *string,
+	opts ...optconfigcopy.Option,
+) (base.CommandResult, error) {
+	o := optconfigcopy.Options{}
+	for _, opt := range opts {
+		opt(&o)
+	}
+
+	final := []string{"config", "copy"}
+
+	if o.Color != "" {
+		final = append(final, "--color", fmt.Sprint(o.Color))
+	}
+
+	if o.ConfigFile != "" {
+		final = append(final, "--config-file", fmt.Sprint(o.ConfigFile))
+	}
+
+	if o.Dest != "" {
+		final = append(final, "--dest", fmt.Sprint(o.Dest))
+	}
+
+	if o.DisableIntegrityChecking {
+		final = append(final, "--disable-integrity-checking")
+	}
+
+	if o.FullyQualifyStackNames {
+		final = append(final, "--fully-qualify-stack-names")
+	}
+
+	if o.Json {
+		final = append(final, "--json")
+	}
+
+	if o.Logflow {
+		final = append(final, "--logflow")
+	}
+
+	if o.Logtostderr {
+		final = append(final, "--logtostderr")
+	}
+
+	if o.Memprofilerate != 0 {
+		final = append(final, "--memprofilerate", fmt.Sprint(o.Memprofilerate))
+	}
+
+	if o.Open {
+		final = append(final, "--open")
+	}
+
+	if o.OtelTraces != "" {
+		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
+	}
+
+	if o.Path {
+		final = append(final, "--path")
+	}
+
+	if o.Profiling != "" {
+		final = append(final, "--profiling", fmt.Sprint(o.Profiling))
+	}
+
+	if o.ShowSecrets {
+		final = append(final, "--show-secrets")
+	}
+
+	if o.Stack != "" {
+		final = append(final, "--stack", fmt.Sprint(o.Stack))
+	}
+
+	if o.Tracing != "" {
+		final = append(final, "--tracing", fmt.Sprint(o.Tracing))
+	}
+
+	if o.TracingHeader != "" {
+		final = append(final, "--tracing-header", fmt.Sprint(o.TracingHeader))
+	}
+
+	if o.Verbose != 0 {
+		final = append(final, "--verbose", fmt.Sprint(o.Verbose))
+	}
+
+	args := []string{}
+	if key != nil {
+		args = append(args, fmt.Sprint(*key))
+	}
+	if len(args) > 0 {
+		final = append(final, "--")
+		final = append(final, args...)
+	}
+
+	return a.run(ctx, base.BaseOptions{
+		Cwd:           o.Cwd,
+		AdditionalEnv: o.AdditionalEnv,
+		Stdout:        o.Stdout,
+		Stderr:        o.Stderr,
+		Stdin:         o.Stdin,
+	}, final)
+}
+
+// ConfigEnvAdd corresponds to `pulumi config env add`.
+//
+// Adds environments to the end of a stack's import list. Imported environments are merged in order
+// per the ESC merge rules. The list of stacks behaves as if it were the import list in an anonymous
+// environment.
+func (a *API) ConfigEnvAdd(
+	ctx context.Context,
+	environmentName []string,
+	opts ...optconfigenvadd.Option,
+) (base.CommandResult, error) {
+	o := optconfigenvadd.Options{}
+	for _, opt := range opts {
+		opt(&o)
+	}
+
+	final := []string{"config", "env", "add"}
+
+	final = append(final, "--yes")
+
+	if o.Color != "" {
+		final = append(final, "--color", fmt.Sprint(o.Color))
+	}
+
+	if o.ConfigFile != "" {
+		final = append(final, "--config-file", fmt.Sprint(o.ConfigFile))
+	}
+
+	if o.DisableIntegrityChecking {
+		final = append(final, "--disable-integrity-checking")
+	}
+
+	if o.FullyQualifyStackNames {
+		final = append(final, "--fully-qualify-stack-names")
+	}
+
+	if o.Json {
+		final = append(final, "--json")
+	}
+
+	if o.Logflow {
+		final = append(final, "--logflow")
+	}
+
+	if o.Logtostderr {
+		final = append(final, "--logtostderr")
+	}
+
+	if o.Memprofilerate != 0 {
+		final = append(final, "--memprofilerate", fmt.Sprint(o.Memprofilerate))
+	}
+
+	if o.Open {
+		final = append(final, "--open")
+	}
+
+	if o.OtelTraces != "" {
+		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
+	}
+
+	if o.Profiling != "" {
+		final = append(final, "--profiling", fmt.Sprint(o.Profiling))
+	}
+
+	if o.ShowSecrets {
+		final = append(final, "--show-secrets")
+	}
+
+	if o.Stack != "" {
+		final = append(final, "--stack", fmt.Sprint(o.Stack))
+	}
+
+	if o.Tracing != "" {
+		final = append(final, "--tracing", fmt.Sprint(o.Tracing))
+	}
+
+	if o.TracingHeader != "" {
+		final = append(final, "--tracing-header", fmt.Sprint(o.TracingHeader))
+	}
+
+	if o.Verbose != 0 {
+		final = append(final, "--verbose", fmt.Sprint(o.Verbose))
+	}
+
+	args := []string{}
+	for _, v := range environmentName {
+		args = append(args, fmt.Sprint(v))
+	}
+	if len(args) > 0 {
+		final = append(final, "--")
+		final = append(final, args...)
+	}
+
+	return a.run(ctx, base.BaseOptions{
+		Cwd:           o.Cwd,
+		AdditionalEnv: o.AdditionalEnv,
+		Stdout:        o.Stdout,
+		Stderr:        o.Stderr,
+		Stdin:         o.Stdin,
+	}, final)
+}
+
+// ConfigEnvInit corresponds to `pulumi config env init`.
+//
+// Creates an environment for a specific stack based on the stack's configuration values,
+// then replaces the stack's configuration values with a reference to that environment.
+// The environment will be created in the same organization as the stack.
+func (a *API) ConfigEnvInit(
+	ctx context.Context,
+	opts ...optconfigenvinit.Option,
+) (base.CommandResult, error) {
+	o := optconfigenvinit.Options{}
+	for _, opt := range opts {
+		opt(&o)
+	}
+
+	final := []string{"config", "env", "init"}
+
+	final = append(final, "--yes")
+
+	if o.Color != "" {
+		final = append(final, "--color", fmt.Sprint(o.Color))
+	}
+
+	if o.ConfigFile != "" {
+		final = append(final, "--config-file", fmt.Sprint(o.ConfigFile))
+	}
+
+	if o.DisableIntegrityChecking {
+		final = append(final, "--disable-integrity-checking")
+	}
+
+	if o.Env != "" {
+		final = append(final, "--env", fmt.Sprint(o.Env))
+	}
+
+	if o.FullyQualifyStackNames {
+		final = append(final, "--fully-qualify-stack-names")
+	}
+
+	if o.Json {
+		final = append(final, "--json")
+	}
+
+	if o.KeepConfig {
+		final = append(final, "--keep-config")
+	}
+
+	if o.Logflow {
+		final = append(final, "--logflow")
+	}
+
+	if o.Logtostderr {
+		final = append(final, "--logtostderr")
+	}
+
+	if o.Memprofilerate != 0 {
+		final = append(final, "--memprofilerate", fmt.Sprint(o.Memprofilerate))
+	}
+
+	if o.Open {
+		final = append(final, "--open")
+	}
+
+	if o.OtelTraces != "" {
+		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
+	}
+
+	if o.Profiling != "" {
+		final = append(final, "--profiling", fmt.Sprint(o.Profiling))
+	}
+
+	if o.ShowSecrets {
+		final = append(final, "--show-secrets")
+	}
+
+	if o.Stack != "" {
+		final = append(final, "--stack", fmt.Sprint(o.Stack))
+	}
+
+	if o.Tracing != "" {
+		final = append(final, "--tracing", fmt.Sprint(o.Tracing))
+	}
+
+	if o.TracingHeader != "" {
+		final = append(final, "--tracing-header", fmt.Sprint(o.TracingHeader))
+	}
+
+	if o.Verbose != 0 {
+		final = append(final, "--verbose", fmt.Sprint(o.Verbose))
+	}
+
+	return a.run(ctx, base.BaseOptions{
+		Cwd:           o.Cwd,
+		AdditionalEnv: o.AdditionalEnv,
+		Stdout:        o.Stdout,
+		Stderr:        o.Stderr,
+		Stdin:         o.Stdin,
+	}, final)
+}
+
+// ConfigEnvList corresponds to `pulumi config env list`.
+//
+// Lists the environments imported into a stack's configuration.
+func (a *API) ConfigEnvList(
+	ctx context.Context,
+	opts ...optconfigenvlist.Option,
+) (base.CommandResult, error) {
+	o := optconfigenvlist.Options{}
+	for _, opt := range opts {
+		opt(&o)
+	}
+
+	final := []string{"config", "env", "list"}
+
+	final = append(final, "--json")
+
+	if o.Color != "" {
+		final = append(final, "--color", fmt.Sprint(o.Color))
+	}
+
+	if o.ConfigFile != "" {
+		final = append(final, "--config-file", fmt.Sprint(o.ConfigFile))
+	}
+
+	if o.DisableIntegrityChecking {
+		final = append(final, "--disable-integrity-checking")
+	}
+
+	if o.FullyQualifyStackNames {
+		final = append(final, "--fully-qualify-stack-names")
+	}
+
+	if o.Logflow {
+		final = append(final, "--logflow")
+	}
+
+	if o.Logtostderr {
+		final = append(final, "--logtostderr")
+	}
+
+	if o.Memprofilerate != 0 {
+		final = append(final, "--memprofilerate", fmt.Sprint(o.Memprofilerate))
+	}
+
+	if o.Open {
+		final = append(final, "--open")
+	}
+
+	if o.OtelTraces != "" {
+		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
+	}
+
+	if o.Output != "" {
+		final = append(final, "--output", fmt.Sprint(o.Output))
+	}
+
+	if o.Profiling != "" {
+		final = append(final, "--profiling", fmt.Sprint(o.Profiling))
+	}
+
+	if o.ShowSecrets {
+		final = append(final, "--show-secrets")
+	}
+
+	if o.Stack != "" {
+		final = append(final, "--stack", fmt.Sprint(o.Stack))
+	}
+
+	if o.Tracing != "" {
+		final = append(final, "--tracing", fmt.Sprint(o.Tracing))
+	}
+
+	if o.TracingHeader != "" {
+		final = append(final, "--tracing-header", fmt.Sprint(o.TracingHeader))
+	}
+
+	if o.Verbose != 0 {
+		final = append(final, "--verbose", fmt.Sprint(o.Verbose))
+	}
+
+	return a.run(ctx, base.BaseOptions{
+		Cwd:           o.Cwd,
+		AdditionalEnv: o.AdditionalEnv,
+		Stdout:        o.Stdout,
+		Stderr:        o.Stderr,
+		Stdin:         o.Stdin,
+	}, final)
+}
+
+// ConfigEnvRemove corresponds to `pulumi config env remove`.
+//
+// Removes an environment from a stack's import list.
+func (a *API) ConfigEnvRemove(
+	ctx context.Context,
+	environmentName string,
+	opts ...optconfigenvremove.Option,
+) (base.CommandResult, error) {
+	o := optconfigenvremove.Options{}
+	for _, opt := range opts {
+		opt(&o)
+	}
+
+	final := []string{"config", "env", "remove"}
+
+	final = append(final, "--yes")
+
+	if o.Color != "" {
+		final = append(final, "--color", fmt.Sprint(o.Color))
+	}
+
+	if o.ConfigFile != "" {
+		final = append(final, "--config-file", fmt.Sprint(o.ConfigFile))
+	}
+
+	if o.DisableIntegrityChecking {
+		final = append(final, "--disable-integrity-checking")
+	}
+
+	if o.FullyQualifyStackNames {
+		final = append(final, "--fully-qualify-stack-names")
+	}
+
+	if o.Json {
+		final = append(final, "--json")
+	}
+
+	if o.Logflow {
+		final = append(final, "--logflow")
+	}
+
+	if o.Logtostderr {
+		final = append(final, "--logtostderr")
+	}
+
+	if o.Memprofilerate != 0 {
+		final = append(final, "--memprofilerate", fmt.Sprint(o.Memprofilerate))
+	}
+
+	if o.Open {
+		final = append(final, "--open")
+	}
+
+	if o.OtelTraces != "" {
+		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
+	}
+
+	if o.Profiling != "" {
+		final = append(final, "--profiling", fmt.Sprint(o.Profiling))
+	}
+
+	if o.ShowSecrets {
+		final = append(final, "--show-secrets")
+	}
+
+	if o.Stack != "" {
+		final = append(final, "--stack", fmt.Sprint(o.Stack))
+	}
+
+	if o.Tracing != "" {
+		final = append(final, "--tracing", fmt.Sprint(o.Tracing))
+	}
+
+	if o.TracingHeader != "" {
+		final = append(final, "--tracing-header", fmt.Sprint(o.TracingHeader))
+	}
+
+	if o.Verbose != 0 {
+		final = append(final, "--verbose", fmt.Sprint(o.Verbose))
+	}
+
+	args := []string{}
+	args = append(args, fmt.Sprint(environmentName))
+	if len(args) > 0 {
+		final = append(final, "--")
+		final = append(final, args...)
+	}
+
+	return a.run(ctx, base.BaseOptions{
+		Cwd:           o.Cwd,
+		AdditionalEnv: o.AdditionalEnv,
+		Stdout:        o.Stdout,
+		Stderr:        o.Stderr,
+		Stdin:         o.Stdin,
+	}, final)
+}
+
+// ConfigGet corresponds to `pulumi config get`.
+//
+// Get a single configuration value.
+//
+// The `--path` flag can be used to get a value inside a map or list:
+//
+//   - `pulumi config get --path outer.inner` will get the value of the `inner` key, if the value of `outer` is a map `inner: value`.
+//   - `pulumi config get --path 'names[0]'` will get the value of the first item, if the value of `names` is a list.
+func (a *API) ConfigGet(
+	ctx context.Context,
+	key string,
+	opts ...optconfigget.Option,
+) (base.CommandResult, error) {
+	o := optconfigget.Options{}
+	for _, opt := range opts {
+		opt(&o)
+	}
+
+	final := []string{"config", "get"}
+
+	final = append(final, "--json")
+
+	if o.Color != "" {
+		final = append(final, "--color", fmt.Sprint(o.Color))
+	}
+
+	if o.ConfigFile != "" {
+		final = append(final, "--config-file", fmt.Sprint(o.ConfigFile))
+	}
+
+	if o.DisableIntegrityChecking {
+		final = append(final, "--disable-integrity-checking")
+	}
+
+	if o.FullyQualifyStackNames {
+		final = append(final, "--fully-qualify-stack-names")
+	}
+
+	if o.Logflow {
+		final = append(final, "--logflow")
+	}
+
+	if o.Logtostderr {
+		final = append(final, "--logtostderr")
+	}
+
+	if o.Memprofilerate != 0 {
+		final = append(final, "--memprofilerate", fmt.Sprint(o.Memprofilerate))
+	}
+
+	if o.Open {
+		final = append(final, "--open")
+	}
+
+	if o.OtelTraces != "" {
+		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
+	}
+
+	if o.Path {
+		final = append(final, "--path")
+	}
+
+	if o.Profiling != "" {
+		final = append(final, "--profiling", fmt.Sprint(o.Profiling))
+	}
+
+	if o.ShowSecrets {
+		final = append(final, "--show-secrets")
+	}
+
+	if o.Stack != "" {
+		final = append(final, "--stack", fmt.Sprint(o.Stack))
+	}
+
+	if o.Tracing != "" {
+		final = append(final, "--tracing", fmt.Sprint(o.Tracing))
+	}
+
+	if o.TracingHeader != "" {
+		final = append(final, "--tracing-header", fmt.Sprint(o.TracingHeader))
+	}
+
+	if o.Verbose != 0 {
+		final = append(final, "--verbose", fmt.Sprint(o.Verbose))
+	}
+
+	args := []string{}
+	args = append(args, fmt.Sprint(key))
+	if len(args) > 0 {
+		final = append(final, "--")
+		final = append(final, args...)
+	}
+
+	return a.run(ctx, base.BaseOptions{
+		Cwd:           o.Cwd,
+		AdditionalEnv: o.AdditionalEnv,
+		Stdout:        o.Stdout,
+		Stderr:        o.Stderr,
+		Stdin:         o.Stdin,
+	}, final)
+}
+
+// ConfigRefresh corresponds to `pulumi config refresh`.
+//
+// Update the local configuration based on the most recent deployment of the stack
+func (a *API) ConfigRefresh(
+	ctx context.Context,
+	opts ...optconfigrefresh.Option,
+) (base.CommandResult, error) {
+	o := optconfigrefresh.Options{}
+	for _, opt := range opts {
+		opt(&o)
+	}
+
+	final := []string{"config", "refresh"}
+
+	final = append(final, "--force")
+
+	if o.Color != "" {
+		final = append(final, "--color", fmt.Sprint(o.Color))
+	}
+
+	if o.ConfigFile != "" {
+		final = append(final, "--config-file", fmt.Sprint(o.ConfigFile))
+	}
+
+	if o.DisableIntegrityChecking {
+		final = append(final, "--disable-integrity-checking")
+	}
+
+	if o.FullyQualifyStackNames {
+		final = append(final, "--fully-qualify-stack-names")
+	}
+
+	if o.Json {
+		final = append(final, "--json")
+	}
+
+	if o.Logflow {
+		final = append(final, "--logflow")
+	}
+
+	if o.Logtostderr {
+		final = append(final, "--logtostderr")
+	}
+
+	if o.Memprofilerate != 0 {
+		final = append(final, "--memprofilerate", fmt.Sprint(o.Memprofilerate))
+	}
+
+	if o.Open {
+		final = append(final, "--open")
+	}
+
+	if o.OtelTraces != "" {
+		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
+	}
+
+	if o.Profiling != "" {
+		final = append(final, "--profiling", fmt.Sprint(o.Profiling))
+	}
+
+	if o.ShowSecrets {
+		final = append(final, "--show-secrets")
+	}
+
+	if o.Stack != "" {
+		final = append(final, "--stack", fmt.Sprint(o.Stack))
+	}
+
+	if o.Tracing != "" {
+		final = append(final, "--tracing", fmt.Sprint(o.Tracing))
+	}
+
+	if o.TracingHeader != "" {
+		final = append(final, "--tracing-header", fmt.Sprint(o.TracingHeader))
+	}
+
+	if o.Verbose != 0 {
+		final = append(final, "--verbose", fmt.Sprint(o.Verbose))
+	}
+
+	return a.run(ctx, base.BaseOptions{
+		Cwd:           o.Cwd,
+		AdditionalEnv: o.AdditionalEnv,
+		Stdout:        o.Stdout,
+		Stderr:        o.Stderr,
+		Stdin:         o.Stdin,
+	}, final)
+}
+
+// ConfigRemove corresponds to `pulumi config remove`.
+//
+// Remove configuration value.
+//
+// The `--path` flag can be used to remove a value inside a map or list:
+//
+//   - `pulumi config rm --path outer.inner` will remove the `inner` key, if the value of `outer` is a map `inner: value`.
+//   - `pulumi config rm --path 'names[0]'` will remove the first item, if the value of `names` is a list.
+func (a *API) ConfigRemove(
+	ctx context.Context,
+	key string,
+	opts ...optconfigremove.Option,
+) (base.CommandResult, error) {
+	o := optconfigremove.Options{}
+	for _, opt := range opts {
+		opt(&o)
+	}
+
+	final := []string{"config", "remove"}
+
+	if o.Color != "" {
+		final = append(final, "--color", fmt.Sprint(o.Color))
+	}
+
+	if o.ConfigFile != "" {
+		final = append(final, "--config-file", fmt.Sprint(o.ConfigFile))
+	}
+
+	if o.DisableIntegrityChecking {
+		final = append(final, "--disable-integrity-checking")
+	}
+
+	if o.FullyQualifyStackNames {
+		final = append(final, "--fully-qualify-stack-names")
+	}
+
+	if o.Json {
+		final = append(final, "--json")
+	}
+
+	if o.Logflow {
+		final = append(final, "--logflow")
+	}
+
+	if o.Logtostderr {
+		final = append(final, "--logtostderr")
+	}
+
+	if o.Memprofilerate != 0 {
+		final = append(final, "--memprofilerate", fmt.Sprint(o.Memprofilerate))
+	}
+
+	if o.Open {
+		final = append(final, "--open")
+	}
+
+	if o.OtelTraces != "" {
+		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
+	}
+
+	if o.Path {
+		final = append(final, "--path")
+	}
+
+	if o.Profiling != "" {
+		final = append(final, "--profiling", fmt.Sprint(o.Profiling))
+	}
+
+	if o.ShowSecrets {
+		final = append(final, "--show-secrets")
+	}
+
+	if o.Stack != "" {
+		final = append(final, "--stack", fmt.Sprint(o.Stack))
+	}
+
+	if o.Tracing != "" {
+		final = append(final, "--tracing", fmt.Sprint(o.Tracing))
+	}
+
+	if o.TracingHeader != "" {
+		final = append(final, "--tracing-header", fmt.Sprint(o.TracingHeader))
+	}
+
+	if o.Verbose != 0 {
+		final = append(final, "--verbose", fmt.Sprint(o.Verbose))
+	}
+
+	args := []string{}
+	args = append(args, fmt.Sprint(key))
+	if len(args) > 0 {
+		final = append(final, "--")
+		final = append(final, args...)
+	}
+
+	return a.run(ctx, base.BaseOptions{
+		Cwd:           o.Cwd,
+		AdditionalEnv: o.AdditionalEnv,
+		Stdout:        o.Stdout,
+		Stderr:        o.Stderr,
+		Stdin:         o.Stdin,
+	}, final)
+}
+
+// ConfigRemoveAll corresponds to `pulumi config remove-all`.
+//
+// Remove multiple configuration values.
+//
+// The `--path` flag indicates that keys should be parsed within maps or lists:
+//
+//   - `pulumi config rm-all --path  outer.inner 'foo[0]' key1` will remove the
+//     `inner` key of the `outer` map, the first key of the `foo` list and `key1`.
+//   - `pulumi config rm-all outer.inner 'foo[0]' key1` will remove the literal    `outer.inner`, `foo[0]` and `key1` keys
+func (a *API) ConfigRemoveAll(
+	ctx context.Context,
+	key []string,
+	opts ...optconfigremoveall.Option,
+) (base.CommandResult, error) {
+	o := optconfigremoveall.Options{}
+	for _, opt := range opts {
+		opt(&o)
+	}
+
+	final := []string{"config", "remove-all"}
+
+	if o.Color != "" {
+		final = append(final, "--color", fmt.Sprint(o.Color))
+	}
+
+	if o.ConfigFile != "" {
+		final = append(final, "--config-file", fmt.Sprint(o.ConfigFile))
+	}
+
+	if o.DisableIntegrityChecking {
+		final = append(final, "--disable-integrity-checking")
+	}
+
+	if o.FullyQualifyStackNames {
+		final = append(final, "--fully-qualify-stack-names")
+	}
+
+	if o.Json {
+		final = append(final, "--json")
+	}
+
+	if o.Logflow {
+		final = append(final, "--logflow")
+	}
+
+	if o.Logtostderr {
+		final = append(final, "--logtostderr")
+	}
+
+	if o.Memprofilerate != 0 {
+		final = append(final, "--memprofilerate", fmt.Sprint(o.Memprofilerate))
+	}
+
+	if o.Open {
+		final = append(final, "--open")
+	}
+
+	if o.OtelTraces != "" {
+		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
+	}
+
+	if o.Path {
+		final = append(final, "--path")
+	}
+
+	if o.Profiling != "" {
+		final = append(final, "--profiling", fmt.Sprint(o.Profiling))
+	}
+
+	if o.ShowSecrets {
+		final = append(final, "--show-secrets")
+	}
+
+	if o.Stack != "" {
+		final = append(final, "--stack", fmt.Sprint(o.Stack))
+	}
+
+	if o.Tracing != "" {
+		final = append(final, "--tracing", fmt.Sprint(o.Tracing))
+	}
+
+	if o.TracingHeader != "" {
+		final = append(final, "--tracing-header", fmt.Sprint(o.TracingHeader))
+	}
+
+	if o.Verbose != 0 {
+		final = append(final, "--verbose", fmt.Sprint(o.Verbose))
+	}
+
+	args := []string{}
+	for _, v := range key {
+		args = append(args, fmt.Sprint(v))
+	}
+	if len(args) > 0 {
+		final = append(final, "--")
+		final = append(final, args...)
+	}
+
+	return a.run(ctx, base.BaseOptions{
+		Cwd:           o.Cwd,
+		AdditionalEnv: o.AdditionalEnv,
+		Stdout:        o.Stdout,
+		Stderr:        o.Stderr,
+		Stdin:         o.Stdin,
+	}, final)
+}
+
+// ConfigSet corresponds to `pulumi config set`.
+//
+// Configuration values can be accessed when a stack is being deployed and used to configure behavior.
+// If a value is not present on the command line, pulumi will prompt for the value. Multi-line values
+// may be set by piping a file to standard in. Note that in that case, trailing newlines are stripped,
+// unless `--raw` is passed.
+//
+// The `--path` flag can be used to set a value inside a map or list:
+//
+//   - `pulumi config set --path 'names[0]' a` will set the value to a list with the first item `a`.
+//   - `pulumi config set --path parent.nested value` will set the value of `parent` to a map `nested: value`.
+//   - `pulumi config set --path '["parent.name"]["nested.name"]' value` will set the value of
+//     `parent.name` to a map `nested.name: value`.
+//
+// When setting the config for a path, "true" and "false" are treated as boolean values, and
+// integers are treated as numbers. All other values are treated as strings.  Top level entries
+// are always treated as strings.
+func (a *API) ConfigSet(
+	ctx context.Context,
+	key string,
+	value *string,
+	opts ...optconfigset.Option,
+) (base.CommandResult, error) {
+	o := optconfigset.Options{}
+	for _, opt := range opts {
+		opt(&o)
+	}
+
+	final := []string{"config", "set"}
+
+	if o.Color != "" {
+		final = append(final, "--color", fmt.Sprint(o.Color))
+	}
+
+	if o.ConfigFile != "" {
+		final = append(final, "--config-file", fmt.Sprint(o.ConfigFile))
+	}
+
+	if o.DisableIntegrityChecking {
+		final = append(final, "--disable-integrity-checking")
+	}
+
+	if o.FullyQualifyStackNames {
+		final = append(final, "--fully-qualify-stack-names")
+	}
+
+	if o.Json {
+		final = append(final, "--json")
+	}
+
+	if o.Logflow {
+		final = append(final, "--logflow")
+	}
+
+	if o.Logtostderr {
+		final = append(final, "--logtostderr")
+	}
+
+	if o.Memprofilerate != 0 {
+		final = append(final, "--memprofilerate", fmt.Sprint(o.Memprofilerate))
+	}
+
+	if o.Open {
+		final = append(final, "--open")
+	}
+
+	if o.OtelTraces != "" {
+		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
+	}
+
+	if o.Path {
+		final = append(final, "--path")
+	}
+
+	if o.Plaintext {
+		final = append(final, "--plaintext")
+	}
+
+	if o.Profiling != "" {
+		final = append(final, "--profiling", fmt.Sprint(o.Profiling))
+	}
+
+	if o.Raw {
+		final = append(final, "--raw")
+	}
+
+	if o.Secret {
+		final = append(final, "--secret")
+	}
+
+	if o.ShowSecrets {
+		final = append(final, "--show-secrets")
+	}
+
+	if o.Stack != "" {
+		final = append(final, "--stack", fmt.Sprint(o.Stack))
+	}
+
+	if o.Tracing != "" {
+		final = append(final, "--tracing", fmt.Sprint(o.Tracing))
+	}
+
+	if o.TracingHeader != "" {
+		final = append(final, "--tracing-header", fmt.Sprint(o.TracingHeader))
+	}
+
+	if o.Type != "" {
+		final = append(final, "--type", fmt.Sprint(o.Type))
+	}
+
+	if o.Verbose != 0 {
+		final = append(final, "--verbose", fmt.Sprint(o.Verbose))
+	}
+
+	args := []string{}
+	args = append(args, fmt.Sprint(key))
+	if value != nil {
+		args = append(args, fmt.Sprint(*value))
+	}
+	if len(args) > 0 {
+		final = append(final, "--")
+		final = append(final, args...)
+	}
+
+	return a.run(ctx, base.BaseOptions{
+		Cwd:           o.Cwd,
+		AdditionalEnv: o.AdditionalEnv,
+		Stdout:        o.Stdout,
+		Stderr:        o.Stderr,
+		Stdin:         o.Stdin,
+	}, final)
+}
+
+// ConfigSetAll corresponds to `pulumi config set-all`.
+//
+// pulumi set-all allows you to set multiple configuration values in one command.
+//
+// Each key-value pair must be preceded by either the `--secret` or the `--plaintext` flag to denote whether
+// it should be encrypted:
+//
+//   - `pulumi config set-all --secret key1=value1 --plaintext key2=value --secret key3=value3`
+//
+// The `--path` flag can be used to set values inside a map or list:
+//
+//   - `pulumi config set-all --path --plaintext "names[0]"=a --plaintext "names[1]"=b`
+//     will set the value to a list with the first item `a` and second item `b`.
+//   - `pulumi config set-all --path --plaintext parent.nested=value --plaintext parent.other=value2`
+//     will set the value of `parent` to a map `{nested: value, other: value2}`.
+//   - `pulumi config set-all --path --plaintext '["parent.name"].["nested.name"]'=value` will set the
+//     value of `parent.name` to a map `nested.name: value`.
+//
+// The `--json` flag can be used to pass a JSON string from which values should be read.
+// The JSON string should follow the same format as that produced by `pulumi config --json`. If the
+// `--json` option is passed, the `--plaintext`, `--secret` and `--path` flags must not be used.
+func (a *API) ConfigSetAll(
+	ctx context.Context,
+	opts ...optconfigsetall.Option,
+) (base.CommandResult, error) {
+	o := optconfigsetall.Options{}
+	for _, opt := range opts {
+		opt(&o)
+	}
+
+	final := []string{"config", "set-all"}
+
+	final = append(final, "--json")
+
+	if o.Color != "" {
+		final = append(final, "--color", fmt.Sprint(o.Color))
+	}
+
+	if o.ConfigFile != "" {
+		final = append(final, "--config-file", fmt.Sprint(o.ConfigFile))
+	}
+
+	if o.DisableIntegrityChecking {
+		final = append(final, "--disable-integrity-checking")
+	}
+
+	if o.FullyQualifyStackNames {
+		final = append(final, "--fully-qualify-stack-names")
+	}
+
+	if o.Logflow {
+		final = append(final, "--logflow")
+	}
+
+	if o.Logtostderr {
+		final = append(final, "--logtostderr")
+	}
+
+	if o.Memprofilerate != 0 {
+		final = append(final, "--memprofilerate", fmt.Sprint(o.Memprofilerate))
+	}
+
+	if o.Open {
+		final = append(final, "--open")
+	}
+
+	if o.OtelTraces != "" {
+		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
+	}
+
+	if o.Path {
+		final = append(final, "--path")
+	}
+
+	for _, v := range o.Plaintext {
+		final = append(final, "--plaintext", fmt.Sprint(v))
+	}
+
+	if o.Profiling != "" {
+		final = append(final, "--profiling", fmt.Sprint(o.Profiling))
+	}
+
+	for _, v := range o.Secret {
+		final = append(final, "--secret", fmt.Sprint(v))
+	}
+
+	if o.ShowSecrets {
+		final = append(final, "--show-secrets")
+	}
+
+	if o.Stack != "" {
+		final = append(final, "--stack", fmt.Sprint(o.Stack))
+	}
+
+	if o.Tracing != "" {
+		final = append(final, "--tracing", fmt.Sprint(o.Tracing))
+	}
+
+	if o.TracingHeader != "" {
+		final = append(final, "--tracing-header", fmt.Sprint(o.TracingHeader))
+	}
+
+	if o.Verbose != 0 {
+		final = append(final, "--verbose", fmt.Sprint(o.Verbose))
 	}
 
 	return a.run(ctx, base.BaseOptions{
