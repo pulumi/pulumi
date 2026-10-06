@@ -230,12 +230,6 @@
             "flags": {}
         },
         {
-            "path": ["logs"],
-            "propagate": true,
-            "exclude": true,
-            "flags": {}
-        },
-        {
             "path": ["new"],
             "propagate": true,
             "flags": {}
