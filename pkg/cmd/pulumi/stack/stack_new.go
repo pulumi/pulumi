@@ -102,6 +102,9 @@ func newStackNewCmd() *cobra.Command {
 		&sicmd.remoteConfig, "remote-config", false, "Store stack configuration remotely",
 	)
 	_ = cmd.PersistentFlags().MarkHidden("remote-config")
+	cmd.PersistentFlags().BoolVar(
+		&sicmd.sandbox, "sandbox", false,
+		"Create a sandbox stack, which deploys against local cloud emulators (floci) instead of real clouds")
 	cmd.PersistentFlags().BoolVarP(
 		&sicmd.yes, "yes", "y", false,
 		"Skip interactive prompts; fail if required information is missing")
@@ -116,6 +119,7 @@ type stackNewCmd struct {
 	noSelect        bool
 	teams           []string
 	remoteConfig    bool
+	sandbox         bool
 	yes             bool
 	stdout          io.Writer
 
@@ -208,6 +212,7 @@ func (cmd *stackNewCmd) Run(ctx context.Context, args []string) error {
 		SetCurrent:      !cmd.noSelect,
 		SecretsProvider: cmd.secretsProvider,
 		UseRemoteConfig: cmd.remoteConfig,
+		Sandbox:         cmd.sandbox,
 	})
 	if err != nil {
 		if errors.Is(err, backend.ErrTeamsNotSupported) {

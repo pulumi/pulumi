@@ -1,0 +1,174 @@
+{
+  "emulators": {
+    "aws": {
+      "defaultEndpoint": "http://localhost:4566",
+      "env": {
+        "AWS_ENDPOINT_URL": "{endpoint}",
+        "AWS_ACCESS_KEY_ID": "test",
+        "AWS_SECRET_ACCESS_KEY": "test",
+        "AWS_SESSION_TOKEN": "",
+        "AWS_PROFILE": "",
+        "AWS_DEFAULT_PROFILE": "",
+        "AWS_ROLE_ARN": "",
+        "AWS_WEB_IDENTITY_TOKEN_FILE": ""
+      }
+    },
+    "gcp": {
+      "defaultEndpoint": "http://localhost:4588",
+      "env": {
+        "GOOGLE_OAUTH_ACCESS_TOKEN": "floci-local-token",
+        "GOOGLE_CREDENTIALS": "",
+        "GOOGLE_CLOUD_KEYFILE_JSON": "",
+        "GCLOUD_KEYFILE_JSON": "",
+        "GOOGLE_APPLICATION_CREDENTIALS": "",
+        "GOOGLE_IMPERSONATE_SERVICE_ACCOUNT": "",
+        "STORAGE_EMULATOR_HOST": "{endpoint}",
+        "PUBSUB_EMULATOR_HOST": "{host}",
+        "FIRESTORE_EMULATOR_HOST": "{host}",
+        "DATASTORE_EMULATOR_HOST": "{host}",
+        "SECRET_MANAGER_EMULATOR_HOST": "{host}",
+        "IAM_EMULATOR_HOST": "{host}"
+      }
+    }
+  },
+  "packages": {
+    "aws": {
+      "emulators": [
+        "aws"
+      ],
+      "config": {
+        "accessKey": "test",
+        "secretKey": "test",
+        "skipCredentialsValidation": true,
+        "skipRequestingAccountId": true,
+        "skipMetadataApiCheck": true,
+        "s3UsePathStyle": true
+      },
+      "configDefaults": {
+        "region": "us-east-1"
+      },
+      "removeConfig": [
+        "profile",
+        "token",
+        "endpoints",
+        "assumeRole",
+        "assumeRoles",
+        "assumeRoleWithWebIdentity",
+        "sharedCredentialsFiles",
+        "sharedConfigFiles"
+      ],
+      "services": {
+        "acm": "acm",
+        "alb": "elasticloadbalancing",
+        "apigateway": "apigateway",
+        "apigatewayv2": "apigatewayv2",
+        "athena": "athena",
+        "cloudfront": "cloudfront",
+        "cognito": "cognito-idp",
+        "dynamodb": "dynamodb",
+        "ec2": "ec2",
+        "ecr": "ecr",
+        "ecs": "ecs",
+        "eks": "eks",
+        "elasticache": "elasticache",
+        "glue": "glue",
+        "iam": "iam",
+        "kinesis": "kinesis",
+        "kms": "kms",
+        "lambda": "lambda",
+        "lb": "elasticloadbalancing",
+        "opensearch": "es",
+        "rds": "rds",
+        "route53": "route53",
+        "s3": "s3",
+        "secretsmanager": "secretsmanager",
+        "ses": "email",
+        "sfn": "states",
+        "sns": "sns",
+        "sqs": "sqs",
+        "ssm": "ssm"
+      }
+    },
+    "gcp": {
+      "emulators": [
+        "gcp"
+      ],
+      "config": {
+        "accessToken": "floci-local-token",
+        "skipRegionValidation": true,
+        "userProjectOverride": false,
+        "storageCustomEndpoint": "{endpoint}/storage/v1/",
+        "computeCustomEndpoint": "{endpoint}/compute/v1/",
+        "iamCustomEndpoint": "{endpoint}/",
+        "iamBetaCustomEndpoint": "{endpoint}/v1/",
+        "secretManagerCustomEndpoint": "{endpoint}/v1/",
+        "kmsCustomEndpoint": "{endpoint}/v1/",
+        "pubsubCustomEndpoint": "{endpoint}/v1/",
+        "serviceUsageCustomEndpoint": "{endpoint}/v1/",
+        "resourceManagerCustomEndpoint": "{endpoint}/v1/",
+        "cloudRunCustomEndpoint": "{endpoint}/v2/",
+        "cloudRunV2CustomEndpoint": "{endpoint}/v2/",
+        "sqlCustomEndpoint": "{endpoint}/sql/v1beta4/",
+        "bigQueryCustomEndpoint": "{endpoint}/bigquery/v2/"
+      },
+      "configDefaults": {
+        "project": "floci-local",
+        "region": "us-central1"
+      },
+      "removeConfig": [
+        "credentials",
+        "externalCredentials",
+        "impersonateServiceAccount",
+        "impersonateServiceAccountDelegates",
+        "universeDomain",
+        "billingProject"
+      ],
+      "services": {
+        "bigquery": "bigquery",
+        "cloudfunctions": "cloudfunctions",
+        "cloudfunctionsv2": "cloudfunctions",
+        "cloudrun": "cloudrun",
+        "cloudrunv2": "cloudrun",
+        "cloudscheduler": "scheduler",
+        "cloudtasks": "cloudtasks",
+        "compute": "compute",
+        "container": "gke",
+        "datastore": "datastore",
+        "eventarc": "eventarc",
+        "firestore": "firestore",
+        "kms": "kms",
+        "logging": "logging",
+        "monitoring": "monitoring",
+        "projects": "serviceusage",
+        "pubsub": "pubsub",
+        "secretmanager": "secretmanager",
+        "serviceaccount": "iam",
+        "sql": "cloudsql",
+        "storage": "gcs"
+      }
+    },
+    "command": {
+      "envOnly": [
+        "aws",
+        "gcp"
+      ]
+    },
+    "pulumi": {},
+    "pulumi-nodejs": {
+      "envOnly": [
+        "aws",
+        "gcp"
+      ]
+    },
+    "pulumi-python": {
+      "envOnly": [
+        "aws",
+        "gcp"
+      ]
+    },
+    "random": {},
+    "std": {},
+    "time": {},
+    "tls": {}
+  }
+}

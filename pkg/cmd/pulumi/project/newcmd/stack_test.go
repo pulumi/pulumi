@@ -76,7 +76,7 @@ func TestPromptAndCreateStackNamedStackHardErrors(t *testing.T) {
 	}
 
 	_, err := PromptAndCreateStack(t.Context(), cmdutil.Diag(), pkgWorkspace.Instance,
-		b, prompt, "named", t.TempDir(), false, false, display.Options{}, "default", false, "")
+		b, prompt, "named", t.TempDir(), false, false, display.Options{}, "default", false, false, "")
 
 	assert.Error(t, err, "a pre-decided stack name must not retry")
 	assert.Equal(t, 0, prompts, "a pre-decided stack name must not prompt")

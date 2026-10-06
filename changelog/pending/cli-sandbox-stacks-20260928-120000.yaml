@@ -1,0 +1,4 @@
+component: cli
+kind: feat
+body: Add `--sandbox` to `pulumi new` and `pulumi stack init` to create stacks that deploy against the floci emulators for AWS and Google Cloud
+time: 2026-09-28T12:00:00.000000+02:00
