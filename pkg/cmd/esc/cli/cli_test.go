@@ -662,7 +662,10 @@ func (c *testPulumiClient) UpdateEnvironment(
 	}
 
 	if etag != "" && etag != latest.etag {
-		return nil, 0, errors.New("etag mismatch")
+		return nil, 0, &client.EnvironmentErrorResponse{
+			Code:    http.StatusConflict,
+			Message: "Conflict: the environment has changed since it was read",
+		}
 	}
 
 	envId := projectName + "/" + envName

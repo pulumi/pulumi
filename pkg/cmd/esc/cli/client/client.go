@@ -43,6 +43,7 @@ import (
 
 const (
 	etagHeader     = "ETag"
+	ifMatchHeader  = "If-Match"
 	revisionHeader = "Pulumi-ESC-Revision"
 	DefaultProject = "default"
 )
@@ -775,7 +776,7 @@ func (pc *client) UpdateEnvironment(
 ) ([]EnvironmentDiagnostic, int, error) {
 	header := http.Header{}
 	if tag != "" {
-		header.Set(etagHeader, tag)
+		header.Set(ifMatchHeader, tag)
 	}
 
 	var errResp EnvironmentErrorResponse
@@ -868,7 +869,7 @@ func (pc *client) UpdateEnvironmentDraft(
 	etag string,
 ) ([]EnvironmentDiagnostic, error) {
 	header := http.Header{}
-	header.Set("If-Match", etag)
+	header.Set(ifMatchHeader, etag)
 
 	var errResp EnvironmentErrorResponse
 	path := fmt.Sprintf("/api/esc/environments/%v/%v/%v/drafts/%v", orgName, projectName, envName, changeRequestID)

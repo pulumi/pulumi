@@ -394,7 +394,7 @@ func TestUpdateEnvironment(t *testing.T) {
 			http.MethodPatch,
 			"/api/esc/environments/test-org/test-project/test-env",
 			func(w http.ResponseWriter, r *http.Request) {
-				assert.Equal(t, tag, r.Header.Get("ETag"))
+				assert.Equal(t, tag, r.Header.Get("If-Match"))
 
 				body, err := io.ReadAll(r.Body)
 				require.NoError(t, err)
