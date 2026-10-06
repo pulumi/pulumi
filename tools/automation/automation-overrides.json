@@ -334,12 +334,6 @@
             "flags": {}
         },
         {
-            "path": ["schema"],
-            "propagate": true,
-            "exclude": true,
-            "flags": {}
-        },
-        {
             "path": ["stack"],
             "propagate": true,
             "exclude": true,

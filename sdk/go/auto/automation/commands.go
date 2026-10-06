@@ -29,6 +29,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optorgsearch"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optorgsearchai"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optorgsetdefault"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optschemacheck"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optversion"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optwhoami"
 )
@@ -922,6 +923,104 @@ func (a *API) OrgSetDefault(
 
 	args := []string{}
 	args = append(args, fmt.Sprint(name))
+	if len(args) > 0 {
+		final = append(final, "--")
+		final = append(final, args...)
+	}
+
+	return a.run(ctx, base.BaseOptions{
+		Cwd:           o.Cwd,
+		AdditionalEnv: o.AdditionalEnv,
+		Stdout:        o.Stdout,
+		Stderr:        o.Stderr,
+		Stdin:         o.Stdin,
+	}, final)
+}
+
+// SchemaCheck corresponds to `pulumi schema check`.
+//
+// Check a Pulumi package schema for errors.
+//
+// Ensure that a Pulumi package schema meets the requirements imposed by the
+// schema spec as well as additional requirements imposed by the supported
+// target languages.
+//
+// <schema_source> can be a package name, the path to a plugin binary or folder,
+// or a JSON/YAML schema file. Pass "-" to read a JSON schema from stdin.
+func (a *API) SchemaCheck(
+	ctx context.Context,
+	schemaSource string,
+	providerParameter []string,
+	opts ...optschemacheck.Option,
+) (base.CommandResult, error) {
+	o := optschemacheck.Options{}
+	for _, opt := range opts {
+		opt(&o)
+	}
+
+	final := []string{"schema", "check"}
+
+	if o.AllowDanglingReferences {
+		final = append(final, "--allow-dangling-references")
+	}
+
+	if o.Color != "" {
+		final = append(final, "--color", fmt.Sprint(o.Color))
+	}
+
+	if o.DisableIntegrityChecking {
+		final = append(final, "--disable-integrity-checking")
+	}
+
+	if o.Extension != "" {
+		final = append(final, "--extension", fmt.Sprint(o.Extension))
+	}
+
+	if o.FullyQualifyStackNames {
+		final = append(final, "--fully-qualify-stack-names")
+	}
+
+	if o.Logflow {
+		final = append(final, "--logflow")
+	}
+
+	if o.Logtostderr {
+		final = append(final, "--logtostderr")
+	}
+
+	if o.Memprofilerate != 0 {
+		final = append(final, "--memprofilerate", fmt.Sprint(o.Memprofilerate))
+	}
+
+	if o.OtelTraces != "" {
+		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
+	}
+
+	if o.Profiling != "" {
+		final = append(final, "--profiling", fmt.Sprint(o.Profiling))
+	}
+
+	if o.Server != "" {
+		final = append(final, "--server", fmt.Sprint(o.Server))
+	}
+
+	if o.Tracing != "" {
+		final = append(final, "--tracing", fmt.Sprint(o.Tracing))
+	}
+
+	if o.TracingHeader != "" {
+		final = append(final, "--tracing-header", fmt.Sprint(o.TracingHeader))
+	}
+
+	if o.Verbose != 0 {
+		final = append(final, "--verbose", fmt.Sprint(o.Verbose))
+	}
+
+	args := []string{}
+	args = append(args, fmt.Sprint(schemaSource))
+	for _, v := range providerParameter {
+		args = append(args, fmt.Sprint(v))
+	}
 	if len(args) > 0 {
 		final = append(final, "--")
 		final = append(final, args...)
