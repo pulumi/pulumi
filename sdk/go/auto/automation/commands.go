@@ -29,6 +29,8 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optorgsearch"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optorgsearchai"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optorgsetdefault"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/opttemplatelist"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/opttemplatepublish"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optversion"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optwhoami"
 )
@@ -922,6 +924,180 @@ func (a *API) OrgSetDefault(
 
 	args := []string{}
 	args = append(args, fmt.Sprint(name))
+	if len(args) > 0 {
+		final = append(final, "--")
+		final = append(final, args...)
+	}
+
+	return a.run(ctx, base.BaseOptions{
+		Cwd:           o.Cwd,
+		AdditionalEnv: o.AdditionalEnv,
+		Stdout:        o.Stdout,
+		Stderr:        o.Stderr,
+		Stdin:         o.Stdin,
+	}, final)
+}
+
+// TemplateList corresponds to `pulumi template list`.
+//
+// [EXPERIMENTAL] List templates from the Pulumi Cloud registry.
+//
+// No authentication is required; without a Pulumi Cloud session, only publicly
+// visible templates are returned.
+//
+// Results are paginated by the server; the command follows continuation tokens
+// internally so all matching templates are streamed in a single invocation.
+func (a *API) TemplateList(
+	ctx context.Context,
+	opts ...opttemplatelist.Option,
+) (base.CommandResult, error) {
+	o := opttemplatelist.Options{}
+	for _, opt := range opts {
+		opt(&o)
+	}
+
+	final := []string{"template", "list"}
+
+	if o.Color != "" {
+		final = append(final, "--color", fmt.Sprint(o.Color))
+	}
+
+	if o.DisableIntegrityChecking {
+		final = append(final, "--disable-integrity-checking")
+	}
+
+	if o.FullyQualifyStackNames {
+		final = append(final, "--fully-qualify-stack-names")
+	}
+
+	if o.Logflow {
+		final = append(final, "--logflow")
+	}
+
+	if o.Logtostderr {
+		final = append(final, "--logtostderr")
+	}
+
+	if o.Memprofilerate != 0 {
+		final = append(final, "--memprofilerate", fmt.Sprint(o.Memprofilerate))
+	}
+
+	if o.Name != "" {
+		final = append(final, "--name", fmt.Sprint(o.Name))
+	}
+
+	if o.Org != "" {
+		final = append(final, "--org", fmt.Sprint(o.Org))
+	}
+
+	if o.OtelTraces != "" {
+		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
+	}
+
+	if o.Output != "" {
+		final = append(final, "--output", fmt.Sprint(o.Output))
+	}
+
+	if o.Profiling != "" {
+		final = append(final, "--profiling", fmt.Sprint(o.Profiling))
+	}
+
+	if o.Search != "" {
+		final = append(final, "--search", fmt.Sprint(o.Search))
+	}
+
+	if o.Tracing != "" {
+		final = append(final, "--tracing", fmt.Sprint(o.Tracing))
+	}
+
+	if o.TracingHeader != "" {
+		final = append(final, "--tracing-header", fmt.Sprint(o.TracingHeader))
+	}
+
+	if o.Verbose != 0 {
+		final = append(final, "--verbose", fmt.Sprint(o.Verbose))
+	}
+
+	return a.run(ctx, base.BaseOptions{
+		Cwd:           o.Cwd,
+		AdditionalEnv: o.AdditionalEnv,
+		Stdout:        o.Stdout,
+		Stderr:        o.Stderr,
+		Stdin:         o.Stdin,
+	}, final)
+}
+
+// TemplatePublish corresponds to `pulumi template publish`.
+//
+// Publish a template to the Private Registry.
+//
+// This command publishes a template directory to the Private Registry.
+func (a *API) TemplatePublish(
+	ctx context.Context,
+	directory string,
+	opts ...opttemplatepublish.Option,
+) (base.CommandResult, error) {
+	o := opttemplatepublish.Options{}
+	for _, opt := range opts {
+		opt(&o)
+	}
+
+	final := []string{"template", "publish"}
+
+	if o.Color != "" {
+		final = append(final, "--color", fmt.Sprint(o.Color))
+	}
+
+	if o.DisableIntegrityChecking {
+		final = append(final, "--disable-integrity-checking")
+	}
+
+	if o.FullyQualifyStackNames {
+		final = append(final, "--fully-qualify-stack-names")
+	}
+
+	if o.Logflow {
+		final = append(final, "--logflow")
+	}
+
+	if o.Logtostderr {
+		final = append(final, "--logtostderr")
+	}
+
+	if o.Memprofilerate != 0 {
+		final = append(final, "--memprofilerate", fmt.Sprint(o.Memprofilerate))
+	}
+
+	final = append(final, "--name", fmt.Sprint(o.Name))
+
+	if o.OtelTraces != "" {
+		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
+	}
+
+	if o.Profiling != "" {
+		final = append(final, "--profiling", fmt.Sprint(o.Profiling))
+	}
+
+	if o.Publisher != "" {
+		final = append(final, "--publisher", fmt.Sprint(o.Publisher))
+	}
+
+	if o.Tracing != "" {
+		final = append(final, "--tracing", fmt.Sprint(o.Tracing))
+	}
+
+	if o.TracingHeader != "" {
+		final = append(final, "--tracing-header", fmt.Sprint(o.TracingHeader))
+	}
+
+	if o.Verbose != 0 {
+		final = append(final, "--verbose", fmt.Sprint(o.Verbose))
+	}
+
+	final = append(final, "--version", fmt.Sprint(o.Version))
+
+	args := []string{}
+	args = append(args, fmt.Sprint(directory))
 	if len(args) > 0 {
 		final = append(final, "--")
 		final = append(final, args...)
