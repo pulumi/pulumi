@@ -42,7 +42,6 @@
         {
             "path": ["refresh"],
             "propagate": false,
-            "exclude": true,
             "flags": {
                 "skip-preview": { "omit": true, "preset": true }
             }
