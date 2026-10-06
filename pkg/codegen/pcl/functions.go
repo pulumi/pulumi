@@ -210,13 +210,13 @@ func pulumiBuiltins(options bindOptions) map[string]*model.Function {
 				if len(args) > 0 {
 					switch t := model.ResolveOutputs(args[0].Type()).(type) {
 					case *model.MapType:
-						mapType, elementType = model.ResolveOutputs(args[0].Type()), widenConstType(t.ElementType)
+						mapType, elementType = model.ResolveOutputs(args[0].Type()), t.ElementType
 					case *model.ObjectType:
 						var unifiedType model.Type
 						for _, t := range slices.SortedFunc(maps.Values(t.Properties), model.Compare) {
 							_, unifiedType = model.UnifyTypes(unifiedType, t)
 						}
-						mapType, elementType = model.ResolveOutputs(args[0].Type()), widenConstType(unifiedType)
+						mapType, elementType = model.ResolveOutputs(args[0].Type()), unifiedType
 					default:
 						rng := args[0].SyntaxNode().Range()
 						diagnostics = hcl.Diagnostics{&hcl.Diagnostic{
@@ -229,7 +229,13 @@ func pulumiBuiltins(options bindOptions) map[string]*model.Function {
 					argIsEventual = p || o
 				}
 
+				// The result is either one of the map's values or the default.
 				returnType := elementType
+				if len(args) > 2 {
+					returnType = model.NewUnionType(elementType, model.ResolveOutputs(args[2].Type()))
+					p, o := model.ContainsEventuals(args[2].Type())
+					argIsEventual = argIsEventual || p || o
+				}
 				if argIsEventual {
 					returnType = model.NewOutputType(returnType)
 				}
@@ -246,7 +252,8 @@ func pulumiBuiltins(options bindOptions) map[string]*model.Function {
 						},
 						{
 							Name: "default",
-							Type: model.NewOptionalType(elementType),
+							// The default need not be one of the map's values, only of the same type.
+							Type: model.NewOptionalType(widenConstType(elementType)),
 						},
 					},
 					ReturnType: returnType,

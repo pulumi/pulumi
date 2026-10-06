@@ -376,19 +376,46 @@ func TestMinMaxTypes(t *testing.T) {
 }
 
 // Regression test for https://github.com/pulumi/pulumi/issues/25076: literals have const types, so the
-// default of `lookup` must accept values that are not already in the map.
+// default of `lookup` must accept values that are not already in the map. The result is one of the map's
+// values or the default.
 func TestLookupDefault(t *testing.T) {
 	t.Parallel()
+
+	str := func(v string) model.Type { return model.NewConstType(model.StringType, cty.StringVal(v)) }
+	num := func(v int64) model.Type { return model.NewConstType(model.IntType, cty.NumberIntVal(v)) }
 
 	cases := []struct {
 		source string
 		typ    model.Type
 	}{
-		{source: `value = lookup({a="ay", b="bee"}, "c", "what?")`, typ: model.StringType},
-		{source: `value = lookup({a="ay", b="bee"}, "c", "ay")`, typ: model.StringType},
-		{source: `value = lookup({a=1, b=2}, "c", 3)`, typ: model.IntType},
-		{source: "m = {a=\"ay\", b=\"bee\"}\nvalue = lookup(m, \"c\", \"what?\")", typ: model.StringType},
-		{source: `value = lookup(secret({a="ay"}), "c", "what?")`, typ: model.NewOutputType(model.StringType)},
+		{
+			source: `value = lookup({a="ay", b="bee"}, "c", "what?")`,
+			typ:    model.NewUnionType(str("ay"), str("bee"), str("what?")),
+		},
+		{
+			source: `value = lookup({a="ay", b="bee"}, "c", "ay")`,
+			typ:    model.NewUnionType(str("ay"), str("bee")),
+		},
+		{
+			source: `value = lookup({a="ay", b="bee"}, "c")`,
+			typ:    model.NewUnionType(str("ay"), str("bee")),
+		},
+		{
+			source: `value = lookup({a=1, b=2}, "c", 3)`,
+			typ:    model.NewUnionType(num(1), num(2), num(3)),
+		},
+		{
+			source: "m = {a=\"ay\", b=\"bee\"}\nvalue = lookup(m, \"c\", \"what?\")",
+			typ:    model.NewUnionType(str("ay"), str("bee"), str("what?")),
+		},
+		{
+			source: `value = lookup(secret({a="ay"}), "c", "what?")`,
+			typ:    model.NewOutputType(model.NewUnionType(str("ay"), str("what?"))),
+		},
+		{
+			source: `value = lookup({a="ay"}, "c", secret("what?"))`,
+			typ:    model.NewOutputType(model.NewUnionType(str("ay"), str("what?"))),
+		},
 	}
 	for _, c := range cases {
 		t.Run(c.source, func(t *testing.T) {
@@ -406,4 +433,12 @@ func TestLookupDefault(t *testing.T) {
 			assert.True(t, c.typ.Equals(value.Type()), "expected %v, got %v", c.typ, value.Type())
 		})
 	}
+}
+
+func TestLookupDefaultMustMatchMapType(t *testing.T) {
+	t.Parallel()
+
+	source := `value = lookup({a="ay"}, "c", {x=1})`
+	_, _, err := ParseAndBindProgram(t, source, "program.pp", pcl.NonStrictBindOptions()...)
+	assert.ErrorContains(t, err, "cannot assign expression of type { x: 1 }")
 }
