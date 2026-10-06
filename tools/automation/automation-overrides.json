@@ -12,12 +12,6 @@
             }
         },
         {
-            "path": ["env"],
-            "propagate": true,
-            "exclude": true,
-            "flags": {}
-        },
-        {
             "path": ["neo"],
             "propagate": true,
             "exclude": true,
