@@ -298,6 +298,119 @@ class API:
             on_error=on_error,
         )
 
+    def login(
+        self,
+        url: Optional[str] = None,
+        *,
+        color: Optional[str] = None,
+        disable_integrity_checking: bool = False,
+        fully_qualify_stack_names: bool = False,
+        logflow: bool = False,
+        logtostderr: bool = False,
+        memprofilerate: Optional[int] = None,
+        otel_traces: Optional[str] = None,
+        profiling: Optional[str] = None,
+        tracing: Optional[str] = None,
+        tracing_header: Optional[str] = None,
+        verbose: Optional[int] = None,
+        cloud_url: Optional[str] = None,
+        default_org: Optional[str] = None,
+        insecure: bool = False,
+        local: bool = False,
+        oidc_expiration: Optional[str] = None,
+        oidc_org: Optional[str] = None,
+        oidc_team: Optional[str] = None,
+        oidc_token: Optional[str] = None,
+        oidc_user: Optional[str] = None,
+        cwd: Optional[str] = None,
+        additional_env: Optional[Mapping[str, str]] = None,
+        on_output: Optional[Callable[[str], Any]] = None,
+        on_error: Optional[Callable[[str], Any]] = None,
+    ):
+        """Run `pulumi login`.
+
+        :param color: Colorize output. Choices are: always, never, raw, auto
+        :param disable_integrity_checking: Disable integrity checking of checkpoint files
+        :param fully_qualify_stack_names: Show fully-qualified stack names
+        :param logflow: Flow log settings to child processes (like plugins)
+        :param logtostderr: Log to stderr instead of to files
+        :param memprofilerate: Enable more precise (and expensive) memory allocation profiles by setting runtime.MemProfileRate
+        :param otel_traces: Export OpenTelemetry traces to the specified endpoint. Use file:// for local JSON files, grpc:// or https:// for remote collectors
+        :param profiling: Emit CPU and memory profiles and an execution trace to '[filename].[pid].{cpu,mem,trace}', respectively
+        :param tracing: Emit tracing to the specified endpoint. Use the `file:` scheme to write tracing data to a local file
+        :param tracing_header: Include the tracing header with the given contents.
+        :param verbose: Enable verbose logging (e.g., v=3); anything >3 is very verbose
+        :param cloud_url: The URL of the Pulumi Cloud API to log in with (e.g., 'https://api.pulumi.com')
+        :param default_org: A default org to associate with the login. Please note, currently, only the managed and self-hosted backends support organizations
+        :param insecure: Allow insecure server connections when using SSL
+        :param local: Use Pulumi in local-only mode
+        :param oidc_expiration: The expiration for the cloud backend access token in duration format (e.g. '15m', '24h')
+        :param oidc_org: The organization to use for OIDC token exchange audience
+        :param oidc_team: The team when exchanging for a team token
+        :param oidc_token: An OIDC token to exchange for a cloud backend access token. Can be either a raw token or a file path prefixed with 'file://'.
+        :param oidc_user: The user when exchanging for a personal token
+        :param cwd: Working directory to run the command in.
+        :param additional_env: Additional environment variables to set when running the command.
+        :param on_output: A callback to invoke when the command outputs stdout data.
+        :param on_error: A callback to invoke when the command outputs stderr data."""
+        __final = []
+        __final.append("login")
+        __flags = []
+        if color is not None:
+            __flags.extend(["--color", str(color)])
+        if disable_integrity_checking:
+            __flags.append("--disable-integrity-checking")
+        if fully_qualify_stack_names:
+            __flags.append("--fully-qualify-stack-names")
+        if logflow:
+            __flags.append("--logflow")
+        if logtostderr:
+            __flags.append("--logtostderr")
+        if memprofilerate is not None:
+            __flags.extend(["--memprofilerate", str(memprofilerate)])
+        if otel_traces is not None:
+            __flags.extend(["--otel-traces", str(otel_traces)])
+        if profiling is not None:
+            __flags.extend(["--profiling", str(profiling)])
+        if tracing is not None:
+            __flags.extend(["--tracing", str(tracing)])
+        if tracing_header is not None:
+            __flags.extend(["--tracing-header", str(tracing_header)])
+        if verbose is not None:
+            __flags.extend(["--verbose", str(verbose)])
+        if cloud_url is not None:
+            __flags.extend(["--cloud-url", str(cloud_url)])
+        if default_org is not None:
+            __flags.extend(["--default-org", str(default_org)])
+        if insecure:
+            __flags.append("--insecure")
+        if local:
+            __flags.append("--local")
+        if oidc_expiration is not None:
+            __flags.extend(["--oidc-expiration", str(oidc_expiration)])
+        if oidc_org is not None:
+            __flags.extend(["--oidc-org", str(oidc_org)])
+        if oidc_team is not None:
+            __flags.extend(["--oidc-team", str(oidc_team)])
+        if oidc_token is not None:
+            __flags.extend(["--oidc-token", str(oidc_token)])
+        if oidc_user is not None:
+            __flags.extend(["--oidc-user", str(oidc_user)])
+        __final.extend(__flags)
+        __arguments: list[str] = []
+        if url is not None:
+            __arguments.append(str(url))
+        if __arguments:
+            __final.append("--")
+            __final.extend(__arguments)
+        return self._run(
+            __final,
+            cwd=cwd,
+            additional_env=additional_env,
+            on_output=on_output,
+            on_error=on_error,
+        )
+
     def new(
         self,
         template_or_url: Optional[str] = None,
