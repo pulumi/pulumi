@@ -2894,6 +2894,10 @@ func (b *cloudBackend) showDeploymentEvents(ctx context.Context, stackID client.
 				return updates[0].UpdateID, updates[0].Version, nil
 			}
 
+			// Check the deployment status after, so finished deployments with updates can still be returned,
+			// but failed deployments without updates will error out. We call GetDeployment before GetDeploymentUpdates
+			// to avoid a race condition where the deployment is finished after trying to get the updates, but the
+			// updates were not yet created.
 			switch deployment.Status {
 			case "not-started", "accepted", "running":
 			case "failed":
