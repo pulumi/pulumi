@@ -1028,6 +1028,27 @@ func (sg *stepGenerator) hasSkippedDependencies(new *pkgresource.State) (bool, e
 	return false, nil
 }
 
+// hasFailedProvider reports whether this resource's explicit provider failed earlier in this
+// deployment under ContinueOnError. Dependents of failed regular resources are handled later
+// by the executor's doesStepDependOn filter, which routes them through CreateStep.Skip /
+// UpdateStep.Skip so provider preview outputs are preserved. A failed explicit provider is
+// different because loadResourceProvider would otherwise bail with "unknown provider" before
+// any step is generated.
+func (sg *stepGenerator) hasFailedProvider(new *pkgresource.State) (bool, error) {
+	provider, _ := new.GetAllDependencies()
+	if provider == "" {
+		return false, nil
+	}
+	prov, err := sdkproviders.ParseReference(provider)
+	if err != nil {
+		return false, fmt.Errorf(
+			"could not parse provider reference %s for %s: %w",
+			provider, new.URN, err,
+		)
+	}
+	return sg.skipped != nil && sg.skipped.Contains(prov.URN()), nil
+}
+
 func (sg *stepGenerator) continueStepsFromExtension(
 	ctx context.Context, event ContinueExtensionEvent,
 ) ([]Step, bool, error) {
@@ -1127,6 +1148,23 @@ func (sg *stepGenerator) continueStepsFromRefresh(
 		// All other resources are handled as normal but need to be tagged as 'toDelete' for after we
 		// create/update them. We can use the new inputs for these so that providers get fresh configuration.
 		sg.toDelete = append(sg.toDelete, new)
+	}
+
+	// If this resource's explicit provider failed earlier in this deployment under
+	// ContinueOnError, skip this resource rather than bailing when loadResourceProvider can't
+	// resolve the failed provider ref. Dependents of failed regular resources are handled
+	// later by the executor's doesStepDependOn filter so their skip can go through
+	// CreateStep.Skip / UpdateStep.Skip (preserving provider preview outputs).
+	failedProv, err := sg.hasFailedProvider(new)
+	if err != nil {
+		return nil, false, err
+	}
+	if failedProv {
+		sg.skippedCreates[urn] = true
+		if old != nil {
+			new.Outputs = old.Outputs
+		}
+		return []Step{NewSkippedCreateStep(sg.deployment, event, new)}, false, nil
 	}
 
 	// Fetch the provider for this resource.
