@@ -374,3 +374,36 @@ func TestMinMaxTypes(t *testing.T) {
 		})
 	}
 }
+
+// Regression test for https://github.com/pulumi/pulumi/issues/25076: literals have const types, so the
+// default of `lookup` must accept values that are not already in the map.
+func TestLookupDefault(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		source string
+		typ    model.Type
+	}{
+		{source: `value = lookup({a="ay", b="bee"}, "c", "what?")`, typ: model.StringType},
+		{source: `value = lookup({a="ay", b="bee"}, "c", "ay")`, typ: model.StringType},
+		{source: `value = lookup({a=1, b=2}, "c", 3)`, typ: model.IntType},
+		{source: "m = {a=\"ay\", b=\"bee\"}\nvalue = lookup(m, \"c\", \"what?\")", typ: model.StringType},
+		{source: `value = lookup(secret({a="ay"}), "c", "what?")`, typ: model.NewOutputType(model.StringType)},
+	}
+	for _, c := range cases {
+		t.Run(c.source, func(t *testing.T) {
+			t.Parallel()
+			program, diags, err := ParseAndBindProgram(t, c.source, "program.pp", pcl.NonStrictBindOptions()...)
+			require.NoError(t, err)
+			require.False(t, diags.HasErrors(), diags.Error())
+			var value *pcl.LocalVariable
+			for _, n := range program.Nodes {
+				if v, ok := n.(*pcl.LocalVariable); ok && v.Name() == "value" {
+					value = v
+				}
+			}
+			require.NotNil(t, value)
+			assert.True(t, c.typ.Equals(value.Type()), "expected %v, got %v", c.typ, value.Type())
+		})
+	}
+}

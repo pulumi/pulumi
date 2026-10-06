@@ -210,13 +210,13 @@ func pulumiBuiltins(options bindOptions) map[string]*model.Function {
 				if len(args) > 0 {
 					switch t := model.ResolveOutputs(args[0].Type()).(type) {
 					case *model.MapType:
-						mapType, elementType = model.ResolveOutputs(args[0].Type()), t.ElementType
+						mapType, elementType = model.ResolveOutputs(args[0].Type()), widenConstType(t.ElementType)
 					case *model.ObjectType:
 						var unifiedType model.Type
 						for _, t := range slices.SortedFunc(maps.Values(t.Properties), model.Compare) {
 							_, unifiedType = model.UnifyTypes(unifiedType, t)
 						}
-						mapType, elementType = model.ResolveOutputs(args[0].Type()), unifiedType
+						mapType, elementType = model.ResolveOutputs(args[0].Type()), widenConstType(unifiedType)
 					default:
 						rng := args[0].SyntaxNode().Range()
 						diagnostics = hcl.Diagnostics{&hcl.Diagnostic{
@@ -611,6 +611,27 @@ func pulumiBuiltins(options bindOptions) map[string]*model.Function {
 		// "resource type" as we do for `call` expressions.
 		"pulumiResourceType": newResourceFunction("pulumiResourceType"),
 		"pulumiResourceName": newResourceFunction("pulumiResourceName"),
+	}
+}
+
+// widenConstType replaces a const type, or a union of const types, with the type of its values, so that
+// `"ay" | "bee"` becomes `string`. Other types are returned unchanged.
+func widenConstType(t model.Type) model.Type {
+	switch t := t.(type) {
+	case *model.ConstType:
+		return t.Type
+	case *model.UnionType:
+		if !model.IsConstType(t) {
+			return t
+		}
+		widened := make([]model.Type, len(t.ElementTypes))
+		for i, e := range t.ElementTypes {
+			widened[i] = widenConstType(e)
+		}
+		_, unified := model.UnifyTypes(widened...)
+		return unified
+	default:
+		return t
 	}
 }
 
