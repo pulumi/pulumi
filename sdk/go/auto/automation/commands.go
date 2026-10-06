@@ -29,6 +29,8 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optorgsearch"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optorgsearchai"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optorgsetdefault"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optprojectlist"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optprojectnew"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optversion"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optwhoami"
 )
@@ -922,6 +924,272 @@ func (a *API) OrgSetDefault(
 
 	args := []string{}
 	args = append(args, fmt.Sprint(name))
+	if len(args) > 0 {
+		final = append(final, "--")
+		final = append(final, args...)
+	}
+
+	return a.run(ctx, base.BaseOptions{
+		Cwd:           o.Cwd,
+		AdditionalEnv: o.AdditionalEnv,
+		Stdout:        o.Stdout,
+		Stderr:        o.Stderr,
+		Stdin:         o.Stdin,
+	}, final)
+}
+
+// ProjectList corresponds to `pulumi project list`.
+//
+// List your Pulumi projects.
+//
+// This command lists all Pulumi projects accessible to the current user.
+func (a *API) ProjectList(
+	ctx context.Context,
+	opts ...optprojectlist.Option,
+) (base.CommandResult, error) {
+	o := optprojectlist.Options{}
+	for _, opt := range opts {
+		opt(&o)
+	}
+
+	final := []string{"project", "list"}
+
+	if o.Color != "" {
+		final = append(final, "--color", fmt.Sprint(o.Color))
+	}
+
+	if o.DisableIntegrityChecking {
+		final = append(final, "--disable-integrity-checking")
+	}
+
+	if o.FullyQualifyStackNames {
+		final = append(final, "--fully-qualify-stack-names")
+	}
+
+	if o.Json {
+		final = append(final, "--json")
+	}
+
+	if o.Logflow {
+		final = append(final, "--logflow")
+	}
+
+	if o.Logtostderr {
+		final = append(final, "--logtostderr")
+	}
+
+	if o.Memprofilerate != 0 {
+		final = append(final, "--memprofilerate", fmt.Sprint(o.Memprofilerate))
+	}
+
+	if o.Organization != "" {
+		final = append(final, "--organization", fmt.Sprint(o.Organization))
+	}
+
+	if o.OtelTraces != "" {
+		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
+	}
+
+	if o.Output != "" {
+		final = append(final, "--output", fmt.Sprint(o.Output))
+	}
+
+	if o.Profiling != "" {
+		final = append(final, "--profiling", fmt.Sprint(o.Profiling))
+	}
+
+	if o.Tracing != "" {
+		final = append(final, "--tracing", fmt.Sprint(o.Tracing))
+	}
+
+	if o.TracingHeader != "" {
+		final = append(final, "--tracing-header", fmt.Sprint(o.TracingHeader))
+	}
+
+	if o.Verbose != 0 {
+		final = append(final, "--verbose", fmt.Sprint(o.Verbose))
+	}
+
+	return a.run(ctx, base.BaseOptions{
+		Cwd:           o.Cwd,
+		AdditionalEnv: o.AdditionalEnv,
+		Stdout:        o.Stdout,
+		Stderr:        o.Stderr,
+		Stdin:         o.Stdin,
+	}, final)
+}
+
+// ProjectNew corresponds to `pulumi project new`.
+//
+// Create a new Pulumi project and stack from a template.
+//
+// To create a project from a specific template, pass the template name (such as `aws-typescript`
+// or `azure-python`). If no template name is provided, a list of suggested templates will be presented
+// which can be selected interactively.
+// For testing, a path to a local template may be passed instead (such as `~/templates/aws-typescript`)
+//
+// By default, a stack created using the pulumi.com backend will use the pulumi.com secrets
+// provider and a stack created using the local or cloud object storage backend will use the
+// `passphrase` secrets provider.  A different secrets provider can be selected by passing the
+// `--secrets-provider` flag.
+//
+// To use the `passphrase` secrets provider with the pulumi.com backend, use:
+// * `pulumi new --secrets-provider=passphrase`
+//
+// To use a cloud secrets provider with any backend, use one of the following:
+// * `pulumi new --secrets-provider="awskms://alias/ExampleAlias?region=us-east-1"`
+// * `pulumi new --secrets-provider="awskms://1234abcd-12ab-34cd-56ef-1234567890ab?region=us-east-1"`
+// * `pulumi new --secrets-provider="azurekeyvault://mykeyvaultname.vault.azure.net/keys/mykeyname"`
+// * `pulumi new --secrets-provider="gcpkms://projects/p/locations/l/keyRings/r/cryptoKeys/k"`
+// * `pulumi new --secrets-provider="hashivault://mykey"`
+//
+// To create a project from a specific source control location, pass the url as follows e.g.
+// * `pulumi new https://gitlab.com/<user>/<repo>`
+// * `pulumi new https://bitbucket.org/<user>/<repo>`
+// * `pulumi new https://github.com/<user>/<repo>`
+//
+//	Note: If the URL doesn't follow the usual scheme of the given host (e.g. for GitLab subprojects)
+//	      you can append `.git` to the repository to disambiguate and point to the correct repository.
+//	      For example `https://gitlab.com/<project>/<subproject>/<repository>.git`.
+//
+// To create the project from a branch of a specific source control location, pass the url to the branch, e.g.
+// * `pulumi new https://gitlab.com/<user>/<repo>/tree/<branch>`
+// * `pulumi new https://bitbucket.org/<user>/<repo>/tree/<branch>`
+// * `pulumi new https://github.com/<user>/<repo>/tree/<branch>`
+//
+// To use a private repository as a template source, provide an HTTPS or SSH URL with relevant credentials.
+// Ensure your SSH agent has the correct identity (ssh-add) or you may be prompted for your key's passphrase.
+// * `pulumi new git@github.com:<user>/<private-repo>`
+// * `pulumi new https://<user>:<password>@<hostname>/<project>/<repo>`
+// * `pulumi new <user>@<hostname>:<project>/<repo>`
+// * `PULUMI_GITSSH_PASSPHRASE=<passphrase> pulumi new ssh://<user>@<hostname>/<project>/<repo>`
+// Any missing but required information will be prompted for.
+func (a *API) ProjectNew(
+	ctx context.Context,
+	templateOrUrl *string,
+	opts ...optprojectnew.Option,
+) (base.CommandResult, error) {
+	o := optprojectnew.Options{}
+	for _, opt := range opts {
+		opt(&o)
+	}
+
+	final := []string{"project", "new"}
+
+	final = append(final, "--yes")
+
+	if o.AI != "" {
+		final = append(final, "--ai", fmt.Sprint(o.AI))
+	}
+
+	if o.Color != "" {
+		final = append(final, "--color", fmt.Sprint(o.Color))
+	}
+
+	for _, v := range o.Config {
+		final = append(final, "--config", fmt.Sprint(v))
+	}
+
+	if o.ConfigPath {
+		final = append(final, "--config-path")
+	}
+
+	if o.Description != "" {
+		final = append(final, "--description", fmt.Sprint(o.Description))
+	}
+
+	if o.Dir != "" {
+		final = append(final, "--dir", fmt.Sprint(o.Dir))
+	}
+
+	if o.DisableIntegrityChecking {
+		final = append(final, "--disable-integrity-checking")
+	}
+
+	if o.Force {
+		final = append(final, "--force")
+	}
+
+	if o.FullyQualifyStackNames {
+		final = append(final, "--fully-qualify-stack-names")
+	}
+
+	if o.GenerateOnly {
+		final = append(final, "--generate-only")
+	}
+
+	if o.Language != "" {
+		final = append(final, "--language", fmt.Sprint(o.Language))
+	}
+
+	if o.ListTemplates {
+		final = append(final, "--list-templates")
+	}
+
+	if o.Logflow {
+		final = append(final, "--logflow")
+	}
+
+	if o.Logtostderr {
+		final = append(final, "--logtostderr")
+	}
+
+	if o.Memprofilerate != 0 {
+		final = append(final, "--memprofilerate", fmt.Sprint(o.Memprofilerate))
+	}
+
+	if o.Name != "" {
+		final = append(final, "--name", fmt.Sprint(o.Name))
+	}
+
+	if o.Offline {
+		final = append(final, "--offline")
+	}
+
+	if o.OtelTraces != "" {
+		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
+	}
+
+	if o.Profiling != "" {
+		final = append(final, "--profiling", fmt.Sprint(o.Profiling))
+	}
+
+	if o.RemoteStackConfig {
+		final = append(final, "--remote-stack-config")
+	}
+
+	for _, v := range o.RuntimeOptions {
+		final = append(final, "--runtime-options", fmt.Sprint(v))
+	}
+
+	if o.SecretsProvider != "" {
+		final = append(final, "--secrets-provider", fmt.Sprint(o.SecretsProvider))
+	}
+
+	if o.Stack != "" {
+		final = append(final, "--stack", fmt.Sprint(o.Stack))
+	}
+
+	if o.TemplateMode {
+		final = append(final, "--template-mode")
+	}
+
+	if o.Tracing != "" {
+		final = append(final, "--tracing", fmt.Sprint(o.Tracing))
+	}
+
+	if o.TracingHeader != "" {
+		final = append(final, "--tracing-header", fmt.Sprint(o.TracingHeader))
+	}
+
+	if o.Verbose != 0 {
+		final = append(final, "--verbose", fmt.Sprint(o.Verbose))
+	}
+
+	args := []string{}
+	if templateOrUrl != nil {
+		args = append(args, fmt.Sprint(*templateOrUrl))
+	}
 	if len(args) > 0 {
 		final = append(final, "--")
 		final = append(final, args...)
