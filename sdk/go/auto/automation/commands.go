@@ -23,6 +23,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/base"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optcancel"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optimport"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optlogout"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optnew"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optorg"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optorggetdefault"
@@ -347,6 +348,122 @@ func (a *API) Import(
 	args := []string{}
 	for _, v := range arg {
 		args = append(args, fmt.Sprint(v))
+	}
+	if len(args) > 0 {
+		final = append(final, "--")
+		final = append(final, args...)
+	}
+
+	return a.run(ctx, base.BaseOptions{
+		Cwd:           o.Cwd,
+		AdditionalEnv: o.AdditionalEnv,
+		Stdout:        o.Stdout,
+		Stderr:        o.Stderr,
+		Stdin:         o.Stdin,
+	}, final)
+}
+
+// Logout corresponds to `pulumi logout`.
+//
+// Log out of a Pulumi state backend.
+//
+// This command deletes the credentials stored on this machine for a single login. With no
+// arguments, it logs you out of the current backend:
+//
+//	$ pulumi logout
+//
+// You can be logged in to several backends at once. To choose one, pass its URL, written the
+// same way you wrote it when logging in:
+//
+//	$ pulumi logout https://api.pulumi.acmecorp.com
+//	$ pulumi logout s3://my-pulumi-state-bucket
+//
+// To log out of every backend at once, pass `--all`:
+//
+//	$ pulumi logout --all
+//
+// Stored credentials may be encrypted with a key kept in the OS credential store. That key is
+// shared by all your credentials files, so logging out keeps it. To delete it as well, add
+// `--delete-credentials-key` to `--all`:
+//
+//	$ pulumi logout --all --delete-credentials-key
+//
+// `--local` is a shortcut for `file://~`, matching `pulumi login --local`.
+func (a *API) Logout(
+	ctx context.Context,
+	url *string,
+	opts ...optlogout.Option,
+) (base.CommandResult, error) {
+	o := optlogout.Options{}
+	for _, opt := range opts {
+		opt(&o)
+	}
+
+	final := []string{"logout"}
+
+	if o.All {
+		final = append(final, "--all")
+	}
+
+	if o.CloudUrl != "" {
+		final = append(final, "--cloud-url", fmt.Sprint(o.CloudUrl))
+	}
+
+	if o.Color != "" {
+		final = append(final, "--color", fmt.Sprint(o.Color))
+	}
+
+	if o.DeleteCredentialsKey {
+		final = append(final, "--delete-credentials-key")
+	}
+
+	if o.DisableIntegrityChecking {
+		final = append(final, "--disable-integrity-checking")
+	}
+
+	if o.FullyQualifyStackNames {
+		final = append(final, "--fully-qualify-stack-names")
+	}
+
+	if o.Local {
+		final = append(final, "--local")
+	}
+
+	if o.Logflow {
+		final = append(final, "--logflow")
+	}
+
+	if o.Logtostderr {
+		final = append(final, "--logtostderr")
+	}
+
+	if o.Memprofilerate != 0 {
+		final = append(final, "--memprofilerate", fmt.Sprint(o.Memprofilerate))
+	}
+
+	if o.OtelTraces != "" {
+		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
+	}
+
+	if o.Profiling != "" {
+		final = append(final, "--profiling", fmt.Sprint(o.Profiling))
+	}
+
+	if o.Tracing != "" {
+		final = append(final, "--tracing", fmt.Sprint(o.Tracing))
+	}
+
+	if o.TracingHeader != "" {
+		final = append(final, "--tracing-header", fmt.Sprint(o.TracingHeader))
+	}
+
+	if o.Verbose != 0 {
+		final = append(final, "--verbose", fmt.Sprint(o.Verbose))
+	}
+
+	args := []string{}
+	if url != nil {
+		args = append(args, fmt.Sprint(*url))
 	}
 	if len(args) > 0 {
 		final = append(final, "--")
