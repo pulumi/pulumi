@@ -26,7 +26,6 @@
         {
             "path": ["about"],
             "propagate": false,
-            "exclude": true,
             "flags": {
                 "color": { "preset": "never", "omit": false }
             }
