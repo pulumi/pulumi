@@ -150,19 +150,7 @@
             }
         },
         {
-            "path": ["ai"],
-            "propagate": true,
-            "exclude": true,
-            "flags": {}
-        },
-        {
             "path": ["api"],
-            "propagate": true,
-            "exclude": true,
-            "flags": {}
-        },
-        {
-            "path": ["cloud"],
             "propagate": true,
             "exclude": true,
             "flags": {}
