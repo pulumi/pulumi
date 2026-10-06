@@ -226,7 +226,7 @@ func (s *SameStep) Fail() {
 }
 
 func (s *SameStep) Skip() {
-	s.reg.Done(&RegisterResult{State: s.new, Result: ResultStateSkipped})
+	s.reg.Done(&RegisterResult{State: s.new, Result: ResultStateSkipped, Unknown: s.skippedCreate})
 }
 
 // CreateStep is a mutating step that creates an entirely new resource.

@@ -606,10 +606,17 @@ func doesStepDependOn(step Step, skipped mapset.Set[urn.URN]) bool {
 	if res == nil {
 		return false
 	}
-	_, allDeps := res.GetAllDependencies()
+	provider, allDeps := res.GetAllDependencies()
 	for _, dep := range allDeps {
 		if skipped.Contains(dep.URN) {
 			return true
+		}
+	}
+	if provider != "" {
+		if ref, err := sdkproviders.ParseReference(provider); err == nil {
+			if skipped.Contains(ref.URN()) {
+				return true
+			}
 		}
 	}
 
@@ -627,6 +634,17 @@ func (ex *deploymentExecutor) handleSingleEvent(ctx context.Context, event Sourc
 		return err
 	}
 	event = normalizedEvent
+
+	// Sync errored URNs into both the executor's skipped set and the step generator's failedURNs
+	// map before dispatching. Step generation needs to know about failed providers so it can
+	// treat dependents as skipped rather than bailing with "unknown provider".
+	if ex.deployment.opts.ContinueOnError {
+		for _, errored := range ex.stepExec.GetErroredSteps() {
+			u := errored.Res().URN
+			ex.skipped.Add(u)
+			ex.stepGen.failedURNs[u] = true
+		}
+	}
 
 	var steps []Step
 	switch e := event.(type) {

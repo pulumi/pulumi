@@ -1442,3 +1442,93 @@ func TestUpContinueOnErrorSkippedUpdatePreviewPropagatesMixedOutputs(t *testing.
 	require.ErrorContains(t, err, "intentionally failed update")
 	assert.True(t, previewCalled.Load(), "expected UpdateStep.Skip to have called provider Update in preview mode")
 }
+
+// TestUpContinueOnErrorExplicitProviderCreateFails verifies the behavior when an explicit
+// provider resource fails its own Configure during Create under ContinueOnError. The provider
+// registration itself returns Result_FAIL to a result-reporting SDK. Downstream resources that
+// reference the failed provider are skipped and returned as SUCCESS + Unknown=true so SDKs can
+// propagate unknowns to dependents. Unrelated resources using a different (working) provider
+// continue to be created normally.
+func TestUpContinueOnErrorExplicitProviderCreateFails(t *testing.T) {
+	t.Parallel()
+
+	// ConfigureF errors only when that config is present, so the default provider (with no config) still succeeds.
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				ConfigureF: func(_ context.Context, req plugin.ConfigureRequest) (plugin.ConfigureResponse, error) {
+					if req.URN != nil && req.URN.Name() == "explicitProv" {
+						return plugin.ConfigureResponse{}, errors.New("intentionally failed provider configure")
+					}
+					return plugin.ConfigureResponse{}, nil
+				},
+			}, nil
+		}, deploytest.WithoutGrpc),
+	}
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		// The explicit provider's Configure fails. The engine reports FAIL back to the SDK
+		// (which opted into result reporting).
+		provResp, err := monitor.RegisterResource(
+			providers.MakeProviderType("pkgA"), "explicitProv", true, deploytest.ResourceOptions{
+				SupportsResultReporting: true,
+			})
+		require.NoError(t, err)
+		assert.Equal(t, pulumirpc.Result_FAIL, provResp.Result)
+
+		provRef, err := providers.NewReference(provResp.URN, provResp.ID)
+		require.NoError(t, err)
+
+		// A resource using the failed explicit provider is skipped: SUCCESS + Unknown so
+		// the SDK can propagate the unknown to its own dependents.
+		depResp, err := monitor.RegisterResource("pkgA:m:typA", "usesExplicit", true, deploytest.ResourceOptions{
+			SupportsResultReporting: true,
+			Provider:                provRef.String(),
+		})
+		require.NoError(t, err)
+		assert.Equal(t, pulumirpc.Result_SUCCESS, depResp.Result)
+		assert.True(t, depResp.Unknown)
+
+		// An unrelated resource using the default pkgA provider is unaffected and succeeds.
+		independentResp, err := monitor.RegisterResource(
+			"pkgA:m:typA", "independent", true, deploytest.ResourceOptions{
+				SupportsResultReporting: true,
+			})
+		require.NoError(t, err)
+		assert.Equal(t, pulumirpc.Result_SUCCESS, independentResp.Result)
+		assert.False(t, independentResp.Unknown)
+
+		return nil
+	})
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
+
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{
+			T:                t,
+			SkipDisplayTests: true,
+			UpdateOptions: UpdateOptions{
+				ContinueOnError: true,
+			},
+			HostF: hostF,
+		},
+	}
+
+	project := p.GetProject()
+	snap, err := lt.TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	require.ErrorContains(t, err, "intentionally failed provider configure")
+	require.NotNil(t, snap)
+
+	// The failed explicit provider and its skipped dependent are not persisted. The default
+	// pkgA provider and the independent resource that uses it are.
+	expectedURNs := []string{
+		"urn:pulumi:test::test::pulumi:providers:pkgA::default",
+		"urn:pulumi:test::test::pkgA:m:typA::independent",
+	}
+	assert.Equal(t, len(expectedURNs), len(snap.Resources))
+	for _, u := range expectedURNs {
+		found := slices.ContainsFunc(snap.Resources, func(rs *pkgresource.State) bool {
+			return rs.URN == resource.URN(u)
+		})
+		assert.True(t, found, "Expected URN %s not found in snapshot", u)
+	}
+}
