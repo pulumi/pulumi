@@ -23,6 +23,11 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/base"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optcancel"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optimport"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optlogs"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optlogsdecrypt"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optlogslist"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optlogsremove"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optlogsshare"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optnew"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optorg"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optorggetdefault"
@@ -347,6 +352,526 @@ func (a *API) Import(
 	args := []string{}
 	for _, v := range arg {
 		args = append(args, fmt.Sprint(v))
+	}
+	if len(args) > 0 {
+		final = append(final, "--")
+		final = append(final, args...)
+	}
+
+	return a.run(ctx, base.BaseOptions{
+		Cwd:           o.Cwd,
+		AdditionalEnv: o.AdditionalEnv,
+		Stdout:        o.Stdout,
+		Stderr:        o.Stderr,
+		Stdin:         o.Stdin,
+	}, final)
+}
+
+// Logs corresponds to `pulumi logs`.
+func (a *API) Logs(
+	ctx context.Context,
+	opts ...optlogs.Option,
+) (base.CommandResult, error) {
+	o := optlogs.Options{}
+	for _, opt := range opts {
+		opt(&o)
+	}
+
+	final := []string{"logs"}
+
+	if o.Color != "" {
+		final = append(final, "--color", fmt.Sprint(o.Color))
+	}
+
+	if o.ConfigFile != "" {
+		final = append(final, "--config-file", fmt.Sprint(o.ConfigFile))
+	}
+
+	if o.DisableIntegrityChecking {
+		final = append(final, "--disable-integrity-checking")
+	}
+
+	if o.Follow {
+		final = append(final, "--follow")
+	}
+
+	if o.FullyQualifyStackNames {
+		final = append(final, "--fully-qualify-stack-names")
+	}
+
+	if o.Json {
+		final = append(final, "--json")
+	}
+
+	if o.Logflow {
+		final = append(final, "--logflow")
+	}
+
+	if o.Logtostderr {
+		final = append(final, "--logtostderr")
+	}
+
+	if o.Memprofilerate != 0 {
+		final = append(final, "--memprofilerate", fmt.Sprint(o.Memprofilerate))
+	}
+
+	if o.OtelTraces != "" {
+		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
+	}
+
+	if o.Profiling != "" {
+		final = append(final, "--profiling", fmt.Sprint(o.Profiling))
+	}
+
+	if o.Resource != "" {
+		final = append(final, "--resource", fmt.Sprint(o.Resource))
+	}
+
+	if o.Since != "" {
+		final = append(final, "--since", fmt.Sprint(o.Since))
+	}
+
+	if o.Stack != "" {
+		final = append(final, "--stack", fmt.Sprint(o.Stack))
+	}
+
+	if o.Tracing != "" {
+		final = append(final, "--tracing", fmt.Sprint(o.Tracing))
+	}
+
+	if o.TracingHeader != "" {
+		final = append(final, "--tracing-header", fmt.Sprint(o.TracingHeader))
+	}
+
+	if o.Verbose != 0 {
+		final = append(final, "--verbose", fmt.Sprint(o.Verbose))
+	}
+
+	return a.run(ctx, base.BaseOptions{
+		Cwd:           o.Cwd,
+		AdditionalEnv: o.AdditionalEnv,
+		Stdout:        o.Stdout,
+		Stderr:        o.Stderr,
+		Stdin:         o.Stdin,
+	}, final)
+}
+
+// LogsDecrypt corresponds to `pulumi logs decrypt`.
+//
+// Decrypt and display the contents of an automatic log file.
+//
+// If no filename is provided, a list of available log files is
+// displayed and the user is prompted to choose one. Pass
+// --latest to skip the prompt and decrypt the most recent log
+// file instead
+func (a *API) LogsDecrypt(
+	ctx context.Context,
+	opts ...optlogsdecrypt.Option,
+) (base.CommandResult, error) {
+	o := optlogsdecrypt.Options{}
+	for _, opt := range opts {
+		opt(&o)
+	}
+
+	final := []string{"logs", "decrypt"}
+
+	if o.Color != "" {
+		final = append(final, "--color", fmt.Sprint(o.Color))
+	}
+
+	if o.ConfigFile != "" {
+		final = append(final, "--config-file", fmt.Sprint(o.ConfigFile))
+	}
+
+	if o.DisableIntegrityChecking {
+		final = append(final, "--disable-integrity-checking")
+	}
+
+	if o.Follow {
+		final = append(final, "--follow")
+	}
+
+	if o.FullyQualifyStackNames {
+		final = append(final, "--fully-qualify-stack-names")
+	}
+
+	if o.Json {
+		final = append(final, "--json")
+	}
+
+	if o.Latest {
+		final = append(final, "--latest")
+	}
+
+	if o.Logflow {
+		final = append(final, "--logflow")
+	}
+
+	if o.Logtostderr {
+		final = append(final, "--logtostderr")
+	}
+
+	if o.Memprofilerate != 0 {
+		final = append(final, "--memprofilerate", fmt.Sprint(o.Memprofilerate))
+	}
+
+	if o.OtelTraces != "" {
+		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
+	}
+
+	if o.Profiling != "" {
+		final = append(final, "--profiling", fmt.Sprint(o.Profiling))
+	}
+
+	if o.Resource != "" {
+		final = append(final, "--resource", fmt.Sprint(o.Resource))
+	}
+
+	if o.Since != "" {
+		final = append(final, "--since", fmt.Sprint(o.Since))
+	}
+
+	if o.Stack != "" {
+		final = append(final, "--stack", fmt.Sprint(o.Stack))
+	}
+
+	if o.Tracing != "" {
+		final = append(final, "--tracing", fmt.Sprint(o.Tracing))
+	}
+
+	if o.TracingHeader != "" {
+		final = append(final, "--tracing-header", fmt.Sprint(o.TracingHeader))
+	}
+
+	if o.Verbose != 0 {
+		final = append(final, "--verbose", fmt.Sprint(o.Verbose))
+	}
+
+	return a.run(ctx, base.BaseOptions{
+		Cwd:           o.Cwd,
+		AdditionalEnv: o.AdditionalEnv,
+		Stdout:        o.Stdout,
+		Stderr:        o.Stderr,
+		Stdin:         o.Stdin,
+	}, final)
+}
+
+// LogsList corresponds to `pulumi logs list`.
+//
+// # List automatic log files
+//
+// Each entry shows the stack the log belongs to, when it was
+// created, the associated update ID (or PID for CLI-level logs
+// that were never attached to a stack), the file size, and the
+// full path to the file.
+func (a *API) LogsList(
+	ctx context.Context,
+	opts ...optlogslist.Option,
+) (base.CommandResult, error) {
+	o := optlogslist.Options{}
+	for _, opt := range opts {
+		opt(&o)
+	}
+
+	final := []string{"logs", "list"}
+
+	if o.Color != "" {
+		final = append(final, "--color", fmt.Sprint(o.Color))
+	}
+
+	if o.ConfigFile != "" {
+		final = append(final, "--config-file", fmt.Sprint(o.ConfigFile))
+	}
+
+	if o.DisableIntegrityChecking {
+		final = append(final, "--disable-integrity-checking")
+	}
+
+	if o.Follow {
+		final = append(final, "--follow")
+	}
+
+	if o.FullyQualifyStackNames {
+		final = append(final, "--fully-qualify-stack-names")
+	}
+
+	if o.Json {
+		final = append(final, "--json")
+	}
+
+	if o.Logflow {
+		final = append(final, "--logflow")
+	}
+
+	if o.Logtostderr {
+		final = append(final, "--logtostderr")
+	}
+
+	if o.Memprofilerate != 0 {
+		final = append(final, "--memprofilerate", fmt.Sprint(o.Memprofilerate))
+	}
+
+	if o.OtelTraces != "" {
+		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
+	}
+
+	if o.Output != "" {
+		final = append(final, "--output", fmt.Sprint(o.Output))
+	}
+
+	if o.Profiling != "" {
+		final = append(final, "--profiling", fmt.Sprint(o.Profiling))
+	}
+
+	if o.Resource != "" {
+		final = append(final, "--resource", fmt.Sprint(o.Resource))
+	}
+
+	if o.Since != "" {
+		final = append(final, "--since", fmt.Sprint(o.Since))
+	}
+
+	if o.Stack != "" {
+		final = append(final, "--stack", fmt.Sprint(o.Stack))
+	}
+
+	if o.Tracing != "" {
+		final = append(final, "--tracing", fmt.Sprint(o.Tracing))
+	}
+
+	if o.TracingHeader != "" {
+		final = append(final, "--tracing-header", fmt.Sprint(o.TracingHeader))
+	}
+
+	if o.Verbose != 0 {
+		final = append(final, "--verbose", fmt.Sprint(o.Verbose))
+	}
+
+	return a.run(ctx, base.BaseOptions{
+		Cwd:           o.Cwd,
+		AdditionalEnv: o.AdditionalEnv,
+		Stdout:        o.Stdout,
+		Stderr:        o.Stderr,
+		Stdin:         o.Stdin,
+	}, final)
+}
+
+// LogsRemove corresponds to `pulumi logs remove`.
+//
+// Remove automatic log files.
+//
+// If no filters are given, a list of available log files is
+// displayed and the user is prompted to choose one to remove.
+//
+// Logs can also be removed in bulk by passing --stack to limit
+// removal to a single stack, --before to remove logs older than
+// a given date or duration, or --all to remove every log file.
+//
+// By default the user is asked to confirm by typing the stack
+// name (or 'yes' when multiple stacks are involved). Pass --yes
+// to skip the prompt.
+func (a *API) LogsRemove(
+	ctx context.Context,
+	opts ...optlogsremove.Option,
+) (base.CommandResult, error) {
+	o := optlogsremove.Options{}
+	for _, opt := range opts {
+		opt(&o)
+	}
+
+	final := []string{"logs", "remove"}
+
+	final = append(final, "--yes")
+
+	if o.All {
+		final = append(final, "--all")
+	}
+
+	if o.Before != "" {
+		final = append(final, "--before", fmt.Sprint(o.Before))
+	}
+
+	if o.Color != "" {
+		final = append(final, "--color", fmt.Sprint(o.Color))
+	}
+
+	if o.ConfigFile != "" {
+		final = append(final, "--config-file", fmt.Sprint(o.ConfigFile))
+	}
+
+	if o.DisableIntegrityChecking {
+		final = append(final, "--disable-integrity-checking")
+	}
+
+	if o.Follow {
+		final = append(final, "--follow")
+	}
+
+	if o.FullyQualifyStackNames {
+		final = append(final, "--fully-qualify-stack-names")
+	}
+
+	if o.Json {
+		final = append(final, "--json")
+	}
+
+	if o.Logflow {
+		final = append(final, "--logflow")
+	}
+
+	if o.Logtostderr {
+		final = append(final, "--logtostderr")
+	}
+
+	if o.Memprofilerate != 0 {
+		final = append(final, "--memprofilerate", fmt.Sprint(o.Memprofilerate))
+	}
+
+	if o.OtelTraces != "" {
+		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
+	}
+
+	if o.Profiling != "" {
+		final = append(final, "--profiling", fmt.Sprint(o.Profiling))
+	}
+
+	if o.Resource != "" {
+		final = append(final, "--resource", fmt.Sprint(o.Resource))
+	}
+
+	if o.Since != "" {
+		final = append(final, "--since", fmt.Sprint(o.Since))
+	}
+
+	if o.Stack != "" {
+		final = append(final, "--stack", fmt.Sprint(o.Stack))
+	}
+
+	if o.Tracing != "" {
+		final = append(final, "--tracing", fmt.Sprint(o.Tracing))
+	}
+
+	if o.TracingHeader != "" {
+		final = append(final, "--tracing-header", fmt.Sprint(o.TracingHeader))
+	}
+
+	if o.Verbose != 0 {
+		final = append(final, "--verbose", fmt.Sprint(o.Verbose))
+	}
+
+	return a.run(ctx, base.BaseOptions{
+		Cwd:           o.Cwd,
+		AdditionalEnv: o.AdditionalEnv,
+		Stdout:        o.Stdout,
+		Stderr:        o.Stderr,
+		Stdin:         o.Stdin,
+	}, final)
+}
+
+// LogsShare corresponds to `pulumi logs share`.
+//
+// Create a copy of a log file that can be safely shared with
+// Pulumi support. The log content is re-encrypted with a key
+// that only Pulumi can read.
+//
+// If no filename is provided, a list of available log files is
+// displayed and the user is prompted to choose one. Pass
+// --latest to skip the prompt and share the most recent log
+// file instead.
+//
+// By default, secret values in the log are redacted. Use
+// --include-secrets to include them in the shared log.
+func (a *API) LogsShare(
+	ctx context.Context,
+	filename *string,
+	opts ...optlogsshare.Option,
+) (base.CommandResult, error) {
+	o := optlogsshare.Options{}
+	for _, opt := range opts {
+		opt(&o)
+	}
+
+	final := []string{"logs", "share"}
+
+	if o.Color != "" {
+		final = append(final, "--color", fmt.Sprint(o.Color))
+	}
+
+	if o.ConfigFile != "" {
+		final = append(final, "--config-file", fmt.Sprint(o.ConfigFile))
+	}
+
+	if o.DisableIntegrityChecking {
+		final = append(final, "--disable-integrity-checking")
+	}
+
+	if o.Follow {
+		final = append(final, "--follow")
+	}
+
+	if o.FullyQualifyStackNames {
+		final = append(final, "--fully-qualify-stack-names")
+	}
+
+	if o.IncludeSecrets {
+		final = append(final, "--include-secrets")
+	}
+
+	if o.Json {
+		final = append(final, "--json")
+	}
+
+	if o.Latest {
+		final = append(final, "--latest")
+	}
+
+	if o.Logflow {
+		final = append(final, "--logflow")
+	}
+
+	if o.Logtostderr {
+		final = append(final, "--logtostderr")
+	}
+
+	if o.Memprofilerate != 0 {
+		final = append(final, "--memprofilerate", fmt.Sprint(o.Memprofilerate))
+	}
+
+	if o.OtelTraces != "" {
+		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
+	}
+
+	if o.Profiling != "" {
+		final = append(final, "--profiling", fmt.Sprint(o.Profiling))
+	}
+
+	if o.Resource != "" {
+		final = append(final, "--resource", fmt.Sprint(o.Resource))
+	}
+
+	if o.Since != "" {
+		final = append(final, "--since", fmt.Sprint(o.Since))
+	}
+
+	if o.Stack != "" {
+		final = append(final, "--stack", fmt.Sprint(o.Stack))
+	}
+
+	if o.Tracing != "" {
+		final = append(final, "--tracing", fmt.Sprint(o.Tracing))
+	}
+
+	if o.TracingHeader != "" {
+		final = append(final, "--tracing-header", fmt.Sprint(o.TracingHeader))
+	}
+
+	if o.Verbose != 0 {
+		final = append(final, "--verbose", fmt.Sprint(o.Verbose))
+	}
+
+	args := []string{}
+	if filename != nil {
+		args = append(args, fmt.Sprint(*filename))
 	}
 	if len(args) > 0 {
 		final = append(final, "--")
