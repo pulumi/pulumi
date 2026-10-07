@@ -24,6 +24,7 @@ import (
 
 	"github.com/go-git/go-git/v6"
 	"github.com/go-git/go-git/v6/config"
+	"github.com/go-git/go-git/v6/plumbing"
 	"github.com/go-git/go-git/v6/plumbing/object"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/stretchr/testify/assert"
@@ -764,4 +765,55 @@ func TestCopyTemplateFiles(t *testing.T) {
 		err = CopyTemplateFiles(projectDir, copyDestDir, true, "testProjectName", "testProjectDescription")
 		require.NoError(t, err)
 	})
+}
+
+func TestRetrievePulumiTemplatesBranchChange(t *testing.T) {
+	source := t.TempDir()
+	repo, worktree := newTemplateSourceRepo(t, source)
+	head, err := repo.Head()
+	require.NoError(t, err)
+
+	feature := plumbing.NewBranchReferenceName("feature")
+	require.NoError(t, worktree.Checkout(&git.CheckoutOptions{Branch: feature, Create: true}))
+	featureCommit, err := worktree.Commit("feature", &git.CommitOptions{
+		Author:            &object.Signature{Name: "test", Email: "test@example.com", When: time.Now()},
+		AllowEmptyCommits: true,
+	})
+	require.NoError(t, err)
+	require.NoError(t, worktree.Checkout(&git.CheckoutOptions{Branch: head.Name()}))
+
+	templateDir := filepath.Join(t.TempDir(), "templates")
+	t.Setenv(env.TemplateGitRepository.Var().Name(), source)
+	t.Setenv(env.TemplatePath.Var().Name(), templateDir)
+
+	t.Setenv(env.TemplateBranch.Var().Name(), head.Name().Short())
+	_, err = retrievePulumiTemplates(t.Context(), false, TemplateKindPulumiProject)
+	require.NoError(t, err)
+	marker := filepath.Join(templateDir, ".git", "marker")
+	require.NoError(t, os.WriteFile(marker, nil, 0o600))
+
+	t.Setenv(env.TemplateBranch.Var().Name(), feature.Short())
+	_, err = retrievePulumiTemplates(t.Context(), false, TemplateKindPulumiProject)
+	require.NoError(t, err)
+
+	cache, err := git.PlainOpen(templateDir)
+	require.NoError(t, err)
+	cacheHead, err := cache.Head()
+	require.NoError(t, err)
+	require.Equal(t, feature, cacheHead.Name())
+	require.Equal(t, featureCommit, cacheHead.Hash())
+	require.FileExists(t, marker)
+
+	require.NoError(t, worktree.Checkout(&git.CheckoutOptions{Branch: feature}))
+	featureCommit, err = worktree.Commit("feature 2", &git.CommitOptions{
+		Author:            &object.Signature{Name: "test", Email: "test@example.com", When: time.Now()},
+		AllowEmptyCommits: true,
+	})
+	require.NoError(t, err)
+
+	_, err = retrievePulumiTemplates(t.Context(), false, TemplateKindPulumiProject)
+	require.NoError(t, err)
+	cacheHead, err = cache.Head()
+	require.NoError(t, err)
+	require.Equal(t, featureCommit, cacheHead.Hash())
 }
