@@ -496,7 +496,7 @@ func TestBindLookup(t *testing.T) {
 	env := environment(map[string]any{
 		"key": StringType,
 		"m":   NewMapType(BoolType),
-		"o":   NewObjectType(map[string]Type{"foo": BoolType, "bar": BoolType}),
+		"o":   NewObjectType(map[string]Type{"foo": BoolType, "bar": IntType}),
 		"om":  NewOutputType(NewMapType(BoolType)),
 	})
 	scope := env.scope()
@@ -508,7 +508,8 @@ func TestBindLookup(t *testing.T) {
 	}{
 		{x: `lookup(m, key)`, t: BoolType, printed: "m[key]"},
 		{x: `lookup(o, "foo")`, t: BoolType, printed: `o["foo"]`},
-		{x: `lookup(o, key)`, t: BoolType, printed: `o[key]`},
+		{x: `lookup(o, "bar")`, t: IntType, printed: `o["bar"]`},
+		{x: `lookup(o, key)`, t: NewUnionType(BoolType, IntType), printed: `o[key]`},
 		{x: `lookup(om, key)`, t: NewOutputType(BoolType), printed: "om[key]"},
 		{x: `lookup( m , key )`, t: BoolType, printed: " m[key ]"},
 		{x: "lookup(m, /* c */ key)", t: BoolType, printed: "m[/* c */ key]"},
