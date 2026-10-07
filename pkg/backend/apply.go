@@ -314,6 +314,17 @@ func PreviewThenPromptThenExecute(ctx context.Context, kind apitype.UpdateKind, 
 		}
 	}
 
+	// The operation is confirmed: publish the stack's inline environment definition, if it has one, so the
+	// execution reads its configuration from the published revision and records which one it used.
+	if op.StackConfiguration.SyncEnvironment != nil {
+		cfg, err := op.StackConfiguration.SyncEnvironment(ctx)
+		if err != nil {
+			return nil, err
+		}
+		op.StackConfiguration = cfg
+		op.M.RecordStackEnvironment(cfg)
+	}
+
 	// Perform the change (!DryRun) and show the cloud link to the result.
 	// We don't care about the events it issues, so just pass a nil channel along.
 	opts := ApplierOptions{

@@ -95,6 +95,7 @@ type newArgs struct {
 	templateMode         bool
 	runtimeOptions       []string
 	remoteStackConfig    bool
+	escConfig            bool
 	stdout               io.Writer
 	stderr               io.Writer
 }
@@ -176,6 +177,14 @@ func runNew(ctx context.Context, args newArgs) error {
 		// Check project name and stack reference project name are the same, we skip this check if
 		// --generate-only is set because we're not going to actually use the --stack argument given.
 		if err := compareStackProjectName(b, args.stack, args.name); err != nil {
+			return err
+		}
+	}
+
+	// Everything --esc-config needs is checked before a template is downloaded, a stack is created or a
+	// file is written, so that a refusal leaves nothing behind.
+	if args.escConfig {
+		if err := validateESCConfig(b, args); err != nil {
 			return err
 		}
 	}
@@ -265,6 +274,12 @@ func runNew(ctx context.Context, args newArgs) error {
 			return err
 		}
 		if existingStack != nil {
+			if args.escConfig {
+				// --esc-config defines a stack's configuration as it is born; adopting an existing stack
+				// would silently reshape configuration it already has.
+				return fmt.Errorf("--esc-config cannot be used with the existing stack %s: "+
+					"it applies to stacks created by this command", args.stack)
+			}
 			s = existingStack
 			if args.description == "" {
 				args.description = existingDesc
@@ -420,6 +435,11 @@ func runNew(ctx context.Context, args newArgs) error {
 	if !args.generateOnly {
 		if err = confirmed.saveConfig(ctx, cmdutil.Diag(), ssml, ws, proj, s, template, args, opts); err != nil {
 			return err
+		}
+		if args.escConfig {
+			if err := initStackEnvironmentFromConfig(ctx, cmdutil.Diag(), ws, s, args.stdout); err != nil {
+				return err
+			}
 		}
 	}
 
@@ -663,7 +683,28 @@ func NewNewCmd() *cobra.Command {
 	)
 	_ = cmd.PersistentFlags().MarkHidden("remote-stack-config")
 
+	cmd.PersistentFlags().BoolVar(
+		&args.escConfig, "esc-config", false,
+		"[EXPERIMENTAL] Define the stack's configuration as an inline ESC environment in its configuration "+
+			"file, published to the environment '<project>/<stack>' on every `pulumi up`",
+	)
+
 	return cmd
+}
+
+// validateESCConfig rejects the flag combinations --esc-config cannot honour.
+func validateESCConfig(b backend.Backend, args newArgs) error {
+	if args.generateOnly {
+		return errors.New("--esc-config cannot be combined with --generate-only: no stack is created")
+	}
+	if args.remoteStackConfig {
+		return errors.New("--esc-config cannot be combined with --remote-stack-config: " +
+			"a stack whose configuration is stored remotely has no configuration file to define an environment in")
+	}
+	if b == nil {
+		return errors.New("--esc-config requires a backend that supports stack-managed environments")
+	}
+	return cmdStack.CheckStackEnvironmentSupport(b)
 }
 
 func validateProjectName(ctx context.Context, b backend.Backend,

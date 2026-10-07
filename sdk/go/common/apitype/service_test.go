@@ -193,6 +193,23 @@ func TestCapabilities(t *testing.T) {
 		}, actual)
 	})
 
+	t.Run("parse stack environment sync", func(t *testing.T) {
+		t.Parallel()
+		response := CapabilitiesResponse{
+			Capabilities: []APICapabilityConfig{
+				{
+					Capability: StackEnvironmentSync,
+					Version:    1,
+				},
+			},
+		}
+		actual, err := response.Parse()
+		require.NoError(t, err)
+		assert.Equal(t, Capabilities{
+			StackEnvironmentSync: true,
+		}, actual)
+	})
+
 	t.Run("parse api version v1", func(t *testing.T) {
 		t.Parallel()
 		response := CapabilitiesResponse{

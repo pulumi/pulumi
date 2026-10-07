@@ -1014,6 +1014,25 @@ func NewEnvironment(envs []string) *Environment {
 	return &Environment{envs: envs}
 }
 
+// NewEnvironmentDefinition returns an inline environment definition parsed from a YAML document,
+// as opposed to the list of environments to import that NewEnvironment creates.
+func NewEnvironmentDefinition(definition []byte) (*Environment, error) {
+	var doc yaml.Node
+	if err := yaml.Unmarshal(definition, &doc); err != nil {
+		return nil, fmt.Errorf("parsing environment definition: %w", err)
+	}
+	if doc.Kind != yaml.DocumentNode || len(doc.Content) != 1 || doc.Content[0].Kind != yaml.MappingNode {
+		return nil, errors.New("an environment definition must be a YAML mapping")
+	}
+	return &Environment{node: doc.Content[0]}, nil
+}
+
+// IsDefinition reports whether the environment block is an inline environment definition rather
+// than a list of environments to import.
+func (e *Environment) IsDefinition() bool {
+	return e != nil && len(e.envs) == 0 && (e.message != nil || e.node != nil)
+}
+
 func (e *Environment) Definition() []byte {
 	switch {
 	case e == nil:

@@ -17,7 +17,6 @@ package metadata
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
 	"log/slog"
 	"os"
@@ -43,7 +42,6 @@ import (
 	pkghost "github.com/pulumi/pulumi/pkg/v3/host"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/constant"
 	cmdEnv "github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
@@ -273,17 +271,7 @@ func addUpdatePlanMetadataToEnvironment(env map[string]string, updatePlan bool) 
 // addEscMetadataToEnvironment populates the environment metadata bag with the ESC environments
 // used as part of the stack update.
 func addEscMetadataToEnvironment(env map[string]string, escEnvironments []string) {
-	envs := make([]apitype.EscEnvironmentMetadata, len(escEnvironments))
-	for i, s := range escEnvironments {
-		envs[i] = apitype.EscEnvironmentMetadata{ID: s}
-	}
-
-	jsonData, err := json.Marshal(envs)
-	if err != nil {
-		return
-	}
-
-	env[backend.StackEnvironments] = string(jsonData)
+	backend.SetStackEnvironmentsMetadata(env, escEnvironments)
 }
 
 // addVCSMetadata populates the environment metadata bag with VCS-related

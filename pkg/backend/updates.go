@@ -15,6 +15,8 @@
 package backend
 
 import (
+	"encoding/json"
+
 	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
@@ -99,7 +101,62 @@ const (
 
 	// StackEnvironments indicates the list of ESC environments imported by the stack being updated.
 	StackEnvironments = "stack.environments"
+
+	// StackEnvironment names the revision of the environment managed by the stack that the update
+	// published its inline definition to and read its configuration from, as "project/name@revision".
+	StackEnvironment = "stack.environment"
+	// StackEnvironmentOpenSession is the open session of StackEnvironment the update read its configuration through.
+	StackEnvironmentOpenSession = "stack.environment.openSession"
 )
+
+// SetStackEnvironmentsMetadata records the ESC environments an update reads its configuration from under
+// StackEnvironments.
+func SetStackEnvironmentsMetadata(env map[string]string, escEnvironments []string) {
+	envs := make([]apitype.EscEnvironmentMetadata, len(escEnvironments))
+	for i, s := range escEnvironments {
+		envs[i] = apitype.EscEnvironmentMetadata{ID: s}
+	}
+
+	jsonData, err := json.Marshal(envs)
+	if err != nil {
+		return
+	}
+
+	env[StackEnvironments] = string(jsonData)
+}
+
+// RecordStackEnvironment records the revision and open session of the stack-managed environment that cfg
+// was read from. The anonymous "yaml" entry of StackEnvironments, which stands for the inline definition,
+// is replaced by the published revision so the service can attribute the update to it.
+func (m *UpdateMetadata) RecordStackEnvironment(cfg StackConfiguration) {
+	if m == nil || cfg.StackEnvironment == nil {
+		return
+	}
+	if m.Environment == nil {
+		m.Environment = make(map[string]string)
+	}
+
+	ref := cfg.StackEnvironment.String()
+	m.Environment[StackEnvironment] = ref
+	if cfg.StackEnvironment.OpenSessionID != "" {
+		m.Environment[StackEnvironmentOpenSession] = cfg.StackEnvironment.OpenSessionID
+	}
+
+	imports := make([]string, 0, len(cfg.EnvironmentImports)+1)
+	replaced := false
+	for _, imp := range cfg.EnvironmentImports {
+		if imp == "yaml" {
+			imports = append(imports, ref)
+			replaced = true
+			continue
+		}
+		imports = append(imports, imp)
+	}
+	if !replaced {
+		imports = append(imports, ref)
+	}
+	SetStackEnvironmentsMetadata(m.Environment, imports)
+}
 
 // UpdateInfo describes a previous update.
 type UpdateInfo struct {

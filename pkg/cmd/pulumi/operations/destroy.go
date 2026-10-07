@@ -253,13 +253,15 @@ func NewDestroyCmd() *cobra.Command {
 				return err
 			}
 
-			getConfig := config.GetStackConfiguration
+			getConfig := config.GetStackConfigurationWithOptions
 			if stackName != "" {
 				// `pulumi destroy --stack <stack>` can be run outside of the project directory.
 				// The config may be missing, fallback on the latest configuration in the backend.
-				getConfig = config.GetStackConfigurationOrLatest
+				getConfig = config.GetStackConfigurationOrLatestWithOptions
 			}
-			cfg, sm, err := getConfig(ctx, cmdutil.Diag(), ssml, s, proj, configFile, envOverrides)
+			cfg, sm, err := getConfig(ctx, cmdutil.Diag(), ssml, s, proj, configFile, envOverrides,
+				config.StackConfigurationOptions{EnvironmentMode: config.StackEnvironmentSync, Stdout: cmd.OutOrStdout()},
+			)
 			if err != nil {
 				return fmt.Errorf("getting stack configuration: %w", err)
 			}

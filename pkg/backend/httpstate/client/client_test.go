@@ -2257,3 +2257,63 @@ func TestGetStackOutputs(t *testing.T) {
 		SecretsProviders: &apitype.SecretsProvidersV1{Type: "b64"},
 	}, resp)
 }
+
+func TestSyncStackEnvironment(t *testing.T) {
+	t.Parallel()
+
+	server := newMockServerRequestProcessor(200, func(req *http.Request) string {
+		assert.Equal(t, http.MethodPost, req.Method)
+		assert.Equal(t, "/api/stacks/acme/payments/prod/environment/sync", req.URL.Path)
+		var body apitype.StackEnvironmentSyncRequest
+		require.NoError(t, json.NewDecoder(req.Body).Decode(&body))
+		assert.Equal(t, "values:\n  pulumiConfig: {}\n", body.Yaml)
+		require.NotNil(t, body.ExpectedRevision)
+		assert.Equal(t, 3, *body.ExpectedRevision)
+		assert.Equal(t, "2h0m0s", body.OpenDuration)
+		return `{"environment":"payments/prod","previousRevision":3,"revision":4,"created":false,"changed":true,` +
+			`"openSessionId":"open-1"}`
+	})
+	defer server.Close()
+
+	client := newMockClient(server)
+	resp, err := client.SyncStackEnvironment(t.Context(), StackIdentifier{
+		Owner:   "acme",
+		Project: "payments",
+		Stack:   tokens.MustParseStackName("prod"),
+	}, apitype.StackEnvironmentSyncRequest{
+		Yaml:             "values:\n  pulumiConfig: {}\n",
+		ExpectedRevision: new(3),
+		OpenDuration:     "2h0m0s",
+	})
+	require.NoError(t, err)
+	assert.Equal(t, &apitype.StackEnvironmentSyncResponse{
+		Environment:      "payments/prod",
+		PreviousRevision: 3,
+		Revision:         4,
+		Changed:          true,
+		OpenSessionID:    "open-1",
+	}, resp)
+}
+
+func TestEncryptStackEnvironmentSecret(t *testing.T) {
+	t.Parallel()
+
+	server := newMockServerRequestProcessor(200, func(req *http.Request) string {
+		assert.Equal(t, http.MethodPost, req.Method)
+		assert.Equal(t, "/api/stacks/acme/payments/prod/environment/secrets", req.URL.Path)
+		var body apitype.StackEnvironmentSecretRequest
+		require.NoError(t, json.NewDecoder(req.Body).Decode(&body))
+		assert.Equal(t, "hunter2", body.Plaintext)
+		return `{"environment":"payments/prod","ciphertext":"AAAB"}`
+	})
+	defer server.Close()
+
+	client := newMockClient(server)
+	resp, err := client.EncryptStackEnvironmentSecret(t.Context(), StackIdentifier{
+		Owner:   "acme",
+		Project: "payments",
+		Stack:   tokens.MustParseStackName("prod"),
+	}, apitype.StackEnvironmentSecretRequest{Plaintext: "hunter2"})
+	require.NoError(t, err)
+	assert.Equal(t, &apitype.StackEnvironmentSecretResponse{Environment: "payments/prod", Ciphertext: "AAAB"}, resp)
+}

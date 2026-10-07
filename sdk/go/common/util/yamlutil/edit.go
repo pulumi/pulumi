@@ -60,6 +60,11 @@ func editNodes(original, newNode *yaml.Node) (yaml.Node, error) {
 	ret := *original
 	ret.Tag = newNode.Tag
 	ret.Value = newNode.Value
+	// An empty `{}` or `[]` placeholder that gains entries takes the new node's (block) style:
+	// keeping the flow style would cram every entry onto the placeholder's line.
+	if len(original.Content) == 0 && len(newNode.Content) != 0 {
+		ret.Style = newNode.Style
+	}
 
 	switch original.Kind {
 	case yaml.DocumentNode, yaml.SequenceNode:

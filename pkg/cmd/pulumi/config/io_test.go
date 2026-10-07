@@ -498,6 +498,7 @@ func TestStackEnvConfig(t *testing.T) {
 		mockSecretsManager,
 		&projectStack,
 		nil,
+		StackConfigurationOptions{},
 	)
 	require.NoError(t, err)
 

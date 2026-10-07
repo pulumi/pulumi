@@ -562,6 +562,49 @@ func (be *MockEnvironmentsBackend) OpenYAMLEnvironment(
 	panic("not implemented")
 }
 
+var _ = StackEnvironmentsBackend((*MockStackEnvironmentsBackend)(nil))
+
+// MockStackEnvironmentsBackend is a MockEnvironmentsBackend that also publishes stack-managed environments.
+type MockStackEnvironmentsBackend struct {
+	MockEnvironmentsBackend
+
+	SyncStackEnvironmentF func(
+		ctx context.Context,
+		stack Stack,
+		definition []byte,
+		opts StackEnvironmentSyncOptions,
+	) (*StackEnvironmentSync, error)
+
+	EncryptStackEnvironmentSecretF func(
+		ctx context.Context,
+		stack Stack,
+		plaintext string,
+	) (*StackEnvironmentSecret, error)
+}
+
+func (be *MockStackEnvironmentsBackend) EncryptStackEnvironmentSecret(
+	ctx context.Context,
+	stack Stack,
+	plaintext string,
+) (*StackEnvironmentSecret, error) {
+	if be.EncryptStackEnvironmentSecretF != nil {
+		return be.EncryptStackEnvironmentSecretF(ctx, stack, plaintext)
+	}
+	panic("not implemented")
+}
+
+func (be *MockStackEnvironmentsBackend) SyncStackEnvironment(
+	ctx context.Context,
+	stack Stack,
+	definition []byte,
+	opts StackEnvironmentSyncOptions,
+) (*StackEnvironmentSync, error) {
+	if be.SyncStackEnvironmentF != nil {
+		return be.SyncStackEnvironmentF(ctx, stack, definition, opts)
+	}
+	panic("not implemented")
+}
+
 //
 // Mock stack.
 //

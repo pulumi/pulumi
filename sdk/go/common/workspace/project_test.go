@@ -1885,3 +1885,41 @@ func TestPackageSpecLogValueRedactsCredentials(t *testing.T) {
 	require.NotContains(t, out, "downloadsecret")
 	require.Contains(t, out, "1.2.3", "non-secret fields should still be logged")
 }
+
+func TestEnvironmentIsDefinition(t *testing.T) {
+	t.Parallel()
+
+	var list ProjectStack
+	require.NoError(t, encoding.YAML.Unmarshal([]byte("environment:\n  - shared\n"), &list))
+	assert.False(t, list.Environment.IsDefinition())
+
+	var inline ProjectStack
+	require.NoError(t, encoding.YAML.Unmarshal(
+		[]byte("environment:\n  values:\n    pulumiConfig:\n      aws:region: us-west-2\n"), &inline))
+	assert.True(t, inline.Environment.IsDefinition())
+
+	var none ProjectStack
+	require.NoError(t, encoding.YAML.Unmarshal([]byte("config:\n  aws:region: us-west-2\n"), &none))
+	assert.False(t, none.Environment.IsDefinition())
+
+	var inlineJSON ProjectStack
+	require.NoError(t, json.Unmarshal([]byte(`{"environment": {"values": {"pulumiConfig": {}}}}`), &inlineJSON))
+	assert.True(t, inlineJSON.Environment.IsDefinition())
+}
+
+func TestNewEnvironmentDefinition(t *testing.T) {
+	t.Parallel()
+
+	env, err := NewEnvironmentDefinition([]byte("values:\n  pulumiConfig: {}\n"))
+	require.NoError(t, err)
+	assert.True(t, env.IsDefinition())
+	assert.Equal(t, []string{"yaml"}, env.Imports())
+
+	ps := ProjectStack{Environment: env}
+	out, err := encoding.YAML.Marshal(ps)
+	require.NoError(t, err)
+	assert.Equal(t, "environment:\n  values:\n    pulumiConfig: {}\n", string(out))
+
+	_, err = NewEnvironmentDefinition([]byte("- not\n- a mapping\n"))
+	assert.ErrorContains(t, err, "must be a YAML mapping")
+}

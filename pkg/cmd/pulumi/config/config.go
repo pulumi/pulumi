@@ -438,7 +438,7 @@ func newConfigRemoveCmd(ws pkgWorkspace.Context, stack *string, configFile *stri
 				return err
 			}
 
-			err = ps.Config.Remove(key, path)
+			err = removeStackConfigValue(ps, key, path)
 			if err != nil {
 				return err
 			}
@@ -524,7 +524,7 @@ func newConfigRemoveAllCmd(ws pkgWorkspace.Context, stack *string, configFile *s
 					return fmt.Errorf("invalid configuration key: %w", err)
 				}
 
-				err = ps.Config.Remove(key, path)
+				err = removeStackConfigValue(ps, key, path)
 				if err != nil {
 					return err
 				}
@@ -844,21 +844,9 @@ func (c *configSetCmd) Run(
 
 	ssml := cmdStack.NewStackSecretsManagerLoaderFromEnv()
 
-	// Encrypt the config value if needed.
+	// Validate and type the config value; secrets are encrypted once we know where they are stored.
 	var v config.Value
-	if c.Secret {
-		// We're always going to save, so can ignore the bool for if getStackEncrypter changed the
-		// config data.
-		c, _, cerr := ssml.GetEncrypter(ctx, s, ps)
-		if cerr != nil {
-			return cerr
-		}
-		enc, eerr := c.EncryptValue(ctx, value)
-		if eerr != nil {
-			return eerr
-		}
-		v = config.NewSecureValue(enc)
-	} else {
+	if !c.Secret {
 		var t config.Type
 		switch c.Type {
 		case "":
@@ -897,7 +885,18 @@ func (c *configSetCmd) Run(
 		return err
 	}
 
-	err = ps.Config.Set(key, v, c.Path)
+	if c.Secret {
+		err = setSecretStackConfigValue(ctx, s, ps, key, c.Path, value, func(plaintext string) (string, error) {
+			// We're always going to save, so can ignore the bool for if GetEncrypter changed the config data.
+			encrypter, _, err := ssml.GetEncrypter(ctx, s, ps)
+			if err != nil {
+				return "", err
+			}
+			return encrypter.EncryptValue(ctx, plaintext)
+		})
+	} else {
+		err = setStackConfigValue(ps, key, v, c.Path)
+	}
 	if err != nil {
 		return fmt.Errorf("could not set config: %w", err)
 	}
@@ -980,7 +979,7 @@ func newConfigSetAllCmd(
 				}
 				v := config.NewValue(value)
 
-				err = ps.Config.Set(key, v, path)
+				err = setStackConfigValue(ps, key, v, path)
 				if err != nil {
 					return err
 				}
@@ -1014,13 +1013,7 @@ func newConfigSetAllCmd(
 					return err
 				}
 
-				enc, err := encrypt(value)
-				if err != nil {
-					return err
-				}
-				v := config.NewSecureValue(enc)
-
-				err = ps.Config.Set(key, v, path)
+				err = setSecretStackConfigValue(ctx, stack, ps, key, path, value, encrypt)
 				if err != nil {
 					return err
 				}
@@ -1063,17 +1056,16 @@ func newConfigSetAllCmd(
 							value = config.NewObjectValue(*jsonValue.Value)
 						}
 					} else if jsonValue.Secret {
-						enc, err := encrypt(*jsonValue.Value)
+						err = setSecretStackConfigValue(ctx, stack, ps, key, path, *jsonValue.Value, encrypt)
 						if err != nil {
-							return err
+							return fmt.Errorf("could not set --json config for %q: %w", jsonKey, err)
 						}
-
-						value = config.NewSecureValue(enc)
+						continue
 					} else {
 						value = config.NewValue(*jsonValue.Value)
 					}
 
-					err = ps.Config.Set(key, value, path)
+					err = setStackConfigValue(ps, key, value, path)
 					if err != nil {
 						return fmt.Errorf("could not set --json config for %q: %w", jsonKey, err)
 					}

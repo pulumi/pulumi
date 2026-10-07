@@ -2537,6 +2537,35 @@ func (pc *Client) RecordEngineEvents(
 }
 
 // UpdateStackTags updates the stacks's tags, replacing all existing tags.
+// SyncStackEnvironment publishes a stack's inline environment definition to the environment managed by that
+// stack and opens the published revision.
+func (pc *Client) SyncStackEnvironment(
+	ctx context.Context,
+	stack StackIdentifier,
+	req apitype.StackEnvironmentSyncRequest,
+) (*apitype.StackEnvironmentSyncResponse, error) {
+	var resp apitype.StackEnvironmentSyncResponse
+	err := pc.restCall(ctx, http.MethodPost, getStackPath(stack, "environment", "sync"), nil, req, &resp)
+	if err != nil {
+		return nil, err
+	}
+	return &resp, nil
+}
+
+// EncryptStackEnvironmentSecret encrypts a value with the key of the environment managed by a stack.
+func (pc *Client) EncryptStackEnvironmentSecret(
+	ctx context.Context,
+	stack StackIdentifier,
+	req apitype.StackEnvironmentSecretRequest,
+) (*apitype.StackEnvironmentSecretResponse, error) {
+	var resp apitype.StackEnvironmentSecretResponse
+	err := pc.restCall(ctx, http.MethodPost, getStackPath(stack, "environment", "secrets"), nil, req, &resp)
+	if err != nil {
+		return nil, err
+	}
+	return &resp, nil
+}
+
 func (pc *Client) UpdateStackTags(
 	ctx context.Context, stack StackIdentifier, tags map[apitype.StackTagName]string,
 ) error {
