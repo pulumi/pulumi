@@ -543,25 +543,33 @@ func (b *binder) schemaTypeToType(src schema.Type) model.Type {
 }
 
 func (b *binder) schemaTypeToTypeOrConst(typ schema.Type, prop *schema.Property) model.Type {
-	t := b.schemaTypeToType(typ)
-	if prop.ConstValue != nil {
-		var value cty.Value
-		switch v := prop.ConstValue.(type) {
-		case bool:
-			value = cty.BoolVal(v)
-		case int32:
-			value = cty.NumberIntVal(int64(v))
-		case float64:
-			value = cty.NumberFloatVal(v)
-		case string:
-			value = cty.StringVal(v)
-		default:
-			contract.Failf("unexpected constant type %T", v)
-		}
-		t = model.NewConstType(t, value)
+	if prop.ConstValue == nil {
+		return b.schemaTypeToType(typ)
+	}
+	// The constant replaces the leaf of the schema type. The input and optional wrappers around the leaf
+	// stay, so that a constant input property still accepts an output and still names its input shape.
+	switch typ := typ.(type) {
+	case *schema.InputType:
+		elementType := b.schemaTypeToTypeOrConst(typ.ElementType, prop)
+		return model.NewUnionTypeAnnotated([]model.Type{elementType, model.NewOutputType(elementType)}, typ)
+	case *schema.OptionalType:
+		return model.NewOptionalType(b.schemaTypeToTypeOrConst(typ.ElementType, prop))
 	}
 
-	return t
+	var value cty.Value
+	switch v := prop.ConstValue.(type) {
+	case bool:
+		value = cty.BoolVal(v)
+	case int32:
+		value = cty.NumberIntVal(int64(v))
+	case float64:
+		value = cty.NumberFloatVal(v)
+	case string:
+		value = cty.StringVal(v)
+	default:
+		contract.Failf("unexpected constant type %T", v)
+	}
+	return (&model.LiteralValueExpression{Value: value}).Type()
 }
 
 var schemaArrayTypes = make(map[schema.Type]*schema.ArrayType)

@@ -140,9 +140,7 @@ func TestIDType(t *testing.T) {
 	assert.Equal(t, UnsafeConversion, IntType.ConversionFrom(IDType))
 	assert.Equal(t, UnsafeConversion, NumberType.ConversionFrom(IDType))
 
-	safeType, unsafeType := UnifyTypes(IDType, StringType)
-	assert.True(t, safeType.Equals(StringType))
-	assert.True(t, unsafeType.Equals(StringType))
+	assert.True(t, UnifyTypes(IDType, StringType).Equals(StringType))
 }
 
 func TestOptionalType(t *testing.T) {
@@ -603,60 +601,59 @@ func TestInputType(t *testing.T) {
 	assert.True(t, InputType(NumberType).ConversionFrom(NumberType).Exists())
 }
 
-func assertUnified(t *testing.T, expectedSafe, expectedUnsafe Type, types ...Type) {
-	actualSafe, actualUnsafe := UnifyTypes(types...)
-	assert.True(t, expectedSafe.Equals(actualSafe))
-	assert.True(t, expectedUnsafe.Equals(actualUnsafe))
+func assertUnified(t *testing.T, expected Type, types ...Type) {
+	actual := UnifyTypes(types...)
+	assert.True(t, expected.Equals(actual), "UnifyTypes(%v): expected %v, got %v", types, expected, actual)
 
-	// Reverse the types and ensure we get the same results.
+	// Reverse the types and ensure we get the same result.
 	for i, j := 0, len(types)-1; i < j; i, j = i+1, j-1 {
 		types[i], types[j] = types[j], types[i]
 	}
-	actualSafe2, actualUnsafe2 := UnifyTypes(types...)
-	assert.True(t, actualSafe.Equals(actualSafe2))
-	assert.True(t, actualUnsafe.Equals(actualUnsafe2))
+	reversed := UnifyTypes(types...)
+	assert.True(t, actual.Equals(reversed), "UnifyTypes(%v): expected %v, got %v", types, actual, reversed)
 }
 
 func TestUnifyType(t *testing.T) {
 	t.Parallel()
 
 	// Number, int, and bool unify with string by preferring string.
-	assertUnified(t, StringType, StringType, NumberType, StringType)
-	assertUnified(t, StringType, StringType, IntType, StringType)
-	assertUnified(t, StringType, StringType, BoolType, StringType)
+	assertUnified(t, StringType, NumberType, StringType)
+	assertUnified(t, StringType, IntType, StringType)
+	assertUnified(t, StringType, BoolType, StringType)
 
 	// Number and int unify by preferring number.
-	assertUnified(t, NumberType, NumberType, IntType, NumberType)
+	assertUnified(t, NumberType, IntType, NumberType)
 
-	// Number or int and bool unify by preferring number or int.
-	assertUnified(t, NewUnionType(NumberType, BoolType), NumberType, BoolType, NumberType)
-	assertUnified(t, NewUnionType(IntType, BoolType), IntType, BoolType, IntType)
+	// Number or int and bool are incomparable and unify to their union.
+	assertUnified(t, NewUnionType(NumberType, BoolType), BoolType, NumberType)
+	assertUnified(t, NewUnionType(IntType, BoolType), BoolType, IntType)
 
 	// Two collection types of the same kind unify according to the unification of their element types.
-	assertUnified(t, NewMapType(StringType), NewMapType(StringType), NewMapType(BoolType), NewMapType(StringType))
-	assertUnified(t, NewListType(StringType), NewListType(StringType), NewListType(BoolType), NewListType(StringType))
-	assertUnified(t, NewSetType(StringType), NewSetType(StringType), NewSetType(BoolType), NewSetType(StringType))
+	assertUnified(t, NewMapType(StringType), NewMapType(BoolType), NewMapType(StringType))
+	assertUnified(t, NewListType(StringType), NewListType(BoolType), NewListType(StringType))
+	assertUnified(t, NewSetType(StringType), NewSetType(BoolType), NewSetType(StringType))
 
 	// List and set types unify by preferring the list type.
-	assertUnified(t, NewListType(StringType), NewListType(StringType), NewListType(StringType), NewSetType(BoolType))
-	assertUnified(t, NewListType(StringType), NewListType(StringType), NewListType(BoolType), NewSetType(StringType))
+	assertUnified(t, NewListType(StringType), NewListType(StringType), NewSetType(BoolType))
+	assertUnified(t, NewListType(StringType), NewListType(BoolType), NewSetType(StringType))
 
 	assert.True(t, StringType.ConversionFrom(NewOptionalType(NewUnionType(NewMapType(StringType), BoolType))).Exists())
 
 	// Map and object types unify by preferring the map type.
 	m0, m1 := NewObjectType(map[string]Type{"foo": StringType}), NewObjectType(map[string]Type{"foo": BoolType})
-	assertUnified(t, NewMapType(StringType), NewMapType(StringType), m0, NewMapType(BoolType))
-	assertUnified(t, NewMapType(StringType), NewMapType(StringType), m1, NewMapType(StringType))
+	assertUnified(t, NewMapType(StringType), m0, NewMapType(BoolType))
+	assertUnified(t, NewMapType(StringType), m1, NewMapType(StringType))
 
-	// List or set and tuple types unify by preferring the list or set type.
+	// A tuple and a list or a set unify to a list (U-List).
 	t0, t1 := NewTupleType(NumberType, BoolType), NewTupleType(StringType, NumberType)
-	assertUnified(t, NewListType(StringType), NewListType(StringType), t0, NewListType(StringType))
-	assertUnified(t, NewListType(StringType), NewListType(StringType), t1, NewListType(BoolType))
-	assertUnified(t, NewUnionType(t0, NewSetType(StringType)), NewSetType(StringType), t0, NewSetType(StringType))
-	assertUnified(t, NewUnionType(t1, NewSetType(BoolType)), NewSetType(StringType), t1, NewSetType(BoolType))
+	assertUnified(t, NewListType(StringType), t0, NewListType(StringType))
+	assertUnified(t, NewListType(StringType), t1, NewListType(BoolType))
+	assertUnified(t, NewListType(StringType), t0, NewSetType(StringType))
+	assertUnified(t, NewListType(StringType), t1, NewSetType(BoolType))
 
-	// The dynamic type unifies with any other type by selecting the other type.
-	assertUnified(t, NewUnionType(BoolType, DynamicType), BoolType, BoolType, DynamicType)
+	// The dynamic type absorbs every other type (U-Dynamic).
+	assertUnified(t, DynamicType, BoolType, DynamicType)
+	assertUnified(t, NewOptionalType(DynamicType), NewOptionalType(IntType), DynamicType)
 
 	// Object types unify by constructing a new object type whose attributes are the unification of the two input types.
 	m2 := NewObjectType(map[string]Type{"bar": StringType})
@@ -666,19 +663,18 @@ func TestUnifyType(t *testing.T) {
 		"foo": NewOptionalType(NewUnionType(NewMapType(StringType), StringType, NoneType)),
 		"bar": NewOptionalType(NewUnionType(NewListType(StringType), StringType, NoneType)),
 	})
-	assertUnified(t, m0, m0, m0, m1)
-	assertUnified(t, m3, m3, m0, m2)
-	assertUnified(t, m5, m5, m4, m2, m0, m1)
-	assertUnified(t, m5, m5, m4, m0, m2, m1)
+	assertUnified(t, m0, m0, m1)
+	assertUnified(t, m3, m0, m2)
+	assertUnified(t, m5, m4, m2, m0, m1)
+	assertUnified(t, m5, m4, m0, m2, m1)
 
 	// A constant converts from nothing but itself, so distinct constants unify to their union.
 	cf, ct := NewConstType(BoolType, cty.False), NewConstType(BoolType, cty.True)
 	assert.Equal(t, NoConversion, cf.ConversionFrom(ct))
 	assert.Equal(t, UnsafeConversion, cf.ConversionFrom(BoolType))
-	// The same constant converts as its type does: a schema constant has an input-wrapped type.
-	inputCf := NewConstType(NewUnionType(BoolType, NewOutputType(BoolType)), cty.False)
-	assert.Equal(t, SafeConversion, inputCf.ConversionFrom(cf))
-	assert.Equal(t, NoConversion, inputCf.ConversionFrom(ct))
+	// A schema constant is checked through its input type, which sees the constant.
+	assert.Equal(t, SafeConversion, InputType(cf).ConversionFrom(cf))
+	assert.Equal(t, NoConversion, InputType(cf).ConversionFrom(ct))
 	// A union, output, or optional destination sees the constant rather than its base type.
 	assert.Equal(t, SafeConversion, NewOptionalType(cf).ConversionFrom(cf))
 	assert.Equal(t, NoConversion, NewOptionalType(cf).ConversionFrom(ct))
@@ -689,10 +685,15 @@ func TestUnifyType(t *testing.T) {
 	assert.True(t, StringType.AssignableFrom(NewUnionType(ca, cb)))
 	assert.True(t, InputType(StringType).AssignableFrom(NewUnionType(ca, cb)))
 	assert.False(t, StringType.AssignableFrom(NewUnionType(ca, cf)))
-	// The null literal is a constant of the none type and converts to any optional type.
-	null := NewConstType(NoneType, cty.NullVal(cty.DynamicPseudoType))
-	assert.Equal(t, SafeConversion, NoneType.ConversionFrom(null))
-	assert.Equal(t, SafeConversion, InputType(NewOptionalType(StringType)).ConversionFrom(null))
+	// A promise converts from no output, but a nested output in its source meets the element rules (C-Prom).
+	assert.Equal(t, NoConversion, NewPromiseType(StringType).ConversionFrom(NewOutputType(StringType)))
+	assert.Equal(t, SafeConversion, NewPromiseType(NewListType(NewOutputType(StringType))).ConversionFrom(
+		NewPromiseType(NewListType(NewOutputType(BoolType)))))
+	assert.Equal(t, NoConversion, NewPromiseType(NewListType(StringType)).ConversionFrom(
+		NewListType(NewOutputType(BoolType))))
+	// The null literal has the none type, which converts to any optional type.
+	assert.Equal(t, SafeConversion, InputType(NewOptionalType(StringType)).ConversionFrom(NoneType))
+	assert.Equal(t, NoConversion, InputType(StringType).ConversionFrom(NoneType))
 	// An enum accepts a member constant safely, no other constant, and its base type unsafely.
 	c1, c2, c3 := NewConstType(IntType, cty.NumberIntVal(1)), NewConstType(IntType, cty.NumberIntVal(2)),
 		NewConstType(IntType, cty.NumberIntVal(3))
@@ -702,36 +703,42 @@ func TestUnifyType(t *testing.T) {
 	assert.Equal(t, UnsafeConversion, enum.ConversionFrom(IntType))
 	assert.Equal(t, SafeConversion, InputType(NewOptionalType(enum)).ConversionFrom(c2))
 	assert.Equal(t, NoConversion, InputType(NewOptionalType(enum)).ConversionFrom(c3))
-	assertUnified(t, NewUnionType(cf, ct), NewUnionType(cf, ct), cf, ct)
-	assertUnified(t, NewTupleType(NewUnionType(cf, ct)), NewTupleType(NewUnionType(cf, ct)),
+	assertUnified(t, NewUnionType(cf, ct), cf, ct)
+	assertUnified(t, NewTupleType(NewUnionType(cf, ct)),
 		NewTupleType(cf), NewTupleType(ct))
 
 	// A conversion check and a unification of the same types do not share a cached result, in either order.
 	a, b := NewTupleType(cf), NewTupleType(ct)
-	assertUnified(t, NewTupleType(NewUnionType(cf, ct)), NewTupleType(NewUnionType(cf, ct)), a, b)
+	assertUnified(t, NewTupleType(NewUnionType(cf, ct)), a, b)
 	assert.Equal(t, NoConversion, a.ConversionFrom(b))
 	a, b = NewTupleType(cf), NewTupleType(ct)
 	assert.Equal(t, NoConversion, a.ConversionFrom(b))
-	assertUnified(t, NewTupleType(NewUnionType(cf, ct)), NewTupleType(NewUnionType(cf, ct)), a, b)
+	assertUnified(t, NewTupleType(NewUnionType(cf, ct)), a, b)
 
-	// Nested tuples of constants with different lengths unify element by element.
+	// Collections of distinct constants unify to one collection of their union, across collection kinds.
+	cu := NewUnionType(cf, ct)
+	assertUnified(t, NewListType(cu), NewListType(cf), NewListType(ct))
+	assertUnified(t, NewMapType(cu), NewMapType(cf), NewMapType(ct))
+	assertUnified(t, NewSetType(cu), NewSetType(cf), NewSetType(ct))
+	assertUnified(t, NewListType(cu), NewListType(cf), NewTupleType(ct, ct))
+	assertUnified(t, NewListType(cu), NewListType(cf), NewSetType(ct))
+	assertUnified(t, NewListType(cu), NewSetType(cf), NewTupleType(ct))
+	assertUnified(t, NewMapType(cu), NewMapType(cf), NewObjectType(map[string]Type{"a": ct}))
+	assertUnified(t, NewListType(NewListType(cu)),
+		NewListType(NewListType(cf)), NewListType(NewListType(ct)))
+
+	// Nested tuples of different lengths unify to a list of their elements (U-List).
 	t6 := NewTupleType(NewTupleType(cf, cf, cf))
 	t7 := NewTupleType(NewTupleType(ct), NewTupleType(cf))
-	t8 := NewTupleType(
-		NewTupleType(NewUnionType(cf, ct), NewOptionalType(cf), NewOptionalType(cf)),
-		NewOptionalType(NewTupleType(cf)),
-	)
-	assertUnified(t, t8, t8, t6, t7)
+	assertUnified(t, NewListType(NewListType(cu)), t6, t7)
 
-	// Tuple types unify by constructing a new tuple type whose element types are the unification of the corresponding
-	// element types.
+	// Tuples of one length unify element by element (U-Tuple); tuples of different lengths unify to a list.
 	t2 := NewTupleType(StringType, NumberType)
 	t3 := NewTupleType(StringType, IntType)
 	t4 := NewTupleType(NumberType, BoolType, StringType)
-	t5 := NewTupleType(NumberType, BoolType, NewOptionalType(StringType))
-	assertUnified(t, NewUnionType(t0, t1), t2, t0, t1)
-	assertUnified(t, t2, t2, t3, t1)
-	assertUnified(t, t5, t5, t4, t0)
+	assertUnified(t, NewTupleType(StringType, NewUnionType(BoolType, NumberType)), t0, t1)
+	assertUnified(t, t2, t3, t1)
+	assertUnified(t, NewListType(StringType), t4, t0)
 
 	//
 	//	assertUnified(t, NewUnionType(BoolType, IntType), IntType, BoolType, IntType)
@@ -1320,6 +1327,51 @@ var _ i = (*y)(nil)
 
 type z struct{}
 
+// TestUnifyKeepsLoneMember verifies that a member that is alone in its class is the result for that class, with
+// its identity and its annotations, so that an optional resource type keeps its schema annotation.
+func TestUnifyKeepsLoneMember(t *testing.T) {
+	t.Parallel()
+
+	annotation := "schema"
+	object := NewObjectType(map[string]Type{"name": NewOutputType(StringType)}, annotation)
+	list := NewListType(object)
+
+	for _, c := range []struct {
+		name   string
+		inputs []Type
+		want   Type
+	}{
+		{"object and none", []Type{object, NoneType}, NewOptionalType(object)},
+		{"none and object", []Type{NoneType, object}, NewOptionalType(object)},
+		{"list and none", []Type{list, NoneType}, NewOptionalType(list)},
+		{"object and string", []Type{object, StringType}, NewUnionType(object, StringType)},
+		{"output of object and none", []Type{NewOutputType(object), NoneType}, NewOptionalType(NewOutputType(object))},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+			got := UnifyTypes(c.inputs...)
+			assert.True(t, c.want.Equals(got), "expected %v, got %v", c.want, got)
+			var members []Type
+			if union, ok := got.(*UnionType); ok {
+				members = union.ElementTypes
+			} else {
+				members = []Type{got}
+			}
+			for _, member := range members {
+				if output, ok := member.(*OutputType); ok {
+					member = output.ElementType
+				}
+				if list, ok := member.(*ListType); ok {
+					member = list.ElementType
+				}
+				if member, ok := member.(*ObjectType); ok {
+					assert.Equal(t, []any{annotation}, member.Annotations)
+				}
+			}
+		})
+	}
+}
+
 // TestUnifyRecursiveObjectTypes verifies that two recursive object types of different shapes unify to one
 // recursive object type instead of recursing without end.
 func TestUnifyRecursiveObjectTypes(t *testing.T) {
@@ -1339,7 +1391,7 @@ func TestUnifyRecursiveObjectTypes(t *testing.T) {
 		expected := NewObjectType(expectedProps)
 		expectedProps["self"] = NewListType(expected)
 
-		assertUnified(t, expected, expected, a, b)
+		assertUnified(t, expected, a, b)
 	})
 
 	t.Run("optional", func(t *testing.T) {
@@ -1352,17 +1404,30 @@ func TestUnifyRecursiveObjectTypes(t *testing.T) {
 		b := NewObjectType(bProps)
 		bProps["self"] = NewOptionalType(b)
 
-		expected := NewObjectType(map[string]Type{
-			"b":    NewOptionalType(IntType),
-			"self": NewUnionType(NoneType, a, b),
-		})
+		expectedProps := map[string]Type{"b": NewOptionalType(IntType)}
+		expected := NewObjectType(expectedProps)
+		expectedProps["self"] = NewOptionalType(expected)
 
-		assertUnified(t, expected, expected, a, b)
+		assertUnified(t, expected, a, b)
+	})
+
+	// A map and an object whose property leads back to the same pair unify to a map of their union, because the
+	// exact result would be a cycle through a map.
+	t.Run("map", func(t *testing.T) {
+		t.Parallel()
+
+		aProps := map[string]Type{}
+		a := NewObjectType(aProps)
+		aProps["self"] = NewMapType(a)
+
+		assertUnified(t, NewMapType(NewUnionType(NewMapType(a), a)), NewMapType(a), a)
+		assert.Equal(t, UnsafeConversion, a.ConversionFrom(NewMapType(a)))
+		assert.Equal(t, UnsafeConversion, NewMapType(a).ConversionFrom(a))
 	})
 }
 
-// TestUnifyMapWithObject verifies that a map unifies with an object by folding the object's property types into
-// the map's element type in an order that does not depend on the property names.
+// TestUnifyMapWithObject verifies that a map unifies with an object to a map of the unification of the map's element
+// type and every property type, whatever the property names (U-MapOf).
 func TestUnifyMapWithObject(t *testing.T) {
 	t.Parallel()
 
@@ -1377,19 +1442,18 @@ func TestUnifyMapWithObject(t *testing.T) {
 		"b": properties["a"],
 		"c": properties["b"],
 	}
-	expectedUnsafe := NewMapType(NewUnionType(NumberType, NoneType, NewConstType(StringType, cty.StringVal("y"))))
+	expected := NewMapType(NewUnionType(BoolType, NumberType, NoneType, NewConstType(StringType, cty.StringVal("y"))))
 
 	for _, obj := range []Type{NewObjectType(properties), NewObjectType(reordered)} {
-		assertUnified(t, NewUnionType(m, obj), expectedUnsafe, m, obj)
+		assertUnified(t, expected, m, obj)
 	}
 }
 
-// TestTupleConversionFromShorterTuple verifies that a tuple converts from a shorter tuple only when the elements
-// that the source lacks are optional.
+// TestTupleConversionFromShorterTuple verifies that a tuple converts only from a tuple of the same length (C-Tuple).
 func TestTupleConversionFromShorterTuple(t *testing.T) {
 	t.Parallel()
 
-	assert.Equal(t, SafeConversion,
+	assert.Equal(t, NoConversion,
 		NewTupleType(IntType, NewOptionalType(BoolType)).ConversionFrom(NewTupleType(IntType)))
 	assert.Equal(t, NoConversion, NewTupleType(IntType, BoolType).ConversionFrom(NewTupleType(IntType)))
 	assert.Equal(t, NoConversion, NewTupleType(IntType).ConversionFrom(NewTupleType(IntType, BoolType)))

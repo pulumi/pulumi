@@ -21,7 +21,9 @@ import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/zclconf/go-cty/cty"
 
+	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
@@ -122,5 +124,32 @@ func TestBindConstantAndEnumLiterals(t *testing.T) {
 			assert.Equal(t, hcl.DiagError, diags[0].Severity)
 			assert.Equal(t, c.detail, diags[0].Detail)
 		})
+	}
+}
+
+// TestConstantPropertyInputType checks that a constant input property keeps its input shape: the
+// constant is the leaf of the property type, and the property still accepts an output.
+func TestConstantPropertyInputType(t *testing.T) {
+	t.Parallel()
+
+	source := "resource \"r\" \"constant:index:Resource\" {\n  kind = \"Constant\"\n  flag = true\n  count = 3\n}\n"
+	parser := syntax.NewParser()
+	require.NoError(t, parser.ParseFile(strings.NewReader(source), "main.pp"))
+	program, diags, err := pcl.BindProgram(parser.Files, constLoader)
+	require.NoError(t, err)
+	require.Empty(t, diags)
+
+	inputType := program.Nodes[0].(*pcl.Resource).InputType
+	kind := model.NewConstType(model.StringType, cty.StringVal("Constant"))
+	flag := model.NewConstType(model.BoolType, cty.True)
+	count := model.NewConstType(model.IntType, cty.NumberIntVal(3))
+	for name, want := range map[string]model.Type{
+		"kind":  model.NewOptionalType(model.InputType(kind)),
+		"flag":  model.NewOptionalType(model.InputType(flag)),
+		"count": model.NewOptionalType(model.InputType(count)),
+	} {
+		got, tdiags := inputType.Traverse(hcl.TraverseAttr{Name: name})
+		require.Empty(t, tdiags)
+		assert.True(t, want.Equals(got.(model.Type)), "%s: expected %v, got %v", name, want, got)
 	}
 }

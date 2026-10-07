@@ -72,8 +72,7 @@ func pulumiBuiltins(options bindOptions) map[string]*model.Function {
 					case *model.ListType:
 						listType, returnType = args[0].Type(), t.ElementType
 					case *model.TupleType:
-						_, elementType := model.UnifyTypes(t.ElementTypes...)
-						listType, returnType = args[0].Type(), elementType
+						listType, returnType = args[0].Type(), model.UnifyTypes(t.ElementTypes...)
 					default:
 						if !options.skipRangeTypecheck {
 							// we are in strict mode, so we should error if the type is not a list or tuple
@@ -212,11 +211,8 @@ func pulumiBuiltins(options bindOptions) map[string]*model.Function {
 					case *model.MapType:
 						mapType, elementType = model.ResolveOutputs(args[0].Type()), t.ElementType
 					case *model.ObjectType:
-						var unifiedType model.Type
-						for _, t := range slices.SortedFunc(maps.Values(t.Properties), model.Compare) {
-							_, unifiedType = model.UnifyTypes(unifiedType, t)
-						}
-						mapType, elementType = model.ResolveOutputs(args[0].Type()), unifiedType
+						mapType = model.ResolveOutputs(args[0].Type())
+						elementType = model.UnifyTypes(slices.Collect(maps.Values(t.Properties))...)
 					default:
 						rng := args[0].SyntaxNode().Range()
 						diagnostics = hcl.Diagnostics{&hcl.Diagnostic{
@@ -232,7 +228,7 @@ func pulumiBuiltins(options bindOptions) map[string]*model.Function {
 				returnType, defaultType := elementType, elementType
 				if len(args) > 2 {
 					defaultType = args[2].Type()
-					returnType, _ = model.UnifyTypes(elementType, defaultType)
+					returnType = model.UnifyTypes(elementType, defaultType)
 				}
 				if argIsEventual {
 					returnType = model.NewOutputType(returnType)
@@ -483,7 +479,7 @@ func pulumiBuiltins(options bindOptions) map[string]*model.Function {
 				for i, arg := range args {
 					argTypes[i] = arg.Type()
 				}
-				returnType, _ := model.UnifyTypes(argTypes...)
+				returnType := model.UnifyTypes(argTypes...)
 
 				lift := false
 				for i, arg := range args {
@@ -585,7 +581,7 @@ func pulumiBuiltins(options bindOptions) map[string]*model.Function {
 					recoveryType = args[1].Type()
 				}
 
-				returnType, _ := model.UnifyTypes(model.ResolveOutputs(valueType), model.ResolveOutputs(recoveryType))
+				returnType := model.UnifyTypes(model.ResolveOutputs(valueType), model.ResolveOutputs(recoveryType))
 				if returnType == nil {
 					returnType = model.DynamicType
 				}

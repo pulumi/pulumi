@@ -41,9 +41,6 @@ func NewConstType(typ Type, value cty.Value) *ConstType {
 }
 
 func (t *ConstType) pretty(seenFormatters map[Type]pretty.Formatter) pretty.Formatter {
-	if t.Value.IsNull() {
-		return pretty.FromString("null")
-	}
 	if !t.Value.IsKnown() {
 		return pretty.FromString("unknown")
 	}
@@ -79,7 +76,7 @@ func (t *ConstType) Equals(other Type) bool {
 	return t.equals(other, nil)
 }
 
-func (t *ConstType) equals(other Type, seen map[Type]struct{}) bool {
+func (t *ConstType) equals(other Type, seen equalPairs) bool {
 	if t == other {
 		return true
 	}
@@ -96,28 +93,11 @@ func (t *ConstType) AssignableFrom(src Type) bool {
 	})
 }
 
-// ConversionFrom returns the kind of conversion (if any) that is possible from the source type to this type.
-// The const type is only convertible from itself.
+// ConversionFrom returns the kind of conversion (if any) that is possible from the source type to this type. A
+// constant converts safely from itself and unsafely from every type that converts to its base type (README §4,
+// C-Const and C-ConstSrc).
 func (t *ConstType) ConversionFrom(src Type) ConversionKind {
-	kind, _ := t.conversionFrom(src, false, nil)
-	return kind
-}
-
-func (t *ConstType) conversionFrom(src Type, unifying bool, seen *cycleSet) (ConversionKind, lazyDiagnostics) {
-	return conversionFrom(t, src, unifying, seen, t.cache, func() (ConversionKind, lazyDiagnostics) {
-		notConvertible := func() hcl.Diagnostics { return hcl.Diagnostics{typeNotConvertible(t, src)} }
-		if src, ok := src.(*ConstType); ok {
-			// A constant either matches or does not, since we know the value.
-			if !t.Value.RawEquals(src.Value) {
-				return NoConversion, notConvertible
-			}
-			return SafeConversion, nil
-		}
-		if kind, _ := t.Type.conversionFrom(src, unifying, seen); kind != NoConversion {
-			return UnsafeConversion, nil
-		}
-		return NoConversion, notConvertible
-	})
+	return cachedConversionFrom(t, src, t.cache)
 }
 
 func (t *ConstType) String() string {
@@ -126,13 +106,6 @@ func (t *ConstType) String() string {
 
 func (t *ConstType) string(_ map[Type]struct{}) string {
 	return t.String()
-}
-
-func (t *ConstType) unify(other Type, seen *cycleSet) (Type, ConversionKind) {
-	return unify(t, other, seen, func() (Type, ConversionKind) {
-		kind, _ := other.conversionFrom(t, true, seen)
-		return t, kind
-	})
 }
 
 func (*ConstType) isType() {}
