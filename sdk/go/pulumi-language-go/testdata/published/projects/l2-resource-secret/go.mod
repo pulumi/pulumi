@@ -3,7 +3,7 @@ module l2-resource-secret
 go 1.25
 
 require (
-	github.com/pulumi/pulumi/sdk/v3 v3.269.0
+	github.com/pulumi/pulumi/sdk/v3 v3.30.0
 	example.com/pulumi-secret/sdk/go/v14 v14.0.0
 )
 

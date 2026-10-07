@@ -637,7 +637,7 @@ func GenerateProjectFiles(project workspace.Project, program *pcl.Program,
 
 	packagePaths := map[string]string{}
 	packagePaths["pulumi"] = "github.com/pulumi/pulumi/sdk/v3"
-	err = gomod.AddRequire("github.com/pulumi/pulumi/sdk/v3", "v3.269.0")
+	err = gomod.AddRequire("github.com/pulumi/pulumi/sdk/v3", "v3.30.0")
 	contract.AssertNoErrorf(err, "could not add require statement for github.com/pulumi/pulumi/sdk/v3 to go.mod")
 
 	// build metadata seems to cause issues for mod tidy so we strip it when converting to a Go string

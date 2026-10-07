@@ -3,7 +3,7 @@ module l2-component-call-simple
 go 1.25
 
 require (
-	github.com/pulumi/pulumi/sdk/v3 v3.269.0
+	github.com/pulumi/pulumi/sdk/v3 v3.30.0
 	example.com/pulumi-component/sdk/go/v13 v13.3.7
 )
 

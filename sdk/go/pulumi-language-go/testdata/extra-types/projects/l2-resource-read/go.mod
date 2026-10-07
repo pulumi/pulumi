@@ -3,7 +3,7 @@ module l2-resource-read
 go 1.25
 
 require (
-	github.com/pulumi/pulumi/sdk/v3 v3.269.0
+	github.com/pulumi/pulumi/sdk/v3 v3.30.0
 	example.com/pulumi-read/sdk/go/v39 v39.0.0
 )
 

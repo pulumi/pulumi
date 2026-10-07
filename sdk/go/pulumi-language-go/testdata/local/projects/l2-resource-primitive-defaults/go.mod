@@ -3,7 +3,7 @@ module l2-resource-primitive-defaults
 go 1.25
 
 require (
-	github.com/pulumi/pulumi/sdk/v3 v3.269.0
+	github.com/pulumi/pulumi/sdk/v3 v3.30.0
 	example.com/pulumi-primitive-defaults/sdk/go/v8 v8.0.0
 )
 

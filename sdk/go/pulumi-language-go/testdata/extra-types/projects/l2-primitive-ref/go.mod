@@ -3,7 +3,7 @@ module l2-primitive-ref
 go 1.25
 
 require (
-	github.com/pulumi/pulumi/sdk/v3 v3.269.0
+	github.com/pulumi/pulumi/sdk/v3 v3.30.0
 	example.com/pulumi-primitive-ref/sdk/go/v11 v11.0.0
 )
 

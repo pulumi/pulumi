@@ -3,7 +3,7 @@ module l2-large-map
 go 1.25
 
 require (
-	github.com/pulumi/pulumi/sdk/v3 v3.269.0
+	github.com/pulumi/pulumi/sdk/v3 v3.30.0
 	example.com/pulumi-large/sdk/go/v4 v4.3.2
 )
 
