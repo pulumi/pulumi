@@ -528,3 +528,8 @@ func TestAnyOutputAs{{.Name}}Output(t *testing.T) {
 	assert.EqualValues(t, ev, av)
 }
 {{end}}
+
+// An input type is also an input type of every type it implements.
+{{- range $builtin := .Builtins}}{{range $t := $builtin.Implements}}
+var _ {{$t.Name}}Input = {{$builtin.Name}}Input(nil)
+{{- end}}{{end}}
