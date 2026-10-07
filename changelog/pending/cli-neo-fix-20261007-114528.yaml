@@ -1,0 +1,4 @@
+component: cli/neo
+kind: fix
+body: Honor optional refresh settings in agent previews without persisting refreshed state
+time: 2026-10-07T11:45:28.808576-05:00
