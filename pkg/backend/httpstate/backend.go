@@ -99,6 +99,19 @@ func agentCredentialUseFromContext(ctx context.Context) *agentCredentialUse {
 	return use
 }
 
+type skipAgentSignupContextKey struct{}
+
+// ContextWithoutAgentSignup returns a context in which agent mode reuses any
+// existing shared agent credentials but never creates a new agent account.
+func ContextWithoutAgentSignup(ctx context.Context) context.Context {
+	return context.WithValue(ctx, skipAgentSignupContextKey{}, true)
+}
+
+func skipAgentSignup(ctx context.Context) bool {
+	skip, _ := ctx.Value(skipAgentSignupContextKey{}).(bool)
+	return skip
+}
+
 type commandNameContextKey struct{}
 
 // ContextWithCommandName returns a context carrying the full invoked CLI command path
@@ -708,6 +721,11 @@ func (m defaultLoginManager) currentOrSignupAgentAccount(
 	// not be papered over with a fresh ephemeral agent identity.
 	if workspace.IsUndecryptableCredentials(defaultCredsErr) {
 		return nil, defaultCredsErr
+	}
+
+	if skipAgentSignup(ctx) {
+		logging.V(7).Infof("Agent signup disabled for this command; not creating a new agent account")
+		return nil, nil
 	}
 
 	logging.V(7).Infof("Calling agent signup endpoint for %q", cloudURL)

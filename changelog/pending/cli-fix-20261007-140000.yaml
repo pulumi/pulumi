@@ -1,0 +1,4 @@
+component: cli
+kind: fix
+body: Stop `pulumi login` from creating a new agent account in agent mode
+time: 2026-10-07T14:00:00.000000+01:00

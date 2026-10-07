@@ -33,6 +33,7 @@ import (
 	pkgBackend "github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/diy"
+	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
@@ -238,8 +239,10 @@ func NewLoginCmd(ws pkgWorkspace.Context, lm backend.LoginManager, store env.Env
 					ctx, cmdutil.Diag(), cloudURL, project, true /* setCurrent */, insecure, authContext,
 				)
 			} else {
+				// `pulumi login` should only reuse existing agent credentials, never create a new agent account.
 				be, err = lm.Login(
-					ctx, ws, cmdutil.Diag(), cloudURL, project, true /* setCurrent */, insecure, displayOptions.Color,
+					httpstate.ContextWithoutAgentSignup(ctx), ws, cmdutil.Diag(), cloudURL, project,
+					true /* setCurrent */, insecure, displayOptions.Color,
 				)
 			}
 

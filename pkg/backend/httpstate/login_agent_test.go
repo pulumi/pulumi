@@ -625,3 +625,67 @@ func TestLoginUsesAgentSignupInNonInteractiveAgentMode(t *testing.T) {
 	assert.Equal(t, []string{http.MethodGet, http.MethodPost}, signupMethods)
 	assert.True(t, AgentCredentialsUsed(ctx, server.URL))
 }
+
+func TestLoginWithoutAgentSignupDoesNotCreateAgentAccount(t *testing.T) {
+	ptesting.IsolateCredentials(t)
+
+	disableInteractive := cmdutil.DisableInteractive
+	cmdutil.DisableInteractive = true
+	t.Cleanup(func() {
+		cmdutil.DisableInteractive = disableInteractive
+	})
+
+	t.Setenv("CODEX_SANDBOX", "1")
+
+	signupCalls := 0
+	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		if req.URL.Path == "/api/agents/signup" {
+			signupCalls++
+		}
+		rw.WriteHeader(http.StatusInternalServerError)
+	}))
+	t.Cleanup(server.Close)
+
+	ctx := ContextWithoutAgentSignup(t.Context())
+	account, err := NewLoginManager().Login(ctx, server.URL, false, "pulumi", "Pulumi Cloud", nil, true,
+		display.Options{})
+	require.ErrorAs(t, err, &backenderr.MissingEnvVarForNonInteractiveError{})
+	assert.Nil(t, account)
+	assert.Equal(t, 0, signupCalls)
+
+	fromAgent, err := workspace.GetAgentAccount(server.URL)
+	require.NoError(t, err)
+	assert.False(t, fromAgent.HasCredential())
+}
+
+//nolint:paralleltest // isolates credentials with t.Setenv
+func TestCurrentWithoutAgentSignupReusesExistingAgentCredentials(t *testing.T) {
+	ptesting.IsolateCredentials(t)
+
+	signupCalls := 0
+	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		if req.URL.Path == "/api/agents/signup" {
+			signupCalls++
+		}
+		rw.WriteHeader(http.StatusInternalServerError)
+	}))
+	t.Cleanup(server.Close)
+
+	expiresAt := time.Now().Add(time.Hour)
+	err := workspace.StoreAgentAccount(server.URL, workspace.Account{
+		AccessToken:     "valid-agent-token",
+		Username:        "agent-user",
+		LastValidatedAt: time.Now(),
+		TokenInformation: &workspace.TokenInformation{
+			ExpiresAt: &expiresAt,
+		},
+	}, true)
+	require.NoError(t, err)
+
+	ctx := ContextWithoutAgentSignup(t.Context())
+	account, err := defaultLoginManager{}.currentOrSignupAgentAccount(ctx, server.URL, false, true, "codex", nil)
+	require.NoError(t, err)
+	require.NotNil(t, account)
+	assert.Equal(t, "valid-agent-token", account.AccessToken)
+	assert.Equal(t, 0, signupCalls)
+}
