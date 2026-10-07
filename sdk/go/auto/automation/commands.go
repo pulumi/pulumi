@@ -21,6 +21,9 @@ import (
 	"fmt"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/base"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optapi"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optapidescribe"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optapilist"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optcancel"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optimport"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optinstall"
@@ -37,6 +40,401 @@ import (
 // Silence unused-import warnings when a spec has no commands with args.
 var _ = fmt.Sprint
 var _ = context.Background
+
+// Api corresponds to `pulumi api`.
+func (a *API) Api(
+	ctx context.Context,
+	opts ...optapi.Option,
+) (base.CommandResult, error) {
+	o := optapi.Options{}
+	for _, opt := range opts {
+		opt(&o)
+	}
+
+	final := []string{"api"}
+
+	if o.All {
+		final = append(final, "--all")
+	}
+
+	if o.Body != "" {
+		final = append(final, "--body", fmt.Sprint(o.Body))
+	}
+
+	if o.Color != "" {
+		final = append(final, "--color", fmt.Sprint(o.Color))
+	}
+
+	if o.DisableIntegrityChecking {
+		final = append(final, "--disable-integrity-checking")
+	}
+
+	if o.DryRun {
+		final = append(final, "--dry-run")
+	}
+
+	if o.EnvelopeVersion != 0 {
+		final = append(final, "--envelope-version", fmt.Sprint(o.EnvelopeVersion))
+	}
+
+	for _, v := range o.Field {
+		final = append(final, "--field", fmt.Sprint(v))
+	}
+
+	if o.FullyQualifyStackNames {
+		final = append(final, "--fully-qualify-stack-names")
+	}
+
+	for _, v := range o.Header {
+		final = append(final, "--header", fmt.Sprint(v))
+	}
+
+	if o.Include {
+		final = append(final, "--include")
+	}
+
+	if o.Input != "" {
+		final = append(final, "--input", fmt.Sprint(o.Input))
+	}
+
+	if o.Logflow {
+		final = append(final, "--logflow")
+	}
+
+	if o.Logtostderr {
+		final = append(final, "--logtostderr")
+	}
+
+	if o.Memprofilerate != 0 {
+		final = append(final, "--memprofilerate", fmt.Sprint(o.Memprofilerate))
+	}
+
+	if o.Method != "" {
+		final = append(final, "--method", fmt.Sprint(o.Method))
+	}
+
+	if o.OtelTraces != "" {
+		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
+	}
+
+	if o.Output != "" {
+		final = append(final, "--output", fmt.Sprint(o.Output))
+	}
+
+	if o.Profiling != "" {
+		final = append(final, "--profiling", fmt.Sprint(o.Profiling))
+	}
+
+	for _, v := range o.RawField {
+		final = append(final, "--raw-field", fmt.Sprint(v))
+	}
+
+	if o.RefreshSpec {
+		final = append(final, "--refresh-spec")
+	}
+
+	if o.Silent {
+		final = append(final, "--silent")
+	}
+
+	if o.Tracing != "" {
+		final = append(final, "--tracing", fmt.Sprint(o.Tracing))
+	}
+
+	if o.TracingHeader != "" {
+		final = append(final, "--tracing-header", fmt.Sprint(o.TracingHeader))
+	}
+
+	if o.Verbose {
+		final = append(final, "--verbose")
+	}
+
+	return a.run(ctx, base.BaseOptions{
+		Cwd:           o.Cwd,
+		AdditionalEnv: o.AdditionalEnv,
+		Stdout:        o.Stdout,
+		Stderr:        o.Stderr,
+		Stdin:         o.Stdin,
+	}, final)
+}
+
+// ApiDescribe corresponds to `pulumi api describe`.
+//
+// Show the parameters, request body, and response schema for a Pulumi Cloud
+// API operation.
+//
+// The argument may be either a path (with optional template variables, e.g.
+// `/api/stacks/{orgName}`) or an operation ID as shown in `list` (e.g.
+// `ListAccounts`). Operation IDs are matched case-insensitively.
+//
+// Default output is a human-readable schema render. Pass --output=json for the
+// stable agent envelope, including the inlined JSON schema.
+func (a *API) ApiDescribe(
+	ctx context.Context,
+	pathOrOperationId string,
+	opts ...optapidescribe.Option,
+) (base.CommandResult, error) {
+	o := optapidescribe.Options{}
+	for _, opt := range opts {
+		opt(&o)
+	}
+
+	final := []string{"api", "describe"}
+
+	if o.All {
+		final = append(final, "--all")
+	}
+
+	if o.Body != "" {
+		final = append(final, "--body", fmt.Sprint(o.Body))
+	}
+
+	if o.Color != "" {
+		final = append(final, "--color", fmt.Sprint(o.Color))
+	}
+
+	if o.DisableIntegrityChecking {
+		final = append(final, "--disable-integrity-checking")
+	}
+
+	if o.DryRun {
+		final = append(final, "--dry-run")
+	}
+
+	if o.EnvelopeVersion != 0 {
+		final = append(final, "--envelope-version", fmt.Sprint(o.EnvelopeVersion))
+	}
+
+	for _, v := range o.Field {
+		final = append(final, "--field", fmt.Sprint(v))
+	}
+
+	if o.FullyQualifyStackNames {
+		final = append(final, "--fully-qualify-stack-names")
+	}
+
+	for _, v := range o.Header {
+		final = append(final, "--header", fmt.Sprint(v))
+	}
+
+	if o.Include {
+		final = append(final, "--include")
+	}
+
+	if o.Input != "" {
+		final = append(final, "--input", fmt.Sprint(o.Input))
+	}
+
+	if o.Logflow {
+		final = append(final, "--logflow")
+	}
+
+	if o.Logtostderr {
+		final = append(final, "--logtostderr")
+	}
+
+	if o.Memprofilerate != 0 {
+		final = append(final, "--memprofilerate", fmt.Sprint(o.Memprofilerate))
+	}
+
+	if o.Method != "" {
+		final = append(final, "--method", fmt.Sprint(o.Method))
+	}
+
+	if o.OtelTraces != "" {
+		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
+	}
+
+	if o.Output != "" {
+		final = append(final, "--output", fmt.Sprint(o.Output))
+	}
+
+	if o.Profiling != "" {
+		final = append(final, "--profiling", fmt.Sprint(o.Profiling))
+	}
+
+	for _, v := range o.RawField {
+		final = append(final, "--raw-field", fmt.Sprint(v))
+	}
+
+	if o.RefreshSpec {
+		final = append(final, "--refresh-spec")
+	}
+
+	if o.Silent {
+		final = append(final, "--silent")
+	}
+
+	if o.Tracing != "" {
+		final = append(final, "--tracing", fmt.Sprint(o.Tracing))
+	}
+
+	if o.TracingHeader != "" {
+		final = append(final, "--tracing-header", fmt.Sprint(o.TracingHeader))
+	}
+
+	if o.Verbose {
+		final = append(final, "--verbose")
+	}
+
+	args := []string{}
+	args = append(args, fmt.Sprint(pathOrOperationId))
+	if len(args) > 0 {
+		final = append(final, "--")
+		final = append(final, args...)
+	}
+
+	return a.run(ctx, base.BaseOptions{
+		Cwd:           o.Cwd,
+		AdditionalEnv: o.AdditionalEnv,
+		Stdout:        o.Stdout,
+		Stderr:        o.Stderr,
+		Stdin:         o.Stdin,
+	}, final)
+}
+
+// ApiList corresponds to `pulumi api list`.
+//
+// List every endpoint exposed by the Pulumi Cloud OpenAPI spec.
+//
+// Output is sorted by (tag asc, path asc, method precedence). The default is a
+// human-readable table when interactive; when non-interactive, list switches to
+// the JSON envelope so downstream parsers don't have to deal with the table's
+// box-drawing characters. Pass --output=json to request JSON explicitly, or
+// --output=table to keep the table when redirecting.
+//
+// Preview endpoints are listed by default; deprecated endpoints are hidden. Use
+// --include-preview=false or --include-deprecated to change that.
+//
+// --filter keeps only operations whose ID, path, tag, summary, or description
+// contain the given text (case-insensitive).
+func (a *API) ApiList(
+	ctx context.Context,
+	opts ...optapilist.Option,
+) (base.CommandResult, error) {
+	o := optapilist.Options{}
+	for _, opt := range opts {
+		opt(&o)
+	}
+
+	final := []string{"api", "list"}
+
+	if o.All {
+		final = append(final, "--all")
+	}
+
+	if o.Body != "" {
+		final = append(final, "--body", fmt.Sprint(o.Body))
+	}
+
+	if o.Color != "" {
+		final = append(final, "--color", fmt.Sprint(o.Color))
+	}
+
+	if o.DisableIntegrityChecking {
+		final = append(final, "--disable-integrity-checking")
+	}
+
+	if o.DryRun {
+		final = append(final, "--dry-run")
+	}
+
+	if o.EnvelopeVersion != 0 {
+		final = append(final, "--envelope-version", fmt.Sprint(o.EnvelopeVersion))
+	}
+
+	for _, v := range o.Field {
+		final = append(final, "--field", fmt.Sprint(v))
+	}
+
+	if o.Filter != "" {
+		final = append(final, "--filter", fmt.Sprint(o.Filter))
+	}
+
+	if o.FullyQualifyStackNames {
+		final = append(final, "--fully-qualify-stack-names")
+	}
+
+	for _, v := range o.Header {
+		final = append(final, "--header", fmt.Sprint(v))
+	}
+
+	if o.Include {
+		final = append(final, "--include")
+	}
+
+	if o.IncludeDeprecated {
+		final = append(final, "--include-deprecated")
+	}
+
+	if o.IncludePreview {
+		final = append(final, "--include-preview")
+	}
+
+	if o.Input != "" {
+		final = append(final, "--input", fmt.Sprint(o.Input))
+	}
+
+	if o.Logflow {
+		final = append(final, "--logflow")
+	}
+
+	if o.Logtostderr {
+		final = append(final, "--logtostderr")
+	}
+
+	if o.Memprofilerate != 0 {
+		final = append(final, "--memprofilerate", fmt.Sprint(o.Memprofilerate))
+	}
+
+	if o.Method != "" {
+		final = append(final, "--method", fmt.Sprint(o.Method))
+	}
+
+	if o.OtelTraces != "" {
+		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
+	}
+
+	if o.Output != "" {
+		final = append(final, "--output", fmt.Sprint(o.Output))
+	}
+
+	if o.Profiling != "" {
+		final = append(final, "--profiling", fmt.Sprint(o.Profiling))
+	}
+
+	for _, v := range o.RawField {
+		final = append(final, "--raw-field", fmt.Sprint(v))
+	}
+
+	if o.RefreshSpec {
+		final = append(final, "--refresh-spec")
+	}
+
+	if o.Silent {
+		final = append(final, "--silent")
+	}
+
+	if o.Tracing != "" {
+		final = append(final, "--tracing", fmt.Sprint(o.Tracing))
+	}
+
+	if o.TracingHeader != "" {
+		final = append(final, "--tracing-header", fmt.Sprint(o.TracingHeader))
+	}
+
+	if o.Verbose {
+		final = append(final, "--verbose")
+	}
+
+	return a.run(ctx, base.BaseOptions{
+		Cwd:           o.Cwd,
+		AdditionalEnv: o.AdditionalEnv,
+		Stdout:        o.Stdout,
+		Stderr:        o.Stderr,
+		Stdin:         o.Stdin,
+	}, final)
+}
 
 // Cancel corresponds to `pulumi cancel`.
 //
