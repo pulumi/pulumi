@@ -954,6 +954,236 @@ class API:
             on_error=on_error,
         )
 
+    def project_list(
+        self,
+        *,
+        color: Optional[str] = None,
+        disable_integrity_checking: bool = False,
+        fully_qualify_stack_names: bool = False,
+        logflow: bool = False,
+        logtostderr: bool = False,
+        memprofilerate: Optional[int] = None,
+        otel_traces: Optional[str] = None,
+        profiling: Optional[str] = None,
+        tracing: Optional[str] = None,
+        tracing_header: Optional[str] = None,
+        verbose: Optional[int] = None,
+        json: bool = False,
+        organization: Optional[str] = None,
+        output: Optional[str] = None,
+        cwd: Optional[str] = None,
+        additional_env: Optional[Mapping[str, str]] = None,
+        on_output: Optional[Callable[[str], Any]] = None,
+        on_error: Optional[Callable[[str], Any]] = None,
+    ):
+        """Run `pulumi project list`.
+
+        :param color: Colorize output. Choices are: always, never, raw, auto
+        :param disable_integrity_checking: Disable integrity checking of checkpoint files
+        :param fully_qualify_stack_names: Show fully-qualified stack names
+        :param logflow: Flow log settings to child processes (like plugins)
+        :param logtostderr: Log to stderr instead of to files
+        :param memprofilerate: Enable more precise (and expensive) memory allocation profiles by setting runtime.MemProfileRate
+        :param otel_traces: Export OpenTelemetry traces to the specified endpoint. Use file:// for local JSON files, grpc:// or https:// for remote collectors
+        :param profiling: Emit CPU and memory profiles and an execution trace to '[filename].[pid].{cpu,mem,trace}', respectively
+        :param tracing: Emit tracing to the specified endpoint. Use the `file:` scheme to write tracing data to a local file
+        :param tracing_header: Include the tracing header with the given contents.
+        :param verbose: Enable verbose logging (e.g., v=3); anything >3 is very verbose
+        :param json: Emit output as JSON (alias for --output=json)
+        :param organization: The organization whose projects to list
+        :param output: Output format. Supported values are: default and json
+        :param cwd: Working directory to run the command in.
+        :param additional_env: Additional environment variables to set when running the command.
+        :param on_output: A callback to invoke when the command outputs stdout data.
+        :param on_error: A callback to invoke when the command outputs stderr data."""
+        __final = []
+        __final.append("project")
+        __final.append("list")
+        __flags = []
+        if color is not None:
+            __flags.extend(["--color", str(color)])
+        if disable_integrity_checking:
+            __flags.append("--disable-integrity-checking")
+        if fully_qualify_stack_names:
+            __flags.append("--fully-qualify-stack-names")
+        if logflow:
+            __flags.append("--logflow")
+        if logtostderr:
+            __flags.append("--logtostderr")
+        if memprofilerate is not None:
+            __flags.extend(["--memprofilerate", str(memprofilerate)])
+        if otel_traces is not None:
+            __flags.extend(["--otel-traces", str(otel_traces)])
+        if profiling is not None:
+            __flags.extend(["--profiling", str(profiling)])
+        if tracing is not None:
+            __flags.extend(["--tracing", str(tracing)])
+        if tracing_header is not None:
+            __flags.extend(["--tracing-header", str(tracing_header)])
+        if verbose is not None:
+            __flags.extend(["--verbose", str(verbose)])
+        if json:
+            __flags.append("--json")
+        if organization is not None:
+            __flags.extend(["--organization", str(organization)])
+        if output is not None:
+            __flags.extend(["--output", str(output)])
+        __final.extend(__flags)
+        __arguments: list[str] = []
+        if __arguments:
+            __final.append("--")
+            __final.extend(__arguments)
+        return self._run(
+            __final,
+            cwd=cwd,
+            additional_env=additional_env,
+            on_output=on_output,
+            on_error=on_error,
+        )
+
+    def project_new(
+        self,
+        template_or_url: Optional[str] = None,
+        *,
+        color: Optional[str] = None,
+        disable_integrity_checking: bool = False,
+        fully_qualify_stack_names: bool = False,
+        logflow: bool = False,
+        logtostderr: bool = False,
+        memprofilerate: Optional[int] = None,
+        otel_traces: Optional[str] = None,
+        profiling: Optional[str] = None,
+        tracing: Optional[str] = None,
+        tracing_header: Optional[str] = None,
+        verbose: Optional[int] = None,
+        ai: Optional[str] = None,
+        config: Optional[list[str]] = None,
+        config_path: bool = False,
+        description: Optional[str] = None,
+        dir: Optional[str] = None,
+        force: bool = False,
+        generate_only: bool = False,
+        language: Optional[str] = None,
+        list_templates: bool = False,
+        name: Optional[str] = None,
+        offline: bool = False,
+        remote_stack_config: bool = False,
+        runtime_options: Optional[list[str]] = None,
+        secrets_provider: Optional[str] = None,
+        stack: Optional[str] = None,
+        template_mode: bool = False,
+        cwd: Optional[str] = None,
+        additional_env: Optional[Mapping[str, str]] = None,
+        on_output: Optional[Callable[[str], Any]] = None,
+        on_error: Optional[Callable[[str], Any]] = None,
+    ):
+        """Run `pulumi project new`.
+
+        :param color: Colorize output. Choices are: always, never, raw, auto
+        :param disable_integrity_checking: Disable integrity checking of checkpoint files
+        :param fully_qualify_stack_names: Show fully-qualified stack names
+        :param logflow: Flow log settings to child processes (like plugins)
+        :param logtostderr: Log to stderr instead of to files
+        :param memprofilerate: Enable more precise (and expensive) memory allocation profiles by setting runtime.MemProfileRate
+        :param otel_traces: Export OpenTelemetry traces to the specified endpoint. Use file:// for local JSON files, grpc:// or https:// for remote collectors
+        :param profiling: Emit CPU and memory profiles and an execution trace to '[filename].[pid].{cpu,mem,trace}', respectively
+        :param tracing: Emit tracing to the specified endpoint. Use the `file:` scheme to write tracing data to a local file
+        :param tracing_header: Include the tracing header with the given contents.
+        :param verbose: Enable verbose logging (e.g., v=3); anything >3 is very verbose
+        :param ai: Retired: use 'pulumi neo -p "prompt"' instead.
+        :param config: Config to save
+        :param config_path: Config keys contain a path to a property in a map or list to set
+        :param description: The project description; if not specified, a prompt will request it
+        :param dir: The location to place the generated project; if not specified, the current directory is used
+        :param force: Forces content to be generated even if it would change existing files
+        :param generate_only: Generate the project only; do not create a stack, save config, or install dependencies
+        :param language: Retired: use 'pulumi neo -p "prompt"' instead.
+        :param list_templates: List locally installed templates and exit
+        :param name: The project name; if not specified, a prompt will request it
+        :param offline: Use locally cached templates without making any network requests
+        :param remote_stack_config: Store stack configuration remotely
+        :param runtime_options: Additional options for the language runtime (format: key1=value1,key2=value2)
+        :param secrets_provider: The type of the provider that should be used to encrypt and decrypt secrets (possible choices: default, passphrase, awskms, azurekeyvault, gcpkms, hashivault)
+        :param stack: The stack name; either an existing stack or stack to create; if not specified, a prompt will request it
+        :param template_mode: Deprecated: template mode is now the only mode; this flag is a no-op
+        :param cwd: Working directory to run the command in.
+        :param additional_env: Additional environment variables to set when running the command.
+        :param on_output: A callback to invoke when the command outputs stdout data.
+        :param on_error: A callback to invoke when the command outputs stderr data."""
+        __final = []
+        __final.append("project")
+        __final.append("new")
+        __flags = []
+        __flags.append("--yes")
+        if color is not None:
+            __flags.extend(["--color", str(color)])
+        if disable_integrity_checking:
+            __flags.append("--disable-integrity-checking")
+        if fully_qualify_stack_names:
+            __flags.append("--fully-qualify-stack-names")
+        if logflow:
+            __flags.append("--logflow")
+        if logtostderr:
+            __flags.append("--logtostderr")
+        if memprofilerate is not None:
+            __flags.extend(["--memprofilerate", str(memprofilerate)])
+        if otel_traces is not None:
+            __flags.extend(["--otel-traces", str(otel_traces)])
+        if profiling is not None:
+            __flags.extend(["--profiling", str(profiling)])
+        if tracing is not None:
+            __flags.extend(["--tracing", str(tracing)])
+        if tracing_header is not None:
+            __flags.extend(["--tracing-header", str(tracing_header)])
+        if verbose is not None:
+            __flags.extend(["--verbose", str(verbose)])
+        if ai is not None:
+            __flags.extend(["--ai", str(ai)])
+        for __item in config or []:
+            __flags.extend(["--config", str(__item)])
+        if config_path:
+            __flags.append("--config-path")
+        if description is not None:
+            __flags.extend(["--description", str(description)])
+        if dir is not None:
+            __flags.extend(["--dir", str(dir)])
+        if force:
+            __flags.append("--force")
+        if generate_only:
+            __flags.append("--generate-only")
+        if language is not None:
+            __flags.extend(["--language", str(language)])
+        if list_templates:
+            __flags.append("--list-templates")
+        if name is not None:
+            __flags.extend(["--name", str(name)])
+        if offline:
+            __flags.append("--offline")
+        if remote_stack_config:
+            __flags.append("--remote-stack-config")
+        for __item in runtime_options or []:
+            __flags.extend(["--runtime-options", str(__item)])
+        if secrets_provider is not None:
+            __flags.extend(["--secrets-provider", str(secrets_provider)])
+        if stack is not None:
+            __flags.extend(["--stack", str(stack)])
+        if template_mode:
+            __flags.append("--template-mode")
+        __final.extend(__flags)
+        __arguments: list[str] = []
+        if template_or_url is not None:
+            __arguments.append(str(template_or_url))
+        if __arguments:
+            __final.append("--")
+            __final.extend(__arguments)
+        return self._run(
+            __final,
+            cwd=cwd,
+            additional_env=additional_env,
+            on_output=on_output,
+            on_error=on_error,
+        )
+
     def version(
         self,
         *,

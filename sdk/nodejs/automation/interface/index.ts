@@ -860,6 +860,217 @@ export class API {
         return this.__run(options, __final);
     }
 
+    projectList(options: PulumiProjectListOptions): ReturnType<API["__run"]> {
+        const __final: string[] = [];
+        __final.push("project");
+        __final.push("list");
+
+        const __flags: string[] = [];
+
+        if (options.color != null) {
+            __flags.push("--color", "" + options.color);
+        }
+
+        if (options.disableIntegrityChecking) {
+            __flags.push("--disable-integrity-checking");
+        }
+
+        if (options.fullyQualifyStackNames) {
+            __flags.push("--fully-qualify-stack-names");
+        }
+
+        if (options.logflow) {
+            __flags.push("--logflow");
+        }
+
+        if (options.logtostderr) {
+            __flags.push("--logtostderr");
+        }
+
+        if (options.memprofilerate != null) {
+            __flags.push("--memprofilerate", "" + options.memprofilerate);
+        }
+
+        if (options.otelTraces != null) {
+            __flags.push("--otel-traces", "" + options.otelTraces);
+        }
+
+        if (options.profiling != null) {
+            __flags.push("--profiling", "" + options.profiling);
+        }
+
+        if (options.tracing != null) {
+            __flags.push("--tracing", "" + options.tracing);
+        }
+
+        if (options.tracingHeader != null) {
+            __flags.push("--tracing-header", "" + options.tracingHeader);
+        }
+
+        if (options.verbose != null) {
+            __flags.push("--verbose", "" + options.verbose);
+        }
+
+        if (options.json) {
+            __flags.push("--json");
+        }
+
+        if (options.organization != null) {
+            __flags.push("--organization", "" + options.organization);
+        }
+
+        if (options.output != null) {
+            __flags.push("--output", "" + options.output);
+        }
+
+        __final.push(...__flags);
+
+        const __arguments: string[] = [];
+
+        if (__arguments.length > 0) {
+            __final.push("--");
+            __final.push(...__arguments);
+        }
+
+        return this.__run(options, __final);
+    }
+
+    projectNew(options: PulumiProjectNewOptions, templateOrUrl?: string): ReturnType<API["__run"]> {
+        const __final: string[] = [];
+        __final.push("project");
+        __final.push("new");
+
+        const __flags: string[] = [];
+
+        __flags.push("--yes");
+
+        if (options.color != null) {
+            __flags.push("--color", "" + options.color);
+        }
+
+        if (options.disableIntegrityChecking) {
+            __flags.push("--disable-integrity-checking");
+        }
+
+        if (options.fullyQualifyStackNames) {
+            __flags.push("--fully-qualify-stack-names");
+        }
+
+        if (options.logflow) {
+            __flags.push("--logflow");
+        }
+
+        if (options.logtostderr) {
+            __flags.push("--logtostderr");
+        }
+
+        if (options.memprofilerate != null) {
+            __flags.push("--memprofilerate", "" + options.memprofilerate);
+        }
+
+        if (options.otelTraces != null) {
+            __flags.push("--otel-traces", "" + options.otelTraces);
+        }
+
+        if (options.profiling != null) {
+            __flags.push("--profiling", "" + options.profiling);
+        }
+
+        if (options.tracing != null) {
+            __flags.push("--tracing", "" + options.tracing);
+        }
+
+        if (options.tracingHeader != null) {
+            __flags.push("--tracing-header", "" + options.tracingHeader);
+        }
+
+        if (options.verbose != null) {
+            __flags.push("--verbose", "" + options.verbose);
+        }
+
+        if (options.ai != null) {
+            __flags.push("--ai", "" + options.ai);
+        }
+
+        for (const __item of options.config ?? []) {
+            if (__item != null) {
+                __flags.push("--config", "" + __item);
+            }
+        }
+
+        if (options.configPath) {
+            __flags.push("--config-path");
+        }
+
+        if (options.description != null) {
+            __flags.push("--description", "" + options.description);
+        }
+
+        if (options.dir != null) {
+            __flags.push("--dir", "" + options.dir);
+        }
+
+        if (options.force) {
+            __flags.push("--force");
+        }
+
+        if (options.generateOnly) {
+            __flags.push("--generate-only");
+        }
+
+        if (options.language != null) {
+            __flags.push("--language", "" + options.language);
+        }
+
+        if (options.listTemplates) {
+            __flags.push("--list-templates");
+        }
+
+        if (options.name != null) {
+            __flags.push("--name", "" + options.name);
+        }
+
+        if (options.offline) {
+            __flags.push("--offline");
+        }
+
+        if (options.remoteStackConfig) {
+            __flags.push("--remote-stack-config");
+        }
+
+        for (const __item of options.runtimeOptions ?? []) {
+            if (__item != null) {
+                __flags.push("--runtime-options", "" + __item);
+            }
+        }
+
+        if (options.secretsProvider != null) {
+            __flags.push("--secrets-provider", "" + options.secretsProvider);
+        }
+
+        if (options.stack != null) {
+            __flags.push("--stack", "" + options.stack);
+        }
+
+        if (options.templateMode) {
+            __flags.push("--template-mode");
+        }
+
+        __final.push(...__flags);
+
+        const __arguments: string[] = [];
+
+        if (templateOrUrl != null) {
+            __arguments.push("" + templateOrUrl);
+        }
+        if (__arguments.length > 0) {
+            __final.push("--");
+            __final.push(...__arguments);
+        }
+
+        return this.__run(options, __final);
+    }
+
     version(options: PulumiVersionOptions): ReturnType<API["__run"]> {
         const __final: string[] = [];
         __final.push("version");
@@ -1340,6 +1551,96 @@ export interface PulumiOrgSetDefaultOptions extends BaseOptions {
     tracingHeader?: string;
     /** Enable verbose logging (e.g., v=3); anything >3 is very verbose */
     verbose?: number;
+}
+
+/** Options for the `pulumi project list` command. */
+export interface PulumiProjectListOptions extends BaseOptions {
+    /** Colorize output. Choices are: always, never, raw, auto */
+    color?: string;
+    /** Disable integrity checking of checkpoint files */
+    disableIntegrityChecking?: boolean;
+    /** Show fully-qualified stack names */
+    fullyQualifyStackNames?: boolean;
+    /** Flow log settings to child processes (like plugins) */
+    logflow?: boolean;
+    /** Log to stderr instead of to files */
+    logtostderr?: boolean;
+    /** Enable more precise (and expensive) memory allocation profiles by setting runtime.MemProfileRate */
+    memprofilerate?: number;
+    /** Export OpenTelemetry traces to the specified endpoint. Use file:// for local JSON files, grpc:// or https:// for remote collectors */
+    otelTraces?: string;
+    /** Emit CPU and memory profiles and an execution trace to '[filename].[pid].{cpu,mem,trace}', respectively */
+    profiling?: string;
+    /** Emit tracing to the specified endpoint. Use the `file:` scheme to write tracing data to a local file */
+    tracing?: string;
+    /** Include the tracing header with the given contents. */
+    tracingHeader?: string;
+    /** Enable verbose logging (e.g., v=3); anything >3 is very verbose */
+    verbose?: number;
+    /** Emit output as JSON (alias for --output=json) */
+    json?: boolean;
+    /** The organization whose projects to list */
+    organization?: string;
+    /** Output format. Supported values are: default and json */
+    output?: string;
+}
+
+/** Options for the `pulumi project new` command. */
+export interface PulumiProjectNewOptions extends BaseOptions {
+    /** Colorize output. Choices are: always, never, raw, auto */
+    color?: string;
+    /** Disable integrity checking of checkpoint files */
+    disableIntegrityChecking?: boolean;
+    /** Show fully-qualified stack names */
+    fullyQualifyStackNames?: boolean;
+    /** Flow log settings to child processes (like plugins) */
+    logflow?: boolean;
+    /** Log to stderr instead of to files */
+    logtostderr?: boolean;
+    /** Enable more precise (and expensive) memory allocation profiles by setting runtime.MemProfileRate */
+    memprofilerate?: number;
+    /** Export OpenTelemetry traces to the specified endpoint. Use file:// for local JSON files, grpc:// or https:// for remote collectors */
+    otelTraces?: string;
+    /** Emit CPU and memory profiles and an execution trace to '[filename].[pid].{cpu,mem,trace}', respectively */
+    profiling?: string;
+    /** Emit tracing to the specified endpoint. Use the `file:` scheme to write tracing data to a local file */
+    tracing?: string;
+    /** Include the tracing header with the given contents. */
+    tracingHeader?: string;
+    /** Enable verbose logging (e.g., v=3); anything >3 is very verbose */
+    verbose?: number;
+    /** Retired: use 'pulumi neo -p "prompt"' instead. */
+    ai?: string;
+    /** Config to save */
+    config?: string[];
+    /** Config keys contain a path to a property in a map or list to set */
+    configPath?: boolean;
+    /** The project description; if not specified, a prompt will request it */
+    description?: string;
+    /** The location to place the generated project; if not specified, the current directory is used */
+    dir?: string;
+    /** Forces content to be generated even if it would change existing files */
+    force?: boolean;
+    /** Generate the project only; do not create a stack, save config, or install dependencies */
+    generateOnly?: boolean;
+    /** Retired: use 'pulumi neo -p "prompt"' instead. */
+    language?: string;
+    /** List locally installed templates and exit */
+    listTemplates?: boolean;
+    /** The project name; if not specified, a prompt will request it */
+    name?: string;
+    /** Use locally cached templates without making any network requests */
+    offline?: boolean;
+    /** Store stack configuration remotely */
+    remoteStackConfig?: boolean;
+    /** Additional options for the language runtime (format: key1=value1,key2=value2) */
+    runtimeOptions?: string[];
+    /** The type of the provider that should be used to encrypt and decrypt secrets (possible choices: default, passphrase, awskms, azurekeyvault, gcpkms, hashivault) */
+    secretsProvider?: string;
+    /** The stack name; either an existing stack or stack to create; if not specified, a prompt will request it */
+    stack?: string;
+    /** Deprecated: template mode is now the only mode; this flag is a no-op */
+    templateMode?: boolean;
 }
 
 /** Options for the `pulumi version` command. */
