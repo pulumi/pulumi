@@ -23,6 +23,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -243,6 +244,17 @@ func (p *Pulumi) run(ctx context.Context, a pulumiArgs, isPreview bool) (pulumiR
 		return failedResult(a, "", fmt.Errorf("reading project: %w", err))
 	}
 
+	refresh := false
+	if isPreview {
+		refresh = proj.Options != nil && proj.Options.Refresh == "always"
+		if value := os.Getenv("PULUMI_OPTION_REFRESH"); value != "" {
+			refresh, err = strconv.ParseBool(value)
+			if err != nil {
+				return failedResult(a, "", errors.New("PULUMI_OPTION_REFRESH must be a boolean"))
+			}
+		}
+	}
+
 	// Resolve the backend fresh per tool call, the same way `pulumi preview`/`pulumi up`
 	// do (stack.RequireStack -> cmdBackend.CurrentBackend -> Login). Reusing the backend
 	// frozen at `pulumi neo` startup would pin the access token resolved back then, so the
@@ -303,6 +315,7 @@ func (p *Pulumi) run(ctx context.Context, a pulumiArgs, isPreview bool) (pulumiR
 		Engine: engine.UpdateOptions{
 			Experimental: true,
 			Autonamer:    autonamer,
+			Refresh:      refresh,
 		},
 		Display: backendDisplay.Options{
 			// Mute the backend's own progress renderer so it doesn't fight the Neo TUI.
