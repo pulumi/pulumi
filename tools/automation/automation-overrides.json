@@ -346,12 +346,6 @@
             "flags": {}
         },
         {
-            "path": ["template"],
-            "propagate": true,
-            "exclude": true,
-            "flags": {}
-        },
-        {
             "path": ["view-trace"],
             "propagate": true,
             "exclude": true,
