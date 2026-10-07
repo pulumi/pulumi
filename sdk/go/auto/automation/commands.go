@@ -22,6 +22,16 @@ import (
 
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/base"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optcancel"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optdeployment"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optdeploymentcancel"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optdeploymentget"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optdeploymentlist"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optdeploymentlog"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optdeploymentrun"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optdeploymentsettings"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optdeploymentsettingsdestroy"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optdeploymentsettingsedit"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optdeploymentsettingsget"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optimport"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optinstall"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optnew"
@@ -117,6 +127,1143 @@ func (a *API) Cancel(
 	if len(args) > 0 {
 		final = append(final, "--")
 		final = append(final, args...)
+	}
+
+	return a.run(ctx, base.BaseOptions{
+		Cwd:           o.Cwd,
+		AdditionalEnv: o.AdditionalEnv,
+		Stdout:        o.Stdout,
+		Stderr:        o.Stderr,
+		Stdin:         o.Stdin,
+	}, final)
+}
+
+// Deployment corresponds to `pulumi deployment`.
+func (a *API) Deployment(
+	ctx context.Context,
+	opts ...optdeployment.Option,
+) (base.CommandResult, error) {
+	o := optdeployment.Options{}
+	for _, opt := range opts {
+		opt(&o)
+	}
+
+	final := []string{"deployment"}
+
+	if o.Color != "" {
+		final = append(final, "--color", fmt.Sprint(o.Color))
+	}
+
+	if o.DisableIntegrityChecking {
+		final = append(final, "--disable-integrity-checking")
+	}
+
+	if o.FullyQualifyStackNames {
+		final = append(final, "--fully-qualify-stack-names")
+	}
+
+	if o.Logflow {
+		final = append(final, "--logflow")
+	}
+
+	if o.Logtostderr {
+		final = append(final, "--logtostderr")
+	}
+
+	if o.Memprofilerate != 0 {
+		final = append(final, "--memprofilerate", fmt.Sprint(o.Memprofilerate))
+	}
+
+	if o.OtelTraces != "" {
+		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
+	}
+
+	if o.Profiling != "" {
+		final = append(final, "--profiling", fmt.Sprint(o.Profiling))
+	}
+
+	if o.Tracing != "" {
+		final = append(final, "--tracing", fmt.Sprint(o.Tracing))
+	}
+
+	if o.TracingHeader != "" {
+		final = append(final, "--tracing-header", fmt.Sprint(o.TracingHeader))
+	}
+
+	if o.Verbose != 0 {
+		final = append(final, "--verbose", fmt.Sprint(o.Verbose))
+	}
+
+	return a.run(ctx, base.BaseOptions{
+		Cwd:           o.Cwd,
+		AdditionalEnv: o.AdditionalEnv,
+		Stdout:        o.Stdout,
+		Stderr:        o.Stderr,
+		Stdin:         o.Stdin,
+	}, final)
+}
+
+// DeploymentCancel corresponds to `pulumi deployment cancel`.
+//
+// [EXPERIMENTAL] Cancel an in-progress deployment.
+//
+// Terminates an in-progress Pulumi Deployments execution. If the deployment is
+// currently running, it is stopped immediately. If the deployment is queued but
+// has not yet started, it is removed from the queue.
+//
+// Canceling a deployment is a dangerous action and may leave the stack in an
+// inconsistent state if canceled during the execution of a Pulumi operation.
+func (a *API) DeploymentCancel(
+	ctx context.Context,
+	deploymentId string,
+	opts ...optdeploymentcancel.Option,
+) (base.CommandResult, error) {
+	o := optdeploymentcancel.Options{}
+	for _, opt := range opts {
+		opt(&o)
+	}
+
+	final := []string{"deployment", "cancel"}
+
+	final = append(final, "--yes")
+
+	if o.Color != "" {
+		final = append(final, "--color", fmt.Sprint(o.Color))
+	}
+
+	if o.DisableIntegrityChecking {
+		final = append(final, "--disable-integrity-checking")
+	}
+
+	if o.FullyQualifyStackNames {
+		final = append(final, "--fully-qualify-stack-names")
+	}
+
+	if o.Logflow {
+		final = append(final, "--logflow")
+	}
+
+	if o.Logtostderr {
+		final = append(final, "--logtostderr")
+	}
+
+	if o.Memprofilerate != 0 {
+		final = append(final, "--memprofilerate", fmt.Sprint(o.Memprofilerate))
+	}
+
+	if o.OtelTraces != "" {
+		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
+	}
+
+	if o.Output != "" {
+		final = append(final, "--output", fmt.Sprint(o.Output))
+	}
+
+	if o.Profiling != "" {
+		final = append(final, "--profiling", fmt.Sprint(o.Profiling))
+	}
+
+	if o.Stack != "" {
+		final = append(final, "--stack", fmt.Sprint(o.Stack))
+	}
+
+	if o.Tracing != "" {
+		final = append(final, "--tracing", fmt.Sprint(o.Tracing))
+	}
+
+	if o.TracingHeader != "" {
+		final = append(final, "--tracing-header", fmt.Sprint(o.TracingHeader))
+	}
+
+	if o.Verbose != 0 {
+		final = append(final, "--verbose", fmt.Sprint(o.Verbose))
+	}
+
+	args := []string{}
+	args = append(args, fmt.Sprint(deploymentId))
+	if len(args) > 0 {
+		final = append(final, "--")
+		final = append(final, args...)
+	}
+
+	return a.run(ctx, base.BaseOptions{
+		Cwd:           o.Cwd,
+		AdditionalEnv: o.AdditionalEnv,
+		Stdout:        o.Stdout,
+		Stderr:        o.Stderr,
+		Stdin:         o.Stdin,
+	}, final)
+}
+
+// DeploymentGet corresponds to `pulumi deployment get`.
+//
+// [EXPERIMENTAL] Get details for a specific deployment.
+//
+// The deployment may be referenced by its UUID or by its per-stack version
+// number (the integer shown in the Pulumi Cloud UI, e.g. 9410 or #9410).
+//
+// Retrieves detailed information about a single Pulumi Deployments execution.
+// The response includes the deployment's current status, creation and
+// modification timestamps, version number, the user who requested the
+// deployment, the Pulumi operation type, the list of jobs (with their
+// step-level status), and any stack updates produced by the deployment.
+func (a *API) DeploymentGet(
+	ctx context.Context,
+	deploymentVersion string,
+	opts ...optdeploymentget.Option,
+) (base.CommandResult, error) {
+	o := optdeploymentget.Options{}
+	for _, opt := range opts {
+		opt(&o)
+	}
+
+	final := []string{"deployment", "get"}
+
+	if o.Color != "" {
+		final = append(final, "--color", fmt.Sprint(o.Color))
+	}
+
+	if o.DisableIntegrityChecking {
+		final = append(final, "--disable-integrity-checking")
+	}
+
+	if o.FullyQualifyStackNames {
+		final = append(final, "--fully-qualify-stack-names")
+	}
+
+	if o.Logflow {
+		final = append(final, "--logflow")
+	}
+
+	if o.Logtostderr {
+		final = append(final, "--logtostderr")
+	}
+
+	if o.Memprofilerate != 0 {
+		final = append(final, "--memprofilerate", fmt.Sprint(o.Memprofilerate))
+	}
+
+	if o.OtelTraces != "" {
+		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
+	}
+
+	if o.Output != "" {
+		final = append(final, "--output", fmt.Sprint(o.Output))
+	}
+
+	if o.Profiling != "" {
+		final = append(final, "--profiling", fmt.Sprint(o.Profiling))
+	}
+
+	if o.Stack != "" {
+		final = append(final, "--stack", fmt.Sprint(o.Stack))
+	}
+
+	if o.Tracing != "" {
+		final = append(final, "--tracing", fmt.Sprint(o.Tracing))
+	}
+
+	if o.TracingHeader != "" {
+		final = append(final, "--tracing-header", fmt.Sprint(o.TracingHeader))
+	}
+
+	if o.Verbose != 0 {
+		final = append(final, "--verbose", fmt.Sprint(o.Verbose))
+	}
+
+	args := []string{}
+	args = append(args, fmt.Sprint(deploymentVersion))
+	if len(args) > 0 {
+		final = append(final, "--")
+		final = append(final, args...)
+	}
+
+	return a.run(ctx, base.BaseOptions{
+		Cwd:           o.Cwd,
+		AdditionalEnv: o.AdditionalEnv,
+		Stdout:        o.Stdout,
+		Stderr:        o.Stderr,
+		Stdin:         o.Stdin,
+	}, final)
+}
+
+// DeploymentList corresponds to `pulumi deployment list`.
+//
+// [EXPERIMENTAL] List deployments for a stack.
+//
+// Returns deployments for the selected stack, showing each deployment's ID,
+// operation, status, version, initiator, and the time it was last modified.
+// Default output is a human-readable table; pass --output=json for a JSON
+// envelope.
+//
+// By default, the first 10 results are shown. Use --count to request more,
+// or --all to fetch every deployment.
+func (a *API) DeploymentList(
+	ctx context.Context,
+	opts ...optdeploymentlist.Option,
+) (base.CommandResult, error) {
+	o := optdeploymentlist.Options{}
+	for _, opt := range opts {
+		opt(&o)
+	}
+
+	final := []string{"deployment", "list"}
+
+	if o.All {
+		final = append(final, "--all")
+	}
+
+	if o.Asc {
+		final = append(final, "--asc")
+	}
+
+	if o.Color != "" {
+		final = append(final, "--color", fmt.Sprint(o.Color))
+	}
+
+	if o.Count != 0 {
+		final = append(final, "--count", fmt.Sprint(o.Count))
+	}
+
+	if o.DisableIntegrityChecking {
+		final = append(final, "--disable-integrity-checking")
+	}
+
+	if o.FullyQualifyStackNames {
+		final = append(final, "--fully-qualify-stack-names")
+	}
+
+	if o.Logflow {
+		final = append(final, "--logflow")
+	}
+
+	if o.Logtostderr {
+		final = append(final, "--logtostderr")
+	}
+
+	if o.Memprofilerate != 0 {
+		final = append(final, "--memprofilerate", fmt.Sprint(o.Memprofilerate))
+	}
+
+	if o.OtelTraces != "" {
+		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
+	}
+
+	if o.Output != "" {
+		final = append(final, "--output", fmt.Sprint(o.Output))
+	}
+
+	if o.Profiling != "" {
+		final = append(final, "--profiling", fmt.Sprint(o.Profiling))
+	}
+
+	if o.Sort != "" {
+		final = append(final, "--sort", fmt.Sprint(o.Sort))
+	}
+
+	if o.Stack != "" {
+		final = append(final, "--stack", fmt.Sprint(o.Stack))
+	}
+
+	if o.Tracing != "" {
+		final = append(final, "--tracing", fmt.Sprint(o.Tracing))
+	}
+
+	if o.TracingHeader != "" {
+		final = append(final, "--tracing-header", fmt.Sprint(o.TracingHeader))
+	}
+
+	if o.Verbose != 0 {
+		final = append(final, "--verbose", fmt.Sprint(o.Verbose))
+	}
+
+	return a.run(ctx, base.BaseOptions{
+		Cwd:           o.Cwd,
+		AdditionalEnv: o.AdditionalEnv,
+		Stdout:        o.Stdout,
+		Stderr:        o.Stderr,
+		Stdin:         o.Stdin,
+	}, final)
+}
+
+// DeploymentLog corresponds to `pulumi deployment log`.
+//
+// [EXPERIMENTAL] Retrieve execution logs for a deployment.
+//
+// The deployment may be referenced by its UUID or by its per-stack version
+// number (the integer shown in the Pulumi Cloud UI, e.g. 9410 or #9410).
+//
+// Returns log lines from a deployment. Pass --job and --step to scope to a
+// specific step within a specific job; in step mode --count must be 1-499
+// (default 100 server-side). Pass --all to fetch every available log line,
+// following the server's pagination internally; --count and --all are
+// mutually exclusive.
+//
+// Default output prints one log line per row; pass --output=json for a
+// structured envelope.
+func (a *API) DeploymentLog(
+	ctx context.Context,
+	deploymentVersion string,
+	opts ...optdeploymentlog.Option,
+) (base.CommandResult, error) {
+	o := optdeploymentlog.Options{}
+	for _, opt := range opts {
+		opt(&o)
+	}
+
+	final := []string{"deployment", "log"}
+
+	if o.All {
+		final = append(final, "--all")
+	}
+
+	if o.Color != "" {
+		final = append(final, "--color", fmt.Sprint(o.Color))
+	}
+
+	if o.Count != 0 {
+		final = append(final, "--count", fmt.Sprint(o.Count))
+	}
+
+	if o.DisableIntegrityChecking {
+		final = append(final, "--disable-integrity-checking")
+	}
+
+	if o.FullyQualifyStackNames {
+		final = append(final, "--fully-qualify-stack-names")
+	}
+
+	if o.Job != 0 {
+		final = append(final, "--job", fmt.Sprint(o.Job))
+	}
+
+	if o.Logflow {
+		final = append(final, "--logflow")
+	}
+
+	if o.Logtostderr {
+		final = append(final, "--logtostderr")
+	}
+
+	if o.Memprofilerate != 0 {
+		final = append(final, "--memprofilerate", fmt.Sprint(o.Memprofilerate))
+	}
+
+	if o.Offset != 0 {
+		final = append(final, "--offset", fmt.Sprint(o.Offset))
+	}
+
+	if o.OtelTraces != "" {
+		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
+	}
+
+	if o.Output != "" {
+		final = append(final, "--output", fmt.Sprint(o.Output))
+	}
+
+	if o.Profiling != "" {
+		final = append(final, "--profiling", fmt.Sprint(o.Profiling))
+	}
+
+	if o.Stack != "" {
+		final = append(final, "--stack", fmt.Sprint(o.Stack))
+	}
+
+	if o.Step != 0 {
+		final = append(final, "--step", fmt.Sprint(o.Step))
+	}
+
+	if o.Tracing != "" {
+		final = append(final, "--tracing", fmt.Sprint(o.Tracing))
+	}
+
+	if o.TracingHeader != "" {
+		final = append(final, "--tracing-header", fmt.Sprint(o.TracingHeader))
+	}
+
+	if o.Verbose != 0 {
+		final = append(final, "--verbose", fmt.Sprint(o.Verbose))
+	}
+
+	args := []string{}
+	args = append(args, fmt.Sprint(deploymentVersion))
+	if len(args) > 0 {
+		final = append(final, "--")
+		final = append(final, args...)
+	}
+
+	return a.run(ctx, base.BaseOptions{
+		Cwd:           o.Cwd,
+		AdditionalEnv: o.AdditionalEnv,
+		Stdout:        o.Stdout,
+		Stderr:        o.Stderr,
+		Stdin:         o.Stdin,
+	}, final)
+}
+
+// DeploymentRun corresponds to `pulumi deployment run`.
+//
+// # Launch a deployment job on Pulumi Cloud
+//
+// This command queues a new deployment job for any supported operation of type
+// update, preview, destroy, refresh, detect-drift or remediate-drift.
+func (a *API) DeploymentRun(
+	ctx context.Context,
+	operation string,
+	url *string,
+	opts ...optdeploymentrun.Option,
+) (base.CommandResult, error) {
+	o := optdeploymentrun.Options{}
+	for _, opt := range opts {
+		opt(&o)
+	}
+
+	final := []string{"deployment", "run"}
+
+	if o.AgentPoolId != "" {
+		final = append(final, "--agent-pool-id", fmt.Sprint(o.AgentPoolId))
+	}
+
+	if o.Color != "" {
+		final = append(final, "--color", fmt.Sprint(o.Color))
+	}
+
+	if o.DisableIntegrityChecking {
+		final = append(final, "--disable-integrity-checking")
+	}
+
+	for _, v := range o.Env {
+		final = append(final, "--env", fmt.Sprint(v))
+	}
+
+	for _, v := range o.EnvSecret {
+		final = append(final, "--env-secret", fmt.Sprint(v))
+	}
+
+	if o.ExecutorImage != "" {
+		final = append(final, "--executor-image", fmt.Sprint(o.ExecutorImage))
+	}
+
+	if o.ExecutorImagePassword != "" {
+		final = append(final, "--executor-image-password", fmt.Sprint(o.ExecutorImagePassword))
+	}
+
+	if o.ExecutorImageUsername != "" {
+		final = append(final, "--executor-image-username", fmt.Sprint(o.ExecutorImageUsername))
+	}
+
+	if o.FullyQualifyStackNames {
+		final = append(final, "--fully-qualify-stack-names")
+	}
+
+	if o.GitAuthAccessToken != "" {
+		final = append(final, "--git-auth-access-token", fmt.Sprint(o.GitAuthAccessToken))
+	}
+
+	if o.GitAuthPassword != "" {
+		final = append(final, "--git-auth-password", fmt.Sprint(o.GitAuthPassword))
+	}
+
+	if o.GitAuthSshPrivateKey != "" {
+		final = append(final, "--git-auth-ssh-private-key", fmt.Sprint(o.GitAuthSshPrivateKey))
+	}
+
+	if o.GitAuthSshPrivateKeyPath != "" {
+		final = append(final, "--git-auth-ssh-private-key-path", fmt.Sprint(o.GitAuthSshPrivateKeyPath))
+	}
+
+	if o.GitAuthUsername != "" {
+		final = append(final, "--git-auth-username", fmt.Sprint(o.GitAuthUsername))
+	}
+
+	if o.GitBranch != "" {
+		final = append(final, "--git-branch", fmt.Sprint(o.GitBranch))
+	}
+
+	if o.GitCommit != "" {
+		final = append(final, "--git-commit", fmt.Sprint(o.GitCommit))
+	}
+
+	if o.GitRepoDir != "" {
+		final = append(final, "--git-repo-dir", fmt.Sprint(o.GitRepoDir))
+	}
+
+	if o.InheritSettings {
+		final = append(final, "--inherit-settings")
+	}
+
+	if o.Logflow {
+		final = append(final, "--logflow")
+	}
+
+	if o.Logtostderr {
+		final = append(final, "--logtostderr")
+	}
+
+	if o.Memprofilerate != 0 {
+		final = append(final, "--memprofilerate", fmt.Sprint(o.Memprofilerate))
+	}
+
+	if o.OtelTraces != "" {
+		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
+	}
+
+	for _, v := range o.PreRunCommand {
+		final = append(final, "--pre-run-command", fmt.Sprint(v))
+	}
+
+	if o.Profiling != "" {
+		final = append(final, "--profiling", fmt.Sprint(o.Profiling))
+	}
+
+	if o.SkipInstallDependencies {
+		final = append(final, "--skip-install-dependencies")
+	}
+
+	if o.Stack != "" {
+		final = append(final, "--stack", fmt.Sprint(o.Stack))
+	}
+
+	if o.SuppressPermalink {
+		final = append(final, "--suppress-permalink")
+	}
+
+	if o.SuppressStreamLogs {
+		final = append(final, "--suppress-stream-logs")
+	}
+
+	if o.Tracing != "" {
+		final = append(final, "--tracing", fmt.Sprint(o.Tracing))
+	}
+
+	if o.TracingHeader != "" {
+		final = append(final, "--tracing-header", fmt.Sprint(o.TracingHeader))
+	}
+
+	if o.Verbose != 0 {
+		final = append(final, "--verbose", fmt.Sprint(o.Verbose))
+	}
+
+	args := []string{}
+	args = append(args, fmt.Sprint(operation))
+	if url != nil {
+		args = append(args, fmt.Sprint(*url))
+	}
+	if len(args) > 0 {
+		final = append(final, "--")
+		final = append(final, args...)
+	}
+
+	return a.run(ctx, base.BaseOptions{
+		Cwd:           o.Cwd,
+		AdditionalEnv: o.AdditionalEnv,
+		Stdout:        o.Stdout,
+		Stderr:        o.Stderr,
+		Stdin:         o.Stdin,
+	}, final)
+}
+
+// DeploymentSettings corresponds to `pulumi deployment settings`.
+func (a *API) DeploymentSettings(
+	ctx context.Context,
+	opts ...optdeploymentsettings.Option,
+) (base.CommandResult, error) {
+	o := optdeploymentsettings.Options{}
+	for _, opt := range opts {
+		opt(&o)
+	}
+
+	final := []string{"deployment", "settings"}
+
+	if o.Color != "" {
+		final = append(final, "--color", fmt.Sprint(o.Color))
+	}
+
+	if o.DisableIntegrityChecking {
+		final = append(final, "--disable-integrity-checking")
+	}
+
+	if o.FullyQualifyStackNames {
+		final = append(final, "--fully-qualify-stack-names")
+	}
+
+	if o.Logflow {
+		final = append(final, "--logflow")
+	}
+
+	if o.Logtostderr {
+		final = append(final, "--logtostderr")
+	}
+
+	if o.Memprofilerate != 0 {
+		final = append(final, "--memprofilerate", fmt.Sprint(o.Memprofilerate))
+	}
+
+	if o.OtelTraces != "" {
+		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
+	}
+
+	if o.Profiling != "" {
+		final = append(final, "--profiling", fmt.Sprint(o.Profiling))
+	}
+
+	if o.Tracing != "" {
+		final = append(final, "--tracing", fmt.Sprint(o.Tracing))
+	}
+
+	if o.TracingHeader != "" {
+		final = append(final, "--tracing-header", fmt.Sprint(o.TracingHeader))
+	}
+
+	if o.Verbose != 0 {
+		final = append(final, "--verbose", fmt.Sprint(o.Verbose))
+	}
+
+	return a.run(ctx, base.BaseOptions{
+		Cwd:           o.Cwd,
+		AdditionalEnv: o.AdditionalEnv,
+		Stdout:        o.Stdout,
+		Stderr:        o.Stderr,
+		Stdin:         o.Stdin,
+	}, final)
+}
+
+// DeploymentSettingsDestroy corresponds to `pulumi deployment settings destroy`.
+//
+// Delete all the stack's deployment settings
+func (a *API) DeploymentSettingsDestroy(
+	ctx context.Context,
+	opts ...optdeploymentsettingsdestroy.Option,
+) (base.CommandResult, error) {
+	o := optdeploymentsettingsdestroy.Options{}
+	for _, opt := range opts {
+		opt(&o)
+	}
+
+	final := []string{"deployment", "settings", "destroy"}
+
+	final = append(final, "--yes")
+
+	if o.Color != "" {
+		final = append(final, "--color", fmt.Sprint(o.Color))
+	}
+
+	if o.DisableIntegrityChecking {
+		final = append(final, "--disable-integrity-checking")
+	}
+
+	if o.FullyQualifyStackNames {
+		final = append(final, "--fully-qualify-stack-names")
+	}
+
+	if o.Logflow {
+		final = append(final, "--logflow")
+	}
+
+	if o.Logtostderr {
+		final = append(final, "--logtostderr")
+	}
+
+	if o.Memprofilerate != 0 {
+		final = append(final, "--memprofilerate", fmt.Sprint(o.Memprofilerate))
+	}
+
+	if o.OtelTraces != "" {
+		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
+	}
+
+	if o.Profiling != "" {
+		final = append(final, "--profiling", fmt.Sprint(o.Profiling))
+	}
+
+	if o.Stack != "" {
+		final = append(final, "--stack", fmt.Sprint(o.Stack))
+	}
+
+	if o.Tracing != "" {
+		final = append(final, "--tracing", fmt.Sprint(o.Tracing))
+	}
+
+	if o.TracingHeader != "" {
+		final = append(final, "--tracing-header", fmt.Sprint(o.TracingHeader))
+	}
+
+	if o.Verbose != 0 {
+		final = append(final, "--verbose", fmt.Sprint(o.Verbose))
+	}
+
+	return a.run(ctx, base.BaseOptions{
+		Cwd:           o.Cwd,
+		AdditionalEnv: o.AdditionalEnv,
+		Stdout:        o.Stdout,
+		Stderr:        o.Stderr,
+		Stdin:         o.Stdin,
+	}, final)
+}
+
+// DeploymentSettingsEdit corresponds to `pulumi deployment settings edit`.
+//
+// [EXPERIMENTAL] Create or update deployment settings for a stack.
+func (a *API) DeploymentSettingsEdit(
+	ctx context.Context,
+	opts ...optdeploymentsettingsedit.Option,
+) (base.CommandResult, error) {
+	o := optdeploymentsettingsedit.Options{}
+	for _, opt := range opts {
+		opt(&o)
+	}
+
+	final := []string{"deployment", "settings", "edit"}
+
+	if o.Branch != "" {
+		final = append(final, "--branch", fmt.Sprint(o.Branch))
+	}
+
+	if o.Cache {
+		final = append(final, "--cache")
+	}
+
+	if o.Color != "" {
+		final = append(final, "--color", fmt.Sprint(o.Color))
+	}
+
+	if o.Commit != "" {
+		final = append(final, "--commit", fmt.Sprint(o.Commit))
+	}
+
+	if o.DeleteAfterDestroy {
+		final = append(final, "--delete-after-destroy")
+	}
+
+	if o.DeployTags {
+		final = append(final, "--deploy-tags")
+	}
+
+	if o.DisableIntegrityChecking {
+		final = append(final, "--disable-integrity-checking")
+	}
+
+	for _, v := range o.Env {
+		final = append(final, "--env", fmt.Sprint(v))
+	}
+
+	if o.ExecutorImage != "" {
+		final = append(final, "--executor-image", fmt.Sprint(o.ExecutorImage))
+	}
+
+	if o.ExecutorRootPath != "" {
+		final = append(final, "--executor-root-path", fmt.Sprint(o.ExecutorRootPath))
+	}
+
+	if o.Folder != "" {
+		final = append(final, "--folder", fmt.Sprint(o.Folder))
+	}
+
+	if o.FullyQualifyStackNames {
+		final = append(final, "--fully-qualify-stack-names")
+	}
+
+	if o.GitAuthAccessToken != "" {
+		final = append(final, "--git-auth-access-token", fmt.Sprint(o.GitAuthAccessToken))
+	}
+
+	if o.GitAuthPassword != "" {
+		final = append(final, "--git-auth-password", fmt.Sprint(o.GitAuthPassword))
+	}
+
+	if o.GitAuthSshPrivateKey != "" {
+		final = append(final, "--git-auth-ssh-private-key", fmt.Sprint(o.GitAuthSshPrivateKey))
+	}
+
+	if o.GitAuthSshPrivateKeyPassword != "" {
+		final = append(final, "--git-auth-ssh-private-key-password", fmt.Sprint(o.GitAuthSshPrivateKeyPassword))
+	}
+
+	if o.GitAuthSshPrivateKeyPath != "" {
+		final = append(final, "--git-auth-ssh-private-key-path", fmt.Sprint(o.GitAuthSshPrivateKeyPath))
+	}
+
+	if o.GitAuthUsername != "" {
+		final = append(final, "--git-auth-username", fmt.Sprint(o.GitAuthUsername))
+	}
+
+	if o.GitUrl != "" {
+		final = append(final, "--git-url", fmt.Sprint(o.GitUrl))
+	}
+
+	if o.GithubRepo != "" {
+		final = append(final, "--github-repo", fmt.Sprint(o.GithubRepo))
+	}
+
+	if o.InstallationId != "" {
+		final = append(final, "--installation-id", fmt.Sprint(o.InstallationId))
+	}
+
+	if o.Logflow {
+		final = append(final, "--logflow")
+	}
+
+	if o.Logtostderr {
+		final = append(final, "--logtostderr")
+	}
+
+	if o.Memprofilerate != 0 {
+		final = append(final, "--memprofilerate", fmt.Sprint(o.Memprofilerate))
+	}
+
+	if o.OidcAwsClear {
+		final = append(final, "--oidc-aws-clear")
+	}
+
+	if o.OidcAwsDuration != "" {
+		final = append(final, "--oidc-aws-duration", fmt.Sprint(o.OidcAwsDuration))
+	}
+
+	for _, v := range o.OidcAwsPolicyArn {
+		final = append(final, "--oidc-aws-policy-arn", fmt.Sprint(v))
+	}
+
+	if o.OidcAwsRoleArn != "" {
+		final = append(final, "--oidc-aws-role-arn", fmt.Sprint(o.OidcAwsRoleArn))
+	}
+
+	if o.OidcAwsSessionName != "" {
+		final = append(final, "--oidc-aws-session-name", fmt.Sprint(o.OidcAwsSessionName))
+	}
+
+	if o.OidcAzureClear {
+		final = append(final, "--oidc-azure-clear")
+	}
+
+	if o.OidcAzureClientId != "" {
+		final = append(final, "--oidc-azure-client-id", fmt.Sprint(o.OidcAzureClientId))
+	}
+
+	if o.OidcAzureSubscriptionId != "" {
+		final = append(final, "--oidc-azure-subscription-id", fmt.Sprint(o.OidcAzureSubscriptionId))
+	}
+
+	if o.OidcAzureTenantId != "" {
+		final = append(final, "--oidc-azure-tenant-id", fmt.Sprint(o.OidcAzureTenantId))
+	}
+
+	if o.OidcGcpClear {
+		final = append(final, "--oidc-gcp-clear")
+	}
+
+	if o.OidcGcpProjectNumber != "" {
+		final = append(final, "--oidc-gcp-project-number", fmt.Sprint(o.OidcGcpProjectNumber))
+	}
+
+	if o.OidcGcpProviderId != "" {
+		final = append(final, "--oidc-gcp-provider-id", fmt.Sprint(o.OidcGcpProviderId))
+	}
+
+	if o.OidcGcpRegion != "" {
+		final = append(final, "--oidc-gcp-region", fmt.Sprint(o.OidcGcpRegion))
+	}
+
+	if o.OidcGcpServiceAccount != "" {
+		final = append(final, "--oidc-gcp-service-account", fmt.Sprint(o.OidcGcpServiceAccount))
+	}
+
+	if o.OidcGcpTokenLifetime != "" {
+		final = append(final, "--oidc-gcp-token-lifetime", fmt.Sprint(o.OidcGcpTokenLifetime))
+	}
+
+	if o.OidcGcpWorkloadPoolId != "" {
+		final = append(final, "--oidc-gcp-workload-pool-id", fmt.Sprint(o.OidcGcpWorkloadPoolId))
+	}
+
+	if o.OtelTraces != "" {
+		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
+	}
+
+	if o.Output != "" {
+		final = append(final, "--output", fmt.Sprint(o.Output))
+	}
+
+	for _, v := range o.PathFilter {
+		final = append(final, "--path-filter", fmt.Sprint(v))
+	}
+
+	if o.PrTemplate {
+		final = append(final, "--pr-template")
+	}
+
+	for _, v := range o.PreRunCommand {
+		final = append(final, "--pre-run-command", fmt.Sprint(v))
+	}
+
+	if o.PreviewPrs {
+		final = append(final, "--preview-prs")
+	}
+
+	if o.Profiling != "" {
+		final = append(final, "--profiling", fmt.Sprint(o.Profiling))
+	}
+
+	if o.PushToDeploy {
+		final = append(final, "--push-to-deploy")
+	}
+
+	if o.RemediateIfDriftDetected {
+		final = append(final, "--remediate-if-drift-detected")
+	}
+
+	if o.RemoveAllEnv {
+		final = append(final, "--remove-all-env")
+	}
+
+	for _, v := range o.RemoveEnv {
+		final = append(final, "--remove-env", fmt.Sprint(v))
+	}
+
+	if o.RemoveGitAuth {
+		final = append(final, "--remove-git-auth")
+	}
+
+	if o.RemoveOidcAws {
+		final = append(final, "--remove-oidc-aws")
+	}
+
+	if o.RemoveOidcAzure {
+		final = append(final, "--remove-oidc-azure")
+	}
+
+	if o.RemoveOidcGcp {
+		final = append(final, "--remove-oidc-gcp")
+	}
+
+	if o.Repo != "" {
+		final = append(final, "--repo", fmt.Sprint(o.Repo))
+	}
+
+	for _, v := range o.ReviewStackLabel {
+		final = append(final, "--review-stack-label", fmt.Sprint(v))
+	}
+
+	if o.RunnerPool != "" {
+		final = append(final, "--runner-pool", fmt.Sprint(o.RunnerPool))
+	}
+
+	for _, v := range o.SecretEnv {
+		final = append(final, "--secret-env", fmt.Sprint(v))
+	}
+
+	if o.Shell != "" {
+		final = append(final, "--shell", fmt.Sprint(o.Shell))
+	}
+
+	if o.SkipInstallDeps {
+		final = append(final, "--skip-install-deps")
+	}
+
+	if o.SkipIntermediateDeployments {
+		final = append(final, "--skip-intermediate-deployments")
+	}
+
+	if o.Stack != "" {
+		final = append(final, "--stack", fmt.Sprint(o.Stack))
+	}
+
+	for _, v := range o.TagFilter {
+		final = append(final, "--tag-filter", fmt.Sprint(v))
+	}
+
+	if o.TemplateSourceUrl != "" {
+		final = append(final, "--template-source-url", fmt.Sprint(o.TemplateSourceUrl))
+	}
+
+	if o.Tracing != "" {
+		final = append(final, "--tracing", fmt.Sprint(o.Tracing))
+	}
+
+	if o.TracingHeader != "" {
+		final = append(final, "--tracing-header", fmt.Sprint(o.TracingHeader))
+	}
+
+	if o.VcsProvider != "" {
+		final = append(final, "--vcs-provider", fmt.Sprint(o.VcsProvider))
+	}
+
+	if o.Verbose != 0 {
+		final = append(final, "--verbose", fmt.Sprint(o.Verbose))
+	}
+
+	return a.run(ctx, base.BaseOptions{
+		Cwd:           o.Cwd,
+		AdditionalEnv: o.AdditionalEnv,
+		Stdout:        o.Stdout,
+		Stderr:        o.Stderr,
+		Stdin:         o.Stdin,
+	}, final)
+}
+
+// DeploymentSettingsGet corresponds to `pulumi deployment settings get`.
+//
+// [EXPERIMENTAL] Retrieve the deployment settings for a stack.
+func (a *API) DeploymentSettingsGet(
+	ctx context.Context,
+	opts ...optdeploymentsettingsget.Option,
+) (base.CommandResult, error) {
+	o := optdeploymentsettingsget.Options{}
+	for _, opt := range opts {
+		opt(&o)
+	}
+
+	final := []string{"deployment", "settings", "get"}
+
+	if o.Color != "" {
+		final = append(final, "--color", fmt.Sprint(o.Color))
+	}
+
+	if o.DisableIntegrityChecking {
+		final = append(final, "--disable-integrity-checking")
+	}
+
+	if o.FullyQualifyStackNames {
+		final = append(final, "--fully-qualify-stack-names")
+	}
+
+	if o.Logflow {
+		final = append(final, "--logflow")
+	}
+
+	if o.Logtostderr {
+		final = append(final, "--logtostderr")
+	}
+
+	if o.Memprofilerate != 0 {
+		final = append(final, "--memprofilerate", fmt.Sprint(o.Memprofilerate))
+	}
+
+	if o.OtelTraces != "" {
+		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
+	}
+
+	if o.Output != "" {
+		final = append(final, "--output", fmt.Sprint(o.Output))
+	}
+
+	if o.Profiling != "" {
+		final = append(final, "--profiling", fmt.Sprint(o.Profiling))
+	}
+
+	if o.Stack != "" {
+		final = append(final, "--stack", fmt.Sprint(o.Stack))
+	}
+
+	if o.Tracing != "" {
+		final = append(final, "--tracing", fmt.Sprint(o.Tracing))
+	}
+
+	if o.TracingHeader != "" {
+		final = append(final, "--tracing-header", fmt.Sprint(o.TracingHeader))
+	}
+
+	if o.Verbose != 0 {
+		final = append(final, "--verbose", fmt.Sprint(o.Verbose))
 	}
 
 	return a.run(ctx, base.BaseOptions{
