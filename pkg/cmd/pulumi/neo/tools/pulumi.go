@@ -245,13 +245,11 @@ func (p *Pulumi) run(ctx context.Context, a pulumiArgs, isPreview bool) (pulumiR
 	}
 
 	refresh := false
-	if isPreview {
-		refresh = proj.Options != nil && proj.Options.Refresh == "always"
-		if value := os.Getenv("PULUMI_OPTION_REFRESH"); value != "" {
-			refresh, err = strconv.ParseBool(value)
-			if err != nil {
-				return failedResult(a, "", errors.New("PULUMI_OPTION_REFRESH must be a boolean"))
-			}
+	if value := os.Getenv("PULUMI_OPTION_REFRESH"); isPreview && value != "" {
+		refresh, err = strconv.ParseBool(value)
+		if err != nil {
+			// Do not include the value, which may be secret.
+			return failedResult(a, "", errors.New("PULUMI_OPTION_REFRESH must be a boolean"))
 		}
 	}
 

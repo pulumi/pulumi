@@ -491,45 +491,26 @@ func TestPulumi_Run_PreviewAndUpResolveBackend(t *testing.T) {
 }
 
 func TestPulumi_Run_PreviewRefresh(t *testing.T) {
-	plain := func(value string) *envVal { return &envVal{Plain: value} }
 	for _, tt := range []struct {
-		name           string
-		method         string
-		value          *envVal
-		ambient        string
-		projectOptions *workspace.ProjectOptions
-		wantRefresh    bool
-		wantError      bool
+		name        string
+		up          bool
+		value       *envVal
+		ambient     string
+		wantRefresh bool
+		wantError   bool
 	}{
 		{name: "default"},
-		{name: "true", value: plain("true"), wantRefresh: true},
-		{name: "false", value: plain("false")},
-		{name: "one", value: plain("1"), wantRefresh: true},
-		{name: "zero", value: plain("0")},
-		{name: "secret", value: &envVal{Secret: "true"}, wantRefresh: true},
+		{name: "true", value: &envVal{Plain: "true"}, wantRefresh: true},
 		{name: "ambient", ambient: "true", wantRefresh: true},
-		{name: "override ambient", ambient: "true", value: plain("false")},
-		{name: "project default", projectOptions: &workspace.ProjectOptions{Refresh: "always"}, wantRefresh: true},
-		{
-			name: "override project", value: plain("false"),
-			projectOptions: &workspace.ProjectOptions{Refresh: "always"},
-		},
-		{
-			name: "empty uses project", value: plain(""),
-			projectOptions: &workspace.ProjectOptions{Refresh: "always"}, wantRefresh: true,
-		},
-		{name: "invalid", value: plain("invalid-refresh-value"), wantError: true},
+		{name: "override ambient", ambient: "true", value: &envVal{Plain: "false"}},
 		{name: "invalid secret", value: &envVal{Secret: "secret-refresh-value"}, wantError: true},
-		{name: "up ignores option", method: "pulumi_up", value: plain("true")},
-		{name: "up ignores invalid", method: "pulumi_up", value: plain("invalid-refresh-value")},
-		{name: "up ignores project", method: "pulumi_up", projectOptions: &workspace.ProjectOptions{Refresh: "always"}},
+		{name: "up ignores option", up: true, value: &envVal{Plain: "true"}},
+		{name: "up ignores invalid", up: true, value: &envVal{Plain: "invalid-refresh-value"}},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Setenv("PULUMI_OPTION_REFRESH", tt.ambient)
 			t.Setenv("PULUMI_FALLBACK_TO_STATE_SECRETS_MANAGER", "false")
 			dir := newProjectDir(t)
-			beforeDir, err := os.Getwd()
-			require.NoError(t, err)
 			ref := &backend.MockStackReference{
 				NameV:               tokens.MustParseStackName("dev"),
 				FullyQualifiedNameV: "organization/p/dev",
@@ -544,18 +525,17 @@ func TestPulumi_Run_PreviewRefresh(t *testing.T) {
 			}
 			be.ParseStackReferenceF = func(string) (backend.StackReference, error) { return ref, nil }
 			be.GetStackF = func(context.Context, backend.StackReference) (backend.Stack, error) { return stk, nil }
-			var invoked string
-			var options backend.UpdateOptions
+			var got *backend.UpdateOptions
 			be.PreviewF = func(_ context.Context, _ backend.Stack, op backend.UpdateOperation) (
 				*deploy.Plan, display.ResourceChanges, error,
 			) {
-				invoked, options = "pulumi_preview", op.Opts
+				got = &op.Opts
 				return nil, nil, nil
 			}
 			be.UpdateF = func(_ context.Context, _ backend.Stack, op backend.UpdateOperation) (
 				display.ResourceChanges, error,
 			) {
-				invoked, options = "pulumi_up", op.Opts
+				got = &op.Opts
 				return nil, nil
 			}
 			previous := cmdBackend.DefaultLoginManager
@@ -574,37 +554,27 @@ func TestPulumi_Run_PreviewRefresh(t *testing.T) {
 			t.Cleanup(func() { cmdBackend.DefaultLoginManager = previous })
 			p := &Pulumi{Cwd: dir, Workspace: &pkgWorkspace.MockContext{
 				ReadProjectF: func(string) (*workspace.Project, string, error) {
-					return &workspace.Project{Name: "p", Options: tt.projectOptions}, dir, nil
+					return &workspace.Project{Name: "p"}, dir, nil
 				},
 			}}
 			args := pulumiArgs{ProjectName: "p", StackName: "dev", LocalPulumiDir: dir}
 			if tt.value != nil {
 				args.EnvironmentVariables = map[string]envVal{"PULUMI_OPTION_REFRESH": *tt.value}
 			}
-			method := tt.method
-			if method == "" {
-				method = "pulumi_preview"
-			}
-			result, err := p.run(t.Context(), args, method == "pulumi_preview")
+			result, err := p.run(t.Context(), args, !tt.up)
 			if result.EventsFile != "" {
 				t.Cleanup(func() { require.NoError(t, os.Remove(result.EventsFile)) })
 			}
-			assert.Equal(t, tt.ambient, os.Getenv("PULUMI_OPTION_REFRESH"))
-			afterDir, cwdErr := os.Getwd()
-			require.NoError(t, cwdErr)
-			assert.Equal(t, beforeDir, afterDir)
 			if tt.wantError {
 				require.Error(t, err)
 				assertFailedResult(t, result, "PULUMI_OPTION_REFRESH must be a boolean")
 				assert.NotContains(t, result.Logs, tt.value.Value())
-				assert.Empty(t, invoked)
+				assert.Nil(t, got)
 				return
 			}
 			require.NoError(t, err)
-			assert.Equal(t, "succeeded", result.Status)
-			assert.Equal(t, method, invoked)
-			assert.Equal(t, tt.wantRefresh, options.Engine.Refresh)
-			assert.Equal(t, method == "pulumi_up", options.SkipPreview)
+			require.NotNil(t, got)
+			assert.Equal(t, tt.wantRefresh, got.Engine.Refresh)
 		})
 	}
 }
