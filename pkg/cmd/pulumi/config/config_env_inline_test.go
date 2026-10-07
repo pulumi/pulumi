@@ -163,3 +163,67 @@ func TestConfigSetWritesInlineEnvironment(t *testing.T) {
 	assert.Equal(t, "environment:\n  values:\n    pulumiConfig:\n      testProject:existing: keep\n"+
 		"      testProject:test: \"123\"\n", string(data))
 }
+
+func TestSetSecretStackConfigValueInlineEnvironment(t *testing.T) {
+	t.Parallel()
+
+	localEncrypt := func(plaintext string) (string, error) { return "local:" + plaintext, nil }
+
+	t.Run("encrypts with the stack environment's key", func(t *testing.T) {
+		t.Parallel()
+		ps := inlineEnvironmentStack(t,
+			"environment:\n  values:\n    pulumiConfig: {}\nconfig:\n  proj:token:\n    secure: old\n")
+		var encrypted []string
+		stack := &backend.MockStack{BackendF: func() backend.Backend {
+			return &backend.MockStackEnvironmentsBackend{
+				EncryptStackEnvironmentSecretF: func(
+					_ context.Context, _ backend.Stack, plaintext string,
+				) (*backend.StackEnvironmentSecret, error) {
+					encrypted = append(encrypted, plaintext)
+					return &backend.StackEnvironmentSecret{Environment: "proj/stack", Ciphertext: "esc:" + plaintext}, nil
+				},
+			}
+		}}
+
+		require.NoError(t, setSecretStackConfigValue(
+			t.Context(), stack, ps, config.MustMakeKey("proj", "token"), false, "hunter2", localEncrypt))
+
+		assert.Equal(t, []string{"hunter2"}, encrypted)
+		assert.Equal(t, `environment:
+  values:
+    pulumiConfig:
+      proj:token:
+        fn::secret:
+          ciphertext: esc:hunter2
+`, stackFileYAML(t, ps))
+	})
+
+	t.Run("falls back to the config block on an older service", func(t *testing.T) {
+		t.Parallel()
+		ps := inlineEnvironmentStack(t, "environment:\n  values:\n    pulumiConfig: {}\n")
+		stack := &backend.MockStack{BackendF: func() backend.Backend {
+			return &backend.MockStackEnvironmentsBackend{
+				EncryptStackEnvironmentSecretF: func(
+					context.Context, backend.Stack, string,
+				) (*backend.StackEnvironmentSecret, error) {
+					return nil, backend.ErrStackEnvironmentSyncUnsupported
+				},
+			}
+		}}
+
+		require.NoError(t, setSecretStackConfigValue(
+			t.Context(), stack, ps, config.MustMakeKey("proj", "token"), false, "hunter2", localEncrypt))
+		assert.Equal(t, "environment:\n  values:\n    pulumiConfig: {}\nconfig:\n  proj:token:\n    secure: local:hunter2\n",
+			stackFileYAML(t, ps))
+	})
+
+	t.Run("uses the config block without an inline environment", func(t *testing.T) {
+		t.Parallel()
+		ps := inlineEnvironmentStack(t, "environment:\n  - shared\n")
+		stack := &backend.MockStack{BackendF: func() backend.Backend { return &backend.MockStackEnvironmentsBackend{} }}
+
+		require.NoError(t, setSecretStackConfigValue(
+			t.Context(), stack, ps, config.MustMakeKey("proj", "token"), false, "hunter2", localEncrypt))
+		assert.Equal(t, "environment:\n  - shared\nconfig:\n  proj:token:\n    secure: local:hunter2\n", stackFileYAML(t, ps))
+	})
+}

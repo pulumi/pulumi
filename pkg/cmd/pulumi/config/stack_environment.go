@@ -81,6 +81,7 @@ func attachStackEnvironment(
 	workspaceStack *workspace.ProjectStack,
 	sm secrets.Manager,
 	envOverrides []string,
+	preview *backend.StackEnvironmentSync,
 	opts StackConfigurationOptions,
 	cfg *backend.StackConfiguration,
 ) error {
@@ -93,13 +94,17 @@ func attachStackEnvironment(
 	}
 
 	definition := workspaceStack.EnvironmentBytes()
-	preview, err := syncer.SyncStackEnvironment(ctx, stack, definition, backend.StackEnvironmentSyncOptions{DryRun: true})
-	if errors.Is(err, backend.ErrStackEnvironmentSyncUnsupported) {
-		slog.Debug("backend does not support stack-managed environments; opening the inline definition only")
-		return nil
-	}
-	if err != nil {
-		return fmt.Errorf("comparing the environment definition with the stack's environment: %w", err)
+	if preview == nil {
+		// The open did not go through the sync (for instance because of --override-env), so compare now.
+		var err error
+		preview, err = syncer.SyncStackEnvironment(ctx, stack, definition, backend.StackEnvironmentSyncOptions{DryRun: true})
+		if errors.Is(err, backend.ErrStackEnvironmentSyncUnsupported) {
+			slog.Debug("backend does not support stack-managed environments; opening the inline definition only")
+			return nil
+		}
+		if err != nil {
+			return fmt.Errorf("comparing the environment definition with the stack's environment: %w", err)
+		}
 	}
 
 	stdout := opts.stdout()

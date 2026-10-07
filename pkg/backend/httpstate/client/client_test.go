@@ -2294,3 +2294,26 @@ func TestSyncStackEnvironment(t *testing.T) {
 		OpenSessionID:    "open-1",
 	}, resp)
 }
+
+func TestEncryptStackEnvironmentSecret(t *testing.T) {
+	t.Parallel()
+
+	server := newMockServerRequestProcessor(200, func(req *http.Request) string {
+		assert.Equal(t, http.MethodPost, req.Method)
+		assert.Equal(t, "/api/stacks/acme/payments/prod/environment/secrets", req.URL.Path)
+		var body apitype.StackEnvironmentSecretRequest
+		require.NoError(t, json.NewDecoder(req.Body).Decode(&body))
+		assert.Equal(t, "hunter2", body.Plaintext)
+		return `{"environment":"payments/prod","ciphertext":"AAAB"}`
+	})
+	defer server.Close()
+
+	client := newMockClient(server)
+	resp, err := client.EncryptStackEnvironmentSecret(t.Context(), StackIdentifier{
+		Owner:   "acme",
+		Project: "payments",
+		Stack:   tokens.MustParseStackName("prod"),
+	}, apitype.StackEnvironmentSecretRequest{Plaintext: "hunter2"})
+	require.NoError(t, err)
+	assert.Equal(t, &apitype.StackEnvironmentSecretResponse{Environment: "payments/prod", Ciphertext: "AAAB"}, resp)
+}

@@ -137,3 +137,24 @@ func (b *cloudBackend) SyncStackEnvironment(
 	res.Opened = env
 	return res, nil
 }
+
+func (b *cloudBackend) EncryptStackEnvironmentSecret(
+	ctx context.Context,
+	stack backend.Stack,
+	plaintext string,
+) (*backend.StackEnvironmentSecret, error) {
+	if !b.Capabilities(ctx).StackEnvironmentSync {
+		return nil, backend.ErrStackEnvironmentSyncUnsupported
+	}
+	stackID, err := b.getCloudStackIdentifier(stack.Ref())
+	if err != nil {
+		return nil, err
+	}
+	resp, err := b.client.EncryptStackEnvironmentSecret(ctx, stackID, apitype.StackEnvironmentSecretRequest{
+		Plaintext: plaintext,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return &backend.StackEnvironmentSecret{Environment: resp.Environment, Ciphertext: resp.Ciphertext}, nil
+}

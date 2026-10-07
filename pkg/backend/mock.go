@@ -574,6 +574,23 @@ type MockStackEnvironmentsBackend struct {
 		definition []byte,
 		opts StackEnvironmentSyncOptions,
 	) (*StackEnvironmentSync, error)
+
+	EncryptStackEnvironmentSecretF func(
+		ctx context.Context,
+		stack Stack,
+		plaintext string,
+	) (*StackEnvironmentSecret, error)
+}
+
+func (be *MockStackEnvironmentsBackend) EncryptStackEnvironmentSecret(
+	ctx context.Context,
+	stack Stack,
+	plaintext string,
+) (*StackEnvironmentSecret, error) {
+	if be.EncryptStackEnvironmentSecretF != nil {
+		return be.EncryptStackEnvironmentSecretF(ctx, stack, plaintext)
+	}
+	panic("not implemented")
 }
 
 func (be *MockStackEnvironmentsBackend) SyncStackEnvironment(

@@ -103,6 +103,9 @@ type stackEnvironmentTestHarness struct {
 	projectStack workspace.ProjectStack
 	syncCalls    []backend.StackEnvironmentSyncOptions
 	published    []byte
+	// dryRunOpens makes the dry run open the submitted definition, as the service does once the
+	// environment exists.
+	dryRunOpens bool
 }
 
 // newStackEnvironmentTestHarness returns a stack whose configuration file holds an inline environment
@@ -143,6 +146,10 @@ func newStackEnvironmentTestHarness(t *testing.T, supported bool) *stackEnvironm
 				CurrentDefinition: []byte("values:\n  pulumiConfig:\n    test:source: old\n"),
 			}
 			if opts.DryRun {
+				if h.dryRunOpens {
+					res.OpenSessionID = "open-dry"
+					res.Opened = &esc.Environment{Properties: published}
+				}
 				return res, nil
 			}
 			h.published = definition
@@ -175,7 +182,11 @@ func TestAttachStackEnvironment(t *testing.T) {
 			t.Context(), h.stack, &project, sm, &h.projectStack, nil, StackConfigurationOptions{})
 		require.NoError(t, err)
 		assert.Nil(t, cfg.SyncEnvironment)
-		assert.Empty(t, h.syncCalls)
+		// The open itself goes through a dry run so secrets encrypted for the environment resolve;
+		// nothing is published and no diff is printed.
+		assert.Equal(t, []backend.StackEnvironmentSyncOptions{{DryRun: true, Duration: stackEnvironmentOpenDuration}},
+			h.syncCalls)
+		assert.Nil(t, h.published)
 	})
 
 	t.Run("preview prints the pending change and does not publish", func(t *testing.T) {
@@ -188,7 +199,8 @@ func TestAttachStackEnvironment(t *testing.T) {
 			StackConfigurationOptions{EnvironmentMode: StackEnvironmentPreview, Stdout: &out})
 		require.NoError(t, err)
 		assert.Nil(t, cfg.SyncEnvironment)
-		assert.Equal(t, []backend.StackEnvironmentSyncOptions{{DryRun: true}}, h.syncCalls)
+		assert.Equal(t, []backend.StackEnvironmentSyncOptions{{DryRun: true, Duration: stackEnvironmentOpenDuration}},
+			h.syncCalls)
 		assert.Contains(t, out.String(), "Environment project/stack will be updated (revision 3):")
 		assert.Contains(t, out.String(), "~ values.pulumiConfig.test:source: old -> new")
 		assert.Equal(t, "anonymous", cfg.Environment.Value.(map[string]esc.Value)["test:source"].Value)
@@ -216,6 +228,28 @@ func TestAttachStackEnvironment(t *testing.T) {
 			synced.StackEnvironment)
 		assert.Equal(t, "published", synced.Environment.Value.(map[string]esc.Value)["test:source"].Value)
 		assert.Contains(t, out.String(), "Published the stack's definition to environment project/stack (revision 3 -> 4)")
+	})
+
+	t.Run("an existing environment is opened through the dry run", func(t *testing.T) {
+		t.Parallel()
+		h := newStackEnvironmentTestHarness(t, true)
+		h.dryRunOpens = true
+		var out bytes.Buffer
+
+		cfg, err := getStackConfigurationFromProjectStack(
+			t.Context(), h.stack, &project, sm, &h.projectStack, nil,
+			StackConfigurationOptions{EnvironmentMode: StackEnvironmentPreview, Stdout: &out})
+		require.NoError(t, err)
+		assert.Equal(t, []backend.StackEnvironmentSyncOptions{{DryRun: true, Duration: stackEnvironmentOpenDuration}},
+			h.syncCalls, "one dry run serves both the open and the diff")
+		assert.Equal(t, "published", cfg.Environment.Value.(map[string]esc.Value)["test:source"].Value)
+		assert.Contains(t, out.String(), "~ values.pulumiConfig.test:source: old -> new")
+
+		// Commands that only read configuration take the same path.
+		env, diags, err := openStackEnv(t.Context(), h.stack, &h.projectStack, nil)
+		require.NoError(t, err)
+		assert.Empty(t, diags)
+		assert.Equal(t, "published", env.Properties["pulumiConfig"].Value.(map[string]esc.Value)["test:source"].Value)
 	})
 
 	t.Run("overrides keep the anonymous open and skip publishing", func(t *testing.T) {

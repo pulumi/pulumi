@@ -15,21 +15,66 @@
 package config
 
 import (
+	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"strconv"
 
 	"gopkg.in/yaml.v3"
 
+	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
+// setSecretStackConfigValue stores a secret in the stack's configuration file. When the file defines
+// the stack's environment inline and the backend manages that environment, the value is encrypted
+// with the environment's key and stored as an `fn::secret` under `environment.values.pulumiConfig`,
+// which only that environment can decrypt and which `pulumi up` publishes. Otherwise the value is
+// encrypted with encryptLocal (the stack's secrets provider) and stored in the `config` block.
+func setSecretStackConfigValue(
+	ctx context.Context,
+	stack backend.Stack,
+	ps *workspace.ProjectStack,
+	key config.Key,
+	path bool,
+	plaintext string,
+	encryptLocal func(plaintext string) (string, error),
+) error {
+	if ps.Environment.IsDefinition() {
+		if syncer, ok := stack.Backend().(backend.StackEnvironmentsBackend); ok {
+			secret, err := syncer.EncryptStackEnvironmentSecret(ctx, stack, plaintext)
+			switch {
+			case errors.Is(err, backend.ErrStackEnvironmentSyncUnsupported):
+				slog.Debug("backend does not support stack-managed environments; storing the secret in the config block")
+			case err != nil:
+				return fmt.Errorf("encrypting the secret for the stack's environment: %w", err)
+			default:
+				node := &yaml.Node{Kind: yaml.MappingNode, Content: []*yaml.Node{
+					{Kind: yaml.ScalarNode, Tag: "!!str", Value: "fn::secret"},
+					{Kind: yaml.MappingNode, Content: []*yaml.Node{
+						{Kind: yaml.ScalarNode, Tag: "!!str", Value: "ciphertext"},
+						{Kind: yaml.ScalarNode, Tag: "!!str", Value: secret.Ciphertext},
+					}},
+				}}
+				return setStackConfigNode(ps, key, path, node)
+			}
+		}
+	}
+
+	encrypted, err := encryptLocal(plaintext)
+	if err != nil {
+		return err
+	}
+	return setStackConfigValue(ps, key, config.NewSecureValue(encrypted), path)
+}
+
 // setStackConfigValue stores a configuration value in the stack's configuration file. When the file
 // defines the stack's environment inline, plain values go to `environment.values.pulumiConfig`, which
-// `pulumi up` publishes; secrets stay in the `config` block, encrypted with the stack's secrets
-// provider, because the inline definition is committed in plaintext. Whichever block receives the
+// `pulumi up` publishes; secrets encrypted with the stack's secrets provider stay in the `config`
+// block, because the inline definition is committed in plaintext. Whichever block receives the
 // value, the other one drops its copy: stack config shadows the environment during merging.
 func setStackConfigValue(ps *workspace.ProjectStack, key config.Key, v config.Value, path bool) error {
 	if !ps.Environment.IsDefinition() {
@@ -48,6 +93,16 @@ func setStackConfigValue(ps *workspace.ProjectStack, key config.Key, v config.Va
 	}
 
 	node, err := environmentConfigNode(v, len(envPath) > 0)
+	if err != nil {
+		return err
+	}
+	return setStackConfigNode(ps, key, path, node)
+}
+
+// setStackConfigNode stores node under `environment.values.pulumiConfig` and drops the config block's
+// copy of the key, which would otherwise shadow it.
+func setStackConfigNode(ps *workspace.ProjectStack, key config.Key, path bool, node *yaml.Node) error {
+	envKey, envPath, err := environmentConfigPath(key, path)
 	if err != nil {
 		return err
 	}

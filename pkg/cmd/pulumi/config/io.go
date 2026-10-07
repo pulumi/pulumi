@@ -18,10 +18,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"os"
 	"slices"
 	"strings"
-	"time"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/esc/cli"
@@ -169,7 +169,7 @@ func getStackConfigurationFromProjectStack(
 	envOverrides []string,
 	opts StackConfigurationOptions,
 ) (backend.StackConfiguration, error) {
-	env, diags, err := openStackEnv(ctx, stack, workspaceStack, envOverrides)
+	env, diags, preview, err := openStackEnvWithPreview(ctx, stack, workspaceStack, envOverrides)
 	if err != nil {
 		return backend.StackConfiguration{}, fmt.Errorf("opening environment: %w", err)
 	}
@@ -187,7 +187,7 @@ func getStackConfigurationFromProjectStack(
 	if err != nil {
 		return backend.StackConfiguration{}, err
 	}
-	if err := attachStackEnvironment(ctx, stack, workspaceStack, sm, envOverrides, opts, &cfg); err != nil {
+	if err := attachStackEnvironment(ctx, stack, workspaceStack, sm, envOverrides, preview, opts, &cfg); err != nil {
 		return backend.StackConfiguration{}, err
 	}
 	return cfg, nil
@@ -293,27 +293,64 @@ func openStackEnv(
 	workspaceStack *workspace.ProjectStack,
 	envOverrides []string,
 ) (*esc.Environment, []apitype.EnvironmentDiagnostic, error) {
+	env, diags, _, err := openStackEnvWithPreview(ctx, stack, workspaceStack, envOverrides)
+	return env, diags, err
+}
+
+// openStackEnvWithPreview opens the stack's environment. An inline definition of a stack whose
+// backend manages a stack environment is opened through a dry-run sync, under that environment's key,
+// so secrets encrypted for it resolve; the dry run's comparison with the published definition is
+// returned alongside. Everything else is opened anonymously, as is an inline definition whose
+// environment does not exist yet or that is run with --override-env.
+func openStackEnvWithPreview(
+	ctx context.Context,
+	stack backend.Stack,
+	workspaceStack *workspace.ProjectStack,
+	envOverrides []string,
+) (*esc.Environment, []apitype.EnvironmentDiagnostic, *backend.StackEnvironmentSync, error) {
 	yaml := workspaceStack.EnvironmentBytes()
 	if len(yaml) == 0 {
-		return nil, nil, nil
+		return nil, nil, nil, nil
 	}
 
 	overrides, err := parseEnvironmentOverrides(envOverrides)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
+	}
+
+	var preview *backend.StackEnvironmentSync
+	if syncer, ok := stack.Backend().(backend.StackEnvironmentsBackend); ok &&
+		workspaceStack.Environment.IsDefinition() && len(overrides) == 0 {
+		res, err := syncer.SyncStackEnvironment(ctx, stack, yaml, backend.StackEnvironmentSyncOptions{
+			DryRun:   true,
+			Duration: stackEnvironmentOpenDuration,
+		})
+		switch {
+		case errors.Is(err, backend.ErrStackEnvironmentSyncUnsupported):
+			slog.Debug("backend does not support stack-managed environments; opening the inline definition anonymously")
+		case err != nil:
+			return nil, nil, nil, err
+		case len(res.Diagnostics) != 0:
+			return nil, res.Diagnostics, res, nil
+		case res.Opened != nil:
+			return res.Opened, nil, res, nil
+		default:
+			preview = res
+		}
 	}
 
 	envs, ok := stack.Backend().(backend.EnvironmentsBackend)
 	if !ok {
-		return nil, nil, errBackendNoEnvironments(stack.Backend())
+		return nil, nil, nil, errBackendNoEnvironments(stack.Backend())
 	}
 	orgNamer, ok := stack.(interface{ OrgName() string })
 	if !ok {
-		return nil, nil, fmt.Errorf("cannot determine organzation for stack %v", stack.Ref())
+		return nil, nil, nil, fmt.Errorf("cannot determine organzation for stack %v", stack.Ref())
 	}
 	orgName := orgNamer.OrgName()
 
-	return envs.OpenYAMLEnvironment(ctx, orgName, yaml, 2*time.Hour, overrides)
+	env, diags, err := envs.OpenYAMLEnvironment(ctx, orgName, yaml, stackEnvironmentOpenDuration, overrides)
+	return env, diags, preview, err
 }
 
 // parseEnvironmentOverrides converts <env>=<replacement> pairs into a map sent to ESC,

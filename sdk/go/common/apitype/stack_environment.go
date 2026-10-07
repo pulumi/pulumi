@@ -48,3 +48,18 @@ type StackEnvironmentSyncResponse struct {
 	// Diagnostics carries the errors that stopped the definition from being published or opened.
 	Diagnostics EnvironmentDiagnostics `json:"diagnostics,omitempty"`
 }
+
+// StackEnvironmentSecretRequest asks the service to encrypt a value with the key of the environment
+// managed by a stack.
+type StackEnvironmentSecretRequest struct {
+	// Plaintext is the value to encrypt.
+	Plaintext string `json:"plaintext"`
+}
+
+// StackEnvironmentSecretResponse carries a value encrypted for the environment managed by a stack.
+type StackEnvironmentSecretResponse struct {
+	// Environment is the environment managed by the stack, as "project/name".
+	Environment string `json:"environment"`
+	// Ciphertext is the base64 ciphertext to store as `fn::secret: {ciphertext: ...}`.
+	Ciphertext string `json:"ciphertext"`
+}

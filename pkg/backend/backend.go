@@ -353,18 +353,32 @@ type StackEnvironmentSync struct {
 	Diagnostics apitype.EnvironmentDiagnostics
 }
 
+// StackEnvironmentSecret is a value encrypted with the key of the environment managed by a stack.
+type StackEnvironmentSecret struct {
+	// Environment is the environment managed by the stack, as "project/name".
+	Environment string
+	// Ciphertext is the base64 ciphertext to store as `fn::secret: {ciphertext: ...}` in the stack's inline
+	// definition.
+	Ciphertext string
+}
+
 // StackEnvironmentsBackend is an interface that defines an optional capability for a backend to publish a stack's
 // inline environment definition to the environment managed by that stack.
 type StackEnvironmentsBackend interface {
 	// SyncStackEnvironment publishes definition to the environment managed by stack, creating the environment on
-	// first use, and opens the published revision. Returns ErrStackEnvironmentSyncUnsupported when the service
-	// does not support it.
+	// first use, and opens the published revision. On a dry run against an existing environment it instead opens
+	// the submitted definition under that environment's key. Returns ErrStackEnvironmentSyncUnsupported when the
+	// service does not support it.
 	SyncStackEnvironment(
 		ctx context.Context,
 		stack Stack,
 		definition []byte,
 		opts StackEnvironmentSyncOptions,
 	) (*StackEnvironmentSync, error)
+
+	// EncryptStackEnvironmentSecret encrypts plaintext with the key of the environment managed by stack, creating
+	// the environment on first use. Returns ErrStackEnvironmentSyncUnsupported when the service does not support it.
+	EncryptStackEnvironmentSecret(ctx context.Context, stack Stack, plaintext string) (*StackEnvironmentSecret, error)
 }
 
 // SpecificDeploymentExporter is an interface defining an additional capability of a Backend, specifically the
