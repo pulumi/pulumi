@@ -27,6 +27,10 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optnew"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optorg"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optorggetdefault"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optorgmember"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optorgmemberedit"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optorgmemberlist"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optorgmemberremove"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optorgsearch"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optorgsearchai"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optorgsetdefault"
@@ -764,6 +768,353 @@ func (a *API) OrgGetDefault(
 
 	if o.Verbose != 0 {
 		final = append(final, "--verbose", fmt.Sprint(o.Verbose))
+	}
+
+	return a.run(ctx, base.BaseOptions{
+		Cwd:           o.Cwd,
+		AdditionalEnv: o.AdditionalEnv,
+		Stdout:        o.Stdout,
+		Stderr:        o.Stderr,
+		Stdin:         o.Stdin,
+	}, final)
+}
+
+// OrgMember corresponds to `pulumi org member`.
+func (a *API) OrgMember(
+	ctx context.Context,
+	opts ...optorgmember.Option,
+) (base.CommandResult, error) {
+	o := optorgmember.Options{}
+	for _, opt := range opts {
+		opt(&o)
+	}
+
+	final := []string{"org", "member"}
+
+	if o.Color != "" {
+		final = append(final, "--color", fmt.Sprint(o.Color))
+	}
+
+	if o.DisableIntegrityChecking {
+		final = append(final, "--disable-integrity-checking")
+	}
+
+	if o.FullyQualifyStackNames {
+		final = append(final, "--fully-qualify-stack-names")
+	}
+
+	if o.Logflow {
+		final = append(final, "--logflow")
+	}
+
+	if o.Logtostderr {
+		final = append(final, "--logtostderr")
+	}
+
+	if o.Memprofilerate != 0 {
+		final = append(final, "--memprofilerate", fmt.Sprint(o.Memprofilerate))
+	}
+
+	if o.OtelTraces != "" {
+		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
+	}
+
+	if o.Profiling != "" {
+		final = append(final, "--profiling", fmt.Sprint(o.Profiling))
+	}
+
+	if o.Tracing != "" {
+		final = append(final, "--tracing", fmt.Sprint(o.Tracing))
+	}
+
+	if o.TracingHeader != "" {
+		final = append(final, "--tracing-header", fmt.Sprint(o.TracingHeader))
+	}
+
+	if o.Verbose != 0 {
+		final = append(final, "--verbose", fmt.Sprint(o.Verbose))
+	}
+
+	return a.run(ctx, base.BaseOptions{
+		Cwd:           o.Cwd,
+		AdditionalEnv: o.AdditionalEnv,
+		Stdout:        o.Stdout,
+		Stderr:        o.Stderr,
+		Stdin:         o.Stdin,
+	}, final)
+}
+
+// OrgMemberEdit corresponds to `pulumi org member edit`.
+//
+// [EXPERIMENTAL] Modify a member's role within an organization.
+//
+// Updates the role assigned to an organization member. Pass --role to
+// assign one of the built-in roles (member, admin, or billing-manager),
+// --fga-role-name to assign a custom role by name, or --fga-role-id to
+// assign by ID. These flags are mutually exclusive.
+//
+// Default output is a human-readable summary; pass --output=json for the
+// raw member record as JSON.
+func (a *API) OrgMemberEdit(
+	ctx context.Context,
+	userLogin string,
+	opts ...optorgmemberedit.Option,
+) (base.CommandResult, error) {
+	o := optorgmemberedit.Options{}
+	for _, opt := range opts {
+		opt(&o)
+	}
+
+	final := []string{"org", "member", "edit"}
+
+	if o.Color != "" {
+		final = append(final, "--color", fmt.Sprint(o.Color))
+	}
+
+	if o.DisableIntegrityChecking {
+		final = append(final, "--disable-integrity-checking")
+	}
+
+	if o.FgaRoleId != "" {
+		final = append(final, "--fga-role-id", fmt.Sprint(o.FgaRoleId))
+	}
+
+	if o.FgaRoleName != "" {
+		final = append(final, "--fga-role-name", fmt.Sprint(o.FgaRoleName))
+	}
+
+	if o.FullyQualifyStackNames {
+		final = append(final, "--fully-qualify-stack-names")
+	}
+
+	if o.Logflow {
+		final = append(final, "--logflow")
+	}
+
+	if o.Logtostderr {
+		final = append(final, "--logtostderr")
+	}
+
+	if o.Memprofilerate != 0 {
+		final = append(final, "--memprofilerate", fmt.Sprint(o.Memprofilerate))
+	}
+
+	if o.Org != "" {
+		final = append(final, "--org", fmt.Sprint(o.Org))
+	}
+
+	if o.OtelTraces != "" {
+		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
+	}
+
+	if o.Output != "" {
+		final = append(final, "--output", fmt.Sprint(o.Output))
+	}
+
+	if o.Profiling != "" {
+		final = append(final, "--profiling", fmt.Sprint(o.Profiling))
+	}
+
+	if o.Role != "" {
+		final = append(final, "--role", fmt.Sprint(o.Role))
+	}
+
+	if o.Tracing != "" {
+		final = append(final, "--tracing", fmt.Sprint(o.Tracing))
+	}
+
+	if o.TracingHeader != "" {
+		final = append(final, "--tracing-header", fmt.Sprint(o.TracingHeader))
+	}
+
+	if o.Verbose != 0 {
+		final = append(final, "--verbose", fmt.Sprint(o.Verbose))
+	}
+
+	args := []string{}
+	args = append(args, fmt.Sprint(userLogin))
+	if len(args) > 0 {
+		final = append(final, "--")
+		final = append(final, args...)
+	}
+
+	return a.run(ctx, base.BaseOptions{
+		Cwd:           o.Cwd,
+		AdditionalEnv: o.AdditionalEnv,
+		Stdout:        o.Stdout,
+		Stderr:        o.Stderr,
+		Stdin:         o.Stdin,
+	}, final)
+}
+
+// OrgMemberList corresponds to `pulumi org member list`.
+//
+// [EXPERIMENTAL] List members of an organization.
+//
+// Returns the members of the organization, showing each member's user name,
+// role, and join date. Default output is a human-readable table; pass
+// --output=json for the full response as a JSON envelope.
+//
+// Wraps the `ListOrganizationMembers` Pulumi Cloud REST endpoint.
+func (a *API) OrgMemberList(
+	ctx context.Context,
+	opts ...optorgmemberlist.Option,
+) (base.CommandResult, error) {
+	o := optorgmemberlist.Options{}
+	for _, opt := range opts {
+		opt(&o)
+	}
+
+	final := []string{"org", "member", "list"}
+
+	if o.All {
+		final = append(final, "--all")
+	}
+
+	if o.Color != "" {
+		final = append(final, "--color", fmt.Sprint(o.Color))
+	}
+
+	if o.Count != 0 {
+		final = append(final, "--count", fmt.Sprint(o.Count))
+	}
+
+	if o.DisableIntegrityChecking {
+		final = append(final, "--disable-integrity-checking")
+	}
+
+	if o.FullyQualifyStackNames {
+		final = append(final, "--fully-qualify-stack-names")
+	}
+
+	if o.Logflow {
+		final = append(final, "--logflow")
+	}
+
+	if o.Logtostderr {
+		final = append(final, "--logtostderr")
+	}
+
+	if o.Memprofilerate != 0 {
+		final = append(final, "--memprofilerate", fmt.Sprint(o.Memprofilerate))
+	}
+
+	if o.Org != "" {
+		final = append(final, "--org", fmt.Sprint(o.Org))
+	}
+
+	if o.OtelTraces != "" {
+		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
+	}
+
+	if o.Output != "" {
+		final = append(final, "--output", fmt.Sprint(o.Output))
+	}
+
+	if o.Profiling != "" {
+		final = append(final, "--profiling", fmt.Sprint(o.Profiling))
+	}
+
+	if o.Tracing != "" {
+		final = append(final, "--tracing", fmt.Sprint(o.Tracing))
+	}
+
+	if o.TracingHeader != "" {
+		final = append(final, "--tracing-header", fmt.Sprint(o.TracingHeader))
+	}
+
+	if o.Verbose != 0 {
+		final = append(final, "--verbose", fmt.Sprint(o.Verbose))
+	}
+
+	return a.run(ctx, base.BaseOptions{
+		Cwd:           o.Cwd,
+		AdditionalEnv: o.AdditionalEnv,
+		Stdout:        o.Stdout,
+		Stderr:        o.Stderr,
+		Stdin:         o.Stdin,
+	}, final)
+}
+
+// OrgMemberRemove corresponds to `pulumi org member remove`.
+//
+// [EXPERIMENTAL] Remove a member from an organization.
+//
+// Removes a user from an organization. The removed user loses access to
+// all organization resources including stacks, teams, and projects.
+// This cannot be undone. You will be prompted to confirm unless
+// --yes is passed.
+func (a *API) OrgMemberRemove(
+	ctx context.Context,
+	userLogin string,
+	opts ...optorgmemberremove.Option,
+) (base.CommandResult, error) {
+	o := optorgmemberremove.Options{}
+	for _, opt := range opts {
+		opt(&o)
+	}
+
+	final := []string{"org", "member", "remove"}
+
+	final = append(final, "--yes")
+
+	if o.Color != "" {
+		final = append(final, "--color", fmt.Sprint(o.Color))
+	}
+
+	if o.DisableIntegrityChecking {
+		final = append(final, "--disable-integrity-checking")
+	}
+
+	if o.FullyQualifyStackNames {
+		final = append(final, "--fully-qualify-stack-names")
+	}
+
+	if o.Logflow {
+		final = append(final, "--logflow")
+	}
+
+	if o.Logtostderr {
+		final = append(final, "--logtostderr")
+	}
+
+	if o.Memprofilerate != 0 {
+		final = append(final, "--memprofilerate", fmt.Sprint(o.Memprofilerate))
+	}
+
+	if o.Org != "" {
+		final = append(final, "--org", fmt.Sprint(o.Org))
+	}
+
+	if o.OtelTraces != "" {
+		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
+	}
+
+	if o.Output != "" {
+		final = append(final, "--output", fmt.Sprint(o.Output))
+	}
+
+	if o.Profiling != "" {
+		final = append(final, "--profiling", fmt.Sprint(o.Profiling))
+	}
+
+	if o.Tracing != "" {
+		final = append(final, "--tracing", fmt.Sprint(o.Tracing))
+	}
+
+	if o.TracingHeader != "" {
+		final = append(final, "--tracing-header", fmt.Sprint(o.TracingHeader))
+	}
+
+	if o.Verbose != 0 {
+		final = append(final, "--verbose", fmt.Sprint(o.Verbose))
+	}
+
+	args := []string{}
+	args = append(args, fmt.Sprint(userLogin))
+	if len(args) > 0 {
+		final = append(final, "--")
+		final = append(final, args...)
 	}
 
 	return a.run(ctx, base.BaseOptions{
