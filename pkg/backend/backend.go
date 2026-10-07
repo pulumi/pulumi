@@ -316,6 +316,57 @@ type EnvironmentsBackend interface {
 	) (*esc.Environment, apitype.EnvironmentDiagnostics, error)
 }
 
+// ErrStackEnvironmentSyncUnsupported is returned by StackEnvironmentsBackend.SyncStackEnvironment when the
+// service behind the backend does not support stack-managed environments.
+var ErrStackEnvironmentSyncUnsupported = errors.New("the backend does not support stack-managed environments")
+
+// StackEnvironmentSyncOptions controls StackEnvironmentsBackend.SyncStackEnvironment.
+type StackEnvironmentSyncOptions struct {
+	// ExpectedRevision, when set, is the revision the caller last observed; the sync fails if the environment
+	// has moved past it.
+	ExpectedRevision *int
+	// DryRun reports what the sync would do without publishing a revision or opening the environment.
+	DryRun bool
+	// Duration is how long the opened environment stays valid. Zero uses the environment's default.
+	Duration time.Duration
+}
+
+// StackEnvironmentSync describes the outcome of StackEnvironmentsBackend.SyncStackEnvironment.
+type StackEnvironmentSync struct {
+	// Environment is the environment managed by the stack, as "project/name".
+	Environment string
+	// PreviousRevision is the environment's latest revision before the sync (0 if it did not exist).
+	PreviousRevision int
+	// Revision holds the stack's definition after the sync.
+	Revision int
+	// Created reports that the environment was created, or would be created on a dry run.
+	Created bool
+	// Changed reports that the stack's definition differs from the published one.
+	Changed bool
+	// CurrentDefinition is the definition published before the sync, with secrets encrypted.
+	CurrentDefinition []byte
+	// OpenSessionID is the open session for Revision. Empty on a dry run or on errors.
+	OpenSessionID string
+	// Opened is the environment read through OpenSessionID. Nil on a dry run or on errors.
+	Opened *esc.Environment
+	// Diagnostics carries the errors that stopped the definition from being published or opened.
+	Diagnostics apitype.EnvironmentDiagnostics
+}
+
+// StackEnvironmentsBackend is an interface that defines an optional capability for a backend to publish a stack's
+// inline environment definition to the environment managed by that stack.
+type StackEnvironmentsBackend interface {
+	// SyncStackEnvironment publishes definition to the environment managed by stack, creating the environment on
+	// first use, and opens the published revision. Returns ErrStackEnvironmentSyncUnsupported when the service
+	// does not support it.
+	SyncStackEnvironment(
+		ctx context.Context,
+		stack Stack,
+		definition []byte,
+		opts StackEnvironmentSyncOptions,
+	) (*StackEnvironmentSync, error)
+}
+
 // SpecificDeploymentExporter is an interface defining an additional capability of a Backend, specifically the
 // ability to export a specific versions of a stack's deployment. This isn't a requirement for all backends and
 // should be checked for dynamically.
@@ -348,6 +399,30 @@ type StackConfiguration struct {
 	Environment esc.Value
 	Config      config.Map
 	Decrypter   config.Decrypter
+
+	// StackEnvironment, when set, names the revision of the environment managed by the stack that
+	// Environment was read from.
+	StackEnvironment *StackEnvironmentRef
+
+	// SyncEnvironment, when set, publishes the stack's inline environment definition to the environment
+	// managed by the stack and returns the configuration read from the published revision. Backends call
+	// it once the operation is confirmed, right before executing it.
+	SyncEnvironment func(ctx context.Context) (StackConfiguration, error)
+}
+
+// StackEnvironmentRef names a revision of the environment managed by a stack and the session it was opened in.
+type StackEnvironmentRef struct {
+	// Name is the environment, as "project/name".
+	Name string
+	// Revision is the revision the stack's definition was published at.
+	Revision int
+	// OpenSessionID is the open session the configuration was read through.
+	OpenSessionID string
+}
+
+// String returns the reference as "project/name@revision".
+func (r StackEnvironmentRef) String() string {
+	return fmt.Sprintf("%s@%d", r.Name, r.Revision)
 }
 
 // LatestConfiguration holds the configuration retrieved from the most recent deployment.

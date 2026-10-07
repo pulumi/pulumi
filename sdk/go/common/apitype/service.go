@@ -62,6 +62,10 @@ const (
 	// Indicates that the service supports reading a stack's outputs directly, without
 	// exporting the whole deployment.
 	StackOutputs APICapability = "stack-outputs"
+
+	// Indicates that the service can publish a stack's inline environment definition to the
+	// ESC environment managed by that stack and open the published revision.
+	StackEnvironmentSync APICapability = "stack-environment-sync"
 )
 
 type DeltaCheckpointUploadsConfigV2 struct {
@@ -164,6 +168,10 @@ type Capabilities struct {
 
 	// Indicates whether the service supports reading a stack's outputs directly.
 	StackOutputs bool
+
+	// Indicates whether the service can publish a stack's inline environment definition to the
+	// environment managed by that stack.
+	StackEnvironmentSync bool
 }
 
 // Parse decodes the CapabilitiesResponse into a Capabilities struct for ease of use.
@@ -229,6 +237,10 @@ func (r CapabilitiesResponse) Parse() (Capabilities, error) {
 		case BeginUpdate:
 			if entry.Version == 1 {
 				parsed.BeginUpdate = true
+			}
+		case StackEnvironmentSync:
+			if entry.Version == 1 {
+				parsed.StackEnvironmentSync = true
 			}
 		case StackOutputs:
 			if entry.Version == 1 {

@@ -1,0 +1,4 @@
+component: cli
+kind: feature
+body: Publish a stack's inline `environment` definition to an ESC environment named after the stack on `pulumi up`, show the pending environment changes on `pulumi preview`, and add `--esc-config` to `pulumi new` and `pulumi stack init`
+time: 2026-10-06T00:00:00Z

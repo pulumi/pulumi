@@ -102,6 +102,10 @@ func newStackNewCmd() *cobra.Command {
 		&sicmd.remoteConfig, "remote-config", false, "Store stack configuration remotely",
 	)
 	_ = cmd.PersistentFlags().MarkHidden("remote-config")
+	cmd.PersistentFlags().BoolVar(
+		&sicmd.escConfig, "esc-config", false,
+		"[EXPERIMENTAL] Define the stack's configuration as an inline ESC environment in its configuration "+
+			"file, published to the environment '<project>/<stack>' on every `pulumi up`")
 	cmd.PersistentFlags().BoolVarP(
 		&sicmd.yes, "yes", "y", false,
 		"Skip interactive prompts; fail if required information is missing")
@@ -116,6 +120,7 @@ type stackNewCmd struct {
 	noSelect        bool
 	teams           []string
 	remoteConfig    bool
+	escConfig       bool
 	yes             bool
 	stdout          io.Writer
 
@@ -203,6 +208,13 @@ func (cmd *stackNewCmd) Run(ctx context.Context, args []string) error {
 		return projectErr
 	}
 
+	// Everything --esc-config needs is checked before the stack exists, so a refusal creates nothing.
+	if cmd.escConfig {
+		if err := cmd.validateESCConfig(b, projectErr); err != nil {
+			return err
+		}
+	}
+
 	newStack, err := CreateStack(ctx, cmdutil.Diag(), ws, b, stackRef, root, CreateStackOptions{
 		Teams:           sanitizeTeams(cmd.teams),
 		SetCurrent:      !cmd.noSelect,
@@ -215,6 +227,16 @@ func (cmd *stackNewCmd) Run(ctx context.Context, args []string) error {
 				"%s does not support --teams", cmd.stackName, b.Name(), b.Name())
 		}
 		return err
+	}
+
+	if cmd.escConfig {
+		ps, err := LoadProjectStack(ctx, cmdutil.Diag(), proj, newStack, "")
+		if err != nil {
+			return err
+		}
+		if err := InitStackEnvironment(ctx, cmd.stdout, newStack, ps, ""); err != nil {
+			return err
+		}
 	}
 
 	if cmd.stackToCopy != "" {
@@ -271,6 +293,23 @@ func (cmd *stackNewCmd) Run(ctx context.Context, args []string) error {
 	}
 
 	return nil
+}
+
+// validateESCConfig rejects the flag combinations --esc-config cannot honour, before anything is created.
+func (cmd *stackNewCmd) validateESCConfig(b backend.Backend, projectErr error) error {
+	if cmd.stackToCopy != "" {
+		return errors.New("--esc-config cannot be combined with --copy-config-from: " +
+			"the new stack's configuration lives in its inline environment definition, not in a copied config map")
+	}
+	if cmd.remoteConfig {
+		return errors.New("--esc-config cannot be combined with --remote-config: " +
+			"a stack whose configuration is stored remotely has no configuration file to define an environment in")
+	}
+	if err := CheckStackEnvironmentSupport(b); err != nil {
+		return err
+	}
+	// The environment is named after the Pulumi project, so there has to be one.
+	return projectErr
 }
 
 // newCreateStackOptions constructs a backend.CreateStackOptions object

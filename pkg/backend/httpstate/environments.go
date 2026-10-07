@@ -16,6 +16,8 @@ package httpstate
 
 import (
 	"context"
+	"fmt"
+	"strings"
 	"time"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
@@ -78,4 +80,60 @@ func (b *cloudBackend) OpenYAMLEnvironment(
 	}
 	env, err := b.escClient.GetAnonymousOpenEnvironment(ctx, org, id)
 	return env, nil, err
+}
+
+var _ = backend.StackEnvironmentsBackend((*cloudBackend)(nil))
+
+func (b *cloudBackend) SyncStackEnvironment(
+	ctx context.Context,
+	stack backend.Stack,
+	definition []byte,
+	opts backend.StackEnvironmentSyncOptions,
+) (*backend.StackEnvironmentSync, error) {
+	if !b.Capabilities(ctx).StackEnvironmentSync {
+		return nil, backend.ErrStackEnvironmentSyncUnsupported
+	}
+
+	stackID, err := b.getCloudStackIdentifier(stack.Ref())
+	if err != nil {
+		return nil, err
+	}
+
+	req := apitype.StackEnvironmentSyncRequest{
+		Yaml:             string(definition),
+		ExpectedRevision: opts.ExpectedRevision,
+		DryRun:           opts.DryRun,
+	}
+	if opts.Duration != 0 {
+		req.OpenDuration = opts.Duration.String()
+	}
+	resp, err := b.client.SyncStackEnvironment(ctx, stackID, req)
+	if err != nil {
+		return nil, err
+	}
+
+	res := &backend.StackEnvironmentSync{
+		Environment:       resp.Environment,
+		PreviousRevision:  resp.PreviousRevision,
+		Revision:          resp.Revision,
+		Created:           resp.Created,
+		Changed:           resp.Changed,
+		CurrentDefinition: []byte(resp.CurrentYaml),
+		OpenSessionID:     resp.OpenSessionID,
+		Diagnostics:       resp.Diagnostics,
+	}
+	if resp.OpenSessionID == "" || len(resp.Diagnostics) != 0 {
+		return res, nil
+	}
+
+	projectName, envName, ok := strings.Cut(resp.Environment, "/")
+	if !ok {
+		return nil, fmt.Errorf("the service named the stack's environment %q, expected project/name", resp.Environment)
+	}
+	env, err := b.escClient.GetOpenEnvironment(ctx, stackID.Owner, projectName, envName, resp.OpenSessionID)
+	if err != nil {
+		return nil, fmt.Errorf("reading environment %s@%d: %w", resp.Environment, resp.Revision, err)
+	}
+	res.Opened = env
+	return res, nil
 }

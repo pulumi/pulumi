@@ -56,7 +56,23 @@ func GetStackConfiguration(
 	configFile string,
 	envOverrides []string,
 ) (backend.StackConfiguration, secrets.Manager, error) {
-	return getStackConfigurationWithFallback(ctx, sink, ssml, stack, project, nil, configFile, envOverrides)
+	return getStackConfigurationWithFallback(
+		ctx, sink, ssml, stack, project, nil, configFile, envOverrides, StackConfigurationOptions{})
+}
+
+// GetStackConfigurationWithOptions is GetStackConfiguration with control over what happens to an
+// inline environment definition in the stack's configuration file.
+func GetStackConfigurationWithOptions(
+	ctx context.Context,
+	sink diag.Sink,
+	ssml cmdStack.SecretsManagerLoader,
+	stack backend.Stack,
+	project *workspace.Project,
+	configFile string,
+	envOverrides []string,
+	opts StackConfigurationOptions,
+) (backend.StackConfiguration, secrets.Manager, error) {
+	return getStackConfigurationWithFallback(ctx, sink, ssml, stack, project, nil, configFile, envOverrides, opts)
 }
 
 // GetStackConfigurationOrLatest attempts to load a current stack configuration
@@ -74,6 +90,22 @@ func GetStackConfigurationOrLatest(
 	configFile string,
 	envOverrides []string,
 ) (backend.StackConfiguration, secrets.Manager, error) {
+	return GetStackConfigurationOrLatestWithOptions(
+		ctx, sink, ssml, stack, project, configFile, envOverrides, StackConfigurationOptions{})
+}
+
+// GetStackConfigurationOrLatestWithOptions is GetStackConfigurationOrLatest with control over what
+// happens to an inline environment definition in the stack's configuration file.
+func GetStackConfigurationOrLatestWithOptions(
+	ctx context.Context,
+	sink diag.Sink,
+	ssml cmdStack.SecretsManagerLoader,
+	stack backend.Stack,
+	project *workspace.Project,
+	configFile string,
+	envOverrides []string,
+	opts StackConfigurationOptions,
+) (backend.StackConfiguration, secrets.Manager, error) {
 	return getStackConfigurationWithFallback(
 		ctx, sink, ssml, stack, project,
 		func(err error) (config.Map, error) {
@@ -85,7 +117,7 @@ func GetStackConfigurationOrLatest(
 			}
 			return nil, err
 		},
-		configFile, envOverrides)
+		configFile, envOverrides, opts)
 }
 
 func getStackConfigurationWithFallback(
@@ -97,6 +129,7 @@ func getStackConfigurationWithFallback(
 	fallbackGetConfig func(err error) (config.Map, error), // optional
 	configFile string,
 	envOverrides []string,
+	opts StackConfigurationOptions,
 ) (backend.StackConfiguration, secrets.Manager, error) {
 	workspaceStack, err := cmdStack.LoadProjectStack(ctx, sink, project, s, configFile)
 	if err != nil || workspaceStack == nil {
@@ -120,7 +153,7 @@ func getStackConfigurationWithFallback(
 		return backend.StackConfiguration{}, nil, err
 	}
 
-	config, err := getStackConfigurationFromProjectStack(ctx, s, project, sm, workspaceStack, envOverrides)
+	config, err := getStackConfigurationFromProjectStack(ctx, s, project, sm, workspaceStack, envOverrides, opts)
 	if err != nil {
 		return backend.StackConfiguration{}, nil, err
 	}
@@ -134,6 +167,7 @@ func getStackConfigurationFromProjectStack(
 	sm secrets.Manager,
 	workspaceStack *workspace.ProjectStack,
 	envOverrides []string,
+	opts StackConfigurationOptions,
 ) (backend.StackConfiguration, error) {
 	env, diags, err := openStackEnv(ctx, stack, workspaceStack, envOverrides)
 	if err != nil {
@@ -145,11 +179,29 @@ func getStackConfigurationFromProjectStack(
 		printESCDiagnostics(os.Stderr, diags) //nolint:forbidigo
 		return backend.StackConfiguration{}, errors.New("opening environment: too many errors")
 	}
-
-	var pulumiEnv esc.Value
 	if env != nil {
 		warnOnNoEnvironmentEffects(os.Stdout, env) //nolint:forbidigo
+	}
 
+	cfg, err := stackConfigurationFromEnvironment(env, workspaceStack, sm)
+	if err != nil {
+		return backend.StackConfiguration{}, err
+	}
+	if err := attachStackEnvironment(ctx, stack, workspaceStack, sm, envOverrides, opts, &cfg); err != nil {
+		return backend.StackConfiguration{}, err
+	}
+	return cfg, nil
+}
+
+// stackConfigurationFromEnvironment builds the stack's configuration from its opened environment (nil
+// when the stack has none), applying the environment's variables to the process as a side effect.
+func stackConfigurationFromEnvironment(
+	env *esc.Environment,
+	workspaceStack *workspace.ProjectStack,
+	sm secrets.Manager,
+) (backend.StackConfiguration, error) {
+	var pulumiEnv esc.Value
+	if env != nil {
 		pulumiEnv = env.Properties["pulumiConfig"]
 
 		_, environ, secrets, _, err := cli.PrepareEnvironment(env, nil)
