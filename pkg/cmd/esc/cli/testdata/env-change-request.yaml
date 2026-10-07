@@ -1,0 +1,160 @@
+run: |
+  esc env init default/test
+  esc env set default/test foo bar --draft
+  esc env change-request ls
+  esc env change-request ls default/test --status pending
+  esc env change-request ls default/test --status applied
+  esc env change-request get 00000000-0000-0000-0000-000000000000
+  esc env change-request comment 00000000-0000-0000-0000-000000000000 -m "looks good"
+  esc env change-request approve 00000000-0000-0000-0000-000000000000 -m lgtm
+  esc env change-request unapprove 00000000-0000-0000-0000-000000000000
+  esc env change-request approve 00000000-0000-0000-0000-000000000000
+  esc env change-request rebase 00000000-0000-0000-0000-000000000000
+  esc env change-request get 00000000-0000-0000-0000-000000000000 --output json
+  esc env change-request apply 00000000-0000-0000-0000-000000000000
+  esc env change-request ls --output json
+  esc env get default/test
+
+---
+> esc env init default/test
+Environment created: test-user/default/test
+> esc env set default/test foo bar --draft
+Change request created: 00000000-0000-0000-0000-000000000000
+Change request URL: https://app.fake.pulumi.com/test-user/esc/default/test?version=00000000-0000-0000-0000-000000000000
+Change request submitted
+> esc env change-request ls
+┌──────────────────────────────────────┬──────────────┬─────────┬───────────┬─────────────┬──────────────────┐
+│ ID                                   │ ENVIRONMENT  │ STATUS  │ AUTHOR    │ DESCRIPTION │ AGE              │
+├──────────────────────────────────────┼──────────────┼─────────┼───────────┼─────────────┼──────────────────┤
+│ 00000000-0000-0000-0000-000000000000 │ default/test │ pending │ test-user │             │ a long while ago │
+└──────────────────────────────────────┴──────────────┴─────────┴───────────┴─────────────┴──────────────────┘
+> esc env change-request ls default/test --status pending
+┌──────────────────────────────────────┬──────────────┬─────────┬───────────┬─────────────┬──────────────────┐
+│ ID                                   │ ENVIRONMENT  │ STATUS  │ AUTHOR    │ DESCRIPTION │ AGE              │
+├──────────────────────────────────────┼──────────────┼─────────┼───────────┼─────────────┼──────────────────┤
+│ 00000000-0000-0000-0000-000000000000 │ default/test │ pending │ test-user │             │ a long while ago │
+└──────────────────────────────────────┴──────────────┴─────────┴───────────┴─────────────┴──────────────────┘
+> esc env change-request ls default/test --status applied
+No change requests found.
+> esc env change-request get 00000000-0000-0000-0000-000000000000
+ID: 00000000-0000-0000-0000-000000000000
+Environment: test-user/default/test
+Action: update
+Status: pending
+Author: Test User <test-user>
+Created: a long while ago
+Revision: 1
+Base environment revision: 0
+Current environment revision: 0
+Approved: false
+  Require approval (not satisfied): 0 of 1 approvals
+URL: https://app.fake.pulumi.com/test-user/esc/default/test?version=00000000-0000-0000-0000-000000000000
+> esc env change-request comment 00000000-0000-0000-0000-000000000000 -m looks good
+Added comment to change request 00000000-0000-0000-0000-000000000000
+> esc env change-request approve 00000000-0000-0000-0000-000000000000 -m lgtm
+Approved revision 1 of change request 00000000-0000-0000-0000-000000000000
+> esc env change-request unapprove 00000000-0000-0000-0000-000000000000
+Removed approval from change request 00000000-0000-0000-0000-000000000000
+> esc env change-request approve 00000000-0000-0000-0000-000000000000
+Approved revision 1 of change request 00000000-0000-0000-0000-000000000000
+> esc env change-request rebase 00000000-0000-0000-0000-000000000000
+Rebased change request 00000000-0000-0000-0000-000000000000 (revision 1)
+> esc env change-request get 00000000-0000-0000-0000-000000000000 --output json
+{
+  "id": "00000000-0000-0000-0000-000000000000",
+  "status": "ready",
+  "action": "update",
+  "description": "",
+  "createdAt": "0001-01-01T00:00:00Z",
+  "createdBy": {
+    "name": "Test User",
+    "githubLogin": "test-user"
+  },
+  "latestRevisionNumber": 1,
+  "entity": {
+    "entityType": "environment",
+    "project": "default",
+    "name": "test"
+  },
+  "gateEvaluation": {
+    "satisfied": true,
+    "applicableGates": [
+      {
+        "id": "gate-1",
+        "name": "Require approval",
+        "satisfied": true,
+        "ruleDetails": {
+          "ruleType": "approval_required",
+          "requiredApprovals": 1,
+          "approvers": [
+            {
+              "name": "Test User",
+              "githubLogin": "test-user"
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "draftStatus": {
+    "baseRevision": 0,
+    "environmentRevision": 0,
+    "draftRevisionNumber": 1
+  },
+  "url": "https://app.fake.pulumi.com/test-user/esc/default/test?version=00000000-0000-0000-0000-000000000000"
+}
+> esc env change-request apply 00000000-0000-0000-0000-000000000000
+Applied change request 00000000-0000-0000-0000-000000000000
+> esc env change-request ls --output json
+{
+  "changeRequests": [
+    {
+      "id": "00000000-0000-0000-0000-000000000000",
+      "status": "applied",
+      "action": "update",
+      "description": "",
+      "createdAt": "0001-01-01T00:00:00Z",
+      "createdBy": {
+        "name": "Test User",
+        "githubLogin": "test-user"
+      },
+      "latestRevisionNumber": 1,
+      "entity": {
+        "entityType": "environment",
+        "project": "default",
+        "name": "test"
+      }
+    }
+  ]
+}
+> esc env get default/test
+# Value
+```json
+{
+  "foo": "bar"
+}
+```
+# Definition
+```yaml
+values:
+  foo: bar
+
+```
+
+
+---
+> esc env init default/test
+> esc env set default/test foo bar --draft
+> esc env change-request ls
+> esc env change-request ls default/test --status pending
+> esc env change-request ls default/test --status applied
+> esc env change-request get 00000000-0000-0000-0000-000000000000
+> esc env change-request comment 00000000-0000-0000-0000-000000000000 -m looks good
+> esc env change-request approve 00000000-0000-0000-0000-000000000000 -m lgtm
+> esc env change-request unapprove 00000000-0000-0000-0000-000000000000
+> esc env change-request approve 00000000-0000-0000-0000-000000000000
+> esc env change-request rebase 00000000-0000-0000-0000-000000000000
+> esc env change-request get 00000000-0000-0000-0000-000000000000 --output json
+> esc env change-request apply 00000000-0000-0000-0000-000000000000
+> esc env change-request ls --output json
+> esc env get default/test

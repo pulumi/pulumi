@@ -1,0 +1,4 @@
+component: cli/env
+kind: feature
+body: Add `pulumi env change-request` commands to list, view, approve, apply, close, comment on, and rebase change requests
+time: 2026-10-07T00:00:00Z
