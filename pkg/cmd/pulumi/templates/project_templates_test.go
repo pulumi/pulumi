@@ -24,6 +24,7 @@ import (
 
 	"github.com/go-git/go-git/v6"
 	"github.com/go-git/go-git/v6/config"
+	"github.com/go-git/go-git/v6/plumbing"
 	"github.com/go-git/go-git/v6/plumbing/object"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/stretchr/testify/assert"
@@ -473,6 +474,193 @@ func TestRetrievePulumiTemplatesConcurrently(t *testing.T) {
 	wg.Wait()
 	for _, err := range errs {
 		require.NoError(t, err)
+	}
+}
+
+const (
+	// baseBranch is the default branch of the repositories that newTemplateSource creates.
+	baseBranch = "base"
+	// sameBranch points at the same commit as baseBranch.
+	sameBranch = "same"
+	// featureBranch is one commit ahead of baseBranch, and that commit adds featureFile.
+	featureBranch = "feature"
+	featureFile   = "feature.yaml"
+)
+
+// newTemplateSource creates a Git repository to retrieve templates from, with the branches baseBranch,
+// sameBranch and featureBranch, and returns its directory.
+func newTemplateSource(t *testing.T) string {
+	t.Helper()
+
+	dir := t.TempDir()
+	repo, err := git.PlainInit(dir, false, git.WithDefaultBranch(plumbing.NewBranchReferenceName(baseBranch)))
+	require.NoError(t, err)
+	// go-git honors the user's commit.gpgSign, so turn it off for this scratch repo.
+	cfg, err := repo.Config()
+	require.NoError(t, err)
+	cfg.Commit.GpgSign = config.OptBoolFalse
+	require.NoError(t, repo.SetConfig(cfg))
+	worktree, err := repo.Worktree()
+	require.NoError(t, err)
+
+	commit := func(file string) plumbing.Hash {
+		require.NoError(t, os.WriteFile(filepath.Join(dir, file), []byte("name: test\n"), 0o600))
+		_, err := worktree.Add(file)
+		require.NoError(t, err)
+		hash, err := worktree.Commit("add "+file, &git.CommitOptions{
+			Author: &object.Signature{Name: "test", Email: "test@example.com", When: time.Now()},
+		})
+		require.NoError(t, err)
+		return hash
+	}
+
+	base := commit("Pulumi.yaml")
+	same := plumbing.NewHashReference(plumbing.NewBranchReferenceName(sameBranch), base)
+	require.NoError(t, repo.Storer.SetReference(same))
+	require.NoError(t, worktree.Checkout(&git.CheckoutOptions{
+		Branch: plumbing.NewBranchReferenceName(featureBranch),
+		Create: true,
+	}))
+	commit(featureFile)
+	return dir
+}
+
+func TestRetrievePulumiTemplatesBranchChange(t *testing.T) {
+	kinds := []struct {
+		name         string
+		templateKind TemplateKind
+		repoVar      string
+		branchVar    string
+		pathVar      string
+	}{
+		{
+			name:         "project",
+			templateKind: TemplateKindPulumiProject,
+			repoVar:      env.TemplateGitRepository.Var().Name(),
+			branchVar:    env.TemplateBranch.Var().Name(),
+			pathVar:      env.TemplatePath.Var().Name(),
+		},
+		{
+			name:         "policy pack",
+			templateKind: TemplateKindPolicyPack,
+			repoVar:      env.PolicyTemplateGitRepository.Var().Name(),
+			branchVar:    env.PolicyTemplateBranch.Var().Name(),
+			pathVar:      env.PolicyTemplatePath.Var().Name(),
+		},
+		{
+			name:         "package",
+			templateKind: TemplateKindPackage,
+			repoVar:      env.PackageTemplateGitRepository.Var().Name(),
+			branchVar:    env.PackageTemplateBranch.Var().Name(),
+			pathVar:      env.PackageTemplatePath.Var().Name(),
+		},
+	}
+	tests := []struct {
+		name    string
+		from    string
+		to      string
+		offline bool
+		// want is the branch that the cache is on after retrieving to.
+		want string
+	}{
+		{name: "branch with new commits", from: baseBranch, to: featureBranch, want: featureBranch},
+		{name: "branch at the same commit", from: baseBranch, to: sameBranch, want: sameBranch},
+		{name: "back to an older branch", from: featureBranch, to: baseBranch, want: baseBranch},
+		{name: "same branch", from: baseBranch, to: baseBranch, want: baseBranch},
+		{name: "offline", from: baseBranch, to: featureBranch, offline: true, want: baseBranch},
+	}
+
+	for _, kind := range kinds {
+		t.Run(kind.name, func(t *testing.T) {
+			for _, tt := range tests {
+				t.Run(tt.name, func(t *testing.T) {
+					cache := filepath.Join(t.TempDir(), "templates")
+					t.Setenv(kind.repoVar, newTemplateSource(t))
+					t.Setenv(kind.pathVar, cache)
+
+					t.Setenv(kind.branchVar, tt.from)
+					_, err := retrievePulumiTemplates(t.Context(), false, kind.templateKind)
+					require.NoError(t, err)
+
+					t.Setenv(kind.branchVar, tt.to)
+					_, err = retrievePulumiTemplates(t.Context(), tt.offline, kind.templateKind)
+					require.NoError(t, err)
+
+					repo, err := git.PlainOpen(cache)
+					require.NoError(t, err)
+					head, err := repo.Head()
+					require.NoError(t, err)
+					assert.Equal(t, plumbing.NewBranchReferenceName(tt.want), head.Name())
+					if tt.want == featureBranch {
+						assert.FileExists(t, filepath.Join(cache, featureFile))
+					} else {
+						assert.NoFileExists(t, filepath.Join(cache, featureFile))
+					}
+				})
+			}
+		})
+	}
+}
+
+func TestCleanupLegacyTemplateDir(t *testing.T) {
+	missing := func(*testing.T, string, string) {}
+	notARepository := func(t *testing.T, _, cache string) {
+		require.NoError(t, os.MkdirAll(cache, 0o700))
+	}
+	cloned := func(t *testing.T, _, _ string) {
+		_, err := retrievePulumiTemplates(t.Context(), false, TemplateKindPulumiProject)
+		require.NoError(t, err)
+	}
+	// A repository without commits has no branch to compare.
+	withoutCommits := func(t *testing.T, source, cache string) {
+		repo, err := git.PlainInit(cache, false)
+		require.NoError(t, err)
+		_, err = repo.CreateRemote(&config.RemoteConfig{Name: "origin", URLs: []string{source}})
+		require.NoError(t, err)
+	}
+
+	tests := []struct {
+		name string
+		// prepare puts the cache directory in the state under test, for templates of baseBranch from source.
+		prepare func(t *testing.T, source, cache string)
+		// repo and branch, when set, are what is wanted instead of source and baseBranch.
+		repo     string
+		branch   string
+		offline  bool
+		wantKept bool
+	}{
+		{name: "missing", prepare: missing},
+		{name: "not a repository", prepare: notARepository},
+		{name: "another repository", prepare: cloned, repo: "https://example.com/templates.git"},
+		{name: "same branch", prepare: cloned, wantKept: true},
+		{name: "another branch", prepare: cloned, branch: featureBranch},
+		{name: "another branch offline", prepare: cloned, branch: featureBranch, offline: true, wantKept: true},
+		{name: "without commits", prepare: withoutCommits},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			source := newTemplateSource(t)
+			cache := filepath.Join(t.TempDir(), "templates")
+			t.Setenv(env.TemplateGitRepository.Var().Name(), source)
+			t.Setenv(env.TemplateBranch.Var().Name(), baseBranch)
+			t.Setenv(env.TemplatePath.Var().Name(), cache)
+			tt.prepare(t, source, cache)
+
+			if tt.repo != "" {
+				t.Setenv(env.TemplateGitRepository.Var().Name(), tt.repo)
+			}
+			if tt.branch != "" {
+				t.Setenv(env.TemplateBranch.Var().Name(), tt.branch)
+			}
+
+			require.NoError(t, cleanupLegacyTemplateDir(TemplateKindPulumiProject, tt.offline))
+			if tt.wantKept {
+				assert.DirExists(t, cache)
+			} else {
+				assert.NoDirExists(t, cache)
+			}
+		})
 	}
 }
 

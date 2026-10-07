@@ -267,8 +267,9 @@ func (t PackageTemplate) Errored() bool {
 	return t.Error != nil
 }
 
-// cleanupLegacyTemplateDir deletes an existing ~/.pulumi/templates directory if it isn't a git repository.
-func cleanupLegacyTemplateDir(templateKind TemplateKind) error {
+// cleanupLegacyTemplateDir deletes an existing ~/.pulumi/templates directory if it isn't a git repository, or if it
+// is a clone of another repository or branch than the one we want to pull from.
+func cleanupLegacyTemplateDir(templateKind TemplateKind, offline bool) error {
 	templateDir, err := GetTemplateDir(templateKind)
 	if err != nil {
 		return err
@@ -296,6 +297,18 @@ func cleanupLegacyTemplateDir(templateKind TemplateKind) error {
 	}
 	// If the repo exists and it doesn't have exactly one remote that matches our URL, wipe the templates directory.
 	if len(remotes) != 1 || remotes[0] == nil || !strings.Contains(remotes[0].String(), url) {
+		return os.RemoveAll(templateDir)
+	}
+
+	// When offline there is nothing to clone again from, so we keep whatever is there.
+	if offline {
+		return nil
+	}
+
+	// The repository is a single-branch clone, which can't be pulled onto another branch. If it isn't on the branch
+	// that we want, we'll delete it, so that the clone later fetches that branch.
+	head, err := repo.Head()
+	if err != nil || head.Name() != plumbing.NewBranchReferenceName(getTemplateBranch(templateKind)) {
 		return os.RemoveAll(templateDir)
 	}
 
@@ -404,7 +417,7 @@ func retrievePulumiTemplates(
 	}
 
 	// Cleanup the template directory.
-	if err := cleanupLegacyTemplateDir(templateKind); err != nil {
+	if err := cleanupLegacyTemplateDir(templateKind, offline); err != nil {
 		return TemplateRepository{}, err
 	}
 

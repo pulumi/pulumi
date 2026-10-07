@@ -1,0 +1,4 @@
+component: cli/new
+kind: fix
+body: Fix `pulumi new` failing to clone templates after changing `PULUMI_TEMPLATE_BRANCH`
+time: 2026-10-07T11:38:33.20774+07:00
