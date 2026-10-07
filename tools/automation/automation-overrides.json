@@ -340,12 +340,6 @@
             "flags": {}
         },
         {
-            "path": ["state"],
-            "propagate": true,
-            "exclude": true,
-            "flags": {}
-        },
-        {
             "path": ["template"],
             "propagate": true,
             "exclude": true,

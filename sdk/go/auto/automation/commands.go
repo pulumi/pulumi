@@ -30,6 +30,18 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optorgsearch"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optorgsearchai"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optorgsetdefault"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optstateedit"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optstateget"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optstatemove"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optstatepromote"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optstateprotect"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optstateremove"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optstaterename"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optstaterepair"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optstatetaint"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optstateunprotect"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optstateuntaint"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optstateupgrade"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optversion"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optwhoami"
 )
@@ -1017,6 +1029,1080 @@ func (a *API) OrgSetDefault(
 	if len(args) > 0 {
 		final = append(final, "--")
 		final = append(final, args...)
+	}
+
+	return a.run(ctx, base.BaseOptions{
+		Cwd:           o.Cwd,
+		AdditionalEnv: o.AdditionalEnv,
+		Stdout:        o.Stdout,
+		Stderr:        o.Stderr,
+		Stdin:         o.Stdin,
+	}, final)
+}
+
+// StateEdit corresponds to `pulumi state edit`.
+//
+// [EXPERIMENTAL] Edit the current stack's state in your EDITOR
+//
+// This command can be used to surgically edit a stack's state in the editor
+// specified by the EDITOR environment variable and will provide the user with
+// a preview showing a diff of the altered state.
+func (a *API) StateEdit(
+	ctx context.Context,
+	opts ...optstateedit.Option,
+) (base.CommandResult, error) {
+	o := optstateedit.Options{}
+	for _, opt := range opts {
+		opt(&o)
+	}
+
+	final := []string{"state", "edit"}
+
+	if o.Color != "" {
+		final = append(final, "--color", fmt.Sprint(o.Color))
+	}
+
+	if o.DisableIntegrityChecking {
+		final = append(final, "--disable-integrity-checking")
+	}
+
+	if o.FullyQualifyStackNames {
+		final = append(final, "--fully-qualify-stack-names")
+	}
+
+	if o.Logflow {
+		final = append(final, "--logflow")
+	}
+
+	if o.Logtostderr {
+		final = append(final, "--logtostderr")
+	}
+
+	if o.Memprofilerate != 0 {
+		final = append(final, "--memprofilerate", fmt.Sprint(o.Memprofilerate))
+	}
+
+	if o.OtelTraces != "" {
+		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
+	}
+
+	if o.Profiling != "" {
+		final = append(final, "--profiling", fmt.Sprint(o.Profiling))
+	}
+
+	if o.Stack != "" {
+		final = append(final, "--stack", fmt.Sprint(o.Stack))
+	}
+
+	if o.Tracing != "" {
+		final = append(final, "--tracing", fmt.Sprint(o.Tracing))
+	}
+
+	if o.TracingHeader != "" {
+		final = append(final, "--tracing-header", fmt.Sprint(o.TracingHeader))
+	}
+
+	if o.Verbose != 0 {
+		final = append(final, "--verbose", fmt.Sprint(o.Verbose))
+	}
+
+	return a.run(ctx, base.BaseOptions{
+		Cwd:           o.Cwd,
+		AdditionalEnv: o.AdditionalEnv,
+		Stdout:        o.Stdout,
+		Stderr:        o.Stderr,
+		Stdin:         o.Stdin,
+	}, final)
+}
+
+// StateGet corresponds to `pulumi state get`.
+//
+// # Show a resource's state
+//
+// Display the state tracked for a single resource in a stack's state, including its URN,
+// ID, inputs and outputs. The resource may be referenced by its URN or by the identifier
+// auto-assigned to it (as listed by "pulumi do show-resources"). If no resource is given,
+// this command will prompt for one.
+func (a *API) StateGet(
+	ctx context.Context,
+	resource *string,
+	opts ...optstateget.Option,
+) (base.CommandResult, error) {
+	o := optstateget.Options{}
+	for _, opt := range opts {
+		opt(&o)
+	}
+
+	final := []string{"state", "get"}
+
+	if o.Color != "" {
+		final = append(final, "--color", fmt.Sprint(o.Color))
+	}
+
+	if o.DisableIntegrityChecking {
+		final = append(final, "--disable-integrity-checking")
+	}
+
+	if o.FullyQualifyStackNames {
+		final = append(final, "--fully-qualify-stack-names")
+	}
+
+	if o.Logflow {
+		final = append(final, "--logflow")
+	}
+
+	if o.Logtostderr {
+		final = append(final, "--logtostderr")
+	}
+
+	if o.Memprofilerate != 0 {
+		final = append(final, "--memprofilerate", fmt.Sprint(o.Memprofilerate))
+	}
+
+	if o.OtelTraces != "" {
+		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
+	}
+
+	if o.Output != "" {
+		final = append(final, "--output", fmt.Sprint(o.Output))
+	}
+
+	if o.Profiling != "" {
+		final = append(final, "--profiling", fmt.Sprint(o.Profiling))
+	}
+
+	if o.ShowSecrets {
+		final = append(final, "--show-secrets")
+	}
+
+	if o.Stack != "" {
+		final = append(final, "--stack", fmt.Sprint(o.Stack))
+	}
+
+	if o.Tracing != "" {
+		final = append(final, "--tracing", fmt.Sprint(o.Tracing))
+	}
+
+	if o.TracingHeader != "" {
+		final = append(final, "--tracing-header", fmt.Sprint(o.TracingHeader))
+	}
+
+	if o.Verbose != 0 {
+		final = append(final, "--verbose", fmt.Sprint(o.Verbose))
+	}
+
+	args := []string{}
+	if resource != nil {
+		args = append(args, fmt.Sprint(*resource))
+	}
+	if len(args) > 0 {
+		final = append(final, "--")
+		final = append(final, args...)
+	}
+
+	return a.run(ctx, base.BaseOptions{
+		Cwd:           o.Cwd,
+		AdditionalEnv: o.AdditionalEnv,
+		Stdout:        o.Stdout,
+		Stderr:        o.Stderr,
+		Stdin:         o.Stdin,
+	}, final)
+}
+
+// StateMove corresponds to `pulumi state move`.
+//
+// # Move resources from one stack to another
+//
+// This command can be used to move resources from one stack to another. This can be useful when
+// splitting a stack into multiple stacks or when merging multiple stacks into one.
+func (a *API) StateMove(
+	ctx context.Context,
+	urn []string,
+	opts ...optstatemove.Option,
+) (base.CommandResult, error) {
+	o := optstatemove.Options{}
+	for _, opt := range opts {
+		opt(&o)
+	}
+
+	final := []string{"state", "move"}
+
+	final = append(final, "--yes")
+
+	if o.Color != "" {
+		final = append(final, "--color", fmt.Sprint(o.Color))
+	}
+
+	if o.Dest != "" {
+		final = append(final, "--dest", fmt.Sprint(o.Dest))
+	}
+
+	if o.DisableIntegrityChecking {
+		final = append(final, "--disable-integrity-checking")
+	}
+
+	if o.FullyQualifyStackNames {
+		final = append(final, "--fully-qualify-stack-names")
+	}
+
+	if o.IncludeParents {
+		final = append(final, "--include-parents")
+	}
+
+	if o.Logflow {
+		final = append(final, "--logflow")
+	}
+
+	if o.Logtostderr {
+		final = append(final, "--logtostderr")
+	}
+
+	if o.Memprofilerate != 0 {
+		final = append(final, "--memprofilerate", fmt.Sprint(o.Memprofilerate))
+	}
+
+	if o.OtelTraces != "" {
+		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
+	}
+
+	if o.Profiling != "" {
+		final = append(final, "--profiling", fmt.Sprint(o.Profiling))
+	}
+
+	if o.Source != "" {
+		final = append(final, "--source", fmt.Sprint(o.Source))
+	}
+
+	if o.Tracing != "" {
+		final = append(final, "--tracing", fmt.Sprint(o.Tracing))
+	}
+
+	if o.TracingHeader != "" {
+		final = append(final, "--tracing-header", fmt.Sprint(o.TracingHeader))
+	}
+
+	if o.Verbose != 0 {
+		final = append(final, "--verbose", fmt.Sprint(o.Verbose))
+	}
+
+	args := []string{}
+	for _, v := range urn {
+		args = append(args, fmt.Sprint(v))
+	}
+	if len(args) > 0 {
+		final = append(final, "--")
+		final = append(final, args...)
+	}
+
+	return a.run(ctx, base.BaseOptions{
+		Cwd:           o.Cwd,
+		AdditionalEnv: o.AdditionalEnv,
+		Stdout:        o.Stdout,
+		Stderr:        o.Stderr,
+		Stdin:         o.Stdin,
+	}, final)
+}
+
+// StatePromote corresponds to `pulumi state promote`.
+//
+// # Promote a snippet from state into Pulumi program code
+//
+// This command generates Pulumi program code for a stateful snippet, prints the
+// generated files, then removes the snippet from the stack while leaving the
+// resources it registered in state. The retained resources are marked as
+// protected so that a subsequent update cannot delete them before you have
+// copied the generated code into your program. The argument is the
+// snippet's logical name.
+//
+// This command must be run from a real Pulumi project so the generated code has
+// a backing project runtime.
+func (a *API) StatePromote(
+	ctx context.Context,
+	snippetName string,
+	opts ...optstatepromote.Option,
+) (base.CommandResult, error) {
+	o := optstatepromote.Options{}
+	for _, opt := range opts {
+		opt(&o)
+	}
+
+	final := []string{"state", "promote"}
+
+	final = append(final, "--yes")
+
+	if o.Color != "" {
+		final = append(final, "--color", fmt.Sprint(o.Color))
+	}
+
+	if o.DisableIntegrityChecking {
+		final = append(final, "--disable-integrity-checking")
+	}
+
+	if o.FullyQualifyStackNames {
+		final = append(final, "--fully-qualify-stack-names")
+	}
+
+	if o.Logflow {
+		final = append(final, "--logflow")
+	}
+
+	if o.Logtostderr {
+		final = append(final, "--logtostderr")
+	}
+
+	if o.Memprofilerate != 0 {
+		final = append(final, "--memprofilerate", fmt.Sprint(o.Memprofilerate))
+	}
+
+	if o.OtelTraces != "" {
+		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
+	}
+
+	if o.Profiling != "" {
+		final = append(final, "--profiling", fmt.Sprint(o.Profiling))
+	}
+
+	if o.Stack != "" {
+		final = append(final, "--stack", fmt.Sprint(o.Stack))
+	}
+
+	if o.Tracing != "" {
+		final = append(final, "--tracing", fmt.Sprint(o.Tracing))
+	}
+
+	if o.TracingHeader != "" {
+		final = append(final, "--tracing-header", fmt.Sprint(o.TracingHeader))
+	}
+
+	if o.Verbose != 0 {
+		final = append(final, "--verbose", fmt.Sprint(o.Verbose))
+	}
+
+	args := []string{}
+	args = append(args, fmt.Sprint(snippetName))
+	if len(args) > 0 {
+		final = append(final, "--")
+		final = append(final, args...)
+	}
+
+	return a.run(ctx, base.BaseOptions{
+		Cwd:           o.Cwd,
+		AdditionalEnv: o.AdditionalEnv,
+		Stdout:        o.Stdout,
+		Stderr:        o.Stderr,
+		Stdin:         o.Stdin,
+	}, final)
+}
+
+// StateProtect corresponds to `pulumi state protect`.
+//
+// # Protect resource in a stack's state
+//
+// This command sets the 'protect' bit on one or more resources, preventing those resources from being deleted.
+//
+// Caution: this command is a low-level operation that directly modifies your stack's state.
+// Setting the 'protect' bit on a resource in your stack's state is not sufficient to protect it in
+// all cases. If your program does not also set the 'protect' resource option, Pulumi will
+// unprotect the resource the next time your program runs (e.g. as part of a `pulumi up`).
+//
+// See https://www.pulumi.com/docs/iac/concepts/options/protect/ for more information on
+// the 'protect' resource option and how it can be used to protect resources in your program.
+//
+// To unprotect a resource, use `pulumi unprotect`on the resource URN.
+//
+// To see the list of URNs in a stack, use `pulumi stack --show-urns`.
+func (a *API) StateProtect(
+	ctx context.Context,
+	resourceUrn []string,
+	opts ...optstateprotect.Option,
+) (base.CommandResult, error) {
+	o := optstateprotect.Options{}
+	for _, opt := range opts {
+		opt(&o)
+	}
+
+	final := []string{"state", "protect"}
+
+	final = append(final, "--yes")
+
+	if o.All {
+		final = append(final, "--all")
+	}
+
+	if o.Color != "" {
+		final = append(final, "--color", fmt.Sprint(o.Color))
+	}
+
+	if o.DisableIntegrityChecking {
+		final = append(final, "--disable-integrity-checking")
+	}
+
+	if o.FullyQualifyStackNames {
+		final = append(final, "--fully-qualify-stack-names")
+	}
+
+	if o.Logflow {
+		final = append(final, "--logflow")
+	}
+
+	if o.Logtostderr {
+		final = append(final, "--logtostderr")
+	}
+
+	if o.Memprofilerate != 0 {
+		final = append(final, "--memprofilerate", fmt.Sprint(o.Memprofilerate))
+	}
+
+	if o.OtelTraces != "" {
+		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
+	}
+
+	if o.Profiling != "" {
+		final = append(final, "--profiling", fmt.Sprint(o.Profiling))
+	}
+
+	if o.Stack != "" {
+		final = append(final, "--stack", fmt.Sprint(o.Stack))
+	}
+
+	if o.Tracing != "" {
+		final = append(final, "--tracing", fmt.Sprint(o.Tracing))
+	}
+
+	if o.TracingHeader != "" {
+		final = append(final, "--tracing-header", fmt.Sprint(o.TracingHeader))
+	}
+
+	if o.Verbose != 0 {
+		final = append(final, "--verbose", fmt.Sprint(o.Verbose))
+	}
+
+	args := []string{}
+	for _, v := range resourceUrn {
+		args = append(args, fmt.Sprint(v))
+	}
+	if len(args) > 0 {
+		final = append(final, "--")
+		final = append(final, args...)
+	}
+
+	return a.run(ctx, base.BaseOptions{
+		Cwd:           o.Cwd,
+		AdditionalEnv: o.AdditionalEnv,
+		Stdout:        o.Stdout,
+		Stderr:        o.Stderr,
+		Stdin:         o.Stdin,
+	}, final)
+}
+
+// StateRemove corresponds to `pulumi state remove`.
+//
+// # Deletes one or more resources from a stack's state
+//
+// This command deletes resources from a stack's state, as long as it is safe to do so. Each resource is specified
+// by its Pulumi URN. If no resource is specified, this command will prompt for one.
+//
+// Resources can't be deleted if other resources depend on it or are parented to it. Protected resources
+// will not be deleted unless specifically requested using the --force flag.
+//
+// Make sure that URNs are single-quoted to avoid having characters unexpectedly interpreted by the shell.
+//
+// To see the list of URNs in a stack, use `pulumi stack --show-urns`.
+func (a *API) StateRemove(
+	ctx context.Context,
+	resourceUrn []string,
+	opts ...optstateremove.Option,
+) (base.CommandResult, error) {
+	o := optstateremove.Options{}
+	for _, opt := range opts {
+		opt(&o)
+	}
+
+	final := []string{"state", "remove"}
+
+	final = append(final, "--yes")
+
+	if o.All {
+		final = append(final, "--all")
+	}
+
+	if o.Color != "" {
+		final = append(final, "--color", fmt.Sprint(o.Color))
+	}
+
+	if o.DisableIntegrityChecking {
+		final = append(final, "--disable-integrity-checking")
+	}
+
+	if o.Force {
+		final = append(final, "--force")
+	}
+
+	if o.FullyQualifyStackNames {
+		final = append(final, "--fully-qualify-stack-names")
+	}
+
+	if o.Logflow {
+		final = append(final, "--logflow")
+	}
+
+	if o.Logtostderr {
+		final = append(final, "--logtostderr")
+	}
+
+	if o.Memprofilerate != 0 {
+		final = append(final, "--memprofilerate", fmt.Sprint(o.Memprofilerate))
+	}
+
+	if o.OtelTraces != "" {
+		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
+	}
+
+	if o.Profiling != "" {
+		final = append(final, "--profiling", fmt.Sprint(o.Profiling))
+	}
+
+	if o.Stack != "" {
+		final = append(final, "--stack", fmt.Sprint(o.Stack))
+	}
+
+	if o.TargetDependents {
+		final = append(final, "--target-dependents")
+	}
+
+	if o.Tracing != "" {
+		final = append(final, "--tracing", fmt.Sprint(o.Tracing))
+	}
+
+	if o.TracingHeader != "" {
+		final = append(final, "--tracing-header", fmt.Sprint(o.TracingHeader))
+	}
+
+	if o.Verbose != 0 {
+		final = append(final, "--verbose", fmt.Sprint(o.Verbose))
+	}
+
+	args := []string{}
+	for _, v := range resourceUrn {
+		args = append(args, fmt.Sprint(v))
+	}
+	if len(args) > 0 {
+		final = append(final, "--")
+		final = append(final, args...)
+	}
+
+	return a.run(ctx, base.BaseOptions{
+		Cwd:           o.Cwd,
+		AdditionalEnv: o.AdditionalEnv,
+		Stdout:        o.Stdout,
+		Stderr:        o.Stderr,
+		Stdin:         o.Stdin,
+	}, final)
+}
+
+// StateRename corresponds to `pulumi state rename`.
+//
+// # Renames a resource from a stack's state
+//
+// This command renames a resource from a stack's state. The resource is specified
+// by its Pulumi URN and the new name of the resource.
+//
+// Make sure that URNs are single-quoted to avoid having characters unexpectedly interpreted by the shell.
+//
+// To see the list of URNs in a stack, use `pulumi stack --show-urns`.
+func (a *API) StateRename(
+	ctx context.Context,
+	resourceUrn *string,
+	newName *string,
+	opts ...optstaterename.Option,
+) (base.CommandResult, error) {
+	o := optstaterename.Options{}
+	for _, opt := range opts {
+		opt(&o)
+	}
+
+	final := []string{"state", "rename"}
+
+	final = append(final, "--yes")
+
+	if o.Color != "" {
+		final = append(final, "--color", fmt.Sprint(o.Color))
+	}
+
+	if o.DisableIntegrityChecking {
+		final = append(final, "--disable-integrity-checking")
+	}
+
+	if o.FullyQualifyStackNames {
+		final = append(final, "--fully-qualify-stack-names")
+	}
+
+	if o.Logflow {
+		final = append(final, "--logflow")
+	}
+
+	if o.Logtostderr {
+		final = append(final, "--logtostderr")
+	}
+
+	if o.Memprofilerate != 0 {
+		final = append(final, "--memprofilerate", fmt.Sprint(o.Memprofilerate))
+	}
+
+	if o.OtelTraces != "" {
+		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
+	}
+
+	if o.Profiling != "" {
+		final = append(final, "--profiling", fmt.Sprint(o.Profiling))
+	}
+
+	if o.Stack != "" {
+		final = append(final, "--stack", fmt.Sprint(o.Stack))
+	}
+
+	if o.Tracing != "" {
+		final = append(final, "--tracing", fmt.Sprint(o.Tracing))
+	}
+
+	if o.TracingHeader != "" {
+		final = append(final, "--tracing-header", fmt.Sprint(o.TracingHeader))
+	}
+
+	if o.Verbose != 0 {
+		final = append(final, "--verbose", fmt.Sprint(o.Verbose))
+	}
+
+	args := []string{}
+	if resourceUrn != nil {
+		args = append(args, fmt.Sprint(*resourceUrn))
+	}
+	if newName != nil {
+		args = append(args, fmt.Sprint(*newName))
+	}
+	if len(args) > 0 {
+		final = append(final, "--")
+		final = append(final, args...)
+	}
+
+	return a.run(ctx, base.BaseOptions{
+		Cwd:           o.Cwd,
+		AdditionalEnv: o.AdditionalEnv,
+		Stdout:        o.Stdout,
+		Stderr:        o.Stderr,
+		Stdin:         o.Stdin,
+	}, final)
+}
+
+// StateRepair corresponds to `pulumi state repair`.
+//
+// Repair an invalid state,
+//
+// This command can be used to repair an invalid state file. It will attempt to
+// sort resources that appear out of order and remove references to resources that
+// are no longer present in the state. If the state is already valid, this command
+// will not attempt to make or write any changes. If the state is not already
+// valid, and remains invalid after repair has been attempted, this command will
+// not write any changes.
+func (a *API) StateRepair(
+	ctx context.Context,
+	opts ...optstaterepair.Option,
+) (base.CommandResult, error) {
+	o := optstaterepair.Options{}
+	for _, opt := range opts {
+		opt(&o)
+	}
+
+	final := []string{"state", "repair"}
+
+	final = append(final, "--yes")
+
+	if o.Color != "" {
+		final = append(final, "--color", fmt.Sprint(o.Color))
+	}
+
+	if o.DisableIntegrityChecking {
+		final = append(final, "--disable-integrity-checking")
+	}
+
+	if o.FullyQualifyStackNames {
+		final = append(final, "--fully-qualify-stack-names")
+	}
+
+	if o.Logflow {
+		final = append(final, "--logflow")
+	}
+
+	if o.Logtostderr {
+		final = append(final, "--logtostderr")
+	}
+
+	if o.Memprofilerate != 0 {
+		final = append(final, "--memprofilerate", fmt.Sprint(o.Memprofilerate))
+	}
+
+	if o.OtelTraces != "" {
+		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
+	}
+
+	if o.Profiling != "" {
+		final = append(final, "--profiling", fmt.Sprint(o.Profiling))
+	}
+
+	if o.Stack != "" {
+		final = append(final, "--stack", fmt.Sprint(o.Stack))
+	}
+
+	if o.Tracing != "" {
+		final = append(final, "--tracing", fmt.Sprint(o.Tracing))
+	}
+
+	if o.TracingHeader != "" {
+		final = append(final, "--tracing-header", fmt.Sprint(o.TracingHeader))
+	}
+
+	if o.Verbose != 0 {
+		final = append(final, "--verbose", fmt.Sprint(o.Verbose))
+	}
+
+	return a.run(ctx, base.BaseOptions{
+		Cwd:           o.Cwd,
+		AdditionalEnv: o.AdditionalEnv,
+		Stdout:        o.Stdout,
+		Stderr:        o.Stderr,
+		Stdin:         o.Stdin,
+	}, final)
+}
+
+// StateTaint corresponds to `pulumi state taint`.
+//
+// Taint one or more resources in the stack's state.
+//
+// This has the effect of ensuring the resources are destroyed and recreated upon the next `pulumi up`.
+//
+// To see the list of URNs in a stack, use `pulumi stack --show-urns`.
+func (a *API) StateTaint(
+	ctx context.Context,
+	resourceUrn []string,
+	opts ...optstatetaint.Option,
+) (base.CommandResult, error) {
+	o := optstatetaint.Options{}
+	for _, opt := range opts {
+		opt(&o)
+	}
+
+	final := []string{"state", "taint"}
+
+	final = append(final, "--yes")
+
+	if o.Color != "" {
+		final = append(final, "--color", fmt.Sprint(o.Color))
+	}
+
+	if o.DisableIntegrityChecking {
+		final = append(final, "--disable-integrity-checking")
+	}
+
+	if o.FullyQualifyStackNames {
+		final = append(final, "--fully-qualify-stack-names")
+	}
+
+	if o.Logflow {
+		final = append(final, "--logflow")
+	}
+
+	if o.Logtostderr {
+		final = append(final, "--logtostderr")
+	}
+
+	if o.Memprofilerate != 0 {
+		final = append(final, "--memprofilerate", fmt.Sprint(o.Memprofilerate))
+	}
+
+	if o.OtelTraces != "" {
+		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
+	}
+
+	if o.Profiling != "" {
+		final = append(final, "--profiling", fmt.Sprint(o.Profiling))
+	}
+
+	if o.Stack != "" {
+		final = append(final, "--stack", fmt.Sprint(o.Stack))
+	}
+
+	if o.Tracing != "" {
+		final = append(final, "--tracing", fmt.Sprint(o.Tracing))
+	}
+
+	if o.TracingHeader != "" {
+		final = append(final, "--tracing-header", fmt.Sprint(o.TracingHeader))
+	}
+
+	if o.Verbose != 0 {
+		final = append(final, "--verbose", fmt.Sprint(o.Verbose))
+	}
+
+	args := []string{}
+	for _, v := range resourceUrn {
+		args = append(args, fmt.Sprint(v))
+	}
+	if len(args) > 0 {
+		final = append(final, "--")
+		final = append(final, args...)
+	}
+
+	return a.run(ctx, base.BaseOptions{
+		Cwd:           o.Cwd,
+		AdditionalEnv: o.AdditionalEnv,
+		Stdout:        o.Stdout,
+		Stderr:        o.Stderr,
+		Stdin:         o.Stdin,
+	}, final)
+}
+
+// StateUnprotect corresponds to `pulumi state unprotect`.
+//
+// # Unprotect resources in a stack's state
+//
+// This command clears the 'protect' bit on one or more resources, allowing those resources to be deleted.
+//
+// To see the list of URNs in a stack, use `pulumi stack --show-urns`.
+func (a *API) StateUnprotect(
+	ctx context.Context,
+	resourceUrn []string,
+	opts ...optstateunprotect.Option,
+) (base.CommandResult, error) {
+	o := optstateunprotect.Options{}
+	for _, opt := range opts {
+		opt(&o)
+	}
+
+	final := []string{"state", "unprotect"}
+
+	final = append(final, "--yes")
+
+	if o.All {
+		final = append(final, "--all")
+	}
+
+	if o.Color != "" {
+		final = append(final, "--color", fmt.Sprint(o.Color))
+	}
+
+	if o.DisableIntegrityChecking {
+		final = append(final, "--disable-integrity-checking")
+	}
+
+	if o.FullyQualifyStackNames {
+		final = append(final, "--fully-qualify-stack-names")
+	}
+
+	if o.Logflow {
+		final = append(final, "--logflow")
+	}
+
+	if o.Logtostderr {
+		final = append(final, "--logtostderr")
+	}
+
+	if o.Memprofilerate != 0 {
+		final = append(final, "--memprofilerate", fmt.Sprint(o.Memprofilerate))
+	}
+
+	if o.OtelTraces != "" {
+		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
+	}
+
+	if o.Profiling != "" {
+		final = append(final, "--profiling", fmt.Sprint(o.Profiling))
+	}
+
+	if o.Stack != "" {
+		final = append(final, "--stack", fmt.Sprint(o.Stack))
+	}
+
+	if o.Tracing != "" {
+		final = append(final, "--tracing", fmt.Sprint(o.Tracing))
+	}
+
+	if o.TracingHeader != "" {
+		final = append(final, "--tracing-header", fmt.Sprint(o.TracingHeader))
+	}
+
+	if o.Verbose != 0 {
+		final = append(final, "--verbose", fmt.Sprint(o.Verbose))
+	}
+
+	args := []string{}
+	for _, v := range resourceUrn {
+		args = append(args, fmt.Sprint(v))
+	}
+	if len(args) > 0 {
+		final = append(final, "--")
+		final = append(final, args...)
+	}
+
+	return a.run(ctx, base.BaseOptions{
+		Cwd:           o.Cwd,
+		AdditionalEnv: o.AdditionalEnv,
+		Stdout:        o.Stdout,
+		Stderr:        o.Stderr,
+		Stdin:         o.Stdin,
+	}, final)
+}
+
+// StateUntaint corresponds to `pulumi state untaint`.
+//
+// Untaint one or more resources in the stack's state.
+//
+// After running this, the resources will no longer be destroyed and recreated upon the next `pulumi up`.
+//
+// To see the list of URNs in a stack, use `pulumi stack --show-urns`.
+func (a *API) StateUntaint(
+	ctx context.Context,
+	resourceUrn []string,
+	opts ...optstateuntaint.Option,
+) (base.CommandResult, error) {
+	o := optstateuntaint.Options{}
+	for _, opt := range opts {
+		opt(&o)
+	}
+
+	final := []string{"state", "untaint"}
+
+	final = append(final, "--yes")
+
+	if o.All {
+		final = append(final, "--all")
+	}
+
+	if o.Color != "" {
+		final = append(final, "--color", fmt.Sprint(o.Color))
+	}
+
+	if o.DisableIntegrityChecking {
+		final = append(final, "--disable-integrity-checking")
+	}
+
+	if o.FullyQualifyStackNames {
+		final = append(final, "--fully-qualify-stack-names")
+	}
+
+	if o.Logflow {
+		final = append(final, "--logflow")
+	}
+
+	if o.Logtostderr {
+		final = append(final, "--logtostderr")
+	}
+
+	if o.Memprofilerate != 0 {
+		final = append(final, "--memprofilerate", fmt.Sprint(o.Memprofilerate))
+	}
+
+	if o.OtelTraces != "" {
+		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
+	}
+
+	if o.Profiling != "" {
+		final = append(final, "--profiling", fmt.Sprint(o.Profiling))
+	}
+
+	if o.Stack != "" {
+		final = append(final, "--stack", fmt.Sprint(o.Stack))
+	}
+
+	if o.Tracing != "" {
+		final = append(final, "--tracing", fmt.Sprint(o.Tracing))
+	}
+
+	if o.TracingHeader != "" {
+		final = append(final, "--tracing-header", fmt.Sprint(o.TracingHeader))
+	}
+
+	if o.Verbose != 0 {
+		final = append(final, "--verbose", fmt.Sprint(o.Verbose))
+	}
+
+	args := []string{}
+	for _, v := range resourceUrn {
+		args = append(args, fmt.Sprint(v))
+	}
+	if len(args) > 0 {
+		final = append(final, "--")
+		final = append(final, args...)
+	}
+
+	return a.run(ctx, base.BaseOptions{
+		Cwd:           o.Cwd,
+		AdditionalEnv: o.AdditionalEnv,
+		Stdout:        o.Stdout,
+		Stderr:        o.Stderr,
+		Stdin:         o.Stdin,
+	}, final)
+}
+
+// StateUpgrade corresponds to `pulumi state upgrade`.
+//
+// # Migrates the current backend to the latest supported version
+//
+// This only has an effect on DIY backends.
+func (a *API) StateUpgrade(
+	ctx context.Context,
+	opts ...optstateupgrade.Option,
+) (base.CommandResult, error) {
+	o := optstateupgrade.Options{}
+	for _, opt := range opts {
+		opt(&o)
+	}
+
+	final := []string{"state", "upgrade"}
+
+	final = append(final, "--yes")
+
+	if o.Color != "" {
+		final = append(final, "--color", fmt.Sprint(o.Color))
+	}
+
+	if o.DisableIntegrityChecking {
+		final = append(final, "--disable-integrity-checking")
+	}
+
+	if o.FullyQualifyStackNames {
+		final = append(final, "--fully-qualify-stack-names")
+	}
+
+	if o.Logflow {
+		final = append(final, "--logflow")
+	}
+
+	if o.Logtostderr {
+		final = append(final, "--logtostderr")
+	}
+
+	if o.Memprofilerate != 0 {
+		final = append(final, "--memprofilerate", fmt.Sprint(o.Memprofilerate))
+	}
+
+	if o.OtelTraces != "" {
+		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
+	}
+
+	if o.Profiling != "" {
+		final = append(final, "--profiling", fmt.Sprint(o.Profiling))
+	}
+
+	if o.Tracing != "" {
+		final = append(final, "--tracing", fmt.Sprint(o.Tracing))
+	}
+
+	if o.TracingHeader != "" {
+		final = append(final, "--tracing-header", fmt.Sprint(o.TracingHeader))
+	}
+
+	if o.Verbose != 0 {
+		final = append(final, "--verbose", fmt.Sprint(o.Verbose))
 	}
 
 	return a.run(ctx, base.BaseOptions{
