@@ -75,7 +75,7 @@ func TestEntries(t *testing.T) {
 		return property.New(map[string]property.Value{"key": property.New(key), "value": value})
 	}
 	list := func(entries ...property.Value) property.Value {
-		return property.New(entries)
+		return property.New(append([]property.Value{}, entries...))
 	}
 	values := evaluateLocals(t, `
 uniform = entries({"a" = 1, "b" = 2})
