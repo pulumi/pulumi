@@ -239,14 +239,7 @@ func (v Value) asArchiveMut() Archive { return asMut[Archive](v) }
 func (v Value) Secret() bool { return v.isSecret }
 
 // HasSecrets returns true if the Value or any nested Value is secret.
-func (v Value) HasSecrets() bool {
-	var hasSecret bool
-	v.visit(func(v Value) bool {
-		hasSecret = v.isSecret
-		return !hasSecret
-	})
-	return hasSecret
-}
+func (v Value) HasSecrets() bool { return v.any(Value.Secret) }
 
 // WithSecret produces a new [Value] identical to it's receiver except that it's secret
 // market is set to isSecret.
@@ -258,14 +251,7 @@ func (v Value) WithSecret(isSecret bool) Value {
 // HasComputed returns true if the Value or any nested Value is computed.
 //
 // To check if the receiver is itself computed, use [Value.IsComputed].
-func (v Value) HasComputed() bool {
-	var hasComputed bool
-	v.visit(func(v Value) bool {
-		hasComputed = v.IsComputed()
-		return !hasComputed
-	})
-	return hasComputed
-}
+func (v Value) HasComputed() bool { return v.any(Value.IsComputed) }
 
 // Dependencies returns the dependency set of v.
 //
