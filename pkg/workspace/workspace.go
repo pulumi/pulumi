@@ -110,6 +110,10 @@ func (pw *projectWorkspace) Settings() *Settings {
 func (pw *projectWorkspace) Save() error {
 	settingsFile := pw.settingsPath()
 
+	// We used to not follow symlinks when computing the settings
+	// file path.  If the settings file is present at the legacy
+	// path, delete it, as we'll write it to the correct location
+	// below.
 	if legacySettingsFile := pw.settingsPathFor(pw.project); legacySettingsFile != settingsFile {
 		err := os.Remove(legacySettingsFile)
 		if err != nil && !os.IsNotExist(err) {
