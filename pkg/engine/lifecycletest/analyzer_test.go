@@ -37,9 +37,10 @@ import (
 )
 
 type testRequiredPolicy struct {
-	name    string
-	version string
-	config  map[string]*json.RawMessage
+	name       string
+	version    string
+	config     map[string]*json.RawMessage
+	exceptions map[string]json.RawMessage
 }
 
 func (p *testRequiredPolicy) Name() string {
@@ -67,6 +68,10 @@ func (p *testRequiredPolicy) Config() map[string]*json.RawMessage {
 
 func (p *testRequiredPolicy) ResolveEnvironments(_ context.Context) (*ResolvedPolicyEnvironment, error) {
 	return nil, nil
+}
+
+func (p *testRequiredPolicy) Exceptions() map[string]json.RawMessage {
+	return p.exceptions
 }
 
 func NewRequiredPolicy(name, version string, config map[string]*json.RawMessage) RequiredPolicy {
@@ -1197,10 +1202,11 @@ type failingRequiredPolicy struct {
 	name string
 }
 
-func (p *failingRequiredPolicy) Name() string                        { return p.name }
-func (p *failingRequiredPolicy) Version() string                     { return "" }
-func (p *failingRequiredPolicy) LocalPath() (string, error)          { return "", nil }
-func (p *failingRequiredPolicy) Config() map[string]*json.RawMessage { return nil }
+func (p *failingRequiredPolicy) Name() string                           { return p.name }
+func (p *failingRequiredPolicy) Version() string                        { return "" }
+func (p *failingRequiredPolicy) LocalPath() (string, error)             { return "", nil }
+func (p *failingRequiredPolicy) Config() map[string]*json.RawMessage    { return nil }
+func (p *failingRequiredPolicy) Exceptions() map[string]json.RawMessage { return nil }
 
 func (p *failingRequiredPolicy) EnsureInstalled(
 	*plugin.Context, func(io.ReadCloser, int64) io.ReadCloser, io.Writer,

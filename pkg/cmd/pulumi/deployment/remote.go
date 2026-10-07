@@ -69,6 +69,7 @@ func ValidateUnsupportedRemoteFlags(
 	refresh string,
 	showConfig bool,
 	showPolicyRemediations bool,
+	showPolicyExceptions bool,
 	showReplacementSteps bool,
 	showSames bool,
 	showReads bool,
@@ -113,6 +114,9 @@ func ValidateUnsupportedRemoteFlags(
 	}
 	if showPolicyRemediations {
 		return errors.New("--show-policy-remediations is not supported with --remote")
+	}
+	if showPolicyExceptions {
+		return errors.New("--show-policy-exceptions is not supported with --remote")
 	}
 	if showReplacementSteps {
 		return errors.New("--show-replacement-steps is not supported with --remote")

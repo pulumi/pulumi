@@ -17,6 +17,8 @@ package analyzer
 import (
 	"encoding/json"
 	"fmt"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
@@ -173,7 +175,7 @@ func TestParsePolicyPackConfigSuccess(t *testing.T) {
 
 			result, _, err := parsePolicyPackConfig([]byte(test.JSON))
 			require.NoError(t, err)
-			assert.Equal(t, test.Expected, result)
+			assert.Equal(t, test.Expected, result.Config)
 		})
 	}
 }
@@ -266,12 +268,13 @@ func TestParsePolicyPackConfigWithEnvironments(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			config, envs, err := parsePolicyPackConfig([]byte(tt.json))
+			file, _, err := parsePolicyPackConfig([]byte(tt.json))
 			if tt.wantErr != "" {
 				assert.ErrorContains(t, err, tt.wantErr)
 				return
 			}
 			require.NoError(t, err)
+			config, envs := file.Config, file.Environments
 			assert.Equal(t, tt.wantEnvs, envs)
 			if config == nil {
 				assert.Equal(t, 0, tt.wantPolicies)
@@ -1290,4 +1293,65 @@ func TestReconcilePolicyPackConfigValidationErrors(t *testing.T) {
 			assert.ElementsMatch(t, test.ExpectedValidationErrors, validationErrors)
 		})
 	}
+}
+
+func TestParsePolicyPackConfigExtractsExceptions(t *testing.T) {
+	t.Parallel()
+
+	file, _, err := parsePolicyPackConfig([]byte(`{
+		"all": "mandatory",
+		"environments": ["policy/shared"],
+		"exceptions": {"a": {"policies": ["p"], "stacks": ["web/prod"], "reason": "r"}}
+	}`))
+	require.NoError(t, err)
+	assert.Equal(t, []string{"policy/shared"}, file.Environments)
+	assert.NotContains(t, file.Config, "exceptions")
+	assert.Contains(t, file.Config, "all")
+	assert.Equal(t, 1, file.Exceptions.Len())
+
+	file, _, err = parsePolicyPackConfig([]byte(`{"p": "advisory"}`))
+	require.NoError(t, err)
+	assert.Nil(t, file.Exceptions)
+}
+
+func TestLoadPolicyPackConfigFromFile(t *testing.T) {
+	t.Parallel()
+
+	file := filepath.Join(t.TempDir(), "config.json")
+	require.NoError(t, os.WriteFile(file, []byte(`{
+		"p": "advisory",
+		"environments": ["policy/shared"],
+		"exceptions": {"a": {"policies": ["p"], "stacks": ["web/prod"], "reason": "r"}}
+	}`), 0o600))
+
+	f, warnings, err := LoadPolicyPackConfigFromFile(file)
+	require.NoError(t, err)
+	assert.Empty(t, warnings)
+	assert.Equal(t, map[string]plugin.AnalyzerPolicyConfig{"p": {EnforcementLevel: apitype.Advisory}}, f.Config)
+	assert.Equal(t, []string{"policy/shared"}, f.Environments)
+	assert.Equal(t, 1, f.Exceptions.Len())
+}
+
+func TestLoadPolicyPackConfigFromFileExceptionErrorsAndWarnings(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	write := func(name, content string) string {
+		path := filepath.Join(dir, name)
+		require.NoError(t, os.WriteFile(path, []byte(content), 0o600))
+		return path
+	}
+
+	// A malformed exception in a local file is an error.
+	_, _, err := LoadPolicyPackConfigFromFile(write("bad.json",
+		`{"exceptions": {"a": {"policies": ["p"], "reason": "no targets"}}}`))
+	assert.ErrorContains(t, err, "at least one target")
+
+	// An exception with an unrecognized field is ignored, with a warning.
+	f, warnings, err := LoadPolicyPackConfigFromFile(write("unknown.json",
+		`{"exceptions": {"a": {"policies": ["p"], "stacks": ["web/prod"], "reason": "r", "tags": {}}}}`))
+	require.NoError(t, err)
+	assert.Equal(t, 0, f.Exceptions.Len())
+	require.Len(t, warnings, 1)
+	assert.Contains(t, warnings[0], "unrecognized fields (tags)")
 }

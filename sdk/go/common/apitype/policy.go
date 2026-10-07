@@ -99,6 +99,21 @@ type RequiredPolicy struct {
 
 	// ESC environment references to resolve for this policy pack.
 	Environments []string `json:"environments,omitempty"`
+
+	// The active policy exceptions for this Policy Pack, keyed by exception ID. Each value is a PolicyException.
+	Exceptions map[string]json.RawMessage `json:"exceptions,omitempty"`
+}
+
+// PolicyException excepts violations of the given policies on the given targets, so that they don't fail an operation.
+type PolicyException struct {
+	// The names of the policies within the Policy Pack that this exception applies to.
+	Policies []string `json:"policies"`
+	// Qualified stack names, as "<project>/<stack>". Every violation in these stacks matches.
+	Stacks []string `json:"stacks,omitempty"`
+	// Resource URNs. The root stack URN stands for stack policy violations not tied to a resource.
+	URNs []string `json:"urns,omitempty"`
+	// The justification for the exception.
+	Reason string `json:"reason"`
 }
 
 // Policy defines the metadata for an individual Policy within a Policy Pack.

@@ -19,6 +19,7 @@ import (
 	"cmp"
 	"fmt"
 	"io"
+	"maps"
 	"os"
 	"runtime"
 	"slices"
@@ -935,9 +936,19 @@ func (display *ProgressDisplay) printPolicies() bool {
 	for _, key := range policyKeys {
 		info := policyPackInfos[key]
 
+		// Split violations and excepted violations
+		var violations, excepted []engine.PolicyViolationEventPayload
+		for _, violation := range info.ViolationEvents {
+			if violation.Exception != nil {
+				excepted = append(excepted, violation)
+			} else {
+				violations = append(violations, violation)
+			}
+		}
+
 		// Print the policy pack status and name/version as a header:
 		passFailWarn := "✅"
-		for _, violation := range info.ViolationEvents {
+		for _, violation := range violations {
 			if violation.EnforcementLevel == apitype.Mandatory {
 				passFailWarn = "❌"
 				hadMandatoryViolations = true
@@ -1003,7 +1014,7 @@ func (display *ProgressDisplay) printPolicies() bool {
 
 		// Next up, display all violations. Sort policy events by: enforcement level, severity, policy name,
 		// and finally the URN of the resource.
-		slices.SortStableFunc(info.ViolationEvents, func(a, b engine.PolicyViolationEventPayload) int {
+		slices.SortStableFunc(violations, func(a, b engine.PolicyViolationEventPayload) int {
 			if d := cmp.Compare(enforcementRank(a.EnforcementLevel), enforcementRank(b.EnforcementLevel)); d != 0 {
 				return d
 			}
@@ -1015,10 +1026,22 @@ func (display *ProgressDisplay) printPolicies() bool {
 			}
 			return cmp.Compare(string(a.ResourceURN), string(b.ResourceURN))
 		})
-		for _, policyEvent := range info.ViolationEvents {
+		for _, policyEvent := range violations {
 			// Print the individual policy event.
 			policyLine := renderDiffPolicyViolationEvent(
 				policyEvent, subItemIndent+"- ", subItemIndent+"  ", display.opts)
+			policyLine = strings.TrimSuffix(policyLine, "\n")
+			display.println(policyLine)
+		}
+
+		// Finally, summarize the excepted violations: one line per policy, in policy name order.
+		exceptedByPolicy := make(map[string][]engine.PolicyViolationEventPayload)
+		for _, e := range excepted {
+			exceptedByPolicy[e.PolicyName] = append(exceptedByPolicy[e.PolicyName], e)
+		}
+		for _, policy := range slices.Sorted(maps.Keys(exceptedByPolicy)) {
+			policyLine := renderDiffExceptedPolicyViolations(
+				exceptedByPolicy[policy], subItemIndent+"· ", subItemIndent+"    ", display.opts)
 			policyLine = strings.TrimSuffix(policyLine, "\n")
 			display.println(policyLine)
 		}

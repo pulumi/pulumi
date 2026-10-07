@@ -648,3 +648,68 @@ func TestSystemEventDoesNotDeadlockMessageRenderer(t *testing.T) {
 		t.Fatal("display deadlocked processing system event with messageRenderer")
 	}
 }
+
+func TestProgressPoliciesExceptedViolations(t *testing.T) {
+	t.Parallel()
+
+	resA := resource.NewURN("stack", "project", "", "pkgA:index:typA", "resA")
+	rootStack := resource.DefaultRootStackURN("stack", "project")
+	violation := func(urn resource.URN, policy string, level apitype.EnforcementLevel,
+		exception *apitype.PolicyEventException,
+	) engine.Event {
+		return engine.NewEvent(engine.PolicyViolationEventPayload{
+			ResourceURN:       urn,
+			Message:           policy + " failed",
+			PolicyName:        policy,
+			PolicyPackName:    "pack",
+			PolicyPackVersion: "1.0.0",
+			EnforcementLevel:  level,
+			Exception:         exception,
+		})
+	}
+
+	run := func(t *testing.T, showExceptions bool) string {
+		eventChannel, doneChannel := make(chan engine.Event), make(chan bool)
+		var stdout, stderr bytes.Buffer
+		go ShowProgressEvents(
+			"test", "update", tokens.MustParseStackName("stack"), "project", "", eventChannel, doneChannel,
+			Options{
+				Color:                colors.Never,
+				Stdout:               &stdout,
+				Stderr:               &stderr,
+				DeterministicOutput:  true,
+				ShowPolicyExceptions: showExceptions,
+			}, false)
+
+		eventChannel <- violation(resA, "versioning", apitype.Advisory, nil)
+		eventChannel <- violation(resA, "public-read", apitype.Mandatory,
+			&apitype.PolicyEventException{ID: "EXC-42", Reason: "Log target bucket"})
+		eventChannel <- violation(rootStack, "public-read", apitype.Mandatory,
+			&apitype.PolicyEventException{ID: "EXC-7", Reason: "Legacy stack"})
+		eventChannel <- engine.NewEvent(engine.SummaryEventPayload{PolicyPacks: map[string]string{"pack": "1.0.0"}})
+		close(eventChannel)
+		<-doneChannel
+		return stdout.String()
+	}
+
+	t.Run("collapsed", func(t *testing.T) {
+		t.Parallel()
+		// The pack's status reflects only the advisory violation, and the excepted ones are summarized.
+		assert.Contains(t, run(t, false), ""+
+			"Policies:\n"+
+			"    ⚠️ pack@v1.0.0\n"+
+			"        - [advisory]  versioning  (pkgA:index:typA: resA)\n"+
+			"          versioning failed\n"+
+			"        · public-read  excepted for 2 resources\n\n")
+	})
+
+	t.Run("expanded", func(t *testing.T) {
+		t.Parallel()
+		assert.Contains(t, run(t, true), ""+
+			"        · public-read (mandatory)  excepted for 2 resources\n"+
+			"            EXC-42: Log target bucket\n"+
+			"              - pkgA:index:typA: resA\n"+
+			"            EXC-7: Legacy stack\n"+
+			"              - stack: project/stack\n\n")
+	})
+}

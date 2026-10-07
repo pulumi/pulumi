@@ -393,7 +393,11 @@ func describeEngineEvent(ev apitype.EngineEvent) (string, string) {
 		return "resource-op-failed", fmt.Sprintf("%s %s", m.Op, m.URN)
 	case ev.PolicyEvent != nil:
 		p := ev.PolicyEvent
-		return "policy", fmt.Sprintf("%s/%s: %s", p.PolicyPackName, p.PolicyName, plain(p.Message))
+		detail := fmt.Sprintf("%s/%s: %s", p.PolicyPackName, p.PolicyName, plain(p.Message))
+		if p.Exception != nil {
+			detail += fmt.Sprintf(" (excepted: %s)", p.Exception.ID)
+		}
+		return "policy", detail
 	case ev.PolicyRemediationEvent != nil:
 		p := ev.PolicyRemediationEvent
 		return "policy-remediation", fmt.Sprintf("%s/%s on %s", p.PolicyPackName, p.PolicyName, p.ResourceURN)

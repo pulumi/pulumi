@@ -19,8 +19,10 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"maps"
 	"math"
 	"os"
+	"slices"
 	"sort"
 	"strings"
 	"time"
@@ -153,7 +155,12 @@ func RenderDiffEvent(event engine.Event, resourcesErrored int,
 	case engine.PolicyRemediationEvent:
 		return renderDiffPolicyRemediationEvent(event.Payload().(engine.PolicyRemediationEventPayload), "", true, opts)
 	case engine.PolicyViolationEvent:
-		return renderDiffPolicyViolationEvent(event.Payload().(engine.PolicyViolationEventPayload), "", "", opts)
+		payload := event.Payload().(engine.PolicyViolationEventPayload)
+		// Policy exceptions are only summarized under "Policies:"
+		if payload.Exception != nil {
+			return ""
+		}
+		return renderDiffPolicyViolationEvent(payload, "", "", opts)
 
 	default:
 		contract.Failf("unknown event type '%s'", event.Type)
@@ -264,6 +271,63 @@ func renderDiffPolicyViolationEvent(payload engine.PolicyViolationEventPayload,
 	message = strings.ReplaceAll(message, "\n", "\n"+linePrefix)
 	policyLine = fmt.Sprintf("%s%s%s", policyLine, linePrefix, message)
 	return opts.Color.Colorize(policyLine + "\n")
+}
+
+// renderDiffExceptedPolicyViolations renders the excepted violations of one policy.
+// With ShowPolicyExceptions, the line is followed by each exception and the resources it covered.
+func renderDiffExceptedPolicyViolations(payloads []engine.PolicyViolationEventPayload,
+	prefix string, linePrefix string, opts Options,
+) string {
+	contract.Requiref(len(payloads) > 0, "payloads", "must not be empty")
+
+	var level string
+	if opts.ShowPolicyExceptions {
+		level = fmt.Sprintf(" (%s)", payloads[0].EnforcementLevel)
+	}
+	count := len(uniquePolicyViolationURNs(payloads))
+	var policyLines strings.Builder
+	fmt.Fprintf(&policyLines, "%s%s%s%s  excepted for %d %s%s\n",
+		prefix, colors.BrightBlack, payloads[0].PolicyName, level,
+		count, english.PluralWord(count, "resource", ""), colors.Reset)
+
+	if opts.ShowPolicyExceptions {
+		byException := make(map[string][]engine.PolicyViolationEventPayload)
+		for _, p := range payloads {
+			byException[p.Exception.ID] = append(byException[p.Exception.ID], p)
+		}
+		for _, id := range slices.Sorted(maps.Keys(byException)) {
+			exceptionPayloads := byException[id]
+			fmt.Fprintf(&policyLines, "%s%s%s: %s%s\n",
+				linePrefix, colors.BrightBlack, id, exceptionPayloads[0].Exception.Reason, colors.Reset)
+			for _, urn := range uniquePolicyViolationURNs(exceptionPayloads) {
+				fmt.Fprintf(&policyLines, "%s  %s- %s%s\n",
+					linePrefix, colors.BrightBlack, exceptedResourceText(urn, opts), colors.Reset)
+			}
+		}
+	}
+	return opts.Color.Colorize(policyLines.String())
+}
+
+// uniquePolicyViolationURNs returns the sorted, distinct resources of the given policy violations.
+func uniquePolicyViolationURNs(payloads []engine.PolicyViolationEventPayload) []resource.URN {
+	urns := make([]resource.URN, 0, len(payloads))
+	for _, p := range payloads {
+		urns = append(urns, p.ResourceURN)
+	}
+	slices.Sort(urns)
+	return slices.Compact(urns)
+}
+
+// exceptedResourceText renders the target of an excepted violation as "type: name", or as "stack: project/stack"
+// for a stack policy violation that isn't tied to a resource.
+func exceptedResourceText(urn resource.URN, opts Options) string {
+	if !urn.IsValid() {
+		return "stack"
+	}
+	if urn.QualifiedType() == resource.RootStackType {
+		return fmt.Sprintf("stack: %s/%s", urn.Project(), urn.Stack())
+	}
+	return fmt.Sprintf("%s: %s", urn.Type().DisplayName(), resourceText(urn, opts))
 }
 
 func renderStdoutColorEvent(payload engine.StdoutEventPayload, opts Options) string {

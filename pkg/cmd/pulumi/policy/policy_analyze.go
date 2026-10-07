@@ -63,6 +63,7 @@ func newPolicyAnalyzeCmd(
 	var stackName string
 	var file string
 	var diffDisplay bool
+	var showPolicyExceptions bool
 	var jsonDisplay bool
 	var policyPackPaths []string
 	var policyPackConfigs []string
@@ -200,7 +201,7 @@ func newPolicyAnalyzeCmd(
 			events, finish, err := newAnalyzeEvents(
 				cmd.Context(),
 				cmd.OutOrStdout(), cmd.ErrOrStderr(), cmdutil.GetGlobalColorization(),
-				diffDisplay, jsonDisplay, stackRef, analyzers)
+				diffDisplay, jsonDisplay, showPolicyExceptions, stackRef, analyzers)
 			if err != nil {
 				return fmt.Errorf("configuring analysis display: %w", err)
 			}
@@ -230,6 +231,8 @@ func newPolicyAnalyzeCmd(
 		"Display policy diagnostics as a rich diff instead of grouped progress output")
 	cmd.Flags().BoolVarP(&jsonDisplay, "json", "j", false,
 		"Serialize policy analysis events as JSON")
+	cmd.Flags().BoolVar(&showPolicyExceptions, "show-policy-exceptions", false,
+		"Show the exceptions and resources behind excepted policy violations instead of a summary")
 	cmd.Flags().StringArrayVar(&policyPackPaths, "policy-pack", []string{},
 		"Path to a policy pack to run during analysis")
 	cmd.Flags().StringArrayVar(&policyPackConfigs, "policy-pack-config", []string{},
@@ -304,6 +307,7 @@ func newAnalyzeEvents(
 	colorization colors.Colorization,
 	diffDisplay bool,
 	jsonDisplay bool,
+	showPolicyExceptions bool,
 	stackRef backend.StackReference,
 	analyzers []plugin.Analyzer,
 ) (*analyzeEvents, func(apitype.OperationResult), error) {
@@ -350,6 +354,7 @@ func newAnalyzeEvents(
 		Color:                  colorization,
 		Type:                   displayType,
 		ShowPolicyRemediations: true,
+		ShowPolicyExceptions:   showPolicyExceptions,
 		IsInteractive:          cmdutil.Interactive(),
 		JSONDisplay:            jsonDisplay,
 		Stdout:                 out,
@@ -427,6 +432,7 @@ func (e *analyzeEvents) OnPolicyViolation(urn resource.URN, d plugin.AnalyzeDiag
 		PolicyPackVersion: d.PolicyPackVersion,
 		EnforcementLevel:  d.EnforcementLevel,
 		Severity:          d.Severity,
+		Exception:         d.Exception,
 	}))
 }
 
