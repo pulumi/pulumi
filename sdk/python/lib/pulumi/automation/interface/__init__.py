@@ -954,6 +954,258 @@ class API:
             on_error=on_error,
         )
 
+    def preview(
+        self,
+        *,
+        color: Optional[str] = None,
+        disable_integrity_checking: bool = False,
+        fully_qualify_stack_names: bool = False,
+        logflow: bool = False,
+        logtostderr: bool = False,
+        memprofilerate: Optional[int] = None,
+        otel_traces: Optional[str] = None,
+        profiling: Optional[str] = None,
+        tracing: Optional[str] = None,
+        tracing_header: Optional[str] = None,
+        verbose: Optional[int] = None,
+        attach_debugger: Optional[list[str]] = None,
+        client: Optional[str] = None,
+        config: Optional[list[str]] = None,
+        config_file: Optional[str] = None,
+        config_path: bool = False,
+        copilot: bool = False,
+        debug: bool = False,
+        diff: bool = False,
+        exclude: Optional[list[str]] = None,
+        exclude_dependents: bool = False,
+        exec_agent: Optional[str] = None,
+        exec_kind: Optional[str] = None,
+        expect_no_changes: bool = False,
+        ignore_protect: bool = False,
+        import_file: Optional[str] = None,
+        json: bool = False,
+        message: Optional[str] = None,
+        neo: bool = False,
+        neo_task_on_failure: bool = False,
+        output: Optional[str] = None,
+        override_env: Optional[list[str]] = None,
+        parallel: Optional[int] = None,
+        policy_pack: Optional[list[str]] = None,
+        policy_pack_config: Optional[list[str]] = None,
+        refresh: Optional[str] = None,
+        replace: Optional[list[str]] = None,
+        run_program: bool = False,
+        save_plan: Optional[str] = None,
+        show_config: bool = False,
+        show_full_output: bool = False,
+        show_policy_remediations: bool = False,
+        show_reads: bool = False,
+        show_replacement_steps: bool = False,
+        show_sames: bool = False,
+        show_secrets: bool = False,
+        skip_config_validation: bool = False,
+        skip_plugin_pre_install: bool = False,
+        stack: Optional[str] = None,
+        suppress_outputs: bool = False,
+        suppress_permalink: Optional[str] = None,
+        suppress_progress: bool = False,
+        target: Optional[list[str]] = None,
+        target_dependents: bool = False,
+        target_replace: Optional[list[str]] = None,
+        urns: bool = False,
+        cwd: Optional[str] = None,
+        additional_env: Optional[Mapping[str, str]] = None,
+        on_output: Optional[Callable[[str], Any]] = None,
+        on_error: Optional[Callable[[str], Any]] = None,
+    ):
+        """Run `pulumi preview`.
+
+        :param color: Colorize output. Choices are: always, never, raw, auto
+        :param disable_integrity_checking: Disable integrity checking of checkpoint files
+        :param fully_qualify_stack_names: Show fully-qualified stack names
+        :param logflow: Flow log settings to child processes (like plugins)
+        :param logtostderr: Log to stderr instead of to files
+        :param memprofilerate: Enable more precise (and expensive) memory allocation profiles by setting runtime.MemProfileRate
+        :param otel_traces: Export OpenTelemetry traces to the specified endpoint. Use file:// for local JSON files, grpc:// or https:// for remote collectors
+        :param profiling: Emit CPU and memory profiles and an execution trace to '[filename].[pid].{cpu,mem,trace}', respectively
+        :param tracing: Emit tracing to the specified endpoint. Use the `file:` scheme to write tracing data to a local file
+        :param tracing_header: Include the tracing header with the given contents.
+        :param verbose: Enable verbose logging (e.g., v=3); anything >3 is very verbose
+        :param attach_debugger: Enable the ability to attach a debugger to the program and source based plugins being executed. Can limit debug type to 'program', 'plugins', 'plugin:<name>' or 'all'.
+        :param client: The address of an existing language runtime host to connect to
+        :param config: Config to use during the preview and save to the stack config file
+        :param config_file: Use the configuration values in the specified file rather than detecting the file name
+        :param config_path: Config keys contain a path to a property in a map or list to set
+        :param copilot: [DEPRECATED] Use --neo instead. Enable Pulumi Neo's assistance for improved CLI experience and insights (can also be set with PULUMI_COPILOT environment variable)
+        :param debug: Print detailed debugging output during resource operations
+        :param diff: Display operation as a rich diff showing the overall change
+        :param exclude: Specify a resource URN to ignore. These resources will not be updated. Multiple resources can be specified using --exclude urn1 --exclude urn2. Wildcards (*, **) are also supported
+        :param exclude_dependents: Allow ignoring of dependent targets discovered but not specified in --exclude list
+        :param expect_no_changes: Return an error if any changes are proposed by this preview
+        :param ignore_protect: Ignore the protect resource option for this operation, previewing the deletion or replacement of protected resources instead of failing
+        :param import_file: Save any creates seen during the preview into an import file to use with 'pulumi import'
+        :param json: Serialize the preview diffs, operations, and overall output as JSON. Set PULUMI_ENABLE_STREAMING_JSON_PREVIEW to stream JSON events instead.
+        :param message: Optional message to associate with the preview operation
+        :param neo: Enable Pulumi Neo's assistance for improved CLI experience and insights (can also be set with PULUMI_NEO environment variable)
+        :param neo_task_on_failure: Start a Neo task to help debug errors that occur during the operation
+        :param output: Output format. Supported values are: default, json
+        :param override_env: [EXPERIMENTAL] Override an imported environment for this run only, as <env>=<replacement>; repeatable
+        :param parallel: Allow P resource operations to run in parallel at once (1 for no parallelism).
+        :param policy_pack: Run one or more policy packs as part of this update
+        :param policy_pack_config: Path to JSON file containing the config for the policy pack of the corresponding "--policy-pack" flag
+        :param refresh: Refresh the state of the stack's resources before this update
+        :param replace: Specify resources to replace. Multiple resources can be specified using --replace urn1 --replace urn2
+        :param run_program: Run the program to determine up-to-date state for providers to refresh resources, this only applies if --refresh is set
+        :param save_plan: [PREVIEW] Save the operations proposed by the preview to a plan file at the given path
+        :param show_config: Show configuration keys and variables
+        :param show_full_output: Display full length of inputs & outputs
+        :param show_policy_remediations: Show per-resource policy remediation details instead of a summary
+        :param show_reads: Show resources that are being read in, alongside those being managed directly in the stack
+        :param show_replacement_steps: Show detailed resource replacement creates and deletes instead of a single step
+        :param show_sames: Show resources that needn't be updated because they haven't changed, alongside those that do
+        :param show_secrets: Show secrets in plaintext in the CLI output, if used with --save-plan the secrets will also be shown in the plan file. Defaults to `false`
+        :param skip_config_validation: Skip validation of stack config values against the project config schema
+        :param skip_plugin_pre_install: Skip the up-front provider plugin install step; missing plugins are installed lazily by the engine
+        :param stack: The name of the stack to operate on. Defaults to the current stack
+        :param suppress_outputs: Suppress display of stack outputs (in case they contain sensitive values)
+        :param suppress_permalink: Suppress display of the state permalink
+        :param suppress_progress: Suppress display of periodic progress dots
+        :param target: Specify a single resource URN to update. Other resources will not be updated. Multiple resources can be specified using --target urn1 --target urn2
+        :param target_dependents: Allow updating of dependent targets discovered but not specified in --target list
+        :param target_replace: Specify a single resource URN to replace. Other resources will not be updated. Shorthand for --target urn --replace urn.
+        :param urns: Display full URNs instead of short resource names
+        :param cwd: Working directory to run the command in.
+        :param additional_env: Additional environment variables to set when running the command.
+        :param on_output: A callback to invoke when the command outputs stdout data.
+        :param on_error: A callback to invoke when the command outputs stderr data."""
+        __final = []
+        __final.append("preview")
+        __flags = []
+        if color is not None:
+            __flags.extend(["--color", str(color)])
+        if disable_integrity_checking:
+            __flags.append("--disable-integrity-checking")
+        if fully_qualify_stack_names:
+            __flags.append("--fully-qualify-stack-names")
+        if logflow:
+            __flags.append("--logflow")
+        if logtostderr:
+            __flags.append("--logtostderr")
+        if memprofilerate is not None:
+            __flags.extend(["--memprofilerate", str(memprofilerate)])
+        if otel_traces is not None:
+            __flags.extend(["--otel-traces", str(otel_traces)])
+        if profiling is not None:
+            __flags.extend(["--profiling", str(profiling)])
+        if tracing is not None:
+            __flags.extend(["--tracing", str(tracing)])
+        if tracing_header is not None:
+            __flags.extend(["--tracing-header", str(tracing_header)])
+        if verbose is not None:
+            __flags.extend(["--verbose", str(verbose)])
+        for __item in attach_debugger or []:
+            __flags.extend(["--attach-debugger", str(__item)])
+        if client is not None:
+            __flags.extend(["--client", str(client)])
+        for __item in config or []:
+            __flags.extend(["--config", str(__item)])
+        if config_file is not None:
+            __flags.extend(["--config-file", str(config_file)])
+        if config_path:
+            __flags.append("--config-path")
+        if copilot:
+            __flags.append("--copilot")
+        if debug:
+            __flags.append("--debug")
+        if diff:
+            __flags.append("--diff")
+        for __item in exclude or []:
+            __flags.extend(["--exclude", str(__item)])
+        if exclude_dependents:
+            __flags.append("--exclude-dependents")
+        if exec_agent is not None:
+            __flags.extend(["--exec-agent", str(exec_agent)])
+        if exec_kind is not None:
+            __flags.extend(["--exec-kind", str(exec_kind)])
+        if expect_no_changes:
+            __flags.append("--expect-no-changes")
+        if ignore_protect:
+            __flags.append("--ignore-protect")
+        if import_file is not None:
+            __flags.extend(["--import-file", str(import_file)])
+        if json:
+            __flags.append("--json")
+        if message is not None:
+            __flags.extend(["--message", str(message)])
+        if neo:
+            __flags.append("--neo")
+        if neo_task_on_failure:
+            __flags.append("--neo-task-on-failure")
+        if output is not None:
+            __flags.extend(["--output", str(output)])
+        for __item in override_env or []:
+            __flags.extend(["--override-env", str(__item)])
+        if parallel is not None:
+            __flags.extend(["--parallel", str(parallel)])
+        for __item in policy_pack or []:
+            __flags.extend(["--policy-pack", str(__item)])
+        for __item in policy_pack_config or []:
+            __flags.extend(["--policy-pack-config", str(__item)])
+        if refresh is not None:
+            __flags.extend(["--refresh", str(refresh)])
+        for __item in replace or []:
+            __flags.extend(["--replace", str(__item)])
+        if run_program:
+            __flags.append("--run-program")
+        if save_plan is not None:
+            __flags.extend(["--save-plan", str(save_plan)])
+        if show_config:
+            __flags.append("--show-config")
+        if show_full_output:
+            __flags.append("--show-full-output")
+        if show_policy_remediations:
+            __flags.append("--show-policy-remediations")
+        if show_reads:
+            __flags.append("--show-reads")
+        if show_replacement_steps:
+            __flags.append("--show-replacement-steps")
+        if show_sames:
+            __flags.append("--show-sames")
+        if show_secrets:
+            __flags.append("--show-secrets")
+        if skip_config_validation:
+            __flags.append("--skip-config-validation")
+        if skip_plugin_pre_install:
+            __flags.append("--skip-plugin-pre-install")
+        if stack is not None:
+            __flags.extend(["--stack", str(stack)])
+        if suppress_outputs:
+            __flags.append("--suppress-outputs")
+        if suppress_permalink is not None:
+            __flags.extend(["--suppress-permalink", str(suppress_permalink)])
+        if suppress_progress:
+            __flags.append("--suppress-progress")
+        for __item in target or []:
+            __flags.extend(["--target", str(__item)])
+        if target_dependents:
+            __flags.append("--target-dependents")
+        for __item in target_replace or []:
+            __flags.extend(["--target-replace", str(__item)])
+        if urns:
+            __flags.append("--urns")
+        __final.extend(__flags)
+        __arguments: list[str] = []
+        if __arguments:
+            __final.append("--")
+            __final.extend(__arguments)
+        return self._run(
+            __final,
+            cwd=cwd,
+            additional_env=additional_env,
+            on_output=on_output,
+            on_error=on_error,
+        )
+
     def version(
         self,
         *,
