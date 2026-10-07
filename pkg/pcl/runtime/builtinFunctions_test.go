@@ -113,6 +113,36 @@ emptyList = entries(range(0))
 	}, values)
 }
 
+// TestLookup checks that lookup returns the default unchanged when the key is absent. The conditional
+// evaluates to a cty map whose element type the default does not convert to.
+func TestLookup(t *testing.T) {
+	t.Parallel()
+
+	bools := func(bs ...bool) property.Value {
+		values := make([]property.Value, len(bs))
+		for i, b := range bs {
+			values[i] = property.New(b)
+		}
+		return property.New(values)
+	}
+	values := evaluateLocals(t, `
+present = lookup((true
+  ? {for k, v in {"a" = [false, false]} : k => v}
+  : {for i, x in [false] : "k${i}" => [false] if false}), "a", [true])
+absent = lookup((true
+  ? {for k, v in {"a" = [false, false]} : k => v}
+  : {for i, x in [false] : "k${i}" => [false] if false}), "b", [true])
+objectPresent = lookup({"a" = 1}, "a", "x")
+objectAbsent = lookup({"a" = 1}, "b", "x")
+`)
+	assert.Equal(t, map[string]property.Value{
+		"present":       bools(false, false),
+		"absent":        bools(true),
+		"objectPresent": property.New(1.0),
+		"objectAbsent":  property.New("x"),
+	}, values)
+}
+
 func TestRange(t *testing.T) {
 	t.Parallel()
 
