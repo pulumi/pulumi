@@ -687,7 +687,7 @@ func exceptedAnalyzer(t *testing.T) plugin.Analyzer {
 	exceptions, warnings, err := resourceanalyzer.ParsePolicyExceptionsBlock(json.RawMessage(`{
 		"EXC-42": {
 			"policies": ["test-policy"],
-			"urns": ["urn:pulumi:stack::project::pkg:index:MyResource::res"],
+			"resources": [{"urn": "urn:pulumi:stack::project::pkg:index:MyResource::res"}],
 			"reason": "Needed for the CDN"
 		}
 	}`), true)

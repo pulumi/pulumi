@@ -15,6 +15,7 @@
 package lifecycletest
 
 import (
+	"context"
 	"encoding/json"
 	"testing"
 
@@ -30,6 +31,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 // policyExceptionTest runs an update (or a preview) of a program that registers resA and resB against a
@@ -147,7 +149,7 @@ func TestPolicyExceptionExceptsResourceViolations(t *testing.T) {
 	t.Parallel()
 
 	exceptions := exceptionsJSON(t, `{
-		"EXC-1": {"policies": ["always-fails"], "urns": ["`+string(resAURN)+`"], "reason": "resA is special"},
+		"EXC-1": {"policies": ["always-fails"], "resources": [{"urn": "`+string(resAURN)+`"}], "reason": "resA is special"},
 		"EXC-2": {"policies": ["always-fails"], "stacks": ["web/prod"], "reason": "the whole stack"}
 	}`)
 	for _, dryRun := range []bool{false, true} {
@@ -159,7 +161,7 @@ func TestPolicyExceptionExceptsResourceViolations(t *testing.T) {
 			assert.Equal(t, apitype.Mandatory, v.EnforcementLevel)
 			got[v.ResourceURN] = v.Exception
 		}
-		// A URN match beats a stack match.
+		// When both exceptions match, the lowest ID wins.
 		assert.Equal(t, map[resource.URN]*apitype.PolicyEventException{
 			resAURN: {ID: "EXC-1", Reason: "resA is special"},
 			resBURN: {ID: "EXC-2", Reason: "the whole stack"},
@@ -172,7 +174,7 @@ func TestPolicyExceptionPartialCoverageStillFails(t *testing.T) {
 	t.Parallel()
 
 	exceptions := exceptionsJSON(t, `{
-		"EXC-1": {"policies": ["always-fails"], "urns": ["`+string(resAURN)+`"], "reason": "resA is special"}
+		"EXC-1": {"policies": ["always-fails"], "resources": [{"urn": "`+string(resAURN)+`"}], "reason": "resA is special"}
 	}`)
 	violations, err := policyExceptionTest(t, exceptions, false, false)
 	assert.Error(t, err)
@@ -205,7 +207,7 @@ func TestPolicyExceptionExceptsStackViolation(t *testing.T) {
 	rootStackURN := resource.DefaultRootStackURN("prod", "web")
 	for _, target := range []string{
 		`"stacks": ["web/prod"]`,
-		`"urns": ["` + string(rootStackURN) + `"]`,
+		`"resources": [{"urn": "` + string(rootStackURN) + `"}]`,
 	} {
 		exceptions := exceptionsJSON(t, `{"EXC-1": {"policies": ["always-fails"], `+target+`, "reason": "r"}}`)
 		violations, err := policyExceptionTest(t, exceptions, true, false)
@@ -232,4 +234,124 @@ func TestPolicyExceptionMalformedFromServiceIgnored(t *testing.T) {
 	for _, v := range violations {
 		assert.Nil(t, v.Exception)
 	}
+}
+
+// propertyExceptionTest runs an update of a program that registers resA (env: dev) and resB (env: prod). The
+// provider adds an output-only "arn". The pack's resource policy and stack policy each fail for resA only; the stack
+// policy reports its violation against resA's URN. It returns the violations and the update's error.
+func propertyExceptionTest(t *testing.T, exceptions map[string]json.RawMessage) ([]PolicyViolationEventPayload, error) {
+	t.Helper()
+
+	failsForDev := func(env property.Value) []plugin.AnalyzeDiagnostic {
+		if !env.IsString() || env.AsString() != "dev" {
+			return nil
+		}
+		return []plugin.AnalyzeDiagnostic{{
+			PolicyName: "res-policy", PolicyPackName: "analyzerA", Message: "failed", EnforcementLevel: apitype.Mandatory,
+		}}
+	}
+	loaders := []*deploytest.PluginLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					outputs := req.Properties.Set("arn", property.New("arn:"+req.URN.Name()))
+					return plugin.CreateResponse{ID: "id", Properties: outputs, Status: resource.StatusOK}, nil
+				},
+			}, nil
+		}),
+		deploytest.NewAnalyzerLoader("analyzerA", func(_ *plugin.PolicyAnalyzerOptions) (plugin.Analyzer, error) {
+			return &deploytest.Analyzer{
+				Info: plugin.AnalyzerInfo{
+					Name: "analyzerA",
+					Policies: []plugin.AnalyzerPolicyInfo{
+						{Name: "res-policy", EnforcementLevel: apitype.Mandatory},
+						{Name: "stack-policy", EnforcementLevel: apitype.Mandatory},
+					},
+				},
+				AnalyzeF: func(r plugin.AnalyzerResource) (plugin.AnalyzeResponse, error) {
+					return plugin.AnalyzeResponse{Diagnostics: failsForDev(r.Properties.Get("env"))}, nil
+				},
+				AnalyzeStackF: func(rs []plugin.AnalyzerStackResource) (plugin.AnalyzeResponse, error) {
+					var diags []plugin.AnalyzeDiagnostic
+					for _, r := range rs {
+						for _, d := range failsForDev(r.Properties.Get("env")) {
+							d.PolicyName, d.URN = "stack-policy", r.URN
+							diags = append(diags, d)
+						}
+					}
+					return plugin.AnalyzeResponse{Diagnostics: diags}, nil
+				},
+			}, nil
+		}, deploytest.WithGrpc),
+	}
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		for name, env := range map[string]string{"resA": "dev", "resB": "prod"} {
+			_, err := monitor.RegisterResource("pkgA:m:typA", name, true, deploytest.ResourceOptions{
+				Inputs: resource.PropertyMap{"env": resource.NewProperty(env)},
+			})
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
+
+	p := &lt.TestPlan{
+		Project: "web",
+		Stack:   "prod",
+		Options: lt.TestUpdateOptions{
+			T:                t,
+			SkipDisplayTests: true,
+			UpdateOptions: UpdateOptions{
+				RequiredPolicies: []RequiredPolicy{&testRequiredPolicy{name: "analyzerA", exceptions: exceptions}},
+			},
+			HostF: hostF,
+		},
+	}
+
+	var violations []PolicyViolationEventPayload
+	validate := func(_ workspace.Project, _ deploy.Target, _ JournalEntries, events []Event, err error) error {
+		for _, e := range events {
+			if e.Type == PolicyViolationEvent {
+				violations = append(violations, e.Payload().(PolicyViolationEventPayload))
+			}
+		}
+		return err
+	}
+	_, err := lt.TestOp(Update).Run(p.GetProject(), p.GetTarget(t, nil), p.Options, false, p.BackendClient, validate)
+	return violations, err
+}
+
+// A resource selector's properties are matched against what the policy saw: inputs for a resource policy, and
+// outputs for a stack policy.
+func TestPolicyExceptionMatchesProperties(t *testing.T) {
+	t.Parallel()
+
+	t.Run("inputs for resource policies, outputs for stack policies", func(t *testing.T) {
+		t.Parallel()
+		violations, err := propertyExceptionTest(t, exceptionsJSON(t, `{
+			"by-input": {"policies": ["res-policy"], "resources": [{"properties": {"env": "dev"}}], "reason": "inputs"},
+			"by-output": {"policies": ["stack-policy"], "resources": [{"properties": {"arn": "arn:res*"}}], "reason": "outputs"}
+		}`))
+		require.NoError(t, err)
+
+		got := map[string]string{}
+		for _, v := range violations {
+			require.NotNil(t, v.Exception, "%s on %s", v.PolicyName, v.ResourceURN)
+			got[v.PolicyName+" "+v.ResourceURN.Name()] = v.Exception.ID
+		}
+		assert.Equal(t, map[string]string{"res-policy resA": "by-input", "stack-policy resA": "by-output"}, got)
+	})
+
+	t.Run("an output-only property never matches a resource policy", func(t *testing.T) {
+		t.Parallel()
+		violations, err := propertyExceptionTest(t, exceptionsJSON(t, `{
+			"by-output": {"policies": ["res-policy"], "resources": [{"properties": {"arn": "arn:resA"}}], "reason": "r"}
+		}`))
+		assert.Error(t, err)
+		require.NotEmpty(t, violations)
+		assert.Nil(t, violations[0].Exception)
+	})
 }

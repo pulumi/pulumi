@@ -1344,8 +1344,8 @@ func TestLoadPolicyPackConfigFromFileExceptionErrorsAndWarnings(t *testing.T) {
 
 	// A malformed exception in a local file is an error.
 	_, _, err := LoadPolicyPackConfigFromFile(write("bad.json",
-		`{"exceptions": {"a": {"policies": ["p"], "reason": "no targets"}}}`))
-	assert.ErrorContains(t, err, "at least one target")
+		`{"exceptions": {"a": {"policies": ["p"]}}}`))
+	assert.ErrorContains(t, err, `"reason" is required`)
 
 	// An exception with an unrecognized field is ignored, with a warning.
 	f, warnings, err := LoadPolicyPackConfigFromFile(write("unknown.json",
