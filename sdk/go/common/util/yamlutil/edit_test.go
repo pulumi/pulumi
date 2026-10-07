@@ -114,3 +114,15 @@ listFoo:
       - cee
 `)
 }
+
+func TestEditExpandsEmptyFlowContainers(t *testing.T) {
+	t.Parallel()
+
+	original := []byte("config: {}\nlist: []\n")
+	edited, err := Edit(original, map[string]any{
+		"config": map[string]any{"a": "b", "c": map[string]any{"d": 1}},
+		"list":   []any{"x"},
+	})
+	require.NoError(t, err)
+	assert.Equal(t, "config:\n  a: b\n  c:\n    d: 1\nlist:\n  - x\n", string(edited))
+}

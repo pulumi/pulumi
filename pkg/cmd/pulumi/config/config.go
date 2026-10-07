@@ -438,7 +438,7 @@ func newConfigRemoveCmd(ws pkgWorkspace.Context, stack *string, configFile *stri
 				return err
 			}
 
-			err = ps.Config.Remove(key, path)
+			err = removeStackConfigValue(ps, key, path)
 			if err != nil {
 				return err
 			}
@@ -524,7 +524,7 @@ func newConfigRemoveAllCmd(ws pkgWorkspace.Context, stack *string, configFile *s
 					return fmt.Errorf("invalid configuration key: %w", err)
 				}
 
-				err = ps.Config.Remove(key, path)
+				err = removeStackConfigValue(ps, key, path)
 				if err != nil {
 					return err
 				}
@@ -897,7 +897,7 @@ func (c *configSetCmd) Run(
 		return err
 	}
 
-	err = ps.Config.Set(key, v, c.Path)
+	err = setStackConfigValue(ps, key, v, c.Path)
 	if err != nil {
 		return fmt.Errorf("could not set config: %w", err)
 	}
@@ -980,7 +980,7 @@ func newConfigSetAllCmd(
 				}
 				v := config.NewValue(value)
 
-				err = ps.Config.Set(key, v, path)
+				err = setStackConfigValue(ps, key, v, path)
 				if err != nil {
 					return err
 				}
@@ -1020,7 +1020,7 @@ func newConfigSetAllCmd(
 				}
 				v := config.NewSecureValue(enc)
 
-				err = ps.Config.Set(key, v, path)
+				err = setStackConfigValue(ps, key, v, path)
 				if err != nil {
 					return err
 				}
@@ -1073,7 +1073,7 @@ func newConfigSetAllCmd(
 						value = config.NewValue(*jsonValue.Value)
 					}
 
-					err = ps.Config.Set(key, value, path)
+					err = setStackConfigValue(ps, key, value, path)
 					if err != nil {
 						return fmt.Errorf("could not set --json config for %q: %w", jsonKey, err)
 					}
