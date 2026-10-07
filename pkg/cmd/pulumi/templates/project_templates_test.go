@@ -476,6 +476,65 @@ func TestRetrievePulumiTemplatesConcurrently(t *testing.T) {
 	}
 }
 
+func newTemplateSourceRepo(t *testing.T, source string) (*git.Repository, *git.Worktree) {
+	repo, err := git.PlainInit(source, false)
+	require.NoError(t, err)
+	cfg, err := repo.Config()
+	require.NoError(t, err)
+	cfg.Commit.GpgSign = config.OptBoolFalse
+	require.NoError(t, repo.SetConfig(cfg))
+	require.NoError(t, os.WriteFile(filepath.Join(source, "Pulumi.yaml"), []byte("name: test\n"), 0o600))
+	worktree, err := repo.Worktree()
+	require.NoError(t, err)
+	_, err = worktree.Add("Pulumi.yaml")
+	require.NoError(t, err)
+	_, err = worktree.Commit("initial", &git.CommitOptions{
+		Author: &object.Signature{Name: "test", Email: "test@example.com", When: time.Now()},
+	})
+	require.NoError(t, err)
+	return repo, worktree
+}
+
+func TestRetrievePulumiTemplatesPrefixURLChange(t *testing.T) {
+	root := t.TempDir()
+	internal := filepath.Join(root, "templates-internal")
+	public := filepath.Join(root, "templates")
+	repo, _ := newTemplateSourceRepo(t, internal)
+	newTemplateSourceRepo(t, public)
+	head, err := repo.Head()
+	require.NoError(t, err)
+
+	templateDir := filepath.Join(t.TempDir(), "templates")
+	t.Setenv(env.TemplateBranch.Var().Name(), head.Name().Short())
+	t.Setenv(env.TemplatePath.Var().Name(), templateDir)
+
+	t.Setenv(env.TemplateGitRepository.Var().Name(), internal)
+	_, err = retrievePulumiTemplates(t.Context(), false, TemplateKindPulumiProject)
+	require.NoError(t, err)
+
+	t.Setenv(env.TemplateGitRepository.Var().Name(), public)
+	_, err = retrievePulumiTemplates(t.Context(), false, TemplateKindPulumiProject)
+	require.NoError(t, err)
+
+	cache, err := git.PlainOpen(templateDir)
+	require.NoError(t, err)
+	remote, err := cache.Remote("origin")
+	require.NoError(t, err)
+	require.Equal(t, []string{public}, remote.Config().URLs)
+}
+
+func TestNormalizeTemplateRepoURL(t *testing.T) {
+	t.Parallel()
+
+	require.Equal(t,
+		normalizeTemplateRepoURL("https://github.com/pulumi/templates.git"),
+		normalizeTemplateRepoURL("https://user:pass@github.com/pulumi/templates.git"))
+
+	abs, err := filepath.Abs("templates")
+	require.NoError(t, err)
+	require.Equal(t, normalizeTemplateRepoURL(abs), normalizeTemplateRepoURL("templates"))
+}
+
 func TestCopyTemplateFiles(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
