@@ -262,12 +262,6 @@
             "flags": {}
         },
         {
-            "path": ["org", "audit-log"],
-            "propagate": true,
-            "exclude": true,
-            "flags": {}
-        },
-        {
             "path": ["org", "member"],
             "propagate": true,
             "exclude": true,
