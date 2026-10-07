@@ -1612,14 +1612,16 @@ func TestCreateAndStartUpdatePreviewsInADerivedCoherenceWindow(t *testing.T) {
 	assert.Equal(t, preview, previewCoherenceWindow(uuid.Must(uuid.FromString(window))))
 
 	cases := []struct {
-		name   string
-		action apitype.UpdateKind
-		dryRun bool
-		want   string
+		name        string
+		action      apitype.UpdateKind
+		dryRun      bool
+		previewOnly bool
+		want        string
 	}{
-		{"the preview of an update", apitype.UpdateUpdate, true, preview},
-		{"the update itself", apitype.UpdateUpdate, false, window},
-		{"a preview on its own", apitype.PreviewUpdate, true, window},
+		{"the preview of an update", apitype.UpdateUpdate, true, false, preview},
+		{"the update itself", apitype.UpdateUpdate, false, false, window},
+		{"a preview on its own", apitype.PreviewUpdate, true, false, window},
+		{"a preview-only refresh", apitype.RefreshUpdate, true, true, window},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -1629,6 +1631,7 @@ func TestCreateAndStartUpdatePreviewsInADerivedCoherenceWindow(t *testing.T) {
 				return apitype.Capabilities{CoherenceWindowsVersion: 1, StackOutputs: true}, nil
 			})
 			fx.op.CoherenceWindow = window
+			fx.op.Opts.PreviewOnly = tc.previewOnly
 			fx.op.M = &backend.UpdateMetadata{}
 
 			stk := &cloudStack{ref: fx.stackRef, b: fx.backend}

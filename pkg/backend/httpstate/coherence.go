@@ -28,8 +28,23 @@ import (
 
 type stackOutputsRecorder struct {
 	outputs resource.PropertyMap
-	seen    bool
 	deleted bool
+}
+
+// newStackOutputsRecorder starts from the outputs the stack has, so that a preview that never
+// touches the stack resource still reports them.
+func newStackOutputsRecorder(snap *deploy.Snapshot) *stackOutputsRecorder {
+	r := &stackOutputsRecorder{outputs: resource.PropertyMap{}}
+	if snap == nil {
+		return r
+	}
+	for _, res := range snap.Resources {
+		if res.Type == resource.RootStackType && res.Parent == "" {
+			r.outputs = res.Outputs
+			break
+		}
+	}
+	return r
 }
 
 func (r *stackOutputsRecorder) record(e engine.Event) {
@@ -41,18 +56,18 @@ func (r *stackOutputsRecorder) record(e engine.Event) {
 		return
 	}
 	if payload.Metadata.Op == deploy.OpDelete {
-		r.outputs, r.seen, r.deleted = resource.PropertyMap{}, true, true
+		r.outputs, r.deleted = resource.PropertyMap{}, true
 		return
 	}
 	if state := payload.Metadata.New; state != nil && state.State != nil {
-		r.outputs, r.seen = state.State.Outputs, true
+		r.outputs = state.State.Outputs
 	}
 }
 
 func (r *stackOutputsRecorder) response(
 	ctx context.Context, sm secrets.Manager,
 ) (*apitype.StackOutputsResponse, error) {
-	if r == nil || sm == nil || !r.seen {
+	if r == nil || sm == nil {
 		return nil, nil
 	}
 

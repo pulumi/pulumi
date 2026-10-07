@@ -1851,7 +1851,7 @@ func (b *cloudBackend) createAndStartUpdate(
 		if err := checkCoherenceWindowSupport(b.Capabilities(ctx)); err != nil {
 			return client.UpdateIdentifier{}, updateMetadata{}, err
 		}
-		if dryRun && action != apitype.PreviewUpdate {
+		if dryRun && action != apitype.PreviewUpdate && !op.Opts.PreviewOnly {
 			op.CoherenceWindow = previewCoherenceWindow(window)
 		}
 	}
@@ -2167,7 +2167,7 @@ func (b *cloudBackend) runEngineAction(
 		b.readingUpdateID.Store(&update.UpdateID)
 		defer b.readingUpdateID.Store(nil)
 		if dryRun {
-			outputsRecorder = &stackOutputsRecorder{}
+			outputsRecorder = newStackOutputsRecorder(u.Target.Snapshot)
 		}
 	}
 

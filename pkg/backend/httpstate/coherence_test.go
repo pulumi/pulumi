@@ -155,14 +155,26 @@ func TestStackOutputsRecorder(t *testing.T) {
 		assert.Equal(t, map[string]any{"plain": "value"}, resp.Outputs)
 	})
 
-	t.Run("reports nothing when the stack never registered outputs", func(t *testing.T) {
+	t.Run("keeps the stack's outputs when the stack never registered any", func(t *testing.T) {
 		t.Parallel()
-		r := &stackOutputsRecorder{}
+		r := newStackOutputsRecorder(&deploy.Snapshot{Resources: []*pkgresource.State{{
+			Type:    resource.RootStackType,
+			URN:     stackURN,
+			Outputs: resource.PropertyMap{"kept": resource.NewProperty("value")},
+		}}})
 		r.record(outputsEvent(otherURN, "pkg:index:Thing", resource.PropertyMap{}))
 
 		resp, err := r.response(t.Context(), b64.NewBase64SecretsManager())
 		require.NoError(t, err)
-		assert.Nil(t, resp)
+		assert.Equal(t, map[string]any{"kept": "value"}, resp.Outputs)
+	})
+
+	t.Run("a stack without state has no outputs", func(t *testing.T) {
+		t.Parallel()
+		resp, err := newStackOutputsRecorder(nil).response(t.Context(), b64.NewBase64SecretsManager())
+		require.NoError(t, err)
+		require.NotNil(t, resp)
+		assert.Empty(t, resp.Outputs)
 	})
 
 	t.Run("a nil recorder is inert", func(t *testing.T) {
