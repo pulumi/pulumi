@@ -420,6 +420,18 @@ func TestLookupDefaultType(t *testing.T) {
 			source: `value = lookup(secret({for k, v in {"a" = false} : k => v}), "a", true)`,
 			typ:    model.NewOutputType(model.NewUnionType(cf, ct)),
 		},
+		{
+			source: `value = lookup({for k, v in {"a" = {for k, v in {"a" = 0.01} : k => v}} : k => v}, "a",` +
+				` {for i, v in [false] : "k${i}" => i})`,
+			typ: model.NewMapType(model.NewUnionType(model.IntType,
+				model.NewConstType(model.NumberType, cty.NumberFloatVal(0.01)))),
+		},
+		{
+			source: `v1 = secret(false)
+value = (false ? {for k, w in {"a" = v1} : k => w} : lookup({for k, w in {"a" = {for k, w in {"a" = v1} : k => w}} :` +
+				` k => w}, "a", {for k, w in {"a" = true} : k => w}))`,
+			typ: model.NewOutputType(model.NewMapType(model.NewUnionType(cf, ct))),
+		},
 	}
 	for _, c := range cases {
 		t.Run(c.source, func(t *testing.T) {
@@ -427,8 +439,7 @@ func TestLookupDefaultType(t *testing.T) {
 			program, diags, err := ParseAndBindProgram(t, c.source, "program.pp")
 			require.NoError(t, err)
 			require.False(t, diags.HasErrors(), diags.Error())
-			require.Len(t, program.Nodes, 1)
-			typ := program.Nodes[0].(*pcl.LocalVariable).Type()
+			typ := program.Nodes[len(program.Nodes)-1].(*pcl.LocalVariable).Type()
 			assert.True(t, c.typ.Equals(typ), "expected %v, got %v", c.typ, typ)
 		})
 	}

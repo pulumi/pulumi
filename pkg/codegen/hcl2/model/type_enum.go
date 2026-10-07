@@ -116,7 +116,7 @@ func (t *EnumType) Equals(other Type) bool {
 	return t.equals(other, nil)
 }
 
-func (t *EnumType) equals(other Type, seen map[Type]struct{}) bool {
+func (t *EnumType) equals(other Type, seen equalPairs) bool {
 	if t == other {
 		return true
 	}
@@ -143,33 +143,11 @@ func (t *EnumType) AssignableFrom(src Type) bool {
 }
 
 // ConversionFrom returns the kind of conversion (if any) that is possible from
-// the source type to this type. Most languages support casting between value
-// types and an enum of that value. When the value is constant, we can determine
-// if the cast is valid. Otherwise it is valid but unsafe.
+// the source type to this type. An enum converts safely from a constant that is
+// one of its values, not at all from another constant, and unsafely from every
+// type that converts to its base type (README §4, C-EnumConst and C-EnumSrc).
 func (t *EnumType) ConversionFrom(src Type) ConversionKind {
-	kind, _ := t.conversionFrom(src, false, nil)
-	return kind
-}
-
-func (t *EnumType) conversionFrom(src Type, unifying bool, seen *cycleSet) (ConversionKind, lazyDiagnostics) {
-	return conversionFrom(t, src, unifying, seen, t.cache, func() (ConversionKind, lazyDiagnostics) {
-		// A constant converts safely when it is a member of the enum and not at all otherwise.
-		if src, ok := src.(*ConstType); ok {
-			for _, el := range t.Elements {
-				if el.Type().Equals(src.Value.Type()) && el.Equals(src.Value).True() {
-					return SafeConversion, nil
-				}
-			}
-			return NoConversion, func() hcl.Diagnostics { return hcl.Diagnostics{typeNotConvertible(t, src)} }
-		}
-		con, diags := t.Type.conversionFrom(src, unifying, seen)
-		if con == NoConversion {
-			return NoConversion, diags
-		}
-		// We can perform a conversion. Because the value might not be valid, it
-		// is always unsafe.
-		return UnsafeConversion, diags
-	})
+	return cachedConversionFrom(t, src, t.cache)
 }
 
 func (t *EnumType) String() string {
@@ -192,9 +170,4 @@ func (t *EnumType) string(seen map[Type]struct{}) string {
 	return s
 }
 
-func (t *EnumType) unify(other Type, seen *cycleSet) (Type, ConversionKind) {
-	return unify(t, other, seen, func() (Type, ConversionKind) {
-		return nil, NoConversion
-	})
-}
 func (*EnumType) isType() {}

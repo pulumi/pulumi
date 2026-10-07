@@ -31,7 +31,6 @@ func TestBindNestedCollectionLiterals(t *testing.T) {
 	t.Parallel()
 
 	cf, ct := model.NewConstType(model.BoolType, cty.False), model.NewConstType(model.BoolType, cty.True)
-	optional := model.NewOptionalType
 
 	cases := []struct {
 		name   string
@@ -46,10 +45,7 @@ func TestBindNestedCollectionLiterals(t *testing.T) {
 		{
 			name:   "try over nested tuples of different lengths",
 			source: `o = try([[[false, false, false]]][length([[[false, false, false]]])], [[true], [false]])`,
-			typ: model.NewTupleType(
-				model.NewTupleType(model.NewUnionType(cf, ct), optional(cf), optional(cf)),
-				optional(model.NewTupleType(cf)),
-			),
+			typ:    model.NewListType(model.NewListType(model.NewUnionType(cf, ct))),
 		},
 		{
 			name:   "quoted string",
@@ -77,7 +73,7 @@ func TestBindNestedCollectionLiterals(t *testing.T) {
 		{
 			name:   "splat over objects with tuples of different lengths",
 			source: `o = [{"a" = [false], "b" = [false, false]}, {"a" = [false, false], "b" = [true]}][*].a`,
-			typ:    model.NewListType(model.NewTupleType(cf, optional(cf))),
+			typ:    model.NewListType(model.NewListType(cf)),
 		},
 	}
 	for _, c := range cases {

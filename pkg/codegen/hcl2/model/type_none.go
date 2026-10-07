@@ -44,7 +44,7 @@ func (n noneType) Equals(other Type) bool {
 	return n.equals(other, nil)
 }
 
-func (noneType) equals(other Type, seen map[Type]struct{}) bool {
+func (noneType) equals(other Type, seen equalPairs) bool {
 	return other == NoneType
 }
 
@@ -55,21 +55,7 @@ func (noneType) AssignableFrom(src Type) bool {
 }
 
 func (noneType) ConversionFrom(src Type) ConversionKind {
-	kind, _ := NoneType.conversionFrom(src, false, nil)
-	return kind
-}
-
-func (noneType) conversionFrom(src Type, unifying bool, seen *cycleSet) (ConversionKind, lazyDiagnostics) {
-	return conversionFrom(NoneType, src, unifying, seen, &typeCache{},
-		func() (ConversionKind, lazyDiagnostics) {
-			// The null literal is a constant of the none type.
-			if src, ok := src.(*ConstType); ok {
-				return NoneType.conversionFrom(src.Type, unifying, seen)
-			}
-			return NoConversion, func() hcl.Diagnostics {
-				return hcl.Diagnostics{typeNotConvertible(NoneType, src)}
-			}
-		})
+	return cachedConversionFrom(NoneType, src, nil)
 }
 
 func (noneType) String() string {
@@ -78,13 +64,6 @@ func (noneType) String() string {
 
 func (noneType) string(_ map[Type]struct{}) string {
 	return "none"
-}
-
-func (noneType) unify(other Type, seen *cycleSet) (Type, ConversionKind) {
-	return unify(NoneType, other, seen, func() (Type, ConversionKind) {
-		kind, _ := other.conversionFrom(NoneType, true, seen)
-		return NoneType, kind
-	})
 }
 
 func (noneType) isType() {}

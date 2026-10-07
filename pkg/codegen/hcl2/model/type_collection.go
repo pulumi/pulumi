@@ -75,11 +75,10 @@ func GetCollectionTypes(collectionType Type, rng hcl.Range, strict bool) (Type, 
 		keyType, valueType = StringType, collectionType.ElementType
 	case *TupleType:
 		keyType = IntType
-		valueType, _ = UnifyTypes(collectionType.ElementTypes...)
+		valueType = UnifyTypes(collectionType.ElementTypes...)
 	case *ObjectType:
 		keyType = StringType
-
-		valueType, _ = UnifyTypes(slices.SortedFunc(maps.Values(collectionType.Properties), Compare)...)
+		valueType = UnifyTypes(slices.Collect(maps.Values(collectionType.Properties))...)
 
 	default:
 		// If the collection is a dynamic type, treat it as an iterable(dynamic, dynamic).

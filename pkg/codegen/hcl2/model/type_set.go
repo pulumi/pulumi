@@ -51,7 +51,7 @@ func (t *SetType) Equals(other Type) bool {
 	return t.equals(other, nil)
 }
 
-func (t *SetType) equals(other Type, seen map[Type]struct{}) bool {
+func (t *SetType) equals(other Type, seen equalPairs) bool {
 	if t == other {
 		return true
 	}
@@ -71,34 +71,10 @@ func (t *SetType) AssignableFrom(src Type) bool {
 }
 
 // ConversionFrom returns the kind of conversion (if any) that is possible from the source type to this type.
-// A set(T) is convertible from a set(U) if a conversion exists from U to T. If the conversion from U to T is unsafe,
-// the entire conversion is unsafe; otherwise the conversion is safe. An unsafe conversion exists from list(U) or
-// or tuple(U_0 ... U_N) to set(T) if a conversion exists from each U to T.
+// A set(T) converts from a set(U) as T converts from U, and at most unsafely from a list(U) or a
+// tuple(U_0 ... U_N) whose element types convert to T (README §4, C-Set).
 func (t *SetType) ConversionFrom(src Type) ConversionKind {
-	kind, _ := t.conversionFrom(src, false, nil)
-	return kind
-}
-
-func (t *SetType) conversionFrom(src Type, unifying bool, seen *cycleSet) (ConversionKind, lazyDiagnostics) {
-	return conversionFrom(t, src, unifying, seen, t.cache, func() (ConversionKind, lazyDiagnostics) {
-		switch src := src.(type) {
-		case *SetType:
-			return t.ElementType.conversionFrom(src.ElementType, unifying, seen)
-		case *ListType:
-			if conversionKind, why := t.ElementType.conversionFrom(src.ElementType, unifying, seen); conversionKind ==
-				NoConversion {
-				return NoConversion, why
-			}
-			return UnsafeConversion, nil
-		case *TupleType:
-			if conversionKind, why := NewListType(t.ElementType).conversionFrom(src, unifying, seen); conversionKind ==
-				NoConversion {
-				return NoConversion, why
-			}
-			return UnsafeConversion, nil
-		}
-		return NoConversion, func() hcl.Diagnostics { return hcl.Diagnostics{typeNotConvertible(t, src)} }
-	})
+	return cachedConversionFrom(t, src, t.cache)
 }
 
 func (t *SetType) pretty(seenFormatters map[Type]pretty.Formatter) pretty.Formatter {
@@ -127,36 +103,6 @@ func (t *SetType) String() string {
 
 func (t *SetType) string(seen map[Type]struct{}) string {
 	return fmt.Sprintf("set(%s)", t.ElementType.string(seen))
-}
-
-func (t *SetType) unify(other Type, seen *cycleSet) (Type, ConversionKind) {
-	return unify(t, other, seen, func() (Type, ConversionKind) {
-		switch other := other.(type) {
-		case *SetType:
-			// If the other type is a set type, unify based on the element type.
-			elementType, conversionKind := t.ElementType.unify(other.ElementType, seen)
-			return NewSetType(elementType), conversionKind
-		case *ListType:
-			// Prefer the list type, but unify the element types.
-			element, conversionKind := t.ElementType.unify(other.ElementType, seen)
-			return NewListType(element), conversionKind
-		case *TupleType:
-			// Prefer the set type, but unify the element type.
-			elementType, conversionKind := t.ElementType, UnsafeConversion
-			for _, other := range other.ElementTypes {
-				element, ck := elementType.unify(other, seen)
-				if ck < conversionKind {
-					conversionKind = ck
-				}
-				elementType = element
-			}
-			return NewSetType(elementType), conversionKind
-		default:
-			// Prefer the set type.
-			kind, _ := t.conversionFrom(other, true, seen)
-			return t, kind
-		}
-	})
 }
 
 func (*SetType) isType() {}

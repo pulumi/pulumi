@@ -27,7 +27,9 @@ const maxDepth = 3
 
 // Type generates a model type. Leaves are the opaque types, constants of each opaque type, enums, none, and
 // dynamic. Collections, objects, unions, optionals, outputs, and promises nest to a small depth, and an object
-// may refer back to itself or to an object that encloses it, which makes the type recursive.
+// may refer back to itself or to an object that encloses it, which makes the type recursive. A back reference
+// never crosses an output or a promise, so that the element of an eventual holds no eventual that the constructor
+// could not resolve.
 func Type() *rapid.Generator[model.Type] {
 	return rapid.Custom(func(t *rapid.T) model.Type {
 		return draw(t, 0, nil)
@@ -54,9 +56,9 @@ func draw(t *rapid.T, depth int, enclosing []*model.ObjectType) model.Type {
 	case 6:
 		return model.NewUnionType(elements(t, depth, enclosing, 2)...)
 	case 7:
-		return model.NewOutputType(draw(t, depth+1, enclosing))
+		return model.NewOutputType(draw(t, depth+1, nil))
 	case 8:
-		return model.NewPromiseType(draw(t, depth+1, enclosing))
+		return model.NewPromiseType(draw(t, depth+1, nil))
 	case 9, 10:
 		if len(enclosing) > 0 {
 			return backReference(t, enclosing)
@@ -121,7 +123,7 @@ func leaf(t *rapid.T) model.Type {
 		return model.NewConstType(model.IntType, cty.NumberIntVal(rapid.Int64Range(-2, 2).Draw(t, "int")))
 	case 8:
 		return model.NewConstType(model.NumberType, cty.NumberFloatVal(
-			rapid.SampledFrom([]float64{-1.5, 0, 0.5}).Draw(t, "number")))
+			rapid.SampledFrom([]float64{-1.5, 0.01, 0.5}).Draw(t, "number")))
 	case 9:
 		return model.NewConstType(model.StringType, cty.StringVal(
 			rapid.SampledFrom([]string{"", "x", "y"}).Draw(t, "string")))
