@@ -1843,11 +1843,16 @@ func (b *cloudBackend) createAndStartUpdate(
 		Environment: op.M.Environment,
 	}
 	if op.CoherenceWindow != "" {
+		window, err := uuid.FromString(op.CoherenceWindow)
+		if err != nil {
+			return client.UpdateIdentifier{}, updateMetadata{},
+				fmt.Errorf("coherence window %q is not a UUID", op.CoherenceWindow)
+		}
 		if err := checkCoherenceWindowSupport(b.Capabilities(ctx)); err != nil {
 			return client.UpdateIdentifier{}, updateMetadata{}, err
 		}
 		if dryRun && action != apitype.PreviewUpdate {
-			op.CoherenceWindow = previewCoherenceWindow(op.CoherenceWindow)
+			op.CoherenceWindow = previewCoherenceWindow(window)
 		}
 	}
 
@@ -2115,8 +2120,8 @@ func permalinkForDisplay(ctx context.Context, cloudURL, permalink string) (strin
 
 // previewCoherenceWindow is the window the preview an update makes before applying runs in: derived
 // from the update's own, so that the previews of one run read each other rather than its updates.
-func previewCoherenceWindow(window string) string {
-	return uuid.NewV5(uuid.Must(uuid.FromString(window)), "preview").String()
+func previewCoherenceWindow(window uuid.UUID) string {
+	return uuid.NewV5(window, "preview").String()
 }
 
 func checkCoherenceWindowSupport(caps apitype.Capabilities) error {
