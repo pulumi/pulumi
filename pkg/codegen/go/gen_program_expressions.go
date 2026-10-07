@@ -400,22 +400,10 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 						// For collection types (maps, objects, lists), wrap with pulumi.ToMap/ToArray.
 						// If the source has a typed Go representation (e.g. map[string]string,
 						// []int), use the matching typed converter (ToStringMap, ToIntArray)
-						// since pulumi.ToMap/ToArray only accept map[string]any / []any. For
-						// maps/arrays of Pulumi input interfaces (map[string]pulumi.XInput), a
-						// direct type cast to pulumi.XMap / pulumi.XArray suffices — the
-						// underlying types are identical and the named type satisfies
-						// pulumi.Input.
+						// since pulumi.ToMap/ToArray only accept map[string]any / []any.
 						argGoType := g.argumentTypeName(arg.Type(), false)
 						switch scalarType.(type) {
 						case *model.ObjectType, *model.MapType:
-							if elm, ok := strings.CutPrefix(argGoType, "map[string]"); ok {
-								if named, ok := pulumiInputElementCastName(elm); ok {
-									g.Fgenf(w, "pulumi.%sMap(", named)
-									g.genScopeTraversalExpression(w, arg, expr.Type())
-									g.Fgenf(w, ")")
-									return
-								}
-							}
 							fn := "pulumi.ToMap"
 							if elm, ok := strings.CutPrefix(argGoType, "map[string]"); ok &&
 								elm != "interface{}" {
@@ -428,14 +416,6 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 							g.Fgenf(w, ")")
 							return
 						case *model.ListType, *model.TupleType:
-							if elm, ok := strings.CutPrefix(argGoType, "[]"); ok {
-								if named, ok := pulumiInputElementCastName(elm); ok {
-									g.Fgenf(w, "pulumi.%sArray(", named)
-									g.genScopeTraversalExpression(w, arg, expr.Type())
-									g.Fgenf(w, ")")
-									return
-								}
-							}
 							fn := "pulumi.ToArray"
 							if elm, ok := strings.CutPrefix(argGoType, "[]"); ok &&
 								elm != "interface{}" {
@@ -1630,9 +1610,6 @@ func (g *generator) argumentTypeName(destType model.Type, isInput bool) (result 
 			}
 			return "string"
 		case *model.IDType:
-			if isInput {
-				return "pulumi.IDInput"
-			}
 			return "pulumi.ID"
 		case *model.BoolType:
 			if isInput {
@@ -1701,6 +1678,15 @@ func (g *generator) argumentTypeName(destType model.Type, isInput bool) (result 
 				!strings.HasPrefix(elmType, "[]") && !strings.HasPrefix(elmType, "pulumi.") {
 				elmType = "*" + elmType
 			}
+			// Output-typed values render as Pulumi input types. A raw Go map can neither hold
+			// them nor act as an Input, so use the SDK's named map, as lists use `XArray`.
+			isResourceTypeName := elmType == "pulumi.Resource" || elmType == "pulumi.ProviderResource"
+			if strings.HasPrefix(elmType, "pulumi.") && !isResourceTypeName {
+				if elmType == "pulumi.Any" {
+					return "pulumi.Map"
+				}
+				return elmType + "Map"
+			}
 			return "map[string]" + elmType
 		}
 		return "map[string]interface{}"
@@ -1717,9 +1703,6 @@ func (g *generator) argumentTypeName(destType model.Type, isInput bool) (result 
 		if strings.HasPrefix(argTypeName, "pulumi.") && !isResourceTypeName {
 			if argTypeName == "pulumi.Any" {
 				return "pulumi.Array"
-			}
-			if argTypeName == "pulumi.IDInput" {
-				return "pulumi.IDArray"
 			}
 			return argTypeName + "Array"
 		}
@@ -1746,9 +1729,6 @@ func (g *generator) argumentTypeName(destType model.Type, isInput bool) (result 
 			if strings.HasPrefix(argTypeName, "pulumi.") && !isResourceTypeName {
 				if argTypeName == "pulumi.Any" {
 					return "pulumi.Array"
-				}
-				if argTypeName == "pulumi.IDInput" {
-					return "pulumi.IDArray"
 				}
 				return argTypeName + "Array"
 			}
@@ -1939,24 +1919,6 @@ func pulumiConverterSuffix(goType string) (string, bool) {
 	return pulumiScalarSuffix(goType)
 }
 
-// pulumiInputElementCastName recognizes a Go element type of the form
-// "pulumi.XInput" and returns "X". This is used to convert a raw Go
-// map/slice of such element types (e.g. map[string]pulumi.IDInput) into
-// the corresponding named Pulumi container (pulumi.IDMap) via a direct
-// type cast — the underlying types are identical but the named type
-// satisfies pulumi.Input.
-func pulumiInputElementCastName(elm string) (string, bool) {
-	name, ok := strings.CutPrefix(elm, "pulumi.")
-	if !ok {
-		return "", false
-	}
-	name, ok = strings.CutSuffix(name, "Input")
-	if !ok || name == "" {
-		return "", false
-	}
-	return name, true
-}
-
 // pulumiScalarSuffix returns the Pulumi suffix for a scalar Go type. Only
 // primitive scalars have generated Ptr/Map/Array containers in the SDK, so
 // callers use this to gate composition of the compound suffixes above.
@@ -2040,11 +2002,13 @@ func (g *generator) genMapKeyAccess(w io.Writer, source model.Traversable, key s
 	// Non-schema ObjectTypes are represented as map[string]interface{} in Go,
 	// so map access returns interface{} and needs a type assertion.
 	// MapTypes (and ObjectTypes that unify to a typed map) use typed Go maps
-	// (e.g., map[string]string), so no assertion is needed since the access
-	// already returns the correct type.
+	// (e.g., map[string]string or pulumi.StringMap), so no assertion is needed
+	// since the access already returns the correct type.
 	if objType, ok := sourceType.(*model.ObjectType); ok {
 		sourceGoType := g.argumentTypeName(sourceType, false)
-		if strings.HasPrefix(sourceGoType, "map[string]") && sourceGoType != "map[string]interface{}" {
+		isTypedGoMap := strings.HasPrefix(sourceGoType, "map[string]") && sourceGoType != "map[string]interface{}"
+		isNamedSDKMap := strings.HasPrefix(sourceGoType, "pulumi.") && strings.HasSuffix(sourceGoType, "Map")
+		if isTypedGoMap || isNamedSDKMap {
 			return
 		}
 		if propType, hasProp := objType.Properties[key]; hasProp {

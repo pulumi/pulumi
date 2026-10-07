@@ -93,9 +93,6 @@ func (g *generator) genForTemp(w io.Writer, t *forTemp) {
 	suffix := strings.TrimPrefix(t.Name, "forResult")
 
 	valueArgTyp := g.argumentTypeName(f.Value.Type(), false)
-	if valueArgTyp == "pulumi.IDInput" {
-		valueArgTyp = "pulumi.ID"
-	}
 	isPulumiTyp := strings.Contains(valueArgTyp, ".")
 	switch {
 	case f.Key != nil && isPulumiTyp:
