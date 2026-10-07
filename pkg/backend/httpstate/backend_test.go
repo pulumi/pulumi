@@ -1625,7 +1625,7 @@ func TestCreateAndStartUpdatePreviewsInADerivedCoherenceWindow(t *testing.T) {
 			t.Parallel()
 			fx := newRunEngineActionFixture(t, &deploy.Snapshot{}, nil, b64.NewBase64SecretsManager())
 			fx.backend.capabilities = promise.Run(func() (apitype.Capabilities, error) {
-				return apitype.Capabilities{CoherenceWindows: true, StackOutputs: true}, nil
+				return apitype.Capabilities{CoherenceWindowsVersion: 1, StackOutputs: true}, nil
 			})
 			fx.op.CoherenceWindow = window
 			fx.op.M = &backend.UpdateMetadata{}
@@ -1640,19 +1640,23 @@ func TestCreateAndStartUpdatePreviewsInADerivedCoherenceWindow(t *testing.T) {
 func TestCreateAndStartUpdateRequiresCoherenceWindowCapability(t *testing.T) {
 	t.Parallel()
 
-	for _, caps := range []apitype.Capabilities{
-		{},
-		{StackOutputs: true},
-		{CoherenceWindows: true},
+	for _, tc := range []struct {
+		caps apitype.Capabilities
+		want string
+	}{
+		{apitype.Capabilities{}, "does not support coherence windows"},
+		{apitype.Capabilities{StackOutputs: true}, "does not support coherence windows"},
+		{apitype.Capabilities{CoherenceWindowsVersion: 1}, "does not support coherence windows"},
+		{apitype.Capabilities{CoherenceWindowsVersion: 2, StackOutputs: true}, "too old for the coherence windows"},
 	} {
 		fx := newRunEngineActionFixture(t, &deploy.Snapshot{}, nil, b64.NewBase64SecretsManager())
-		fx.backend.capabilities = promise.Run(func() (apitype.Capabilities, error) { return caps, nil })
+		fx.backend.capabilities = promise.Run(func() (apitype.Capabilities, error) { return tc.caps, nil })
 		fx.op.CoherenceWindow = "d333a711-4aa0-402f-be6d-72af9665fc37"
 		fx.op.M = &backend.UpdateMetadata{}
 
 		stk := &cloudStack{ref: fx.stackRef, b: fx.backend}
 		_, _, err := fx.backend.createAndStartUpdate(t.Context(), apitype.PreviewUpdate, stk, &fx.op, true)
-		assert.ErrorContains(t, err, "does not support coherence windows")
+		assert.ErrorContains(t, err, tc.want)
 	}
 }
 

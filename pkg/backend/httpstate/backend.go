@@ -1843,9 +1843,8 @@ func (b *cloudBackend) createAndStartUpdate(
 		Environment: op.M.Environment,
 	}
 	if op.CoherenceWindow != "" {
-		if caps := b.Capabilities(ctx); !caps.CoherenceWindows || !caps.StackOutputs {
-			return client.UpdateIdentifier{}, updateMetadata{},
-				errors.New("the Pulumi Cloud backend does not support coherence windows")
+		if err := checkCoherenceWindowSupport(b.Capabilities(ctx)); err != nil {
+			return client.UpdateIdentifier{}, updateMetadata{}, err
 		}
 		if dryRun && action != apitype.PreviewUpdate {
 			op.CoherenceWindow = previewCoherenceWindow(op.CoherenceWindow)
@@ -2118,6 +2117,25 @@ func permalinkForDisplay(ctx context.Context, cloudURL, permalink string) (strin
 // from the update's own, so that the previews of one run read each other rather than its updates.
 func previewCoherenceWindow(window string) string {
 	return uuid.NewV5(uuid.Must(uuid.FromString(window)), "preview").String()
+}
+
+func checkCoherenceWindowSupport(caps apitype.Capabilities) error {
+	if !caps.StackOutputs {
+		return errors.New("the Pulumi Cloud backend does not support coherence windows")
+	}
+	return checkCapabilityVersion("coherence windows", caps.CoherenceWindowsVersion)
+}
+
+func checkCapabilityVersion(feature string, version int) error {
+	switch version {
+	case 0:
+		return fmt.Errorf("the Pulumi Cloud backend does not support %s", feature)
+	case 1:
+		return nil
+	default:
+		return fmt.Errorf("this version of the Pulumi CLI is too old for the %s of this Pulumi Cloud backend; "+
+			"see https://www.pulumi.com/docs/install/ to upgrade", feature)
+	}
 }
 
 func (b *cloudBackend) runEngineAction(
