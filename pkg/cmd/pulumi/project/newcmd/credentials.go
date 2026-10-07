@@ -54,7 +54,8 @@ type cloudProvider struct {
 // credentialsCheckEnabled reports whether this run should preflight cloud credentials: only
 // interactive runs that actually set up a project, and only when the user hasn't opted out.
 func credentialsCheckEnabled(args newArgs) bool {
-	return args.interactive && !args.generateOnly && !args.offline && !env.SkipNewCredentialsCheck.Value()
+	return args.interactive && !args.generateOnly && !args.offline && !args.sandbox &&
+		!env.SkipNewCredentialsCheck.Value()
 }
 
 // providerConfigProperties extracts the plaintext values in the provider's config

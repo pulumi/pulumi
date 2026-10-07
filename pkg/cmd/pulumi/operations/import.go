@@ -46,6 +46,7 @@ import (
 	cmdDiag "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/diag"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/metadata"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageworkspace"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/sandbox"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/convert"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
@@ -1213,6 +1214,9 @@ func NewImportCmd() *cobra.Command {
 				UseLegacyRefreshDiff: env.EnableLegacyRefreshDiff.Value(),
 				Experimental:         env.Experimental.Value(),
 				SkipPluginPreInstall: skipPluginPreInstall,
+			}
+			if err := sandbox.ApplySandbox(ctx, cmd.OutOrStdout(), s, &opts.Engine); err != nil {
+				return err
 			}
 
 			_, err = backend.ImportStack(ctx, s, backend.UpdateOperation{

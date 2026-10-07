@@ -35,8 +35,10 @@ import (
 	resourceanalyzer "github.com/pulumi/pulumi/pkg/v3/resource/analyzer"
 	"github.com/pulumi/pulumi/pkg/v3/resource/autonaming"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers/sandbox"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
@@ -439,6 +441,9 @@ type UpdateOptions struct {
 	// ShowSecrets is true if the engine should display secrets in the CLI.
 	ShowSecrets bool
 
+	// Sandbox, if set, redirects every provider at local cloud emulators. It is set for sandbox stacks.
+	Sandbox *sandbox.Mode
+
 	// SkipPluginPreInstall is true if the engine should skip the up-front plugin install step that
 	// otherwise happens during engine setup. Missing plugins will still be installed lazily by
 	// the provider registry when they are actually requested.
@@ -736,6 +741,14 @@ func installPlugins(
 	allPackages := languagePackages.Union(snapshotPackages)
 	allPlugins := allPackages.ToPluginSet().Deduplicate()
 
+	// Refuse packages a sandbox stack can't use before anything is deployed. The provider registry refuses them too,
+	// since the language host's list may be incomplete, but only once they load, which may be mid-deployment.
+	if opts != nil && opts.Sandbox != nil {
+		if err := opts.Sandbox.CheckPackages(resourcePackageNames(allPackages)); err != nil {
+			return nil, nil, err
+		}
+	}
+
 	var waitNeeded bool
 	if manager == nil {
 		manager = newInstallManager(returnInstallErrors)
@@ -771,6 +784,22 @@ func installPlugins(
 	}
 
 	return allPlugins, defaultProviderVersions, nil
+}
+
+// resourcePackageNames returns the names resource packages are known by in URNs.
+func resourcePackageNames(packages PackageSet) []tokens.Package {
+	names := make([]tokens.Package, 0, len(packages))
+	for _, pkg := range packages {
+		if pkg.Kind != apitype.ResourcePlugin {
+			continue
+		}
+		name := pkg.Name
+		if pkg.Parameterization != nil {
+			name = pkg.Parameterization.Name
+		}
+		names = append(names, tokens.Package(name))
+	}
+	return names
 }
 
 // installPluginFunc is the function used to install plugins.

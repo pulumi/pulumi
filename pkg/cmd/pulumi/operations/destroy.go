@@ -36,6 +36,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/deployment"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/metadata"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/sandbox"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
@@ -360,6 +361,9 @@ func NewDestroyCmd() *cobra.Command {
 				IgnoreProtect:             ignoreProtect,
 				DestroyProgram:            runProgram,
 				SkipPluginPreInstall:      skipPluginPreInstall,
+			}
+			if err := sandbox.ApplySandbox(ctx, cmd.OutOrStdout(), s, &opts.Engine); err != nil {
+				return err
 			}
 
 			_, destroyErr := backend.DestroyStack(ctx, s, backend.UpdateOperation{

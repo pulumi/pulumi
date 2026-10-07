@@ -76,6 +76,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/project"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/project/newcmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/rattler"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/sandbox"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/schema"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/state"
@@ -498,6 +499,7 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 				operations.NewDestroyCmd(),
 				operations.NewPreviewCmd(),
 				cancel.NewCancelCmd(pkgWorkspace.Instance),
+				sandbox.NewSandboxCmd(),
 			},
 		},
 		{

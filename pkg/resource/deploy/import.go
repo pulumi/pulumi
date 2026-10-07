@@ -154,6 +154,9 @@ func NewImportDeployment(
 
 	// Create a new provider registry.
 	reg := providers.NewRegistry(ctx, opts.DryRun, builtins)
+	if opts.Sandbox != nil {
+		reg.SetSandbox(opts.Sandbox)
+	}
 
 	// Return the prepared deployment.
 	return &Deployment{

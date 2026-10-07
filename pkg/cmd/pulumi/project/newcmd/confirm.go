@@ -71,12 +71,13 @@ func (c *confirmedNew) createStack(
 				SetCurrent:      true,
 				SecretsProvider: args.secretsProvider,
 				UseRemoteConfig: args.remoteStackConfig,
+				Sandbox:         args.sandbox,
 				Quiet:           true,
 			})
 	}
 	s, err := PromptAndCreateStack(ctx, sink, ws, b, args.prompt,
 		args.stack, root, true /*setCurrent*/, args.yes, opts, args.secretsProvider,
-		args.remoteStackConfig, "")
+		args.remoteStackConfig, args.sandbox, "")
 	if err != nil {
 		return nil, "", err
 	}

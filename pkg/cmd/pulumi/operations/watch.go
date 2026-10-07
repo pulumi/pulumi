@@ -28,6 +28,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/config"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/metadata"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/sandbox"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
@@ -162,6 +163,9 @@ func NewWatchCmd() *cobra.Command {
 				DisableOutputValues:       env.DisableOutputValues.Value(),
 				Experimental:              env.Experimental.Value(),
 				SkipPluginPreInstall:      skipPluginPreInstall,
+			}
+			if err := sandbox.ApplySandbox(ctx, cmd.OutOrStdout(), s, &opts.Engine); err != nil {
+				return err
 			}
 
 			err = backend.WatchStack(ctx, s, backend.UpdateOperation{

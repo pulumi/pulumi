@@ -186,6 +186,9 @@ func newStackTagRemoveCmd(stack *string) *cobra.Command {
 			sink := cmdutil.Diag()
 			ws := pkgWorkspace.Instance
 			name := args[0]
+			if name == backend.SandboxStackTag {
+				return errSandboxStackTagReadOnly
+			}
 
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
@@ -221,6 +224,9 @@ func newStackTagRemoveCmd(stack *string) *cobra.Command {
 	return cmd
 }
 
+var errSandboxStackTagReadOnly = fmt.Errorf(
+	"the %s tag can only be set when a stack is created (pulumi stack init --sandbox)", backend.SandboxStackTag)
+
 func newStackTagSetCmd(stack *string) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "set",
@@ -230,6 +236,9 @@ func newStackTagSetCmd(stack *string) *cobra.Command {
 			sink := cmdutil.Diag()
 			ws := pkgWorkspace.Instance
 			name := args[0]
+			if name == backend.SandboxStackTag {
+				return errSandboxStackTagReadOnly
+			}
 			value := args[1]
 
 			opts := display.Options{

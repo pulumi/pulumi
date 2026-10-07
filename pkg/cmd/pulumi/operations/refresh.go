@@ -33,6 +33,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/deployment"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/metadata"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/sandbox"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/state"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
@@ -350,6 +351,9 @@ func NewRefreshCmd() *cobra.Command {
 				ExecKind:                  execKind,
 				RefreshProgram:            runProgram,
 				SkipPluginPreInstall:      skipPluginPreInstall,
+			}
+			if err := sandbox.ApplySandbox(ctx, cmd.OutOrStdout(), s, &opts.Engine); err != nil {
+				return err
 			}
 
 			changes, err := backend.RefreshStack(ctx, s, backend.UpdateOperation{
