@@ -285,6 +285,107 @@ export class API {
         return this.__run(options, __final);
     }
 
+    login(options: PulumiLoginOptions, url?: string): ReturnType<API["__run"]> {
+        const __final: string[] = [];
+        __final.push("login");
+
+        const __flags: string[] = [];
+
+        if (options.color != null) {
+            __flags.push("--color", "" + options.color);
+        }
+
+        if (options.disableIntegrityChecking) {
+            __flags.push("--disable-integrity-checking");
+        }
+
+        if (options.fullyQualifyStackNames) {
+            __flags.push("--fully-qualify-stack-names");
+        }
+
+        if (options.logflow) {
+            __flags.push("--logflow");
+        }
+
+        if (options.logtostderr) {
+            __flags.push("--logtostderr");
+        }
+
+        if (options.memprofilerate != null) {
+            __flags.push("--memprofilerate", "" + options.memprofilerate);
+        }
+
+        if (options.otelTraces != null) {
+            __flags.push("--otel-traces", "" + options.otelTraces);
+        }
+
+        if (options.profiling != null) {
+            __flags.push("--profiling", "" + options.profiling);
+        }
+
+        if (options.tracing != null) {
+            __flags.push("--tracing", "" + options.tracing);
+        }
+
+        if (options.tracingHeader != null) {
+            __flags.push("--tracing-header", "" + options.tracingHeader);
+        }
+
+        if (options.verbose != null) {
+            __flags.push("--verbose", "" + options.verbose);
+        }
+
+        if (options.cloudUrl != null) {
+            __flags.push("--cloud-url", "" + options.cloudUrl);
+        }
+
+        if (options.defaultOrg != null) {
+            __flags.push("--default-org", "" + options.defaultOrg);
+        }
+
+        if (options.insecure) {
+            __flags.push("--insecure");
+        }
+
+        if (options.local) {
+            __flags.push("--local");
+        }
+
+        if (options.oidcExpiration != null) {
+            __flags.push("--oidc-expiration", "" + options.oidcExpiration);
+        }
+
+        if (options.oidcOrg != null) {
+            __flags.push("--oidc-org", "" + options.oidcOrg);
+        }
+
+        if (options.oidcTeam != null) {
+            __flags.push("--oidc-team", "" + options.oidcTeam);
+        }
+
+        if (options.oidcToken != null) {
+            __flags.push("--oidc-token", "" + options.oidcToken);
+        }
+
+        if (options.oidcUser != null) {
+            __flags.push("--oidc-user", "" + options.oidcUser);
+        }
+
+        __final.push(...__flags);
+
+        const __arguments: string[] = [];
+
+        if (url != null) {
+            __arguments.push("" + url);
+        }
+        if (__arguments.length > 0) {
+            __final.push("--");
+            __final.push(...__arguments);
+        }
+
+        return this.__run(options, __final);
+    }
+
     new(options: PulumiNewOptions, templateOrUrl?: string): ReturnType<API["__run"]> {
         const __final: string[] = [];
         __final.push("new");
@@ -1009,6 +1110,50 @@ export interface PulumiImportOptions extends BaseOptions {
     suppressProgress?: boolean;
     /** Display full URNs instead of short resource names */
     urns?: boolean;
+}
+
+/** Options for the `pulumi login` command. */
+export interface PulumiLoginOptions extends BaseOptions {
+    /** Colorize output. Choices are: always, never, raw, auto */
+    color?: string;
+    /** Disable integrity checking of checkpoint files */
+    disableIntegrityChecking?: boolean;
+    /** Show fully-qualified stack names */
+    fullyQualifyStackNames?: boolean;
+    /** Flow log settings to child processes (like plugins) */
+    logflow?: boolean;
+    /** Log to stderr instead of to files */
+    logtostderr?: boolean;
+    /** Enable more precise (and expensive) memory allocation profiles by setting runtime.MemProfileRate */
+    memprofilerate?: number;
+    /** Export OpenTelemetry traces to the specified endpoint. Use file:// for local JSON files, grpc:// or https:// for remote collectors */
+    otelTraces?: string;
+    /** Emit CPU and memory profiles and an execution trace to '[filename].[pid].{cpu,mem,trace}', respectively */
+    profiling?: string;
+    /** Emit tracing to the specified endpoint. Use the `file:` scheme to write tracing data to a local file */
+    tracing?: string;
+    /** Include the tracing header with the given contents. */
+    tracingHeader?: string;
+    /** Enable verbose logging (e.g., v=3); anything >3 is very verbose */
+    verbose?: number;
+    /** The URL of the Pulumi Cloud API to log in with (e.g., 'https://api.pulumi.com') */
+    cloudUrl?: string;
+    /** A default org to associate with the login. Please note, currently, only the managed and self-hosted backends support organizations */
+    defaultOrg?: string;
+    /** Allow insecure server connections when using SSL */
+    insecure?: boolean;
+    /** Use Pulumi in local-only mode */
+    local?: boolean;
+    /** The expiration for the cloud backend access token in duration format (e.g. '15m', '24h') */
+    oidcExpiration?: string;
+    /** The organization to use for OIDC token exchange audience */
+    oidcOrg?: string;
+    /** The team when exchanging for a team token */
+    oidcTeam?: string;
+    /** An OIDC token to exchange for a cloud backend access token. Can be either a raw token or a file path prefixed with 'file://'. */
+    oidcToken?: string;
+    /** The user when exchanging for a personal token */
+    oidcUser?: string;
 }
 
 /** Options for the `pulumi new` command. */

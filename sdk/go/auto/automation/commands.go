@@ -23,6 +23,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/base"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optcancel"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optimport"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optlogin"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optnew"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optorg"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optorggetdefault"
@@ -347,6 +348,145 @@ func (a *API) Import(
 	args := []string{}
 	for _, v := range arg {
 		args = append(args, fmt.Sprint(v))
+	}
+	if len(args) > 0 {
+		final = append(final, "--")
+		final = append(final, args...)
+	}
+
+	return a.run(ctx, base.BaseOptions{
+		Cwd:           o.Cwd,
+		AdditionalEnv: o.AdditionalEnv,
+		Stdout:        o.Stdout,
+		Stderr:        o.Stderr,
+		Stdin:         o.Stdin,
+	}, final)
+}
+
+// Login corresponds to `pulumi login`.
+//
+// Log in to a Pulumi state backend.
+//
+// With no arguments, this command logs in to Pulumi Cloud:
+//
+//	$ pulumi login
+//
+// If `PULUMI_ACCESS_TOKEN` is set, that token is used. Otherwise, the command prompts for an
+// access token and offers to open a browser where you can create one.
+//
+// To log in to a self-hosted Pulumi Cloud, pass its API URL:
+//
+//	$ pulumi login https://api.pulumi.acmecorp.com
+//
+// For either, `--default-org` sets the organization to use when a command doesn't name one, and
+// `--interactive` lists the accounts you're already logged in to so you can choose among them.
+//
+// To manage state yourself, pass the URL of a supported storage backend instead. Pulumi stores
+// state under a `.pulumi` directory at that location, and backing it up and coordinating access
+// across a team is then up to you:
+//
+//	$ pulumi login file://~                                    # local filesystem
+//	$ pulumi login s3://my-pulumi-state-bucket                 # AWS S3
+//	$ pulumi login gs://my-pulumi-state-bucket                 # Google Cloud Storage
+//	$ pulumi login azblob://my-pulumi-state-bucket             # Azure Blob Storage
+//	$ pulumi login postgres://user:password@host:5432/database # PostgreSQL
+//
+// `--local` is a shortcut for `file://~`, which stores state under `~/.pulumi`.
+func (a *API) Login(
+	ctx context.Context,
+	url *string,
+	opts ...optlogin.Option,
+) (base.CommandResult, error) {
+	o := optlogin.Options{}
+	for _, opt := range opts {
+		opt(&o)
+	}
+
+	final := []string{"login"}
+
+	if o.CloudUrl != "" {
+		final = append(final, "--cloud-url", fmt.Sprint(o.CloudUrl))
+	}
+
+	if o.Color != "" {
+		final = append(final, "--color", fmt.Sprint(o.Color))
+	}
+
+	if o.DefaultOrg != "" {
+		final = append(final, "--default-org", fmt.Sprint(o.DefaultOrg))
+	}
+
+	if o.DisableIntegrityChecking {
+		final = append(final, "--disable-integrity-checking")
+	}
+
+	if o.FullyQualifyStackNames {
+		final = append(final, "--fully-qualify-stack-names")
+	}
+
+	if o.Insecure {
+		final = append(final, "--insecure")
+	}
+
+	if o.Local {
+		final = append(final, "--local")
+	}
+
+	if o.Logflow {
+		final = append(final, "--logflow")
+	}
+
+	if o.Logtostderr {
+		final = append(final, "--logtostderr")
+	}
+
+	if o.Memprofilerate != 0 {
+		final = append(final, "--memprofilerate", fmt.Sprint(o.Memprofilerate))
+	}
+
+	if o.OidcExpiration != "" {
+		final = append(final, "--oidc-expiration", fmt.Sprint(o.OidcExpiration))
+	}
+
+	if o.OidcOrg != "" {
+		final = append(final, "--oidc-org", fmt.Sprint(o.OidcOrg))
+	}
+
+	if o.OidcTeam != "" {
+		final = append(final, "--oidc-team", fmt.Sprint(o.OidcTeam))
+	}
+
+	if o.OidcToken != "" {
+		final = append(final, "--oidc-token", fmt.Sprint(o.OidcToken))
+	}
+
+	if o.OidcUser != "" {
+		final = append(final, "--oidc-user", fmt.Sprint(o.OidcUser))
+	}
+
+	if o.OtelTraces != "" {
+		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
+	}
+
+	if o.Profiling != "" {
+		final = append(final, "--profiling", fmt.Sprint(o.Profiling))
+	}
+
+	if o.Tracing != "" {
+		final = append(final, "--tracing", fmt.Sprint(o.Tracing))
+	}
+
+	if o.TracingHeader != "" {
+		final = append(final, "--tracing-header", fmt.Sprint(o.TracingHeader))
+	}
+
+	if o.Verbose != 0 {
+		final = append(final, "--verbose", fmt.Sprint(o.Verbose))
+	}
+
+	args := []string{}
+	if url != nil {
+		args = append(args, fmt.Sprint(*url))
 	}
 	if len(args) > 0 {
 		final = append(final, "--")
