@@ -30,6 +30,14 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optorgsearch"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optorgsearchai"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optorgsetdefault"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optorgwebhook"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optorgwebhookdelivery"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optorgwebhookdeliverylist"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optorgwebhookedit"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optorgwebhooklist"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optorgwebhooknew"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optorgwebhookping"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optorgwebhookremove"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optversion"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optwhoami"
 )
@@ -1014,6 +1022,725 @@ func (a *API) OrgSetDefault(
 
 	args := []string{}
 	args = append(args, fmt.Sprint(name))
+	if len(args) > 0 {
+		final = append(final, "--")
+		final = append(final, args...)
+	}
+
+	return a.run(ctx, base.BaseOptions{
+		Cwd:           o.Cwd,
+		AdditionalEnv: o.AdditionalEnv,
+		Stdout:        o.Stdout,
+		Stderr:        o.Stderr,
+		Stdin:         o.Stdin,
+	}, final)
+}
+
+// OrgWebhook corresponds to `pulumi org webhook`.
+func (a *API) OrgWebhook(
+	ctx context.Context,
+	opts ...optorgwebhook.Option,
+) (base.CommandResult, error) {
+	o := optorgwebhook.Options{}
+	for _, opt := range opts {
+		opt(&o)
+	}
+
+	final := []string{"org", "webhook"}
+
+	if o.Color != "" {
+		final = append(final, "--color", fmt.Sprint(o.Color))
+	}
+
+	if o.DisableIntegrityChecking {
+		final = append(final, "--disable-integrity-checking")
+	}
+
+	if o.FullyQualifyStackNames {
+		final = append(final, "--fully-qualify-stack-names")
+	}
+
+	if o.Logflow {
+		final = append(final, "--logflow")
+	}
+
+	if o.Logtostderr {
+		final = append(final, "--logtostderr")
+	}
+
+	if o.Memprofilerate != 0 {
+		final = append(final, "--memprofilerate", fmt.Sprint(o.Memprofilerate))
+	}
+
+	if o.OtelTraces != "" {
+		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
+	}
+
+	if o.Profiling != "" {
+		final = append(final, "--profiling", fmt.Sprint(o.Profiling))
+	}
+
+	if o.Tracing != "" {
+		final = append(final, "--tracing", fmt.Sprint(o.Tracing))
+	}
+
+	if o.TracingHeader != "" {
+		final = append(final, "--tracing-header", fmt.Sprint(o.TracingHeader))
+	}
+
+	if o.Verbose != 0 {
+		final = append(final, "--verbose", fmt.Sprint(o.Verbose))
+	}
+
+	return a.run(ctx, base.BaseOptions{
+		Cwd:           o.Cwd,
+		AdditionalEnv: o.AdditionalEnv,
+		Stdout:        o.Stdout,
+		Stderr:        o.Stderr,
+		Stdin:         o.Stdin,
+	}, final)
+}
+
+// OrgWebhookDelivery corresponds to `pulumi org webhook delivery`.
+func (a *API) OrgWebhookDelivery(
+	ctx context.Context,
+	opts ...optorgwebhookdelivery.Option,
+) (base.CommandResult, error) {
+	o := optorgwebhookdelivery.Options{}
+	for _, opt := range opts {
+		opt(&o)
+	}
+
+	final := []string{"org", "webhook", "delivery"}
+
+	if o.Color != "" {
+		final = append(final, "--color", fmt.Sprint(o.Color))
+	}
+
+	if o.DisableIntegrityChecking {
+		final = append(final, "--disable-integrity-checking")
+	}
+
+	if o.FullyQualifyStackNames {
+		final = append(final, "--fully-qualify-stack-names")
+	}
+
+	if o.Logflow {
+		final = append(final, "--logflow")
+	}
+
+	if o.Logtostderr {
+		final = append(final, "--logtostderr")
+	}
+
+	if o.Memprofilerate != 0 {
+		final = append(final, "--memprofilerate", fmt.Sprint(o.Memprofilerate))
+	}
+
+	if o.OtelTraces != "" {
+		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
+	}
+
+	if o.Profiling != "" {
+		final = append(final, "--profiling", fmt.Sprint(o.Profiling))
+	}
+
+	if o.Tracing != "" {
+		final = append(final, "--tracing", fmt.Sprint(o.Tracing))
+	}
+
+	if o.TracingHeader != "" {
+		final = append(final, "--tracing-header", fmt.Sprint(o.TracingHeader))
+	}
+
+	if o.Verbose != 0 {
+		final = append(final, "--verbose", fmt.Sprint(o.Verbose))
+	}
+
+	return a.run(ctx, base.BaseOptions{
+		Cwd:           o.Cwd,
+		AdditionalEnv: o.AdditionalEnv,
+		Stdout:        o.Stdout,
+		Stderr:        o.Stderr,
+		Stdin:         o.Stdin,
+	}, final)
+}
+
+// OrgWebhookDeliveryList corresponds to `pulumi org webhook delivery list`.
+//
+// [EXPERIMENTAL] List recent deliveries for an organization webhook.
+//
+// Returns the recent delivery history for a specific webhook. Each
+// delivery includes the timestamp, event kind, HTTP response code,
+// and request duration.
+func (a *API) OrgWebhookDeliveryList(
+	ctx context.Context,
+	id string,
+	opts ...optorgwebhookdeliverylist.Option,
+) (base.CommandResult, error) {
+	o := optorgwebhookdeliverylist.Options{}
+	for _, opt := range opts {
+		opt(&o)
+	}
+
+	final := []string{"org", "webhook", "delivery", "list"}
+
+	if o.Color != "" {
+		final = append(final, "--color", fmt.Sprint(o.Color))
+	}
+
+	if o.DisableIntegrityChecking {
+		final = append(final, "--disable-integrity-checking")
+	}
+
+	if o.FullyQualifyStackNames {
+		final = append(final, "--fully-qualify-stack-names")
+	}
+
+	if o.Logflow {
+		final = append(final, "--logflow")
+	}
+
+	if o.Logtostderr {
+		final = append(final, "--logtostderr")
+	}
+
+	if o.Memprofilerate != 0 {
+		final = append(final, "--memprofilerate", fmt.Sprint(o.Memprofilerate))
+	}
+
+	if o.Org != "" {
+		final = append(final, "--org", fmt.Sprint(o.Org))
+	}
+
+	if o.OtelTraces != "" {
+		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
+	}
+
+	if o.Output != "" {
+		final = append(final, "--output", fmt.Sprint(o.Output))
+	}
+
+	if o.Profiling != "" {
+		final = append(final, "--profiling", fmt.Sprint(o.Profiling))
+	}
+
+	if o.Tracing != "" {
+		final = append(final, "--tracing", fmt.Sprint(o.Tracing))
+	}
+
+	if o.TracingHeader != "" {
+		final = append(final, "--tracing-header", fmt.Sprint(o.TracingHeader))
+	}
+
+	if o.Verbose != 0 {
+		final = append(final, "--verbose", fmt.Sprint(o.Verbose))
+	}
+
+	args := []string{}
+	args = append(args, fmt.Sprint(id))
+	if len(args) > 0 {
+		final = append(final, "--")
+		final = append(final, args...)
+	}
+
+	return a.run(ctx, base.BaseOptions{
+		Cwd:           o.Cwd,
+		AdditionalEnv: o.AdditionalEnv,
+		Stdout:        o.Stdout,
+		Stderr:        o.Stderr,
+		Stdin:         o.Stdin,
+	}, final)
+}
+
+// OrgWebhookEdit corresponds to `pulumi org webhook edit`.
+//
+// [EXPERIMENTAL] Update an organization webhook's configuration.
+//
+// Modifies an existing webhook. Only the flags you pass are changed;
+// all other fields are preserved.
+//
+// Use --add-event/--remove-event and --add-group/--remove-group to
+// modify event subscriptions incrementally. To clear the secret,
+// pass --secret "".
+func (a *API) OrgWebhookEdit(
+	ctx context.Context,
+	id string,
+	opts ...optorgwebhookedit.Option,
+) (base.CommandResult, error) {
+	o := optorgwebhookedit.Options{}
+	for _, opt := range opts {
+		opt(&o)
+	}
+
+	final := []string{"org", "webhook", "edit"}
+
+	if o.Active {
+		final = append(final, "--active")
+	}
+
+	for _, v := range o.AddEvent {
+		final = append(final, "--add-event", fmt.Sprint(v))
+	}
+
+	for _, v := range o.AddGroup {
+		final = append(final, "--add-group", fmt.Sprint(v))
+	}
+
+	if o.Color != "" {
+		final = append(final, "--color", fmt.Sprint(o.Color))
+	}
+
+	if o.DisableIntegrityChecking {
+		final = append(final, "--disable-integrity-checking")
+	}
+
+	if o.DisplayName != "" {
+		final = append(final, "--display-name", fmt.Sprint(o.DisplayName))
+	}
+
+	if o.FullyQualifyStackNames {
+		final = append(final, "--fully-qualify-stack-names")
+	}
+
+	if o.HookFormat != "" {
+		final = append(final, "--hook-format", fmt.Sprint(o.HookFormat))
+	}
+
+	if o.Logflow {
+		final = append(final, "--logflow")
+	}
+
+	if o.Logtostderr {
+		final = append(final, "--logtostderr")
+	}
+
+	if o.Memprofilerate != 0 {
+		final = append(final, "--memprofilerate", fmt.Sprint(o.Memprofilerate))
+	}
+
+	if o.Org != "" {
+		final = append(final, "--org", fmt.Sprint(o.Org))
+	}
+
+	if o.OtelTraces != "" {
+		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
+	}
+
+	if o.Output != "" {
+		final = append(final, "--output", fmt.Sprint(o.Output))
+	}
+
+	if o.Profiling != "" {
+		final = append(final, "--profiling", fmt.Sprint(o.Profiling))
+	}
+
+	for _, v := range o.RemoveEvent {
+		final = append(final, "--remove-event", fmt.Sprint(v))
+	}
+
+	for _, v := range o.RemoveGroup {
+		final = append(final, "--remove-group", fmt.Sprint(v))
+	}
+
+	if o.Secret != "" {
+		final = append(final, "--secret", fmt.Sprint(o.Secret))
+	}
+
+	if o.Tracing != "" {
+		final = append(final, "--tracing", fmt.Sprint(o.Tracing))
+	}
+
+	if o.TracingHeader != "" {
+		final = append(final, "--tracing-header", fmt.Sprint(o.TracingHeader))
+	}
+
+	if o.Url != "" {
+		final = append(final, "--url", fmt.Sprint(o.Url))
+	}
+
+	if o.Verbose != 0 {
+		final = append(final, "--verbose", fmt.Sprint(o.Verbose))
+	}
+
+	args := []string{}
+	args = append(args, fmt.Sprint(id))
+	if len(args) > 0 {
+		final = append(final, "--")
+		final = append(final, args...)
+	}
+
+	return a.run(ctx, base.BaseOptions{
+		Cwd:           o.Cwd,
+		AdditionalEnv: o.AdditionalEnv,
+		Stdout:        o.Stdout,
+		Stderr:        o.Stderr,
+		Stdin:         o.Stdin,
+	}, final)
+}
+
+// OrgWebhookList corresponds to `pulumi org webhook list`.
+//
+// [EXPERIMENTAL] List all webhooks configured for an organization.
+//
+// Returns all webhooks configured at the organization level. Each
+// webhook includes its ID, name, payload URL, format, event groups,
+// events, and active status.
+//
+// Organization-level webhooks can fire on stack lifecycle events,
+// deployment events, drift detection events, and policy violation events.
+func (a *API) OrgWebhookList(
+	ctx context.Context,
+	opts ...optorgwebhooklist.Option,
+) (base.CommandResult, error) {
+	o := optorgwebhooklist.Options{}
+	for _, opt := range opts {
+		opt(&o)
+	}
+
+	final := []string{"org", "webhook", "list"}
+
+	if o.All {
+		final = append(final, "--all")
+	}
+
+	if o.Color != "" {
+		final = append(final, "--color", fmt.Sprint(o.Color))
+	}
+
+	if o.Count != 0 {
+		final = append(final, "--count", fmt.Sprint(o.Count))
+	}
+
+	if o.DisableIntegrityChecking {
+		final = append(final, "--disable-integrity-checking")
+	}
+
+	if o.FullyQualifyStackNames {
+		final = append(final, "--fully-qualify-stack-names")
+	}
+
+	if o.Logflow {
+		final = append(final, "--logflow")
+	}
+
+	if o.Logtostderr {
+		final = append(final, "--logtostderr")
+	}
+
+	if o.Memprofilerate != 0 {
+		final = append(final, "--memprofilerate", fmt.Sprint(o.Memprofilerate))
+	}
+
+	if o.Org != "" {
+		final = append(final, "--org", fmt.Sprint(o.Org))
+	}
+
+	if o.OtelTraces != "" {
+		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
+	}
+
+	if o.Output != "" {
+		final = append(final, "--output", fmt.Sprint(o.Output))
+	}
+
+	if o.Profiling != "" {
+		final = append(final, "--profiling", fmt.Sprint(o.Profiling))
+	}
+
+	if o.Tracing != "" {
+		final = append(final, "--tracing", fmt.Sprint(o.Tracing))
+	}
+
+	if o.TracingHeader != "" {
+		final = append(final, "--tracing-header", fmt.Sprint(o.TracingHeader))
+	}
+
+	if o.Verbose != 0 {
+		final = append(final, "--verbose", fmt.Sprint(o.Verbose))
+	}
+
+	return a.run(ctx, base.BaseOptions{
+		Cwd:           o.Cwd,
+		AdditionalEnv: o.AdditionalEnv,
+		Stdout:        o.Stdout,
+		Stderr:        o.Stderr,
+		Stdin:         o.Stdin,
+	}, final)
+}
+
+// OrgWebhookNew corresponds to `pulumi org webhook new`.
+//
+// [EXPERIMENTAL] Create a new organization webhook.
+//
+// Creates a webhook that delivers events for the specified organization
+// to a given URL. Organization webhooks can fire on stack lifecycle,
+// deployment, drift detection, environment, and policy violation events.
+//
+// When run interactively, prompts for required values that aren't
+// provided via flags. Pass --yes to accept defaults without prompting.
+func (a *API) OrgWebhookNew(
+	ctx context.Context,
+	opts ...optorgwebhooknew.Option,
+) (base.CommandResult, error) {
+	o := optorgwebhooknew.Options{}
+	for _, opt := range opts {
+		opt(&o)
+	}
+
+	final := []string{"org", "webhook", "new"}
+
+	final = append(final, "--yes")
+
+	if o.Active {
+		final = append(final, "--active")
+	}
+
+	if o.Color != "" {
+		final = append(final, "--color", fmt.Sprint(o.Color))
+	}
+
+	if o.DisableIntegrityChecking {
+		final = append(final, "--disable-integrity-checking")
+	}
+
+	for _, v := range o.Event {
+		final = append(final, "--event", fmt.Sprint(v))
+	}
+
+	if o.FullyQualifyStackNames {
+		final = append(final, "--fully-qualify-stack-names")
+	}
+
+	for _, v := range o.Group {
+		final = append(final, "--group", fmt.Sprint(v))
+	}
+
+	if o.HookFormat != "" {
+		final = append(final, "--hook-format", fmt.Sprint(o.HookFormat))
+	}
+
+	if o.Logflow {
+		final = append(final, "--logflow")
+	}
+
+	if o.Logtostderr {
+		final = append(final, "--logtostderr")
+	}
+
+	if o.Memprofilerate != 0 {
+		final = append(final, "--memprofilerate", fmt.Sprint(o.Memprofilerate))
+	}
+
+	if o.Name != "" {
+		final = append(final, "--name", fmt.Sprint(o.Name))
+	}
+
+	if o.Org != "" {
+		final = append(final, "--org", fmt.Sprint(o.Org))
+	}
+
+	if o.OtelTraces != "" {
+		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
+	}
+
+	if o.Output != "" {
+		final = append(final, "--output", fmt.Sprint(o.Output))
+	}
+
+	if o.Profiling != "" {
+		final = append(final, "--profiling", fmt.Sprint(o.Profiling))
+	}
+
+	if o.Secret != "" {
+		final = append(final, "--secret", fmt.Sprint(o.Secret))
+	}
+
+	if o.Tracing != "" {
+		final = append(final, "--tracing", fmt.Sprint(o.Tracing))
+	}
+
+	if o.TracingHeader != "" {
+		final = append(final, "--tracing-header", fmt.Sprint(o.TracingHeader))
+	}
+
+	if o.Url != "" {
+		final = append(final, "--url", fmt.Sprint(o.Url))
+	}
+
+	if o.Verbose != 0 {
+		final = append(final, "--verbose", fmt.Sprint(o.Verbose))
+	}
+
+	return a.run(ctx, base.BaseOptions{
+		Cwd:           o.Cwd,
+		AdditionalEnv: o.AdditionalEnv,
+		Stdout:        o.Stdout,
+		Stderr:        o.Stderr,
+		Stdin:         o.Stdin,
+	}, final)
+}
+
+// OrgWebhookPing corresponds to `pulumi org webhook ping`.
+//
+// [EXPERIMENTAL] Send a test ping to an organization webhook.
+//
+// Issues a test ping event to the specified webhook to verify it is
+// properly configured and reachable. Returns the delivery result
+// including the HTTP response code and duration.
+func (a *API) OrgWebhookPing(
+	ctx context.Context,
+	id string,
+	opts ...optorgwebhookping.Option,
+) (base.CommandResult, error) {
+	o := optorgwebhookping.Options{}
+	for _, opt := range opts {
+		opt(&o)
+	}
+
+	final := []string{"org", "webhook", "ping"}
+
+	if o.Color != "" {
+		final = append(final, "--color", fmt.Sprint(o.Color))
+	}
+
+	if o.DisableIntegrityChecking {
+		final = append(final, "--disable-integrity-checking")
+	}
+
+	if o.FullyQualifyStackNames {
+		final = append(final, "--fully-qualify-stack-names")
+	}
+
+	if o.Logflow {
+		final = append(final, "--logflow")
+	}
+
+	if o.Logtostderr {
+		final = append(final, "--logtostderr")
+	}
+
+	if o.Memprofilerate != 0 {
+		final = append(final, "--memprofilerate", fmt.Sprint(o.Memprofilerate))
+	}
+
+	if o.Org != "" {
+		final = append(final, "--org", fmt.Sprint(o.Org))
+	}
+
+	if o.OtelTraces != "" {
+		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
+	}
+
+	if o.Output != "" {
+		final = append(final, "--output", fmt.Sprint(o.Output))
+	}
+
+	if o.Profiling != "" {
+		final = append(final, "--profiling", fmt.Sprint(o.Profiling))
+	}
+
+	if o.Tracing != "" {
+		final = append(final, "--tracing", fmt.Sprint(o.Tracing))
+	}
+
+	if o.TracingHeader != "" {
+		final = append(final, "--tracing-header", fmt.Sprint(o.TracingHeader))
+	}
+
+	if o.Verbose != 0 {
+		final = append(final, "--verbose", fmt.Sprint(o.Verbose))
+	}
+
+	args := []string{}
+	args = append(args, fmt.Sprint(id))
+	if len(args) > 0 {
+		final = append(final, "--")
+		final = append(final, args...)
+	}
+
+	return a.run(ctx, base.BaseOptions{
+		Cwd:           o.Cwd,
+		AdditionalEnv: o.AdditionalEnv,
+		Stdout:        o.Stdout,
+		Stderr:        o.Stderr,
+		Stdin:         o.Stdin,
+	}, final)
+}
+
+// OrgWebhookRemove corresponds to `pulumi org webhook remove`.
+//
+// [EXPERIMENTAL] Delete an organization webhook.
+//
+// Permanently removes the specified webhook from the organization.
+// This cannot be undone. You will be prompted to confirm unless
+// --yes is passed.
+//
+// Returns an error if the webhook does not exist.
+func (a *API) OrgWebhookRemove(
+	ctx context.Context,
+	id string,
+	opts ...optorgwebhookremove.Option,
+) (base.CommandResult, error) {
+	o := optorgwebhookremove.Options{}
+	for _, opt := range opts {
+		opt(&o)
+	}
+
+	final := []string{"org", "webhook", "remove"}
+
+	final = append(final, "--yes")
+
+	if o.Color != "" {
+		final = append(final, "--color", fmt.Sprint(o.Color))
+	}
+
+	if o.DisableIntegrityChecking {
+		final = append(final, "--disable-integrity-checking")
+	}
+
+	if o.FullyQualifyStackNames {
+		final = append(final, "--fully-qualify-stack-names")
+	}
+
+	if o.Logflow {
+		final = append(final, "--logflow")
+	}
+
+	if o.Logtostderr {
+		final = append(final, "--logtostderr")
+	}
+
+	if o.Memprofilerate != 0 {
+		final = append(final, "--memprofilerate", fmt.Sprint(o.Memprofilerate))
+	}
+
+	if o.Org != "" {
+		final = append(final, "--org", fmt.Sprint(o.Org))
+	}
+
+	if o.OtelTraces != "" {
+		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
+	}
+
+	if o.Profiling != "" {
+		final = append(final, "--profiling", fmt.Sprint(o.Profiling))
+	}
+
+	if o.Tracing != "" {
+		final = append(final, "--tracing", fmt.Sprint(o.Tracing))
+	}
+
+	if o.TracingHeader != "" {
+		final = append(final, "--tracing-header", fmt.Sprint(o.TracingHeader))
+	}
+
+	if o.Verbose != 0 {
+		final = append(final, "--verbose", fmt.Sprint(o.Verbose))
+	}
+
+	args := []string{}
+	args = append(args, fmt.Sprint(id))
 	if len(args) > 0 {
 		final = append(final, "--")
 		final = append(final, args...)
