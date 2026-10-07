@@ -13,6 +13,10 @@ pulumi.export("lookupLiteralMismatchedType", {
     "a": 1,
     "b": 2,
 }.get("c", True))
+pulumi.export("deprecatedTwoArgumentLookup", {
+    "a": 1,
+    "b": 2,
+}["a"])
 alternative_names = config.get_object("alternativeNames")
 if alternative_names is None:
     alternative_names = {}

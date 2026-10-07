@@ -13,6 +13,10 @@ export const lookupLiteralMismatchedType = ({
     a: 1,
     b: 2,
 } as Record<string, any>)["c"] || true;
+export const deprecatedTwoArgumentLookup = {
+    a: 1,
+    b: 2,
+}["a"];
 const alternativeNames = config.getObject<any>("alternativeNames") || {};
 export const names = Object.entries(alternativeNames).sort().map(([k, v]) => ({key: k, value: v})).map(entry => (entry.value));
 export const lengthOutput = Object.keys(aMap).length;
