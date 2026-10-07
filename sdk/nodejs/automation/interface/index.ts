@@ -860,6 +860,89 @@ export class API {
         return this.__run(options, __final);
     }
 
+    schemaCheck(options: PulumiSchemaCheckOptions, schemaSource: string, ...providerParameter: string[]): ReturnType<API["__run"]> {
+        const __final: string[] = [];
+        __final.push("schema");
+        __final.push("check");
+
+        const __flags: string[] = [];
+
+        if (options.color != null) {
+            __flags.push("--color", "" + options.color);
+        }
+
+        if (options.disableIntegrityChecking) {
+            __flags.push("--disable-integrity-checking");
+        }
+
+        if (options.fullyQualifyStackNames) {
+            __flags.push("--fully-qualify-stack-names");
+        }
+
+        if (options.logflow) {
+            __flags.push("--logflow");
+        }
+
+        if (options.logtostderr) {
+            __flags.push("--logtostderr");
+        }
+
+        if (options.memprofilerate != null) {
+            __flags.push("--memprofilerate", "" + options.memprofilerate);
+        }
+
+        if (options.otelTraces != null) {
+            __flags.push("--otel-traces", "" + options.otelTraces);
+        }
+
+        if (options.profiling != null) {
+            __flags.push("--profiling", "" + options.profiling);
+        }
+
+        if (options.tracing != null) {
+            __flags.push("--tracing", "" + options.tracing);
+        }
+
+        if (options.tracingHeader != null) {
+            __flags.push("--tracing-header", "" + options.tracingHeader);
+        }
+
+        if (options.verbose != null) {
+            __flags.push("--verbose", "" + options.verbose);
+        }
+
+        if (options.allowDanglingReferences) {
+            __flags.push("--allow-dangling-references");
+        }
+
+        if (options.extension != null) {
+            __flags.push("--extension", "" + options.extension);
+        }
+
+        if (options.server != null) {
+            __flags.push("--server", "" + options.server);
+        }
+
+        __final.push(...__flags);
+
+        const __arguments: string[] = [];
+
+        for (const __item of schemaSource ?? []) {
+            __arguments.push("" + __item);
+        }
+        if (providerParameter != null) {
+            for (const __item of providerParameter ?? []) {
+                __arguments.push("" + __item);
+            }
+        }
+        if (__arguments.length > 0) {
+            __final.push("--");
+            __final.push(...__arguments);
+        }
+
+        return this.__run(options, __final);
+    }
+
     version(options: PulumiVersionOptions): ReturnType<API["__run"]> {
         const __final: string[] = [];
         __final.push("version");
@@ -1340,6 +1423,38 @@ export interface PulumiOrgSetDefaultOptions extends BaseOptions {
     tracingHeader?: string;
     /** Enable verbose logging (e.g., v=3); anything >3 is very verbose */
     verbose?: number;
+}
+
+/** Options for the `pulumi schema check` command. */
+export interface PulumiSchemaCheckOptions extends BaseOptions {
+    /** Colorize output. Choices are: always, never, raw, auto */
+    color?: string;
+    /** Disable integrity checking of checkpoint files */
+    disableIntegrityChecking?: boolean;
+    /** Show fully-qualified stack names */
+    fullyQualifyStackNames?: boolean;
+    /** Flow log settings to child processes (like plugins) */
+    logflow?: boolean;
+    /** Log to stderr instead of to files */
+    logtostderr?: boolean;
+    /** Enable more precise (and expensive) memory allocation profiles by setting runtime.MemProfileRate */
+    memprofilerate?: number;
+    /** Export OpenTelemetry traces to the specified endpoint. Use file:// for local JSON files, grpc:// or https:// for remote collectors */
+    otelTraces?: string;
+    /** Emit CPU and memory profiles and an execution trace to '[filename].[pid].{cpu,mem,trace}', respectively */
+    profiling?: string;
+    /** Emit tracing to the specified endpoint. Use the `file:` scheme to write tracing data to a local file */
+    tracing?: string;
+    /** Include the tracing header with the given contents. */
+    tracingHeader?: string;
+    /** Enable verbose logging (e.g., v=3); anything >3 is very verbose */
+    verbose?: number;
+    /** Whether references to nonexistent types should be considered errors */
+    allowDanglingReferences?: boolean;
+    /** Add an extension layered onto a base provider rather than a replacement. The value is the extension's provider-defined parameters as one shell-quoted string, e.g. --extension "key=value ..." */
+    extension?: string;
+    /** A URL to download the plugin from. When set, the schema source is used as the plugin name directly and no package resolution is performed. */
+    server?: string;
 }
 
 /** Options for the `pulumi version` command. */
