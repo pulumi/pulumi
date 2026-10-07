@@ -1,4 +1,0 @@
-component: auto
-kind: feat
-body: Add `whoami` to the generated automation APIs for NodeJS, Python and Go
-time: 2026-10-05T10:43:45.503193+02:00
