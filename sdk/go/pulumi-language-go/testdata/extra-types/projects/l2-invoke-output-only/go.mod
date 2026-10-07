@@ -3,7 +3,7 @@ module l2-invoke-output-only
 go 1.25
 
 require (
-	github.com/pulumi/pulumi/sdk/v3 v3.30.0
+	github.com/pulumi/pulumi/sdk/v3 v3.269.0
 	example.com/pulumi-output-only-invoke/sdk/go/v24 v24.0.0
 )
 

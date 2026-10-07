@@ -3,7 +3,7 @@ module l2-resource-option-version
 go 1.25
 
 require (
-	github.com/pulumi/pulumi/sdk/v3 v3.30.0
+	github.com/pulumi/pulumi/sdk/v3 v3.269.0
 	example.com/pulumi-simple/sdk/go/v26 v26.0.0
 )
 

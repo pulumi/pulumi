@@ -3,7 +3,7 @@ module l2-namespaced-provider
 go 1.25
 
 require (
-	github.com/pulumi/pulumi/sdk/v3 v3.30.0
+	github.com/pulumi/pulumi/sdk/v3 v3.269.0
 	example.com/pulumi-component/sdk/go/v13 v13.3.7
 	github.com/a-namespace/pulumi-namespaced/sdk/go/v16 v16.0.0
 )

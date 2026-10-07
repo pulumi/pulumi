@@ -3,7 +3,7 @@ module l2-failed-create
 go 1.25
 
 require (
-	github.com/pulumi/pulumi/sdk/v3 v3.30.0
+	github.com/pulumi/pulumi/sdk/v3 v3.269.0
 	example.com/pulumi-fail_on_create/sdk/go/v4 v4.0.0
 	example.com/pulumi-simple/sdk/go/v2 v2.0.0
 )

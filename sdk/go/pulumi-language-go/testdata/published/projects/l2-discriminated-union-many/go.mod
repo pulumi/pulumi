@@ -3,7 +3,7 @@ module l2-discriminated-union-many
 go 1.25
 
 require (
-	github.com/pulumi/pulumi/sdk/v3 v3.30.0
+	github.com/pulumi/pulumi/sdk/v3 v3.269.0
 	example.com/pulumi-discriminated-union-many/sdk/go/v49 v49.0.0
 )
 

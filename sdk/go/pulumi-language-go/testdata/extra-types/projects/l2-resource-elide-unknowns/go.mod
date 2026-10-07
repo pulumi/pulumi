@@ -3,7 +3,7 @@ module l2-resource-elide-unknowns
 go 1.25
 
 require (
-	github.com/pulumi/pulumi/sdk/v3 v3.30.0
+	github.com/pulumi/pulumi/sdk/v3 v3.269.0
 	example.com/pulumi-output/sdk/go/v23 v23.0.0
 	example.com/pulumi-simple/sdk/go/v2 v2.0.0
 )

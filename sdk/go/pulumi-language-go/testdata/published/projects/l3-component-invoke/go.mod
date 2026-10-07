@@ -3,7 +3,7 @@ module l3-component-invoke
 go 1.25
 
 require (
-	github.com/pulumi/pulumi/sdk/v3 v3.30.0
+	github.com/pulumi/pulumi/sdk/v3 v3.269.0
 	example.com/pulumi-config/sdk/go/v9 v9.0.0
 	example.com/pulumi-multi-argument-invoke/sdk/go/v44 v44.0.0
 )

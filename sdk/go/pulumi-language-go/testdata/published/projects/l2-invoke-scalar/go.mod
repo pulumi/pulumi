@@ -3,7 +3,7 @@ module l2-invoke-scalar
 go 1.25
 
 require (
-	github.com/pulumi/pulumi/sdk/v3 v3.30.0
+	github.com/pulumi/pulumi/sdk/v3 v3.269.0
 	example.com/pulumi-simple-invoke-with-scalar-return/sdk/go/v17 v17.0.0
 )
 
