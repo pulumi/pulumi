@@ -1,0 +1,4 @@
+component: auto
+kind: feat
+body: Add `install` to the generated automation APIs for NodeJS, Python and Go
+time: 2026-10-05T17:25:04.295224+02:00
