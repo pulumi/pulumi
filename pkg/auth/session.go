@@ -38,9 +38,10 @@ type runHelperFunc func(context.Context, credentialhelper.Request) (*credentialh
 type Session struct {
 	mu sync.Mutex
 	// find initializes run lazily. It is nil when run was supplied directly.
-	find   func() error
-	run    runHelperFunc
-	stderr io.Writer
+	find     func() error
+	run      runHelperFunc
+	resolved *credentialhelper.Resolved
+	stderr   io.Writer
 	// helperEnv holds the variables applied so far, to detect conflicts between backends.
 	helperEnv map[string]string
 	// prepared holds the outcome for each backend the helper ran for.
@@ -89,6 +90,7 @@ func NewSession(stderr io.Writer) *Session {
 		if err != nil || resolved == nil {
 			return err
 		}
+		session.resolved = resolved
 		session.run = session.executableRunner(resolved)
 		return nil
 	})
@@ -111,6 +113,35 @@ func (s *Session) executableRunner(resolved *credentialhelper.Resolved) runHelpe
 		runner := credentialhelper.Runner{Path: resolved.Path, Args: resolved.Args, Stderr: s.stderr}
 		return runner.Run(ctx, request)
 	}
+}
+
+// UseHelper selects an explicitly configured helper before any backends are prepared.
+func (s *Session) UseHelper(config workspace.CredentialHelper) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if len(s.prepared) != 0 || s.unselected != nil {
+		return errors.New("credential helper cannot be changed after preparing a backend")
+	}
+	resolved, err := credentialhelper.ResolveHelper(credentialhelper.ResolveHelperOptions{Explicit: &config})
+	if err != nil {
+		return err
+	}
+	s.resolved = resolved
+	s.run = s.executableRunner(resolved)
+	s.find = nil
+	return nil
+}
+
+// Helper finds the configured helper without executing it. Nil means no helper is in use.
+func (s *Session) Helper() (*credentialhelper.Resolved, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.find != nil {
+		if err := s.find(); err != nil {
+			return nil, err
+		}
+	}
+	return s.resolved, nil
 }
 
 // SetBackendValidator registers a function that checks whether the caller can open a backend URL

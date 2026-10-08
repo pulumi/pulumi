@@ -25,6 +25,9 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
+	"slices"
+	"strings"
 	"sync/atomic"
 	"testing"
 
@@ -34,6 +37,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/auth/authtest"
 	"github.com/pulumi/pulumi/pkg/v3/auth/credentialhelper"
 	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -85,6 +89,88 @@ func runCredentialCommandAt(t *testing.T, executable string, args ...string) (st
 		return string(output), fmt.Errorf("%w: %s", err, output)
 	}
 	return string(output), nil
+}
+
+func installCredentialTestExecutable(t *testing.T, dir, name string) string {
+	t.Helper()
+	if runtime.GOOS == "windows" {
+		name += ".exe"
+	}
+	executable, err := os.Executable()
+	require.NoError(t, err)
+	require.NoError(t, os.MkdirAll(dir, 0o700))
+	path := filepath.Join(dir, name)
+	if err := os.Link(executable, path); err != nil {
+		require.NoError(t, fsutil.CopyFile(path, executable, nil))
+	}
+	path, err = filepath.EvalSymlinks(path)
+	require.NoError(t, err)
+	return path
+}
+
+func TestCredentialHelperDiscovery(t *testing.T) {
+	for _, test := range []struct {
+		name      string
+		besideCLI bool
+		disabled  bool
+	}{
+		{name: "PATH"},
+		{name: "beside CLI precedes PATH", besideCLI: true},
+		{name: "none disables saved and discovered helpers", besideCLI: true, disabled: true},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			ptesting.IsolateCredentials(t)
+			t.Chdir(t.TempDir())
+			t.Setenv("PULUMI_CREDENTIAL_HELPER", "")
+			t.Setenv("PULUMI_CREDENTIAL_HELPER_ARGS", "ignored invalid JSON")
+			cliDir, pathDir := filepath.Join(t.TempDir(), "cli"), filepath.Join(t.TempDir(), "path")
+			cli := installCredentialTestExecutable(t, cliDir, "pulumi")
+			pathHelper := installCredentialTestExecutable(t, pathDir, "pulumi-credential-helper")
+			t.Setenv("PATH", pathDir)
+			responses := map[string]any{
+				"initial": map[string]any{"version": 1, "env": map[string]string{"HELPER_TEST_VALUE": "ephemeral"}},
+			}
+			pathCalls := authtest.NewHelperIn(t, pathDir, responses).Requests
+			besideCalls := authtest.NewHelperIn(t, cliDir, responses).Requests
+			selected := pathHelper
+			if test.besideCLI {
+				selected = installCredentialTestExecutable(t, cliDir, "pulumi-credential-helper")
+			}
+			if test.disabled {
+				t.Setenv("PULUMI_CREDENTIAL_HELPER", "none")
+				require.NoError(t, workspace.StoreCredentials(workspace.Credentials{
+					CredentialHelper: &workspace.CredentialHelper{Path: filepath.Join(t.TempDir(), "missing-helper")},
+				}))
+			}
+
+			_, err := runCredentialCommandAt(t, cli, "version")
+			require.NoError(t, err)
+			assert.Empty(t, pathCalls(t))
+			assert.Empty(t, besideCalls(t))
+
+			backendURL := "file://" + filepath.ToSlash(t.TempDir())
+			output, err := runCredentialCommandAt(t, cli, "login", backendURL)
+			require.NoError(t, err)
+			if test.disabled {
+				assert.NotContains(t, output, "Credential helper:")
+				assert.Empty(t, pathCalls(t))
+				assert.Empty(t, besideCalls(t))
+			} else {
+				assert.Contains(t, output, "Credential helper: "+selected)
+				expected := []credentialhelper.Request{{
+					Version: 1, Reason: credentialhelper.Initial,
+					SelectedBackendURL: backendURL,
+				}}
+				if test.besideCLI {
+					assert.Equal(t, expected, besideCalls(t))
+					assert.Empty(t, pathCalls(t))
+				} else {
+					assert.Equal(t, expected, pathCalls(t))
+					assert.Empty(t, besideCalls(t))
+				}
+			}
+		})
+	}
 }
 
 func TestCredentialHelperRedactsRefreshedCredentials(t *testing.T) {
@@ -167,11 +253,117 @@ func TestCredentialHelperRedactsRefreshedCredentials(t *testing.T) {
 	}
 }
 
-func TestCredentialHelperDoesNotRunWithoutBackend(t *testing.T) {
+func TestCredentialHelperLoginFlags(t *testing.T) {
+	for _, decline := range []bool{false, true} {
+		t.Run(fmt.Sprintf("decline=%t", decline), func(t *testing.T) {
+			ptesting.IsolateCredentials(t)
+			t.Chdir(t.TempDir())
+			backendURL := "file://" + filepath.ToSlash(t.TempDir())
+			response := map[string]any{"version": 1}
+			if !decline {
+				response["env"] = map[string]string{"HELPER_TEST_VALUE": "ephemeral"}
+			}
+			calls := configureTestCredentialHelper(t, map[string]any{"initial": response})
+			path := os.Getenv("PULUMI_CREDENTIAL_HELPER")
+			var helperArgs []string
+			require.NoError(t, json.Unmarshal([]byte(os.Getenv("PULUMI_CREDENTIAL_HELPER_ARGS")), &helperArgs))
+			args := slices.Concat(helperArgs, []string{"literal $(argument), with spaces", ""})
+			flags := make([]string, 0, 4+len(args))
+			flags = append(flags, "login", backendURL, "--credential-helper", path)
+			for _, arg := range args {
+				flags = append(flags, "--credential-helper-arg="+arg)
+			}
+			t.Setenv("PULUMI_CREDENTIAL_HELPER", "none")
+			t.Setenv("PULUMI_CREDENTIAL_HELPER_ARGS", "ignored invalid JSON")
+			previous := &workspace.CredentialHelper{Path: filepath.Join(t.TempDir(), "missing-helper")}
+			require.NoError(t, workspace.StoreCredentials(workspace.Credentials{
+				CredentialHelper: previous,
+				Accounts:         map[string]workspace.Account{"https://old.example.com": {AccessToken: "old-token"}},
+			}))
+
+			// A failed backend open must leave the existing helper configuration intact.
+			blocked := filepath.Join(t.TempDir(), "not-a-directory")
+			require.NoError(t, os.WriteFile(blocked, nil, 0o600))
+			flags[1] = "file://" + filepath.ToSlash(filepath.Join(blocked, "backend"))
+			_, err := runCredentialCommand(t, flags...)
+			require.Error(t, err)
+			stored, err := workspace.GetStoredCredentials()
+			require.NoError(t, err)
+			assert.Equal(t, previous, stored.CredentialHelper)
+
+			flags[1] = backendURL
+			output, err := runCredentialCommand(t, flags...)
+			require.NoError(t, err)
+			if decline {
+				assert.NotContains(t, output, "Credential helper:")
+			} else {
+				assert.Contains(t, output, "Credential helper: "+path)
+			}
+			stored, err = workspace.GetStoredCredentials()
+			require.NoError(t, err)
+			assert.Equal(t, &workspace.CredentialHelper{Path: path, Args: args}, stored.CredentialHelper)
+			assert.Equal(t, "old-token", stored.Accounts["https://old.example.com"].AccessToken)
+			assert.Equal(t, backendURL, stored.Current)
+
+			// The next process uses the saved configuration without explicit flags.
+			t.Setenv("PULUMI_CREDENTIAL_HELPER", "")
+			_, err = runCredentialCommand(t, "whoami")
+			require.NoError(t, err)
+			require.Len(t, calls(), 3)
+		})
+	}
+}
+
+//nolint:paralleltest // IsolateCredentials changes process-wide environment variables.
+func TestCredentialHelperLogout(t *testing.T) {
+	for _, args := range [][]string{nil, {"--all"}, {"https://old.example.com"}} {
+		t.Run(strings.Join(args, " "), func(t *testing.T) {
+			ptesting.IsolateCredentials(t)
+			t.Chdir(t.TempDir())
+			calls := configureTestCredentialHelper(t, nil)
+			helper := &workspace.CredentialHelper{Path: os.Getenv("PULUMI_CREDENTIAL_HELPER")}
+			require.NoError(t, workspace.StoreCredentials(workspace.Credentials{
+				Current: "https://old.example.com", CredentialHelper: helper,
+				Accounts: map[string]workspace.Account{
+					"https://old.example.com":   {AccessToken: "old-token"},
+					"https://other.example.com": {AccessToken: "other-token"},
+				},
+			}))
+			_, err := runCredentialCommand(t, append([]string{"logout"}, args...)...)
+			require.NoError(t, err)
+			stored, err := workspace.GetStoredCredentials()
+			require.NoError(t, err)
+			if len(args) != 0 && args[0] != "--all" {
+				assert.Equal(t, helper, stored.CredentialHelper)
+			} else {
+				assert.Nil(t, stored.CredentialHelper)
+			}
+			if len(args) == 0 || args[0] != "--all" {
+				assert.Equal(t, "other-token", stored.Accounts["https://other.example.com"].AccessToken)
+			}
+			assert.Empty(t, stored.Current)
+			assert.NotContains(t, stored.Accounts, "https://old.example.com")
+			assert.Empty(t, calls())
+		})
+	}
+}
+
+//nolint:paralleltest // IsolateCredentials changes process-wide environment variables.
+func TestCredentialHelperRejectsOIDC(t *testing.T) {
 	ptesting.IsolateCredentials(t)
-	t.Setenv("PULUMI_CREDENTIAL_HELPER", filepath.Join(t.TempDir(), "missing-helper"))
-	_, err := runCredentialCommand(t, "version")
-	require.NoError(t, err)
+	t.Chdir(t.TempDir())
+	calls := configureTestCredentialHelper(t, nil)
+	_, err := runCredentialCommand(t, "login", "https://api.example.com", "--oidc-token", "unused-token")
+	require.ErrorContains(t, err, "--oidc-token cannot be used with a credential helper")
+	assert.Contains(t, err.Error(), "PULUMI_CREDENTIAL_HELPER=none")
+	_, err = runCredentialCommand(t, "login", "--oidc-token", "unused-token",
+		"--credential-helper", os.Getenv("PULUMI_CREDENTIAL_HELPER"))
+	require.ErrorContains(t, err, "credential-helper oidc-token")
+	_, err = runCredentialCommand(t, "login", "--credential-helper-arg", "orphaned-argument")
+	require.ErrorContains(t, err, "--credential-helper-arg requires --credential-helper")
+	_, err = runCredentialCommand(t, "login", "--credential-helper=")
+	require.ErrorContains(t, err, "credential helper path must not be empty")
+	assert.Empty(t, calls())
 }
 
 func TestCredentialHelperKeepsInsecureConnection(t *testing.T) {

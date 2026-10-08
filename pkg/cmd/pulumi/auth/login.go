@@ -52,6 +52,8 @@ func NewLoginCmd(ws pkgWorkspace.Context, lm backend.LoginManager, store env.Env
 	var localMode bool
 	var insecure bool
 	var interactive bool
+	var helperPath string
+	var helperArgs []string
 
 	var oidcToken string
 	var oidcOrg string
@@ -64,12 +66,24 @@ func NewLoginCmd(ws pkgWorkspace.Context, lm backend.LoginManager, store env.Env
 		Short: "Log in to a Pulumi state backend",
 		Long: "Log in to a Pulumi state backend.\n" +
 			"\n" +
-			"With no arguments, this command logs in to Pulumi Cloud:\n" +
+			"With no arguments, this command uses your configured backend or credential helper, falling\n" +
+			"back to Pulumi Cloud when neither selects one:\n" +
 			"\n" +
 			"    $ pulumi login\n" +
 			"\n" +
-			"If `PULUMI_ACCESS_TOKEN` is set, that token is used. Otherwise, the command prompts for an\n" +
-			"access token and offers to open a browser where you can create one.\n" +
+			"If `PULUMI_ACCESS_TOKEN` is set, that token is used. Otherwise, a helper or stored account can\n" +
+			"provide it. If a token is still needed, the command prompts for one and offers to open a\n" +
+			"browser where you can create one.\n" +
+			"\n" +
+			"Credential helpers are experimental. Use one to obtain tokens, HTTP headers, or environment\n" +
+			"variables:\n" +
+			"\n" +
+			"    $ pulumi login --credential-helper ./helper --credential-helper-arg production\n" +
+			"\n" +
+			"After login succeeds, the resolved helper path and literal arguments are saved for future\n" +
+			"commands. Arguments must not contain secrets. These flags override PULUMI_CREDENTIAL_HELPER;\n" +
+			"environment configuration overrides the saved helper. Set PULUMI_CREDENTIAL_HELPER=none\n" +
+			"to disable saved helpers and automatic discovery. OIDC login cannot use a credential helper.\n" +
 			"\n" +
 			"To log in to a self-hosted Pulumi Cloud, pass its API URL:\n" +
 			"\n" +
@@ -91,6 +105,15 @@ func NewLoginCmd(ws pkgWorkspace.Context, lm backend.LoginManager, store env.Env
 			"`--local` is a shortcut for `file://~`, which stores state under `~/.pulumi`.\n",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
+			session := lm.Session()
+			if cmd.Flags().Changed("credential-helper-arg") && !cmd.Flags().Changed("credential-helper") {
+				return errors.New("--credential-helper-arg requires --credential-helper")
+			}
+			if cmd.Flags().Changed("credential-helper") {
+				if err := session.UseHelper(workspace.CredentialHelper{Path: helperPath, Args: helperArgs}); err != nil {
+					return err
+				}
+			}
 			displayOptions := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
@@ -205,7 +228,15 @@ func NewLoginCmd(ws pkgWorkspace.Context, lm backend.LoginManager, store env.Env
 				}
 			}
 
-			if oidcToken == "" {
+			hasHelperResponse := false
+			if oidcToken != "" {
+				if helper, err := session.Helper(); err != nil {
+					return err
+				} else if helper != nil {
+					return errors.New("--oidc-token cannot be used with a credential helper; " +
+						"set PULUMI_CREDENTIAL_HELPER=none to disable the helper for this login")
+				}
+			} else {
 				backendURL := cloudURL
 				if backendURL == "" {
 					backendURL = store.GetString(env.APIURL)
@@ -215,7 +246,6 @@ func NewLoginCmd(ws pkgWorkspace.Context, lm backend.LoginManager, store env.Env
 				if backendURL == "" {
 					backendURL = client.PulumiCloudURL
 				}
-				session := lm.Session()
 				if helperMaySelect {
 					backendURL, err = session.PrepareBackendWithFallback(ctx, backendURL)
 				} else {
@@ -224,6 +254,7 @@ func NewLoginCmd(ws pkgWorkspace.Context, lm backend.LoginManager, store env.Env
 				if err != nil {
 					return fmt.Errorf("preparing backend: %w", err)
 				}
+				hasHelperResponse = session.HasHelperResponse(backendURL)
 				if backendURL == session.SelectedBackend() {
 					cloudURL, urlSource = backendURL, pkgWorkspace.CloudURLSourceNone
 				}
@@ -286,11 +317,26 @@ func NewLoginCmd(ws pkgWorkspace.Context, lm backend.LoginManager, store env.Env
 				}
 			}
 
+			if cmd.Flags().Changed("credential-helper") {
+				helper, err := session.Helper()
+				if err != nil {
+					return err
+				}
+				if err := pkgauth.SaveHelper(&helper.CredentialHelper); err != nil {
+					return err
+				}
+			}
+
 			if currentUser, _, _, err := be.CurrentUser(); err == nil {
 				// TODO should we print the token information here? (via team MyTeam token MyToken)
 				fmt.Fprintf(cmd.OutOrStdout(), "Logged in to %s as %s (%s)\n", be.Name(), currentUser, be.URL())
 			} else {
 				fmt.Fprintf(cmd.OutOrStdout(), "Logged in to %s (%s)\n", be.Name(), be.URL())
+			}
+			if hasHelperResponse {
+				if helper, err := session.Helper(); err == nil && helper != nil {
+					fmt.Fprintf(cmd.OutOrStdout(), "Credential helper: %s\n", helper.Path)
+				}
 			}
 
 			return nil
@@ -312,6 +358,11 @@ func NewLoginCmd(ws pkgWorkspace.Context, lm backend.LoginManager, store env.Env
 	cmd.PersistentFlags().BoolVar(&insecure, "insecure", false, "Allow insecure server connections when using SSL")
 	cmd.PersistentFlags().BoolVar(&interactive, "interactive", false,
 		"Show interactive login options based on known accounts")
+	cmd.PersistentFlags().StringVar(&helperPath, "credential-helper", "",
+		"[EXPERIMENTAL] Use this credential helper and save its resolved path after login succeeds")
+	cmd.PersistentFlags().StringArrayVar(&helperArgs, "credential-helper-arg", nil,
+		"[EXPERIMENTAL] A literal argument to save with --credential-helper (repeat for multiple arguments; "+
+			"must not contain secrets)")
 	cmd.PersistentFlags().StringVar(&oidcToken, "oidc-token", "",
 		"An OIDC token to exchange for a cloud backend access token. Can be either a raw token or a file path "+
 			"prefixed with 'file://'.")
@@ -322,6 +373,7 @@ func NewLoginCmd(ws pkgWorkspace.Context, lm backend.LoginManager, store env.Env
 		&oidcExpiration, "oidc-expiration", "",
 		"The expiration for the cloud backend access token in duration format (e.g. '15m', '24h')",
 	)
+	cmd.MarkFlagsMutuallyExclusive("credential-helper", "oidc-token")
 
 	return cmd
 }
