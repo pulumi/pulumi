@@ -2162,6 +2162,24 @@ func TestGetSnapshotStackOutputs(t *testing.T) {
 		assert.Equal(t, wantOutputs, outputs)
 	})
 
+	t.Run("unknown outputs keep their names and secrecy only", func(t *testing.T) {
+		t.Parallel()
+		b, ref := newBackend(t, apitype.Capabilities{StackOutputs: true}, func(w http.ResponseWriter, r *http.Request) {
+			require.NoError(t, json.NewEncoder(w).Encode(apitype.StackOutputsResponse{
+				Outputs:          serializedOutputs,
+				SecretsProviders: &apitype.SecretsProvidersV1{Type: b64.Type},
+				Unknown:          true,
+			}))
+		})
+
+		outputs, err := b.getSnapshotStackOutputs(t.Context(), secretsProvider, ref)
+		require.NoError(t, err)
+		assert.Equal(t, property.NewMap(map[string]property.Value{
+			"plain":  property.New(property.Computed),
+			"secret": property.New(property.Computed).WithSecret(true),
+		}), outputs)
+	})
+
 	t.Run("capability absent falls back to export", func(t *testing.T) {
 		t.Parallel()
 		deployment, err := json.Marshal(apitype.DeploymentV3{

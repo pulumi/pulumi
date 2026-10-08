@@ -253,6 +253,15 @@ func (b *cloudBackend) getSnapshotStackOutputs(ctx context.Context,
 		if err != nil {
 			return property.Map{}, err
 		}
+		if resp.Unknown {
+			for name, value := range outputs {
+				unknown := resource.MakeComputed(resource.NewProperty(""))
+				if value.IsSecret() {
+					unknown = resource.MakeSecret(unknown)
+				}
+				outputs[name] = unknown
+			}
+		}
 		return resource.FromResourcePropertyMap(outputs), nil
 	}
 
