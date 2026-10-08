@@ -33,6 +33,8 @@ import (
 	pkgBackend "github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/diy"
+	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
+	"github.com/pulumi/pulumi/pkg/v3/backend/state"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
@@ -203,6 +205,30 @@ func NewLoginCmd(ws pkgWorkspace.Context, lm backend.LoginManager, store env.Env
 				}
 			}
 
+			if oidcToken == "" {
+				backendURL := cloudURL
+				if backendURL == "" {
+					backendURL = store.GetString(env.APIURL)
+				}
+				// The helper may select a backend before a saved URL or the implicit Pulumi Cloud fallback.
+				helperMaySelect := backendURL == "" || urlSource == pkgWorkspace.CloudURLSourceCredentials
+				if backendURL == "" {
+					backendURL = client.PulumiCloudURL
+				}
+				session := lm.Session()
+				if helperMaySelect {
+					backendURL, err = session.PrepareBackendWithFallback(ctx, backendURL)
+				} else {
+					backendURL, err = session.PrepareBackend(ctx, backendURL)
+				}
+				if err != nil {
+					return fmt.Errorf("preparing backend: %w", err)
+				}
+				if backendURL == session.SelectedBackend() {
+					cloudURL, urlSource = backendURL, pkgWorkspace.CloudURLSourceNone
+				}
+			}
+
 			if userProvidedURL {
 				if envURL := store.GetString(env.BackendURL); envURL != "" && envURL != cloudURL {
 					fmt.Fprintf(cmd.ErrOrStderr(),
@@ -254,7 +280,7 @@ func NewLoginCmd(ws pkgWorkspace.Context, lm backend.LoginManager, store env.Env
 			} else {
 				// if the user has specified a default org to associate with the backend
 				if defaultOrg != "" {
-					if err := workspace.SetBackendConfigDefaultOrg(be.URL(), defaultOrg); err != nil {
+					if err := workspace.SetBackendConfigDefaultOrg(state.BackendURLKey(be), defaultOrg); err != nil {
 						return err
 					}
 				}
