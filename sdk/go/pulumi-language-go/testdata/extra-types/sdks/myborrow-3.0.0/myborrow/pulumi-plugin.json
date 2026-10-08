@@ -1,0 +1,10 @@
+{
+  "resource": true,
+  "name": "borrowbase",
+  "version": "46.0.0",
+  "extensionParameterization": {
+    "name": "myborrow",
+    "version": "3.0.0",
+    "value": "V2lkZ2V0"
+  }
+}
