@@ -17,6 +17,7 @@ package config
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"testing"
 	"time"
 
@@ -28,6 +29,8 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/secrets/b64"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/esc"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -122,9 +125,20 @@ func newStackEnvironmentTestHarness(t *testing.T, supported bool) *stackEnvironm
 		"pulumiConfig": esc.NewValue(map[string]esc.Value{"test:source": esc.NewValue("published")}),
 	}
 
+	// The stack's last update ran with "old" for test:source and a key that the new definition drops.
+	previous := config.Map{
+		config.MustMakeKey("test", "source"):  config.NewValue("old"),
+		config.MustMakeKey("test", "removed"): config.NewValue("gone"),
+	}
+
 	be := &backend.MockStackEnvironmentsBackend{
 		MockEnvironmentsBackend: backend.MockEnvironmentsBackend{
-			MockBackend: backend.MockBackend{NameF: func() string { return "test" }},
+			MockBackend: backend.MockBackend{
+				NameF: func() string { return "test" },
+				GetLatestConfigurationF: func(context.Context, backend.Stack) (backend.LatestConfiguration, error) {
+					return backend.LatestConfiguration{Config: previous}, nil
+				},
+			},
 			OpenYAMLEnvironmentF: func(
 				context.Context, string, []byte, time.Duration, map[string]string,
 			) (*esc.Environment, apitype.EnvironmentDiagnostics, error) {
@@ -160,6 +174,9 @@ func newStackEnvironmentTestHarness(t *testing.T, supported bool) *stackEnvironm
 		},
 	}
 	h.stack = &backend.MockStack{
+		RefF: func() backend.StackReference {
+			return &backend.MockStackReference{NameV: tokens.MustParseStackName("stack"), StringV: "stack"}
+		},
 		OrgNameF: func() string { return "test-org" },
 		BackendF: func() backend.Backend { return be },
 	}
@@ -204,6 +221,11 @@ func TestAttachStackEnvironment(t *testing.T) {
 		assert.Contains(t, out.String(), "Environment project/stack will be updated (revision 3):")
 		assert.Contains(t, out.String(), "~ values.pulumiConfig.test:source: old -> new")
 		assert.Equal(t, "anonymous", cfg.Environment.Value.(map[string]esc.Value)["test:source"].Value)
+
+		// The resolved configuration is compared with what the last update ran with.
+		assert.Contains(t, out.String(), "Configuration changes since the stack's last update:")
+		assert.Contains(t, out.String(), "- test:removed: gone")
+		assert.Contains(t, out.String(), "~ test:source: old -> anonymous")
 	})
 
 	t.Run("sync publishes the definition once invoked and re-reads configuration", func(t *testing.T) {
@@ -289,4 +311,38 @@ func TestAttachStackEnvironment(t *testing.T) {
 		assert.Nil(t, cfg.SyncEnvironment)
 		assert.Empty(t, h.syncCalls)
 	})
+}
+
+func TestDiffStackConfig(t *testing.T) {
+	t.Parallel()
+
+	secret := func(plaintext string) config.Value {
+		return config.NewSecureValue(base64.StdEncoding.EncodeToString([]byte(plaintext)))
+	}
+	previous := config.Map{
+		config.MustMakeKey("app", "region"):   config.NewValue("us-west-2"),
+		config.MustMakeKey("app", "removed"):  config.NewValue("gone"),
+		config.MustMakeKey("app", "password"): secret("hunter2"),
+		config.MustMakeKey("app", "token"):    secret("same"),
+	}
+	proposed := config.Map{
+		config.MustMakeKey("app", "region"):   config.NewValue("us-east-1"),
+		config.MustMakeKey("app", "added"):    config.NewObjectValue(`{"min":1}`),
+		config.MustMakeKey("app", "password"): secret("rotated"),
+		config.MustMakeKey("app", "token"):    secret("same"),
+	}
+	decrypter := b64.NewBase64SecretsManager().Decrypter()
+	previousValues, err := previous.Decrypt(decrypter)
+	require.NoError(t, err)
+	proposedValues, err := proposed.Decrypt(decrypter)
+	require.NoError(t, err)
+
+	assert.Equal(t, []string{
+		"+ app:added: {\"min\":1}",
+		"~ app:password: [secret] -> [secret]",
+		"~ app:region: us-west-2 -> us-east-1",
+		"- app:removed: gone",
+	}, diffStackConfig(previous, previousValues, proposed, proposedValues))
+
+	assert.Empty(t, diffStackConfig(previous, previousValues, previous, previousValues))
 }

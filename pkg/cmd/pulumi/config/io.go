@@ -187,7 +187,8 @@ func getStackConfigurationFromProjectStack(
 	if err != nil {
 		return backend.StackConfiguration{}, err
 	}
-	if err := attachStackEnvironment(ctx, stack, workspaceStack, sm, envOverrides, preview, opts, &cfg); err != nil {
+	err = attachStackEnvironment(ctx, stack, project, workspaceStack, sm, envOverrides, preview, opts, &cfg)
+	if err != nil {
 		return backend.StackConfiguration{}, err
 	}
 	return cfg, nil

@@ -21,16 +21,22 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"maps"
 	"os"
 	"reflect"
 	"slices"
 	"strconv"
+	"strings"
 	"time"
 
 	"gopkg.in/yaml.v3"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
+	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
+	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/esc"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -78,6 +84,7 @@ const stackEnvironmentOpenDuration = 2 * time.Hour
 func attachStackEnvironment(
 	ctx context.Context,
 	stack backend.Stack,
+	project *workspace.Project,
 	workspaceStack *workspace.ProjectStack,
 	sm secrets.Manager,
 	envOverrides []string,
@@ -109,6 +116,10 @@ func attachStackEnvironment(
 
 	stdout := opts.stdout()
 	printStackEnvironmentPreview(stdout, preview, definition)
+	if err := printStackConfigPreview(ctx, stdout, stack, project, workspaceStack, cfg.Environment, sm); err != nil {
+		// The resolved-config diff is advisory: the operation itself reports anything that is wrong.
+		slog.Debug("skipping the configuration diff", "err", err)
+	}
 
 	if opts.EnvironmentMode != StackEnvironmentSync {
 		return nil
@@ -328,4 +339,113 @@ func redactDefinitionSecrets(v any) any {
 	default:
 		return v
 	}
+}
+
+// printStackConfigPreview prints how the configuration this run resolves to, from the stack file and
+// its opened environment, differs from the configuration the stack's last update ran with. Nothing is
+// printed when they match. Secrets are compared decrypted but always rendered as "[secret]".
+func printStackConfigPreview(
+	ctx context.Context,
+	w io.Writer,
+	stack backend.Stack,
+	project *workspace.Project,
+	workspaceStack *workspace.ProjectStack,
+	env esc.Value,
+	sm secrets.Manager,
+) error {
+	if project == nil || sm == nil {
+		return nil
+	}
+
+	// Merge the environment into the stack config exactly the way `up` does before it runs.
+	proposed := maps.Clone(workspaceStack.Config)
+	if proposed == nil {
+		proposed = config.Map{}
+	}
+	stackName := stack.Ref().Name().String()
+	err := pkgWorkspace.ApplyProjectConfig(ctx, stackName, project, env, proposed, sm.Encrypter(), sm.Decrypter())
+	if err != nil {
+		return fmt.Errorf("resolving the proposed configuration: %w", err)
+	}
+
+	var previous config.Map
+	latest, err := backend.GetLatestConfiguration(ctx, stack)
+	switch {
+	case errors.Is(err, backenderr.ErrNoPreviousDeployment):
+		previous = config.Map{}
+	case err != nil:
+		return fmt.Errorf("reading the last update's configuration: %w", err)
+	default:
+		previous = latest.Config
+	}
+
+	decrypter := sm.Decrypter()
+	previousValues, err := previous.Decrypt(decrypter)
+	if err != nil {
+		return fmt.Errorf("decrypting the last update's configuration: %w", err)
+	}
+	proposedValues, err := proposed.Decrypt(decrypter)
+	if err != nil {
+		return fmt.Errorf("decrypting the proposed configuration: %w", err)
+	}
+
+	lines := diffStackConfig(previous, previousValues, proposed, proposedValues)
+	if len(lines) == 0 {
+		return nil
+	}
+	if len(previous) == 0 {
+		fmt.Fprintln(w, "Configuration for this run (the stack has no previous update):")
+	} else {
+		fmt.Fprintln(w, "Configuration changes since the stack's last update:")
+	}
+	for _, line := range lines {
+		fmt.Fprintf(w, "    %s\n", line)
+	}
+	fmt.Fprintln(w)
+	return nil
+}
+
+// diffStackConfig lists the differences between two decrypted configuration maps, one per line, as
+// "+ key: value", "- key: value" or "~ key: old -> new". A value that is secret on either side is
+// rendered as "[secret]"; the comparison itself uses the decrypted values.
+func diffStackConfig(
+	previous config.Map,
+	previousValues map[config.Key]string,
+	proposed config.Map,
+	proposedValues map[config.Key]string,
+) []string {
+	keys := make([]config.Key, 0, len(previousValues)+len(proposedValues))
+	for k := range previousValues {
+		keys = append(keys, k)
+	}
+	for k := range proposedValues {
+		if _, ok := previousValues[k]; !ok {
+			keys = append(keys, k)
+		}
+	}
+	slices.SortFunc(keys, func(a config.Key, b config.Key) int {
+		return strings.Compare(a.String(), b.String())
+	})
+
+	render := func(m config.Map, k config.Key, value string) string {
+		if m[k].Secure() {
+			return "[secret]"
+		}
+		return value
+	}
+
+	var lines []string
+	for _, k := range keys {
+		oldValue, inOld := previousValues[k]
+		newValue, inNew := proposedValues[k]
+		switch {
+		case !inOld:
+			lines = append(lines, fmt.Sprintf("+ %s: %s", k, render(proposed, k, newValue)))
+		case !inNew:
+			lines = append(lines, fmt.Sprintf("- %s: %s", k, render(previous, k, oldValue)))
+		case oldValue != newValue || previous[k].Secure() != proposed[k].Secure():
+			lines = append(lines, fmt.Sprintf("~ %s: %s -> %s", k, render(previous, k, oldValue), render(proposed, k, newValue)))
+		}
+	}
+	return lines
 }
