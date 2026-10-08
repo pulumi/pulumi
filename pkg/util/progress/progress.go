@@ -49,11 +49,22 @@ func Stderr() *Group {
 // terminal: each active bar gets its own line, and the whole block is redrawn
 // in place. Finished bars are printed once more in their final state and then
 // scroll away with the regular output.
+//
+// Closing the last active bar waits for the group to finish drawing before
+// returning, so output printed afterwards always lands below the bars.
 type Group struct {
 	out io.Writer
 
-	mu sync.Mutex
-	p  *mpb.Progress
+	mu     sync.Mutex
+	p      *mpb.Progress
+	active int
+	// draining is closed once the previous renderer has drawn its last frame.
+	// New bars wait for it, so two renderers never draw at the same time.
+	draining chan struct{}
+
+	// forceRefresh redraws even when out isn't a terminal, which mpb otherwise
+	// skips. Tests set it to render into a buffer.
+	forceRefresh bool
 }
 
 func NewGroup(out io.Writer) *Group {
@@ -67,20 +78,37 @@ func NewGroup(out io.Writer) *Group {
 func (g *Group) Wrap(
 	closer io.ReadCloser, size int64, message string, colorization colors.Colorization,
 ) io.ReadCloser {
-	if size == -1 || !cmdutil.Interactive() {
+	return g.wrap(closer, size, message, colorization, cmdutil.Interactive())
+}
+
+func (g *Group) wrap(
+	closer io.ReadCloser, size int64, message string, colorization colors.Colorization, interactive bool,
+) io.ReadCloser {
+	if size == -1 || !interactive {
 		fmt.Fprintln(g.out, colorization.Colorize(colors.SpecUnimportant+message+colors.Reset))
 		return closer
 	}
 
 	g.mu.Lock()
+	for g.draining != nil {
+		draining := g.draining
+		g.mu.Unlock()
+		<-draining
+		g.mu.Lock()
+	}
 	if g.p == nil {
-		g.p = mpb.New(
+		opts := []mpb.ContainerOption{
 			mpb.WithOutput(g.out),
-			mpb.WithRefreshRate(150*time.Millisecond),
+			mpb.WithRefreshRate(150 * time.Millisecond),
 			mpb.PopCompletedMode(),
-		)
+		}
+		if g.forceRefresh {
+			opts = append(opts, mpb.WithAutoRefresh())
+		}
+		g.p = mpb.New(opts...)
 	}
 	p := g.p
+	g.active++
 	g.mu.Unlock()
 
 	bar := p.New(size,
@@ -95,10 +123,36 @@ func (g *Group) Wrap(
 			decor.Elapsed(decor.ET_STYLE_GO),
 		),
 	)
-	return &barCloser{bar: bar, readCloser: bar.ProxyReader(closer)}
+	return &barCloser{group: g, bar: bar, readCloser: bar.ProxyReader(closer)}
+}
+
+// release is called as each bar finishes. When the last active bar finishes,
+// it waits for the renderer to draw its final frame and stop. Otherwise the
+// renderer's next refresh can land after whatever the caller prints next and
+// redraw the finished bars below it.
+func (g *Group) release() {
+	g.mu.Lock()
+	g.active--
+	if g.active > 0 {
+		g.mu.Unlock()
+		return
+	}
+	p := g.p
+	g.p = nil
+	draining := make(chan struct{})
+	g.draining = draining
+	g.mu.Unlock()
+
+	p.Wait()
+
+	g.mu.Lock()
+	g.draining = nil
+	g.mu.Unlock()
+	close(draining)
 }
 
 type barCloser struct {
+	group      *Group
 	bar        *mpb.Bar
 	readCloser io.ReadCloser
 	closeOnce  sync.Once
@@ -113,6 +167,7 @@ func (bc *barCloser) Close() error {
 	bc.closeOnce.Do(func() {
 		err = bc.readCloser.Close()
 		bc.bar.SetTotal(-1, true)
+		bc.group.release()
 	})
 	return err
 }
