@@ -353,10 +353,9 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 			return
 		}
 		// PCL treats ID as a string-like type that can be coerced to any
-		// primitive scalar. In Go the IDInput/IDOutput interfaces don't
-		// declare ToStringOutput/ToBoolOutput/etc, so the target field
-		// won't accept an IDInput directly. Emit an ApplyT that parses
-		// the ID string into the destination scalar.
+		// primitive scalar. In Go every IDInput is a StringInput, so string
+		// destinations accept the value as is, but bool and numeric
+		// destinations need an ApplyT that parses the ID string.
 		if isFromOutput {
 			fromInner := model.ResolveOutputs(fromType)
 			if cns, ok := fromInner.(*model.ConstType); ok {
@@ -1885,34 +1884,27 @@ func (g *generator) secretOutputTypeName(expr *model.FunctionCallExpression) str
 	return g.argumentTypeName(expr.Type(), false)
 }
 
-// genIDConversion emits an ApplyT-based cast from an ID-typed expression
-// to a primitive scalar `to`. Returns false if `to` isn't a scalar we know
-// how to parse an ID string into.
+// genIDConversion emits an ApplyT that parses an ID-typed output expression
+// into the bool or numeric scalar `to`. It goes through ToStringOutput, which
+// both IDOutput and the IDInput interface provide. Returns false for every
+// other `to`, including string, where the value is assignable as is.
 func (g *generator) genIDConversion(w io.Writer, from model.Expression, to model.Type) bool {
+	var applier, output string
 	switch to {
-	case model.StringType:
-		g.Fgenf(w, "%.v.ToIDOutput().ToStringOutput()", from)
-		return true
 	case model.BoolType:
-		g.importer.Import("strconv", "strconv")
-		g.Fgenf(w,
-			"%.v.ToIDOutput().ApplyT(func(id pulumi.ID) (bool, error) {"+
-				" return strconv.ParseBool(string(id)) }).(pulumi.BoolOutput)", from)
-		return true
+		applier, output = "strconv.ParseBool", "pulumi.BoolOutput"
 	case model.IntType:
-		g.importer.Import("strconv", "strconv")
-		g.Fgenf(w,
-			"%.v.ToIDOutput().ApplyT(func(id pulumi.ID) (int, error) {"+
-				" return strconv.Atoi(string(id)) }).(pulumi.IntOutput)", from)
-		return true
+		applier, output = "strconv.Atoi", "pulumi.IntOutput"
 	case model.NumberType:
-		g.importer.Import("strconv", "strconv")
-		g.Fgenf(w,
-			"%.v.ToIDOutput().ApplyT(func(id pulumi.ID) (float64, error) {"+
-				" return strconv.ParseFloat(string(id), 64) }).(pulumi.Float64Output)", from)
-		return true
+		// ParseFloat takes a bit size, so it does not fit ApplyT's one-argument applier shape.
+		applier = "func(id string) (float64, error) { return strconv.ParseFloat(id, 64) }"
+		output = "pulumi.Float64Output"
+	default:
+		return false
 	}
-	return false
+	g.importer.Import("strconv", "strconv")
+	g.Fgenf(w, "%.v.ToStringOutput().ApplyT(%s).(%s)", from, applier, output)
+	return true
 }
 
 // pulumiConverterSuffix maps a Go type name (e.g. "string", "*bool",
