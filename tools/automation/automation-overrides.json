@@ -280,12 +280,6 @@
             "flags": {}
         },
         {
-            "path": ["org", "usage"],
-            "propagate": true,
-            "exclude": true,
-            "flags": {}
-        },
-        {
             "path": ["org", "webhook"],
             "propagate": true,
             "exclude": true,
