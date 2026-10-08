@@ -7,7 +7,7 @@ import (
 	"context"
 	"reflect"
 
-	"example.com/pulumi-borrowbase/sdk/go/v46/borrowbase"
+	"example.com/pulumi-borrowbase/sdk/go/v56/borrowbase"
 	"example.com/pulumi-myborrow/sdk/go/v3/myborrow/internal"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )

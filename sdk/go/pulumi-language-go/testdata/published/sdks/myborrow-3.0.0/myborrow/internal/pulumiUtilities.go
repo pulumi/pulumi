@@ -175,7 +175,7 @@ func PkgGetPackageRef(ctx *pulumi.Context) (string, error) {
 
 		return &pulumirpc.RegisterPackageRequest{
 			Name:        "borrowbase",
-			Version:     "46.0.0",
+			Version:     "56.0.0",
 			DownloadUrl: "",
 			Extension: &pulumirpc.Parameterization{
 				Name:    "myborrow",

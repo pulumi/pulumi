@@ -42,7 +42,7 @@ type ExtensionBorrowedTypeProvider struct {
 
 const (
 	borrowedTypeBaseName    = "borrowbase"
-	borrowedTypeBaseVersion = "46.0.0"
+	borrowedTypeBaseVersion = "56.0.0"
 )
 
 var _ plugin.Provider = (*ExtensionBorrowedTypeProvider)(nil)

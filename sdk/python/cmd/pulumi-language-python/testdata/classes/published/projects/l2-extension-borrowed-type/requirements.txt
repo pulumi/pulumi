@@ -1,0 +1,4 @@
+ROOT/artifacts/pulumi-CORE.VERSION-py3-none-any.whl
+ROOT/artifacts/pulumi_borrowbase-56.0.0-py3-none-any.whl
+ROOT/artifacts/pulumi_myborrow-3.0.0-py3-none-any.whl
+pyright
