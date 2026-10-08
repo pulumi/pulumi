@@ -55,12 +55,11 @@ func Stderr() *Group {
 type Group struct {
 	out io.Writer
 
+	// mu also covers shutting the renderer down, so a new bar can't start a
+	// second renderer while the previous one is still drawing.
 	mu     sync.Mutex
 	p      *mpb.Progress
 	active int
-	// draining is closed once the previous renderer has drawn its last frame.
-	// New bars wait for it, so two renderers never draw at the same time.
-	draining chan struct{}
 
 	// forceRefresh redraws even when out isn't a terminal, which mpb otherwise
 	// skips. Tests set it to render into a buffer.
@@ -90,12 +89,6 @@ func (g *Group) wrap(
 	}
 
 	g.mu.Lock()
-	for g.draining != nil {
-		draining := g.draining
-		g.mu.Unlock()
-		<-draining
-		g.mu.Lock()
-	}
 	if g.p == nil {
 		opts := []mpb.ContainerOption{
 			mpb.WithOutput(g.out),
@@ -130,25 +123,19 @@ func (g *Group) wrap(
 // it waits for the renderer to draw its final frame and stop. Otherwise the
 // renderer's next refresh can land after whatever the caller prints next and
 // redraw the finished bars below it.
+//
+// The wait holds mu: no bars are active by then and mpb never calls back into
+// the group, so it can't deadlock, and a new bar blocks until the old renderer
+// is done instead of drawing over it.
 func (g *Group) release() {
 	g.mu.Lock()
+	defer g.mu.Unlock()
 	g.active--
 	if g.active > 0 {
-		g.mu.Unlock()
 		return
 	}
-	p := g.p
+	g.p.Wait()
 	g.p = nil
-	draining := make(chan struct{})
-	g.draining = draining
-	g.mu.Unlock()
-
-	p.Wait()
-
-	g.mu.Lock()
-	g.draining = nil
-	g.mu.Unlock()
-	close(draining)
 }
 
 type barCloser struct {
