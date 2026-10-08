@@ -365,18 +365,23 @@ func TestConfigValueSources(t *testing.T) {
 		"app:imported": {Value: "y", Trace: esc.Trace{Def: esc.Range{Environment: "payments/secrets"}}},
 		"app:untraced": {Value: "z"},
 		"app:shadowed": {Value: "w", Trace: esc.Trace{Def: esc.Range{Environment: "payments/secrets"}}},
+		"bare":         {Value: "v", Trace: esc.Trace{Def: esc.Range{Environment: "payments/base"}}},
 	})
 	stackConfig := config.Map{config.MustMakeKey("app", "shadowed"): config.NewValue("file")}
 
+	// An entry without a namespace is reported under the project's namespace, as the diff shows it.
 	assert.Equal(t, map[string]string{
-		"app:imported": "from import payments/secrets",
-		"app:shadowed": "from the stack configuration file",
-	}, configValueSources(env, "payments/prod", nil, stackConfig))
+		"app:imported":  "from import payments/secrets",
+		"app:shadowed":  "from the stack configuration file",
+		"payments:bare": "from import payments/base",
+	}, configValueSources("payments", env, "payments/prod", nil, stackConfig))
 
 	// Provenance reported by the service wins over traces.
 	assert.Equal(t, map[string]string{
-		"app:own":      "from import payments/shared",
-		"app:imported": "from import payments/secrets",
-		"app:shadowed": "from the stack configuration file",
-	}, configValueSources(env, "payments/prod", map[string]string{"app:own": "payments/shared"}, stackConfig))
+		"app:own":       "from import payments/shared",
+		"app:imported":  "from import payments/secrets",
+		"app:shadowed":  "from the stack configuration file",
+		"payments:bare": "from import payments/defaults",
+	}, configValueSources("payments", env, "payments/prod",
+		map[string]string{"app:own": "payments/shared", "bare": "payments/defaults"}, stackConfig))
 }

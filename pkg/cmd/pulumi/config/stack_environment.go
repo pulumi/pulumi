@@ -38,6 +38,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/esc"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
@@ -432,7 +433,7 @@ func printStackConfigPreview(
 		return fmt.Errorf("decrypting the proposed configuration: %w", err)
 	}
 
-	sources := configValueSources(env, preview.Environment, preview.ConfigSources, workspaceStack.Config)
+	sources := configValueSources(project.Name, env, preview.Environment, preview.ConfigSources, workspaceStack.Config)
 	lines := diffStackConfig(previous, previousValues, proposed, proposedValues, sources)
 	if len(lines) == 0 {
 		return nil
@@ -455,18 +456,29 @@ func printStackConfigPreview(
 // The service reports import provenance with the dry run; value traces, when the service kept them,
 // are the fallback.
 func configValueSources(
+	projectName tokens.PackageName,
 	env esc.Value,
 	environmentName string,
 	serverSources map[string]string,
 	stackConfig config.Map,
 ) map[string]string {
+	// A pulumiConfig entry without a namespace lands in the project's namespace during merging, the
+	// same way `pulumi config` keys do, so the diff's keys are qualified.
+	qualify := func(entry string) string {
+		if strings.Contains(entry, ":") {
+			return entry
+		}
+		return string(projectName) + ":" + entry
+	}
+
 	sources := map[string]string{}
 	for key, definedIn := range serverSources {
-		sources[key] = "from import " + definedIn
+		sources[qualify(key)] = "from import " + definedIn
 	}
 	if entries, ok := env.Value.(map[string]esc.Value); ok {
 		for key, value := range entries {
-			if _, known := sources[key]; known {
+			qualified := qualify(key)
+			if _, known := sources[qualified]; known {
 				continue
 			}
 			definedIn := value.Trace.Def.Environment
@@ -474,7 +486,7 @@ func configValueSources(
 			case "", environmentName, esc.AnonymousEnvironmentName:
 				// Defined by the stack's own definition, or the evaluator kept no trace.
 			default:
-				sources[key] = "from import " + definedIn
+				sources[qualified] = "from import " + definedIn
 			}
 		}
 	}
