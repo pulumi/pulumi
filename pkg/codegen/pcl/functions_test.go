@@ -374,3 +374,37 @@ func TestMinMaxTypes(t *testing.T) {
 		})
 	}
 }
+
+// Tests that `lookup` accepts a default of any type and returns the unification of the element type and
+// the default, as HCL's lookup does.
+func TestLookupDefaultType(t *testing.T) {
+	t.Parallel()
+
+	cf, ct := model.NewConstType(model.BoolType, cty.False), model.NewConstType(model.BoolType, cty.True)
+	cases := []struct {
+		source string
+		typ    model.Type
+	}{
+		{source: `value = lookup({for k, v in {"a" = false} : k => v}, "a", true)`, typ: model.NewUnionType(cf, ct)},
+		{source: `value = lookup({for k, v in {"a" = false} : k => v}, "a", "none")`, typ: model.NewUnionType(cf,
+			model.NewConstType(model.StringType, cty.StringVal("none")))},
+		{source: `value = lookup({for k, v in {"a" = [false]} : k => v}, "a", [true])`, typ: model.NewTupleType(
+			model.NewUnionType(cf, ct))},
+		{source: `value = lookup({for k, v in {"a" = false} : k => v}, "a")`, typ: cf},
+		{
+			source: `value = lookup(secret({for k, v in {"a" = false} : k => v}), "a", true)`,
+			typ:    model.NewOutputType(model.NewUnionType(cf, ct)),
+		},
+	}
+	for _, c := range cases {
+		t.Run(c.source, func(t *testing.T) {
+			t.Parallel()
+			program, diags, err := ParseAndBindProgram(t, c.source, "program.pp")
+			require.NoError(t, err)
+			require.False(t, diags.HasErrors(), diags.Error())
+			require.Len(t, program.Nodes, 1)
+			typ := program.Nodes[0].(*pcl.LocalVariable).Type()
+			assert.True(t, c.typ.Equals(typ), "expected %v, got %v", c.typ, typ)
+		})
+	}
+}
