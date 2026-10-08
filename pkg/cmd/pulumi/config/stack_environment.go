@@ -116,7 +116,8 @@ func attachStackEnvironment(
 
 	stdout := opts.stdout()
 	printStackEnvironmentPreview(stdout, preview, definition)
-	if err := printStackConfigPreview(ctx, stdout, stack, project, workspaceStack, cfg.Environment, sm); err != nil {
+	err := printStackConfigPreview(ctx, stdout, stack, project, workspaceStack, cfg.Environment, preview.Environment, sm)
+	if err != nil {
 		// The resolved-config diff is advisory: the operation itself reports anything that is wrong.
 		slog.Debug("skipping the configuration diff", "err", err)
 	}
@@ -343,7 +344,8 @@ func redactDefinitionSecrets(v any) any {
 
 // printStackConfigPreview prints how the configuration this run resolves to, from the stack file and
 // its opened environment, differs from the configuration the stack's last update ran with. Nothing is
-// printed when they match. Secrets are compared decrypted but always rendered as "[secret]".
+// printed when they match. Secrets are compared decrypted but always rendered as "[secret]". Each
+// added or changed value names where it comes from unless the stack's own definition sets it.
 func printStackConfigPreview(
 	ctx context.Context,
 	w io.Writer,
@@ -351,6 +353,7 @@ func printStackConfigPreview(
 	project *workspace.Project,
 	workspaceStack *workspace.ProjectStack,
 	env esc.Value,
+	environmentName string,
 	sm secrets.Manager,
 ) error {
 	if project == nil || sm == nil {
@@ -389,7 +392,8 @@ func printStackConfigPreview(
 		return fmt.Errorf("decrypting the proposed configuration: %w", err)
 	}
 
-	lines := diffStackConfig(previous, previousValues, proposed, proposedValues)
+	sources := configValueSources(env, environmentName, workspaceStack.Config)
+	lines := diffStackConfig(previous, previousValues, proposed, proposedValues, sources)
 	if len(lines) == 0 {
 		return nil
 	}
@@ -405,14 +409,39 @@ func printStackConfigPreview(
 	return nil
 }
 
+// configValueSources reports, for each configuration key the proposed run resolves, where its value
+// comes from: "" when the stack's own environment definition sets it, the importing environment's
+// name when an import does, or the stack configuration file when its `config` block overrides it.
+func configValueSources(env esc.Value, environmentName string, stackConfig config.Map) map[string]string {
+	sources := map[string]string{}
+	if entries, ok := env.Value.(map[string]esc.Value); ok {
+		for key, value := range entries {
+			definedIn := value.Trace.Def.Environment
+			switch definedIn {
+			case "", environmentName, esc.AnonymousEnvironmentName:
+				// Defined by the stack's own definition, or the evaluator kept no trace.
+			default:
+				sources[key] = "from import " + definedIn
+			}
+		}
+	}
+	for key := range stackConfig {
+		// Values in the config block shadow the environment's during merging.
+		sources[key.String()] = "from the stack configuration file"
+	}
+	return sources
+}
+
 // diffStackConfig lists the differences between two decrypted configuration maps, one per line, as
 // "+ key: value", "- key: value" or "~ key: old -> new". A value that is secret on either side is
-// rendered as "[secret]"; the comparison itself uses the decrypted values.
+// rendered as "[secret]"; the comparison itself uses the decrypted values. Added and changed lines
+// end with the value's source from sources, when it has one.
 func diffStackConfig(
 	previous config.Map,
 	previousValues map[config.Key]string,
 	proposed config.Map,
 	proposedValues map[config.Key]string,
+	sources map[string]string,
 ) []string {
 	keys := make([]config.Key, 0, len(previousValues)+len(proposedValues))
 	for k := range previousValues {
@@ -434,17 +463,25 @@ func diffStackConfig(
 		return value
 	}
 
+	source := func(k config.Key) string {
+		if s := sources[k.String()]; s != "" {
+			return " (" + s + ")"
+		}
+		return ""
+	}
+
 	var lines []string
 	for _, k := range keys {
 		oldValue, inOld := previousValues[k]
 		newValue, inNew := proposedValues[k]
 		switch {
 		case !inOld:
-			lines = append(lines, fmt.Sprintf("+ %s: %s", k, render(proposed, k, newValue)))
+			lines = append(lines, fmt.Sprintf("+ %s: %s%s", k, render(proposed, k, newValue), source(k)))
 		case !inNew:
 			lines = append(lines, fmt.Sprintf("- %s: %s", k, render(previous, k, oldValue)))
 		case oldValue != newValue || previous[k].Secure() != proposed[k].Secure():
-			lines = append(lines, fmt.Sprintf("~ %s: %s -> %s", k, render(previous, k, oldValue), render(proposed, k, newValue)))
+			lines = append(lines, fmt.Sprintf("~ %s: %s -> %s%s",
+				k, render(previous, k, oldValue), render(proposed, k, newValue), source(k)))
 		}
 	}
 	return lines

@@ -118,8 +118,12 @@ func newStackEnvironmentTestHarness(t *testing.T, supported bool) *stackEnvironm
 	t.Helper()
 	h := &stackEnvironmentTestHarness{}
 
+	// test:source is defined by an imported environment, which the diff reports as its source.
 	anonymous := map[string]esc.Value{
-		"pulumiConfig": esc.NewValue(map[string]esc.Value{"test:source": esc.NewValue("anonymous")}),
+		"pulumiConfig": esc.NewValue(map[string]esc.Value{"test:source": {
+			Value: "anonymous",
+			Trace: esc.Trace{Def: esc.Range{Environment: "project/base"}},
+		}}),
 	}
 	published := map[string]esc.Value{
 		"pulumiConfig": esc.NewValue(map[string]esc.Value{"test:source": esc.NewValue("published")}),
@@ -225,7 +229,7 @@ func TestAttachStackEnvironment(t *testing.T) {
 		// The resolved configuration is compared with what the last update ran with.
 		assert.Contains(t, out.String(), "Configuration changes since the stack's last update:")
 		assert.Contains(t, out.String(), "- test:removed: gone")
-		assert.Contains(t, out.String(), "~ test:source: old -> anonymous")
+		assert.Contains(t, out.String(), "~ test:source: old -> anonymous (from import project/base)")
 	})
 
 	t.Run("sync publishes the definition once invoked and re-reads configuration", func(t *testing.T) {
@@ -337,12 +341,33 @@ func TestDiffStackConfig(t *testing.T) {
 	proposedValues, err := proposed.Decrypt(decrypter)
 	require.NoError(t, err)
 
+	sources := map[string]string{
+		"app:added":  "from import shared/defaults",
+		"app:region": "from the stack configuration file",
+	}
 	assert.Equal(t, []string{
-		"+ app:added: {\"min\":1}",
+		"+ app:added: {\"min\":1} (from import shared/defaults)",
 		"~ app:password: [secret] -> [secret]",
-		"~ app:region: us-west-2 -> us-east-1",
+		"~ app:region: us-west-2 -> us-east-1 (from the stack configuration file)",
 		"- app:removed: gone",
-	}, diffStackConfig(previous, previousValues, proposed, proposedValues))
+	}, diffStackConfig(previous, previousValues, proposed, proposedValues, sources))
 
-	assert.Empty(t, diffStackConfig(previous, previousValues, previous, previousValues))
+	assert.Empty(t, diffStackConfig(previous, previousValues, previous, previousValues, nil))
+}
+
+func TestConfigValueSources(t *testing.T) {
+	t.Parallel()
+
+	env := esc.NewValue(map[string]esc.Value{
+		"app:own":      {Value: "x", Trace: esc.Trace{Def: esc.Range{Environment: "payments/prod"}}},
+		"app:imported": {Value: "y", Trace: esc.Trace{Def: esc.Range{Environment: "payments/secrets"}}},
+		"app:untraced": {Value: "z"},
+		"app:shadowed": {Value: "w", Trace: esc.Trace{Def: esc.Range{Environment: "payments/secrets"}}},
+	})
+	stackConfig := config.Map{config.MustMakeKey("app", "shadowed"): config.NewValue("file")}
+
+	assert.Equal(t, map[string]string{
+		"app:imported": "from import payments/secrets",
+		"app:shadowed": "from the stack configuration file",
+	}, configValueSources(env, "payments/prod", stackConfig))
 }
