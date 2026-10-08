@@ -23,7 +23,6 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
-	"strconv"
 	"strings"
 	"time"
 
@@ -35,6 +34,7 @@ import (
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	cmdConfig "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/config"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/metadata"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/operations"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
@@ -246,12 +246,9 @@ func (p *Pulumi) run(ctx context.Context, a pulumiArgs, isPreview bool) (pulumiR
 
 	refresh := false
 	if isPreview {
-		refresh = proj.Options != nil && proj.Options.Refresh == "always"
-		if value := os.Getenv("PULUMI_OPTION_REFRESH"); value != "" {
-			refresh, err = strconv.ParseBool(value)
-			if err != nil {
-				return failedResult(a, "", errors.New("PULUMI_OPTION_REFRESH must be a boolean"))
-			}
+		refresh, err = operations.GetRefreshOption(proj, os.Getenv("PULUMI_OPTION_REFRESH"))
+		if err != nil {
+			return failedResult(a, "", err)
 		}
 	}
 

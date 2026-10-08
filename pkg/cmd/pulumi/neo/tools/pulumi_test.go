@@ -595,7 +595,7 @@ func TestPulumi_Run_PreviewRefresh(t *testing.T) {
 			assert.Equal(t, beforeDir, afterDir)
 			if tt.wantError {
 				require.Error(t, err)
-				assertFailedResult(t, result, "PULUMI_OPTION_REFRESH must be a boolean")
+				assertFailedResult(t, result, "unable to determine value for --refresh")
 				assert.NotContains(t, result.Logs, tt.value.Value())
 				assert.Empty(t, invoked)
 				return

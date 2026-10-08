@@ -229,7 +229,7 @@ func NewUpCmd() *cobra.Command {
 			replaceURNs = append(replaceURNs, tr)
 		}
 
-		refreshOption, err := getRefreshOption(proj, refresh)
+		refreshOption, err := GetRefreshOption(proj, refresh)
 		if err != nil {
 			return err
 		}
@@ -520,7 +520,7 @@ func NewUpCmd() *cobra.Command {
 			}
 		}
 
-		refreshOption, err := getRefreshOption(proj, refresh)
+		refreshOption, err := GetRefreshOption(proj, refresh)
 		if err != nil {
 			return err
 		}
