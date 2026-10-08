@@ -78,6 +78,10 @@ type Options struct {
 	term                terminal.Terminal
 	DeterministicOutput bool // true to disable timing-based rendering
 	RenderOnDirty       bool // true to always render frames when marked dirty
+
+	// HelperDiagnostics, if set, routes a credential helper's stderr to the interactive display until
+	// the returned function is called. The display shows the messages it receives as system messages.
+	HelperDiagnostics func() (<-chan string, func())
 }
 
 func (opts Options) WithIsInteractive(isInteractive bool) Options {

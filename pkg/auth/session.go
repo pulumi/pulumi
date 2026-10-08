@@ -41,7 +41,7 @@ type Session struct {
 	find     func() error
 	run      runHelperFunc
 	resolved *credentialhelper.Resolved
-	stderr   io.Writer
+	stderr   *helperOutput
 	// helperEnv holds the variables applied so far, to detect conflicts between backends.
 	helperEnv map[string]string
 	// prepared holds the outcome for each backend the helper ran for.
@@ -76,7 +76,7 @@ func DefaultSession() *Session {
 // automatic discovery when the first backend is prepared. Helper diagnostics go to stderr.
 func NewSession(stderr io.Writer) *Session {
 	session := NewSessionWithHelperFunc(nil)
-	session.stderr = stderr
+	session.stderr.terminal = stderr
 	session.find = sync.OnceValue(func() error {
 		// Environment configuration overrides the saved helper, so the credentials file is not read for it.
 		var saved *workspace.CredentialHelper
@@ -102,6 +102,7 @@ func NewSession(stderr io.Writer) *Session {
 func NewSessionWithHelperFunc(run runHelperFunc) *Session {
 	return &Session{
 		run:       run,
+		stderr:    &helperOutput{},
 		helperEnv: map[string]string{},
 		prepared:  map[string]preparedBackend{},
 		httpAuth:  map[string]*HTTPAuth{},
@@ -238,7 +239,7 @@ func (s *Session) prepare(ctx context.Context, url string, helperMaySelect bool)
 		redactHelperCredentials(response)
 		result.err = s.applyEnvironment(response.Env)
 		if result.err == nil && response.HasHTTPCredentials() && IsHTTPBackend(result.url) {
-			s.httpAuth[result.url] = newHTTPAuth(result.url, response, s.run)
+			s.httpAuth[result.url] = newHTTPAuth(result.url, response, s.run, s.stderr)
 		}
 	}
 	if helperMaySelect {

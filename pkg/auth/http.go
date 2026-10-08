@@ -39,6 +39,7 @@ type HTTPAuth struct {
 	backendURL string
 	origin     *url.URL
 	run        runHelperFunc
+	stderr     *helperOutput
 
 	// mu is held while the helper runs, so requests that start during a refresh wait for its result.
 	mu      sync.Mutex
@@ -49,9 +50,21 @@ type HTTPAuth struct {
 	refreshErr error
 }
 
-func newHTTPAuth(backendURL string, response *credentialhelper.Response, run runHelperFunc) *HTTPAuth {
+func newHTTPAuth(
+	backendURL string, response *credentialhelper.Response, run runHelperFunc, stderr *helperOutput,
+) *HTTPAuth {
 	origin, _ := url.Parse(backendURL)
-	return &HTTPAuth{backendURL: backendURL, origin: origin, run: run, current: response}
+	return &HTTPAuth{backendURL: backendURL, origin: origin, run: run, stderr: stderr, current: response}
+}
+
+// CaptureHelperStderr routes the helper's diagnostics to a renderer until the returned cleanup function
+// is called. A refresh can run the helper in the middle of an update, when writing to the terminal
+// would corrupt an interactive display.
+func (a *HTTPAuth) CaptureHelperStderr() (<-chan string, func()) {
+	if a == nil {
+		return nil, func() {}
+	}
+	return a.stderr.capture()
 }
 
 // AccessToken returns the helper's current token when it is the backend's effective token.

@@ -99,6 +99,7 @@ func (b *cloudBackend) recordAndDisplayEvents(
 	}()
 
 	// Start the Go-routines for displaying and persisting events.
+	opts.HelperDiagnostics = b.httpAuth.CaptureHelperStderr
 	go display.ShowEvents(
 		label, action, stackRef.Name(), op.Proj.Name, permalink,
 		displayEvents, displayEventsDone, opts, isPreview)
